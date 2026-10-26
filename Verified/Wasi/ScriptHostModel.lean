@@ -1,4 +1,5 @@
 import LeanExe.Wasi.Semantics
+import Verified.Wasi.HostBytes
 
 namespace Verified.Wasi.ScriptHost
 
@@ -87,8 +88,6 @@ def writePolicy (output : Output) : List Request → Policy × List Request
 def exitPolicy : List Request → ExitPolicy × List Request
   | .exit policy :: rest => (policy, rest)
   | requests => (.rejected "script: unexpected proc_exit", requests)
-
-def bytesOfList (bytes : List UInt8) : Bytes := ⟨⟨bytes.toArray⟩⟩
 
 def readData (world : World) (capacity : UInt64) : List UInt8 :=
   (world.queues.get world.links.stdin).take

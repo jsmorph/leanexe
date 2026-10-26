@@ -161,7 +161,7 @@ The target host state contains the abstract world and an append-only joint event
 
 | Premise | Requirement |
 |---|---|
-| Host implementation | The Talos host satisfies `hostSpec host` for the three imports, including reply bounds, trace updates, terminal exit behavior, and guest-memory preservation. |
+| Host implementation | The Talos host satisfies `hostSpec host` for the three imports, including reply bounds, trace updates, terminal exit behavior, and guest-memory preservation.  Such a host exists when `host` answers every request, and only when it answers every request that the ABI expresses, as [the totality module](../Verified/Wasi/HostTotal.lean) proves. |
 | Heap and arguments | `Heap.At`, correctly represented argument words, and separation of consumed blocks from retained and borrowed memory. |
 | Static input | The literal pool's bytes and region exist and lie apart from consumed blocks.  Hidden table arguments represent their declared constants. |
 | Scratch separation | Every live region read through an argument lies apart from `[0,16)`, including the full allocation of an allocated-empty byte buffer. |
@@ -180,6 +180,8 @@ Running sum's `RunResources` ties each step budget to its active local words in 
 With `aborts = true`, `.implements` and `.start` permit guest allocation or depth failure after earlier I/O.  Their prefix classification retains those effects.  Normal-return ownership and heap-preservation postconditions apply to a returned store.  Terminal exit and trap require the host to discard the instance.
 
 The host's memory rules preserve globals, memory limits and page count, and bytes outside scratch and a read's destination.  Read and write preserve the exit marker.  Accepted exit records its status and uses the designated exit trap.  Rejected exit preserves the previous marker and records its failure.  The guest wrapper follows `proc_exit` with `unreachable`, while the host API requires the import to terminate.  [The host assumptions](../Verified/Wasi/HostSpec.lean) distinguish accepted exit from arbitrary host traps.
+
+`hostSpec host` constrains every invocation of each import from every store, so a satisfying Talos host must answer every request that reaches it.  [The totality module](../Verified/Wasi/HostTotal.lean) states the condition exactly.  `Host.Total host` requires a permitted reply to every read and write and an accepted or rejected outcome for every exit, and `Host.Total.satisfiable` builds a host environment that satisfies `hostSpec host` for any module with the three imports, from an oracle that chooses those replies.  `Host.Answers.of_satisfies` proves the converse for every request that the one-iovec ABI expresses with its payload at address 16: reads of capacity at most `2^32 - 16`, writes of at most `2^32 - 16` bytes, and every 32-bit exit status.  A theorem that assumes a satisfying host is therefore vacuous for a host relation that leaves such a request without a reply.  [The scripted host](../Verified/Wasi/ScriptHostContracts.lean) is the oracle of a queue world.
 
 ### Initial store and external execution
 

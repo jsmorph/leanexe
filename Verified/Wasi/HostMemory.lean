@@ -1,21 +1,13 @@
-import Verified.Wasi.ScriptHostModel
+import Verified.Wasi.HostBytes
 import Verified.Wasi.Scratch
 import Verified.Wasi.GuestFrame
 
-namespace Verified.Wasi.ScriptHost
+/-! Guest memory facts that the host imports use: reading the bytes of a write request,
+placing the bytes of a read reply, and the guest frames of those writes. -/
+
+namespace Verified.Wasi
 
 open Wasm
-
-@[simp] theorem bytesOfList_size (bytes : List UInt8) :
-    (bytesOfList bytes).data.size = bytes.length := by
-  simp only [bytesOfList, ByteArray.size, List.size_toArray]
-
-@[simp] theorem bytesOfList_data (bytes : LeanExe.Bytes) :
-    bytesOfList bytes.data.data.toList = bytes := by
-  cases bytes with
-  | mk bytes =>
-      cases bytes with
-      | mk data => simp only [bytesOfList, Array.toArray_toList]
 
 theorem readBytes_eq {memory : Mem} {pointer : UInt64} {bytes : LeanExe.Bytes}
     (data : Bytes.At memory pointer bytes) :
@@ -85,4 +77,4 @@ theorem frame_count (before : Store α) (host : α) (count : UInt32) :
   simp only [InRange, ABI.scratch, UInt32.reduceToNat] at apart ⊢
   omega
 
-end Verified.Wasi.ScriptHost
+end Verified.Wasi
