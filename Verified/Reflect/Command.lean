@@ -1,3 +1,4 @@
+import LeanExe.Native.Subset
 import Verified.Reflect.Definitions
 import Verified.Reflect.TailDefinition
 import Verified.Reflect.TailOptions
@@ -360,7 +361,8 @@ order, each of which may call those before it and, when recursive, itself; the m
 theorem `p.f.implements` that the module computes `f`, at the function's index, at its exported
 entry when its code takes the call depth, or, for a wrapper, at the wrapper's entry from a store
 that holds the tables; `p.initial`, that the store in which the module starts meets the
-allocator invariant and holds the tables; and `p.bytes`, the module's bytes with all the
+allocator invariant and holds the tables; `p.inSubset`, that the module is in the subset that
+the translator to C accepts, when it is; and `p.bytes`, the module's bytes with all the
 functions' theorems. -/
 @[command_elab verifiedCompile]
 def elabVerifiedCompile : CommandElab
@@ -625,13 +627,25 @@ def elabVerifiedCompile : CommandElab
             |>.set! 9 (← instantiateMVars pre) |>.set! 10 (← instantiateMVars post))
           addTheorem (base ++ simple ++ `trapFree) claim proof
       j := j + 1
+    let evaluated ← match evalModule (← getEnv) (← getOptions) (base ++ `module) with
+      | .ok m => pure m
+      | .error e => throwError "verified_compile: cannot evaluate the module: {e}"
+    -- The subset of WebAssembly that the translator to C accepts.  The native check gives the
+    -- reason for a module outside it, which has no native path; the kernel checks the theorem.
+    match LeanExe.Native.violation evaluated with
+    | some reason =>
+        logWarning m!"verified_compile: the module is outside the subset of the translator to C: \
+          {reason}"
+    | none =>
+        let inSubsetId := mkIdent (target.getId ++ `inSubset)
+        elabCommand (← `(set_option maxRecDepth 100000 in
+          theorem $inSubsetId : LeanExe.Native.InSubset $(mkIdent (base ++ `module)) := by
+            decide +kernel))
     -- The encoding, part by part: the native encoder gives the bytes of each part, and the kernel
     -- checks each function's body in its own theorem, so that one check holds one function.
-    let parts ← match evalModule (← getEnv) (← getOptions) (base ++ `module) with
-      | .ok m => match Wasm.Encoding.encodeParts m with
-        | .ok parts => pure parts
-        | .error e => throwError "verified_compile: the module does not encode: {e}"
-      | .error e => throwError "verified_compile: cannot evaluate the module: {e}"
+    let parts ← match Wasm.Encoding.encodeParts evaluated with
+      | .ok parts => pure parts
+      | .error e => throwError "verified_compile: the module does not encode: {e}"
     let (secs, bodies, data) := parts
     let bytesTy := mkApp (Lean.mkConst ``List [.zero]) (Lean.mkConst ``UInt8)
     let bytesListTy := mkApp (Lean.mkConst ``List [.zero]) bytesTy

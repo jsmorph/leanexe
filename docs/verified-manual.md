@@ -218,6 +218,7 @@ The command adds the program, the module, and every theorem in one step, and the
 | `p.sections`, `p.bodies`, `p.data`, `p.encoding` | Literal byte lists for the sections, function bodies, and data, and their assembly into the module's bytes. |
 | `p.func_ok_k`, `p.rest_ok`, `p.data_ok`, `p.codes_ok`, `p.funcs_count`, `p.funcs_length` | Kernel-checked encoding claims for each function, the other sections, and the sizes. |
 | `p.encoded` | `encode p.module = .ok ⟨p.encoding.toArray⟩`, with the bound on each function's locals that `decode_encode` requires. |
+| `p.inSubset` | `LeanExe.Native.InSubset p.module`: the module is in the subset of WebAssembly that the translator to C accepts.  A module outside it gets a warning that names the first part outside, and no theorem. |
 | `p.f.func`, `p.f.denote_eq` | The source function and its body equation.  A tail body's equation describes its return-or-continue step.  A wrapper has no source function, and its equation relates it to its callee at the tables and parameters. |
 | `p.f.implements` | `ImplementsA aborts p.module k f` with Lean's instances for the argument tuple and the result, or `ImplementsTables` for a wrapper. |
 | `p.f.uniform`, `p.f.pure` | For eligible scalar functions: raw execution is independent of the store, and `ImplementsPureA aborts` computes the Lean result while preserving the whole store. |
