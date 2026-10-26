@@ -168,7 +168,8 @@ def cglobal (id : ident) (v : globvar type) : Except String String := do
   | .Tarray elt n _, [.Init_space _] => pure s!"{qual}{← ctype elt} {name id}[{n}];\n"
   | .Tarray elt n _, init => do
       let items ← init.mapM (cinit elt)
-      pure s!"{qual}{← ctype elt} {name id}[{n}] = \{{", ".intercalate items}};\n"
+      let body := ", ".intercalate items
+      pure s!"{qual}{← ctype elt} {name id}[{n}] = \{{body}};\n"
   | ty, [.Init_space _] => pure s!"{qual}{← ctype ty} {name id};\n"
   | ty, [d] => pure s!"{qual}{← ctype ty} {name id} = {← cinit ty d};\n"
   | _, _ => throw "a scalar global with several initializers"
