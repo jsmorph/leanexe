@@ -17,8 +17,8 @@ open LClight
 
 /-- Lowercase hexadecimal digits of `n`, with at least `width` digits. -/
 def hexDigits (n width : Nat) : String :=
-  let s := String.mk (Nat.toDigits 16 n)
-  String.mk (List.replicate (width - s.length) '0') ++ s
+  let s := String.ofList (Nat.toDigits 16 n)
+  String.ofList (List.replicate (width - s.length) '0') ++ s
 
 def ctype : type → Except String String
   | .Tvoid => pure "void"
@@ -107,7 +107,7 @@ def builtinName : external_function → Except String String
   | .EF_builtin n _ => pure n
   | _ => throw "an external call other than a built-in"
 
-def indent (depth : Nat) : String := String.mk (List.replicate (2 * depth) ' ')
+def indent (depth : Nat) : String := String.ofList (List.replicate (2 * depth) ' ')
 
 def cstmt (depth : Nat) : statement → Except String String
   | .Sskip => pure s!"{indent depth};\n"

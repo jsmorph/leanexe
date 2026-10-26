@@ -387,7 +387,7 @@ def cMain : String :=
 def cText (p : program function) : Except String String := do
   pure ((← LeanExe.Native.cprogram name p) ++ cMain)
 
-def hex (n : Nat) : String := String.mk (Nat.toDigits 16 n)
+def hex (n : Nat) : String := String.ofList (Nat.toDigits 16 n)
 
 /-- The bits of the `chunk`-sized value at offset `ofs` of the global `id` in `m`. -/
 def bitsAt (p : program function) (m : mem) (id : ident) (chunk : memory_chunk) (ofs : Int) :
