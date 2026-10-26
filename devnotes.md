@@ -35590,3 +35590,89 @@ The proofs follow the programs' structure.  SipHash's `messageWords_eq` describe
 - [x] Full validation, then commit and fast-forward `main`.
 
 On the build host the branch built `Verified Library` in 10,519 jobs with no `sorry` and the default targets, and the vector checks agreed: `siphash-vectors` on 331 messages and `xxhash64-vectors` on 8,322.  `tests/verified/run.sh` ended with status 0: 32,806 verified cases, `main`'s 32,374, the 266 of `siphash`, and the 166 of `xxhash64`, with no failure, and 31 file theorems with the permitted axioms.  The review's comment corrections came after that run, and the affected modules then rebuilt, both vector checks agreed again, and the file theorems of both modules held.
+
+## 2026-10-26: The slew planner: program, theorems, and tests
+
+The user asked to bring the Lean program of a slew-planner demo into the repository, to compile it with the verified compiler and test it in WebAssembly, and then to prove its theorems, starting with the lemmas of the edge check.  The work runs on the branch `slew-planner` from `d1f851729`, and phase A ran no Lean and connected to no build host.  The delivery also held a browser page, a JavaScript reference with a generated corpus, and a design document.  The branch first imported them and then removed them at the user's direction, since they will live outside the repository and the user does not take the JavaScript corpus as authoritative.  The repository keeps `Demos/Slew/Program.lean`, `Flat.lean`, `Verified.lean`, and a README that describes the Lean program alone.
+
+The review against [the verified compiler manual](docs/verified-manual.md#the-dialect) found one required change.  `Verified/Compile.lean` compiles `&&` as both operands followed by `i64.and`, so `relax` would have run `edgeOk` on every candidate edge instead of only on the improving ones, and a nested `if` now keeps the check lazy with the same Lean meaning.  The other points wait for the reflector: `round` and `relax` borrow their record parameter and copy its arrays each round, which inflates the generated bound, the index forms `p.1.toNat` and `(1 : UInt64).toNat` may need a `let`, and `plan` should borrow its input.  `tools/source-layout` reports five programs that `main` lacks in `Library.Native`, and the user decided that they arrive with the WASI review fixes.
+
+Regenerating the JavaScript corpus under Node.js 24.13.0 changed the last bits of 798 of its 5,361 lines.  ECMAScript leaves `**` and the `Math` functions to the implementation ([Number::exponentiate](https://tc39.es/ecma262/#sec-numeric-types-number-exponentiate), [the Math functions](https://tc39.es/ecma262/#sec-function-properties-of-the-math-object), cited without fetching them), and the engine that wrote the corpus computed `10 ** e` one unit in the last place off at four exponents.  The Lean generator below therefore uses only correctly rounded operations and Lean definitions, so that its inputs are the same on every host.
+
+### Theorems
+
+The theorems concern `Demos.Slew.plan` and the module of `Demos/Slew/Verified.lean`, in this order of work.  An attitude `q` acts by its rotation matrix `R(q̄)`, where `q̄` is the normalization of `q`, and `R(n, φ)` is the rotation by `φ` about the unit axis `n`.  Two attitudes lie within `ρ` of each other when they move no unit vector apart by more than `ρ`, and the tube radius is `ρ = 10⁻⁹`.
+
+1. **Compilation (generated).**  `compiled.plan.implements`: the module's `plan` export, called with a representation of an input array, returns a representation of `plan` of the array, or traps at `unreachable` when an allocation finds no memory.
+2. **Execution (generated, then bounded).**  `compiled.plan.trapFree` with a stated bound: for inputs within the validated sizes, the call returns without a trap whenever `top` can rise by a constant number of bytes within the memory cap, which `compiled.plan.bound_eq` yields as `compute_bound` does for the drone planner.
+3. **NaN-freedom.**  For every input that passes `validInput`, no floating-point operation in the evaluation of `plan` has a NaN operand or result.  The program takes square roots only of sums of squares and of `θ/a` with `θ ≥ 0`, divides only by quantities bounded away from zero, and writes each acceptance test so that a false comparison rejects.  Transferring the statement to the bytes needs either a statement in Talos's terms or an argument from the compilation theorem that the code performs the same operations, which stays open until the semantics are in hand.
+4. **Safety.**  Let the output have status 1, segments `(q_k, n_k, θ_k)` for `k < K`, and goal `q_K`.  Then `q_0` and `q_K` are the input start and goal bit for bit, and `R(n̄_k, θ_k) R(q̄_k)` lies within `ρ` of `R(q̄_{k+1})`.  For each `k`, each `φ` in `[0, θ_k]`, each attitude `R′` within `ρ` of `R(n̄_k, φ) R(q̄_k)`, and each input cone `(b, u, c, kind)`, a keep-out cone gives `ū · R′ b̄ ≤ c` and a keep-in cone `ū · R′ b̄ ≥ c`.  The theorem assumes nothing about the waypoints or cones beyond validation.
+5. **Premises.**  For a keep-out cone with body vector `b` and a nominal half-angle `α(t)` that may change during the slew, suppose that the true axis `u(t)` stays within angle `d` of the planning axis `u₀`, that `α(t) ≤ α(t₀) + g`, and that the flown attitude `A(t)` stays within angle `ε` of a commanded attitude on the plan's path.  If the plan's half-angle was at least `α(t₀) + g + d + ε`, then `∠(A(t) b, u(t)) ≥ α(t)` throughout.  The proof is the triangle inequality on the sphere and the fact that a rotation by `ε` moves no unit vector by more than `ε`, and keep-in cones are symmetric.
+6. **Optimality.**  Let `G` be the graph that the program's own predicates define: a waypoint is a node when it passes `attitudeOk`, and an edge exists when its computed angle is at most `maxEdge` or it joins the start to the goal, and `edgeOk` accepts it, weighted by its computed integer cost.  Status 1 holds exactly when `G` has a path from the start to the goal, and then the output is such a path of least total cost, and status 0 holds exactly when no path exists.  The proof is the correctness of array Dijkstra with integer weights and the observation that skipping the check of a candidate that cannot strictly improve its target leaves the result unchanged, and it comes last, because a change of the motion model would change `G`.
+7. **File.**  The written `build/verified/slew.wasm` holds `encode compiled.module`, as the numerical file theorems state for their modules.
+
+The safety proof divides into the arc lemmas, the error lemmas, the soundness of the edge check and of its small-angle branch, the tube lemma, the relation of the output's axis and angle to the relative quaternion, and the path structure, which is a loop invariant of the search.  Phase 1 proves the first four, and the safety phase proves the rest.
+
+### Phase 1: the edge-check lemmas
+
+| Question | Decision | Reason |
+|---|---|---|
+| Subject | Prove soundness of the program's own `edgeOk` and `attitudeOk`, with the per-cone body moved into an `@[inline]` helper if the proofs need one | A second implementation would need an equivalence proof, and an inline helper should leave the bytes unchanged, which a byte comparison confirms. |
+| Statement | Soundness for an attitude `qa` and a relative quaternion `rel` with near-unit norm and `w ≥ 0`, with the axis `rel.v/|rel.v|` and the angle `2 arg (w + s i)` of `rel`'s real value: if `edgeOk` accepts, every attitude within `r` of `R(n, φ) R(q̄a)` for `φ` in `[0, θ]` satisfies every cone | The check computes from `rel`, the output's axis comes from the same `rel`, and the relation of `rel` to the target attitude belongs to the safety phase. |
+| Vectors | A structure of three reals with explicit `dot`, `cross`, and norm | The error lemmas follow the program field by field, `ring` and `nlinarith` do the algebra, and Cauchy–Schwarz in three dimensions is Lagrange's identity. |
+| Tube distance | The largest displacement of a unit vector, `‖R′b − Rb‖ ≤ r` for every unit `b` | The tube lemma is then one Cauchy–Schwarz step, and a rotation by `α` displaces a unit vector by at most `2 sin(α/2) ≤ α`, so the theorem implies the statement in angles. |
+| Arc lemma | Prove the endpoint case from the identity `sin(β−α) p(γ) = sin(β−γ) p(α) + sin(γ−α) p(β)` for `p = P cos + Q sin`, applied to `f′` with the mean value theorem, and the interior case from `|A cos φ + B sin φ| ≤ √(A² + B²)` | The identity shows that `f′` keeps its sign between two points of the same sign less than `π` apart, so `f′(0) ≤ 0` or `f′(θ) ≥ 0` excludes a rise followed by a fall on `[0, θ]`. |
+| Error budget | Bound the rounding errors against the program's formulas evaluated in real arithmetic on the unnormalized inputs, and add the normalization error, a few times `10⁻¹²`, only to the extremum's bound | The stationary-point tests need errors below `η = 10⁻¹²`, which the normalization of inputs at the tolerance can exceed, and the sign of `f′` for the unnormalized arc is the one the case split uses. |
+| Margin split | Prove soundness with `r = 1.05 · 10⁻⁹` and an error bound of `4.9 · 10⁻¹¹`, which together fit within `margin`, the double just below `1.1 · 10⁻⁹` | The safety theorem can then state `ρ = 10⁻⁹` and absorb the output's axis, angle, and connection discrepancies, each near `10⁻¹⁵`.  The split stays open until the error lemmas give their constants, and larger margins or interval arithmetic for a resistant expression are the fallbacks. |
+
+The rounding model is `FApprox` of [the error tracking for straight-line code](LeanExe/ProofKit/F64Approx.lean): `FApprox x v e` states that the float `x` is finite and within `e` of the real `v`, and its rules for addition, subtraction, multiplication, division, and square root take magnitude bounds that validation supplies.  The words' real values are `value` of Talos's `CodeLib.IEEE64`.  The specification uses explicit formulas on real triples, the rotation matrix of a normalized quaternion and Rodrigues' formula, rather than Mathlib's quaternions, which have little theory of rotations.
+
+### Tests
+
+The tests follow the other verified examples, and the build phase writes them.  `tests/TestSupport/Slew/Cases.lean` generates the inputs and prints one line per case, `slew|plan|array-u64|INPUT|OUTPUT|2` or `slew|atan2|f64|f64:Y f64:X|RESULT`, with native Lean's results.  `tests/TestSupport/Slew/CasesMain.lean` runs it for `tests/verified/run.sh --cases slew`, `Verified/Examples/Cases.lean` includes it in the full run, and `tests/verified/modules.txt` registers `Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew`, so the driver writes `build/verified/slew.wasm` and compares every case in Wasmtime, bit for bit.  The live-block field 2 counts the host's input and the result, which holds if `plan` borrows its input.
+
+The generator draws from `Library.Random.SplitMix64` with fixed seeds and uses only correctly rounded operations: sums, products, quotients, square roots, and `unitFloat`.  It builds angles from their half-angle tangents `t`, with `cos = (1 − t²)/(1 + t²)` and `sin = 2t/(1 + t²)`, and attitudes from orthonormal frames by the standard trace-based conversion, so it calls neither Lean's `Float.sin` nor any other function of the platform's library.
+
+| Class | Construction |
+|---|---|
+| Realistic plans | Three constraint directions drawn as unit vectors by rejection in the cube; six cones of a telescope's usual shape (boresight `+X` at least 50° from the first direction and 20° and 15° beyond the angular radii of the other two, `+Z` within 70° of the first, and `±Y` at least 75° from it), with cosines as fixed bit patterns; waypoint attitudes at random boresights with the first direction in the body's `X`–`Z` plane; a start and a goal drawn until they pass every cone with `10⁻⁶` to spare; 0, 60, 200, and 500 waypoints; and variations of the rate, acceleration, settling, and `maxEdge`. |
+| Grazing | `v₀ = cos γ p + sin γ n` with `p ⊥ n`, and `u = cos β R(n, φ*) p + sin β n`, so `f(φ) = cos β cos γ cos(φ − φ*) + sin β sin γ` has the extremum `cos(β − γ)` at `φ*` inside `(0, θ)`; the limit sits at the extremum plus each of `−10⁻⁸`, `−2·10⁻⁹`, `−1.1·10⁻⁹`, `−10⁻¹⁰`, 0, `10⁻¹⁰`, `1.1·10⁻⁹`, `1.2·10⁻⁹`, `2·10⁻⁹`, and `10⁻⁸`, for both kinds. |
+| Stationary points | `u` with a component `t (n × v₀)` for `t` in `{0, ±10⁻¹³, ±10⁻¹¹, ±10⁻⁶}`, so that `B` is proportional to `t`, at the start and, by reversing the rotation, at the end, with limits `2·10⁻⁹` and `10⁻¹²` beyond the start's value. |
+| Angles near 0 and `π` | The relative quaternion's vector length `s` set directly to 0, `10⁻¹⁵`, `10⁻¹²`, `10⁻⁹`, `0.995·10⁻⁷`, `10⁻⁷`, `1.005·10⁻⁷`, `10⁻⁶`, and `10⁻³`, and its scalar part `w` to `10⁻³`, `10⁻⁶`, `10⁻⁹`, `10⁻¹⁵`, and 0; antipodal quaternions `q` and `−q`; and small rotations whose start lies `10⁻⁸` inside the limit. |
+| Extreme cones | Keep-out and keep-in cones of cosine 0, 1, and −1, and of half-angles near 0°, on and beside the path. |
+| Norms at the tolerance | One body vector or quaternion scaled by `1 ± 4.9·10⁻¹³` and `1 ± 5.1·10⁻¹³`. |
+| Invalid inputs | NaN and infinities in each section, version 1, 0 and 3.5 bodies, 17 cones, 1,025 waypoints at the matching length, a length off by one, a body index out of range, kind 2, cosine 1.0000001, rate 0, acceleration 2, settling −1, `maxEdge` 5, a start off the unit sphere, inputs of 4 and 0 values, a start and a goal that violate a cone, and no cones. |
+| `atan2` | All pairs of ±0, ± the smallest subnormal, ±1, ±infinity, NaN, 0.5, 2, `10^±8`, and `10^±300`, random bit patterns, and random values with decimal exponents from −20 to 19. |
+
+Two limits shape the corpus.  Linux limits one argument to 128 KiB (`MAX_ARG_STRLEN`), and a plan of 1,024 waypoints, about 4,200 words in decimal, takes about 84 KB, so every plan fits.  The driver runs the generator interpreted, under a 10-minute limit, and the delivered native run took about 5 s for three plans of 500 waypoints, so the realistic class keeps about 20 such plans until the build phase measures the time.
+
+| Question | Decision | Reason |
+|---|---|---|
+| A sampled safety check before the safety theorem | Have the generator also evaluate every cone of every status-1 plan at 1,000 angles per segment, with Rodrigues' formula and the library's `Trig.sin` and `Trig.cos`, and fail when a cone has less than `10⁻⁹` to spare | The comparison of the module with native Lean cannot detect an error that both share.  The library's `sin` and `cos` are Lean definitions with proved accuracy, so the check is the same on every host.  This goes beyond the user's test design and needs the user's agreement. |
+| Edge-check cases | Add calls of the module's `edgeOk` export on single-cone edges whose endpoints have not passed a static check | The plans never reach an endpoint-only rejection, since both ends of every edge in a plan pass the static check with the same margin. |
+
+### Plan
+
+Phase A:
+
+- [x] Import the program, review it against the dialect, make `relax`'s edge check lazy, and document it.
+- [x] Remove the page, the JavaScript, the corpus, and the design document at the user's direction, and move the theorem plan here.
+
+Build phase:
+
+- [ ] Build `Demos.Slew.Program`, `Demos.Slew.Flat`, and `Demos.Slew.Verified`, and record each change that the reflector needs.
+- [ ] Write the generator and its main module, register the module and the cases, and run `tests/verified/run.sh --cases slew`, recording the counts and the times of the largest plans against a target of 100 ms.
+- [ ] Confirm from `compiled.plan.implements` that `plan` borrows its input, and check the axioms of `compiled.bytes`.
+- [ ] Read `compiled.plan.bound_eq`, and decide whether `cost` and `parent` leave the `Search` record.
+- [ ] Add the imports to `Demos.lean` and `Demos/Verified.lean`, run `tools/source-layout`, and update the README and the verified compiler manual's examples.
+
+Phase 1:
+
+- [ ] `Spec.lean`: real vectors, the rotation matrix of a normalized quaternion, Rodrigues' rotation, the cone predicates, and the tube.
+- [ ] `Arc.lean`: Rodrigues' formula in the `A, B, C` form, the global bound, the interpolation identity, and the endpoint lemma for maxima and, by negation, minima.
+- [ ] `Error.lean`: from validated input, `FApprox` bounds for `s`, `n`, `cos θ`, `sin θ`, `v₀`, `n·u`, `n·v₀`, `f₀`, `A`, `B`, `C`, `f₁`, `f′(θ)`, and `√(A² + B²)`.
+- [ ] `Check.lean`: soundness of one cone in both kinds and both branches, of the small-angle branch, of `edgeOk` over all cones by `loop_induction`, and of `attitudeOk`.
+- [ ] Compare the module's `edgeOk` export with native Lean on 10⁵ generated single-cone edges.
+- [ ] No `sorry`, no new axiom, no `bv_decide`, and an axiom check of the soundness theorems.
+
+Later phases: the path structure and the safety theorem, the premise theorem, NaN-freedom, then the motion model and optimality, with the file theorem once the module is stable.

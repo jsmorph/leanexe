@@ -1,0 +1,170 @@
+# Slew: constraint-checked attitude slews
+
+[The program](Program.lean) plans a slew of a spacecraft from a start attitude to a goal attitude
+as a sequence of rest-to-rest eigenaxis rotations through a set of waypoint attitudes.  It checks
+every rotation it returns against cones that keep body vectors out of or inside given directions,
+and it returns the path of least total duration, in whole milliseconds, among the paths of its
+graph.  The program is written in the verified compiler's dialect, takes one array of
+binary64 values, and returns one, and [the development
+journal](../../devnotes.md#2026-10-26-the-slew-planner-program-theorems-and-tests) holds the plan
+for its compilation, its tests, and its theorems.
+
+No theorem about the planner is proved yet.  The program was written and first tested outside this
+repository, and it has not yet been built here, compiled by `verified_compile`, or run in
+WebAssembly.  The build phase adds the tests that [the test section](#tests) describes.
+
+| File | Contents |
+|---|---|
+| [The program](Program.lean) | The planner in the dialect |
+| [The representations](Flat.lean) | `Flat` instances for `V3`, `Q4`, `Dims`, and `Search` |
+| [The compilation](Verified.lean) | `verified_compile compiled := [atan, atan2, …, plan]` |
+
+The program imports only the dialect modules and `Library.Numerics.Float64.Atan.Program`, which
+build from Lean's core library.  The representations need `LeanExe.Pipeline`, which depends on
+Talos's CodeLib, and the compilation needs `Verified`, which imports Mathlib.  Neither of the last
+two files has been built yet.
+
+## The planning problem
+
+An attitude is a quaternion `q = [w, x, y, z]` that maps body coordinates to inertial coordinates.
+A cone names a body vector `b`, an inertial axis `u`, the cosine `c` of its half-angle, and a kind.
+A keep-out cone requires `u · R(q) b ≤ c`, and a keep-in cone requires `u · R(q) b ≥ c`.
+
+A segment is a rest-to-rest rotation about a fixed inertial axis `n` by an angle `θ` in `[0, π]`,
+with a rate limit `ω` and an acceleration limit `a`.  It lasts `θ/ω + ω/a` when `θ ≥ ω²/a` and
+`2 √(θ/a)` otherwise, followed by a settling time, and the attitudes it visits do not depend on its
+time profile.  The graph's nodes are the start, the goal, and the waypoints, and an edge joins two
+nodes when the rotation between them is at most `maxEdge`, or joins the start to the goal, and
+the edge check accepts it.
+
+## Interface
+
+```text
+input   header (8):  version = 2, nBody, nCone, nWay, rate limit (rad/s), acceleration limit (rad/s²),
+                     settling time (s), maxEdge (rad)
+        q0 (4), q1 (4)          start and goal attitudes
+        body vectors (3 each)   body frame
+        cones (6 each)          body index, axis x, y, z, cosine of the half-angle, kind (0 keep-out, 1 keep-in)
+        waypoints (4 each)
+
+output  header (4):  status, k (segments), total cost (ms), nodes finalized
+        segments (11 each): start quaternion (4), axis (3), angle (rad), cost (ms), from node, to node
+        goal quaternion (4)
+
+status   1 plan found
+         0 no path in the graph
+        -1 start attitude violates a cone
+        -2 goal attitude violates a cone
+        -3 invalid input
+```
+
+Only status 1 has segments and the goal quaternion.  Each segment's start quaternion is the input's
+start or waypoint quaternion, bit for bit, and its axis and angle are the rotation that the plan
+commands.  Costs are whole numbers of milliseconds held as binary64 values, which are exact below
+`2^53`.
+
+## Program structure
+
+The program follows the drone planner: flat arrays, counted loops through `LeanExe.loop`,
+`LeanExe.build`, and `LeanExe.repeatWhile`, ties to the lowest index, and replacement only on
+strict improvement.  It works in five stages.
+
+1. `validInput` rejects anything outside the interface, with status -3.  It requires:
+   - version 2, and counts that are whole numbers within bounds (1 to 8 bodies, up to 16 cones,
+     up to 1,024 waypoints) and that match the length;
+   - finite values, a rate limit in `[1e-5, 1]`, an acceleration limit in `[1e-7, 1]`, a settling
+     time in `[0, 3600]`, and `maxEdge` in `[0, 4]`;
+   - a squared norm within `1e-12` of 1 for every vector and quaternion;
+   - cone body indices in range, cosines in `[-1, 1]`, and kinds 0 or 1.
+2. `attitudeOk` checks one attitude against every cone.  The start and goal get status -1 or -2
+   on failure, and failing waypoints are left out of the graph.
+3. `search` runs array Dijkstra over the start, the goal, and the waypoints.  `relax` computes
+   each candidate edge's relative quaternion (`relative`), its angle (`angleOf`, with the
+   library's `atan2`), and its cost (`slewTicks`).  It calls `edgeOk` only when the candidate
+   would strictly improve the target's cost, in an `if` of its own, since the compiled code
+   evaluates both operands of `&&`.
+4. `edgeOk` is the closed-form check described below.
+5. `output` follows the parent chain and writes the segments.
+
+During a rotation by `φ` about the unit axis `n`, the cosine between a body vector `v₀` and a cone
+axis `u` is `f(φ) = A cos φ + B sin φ + C`, with `A = u·v₀ - (n·u)(n·v₀)`, `B = u·(n × v₀)`, and
+`C = (n·u)(n·v₀)`.  On `[0, θ]` with `θ ≤ π`, `f` has an interior maximum only when `B > 0` and
+`f′(θ) = B cos θ - A sin θ < 0`, of value `C + √(A² + B²)`, and an interior minimum only when
+`B < 0` and `f′(θ) > 0`, of value `C - √(A² + B²)`.  The relative quaternion `[w, v]` with
+`w ≥ 0` gives `cos θ = w² - s²` and `sin θ = 2ws` for `s = |v|`, so the check needs no
+trigonometric function.
+
+The check compares the endpoint values, and the stationary value unless a computed test excludes it
+by more than `eta = 1e-12`, with the cone's cosine tightened by `margin`, the double nearest
+`1.1e-9`.  The margin covers a rounding allowance of `1e-10` and a tube of `1e-9` rad around the
+commanded rotation.  Below `s = 1e-7` the axis `v/s` is unreliable, and the check tests the start
+attitude with `2.125 s` more slack, since no vector moves farther than the rotation angle.  Each
+edge costs `⌈1000 T(θ)⌉ + ⌈1000 t_settle⌉` milliseconds, each ceiling built from the saturating
+`Float.toUInt64`, because the verified compiler has no rule for `Float.ceil`.  An unreached node
+costs `2^62`, and no path cost comes near it, since an edge costs less than `3.2e8` ms.
+
+## Compilation
+
+These commands build the compilation, write the module, and validate it:
+
+```sh
+tools/leanrun --timeout 60m lake build Demos.Slew.Verified
+mkdir -p build/verified
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+  Demos.Slew.Verified Demos.Slew.Verified.compiled.module build/verified/slew.wasm
+wasm-tools validate build/verified/slew.wasm
+```
+
+`Verified.lean` has not yet met the reflector, and these are the points to watch:
+
+- `round` and `relax` take the search state, a record with array fields, as a parameter, and the
+  verified compiler borrows every record parameter.  Their updates therefore copy arrays of up to
+  1,026 words in each of up to 1,027 rounds.  The copies are correct, but the generated allocation
+  bound counts each one without reuse.  Passing `cost` and `parent` as separate owned parameters
+  would remove the copies.
+- `pathLength` indexes with `p.1.toNat` for a pair `p`.  If the reflector requires a variable,
+  `p.1` can be bound with `let` first.
+- `output` reads `s.cost[(1 : UInt64).toNat]!`.  If the reflector rejects the literal's ascription,
+  `let one : UInt64 := 1` can replace it.
+- `plan` should borrow its input, and the generated theorem states the mode, since an owned
+  parameter has type `Moved`.
+- The module exports each listed definition under the last component of its name.  `round`,
+  `initial`, `search`, and `output` are generic names, and they do not collide within this
+  program.
+
+## Tests
+
+The tests follow the other verified examples.  A generator written in Lean draws the inputs from
+SplitMix64 with fixed seeds and builds the geometry from rational parametrizations of angles, with
+no call to a platform library.  Native Lean computes each expected result, and
+`tests/verified/run.sh --cases slew` compares the module with it in Wasmtime, bit for bit.  The
+cases cover these classes:
+
+- realistic plans with 0, 60, 200, and 500 waypoints, and variations of the limits;
+- cones whose limit grazes a rotation's designed extremum, from `-1e-8` to `1e-8` away, the margin
+  included;
+- stationary points near the start and the end of a rotation, with `B` of both signs and within
+  and beyond `eta`;
+- rotations at both sides of the small-angle threshold, near and at `π`, and antipodal quaternions;
+- cones of half-angles near 0° and 90°, and cones of 0° and 180°;
+- vectors and quaternions just inside and just outside the norm tolerance;
+- invalid inputs of every kind that `validInput` rejects;
+- `atan2` on special values and on random arguments.
+
+## Theorems to prove
+
+The journal states each theorem and the order of the work.
+
+- **Compilation and execution:** the generated `compiled.plan.implements` and `trapFree`, with a
+  stated allocation bound.
+- **NaN-freedom:** no floating-point operation in the evaluation of `plan` on validated input has
+  a NaN operand or result.
+- **Safety:** every commanded rotation of a plan, and every attitude within `1e-9` of it, satisfies
+  every input cone, as a statement about real numbers.
+- **Premises:** if the flown attitude stays within `ε` of the commanded one, each constraint axis
+  within `d` of its planning value, and each nominal half-angle grows by at most `g`, then a plan
+  computed with half-angles enlarged by `ε + d + g` keeps the nominal limits along the flown
+  slew.
+- **Optimality:** no path in the graph that the program's own checks define costs less than the
+  plan.
+- **File:** the written `slew.wasm` holds the encoding of `compiled.module`.
