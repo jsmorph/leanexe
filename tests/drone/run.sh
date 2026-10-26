@@ -5,6 +5,10 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 host=$root/build/tools/leanexe-wasmtime-host
+if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+  echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
+  exit 1
+fi
 total=0
 failed=0
 while IFS='|' read -r module name result args expected; do

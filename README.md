@@ -189,7 +189,7 @@ The complete `Library` build includes the numerical proofs and can take several 
 the execution, decoder, allocation, numerical, and GPU tests.  On an 8-CPU host with about 12 GiB
 of memory, the procedure stages
 [memory-heavy numerical proofs](docs/leanexe-manual.md#memory-heavy-numerical-proofs) individually
-before a three-worker aggregate, with a 10 GiB memory high limit and 12 GiB maximum.  Test drivers
+before a two-worker aggregate, with a 10 GiB memory high limit and 12 GiB maximum.  Test drivers
 invoke the runner themselves.
 
 `tests/wasi/run.sh` checks the WASI proofs, reflected modules, byte ownership, and native and
