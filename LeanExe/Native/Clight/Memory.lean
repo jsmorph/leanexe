@@ -51,11 +51,7 @@ theorem perm_order_b_iff (p1 p2 : permission) : perm_order_b p1 p2 = true ↔ pe
   · intro h
     cases p1 <;> cases p2 <;> simp [perm_order_b] at h <;> constructor
   · intro h
-    cases h with
-    | perm_refl p => cases p <;> rfl
-    | perm_F_any p => cases p <;> rfl
-    | perm_W_R => rfl
-    | perm_any_N p => cases p <;> rfl
+    cases p1 <;> cases p2 <;> first | rfl | cases h
 
 instance (p1 p2 : permission) : Decidable (perm_order p1 p2) :=
   decidable_of_iff _ (perm_order_b_iff p1 p2)

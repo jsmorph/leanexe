@@ -22,11 +22,11 @@ theorem lvar_sound {e : env} {le : temp_env} {m : mem} {id : ident} {ty : type} 
       obtain ⟨l', ty'⟩ := p
       simp only [he] at h
       by_cases hty : ty' = ty
-      · rw [if_pos hty] at h
+      · rw [ite_eq_left hty] at h
         cases h
         subst hty
         exact .eval_Evar_local _ _ _ he
-      · rw [if_neg hty] at h
+      · rw [ite_eq_right hty] at h
         cases h
   | none =>
       simp only [he] at h
@@ -136,13 +136,13 @@ theorem eval_fn_sound (e : env) (le : temp_env) (m : mem) (a : expr) :
             | Vptr l' ofs' =>
                 simp only [ha] at h
                 cases h
-                exact .eval_Ederef a ty l' ofs' (iha.1 _ ha)
+                exact .eval_Ederef a ty _ _ (iha.1 _ ha)
             | _ => simp [ha] at h
   | Eaddrof a ty iha =>
       refine ⟨fun v h => ?_, fun l ofs bf h => by simp [eval_lvalue_fn] at h⟩
-      simp only [eval_expr_fn] at h
       cases a with
       | Evar id ty' =>
+          simp only [eval_expr_fn] at h
           cases hl : lvar ge e id ty' with
           | none => simp [hl] at h
           | some p =>
@@ -151,6 +151,7 @@ theorem eval_fn_sound (e : env) (le : temp_env) (m : mem) (a : expr) :
               cases h
               exact .eval_Eaddrof _ ty l ofs (lvar_sound hl)
       | Ederef b ty' =>
+          simp only [eval_expr_fn] at h
           cases hb : eval_expr_fn A ge e le m b with
           | none => simp [hb] at h
           | some vb =>
@@ -160,7 +161,7 @@ theorem eval_fn_sound (e : env) (le : temp_env) (m : mem) (a : expr) :
                   cases h
                   exact .eval_Eaddrof _ ty l ofs (iha.2 l ofs .Full (by simp [eval_lvalue_fn, hb]))
               | _ => simp [hb] at h
-      | _ => simp at h
+      | _ => simp [eval_expr_fn] at h
   | Eunop op a ty iha =>
       refine ⟨fun v h => ?_, fun l ofs bf h => by simp [eval_lvalue_fn] at h⟩
       simp only [eval_expr_fn] at h
@@ -253,9 +254,9 @@ theorem function_entry2_fn_sound {f : function} {vargs : List val} {le : temp_en
   unfold function_entry2_fn at h
   by_cases hc : f.fn_vars = [] ∧ (var_names f.fn_params).Nodup ∧
       (∀ x ∈ var_names f.fn_params, ∀ y ∈ var_names f.fn_temps, x ≠ y)
-  · rw [if_pos hc] at h
+  · rw [ite_eq_left hc] at h
     exact .intro le hc.1 hc.2.1 hc.2.2 h
-  · rw [if_neg hc] at h
+  · rw [ite_eq_right hc] at h
     cases h
 
 theorem outcome_result_value_fn_sound {out : outcome} {t : type} {m : mem} {v : val}
@@ -281,9 +282,9 @@ theorem outcome_result_value_fn_sound {out : outcome} {t : type} {m : mem} {v : 
           obtain ⟨v', t'⟩ := p
           simp only [outcome_result_value_fn] at h
           by_cases hv : t = .Tvoid
-          · rw [if_pos hv] at h
+          · rw [ite_eq_left hv] at h
             cases h
-          · rw [if_neg hv] at h
+          · rw [ite_eq_right hv] at h
             exact ⟨hv, h⟩
   | Out_break => simp [outcome_result_value_fn] at h
   | Out_continue => simp [outcome_result_value_fn] at h
@@ -322,7 +323,7 @@ theorem fn_sound (fuel : Nat) :
                       | some m'' =>
                           simp only [hl, hv, hc, ha] at h
                           cases h
-                          exact .exec_Sassign e le m a1 a2 loc ofs bf v2 v m''
+                          exact .exec_Sassign e le m a1 a2 loc ofs bf v2 v _
                             (eval_lvalue_fn_sound hl) (eval_expr_fn_sound hv) hc
                             (assign_loc_fn_sound ha)
       | Sset id a =>
@@ -349,18 +350,18 @@ theorem fn_sound (fuel : Nat) :
                       | some f =>
                           simp only [hcf, hvf, hva, hf] at h
                           by_cases hty : type_of_fundef f = .Tfunction tyargs tyres cconv
-                          · rw [if_pos hty] at h
+                          · rw [ite_eq_left hty] at h
                             cases hc : eval_funcall_fn A ge fuel m f vargs with
                             | error err => simp [hc] at h
                             | ok r =>
                                 obtain ⟨t0, m0, vres⟩ := r
                                 simp only [hc] at h
                                 cases h
-                                exact .exec_Scall e le m optid a al tyargs tyres cconv vf vargs f t0
-                                  m0 vres hcf (eval_expr_fn_sound hvf)
+                                exact .exec_Scall e le m optid a al tyargs tyres cconv vf vargs f _
+                                  _ vres hcf (eval_expr_fn_sound hvf)
                                   (eval_exprlist_fn_sound _ _ _ hva) hf hty
                                   (ihf _ _ _ _ _ _ hc)
-                          · rw [if_neg hty] at h
+                          · rw [ite_eq_right hty] at h
                             cases h
       | Sbuiltin optid ef tyargs al =>
           simp only [exec_fn] at h
@@ -373,7 +374,7 @@ theorem fn_sound (fuel : Nat) :
                   obtain ⟨t0, vres, m0⟩ := r
                   simp only [hv, hx] at h
                   cases h
-                  exact .exec_Sbuiltin e le m optid ef al tyargs vargs t0 m0 vres
+                  exact .exec_Sbuiltin e le m optid ef al tyargs vargs _ _ vres
                     (eval_exprlist_fn_sound _ _ _ hv) (external_call_fn_sound hx)
       | Ssequence s1 s2 =>
           simp only [exec_fn] at h
@@ -391,21 +392,21 @@ theorem fn_sound (fuel : Nat) :
                       obtain ⟨t2, le2, m2, out2⟩ := r2
                       simp only [h2] at h
                       cases h
-                      exact .exec_Sseq_1 e le m s1 s2 t1 le1 m1 t2 le2 m2 out2 d1
+                      exact .exec_Sseq_1 e le m s1 s2 t1 le1 m1 t2 _ _ _ d1
                         (ihs _ _ _ _ _ _ _ _ h2)
               | Out_break =>
                   simp only [h1] at h
                   cases h
-                  exact .exec_Sseq_2 e le m s1 s2 t1 le1 m1 .Out_break d1 (by intro hn; cases hn)
+                  exact .exec_Sseq_2 e le m s1 s2 _ _ _ .Out_break d1 (by intro hn; cases hn)
               | Out_continue =>
                   simp only [h1] at h
                   cases h
-                  exact .exec_Sseq_2 e le m s1 s2 t1 le1 m1 .Out_continue d1
+                  exact .exec_Sseq_2 e le m s1 s2 _ _ _ .Out_continue d1
                     (by intro hn; cases hn)
               | Out_return ov =>
                   simp only [h1] at h
                   cases h
-                  exact .exec_Sseq_2 e le m s1 s2 t1 le1 m1 (.Out_return ov) d1
+                  exact .exec_Sseq_2 e le m s1 s2 _ _ _ (.Out_return ov) d1
                     (by intro hn; cases hn)
       | Sifthenelse a s1 s2 =>
           simp only [exec_fn] at h
@@ -429,12 +430,12 @@ theorem fn_sound (fuel : Nat) :
               | Out_break =>
                   simp only [h1] at h
                   cases h
-                  exact .exec_Sloop_stop1 e le m s1 s2 t1 le1 m1 .Out_break .Out_normal d1
+                  exact .exec_Sloop_stop1 e le m s1 s2 _ _ _ .Out_break .Out_normal d1
                     .Out_break_or_return_B
               | Out_return ov =>
                   simp only [h1] at h
                   cases h
-                  exact .exec_Sloop_stop1 e le m s1 s2 t1 le1 m1 (.Out_return ov) (.Out_return ov)
+                  exact .exec_Sloop_stop1 e le m s1 s2 _ _ _ (.Out_return ov) (.Out_return ov)
                     d1 (.Out_break_or_return_R ov)
               | Out_normal =>
                   simp only [h1] at h
@@ -453,18 +454,18 @@ theorem fn_sound (fuel : Nat) :
                               simp only [h3] at h
                               cases h
                               exact .exec_Sloop_loop e le m s1 s2 t1 le1 m1 .Out_normal t2 le2 m2
-                                t3 le3 m3 out3 d1 .Out_normal_or_continue_N d2
+                                t3 _ _ _ d1 .Out_normal_or_continue_N d2
                                 (ihs _ _ _ _ _ _ _ _ h3)
                       | Out_break =>
                           simp only [h2] at h
                           cases h
-                          exact .exec_Sloop_stop2 e le m s1 s2 t1 le1 m1 .Out_normal t2 le2 m2
+                          exact .exec_Sloop_stop2 e le m s1 s2 t1 le1 m1 .Out_normal t2 _ _
                             .Out_break .Out_normal d1 .Out_normal_or_continue_N d2
                             .Out_break_or_return_B
                       | Out_return ov =>
                           simp only [h2] at h
                           cases h
-                          exact .exec_Sloop_stop2 e le m s1 s2 t1 le1 m1 .Out_normal t2 le2 m2
+                          exact .exec_Sloop_stop2 e le m s1 s2 t1 le1 m1 .Out_normal t2 _ _
                             (.Out_return ov) (.Out_return ov) d1 .Out_normal_or_continue_N d2
                             (.Out_break_or_return_R ov)
                       | Out_continue => simp [h2] at h
@@ -485,18 +486,18 @@ theorem fn_sound (fuel : Nat) :
                               simp only [h3] at h
                               cases h
                               exact .exec_Sloop_loop e le m s1 s2 t1 le1 m1 .Out_continue t2 le2
-                                m2 t3 le3 m3 out3 d1 .Out_normal_or_continue_C d2
+                                m2 t3 _ _ _ d1 .Out_normal_or_continue_C d2
                                 (ihs _ _ _ _ _ _ _ _ h3)
                       | Out_break =>
                           simp only [h2] at h
                           cases h
-                          exact .exec_Sloop_stop2 e le m s1 s2 t1 le1 m1 .Out_continue t2 le2 m2
+                          exact .exec_Sloop_stop2 e le m s1 s2 t1 le1 m1 .Out_continue t2 _ _
                             .Out_break .Out_normal d1 .Out_normal_or_continue_C d2
                             .Out_break_or_return_B
                       | Out_return ov =>
                           simp only [h2] at h
                           cases h
-                          exact .exec_Sloop_stop2 e le m s1 s2 t1 le1 m1 .Out_continue t2 le2 m2
+                          exact .exec_Sloop_stop2 e le m s1 s2 t1 le1 m1 .Out_continue t2 _ _
                             (.Out_return ov) (.Out_return ov) d1 .Out_normal_or_continue_C d2
                             (.Out_break_or_return_R ov)
                       | Out_continue => simp [h2] at h
@@ -543,8 +544,8 @@ theorem fn_sound (fuel : Nat) :
                       | some m3 =>
                           simp only [he, hb, hr, hfl] at h
                           cases h
-                          exact .eval_funcall_internal m f vargs t0 empty_env le1 le2 m m2 out
-                            vres0 m3 (function_entry2_fn_sound he) (ihs _ _ _ _ _ _ _ _ hb)
+                          exact .eval_funcall_internal m f vargs _ empty_env le1 le2 m m2 out
+                            _ _ (function_entry2_fn_sound he) (ihs _ _ _ _ _ _ _ _ hb)
                             (outcome_result_value_fn_sound hr) hfl
       | External ef targs tres cconv =>
           simp only [eval_funcall_fn] at h
@@ -554,7 +555,7 @@ theorem fn_sound (fuel : Nat) :
               obtain ⟨t0, vres0, m0⟩ := r
               simp only [hx] at h
               cases h
-              exact .eval_funcall_external m ef targs tres cconv vargs t0 vres0 m0
+              exact .eval_funcall_external m ef targs tres cconv vargs _ _ _
                 (external_call_fn_sound hx)
 
 theorem exec_fn_sound {fuel : Nat} {e : env} {le : temp_env} {m : mem} {s : statement}
