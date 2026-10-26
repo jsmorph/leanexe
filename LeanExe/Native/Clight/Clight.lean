@@ -2,9 +2,13 @@ import LeanExe.Native.Clight.Cop
 import LeanExe.Native.Clight.Events
 
 /-!
-The syntax of Clight and the evaluation of its expressions, from CompCert 3.18's
-`cfrontend/Clight.v`.  The syntax is complete.  The semantics is that of `step2`, in which
-function parameters are temporaries, the form `clightgen` produces.
+The syntax of Clight, the evaluation of its expressions, and function entry, from CompCert
+3.18's `cfrontend/Clight.v`, with `globalenv` and `Genv.init_mem` of `common/Globalenvs.v` for
+Clight programs.  The syntax is complete.  Function entry is `function_entry2`, in which
+function parameters are temporaries, the form `clightgen` produces.  The small-step semantics
+(`cont`, `state`, `step`, `find_label`, `initial_state`, `final_state`), `function_entry1` with
+`bind_parameters`, and the selection of `switch` cases are omitted; `Bigstep.lean` gives the
+semantics of statements.
 
 The copy omits these rules of `Clight.v`, so the constructs they cover have no outcome:
 `eval_Esizeof`, `eval_Ealignof`, `eval_Efield_struct`, `eval_Efield_union`, `deref_loc_copy`,

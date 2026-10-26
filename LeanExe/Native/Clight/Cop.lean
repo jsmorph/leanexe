@@ -4,9 +4,10 @@ import LeanExe.Native.Clight.Ctypes
 The operators of Clight, from CompCert 3.18's `cfrontend/Cop.v`, with `Archi.ptr64` true and an
 empty composite environment, which `sizeof` assumes.  The floating-point operations take the NaN
 parameters `A : Archi`.  The comparison of two pointers, or of a pointer and an integer, has no
-result (`cmp_ptr`, which needs `Val.cmplu_bool`); the rest of `Cop.v` that Clight uses is
-copied.  Bit-field accesses (`load_bitfield`, `store_bitfield`) are omitted with the members of
-structs and unions.
+result (`cmp_ptr`, which needs `Val.cmplu_bool`).  `classify_switch` and `sem_switch_arg`, which
+only `Sswitch` uses, and the bit-field accesses `load_bitfield` and `store_bitfield`, which only
+the members of structs and unions use, are omitted.  The rest of `Cop.v` that Clight uses is
+copied.
 -/
 
 namespace LClight
@@ -688,7 +689,7 @@ def classify_cmp (ty1 ty2 : type) : classify_cmp_cases :=
   | .Tlong _ _, .Tpointer _ _ => .cmp_case_lp
   | _, _ => .cmp_default
 
-/-- `sem_cmp`.  The four pointer cases call `cmp_ptr`, which the copy omits. -/
+/-- `sem_cmp`.  The five pointer cases call `cmp_ptr`, which the copy omits. -/
 def sem_cmp (c : comparison) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
     Option val :=
   match classify_cmp t1 t2 with

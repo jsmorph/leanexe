@@ -1,11 +1,13 @@
 import LeanExe.Native.Clight.Ctypes
 
 /-!
-Global environments and the initial memory, from CompCert 3.18's `common/Globalenvs.v`, without
-the proof fields of `Genv.t`.  A program's globals take the blocks `1, 2, …` in the order of
-`prog_defs`, and `init_mem` allocates and initializes them in that order.  `store_zeros` writes
-one byte at a time, as in CompCert, so evaluating the initial memory of a large global costs time
-in proportion to its size.
+Global environments and the allocation of globals, from CompCert 3.18's `common/Globalenvs.v`,
+without the proof fields of `Genv.t`; `Clight.lean` applies them to a program as `globalenv` and
+`init_mem`.  A program's globals take the blocks `1, 2, …` in the order of `prog_defs`, and
+`alloc_globals` allocates and initializes them in that order.  `store_zeros` writes one byte at a
+time, as in CompCert, so evaluating the initial memory of a large global costs time in proportion
+to its size.  `public_symbol`, `invert_symbol`, `find_var_info`, `block_is_volatile`, and
+`to_senv` are omitted.
 -/
 
 namespace LClight

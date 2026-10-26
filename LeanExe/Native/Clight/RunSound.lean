@@ -590,6 +590,6 @@ theorem run_sound {A : Archi} {X : ExtSem} {p : program function} {name : ident}
           | none => simp [hm, hs, hf] at h
           | some fd =>
               simp only [hm, hs, hf] at h
-              exact ⟨m0, b, fd, rfl, rfl, rfl, eval_funcall_fn_sound h⟩
+              exact ⟨m0, b, fd, rfl, rfl, hf, eval_funcall_fn_sound h⟩
 
 end LClight
