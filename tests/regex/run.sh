@@ -14,4 +14,4 @@ tools/leanrun --timeout 30m lake build Library.Regex.Program Library.Regex.Spec 
   Library.Bytes.Packed TestSupport.Regex.Generate
 tools/leanrun --timeout 90m lake env lean --run tests/TestSupport/Regex/Native.lean
 tools/leanrun --timeout 60m lake env lean --run tests/TestSupport/Regex/PythonCases.lean >"$cases"
-python3 -I tests/regex/python_check.py <"$cases"
+uv run tests/regex/python_check.py <"$cases"
