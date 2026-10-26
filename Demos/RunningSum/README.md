@@ -15,7 +15,9 @@ output from preceding valid lines and stops before processing another line.
 The program reads chunks of at most 4,096 bytes.  It retains a partial line across reads and
 finishes pending output before processing the next line.  A short successful write retains the
 unwritten suffix.  A successful zero-byte write retries that suffix.  A returned I/O error stops
-with its errno.  Host traps preserve the effects committed before the trap.
+the Wasm module with its errno as the exit status.  The native executable raises the error as a
+Lean `IO.Error`, prints it, and exits with status 1.  Host traps preserve the effects committed
+before the trap.
 
 For input `12`, `-5`, and `20` on separate lines, output is `12`, `7`, and `27` on separate lines.
 Each completed line produces output before the next blocking read.
@@ -29,35 +31,39 @@ Each completed line produces output before the next blocking read.
 | [Parser correctness](Parsing.lean) | Optional sign and CR syntax, acceptance, integer value, and normalization. |
 | [Addition correctness](Addition.lean) | Signed integer addition, including cancellation and negative zero. |
 | [Renderer correctness](Rendering.lean) | Canonical signed decimal encoding from `Nat.digits`, followed by LF. |
-| [Mathematical stream model](StreamModel.lean) and [input bounds](InputBounds.lean) | Cumulative sums under independent line and prefix-sum size bounds. |
+| [Line kernel](Kernel.lean) | The line kernel and its specification for [the shared stream proofs](../StreamFold/README.md): normal totals, size room, and nonempty output. |
+| [Line model and size bounds](Model.lean) | `InputBounds`, the line rooms that it implies, and the outputs and status of the kernel's fold over the input lines. |
 | [Arithmetic compilation](Compiled.lean) | Verified compilation of the six pure arithmetic functions. |
 | [Stream process](Stream.lean) | Buffered input, pending output, error handling, and the EOF process. |
+| [Stream view](StreamView.lean) and [termination](Termination.lean) | The relation between the process and the shared stream process, and the progress of each step. |
 | [Action compilation](Wasi.lean) | Reflection and source-correspondence proofs for the bounded effectful steps. |
 | [Command module](Module.lean) | The unbounded Wasm loop, stack admission check, binary encoding, and validity proofs. |
 | [Process refinement](Proof.lean) | Initial-store invariants, native-process correspondence, `_start` partial refinement, and the byte theorem. |
-| [Stream-host assumptions](StreamHost.lean) and [observed output](StreamObserved.lean) | Input consumption, committed stdout prefixes, EOF, and zero-write progress. |
-| [Integer process correctness](StreamCorrect.lean) | Native process termination and canonical cumulative integer output. |
+| [Integer process correctness](StreamCorrect.lean) | `InputValues`, native process termination, and the canonical cumulative output of the lines before the first rejected line. |
 | [Compiled termination](TerminationTarget.lean) | Well-founded process progress, typed allocation budgets, and accepted exit. |
-| [Compiled integer correctness](Correct.lean) | Cumulative stdout and eventual accepted exit 0 from the modeled initial store, with an encoded-byte theorem. |
+| [Compiled integer correctness](Correct.lean) | Cumulative stdout and eventual accepted exit with status 0 or 28 from the modeled initial store, with an encoded-byte theorem. |
 | [Native executable](Native.lean) | The same process with a [POSIX fd 0 reader](read.c) and flushed Lean output streams. |
 
 `parse_correct`, `add_correct`, and `render_correct` relate the decimal arithmetic to `Int`.
-`process_terminates_integer` connects the native process to the mathematical prefix sums.
-`initial_terminates_integer` proves that the compiled command eventually exits with accepted
-status 0 and writes exactly those sums in canonical signed decimal form, each followed by LF.
-It supplies a fuel threshold valid for every larger Talos fuel value.  `integer_bytes` combines
-that theorem with encoding, exact decoding, and binary validity.  Talos represents accepted
-`proc_exit` by the designated exit trap and records status 0 in the final host world.
+`InputValues input values status` holds when `values` are the integers of the input lines before
+the first line that is not a decimal integer, with `status` 0 when every line is one and 28
+otherwise.  `inputValues_exist` and `inputValues_unique` show that every input within the size
+bounds determines one such pair.  `process_terminates_integer` connects the native process to
+the cumulative sums of `values`.  `initial_terminates_integer` proves, for every input within the
+size bounds, that the compiled command eventually exits with accepted status `status` and writes
+exactly those sums in canonical signed decimal form, each followed by LF.  It supplies a fuel
+threshold valid for every larger Talos fuel value.  `integer_bytes` combines that theorem with
+encoding, exact decoding, and binary validity.  Talos represents accepted `proc_exit` by the
+designated exit trap and records the status in the final host world.
 
 The theorem starts with an empty event journal and output history and uses these premises:
 
 | Premise | Requirement |
 |---|---|
-| [Valid input](StreamModel.lean) | `StreamModel.ValidInput` decomposes the finite input into decimal lines, with LF boundaries and an optional nonempty final line at EOF. |
-| [Integer sizes](InputBounds.lean) | `InputBounds` requires `line.size + 3 < 2^64` for each line and `integerDigitCount sum + 3 < 2^64` for every mathematical prefix sum.  These conditions bound lines and sums independently of the total input length. |
-| [Host behavior](StreamHost.lean) | `StreamHost` supplies successful reads and writes, consumes input prefixes, reports empty input only at EOF, and commits output prefixes.  Every zero-byte write decreases a proof-only natural-valued credit.  The Talos host also satisfies the WASI specification. |
+| [Integer sizes](Model.lean) | `InputBounds` requires `line.size + 3 < 2^64` for each line of the input and `integerDigitCount total + 3 < 2^64` for the total of each prefix of valid lines.  These conditions bound lines and sums independently of the total input length. |
+| [Host behavior](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful reads and writes, consumes input prefixes, reports empty input only at EOF, and commits output prefixes.  Every zero-byte write decreases a proof-only natural-valued credit.  The Talos host also satisfies the WASI specification. |
 | [Allocation and depth](Correct.lean) | `RunResources` supplies `Heap.Within` and a typed `Resource.CallPrefixBound` at begin and every finite reached active step call.  `LocalsHold` ties the represented state to the iteration's local words. |
-| [Final exit](Correct.lean) | `ExitAccepted` excludes rejection of status 0 or 28 at represented host worlds.  The valid-input theorem exits with status 0. |
+| [Final exit](Correct.lean) | `ExitAccepted` excludes rejection of status 0 or 28 at represented host worlds. |
 
 A numeric whole-input memory bound remains unproved.
 
@@ -96,4 +102,5 @@ printf '12\n-5\n20\n' | build/tools/leanexe-wasmtime-host run build/running-sum/
 
 [The application driver](../../tests/running-sum/run.sh) builds the proofs, audits their axioms,
 tests native arithmetic and stream handling, exercises scripted Wasm transfers and failures,
-compares native and Wasmtime output and status, and checks interactive output before EOF.
+compares native and Wasmtime output and status, checks interactive output before EOF, and checks
+the exit status after a read error from a directory and a write error from `/dev/full`.

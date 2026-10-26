@@ -29,7 +29,9 @@ The process reads chunks of at most 4,096 bytes, retains a partial line across r
 pending output before processing the next line.  Short writes retain the unwritten suffix.
 Successful zero-byte writes retry that suffix.  Each completed line produces output before the
 next blocking read.  Invalid input exits with status 28 and preserves preceding output.  A
-returned I/O error exits with its errno.  Host traps preserve committed effects.
+returned I/O error stops the Wasm module with its errno as the exit status.  The native executable
+raises the error as a Lean `IO.Error`, prints it, and exits with status 1.  Host traps preserve
+committed effects.
 
 ## Specification and proofs
 
@@ -43,24 +45,30 @@ signed zero, infinities, and canonical NaNs.
 | [Numeric operations](Program.lean) | CR removal, the existing general binary64 parser, and scientific rendering with LF. |
 | [Arithmetic correspondence](ArithmeticProof.lean) | Parser acceptance and bits, binary64 addition, and renderer properties. |
 | [Stream process](Stream.lean) | Buffered input, partial lines, pending output, EOF, and error handling. |
+| [Stream view](StreamView.lean), [kernel](Kernel.lean), and [termination](Termination.lean) | The relation between the process and [the shared stream process](../StreamFold/README.md), the line kernel's specification, and the progress of each step. |
+| [Line model](Model.lean) | `ShortLines`, the line rooms that it implies, and the outputs and status of the kernel's fold over the input lines. |
 | [Action compilation](Wasi.lean) | Pure helper compilation and reflected effectful begin/step functions. |
 | [Command module](Module.lean) | The unbounded Wasm loop, stack admission check, encoding, and validity proofs. |
 | [Process refinement](Proof.lean) | Native-process correspondence, modeled initial store, `_start` partial refinement, and byte theorem. |
-| [Stream correctness](StreamCorrect.lean) | Sequential binary64 output and source process termination. |
-| [Compiled correctness](Correct.lean) | Eventual accepted exit 0 and the sequential binary64 output from the modeled initial store. |
+| [Stream correctness](StreamCorrect.lean) | `InputValues`, sequential binary64 output of the lines before the first rejected line, and source process termination. |
+| [Compiled correctness](Correct.lean) | Eventual accepted exit with status 0 or 28 and the sequential binary64 output from the modeled initial store. |
 | [Native executable](Native.lean) | The same process with the shared [POSIX fd 0 reader](../RunningSum/read.c) and flushed output streams. |
 
-`initial_terminates_fp` supplies a Talos fuel threshold such that every larger fuel value runs the
-compiled command to accepted exit 0 with the specified stdout bytes.  `fp_bytes` combines the
-theorem with encoding, exact decoding, and binary validity.  The theorem starts with an empty
+`InputValues input numbers status` holds when `numbers` are the numbers that the input lines
+denote before the first line that denotes none, with `status` 0 when every line denotes a number
+and 28 otherwise.  `inputValues_exist` and `inputValues_unique` show that every input with lines
+shorter than `2^32` bytes determines one such pair.  `initial_terminates_fp` supplies, for every
+such input, a Talos fuel threshold such that every larger fuel value runs the compiled command to
+accepted exit with status `status` and the cumulative output of `numbers`.  `fp_bytes` combines
+the theorem with encoding, exact decoding, and binary validity.  The theorem starts with an empty
 event journal and output history and uses these premises:
 
 | Premise | Requirement |
 |---|---|
-| [Valid input](Model.lean) | `ValidInput` describes a finite sequence of valid input lines, each with fewer than `2^32` bytes.  Values may include infinities and NaNs. |
-| [Host progress](../RunningSum/StreamHost.lean) | `StreamHost` supplies successful transfers, input-prefix consumption, EOF, and committed output prefixes.  Each zero-byte write decreases a proof-only natural-valued credit. |
+| [Line sizes](Model.lean) | `ShortLines` requires each line of the input to hold fewer than `2^32` bytes. |
+| [Host progress](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful transfers, input-prefix consumption, EOF, and committed output prefixes.  Each zero-byte write decreases a proof-only natural-valued credit. |
 | [Allocation and depth](Correct.lean) | `RunResources` supplies `Heap.Within` and typed `Resource.CallPrefixBound` budgets at begin and finite reached active step calls.  `LocalsHold` ties the represented state to the iteration's local words. |
-| [Exit acceptance](Correct.lean) | `ExitAccepted` excludes rejected exits with status 0 or 28 at represented worlds.  Valid input produces status 0. |
+| [Exit acceptance](Correct.lean) | `ExitAccepted` excludes rejected exits with status 0 or 28 at represented worlds. |
 
 The resource conditions remain explicit per-call budgets.  A numeric whole-input memory bound
 has not been proved.  The host also satisfies the WASI specification, with valid heap and
@@ -94,8 +102,8 @@ printf '12\n-5\n20\n' | build/tools/leanexe-wasmtime-host run build/running-sumf
 
 [The application driver](../../tests/running-sumfp/run.sh) builds the proofs, audits their axioms,
 checks fixed numerical outputs, exercises short and zero-byte transfers and committed failure
-prefixes, compares native and Wasmtime output and status, and checks interactive output before
-EOF.  Its numerical cases cover parser rounding, sequential addition, cancellation, subnormals,
+prefixes, compares native and Wasmtime output and status, checks interactive output before EOF,
+and checks the exit status after read and write errors.  Its numerical cases cover parser rounding, sequential addition, cancellation, subnormals,
 overflow, signed zero, NaNs, and infinities.
 
 | Execution backend | Coverage |
@@ -103,7 +111,8 @@ overflow, signed zero, NaNs, and infinities.
 | Native numeric checks | Exact parsed words and printed bytes, including negative zero, subnormals, parser overflow, infinities, and NaNs. |
 | Native process and Wasmtime | The 27-case corpus covers finite rounding, cancellation, subnormals, arithmetic overflow, signed zero, nonfinite values, input framing, and rejection.  Scripted native streams add transfer partitions and errors. |
 | Talos | Eight cases in the same Float module cover split reads, short and zero-byte writes, committed error and trap prefixes, invalid lines, and exit rejection.  Numeric paths use signed zero, underflow to zero, infinities, and NaN propagation. |
-| Interactive native and Wasmtime | Output before the next read and before EOF, plus propagation of a closed-stdin error. |
+| Interactive native and Wasmtime | Output before the next read and before EOF. |
+| I/O errors in native and Wasmtime | A directory as stdin and `/dev/full` as stdout.  Wasmtime exits with WASI errno 31 or 51, and the native executable exits with status 1. |
 
 [Talos's memory model](https://github.com/jsmorph/talos/blob/87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47/interpreter/Interpreter/Wasm/Mem.lean)
 represents bytes with a lookup function.  Each write wraps the previous function, so reads can

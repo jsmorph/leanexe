@@ -80,6 +80,7 @@ done <"$out/cases/cases.tsv"
 printf 'Running sumfp native/Wasm comparisons: %s cases passed\n' "$count"
 
 uv run tests/running-sumfp/interactive.py
+tests/wasi/stream-io-errors.sh running-sumfp .lake/build/bin/running-sumfp-native "$out/sumfp.wasm"
 fi
 
 if [ "$group" != native-wasm ]; then

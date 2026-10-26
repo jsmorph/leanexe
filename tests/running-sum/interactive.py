@@ -53,18 +53,3 @@ def check(command: list[str]) -> None:
 check([".lake/build/bin/running-sum-native"])
 check(["build/tools/leanexe-wasmtime-host", "run", "build/running-sum/sum.wasm"])
 print("Running sum interactive output: native and Wasm passed")
-
-failed_read = subprocess.run(
-    ["sh", "-c", "exec .lake/build/bin/running-sum-native 0<&-"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-    timeout=10,
-    check=False,
-)
-if (
-    failed_read.returncode == 0
-    or failed_read.stdout
-    or b"error code:" not in failed_read.stderr
-):
-    raise RuntimeError(f"Closed stdin did not propagate its error: {failed_read}")
-print("Running sum native read error: passed")

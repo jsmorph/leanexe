@@ -1,5 +1,5 @@
 import Demos.RunningSum.Proof
-import Demos.RunningSum.TerminationHost
+import Demos.RunningSum.Termination
 import Verified.Wasi.ProcessTotalCorrect
 
 namespace Demos.RunningSum.Termination

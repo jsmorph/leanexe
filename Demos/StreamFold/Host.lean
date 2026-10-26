@@ -1,13 +1,26 @@
 import Demos.StreamFold.Rank
-import Demos.RunningSum.TerminationHost
+import Verified.Wasi.ProcessTotalSource
 
 namespace Demos.StreamFold
 
 open LeanExe LeanExe.Wasi
 
-abbrev StreamProgress {World Ghost : Type} (host : Host World) (rep : Ghost → World → Prop)
-    (unread zeroWrites : Ghost → Nat) :=
-  Demos.RunningSum.Termination.StreamProgress host rep unread zeroWrites
+structure StreamProgress {World Ghost : Type} (host : Host World) (rep : Ghost → World → Prop)
+    (unread zeroWrites : Ghost → Nat) : Prop where
+  read_available : ∀ ghost world, rep ghost world →
+    ∃ bytes final, host.read world 4096 (.returned 0 bytes) final
+  write_available : ∀ ghost world bytes, rep ghost world → 0 < bytes.data.size →
+    ∃ count final, host.write world .stdout bytes (.returned 0 count) final
+  read_reply : ∀ {ghost world reply final}, rep ghost world →
+    host.read world 4096 reply final →
+    ∃ bytes nextGhost, reply = .returned 0 bytes ∧ rep nextGhost final ∧
+      unread nextGhost ≤ unread ghost ∧
+      (bytes.data.size ≠ 0 → unread nextGhost < unread ghost)
+  write_reply : ∀ {ghost world bytes reply final}, rep ghost world → 0 < bytes.data.size →
+    host.write world .stdout bytes reply final →
+    ∃ count nextGhost, reply = .returned 0 count ∧ rep nextGhost final ∧
+      unread nextGhost = unread ghost ∧
+      (count = 0 → zeroWrites nextGhost < zeroWrites ghost)
 
 variable {Acc : Type} {kernel : Kernel Acc} {seed : Acc}
 

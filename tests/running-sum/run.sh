@@ -73,3 +73,4 @@ cmp "$out/process.expected" "$out/process.stdout"
 cmp tests/wasi/host/exit-0.control "$out/process.control"
 test ! -s "$out/process.stderr"
 uv run tests/running-sum/interactive.py
+tests/wasi/stream-io-errors.sh running-sum .lake/build/bin/running-sum-native "$out/sum.wasm"

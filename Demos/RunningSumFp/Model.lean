@@ -9,61 +9,58 @@ open Library.Numerics.Decimal.Shared.StrconvRound
 def InputLine (line : Array UInt64) (number : Num) : Prop :=
   ∃ text : List UInt8, line = words text ∧ text.length < 2 ^ 32 ∧ LineDenotes text number
 
-def ValidInput (input : List UInt64) (numbers : List Num) : Prop :=
-  ∃ lines, StreamFold.Model.ValidInput (fun _ => True) input lines ∧
-    List.Forall₂ InputLine lines numbers
+/-- Each line of `input` holds fewer than `2^32` bytes. -/
+def ShortLines (input : List UInt64) : Prop :=
+  ∀ line ∈ StreamFold.Model.lines input, ∃ text : List UInt8, line = words text ∧ text.length < 2 ^ 32
 
-noncomputable def finalTotal (total : Float) (numbers : List Num) : Float :=
-  numbers.foldl (fun total number => total + Float.ofBits (round64 number)) total
+theorem words_injective {a b : List UInt8} (same : words a = words b) : a = b := by
+  have lists : a.map UInt8.toUInt64 = b.map UInt8.toUInt64 := by
+    simpa [words] using congrArg Array.toList same
+  exact List.map_injective_iff.mpr
+    (fun x y equal => UInt8.toNat_inj.mp (by simpa using congrArg UInt64.toNat equal)) lists
 
-theorem finalTotal_bits (total : Float) (numbers : List Num) :
-    (finalTotal total numbers).toBits =
-      numbers.foldl (fun bits number => Wasm.IEEE64.add bits (lineBits number)) total.toBits := by
-  induction numbers generalizing total with
-  | nil => rfl
-  | cons number rest ih =>
-      change (finalTotal (total + Float.ofBits (round64 number)) rest).toBits = _
-      rw [ih, add_bits]
-      rfl
+theorem inputLine_unique {line : Array UInt64} {a b : Num} (first : InputLine line a)
+    (second : InputLine line b) : a = b := by
+  obtain ⟨text, rfl, _, meaning⟩ := first
+  obtain ⟨other, same, _, otherMeaning⟩ := second
+  cases words_injective same
+  exact lineDenotes_unique text a b meaning otherMeaning
 
-theorem inputLine_size {line : Array UInt64} {number : Num} (valid : InputLine line number) :
-    line.size < 2 ^ 32 := by
-  obtain ⟨text, rfl, bound, _⟩ := valid
-  simpa [words] using bound
-
-theorem lineRooms {lines : List (Array UInt64)} {numbers : List Num}
-    (valid : List.Forall₂ InputLine lines numbers) (total : Float) :
-    StreamFold.Model.LineRooms kernelSpec total lines := by
-  induction valid generalizing total with
+theorem lineRooms {lines : List (Array UInt64)}
+    (short : ∀ line ∈ lines, ∃ text : List UInt8, line = words text ∧ text.length < 2 ^ 32)
+    (total : Float) : StreamFold.Model.LineRooms kernelSpec total lines := by
+  induction lines generalizing total with
   | nil => trivial
   | cons line rest ih =>
-      exact ⟨inputLine_size line, fun _ => ih _⟩
+      obtain ⟨text, rfl, bound⟩ := short line (List.mem_cons_self ..)
+      exact ⟨show (words text).size < 2 ^ 32 by simpa [words] using bound,
+        fun _ => ih (fun line member => short line (List.mem_cons_of_mem _ member)) _⟩
 
-theorem foldLines_correct {lines : List (Array UInt64)} {numbers : List Num}
-    (valid : List.Forall₂ InputLine lines numbers) (total : Float) :
-    StreamFold.Model.foldLines lineKernel total lines =
-      .ok (finalTotal total numbers, (prefixFloats total numbers).map render) := by
-  induction valid generalizing total with
-  | nil => rfl
-  | @cons line number lines numbers valid rest ih =>
-      obtain ⟨text, rfl, bound, meaning⟩ := valid
-      simp only [StreamFold.Model.foldLines, lineKernel, parse_accept text number bound meaning,
-        ↓reduceIte, ih, prefixFloats, List.map_cons, finalTotal, List.foldl_cons]
-
-theorem model_fp_correct {input : List UInt64} {numbers : List Num}
-    (valid : ValidInput input numbers) :
-    (StreamFold.Model.consume lineKernel (StreamFold.Model.initial (0 : Float)) input >>=
-      StreamFold.Model.finish lineKernel) =
-      .ok ⟨finalTotal 0 numbers, #[], (prefixFloats 0 numbers).map render⟩ := by
-  obtain ⟨lines, trace, meanings⟩ := valid
-  rw [StreamFold.Model.finish_consume_input trace (0 : Float), foldLines_correct meanings]
-
-theorem validInput_safe_and_finalRoom {input : List UInt64} {numbers : List Num}
-    (valid : ValidInput input numbers) :
-    StreamFold.Model.Safe kernelSpec (StreamFold.Model.initial (0 : Float)) input ∧
-      ∀ final, StreamFold.Model.consume lineKernel (StreamFold.Model.initial (0 : Float)) input =
-        .ok final → final.pending.size ≠ 0 → kernelSpec.Room final.total final.pending := by
-  obtain ⟨lines, trace, meanings⟩ := valid
-  exact StreamFold.Model.validInput_safe_and_finalRoom kernelSpec trace 0 (lineRooms meanings 0)
+theorem foldOutcome_fp {lines : List (Array UInt64)}
+    (short : ∀ line ∈ lines, ∃ text : List UInt8, line = words text ∧ text.length < 2 ^ 32)
+    (total : Float) :
+    ∃ numbers status, StreamFold.Model.LineValues InputLine lines numbers status ∧
+      StreamFold.Model.foldOutcome lineKernel total lines =
+        ((prefixFloats total numbers).map render, status) := by
+  classical
+  induction lines generalizing total with
+  | nil => exact ⟨[], 0, .nil, rfl⟩
+  | cons line rest ih =>
+      obtain ⟨text, rfl, bound⟩ := short _ (List.mem_cons_self ..)
+      by_cases valid : ∃ number, LineDenotes text number
+      · obtain ⟨number, meaning⟩ := valid
+        obtain ⟨numbers, status, values, folded⟩ :=
+          ih (fun line member => short line (List.mem_cons_of_mem _ member))
+            (total + Float.ofBits (round64 number))
+        refine ⟨number :: numbers, status, .accept ⟨text, rfl, bound, meaning⟩ values, ?_⟩
+        simp [StreamFold.Model.foldOutcome, lineKernel, parse_accept text number bound meaning,
+          folded, prefixFloats]
+      · have invalid : ∀ number, ¬ LineDenotes text number := by simpa using valid
+        refine ⟨[], 28, .reject fun number denotes => ?_, ?_⟩
+        · obtain ⟨other, same, _, meaning⟩ := denotes
+          cases words_injective same
+          exact invalid number meaning
+        · simp [StreamFold.Model.foldOutcome, lineKernel, parse_reject text bound invalid,
+            prefixFloats]
 
 end Demos.RunningSumFp

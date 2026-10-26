@@ -1,7 +1,7 @@
-import Demos.RunningSum.StreamHost
+import Demos.StreamFold.StreamHost
 import Verified.Wasi.Observed
 
-namespace Demos.RunningSum
+namespace Demos.StreamFold
 
 open LeanExe LeanExe.Wasi Verified.Wasi
 
@@ -94,4 +94,4 @@ theorem observedStreamRep_exitTrap_output {World : Type} {host : Host World}
     position.output = stdoutWords after.events :=
   represented.2.trans (stdoutWords_of_exitTrap operation).symm
 
-end Demos.RunningSum
+end Demos.StreamFold

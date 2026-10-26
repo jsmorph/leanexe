@@ -1,4 +1,4 @@
-import Demos.RunningSum.InputBounds
+import Demos.RunningSum.Model
 
 open Lean Elab Command in
 elab "check_running_sum_math_axioms" : command => do
@@ -22,12 +22,12 @@ elab "check_running_sum_math_axioms" : command => do
     ``Demos.RunningSum.render_correct,
     ``Demos.RunningSum.render_zero,
     ``Demos.RunningSum.decimalOutput_unique,
-    ``Demos.RunningSum.StreamModel.consume_correct,
-    ``Demos.RunningSum.StreamModel.consumeChunks_eq,
-    ``Demos.RunningSum.StreamModel.stream_correct,
-    ``Demos.RunningSum.StreamModel.safe_append_iff,
-    ``Demos.RunningSum.StreamModel.validInput_safe_and_finalRoom,
-    ``Demos.RunningSum.StreamModel.stream_correct_of_inputBounds]
+    ``Demos.RunningSum.kernel_accepted,
+    ``Demos.RunningSum.BoundsFrom.tail,
+    ``Demos.RunningSum.decimal_digitCount,
+    ``Demos.RunningSum.lineRooms,
+    ``Demos.RunningSum.decimalLine_unique,
+    ``Demos.RunningSum.foldOutcome_integer]
   for declaration in declarations do
     for axiomName in ← collectAxioms declaration do
       unless permitted.contains axiomName do

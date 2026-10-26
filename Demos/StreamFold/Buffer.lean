@@ -44,15 +44,6 @@ theorem consumeGo_stop (fuel : Nat) (current : ProcessStep (BufferState Acc))
     LeanExe.repeatWhile.go consumeTest (consumeStep kernel) fuel current = current := by
   cases fuel <;> simp [LeanExe.repeatWhile.go, stopped]
 
-theorem model_head_success (state : (Model.State Acc)) (byte : UInt64) (rest : List UInt64)
-    (final : (Model.State Acc)) (success : (Model.consume kernel) state (byte :: rest) = .ok final) :
-    ∃ middle, (Model.consumeByte kernel) state byte = .ok middle ∧
-      (Model.consume kernel) middle rest = .ok final := by
-  rw [Model.consume_cons] at success
-  cases first : (Model.consumeByte kernel) state byte with
-  | error code => simp [first, bind, Except.bind] at success
-  | ok middle => exact ⟨middle, rfl, by simpa [first, bind, Except.bind] using success⟩
-
 theorem completeLine_buffer (state : BufferState Acc) (history : List Bytes)
     (normal : spec.Good state.total) (room : spec.Room state.total state.line)
     (accepted : (kernel state.total state.line).valid = true) :
@@ -68,37 +59,34 @@ theorem completeLine_buffer (state : BufferState Acc) (history : List Bytes)
   · simpa only [completeLine, accepted, Bool.not_true, Bool.false_eq_true, ↓reduceIte] using outputPositive
   · simp [Model.consumeByte, Model.emitLine, bufferModel, completeLine, accepted]
 
-structure BufferProgress (state : (BufferState Acc)) (history : List Bytes) (final : (Model.State Acc))
+structure BufferProgress (state : BufferState Acc) (history : List Bytes)
     (result : ProcessStep (BufferState Acc)) (consumed : List UInt64) : Prop where
-  running : result.running = true
-  status : result.status = 0
   safe : Safe result.state
   input : result.state.input = state.input
   eof : result.state.eof = state.eof
   cursor : result.state.cursor.toNat = state.cursor.toNat + consumed.length
-  normal : spec.Good result.state.total
   split : unreadWords state = consumed ++ unreadWords result.state
-  consumed : (Model.consume kernel) (bufferModel state history) consumed =
-    .ok (bufferModel result.state (history ++ bufferOutputs result.state))
-  continuation : (Model.consume kernel) (bufferModel result.state (history ++ bufferOutputs result.state))
-    (unreadWords result.state) = .ok final
-  modelSafe : Model.Safe spec (bufferModel result.state (history ++ bufferOutputs result.state))
-    (unreadWords result.state)
+  running : result.running = true → result.status = 0 ∧ spec.Good result.state.total ∧
+    Model.consume kernel (bufferModel state history) consumed =
+      .ok (bufferModel result.state (history ++ bufferOutputs result.state))
+  stopped : result.running = false → result.status = 28 ∧
+    Model.consume kernel (bufferModel state history) consumed =
+      .error (bufferModel result.state history)
 
-theorem consumeGo_buffer (fuel : Nat) (state : (BufferState Acc)) (history : List Bytes) (final : (Model.State Acc))
+theorem BufferProgress.unmoved {state : BufferState Acc} {history : List Bytes} (safe : Safe state)
+    (empty : state.output.size = 0) (normal : spec.Good state.total) :
+    BufferProgress spec state history ⟨true, 0, state⟩ [] := by
+  refine ⟨safe, rfl, rfl, by simp, by simp, fun _ => ⟨rfl, normal, ?_⟩, fun stopped => nomatch stopped⟩
+  simp [bufferOutputs_empty safe empty, bufferModel]
+
+theorem consumeGo_buffer (fuel : Nat) (state : BufferState Acc) (history : List Bytes)
     (safe : Safe state) (empty : state.output.size = 0) (normal : spec.Good state.total)
-    (modelSafe : Model.Safe spec (bufferModel state history) (unreadWords state))
-    (success : (Model.consume kernel) (bufferModel state history) (unreadWords state) = .ok final) :
-    ∃ consumed, BufferProgress spec state history final
+    (modelSafe : Model.Safe spec (bufferModel state history) (unreadWords state)) :
+    ∃ consumed, BufferProgress spec state history
       (LeanExe.repeatWhile.go consumeTest (consumeStep kernel) fuel ⟨true, 0, state⟩)
       consumed := by
-  induction fuel generalizing state history final with
-  | zero =>
-      change ∃ consumed, BufferProgress spec state history final (⟨true, 0, state⟩) consumed
-      refine ⟨[], ⟨rfl, rfl, safe, rfl, rfl, by simp, normal, by simp, ?_, ?_, ?_⟩⟩
-      · simp [bufferOutputs_empty safe empty, bufferModel]
-      · simpa only [bufferOutputs_empty safe empty, List.append_nil] using success
-      · simpa only [bufferOutputs_empty safe empty, List.append_nil] using modelSafe
+  induction fuel generalizing state history with
+  | zero => exact ⟨[], BufferProgress.unmoved spec safe empty normal⟩
   | succ fuel ih =>
       by_cases remaining : state.cursor < state.input.size
       · have test : consumeTest (ProcessStep.mk true 0 state) = true := by
@@ -107,20 +95,13 @@ theorem consumeGo_buffer (fuel : Nat) (state : (BufferState Acc)) (history : Lis
         let byte := state.input.get state.cursor
         let tail := (byteWords state.input).drop (state.cursor.toNat + 1)
         have words : unreadWords state = byte :: tail := oldWords
-        rw [words] at success modelSafe
-        obtain ⟨middle, first, rest⟩ := model_head_success _ byte tail final success
+        rw [words] at modelSafe
         have increment := cursor_increment safe remaining
         have stepFacts := consumeStep_safe spec safe test
         by_cases newline : byte = 10
-        · have parsed : (kernel state.total state.line).valid = true := by
-            cases accepted : (kernel state.total state.line).valid with
-            | true => rfl
-            | false =>
-                simp [newline, Model.consumeByte, Model.emitLine, bufferModel, accepted] at first
-          let advanced : (BufferState Acc) := { state with cursor := state.cursor + 1 }
-          let next := (completeLine kernel) advanced
-          have normalNext := completeLine_buffer spec advanced history normal (modelSafe.1 newline) parsed
-          have nextEq : (consumeStep kernel) (ProcessStep.mk true 0 state) = next := by
+        · let advanced : BufferState Acc := { state with cursor := state.cursor + 1 }
+          let next := completeLine kernel advanced
+          have nextEq : consumeStep kernel (ProcessStep.mk true 0 state) = next := by
             simp only [consumeStep, byte, newline, beq_self_eq_true, ↓reduceIte, next, advanced]
           have nextSafe : Safe next.state := by simpa only [nextEq] using stepFacts.1
           have nextInput : next.state.input = state.input := completeLine_input advanced
@@ -129,79 +110,90 @@ theorem consumeGo_buffer (fuel : Nat) (state : (BufferState Acc)) (history : Lis
             simpa only [next, completeLine_cursor, advanced] using increment
           have nextUnread : unreadWords next.state = tail := by
             simp only [unreadWords, nextInput, nextCursor, tail]
-          have outputPositive : 0 < next.state.output.data.size := normalNext.2.2.2.1
-          have output : bufferOutputs next.state = [next.state.output] := by
-            simp only [bufferOutputs, Nat.ne_of_gt outputPositive, ↓reduceIte]
-          have firstNext : (Model.consumeByte kernel) (bufferModel state history) byte =
-              .ok (bufferModel next.state (history ++ bufferOutputs next.state)) := by
-            rw [output, newline]
-            simpa only [bufferModel, advanced, next] using normalNext.2.2.2.2
-          have middleEq : middle = bufferModel next.state (history ++ bufferOutputs next.state) :=
-            Except.ok.inj (first.symm.trans firstNext)
-          have nextStop : consumeTest next = false := by
-            have outputWord : next.state.output.size ≠ 0 := by
-              intro zero
-              have := congrArg UInt64.toNat zero
-              rw [nextSafe.output_toNat, UInt64.toNat_zero] at this
-              omega
-            simp [consumeTest, outputWord]
-          refine ⟨[byte], ?_⟩
-          simp only [LeanExe.repeatWhile.go, test, ↓reduceIte, nextEq, consumeGo_stop fuel next nextStop]
-          refine ⟨normalNext.1, normalNext.2.1, nextSafe, nextInput, nextEof,
-            by simpa using nextCursor, normalNext.2.2.1, ?_, ?_, ?_, ?_⟩
-          · simpa only [nextUnread, List.singleton_append] using words
-          · simp [Model.consume_cons, firstNext, bind, Except.bind]
-          · simpa only [middleEq, nextUnread] using rest
-          · simpa only [nextUnread] using modelSafe.2 _ firstNext
-        · let next : (BufferState Acc) := { state with cursor := state.cursor + 1, line := state.line.push byte }
-          have nextEq : (consumeStep kernel) (ProcessStep.mk true 0 state) = ⟨true, 0, next⟩ := by
+          have split : unreadWords state = [byte] ++ unreadWords next.state := by
+            simpa only [nextUnread, List.singleton_append] using words
+          cases parsed : (kernel state.total state.line).valid with
+          | false =>
+              have stoppedEq : next = ⟨false, 28, advanced⟩ := by
+                simp [next, completeLine, advanced, parsed]
+              have nextStop : consumeTest next = false := by simp [consumeTest, stoppedEq]
+              refine ⟨[byte], ?_⟩
+              simp only [LeanExe.repeatWhile.go, test, ↓reduceIte, nextEq,
+                consumeGo_stop fuel next nextStop]
+              refine ⟨nextSafe, nextInput, nextEof, by simpa using nextCursor, split, ?_, ?_⟩
+              · intro running
+                simp [stoppedEq] at running
+              · intro _
+                refine ⟨by simp [stoppedEq], ?_⟩
+                simp [Model.consume_cons, Model.consumeByte, Model.emitLine, bufferModel, newline,
+                  parsed, stoppedEq, advanced, bind, Except.bind]
+          | true =>
+              have normalNext := completeLine_buffer spec advanced history normal
+                (modelSafe.1 newline) parsed
+              have outputPositive : 0 < next.state.output.data.size := normalNext.2.2.2.1
+              have output : bufferOutputs next.state = [next.state.output] := by
+                simp only [bufferOutputs, Nat.ne_of_gt outputPositive, ↓reduceIte]
+              have firstNext : Model.consumeByte kernel (bufferModel state history) byte =
+                  .ok (bufferModel next.state (history ++ bufferOutputs next.state)) := by
+                rw [output, newline]
+                simpa only [bufferModel, advanced, next] using normalNext.2.2.2.2
+              have nextStop : consumeTest next = false := by
+                have outputWord : next.state.output.size ≠ 0 := by
+                  intro zero
+                  have := congrArg UInt64.toNat zero
+                  rw [nextSafe.output_toNat, UInt64.toNat_zero] at this
+                  omega
+                simp [consumeTest, outputWord]
+              refine ⟨[byte], ?_⟩
+              simp only [LeanExe.repeatWhile.go, test, ↓reduceIte, nextEq,
+                consumeGo_stop fuel next nextStop]
+              refine ⟨nextSafe, nextInput, nextEof, by simpa using nextCursor, split,
+                fun _ => ⟨normalNext.2.1, normalNext.2.2.1, ?_⟩, ?_⟩
+              · simp [Model.consume_cons, firstNext, bind, Except.bind]
+              · intro stopped
+                rw [normalNext.1] at stopped
+                cases stopped
+        · let next : BufferState Acc :=
+            { state with cursor := state.cursor + 1, line := state.line.push byte }
+          have nextEq : consumeStep kernel (ProcessStep.mk true 0 state) = ⟨true, 0, next⟩ := by
             simp [consumeStep, byte, newline, next]
           have nextSafe : Safe next := by simpa only [nextEq] using stepFacts.1
           have nextUnread : unreadWords next = tail := by
             simp only [unreadWords, next, increment, tail]
-          have firstNext : (Model.consumeByte kernel) (bufferModel state history) byte =
+          have firstNext : Model.consumeByte kernel (bufferModel state history) byte =
               .ok (bufferModel next history) := by
             simp [Model.consumeByte, bufferModel, next, newline]
-          have middleEq : middle = bufferModel next history := Except.ok.inj (first.symm.trans firstNext)
           have nextModelSafe : Model.Safe spec (bufferModel next history) (unreadWords next) := by
             simpa only [nextUnread] using modelSafe.2 _ firstNext
-          have nextSuccess : (Model.consume kernel) (bufferModel next history) (unreadWords next) = .ok final := by
-            simpa only [middleEq, nextUnread] using rest
-          obtain ⟨consumed, progress⟩ := ih next history final nextSafe empty normal nextModelSafe nextSuccess
+          obtain ⟨consumed, progress⟩ := ih next history nextSafe empty normal nextModelSafe
+          have prepend : Model.consume kernel (bufferModel state history) (byte :: consumed) =
+              Model.consume kernel (bufferModel next history) consumed := by
+            rw [Model.consume_cons, firstNext]
+            rfl
           refine ⟨byte :: consumed, ?_⟩
           simp only [LeanExe.repeatWhile.go, test, ↓reduceIte, nextEq]
-          refine ⟨progress.running, progress.status, progress.safe, progress.input, progress.eof,
-            ?_, progress.normal, ?_, ?_, progress.continuation, progress.modelSafe⟩
+          refine ⟨progress.safe, progress.input, progress.eof, ?_, ?_, ?_, ?_⟩
           · have nextCursor : next.cursor.toNat = state.cursor.toNat + 1 := increment
             rw [progress.cursor, nextCursor, List.length_cons]
             omega
           · rw [words, ← nextUnread, progress.split, List.cons_append]
-          · rw [Model.consume_cons, firstNext]
-            simpa [bind, Except.bind] using progress.consumed
+          · intro running
+            rw [prepend]
+            exact progress.running running
+          · intro stopped
+            rw [prepend]
+            exact progress.stopped stopped
       · have test : consumeTest (ProcessStep.mk true 0 state) = false := by
           simp [consumeTest, empty, remaining]
         refine ⟨[], ?_⟩
         simp only [LeanExe.repeatWhile.go, test, Bool.false_eq_true, ↓reduceIte]
-        refine ⟨rfl, rfl, safe, rfl, rfl, by simp, normal, by simp, ?_, ?_, ?_⟩
-        · simp [bufferOutputs_empty safe empty, bufferModel]
-        · simpa only [bufferOutputs_empty safe empty, List.append_nil] using success
-        · simpa only [bufferOutputs_empty safe empty, List.append_nil] using modelSafe
+        exact BufferProgress.unmoved spec safe empty normal
 
-theorem consumeInput_buffer (state : (BufferState Acc)) (history : List Bytes) (final : (Model.State Acc))
+theorem consumeInput_buffer (state : BufferState Acc) (history : List Bytes)
     (safe : Safe state) (empty : state.output.size = 0) (normal : spec.Good state.total)
-    (modelSafe : Model.Safe spec (bufferModel state history) (unreadWords state))
-    (success : (Model.consume kernel) (bufferModel state history) (unreadWords state) = .ok final) :
-    BufferProgress spec state history final ((consumeInput kernel) state)
-      ((unreadWords state).take (((consumeInput kernel) state).state.cursor.toNat - state.cursor.toNat)) := by
-  obtain ⟨consumed, progress⟩ := consumeGo_buffer spec (state.input.size - state.cursor).toNat
-    state history final safe empty normal modelSafe success
-  change BufferProgress spec state history final ((consumeInput kernel) state) consumed at progress
-  have cursor : ((consumeInput kernel) state).state.cursor.toNat = state.cursor.toNat + consumed.length :=
-    progress.cursor
-  have length : ((consumeInput kernel) state).state.cursor.toNat - state.cursor.toNat = consumed.length := by
-    omega
-  have taken : (unreadWords state).take consumed.length = consumed := by
-    rw [progress.split, List.take_append_length]
-  simpa only [length, taken] using progress
+    (modelSafe : Model.Safe spec (bufferModel state history) (unreadWords state)) :
+    ∃ consumed, BufferProgress spec state history (consumeInput kernel state) consumed :=
+  consumeGo_buffer spec (state.input.size - state.cursor).toNat state history safe empty normal
+    modelSafe
 
 end Demos.StreamFold

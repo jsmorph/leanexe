@@ -1,7 +1,7 @@
-import Demos.RunningSum.StreamBytes
-import Demos.RunningSum.TerminationHost
+import Demos.StreamFold.Bytes
+import Demos.StreamFold.Host
 
-namespace Demos.RunningSum
+namespace Demos.StreamFold
 
 open LeanExe LeanExe.Wasi
 
@@ -10,7 +10,7 @@ structure StreamPosition where
   output : List UInt64
   zeroWrites : Nat
 
-structure StreamHost (host : Host World) (rep : StreamPosition → World → Prop) : Prop where
+structure StreamHost {World : Type} (host : Host World) (rep : StreamPosition → World → Prop) : Prop where
   read_available : ∀ position world, rep position world →
     ∃ bytes final, host.read world 4096 (.returned 0 bytes) final
   write_available : ∀ position world bytes, rep position world → 0 < bytes.data.size →
@@ -29,7 +29,7 @@ structure StreamHost (host : Host World) (rep : StreamPosition → World → Pro
 
 theorem StreamHost.progress {host : Host World} {rep : StreamPosition → World → Prop}
     (streams : StreamHost host rep) :
-    Termination.StreamProgress host rep (fun position => position.input.length)
+    StreamProgress host rep (fun position => position.input.length)
       StreamPosition.zeroWrites := by
   refine ⟨streams.read_available, streams.write_available, ?_, ?_⟩
   · intro position world reply final represented operation
@@ -63,4 +63,4 @@ theorem StreamHost.read_after_eof {host : Host World}
   simp only [empty, List.length_nil, List.length_append, byteWords_length] at length
   omega
 
-end Demos.RunningSum
+end Demos.StreamFold

@@ -32,7 +32,7 @@ theorem safe_append_iff (spec : KernelSpec kernel) (state : State Acc) (a b : Li
           exact ((ih next).mp (safe.2 next executed)).1
         · intro next executed
           cases step : consumeByte kernel state byte with
-          | error code => simp [consume_cons, step, bind, Except.bind] at executed
+          | error stopped => simp [consume_cons, step, bind, Except.bind] at executed
           | ok middle =>
               apply ((ih middle).mp (safe.2 middle step)).2 next
               simpa [consume_cons, step, bind, Except.bind] using executed
@@ -45,56 +45,134 @@ theorem safe_append_iff (spec : KernelSpec kernel) (state : State Acc) (a b : Li
         apply tailSafe next
         simpa [consume_cons, executed, bind, Except.bind] using restExecuted
 
-inductive Lines (validLine : Array UInt64 → Prop) :
-    Array UInt64 → List UInt64 → List (Array UInt64) → Array UInt64 → Prop
-  | nil (pending) : Lines validLine pending [] [] pending
-  | byte {pending bytes lines tail} (byte : UInt64) (notLf : byte ≠ 10)
-      (rest : Lines validLine (pending.push byte) bytes lines tail) :
-      Lines validLine pending (byte :: bytes) lines tail
-  | newline {pending bytes lines tail} (valid : validLine pending)
-      (rest : Lines validLine #[] bytes lines tail) :
-      Lines validLine pending (10 :: bytes) (pending :: lines) tail
+theorem outcome_cons_ok {state next : State Acc} {byte : UInt64} (bytes : List UInt64)
+    (step : consumeByte kernel state byte = .ok next) :
+    outcome kernel state (byte :: bytes) = outcome kernel next bytes := by
+  unfold outcome
+  rw [consume_cons, step]
+  rfl
 
-def ValidInput (validLine : Array UInt64 → Prop) (bytes : List UInt64)
-    (inputs : List (Array UInt64)) : Prop :=
-  ∃ complete pending, Lines validLine #[] bytes complete pending ∧
-    if pending.size = 0 then inputs = complete
-    else validLine pending ∧ inputs = complete ++ [pending]
+theorem outcome_cons_error {state stopped : State Acc} {byte : UInt64} (bytes : List UInt64)
+    (step : consumeByte kernel state byte = .error stopped) :
+    outcome kernel state (byte :: bytes) = (stopped.output, 28) := by
+  unfold outcome
+  rw [consume_cons, step]
+  rfl
 
-def foldLines (kernel : Kernel Acc) (total : Acc) :
-    List (Array UInt64) → Except UInt64 (Acc × List LeanExe.Bytes)
-  | [] => .ok (total, [])
+theorem outcome_append_ok {state next : State Acc} {a : List UInt64} (b : List UInt64)
+    (executed : consume kernel state a = .ok next) :
+    outcome kernel state (a ++ b) = outcome kernel next b := by
+  unfold outcome
+  rw [consume_append, executed]
+  rfl
+
+theorem outcome_append_error {state stopped : State Acc} {a : List UInt64} (b : List UInt64)
+    (executed : consume kernel state a = .error stopped) :
+    outcome kernel state (a ++ b) = (stopped.output, 28) := by
+  unfold outcome
+  rw [consume_append, executed]
+  rfl
+
+/-- The lines of `bytes` after the partial line `pending`: each segment that LF ends, then the
+final segment when it is nonempty. -/
+def linesFrom (pending : Array UInt64) : List UInt64 → List (Array UInt64)
+  | [] => if pending.size = 0 then [] else [pending]
+  | byte :: bytes =>
+      if byte == 10 then pending :: linesFrom #[] bytes else linesFrom (pending.push byte) bytes
+
+def lines (bytes : List UInt64) : List (Array UInt64) := linesFrom #[] bytes
+
+/-- The outputs of the kernel for `lines` from `total` before the first rejected line, and the
+status: 0 when the kernel accepts every line and 28 when it rejects one. -/
+def foldOutcome (kernel : Kernel Acc) (total : Acc) : List (Array UInt64) → List LeanExe.Bytes × UInt64
+  | [] => ([], 0)
   | line :: rest =>
       let result := kernel total line
       if result.valid then
-        match foldLines kernel result.total rest with
-        | .error code => .error code
-        | .ok (final, output) => .ok (final, result.output :: output)
-      else .error 28
+        let after := foldOutcome kernel result.total rest
+        (result.output :: after.1, after.2)
+      else ([], 28)
 
-theorem consume_lines {validLine pending bytes inputs tail}
-    (trace : Lines validLine pending bytes inputs tail) (total : Acc) (history : List LeanExe.Bytes) :
-    consume kernel ⟨total, pending, history⟩ bytes =
-      match foldLines kernel total inputs with
-      | .error code => .error code
-      | .ok (final, output) => .ok ⟨final, tail, history ++ output⟩ := by
-  induction trace generalizing total history with
-  | nil pending => simp [foldLines]
-  | @byte pending bytes lines tail byte notLf rest ih =>
-      simpa [consume_cons, consumeByte, notLf, bind, Except.bind] using ih total history
-  | @newline pending bytes lines tail valid rest ih =>
-      cases accepted : (kernel total pending).valid with
-      | false => simp [consume_cons, consumeByte, emitLine, foldLines, accepted, bind, Except.bind]
-      | true =>
-          simp only [consume_cons, consumeByte, beq_self_eq_true, ↓reduceIte, emitLine,
-            accepted, foldLines]
-          simp only [bind, Except.bind]
-          rw [ih]
-          cases foldLines kernel (kernel total pending).total lines with
-          | error code => rfl
-          | ok result =>
-              rcases result with ⟨final, output⟩
-              simp [List.append_assoc]
+theorem outcome_lines (total : Acc) (pending : Array UInt64) (history : List LeanExe.Bytes)
+    (bytes : List UInt64) :
+    outcome kernel ⟨total, pending, history⟩ bytes =
+      (history ++ (foldOutcome kernel total (linesFrom pending bytes)).1,
+        (foldOutcome kernel total (linesFrom pending bytes)).2) := by
+  induction bytes generalizing total pending history with
+  | nil =>
+      by_cases empty : pending.size = 0
+      · simp [outcome, finish, empty, linesFrom, foldOutcome, bind, Except.bind]
+      · cases accepted : (kernel total pending).valid <;>
+          simp [outcome, finish, emitLine, empty, accepted, linesFrom, foldOutcome, bind,
+            Except.bind]
+  | cons byte bytes ih =>
+      by_cases newline : byte = 10
+      · subst newline
+        cases accepted : (kernel total pending).valid with
+        | false =>
+            rw [outcome_cons_error (stopped := ⟨total, pending, history⟩) bytes
+              (by simp [consumeByte, emitLine, accepted])]
+            simp [linesFrom, foldOutcome, accepted]
+        | true =>
+            rw [outcome_cons_ok (next := ⟨(kernel total pending).total, #[],
+              history ++ [(kernel total pending).output]⟩) bytes
+              (by simp [consumeByte, emitLine, accepted]), ih]
+            simp [linesFrom, foldOutcome, accepted]
+      · rw [outcome_cons_ok (next := ⟨total, pending.push byte, history⟩) bytes
+          (by simp [consumeByte, newline]), ih]
+        simp [linesFrom, newline]
+
+theorem outcome_initial (seed : Acc) (bytes : List UInt64) :
+    outcome kernel (initial seed) bytes = foldOutcome kernel seed (lines bytes) := by
+  rw [initial, outcome_lines]
+  rfl
+
+/-- `values` holds the values of the lines before the first line without a value, and `status`
+is 0 when every line has a value and 28 when one does not. -/
+inductive LineValues {α : Type} (Denotes : Array UInt64 → α → Prop) :
+    List (Array UInt64) → List α → UInt64 → Prop
+  | nil : LineValues Denotes [] [] 0
+  | accept {line lines value values status} (denotes : Denotes line value)
+      (rest : LineValues Denotes lines values status) :
+      LineValues Denotes (line :: lines) (value :: values) status
+  | reject {line lines} (invalid : ∀ value, ¬ Denotes line value) :
+      LineValues Denotes (line :: lines) [] 28
+
+theorem LineValues.unique {α : Type} {Denotes : Array UInt64 → α → Prop}
+    (functional : ∀ {line a b}, Denotes line a → Denotes line b → a = b)
+    {lines : List (Array UInt64)} {values others : List α} {status other : UInt64}
+    (first : LineValues Denotes lines values status)
+    (second : LineValues Denotes lines others other) : values = others ∧ status = other := by
+  induction first generalizing others other with
+  | nil =>
+      cases second
+      exact ⟨rfl, rfl⟩
+  | accept denotes rest ih =>
+      cases second with
+      | accept otherDenotes otherRest =>
+          obtain ⟨same, statusEq⟩ := ih otherRest
+          exact ⟨by rw [functional denotes otherDenotes, same], statusEq⟩
+      | reject invalid => exact (invalid _ denotes).elim
+  | reject invalid =>
+      cases second with
+      | accept otherDenotes _ => exact (invalid _ otherDenotes).elim
+      | reject _ => exact ⟨rfl, rfl⟩
+
+theorem LineValues.status {α : Type} {Denotes : Array UInt64 → α → Prop}
+    {lines : List (Array UInt64)} {values : List α} {status : UInt64}
+    (run : LineValues Denotes lines values status) : status = 0 ∨ status = 28 := by
+  induction run with
+  | nil => exact Or.inl rfl
+  | accept _ _ ih => exact ih
+  | reject _ => exact Or.inr rfl
+
+theorem LineValues.exitStatus {α : Type} {Denotes : Array UInt64 → α → Prop}
+    {lines : List (Array UInt64)} {values : List α} {status : UInt64}
+    (run : LineValues Denotes lines values status) : LeanExe.Wasi.exitStatus status = status := by
+  induction run with
+  | nil => rfl
+  | accept _ _ ih => exact ih
+  | reject _ => rfl
 
 def LineRooms {kernel : Kernel Acc} (spec : KernelSpec kernel) (total : Acc) :
     List (Array UInt64) → Prop
@@ -102,151 +180,67 @@ def LineRooms {kernel : Kernel Acc} (spec : KernelSpec kernel) (total : Acc) :
   | line :: rest => spec.Room total line ∧
       ((kernel total line).valid = true → LineRooms spec (kernel total line).total rest)
 
-theorem safe_of_lines {validLine pending bytes inputs tail}
-    (spec : KernelSpec kernel) (trace : Lines validLine pending bytes inputs tail)
-    (total : Acc) (history : List LeanExe.Bytes) (rooms : LineRooms spec total inputs) :
+theorem linesFrom_newline (pending : Array UInt64) (bytes : List UInt64) :
+    linesFrom pending (10 :: bytes) = pending :: linesFrom #[] bytes := by
+  simp [linesFrom]
+
+theorem linesFrom_byte (pending : Array UInt64) {byte : UInt64} (bytes : List UInt64)
+    (notLf : byte ≠ 10) : linesFrom pending (byte :: bytes) = linesFrom (pending.push byte) bytes := by
+  simp [linesFrom, notLf]
+
+theorem safe_of_rooms (spec : KernelSpec kernel) (total : Acc) (pending : Array UInt64)
+    (history : List LeanExe.Bytes) (bytes : List UInt64)
+    (rooms : LineRooms spec total (linesFrom pending bytes)) :
     Safe spec ⟨total, pending, history⟩ bytes := by
-  induction trace generalizing total history with
-  | nil pending => trivial
-  | @byte pending bytes lines tail byte notLf rest ih =>
-      refine ⟨fun newline => (notLf newline).elim, ?_⟩
-      intro next executed
-      have same : next = ⟨total, pending.push byte, history⟩ := by
-        simpa [consumeByte, notLf] using executed.symm
-      subst next
-      exact ih total history rooms
-  | @newline pending bytes lines tail valid rest ih =>
-      refine ⟨fun _ => rooms.1, ?_⟩
-      intro next executed
-      cases accepted : (kernel total pending).valid with
-      | false => simp [consumeByte, emitLine, accepted] at executed
-      | true =>
-          have same : next =
-              ⟨(kernel total pending).total, #[], history ++ [(kernel total pending).output]⟩ := by
-            simpa [consumeByte, emitLine, accepted] using executed.symm
-          subst next
-          exact ih _ _ (rooms.2 accepted)
-
-theorem foldLines_append (total : Acc) (first rest : List (Array UInt64)) :
-    foldLines kernel total (first ++ rest) =
-      match foldLines kernel total first with
-      | .error code => .error code
-      | .ok (middle, output) =>
-          match foldLines kernel middle rest with
-          | .error code => .error code
-          | .ok (final, after) => .ok (final, output ++ after) := by
-  induction first generalizing total with
-  | nil =>
-      simp only [List.nil_append, foldLines]
-      cases foldLines kernel total rest <;> rfl
-  | cons line first ih =>
-      cases accepted : (kernel total line).valid with
-      | false => simp [foldLines, accepted]
-      | true =>
-          simp only [List.cons_append, foldLines, accepted, ↓reduceIte]
-          rw [ih]
-          cases foldLines kernel (kernel total line).total first with
-          | error code => rfl
-          | ok result =>
-              rcases result with ⟨middle, output⟩
-              simp only
-              cases foldLines kernel middle rest <;> rfl
-
-theorem finish_consume_input {validLine bytes inputs}
-    (valid : ValidInput validLine bytes inputs) (seed : Acc) :
-    (consume kernel (initial seed) bytes >>= finish kernel) =
-      match foldLines kernel seed inputs with
-      | .error code => .error code
-      | .ok (total, output) => .ok ⟨total, #[], output⟩ := by
-  obtain ⟨complete, pending, trace, last⟩ := valid
-  have consumed := consume_lines (kernel := kernel) trace seed []
-  change consume kernel ⟨seed, #[], []⟩ bytes >>= finish kernel = _
-  rw [consumed]
-  by_cases empty : pending.size = 0
-  · simp only [empty, ↓reduceIte] at last
-    subst inputs
-    cases foldLines kernel seed complete with
-    | error code => rfl
-    | ok result =>
-        rcases result with ⟨total, output⟩
-        have pendingEmpty : pending = #[] := Array.eq_empty_of_size_eq_zero empty
-        simp [finish, pendingEmpty, bind, Except.bind]
-  · simp only [empty, ↓reduceIte] at last
-    obtain ⟨_, rfl⟩ := last
-    rw [foldLines_append]
-    cases foldLines kernel seed complete with
-    | error code => rfl
-    | ok result =>
-        rcases result with ⟨total, output⟩
-        cases accepted : (kernel total pending).valid <;>
-          simp [finish, emitLine, empty, foldLines, accepted, bind, Except.bind]
-
-theorem LineRooms.prefix (spec : KernelSpec kernel) (total : Acc)
-    (first rest : List (Array UInt64)) (rooms : LineRooms spec total (first ++ rest)) :
-    LineRooms spec total first := by
-  induction first generalizing total with
+  induction bytes generalizing total pending history with
   | nil => trivial
-  | cons line first ih =>
-      exact ⟨rooms.1, fun accepted => ih _ (rooms.2 accepted)⟩
+  | cons byte bytes ih =>
+      by_cases newline : byte = 10
+      · subst newline
+        rw [linesFrom_newline] at rooms
+        refine ⟨fun _ => rooms.1, ?_⟩
+        intro next executed
+        cases accepted : (kernel total pending).valid with
+        | false => simp [consumeByte, emitLine, accepted] at executed
+        | true =>
+            have same : next =
+                ⟨(kernel total pending).total, #[], history ++ [(kernel total pending).output]⟩ := by
+              simpa [consumeByte, emitLine, accepted] using executed.symm
+            subst next
+            exact ih _ _ _ (rooms.2 accepted)
+      · rw [linesFrom_byte pending bytes newline] at rooms
+        refine ⟨fun lf => (newline lf).elim, ?_⟩
+        intro next executed
+        have same : next = ⟨total, pending.push byte, history⟩ := by
+          simpa [consumeByte, newline] using executed.symm
+        subst next
+        exact ih _ _ _ rooms
 
-theorem LineRooms.after_fold (spec : KernelSpec kernel) (total : Acc)
-    (first rest : List (Array UInt64)) (rooms : LineRooms spec total (first ++ rest))
-    {final output} (executed : foldLines kernel total first = .ok (final, output)) :
-    LineRooms spec final rest := by
-  induction first generalizing total final output with
+theorem room_of_rooms (spec : KernelSpec kernel) (total : Acc) (pending : Array UInt64)
+    (history : List LeanExe.Bytes) (bytes : List UInt64)
+    (rooms : LineRooms spec total (linesFrom pending bytes)) {final : State Acc}
+    (executed : consume kernel ⟨total, pending, history⟩ bytes = .ok final)
+    (nonempty : final.pending.size ≠ 0) : spec.Room final.total final.pending := by
+  induction bytes generalizing total pending history with
   | nil =>
-      cases executed
-      exact rooms
-  | cons line first ih =>
-      cases accepted : (kernel total line).valid with
-      | false => simp [foldLines, accepted] at executed
-      | true =>
-          cases next : foldLines kernel (kernel total line).total first with
-          | error code => simp [foldLines, accepted, next] at executed
-          | ok result =>
-              rcases result with ⟨middle, outputs⟩
-              have same : (middle, (kernel total line).output :: outputs) = (final, output) := by
-                simpa [foldLines, accepted, next, bind, Except.bind] using executed
-              have totalEq : middle = final := congrArg Prod.fst same
-              rw [← totalEq]
-              exact ih _ (rooms.2 accepted) next
-
-theorem consume_lines_properties {validLine pending bytes inputs tail}
-    (spec : KernelSpec kernel) (trace : Lines validLine pending bytes inputs tail)
-    (total : Acc) (history : List LeanExe.Bytes) (rest : List (Array UInt64))
-    (rooms : LineRooms spec total (inputs ++ rest)) {final}
-    (executed : consume kernel ⟨total, pending, history⟩ bytes = .ok final) :
-    final.pending = tail ∧ LineRooms spec final.total rest := by
-  rw [consume_lines trace total history] at executed
-  cases folded : foldLines kernel total inputs with
-  | error code => simp [folded] at executed
-  | ok result =>
-      rcases result with ⟨next, output⟩
-      have same : final = ⟨next, tail, history ++ output⟩ := by
-        simpa [folded] using executed.symm
+      have same : final = ⟨total, pending, history⟩ := by simpa using executed.symm
       subst final
-      exact ⟨rfl, LineRooms.after_fold spec total inputs rest rooms folded⟩
-
-theorem validInput_safe_and_finalRoom {validLine bytes inputs}
-    (spec : KernelSpec kernel) (valid : ValidInput validLine bytes inputs) (seed : Acc)
-    (rooms : LineRooms spec seed inputs) :
-    Safe spec (initial seed) bytes ∧
-      ∀ final, consume kernel (initial seed) bytes = .ok final →
-        final.pending.size ≠ 0 → spec.Room final.total final.pending := by
-  obtain ⟨complete, pending, trace, last⟩ := valid
-  by_cases empty : pending.size = 0
-  · simp only [empty, ↓reduceIte] at last
-    subst inputs
-    refine ⟨safe_of_lines spec trace seed [] rooms, ?_⟩
-    intro final executed nonempty
-    have facts := consume_lines_properties spec trace seed [] []
-      (by simpa only [List.append_nil] using rooms) executed
-    exact False.elim (nonempty (by rw [facts.1]; exact empty))
-  · simp only [empty, ↓reduceIte] at last
-    obtain ⟨_, rfl⟩ := last
-    refine ⟨safe_of_lines spec trace seed [] (LineRooms.prefix spec seed complete [pending] rooms), ?_⟩
-    intro final executed _
-    obtain ⟨same, remaining⟩ := consume_lines_properties spec trace seed [] [pending] rooms executed
-    simpa only [same] using remaining.1
+      have nonempty : pending.size ≠ 0 := nonempty
+      have single : linesFrom pending [] = [pending] := by simp [linesFrom, nonempty]
+      rw [single] at rooms
+      exact rooms.1
+  | cons byte bytes ih =>
+      by_cases newline : byte = 10
+      · subst newline
+        rw [linesFrom_newline] at rooms
+        cases accepted : (kernel total pending).valid with
+        | false =>
+            simp [consume_cons, consumeByte, emitLine, accepted, bind, Except.bind] at executed
+        | true =>
+            apply ih _ _ _ (rooms.2 accepted)
+            simpa [consume_cons, consumeByte, emitLine, accepted, bind, Except.bind] using executed
+      · rw [linesFrom_byte pending bytes newline] at rooms
+        apply ih _ _ _ rooms
+        simpa [consume_cons, consumeByte, newline, bind, Except.bind] using executed
 
 end Demos.StreamFold.Model

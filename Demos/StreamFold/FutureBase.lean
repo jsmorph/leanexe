@@ -14,24 +14,17 @@ theorem unreadWords_empty {state : (BufferState Acc)} (safe : Safe state)
   have bound := UInt64.le_iff_toNat_le.mp limit
   simpa only [safe.input_toNat] using bound
 
-theorem model_prefix_success (state : (Model.State Acc)) (a b : List UInt64)
-    (final : (Model.State Acc)) (success : Model.consume kernel state (a ++ b) = .ok final) :
-    ∃ middle, Model.consume kernel state a = .ok middle ∧
-      Model.consume kernel middle b = .ok final := by
-  rw [Model.consume_append] at success
-  cases first : Model.consume kernel state a with
-  | error code => simp [first, bind, Except.bind] at success
-  | ok middle => exact ⟨middle, rfl, by simpa [first, bind, Except.bind] using success⟩
-
 theorem StreamFuture.of_consumed {state next : (BufferState Acc)} {position nextPosition : StreamPosition}
-    {history nextHistory expected : List Bytes} (future : StreamFuture spec state position history expected)
+    {history nextHistory expected : List Bytes} {status : UInt64}
+    (future : StreamFuture spec state position history expected status)
     (consumed : List UInt64) (safe : Safe next) (normal : spec.Good next.total)
     (eofBuffer : next.eof = true → next.input.data.size = 0)
     (eofInput : next.eof = true → nextPosition.input = [])
     (output : outputWords nextHistory = nextPosition.output ++ byteWords (remainingOutput next))
     (split : remainingInput state position = consumed ++ remainingInput next nextPosition)
     (executed : Model.consume kernel (bufferModel state history) consumed =
-      .ok (bufferModel next nextHistory)) : StreamFuture spec next nextPosition nextHistory expected := by
+      .ok (bufferModel next nextHistory)) :
+    StreamFuture spec next nextPosition nextHistory expected status := by
   refine ⟨safe, normal, eofBuffer, eofInput, output, ?_, ?_, ?_⟩
   · have divided := (Model.safe_append_iff spec _ consumed _).mp
       (show Model.Safe spec (bufferModel state history)
@@ -41,18 +34,18 @@ theorem StreamFuture.of_consumed {state next : (BufferState Acc)} {position next
     apply future.finalRoom final _ nonempty
     rw [split, Model.consume_append, executed]
     simpa [bind, Except.bind] using completed
-  · obtain ⟨processed, final, completed, finished, outputEq⟩ := future.completion
-    rw [split, Model.consume_append, executed] at completed
-    exact ⟨processed, final, by simpa [bind, Except.bind] using completed, finished, outputEq⟩
+  · have completed := future.completion
+    rwa [split, Model.outcome_append_ok _ executed] at completed
 
 theorem streamFuture_afterRead {state : (BufferState Acc)} {position nextPosition : StreamPosition}
-    {history expected : List Bytes} (future : StreamFuture spec state position history expected)
+    {history expected : List Bytes} {status : UInt64}
+    (future : StreamFuture spec state position history expected status)
     (bytes : Bytes) (bound : bytes.data.size ≤ (4096 : UInt64).toNat)
     (exhausted : ¬ state.cursor < state.input.size)
     (input : position.input = byteWords bytes ++ nextPosition.input)
     (eof : bytes.data.size = 0 → position.input = [])
     (output : nextPosition.output = position.output) :
-    StreamFuture spec (afterRead state ⟨0, bytes⟩).state nextPosition history expected := by
+    StreamFuture spec (afterRead state ⟨0, bytes⟩).state nextPosition history expected status := by
   have sizeBound : bytes.data.size < UInt64.size := by
     have count : (4096 : UInt64).toNat = 4096 := rfl
     have size : UInt64.size = 18446744073709551616 := rfl
@@ -88,12 +81,13 @@ theorem streamFuture_afterRead {state : (BufferState Acc)} {position nextPositio
   · simp [afterRead, bufferModel]
 
 theorem streamFuture_afterWrite {state : (BufferState Acc)} {position nextPosition : StreamPosition}
-    {history expected : List Bytes} (future : StreamFuture spec state position history expected)
+    {history expected : List Bytes} {status : UInt64}
+    (future : StreamFuture spec state position history expected status)
     (count : UInt64) (bound : count.toNat ≤ (remainingOutput state).data.size)
     (input : nextPosition.input = position.input)
     (output : nextPosition.output =
       position.output ++ (byteWords (remainingOutput state)).take count.toNat) :
-    StreamFuture spec (afterWrite state ⟨0, count⟩).state nextPosition history expected := by
+    StreamFuture spec (afterWrite state ⟨0, count⟩).state nextPosition history expected status := by
   have sameModel : bufferModel (afterWrite state ⟨0, count⟩).state history =
       bufferModel state history := by
     simp only [afterWrite, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
@@ -164,13 +158,15 @@ theorem consumeInput_written_zero (state : (BufferState Acc)) (zero : state.writ
   exact consumeGo_written_zero _ ⟨true, 0, state⟩ zero
 
 theorem StreamFuture.eof_remaining {state : (BufferState Acc)} {position : StreamPosition}
-    {history expected : List Bytes} (future : StreamFuture spec state position history expected)
+    {history expected : List Bytes} {status : UInt64}
+    (future : StreamFuture spec state position history expected status)
     (eof : state.eof = true) : remainingInput state position = [] := by
   simp [remainingInput, unreadWords, byteWords_nil state.input (future.eof_buffer eof),
     future.eof_input eof]
 
 theorem StreamFuture.eof_room {state : (BufferState Acc)} {position : StreamPosition}
-    {history expected : List Bytes} (future : StreamFuture spec state position history expected)
+    {history expected : List Bytes} {status : UInt64}
+    (future : StreamFuture spec state position history expected status)
     (eof : state.eof = true) (nonempty : state.line.size ≠ 0) :
     spec.Room state.total state.line := by
   apply future.finalRoom (bufferModel state history) _ nonempty

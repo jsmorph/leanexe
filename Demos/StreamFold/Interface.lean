@@ -99,20 +99,29 @@ structure State (Acc : Type) where
   pending : Array UInt64
   output : List Bytes
 
-def emitLine (kernel : Kernel Acc) (state : State Acc) : Except UInt64 (State Acc) :=
+/-- The model's step at a line ending: the kernel's result for the pending line, or the state
+itself when the kernel rejects that line. -/
+def emitLine (kernel : Kernel Acc) (state : State Acc) : Except (State Acc) (State Acc) :=
   let result := kernel state.total state.pending
-  if result.valid then .ok ⟨result.total, #[], state.output ++ [result.output]⟩ else .error 28
+  if result.valid then .ok ⟨result.total, #[], state.output ++ [result.output]⟩ else .error state
 
 def consumeByte (kernel : Kernel Acc) (state : State Acc) (byte : UInt64) :
-    Except UInt64 (State Acc) :=
+    Except (State Acc) (State Acc) :=
   if byte == 10 then emitLine kernel state
   else .ok { state with pending := state.pending.push byte }
 
 def consume (kernel : Kernel Acc) (state : State Acc) (bytes : List UInt64) :
-    Except UInt64 (State Acc) := bytes.foldlM (consumeByte kernel) state
+    Except (State Acc) (State Acc) := bytes.foldlM (consumeByte kernel) state
 
-def finish (kernel : Kernel Acc) (state : State Acc) : Except UInt64 (State Acc) :=
+def finish (kernel : Kernel Acc) (state : State Acc) : Except (State Acc) (State Acc) :=
   if state.pending.size = 0 then .ok state else emitLine kernel state
+
+/-- The outputs of the model for `bytes` from `state` and its status: 0 when the kernel accepts
+every line, including a last line without LF, and 28 when the model stops at a rejected line. -/
+def outcome (kernel : Kernel Acc) (state : State Acc) (bytes : List UInt64) : List Bytes × UInt64 :=
+  match consume kernel state bytes >>= finish kernel with
+  | .ok final => (final.output, 0)
+  | .error stopped => (stopped.output, 28)
 
 def Safe {kernel : Kernel Acc} (spec : KernelSpec kernel) : State Acc → List UInt64 → Prop
   | _, [] => True
