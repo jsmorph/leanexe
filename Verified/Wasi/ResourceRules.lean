@@ -111,12 +111,12 @@ theorem exec_rule {World : Type} {host : Host World} {pure : PureContext pureSig
   | ite_yes chosen execution =>
     intro yesBudget noBudget total conditionFits yesBound _
     obtain ⟨cost, valid⟩ := (yesBound chosen).1 _ _ _ _ _ _ execution
-    rw [if_pos chosen] at total
+    rw [ite_eq_left chosen] at total
     exact ⟨by omega, by simp only [conditionFits, valid, Bool.true_and]⟩
   | ite_no chosen execution =>
     intro yesBudget noBudget total conditionFits _ noBound
     obtain ⟨cost, valid⟩ := (noBound chosen).1 _ _ _ _ _ _ execution
-    rw [if_neg (by simp [chosen])] at total
+    rw [ite_eq_right (by simp [chosen])] at total
     exact ⟨by omega, by simp only [conditionFits, valid, Bool.true_and]⟩
   | call execution =>
     intro calleeBudget total argumentFits bounded
@@ -155,12 +155,12 @@ theorem prefix_rule {World : Type} {host : Host World} {pure : PureContext pureS
   | ite_yes chosen progress =>
     intro yesBudget noBudget total conditionFits yesBound _
     obtain ⟨cost, valid⟩ := (yesBound chosen).2 _ _ _ _ _ _ progress
-    rw [if_pos chosen] at total
+    rw [ite_eq_left chosen] at total
     exact ⟨by omega, by simp only [conditionFits, valid, Bool.true_and]⟩
   | ite_no chosen progress =>
     intro yesBudget noBudget total conditionFits _ noBound
     obtain ⟨cost, valid⟩ := (noBound chosen).2 _ _ _ _ _ _ progress
-    rw [if_neg (by simp [chosen])] at total
+    rw [ite_eq_right (by simp [chosen])] at total
     exact ⟨by omega, by simp only [conditionFits, valid, Bool.true_and]⟩
   | call progress =>
     intro calleeBudget total argumentFits bounded

@@ -154,7 +154,10 @@ theorem fold_flat_bound {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote
         (false :: ps :: false :: paid) (shift 1 (shift 2 all))
         (.cons (ψ v) (.cons (φ s) (.cons i env))) +
         coerceCost t (body.mode (.borrowed :: M :: .borrowed :: modes)) M (φ (F s v)) =
-      BA i s v) :
+      BA i s v)
+    (hby : ∀ (i : UInt64) (s : t.denote), (if ps = true then (Expr.foldStep x body).buys funs flags
+        (M :: .borrowed :: modes) (ps :: false :: paid) (shift 2 all) (.cons s (.cons i env))
+      else 0) = 0) :
     (Expr.fold x init body).allocs funs flags bounds modes paid live env =
       IA + KA + CR + foldCost xs I F BA := by
   subst hall hM hps hia hka hcr
@@ -173,9 +176,13 @@ theorem fold_flat_bound {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote
   · intro k hk s
     have hk64 : k < UInt64.size := hk.trans xs.size.toUInt64.toNat_lt_size
     have hkxs : k < xs.size := hk.trans_le (by exact Nat.mod_le _ _)
+    have hz := hby (UInt64.ofNat k) (φ s)
+    simp only [Expr.foldStep, Expr.mode, Expr.denote, Expr.uses, Env.get, hx,
+      UInt64.toNat_ofNat_of_lt' hk64,
+      getElem!_pos (xs.map ψ) k (by simpa using hkxs), Array.getElem_map, hb] at hz
     simpa only [Expr.foldStep, Expr.mode, Expr.denote, Expr.uses, Env.get, hx,
       UInt64.toNat_ofNat_of_lt' hk64,
-      getElem!_pos (xs.map ψ) k (by simpa using hkxs), Array.getElem_map, hb]
+      getElem!_pos (xs.map ψ) k (by simpa using hkxs), Array.getElem_map, hb, hz, Nat.add_zero]
       using hba (UInt64.ofNat k) s xs[k]
 
 theorem fold_flat_fits {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote)

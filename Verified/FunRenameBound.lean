@@ -69,6 +69,46 @@ theorem Expr.paid_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     simp_all [Expr.renameFuns, Expr.paid, Expr.mode_renameFuns, Expr.uses_renameFuns,
       Expr.grows_renameFuns ρ flags target params, Expr.foldStep_renameFuns]
 
+theorem Expr.bodyPaid_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
+    (flags : Flags S) (target : Flags T)
+    (params : ∀ {g : Sig} (f : FVar S g), target.params (ρ f) = flags.params f)
+    (result : ∀ {g : Sig} (f : FVar S g), target.result (ρ f) = flags.result f)
+    (e : Expr S Γ t) (modes : List Mode) (paid : List Bool) (live : Nat → Bool) :
+    (e.renameFuns ρ).bodyPaid target modes paid live = e.bodyPaid flags modes paid live := by
+  induction e generalizing modes paid live
+  case ite c a b _ iha ihb => simp only [Expr.renameFuns, Expr.bodyPaid, iha, ihb]
+  case letE value body _ ih =>
+    simp only [Expr.renameFuns, Expr.bodyPaid, ih, Expr.mode_renameFuns, Expr.uses_renameFuns,
+      Expr.paid_renameFuns ρ flags target params result]
+  case letPair value body _ ih =>
+    simp only [Expr.renameFuns, Expr.bodyPaid, ih, Expr.mode_renameFuns, Expr.uses_renameFuns,
+      Expr.paid_renameFuns ρ flags target params result]
+  all_goals exact Expr.paid_renameFuns ρ flags target params result _ modes paid live
+
+theorem Expr.buys_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
+    (funs : Funs S) (targetFuns : Funs T)
+    (functions : ∀ {g : Sig} (f : FVar S g) env, targetFuns.get (ρ f) env = funs.get f env)
+    (flags : Flags S) (target : Flags T)
+    (params : ∀ {g : Sig} (f : FVar S g), target.params (ρ f) = flags.params f)
+    (result : ∀ {g : Sig} (f : FVar S g), target.result (ρ f) = flags.result f)
+    (e : Expr S Γ t) (modes : List Mode) (paid : List Bool) (live : Nat → Bool) (env : Env Γ) :
+    (e.renameFuns ρ).buys targetFuns target modes paid live env =
+      e.buys funs flags modes paid live env := by
+  induction e generalizing modes paid live
+  case ite c a b _ iha ihb =>
+    simp only [Expr.renameFuns, Expr.buys, iha, ihb,
+      Expr.bodyPaid_renameFuns ρ flags target params result,
+      Expr.denote_renameFuns ρ funs targetFuns functions]
+  case letE value body _ ih =>
+    simp only [Expr.renameFuns, Expr.buys, ih, Expr.mode_renameFuns, Expr.uses_renameFuns,
+      Expr.paid_renameFuns ρ flags target params result,
+      Expr.denote_renameFuns ρ funs targetFuns functions]
+  case letPair value body _ ih =>
+    simp only [Expr.renameFuns, Expr.buys, ih, Expr.mode_renameFuns, Expr.uses_renameFuns,
+      Expr.paid_renameFuns ρ flags target params result,
+      Expr.denote_renameFuns ρ funs targetFuns functions]
+  all_goals rfl
+
 theorem callMovesAt_renameFuns {S T : List Sig} (ρ : FunRenaming S T) {Γ : List Ty} {g : Sig}
     (args : (i : Fin g.params.length) → Expr S Γ (g.params.get i))
     (modes : List Mode) (live : Nat → Bool) (i : Fin g.params.length) :
@@ -84,7 +124,8 @@ theorem Expr.statePaid_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     Expr.statePaid target modes paid live (init.renameFuns ρ) (cond.renameFuns ρ)
       (body.renameFuns ρ) = Expr.statePaid flags modes paid live init cond body := by
   simp only [Expr.statePaid, Expr.mode_renameFuns, Expr.uses_renameFuns,
-    Expr.grows_renameFuns ρ flags target params, Expr.paid_renameFuns ρ flags target params result]
+    Expr.grows_renameFuns ρ flags target params,
+    Expr.bodyPaid_renameFuns ρ flags target params result]
 
 theorem callCredits_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (funs : Funs S) (targetFuns : Funs T)
@@ -124,6 +165,8 @@ theorem Expr.allocs_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
       [Expr.renameFuns, Expr.allocs, loopAlloc, Expr.foldStep_renameFuns, Expr.statePaid,
       Expr.mode_renameFuns, Expr.uses_renameFuns, Expr.ownedCost_renameFuns,
       Expr.paid_renameFuns ρ flags targetFlags params result,
+      Expr.bodyPaid_renameFuns ρ flags targetFlags params result,
+      Expr.buys_renameFuns ρ funs targetFuns functions flags targetFlags params result,
       Expr.grows_renameFuns ρ flags targetFlags params, callMovesAt_renameFuns,
       callCredits_renameFuns ρ funs targetFuns functions flags targetFlags params,
       Expr.denote_renameFuns ρ funs targetFuns functions, Expr.denote]
