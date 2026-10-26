@@ -41,6 +41,7 @@ section](#theorems-to-prove) lists the theorems that remain.
 | [The output](Angle.lean) | The output's axis and angle against those of the relative quaternion |
 | [The safety theorem](Safety.lean) | `plan_safe` |
 | [NaN-freedom](NanFree.lean) | `plan_finite` |
+| [The premise theorem](Premise.lean) | `plan_premise` |
 
 The program imports only the dialect modules and `Library.Numerics.Float64.Atan.Program`, which
 build from Lean's core library.  The representations need `LeanExe.Pipeline`, which depends on
@@ -201,9 +202,9 @@ attitudes by the rounding of `relative`.  The safety theorem derives the hypothe
 nothing about the input beyond what `validInput` checks.  It states that the output's start and
 goal quaternions equal the input's, bit for bit, and that segment `g` of `K` stores its start
 quaternion `q_g` at offset `4 + 11g`, its axis `n_g` at `8 + 11g`, and its angle `θ_g` at
-`11 + 11g`, with the goal as `q_K`.  For each segment, the rotation by `θ_g` about the normalized
-axis `n̄_g` carries the attitude `R(q̄_g)` to within `1e-9` of `R(q̄_{g+1})`, where the distance
-between attitudes is the largest displacement of a unit vector.  For each angle `φ` in
+`11 + 11g`, with the goal as `q_K`.  For each segment, the normalized axis `n̄_g` has length 1,
+and the rotation by `θ_g` about `n̄_g` carries the attitude `R(q̄_g)` to within `1e-9` of
+`R(q̄_{g+1})`, where the distance between attitudes is the largest displacement of a unit vector.  For each angle `φ` in
 `[0, θ_g]` and each map `R'` that moves every unit vector at most `1e-9` from `R(n̄_g, φ) R(q̄_g)`,
 every input cone holds for `R'` applied to the cone's normalized body vector, against its
 normalized axis.  `R(q̄)` is the program's rotation formula on the normalized quaternion, which
@@ -226,8 +227,8 @@ displace a unit vector by at most `5e-14`, which the tube of `1.05e-9` covers.
 
 The compiler's `compiled.plan.implements` states that the module's `plan` export returns `plan`
 of its input or traps when an allocation finds no memory, so the theorem applies to every output
-of status 1 that the export returns.  The theorem concerns the commanded rotations, and the
-premise theorem below, which relates them to a flown slew, remains to be proved.
+of status 1 that the export returns.  The theorem concerns the commanded rotations, and [the
+premise theorem](#premises) relates them to a flown slew.
 
 ## NaN-freedom
 
@@ -248,6 +249,33 @@ a tiny positive argument, so the proof follows the library's branches instead: f
 a positive constant, and `atan` keeps the sign of its argument.  The internal operations of the
 library's `atan2` and `atan` lie outside the statement, and the statement concerns `plan` in
 Lean: carrying it to the module's instructions needs a statement in Talos's semantics.
+
+## Premises
+
+[The premise theorem](Premise.lean) `plan_premise` relates a plan of status 1 to a flown slew.  It
+measures the angle between two vectors with Mathlib's `InnerProductGeometry.angle`, the arccosine
+of their inner product over the product of their lengths, which is `π/2` when either vector is
+zero.  Let `φ` lie in `[0, θ_g]` for a segment `g`, let a map `A` move every unit vector by an
+angle of at most `ε` from the commanded attitude `R(n̄_g, φ) R(q̄_g)`, and let cone `k` have a true
+axis `u` within angle `d` of its normalized input axis `ū` and a true half-angle `α`.  For a
+keep-out cone with `α + d + ε ≤ arccos c`, where `c` is the input cosine, the angle between `A b̄`
+and `u` is at least `α`, and for a keep-in cone with `arccos c + d + ε ≤ α`, it is at most `α`.
+The theorem depends only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+The statement concerns one instant, so the attitude, the axis, and the half-angle may change
+during the slew.  If a keep-out cone's half-angle stays at most `α₀ + γ` for a nominal half-angle
+`α₀`, an input cosine `c` with `arccos c ≥ α₀ + γ + d + ε` satisfies the hypothesis at every
+instant, and a keep-in cone whose half-angle stays at least `α₀ − γ` needs
+`arccos c ≤ α₀ − γ − d − ε`.  The hypotheses concern the real value of the input's float, so the
+cosine of the enlarged half-angle, rounded down for a keep-out cone and up for a keep-in cone,
+satisfies them.  The map `A` covers every difference between the flown and the commanded
+attitudes, including control and knowledge errors, and the theorem assumes nothing else about it.
+
+The proof applies `plan_safe` with the commanded attitude as `R'`, at distance 0 from itself.  The
+commanded attitude preserves length, because `n̄_g` has length 1 and `R(q̄)` preserves length for
+every `q`, so `b̄` maps to a unit vector, and the cone's bound on its cosine with `ū` bounds its
+angle with `ū` through `arccos`, which is decreasing.  The triangle inequality for angles,
+`InnerProductGeometry.angle_le_angle_add_angle`, holds for all vectors and adds `d` and `ε`.
 
 ## Tests
 
@@ -314,9 +342,9 @@ The journal states each theorem and the order of the work.
   every input cone, as a statement about real numbers.  [The safety section](#safety) states the
   proved theorem, `plan_safe`.
 - **Premises:** if the flown attitude stays within `ε` of the commanded one, each constraint axis
-  within `d` of its planning value, and each nominal half-angle grows by at most `g`, then a plan
-  computed with half-angles enlarged by `ε + d + g` keeps the nominal limits along the flown
-  slew.
+  within `d` of its planning value, and each nominal half-angle grows by at most `γ`, then a plan
+  computed with half-angles enlarged by `ε + d + γ` keeps the nominal limits along the flown
+  slew.  [The premises section](#premises) states the proved theorem, `plan_premise`.
 - **Optimality:** no path in the graph that the program's own checks define costs less than the
   plan.
 - **File:** the written `slew.wasm` holds the encoding of `compiled.module`.

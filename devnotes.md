@@ -35766,7 +35766,21 @@ The coordinator asked for the remaining theorems in the plan's order: NaN-freedo
 `Demos.Slew.NanFree.plan_finite` proves the statement, with `StaticClean`, `ConeClean`, `EdgeClean`, `SegClean`, and `InputClean` mirroring `attitudeOk`, the cone loop of `edgeOk`, `edgeOk`, the segment computations (`relative`, `angleOf`, `slewTicks`, `ceilMs`, and `segmentField`), and `validInput`.  It depends on `propext`, `Classical.choice`, and `Quot.sound` alone, and the module builds in 4.1 s.  Most values come from the bounds of the edge-check proofs.  The new work was the duration: `slewTicks` takes the square root of `θ / a`, so the output angle `2 atan2 s w` must not be negative, and the library's accuracy theorem allows a result two steps below a tiny positive argument, which would be negative.  `atan2_nonneg` therefore follows the library's branch lemmas: for a positive `s` and a `w` that is not negative, `atan2` returns a positive constant or `atan` of a quotient that is not negative, and `atan_nonneg` shows from the small-argument branch and the accuracy within one step that `atan` keeps the sign of its argument.  Quotients and square roots of values that are not negative are not negative from the enclosure lemmas, with exact zeros handled from the definitions of `mul` and `div`.
 
 - [x] NaN-freedom: `plan_finite`.
-- [ ] The premise theorem.
+- [x] The premise theorem: `plan_premise`.
 - [ ] The constant allocation bound.
 - [ ] Optimality.
 - [ ] The file theorem.
+
+## 2026-10-26: The slew premise theorem
+
+`Demos.Slew.Premise.plan_premise` proves item 5 of [the theorem list](#theorems) for one instant of a segment.  For an output of status 1, a segment `g`, an angle `φ` in `[0, θ_g]`, a map `A` that moves every unit vector by an angle of at most `ε` from `R(n̄_g, φ) R(q̄_g)`, and a cone with a true axis `u` within angle `d` of `ū` and a true half-angle `α`, a keep-out cone with `α + d + ε ≤ arccos c` gives `∠(A b̄, u) ≥ α`, and a keep-in cone with `arccos c + d + ε ≤ α` gives `∠(A b̄, u) ≤ α`.  The theorem depends on `propext`, `Classical.choice`, and `Quot.sound` alone, and the module builds in 1.9 s.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The angle between vectors | Mathlib's `InnerProductGeometry.angle` on `EuclideanSpace ℝ (Fin 3)`, through `toE` | Its definition is an arccosine that a reader checks directly, and Mathlib proves the triangle inequality for it (`angle_le_angle_add_angle`) with no hypothesis that the vectors are nonzero. |
+| The flown attitude | A map `A : Vec → Vec` with every unit vector within angle `ε` of its commanded image | A map, as in `plan_safe`, makes the hypothesis weaker than one about a rotation, and an angle bound matches item 5. |
+| The growth of the half-angle | The theorem takes the true half-angle `α` and the hypothesis `α + d + ε ≤ arccos c`, and the README derives the condition for `α ≤ α₀ + γ` | `α₀` and `γ` enter item 5 only through `α₀ + γ`, so the two forms are equivalent, and the theorem's form has fewer variables. |
+| Time | One instant: one `φ`, `A`, `u`, and `α` | A statement over time follows by applying the theorem at each instant, and a model of time would add nothing to the proof. |
+| The tube of `plan_safe` | The proof applies `plan_safe` to the commanded attitude, at distance 0 | `ε` covers the whole difference between the flown and commanded attitudes, so the tube is unused here. |
+
+The proof needed the commanded attitude to preserve length, and Rodrigues' formula does so only for a unit axis.  `plan_safe` now states that the normalized output axis has length 1, which `segment_close` already proved, and `norm_attitude_any` covers `attitude q` for every `q`, with `q = 0` giving the identity.  The cone's bound on the cosine of two unit vectors becomes a bound on their angle by `Real.arccos_le_arccos`, and the triangle inequality adds `d` and `ε`.

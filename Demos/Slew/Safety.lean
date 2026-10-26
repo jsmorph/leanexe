@@ -302,11 +302,11 @@ theorem segValue_axis (xs : Array Float) (d : Dims) (st a b : UInt64) :
 
 /-- **Safety of the slew planner.**  For an output of status 1 with `K` segments, the plan
 starts at the input's start quaternion and ends at its goal quaternion, bit for bit.  Segment `g`
-has its start quaternion at offset `4 + 11 g`, its axis at `8 + 11 g`, and its angle at
-`11 + 11 g`, and the next start quaternion, or the goal, at `4 + 11 (g + 1)`.  Its rotation by
-its angle about its normalized axis carries its normalized start attitude to within `1e-9` of
-the next.  For every angle `φ` from 0 to its angle and every map `R'` that moves every unit
-vector at most `1e-9` from the attitude after the rotation by `φ`, every cone of the input
+has its start quaternion at offset `4 + 11 g`, its axis, which is not zero, at `8 + 11 g`, and
+its angle at `11 + 11 g`, and the next start quaternion, or the goal, at `4 + 11 (g + 1)`.  Its
+rotation by its angle about its normalized axis carries its normalized start attitude to within
+`1e-9` of the next.  For every angle `φ` from 0 to its angle and every map `R'` that moves every
+unit vector at most `1e-9` from the attitude after the rotation by `φ`, every cone of the input
 holds of `R'` applied to the cone's normalized body vector: a keep-out cone gives a cosine with
 the normalized cone axis of at most the cone's cosine, and a keep-in cone at least. -/
 theorem plan_safe {xs : Array Float} (h : (plan xs)[0]! = 1.0) :
@@ -314,6 +314,8 @@ theorem plan_safe {xs : Array Float} (h : (plan xs)[0]! = 1.0) :
       (∀ i < 4, (plan xs)[4 + i]! = rd xs (8 + UInt64.ofNat i) ∧
         (plan xs)[4 + 11 * K + i]! = rd xs (12 + UInt64.ofNat i)) ∧
       ∀ g < K,
+        Vec.dot (Vec.unit (vecAt (plan xs) (8 + 11 * g)))
+          (Vec.unit (vecAt (plan xs) (8 + 11 * g))) = 1 ∧
         (∀ b : Vec, Vec.dot b b = 1 → Vec.norm (Vec.sub
           (rod (Vec.unit (vecAt (plan xs) (8 + 11 * g))) (val (plan xs)[11 + 11 * g]!)
             (attitude (quatAt (plan xs) (4 + 11 * g)) b))
@@ -382,6 +384,6 @@ theorem plan_safe {xs : Array Float} (h : (plan xs)[0]! = 1.0) :
         angleOf (relative (nodeAt xs (dims xs) (node g)) (nodeAt xs (dims xs) (node (g + 1)))) := by
       rw [show 11 + 11 * g = 4 + 11 * g + 7 by ring, hseg g hg 7 (by norm_num), segValue_angle]
     rw [hax, hang, hq g hg.le, hq (g + 1) hg]
-    exact ⟨hconn, hsafe⟩
+    exact ⟨(segment_close (relative_good hqa hqb)).1, hconn, hsafe⟩
 
 end Demos.Slew.Safety
