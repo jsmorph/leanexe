@@ -3,8 +3,7 @@ import Verified.Wasi.ResourcePrefix
 /-! Compositional bounds on the resource semantics of effect commands.  `Bounded` states that every
 run and every prefix of a command spends at most a budget and finds its frames, and `Rule` gives,
 for each form of command, the facts about its parts from which that follows.  A bound on an effect
-function's body follows by `bounded_of_rule` at each command, and `callBounded_here` turns it into
-a bound on a call of the function. -/
+function's body follows by `bounded_of_rule` at each command. -/
 
 namespace Verified.Wasi.Resource
 
@@ -203,42 +202,6 @@ theorem word_readCost (pure : PureContext pureSigs) (depth : UInt64) (modes : Li
     (live : Nat → Bool) (capacity : UInt64) (env : Env context) :
     pure.readCost depth modes live (.word capacity) env = Verified.Wasi.readCost capacity := by
   simp only [PureContext.readCost, PureContext.exprCost, Expr.allocs, Expr.denote, Nat.zero_add]
-
-/-- A call of the first function of a program, whose body is bounded and whose depth leaves room
-for its frame, is bounded. -/
-theorem callBounded_here {World : Type} {host : Host World} {pure : PureContext pureSigs}
-    {function : EffectFunc pureSigs effectSigs} {rest : EffectProg pureSigs effectSigs}
-    {depth : UInt64} {env : Env function.params} {budget : Nat}
-    (valid : entryFits depth = true)
-    (body : Bounded host pure rest depth (entryModes function.params function.modes) (fun _ => false)
-      function.body env budget) :
-    CallBounded host pure (.cons function rest) .here depth env budget := by
-  refine ⟨fun world trace outcome final spent fits execution => ?_,
-    fun world trace residual final spent fits progress => ?_⟩
-  · cases execution with
-    | here execution =>
-      obtain ⟨cost, bodyFits⟩ := body.1 _ _ _ _ _ _ execution
-      exact ⟨cost, by simp only [valid, bodyFits, Bool.true_and]⟩
-  · cases progress with
-    | guard => exact ⟨Nat.zero_le _, valid⟩
-    | here progress =>
-      obtain ⟨cost, bodyFits⟩ := body.2 _ _ _ _ _ _ progress
-      exact ⟨cost, by simp only [valid, bodyFits, Bool.true_and]⟩
-
-/-- A bounded call of a function of the rest of a program is bounded in the whole program. -/
-theorem callBounded_there {World : Type} {host : Host World} {pure : PureContext pureSigs}
-    {function : EffectFunc pureSigs effectSigs} {rest : EffectProg pureSigs effectSigs}
-    {signature : EffectSig} {callee : EffectVar effectSigs signature}
-    {depth : UInt64} {env : Env signature.params} {budget : Nat}
-    (bounded : CallBounded host pure rest callee depth env budget) :
-    CallBounded host pure (.cons function rest) (.there callee) depth env budget := by
-  refine ⟨fun world trace outcome final spent fits execution => ?_,
-    fun world trace residual final spent fits progress => ?_⟩
-  · cases execution with
-    | there execution => exact bounded.1 _ _ _ _ _ _ execution
-  · cases progress with
-    | guard => exact bounded.2 world _ _ _ _ _ (.guard rest callee depth env world)
-    | there progress => exact bounded.2 _ _ _ _ _ _ progress
 
 def CallRule {World : Type} (host : Host World) (pure : PureContext pureSigs)
     (world : World) : {effectSigs : List EffectSig} → (program : EffectProg pureSigs effectSigs) →

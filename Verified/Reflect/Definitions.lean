@@ -1265,7 +1265,7 @@ def assignBuy (base : Name) (app : LemmaApp) (value proof : Name) (t : Ty) (u : 
     MetaM Unit := do
   let some (_, lhs, _) := (← app.hypType proof).eq?
     | throwError "verified_compile: the argument {proof} of {app.name} is not an equation"
-  let (``Ty.buyCost, #[_, want, held, v]) := lhs.getAppFnArgs
+  let (``Ty.buyCost, #[tE, want, held, v]) := lhs.getAppFnArgs
     | throwError "verified_compile: the argument {proof} of {app.name} is not a branch charge"
   let flag ← mkAppM ``and #[want, ← mkAppM ``not #[held]]
   if ← evalBool m!"whether a branch of {app.name} is charged its credit" flag then
@@ -1275,7 +1275,7 @@ def assignBuy (base : Name) (app : LemmaApp) (value proof : Name) (t : Ty) (u : 
   else
     app.assign value natZero
     app.assign proof (← mkAppOptM ``buy_none
-      #[none, some want, some held, some v, some (← evalEq flag (boolConst false))])
+      #[some tE, some want, some held, some v, some (← evalEq flag (boolConst false))])
 
 /-- The arguments that the lemmas on `Expr.buys` take from the context. -/
 def buysArgs (c : Ctx) (modes paid live : Lean.Expr) : List (Name × Lean.Expr) :=
