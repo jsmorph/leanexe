@@ -3,8 +3,10 @@ import LeanExe.Native.Clight.Run
 /-!
 The soundness of `run` against the big-step semantics: an `.ok` result of `exec_fn` or
 `eval_funcall_fn` is an execution of `exec_stmt` or `eval_funcall`, for every semantics `X` of
-external functions, and `run_sound` states it for a call from the initial memory.  The proofs go
-by induction on the fuel and, within one unit of fuel, by cases on the statement.
+external functions, and `run_sound` states it for a call from the initial memory.  `run_sound`
+concludes `eval_funcall` for any function and arguments, while CompCert's program-level
+judgment, which `Bigstep.lean` omits, calls `main` with no arguments.  The proofs go by
+induction on the fuel and, within one unit of fuel, by cases on the statement.
 -/
 
 namespace LClight

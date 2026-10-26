@@ -19,7 +19,11 @@ Events, traces, and the semantics of external calls, from CompCert 3.18's `commo
 
 CompCert leaves the semantics of an `EF_external` function to the parameter
 `external_functions_sem`, and proves its compiler for every semantics that satisfies
-`extcall_properties`.  `ExtSem` is that parameter here.  Of the built-in functions, the copy
+`extcall_properties`.  `ExtSem` is that parameter here, without the hypothesis
+`external_functions_properties` that CompCert states of it, so a theorem about the copy
+corresponds to CompCert's compiler theorem only when it holds for every `ExtSem`, as the
+theorems in this directory do.  `builtin_function` lists the three functions directly, where
+`Builtins.v` nests them under `BI_standard`.  Of the built-in functions, the copy
 gives meaning to `__builtin_fsqrt` and its alias `__builtin_sqrt`, `__builtin_fabs`, and
 `__builtin_fabsf`, each at the signature of CompCert's table.  Every other built-in, run-time
 function, volatile access, `malloc`, `free`, `memcpy`, annotation, inline assembly, and debug

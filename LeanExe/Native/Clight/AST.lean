@@ -15,8 +15,9 @@ import LeanExe.Native.Clight.Floats
 /-!
 The syntax shared by CompCert's languages, from CompCert 3.18's `common/AST.v`: identifiers, the
 back-end types and signatures, memory chunks, the initialization data of globals, global
-definitions, and external functions.  Identifiers and blocks are numbers, as Coq's `positive`
-values are.  The constructors are those of `AST.v`, so that the output of `clightgen` has a
+definitions, and external functions.  Identifiers and blocks are natural numbers, where Coq
+uses `positive`, so 0 is an identifier and a block with no counterpart in CompCert; `globalenv`
+and `Mem.empty` number blocks from 1.  The constructors are those of `AST.v`, so that the output of `clightgen` has a
 representation; the semantics gives meaning to some of them only.
 -/
 

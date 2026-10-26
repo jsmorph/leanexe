@@ -25,7 +25,10 @@ or an infinity, the copy returns Talos's `Wasm.IEEE64` or `Wasm.IEEE32` result, 
 which happens exactly when the Talos operation returns its canonical NaN, the copy computes the
 NaN as `Floats.v` does, from the architecture's choice function `Archi.choose_nan_64` or
 `choose_nan_32`.  `Archi` holds these functions, so a theorem stated for every `Archi` holds on
-both targets; `x86_64` and `aarch64` are the two instances.  `of_single` and `to_single`, which
+both targets; `x86_64` and `aarch64` are the two instances.  The fields `default_nan_64` and
+`default_nan_32` record `Archi.v`'s default NaNs, which the operations reach only through the
+choice functions.  `Float.binop` and `Float32.binop`, which replace a Talos NaN result by
+Flocq's, have no counterpart in `Floats.v`.  `of_single` and `to_single`, which
 Talos computes with Lean's native floats, are defined here from Talos's exact rounding helpers.
 
 Both targets set `float_conversion_default_nan` and `float_of_single_preserves_sNaN` to false,

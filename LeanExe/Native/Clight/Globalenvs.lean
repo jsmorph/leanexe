@@ -20,6 +20,11 @@ without the proof fields of `Genv.t`; `Clight.lean` applies them to a program as
 time, as in CompCert, so evaluating the initial memory of a large global costs time in proportion
 to its size.  `public_symbol`, `invert_symbol`, `find_var_info`, `block_is_volatile`, and
 `to_senv` are omitted.
+
+`Genv.t` drops the invariants `genv_symb_range`, `genv_defs_range`, and `genv_vars_inj`.  The
+environments that CompCert's semantics uses are those of `globalenv p`, which satisfy them; a
+theorem stated for every `Genv.t` holds for those, and a theorem whose hypotheses only
+`globalenv p` meets should take `globalenv p`.
 -/
 
 namespace LClight

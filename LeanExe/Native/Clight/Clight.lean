@@ -26,7 +26,10 @@ The copy omits these rules of `Clight.v`, so the constructs they cover have no o
 `eval_Esizeof`, `eval_Ealignof`, `eval_Efield_struct`, `eval_Efield_union`, `deref_loc_copy`,
 `deref_loc_bitfield`, `assign_loc_copy`, and `assign_loc_bitfield`.  `function_entry2` admits a
 function only when it declares no local variable in memory (`fn_vars = []`), so the local
-environment is always empty and `alloc_variables` and the frees at return do nothing.
+environment is always empty and `alloc_variables` and the frees at return do nothing.  Its
+constructor is `function_entry2.intro`, CompCert's `function_entry2_intro`.  `blocks_of_env`
+lists the bindings in ascending order of identifiers, where CompCert uses the order of
+`PTree.elements`; the two agree on the empty environment, the only one that arises.
 -/
 
 namespace LClight

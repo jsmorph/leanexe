@@ -19,6 +19,15 @@ relates it to the small-step semantics `semantics2`, which its compiler theorem 
 copy has no rule for `Sswitch`, whose rule `exec_Sswitch` it omits; `ClightBigstep.v` itself has
 none for `Slabel` and `Sgoto`.  `A` gives the NaN results of floating-point operations and `X`
 the semantics of external functions.
+
+The copy omits the judgments about divergence, `execinf_stmt` and `evalinf_funcall`, and the
+judgments about a whole program, `bigstep_program_terminates`, `bigstep_program_diverges`, and
+`bigstep_semantics` (`ClightBigstep.v`, lines 252 to 273 and 627 to 630).
+`bigstep_program_terminates` requires a `main` of type `int(void)`, called with no arguments
+from the memory of `init_mem`, whose result is a `Vint`, and CompCert's `bigstep_semantics_sound`
+is about that judgment only.  The theorems about the copy conclude `eval_funcall` of one
+function.  The design of the translator describes the step from such a theorem to a whole
+program.
 -/
 
 namespace LClight

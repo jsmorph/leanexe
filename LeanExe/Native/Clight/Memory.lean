@@ -20,10 +20,18 @@ offsets, and the contents of all blocks are a tree map from blocks, as `PMap` is
 Permissions are functions, as in `Memory.v`.  `range_perm` and `valid_access` are propositions
 with decision procedures, `range_perm_dec` and `valid_access_dec` in CompCert.
 
-Only the operations that the semantics in this directory use are copied: `valid_pointer`,
-`weak_valid_pointer`, `empty`, `alloc`, `free`, `free_list`, `load`, `loadv`, `store`,
-`storev`, and `drop_perm`.  `loadv` and `storev` check that the accessed bytes end at most at
+Only the operations that the semantics in this directory use are copied: `perm_order'`,
+`perm`, `range_perm`, `valid_access`, `valid_pointer`, `weak_valid_pointer`, `empty`, `alloc`,
+`unchecked_free`, `free`, `free_list`, `getN`, `setN`, `load`, `loadv`, `store`, `storev`, and
+`drop_perm`.  `loadv` and `storev` check that the accessed bytes end at most at
 `Ptrofs.modulus`, as CompCert 3.18 does.
+
+`mem` drops the invariants `access_max`, `nextblock_noaccess`, and `contents_default` of
+CompCert's `mem`, so a `mem` need not satisfy them.  Forgetting them maps each CompCert memory to
+a `mem`, and each operation here maps the image of a CompCert memory to the image of CompCert's
+result, so the memories that `init_mem` and these operations produce are such images.  A
+theorem that holds for every `mem` therefore holds for the images of CompCert's memories; a
+statement about a `mem` outside the image says nothing about CompCert.
 -/
 
 namespace LClight
