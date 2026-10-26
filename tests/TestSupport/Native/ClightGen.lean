@@ -479,7 +479,7 @@ def cMain : String :=
   "}\n"
 
 def cText (p : program function) : Except String String := do
-  pure ((← LeanExe.Native.cprogram name p) ++ cMain)
+  pure ((← LeanExe.Native.cprogram name name (fun _ => false) p) ++ cMain)
 
 def hex (n : Nat) : String := String.ofList (Nat.toDigits 16 n)
 

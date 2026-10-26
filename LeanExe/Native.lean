@@ -14,3 +14,6 @@ import LeanExe.Native.Clight.Bigstep
 import LeanExe.Native.Clight.Run
 import LeanExe.Native.Clight.RunSound
 import LeanExe.Native.Print
+import LeanExe.Native.Translate
+import LeanExe.Native.CText
+import LeanExe.Native.ClightCheck
