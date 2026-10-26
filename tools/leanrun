@@ -13,15 +13,15 @@ lock_dir="${LEANRUN_LOCKDIR:-${VQ_LOCKDIR:-${TMPDIR:-/tmp}/vq-leanrun.$(id -u)}}
 cache_dir="${LEANRUN_CACHE_HOME:-$repo_root/.lake/cache}"
 local_mode="${LEANRUN_LOCAL:-0}"
 memory_high="${LEANRUN_MEMORY_HIGH:-4G}"
-cpu_count="${LEANRUN_CPUS:-1}"
+cpu_count="${LEANRUN_CPUS:-}"
 thread_count="${LEANRUN_THREADS:-}"
 log_file=""
 
 usage() {
   echo "usage: tools/leanrun [--timeout DURATION] [--lock-timeout SECONDS] [--memory-high SIZE] [--cpus N|auto] [--threads N] [--log FILE] [--toolchain DIR] <command> [args]" >&2
   echo "SIZE is the scope's MemoryHigh in whole gibibytes with the suffix G (default 4G), and MemoryMax is 2G more." >&2
-  echo "N is a positive CPU count, or auto for all online CPUs (default 1)." >&2
-  echo "Threads default to the resolved CPU count; --threads selects a positive thread count." >&2
+  echo "--threads N sets LEAN_NUM_THREADS to a positive count (default 1, or the --cpus count)." >&2
+  echo "--cpus N sets the scope's CPUQuota to N CPUs, or to all online CPUs for auto (default: the thread count)." >&2
   exit 2
 }
 
@@ -110,6 +110,8 @@ if [ "$cpu_count" = "auto" ]; then
     exit 2
   fi
 fi
+thread_count="${thread_count:-${cpu_count:-1}}"
+cpu_count="${cpu_count:-$thread_count}"
 case "$cpu_count" in
   ''|0*|*[!0-9]*)
     echo "leanrun: --cpus/LEANRUN_CPUS must be a positive integer or auto" >&2
@@ -119,7 +121,6 @@ esac
 cpu_quota_percent="${cpu_count}00"
 cpu_quota_usec="${cpu_count}00000"
 
-thread_count="${thread_count:-$cpu_count}"
 case "$thread_count" in
   ''|0*|*[!0-9]*)
     echo "leanrun: --threads/LEANRUN_THREADS must be a positive integer" >&2

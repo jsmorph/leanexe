@@ -45,8 +45,8 @@ theorem wp_treeCopyComplete {m : Module} {host : HostEnv Unit} {heap0 heap : Hea
     hLocals.scratch hLow5 (by omega) (by omega)
   have hFresh : sFresh.get (base + 5) = some (.i64 ((parents.head?.map CopyRecord.pointer).getD 0)) :=
     Locals.get_setLocal_same hLow5 hHigh5
-  refine wp_restoreOwnedRecord hCurrent.storage h.step.at_ hFreshLocals.current hCurrent.layout.1
-    hCurrent.layout.2.1 hSlots hNodeApart ?_
+  refine wp_restoreOwnedRecord hCurrent.storage h.step.at_ hFreshLocals.current hCurrent.layout
+    hSlots hNodeApart ?_
   intro store' hWrites hAt hOwned hBlocks
   exact hNext store' sFresh (h.complete hDone hWrites hAt hOwned hBlocks) hFreshLocals hFresh
 

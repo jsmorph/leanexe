@@ -2,7 +2,7 @@
 
 This index lists implementations, behavior, and proved results for [library algorithms](Library/README.md), [WASI stream operations](docs/wasi.md), [applications](Demos/README.md), and compiler examples.  [The native library aggregate](Library/Native.lean) imports the reusable implementations.  The compiler manuals describe the [verified dialect](docs/verified-manual.md) and the [LeanExe dialect](docs/leanexe-manual.md).
 
-Compiler correctness proves that a module computes its Lean definition.  Mathematical theorems add properties such as accuracy bounds or generator periods.  Byte theorems apply these results to decoded byte sequences, and file theorems identify the encodings in emitted files.  Execution proofs use Talos's WebAssembly semantics and deterministic floating-point profile, under their representation, heap, ownership, static-data, and resource premises.  An `implements` theorem can permit a trap at `unreachable`.  A trap-free theorem proves a return under its allocation and depth conditions.  The linked guides state each result's domain, exceptional cases, and host assumptions.  [The transcendental development record](transcendentals.md) records the numerical proofs' history.
+The compiler's theorem for a module states that the module computes its Lean definition.  A byte theorem states execution or a further property, such as an accuracy bound, for the encoded module.  A call theorem is a byte theorem for one export, called from a store and with arguments that meet its premises.  A file theorem states that an emitted file holds that encoding.  Execution theorems use Talos's semantics of WebAssembly with the deterministic floating-point profile.  They assume the allocator invariant and, for some functions, borrowed tables, static byte data, and bounds on memory and recursion depth.  WASI theorems also assume a host that satisfies the WASI contracts.  An `implements` theorem can permit a trap at `unreachable`.  A trap-free theorem proves a return under its allocation and depth conditions.  Each linked guide states its domains, exceptional inputs, and host assumptions.  [The transcendental development record](transcendentals.md) gives the numerical proofs' history.
 
 ## Contents
 
@@ -19,9 +19,11 @@ Compiler correctness proves that a module computes its Lean definition.  Mathema
 - [8. Discrete Fourier transform](#8-discrete-fourier-transform)
 - [9. Conversion between decimal strings and binary floating point](#9-conversion-between-decimal-strings-and-binary-floating-point)
 - [10. Outward rounding and limiters](#10-outward-rounding-and-limiters)
-- [11. WASI stream operations](#11-wasi-stream-operations)
-- [12. Applications](#12-applications)
-- [13. Compiler examples](#13-compiler-examples)
+- [11. Hash functions](#11-hash-functions)
+- [12. Regular expressions](#12-regular-expressions)
+- [13. WASI stream operations](#13-wasi-stream-operations)
+- [14. Applications](#14-applications)
+- [15. Compiler examples](#15-compiler-examples)
 
 ## 1. Arithmetic
 
@@ -135,7 +137,7 @@ Mean and sum of squares are reusable library functions.  The other entries remai
 
 ## 6. Elementary and special functions
 
-Arguments and results are binary64 values.  A bound of `k` steps means that the result lies within `k` positions of the nearest-even rounding of the exact result on the ordered line of binary64 values, which puts both zeros at one position and the infinities at its ends.  Each bound covers finite inputs in its stated domain, or every finite input when the row gives no restriction.  The linked guides state the exceptional-value results.
+Arguments and results are binary64 values.  A bound of `k` steps means that the result lies within `k` positions of the nearest-even rounding of the exact result on the ordered line of binary64 values, which puts both zeros at one position and the infinities at its ends.  Each bound covers finite inputs in its stated domain, or every finite input when the row gives no restriction.  The linked guides state the exceptional-value results.  The module of each byte theorem has file theorems that identify its encoding in `build/verified/`, such as [`ExpFile.exp_file`](Library/Numerics/Float64/Exp/ExpFile.lean).
 
 | Algorithm | Implementation | Behavior | Proved results and limits |
 |---|---|---|---|
@@ -254,7 +256,38 @@ Parsing a printer's output recovers the input, with a NaN replaced by the canoni
 
 [The Euler enclosure proofs](Demos/Euler/Enclosure.lean) use the checked operations.  [The reconstruction analysis](Demos/Euler/ReconstructionAccuracy.lean) uses minmod to bound the differences and faces computed from rounded inputs.
 
-## 11. WASI stream operations
+## 11. Hash functions
+
+[The hashing guide](Library/Hashing/README.md) describes the arguments: a message of `n` bytes is an `Array UInt64` with eight bytes per word in little-endian order.  A digest of SHA-2, HMAC, or a SHA-3 hash function is a structure of words in the same packing, a SHAKE output is an array of words, and a CRC, SipHash, or XXH64 result is one word.  Each call theorem states that the export, called from a ready store with borrowed arrays, returns without a trap the result of its family's transcription for the message's bytes, and that the caller's heap keeps its bytes.  Each row states the limits on the lengths.  The compiler's allocation bound, `bound_eq`, is zero for every export except SHAKE, whose bound is its output array.  The file theorems of [SHA-256](Library/Hashing/Sha256/File.lean), [SHA-512](Library/Hashing/Sha512/File.lean), [HMAC-SHA-256](Library/Hashing/Hmac/File256.lean), [HMAC-SHA-512](Library/Hashing/Hmac/File512.lean), [SHA-3](Library/Hashing/Sha3/File.lean), [CRC](Library/Hashing/Crc/File.lean), [SipHash](Library/Hashing/SipHash/File.lean), and [XXH64](Library/Hashing/XxHash64/File.lean) identify the emitted modules.
+
+The SHA-2 specification is a literate transcription of FIPS 180-4, copied with its implementation and equivalence proofs from fips-180-4-lean, and the HMAC specification transcribes FIPS 198-1 over it.  The SHA-2 and HMAC call theorems read message, key, and digest bytes most significant bit first, as FIPS 180-4 does.  [The Merkle–Damgård module](Library/Hashing/MerkleDamgard.lean) proves that two distinct messages with equal SHA-256 or SHA-512 digests give a collision of the compression function of FIPS 180-4.  The SHA-3 specification transcribes FIPS 202 and agrees with every CAVP vector, and its call theorems read message and digest bytes least significant bit first, as FIPS 202 does.  The CRC specification transcribes ITU-T V.42 and RFC 3720 with Mathlib's polynomials over GF(2), and its result is the CRC as zlib and the Linux kernel report it.  The SipHash and XXH64 specifications transcribe the SipHash paper and the xxHash specification on 64-bit words.  Independent reviews compared the SHA-3, CRC, SipHash, and XXH64 transcriptions with their sources.
+
+| Algorithm | Implementation | Behavior | Proved results and limits |
+|---|---|---|---|
+| `sha256` | [SHA-256 and SHA-224](Library/Hashing/Sha256/README.md) | The 32-byte digest of FIPS 180-4 §6.2.  The program holds each 32-bit word in the low half of a `UInt64`, masking before shifts to the right and rotations. | [`sha256_call`](Library/Hashing/Sha256/Bytes.lean), from [`sha256_spec`](Library/Hashing/Sha256/Proof.lean), for messages below `2^61` bytes. |
+| `sha224` | [SHA-256 and SHA-224](Library/Hashing/Sha256/README.md) | The 28-byte digest of §6.3, in four words whose last four bytes are zero. | [`sha224_call`](Library/Hashing/Sha256/Bytes.lean), for messages below `2^61` bytes. |
+| `sha512` | [The SHA-512 family](Library/Hashing/Sha512/README.md) | The 64-byte digest of FIPS 180-4 §6.4.  The program reads each padded word from the packed message and keeps the message schedule in a window of sixteen words. | [`sha512_call`](Library/Hashing/Sha512/Bytes.lean), from [`sha512_spec`](Library/Hashing/Sha512/Proof.lean), for messages below `2^61` bytes. |
+| `sha384` | [The SHA-512 family](Library/Hashing/Sha512/README.md) | The 48-byte digest of §6.5, from the initial value of §5.3.4. | [`sha384_call`](Library/Hashing/Sha512/Bytes.lean), for messages below `2^61` bytes. |
+| `sha512_256` | [The SHA-512 family](Library/Hashing/Sha512/README.md) | The 32-byte digest of §6.7. | [`sha512_256_call`](Library/Hashing/Sha512/Bytes.lean), for messages below `2^61` bytes. |
+| `sha512_224` | [The SHA-512 family](Library/Hashing/Sha512/README.md) | The 28-byte digest of §6.6, in four words whose last four bytes are zero. | [`sha512_224_call`](Library/Hashing/Sha512/Bytes.lean), for messages below `2^61` bytes. |
+| `hmacSha256` | [HMAC](Library/Hashing/Hmac/README.md) | The 32-byte MAC of FIPS 198-1 with SHA-256.  The program forms `K_0` as one block, hashes the key block and the message without copying them, and hashes the outer message as two blocks. | [`hmacSha256_call`](Library/Hashing/Hmac/Bytes.lean), from [`hmacSha256_spec`](Library/Hashing/Hmac/Proof256.lean), for keys below `2^61` bytes and messages below `2^61 - 64` bytes. |
+| `hmacSha512` | [HMAC](Library/Hashing/Hmac/README.md) | The 64-byte MAC of FIPS 198-1 with SHA-512, formed in the same way with blocks of 128 bytes. | [`hmacSha512_call`](Library/Hashing/Hmac/Bytes.lean), from [`hmacSha512_spec`](Library/Hashing/Hmac/Proof512.lean), for keys below `2^61` bytes and messages below `2^61 - 128` bytes. |
+| `sha3_224`, `sha3_256`, `sha3_384`, `sha3_512` | [SHA-3](Library/Hashing/Sha3/README.md) | The digests of FIPS 202 §6.1.  The program holds the state in 25 lanes, XORs message words into lanes without a byte swap, and reads the padded message in place. | [`sha3_256_call`](Library/Hashing/Sha3/Bytes.lean) and its companions, from [`sha3_256_spec`](Library/Hashing/Sha3/Proof.lean), for messages below `2^61` bytes. |
+| `shake128`, `shake256` | [SHA-3](Library/Hashing/Sha3/README.md) | The outputs of FIPS 202 §6.2 to `d` bytes, in an array of `⌈d/8⌉` words that the squeeze fills in place. | [`shake128_call`](Library/Hashing/Sha3/Bytes.lean) and `shake256_call`, from [`shake128_spec`](Library/Hashing/Sha3/ShakeProof.lean), for messages and outputs below `2^61` bytes, with room for one block of `⌈d/8⌉` words. |
+| `crc32`, `crc32c` | [CRC-32 and CRC-32C](Library/Hashing/Crc/README.md) | The CRCs of ITU-T V.42 and RFC 3720.  The program holds the remainder in the low 32 bits of a word and reads one entry of a 256-word table for each byte. | [`crc32_call`](Library/Hashing/Crc/Bytes.lean) and `crc32c_call`, from [`crc32_spec`](Library/Hashing/Crc/Proof.lean), for messages of any length. |
+| `crc32Update`, `crc32cUpdate` | [CRC-32 and CRC-32C](Library/Hashing/Crc/README.md) | The CRC of earlier bytes followed by the message, from the CRC of the earlier bytes, as zlib's `crc32(crc, buf, len)` computes it. | [`crc32Update_call`](Library/Hashing/Crc/Bytes.lean) and `crc32cUpdate_call`, from [`crc32Update_spec`](Library/Hashing/Crc/Proof.lean), for messages of any length and the CRC of any bytes. |
+| `siphash24`, `siphash13` | [SipHash](Library/Hashing/SipHash/README.md) | SipHash-2-4 and SipHash-1-3 of a 128-bit key given as two words.  The program reads the message words in place and forms the last word from the remaining bytes and `n mod 256`. | [`siphash24_call`](Library/Hashing/SipHash/Bytes.lean) and `siphash13_call`, from [`siphash24_spec`](Library/Hashing/SipHash/Proof.lean), for messages of any length. |
+| `xxh64` | [XXH64](Library/Hashing/XxHash64/README.md) | XXH64 with a 64-bit seed.  The program reads the stripes, the lanes of 8 bytes, the lane of 4 bytes, and the single bytes in place. | [`xxh64_call`](Library/Hashing/XxHash64/Bytes.lean), from [`xxh64_eq`](Library/Hashing/XxHash64/Proof.lean), for messages of any length. |
+
+## 12. Regular expressions
+
+[The regex guide](Library/Regex/README.md) describes the pattern and the input: a regular expression over bytes in postfix order, one word for each operator and five for each set of bytes, and an input of `n` bytes packed eight to a word.  The specification defines the language of an expression with Mathlib's `Language` and proves it equal to the language of Mathlib's `RegularExpression`.  [Glushkov's theorem](Library/Regex/Glushkov.lean) relates the language to the position automaton.  The call theorem states that, for every pattern of `pn` words with `3 pn < 2^64` and every input, the export returns the specification's code without a trap in a heap with room for `24 pn + 21,272` bytes, and [the file theorems](Library/Regex/File.lean) identify the emitted module.
+
+| Algorithm | Implementation | Behavior | Proved results and limits |
+|---|---|---|---|
+| `matchWith` | [Regular expressions](Library/Regex/README.md) | Builds the position automaton of the pattern in one pass over its words, with each state a set of at most 63 positions in one word, and runs it over the input with nine table reads per byte. | [`matchWith_call`](Library/Regex/Bytes.lean), from [`matchWith_eq`](Library/Regex/Proof.lean): 2 for a pattern that does not decode, 3 for one of more than 63 sets, and otherwise 1 or 0 for whether the whole input is in the language. |
+
+## 13. WASI stream operations
 
 `LeanExe.Wasi` provides native action descriptions and an interpreter.  `verified_compile_wasi` compiles accepted actions to core WebAssembly with three Preview 1 imports.  Its exported-entry proofs preserve the native result or terminal outcome, committed world, and joint ordered trace under the host, representation, ownership, and scratch premises.  Conditional total execution requires a typed resource-prefix bound and assumptions about reached host operations.  Each compiled read or write makes at most one WASI import call, which the host may implement with several operating-system calls.  [The WASI manual](docs/wasi.md) gives the exact API and proof scope.
 
@@ -268,7 +301,7 @@ Parsing a printer's output recovers the input, with a NaN replaced by the canoni
 | `LeanExe.Wasi.Process` | [Unbounded process](LeanExe/Wasi/Process.lean) | Executes bounded action steps until a returned control flag stops the process, an exit occurs, or the host traps. | [Compiled process refinement](Verified/Wasi/ProcessCorrect.lean) preserves completed steps and pending effects for every target run that completes without exhausting Talos fuel.  [The total-process theorem](Verified/Wasi/ProcessTotalCorrect.lean) proves accepted exit under an application-supplied well-founded progress relation, a charge for the cost of each step, a potential that bounds the remaining charges within the memory cap, and final-exit acceptance. |
 | `Action.runStdio` | [Native stream interpreter](LeanExe/Wasi/Interpreter.lean) | Runs actions against Lean's stdio.  Writes flush and report full count on success.  Exit returns an outcome to Lean.  Stream errors propagate as `IO.Error`. | [Native interpreter cases](tests/wasi/Interpreter.lean) test this adapter policy.  OS-stream behavior and adapter conformance to the formal host assumptions remain outside the compiler theorem. |
 
-## 12. Applications
+## 14. Applications
 
 Application definitions and proofs live in `Demos`, with shared algorithms imported from `Library`.  The linked guides state the domains, execution premises, and host assumptions.  GPU theorems concern the modeled device and host commands.  Execution tests cover the host processes, file I/O, engines, and device arithmetic described in the guides.
 
@@ -282,7 +315,7 @@ Application definitions and proofs live in `Demos`, with shared algorithms impor
 | Running sum | [Decimal stream application](Demos/RunningSum/README.md) | Reads signed decimal integers through EOF, prints each cumulative total, and handles split lines, CRLF, and short writes. | [The integer and byte theorems](Demos/RunningSum/Correct.lean) cover every finite input within the size bounds.  They prove canonical decimal output for each prefix sum before the first line that is not a decimal integer, and eventual accepted exit with status 0 when every line is one and 28 otherwise.  Premises include [stream-host progress](Demos/StreamFold/StreamHost.lean), independent [line and prefix-sum size bounds](Demos/RunningSum/Model.lean), a `RunBudget` that bounds the cost of begin and of each step, and final-exit acceptance. |
 | Floating-point running sum | [Binary64 stream application](Demos/RunningSumFp/README.md) | Parses binary64 values through EOF, adds each to a total starting at positive zero, and prints each total in scientific notation.  Input supports decimal and hexadecimal floats, infinities, NaNs, and CRLF. | [The arithmetic proof](Demos/RunningSumFp/ArithmeticProof.lean) connects parsing, sequential IEEE-754 addition, and printing.  [The compiled and byte theorems](Demos/RunningSumFp/Correct.lean) cover every finite input with fewer than `2^32` bytes per line.  They prove cumulative output before the first line that denotes no number and eventual accepted exit with status 0 or 28, under host progress, typed resource budgets, and final-exit acceptance. |
 
-## 13. Compiler examples
+## 15. Compiler examples
 
 These algorithms remain in `Examples` or `Verified/Examples` as demonstrations of language forms, ownership, and proof procedures.  Execution theorems relate compiled programs to their Lean definitions under the compiler's premises.  Word arithmetic wraps modulo `2^64`.  The WGSL dispatch results assume the device model's shape, buffer, and invocation bounds.
 

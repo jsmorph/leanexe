@@ -9,8 +9,9 @@ theorem func_bound {S : List Sig} {e : Elem} {captures : List Ty}
     (func body place).bound funs flags bounds (.cons root (.cons acc captured)) =
       costWith (body.denote funs)
         (body.allocs funs flags bounds
-          (listShape.modes .borrowed (paramModes (params e captures) []))
-          (List.replicate listShape.bindCount false ++ List.replicate (params e captures).length false)
+          (listShape.modes listCell .borrowed (paramModes (params e captures) []))
+          (List.replicate (listShape.bindCount listCell) false ++
+            List.replicate (params e captures).length false)
           (bodyLive e captures))
         (.cons root (.cons acc captured)) := by
   have charge (root : Tree listShape) (acc : e.denote) (captured : Env captures) :
@@ -19,12 +20,15 @@ theorem func_bound {S : List Sig} {e : Elem} {captures : List Ty}
         (entryModes (func body place).params (func body place).modes)
         ((func body place).paidParams flags) (.cons root (.cons acc captured)) =
       match root with
-      | .nil => 0
-      | .node words children => body.allocs funs flags bounds
-          (listShape.modes .borrowed (paramModes (params e captures) []))
-          (List.replicate listShape.bindCount false ++ List.replicate (params e captures).length false)
+      | .nil _ => 0
+      | .node r words children => body.allocs funs flags bounds
+          (listShape.modes listCell .borrowed (paramModes (params e captures) []))
+          (List.replicate (listShape.bindCount listCell) false ++
+            List.replicate (params e captures).length false)
           (bodyLive e captures)
-          (Env.treeFields listShape words children (.cons root (.cons acc captured))) := by
+          (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩)
+            (fun _ => children ⟨0, listShape_children_pos r⟩)
+            (.cons root (.cons acc captured))) := by
     rw [func_paidParams]
     change (tailBody body).allocs funs flags bounds [] _ (entryModes (params e captures) []) _ _ = _
     rw [show entryModes (params e captures) [] = paramModes (params e captures) [] from
@@ -33,9 +37,10 @@ theorem func_bound {S : List Sig} {e : Elem} {captures : List Ty}
   have step (root : Tree listShape) (acc : e.denote) (captured : Env captures) :
       (func body place).body.denote funs (.cons root (.cons acc captured)) =
       match root with
-      | .nil => .inr acc
-      | .node words children => .inl (.cons (children ⟨0, by decide⟩)
-          (.cons (body.denote funs (Env.treeFields listShape words children
+      | .nil _ => .inr acc
+      | .node r words children => .inl (.cons (children ⟨0, listShape_children_pos r⟩)
+          (.cons (body.denote funs (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩)
+            (fun _ => children ⟨0, listShape_children_pos r⟩)
             (.cons root (.cons acc captured)))) captured)) :=
     tailBody_denote body funs root acc captured
   rw [← Tree.ofList_toList root]
@@ -81,8 +86,9 @@ theorem func_bound_env {S : List Sig} {e : Elem} {captures : List Ty}
     (func body place).bound funs flags bounds env =
       costWith (body.denote funs)
         (body.allocs funs flags bounds
-          (listShape.modes .borrowed (paramModes (params e captures) []))
-          (List.replicate listShape.bindCount false ++ List.replicate (params e captures).length false)
+          (listShape.modes listCell .borrowed (paramModes (params e captures) []))
+          (List.replicate (listShape.bindCount listCell) false ++
+            List.replicate (params e captures).length false)
           (bodyLive e captures)) env := by
   cases env with
   | cons root env => cases env with

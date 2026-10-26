@@ -1,6 +1,12 @@
 import Verified.Rename
 
+universe u
+
 namespace Verified
+
+theorem listBranch_cell {β : Fin listShape.records → Sort u} (x : β listCell) :
+    listBranch x listCell = x :=
+  rfl
 
 def Args.vars {S : List Sig} {Γ : List Ty} :
     (ps : List Ty) → Renaming ps Γ → Args S Γ ps
@@ -18,7 +24,8 @@ def nextArgs {S : List Sig} (e : Elem) (captures : List Ty) :
 def tailBody {S : List Sig} {e : Elem} {captures : List Ty}
     (body : Expr S (context e captures) (.elem e)) :
     TailBody S (params e captures) (.elem e) (params e captures) :=
-  .treeCase .here (.ret (.var (.there .here))) (.letE body (.next (nextArgs e captures).get))
+  .treeCase .here (fun _ => .ret (.var (.there .here)))
+    (listBranch (.letE body (.next (nextArgs e captures).get)))
 
 def meaning {S : List Sig} {e : Elem} {captures : List Ty}
     (body : Expr S (context e captures) (.elem e)) (funs : Funs S) :

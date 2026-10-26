@@ -369,15 +369,16 @@ The form is `call MODULE.wasm FUNCTION RESULT-KIND ARG …`.  The first command 
 | `file-u64:PATH` | An `Array UInt64` read from a file of little-endian words. |
 | `chain-u64:N,N,…` | A `List UInt64` as a chain of records. |
 | `tree-u64:K,L,R` | A tree of the `KeyTree` layout in preorder, with `.` for a leaf, such as `tree-u64:5,3,.,.,.`. |
+| `records-u64:W,M,S,…` | A tree of records in preorder: `.` for null, and otherwise the width, the child mask, and the slots, where a slot whose mask bit is set is a tree, such as `records-u64:3,6,3,2,0,1,7,.` for `Term.add (.lit 7) .zero` of [the tagged example](../Verified/Examples/TaggedTypes.lean). |
 | `bytes:HEX`, `bytes-file:PATH` | A byte object, passed as a pointer and a length. |
 
 | Result kind | Output |
 |---|---|
 | `i64`, `f64`, `f32` | One decimal word, the bit pattern for floats. |
 | `array-u64` | The elements, as `[a, b, …]`. |
-| `chain-u64`, `tree-u64` | The list as `[a, b, …]`, or the tree in the preorder form of its argument, after the host checks each record's header. |
+| `chain-u64`, `tree-u64`, `records-u64` | The list as `[a, b, …]`, or the tree in the preorder form of its argument, after the host checks each record's header.  `records-u64` prints the width and mask that each header holds. |
 | `file-u64:PATH` | The array, written to a file. |
-| `list:K1,K2,…` | Several results, one line each.  Each kind is `i64`, `f64`, `f32`, `array-u64`, `chain-u64`, or `tree-u64`. |
+| `list:K1,K2,…` | Several results, one line each.  Each kind is `i64`, `f64`, `f32`, `array-u64`, `chain-u64`, `tree-u64`, or `records-u64`. |
 | `slots:N` | `N` words on one line. |
 | `bytes` | Two results, a pointer and a length, printed as the bytes in hexadecimal. |
 
@@ -634,9 +635,9 @@ Compiler fixtures use `Examples/<Name>/`, reusable algorithms use the families i
 
 ### `tools/leanrun` and the shared lock
 
-Every `lean` and `lake` command runs through [`tools/leanrun`](../tools/leanrun), as [the repository instructions](../AGENTS.md) require.  The runner limits memory and CPU through a systemd user scope and takes a machine-wide lock.  One external runner invocation owns that lock.  A parallel Lake build may run several child Lean processes within the scope.  `--timeout` sets the command's limit and `--lock-timeout` the seconds to wait for the lock, 900 by default.
+Every `lean` and `lake` command runs through [`tools/leanrun`](../tools/leanrun), as [the repository instructions](../AGENTS.md) require.  The runner limits memory and CPU through a systemd user scope, sets `LEAN_NUM_THREADS`, and takes a machine-wide lock, so the machine runs one runner command at a time and other sessions wait for the slot.  `--timeout` sets the command's limit and `--lock-timeout` the seconds to wait for the lock, 900 by default.
 
-The default is one Lean worker and one CPU's capacity.  `--cpus N` sets a CPU quota of N times 100 percent.  `--cpus auto` uses every online CPU.  `--threads M` sets `LEAN_NUM_THREADS=M` for the invoked Lean or Lake process and its children.  Its default follows the CPU count.  `LEANRUN_CPUS` and `LEANRUN_THREADS` supply these settings to repository drivers without wrapping them in another runner.  The memory and swap limits apply to the whole job, including every child process.  Lean may grow its worker pool while tasks wait, so the selected thread count is not a strict limit on concurrent compiler processes.
+`--threads N`, 1 by default, sets `LEAN_NUM_THREADS=N`.  Lake takes its number of parallel build jobs from `LEAN_NUM_THREADS`, and each Lean process it starts uses the same value for its own tasks, so parallel jobs share the scope's memory limit.  `--cpus N` sets a CPU quota of `N` CPUs, and `--cpus auto` uses every online CPU.  Without `--cpus` the quota equals the thread count, and without `--threads` the thread count equals the `--cpus` count.  `LEANRUN_THREADS` and `LEANRUN_CPUS` supply these settings to repository drivers without wrapping them in another runner.  Lean may grow its worker pool while tasks wait, so the thread count does not bound the number of concurrent compiler processes.
 
 `--log FILE` writes standard output and standard error to a file and preserves the command’s exit status.  Passing the path as an argument keeps `tools/leanrun` as the first command token, so saved runner permissions cover later targets and logs.
 

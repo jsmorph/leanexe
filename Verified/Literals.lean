@@ -31,12 +31,14 @@ def Expr.literals : {Γ : List Ty} → {t : Ty} → Expr S Γ t → List Bytes.L
   | _, _, .build count elem | _, _, .bytesBuild count elem => count.literals ++ elem.literals
   | _, _, .set _ index value | _, _, .insertAt _ index value => index.literals ++ value.literals
   | _, _, .push _ value => value.literals
-  | _, _, .treeNode _ words children =>
+  | _, _, .treeNode _ _ words children =>
     (List.ofFn fun i => (words i).literals).flatten ++
       (List.ofFn fun i => (children i).literals).flatten
-  | _, _, .treeCase _ empty node => empty.literals ++ node.literals
+  | _, _, .treeCase (shape := shape) _ empty nodes =>
+    (if h : shape.hasNull = true then (empty h).literals else []) ++
+      (List.ofFn fun r => (nodes r).literals).flatten
   | _, _, .word _ | _, _, .bool _ | _, _, .float _ | _, _, .float32 _
-  | _, _, .var _ | _, _, .treeNil _ | _, _, .size _ | _, _, .bytesEmpty
+  | _, _, .var _ | _, _, .treeNil _ _ | _, _, .size _ | _, _, .bytesEmpty
   | _, _, .bytesSize _ | _, _, .leSize _ _ | _, _, .append _ _ | _, _, .proj _ _ => []
 
 def Expr.Covered (expr : Expr S Γ t) (pool : Bytes.LiteralPool) : Prop :=
@@ -47,7 +49,9 @@ def TailBody.literals : {Γ : List Ty} → TailBody S params result Γ → List 
   | _, .next args => (List.ofFn fun i => (args i).literals).flatten
   | _, .ite cond yes no => cond.literals ++ yes.literals ++ no.literals
   | _, .letE value body | _, .letPair value body => value.literals ++ body.literals
-  | _, .treeCase _ empty node => empty.literals ++ node.literals
+  | _, .treeCase (shape := shape) _ empty nodes =>
+    (if h : shape.hasNull = true then (empty h).literals else []) ++
+      (List.ofFn fun r => (nodes r).literals).flatten
 
 def TailBody.Covered (body : TailBody S params result Γ) (pool : Bytes.LiteralPool) : Prop :=
   body.literals ⊆ pool.values

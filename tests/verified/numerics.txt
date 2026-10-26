@@ -20,3 +20,12 @@ bessel:Library.Numerics.Float64.Bessel.BesselBytes:Library/Numerics/Float64/Bess
 tgamma:Library.Numerics.Float64.Tgamma.TgammaBytes:Library/Numerics/Float64/Tgamma/TgammaFile.lean
 lgamma:Library.Numerics.Float64.Lgamma.LgammaBytes:Library/Numerics/Float64/Lgamma/LgammaFile.lean
 erfc:Library.Numerics.Float64.Erfc.ErfcBytes:Library/Numerics/Float64/Erfc/ErfcFile.lean
+sha512:Library.Hashing.Sha512.Bytes:Library/Hashing/Sha512/File.lean
+sha256:Library.Hashing.Sha256.Bytes:Library/Hashing/Sha256/File.lean
+hmac_sha256:Library.Hashing.Hmac.Bytes:Library/Hashing/Hmac/File256.lean
+hmac_sha512:Library.Hashing.Hmac.Bytes:Library/Hashing/Hmac/File512.lean
+regex:Library.Regex.Bytes:Library/Regex/File.lean
+sha3:Library.Hashing.Sha3.Bytes:Library/Hashing/Sha3/File.lean
+crc:Library.Hashing.Crc.Bytes:Library/Hashing/Crc/File.lean
+siphash:Library.Hashing.SipHash.Bytes:Library/Hashing/SipHash/File.lean
+xxhash64:Library.Hashing.XxHash64.Bytes:Library/Hashing/XxHash64/File.lean

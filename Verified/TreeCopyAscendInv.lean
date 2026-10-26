@@ -54,9 +54,9 @@ theorem CopyCompleted.ascend {shape : TreeShape} {heap0 heap : Heap}
   · cases h.path with
     | child _ _ rest => exact rest.advance _
   · have hWork := CopyRecord.work_ascend (parent := parent) (parents := parents) h.done
-    have hAllocates : (current.work (parent :: parents)).allocates = 0 := by
-      simp only [CopyRecord.work, h.done, List.drop_length, CopyWork.allocates]
-    exact hWork.allocation_bound (by rw [hAllocates]; simp) h.budget
+    have hCharge : (current.work (parent :: parents)).charge = 0 := by
+      simp only [CopyRecord.work, h.done, List.drop_length, CopyWork.charge]
+    exact hWork.cost_bound (by rw [hCharge]; simp) h.budget
 
 #print axioms CopyCompleted.ascend
 

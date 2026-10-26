@@ -21,6 +21,21 @@ theorem Expr.code_eq_of_no_literals (expr : Expr S Γ t) (first second : Bytes.L
     cases bytes with
     | nil => rfl
     | cons byte bytes => simp [Expr.literals] at hNone
+  case treeCase x empty nodes emptyIh nodesIh =>
+    simp only [Expr.literals, List.append_eq_nil_iff, literals_args_eq_nil] at hNone
+    have hEmpty : ∀ hn h slots base live,
+        (empty hn).code (pool := first) h slots base live =
+          (empty hn).code (pool := second) h slots base live := by
+      intro hn h slots base live
+      apply emptyIh hn
+      have hNil := hNone.1
+      rw [dif_pos hn] at hNil
+      exact hNil
+    have hNodes : ∀ r h slots base live,
+        (nodes r).code (pool := first) h slots base live =
+          (nodes r).code (pool := second) h slots base live :=
+      fun r h slots base live => nodesIh r h slots base live (hNone.2 r)
+    simp only [Expr.code, hEmpty, hNodes]
   all_goals
     simp_all only [Expr.literals, List.append_eq_nil_iff, literals_args_eq_nil, Expr.code]
 

@@ -1,4 +1,12 @@
 import TestSupport.LibraryCases
+import TestSupport.Hashing.Sha256Cases
+import TestSupport.Hashing.Sha512Cases
+import TestSupport.Hashing.HmacCases
+import TestSupport.Hashing.Sha3Cases
+import TestSupport.Hashing.CrcCases
+import TestSupport.Hashing.SipHashCases
+import TestSupport.Hashing.XxHash64Cases
+import TestSupport.Regex.Cases
 import Verified.Examples.Poly
 import Verified.Examples.Mix
 import Verified.Examples.Lets
@@ -18,6 +26,7 @@ import Verified.Examples.ListRecursionCases
 import Verified.Examples.ListLoopsCases
 import Verified.Examples.ListTailCases
 import Verified.Examples.RecursiveTypesCases
+import Verified.Examples.TaggedTypesCases
 import Verified.Examples.TailCore
 import Verified.Examples.Tail
 import Verified.Examples.TailConditions
@@ -427,6 +436,14 @@ end Verified.Examples
 open Verified.Examples in
 def main : IO Unit := do
   TestSupport.LibraryCases.cases
+  TestSupport.Hashing.Sha256Cases.cases
+  TestSupport.Hashing.Sha512Cases.cases
+  TestSupport.Hashing.HmacCases.cases
+  TestSupport.Hashing.Sha3Cases.cases
+  TestSupport.Hashing.CrcCases.cases
+  TestSupport.Hashing.SipHashCases.cases
+  TestSupport.Hashing.XxHash64Cases.cases
+  TestSupport.Regex.Cases.cases
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases
@@ -439,6 +456,7 @@ def main : IO Unit := do
   Verified.Examples.ListLoops.cases
   Verified.Examples.ListTail.cases
   Verified.Examples.RecursiveTypes.cases
+  Verified.Examples.TaggedTypes.cases
   for n in ([0, 1, 2, 7, 999, 1000, 1024, 4096] : List UInt64) do
     for acc in [(0 : UInt64), 18446744073709551615] do
       IO.println s!"tailconditions|boolCount|i64|i64:{n} i64:{acc}|\

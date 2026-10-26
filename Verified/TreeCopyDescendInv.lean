@@ -13,7 +13,7 @@ theorem CopyInv.descend {shape : TreeShape} {heap0 heap heap' : Heap}
     (hChildSource : NodeBorrowed heap0 initial child.source (.record child.slots))
     (hNew : Step heap store (fun _ => True) heap' store' [block store' child.pointer])
     (hChild : child.Holds shape heap' store' current.pointer)
-    (hTop : heap'.top.toNat ≤ heap.top.toNat + allocCost (8 * shape.fields.length)) :
+    (hTop : heap'.top.toNat ≤ heap.top.toNat + allocCost (8 * child.slots.length)) :
     CopyInv shape heap0 initial root result limit heap' store' child (current :: parents) := by
   obtain ⟨hFrames, hBlocks, hApart⟩ := h.frames.step hNew
   have hCopyBlocks : copyBlocks store' child (current :: parents) =
@@ -44,11 +44,11 @@ theorem CopyInv.descend {shape : TreeShape} {heap0 heap heap' : Heap}
   · rw [hCopyBlocks]
     exact List.pairwise_cons.mpr ⟨fun b hb => regionsDisjoint_symm (hApart b hb _ (by simp)), h.apart⟩
   · have hWork := CopyRecord.work_descend (parents := parents) hBound hSlot hNext
-    have hAllocates : (current.work parents).allocates = 1 := by
+    have hCharge : (current.work parents).charge = allocCost (8 * child.slots.length) := by
       unfold CopyRecord.work
       rw [List.drop_eq_getElem_cons hBound, hSlot]
       rfl
-    exact hWork.allocation_bound (by rw [hAllocates, Nat.mul_one]; exact hTop) h.budget
+    exact hWork.cost_bound (by rw [hCharge]; exact hTop) h.budget
 
 #print axioms CopyInv.descend
 

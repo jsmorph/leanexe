@@ -1,0 +1,31 @@
+Library/Hashing/Sha2/
+
+The Lean files of Spec/, Impl/, and Equiv/, and Spec.lean, are copied from the
+directories spec/, impl/, and equiv/, and the file spec.lean, of fips-180-4-lean,
+https://github.com/remix7531/fips-180-4-lean/tree/0018b08f3458553ad511e92a96336979c1e0c45a,
+by remix7531, licensed under the GNU General Public License, version 3 or later.
+Spec/ is a literate Lean transcription of NIST FIPS 180-4.  Impl/ holds an
+implementation of SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, and
+SHA-512/256 on bytes, and Equiv/ proves it equal to the transcription.  A copy
+of the license is in LICENSE beside this file.
+
+Changes: the import paths name these modules instead of `spec.*`, `impl.*`, and
+`equiv.*`.  The proofs of `SHS.SHA512.H0_512_224_correct` and
+`SHS.SHA512.H0_512_256_correct` use `decide +kernel` instead of `native_decide`,
+so they depend on no axiom beyond `propext`, `Classical.choice`, and
+`Quot.sound`.  Lean 4.34 desugars the mutable variables of a `do` block into
+nested `Prod` pairs instead of `MProd`, so the tuple types `ImplVarsTuple` of
+Equiv/SHA512/Compress/Impl.lean and `SpecVarsTuple` of the two
+Foldl/Sequential.lean files are nested `Prod` types.  Under Lean 4.34 a
+definitional check that a `match` on the round fold equals its restatement
+unfolds the fold until the recursion limit, and so does the closing `rfl` of
+`congr 1`.  `spec_compress_eq_seq` of the two Foldl/Sequential.lean files
+therefore abstracts the fold with `generalize` before applying `hfinal`, and
+`spec_compress_eq_fused` of the two Foldl/Fused.lean files uses
+`congrArg (addH H)` instead of `congr 1`.  In Equiv/SHA256/Compress/Match.lean,
+two `convert` steps whose remaining goals Lean 4.34 no longer closes are `exact`
+steps, a `simp at` that makes no progress and an unused fact that fails the same
+way are removed, and `toSpecState_implCompressFoldl` abstracts the round fold
+with `generalize` before its final case split.  The Markdown chapters,
+the README of equiv/, the logo, and the document-generation support files of
+the upstream directories are omitted.

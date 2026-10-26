@@ -26,70 +26,75 @@ theorem Env.pot_repeatZero {Γ : List Ty} (store : Store Unit) (s : Locals) (tai
       congr 1
 
 theorem Env.pot_treeFields {Γ : List Ty} (store : Store Unit) (s : Locals) (env : Env Γ)
-    (shape : TreeShape) (words : Fin shape.words → UInt64)
-    (children : Fin shape.children → Tree shape) (base : Nat) (mode : Mode)
+    (shape : TreeShape) (r : Fin shape.records) (words : Fin (shape.words r) → UInt64)
+    (children : Fin (shape.children r) → Tree shape) (base : Nat) (mode : Mode)
     (slots : List Slot) (sel : Nat → Bool) :
-    (Env.treeFields shape words children env).pot store s (shape.slots base mode slots) sel =
-      env.pot store s slots (fun i => sel (i + shape.bindCount)) := by
+    (Env.treeFields shape r words children env).pot store s (shape.slots r base mode slots) sel =
+      env.pot store s slots (fun i => sel (i + shape.bindCount r)) := by
   change (if sel 0 then 0 else 0) +
-    (Env.prependRepeat .word shape.words words
-      (Env.prependRepeat (.tree shape) shape.children children env)).pot store s
-      (((List.range shape.words).map (fun i => Slot.mk (base + 1 + i) .borrowed)) ++
-        (((List.range shape.children).map (fun i => Slot.mk (base + 1 + shape.words + i) mode)) ++
+    (Env.prependRepeat .word (shape.words r) words
+      (Env.prependRepeat (.tree shape) (shape.children r) children env)).pot store s
+      (((List.range (shape.words r)).map (fun i => Slot.mk (base + 1 + i) .borrowed)) ++
+        (((List.range (shape.children r)).map
+          (fun i => Slot.mk (base + 1 + shape.words r + i) mode)) ++
           slots)) (fun i => sel (i + 1)) = _
   simp only [ite_self, Nat.zero_add]
-  rw [Env.pot_repeatZero store s _ .word (fun _ _ => rfl) shape.words words
-    ((List.range shape.words).map (fun i => Slot.mk (base + 1 + i) .borrowed)) _
+  rw [Env.pot_repeatZero store s _ .word (fun _ _ => rfl) (shape.words r) words
+    ((List.range (shape.words r)).map (fun i => Slot.mk (base + 1 + i) .borrowed)) _
     (fun i => sel (i + 1)) (by simp)]
-  rw [Env.pot_repeatZero store s env (.tree shape) (fun _ _ => rfl) shape.children children
-    ((List.range shape.children).map (fun i => Slot.mk (base + 1 + shape.words + i) mode)) slots
-    (fun i => sel (i + shape.words + 1)) (by simp)]
+  rw [Env.pot_repeatZero store s env (.tree shape) (fun _ _ => rfl) (shape.children r) children
+    ((List.range (shape.children r)).map (fun i => Slot.mk (base + 1 + shape.words r + i) mode))
+    slots
+    (fun i => sel (i + shape.words r + 1)) (by simp)]
   congr 1
   funext i
   congr 1
   simp only [TreeShape.bindCount]
   omega
 
-theorem TreeShape.slots_getD_suffix (shape : TreeShape) (base : Nat) (mode : Mode)
+theorem TreeShape.slots_getD_suffix (shape : TreeShape)
+    (r : Fin shape.records) (base : Nat) (mode : Mode)
     (slots : List Slot) (i : Nat) :
-    (shape.slots base mode slots).getD (i + shape.bindCount) default = slots.getD i default := by
-  rw [shape.slots_append]
+    (shape.slots r base mode slots).getD (i + shape.bindCount r) default =
+      slots.getD i default := by
+  rw [shape.slots_append r]
   simp only [List.getD_eq_getElem?_getD]
-  rw [List.getElem?_append_right (by rw [shape.slots_length]; omega), shape.slots_length,
+  rw [List.getElem?_append_right (by rw [shape.slots_length r]; omega), shape.slots_length r,
     Nat.add_sub_cancel_right]
 
 theorem dyingPot_treeFields {Γ : List Ty} (store : Store Unit) (s : Locals) (env : Env Γ)
-    (shape : TreeShape) (words : Fin shape.words → UInt64)
-    (children : Fin shape.children → Tree shape) (base : Nat) (mode : Mode)
+    (shape : TreeShape) (r : Fin shape.records) (words : Fin (shape.words r) → UInt64)
+    (children : Fin (shape.children r) → Tree shape) (base : Nat) (mode : Mode)
     (slots : List Slot) (paid : List Bool) (L0 L1 : Nat → Bool) :
-    dyingPot store s (Env.treeFields shape words children env) (shape.slots base mode slots)
-      (List.replicate shape.bindCount false ++ paid) L0 L1 =
-      dyingPot store s env slots paid (fun i => L0 (i + shape.bindCount))
-        (fun i => L1 (i + shape.bindCount)) := by
+    dyingPot store s (Env.treeFields shape r words children env) (shape.slots r base mode slots)
+      (List.replicate (shape.bindCount r) false ++ paid) L0 L1 =
+      dyingPot store s env slots paid (fun i => L0 (i + shape.bindCount r))
+        (fun i => L1 (i + shape.bindCount r)) := by
   unfold dyingPot
   rw [Env.pot_treeFields]
   apply Env.pot_ext
   intro i _
-  rw [shape.slots_getD_suffix]
+  rw [shape.slots_getD_suffix r]
   simp only [paidAt, List.getD_eq_getElem?_getD]
   rw [List.getElem?_append_right (by simp), List.length_replicate,
     Nat.add_sub_cancel_right]
 
 theorem dyingPot_treeEntry {Γ : List Ty} (store : Store Unit) (s : Locals) (env : Env Γ)
-    (shape : TreeShape) (words : Fin shape.words → UInt64)
-    (children : Fin shape.children → Tree shape) (base : Nat) (mode : Mode)
+    (shape : TreeShape) (r : Fin shape.records) (words : Fin (shape.words r) → UInt64)
+    (children : Fin (shape.children r) → Tree shape) (base : Nat) (mode : Mode)
     (slots : List Slot) (paid : List Bool) (L1 live : Nat → Bool) :
-    dyingPot store s (Env.treeFields shape words children env) (shape.slots base mode slots)
-      (List.replicate shape.bindCount false ++ paid)
-      (fun i => decide (i < shape.bindCount) || shift shape.bindCount L1 i)
-      (shift shape.bindCount live) = dyingPot store s env slots paid L1 live := by
+    dyingPot store s (Env.treeFields shape r words children env) (shape.slots r base mode slots)
+      (List.replicate (shape.bindCount r) false ++ paid)
+      (fun i => decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i)
+      (shift (shape.bindCount r) live) = dyingPot store s env slots paid L1 live := by
   rw [dyingPot_treeFields]
   apply dyingPot_congr <;> intro i <;>
-    simp [shift, show ¬i + shape.bindCount < shape.bindCount by omega]
+    simp [shift, show ¬i + shape.bindCount r < shape.bindCount r by omega]
 
 theorem treeCase_bodyWithin {Γ : List Ty} {env : Env Γ} {slots : List Slot} {paid : List Bool}
-    {L0 L1 live : Nat → Bool} {base fieldBase : Nat} {shape : TreeShape} {mode : Mode}
-    {words : Fin shape.words → UInt64} {children : Fin shape.children → Tree shape}
+    {L0 L1 live : Nat → Bool} {base fieldBase : Nat} {shape : TreeShape}
+    {r : Fin shape.records} {mode : Mode}
+    {words : Fin (shape.words r) → UInt64} {children : Fin (shape.children r) → Tree shape}
     {heap0 heap : Heap} {store0 store : Store Unit} {s0 s : Locals}
     {fresh : List (Nat × Nat)} {m : Module} {rootCost bodyCost : Nat}
     (h0 : Holds env slots L0 base heap0 store0 s0)
@@ -100,10 +105,10 @@ theorem treeCase_bodyWithin {Γ : List Ty} {env : Env Γ} {slots : List Slot} {p
     (hWithin : heap0.Within store0 m
       (dyingPot store0 s0 env slots paid L0 live + rootCost + bodyCost)) :
     heap.Within store m
-      (dyingPot store s (Env.treeFields shape words children env)
-        (shape.slots fieldBase mode slots) (List.replicate shape.bindCount false ++ paid)
-        (fun i => decide (i < shape.bindCount) || shift shape.bindCount L1 i)
-        (shift shape.bindCount live) + bodyCost) := by
+      (dyingPot store s (Env.treeFields shape r words children env)
+        (shape.slots r fieldBase mode slots) (List.replicate (shape.bindCount r) false ++ paid)
+        (fun i => decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i)
+        (shift (shape.bindCount r) live) + bodyCost) := by
   rw [dyingPot_treeEntry, dyingPot_step h0 hStep hFrame hL1 L1 live (fun _ hi => hi)]
   have hSplit := dyingPot_split (store := store0) (s := s0) (env := env) (slots := slots)
     (paid := paid) L0 L1 live hL1 hLive

@@ -1,4 +1,5 @@
 import LeanExe.Pipeline.ReleaseTree
+import Verified.AllocCost
 
 namespace Verified
 
@@ -15,6 +16,19 @@ def slotsCopySteps : List Slot → Nat
   | .child value :: rest => 1 + nodeCopySteps value + slotsCopySteps rest
 end
 
+mutual
+/-- The growth of `top` for the copies of the records of a node, `allocCost (8 * w)` for a record
+of `w` slots. -/
+def nodeCopyCost : Node → Nat
+  | .null => 0
+  | .record slots => allocCost (8 * slots.length) + slotsCopyCost slots
+
+def slotsCopyCost : List Slot → Nat
+  | [] => 0
+  | .word _ :: rest => slotsCopyCost rest
+  | .child value :: rest => nodeCopyCost value + slotsCopyCost rest
+end
+
 inductive CopyWork where
   | done
   | current (slots : List Slot) (parents : List (List Slot))
@@ -24,9 +38,10 @@ def CopyWork.steps : CopyWork → Nat
   | .current slots parents =>
     1 + slotsCopySteps slots + (parents.map fun rest => 1 + slotsCopySteps rest).sum
 
-def CopyWork.allocations : CopyWork → Nat
+/-- The growth of `top` for the copies of the records that remain. -/
+def CopyWork.cost : CopyWork → Nat
   | .done => 0
-  | .current slots parents => slotsRecords slots + (parents.map slotsRecords).sum
+  | .current slots parents => slotsCopyCost slots + (parents.map slotsCopyCost).sum
 
 inductive CopyWork.Step : CopyWork → CopyWork → Prop where
   | word {word rest parents} : Step (.current (.word word :: rest) parents) (.current rest parents)
@@ -44,20 +59,21 @@ theorem CopyWork.Step.steps {before after : CopyWork} (h : Step before after) :
 theorem CopyWork.Step.decreases {before after : CopyWork} (h : Step before after) :
     after.steps < before.steps := by rw [h.steps]; omega
 
-def CopyWork.allocates : CopyWork → Nat
-  | .current (.child (.record _) :: _) _ => 1
+/-- The growth of `top` for the step from `work`: the copy of a record child's record. -/
+def CopyWork.charge : CopyWork → Nat
+  | .current (.child (.record children) :: _) _ => allocCost (8 * children.length)
   | _ => 0
 
-theorem CopyWork.Step.allocations {before after : CopyWork} (h : Step before after) :
-    before.allocations = after.allocations + before.allocates := by
-  cases h <;> simp only [CopyWork.allocations, CopyWork.allocates, slotsRecords,
-    Node.records, List.map_cons, List.sum_cons, List.map_nil, List.sum_nil] <;> omega
+theorem CopyWork.Step.cost {before after : CopyWork} (h : Step before after) :
+    before.cost = after.cost + before.charge := by
+  cases h <;> simp only [CopyWork.cost, CopyWork.charge, slotsCopyCost, nodeCopyCost,
+    List.map_cons, List.sum_cons, List.map_nil, List.sum_nil] <;> omega
 
-theorem CopyWork.Step.allocation_bound {before after : CopyWork} (h : Step before after)
-    {top top' cost limit : Nat} (hTop : top' ≤ top + cost * before.allocates)
-    (hBudget : top + cost * before.allocations ≤ limit) :
-    top' + cost * after.allocations ≤ limit := by
-  rw [h.allocations, Nat.mul_add] at hBudget
+theorem CopyWork.Step.cost_bound {before after : CopyWork} (h : Step before after)
+    {top top' limit : Nat} (hTop : top' ≤ top + before.charge)
+    (hBudget : top + before.cost ≤ limit) :
+    top' + after.cost ≤ limit := by
+  rw [h.cost] at hBudget
   omega
 
 theorem CopyWork.next (slots : List Slot) (parents : List (List Slot)) :
@@ -78,13 +94,13 @@ theorem CopyWork.next (slots : List Slot) (parents : List (List Slot)) :
 inductive CopyWork.Run : CopyWork → CopyWork → Nat → Prop where
   | refl {work} : Run work work 0
   | cons {before middle after spent} (first : Step before middle) (rest : Run middle after spent) :
-      Run before after (before.allocates + spent)
+      Run before after (before.charge + spent)
 
-theorem CopyWork.Run.allocations {before after : CopyWork} {spent : Nat}
-    (h : Run before after spent) : before.allocations = after.allocations + spent := by
+theorem CopyWork.Run.cost {before after : CopyWork} {spent : Nat}
+    (h : Run before after spent) : before.cost = after.cost + spent := by
   induction h with
   | refl => omega
-  | cons first rest ih => have := first.allocations; omega
+  | cons first rest ih => have := first.cost; omega
 
 theorem CopyWork.terminates (before : CopyWork) : ∃ spent, Run before .done spent := by
   refine (measure CopyWork.steps).wf.induction
@@ -95,18 +111,18 @@ theorem CopyWork.terminates (before : CopyWork) : ∃ spent, Run before .done sp
   | current slots parents =>
     obtain ⟨after, hStep⟩ := next slots parents
     obtain ⟨spent, hRun⟩ := ih after hStep.decreases
-    exact ⟨(CopyWork.current slots parents).allocates + spent, .cons hStep hRun⟩
+    exact ⟨(CopyWork.current slots parents).charge + spent, .cons hStep hRun⟩
 
-theorem CopyWork.terminates_allocations (before : CopyWork) :
-    Run before .done before.allocations := by
+theorem CopyWork.terminates_cost (before : CopyWork) :
+    Run before .done before.cost := by
   obtain ⟨spent, hRun⟩ := before.terminates
-  have hSpent : before.allocations = spent := by simpa [CopyWork.allocations] using hRun.allocations
+  have hSpent : before.cost = spent := by simpa [CopyWork.cost] using hRun.cost
   rw [hSpent]
   exact hRun
 
 #print axioms CopyWork.Step.decreases
-#print axioms CopyWork.Step.allocations
-#print axioms CopyWork.Step.allocation_bound
-#print axioms CopyWork.terminates_allocations
+#print axioms CopyWork.Step.cost
+#print axioms CopyWork.Step.cost_bound
+#print axioms CopyWork.terminates_cost
 
 end Verified

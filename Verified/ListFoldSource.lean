@@ -76,12 +76,14 @@ theorem nextArgs_denote {S : List Sig} {e : Elem} {captures : List Ty}
     (funs : Funs S) (root tail : Tree listShape) (head : UInt64)
     (acc value : e.denote) (captured : Env captures) :
     Env.ofFn (fun i => ((nextArgs (S := S) e captures).get i).denote funs
-      (.cons value (Env.treeFields listShape (fun _ => head) (fun _ => tail)
+      (.cons value (Env.treeFields listShape listCell (fun _ => head) (fun _ => tail)
         (.cons root (.cons acc captured))))) = .cons tail (.cons value captured) := by
   change Env.cons (t := .tree listShape) tail (Env.cons (t := .elem e) value
     (Env.ofFn (fun i => ((Args.vars captures (fun x => x.suffix
-      [.elem e, .treeHeader listShape, .word, .tree listShape, .tree listShape, .elem e])).get i).denote
-        funs (.cons (t := .elem e) value (Env.treeFields listShape (fun _ => head) (fun _ => tail)
+      [.elem e, .treeHeader listShape listCell, .word, .tree listShape, .tree listShape,
+        .elem e])).get i).denote
+        funs (.cons (t := .elem e) value (Env.treeFields listShape listCell (fun _ => head)
+          (fun _ => tail)
           (.cons root (.cons acc captured))))))) = _
   rw [Args.vars_denote]
   congr 2
@@ -95,30 +97,18 @@ theorem tailBody_denote {S : List Sig} {e : Elem} {captures : List Ty}
     (root : Tree listShape) (acc : e.denote) (captured : Env captures) :
     (tailBody body).denote funs (.cons root (.cons acc captured)) =
       match root with
-      | .nil => .inr acc
-      | .node words children => .inl (.cons (children ⟨0, by decide⟩)
-          (.cons (body.denote funs (Env.treeFields listShape words children
+      | .nil _ => .inr acc
+      | .node r words children => .inl (.cons (children ⟨0, listShape_children_pos r⟩)
+          (.cons (body.denote funs (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩)
+            (fun _ => children ⟨0, listShape_children_pos r⟩)
             (.cons root (.cons acc captured)))) captured)) := by
   cases root with
   | nil => rfl
-  | node words children =>
-    simp only [tailBody, TailBody.denote, Env.get]
+  | node r words children =>
+    obtain rfl := listShape_cell r
+    simp only [tailBody, TailBody.denote, Env.get, listCell, listBranch]
     congr 1
-    have wordsEq : words = fun _ => words ⟨0, by decide⟩ := by
-      funext i
-      apply congrArg words
-      apply Fin.ext
-      change i.val = 0
-      have hi : i.val < 1 := i.isLt
-      omega
-    have childrenEq : children = fun _ => children ⟨0, by decide⟩ := by
-      funext i
-      apply congrArg children
-      apply Fin.ext
-      change i.val = 0
-      have hi : i.val < 1 := i.isLt
-      omega
-    rw [wordsEq, childrenEq]
+    rw [listCell_words_eq words, listCell_children_eq children]
     exact nextArgs_denote funs _ _ _ _ _ _
 
 theorem fixed {S : List Sig} {e : Elem} {captures : List Ty}
@@ -132,7 +122,7 @@ theorem fixed {S : List Sig} {e : Elem} {captures : List Ty}
       rw [tailBody_denote]
       cases root with
       | nil => rfl
-      | node words children =>
+      | node r words children =>
         simp only [meaning, denoteWith, Sum.elim_inl]
         congr 2
 
@@ -148,19 +138,15 @@ theorem decreases {S : List Sig} {e : Elem} {captures : List Ty}
       rw [tailBody_denote] at h
       cases root with
       | nil => contradiction
-      | node words children =>
+      | node r words children =>
+        obtain rfl := listShape_cell r
         cases h
-        change (children ⟨0, by decide⟩).nodes <
+        change (children ⟨0, listShape_children_pos listCell⟩).nodes <
           1 + (List.ofFn fun i => (children i).nodes).sum
-        have childrenEq : children = fun _ => children ⟨0, by decide⟩ := by
-          funext i
-          apply congrArg children
-          apply Fin.ext
-          change i.val = 0
-          have hi : i.val < 1 := i.isLt
-          omega
-        rw [childrenEq]
-        simp [List.ofFn_succ, listShape, TreeShape.children]
+        rw [listCell_children_eq children]
+        change _ < 1 + (List.ofFn (n := 1) fun _ => _).sum
+        simp only [List.ofFn_succ, List.ofFn_zero, List.sum_cons, List.sum_nil]
+        omega
 
 end ListFold
 end Verified

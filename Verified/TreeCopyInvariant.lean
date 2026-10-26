@@ -13,8 +13,7 @@ structure CopyProgress (shape : TreeShape) (heap0 : Heap) (initial : Store Unit)
   sources : CopySources shape heap0 initial current parents
   step : Step heap0 initial (fun _ => True) heap store (copyBlocks store current parents)
   apart : (copyBlocks store current parents).Pairwise regionsDisjoint
-  budget : heap.top.toNat + allocCost (8 * shape.fields.length) *
-    (current.work parents).allocations ≤ limit
+  budget : heap.top.toNat + (current.work parents).cost ≤ limit
 
 structure CopyInv (shape : TreeShape) (heap0 : Heap) (initial : Store Unit)
     (root : List LeanExe.Pipeline.Slot) (result : UInt64) (limit : Nat)

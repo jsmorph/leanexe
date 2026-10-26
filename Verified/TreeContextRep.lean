@@ -25,19 +25,20 @@ theorem Env.Rep.repeatFields {heap : Heap} {store : Store Unit} {Γ : List Ty}
       simpa only [paramMode, List.replicate_succ, List.cons_append, paramModes,
         List.headD_cons, List.tail_cons, List.getD_cons_succ] using hRest
 
-theorem treeFields_rep {heap : Heap} {store : Store Unit} {shape : TreeShape} {mode : Mode}
-    {p : UInt64} {words : Fin shape.words → UInt64} {children : Fin shape.children → Tree shape}
-    {pointers : Fin shape.children → UInt64}
-    (hHeader : mode.header shape heap store p)
+theorem treeFields_rep {heap : Heap} {store : Store Unit} {shape : TreeShape}
+    {r : Fin shape.records} {mode : Mode} {p : UInt64} {words : Fin (shape.words r) → UInt64}
+    {children : Fin (shape.children r) → Tree shape}
+    {pointers : Fin (shape.children r) → UInt64}
+    (hHeader : mode.header shape r heap store p)
     (hChildren : ∀ i, mode.node heap store (pointers i) (children i).toNode) :
-    Env.Rep (paramMode (shape.context []) (shape.modes mode [])) heap store
+    Env.Rep (paramMode (shape.context r []) (shape.modes r mode [])) heap store
       (.i64 p :: ((List.ofFn fun i => Value.i64 (words i)) ++
         (List.ofFn fun i => Value.i64 (pointers i))))
-      (Env.treeFields shape words children .nil) := by
+      (Env.treeFields shape r words children .nil) := by
   have hTrees := Env.Rep.repeatFields (heap := heap) (store := store) (Γ := [])
-    (modes := []) (tail := .nil) (rest := []) rfl (.tree shape) mode shape.children
+    (modes := []) (tail := .nil) (rest := []) rfl (.tree shape) mode (shape.children r)
     children pointers (fun i => ⟨pointers i, rfl, hChildren i⟩)
-  have hWords := Env.Rep.repeatFields hTrees .word .borrowed shape.words words words
+  have hWords := Env.Rep.repeatFields hTrees .word .borrowed (shape.words r) words words
     (fun _ => rfl)
   unfold Verified.paramMode at hWords
   rw [show (List.ofFn fun i => Value.i64 (pointers i)) ++ [] =

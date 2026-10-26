@@ -53,13 +53,17 @@ theorem TailBody.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : 
       (Expr.code_spec m funs flags bounds fits host hm hCalls value hParts.1 fun hd =>
         hDepth (by simp [TailBody.depthCalls, hd]))
       (bodySpec hParts.2 fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
-  | treeCase x empty node emptySpec nodeSpec =>
+  | treeCase x empty nodes emptySpec nodesSpec =>
     intro hCovered hDepth
-    have hParts : empty.Covered pool ∧ node.Covered pool := by
-      simpa only [TailBody.Covered, TailBody.literals, List.append_subset] using hCovered
-    exact tail_treeCase_spec hm targetModes x empty node
-      (emptySpec hParts.1 fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
-      (nodeSpec hParts.2 fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
+    have hParts := List.append_subset.mp hCovered
+    exact tail_treeCase_spec hm targetModes x empty nodes
+      (fun hn => emptySpec hn (by
+          have hEmpty := hParts.1
+          rw [dif_pos hn] at hEmpty
+          exact hEmpty)
+        fun hd => hDepth (by simp [TailBody.depthCalls, hn, hd]))
+      (fun r => nodesSpec r (literals_args_subset.mp hParts.2 r) fun hd => hDepth (by
+        simp [TailBody.depthCalls, le_argsAny (fun r => (nodes r).depthCalls) r hd]))
 
 #print axioms TailBody.code_spec
 

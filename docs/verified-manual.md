@@ -67,7 +67,7 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | `LeanExe.Bytes` | An allocation root and UInt64 logical length | Packed bytes, with owned and borrowed parameters, results, pairs, copying, and release. |
 | A pair that holds arrays, or a structure whose `Flat` tuple holds arrays | Its components' words | A structure of this kind is a record with array fields. |
 | `List UInt64` | Null for `[]`, otherwise a record holding the head word and tail pointer | Construction, matching, identity, duplication, tuples, calls, tail recursion, and folds with scalar state |
-| A recursive type with one empty and one record constructor | Null for the empty constructor, otherwise a fixed-layout record | At most 64 fields, each `UInt64` or a recursive child.  Construction, matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state. |
+| A recursive type whose fields are `UInt64` or the type itself | Null for the first constructor without fields, and for any other constructor a record of its fields in declaration order, after a tag word that holds the constructor's index when the type has more than one record constructor | Each record has between 1 and 64 slots, the tag included, at least one constructor has no child field, and at least one has a child field.  Construction, one-level matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state. |
 
 `Nat`, `Int`, `String`, `Option`, recursive types outside the listed layout, and arrays of arrays are outside the dialect.  Integers are `UInt64`, so that a program and its module compute the same values, wraparound included.  A read past the end of an array gives Lean's default element, whose flattening must have zero words.  An array stores each Float32 bit pattern in the low 32 bits of an eight-byte word.
 
@@ -137,10 +137,19 @@ reconstruction consumes the cell at its last use, the code reuses its header.  C
 allocates one record per cell.  A borrowed list retains its records.
 
 The same ownership rules apply to accepted user-defined recursive types.  Such a type has no
-parameters or indices, is neither mutual nor nested, and has one empty constructor and one record
-constructor.  The reflector proves conversions to and from its typed layout, both inverse laws,
-and preservation of its `Encode` instance.  An encoding that disagrees with the layout fails that
-proof.  Tail matching preserves ownership across return and continue steps.
+parameters or indices, is neither mutual nor nested, and has fields of type `UInt64` or of the
+type itself.  Its first constructor without fields is null, and each other constructor is a
+record constructor.  A type with several record constructors is tagged: slot 0 of each record
+holds its constructor's index in declaration order, and a match tests the tag against the record
+constructors in that order and runs the last one's branch without a test.  A pattern matches one
+constructor level, and a wildcard alternative compiles once for each constructor it covers.  A
+variable that names the matched value, as in `| s => f s`, compiles in each record constructor's
+copy as that constructor applied to the fields, which reuses the matched header and makes the
+matched variable owned.  A branch that names the matched variable itself, as in `| _ => f t`,
+reads it, and when that variable is owned the match works on a copy.  The
+reflector proves conversions to and from its typed layout, both inverse laws, and preservation of
+its `Encode` instance.  An encoding that disagrees with the layout fails that proof.  Tail matching
+preserves ownership across return and continue steps.
 
 ### Records, tuples, and sums
 
@@ -193,6 +202,7 @@ A table is a Lean constant of type `Array UInt64`, which the module writes in a 
 | `unsupported negation …` | `-x` on words | Write `0 - x`. |
 | `… has universe parameters` | A universe-polymorphic definition | Define the function at one universe. |
 | `a match on several values is not supported`, `` `match h : …` is not supported `` | A `match` with several discriminants or a named hypothesis | Nest the matches, and use `if` for tests. |
+| `cannot reduce the recursive match at …` | A pattern below the first constructor level of a recursive type, such as `.a (.a _)` | Match the child in a nested `match`. |
 | `the branches of … use the hypothesis of the if` | `if h : c` with a branch that uses `h` | Read with `xs[i.toNat]!`, which needs no proof of the bound. |
 | `… must be applied to all n arguments` | A partial application of a listed definition | Apply the definition to all its arguments. |
 | `the code of … takes the call depth and needs k positions, more than the 32 …` | A recursive function, or a caller of one, with many live values | Move work into a function that calls no recursive function, or bind fewer values. |
@@ -394,7 +404,7 @@ For guarded recursion, `p.f.bound k x` and `p.f.fits k x` take the number of fra
 
 ### Module cases
 
-[`tests/verified/run.sh`](../tests/verified/run.sh) writes each example's module to `build/verified/`, validates it with `wasm-tools`, and compares every case of [`Verified/Examples/Cases.lean`](../Verified/Examples/Cases.lean) between the Wasmtime host and native Lean.  `Cases.lean` prints one line per case, `module|export|result kind|host arguments|expected result`, computed by native Lean, with an optional sixth field, the number of blocks that must stay allocated after the call, and a seventh, a bound on the number of allocations, the host's included.  The expected result `trap` requires a trap at `unreachable`.  Native Lean writes a panic message for each read, update, or `insertIdx!` past the end, and the script counts these messages and fails on any other output to standard error.  The full invocation needs `lake build Verified Library` first and the Wasmtime host `build/tools/leanexe-wasmtime-host`.  The driver adds `~/.cargo/bin` to its search path for `wasm-tools`.
+[`tests/verified/run.sh`](../tests/verified/run.sh) writes each example's module to `build/verified/`, validates it with `wasm-tools`, and compares every case of [`Verified/Examples/Cases.lean`](../Verified/Examples/Cases.lean) between the Wasmtime host and native Lean.  `Cases.lean` prints one line per case, `module|export|result kind|host arguments|expected result`, computed by native Lean, with an optional sixth field, the number of blocks that must stay allocated after the call, and a seventh, a bound on the number of allocations, the host's included.  The expected result `trap` requires a trap at `unreachable`.  Native Lean writes a panic message for each read, update, or `insertIdx!` past the end, and the script counts these messages and fails on any other output to standard error.  The full invocation needs `lake build`, whose default targets include the module cases of the Euler check, `lake build Verified Library`, and the Wasmtime host `build/tools/leanexe-wasmtime-host`.  The driver adds `~/.cargo/bin` to its search path for `wasm-tools`.
 
 `tests/verified/run.sh --cases frontend` builds and emits the selected module, validates it, builds the case generator and its imports, and compares its checked cases, including allocation counters.  Its insertion cases cover empty arrays, indices at and beyond the end, the largest word, a computed index, fresh and aliased inputs, and float and record elements.  The full invocation also runs the numerical byte/file proofs and native accuracy checks.  Each module has an entry in [the module registry](../tests/verified/modules.txt) and a checked corpus.  [The library case map](../tests/verified/library-cases.txt) reuses the compiler fixtures' cases for the shared library compilations.
 
@@ -425,6 +435,15 @@ loops through 4,096 iterations, including empty and nonempty seeds.
 `tests/verified/run.sh --cases listtail` checks borrowed tail summation and consumed reversal
 through 4,096 cells.  Both compile as loops.  Reversal reuses the input headers and retains the
 input and accumulator cells in its result.
+
+`tests/verified/run.sh --cases taggedtypes` checks each function of the tagged example on every
+constructor, on chains of 998, 999, and 1,000 negations and of 999, 1,000, and 4,096 additions,
+and on 20 arbitrary terms of at most 190 constructors, and it checks `add` on 64 pairs of these
+terms.  The allocation counts show that `swap` and `right` allocate nothing beyond the host's
+records, so `swap` reuses the matched record and `right` releases the rest of its argument, and
+that `double` allocates one copy of its argument and one record.  `eval` and `size` return at
+depth 999 and trap at `unreachable` at depth 1,000, and `spine` compiles as a loop and returns on
+every chain.
 
 `tests/verified/run.sh --cases gpt` tests binary64 GPT with the existing corpus in [`tests/gpt/Cases.lean`](../tests/gpt/Cases.lean) and the release and cache-growth checks of [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh).  `tests/verified/run.sh --cases euler` uses [the existing Euler corpus](../Demos/Euler/Cases.lean) through `tests/modules/run.sh --module euler PATH`.  The full invocation includes both application checks.
 
@@ -469,6 +488,7 @@ Reusable implementations and their compilations live in [the library](../Library
 | [List loops](../Verified/Examples/ListLoops.lean) | Construction and extension of list state in word-counted loops. |
 | [List tail recursion](../Verified/Examples/ListTail.lean) | Borrowed summation and consumed reversal with header reuse, including chains beyond the guarded call-depth limit. |
 | [User-defined recursive values](../Verified/Examples/RecursiveTypes.lean) | Construction, matching, identity, duplication, subtree release, guarded size and increment with header reuse, loop state, tail summation and reversal, owned right-spine traversal, and generated conversion and encoding proofs for the existing `Words` and `KeyTree` types. |
+| [Tagged recursive values](../Verified/Examples/TaggedTypes.lean) | A type `Term` with a null constructor and four tagged record constructors: construction, duplication with a copy, matching, guarded evaluation and size, header reuse, subtree release, and tail recursion. |
 | [Tail loops](../Verified/Examples/Tail.lean) | Word accumulation, scalar pairs, record arrays, owned growth, swapped and replaced array parameters, aliases, calls between tail functions, and a guarded callee.  The byte theorem covers ten functions. |
 | [Tail conditions and borrowed states](../Verified/Examples/TailConditions.lean) | Boolean and inequality conditions, a proof-named conditional, tuple destructuring, and borrowed pair and record parameters. |
 | [Binary64 GPT-2](../Demos/Gpt/Verified.lean) | The 48 unchanged functions of [the GPT example](../Demos/Gpt/README.md), including full-sequence inference, cached steps, and sampling.  The compiler derives each function's execution, allocation-bound, and trap-free theorems and the module's bytes theorem. |

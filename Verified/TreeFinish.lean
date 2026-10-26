@@ -7,34 +7,37 @@ open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     {L0 L1 live : Nat → Bool} {base fieldBase ptr : Nat} {shape : TreeShape}
+    {r : Fin shape.records}
     {heap heap1 heap2 : Heap} {store store1 store2 : Store Unit} {s s1 s2 : Locals}
-    {words : Fin shape.words → UInt64} {children : Fin shape.children → Tree shape}
+    {words : Fin (shape.words r) → UInt64} {children : Fin (shape.children r) → Tree shape}
     {ws : List Value} {p : UInt64} {m : Module} {host : HostEnv Unit}
     {rest : Program} {Q : Assertion Unit}
     (h0 : Holds env slots L0 base heap store s)
     (a : FieldsAfter env slots L0 L1 base heap store s
-      (Env.prependRepeat .word shape.words words
-        (Env.prependRepeat (.tree shape) shape.children children .nil)) heap1 store1 s1 ws)
+      (Env.prependRepeat .word (shape.words r) words
+        (Env.prependRepeat (.tree shape) (shape.children r) children .nil)) heap1 store1 s1 ws)
     (hStep : Step heap1 store1 (Holds.KeepDying env slots L1 live store1 s1)
       heap2 store2 [block store2 p])
     (hFrame : Frame base s1 s2) (hHolds : Holds env slots live base heap2 store2 s2)
     (hL1 : ∀ i, L1 i = true → L0 i = true) (hLive : ∀ i, live i = true → L1 i = true)
-    (hRaw : RecordStorage shape heap2 store2 p)
+    (hRaw : RecordStorage (shape.width r) heap2 store2 p)
     (hCount : store2.mem.read64 (p - 40).toUInt32 = 1)
     (hPtr : s2.get ptr = some (.i64 p)) (hStack : s2.values = s.values)
-    (hLocals : LocalsHold s2 fieldBase (List.replicate (shape.words + shape.children) .i64) ws)
-    (hRootApart : Holds.Apart env slots live store2 s2 (.treeHeader shape) .owned [.i64 p] .unit)
+    (hLocals : LocalsHold s2 fieldBase (List.replicate (shape.words r + shape.children r) .i64) ws)
+    (hRootApart : Holds.Apart env slots live store2 s2 (.treeHeader shape r) .owned [.i64 p] .unit)
     (hNext : ∀ store',
-      After env slots L0 live base heap store s (.tree shape) .owned (.node words children)
+      After env slots L0 live base heap store s (.tree shape) .owned (.node r words children)
         heap2 store' s2 [.i64 p] →
       wp m rest Q store' { s2 with values := .i64 p :: s.values } host) :
-    wp m (treeStoreFields ptr fieldBase (fieldBase + shape.words) 0 shape.fields ++
-      sealRecordCode shape ptr shape.mask ++ (.localGet ptr :: rest)) Q store2 s2 host := by
+    wp m (shape.tagStoreCode r ptr ++
+      treeStoreFields ptr fieldBase (fieldBase + shape.words r) shape.fieldStart (shape.fields r) ++
+      sealRecordCode (shape.width r) ptr (shape.mask r) ++ (.localGet ptr :: rest))
+      Q store2 s2 host := by
   obtain ⟨a2, hBoth, hSame, hFresh⟩ := a.advance h0 hStep hFrame hHolds hL1 hLive
   have hApart : (block store2 p ::
-      (Env.prependRepeat .word shape.words words
-        (Env.prependRepeat (.tree shape) shape.children children .nil)).blocks store2 ws).Pairwise
-          regionsDisjoint := by
+      (Env.prependRepeat .word (shape.words r) words
+        (Env.prependRepeat (.tree shape) (shape.children r) children .nil)).blocks store2
+          ws).Pairwise regionsDisjoint := by
     refine List.pairwise_cons.mpr ⟨?_, a2.pairwise⟩
     intro b hb
     rw [hSame] at hb
@@ -53,10 +56,10 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     (fun r hr => ⟨hr, fun hApart => hApart (block store2 p)
       (List.mem_append_right _ (by simp))⟩)
   have hAfter : After env slots L0 live base heap store s (.tree shape) .owned
-      (.node words children) heap2 store3 s2 [.i64 p] := by
+      (.node r words children) heap2 store3 s2 [.i64 p] := by
     refine ⟨?_, a2.frame, hHolds.step hWrite hKeepLive, hRep, ?_⟩
     · change Step heap store (Holds.KeepDying env slots L0 live store s) heap2 store3
-        ((Ty.tree shape).blocks store3 [.i64 p] (.node words children))
+        ((Ty.tree shape).blocks store3 [.i64 p] (.node r words children))
       rw [hBlocks]
       apply hWhole.mono (fun _ hr => hr)
       intro b hb
@@ -65,7 +68,7 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
       · exact List.mem_append_right _ (by simp)
       · exact List.mem_append_left _ hb
     · intro u x hx _ wx hold length b hb c hc
-      change b ∈ (Ty.tree shape).blocks store3 [.i64 p] (.node words children) at hb
+      change b ∈ (Ty.tree shape).blocks store3 [.i64 p] (.node r words children) at hb
       rw [hBlocks] at hb
       have hRegions := (hHolds.regions_after hWrite hx hold length
         (hKeepLive u x hx wx hold length)).1

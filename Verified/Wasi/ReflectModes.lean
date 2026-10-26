@@ -35,7 +35,7 @@ def Command.paramChoice {params : List Ty} {result : ResultTy}
     (body : Command pureSigs effectSigs params result) : List Mode :=
   (List.range params.length).map fun index =>
     match params[index]? with
-    | some (Ty.array _) | some (Ty.tree _) | some (Ty.treeHeader _) | some Ty.bytes =>
+    | some (Ty.array _) | some (Ty.tree _) | some (Ty.treeHeader _ _) | some Ty.bytes =>
       if body.demands (fun _ => false) index then .owned else .borrowed
     | _ => .borrowed
 

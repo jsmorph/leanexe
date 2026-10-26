@@ -18,6 +18,7 @@ Verified.Examples.ListRecursion:Verified.Examples.ListRecursion.compiled.module:
 Verified.Examples.ListLoops:Verified.Examples.ListLoops.compiled.module:listloops
 Verified.Examples.ListTail:Verified.Examples.ListTail.compiled.module:listtail
 Verified.Examples.RecursiveTypes:Verified.Examples.RecursiveTypes.compiled.module:recursivetypes
+Verified.Examples.TaggedTypes:Verified.Examples.TaggedTypes.compiled.module:taggedtypes
 Verified.Examples.Tail:Verified.Examples.Tail.compiled.module:tail
 Verified.Examples.TailConditions:Verified.Examples.TailConditions.compiled.module:tailconditions
 Demos.Gpt.Verified:Demos.Gpt.Verified.compiled.module:gpt
@@ -86,3 +87,12 @@ Library.Numerics.Arithmetic.CeilSqrt.Compiled:Library.Numerics.Arithmetic.CeilSq
 Library.Numerics.Bounds.Compiled:Library.Numerics.Bounds.compiled.module:libbounds
 Library.Numerics.Limiters.Minmod.Compiled:Library.Numerics.Limiters.Minmod.compiled.module:libminmod
 Library.Trees.WordTree.Compiled:Library.Trees.WordTree.compiled.module:libtrees
+Library.Hashing.Sha512.Compiled:Library.Hashing.Sha512.compiled.module:sha512
+Library.Hashing.Sha256.Compiled:Library.Hashing.Sha256.compiled.module:sha256
+Library.Hashing.Hmac.Compiled:Library.Hashing.Hmac.compiled256.module:hmac_sha256
+Library.Hashing.Hmac.Compiled:Library.Hashing.Hmac.compiled512.module:hmac_sha512
+Library.Regex.Compiled:Library.Regex.compiled.module:regex
+Library.Hashing.Sha3.Compiled:Library.Hashing.Sha3.compiled.module:sha3
+Library.Hashing.Crc.Compiled:Library.Hashing.Crc.compiled.module:crc
+Library.Hashing.SipHash.Compiled:Library.Hashing.SipHash.compiled.module:siphash
+Library.Hashing.XxHash64.Compiled:Library.Hashing.XxHash64.compiled.module:xxhash64

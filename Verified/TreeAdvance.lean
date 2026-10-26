@@ -30,7 +30,6 @@ theorem CopyRecord.Holds.advance {shape : TreeShape} {heap : Heap} {store : Stor
   have hBase := h.storage.base
   have hAddress := h.storage.address
   have hCapacity := h.storage.capacity
-  have hLength := h.layout.1
   have hTaken : (record.slots.take i).length = i := List.length_take_of_le h.bound
   have hSlotAddress : (slotAddress p i).toNat = p.toNat + 8 * i :=
     slotAddress_toNat (by dsimp [p, i]; omega)
@@ -82,6 +81,7 @@ theorem CopyRecord.Holds.advance {shape : TreeShape} {heap : Heap} {store : Stor
   refine ⟨⟨h.layout, by dsimp [i] at *; omega, hRaw', hSource',
     (hReadHeader 40 (by decide) (by decide)).trans h.parent,
     (hReadHeader 24 (by decide) (by decide)).trans h.source,
+    fun ht => (hReadHeader 16 (by decide) (by decide)).trans (h.width ht),
     Memory.read64_write64 .., hNextSlots⟩,
     Step.ofWritesRange hAt' hAll (by simp only [block]; dsimp [p]; omega)
       (by simp only [block]; dsimp [p, i]; omega), ?_⟩

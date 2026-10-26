@@ -1,8 +1,19 @@
 import LeanExe.Runtime.Defs
+import Verified.Tree
 
 namespace Verified
 
 open Wasm
+
+/-- The first slot of a record's fields: 1 when slot 0 holds the tag. -/
+def TreeShape.fieldStart (shape : TreeShape) : Nat := if shape.tagged then 1 else 0
+
+/-- Code that stores the tag of record constructor `r` into slot 0 of the record at local `ptr`
+when the shape is tagged. -/
+def TreeShape.tagStoreCode (shape : TreeShape) (r : Fin shape.records) (ptr : Nat) : Program :=
+  if shape.tagged then
+    [.localGet ptr, .wrapI64, .constI64 (UInt64.ofNat (shape.ctorIndex r)), .store64 0]
+  else []
 
 def treeStoreFields (ptr : Nat) : Nat → Nat → Nat → List Bool → Program
   | _, _, _, [] => []

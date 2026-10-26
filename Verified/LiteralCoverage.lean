@@ -22,15 +22,16 @@ theorem Expr.literals_rename (expr : Expr S Γ t) (renameVars : Renaming Γ Δ) 
     (expr.rename renameVars).literals = expr.literals := by
   induction expr generalizing Δ with
   | call func args ih => exact literals_args_congr fun i => ih i renameVars
-  | treeNode reuse words children ihWords ihChildren =>
+  | treeNode r reuse words children ihWords ihChildren =>
     exact congrArg₂ List.append
       (literals_args_congr fun i => ihWords i renameVars)
       (literals_args_congr fun i => ihChildren i renameVars)
   | listFold args body ihArgs ihBody =>
     exact congrArg₂ List.append (literals_args_congr fun i => ihArgs i renameVars)
       (Eq.refl body.literals)
-  | treeCase x empty node ihEmpty ihNode =>
-    exact congrArg₂ List.append (ihEmpty renameVars) (ihNode _)
+  | treeCase x empty nodes ihEmpty ihNodes =>
+    exact congrArg₂ List.append (dite_congr rfl (fun h => ihEmpty h renameVars) (fun _ => rfl))
+      (literals_args_congr fun r => ihNodes r _)
   | bin op left right ihLeft ihRight =>
     exact congrArg₂ List.append (ihLeft renameVars) (ihRight renameVars)
   | cmp op left right ihLeft ihRight =>
@@ -90,11 +91,13 @@ theorem Expr.literals_renameFuns (expr : Expr S Γ t)
     (expr.renameFuns renameFuncs).literals = expr.literals := by
   induction expr with
   | call func args ih => exact literals_args_congr ih
-  | treeNode reuse words children ihWords ihChildren =>
+  | treeNode r reuse words children ihWords ihChildren =>
     exact congrArg₂ List.append (literals_args_congr ihWords) (literals_args_congr ihChildren)
   | listFold args body ihArgs ihBody =>
     exact congrArg₂ List.append (literals_args_congr ihArgs) ihBody
-  | treeCase x empty node ihEmpty ihNode => exact congrArg₂ List.append ihEmpty ihNode
+  | treeCase x empty nodes ihEmpty ihNodes =>
+    exact congrArg₂ List.append (dite_congr rfl (fun h => ihEmpty h) (fun _ => rfl))
+      (literals_args_congr ihNodes)
   | bin op left right ihLeft ihRight => exact congrArg₂ List.append ihLeft ihRight
   | cmp op left right ihLeft ihRight => exact congrArg₂ List.append ihLeft ihRight
   | and left right ihLeft ihRight => exact congrArg₂ List.append ihLeft ihRight

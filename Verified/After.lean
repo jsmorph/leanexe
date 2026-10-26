@@ -475,7 +475,7 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
       · exact nomatch h1
       · exact Or.inr h1
   | build _ _ _ _ | bytesBuild _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ | insertAt _ _ _ _ _
-  | eraseAt _ _ _ | treeNil _ | treeNode _ _ _ | treeCase _ _ _ | bytesEmpty | bytesLiteral _ =>
+  | eraseAt _ _ _ | treeNil _ _ | treeNode _ _ _ _ | treeCase _ _ _ | bytesEmpty | bytesLiteral _ =>
     intro _ _; simp [Expr.aborts]
   | _ => intro modes h; simp [Expr.mode] at h
 
@@ -1110,7 +1110,7 @@ theorem Ty.copyScratch_le (t : Ty) : t.copyScratch ≤ copyWidth t := by
       | pair a b ha hb =>
         simp only [Ty.scalar, Bool.and_eq_true] at h
         simp only [Ty.copyScratch, ha h.1, hb h.2, Nat.max_self]
-      | array _ | tree _ | treeHeader _ | bytes => exact nomatch h
+      | array _ | tree _ | treeHeader _ _ | bytes => exact nomatch h
     simp [copyWidth, h, this]
   · simp [copyWidth, h]
 
@@ -1225,7 +1225,7 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .funary32 _ _, hp, _, _, _, _, _ | _, .toFloat32 _ _, hp, _, _, _, _, _
   | _, .toWord32 _ _, hp, _, _, _, _, _
   | _, .float32 _, hp, _, _, _, _, _
-  | _, .treeNil _, hp, _, _, _, _, _ | _, .treeNode _ _ _, hp, _, _, _, _, _
+  | _, .treeNil _ _, hp, _, _, _, _, _ | _, .treeNode _ _ _ _, hp, _, _, _, _, _
   | _, .treeCase _ _ _, hp, _, _, _, _, _
   | _, .float _, hp, _, _, _, _, _ | _, .fbin _ _ _, hp, _, _, _, _, _
   | _, .funary _ _, hp, _, _, _, _, _ | _, .fcmp _ _ _, hp, _, _, _, _, _

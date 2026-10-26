@@ -7,8 +7,8 @@ theorem bool_counts (fields : List Bool) : fields.count false + fields.count tru
   | nil => rfl
   | cons bit rest ih => cases bit <;> simp_all <;> omega
 
-theorem TreeShape.words_children (shape : TreeShape) :
-    shape.words + shape.children = shape.fields.length := bool_counts shape.fields
+theorem TreeShape.words_children (shape : TreeShape) (r : Fin shape.records) :
+    shape.words r + shape.children r = (shape.fields r).length := bool_counts (shape.fields r)
 
 def fieldPosition (bit : Bool) : (fields : List Bool) → Fin (fields.count bit) → Fin fields.length
   | [], i => Fin.elim0 i

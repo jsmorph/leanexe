@@ -9,6 +9,9 @@ open Lean Meta Elab Command
 private def fieldFamily (values : Array Term) : CommandElabM Term := do
   `(([$values,*]).get)
 
+open Lean.Parser.Term in
+/-- `toTree` and `fromTree` between a recursive type and `Tree` of its shape, the laws that they
+are inverse, and the agreement of the type's `Encode` instance with `Tree.toNode`. -/
 def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     withScope (fun scope => { scope with currNamespace := .anonymous }) do
   if (← getEnv).contains (layout.decl `toTree) then return
@@ -19,41 +22,66 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
   let right := root (layout.decl `to_from)
   let encoding := root (layout.decl `encoding)
   let native := root layout.name
-  let empty := root layout.empty
-  let node := root layout.node
-  let shape : Term ← if layout.shape = listShape then `(Verified.listShape)
-    else `(Verified.Reflect.reflectedTreeShape $(quote layout.shape.fields) rfl)
-  let fields := (List.range layout.shape.fields.length).toArray.map fun i =>
-    mkIdent (Name.mkSimple s!"field{i}")
-  let mut words : Array Term := #[]
-  let mut children : Array Term := #[]
-  let mut decoded : Array Term := #[]
-  for i in [:fields.size] do
-    let field := fields[i]!
-    if layout.shape.fields[i]! then
-      children := children.push (← `($flatten $field))
-      decoded := decoded.push (← `($unflatten (children ⟨$(quote (children.size - 1)), by decide⟩)))
-    else
-      words := words.push field
-      decoded := decoded.push (← `(words ⟨$(quote (words.size - 1)), by decide⟩))
-  let wordFn ← fieldFamily words
-  let childFn ← fieldFamily children
-  let pattern ← `($node $fields*)
-  let value ← `($node $decoded*)
-  elabCommand (← `(def $flatten : $native → Verified.Tree $shape
-    | $empty => Verified.Tree.nil
-    | $pattern => Verified.Tree.node $wordFn $childFn))
-  elabCommand (← `(def $unflatten : Verified.Tree $shape → $native
-    | .nil => $empty
-    | .node words children => $value))
+  let shape ← shapeTerm layout.shape
+  let records := layout.shape.records
+  let mut toAlts : Array (TSyntax ``Lean.Parser.Term.matchAlt) := #[]
+  let mut fromAlts : Array (TSyntax ``Lean.Parser.Term.matchAlt) := #[]
+  let mut rightCases : Array (TSyntax ``Lean.Parser.Term.matchAlt) := #[]
+  for (ctor, kinds) in layout.ctors do
+    let fields := fieldNames kinds.length
+    let pattern ← `($(mkIdent ctor) $fields*)
+    match layout.record? ctor with
+    | none =>
+      toAlts := toAlts.push (← `(matchAltExpr| | $pattern => Verified.Tree.nil rfl))
+      fromAlts := fromAlts.push (← `(matchAltExpr| | .nil _ => $(mkIdent ctor)))
+    | some r =>
+      let record ← recordTerm layout.shape r
+      let mut words : Array Term := #[]
+      let mut children : Array Term := #[]
+      let mut decoded : Array Term := #[]
+      for i in [:fields.size] do
+        let field := fields[i]!
+        if kinds[i]! then
+          children := children.push (← `($flatten $field))
+          let k := quote (children.size - 1)
+          decoded := decoded.push (← `($unflatten
+            (children ⟨$k, (by decide : $k < ($shape).children $record)⟩)))
+        else
+          words := words.push field
+          let k := quote (words.size - 1)
+          decoded := decoded.push (← `(words ⟨$k, (by decide : $k < ($shape).words $record)⟩))
+      toAlts := toAlts.push (← `(matchAltExpr| | $pattern =>
+        Verified.Tree.node $record $(← fieldFamily words) $(← fieldFamily children)))
+      fromAlts := fromAlts.push (← `(matchAltExpr| | .node ⟨$(quote r.val), _⟩ words children =>
+        $(mkIdent ctor) $decoded*))
+      rightCases := rightCases.push (← `(matchAltExpr| | ⟨$(quote r.val), _⟩, words, children, ih =>
+        by
+          simp only [$unflatten:term, $flatten:term, Verified.listCell]
+          congr 1 <;> funext i <;> fin_cases i <;> simp [ih, List.get] <;> rfl))
+  let recordsCount : Term ← `(($shape).records)
+  let outOfRange ← `(by
+    have : $recordsCount = $(quote records) := by decide
+    omega)
+  if layout.null?.isNone then
+    fromAlts := fromAlts.push (← `(matchAltExpr| | .nil h => absurd h (by decide)))
+  fromAlts := fromAlts.push (← `(matchAltExpr| | .node ⟨_ + $(quote records), h⟩ _ _ =>
+    absurd h $outOfRange))
+  rightCases := rightCases.push (← `(matchAltExpr| | ⟨_ + $(quote records), h⟩, _, _, _ =>
+    absurd h $outOfRange))
+  elabCommand (← `(def $flatten : $native → Verified.Tree $shape := fun value =>
+    match value with $toAlts:matchAlt*))
+  elabCommand (← `(def $unflatten : Verified.Tree $shape → $native := fun value =>
+    match value with $fromAlts:matchAlt*))
   elabCommand (← `(theorem $left (value : $native) : $unflatten ($flatten value) = value := by
-    induction value <;> simp_all [$flatten:term, $unflatten:term, List.get]))
-  elabCommand (← `(theorem $right (value : Verified.Tree $shape) : $flatten ($unflatten value) = value := by
+    induction value <;> simp_all [$flatten:term, $unflatten:term, Verified.listCell, List.get]))
+  let nilCase ← if layout.null?.isSome then `(tactic| rfl)
+    else `(tactic| exact absurd h (by decide))
+  elabCommand (← `(theorem $right (value : Verified.Tree $shape) :
+      $flatten ($unflatten value) = value := by
     induction value with
-    | nil => rfl
-    | node words children ih =>
-      simp only [$unflatten:term, $flatten:term]
-      congr 1 <;> funext i <;> fin_cases i <;> simp [ih, List.get] <;> rfl))
+    | nil h => $nilCase:tactic
+    | node r words children ih =>
+      exact match r, words, children, ih with $rightCases:matchAlt*))
   let encodeFn ← liftTermElabM do
     let type := mkConst layout.name
     let inst ← synthInstance (mkApp (mkConst ``LeanExe.Pipeline.Encode) type)
@@ -64,10 +92,8 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
   let encode := mkIdent encodeName
   elabCommand (← `(theorem $encoding (value : $native) :
       LeanExe.Pipeline.Encode.encode value = ($flatten value).toNode := by
-    induction value <;> simp_all [LeanExe.Pipeline.Encode.encode, $encode:term, $flatten:term,
-      Verified.Tree.toNode, Verified.treeSlots, Verified.listShape,
-      Verified.Reflect.reflectedTreeShape, Verified.TreeShape.words, Verified.TreeShape.children,
-      List.get]))
+    induction value <;> simp_all only [LeanExe.Pipeline.Encode.encode, $encode:term,
+      $flatten:term] <;> rfl))
 
 def prepareRecursiveTypes (names : Array Name) : CommandElabM Unit := do
   let mut types : List Name := []

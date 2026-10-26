@@ -8,29 +8,30 @@ variable {pool : Bytes.LiteralPool}
 
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
-theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape} {m : Module}
+theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
+    {r : Fin shape.records} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
-    (reuse : Option (Var Γ (.treeHeader shape)))
-    (words : Fin shape.words → Expr S Γ .word)
-    (children : Fin shape.children → Expr S Γ (.tree shape))
+    (reuse : Option (Var Γ (.treeHeader shape r)))
+    (words : Fin (shape.words r) → Expr S Γ .word)
+    (children : Fin (shape.children r) → Expr S Γ (.tree shape))
     (wordSpec : ∀ i env slots paid live,
       CodeSpec (pool := pool) m funs flags bounds fits host pv (words i) env slots paid live)
     (childSpec : ∀ i env slots paid live,
       CodeSpec (pool := pool) m funs flags bounds fits host pv (children i) env slots paid live) :
     ∀ env slots paid live,
-      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.treeNode reuse words children)
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.treeNode r reuse words children)
         env slots paid live := by
   intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom hPlace
     rest Q hTrap hNext
-  let e := Expr.treeNode reuse words children
-  let ps : List Ty := List.replicate shape.words .word ++
-    (List.replicate shape.children (.tree shape) ++ [])
+  let e := Expr.treeNode r reuse words children
+  let ps : List Ty := List.replicate (shape.words r) .word ++
+    (List.replicate (shape.children r) (.tree shape) ++ [])
   let args := treeArgs words children
   let kept := fun k => live k || optionVarUses reuse k
   let L := fieldLive args.get kept
   let cost := argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args.get env)
-  have hLen : ps.length = shape.words + shape.children := by simp [ps]
+  have hLen : ps.length = shape.words r + shape.children r := by simp [ps]
   have hIn : L 0 = fun i => live i || e.uses i := treeNode_entryLive reuse words children live
   have hEnd : L ps.length = kept := funext (fieldLive_end args.get kept)
   have hVars0 : Holds env slots (L 0) base heap store s := by rw [hIn]; exact hVars
@@ -42,7 +43,7 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape} {m : Mod
     simp only [kept, hi, Bool.true_or]
   have hSplit := dyingPot_split (store := store) (s := s) (env := env) (slots := slots)
     (paid := paid) (L 0) kept live hKept hLive
-  have hCost : cost + treeParentCost shape reuse slots live =
+  have hCost : cost + treeParentCost shape r reuse slots live =
       e.allocs funs flags bounds (slots.map Slot.mode) paid live env :=
     treeNode_fieldCost reuse words children funs flags bounds slots paid live env
   have hTypes : ∀ i : Fin ps.length, (ps.get i).width = 1 ∧ (ps.get i).types = [.i64] :=
@@ -70,10 +71,11 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape} {m : Mod
       have hf : (children i).fits funs fits env = false := by simpa using hi
       simp only [e, Expr.fits, argsAll_false (fun j => (children j).fits funs fits env) i hf,
         Bool.and_false, Bool.not_false]
-  have hWidths : ∀ i, base + shape.bindCount + max (args.get i).width (copyWidth (ps.get i)) ≤ h := by
+  have hWidths : ∀ i,
+      base + shape.bindCount r + max (args.get i).width (copyWidth (ps.get i)) ≤ h := by
     simp only [Expr.width] at hRoom
     apply treeArgs_forall (fun {t} _ (value : Expr S Γ t) =>
-      base + shape.bindCount + max value.width (copyWidth t) ≤ h) words children
+      base + shape.bindCount r + max value.width (copyWidth t) ≤ h) words children
     · intro i
       have hi := le_argsMax (fun j => (words j).width) i
       have hm := Nat.le_max_left (argsMax fun j => (words j).width)
@@ -86,12 +88,12 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape} {m : Mod
         (argsMax fun j => max (children j).width (copyWidth (.tree shape)))
       omega
   have hParentRoom : base < h := by
-    have hb : 1 ≤ shape.bindCount := by simp only [TreeShape.bindCount]; omega
+    have hb : 1 ≤ shape.bindCount r := by simp only [TreeShape.bindCount]; omega
     simp only [Expr.width] at hRoom
     omega
   have hValues : (Env.ofFn fun i => (args.get i).denote funs env) =
-      Env.prependRepeat .word shape.words (fun i => (words i).denote funs env)
-        (Env.prependRepeat (.tree shape) shape.children
+      Env.prependRepeat .word (shape.words r) (fun i => (words i).denote funs env)
+        (Env.prependRepeat (.tree shape) (shape.children r)
           (fun i => (children i).denote funs env) .nil) :=
     (Args.denote_eq_ofFn funs env args).symm.trans (treeArgs_denote funs env words children)
   have hBudget : TrapOK (!(e.fits funs fits env) || !decide (heap.Within store m
@@ -102,12 +104,13 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape} {m : Mod
   simp only [List.append_assoc]
   have hRun := fields_spec hm ps args.get L (fun i => (hTypes i).1) (fun i => (hTypes i).2)
     (fieldLive_step args.get kept) (fun i => hArgsSpec i (L (i.val + 1))) hArgsPlace hArgsD
-    (fieldBase := base + 1) (scratch := base + shape.bindCount) (by omega)
+    (fieldBase := base + 1) (scratch := base + shape.bindCount r) (by omega)
     (by rw [hLen]; simp only [TreeShape.bindCount]; omega) hWidths
     heap store s hh hpv hBase hVars0 hAt (by rw [hIn]; exact hSafe) hCap
-    (treeParentCode shape reuse slots base live ++
-      (treeStoreFields base (base + 1) (base + 1 + shape.words) 0 shape.fields ++
-        (sealRecordCode shape base shape.mask ++ (.localGet base :: rest)))) Q
+    (treeParentCode shape r reuse slots base live ++ (shape.tagStoreCode r base ++
+      (treeStoreFields base (base + 1) (base + 1 + shape.words r) shape.fieldStart
+        (shape.fields r) ++
+        (sealRecordCode (shape.width r) base (shape.mask r) ++ (.localGet base :: rest))))) Q
     (hBudget.allocPart id (fun _ hw => hw.mono (by rw [hEnd, hSplit, ← hCost]; omega)))
     (fun heap1 store1 s1 ws aFields hFrameFields holdFields hTopFields => by
       rw [hEnd] at aFields hTopFields
@@ -123,10 +126,11 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape} {m : Mod
         fun heap2 store2 s2 p hRootStep hRootFrame hRootHolds hRaw hCount hPtr hStack hOther hApart
           hTopRoot => ?_
       have holdFields2 : LocalsHold s2 (base + 1)
-          (List.replicate (shape.words + shape.children) .i64) ws := by
+          (List.replicate (shape.words r + shape.children r) .i64) ws := by
         intro k hk
-        have hType : (List.replicate (shape.words + shape.children) ValueType.i64).getD k .i64 = .i64 :=
-          by
+        have hType :
+            (List.replicate (shape.words r + shape.children r) ValueType.i64).getD k .i64 =
+              .i64 := by
             simp only [List.getD_eq_getElem?_getD, List.getElem?_replicate]
             split <;> rfl
         have hold := holdFields k hk

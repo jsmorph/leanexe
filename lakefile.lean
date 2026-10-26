@@ -38,3 +38,21 @@ lean_exe «running-sum-native» where
 lean_exe «running-sumfp-native» where
   root := `Demos.RunningSumFp.Native
   moreLinkObjs := #[`@/runningSumRead]
+
+-- The checks of the hashing transcriptions and programs on their vectors
+-- (tests/TestSupport/Hashing); not default targets.
+lean_exe «sha3-vectors» where
+  srcDir := "tests"
+  root := `TestSupport.Hashing.Sha3Vectors
+
+lean_exe «crc-vectors» where
+  srcDir := "tests"
+  root := `TestSupport.Hashing.CrcVectors
+
+lean_exe «siphash-vectors» where
+  srcDir := "tests"
+  root := `TestSupport.Hashing.SipHashVectors
+
+lean_exe «xxhash64-vectors» where
+  srcDir := "tests"
+  root := `TestSupport.Hashing.XxHash64Vectors

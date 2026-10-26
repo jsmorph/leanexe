@@ -35516,3 +35516,520 @@ Forty-eight compiler and specification functions gave `pool` the default `Bytes.
 The per-step charges remain premises.  Proving them for either running sum requires cost bounds for the stream step and its helpers, including the binary64 parser and printer, which is a separate project.  The heap model charges each allocation against `top` even when the allocator reuses a released block, so the potential covers the allocation of the whole run and grows with the input.  A host that may grant new zero-write credits at each read can make the premise unsatisfiable, because no finite potential covers its replies.
 
 An 8-thread build under leanrun's default 4 GiB `MemoryHigh` reached 94 percent full memory pressure, and a 4-thread, 9 GiB build of the large `Library` modules reached 65 percent.  I stopped both.  The builds now use three threads and a 9 GiB limit, and pressure stays near zero.  The stopped the build host job was the independent build of the original branch tip, at 10,030 of 10,710 jobs.  The final validation of the revised branch replaces it.
+## 2026-10-23: Hashing library plan
+
+The user requested a hashing library compiled with the verified compiler, with implementations designed for theorems about the emitted artifacts.  Work proceeds on the `hashing` branch, taken from `library-layout`.  All Lean commands run, reached through SSH, in a separate worktree of the host's checkout.  The local machine runs concurrent sessions and holds one machine-wide Lean slot, so no Lean command runs there.
+
+Each hash's final theorem will state that the emitted file decodes to a module whose export computes the standard's function of the message bytes without a trap.  The Wasm reasoning comes from `Prog.correctWith` through `verified_compile`, and no proof of a hash touches Wasm.  The only proof specific to a function is the Lean equality between its program and a specification.  A file theorem identifies the emitted file, as in the Bessel and decimal families.  The programs follow their specification's structure and depart from it only for representation, with one lemma for each departure.
+
+| Topic | Decision | Reason |
+|---|---|---|
+| Compiler | The verified compiler, unchanged | A review withdrew the proposed rotation and `UInt32` extensions.  A library rotation helper needs the same `BitVec` lemma as a compiled rotation.  Truncation to 32 bits preserves addition, multiplication, the bitwise operations, and small left shifts, so helpers that mask before right shifts give unconditional lemmas without a range invariant.  A native `UInt32` type will be reconsidered after measuring SHA-256 in Wasmtime. |
+| Messages | `Array UInt64` with eight bytes per word in little-endian order, and a byte count `n` | The packing matches Wasm memory and the host's `file-u64` argument, and Keccak, BLAKE2b, SipHash, and xxHash read little-endian words.  Bytes after `n` in the last word must not affect a digest.  Specifications cover whole-byte messages. |
+| Digests | Flat structures of words in the same packing, and arrays only for variable-length output | A borrowed input, scalar loop state, and a scalar result allow `aborts = false`, whose `implements` theorem excludes traps without a memory premise.  Callers of such a hash keep a zero allocation bound. |
+| Allocation | No allocation per block | The allocation bound ignores reuse, so a schedule allocated for each block would make the bound grow with message length. |
+| SHA-2 specification | A port of the `spec/` directory of fips-180-4-lean to Lean 4.34.0-rc2 | Another author wrote it as a literate transcription of FIPS 180-4, and it passes 1,415 CAVP vectors.  It pins Lean 4.29.1 and Mathlib v4.29.1, so it cannot be a Lake dependency.  Its messages are bit lists, and the theorems will convert bytes most significant bit first.  The user accepted its GPL-3.0-or-later license for research use. |
+| SHA-3 specification | A transcription of FIPS 202 at the bit level, with independent review | No standalone Lean specification of the same form was found.  SymCrypt's Aeneas-based specification remains a possible cross-check. |
+| Test vectors | Unmodified CAVP response files under `data/hashing/`, with a NOTICE | Runs need no network and read fixed inputs.  The RFC 4231 HMAC vectors go into a Lean test file. |
+
+- [x] Write the byte layer: packing, unpacking, byte swaps, and 32-bit helpers with their truncation lemmas.
+- [x] Port the SHA-2 specification and check it against the CAVP vectors.
+- [x] SHA-512, SHA-384, and SHA-512/256: program, compilation with `aborts = false`, equality proof, file theorem, cases, and the Merkle–Damgård reduction for SHA-512.
+- [x] SHA-256 and SHA-224, with a Wasmtime speed measurement for the `UInt32` decision.
+- [x] HMAC-SHA-256 and HMAC-SHA-512.
+- [x] SHA-3 and SHAKE.
+- [x] CRC-32 and CRC-32C, with equality to the polynomial remainder over GF(2).
+- [x] SipHash and xxHash64.
+
+References: [FIPS 180-4](https://csrc.nist.gov/pubs/fips/180-4/final), [FIPS 202](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf), [the CAVP secure-hashing vectors](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing), [fips-180-4-lean](https://github.com/remix7531/fips-180-4-lean), [sha2-fv](https://docs.rs/sha2-fv), and [RFC 4231](https://www.rfc-editor.org/rfc/rfc4231).
+
+## 2026-10-23: The SHA-512 family
+
+The `spec/`, `impl/`, and `equiv/` directories of fips-180-4-lean are copied into `Library/Hashing/Sha2` with a NOTICE and the GPL-3.0 license.  The transcription built unchanged under Lean 4.34 apart from its import paths.  Its two `native_decide` proofs of the SHA-512/t initial values now use `decide +kernel`, which takes 40 seconds.  Three changes were needed in the equivalence proofs.  Lean 4.34 desugars the mutable variables of a `do` block into nested `Prod` pairs instead of `MProd`, so the three tuple types that mirror the desugaring are now `Prod` types.  Two definitional checks unfolded the 80-round fold until the recursion limit: a `show` that restated a `match` on the fold, and the closing `rfl` of `congr 1`.  The proofs now abstract the fold with `generalize` and use `congrArg (addH H)`.  The whole SHA-512 part of `Equiv` builds.  In the SHA-256 part, `SHA256/Compress/Match.lean` still fails with four errors of the same kinds, which the SHA-256 step will repair.
+
+`Library/Hashing/Sha512` implements SHA-512, SHA-384, SHA-512/256, and SHA-512/224.  `paddedWord` reads each word of the padded message from the packed message, and the compression keeps a sixteen-word schedule window.  The additions follow the order of `SHS.SHA512.Impl`.  The first version used the order of FIPS 180-4, and the `ac_rfl` steps that reconciled the two orders timed out on the large terms of the round and schedule expressions.  `verified_compile` gives every export `ImplementsTables false`, so a call cannot trap and needs no memory premise.  The module is 5,588 bytes.
+
+The proof shows that the program's state after each block is the implementation's and that its digest bytes are those of `Impl.sha512`; `sha512_correct` and its companions then give the transcription's digest.  `sha512_call`, `sha384_call`, `sha512_256_call`, `sha512_224_call`, `sha512_module`, and the two file theorems depend only on `propext`, `Classical.choice`, and `Quot.sound`.  Several proof steps had to avoid definitional checks that unfold the 80-round fold or `paddedWord`: `rw` closes its goal with `rfl`, which reached the recursion limit where `simp only` with the same equation did not.  Lean's elaborator gave literals in `(x >>> 8) &&& c ||| (y <<< 8)` the type `Nat`, so the masks in `bswap` are typed bindings.
+
+The native vector test agrees with all 129 short and 128 long CAVP messages of each function, for the program and for the transcription, in 81 seconds.  The program reproduces the 100 Monte Carlo checkpoints of each function, computed by the procedure of SHAVS §6.4, and the whole test takes 347 seconds.  `tests/verified/run.sh --cases sha512` passed 405 cases, with one retained block and no allocation by the call in each.  The emitted file checks against both file theorems.
+
+- [x] Write the byte layer: packing, unpacking, byte swaps, and byte lemmas.
+- [x] Port the SHA-2 specification and check it against the CAVP vectors.
+- [x] SHA-512, SHA-384, and SHA-512/256 (and SHA-512/224): program, compilation with `aborts = false`, equality proof, file theorem, and cases.
+- [x] The Monte Carlo checkpoints of the four functions.
+- [ ] The Merkle–Damgård reduction for SHA-512.
+- [ ] The full library build and verified driver with the new module.
+
+The user updated `main` with the completed library layout, which `library-layout` also holds.  The hashing work now continues on `hashing-main`, taken from `main`, with the four hashing commits applied unchanged except for the journal's merge with the two new library-check paragraphs.  The Lean sources under the hashing work are the same as on `hashing`, so the build outputs of the worktree on the build host remain valid.  The `hashing` branch stays at its last commit.
+
+## 2026-10-23: SHA-256 and SHA-224
+
+`SHA256/Compress/Match.lean` now builds under Lean 4.34, so the whole of `Equiv` builds, including `Equiv.AxiomCheck`.  Two `convert` steps left goals that Lean 4.34 no longer closes and are now `exact` steps.  A `simp at` that made no progress and an unused fact that failed the same way are removed.  `toSpecState_implCompressFoldl` abstracts the 64-round fold with `generalize` before its final case split, the same repair as in the SHA-512 proofs, and the NOTICE lists each change.
+
+`Library/Hashing/Sha256` implements SHA-256 and SHA-224 on the verified compiler without extending it.  The program holds each 32-bit word in the low half of a `UInt64` and ignores the high half.  Truncation to 32 bits commutes with addition and the bitwise operations, so only right shifts and rotations clear the high half first, and each sigma function masks its argument once.  The SHA-512 program adds in the copied implementation's order so that its proof can equate the two directly.  The SHA-256 program adds in the order of FIPS 180-4, and its proof works on the specification's 32-bit words.  `compress_spec` shows that `compress` equals `SHS.SHA256.compress` on the low halves.  `compress_correct` and the injectivity of lifting a state to the specification's words then give equality with `Impl.compress`.  The module is 5,156 bytes, and every export has `ImplementsTables false`.
+
+`sha256_spec`, `sha224_spec`, `sha256_call`, `sha224_call`, `sha256_module`, and the two file theorems depend only on `propext`, `Classical.choice`, and `Quot.sound`.  Lean 4.34 deprecates `if_pos`, `if_neg`, `if_true`, and `if_false` in favor of `ite_eq_left`, `ite_eq_right`, `ite_true`, and `ite_false`, which have the same statements, and the SHA-256 and SHA-512 proofs now use the new names.  The copied upstream proofs keep the old names.
+
+The native vector test agrees with all 65 short and 64 long CAVP messages of each function, for the program and for the transcription, and the program reproduces the 100 Monte Carlo checkpoints of each, in 155 seconds.  `tests/verified/run.sh --cases sha256` passed 145 cases, with one retained block and no allocation by the call in each.  The emitted file checks against both file theorems.
+
+On an x86-64 machine, the Wasmtime host hashes random bytes at 49.6 MiB/s with SHA-256 and 87.5 MiB/s with SHA-512.  Each rate comes from the best of three calls on 257 MiB and on 1 MiB, whose difference removes the fixed cost of compiling the module, and every digest agrees with coreutils.  On the same files `sha256sum` reaches 1,571 MiB/s and `sha512sum` 837 MiB/s.  A SHA-256 round, with its share of loading and schedule, takes 19.2 ns, and a SHA-512 round takes 17.4 ns.  The two compressions have the same structure on 64-bit operations, so the difference of 1.8 ns bounds the cost of holding 32-bit words in 64-bit words at about a tenth of SHA-256's time.  The rest of the gap to `sha512sum`, a factor of about ten, lies elsewhere in the compiled code, and locating it needs a Wasm disassembler, which neither machine has.  The user decided from these measurements to keep the compiler without a native `UInt32` type.
+
+- [x] SHA-256 and SHA-224: program, compilation with `aborts = false`, equality proof, file theorem, vectors, and cases.
+- [x] The 32-bit helpers and their truncation lemmas.
+- [x] Measure SHA-256 in Wasmtime.
+- [x] Decide on a native `UInt32` type in the compiler.
+- [ ] The Merkle–Damgård reduction for SHA-512 and SHA-256.
+- [ ] The full library build and verified driver with the new modules.
+
+## 2026-10-23: The Merkle–Damgård reduction
+
+`Library/Hashing/MerkleDamgard.lean` proves the reduction of the plan for SHA-256 and SHA-512: two distinct messages with equal digests give two distinct pairs of a hash value and a block on which the compression function of FIPS 180-4 agrees.  The proof is generic in the word width `w` and the compression function, with the padding, parsing, and final hash value defined at width `w`.  At `w = 32` and `w = 64` these definitions unfold to the transcription's `pad`, `parse`, `sha256`, and `sha512`, so `sha256_collision` and `sha512_collision` follow by definitional unfolding, which never reaches the compression.  `sha256_bytes_collision` and `sha512_bytes_collision` restate the reduction for byte strings through the injectivity of `bytesToBitMessage`, and they apply to two calls of an export through the call theorems.  All four theorems depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+The proof splits on the message lengths.  Different lengths give different length fields and therefore different final blocks, so the last compression collides.  Equal lengths give the same number of blocks, and a fold over two lists of one length either meets a collision or runs over equal lists, which makes the padded messages and then the messages equal.  The supporting lemmas cover the number of zero bits that `find?` selects, the injectivity of `Word.fromBits` on lists of `w` bits and of a block on its `16 w` bits, and the injectivity of the length field below `2 ^ (2 w)`.
+
+- [x] The Merkle–Damgård reduction for SHA-256 and SHA-512, for bit messages and byte strings.
+- [ ] The full library build and verified driver with the new modules, which wait for memory.
+- [ ] HMAC-SHA-256 and HMAC-SHA-512.
+
+## 2026-10-23: Hashing from a prefix
+
+The user approved generalizing the SHA-256 and SHA-512 programs for HMAC, which hashes a key block followed by the message without copying them.  `paddedWord` and `loadBlock` take the byte count `len` of the length field separately from the count `n` of message bytes in `msg`.  `hashFrom` replaces `hashWith`: it starts from a given hash value and hashes the rest of a message whose first `len - n` bytes, a whole number of blocks, gave that value.  The digests call `hashFrom` with the initial value and `len = n`.  The padding lemmas now concern `pre ++ bytes msg n`, where `pre` holds `p` whole blocks, and `foldl_append` splits the implementation's fold over the padded blocks at the prefix.
+
+`foldl_append` is stated for an arbitrary function in place of the compression.  Its first version used `Impl.compress` directly, and an `rfl` and a `rw` on two folds of `Impl.compress` over different blocks unfolded the compression until the heartbeat limit.  The modules grew to 5,209 and 5,645 bytes.  The SHA-256 and SHA-512 cases pass 145 and 405, the file theorems check, and every theorem still depends only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] Generalize SHA-256 and SHA-512 to hash from a prefix of whole blocks.
+- [ ] HMAC-SHA-256 and HMAC-SHA-512: specification, program, proof, module, RFC 4231 vectors, and cases.
+
+## 2026-10-23: HMAC-SHA-256 and HMAC-SHA-512
+
+`Library/Hashing/Hmac/Spec.lean` transcribes §2.3 and Table 1 of [FIPS 198-1](https://csrc.nist.gov/pubs/fips/198-1/final) on the bit strings of the FIPS 180-4 transcription.  `keyBlock` is steps 1 to 3 and `hmac` steps 4 to 9.  The standard counts the block size `B` and the digest length `L` in bytes, and the transcription counts `L` in bits, so the zeros after a hashed key number `8 B - L` bits.  The transcription's SHA-256 and SHA-512 take a proof that the message is below the length limit, so `Spec.sha256` and `Spec.sha512` give zero outside the limit, which the theorems' hypotheses exclude.
+
+The program forms `K_0` as one block of sixteen words.  A key longer than a block is hashed in place by `hashFrom`, and a shorter key is read a word at a time, with the last partial word masked.  The inner hash compresses `K_0 ⊕ ipad` and continues with the message through `hashFrom`, whose length field counts the key block.  The outer hash compresses `K_0 ⊕ opad` and one block that holds the inner digest, `0x80`, and the bit length, 768 or 1,536.  No call allocates.  The reflector names a module's exports and theorems by the last component of each definition's name, and the SHA-256 and SHA-512 programs share names such as `compress` and `hashFrom`, so `Compiled.lean` defines two programs, `compiled256` and `compiled512`, and two modules.  They are 6,502 and 6,299 bytes.
+
+The proof goes through `implHmac256` and `implHmac512`, HMAC built on the copied implementations on byte strings.  `implHmac256_spec` and `implHmac512_spec` equate their digests with the transcription on the bits, using the bit laws of `Bits.lean` and `sha256_correct` and `sha512_correct`.  `hmacSha256_bytes` and `hmacSha512_bytes` equate the program's digest bytes with those of `implHmac256` and `implHmac512`.  The key block is `K_0` word by word, the inner hash value follows from `hashFrom_toVec32` or `hashFrom_toVec` with the prefix `K_0 ⊕ ipad`, and the outer hash value from `foldl_append` with the prefix `K_0 ⊕ opad` and the padded block of the digest.  `Bytes.lean` states the call theorems with one entry lemma for a module, a table, and two borrowed arrays.  `hmacSha256_call`, `hmacSha512_call`, `hmacSha256_module`, `hmacSha512_module`, and the four file theorems depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+Two proof steps needed repair.  The generalized `foldl_append` counts the blocks of an arbitrary suffix as `blockCount data.size`, and `simp` cannot rewrite that count in `Nat.fold`, whose function's type depends on it, so `hashFrom_iv` rewrites it with `rw`.  `List.foldl_concat` does not exist in Lean 4.34, and `List.foldl_append` gives the step instead.
+
+The build of the root module `Library` would have failed.  The SHA-256 and SHA-512 compression proofs each defined `Library.Hashing.Words.Words16.get`, and Lean rejects an environment that imports a name twice.  Each family's own build succeeded, the error appeared only where both are imported, and the earlier full library build was stopped before it reached the root.  A probe that imports `Sha256.Bytes` and `Sha512.Bytes` reproduced the error.  `Words16.get` and its lemmas are now defined once in `Words/Proof.lean`, and the SHA-512 window proof splits on the index where it relied on the old definition.
+
+The native test of `HmacVectors.lean` agrees with the seven cases of [RFC 4231](https://www.rfc-editor.org/rfc/rfc4231) §4 for the programs and the transcription, and the programs agree with the transcription on 1,595 pairs of key and message for each function, in 32 seconds.  `tests/verified/run.sh --cases hmac_sha256` and `--cases hmac_sha512` each passed 136 cases, with two retained blocks and no allocation by the call in each.  Both emitted files check against their file theorems.
+
+- [x] HMAC-SHA-256 and HMAC-SHA-512: specification, program, proof, modules, RFC 4231 vectors, and cases.
+- [x] Define `Words16.get` once.
+- [ ] The full library build and verified driver with the new modules.
+
+## 2026-10-23: Regular expressions: plan and decisions
+
+The user asked for a design for regular expressions, starting simple with a compiler and a machine.  A research agent proposed an untrusted compiler that runs at elaboration time and builds a DFA of at most 256 states from Brzozowski derivatives, normalized as in Owens, Reppy, and Turon, [*Regular-expression derivatives re-examined*](https://doi.org/10.1017/S0956796808007090), JFP 19(2), 2009, with a regex label on each state.  The kernel checks a certificate of the DFA with `decide +kernel`, against a checker whose soundness is proved once.  The machine `matchWith T msg n` is a Wasm loop that reads one table entry per byte, with the table packed eight entries per word, and it gets `ImplementsTables false`.  The specification is Mathlib's `RegularExpression UInt8` with `matches'`, reached through a six-constructor `Re` with byte classes, and matching is anchored to the whole input.
+
+The review found that kernel time is the main unknown and must be measured first.  A byte class may be better represented as one `Nat` below `2 ^ 256` than as four words, byte classes may belong in the first step, and a shared call-theorem layer would serve hashing, HMAC, and regexes.  Two of the agent's claims are unverified: a module size limit near 90 KB from the nesting limit of 100,000, and a restriction of the dialect on recursive types.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Location | `Library/Regex` on a branch `regex` taken from `hashing-main` after the HMAC commit | The branch uses the packed-byte modules and the two-array call lemma, and it rebases onto `main` after the hashing work merges. |
+| Byte module | Move `bytes`, `byteAt`, and their lemmas from `Library/Hashing/Words` to a neutral module in a separate commit on `hashing-main` before the branch | Regexes then depend on a byte module rather than on the hashing library.  Only proofs and tests use the definitions, so the emitted modules do not change. |
+| Test reference | Python's `re`, with `re.fullmatch` on byte patterns and `re.DOTALL`, besides Mathlib's `rmatch` | It needs no new dependency, and for patterns without backreferences or lookaround its anchored matches are regular-language membership.  RE2 would be a new dependency. |
+| First step | Three probes, before SHA-3 | The probes measure the kernel time of a certificate of about 10, 50, and 200 states, the compile time and size of a table of 256 states by 256 bytes in 8,192 words, and whether the dialect accepts the recursive `Re` type. |
+
+- [x] Move the packed-byte definitions and lemmas to a neutral module.
+- The probes and the certificate design were dropped for runtime patterns, as the next entry records.
+
+## 2026-10-23: Regular expressions with runtime patterns
+
+The user decided that patterns arrive at run time from the start.  One theorem then covers every pattern: for every pattern and input, the module answers true exactly when the input is in the pattern's language.  The regex compiler and the matcher are Lean functions compiled by the verified compiler, so nothing is evaluated in the kernel for a pattern, no table is a constant of a module, and the certificate, its checker, and the two probes are no longer needed.  The user also asked whether the compiler should gain general tagged recursive types, which a compiler based on derivatives would need for regex trees in Wasm.  A research agent is assessing that extension, and the regex work does not wait for it.
+
+The design uses the position automaton of McNaughton and Yamada (1960) and Glushkov (1961), which needs no new regex terms at run time and fits the dialect as it stands.  Each byte class of the pattern is a position, numbered from the left, and a state is a set of positions held in one `UInt64`.  One loop over a postfix pattern array, with a stack of three words per entry, computes each subpattern's empty-match flag and first and last sets and fills a follow table of 64 words.  A mask of 256 words gives the positions whose class contains each byte, and a table of 8 by 256 words gives the union of follow sets eight bits of the state at a time.  The match loop takes about ten word operations per input byte, and an export borrows the pattern and the input as HMAC borrows its key and message.
+
+The proof has five parts: a specification of regexes and their languages on Mathlib's `Language` or `RegularExpression`, reviewed independently; the decoding of a postfix array to a regex; the stack invariant of the compile pass, which relates it to the recursive definitions of the empty-match flag, first, last, and follow; Glushkov's theorem that the position automaton accepts the regex's language; and the bit-set loop, with lemmas that relate `UInt64` operations to finite sets.  No Lean formalization of Glushkov's theorem is known to the project to reuse.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Patterns | At run time, from the first version | One theorem covers all patterns, with no kernel evaluation per pattern. |
+| Automaton | The position automaton on bit sets | Its compile pass builds no regex terms and its states are words, so it needs no compiler change.  It has no exponential blowup of states. |
+| Input format | A postfix array of opcodes: class with four words of 256 bits, empty, epsilon, concatenation, alternation, star | It needs only a decoder.  Text syntax needs a parser and a specification of the syntax, which come later. |
+| Size | At most 63 positions, one bit being the start state | One word per state.  Multiword sets use arrays and stay in the dialect. |
+| Matching | Anchored to the whole input | Search adds the start state at every step and comes later. |
+| Tagged recursive types | Research continues, not blocking the regex work | Syntax trees and other uses would benefit. |
+
+- [x] Move the packed-byte definitions and lemmas to a neutral module.
+- [ ] Create the `regex` branch from `hashing-main`.
+- [x] Write the specification and have it reviewed independently.
+- [ ] Write the program: decoder, compile pass, masks, follow tables, and match loop.
+- [ ] Prove the compile pass, Glushkov's theorem, and the match loop.
+- [ ] Compile the module, test against Python's `re` and Mathlib, and write the call and file theorems.
+- [ ] Later: text syntax, search, more than 63 positions, and a cache of DFA states.
+
+## 2026-10-23: Assessment of tagged recursive types
+
+A research agent read the verified compiler's recursive-type support at the user's request, without running Lean.  Today a recursive type is `Tree shape`, with an empty constructor and one record of at most 64 fields, each a word or a child (`Verified/Tree.lean`), and `recursiveLayout?` accepts only that form (`Verified/Reflect/RecursiveLayout.lean`).  The `Node` heap model, the release runtime, and the field loads and stores are independent of the shape.  Construction, matching, copying, `NodeLayout`, and the reflector's generated conversions and match theorems depend on it.  About 45 declarations split on the type forms, and about 43 mention `treeCase`.
+
+The proposed design generalizes `Tree` in place to several constructors with the tag in slot 0 and one union layout per type, in which unused words are zero and unused children null.  Width and child mask then stay constant per type, so copy, release, header reuse, and the cost formulas keep their statements.  One nullary constructor is null and the others are records that hold only the tag.  A type with one record constructor keeps its untagged encoding, so existing modules keep their bytes.  Mutual types, children of other types, and `Option` are deferred.  The agent estimates 3,000 to 7,000 changed lines, a quarter to half of the original recursive-type phase of 38 commits and about 14,100 added lines, with an uncertainty of a factor of two or more.  The main risks are the elaboration time of generated n-way proofs and edits to the existing tree examples.
+
+For a regex compiler in Wasm built on derivatives, tagged types are not sufficient.  A table of regex labels needs arrays of trees, recursion on long concatenations meets the limit of 1,000 frames, and the allocation bound, which credits no release, could reach about a gigabyte.  These findings support the position automaton, which needs none of them.  The decisions the extension requires (layout, nullary constructors, in-place generalization, generated `Encode` instances, field types other than `UInt64`, and whether `trapFree` is required) wait until the user chooses to start it.
+
+## 2026-10-23: Tagged recursive types: decisions
+
+The user asked for recommendations on the design decisions of the assessment above, with a review before they were put to them.  An independent review of the first draft found that the journal already proposes a layout rule for user types for both compilers (the entry of the LeanExe compiler's recursive-type plan, with its corrections), that the project writes `Encode` instances by hand as trusted text, and that `release` already handles masked slots in arrays, so arrays of trees lack proofs rather than runtime support.  It also found decisions the draft omitted: tag values, a type with no nullary constructor, the fields a branch binds, host formats, and a test of byte identity.  The draft's union layout and generated `Encode` instances were withdrawn.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Layout | The journal's rule: a record per constructor with that constructor's fields in declaration order, preceded by a tag slot holding the constructor index when more than one constructor is a record | One `Encode` instance serves both compilers, records carry no padding, and types with one record constructor keep their bytes.  The copy loop must look up each record's width and mask from its tag, and its proofs must be generalized. |
+| Constructors without fields | The first in declaration order is null, and each other one is a record of one slot holding its tag | Immediate values would change `release`, which every module contains, and the shared `Node` model.  A type with no such constructor has every value as a record. |
+| Compiler types | Generalize `TreeShape`, `Tree`, and `Ty.tree` in place, with a typed `Tree` whose constructors carry exactly their own fields | One code path.  A padded typed tree would admit invalid tags and break the inverse law of recursive parameters.  About 27 files and the tree examples change. |
+| `Encode` | Written by the user and checked by the reflector, as today | The encoding enters the meaning of every theorem about the type.  A deriving command may come later. |
+| Guarantees | The same as today's recursive types: `implements`, bounds, frames, tail theorems, and `trapFree` where they apply | The bound formula is unchanged.  The node count includes tag-only records, and a branch binds only its constructor's fields. |
+| Scope | `UInt64` fields and children, one-level patterns, and a chain of tests on the null pointer and then the tag | Arrays of trees, children of other recursive types, mutual and nested types, `Option`, and other field types come later. |
+| Host format | One self-describing preorder format for any record tree, with expected text computed from `Encode` in native Lean | One reader and printer serves every type and compares the encoding the theorems use.  The `chain-u64` and `tree-u64` formats stay. |
+
+Acceptance requires every existing module to emit identical bytes and every existing theorem to check.  No tool compares emitted modules across versions, so the work begins with one.  The effort exceeds the assessment's estimate of 3,000 to 7,000 changed lines by the generalization of the copy proofs, which has not been measured.
+
+- [ ] Branch `tagged-types` from `main`, in a worktree.
+- [ ] A script that emits every module of `tests/verified/modules.txt` and compares the bytes with a baseline from `main`.
+- [ ] A design note for the generalized `TreeShape` and `Tree` and the reflector's layout check, reviewed before code.
+
+## 2026-10-23: Packed bytes
+
+`byteOf`, `byteAt`, `bytes`, and the lemmas `bytes_size`, `bytes_get!`, and `byteAt_eq` moved from `Library/Hashing/Words` to `Library/Bytes/Packed.lean`, in the namespace `Library.Bytes`, so that the regex library can state its input as the hash functions do without importing them.  `Words/Bytes.lean` keeps the digest views, and the hashing files open `Library.Bytes`.  Only proofs and statements use the moved definitions, and the four hashing modules pass their 145, 405, 136, and 136 cases, with their file theorems checking against the emitted files.  The full library build was stopped at job 9,912 of 10,242 to free the build host for these checks, and it resumes later.
+
+## 2026-10-23: Tagged recursive types: design
+
+The user chose to extend the verified compiler to recursive types with several constructors.  The decisions entry of the same date in the journal of `hashing-main`, which this branch does not contain until the branches merge, records the choices: per-constructor records under the journal's layout rule, the first constructor without fields as null and any other one as a one-slot tag record, an in-place generalization, hand-written `Encode` instances, the guarantees of today's recursive types, a first scope of word and child fields with one-level patterns, and a generic host format.  An independent review of the first version of this note found that abbreviations cannot replace constructors in `cases`, `induction`, and `match`, that headers and contexts must be indexed by record constructor, and that the copy plan omitted the loop bound, the restore, the scratch locals, and the copy budget.  This version incorporates its findings and the user's choice of a typed tree with two constructors.
+
+### Shapes and typed trees
+
+`TreeShape` becomes a list of constructors, each a list of field kinds in declaration order, `false` for a word and `true` for a child.  The null constructor is the first constructor without fields, if there is one, and the record constructors are the others, numbered by `Fin shape.records` in declaration order.  The type is tagged when it has more than one record constructor.  The slots of record constructor `r` are a tag word holding `r`'s constructor index when the type is tagged, followed by `r`'s fields, and `width r` and `mask r` are their length and child mask.  The shape carries three invariants: every record has between 1 and 64 slots, some constructor has no child fields, and some constructor has a child field.  The second gives every type a default value and rejects empty types such as `a (t : T) | b (x : UInt64) (t : T)`.  Today's shapes are two-constructor shapes with one untagged record constructor whose slots are today's fields.
+
+`Tree shape` keeps two constructors: `nil (h : shape.hasNull = true)` and `node (r : Fin shape.records) (words : Fin (shape.words r) → UInt64) (children : Fin (shape.children r) → Tree shape)`.  Proofs of `h` are equal, so every typed tree corresponds to exactly one native value, and the inverse laws that recursive parameters need hold.  Every existing `cases`, `induction`, and `match` keeps its `nil` and `node` alternatives, and the `node` alternative gains `r`.  `Tree.toNode` gives null for `nil` and a record of `r`'s slots for `node`.  About 118 files under `Verified/` use quantities derived from the shape, and about 50 of them contain tree patterns or terms.  Each of them changes, because each derived quantity gains a record-constructor argument.
+
+### Source language
+
+| Form | Today | Generalized |
+|---|---|---|
+| Header type | `Ty.treeHeader shape` | `Ty.treeHeader shape r`, the header of a matched owned record of record constructor `r` |
+| Null construction | `treeNil shape` | `treeNil shape h`, of width 0 and cost 0, compiled to the word 0 |
+| Record construction | `treeNode reuse words children` | `treeNode r reuse words children`, where `reuse` names a header of the same record constructor |
+| Match | `treeCase x empty node` | `treeCase x empty nodes`, with `empty : shape.hasNull = true → Expr S Γ t` and `nodes : (r : Fin shape.records) → Expr S (shape.context r Γ) t` |
+| Node context | `treeHeader :: words ++ children ++ Γ` | `treeHeader shape r :: replicate (words r) word ++ replicate (children r) (tree shape) ++ Γ` |
+| Tail body | `TailBody.treeCase x empty node` | The same two arguments |
+
+The empty branch is a function of the proof that the shape has a null constructor, so a shape without one needs no expression for it.  `Expr.mode` joins the modes of the branches.  `Env.treeFields`, `Renaming.treeFields`, `TreeShape.slots`, `TreeShape.modes`, and the shifts of the paid and live sets take the record constructor.  `Expr` already holds a family of subterms whose types vary by index, the arguments of `call`, and the structural functions over `Expr` treat them through `argsAny` and `argsMask`, so a family of branches fits the same pattern.  Reuse of a wider header for a narrower constructor needs a capacity argument and is left for later.
+
+### Code and bytes
+
+A record construction allocates `8 * width r` bytes or reuses the header, stores the tag when the type is tagged, stores the fields after it, and writes kind 1, `width r`, and `mask r`.  A match tests the pointer for null when the shape has a null constructor, and the null branch stays the `then` arm of that test.  When the type is tagged, the code loads slot 0 through the variable's local, tests the tag against the record constructors in order, and runs the last record constructor's branch untested.  Each branch then performs, as today, its releases, the variable's code, its field loads from the slots after the tag, and, for an owned root, the clearing of the mask word.  A borrowed record guarantees its slots, so slot 0 holds the tag in both modes.  `release` is unchanged, since it reads each record's header.
+
+An untagged shape produces today's bytes under these conditions, which the implementation must keep: the null construction has width 0; a single record constructor gets no tag test; the order of releases, the variable's code, field loads, and the mask store is unchanged; untagged fields start at slot 0; the null branch is the `then` arm whichever constructor is declared first; and the reflector's choice of modes and reuse computes the same values.  `tests/verified/emit-modules.sh` checks the result for every module of `tests/verified/modules.txt`, which lists every emitted module.  Equal bytes say nothing about the proofs, so acceptance also requires the full build, `tests/verified/run.sh` with its file theorems, and a comparison of the kernel time of the byte theorems.
+
+The copy loop keeps its structure and its six scratch locals.  During a copy the destination's header holds the parent link, the source pointer, and the next slot index, and its width word is the one free header word.  For a tagged type, the copy reads the tag from the source's slot 0 before it allocates, selects the width with a chain of tests, and stores it in the destination's width word, which the loop bound then reads.  A slot test selects the mask by a chain of tests on the tag reloaded from the source's slot 0, and the restore takes the tag from the destination's slot 0, because it overwrites the source pointer before it writes the width and mask.  For an untagged type the code is today's, with the single record constructor's constants.
+
+### Proofs
+
+`NodeLayout shape` holds for null when the shape has a null constructor, and for a record whose length and mask are those of some record constructor `r`, whose slot 0 holds `r`'s index when the type is tagged, and whose children satisfy `NodeLayout shape`.  The construction lemmas take the record constructor.  The match proof gains the tag tests, whose nested conditionals shift the labels of each branch's tail code.  The header lemmas, `treeHeaderCopyCode`, and `Ty.copyCost` take `width r`.  `RecordStorage` takes each record's width, and the copy proof replaces one uniform cost times the record count by a budget per record.  The bound of a record construction is `allocCost (8 * width r)`, and the cost of a copy sums `48 + 8 * width r` over the records, tag records included.  `Prog.correctWith` keeps its statement.
+
+### Reflector
+
+`recursiveLayout?` accepts a type without parameters or indices that is neither mutual nor nested, whose fields are `UInt64` or the type, and whose shape meets the invariants.  It builds the shape in declaration order and generates the conversions, the inverse laws, and the proof that the user's `Encode` instance agrees with the layout rule.  A match reduces Lean's matcher at each constructor, as `treeMatcherCases` does today for two, and collects the branches in a typed list like `Args`, since their contexts differ.  A wildcard alternative becomes one branch for each constructor it covers, which duplicates its code, and a nested pattern is rejected.  `treeMatcherCases` does not substitute the discriminant into the reduced alternatives, while `reflectDataMatch` does, and the generalization adds that substitution so that a wildcard branch that names the discriminant reuses its variable.  Each match level costs `bindCount r + 6` of the 32 positions that a depth-taking function may use, which the reflector reports when exceeded.  The special cases for `listShape` stay.
+
+### Other compiler, host, tests, and documents
+
+The LeanExe compiler accepts exactly two constructors with one record constructor and treats a constructor without fields as null, so the layout rule agrees with it on every type it accepts, and it is unchanged.  The Wasmtime host keeps `chain-u64` and `tree-u64` and gains one format for any tree of records: `.` for null, and otherwise the width and mask followed by the slots, with a child slot written as a tree.  It checks each result record's header against them, and native Lean computes the expected text from the value's `Encode` instance.  A new example compiles a type with several constructors, a tag record among them, with construction, matching, recursion, copying, and release, and its cases compare Wasmtime with native Lean.  The manual's type table, its section on recursive types, and its restrictions describe the new form.
+
+- [x] A script that emits every module and compares the bytes with a baseline.
+- [x] Review the design, and revise it from the review.
+- [x] Write the baseline from `main`.
+- [x] Generalize `TreeShape`, `Tree`, `toNode`, and `NodeLayout`.
+- [x] Generalize the source forms, the code generators, and their proofs.
+- [x] Generalize the copy loop and its proof.
+- [x] Generalize the reflector.
+- [x] Add the host format, the example, and its cases, and update the manual.
+
+## 2026-10-24: Tagged recursive types: the port so far
+
+The port follows the design above, with six choices made while writing the proofs.  `shapeValid` also requires fewer than `2^64` constructors, so that every constructor index fits in the tag word and the tags of distinct record constructors differ.  `treeCopyBegin` stores the width word before the parent link, the source pointer, and the next slot index, so that the code reads the source's tag before any header write.  An untagged shape emits no width store, and its bytes are unchanged.  `RecordStorage` takes a width, and `CopyRecord.Holds` uses the record's own slot count, with a field that for a tagged shape the width word holds it, so the copy invariant needs no record constructor.  The copy budget is `CopyWork.cost`, the sum of `allocCost (8 * w)` over the records that remain, with `nodeCopyCost` and `Tree.copyCost` for a whole tree and `Tree.copyCost_eq` between them.  `NodeLayout` holds for null in every shape, a weaker condition than the design states, since the copy handles null the same way in every shape.  `TreeShape.fieldStart` and `tagStoreCode` moved from `Compile.lean` to `TreeFieldsCode.lean`, so that the assembly proofs can use them.
+
+`TreeSelect.lean` holds what the tag tests share.  `PushesWord` states that code pushes one word and changes nothing else, `chainPick` gives the entry that a chain of tests selects, and `TreeShape.chainPick_tag` shows that a chain over `tagPairs` selects the entry of record constructor `r` when the tested word is `r`'s tag, which needs the bound on the number of constructors.  `NodeBorrowed.tag` and `SlotsOwned.tag` read the tag from slot 0, and `RecordStorage.readSlot_write` shows that header writes leave slot 0 unchanged.
+
+The proofs of the compiler compile with the standard axioms through `TailCode`, including the match proofs, `ExprCorrect`, the list fold, and `TailBody.code_spec`.  `TreeDispatch.lean` proves the chain of tag tests for a match: `RunsBranch` states that a branch's code runs to the postcondition at a label shift, and `wp_dispatchCode` and `RunsTailBranch.dispatchCode` select record constructor `r`'s branch.  The list fold proofs use `listBranch_cell` and `listShape_dispatchCode`, which reduce a list match without unfolding `listCell` in the types of the field families, since a rewrite then no longer finds the family.  A script in the session's scratch directory added the record constructor to shape quantities in each file, and each result was reviewed and corrected by hand.
+
+The reflector builds the branches of a match on a type with `n` record constructors as a chain of `Fin.cases`, typed as a family over `Fin shape.records`, and the empty branch as `absurd` when the shape has no null constructor.  The lemmas of a match, which `RecursiveMatch.lean` generates for each type, take one hypothesis per constructor.  The proof that a hand-written `Encode` instance agrees with the layout rule now uses the induction hypotheses and `rfl`, since the earlier `simp` set did not reduce the field lists of a tagged shape.  The bounds in the generated `fromTree` are proved with `decide` at closed types, since the record in the pattern is a free variable.
+
+The Wasmtime host has a format `records-u64` for any tree of records: `.` for null, and otherwise the width, the mask, and the slots, where a slot whose mask bit is set is a tree.  It checks the magic number, the count, the kind, and that the width is between 1 and 64 with no mask bit at or above it, and it prints the width and mask it reads, so that a case compares them with the `Encode` instance.  `tests/TestSupport/Records.lean` computes that text in native Lean.  The example `Verified/Examples/TaggedTypes.lean` compiles `Term`, with a null constructor and four tagged record constructors, and its cases are in `TaggedTypesCases.lean`.
+
+`verified-18.log` built all 3,927 jobs of `Verified` with no `sorry`, and the 87 targets of the module registry then built in 3,987 jobs.  `tests/verified/emit-modules.sh` found all 88 modules identical to the baseline written from `main`.  `tests/verified/run.sh --cases taggedtypes` passed all 331 cases with their allocation counts, among them an in-place `swap` that allocates nothing beyond the host's records, a `double` that copies once, and an `eval` that returns at depth 999 and traps at depth 1,000.  A pattern below the first constructor level fails with `cannot reduce the recursive match at …`, which the manual's restrictions now list.  `Term.arbitrary` in the cases recurses structurally on a count of levels, since a `match` on a numeral inside well-founded recursion reached Lean's maximum recursion depth.
+
+The profiler's cumulative kernel time, for `main` and for this branch, is 8.6 and 34.4 ms for `TreeCopy`, 532 and 442 ms for `TreeCore`, 28.8 and 29.6 s for `Lists`, 2.57 and 2.57 s for `ListRecursion`, 2.75 and 2.82 s for `ListLoops`, 3.03 and 3.03 s for `ListTail`, and 17.7 and 22.0 s for `RecursiveTypes`.  `TaggedTypes` takes 16.6 s.  In `RecursiveTypes`, 71 kernel checks exceed the profiler's 100 ms threshold, against 56 on `main`, and their sums are 17.2 and 14.3 s.  The profiler does not name the declarations, so the source of the increase is not identified.  The logs are `profile-base-*.log` and `profile-branch-*.log` under `build/tagged/`.
+
+`treeMatcherCases` still does not substitute the discriminant into a reduced alternative.  Reducing the matcher at a constructor applied to field variables binds a variable pattern that names the matched value to that constructor application, which the reflector compiles as a construction, as on `main`.  The design above adds the substitution, which needs a motive that depends on the discriminant, and it is not done.
+
+The user chose to commit the port once the full build and `tests/verified/run.sh` pass, and to add the substitution in the next commit on this branch.  The port's evidence is that every module's bytes equal the baseline, and the substitution can change the bytes of a module that names a matched value, so a separate commit keeps each byte change with its own explanation.  The substitution's proof change, a motive that depends on the matched value in the expression and tail-body paths, is then reviewable alone.
+
+- [x] Commit the port after the full build and `tests/verified/run.sh` pass.
+- [x] Measure the cost of a variable pattern that names a borrowed matched value, with a small example.
+- [x] Substitute the matched value into the reduced alternatives of `treeMatcherCases`: tried and dropped, as a later entry records.
+
+The user chose to find the source of the kernel-time increase after the port's commit and before the substitution, so that the measurement covers the port alone.  The whole-file times above do not yet meet the design's criterion, which names the kernel time of the byte theorems.  The method is Lean's `trace.profiler` option, under which `addDecl` records each kernel check above the threshold as a `Kernel` trace node named "typechecking declarations" with the declarations' names (`Lean/AddDecl.lean` in the toolchain's sources), with `Elab.async` off so that the checks run inside their commands.  Each example runs under `lake env lean` in a checkout of `main` and in one of this branch, whose imports `build/timing/kernel-timing.sh` builds first.
+
+- [x] Time each declaration's kernel check in the recursive-type examples, on `main` and on this branch.
+
+The user chose the merge order.  `hashing-main` goes to `main` first, after its open full build and `tests/verified/run.sh`, by a fast-forward of `origin/main` if `main` has not moved, which leaves `regex` on `main` without a rebase.  `tagged-types`, which is not pushed, then rebases onto the new `main` after the substitution, and its final full build, its tests, and a byte comparison against a baseline from the new `main` cover the hashing modules.  The order needs no full build beyond the two already required and rewrites no pushed branch.  Each push to `origin/main` waits for the user's instruction at the time.
+
+- [ ] Run the full build and `tests/verified/run.sh` on `hashing-main` when the build host is free.
+- [ ] Fast-forward `origin/main` to `hashing-main`, on the user's instruction.
+- [ ] Rebase `tagged-types` onto the new `main` after the substitution, and rerun the full build, the tests, and the byte comparison.
+
+The user deferred nested patterns until a program needs them.  The nested `match` form compiles today to the code that nested patterns would produce, and no current or planned program uses them.  When they are added, they follow the substitution, since a fallback alternative that names a child would otherwise rebuild the child in each constructor's copy.
+
+- [ ] Later: nested patterns, by splitting a stuck field by its constructors in `treeMatcherCases`.
+
+The user deferred the reuse of a wider header for a narrower record constructor.  The runtime records each block's capacity and `release` frees by it, and `RecordStorage` bounds the width by the capacity, so the change falls on `treeNode`'s reuse argument, `TreeHeader.Owned`, the construction proof, and the reflector's choice of header.  It saves one allocation and one release per construction that changes a matched record's constructor, and the choice between a wider header and a fresh record affects memory use, which needs its own design.
+
+- [ ] Later: reuse of a wider header for a narrower record constructor.
+
+## 2026-10-24: Softmax and cross-entropy review
+
+The user asked whether the two bugs of Barron, Gnanapragasam, and Tschannen, [*A Fix for Softmax and Cross-Entropy*](https://arxiv.org/abs/2610.31642), arXiv 2610.31642, 2026, affect our GPT implementations.  In Softmax Collapse, the denominator `1 + e^-m` that follows the shift by the largest logit rounds to 1 once the margin `m` exceeds about 16.6 in binary32 or 36.7 in binary64, so the largest entry's log-probability and its gradient `q_t − 1` become 0 while the other gradients stay positive.  In Softmax Cancellation, soft-target cross-entropy forms its gradient `q − p` from two separately rounded softmaxes, which loses precision when student and teacher logits are close and leaves a nonzero gradient when they are equal.  The paper's fixes compute the margin with a log-sum-exp that excludes the largest entry, combined by softplus, and compute `q − p` in log space with `expm1` and `log1p`.
+
+Neither bug applies.  `Demos/Gpt` and `Demos/Gpt32`, with its WGSL kernels, run inference only, and they compute no gradient, loss, log-softmax, or cross-entropy.  Their attention softmaxes compute `exp (x − max) / sum`, which gives each probability within a few rounding errors, and a largest probability of 1.0 when `e^-m` falls below the precision of 1.0 is within one unit in the last place of `1 / (1 + e^-m)`.  The collapse harms only a later subtraction from 1 or a logarithm, and the code has neither.
+
+`sampleFrom` shows the same rounding at the resolution of its random number.  The top token's weight is exactly 1, and when the other kept weights sum to less than `2^-53` the total rounds to 1, so tokens after the top token in vocabulary order are never drawn and a token before it is drawn with probability 0 or `2^-53`.  Their exact probabilities are below `2^-53`, the resolution of the number that `unitFloat` makes from one SplitMix64 step.  The binary32 browser page widens its scores to binary64 and calls the same `sampleTopK`.
+
+The closest computation to the cancellation bug is the KL divergence of the quantized GPT-2 report.  The script that computed it is neither on `main` nor on `gpt2-quantized`, so its arithmetic is unchecked.  Its smallest value is 0.000507 nats, and an estimate of the error of a KL sum from two separate log-softmaxes, the unit roundoff times the entropy, gives about `10^-6` in binary32 and `10^-15` in binary64, below the printed digits.  The GPT theorems prove bit-exact agreement between each module and its Lean source, so a bug of this kind in a source formula would pass into the module unchanged, and training code would need the paper's formulation in the source and an accuracy bound.
+
+## 2026-10-24: Lean threads on the build machines
+
+`tools/leanrun` ran every job with `LEAN_NUM_THREADS=1` and a CPU quota of one CPU, so the build host's 8 CPUs sat mostly idle for days, which the user objected to.  The runner now takes `--threads N`, or `LEANRUN_THREADS`, which sets `LEAN_NUM_THREADS=N` and a CPU quota of `N` CPUs, with 1 as the default.  Lake has no `-j` option and takes its number of parallel jobs from `LEAN_NUM_THREADS`, and each Lean process it starts uses the same value for its own tasks.
+
+The first restart of the full build used 8 threads and a 9 GiB memory limit.  The remaining modules were numerical proofs of 1 to 3 GB each, and eight at once held the scope at its memory limit with its 1 GiB of swap full: the kernel stalled its tasks about 87% of the time, most of its CPU time was system time, and the job counter stopped at 10,246 of 10,404.  With 3 threads the stall share is under 1%, about 7 GB of the machine's 11 GB stays available, and the counter advances.  The thread count for a build of the numerical library is bounded by memory, while smaller modules may take more threads.  Three threads also stalled, at 46%, when three lgamma piece modules of 3.3 to 4.3 GB each built at once in the `hashing-main` build, so the rest of that build runs with 2 threads.
+
+The user granted standing permission to stop and restart my own Lean, Lake, runner, and driver processes and the build host when a job needs different settings, with each stop reported afterwards.
+
+- [x] Add `--threads` to `tools/leanrun`, with the instructions and the manual.
+- [x] Commit the runner change separately from the port.
+
+## 2026-10-24: Kernel time by declaration
+
+The trace profiler named every kernel check above 10 ms, with one Lean thread on both sides.  Summed over those checks, `main` and this branch take 0.56 and 1.33 s for `TreeCore`, 24.85 and 25.47 s for `Lists`, 2.29 and 2.50 s for `ListRecursion`, 2.51 and 2.54 s for `ListLoops`, 2.74 and 2.97 s for `ListTail`, and 13.72 and 15.04 s for `RecursiveTypes`, while `TreeCopy` has no check above 10 ms.  `TaggedTypes` takes 11.95 s over 103 checks.  The logs are `base-*.log` and `branch-*.log` under `build/timing/`, compared by a script that joins the checks by name.
+
+In `RecursiveTypes` the increase lies in the `func_ok_k._proof_1` theorems, the per-function encoding claims that `decide +kernel` proves by evaluating the code generator, each 20 to 35% slower, and the branch has 14 more checks above the threshold.  The bytes are unchanged, so the added work is the kernel's evaluation of the generalized shape quantities for a shape with one record constructor: `recordIndices` filters the constructor list, `nullIndex` searches it, and the widths, masks, and field starts derive from them.  In `TreeCore` the definitions `foldBuild`, `foldLookup`, and `foldWord` rose from about 0.02 to about 0.2 s, since their types contain quantities such as `listShape.context listCell Γ` that the kernel reduces.  In `TaggedTypes` the largest checks are again `func_ok_k`, up to 1.13 s each.
+
+The increase is at most 10% of the checks above the threshold in every example but `TreeCore`, whose total is about a second.  Making the shape quantities cheaper to reduce, for example by structural recursion over the constructor list or by storing each record constructor's index, width, and mask in the shape, would address both sources.  That change is a separate decision.
+
+## 2026-10-24: The cost of a variable pattern that names the matched value
+
+A scratch module compiled four functions over `Term` with `verified_compile` and printed their source terms, modes, and bound equations (`build/timing/patterns.log`).  `countOr t := match t with | .zero => 7 | s => count s` compiles in each record constructor's copy as a construction of `s` from the fields that reuses the matched header, followed by the call, so its parameter is owned and its theorem takes `Moved Term`.  `countOrDirect`, the same function with `| _ => count t`, has a borrowed parameter and the bound of `count` alone.  `keepOr` (`| s => s`) and `pairOr` (`| s => .add s s`) are owned with or without the substitution: the first rebuilds in place and allocates nothing, and the second copies the rebuilt value as `.add t t` copies `t`.
+
+The cost of the current form is therefore a change of mode: a function that only reads the matched value takes its argument owned, so a caller that keeps the value copies it, and the function releases it.  The substitution removes the rebuild and lets the mode analysis see the read.
+
+## 2026-10-24: Full build and the first full test run
+
+`tools/leanrun --threads 3 --memory-high 9G --timeout 12h lake build Verified Library` completed all 10,404 jobs with exit 0 (`build/tagged/full-03.log`, after two restarts that kept the built modules), with no `sorry` warning and no mention of `sorryAx`, `Lean.ofReduceBool`, or `Lean.trustCompiler`.  The following `tests/verified/run.sh` (`run-03.log`) emitted every module and passed the GPT checks, and then the Euler step failed with "native Lean exited with an error".  `tests/modules/run.sh` runs `lean --run tests/modules/Cases.lean`, which imports the `Examples.*.Cases` modules and `Demos.Clob.Cases` of the default targets, and the checkout had built only `Verified Library`, so Lean stopped on the missing imports.  It printed that error to standard output, which the script writes to a temporary file it deletes, so the log shows no message.
+
+The prerequisite was incomplete in the driver's header and in the verified manual, which named only `lake build Verified Library`.  Both now also name `lake build`, as the LeanExe manual's full check does in its first step.  A chain builds the default targets and reruns the tests in this checkout, and then does the same for `hashing-main`, whose checkout lacked the same modules.
+
+`tools/leanrun --threads 3 lake build` then built the 4,169 jobs of the default targets with no `sorry` warning (`default-01.log`), and `tests/verified/run.sh` passed with exit 0 (`run-04.log`).  It passed 2,733 GPT cases, 3,096 Euler cases, and 226 cases of the shapes module, checked the file theorems of 22 numerical modules against their emitted files with only the three permitted axioms, passed all 30,618 verified cases with their allocation counts, and passed the native accuracy checks.  All 88 modules of the baseline from `main` are byte-identical to the modules that this run emitted, and the 89th is `taggedtypes`.
+
+## 2026-10-24: The substitution, tried and dropped
+
+`treeMatcherCases` was changed as in `reflectDataMatch`: at each record constructor it replaced the constructor application among the alternative's arguments by the matched value, under a motive that depends on that value, and kept the construction at the null constructor.  The tagged example built with it, and the scratch module of the entry above showed a trade-off.  `countOr` (`| s => count s`) became borrowed with the bound of `count` alone, while `keepOr` (`| s => s`) paid a copy of the matched value in every record case where it had rebuilt in place, and `pairOr` (`| s => .add s s`) paid two copies where it had paid one.
+
+The cost comes from the match.  `Var.code` copies an owned variable that is live after the load, so a match whose branch still uses the whole matched variable copies it and takes the copy apart.  A fix that removes the copy, a branch that uses the matched variable and none of its fields dispatching on the tag without taking the record apart, changes the match's code generation, modes, bound, and proofs, and depends on whether the slot invariants allow dead borrowed fields to point into an owned record.  The user chose to drop the substitution and keep the copy at the match.  The verified manual describes the two source forms: a variable that names the matched value rebuilds it from the fields, and a branch that names the matched variable reads it, through a copy when the variable is owned.
+
+- [ ] Later: a match whose branch uses the matched variable and none of its fields, without taking the record apart.
+
+## 2026-10-24: Rebase onto main
+
+At the user's instruction, `origin/main` moved by a fast-forward from ba4660613 to f582a2738, the head of `hashing-main` after its full build, default targets, and verified tests passed.  `tagged-types` then moved onto the new `main` with `git rebase`.  Two conflicts arose, both between additions at the same place: the journal's entries after the same day, and the `elif` branches of `tests/verified/run.sh` after `listtail`.  Both resolutions keep each side, with `main`'s journal entries first, and `modules.txt` and `Verified/Examples/Cases.lean` merged without conflict.
+
+The build checkout received the commits as a git bundle and now holds the rebased branch.  The chain there builds `Verified Library`, the default targets, and `tests/verified/run.sh`, and then compares each of the 92 modules that `main` wrote in the hashing checkout with the module of the same name, which must be identical.  The modules from before the rebase moved to `build/verified-prerebase`, so that every compared file comes from this run.
+
+The acceptance rule of the design compares the kernel time of the byte theorems, and the timing above covered only the recursive-type examples.  The same method, with the examples `Fold`, `Tail`, and `Owned`, which use no recursive type, gives 12.18 and 12.33 s over 77 checks for `Fold`, 13.12 and 13.44 s over 113 checks for `Tail`, and 15.34 and 15.50 s over 128 and 129 checks for `Owned`, on `main` and on the branch.  The increases are 1 to 2.5%, and no check changed by more than 0.05 s.  The logs are `base-Fold.log` through `branch-Owned.log` under `build/timing/`.
+
+The user chose to defer the cheaper shape quantities, the structural recursion over the constructor list or the indices, widths, and masks stored in the shape, and to merge with the cost measured above.  `recursiveLayout?` builds every shape, so the change touches only the compiler's internals.
+
+- [ ] Later: shape quantities that the kernel reduces without filtering and searching the constructor list.
+On the build host the rebased branch built `Verified Library` in 10,481 jobs with no `sorry`, the default targets in 4,169 jobs, and `tests/verified/run.sh` ended with status 0.  The Wasmtime host passed 2,733 GPT cases, 3,096 Euler cases, 226 shapes cases, and 31,440 verified cases, which are `main`'s 31,109 and the 331 of `taggedtypes`, with no failure, and the 26 file theorems hold with the permitted axioms.  All 92 modules that `main` wrote are identical, and `taggedtypes` is the 93rd of the 93 written.  The full build replayed most modules, since the checkout had built the hashing library on this branch's compiler on October 23, and it built 7, among them the hashing `Compiled` and `Bytes` modules.  The logs are under `build/tagged-rebase/` in that checkout.
+
+- [x] Full build, default targets, and verified tests of the rebased branch.
+- [x] The 92 modules of `main` identical, and `taggedtypes` the 93rd.
+
+## 2026-10-23: The regex specification
+
+`Library/Regex/Spec.lean` defines `Re`, a regular expression over bytes whose leaf is a set of bytes given as a predicate, and its language with Mathlib's `Language` operations.  `lang_eq_matches'` proves that this language is the one Mathlib's `RegularExpression` gives when each set is the sum of its bytes, and it depends only on `propext` and `Quot.sound`.  `run` and `decode` read the postfix pattern words, `positions` counts the sets, and `answer` is the result the matcher must return: 2 when the pattern does not decode, then 3 when it has more than 63 sets, then 1 or 0 for membership.  Membership is decided by Mathlib's derivative matcher through `lang_eq_matches'`, so `answer` is computable and serves as the tests' oracle.
+
+An independent review found the semantics standard and the decoder consistent with its documentation, and it corrected four statements of the docstring.  It translated decodable patterns to Python's syntax, with `(?!)` for the empty set, `(?:)` for epsilon, an escaped class for a set, `[^\x00-\xff]` for the empty set of bytes, and groups around every operand.  On 3,000 random patterns and all 781 strings of length at most 4 over five bytes, `re.fullmatch` agreed with a separate membership test on all 2,343,000 cases.  Python's parser fails at about 500 nested groups and its backtracking is exponential on some patterns, and Mathlib's `rmatch` does not simplify its derivatives, so the tests use short inputs and bounded nesting.  Because code 2 takes precedence over code 3, the compile pass must keep validating a pattern after its sets exceed 63.
+
+## 2026-10-23: The regex program
+
+`Library/Regex/Program.lean` defines `matchWith pat pn msg n`, which returns the codes of `Library.Regex.Spec.answer` for the first `pn` words of `pat` and the first `n` bytes of `msg`.  `scan` reads the pattern words once with `LeanExe.loop`, keeping a validity flag, the number of sets, the words of the current set still to read, and a stack of three words per subexpression: the empty-match flag and the first and last positions.  Concatenation and star add to the follow table of 64 words, and a set past the 63rd still counts and validates, so code 2 takes precedence over code 3 as the specification requires.  `masks` builds the 256 words of positions per byte, `steps` the 2,048 unions of follow sets for each byte of a state, and `runInput` advances the state over the input, starting from bit 0 with the follow set of position 0 set to the pattern's first positions.
+
+`tests/regex/run.sh` runs two checks.  `tests/TestSupport/Regex/Native.lean` compares `matchWith` with `answer` on 600 random pattern trees, each against all 341 strings of at most four bytes over 0, 1, 64, and 255; on 3,000 random word sequences, most of which do not decode; and on patterns of 62 to 65 and 80 sets.  `PythonCases.lean` writes 34,500 cases that `tests/regex/python_check.py` compares with `re.fullmatch` under the review's translation, and all agree.  The native check takes 55 minutes, since `lean --run` interprets `answer`'s derivative matcher.  The first Python run failed because `lean --run` printed a deprecation warning for `List.asString` on standard output, ahead of the cases.  `String.ofList` replaces it.  The generator's leaf case is a separate function, because the match on the random choice inside the recursive one exceeded the maximum recursion depth.
+
+- [x] Create the `regex` branch from `hashing-main`.
+- [x] Write the program: decoder, compile pass, masks, follow tables, and match loop.
+- [x] Test the program in native Lean against the specification and Python's `re`.
+- [ ] Prove the compile pass, Glushkov's theorem, and the match loop.
+- [ ] Compile the module and write the call and file theorems and the cases.
+
+## 2026-10-24: Glushkov's theorem
+
+`Library/Regex/Glushkov.lean` proves Glushkov's theorem for `Library.Regex.Spec.Re` with only the three standard axioms.  The positions of an expression are its sets of bytes, numbered `k + 1` to `k + r.positions` from an offset `k` in the order of the expression, which is also the order in which the postfix pattern lists them.  `First`, `Last`, `Follow`, and `Class` are predicates on positions defined by recursion on the expression, `Accepts r k p w` reads `w` from position `p` along `Follow` and `Class` and stops at a `Last` position, and `glushkov` states `w ∈ r.lang ↔ Matches r k w`: the word is empty and `r` is nullable, or its first byte is in the set of a `First` position from which `Accepts` reads the rest.
+
+The proof is an induction on the expression.  Range lemmas place every position that the predicates name between `k + 1` and `k + r.positions`, so that in `cat a b` and `alt a b` a position of one operand is no position of the other.  `accepts_cat_left` splits a run from a position of `a` into a run of `a` to a last position and a word of `b`, `accepts_cat_right` and the two `alt` lemmas reduce a run to a run in one operand, and `accepts_star` splits a run of `star a` into a run of `a` and a word of `a.lang∗`, with `kstar_cons` and `append_kstar` for the Kleene star of Mathlib's `Language`.  The proofs were checked with the runner's four threads.
+
+The rest of the proof follows the program.  The pass `scan` keeps, for the stack of expressions that `Spec.run` builds, each one's nullability and its `First` and `Last` positions as bits, with offsets that add up the positions below it, and its follow table holds `Follow` of every expression on the stack.  A lemma on sets of positions rewrites `Accepts` from a set of states as the forward step of the automaton, `{q | ∃ p ∈ S, Follow p q ∧ Class q c}`, which `runInput` computes on words with `steps` and `masks`, the start state being bit 0 with `First` as its follow set.
+
+- [x] Glushkov's theorem.
+- [x] Bit-set lemmas relating `UInt64` operations on bits 0 to 63 to sets of positions (`Library/Regex/Bits.lean`).
+- [x] The invariant of `scan` against `Spec.run`, including validity, the count, and the sets (`Library/Regex/ScanProof.lean`).
+- [x] The forward automaton (`Library/Regex/Automaton.lean`), and `masks`, `steps`, `advance`, and `runInput` (`Library/Regex/RunProof.lean`).
+- [x] `matchWith pat pn msg n = answer` on the first `pn` words and `n` bytes (`Library/Regex/Proof.lean`).
+- [x] `verified_compile` of the matcher, the call and file theorems, and the cases.
+
+`Library/Regex/Automaton.lean` proves `lang_iff_steps`: a word is in the language exactly when the states that the automaton reaches from state 0 hold a final state, a `Last` position or the start of a nullable expression.  `Library/Regex/Bits.lean` gives the bits of `|||`, `&&&`, `1 <<< p`, and the membership test `(s >>> q) &&& 1 == 1`.  `Library/Regex/RunProof.lean` proves `steps_bit`, `advance_bit`, `masks_bit`, and `runInput_bit`: the word that `runInput` returns holds the automaton's states after the first `n` bytes, under two hypotheses, that bit `q` of follow entry `p` holds `Next r p q` and that bit `q` of mask entry `c` holds `Class r 0 q c`.  `LeanExe.IR.loop_induction` carries each loop, and `bit_loop` covers the loops that add bits.  All of these depend only on the three standard axioms.  The invariant of `scan` remains, which discharges the two hypotheses and the decoding cases.
+
+## 2026-10-24: The matcher computes the specification
+
+`Library/Regex/Proof.lean` proves `matchWith_eq`: when `3 * pn` fits in a word, `matchWith pat pn msg n` equals `Spec.answer` of the words `pat[j]!` for `j < pn` and the bytes `Library.Bytes.byteAt msg i` for `i < n`.  Reads past the end of either array are zero, as in the compiled code, so the theorem needs no hypothesis on the array sizes.  It depends only on the three standard axioms, as do Glushkov's theorem and every lemma of the files below it.
+
+`Library/Regex/ScanProof.lean` carries the pass over the pattern.  `Corr pn s es` relates the program's state to the stack `es` of expressions, listed from the bottom, that `Spec.run` builds: the state is valid and between sets, its depth and count are the stack's length and number of positions, entry `e` of the program's stack holds the nullability and the `First` and `Last` positions below 64 of expression `e` at the offset of the positions below it, the follow table holds `Follow` of every expression, and the words of each position below 64 hold its set.  `step_empty`, `step_eps`, `step_set`, `step_cat`, `step_alt`, and `step_star` preserve `Corr` for each kind of word, `step_set` covering word 2 with its four words through `FillState` and `fill_step`, and `scan_run` follows the recursion of `Spec.run`: when the run returns a stack, the state holds `Corr` for it, and when the run fails, the state is invalid or still reading a set.  The final theorem discharges the two hypotheses of `runInput_bit` from `Corr` for the one-expression stack and joins it with `lang_iff_steps`.
+
+The proofs were written and checked with the runner's `--threads 4`, in a checkout of this branch with the new runner copied in.  `lake build Library.Regex.Proof` builds the six files with no warning.  Two Lean details cost iterations: `simp [Spec.run]` does not unfold `run` on a cons, which `unfold Spec.run` does, and `simp only` with `↓reduceIte` reduces the chain of literal tests in `scanStep` only with `decide := true`.
+
+## 2026-10-24: The compiled matcher
+
+`Library/Regex/Compiled.lean` compiles the matcher with `verified_compile`, and `Library/Regex/Bytes.lean` proves `matchWith_call` from `compiled.matchWith.trapFree` and `matchWith_eq`: function 8, called from a ready store with borrowed pattern and input arrays, `3 pn < 2^64`, and room for `24 pn + 21,272` bytes, returns the code of `Spec.answer` without a trap.  The arrays stay borrowed, every region of the caller's heap keeps its bytes, and the top grows by at most that number.  The reflector requires every array position to be `i.toNat` for a word `i`, so four literal positions in `matchWith` became `(k : UInt64).toNat`.  `Library/Regex/File.lean` checks the emitted `build/verified/regex.wasm`, and every theorem depends only on the three standard axioms.
+
+The first compilation listed `scanStep`, `push`, and `combine` as functions.  Their bound equations charged a block for the stack, the follow table, and the set table at every pattern word, because a record parameter of a compiled function is borrowed and an update of its arrays copies them ([the verified manual](docs/verified-manual.md), on array modes).  The bound was `(pn + 1) (24 pn + 2,728) + 18,544` bytes, which exceeds the memory cap of 4 GiB near `pn = 13,000`, and the code copied about `3 pn + 320` words per pattern word.  Marking the three helpers `@[inline]` and dropping them from the list makes the reflector unfold them into the loop of `scan`, whose state it updates in place.  The definitions and their proofs are unchanged, the scan's loop now costs nothing, and `matchWith_bound` proves the linear bound by rewriting with the bound equations.  `Compiled` builds in 34 s instead of 72 s, the module shrinks from 10,267 to 7,187 bytes, and `matchWith` moves from function 11 to function 8.
+
+`#eval compiled.matchWith.bound` is impractical: `bound` is `Func.bound` over the reflected program, so the evaluation runs the deep embedding's interpreter, and at `pn = 1` it ran for 10 minutes at 4.4 GB before I stopped it.  The bound equations give the closed form instead, as the manual describes.
+
+`tests/verified/run.sh --cases regex` passes all 280 cases in Wasmtime, whose expected codes are 137 zeros, 117 ones, 22 twos, and 4 threes.  Each case requires two retained blocks and at most seven allocations with the host's two, or five when the code is 2 or 3.  By the manual's rule, the earlier module allocated three copies at every pattern word and would exceed these limits in every case with a pattern word, but I did not run it with them.  The run used a new checkout, a separate checkout, with a copy of the hashing checkout's `.lake` and of its Wasmtime host binary, whose source `tools/wasmtime-host.c` is identical in both checkouts.  The first run failed with status 127 because the new checkout had no host binary.  The native check of `tests/regex/run.sh`, started before the `@[inline]` change, reached the script's limit of 90 minutes and ended with status 124 before it printed a result, against 55 minutes. , with the inlined helpers, the native check passed in 65 minutes: the 600 pattern trees against 341 inputs each, the 3,000 word sequences, the patterns of 62 to 65 and 80 sets, and 34,500 cases that agree with `re.fullmatch`.
+
+- [x] `Library/Regex/README.md`, with entries in `Library/README.md` and `index.md`.
+- [x] The native check with the inlined helpers.
+
+## 2026-10-25: Rebase onto main with tagged types
+
+The branch moved onto `main` after tagged recursive types merged, with the user's approval.  The conflicts were additions at the same place in this journal and in the `elif` branches of `tests/verified/run.sh`, and both resolutions keep each side.  In a separate checkout, the rebased branch built `Verified Library` in 10,491 jobs with no `sorry`, built the default targets, and passed `tests/verified/run.sh` with status 0: 31,720 verified cases, which are `main`'s 31,440 and the 280 of `regex`, and 27 file theorems with the permitted axioms.  The 93 modules that `main` wrote are identical, and `regex.wasm` has the SHA-256 it had before the rebase, so the tagged compiler emits the same matcher.  The native check did not run again, since the rebase changes neither the program nor the specification.
+
+- [x] Full build, default targets, verified tests, and module comparison of the rebased branch.
+
+## 2026-10-25: The FIPS 202 transcription
+
+The user chose SHA-3 and SHAKE as the next family of the hashing plan, on the branch `sha3` from `main`.  A search found no standards-level Lean transcription of FIPS 202.  Two related works can serve as cross-checks: Doussot's SHA-3 implementation in Lean 4 with proofs about it ([ePrint 2024/1880](https://eprint.iacr.org/2024/1880)), and the Aeneas verification of SymCrypt's SHA-3 against FIPS 202 ([arXiv 2609.15648](https://arxiv.org/abs/2609.15648)).  The standard is [FIPS 202](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf), and the vectors and their procedures are those of [the CAVP](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing) and [SHA3VS](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha3vs.pdf).
+
+`Library/Hashing/Sha3/Spec.lean` transcribes §2.3, §3 to §6, and Appendix B.1.  Strings are `List Bool`, as in the SHA-2 and HMAC transcriptions, and KECCAK-p is generic over the seven widths `b = 25 · 2^ℓ`.  The standard's `m mod n` is the integer `emod`, since θ, ρ, and pad10*1 take it of negative numbers.  The user chose the state array as a function `Fin 5 → Fin 5 → Fin w → Bool`, so that θ, π, and χ read as their algorithms' steps over all triples.  ρ separates the walk of Algorithm 2 over the lanes, `rhoSteps`, from its assignment, and `rhoSteps_table2` and `rhoSteps_lanes` check the walk against Table 2 by `decide`.  ι splits into `roundConstant`, steps 2 and 3, and `addRoundConstant`, steps 1 and 4.  The squeeze loop of Algorithm 8 takes at most `d / r + 1` passes, which reach `d ≤ len(Z)` for `0 < r` and outputs of at least `r` bits.
+
+Evaluating the transcription met Lean's compilation rule that a definition takes all its binders as arguments.  A state returned by `fun x y z => …` after a `let` recomputes the `let` at every bit, so a first version, which stored each round's state in an array inside such a function, rebuilt the array at every read, and one round did not finish in nine minutes.  The same rule made ι run Algorithm 5's register, up to 254 steps for each of seven bits, at every bit.  `keccakP` is therefore Algorithm 7 on state arrays, and `keccakPRun` holds the state between rounds as the array of its bits and computes `RC` once a round.  The `csimp` theorem `keccakP_eq_run` proves them equal and makes compiled code use `keccakPRun`.  It must precede the definitions that call `keccakP`, since a `csimp` theorem changes only code compiled after it, and placed at the end of the file it changed nothing.  A permutation then takes about 0.1 s in the executable `sha3-vectors`, against 3 s under `lean --run` for the earlier form.
+
+The bit-oriented CAVP files write a message of `Len` bits as `h2b(Msg, Len)` of Appendix B.1, least significant bit first in each byte.  SHA3VS does not state the convention, and on the SHA3-256 vectors of 2, 3, and 4 bits the transcription matches the files with `h2b` and differs from them when each byte is read most significant bit first.  The empty message gives the files' SHA3-256 and SHAKE128 values.  The data are every byte-oriented response file and the bit-oriented ShortMsg files, in `data/hashing/sha3/` with a NOTICE.
+
+An independent agent compared the transcription with the PDF and found no discrepancy.  It reproduced `hashlib`'s SHA-3 and SHAKE values on a Python copy of the definitions, the 24 round constants of KECCAK-f[1600] from `rc`, and Table 5 from `h2b`.  Its report found five docstrings that misdescribed the code, now corrected, and a coverage claim of `rhoSteps_lanes` that the lemma implied without stating, which it now states.  It also noted that step 1 of Algorithm 10 reads `0 ≤ i < 2m−1`, which omits the last digit `H_{2m−1}` that the displayed string and step 2a use, and `h2b` reads all `2m` digits.
+
+The executable `sha3-vectors` ran one process for each function, and the transcription agrees with all 12,560 vectors in 27 minutes: the ShortMsg and LongMsg files of the six functions, the VariableOut files of the two SHAKE functions, and the 8,518 bit-oriented short messages.  The LongMsg files, of up to 110,688 bits, took 17 to 27 minutes each.  The Monte Carlo files wait for the programs, which compute their 100,000 hashes per function far faster than the transcription.
+
+- [x] Transcribe FIPS 202 and review it independently.
+- [x] Check the transcription on every CAVP file in `sha3-vectors`.
+## 2026-10-25: The SHA-3 program's design
+
+A message of `n` bytes packed eight to a word in little-endian order is FIPS 202's lane order: word `i` holds string bits `64 i` to `64 i + 63`, which are lane `i = 5y + x`, so message words XOR into lanes without a byte swap, and the digest is the first lanes as words.  The user made four choices, each recommended.
+
+| Topic | Decision | Reason |
+|---|---|---|
+| State | A flat structure of 25 lanes, passed and returned by value | The hash functions allocate nothing and compile with `aborts = false`.  A probe compiled a 25-field round with the verified compiler, its `implements` theorem on the standard axioms, in 14 s, and its module ran in Wasmtime with the native result. |
+| Round constants | The permutation as 24 calls of the round function with literal constants | No table, no wrapper, and no premise that the store holds a table.  Each constant needs a `decide` check against `roundConstant 6 k`. |
+| SHAKE | Output length `d` in bytes, returned in a new `Array UInt64` of `⌈d/8⌉` words, the bytes after `d` zero | §7 of FIPS 202 allows a conforming XOF to restrict its output lengths, and every byte-oriented CAVP vector asks for whole bytes.  The squeeze fills the array in place. |
+| Digests | `Words4` for SHA3-224, with its last four bytes zero as SHA-224 has, `Words4` for SHA3-256, `Words6` for SHA3-384, and `Words8` for SHA3-512 | The SHA-2 programs' types and packing lemmas apply, and no allocation. |
+
+The user rejected the first form of the question, which buried the other three decisions in its preamble, and asked for a review.  The review also found that the recommended table of round constants was the weaker choice and that the 25-word result had not been tried.
+
+- [x] Design the lane program with the user.
+- [x] The program, its compilation, and the `sha3-vectors` check of the program, the Monte Carlo files included.
+- [x] The equality of the program with the transcription.
+
+## 2026-10-25: The SHA-3 program
+
+`Library/Hashing/Sha3/Program.lean` came from a script that computed the lanes of ρ and π from the walk of Algorithm 2 and the 24 constants from Algorithm 5's register, and `RoundProof.lean` checks both against the transcription.  The program agrees with all 4,642 byte-oriented CAVP vectors in a few seconds, among them the 100 checkpoints of each Monte Carlo test, which SHA3VS §6.2.3 and §6.3.3 define and which chain 100,000 hashes per function.  `tests/verified/run.sh --cases sha3` passes 384 cases in Wasmtime, in which a hash call keeps only the host's message and allocates nothing, a SHAKE call keeps the message and its output and allocates nothing else, and `keccakF` allocates nothing.
+
+Three versions of the round were tried.  The first, one function of 85 bindings, compiled.  The second split it into `@[inline]` helpers for the proof, and `verified_compile` then ran out of heartbeats in `isDefEq` on the unfolded structures.  The third lists the helpers as functions, whose record parameter is borrowed, and since the lanes hold no array no call copies anything; `Compiled` builds in 146 s and the module has 17,332 bytes.  The lanes' `Flat` instance lives in `Encoding.lean`, as the word structures' does, because importing `LeanExe.Pipeline.Implements` into the program made the executable `sha3-vectors` compile 365 modules of the pipeline to native code.
+
+## 2026-10-25: The SHA-3 proofs
+
+The proof has four files, and each checks in under a minute.  `RoundProof.lean` reads the lanes as a state array and proves each step function equal to its step mapping by a case on each of the 25 lanes.  One case takes 1.4 s of `simp`, so the four step lemmas raise `maxHeartbeats` to 1,000,000.  ρ uses a lemma that states Algorithm 2's offsets modulo 64, since the program rotates by 44 where the transcription subtracts 300.  The 24 constants are checked as whole lanes by `decide +kernel`, because the elaborator's `decide` reached its recursion depth from round 10 on.  Rounds 5 and 22 share a constant, as do rounds 6 and 20, so `keccakF_spec` rewrites the rounds from the last inward.
+
+`SpongeProof.lean` proves that §3.1.2 inverts §3.1.3, that `xorBlock` is step 6 of Algorithm 8, and that the absorbing loop leaves the sponge's state.  The padding took a second attempt.  The first stated the padded string's bits with the program's `UInt64` arithmetic, the regions of the string, and pad10*1's length in one proof, and `set` and `simp` rewrote the lengths into forms that no longer matched.  The proof that checks separates three lemmas: `pad101_zeros` gives the zeros of pad10*1 in closed form, `padded_of_regions` equates a message, a suffix, and pad10*1 with any bit function that agrees in three regions, and `bit_padded` gives the program's bit with the arithmetic written as `n = 8 Q + ρ` for `omega`.
+
+`Proof.lean` gives the four hash theorems, whose squeeze takes one pass.  `ShakeProof.lean` reads the squeeze as the first `d` bits of the rate prefixes of the iterated states, proves the invariant of the squeezing loop, and shows that the last word's mask keeps the first `d` bytes and zeroes the rest.  `Bytes.lean` states the six call theorems.  The hash calls need no room in the heap, and a SHAKE call needs room for one block of `⌈d/8⌉` words, which `compiled.shakeWith.bound_eq` gives as the only allocation.  `File.lean` checks the emitted module, and every theorem depends only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] Call theorems, file theorem, registry entries, README, and the index.
+On the build host the branch built `Verified Library` in 10,500 jobs with no `sorry` and the default targets, and `tests/verified/run.sh` ended with status 0: 32,104 verified cases, `main`'s 31,720 and the 384 of `sha3`, with no failure, and 28 file theorems with the permitted axioms.  The programs then agreed with the 4,642 byte-oriented vectors again.
+
+- [x] Full build, default targets, and the full `tests/verified/run.sh` on the branch.
+
+## 2026-10-25: CRC-32 and CRC-32C: plan
+
+The user asked to continue with the hashing plan's next families after SHA-3, on the branch `crc` from `main`.  [ITU-T V.42](https://www.itu.int/rec/T-REC-V.42-200203-I/en) §8.1.1.6.2 defines the 32-bit frame check sequence of CRC-32, the one that gzip ([RFC 1952](https://www.rfc-editor.org/rfc/rfc1952) §8) and PNG use, as the ones complement of the sum of `(x^k L) mod G` and `(x^32 M) mod G`.  Here `L = x^31 + … + 1`, `M` holds the `k` frame bits in transmission order, the least significant bit of each octet first by §8.1.2.2 and §8.1.2.3, and the FCS maps `x^31` to bit 1 of its first octet.  [RFC 3720](https://www.rfc-editor.org/rfc/rfc3720) §12.1 defines CRC-32C by a process with the generator `0x11EDC6F41`: complement the most significant 32 bits of `M`, multiply by `x^32`, divide by `G`, and complement the remainder.  Its Byte Rule numbers bit 0 as the most significant, so its "bit 7 of the lowest numbered byte" is that byte's least significant bit, the same order as V.42's, and Appendix B.4 gives five examples.
+
+| Topic | Decision | Reason |
+|---|---|---|
+| Transcription | Mathlib's `Polynomial (ZMod 2)` and `%ₘ`, as the standards write them, with a computable division on bit strings proved equal to `%ₘ` for the tests | The standards define the CRCs as polynomial remainders, and Mathlib's polynomials cannot be evaluated. |
+| Short messages | CRC-32C by V.42's form with `G = 0x11EDC6F41`, and a lemma that it equals RFC 3720's process for at least 32 bits | RFC 3720's first step has no meaning for fewer than 32 bits.  For `k ≥ 32` complementing the top 32 bits adds `x^(k−32) L` to `M`, which is V.42's form, and V.42's form gives 0 for the empty message, as common CRC-32C code does. |
+| Program | One 256-word table for each CRC, read through a wrapper as SHA-512 reads `K` | One table read per byte, eight times fewer steps than the bitwise method.  The entries check against eight bitwise steps by `decide`, and the module's initial store holds the tables. |
+| Interface | `crc32` and `crc32c` from 0, and `crc32Update` and `crc32cUpdate` that continue from the CRC of earlier bytes | zlib's `crc32(crc, buf, len)` convention, which lets a caller checksum in pieces, with a theorem for concatenation. |
+
+The tests compare the programs and the computable transcription on the examples of RFC 3720 Appendix B.4, the check values of the CRC catalogue for the string `123456789` (`0xCBF43926` and `0xE3069283`), Python's `zlib.crc32` for CRC-32, and the Wasmtime host.
+
+- [x] Transcription, its computable division, the equality lemmas, and an independent review.
+- [x] Programs, tables, compilation, and tests.
+- [x] Equality of the programs with the transcription, call and file theorems, and documentation.
+- [x] Full validation, then commit and fast-forward `main`.
+
+## 2026-10-25: CRC-32 and CRC-32C: results
+
+`Division.lean` defines `lfsr`, the division one bit at a time on strings of 32 bits with the coefficient of `x^31` first, and proves `lfsr_spec`: from the remainder `S` and the bits `M` it gives `(x^k S + x^32 M) mod G`.  `crc32_eq` and `crc32c_eq` follow from `add_modByMonic`, and `rfcProcess_eq` proves RFC 3720's process equal to V.42's form for at least 32 bits.  Mathlib's `ring` cannot use the characteristic, so the identities that need `p + p = 0` use `grind`, which finds `CharP (ZMod 2)[X] 2`.  The computable form gives the catalogue's check values and the five RFC 3720 examples.
+
+An independent review compared `Spec.lean` with V.42 and RFC 3720 and found the six definitions in agreement, with a Python model that follows the Lean definitions and agrees with zlib and a reflected CRC-32C on 300 random messages.  It found two misstatements in comments, which I corrected.  The bit order of RFC 3720 comes from the first step of §12.1, which makes bit 7 of the lowest numbered byte the highest coefficient, and §2.3.3 gives only the byte order and the bit values.  Neither document defines an integer for the sequence: V.42 Figure 7 weights bit 1 of the first octet as `2^31`, which gives the bit reversal of `value`, and `value` is the convention of zlib, whose bytes from the least significant are the four octets.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Program | One module `crc` with both tables, a byte loop with one table read per byte, and `byteStep` inline | The tables are 2 KiB each.  A loop over words with eight byte steps would read memory less often but adds a second loop and its proof. |
+| Update argument | `updateWith` reads the low 32 bits of the CRC argument, and the theorem assumes `crc.toNat = Spec.crc32 A` | Masking gives a defined result for every word, and the hypothesis names the bytes whose CRC continues, which zlib's interface implies. |
+| Proof | `Holds r S` reads a register as 32 bits, `poly_inj` turns the polynomial equation of a byte step into an equation of bit strings, and `decide +kernel` checks each table entry against `lfsr` | The step's proof is two remainders of degree below 32, and the loop then follows `lfsr_append` on lists. |
+| Test vectors | zlib for CRC-32 and the Linux kernel's `crc32c` through an `AF_ALG` socket for CRC-32C, written by `data/hashing/crc/generate.py` with Python's standard library | Both are implementations independent of this code, available without a new dependency.  The script checks both against the catalogue's check values and RFC 3720's examples first. |
+
+The tables sit at 4096 and 6152.  `ready_initial` needs `maxRecDepth 10000` because the second table's address unfolds the size of the first.  [The CRC catalogue](https://reveng.sourceforge.io/crc-catalogue/17plus.htm) lists CRC-32/ISO-HDLC with check `0xcbf43926` and CRC-32/ISCSI with check `0xe3069283`.
+
+| Check | Result |
+|---|---|
+| `crc-vectors` | The transcription and the programs agree on 273 messages, and the updates on six splits of each, in 370 ms. |
+| `tests/verified/run.sh --cases crc` | 270 cases pass. |
+| `Library/Hashing/Crc/File.lean` | `crc_file` and `crc_file_decode` hold for the 5,921-byte module. |
+| Axioms | The call theorems and the file theorems depend on `propext`, `Classical.choice`, and `Quot.sound`. |
+
+On the build host the branch built `Verified Library` in 10,506 jobs with no `sorry` and the default targets, and `crc-vectors` agreed on all 273 messages.  `tests/verified/run.sh` ended with status 0: 32,374 verified cases, `main`'s 32,104 and the 270 of `crc`, with no failure, and 29 file theorems with the permitted axioms.  The 23 committed files other than this journal are identical to the tested ones.
+
+## 2026-10-25: SipHash and XXH64
+
+The hashing plan's last item is SipHash and xxHash64, on the branch `siphash` from `main`.  §2 of [the SipHash paper](https://cr.yp.to/siphash/siphash-20120918.pdf) defines SipHash-c-d for every `c` and `d` on 64-bit words, and Appendix A lists the intermediate states of SipHash-2-4 for one message.  [The xxHash specification](https://github.com/Cyan4973/xxHash/blob/dev/doc/xxhash_spec.md), version 0.2.0, defines XXH64 in seven steps.  Both read input as little-endian 64-bit words, which is the library's packing, so each program reads its message words in place.  I made the decisions below by recommendation and review, without asking.
+
+| Question | Decision | Reason |
+|---|---|---|
+| SipHash variants | Transcribe SipHash-c-d for every `c` and `d`, and export SipHash-2-4 and SipHash-1-3 with the 64-bit output | SipHash-2-4 is the paper's proposal and has the reference vectors.  CPython 3.11 hashes `str` and `bytes` with SipHash-1-3 ([What's New](https://docs.python.org/3/whatsnew/3.11.html), bpo-29410).  The 128-bit output appears only in the reference implementation's README. |
+| SipHash key | Two words `k0` and `k1`, the little-endian words of the key's 16 bytes | The key packs as a message does, and the call passes two scalars instead of a second array. |
+| State | Each program uses its transcription's structure of four words, with a `Flat` instance | The proofs compare states by equality, with no conversion. |
+| Rotation | The transcriptions rotate with `BitVec.rotateLeft`, and the programs with two shifts and an OR | The transcriptions do not share the programs' helper.  One lemma for each rotation amount relates them. |
+| XXH64 loops | Both loops of the transcription take 32 or 8 bytes while that many remain, by `if`, `take`, and `drop` with well-founded recursion | The pseudocode states both as such loops, and the common form gives the two loops one proof. |
+| XXH64 tail | The program tests `n mod 8 < 4` for the lane of 4 bytes and reads the single bytes from `n - n mod 4` | Both positions are remainders of `n`, which keeps the proof of the tail to arithmetic on `n`. |
+| Shared lemmas | `Library/Bytes/LittleEndian.lean` holds the lemmas on little-endian values of bytes | SipHash and XXH64 read eight bytes as a word in the same way. |
+| SipHash vectors | `vectors.h` of [the reference implementation](https://github.com/veorq/SipHash), unmodified, Appendix A's intermediate states, and OpenSSL 3's `SIPHASH` MAC for both variants | OpenSSL's parameters `c-rounds` and `d-rounds` select the variant, and `generate.py` checks it against the reference vectors and Appendix A first. |
+| XXH64 vectors | The 8,322 entries of `XSUM_XXH64_testdata` in the xxHash repository's `tests/sanity_test_vectors.h`, extracted with the repository's BSD 2-Clause license | They cover every length to 4,160 bytes with two seeds, and the whole header is 4.5 MB.  No XXH64 tool is installed on these machines. |
+
+An independent review compared both transcriptions with their sources, with Python implementations written from the documents, and found no discrepancy in the definitions.  Its implementations reproduced Appendix A, the 64 reference vectors, and the 8,322 XXH64 vectors.  It found four comments to correct, which I corrected: the lane and accumulator numbering of `stripe`, the right shift of XXH64 that fills with zeros, the display order of step 7, and the reading of a SipHash key of another length.  The paper's PDF does not name INDOCRYPT 2012, which the reference README does, and §2 does not define `+` or `≪`, whose meanings the comment now attributes to the reference code.
+
+The proofs follow the programs' structure.  SipHash's `messageWords_eq` describes the padded string of §2 byte by byte, and XXH64's `stripes_from` and `lanes8_from` proceed by induction on the stripes or lanes that remain.  Byte extraction from a word now has three copies: `natBits_word` in the CRC proof, `input_byte` in the regex proof, and `byte_eq` in the XXH64 proof.  A later change can move one of them to `Library/Bytes/LittleEndian.lean`.
+
+- [x] SipHash transcription, programs, proofs, call and file theorems, vectors, and cases.
+- [x] XXH64 transcription, program, proof, call and file theorems, vectors, and cases.
+- [x] Full validation, then commit and fast-forward `main`.
+
+On the build host the branch built `Verified Library` in 10,519 jobs with no `sorry` and the default targets, and the vector checks agreed: `siphash-vectors` on 331 messages and `xxhash64-vectors` on 8,322.  `tests/verified/run.sh` ended with status 0: 32,806 verified cases, `main`'s 32,374, the 266 of `siphash`, and the 166 of `xxhash64`, with no failure, and 31 file theorems with the permitted axioms.  The review's comment corrections came after that run, and the affected modules then rebuilt, both vector checks agreed again, and the file theorems of both modules held.

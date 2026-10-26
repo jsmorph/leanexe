@@ -57,18 +57,25 @@ theorem Expr.covered_call {g : Sig} {func : FVar S g}
     (h : (Expr.call func args).Covered pool) : ∀ i, (args i).Covered pool :=
   literals_args_subset.mp h
 
-theorem Expr.covered_treeNode {shape : TreeShape} {reuse : Option (Var Γ (.treeHeader shape))}
-    {words : Fin shape.words → Expr S Γ .word}
-    {children : Fin shape.children → Expr S Γ (.tree shape)}
-    (h : (Expr.treeNode reuse words children).Covered pool) :
+theorem Expr.covered_treeNode {shape : TreeShape} {r : Fin shape.records}
+    {reuse : Option (Var Γ (.treeHeader shape r))}
+    {words : Fin (shape.words r) → Expr S Γ .word}
+    {children : Fin (shape.children r) → Expr S Γ (.tree shape)}
+    (h : (Expr.treeNode r reuse words children).Covered pool) :
     (∀ i, (words i).Covered pool) ∧ (∀ i, (children i).Covered pool) := by
   have parts := List.append_subset.mp h
   exact ⟨literals_args_subset.mp parts.1, literals_args_subset.mp parts.2⟩
 
 theorem Expr.covered_treeCase {shape : TreeShape} {t : Ty} {x : Var Γ (.tree shape)}
-    {empty : Expr S Γ t} {node : Expr S (shape.context Γ) t}
-    (h : (Expr.treeCase x empty node).Covered pool) : empty.Covered pool ∧ node.Covered pool :=
-  List.append_subset.mp h
+    {empty : shape.hasNull = true → Expr S Γ t}
+    {nodes : (r : Fin shape.records) → Expr S (shape.context r Γ) t}
+    (h : (Expr.treeCase x empty nodes).Covered pool) :
+    (∀ hn, (empty hn).Covered pool) ∧ ∀ r, (nodes r).Covered pool := by
+  have parts := List.append_subset.mp h
+  refine ⟨fun hn => ?_, literals_args_subset.mp parts.2⟩
+  have hEmpty := parts.1
+  rw [dif_pos hn] at hEmpty
+  exact hEmpty
 
 theorem Expr.covered_listFold {e : Elem} {captures : List Ty}
     {args : (i : Fin (ListFold.params e captures).length) →

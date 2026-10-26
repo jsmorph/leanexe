@@ -17,7 +17,7 @@ theorem CopyInv.advanceStep {shape : TreeShape} {heap0 heap : Heap}
       current.blocks store)
     (hWork : CopyWork.Step (current.work parents)
       ({ current with next := current.next + 1 }.work parents))
-    (hAllocates : (current.work parents).allocates = 0) :
+    (hCharge : (current.work parents).charge = 0) :
     CopyInv shape heap0 initial root result limit heap store'
       { current with next := current.next + 1 } parents := by
   have hKeep := h.sources.parentsKept h.step h.apart
@@ -44,7 +44,7 @@ theorem CopyInv.advanceStep {shape : TreeShape} {heap0 heap : Heap}
   · simpa only [hCopyBlocks] using hAll
   · rw [hCopyBlocks]
     exact h.apart
-  · exact hWork.allocation_bound (by rw [hAllocates]; simp) h.budget
+  · exact hWork.cost_bound (by rw [hCharge]; simp) h.budget
 
 #print axioms CopyInv.advanceStep
 

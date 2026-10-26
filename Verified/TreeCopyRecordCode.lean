@@ -10,32 +10,32 @@ theorem wp_treeCopyRecord {m : Module} (hm : Runtime m) {host : HostEnv Unit} {h
     {slots : List LeanExe.Pipeline.Slot} {rest : Program} {Q : Assertion Unit}
     (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
     (hLayout : NodeLayout shape (.record slots)) (hSource : NodeBorrowed heap store source (.record slots))
-    (hTrap : TrapOK (!decide (heap.Within store m
-      (allocCost (8 * shape.fields.length) * (Node.record slots).records))) Q)
+    (hTrap : TrapOK (!decide (heap.Within store m (nodeCopyCost (.record slots)))) Q)
     (hSrc : s.get src = some (.i64 source)) (hSrcBase : src < base)
     (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
     (hNext : ∀ heap' store' s' ptr,
       Step heap store (fun _ => True) heap' store' (Node.blocks store' ptr (.record slots)) →
       NodeOwned heap' store' ptr (.record slots) →
       (Node.blocks store' ptr (.record slots)).Pairwise regionsDisjoint → Frame base s s' →
-      heap'.top.toNat ≤ heap.top.toNat + allocCost (8 * shape.fields.length) * (Node.record slots).records →
+      heap'.top.toNat ≤ heap.top.toNat + nodeCopyCost (.record slots) →
       wp m rest Q store' { s' with values := .i64 ptr :: s.values } host) :
-    wp m (treeCopyAllocate shape base ++ treeCopyBegin base [.localGet src] [.constI64 0] ++
+    wp m (treeCopyAllocate shape src base ++
+      treeCopyBegin shape src base [.localGet src] [.constI64 0] ++
       [.localGet base, .localSet (base + 1), .block 0 0 [.loop 0 0 (treeCopyBody shape base)],
         .localGet base] ++ rest) Q store s host := by
-  have hCost : allocCost (8 * shape.fields.length) ≤
-      allocCost (8 * shape.fields.length) * (Node.record slots).records :=
-    Nat.le_mul_of_pos_right _ (by simp only [Node.records]; omega)
+  have hCost : allocCost (8 * slots.length) ≤ nodeCopyCost (.record slots) := by
+    simp only [nodeCopyCost]
+    omega
   have hHigh0 : base < s.params.length + s.locals.length := Locals.lt_total (by omega)
-  rw [List.append_assoc, List.append_assoc]
+  rw [List.append_assoc]
   refine wp_treeCopyNew hm (shape := shape) (dst := base) (input := src) (parent := none)
     (slots := slots) (rest := [.localGet base, .localSet (base + 1),
       .block 0 0 [.loop 0 0 (treeCopyBody shape base)], .localGet base] ++ rest)
     hAt hCap (hTrap.within (fun hRoom => hRoom.mono hCost)) hLayout hSource hSrc rfl
     (by omega) (by intro pos h; cases h) hLow hHigh0 ?_
   intro heap' store' ptr hNew hRecord hTop
-  have hInv := CopyInv.start (limit := heap.top.toNat + allocCost (8 * shape.fields.length) *
-    (Node.record slots).records) hSource hNew hRecord hTop (Nat.le_refl _)
+  have hInv := CopyInv.start (limit := heap.top.toNat + nodeCopyCost (.record slots)) hSource hNew
+    hRecord hTop (Nat.le_refl _)
   let sResult := setLocal s base (.i64 ptr)
   have hResult : sResult.get base = some (.i64 ptr) := Locals.get_setLocal_same hLow hHigh0
   have hFrameResult : Frame base s sResult := Frame.set hLow (by omega) (by omega)

@@ -12,7 +12,9 @@
 # checks compare the transcendental functions with references computed with Lean's integers, each
 # within the bound its docstring states, and tests/TestSupport/Numerics/FourierAccuracy.lean checks that
 # Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
-# Run `tools/leanrun --cpus auto --threads 3 --memory-high 10G --timeout 12h lake build Verified Library` first.
+# Run `tools/leanrun --timeout 60m lake build`, whose default targets include the module cases of
+# the Euler check, and `tools/leanrun --threads 3 --memory-high 10G --timeout 12h lake build Verified
+# Library` first.
 # Usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]
 set -euo pipefail
 export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
@@ -145,6 +147,33 @@ elif [ "$case_module" = "listtail" ]; then
 elif [ "$case_module" = "recursivetypes" ]; then
   cases_module=Verified.Examples.RecursiveTypesCasesMain
   cases_source=Verified/Examples/RecursiveTypesCasesMain.lean
+elif [ "$case_module" = "sha256" ]; then
+  cases_module=TestSupport.Hashing.Sha256CasesMain
+  cases_source=tests/TestSupport/Hashing/Sha256CasesMain.lean
+elif [ "$case_module" = "sha512" ]; then
+  cases_module=TestSupport.Hashing.Sha512CasesMain
+  cases_source=tests/TestSupport/Hashing/Sha512CasesMain.lean
+elif [ "$case_module" = "hmac_sha256" ] || [ "$case_module" = "hmac_sha512" ]; then
+  cases_module=TestSupport.Hashing.HmacCasesMain
+  cases_source=tests/TestSupport/Hashing/HmacCasesMain.lean
+elif [ "$case_module" = "taggedtypes" ]; then
+  cases_module=Verified.Examples.TaggedTypesCasesMain
+  cases_source=Verified/Examples/TaggedTypesCasesMain.lean
+elif [ "$case_module" = "regex" ]; then
+  cases_module=TestSupport.Regex.CasesMain
+  cases_source=tests/TestSupport/Regex/CasesMain.lean
+elif [ "$case_module" = "sha3" ]; then
+  cases_module=TestSupport.Hashing.Sha3CasesMain
+  cases_source=tests/TestSupport/Hashing/Sha3CasesMain.lean
+elif [ "$case_module" = "crc" ]; then
+  cases_module=TestSupport.Hashing.CrcCasesMain
+  cases_source=tests/TestSupport/Hashing/CrcCasesMain.lean
+elif [ "$case_module" = "siphash" ]; then
+  cases_module=TestSupport.Hashing.SipHashCasesMain
+  cases_source=tests/TestSupport/Hashing/SipHashCasesMain.lean
+elif [ "$case_module" = "xxhash64" ]; then
+  cases_module=TestSupport.Hashing.XxHash64CasesMain
+  cases_source=tests/TestSupport/Hashing/XxHash64CasesMain.lean
 fi
 tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
 cases=$(mktemp)

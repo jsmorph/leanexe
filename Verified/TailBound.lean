@@ -11,13 +11,14 @@ theorem TailBody.fits_of_depthCalls (funs : Funs S) (fits : Fits S)
   | next args =>
     intro hd env
     exact argsAll_true fun i => (args i).fits_of_depthCalls funs fits (argsAny_eq_false hd i) env
-  | treeCase x empty node he hn =>
+  | treeCase x empty nodes he hn =>
     intro hd env
     simp only [TailBody.depthCalls, Bool.or_eq_false_iff] at hd
     simp only [TailBody.fits]
     cases env.get x with
-    | nil => exact he hd.1 env
-    | node words children => exact hn hd.2 (Env.treeFields _ words children env)
+    | nil h => exact he h (by simpa only [dite_eq_left h] using hd.1) env
+    | node r words children =>
+      exact hn r (argsAny_eq_false hd.2 r) (Env.treeFields _ r words children env)
   | _ => intro hd env; simp_all [TailBody.depthCalls, TailBody.fits,
       Bool.or_eq_false_iff, Expr.fits_of_depthCalls]
 

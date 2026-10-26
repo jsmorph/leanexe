@@ -36,7 +36,8 @@ theorem nextArgs_borrowed {S : List Sig} {e : Elem} {captures : List Ty}
       exact Bool.noConfusion h
     · intro _
       let vars : Renaming captures
-          ([.elem e, .treeHeader listShape, .word, .tree listShape, .tree listShape, .elem e] ++
+          ([.elem e, .treeHeader listShape listCell, .word, .tree listShape, .tree listShape,
+            .elem e] ++
             captures) := fun x => x.suffix _
       obtain ⟨x, hx⟩ := Args.vars_get_image (S := S) captures vars k
       change ((Args.vars (S := S) captures vars).get k).mode (mode :: modes) = .borrowed
@@ -77,6 +78,11 @@ theorem next_placeArgs {S : List Sig} {e : Elem} {captures : List Ty}
     rw [he]
     exact argsAny_false _
 
+theorem argsAny_listShape (b : Fin listShape.records → Bool) : argsAny b = b listCell := by
+  change argsAny (n := 1) b = b listCell
+  simp only [argsAny, Bool.or_false]
+  rfl
+
 theorem tailBody_placeArgs {S : List Sig} {e : Elem} {captures : List Ty}
     (body : Expr S (context e captures) (.elem e)) (h : body.placeArgs = true) :
     (tailBody body).placeArgs [] (paramModes (params e captures) []) = true := by
@@ -84,7 +90,8 @@ theorem tailBody_placeArgs {S : List Sig} {e : Elem} {captures : List Ty}
   have borrowed (i : Nat) : modes.getD i .borrowed = .borrowed := paramMode_default _ i
   have root : modes.getD (Var.here : Var (params e captures) (.tree listShape)).index
       .borrowed = .borrowed := borrowed 0
-  have fields (i : Nat) : (listShape.modes .borrowed modes).getD i .borrowed = .borrowed := by
+  have fields (i : Nat) :
+      (listShape.modes listCell .borrowed modes).getD i .borrowed = .borrowed := by
     change (.borrowed :: .borrowed :: .borrowed :: modes).getD i .borrowed = .borrowed
     cases i with
     | zero => rfl
@@ -94,9 +101,15 @@ theorem tailBody_placeArgs {S : List Sig} {e : Elem} {captures : List Ty}
         | zero => rfl
         | succ i => exact borrowed i
   change (tailBody body).placeArgs [] modes = true
-  simp only [tailBody, TailBody.placeArgs, Expr.placeArgs, Bool.true_and, h, root]
+  simp only [tailBody, TailBody.placeArgs, Expr.placeArgs, dite_eq_ite, ite_self, Bool.true_and,
+    argsAny_listShape, Bool.not_not, root]
+  change (body.placeArgs && TailBody.placeArgs []
+      (body.mode (listShape.modes listCell .borrowed modes) ::
+        listShape.modes listCell .borrowed modes)
+      (TailBody.next (nextArgs (S := S) e captures).get)) = true
+  rw [h, Bool.true_and]
   exact next_placeArgs (S := S) (e := e) (captures := captures)
-    (body.mode (listShape.modes .borrowed modes)) _ fields
+    (body.mode (listShape.modes listCell .borrowed modes)) _ fields
 
 abbrev func {S : List Sig} {e : Elem} {captures : List Ty}
     (body : Expr S (context e captures) (.elem e)) (place : body.placeArgs = true) : TailFunc S :=

@@ -26,18 +26,18 @@ theorem wp_treeCopySlot {m : Module} (hm : Runtime m) {host : HostEnv Unit}
     wp m (treeCopySlot shape base ++ rest) Q store s host := by
   let copyWord := treeSlotAddress (base + 1) (base + 2) ++
     [.localGet (base + 4), .store64 0] ++ treeCopyAdvance (base + 1) (base + 2)
-  let descend := treeCopyAllocate shape (base + 5) ++
-    treeCopyBegin (base + 5) [.localGet (base + 4)] [.localGet (base + 1)] ++
+  let descend := treeCopyAllocate shape (base + 4) (base + 5) ++
+    treeCopyBegin shape (base + 4) (base + 5) [.localGet (base + 4)] [.localGet (base + 1)] ++
     [.localGet (base + 5), .localSet (base + 1)]
   change wp m (treeCopyRead base ++ treeCopyTest shape base ++
     [.iff 0 0 descend copyWord] ++ rest) Q store s host
   rw [List.append_assoc, List.append_assoc]
   refine wp_treeCopyRead h.frames.current h.step.at_ hBound hLow hHigh hLocals.current hIndex ?_
-  intro sRead hFrame hResult hCurrent hIndex' hWord hValues
+  intro sRead hFrame hResult hCurrent hIndex' hSource hWord hValues
   have hReadLocals := hLocals.ofRead hFrame hResult hCurrent hValues
   have hLowRead : sRead.params.length ≤ base := by rw [hFrame.params]; exact hLow
   have hHighRead : base + 6 ≤ sRead.positions := by rw [hFrame.positions]; exact hHigh
-  refine wp_treeCopyTest hIndex' hWord ?_
+  refine wp_treeCopyTest (h.frames.current.maskPushes h.step.at_ hSource) hIndex' hWord ?_
   rw [treeCopyCondition_spec h.frames.current hBound]
   let post : Assertion Unit := fun cont => match cont with
     | .Fallthrough store' s' => wp m rest Q store' { s' with values := sRead.values } host
@@ -73,12 +73,12 @@ theorem wp_treeCopySlot {m : Module} (hm : Runtime m) {host : HostEnv Unit}
       rw [hSlot] at hBorrow ⊢
       exact hBorrow.1
     have hWork := CopyRecord.work_advance (parents := parents) hBound hSlot
-    have hAllocates : (current.work parents).allocates = 0 := by
+    have hCharge : (current.work parents).charge = 0 := by
       unfold CopyRecord.work
       rw [List.drop_eq_getElem_cons hBound, hSlot]
       rfl
     apply wp_treeCopyAdvanceInv (rest := []) h hReadLocals hIndex' hWord hBound hValue
-      (by rw [hSlot]; rfl) hWork hAllocates
+      (by rw [hSlot]; rfl) hWork hCharge
     intro store' hInv
     exact hAfter heap store' sRead _ parents hInv hReadLocals hWork
   | child value =>
@@ -98,12 +98,12 @@ theorem wp_treeCopySlot {m : Module} (hm : Runtime m) {host : HostEnv Unit}
         rw [hSlot] at hBorrow ⊢
         exact hBorrow.1
       have hWork := CopyRecord.work_null (parents := parents) hBound hSlot
-      have hAllocates : (current.work parents).allocates = 0 := by
+      have hCharge : (current.work parents).charge = 0 := by
         unfold CopyRecord.work
         rw [List.drop_eq_getElem_cons hBound, hSlot]
         rfl
       apply wp_treeCopyAdvanceInv (rest := []) h hReadLocals hIndex' hWord hBound hValue
-        (by rw [hSlot]; rfl) hWork hAllocates
+        (by rw [hSlot]; rfl) hWork hCharge
       intro store' hInv
       exact hAfter heap store' sRead _ parents hInv hReadLocals hWork
     | record children =>
@@ -116,6 +116,7 @@ theorem wp_treeCopySlot {m : Module} (hm : Runtime m) {host : HostEnv Unit}
         | Break k _ _ => cases k <;> exact hc
         | _ => exact hc
       change wp m descend post store sRead host
+      rw [← List.append_nil descend]
       apply wp_treeCopyDescendInv hm (rest := []) (Q := post) h hReadLocals hWord hBound hSlot
         hLowRead hHighRead hCap (hTrap.imp (Q' := post) (fun _ h => h))
       intro heap' store' ptr s' hInv hVars

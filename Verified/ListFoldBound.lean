@@ -58,18 +58,23 @@ theorem body_allocs {S : List Sig} {e : Elem} {captures : List Ty}
       (paramModes (params e captures) []) (List.replicate (params e captures).length false)
       (.cons root (.cons acc captured)) =
       match root with
-      | .nil => 0
-      | .node words children => body.allocs funs flags bounds
-          (listShape.modes .borrowed (paramModes (params e captures) []))
-          (List.replicate listShape.bindCount false ++ List.replicate (params e captures).length false)
+      | .nil _ => 0
+      | .node r words children => body.allocs funs flags bounds
+          (listShape.modes listCell .borrowed (paramModes (params e captures) []))
+          (List.replicate (listShape.bindCount listCell) false ++
+            List.replicate (params e captures).length false)
           (bodyLive e captures)
-          (Env.treeFields listShape words children (.cons root (.cons acc captured))) := by
+          (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩)
+            (fun _ => children ⟨0, listShape_children_pos r⟩)
+            (.cons root (.cons acc captured))) := by
   cases root with
   | nil => simp [tailBody, TailBody.allocs, Expr.allocs, Var.cost, modeAt,
       paramMode, coerceCost, Ty.copyCost, Expr.denote, Env.get, Expr.mode, Var.index]
-  | node words children =>
+  | node r words children =>
+    obtain rfl := listShape_cell r
     rw [tailBody, TailBody.allocs]
-    simp only [Env.get]
+    simp only [Env.get, listBranch_cell]
+    rw [← listCell_words_eq words, ← listCell_children_eq children]
     rw [TailBody.allocs, next_allocs, Nat.add_zero]
     have hl : (fun i => (TailBody.next (result := .elem e)
         (nextArgs (S := S) e captures).get).uses (i + 1)) = bodyLive e captures :=
@@ -89,14 +94,18 @@ theorem body_fits {S : List Sig} {e : Elem} {captures : List Ty}
     (root : Tree listShape) (acc : e.denote) (captured : Env captures) :
     (tailBody body).fits funs fits (.cons root (.cons acc captured)) =
       match root with
-      | .nil => true
-      | .node words children => body.fits funs fits
-          (Env.treeFields listShape words children (.cons root (.cons acc captured))) := by
+      | .nil _ => true
+      | .node r words children => body.fits funs fits
+          (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩)
+            (fun _ => children ⟨0, listShape_children_pos r⟩)
+            (.cons root (.cons acc captured))) := by
   cases root with
   | nil => rfl
-  | node words children =>
+  | node r words children =>
+    obtain rfl := listShape_cell r
     rw [tailBody, TailBody.fits]
-    simp only [Env.get]
+    simp only [Env.get, listBranch_cell]
+    rw [← listCell_words_eq words, ← listCell_children_eq children]
     rw [TailBody.fits, next_fits, Bool.and_true]
 
 end ListFold

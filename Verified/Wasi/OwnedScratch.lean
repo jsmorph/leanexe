@@ -55,7 +55,7 @@ theorem owned_scratch {heap : Heap} {store : Store Unit} :
       exact block_scratch rep.base
   | .tree _, _, value, ⟨root, rfl, rep⟩, region, member =>
       node_blocks_scratch root value.toNode rep.1 region member
-  | .treeHeader _, _, _, ⟨root, rfl, rep⟩, region, member => by
+  | .treeHeader _ _, _, _, ⟨root, rfl, rep⟩, region, member => by
       obtain rfl : region = block store root := by
         simpa only [Ty.regions, Ty.blocks, List.mem_singleton] using member
       obtain ⟨_, _, header, _⟩ := rep

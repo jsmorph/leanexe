@@ -29,9 +29,10 @@ theorem wp_releaseNode {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap
   simpa using hNext heap' store' hStep hTop
 
 theorem wp_releaseHeader {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
-    {shape : TreeShape} {store : Store Unit} {s : Locals} {ptr : UInt64} {vs : List Value}
+    {shape : TreeShape} {r : Fin shape.records} {store : Store Unit} {s : Locals} {ptr : UInt64}
+    {vs : List Value}
     {rest : Program} {Q : Assertion Unit} (hAt : heap.At store)
-    (hOwned : TreeHeader.Owned shape heap store ptr)
+    (hOwned : TreeHeader.Owned shape r heap store ptr)
     (hNext : ∀ heap' store', Step heap store (fun r => regionsDisjoint r (block store ptr))
       heap' store' [] → heap'.top = heap.top →
       wp m rest Q store' { s with values := vs } host) :

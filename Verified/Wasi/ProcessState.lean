@@ -15,7 +15,7 @@ def processValue : (state : Ty) → ProcessStep state.denote → (processResultT
   | .array _, value => (value.running, value.status, value.state)
   | .bytes, value => (value.running, value.status, value.state)
   | .tree _, value => (value.running, value.status, value.state)
-  | .treeHeader _, value => (value.running, value.status, value.state)
+  | .treeHeader _ _, value => (value.running, value.status, value.state)
 
 def processNative : (state : Ty) → (processResultTy state).denote → ProcessStep state.denote
   | .elem _, value => ⟨value.1, value.2.1, value.2.2⟩
@@ -23,7 +23,7 @@ def processNative : (state : Ty) → (processResultTy state).denote → ProcessS
   | .array _, value => ⟨value.1, value.2.1, value.2.2⟩
   | .bytes, value => ⟨value.1, value.2.1, value.2.2⟩
   | .tree _, value => ⟨value.1, value.2.1, value.2.2⟩
-  | .treeHeader _, value => ⟨value.1, value.2.1, value.2.2⟩
+  | .treeHeader _ _, value => ⟨value.1, value.2.1, value.2.2⟩
 
 @[simp] theorem processNative_value (state : Ty) (value : ProcessStep state.denote) :
     processNative state (processValue state value) = value := by
@@ -75,7 +75,7 @@ theorem processValue_rep {state : Ty} {heap : Heap} {store : Store Unit}
       · rintro ⟨stateWords, same, represented⟩
         change stateWords = element.values value.state at represented
         simpa only [represented] using same
-  | pair first second | array element | bytes | tree shape | treeHeader shape =>
+  | pair first second | array element | bytes | tree shape | treeHeader shape r =>
       exact pair_control_rep
 
 theorem processValue_blocks (state : Ty) (store : Store Unit) (words : List Value)

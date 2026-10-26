@@ -18,7 +18,7 @@ theorem Ty.copyScratch_le_tree (t : Ty) : t.copyScratch ≤ treeCopyScratch := b
   | array e => change 3 ≤ 6; decide
   | bytes => change 2 ≤ 6; decide
   | tree shape => exact le_rfl
-  | treeHeader shape => change 1 ≤ 6; decide
+  | treeHeader shape r => change 1 ≤ 6; decide
   | pair a b ha hb => exact Nat.max_le.mpr ⟨ha, hb⟩
 
 namespace ListFold
@@ -36,6 +36,10 @@ theorem leafCode_var {S : List Sig} {Γ : List Ty} {t : Ty}
     (h : Nat) (x : Var Γ t) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     leafCode (S := S) h bodyCode (.var x) slots base live = x.code h slots base live := rfl
 
+theorem listShape_dispatchCode (ptr : Nat) (branch : Fin listShape.records → Program) :
+    listShape.dispatchCode ptr branch = branch listCell :=
+  rfl
+
 theorem loopCode_eq {S : List Sig} {e : Elem} {captures : List Ty}
     (body : Expr S (context e captures) (.elem e)) (h stateBase : Nat) :
     loopCode body h stateBase (fun slots base live => body.code (pool := pool) h slots base live) =
@@ -45,7 +49,8 @@ theorem loopCode_eq {S : List Sig} {e : Elem} {captures : List Ty}
         (releaseWhere (params e captures) stateSlots (fun i => !(tailBody body).usesFast i) ++
           (tailBody body).code (pool := pool) [] h stateBase resultBase stateSlots (resultBase + e.width) 1 0)
         [] []] [] []] := by
-  simp only [loopCode, TailBody.code, tailBody, TailBody.codeWith]
+  simp only [loopCode, TailBody.code, tailBody, TailBody.codeWith, listShape_dispatchCode,
+    listBranch_cell]
   simp only [nextArgs_get, leafCode_self, leafCode_var]
   rfl
 
@@ -62,10 +67,10 @@ theorem tail_width {S : List Sig} {e : Elem} {captures : List Ty}
     (tailBody body).width [] ≤ 3 + max treeCopyScratch (e.width + max body.width treeCopyScratch) := by
   have hn := next_width (S := S) (e := e) (captures := captures)
   change max (max 0 0)
-    (3 + max treeCopyScratch
+    (max (3 + max treeCopyScratch
       (e.width + max body.width
-        ((TailBody.next (result := .elem e) (nextArgs (S := S) e captures).get).width []))) ≤ _
-  rw [Nat.max_self, Nat.zero_max]
+        ((TailBody.next (result := .elem e) (nextArgs (S := S) e captures).get).width []))) 0) ≤ _
+  rw [Nat.max_self, Nat.zero_max, Nat.max_zero]
   exact Nat.add_le_add_left
     (max_le_max le_rfl (Nat.add_le_add_left (max_le_max le_rfl hn) _)) _
 
