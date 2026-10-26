@@ -71,3 +71,10 @@ root = "TestSupport.Hashing.SipHashVectors"
 name = "xxhash64-vectors"
 srcDir = "tests"
 root = "TestSupport.Hashing.XxHash64Vectors"
+
+# The differential test of the Lean copy of Clight against CompCert's reference interpreter
+# (tests/native/clight.sh); not a default target.
+[[lean_exe]]
+name = "clight-diff"
+srcDir = "tests"
+root = "TestSupport.Native.ClightDiff"
