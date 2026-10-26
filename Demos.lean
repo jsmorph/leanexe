@@ -81,5 +81,6 @@ import Demos.Gpt32.Module
 import Demos.Gpt32.Proofs
 import Demos.Gpt32.Specs
 import Demos.Slew.Flat
+import Demos.Slew.NanFree
 import Demos.Slew.Program
 import Demos.Slew.Safety

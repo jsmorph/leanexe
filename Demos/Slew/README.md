@@ -14,8 +14,10 @@ with native Lean, bit for bit, on all 852 generated plans and 1,225 `atan2` call
 The compiler's generated theorems state that the module computes `plan`.  [The safety
 section](#safety) states the theorem that every plan of status 1 keeps every cone along its
 commanded rotations, which rests on the soundness of the edge check and the static check
-([the soundness section](#soundness-of-the-checks)).  [The test section](#tests) describes the
-cases, and [the theorem section](#theorems-to-prove) lists the theorems that remain.
+([the soundness section](#soundness-of-the-checks)), and [the NaN-freedom
+section](#nan-freedom) states that every floating-point value that the planner computes from a
+validated input is finite.  [The test section](#tests) describes the cases, and [the theorem
+section](#theorems-to-prove) lists the theorems that remain.
 
 | File | Contents |
 |---|---|
@@ -38,6 +40,7 @@ cases, and [the theorem section](#theorems-to-prove) lists the theorems that rem
 | [The search](Search.lean) | The invariant of `search` and the segments of a plan as accepted edges |
 | [The output](Angle.lean) | The output's axis and angle against those of the relative quaternion |
 | [The safety theorem](Safety.lean) | `plan_safe` |
+| [NaN-freedom](NanFree.lean) | `plan_finite` |
 
 The program imports only the dialect modules and `Library.Numerics.Float64.Atan.Program`, which
 build from Lean's core library.  The representations need `LeanExe.Pipeline`, which depends on
@@ -226,6 +229,26 @@ of its input or traps when an allocation finds no memory, so the theorem applies
 of status 1 that the export returns.  The theorem concerns the commanded rotations, and the
 premise theorem below, which relates them to a flown slew, remains to be proved.
 
+## NaN-freedom
+
+[The NaN-freedom proof](NanFree.lean) `plan_finite` states that every floating-point value that
+`plan` computes from an input that passes `validInput` is finite, and so not a NaN.  It lists the
+values as the program's functions bind them: each `let` value, each operand of a comparison,
+conversion, `min`, `max`, or `abs`, each divisor, each argument of a square root, and the
+arguments and result of each call of `atan2`.  Every other operation lies inside one of these
+expressions as a sum, difference, product, or negation, and its result is finite whenever the
+expression's is.  The statement covers the static check of every node and the edge check,
+relative quaternion, angle, duration, and output axis of every pair of nodes, and it depends only
+on `propext`, `Classical.choice`, and `Quot.sound`.
+
+The duration `slewTicks` takes the square root of `θ / a`, so the output angle `2 atan2 s w`
+must not be negative.  The library's accuracy theorem for `atan2` allows a result two steps below
+a tiny positive argument, so the proof follows the library's branches instead: for a positive
+`s` and a `w` that is not negative, `atan2` returns `atan` of a quotient that is not negative, or
+a positive constant, and `atan` keeps the sign of its argument.  The internal operations of the
+library's `atan2` and `atan` lie outside the statement, and the statement concerns `plan` in
+Lean: carrying it to the module's instructions needs a statement in Talos's semantics.
+
 ## Tests
 
 The tests follow the other verified examples.  [The
@@ -285,7 +308,8 @@ The journal states each theorem and the order of the work.
 - **Compilation and execution:** the generated `compiled.plan.implements` and `trapFree` hold, and
   a constant allocation bound for validated input remains to be derived from `bound_eq`.
 - **NaN-freedom:** no floating-point operation in the evaluation of `plan` on validated input has
-  a NaN operand or result.
+  a NaN operand or result.  [The NaN-freedom section](#nan-freedom) states the proved theorem,
+  `plan_finite`, for the evaluation in Lean.
 - **Safety:** every commanded rotation of a plan, and every attitude within `1e-9` of it, satisfies
   every input cone, as a statement about real numbers.  [The safety section](#safety) states the
   proved theorem, `plan_safe`.

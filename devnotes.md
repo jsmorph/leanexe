@@ -35751,3 +35751,22 @@ Each design decision of the plan held.  The norm tests needed the most new float
 The output angle needed two conversions.  `AtanTwoTheorem.atan2_within_two` gives two steps from the nearest-even reference of `arg (w + i s)`, and `within_two_abs` turns that into `2⁻⁴⁹` for an argument in `[0, 2]` from the spacing of words below 4 and `F64NearestHalf.nearest_half`.  `angle_eq_two_arg` identifies `angle W S` with `2 arg (W + i S)`, and `arg_sub_le` bounds the change of the argument by `4 |Δy|` from the sine of the difference and Jordan's inequality.  The edge check's proof had left a NaN `s` possible.  `radicand_nonneg` shows that the computed sum of squares is never negative, from the enclosures, so `s` is finite and `atan2` receives finite arguments.
 
 `lake build Demos` passed with `Demos.Slew.Safety` imported in place of `Demos.Slew.Check`, `tools/source-layout` reports the same five programs, the link check passes.  The sampled safety check of the generator stays as a test, and removing it is a question for the user.  The remaining theorems are the premise theorem, NaN-freedom, the constant allocation bound, optimality, and the file theorem.
+
+## 2026-10-26: NaN-freedom of the slew planner
+
+The coordinator asked for the remaining theorems in the plan's order: NaN-freedom, the premise theorem, the constant allocation bound, optimality, and the file theorem, with the sampled safety check left in place until the user decides on its removal.
+
+| Question | Decision | Reason |
+|---|---|---|
+| What "every operation" means | A theorem about `plan` in Lean that lists every floating-point value the program's functions bind: each `let` value, each operand of a comparison, conversion, `min`, `max`, or `abs`, each divisor, each argument of a square root, and the arguments and result of each `atan2` call.  An operation inside one of these expressions is a sum, difference, product, or negation, and `fin_add`, `fin_sub`, and `fin_mul` make its result finite when the expression's is. | Lean has no trace of the operations a function performs, and a statement about the module's instructions needs Talos's semantics, which the plan left open.  The list follows the program text, so a reader can check it against each function. |
+| Finite or only not NaN | Finite | Every value is finite, and finiteness carries from an expression to its parts, while being not NaN does not. |
+| Which evaluations | Every node and every pair of nodes, whether or not the search evaluates them | The statement needs no model of which pairs `relax` reaches. |
+| The library's functions | The arguments and result of `atan2` are in the statement, and its internal operations and those of `atan` are not | The library proves accuracy, and a NaN-freedom proof of its internals belongs to the library. |
+
+`Demos.Slew.NanFree.plan_finite` proves the statement, with `StaticClean`, `ConeClean`, `EdgeClean`, `SegClean`, and `InputClean` mirroring `attitudeOk`, the cone loop of `edgeOk`, `edgeOk`, the segment computations (`relative`, `angleOf`, `slewTicks`, `ceilMs`, and `segmentField`), and `validInput`.  It depends on `propext`, `Classical.choice`, and `Quot.sound` alone, and the module builds in 4.1 s.  Most values come from the bounds of the edge-check proofs.  The new work was the duration: `slewTicks` takes the square root of `θ / a`, so the output angle `2 atan2 s w` must not be negative, and the library's accuracy theorem allows a result two steps below a tiny positive argument, which would be negative.  `atan2_nonneg` therefore follows the library's branch lemmas: for a positive `s` and a `w` that is not negative, `atan2` returns a positive constant or `atan` of a quotient that is not negative, and `atan_nonneg` shows from the small-argument branch and the accuracy within one step that `atan` keeps the sign of its argument.  Quotients and square roots of values that are not negative are not negative from the enclosure lemmas, with exact zeros handled from the definitions of `mul` and `div`.
+
+- [x] NaN-freedom: `plan_finite`.
+- [ ] The premise theorem.
+- [ ] The constant allocation bound.
+- [ ] Optimality.
+- [ ] The file theorem.
