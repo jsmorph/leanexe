@@ -41,14 +41,11 @@ theorem control_begin_replies {World Ghost : Type} {host : Host World}
   | returned related =>
       exact ⟨_, rfl, related, Safe.initial, ready, fun impossible => Bool.noConfusion impossible⟩
 
+/-- A step from a represented running state returns a represented state of lower rank, and the
+native step from the ghost's state returns the ghost's next state. -/
 theorem control_step_replies {World Ghost : Type} {host : Host World}
     {rep : Ghost → World → Prop} {unread zeroWrites : Ghost → Nat}
     (progress : StreamProgress host rep unread zeroWrites)
-    (potential charge : ProcessStep State → Ghost → Nat)
-    (decreases : ∀ (native : ProcessStep State) ghost world, Safe native.state → rep ghost world →
-      native.running = true → ∀ trace next final nextGhost,
-      LeanExe.Wasi.Exec host (step native.state) world trace (.returned next) final →
-      rep nextGhost final → potential next nextGhost + charge native ghost ≤ potential native ghost)
     {ghost : ControlGhost Ghost} {current : ProcessStep stateTy.denote}
     {world : World} (held : ControlRep rep ghost current world) (running : current.running = true)
     {trace outcome final}
@@ -56,7 +53,7 @@ theorem control_step_replies {World Ghost : Type} {host : Host World}
       world trace outcome final) :
     ∃ nextGhost next, outcome = .returned next ∧ ControlRep rep nextGhost next final ∧
       ControlLt unread zeroWrites nextGhost ghost ∧
-      potential nextGhost.1 nextGhost.2 + charge ghost.1 ghost.2 ≤ potential ghost.1 ghost.2 := by
+      LeanExe.Wasi.Exec host (step ghost.1.state) world trace (.returned nextGhost.1) final := by
   obtain ⟨related, safe, ready, _⟩ := held
   obtain ⟨nativeOutcome, nativeExecution, resultRelated⟩ :=
     (step_related ghost.1.state current.state related.state).exec_back execution
@@ -68,8 +65,7 @@ theorem control_step_replies {World Ghost : Type} {host : Host World}
         step_advances progress ready safe nativeExecution
       have beforeRunning : ghost.1.running = true := related.running.trans running
       refine ⟨(nativeNext, nextGhost), _, rfl, ⟨nextRelated, nextSafe, nextRep, status⟩, ?_,
-        decreases ghost.1 ghost.2 world safe ready beforeRunning trace nativeNext final nextGhost
-          nativeExecution nextRep⟩
+        nativeExecution⟩
       change controlOrder.rel (controlRank unread zeroWrites (nativeNext, nextGhost))
         (controlRank unread zeroWrites ghost)
       cases afterRunning : nativeNext.running with

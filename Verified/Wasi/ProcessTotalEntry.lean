@@ -15,24 +15,21 @@ def ProcessTotalExited {World Ghost : Type} (host : Host World) (state : Ty)
 
 theorem wp_process_loop_total {World Ghost : Type} {source target : Wasm.Module}
     {host : Host World} {effectSigs : List EffectSig} {entry : ProcessEntry effectSigs}
-    {pool : Bytes.LiteralPool} {targetHost : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {locals : Locals}
-    {ghost : Ghost} {current : ProcessStep entry.state.denote}
+    {pool : Bytes.LiteralPool} {base : UInt64} {limit : Nat}
+    {targetHost : HostEnv (Observed World)}
+    {initial : Store (Observed World)} {locals : Locals} {ghost : Ghost}
     (represented : Ghost → ProcessStep entry.state.denote → Observed World → Prop)
     (relation : Ghost → Ghost → Prop) (wellFounded : WellFounded relation)
-    (potential : Ghost → ProcessStep entry.state.denote → Nat)
     (imports : target.imports = ABI.imports)
     (valid : targetHost.Satisfies target (hostSpec host))
-    (stored : ProcessStored target entry.state pool current initial locals)
-    (held : represented ghost current initial.host)
-    (fits : ProcessFits source initial (potential ghost current))
-    (iteration : ∀ ghost current store locals,
-      ProcessStored target entry.state pool current store locals →
-      represented ghost current store.host →
-      ProcessFits source store (potential ghost current) →
+    (held : ProcessTotalInvariant source target entry.state pool base limit represented ghost
+      initial locals)
+    (iteration : ∀ ghost store locals,
+      ProcessTotalInvariant source target entry.state pool base limit represented ghost store
+        locals →
       wp target (entry.iteration source)
-        (GhostLoopPost (ProcessTotalInvariant source target entry.state pool represented potential)
-          relation ghost (ProcessTotalStopped target entry.state pool represented) locals.values)
+        (GhostLoopPost (ProcessTotalInvariant source target entry.state pool base limit represented)
+          relation ghost (ProcessTotalStopped target entry.state pool base represented) locals.values)
         store locals targetHost)
     (accepted : ∀ ghost current world, represented ghost current world →
       current.running = false → ∀ message final,
@@ -41,10 +38,8 @@ theorem wp_process_loop_total {World Ghost : Type} {source target : Wasm.Module}
       [.localGet 1, .wrapI64, .call 2, .unreachable])
       (ProcessTotalExited host entry.state represented) initial locals targetHost := by
   have loop := wp_loop_ghost
-    (ProcessTotalInvariant source target entry.state pool represented potential) relation wellFounded
-    (ghost := ghost) ⟨current, stored, held, fits⟩ (fun ghost store locals rep => by
-      obtain ⟨current, stored, held, fits⟩ := rep
-      exact iteration ghost current store locals stored held fits)
+    (ProcessTotalInvariant source target entry.state pool base limit represented) relation
+    wellFounded (ghost := ghost) held iteration
   apply wp_block_cons
   apply loop.conseq
   intro continuation stopped
@@ -67,25 +62,28 @@ theorem wp_process_loop_total {World Ghost : Type} {source target : Wasm.Module}
 
 theorem wp_process_entry_total {World Ghost : Type} {source target : Wasm.Module}
     {host : Host World} {effectSigs : List EffectSig} {entry : ProcessEntry effectSigs}
-    {pool : Bytes.LiteralPool} {targetHost : HostEnv (Observed World)}
-    {initial : Store (Observed World)} {typeIdx : Nat}
+    {pool : Bytes.LiteralPool} {limit : Nat} {targetHost : HostEnv (Observed World)}
+    {initial : Store (Observed World)} {heap : Heap} {typeIdx : Nat}
     (represented : Ghost → ProcessStep entry.state.denote → Observed World → Prop)
     (relation : Ghost → Ghost → Prop) (wellFounded : WellFounded relation)
-    (potential : Ghost → ProcessStep entry.state.denote → Nat)
     (imports : target.imports = ABI.imports)
     (valid : targetHost.Satisfies target (hostSpec host))
-    (began : wp target
-      ([.constI64 0, .call (Wrappers.effectIndex source entry.begin.index)] ++
-        storeCode (2 * (processResultTy entry.state).width) 0 (processResultTy entry.state).types)
-      (ProcessTotalBegan source target entry.state pool represented potential) initial
-      ((entry.function source typeIdx).toLocals []) targetHost)
-    (iteration : ∀ ghost current store locals,
-      ProcessStored target entry.state pool current store locals →
-      represented ghost current store.host →
-      ProcessFits source store (potential ghost current) →
+    (at_ : heap.At (PureTransport.erase initial))
+    (began : ∀ locals, locals.params = [] → locals.positions = processPositions entry.state →
+      locals.get (processAux entry.state) = some (.i64 heap.top) →
+      wp target
+        ([.constI64 0, .call (Wrappers.effectIndex source entry.begin.index)] ++
+          (storeCode (processPositions entry.state) 0 (processResultTy entry.state).types ++
+            Relocation.program (processCompaction entry.state)))
+        (ProcessTotalBegan source target entry.state pool heap.top limit represented) initial
+        locals targetHost)
+    (iteration : ∀ ghost store locals,
+      ProcessTotalInvariant source target entry.state pool heap.top limit represented ghost store
+        locals →
       wp target (entry.iteration source)
-        (GhostLoopPost (ProcessTotalInvariant source target entry.state pool represented potential)
-          relation ghost (ProcessTotalStopped target entry.state pool represented) locals.values)
+        (GhostLoopPost (ProcessTotalInvariant source target entry.state pool heap.top limit
+          represented) relation ghost (ProcessTotalStopped target entry.state pool heap.top
+          represented) locals.values)
         store locals targetHost)
     (accepted : ∀ ghost current world, represented ghost current world →
       current.running = false → ∀ message final,
@@ -93,18 +91,33 @@ theorem wp_process_entry_total {World Ghost : Type} {source target : Wasm.Module
     wp target (entry.function source typeIdx).body
       (ProcessTotalExited host entry.state represented) initial
       ((entry.function source typeIdx).toLocals []) targetHost := by
+  let locals := (entry.function source typeIdx).toLocals []
   let tailCode : Program := [.block 0 0 [.loop 0 0 (entry.iteration source) [] []] [] []] ++
     [.localGet 1, .wrapI64, .call 2, .unreachable]
+  have positions : locals.positions = processPositions entry.state := by
+    simp only [locals, ProcessEntry.function, Function.toLocals, Locals.positions,
+      List.length_nil, List.length_map, List.length_append, List.length_replicate, Nat.zero_add]
+    omega
+  have total : processAux entry.state < locals.params.length + locals.locals.length :=
+    Locals.lt_total (by rw [positions]; simp only [processPositions]; omega)
+  have low : locals.params.length ≤ processAux entry.state := Nat.zero_le _
+  have low' : ({ locals with values := locals.values } : Locals).params.length ≤
+      processAux entry.state := low
   have body := wp_append (rest := tailCode)
     (Q := ProcessTotalExited host entry.state represented)
-    (began.conseq (fun continuation classification => by
+    ((began (setLocal { locals with values := locals.values } (processAux entry.state)
+        (.i64 heap.top)) rfl
+      (by simp only [Locals.positions_setLocal, Locals.positions_values]; exact positions)
+      (Locals.get_setLocal_same low' total)).conseq (fun continuation classification => by
       cases continuation with
       | Fallthrough final after =>
-          obtain ⟨ghost, current, stored, held, fits⟩ := classification
-          exact wp_process_loop_total represented relation wellFounded potential
-            imports valid stored held fits iteration accepted
+          obtain ⟨ghost, held⟩ := classification
+          exact wp_process_loop_total represented relation wellFounded imports valid held
+            iteration accepted
       | _ => exact classification.elim))
-  simpa only [ProcessEntry.function, ProcessEntry.result, tailCode, List.append_assoc] using body
+  have whole := wp_saveBase (target := target) (rest := _) at_ low total body
+  simpa only [ProcessEntry.function, ProcessEntry.result, tailCode, List.append_assoc,
+    List.cons_append, List.nil_append] using whole
 
 def ProcessTotalRunExited {World Ghost : Type} (host : Host World) (state : Ty)
     (represented : Ghost → ProcessStep state.denote → Observed World → Prop) :

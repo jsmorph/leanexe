@@ -1,4 +1,5 @@
 import Verified.Wasi.ProgramIn
+import Verified.Wasi.CompactCode
 import LeanExe.Wasi.Process
 
 namespace Verified.Wasi
@@ -21,26 +22,40 @@ structure ProcessEntry (effectSigs : List EffectSig) where
 abbrev ProcessEntry.result (entry : ProcessEntry effectSigs) : Ty :=
   processResultTy entry.state
 
+/-- The first of the process entry's compaction scalars: after the result's words.  It holds
+the heap base, the heap top when `_start` begins. -/
+def processAux (state : Ty) : Nat := (processResultTy state).width
+
+/-- The positions of the process entry's function: the result's words, the five compaction
+scalars, and the scratch of the state's copy. -/
+def processPositions (state : Ty) : Nat := processAux state + 5 + state.copyScratch
+
+/-- The compaction of the state, whose words follow the running flag and the status. -/
+def processCompaction (state : Ty) : Program :=
+  compactCode (processPositions state) state 2 (processAux state)
+
+/-- One step of the process loop: stop when the state is not running, and otherwise call the
+step on the state, store its result over the current one, and compact the new state.  The step
+borrows the state, so the old state is garbage once the result is stored, and the compaction
+reclaims it with everything else the step allocated. -/
 def ProcessEntry.iteration (source : Wasm.Module) (entry : ProcessEntry effectSigs) : Program :=
-  let width := entry.result.width
-  let positions := 2 * width
+  let positions := processPositions entry.state
   [.localGet 0, .eqzI64, .br_if 1, .constI64 0] ++
     loadCode positions 2 entry.state.types ++
     [.call (Wrappers.effectIndex source entry.step.index)] ++
-    storeCode positions width entry.result.types ++
-    Relocation.program (releaseCode entry.state 2) ++
-    loadCode positions width entry.result.types ++
-    storeCode positions 0 entry.result.types ++ [.br 0]
+    storeCode positions 0 entry.result.types ++
+    Relocation.program (processCompaction entry.state) ++ [.br 0]
 
 def ProcessEntry.function (source : Wasm.Module) (entry : ProcessEntry effectSigs)
     (typeIdx : Nat) : Function :=
-  let width := entry.result.width
-  let positions := 2 * width
+  let positions := processPositions entry.state
   { params := []
     locals := List.replicate positions .i64 ++ List.replicate positions .f64 ++
       List.replicate positions .f32
-    body := [.constI64 0, .call (Wrappers.effectIndex source entry.begin.index)] ++
+    body := [.globalGet 0, .localSet (processAux entry.state), .constI64 0,
+        .call (Wrappers.effectIndex source entry.begin.index)] ++
       storeCode positions 0 entry.result.types ++
+      Relocation.program (processCompaction entry.state) ++
       [.block 0 0 [.loop 0 0 (entry.iteration source) [] []] [] []] ++
       [.localGet 1, .wrapI64, .call 2, .unreachable]
     results := []

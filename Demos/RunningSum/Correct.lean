@@ -6,32 +6,37 @@ namespace Demos.RunningSum
 open Wasm Verified Verified.Wasi LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 open Demos.StreamFold (StreamPosition StreamHost observedStreamRep stdoutWords)
 
-/-- Allocation budgets for a run from `position`.  `charge` bounds the allocation of the step
-from each reached running state, `potential` bounds the allocation of every remaining step, and
-the initial heap can raise `top` by `start`, which covers `begin` and the steps after it. -/
-structure RunBudget {World : Type} (host : Host World) (initial : Store (Observed World))
-    (heap : Heap) (rep : StreamPosition → World → Prop) (position : StreamPosition) where
+/-- Charges for a run: `beginCharge` bounds the allocation of `begin`, `charge` bounds that of
+the step from each reached running state, and the heap has room for each charge with the copies
+of the state before and after it.  The process compacts the state after `begin` and after each
+step, so the heap holds the literal pool and one state between steps.  A later theorem derives
+these charges from limits on line length and total size. -/
+structure RunCharges {World : Type} (host : Host World) (initial : Store (Observed World))
+    (heap : Heap) (rep : StreamPosition → World → Prop) where
   charge : ProcessStep State → StreamPosition → Nat
-  potential : ProcessStep State → StreamPosition → Nat
-  start : Nat
   beginCharge : Nat
-  fits : heap.Within (PureTransport.erase initial) io.pure.module start
-  beginBounded : beginCharge ≤ start ∧ Resource.CallPrefixBound (observedHost host)
+  beginRoom : heap.top.toNat + beginCharge +
+      stateTy.copyCost (sourceState Demos.RunningSum.initial) ≤
+    65536 * (PureTransport.erase initial).memoryCap io.pure.module 0
+  beginBounded : Resource.CallPrefixBound (observedHost host)
     (Resource.PureContext.ofProg io.pure.program io.pure.funs) io.program entry.begin 0 .nil
     initial.host beginCharge
-  beginRoom : potential ⟨true, 0, Demos.RunningSum.initial⟩ position + beginCharge ≤ start
   stepBounded : ∀ (native : ProcessStep State) position (world : Observed World),
     Termination.Safe native.state → observedStreamRep rep position world →
-    native.running = true → charge native position ≤ potential native position ∧
+    native.running = true →
+    heap.top.toNat + stateTy.copyCost (sourceState native.state) + charge native position ≤
+        65536 * (PureTransport.erase initial).memoryCap io.pure.module 0 ∧
       Resource.CallPrefixBound (observedHost host)
         (Resource.PureContext.ofProg io.pure.program io.pure.funs) io.program entry.step 0
         (.cons (sourceState native.state) .nil) world (charge native position)
-  stepDecreases : ∀ (native : ProcessStep State) position (world : Observed World),
+  stepRoom : ∀ (native : ProcessStep State) position (world : Observed World),
     Termination.Safe native.state → observedStreamRep rep position world →
     native.running = true → ∀ trace next final nextPosition,
     LeanExe.Wasi.Exec (observedHost host) (step native.state) world trace (.returned next) final →
     observedStreamRep rep nextPosition final →
-    potential next nextPosition + charge native position ≤ potential native position
+    heap.top.toNat + stateTy.copyCost (sourceState native.state) + charge native position +
+        stateTy.copyCost (sourceState next.state) ≤
+      65536 * (PureTransport.erase initial).memoryCap io.pure.module 0
 
 def ExitAccepted {World : Type} (host : Host World)
     (rep : StreamPosition → World → Prop) : Prop :=
@@ -71,10 +76,10 @@ theorem terminates_integer {World : Type} (host : Host World)
     (events : initial.host.events = []) (empty : position.output = [])
     (bounds : InputBounds position.input)
     (valid : targetHost.Satisfies module (hostSpec host))
-    (at_ : heap.At (PureTransport.erase initial))
+    (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : io.literalPool.Static heap (PureTransport.erase initial))
     (cap : (PureTransport.erase initial).memoryCap module 0 ≤ 65535)
-    (budget : RunBudget host initial heap rep position) (accepted : ExitAccepted host rep) :
+    (charges : RunCharges host initial heap rep) (accepted : ExitAccepted host rep) :
     ∃ values status, InputValues position.input values status ∧
       ∃ bound, ∀ fuel ≥ bound, ∃ final,
         run fuel module startIndex initial [] targetHost = .Trap final exitTrap ∧
@@ -85,9 +90,8 @@ theorem terminates_integer {World : Type} (host : Host World)
   obtain ⟨values, status, lineValues⟩ := inputValues_exist bounds
   obtain ⟨bound, executions⟩ := Termination.target_terminates host targetHost initial heap
     (observedStreamRep rep) (fun position => position.input.length) StreamPosition.zeroWrites
-    streams.observed.progress observed valid at_ static cap budget.potential budget.charge
-    budget.start budget.beginCharge ⟨budget.fits, budget.beginBounded⟩ budget.beginRoom
-    budget.stepBounded budget.stepDecreases accepted
+    streams.observed.progress observed valid at_ free static cap charges.charge charges.beginCharge
+    charges.beginRoom charges.beginBounded charges.stepBounded charges.stepRoom accepted
   refine ⟨values, status, lineValues, bound, fun fuel enough => ?_⟩
   obtain ⟨total, native⟩ := executions fuel enough
   generalize executed : run fuel module startIndex initial [] targetHost = result at total native ⊢
@@ -109,7 +113,7 @@ theorem initial_terminates_integer {World : Type} (host : Host World)
     (events : world.events = []) (empty : position.output = [])
     (bounds : InputBounds position.input)
     (valid : targetHost.Satisfies module (hostSpec host))
-    (budget : RunBudget host (initialStore world) (initialStaticHeap io.literalPool) rep position)
+    (charges : RunCharges host (initialStore world) (initialStaticHeap io.literalPool) rep)
     (accepted : ExitAccepted host rep) :
     ∃ values status, InputValues position.input values status ∧
       ∃ bound, ∀ fuel ≥ bound, ∃ final,
@@ -118,7 +122,7 @@ theorem initial_terminates_integer {World : Type} (host : Host World)
           host.exited final.host.world = some status :=
   terminates_integer host targetHost (initialStore world) (initialStaticHeap io.literalPool)
     rep streams represented events empty bounds valid
-    (initialState world).1 (initialState world).2.2 (initialState world).2.1 budget accepted
+    (initialState world).1 rfl (initialState world).2.2 (initialState world).2.1 charges accepted
 
 theorem integer_bytes : ∃ bytes,
     Encoding.encode module = .ok bytes ∧ Encoding.decode bytes = .ok module ∧
