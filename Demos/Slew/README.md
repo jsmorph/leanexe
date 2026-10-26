@@ -298,24 +298,23 @@ cases cover these classes:
 - invalid inputs of every kind that `validInput` rejects;
 - `atan2` on special values and on random arguments.
 
-| Class | Plans | Status 1 | 0 | -1 | -2 | -3 | Least sampled spare |
-|---|---:|---:|---:|---:|---:|---:|---|
-| Realistic | 48 | 42 | 6 | 0 | 0 | 0 | 1.7e-3 |
-| Limits | 18 | 14 | 4 | 0 | 0 | 0 | 3.3e-2 |
-| Grazing | 240 | 83 | 157 | 0 | 0 | 0 | 1.23e-9 |
-| Stationary points | 336 | 168 | 0 | 84 | 84 | 0 | 2.0e-9 |
-| Angles near 0 and π | 114 | 72 | 22 | 0 | 20 | 0 | 1.01e-8 |
-| Extreme cones | 64 | 48 | 0 | 16 | 0 | 0 | 3.4e-4 |
-| Norms at the tolerance | 8 | 4 | 0 | 0 | 0 | 4 | 0.13 |
-| Invalid inputs | 24 | 2 | 0 | 1 | 1 | 20 | 1.9e-2 |
+| Class | Plans | Status 1 | 0 | -1 | -2 | -3 |
+|---|---:|---:|---:|---:|---:|---:|
+| Realistic | 48 | 42 | 6 | 0 | 0 | 0 |
+| Limits | 18 | 14 | 4 | 0 | 0 | 0 |
+| Grazing | 240 | 83 | 157 | 0 | 0 | 0 |
+| Stationary points | 336 | 168 | 0 | 84 | 84 | 0 |
+| Angles near 0 and π | 114 | 72 | 22 | 0 | 20 | 0 |
+| Extreme cones | 64 | 48 | 0 | 16 | 0 | 0 |
+| Norms at the tolerance | 8 | 4 | 0 | 0 | 0 | 4 |
+| Invalid inputs | 24 | 2 | 0 | 1 | 1 | 20 |
 
-The generator also runs a sampled safety check, a test written before the safety theorem.  For
-every plan of status 1 it evaluates each cone along each segment at 1,001 equally spaced angles,
-with Rodrigues' formula and the library's `Trig.sin` and `Trig.cos`, and it fails when a cone has
-less than `1e-9` to spare.  Samples `θ/1000` apart can miss an interior extremum by up to about
-`10⁻⁶` in cosine on the longest rotations, so the check does not resolve the grazing cases at the
-scale of the margin, which the theorem does.  `tests/TestSupport/Slew/CasesMain.lean` with the
-argument `--summary` prints the table's counts and spares.
+Before the safety theorem was proved, the generator also ran a sampled safety check, which
+evaluated each cone along each segment of every plan of status 1 at 1,001 equally spaced angles
+and found at least `1.23e-9` to spare.  `plan_safe` replaces that check: it covers every angle of
+every segment and every input that passes `validInput`, and the generator no longer runs the
+check.  `tests/TestSupport/Slew/CasesMain.lean` with the argument `--summary` prints the table's
+counts.
 
 `tests/slew/edges.sh`, which `tests/verified/run.sh` runs with the slew cases, compares the
 module's `edgeOk` export with native Lean on 100,000 single-cone edges from [the edge
@@ -325,8 +324,8 @@ points at either end with `B` within and beyond `eta`, and relative quaternions 
 lengths near 0, near the small-angle threshold, and near 1.  All 100,000 results agree, 34,213 of
 them acceptances, and the session allocates no block beyond its input.
 
-The generator takes 18 s, the edge test 9 s, and the whole run of `tests/verified/run.sh --cases
-slew` 85 s.  A plan of 500 waypoints takes at most 51 ms in the host, of which about 20 ms is the
+The generator takes 14 s, the edge test 9 s, and the whole run of `tests/verified/run.sh --cases
+slew` 80 s.  A plan of 500 waypoints takes at most 51 ms in the host, of which about 20 ms is the
 start of the host and the compilation of the module.
 
 ## Theorems to prove

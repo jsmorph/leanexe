@@ -12,13 +12,10 @@ library's `Trig.cos`.  The inputs are therefore the same on every host.
 The classes are realistic plans with 0, 60, 200, and 500 waypoints and variations of the limits;
 cones whose limit grazes a rotation's designed extremum; stationary points of the cosine near the
 start and the end of a rotation; rotations near the small-angle threshold and near `π`; extreme
-cones; vectors and quaternions at the norm tolerance; and invalid inputs.
-
-The sampled safety check is a test, which the safety theorem is to replace: for every plan of
-status 1, it evaluates every cone along every segment at 1,001 equally spaced angles, with
-Rodrigues' formula and the library's `Trig.sin` and `Trig.cos`, and fails when a cone has less
-than `1e-9` to spare.  A plan case requires two retained blocks, the host's input and the result,
-which holds when `plan` borrows its input. -/
+cones; vectors and quaternions at the norm tolerance; and invalid inputs.  A plan case requires two
+retained blocks, the host's input and the result, which holds when `plan` borrows its input.  The
+safety theorem `Demos.Slew.Safety.plan_safe` replaced a sampled safety check that the generator
+ran before the theorem was proved. -/
 
 namespace TestSupport.Slew.Cases
 
@@ -394,41 +391,6 @@ def planLine (xs out : Array Float) : String :=
   let result := ", ".intercalate (out.toList.map fun x => toString x.toBits)
   s!"slew|plan|array-u64|array-u64:{words xs}|[{result}]|2"
 
-/-- The least cosine to spare over every cone at 1,001 angles of every segment of the plan `out`
-of input `xs`, or an error below `1e-9`. -/
-def sampledSpare (xs out : Array Float) : Except String Float := do
-  let nb := xs[1]!.toUInt64.toNat
-  let nc := xs[2]!.toUInt64.toNat
-  let coneOff := 16 + 3 * nb
-  let k := out[1]!.toUInt64.toNat
-  if out.size != 8 + 11 * k then throw s!"an output of {out.size} values for {k} segments"
-  let mut least : Float := 1e300
-  for g in [0:k] do
-    let o := 4 + 11 * g
-    let q := qunit ⟨out[o]!, out[o + 1]!, out[o + 2]!, out[o + 3]!⟩
-    let n := vunit ⟨out[o + 4]!, out[o + 5]!, out[o + 6]!⟩
-    let theta := out[o + 7]!
-    let trig := (List.range 1001).map fun i =>
-      let phi := theta * i.toFloat / 1000
-      (Library.Numerics.Float64.Trig.cos phi, Library.Numerics.Float64.Trig.sin phi)
-    for c in [0:nc] do
-      let co := coneOff + 6 * c
-      let bi := xs[co]!.toUInt64.toNat
-      let b := vunit ⟨xs[16 + 3 * bi]!, xs[17 + 3 * bi]!, xs[18 + 3 * bi]!⟩
-      let u := vunit ⟨xs[co + 1]!, xs[co + 2]!, xs[co + 3]!⟩
-      let lim := xs[co + 4]!
-      let keepIn := xs[co + 5]! == 1
-      let v0 := rot q b
-      let nv := vcross n v0
-      let along := vdot n v0
-      for (cp, sp) in trig do
-        let v := vadd (vadd (vscale v0 cp) (vscale nv sp)) (vscale n (along * (1 - cp)))
-        let f := vdot u v
-        let spare := if keepIn then f - lim else lim - f
-        if spare < least then least := spare
-  if least < 1e-9 then throw s!"a cone has {least} to spare in segment's cosine"
-  return least
-
 def classes : List (String × List (Array Float)) :=
   [("realistic", Id.run (realistic.run' 1)), ("limits", Id.run (limits.run' 2)),
     ("grazing", Id.run (grazing.run' 3)), ("stationary", Id.run (stationary.run' 4)),
@@ -438,31 +400,20 @@ def classes : List (String × List (Array Float)) :=
 def statusIndex (s : Float) : Nat :=
   if s == 1 then 0 else if s == 0 then 1 else if s == -1 then 2 else if s == -2 then 3 else 4
 
-/-- Prints the cases, or with `summary` the count of each class's statuses and the least spare of
-the sampled check, and fails when the sampled check fails. -/
+/-- Prints the cases, or with `summary` the count of each class's statuses. -/
 def run (summary : Bool) : IO Unit := do
-  let mut least : Float := 1e300
   for (name, inputs) in classes do
     let mut counts : Array Nat := #[0, 0, 0, 0, 0]
-    let mut classLeast : Float := 1e300
     for xs in inputs do
       let out := plan xs
       if !summary then IO.println (planLine xs out)
-      let status := out[0]!
-      counts := counts.modify (statusIndex status) (· + 1)
-      if status == 1 then
-        match sampledSpare xs out with
-        | .error e => throw (IO.userError s!"slew {name}: {e}")
-        | .ok s => if s < classLeast then classLeast := s
-    if classLeast < least then least := classLeast
+      counts := counts.modify (statusIndex out[0]!) (· + 1)
     if summary then
-      IO.println s!"{name}: {inputs.length} plans, statuses 1 0 -1 -2 -3: {counts}, \
-        least spare {classLeast * 1e9} e-9"
+      IO.println s!"{name}: {inputs.length} plans, statuses 1 0 -1 -2 -3: {counts}"
   for (y, x) in Id.run (atanArgs.run' 9) do
     if !summary then
       let r := Library.Numerics.Float64.Atan.atan2 y x
       IO.println s!"slew|atan2|f64|f64:{y.toBits} f64:{x.toBits}|{r.toBits}"
-  if summary then IO.println s!"least spare of the sampled check over all plans: {least * 1e9} e-9"
 
 def cases : IO Unit := run false
 
