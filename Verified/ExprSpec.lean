@@ -108,7 +108,7 @@ def CodeSpec {S : List Sig} {Γ : List Ty} {t : Ty} (m : Module) (funs : Funs S)
     (flags : Flags S) (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (pv : List Value)
     (e : Expr S Γ t)
     (env : Env Γ) (slots : List Slot) (paid : List Bool) (live : Nat → Bool)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
+    (pool : Bytes.LiteralPool) : Prop :=
   ∀ (h base : Nat) (heap : Heap) (store : Store Unit) (s : Locals), s.positions = h → s.params = pv →
     Holds env slots (fun i => live i || e.uses i) base heap store s → heap.At store →
     pool.Safe env slots (fun i => live i || e.uses i) heap store s →
@@ -204,7 +204,7 @@ only when `fits x` fails, or when `aborts` holds and `top` cannot rise by the ar
 def ImplementsP {α β : Type} [Represent α] [Represent β] (pre : α → Prop) (fits : α → Bool)
     (potIn : Store Unit → List Value → α → Nat) (potOut : Store Unit → List Value → β → Nat)
     (aborts : Bool) (m : Module) (entry : Nat) (f : α → β) (bound : α → Nat)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
+    (pool : Bytes.LiteralPool) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
     pre x → heap.At store → pool.Input heap store params x →
     Represent.borrowed heap store params x →
@@ -229,7 +229,7 @@ from its arguments, within the allocation bound `A`, or, when the code takes the
 each depth that `D` admits, within `A` when its calls find their frames as `Fi` states. -/
 def FunSpec (m : Module) (g : Sig) (idx : Nat) (F : Env g.params → g.result.denote)
     (pf : List Bool) (rf : Bool) (A : Env g.params → Nat) (Fi : Env g.params → Bool)
-    (D : UInt64 → Prop) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
+    (D : UInt64 → Prop) (pool : Bytes.LiteralPool) : Prop :=
   (g.depth = false →
     @ImplementsP _ _ (Env.represent g.params g.modes) (Ty.represent g.result) (fun _ => True)
       (fun _ => true) (fun store ws x => Env.argPot store (g.paidSel pf) ws x)
@@ -249,7 +249,7 @@ def framesAt (d : UInt64) : Nat := depthLimit.toNat - d.toNat
 `FunSpec` states at every depth `d`, with the flags `flags`, and the bounds `bounds` and frames
 `fits` at the frames available at `d`. -/
 def Calls {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S) (bounds : Nat → Bounds S)
-    (fits : Nat → Fits S) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
+    (fits : Nat → Fits S) (pool : Bytes.LiteralPool) : Prop :=
   ∀ {g : Sig} (f : FVar S g) (d : UInt64), FunSpec m g f.callIndex (funs.get f)
     (flags.params f) (flags.result f) ((bounds (framesAt d)).get f) ((fits (framesAt d)).get f)
     (fun d' => d' = d) pool
@@ -258,7 +258,7 @@ def Calls {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S) (bounds 
 bounds `bounds`, and the frames `fits` of the callees: those whose code takes the call depth
 compute their meanings at the next depth. -/
 def CallsAt {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S) (bounds : Bounds S)
-    (fits : Fits S) (d0 : UInt64) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
+    (fits : Fits S) (d0 : UInt64) (pool : Bytes.LiteralPool) : Prop :=
   ∀ {g : Sig} (f : FVar S g), FunSpec m g f.callIndex (funs.get f) (flags.params f)
     (flags.result f) (bounds.get f) (fits.get f) (fun d => d = d0 + 1) pool
 

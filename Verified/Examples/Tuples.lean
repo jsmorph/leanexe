@@ -138,7 +138,8 @@ def module : Wasm.Module := compile prog
 
 /-- Every function of the module computes its meaning, by the compiler's theorem. -/
 theorem correct :
-    Calls module prog.funs prog.flags (prog.boundsAt prog.funs) (prog.fitsAt prog.funs) :=
+    Calls module prog.funs prog.flags (prog.boundsAt prog.funs) (prog.fitsAt prog.funs)
+      Bytes.LiteralPool.empty :=
   Prog.correct_funs prog rfl (by decide +kernel)
 
 end Verified.Examples.Tuples

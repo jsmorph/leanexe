@@ -83,7 +83,7 @@ def TailCodeSpecAt {S : List Sig} {Γ params : List Ty} {result : Ty}
     (m : Module) (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
     (host : HostEnv Unit) (pv : List Value) (targetModes : List Mode)
     (body : TailBody S params result Γ) (env : Env Γ)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
+    (pool : Bytes.LiteralPool) : Prop :=
   ∀ (slots : List Slot) (paid : List Bool) (nextPaid : List Bool) (resultPaid : Bool)
     (h stateBase resultBase base exitLabel nextLabel : Nat)
     (heap : Heap) (store : Store Unit) (s : Locals),
@@ -114,7 +114,7 @@ def TailCodeSpec {S : List Sig} {Γ params : List Ty} {result : Ty}
     (m : Module) (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
     (host : HostEnv Unit) (pv : List Value) (targetModes : List Mode)
     (body : TailBody S params result Γ)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
+    (pool : Bytes.LiteralPool) : Prop :=
   ∀ env, TailCodeSpecAt (pool := pool) m funs flags bounds fits host pv targetModes body env
 
 theorem tail_ret_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}

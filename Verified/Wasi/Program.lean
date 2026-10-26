@@ -6,7 +6,7 @@ open Wasm
 
 def EffectProg.callableExtension (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (entries : List (EffectEntry effectSigs))
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Module.Extension :=
+    (pool : Bytes.LiteralPool) : Module.Extension :=
   { types := program.types ++ entries.map EffectEntry.type
     funcs := program.functions source pool ++ entries.mapIdx (fun index entry =>
       entry.function source (effectTypeIndex source (effectSigs.length + index)))
@@ -15,7 +15,7 @@ def EffectProg.callableExtension (source : Wasm.Module)
 
 def EffectProg.commandExtension (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (main : EffectMain effectSigs)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Module.Extension :=
+    (pool : Bytes.LiteralPool) : Module.Extension :=
   { types := program.types ++ [startType]
     funcs := program.functions source pool ++
       [main.function source (effectTypeIndex source effectSigs.length)]
@@ -23,7 +23,7 @@ def EffectProg.commandExtension (source : Wasm.Module)
 
 def compile (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
     (entries : List (EffectEntry effectSigs)) (main : Option (EffectMain effectSigs) := none)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Wasm.Module :=
+    (pool : Bytes.LiteralPool) : Wasm.Module :=
   let next := match main with
     | none => program.callableExtension source entries pool
     | some entry => program.commandExtension source entry pool
@@ -41,7 +41,7 @@ def compile (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
 
 theorem EffectProg.callableExtension_types_length (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (entries : List (EffectEntry effectSigs))
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (program.callableExtension source entries pool).types.length =
       effectSigs.length + entries.length := by
   simp only [EffectProg.callableExtension, List.length_append, List.length_map,
@@ -49,7 +49,7 @@ theorem EffectProg.callableExtension_types_length (source : Wasm.Module)
 
 theorem EffectProg.callableExtension_funcs_length (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (entries : List (EffectEntry effectSigs))
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (program.callableExtension source entries pool).funcs.length =
       effectSigs.length + entries.length := by
   simp only [EffectProg.callableExtension, List.length_append, List.length_mapIdx,
@@ -57,14 +57,14 @@ theorem EffectProg.callableExtension_funcs_length (source : Wasm.Module)
 
 theorem EffectProg.commandExtension_types_length (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (main : EffectMain effectSigs)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (program.commandExtension source main pool).types.length = effectSigs.length + 1 := by
   simp only [EffectProg.commandExtension, List.length_append, List.length_cons, List.length_nil,
     EffectProg.types_length]
 
 theorem EffectProg.commandExtension_funcs_length (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (main : EffectMain effectSigs)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (program.commandExtension source main pool).funcs.length = effectSigs.length + 1 := by
   simp only [EffectProg.commandExtension, List.length_append, List.length_cons, List.length_nil,
     program.functions_length source pool]
@@ -72,14 +72,14 @@ theorem EffectProg.commandExtension_funcs_length (source : Wasm.Module)
 theorem EffectProg.callableExtension_body (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (entries : List (EffectEntry effectSigs))
     {index : Nat} (hIndex : index < effectSigs.length)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (program.callableExtension source entries pool).funcs[index]? =
       (program.functions source pool)[index]? := by
   exact List.getElem?_append_left (by rw [program.functions_length source pool]; exact hIndex)
 
 theorem EffectProg.callableExtension_entry (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (entries : List (EffectEntry effectSigs))
-    (index : Nat) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (index : Nat) (pool : Bytes.LiteralPool) :
     (program.callableExtension source entries pool).funcs[effectSigs.length + index]? =
       (entries[index]?).map (fun entry =>
         entry.function source (effectTypeIndex source (effectSigs.length + index))) := by
@@ -90,14 +90,14 @@ theorem EffectProg.callableExtension_entry (source : Wasm.Module)
 theorem EffectProg.commandExtension_body (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (main : EffectMain effectSigs)
     {index : Nat} (hIndex : index < effectSigs.length)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (program.commandExtension source main pool).funcs[index]? =
       (program.functions source pool)[index]? := by
   exact List.getElem?_append_left (by rw [program.functions_length source pool]; exact hIndex)
 
 theorem EffectProg.commandExtension_start (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (main : EffectMain effectSigs)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (program.commandExtension source main pool).funcs[effectSigs.length]? =
       some (main.function source (effectTypeIndex source effectSigs.length)) := by
   rw [EffectProg.commandExtension,
@@ -116,7 +116,7 @@ theorem Wrappers.next_type (source : Wasm.Module) (next : Module.Extension) (ind
 theorem compile_body (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
     (entries : List (EffectEntry effectSigs)) (main : Option (EffectMain effectSigs))
     {index : Nat} (hIndex : index < effectSigs.length)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (compile source program entries main pool).funcs[source.funcs.length + (3 + index)]? =
       (program.functions source pool)[index]? := by
   cases main with
@@ -136,7 +136,7 @@ theorem compile_body (source : Wasm.Module) (program : EffectProg pureSigs effec
 theorem compile_body_type (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
     (entries : List (EffectEntry effectSigs)) (main : Option (EffectMain effectSigs))
     (callee : EffectVar effectSigs signature)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (compile source program entries main pool).types[effectTypeIndex source callee.index]? =
       some signature.type := by
   cases main with
@@ -160,7 +160,7 @@ theorem compile_body_type (source : Wasm.Module) (program : EffectProg pureSigs 
 
 theorem compile_entry (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
     (entries : List (EffectEntry effectSigs)) (index : Nat)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (compile source program entries none pool).funcs[
       source.funcs.length + (3 + (effectSigs.length + index))]? =
       (entries[index]?).map (fun entry =>
@@ -175,7 +175,7 @@ theorem compile_entry (source : Wasm.Module) (program : EffectProg pureSigs effe
 
 theorem compile_start (source : Wasm.Module) (program : EffectProg pureSigs effectSigs)
     (entries : List (EffectEntry effectSigs)) (main : EffectMain effectSigs)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (compile source program entries (some main) pool).funcs[
       source.funcs.length + (3 + effectSigs.length)]? =
       some (main.function source (effectTypeIndex source effectSigs.length)) := by
@@ -218,7 +218,7 @@ theorem compile_start (source : Wasm.Module) (program : EffectProg pureSigs effe
 
 theorem compile_callable_exports (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (entries : List (EffectEntry effectSigs))
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (compile source program entries none pool).exports =
       [{ name := "alloc", funcIdx := Module.pureIndex 0 },
         { name := "release", funcIdx := Module.pureIndex 1 }] ++
@@ -229,18 +229,18 @@ theorem compile_callable_exports (source : Wasm.Module)
 
 theorem compile_command_exports (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (entries : List (EffectEntry effectSigs))
-    (main : EffectMain effectSigs) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (main : EffectMain effectSigs) (pool : Bytes.LiteralPool) :
     (compile source program entries (some main) pool).exports =
       [{ name := "_start", funcIdx := Wrappers.effectIndex source effectSigs.length }] := rfl
 
 theorem compile_callable_counters (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (entries : List (EffectEntry effectSigs))
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (compile source program entries none pool).globalExports = source.globalExports := rfl
 
 theorem compile_command_counters (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (entries : List (EffectEntry effectSigs))
-    (main : EffectMain effectSigs) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (main : EffectMain effectSigs) (pool : Bytes.LiteralPool) :
     (compile source program entries (some main) pool).globalExports = [] := rfl
 
 end Verified.Wasi

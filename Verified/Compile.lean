@@ -632,7 +632,7 @@ the size, it moves the words after the element down by the element's word count 
 `mk` pushes its components' words in order, and `proj` loads the words of the
 component from the tuple variable's positions. -/
 def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
   | _, _, .bytesEmpty => [.constI64 0, .constI64 0]
@@ -936,7 +936,7 @@ floating parameters to their typed locals, releases the owned parameters that th
 the body, which leaves the words of the result on the stack. -/
 def bodyFunction {S : List Sig} {params : List Ty} {result : Ty} (modes : List Mode)
     (body : Expr S params result) (depth : Bool) (typeIdx : Nat)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Wasm.Function :=
+    (pool : Bytes.LiteralPool) : Wasm.Function :=
   let p0 := if depth then 1 else 0
   let slots := paramSlots params modes p0
   let h := positions body depth
@@ -953,11 +953,11 @@ def bodyFunction {S : List Sig} {params : List Ty} {result : Ty} (modes : List M
     typeIdx := some typeIdx }
 
 def Func.function (func : Func S) (typeIdx : Nat)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Wasm.Function :=
+    (pool : Bytes.LiteralPool) : Wasm.Function :=
   bodyFunction func.modes func.body func.depth typeIdx pool
 
 def RecFunc.function (func : RecFunc S) (typeIdx : Nat)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Wasm.Function :=
+    (pool : Bytes.LiteralPool) : Wasm.Function :=
   bodyFunction func.modes func.body true typeIdx pool
 
 /-- The entry of a function whose code takes the call depth, exported under its name: it calls
@@ -1054,7 +1054,7 @@ def TailBody.width (targetModes : List Mode) :
 def TailBody.code (targetModes : List Mode) (h p0 resultBase : Nat)
     {Γ : List Ty} (body : TailBody S params result Γ) (slots : List Slot)
     (base exitLabel nextLabel : Nat)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Program :=
+    (pool : Bytes.LiteralPool) : Program :=
   body.codeWith (fun value slots base live => value.code (pool := pool) h slots base live)
     targetModes h p0 resultBase slots base exitLabel nextLabel
 
@@ -1063,7 +1063,7 @@ def TailFunc.positions (func : TailFunc S) : Nat :=
     func.body.width func.modes
 
 def TailFunc.function (func : TailFunc S) (typeIdx : Nat)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Wasm.Function :=
+    (pool : Bytes.LiteralPool) : Wasm.Function :=
   let p0 := if func.depth then 1 else 0
   let stateBase := p0 + widthSum func.params
   let slots := paramSlots func.params func.modes stateBase
@@ -1085,7 +1085,7 @@ def TailFunc.function (func : TailFunc S) (typeIdx : Nat)
     typeIdx := some typeIdx }
 
 /-- A program's functions in module order, the last of the list first, from position 2. -/
-def Prog.functions (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+def Prog.functions (pool : Bytes.LiteralPool) :
     {S : List Sig} → Prog S → List Wasm.Function
   | _, .nil => []
   | _, .cons (S := S) f rest => rest.functions (pool := pool) ++ [f.function (2 + S.length) pool]
@@ -1156,7 +1156,7 @@ def compile (prog : Prog S)
     (pool : Bytes.LiteralPool := prog.literalPool 4096) : Module := compileWith prog [] [] pool
 
 theorem Prog.functions_length (prog : Prog S)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (prog.functions (pool := pool)).length = S.length := by
   induction prog with
   | nil => rfl

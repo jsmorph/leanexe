@@ -33,14 +33,15 @@ def program := Prog.cons floatFunc (Prog.cons wordFunc CompositionBase.compiled.
 
 def module := compile program
 
-theorem base_prefix : CompositionBase.compiled.program.functions <+: program.functions :=
-  (CompositionBase.compiled.program.functions_prefix_cons wordFunc).trans
-    ((Prog.cons wordFunc CompositionBase.compiled.program).functions_prefix_cons floatFunc)
+theorem base_prefix : CompositionBase.compiled.program.functions Bytes.LiteralPool.empty <+:
+    program.functions Bytes.LiteralPool.empty :=
+  (CompositionBase.compiled.program.functions_prefix_cons wordFunc _).trans
+    ((Prog.cons wordFunc CompositionBase.compiled.program).functions_prefix_cons floatFunc _)
 
 theorem base_calls : Calls module CompositionBase.compiled.funs
     CompositionBase.compiled.program.flags
     (CompositionBase.compiled.program.boundsAt CompositionBase.compiled.funs)
-    (CompositionBase.compiled.program.fitsAt CompositionBase.compiled.funs) :=
+    (CompositionBase.compiled.program.fitsAt CompositionBase.compiled.funs) Bytes.LiteralPool.empty :=
   CompositionBase.compiled.program.calls_extension program _ CompositionBase.compiled.meaning
     base_prefix [] [] (by
       have noLiterals : CompositionBase.compiled.program.literals = [] := by decide +kernel

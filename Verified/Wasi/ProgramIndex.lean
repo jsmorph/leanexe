@@ -23,7 +23,7 @@ def EffectProg.types : {effectSigs : List EffectSig} →
 /-- Bodies follow their earlier callees.  The three I/O functions precede them, while two
 function types cover those wrappers. -/
 def EffectProg.functions (source : Wasm.Module)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     {effectSigs : List EffectSig} → EffectProg pureSigs effectSigs → List Function
   | _, .nil => []
   | _, .cons (effectSigs := effectSigs) function rest =>
@@ -116,7 +116,7 @@ theorem EffectVar.index_lt (callee : EffectVar effectSigs signature) :
       ih, List.length_cons, List.length_nil]
 
 @[simp] theorem EffectProg.functions_length (program : EffectProg pureSigs effectSigs)
-    (source : Wasm.Module) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (source : Wasm.Module) (pool : Bytes.LiteralPool) :
     (program.functions source pool).length = effectSigs.length := by
   induction program with
   | nil => rfl
@@ -140,11 +140,11 @@ theorem EffectProg.types_get : {effectSigs : List EffectSig} →
 
 @[simp] theorem EffectFunc.function_signature (source : Wasm.Module)
     (function : EffectFunc pureSigs effectSigs) (typeIdx : Nat)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     Encoding.Spec.signature (function.function source typeIdx pool) = function.type := rfl
 
 theorem EffectProg.functions_signatures (program : EffectProg pureSigs effectSigs)
-    (source : Wasm.Module) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (source : Wasm.Module) (pool : Bytes.LiteralPool) :
     (program.functions source pool).map Encoding.Spec.signature = program.types := by
   induction program with
   | nil => rfl
@@ -153,7 +153,7 @@ theorem EffectProg.functions_signatures (program : EffectProg pureSigs effectSig
       EffectFunc.function_signature, ih, EffectProg.types]
 
 theorem EffectProg.function_typeIdx (source : Wasm.Module)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     {effectSigs : List EffectSig} → (program : EffectProg pureSigs effectSigs) →
     {signature : EffectSig} → (callee : EffectVar effectSigs signature) →
     ((program.functions source pool)[callee.index]?).map Function.typeIdx =
@@ -171,7 +171,7 @@ theorem EffectProg.function_typeIdx (source : Wasm.Module)
 
 theorem EffectProg.function_signature (program : EffectProg pureSigs effectSigs)
     (source : Wasm.Module) (callee : EffectVar effectSigs signature)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     ((program.functions source pool)[callee.index]?).map Encoding.Spec.signature =
       some signature.type := by
   rw [← List.getElem?_map, program.functions_signatures source pool, EffectProg.types_get]

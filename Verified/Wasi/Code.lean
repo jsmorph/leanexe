@@ -9,7 +9,7 @@ open Wasm LeanExe.Wasi
 three-import relocation once.  Normal returns leave owned result words on the stack.  Local
 zero carries the incoming depth, and `live` identifies context values retained afterward. -/
 def Command.code (source : Wasm.Module) (h : Nat) (slots : List Slot) (base : Nat)
-    (live : Nat → Bool) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (live : Nat → Bool) (pool : Bytes.LiteralPool) :
     {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → Program
   | _, _, .unit => []
@@ -97,7 +97,7 @@ def EffectFunc.positions (function : EffectFunc pureSigs effectSigs) : Nat :=
   1 + widthSum function.params + function.body.width
 
 def EffectFunc.function (source : Wasm.Module) (function : EffectFunc pureSigs effectSigs)
-    (typeIdx : Nat) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Wasm.Function :=
+    (typeIdx : Nat) (pool : Bytes.LiteralPool) : Wasm.Function :=
   let slots := paramSlots function.params function.modes 1
   let h := function.positions
   { params := codeParams function.params true

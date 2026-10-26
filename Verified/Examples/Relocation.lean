@@ -46,10 +46,11 @@ theorem meaning : program.Meaning funs := .cons libraryMeaning
 def module := compile program
 
 theorem prefix_calls : Calls module seedLibrary.funs seedLibrary.program.flags
-    (seedLibrary.program.boundsAt seedLibrary.funs) (seedLibrary.program.fitsAt seedLibrary.funs) :=
+    (seedLibrary.program.boundsAt seedLibrary.funs) (seedLibrary.program.fitsAt seedLibrary.funs)
+    Bytes.LiteralPool.empty :=
   seedLibrary.program.calls_extension program seedLibrary.funs seedLibrary.meaning
-    ((ScalarComposition.compiled.program.functions_prefix_append seedLibrary.program).trans
-      (libraryProgram.functions_prefix_cons caller)) [] [] (by
+    ((ScalarComposition.compiled.program.functions_prefix_append seedLibrary.program _).trans
+      (libraryProgram.functions_prefix_cons caller _)) [] [] (by
         have noLiterals : seedLibrary.program.literals = [] := by decide +kernel
         simp only [Prog.Covered, noLiterals, List.nil_subset])
 
@@ -58,7 +59,7 @@ theorem seed_implements : ImplementsA false module 2 seed
   exact ImplementsA.lean ((prefix_calls .here 0).implementsB_unpaid rfl rfl).implementsA
 
 theorem relocated_calls : Calls module funs program.flags (program.boundsAt funs)
-    (program.fitsAt funs) :=
+    (program.fitsAt funs) Bytes.LiteralPool.empty :=
   program.correct funs meaning (by decide +kernel)
 
 theorem sum_implements : ImplementsA false module 5

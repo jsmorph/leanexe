@@ -30,13 +30,13 @@ theorem FVar.callIndex_appendRight {S T : List Sig} {g : Sig} (f : FVar T g) :
   omega
 
 theorem Prog.functions_cast {S T : List Sig} (h : S = T) (prog : Prog S)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     (cast (congrArg Prog h) prog).functions (pool := pool) = prog.functions (pool := pool) := by
   cases h
   rfl
 
 theorem Prog.functions_prefix_append {S T : List Sig} (source : Prog S) (target : Prog T)
-    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (pool : Bytes.LiteralPool) :
     target.functions (pool := pool) <+: (source.append target).functions (pool := pool) := by
   induction source with
   | nil => exact ⟨[], List.append_nil _⟩

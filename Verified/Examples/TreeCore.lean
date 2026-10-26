@@ -84,7 +84,7 @@ def prog :=
 def module : Wasm.Module := compile prog
 
 theorem correct : Calls module prog.funs prog.flags
-    (prog.boundsAt prog.funs) (prog.fitsAt prog.funs) :=
+    (prog.boundsAt prog.funs) (prog.fitsAt prog.funs) Bytes.LiteralPool.empty :=
   prog.correct_funs rfl (by decide +kernel)
 
 theorem duplicate_denote (xs : List UInt64) :
