@@ -10,7 +10,7 @@ programs.  Shared algorithms come from [the library](../Library/README.md).
 | [GPT32](Gpt32/README.md) | Binary32 GPT-2 with Wasm and WGSL compilation and modeled host and dispatch proofs. |
 | [Drone](Drone/README.md) | Terrain-following flight planning with optimality, flight-safety, and execution proofs. |
 | [Clob](Clob/README.md) | An order book with command-stream and compilation proofs. |
-| [Slew](Slew/README.md) | A slew planner for a spacecraft under cone constraints, with its compilation, tests, and safety proofs planned. |
+| [Slew](Slew/README.md) | A slew planner for a spacecraft under cone constraints, compiled by the verified compiler and tested in Wasmtime, with its safety proofs planned. |
 
 Each guide states its proof premises and run commands.  Euler's recorded outputs are under
 [the Euler run data](../data/euler).  The [compiler examples](../Examples) demonstrate individual

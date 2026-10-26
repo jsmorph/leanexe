@@ -7,6 +7,7 @@ import TestSupport.Hashing.CrcCases
 import TestSupport.Hashing.SipHashCases
 import TestSupport.Hashing.XxHash64Cases
 import TestSupport.Regex.Cases
+import TestSupport.Slew.Cases
 import Verified.Examples.Poly
 import Verified.Examples.Mix
 import Verified.Examples.Lets
@@ -444,6 +445,7 @@ def main : IO Unit := do
   TestSupport.Hashing.SipHashCases.cases
   TestSupport.Hashing.XxHash64Cases.cases
   TestSupport.Regex.Cases.cases
+  TestSupport.Slew.Cases.cases
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases

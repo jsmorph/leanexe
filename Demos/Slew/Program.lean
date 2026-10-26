@@ -317,7 +317,7 @@ def segmentField (xs : Array Float) (d : Dims) (s : Search) (k settleTicks g f :
   let qa := nodeAt xs d a
   let rel := relative qa (nodeAt xs d b)
   let sn := Float.sqrt (rel.x * rel.x + rel.y * rel.y + rel.z * rel.z)
-  let big := sn ≥ axisMin
+  let big : Bool := sn ≥ axisMin
   if f == 0 then qa.w else if f == 1 then qa.x else if f == 2 then qa.y else if f == 3 then qa.z
   else if f == 4 then (if big then rel.x / sn else 1.0)
   else if f == 5 then (if big then rel.y / sn else 0.0)

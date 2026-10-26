@@ -65,6 +65,7 @@ Library.Numerics.Float64.Erf.Compiled:Library.Numerics.Float64.Erf.compiled.modu
 Library.Numerics.Decimal.ParseFloat.Compiled:Library.Numerics.Decimal.ParseFloat.compiled.module:parsefloat
 Library.Numerics.Decimal.PrintFloat.Compiled:Library.Numerics.Decimal.PrintFloat.compiled.module:printfloat
 Demos.Drone.Verified:Demos.Drone.Verified.compiled.module:drone
+Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew
 Library.Random.Lcg.Verified:Library.Random.Lcg.compiled.module:lcg
 Library.Random.ParkMiller.Verified:Library.Random.ParkMiller.compiled.module:parkmiller
 Library.Random.Xorshift.Verified:Library.Random.Xorshift.compiled.module:xorshift

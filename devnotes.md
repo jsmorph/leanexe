@@ -35660,12 +35660,12 @@ Phase A:
 
 Build phase:
 
-- [ ] Build `Demos.Slew.Program`, `Demos.Slew.Flat`, and `Demos.Slew.Verified`, and record each change that the reflector needs.
-- [ ] Write the generator and its main module, register the module and the cases, and run `tests/verified/run.sh --cases slew`, recording the counts and the times of the largest plans against a target of 100 ms.
-- [ ] Write the sampled safety check in the generator, labeled a test until the safety theorem replaces it, and record the least spare it finds.
-- [ ] Confirm from `compiled.plan.implements` that `plan` borrows its input, and check the axioms of `compiled.bytes`.
-- [ ] Read `compiled.plan.bound_eq`, and decide whether `cost` and `parent` leave the `Search` record.
-- [ ] Add the imports to `Demos.lean` and `Demos/Verified.lean`, run `tools/source-layout`, and update the README and the verified compiler manual's examples.
+- [x] Build `Demos.Slew.Program`, `Demos.Slew.Flat`, and `Demos.Slew.Verified`, and record each change that the reflector needs.
+- [x] Write the generator and its main module, register the module and the cases, and run `tests/verified/run.sh --cases slew`, recording the counts and the times of the largest plans against a target of 100 ms.
+- [x] Write the sampled safety check in the generator, labeled a test until the safety theorem replaces it, and record the least spare it finds.
+- [x] Confirm from `compiled.plan.implements` that `plan` borrows its input, and check the axioms of `compiled.bytes`.
+- [x] Read `compiled.plan.bound_eq`, and decide whether `cost` and `parent` leave the `Search` record.
+- [x] Add the imports to `Demos.lean` and `Demos/Verified.lean`, run `tools/source-layout`, and update the README and the verified compiler manual's examples.
 
 Phase 1:
 
@@ -35677,3 +35677,17 @@ Phase 1:
 - [ ] No `sorry`, no new axiom, no `bv_decide`, and an axiom check of the soundness theorems.
 
 Later phases: the path structure and the safety theorem, the premise theorem, NaN-freedom, then the motion model and optimality, with the file theorem once the module is stable.
+
+## 2026-10-26: The slew planner compiled and tested in Wasmtime
+
+The build phase ran in a clone whose `.lake` held `main`'s full build, with at most 6 workers and `--memory-high 32G`.  `Demos.Slew.Program` built in 0.4 s and `Demos.Slew.Flat` in 1.5 s.  The first build of `Demos.Slew.Verified` failed with `the type Prop is not UInt64, Bool, Float, …`, which names no function, and the same command with `set_option trace.Verified.reflect true` stopped after `reflect Demos.Slew.segmentField`.  Its `let big := sn ≥ axisMin` bound a proposition, and `let big : Bool := sn ≥ axisMin` gives the same meaning in the dialect, after which the compilation built in 170 s.  The reflector accepted the index forms `p.1.toNat` and `(1 : UInt64).toNat` that the review had flagged.
+
+`compiled.plan.implements` is `ImplementsA true compiled.module 28 (fun x => Demos.Slew.plan x)` with an argument of type `Array Float`, so `plan` borrows its input, and `compiled.bytes` and `compiled.plan.trapFree` depend on `propext`, `Classical.choice`, and `Quot.sound` alone.  `compiled.plan.bound_eq` gives the bound of validated input as `compiled.search.bound` plus `compiled.output.bound` at the search's result, so a constant bound needs the bound equations of `search`, `round`, and `relax` in turn.  The record parameter of `round` and `relax` stays, because the plans run far inside the time target and the copies it causes enlarge only that bound, whose derivation belongs to the execution theorem and can reopen the question with numbers.
+
+`tests/TestSupport/Slew/Cases.lean` generates 852 plans in eight classes and 1,225 `atan2` calls, and `Demos/Slew/README.md` tabulates the classes with their statuses.  The `atan2` cases are the 225 pairs of 15 special values and 1,000 random pairs, half of them random bit patterns, in which a NaN pattern becomes the canonical NaN, since the host canonicalizes NaN results and native code need not keep that form.  The generator runs interpreted in 18 s.  Lean requires a structure instance's continuation lines to start at or right of its first field, which the first version broke, and a helper for the one-cone scenes replaced the long instances.
+
+`tests/verified/run.sh --cases slew` wrote and validated the 26,362-byte `build/verified/slew.wasm` and reported `verified: passed 2077 failed 0` in 74 s, with no access past the end of an array in native Lean.  Every plan case left two blocks allocated, the host's input and the result, which agrees with the borrowed parameter.  In the host, a plan of 500 waypoints took at most 51 ms, for one that finalized 348 nodes, against 18 to 28 ms for a call of `atan2`, the start of the host and the compilation of the module.
+
+The sampled safety check passed on every one of the 433 plans of status 1, with a least spare of `1.23 · 10⁻⁹` in a grazing case.  Its samples lie `θ/1000` apart and can miss an interior extremum by up to about `10⁻⁶` in cosine, so it confirms the shape of the decisions without resolving the grazing cases at the scale of the margin.  The comparison with native Lean and the check are tests, and the edge-check lemmas of Phase 1 are the next step toward a proof.
+
+`Demos`, `Demos.Verified`, and `Verified.Examples.Cases` build with the new imports, `tools/source-layout` reports only the five programs that `main` lacks in `Library.Native`, and the link check passes.  The full `lake build Verified Library` and the full `tests/verified/run.sh`, which the repository requires before a merge into `main`, have not run on this branch.

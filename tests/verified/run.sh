@@ -156,6 +156,9 @@ elif [ "$case_module" = "siphash" ]; then
 elif [ "$case_module" = "xxhash64" ]; then
   cases_module=TestSupport.Hashing.XxHash64CasesMain
   cases_source=tests/TestSupport/Hashing/XxHash64CasesMain.lean
+elif [ "$case_module" = "slew" ]; then
+  cases_module=TestSupport.Slew.CasesMain
+  cases_source=tests/TestSupport/Slew/CasesMain.lean
 fi
 tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
 cases=$(mktemp)

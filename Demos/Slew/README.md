@@ -9,9 +9,11 @@ binary64 values, and returns one, and [the development
 journal](../../devnotes.md#2026-10-26-the-slew-planner-program-theorems-and-tests) holds the plan
 for its compilation, its tests, and its theorems.
 
-No theorem about the planner is proved yet.  The program was written and first tested outside this
-repository, and it has not yet been built here, compiled by `verified_compile`, or run in
-WebAssembly.  The build phase adds the tests that [the test section](#tests) describes.
+`verified_compile` compiles the program into a module of 26,362 bytes, whose `plan` export agrees
+with native Lean, bit for bit, on all 852 generated plans and 1,225 `atan2` calls in Wasmtime.
+The compiler's generated theorems state that the module computes `plan`, and no theorem about the
+plans themselves is proved yet.  [The test section](#tests) describes the cases, and [the theorem
+section](#theorems-to-prove) lists the theorems to prove.
 
 | File | Contents |
 |---|---|
@@ -21,8 +23,8 @@ WebAssembly.  The build phase adds the tests that [the test section](#tests) des
 
 The program imports only the dialect modules and `Library.Numerics.Float64.Atan.Program`, which
 build from Lean's core library.  The representations need `LeanExe.Pipeline`, which depends on
-Talos's CodeLib, and the compilation needs `Verified`, which imports Mathlib.  Neither of the last
-two files has been built yet.
+Talos's CodeLib, and the compilation needs `Verified`, which imports Mathlib.  `Demos.lean`
+imports the program and the representations, and `Demos/Verified.lean` imports the compilation.
 
 ## The planning problem
 
@@ -105,7 +107,9 @@ costs `2^62`, and no path cost comes near it, since an edge costs less than `3.2
 
 ## Compilation
 
-These commands build the compilation, write the module, and validate it:
+These commands build the compilation, write the module, and validate it.  The build of
+`Verified.lean` takes about 3 minutes, and `tests/verified/run.sh --cases slew` runs the same steps
+before it runs the cases.
 
 ```sh
 tools/leanrun --timeout 60m lake build Demos.Slew.Verified
@@ -115,29 +119,29 @@ tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
 wasm-tools validate build/verified/slew.wasm
 ```
 
-`Verified.lean` has not yet met the reflector, and these are the points to watch:
+The reflector needed one change to the program: `segmentField` bound `let big := sn ≥ axisMin`,
+a proposition, which the dialect does not hold, and `let big : Bool := sn ≥ axisMin` replaces it
+with the same meaning.  It accepts the index forms `p.1.toNat` and `(1 : UInt64).toNat`.  The
+compilation yields these results:
 
-- `round` and `relax` take the search state, a record with array fields, as a parameter, and the
-  verified compiler borrows every record parameter.  Their updates therefore copy arrays of up to
-  1,026 words in each of up to 1,027 rounds.  The copies are correct, but the generated allocation
-  bound counts each one without reuse.  Passing `cost` and `parent` as separate owned parameters
-  would remove the copies.
-- `pathLength` indexes with `p.1.toNat` for a pair `p`.  If the reflector requires a variable,
-  `p.1` can be bound with `let` first.
-- `output` reads `s.cost[(1 : UInt64).toNat]!`.  If the reflector rejects the literal's ascription,
-  `let one : UInt64 := 1` can replace it.
-- `plan` should borrow its input, and the generated theorem states the mode, since an owned
-  parameter has type `Moved`.
-- The module exports each listed definition under the last component of its name.  `round`,
-  `initial`, `search`, and `output` are generic names, and they do not collide within this
-  program.
+- `compiled.plan.implements` states `ImplementsA true compiled.module 28 plan`, and the argument's
+  type is `Array Float` rather than `Moved`, so `plan` borrows its input.
+- `compiled.bytes` and `compiled.plan.trapFree` depend only on `propext`, `Classical.choice`, and
+  `Quot.sound`.
+- `compiled.plan.bound_eq` states the allocation bound as `compiled.search.bound` plus
+  `compiled.output.bound` for validated input, and the closed form remains to be derived.  `round`
+  and `relax` take the search state, a record with array fields, as a parameter, and the verified
+  compiler borrows every record parameter, so their updates copy arrays of up to 1,026 words in each
+  of up to 1,027 rounds, and the bound counts each copy without reuse.
 
 ## Tests
 
-The tests follow the other verified examples.  A generator written in Lean draws the inputs from
-SplitMix64 with fixed seeds and builds the geometry from rational parametrizations of angles, with
-no call to a platform library.  Native Lean computes each expected result, and
-`tests/verified/run.sh --cases slew` compares the module with it in Wasmtime, bit for bit.  The
+The tests follow the other verified examples.  [The
+generator](../../tests/TestSupport/Slew/Cases.lean) draws the inputs from SplitMix64 with fixed
+seeds and builds the geometry from rational parametrizations of angles, with no call to a platform
+library.  Native Lean computes each expected
+result, and `tests/verified/run.sh --cases slew` compares the module with it in Wasmtime, bit for
+bit, with the host's input and the result as the only blocks left allocated after a call.  The
 cases cover these classes:
 
 - realistic plans with 0, 60, 200, and 500 waypoints, and variations of the limits;
@@ -151,12 +155,34 @@ cases cover these classes:
 - invalid inputs of every kind that `validInput` rejects;
 - `atan2` on special values and on random arguments.
 
+| Class | Plans | Status 1 | 0 | -1 | -2 | -3 | Least sampled spare |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Realistic | 48 | 42 | 6 | 0 | 0 | 0 | 1.7e-3 |
+| Limits | 18 | 14 | 4 | 0 | 0 | 0 | 3.3e-2 |
+| Grazing | 240 | 83 | 157 | 0 | 0 | 0 | 1.23e-9 |
+| Stationary points | 336 | 168 | 0 | 84 | 84 | 0 | 2.0e-9 |
+| Angles near 0 and π | 114 | 72 | 22 | 0 | 20 | 0 | 1.01e-8 |
+| Extreme cones | 64 | 48 | 0 | 16 | 0 | 0 | 3.4e-4 |
+| Norms at the tolerance | 8 | 4 | 0 | 0 | 0 | 4 | 0.13 |
+| Invalid inputs | 24 | 2 | 0 | 1 | 1 | 20 | 1.9e-2 |
+
+The generator also runs a sampled safety check, a test that the safety theorem is to replace.  For
+every plan of status 1 it evaluates each cone along each segment at 1,001 equally spaced angles,
+with Rodrigues' formula and the library's `Trig.sin` and `Trig.cos`, and it fails when a cone has
+less than `1e-9` to spare.  Samples `θ/1000` apart can miss an interior extremum by up to about
+`10⁻⁶` in cosine on the longest rotations, so the check does not resolve the grazing cases at the
+scale of the margin, which the theorem will.  `tests/TestSupport/Slew/CasesMain.lean` with the
+argument `--summary` prints the table's counts and spares.
+
+The generator takes 18 s, and the whole run of `tests/verified/run.sh --cases slew` 74 s.  A plan
+of 500 waypoints takes at most 51 ms in the host, of which about 20 ms is the start of the host and
+the compilation of the module.
 ## Theorems to prove
 
 The journal states each theorem and the order of the work.
 
-- **Compilation and execution:** the generated `compiled.plan.implements` and `trapFree`, with a
-  stated allocation bound.
+- **Compilation and execution:** the generated `compiled.plan.implements` and `trapFree` hold, and
+  a constant allocation bound for validated input remains to be derived from `bound_eq`.
 - **NaN-freedom:** no floating-point operation in the evaluation of `plan` on validated input has
   a NaN operand or result.
 - **Safety:** every commanded rotation of a plan, and every attitude within `1e-9` of it, satisfies
