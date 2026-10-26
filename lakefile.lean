@@ -6,6 +6,7 @@ package leanexe where
   version := v!"0.1.0"
 
 require Verifier from ".lake/packages/CodeLib/verifier"
+-- Lake loads requirements in reverse order, so CodeLib must follow Verifier.
 require CodeLib from git "https://github.com/jsmorph/talos"
   @ "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47" / "codelib"
 

@@ -16,9 +16,11 @@ The model consumes the input one byte at a time.  `Model.outcome kernel state by
 |---|---|
 | [Kernel](Interface.lean) | `KernelSpec` supplies an invariant `Good` of the accumulator and a size condition `Room` for a line.  An accepted line keeps `Good` and produces nonempty output of fewer than `2^64` bytes. |
 | [Line sizes](Model.lean) | `LineRooms` requires `Room` for each line up to and including the first rejected line. |
-| [Host](StreamHost.lean) | `StreamHost` supplies successful reads and writes, consumes input prefixes, reports an empty read only at EOF, and commits output prefixes.  Each zero-byte write decreases a proof-only credit. |
+| [Host](StreamHost.lean) | `StreamHost` supplies successful reads and writes, consumes input prefixes, reports an empty read only at EOF, and commits output prefixes.  Each zero-byte write decreases a proof-only credit, and a read or a write of at least one byte may set the credit to any value. |
 
-The theorems cover successful transfers only.  A returned I/O error stops the process with its errno, as `afterRead` and `afterWrite` state, and the application drivers test that case.
+The compiled termination theorem of each application adds an allocation budget.  That budget
+limits the total input length, as [the WASI manual](../../docs/wasi.md#resources-host-assumptions-and-total-execution)
+states, and no proof yet supplies it.  The StreamFold theorems cover successful transfers only.  A returned I/O error stops the process with its errno, as `afterRead` and `afterWrite` state, and the application drivers test that case.
 
 ## Modules
 

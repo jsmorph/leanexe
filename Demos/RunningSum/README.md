@@ -60,8 +60,8 @@ The theorem starts with an empty event journal and output history and uses these
 
 | Premise | Requirement |
 |---|---|
-| [Integer sizes](Model.lean) | `InputBounds` requires `line.size + 3 < 2^64` for each line of the input and `integerDigitCount total + 3 < 2^64` for the total of each prefix of valid lines.  These conditions bound lines and sums independently of the total input length. |
-| [Host behavior](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful reads and writes, consumes input prefixes, reports empty input only at EOF, and commits output prefixes.  Every zero-byte write decreases a proof-only natural-valued credit.  The Talos host also satisfies the WASI specification. |
+| [Integer sizes](Model.lean) | `InputBounds` requires `line.size + 3 < 2^64` for each line of the input and `integerDigitCount total + 3 < 2^64` for the total of each prefix of valid lines.  These conditions bound lines and sums.  The allocation premise bounds the total input length, as the paragraph after this table states. |
+| [Host behavior](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful reads and writes, consumes input prefixes, reports empty input only at EOF, and commits output prefixes.  Each zero-byte write decreases a proof-only natural-valued credit, and a read or a write of at least one byte may set the credit to any value.  The Talos host also satisfies the WASI specification. |
 | [Allocation](Correct.lean) | `RunBudget` supplies a `charge` and a `potential` on native states and stream positions.  The charge bounds the typed `Resource.CallPrefixBound` of the step from each represented running state, and the potential covers that charge and decreases by at least it along each step.  The initial heap satisfies `Heap.Within` for `start`, which covers the begin charge plus the initial potential. |
 | [Final exit](Correct.lean) | `ExitAccepted` excludes rejection of status 0 or 28 at represented host worlds. |
 
@@ -69,7 +69,9 @@ The proof carries the heap-top bound through the loop, so these premises concern
 and stream positions, not compiled stores.  The heap model charges each allocation against `top`
 even when the allocator reuses a released block.  The potential therefore covers the allocation of
 the whole run, which grows with the input, and it must cover every reply the stream-host relation
-permits.  No proof yet supplies the step charges.
+permits.  A 4,096-byte read charges 4,144 bytes, so no budget exists for an input above about one
+million bytes when the host may return one byte per read, or above about four gigabytes when it
+returns full chunks, as [the WASI manual](../../docs/wasi.md#resources-host-assumptions-and-total-execution) states.  No proof yet supplies the step charges.
 
 `implements` and `run_initial` remain partial refinement theorems.  They classify every modeled
 run that completes without exhausting Talos fuel.  A normally stopped native process returns
@@ -107,4 +109,5 @@ printf '12\n-5\n20\n' | build/tools/leanexe-wasmtime-host run build/running-sum/
 [The application driver](../../tests/running-sum/run.sh) builds the proofs, audits their axioms,
 tests native arithmetic and stream handling, exercises scripted Wasm transfers and failures,
 compares native and Wasmtime output and status, checks interactive output before EOF, and checks
-the exit status after a read error from a directory and a write error from `/dev/full`.
+the exit status after a read error from a directory and, where `/dev/full` exists, a write error
+from `/dev/full`.

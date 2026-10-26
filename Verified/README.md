@@ -30,8 +30,8 @@ The element types, `Elem`, are 64-bit words, `Bool`s, binary64 and binary32 floa
 element types.  `Ty.elem e` embeds an element type, `Ty.array e` holds an array of elements, and
 `Ty.pair` combines any two value types.  `Ty.bytes` denotes `LeanExe.Bytes`.
 `Ty.tree shape` holds a recursive value with the fixed
-layout `shape`, and `Ty.treeHeader shape` holds a detached record header during matching and
-reuse.  The reflector represents `List UInt64` and supported user-defined recursive types through
+layout `shape`, and `Ty.treeHeader shape r` holds the detached header of a record of constructor
+`r` during matching and reuse.  The reflector represents `List UInt64` and supported user-defined recursive types through
 this tree model.  An expression of type `t` over a context `Γ` that may call functions with
 signatures `S` has type `Expr S Γ t`, so every expression is well typed, reads only variables in
 scope, and calls only functions that exist.  The constructs are those of [the manual's
@@ -466,10 +466,12 @@ bodies and expression callbacks.  `Prog.literalPool` removes duplicate nonempty 
 stores their concatenation in one raw data segment after the word-array tables.  The static
 bytes have no allocation header.  The allocator starts at the eight-byte-aligned end of the
 pool.  Each literal evaluation copies from this pool into its own owned allocation.
-[Empty-pool equality](LiteralCodeEq.lean) proves that an empty pool gives the previous module
-record and encoding.  The default `compileWith` pool starts at `tablesEnd tables`.
+[Empty-pool equality](LiteralCodeEq.lean) states the module for an empty pool: the table segments
+are its only data, its memory size and heap start depend only on the tables, and its functions use
+the empty pool.  The default `compileWith` pool
+starts at `tablesEnd tables`.
 
-The compiler carries the same optional pool through expression code, ordinary and tail function
+The compiler carries the same pool through expression code, ordinary and tail function
 templates, and every program suffix.  This compile-time context adds no function parameter.
 `Expr.Covered` and `Prog.Covered` require the source literals to occur in the pool.  The universal
 expression and program theorems take this coverage premise.  Expression rules take

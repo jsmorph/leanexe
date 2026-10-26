@@ -287,13 +287,11 @@ theorem Prog.correctWith {S : List Sig} (prog : Prog S) (funs : Funs S) (h : pro
     (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length))
     (hNoLiterals : prog.literals = []) :
     Calls (compileWith prog tables wrappers) funs prog.flags (prog.boundsAt funs)
-      (prog.fitsAt funs) Bytes.LiteralPool.empty := by
+      (prog.fitsAt funs) ⟨tablesEnd tables, []⟩ := by
   apply prog.calls funs h _ (compileWith_runtime prog tables wrappers)
   · intro k hk
     rw [compileWith_funcs prog tables wrappers hk]
     simp only [Prog.literalPool, hNoLiterals, List.eraseDups_nil]
-    exact congrArg (fun fs : List Function => fs[k]?)
-      (prog.functions_empty_pool (tablesEnd tables))
   · simp [Prog.Covered, hNoLiterals]
 
 /-- The `local.get` of each position from `k`, in order, pushes the words `vs` that they hold. -/
@@ -354,7 +352,8 @@ theorem entry_correctStatic {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx
 
 theorem entry_correct {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : Nat}
     {F : Env g.params → g.result.denote} {pf : List Bool} {rf : Bool} {A : Env g.params → Nat}
-    {Fi : Env g.params → Bool} {D : UInt64 → Prop} (hF : FunSpec m g idx F pf rf A Fi D Bytes.LiteralPool.empty)
+    {Fi : Env g.params → Bool} {D : UInt64 → Prop} {base : Nat}
+    (hF : FunSpec m g idx F pf rf A Fi D ⟨base, []⟩)
     (hd : g.depth = true) (hD : D 0)
     (he : m.funcs[e]? = some (entryFunction g.params g.result idx typeIdx)) :
     @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) true m e F
@@ -372,7 +371,8 @@ theorem Env.argPot_le_paidCredit {heap : Heap} {store : Store Unit} {g : Sig} {p
 owned parameters added to its bound. -/
 theorem FunSpec.implementsB {m : Module} {g : Sig} {idx : Nat}
     {F : Env g.params → g.result.denote} {pf : List Bool} {rf : Bool} {A : Env g.params → Nat}
-    {Fi : Env g.params → Bool} {D : UInt64 → Prop} (hF : FunSpec m g idx F pf rf A Fi D Bytes.LiteralPool.empty)
+    {Fi : Env g.params → Bool} {D : UInt64 → Prop} {base : Nat}
+    (hF : FunSpec m g idx F pf rf A Fi D ⟨base, []⟩)
     (hd : g.depth = false) :
     @ImplementsB _ _ (Env.represent g.params g.modes) (Ty.represent g.result) g.aborts m idx F
       (fun x => Env.credit (g.paidSel pf) x + A x) := by
@@ -401,7 +401,8 @@ theorem Sig.paidSel_none {g : Sig} {pf : List Bool} (h : (pf.all fun b => !b) = 
 /-- `FunSpec.implementsB` for a function without paid parameters: its bound alone. -/
 theorem FunSpec.implementsB_unpaid {m : Module} {g : Sig} {idx : Nat}
     {F : Env g.params → g.result.denote} {pf : List Bool} {rf : Bool} {A : Env g.params → Nat}
-    {Fi : Env g.params → Bool} {D : UInt64 → Prop} (hF : FunSpec m g idx F pf rf A Fi D Bytes.LiteralPool.empty)
+    {Fi : Env g.params → Bool} {D : UInt64 → Prop} {base : Nat}
+    (hF : FunSpec m g idx F pf rf A Fi D ⟨base, []⟩)
     (hd : g.depth = false) (hpf : (pf.all fun b => !b) = true) :
     @ImplementsB _ _ (Env.represent g.params g.modes) (Ty.represent g.result) g.aborts m idx F
       A := by
@@ -460,7 +461,8 @@ theorem entry_trapFreeStatic {m : Module} (hm : Runtime m) {g : Sig} {idx typeId
 
 theorem entry_trapFree {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : Nat}
     {F : Env g.params → g.result.denote} {pf : List Bool} {rf : Bool} {A : Env g.params → Nat}
-    {Fi : Env g.params → Bool} {D : UInt64 → Prop} (hF : FunSpec m g idx F pf rf A Fi D Bytes.LiteralPool.empty)
+    {Fi : Env g.params → Bool} {D : UInt64 → Prop} {base : Nat}
+    (hF : FunSpec m g idx F pf rf A Fi D ⟨base, []⟩)
     (hd : g.depth = true) (hD : D 0)
     (he : m.funcs[e]? = some (entryFunction g.params g.result idx typeIdx)) :
     @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) false m e F
@@ -1042,7 +1044,7 @@ the tables apart from the blocks that the arguments move.  It may trap where the
 theorem wrapper_correct {m : Module} (hm : Runtime m) {S : List Sig}
     {tables : List (Array UInt64)} (w : Wrapper S tables.length) {funs : Funs S}
     {flags : Flags S} {bounds : Nat → Bounds S} {fits : Nat → Fits S}
-    (hCalls : Calls m funs flags bounds fits Bytes.LiteralPool.empty) {e : Nat}
+    {base : Nat} (hCalls : Calls m funs flags bounds fits ⟨base, []⟩) {e : Nat}
     (he : m.funcs[e]? = some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
       w.params w.result w.depth w.callee.callIndex e)) :
     @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
@@ -1066,7 +1068,7 @@ bound. -/
 theorem wrapper_trapFree {m : Module} (hm : Runtime m) {S : List Sig}
     {tables : List (Array UInt64)} (w : Wrapper S tables.length) {funs : Funs S}
     {flags : Flags S} {bounds : Nat → Bounds S} {fits : Nat → Fits S}
-    (hCalls : Calls m funs flags bounds fits Bytes.LiteralPool.empty) {e : Nat}
+    {base : Nat} (hCalls : Calls m funs flags bounds fits ⟨base, []⟩) {e : Nat}
     (he : m.funcs[e]? = some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
       w.params w.result w.depth w.callee.callIndex e)) (hd : w.depth = false) :
     @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
@@ -1087,7 +1089,7 @@ the tables, and it raises `top` by at most its bound. -/
 theorem wrapper_noTrap {m : Module} (hm : Runtime m) {S : List Sig}
     {tables : List (Array UInt64)} (w : Wrapper S tables.length) {funs : Funs S}
     {flags : Flags S} {bounds : Nat → Bounds S} {fits : Nat → Fits S}
-    (hCalls : Calls m funs flags bounds fits Bytes.LiteralPool.empty) {e : Nat}
+    {base : Nat} (hCalls : Calls m funs flags bounds fits ⟨base, []⟩) {e : Nat}
     (he : m.funcs[e]? = some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
       w.params w.result w.depth w.callee.callIndex e)) (ha : w.aborts = false)
     (hd : w.depth = false) :

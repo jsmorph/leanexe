@@ -14,6 +14,10 @@ if [ ! -x "$host" ]; then
   printf 'Missing native host: %s\n' "$host" >&2
   exit 1
 fi
+if [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+  printf 'Native host is older than tools/wasmtime-host.c; rebuild it with tools/build-wasmtime-host.sh\n' >&2
+  exit 1
+fi
 
 tools/leanrun --timeout 10m --log build/wasi/reflection/build.log lake build \
   Verified.Wasi.ReflectCommandCases Verified.Wasi.ReflectBinderCases Verified.Examples.WasiStdio
@@ -45,6 +49,11 @@ begin_case() {
 run_host() {
   expected_status=$1
   shift
+  case $expected_status in
+    ''|*[!0-9]*)
+      printf '%s: expected status is not a decimal number: %s\n' "$case_name" "$expected_status" >&2
+      exit 1 ;;
+  esac
   observed_status=0
   timeout 30s "$host" "$@" >"$host_stdout" 2>"$host_stderr" || observed_status=$?
   if [ "$observed_status" -ne "$expected_status" ]; then

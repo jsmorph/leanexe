@@ -397,6 +397,17 @@ The form is `call MODULE.wasm FUNCTION RESULT-KIND ARG …`.  The first command 
 
 A host releases an object it owns by calling the export `release` with the pointer.  `release` traps when the header lacks the magic number or the count is not 1, so a second release of one pointer traps.  The host also has test commands for the allocator (`release-reuse`, `free-alias`, `temp-byte-call`, `temp-array-call`, `noarg-temp-reuse`, and `allocator-grows`), which [`tools/wasmtime-host.c`](../tools/wasmtime-host.c) documents.
 
+Options before the mode configure WASI.  `--wasi` links WASI preview 1, and `run MODULE.wasm` enables WASI and calls `_start`.  `--stdin-file`, `--stdout-file`, and `--stderr-file` give the guest's streams, which the guest otherwise inherits from the host.  `--control-file` receives the host's own output, the control records, which otherwise go to the host's stdout.  [The WASI manual](wasi.md#wasmtime-host) states which combinations each mode requires.  In WASI mode, the control output of a failed run ends with `wasi-exit N`, `trap`, or `error`, and in `run` mode the host writes records only to a control file.  Without `--wasi`, the host writes no outcome records, and its status and stderr report a failure.
+
+| Record | Meaning | Host status |
+|---|---|---|
+| A result line, `results r0 r1 …`, `u64 V X`, `memory P L HEX`, `memory-size N`, `saved N` | The output of a call or a script command. | 0 |
+| `stats A F` | The allocation and free counters after `call-stats` or the `stats` command. | 0 |
+| `return` | `_start` returned in `run` mode. | 0 |
+| `wasi-exit N` | The guest called `proc_exit` with a status `N` that Wasmtime accepts. | `N` modulo 256 |
+| `trap` | The export that the mode or a script `call` command calls trapped. | 2 |
+| `error` | Any other failure after the control output opens: a Wasmtime error, a rejected exit status, a trap in `alloc`, `reset`, or module initialization, a malformed result, or a host failure. | 1 |
+
 ### Native runs and tools
 
 A Lean file with a `main` runs natively with `tools/leanrun --timeout 10m lake env lean --run FILE ARGS`, which is how the test-case generators produce their expected results.  `tools/leanrun --timeout 60m lake build euler-native` builds [`Demos/Euler/Native.lean`](../Demos/Euler/Native.lean), which runs either Euler solver natively and writes its output words, and `uv run tools/euler-run.py WASM first|reconstructed N OUTDIR` runs one solve export in the Wasmtime host and records its runtime and peak resident size.  `uv run tools/gpt2.py --output-tokens 32 --prompt "…"` generates text with `gpt.wasm`, greedily or with `--top-k`, `--temperature`, and `--seed`, from the weight files that [`tests/gpt/gpt2_compare.py`](../tests/gpt/gpt2_compare.py) writes.
@@ -586,12 +597,12 @@ uv run tests/modules/chunks.py
 3. [`tests/modules/run.sh`](../tests/modules/run.sh), with the module cases, the release counts, and the depth guard, and `uv run tests/modules/chunks.py`.
 4. [`tests/drone/run.sh`](../tests/drone/run.sh), and [`tests/gpt/run.sh`](../tests/gpt/run.sh) and [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh) when the GPT module changed.
 5. The LTG check.
-6. On the build host, a cold numerical proof cache first needs the [separate one-worker builds](#memory-heavy-numerical-proofs).  Then `tools/leanrun --cpus auto --threads 3 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh) must pass, since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
+6. A cold numerical proof cache first needs the [separate one-worker builds](#memory-heavy-numerical-proofs).  Then `tools/leanrun --threads 3 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh) must pass, since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
 7. [`tests/wgsl/run.sh`](../tests/wgsl/run.sh), `tests/wgsl/run.sh --verified`, and `tests/wgsl/run.sh --verified-gpt32` on both Vulkan drivers.  `tests/gpt32/native.sh --verified` also compares complete binary32 generation with native Lean on Wasm and both drivers.
 
 Changes to packed bytes or WASI also require [the maintained WASI driver](../tests/wasi/run.sh) after the build and before the GPU checks.  It checks the byte representations, universal and generated proofs, native actions, emitted modules, and execution hosts, as [the WASI manual](wasi.md#tests) describes.
 
-Set `LEANRUN_MEMORY_HIGH=10G` for the full verified test driver on the build host, retaining eight CPUs and three workers.  The printer's file check paged under the default 4 GiB high limit.  The 10 GiB setting gives the driver the same 12 GiB maximum as the numerical proof build.
+Set `LEANRUN_THREADS=3` and `LEANRUN_MEMORY_HIGH=10G` for the full verified test driver on an 8-CPU host with about 12 GiB of memory.  The printer's file check paged under the default 4 GiB high limit.  The 10 GiB setting gives the driver the same 12 GiB maximum as the numerical proof build.
 
 `tests/verified/run.sh --check-bytes DIRECTORY` compares every registered verified module with saved reference files named `DIRECTORY/NAME.wasm`.  It writes fresh emissions to `build/byte-check/verified` and requires the verified modules to have been built.  `tests/modules/run.sh --emit-from CHECKOUT DIRECTORY` builds and emits original-compiler references from a clean checkout, records its commit, and preserves that checkout's source.  The reference checkout must contain the modules named by the checked registry.  These modes support comparisons against a recorded preceding revision.
 
@@ -654,7 +665,7 @@ The default memory limits are 4 GiB high and 6 GiB maximum.  `--memory-high SIZE
 
 ### Memory-heavy numerical proofs
 
-Some gamma and lgamma range checks need several gibibytes each.  On the build host, a cold numerical proof cache uses the following one-worker builds before the three-worker aggregate.  Each target has a separate invocation, which bounds the working set to one heavy proof and its imports.  The aggregate reuses the accepted results.
+Some gamma and lgamma range checks need several gibibytes each.  On an 8-CPU host with about 12 GiB of memory, a cold numerical proof cache uses the following one-worker builds before the three-worker aggregate.  Each target has a separate invocation, which bounds the working set to one heavy proof and its imports.  The aggregate reuses the accepted results.
 
 ```sh
 tools/leanrun --cpus auto --threads 1 --memory-high 10G --timeout 12h lake build MODULE

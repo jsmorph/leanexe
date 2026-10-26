@@ -44,10 +44,19 @@ if [ ! -x "$host" ]; then
   printf 'Missing Wasmtime host: %s\n' "$host" >&2
   exit 1
 fi
+if [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+  printf 'Native host is older than tools/wasmtime-host.c; rebuild it with tools/build-wasmtime-host.sh\n' >&2
+  exit 1
+fi
 
 count=0
 tab=$(printf '\t')
 while IFS="$tab" read -r name expected_status; do
+  case $expected_status in
+    ''|*[!0-9]*)
+      printf '%s: expected status is not a decimal number: %s\n' "$name" "$expected_status" >&2
+      exit 1 ;;
+  esac
   directory="$out/cases/$name"
   mkdir -p "$directory"
   status=0

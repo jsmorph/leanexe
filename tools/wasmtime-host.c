@@ -1,4 +1,5 @@
 #include <inttypes.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -36,6 +37,7 @@ static HostOptions options;
 static Runtime *active_runtime;
 static FILE *control_output;
 static bool owns_control_output;
+static bool outcome_recorded;
 
 typedef struct {
   uint64_t *items;
@@ -58,8 +60,14 @@ static void dispose_runtime(Runtime *runtime) {
   memset(runtime, 0, sizeof(*runtime));
 }
 
+/* Exits with `status`.  In WASI mode with control records, a failure that `check_outcome` has
+   not recorded as `wasi-exit` or `trap` ends the control output with `error`. */
 static _Noreturn void finish_host(int status) {
   dispose_runtime(active_runtime);
+  if (status != 0 && !outcome_recorded && options.wasi && options.control_records &&
+      control_output != NULL) {
+    fprintf(control_output, "error\n");
+  }
   if (control_output != NULL) {
     bool failed = ferror(control_output) != 0;
     int result = owns_control_output ? fclose(control_output) : fflush(control_output);
@@ -105,21 +113,20 @@ static void check_outcome(wasmtime_error_t *error, wasm_trap_t *trap, int trap_s
       if (options.control_records) {
         fprintf(control_output, "wasi-exit %" PRIu32 "\n", raw_status);
       }
+      outcome_recorded = true;
       finish_host((int)(raw_status & UINT32_C(255)));
     }
     print_error(error);
     if (trap != NULL) {
       print_trap(trap);
     }
-    if (options.wasi && options.control_records) {
-      fprintf(control_output, "error\n");
-    }
     finish_host(1);
   }
   if (trap != NULL) {
     print_trap(trap);
-    if (options.wasi && options.control_records) {
+    if (trap_status == 2 && options.wasi && options.control_records) {
       fprintf(control_output, "trap\n");
+      outcome_recorded = true;
     }
     finish_host(trap_status);
   }
@@ -572,11 +579,23 @@ static uint64_t alloc_records(Runtime *runtime, const char **text) {
 
 #define OBJECT_MAGIC UINT64_C(5501223100278326855)
 
-/* Prints the chain of records at `ptr` as `[x, y, ...]`, after checking that each record's
+/* Writes to `out` unless `out` is NULL.  The result printers walk a result once with NULL to
+   check it and once with the control output to print it, so a malformed result prints nothing. */
+static void emit(FILE *out, const char *format, ...) {
+  if (out == NULL) {
+    return;
+  }
+  va_list args;
+  va_start(args, format);
+  vfprintf(out, format, args);
+  va_end(args);
+}
+
+/* Writes the chain of records at `ptr` as `[x, y, ...]`, after checking that each record's
    header holds the magic number, count 1, kind 1, width 2, and mask 2. */
-static void print_u64_chain(Runtime *runtime, uint64_t ptr) {
+static void walk_u64_chain(Runtime *runtime, uint64_t ptr, FILE *out) {
   size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
-  fprintf(control_output, "[");
+  emit(out, "[");
   for (uint64_t k = 0; ptr != 0; k++) {
     if (k > memory_len / 16) {
       die("list result does not end");
@@ -587,20 +606,25 @@ static void print_u64_chain(Runtime *runtime, uint64_t ptr) {
       die("list result has a wrong record header");
     }
     if (k != 0) {
-      fprintf(control_output, ", ");
+      emit(out, ", ");
     }
-    fprintf(control_output, "%" PRIu64, read_u64_at(runtime, ptr));
+    emit(out, "%" PRIu64, read_u64_at(runtime, ptr));
     ptr = read_u64_at(runtime, ptr + 8);
   }
-  fprintf(control_output, "]\n");
+  emit(out, "]\n");
 }
 
-/* Prints the tree of records at `ptr` in preorder, `.` for a leaf and a node's key followed
+static void print_u64_chain(Runtime *runtime, uint64_t ptr) {
+  walk_u64_chain(runtime, ptr, NULL);
+  walk_u64_chain(runtime, ptr, control_output);
+}
+
+/* Writes the tree of records at `ptr` in preorder, `.` for a leaf and a node's key followed
    by its subtrees, separated by commas, after checking that each record's header holds the
    magic number, count 1, kind 1, width 3, and mask 5.  `count` bounds the records visited. */
-static void print_u64_tree_at(Runtime *runtime, uint64_t ptr, uint64_t *count) {
+static void walk_u64_tree(Runtime *runtime, uint64_t ptr, uint64_t *count, FILE *out) {
   if (ptr == 0) {
-    fprintf(control_output, ".");
+    emit(out, ".");
     return;
   }
   size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
@@ -612,24 +636,26 @@ static void print_u64_tree_at(Runtime *runtime, uint64_t ptr, uint64_t *count) {
       read_u64_at(runtime, ptr - 16) != 3 || read_u64_at(runtime, ptr - 8) != 5) {
     die("tree result has a wrong record header");
   }
-  fprintf(control_output, "%" PRIu64 ",", read_u64_at(runtime, ptr + 8));
-  print_u64_tree_at(runtime, read_u64_at(runtime, ptr), count);
-  fprintf(control_output, ",");
-  print_u64_tree_at(runtime, read_u64_at(runtime, ptr + 16), count);
+  emit(out, "%" PRIu64 ",", read_u64_at(runtime, ptr + 8));
+  walk_u64_tree(runtime, read_u64_at(runtime, ptr), count, out);
+  emit(out, ",");
+  walk_u64_tree(runtime, read_u64_at(runtime, ptr + 16), count, out);
 }
 
 static void print_u64_tree(Runtime *runtime, uint64_t ptr) {
   uint64_t count = 0;
-  print_u64_tree_at(runtime, ptr, &count);
+  walk_u64_tree(runtime, ptr, &count, NULL);
+  count = 0;
+  walk_u64_tree(runtime, ptr, &count, control_output);
   fprintf(control_output, "\n");
 }
 
-/* Prints the tree of records at `ptr` in the preorder description of `alloc_records`, after
+/* Writes the tree of records at `ptr` in the preorder description of `alloc_records`, after
    checking that each record's header holds the magic number, count 1, kind 1, and a valid
    width and mask.  `count` bounds the records visited. */
-static void print_records_at(Runtime *runtime, uint64_t ptr, uint64_t *count) {
+static void walk_records(Runtime *runtime, uint64_t ptr, uint64_t *count, FILE *out) {
   if (ptr == 0) {
-    fprintf(control_output, ".");
+    emit(out, ".");
     return;
   }
   size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
@@ -645,21 +671,23 @@ static void print_records_at(Runtime *runtime, uint64_t ptr, uint64_t *count) {
   if (!record_header_valid(width, mask)) {
     die("tree result has a wrong record header");
   }
-  fprintf(control_output, "%" PRIu64 ",%" PRIu64, width, mask);
+  emit(out, "%" PRIu64 ",%" PRIu64, width, mask);
   for (uint64_t i = 0; i < width; i++) {
-    fprintf(control_output, ",");
+    emit(out, ",");
     uint64_t slot = read_u64_at(runtime, ptr + 8 * i);
     if ((mask >> i) & 1) {
-      print_records_at(runtime, slot, count);
+      walk_records(runtime, slot, count, out);
     } else {
-      fprintf(control_output, "%" PRIu64, slot);
+      emit(out, "%" PRIu64, slot);
     }
   }
 }
 
 static void print_records(Runtime *runtime, uint64_t ptr) {
   uint64_t count = 0;
-  print_records_at(runtime, ptr, &count);
+  walk_records(runtime, ptr, &count, NULL);
+  count = 0;
+  walk_records(runtime, ptr, &count, control_output);
   fprintf(control_output, "\n");
 }
 
@@ -1593,7 +1621,10 @@ static _Noreturn void usage(void) {
           "<i64|f64|f32|bytes|array-u64|chain-u64|tree-u64|records-u64|file-u64:PATH|slots:N|"
           "list:K1,K2,...> "
           "[i64:N|f64:BITS|f32:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|chain-u64:N,N|tree-u64:K,.,.|"
-          "records-u64:W,M,S,...|file-u64:PATH ...]\n");
+          "records-u64:W,M,S,...|file-u64:PATH ...]\n"
+          "       wasmtime-host [options] script|session <module.wasm> < commands\n"
+          "       wasmtime-host release-reuse|free-alias|temp-byte-call|temp-array-call|"
+          "noarg-temp-reuse|allocator-grows <module.wasm> [arguments]\n");
   finish_host(1);
 }
 

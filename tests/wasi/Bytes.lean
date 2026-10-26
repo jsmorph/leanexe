@@ -13,5 +13,14 @@ example : Bytes.get (Bytes.build 3 (fun i => 256 + i)) 2 = 2 := rfl
 #guard_msgs in
 example : Bytes := bytes![256]
 
-#print axioms Bytes.get_build
-#print axioms Bytes.get_toNat_lt
+open Lean Elab Command in
+elab "check_bytes_axioms" : command => do
+  let permitted := #[``propext, ``Classical.choice, ``Quot.sound]
+  let declarations := #[``Bytes.get_build, ``Bytes.get_toNat_lt]
+  for declaration in declarations do
+    for axiomName in ← collectAxioms declaration do
+      unless permitted.contains axiomName do
+        throwError "{declaration} uses forbidden axiom {axiomName}"
+  logInfo m!"Bytes axiom check passed for {declarations.size} theorems"
+
+check_bytes_axioms

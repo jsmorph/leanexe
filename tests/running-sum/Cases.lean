@@ -29,6 +29,8 @@ private def cases : Array Case := Id.run do
     ⟨"leading-space", " 1\n", "", 28⟩,
     ⟨"trailing-space", "1 \n", "", 28⟩,
     ⟨"nul", "1\n2\x00\n", "1\n", 28⟩,
+    ⟨"rejected-final-line", "1\n2x", "1\n", 28⟩,
+    ⟨"blank-after-lines", "1\n2\n\n3\n", "1\n3\n", 28⟩,
     ⟨"empty-final", "1\n", "1\n", 0⟩,
     ⟨"long-carry", nines ++ "\n1\n-" ++ power, nines ++ "\n" ++ power ++ "\n0\n", 0⟩,
     ⟨"many-lines", lines, sums, 0⟩]

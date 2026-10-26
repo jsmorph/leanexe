@@ -14,6 +14,10 @@ if [ ! -x "$host" ]; then
   printf 'Missing native host: %s\n' "$host" >&2
   exit 1
 fi
+if [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+  printf 'Native host is older than tools/wasmtime-host.c; rebuild it with tools/build-wasmtime-host.sh\n' >&2
+  exit 1
+fi
 
 tools/leanrun --timeout 10m --log build/wasi/acceptance/build.log lake build \
   Verified.Examples.WasiDepth Verified.Examples.WasiRetainTotal
@@ -60,6 +64,11 @@ while IFS="$tab" read -r case_name module export_name argument kind input result
     if [ "$result" = _ ]; then result=; fi
     printf '%s\nstats %s %s\n' "$result" "$allocations" "$releases" >"$case_dir/expected.control"
   fi
+  case $status in
+    ''|*[!0-9]*)
+      printf '%s: expected status is not a decimal number: %s\n' "$case_name" "$status" >&2
+      exit 1 ;;
+  esac
   observed=0
   timeout 30s "$host" --wasi --stdin-file "$fixtures/$input" \
     --stdout-file "$guest_stdout" --stderr-file "$guest_stderr" --control-file "$control" \

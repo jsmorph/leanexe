@@ -89,8 +89,11 @@ their concatenated raw bytes in a data segment after the constant word-array tab
 starts at the eight-byte-aligned end of this pool.  Deduplication shares the static source bytes.
 Each evaluation still allocates and copies its result.  [The pool definitions](../Verified/Bytes/LiteralPool.lean)
 and [literal-copy correctness](../Verified/Bytes/Literal.lean) give the layout and allocation rules.
-An empty pool preserves the previous module and encoding, as [the empty-pool equality](../Verified/LiteralCodeEq.lean)
-proves.  [The WASI manual](wasi.md) describes these bytes in stream actions and the separate I/O compilation command.
+For a program without literals, [the empty-pool equality](../Verified/LiteralCodeEq.lean) states
+the module that `compileWith` produces: the table segments are its only data, its memory size and
+heap start depend only on the tables, and its functions use the empty pool.
+`tests/verified/run.sh --check-bytes DIRECTORY` compares the emitted modules with saved reference
+modules, such as those of an earlier compiler.  [The WASI manual](wasi.md) describes these bytes in stream actions and the separate I/O compilation command.
 
 ### Expressions
 
@@ -459,7 +462,7 @@ The checks of `Trig`, `Exp`, and `Log` also compare the stored tables with integ
 
 The full library includes the numerical proofs and can take several hours.  The lgamma root-range proofs need `--memory-high 10G`, which sets a 12 GiB memory maximum.  The [compilation example](#compiling-and-running) builds only its selected module and imports at the default limits.
 
-After a change to the verified compiler or its examples, `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and `tests/verified/run.sh` must pass with no failed case.  A new pure compiler fixture needs an import in [`Verified.lean`](../Verified.lean), an entry in [the module registry](../tests/verified/modules.txt), and checked cases.  Reusable algorithm compilations belong in [`Library.lean`](../Library.lean), and verified application compilations belong in [`Demos/Verified.lean`](../Demos/Verified.lean), which `Verified` imports.  An application port reuses its existing corpus.  Other pure examples add cases to `Verified/Examples/Cases.lean`.  WASI changes also use [the maintained WASI driver](../tests/wasi/run.sh), with its proof and axiom targets, frontend examples, stream fixtures, and host tests.  [The LeanExe compiler manual's full check](leanexe-manual.md#the-full-check) covers the rest of the repository, and [the journal](../devnotes.md) records the counts of each run.
+After a change to the verified compiler or its examples, `tools/leanrun --threads 3 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and `tests/verified/run.sh`, run with `LEANRUN_THREADS=3` and `LEANRUN_MEMORY_HIGH=10G`, must pass with no failed case.  A new pure compiler fixture needs an import in [`Verified.lean`](../Verified.lean), an entry in [the module registry](../tests/verified/modules.txt), and checked cases.  Reusable algorithm compilations belong in [`Library.lean`](../Library.lean), and verified application compilations belong in [`Demos/Verified.lean`](../Demos/Verified.lean), which `Verified` imports.  An application port reuses its existing corpus.  Other pure examples add cases to `Verified/Examples/Cases.lean`.  WASI changes also use [the maintained WASI driver](../tests/wasi/run.sh), with its proof and axiom targets, frontend examples, stream fixtures, and host tests.  [The LeanExe compiler manual's full check](leanexe-manual.md#the-full-check) covers the rest of the repository, and [the journal](../devnotes.md) records the counts of each run.
 
 ## Examples
 

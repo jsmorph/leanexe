@@ -67,7 +67,7 @@ theorem HiddenTables.modes_eq (tables : HiddenTables params modes) :
 structure EffectEntry (effectSigs : List EffectSig) where
   signature : EffectSig
   callee : EffectVar effectSigs signature
-  tables : HiddenTables signature.params signature.modes := .nil
+  tables : HiddenTables signature.params signature.modes
 
 def EffectEntry.type (entry : EffectEntry effectSigs) : FuncType :=
   { params := entry.tables.visibleParams.flatMap Ty.types

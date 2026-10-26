@@ -13,6 +13,18 @@ case "$#:${1-}" in
   *) printf 'Usage: %s [--foundations-only]\n' "$0" >&2; exit 2 ;;
 esac
 
+host="$root/build/tools/leanexe-wasmtime-host"
+if ! "$foundations_only"; then
+  if [ ! -x "$host" ]; then
+    printf 'Missing native host: %s\n' "$host" >&2
+    exit 1
+  fi
+  if [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+    printf 'Native host is older than tools/wasmtime-host.c; rebuild it with tools/build-wasmtime-host.sh\n' >&2
+    exit 1
+  fi
+fi
+
 tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Bytes.CopyOwned Verified.Bytes.Release Verified.Bytes.Get \
   Verified.Bytes.Literal Verified.Bytes.StaticEnv Verified.BytesBuildCorrect \
@@ -93,7 +105,6 @@ tools/leanrun --timeout 5m lake env lean tests/decoder/TableProfile.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Axioms.lean
 
 out="$root/build/wasi"
-host="$root/build/tools/leanexe-wasmtime-host"
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean Verified.Examples.Bytes \
   Verified.Examples.Bytes.compiled.module "$out/bytes.wasm"
 wasm-tools validate "$out/bytes.wasm"

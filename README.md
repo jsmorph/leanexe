@@ -48,18 +48,20 @@ interpreter, and Wasmtime's exit-acceptance policy.
 
 `LeanExe.Wasi.Process` composes bounded actions through an unbounded outer loop.  The
 [running-sum application](Demos/RunningSum/README.md) reads decimal integers through EOF, handles
-short writes, and proves canonical cumulative integer output and eventual accepted exit.  [Its
-compiled theorem](Demos/RunningSum/Correct.lean) covers every finite input within separate line
-and prefix-sum size bounds.  A line that is not a decimal integer stops the command with status 28
-after the output of the lines before it.  The theorem assumes stream-host progress, a run budget
-for allocation, and final-exit acceptance.
+short writes.  [Its compiled theorem](Demos/RunningSum/Correct.lean) proves canonical cumulative
+integer output and eventual accepted exit under separate line and prefix-sum size bounds.  A line
+that is not a decimal integer stops the command with status 28 after the output of the lines before
+it.  The theorem assumes stream-host progress, a run budget for allocation, and final-exit
+acceptance.  No proof yet supplies a run budget, and none exists for inputs above about one million
+bytes when the host may return one byte per read, because the heap model credits no released
+memory.
 
 [The floating-point version, `sumfp`](Demos/RunningSumFp/README.md), parses binary64 values and
 prints each sequential binary64 total in scientific notation.  Its proofs compose the existing
 parser and printer theorems with IEEE-754 addition and the WASI process proof.  The total starts
-at positive zero.  Its theorem covers every finite input with fewer than `2^32` bytes per line,
-including lines that denote no number, and assumes host progress, a run budget for allocation, and
-final-exit acceptance.
+at positive zero.  Its theorem requires fewer than `2^32` bytes per line, covers lines that denote
+no number, and assumes host progress, a run budget for allocation, and final-exit acceptance, with
+the same limits on the budget.
 
 ### Comparison
 
@@ -184,7 +186,8 @@ tools/leanrun --timeout 60m lake build Verified
 
 The complete `Library` build includes the numerical proofs and can take several hours.
 [The full-check procedure](docs/leanexe-manual.md#the-full-check) gives its resource settings and
-the execution, decoder, allocation, numerical, and GPU tests.  the build host's procedure stages
+the execution, decoder, allocation, numerical, and GPU tests.  On an 8-CPU host with about 12 GiB
+of memory, the procedure stages
 [memory-heavy numerical proofs](docs/leanexe-manual.md#memory-heavy-numerical-proofs) individually
 before a three-worker aggregate, with a 10 GiB memory high limit and 12 GiB maximum.  Test drivers
 invoke the runner themselves.

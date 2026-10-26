@@ -53,6 +53,37 @@ def TailBody.literals : {Γ : List Ty} → TailBody S params result Γ → List 
     (if h : shape.hasNull = true then (empty h).literals else []) ++
       (List.ofFn fun r => (nodes r).literals).flatten
 
+section
+
+variable {S : List Sig} {params : List Ty} {result : Ty} {Γ : List Ty}
+
+theorem TailBody.literals_ret (value : Expr S Γ result) :
+    (TailBody.ret (params := params) value).literals = value.literals := rfl
+
+theorem TailBody.literals_next (args : (i : Fin params.length) → Expr S Γ (params.get i)) :
+    (TailBody.next (result := result) args).literals =
+      (List.ofFn fun i => (args i).literals).flatten := rfl
+
+theorem TailBody.literals_ite (cond : Expr S Γ .bool) (yes no : TailBody S params result Γ) :
+    (TailBody.ite cond yes no).literals = cond.literals ++ yes.literals ++ no.literals := rfl
+
+theorem TailBody.literals_letE {t : Ty} (value : Expr S Γ t)
+    (body : TailBody S params result (t :: Γ)) :
+    (TailBody.letE value body).literals = value.literals ++ body.literals := rfl
+
+theorem TailBody.literals_letPair {s t : Ty} (value : Expr S Γ (.pair s t))
+    (body : TailBody S params result (t :: s :: Γ)) :
+    (TailBody.letPair value body).literals = value.literals ++ body.literals := rfl
+
+theorem TailBody.literals_treeCase {shape : TreeShape} (x : Var Γ (.tree shape))
+    (empty : shape.hasNull = true → TailBody S params result Γ)
+    (nodes : (r : Fin shape.records) → TailBody S params result (shape.context r Γ)) :
+    (TailBody.treeCase x empty nodes).literals =
+      (if h : shape.hasNull = true then (empty h).literals else []) ++
+        (List.ofFn fun r => (nodes r).literals).flatten := rfl
+
+end
+
 def TailBody.Covered (body : TailBody S params result Γ) (pool : Bytes.LiteralPool) : Prop :=
   body.literals ⊆ pool.values
 

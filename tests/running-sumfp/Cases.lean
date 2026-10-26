@@ -39,7 +39,9 @@ private def cases : Array Case := Id.run do
     ⟨"incomplete-exponent", "1e\n", "", 28⟩,
     ⟨"hex-without-exponent", "0x10\n", "", 28⟩,
     ⟨"double-cr", "1\r\r\n", "", 28⟩,
-    ⟨"nul", "1\n2\x00\n", "1e0\n", 28⟩]
+    ⟨"nul", "1\n2\x00\n", "1e0\n", 28⟩,
+    ⟨"rejected-final-line", "1\n2x", "1e0\n", 28⟩,
+    ⟨"blank-after-lines", "1\n2\n\n3\n", "1e0\n3e0\n", 28⟩]
 
 def main (arguments : List String) : IO Unit := do
   let [directory] := arguments

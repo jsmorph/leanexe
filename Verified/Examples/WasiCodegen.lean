@@ -93,15 +93,15 @@ def program : EffectProg [] signatures :=
       (.cons (bindHelper []) (.cons (helper []) .nil))))))))
 
 def entries : List (EffectEntry signatures) :=
-  [{ signature := _, callee := .here },
-    { signature := _, callee := .there .here },
-    { signature := _, callee := .there (.there .here) },
-    { signature := _, callee := .there (.there (.there .here)) },
-    { signature := _, callee := .there (.there (.there (.there .here))) },
-    { signature := _, callee := .there (.there (.there (.there (.there .here)))) },
-    { signature := _, callee := .there (.there (.there (.there (.there (.there .here))))) },
-    { signature := _, callee := .there (.there (.there (.there (.there (.there (.there .here)))))) },
-    { signature := _, callee := .there (.there (.there (.there (.there (.there (.there (.there .here))))))) }]
+  [{ signature := _, callee := .here, tables := .nil },
+    { signature := _, callee := .there .here, tables := .nil },
+    { signature := _, callee := .there (.there .here), tables := .nil },
+    { signature := _, callee := .there (.there (.there .here)), tables := .nil },
+    { signature := _, callee := .there (.there (.there (.there .here))), tables := .nil },
+    { signature := _, callee := .there (.there (.there (.there (.there .here)))), tables := .nil },
+    { signature := _, callee := .there (.there (.there (.there (.there (.there .here))))), tables := .nil },
+    { signature := _, callee := .there (.there (.there (.there (.there (.there (.there .here)))))), tables := .nil },
+    { signature := _, callee := .there (.there (.there (.there (.there (.there (.there (.there .here))))))), tables := .nil }]
 
 def pool : Bytes.LiteralPool := ⟨tablesEnd [], program.literals.eraseDups⟩
 

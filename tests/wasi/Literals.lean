@@ -38,6 +38,8 @@ namespace Verified.Examples.Literals
 #guard arrayFold #[2, 0, 5, 4] = 575
 #guard listFold [2, 0, 5, 4] = 575
 #guard (treeCase [], treeCase [2, 99], treeCase [3]) = (65, 128, 1)
+#guard (pickLookup 0, pickLookup 4, pickLookup 1, pickLookup 3, pickLookup 7) = (65, 0, 1, 0, 0)
+#guard (pickCase (.first 5), pickCase (.second 5 (.first 0))) = (255, 1)
 #guard (tail 3 (bytes![0, 1, 255, 128])).data.data.toList = [65, 0, 255]
 #guard guarded 4 = 320
 

@@ -7,7 +7,8 @@ theorem TailBody.literals_renameFuns {S T : List Sig} (renameFuncs : FunRenaming
     (body : TailBody S params result Γ) :
     (body.renameFuns renameFuncs).literals = body.literals := by
   induction body <;>
-    simp_all only [TailBody.renameFuns, TailBody.literals, Expr.literals_renameFuns]
+    simp_all only [TailBody.renameFuns, TailBody.literals_ret, TailBody.literals_next, TailBody.literals_ite, TailBody.literals_letE, TailBody.literals_letPair, TailBody.literals_treeCase,
+      Expr.literals_renameFuns]
 
 theorem Prog.literals_cast {S T : List Sig} (types : S = T) (prog : Prog S) :
     (cast (congrArg Prog types) prog).literals = prog.literals := by

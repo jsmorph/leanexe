@@ -66,12 +66,15 @@ event journal and output history and uses these premises:
 | Premise | Requirement |
 |---|---|
 | [Line sizes](Model.lean) | `ShortLines` requires each line of the input to hold fewer than `2^32` bytes. |
-| [Host progress](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful transfers, input-prefix consumption, EOF, and committed output prefixes.  Each zero-byte write decreases a proof-only natural-valued credit. |
+| [Host progress](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful transfers, input-prefix consumption, EOF, and committed output prefixes.  Each zero-byte write decreases a proof-only natural-valued credit, and a read or a write of at least one byte may set the credit to any value. |
 | [Allocation](Correct.lean) | `RunBudget` supplies a `charge` and a `potential` on native states and stream positions.  The charge bounds the typed `Resource.CallPrefixBound` of the step from each represented running state, and the potential covers that charge and decreases by at least it along each step.  The initial heap satisfies `Heap.Within` for `start`, which covers the begin charge plus the initial potential. |
 | [Exit acceptance](Correct.lean) | `ExitAccepted` excludes rejected exits with status 0 or 28 at represented worlds. |
 
 The run budget is a premise: no proof yet supplies the step charges, and the potential covers the
-allocation of the whole run because the heap model charges each allocation against `top`.  The
+allocation of the whole run because the heap model charges each allocation against `top`.  A
+4,096-byte read charges 4,144 bytes, so no budget exists for an input above about one million
+bytes when the host may return one byte per read, or above about four gigabytes when it returns
+full chunks, as [the WASI manual](../../docs/wasi.md#resources-host-assumptions-and-total-execution) states.  The
 host also satisfies the WASI specification, with valid heap and
 static-data representations and a memory cap of at most 65,535 pages.
 
@@ -90,7 +93,7 @@ with the modeled floating-point and host semantics require external execution te
 Commands run from the repository root.  [The host setup](../../docs/leanexe-manual.md#the-wasmtime-host)
 provides the pinned Wasmtime host and its deterministic floating-point profile.
 
-The tested profile on the build host uses `LEANRUN_CPUS=8`, `LEANRUN_THREADS=3`, and
+On an 8-CPU host with about 12 GiB of memory, the tested profile uses `LEANRUN_THREADS=3` and
 `LEANRUN_MEMORY_HIGH=10G`, with a 12 GiB maximum.  The initial WASI compilation had a captured
 memory peak of 4.84 GiB.  [The resource instructions](../../AGENTS.md#lean-process-limits)
 describe these settings.
@@ -110,10 +113,10 @@ overflow, signed zero, NaNs, and infinities.
 | Execution backend | Coverage |
 |---|---|
 | Native numeric checks | Exact parsed words and printed bytes, including negative zero, subnormals, parser overflow, infinities, and NaNs. |
-| Native process and Wasmtime | The 27-case corpus covers finite rounding, cancellation, subnormals, arithmetic overflow, signed zero, nonfinite values, input framing, and rejection.  Scripted native streams add transfer partitions and errors. |
+| Native process and Wasmtime | The 29-case corpus covers finite rounding, cancellation, subnormals, arithmetic overflow, signed zero, nonfinite values, input framing, and rejection.  Scripted native streams add transfer partitions and errors. |
 | Talos | Eight cases in the same Float module cover split reads, short and zero-byte writes, committed error and trap prefixes, invalid lines, and exit rejection.  Numeric paths use signed zero, underflow to zero, infinities, and NaN propagation. |
 | Interactive native and Wasmtime | Output before the next read and before EOF. |
-| I/O errors in native and Wasmtime | A directory as stdin and `/dev/full` as stdout.  Wasmtime exits with WASI errno 31 or 51, and the native executable exits with status 1. |
+| I/O errors in native and Wasmtime | A directory as stdin and, where it exists, `/dev/full` as stdout.  Wasmtime exits with WASI errno 31 or 51, and the native executable exits with status 1. |
 
 [Talos's memory model](https://github.com/jsmorph/talos/blob/87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47/interpreter/Interpreter/Wasm/Mem.lean)
 represents bytes with a lookup function.  Each write wraps the previous function, so reads can

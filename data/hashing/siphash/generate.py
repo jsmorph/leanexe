@@ -1,3 +1,8 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
+
 """Write vectors.txt: SipHash-2-4 and SipHash-1-3 by the SIPHASH MAC of OpenSSL 3.
 
 Each line is `key tag24 tag13 message`: the 16-byte key in hexadecimal, the SipHash-2-4 and
@@ -5,7 +10,7 @@ SipHash-1-3 tags as sixteen hexadecimal digits of their 64-bit values, and the m
 hexadecimal, `-` when empty.  OpenSSL writes the tag's eight bytes from the least significant.
 The keys and messages are pseudorandom.  The script stops if OpenSSL disagrees with the 64
 SipHash-2-4 vectors of the reference implementation in vectors.h or with the test value of
-Appendix A of the SipHash paper.  Run it with `python3 -I data/hashing/siphash/generate.py`.
+Appendix A of the SipHash paper.  Run it with `uv run data/hashing/siphash/generate.py`.
 """
 
 import random

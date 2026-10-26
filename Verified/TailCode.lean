@@ -30,7 +30,8 @@ theorem TailBody.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : 
   | ite cond yes no yesSpec noSpec =>
     intro hCovered hDepth
     have hParts : (cond.Covered pool ∧ yes.Covered pool) ∧ no.Covered pool := by
-      simpa only [TailBody.Covered, TailBody.literals, Expr.Covered, List.append_subset,
+      simpa only [TailBody.Covered, TailBody.literals_ite, TailBody.literals_letE,
+        TailBody.literals_letPair, Expr.Covered, List.append_subset,
         and_assoc] using hCovered
     exact tail_ite_spec hm targetModes cond yes no
       (Expr.code_spec m funs flags bounds fits host hm hCalls cond hParts.1.1 fun hd =>
@@ -40,7 +41,8 @@ theorem TailBody.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : 
   | letE value body bodySpec =>
     intro hCovered hDepth
     have hParts : value.Covered pool ∧ body.Covered pool := by
-      simpa only [TailBody.Covered, TailBody.literals, Expr.Covered, List.append_subset] using hCovered
+      simpa only [TailBody.Covered, TailBody.literals_ite, TailBody.literals_letE,
+        TailBody.literals_letPair, Expr.Covered, List.append_subset] using hCovered
     exact tail_let_spec hm targetModes value body
       (Expr.code_spec m funs flags bounds fits host hm hCalls value hParts.1 fun hd =>
         hDepth (by simp [TailBody.depthCalls, hd]))
@@ -48,7 +50,8 @@ theorem TailBody.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : 
   | letPair value body bodySpec =>
     intro hCovered hDepth
     have hParts : value.Covered pool ∧ body.Covered pool := by
-      simpa only [TailBody.Covered, TailBody.literals, Expr.Covered, List.append_subset] using hCovered
+      simpa only [TailBody.Covered, TailBody.literals_ite, TailBody.literals_letE,
+        TailBody.literals_letPair, Expr.Covered, List.append_subset] using hCovered
     exact tail_letPair_spec hm targetModes value body
       (Expr.code_spec m funs flags bounds fits host hm hCalls value hParts.1 fun hd =>
         hDepth (by simp [TailBody.depthCalls, hd]))

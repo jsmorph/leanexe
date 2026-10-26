@@ -35437,11 +35437,78 @@ Proof checkpoint `6efedd0c` is pushed.  The build host passed the default build 
 
 The README, algorithm index, application guide, WASI manual, and design now describe the integer theorem and its explicit host, size, resource, and exit premises.  Review retained the partial-refinement results and the external engine, OS, and native-adapter assumptions.  A numeric whole-input memory bound remains open.  No executable source, compiler lowering, emitted bytes, or dependency changed during this proof work.  The earlier complete numerical and GPU results remain the execution baseline.  The current aggregate builds and full WASI driver check the new proof imports and application gate.
 
-The [main-integration review](docs/wasi-main-integration.md) compares `6efedd0c` with fetched main `1b8445f4`.  Main has twenty commits absent from this checkpoint, which has 79 commits absent from main.  The read-only preview reports 28 conflicts, including twenty compiler files.  Tagged tree constructors require changes to byte and literal-pool proofs and to branch-only WASI adapters, including files without conflict markers.  The review identifies literal-pool forwarding, host options, resource controls, registry entries, and documentation that the resolution must preserve.  It records a separate integration branch and full merged-tree tests.  This task completed the requested review without merging either source branch.
+The [main-integration review](#main-integration-review) compares `6efedd0c` with fetched main `1b8445f4`.  Main has twenty commits absent from this checkpoint, which has 79 commits absent from main.  The read-only preview reports 28 conflicts, including twenty compiler files.  Tagged tree constructors require changes to byte and literal-pool proofs and to branch-only WASI adapters, including files without conflict markers.  The review identifies literal-pool forwarding, host options, resource controls, registry entries, and documentation that the resolution must preserve.  It records a separate integration branch and full merged-tree tests.  This task completed the requested review without merging either source branch.
 
 The build host's observer recorded 374 complete samples from 14:35:18 to 15:50:02 UTC and stopped normally at 15:50:14.  It captured 26 distinct worktree scopes in 28 samples.  Those scopes reported zero swap, memory-high/max/OOM events, and memory stalls.  The largest captured memory peak was 1,601,634,304 bytes during WASI module emission.  The captured `Verified Library` scope peaked at 1,223,544,832 bytes.  No default-build scope was captured.  The last sampled counters for each captured scope total 89.00 seconds of user CPU and 47.65 seconds of system CPU.  They omit missed scopes and work after the last capture.  Host-wide counters increased by two swap-in pages, five swap-out pages, and zero OOM kills.  Host full-memory stalls increased by 76,820 microseconds, with a maximum ten-second average of 0.18 percent.  Available host memory stayed above 9,791,568 KiB.  Host counters include unrelated activity.  Twelve-second sampling provides intermittent scope coverage and cannot establish resource behavior for missed runs.
 
 The final documentation check passed for 200 Markdown files and 4,166 links.  Whitespace and source-layout checks passed.  The remaining work is the separately scoped main integration described in the review.
+
+### Main-integration review
+
+This review was a separate document in `docs/` until the merge superseded it.
+The WASI proof checkpoint is complete and pushed.  Main integration awaits authorization and requires compiler API integration and a separate test run on the resolved tree.  The current WASI branch's proof and execution tests cover its compiler before main's tagged recursive types are incorporated.
+
+### Main-integration review: Reviewed revisions
+
+| Reference | Revision | Contents |
+|---|---|---|
+| Merge base | `ba4660613e251d181fcf8361f2109448e07bdf34` | Common library reorganization baseline. |
+| Fetched main | `1b8445f4` | Hashing, tagged recursive types, regex, and their tests. |
+| WASI proof checkpoint | `6efedd0c` | WASI compiler, byte values and literals, running sum, and the combined integer-output and termination proofs and axiom checks. |
+
+At these revisions, main has 20 commits absent from `verified-wasi`, which has 79 commits absent from main.  The combined `Demos.RunningSum.Correct` build passed separately in `correct-01.log`, with 3,954 jobs.  The checkpoint's default build passed with 4,175 jobs.
+
+The subsequent [binary64 running-sum application](Demos/RunningSumFp/README.md) reuses this compiler.  Integration also needs its compiled output and termination proofs, backend tests, and recorded the build host resource profile.
+
+`git merge-tree --write-tree --name-only 1b8445f4 6efedd0c` reported 28 conflicted paths, unchanged from the earlier preview at `de3d151b`.  The preview tree is `4b90fa9ff722321e1f993a3364be50ec7312692f`.  The command changed neither the index nor the worktree.  Its tree contains unresolved conflict markers and cannot serve as a tested integration result.
+
+### Main-integration review: Compiler integration
+
+Main generalizes the tree representation from one null constructor and one record constructor to multiple record constructors, with optional null and a tag when several constructors use records.  `Ty.treeHeader` gains a record index.  Tree fields, widths, child masks, contexts, slots, and branch bodies become indexed by that constructor.  The WASI branch adds `Ty.bytes`, byte expressions, static literal pools, and ownership and allocation proofs that use the earlier tree API.
+
+The 20 compiler conflicts divide as follows.  Names in each row are relative to `Verified/`.
+
+| Area | Conflicted files | Required combination |
+|---|---|---|
+| [Source types and expressions](Verified/Source.lean) | `Source.lean`, `Compile.lean`, `Bound.lean` | Keep indexed tree constructors, dispatch, and constructor-specific copy costs alongside byte values and expressions.  Preserve static-pool parameters throughout compilation. |
+| [Representations and ownership](Verified/State.lean) | `State.lean`, `After.lean`, `EnvStep.lean`, `Potential.lean` | Combine indexed tree-header representation and potential with the byte representation, byte ownership, and literal preservation rules. |
+| [Expression correctness](Verified/ExprCorrect.lean) | `ExprCorrect.lean` | Supply literal coverage for each indexed constructor branch, retain the additional static-pool premises, and apply the generalized tree proofs. |
+| [Reflection and mode inference](Verified/Reflect/Definitions.lean) | `Reflect/Definitions.lean`, `Reflect/Modes.lean`, `Reflect/TailModes.lean` | Retain tagged recursive-type reflection and branch ownership while keeping byte reflection and byte parameter modes. |
+| [Tail compilation](Verified/TailCode.lean) | `TailCode.lean`, `TailTreeCase.lean`, `TailTreeEmpty.lean`, `TailTreeNode.lean` | Combine indexed branches and their adjusted labels with literal-pool compilation and proof premises. |
+| [Tree construction and matching](Verified/TreeCaseCorrect.lean) | `TreeCaseCorrect.lean`, `TreeCaseEmpty.lean`, `TreeCaseNode.lean`, `TreeNodeCode.lean`, `TreeNodeCorrect.lean` | Preserve main's tag dispatch and field layouts while transporting the branch's literal coverage and static-pool arguments. |
+
+Conflict markers do not identify every required edit.  The branch-only [literal collection](Verified/Literals.lean), [coverage proofs](Verified/LiteralCoverage.lean), and [coverage decomposition](Verified/LiteralCoverageFacts.lean) still use the earlier tree constructor arities and a single record branch.  Their definitions and proofs must cover the conditional null branch and every indexed record branch.  [Scratch separation](Verified/Wasi/OwnedScratch.lean), [WASI mode inference](Verified/Wasi/ReflectModes.lean), and [process representation](Verified/Wasi/ProcessState.lean) also contain the earlier one-argument `treeHeader` patterns.
+
+Literal-pool forwarding needs explicit review.  Main's new `Expr.code` tree-match arms call `(nodes r).code` and `(empty hn).code` without a pool argument.  In the combined API, `pool` has no default, so those calls fail to elaborate until they pass a pool.  Every generated expression branch must use the caller's pool.  The same requirement applies to the corresponding tail and expression proofs, including automatically merged files.
+
+The [toolchain](lean-toolchain), [Lake manifest](lake-manifest.json), Talos revision, wasm-tools pin, and Wasmtime pin agree between the reviewed tips.  The branch's [Lake configuration](lakefile.lean) replaces main's TOML configuration, preserves its libraries and existing executables, and adds the running-sum native executable and C input helper.  Main's `Library.Bytes.Packed` defines packing operations over word arrays in the `Library.Bytes` namespace.  The branch's [byte value](LeanExe/Dialect/Bytes.lean) is `LeanExe.Bytes`.  These declarations have distinct names and APIs.
+
+### Main-integration review: Tool, test, and documentation resolutions
+
+The remaining eight conflicts concern tools, tests, instructions, and prose.
+
+| Paths | Resolution |
+|---|---|
+| [Lean runner](tools/leanrun), [repository instructions](AGENTS.md), [LeanExe manual](docs/leanexe-manual.md) | Retain the branch's separate `--cpus` and `--threads` controls, inherited-scope checks, and explicit CPU period.  Reconcile main's description, where `--threads` also selects the quota, with the branch's approved settings and paging measurements. |
+| [Wasmtime host](tools/wasmtime-host.c) | Retain main's `records-u64` argument and result support and the branch's WASI options, control output, and cleanup.  The conflict spans the usage text and the new option parser.  Keep `finish_host` on those exit paths. |
+| [Verified test driver](tests/verified/run.sh) | Combine main's default-build prerequisite with the branch's resource settings and `--check-bytes` option.  Preserve the automatically merged SHA, HMAC, tagged-type, and regex case routing, plus their module and file-theorem registry entries. |
+| [Library guide](Library/README.md), [algorithm index](index.md), [development journal](devnotes.md) | Keep hashing, regex, bytes, WASI, and running-sum coverage.  Reconcile the index numbering and anchors, remove the obsolete future-hashing statement, and retain both journals' evidence. |
+
+Main's new `tests/regex/run.sh` invokes `python3 -I`, and its `python_check.py` has no PEP 723 declaration.  Incorporating that gate requires the repository's `uv run` form and a script declaration with `requires-python = ">=3.12"`.  The program uses the standard library and needs no new dependency.
+
+The branch-only [verified internals guide](Verified/README.md) still describes `Ty.treeHeader shape` and one empty and one record constructor.  Update that description to main's indexed headers and tagged layouts.  Preserve the generalized limits from the automatically merged [verified compiler manual](docs/verified-manual.md).  Review the [README](README.md), [WASI manual](docs/wasi.md), and [running-sum guide](Demos/RunningSum/README.md) for consistent proof claims and links against the combined output and termination theorems.
+
+### Main-integration review: Integration and remaining gates
+
+Each stage must pass before the next stage starts.  Lean commands use the [resource-limited runner](tools/leanrun), with one external runner invocation per host.  Failures, changes in proof approach, and accepted results belong in the [development journal](devnotes.md).
+
+1. [x] Commit and push the final WASI proofs and their axiom checks at `6efedd0c`.
+2. [ ] After authorization, create a separate integration branch from the tested `verified-wasi` tip containing `6efedd0c` and merge the reviewed main tip `1b8445f4` into it.  Preserve the tested source branches and their available emitted-module baselines.  Resolve the core source and representation APIs first, then literal collection and coverage, tree and tail proofs, reflection, and the WASI adapters.  Resolve the tool and prose conflicts without dropping either branch's features.
+3. [ ] Check the resolved tree for conflict markers, whitespace errors, obsolete constructor patterns, and omitted literal-pool arguments.  Check merged imports, test registries, shell syntax, links, and the Python invocation.  Rebuild the Wasmtime host before execution tests.
+4. [ ] Build the merged compiler and source-proof dependencies, including the tagged-type examples, byte and literal examples, WASI foundations, `Demos.RunningSum.Correct`, and `Demos.RunningSumFp.Correct`.  Run the corresponding axiom checks.  A proof checked against the earlier compiler does not cover this stage.
+5. [ ] Run focused execution tests for tagged types and existing recursive types, lists, ownership, and static literals.  Run the SHA-256, SHA-512, both HMAC, and regex cases added on main, including the corrected regex native/Python gate.  Then run the complete [WASI driver](tests/wasi/run.sh), which includes the [integer](tests/running-sum/run.sh) and [binary64](tests/running-sumfp/run.sh) application gates.  These cover short writes, EOF, malformed input, host errors, accepted and rejected exits, and floating-point behavior.
+6. [ ] Complete the [full-check procedure](docs/leanexe-manual.md#the-full-check) on the merged tree: default and aggregate builds, verified modules and file theorems, numerical tests, decoder tests, application comparisons, and the WGSL and binary32 generation checks.  Compare emitted bytes against the applicable pre-merge baselines.  Main adds registry entries, so baseline comparisons must distinguish new modules from changed existing modules.  Explain any byte change and recheck its file theorem and execution cases.
+7. [ ] Review the final diff and documents, record the exact tested integration commit and results, and merge that commit into main.  Push only after the merged-tree gates pass.
 
 ## 2026-10-25: Floating-point running sum
 
@@ -36033,3 +36100,44 @@ The proofs follow the programs' structure.  SipHash's `messageWords_eq` describe
 - [x] Full validation, then commit and fast-forward `main`.
 
 On the build host the branch built `Verified Library` in 10,519 jobs with no `sorry` and the default targets, and the vector checks agreed: `siphash-vectors` on 331 messages and `xxhash64-vectors` on 8,322.  `tests/verified/run.sh` ended with status 0: 32,806 verified cases, `main`'s 32,374, the 266 of `siphash`, and the 166 of `xxhash64`, with no failure, and 31 file theorems with the permitted axioms.  The review's comment corrections came after that run, and the affected modules then rebuilt, both vector checks agreed again, and the file theorems of both modules held.
+
+## 2026-10-26: Merge main into the WASI work
+
+Merging current `origin/main` into `wasi-revisions` produced 29 conflicts.  Main's tagged recursive types (several record kinds, `treeNode r`, `treeCase x empty nodes`) and the branch's byte values and literal pool changed the same compiler definitions and tree proofs.  For the tree proof files, main's changes were large and the branch's were small, so the resolution takes main's files and reapplies the branch's pool threading: the section variable `pool`, `(pool := pool)` on code and specification terms, and the `pool.Safe` hypothesis passed through.  The two node cases derive the safety of the bound fields with `bindPrefixStep` and `ofHEq`, as the branch did for one record kind.  `Expr.literals` and `TailBody.literals` gained multi-record `treeCase` clauses, with coverage lemmas to match.
+
+Three problems appeared only in the merged tree.  `Expr.grows` ends in a wildcard, and the byte constructors made the generated equation for its `treeCase` clause exceed the heartbeat limit, so `Expr.grows_treeCase` states that equation by `rfl`.  `TailCode` and `ProgramLiterals` each generated `TailBody.literals.eq_def`, and a module that imported both failed, so `Literals.lean` now states one equation per constructor and the two modules use those.  Four files still used the one-record tree arity.
+
+`tools/leanrun` keeps the branch's `--cpus` and main's `--threads`, and the CPU quota now defaults to the thread count, which settles review finding 2.  Main's records printer in the Wasmtime host wrote with `printf`, so it now writes to `control_output` like the other printers, which settles finding 8.  The four hashing executables moved from `lakefile.toml` to `lakefile.lean`.
+
+## 2026-10-26: Complete review of the WASI work
+
+Five independent reviewers read the merged tree: the WASI model and host assumptions, the effectful compiler and its theorems, bytes and the literal pool, the applications, and the tests, tools, and documents.  They found no unsound statement and no forbidden axiom.  They found that the run budget leaves the total-process theorems unproved for every input and vacuous for long ones, that several documents overstate the results, and a set of documentation, test, and tool defects.
+
+### Decisions
+
+The run-budget premise caps the total allocation of a run below `2^32` bytes, because the heap model counts every allocation against `top` and credits no release.  A read charges 4,144 bytes, so a host that may return one byte per read admits no budget for inputs above about one million bytes.  `RunBudget` also quantifies over every safe running state, and a `StreamHost` host may restore its zero-write credit, which leaves no finite potential.  The root fix is an allocator invariant that credits released blocks and a cost bound for the stream step as a function of its state, and both are separate projects.  I keep the theorems and state their scope exactly in every document: no proof supplies a budget for any input, and the bound above limits the inputs any budget can cover.
+
+Host traps may carry any message, including the exit message, so the journal and the exit marker distinguish an accepted exit from a host trap and the message alone does not.  The documents will say so; changing `hostSpec` would buy no theorem.  `Host.Total` is a sufficient condition and `Host.Answers` a necessary one, and the documents will say that instead of claiming an exact condition.  The trusted base will name the WASI definitions that every theorem assumes, and the documents will state that the total-process theorem requires begin and step to return normally and that process entries take no constant tables.
+
+`Prog.correctWith` states the empty pool at base 4096, while the module uses an empty pool at `tablesEnd tables`.  Every pool predicate holds trivially for an empty payload, so I will state the literal-free theorems for an empty pool at any base, which removes the mismatch.  The last silent default in the WASI compiler, `HiddenTables := .nil`, goes the way of the pool defaults.
+
+The tests gain a rejected final line without LF, a blank line after valid lines, a literal inside a multi-record tree match, a byte comparison with main's modules after the merge, numeric validation of expected statuses, a check that the host binary is current, and a failing axiom audit for `tests/wasi/Bytes.lean`.  The host's control records now agree with its exit status.  In WASI mode, a failed run ends its control output with `wasi-exit N`, with `trap` for a trap in the export that the mode or a script `call` command calls (status 2), or with `error` for any other failure after the control output opens (status 1).  A trap in `alloc`, `reset`, or module initialization therefore records `error`, because the export under test did not trap, and a missing guest stream file also records `error`.  The result printers walk a list, tree, or records result once to check it and once to print it, so a malformed result leaves no partial line before `error`.  `tools/leanrun` rejects an empty `--cpus`.  The superseded integration plan moves into this journal, and the documents lose their machine names, branch names, and commit hashes.
+
+- [x] State the budget scope and the other corrections in the documents.
+- [x] Generalize the literal-free theorems over the base of an empty pool, and remove the `HiddenTables` default.
+- [x] Add the tests and the host fixes.
+- [x] Remove the superseded plan and the rule violations from the documents.
+- [x] Bring in the `uv` conversion of the hashing and regex scripts and fix `tools/source-layout`.
+- [ ] Rebuild, run every driver, and record the results.
+
+### Results and failures
+
+The full WASI driver passed with every fix in place.  Its audits passed for 180 WASI theorems, 29 StreamFold, 43 binary64, 22, 24, and 26 integer, and 26 process statements.  The execution groups passed with 48 byte cases, 36 literal cases, 34 code-generation cases, 35 native host cases, 17 scripted Talos cases, and both application drivers with 16 and 29 native/Wasm comparisons.  `sum.wasm` keeps SHA-256 `1bf77c05a727a559a721c40800a39bf035c3ccff67c71c30096d19ba025a70c5` and `sumfp.wasm` keeps `2491ed859db987ebc0636680fba0b5b45d4a05713b0a3cf29acc83d037d39614`, the values of the pre-merge branch and of the original checkout.
+
+The first version of the multi-record literal test gave `Pick` two constructors with word fields only.  `verified_compile` rejected it, because `Pick` had no `Flat` instance and `recursiveLayout?` represents only recursive inductive types as trees.  A non-recursive sum compiles as a flat tagged tuple when it has a `Flat` instance, as `Packet` in `Verified/Examples/Sums.lean` does, but that path passes the value as words and involves no tree match.  The test needs a tagged tree match, so `Pick` now has a recursive field in its second constructor.  The seven Wasm rows of `tests/wasi/literals.tsv` record the outputs and allocation counts that Wasmtime reported.  The native guards in `tests/wasi/Literals.lean` check the outputs independently, and the counts follow the pattern of the `treeCase` rows: a tree argument stays borrowed, and each literal copy is released.
+
+The restarted `Verified Library` build used three workers under a 9 GiB limit, contrary to the manual's procedure for the gamma proofs.  `TgammaAccRangeA` and `TgammaAccRangeB` ran together at about 3.8 GB each beside the Euler module at 1.7 GB.  Full memory pressure stayed near 60 percent, and the build made no progress for several hours.  I stopped it and restarted it with the manual's sequence: each heavy proof alone with one worker and 10 GiB, then the three-worker aggregate.  The reference build of main uses the same sequence.
+
+I created my remote checkouts in the previous session by copying other checkouts with `cp -a` to reuse their builds.  The copies kept the originals' `.git` files, which name shared worktree directories, so my branch switches changed the recorded branch of three other checkouts from `siphash` to `wasi-integration`, and that of a fourth from `verified-wasi` to `wasi-integration`.  Their files did not change.  My four checkouts now have independent repositories.  The user directed that I leave the affected checkouts and the branches I created in the two the main checkout repositories as they are.
+
+The byte comparison with main uses a fresh clone of `d1f851729`, whose manifest and toolchain equal the branch's.  It emits main's 98 registered modules for comparison with the merged tree's emissions.
