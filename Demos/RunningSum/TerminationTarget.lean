@@ -19,23 +19,22 @@ theorem target_terminates {World Ghost : Type} (host : Host World)
     (at_ : heap.At (PureTransport.erase initial))
     (static : io.literalPool.Static heap (PureTransport.erase initial))
     (cap : (PureTransport.erase initial).memoryCap module 0 ≤ 65535)
-    (beginResources : ∃ budget, heap.Within (PureTransport.erase initial) io.pure.module budget ∧
-      Resource.CallPrefixBound (observedHost host)
+    (potential charge : ProcessStep State → Ghost → Nat) (start beginCharge : Nat)
+    (beginResources : heap.Within (PureTransport.erase initial) io.pure.module start ∧
+      beginCharge ≤ start ∧ Resource.CallPrefixBound (observedHost host)
         (Resource.PureContext.ofProg io.pure.program io.pure.funs) io.program entry.begin 0 .nil
-        initial.host budget)
-    (stepResources : ∀ (native : ProcessStep State) ghost (store : Store (Observed World))
-      locals heap words,
-      ProcessReachable io.pure.module module entry initial
-        ((entry.function io.pure.module (effectTypeIndex io.pure.module 4)).toLocals [])
-        targetHost store locals →
-      Safe native.state → rep ghost store.host → native.running = true →
-      ProcessMemory stateTy io.literalPool heap (PureTransport.erase store) words
-        (sourceState native.state) →
-      LocalsHold locals 2 stateTy.types words →
-      ∃ budget, heap.Within (PureTransport.erase store) io.pure.module budget ∧
+        initial.host beginCharge)
+    (beginRoom : potential ⟨true, 0, Demos.RunningSum.initial⟩ ghost + beginCharge ≤ start)
+    (stepResources : ∀ (native : ProcessStep State) ghost (world : Observed World),
+      Safe native.state → rep ghost world → native.running = true →
+      charge native ghost ≤ potential native ghost ∧
         Resource.CallPrefixBound (observedHost host)
           (Resource.PureContext.ofProg io.pure.program io.pure.funs) io.program entry.step 0
-          (.cons (sourceState native.state) .nil) store.host budget)
+          (.cons (sourceState native.state) .nil) world (charge native ghost))
+    (decreases : ∀ (native : ProcessStep State) ghost (world : Observed World),
+      Safe native.state → rep ghost world → native.running = true → ∀ trace next final nextGhost,
+      LeanExe.Wasi.Exec (observedHost host) (step native.state) world trace (.returned next) final →
+      rep nextGhost final → potential next nextGhost + charge native ghost ≤ potential native ghost)
     (accepted : ∀ ghost world, rep ghost world → ∀ status,
       status = 0 ∨ status = 28 → ∀ message final,
       (observedHost host).exitTrap world (exitStatus status) message final → False) :
@@ -47,14 +46,18 @@ theorem target_terminates {World Ghost : Type} (host : Host World)
     (compileWith_runtime io.pure.program io.pure.tables io.pure.wrappers io.literalPool)
     io.profile (Encoding.checkProgramForm_sound (by decide +kernel))
     (by decide +kernel) (ControlRep rep) (ControlLt unread zeroWrites)
-    (control_wellFounded unread zeroWrites) valid at_ static io.pool_apart cap beginResources
-    (fun _ _ _ execution => control_begin_replies ready execution)
-    (fun ghost current store locals heap words reached held running memory active => by
+    (control_wellFounded unread zeroWrites) (fun ghost _ => potential ghost.1 ghost.2)
+    (fun ghost _ => charge ghost.1 ghost.2) start beginCharge valid at_ static io.pool_apart cap
+    beginResources
+    (fun _ _ _ execution => by
+      obtain ⟨current, same, held⟩ := control_begin_replies ready execution
+      exact ⟨_, current, same, held, beginRoom⟩)
+    (fun ghost current world held running => by
       obtain ⟨related, safe, ready, _⟩ := held
-      rw [related.state] at memory ⊢
-      exact stepResources ghost.1 ghost.2 store locals heap words reached safe ready
-        (related.running.trans running) memory active)
-    (fun _ _ _ held running _ _ _ execution => control_step_replies progress held running execution)
+      rw [related.state]
+      exact stepResources ghost.1 ghost.2 world safe ready (related.running.trans running))
+    (fun _ _ _ held running _ _ _ execution =>
+      control_step_replies progress potential charge decreases held running execution)
     (fun _ _ _ held stopped _ _ rejected => control_exit_accepted accepted held stopped rejected)
   refine ⟨bound, fun fuel enough => ?_⟩
   have total : ProcessTotalRunExited host stateTy (ControlRep rep)

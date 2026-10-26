@@ -62,10 +62,14 @@ The theorem starts with an empty event journal and output history and uses these
 |---|---|
 | [Integer sizes](Model.lean) | `InputBounds` requires `line.size + 3 < 2^64` for each line of the input and `integerDigitCount total + 3 < 2^64` for the total of each prefix of valid lines.  These conditions bound lines and sums independently of the total input length. |
 | [Host behavior](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful reads and writes, consumes input prefixes, reports empty input only at EOF, and commits output prefixes.  Every zero-byte write decreases a proof-only natural-valued credit.  The Talos host also satisfies the WASI specification. |
-| [Allocation and depth](Correct.lean) | `RunResources` supplies `Heap.Within` and a typed `Resource.CallPrefixBound` at begin and every finite reached active step call.  `LocalsHold` ties the represented state to the iteration's local words. |
+| [Allocation](Correct.lean) | `RunBudget` supplies a `charge` and a `potential` on native states and stream positions.  The charge bounds the typed `Resource.CallPrefixBound` of the step from each represented running state, and the potential covers that charge and decreases by at least it along each step.  The initial heap satisfies `Heap.Within` for `start`, which covers the begin charge plus the initial potential. |
 | [Final exit](Correct.lean) | `ExitAccepted` excludes rejection of status 0 or 28 at represented host worlds. |
 
-A numeric whole-input memory bound remains unproved.
+The proof carries the heap-top bound through the loop, so these premises concern native states
+and stream positions, not compiled stores.  The heap model charges each allocation against `top`
+even when the allocator reuses a released block.  The potential therefore covers the allocation of
+the whole run, which grows with the input, and it must cover every reply the stream-host relation
+permits.  No proof yet supplies the step charges.
 
 `implements` and `run_initial` remain partial refinement theorems.  They classify every modeled
 run that completes without exhausting Talos fuel.  A normally stopped native process returns
@@ -81,7 +85,7 @@ invariant, valid static bytes, and a memory cap of at most 65,535 pages.  The lo
 old owned state after each completed step.  [The WASI manual](../../docs/wasi.md) states the host, engine, and
 file-emission assumptions.  The generic
 [total-process theorem](../../Verified/Wasi/ProcessTotalCorrect.lean) uses an application-supplied
-well-founded progress relation, resource budgets at reached calls, and final-exit acceptance.
+well-founded progress relation, step charges and a potential, and final-exit acceptance.
 
 The native reader returns after one successful `read` call and retries interrupted calls.  OS
 errors propagate through Lean's `IO.Error` API.  This gives the executable short reads on pipes.

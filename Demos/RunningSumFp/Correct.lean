@@ -7,27 +7,32 @@ open Wasm Verified Verified.Wasi LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 open Library.Numerics.Decimal.Shared.StrconvGrammar
 open Demos.StreamFold (StreamPosition StreamHost observedStreamRep stdoutWords)
 
-structure RunResources {World : Type} (host : Host World)
-    (targetHost : HostEnv (Observed World)) (initial : Store (Observed World)) (heap : Heap)
-    (rep : StreamPosition → World → Prop) : Prop where
-  beginCall : ∃ budget, heap.Within (PureTransport.erase initial) io.pure.module budget ∧
-    Resource.CallPrefixBound (observedHost host)
-      (Resource.PureContext.ofProg io.pure.program io.pure.funs) io.program entry.begin 0 .nil
-      initial.host budget
-  stepCall : ∀ (native : ProcessStep State) position (store : Store (Observed World))
-    locals heap words,
-    ProcessReachable io.pure.module module entry initial
-      ((entry.function io.pure.module (effectTypeIndex io.pure.module 4)).toLocals [])
-      targetHost store locals →
-    Termination.Safe native.state → observedStreamRep rep position store.host →
-    native.running = true →
-    ProcessMemory stateTy io.literalPool heap (PureTransport.erase store) words
-      (sourceState native.state) →
-    LocalsHold locals 2 stateTy.types words →
-    ∃ budget, heap.Within (PureTransport.erase store) io.pure.module budget ∧
+/-- Allocation budgets for a run from `position`.  `charge` bounds the allocation of the step
+from each reached running state, `potential` bounds the allocation of every remaining step, and
+the initial heap can raise `top` by `start`, which covers `begin` and the steps after it. -/
+structure RunBudget {World : Type} (host : Host World) (initial : Store (Observed World))
+    (heap : Heap) (rep : StreamPosition → World → Prop) (position : StreamPosition) where
+  charge : ProcessStep State → StreamPosition → Nat
+  potential : ProcessStep State → StreamPosition → Nat
+  start : Nat
+  beginCharge : Nat
+  fits : heap.Within (PureTransport.erase initial) io.pure.module start
+  beginBounded : beginCharge ≤ start ∧ Resource.CallPrefixBound (observedHost host)
+    (Resource.PureContext.ofProg io.pure.program io.pure.funs) io.program entry.begin 0 .nil
+    initial.host beginCharge
+  beginRoom : potential ⟨true, 0, Demos.RunningSumFp.initial⟩ position + beginCharge ≤ start
+  stepBounded : ∀ (native : ProcessStep State) position (world : Observed World),
+    Termination.Safe native.state → observedStreamRep rep position world →
+    native.running = true → charge native position ≤ potential native position ∧
       Resource.CallPrefixBound (observedHost host)
         (Resource.PureContext.ofProg io.pure.program io.pure.funs) io.program entry.step 0
-        (.cons (sourceState native.state) .nil) store.host budget
+        (.cons (sourceState native.state) .nil) world (charge native position)
+  stepDecreases : ∀ (native : ProcessStep State) position (world : Observed World),
+    Termination.Safe native.state → observedStreamRep rep position world →
+    native.running = true → ∀ trace next final nextPosition,
+    LeanExe.Wasi.Exec (observedHost host) (step native.state) world trace (.returned next) final →
+    observedStreamRep rep nextPosition final →
+    potential next nextPosition + charge native position ≤ potential native position
 
 def ExitAccepted {World : Type} (host : Host World)
     (rep : StreamPosition → World → Prop) : Prop :=
@@ -70,7 +75,7 @@ theorem terminates_fp {World : Type} (host : Host World)
     (at_ : heap.At (PureTransport.erase initial))
     (static : io.literalPool.Static heap (PureTransport.erase initial))
     (cap : (PureTransport.erase initial).memoryCap module 0 ≤ 65535)
-    (resources : RunResources host targetHost initial heap rep) (accepted : ExitAccepted host rep) :
+    (budget : RunBudget host initial heap rep position) (accepted : ExitAccepted host rep) :
     ∃ numbers status, InputValues position.input numbers status ∧
       ∃ bound, ∀ fuel ≥ bound, ∃ final,
         run fuel module startIndex initial [] targetHost = .Trap final exitTrap ∧
@@ -81,7 +86,9 @@ theorem terminates_fp {World : Type} (host : Host World)
   obtain ⟨numbers, status, values⟩ := inputValues_exist short
   obtain ⟨bound, executions⟩ := Termination.target_terminates host targetHost initial heap
     (observedStreamRep rep) (fun position => position.input.length) StreamPosition.zeroWrites
-    streams.observed.progress observed valid at_ static cap resources.beginCall resources.stepCall accepted
+    streams.observed.progress observed valid at_ static cap budget.potential budget.charge
+    budget.start budget.beginCharge ⟨budget.fits, budget.beginBounded⟩ budget.beginRoom
+    budget.stepBounded budget.stepDecreases accepted
   refine ⟨numbers, status, values, bound, fun fuel enough => ?_⟩
   obtain ⟨total, native⟩ := executions fuel enough
   generalize executed : run fuel module startIndex initial [] targetHost = result at total native ⊢
@@ -103,8 +110,8 @@ theorem initial_terminates_fp {World : Type} (host : Host World)
     (events : world.events = []) (empty : position.output = [])
     (short : ShortLines position.input)
     (valid : targetHost.Satisfies module (hostSpec host))
-    (resources : RunResources host targetHost (initialStore world)
-      (initialStaticHeap io.literalPool) rep) (accepted : ExitAccepted host rep) :
+    (budget : RunBudget host (initialStore world) (initialStaticHeap io.literalPool) rep position)
+    (accepted : ExitAccepted host rep) :
     ∃ numbers status, InputValues position.input numbers status ∧
       ∃ bound, ∀ fuel ≥ bound, ∃ final,
         run fuel module startIndex (initialStore world) [] targetHost = .Trap final exitTrap ∧
@@ -112,7 +119,7 @@ theorem initial_terminates_fp {World : Type} (host : Host World)
           host.exited final.host.world = some status :=
   terminates_fp host targetHost (initialStore world) (initialStaticHeap io.literalPool)
     rep streams represented events empty short valid
-    (initialState world).1 (initialState world).2.2 (initialState world).2.1 resources accepted
+    (initialState world).1 (initialState world).2.2 (initialState world).2.1 budget accepted
 
 theorem fp_bytes : ∃ bytes,
     Encoding.encode module = .ok bytes ∧ Encoding.decode bytes = .ok module ∧

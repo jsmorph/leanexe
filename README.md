@@ -48,16 +48,18 @@ interpreter, and Wasmtime's exit-acceptance policy.
 
 `LeanExe.Wasi.Process` composes bounded actions through an unbounded outer loop.  The
 [running-sum application](Demos/RunningSum/README.md) reads decimal integers through EOF, handles
-short writes, and proves canonical cumulative integer output and eventual accepted exit 0.
-[Its compiled theorem](Demos/RunningSum/Correct.lean) assumes finite valid input, stream-host
-progress, separate line and prefix-sum size bounds, typed resource budgets at reached calls,
-and final-exit acceptance.
+short writes, and proves canonical cumulative integer output and eventual accepted exit.  [Its
+compiled theorem](Demos/RunningSum/Correct.lean) covers every finite input within separate line
+and prefix-sum size bounds.  A line that is not a decimal integer stops the command with status 28
+after the output of the lines before it.  The theorem assumes stream-host progress, a run budget
+for allocation, and final-exit acceptance.
 
 [The floating-point version, `sumfp`](Demos/RunningSumFp/README.md), parses binary64 values and
 prints each sequential binary64 total in scientific notation.  Its proofs compose the existing
 parser and printer theorems with IEEE-754 addition and the WASI process proof.  The total starts
-at positive zero.  Its successful-execution theorem assumes a finite sequence of valid input lines, fewer than
-`2^32` bytes per line, host progress, typed resource budgets, and final-exit acceptance.
+at positive zero.  Its theorem covers every finite input with fewer than `2^32` bytes per line,
+including lines that denote no number, and assumes host progress, a run budget for allocation, and
+final-exit acceptance.
 
 ### Comparison
 
@@ -66,7 +68,7 @@ at positive zero.  Its successful-execution theorem assumes a finite sequence of
 | Correctness proof | A theorem per program, from rule lemmas and hints | A universal typed-source compiler theorem, combined with generated source-correspondence proofs |
 | Pure compilation command | `leanexe_compile p := [f, …]` | `verified_compile p := [f, …]` |
 | WASI Preview 1 I/O | Application hosts perform I/O around compiled calls. | `verified_compile_wasi` compiles stdin reads, stdout and stderr writes, and exit, with native source-to-export refinement proofs. |
-| Total execution | `ImplementsA false` with a proved memory budget | Pure `p.f.trapFree` under generated allocation and depth conditions.  WASI `.total` under typed resource-prefix and reached-host conditions.  Processes require application progress proofs and budgets at reached calls. |
+| Total execution | `ImplementsA false` with a proved memory budget | Pure `p.f.trapFree` under generated allocation and depth conditions.  WASI `.total` under typed resource-prefix and reached-host conditions.  Processes require application progress proofs and a run budget for allocation. |
 | `Float32` and WGSL kernels | Binary32 arithmetic and proved WGSL kernels | Binary32 arithmetic and a proved WGSL path for supported word, Boolean, and binary32 array builds |
 | Lists and recursive types | `List UInt64` and user recursive types | Lists and fixed-layout recursive types, including matching, guarded recursion, tail loops, copying, release, and header reuse |
 | Sum types | Supported, with fields | Enumerations and sums with scalar fields |
@@ -103,9 +105,9 @@ accepted exits, and host traps to source executions with the same world and orde
 Permitted guest resource traps match source prefixes and residual actions.  Generated action
 total-execution theorems require allocation room, the typed prefix budget, and `NoTrapsAlong`
 for the native action.  [The total-process theorem](Verified/Wasi/ProcessTotalCorrect.lean)
-uses a well-founded progress relation, budgets at finite reached active calls, and final-exit
-acceptance.  Both running-sum applications retain explicit budget premises.  A numeric whole-input
-memory bound remains open.  The modeled initial-store theorem establishes allocator and
+uses a well-founded progress relation, a charge that bounds the cost of each step, a potential
+that bounds the charges of the remaining steps, and final-exit acceptance.  Both running-sum
+applications retain those cost bounds as premises.  The modeled initial-store theorem establishes allocator and
 static-data invariants.  Real engine instantiation, OS streams, and the native stream adapter
 require conformance to the modeled behavior, which execution tests check on concrete inputs.
 

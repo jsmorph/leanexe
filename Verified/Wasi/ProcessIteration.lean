@@ -8,6 +8,12 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
+theorem _root_.LeanExe.Pipeline.Heap.At.top_eq {heap other : Heap} {store : Store Unit}
+    (first : heap.At store) (second : other.At store) : heap.top = other.top := by
+  have same := first.globals.symm.trans second.globals
+  simp only [Heap.globals, List.cons.injEq, Value.i64.injEq] at same
+  exact same.1
+
 structure ProcessStored {World : Type} (target : Wasm.Module) (state : Ty)
     (pool : Bytes.LiteralPool) (current : ProcessStep state.denote)
     (store : Store (Observed World)) (locals : Locals) : Prop where
@@ -94,6 +100,8 @@ theorem wp_process_replace {World : Type} {source target : Wasm.Module}
       resultWords resultValue)
     (next : ∀ final after, final.host = middle.host →
       ProcessStored target state pool (processNative state resultValue) final after →
+      (∀ other : Heap, other.At (PureTransport.erase final) → other.top = middleHeap.top) →
+      (PureTransport.erase final).memoryCaps = (PureTransport.erase middle).memoryCaps →
       Q (.Break 0 final after)) :
     wp target
       (storeCode (2 * (processResultTy state).width) (processResultTy state).width
@@ -123,14 +131,15 @@ theorem wp_process_replace {World : Type} {source target : Wasm.Module}
     | .Fallthrough final after => ∃ finalHeap,
         Step middleHeap (PureTransport.erase middle)
           (fun region => ∀ block ∈ state.blocks (PureTransport.erase middle) oldWords oldValue,
-            regionsDisjoint region block) finalHeap final [] ∧ after = saved
+            regionsDisjoint region block) finalHeap final [] ∧ finalHeap.top = middleHeap.top ∧
+          after = saved
     | _ => False
   have releasePure : wp source (releaseCode state 2) releasePost
       (PureTransport.erase middle) saved (HostEnv.empty : HostEnv Unit) := by
     have released := wp_releaseCode (host := HostEnv.empty) runtime state called.at_ oldRep oldHeld
-      (rest := []) (Q := releasePost) fun finalHeap final evolution _ => by
+      (rest := []) (Q := releasePost) fun finalHeap final evolution top => by
         rw [wp_nil]
-        exact ⟨finalHeap, evolution, rfl⟩
+        exact ⟨finalHeap, evolution, top, rfl⟩
     simpa only [List.append_nil] using released
   have transported := PureTransport.wp_prefix layout profile releaseForm releaseClosed middle.host
     releasePure (targetHost := targetHost)
@@ -140,7 +149,7 @@ theorem wp_process_replace {World : Type} {source target : Wasm.Module}
     (Q := Q) (fun continuation post => by
       cases continuation with
       | Fallthrough final after =>
-          obtain ⟨finalHeap, evolution, rfl⟩ := post
+          obtain ⟨finalHeap, evolution, releasedTop, rfl⟩ := post
           have resultMemory := (memory.afterStep poolScratch called rep evolution).1
           have storedMemory : ProcessMemory (processResultTy state) pool finalHeap final
               resultWords (processValue state (processNative state resultValue)) := by
@@ -155,12 +164,17 @@ theorem wp_process_replace {World : Type} {source target : Wasm.Module}
             (by rw [savedParams]; rfl) (by rw [Ty.types_length, savedPositions]; omega)
             fun copied copiedFrame copiedHeld _ => ?_
           rw [wp_br_cons]
-          apply next (PureTransport.restore middle.host final)
+          refine next (PureTransport.restore middle.host final)
             { copied with values := locals.values } rfl
-          refine ⟨⟨finalHeap, resultWords, ?_, copiedHeld⟩,
-            copiedFrame.params.trans savedParams, copiedFrame.positions.trans savedPositions, ?_⟩
+            ⟨⟨finalHeap, resultWords, ?_, copiedHeld⟩,
+              copiedFrame.params.trans savedParams, copiedFrame.positions.trans savedPositions, ?_⟩
+            (fun other otherAt => ?_) ?_
           · simpa only [PureTransport.erase_restore] using storedMemory
           · simpa only [PureTransport.erase_restore] using finalCap
+          · rw [PureTransport.erase_restore] at otherAt
+            exact (otherAt.top_eq evolution.at_).trans releasedTop
+          · rw [PureTransport.erase_restore]
+            exact evolution.caps
       | _ => exact False.elim post)
   simpa only [PureTransport.restore_erase, saved, List.append_assoc] using transported
 
@@ -265,7 +279,7 @@ theorem wp_process_iteration {World : Type} {source target : Wasm.Module}
             simpa only [ProcessEntry.action, List.append_nil] using composed
           apply wp_process_replace runtime layout profile releaseForm releaseClosed memory held
             stored.params stored.positions stored.cap poolScratch called representation
-          intro released after sameWorld nextStored
+          intro released after sameWorld nextStored _ _
           exact ProcessIterationResult.next (processNative entry.state value) released after trace running
             (by simpa only [sameWorld] using nativeExecution)
             (ProcessStored.values locals.values nextStored))

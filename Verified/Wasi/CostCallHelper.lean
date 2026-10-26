@@ -1,5 +1,37 @@
 import Verified.Wasi.CostEffectSpec
 
+namespace Verified.Wasi.Resource
+
+open LeanExe.Wasi
+
+theorem ResourceCall.returned_prefix {World : Type} {host : Host World}
+    {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {callee : EffectVar effectSigs signature} {depth : UInt64} {env : Env signature.params}
+    {world trace value final spent fits}
+    (execution : ResourceCall host pure program callee depth env world trace (.returned value)
+      final spent fits) :
+    ResourceCallPrefix host pure program callee depth env world trace (.pure value) final spent
+      fits := by
+  induction callee with
+  | here =>
+      cases execution with
+      | here run => exact .here (.returned run)
+  | there callee ih =>
+      cases execution with
+      | there run => exact .there (ih run)
+
+theorem CallPrefixBound.returned {World : Type} {host : Host World}
+    {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {callee : EffectVar effectSigs signature} {depth : UInt64} {env : Env signature.params}
+    {world : World} {budget : Nat} {trace value final spent fits}
+    (bounded : CallPrefixBound host pure program callee depth env world budget)
+    (execution : ResourceCall host pure program callee depth env world trace (.returned value)
+      final spent fits) :
+    spent ≤ budget ∧ fits = true :=
+  bounded _ _ _ _ _ execution.returned_prefix
+
+end Verified.Wasi.Resource
+
 namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime

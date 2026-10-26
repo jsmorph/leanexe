@@ -67,11 +67,12 @@ event journal and output history and uses these premises:
 |---|---|
 | [Line sizes](Model.lean) | `ShortLines` requires each line of the input to hold fewer than `2^32` bytes. |
 | [Host progress](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful transfers, input-prefix consumption, EOF, and committed output prefixes.  Each zero-byte write decreases a proof-only natural-valued credit. |
-| [Allocation and depth](Correct.lean) | `RunResources` supplies `Heap.Within` and typed `Resource.CallPrefixBound` budgets at begin and finite reached active step calls.  `LocalsHold` ties the represented state to the iteration's local words. |
+| [Allocation](Correct.lean) | `RunBudget` supplies a `charge` and a `potential` on native states and stream positions.  The charge bounds the typed `Resource.CallPrefixBound` of the step from each represented running state, and the potential covers that charge and decreases by at least it along each step.  The initial heap satisfies `Heap.Within` for `start`, which covers the begin charge plus the initial potential. |
 | [Exit acceptance](Correct.lean) | `ExitAccepted` excludes rejected exits with status 0 or 28 at represented worlds. |
 
-The resource conditions remain explicit per-call budgets.  A numeric whole-input memory bound
-has not been proved.  The host also satisfies the WASI specification, with valid heap and
+The run budget is a premise: no proof yet supplies the step charges, and the potential covers the
+allocation of the whole run because the heap model charges each allocation against `top`.  The
+host also satisfies the WASI specification, with valid heap and
 static-data representations and a memory cap of at most 65,535 pages.
 
 `implements` and `run_initial` classify modeled executions that complete without exhausting Talos

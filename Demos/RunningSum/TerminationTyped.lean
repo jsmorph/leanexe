@@ -31,26 +31,32 @@ theorem control_begin_replies {World Ghost : Type} {host : Host World}
     {trace outcome final}
     (execution : LeanExe.Wasi.Exec host (entry.beginAction (io.program.funs io.pure.funs))
       world trace outcome final) :
-    ∃ nextGhost current, outcome = .returned current ∧ ControlRep rep nextGhost current final := by
+    ∃ current, outcome = .returned current ∧
+      ControlRep rep (⟨true, 0, initial⟩, ghost) current final := by
   obtain ⟨nativeOutcome, nativeExecution, related⟩ := begin_related.exec_back execution
   change LeanExe.Wasi.Exec host (.pure ⟨true, 0, initial⟩) world trace nativeOutcome final
     at nativeExecution
   cases nativeExecution
   cases related with
   | returned related =>
-      exact ⟨(⟨true, 0, initial⟩, ghost), _, rfl, related, Safe.initial, ready,
-        fun impossible => Bool.noConfusion impossible⟩
+      exact ⟨_, rfl, related, Safe.initial, ready, fun impossible => Bool.noConfusion impossible⟩
 
 theorem control_step_replies {World Ghost : Type} {host : Host World}
     {rep : Ghost → World → Prop} {unread zeroWrites : Ghost → Nat}
     (progress : StreamProgress host rep unread zeroWrites)
+    (potential charge : ProcessStep State → Ghost → Nat)
+    (decreases : ∀ (native : ProcessStep State) ghost world, Safe native.state → rep ghost world →
+      native.running = true → ∀ trace next final nextGhost,
+      LeanExe.Wasi.Exec host (step native.state) world trace (.returned next) final →
+      rep nextGhost final → potential next nextGhost + charge native ghost ≤ potential native ghost)
     {ghost : ControlGhost Ghost} {current : ProcessStep stateTy.denote}
     {world : World} (held : ControlRep rep ghost current world) (running : current.running = true)
     {trace outcome final}
     (execution : LeanExe.Wasi.Exec host (entry.action (io.program.funs io.pure.funs) current.state)
       world trace outcome final) :
     ∃ nextGhost next, outcome = .returned next ∧ ControlRep rep nextGhost next final ∧
-      ControlLt unread zeroWrites nextGhost ghost := by
+      ControlLt unread zeroWrites nextGhost ghost ∧
+      potential nextGhost.1 nextGhost.2 + charge ghost.1 ghost.2 ≤ potential ghost.1 ghost.2 := by
   obtain ⟨related, safe, ready, _⟩ := held
   obtain ⟨nativeOutcome, nativeExecution, resultRelated⟩ :=
     (step_related ghost.1.state current.state related.state).exec_back execution
@@ -60,8 +66,10 @@ theorem control_step_replies {World Ghost : Type} {host : Host World}
   | returned nextRelated =>
       obtain ⟨nextGhost, nextRep, nextSafe, status, smaller⟩ :=
         step_advances progress ready safe nativeExecution
-      refine ⟨(nativeNext, nextGhost), _, rfl, ⟨nextRelated, nextSafe, nextRep, status⟩, ?_⟩
       have beforeRunning : ghost.1.running = true := related.running.trans running
+      refine ⟨(nativeNext, nextGhost), _, rfl, ⟨nextRelated, nextSafe, nextRep, status⟩, ?_,
+        decreases ghost.1 ghost.2 world safe ready beforeRunning trace nativeNext final nextGhost
+          nativeExecution nextRep⟩
       change controlOrder.rel (controlRank unread zeroWrites (nativeNext, nextGhost))
         (controlRank unread zeroWrites ghost)
       cases afterRunning : nativeNext.running with

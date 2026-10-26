@@ -6,12 +6,19 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-def ProcessTotalInvariant {World Ghost : Type} (target : Wasm.Module) (state : Ty)
+/-- Every heap of `store` can raise `top` by `budget` bytes within the memory cap. -/
+def ProcessFits {World : Type} (source : Wasm.Module) (store : Store (Observed World))
+    (budget : Nat) : Prop :=
+  ∀ heap : Heap, heap.At (PureTransport.erase store) →
+    heap.Within (PureTransport.erase store) source budget
+
+def ProcessTotalInvariant {World Ghost : Type} (source target : Wasm.Module) (state : Ty)
     (pool : Bytes.LiteralPool)
     (represented : Ghost → ProcessStep state.denote → Observed World → Prop)
+    (potential : Ghost → ProcessStep state.denote → Nat)
     (ghost : Ghost) (store : Store (Observed World)) (locals : Locals) : Prop :=
   ∃ current, ProcessStored target state pool current store locals ∧
-    represented ghost current store.host
+    represented ghost current store.host ∧ ProcessFits source store (potential ghost current)
 
 def ProcessTotalStopped {World Ghost : Type} (target : Wasm.Module) (state : Ty)
     (pool : Bytes.LiteralPool)
@@ -29,8 +36,8 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
     {initial : Store (Observed World)} {locals : Locals}
     {current : ProcessStep entry.state.denote} {function : Wasm.Function}
     (represented : Ghost → ProcessStep entry.state.denote → Observed World → Prop)
-    (relation : Ghost → Ghost → Prop) (ghost : Ghost)
-    (runtime : Runtime source) (layout : Relocation.Layout source target)
+    (relation : Ghost → Ghost → Prop) (potential charge : Ghost → ProcessStep entry.state.denote → Nat)
+    (ghost : Ghost) (runtime : Runtime source) (layout : Relocation.Layout source target)
     (profile : Relocation.Profile source)
     (releaseForm : Encoding.ProgramForm (releaseCode entry.state 2))
     (releaseClosed : Relocation.programClosed source.funcs.length (releaseCode entry.state 2) = true)
@@ -44,23 +51,22 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
     (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
     (stored : ProcessStored target entry.state pool current initial locals)
     (held : represented ghost current initial.host)
-    (resources : current.running = true → ∀ heap words,
-      ProcessMemory entry.state pool heap (PureTransport.erase initial) words current.state →
-      LocalsHold locals 2 entry.state.types words →
-      ∃ budget, heap.Within (PureTransport.erase initial) source budget ∧
-        Resource.CallPrefixBound (observedHost host) pure program entry.step 0
-          (.cons current.state .nil) initial.host budget)
+    (fits : ProcessFits source initial (potential ghost current))
+    (resources : current.running = true → charge ghost current ≤ potential ghost current ∧
+      Resource.CallPrefixBound (observedHost host) pure program entry.step 0
+        (.cons current.state .nil) initial.host (charge ghost current))
     (replies : current.running = true → ∀ trace outcome final,
       LeanExe.Wasi.Exec (observedHost host) (entry.action (program.funs pure.funs) current.state)
         initial.host trace outcome final →
       ∃ nextGhost next, outcome = .returned next ∧ represented nextGhost next final ∧
-        relation nextGhost ghost) :
+        relation nextGhost ghost ∧ potential nextGhost next + charge ghost current ≤
+          potential ghost current) :
     wp target (entry.iteration source)
-      (GhostLoopPost (ProcessTotalInvariant target entry.state pool represented) relation ghost
-        (ProcessTotalStopped target entry.state pool represented) locals.values)
+      (GhostLoopPost (ProcessTotalInvariant source target entry.state pool represented potential)
+        relation ghost (ProcessTotalStopped target entry.state pool represented) locals.values)
       initial locals targetHost := by
-  let Q := GhostLoopPost (ProcessTotalInvariant target entry.state pool represented) relation ghost
-    (ProcessTotalStopped target entry.state pool represented) locals.values
+  let Q := GhostLoopPost (ProcessTotalInvariant source target entry.state pool represented potential)
+    relation ghost (ProcessTotalStopped target entry.state pool represented) locals.values
   obtain ⟨heap, stateWords, memory, stateHeld, control⟩ := stored.parts
   simp only [ProcessEntry.iteration, ProcessEntry.result, List.append_assoc,
     List.cons_append, List.nil_append, wp_localGet_cons, control, wp_eqzI64_cons]
@@ -109,9 +115,12 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
           regionsDisjoint ABI.scratch region := by
         rw [reads]
         exact memory.rep.reads_apart ABI.scratch (owned_scratch memory.rep)
-      obtain ⟨budget, within, bounded⟩ := resources running heap stateWords memory stateHeld
+      obtain ⟨affordable, bounded⟩ := resources running
+      have within : heap.Within (PureTransport.erase initial) source (charge ghost current) :=
+        (fits heap memory.at_).mono affordable
       have callExecution := wp_cost_effect_helper (locals := locals) (values := locals.values)
-        (depth := 0) (params := stateWords) (args := args) (Q := Q) (budget := budget) (aborts := false)
+        (depth := 0) (params := stateWords) (args := args) (Q := Q) (budget := charge ghost current)
+        (aborts := false)
         (rest := storeCode (2 * (processResultTy entry.state).width) (processResultTy entry.state).width
             (processResultTy entry.state).types ++
           Relocation.program (releaseCode entry.state 2) ++
@@ -120,7 +129,11 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
           storeCode (2 * (processResultTy entry.state).width) 0 (processResultTy entry.state).types ++ [.br 0])
         spec noImport lookup arity valid memory.at_ argsRep separate input scratch stored.cap
         (fun _ => ⟨within, bounded⟩)
-        (fun value finalHeap final words trace spent fits execution callStep representation _ => by
+        (fun value finalHeap final words trace spent callFits execution callStep representation rise => by
+          obtain ⟨spentLe, callFitsTrue⟩ := bounded.returned execution
+          have topBound : finalHeap.top.toNat ≤ heap.top.toNat + charge ghost current := by
+            have := rise callFitsTrue
+            omega
           have called : Step heap (PureTransport.erase initial)
               (fun region => regionsDisjoint region ABI.scratch)
               finalHeap (PureTransport.erase final)
@@ -136,14 +149,22 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
               (next := fun result => Action.pure (processNative entry.state result))
               (Exec.pure final.host (processNative entry.state value))
             simpa only [ProcessEntry.action, List.append_nil] using composed
-          obtain ⟨nextGhost, next, same, nextRep, smaller⟩ :=
+          obtain ⟨nextGhost, next, same, nextRep, smaller, decreased⟩ :=
             replies running trace (.returned (processNative entry.state value)) final.host nativeExecution
           cases same
           apply wp_process_replace runtime layout profile releaseForm releaseClosed memory stateHeld
             stored.params stored.positions stored.cap poolScratch called representation
-          intro released after sameWorld nextStored
-          exact ⟨nextGhost, ⟨_, nextStored.values locals.values,
-            by simpa only [sameWorld] using nextRep⟩, smaller⟩)
+          intro released after sameWorld nextStored releasedTop releasedCaps
+          refine ⟨nextGhost, ⟨_, nextStored.values locals.values,
+            by simpa only [sameWorld] using nextRep, fun other otherAt => ?_⟩, smaller⟩
+          have heapWithin := fits heap memory.at_
+          have sameCaps := releasedCaps.trans callStep.caps
+          have capEq : (PureTransport.erase released).memoryCap source 0 =
+              (PureTransport.erase initial).memoryCap source 0 := by
+            simp only [Store.memoryCap, sameCaps]
+          unfold Heap.Within at heapWithin ⊢
+          rw [releasedTop other otherAt, capEq]
+          omega)
         (fun final message classification => by
           cases classification with
           | terminal final trace outcome message execution terminal =>
