@@ -102,7 +102,7 @@ theorem wp_moveCode {m : Module} {host : HostEnv Unit} {store : Store Unit} {s :
         st.mem.pages * 65536) by rw [hSrcAddr, hPages]; omega),
       ite_eq_right (show ¬((pdst + UInt64.ofNat (8 * k)).toUInt32.toNat + 8 >
         st.mem.pages * 65536) by rw [hDstAddr, hPages]; omega)]
-    simp only [wp_localGet_cons, Locals.get_values, hIdx, wp_constI64_cons, wp_addI64_cons]
+    simp only [wp_localGet_cons, hIdx, wp_constI64_cons, wp_addI64_cons]
     have hLowI : si.params.length ≤ index := by rw [hp]; exact hLow
     have hHighI : index < si.params.length + si.locals.length := by rw [hp, hl]; exact hHigh
     refine wp_localSet_local (s := si) (vs := si.values) hLowI hHighI ?_
@@ -117,8 +117,9 @@ theorem wp_moveCode {m : Module} {host : HostEnv Unit} {store : Store Unit} {s :
       omega
     have hSucc64 : (UInt64.ofNat (8 * (k + 1))).toNat = 8 * (k + 1) :=
       UInt64.toNat_ofNat_of_lt' (by rw [hSize]; omega)
-    let st' : Store Unit := { st with mem := st.mem.write64 (pdst + UInt64.ofNat (8 * k)).toUInt32
-      (st.mem.read64 (psrc + UInt64.ofNat (8 * k)).toUInt32) }
+    let st' : Store Unit := { st with
+      mem := st.mem.write64 (pdst + UInt64.ofNat (8 * k)).toUInt32
+        (st.mem.read64 (psrc + UInt64.ofNat (8 * k)).toUInt32) }
     have hWrite : Memory.WritesRange st st' pdst.toNat (pdst.toNat + 8 * (k + 1)) :=
       Memory.WritesRange.write64 _ _ _ _ _ (by rw [hDstAddr]; omega) (by rw [hDstAddr]; omega)
     refine ⟨⟨k + 1, by omega, (hW.mono le_rfl (by omega)).trans hWrite, fun j hj => ?_, hp,

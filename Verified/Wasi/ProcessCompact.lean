@@ -21,7 +21,7 @@ structure ProcessStored {World : Type} (target : Wasm.Module) (state : Ty)
     LocalsHold locals 0 (processResultTy state).types words ∧
     heap.free = [] ∧ base.toNat ≤ heap.top.toNat ∧
     heap.top.toNat ≤ base.toNat + state.copyCost current.state
-  base : locals.get (processAux state) = some (.i64 base)
+  baseLocal : locals.get (processAux state) = some (.i64 base)
   low : 4096 ≤ base.toNat
   pool : ∀ region ∈ pool.regions, region.1 + region.2 ≤ base.toNat
   params : locals.params = []
@@ -77,7 +77,7 @@ theorem ProcessStored.values {World : Type} {target : Wasm.Module} {state : Ty}
     (stored : ProcessStored target state pool base current store locals) :
     ProcessStored target state pool base current store { locals with values } :=
   { represented := stored.represented
-    base := stored.base
+    baseLocal := stored.baseLocal
     low := stored.low
     pool := stored.pool
     params := stored.params
@@ -151,7 +151,7 @@ theorem ProcessMemory.compacted {state : Ty} {pool : Bytes.LiteralPool} {heap he
     · exact Or.inl hEmpty
     · obtain ⟨valid, _⟩ := memory.static.resolve_left hEmpty
       have hEnd : pool.base + pool.payload.length ≤ base.toNat :=
-        poolBelow _ (by simp [Bytes.LiteralPool.regions, hEmpty])
+        poolBelow (pool.base, pool.payload.length) (by simp [Bytes.LiteralPool.regions, hEmpty])
       have hTop := at_.top
       refine Or.inr ⟨valid.frame (by simp only [Bytes.LiteralPool.endAddress]; omega)
         fun address _ high => bytes address (by
@@ -208,8 +208,6 @@ theorem wp_process_compact {World : Type} {source target : Wasm.Module} {state :
     simpa only [List.length_cons, List.length_nil, Nat.zero_add] using split.2
   have sourceCap : (PureTransport.erase store).memoryCap source 0 ≤ 65535 := by
     rw [← PureTransport.memoryCap_zero_eq layout.memoryCap]; exact cap
-  let room := roundWord heap.top.toNat + state.copyCost value.state ≤
-    65536 * (PureTransport.erase store).memoryCap source 0
   let post : Assertion Unit := fun continuation => match continuation with
     | .Fallthrough final after => ∃ heap' stateWords',
         heap'.At final ∧ heap'.free = [] ∧ base.toNat ≤ heap'.top.toNat ∧
@@ -220,7 +218,8 @@ theorem wp_process_compact {World : Type} {source target : Wasm.Module} {state :
         final.memoryCaps = (PureTransport.erase store).memoryCaps ∧
         Frame 2 locals after ∧ LocalsHold after 2 state.types stateWords' ∧
         after.get (processAux state) = some (.i64 base) ∧ after.values = locals.values
-    | .Trap _ message => message = "unreachable" ∧ ¬ room
+    | .Trap _ message => message = "unreachable" ∧ ¬ roundWord heap.top.toNat +
+        state.copyCost value.state ≤ 65536 * (PureTransport.erase store).memoryCap source 0
     | _ => False
   have hWidth : 2 + state.width ≤ processAux state := by
     simp only [processAux, processResult_width]; omega

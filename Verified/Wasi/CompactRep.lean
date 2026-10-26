@@ -177,7 +177,8 @@ theorem _root_.Verified.Ty.Rep.relocate {heap heap' : Heap} {store store' : Stor
     have hp := sub_toNat (x := ptr) (d := d) (by omega)
     refine ⟨⟨ptr - d, rfl, owned'⟩, ?_⟩
     simp only [relocateWords, Ty.blocks, List.map_cons, List.map_nil, block, capacity, hp,
-      List.cons.injEq, Prod.mk.injEq, and_true] <;> omega
+      List.cons.injEq, Prod.mk.injEq, and_true]
+    omega
   | bytes =>
     rintro ws value ⟨root, length, rfl, rep⟩ inside
     by_cases hZero : root = 0
@@ -202,7 +203,8 @@ theorem _root_.Verified.Ty.Rep.relocate {heap heap' : Heap} {store store' : Stor
       refine ⟨⟨root - d, length, by simp [relocateWords, hZero], rep.length_eq, Or.inr allocated'⟩,
         ?_⟩
       simp only [relocateWords, hZero, ↓reduceIte, Ty.blocks, Bytes.roots, hNonzero, List.map_cons,
-        List.map_nil, block, capacity, hp, List.cons.injEq, Prod.mk.injEq, and_true] <;> omega
+        List.map_nil, block, capacity, hp, List.cons.injEq, Prod.mk.injEq, and_true]
+      omega
   | pair a b iha ihb =>
     rintro ws v ⟨first, second, rfl, repA, repB, apart⟩ inside
     obtain ⟨ha, hb⟩ := Ty.compactable_pair ht
@@ -271,10 +273,9 @@ theorem wp_relocateCode {α : Type} {m : Module} {host : HostEnv α} {store : St
     refine next _ (fun k hk => ?_) rfl (by simp [setLocal]) (fun j hj => ?_) rfl
     · have hk0 : k = 0 := by simp [relocateWords] at hk; omega
       subst hk0
-      simpa [relocateWords, slotIndex] using Locals.get_setLocal_same (v := .i64 (ptr - d)) hLow'
-        hTotal
+      simpa [relocateWords, slotIndex, Ty.types] using
+        Locals.get_setLocal_same (v := .i64 (ptr - d)) hLow' hTotal
     · rw [Locals.get_setLocal_ne hLow' (by simp only [Ty.width] at hj; omega)]
-      rfl
   | bytes =>
     rintro s loc ws value rest Q ⟨root, length, rfl, _⟩ hold hDelta hApart hLow hHigh next
     have hRoot : s.get loc = some (.i64 root) := by
@@ -287,8 +288,8 @@ theorem wp_relocateCode {α : Type} {m : Module} {host : HostEnv α} {store : St
     refine wp_iff_cons rfl ?_
     by_cases hZero : root = 0
     · subst hZero
-      simp (config := { decide := true }) only [ne_eq, not_true_eq_false, ↓reduceIte, wp_nil,
-        List.take_zero, List.drop_zero, List.nil_append]
+      simp (config := { decide := true }) only [↓reduceIte, wp_nil, List.take_zero,
+        List.drop_zero, List.nil_append]
       exact next _ (by simpa [relocateWords] using hold) rfl rfl (fun _ _ => rfl) rfl
     · simp (config := { decide := true }) only [ne_eq, hZero, not_false_eq_true, ↓reduceIte,
         wp_localGet_cons, Locals.get_values, hRoot, hDelta, wp_subI64_cons]
@@ -302,12 +303,11 @@ theorem wp_relocateCode {α : Type} {m : Module} {host : HostEnv α} {store : St
           simpa [relocateWords, hZero, slotIndex, Ty.types] using
             Locals.get_setLocal_same (v := .i64 (root - d)) hLow' hTotal
         | 1, _ =>
-          have hOther : (setLocal { s with values := s.values } loc (.i64 (root - d))).get
-              (loc + 1) = s.get (loc + 1) := Locals.get_setLocal_ne hLow' (by omega)
-          simpa [relocateWords, hZero, slotIndex, Ty.types, hOther] using hLength
+          change (setLocal { s with values := s.values } loc (.i64 (root - d))).get (loc + 1) = _
+          rw [Locals.get_setLocal_ne hLow' (by omega), Locals.get_values, hLength]
+          simp [relocateWords, hZero]
         | k + 2, h => exact absurd h (by omega)
       · rw [Locals.get_values, Locals.get_setLocal_ne hLow' (by simp only [Ty.width] at hj; omega)]
-        rfl
   | pair a b iha ihb =>
     rintro s loc ws v rest Q ⟨first, second, rfl, repA, repB, _⟩ hold hDelta hApart hLow hHigh
       next
@@ -340,7 +340,8 @@ theorem wp_relocateCode {α : Type} {m : Module} {host : HostEnv α} {store : St
         ⟨holdA2, ?_⟩
       rw [relocateWords_length d a first hl]
       exact holdB2
-    · rw [same2 j (by omega), same1 j (by omega)]
+    · simp only [Ty.width] at hj
+      rw [same2 j (by omega), same1 j (by omega)]
   | _ => simp [Ty.compactable] at ht
 
 end Verified.Wasi

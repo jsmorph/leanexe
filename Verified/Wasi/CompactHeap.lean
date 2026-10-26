@@ -24,7 +24,7 @@ theorem resetHeap_at {heap : Heap} {store : Store Unit} {top : UInt64}
     (hBase : 4096 ≤ top.toNat) (hTop : top.toNat ≤ store.mem.pages * 65536)
     (hPages : store.mem.pages ≤ 65535) :
     (resetHeap heap top).At { store with globals := { globals := resetGlobals heap top } } :=
-  ⟨rfl, .nil, hBase, hTop, hPages, fun _ h => nomatch h, fun _ h => nomatch h⟩
+  ⟨rfl, .nil, hBase, hTop, hPages, (fun _ h => nomatch h), (fun _ h => nomatch h)⟩
 
 /-- A reset to a top at least the old one keeps every region of the heap. -/
 theorem _root_.Verified.Step.reset {heap : Heap} {store : Store Unit} (h : heap.At store) {top : UInt64}
@@ -281,7 +281,7 @@ theorem wp_compactCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} {t : 
   generalize hd : T8 - base = delta at hDeltaNat hS7d ⊢
   generalize hs7 : setLocal { s6 with values := s6.values } (aux + 4) (.i64 delta) = s7 at hS7d ⊢
   have hS7 (j : Nat) (hj : j ≠ aux + 4) : s7.get j = s6.get j := by
-    rw [← hs7, Locals.get_setLocal_ne hLow6' hj]; rfl
+    rw [← hs7, Locals.get_setLocal_ne hLow6' hj]
   have hF7 : Frame loc s6 s7 := by
     rw [← hs7]; exact Frame.setValues hLow6 (by omega) (by rw [hs6Pos]; omega)
   have hs7Pos : s7.positions = h := hF7.positions.trans hs6Pos

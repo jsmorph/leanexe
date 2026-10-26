@@ -290,7 +290,7 @@ theorem pwp_process_entry_body {World : Type} {source target : Wasm.Module} {hos
   have savedBase : saved.get (processAux entry.state) = some (.i64 heap.top) :=
     Locals.get_setLocal_same low' total
   have savedPositions : saved.positions = processPositions entry.state := by
-    simp only [saved, Locals.positions_setLocal, Locals.positions_values]; exact positions
+    simp only [saved, Locals.positions_setLocal]; exact positions
   have began := wp_process_begin (locals := saved) runtime layout profile compactable compactForm
     compactClosed spec noImport lookup arity valid at_ free static poolScratch cap rfl
     savedPositions savedBase

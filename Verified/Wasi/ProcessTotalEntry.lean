@@ -3,7 +3,7 @@ import Verified.Wasi.WrapperDispatch
 
 namespace Verified.Wasi
 
-open Wasm LeanExe.Wasi
+open Wasm LeanExe.Wasi LeanExe.Pipeline
 
 def ProcessTotalExited {World Ghost : Type} (host : Host World) (state : Ty)
     (represented : Ghost → ProcessStep state.denote → Observed World → Prop) :
@@ -107,7 +107,7 @@ theorem wp_process_entry_total {World Ghost : Type} {source target : Wasm.Module
     (Q := ProcessTotalExited host entry.state represented)
     ((began (setLocal { locals with values := locals.values } (processAux entry.state)
         (.i64 heap.top)) rfl
-      (by simp only [Locals.positions_setLocal, Locals.positions_values]; exact positions)
+      (by simp only [Locals.positions_setLocal]; exact positions)
       (Locals.get_setLocal_same low' total)).conseq (fun continuation classification => by
       cases continuation with
       | Fallthrough final after =>
@@ -116,7 +116,7 @@ theorem wp_process_entry_total {World Ghost : Type} {source target : Wasm.Module
             iteration accepted
       | _ => exact classification.elim))
   have whole := wp_saveBase (target := target) (rest := _) at_ low total body
-  simpa only [ProcessEntry.function, ProcessEntry.result, tailCode, List.append_assoc,
+  simpa only [ProcessEntry.function, ProcessEntry.result, tailCode, locals, List.append_assoc,
     List.cons_append, List.nil_append] using whole
 
 def ProcessTotalRunExited {World Ghost : Type} (host : Host World) (state : Ty)

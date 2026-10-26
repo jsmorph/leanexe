@@ -160,14 +160,14 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
           have resultMemory : ProcessMemory (processResultTy entry.state) pool finalHeap
               (PureTransport.erase final) words
               (processValue entry.state (processNative entry.state value)) := by
-            rw [processValue_native]
+            rw [processValue_native entry.state value]
             exact memory.called poolScratch called representation
           have grown := called.top_le memory.at_ free (scratch_apart_above _)
           have sameCap : (PureTransport.erase final).memoryCap source 0 =
               (PureTransport.erase initial).memoryCap source 0 := by
             simp only [Store.memoryCap, called.caps]
           refine wp_process_store_compact runtime layout profile compactable compactForm
-            compactClosed resultMemory (by omega) stored.base stored.low stored.pool stored.params
+            compactClosed resultMemory (by omega) stored.baseLocal stored.low stored.pool stored.params
             stored.positions (by rw [called.cap target]; exact stored.cap)
             (fun noRoom _ _ => absurd (compaction_room compactable topBound (by
               rw [sameCap]; omega)) noRoom)

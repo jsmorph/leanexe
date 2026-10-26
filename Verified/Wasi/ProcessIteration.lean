@@ -45,7 +45,8 @@ theorem wp_process_store_compact {World : Type} {source target : Wasm.Module} {s
     (by rw [Ty.types_length, positions]; omega) fun after frame held above => ?_
   have baseAfter : ({ after with values := locals.values } : Locals).get (processAux state) =
       some (.i64 base) := by
-    rw [Locals.get_values, (above (processAux state) (by rw [Ty.types_length]; rfl)
+    rw [Locals.get_values, (above (processAux state)
+      (by rw [Ty.types_length]; simp only [processAux]; omega)
       (by rw [positions]; simp only [processPositions]; omega)).1]
     exact baseLocal
   exact wp_process_compact runtime layout profile compactable form closed memory held baseTop
@@ -151,11 +152,11 @@ theorem wp_process_iteration {World : Type} {source target : Wasm.Module}
           have resultMemory : ProcessMemory (processResultTy entry.state) pool finalHeap
               (PureTransport.erase final) words
               (processValue entry.state (processNative entry.state value)) := by
-            rw [processValue_native]
+            rw [processValue_native entry.state value]
             exact memory.called poolScratch called representation
           have grown := called.top_le memory.at_ free (scratch_apart_above _)
           refine wp_process_store_compact runtime layout profile compactable compactForm
-            compactClosed resultMemory (by omega) stored.base stored.low stored.pool stored.params
+            compactClosed resultMemory (by omega) stored.baseLocal stored.low stored.pool stored.params
             stored.positions (by rw [called.cap target]; exact stored.cap) (fun _ ended sameHost => ?_)
             fun ended after sameHost _ nextStored _ => ?_
           · apply ProcessIterationResult.resource ended trace
