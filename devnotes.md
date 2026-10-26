@@ -36191,7 +36191,7 @@ The total theorem drops the potential, `start`, the decrease premises, and `Proc
 
 ### Stage 2: paid flags
 
-Stage 2 fixes the quadratic append charges with one flag per variable, which states that every array of the variable carries its potential, and with a rule at `if`.  The approved design asked for a flag for each array leaf.  The report asks the user to confirm the departure.
+Stage 2 fixes the quadratic append charges with one flag per variable, which states that every array of the variable carries its potential, and with a rule at `if`.  The approved design asked for a flag for each array leaf.  The user approved the departure under the condition in the decisions below.
 
 Per-leaf flags alone do not remove the charge in `consumeInput`.  Its loop body is `if byte == 10 then completeLine next else ⟨true, 0, {next with line := next.line.push byte}⟩`.  `completeLine` resets `line` to `#[]`, a `build` of zero elements, whose leaf is unpaid, so the `if` of two leaf masks leaves `line` unpaid and every push in the other branch is charged its quadratic cost.  The missing rule is at the `if`: the `if` is paid when either branch is, and the unpaid branch is charged the credit of its value.  `completeLine` is taken at most once per step, at the newline that ends the loop, so that charge is linear.  With that rule, a per-variable flag that covers every array of a pair suffices for both running sums, and per-leaf masks would add precision only for a record with an unpaid array beside a growing one, which neither program has.  Per-leaf masks would also change the type of `paid` across `ExprCorrect.lean`, about 460 references, in files that the typed-fields work also changes.
 
@@ -36212,7 +36212,7 @@ In the integer program, `combineMagnitude`'s loop state `(#[], carry)` becomes p
 
 The compositional rules moved to `Verified/Wasi/ResourceRules.lean` and gained `unit`, `exit`, `ite`, and `call`, with `CallBounded`, `callBounded_here`, and `callBounded_there` for calls of effect functions.  The retained-buffer example now imports them.
 
-A generated closed form for an effect command meets `bind`: the charge after a read or a write is a function of the host's reply, so a closed form needs a bound over all replies, which generation cannot supply in general.  For the running sums the replies do not affect the charges, because the read's bytes move into the state and the write's count is a word.  The plan is one `Bounded` proof per effect function, with the charge a Lean function of the native state written from the pure functions' generated `bound_eq` theorems.  This replaces the generated effect-command equations of the approved design, and the report lists it.
+A generated closed form for an effect command meets `bind`: the charge after a read or a write is a function of the host's reply, so a closed form needs a bound over all replies, which generation cannot supply in general.  For the running sums the replies do not affect the charges, because the read's bytes move into the state and the write's count is a word.  The plan is one `Bounded` proof per effect function, with the charge a Lean function of the native state written from the pure functions' generated `bound_eq` theorems.  This replaces the generated effect-command equations of the approved design, and the user approved the change.
 
 The step charge of the integer program, from the bounds of the pure functions it calls, is linear in the line length and the digit count.  The consume step copies the state and buys its credit, pushes at most 4,096 bytes at 80 bytes each, and runs `completeLine` at most once.  `completeLine` parses the line, adds with `combineMagnitude` at 80 bytes per digit, renders the total, and copies the parts of its borrowed state that its result keeps.  The write step builds the remaining output and copies the state, and the read step charges the 4,144-byte read and copies the state.  The loop over a chunk needs a refined `loopCost` lemma: every iteration costs at most a push except the last, which may run `completeLine`, so the chunk's charge is `4096 · 80` plus one `completeLine`.
 
@@ -36228,6 +36228,19 @@ The size invariant on reachable states comes from `StreamFuture` with a stronger
 
 `target_terminates` gains an invariant parameter with an initial and a preservation premise, and `RunCharges` quantifies over states that satisfy it.  A lemma derives `RunCharges` from `InputLimits L D` and one explicit inequality on `L` and `D` against the memory cap and the pool's top.  The final integer theorem keeps `StreamHost`, `InputBounds`, and `ExitAccepted`, and replaces `RunBudget` with `InputLimits L D` and that inequality.  The binary64 program follows with the same stream structure; its total is a scalar, and its line parser and printer need their own closed-form bounds.
 
+### Decisions
+
+The user approved the four questions of the phase A report on 2026-10-26.  The paid rule stays one flag per variable, with the `if` paid when either branch is and the unpaid branch charged the credit of its value.  The approval carries a condition: the build lists every existing program whose proved allocation bound changes, the drone's 2,251,064-byte bound among them.  If any existing bound rises, the new `if` rule applies only in the bodies of loops whose state grows, the old rule, which requires both branches paid, applies elsewhere, and the report names each changed bound.
+
+| Question | Decision |
+|---|---|
+| Paid flags | one flag per variable with the `if` rule, under the condition above |
+| Effect-command charges | hand-written `Bounded` proofs for `begin`, `step`, `readStep`, and `writeStep` |
+| Final hypothesis | a general theorem over `InputLimits L D` with one explicit inequality against the memory cap, and a corollary with concrete `L` and `D` |
+| Trees in process states | rejected in stage 1: `Ty.compactable` is false for trees |
+
+A restricted rule would need the loop context in `Expr.paid` and `Expr.allocs`: a flag, set when the recursion enters the body of a loop whose `grows` holds, that selects between the two `if` rules.  The proofs of `ite_branch` and the reflector's `ite_bound` family would then case on that flag.  That variant is not written.  The build's comparison of bounds decides whether it is needed.
+
 ### Plan
 
 - [x] Write the compaction code and its proofs (stage 1), unbuilt.
@@ -36236,9 +36249,10 @@ The size invariant on reachable states comes from `StreamFuture` with a stronger
 - [x] Move and extend the effect-command resource rules (stage 2), unbuilt.
 - [ ] Build `Verified.Wasi.CompactHeap`, `Verified.Wasi.ProcessCompact`, and the process modules; fix the drafts.
 - [ ] Build `Verified.ExprCorrect`, the reflector, and every program that the paid rules reach; compare all module bytes with the previous emissions, which must match except the process modules.
+- [ ] List every existing program whose proved allocation bound changes, the drone's 2,251,064 bytes among them; if any bound rises, restrict the `if` rule to the bodies of loops whose state grows and list the changed bounds.
 - [ ] Re-check `stackFits`, the process modules' validity and encoding, and the WASI and running-sum drivers, including the Talos groups.
 - [ ] Prove the `Bounded` charges of `begin`, `step`, `readStep`, and `writeStep` for the integer program, and their closed-form bounds.
-- [ ] Prove the size invariant and the room lemma, and state the final integer theorem.
+- [ ] Prove the size invariant and the room lemma, and state the final integer theorem over `InputLimits L D` with its inequality against the memory cap, and a corollary with concrete `L` and `D`.
 - [ ] Repeat the charges and limits for the binary64 program.
 - [ ] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audits.
 
