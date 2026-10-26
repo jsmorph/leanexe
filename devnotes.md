@@ -36247,7 +36247,7 @@ A restricted rule would need the loop context in `Expr.paid` and `Expr.allocs`: 
 - [x] Rewrite the partial and total process theorems and both applications' uses (stage 1), unbuilt.
 - [x] Write the paid-flag rules, their proofs, and the reflector changes (stage 2), unbuilt.
 - [x] Move and extend the effect-command resource rules (stage 2), unbuilt.
-- [ ] Build `Verified.Wasi.CompactHeap`, `Verified.Wasi.ProcessCompact`, and the process modules; fix the drafts.
+- [x] Build `Verified.Wasi.CompactHeap`, `Verified.Wasi.ProcessCompact`, and the process modules; fix the drafts (against the base bound rules).
 - [ ] Build `Verified.ExprCorrect`, the reflector, and every program that the paid rules reach; compare all module bytes with the previous emissions, which must match except the process modules.
 - [ ] List every existing program whose proved allocation bound changes, the drone's 2,251,064 bytes among them; if any bound rises, restrict the `if` rule to the bodies of loops whose state grows and list the changed bounds.
 - [ ] Re-check `stackFits`, the process modules' validity and encoding, and the WASI and running-sum drivers, including the Talos groups.
@@ -36259,3 +36259,35 @@ A restricted rule would need the loop context in `Expr.paid` and `Expr.allocs`: 
 ### Risks
 
 The drafts have not met Lean.  The main risks are the low-level `wp` stepping in `wp_compactCode`, where several `simp only` calls must reduce stores, globals, and locals exactly as written, and the bit-level proof of `write64_read64_byte`.  The paid rules change the generated bounds of many programs, and the reflector evaluates `Expr.paid` at each `let`, destructuring, and loop, which now recurses through destructurings and pairs; large programs such as the binary64 printer may elaborate more slowly.  Compaction adds one copy and one move of the state per step.  The integer step already copies the 4,096-byte input buffer when it consumes or writes, so the per-step memory traffic roughly doubles, and the Talos tests, whose memory model grows with each write, may exceed their time limits.
+
+## 2026-10-26: Building the process compaction
+
+The build ran on the AArch64 build host in an independent clone, with at most eight Lean workers and a 44 GiB memory limit.  The baseline came from the fully built base commit `ed77fa248` before the branch was checked out.  A scratch program outside the repository, `EmitAll.lean`, imports a group of modules, encodes every definition of type `Wasm.Module` from the repository's libraries with the encoder and decoder check of `tools/Emit.lean`, and prints the statement of every imported theorem whose name mentions a bound or a cost.  The groups follow the library roots, because some modules of different roots define the same names, and they leave out the test drivers that define `main`.  The baseline holds 171 modules, every module of `tests/verified/modules.txt`, `tests/modules/modules.txt`, and the WASI and running-sum drivers among them, and 1,876 distinct statements.
+
+### Stage 1
+
+Stage 1 changes no bound rule, so the stage 2 files went back to their base contents in the build clone's working tree, and stage 1 built alone.  The drafts needed small repairs: a structure instance that a line break ended early, a `nomatch` that read the next argument as a second discriminant, a structure field named `base` that shadowed the parameter of the same name, a missing `open LeanExe.Pipeline`, which made `Heap` an automatically bound type variable, a few `simp` sets, and an explicit instance of `processValue_native`.  The compaction modules, the partial and total process theorems, and both running sums then built.  Both running-sum drivers passed, the axiom checks among them, including the Wasm runs of every case with the compacting modules.
+
+The emission from this state differs from the baseline in exactly three modules: `Demos.RunningSum.module` (17,972 bytes before, 18,820 after), `Demos.RunningSumFp.module` (31,559 and 32,231), and `Verified.Examples.WasiProcess.module` (2,185 and 2,378).  The other 168 modules are identical.  The statements differ only in the fields of `RunBudget`, now `RunCharges`, the premises of the total process theorem, and the new lemmas `Ty.copyCost_mod` and `Bytes.allocationCost_mod`.
+
+### Stage 2: the uniform `if` rule raises existing bounds
+
+The first build with the stage 2 rules failed in `Verified.TailAllocExpand`, whose theorem equates the allocations of a tail-recursive body with those of its expansion into an expression.  The failure exposes a rise.  `tailGrow` in `Verified/Examples/TailReflection.lean` is `if n = 0 then xs else tailGrow weights (n - 1) (xs.push ...)`, with `xs` a paid parameter.  In the expansion the `then` branch is a paid moved variable, and the `else` branch is the function's own call, whose result is unpaid.  The uniform rule makes the `if` paid and charges the `else` branch the credit of the call's result, the final array, at every step, so the bound of `tailGrow` becomes quadratic in the array's length.  An ordinary function whose body is an `if` with one paid branch rises in the same way whenever its callers do not use the result's potential.
+
+Following the user's decision, the new rule applies only in the bodies of loops whose state grows, and the old rule applies elsewhere.  The design keeps `Expr.paid` and `Expr.allocs` as the base rules plus the pair and destructuring rules, and adds two functions for loop bodies.
+
+| Part | Definition |
+|---|---|
+| `Expr.bodyPaid` | `Expr.paid`, except that an `if` reached through `let`s, destructurings, and branches from the body's result is paid when either branch is |
+| `Expr.buys` | the credit of the value of the branch taken at such an `if` when that branch is not paid and the other is, summed along the path taken |
+| `Expr.statePaid` | uses `Expr.bodyPaid` for the body |
+| `loopAlloc` | adds the body's `Expr.buys` at each step when the state is paid |
+| `CodeSpecIn buy` | `CodeSpec` with the conclusion stated for `Expr.bodyPaid` and the bound plus `Expr.buys` when `buy` holds; the trap condition is unchanged |
+
+`spec_ite`, `spec_letE`, and `spec_letPair` produce `CodeSpecIn buy` from `CodeSpecIn buy` of the parts in result position, `spec_loop` uses `CodeSpecIn` of the body at the state's flag, and `Expr.code_spec` proves `CodeSpecIn` for every flag, from which `CodeSpec` follows.  The other constructors take `CodeSpecIn` from `CodeSpec`, since their `Expr.bodyPaid` is `Expr.paid` and their `Expr.buys` is 0 by definition.  The reflector gives a loop's state step a zero buy charge when the state is unpaid or when no `if` in the body's result positions has branches with different flags, which a kernel-evaluated test decides; otherwise it builds the charge with builders that it records when it reflects an `if`, a `let`, or a destructuring.  `TailBody.allocs` gives the components of a destructured pair the pair's flag, as `Expr.allocs` does, so that `TailBody.allocs_toExpr` holds again.
+
+The pair rule applies everywhere, and it can still raise a bound: a loop whose state is a pair can now be paid, and such a loop buys the credit of an unpaid initial state once, which exceeds what the old charges cost when the loop runs zero times or once.  The comparison of statements after the stage 2 build decides whether any existing bound rises this way.
+
+- [x] Build stage 1 alone, run both running-sum drivers, and compare all modules and bound statements with the baseline.
+- [ ] Write the restricted `if` rule: `Expr.bodyPaid`, `Expr.buys`, `CodeSpecIn`, the generalized specifications, the loop and fold proofs, the renaming lemmas, the tail destructuring, and the reflector's buy charges.
+- [ ] Build everything with stage 2, compare modules and statements with the baseline, and list every changed bound with its direction.
