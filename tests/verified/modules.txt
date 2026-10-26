@@ -19,6 +19,7 @@ Verified.Examples.ListLoops:Verified.Examples.ListLoops.compiled.module:listloop
 Verified.Examples.ListTail:Verified.Examples.ListTail.compiled.module:listtail
 Verified.Examples.RecursiveTypes:Verified.Examples.RecursiveTypes.compiled.module:recursivetypes
 Verified.Examples.TaggedTypes:Verified.Examples.TaggedTypes.compiled.module:taggedtypes
+Verified.Examples.HeapSums:Verified.Examples.HeapSums.compiled.module:heapsums
 Verified.Examples.Tail:Verified.Examples.Tail.compiled.module:tail
 Verified.Examples.TailConditions:Verified.Examples.TailConditions.compiled.module:tailconditions
 Demos.Gpt.Verified:Demos.Gpt.Verified.compiled.module:gpt
