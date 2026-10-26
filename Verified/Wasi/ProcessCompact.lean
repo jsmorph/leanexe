@@ -95,10 +95,11 @@ theorem _root_.Verified.Step.top_le {heap heap' : Heap} {store store' : Store Un
   by_cases hEq : heap.top.toNat = 4096
   · omega
   · have hRegion : heap.Region (4096, heap.top.toNat - 4096) :=
-      ⟨by simp only; omega, fun node member => by rw [free] at member; exact nomatch member⟩
-    obtain ⟨_, hRegion', _⟩ := step.keeps _ hRegion (by simp only; omega) hKeep
-    have := hRegion'.below
-    simp only at this
+      ⟨show 4096 + (heap.top.toNat - 4096) ≤ heap.top.toNat by omega,
+        fun node member => by rw [free] at member; exact nomatch member⟩
+    obtain ⟨_, hRegion', _⟩ :=
+      step.keeps _ hRegion (show 0 < heap.top.toNat - 4096 by omega) hKeep
+    have : 4096 + (heap.top.toNat - 4096) ≤ heap'.top.toNat := hRegion'.below
     omega
 
 /-- The literal pool lies below the top of a heap that keeps it static. -/
@@ -149,12 +150,14 @@ theorem ProcessMemory.compacted {state : Ty} {pool : Bytes.LiteralPool} {heap he
   · by_cases hEmpty : pool.payload = []
     · exact Or.inl hEmpty
     · obtain ⟨valid, _⟩ := memory.static.resolve_left hEmpty
-      have hEnd := poolBelow _ (by simp [Bytes.LiteralPool.regions, hEmpty])
+      have hEnd : pool.base + pool.payload.length ≤ base.toNat :=
+        poolBelow _ (by simp [Bytes.LiteralPool.regions, hEmpty])
       have hTop := at_.top
       refine Or.inr ⟨valid.frame (by simp only [Bytes.LiteralPool.endAddress]; omega)
         fun address _ high => bytes address (by
           simp only [Bytes.LiteralPool.endAddress] at high; omega), ?_, ?_⟩
-      · simp only; omega
+      · show pool.base + pool.payload.length ≤ heap'.top.toNat
+        omega
       · intro node member
         rw [free] at member
         exact nomatch member
@@ -227,9 +230,11 @@ theorem wp_process_compact {World : Type} {source target : Wasm.Module} {state :
       memory.at_ sourceCap stateRep stateHeld positions (by rw [params]; exact Nat.zero_le _)
       hWidth (by simp only [processPositions]; omega) baseLocal low baseTop
       (by
-        cases hRoom : decide room
-        · intro final
-          exact ⟨rfl, of_decide_eq_false hRoom⟩
+        unfold TrapOK
+        split
+        · rename_i noRoom
+          intro final
+          exact ⟨rfl, by simpa using noRoom⟩
         · trivial)
       fun heap' store' s' ws' at' free' low' high' rep' above' bytes' caps' frame' held' base'
           values' => by

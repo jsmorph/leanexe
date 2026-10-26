@@ -41,7 +41,8 @@ theorem wp_emptyFree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : S
     {s : Locals} {rest : Program} {Q : Assertion Unit} (hG : store.globals.globals = heap.globals)
     (hNext : wp m rest Q { store with globals := { globals := resetGlobals heap heap.top } } s host) :
     wp m (.constI64 0 :: .globalSet 1 :: rest) Q store s host := by
-  simp only [wp_constI64_cons, wp_globalSet_cons, hG]
+  simp only [wp_constI64_cons, wp_globalSet_cons, hG, Heap.globals, List.getElem?_cons_zero,
+    List.getElem?_cons_succ, List.set_cons_zero, List.set_cons_succ]
   exact hNext
 
 /-- The top rounded up to a word: the code stores it in local `i` and in global 0. -/
@@ -199,7 +200,7 @@ theorem wp_compactCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} {t : 
   -- The copy's blocks lie between the rounded top and the new top, and the copy keeps the bytes
   -- below the rounded top.
   have hRegion : (resetHeap heap T8).Region (0, T8.toNat) :=
-    ⟨by simp only [resetHeap_top]; omega, fun _ h => nomatch h⟩
+    ⟨show 0 + T8.toNat ≤ T8.toNat by omega, fun _ h => nomatch h⟩
   obtain ⟨hKeepBytes, hRegion3, hFresh⟩ :=
     hStep3.keeps _ hRegion (show 0 < T8.toNat by rw [hT8]; omega) trivial
   have hT8Top3 : T8.toNat ≤ heap2.top.toNat := by have := hRegion3.below; simpa using this
@@ -336,7 +337,7 @@ theorem wp_compactCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} {t : 
     rw [hBlocks5] at hb
     obtain ⟨b0, hb0, rfl⟩ := List.mem_map.mp hb
     have := hInside b0 hb0
-    simp only
+    show base.toNat ≤ b0.1 - delta.toNat
     rw [hDeltaNat]
     omega
   · intro a ha

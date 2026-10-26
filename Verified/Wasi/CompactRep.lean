@@ -177,8 +177,7 @@ theorem _root_.Verified.Ty.Rep.relocate {heap heap' : Heap} {store store' : Stor
     have hp := sub_toNat (x := ptr) (d := d) (by omega)
     refine ⟨⟨ptr - d, rfl, owned'⟩, ?_⟩
     simp only [relocateWords, Ty.blocks, List.map_cons, List.map_nil, block, capacity, hp,
-      List.cons.injEq, Prod.mk.injEq, and_true]
-    omega
+      List.cons.injEq, Prod.mk.injEq, and_true] <;> omega
   | bytes =>
     rintro ws value ⟨root, length, rfl, rep⟩ inside
     by_cases hZero : root = 0
@@ -203,8 +202,7 @@ theorem _root_.Verified.Ty.Rep.relocate {heap heap' : Heap} {store store' : Stor
       refine ⟨⟨root - d, length, by simp [relocateWords, hZero], rep.length_eq, Or.inr allocated'⟩,
         ?_⟩
       simp only [relocateWords, hZero, ↓reduceIte, Ty.blocks, Bytes.roots, hNonzero, List.map_cons,
-        List.map_nil, block, capacity, hp, List.cons.injEq, Prod.mk.injEq, and_true]
-      omega
+        List.map_nil, block, capacity, hp, List.cons.injEq, Prod.mk.injEq, and_true] <;> omega
   | pair a b iha ihb =>
     rintro ws v ⟨first, second, rfl, repA, repB, apart⟩ inside
     obtain ⟨ha, hb⟩ := Ty.compactable_pair ht
@@ -238,7 +236,8 @@ theorem _root_.Verified.LocalsHold.outside {s s' : Locals} {loc lo hi : Nat} {ty
     (hApart : loc + ws.length ≤ lo ∨ hi ≤ loc) (hTop : hi ≤ s.positions) :
     LocalsHold s' loc tys ws := by
   intro k hk
-  rw [hPositions, same _ (by cases tys.getD k .i64 <;> simp only [slotIndex] <;> omega)]
+  rw [hPositions, same (slotIndex s.positions (loc + k) (tys.getD k .i64))
+    (by cases tys.getD k .i64 <;> simp only [slotIndex] <;> omega)]
   exact hold k hk
 
 /-- The subtraction of the word `d` of local `delta` from the roots of the compactable value whose

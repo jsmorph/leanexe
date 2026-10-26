@@ -36141,3 +36141,107 @@ The restarted `Verified Library` build used three workers under a 9 GiB limit, c
 I created my remote checkouts in the previous session by copying other checkouts with `cp -a` to reuse their builds.  The copies kept the originals' `.git` files, which name shared worktree directories, so my branch switches changed the recorded branch of three other checkouts from `siphash` to `wasi-integration`, and that of a fourth from `verified-wasi` to `wasi-integration`.  Their files did not change.  My four checkouts now have independent repositories.  The user directed that I leave the affected checkouts and the branches I created in the two the main checkout repositories as they are.
 
 The byte comparison with main uses a fresh clone of `d1f851729`, whose manifest and toolchain equal the branch's.  It emits main's 98 registered modules for comparison with the merged tree's emissions.
+
+## 2026-10-26: Memory accounting for the process loop
+
+The user approved a two-stage design that replaces the unproved `RunBudget` premise of both running-sum theorems.  Stage 1 compacts the process state after `begin` and after each step, so the heap between steps holds the literal pool and one state, and the total-process theorem takes room conditions on one step at a time.  Stage 2 removes the quadratic append charges, proves a charge for each running step as a function of the state, and derives the room conditions from explicit limits on line length and total size.  Work proceeds on the local branch `process-compaction`, taken at `ed77fa248`, in a scratch worktree.  Phase A wrote the code below without running Lean, so none of it has been checked.
+
+### Stage 1: compaction
+
+`_start` saves the heap top in a local before `begin`.  That value, `base`, is at least 4096, lies above the literal pool, and stays fixed for the run.  After `begin` and after each step, `processCompaction` runs on the stored result's state.  It empties the free list, rounds the top up to a word, copies the state with `copyCode`, moves the copy's bytes down to `base` a word at a time from the lowest address, subtracts the distance from each array root and each nonzero byte root, sets the top just past the moved bytes, and empties the free list again.  The step borrows the state, so once its result is stored the old state is garbage, and the release that followed the step is gone.
+
+| Positions of `_start` | Contents |
+|---|---|
+| `0` to `W - 1`, with `W` the result's width | running flag, status, and the state's words from position 2 |
+| `W` | `base` |
+| `W + 1` | the rounded top, where the copy starts |
+| `W + 2` | the copy's byte count |
+| `W + 3` | the move's byte offset |
+| `W + 4` | the distance of the move |
+| `W + 5` on | the copy's scratch, `state.copyScratch` positions |
+
+The step's result goes straight into positions 0 to `W - 1`, so the second result slot of the old layout is gone.  The copy's scratch lies above the five scalars because `wp_copyCode` keeps only the positions below its scratch base.  For the integer state, `W` is 12 and the function has 20 positions, against 24 before, so `stackFits` should still hold.
+
+Rounding the top makes the move's last word end at the top rounded up, which lies in memory because memory ends on a page.  Without it, a heap whose top is not a multiple of 8 could make the last word reach past memory.  The copy cost of a compactable value is a multiple of 8 (`Ty.copyCost_mod`), and so is the memory bound, so the rounding costs no room: `roundWord_add_le` turns `top + copy ≤ limit` into `roundWord top + copy ≤ limit`.  Emptying the free list before the copy makes every allocation of the copy raise the top, so each fresh block lies above the rounded top, which `Step.keeps` on the region `(0, T8)` proves.  Emptying it again at the end makes the final heap independent of the free list after the copy, which `wp_copyCode` does not state.
+
+The move is proved at the byte level (`wp_moveCode`, `write64_read64_byte`), because a byte string's contents are bytes and an array's header and words are read as words at arbitrary offsets.  The translation lemma `Ty.Rep.relocate` takes a `Moved` store, whose bytes at `a - d` are the old bytes at `a` for every `a` in the moved range, and transports `Heap.Owned` and `Bytes.Allocated` field by field.  Its heap has the new top and no free block.
+
+| File | Contents |
+|---|---|
+| `Verified/Wasi/CompactCode.lean` | `Ty.compactable`, `relocateWords`, `relocateCode`, `moveCode`, `compactCode`, `roundWord` and its lemmas, `Ty.copyCost_mod` |
+| `Verified/Wasi/CompactMove.lean` | `write64_read64_byte`, `wp_moveCode` |
+| `Verified/Wasi/CompactRep.lean` | `Moved`, `arrayAt_relocate`, `Heap.Owned.relocate`, `Bytes.Allocated.relocate`, `Ty.Rep.relocate`, `wp_relocateCode` |
+| `Verified/Wasi/CompactHeap.lean` | `resetHeap`, `wp_emptyFree`, `wp_roundTop`, `wp_resetTop`, `Ty.Rep.blocks_inside`, `wp_compactCode` |
+| `Verified/Wasi/ProcessCompact.lean` | the new `ProcessStored`, `Step.top_le`, `ProcessMemory.called`, `ProcessMemory.compacted`, `wp_process_compact` |
+
+`ProcessStored target state pool base current store locals` now carries `base`: the heap has no free block, its top lies between `base` and `base + state.copyCost current.state`, local `processAux state` holds `base`, and the pool lies below `base`.  `wp_process_compact` transports `wp_compactCode` through `PureTransport.wp_prefix` and rebuilds `ProcessMemory` and `pool.Static` from the bytes below `base`.  In the partial-refinement theorems, a trap during the compaction after a returned step is `ProcessIterationResult.resource` with residual `.pure next`, from `Exec.returned_prefix`, and the same holds after `begin`.  `Step.top_le` shows that a step from a heap with no free block does not lower the top, which gives `base ≤ top` before each compaction.  The process theorems therefore take `heap.free = []` for the initial heap, which `initialStaticHeap` satisfies by `rfl`.
+
+The total theorem drops the potential, `start`, the decrease premises, and `ProcessFits`.  Its premises are a structure, with `base` the initial heap top and `limit` the memory cap in bytes.
+
+| Field of `ProcessTotalPremises` | Statement |
+|---|---|
+| `beginRoom` | `base + beginCharge ≤ limit` |
+| `beginBounded` | `CallPrefixBound` for `begin` at `beginCharge` |
+| `beginReplies` | every outcome of `begin` returns a represented state `S₀` with `base + beginCharge + copyCost S₀ ≤ limit` |
+| `stepRoom` | `base + copyCost S + charge S ≤ limit` for each represented running state |
+| `stepBounded` | `CallPrefixBound` for the step from `S` at `charge S` |
+| `stepReplies` | every outcome of the step returns a represented state `S'`, lower in the well-founded relation, with `base + copyCost S + charge S + copyCost S' ≤ limit` |
+
+`beginRoom` and `stepRoom` give the room that a call needs before any reply exists.  The loop invariant is `ProcessStored` with the represented state and `limit ≤ 65536 · cap`.  In each application, the intermediate premise `RunCharges` replaces `RunBudget`: a charge function on native states and stream positions, a begin charge, their prefix bounds, and the room conditions above.  Stage 2 proves `RunCharges` from the limits.
+
+### Stage 2: paid flags
+
+Stage 2 fixes the quadratic append charges with one flag per variable, which states that every array of the variable carries its potential, and with a rule at `if`.  The approved design asked for a flag for each array leaf.  The report asks the user to confirm the departure.
+
+Per-leaf flags alone do not remove the charge in `consumeInput`.  Its loop body is `if byte == 10 then completeLine next else ⟨true, 0, {next with line := next.line.push byte}⟩`.  `completeLine` resets `line` to `#[]`, a `build` of zero elements, whose leaf is unpaid, so the `if` of two leaf masks leaves `line` unpaid and every push in the other branch is charged its quadratic cost.  The missing rule is at the `if`: the `if` is paid when either branch is, and the unpaid branch is charged the credit of its value.  `completeLine` is taken at most once per step, at the newline that ends the loop, so that charge is linear.  With that rule, a per-variable flag that covers every array of a pair suffices for both running sums, and per-leaf masks would add precision only for a record with an unpaid array beside a growing one, which neither program has.  Per-leaf masks would also change the type of `paid` across `ExprCorrect.lean`, about 460 references, in files that the typed-fields work also changes.
+
+| Rule | Change |
+|---|---|
+| `Ty.creditFree` | a type without arrays, whose credit and potential are 0 |
+| `Expr.paid` of `.pair a b` | owned, and each component paid or `creditFree` |
+| `Expr.paid` of `.letPair e body` | the body's, with both components flagged as `e` is |
+| `Expr.paid` of `.ite` | either branch paid, in place of both |
+| `Expr.allocs` of `.ite` | each branch adds `t.buyCost other own value`, the value's credit when the other branch is paid and this one is not |
+| `Expr.allocs` of `.letPair` | the body's flags for the components are `e.paid` in place of `false` |
+
+The proofs change in `spec_pair` (`pair_top`, `After.seq_regions`), `spec_letPair` (the dying potential of the components is at most the pair's), `ite_branch` (an unpaid branch's charge bounds the owned result's potential by `Ty.pot_le_credit`), `Expr.mode_of_paid`, the reflector's `ite_bound` family and `letPair_bound`, and the builders in `Reflect/Definitions.lean` (`assignBuy`, and `assignPaid` for the destructuring).  No code generator reads `Expr.paid` or `Expr.allocs`, so module bytes do not change.  Bounds do change: an `if` with one paid branch now charges a credit, and pushes on arrays in paid pairs become cheaper.  The examples that rewrite with generated `bound_eq` theorems, such as `Grow`, `Insert`, `Tables`, `Recursion`, and the xorshift and regex proofs, may need new arithmetic.
+
+In the integer program, `combineMagnitude`'s loop state `(#[], carry)` becomes paid, so its pushes cost 80 bytes each in place of a growing block, and `consumeInput`'s record state becomes paid, so its line pushes cost 80 bytes each.  The loop buys the credit of its initial state once, and the newline branch buys the credit of `completeLine`'s result.
+
+### Stage 2: charges and limits
+
+The compositional rules moved to `Verified/Wasi/ResourceRules.lean` and gained `unit`, `exit`, `ite`, and `call`, with `CallBounded`, `callBounded_here`, and `callBounded_there` for calls of effect functions.  The retained-buffer example now imports them.
+
+A generated closed form for an effect command meets `bind`: the charge after a read or a write is a function of the host's reply, so a closed form needs a bound over all replies, which generation cannot supply in general.  For the running sums the replies do not affect the charges, because the read's bytes move into the state and the write's count is a word.  The plan is one `Bounded` proof per effect function, with the charge a Lean function of the native state written from the pure functions' generated `bound_eq` theorems.  This replaces the generated effect-command equations of the approved design, and the report lists it.
+
+The step charge of the integer program, from the bounds of the pure functions it calls, is linear in the line length and the digit count.  The consume step copies the state and buys its credit, pushes at most 4,096 bytes at 80 bytes each, and runs `completeLine` at most once.  `completeLine` parses the line, adds with `combineMagnitude` at 80 bytes per digit, renders the total, and copies the parts of its borrowed state that its result keeps.  The write step builds the remaining output and copies the state, and the read step charges the 4,144-byte read and copies the state.  The loop over a chunk needs a refined `loopCost` lemma: every iteration costs at most a push except the last, which may run `completeLine`, so the chunk's charge is `4096 · 80` plus one `completeLine`.
+
+The size invariant on reachable states comes from `StreamFuture` with a stronger kernel specification.
+
+| Part | Definition |
+|---|---|
+| `InputLimits L D input` | each line up to and including the first rejected line has at most `L` bytes, and each prefix sum of valid lines has at most `D` digits |
+| `limitSpec L D` | `Good` adds `total.digits.size ≤ D`, and `Room` adds `line.size ≤ L` and, for a valid line, the next total's digit bound |
+| line bound | `Model.Safe` with `finalRoom` bounds the pending line by `L`, by induction on the remaining input, because the pending line is a prefix of a line whose `Room` holds |
+| input bound | `Host.read_bound` keeps the input buffer at most 4,096 bytes |
+| output bound | the output is empty or the rendering of the current total, at most `D + 2` bytes |
+
+`target_terminates` gains an invariant parameter with an initial and a preservation premise, and `RunCharges` quantifies over states that satisfy it.  A lemma derives `RunCharges` from `InputLimits L D` and one explicit inequality on `L` and `D` against the memory cap and the pool's top.  The final integer theorem keeps `StreamHost`, `InputBounds`, and `ExitAccepted`, and replaces `RunBudget` with `InputLimits L D` and that inequality.  The binary64 program follows with the same stream structure; its total is a scalar, and its line parser and printer need their own closed-form bounds.
+
+### Plan
+
+- [x] Write the compaction code and its proofs (stage 1), unbuilt.
+- [x] Rewrite the partial and total process theorems and both applications' uses (stage 1), unbuilt.
+- [x] Write the paid-flag rules, their proofs, and the reflector changes (stage 2), unbuilt.
+- [x] Move and extend the effect-command resource rules (stage 2), unbuilt.
+- [ ] Build `Verified.Wasi.CompactHeap`, `Verified.Wasi.ProcessCompact`, and the process modules; fix the drafts.
+- [ ] Build `Verified.ExprCorrect`, the reflector, and every program that the paid rules reach; compare all module bytes with the previous emissions, which must match except the process modules.
+- [ ] Re-check `stackFits`, the process modules' validity and encoding, and the WASI and running-sum drivers, including the Talos groups.
+- [ ] Prove the `Bounded` charges of `begin`, `step`, `readStep`, and `writeStep` for the integer program, and their closed-form bounds.
+- [ ] Prove the size invariant and the room lemma, and state the final integer theorem.
+- [ ] Repeat the charges and limits for the binary64 program.
+- [ ] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audits.
+
+### Risks
+
+The drafts have not met Lean.  The main risks are the low-level `wp` stepping in `wp_compactCode`, where several `simp only` calls must reduce stores, globals, and locals exactly as written, and the bit-level proof of `write64_read64_byte`.  The paid rules change the generated bounds of many programs, and the reflector evaluates `Expr.paid` at each `let`, destructuring, and loop, which now recurses through destructurings and pairs; large programs such as the binary64 printer may elaborate more slowly.  Compaction adds one copy and one move of the state per step.  The integer step already copies the 4,096-byte input buffer when it consumes or writes, so the per-step memory traffic roughly doubles, and the Talos tests, whose memory model grows with each write, may exceed their time limits.
