@@ -99,15 +99,31 @@ def finiteDouble : Gen Nat := do
     0x3FE0000000000000, 0x43E0000000000000, 0x43F0000000000000, 0xC3E0000000000000,
     0x41DFFFFFFFC00000, 0x41E0000000000000, 0x7FEFFFFFFFFFFFFF, 1, 0x000FFFFFFFFFFFFF,
     0x43EFFFFFFFFFFFFF, 0x3CA0000000000000]
-  let b ← edgeOr edges (2 ^ 64)
-  -- An exponent of all ones is a NaN or an infinity, which has no literal.
-  pure (if b / 2 ^ 52 % 2 ^ 11 == 0x7FF then b - 2 ^ 52 else b)
+  match (← rand 3) with
+  | 0 => pick edges
+  | 1 => do
+      -- A magnitude between 2^-10 and 2^32, which a conversion to an integer type often keeps
+      -- in range.
+      let sign := (← rand 2) * 2 ^ 63
+      let exponent := 1023 - 10 + (← rand 43)
+      pure (sign + exponent * 2 ^ 52 + (← rand (2 ^ 52)))
+  | _ => do
+      let b ← rand (2 ^ 64)
+      -- An exponent of all ones is a NaN or an infinity, which has no literal.
+      pure (if b / 2 ^ 52 % 2 ^ 11 == 0x7FF then b - 2 ^ 52 else b)
 
 def finiteFloat : Gen Nat := do
   let edges := [0, 0x80000000, 0x3F800000, 0xBF800000, 0x3F000000, 0x5F000000, 0x5F800000,
     0x4F000000, 0xCF000000, 0x7F7FFFFF, 1, 0x007FFFFF, 0x5F7FFFFF]
-  let b ← edgeOr edges (2 ^ 32)
-  pure (if b / 2 ^ 23 % 2 ^ 8 == 0xFF then b - 2 ^ 23 else b)
+  match (← rand 3) with
+  | 0 => pick edges
+  | 1 => do
+      let sign := (← rand 2) * 2 ^ 31
+      let exponent := 127 - 10 + (← rand 43)
+      pure (sign + exponent * 2 ^ 23 + (← rand (2 ^ 23)))
+  | _ => do
+      let b ← rand (2 ^ 32)
+      pure (if b / 2 ^ 23 % 2 ^ 8 == 0xFF then b - 2 ^ 23 else b)
 
 def constOf : Ty → Gen expr
   | .u32 => do
@@ -158,11 +174,11 @@ def cmpOps : List binary_operation := [.Oeq, .One, .Olt, .Ogt, .Ole, .Oge]
 
 /-- Usually `b | 1`, which is not zero. -/
 def divisor (b : expr) (one : expr) (ty : type) : Gen expr := do
-  if (← rand 4) == 0 then pure b else pure (.Ebinop .Oor b one ty)
+  if (← rand 16) == 0 then pure b else pure (.Ebinop .Oor b one ty)
 
 /-- Usually `b & mask`, which is below the word size. -/
 def amount (b : expr) (mask : expr) (ty : type) : Gen expr := do
-  if (← rand 4) == 0 then pure b else pure (.Ebinop .Oand b mask ty)
+  if (← rand 16) == 0 then pure b else pure (.Ebinop .Oand b mask ty)
 
 def genExpr (c : Ctx) : Nat → Ty → Gen expr
   | 0, t => leaf c t
@@ -418,7 +434,7 @@ def expected (A : Archi) (p : program function) (fuel : Nat) : String :=
       line "g_u64" (bitsAt p m idU64 .Mint64 0) ++
       line "g_f64" (bitsAt p m idF64 .Mint64 0) ++
       line "g_f32" (bitsAt p m idF32 .Mint32 0) ++
-      String.join ((List.range 8).map fun i => line "arr" (bitsAt p m idArr .Mint64 (8 * i))) ++
+      String.join ((List.range 8).map fun (i : Nat) => line "arr" (bitsAt p m idArr .Mint64 (8 * (i : Int)))) ++
       line "pun" (bitsAt p m idPun .Mint64 0)
 
 end TestSupport.Native.ClightGen
