@@ -103,18 +103,13 @@ def range_perm_b (m : mem) (b : block) (lo hi : _root_.Int) (k : perm_kind) (p :
 theorem range_perm_b_iff (m : mem) (b : block) (lo hi : _root_.Int) (k : perm_kind)
     (p : permission) : range_perm_b m b lo hi k p = true ↔ range_perm m b lo hi k p := by
   unfold range_perm_b range_perm
-  rw [List.all_eq_true]
+  simp only [List.all_eq_true, List.mem_range, decide_eq_true_eq]
   constructor
   · intro h ofs h1 h2
-    have hmem : (ofs - lo).toNat ∈ List.range (hi - lo).toNat := by
-      rw [List.mem_range]; omega
-    have hp := h _ hmem
-    rw [decide_eq_true_eq] at hp
+    have hp := h (ofs - lo).toNat (by omega)
     have e : lo + (((ofs - lo).toNat : Nat) : _root_.Int) = ofs := by omega
     rwa [e] at hp
   · intro h i hi
-    rw [List.mem_range] at hi
-    rw [decide_eq_true_eq]
     exact h _ (by omega) (by omega)
 
 instance (m : mem) (b : block) (lo hi : _root_.Int) (k : perm_kind) (p : permission) :
