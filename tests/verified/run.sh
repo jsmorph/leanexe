@@ -13,7 +13,7 @@
 # within the bound its docstring states, and tests/TestSupport/Numerics/FourierAccuracy.lean checks that
 # Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
 # Run `tools/leanrun --timeout 60m lake build`, whose default targets include the module cases of
-# the Euler check, and `tools/leanrun --threads 3 --memory-high 10G --timeout 12h lake build Verified
+# the Euler check, and `tools/leanrun --threads 2 --memory-high 10G --timeout 12h lake build Verified
 # Library` first.
 # Usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]
 set -euo pipefail
@@ -63,6 +63,10 @@ fi
 if [ -n "$reference" ]; then
   echo "verified byte comparison passed: $emitted modules"
   exit 0
+fi
+if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+  echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
+  exit 1
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "gpt" ]; then
   tests/gpt/run.sh "$out/gpt.wasm"

@@ -9,11 +9,11 @@
   "evidenceStatus": "promoted",
   "features": ["bitwise", "pure-call", "straight-line", "word-to-float"],
   "annotationKinds": [],
-  "modules": ["Examples.Prng.Verify", "Examples.Prng.Program"],
-  "declarations": ["Examples.Prng.splitMix", "Examples.Prng.unitFloat", "Examples.Prng.splitMix_pure", "Examples.Prng.unitFloat_pure", "Examples.Prng.prng_bytes"],
+  "modules": ["Library.Random.SplitMix64.Verify", "Library.Random.SplitMix64.Program"],
+  "declarations": ["Library.Random.SplitMix64.splitMix", "Library.Random.SplitMix64.unitFloat", "Library.Random.SplitMix64.splitMix_pure", "Library.Random.SplitMix64.unitFloat_pure", "Library.Random.SplitMix64.prng_bytes"],
   "premises": ["The module's function list holds the compiled splitMix or unitFloat at index i, as prng.splitMix.ir or prng.unitFloat.ir with its name"],
   "result": "ImplementsPure at entry 2 + i, which Stmt.callPure_spec turns into a Triple for a call from a loop body or any other code that must keep the store.",
-  "consumers": ["Examples.Prng.splitMix_implements", "Examples.Prng.unitFloat_implements"],
+  "consumers": ["Library.Random.SplitMix64.splitMix_implements", "Library.Random.SplitMix64.unitFloat_implements"],
   "relatedEntries": ["straight-line-run", "float-arithmetic", "function-call"],
   "exclusion": null
 }
