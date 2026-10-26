@@ -14,7 +14,7 @@ The pipeline, with the status of each step:
 4. C-subset program → C text: a printer, unverified, checked on every build by comparing the Clight that CompCert's `clightgen` produces from it with the program Lean generated.
 5. C text → machine code: CompCert, proved in Rocq.
 
-The target theorem, `p.f.native`, mirrors `ImplementsA`. From any C state that corresponds to a Talos store and arguments meeting `ImplementsA`'s premises, the translated C function terminates and either returns words that represent `f x`, with the heap, region and cap conclusions carried over, or calls the trap function, which is allowed only when `aborts` holds.
+The target theorem, `p.f.native`, mirrors `ImplementsA`. From any C state that corresponds to a Talos store and arguments meeting `ImplementsA`'s premises, the translated C function terminates and either returns words that represent `f x`, with the heap, region and cap conclusions carried over, or returns with the code of a trap in `lx_status`, which is allowed only when `aborts` holds.
 
 What stays trusted afterwards:
 
@@ -80,11 +80,11 @@ The proofs target CompCert's Clight in the form `clightgen` produces: after `Sim
 **What the generated C uses** (prefix `lx_` throughout):
 
 - Types: `unsigned int`, `int` (comparison results), `unsigned long long`, `float`, `double`, `unsigned char`, and pointers to these.
-- Globals: `lx_mem`, an array of `unsigned long long` holding the linear memory, zero-initialized; `lx_pages`; `lx_g0` to `lx_g3`, the Wasm globals; `lx_r0`, `lx_r1`, …, the result slots for functions with several results; `lx_pun`, an 8-byte scratch cell for reinterpreting bits; `lx_tables`, a constant array holding the data segments.
+- Globals: `lx_mem`, an array of `unsigned long long` holding the linear memory, zero-initialized; `lx_pages`; `lx_g0` to `lx_g3`, the Wasm globals; `lx_r0`, `lx_r1`, …, the result slots for functions with several results; `lx_pun`, an 8-byte scratch cell for reinterpreting bits; `lx_tables`, a constant array holding the data segments; `lx_status`, the code of a trap, 0 while none has occurred.
 - Locals: one C local per Wasm local and per operand-stack slot, plus `brk` for multi-level branches. None has its address taken, so `SimplLocals` turns them all into temporaries.
 - Expressions: integer constants, temporaries, global variables, dereferences of `lx_mem` and `lx_pun`, address-of for punning, the binary operators at the types above, and casts between the scalar types. Float constants are printed as literals; `clightgen` exports them as bit patterns, so the per-build check (section 6) compares them exactly.
 - Statements: `Sset`, `Sassign`, `Scall`, `Sbuiltin` (only `__builtin_fsqrt`), `Ssequence`, `Sifthenelse`, `Sloop`, `Sbreak`, `Scontinue`, `Sreturn`, `Sskip`.
-- One external function, `lx_trap(unsigned int code)`, which the host implements with `abort()`.
+- No external function.  A trap stores its code in `lx_status` and returns, as section 4 describes.
 
 **Transcription plan.** Each Lean definition names the CompCert 3.18 definition it copies. The copy keeps CompCert's names so a reviewer can read the two side by side, and it keeps only the cases the translator can reach:
 
@@ -98,7 +98,7 @@ The proofs target CompCert's Clight in the form `clightgen` produces: after `Sim
 | Expressions | `cfrontend/Clight.v` | `eval_expr`, `eval_lvalue`, `deref_loc`, `assign_loc`, `function_entry2` |
 | Statements and calls | `cfrontend/ClightBigstep.v` | `exec_stmt`, `eval_funcall`, `outcome_result_value` |
 | Initial memory | `common/Globalenvs.v` | `init_mem` for `Init_int64`, `Init_space`, `Init_int32` |
-| Externals | `common/Events.v`, `common/Builtins0.v` | `lx_trap` ends execution; `__builtin_fsqrt` is `Float.sqrt` |
+| Externals | `common/Events.v`, `common/Builtins0.v` | `EF_external` has the parameter `external_functions_sem` as its semantics, and the translator emits no external call; `__builtin_fsqrt` is `Float.sqrt` |
 
 Three rules keep the copy honest:
 
@@ -110,11 +110,13 @@ An executable evaluator, `LClight.run` with fuel, is proved sound against the re
 
 ## Translation scheme
 
-The translator is a Lean function `translate : Module → Option LClight.Program`. It returns `none` when the subset check or the static stack analysis fails, and the theorem covers every `some`. Each Wasm function becomes one C function. Every value lives in a C temporary named by its position, and every trap goes through `lx_trap` inside an `if`/`else`, so no undefined operation follows a trap even if `lx_trap` were to return.
+The translator is a Lean function `translate : Module → Option LClight.Program`. It returns `none` when the subset check or the static stack analysis fails, and the theorem covers every `some`. Each Wasm function becomes one C function. Every value lives in a C temporary named by its position, and a trap returns from the function at once, so no operation follows it.
 
 **Static stack analysis.** Locals and operand-stack slots become C locals named by index, height and type: `l3`, `s5_l` (i64), `s5_i` (i32), `s5_d` (f64), `s5_f` (f32). The analysis computes the type stack at every instruction, which is possible because every block type here has no parameters and at most one result. A mismatch makes `translate` return `none`. Declared Wasm locals are assigned 0 at entry, as `Function.toLocals` zeroes them; stack slots are always written before they are read.
 
 **Functions and calls.** A function with no result returns `void`, and one with one result returns that scalar. With two or more results it returns `void` and writes `lx_r0`, `lx_r1`, …, which the caller copies into its stack slots straight after the call. Arguments are the top `n` slots, deepest first, which matches Talos's reversal of the top `numParams` values. The call-depth parameter is an ordinary `unsigned long long`. Exported functions keep their Wasm export names; the others are named `lx_f<index>`.
+
+**Traps.** A trap stores its code in `lx_status`, one of unreachable, out of bounds, and divide by zero, and returns from the function at once, with `return;` in a function without a result and `return 0;` at the result's type otherwise.  After a call to a function that can trap, directly or through its own calls, the caller tests `if (lx_status != 0) return …;` before it copies the results, so a trap leaves every C frame up to the exported function without running more of its code.  A static pass over the call graph decides which functions can trap, and a call to one that cannot needs no test, so the cost is one load and one branch after each call that can trap.  The host reads `lx_status` after the exported function returns: 0 means that the call returned its results, and any other value names the trap.  No external function is called, so no assumption that one never returns enters the proof.
 
 **Control flow.** Every `block`, `loop` and `iff`, and the function body itself, becomes a loop the body leaves with `break`:
 
@@ -133,8 +135,8 @@ After any construct that contains a branch leaving it by more than one level, th
 
 ```c
 a = (unsigned long long) s4_i + 16;                 /* off = 16; 64-bit sum, no wrap */
-if (a + 8 > (unsigned long long) lx_pages * 65536) lx_trap(LX_OOB);
-else if ((a & 7) == 0) s4_l = lx_mem[a >> 3];       /* aligned: one 8-byte load */
+if (a + 8 > (unsigned long long) lx_pages * 65536) { lx_status = LX_OOB; return 0; }
+if ((a & 7) == 0) s4_l = lx_mem[a >> 3];            /* aligned: one 8-byte load */
 else s4_l = lx_load64_bytes(a);                     /* eight byte loads, little-endian */
 ```
 
@@ -147,7 +149,7 @@ else s4_l = lx_load64_bytes(a);                     /* eight byte loads, little-
 | Wasm form | C shape | Why |
 | --- | --- | --- |
 | `shlI64`, `shrUI64` | `a << (b & 63)`, `a >> (b & 63)` | Wasm masks the amount; CompCert leaves a shift by 64 or more undefined |
-| `divUI64`, `remUI64` | `if (b == 0) lx_trap(LX_DIV0); else a / b` | Talos traps; C leaves it undefined |
+| `divUI64`, `remUI64` | `if (b == 0) { lx_status = LX_DIV0; return 0; }`, then `a / b` | Talos traps; C leaves it undefined |
 | comparisons, `eqz` | `(unsigned int)(a < b)` | C comparisons yield `int` |
 | `wrapI64`, `extendUI32` | casts between `unsigned int` and `unsigned long long` | |
 | f64 and f32 `add`, `sub`, `mul`, `div`, `sqrt` | the C operator or `__builtin_fsqrt`, then `if (t != t) t = canonical NaN` | CompCert's NaN choice differs by architecture; Talos always gives the positive canonical NaN |
@@ -170,7 +172,7 @@ One simulation theorem, `translate_correct`, carries every Talos `run` that ends
 - Stack: `s.values` has length `|σ|`, and slot `k` holds the value at depth `|σ| − 1 − k`.
 - Globals: the blocks of `lx_g0` to `lx_g3` hold the encoding of `st.globals`.
 - Memory: every byte of `lx_mem` below `LX_CAP × 65536` equals `st.mem.bytes` at that address; `lx_pages = st.mem.pages`; and `st.memoryCap m 0 = LX_CAP`.
-- `brk` is 0. `lx_pun`, `lx_r*` and slots above the stack are unconstrained.
+- `brk` and `lx_status` are 0. `lx_pun`, `lx_r*` and slots above the stack are unconstrained.
 
 **Outcomes.** Each Talos continuation corresponds to one C outcome:
 
@@ -179,21 +181,21 @@ One simulation theorem, `translate_correct`, carries every Talos `run` that ends
 | `Fallthrough st' s'` | normal completion, with `Match` at the next point |
 | `Break k st' s'` | `break` or `continue` with `brk` set as section 4 encodes it, and the kept value already in the target's result slot |
 | `Return st' vs` | `return`, with the result or `lx_r*` holding `vs.take results.length` |
-| `Trap st' msg` | the call to `lx_trap` with the code for `msg`: unreachable, out of bounds, or divide by zero |
+| `Trap st' msg` | `return` from every frame up to the exported function, with `lx_status` holding the code for `msg` (unreachable, out of bounds, or divide by zero) and the globals and memory matching `st'` |
 
 **Proof layers**, bottom up, with rough sizes:
 
 1. **Lean Clight lemmas** (1,000–2,000 lines): load after store; punning round trips for the four scalar types; agreement of little-endian `decode_val` with Talos's `Mem.read64` and `write64`; evaluation of each expression shape the translator emits; determinism of the big-step relation.
-2. **Instruction lemmas** (3,000–5,000 lines): one per form. If `execOne` gives `Fallthrough` or `Trap` from a matched state, the instruction's C statement completes normally with `Match`, or reaches `lx_trap` with the right code. Most are 20–60 lines; the float forms cite layer 4.
-3. **Control and calls** (3,000–5,000 lines): a mutual induction on fuel over `execOne`, `exec` and `run`, following Talos's own mutual definition. It covers sequences, the loop wrappers and the `brk` dispatch, `br`, `br_if`, `ret`, function entry through `function_entry2`, and calls. A loop that re-runs itself and a call each use the hypothesis at fuel − 1, exactly where Talos spends fuel.
+2. **Instruction lemmas** (3,000–5,000 lines): one per form. If `execOne` gives `Fallthrough` or `Trap` from a matched state, the instruction's C statement completes normally with `Match`, or returns with the right code in `lx_status`. Most are 20–60 lines; the float forms cite layer 4.
+3. **Control and calls** (3,000–5,000 lines): a mutual induction on fuel over `execOne`, `exec` and `run`, following Talos's own mutual definition. It covers sequences, the loop wrappers and the `brk` dispatch, `br`, `br_if`, `ret`, function entry through `function_entry2`, and calls with the test of `lx_status` after them. A loop that re-runs itself and a call each use the hypothesis at fuel − 1, exactly where Talos spends fuel.
 4. **Float lemmas** (1,000–3,000 lines): canonicalization equals Talos's NaN result for every NaN choice CompCert might make; the `trunc_sat` guards; f32 square root through binary64 (the double-rounding lemma); `f32Nearest` by integer arithmetic; the conversions agree with Talos's IEEE 754 functions. LeanExe's existing `F32*` and `F64*` lemmas in `LeanExe/ProofKit` cover part of this.
-5. **Module theorem.** `translate_correct`: if `translate m = some p` and `run fuel m id st args` returns `Success vs st'` or `Trap st' msg`, then from any C state matching `st` and the arguments, `eval_funcall` of the C function terminates with results matching `vs` and a state matching `st'`, or calls `lx_trap` with the code for `msg`.
+5. **Module theorem.** `translate_correct`: if `translate m = some p` and `run fuel m id st args` returns `Success vs st'` or `Trap st' msg`, then from any C state matching `st` and the arguments, `eval_funcall` of the C function terminates with results matching `vs` and a state matching `st'`, or terminates with the code for `msg` in `lx_status` and globals and memory matching `st'`.
 6. **Initialization.** `lx_init_correct`: running `lx_init` from CompCert's initial memory gives a state matching Talos's `Module.initialStore`, with the cap set to `LX_CAP`. A variant of `compileWith_initialStore` for that cap supplies the allocator invariant for the first call.
 7. **Composition.** `ImplementsA.native` takes `p.f.implements` and `translate_correct`. It picks a fuel at least the `N` from `Runs`, and transports the `Represent`, heap and region facts through `Match`; the bytes are equal, so every heap reading carries over unchanged.
 
 **What `verified_compile` adds.** As with `p.encoded` today, the command evaluates `translate p.module` natively to a literal `p.cprogram`. The kernel then checks `translate p.module = some p.cprogram`, one function per theorem. It adds `p.f.native` for every function, and `p.c`, the C text printed from `p.cprogram`.
 
-**Why the result transfers to the binary.** The C execution terminates, and the Lean copy's big-step relation is deterministic, so the program has exactly one behaviour and does not go wrong. CompCert's `bigstep_semantics_sound` and its compiler theorem then make that the behaviour of the machine code. That last step is in Rocq; the trust argument for crossing between the two provers is in section 6.
+**Why the result transfers to the binary.** The C execution terminates, after a trap as well as after a return of results, and the Lean copy's big-step relation is deterministic, so the program has exactly one behaviour and does not go wrong. CompCert's `bigstep_semantics_sound` and its compiler theorem then make that the behaviour of the machine code. That last step is in Rocq; the trust argument for crossing between the two provers is in section 6.
 
 ## Trust argument and validation
 
@@ -218,7 +220,7 @@ Three links connect the Lean theorem to the binary:
 **Assumptions about the host and environment.** The generated header states these:
 
 - The host is compiled with `ccomp`. It calls `lx_init()` once, places arguments in `lx_mem` through the exported `alloc` so that they meet the `Represent` premises, and reads results through the same representation.
-- `lx_trap` never returns.
+- The host reads `lx_status` after each call, and treats a nonzero value as a trap of that call.
 - The stack does not overflow. CompCert's theorem assumes this. The 1,000-call depth guard bounds the number of frames, so measure the deepest stack use under `ccomp` and size the thread stack from that.
 - `LX_CAP` pages fit in memory and in the toolchain's addressing limits (section 8).
 

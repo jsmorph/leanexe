@@ -35639,7 +35639,8 @@ The design calls `lx_trap(code)` at a trap and lists "`lx_trap` never returns" a
 - [ ] `tests/native/clight.sh` on many seeds for both targets, with every difference explained and the counts recorded (M1's exit criterion).
 - [ ] An independent review of the copy against the CompCert sources, file by file.
 - [ ] Import `LeanExe.Native` from `LeanExe.lean` once it builds without `sorry`.
-- [ ] The user's decisions: the trap mechanism above, and the license of the Lean copy.
+- [x] The user's decision on the trap mechanism (below).
+- [ ] The user's decision on the license of the Lean copy.
 
 `tools/source-layout` reports five errors in this worktree, all present on `main`: the programs of `Library/Hashing/Crc`, `Sha3`, `SipHash`, and `XxHash64` and of `Library/Regex` are missing from `Library.Native`.  It reports none for the new files.
 
@@ -35648,3 +35649,11 @@ The design calls `lx_trap(code)` at a trap and lists "`lx_trap` never returns" a
 An independent agent read every file of `LeanExe/Native/Clight/` against the CompCert 3.18 sources and Talos's `IEEE32.lean` and `IEEE64.lean`, and checked the Lean names against the toolchain's sources, without running Lean.  It found no rule that admits an outcome CompCert does not and no function that computes a different value at `ptr64 = true`.  It found one proof step that cannot work, the third `rfl` of `run_sound`, whose goal lies under the existential's binder; the step is now `hf`.  It found three headers that did not list all omissions, in `Cop.lean`, `Clight.lean`, and `Globalenvs.lean`, now corrected.  Its float analysis confirms that every operation but `to_single` relies only on Talos's correctness, and that `to_single` relies on `IEEE32.roundDyadicMagnitude` at 925 fractional bits, an argument that Talos itself never uses; the exhaustive binary32 tests of M6 and the differential tests must cover it.
 
 The review also bounds what a containment theorem can say, and the build phase has to state these limits.  Identifiers and blocks are `Nat`, so a block 0 in a call's arguments has no CompCert counterpart.  A `mem` carries none of CompCert's invariants, which the copy's operations preserve but an arbitrary `ExtSem` result need not.  A theorem for every `Archi` corresponds to CompCert only at the two instances.  `run_sound` concludes `eval_funcall` for any function and arguments, while CompCert's `bigstep_program_terminates` is about `main`; the trust argument has to connect the two through the host.
+
+### The user's decisions
+
+The user approved the recommended trap mechanism and dropped `lx_trap`.  A trap stores its code in the global `lx_status` and returns at once, each call site whose callee can trap tests `lx_status` after the call and returns, and the host reads `lx_status` after the exported function returns.  [The design](docs/native-translator.md) now says so in its list of what the generated C uses, its translation scheme (a new paragraph on traps, the memory and division code, and the externals row), the relation (`lx_status` is 0 at a matched point), the outcome of `Trap`, proof layers 2, 3, and 5, the transfer to the binary, and the host's assumptions.  The claude.ai copy linked from the design's header predates this change.
+
+A module outside the subset stays a warning in `verified_compile`, as implemented, and `tests/native/subset.sh` enforces M0's exit criterion.  CompCert 3.18 will be built from the verified archive in two configurations, `x86_64-linux` with `-clightgen` for compilation and the `clightgen` check, and `aarch64-linux` for `ccomp -interp` alone, with Rocq, OCaml, and Menhir from opam at versions that 3.18 supports (Rocq or Coq 8.15 to 9.2, OCaml 4.05 or later, Menhir 20200624 or later but not 20260122).   The license of the Lean copy remains with the user, and the NOTICE keeps both options.
+
+- [ ] Build CompCert 3.18 in both configurations on the build host, from the archive with the recorded digests.
