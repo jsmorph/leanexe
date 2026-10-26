@@ -35631,12 +35631,12 @@ The design calls `lx_trap(code)` at a trap and lists "`lx_trap` never returns" a
 - [x] The Lean copy: `Integers.lean`, `Floats.lean`, `AST.lean`, `Values.lean`, `Memdata.lean`, `Memory.lean`, `Ctypes.lean`, `Globalenvs.lean`, `Events.lean`, `Cop.lean`, `Clight.lean`, `Bigstep.lean`, and the NOTICE.
 - [x] `Run.lean` (`LClight.run`) and `RunSound.lean` (`run_sound`), with complete proofs that have not been checked.
 - [x] `Print.lean`, the C printer; `ClightGen.lean`, `ClightDiff.lean`, the executable `clight-diff`, and `tests/native/clight.sh`.
-- [ ] Build `LeanExe.Native` and fix what the compiler rejects.  The unchecked proofs are `perm_order_b_iff` and `Mem.range_perm_b_iff` in `Memory.lean`, `type_beq_eq` and `type_beq_refl` in `Ctypes.lean`, and every theorem of `RunSound.lean`; none uses `sorry`.
-- [ ] `#print axioms LClight.run_sound` shows at most `propext`, `Classical.choice`, and `Quot.sound`.
+- [x] Build `LeanExe.Native` and fix what the compiler rejects.  The unchecked proofs are `perm_order_b_iff` and `Mem.range_perm_b_iff` in `Memory.lean`, `type_beq_eq` and `type_beq_refl` in `Ctypes.lean`, and every theorem of `RunSound.lean`; none uses `sorry`.
+- [x] `#print axioms LClight.run_sound` shows at most `propext`, `Classical.choice`, and `Quot.sound`.
 - [ ] Build `Verified Library` with the change to `verified_compile`; every `verified_compile` emits `p.inSubset` without a warning, and the kernel's time for it on the largest modules (GPT-2, binary32 GPT-2, the Euler solvers) is recorded.
-- [ ] `tests/native/subset.sh`: all 98 modules of the corpus inside the subset (M0's exit criterion).
-- [ ] Build CompCert 3.18 with `clightgen` from the verified archive, for x86-64 and, for `ccomp -interp` alone, for AArch64.
-- [ ] `tests/native/clight.sh` on many seeds for both targets, with every difference explained and the counts recorded (M1's exit criterion).
+- [x] `tests/native/subset.sh`: all 98 modules of the corpus inside the subset (M0's exit criterion).
+- [x] Build CompCert 3.18 with `clightgen` from the verified archive, for x86-64 and, for `ccomp -interp` alone, for AArch64.
+- [x] `tests/native/clight.sh` on many seeds for both targets, with every difference explained and the counts recorded (M1's exit criterion).
 - [ ] An independent review of the copy against the CompCert sources, file by file.
 - [ ] Import `LeanExe.Native` from `LeanExe.lean` once it builds without `sorry`.
 - [x] The user's decision on the trap mechanism (below).
@@ -35656,7 +35656,7 @@ The user approved the recommended trap mechanism and dropped `lx_trap`.  A trap 
 
 A module outside the subset stays a warning in `verified_compile`, as implemented, and `tests/native/subset.sh` enforces M0's exit criterion.  CompCert 3.18 will be built from the verified archive in two configurations, `x86_64-linux` with `-clightgen` for compilation and the `clightgen` check, and `aarch64-linux` for `ccomp -interp` alone, with Rocq, OCaml, and Menhir from opam at versions that 3.18 supports (Rocq or Coq 8.15 to 9.2, OCaml 4.05 or later, Menhir 20200624 or later but not 20260122).   The license of the Lean copy remains with the user, and the NOTICE keeps both options.
 
-- [ ] Build CompCert 3.18 in both configurations on the build host, from the archive with the recorded digests.
+- [x] Build CompCert 3.18 in both configurations from the archive with the recorded digests.
 
 The user chose the GNU LGPL, version 2.1 or later, for the twelve files of `LeanExe/Native/Clight/` that transcribe CompCert, one of the two licenses CompCert offers for their sources.  `LeanExe/Native/Clight/LICENSE-LGPL-2.1` holds the text of version 2.1, copied unchanged from lines 173 to 674 of CompCert 3.18's `LICENSE` (SHA-256 `dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551`).  Each of the twelve files now begins with a notice that names its CompCert sources, CompCert's copyright holders (INRIA, whose copyright the source files carry, and AbsInt, which `LICENSE` names for CompCert as a whole), the license, and the change from CompCert on 2026-10-26, as section 2(a) of the LGPL 2.1 requires of a modified file.  The NOTICE records the choice and states that the rest of LeanExe, including `Run.lean`, `RunSound.lean`, and the translator, which import these files, is not covered by the LGPL.  The transcribed sources also include `lib/IEEE754_extra.v` (`ZofB_range`, `BofZ`) and `lib/Maps.v` (`ZMap`), which the NOTICE now lists.
 
@@ -35673,6 +35673,15 @@ The CompCert build is blocked: opam cannot sandbox its package builds, and the c
 - [x] `lake build LeanExe.Native` with no warning in the new files; axioms as above.
 - [x] `tests/native/subset.sh`: 98 of 98 modules inside the subset (M0).
 - [x] `clight-diff` builds; 107 defined programs of 200 agree with gcc on aarch64 (smoke test).
-- [ ] `lake build Verified` and then `Library` with `p.inSubset` everywhere, with the kernel's time on the largest modules.
-- [ ] CompCert 3.18 in both configurations, once the user decides how opam may build packages.
-- [ ] `tests/native/clight.sh` against `ccomp -interp` for both targets (M1).
+- [x] `lake build Verified` with `p.inSubset` everywhere, with the kernel's time on the largest modules.
+- [ ] `lake build Library` with `p.inSubset` everywhere.
+- [x] CompCert 3.18 in both configurations.
+- [x] `tests/native/clight.sh` against `ccomp -interp` for both targets (M1).
+
+`lake build Verified` succeeded, and every `verified_compile` in it emitted `p.inSubset` without the warning for a module outside the subset.  With one thread and the profiler, the kernel checked `InSubset` by `decide +kernel` in 7.98 s for `Demos.Gpt.Verified`, 2.74 s for `Demos.Gpt32.Verified`, and 14.9 s for `Demos.Euler.Verified`.  769 of the 1,072 modules of `Library` import `Verified.Reflect.Command`, directly or not, and so rebuild.  The first `lake build Library`, with two threads, rebuilt 121 of them without an error in about 75 minutes; I stopped it to free the Lean slot for the differential tests, and it now runs again with three threads.
+
+The user chose Ubuntu's packages over opam for CompCert's toolchain.  apt installed `coq` 8.18.0+dfsg-1build2, `ocaml-nox` 4.14.1-1ubuntu1, `menhir` 20231231+ds-1, and `libmenhir-ocaml-dev` 20231231+ds-1, the Menhir API library that `configure` requires.  On AArch64, gcc rejects the `-m64` that the `x86_64-linux` configuration passes to the preprocessor and to the runtime's build, so that configuration uses the cross compiler `gcc-x86-64-linux-gnu` 13.3.0.  One copy of the archive is configured with `./configure -toolprefix x86_64-linux-gnu- -clightgen x86_64-linux` and another with `./configure -clightgen aarch64-linux`, and `make -j2 all` built `ccomp` and `clightgen` in both.  The archive's `VERSION` file says 3.17, and its `Changelog.md` begins with an undated section for release 3.18, so `ccomp -version` reports 3.17 although the sources are those of 3.18.
+
+Both interpreters printed the expected lines for all 200 programs of the gcc smoke test, 93 of them undefined, although those lines were computed under `Archi.aarch64`, so no output of these programs depends on a NaN parameter.  `clight-diff` now counts the programs whose output differs between `Archi.x86_64` and `Archi.aarch64`.  With `pun` starting as a NaN or an infinity half of the time, it still found none among 1,000.  The two targets differ only in the NaN that an invalid operation creates and in the choice between two NaN operands, and no printed value of these programs depended on either.  The generator now also produces `Onotint`, `Oneg`, and `Onotbool` (the printer rejects `Oabsfloat`) and ends `test` with stores of a computed `double` and `float`; 8 of 1,000 programs then depended on the target.  `ClightGen.nanPrograms` adds eleven fixed programs for the default NaNs of both formats, a quiet and a signaling operand in both orders, two quiet operands, the square root of −1, conversions of NaNs between the formats, and negation of a NaN.
+
+`tests/native/clight.sh` ran for seeds 1 to 20 with 1,000 random programs each, plus the eleven fixed programs, against the interpreter of each target.  All 20,220 programs agreed on each target, 8,656 of them undefined under both semantics and none out of fuel.  237 of the 20,000 random programs and 8 of the 11 fixed ones print different lines on the two targets, so for these programs the test checks each target's NaN parameters.  The three fixed programs that print the same lines on both targets are the sum whose first operand is the signaling NaN, the conversion of a signaling `double` to `float`, and the negation, as the two targets' rules predict.  For an undefined program the test checks only that both semantics stop: of the 424 undefined programs of seed 20, `ccomp` reported 362 at a conversion of a float out of the integer range, 53 at a shift, and 9 at a division or remainder.
