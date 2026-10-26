@@ -35767,7 +35767,7 @@ The coordinator asked for the remaining theorems in the plan's order: NaN-freedo
 
 - [x] NaN-freedom: `plan_finite`.
 - [x] The premise theorem: `plan_premise`.
-- [ ] The constant allocation bound.
+- [x] The constant allocation bound: `plan_bound` and `slew_trapFree`.
 - [ ] Optimality.
 - [ ] The file theorem.
 
@@ -35790,3 +35790,15 @@ The proof needed the commanded attitude to preserve length, and Rodrigues' formu
 The user decided the two questions that the safety and NaN-freedom entries left open.  The generator no longer runs the sampled safety check, because `plan_safe` covers every angle of every segment for every input that passes `validInput`, while the check sampled 1,001 angles of each segment of the generated plans.  `sampledSpare` is gone from `tests/TestSupport/Slew/Cases.lean`, `--summary` prints the counts of statuses alone, and the README's table of classes drops the column of spares and records that the theorem replaces the check, which had found at least `1.23 · 10⁻⁹` to spare.  `tests/verified/run.sh --cases slew` passed afterwards with the same counts of statuses, 2,077 cases in all, in 80 s, and the generator alone takes 14 s.
 
 The user accepted the formulation of NaN-freedom as `plan_finite` states it.  The theorem concerns `plan` in Lean, and it covers each call of the library's `atan2` at its arguments and its result, while the internal operations of `atan2` and of the `atan` that it calls lie outside it.  Carrying the statement to the module's instructions stays open until a statement in Talos's semantics is in hand.
+
+## 2026-10-26: The slew planner's allocation bound
+
+`Demos.Slew.Bound.plan_bound` states that `compiled.plan.bound xs ≤ 68,020,488` for every input, and `slew_trapFree` states, as `drone_trapFree` does for the drone planner, that entry 28 computes `plan` without a trap whenever `top` can rise by 68,020,488 bytes within the memory's cap.  Both depend on `propext`, `Classical.choice`, and `Quot.sound` alone, and the module builds in 1.8 s.  The module sits beside the compilation, with `Demos/Verified.lean` importing it, and keeps the safety proofs out of the compilation's imports.
+
+| Term | Bytes | Source |
+|---|---:|---|
+| `initial` | 33,056 | four blocks of `n ≤ 1,026` words, `blockCost n = 8n + 56` |
+| Rounds | 67,897,024 | at most `n + 1 = 1,027` rounds, each charged eight blocks of `n` words: four for the copy in `round` and four for the copy in `relax` |
+| `output` | 90,408 | a block of `8 + 11k` words with `k ≤ n` |
+
+The proof follows `compute_bound` of the drone planner.  `loopCost_le` bounds the rounds with the invariant `Inv` of the search, which already fixes the sizes of `cost`, `parent`, and `done`, and the fact that `round` and `relax` leave `ok` unchanged (`round_ok`, `relax_ok`).  `pathLength_le` bounds the edge count of `pathLength` by its fuel for every search state, so the output's size needs no assumption about the parent chains.  The bound charges every copy and ignores the reuse of freed blocks.  The plan cases leave only the host's input and the result allocated after a call, so the module frees its copies, but neither the theorem nor the tests measure the peak use of a call.

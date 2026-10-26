@@ -42,11 +42,13 @@ section](#theorems-to-prove) lists the theorems that remain.
 | [The safety theorem](Safety.lean) | `plan_safe` |
 | [NaN-freedom](NanFree.lean) | `plan_finite` |
 | [The premise theorem](Premise.lean) | `plan_premise` |
+| [The allocation bound](Bound.lean) | `plan_bound` and `slew_trapFree` |
 
 The program imports only the dialect modules and `Library.Numerics.Float64.Atan.Program`, which
 build from Lean's core library.  The representations need `LeanExe.Pipeline`, which depends on
 Talos's CodeLib, and the compilation and the proofs need Mathlib.  `Demos.lean` imports the
-program, the representations, and the proofs, and `Demos/Verified.lean` imports the compilation.
+program, the representations, and the proofs, and `Demos/Verified.lean` imports the compilation
+and the allocation bound.
 
 ## The planning problem
 
@@ -151,10 +153,15 @@ compilation yields these results:
 - `compiled.bytes` and `compiled.plan.trapFree` depend only on `propext`, `Classical.choice`, and
   `Quot.sound`.
 - `compiled.plan.bound_eq` states the allocation bound as `compiled.search.bound` plus
-  `compiled.output.bound` for validated input, and the closed form remains to be derived.  `round`
-  and `relax` take the search state, a record with array fields, as a parameter, and the verified
-  compiler borrows every record parameter, so their updates copy arrays of up to 1,026 words in each
-  of up to 1,027 rounds, and the bound counts each copy without reuse.
+  `compiled.output.bound` for validated input.  `round` and `relax` take the search state, a
+  record with array fields, as a parameter, and the verified compiler borrows every record
+  parameter, so their updates copy arrays of up to 1,026 words in each of up to 1,027 rounds, and
+  the bound counts each copy without reuse.
+- [The allocation bound](Bound.lean) `plan_bound` bounds `compiled.plan.bound` by 68,020,488 bytes
+  for every input: four arrays of at most 1,026 words from `initial`, two copies of them in each
+  round, and an output of at most 11,294 words.  `slew_trapFree` states that the export computes
+  `plan` without a trap whenever `top` can rise by 68,020,488 bytes within the memory's cap, and
+  both depend only on `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Soundness of the checks
 
@@ -333,7 +340,8 @@ start of the host and the compilation of the module.
 The journal states each theorem and the order of the work.
 
 - **Compilation and execution:** the generated `compiled.plan.implements` and `trapFree` hold, and
-  a constant allocation bound for validated input remains to be derived from `bound_eq`.
+  [the compilation section](#compilation) states the constant allocation bound, `plan_bound`, and
+  `slew_trapFree`.
 - **NaN-freedom:** no floating-point operation in the evaluation of `plan` on validated input has
   a NaN operand or result.  [The NaN-freedom section](#nan-freedom) states the proved theorem,
   `plan_finite`, for the evaluation in Lean.
