@@ -11,10 +11,11 @@ for its compilation, its tests, and its theorems.
 
 `verified_compile` compiles the program into a module of 26,362 bytes, whose `plan` export agrees
 with native Lean, bit for bit, on all 852 generated plans and 1,225 `atan2` calls in Wasmtime.
-The compiler's generated theorems state that the module computes `plan`, and [the soundness
-section](#soundness-of-the-checks) states the theorems that the program's edge check and static
-check accept only rotations and attitudes that the cones allow.  [The test section](#tests)
-describes the cases, and [the theorem section](#theorems-to-prove) lists the theorems that remain.
+The compiler's generated theorems state that the module computes `plan`.  [The safety
+section](#safety) states the theorem that every plan of status 1 keeps every cone along its
+commanded rotations, which rests on the soundness of the edge check and the static check
+([the soundness section](#soundness-of-the-checks)).  [The test section](#tests) describes the
+cases, and [the theorem section](#theorems-to-prove) lists the theorems that remain.
 
 | File | Contents |
 |---|---|
@@ -31,6 +32,12 @@ describes the cases, and [the theorem section](#theorems-to-prove) lists the the
 | [The amplitude](Hypot.lean) | The rounding error of `√(A² + B²)` |
 | [The decisions](Decide.lean) | Comparisons, NaN propagation, and the bounds that a decision gives over the rotation |
 | [The soundness](Check.lean) | `edgeOk_sound` and `attitudeOk_sound` |
+| [The rotations](Rotation.lean) | Quaternion products and actions, their composition and distances, and Rodrigues' rotation as an action |
+| [The relative quaternion](Relative.lean) | `GoodRel` for `relative` and the distance of its rotation from the exact one |
+| [The input](Valid.lean) | `GoodQ` for every node and `ConeGood` for every cone of a validated input |
+| [The search](Search.lean) | The invariant of `search` and the segments of a plan as accepted edges |
+| [The output](Angle.lean) | The output's axis and angle against those of the relative quaternion |
+| [The safety theorem](Safety.lean) | `plan_safe` |
 
 The program imports only the dialect modules and `Library.Numerics.Float64.Atan.Program`, which
 build from Lean's core library.  The representations need `LeanExe.Pipeline`, which depends on
@@ -176,15 +183,48 @@ Below `s = 1e-7`, the slack `2.125 s` exceeds the change `2.0003 S` of the cosin
 rotation, where `S` is the real length of `rel`'s vector part.  The proof follows the program's
 decisions through NaN results: Lean's `max a b` returns `a` when `b` is a NaN, so a keep-out check
 that drops a NaN value still bounds the start, and the proof derives the finiteness of every other
-value it needs from the error bounds.  It does not exclude a NaN `s`, which would require
-`S² ≤ 5 · 2⁻¹⁰⁷⁵`, and such an `s` makes a keep-in check fail and leaves a keep-out check the
-bound at the start, which covers a rotation that small.
+value it needs from the error bounds.  The edge check's proof does not exclude a NaN `s`, which
+would require `S² ≤ 5 · 2⁻¹⁰⁷⁵`, and the safety proof shows that the computed sum of squares is
+never negative, so `s` is finite.
 
 The theorems take the properties of the inputs as hypotheses, and the rotation they describe is
 that of `rel`'s real value, which differs from the exact rotation between the normalized
-attitudes by the rounding of `relative`.  The derivation of the hypotheses from `validInput` and
-`relative`, the bound on that difference, and the path structure of the search belong to the
-safety theorem.  Until that theorem exists, the sampled safety check below tests whole plans.
+attitudes by the rounding of `relative`.  The safety theorem derives the hypotheses from
+`validInput` and `relative` and bounds that difference.
+
+## Safety
+
+[The safety theorem](Safety.lean) `plan_safe` concerns every output of status 1 and assumes
+nothing about the input beyond what `validInput` checks.  It states that the output's start and
+goal quaternions equal the input's, bit for bit, and that segment `g` of `K` stores its start
+quaternion `q_g` at offset `4 + 11g`, its axis `n_g` at `8 + 11g`, and its angle `θ_g` at
+`11 + 11g`, with the goal as `q_K`.  For each segment, the rotation by `θ_g` about the normalized
+axis `n̄_g` carries the attitude `R(q̄_g)` to within `1e-9` of `R(q̄_{g+1})`, where the distance
+between attitudes is the largest displacement of a unit vector.  For each angle `φ` in
+`[0, θ_g]` and each map `R'` that moves every unit vector at most `1e-9` from `R(n̄_g, φ) R(q̄_g)`,
+every input cone holds for `R'` applied to the cone's normalized body vector, against its
+normalized axis.  `R(q̄)` is the program's rotation formula on the normalized quaternion, which
+equals `v ↦ q̄ v q̄*`, `R(n, φ)` is Rodrigues' formula, and the theorem depends only on `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+The proof has five parts.  `validInput`'s norm tests give every node and cone the hypotheses of
+the edge check: a component above 2 in magnitude makes the computed sum of squares at least about
+4, so the test fails, and otherwise the test's rounding stays below `70 u`.  `relative` computes
+each component within `13.04 u` of `±q_b q_a*`, so the rotation of its real value after
+`R(q̄_a)` lies within `1.2e-14` of `R(q̄_b)`.  An invariant of `search` makes every segment an edge
+that `edgeOk` accepted, on a path from the start to the goal: every node other than the start
+with a finite cost, and every finalized node other than the start, has a finalized parent through
+an accepted edge, and the parent chain of a finalized node reaches the start in fewer steps than
+there are finalized nodes, which keeps the chain within the fuel of `pathLength`.  The output
+angle `2 atan2 s w` lies within `1e-14` of the rotation angle of `rel`'s real value, from the
+library's accuracy of `atan2` within two steps, and the output axis lies within `18.2 u` of its
+axis, or, when the output axis is `+X`, the rotation is below `2e-149` rad.  These differences
+displace a unit vector by at most `5e-14`, which the tube of `1.05e-9` covers.
+
+The compiler's `compiled.plan.implements` states that the module's `plan` export returns `plan`
+of its input or traps when an allocation finds no memory, so the theorem applies to every output
+of status 1 that the export returns.  The theorem concerns the commanded rotations, and the
+premise theorem below, which relates them to a flown slew, remains to be proved.
 
 ## Tests
 
@@ -218,12 +258,12 @@ cases cover these classes:
 | Norms at the tolerance | 8 | 4 | 0 | 0 | 0 | 4 | 0.13 |
 | Invalid inputs | 24 | 2 | 0 | 1 | 1 | 20 | 1.9e-2 |
 
-The generator also runs a sampled safety check, a test that the safety theorem is to replace.  For
+The generator also runs a sampled safety check, a test written before the safety theorem.  For
 every plan of status 1 it evaluates each cone along each segment at 1,001 equally spaced angles,
 with Rodrigues' formula and the library's `Trig.sin` and `Trig.cos`, and it fails when a cone has
 less than `1e-9` to spare.  Samples `θ/1000` apart can miss an interior extremum by up to about
 `10⁻⁶` in cosine on the longest rotations, so the check does not resolve the grazing cases at the
-scale of the margin, which the theorem will.  `tests/TestSupport/Slew/CasesMain.lean` with the
+scale of the margin, which the theorem does.  `tests/TestSupport/Slew/CasesMain.lean` with the
 argument `--summary` prints the table's counts and spares.
 
 `tests/slew/edges.sh`, which `tests/verified/run.sh` runs with the slew cases, compares the
@@ -247,8 +287,8 @@ The journal states each theorem and the order of the work.
 - **NaN-freedom:** no floating-point operation in the evaluation of `plan` on validated input has
   a NaN operand or result.
 - **Safety:** every commanded rotation of a plan, and every attitude within `1e-9` of it, satisfies
-  every input cone, as a statement about real numbers.  The soundness of the checks covers one
-  rotation and one attitude.
+  every input cone, as a statement about real numbers.  [The safety section](#safety) states the
+  proved theorem, `plan_safe`.
 - **Premises:** if the flown attitude stays within `ε` of the commanded one, each constraint axis
   within `d` of its planning value, and each nominal half-angle grows by at most `g`, then a plan
   computed with half-angles enlarged by `ε + d + g` keeps the nominal limits along the flown

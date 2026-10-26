@@ -35726,9 +35726,28 @@ The coordinator asked for the safety theorem for whole plans, starting from the 
 | Path structure | An invariant of `search` over the finalized nodes: every node with a finite cost other than the start, and every finalized node other than the start, has a finalized parent whose edge `edgeOk` accepted, and the parent chain of a finalized node reaches the start within as many steps as there are finalized nodes | The invariant needs no ghost state, and the count of finalized nodes bounds the chain by `n`, the fuel of `pathLength`. |
 | Large inputs | `validInput`'s norm tests reject a component above 2 in magnitude, which the proof shows from the enclosure lemmas of the rounding of a finite result | `FApprox` needs magnitude bounds on its operands, and `allFinite` bounds the values only by the largest finite double. |
 
-- [ ] `Rotation.lean`: quaternion product, conjugate, and action; the action equals `Quat.rot` for unit quaternions, composes, and moves vectors by at most twice the quaternion distance; Rodrigues' rotation as an action.
-- [ ] `Valid.lean`: `GoodQ` for every node and `ConeGood` for every cone of a validated input.
-- [ ] `Relative.lean`: `GoodRel` for `relative qa qb`, and the distance between `rel` normalized and `±q̄b q̄a*`.
-- [ ] `Search.lean`: the invariant of `search`, `pathLength`, and `pathNode`, and the segments of the output as accepted edges.
-- [ ] `Angle.lean`: the output axis and angle against the axis and angle of `rel`'s real value.
-- [ ] `Safety.lean`: the safety theorem, its axioms, and the documentation.
+- [x] `Rotation.lean`: quaternion product, conjugate, and action; the action equals `Quat.rot` for unit quaternions, composes, and moves vectors by at most twice the quaternion distance; Rodrigues' rotation as an action.
+- [x] `Valid.lean`: `GoodQ` for every node and `ConeGood` for every cone of a validated input.
+- [x] `Relative.lean`: `GoodRel` for `relative qa qb`, and the distance between `rel` normalized and `±q̄b q̄a*`.
+- [x] `Search.lean`: the invariant of `search`, `pathLength`, and `pathNode`, and the segments of the output as accepted edges.
+- [x] `Angle.lean`: the output axis and angle against the axis and angle of `rel`'s real value.
+- [x] `Safety.lean`: the safety theorem, its axioms, and the documentation.
+
+## 2026-10-26: The slew safety theorem proved
+
+`Demos.Slew.Safety.plan_safe` proves the safety theorem for whole plans, and it depends on `propext`, `Classical.choice`, and `Quot.sound` alone.  For an output of status 1 with `K` segments, the start and goal quaternions equal the input's, bit for bit, and segment `g` stores its start quaternion at offset `4 + 11g`, its axis at `8 + 11g`, and its angle at `11 + 11g`, with the goal as the start of segment `K`.  The rotation of each segment by its angle about its normalized axis carries `R(q̄_g)` to within `10⁻⁹` of `R(q̄_{g+1})`, and for every `φ` from 0 to the angle and every map `R′` that moves every unit vector at most `10⁻⁹` from `R(n̄_g, φ) R(q̄_g)`, every input cone holds for `R′ b̄`.  `R(q̄)` is `Quat.rot (Quat.unit q)`, which `rot_eq_act` equates with `v ↦ q̄ v q̄*`, so the statement follows item 4 of [the theorem list](#theorems) with a map in place of an attitude, which makes it stronger.
+
+| Module | Content | Build |
+|---|---|---|
+| `Rotation.lean` | The quaternion product, conjugate, and action; `rot_eq_act`; composition; the distance bound `act_sub_le` from the multiplicative norm and Cauchy–Schwarz in four dimensions; `rod_eq_act`; and `half_axis_angle` | 3.1 s |
+| `Relative.lean` | `relative_good` and `relative_rot`: each component within `13.04 u` of `±q_b q_a*`, and the rotation within `1.2·10⁻¹⁴` of `R(q̄_b)` | 2.6 s |
+| `Valid.lean` | `valid_good`: `GoodQ` for every node and `ConeGood` for every cone of a validated input | 4.7 s |
+| `Search.lean` | The invariant of `search` and `plan_segments` | 2.3 s |
+| `Angle.lean` | `angle_out` and `axis_out` | 10 s |
+| `Safety.lean` | `segment_close`, `segment_safe`, and `plan_safe` | 8.0 s |
+
+Each design decision of the plan held.  The norm tests needed the most new floating-point work, since `FApprox` needs magnitude bounds on its operands: a NaN or infinite operand of a sum, difference, or product gives a NaN or infinite result (`finite_of_add`, `finite_of_mul`), the enclosure of a finite result between its neighbors gives a lower bound by any float below the exact value (`lower_of_enclosure`), and a component above 2 then makes the computed sum of squares at least `4 − 60 u`, so the test fails.  The search invariant tracks finalized nodes instead of costs, because an edge can cost zero ticks when the settling time is zero, so costs alone do not exclude cycles of parents.  The count of finalized nodes, a `Finset`, bounds the parent chains, and the proof needs no ghost state and no assumption about the cost arithmetic, so a sum of costs that wrapped could change which path the search reports but not its safety.  `output` reads the parent array past its end only when a chain fails to reach the start, which the invariant excludes.
+
+The output angle needed two conversions.  `AtanTwoTheorem.atan2_within_two` gives two steps from the nearest-even reference of `arg (w + i s)`, and `within_two_abs` turns that into `2⁻⁴⁹` for an argument in `[0, 2]` from the spacing of words below 4 and `F64NearestHalf.nearest_half`.  `angle_eq_two_arg` identifies `angle W S` with `2 arg (W + i S)`, and `arg_sub_le` bounds the change of the argument by `4 |Δy|` from the sine of the difference and Jordan's inequality.  The edge check's proof had left a NaN `s` possible.  `radicand_nonneg` shows that the computed sum of squares is never negative, from the enclosures, so `s` is finite and `atan2` receives finite arguments.
+
+`lake build Demos` passed with `Demos.Slew.Safety` imported in place of `Demos.Slew.Check`, `tools/source-layout` reports the same five programs, the link check passes.  The sampled safety check of the generator stays as a test, and removing it is a question for the user.  The remaining theorems are the premise theorem, NaN-freedom, the constant allocation bound, optimality, and the file theorem.

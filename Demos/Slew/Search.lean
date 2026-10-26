@@ -176,7 +176,8 @@ theorem finalize_inv {xs : Array Float} {d : Dims} {n : UInt64} {s : Search} (h 
     simp
   have hcard : (fin n s1).card = (fin n s).card + 1 := by
     rw [hfin, Finset.card_insert_of_notMem hnot]
-  refine ⟨⟨h.costSize, h.parentSize, by simp only [s1]; rw [size_set]; exact h.doneSize, ?_, ?_, ?_⟩,
+  refine ⟨⟨h.costSize, h.parentSize, by simp only [s1]; rw [size_set]; exact h.doneSize,
+    ?_, ?_, ?_⟩,
     edu⟩
   · intro v hv h0 hd hc
     have hvu : v ≠ u := by intro e; rw [e, edu] at hd; exact absurd hd (by simp)
@@ -382,11 +383,13 @@ theorem float_ne {a b : Float} (h : a.toBits ≠ b.toBits) : a ≠ b := fun e =>
 theorem one_bits : (1.0 : Float).toBits = 0x3FF0000000000000 := rfl
 
 theorem neg3_ne : (-3.0 : Float) ≠ 1.0 := float_ne (by
-  rw [LeanExe.ProofKit.F64Bits.toBits_neg, show (3.0 : Float).toBits = 0x4008000000000000 from rfl, one_bits]
+  rw [LeanExe.ProofKit.F64Bits.toBits_neg,
+    show (3.0 : Float).toBits = 0x4008000000000000 from rfl, one_bits]
   decide +kernel)
 
 theorem neg2_ne : (-2.0 : Float) ≠ 1.0 := float_ne (by
-  rw [LeanExe.ProofKit.F64Bits.toBits_neg, show (2.0 : Float).toBits = 0x4000000000000000 from rfl, one_bits]
+  rw [LeanExe.ProofKit.F64Bits.toBits_neg,
+    show (2.0 : Float).toBits = 0x4000000000000000 from rfl, one_bits]
   decide +kernel)
 
 theorem neg1_ne : (-1.0 : Float) ≠ 1.0 := float_ne (by
@@ -421,7 +424,8 @@ theorem plan_output {xs : Array Float} (hv : validInput xs = true)
   simp only [plan, hv, h1, h2, Bool.not_true, Bool.false_eq_true, ite_false]
 
 theorem output_zero {xs : Array Float} {d : Dims} {s : Search} {n st : UInt64}
-    (hc : s.cost[(1 : UInt64).toNat]! = infinity) : output xs d s n st = statusOnly 0.0 s.examined := by
+    (hc : s.cost[(1 : UInt64).toNat]! = infinity) :
+    output xs d s n st = statusOnly 0.0 s.examined := by
   simp only [output, hc, beq_self_eq_true, ite_true]
 
 /-- An output of status 1 comes from a validated input with a reached goal. -/
@@ -477,7 +481,8 @@ theorem output_get {xs : Array Float} {d : Dims} {s : Search} {n st : UInt64}
     have e4 : UInt64.ofNat (4 + 11 * g + f) < 4 + 11 * k := by
       rw [UInt64.lt_iff_toNat_lt, ofNat_toNat_lt hm, h4k]; omega
     have hsub : (UInt64.ofNat (4 + 11 * g + f) - 4).toNat = 11 * g + f := by
-      rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, ofNat_toNat_lt hm]; simp only [UInt64.reduceToNat]; omega)]
+      rw [UInt64.toNat_sub_of_le _ _ (by
+        rw [UInt64.le_iff_toNat_le, ofNat_toNat_lt hm]; simp only [UInt64.reduceToNat]; omega)]
       rw [ofNat_toNat_lt hm]; simp only [UInt64.reduceToNat]; omega
     have eg : (UInt64.ofNat (4 + 11 * g + f) - 4) / 11 = UInt64.ofNat g := by
       apply UInt64.toNat_inj.mp
