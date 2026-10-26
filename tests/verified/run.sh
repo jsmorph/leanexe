@@ -62,6 +62,9 @@ fi
 if [ -z "$case_module" ] || [ "$case_module" = "sums" ]; then
   tests/modules/run.sh --module shapes "$out/sums.wasm"
 fi
+if [ -z "$case_module" ] || [ "$case_module" = "slew" ]; then
+  tests/slew/edges.sh "$out/slew.wasm"
+fi
 # Each entry names the written module, the theorem module, and the file theorem module.  The file
 # module's second theorem depends on every byte theorem of the module, so its axiom report covers
 # them all.
