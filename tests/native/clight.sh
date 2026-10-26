@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Compares LClight.run with CompCert's reference interpreter on random programs.  The executable
 # clight-diff (tests/TestSupport/Native/ClightDiff.lean) writes COUNT programs from SEED as C,
-# each with the output that LClight.run gives under the NaN parameters of ARCHI; then
-# `ccomp -interp -quiet` runs each C file.  A program that LClight.run finds stuck must stop with
+# and the fixed programs of ClightGen.nanPrograms, each with the output that LClight.run gives
+# under the NaN parameters of ARCHI; then `ccomp -interp -quiet` runs each C file.  A program that LClight.run finds stuck must stop with
 # CompCert's "Undefined behavior", and every other program must print the same lines.  A program
 # whose run exhausts the fuel is counted and skipped.  CCOMP names the CompCert 3.18 driver,
 # `ccomp` by default, configured for the target of ARCHI.
@@ -26,20 +26,21 @@ pass=0
 undefined=0
 fuel=0
 fail=0
-for ((i = 0; i < count; i++)); do
-  expected=$(cat "$out/t$i.expected")
+for c in "$out"/*.c; do
+  t=${c%.c}
+  expected=$(cat "$t.expected")
   if [ "$expected" = "FUEL" ]; then
     fuel=$((fuel + 1))
     continue
   fi
   set +e
-  actual=$("$ccomp" -interp -quiet "$out/t$i.c" 2>"$out/t$i.err")
+  actual=$("$ccomp" -interp -quiet "$c" 2>"$t.err")
   status=$?
   set -e
   if [ "$status" -eq 126 ] && grep -q "Undefined behavior" <<<"$actual"; then
     actual=UB
   elif [ "$status" -ne 0 ]; then
-    echo "fail: t$i: ccomp exited with status $status" >&2
+    echo "fail: ${t##*/}: ccomp exited with status $status" >&2
     fail=$((fail + 1))
     continue
   fi
@@ -49,7 +50,7 @@ for ((i = 0; i < count; i++)); do
       undefined=$((undefined + 1))
     fi
   else
-    echo "fail: t$i" >&2
+    echo "fail: ${t##*/}" >&2
     diff <(echo "$expected") <(echo "$actual") >&2 || true
     fail=$((fail + 1))
   fi

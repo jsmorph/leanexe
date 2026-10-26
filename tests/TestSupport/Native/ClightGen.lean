@@ -8,10 +8,11 @@ eight words, and `pun`), a function `helper (x, y)`, and a function `test ()` th
 `unsigned long long`.  The statements assign temporaries, globals, array elements, and `pun`
 read as a `double`; they branch, loop a bounded number of times, call `helper`, and call
 `__builtin_fsqrt`.  The expressions combine constants biased toward edge values, temporaries,
-and globals with the operators and casts of `Cop.lean` at the types `unsigned int`, `int`,
-`unsigned long long`, `double`, and `float`.  Some operations can be undefined, such as a shift
+and globals with the operators and casts of `Cop.lean` other than `Oabsfloat`, at the types
+`unsigned int`, `int`, `unsigned long long`, `double`, and `float`.  Some operations can be undefined, such as a shift
 by the word size or more, a division by zero, and a conversion of a float out of range; most are
-guarded so that they are defined.
+guarded so that they are defined.  `pun` starts as a NaN or an infinity half of the time, the
+only way a NaN with a chosen payload can enter a program.
 
 `cText` is the program in C with a `main` that calls `test` and prints the result and the
 globals' bits, and `expected` is what `LClight.run` gives for the same lines, or `UB`.
@@ -23,6 +24,7 @@ open LClight
 
 instance : Inhabited statement := ⟨.Sskip⟩
 instance : Inhabited binary_operation := ⟨.Oadd⟩
+instance : Inhabited unary_operation := ⟨.Oneg⟩
 
 abbrev Gen := StateM StdGen
 
@@ -125,6 +127,17 @@ def finiteFloat : Gen Nat := do
       let b ← rand (2 ^ 32)
       pure (if b / 2 ^ 23 % 2 ^ 8 == 0xFF then b - 2 ^ 23 else b)
 
+/-- The initial bits of `pun`: a NaN or an infinity half of the time, with either sign and,
+for a NaN, a quiet or signaling payload, so that the NaN rules of the two targets come into
+play; otherwise uniform. -/
+def punBits : Gen Nat := do
+  if (← rand 2) == 0 then
+    let sign := (← rand 2) * 2 ^ 63
+    let payload ← if (← rand 2) == 0 then pick [0, 1, 2 ^ 51, 2 ^ 51 + 1, 2 ^ 52 - 1]
+      else rand (2 ^ 52)
+    pure (sign + 0x7FF * 2 ^ 52 + payload)
+  else rand (2 ^ 64)
+
 def constOf : Ty → Gen expr
   | .u32 => do
       let n ← edgeOr [0, 1, 2, 7, 31, 32, 33, 0x7FFFFFFF, 0x80000000, 0xFFFFFFFF] (2 ^ 32)
@@ -187,7 +200,7 @@ def genExpr (c : Ctx) : Nat → Ty → Gen expr
     else
       match t with
       | .u32 =>
-          match (← rand 7) with
+          match (← rand 8) with
           | 0 => do
               let op ← pick intOps
               pure (.Ebinop op (← genExpr c d .u32) (← genExpr c d .u32) tuint)
@@ -205,11 +218,14 @@ def genExpr (c : Ctx) : Nat → Ty → Gen expr
               pure (.Ecast (.Ebinop op (← genExpr c d s) (← genExpr c d s) tint) tuint)
           | 4 => do pure (.Ecast (← genExpr c d .u64) tuint)
           | 5 => do pure (.Ecast (← genExpr c d .i32) tuint)
+          | 6 => do
+              let op ← pick [unary_operation.Onotint, .Oneg]
+              pure (.Eunop op (← genExpr c d .u32) tuint)
           | _ => do
               let b ← amount (← genExpr c d .u64) (.Econst_long 31 tulong) tulong
               pure (.Ebinop .Oshl (← genExpr c d .u32) b tuint)
       | .i32 =>
-          match (← rand 5) with
+          match (← rand 7) with
           | 0 => do
               let s ← pick allTys
               let op ← pick cmpOps
@@ -222,9 +238,15 @@ def genExpr (c : Ctx) : Nat → Ty → Gen expr
               let b ← divisor (← genExpr c d .i32) (.Econst_int 1 tint) tint
               pure (.Ebinop op (← genExpr c d .i32) b tint)
           | 3 => do pure (.Ecast (← genExpr c d .u32) tint)
+          | 4 => do
+              let s ← pick allTys
+              pure (.Eunop .Onotbool (← genExpr c d s) tint)
+          | 5 => do
+              let op ← pick [unary_operation.Onotint, .Oneg]
+              pure (.Eunop op (← genExpr c d .i32) tint)
           | _ => do pure (.Ecast (← genExpr c d .f32) tint)
       | .u64 =>
-          match (← rand 9) with
+          match (← rand 10) with
           | 0 => do
               let op ← pick intOps
               pure (.Ebinop op (← genExpr c d .u64) (← genExpr c d .u64) tulong)
@@ -243,11 +265,14 @@ def genExpr (c : Ctx) : Nat → Ty → Gen expr
           | 5 => do pure (.Ecast (← genExpr c d .i32) tulong)
           | 6 => do pure (.Ecast (← genExpr c d .f64) tulong)
           | 7 => do pure (.Ecast (← genExpr c d .f32) tulong)
+          | 8 => do
+              let op ← pick [unary_operation.Onotint, .Oneg]
+              pure (.Eunop op (← genExpr c d .u64) tulong)
           | _ => do
               let op ← pick intOps
               pure (.Ebinop op (← genExpr c d .u32) (← genExpr c d .u64) tulong)
       | .f64 =>
-          match (← rand 6) with
+          match (← rand 7) with
           | 0 => do
               let op ← pick floatOps
               pure (.Ebinop op (← genExpr c d .f64) (← genExpr c d .f64) tdouble)
@@ -255,17 +280,19 @@ def genExpr (c : Ctx) : Nat → Ty → Gen expr
           | 2 => do pure (.Ecast (← genExpr c d .f32) tdouble)
           | 3 => do pure (.Ecast (← genExpr c d .i32) tdouble)
           | 4 => do pure (.Ecast (← genExpr c d .u32) tdouble)
+          | 5 => do pure (.Eunop .Oneg (← genExpr c d .f64) tdouble)
           | _ => do
               let op ← pick floatOps
               pure (.Ebinop op (← genExpr c d .f32) (← genExpr c d .f64) tdouble)
       | .f32 =>
-          match (← rand 5) with
+          match (← rand 6) with
           | 0 => do
               let op ← pick floatOps
               pure (.Ebinop op (← genExpr c d .f32) (← genExpr c d .f32) tfloat)
           | 1 => do pure (.Ecast (← genExpr c d .f64) tfloat)
           | 2 => do pure (.Ecast (← genExpr c d .u64) tfloat)
           | 3 => do pure (.Ecast (← genExpr c d .i32) tfloat)
+          | 4 => do pure (.Eunop .Oneg (← genExpr c d .f32) tfloat)
           | _ => do pure (.Ecast (← genExpr c d .u32) tfloat)
 
 /-! ## Statements -/
@@ -344,9 +371,15 @@ def genTest : Gen function := do
   let inits ← temps.mapM fun (id, t) => do pure (statement.Sset id (← constOf t))
   let n ← rand 6
   let body ← (List.range (n + 1)).mapM fun _ => genStmt c 3 0 counters
+  -- A final store of a computed `double` and `float`, so that the printed globals more often
+  -- show a NaN that the program computed.
+  let lhs ← globalOf .f64
+  let finalStores := [statement.Sassign lhs (← genExpr c 3 .f64),
+    .Sassign (.Evar idF32 tfloat) (← genExpr c 3 .f32)]
   let result ← genExpr c 3 .u64
   pure { fn_return := tulong, fn_callconv := cc_default, fn_params := [], fn_vars := [],
-         fn_temps := allTestTemps, fn_body := seqs (inits ++ body ++ [.Sreturn (some result)]) }
+         fn_temps := allTestTemps,
+         fn_body := seqs (inits ++ body ++ finalStores ++ [.Sreturn (some result)]) }
 
 def genHelper : Gen function := do
   let c : Ctx := { temps := fun t => match t with
@@ -364,25 +397,70 @@ def genHelper : Gen function := do
 def gvar (ty : type) (init : List init_data) : globdef (fundef function) type :=
   .Gvar { gvar_info := ty, gvar_init := init, gvar_readonly := false, gvar_volatile := false }
 
+def programOf (u32 : UInt32) (u64 f64 : UInt64) (f32 : UInt32) (arr : List init_data)
+    (pun : UInt64) (helper test : function) : program function :=
+  { prog_defs := [
+      (idU32, gvar tuint [.Init_int32 u32]),
+      (idU64, gvar tulong [.Init_int64 u64]),
+      (idF64, gvar tdouble [.Init_float64 f64]),
+      (idF32, gvar tfloat [.Init_float32 f32]),
+      (idArr, gvar tarr arr),
+      (idPun, gvar tulong [.Init_int64 pun]),
+      (idHelper, .Gfun (.Internal helper)),
+      (idTest, .Gfun (.Internal test))],
+    prog_public := [], prog_main := idTest }
+
 def genProgram : Gen (program function) := do
   let u32 := UInt32.ofNat (← rand (2 ^ 32))
   let u64 := UInt64.ofNat (← rand (2 ^ 64))
   let f64 := UInt64.ofNat (← finiteDouble)
   let f32 := UInt32.ofNat (← finiteFloat)
   let arr ← (List.range 8).mapM fun _ => do pure (init_data.Init_int64 (UInt64.ofNat (← rand (2 ^ 64))))
-  let pun := UInt64.ofNat (← rand (2 ^ 64))
+  let pun := UInt64.ofNat (← punBits)
   let helper ← genHelper
   let test ← genTest
-  pure { prog_defs := [
-           (idU32, gvar tuint [.Init_int32 u32]),
-           (idU64, gvar tulong [.Init_int64 u64]),
-           (idF64, gvar tdouble [.Init_float64 f64]),
-           (idF32, gvar tfloat [.Init_float32 f32]),
-           (idArr, gvar tarr arr),
-           (idPun, gvar tulong [.Init_int64 pun]),
-           (idHelper, .Gfun (.Internal helper)),
-           (idTest, .Gfun (.Internal test))],
-         prog_public := [], prog_main := idTest }
+  pure (programOf u32 u64 f64 f32 arr pun helper test)
+
+/-! ## Programs for the NaN parameters -/
+
+def dzero : expr := .Econst_float 0 tdouble
+def dOne : expr := .Econst_float 0x3FF0000000000000 tdouble
+def fzero : expr := .Econst_single 0 tfloat
+def dnan : expr := .Ebinop .Odiv dzero dzero tdouble
+def fnan : expr := .Ebinop .Odiv fzero fzero tfloat
+def setF64 (e : expr) : statement := .Sassign (.Evar idF64 tdouble) e
+def setF32 (e : expr) : statement := .Sassign (.Evar idF32 tfloat) e
+
+/-- Statements whose results depend on the NaN parameters of `Archi`, each with the initial bits
+of `pun`: the default NaNs of both formats, a quiet and a signaling operand in both orders, two
+quiet operands, the square root of a negative number, conversions of NaNs between the formats,
+and negation of a NaN. -/
+def nanCases : List (UInt64 × statement) := [
+  (0, setF64 dnan),
+  (0, setF32 fnan),
+  (0x7FF0000000000001, setF64 (.Ebinop .Oadd dnan punDouble tdouble)),
+  (0x7FF0000000000001, setF64 (.Ebinop .Oadd punDouble dnan tdouble)),
+  (0xFFF8000000000005, setF64 (.Ebinop .Omul dnan punDouble tdouble)),
+  (0, .Ssequence
+    (.Sbuiltin (some 36) (.EF_builtin "__builtin_fsqrt" sqrtSig) [tdouble]
+      [.Eunop .Oneg dOne tdouble])
+    (setF64 (.Etempvar 36 tdouble))),
+  (0, setF32 (.Ecast dnan tfloat)),
+  (0, setF64 (.Ecast fnan tdouble)),
+  (0x7FF4000000000000, setF32 (.Ecast punDouble tfloat)),
+  (0x7FF8000000000003, setF64 (.Eunop .Oneg punDouble tdouble)),
+  (0x7FFC000000000000, setF32 (.Ebinop .Oadd fnan (.Ecast punDouble tfloat) tfloat))]
+
+def nanPrograms : List (program function) :=
+  let helper : function :=
+    { fn_return := tulong, fn_callconv := cc_default,
+      fn_params := [(idX, tulong), (idY, tdouble)], fn_vars := [], fn_temps := [],
+      fn_body := .Sreturn (some (.Etempvar idX tulong)) }
+  nanCases.map fun (pun, s) =>
+    programOf 0 0 0 0 (List.replicate 8 (.Init_int64 0)) pun helper
+      { fn_return := tulong, fn_callconv := cc_default, fn_params := [], fn_vars := [],
+        fn_temps := allTestTemps,
+        fn_body := .Ssequence s (.Sreturn (some (.Econst_long 0 tulong))) }
 
 /-! ## C text and expected output -/
 
