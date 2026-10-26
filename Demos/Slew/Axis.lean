@@ -6,7 +6,7 @@ the real values of `rel`'s vector part, `S² = X² + Y² + Z²`.  The program's 
 `S² ≥ 2⁻¹⁰⁰⁰` its square root `s` lies within `4.1 u S` of `S` (`s_approx`), a relative bound.
 When `s` passes the small-angle threshold, the axis `x/s` lies within `5.2 u` of `X/S`
 componentwise (`axis_bnd`), and `w w - s s` and `2 w s` lie within `12.5 u` of `W² - S²` and
-`2 W S` (`ct_bnd`, `st_bnd`).  `s_nonneg` shows that an `s` that is not a NaN is not negative. -/
+`2 W S` (`ct_bnd`, `st_bnd`). -/
 
 namespace Demos.Slew.Axis
 
@@ -93,35 +93,6 @@ theorem s_approx (q : Q4) (hx : Fin q.x) (hy : Fin q.y) (hz : Fin q.z)
       ≤ 3.002 / 2 ^ 53 * t + t * (1 + 2 / 2 ^ 53) / 2 ^ 53 :=
         add_le_add h1 (div_le_div_of_nonneg_right h2 (by norm_num))
     _ ≤ 4.1 / 2 ^ 53 * t := by nlinarith
-
-/-- A float square root that is not a NaN is not negative. -/
-theorem sqrt_nonneg_of_lt {r : Float} (hr : Fin r) {b : Float} (h : Float.sqrt r < b) :
-    0 ≤ val (Float.sqrt r) := by
-  have hbits := F64Bits.toBits_sqrt r
-  have hlt := (F64Bits.lt_iff _ _).mp h
-  rw [hbits] at hlt
-  simp only [val, hbits]
-  have hnan := not_nan_of_finite hr
-  by_cases hm : Wasm.IEEE64.scaledMagnitude r.toBits = 0
-  · have e : Wasm.IEEE64.sqrt r.toBits = r.toBits := by
-      unfold Wasm.IEEE64.sqrt; simp [hnan, hm]
-    rw [e]
-    have : value r.toBits = 0 := by simp [value, Wasm.IEEE64.scaledValue, hm]
-    rw [this]
-  · by_cases hs : Wasm.IEEE64.sign r.toBits = true
-    · exfalso
-      have e : Wasm.IEEE64.sqrt r.toBits = Wasm.IEEE64.canonicalNaN := by
-        unfold Wasm.IEEE64.sqrt; simp [hnan, hm, hs]
-      have hc : Wasm.IEEE64.isNaN Wasm.IEEE64.canonicalNaN = true := by decide
-      rw [e] at hlt
-      simp [Wasm.IEEE64.lt, hc] at hlt
-    · have hs' : Wasm.IEEE64.sign r.toBits = false := by simpa using hs
-      have hrel := F64SqrtBounds.sqrt_real_relative r.toBits hr hm hs'
-      have hu : (unitRoundoff64 : ℝ) = 1 / 2 ^ 53 := rfl
-      have hsq := Real.sqrt_nonneg (value r.toBits)
-      have := abs_le.mp hrel.2
-      rw [hu] at this
-      nlinarith [this.1]
 
 /-! ### The axis -/
 

@@ -35669,12 +35669,12 @@ Build phase:
 
 Phase 1:
 
-- [ ] `Spec.lean`: real vectors, the rotation matrix of a normalized quaternion, Rodrigues' rotation, the cone predicates, and the tube.
-- [ ] `Arc.lean`: Rodrigues' formula in the `A, B, C` form, the global bound, the interpolation identity, and the endpoint lemma for maxima and, by negation, minima.
-- [ ] `Error.lean`: from validated input, `FApprox` bounds for `s`, `n`, `cos θ`, `sin θ`, `v₀`, `n·u`, `n·v₀`, `f₀`, `A`, `B`, `C`, `f₁`, `f′(θ)`, and `√(A² + B²)`.
-- [ ] `Check.lean`: soundness of one cone in both kinds and both branches, of the small-angle branch, of `edgeOk` over all cones by `loop_induction`, and of `attitudeOk`.
+- [x] `Spec.lean`: real vectors, the rotation of a normalized quaternion, Rodrigues' rotation, and the cone predicate.  The tube moved to `Check.lean`.
+- [x] `Arc.lean`: Rodrigues' formula in the `A, B, C` form, the global bound, the interpolation identity, and the endpoint lemma for maxima and, by negation, minima.
+- [x] The error lemmas, in `Rounding`, `Error`, `Axis`, `Normalize`, `Cone`, and `Hypot`: bounds for `s`, `n`, `cos θ`, `sin θ`, `v₀`, `n·u`, `n·v₀`, `f₀`, `A`, `B`, `C`, `f₁`, `f′(θ)`, and `√(A² + B²)`.
+- [x] `Decide.lean` and `Check.lean`: soundness of one cone in both kinds and both branches, of the small-angle branch, of `edgeOk` over all cones by `loop_induction`, and of `attitudeOk`.
 - [ ] Compare the module's `edgeOk` export with native Lean on 10⁵ generated single-cone edges.
-- [ ] No `sorry`, no new axiom, no `bv_decide`, and an axiom check of the soundness theorems.
+- [x] No `sorry`, no new axiom, no `bv_decide`, and an axiom check of the soundness theorems.
 
 Later phases: the path structure and the safety theorem, the premise theorem, NaN-freedom, then the motion model and optimality, with the file theorem once the module is stable.
 
@@ -35691,3 +35691,25 @@ The build phase ran in a clone whose `.lake` held `main`'s full build, with at m
 The sampled safety check passed on every one of the 433 plans of status 1, with a least spare of `1.23 · 10⁻⁹` in a grazing case.  Its samples lie `θ/1000` apart and can miss an interior extremum by up to about `10⁻⁶` in cosine, so it confirms the shape of the decisions without resolving the grazing cases at the scale of the margin.  The comparison with native Lean and the check are tests, and the edge-check lemmas of Phase 1 are the next step toward a proof.
 
 `Demos`, `Demos.Verified`, and `Verified.Examples.Cases` build with the new imports, `tools/source-layout` reports only the five programs that `main` lacks in `Library.Native`, and the link check passes.  The full `lake build Verified Library` and the full `tests/verified/run.sh`, which the repository requires before a merge into `main`, have not run on this branch.
+
+## 2026-10-26: The slew edge check proved sound
+
+Phase 1 proved the program's own `edgeOk` and `attitudeOk` sound in ten modules under `Demos/Slew`, built with the build phase's limits of 6 workers and 32 GB.  `edgeOk_sound` assumes an attitude `qa` with finite components and a squared norm within `3·10⁻¹²` of 1, a relative quaternion `rel` that is finite with `w ≥ 0` and a squared norm within `10⁻¹¹` of 1, and cones whose body vectors and axes are finite with squared norms within `3·10⁻¹²` of 1 and whose cosines are finite and in `[−1, 1]`.  If `edgeOk xs d qa rel` holds, then for every cone, every `φ` in `[0, θ]`, and every vector within `1.05·10⁻⁹` of `R(n, φ) R(q̄a) b̄`, the cone of `ū` and `c` holds, where `n` and `θ` are the axis and angle of `rel`'s real value (`ArcSafe`).  `attitudeOk_sound` states the same at one attitude for the check without slack (`PointSafe`).  Both theorems depend on `propext`, `Classical.choice`, and `Quot.sound` alone, and the modules use no `sorry` and no `bv_decide`.
+
+The plan changed in three places.  The per-cone helper was unnecessary: `coneEdge` and `coneStatic` in `Check.lean` repeat the bodies of the loops, `edgeOk_eq` and `attitudeOk_eq` hold by `rfl`, and the program and its bytes are unchanged.  `Spec.lean` states a rotation by the program's formula `v + w t + q × t` in exact arithmetic applied to the normalized quaternion, which for a unit quaternion is the rotation, in place of the rotation matrix, and the tube appears in `ArcSafe` and `PointSafe`.  The error lemmas grew into `Rounding`, `Error`, `Axis`, `Normalize`, `Cone`, and `Hypot`, and the decisions went into `Decide`.
+
+The planned split of the margin, a tube of `1.05·10⁻⁹` and errors of at most `4.9·10⁻¹¹`, holds with errors of `3.63·10⁻¹¹`.  The rounding errors are bounded against the program's formulas in exact arithmetic on the given inputs, so the stationary-point tests see errors of at most `1057 u` against `eta = 10⁻¹²`, and the normalization enters only at the end.
+
+| Part of the budget | Bound | Lemmas |
+|---|---|---|
+| Rounding of `f₀`, `f₁`, the stationary value, and the limit | `2300 u ≈ 2.6·10⁻¹³` | `cone_values`, `hypot_bnd`, `small_amplitude`, `low_limit` |
+| `w² − s²` and `2ws`, which are `cos θ` and `sin θ` times `w² + s²` | `2.3·10⁻¹¹` | `keepout_arc`, `keepin_arc` |
+| Normalization of the attitude, the body vector, and the cone axis | `1.3·10⁻¹¹` | `spec_close` |
+| The tube | `1.05·10⁻⁹` | `near_bounds` |
+| Total, against `margin ≥ 1.0999·10⁻⁹` | `1.0863·10⁻⁹` | `finish_out`, `finish_in` |
+
+Lean's `max a b` is `if a ≤ b then b else a`, which returns `a` when `b` is a NaN, so the keep-out test would drop a NaN `f₁` or stationary value without failing.  The proof derives the finiteness of each value it uses from the error bounds, that of `cc + r` from `hypot_bnd` when `a² + b² ≥ 2⁻¹⁰⁰⁰`, and needs no stationary value when the amplitude is below `1014 u`, so soundness does not depend on that behavior.  The proof does not exclude a NaN `s`, although a sum of squares of finite floats is never negative.  `nan_tiny` shows that a NaN `s` requires `S² ≤ 5 · 2⁻¹⁰⁷⁵`, and then every keep-in check fails and every keep-out check bounds the start, which covers a rotation that small.  Below `sMin`, `s` is finite and non-negative, `2.125 s` is at least `2.0003 S − 10⁻²⁰`, and the cosine moves by at most `2.0003 S` along the rotation, so the start's check with that slack covers the rotation.
+
+`Demos.Slew.Hypot` builds in 12 s and `Demos.Slew.Check` in 4.3 s.  `Demos` builds with `Demos.Slew.Check` imported, `tools/source-layout` reports the same five programs, and the link check passes.  `nlinarith` failed on `(1 + 3·10⁻¹²) · 1.0001 · (2S/0.99999) ≤ 2.0003 S`, and a `ring` step to a constant times `S` replaced it.  `Axis.lean` lost `sqrt_nonneg_of_lt`, which the proof no longer uses, since `s_facts` takes the sign of `s` from `sqrt_cases`.
+
+The comparison of the module's `edgeOk` export with native Lean on 10⁵ single-cone edges has not run.  The safety phase starts from the hypotheses: `validInput`'s `unitV` and `unitQ` tests with `tolNorm` should give the `3·10⁻¹²` bounds after rounding, and `relative` should give `GoodRel` and a bound on the distance between the rotation of `rel`'s real value and `q̄b q̄a*`.

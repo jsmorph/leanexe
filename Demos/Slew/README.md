@@ -11,20 +11,31 @@ for its compilation, its tests, and its theorems.
 
 `verified_compile` compiles the program into a module of 26,362 bytes, whose `plan` export agrees
 with native Lean, bit for bit, on all 852 generated plans and 1,225 `atan2` calls in Wasmtime.
-The compiler's generated theorems state that the module computes `plan`, and no theorem about the
-plans themselves is proved yet.  [The test section](#tests) describes the cases, and [the theorem
-section](#theorems-to-prove) lists the theorems to prove.
+The compiler's generated theorems state that the module computes `plan`, and [the soundness
+section](#soundness-of-the-checks) states the theorems that the program's edge check and static
+check accept only rotations and attitudes that the cones allow.  [The test section](#tests)
+describes the cases, and [the theorem section](#theorems-to-prove) lists the theorems that remain.
 
 | File | Contents |
 |---|---|
 | [The program](Program.lean) | The planner in the dialect |
 | [The representations](Flat.lean) | `Flat` instances for `V3`, `Q4`, `Dims`, and `Search` |
 | [The compilation](Verified.lean) | `verified_compile compiled := [atan, atan2, …, plan]` |
+| [The specification](Spec.lean) | Real vectors and quaternions, Rodrigues' rotation, the rotation angle, and the cone predicate |
+| [The arc lemmas](Arc.lean) | The sinusoid form of the cosine along a rotation, the endpoint lemma, and vector inequalities |
+| [The binary64 facts](Rounding.lean) | Real values of floats, comparisons, the program's constants, and the bounded approximation `Bnd` |
+| [The vector errors](Error.lean) | Rounding errors of dot and cross products and of the rotation formula |
+| [The axis and angle](Axis.lean) | Rounding errors of `s`, the axis `v/s`, `w² - s²`, and `2ws` |
+| [The normalization](Normalize.lean) | The difference between the cosines of the normalized and the given inputs |
+| [The cone values](Cone.lean) | Rounding errors of `f₀`, `A`, `B`, `C`, `f₁`, and `f′(θ)` |
+| [The amplitude](Hypot.lean) | The rounding error of `√(A² + B²)` |
+| [The decisions](Decide.lean) | Comparisons, NaN propagation, and the bounds that a decision gives over the rotation |
+| [The soundness](Check.lean) | `edgeOk_sound` and `attitudeOk_sound` |
 
 The program imports only the dialect modules and `Library.Numerics.Float64.Atan.Program`, which
 build from Lean's core library.  The representations need `LeanExe.Pipeline`, which depends on
-Talos's CodeLib, and the compilation needs `Verified`, which imports Mathlib.  `Demos.lean`
-imports the program and the representations, and `Demos/Verified.lean` imports the compilation.
+Talos's CodeLib, and the compilation and the proofs need Mathlib.  `Demos.lean` imports the
+program, the representations, and the proofs, and `Demos/Verified.lean` imports the compilation.
 
 ## The planning problem
 
@@ -134,6 +145,47 @@ compilation yields these results:
   compiler borrows every record parameter, so their updates copy arrays of up to 1,026 words in each
   of up to 1,027 rounds, and the bound counts each copy without reuse.
 
+## Soundness of the checks
+
+[The soundness proof](Check.lean) shows that `edgeOk` and `attitudeOk` accept only what the cones
+allow, as statements about real numbers.  `edgeOk_sound` assumes an attitude `qa` with finite
+components and a squared norm within `3e-12` of 1, a relative quaternion `rel` that is finite, has
+`w ≥ 0`, and has a squared norm within `1e-11` of 1, and cones whose body vectors and axes are
+finite with squared norms within `3e-12` of 1 and whose cosines are finite and in `[-1, 1]`.  If
+`edgeOk` accepts `rel` from `qa`, then for every cone and every angle `φ` from 0 to the rotation
+angle of `rel`'s real value, every vector within `1.05e-9` of the normalized body vector, rotated
+by the normalized `qa` and then by `φ` about the axis of `rel`'s real value, lies on the allowed
+side of the cone of the normalized axis.  `attitudeOk_sound` states the same at one attitude for
+`attitudeOk` without slack, and both theorems depend only on `propext`, `Classical.choice`, and
+`Quot.sound`.
+
+The proof bounds each rounding error against the program's formulas in exact arithmetic on the
+given, unnormalized inputs, which keeps the errors of the stationary-point tests below `eta`.
+The normalization enters once, in the final bound.  The table lists the parts of the budget for
+a rotation past the small-angle threshold, with `u = 2⁻⁵³`.
+
+| Part | Bound |
+|---|---|
+| Rounding of `f₀`, `f₁`, the stationary value, and the limit | `2300 u`, about `2.6e-13` |
+| `w² - s²` and `2ws`, which are `cos θ` and `sin θ` times `w² + s²` | `2.3e-11` |
+| Normalization of the attitude, the body vector, and the cone axis | `1.3e-11` |
+| The tube | `1.05e-9` |
+| Total | about `1.0863e-9`, `1.3e-11` below `margin` |
+
+Below `s = 1e-7`, the slack `2.125 s` exceeds the change `2.0003 S` of the cosine along the
+rotation, where `S` is the real length of `rel`'s vector part.  The proof follows the program's
+decisions through NaN results: Lean's `max a b` returns `a` when `b` is a NaN, so a keep-out check
+that drops a NaN value still bounds the start, and the proof derives the finiteness of every other
+value it needs from the error bounds.  It does not exclude a NaN `s`, which would require
+`S² ≤ 5 · 2⁻¹⁰⁷⁵`, and such an `s` makes a keep-in check fail and leaves a keep-out check the
+bound at the start, which covers a rotation that small.
+
+The theorems take the properties of the inputs as hypotheses, and the rotation they describe is
+that of `rel`'s real value, which differs from the exact rotation between the normalized
+attitudes by the rounding of `relative`.  The derivation of the hypotheses from `validInput` and
+`relative`, the bound on that difference, and the path structure of the search belong to the
+safety theorem.  Until that theorem exists, the sampled safety check below tests whole plans.
+
 ## Tests
 
 The tests follow the other verified examples.  [The
@@ -177,6 +229,7 @@ argument `--summary` prints the table's counts and spares.
 The generator takes 18 s, and the whole run of `tests/verified/run.sh --cases slew` 74 s.  A plan
 of 500 waypoints takes at most 51 ms in the host, of which about 20 ms is the start of the host and
 the compilation of the module.
+
 ## Theorems to prove
 
 The journal states each theorem and the order of the work.
@@ -186,7 +239,8 @@ The journal states each theorem and the order of the work.
 - **NaN-freedom:** no floating-point operation in the evaluation of `plan` on validated input has
   a NaN operand or result.
 - **Safety:** every commanded rotation of a plan, and every attitude within `1e-9` of it, satisfies
-  every input cone, as a statement about real numbers.
+  every input cone, as a statement about real numbers.  The soundness of the checks covers one
+  rotation and one attitude.
 - **Premises:** if the flown attitude stays within `ε` of the commanded one, each constraint axis
   within `d` of its planning value, and each nominal half-angle grows by at most `g`, then a plan
   computed with half-angles enlarged by `ε + d + g` keeps the nominal limits along the flown
