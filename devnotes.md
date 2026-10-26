@@ -35648,7 +35648,7 @@ Two limits shape the corpus.  Linux limits one argument to 128 KiB (`MAX_ARG_STR
 
 | Question | Decision | Reason |
 |---|---|---|
-| A sampled safety check before the safety theorem | Have the generator also evaluate every cone of every status-1 plan at 1,000 angles per segment, with Rodrigues' formula and the library's `Trig.sin` and `Trig.cos`, and fail when a cone has less than `10⁻⁹` to spare | The comparison of the module with native Lean cannot detect an error that both share.  The library's `sin` and `cos` are Lean definitions with proved accuracy, so the check is the same on every host.  This goes beyond the user's test design and needs the user's agreement. |
+| A sampled safety check before the safety theorem | Have the generator also evaluate every cone of every status-1 plan at 1,000 angles per segment, with Rodrigues' formula and the library's `Trig.sin` and `Trig.cos`, and fail when a cone has less than `10⁻⁹` to spare.  The generator and the journal label it a test, which the safety theorem replaces. | The comparison of the module with native Lean cannot detect an error that both share.  The library's `sin` and `cos` are Lean definitions with proved accuracy, so the check is the same on every host.  The user approved the check on 2026-10-26. |
 | Edge-check cases | Add calls of the module's `edgeOk` export on single-cone edges whose endpoints have not passed a static check | The plans never reach an endpoint-only rejection, since both ends of every edge in a plan pass the static check with the same margin. |
 
 ### Plan
@@ -35662,6 +35662,7 @@ Build phase:
 
 - [ ] Build `Demos.Slew.Program`, `Demos.Slew.Flat`, and `Demos.Slew.Verified`, and record each change that the reflector needs.
 - [ ] Write the generator and its main module, register the module and the cases, and run `tests/verified/run.sh --cases slew`, recording the counts and the times of the largest plans against a target of 100 ms.
+- [ ] Write the sampled safety check in the generator, labeled a test until the safety theorem replaces it, and record the least spare it finds.
 - [ ] Confirm from `compiled.plan.implements` that `plan` borrows its input, and check the axioms of `compiled.bytes`.
 - [ ] Read `compiled.plan.bound_eq`, and decide whether `cost` and `parent` leave the `Search` record.
 - [ ] Add the imports to `Demos.lean` and `Demos/Verified.lean`, run `tools/source-layout`, and update the README and the verified compiler manual's examples.
