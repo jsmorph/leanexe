@@ -12,7 +12,11 @@ variables are paid: it counts each copy that the modes and the live sets call fo
 `build` makes, and each block of `push`, `++`, and `insertAt`.  An owned array that dies and is not
 paid is charged a block of twice the bytes of its new length and twice the added bytes, even when
 it extends in place.  A paid one is charged a header and four times the added bytes, which with
-its potential pay for its growth.  The bound ignores the reuse of freed blocks. -/
+its potential pay for its growth.  A pair is paid when each component is paid or holds no array,
+and destructuring a paid pair gives paid components, so an array inside a loop's state or a
+record grows at the paid charge.  A branch of an `if` whose other branch is paid is charged the
+credit of its value, so the `if` is paid when either branch is.  The bound ignores the reuse of
+freed blocks. -/
 
 namespace Verified
 
@@ -33,6 +37,27 @@ def Ty.credit : (t : Ty) → t.denote → Nat
   | .pair a b, v => a.credit v.1 + b.credit v.2
   | .array e, xs => 16 * (xs.size * e.width + 1)
   | .tree _, _ | .treeHeader _ _, _ | .bytes, _ => 0
+
+/-- Whether a value of type `t` holds no array, so that its credit and potential are 0. -/
+def Ty.creditFree : Ty → Bool
+  | .array _ => false
+  | .pair a b => a.creditFree && b.creditFree
+  | _ => true
+
+theorem Ty.credit_creditFree (t : Ty) (h : t.creditFree = true) (v : t.denote) :
+    t.credit v = 0 := by
+  induction t with
+  | pair a b iha ihb =>
+    simp only [Ty.creditFree, Bool.and_eq_true] at h
+    simp only [Ty.credit, iha h.1 v.1, ihb h.2 v.2]
+  | array => simp [Ty.creditFree] at h
+  | _ => simp [Ty.credit]
+
+/-- The credit that the code of a branch charges for its value of type `t`: the value's credit
+when the other branch's value is paid, `want`, and this one's is not, `held`, and none
+otherwise. -/
+def Ty.buyCost (t : Ty) (want held : Bool) (v : t.denote) : Nat :=
+  if want && !held then t.credit v else 0
 
 /-- The credits of the arguments that `sel` picks. -/
 def Env.credit (sel : Nat → Bool) : {Γ : List Ty} → Env Γ → Nat
@@ -216,21 +241,30 @@ def callCredits (funs : Funs S) (flags : Flags S) (modes : List Mode) (paid : Li
       (g.params.get i).credit ((args i).denote funs env)
     else 0
 
-/-- Whether the potential of an expression's value is counted, given the variables' modes and
-flags and the variables live after it: for the growth of an owned array that dies, for a moved
-variable that is paid, for an `if` whose branches are both paid, for a `let` whose body's value is
-paid, for a loop whose state is paid, as `Expr.statePaid` states, and for a call of a function
-whose result holds arrays and is paid, given the functions' flags `flags`. -/
+/-- Whether the potential of every array of an expression's value is counted, given the
+variables' modes and flags and the variables live after it: for the growth of an owned array that
+dies, for a moved variable that is paid, for an `if` with a paid branch, whose other branch's code
+charges the credit of its value, for an owned pair whose components are paid or hold no array,
+for a `let` or a destructuring whose body's value is paid, the components of a destructured pair
+being paid when the pair is, for a loop whose state is paid, as `Expr.statePaid` states, and for a
+call of a function whose result holds arrays and is paid, given the functions' flags `flags`. -/
 def Expr.paid (flags : Flags S) (modes : List Mode) (paid : List Bool) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .var x => modeAt modes x.index == .owned && !live x.index && paidAt paid x.index
   | _, _, .push x _ | _, _, .insertAt x _ _ => modeAt modes x.index == .owned && !live x.index
   | _, _, .append x y => modeAt modes x.index == .owned && !(live x.index || x.index == y.index)
   | _, _, .ite _ thenE elseE =>
-    thenE.paid flags modes paid live && elseE.paid flags modes paid live
+    thenE.paid flags modes paid live || elseE.paid flags modes paid live
   | _, _, .letE value body =>
     body.paid flags (value.mode modes :: modes)
       (value.paid flags modes paid (fun i => live i || body.uses (i + 1)) :: paid) (shift 1 live)
+  | _, _, .pair (s := s) (t := t) first second =>
+    (first.mode modes).join (second.mode modes) == .owned &&
+      (first.paid flags modes paid (fun i => live i || second.uses i) || s.creditFree) &&
+      (second.paid flags modes paid live || t.creditFree)
+  | _, _, .letPair e body =>
+    let p := e.paid flags modes paid (fun i => live i || body.uses (i + 2))
+    body.paid flags (e.mode modes :: e.mode modes :: modes) (p :: p :: paid) (shift 2 live)
   | _, _, .loop _ init cond body =>
     let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
     mode == .owned && body.grows flags &&
@@ -263,10 +297,17 @@ theorem Expr.mode_of_paid {flags : Flags S} {Γ : List Ty} {t : Ty} (e : Expr S 
   case var x =>
     simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq] at h
     exact h.1.1
-  case ite c thenE elseE _ thenIh _ =>
-    simp only [Expr.paid, Bool.and_eq_true] at h
-    simp [Expr.mode, Mode.join, thenIh h.1]
+  case ite c thenE elseE _ thenIh elseIh =>
+    simp only [Expr.paid, Bool.or_eq_true] at h
+    rcases h with h | h
+    · simp [Expr.mode, Mode.join, thenIh h]
+    · simp only [Expr.mode, elseIh h]
+      cases thenE.mode modes <;> rfl
   case letE value body _ bodyIh => exact bodyIh h
+  case pair first second _ _ =>
+    simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq] at h
+    exact h.1.1
+  case letPair e body _ bodyIh => exact bodyIh h
   case loop count init cond body _ _ _ _ =>
     simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq] at h
     exact h.1.1
@@ -397,13 +438,17 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
   | _, _, .toFloat32 _ e, env | _, _, .toWord32 _ e, env => e.allocs funs flags bounds modes paid live env
   | _, _, .ite (t := t) c thenE elseE, env =>
     let mode := (thenE.mode modes).join (elseE.mode modes)
+    let thenPaid := thenE.paid flags modes paid live
+    let elsePaid := elseE.paid flags modes paid live
     c.allocs funs flags bounds modes paid (fun i => live i || thenE.uses i || elseE.uses i) env +
       if c.denote funs env then
         thenE.allocs funs flags bounds modes paid live env +
-          coerceCost t (thenE.mode modes) mode (thenE.denote funs env)
+          coerceCost t (thenE.mode modes) mode (thenE.denote funs env) +
+          t.buyCost elsePaid thenPaid (thenE.denote funs env)
       else
         elseE.allocs funs flags bounds modes paid live env +
-          coerceCost t (elseE.mode modes) mode (elseE.denote funs env)
+          coerceCost t (elseE.mode modes) mode (elseE.denote funs env) +
+          t.buyCost thenPaid elsePaid (elseE.denote funs env)
   | _, _, .letE value body, env =>
     value.allocs funs flags bounds modes paid (fun i => live i || body.uses (i + 1)) env +
       body.allocs funs flags bounds (value.mode modes :: modes)
@@ -427,8 +472,9 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
   | _, _, .letPair e body, env =>
     let mode := e.mode modes
     let p := e.denote funs env
+    let pp := e.paid flags modes paid (fun i => live i || body.uses (i + 2))
     e.allocs funs flags bounds modes paid (fun i => live i || body.uses (i + 2)) env +
-      body.allocs funs flags bounds (mode :: mode :: modes) (false :: false :: paid) (shift 2 live)
+      body.allocs funs flags bounds (mode :: mode :: modes) (pp :: pp :: paid) (shift 2 live)
         (.cons p.2 (.cons p.1 env))
   | _, _, .loop count init cond body, env =>
     loopAlloc funs flags modes paid live count init cond body

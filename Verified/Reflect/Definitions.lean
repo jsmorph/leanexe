@@ -1256,6 +1256,25 @@ def assignPaid (app : LemmaApp) : MetaM Lean.Expr := do
   app.assign `hp (← evalEq flag p)
   return p
 
+/-- Assigns the charge argument `value` of `app` and its equation `proof`,
+`t.buyCost want held v = K`, for the branch whose Lean term `u` flattens to `v`: the credit of the
+branch's value when the kernel evaluates `want && !held` to `true`, and 0 otherwise. -/
+def assignBuy (base : Name) (app : LemmaApp) (value proof : Name) (t : Ty) (u : Lean.Expr) :
+    MetaM Unit := do
+  let some (_, lhs, _) := (← app.hypType proof).eq?
+    | throwError "verified_compile: the argument {proof} of {app.name} is not an equation"
+  let (``Ty.buyCost, #[_, want, held, v]) := lhs.getAppFnArgs
+    | throwError "verified_compile: the argument {proof} of {app.name} is not a branch charge"
+  let flag ← mkAppM ``and #[want, ← mkAppM ``not #[held]]
+  if ← evalBool m!"whether a branch of {app.name} is charged its credit" flag then
+    let (CR, hx) ← ValueCost.credit.eq base t v u
+    app.assign value CR
+    app.assign proof (← mkAppM ``buy_some #[← evalEq flag (boolConst true), hx])
+  else
+    app.assign value natZero
+    app.assign proof (← mkAppOptM ``buy_none
+      #[none, some want, some held, some v, some (← evalEq flag (boolConst false))])
+
 /-- Assigns the coercion argument `name` of `app`, `coerceCost t s M v = K`, for the Lean term `u`
 whose flattening is `v`. -/
 def assignCoerce (base : Name) (app : LemmaApp) (name : Name) (t : Ty) (u : Lean.Expr) :
@@ -3187,6 +3206,8 @@ where
       let _ ← app.child `hca cond
       let _ ← assignBranch c.base app `haa ra.ty ra
       let _ ← assignBranch c.base app `hba rb.ty rb
+      assignBuy c.base app `KA `hka ra.ty ra.lean
+      assignBuy c.base app `KB `hkb rb.ty rb.lean
       boundOf (← app.finish)
     let iteFits (thm : Name) (condArgs : List (Name × Lean.Expr))
         (conds : List (Name × Reflection)) (cond : FitsBuilder) : FitsBuilder := do
@@ -3394,10 +3415,11 @@ where
       let app ← LemmaApp.start (if flat then ``letPair_flat_bound else ``letPair_bound)
         (boundArgs c bounds modes paid live ++ [(`e, rp.src), (`body, rb.src)] ++ flatArgs)
       let m ← assignMode app `m `hm
+      let p ← assignPaid app
       let (A, B) ← parts app
       let _ ← app.child `hea rp.bound
       let bb ← u.bound (← mkAppM ``List.cons #[m, ← mkAppM ``List.cons #[m, modes]])
-        (← mkAppM ``List.cons #[boolConst false, ← mkAppM ``List.cons #[boolConst false, paid]])
+        (← mkAppM ``List.cons #[p, ← mkAppM ``List.cons #[p, paid]])
         (← mkAppM ``shift #[mkNatLit 2, live])
       app.assign `hba (← bb.at #[A, B]).proof
       boundOf (← app.finish)

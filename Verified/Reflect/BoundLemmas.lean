@@ -103,6 +103,14 @@ theorem credit_some {c : Bool} {x X : Nat} (h : c = true) (hx : x = X) :
 theorem credit_none {c : Bool} {x : Nat} (h : c = false) : (if c = true then x else 0) = 0 := by
   subst h; rfl
 
+theorem buy_some {t : Ty} {want held : Bool} {v : t.denote} {X : Nat}
+    (h : (want && !held) = true) (hx : t.credit v = X) : t.buyCost want held v = X := by
+  simp only [Ty.buyCost, h, ↓reduceIte, hx]
+
+theorem buy_none {t : Ty} {want held : Bool} {v : t.denote} (h : (want && !held) = false) :
+    t.buyCost want held v = 0 := by
+  simp only [Ty.buyCost, h, Bool.false_eq_true, ↓reduceIte]
+
 theorem coerce_copy {t : Ty} {s m : Mode} {v : t.denote} {C : Nat}
     (hs : s = .borrowed) (hm : m = .owned) (hc : t.copyCost v = C) : coerceCost t s m v = C := by
   subst hs hm hc; rfl
@@ -213,132 +221,151 @@ theorem toWord32_bound (op : ToWord32) {e : Expr S Γ .float32} {E : Nat}
 /-! `if`, one lemma per form of condition that the reflector produces. -/
 
 theorem ite_bound {t : Ty} {c : Expr S Γ .bool} {a b : Expr S Γ t} {C : Bool} {A B : t.denote}
-    {M : Mode} {CA AA BA : Nat}
+    {M : Mode} {CA AA BA KA KB : Nat}
     (hM : (a.mode modes).join (b.mode modes) = M)
     (hc : c.denote funs env = C) (ha : a.denote funs env = A) (hb : b.denote funs env = B)
     (hca : c.allocs funs flags bounds modes paid (fun i => live i || a.uses i || b.uses i) env = CA)
     (haa : a.allocs funs flags bounds modes paid live env + coerceCost t (a.mode modes) M A = AA)
-    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA) :
-    (Expr.ite c a b).allocs funs flags bounds modes paid live env = CA + if C then AA else BA := by
-  subst hM hc ha hb hca haa hba; rfl
+    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA)
+    (hka : t.buyCost (b.paid flags modes paid live) (a.paid flags modes paid live) A = KA)
+    (hkb : t.buyCost (a.paid flags modes paid live) (b.paid flags modes paid live) B = KB) :
+    (Expr.ite c a b).allocs funs flags bounds modes paid live env =
+      CA + if C then AA + KA else BA + KB := by
+  subst hM hc ha hb hca haa hba hka hkb; rfl
 
 /-- `ite_bound` for a condition `L < R` on words. -/
 theorem ite_lt_bound {t : Ty} {l r : Expr S Γ .word} {a b : Expr S Γ t} {L R : UInt64}
-    {A B : t.denote} {M : Mode} {CA AA BA : Nat}
+    {A B : t.denote} {M : Mode} {CA AA BA KA KB : Nat}
     (hM : (a.mode modes).join (b.mode modes) = M)
     (hl : l.denote funs env = L) (hr : r.denote funs env = R)
     (ha : a.denote funs env = A) (hb : b.denote funs env = B)
     (hca : (Expr.cmp .lt l r).allocs funs flags bounds modes paid
       (fun i => live i || a.uses i || b.uses i) env = CA)
     (haa : a.allocs funs flags bounds modes paid live env + coerceCost t (a.mode modes) M A = AA)
-    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA) :
+    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA)
+    (hka : t.buyCost (b.paid flags modes paid live) (a.paid flags modes paid live) A = KA)
+    (hkb : t.buyCost (a.paid flags modes paid live) (b.paid flags modes paid live) B = KB) :
     (Expr.ite (.cmp .lt l r) a b).allocs funs flags bounds modes paid live env =
-      CA + if L < R then AA else BA := by
-  rw [ite_bound hM rfl ha hb hca haa hba]
+      CA + if L < R then AA + KA else BA + KB := by
+  rw [ite_bound hM rfl ha hb hca haa hba hka hkb]
   subst hl hr; simp [Expr.denote, CmpOp.apply]
 
 /-- `ite_bound` for a condition `L ≤ R` on words. -/
 theorem ite_le_bound {t : Ty} {l r : Expr S Γ .word} {a b : Expr S Γ t} {L R : UInt64}
-    {A B : t.denote} {M : Mode} {CA AA BA : Nat}
+    {A B : t.denote} {M : Mode} {CA AA BA KA KB : Nat}
     (hM : (a.mode modes).join (b.mode modes) = M)
     (hl : l.denote funs env = L) (hr : r.denote funs env = R)
     (ha : a.denote funs env = A) (hb : b.denote funs env = B)
     (hca : (Expr.cmp .le l r).allocs funs flags bounds modes paid
       (fun i => live i || a.uses i || b.uses i) env = CA)
     (haa : a.allocs funs flags bounds modes paid live env + coerceCost t (a.mode modes) M A = AA)
-    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA) :
+    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA)
+    (hka : t.buyCost (b.paid flags modes paid live) (a.paid flags modes paid live) A = KA)
+    (hkb : t.buyCost (a.paid flags modes paid live) (b.paid flags modes paid live) B = KB) :
     (Expr.ite (.cmp .le l r) a b).allocs funs flags bounds modes paid live env =
-      CA + if L ≤ R then AA else BA := by
-  rw [ite_bound hM rfl ha hb hca haa hba]
+      CA + if L ≤ R then AA + KA else BA + KB := by
+  rw [ite_bound hM rfl ha hb hca haa hba hka hkb]
   subst hl hr; simp [Expr.denote, CmpOp.apply]
 
 /-- `ite_bound` for a condition `L = R` on words. -/
 theorem ite_eqP_bound {t : Ty} {l r : Expr S Γ .word} {a b : Expr S Γ t} {L R : UInt64}
-    {A B : t.denote} {M : Mode} {CA AA BA : Nat}
+    {A B : t.denote} {M : Mode} {CA AA BA KA KB : Nat}
     (hM : (a.mode modes).join (b.mode modes) = M)
     (hl : l.denote funs env = L) (hr : r.denote funs env = R)
     (ha : a.denote funs env = A) (hb : b.denote funs env = B)
     (hca : (Expr.cmp .eq l r).allocs funs flags bounds modes paid
       (fun i => live i || a.uses i || b.uses i) env = CA)
     (haa : a.allocs funs flags bounds modes paid live env + coerceCost t (a.mode modes) M A = AA)
-    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA) :
+    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA)
+    (hka : t.buyCost (b.paid flags modes paid live) (a.paid flags modes paid live) A = KA)
+    (hkb : t.buyCost (a.paid flags modes paid live) (b.paid flags modes paid live) B = KB) :
     (Expr.ite (.cmp .eq l r) a b).allocs funs flags bounds modes paid live env =
-      CA + if L = R then AA else BA := by
-  rw [ite_bound hM rfl ha hb hca haa hba]
+      CA + if L = R then AA + KA else BA + KB := by
+  rw [ite_bound hM rfl ha hb hca haa hba hka hkb]
   subst hl hr; simp [Expr.denote, CmpOp.apply]
 
 /-- `ite_bound` for a condition `L ≠ R` on words. -/
 theorem ite_ne_bound {t : Ty} {l r : Expr S Γ .word} {a b : Expr S Γ t} {L R : UInt64}
-    {A B : t.denote} {M : Mode} {CA AA BA : Nat}
+    {A B : t.denote} {M : Mode} {CA AA BA KA KB : Nat}
     (hM : (a.mode modes).join (b.mode modes) = M)
     (hl : l.denote funs env = L) (hr : r.denote funs env = R)
     (ha : a.denote funs env = A) (hb : b.denote funs env = B)
     (hca : (Expr.cmp .ne l r).allocs funs flags bounds modes paid
       (fun i => live i || a.uses i || b.uses i) env = CA)
     (haa : a.allocs funs flags bounds modes paid live env + coerceCost t (a.mode modes) M A = AA)
-    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA) :
+    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA)
+    (hka : t.buyCost (b.paid flags modes paid live) (a.paid flags modes paid live) A = KA)
+    (hkb : t.buyCost (a.paid flags modes paid live) (b.paid flags modes paid live) B = KB) :
     (Expr.ite (.cmp .ne l r) a b).allocs funs flags bounds modes paid live env =
-      CA + if L ≠ R then AA else BA := by
-  rw [ite_bound hM rfl ha hb hca haa hba]
+      CA + if L ≠ R then AA + KA else BA + KB := by
+  rw [ite_bound hM rfl ha hb hca haa hba hka hkb]
   subst hl hr; simp [Expr.denote, CmpOp.apply]
 
 /-- `ite_bound` for a condition `L < R` on floats. -/
 theorem ite_flt_bound {t : Ty} {l r : Expr S Γ .float} {a b : Expr S Γ t} {L R : Float}
-    {A B : t.denote} {M : Mode} {CA AA BA : Nat}
+    {A B : t.denote} {M : Mode} {CA AA BA KA KB : Nat}
     (hM : (a.mode modes).join (b.mode modes) = M)
     (hl : l.denote funs env = L) (hr : r.denote funs env = R)
     (ha : a.denote funs env = A) (hb : b.denote funs env = B)
     (hca : (Expr.fcmp .lt l r).allocs funs flags bounds modes paid
       (fun i => live i || a.uses i || b.uses i) env = CA)
     (haa : a.allocs funs flags bounds modes paid live env + coerceCost t (a.mode modes) M A = AA)
-    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA) :
+    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA)
+    (hka : t.buyCost (b.paid flags modes paid live) (a.paid flags modes paid live) A = KA)
+    (hkb : t.buyCost (a.paid flags modes paid live) (b.paid flags modes paid live) B = KB) :
     (Expr.ite (.fcmp .lt l r) a b).allocs funs flags bounds modes paid live env =
-      CA + if L < R then AA else BA := by
-  rw [ite_bound hM rfl ha hb hca haa hba]
+      CA + if L < R then AA + KA else BA + KB := by
+  rw [ite_bound hM rfl ha hb hca haa hba hka hkb]
   subst hl hr; simp [Expr.denote, FCmpOp.apply]
 
 /-- `ite_bound` for a condition `L ≤ R` on floats. -/
 theorem ite_fle_bound {t : Ty} {l r : Expr S Γ .float} {a b : Expr S Γ t} {L R : Float}
-    {A B : t.denote} {M : Mode} {CA AA BA : Nat}
+    {A B : t.denote} {M : Mode} {CA AA BA KA KB : Nat}
     (hM : (a.mode modes).join (b.mode modes) = M)
     (hl : l.denote funs env = L) (hr : r.denote funs env = R)
     (ha : a.denote funs env = A) (hb : b.denote funs env = B)
     (hca : (Expr.fcmp .le l r).allocs funs flags bounds modes paid
       (fun i => live i || a.uses i || b.uses i) env = CA)
     (haa : a.allocs funs flags bounds modes paid live env + coerceCost t (a.mode modes) M A = AA)
-    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA) :
+    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA)
+    (hka : t.buyCost (b.paid flags modes paid live) (a.paid flags modes paid live) A = KA)
+    (hkb : t.buyCost (a.paid flags modes paid live) (b.paid flags modes paid live) B = KB) :
     (Expr.ite (.fcmp .le l r) a b).allocs funs flags bounds modes paid live env =
-      CA + if L ≤ R then AA else BA := by
-  rw [ite_bound hM rfl ha hb hca haa hba]
+      CA + if L ≤ R then AA + KA else BA + KB := by
+  rw [ite_bound hM rfl ha hb hca haa hba hka hkb]
   subst hl hr; simp [Expr.denote, FCmpOp.apply]
 
 theorem ite_flt32_bound {t : Ty} {l r : Expr S Γ .float32} {a b : Expr S Γ t} {L R : Float32}
-    {A B : t.denote} {M : Mode} {CA AA BA : Nat}
+    {A B : t.denote} {M : Mode} {CA AA BA KA KB : Nat}
     (hM : (a.mode modes).join (b.mode modes) = M)
     (hl : l.denote funs env = L) (hr : r.denote funs env = R)
     (ha : a.denote funs env = A) (hb : b.denote funs env = B)
     (hca : (Expr.fcmp32 .lt l r).allocs funs flags bounds modes paid
       (fun i => live i || a.uses i || b.uses i) env = CA)
     (haa : a.allocs funs flags bounds modes paid live env + coerceCost t (a.mode modes) M A = AA)
-    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA) :
+    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA)
+    (hka : t.buyCost (b.paid flags modes paid live) (a.paid flags modes paid live) A = KA)
+    (hkb : t.buyCost (a.paid flags modes paid live) (b.paid flags modes paid live) B = KB) :
     (Expr.ite (.fcmp32 .lt l r) a b).allocs funs flags bounds modes paid live env =
-      CA + if L < R then AA else BA := by
-  rw [ite_bound hM rfl ha hb hca haa hba]
+      CA + if L < R then AA + KA else BA + KB := by
+  rw [ite_bound hM rfl ha hb hca haa hba hka hkb]
   subst hl hr; simp [Expr.denote, FCmpOp.apply32]
 
 /-- `ite_bound` for a condition `L ≤ R` on floats. -/
 theorem ite_fle32_bound {t : Ty} {l r : Expr S Γ .float32} {a b : Expr S Γ t} {L R : Float32}
-    {A B : t.denote} {M : Mode} {CA AA BA : Nat}
+    {A B : t.denote} {M : Mode} {CA AA BA KA KB : Nat}
     (hM : (a.mode modes).join (b.mode modes) = M)
     (hl : l.denote funs env = L) (hr : r.denote funs env = R)
     (ha : a.denote funs env = A) (hb : b.denote funs env = B)
     (hca : (Expr.fcmp32 .le l r).allocs funs flags bounds modes paid
       (fun i => live i || a.uses i || b.uses i) env = CA)
     (haa : a.allocs funs flags bounds modes paid live env + coerceCost t (a.mode modes) M A = AA)
-    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA) :
+    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA)
+    (hka : t.buyCost (b.paid flags modes paid live) (a.paid flags modes paid live) A = KA)
+    (hkb : t.buyCost (a.paid flags modes paid live) (b.paid flags modes paid live) B = KB) :
     (Expr.ite (.fcmp32 .le l r) a b).allocs funs flags bounds modes paid live env =
-      CA + if L ≤ R then AA else BA := by
-  rw [ite_bound hM rfl ha hb hca haa hba]
+      CA + if L ≤ R then AA + KA else BA + KB := by
+  rw [ite_bound hM rfl ha hb hca haa hba hka hkb]
   subst hl hr; simp [Expr.denote, FCmpOp.apply32]
 
 /-! `let`, pairs, and destructuring. -/
@@ -376,27 +403,31 @@ theorem pair_bound {s t : Ty} {a : Expr S Γ s} {b : Expr S Γ t} {M : Mode}
 /-- The bound of a destructuring, with the body's at the components `A` and `B` of the pair's
 value `E`: its projections, or the components themselves when the value is built in place. -/
 theorem letPair_bound {s t u : Ty} {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u}
-    {m : Mode} {E : s.denote × t.denote} {A : s.denote} {B : t.denote} {EA BA : Nat}
-    (hm : e.mode modes = m) (he : e.denote funs env = E) (hA : E.1 = A) (hB : E.2 = B)
+    {m : Mode} {p : Bool} {E : s.denote × t.denote} {A : s.denote} {B : t.denote} {EA BA : Nat}
+    (hm : e.mode modes = m)
+    (hp : e.paid flags modes paid (fun i => live i || body.uses (i + 2)) = p)
+    (he : e.denote funs env = E) (hA : E.1 = A) (hB : E.2 = B)
     (hea : e.allocs funs flags bounds modes paid (fun i => live i || body.uses (i + 2)) env = EA)
-    (hba : body.allocs funs flags bounds (m :: m :: modes) (false :: false :: paid) (shift 2 live)
+    (hba : body.allocs funs flags bounds (m :: m :: modes) (p :: p :: paid) (shift 2 live)
         (.cons B (.cons A env)) =
       BA) :
     (Expr.letPair e body).allocs funs flags bounds modes paid live env = EA + BA := by
-  subst hm he hA hB hea hba; rfl
+  subst hm hp he hA hB hea hba; rfl
 
 /-- `letPair_bound` for a pair whose components are the flattenings `φa P.1` and `φb P.2` of a
 Lean pair `P`. -/
 theorem letPair_flat_bound {s t u : Ty} {α β : Type} (φa : α → s.denote) (φb : β → t.denote)
-    (P : α × β) {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u} {m : Mode}
+    (P : α × β) {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u} {m : Mode} {p : Bool}
     {A : α} {B : β} {EA BA : Nat}
-    (hm : e.mode modes = m) (he : e.denote funs env = (φa P.1, φb P.2)) (hA : P.1 = A)
+    (hm : e.mode modes = m)
+    (hp : e.paid flags modes paid (fun i => live i || body.uses (i + 2)) = p)
+    (he : e.denote funs env = (φa P.1, φb P.2)) (hA : P.1 = A)
     (hB : P.2 = B)
     (hea : e.allocs funs flags bounds modes paid (fun i => live i || body.uses (i + 2)) env = EA)
-    (hba : body.allocs funs flags bounds (m :: m :: modes) (false :: false :: paid) (shift 2 live)
+    (hba : body.allocs funs flags bounds (m :: m :: modes) (p :: p :: paid) (shift 2 live)
       (.cons (φb B) (.cons (φa A) env)) = BA) :
     (Expr.letPair e body).allocs funs flags bounds modes paid live env = EA + BA := by
-  subst hm hA hB hea hba; simp only [Expr.allocs, he]
+  subst hm hp hA hB hea hba; simp only [Expr.allocs, he]
 
 /-! Calls. -/
 

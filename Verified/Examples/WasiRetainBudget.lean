@@ -1,10 +1,9 @@
 import Verified.Examples.WasiRetain
-import Verified.Examples.WasiResourceRules
+import Verified.Wasi.ResourceRules
 
 namespace Verified.Examples.WasiRetain
 
 open LeanExe LeanExe.Wasi Verified Verified.Wasi Verified.Wasi.Resource
-open Verified.Examples.WasiResourceRules
 
 private def returnRead : Command [] []
     [.elem (.prod .word .word), .pair .word .bytes, .bytes, .word] (.value .bytes) :=

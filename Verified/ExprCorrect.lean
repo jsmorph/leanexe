@@ -851,9 +851,11 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
       (fun i => live i || thenE.uses i || elseE.uses i) base heap store s heap1 store1
       { s1 with values := s.values })
     (hTop1 : wf = true → heap1.top.toNat ≤ heap.top.toNat + cA)
+    {other : Bool}
     (hB : B = cA + (Db + (b.allocs funs flags bounds (slots.map Slot.mode) paid live env +
       coerceCost tTy (b.mode (slots.map Slot.mode))
-        ((Expr.ite c thenE elseE).mode (slots.map Slot.mode)) (b.denote funs env))))
+        ((Expr.ite c thenE elseE).mode (slots.map Slot.mode)) (b.denote funs env) +
+      tTy.buyCost other (b.paid flags (slots.map Slot.mode) paid live) (b.denote funs env))))
     (hDb : dyingPot store s env slots paid (fun i => live i || b.uses i) live ≤ Db)
     (hbd : wf = true → b.fits funs fits env = true)
     (hbPlace : b.placeArgs = true)
@@ -862,8 +864,8 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
     (hval : b.denote funs env = (Expr.ite c thenE elseE).denote funs env)
     (hbm : b.mode (slots.map Slot.mode) = .owned →
       (Expr.ite c thenE elseE).mode (slots.map Slot.mode) = .owned)
-    (hbp : (Expr.ite c thenE elseE).paid flags (slots.map Slot.mode) paid live = true →
-      b.paid flags (slots.map Slot.mode) paid live = true)
+    (hbp : (Expr.ite c thenE elseE).paid flags (slots.map Slot.mode) paid live =
+      (b.paid flags (slots.map Slot.mode) paid live || other))
     (Qb : Assertion Unit) (hQbTrap : ∀ st, Q (.Trap st "unreachable") → Qb (.Trap st "unreachable"))
     (hQb : ∀ st' s', wp m (loadCode h base tTy.types ++ rest) Q st'
       { s' with values := s.values } host → Qb (.Fallthrough st' s')) :
@@ -952,10 +954,31 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
   refine hNext heap4 store4 _ ws4 ⟨aAll.step, hFrame, aAll.holds.agree hF45, aAll.rep, ?_⟩
     fun hd => by
       have := hTop1 hd; have := hTop3 (hbd hd); have := congrArg UInt64.toNat hTop2
-      -- A paid `if` has a paid branch, whose owned value the coercion keeps.
-      have := pot_keep (b := tTy.pot store3 ws3 (b.denote funs env)) hbp fun hp => by
-        obtain ⟨rfl, rfl⟩ := hSame4 (Expr.mode_of_paid b (hbp hp))
-        rw [hval]
+      -- A paid branch keeps its owned value through the coercion.  An unpaid branch of a paid
+      -- `if` is charged its value's credit, which bounds the potential of the owned result.
+      have hPot : (if (Expr.ite c thenE elseE).paid flags (slots.map Slot.mode) paid live = true
+            then tTy.pot store4 ws4 ((Expr.ite c thenE elseE).denote funs env) else 0) ≤
+          (if b.paid flags (slots.map Slot.mode) paid live = true
+            then tTy.pot store3 ws3 (b.denote funs env) else 0) +
+          tTy.buyCost other (b.paid flags (slots.map Slot.mode) paid live) (b.denote funs env) := by
+        by_cases hbP : b.paid flags (slots.map Slot.mode) paid live = true
+        · obtain ⟨rfl, rfl⟩ := hSame4 (Expr.mode_of_paid b hbP)
+          have hiP : (Expr.ite c thenE elseE).paid flags (slots.map Slot.mode) paid live = true := by
+            rw [hbp, hbP]; rfl
+          rw [if_pos hiP, if_pos hbP, ← hval]
+          omega
+        · have hbF : b.paid flags (slots.map Slot.mode) paid live = false := by simpa using hbP
+          by_cases hiP : (Expr.ite c thenE elseE).paid flags (slots.map Slot.mode) paid live = true
+          · have hOther : other = true := by rw [hbp, hbF] at hiP; simpa using hiP
+            have hOwned := Expr.mode_of_paid (Expr.ite c thenE elseE) hiP
+            have hRep4 := a4.rep
+            rw [hOwned] at hRep4
+            have hle := Ty.pot_le_credit tTy ws4 _ hRep4
+            rw [if_pos hiP, if_neg hbP, ← hval]
+            simp only [Ty.buyCost, hOther, hbF, Bool.not_false, Bool.and_self, ↓reduceIte]
+            omega
+          · rw [if_neg hiP]
+            omega
       rw [hB]; omega
   exact aAll.apart.agree aAll.holds hF45
 
@@ -1059,6 +1082,7 @@ theorem spec_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bo
   · simp (config := { decide := true }) only [↓reduceIte]
     exact ite_branch hm elseSpec hh hpv hVars hSafe hCap hBase hRoomE hTrap hNextB e1 hTopC
       (Db := dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live)
+      (other := thenE.paid flags (slots.map Slot.mode) paid live)
       (by rw [hSplitI]; simp only [Expr.allocs, Expr.mode, hcv, Bool.false_eq_true, ↓reduceIte]
           omega)
       (show dyingPot store s env slots paid (fun i => live i || elseE.uses i) live ≤
@@ -1071,11 +1095,12 @@ theorem spec_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bo
           exact h.2) hPlaceE
       (fun i h => by simp [h]) (fun h => by simp [Expr.aborts, h])
       (by simp [Expr.denote, hcv]) hModeE
-      (fun h => by simp only [Expr.paid, Bool.and_eq_true] at h; exact h.2) _ (fun _ h => h)
+      (by simp only [Expr.paid, Bool.or_comm]) _ (fun _ h => h)
       fun _ _ h => by simpa using h
   · simp (config := { decide := true }) only [↓reduceIte]
     exact ite_branch hm thenSpec hh hpv hVars hSafe hCap hBase hRoomT hTrap hNextB e1 hTopC
       (Db := dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live)
+      (other := elseE.paid flags (slots.map Slot.mode) paid live)
       (by rw [hSplitI]; simp only [Expr.allocs, Expr.mode, hcv, ↓reduceIte]; omega)
       (show dyingPot store s env slots paid (fun i => live i || thenE.uses i) live ≤
           dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live
@@ -1083,8 +1108,7 @@ theorem spec_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bo
           simp only [Bool.or_eq_true] at h ⊢; rcases h with h | h <;> simp [h]) fun _ h => h)
       (fun h => by simp only [Expr.fits, hcv, Bool.and_eq_true] at h; simpa using h.2) hPlaceT
       (fun i h => by simp [h]) (fun h => by simp [Expr.aborts, h])
-      (by simp [Expr.denote, hcv]) hModeT
-      (fun h => by simp only [Expr.paid, Bool.and_eq_true] at h; exact h.1) _ (fun _ h => h)
+      (by simp [Expr.denote, hcv]) hModeT rfl _ (fun _ h => h)
       fun _ _ h => by simpa using h
 
 /-- A `let` binding: the value's code, the store of its words from local `base` on, the release
@@ -1234,6 +1258,38 @@ theorem spec_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr 
       omega
 
 /-- A pair: the code of each component, each followed by its coercion to the pair's mode. -/
+/-- The regions of the first of two values in a row, which the second's code keeps. -/
+theorem After.seq_regions {Γ : List Ty} {env : Env Γ} {slots : List Slot}
+    {L0 L1 live : Nat → Bool} {base : Nat} {heap heap1 heap2 : Heap}
+    {store store1 store2 : Store Unit} {s s1 s2 : Locals} {t u : Ty} {m1 m2 : Mode}
+    {v1 : t.denote} {v2 : u.denote} {ws1 ws2 vs : List Value}
+    (a1 : After env slots L0 L1 base heap store s t m1 v1 heap1 store1 s1 ws1)
+    (a2 : After env slots L1 live base heap1 store1 { s1 with values := vs } u m2 v2 heap2
+      store2 s2 ws2) :
+    t.regions m1 store2 ws1 v1 = t.regions m1 store1 ws1 v1 := by
+  have hKeep1 : ∀ c ∈ t.regions m1 store1 ws1 v1,
+      Holds.KeepDying env slots L1 live store1 { s1 with values := vs } c := by
+    intro c hc w x hx _ hm wx hwx hlx b hb
+    have hb' : b ∈ w.regions (slots.getD x.index default).mode store1 wx (env.get x) := by
+      rw [hm]; exact hb
+    exact a1.apart w x hx (Or.inr hm) wx hwx hlx c hc b hb'
+  exact (a1.rep.step a2.step hKeep1).2.1
+
+/-- The bound of a pair from those of its components and their coercions: a paid pair's
+potential is the sum of its components', each paid or 0. -/
+theorem pair_top {T0 T1' T1 T2' T2 D1 D2 A1 C1 A2 C2 P1 P2 P1' P2' : Nat} {p1 p2 pp : Bool}
+    (hF : T1' + (if p1 = true then P1' else 0) ≤ T0 + D1 + A1) (hC1 : T1 ≤ T1' + C1)
+    (hS : T2' + (if p2 = true then P2' else 0) ≤ T1 + D2 + A2) (hC2 : T2 ≤ T2' + C2)
+    (h1 : pp = true → (p1 = true ∧ P1 = P1') ∨ P1 = 0)
+    (h2 : pp = true → (p2 = true ∧ P2 = P2') ∨ P2 = 0) :
+    T2 + (if pp = true then P1 + P2 else 0) ≤ T0 + (D1 + D2) + (A1 + C1 + A2 + C2) := by
+  cases pp with
+  | false => simp only [Bool.false_eq_true, ↓reduceIte] at *; split at hF <;> split at hS <;> omega
+  | true =>
+    simp only [↓reduceIte]
+    rcases h1 rfl with ⟨hp1, rfl⟩ | h1 <;> rcases h2 rfl with ⟨hp2, rfl⟩ | h2 <;>
+      simp only [hp1, hp2, ↓reduceIte] at hF hS <;> split at hF <;> split at hS <;> omega
+
 theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr S Γ' sTy}
     {second : Expr S Γ' tTy}
     (firstSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv first env
@@ -1296,10 +1352,10 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
     (hSafe.mono hIn) hCap hBase (by omega) hPlace.1 _ _
     (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_left _ _ _ h)
       fun _ hw => hw.mono (by rw [hB, hSplitP]; omega))
-    fun heap1 store1 s1 ws1 a1 hTopF => ?_
-  refine After.coerce hm a1 (fun h => by simp [Mode.join, h]) le_rfl
-    (by rw [a1.frame.params]; exact hBase) (a1.frame.positions.trans hh) (by omega)
-    (by rw [a1.step.cap m]; exact hCap) (fun hs ht _ => hTrap.alloc (hOwnedA ht) fun hd hw => by
+    fun heap0 store0 s0 ws0 a0 hTopF => ?_
+  refine After.coerce hm a0 (fun h => by simp [Mode.join, h]) le_rfl
+    (by rw [a0.frame.params]; exact hBase) (a0.frame.positions.trans hh) (by omega)
+    (by rw [a0.step.cap m]; exact hCap) (fun hs ht _ => hTrap.alloc (hOwnedA ht) fun hd hw => by
       have hcc : coerceCost sTy (first.mode (slots.map Slot.mode))
           ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
           (first.denote funs env) =
@@ -1308,8 +1364,8 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
       exact hw.shift (c1 := dyingPot store s env slots paid
           (fun i => live i || second.uses i || first.uses i) (fun i => live i || second.uses i) +
         first.allocs funs flags bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i) env)
-        (by omega) (by rw [hB, hSplitP]; omega) (a1.step.cap m))
-    fun heap1 store1 s1 ws1 a1 hTopC1 _ => ?_
+        (by omega) (by rw [hB, hSplitP]; omega) (a0.step.cap m))
+    fun heap1 store1 s1 ws1 a1 hTopC1 hSame1 => ?_
   have hDs : dyingPot store1 { s1 with values := ws1.reverse ++ s.values } env slots paid
       (fun i => live i || second.uses i) live =
         dyingPot store s env slots paid (fun i => live i || second.uses i) live := by
@@ -1333,18 +1389,18 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
               (first.denote funs env))
           (by have := hTopF (hdF (fits_of_not hd)); have := hTopC1; omega)
           (by rw [hB, hSplitP]; omega) (a1.step.cap m))
-    fun heap2 store2 s2 ws2 a2 hTopS => ?_
-  refine After.coerce hm a2 (fun h => by
+    fun heap3 store3 s3 ws3 a3 hTopS => ?_
+  refine After.coerce hm a3 (fun h => by
       simp only [Mode.join, h]; cases first.mode (slots.map Slot.mode) <;> rfl) le_rfl
-    (by rw [a2.frame.params, a1.frame.params]; exact hBase)
-    (a2.frame.positions.trans (a1.frame.positions.trans hh)) (by omega)
-    (by rw [a2.step.cap m, a1.step.cap m]; exact hCap)
+    (by rw [a3.frame.params, a1.frame.params]; exact hBase)
+    (a3.frame.positions.trans (a1.frame.positions.trans hh)) (by omega)
+    (by rw [a3.step.cap m, a1.step.cap m]; exact hCap)
     (fun hs ht _ => hTrap.alloc (hOwnedA ht) fun hd hw => by
       have hcc : coerceCost tTy (second.mode (slots.map Slot.mode))
           ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
           (second.denote funs env) =
           tTy.copyCost (second.denote funs env) := by rw [coerceCost, if_pos ⟨hs, ht⟩]
-      exact hw.shift (heap1 := heap2) (store1 := store2)
+      exact hw.shift (heap1 := heap3) (store1 := store3)
         (c1 := dyingPot store s env slots paid (fun i => live i || second.uses i || first.uses i)
           (fun i => live i || second.uses i) +
           first.allocs funs flags bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i)
@@ -1356,8 +1412,8 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
         (by have := hTopF (hdF (fits_of_not hd)); have := hTopC1
             have := hTopS (hdS (fits_of_not hd)); rw [hDs] at this; omega)
         (by rw [hB, hSplitP]; omega)
-        (by rw [a2.step.cap m, a1.step.cap m]))
-    fun heap2 store2 s2 ws2 a2 hTopC2 _ => ?_
+        (by rw [a3.step.cap m, a1.step.cap m]))
+    fun heap2 store2 s2 ws2 a2 hTopC2 hSame2 => ?_
   obtain ⟨hStep, hFrame, hRep1, hApart1, hDisjoint⟩ :=
     After.seq hVarsL a1 a2 (fun i h => by simp [h]) fun i h => by simp [h]
   have hl1 := hRep1.length
@@ -1373,10 +1429,26 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
       rcases List.mem_append.mp hb with hb | hb
       · exact hApart1 w y hy hmo wy hwy hly b hb c hc
       · exact a2.apart w y hy hmo wy hwy hly b hb c hc⟩
-      (fun hd => top_unpaid rfl (by
-        have := hTopF (hdF hd); have := hTopC1; have h3 := hTopS (hdS hd); have := hTopC2
-        rw [hDs] at h3
-        rw [hB, hSplitP]; omega))
+      (fun hd => by
+        have hF := hTopF (hdF hd)
+        have hS := hTopS (hdS hd)
+        rw [hDs] at hS
+        have hRegions1 := After.seq_regions a1 a2
+        have hValue : (Expr.pair first second).denote funs env =
+            (first.denote funs env, second.denote funs env) := rfl
+        rw [hB, hSplitP, hValue]
+        simp only [Ty.pot, List.take_left' hl1, List.drop_left' hl1]
+        refine pair_top hF hTopC1 hS hTopC2 (fun hp => ?_) (fun hp => ?_)
+        · simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq, Bool.or_eq_true] at hp
+          rcases hp.1.2 with hp1 | hc1
+          · obtain ⟨rfl, rfl⟩ := hSame1 (Expr.mode_of_paid first hp1)
+            exact Or.inl ⟨hp1, Ty.pot_of_regions hp.1.1 hRegions1⟩
+          · exact Or.inr (Ty.pot_creditFree sTy hc1 _ _)
+        · simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq, Bool.or_eq_true] at hp
+          rcases hp.2 with hp2 | hc2
+          · obtain ⟨rfl, rfl⟩ := hSame2 (Expr.mode_of_paid second hp2)
+            exact Or.inl ⟨hp2, rfl⟩
+          · exact Or.inr (Ty.pot_creditFree tTy hc2 _ _))
   simpa [List.reverse_append, List.append_assoc] using hv
 
 /-- A binding of a pair's components: the pair's code, the stores of its components' words, the
@@ -1490,23 +1562,39 @@ theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
       have h1 : body.uses 1 = true := by simpa [shift] using h
       simp [h1]
     | k + 2 => split <;> split <;> simpa using h
-  -- The body's dying variables: the components, which are unpaid, and the others, whose potential
-  -- the pair's code and the releases keep.
+  -- The body's dying variables: the components, paid when the pair is, whose potential is the
+  -- pair's, and the others, whose potential the pair's code and the releases keep.
+  have hPotE : (Ty.pair sTy tTy).pot store1 (wf ++ wsec) (e.denote funs env) =
+      sTy.pot store1 wf (e.denote funs env).1 + tTy.pot store1 wsec (e.denote funs env).2 := by
+    simp only [Ty.pot, List.take_left' hlf, List.drop_left' hlf]
   have hDb : dyingPot store2 { s3 with values := s.values }
       (Env.cons (e.denote funs env).2 (Env.cons (e.denote funs env).1 env))
       (⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
-        ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots) (false :: false :: paid)
-      (fun i => shift 2 live i || body.uses i) (shift 2 live) =
+        ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots)
+      (e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+        e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) :: paid)
+      (fun i => shift 2 live i || body.uses i) (shift 2 live) ≤
+        (if e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+          then (Ty.pair sTy tTy).pot store1 (wf ++ wsec) (e.denote funs env) else 0) +
         dyingPot store s env slots paid (fun i => live i || body.uses (i + 2)) live := by
     rw [dyingPot_evolves hVarsB e2' (fun i h => by
       simp only [Bool.or_eq_true] at h ⊢; rcases h with h | h <;> simp [h]) _ _ fun _ h => h,
       dyingPot_cons, dyingPot_cons]
-    simp only [Bool.and_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte, Nat.zero_add]
     rw [dyingPot_congr (L0' := fun i => live i || body.uses (i + 2)) (L1' := live)
       (fun i => by simp [shift]) (fun i => by simp [shift])]
-    exact dyingPot_step (hVars.live_mono hV) a1'.step (a1'.frame.trans f3)
-      (fun i h => by simp [h]) _ _ fun _ h => h
-  refine bodySpec _ _ (false :: false :: paid) (shift 2 live) h (base + sTy.width + tTy.width)
+    rw [dyingPot_step (hVars.live_mono hV) a1'.step (a1'.frame.trans f3)
+      (fun i h => by simp [h]) _ _ fun _ h => h]
+    dsimp only
+    rw [hold2'.read_eq (by rw [hls, Ty.types_length]), hold1'.read_eq (by rw [hlf, Ty.types_length]),
+      hPotE]
+    by_cases hpp : e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+    · rw [if_pos hpp]
+      split <;> split <;> omega
+    · simp only [hpp, Bool.and_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte] <;> omega
+  refine bodySpec _ _
+    (e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+      e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) :: paid)
+    (shift 2 live) h (base + sTy.width + tTy.width)
     heap2 store2
     { s3 with values := s.values } (f3.positions.trans hh1) (hp3.trans hpv) e2'.holds e2'.step.at_
     (hSafeB.evolves hVarsB e2' (fun i hi => live_right _ _ _ hi))
@@ -1519,10 +1607,14 @@ theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
       simp only [List.any_cons, Expr.aborts] at h ⊢
       exact let_trap_body2 _ _ _ _ (fun hv => hmo (by simpa using hv)) h) fun hd hw => by
         have h1 := hTop1 (hd1 (fits_of_not hd)); have := congrArg UInt64.toNat hTop2
+        have hDb' := hDb
         refine hw.of_le ?_ (by rw [e2'.step.cap m, a1.step.cap m])
-        rw [hSplitL, hDb]
+        rw [hSplitL]
         simp only [Expr.allocs, List.map_cons]
-        omega)
+        by_cases hpp :
+            e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+        · rw [if_pos hpp] at h1 hDb'; omega
+        · rw [if_neg hpp] at h1 hDb'; omega)
     fun heap3 store3 s4 ws4 aB hTop3 => ?_
   have aB' := After.prepend hVarsB e2' aB (fun i h => live_right _ _ _ h) fun i h => by simp [h]
   have hNew : ∀ r, (∀ b ∈ (e.mode (slots.map Slot.mode)).fresh store1 (.pair sTy tTy) (wf ++ wsec)
@@ -1546,12 +1638,16 @@ theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
   exact hNext heap3 store3 s4 ws4
     ((After.bind2 (hVars.live_mono hV) a1' f3 aB' (by omega) hNew
       (fun i h => by simpa using h) (fun i h => by simp [h]) fun i h => by simp [h]).liveIn hV)
-    fun hd => top_unpaid rfl (by
+    fun hd => by
       have h1 := hTop1 (hd1 hd); have h3 := hTop3 (hd3 hd); have := congrArg UInt64.toNat hTop2
-      rw [hDb] at h3
+      have hDb' := hDb
       simp only [List.map_cons] at h3
       rw [hSplitL]
-      simp only [Expr.allocs]; omega)
+      simp only [Expr.allocs, Expr.paid, Expr.denote]
+      by_cases hpp :
+          e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+      · rw [if_pos hpp] at h1 hDb'; omega
+      · rw [if_neg hpp] at h1 hDb'; omega
 
 /-- A call: the arguments, the callee, whose theorem `Calls` gives, and the release of the owned
 variables that the arguments use and that die at the call, other than those that the call

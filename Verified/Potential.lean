@@ -63,6 +63,17 @@ theorem Ty.pot_le_credit {heap : Heap} {store : Store Unit} :
     simp only [Ty.pot, arrayPot, Ty.credit, Elem.words_size]
     omega
 
+/-- A value of a type without arrays has no potential. -/
+theorem Ty.pot_creditFree {store : Store Unit} (t : Ty) (h : t.creditFree = true) :
+    (ws : List Value) → (v : t.denote) → t.pot store ws v = 0 := by
+  induction t with
+  | pair a b iha ihb =>
+    intro ws v
+    simp only [Ty.creditFree, Bool.and_eq_true] at h
+    simp only [Ty.pot, iha h.1, ihb h.2]
+  | array => simp [Ty.creditFree] at h
+  | _ => intro ws v; simp [Ty.pot]
+
 /-- The potential of the arguments that `sel` picks, from their words `ws`. -/
 def Env.argPot (store : Store Unit) (sel : Nat → Bool) :
     {Γ : List Ty} → List Value → Env Γ → Nat
