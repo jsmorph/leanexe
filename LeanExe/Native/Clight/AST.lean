@@ -1,3 +1,15 @@
+/-
+Derived from CompCert 3.18, the file `common/AST.v`.  CompCert is Copyright Institut National de
+Recherche en Informatique et en Automatique (INRIA) and AbsInt Angewandte Informatik GmbH, and its
+source files carry INRIA's copyright.
+
+This file is distributed under the GNU Lesser General Public License, version 2.1 or (at your
+option) any later version, one of the two licenses CompCert offers for its source files.  The
+text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
+
+Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
+`LeanExe/Native/NOTICE` and the documentation comment below describe.
+-/
 import LeanExe.Native.Clight.Floats
 
 /-!

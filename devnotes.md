@@ -35640,7 +35640,7 @@ The design calls `lx_trap(code)` at a trap and lists "`lx_trap` never returns" a
 - [ ] An independent review of the copy against the CompCert sources, file by file.
 - [ ] Import `LeanExe.Native` from `LeanExe.lean` once it builds without `sorry`.
 - [x] The user's decision on the trap mechanism (below).
-- [ ] The user's decision on the license of the Lean copy.
+- [x] The user's decision on the license of the Lean copy (below).
 
 `tools/source-layout` reports five errors in this worktree, all present on `main`: the programs of `Library/Hashing/Crc`, `Sha3`, `SipHash`, and `XxHash64` and of `Library/Regex` are missing from `Library.Native`.  It reports none for the new files.
 
@@ -35657,3 +35657,5 @@ The user approved the recommended trap mechanism and dropped `lx_trap`.  A trap 
 A module outside the subset stays a warning in `verified_compile`, as implemented, and `tests/native/subset.sh` enforces M0's exit criterion.  CompCert 3.18 will be built from the verified archive in two configurations, `x86_64-linux` with `-clightgen` for compilation and the `clightgen` check, and `aarch64-linux` for `ccomp -interp` alone, with Rocq, OCaml, and Menhir from opam at versions that 3.18 supports (Rocq or Coq 8.15 to 9.2, OCaml 4.05 or later, Menhir 20200624 or later but not 20260122).   The license of the Lean copy remains with the user, and the NOTICE keeps both options.
 
 - [ ] Build CompCert 3.18 in both configurations on the build host, from the archive with the recorded digests.
+
+The user chose the GNU LGPL, version 2.1 or later, for the twelve files of `LeanExe/Native/Clight/` that transcribe CompCert, one of the two licenses CompCert offers for their sources.  `LeanExe/Native/Clight/LICENSE-LGPL-2.1` holds the text of version 2.1, copied unchanged from lines 173 to 674 of CompCert 3.18's `LICENSE` (SHA-256 `dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551`).  Each of the twelve files now begins with a notice that names its CompCert sources, CompCert's copyright holders (INRIA, whose copyright the source files carry, and AbsInt, which `LICENSE` names for CompCert as a whole), the license, and the change from CompCert on 2026-10-26, as section 2(a) of the LGPL 2.1 requires of a modified file.  The NOTICE records the choice and states that the rest of LeanExe, including `Run.lean`, `RunSound.lean`, and the translator, which import these files, is not covered by the LGPL.  The transcribed sources also include `lib/IEEE754_extra.v` (`ZofB_range`, `BofZ`) and `lib/Maps.v` (`ZMap`), which the NOTICE now lists.
