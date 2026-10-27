@@ -36745,8 +36745,15 @@ Step 9 adds `numDigits_range`, which places the digit count of every word betwee
 The first build of `print64_bound_le` failed with a kernel deep-recursion error.  I bisected the proof in scratch files to find the step that made the kernel recurse.  The error came from the branch of normal words, and with every hypothesis of that branch replaced by `sorry` the scratch run still exceeded its 12 GiB memory limit and did not finish.  The cause was the application of the layout's lemma, then stated over `(neg, t, kb)`, to the generated bound's argument `(neg, shortest Q E 1074 low)`.  The elaborator matches the pair by structure eta, and the kernel, to check the same match, reduces `shortest` on a symbolic word, which unrolls its loops.  `sciLayoutW_bound_le` now takes the pair whole, and the module builds in 2.5 s.  Lemmas over generated bounds will take a tuple argument whole wherever a caller passes the result of a call.
 
 - [x] Prove the cost lemmas of steps 1 to 8, through `shortest`.
+### The parser's charge as proved
+
+`Demos/RunningSumFp/ParseCharges.lean` proves step 10.  `decParse` keeps at most 768 digits, so `digitsVal` builds at most 86 limbs with as many products, at most 716,264 bytes.  `decRound` reaches its products and quotient only past its range tests, which leave biased exponents from `2 ^ 62 - 1,092` to `2 ^ 62 + 309`, at most 121 products by `10 ^ 9`.  With `bitLen_le`, which bounds the bits of `n` limbs by `32 n + 32`, the quotient's shifts stay within a few limbs of the other operand, and `decRound` costs at most 3,688,256 bytes.  The hexadecimal and special forms and the fast path allocate nothing, and `stripCR` copies the line, so `parse` costs at most `8 L + 4,404,576` bytes for a line of `L` bytes.
+
+Two steps of the first proofs were expensive in the same way as the layout's.  A `first` combinator that tried `Nat.zero_le` against the goal of the rounding branch made the elaborator reduce `decRound`'s bound toward 0, and the build stopped at the heartbeat limit.  The proof now splits the branches in order and applies each lemma to its own goal, after generalizing the sign's offset, whose condition `split` would otherwise take first.  `decRound_bound_le` takes the digit count, exponent, and flag whole, as the caller passes them.
+
 - [x] Prove the cost lemmas of step 9, the layout, `print64`, and `render`.
-- [ ] Prove the cost lemmas of steps 10 and 11: the parser and the effect bodies.
+- [x] Prove the cost lemmas of step 10, the parser.
+- [ ] Prove the cost lemmas of step 11, the effect bodies.
 - [ ] State the binary64 theorem over limits on line length, with its inequality against the memory cap, and correct the comment of `RunCharges`, which names that theorem before it exists.
 
 ## 2026-10-27: The merge with main and the slew planner
