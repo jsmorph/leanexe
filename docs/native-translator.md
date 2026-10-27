@@ -80,11 +80,12 @@ The proofs target CompCert's Clight in the form `clightgen` produces: after `Sim
 **What the generated C uses** (prefix `lx_` throughout):
 
 - Types: `unsigned int`, `int` (comparison results), `unsigned long long`, `float`, `double`, `unsigned char`, and pointers to these.
-- Globals: `lx_mem`, an array of `unsigned long long` holding the linear memory, zero-initialized; `lx_pages`; `lx_g0` to `lx_g3`, the Wasm globals; `lx_r0_i` and `lx_r0_l`, `lx_r1_i` and `lx_r1_l`, …, the result globals of functions with several results, one `unsigned int` and one `unsigned long long` per position; `lx_pun`, an 8-byte scratch cell for reinterpreting bits; `lx_status`, the code of a trap, 0 while none has occurred.
+- Globals: `lx_mem`, an array of `unsigned long long` holding the linear memory, zero-initialized; `lx_pages`; `lx_g0` to `lx_g3`, the Wasm globals; `lx_r0_i` and `lx_r0_l`, `lx_r1_i` and `lx_r1_l`, …, the result globals of functions with several results, one `unsigned int` and one `unsigned long long` per position; `lx_pun`, an array of one `unsigned long long`, the scratch cell for reinterpreting bits; `lx_status`, the code of a trap, 0 while none has occurred.
 - Locals: one C local per Wasm local and per operand-stack slot, plus `brk` for multi-level branches. None has its address taken, so `SimplLocals` turns them all into temporaries.
-- Expressions: integer constants, temporaries, global variables, dereferences of `lx_mem` and `lx_pun`, address-of for punning, the binary operators at the types above, and casts between the scalar types. Float constants are printed as literals; `clightgen` exports them as bit patterns, so the per-build check (section 6) compares them exactly.
-- Statements: `Sset`, `Sassign`, `Scall`, `Sbuiltin` (only `__builtin_fsqrt`), `Ssequence`, `Sifthenelse`, `Sloop`, `Sbreak`, `Scontinue`, `Sreturn`, `Sskip`.
-- No external function.  A trap stores its code in `lx_status` and returns, as section 4 describes.
+- Expressions: integer constants, temporaries, global variables, dereferences of `lx_mem` and `lx_pun`, each cast to a pointer to the type it is read or written at, with no address-of, the binary operators at the types above, and casts between the scalar types. Float constants are printed as literals; `clightgen` exports them as bit patterns, so the per-build check (section 6) compares them exactly.
+- Statements: `Sset`, `Sassign`, `Scall`, `Ssequence`, `Sifthenelse`, `Sloop`, `Sbreak`, `Scontinue`, `Sreturn`, `Sskip`.
+- Built-ins: two.  `__builtin_fsqrt` stays a call in `clightgen`'s output, an `Scall` of the external function `EF_builtin "__builtin_fsqrt"`, which the program declares, and its semantics is `Float.sqrt` (`Builtins0.v`).  `__builtin_fabs` becomes the unary operator `Oabsfloat` in CompCert's front end (`cfrontend/C2C.ml`, line 974), and its semantics is `sem_absfloat` (`cfrontend/Cop.v`, line 490), which is `Float.abs` (`lib/Floats.v`, line 279), `Babs` with `abs_nan` (line 215), which keeps a NaN's payload and clears its sign.  Both definitions in the Lean copy are part of the trusted base.
+- No other external function.  A trap stores its code in `lx_status` and returns, as section 4 describes.
 
 **Transcription plan.** Each Lean definition names the CompCert 3.18 definition it copies. The copy keeps CompCert's names so a reviewer can read the two side by side, and it keeps only the cases the translator can reach:
 
@@ -98,7 +99,7 @@ The proofs target CompCert's Clight in the form `clightgen` produces: after `Sim
 | Expressions | `cfrontend/Clight.v` | `eval_expr`, `eval_lvalue`, `deref_loc`, `assign_loc`, `function_entry2` |
 | Statements and calls | `cfrontend/ClightBigstep.v` | `exec_stmt`, `eval_funcall`, `outcome_result_value` |
 | Initial memory | `common/Globalenvs.v` | `init_mem` for `Init_int64`, `Init_space`, `Init_int32` |
-| Externals | `common/Events.v`, `common/Builtins0.v` | `EF_external` has the parameter `external_functions_sem` as its semantics, and the translator emits no external call; `__builtin_fsqrt` is `Float.sqrt` |
+| Externals | `common/Events.v`, `common/Builtins0.v` | `EF_external` has the parameter `external_functions_sem` as its semantics, and the translator calls no such function; the built-ins `__builtin_fsqrt` and `__builtin_sqrt` are `Float.sqrt`, and `__builtin_fabs` and `__builtin_fabsf` are `Float.abs` and `Float32.abs` |
 
 Three rules keep the copy honest:
 
@@ -156,9 +157,11 @@ else s4_l = (unsigned long long) ((unsigned char *) lx_mem)[s4_l]
 | `divUI64`, `remUI64` | `if (b == 0) { lx_status = LX_DIV0; return 0; }`, then `a / b` | Talos traps; C leaves it undefined |
 | comparisons, `eqz` | `(unsigned int)(a < b)` | C comparisons yield `int` |
 | `wrapI64`, `extendUI32` | casts between `unsigned int` and `unsigned long long` | |
-| f64 and f32 `add`, `sub`, `mul`, `div`, `sqrt` | the C operator or `__builtin_fsqrt`, then `if (t != t) t = canonical NaN` | CompCert's NaN choice differs by architecture; Talos always gives the positive canonical NaN |
+| f64 and f32 `add`, `sub`, `mul`, `div`, `sqrt` | the C operator or `__builtin_fsqrt`, then `if (t != t) t = canonical NaN`, the NaN stored as an integer in `lx_pun` and loaded as a double | CompCert's NaN choice differs by architecture; Talos always gives the positive canonical NaN |
 | `eq`, `lt`, `le` on floats | C comparisons | IEEE 754 comparisons on both sides |
-| `abs`, reinterpretations, NaN constants | through `lx_pun`: store as one type, load as the other | exact on the bits; `encode_val` and `decode_val` define it for numeric chunks |
+| `abs` | `__builtin_fabs`, the operator `Oabsfloat` | `Float.abs` keeps the payload and clears the sign, as Talos's `abs` does |
+| reinterpretations, NaN and infinite constants | through `lx_pun`: store as one type, load as the other | exact on the bits; `encode_val` and `decode_val` define it for numeric chunks |
+| finite constants | an exact hexadecimal literal, negated for a negative constant | `clightgen` reads a negative literal as `Oneg` of the positive one, which is exact |
 | `f64ConvertI64U`, `f32ConvertI64U`, `f32ConvertI32S` | C casts | CompCert's `of_longu` and `of_int` round correctly |
 | `trunc_sat` (three forms) | NaN → 0, below the range → the minimum, at or above 2^64 or 2^31 → the maximum, else the C cast | the bare cast is undefined out of range |
 | `f32Sqrt` | `(float) __builtin_fsqrt((double) a)` | correct because binary64 has at least 2 × 24 + 2 bits; needs a proved lemma |
@@ -196,6 +199,8 @@ One simulation theorem, `translate_correct`, carries every Talos `run` that ends
 5. **Module theorem.** `translate_correct`: if `translate LX_CAP m = some p` and `run fuel m id st args` returns `Success vs st'` or `Trap st' msg`, then from any C state matching `st` and the arguments, `eval_funcall` of the C function terminates with results matching `vs` and a state matching `st'`, or terminates with the code for `msg` in `lx_status` and globals and memory matching `st'`.
 6. **Initialization.** `lx_init_correct`: running `lx_init` from CompCert's initial memory gives a state matching Talos's `Module.initialStore`, with the cap set to `LX_CAP`.  The allocator invariant and the tables of `compileWith_initialStore` do not depend on the cap, so they hold of that store for the first call.
 7. **Composition.** `ImplementsA.native` takes `p.f.implements` and `translate_correct`. It picks a fuel at least the `N` from `Runs` and concludes, for a C memory related to the store, that the call terminates in a memory related to a final store that meets the postcondition of `p.f.implements`; the bytes are equal, so every heap reading of that postcondition carries over unchanged.
+
+**The statement of `p.f.native`.**  `NativeA`, which `p.f.native` states for the function's translation, assumes `ImplementsA`'s premises on the store, the heap, and the arguments, and the following of the C side.  The environment `E` finds `lx_status`, the C globals `lx_g<i>`, `lx_pages`, `lx_mem`, the scratch cell `lx_pun`, the external function `__builtin_fsqrt`, the result globals of `unsigned int`, `unsigned long long`, and `double` for each position below `E.nres`, at least the translation's number of positions, and every function of the translation, in distinct blocks (`EnvOk`).  The memory relates the C globals and `lx_mem` to the store, keeps `lx_pages`, the result globals, and `lx_pun` writable with their contents otherwise unconstrained (`StoreRel`), and holds 0 in `lx_status` (`StatusRel`).  The cell, the external function, and the `double` result globals entered with M5; `start` proves every premise on the environment for the program's own global environment and the memory that `lx_init` leaves.
 
 **What `verified_compile` adds.** For a module in the subset, the command evaluates `translate nativeCap p.module` natively, with `nativeCap` 4,096 pages, and the kernel checks one theorem, `p.translation_funcs`, that the translation exists and that its functions are those of the native result.  `p.translation` is that translation, made irreducible after its equation `p.translation_eq`, so that later proofs use the equation rather than unfold the translation.  For every definition `f` whose function the translation contains, `p.f.native` follows from `p.f.implements`, the equation, and the function's membership, as `NativeImpl` states, or `NativeTablesImpl` for a wrapper.  The C text comes from the executable `native-verified`, which runs the same translator, and the corpus test compares `clightgen`'s reading of that text with the translation.  Until M7 the run of `native-verified` is trusted to write the printer's output; M7 adds a file theorem, in the form of the Wasm file theorems, that the `.c` file it writes equals the printer's output for `p.translation`, which removes that run from the trusted base.
 
@@ -244,7 +249,7 @@ M0 and M1 can run in parallel. From M2 on, each milestone adds instruction forms
 | M3 · Memory and runtime | `load64`, `store64`, `memory.size` and `grow`, `lx_init`, the `alloc` and `release` runtime | array, list, hashing and sorting examples native with theorems |
 | M4 · Generated theorems | `verified_compile` emits `p.f.native` for every function; host compiled with `ccomp` | the integer cases of the `tests/verified` corpus pass natively |
 | M5 · binary64 | Arithmetic with NaN canonicalization, comparisons, conversions, `sqrt`, `trunc_sat` | the Euler solvers native with theorems |
-| M6 · binary32 | `nearest` by integer code, `sqrt` through binary64, `trunc_sat`, conversions | binary32 GPT-2 native with theorems |
+| M6 · binary32 | `nearest` by integer code, `sqrt` through binary64, `trunc_sat`, conversions; `f64PromoteF32` and `f32DemoteF64` stay outside the subset, with the subset check's warning, since no corpus module uses them and Talos computes them with Lean's native floats | binary32 GPT-2 native with theorems |
 | M7 · Hardening | Benchmarks against Wasmtime, optional alignment proof, a file theorem for the written C text, every check in CI | a release with its trusted base written down |
 
 M2 carries the most design risk, because it proves the `brk` control-flow encoding; nothing after it changes that encoding. M5 and M6 carry the most schedule risk, because of the float lemmas.
