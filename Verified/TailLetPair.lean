@@ -147,15 +147,32 @@ theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy s
     | 0 => simp [hi]
     | 1 => simp [hi]
     | k + 2 => split <;> split <;> simpa using hi
+  -- The body's dying variables: the components, paid when the pair is, whose potential is the
+  -- pair's, and the others, whose potential the pair's code and the releases keep.
+  have hPotE : (Ty.pair firstTy secondTy).pot store1 (wFirst ++ wSecond) (value.denote funs env) =
+      firstTy.pot store1 wFirst (value.denote funs env).1 +
+        secondTy.pot store1 wSecond (value.denote funs env).2 := by
+    simp only [Ty.pot, List.take_left' lenFirst, List.drop_left' lenFirst]
   have hDb : dyingPot store2 { s3 with values := s.values }
       (Env.cons (value.denote funs env).2 (Env.cons (value.denote funs env).1 env))
       (⟨base + firstTy.width, value.mode (slots.map Slot.mode)⟩ ::
-        ⟨base, value.mode (slots.map Slot.mode)⟩ :: slots) (false :: false :: paid)
-      body.uses (fun _ => false) = dyingPot store s env slots paid mid (fun _ => false) := by
+        ⟨base, value.mode (slots.map Slot.mode)⟩ :: slots)
+      (value.paid flags (slots.map Slot.mode) paid mid ::
+        value.paid flags (slots.map Slot.mode) paid mid :: paid)
+      body.uses (fun _ => false) ≤
+        (if value.paid flags (slots.map Slot.mode) paid mid = true then
+          (Ty.pair firstTy secondTy).pot store1 (wFirst ++ wSecond) (value.denote funs env)
+        else 0) + dyingPot store s env slots paid mid (fun _ => false) := by
     rw [dyingPot_evolves varsB release' (fun i hi => by simp [hi]) _ _ (fun _ hi => hi),
       dyingPot_cons, dyingPot_cons]
-    simp only [Bool.and_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte, Nat.zero_add]
-    exact dyingPot_step vars0 a1'.step (a1'.frame.trans f3) hMid _ _ (fun _ hi => hi)
+    rw [dyingPot_step vars0 a1'.step (a1'.frame.trans f3) hMid _ _ (fun _ hi => hi)]
+    dsimp only
+    rw [holdSecond'.read_eq (by rw [lenSecond, Ty.types_length]),
+      holdFirst'.read_eq (by rw [lenFirst, Ty.types_length]), hPotE]
+    by_cases hpp : value.paid flags (slots.map Slot.mode) paid mid = true
+    · rw [ite_eq_left hpp]
+      split <;> split <;> omega
+    · simp only [hpp, Bool.and_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte] <;> omega
   have hFitsValue : outer.fits funs fits env = true → value.fits funs fits env = true := by
     intro hf
     simp only [outer, TailBody.fits, Bool.and_eq_true] at hf
@@ -166,7 +183,10 @@ theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy s
     intro hf
     simp only [outer, TailBody.fits, Bool.and_eq_true] at hf
     exact hf.2
-  refine bodySpec _ _ (false :: false :: paid) nextPaid resultPaid h stateBase resultBase
+  refine bodySpec _ _
+    (value.paid flags (slots.map Slot.mode) paid mid ::
+      value.paid flags (slots.map Slot.mode) paid mid :: paid) nextPaid resultPaid h stateBase
+    resultBase
     (base + firstTy.width + secondTy.width) exitLabel nextLabel heap2 store2
     { s3 with values := s.values } (f3.positions.trans (a1.frame.positions.trans hh))
     (f3.params.trans (a1.frame.params.trans hpv)) release'.holds release'.step.at_
@@ -196,11 +216,14 @@ theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy s
         have hf : outer.fits funs fits env = true := by simpa using hd
         have h1 := top1 (hFitsValue hf)
         have hr := congrArg UInt64.toNat top2
+        have hDb' := hDb
         refine hw.of_le ?_ (by rw [release'.step.cap m, a1.step.cap m])
-        rw [hSplit, hDb]
+        rw [hSplit]
         simp only [TailBody.allocs, List.map_cons]
-        dsimp only [input, mid] at h1 ⊢
-        omega)
+        dsimp only [input, mid] at h1 hDb' ⊢
+        by_cases hpp : value.paid flags (slots.map Slot.mode) paid (fun i => body.uses (i + 2)) = true
+        · rw [ite_eq_left hpp] at h1 hDb'; omega
+        · rw [ite_eq_right hpp] at h1 hDb'; omega)
     fun heap3 store3 s4 after4 top4 => ?_
   let afterB := TailAfter.prepend varsB release' after4 (fun i hi => by simp [hi]) (by omega)
   have hNew : ∀ r,
@@ -228,13 +251,15 @@ theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy s
   have h1 := top1 (hFitsValue hf)
   have h4 := top4 (hFitsBody hf)
   have hr := congrArg UInt64.toNat top2
-  rw [hDb] at h4
+  have hDb' := hDb
   change heap3.top.toNat + tailPot targetModes nextPaid resultPaid store3 after4.words
     (body.denote funs (.cons (value.denote funs env).2 (.cons (value.denote funs env).1 env))) ≤ _
   rw [hSplit]
   simp only [TailBody.allocs, List.map_cons] at h4 ⊢
-  dsimp only [input, mid] at h1 h4 ⊢
-  omega
+  dsimp only [input, mid] at h1 h4 hDb' ⊢
+  by_cases hpp : value.paid flags (slots.map Slot.mode) paid (fun i => body.uses (i + 2)) = true
+  · rw [ite_eq_left hpp] at h1 hDb'; omega
+  · rw [ite_eq_right hpp] at h1 hDb'; omega
 
 #print axioms TailAfter.bind2
 #print axioms tail_letPair_spec

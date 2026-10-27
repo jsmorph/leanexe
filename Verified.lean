@@ -32,6 +32,7 @@ import Verified.Compile
 import Verified.State
 import Verified.Correct
 import Verified.BoundFacts
+import Verified.LoopCostLast
 import Verified.Reflect.Lemmas
 import Verified.Reflect.BoundLemmas
 import Verified.Reflect.FitsLemmas
@@ -105,6 +106,7 @@ import Verified.Examples.Tables
 import Demos.Verified
 import Verified.Wasi
 import Verified.Examples.Literals
+import Verified.ProgramLiterals
 import Verified.Examples.WasiDepth
 import Verified.Examples.WasiRetainTotal
 import Verified.Examples.WasiStdio

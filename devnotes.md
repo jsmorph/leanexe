@@ -36163,7 +36163,6 @@ The verified driver failed with "unknown result kind" at the `taggedtypes` case 
 With the split driver, the GPU step passed on the reference drivers.  The build host emitted the default and `--verified` kernels and cases, an AArch64 host emitted the `--verified-gpt32` ones, and the local machine ran them on SwiftShader (LLVM 16.0.0) and llvmpipe (LLVM 19.1.7): 474 of 474, 233 of 233, and 694 of 694 cases on each driver.  `tests/gpt32/native.sh --verified` passed with Node.js 20.19.2 installed there, with 15 of 15 steps equal bit for bit on SwiftShader and on llvmpipe.  Its random models evidently reach no subnormal operand, since the Subzero backend passed them.
 
 The byte comparison with main passed.  All 98 verified modules emitted from main at `d1f851729` on AArch64 have the same SHA-256 as those emitted from the merged tree at `ed77fa248` (x86_64), with identical registries.  All 35 original-compiler modules from `tests/modules/run.sh --emit-from`, main's and the merged tree's, also match.  The merge therefore leaves the bytes of all 133 of main's modules unchanged, and emission gives the same bytes on both architectures.
-
 With the rebuilt host, `tests/verified/run.sh` passed in 3,491 seconds: 32,806 verified cases with no failure, the GPT cases (2,733), the GPT sessions (3,096), and the library cases (226).  The module and drone drivers passed again with the rebuilt host.  The full check of the merged tree is complete.  The WASI and running-sum drivers, the default and `Verified Library` builds, module emission, the LTG check, the module, chunk, drone, regex, and hashing tests, the verified driver, the GPU tests on the reference drivers, and the byte comparison of all 133 of main's modules passed.  `origin/main` is still `d1f851729`, an ancestor of the branch.
 
 ## 2026-10-26: Sums with heap fields: design
@@ -36204,6 +36203,498 @@ The second gate found the heavy proofs and the library built, rebuilt the exampl
 - [x] Build, run the cases.
 - [x] Manual, README, and restrictions.
 - [x] Full build, `tests/verified/run.sh`, `tests/wasi/run.sh`, byte comparison, and commit.
+
+## 2026-10-26: The slew planner: program, theorems, and tests
+
+The user asked to bring the Lean program of a slew-planner demo into the repository, to compile it with the verified compiler and test it in WebAssembly, and then to prove its theorems, starting with the lemmas of the edge check.  The work runs on the branch `slew-planner` from `d1f851729`, and phase A ran no Lean and connected to no build host.  The delivery also held a browser page, a JavaScript reference with a generated corpus, and a design document.  The branch first imported them and then removed them at the user's direction, since they will live outside the repository and the user does not take the JavaScript corpus as authoritative.  The repository keeps `Demos/Slew/Program.lean`, `Flat.lean`, `Verified.lean`, and a README that describes the Lean program alone.
+
+The review against [the verified compiler manual](docs/verified-manual.md#the-dialect) found one required change.  `Verified/Compile.lean` compiles `&&` as both operands followed by `i64.and`, so `relax` would have run `edgeOk` on every candidate edge instead of only on the improving ones, and a nested `if` now keeps the check lazy with the same Lean meaning.  The other points wait for the reflector: `round` and `relax` borrow their record parameter and copy its arrays each round, which inflates the generated bound, the index forms `p.1.toNat` and `(1 : UInt64).toNat` may need a `let`, and `plan` should borrow its input.  `tools/source-layout` reports five programs that `main` lacks in `Library.Native`, and the user decided that they arrive with the WASI review fixes.
+Regenerating the JavaScript corpus under Node.js 24.13.0 changed the last bits of 798 of its 5,361 lines.  ECMAScript leaves `**` and the `Math` functions to the implementation ([Number::exponentiate](https://tc39.es/ecma262/#sec-numeric-types-number-exponentiate), [the Math functions](https://tc39.es/ecma262/#sec-function-properties-of-the-math-object), cited without fetching them), and the engine that wrote the corpus computed `10 ** e` one unit in the last place off at four exponents.  The Lean generator below therefore uses only correctly rounded operations and Lean definitions, so that its inputs are the same on every host.
+
+### Theorems
+
+The theorems concern `Demos.Slew.plan` and the module of `Demos/Slew/Verified.lean`, in this order of work.  An attitude `q` acts by its rotation matrix `R(q̄)`, where `q̄` is the normalization of `q`, and `R(n, φ)` is the rotation by `φ` about the unit axis `n`.  Two attitudes lie within `ρ` of each other when they move no unit vector apart by more than `ρ`, and the tube radius is `ρ = 10⁻⁹`.
+
+1. **Compilation (generated).**  `compiled.plan.implements`: the module's `plan` export, called with a representation of an input array, returns a representation of `plan` of the array, or traps at `unreachable` when an allocation finds no memory.
+2. **Execution (generated, then bounded).**  `compiled.plan.trapFree` with a stated bound: for inputs within the validated sizes, the call returns without a trap whenever `top` can rise by a constant number of bytes within the memory cap, which `compiled.plan.bound_eq` yields as `compute_bound` does for the drone planner.
+3. **NaN-freedom.**  For every input that passes `validInput`, no floating-point operation in the evaluation of `plan` has a NaN operand or result.  The program takes square roots only of sums of squares and of `θ/a` with `θ ≥ 0`, divides only by quantities bounded away from zero, and writes each acceptance test so that a false comparison rejects.  Transferring the statement to the bytes needs either a statement in Talos's terms or an argument from the compilation theorem that the code performs the same operations, which stays open until the semantics are in hand.
+4. **Safety.**  Let the output have status 1, segments `(q_k, n_k, θ_k)` for `k < K`, and goal `q_K`.  Then `q_0` and `q_K` are the input start and goal bit for bit, and `R(n̄_k, θ_k) R(q̄_k)` lies within `ρ` of `R(q̄_{k+1})`.  For each `k`, each `φ` in `[0, θ_k]`, each attitude `R′` within `ρ` of `R(n̄_k, φ) R(q̄_k)`, and each input cone `(b, u, c, kind)`, a keep-out cone gives `ū · R′ b̄ ≤ c` and a keep-in cone `ū · R′ b̄ ≥ c`.  The theorem assumes nothing about the waypoints or cones beyond validation.
+5. **Premises.**  For a keep-out cone with body vector `b` and a nominal half-angle `α(t)` that may change during the slew, suppose that the true axis `u(t)` stays within angle `d` of the planning axis `u₀`, that `α(t) ≤ α(t₀) + g`, and that the flown attitude `A(t)` stays within angle `ε` of a commanded attitude on the plan's path.  If the plan's half-angle was at least `α(t₀) + g + d + ε`, then `∠(A(t) b, u(t)) ≥ α(t)` throughout.  The proof is the triangle inequality on the sphere and the fact that a rotation by `ε` moves no unit vector by more than `ε`, and keep-in cones are symmetric.
+6. **Optimality.**  Let `G` be the graph that the program's own predicates define: a waypoint is a node when it passes `attitudeOk`, and an edge exists when its computed angle is at most `maxEdge` or it joins the start to the goal, and `edgeOk` accepts it, weighted by its computed integer cost.  Status 1 holds exactly when `G` has a path from the start to the goal, and then the output is such a path of least total cost, and status 0 holds exactly when no path exists.  The proof is the correctness of array Dijkstra with integer weights and the observation that skipping the check of a candidate that cannot strictly improve its target leaves the result unchanged, and it comes last, because a change of the motion model would change `G`.
+7. **File.**  The written `build/verified/slew.wasm` holds `encode compiled.module`, as the numerical file theorems state for their modules.
+
+The safety proof divides into the arc lemmas, the error lemmas, the soundness of the edge check and of its small-angle branch, the tube lemma, the relation of the output's axis and angle to the relative quaternion, and the path structure, which is a loop invariant of the search.  Phase 1 proves the first four, and the safety phase proves the rest.
+
+### Phase 1: the edge-check lemmas
+
+| Question | Decision | Reason |
+|---|---|---|
+| Subject | Prove soundness of the program's own `edgeOk` and `attitudeOk`, with the per-cone body moved into an `@[inline]` helper if the proofs need one | A second implementation would need an equivalence proof, and an inline helper should leave the bytes unchanged, which a byte comparison confirms. |
+| Statement | Soundness for an attitude `qa` and a relative quaternion `rel` with near-unit norm and `w ≥ 0`, with the axis `rel.v/|rel.v|` and the angle `2 arg (w + s i)` of `rel`'s real value: if `edgeOk` accepts, every attitude within `r` of `R(n, φ) R(q̄a)` for `φ` in `[0, θ]` satisfies every cone | The check computes from `rel`, the output's axis comes from the same `rel`, and the relation of `rel` to the target attitude belongs to the safety phase. |
+| Vectors | A structure of three reals with explicit `dot`, `cross`, and norm | The error lemmas follow the program field by field, `ring` and `nlinarith` do the algebra, and Cauchy–Schwarz in three dimensions is Lagrange's identity. |
+| Tube distance | The largest displacement of a unit vector, `‖R′b − Rb‖ ≤ r` for every unit `b` | The tube lemma is then one Cauchy–Schwarz step, and a rotation by `α` displaces a unit vector by at most `2 sin(α/2) ≤ α`, so the theorem implies the statement in angles. |
+| Arc lemma | Prove the endpoint case from the identity `sin(β−α) p(γ) = sin(β−γ) p(α) + sin(γ−α) p(β)` for `p = P cos + Q sin`, applied to `f′` with the mean value theorem, and the interior case from `|A cos φ + B sin φ| ≤ √(A² + B²)` | The identity shows that `f′` keeps its sign between two points of the same sign less than `π` apart, so `f′(0) ≤ 0` or `f′(θ) ≥ 0` excludes a rise followed by a fall on `[0, θ]`. |
+| Error budget | Bound the rounding errors against the program's formulas evaluated in real arithmetic on the unnormalized inputs, and add the normalization error, a few times `10⁻¹²`, only to the extremum's bound | The stationary-point tests need errors below `η = 10⁻¹²`, which the normalization of inputs at the tolerance can exceed, and the sign of `f′` for the unnormalized arc is the one the case split uses. |
+| Margin split | Prove soundness with `r = 1.05 · 10⁻⁹` and an error bound of `4.9 · 10⁻¹¹`, which together fit within `margin`, the double just below `1.1 · 10⁻⁹` | The safety theorem can then state `ρ = 10⁻⁹` and absorb the output's axis, angle, and connection discrepancies, each near `10⁻¹⁵`.  The split stays open until the error lemmas give their constants, and larger margins or interval arithmetic for a resistant expression are the fallbacks. |
+
+The rounding model is `FApprox` of [the error tracking for straight-line code](LeanExe/ProofKit/F64Approx.lean): `FApprox x v e` states that the float `x` is finite and within `e` of the real `v`, and its rules for addition, subtraction, multiplication, division, and square root take magnitude bounds that validation supplies.  The words' real values are `value` of Talos's `CodeLib.IEEE64`.  The specification uses explicit formulas on real triples, the rotation matrix of a normalized quaternion and Rodrigues' formula, rather than Mathlib's quaternions, which have little theory of rotations.
+
+### Tests
+
+The tests follow the other verified examples, and the build phase writes them.  `tests/TestSupport/Slew/Cases.lean` generates the inputs and prints one line per case, `slew|plan|array-u64|INPUT|OUTPUT|2` or `slew|atan2|f64|f64:Y f64:X|RESULT`, with native Lean's results.  `tests/TestSupport/Slew/CasesMain.lean` runs it for `tests/verified/run.sh --cases slew`, `Verified/Examples/Cases.lean` includes it in the full run, and `tests/verified/modules.txt` registers `Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew`, so the driver writes `build/verified/slew.wasm` and compares every case in Wasmtime, bit for bit.  The live-block field 2 counts the host's input and the result, which holds if `plan` borrows its input.
+
+The generator draws from `Library.Random.SplitMix64` with fixed seeds and uses only correctly rounded operations: sums, products, quotients, square roots, and `unitFloat`.  It builds angles from their half-angle tangents `t`, with `cos = (1 − t²)/(1 + t²)` and `sin = 2t/(1 + t²)`, and attitudes from orthonormal frames by the standard trace-based conversion, so it calls neither Lean's `Float.sin` nor any other function of the platform's library.
+
+| Class | Construction |
+|---|---|
+| Realistic plans | Three constraint directions drawn as unit vectors by rejection in the cube; six cones of a telescope's usual shape (boresight `+X` at least 50° from the first direction and 20° and 15° beyond the angular radii of the other two, `+Z` within 70° of the first, and `±Y` at least 75° from it), with cosines as fixed bit patterns; waypoint attitudes at random boresights with the first direction in the body's `X`–`Z` plane; a start and a goal drawn until they pass every cone with `10⁻⁶` to spare; 0, 60, 200, and 500 waypoints; and variations of the rate, acceleration, settling, and `maxEdge`. |
+| Grazing | `v₀ = cos γ p + sin γ n` with `p ⊥ n`, and `u = cos β R(n, φ*) p + sin β n`, so `f(φ) = cos β cos γ cos(φ − φ*) + sin β sin γ` has the extremum `cos(β − γ)` at `φ*` inside `(0, θ)`; the limit sits at the extremum plus each of `−10⁻⁸`, `−2·10⁻⁹`, `−1.1·10⁻⁹`, `−10⁻¹⁰`, 0, `10⁻¹⁰`, `1.1·10⁻⁹`, `1.2·10⁻⁹`, `2·10⁻⁹`, and `10⁻⁸`, for both kinds. |
+| Stationary points | `u` with a component `t (n × v₀)` for `t` in `{0, ±10⁻¹³, ±10⁻¹¹, ±10⁻⁶}`, so that `B` is proportional to `t`, at the start and, by reversing the rotation, at the end, with limits `2·10⁻⁹` and `10⁻¹²` beyond the start's value. |
+| Angles near 0 and `π` | The relative quaternion's vector length `s` set directly to 0, `10⁻¹⁵`, `10⁻¹²`, `10⁻⁹`, `0.995·10⁻⁷`, `10⁻⁷`, `1.005·10⁻⁷`, `10⁻⁶`, and `10⁻³`, and its scalar part `w` to `10⁻³`, `10⁻⁶`, `10⁻⁹`, `10⁻¹⁵`, and 0; antipodal quaternions `q` and `−q`; and small rotations whose start lies `10⁻⁸` inside the limit. |
+| Extreme cones | Keep-out and keep-in cones of cosine 0, 1, and −1, and of half-angles near 0°, on and beside the path. |
+| Norms at the tolerance | One body vector or quaternion scaled by `1 ± 4.9·10⁻¹³` and `1 ± 5.1·10⁻¹³`. |
+| Invalid inputs | NaN and infinities in each section, version 1, 0 and 3.5 bodies, 17 cones, 1,025 waypoints at the matching length, a length off by one, a body index out of range, kind 2, cosine 1.0000001, rate 0, acceleration 2, settling −1, `maxEdge` 5, a start off the unit sphere, inputs of 4 and 0 values, a start and a goal that violate a cone, and no cones. |
+| `atan2` | All pairs of ±0, ± the smallest subnormal, ±1, ±infinity, NaN, 0.5, 2, `10^±8`, and `10^±300`, random bit patterns, and random values with decimal exponents from −20 to 19. |
+
+Two limits shape the corpus.  Linux limits one argument to 128 KiB (`MAX_ARG_STRLEN`), and a plan of 1,024 waypoints, about 4,200 words in decimal, takes about 84 KB, so every plan fits.  The driver runs the generator interpreted, under a 10-minute limit, and the delivered native run took about 5 s for three plans of 500 waypoints, so the realistic class keeps about 20 such plans until the build phase measures the time.
+
+| Question | Decision | Reason |
+|---|---|---|
+| A sampled safety check before the safety theorem | Have the generator also evaluate every cone of every status-1 plan at 1,000 angles per segment, with Rodrigues' formula and the library's `Trig.sin` and `Trig.cos`, and fail when a cone has less than `10⁻⁹` to spare.  The generator and the journal label it a test, which the safety theorem replaces. | The comparison of the module with native Lean cannot detect an error that both share.  The library's `sin` and `cos` are Lean definitions with proved accuracy, so the check is the same on every host.  The user approved the check on 2026-10-26. |
+| Edge-check cases | Add calls of the module's `edgeOk` export on single-cone edges whose endpoints have not passed a static check | The plans never reach an endpoint-only rejection, since both ends of every edge in a plan pass the static check with the same margin. |
+
+### Plan
+
+Phase A:
+
+- [x] Import the program, review it against the dialect, make `relax`'s edge check lazy, and document it.
+- [x] Remove the page, the JavaScript, the corpus, and the design document at the user's direction, and move the theorem plan here.
+
+Build phase:
+
+- [x] Build `Demos.Slew.Program`, `Demos.Slew.Flat`, and `Demos.Slew.Verified`, and record each change that the reflector needs.
+- [x] Write the generator and its main module, register the module and the cases, and run `tests/verified/run.sh --cases slew`, recording the counts and the times of the largest plans against a target of 100 ms.
+- [x] Write the sampled safety check in the generator, labeled a test until the safety theorem replaces it, and record the least spare it finds.
+- [x] Confirm from `compiled.plan.implements` that `plan` borrows its input, and check the axioms of `compiled.bytes`.
+- [x] Read `compiled.plan.bound_eq`, and decide whether `cost` and `parent` leave the `Search` record.
+- [x] Add the imports to `Demos.lean` and `Demos/Verified.lean`, run `tools/source-layout`, and update the README and the verified compiler manual's examples.
+
+Phase 1:
+
+- [x] `Spec.lean`: real vectors, the rotation of a normalized quaternion, Rodrigues' rotation, and the cone predicate.  The tube moved to `Check.lean`.
+- [x] `Arc.lean`: Rodrigues' formula in the `A, B, C` form, the global bound, the interpolation identity, and the endpoint lemma for maxima and, by negation, minima.
+- [x] The error lemmas, in `Rounding`, `Error`, `Axis`, `Normalize`, `Cone`, and `Hypot`: bounds for `s`, `n`, `cos θ`, `sin θ`, `v₀`, `n·u`, `n·v₀`, `f₀`, `A`, `B`, `C`, `f₁`, `f′(θ)`, and `√(A² + B²)`.
+- [x] `Decide.lean` and `Check.lean`: soundness of one cone in both kinds and both branches, of the small-angle branch, of `edgeOk` over all cones by `loop_induction`, and of `attitudeOk`.
+- [x] Compare the module's `edgeOk` export with native Lean on 10⁵ generated single-cone edges.
+- [x] No `sorry`, no new axiom, no `bv_decide`, and an axiom check of the soundness theorems.
+
+Later phases: the path structure and the safety theorem, the premise theorem, NaN-freedom, then the motion model and optimality, with the file theorem once the module is stable.
+
+## 2026-10-26: The slew planner compiled and tested in Wasmtime
+
+The build phase ran in a clone whose `.lake` held `main`'s full build, with at most 6 workers and `--memory-high 32G`.  `Demos.Slew.Program` built in 0.4 s and `Demos.Slew.Flat` in 1.5 s.  The first build of `Demos.Slew.Verified` failed with `the type Prop is not UInt64, Bool, Float, …`, which names no function, and the same command with `set_option trace.Verified.reflect true` stopped after `reflect Demos.Slew.segmentField`.  Its `let big := sn ≥ axisMin` bound a proposition, and `let big : Bool := sn ≥ axisMin` gives the same meaning in the dialect, after which the compilation built in 170 s.  The reflector accepted the index forms `p.1.toNat` and `(1 : UInt64).toNat` that the review had flagged.
+
+`compiled.plan.implements` is `ImplementsA true compiled.module 28 (fun x => Demos.Slew.plan x)` with an argument of type `Array Float`, so `plan` borrows its input, and `compiled.bytes` and `compiled.plan.trapFree` depend on `propext`, `Classical.choice`, and `Quot.sound` alone.  `compiled.plan.bound_eq` gives the bound of validated input as `compiled.search.bound` plus `compiled.output.bound` at the search's result, so a constant bound needs the bound equations of `search`, `round`, and `relax` in turn.  The record parameter of `round` and `relax` stays, because the plans run far inside the time target and the copies it causes enlarge only that bound, whose derivation belongs to the execution theorem and can reopen the question with numbers.
+
+`tests/TestSupport/Slew/Cases.lean` generates 852 plans in eight classes and 1,225 `atan2` calls, and `Demos/Slew/README.md` tabulates the classes with their statuses.  The `atan2` cases are the 225 pairs of 15 special values and 1,000 random pairs, half of them random bit patterns, in which a NaN pattern becomes the canonical NaN, since the host canonicalizes NaN results and native code need not keep that form.  The generator runs interpreted in 18 s.  Lean requires a structure instance's continuation lines to start at or right of its first field, which the first version broke, and a helper for the one-cone scenes replaced the long instances.
+
+`tests/verified/run.sh --cases slew` wrote and validated the 26,362-byte `build/verified/slew.wasm` and reported `verified: passed 2077 failed 0` in 74 s, with no access past the end of an array in native Lean.  Every plan case left two blocks allocated, the host's input and the result, which agrees with the borrowed parameter.  In the host, a plan of 500 waypoints took at most 51 ms, for one that finalized 348 nodes, against 18 to 28 ms for a call of `atan2`, the start of the host and the compilation of the module.
+
+The sampled safety check passed on every one of the 433 plans of status 1, with a least spare of `1.23 · 10⁻⁹` in a grazing case.  Its samples lie `θ/1000` apart and can miss an interior extremum by up to about `10⁻⁶` in cosine, so it confirms the shape of the decisions without resolving the grazing cases at the scale of the margin.  The comparison with native Lean and the check are tests, and the edge-check lemmas of Phase 1 are the next step toward a proof.
+
+`Demos`, `Demos.Verified`, and `Verified.Examples.Cases` build with the new imports, `tools/source-layout` reports only the five programs that `main` lacks in `Library.Native`, and the link check passes.  The full `lake build Verified Library` and the full `tests/verified/run.sh`, which the repository requires before a merge into `main`, have not run on this branch.
+
+## 2026-10-26: The slew edge check proved sound
+
+Phase 1 proved the program's own `edgeOk` and `attitudeOk` sound in ten modules under `Demos/Slew`, built with the build phase's limits of 6 workers and 32 GB.  `edgeOk_sound` assumes an attitude `qa` with finite components and a squared norm within `3·10⁻¹²` of 1, a relative quaternion `rel` that is finite with `w ≥ 0` and a squared norm within `10⁻¹¹` of 1, and cones whose body vectors and axes are finite with squared norms within `3·10⁻¹²` of 1 and whose cosines are finite and in `[−1, 1]`.  If `edgeOk xs d qa rel` holds, then for every cone, every `φ` in `[0, θ]`, and every vector within `1.05·10⁻⁹` of `R(n, φ) R(q̄a) b̄`, the cone of `ū` and `c` holds, where `n` and `θ` are the axis and angle of `rel`'s real value (`ArcSafe`).  `attitudeOk_sound` states the same at one attitude for the check without slack (`PointSafe`).  Both theorems depend on `propext`, `Classical.choice`, and `Quot.sound` alone, and the modules use no `sorry` and no `bv_decide`.
+
+The plan changed in three places.  The per-cone helper was unnecessary: `coneEdge` and `coneStatic` in `Check.lean` repeat the bodies of the loops, `edgeOk_eq` and `attitudeOk_eq` hold by `rfl`, and the program and its bytes are unchanged.  `Spec.lean` states a rotation by the program's formula `v + w t + q × t` in exact arithmetic applied to the normalized quaternion, which for a unit quaternion is the rotation, in place of the rotation matrix, and the tube appears in `ArcSafe` and `PointSafe`.  The error lemmas grew into `Rounding`, `Error`, `Axis`, `Normalize`, `Cone`, and `Hypot`, and the decisions went into `Decide`.
+
+The planned split of the margin, a tube of `1.05·10⁻⁹` and errors of at most `4.9·10⁻¹¹`, holds with errors of `3.63·10⁻¹¹`.  The rounding errors are bounded against the program's formulas in exact arithmetic on the given inputs, so the stationary-point tests see errors of at most `1057 u` against `eta = 10⁻¹²`, and the normalization enters only at the end.
+
+| Part of the budget | Bound | Lemmas |
+|---|---|---|
+| Rounding of `f₀`, `f₁`, the stationary value, and the limit | `2300 u ≈ 2.6·10⁻¹³` | `cone_values`, `hypot_bnd`, `small_amplitude`, `low_limit` |
+| `w² − s²` and `2ws`, which are `cos θ` and `sin θ` times `w² + s²` | `2.3·10⁻¹¹` | `keepout_arc`, `keepin_arc` |
+| Normalization of the attitude, the body vector, and the cone axis | `1.3·10⁻¹¹` | `spec_close` |
+| The tube | `1.05·10⁻⁹` | `near_bounds` |
+| Total, against `margin ≥ 1.0999·10⁻⁹` | `1.0863·10⁻⁹` | `finish_out`, `finish_in` |
+
+Lean's `max a b` is `if a ≤ b then b else a`, which returns `a` when `b` is a NaN, so the keep-out test would drop a NaN `f₁` or stationary value without failing.  The proof derives the finiteness of each value it uses from the error bounds, that of `cc + r` from `hypot_bnd` when `a² + b² ≥ 2⁻¹⁰⁰⁰`, and needs no stationary value when the amplitude is below `1014 u`, so soundness does not depend on that behavior.  The proof does not exclude a NaN `s`, although a sum of squares of finite floats is never negative.  `nan_tiny` shows that a NaN `s` requires `S² ≤ 5 · 2⁻¹⁰⁷⁵`, and then every keep-in check fails and every keep-out check bounds the start, which covers a rotation that small.  Below `sMin`, `s` is finite and non-negative, `2.125 s` is at least `2.0003 S − 10⁻²⁰`, and the cosine moves by at most `2.0003 S` along the rotation, so the start's check with that slack covers the rotation.
+
+`Demos.Slew.Hypot` builds in 12 s and `Demos.Slew.Check` in 4.3 s.  `Demos` builds with `Demos.Slew.Check` imported, `tools/source-layout` reports the same five programs, and the link check passes.  `nlinarith` failed on `(1 + 3·10⁻¹²) · 1.0001 · (2S/0.99999) ≤ 2.0003 S`, and a `ring` step to a constant times `S` replaced it.  `Axis.lean` lost `sqrt_nonneg_of_lt`, which the proof no longer uses, since `s_facts` takes the sign of `s` from `sqrt_cases`.
+
+`tests/slew/edges.sh` runs the last test of Phase 1.  `tests/TestSupport/Slew/Edges.lean` generates 100,000 single-cone edges, and one host session calls the module's `edgeOk` on each, with one input array whose body vector and cone it rewrites between calls.  The classes are random edges (40,000, of which 13,866 accepted), cones that graze a designed extremum anywhere in the rotation within `10⁻⁸` (30,000, 7,447 accepted), stationary points at either end with `B` within and beyond `eta` (15,000, 7,933 accepted), and vector lengths near 0, `sMin`, and 1 (15,000, 4,967 accepted).  Every result agrees with native Lean, and the session's one allocation is its input, which shows that `edgeOk` borrows the array.  The test takes 9 s, so `tests/verified/run.sh --cases slew` runs it, and that run passed in 85 s.
+
+## 2026-10-26: The slew safety theorem: plan
+
+The coordinator asked for the safety theorem for whole plans, starting from the hypotheses of the edge check: `GoodQ` and `ConeGood` from `validInput`, `GoodRel` from `relative`, and a bound on the distance between the rotation of `rel`'s real value and the exact relative rotation.  The statement is item 4 of [the theorem list](#theorems): for an output of status 1, the start and goal are the input's bit for bit, and for each segment `g`, each `φ` in `[0, θ_g]`, each map `R′` that moves every unit vector at most `ρ = 10⁻⁹` from `R(n̄_g, φ) R(q̄_g)`, and each input cone, the cone holds for `ū · R′ b̄`.  Each segment's rotation `R(n̄_g, θ_g) R(q̄_g)` also lies within `ρ` of `R(q̄_{g+1})`.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Rotations | `R(q̄)` is `Quat.rot (Quat.unit q)`, the program's formula on the normalized quaternion, and the proofs pass through the homogeneous form `q v q*`, which equals it for unit `q` | Composition becomes the associativity of the quaternion product, and the distance between two rotations is at most twice the distance between their unit quaternions, by the multiplicativity of the quaternion norm. |
+| Axis and angle | `R(n, φ)` equals the action of `(cos(φ/2), sin(φ/2) n)`, and the axis and angle of `rel`'s real value give `rel` normalized | Differences in axis, angle, and quaternion then reduce to one bound on quaternion distance. |
+| Output angle | Convert `AtanTwoTheorem.atan2_within_two`, two steps from the reference of `arg (w + i s)`, into an absolute error, and relate `2 arg (W + i S)` to `angle W S` | The output angle comes from the library's `atan2`, and the check uses `rel` alone. |
+| Path structure | An invariant of `search` over the finalized nodes: every node with a finite cost other than the start, and every finalized node other than the start, has a finalized parent whose edge `edgeOk` accepted, and the parent chain of a finalized node reaches the start within as many steps as there are finalized nodes | The invariant needs no ghost state, and the count of finalized nodes bounds the chain by `n`, the fuel of `pathLength`. |
+| Large inputs | `validInput`'s norm tests reject a component above 2 in magnitude, which the proof shows from the enclosure lemmas of the rounding of a finite result | `FApprox` needs magnitude bounds on its operands, and `allFinite` bounds the values only by the largest finite double. |
+
+- [x] `Rotation.lean`: quaternion product, conjugate, and action; the action equals `Quat.rot` for unit quaternions, composes, and moves vectors by at most twice the quaternion distance; Rodrigues' rotation as an action.
+- [x] `Valid.lean`: `GoodQ` for every node and `ConeGood` for every cone of a validated input.
+- [x] `Relative.lean`: `GoodRel` for `relative qa qb`, and the distance between `rel` normalized and `±q̄b q̄a*`.
+- [x] `Search.lean`: the invariant of `search`, `pathLength`, and `pathNode`, and the segments of the output as accepted edges.
+- [x] `Angle.lean`: the output axis and angle against the axis and angle of `rel`'s real value.
+- [x] `Safety.lean`: the safety theorem, its axioms, and the documentation.
+
+## 2026-10-26: The slew safety theorem proved
+
+`Demos.Slew.Safety.plan_safe` proves the safety theorem for whole plans, and it depends on `propext`, `Classical.choice`, and `Quot.sound` alone.  For an output of status 1 with `K` segments, the start and goal quaternions equal the input's, bit for bit, and segment `g` stores its start quaternion at offset `4 + 11g`, its axis at `8 + 11g`, and its angle at `11 + 11g`, with the goal as the start of segment `K`.  The rotation of each segment by its angle about its normalized axis carries `R(q̄_g)` to within `10⁻⁹` of `R(q̄_{g+1})`, and for every `φ` from 0 to the angle and every map `R′` that moves every unit vector at most `10⁻⁹` from `R(n̄_g, φ) R(q̄_g)`, every input cone holds for `R′ b̄`.  `R(q̄)` is `Quat.rot (Quat.unit q)`, which `rot_eq_act` equates with `v ↦ q̄ v q̄*`, so the statement follows item 4 of [the theorem list](#theorems) with a map in place of an attitude, which makes it stronger.
+
+| Module | Content | Build |
+|---|---|---|
+| `Rotation.lean` | The quaternion product, conjugate, and action; `rot_eq_act`; composition; the distance bound `act_sub_le` from the multiplicative norm and Cauchy–Schwarz in four dimensions; `rod_eq_act`; and `half_axis_angle` | 3.1 s |
+| `Relative.lean` | `relative_good` and `relative_rot`: each component within `13.04 u` of `±q_b q_a*`, and the rotation within `1.2·10⁻¹⁴` of `R(q̄_b)` | 2.6 s |
+| `Valid.lean` | `valid_good`: `GoodQ` for every node and `ConeGood` for every cone of a validated input | 4.7 s |
+| `Search.lean` | The invariant of `search` and `plan_segments` | 2.3 s |
+| `Angle.lean` | `angle_out` and `axis_out` | 10 s |
+| `Safety.lean` | `segment_close`, `segment_safe`, and `plan_safe` | 8.0 s |
+
+Each design decision of the plan held.  The norm tests needed the most new floating-point work, since `FApprox` needs magnitude bounds on its operands: a NaN or infinite operand of a sum, difference, or product gives a NaN or infinite result (`finite_of_add`, `finite_of_mul`), the enclosure of a finite result between its neighbors gives a lower bound by any float below the exact value (`lower_of_enclosure`), and a component above 2 then makes the computed sum of squares at least `4 − 60 u`, so the test fails.  The search invariant tracks finalized nodes instead of costs, because an edge can cost zero ticks when the settling time is zero, so costs alone do not exclude cycles of parents.  The count of finalized nodes, a `Finset`, bounds the parent chains, and the proof needs no ghost state and no assumption about the cost arithmetic, so a sum of costs that wrapped could change which path the search reports but not its safety.  `output` reads the parent array past its end only when a chain fails to reach the start, which the invariant excludes.
+
+The output angle needed two conversions.  `AtanTwoTheorem.atan2_within_two` gives two steps from the nearest-even reference of `arg (w + i s)`, and `within_two_abs` turns that into `2⁻⁴⁹` for an argument in `[0, 2]` from the spacing of words below 4 and `F64NearestHalf.nearest_half`.  `angle_eq_two_arg` identifies `angle W S` with `2 arg (W + i S)`, and `arg_sub_le` bounds the change of the argument by `4 |Δy|` from the sine of the difference and Jordan's inequality.  The edge check's proof had left a NaN `s` possible.  `radicand_nonneg` shows that the computed sum of squares is never negative, from the enclosures, so `s` is finite and `atan2` receives finite arguments.
+
+`lake build Demos` passed with `Demos.Slew.Safety` imported in place of `Demos.Slew.Check`, `tools/source-layout` reports the same five programs, the link check passes.  The sampled safety check of the generator stays as a test, and removing it is a question for the user.  The remaining theorems are the premise theorem, NaN-freedom, the constant allocation bound, optimality, and the file theorem.
+
+## 2026-10-26: NaN-freedom of the slew planner
+
+The coordinator asked for the remaining theorems in the plan's order: NaN-freedom, the premise theorem, the constant allocation bound, optimality, and the file theorem, with the sampled safety check left in place until the user decides on its removal.
+
+| Question | Decision | Reason |
+|---|---|---|
+| What "every operation" means | A theorem about `plan` in Lean that lists every floating-point value the program's functions bind: each `let` value, each operand of a comparison, conversion, `min`, `max`, or `abs`, each divisor, each argument of a square root, and the arguments and result of each `atan2` call.  An operation inside one of these expressions is a sum, difference, product, or negation, and `fin_add`, `fin_sub`, and `fin_mul` make its result finite when the expression's is. | Lean has no trace of the operations a function performs, and a statement about the module's instructions needs Talos's semantics, which the plan left open.  The list follows the program text, so a reader can check it against each function. |
+| Finite or only not NaN | Finite | Every value is finite, and finiteness carries from an expression to its parts, while being not NaN does not. |
+| Which evaluations | Every node and every pair of nodes, whether or not the search evaluates them | The statement needs no model of which pairs `relax` reaches. |
+| The library's functions | The arguments and result of `atan2` are in the statement, and its internal operations and those of `atan` are not | The library proves accuracy, and a NaN-freedom proof of its internals belongs to the library. |
+
+`Demos.Slew.NanFree.plan_finite` proves the statement, with `StaticClean`, `ConeClean`, `EdgeClean`, `SegClean`, and `InputClean` mirroring `attitudeOk`, the cone loop of `edgeOk`, `edgeOk`, the segment computations (`relative`, `angleOf`, `slewTicks`, `ceilMs`, and `segmentField`), and `validInput`.  It depends on `propext`, `Classical.choice`, and `Quot.sound` alone, and the module builds in 4.1 s.  Most values come from the bounds of the edge-check proofs.  The new work was the duration: `slewTicks` takes the square root of `θ / a`, so the output angle `2 atan2 s w` must not be negative, and the library's accuracy theorem allows a result two steps below a tiny positive argument, which would be negative.  `atan2_nonneg` therefore follows the library's branch lemmas: for a positive `s` and a `w` that is not negative, `atan2` returns a positive constant or `atan` of a quotient that is not negative, and `atan_nonneg` shows from the small-argument branch and the accuracy within one step that `atan` keeps the sign of its argument.  Quotients and square roots of values that are not negative are not negative from the enclosure lemmas, with exact zeros handled from the definitions of `mul` and `div`.
+
+- [x] NaN-freedom: `plan_finite`.
+- [x] The premise theorem: `plan_premise`.
+- [x] The constant allocation bound: `plan_bound` and `slew_trapFree`.
+- [x] Optimality: `plan_optimal`.
+- [x] The file theorem: `slew_file` and `slew_file_decode`.
+
+## 2026-10-26: The slew premise theorem
+
+`Demos.Slew.Premise.plan_premise` proves item 5 of [the theorem list](#theorems) for one instant of a segment.  For an output of status 1, a segment `g`, an angle `φ` in `[0, θ_g]`, a map `A` that moves every unit vector by an angle of at most `ε` from `R(n̄_g, φ) R(q̄_g)`, and a cone with a true axis `u` within angle `d` of `ū` and a true half-angle `α`, a keep-out cone with `α + d + ε ≤ arccos c` gives `∠(A b̄, u) ≥ α`, and a keep-in cone with `arccos c + d + ε ≤ α` gives `∠(A b̄, u) ≤ α`.  The theorem depends on `propext`, `Classical.choice`, and `Quot.sound` alone, and the module builds in 1.9 s.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The angle between vectors | Mathlib's `InnerProductGeometry.angle` on `EuclideanSpace ℝ (Fin 3)`, through `toE` | Its definition is an arccosine that a reader checks directly, and Mathlib proves the triangle inequality for it (`angle_le_angle_add_angle`) with no hypothesis that the vectors are nonzero. |
+| The flown attitude | A map `A : Vec → Vec` with every unit vector within angle `ε` of its commanded image | A map, as in `plan_safe`, makes the hypothesis weaker than one about a rotation, and an angle bound matches item 5. |
+| The growth of the half-angle | The theorem takes the true half-angle `α` and the hypothesis `α + d + ε ≤ arccos c`, and the README derives the condition for `α ≤ α₀ + γ` | `α₀` and `γ` enter item 5 only through `α₀ + γ`, so the two forms are equivalent, and the theorem's form has fewer variables. |
+| Time | One instant: one `φ`, `A`, `u`, and `α` | A statement over time follows by applying the theorem at each instant, and a model of time would add nothing to the proof. |
+| The tube of `plan_safe` | The proof applies `plan_safe` to the commanded attitude, at distance 0 | `ε` covers the whole difference between the flown and commanded attitudes, so the tube is unused here. |
+
+The proof needed the commanded attitude to preserve length, and Rodrigues' formula does so only for a unit axis.  `plan_safe` now states that the normalized output axis has length 1, which `segment_close` already proved, and `norm_attitude_any` covers `attitude q` for every `q`, with `q = 0` giving the identity.  The cone's bound on the cosine of two unit vectors becomes a bound on their angle by `Real.arccos_le_arccos`, and the triangle inequality adds `d` and `ε`.
+
+## 2026-10-26: The user's decisions on the sampled check and NaN-freedom
+
+The user decided the two questions that the safety and NaN-freedom entries left open.  The generator no longer runs the sampled safety check, because `plan_safe` covers every angle of every segment for every input that passes `validInput`, while the check sampled 1,001 angles of each segment of the generated plans.  `sampledSpare` is gone from `tests/TestSupport/Slew/Cases.lean`, `--summary` prints the counts of statuses alone, and the README's table of classes drops the column of spares and records that the theorem replaces the check, which had found at least `1.23 · 10⁻⁹` to spare.  `tests/verified/run.sh --cases slew` passed afterwards with the same counts of statuses, 2,077 cases in all, in 80 s, and the generator alone takes 14 s.
+
+The user accepted the formulation of NaN-freedom as `plan_finite` states it.  The theorem concerns `plan` in Lean, and it covers each call of the library's `atan2` at its arguments and its result, while the internal operations of `atan2` and of the `atan` that it calls lie outside it.  Carrying the statement to the module's instructions stays open until a statement in Talos's semantics is in hand.
+
+## 2026-10-26: The slew planner's allocation bound
+
+`Demos.Slew.Bound.plan_bound` states that `compiled.plan.bound xs ≤ 68,020,488` for every input, and `slew_trapFree` states, as `drone_trapFree` does for the drone planner, that entry 28 computes `plan` without a trap whenever `top` can rise by 68,020,488 bytes within the memory's cap.  Both depend on `propext`, `Classical.choice`, and `Quot.sound` alone, and the module builds in 1.8 s.  The module sits beside the compilation, with `Demos/Verified.lean` importing it, and keeps the safety proofs out of the compilation's imports.
+
+| Term | Bytes | Source |
+|---|---:|---|
+| `initial` | 33,056 | four blocks of `n ≤ 1,026` words, `blockCost n = 8n + 56` |
+| Rounds | 67,897,024 | at most `n + 1 = 1,027` rounds, each charged eight blocks of `n` words: four for the copy in `round` and four for the copy in `relax` |
+| `output` | 90,408 | a block of `8 + 11k` words with `k ≤ n` |
+
+The proof follows `compute_bound` of the drone planner.  `loopCost_le` bounds the rounds with the invariant `Inv` of the search, which already fixes the sizes of `cost`, `parent`, and `done`, and the fact that `round` and `relax` leave `ok` unchanged (`round_ok`, `relax_ok`).  `pathLength_le` bounds the edge count of `pathLength` by its fuel for every search state, so the output's size needs no assumption about the parent chains.  The bound charges every copy and ignores the reuse of freed blocks.  The plan cases leave only the host's input and the result allocated after a call, so the module frees its copies, but neither the theorem nor the tests measure the peak use of a call.
+
+The user decided to keep `round` and `relax` as they are, with the proved bound, rather than restructure them so that a round copies fewer arrays.  The bound is proved, and its 68,020,488 bytes come to 1,038 pages of 64 KiB, far below the module's declared maximum of 65,535 pages.  The program therefore stays as delivered, and its module, tests, and theorems do not change.
+
+## 2026-10-26: Optimality of the slew planner
+
+`Demos.Slew.Optimal.plan_optimal` proves item 6 of [the theorem list](#theorems).  For an input that passes `validInput` and whose start and goal pass the static check, a walk from the start to the goal in the graph that the program's checks define gives an output of status 1 whose segments join the nodes of such a walk, whose header reports its cost, and which no walk from the start to the goal undercuts, and the absence of such a walk gives status 0.  The theorem depends on `propext`, `Classical.choice`, and `Quot.sound` alone, and `Optimal.lean` builds in 2.7 s and `Cost.lean` in 2.7 s.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The graph | `Edge u v`: both nodes below `n`, both admitted (`okNode`, the start, the goal, or a node that passes `attitudeOk`), `v ≠ u`, `¬(θ > maxEdge ∧ ¬(u = 0 ∧ v = 1))` on the computed angle, and `edgeOk` accepts the rotation, with the cost `slewTicks θ + settleTicks` | These are the tests of `relax`, so the theorem states what the program computes, as item 6 asks. |
+| Walks or paths | Walks, which may repeat nodes | With costs that are not negative, the least cost over walks equals the least cost over simple paths, and walks need no distinctness condition. |
+| The status | Two implications, a walk gives status 1 and no walk gives status 0 | Together with `1.0 ≠ 0.0` they give "exactly when" in both directions. |
+| Overflow | `Cost.edge_cost_le` bounds each edge's cost by `2^34` ms from the limits of `validInput` | Costs are `UInt64` sums with the sentinel `infinity = 2^62`, and at most 1,026 finalized nodes keep every cost below `1027 · 2^34 < 2^62`, so the theorem needs no hypothesis on costs. |
+
+The invariant `Opt` holds of every state of the search.  Its fields state that a finalized node holds the least cost of any walk to it (`lower`), that a node with a finite cost other than the start holds the cost of the walk through its parent, whose edge is in the graph (`edge`), that a node not yet finalized holds at most the cost through each finalized node other than the goal with an edge to it (`relaxed`), that every finite cost is at most `(card done) · 2^34` (`bound`), and that a finished search has finalized the goal or left every open admitted node unreached (`stop`).  `select_lower` is the step of Dijkstra's proof: a walk to the selected node leaves the finalized nodes at a first open node whose cost is at most the walk's cost up to it, and the selected node costs at most every open admitted node.  `relax_opt` carries `relaxed` through the loop with the pairs from the new node pending above the loop index, and the branch that skips `edgeOk` for a candidate that does not improve its target satisfies `relaxed` from the candidate's cost alone.  Each round that does not stop finalizes one more node, so the `n + 1` rounds of `search` end finished.
+
+The proof extended `plan_segments` to state that each node of the output's walk after the start is not the start and has the node before it as its parent, so that the walk is the parent chain, and moved `go_count` and `pathLength_le` from `Bound.lean` to `Search.lean`, so that `Optimal.lean` does not import the compilation.  `Cost.toUInt64_le` takes the truncation of `Float.toUInt64` from the library's `Expm1ReduceWords.truncSat_spec`, and `ticks_le` repeats the enclosures of `NanFree.slew_clean` to bound the computed duration by `1.05 · 10¹⁰` ms.
+
+## 2026-10-26: The slew planner's file theorems
+
+`Demos/Slew/File.lean` states item 7 of [the theorem list](#theorems) as the repository's other file theorems do.  `slew_file` states that `encode compiled.module` equals the bytes of `build/verified/slew.wasm`, from `compiled.encoded` and a kernel comparison of the literal bytes, and `slew_file_decode` states that the file decodes to `compiled.module`, from `compiled.bytes`.  Both depend on `propext`, `Classical.choice`, and `Quot.sound` alone, and the check takes 5.8 s and 5.3 GB on the build host after the module of 26,362 bytes was written again from the current compilation.
+
+The entry `slew:Demos.Slew.Verified:Demos/Slew/File.lean` of `tests/verified/numerics.txt` makes the full `tests/verified/run.sh` build the compilation, check the file module against the file it writes, and require exactly two axiom reports with the permitted axioms, as it does for the regex and hashing modules.  `--cases slew` skips that loop, as it does for every other module.  `Demos.lean` does not import the file module, because the module reads the written file.
+
+All seven theorems of the plan are proved.  The branch still needs the merge with `origin/main`, the full `lake build Verified Library`, and the full `tests/verified/run.sh` before a push, which the coordinator schedules.
+
+## 2026-10-26: The slew planner merged with main and added to the index
+
+Merging `origin/main` at `bab4a8fbe` into `slew-planner` conflicted in `Demos/README.md`, `Demos/Verified.lean`, and `devnotes.md`, where both sides had added rows, imports, or entries, and each resolution keeps both sides, with main's entries first.  `tests/verified/run.sh`, `tests/verified/modules.txt`, `Verified/Examples/Cases.lean`, and `docs/verified-manual.md` merged without conflicts.  The full gate waits for typed-fields stage 1 to reach `main` and a second merge.
+
+Section 14 of `index.md` now has a row for the slew planner, after the drone planner's pattern, with links to `plan_safe`, `plan_premise`, `plan_optimal`, `plan_finite`, `plan_bound` and `slew_trapFree`, and the file theorems, and with their premises and limits.  The verified manual's description of `--cases slew` still described the sampled safety check that the generator no longer runs, and it now omits it, and the manual's `Slew` row names `slew_trapFree`.  The link check passes, and `tools/source-layout` reports no problems after the merge.
+
+## 2026-10-26: The slew documents after an independent review
+
+An independent reviewer read the slew README, the index row, and the demos table against the Lean statements and reported eleven groups of problems, which this revision addresses after checking each proposed text against the code.  The README now leads with the problem, the interface, and the program, gives every theorem in one table with its file, hypotheses, and conclusion, states the three axioms once, and adds a section on the limits of the theorems and one on building and testing with the expected output.  It defines `R(q)`, eigenaxis and rest-to-rest rotation, `T(θ)`, the settling time, the static and edge checks, finalized nodes, admitted nodes, and the tube as the displacement of a unit vector, and it drops the development history.
+
+The review's figures held against the code except where noted here.  The output of statuses 0, -1, -2, and -3 is four values, `[status, 0, 0, F]`, with `F` the count of finalized nodes for status 0 and 0 otherwise, from `statusOnly`.  The invalid-input class fails fifteen of the tests of `validInput`, the norm class fails the test of a body vector's norm, and the README lists the eleven tests that no case fails, from the indices that `invalid` in the generator modifies for a scene with four body vectors.  `plan_finite` omits `m1` and `m2` of the edge check, the margin of `1.1e-9` leaves about `1.37e-11` after the tube `ρ = 1.05e-9` and the rounding errors of `3.63e-11`, and the unit roundoff is now `μ`, since `u` names the cone axis.  The program's docstring still describes the tube in radians, and changing it would change `Program.lean`, which stays as delivered.
+
+`tests/slew/Axioms.lean` audits twelve theorems with an elaborator that fails on any axiom outside the three: the generated `compiled.bytes`, `compiled.plan.implements`, and `compiled.plan.trapFree`, `edgeOk_sound`, `attitudeOk_sound`, `plan_safe`, `plan_finite`, `plan_premise`, `edge_cost_le`, `plan_optimal`, `plan_bound`, and `slew_trapFree`.  The file theorems stay out of it, because importing `Demos.Slew.File` needs a built module whose proof reads the written file, and Lake does not track that file, so a stale build could pass after the file changes.  `tests/verified/run.sh` runs the audit for `--cases slew` and for the full run, and for `--cases slew` it also elaborates `Demos/Slew/File.lean` again and requires its two permitted reports, through a `check_file` function that the loop over `tests/verified/numerics.txt` now shares.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The file theorems in the audit | Checked by elaborating `File.lean` again, as the numeric file theorems are | A module import of the file theorems could use a build that predates the written file. |
+| `check_file` | One shell function for the numeric loop and the slew case | The two checks are the same, and the function also corrects the failure message, which printed `.lean.lean`. |
+| Timings | Stated for one run on one aarch64 Linux machine, with a sentence that they vary | They come from one run. |
+
+On the build host, `tests/verified/run.sh --cases slew` passed in 92 s after `tools/build-wasmtime-host.sh` rebuilt the host, which `main`'s newer `tools/wasmtime-host.c` required: 100,000 edges agree, the audit passed for 12 theorems, the file theorems carry only the permitted axioms, and 2,077 cases passed with none failing.  The link check passes, and `tools/source-layout` reports no problems.
+
+## 2026-10-26: Memory accounting for the process loop
+
+The user approved a two-stage design that replaces the unproved `RunBudget` premise of both running-sum theorems.  Stage 1 compacts the process state after `begin` and after each step, so the heap between steps holds the literal pool and one state, and the total-process theorem takes room conditions on one step at a time.  Stage 2 removes the quadratic append charges, proves a charge for each running step as a function of the state, and derives the room conditions from explicit limits on line length and total size.  Work proceeds on the local branch `process-compaction`, taken at `ed77fa248`, in a scratch worktree.  Phase A wrote the code below without running Lean, so none of it has been checked.
+
+### Stage 1: compaction
+
+`_start` saves the heap top in a local before `begin`.  That value, `base`, is at least 4096, lies above the literal pool, and stays fixed for the run.  After `begin` and after each step, `processCompaction` runs on the stored result's state.  It empties the free list, rounds the top up to a word, copies the state with `copyCode`, moves the copy's bytes down to `base` a word at a time from the lowest address, subtracts the distance from each array root and each nonzero byte root, sets the top just past the moved bytes, and empties the free list again.  The step borrows the state, so once its result is stored the old state is garbage, and the release that followed the step is gone.
+
+| Positions of `_start` | Contents |
+|---|---|
+| `0` to `W - 1`, with `W` the result's width | running flag, status, and the state's words from position 2 |
+| `W` | `base` |
+| `W + 1` | the rounded top, where the copy starts |
+| `W + 2` | the copy's byte count |
+| `W + 3` | the move's byte offset |
+| `W + 4` | the distance of the move |
+| `W + 5` on | the copy's scratch, `state.copyScratch` positions |
+
+The step's result goes straight into positions 0 to `W - 1`, so the second result slot of the old layout is gone.  The copy's scratch lies above the five scalars because `wp_copyCode` keeps only the positions below its scratch base.  For the integer state, `W` is 12 and the function has 20 positions, against 24 before, so `stackFits` should still hold.
+
+Rounding the top makes the move's last word end at the top rounded up, which lies in memory because memory ends on a page.  Without it, a heap whose top is not a multiple of 8 could make the last word reach past memory.  The copy cost of a compactable value is a multiple of 8 (`Ty.copyCost_mod`), and so is the memory bound, so the rounding costs no room: `roundWord_add_le` turns `top + copy ≤ limit` into `roundWord top + copy ≤ limit`.  Emptying the free list before the copy makes every allocation of the copy raise the top, so each fresh block lies above the rounded top, which `Step.keeps` on the region `(0, T8)` proves.  Emptying it again at the end makes the final heap independent of the free list after the copy, which `wp_copyCode` does not state.
+
+The move is proved at the byte level (`wp_moveCode`, `write64_read64_byte`), because a byte string's contents are bytes and an array's header and words are read as words at arbitrary offsets.  The translation lemma `Ty.Rep.relocate` takes a `Moved` store, whose bytes at `a - d` are the old bytes at `a` for every `a` in the moved range, and transports `Heap.Owned` and `Bytes.Allocated` field by field.  Its heap has the new top and no free block.
+
+| File | Contents |
+|---|---|
+| `Verified/Wasi/CompactCode.lean` | `Ty.compactable`, `relocateWords`, `relocateCode`, `moveCode`, `compactCode`, `roundWord` and its lemmas, `Ty.copyCost_mod` |
+| `Verified/Wasi/CompactMove.lean` | `write64_read64_byte`, `wp_moveCode` |
+| `Verified/Wasi/CompactRep.lean` | `Moved`, `arrayAt_relocate`, `Heap.Owned.relocate`, `Bytes.Allocated.relocate`, `Ty.Rep.relocate`, `wp_relocateCode` |
+| `Verified/Wasi/CompactHeap.lean` | `resetHeap`, `wp_emptyFree`, `wp_roundTop`, `wp_resetTop`, `Ty.Rep.blocks_inside`, `wp_compactCode` |
+| `Verified/Wasi/ProcessCompact.lean` | the new `ProcessStored`, `Step.top_le`, `ProcessMemory.called`, `ProcessMemory.compacted`, `wp_process_compact` |
+
+`ProcessStored target state pool base current store locals` now carries `base`: the heap has no free block, its top lies between `base` and `base + state.copyCost current.state`, local `processAux state` holds `base`, and the pool lies below `base`.  `wp_process_compact` transports `wp_compactCode` through `PureTransport.wp_prefix` and rebuilds `ProcessMemory` and `pool.Static` from the bytes below `base`.  In the partial-refinement theorems, a trap during the compaction after a returned step is `ProcessIterationResult.resource` with residual `.pure next`, from `Exec.returned_prefix`, and the same holds after `begin`.  `Step.top_le` shows that a step from a heap with no free block does not lower the top, which gives `base ≤ top` before each compaction.  The process theorems therefore take `heap.free = []` for the initial heap, which `initialStaticHeap` satisfies by `rfl`.
+
+The total theorem drops the potential, `start`, the decrease premises, and `ProcessFits`.  Its premises are a structure, with `base` the initial heap top and `limit` the memory cap in bytes.
+
+| Field of `ProcessTotalPremises` | Statement |
+|---|---|
+| `beginRoom` | `base + beginCharge ≤ limit` |
+| `beginBounded` | `CallPrefixBound` for `begin` at `beginCharge` |
+| `beginReplies` | every outcome of `begin` returns a represented state `S₀` with `base + beginCharge + copyCost S₀ ≤ limit` |
+| `stepRoom` | `base + copyCost S + charge S ≤ limit` for each represented running state |
+| `stepBounded` | `CallPrefixBound` for the step from `S` at `charge S` |
+| `stepReplies` | every outcome of the step returns a represented state `S'`, lower in the well-founded relation, with `base + copyCost S + charge S + copyCost S' ≤ limit` |
+
+`beginRoom` and `stepRoom` give the room that a call needs before any reply exists.  The loop invariant is `ProcessStored` with the represented state and `limit ≤ 65536 · cap`.  In each application, the intermediate premise `RunCharges` replaces `RunBudget`: a charge function on native states and stream positions, a begin charge, their prefix bounds, and the room conditions above.  Stage 2 proves `RunCharges` from the limits.
+
+### Stage 2: paid flags
+
+Stage 2 fixes the quadratic append charges with one flag per variable, which states that every array of the variable carries its potential, and with a rule at `if`.  The approved design asked for a flag for each array leaf.  The user approved the departure under the condition in the decisions below.
+
+Per-leaf flags alone do not remove the charge in `consumeInput`.  Its loop body is `if byte == 10 then completeLine next else ⟨true, 0, {next with line := next.line.push byte}⟩`.  `completeLine` resets `line` to `#[]`, a `build` of zero elements, whose leaf is unpaid, so the `if` of two leaf masks leaves `line` unpaid and every push in the other branch is charged its quadratic cost.  The missing rule is at the `if`: the `if` is paid when either branch is, and the unpaid branch is charged the credit of its value.  `completeLine` is taken at most once per step, at the newline that ends the loop, so that charge is linear.  With that rule, a per-variable flag that covers every array of a pair suffices for both running sums, and per-leaf masks would add precision only for a record with an unpaid array beside a growing one, which neither program has.  Per-leaf masks would also change the type of `paid` across `ExprCorrect.lean`, about 460 references, in files that the typed-fields work also changes.
+
+| Rule | Change |
+|---|---|
+| `Ty.creditFree` | a type without arrays, whose credit and potential are 0 |
+| `Expr.paid` of `.pair a b` | owned, and each component paid or `creditFree` |
+| `Expr.paid` of `.letPair e body` | the body's, with both components flagged as `e` is |
+| `Expr.paid` of `.ite` | either branch paid, in place of both |
+| `Expr.allocs` of `.ite` | each branch adds `t.buyCost other own value`, the value's credit when the other branch is paid and this one is not |
+| `Expr.allocs` of `.letPair` | the body's flags for the components are `e.paid` in place of `false` |
+
+The proofs change in `spec_pair` (`pair_top`, `After.seq_regions`), `spec_letPair` (the dying potential of the components is at most the pair's), `ite_branch` (an unpaid branch's charge bounds the owned result's potential by `Ty.pot_le_credit`), `Expr.mode_of_paid`, the reflector's `ite_bound` family and `letPair_bound`, and the builders in `Reflect/Definitions.lean` (`assignBuy`, and `assignPaid` for the destructuring).  No code generator reads `Expr.paid` or `Expr.allocs`, so module bytes do not change.  Bounds do change: an `if` with one paid branch now charges a credit, and pushes on arrays in paid pairs become cheaper.  The examples that rewrite with generated `bound_eq` theorems, such as `Grow`, `Insert`, `Tables`, `Recursion`, and the xorshift and regex proofs, may need new arithmetic.
+
+In the integer program, `combineMagnitude`'s loop state `(#[], carry)` becomes paid, so its pushes cost 80 bytes each in place of a growing block, and `consumeInput`'s record state becomes paid, so its line pushes cost 80 bytes each.  The loop buys the credit of its initial state once, and the newline branch buys the credit of `completeLine`'s result.
+
+### Stage 2: charges and limits
+
+The compositional rules moved to `Verified/Wasi/ResourceRules.lean` and gained `unit`, `exit`, `ite`, and `call`, with `CallBounded`, `callBounded_here`, and `callBounded_there` for calls of effect functions.  The retained-buffer example now imports them.
+
+A generated closed form for an effect command meets `bind`: the charge after a read or a write is a function of the host's reply, so a closed form needs a bound over all replies, which generation cannot supply in general.  For the running sums the replies do not affect the charges, because the read's bytes move into the state and the write's count is a word.  The plan is one `Bounded` proof per effect function, with the charge a Lean function of the native state written from the pure functions' generated `bound_eq` theorems.  This replaces the generated effect-command equations of the approved design, and the user approved the change.
+
+The step charge of the integer program, from the bounds of the pure functions it calls, is linear in the line length and the digit count.  The consume step copies the state and buys its credit, pushes at most 4,096 bytes at 80 bytes each, and runs `completeLine` at most once.  `completeLine` parses the line, adds with `combineMagnitude` at 80 bytes per digit, renders the total, and copies the parts of its borrowed state that its result keeps.  The write step builds the remaining output and copies the state, and the read step charges the 4,144-byte read and copies the state.  The loop over a chunk needs a refined `loopCost` lemma: every iteration costs at most a push except the last, which may run `completeLine`, so the chunk's charge is `4096 · 80` plus one `completeLine`.
+
+The size invariant on reachable states comes from `StreamFuture` with a stronger kernel specification.
+
+| Part | Definition |
+|---|---|
+| `InputLimits L D input` | each line up to and including the first rejected line has at most `L` bytes, and each prefix sum of valid lines has at most `D` digits |
+| `limitSpec L D` | `Good` adds `total.digits.size ≤ D`, and `Room` adds `line.size ≤ L` and, for a valid line, the next total's digit bound |
+| line bound | `Model.Safe` with `finalRoom` bounds the pending line by `L`, by induction on the remaining input, because the pending line is a prefix of a line whose `Room` holds |
+| input bound | `Host.read_bound` keeps the input buffer at most 4,096 bytes |
+| output bound | the output is empty or the rendering of the current total, at most `D + 2` bytes |
+
+`target_terminates` gains an invariant parameter with an initial and a preservation premise, and `RunCharges` quantifies over states that satisfy it.  A lemma derives `RunCharges` from `InputLimits L D` and one explicit inequality on `L` and `D` against the memory cap and the pool's top.  The final integer theorem keeps `StreamHost`, `InputBounds`, and `ExitAccepted`, and replaces `RunBudget` with `InputLimits L D` and that inequality.  The binary64 program follows with the same stream structure; its total is a scalar, and its line parser and printer need their own closed-form bounds.
+
+### Decisions
+
+The user approved the four questions of the phase A report on 2026-10-26.  The paid rule stays one flag per variable, with the `if` paid when either branch is and the unpaid branch charged the credit of its value.  The approval carries a condition: the build lists every existing program whose proved allocation bound changes, the drone's 2,251,064-byte bound among them.  If any existing bound rises, the new `if` rule applies only in the bodies of loops whose state grows, the old rule, which requires both branches paid, applies elsewhere, and the report names each changed bound.
+
+| Question | Decision |
+|---|---|
+| Paid flags | one flag per variable with the `if` rule, under the condition above |
+| Effect-command charges | hand-written `Bounded` proofs for `begin`, `step`, `readStep`, and `writeStep` |
+| Final hypothesis | a general theorem over `InputLimits L D` with one explicit inequality against the memory cap, and a corollary with concrete `L` and `D` |
+| Trees in process states | rejected in stage 1: `Ty.compactable` is false for trees |
+
+A restricted rule would need the loop context in `Expr.paid` and `Expr.allocs`: a flag, set when the recursion enters the body of a loop whose `grows` holds, that selects between the two `if` rules.  The proofs of `ite_branch` and the reflector's `ite_bound` family would then case on that flag.  That variant is not written.  The build's comparison of bounds decides whether it is needed.
+
+### Plan
+
+- [x] Write the compaction code and its proofs (stage 1), unbuilt.
+- [x] Rewrite the partial and total process theorems and both applications' uses (stage 1), unbuilt.
+- [x] Write the paid-flag rules, their proofs, and the reflector changes (stage 2), unbuilt.
+- [x] Move and extend the effect-command resource rules (stage 2), unbuilt.
+- [x] Build `Verified.Wasi.CompactHeap`, `Verified.Wasi.ProcessCompact`, and the process modules; fix the drafts (against the base bound rules).
+- [x] Build `Verified.ExprCorrect`, the reflector, and every program that the paid rules reach; compare all module bytes with the previous emissions, which must match except the process modules.
+- [x] List every existing program whose proved allocation bound changes, the drone's 2,251,064 bytes among them; if any bound rises, restrict the `if` rule to the bodies of loops whose state grows and list the changed bounds.
+- [x] Re-check `stackFits`, the process modules' validity and encoding, and the WASI and running-sum drivers, including the Talos groups.
+- [x] Prove the `Bounded` charges of `begin`, `step`, `readStep`, and `writeStep` for the integer program, and their closed-form bounds.
+- [x] Prove the size invariant and the room lemma, and state the final integer theorem over `InputLimits L D` with its inequality against the memory cap, and a corollary with concrete `L` and `D`.
+- [ ] Repeat the charges and limits for the binary64 program.
+- [ ] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audits.  The integer program is done.
+
+### Risks
+
+The drafts have not met Lean.  The main risks are the low-level `wp` stepping in `wp_compactCode`, where several `simp only` calls must reduce stores, globals, and locals exactly as written, and the bit-level proof of `write64_read64_byte`.  The paid rules change the generated bounds of many programs, and the reflector evaluates `Expr.paid` at each `let`, destructuring, and loop, which now recurses through destructurings and pairs; large programs such as the binary64 printer may elaborate more slowly.  Compaction adds one copy and one move of the state per step.  The integer step already copies the 4,096-byte input buffer when it consumes or writes, so the per-step memory traffic roughly doubles, and the Talos tests, whose memory model grows with each write, may exceed their time limits.
+
+## 2026-10-26: Building the process compaction
+
+The build ran in an independent clone, with at most eight Lean workers and a 44 GiB memory limit.  The baseline came from the fully built base commit `ed77fa248` before the branch was checked out.  A scratch program outside the repository, `EmitAll.lean`, imports a group of modules, encodes every definition of type `Wasm.Module` from the repository's libraries with the encoder and decoder check of `tools/Emit.lean`, and prints the statement of every imported theorem whose name mentions a bound or a cost.  The groups follow the library roots, because some modules of different roots define the same names, and they leave out the test drivers that define `main`.  The baseline holds 171 modules, every module of `tests/verified/modules.txt`, `tests/modules/modules.txt`, and the WASI and running-sum drivers among them, and 1,876 distinct statements.
+
+### Stage 1
+
+Stage 1 changes no bound rule, so the stage 2 files went back to their base contents in the build clone's working tree, and stage 1 built alone.  The drafts needed small repairs: a structure instance that a line break ended early, a `nomatch` that read the next argument as a second discriminant, a structure field named `base` that shadowed the parameter of the same name, a missing `open LeanExe.Pipeline`, which made `Heap` an automatically bound type variable, a few `simp` sets, and an explicit instance of `processValue_native`.  The compaction modules, the partial and total process theorems, and both running sums then built.  Both running-sum drivers passed, the axiom checks among them, including the Wasm runs of every case with the compacting modules.
+
+The emission from this state differs from the baseline in exactly three modules: `Demos.RunningSum.module` (17,972 bytes before, 18,820 after), `Demos.RunningSumFp.module` (31,559 and 32,231), and `Verified.Examples.WasiProcess.module` (2,185 and 2,378).  The other 168 modules are identical.  The statements differ only in the fields of `RunBudget`, now `RunCharges`, the premises of the total process theorem, and the new lemmas `Ty.copyCost_mod` and `Bytes.allocationCost_mod`.
+
+### Stage 2: the uniform `if` rule raises existing bounds
+
+The first build with the stage 2 rules failed in `Verified.TailAllocExpand`, whose theorem equates the allocations of a tail-recursive body with those of its expansion into an expression.  The failure exposes a rise.  `tailGrow` in `Verified/Examples/TailReflection.lean` is `if n = 0 then xs else tailGrow weights (n - 1) (xs.push ...)`, with `xs` a paid parameter.  In the expansion the `then` branch is a paid moved variable, and the `else` branch is the function's own call, whose result is unpaid.  The uniform rule makes the `if` paid and charges the `else` branch the credit of the call's result, the final array, at every step, so the bound of `tailGrow` becomes quadratic in the array's length.  An ordinary function whose body is an `if` with one paid branch rises in the same way whenever its callers do not use the result's potential.
+
+Following the user's decision, the new rule applies only in the bodies of loops whose state grows, and the old rule applies elsewhere.  The design keeps `Expr.paid` and `Expr.allocs` as the base rules plus the pair and destructuring rules, and adds two functions for loop bodies.
+
+| Part | Definition |
+|---|---|
+| `Expr.bodyPaid` | `Expr.paid`, except that an `if` reached through `let`s, destructurings, and branches from the body's result is paid when either branch is |
+| `Expr.buys` | the credit of the value of the branch taken at such an `if` when that branch is not paid and the other is, summed along the path taken |
+| `Expr.statePaid` | uses `Expr.bodyPaid` for the body |
+| `loopAlloc` | adds the body's `Expr.buys` at each step when the state is paid |
+| `CodeSpecIn buy` | `CodeSpec` with the conclusion stated for `Expr.bodyPaid` and the bound plus `Expr.buys` when `buy` holds; the trap condition is unchanged |
+
+`spec_ite`, `spec_letE`, and `spec_letPair` produce `CodeSpecIn buy` from `CodeSpecIn buy` of the parts in result position, `spec_loop` uses `CodeSpecIn` of the body at the state's flag, and `Expr.code_spec` proves `CodeSpecIn` for every flag, from which `CodeSpec` follows.  The other constructors take `CodeSpecIn` from `CodeSpec`, since their `Expr.bodyPaid` is `Expr.paid` and their `Expr.buys` is 0 by definition.  The reflector gives a loop's state step a zero buy charge when the state is unpaid or when no `if` in the body's result positions has branches with different flags, which a kernel-evaluated test decides; otherwise it builds the charge with builders that it records when it reflects an `if`, a `let`, or a destructuring.  `TailBody.allocs` gives the components of a destructured pair the pair's flag, as `Expr.allocs` does, so that `TailBody.allocs_toExpr` holds again.
+
+The pair rule applies everywhere, and it can still raise a bound: a loop whose state is a pair can now be paid, and such a loop buys the credit of an unpaid initial state once, which exceeds what the old charges cost when the loop runs zero times or once.  The comparison of statements after the stage 2 build decides whether any existing bound rises this way.
+
+- [x] Build stage 1 alone, run both running-sum drivers, and compare all modules and bound statements with the baseline.
+- [x] Write the restricted `if` rule: `Expr.bodyPaid`, `Expr.buys`, `CodeSpecIn`, the generalized specifications, the loop and fold proofs, the renaming lemmas, the tail destructuring, and the reflector's buy charges.
+- [x] Build everything with stage 2, compare modules and statements with the baseline, and list every changed bound with its direction.
+
+### The restricted rule as built
+
+The user approved the restricted rule on 2026-10-26.  `Expr.paid` keeps the base rule at `if` and the new rules for pairs and destructurings.  `Expr.bodyPaid` follows the result of a loop's body through `let`s, destructurings, and branches, and treats every other form as `Expr.paid` does.  `Expr.buys` sums along the path taken the credit of each unpaid branch whose sibling is paid, and `Expr.buyFree` states that no `if` on that path has branches with different flags, so that `Expr.buys` is 0.  `Expr.statePaid` uses `Expr.bodyPaid`, and `loopAlloc` adds the body's `Expr.buys` at each pass when the state is paid.  `Expr.paid` of a loop still asks for a paid body under the base rule, and `Expr.paid_loop` now states that such a loop has a paid state.
+
+`CodeSpecIn buy` is `CodeSpec` with the potential counted as `Expr.paidIn buy` states and the bound, both after the code and in the condition for a trap, increased by `Expr.buysIn buy`.  The trap condition needs the charge: a coercion or a store after a branch finds its room only if the branch's bound includes the branch's credits.  `spec_ite`, `spec_letE`, and `spec_letPair` take `CodeSpecIn buy` of their result parts and give it for the whole.  `spec_loop` and `spec_fold` take it for every flag of the body and use the state's flag.  `Expr.code_specIn` proves it for every expression by one induction, in which each other constructor converts its `CodeSpec` with `specInOf`, and `Expr.code_spec` follows at the flag `false`.
+
+`TailBody.allocs` and `TailBody.paidResult` give the components of a destructured pair the pair's flag, as `Expr.allocs` does, so that `TailBody.allocs_toExpr` holds, and `tail_letPair_spec` bounds the components' potential by the pair's.  The reflector's loop builder evaluates the state's flag and `Expr.buyFree`, and, when both allow it, proves the credits 0 with `buys_free` and keeps the lemma `loop_bound`, whose conclusion has the base form.  Otherwise it uses `loop_buy_bound`, whose pass includes the credits, which the builders that the reflection of an `if` with a Boolean condition, a `let`, and a destructuring records compute with `ite_buys`, `letE_buys`, and `letPair_buys`.  The other forms of condition and folds whose bodies charge credits fail with a message.  The integer and binary64 running sums take the second path for the loop of `consumeInput`.  `callBounded_here` and `callBounded_there`, drafts from phase A, failed by dependent elimination and were removed until the charge proofs need them.
+
+### Stage 2: the comparison
+
+The full build with the restricted rule passed: the heavy gamma and lgamma proofs one at a time, then every module of the import list with four workers.  The emission differs from the baseline in the same three process modules as stage 1, and the other 168 modules keep their bytes.  Sixteen generated bound statements changed, and the drone's `compute` bound, with the theorem of 2,251,064 bytes, did not.
+
+| Changed bound | Loop state |
+|---|---|
+| `Verified.Examples.Repeat.compiled.below` | a word and an array |
+| `Verified.Examples.Fold.compiled.pair` | a word and an array, in a fold |
+| `Verified.Examples.Fields.compiled.pushPrices` | a record with the arrays `prices` and `sizes` |
+| `Library.Arrays.Filter.compiled.below` | a word and an array |
+| `Library.Numerics.Arithmetic.Uscale.compiled.mulSmall`, `.sub` | an array and a carry |
+| the same two functions in `ParseFloat` and `PrintFloat`, and in the binary64 running sum | an array and a carry |
+| `combineMagnitude` of the integer running sum, twice | an array and a carry |
+| `consumeInput` of both running sums | the process record |
+
+Every change has one cause: the pair rule makes a loop's state that is a pair or a record paid.  The loop then buys the credit of its initial state once, 16 bytes for each word of each array plus 16, and each push costs `paidGrowCost 1`, 80 bytes, in place of `growCost (n + 1) 1`, 16·n + 96 bytes at length n.  A push saves 16·n + 16 bytes, which is the credit of the array before it, so the new bound is at most the old one once each array of the state has grown once.  It is higher by the unrecovered credit otherwise: by 16 bytes when a loop that starts from an empty array pushes nothing, as in `Filter.below` with no element below the limit or `combineMagnitude` on empty inputs, by the credit of `sizes` in `Fields.pushPrices`, which never grows, and in `consumeInput` by the credits of the state's arrays at entry and of the completed state when a chunk ends a line before it pushes a byte.  The rule that no existing bound rises therefore fails for all sixteen, and restricting the pair rule to loop states does not help, since every case is a loop state.  The work stops here for the user's decision.
+
+The options are these.  The first accepts the rises, each at most the credit of the arrays of a loop's state, in exchange for the linear bound of `consumeInput`.  The second charges a loop the smaller of its unpaid and paid accountings, `min (loopAlloc false) (loopAlloc ps)`, which needs the loop's proof for both flags, a loop whose state is newly paid to give an unpaid value, and the reflector to write `min` only where the two flags differ, so that no other statement changes.  The diffs differ from the old bounds only in the initial credit, the credits at `if`s, and the push charges, all of which the unpaid accounting drops, so under the second option none of the sixteen bounds rises.  The third buys the credit only for the arrays that grow, with flags per array, which removes the rise of `Fields.pushPrices` but not the 16 bytes of a loop that pushes nothing.  The second meets the rule exactly and keeps the running sums' linear bound.
+
+### Stage 2: the smaller of two bounds
+
+The user chose the second option.  `loopAllocWith ps` is the former `loopAlloc` at the state's flag `ps`, and `loopAlloc` charges a loop whose state is paid and of pair type, `Ty.isPair`, the smaller of `loopAllocWith false` and `loopAllocWith true`, and every other loop `loopAllocWith` at its flag.  A pair-typed state is paid only through the rules for pairs and destructurings, so the minimum appears exactly where those rules make a state paid, and the bound of every other loop keeps its form.  `Expr.paid` of a loop or a fold now also requires a state that is not a pair, since the unpaid accounting does not count the value's potential.
+
+`spec_loop_with` is the former loop proof at any flag `ps` that holds only when the state is paid, with the bound `Expr.loopBound ps`, stated as `CodeSpecWith`, the specification with an explicit paid flag and bound.  `spec_loop` chooses the flag: for a paid pair state, the flag whose bound is the smaller at the given environment, and otherwise the state's flag.  The reflector evaluates the state's flag and `Ty.isPair` and uses `loop_min_bound`, `loop_min_flat_bound`, or `fold_min_flat_bound`, whose conclusion is the `min` of the two closed forms, only when both hold.  The other loop lemmas take the hypothesis that they do not.
+
+The full build with the minimum passed, with the heavy proofs one at a time and the rest with four workers.  The emission again differs from the baseline only in the three process modules, and the other 168 modules keep their bytes.  The same sixteen generated bound statements change, and each now holds one `min`.  A script outside the repository, `minfirst.py`, replaces each `min` by its first argument and drops additions of 0, and the result equals the baseline's statement for all sixteen.  Each new bound is therefore at most the old one at every argument, and no existing bound rises.  The drone's bound is unchanged.  The other changed statements are those of the reflector's loop and destructuring lemmas, which gained hypotheses, and of the retained-buffer example, whose `Bounded` moved to `Verified/Wasi/ResourceRules.lean`.
+
+- [x] Build with the minimum, compare the statements and modules with the baseline, and check that no changed bound rises.
+
+## 2026-10-27: The charges of the integer running sum
+
+The integer running sum's final theorem now replaces the `RunCharges` premise with `InputLimits L D` and one inequality, `4104 + limitMemory L D ≤ 65536 · 65535`, with `limitMemory L D = 220 · (L + D) + 1,010,000`: the module's literal pool ends at 4,104 bytes, and its memory may grow to 65,535 pages, which `initial_top` and `initial_memoryCap` compute.  `terminates_limits` states the same result for any initial heap and memory cap.  A corollary fixes `L` and `D` at 9,000,000.  Both running-sum drivers pass, the correctness axiom check now covers 34 theorems, and the module bytes do not change.
+
+### The invariant
+
+`target_terminates` takes an invariant `Inv` of the native state and the ghost, its initial instance, and `StepAdvances`, which gives for each step from a safe state where `Inv` holds a represented ghost of the final world at which `Inv` holds and the rank falls while the process runs.  `ControlRep` carries `Inv` for running states, and the step conditions of `RunCharges` hold only where it does.  The ghost of `StepAdvances` must be the one at which the rank falls, because the host's representation relation is not functional: two applications of the reply axioms of `StreamHost` may give different positions for the same world.  `streamFuture_writeStep`, `streamFuture_readStep`, and `streamFuture_step` therefore also state the fall of the rank at the position they produce.  The binary64 program passes the invariant that always holds, through `true_advances`, until its charges are proved.
+
+| Part | Statement |
+|---|---|
+| `LimitsFrom L D`, `InputLimits L D` | each line up to and including the first line without an integer has at most `L` bytes, and each total after a line with an integer has at most `D` digits |
+| `limitSpec L D` | `kernelSpec` with `Good` bounding the total's digits by `D` and `Room` bounding the line by `L` and the next total by `D` |
+| `LimitInv L D` | a `StreamFuture` under `limitSpec L D`, and `Within outputSize` of the buffers |
+| `Model.pending_le`, `StreamFuture.line_le` | the pending line is a prefix of a line whose room holds, so it has at most `L` bytes |
+| `step_within` | every returned step keeps the input buffer at most 4,096 bytes and the output buffer at most `outputSize` of the total, whatever the host replies |
+| `Model.error_room`, `streamFuture_stopped` | a step that stops leaves a good total and a line of at most `L` bytes |
+| `step_sized` | every state that a step from a state within the limits returns has the sizes of `Sized L D` |
+
+`outputSize` is the rendering's size, `digits + 2`, when it fits in a word, so that `Within` needs no premise on the totals.
+
+### The charges
+
+`Rule` for `bind` now asks for a bound on the second command only at values that some run of the first returns, through `Returns`.  The read step needs this: `afterRead` borrows the reply and copies its bytes into the state, so its charge depends on the read's size, which `Returns.read_size` bounds by the capacity.  `CallBoundRule`, `callBounded_here`, and `callBounded_there` give a call's bound from its body's, for the first function of a program and for a later one; the phase A drafts failed by dependent elimination because they fixed the program and the callee before the case analysis, and the rule now cases on general indices and reduces by its own pattern matching.
+
+The bodies of `begin`, `step`, `readStep`, and `writeStep` take their charges by `bounded_of_rule` at each command.  A cost of an expression in an effect body reduces by `simp +decide` with the equations of `Expr.allocs` and `Var.cost`: every variable of the step is borrowed or scalar, so each variable's cost is 0, and what remains is the table entry of the called function, which `show` identifies with the generated `bound` of the pure function.  `Ty.copyCost_of_scalar` removes the copy of the write's reply, a scalar argument, whose type is an unreduced entry of the parameter list.  The conditions' frames follow from `Expr.fits_of_depthCalls`, since no condition calls a function.
+
+| Charge | Bound for a state within the limits |
+|---|---|
+| `writeCharge` | `remainingOutput.bound` and a copy of the state |
+| `consumeInput.bound` | the paid side of its `min`: the copy and credit of the state, 80 bytes for each of at most 4,096 pushes, and one `completeLine` with the credits of its result, by `loopCost_le_last` |
+| `endCharge` | a copy of the state, or `completeLine.bound` |
+| `readCharge` | the read's 4,144 bytes and two copies of the state |
+| `stepCharge L D` | `200 · (L + D) + 1,000,500`, at least every branch |
+| `copyLimit L D` | `9 · D + 8 · L + 4,320`, at least the copy of any state of `Sized L D` |
+
+`loopCost_le_last` bounds a loop whose passes cost at most `c` each, except one pass after which the condition fails: in `consumeInput`, the pass at a newline runs `completeLine`, whose result either stops or holds output, and either way ends the loop.  The line at that pass has at most `L + 4,096` bytes, a coarse bound that the pushes of one chunk give.  The closed forms of `parse`, `add`, `combineMagnitude`, and `render` come from their generated equations: `parse` costs a block of at most the line's words, `combineMagnitude` at most `104 · m + 232` bytes for arrays of `m` words in all, and `render` at most the digits and 57 bytes.
+
+- [x] Prove the `Bounded` charges of `begin`, `step`, `readStep`, and `writeStep` for the integer program, and their closed-form bounds.
+- [x] Prove the size invariant and the room lemma, and state the final integer theorem over `InputLimits L D` with its inequality against the memory cap, and a corollary with concrete `L` and `D`.
+- [x] Run both running-sum drivers.
+- [x] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audit of the integer program.
+- [ ] Repeat the charges and limits for the binary64 program, and update its guide.
+
+## 2026-10-27: An unbuilt module in the WASI axiom check
+
+`tests/wasi/Axioms.lean` imports `Verified.ProgramLiterals`, which no module imported and no build list of `tests/wasi/run.sh` named.  The aggregate `lake build Verified Library` therefore never checked its proofs, and the WASI driver failed on a fresh build when the axiom check found no `.olean` for it.  Earlier runs passed only in checkouts that still held an `.olean` from an earlier build.  `Verified.lean` now imports the module, so the aggregate checks it, and the driver's byte-values build names it, so the driver builds what its axiom check imports.  Every other top-level module of `Verified/` is imported by `Verified.lean` or by another module.
 
 ## 2026-10-26: The Wasm-to-C translator: phase A of M0 and M1
 
