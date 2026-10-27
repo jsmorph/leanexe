@@ -2,17 +2,20 @@ import Verified.OwnedExpr
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline
 
 theorem CodeSpec.releaseCoerced {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
     {host : HostEnv Unit} {pv : List Value} {e : Expr S Γ t} {env : Env Γ}
     {slots : List Slot} {paid : List Bool} {L0 live : Nat → Bool} {target : Mode}
-    (hm : Runtime m) (spec : CodeSpec m funs flags bounds fits host pv e env slots paid live)
+    (hm : Runtime m) (spec : CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live)
     (hTarget : e.mode (slots.map Slot.mode) = .owned → target = .owned)
     {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals}
     (hh : s.positions = h) (hpv : s.params = pv) (hVars : Holds env slots L0 base heap store s)
-    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hAt : heap.At store) (hSafe : pool.Safe env slots L0 heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535)
     (hBase : s.params.length ≤ base) (hRoom : base + max e.width (copyWidth t) ≤ h)
     (hPlace : e.placeArgs = true)
     (hEntry : ∀ i, (live i || e.uses i) = true → L0 i = true)
@@ -30,7 +33,7 @@ theorem CodeSpec.releaseCoerced {S : List Sig} {Γ : List Ty} {t : Ty} {m : Modu
         coerceCost t (e.mode (slots.map Slot.mode)) target (e.denote funs env)) →
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
     wp m (releaseWhere Γ slots (fun i => L0 i && !(live i || e.uses i)) ++
-      (e.code h slots base live ++
+      (e.code (pool := pool) h slots base live ++
         (coerceCode h t (e.mode (slots.map Slot.mode)) target base ++ rest))) Q store s host := by
   refine wp_releaseWhere hm hVars hAt (fun i hi => by
       simp only [Bool.and_eq_true] at hi; exact hi.1)
@@ -46,6 +49,7 @@ theorem CodeSpec.releaseCoerced {S : List Sig} {Γ : List Ty} {t : Ty} {m : Modu
   have hPotLe : dyingPot store s env slots paid (fun i => live i || e.uses i) live ≤
       dyingPot store s env slots paid L0 live := dyingPot_mono hEntry (fun _ hi => hi)
   refine spec.coerced hm hTarget hh hpv released.holds released.step.at_
+    (hSafe.evolves hVars released hEntry)
     (by rw [released.step.cap m]; exact hCap) hBase hRoom hPlace
     (hTrap.allocPart id (fun _ hw => hw.shift (heap1 := heap1) (store1 := store1) (c1 := 0)
       (by have ht := congrArg UInt64.toNat hTop1; omega)

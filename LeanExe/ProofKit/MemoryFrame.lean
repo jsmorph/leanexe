@@ -33,6 +33,14 @@ theorem WritesRange.write64 (store : Store α) (address : UInt32) (value : UInt6
     WritesRange store { store with mem := store.mem.write64 address value } start stop :=
   ⟨rfl, Mem.write64_pages .., fun _ hOutside => write64_bytes_outside _ _ _ (by omega)⟩
 
+theorem WritesRange.write8 (store : Store α) (address : UInt32) (value : UInt8)
+    (start stop : Nat) (hStart : start ≤ address.toNat) (hStop : address.toNat + 1 ≤ stop) :
+    WritesRange store { store with mem := store.mem.write8 address value } start stop := by
+  refine ⟨rfl, rfl, ?_⟩
+  intro i hOutside
+  simp only [Mem.write8]
+  exact ite_eq_right (by omega)
+
 theorem WritesRange.read64 {initial final : Store α} {start stop : Nat}
     (h : WritesRange initial final start stop) (address : UInt32)
     (hOutside : address.toNat + 8 ≤ start ∨ stop ≤ address.toNat) :
@@ -44,6 +52,7 @@ theorem WritesRange.read64 {initial final : Store α} {start stop : Nat}
 #print axioms WritesRange.trans
 #print axioms WritesRange.mono
 #print axioms WritesRange.write64
+#print axioms WritesRange.write8
 #print axioms WritesRange.read64
 
 end LeanExe.ProofKit.Memory

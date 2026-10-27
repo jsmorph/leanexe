@@ -1,10 +1,15 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
+
 """Write vectors.txt: CRC-32 by Python's zlib and CRC-32C by the Linux kernel's crypto API.
 
 Each line is `label crc32 crc32c message`, with the CRCs as eight hexadecimal digits of the value
 and the message in hexadecimal, `-` when empty.  The labels are `catalogue` for the check string
 of the CRC catalogue, `rfc3720` for the examples of RFC 3720 Appendix B.4, and `random` for
 pseudorandom messages.  The script stops if zlib or the kernel disagrees with the values that
-those sources publish.  Run it with `python3 -I data/hashing/crc/generate.py` on Linux.
+those sources publish.  Run it with `uv run data/hashing/crc/generate.py` on Linux.
 """
 
 import random

@@ -1,6 +1,7 @@
 import Verified.Compile
 import Verified.AllocCost
 import Verified.TailRun
+import Verified.Bytes.Cost
 
 /-! The allocation bound: the bytes by which the code of an expression can raise the allocator's
 `top`, as a Lean function of the values of its variables.  An allocation of `b` payload bytes
@@ -21,6 +22,7 @@ def Ty.copyCost : (t : Ty) → t.denote → Nat
   | .elem _, _ => 0
   | .pair a b, v => a.copyCost v.1 + b.copyCost v.2
   | .array e, xs => allocCost ((xs.size * e.width + 1) * 8)
+  | .bytes, value => Bytes.allocationCost value.data.size
   | .tree _, value => value.copyCost
   | .treeHeader shape r, _ => allocCost (8 * shape.width r)
 
@@ -30,7 +32,7 @@ def Ty.credit : (t : Ty) → t.denote → Nat
   | .elem _, _ => 0
   | .pair a b, v => a.credit v.1 + b.credit v.2
   | .array e, xs => 16 * (xs.size * e.width + 1)
-  | .tree _, _ | .treeHeader _ _, _ => 0
+  | .tree _, _ | .treeHeader _ _, _ | .bytes, _ => 0
 
 /-- The credits of the arguments that `sel` picks. -/
 def Env.credit (sel : Nat → Bool) : {Γ : List Ty} → Env Γ → Nat
@@ -173,8 +175,9 @@ def Expr.grows (flags : Flags S) : {Γ : List Ty} → {t : Ty} → Expr S Γ t �
     count.grows flags || init.grows flags || cond.grows flags || body.grows flags
   | _, _, .fold _ init body => init.grows flags || body.grows flags
   | _, _, .listFold args body => (argsAny fun i => (args i).grows flags) || body.grows flags
-  | _, _, .build count elem => count.grows flags || elem.grows flags
-  | _, _, .get _ i | _, _, .eraseAt _ i => i.grows flags
+  | _, _, .build count elem | _, _, .bytesBuild count elem =>
+    count.grows flags || elem.grows flags
+  | _, _, .get _ i | _, _, .eraseAt _ i | _, _, .bytesGet _ i => i.grows flags
   | _, _, .set _ i v => i.grows flags || v.grows flags
   | _, _, .treeNode _ _ words children =>
     (argsAny fun i => (words i).grows flags) || (argsAny fun i => (children i).grows flags)
@@ -182,6 +185,13 @@ def Expr.grows (flags : Flags S) : {Γ : List Ty} → {t : Ty} → Expr S Γ t �
     (if h : shape.hasNull = true then (empty h).grows flags else false) ||
       argsAny fun r => (nodes r).grows flags
   | _, _, _ => false
+
+theorem Expr.grows_treeCase (flags : Flags S) {shape : TreeShape} (x : Var Γ (.tree shape))
+    (empty : shape.hasNull = true → Expr S Γ t)
+    (nodes : (r : Fin shape.records) → Expr S (shape.context r Γ) t) :
+    (Expr.treeCase x empty nodes).grows flags =
+      ((if h : shape.hasNull = true then (empty h).grows flags else false) ||
+        argsAny fun r => (nodes r).grows flags) := rfl
 
 /-- Whether parameter `i` of a function with signature `g` and parameter flags `pf` is paid and
 owned, so that its potential counts. -/
@@ -447,6 +457,10 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
           (ListFold.bodyLive e captures))
         (Env.ofFn fun i => (args i).denote funs env)
   | _, _, .size _, _ | _, _, .leSize _ _, _ | _, _, .proj _ _, _ => 0
+  | _, _, .bytesEmpty, _ | _, _, .bytesSize _, _ => 0
+  | _, _, .bytesLiteral bytes, _ => Bytes.allocationCost bytes.length
+  | _, _, .bytesGet x index, env =>
+    index.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env
   | _, _, .get x i, env => i.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env
   | _, _, .set x i v, env =>
     i.allocs funs flags bounds modes paid (fun j => live j || j == x.index || v.uses j) env +
@@ -471,6 +485,12 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
       sumBelow (fun k => elem.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
         (shift 1 all)
         (.cons (UInt64.ofNat k) env)) n
+  | _, _, .bytesBuild count elem, env =>
+    let all := fun i => live i || elem.uses (i + 1)
+    let n := (count.denote funs env).toNat
+    count.allocs funs flags bounds modes paid all env + Bytes.allocationCost n +
+      sumBelow (fun k => elem.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
+        (shift 1 all) (.cons (UInt64.ofNat k) env)) n
 
 /-- The modes of a function's parameters at entry. -/
 def entryModes (params : List Ty) (modes : List Mode) : List Mode :=
@@ -661,10 +681,12 @@ def Expr.fits (funs : Funs S) (fits : Fits S) :
   | _, _, .size _, _ | _, _, .leSize _ _, _ | _, _, .proj _ _, _
   | _, _, .append _ _, _ => true
   | _, _, .get _ i, env | _, _, .eraseAt _ i, env => i.fits funs fits env
+  | _, _, .bytesEmpty, _ | _, _, .bytesLiteral _, _ | _, _, .bytesSize _, _ => true
+  | _, _, .bytesGet _ index, env => index.fits funs fits env
   | _, _, .set _ i v, env | _, _, .insertAt _ i v, env =>
     i.fits funs fits env && v.fits funs fits env
   | _, _, .push _ v, env => v.fits funs fits env
-  | _, _, .build count elem, env =>
+  | _, _, .build count elem, env | _, _, .bytesBuild count elem, env =>
     count.fits funs fits env &&
       allBelow (fun k => elem.fits funs fits (.cons (UInt64.ofNat k) env))
         (count.denote funs env).toNat
@@ -719,7 +741,7 @@ theorem Expr.fits_of_depthCalls (funs : Funs S) (fits : Fits S) {Γ : List Ty} {
     simp only [Expr.fits, Bool.and_eq_true]
     exact ⟨argsAll_true (fun i => ha i (argsAny_eq_false hd.1 i) env),
       ListFold.fitsWith_true _ _ (hb hd.2) _⟩
-  | build count elem hc he =>
+  | build count elem hc he | bytesBuild count elem hc he =>
     intro hd env
     simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd
     simp only [Expr.fits, hc hd.1, Bool.true_and]

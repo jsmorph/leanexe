@@ -2,16 +2,19 @@ import Verified.CoercedRelease
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline
 
 theorem CodeSpec.released {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
     {host : HostEnv Unit} {pv : List Value} {e : Expr S Γ t} {env : Env Γ}
     {slots : List Slot} {paid : List Bool} {L0 live : Nat → Bool}
-    (hm : Runtime m) (spec : CodeSpec m funs flags bounds fits host pv e env slots paid live)
+    (hm : Runtime m) (spec : CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live)
     {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals}
     (hh : s.positions = h) (hpv : s.params = pv) (hVars : Holds env slots L0 base heap store s)
-    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hAt : heap.At store) (hSafe : pool.Safe env slots L0 heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535)
     (hBase : s.params.length ≤ base) (hRoom : base + e.width ≤ h)
     (hPlace : e.placeArgs = true)
     (hEntry : ∀ i, (live i || e.uses i) = true → L0 i = true)
@@ -27,7 +30,7 @@ theorem CodeSpec.released {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
         e.allocs funs flags bounds (slots.map Slot.mode) paid live env) →
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
     wp m (releaseWhere Γ slots (fun i => L0 i && !(live i || e.uses i)) ++
-      (e.code h slots base live ++ rest)) Q store s host := by
+      (e.code (pool := pool) h slots base live ++ rest)) Q store s host := by
   refine wp_releaseWhere hm hVars hAt (fun i hi => by
       simp only [Bool.and_eq_true] at hi; exact hi.1)
     (fun heap1 store1 released hTop1 => ?_)
@@ -46,6 +49,7 @@ theorem CodeSpec.released {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
         e.allocs funs flags bounds (slots.map Slot.mode) paid live env)))) Q := by
     simpa only [Bool.true_and] using hTrap
   refine spec h base heap1 store1 s hh hpv released.holds released.step.at_
+    (hSafe.evolves hVars released hEntry)
     (by rw [released.step.cap m]; exact hCap) hBase hRoom hPlace _ _
     (hBudget.part id (fun _ => rfl) (fun _ hw => hw.shift
       (heap1 := heap1) (store1 := store1) (c1 := 0)

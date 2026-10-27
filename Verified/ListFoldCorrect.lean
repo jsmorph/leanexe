@@ -2,6 +2,8 @@ import Verified.ListFoldLoop
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline
 
 theorem spec_listFold {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List Ty}
@@ -11,12 +13,12 @@ theorem spec_listFold {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List 
       Expr S Γ ((ListFold.params e captures).get i))
     (body : Expr S (ListFold.context e captures) (.elem e))
     (argsSpec : ∀ i env slots paid live,
-      CodeSpec m funs flags bounds fits host pv (args i) env slots paid live)
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (args i) env slots paid live)
     (bodySpec : ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv body env slots paid live) :
+      CodeSpec (pool := pool) m funs flags bounds fits host pv body env slots paid live) :
     ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv (.listFold args body) env slots paid live := by
-  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (.listFold args body) env slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom hPlace rest Q hTrap hNext
   let value := Expr.listFold args body
   let all := fun i => live i || argsAny fun j => (args j).uses i
   let state := Env.ofFn fun i => (args i).denote funs env
@@ -76,7 +78,7 @@ theorem spec_listFold {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List 
     (fun _ => nofun)
     (fun i => by simpa only [Bool.not_eq_false'] using argsAny_eq_false hArgs i)
     (fun i hf => by simpa only [Bool.not_eq_true'] using argsAll_false _ i (by simpa using hf))
-    (fun _ _ => rfl) heap store s hh hpv hVars hAt hCap hBase
+    (fun _ _ => rfl) heap store s hh hpv hVars hAt hSafe hCap hBase
     (fun i => roomArgs i) _ _
     (trap.part (a := true) (fun hd => by
         simp only [Bool.not_eq_true'] at hd ⊢
@@ -89,13 +91,21 @@ theorem spec_listFold {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List 
     (frame1.positions.trans hh) (by rw [frame1.params]; exact hBase)
     (by rw [flatMap_types_length, frame1.positions, hh]; omega)
     fun s2 frame2 hold2 _ => ?_
+  have hInput : @pool.Input (Env (ListFold.params e captures))
+      (Env.represent (ListFold.params e captures) []) heap1 store1 ws state := by
+    obtain ⟨hStatic, _⟩ := hSafe.static.step step1 (fun _ _ => trivial)
+    refine ⟨hStatic, ?_⟩
+    intro region hRegion
+    change Apart store1 (Env.moves store1 (paramMode (ListFold.params e captures) []) ws state) region
+    rw [ListFold.moves_eq_nil]
+    exact Apart.nil
   refine ListFold.loop_spec hm body hBody bodySpec h base state heap1 store1
     { s2 with values := s.values } ws
     (frame2.positions.trans (frame1.positions.trans hh))
     (frame2.params.trans (frame1.params.trans hpv))
     (by simpa only [ListFold.paramMode_eq_borrowed] using rep1)
     (by simpa only [ListFold.paramMode_eq_borrowed] using sep1)
-    hold2 step1.at_ (by rw [step1.cap m]; exact hCap)
+    hold2 step1.at_ hInput (by rw [step1.cap m]; exact hCap)
     (by rw [frame2.params, frame1.params]; exact hBase) roomLoop _ _
     (trap.part (a := true) (a' := true)
       (fun hd => by

@@ -3,6 +3,8 @@ import Verified.FieldsOrder
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm
 
 theorem Args.get_cons_zero {S : List Sig} {Γ ps : List Ty} {t : Ty}
@@ -48,14 +50,14 @@ theorem Args.code_prependRepeat {S : List Sig} {Γ ps : List Ty}
     (t : Ty) (n : Nat) (args : Fin n → Expr S Γ t) (tail : Args S Γ ps)
     (h fieldBase scratch : Nat) (slots : List Slot) (L : Nat → Nat → Bool) :
     argsCode (fun i =>
-      ((prependRepeat t n args tail).get i).code h slots scratch (L (i.val + 1)) ++
+      ((prependRepeat t n args tail).get i).code (pool := pool) h slots scratch (L (i.val + 1)) ++
       coerceCode h ((List.replicate n t ++ ps).get i)
         (((prependRepeat t n args tail).get i).mode (slots.map Slot.mode)) .owned scratch ++
       storeCode h (fieldBase + i.val) ((List.replicate n t ++ ps).get i).types) =
-    argsCode (fun i => (args i).code h slots scratch (L (i.val + 1)) ++
+    argsCode (fun i => (args i).code (pool := pool) h slots scratch (L (i.val + 1)) ++
       coerceCode h t ((args i).mode (slots.map Slot.mode)) .owned scratch ++
       storeCode h (fieldBase + i.val) t.types) ++
-    argsCode (fun i => (tail.get i).code h slots scratch (L (n + i.val + 1)) ++
+    argsCode (fun i => (tail.get i).code (pool := pool) h slots scratch (L (n + i.val + 1)) ++
       coerceCode h (ps.get i) ((tail.get i).mode (slots.map Slot.mode)) .owned scratch ++
       storeCode h (fieldBase + n + i.val) (ps.get i).types) := by
   induction n generalizing fieldBase L with

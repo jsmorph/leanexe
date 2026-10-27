@@ -397,6 +397,17 @@ The form is `call MODULE.wasm FUNCTION RESULT-KIND ARG …`.  The first command 
 
 A host releases an object it owns by calling the export `release` with the pointer.  `release` traps when the header lacks the magic number or the count is not 1, so a second release of one pointer traps.  The host also has test commands for the allocator (`release-reuse`, `free-alias`, `temp-byte-call`, `temp-array-call`, `noarg-temp-reuse`, and `allocator-grows`), which [`tools/wasmtime-host.c`](../tools/wasmtime-host.c) documents.
 
+Options before the mode configure WASI.  `--wasi` links WASI preview 1, and `run MODULE.wasm` enables WASI and calls `_start`.  `--stdin-file`, `--stdout-file`, and `--stderr-file` give the guest's streams, which the guest otherwise inherits from the host.  `--control-file` receives the host's own output, the control records, which otherwise go to the host's stdout.  [The WASI manual](wasi.md#wasmtime-host) states which combinations each mode requires.  In WASI mode, the control output of a failed run ends with `wasi-exit N`, `trap`, or `error`, and in `run` mode the host writes records only to a control file.  Without `--wasi`, the host writes no outcome records, and its status and stderr report a failure.
+
+| Record | Meaning | Host status |
+|---|---|---|
+| A result line, `results r0 r1 …`, `u64 V X`, `memory P L HEX`, `memory-size N`, `saved N` | The output of a call or a script command. | 0 |
+| `stats A F` | The allocation and free counters after `call-stats` or the `stats` command. | 0 |
+| `return` | `_start` returned in `run` mode. | 0 |
+| `wasi-exit N` | The guest called `proc_exit` with a status `N` that Wasmtime accepts. | `N` modulo 256 |
+| `trap` | The export that the mode or a script `call` command calls trapped. | 2 |
+| `error` | Any other failure after the control output opens: a Wasmtime error, a rejected exit status, a trap in `alloc`, `reset`, or module initialization, a malformed result, or a host failure. | 1 |
+
 ### Native runs and tools
 
 A Lean file with a `main` runs natively with `tools/leanrun --timeout 10m lake env lean --run FILE ARGS`, which is how the test-case generators produce their expected results.  `tools/leanrun --timeout 60m lake build euler-native` builds [`Demos/Euler/Native.lean`](../Demos/Euler/Native.lean), which runs either Euler solver natively and writes its output words, and `uv run tools/euler-run.py WASM first|reconstructed N OUTDIR` runs one solve export in the Wasmtime host and records its runtime and peak resident size.  `uv run tools/gpt2.py --output-tokens 32 --prompt "…"` generates text with `gpt.wasm`, greedily or with `--top-k`, `--temperature`, and `--seed`, from the weight files that [`tests/gpt/gpt2_compare.py`](../tests/gpt/gpt2_compare.py) writes.
@@ -586,8 +597,14 @@ uv run tests/modules/chunks.py
 3. [`tests/modules/run.sh`](../tests/modules/run.sh), with the module cases, the release counts, and the depth guard, and `uv run tests/modules/chunks.py`.
 4. [`tests/drone/run.sh`](../tests/drone/run.sh), and [`tests/gpt/run.sh`](../tests/gpt/run.sh) and [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh) when the GPT module changed.
 5. The LTG check.
-6. `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library`, with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh), since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
+6. A cold numerical proof cache first needs the [separate one-worker builds](#memory-heavy-numerical-proofs).  Then `tools/leanrun --threads 2 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh) must pass, since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
 7. [`tests/wgsl/run.sh`](../tests/wgsl/run.sh), `tests/wgsl/run.sh --verified`, and `tests/wgsl/run.sh --verified-gpt32` on both Vulkan drivers.  `tests/gpt32/native.sh --verified` also compares complete binary32 generation with native Lean on Wasm and both drivers.
+
+Changes to packed bytes or WASI also require [the maintained WASI driver](../tests/wasi/run.sh) after the build and before the GPU checks.  It checks the byte representations, universal and generated proofs, native actions, emitted modules, and execution hosts, as [the WASI manual](wasi.md#tests) describes.
+
+Set `LEANRUN_THREADS=3` and `LEANRUN_MEMORY_HIGH=10G` for the full verified test driver on an 8-CPU host with about 12 GiB of memory.  The printer's file check paged under the default 4 GiB high limit.  The 10 GiB setting gives the driver the same 12 GiB maximum as the numerical proof build.
+
+`tests/verified/run.sh --check-bytes DIRECTORY` compares every registered verified module with saved reference files named `DIRECTORY/NAME.wasm`.  It writes fresh emissions to `build/byte-check/verified` and requires the verified modules to have been built.  `tests/modules/run.sh --emit-from CHECKOUT DIRECTORY` builds and emits original-compiler references from a clean checkout, records its commit, and preserves that checkout's source.  The reference checkout must contain the modules named by the checked registry.  These modes support comparisons against a recorded preceding revision.
 
 The decoder test, `tools/leanrun --timeout 60m lake env lean --run tests/decoder/DecodeTest.lean "$(command -v wasm-tools)" build/decode-test`, runs the decoder over the WebAssembly testsuite: each valid module in the supported subset must decode to the reference module and round-trip, and each malformed module must be rejected.  It expects `build/decode-test` to hold the `wasm-tools json-from-wast` output of the testsuite scripts in the CodeLib checkout.  [The encoding notes](../LeanExe/Encoding/README.md) describe the encoder's theorems and the review of its specification against the published WebAssembly rules.
 
@@ -627,9 +644,11 @@ Compiler fixtures use `Examples/<Name>/`, reusable algorithms use the families i
 
 ## Development practice
 
-### `tools/leanrun` and the single Lean slot
+### `tools/leanrun` and the shared lock
 
 Every `lean` and `lake` command runs through [`tools/leanrun`](../tools/leanrun), as [the repository instructions](../AGENTS.md) require.  The runner limits memory and CPU through a systemd user scope, sets `LEAN_NUM_THREADS`, and takes a machine-wide lock, so the machine runs one runner command at a time and other sessions wait for the slot.  `--timeout` sets the command's limit and `--lock-timeout` the seconds to wait for the lock, 900 by default.
+
+`--threads N`, 1 by default, sets `LEAN_NUM_THREADS=N`.  Lake takes its number of parallel build jobs from `LEAN_NUM_THREADS`, and each Lean process it starts uses the same value for its own tasks, so parallel jobs share the scope's memory limit.  `--cpus N` sets a CPU quota of `N` CPUs, and `--cpus auto` uses every online CPU.  Without `--cpus` the quota equals the thread count, and without `--threads` the thread count equals the `--cpus` count.  `LEANRUN_THREADS` and `LEANRUN_CPUS` supply these settings to repository drivers without wrapping them in another runner.  Lean may grow its worker pool while tasks wait, so the thread count does not bound the number of concurrent compiler processes.
 
 `--log FILE` writes standard output and standard error to a file and preserves the command’s exit status.  Passing the path as an argument keeps `tools/leanrun` as the first command token, so saved runner permissions cover later targets and logs.
 
@@ -640,9 +659,35 @@ tools/leanrun --timeout 30m --lock-timeout 1200 lake env lean FILE
 
 After a target reaches its timeout without a diagnostic, [the repository instructions](../AGENTS.md) require dividing it, or adding a reusable lemma that reduces its elaboration, before running it again.  `LEANRUN_LOCAL=1` runs without the cgroup limits and only with the user's explicit authorization.  [`tools/leanrun-dev`](../tools/leanrun-dev) runs Lean on the remote development machine (`sync`, `check`, or a command).
 
-The default memory limits are 4 GiB high and 6 GiB maximum.  `--memory-high SIZE`, in whole gibibytes such as `10G`, selects the high limit and a maximum 2 GiB above it.  The swap limit stays 1 GiB.  `--threads N`, 1 by default, sets `LEAN_NUM_THREADS=N` and a CPU quota of `N` CPUs.  Lake takes its number of parallel build jobs from `LEAN_NUM_THREADS`, and each Lean process it starts uses the same value for its own tasks, so parallel jobs share the scope's memory limit.  The full numerical proof builds recorded in the journal use `--memory-high 10G` for the lgamma root-range proofs.
+The default memory limits are 4 GiB high and 6 GiB maximum.  `--memory-high SIZE`, in whole gibibytes such as `10G`, selects the high limit and a maximum 2 GiB above it.  The swap limit stays 1 GiB.  The full numerical proof builds recorded in the journal use `--memory-high 10G` for the lgamma root-range proofs.
 
 `lake env lean FILE` loads the existing build of each import without rebuilding it, so a check of a file whose imports changed must follow `lake build` of those imports.  `lake build` of a target rebuilds its imports from source.  [The journal](../devnotes.md) (D1) records a case in which stale builds of other files with the same module names made such a check use the wrong theorems.
+
+### Memory-heavy numerical proofs
+
+Some gamma and lgamma range checks need several gibibytes each.  On an 8-CPU host with about 12 GiB of memory, a cold numerical proof cache uses the following one-worker builds before the two-worker aggregate.  Each target has a separate invocation, which bounds the working set to one heavy proof and its imports.  The aggregate reuses the accepted results.  With three workers, the aggregate ran three other `Lgamma` modules together at about 3.5 GB each and paged, and with two it passed with memory pressure below 2 percent.
+
+```sh
+tools/leanrun --cpus auto --threads 1 --memory-high 10G --timeout 12h lake build MODULE
+```
+
+`MODULE` takes each of these values, in order:
+
+1. `Library.Numerics.Float64.Tgamma.TgammaAccRangeC`
+2. `Library.Numerics.Float64.Lgamma.LgammaRootF`
+3. `Library.Numerics.Float64.Lgamma.LgammaRootE`
+4. `Library.Numerics.Float64.Lgamma.LgammaRootD2`
+5. `Library.Numerics.Float64.Lgamma.LgammaRootD1`
+6. `Library.Numerics.Float64.Lgamma.LgammaRootD0`
+7. `Library.Numerics.Float64.Lgamma.LgammaRootC`
+8. `Library.Numerics.Float64.Lgamma.LgammaRootB2`
+9. `Library.Numerics.Float64.Lgamma.LgammaRootB1`
+10. `Library.Numerics.Float64.Lgamma.LgammaRootB0`
+11. `Library.Numerics.Float64.Lgamma.LgammaRootA2`
+12. `Library.Numerics.Float64.Lgamma.LgammaRootA1`
+13. `Library.Numerics.Float64.Lgamma.LgammaRootA0`
+
+The 12-hour limit accommodates cold imports.  The measured leaf checks used 30-minute limits after their common imports had been built.  [The journal](../devnotes.md#2026-10-24-integration-checks) records their results and resource profiles.  Swap traffic, memory and I/O stalls, and user versus system CPU time distinguish useful parallel work from thrashing.
 
 ### Repository rules and iterative development
 

@@ -4,7 +4,7 @@ The repository is one Lake package.  `LeanExe` and `Verified` contain the two co
 
 ## Goal
 
-Two compilers translate Lean functions to Talos modules, and `encode` produces the bytes.  The LeanExe compiler translates a Lean function to an IR, `compile` translates the IR to a `Wasm.Module`, and a per-program proof shows that the module computes the Lean function exactly.  The verified compiler translates a typed source program with `compileWith`, and one theorem shows for every program that the module computes the program's meaning.  A binary decoder, tested against the official WebAssembly testsuite, defines what the bytes mean, and `decode_encode` gives each theorem for the module that the decoder reads from the bytes.  The system is kept small, and the work proceeds in increments that each produce bytes and a theorem.
+Two compilers translate Lean functions to WebAssembly, with execution proofs in Talos.  The LeanExe compiler translates a Lean function to an IR, `compile` translates the IR to a `Wasm.Module`, and a per-program proof shows that the module computes the Lean function.  The verified compiler translates a typed source program with `compileWith`, and a universal theorem proves that the module computes the program's meaning.  A binary decoder, tested against the official WebAssembly testsuite, defines what the bytes mean.  `decode_encode` carries the module's execution theorem to its encoded bytes.
 
 ## Components of the two compilers
 
@@ -27,15 +27,23 @@ The verified compiler shares the runtime, `Implements`, the encoding, and the tr
 
 | Component | Design |
 |---|---|
-| Source language | `Expr S Γ t`, typed by the callees' signatures `S` and the context `Γ`, with a meaning `denote` in Lean.  Values include words, `Bool`s, binary32 and binary64 floats, scalar tuples and sums, flat arrays, records with array fields, `List UInt64`, and fixed-layout recursive types.  `LeanExe.loop` and `LeanExe.repeatWhile` use one loop construct with a condition. |
-| Compiler | `compileWith`, a Lean function from a program, its tables, and its wrappers to a module with the layout and runtime of the LeanExe compiler's modules. |
-| Theorem | `Prog.correct`, by induction on the program, with one lemma per construct, such as `spec_word` and `spec_eraseAt`, combined through the facts of `After`.  It states `ImplementsP`, from which `ImplementsA aborts` and the bounded `ImplementsB` follow. |
+| Source language | `Expr S Γ t`, typed by the callees' signatures `S` and the context `Γ`, with a meaning `denote` in Lean.  Values include words, `Bool`s, binary32 and binary64 floats, scalar tuples and sums, flat arrays, packed byte buffers, records with array fields, `List UInt64`, and fixed-layout recursive types.  `LeanExe.loop` and `LeanExe.repeatWhile` use one loop construct with a condition. |
+| Compiler | `compileWith`, a Lean function from a program, tables, wrappers, and a byte-literal pool to a module using the shared runtime. |
+| Theorem | `Prog.correctStaticWith`, under heap, table, ownership, and literal-coverage premises.  Its proof combines one lemma per construct through the facts of `After`.  `Prog.correctWith` specializes to programs without nonempty byte literals, and `Prog.correct` also omits tables and wrappers. |
 | Reflector | `verified_compile`, meta code that writes Lean definitions as source functions and proves each equation from one lemma per Lean form.  The kernel checks every equation, so the reflector is not trusted. |
 | Modes | `Expr.paramChoice` chooses each array or recursive-value parameter's mode, borrowed or owned.  The theorem holds for every choice. |
 | Bounds | `Expr.allocs` follows the code with the same modes and live sets, and an owned array has a potential, a number of bytes that covers its later moves to larger blocks. |
 | Recursion | Recognized tail recursion uses a loop with a proved decreasing rank.  Other recursion and its callers take the call depth, trap at depth 1,000, and have at most 32 positions per frame.  An entry starts each depth-taking function at depth 0. |
 | Tables | Data segments from the heap base, read as borrowed parameters, with wrappers that pass their addresses and `compileWith_initialStore` for the initial store. |
 | Composition | Typed program reuse and call relocation transport source meanings across modules.  Generated scalar store-preservation proofs support calls from other compiled programs.  [The composition API](../Verified/README.md#module-composition) describes the rules and examples. |
+
+`verified_compile_wasi` adds effectful compilation for `LeanExe.Wasi.Action`, with stdin reads,
+stdout and stderr writes, bounded loops, and exit.  It reflects actions into typed effectful code
+and compiles them to core WebAssembly using `fd_read`, `fd_write`, and `proc_exit` from WASI
+Preview 1.  Exported-entry proofs relate target execution to native actions, including returned
+values, terminal outcomes, committed effects, and a joint ordered trace.  [The WASI manual](wasi.md)
+states the API, host assumptions, and conditional total-execution premises.  [The WASI design](verified-wasi-design.md)
+records the architecture and reviewed decisions.
 
 ## Files
 
@@ -313,8 +321,7 @@ their native dispatch theorems to the shared item, layer, and generation proofs.
 2. The premises `Heap.At` and `Heap.Borrowed`, and a memory cap of at most 65,535 pages, are assumed.  Every compiled module declares that maximum.  For the verified compiler's modules, `p.initial` proves that the store in which the module starts meets the allocator invariant and the cap and holds each table as a borrowed array.  Instantiation of the LeanExe compiler's modules and the host executables remain outside the proofs.  A call may trap at `unreachable` when memory cannot grow or an array would exceed 32-bit memory, and the theorems state the result of every call that does not trap.  A module that always traps would satisfy them, which the verified compiler's `p.f.trapFree` excludes under its bound.  Talos's `memory.grow` succeeds whenever the new page count is within the maximum, while the WebAssembly specification lets an engine refuse growth for its own reasons.  `alloc` checks the result of `memory.grow` and executes `unreachable` on failure (`MemoryGrowth.growProgram`), so on such an engine the call traps and returns no result, a path the theorems do not describe.
 3. `Implements` states a frame: every heap region below `top`, outside the free blocks, and apart from the consumed blocks keeps its bytes and lies apart from the result, and the memory's maximum size is unchanged.  It states nothing about memory outside the heap that the allocator manages.
 4. `Emit.lean` evaluates `encode` with compiled Lean code.  For `gpt.wasm`, `gpt_file` in [`Demos/Gpt/File.lean`](../Demos/Gpt/File.lean), checked after the file is written, proves that the file holds `encode gpt.module`, `exp_file` in [`Library/Numerics/Float64/Exp/ExpFile.lean`](../Library/Numerics/Float64/Exp/ExpFile.lean) does the same for `exp.wasm`, and each transcendental module whose byte theorem is proved has a file module of the same form, which [the Verified test driver](../tests/verified/run.sh) checks in its loop over `name:TheoremModule:FileModule` entries.  The elaborator `binary_file%` that reads the file is trusted.  No theorem covers the other modules' files.
-
-No work on items 2 and 3 is planned.
+5. WASI entry proofs assume a host satisfying the three import specifications, valid byte and static-data representations, and separation from scratch memory.  They preserve source effects through normal return, accepted exit, host trap, and permitted guest resource failure.  Total execution additionally requires a typed resource-prefix bound and no reached host trap.  [The WASI proof premises](wasi.md#execution-proofs-and-their-premises) state these conditions and the external assumptions about stream adapters, OS I/O, and real engines.
 
 ## Open work
 

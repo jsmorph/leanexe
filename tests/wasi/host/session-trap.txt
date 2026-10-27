@@ -1,0 +1,4 @@
+call before 2
+call trap 0
+call after 2
+done

@@ -28,9 +28,10 @@ the definitions before it in the command.  A function's body is a typed expressi
 
 The element types, `Elem`, are 64-bit words, `Bool`s, binary64 and binary32 floats, and tuples of
 element types.  `Ty.elem e` embeds an element type, `Ty.array e` holds an array of elements, and
-`Ty.pair` combines any two value types.  `Ty.tree shape` holds a recursive value with the fixed
-layout `shape`, and `Ty.treeHeader shape` holds a detached record header during matching and
-reuse.  The reflector represents `List UInt64` and supported user-defined recursive types through
+`Ty.pair` combines any two value types.  `Ty.bytes` denotes `LeanExe.Bytes`.
+`Ty.tree shape` holds a recursive value with the fixed
+layout `shape`, and `Ty.treeHeader shape r` holds the detached header of a record of constructor
+`r` during matching and reuse.  The reflector represents `List UInt64` and supported user-defined recursive types through
 this tree model.  An expression of type `t` over a context `Γ` that may call functions with
 signatures `S` has type `Expr S Γ t`, so every expression is well typed, reads only variables in
 scope, and calls only functions that exist.  The constructs are those of [the manual's
@@ -81,6 +82,27 @@ through `Expr.usesFast`, and `Expr.usesFast_eq` equates it with `Expr.uses`.  A 
 loop's state is owned when its initial value or its body's value is owned, so a borrowed component
 or state is copied.  An array copy allocates through the runtime's `alloc` and writes the length word and
 the elements.
+
+A byte value occupies two i64 words: its allocation root and logical length.  Borrowed bytes
+protect the allocation's header and full capacity.  An owned copy allocates a packed payload
+without an array-length word.  Copying empty bytes returns `(0, 0)` without allocating.  A valid
+incoming empty buffer may have a nonzero root, which cleanup releases.  The
+[byte examples](Examples/Bytes.lean) cover parameters, results, duplication, branches, cleanup,
+empty values, UInt64 lengths, and indexed reads.  An out-of-bounds read returns zero.  Length and
+index operations release an owned input at its last use.  `Expr.bytesBuild` allocates a packed
+result and stores each callback's low eight bits.  Its proof carries live captures, callback
+allocation bounds, and separation through the loop.  Zero count skips allocation and callbacks,
+and counts of at least `2^32` trap before allocating the result.  The [WASI compiler](../docs/wasi.md)
+uses these buffers for stdin, stdout, and stderr.
+
+`bytes![65, 0, 255]` reflects to `Expr.bytesLiteral`.  The macro accepts numerals from 0 through
+255.  Each evaluation of a nonempty literal copies its static source bytes into a fresh owned
+allocation.  An empty literal returns `(0, 0)` without allocating.  [Literal expression correctness](BytesLiteralCorrect.lean)
+uses the shared byte allocator and copier, preserving the packed-buffer representation and its
+48-byte header.  The allocation bound charges `Bytes.allocationCost bytes.length` at each
+evaluation, including each loop iteration or callback invocation.  [The literal examples](Examples/Literals.lean)
+cover ordinary, guarded, and tail helpers, nested byte indices, and build, fold, and tree-match
+bodies.
 
 ### Scalar code and control flow
 
@@ -362,7 +384,7 @@ parameter-potential accounting independently of universal expression correctness
 tail-loop rules use these shared lemmas.  [`TailCode.lean`](TailCode.lean) combines those rules
 with the expression theorem when it proves correctness for every typed tail body.
 
-The theorem for each function is `ImplementsA aborts`, the heap form of `Implements` in
+For a program with an empty byte-literal pool, the theorem for each function is `ImplementsA aborts`, the heap form of `Implements` in
 [`LeanExe/Pipeline/Implements.lean`](../LeanExe/Pipeline/Implements.lean).  From any heap and store
 with the allocator invariant, a memory cap of at most 65,535 pages, and arguments that represent
 `x`, whose moved blocks lie apart from one another and from the memory that the call reads, the
@@ -426,18 +448,58 @@ its credit.
 
 A program may hold constant tables of words.  A table is a Lean constant of type `Array UInt64`, and
 the module writes the tables with data segments from the heap base, 4096, each as a length word and
-its words, and starts the allocator's bump pointer after them.  A function reads a table as a
+its words.  A function reads a table as a
 borrowed array parameter, so the theorems for borrowed arrays cover it.  A wrapper is a definition
 `f x := g T₁ … Tₖ x` that applies a listed function `g` to tables before its own parameters.  The
 module exports it as an entry that pushes the tables' addresses and calls `g`, and its theorem is
-`ImplementsTables`, `ImplementsA` with two further premises: each table is a borrowed array at its
+`ImplementsTables` for an empty byte-literal pool, `ImplementsA` with two further premises: each table is a borrowed array at its
 address, and the blocks that the arguments move lie apart from it.  The instantiation theorem
 `compileWith_initialStore` in [`Instantiate.lean`](Instantiate.lean) shows that the store in which
 the module starts, as Talos's `Module.initialStore` builds it, meets the allocator invariant with
 the bump pointer after the tables and an empty free list, caps the memory at 65,535 pages, and holds
 each table at its address, so the theorems apply to the first call.  The reflector states it for
-each program as `p.initial`.  A wrapper is no function of the program, so other functions pass
+each such program as `p.initial`.  A wrapper is no function of the program, so other functions pass
 tables as parameters.
+
+[Literal collection](Literals.lean) traverses every function body, including guarded and tail
+bodies and expression callbacks.  `Prog.literalPool` removes duplicate nonempty byte lists and
+stores their concatenation in one raw data segment after the word-array tables.  The static
+bytes have no allocation header.  The allocator starts at the eight-byte-aligned end of the
+pool.  Each literal evaluation copies from this pool into its own owned allocation.
+[Empty-pool equality](LiteralCodeEq.lean) states the module for an empty pool: the table segments
+are its only data, its memory size and heap start depend only on the tables, and its functions use
+the empty pool.  The default `compileWith` pool
+starts at `tablesEnd tables`.
+
+The compiler carries the same pool through expression code, ordinary and tail function
+templates, and every program suffix.  This compile-time context adds no function parameter.
+`Expr.Covered` and `Prog.Covered` require the source literals to occur in the pool.  The universal
+expression and program theorems take this coverage premise.  Expression rules take
+[static environment safety](Bytes/StaticEnv.lean), `LiteralPool.Safe`, which combines valid pool
+contents with separation from live owned variables.  `Safe.after` transports both facts through
+the existing `After` result.  Binding and tree-field rules extend safety to newly bound values,
+and callback proofs derive it from their accumulated heap steps.
+
+Function specifications use [the static input predicate](Bytes/StaticInput.lean),
+`pool.Input heap store words value`.  It requires `pool.Static heap store` and, for every pool
+region, `Apart store (Represent.moves store words value) region`.  [The static memory predicate](Bytes/LiteralFrame.lean)
+states the pool's exact contents, memory bounds, and heap region when it is nonempty.
+`CodeSpec`, `ImplementsP`, `FunSpec`, and `Calls` share this pool.  [Program correctness with a static pool](Correct.lean),
+`Prog.correctStaticWith`, proves the program specifications under coverage.  The public
+[static call specification](StaticImplements.lean), `ImplementsStatic`, adds `pool.Input` as a
+separate premise using the machine argument words, alongside the ordinary precondition and
+borrowed-table premises.  It retains the owned-result, frame, and memory-cap conclusions.
+[The static program rules](ProgramStatic.lean) derive the exported `implements` and `trapFree`
+theorems and transfer them to Lean's representations.
+
+[Static initialization](Instantiate.lean), `compileWith_initialStaticStore`, requires
+`pool.base = tablesEnd tables` and `pool.top ≤ 65535 * 65536`.  Its result establishes the
+allocator invariant for `initialStaticHeap pool`, the memory cap, the borrowed tables, and
+`pool.Static`.  For a nonempty pool the reflector exposes these four conjuncts as `p.initial`.
+Separation from the arguments moved by a later call remains a call premise.  For a program with
+no nonempty literals, `Prog.correctWith` and `compileWith_initialStore` take an explicit
+`prog.literals = []` proof and preserve the previous generated `ImplementsA`, `ImplementsTables`,
+and three-part `p.initial` APIs.
 
 ## Module composition
 
@@ -447,6 +509,12 @@ that keeps its functions at their original indices and provides the shared runti
 functions.  `Prog.calls_extension` applies that rule to a larger compiled program, including its
 tables and wrappers.  The original program's meaning proof, allocation bounds, and frames
 conditions apply in the larger module.
+
+Composition of programs with literals uses one pool for both function lists.  The pool must cover the
+original program and its extension.  [Append coverage](ProgramLiterals.lean),
+`Prog.covered_append`, proves that covering the appended program is equivalent to covering both
+parts.  `Prog.calls_prefix` and `Prog.calls_extension` take coverage proofs explicitly.  For a
+literal-free program, `prog.literals = []` reduces coverage to `List.nil_subset`.
 
 The [library example](Examples/CompositionBase.lean) compiles word addition and float scaling.
 The [larger module](Examples/Composition.lean) reuses that program, adds typed callers, and
@@ -475,6 +543,48 @@ and preservation of the target prefix.  The [relocation example](Examples/Reloca
 reuses two separately reflected libraries and adds a caller of both.  Its native theorems and
 whole-store theorems apply at the combined module's indices, and its
 [cases](Examples/RelocationCases.lean) reuse the scalar corpus after relocation.
+
+## WASI Preview 1
+
+`import Verified.Wasi` provides `verified_compile_wasi`.  The command reflects definitions of
+`LeanExe.Wasi.Action` into [typed commands](Wasi/Source.lean), with pure expressions as operands.
+The [native API](../LeanExe/Wasi/Action.lean) provides stdin reads, stdout and stderr writes,
+exit, and bounded loops.  Each primitive read or write makes at most one WASI import call.
+The host may use several operating-system calls for one import.  Source code handles errnos
+and short transfers.  Effect helpers form an acyclic graph and share the guarded-call depth with
+pure callees.  [The WASI manual](../docs/wasi.md) states the API and generated declarations.
+
+| Proof stage | Declaration or predicate | Result |
+|---|---|---|
+| [Pure transport](Wasi/PureTransportSpecs.lean) | `Calls` | Relocated pure code computes the same values and preserves the host world in a module with the three WASI imports. |
+| [Universal command proof](Wasi/CostCommandCorrect.lean) | `Command.cost_code_spec` | Every command constructor preserves ownership and caller regions outside scratch, with source execution or a permitted resource prefix.  Normal results retain their allocation charge, fit predicate, and heap-top bound. |
+| [Universal program proof](Wasi/Correct.lean) | `EffectProg.correctWith` | Pure correctness, effect calls, function entries, and command rules compose for the compiled effect program. |
+| [Native callable entry](Wasi/NativeEntry.lean) | `compiled_native_entry_run` | The actual exported wrapper executes the original Lean action after injecting depth zero and hidden table addresses. |
+| [Native command entry](Wasi/NativeCommand.lean) | `compiled_native_start_run` | `_start` executes the selected closed action, then requests its returned status as an exit. |
+| [Modeled initialization](Wasi/ProgramInitial.lean) | `compileWith_initialStore` | The assembled module establishes the allocator invariant, memory cap, borrowed tables, and static literal pool. |
+
+The [resource model](Wasi/ResourcePrefix.lean) charges allocation and checks pure-call fits along
+source execution prefixes, including a read's full requested capacity before its reply.  A
+generated `total` theorem requires `Heap.Within` and `Resource.CallPrefixBound`, together with
+`Host.NoTrapsAlong` for the native action.  The host condition concerns reached operations,
+including acceptance of reached exits.  Callable totality gives a return or accepted exit.
+[Command totality](Wasi/CommandTotal.lean) gives an accepted exit.  Without those premises,
+refinement retains terminal host failures and resource prefixes with their committed effects.
+
+The [host specification](Wasi/HostSpec.lean) reserves scratch `[0, 16)`.  Input read regions and
+retained caller regions must lie apart from it.  Returned bytes have owned allocation roots,
+and their logical lengths may be smaller than the retained capacity after a short read.
+The [source correspondence](../LeanExe/Wasi/RelatedExec.lean) and
+[prefix correspondence](../LeanExe/Wasi/RelatedPrefix.lean) preserve ordered events and worlds
+through native flattening.
+
+The [public command](Wasi/ReflectCommand.lean) supplies finite profile/readiness proofs and
+constructs a scalar module-typing proof through the [validity proof generator](../LeanExe/Encoding/ValidityProof.lean).
+Each accepted module receives `Spec.Validity.Module`, checked encoding and decoding, and native
+entry refinement in its `bytes` theorem.  These proofs use Talos and the specified host relations.
+Real engine instantiation, host conformance, file emission, and host progress remain external
+assumptions.  The [execution tests](../tests/wasi/run.sh) run Wasmtime, scripted hosts, and emitted modules.
+The [development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda) records proof and execution runs.
 
 ## WGSL kernels
 
@@ -647,27 +757,32 @@ in `p.codes_ok`.  `p.encoded` assembles these proofs into the equation for `enco
 `p.bytes` follows by `decode_encode`.  Native evaluation supplies the literals, and the kernel
 checks every claim about them.  It checks each function's encoding in a separate theorem.
 
-For each function of the program the reflector also adds `p.f.bound`, the function's allocation
+For each source function of the program the reflector also adds `p.f.bound`, the function's allocation
 bound in bytes on the tuple of its arguments, with `Moved (Array α)` for an owned array and `Unit`
 for no parameters, and `p.f.trapFree`.  For a function without paid parameters whose code takes no
 call depth, `p.f.bound` is the compiler's bound, `Func.bound` of the function among the functions
 before it, which is `Prog.boundsAt` of the program at the function, composed with the flattening of
 the tuple, and `#eval` computes it by interpreting `Expr.allocs` over the reflected program.  Its
-`p.f.trapFree` states `ImplementsA false`: the call returns `f` of its arguments, without a trap and
+`p.f.trapFree` states `ImplementsA false` when the byte-literal pool is empty: the call returns `f` of its arguments, without a trap and
 for enough fuel, and raises `top` by at most `p.f.bound x`.  When `aborts` holds, its precondition
 is `heap.Within store p.module (p.f.bound x)`.  A function with a paid parameter also gets
 `p.f.cost`, the compiler's bound, and its `p.f.bound x` adds the credits of the paid arguments to
 `p.f.cost x`, so that `p.f.trapFree` has the same form for every function.  A wrapper whose callee's
 code takes no call depth gets the same two declarations, with `Wrapper.bound`, the callee's credits
-and bound at the tables and the wrapper's arguments, as `ImplementsTables` with the same conditions.
+and bound at the tables and the wrapper's arguments, as `ImplementsTables` with the same conditions
+when the byte-literal pool is empty.  With a nonempty pool, generated execution theorems use
+`ImplementsStatic` and require static input safety.  Their trap-free forms require the allocation
+allowance and guarded-call condition.  A wrapper in such a program receives `trapFree` stated with
+`Wrapper.bound`, without a named wrapper `bound` declaration.  Scalar `uniform` and `pure`
+declarations are generated only for programs with an empty byte-literal pool.
 
 For a function whose code takes the call depth, `p.f.bound k x` and `p.f.fits k x` take the frames
 available first: they are `Func.boundAt` and `Func.fitsAt`, or `RecFunc.boundAt` and
 `RecFunc.fitsAt`, of the function among the functions before it, with `p.f.cost k x` the entry and
-`p.f.bound k x` the credits plus it for a function with a paid parameter.  Its `p.f.trapFree` states
+`p.f.bound k x` the credits plus it for a function with a paid parameter.  With an empty byte-literal pool, its `p.f.trapFree` states
 `ImplementsA false` at the function's entry, which calls it at depth 0 with 1,000 frames, under the
 precondition `p.f.fits 1000 x = true ∧ heap.Within store p.module (p.f.bound 1000 x)`, and the call
-raises `top` by at most `p.f.bound 1000 x`.  A wrapper whose callee's code takes the call depth gets
+raises `top` by at most `p.f.bound 1000 x`.  With an empty pool, a wrapper whose callee's code takes the call depth gets
 no bound and no `trapFree`.
 
 `p.f.bound_eq` states `p.f.bound x` as a Lean term in the function's parameters that mirrors the
@@ -707,19 +822,23 @@ for an `allBelow` or a `loopFits` whose parts are `true`.
 
 | Theorem | Statement |
 |---------|-----------|
-| `Prog.correct` | For every program, meanings `funs` of its functions, and function in it, the function's index in the compiled module meets `FunSpec` at every depth `d` with the flags `Prog.flags`, the bounds `Prog.boundsAt`, and the frames conditions `Prog.fitsAt` at `framesAt d` frames: the code computes the function's meaning in the sense of `ImplementsP`, from its arguments when it does not take the call depth, and then without a trap when its signature's `aborts` is false, and from the depth and its arguments otherwise.  `Prog.correct_funs` states it for a program without recursion and `Prog.funs`. |
-| `Prog.correct_entry` | The exported entry of a function whose code takes the call depth computes the function's meaning in the sense of `ImplementsA true`.  `Prog.entry_trapFreeWith` states it as `ImplementsA false` when the function's frames condition holds at 1,000 frames and the credits of its paid arguments plus its bound fit, and `Prog.entry_trapFreeWith_unpaid` without the credits for a function without paid parameters. |
-| `compileWith_initialStore` | The store in which the module of a program with tables starts meets the allocator invariant for `initialHeap`, whose bump pointer follows the tables, caps its memory at 65,535 pages, and holds each table as a borrowed array at its address, when the tables end below 65,535 pages.  `tables_written` shows by induction over the segments that each table's range holds its length word and words, and `read64_of_bytes` reads each word back through `read64_write64`, since `wordBytes` gives the bytes that `Mem.write64` stores. |
-| `Prog.correct_wrapper` | A wrapper computes its callee's meaning at the tables and its own arguments in the sense of `ImplementsTables`, from `wrapper_correct`: the entry's words are the tables' addresses and its arguments, the tables are borrowed arguments of the callee, `Env.withTables_moves` shows that they move no block, and `Env.withTables_reads` that the arguments' reads include their regions.  The theorem `ImplementsTables.lean` states it with Lean's instances. |
+| [Prog.correctStaticWith](Correct.lean) | Every covered program meets `FunSpec` with the same static pool at each depth, using the flags `Prog.flags`, allocation bounds `Prog.boundsAt`, and frames conditions `Prog.fitsAt`.  Calls require static input validity and separation from consumed argument blocks. |
+| `Prog.correct` | For a program with `prog.literals = []`, the function's index in the compiled module meets `FunSpec` at every depth `d` with the flags `Prog.flags`, the bounds `Prog.boundsAt`, and the frames conditions `Prog.fitsAt` at `framesAt d` frames: the code computes the function's meaning in the sense of `ImplementsP`, from its arguments when it does not take the call depth, and then without a trap when its signature's `aborts` is false, and from the depth and its arguments otherwise.  `Prog.correct_funs` states it for a program without recursion and `Prog.funs`. |
+| `Prog.correct_entry` | For a program with no nonempty byte literals, the exported entry of a function whose code takes the call depth computes the function's meaning in the sense of `ImplementsA true`.  `Prog.entry_trapFreeWith` states it as `ImplementsA false` when the function's frames condition holds at 1,000 frames and the credits of its paid arguments plus its bound fit, and `Prog.entry_trapFreeWith_unpaid` without the credits for a function without paid parameters. |
+| `compileWith_initialStore` | For a program with no nonempty byte literals, the initial store meets the allocator invariant for `initialHeap`, whose bump pointer follows the tables, caps its memory at 65,535 pages, and holds each table as a borrowed array at its address, when the tables end below 65,535 pages.  `tables_written` shows that each table's range holds its length word and words, and `read64_of_bytes` reads each word back through `read64_write64`. |
+| [compileWith_initialStaticStore](Instantiate.lean) | With the pool immediately after the tables and its aligned end within the page cap, initialization establishes `initialStaticHeap pool`, the cap, borrowed tables, and static pool contents. |
+| `Prog.correct_wrapper` | For a program with no nonempty byte literals, a wrapper computes its callee's meaning at the tables and its own arguments in the sense of `ImplementsTables`, from `wrapper_correct`: the entry's words are the tables' addresses and its arguments, the tables are borrowed arguments of the callee, `Env.withTables_moves` shows that they move no block, and `Env.withTables_reads` that the arguments' reads include their regions.  The theorem `ImplementsTables.lean` states it with Lean's instances. |
 | `Prog.calls` | By induction on the program.  Ordinary and tail functions use the specifications of the functions before them.  A guarded recursive function meets its specification at depth `d` by strong induction on `depthLimit - d`, since its self-calls happen at `d + 1` and the guard traps at the limit.  The tail-function rule uses its decreasing rank and whole-loop theorem. |
 | `bodyFunction_runs` | A function's code, with or without the depth parameter, in a module whose functions at the call indices compute the functions it calls at the next depth, computes the body's meaning.  `Env.Rep.apart` turns the callee's `Separate` into the facts of `Holds` for the parameters at entry. |
-| `Expr.code_spec` | Expression code computes its source value, consumes dying owned values, preserves live values and the local frame, and meets its allocation and call-depth bounds.  The proof is described below. |
+| `Expr.code_spec` | With literal coverage and static environment safety, expression code computes its source value, consumes dying owned values, preserves live values and the local frame, and meets its allocation and call-depth bounds.  The proof is described below. |
+| [spec_bytesLiteral](BytesLiteralCorrect.lean) | Each nonempty literal evaluation allocates a fresh owned byte buffer with the literal contents.  Empty literals allocate nothing.  The theorem requires coverage and static environment safety. |
 | `ImplementsA.lean` | This theorem of [`Correct.lean`](Correct.lean), with `ImplementsA.transferAgree` there and `Ty.leanInst` and `argsInst` of [`State.lean`](State.lean): a function's theorem for the verified compiler's representation gives the theorem with the instances that Lean synthesizes for its argument tuple and result, in which an owned array parameter has type `Moved (Array α)`.  The instances for arrays and their `Moved` forms are those of [`Implements.lean`](../LeanExe/Pipeline/Implements.lean) for `Array UInt64`, `Array Float`, `Array Float32`, and arrays of `Flat` types, which include `Bool`.  `Ty.leanInst`, `Ty.argInst`, and `argsInst` rebuild those instances by recursion over the types and modes, so no signature needs a proof of its own. |
 
 ### Expression proof
 
-`Expr.code_spec` starts from represented live variables whose owned blocks are separate from the
-other variables' heap data.  It proves that the code computes the source value in its stated mode,
+`Expr.code_spec` assumes coverage of the expression's literals, static environment safety, and
+represented live variables whose owned blocks are separate from the other variables' heap data.
+It proves that the code computes the source value in its stated mode,
 consumes the owned variables that die in the expression, and preserves the live variables.
 Parameters and locals below the code's reserved range keep their values.  The result's owned
 blocks lie apart from the values that remain live.

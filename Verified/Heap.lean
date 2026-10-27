@@ -4,6 +4,8 @@ import Verified.RuntimeFacts
 import Verified.TreeRelease
 import Verified.TreeCopy
 import Verified.TreeHeaderCopyCode
+import Verified.Bytes.CopyOwned
+import Verified.Bytes.Release
 import LeanExe.Pipeline.RuntimeSpec
 import LeanExe.Pipeline.ReleaseTree
 import LeanExe.ProofKit.ArrayPrefix
@@ -913,6 +915,20 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     simp only [copyCode]
     exact wp_loadCode _ (by rw [e.values_length, e.types_length]) hh hold
       (hNext heap store s _ (Step.refl hAt _) rfl (Frame.refl base s) (Nat.le_add_right _ _))
+  | .bytes, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, _, hRep, hold,
+      hSrc, hBase, hRoom, hNext => by
+    obtain ⟨root, length, rfl, hBytes⟩ := hRep
+    have hRoot : s.get src = some (.i64 root) := by simpa [Ty.types, slotIndex] using hold 0 (by simp)
+    have hLength : s.get (src + 1) = some (.i64 length) := by
+      simpa [Ty.types, slotIndex] using hold 1 (by simp)
+    simp only [copyCode]
+    exact Bytes.wp_copyOwned hm hAt (hBytes.toAt hAt) hBytes.payload_region hBytes.length_eq
+      hRoot hLength (by change src + 2 ≤ base at hSrc; omega)
+      (by change src + 2 ≤ base at hSrc; omega) hBase hRoom hCap hTrap
+      fun heap' store' s' root' hStep hRep hFrame hTop =>
+        hNext heap' store' s' [.i64 root', .i64 length]
+          (by simpa only [Ty.blocks, Bytes.roots_regions] using hStep)
+          ⟨root', length, rfl, hRep⟩ hFrame hTop
   | .array e, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, _, hRep, hold,
       hSrc, hBase, hRoom, hNext => by
     obtain ⟨ptr, rfl, ha⟩ := hRep
@@ -995,6 +1011,13 @@ theorem wp_releaseCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     wp m (releaseCode t src ++ rest) Q store s host
   | .elem _, heap, store, _, _, _, _, _, _, hAt, _, _, hNext => by
     simpa [releaseCode] using hNext heap store (Step.refl hAt _) rfl
+  | .bytes, heap, store, s, src, ws, v, rest, Q, hAt, hRep, hold, hNext => by
+    obtain ⟨root, length, rfl, hBytes⟩ := hRep
+    have hRoot : s.get src = some (.i64 root) := by simpa [Ty.types, slotIndex] using hold 0 (by simp)
+    simp only [releaseCode, List.cons_append, List.nil_append, wp_localGet_cons, hRoot]
+    refine Bytes.wp_release hm hAt hBytes ?_
+    obtain ⟨hStep, hTop⟩ := hBytes.release_step hAt
+    simpa using hNext _ _ (by simpa only [Ty.blocks, Bytes.roots_regions] using hStep) hTop
   | .array _, heap, store, s, src, ws, v, rest, Q, hAt, hRep, hold, hNext => by
     obtain ⟨ptr, rfl, hOwned⟩ := hRep
     have h0 : s.get src = some (.i64 ptr) := LocalsHold.word hold

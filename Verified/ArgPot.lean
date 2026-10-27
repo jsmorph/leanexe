@@ -1,4 +1,5 @@
 import Verified.Potential
+import Verified.ArgumentMoves
 
 namespace Verified
 
@@ -70,25 +71,8 @@ theorem callMoves_moved {S : List Sig} {Γ : List Ty} {sig : Sig} (slots : List 
     ∀ k, (argsAny fun j => callMoves slots live args j && (args j).uses k) = true →
       ∃ j x, args j = .var x ∧ x.index = k ∧ sig.mode j = .owned ∧
         (slots.getD k default).mode = .owned ∧ live k = false ∧
-        ∀ j', j' ≠ j → (sig.params.get j').scalar = false → (args j').uses k = false := by
-  intro k hk
-  obtain ⟨j, hj⟩ := argsAny_true.mp hk
-  simp only [Bool.and_eq_true, callMoves, Expr.usesFast_eq, beq_iff_eq] at hj
-  obtain ⟨⟨hmo, hj⟩, hu⟩ := hj
-  obtain ⟨x, hx⟩ := hVar j hmo
-  rw [hx] at hj hu
-  simp only [Expr.varIndex?, Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true'] at hj
-  simp only [Expr.uses, beq_iff_eq] at hu
-  subst hu
-  obtain ⟨⟨hmx, hlx⟩, hOthers⟩ := hj
-  refine ⟨j, x, hx, rfl, hmo, hmx, hlx, fun j' hj' hs => ?_⟩
-  cases hu : (args j').uses x.index with
-  | false => rfl
-  | true =>
-    have := le_argsAny (fun j' => j' != j && !(sig.params.get j').scalar &&
-      (args j').uses x.index) j' (by rw [hs, hu]; simp [hj'])
-    rw [hOthers] at this
-    exact nomatch this
+        ∀ j', j' ≠ j → (sig.params.get j').scalar = false → (args j').uses k = false :=
+  arguments_moved sig.mode slots live args (callMoves slots live args) (fun _ => rfl) hVar
 
 theorem callMoves_kept {S : List Sig} {Γ : List Ty} {sig : Sig} (slots : List Slot)
     (live : Nat → Bool) (args : (i : Fin sig.params.length) → Expr S Γ (sig.params.get i))

@@ -474,8 +474,8 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
       · exact nomatch h1
       · exact nomatch h1
       · exact Or.inr h1
-  | build _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ | insertAt _ _ _ _ _
-  | eraseAt _ _ _ | treeNil _ _ | treeNode _ _ _ _ | treeCase _ _ _ =>
+  | build _ _ _ _ | bytesBuild _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ | insertAt _ _ _ _ _
+  | eraseAt _ _ _ | treeNil _ _ | treeNode _ _ _ _ | treeCase _ _ _ | bytesEmpty | bytesLiteral _ =>
     intro _ _; simp [Expr.aborts]
   | _ => intro modes h; simp [Expr.mode] at h
 
@@ -1110,7 +1110,7 @@ theorem Ty.copyScratch_le (t : Ty) : t.copyScratch ≤ copyWidth t := by
       | pair a b ha hb =>
         simp only [Ty.scalar, Bool.and_eq_true] at h
         simp only [Ty.copyScratch, ha h.1, hb h.2, Nat.max_self]
-      | array _ | tree _ | treeHeader _ _ => exact nomatch h
+      | array _ | tree _ | treeHeader _ _ | bytes => exact nomatch h
     simp [copyWidth, h, this]
   · simp [copyWidth, h]
 
@@ -1213,6 +1213,10 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .letE _ _, hp, _, _, _, _, _ | _, .call _ _, hp, _, _, _, _, _
   | _, .letPair _ _, hp, _, _, _, _, _ | _, .loop _ _ _ _, hp, _, _, _, _, _
   | _, .size _, hp, _, _, _, _, _ | _, .get _ _, hp, _, _, _, _, _
+  | _, .bytesEmpty, hp, _, _, _, _, _ | _, .bytesLiteral _, hp, _, _, _, _, _
+  | _, .bytesSize _, hp, _, _, _, _, _
+  | _, .bytesGet _ _, hp, _, _, _, _, _
+  | _, .bytesBuild _ _, hp, _, _, _, _, _
   | _, .leSize _ _, hp, _, _, _, _, _
   | _, .build _ _, hp, _, _, _, _, _ | _, .set _ _ _, hp, _, _, _, _, _
   | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _
@@ -1524,8 +1528,9 @@ theorem wp_guardCode {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {st
       exact hNext fun _ => UInt64.not_le.mp hd
 
 theorem bodyFunction_numParams {S : List Sig} {params : List Ty} {result : Ty}
+    {pool : Bytes.LiteralPool}
     (modes : List Mode) (body : Expr S params result) (depth : Bool) (typeIdx : Nat) :
-    (bodyFunction modes body depth typeIdx).numParams =
+    (bodyFunction modes body depth typeIdx pool).numParams =
       (if depth then 1 else 0) + widthSum params := by
   simp only [bodyFunction, codeParams, Function.numParams, List.length_append,
     flatMap_types_length]

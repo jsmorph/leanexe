@@ -5,16 +5,16 @@ namespace Verified
 open Wasm LeanExe.Pipeline
 
 theorem tail_ite_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
-    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m) (targetModes : List Mode)
     (cond : Expr S Γ .bool) (yes no : TailBody S params result Γ)
     (condSpec : ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv cond env slots paid live)
-    (yesSpec : TailCodeSpec m funs flags bounds fits host pv targetModes yes)
-    (noSpec : TailCodeSpec m funs flags bounds fits host pv targetModes no) :
-    TailCodeSpec m funs flags bounds fits host pv targetModes (.ite cond yes no) := by
+      CodeSpec (pool := pool) m funs flags bounds fits host pv cond env slots paid live)
+    (yesSpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes yes)
+    (noSpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes no) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (.ite cond yes no) := by
   intro env slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel heap
-    store s hh hpv hVars hAt hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
+    store s hh hpv hVars hAt hSafe hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
   let body := TailBody.ite cond yes no
   let mid := fun i => yes.uses i || no.uses i
   let condLive := fun i => mid i || cond.uses i
@@ -39,7 +39,8 @@ theorem tail_ite_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Mo
   obtain ⟨⟨hCondPlace, hYesPlace⟩, hNoPlace⟩ := hPlace
   simp only [TailBody.code, TailBody.codeWith, TailBody.usesFast_eq]
   refine condSpec env slots paid mid h base heap store s hh hpv
-    (hVars.live_mono fun i hi => by rw [← hCond]; exact hi) hAt hCap (by omega)
+    (hVars.live_mono fun i hi => by rw [← hCond]; exact hi) hAt
+    (hSafe.mono fun i hi => by rw [← hCond]; exact hi) hCap (by omega)
     (by omega) hCondPlace _ _
     (hTrap.part (by simp only [TailBody.fits]; flag_tac)
       (fun ha => by simp only [TailBody.aborts, Bool.or_eq_true] at ha ⊢; tauto)
@@ -59,7 +60,7 @@ theorem tail_ite_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Mo
     rw [hCond] at e
     exact e
   have runBranch (b : TailBody S params result Γ)
-      (bSpec : TailCodeSpec m funs flags bounds fits host pv targetModes b)
+      (bSpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes b)
       (hSub : ∀ i, b.uses i = true → mid i = true)
       (hWidth : b.width targetModes ≤ max (yes.width targetModes) (no.width targetModes))
       (hPlaceB : b.placeArgs targetModes (slots.map Slot.mode) = true)
@@ -74,7 +75,7 @@ theorem tail_ite_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Mo
       (hQTrap : ∀ st, Q (.Trap st "unreachable") → Qb (.Trap st "unreachable"))
       (hQBreak : ∀ k st ss, Q (.Break k st ss) → Qb (.Break (k + 1) st ss)) :
       wp m (releaseWhere Γ slots (fun i => mid i && !b.uses i) ++
-        b.code targetModes h stateBase resultBase slots base (exitLabel + 1) (nextLabel + 1))
+        b.code (pool := pool) targetModes h stateBase resultBase slots base (exitLabel + 1) (nextLabel + 1))
         Qb store1 { s1 with values := s.values } host := by
     refine wp_releaseWhere hm e1.holds e1.step.at_
       (fun i hi => by simp only [Bool.and_eq_true] at hi; exact hi.1)
@@ -102,6 +103,7 @@ theorem tail_ite_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Mo
     refine bSpec env slots paid nextPaid resultPaid h stateBase resultBase base
       (exitLabel + 1) (nextLabel + 1) heap2 store2 { s1 with values := s.values }
       (e1.frame.positions.trans hh) (e1.frame.params.trans hpv) e2.holds e2.step.at_
+      ((hSafe.evolves hVars e1 hEntry).evolves e1.holds e2 hSub)
       (by rw [e2.step.cap m, e1.step.cap m]; exact hCap)
       (by change s1.params.length ≤ stateBase; rw [e1.frame.params]; exact hLow)
       hState hResult (by omega) hPlaceB hPaidB _

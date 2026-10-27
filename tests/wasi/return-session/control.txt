@@ -1,0 +1,12 @@
+results 4200 1
+memory 4200 1 00
+stats 2 1
+results
+stats 2 2
+results 4144 1
+memory 4144 1 42
+stats 4 3
+results
+stats 4 4
+results 0 0
+stats 6 6

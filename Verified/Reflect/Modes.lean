@@ -21,6 +21,10 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
   | _, _, .leSize _ _, _, _, _
   | _, _, .float _, _, _, _ | _, _, .float32 _, _, _, _ => false
   | _, _, .treeNil _ _, _, _, _ => false
+  | _, _, .bytesEmpty, _, _, _ | _, _, .bytesLiteral _, _, _, _
+  | _, _, .bytesSize _, _, _, _ => false
+  | _, _, .bytesGet x index, live, _, k =>
+    index.demands (fun j => live j || j == x.index) false k
   | _, _, .treeNode _ reuse words children, live, _, k =>
     let kept := fun i => live i || optionVarUses reuse i
     (optionVarUses reuse k && !live k) ||
@@ -96,7 +100,7 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
         (args i).demands (fun j => live j || argsAny fun j' => (args j').uses j) false k
       else false
   | _, _, .get x i, live, _, k => i.demands (fun j => live j || j == x.index) false k
-  | _, _, .build count elem, live, _, k =>
+  | _, _, .build count elem, live, _, k | _, _, .bytesBuild count elem, live, _, k =>
     let all := fun i => live i || elem.uses (i + 1)
     count.demands all false k || elem.demands (shift 1 all) false (k + 1)
   | _, _, .set x i v, live, _, k =>
@@ -117,7 +121,7 @@ def Expr.paramChoice {params : List Ty} {result : Ty} (body : Expr S params resu
     List Mode :=
   (List.range params.length).map fun i =>
     match params[i]? with
-    | some (Ty.array _) | some (Ty.tree _) | some (Ty.treeHeader _ _) =>
+    | some (Ty.array _) | some (Ty.tree _) | some (Ty.treeHeader _ _) | some Ty.bytes =>
       if body.demands (fun _ => false) true i then .owned else .borrowed
     | _ => .borrowed
 

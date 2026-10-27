@@ -45,8 +45,8 @@ def module : Wasm.Module := compile prog
 theorem grow_correct : FunSpec module grow.sig 2 growMeaning
     (prog.flags.params .here) (prog.flags.result .here)
     ((prog.boundsAt funs (framesAt 0)).get .here)
-    ((prog.fitsAt funs (framesAt 0)).get .here) (fun d => d = 0) :=
-  Prog.correct prog funs meaning .here 0
+    ((prog.fitsAt funs (framesAt 0)).get .here) (fun d => d = 0) Bytes.LiteralPool.empty :=
+  Prog.correct prog funs meaning (by decide +kernel) .here 0
 
 #print axioms grow_correct
 

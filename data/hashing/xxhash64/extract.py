@@ -1,8 +1,13 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
+
 """Write xxh64.txt from the xxHash repository's tests/sanity_test_vectors.h.
 
 Each line of XSUM_XXH64_testdata, `{ len, seed, result }`, becomes `len seed result`, with the
 seed and the result as sixteen hexadecimal digits.  Run it with
-`python3 -I data/hashing/xxhash64/extract.py PATH/sanity_test_vectors.h`.
+`uv run data/hashing/xxhash64/extract.py PATH/sanity_test_vectors.h`.
 """
 
 import re

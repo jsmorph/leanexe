@@ -28,7 +28,8 @@ counts, and body and section sizes.  Its size functions count the specified
 output form independently of module encoder success.
 
 `Spec.Validity.Module` states scalar WASM typing, memory limits, resolved
-function signatures, export bounds, and distinct export names.  `ValidBinary`
+function signatures, export bounds, and distinct export names.  Its shape
+condition also fixes the admitted table and table-export profile.  `ValidBinary`
 means that the binary represents a module satisfying this predicate.
 Validity and application behavior remain input proof obligations.  The encoder
 preserves the represented module, so the composition theorem applies to an
@@ -61,6 +62,14 @@ imports, integer globals, exports, and one optional 32-bit memory.  Functions
 may return multiple values.  Structured controls have zero parameters and
 zero or one result, with matching explicit Talos annotations.
 
+The optional WASI table profile admits exactly one empty 32-bit nullable
+`funcref` table with minimum zero and no maximum.  It requires exactly the
+table export `__indirect_function_table` at index zero.  Table-free modules
+have no table exports.  Both encoder and decoder reject other table shapes
+or table-export arrangements.  Element segments and indirect calls remain
+outside this profile.  The [pinned WASI application ABI](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/application-abi.md)
+requires the export for applications that call WASI.
+
 The encoder retains duplicate and unused type entries and declared function
 type indices.  Function imports select the first matching signature in that
 table.  Each local uses a one-element declaration group.  Memory instructions
@@ -70,6 +79,13 @@ the type, import, function, memory, global, export, and code sections, including
 empty sections, and a data section when the memory has data segments.  Each
 data segment is active, in memory 0, at an `i32.const` offset.  These choices
 select permitted binary forms.
+
+The table profile adds section 4 between the function and memory sections.
+Its bytes are `04 04 01 70 00 00`: section id, payload length, table count,
+nullable `funcref`, limits flag, and minimum.  The table-free path omits that
+section and preserves its existing bytes.  The checked-parts encoder retains
+six section parts for table-free modules and appends the table section as a
+seventh part for the WASI profile.  Assembly places that part in section order.
 
 The accepted Talos metadata includes canonical function `gcTypes`, integer
 global initializers with matching declared types and constant `sourceInit`,
@@ -96,3 +112,8 @@ tools/leanrun --timeout 60m lake env lean --run tests/decoder/DecodeTest.lean \
 [`tools/Emit.lean`](../../tools/Emit.lean) also checks, for each module it
 writes, that the decoder reads the bytes back as the module, and the module
 tests run the written files in Wasmtime.
+
+[The table-profile proofs](../../tests/decoder/TableProfile.lean) check the
+table-free empty module's exact bytes, the admitted table's round trip,
+table-export bounds, and rejection of unsupported table types, limits,
+counts, export names, and export indices.

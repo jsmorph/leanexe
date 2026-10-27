@@ -4,7 +4,7 @@
 # ///
 """The moduli M_k(x)² = J_k(x)² + Y_k(x)² around the turning point k = x.
 
-Usage: python3 tools/bessel/turning.py X [X ...], for integers X ≥ 2.
+Usage: uv run tools/bessel/turning.py X [X ...], for integers X ≥ 2.
 
 For each X it prints, over the integer orders k < X, the largest value of
 S = (π/2) √(X² − k²) M_k(X)², whose bound S ≤ 1 would give the weight bound

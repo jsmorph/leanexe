@@ -5,15 +5,16 @@ namespace Verified
 open Wasm LeanExe.Pipeline
 
 theorem TailCodeSpec.released {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
-    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
     {host : HostEnv Unit} {pv : List Value} {targetModes : List Mode}
     {body : TailBody S params result Γ} (hm : Runtime m)
-    (spec : TailCodeSpec m funs flags bounds fits host pv targetModes body)
+    (spec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes body)
     {env : Env Γ} {slots : List Slot} {paid nextPaid : List Bool} {resultPaid : Bool}
     {L0 : Nat → Bool} {h stateBase resultBase base exitLabel nextLabel : Nat}
     {heap : Heap} {store : Store Unit} {s : Locals}
     (hh : s.positions = h) (hpv : s.params = pv)
     (hVars : Holds env slots L0 base heap store s) (hAt : heap.At store)
+    (hSafe : pool.Safe env slots L0 heap store s)
     (hCap : store.memoryCap m 0 ≤ 65535) (hLow : s.params.length ≤ stateBase)
     (hState : stateBase + widthSum params ≤ resultBase)
     (hResult : resultBase + result.width ≤ base)
@@ -34,7 +35,7 @@ theorem TailCodeSpec.released {S : List Sig} {Γ params : List Ty} {result : Ty}
       Q (.Break ((body.denote funs env).elim (fun _ => nextLabel) (fun _ => exitLabel))
         store' { s' with values := s.values })) :
     wp m (releaseWhere Γ slots (fun i => L0 i && !body.uses i) ++
-      body.code targetModes h stateBase resultBase slots base exitLabel nextLabel)
+      body.code (pool := pool) targetModes h stateBase resultBase slots base exitLabel nextLabel)
       Q store s host := by
   refine wp_releaseWhere hm hVars hAt (fun i hi => by
       simp only [Bool.and_eq_true] at hi; exact hi.1)
@@ -56,6 +57,7 @@ theorem TailCodeSpec.released {S : List Sig} {Γ params : List Ty} {result : Ty}
     simpa only [Bool.true_and] using hTrap
   refine spec env slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel
     heap1 store1 s hh hpv released.holds released.step.at_
+    (hSafe.evolves hVars released hEntry)
     (by rw [released.step.cap m]; exact hCap) hLow hState hResult hRoom hPlace hPaid _
     (hBudget.part id (fun _ => rfl) (fun _ hw => hw.shift
       (heap1 := heap1) (store1 := store1) (c1 := 0)

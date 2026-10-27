@@ -2,6 +2,8 @@ import Verified.TreeCaseNode
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline
 
 theorem spec_treeCase {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeShape}
@@ -10,11 +12,11 @@ theorem spec_treeCase {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeShape}
     (x : Var Γ (.tree shape)) (empty : shape.hasNull = true → Expr S Γ t)
     (nodes : (r : Fin shape.records) → Expr S (shape.context r Γ) t)
     (emptySpec : ∀ hn env slots paid live,
-      CodeSpec m funs flags bounds fits host pv (empty hn) env slots paid live)
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (empty hn) env slots paid live)
     (nodeSpec : ∀ r env slots paid live,
-      CodeSpec m funs flags bounds fits host pv (nodes r) env slots paid live) :
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (nodes r) env slots paid live) :
     ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv (Expr.treeCase x empty nodes) env slots paid
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.treeCase x empty nodes) env slots paid
         live := by
   intro env slots paid live
   cases hv : env.get x with

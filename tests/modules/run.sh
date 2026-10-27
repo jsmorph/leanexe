@@ -2,9 +2,27 @@
 # Compares every case of tests/modules/Cases.lean between the Wasmtime host running
 # build/MODULE/MODULE.wasm and native Lean.
 # Usage: tests/modules/run.sh [build directory] | --module NAME WASM | --check-bytes DIRECTORY
+#        tests/modules/run.sh --emit-from CHECKOUT DIRECTORY
 set -euo pipefail
-export PATH="$PATH:$HOME/.cargo/bin"
+export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
 root=$(cd "$(dirname "$0")/../.." && pwd)
+if [ "$#" -eq 3 ] && [ "$1" = "--emit-from" ]; then
+  source_root=$(cd "$2" && pwd -P)
+  git -C "$source_root" diff --quiet
+  git -C "$source_root" diff --cached --quiet
+  mkdir -p "$3"
+  scratch=$(cd "$3" && pwd -P)
+  git -C "$source_root" rev-parse HEAD >"$scratch/original-source.commit"
+  while IFS=: read -r module constant name; do
+    mkdir -p "$scratch/$name"
+    (cd "$source_root" && tools/leanrun --timeout 60m lake --log-level error build "$module")
+    (cd "$source_root" && tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+      "$module" "$constant" "$scratch/$name/$name.wasm")
+    wasm-tools validate "$scratch/$name/$name.wasm"
+    echo "$name: reference emitted"
+  done <"$root/tests/modules/modules.txt"
+  exit 0
+fi
 if [ "$#" -eq 2 ] && [ "$1" = "--check-bytes" ] && [ -n "$2" ]; then
   scratch=$2
   cd "$root"
@@ -29,10 +47,14 @@ elif [ "$#" -eq 3 ] && [ "$1" = "--module" ] && [ -n "$2" ] && [ -n "$3" ]; then
   case_module=$2
   case_wasm=$3
 else
-  echo "usage: tests/modules/run.sh [build directory] | --module NAME WASM | --check-bytes DIRECTORY" >&2
+  echo "usage: tests/modules/run.sh [build directory] | --module NAME WASM | --check-bytes DIRECTORY | --emit-from CHECKOUT DIRECTORY" >&2
   exit 2
 fi
 host=$root/build/tools/leanexe-wasmtime-host
+if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+  echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
+  exit 1
+fi
 tools/leanrun --timeout 30m lake --log-level error build TestSupport
 cases=$(mktemp)
 errors=$(mktemp)

@@ -1,3 +1,8 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
+
 """Checks the answers of Library.Regex.matchWith against Python's re.fullmatch.
 
 Reads the lines that tests/TestSupport/Regex/PythonCases.lean writes: the postfix pattern words,

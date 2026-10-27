@@ -1,0 +1,5 @@
+call before 2
+arg-u64 0
+call exit 0
+call after 2
+done

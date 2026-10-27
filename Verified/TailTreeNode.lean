@@ -3,6 +3,7 @@ import Verified.TailBindPrefix
 import Verified.TailAllocExpand
 import Verified.TreeMatchPotential
 import Verified.ReleasedExpr
+import Verified.Bytes.StaticPrefix
 import Verified.TreeDispatch
 
 namespace Verified
@@ -11,18 +12,18 @@ open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
     {shape : TreeShape} {m : Module} {funs : Funs S} {flags : Flags S}
-    {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+    {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool} {host : HostEnv Unit} {pv : List Value}
     (hm : Runtime m) (targetModes : List Mode) (x : Var Γ (.tree shape))
     (empty : shape.hasNull = true → TailBody S params result Γ)
     (nodes : (r : Fin shape.records) → TailBody S params result (shape.context r Γ))
     (r : Fin shape.records)
-    (nodeSpec : TailCodeSpec m funs flags bounds fits host pv targetModes (nodes r))
+    (nodeSpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (nodes r))
     (env : Env Γ) (words : Fin (shape.words r) → UInt64)
     (children : Fin (shape.children r) → Tree shape)
     (hValue : env.get x = .node r words children) :
-    TailCodeSpecAt m funs flags bounds fits host pv targetModes (.treeCase x empty nodes) env := by
+    TailCodeSpecAt (pool := pool) m funs flags bounds fits host pv targetModes (.treeCase x empty nodes) env := by
   intro slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel heap
-    store s hh hpv hVars hAt hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
+    store s hh hpv hVars hAt hSafe hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
   let outer := TailBody.treeCase x empty nodes
   let L0 := outer.uses
   let L1 := fun i => (nodes r).uses (i + shape.bindCount r)
@@ -137,14 +138,14 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
       LeanExe.Runtime.headerStore base 8 [.constI64 0] else []) ++
     releaseWhere (shape.context r Γ) (shape.slots r base (slots.getD x.index default).mode slots)
       (fun i => decide (i < shape.bindCount r) && !(nodes r).uses i) ++
-    (nodes r).code targetModes h stateBase resultBase
+    (nodes r).code (pool := pool) targetModes h stateBase resultBase
       (shape.slots r base (slots.getD x.index default).mode slots) (base + shape.bindCount r)
       (exitLabel + labels + depth r) (nextLabel + labels + depth r)
   have hBranch : RunsTailBranch m host (nc r) (labels + depth r) Q store s := by
     intro Q' hb ht
     let nodeCode := releaseWhere (shape.context r Γ) boundSlots
       (fun i => decide (i < shape.bindCount r) && !(nodes r).uses i) ++
-      (nodes r).code targetModes h stateBase resultBase boundSlots scratch
+      (nodes r).code (pool := pool) targetModes h stateBase resultBase boundSlots scratch
         (exitLabel + labels + depth r) (nextLabel + labels + depth r)
     have hRun := (spec_var (S := S) (funs := funs) (flags := flags) (bounds := bounds)
       (fits := fits) (host := host) (pv := pv) hm x env slots paid L1).released (Q := Q')
@@ -152,7 +153,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
         ((treeLoadFields base (base + 1) (base + 1 + shape.words r) shape.fieldStart
           (shape.fields r) ++
           (if rootMode = .owned then headerStore base 8 [.constI64 0] else [])) ++ nodeCode))
-      hm hh hpv (hVars.mono (by dsimp only [scratch]; omega)) hAt hCap
+      hm hh hpv (hVars.mono (by dsimp only [scratch]; omega)) hAt hSafe hCap
       (by dsimp only [scratch]; omega) hRootRoom rfl hEntry
       (hRootBudget.imp (fun st hq => ht st hq)) (fun heap1 store1 s1 ws afterRoot hTop => by
         obtain ⟨p, rfl, root⟩ := afterRoot.rep
@@ -200,6 +201,18 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
               · simp [LB, hlt]
               · simp only [LB, shift, hlt, decide_false, Bool.false_or, ↓reduceIte, L1]
                 simpa only [Nat.sub_add_cancel (Nat.le_of_not_gt hlt)] using hi
+            have safeFields : pool.Safe boundEnv boundSlots LB heap1
+                (treeDetachStore rootMode store1 p) s3 := by
+              have hCount : (shape.context r []).length = shape.bindCount r := by
+                simp only [TreeShape.context_length, List.length_nil, Nat.add_zero]
+              have hLength : (shape.slots r base rootMode []).length =
+                  (shape.context r []).length := by
+                rw [shape.slots_length r, hCount]
+              have hs := hSafe.bindPrefixStep hVars step3 frame3 outer3 hLength fresh3 hL1
+                (bodyLive := LB) (fun i hi => by simpa [hCount, LB, shift] using hi)
+              rw [← shape.slots_append r base rootMode slots] at hs
+              exact hs.ofHEq (shape.context_append r Γ)
+                (Env.treeFields_append shape r words children env)
             dsimp only [nodeCode]
             have hRelease : (fun i => decide (i < shape.bindCount r) && !(nodes r).uses i) =
                 (fun i => LB i && !(nodes r).uses i) := by
@@ -208,7 +221,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
               · simp [LB, hlt]
               · simp [LB, shift, hlt, L1, Nat.sub_add_cancel (Nat.le_of_not_gt hlt)]
             rw [hRelease]
-            refine nodeSpec.released hm hh3 hp3 fields3 detached.at_
+            refine nodeSpec.released hm hh3 hp3 fields3 detached.at_ safeFields
               (by rw [step3.cap m]; exact hCap)
               (by rw [frame3.params]; exact hLow) hState (by omega)
               hBodyRoom hPlaceN hPaidN hFields (hBodyBudget.imp (fun st hq => ht st hq))

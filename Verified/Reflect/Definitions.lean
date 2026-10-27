@@ -123,6 +123,7 @@ def tyExpr : Ty → Lean.Expr
   | .float32 => mkConst ``Ty.float32
   | .elem e => mkApp (mkConst ``Ty.elem) (elemExpr e)
   | .array e => mkApp (mkConst ``Ty.array) (elemExpr e)
+  | .bytes => mkConst ``Ty.bytes
   | .tree shape => mkApp (mkConst ``Ty.tree) (treeShapeExpr shape)
   | .treeHeader shape r => mkApp2 (mkConst ``Ty.treeHeader) (treeShapeExpr shape) (recordExpr shape r)
 
@@ -190,6 +191,7 @@ partial def flatTree (type β inst : Lean.Expr) (ctor : ConstructorVal) :
 partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
   if let some e ← elemOf? type then return ⟨.elem e, none⟩
   let type ← whnfR type
+  if type.isConstOf ``LeanExe.Bytes then return ⟨.bytes, none⟩
   if let (``List, #[el]) := type.getAppFnArgs then
     if (← whnfR el).isConstOf ``UInt64 then
       return ⟨.tree listShape, some (mkConst ``Tree.ofList)⟩
@@ -229,7 +231,7 @@ partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
     let f ← withLocalDeclD `x type fun x => do
       mkLambdaFVars #[x] (sβ.apply (mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type β inst x))
     return ⟨sβ.ty, some f⟩
-  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, Float32, a structure with a \
+  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, Float32, Bytes, a structure with a \
     `Flat` instance, an array, or a pair"
 
 def tyOf (type : Lean.Expr) : MetaM Ty := return (← shapeOf type).ty
@@ -416,6 +418,13 @@ def wordLit? (e : Lean.Expr) : MetaM (Option UInt64) := do
   let (``OfNat.ofNat, #[α, n, _]) := e.consumeMData.getAppFnArgs | return none
   unless (← whnfR α).isConstOf ``UInt64 do return none
   return (natOf (← instantiateMVars n)).map UInt64.ofNat
+
+def bytesLit? (e : Lean.Expr) : MetaM (Option (List UInt8)) := do
+  if e.hasFVar || e.hasLooseBVars then return none
+  unless (← whnfR (← inferType e)).isConstOf ``LeanExe.Bytes do return none
+  let (``LeanExe.Bytes.mk, #[data]) := (← whnfR e).getAppFnArgs | return none
+  let (``ByteArray.mk, #[data]) := (← whnfR data).getAppFnArgs | return none
+  return (← getArrayLitOf? data getUInt8Value?).map Array.toList
 
 /-- The bit pattern of a float literal: a scientific or natural literal, `Float.ofBits` or
 `UInt64.toFloat` of a word literal, or the negation of a float literal.  Lean's model has one
@@ -1181,7 +1190,7 @@ partial def ValueCost.eq (k : ValueCost) (base : Name) (t : Ty) (v u : Lean.Expr
   let lhs := mkApp2 (mkConst k.fn) (tyExpr t) v
   match t with
   | .elem _ => return (natZero, ← evalEq lhs natZero)
-  | .tree _ | .treeHeader _ _ => return (lhs, ← mkEqRefl lhs)
+  | .tree _ | .treeHeader _ _ | .bytes => return (lhs, ← mkEqRefl lhs)
   | .array e =>
     let width := mkApp (mkConst ``Elem.width) (elemExpr e)
     let w ← evalNat width
@@ -1415,12 +1424,12 @@ def unBound (c : Ctx) (n : Name) (args : List (Name × Lean.Expr)) (x : Reflecti
   let _ ← app.child `h x.bound
   boundOf (← app.finish)
 
-/-- The builder of a leaf with the lemma `n`, whose bound is `0`. -/
+/-- The builder of a leaf with the allocation-bound equation supplied by `n`. -/
 def leafBound (c : Ctx) (n : Name) (args : List (Name × Lean.Expr)) : BoundBuilder :=
   fun modes paid live => do
     let bounds := c.tables.table false
     let app ← LemmaApp.start n (boundArgs c bounds modes paid live ++ args)
-    return ⟨natZero, ← app.finish⟩
+    boundOf (← app.finish)
 
 /-- The builder of the frames condition of a form by the lemma `n`, with the arguments `args` and
 the hypotheses `parts` on the frames of its parts. -/
@@ -1705,6 +1714,15 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let src ← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr t), some x]
     return ⟨src, ← rflProof c src (← flatValue e), t, e, varBound c x t e, leafFits c src⟩
   if let some r := ← reflectCall? e then return r
+  if e.isConstOf ``LeanExe.Bytes.empty then
+    let src ← mkAppOptM ``Expr.bytesEmpty #[some c.sigs, some c.ctx]
+    return ⟨src, ← rflProof c src e, .bytes, e,
+      leafBound c ``bytesEmpty_bound [], leafFits c src⟩
+  if let some bytes ← bytesLit? e then
+    let literal := toExpr bytes
+    let src ← mkAppOptM ``Expr.bytesLiteral #[some c.sigs, some c.ctx, some literal]
+    return ⟨src, ← rflProof c src e, .bytes, e,
+      leafBound c ``bytesLiteral_bound [(`bytes, literal)], leafFits c src⟩
   if let some r := ← reflectRecursiveConstructor? e then return r
   if let some r := ← reflectSumConstructor? e then return r
   if let some r := ← reflectStruct? e then return r
@@ -1747,7 +1765,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
           some (toExpr bits), some e, some h]
         return ⟨src, proof, .float32, e, leafBound c ``float32_bound [(`bits, toExpr bits)],
           leafFits c src⟩
-    | .elem (.prod _ _) | .pair _ _ | .array _ | .tree _ | .treeHeader _ _ => pure ()
+    | .elem (.prod _ _) | .pair _ _ | .array _ | .tree _ | .treeHeader _ _ | .bytes => pure ()
   -- A named constant that holds no array is its value, which the kernel unfolds to it.
   if let .const name lvls := e then
     if let .defnInfo info ← getConstInfo name then
@@ -2466,6 +2484,72 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       return ⟨src, ← mkAppM ``build_eq #[rn.proof, hf], .array el, e, bound, fits⟩
     return ⟨src, ← mkAppM ``build_map_eq #[← se.fn α, f, rn.proof, hf], .array el, e,
       bound, fits⟩
+  | ``LeanExe.Bytes.build, #[n, f] =>
+    let rn ← reflect c n
+    let (fs, hf, ue) ← withLocalDeclD `i (mkConst ``UInt64) fun i => do
+      let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (mkConst ``Ty.word), some i, some c.env]
+      let c' : Ctx := { c with vars := (i, .word) :: c.vars, env := env', ctx := consCtx .word c.ctx }
+      let rf ← reflect c' (f.beta #[i])
+      unless rf.ty == .word do throwError "verified_compile: a byte builder must return UInt64"
+      return (rf.src, ← mkLambdaFVars #[i] rf.proof,
+        (⟨rf, #[i], [← i.fvarId!.getDecl]⟩ : Under))
+    let src ← mkAppM ``Expr.bytesBuild #[rn.src, fs]
+    let bound : BoundBuilder := fun modes paid live => do
+      let bounds := c.tables.table false
+      let app ← LemmaApp.start ``bytesBuild_bound
+        (boundArgs c bounds modes paid live ++ [(`count, rn.src), (`elem, fs)])
+      let some (_, _, allRhs) := (← app.hypType `hall).eq?
+        | throwError "verified_compile: the byte build {e}"
+      app.assign `all allRhs
+      app.assign `hall (← mkEqRefl allRhs)
+      app.assign `hn (← userProof c rn)
+      let _ ← app.child `hna rn.bound
+      let eb ← ue.bound (← mkAppM ``List.cons #[mkConst ``Mode.borrowed, modes])
+        (← mkAppM ``List.cons #[boolConst false, paid]) (← mkAppM ``shift #[mkNatLit 1, allRhs])
+      let (EA, hea) ← withLocalDeclD `k (mkConst ``Nat) fun k => do
+        let b ← eb.at #[← mkAppM ``UInt64.ofNat #[k]]
+        return (← mkLambdaFVars #[k] b.term, ← mkLambdaFVars #[k] b.proof)
+      app.assign `EA EA
+      app.assign `hea hea
+      boundOf (← app.finish)
+    let fits : FitsBuilder := do
+      let app ← LemmaApp.start ``bytesBuild_fits (fitsArgs c ++ [(`count, rn.src), (`elem, fs)])
+      app.assign `hn (← userProof c rn)
+      app.childFits `hnf rn.fits
+      app.childFits `hef do
+        let eb ← ue.fits
+        withLocalDeclD `k (mkConst ``Nat) fun k => do
+          let b ← eb.at #[← mkAppM ``UInt64.ofNat #[k]]
+          return ⟨← mkLambdaFVars #[k] b.term, ← mkLambdaFVars #[k] b.proof⟩
+      fitsOf (← app.finish)
+    return ⟨src, ← mkAppM ``bytesBuild_eq #[rn.proof, hf], .bytes, e, bound, fits⟩
+  | ``LeanExe.Bytes.size, #[bytes] =>
+    let bytes ← projReduce bytes
+    unless bytes.isFVar do
+      return ← reflectAs (← withLetDecl `bytes (← inferType bytes) bytes fun value =>
+        mkLetFVars #[value] (mkApp e.getAppFn value)) e
+    let (x, .bytes) ← varOf c bytes
+      | throwError "verified_compile: {bytes} is not a byte variable"
+    let src ← mkAppOptM ``Expr.bytesSize #[some c.sigs, some c.ctx, some x]
+    return ⟨src, ← rflProof c src e, .word, e,
+      leafBound c ``bytesSize_bound [(`x, x)], leafFits c src⟩
+  | ``LeanExe.Bytes.get, #[bytes, index] =>
+    let bytes ← projReduce bytes
+    unless bytes.isFVar do
+      return ← reflectAs (← withLetDecl `bytes (← inferType bytes) bytes fun value =>
+        mkLetFVars #[value] (mkApp2 e.getAppFn value index)) e
+    let (x, .bytes) ← varOf c bytes
+      | throwError "verified_compile: {bytes} is not a byte variable"
+    let ri ← reflect c index
+    let src ← mkAppOptM ``Expr.bytesGet #[some c.sigs, some c.ctx, some x, some ri.src]
+    let bound : BoundBuilder := fun modes paid live => do
+      let bounds := c.tables.table false
+      let app ← LemmaApp.start ``bytesGet_bound
+        (boundArgs c bounds modes paid live ++ [(`x, x), (`i, ri.src)])
+      let _ ← app.child `hi ri.bound
+      boundOf (← app.finish)
+    let fits := formFits c ``bytesGet_fits [(`x, x), (`i, ri.src)] [(`hi, ri)]
+    return ⟨src, ← mkAppM ``bytesGet_eq #[x, ri.proof], .word, e, bound, fits⟩
   | ``Nat.toUInt64, #[n] =>
     let (``Array.size, sizeArgs@#[_, xs]) := n.consumeMData.getAppFnArgs
       | throwError "verified_compile: unsupported term {e}"
@@ -3630,6 +3714,7 @@ partial def agreeTy (userT : Lean.Expr) (t : Ty) : MetaM (Lean.Expr × Lean.Expr
     let h ← trueByEval (mkApp (mkConst ``Ty.scalar) (tyExpr t))
     return ← agreeScalar userT inst src (mkApp2 (mkConst ``Ty.scalarInst) (tyExpr t) h) φ
   match t, (← whnfR userT).getAppFnArgs with
+  | .bytes, _ => agreeRefl userT inst src
   | .tree _, (``List, #[_]) =>
     agreeAs userT inst src φ (mkConst ``Agree.listTree)
   | .tree _, _ =>
@@ -3660,6 +3745,7 @@ def agreeArg (userT : Lean.Expr) (t : Ty) (m : Mode) : MetaM (Lean.Expr × Lean.
   let src := (mkApp2 (mkConst ``Ty.argTy) (tyExpr t) (modeExpr m),
     mkApp2 (mkConst ``Ty.argInst) (tyExpr t) (modeExpr m))
   match t, m, (← whnfR userT).getAppFnArgs with
+  | .bytes, .owned, (``LeanExe.Pipeline.Moved, #[_]) => agreeRefl userT inst src
   | .tree _, .owned, (``LeanExe.Pipeline.Moved, #[native]) =>
     let proof ← if (← whnfR native).isAppOf ``List then pure (Lean.mkConst ``Agree.movedListTree)
       else do

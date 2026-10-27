@@ -242,7 +242,7 @@ theorem parses_exportEntry {bytes : List UInt8} {entry : UInt8 × String × Nat}
       refine Parses.bind (parses_name nameEncoding) ?_
       refine Parses.bind (parses_byte kind) ?_
       refine Parses.bind_nil (parses_unsigned indexEncoding 32 (Nat.le_refl _)) ?_
-      rcases kindValid with rfl | rfl | rfl <;> exact Parses.pure' _
+      rcases kindValid with rfl | rfl | rfl | rfl <;> exact Parses.pure' _
 
 theorem export_nonempty {bytes : List UInt8} {entry : UInt8 × String × Nat}
     (h : Spec.Export bytes entry) : bytes ≠ [] := by

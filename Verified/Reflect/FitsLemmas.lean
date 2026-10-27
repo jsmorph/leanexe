@@ -95,6 +95,10 @@ theorem get_fits {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : B
     (hi : i.fits funs fits env = I) : (Expr.get x i).fits funs fits env = I := by
   subst hi; rfl
 
+theorem bytesGet_fits (x : Var Γ .bytes) {i : Expr S Γ .word} {I : Bool}
+    (hi : i.fits funs fits env = I) : (Expr.bytesGet x i).fits funs fits env = I := by
+  subst hi; rfl
+
 theorem eraseAt_fits {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : Bool}
     (hi : i.fits funs fits env = I) : (Expr.eraseAt x i).fits funs fits env = I := by
   subst hi; rfl
@@ -308,6 +312,15 @@ theorem build_fits {e : Elem} {count : Expr S Γ .word} {elem : Expr S (.word ::
     (hn : count.denote funs env = N) (hnf : count.fits funs fits env = NF)
     (hef : ∀ k : Nat, elem.fits funs fits (.cons (UInt64.ofNat k) env) = EF k) :
     (Expr.build count elem).fits funs fits env = (NF && allBelow EF N.toNat) := by
+  subst hn hnf
+  obtain rfl := funext hef
+  rfl
+
+theorem bytesBuild_fits {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) .word}
+    {N : UInt64} {NF : Bool} {EF : Nat → Bool}
+    (hn : count.denote funs env = N) (hnf : count.fits funs fits env = NF)
+    (hef : ∀ k : Nat, elem.fits funs fits (.cons (UInt64.ofNat k) env) = EF k) :
+    (Expr.bytesBuild count elem).fits funs fits env = (NF && allBelow EF N.toNat) := by
   subst hn hnf
   obtain rfl := funext hef
   rfl

@@ -65,6 +65,25 @@ theorem section_writes (id : UInt8) {result : Result relation value} {bytes : Li
   refine ⟨_, rfl, ?_⟩
   simp [hsv, hpv]
 
+def tableSectionBytes (tables : List Wasm.TableDecl) : List UInt8 :=
+  if tables.isEmpty then [] else [4, 4, 1, 0x70, 0, 0]
+
+theorem tableSection_writes (tables : List Wasm.TableDecl) (profile : Spec.TableProfile tables) :
+    Writes (tableSection tables) (tableSectionBytes tables) := by
+  rcases profile with empty | table
+  · rw [empty]
+    exact ⟨_, rfl, rfl⟩
+  · rw [table]
+    exact ⟨_, rfl, rfl⟩
+
+theorem Writes.eq {result : Result relation value} {left right : List UInt8}
+    (hl : Writes result left) (hr : Writes result right) : left = right := by
+  obtain ⟨a, ha, hva⟩ := hl
+  obtain ⟨b, hb, hvb⟩ := hr
+  have same : a = b := Except.ok.inj (ha.symm.trans hb)
+  cases same
+  exact hva.symm.trans hvb
+
 /-- The module from the bytes of its sections. -/
 theorem module_writes (m : Wasm.Module) (hshape : Spec.Shape m)
     (b1 b2 b3 b5 b6 b7 b10 bd : List UInt8)
@@ -76,24 +95,25 @@ theorem module_writes (m : Wasm.Module) (hshape : Spec.Shape m)
     (h7 : Writes ((vector exportEntry (Spec.exports m) >>= sectionBytes 7 : Except String _)) b7)
     (h10 : Writes ((vector functionBody m.funcs >>= sectionBytes 10 : Except String _)) b10)
     (hd : Writes (dataSection (Spec.dataSegments m)) bd) :
-    encode m = .ok ⟨([0, 97, 115, 109, 1, 0, 0, 0] ++ b1 ++ b2 ++ b3 ++ b5 ++ b6 ++ b7 ++ b10 ++
+    encode m = .ok ⟨([0, 97, 115, 109, 1, 0, 0, 0] ++ b1 ++ b2 ++ b3 ++ tableSectionBytes m.tables ++ b5 ++ b6 ++ b7 ++ b10 ++
       bd).toArray⟩ := by
   obtain ⟨o1, e1, v1⟩ := h1
   obtain ⟨o2, e2, v2⟩ := h2
   obtain ⟨o3, e3, v3⟩ := h3
+  obtain ⟨o4, e4, v4⟩ := tableSection_writes m.tables hshape.tables
   obtain ⟨o5, e5, v5⟩ := h5
   obtain ⟨o6, e6, v6⟩ := h6
   obtain ⟨o7, e7, v7⟩ := h7
   obtain ⟨o10, e10, v10⟩ := h10
   obtain ⟨od, ed, vd⟩ := hd
   have hmod : ∃ out, module m = .ok out ∧ out.val = [0, 97, 115, 109, 1, 0, 0, 0] ++ o1.val ++
-      o2.val ++ o3.val ++ o5.val ++ o6.val ++ o7.val ++ o10.val ++ od.val := by
-    simp only [module, shape_produces m hshape, e1, e2, e3, e5, e6, e7, e10, ed]
+      o2.val ++ o3.val ++ o4.val ++ o5.val ++ o6.val ++ o7.val ++ o10.val ++ od.val := by
+    simp only [module, shape_produces m hshape, e1, e2, e3, e4, e5, e6, e7, e10, ed]
     exact ⟨_, rfl, rfl⟩
   obtain ⟨out, ho, hov⟩ := hmod
   unfold encode
   rw [ho]
-  simp only [Except.map, hov, v1, v2, v3, v5, v6, v7, v10, vd]
+  simp only [Except.map, hov, v1, v2, v3, v4, v5, v6, v7, v10, vd]
 
 /-- `AllWrite` from the facts at each index. -/
 theorem allWrite_of_getElem! [Inhabited α] (encode : (value : α) → Result relation value) :
@@ -120,8 +140,7 @@ theorem forall_lt_succ {P : Nat → Prop} {n : Nat} (h : ∀ k < n, P k) (hn : P
 def funcOk (f : Wasm.Function) (b : List UInt8) : Bool :=
   (functionBody f).toOption.map (·.val) == some b && decide (f.locals.length ≤ Decoder.maxLocals)
 
-/-- The claim for the rest of the module: its shape and the six sections before the code as
-`s`. -/
+/-- The module shape and section parts.  An optional seventh part holds the table section. -/
 def restOk (m : Wasm.Module) (s : List (List UInt8)) : Bool :=
   (shape m).isOk &&
     ((vector functionType m.types : Except String _) >>= sectionBytes 1).toOption.map (·.val) == some (s.getD 0 []) &&
@@ -133,7 +152,8 @@ def restOk (m : Wasm.Module) (s : List (List UInt8)) : Bool :=
       some (s.getD 3 []) &&
     ((vector global m.globals : Except String _) >>= sectionBytes 6).toOption.map (·.val) == some (s.getD 4 []) &&
     ((vector exportEntry (Spec.exports m) : Except String _) >>= sectionBytes 7).toOption.map (·.val) ==
-      some (s.getD 5 [])
+      some (s.getD 5 []) &&
+    (tableSection m.tables).toOption.map (·.val) == some (s.getD 6 [])
 
 /-- The claim for the data section. -/
 def dataOk (m : Wasm.Module) (d : List UInt8) : Bool :=
@@ -149,7 +169,7 @@ def codesOk (bodies : List (List UInt8)) : Bool :=
 
 /-- The bytes of a module from its parts. -/
 def assemble (s : List (List UInt8)) (bodies : List (List UInt8)) (d : List UInt8) : List UInt8 :=
-  [0, 97, 115, 109, 1, 0, 0, 0] ++ s.getD 0 [] ++ s.getD 1 [] ++ s.getD 2 [] ++ s.getD 3 [] ++
+  [0, 97, 115, 109, 1, 0, 0, 0] ++ s.getD 0 [] ++ s.getD 1 [] ++ s.getD 2 [] ++ s.getD 6 [] ++ s.getD 3 [] ++
     s.getD 4 [] ++ s.getD 5 [] ++
     (10 :: (unsigned 32 (codePayload bodies).length ++ codePayload bodies)) ++ d
 
@@ -167,7 +187,9 @@ theorem encode_of_parts (m : Wasm.Module) (s bodies : List (List UInt8)) (d : Li
     encode m = .ok ⟨(assemble s bodies d).toArray⟩ ∧
       ∀ f ∈ m.funcs, f.locals.length ≤ Decoder.maxLocals := by
   simp only [restOk, Bool.and_eq_true, beq_iff_eq] at hrest
-  obtain ⟨⟨⟨⟨⟨⟨hs, h1⟩, h2⟩, h3⟩, h5⟩, h6⟩, h7⟩ := hrest
+  obtain ⟨⟨⟨⟨⟨⟨⟨hs, h1⟩, h2⟩, h3⟩, h5⟩, h6⟩, h7⟩, h4⟩ := hrest
+  have hTableBytes := Writes.eq (tableSection_writes m.tables (shape_of_isOk m hs).tables)
+    (writes_of_toOption h4)
   have hd : (dataSection (Spec.dataSegments m)).toOption.map (·.val) = some d := by
     simpa [dataOk] using hdata
   simp only [codesOk, Bool.and_eq_true, decide_eq_true_eq] at hcodes
@@ -187,25 +209,27 @@ theorem encode_of_parts (m : Wasm.Module) (s bodies : List (List UInt8)) (d : Li
   · have := module_writes m (shape_of_isOk m hs) _ _ _ _ _ _ _ _ (writes_of_toOption h1)
       (writes_of_toOption h2) (writes_of_toOption h3) (writes_of_toOption h5)
       (writes_of_toOption h6) (writes_of_toOption h7) h10 (writes_of_toOption hd)
-    rw [this]
+    rw [this, hTableBytes]
     rfl
   · intro f hf
     obtain ⟨k, hk, rfl⟩ := List.getElem_of_mem hf
     have := (hw k hk).2
     rwa [getElem!_pos m.funcs k hk] at this
 
-/-- The bytes of the parts of `encode m`: the six sections before the code, the body of each
-function, and the data section. -/
+/-- The section parts, function bodies, and data section.  Table-free modules retain six
+section parts.  The application table adds a seventh part. -/
 def encodeParts (m : Wasm.Module) :
     Except String (List (List UInt8) × List (List UInt8) × List UInt8) := do
   let s1 ← (vector functionType m.types : Except String _) >>= sectionBytes 1
   let s2 ← (vector (importFunction m.types) m.imports : Except String _) >>= sectionBytes 2
   let s3 ← (vector (functionIndex m.types) m.funcs : Except String _) >>= sectionBytes 3
+  let s4 ← tableSection m.tables
   let s5 ← (vector memory (Spec.memoryDecls m) : Except String _) >>= sectionBytes 5
   let s6 ← (vector global m.globals : Except String _) >>= sectionBytes 6
   let s7 ← (vector exportEntry (Spec.exports m) : Except String _) >>= sectionBytes 7
   let bodies ← m.funcs.mapM fun f => (functionBody f).map (·.val)
   let d ← dataSection (Spec.dataSegments m)
-  pure ([s1.val, s2.val, s3.val, s5.val, s6.val, s7.val], bodies, d.val)
+  pure ([s1.val, s2.val, s3.val, s5.val, s6.val, s7.val] ++
+    (if m.tables.isEmpty then [] else [s4.val]), bodies, d.val)
 
 end Wasm.Encoding

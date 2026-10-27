@@ -1,0 +1,6 @@
+call writeLiteral 1
+stats
+arg-u64 126
+call exitCode 1
+call writeLiteral 1
+done
