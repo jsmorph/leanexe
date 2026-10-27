@@ -47,34 +47,46 @@ signed zero, infinities, and canonical NaNs.
 | [Stream process](Stream.lean) | Buffered input, partial lines, pending output, EOF, and error handling. |
 | [Stream view](StreamView.lean), [kernel](Kernel.lean), and [termination](Termination.lean) | The relation between the process and [the shared stream process](../StreamFold/README.md), the line kernel's specification, and the progress of each step. |
 | [Line model](Model.lean) | `ShortLines`, the line rooms that it implies, and the outputs and status of the kernel's fold over the input lines. |
+| [Line limit](Limits.lean) | `InputLimits`, the kernel specification with the limit, and the sizes of every state of a run within it. |
 | [Action compilation](Wasi.lean) | Pure helper compilation and reflected effectful begin/step functions. |
 | [Command module](Module.lean) | The unbounded Wasm loop, stack admission check, encoding, and validity proofs. |
 | [Process refinement](Proof.lean) | Native-process correspondence, modeled initial store, `_start` partial refinement, and byte theorem. |
+| [Printer charges](PrintCharges.lean) and [parser charges](ParseCharges.lean) | The generated allocation bounds of the multiprecision arithmetic, the printer, and the parser, with the sizes of their arrays. |
+| [Step charges](Charges.lean) | The charges of `begin` and of each step, and their bound for states within the limit. |
 | [Stream correctness](StreamCorrect.lean) | `InputValues`, sequential binary64 output of the lines before the first rejected line, and source process termination. |
-| [Compiled correctness](Correct.lean) | Eventual accepted exit with status 0 or 28 and the sequential binary64 output from the modeled initial store. |
+| [Compiled correctness](Correct.lean) | The charges derived from the limit, and eventual accepted exit with status 0 or 28 and the sequential binary64 output from the modeled initial store. |
 | [Native executable](Native.lean) | The same process with the shared [POSIX fd 0 reader](../RunningSum/read.c) and flushed output streams. |
 
 `InputValues input numbers status` holds when `numbers` are the numbers that the input lines
 denote before the first line that denotes none, with `status` 0 when every line denotes a number
 and 28 otherwise.  `inputValues_exist` and `inputValues_unique` show that every input with lines
 shorter than `2^32` bytes determines one such pair.  `initial_terminates_fp` supplies, for every
-such input, a Talos fuel threshold such that every larger fuel value runs the compiled command to
-accepted exit with status `status` and the cumulative output of `numbers`.  `fp_bytes` combines
-the theorem with encoding, exact decoding, and binary validity.  The theorem starts with an empty
-event journal and output history and uses these premises:
+such input whose lines up to the first line that denotes no number hold at most `L` bytes, a Talos
+fuel threshold such that every larger fuel value runs the compiled command to accepted exit with
+status `status` and the cumulative output of `numbers`.  `initial_terminates_fp_50000000` fixes
+`L` at 50,000,000.  `fp_bytes` combines the theorem with encoding, exact decoding, and binary
+validity.  The theorem starts with an empty event journal and output history and uses these
+premises:
 
 | Premise | Requirement |
 |---|---|
 | [Line sizes](Model.lean) | `ShortLines` requires each line of the input to hold fewer than `2^32` bytes. |
 | [Host progress](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful transfers, input-prefix consumption, EOF, and committed output prefixes.  Each zero-byte write decreases a proof-only natural-valued credit, and a read or a write of at least one byte may set the credit to any value. |
-| [Allocation](Correct.lean) | `RunCharges` supplies a begin charge and a step charge on native states and stream positions.  The charges bound the typed `Resource.CallPrefixBound` of `begin` and of the step from each represented running state, and the heap has room above its initial top for each charge with the copies of the state before and after it. |
+| [Line limit](Limits.lean) | `InputLimits L` requires each line up to and including the first line that denotes no number to hold at most `L` bytes. |
+| [Memory](Correct.lean) | `4096 + limitMemory L ≤ 65536 * 65535`, where `limitMemory L = 80 L + 64,031,000`: the heap starts at 4,096 bytes, and the module's memory has 65,535 pages. |
 | [Exit acceptance](Correct.lean) | `ExitAccepted` excludes rejected exits with status 0 or 28 at represented worlds. |
 
-The charges are a premise: no proof yet bounds the allocation of the float parser and printer.
+`limitCharges` derives from the limit the charges that the general theorem `terminates_fp` takes.
 The process compacts its state after `begin` and after each step, so between steps the heap holds
-the literal pool and one state, and the charges concern single steps.  The host also satisfies the
-WASI specification, with valid heap and static-data representations and a memory cap of at most
-65,535 pages.
+the literal pool and one state, and each step needs room for its charge and the copies of the
+state before and after it.  A copy costs at most `8 L + 4,305` bytes, and a step at most
+`64 L + 4,910,000` bytes plus the charge of one rendering, 59,112,378 bytes.  `shortest` takes
+59,109,312 of these, 62 exact quotients of at most 953,376 bytes each:
+`PrintFloatSteps.search_le` bounds its search at 28 tested exponents for every binary64 word, each
+with two quotients, and the choice of the digits takes at most six more.  The parser costs at most
+`8 L + 4,404,576` bytes.  The host also satisfies
+the WASI specification, with valid heap and static-data representations and a memory cap of at
+most 65,535 pages.
 
 `implements` and `run_initial` classify modeled executions that complete without exhausting Talos
 fuel.  They preserve ordered effects and terminal outcomes.  A permitted guest resource failure
