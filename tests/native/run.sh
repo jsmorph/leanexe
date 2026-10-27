@@ -20,7 +20,7 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 out=$root/build/native/run
 cd "$root"
 tools/leanrun --timeout 90m lake build native-emit TestSupport.Native.GcdNative \
-  TestSupport.Native.ExamplesNative
+  TestSupport.Native.ExamplesNative TestSupport.Native.EulerNative
 rm -rf "$out"
 tools/leanrun --timeout 30m .lake/build/bin/native-emit emit "$out"
 names=$(tools/leanrun --timeout 5m .lake/build/bin/native-emit names)

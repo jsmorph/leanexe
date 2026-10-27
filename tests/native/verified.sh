@@ -8,9 +8,11 @@
 # lines of Verified/Examples/Cases.lean, with the library entries of
 # tests/verified/library-cases.txt, which tests/verified/run.sh checks with Wasmtime.  A case
 # runs when the translation contains its export, and it must give the line that the Wasmtime
-# host gives, with the same rules for traps and allocation counters.  The script prints the
-# numbers of cases that pass, that fail, and that do not run, and fails unless every case that
-# runs passes.  Build the modules'
+# host gives, with the same rules for traps and allocation counters.  The module cases of
+# tests/modules/Cases.lean that tests/verified/run.sh checks for the corpus, those of euler and
+# of shapes on sums (tests/TestSupport/Native/ModuleCases.lean), run the same way under the rules
+# of tests/modules/run.sh.  The script prints the numbers of cases that pass, that fail, and
+# that do not run, and fails unless every case that runs passes.  Build the modules'
 # targets first, as tests/verified/run.sh requires.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as
 # for tests/native/run.sh.
 # Usage: tests/native/verified.sh [--module NAME]
@@ -133,4 +135,39 @@ while IFS='|' read -r name export result args expected live allocsMax; do
 done <"$cases"
 echo "native verified: passed $passed failed $failed"
 echo "native verified: not run: $omitted outside the translation, $others of modules that modules.txt omits"
-[ "$passed" -gt 0 ] && [ "$failed" -eq 0 ]
+tools/leanrun --timeout 30m lake --log-level error build Demos.Euler.Cases Examples.Shape.Cases
+modcases=$out/module-cases.txt
+if ! tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Native/ModuleCases.lean \
+    >"$modcases" 2>"$out/module-cases.err"; then
+  cat "$out/module-cases.err" >&2
+  echo "fail: native Lean exited with an error" >&2
+  exit 1
+fi
+mpassed=0
+mfailed=0
+momitted=0
+while IFS='|' read -r module name result args expected; do
+  case "$module" in
+    euler) prog=euler ;;
+    shapes) prog=sums ;;
+    *) continue ;;
+  esac
+  if [ -n "$only" ] && [ "$prog" != "$only" ]; then
+    continue
+  fi
+  if [ ! -f "$out/$prog.exports" ] || ! grep -qxF "$name" "$out/$prog.exports"; then
+    momitted=$((momitted + 1))
+    continue
+  fi
+  read -ra argv <<<"$args"
+  if got=$("$out/$prog" call "$name" "$result" "${argv[@]}" 2>"$errors" | tr -d '[] ' |
+      paste -sd, -) && [ "$got" = "$expected" ]; then
+    mpassed=$((mpassed + 1))
+  else
+    mfailed=$((mfailed + 1))
+    echo "fail: $module $name $args: $got $(cat "$errors"), expected $expected"
+  fi
+done <"$modcases"
+echo "native modules: passed $mpassed failed $mfailed"
+echo "native modules: not run: $momitted outside the translation"
+[ "$passed" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$mfailed" -eq 0 ]

@@ -36,7 +36,7 @@ def reason (cap : Nat) (m : Wasm.Module) (k : Nat) : String :=
   | some f =>
       match signatureOf f with
       | none =>
-          if f.results.length ≥ 2 then s!"{f.results.length} results, not all integers"
+          if f.results.length ≥ 2 then s!"{f.results.length} results, a binary32 one among them"
           else "a parameter or result type"
       | some _ =>
           match (fdefsOf cap m)[k]?.join with
