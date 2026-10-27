@@ -6,8 +6,8 @@ import Library.Numerics.Decimal.PrintFloat.PrintFloatSteps
 /-! Bounds on the generated allocation bounds of the big-integer arithmetic and the printer that
 the binary64 running sum compiles, and the sizes of the arrays that their callers pass on.  Each
 quotient of the printer costs at most `quotAtCost` bytes for the exponents that a binary64 word
-reaches, and `shortest` makes at most 62 such quotients' worth of charges, since its search tests
-at most 28 exponents (`PrintFloatSteps.search_le`). -/
+reaches, and `shortest` makes at most 62 such quotients' worth of charges: its search stops
+within 27 steps of its start (`PrintFloatSteps.search_le`), so it tests at most 28 exponents. -/
 
 namespace Demos.RunningSumFp
 

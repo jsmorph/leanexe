@@ -61,9 +61,9 @@ input, and a corollary covers lines of up to 9,000,000 bytes and totals of up to
 prints each sequential binary64 total in scientific notation.  Its proofs compose the existing
 parser and printer theorems with IEEE-754 addition and the WASI process proof.  The total starts
 at positive zero.  Its theorem requires fewer than `2^32` bytes per line, covers lines that denote
-no number, and assumes host progress, a limit `L` on the bytes of each line up to the first line
-that denotes no number such that `80 L + 64,031,000` bytes fit in the memory cap above the heap's
-start, and final-exit acceptance.  The application proves the allocation charges of begin and each
+no number, and assumes host progress, a limit `L` on the bytes of each line up to and including
+the first line that denotes no number such that `80 · L + 64,031,000` bytes fit in the memory cap
+above the heap's start, and final-exit acceptance.  The application proves the allocation charges of begin and each
 step from the generated bounds of the parser, the printer, and the effect bodies, and a corollary
 covers lines of up to 50,000,000 bytes.
 

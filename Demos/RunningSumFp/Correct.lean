@@ -146,11 +146,11 @@ def limitCharges {World : Type} {host : Host World} {rep : StreamPosition → Wo
     have total := limitMemory_room L
     omega
 
-/-- For every input whose lines hold fewer than `2^32` bytes and whose lines up to the first line
-that denotes no number hold at most `L` bytes, when the memory above the heap's top holds
-`limitMemory L` bytes, the compiled command exits with status 0 when every line denotes a number
-and with status 28 at the first line that does not, after writing the cumulative totals of the
-lines before it. -/
+/-- For every input whose lines hold fewer than `2^32` bytes and whose lines up to and including the
+first line that denotes no number hold at most `L` bytes, when the memory above the heap's top holds
+`limitMemory L` bytes, the compiled command exits with status 0 when every line denotes a number and
+with status 28 at the first line that does not, after writing the cumulative totals of the lines
+before it. -/
 theorem terminates_limits {World : Type} (host : Host World)
     (targetHost : HostEnv (Observed World)) (initial : Store (Observed World)) (heap : Heap)
     (rep : StreamPosition → World → Prop) (streams : StreamHost host rep)
@@ -181,10 +181,10 @@ theorem initial_memoryCap {World : Type} (world : Observed World) :
 theorem initial_top : (initialStaticHeap io.literalPool).top.toNat = 4096 := by
   decide +kernel
 
-/-- For every input whose lines hold fewer than `2^32` bytes and whose lines up to the first line
-that denotes no number hold at most `L` bytes, when `limitMemory L` bytes fit in the module's
-memory of 65,535 pages above the heap's start at 4,096 bytes, the compiled command exits with
-status 0 when every line denotes a number and with status 28 at the first line that does not,
+/-- For every input whose lines hold fewer than `2^32` bytes and whose lines up to and including the
+first line that denotes no number hold at most `L` bytes, when `limitMemory L` bytes fit in the
+module's memory of 65,535 pages above the heap's start at 4,096 bytes, the compiled command exits
+with status 0 when every line denotes a number and with status 28 at the first line that does not,
 after writing the cumulative totals of the lines before it. -/
 theorem initial_terminates_fp {World : Type} (host : Host World)
     (targetHost : HostEnv (Observed World)) (world : Observed World)
@@ -204,9 +204,9 @@ theorem initial_terminates_fp {World : Type} (host : Host World)
     (initialState world).1 rfl (initialState world).2.2 (initialState world).2.1
     (by rw [initial_top, initial_memoryCap]; exact room) accepted
 
-/-- For every input whose lines hold fewer than `2^32` bytes and whose lines up to the first line
-that denotes no number hold at most 50,000,000 bytes, the compiled command exits with status 0
-when every line denotes a number and with status 28 at the first line that does not, after
+/-- For every input whose lines hold fewer than `2^32` bytes and whose lines up to and including the
+first line that denotes no number hold at most 50,000,000 bytes, the compiled command exits with
+status 0 when every line denotes a number and with status 28 at the first line that does not, after
 writing the cumulative totals of the lines before it. -/
 theorem initial_terminates_fp_50000000 {World : Type} (host : Host World)
     (targetHost : HostEnv (Observed World)) (world : Observed World)

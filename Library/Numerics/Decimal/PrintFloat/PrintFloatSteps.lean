@@ -131,4 +131,10 @@ theorem search_le_binary32 (hb : WordBounds Q E 149) (hQ24 : Q < 2 ^ 24) (hE : E
   rw [search_spec hb]
   exact steps_le_binary32 hb hQ24 hE
 
+#print axioms jstart_binary64
+#print axioms steps_le
+#print axioms steps_le_binary32
+#print axioms search_le
+#print axioms search_le_binary32
+
 end Library.Numerics.Decimal.PrintFloat.PrintFloatSteps
