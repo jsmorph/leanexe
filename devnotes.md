@@ -36724,7 +36724,26 @@ The cost lemmas follow the call graph from the bottom, each for the generated `b
 
 The cost of one test and of one call follows from the paid sides of the generated equations, which the cost lemmas will prove.  `mulSmall` on `n` limbs costs at most `96 n + 168` bytes, `shl` at most `104 n + 232 + 8 ⌊k / 32⌋`, `sub` at most `80 n + 72`, and `divBits` 63 steps of a shift and a subtraction.  At the search's exponents, within 350 of the bias, one `found` costs at most about 1.79 MB, the most at binade 2,035, where the shift of the numerator by `E - 1` bits makes the division's operands longest.  One call of the printer then costs at most about 54 MB: 28 tests, the final `range` and `quotAt`, and at most one more of each.  These figures are estimates from the formulas, not yet theorems.
 
+### The search's charge as proved
+
+`Demos/RunningSumFp/PrintCharges.lean` proves steps 1 to 8 of the plan for the generated bounds of the binary64 running sum.  `mulSmall` on `n` limbs costs at most `96 n + 168` bytes, `shl` at most `104 n + 232 + 8 ⌊k / 32⌋`, `sub` at most `80 n + 72`, and one step of `divBits` at most `104 d + 80 n + 312` for a shift below 64 bits, with the sizes of the results that the callers need.  `mulPow10 a k` costs at most `(m + 1) (96 (|a| + m) + 168)` bytes for `m = ⌊k / 9⌋` and returns `|a| + m + 1` limbs.  `quotAt_bound_le` bounds one quotient by `quotAtCost`, 953,376 bytes, for a numerator shift below 2,048, a denominator shift of at most 1,076, and a biased exponent from `2 ^ 62 - 349` to `2 ^ 62 + 319`.  The bound takes the worst case of each factor: 35 products by `10 ^ 9` above the bias and 38 below it, the largest shifts, and 63 quotient bits.  `range` and `found` cost at most two quotients.
+
+`jstart_binary64` places the start exponent of a binary64 word between -321 and 319, so every exponent that `shortest` tests, and the one below the last, lies in the range of `quotAt_bound_le`.  `shortest_bound_le` bounds `shortest` for every word with `WordBounds Q E 1074` and `E ≤ 2047` by 62 quotients, 59,109,312 bytes: at most 28 tests of `found`, the final `range` and `quotAt`, and at most one more of each.  The estimate of about 54 MB above used the operand sizes at each exponent, and the proved bound uses the largest sizes at every exponent.  `Verified/ChargeFacts.lean` gains `loopCost_le_upto`, which needs a loop's cost and step only at its passes, and `loopCost_repeatWhile_le`, which bounds the charge of a counting loop by the condition's charge at each count up to the result of the matching `repeatWhile`.  No theorem of the application imports the new module yet, so the binary64 driver builds it by name.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The form of the printer's bound | One constant per quotient over the exponents of a binary64 word, and 62 quotients for `shortest` | The constant needs only linear arithmetic, and a sum over the exponents would lower the bound by about 5 MB by the estimate above. |
+| The search's charge | A lemma over any counting `repeatWhile` whose body costs nothing, in `Verified/ChargeFacts.lean` | The charge depends only on the count where the loop stops, which `search_le` bounds. |
+| The base of `printfloat-charges` | Merge the compaction merge commit now, and main at the push commit or later after the push | The checkout then keeps its build, and a return to the old base would rebuild most of `Verified` and `Demos`. |
+
 - [x] Write the stage 3 plan.
 - [x] Prove the search-length theorem for binary64, and report the cost of one iteration and of one call of the printer.
-- [ ] Prove the cost lemmas in the order above.
-- [ ] State the binary64 theorem over limits on line length, with its inequality against the memory cap.
+- [x] Prove the cost lemmas of steps 1 to 8, through `shortest`.
+- [ ] Prove the cost lemmas of steps 9 to 11: the layout, the parser, and the effect bodies.
+- [ ] State the binary64 theorem over limits on line length, with its inequality against the memory cap, and correct the comment of `RunCharges`, which names that theorem before it exists.
+
+## 2026-10-27: The merge with main and the slew planner
+
+The coordinator asked me to merge `bbb840a34`, main with typed-fields stage 1 and the slew planner, into `process-compaction` and to check the result.  The merge is `2498ad7cf`.  Git reported conflicts only in `devnotes.md`, where main's entries now come before the three compaction entries, and in `index.md`, where the compaction rows for the two running sums stand with main's new slew row.  In `README.md`, `Verified.lean`, and `Verified/Reflect/Definitions.lean`, every line that either side added relative to `ed77fa248` is present in the merge.  The development gate on AArch64 ran the host program's rebuild, the 16 heavy proofs one at a time, the aggregate, the default build, the verified, running-sum, binary64 running-sum, and WASI drivers, and the byte comparison.
+
+The WASI driver failed at first, because `tests/wasi/Axioms.lean` imports `Verified.ProgramLiterals`, which no target built.  After an explicit build of that module the driver passed, and the coordinator added the module to the `Verified` library and to the driver's build on the push branch.  The aggregate took 823 s, the default build 32 s, the verified driver 3,243 s, the two running-sum drivers 32 s and 22 s, and the WASI driver 164 s.  All 98 baseline modules, `slew.wasm`, and `heapsums.wasm` equal their references, and `sum.wasm`, `sumfp.wasm`, and `process.wasm` equal the stage 2 emission.  I then merged `2498ad7cf` into `printfloat-charges`, and main at `3e87e69a9` or later follows after the push.

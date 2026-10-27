@@ -109,4 +109,71 @@ theorem loopCost_le_upto {α : Type} {CA : α → Nat} {C : α → Bool} {BA : U
         congr 1; funext j; congr 1; omega
       omega
 
+theorem ofNat_succ (k : Nat) : UInt64.ofNat k + 1 = UInt64.ofNat (k + 1) := by
+  apply UInt64.toNat_inj.mp
+  simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
+  omega
+
+/-- A loop that counts up from `k` while its condition holds stops at `k` or above. -/
+theorem repeatWhile_count_ge (C : UInt64 → Bool) :
+    ∀ (fuel k : Nat), k + fuel < UInt64.size →
+      k ≤ (LeanExe.repeatWhile.go C (fun i => i + 1) fuel (UInt64.ofNat k)).toNat
+  | 0, k, small => by
+      simp only [LeanExe.repeatWhile.go, UInt64.toNat_ofNat_of_lt' (show k < UInt64.size by omega)]
+      exact Nat.le_refl k
+  | fuel + 1, k, small => by
+      simp only [LeanExe.repeatWhile.go]
+      split
+      · rw [ofNat_succ]
+        have := repeatWhile_count_ge C fuel (k + 1) (by omega)
+        omega
+      · rw [UInt64.toNat_ofNat_of_lt' (show k < UInt64.size by omega)]
+
+/-- The charge of a loop that counts up from `k` and charges only its condition: at most `c` for
+each count from `k` to the count where the loop stops. -/
+theorem loopCost_count_le (CA : UInt64 → Nat) (C : UInt64 → Bool) (c : Nat) :
+    ∀ (fuel k : Nat) (i : UInt64), k + fuel < UInt64.size →
+      (∀ j, k ≤ j → j ≤ (LeanExe.repeatWhile.go C (fun i => i + 1) fuel (UInt64.ofNat k)).toNat →
+        CA (UInt64.ofNat j) ≤ c) →
+      loopCost CA C (fun _ _ => 0) (fun _ s => s + 1) fuel i (UInt64.ofNat k) + k * c ≤
+        ((LeanExe.repeatWhile.go C (fun i => i + 1) fuel (UInt64.ofNat k)).toNat + 1) * c
+  | 0, k, _, small, _ => by
+      simp only [loopCost, LeanExe.repeatWhile.go,
+        UInt64.toNat_ofNat_of_lt' (show k < UInt64.size by omega), Nat.add_mul, Nat.one_mul]
+      omega
+  | fuel + 1, k, i, small, hcost => by
+      have kNat := UInt64.toNat_ofNat_of_lt' (show k < UInt64.size by omega)
+      have ge := repeatWhile_count_ge C fuel (k + 1) (by omega)
+      cases hC : C (UInt64.ofNat k)
+      · have here := hcost k (Nat.le_refl k) (by
+          simp only [LeanExe.repeatWhile.go, hC, Bool.false_eq_true, ↓reduceIte, kNat]
+          exact Nat.le_refl k)
+        simp only [loopCost, LeanExe.repeatWhile.go, hC, Bool.false_eq_true, ↓reduceIte,
+          Nat.add_zero, kNat, Nat.add_mul, Nat.one_mul]
+        omega
+      · have shift : ∀ j, j ≤ (LeanExe.repeatWhile.go C (fun i => i + 1) fuel
+            (UInt64.ofNat (k + 1))).toNat →
+            j ≤ (LeanExe.repeatWhile.go C (fun i => i + 1) (fuel + 1) (UInt64.ofNat k)).toNat := by
+          intro j hj
+          simp only [LeanExe.repeatWhile.go, hC, ↓reduceIte, ofNat_succ]
+          exact hj
+        have rest := loopCost_count_le CA C c fuel (k + 1) (i + 1) (by omega)
+          (fun j lo hi => hcost j (by omega) (shift j hi))
+        have here := hcost k (Nat.le_refl k) (shift k (by omega))
+        simp only [loopCost, LeanExe.repeatWhile.go, hC, ↓reduceIte, Nat.zero_add, ofNat_succ]
+        rw [Nat.add_mul k 1 c, Nat.one_mul] at rest
+        omega
+
+/-- The charge of a loop that counts up from 0 and charges only its condition: at most `c` for
+each count up to the result of the matching `LeanExe.repeatWhile`. -/
+theorem loopCost_repeatWhile_le (CA : UInt64 → Nat) (C : UInt64 → Bool) (c : Nat) (fuel : UInt64)
+    (hcost : ∀ j, j ≤ (LeanExe.repeatWhile fuel 0 C (fun i => i + 1)).toNat →
+      CA (UInt64.ofNat j) ≤ c) :
+    loopCost CA C (fun _ _ => 0) (fun _ s => s + 1) fuel.toNat 0 0 ≤
+      ((LeanExe.repeatWhile fuel 0 C (fun i => i + 1)).toNat + 1) * c := by
+  have bound := loopCost_count_le CA C c fuel.toNat 0 0
+    (by have := fuel.toNat_lt_size; omega) (fun j _ hi => hcost j hi)
+  rw [Nat.zero_mul, Nat.add_zero] at bound
+  exact bound
+
 end Verified

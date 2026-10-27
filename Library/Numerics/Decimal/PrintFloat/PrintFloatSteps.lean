@@ -6,7 +6,9 @@ The length of the search of `PrintFloat.shortest`.  The search returns `steps = 
 (`width_le`), and it is at least `3 · 2 ^ (E - 1) / 2 ^ (nu + 2)` wide, while `jstart` grows with
 the bits of `4 Q + 2`.  So `steps ≥ N + 1` would make `10 ^ (jstart - N)` at least the width,
 which an exact check of every binade refutes: at most 27 steps for a binary64 word (`steps_le`),
-and at most 10 for a binary32 word (`steps_le_binary32`).
+and at most 10 for a binary32 word (`steps_le_binary32`).  The start exponent of a binary64 word
+lies between -321 and 319 (`jstart_binary64`), so every exponent that the search tests lies
+between -348 and 319.
 -/
 
 namespace Library.Numerics.Decimal.PrintFloat.PrintFloatSteps
@@ -80,6 +82,16 @@ theorem steps_le_of_wide {Q E nu : ℕ} {low : Bool} (hQ : 1 ≤ Q) (hE : 1 ≤ 
   linarith
 
 variable {Q E nu : ℕ} {low : Bool}
+
+/-- The start exponent of a binary64 word lies between -321 and 319. -/
+theorem jstart_binary64 (hb : WordBounds Q E 1074) :
+    -321 ≤ jstart Q E 1074 ∧ jstart Q E 1074 ≤ 319 := by
+  obtain ⟨hQ, hQ53, hE, hE2, hnu, hnu2⟩ := hb
+  have hs : Nat.size (4 * Q + 2) ≤ 55 := by rw [Nat.size_le]; omega
+  have hs3 : 2 < Nat.size (4 * Q + 2) := Nat.lt_size.mpr (by omega)
+  rw [jstart_eq]
+  unfold jfor
+  split_ifs <;> omega
 
 /-- The search of a binary64 word takes at most 27 steps. -/
 theorem steps_le (hb : WordBounds Q E 1074) :
