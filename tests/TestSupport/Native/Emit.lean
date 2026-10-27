@@ -176,6 +176,11 @@ def simCall (m : Module) (c : Call) : SimM String := do
 def initialStore (m : Module) : Store Unit :=
   { (m.initialStore : Store Unit) with memoryCaps := [cap] }
 
+/-- The C type of the result global `n`, from its suffix. -/
+def resultCType (n : String) : String :=
+  if n.endsWith "_i" then "unsigned int" else if n.endsWith "_d" then "double"
+  else "unsigned long long"
+
 def hostText (t : Translation) (m : Module) (body : Array String) (vars : Nat) : String :=
   let globals := (List.range m.globals.length).map fun i => s!"lx_g{i}"
   let protos := t.cprogram.prog_defs.filterMap fun (id, g) =>
@@ -189,7 +194,7 @@ def hostText (t : Translation) (m : Module) (body : Array String) (vars : Nat) :
   let gargs := String.join (globals.map fun g => s!", {g}")
   let resGlobals := t.names.filterMap fun (_, n) =>
     if n.startsWith "lx_r" then
-      some s!"extern unsigned {if n.endsWith "_i" then "int" else "long long"} {n};\n"
+      some s!"extern {resultCType n} {n};\n"
     else none
   let decls := if vars = 0 then "" else
     "  unsigned long long " ++ ", ".intercalate ((List.range vars).map fun i => s!"p{i}") ++ ";\n"

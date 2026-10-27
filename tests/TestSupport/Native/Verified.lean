@@ -85,6 +85,11 @@ def resultText (e : String) : VT → String
   | .f32 => s!"lx_of_f32({e})"
   | .f64 => s!"lx_of_f64({e})"
 
+/-- The C type of the result global `n`, from its suffix. -/
+def resultCType (n : String) : String :=
+  if n.endsWith "_i" then "unsigned int" else if n.endsWith "_d" then "double"
+  else "unsigned long long"
+
 /-- The lines of the entries of a C array, or `empty` for none, since C has no empty array. -/
 def table (entries : List String) (empty : String) : String :=
   ",\n".intercalate (if entries.isEmpty then [empty] else entries) ++ "\n"
@@ -119,7 +124,7 @@ def glue (t : Translation) (m : Wasm.Module) : Except String String := do
     entries := entries.push s!"  \{\"{e.name}\", \"{ptext}\", \"{rtext}\", {cname}}"
   let resGlobals := t.names.filterMap fun (_, n) =>
     if n.startsWith "lx_r" then
-      some s!"extern unsigned {if n.endsWith "_i" then "int" else "long long"} {n};\n"
+      some s!"extern {resultCType n} {n};\n"
     else none
   let globals := m.globalExports.filter fun (_, i) => i < m.globals.length
   let gdecls := String.join (globals.map fun (_, i) => s!"extern unsigned long long lx_g{i};\n")

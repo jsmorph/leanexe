@@ -125,9 +125,9 @@ def LocalsRel (le : temp_env) (tys : List VT) (vals : List Value) : Prop :=
     ∀ i (hi : i < tys.length), ∃ v, vals[i]? = some v ∧ tys[i].has v = true ∧
       le[localId i]? = some (cval v)
 
-/-- The blocks of `lx_status`, of the C globals `lx_g<i>`, of `lx_pages`, of `lx_mem`, and of the
-result globals `lx_r<i>_<t>` for the positions below `nres`, the number of pages of `lx_mem`, and
-the global environment. -/
+/-- The blocks of `lx_status`, of the C globals `lx_g<i>`, of `lx_pages`, of `lx_mem`, of the
+result globals `lx_r<i>_<t>` for the positions below `nres`, of `lx_pun`, and of the built-in
+`__builtin_fsqrt`, the number of pages of `lx_mem`, and the global environment. -/
 structure Env where
   ge : genv
   status : block
@@ -137,6 +137,8 @@ structure Env where
   cap : Nat
   res : Nat → VT → block
   nres : Nat
+  pun : block
+  sqrt : block
 
 /-- The chunk of a value of the type. -/
 def VT.chunk : VT → memory_chunk
@@ -155,7 +157,7 @@ def GlobalsRel (E : Env) (gs : List Value) (m : mem) : Prop :=
 /-- The memory `wm` of a store whose caps are `caps`: below `cap` pages, each byte of `lx_mem`
 holds the byte of `wm` at the same address and can be written; `lx_pages` holds the number of
 pages, at most `cap`, and can be written; the store's cap on the memory's pages is `cap`; and the
-result globals can be written. -/
+result globals and `lx_pun` can be written. -/
 structure MemRel (E : Env) (wm : Wasm.Mem) (caps : List Nat) (m : mem) : Prop where
   pages : Mem.load .Mint32 m E.pages 0 = some (.Vint (UInt32.ofNat wm.pages))
   pagesW : Mem.valid_access m .Mint32 E.pages 0 .Writable
@@ -164,8 +166,9 @@ structure MemRel (E : Env) (wm : Wasm.Mem) (caps : List Nat) (m : mem) : Prop wh
   bytes : ∀ i : Nat, i < 65536 * E.cap →
     ZMap.get (i : _root_.Int) (Mem.contents_of m E.mem) = .Byte (wm.bytes i)
   perm : ∀ i : Nat, i < 65536 * E.cap → Mem.perm m E.mem (i : _root_.Int) .Cur .Writable
-  resW : ∀ i < E.nres, ∀ t : VT, t.isInt = true →
+  resW : ∀ i < E.nres, ∀ t : VT, t.isRes = true →
     Mem.valid_access m t.chunk (E.res i t) 0 .Writable
+  punW : Mem.valid_access m .Mint64 E.pun 0 .Writable
 
 /-- The C globals and `lx_mem` hold Talos's globals and memory. -/
 def StoreRel (E : Env) {α : Type} (st : Store α) (m : mem) : Prop :=

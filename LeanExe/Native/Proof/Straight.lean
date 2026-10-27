@@ -72,8 +72,9 @@ theorem StackRel.cons_inv {le : temp_env} {t : VT} {σ : List VT} {vs : List Val
 
 /-! ## Environments and globals -/
 
-/-- The blocks of `E` are those of `lx_status`, the C globals, `lx_pages`, `lx_mem`, and the result
-globals in `E.ge`, all distinct, and `lx_mem` has at most 65,535 pages. -/
+/-- The blocks of `E` are those of `lx_status`, the C globals, `lx_pages`, `lx_mem`, the result
+globals, `lx_pun`, and `__builtin_fsqrt` in `E.ge`, all distinct, the last holding the built-in,
+and `lx_mem` has at most 65,535 pages. -/
 structure EnvOk (E : Env) : Prop where
   status : Genv.find_symbol E.ge statusId = some E.status
   globals : ∀ i (h : i < E.globals.length), Genv.find_symbol E.ge (globalId i) = some E.globals[i]
@@ -87,12 +88,17 @@ structure EnvOk (E : Env) : Prop where
   mem_status : E.mem ≠ E.status
   mem_pages : E.mem ≠ E.pages
   cap : E.cap ≤ 65535
-  res : ∀ i < E.nres, ∀ t : VT, t.isInt = true →
+  res : ∀ i < E.nres, ∀ t : VT, t.isRes = true →
     Genv.find_symbol E.ge (resId i t) = some (E.res i t)
-  res_inj : ∀ i j (t u : VT), i < E.nres → j < E.nres → t.isInt = true → u.isInt = true →
+  res_inj : ∀ i j (t u : VT), i < E.nres → j < E.nres → t.isRes = true → u.isRes = true →
     E.res i t = E.res j u → i = j ∧ t = u
-  res_other : ∀ i < E.nres, ∀ t : VT, t.isInt = true →
-    E.res i t ≠ E.status ∧ E.res i t ≠ E.pages ∧ E.res i t ≠ E.mem ∧ E.res i t ∉ E.globals
+  res_other : ∀ i < E.nres, ∀ t : VT, t.isRes = true →
+    E.res i t ≠ E.status ∧ E.res i t ≠ E.pages ∧ E.res i t ≠ E.mem ∧ E.res i t ∉ E.globals ∧
+      E.res i t ≠ E.pun
+  pun : Genv.find_symbol E.ge punId = some E.pun
+  pun_other : E.pun ≠ E.status ∧ E.pun ≠ E.pages ∧ E.pun ≠ E.mem ∧ E.pun ∉ E.globals
+  sqrt : Genv.find_symbol E.ge sqrtId = some E.sqrt
+  sqrt_fun : Genv.find_funct_ptr E.ge E.sqrt = some sqrtFun
 
 theorem empty_env_none (id : ident) : empty_env[id]? = none := Std.TreeMap.getElem?_emptyc
 
@@ -154,6 +160,41 @@ theorem exec_assign_int {A : Archi} {X : ExtSem} {ge : genv} {le : temp_env} {m 
     (.assign_loc_value _ .Mint32 _ rfl
       (by rw [storev_zero _ _ _ _ (by decide)]; exact Mem.store_ok _ hva))
 
+theorem VT.access (t : VT) : access_mode t.ty = .By_value t.chunk := by cases t <;> rfl
+
+theorem VT.size_chunk_le (t : VT) : size_chunk t.chunk ≤ 8 := by cases t <;> decide
+
+/-- A global of the type `t`, read. -/
+theorem eval_global_vt {A : Archi} {ge : genv} {le : temp_env} {m : mem} {id : ident}
+    {b : block} {t : VT} {v : Value} (h : Genv.find_symbol ge id = some b)
+    (hl : Mem.load t.chunk m b 0 = some (cval v)) :
+    eval_expr A ge empty_env le m (.Evar id t.ty) (cval v) :=
+  .eval_Elvalue _ _ _ _ _ (eval_lvalue_global h)
+    (.deref_loc_value t.chunk _ (VT.access t)
+      (by rw [loadv_zero _ _ _ (VT.size_chunk_le t)]; exact hl))
+
+/-- A global of the type `t`, written. -/
+theorem exec_assign_vt {A : Archi} {X : ExtSem} {ge : genv} {le : temp_env} {m : mem}
+    {id : ident} {b : block} {e : expr} {t : VT} {v : Value} (htv : t.has v = true)
+    (h : Genv.find_symbol ge id = some b) (he : eval_expr A ge empty_env le m e (cval v))
+    (ht : typeof e = t.ty) (hva : Mem.valid_access m t.chunk b 0 .Writable) :
+    exec_stmt A X ge empty_env le m (.Sassign (.Evar id t.ty) e) E0 le
+      (Mem.stored t.chunk m b 0 (cval v)) .Out_normal :=
+  .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_lvalue_global h) he
+    (by rw [ht]; exact cast_cval htv m)
+    (.assign_loc_value _ t.chunk _ (VT.access t)
+      (by rw [storev_zero _ _ _ _ (VT.size_chunk_le t)]; exact Mem.store_ok _ hva))
+
+/-- A load of the chunk of `t` after its store. -/
+theorem load_stored_vt {m : mem} {b : block} {t : VT} {v : Value} (htv : t.has v = true)
+    (hva : Mem.valid_access m t.chunk b 0 .Writable) :
+    Mem.load t.chunk (Mem.stored t.chunk m b 0 (cval v)) b 0 = some (cval v) := by
+  cases t <;> cases v <;> simp [VT.has] at htv
+  · exact Mem.load_stored_int _ _ _ _ hva
+  · exact Mem.load_stored_long _ _ _ _ hva
+  · exact Mem.load_stored_single _ _ _ _ hva
+  · exact Mem.load_stored_float _ _ _ _ hva
+
 /-- A store to a block other than those of `lx_pages` and `lx_mem` keeps the memory. -/
 theorem MemRel.store_other {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem}
     (h : MemRel E wm caps m) (chunk : memory_chunk) {b : block} (hp : b ≠ E.pages)
@@ -166,6 +207,7 @@ theorem MemRel.store_other {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem}
   bytes := fun i hi => by rw [Mem.contents_stored_other _ _ _ _ _ _ hm]; exact h.bytes i hi
   perm := h.perm
   resW := h.resW
+  punW := h.punW
 
 theorem GlobalsRel.store_status {E : Env} {gs : List Value} {m : mem} (hE : EnvOk E)
     (h : GlobalsRel E gs m) (v : val) :

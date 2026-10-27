@@ -85,11 +85,13 @@ theorem translate_spec {m : Module} {cap : Nat} {T : Translation} (h : translate
   refine ⟨violation_imports hv, violation_memIs64 hv, ?_⟩
   intro k fd hk
   simp only [List.mem_cons, List.mem_append, List.mem_map] at hk
-  rcases hk with hk | ⟨⟨g, i⟩, -, hk⟩ | hk | hk | hk | hk | hk | hk
+  rcases hk with hk | ⟨⟨g, i⟩, -, hk⟩ | hk | hk | hk | hk | hk | hk | hk | hk
   · simp at hk
   · simp at hk
   · simp at hk
   · simp at hk
+  · simp at hk
+  · simp [sqrtDef, sqrtFun] at hk
   · simp [resDefs] at hk
   · obtain ⟨k0, hk0, hdef⟩ := mapM_mem' hfuns _ hk
     cases hfd0 : (fdefsOf cap m)[k0]?.join with

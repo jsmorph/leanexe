@@ -12,8 +12,9 @@ The comparison requires each global variable and each internal function of the t
 appear under its name with the same definition, and the file to define no other variable or
 internal function.  A temporary is read back through `tempName`.  The temporaries of calls are
 compared up to renaming: both programs number them in order of first occurrence in the body.
-The external functions that `clightgen` declares for CompCert's built-ins and run-time library
-are not compared.  The reader is not verified, and a file it cannot read fails the check.
+A built-in function that the translation declares must be declared alike by `clightgen`, and
+the other external functions that `clightgen` declares for CompCert's built-ins and run-time
+library are not compared.  The reader is not verified, and a file it cannot read fails the check.
 -/
 
 namespace LeanExe.Native.ClightCheck
@@ -452,6 +453,41 @@ def varEq (v w : globvar type) : Bool :=
   v.gvar_info == w.gvar_info && v.gvar_init == w.gvar_init &&
     v.gvar_readonly == w.gvar_readonly && v.gvar_volatile == w.gvar_volatile
 
+def toXtype : Term → Except String xtype
+  | .atom "AST.Xfloat" => pure .Xfloat
+  | .atom "AST.Xsingle" => pure .Xsingle
+  | .atom "AST.Xint" => pure .Xint
+  | .atom "AST.Xlong" => pure .Xlong
+  | .atom "AST.Xvoid" => pure .Xvoid
+  | t => throw s!"the type of a signature {repr t}"
+
+def toSignature : Term → Except String signature
+  | .app "mksignature" [args, res, .atom "cc_default"] => do
+      pure { sig_args := ← (← toList args).mapM toXtype, sig_res := ← toXtype res
+             sig_cc := cc_default }
+  | t => throw s!"the signature {repr t}"
+
+/-- An external built-in function as `global_definitions` lists it. -/
+def toBuiltinDef : Term → Except String (fundef function)
+  | .app "Gfun" [.app "External" [.app "EF_builtin" [.str name, sg], targs, tres,
+      .atom "cc_default"]] => do
+      pure (.External (.EF_builtin name (← toSignature sg)) (← (← toList targs).mapM toType)
+        (← toType tres) cc_default)
+  | t => throw s!"the external function {repr t}"
+
+def builtinEq : fundef function → fundef function → Bool
+  | .External (.EF_builtin n sg) as r cc, .External (.EF_builtin n' sg') as' r' cc' =>
+      n == n' && sg == sg' && as == as' && r == r' && cc == cc'
+  | _, _ => false
+
+/-- The entry of `global_definitions` for the name `x`. -/
+partial def entryOf (x : String) : Term → Option Term
+  | .tuple [.atom y, g] => if x == y then some g else none
+  | .app _ args => args.findSome? (entryOf x)
+  | .list items => items.findSome? (entryOf x)
+  | .tuple items => items.findSome? (entryOf x)
+  | _ => none
+
 /-- The names of the variables and internal functions that `global_definitions` lists. -/
 partial def definedNames : Term → List String
   | .app "Gvar" [.atom v] => [v]
@@ -495,6 +531,15 @@ def check (t : Translation) (text : String) : Except String (List String) := do
             match toFunction n term with
             | .error e => errors := errors.push s!"{name}: {e}"
             | .ok g => if !functionEq f g then errors := errors.push s!"{name}: the functions differ"
+    | .Gfun fd@(.External (.EF_builtin _ _) _ _ _) =>
+        match defs.lookup "global_definitions" >>= entryOf s!"_{name}" with
+        | none => errors := errors.push s!"{name}: clightgen declares no such built-in"
+        | some term =>
+            match toBuiltinDef term with
+            | .error e => errors := errors.push s!"{name}: {e}"
+            | .ok fd' =>
+                if !builtinEq fd fd' then
+                  errors := errors.push s!"{name}: the built-in declarations differ"
     | .Gfun (.External _ _ _ _) => errors := errors.push s!"{name}: an external function"
   match defs.lookup "global_definitions" with
   | none => errors := errors.push "the file has no global_definitions"

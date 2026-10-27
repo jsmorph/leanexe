@@ -90,7 +90,9 @@ def tuchar : type := .Tint .I8 .Unsigned noattr
 A temporary is `8 n + r`: local `n - 1` for `r = 0` and `n ≥ 1`, the stack slot at height `n` of
 the type with code `r` for `r` from 1 to 4, `brk` for `n = 0` and `r = 5`, and the result of call
 site `n` for `r = 6`.  A global is `lx_status`, 1, the Wasm global `i`, `4 i + 2`, or the function
-`k`, `4 k + 3`, `lx_pages`, 8, `lx_mem`, 12, or `lx_init`, 16, and the program's `main` is 4.
+`k`, `4 k + 3`, `lx_pages`, 8, `lx_mem`, 12, `lx_init`, 16, `lx_pun`, 20, the built-in `__builtin_fsqrt`, 24, or
+the result global of position `i` and type code `r`, `32 (i + 1) + 4 r`, and the program's `main`
+is 4.
 Every identifier is at least 1, as CompCert's identifiers, which are positive, are. -/
 
 def localId (i : Nat) : ident := 8 * i + 8
@@ -105,6 +107,8 @@ def mainId : ident := 4
 def pagesId : ident := 8
 def memId : ident := 12
 def initId : ident := 16
+def punId : ident := 20
+def sqrtId : ident := 24
 
 /-- The C name of a temporary. -/
 def tempName (id : ident) : String :=
@@ -314,17 +318,21 @@ def funType (ps : List VT) (rs : List VT) : type :=
 
 A function with several results returns `void` and leaves result `i`, of type `t`, in the global
 `lx_r<i>_<t>`, which the caller copies into its stack slot.  The translator declares the
-globals of `unsigned int` and `unsigned long long` for each position up to the most results of
-a function, and translates only functions whose several results have those types. -/
+globals of `unsigned int`, `unsigned long long`, and `double` for each position up to the most
+results of a function, and translates only functions whose several results have those types. -/
 
 /-- `lx_r<i>_<t>`. -/
 def resId (i : Nat) (t : VT) : ident := 32 * (i + 1) + 4 * t.code
 
 def resVar (i : Nat) (t : VT) : expr := .Evar (resId i t) t.ty
 
-def VT.isInt : VT → Bool
-  | .i32 | .i64 => true
-  | _ => false
+/-- The types of the result globals. -/
+def VT.isRes : VT → Bool
+  | .f32 => false
+  | _ => true
+
+/-- The types of the result globals of a position, in the order of the program's definitions. -/
+def resTypes : List VT := [.i32, .i64, .f64]
 
 /-- `Ssequence` of the statements in order. -/
 def seqList : List statement → statement
@@ -619,9 +627,9 @@ def retStmt : List VT → statement
   | [t] => .Sreturn (some (tmp 0 t))
   | rs => seqList (resStores rs 0 0 ++ [.Sreturn none])
 
-/-- The results that the translator handles: at most one, or several of `unsigned int` and
-`unsigned long long`. -/
-def resultsOk (rs : List VT) : Bool := rs.length ≤ 1 || rs.all VT.isInt
+/-- The results that the translator handles: at most one, or several of `unsigned int`,
+`unsigned long long`, and `double`. -/
+def resultsOk (rs : List VT) : Bool := rs.length ≤ 1 || rs.all VT.isRes
 
 /-- The C function of a Talos function, with `lx_mem` of `cap` pages. -/
 def trFunction (cap : Nat) (sigs : List (Option (List VT × List VT))) (nglobals : Nat)
@@ -756,21 +764,43 @@ def initFunction (cap : Nat) (segs : List DataSegment) : function :=
   { fn_return := .Tvoid, fn_callconv := cc_default, fn_params := [], fn_vars := [], fn_temps := []
     fn_body := seqList (segs.flatMap (segmentStores cap)) }
 
-/-- A result global of the type `t`, initially 0. -/
+/-- A result global of the type `t`: an integer one initially 0, a `double` one without an
+initializer. -/
 def resDef (t : VT) : globvar type :=
   { gvar_info := t.ty
-    gvar_init := [if t = .i32 then .Init_int32 0 else .Init_int64 0]
+    gvar_init := [match t with
+      | .i32 => .Init_int32 0
+      | .i64 => .Init_int64 0
+      | _ => .Init_space 8]
     gvar_readonly := false
     gvar_volatile := false }
 
-/-- The result globals of the positions below `nres`, of `unsigned int` and of `unsigned long
-long` for each. -/
+/-- The result globals of the positions below `nres`, of the types `resTypes` for each. -/
 def resDefs (nres : Nat) : List (ident × globdef (fundef function) type) :=
-  (List.range nres).flatMap fun i =>
-    [(resId i .i32, .Gvar (resDef .i32)), (resId i .i64, .Gvar (resDef .i64))]
+  (List.range nres).flatMap fun i => resTypes.map fun t => (resId i t, .Gvar (resDef t))
 
 def resNames (nres : Nat) : List (ident × String) :=
-  (List.range nres).flatMap fun i => [(resId i .i32, s!"lx_r{i}_i"), (resId i .i64, s!"lx_r{i}_l")]
+  (List.range nres).flatMap fun i => resTypes.map fun t => (resId i t, s!"lx_r{i}_{t.letter}")
+
+/-- `lx_pun`, an array of one `unsigned long long`, the cell through which a value changes
+type. -/
+def punType : type := .Tarray tulong 1 noattr
+
+def punDef : globvar type :=
+  { gvar_info := punType, gvar_init := [.Init_space 8], gvar_readonly := false
+    gvar_volatile := false }
+
+def tdouble : type := VT.ty .f64
+
+/-- The signature of `__builtin_fsqrt`, as CompCert's table of built-ins gives it. -/
+def sqrtSig : signature := { sig_args := [.Xfloat], sig_res := .Xfloat, sig_cc := cc_default }
+
+/-- The declaration of `__builtin_fsqrt`, an external built-in function, as `clightgen` writes
+it. -/
+def sqrtFun : fundef function :=
+  .External (.EF_builtin "__builtin_fsqrt" sqrtSig) [tdouble] tdouble cc_default
+
+def sqrtDef : globdef (fundef function) type := .Gfun sqrtFun
 
 /-- `acc`, raised to the results of function `k` when it has several. -/
 def maxStep (m : Module) (acc k : Nat) : Nat :=
@@ -799,11 +829,13 @@ def translate (cap : Nat) (m : Module) : Option Translation := do
   let nres := maxResults m included
   let defs := (statusId, globdef.Gvar statusVar) ::
     (gdefs.zipIdx.map fun (g, i) => (globalId i, globdef.Gvar g)) ++
-    [(pagesId, globdef.Gvar (pagesDef decl.pagesMin.toNat)), (memId, globdef.Gvar (memDef cap))] ++
+    [(pagesId, globdef.Gvar (pagesDef decl.pagesMin.toNat)), (memId, globdef.Gvar (memDef cap)),
+      (punId, globdef.Gvar punDef), (sqrtId, sqrtDef)] ++
     resDefs nres ++ funs ++ [(initId, globdef.Gfun (.Internal (initFunction cap decl.data)))]
   let names := (statusId, "lx_status") ::
     ((List.range m.globals.length).map fun i => (globalId i, s!"lx_g{i}")) ++
-    [(pagesId, "lx_pages"), (memId, "lx_mem")] ++ resNames nres ++
+    [(pagesId, "lx_pages"), (memId, "lx_mem"), (punId, "lx_pun"), (sqrtId, "__builtin_fsqrt")] ++
+    resNames nres ++
     included.map (fun k => (funId k, functionName m k)) ++ [(initId, "lx_init")]
   pure { cprogram := { prog_defs := defs, prog_public := defs.map (·.1), prog_main := mainId }
          names := names

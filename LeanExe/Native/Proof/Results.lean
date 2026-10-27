@@ -92,56 +92,39 @@ theorem ArgsRel.frame {le le' : temp_env} {base : Nat} {ts : List VT} {ws : List
 
 /-- Several results fit in the result globals of `E`. -/
 def ResOk (E : Env) (rs : List VT) : Prop :=
-  2 ≤ rs.length → rs.length ≤ E.nres ∧ rs.all VT.isInt = true
+  2 ≤ rs.length → rs.length ≤ E.nres ∧ rs.all VT.isRes = true
 
-theorem VT.isInt_cases {t : VT} (h : t.isInt = true) : t = .i32 ∨ t = .i64 := by
-  cases t <;> simp_all [VT.isInt]
+theorem VT.isRes_cases {t : VT} (h : t.isRes = true) : t = .i32 ∨ t = .i64 ∨ t = .f64 := by
+  cases t <;> simp_all [VT.isRes]
 
 section
 
 variable {A : Archi} {X : ExtSem} {E : Env}
 
 theorem eval_res (hE : EnvOk E) {le : temp_env} {m : mem} {i : Nat} {t : VT} {v : Value}
-    (hi : i < E.nres) (ht : t.isInt = true) (htv : t.has v = true)
+    (hi : i < E.nres) (ht : t.isRes = true)
     (hl : Mem.load t.chunk m (E.res i t) 0 = some (cval v)) :
-    eval_expr A E.ge empty_env le m (resVar i t) (cval v) := by
-  rcases VT.isInt_cases ht with rfl | rfl
-  · obtain ⟨n, rfl⟩ := has_i32 htv
-    exact eval_global_int (hE.res i hi _ rfl) hl
-  · obtain ⟨n, rfl⟩ := has_i64 htv
-    exact eval_global_long (hE.res i hi _ rfl) hl
+    eval_expr A E.ge empty_env le m (resVar i t) (cval v) :=
+  eval_global_vt (hE.res i hi t ht) hl
 
 theorem exec_res_store (hE : EnvOk E) {le : temp_env} {m : mem} {i : Nat} {t : VT} {e : expr}
-    {v : Value} (hi : i < E.nres) (ht : t.isInt = true) (htv : t.has v = true)
+    {v : Value} (hi : i < E.nres) (ht : t.isRes = true) (htv : t.has v = true)
     (he : eval_expr A E.ge empty_env le m e (cval v)) (hty : typeof e = t.ty)
     (hva : Mem.valid_access m t.chunk (E.res i t) 0 .Writable) :
     exec_stmt A X E.ge empty_env le m (.Sassign (resVar i t) e) E0 le
-      (Mem.stored t.chunk m (E.res i t) 0 (cval v)) .Out_normal := by
-  rcases VT.isInt_cases ht with rfl | rfl
-  · obtain ⟨n, rfl⟩ := has_i32 htv
-    exact exec_assign_int (hE.res i hi _ rfl) he hty hva
-  · obtain ⟨n, rfl⟩ := has_i64 htv
-    exact exec_assign_long (hE.res i hi _ rfl) he hty hva
-
-theorem load_res_stored {m : mem} {b : block} {t : VT} {v : Value} (ht : t.isInt = true)
-    (htv : t.has v = true) (hva : Mem.valid_access m t.chunk b 0 .Writable) :
-    Mem.load t.chunk (Mem.stored t.chunk m b 0 (cval v)) b 0 = some (cval v) := by
-  rcases VT.isInt_cases ht with rfl | rfl
-  · obtain ⟨n, rfl⟩ := has_i32 htv
-    exact Mem.load_stored_int _ _ _ _ hva
-  · obtain ⟨n, rfl⟩ := has_i64 htv
-    exact Mem.load_stored_long _ _ _ _ hva
+      (Mem.stored t.chunk m (E.res i t) 0 (cval v)) .Out_normal :=
+  exec_assign_vt htv (hE.res i hi t ht) he hty hva
 
 theorem StoreRel.store_res {α : Type} {st : Store α} {m : mem} (hE : EnvOk E)
-    (h : StoreRel E st m) {i : Nat} {t : VT} (hi : i < E.nres) (ht : t.isInt = true)
+    (h : StoreRel E st m) {i : Nat} {t : VT} (hi : i < E.nres) (ht : t.isRes = true)
     (chunk : memory_chunk) (ofs : _root_.Int) (v : val) :
     StoreRel E st (Mem.stored chunk m (E.res i t) ofs v) := by
-  obtain ⟨-, hp, hm, hg⟩ := hE.res_other i hi t ht
+  obtain ⟨-, hp, hm, hg, -⟩ := hE.res_other i hi t ht
   exact ⟨GlobalsRel.sameExcept h.1 (Mem.SameExcept.of_stored _ _ _ _ _) hg,
     h.2.store_other _ hp hm _ _⟩
 
 theorem StatusRel.store_res {m : mem} {k : Nat} (hE : EnvOk E) (h : StatusRel E m k) {i : Nat}
-    {t : VT} (hi : i < E.nres) (ht : t.isInt = true) (chunk : memory_chunk) (ofs : _root_.Int)
+    {t : VT} (hi : i < E.nres) (ht : t.isRes = true) (chunk : memory_chunk) (ofs : _root_.Int)
     (v : val) : StatusRel E (Mem.stored chunk m (E.res i t) ofs v) k :=
   h.sameExcept (Mem.SameExcept.of_stored _ _ _ _ _) (Ne.symm (hE.res_other i hi t ht).1)
 
@@ -156,13 +139,13 @@ the result globals from position `i` up then hold `ws`, and those below `i` keep
 values. -/
 theorem exec_resStores (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env} :
     ∀ (rs : List VT) (i h : Nat) (ws : List Value) (m : mem),
-      i + rs.length ≤ E.nres → rs.all VT.isInt = true → ArgsRel le h rs ws →
+      i + rs.length ≤ E.nres → rs.all VT.isRes = true → ArgsRel le h rs ws →
       StoreRel E st m → StatusRel E m 0 →
       ∃ m', exec_stmt A X E.ge empty_env le m (seqList (resStores rs i h ++ [.Sreturn none])) E0
           le m' (.Out_return none) ∧ StoreRel E st m' ∧ StatusRel E m' 0 ∧
         (∀ j (hj : j < rs.length), ∃ v, ws[j]? = some v ∧ rs[j].has v = true ∧
           Mem.load rs[j].chunk m' (E.res (i + j) rs[j]) 0 = some (cval v)) ∧
-        ∀ j < i, ∀ t : VT, t.isInt = true →
+        ∀ j < i, ∀ t : VT, t.isRes = true →
           Mem.load t.chunk m' (E.res j t) 0 = Mem.load t.chunk m (E.res j t) 0
   | [], i, h, ws, m, _, _, hargs, hst, hs => by
       cases ws with
@@ -195,7 +178,7 @@ theorem exec_resStores (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env
                 refine ⟨w, rfl, htw, ?_⟩
                 show Mem.load t.chunk m' (E.res i t) 0 = some (cval w)
                 rw [hframe i (by omega) t ht]
-                exact load_res_stored ht htw hva
+                exact load_stored_vt htw hva
             | succ j =>
                 obtain ⟨v, hv, htv, hl⟩ := hload j (by simp at hj; omega)
                 refine ⟨v, hv, htv, ?_⟩
@@ -210,7 +193,7 @@ theorem exec_resStores (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env
 `h` up then hold `ws`, and every other temporary keeps its value. -/
 theorem exec_resLoads (hE : EnvOk E) {m : mem} :
     ∀ (rs : List VT) (i h : Nat) (ws : List Value) (le : temp_env), rs ≠ [] →
-      i + rs.length ≤ E.nres → rs.all VT.isInt = true → ws.length = rs.length →
+      i + rs.length ≤ E.nres → rs.all VT.isRes = true → ws.length = rs.length →
       (∀ j (hj : j < rs.length), ∃ v, ws[j]? = some v ∧ rs[j].has v = true ∧
         Mem.load rs[j].chunk m (E.res (i + j) rs[j]) 0 = some (cval v)) →
       ∃ le', exec_stmt A X E.ge empty_env le m (seqList (resLoads rs i h)) E0 le' m .Out_normal ∧
@@ -227,7 +210,7 @@ theorem exec_resLoads (hE : EnvOk E) {m : mem} :
           obtain ⟨v0, hv0, htv0, hl0⟩ := hload 0 (by simp)
           simp only [List.getElem?_cons_zero, Option.some.injEq] at hv0
           rw [← hv0] at htv0 hl0
-          have hev := eval_res (A := A) hE (le := le) (by omega) ht htv0 hl0
+          have hev := eval_res (A := A) hE (le := le) (by omega) ht hl0
           let le1 := le.insert (slotId h t) (cval w)
           cases rs with
           | nil =>
@@ -258,7 +241,7 @@ theorem exec_resLoads (hE : EnvOk E) {m : mem} :
                 exact te_insert_ne _ (Ne.symm (hid 0 (by simp) t))
 
 theorem eval_res_any (hE : EnvOk E) {le : temp_env} {m : mem} {i : Nat} {t : VT}
-    (hi : i < E.nres) (ht : t.isInt = true)
+    (hi : i < E.nres) (ht : t.isRes = true)
     (hva : Mem.valid_access m t.chunk (E.res i t) 0 .Writable) :
     ∃ v, eval_expr A E.ge empty_env le m (resVar i t) v := by
   have hl : Mem.load t.chunk m (E.res i t) 0 =
@@ -270,16 +253,16 @@ theorem eval_res_any (hE : EnvOk E) {le : temp_env} {m : mem} {i : Nat} {t : VT}
       (Mem.contents_of m (E.res i t))),
     .eval_Elvalue _ _ _ _ _ (eval_lvalue_global (hE.res i hi t ht))
       (.deref_loc_value t.chunk _ ?_ ?_)⟩
-  · rcases VT.isInt_cases ht with rfl | rfl <;> rfl
-  · rw [loadv_zero _ _ _ (by rcases VT.isInt_cases ht with rfl | rfl <;> decide)]
+  · exact VT.access t
+  · rw [loadv_zero _ _ _ (VT.size_chunk_le t)]
     exact hl
 
 /-- The copies of `resLoads` run whatever the result globals hold. -/
 theorem exec_resLoads_any (hE : EnvOk E) {m : mem}
-    (hW : ∀ i < E.nres, ∀ t : VT, t.isInt = true →
+    (hW : ∀ i < E.nres, ∀ t : VT, t.isRes = true →
       Mem.valid_access m t.chunk (E.res i t) 0 .Writable) :
     ∀ (rs : List VT) (i h : Nat) (le : temp_env), rs ≠ [] → i + rs.length ≤ E.nres →
-      rs.all VT.isInt = true →
+      rs.all VT.isRes = true →
       ∃ le', exec_stmt A X E.ge empty_env le m (seqList (resLoads rs i h)) E0 le' m .Out_normal
   | [], _, _, _, hne, _, _ => absurd rfl hne
   | t :: rs, i, h, le, _, hn, hint => by
