@@ -78,4 +78,35 @@ theorem ite_push_size_le {α : Type} (condition : Prop) [Decidable condition] (x
     (x : α) : (if condition then xs.push x else xs).size ≤ xs.size + 1 := by
   split <;> simp
 
+/-- `loopCost_le` with the cost and the step needed only at the indices of the loop's passes. -/
+theorem loopCost_le_upto {α : Type} {CA : α → Nat} {C : α → Bool} {BA : UInt64 → α → Nat}
+    {F : UInt64 → α → α} (P : Nat → α → Prop) (cost : Nat → Nat) (n : Nat)
+    (hcost : ∀ k s, k < n → P k s → CA s + (if C s then BA (UInt64.ofNat k) s else 0) ≤ cost k)
+    (hstep : ∀ k s, k < n → P k s → C s = true → P (k + 1) (F (UInt64.ofNat k) s)) {I : α}
+    (hI : P 0 I) : loopCost CA C BA F n 0 I ≤ sumBelow cost n := by
+  suffices h : ∀ m k s, k + m = n → P k s →
+      loopCost CA C BA F m (UInt64.ofNat k) s ≤ sumBelow (fun j => cost (k + j)) m by
+    simpa using h n 0 I (by omega) hI
+  intro m
+  induction m with
+  | zero => intro _ _ _ _; simp [loopCost, sumBelow]
+  | succ m ih =>
+    intro k s hkm hP
+    have hc := hcost k s (by omega) hP
+    rw [sumBelow_succ']
+    cases hC : C s
+    · simp only [loopCost, hC, Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hc ⊢
+      omega
+    · simp only [loopCost, hC, ↓reduceIte, Nat.add_zero] at hc ⊢
+      have hk : UInt64.ofNat k + 1 = UInt64.ofNat (k + 1) := by
+        apply UInt64.toNat_inj.mp
+        simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
+        omega
+      have hn := ih (k + 1) _ (by omega) (hstep k s (by omega) hP hC)
+      rw [← hk] at hn
+      have hsum : sumBelow (fun j => cost (k + 1 + j)) m =
+          sumBelow (fun j => cost (k + (j + 1))) m := by
+        congr 1; funext j; congr 1; omega
+      omega
+
 end Verified
