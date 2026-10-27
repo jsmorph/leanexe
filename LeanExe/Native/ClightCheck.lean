@@ -9,15 +9,15 @@ the file's `Definition _x : ident := $"x".` lines and the temporaries that `clig
 named by `Definition _t'k : ident := n%positive.` lines.
 
 The comparison covers the whole program (`LeanExe/Native/Proof/Whole.lean`): CompCert's
-external declarations, which come first, the translation's definitions in order, and the
-program's `main`.  Each global variable and each internal function of the translation must
-appear under its name with the same definition, and `__builtin_fsqrt` must be declared as the
-translation declares it.  A temporary is read back through `tempName`, and the temporaries of
-calls are compared up to renaming: both programs number them in order of first occurrence in
+external declarations, which come first, the translation's definitions in order, and the name
+of the program's `main`.  Each global variable and each internal function of the translation
+must appear under its name with the same definition, and `__builtin_fsqrt` must be declared as
+the translation declares it.  A temporary is read back through `tempName`, and the temporaries
+of calls are compared up to renaming: both programs number them in order of first occurrence in
 the body.  When the check passes, the program of the file is the whole program `wholeProgram pre
 [] t` with its identifiers renamed injectively, by name for globals and per function for
-temporaries, where `pre` holds the external declarations, and `pre` meets `WholeOk`.  The
-reader is not verified, and a file it cannot read fails the check.
+temporaries, where `pre` holds the external declarations and meets the hypotheses of
+`wholeOk_of`.  The reader is not verified, and a file it cannot read fails the check.
 -/
 
 namespace LeanExe.Native.ClightCheck

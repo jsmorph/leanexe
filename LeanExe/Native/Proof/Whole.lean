@@ -15,8 +15,11 @@ identifiers be distinct.  Under it, `init_whole` follows `init_mem` of the whole
 definition at the block one more than its position, and `start_whole` runs `lx_init` and states
 every premise that `NativeA` puts on the environment, for `envWhole`, whose blocks are those
 positions.  These theorems hold for every `pre` and `post` that meet `WholeOk`, so they cover
-every list of declarations that a version of CompCert prints; the per-build check confirms that
-the program `clightgen` reads has this form.
+every list of declarations that a version of CompCert prints.  `wholeOk_of` derives `WholeOk`
+from conditions on identifiers that the per-build check confirms for the program `clightgen`
+reads.  `bareProgram` is the whole program of a bare-metal build, whose `post` declares `lx_out`
+and defines `main`, in the order in which `clightgen` lists them after the translation's
+definitions.
 -/
 
 namespace LClight
@@ -238,7 +241,8 @@ theorem wholeOk_of {m : Module} {cap : Nat} {T : Translation} (h : translate cap
 /-- The identifier of `lx_out`. -/
 def outId : ident := 28
 
-/-- `extern volatile unsigned int lx_out;` -/
+/-- `extern volatile unsigned int lx_out;`, which `clightgen` prints as `tvolatile tuint`
+(`export/Ctypesdefs.v`, lines 30, 39, and 41 to 54). -/
 def outVar : globvar type :=
   { gvar_info := .Tint .I32 .Unsigned { attr_volatile := true, attr_alignas := none },
     gvar_init := [], gvar_readonly := false, gvar_volatile := true }
