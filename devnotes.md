@@ -36695,3 +36695,9 @@ The bodies of `begin`, `step`, `readStep`, and `writeStep` take their charges by
 ## 2026-10-27: An unbuilt module in the WASI axiom check
 
 `tests/wasi/Axioms.lean` imports `Verified.ProgramLiterals`, which no module imported and no build list of `tests/wasi/run.sh` named.  The aggregate `lake build Verified Library` therefore never checked its proofs, and the WASI driver failed on a fresh build when the axiom check found no `.olean` for it.  Earlier runs passed only in checkouts that still held an `.olean` from an earlier build.  `Verified.lean` now imports the module, so the aggregate checks it, and the driver's byte-values build names it, so the driver builds what its axiom check imports.  Every other top-level module of `Verified/` is imported by `Verified.lean` or by another module.
+
+## 2026-10-27: Compiled case generators in the verified driver
+
+`tests/verified/run.sh` ran its case generator with `lake env lean --run` under a ten-minute limit.  On AArch64 that step took between 6 min 51 s and 7 min 34 s, and on an x86-64 host it used one core for the full 600 seconds, with a peak of 1 GB, until `timeout` ended it and the driver reported "native Lean exited with an error".  The interpreter, not the cases, set the time.  The user chose to compile the generators.  The lakefile now declares one executable per generator, `verified-cases` for the full run and `verified-cases-NAME` for each `--cases NAME` that has a generator of its own, and the driver builds the selected executable and runs `.lake/build/bin/NAME` under the same ten-minute limit.  The build step's limit rises from 30 minutes to 12 hours, because the first build compiles the generator's import closure to native code.
+
+- [ ] Full `tests/verified/run.sh` with the compiled generators on AArch64 and on x86-64, with the time of the case step and of the first executable build.
