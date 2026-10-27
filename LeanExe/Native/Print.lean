@@ -15,7 +15,10 @@ sequence nested as the first part of a sequence prints as a block, since C's blo
 right.  `Sloop (Ssequence Sskip s) Sskip` prints as `for (;;) { s }`, from which `clightgen`
 restores the `Sskip`.  A call through a temporary `t` that `isCall` accepts, `Scall (some t) f
 args` followed by `Sset x (Etempvar t)`, prints as `x = f(args);`, and `t` is not declared;
-`clightgen` creates such a temporary for every call whose result is stored.  `gname` names the
+`clightgen` creates such a temporary for every call whose result is stored.  A store to a volatile
+lvalue, `Sbuiltin None (EF_vstore chunk) tys [Eaddrof l ty, e]`, the form that SimplExpr gives
+it, prints as the assignment `l = e;`, and a volatile type prints with the qualifier `volatile`.
+A global without initialization data prints as an `extern` declaration.  `gname` names the
 globals and functions, and `tname` the temporaries.
 -/
 
@@ -28,19 +31,22 @@ def hexDigits (n width : Nat) : String :=
   let s := String.ofList (Nat.toDigits 16 n)
   String.ofList (List.replicate (width - s.length) '0') ++ s
 
+/-- `volatile ` for a volatile type, and nothing otherwise. -/
+def volatileQual (a : attr) : String := if a.attr_volatile then "volatile " else ""
+
 def ctype : type → Except String String
   | .Tvoid => pure "void"
-  | .Tint .I8 .Signed _ => pure "signed char"
-  | .Tint .I8 .Unsigned _ => pure "unsigned char"
-  | .Tint .I16 .Signed _ => pure "short"
-  | .Tint .I16 .Unsigned _ => pure "unsigned short"
-  | .Tint .I32 .Signed _ => pure "int"
-  | .Tint .I32 .Unsigned _ => pure "unsigned int"
-  | .Tint .IBool _ _ => pure "_Bool"
-  | .Tlong .Signed _ => pure "long long"
-  | .Tlong .Unsigned _ => pure "unsigned long long"
-  | .Tfloat .F32 _ => pure "float"
-  | .Tfloat .F64 _ => pure "double"
+  | .Tint .I8 .Signed a => pure (volatileQual a ++ "signed char")
+  | .Tint .I8 .Unsigned a => pure (volatileQual a ++ "unsigned char")
+  | .Tint .I16 .Signed a => pure (volatileQual a ++ "short")
+  | .Tint .I16 .Unsigned a => pure (volatileQual a ++ "unsigned short")
+  | .Tint .I32 .Signed a => pure (volatileQual a ++ "int")
+  | .Tint .I32 .Unsigned a => pure (volatileQual a ++ "unsigned int")
+  | .Tint .IBool _ a => pure (volatileQual a ++ "_Bool")
+  | .Tlong .Signed a => pure (volatileQual a ++ "long long")
+  | .Tlong .Unsigned a => pure (volatileQual a ++ "unsigned long long")
+  | .Tfloat .F32 a => pure (volatileQual a ++ "float")
+  | .Tfloat .F64 a => pure (volatileQual a ++ "double")
   | .Tpointer t _ => do pure ((← ctype t) ++ " *")
   | _ => throw "a type the printer does not declare"
 
@@ -136,6 +142,8 @@ partial def cstmt (depth : Nat) : statement → Except String String
         | some id => s!"{tname id} = "
         | none => ""
       pure s!"{indent depth}{lhs}{← cexpr gname tname a}({← cargs gname tname al});\n"
+  | .Sbuiltin none (.EF_vstore _) _ [.Eaddrof a _, e] => do
+      pure s!"{indent depth}{← cexpr gname tname a} = {← cexpr gname tname e};\n"
   | .Sbuiltin optid ef _ al => do
       let lhs := match optid with
         | some id => s!"{tname id} = "
@@ -213,6 +221,7 @@ def cglobal (id : ident) (v : globvar type) : Except String String := do
       let body := ", ".intercalate items
       pure s!"{qual}{← ctype elt} {gname id}[{n}] = \{{body}};\n"
   | ty, [.Init_space _] => pure s!"{qual}{← ctype ty} {gname id};\n"
+  | ty, [] => pure s!"extern {qual}{← ctype ty} {gname id};\n"
   | ty, [d] => pure s!"{qual}{← ctype ty} {gname id} = {← cinit ty d};\n"
   | _, _ => throw "a scalar global with several initializers"
 
