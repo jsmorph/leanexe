@@ -148,7 +148,7 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
         omega
       · have := mem_bodyTemps hy'
         rw [hyy, ← hxy] at this
-        exact this (by show (8 * i : Nat) % 8 = 0; omega)
+        exact this (by show (8 * i + 8 : Nat) % 8 = 0; omega)
   let le2 := setLocals le1 ps0.length (ls.zipIdx 0)
   let le3 := le2.insert brkId (.Vint (UInt32.ofNat 0))
   obtain ⟨hset2, hother2⟩ := setLocals_get le1 ps0.length ls 0

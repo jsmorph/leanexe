@@ -75,12 +75,13 @@ def tint : type := .Tint .I32 .Signed noattr
 
 /-! ## Identifiers
 
-A temporary is `8 n + r`: local `n` for `r = 0`, the stack slot at height `n` of the type with
-code `r` for `r` from 1 to 4, `brk` for `n = 0` and `r = 5`, and the result of call site `n` for
-`r = 6`.  A global is `lx_status`, 1, the Wasm global `i`, `4 i + 2`, or the function `k`,
-`4 k + 3`. -/
+A temporary is `8 n + r`: local `n - 1` for `r = 0` and `n ≥ 1`, the stack slot at height `n` of
+the type with code `r` for `r` from 1 to 4, `brk` for `n = 0` and `r = 5`, and the result of call
+site `n` for `r = 6`.  A global is `lx_status`, 1, the Wasm global `i`, `4 i + 2`, or the function
+`k`, `4 k + 3`, and the program's `main` is 4.  Every identifier is at least 1, as CompCert's
+identifiers, which are positive, are. -/
 
-def localId (i : Nat) : ident := 8 * i
+def localId (i : Nat) : ident := 8 * i + 8
 def slotId (h : Nat) (t : VT) : ident := 8 * h + t.code
 def brkId : ident := 5
 def callId (k : Nat) : ident := 8 * k + 6
@@ -88,12 +89,13 @@ def callId (k : Nat) : ident := 8 * k + 6
 def statusId : ident := 1
 def globalId (i : Nat) : ident := 4 * i + 2
 def funId (k : Nat) : ident := 4 * k + 3
+def mainId : ident := 4
 
 /-- The C name of a temporary. -/
 def tempName (id : ident) : String :=
   let n := id / 8
   match id % 8 with
-  | 0 => s!"l{n}"
+  | 0 => s!"l{n - 1}"
   | 1 => s!"s{n}_i"
   | 2 => s!"s{n}_l"
   | 3 => s!"s{n}_f"
@@ -565,7 +567,7 @@ def translate (m : Module) : Option Translation := do
   let names := (statusId, "lx_status") ::
     ((List.range m.globals.length).map fun i => (globalId i, s!"lx_g{i}")) ++
     included.map fun k => (funId k, functionName m k)
-  pure { cprogram := { prog_defs := defs, prog_public := defs.map (·.1), prog_main := 0 }
+  pure { cprogram := { prog_defs := defs, prog_public := defs.map (·.1), prog_main := mainId }
          names := names
          funcs := included }
 

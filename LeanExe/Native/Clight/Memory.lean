@@ -28,10 +28,17 @@ Only the operations that the semantics in this directory use are copied: `perm_o
 
 `mem` drops the invariants `access_max`, `nextblock_noaccess`, and `contents_default` of
 CompCert's `mem`, so a `mem` need not satisfy them.  Forgetting them maps each CompCert memory to
-a `mem`, and each operation here maps the image of a CompCert memory to the image of CompCert's
-result, so the memories that `init_mem` and these operations produce are such images.  A
-theorem that holds for every `mem` therefore holds for the images of CompCert's memories; a
-statement about a `mem` outside the image says nothing about CompCert.
+a `mem`, its image, determined only up to extensional equality: two `mem`s with the same
+contents, permissions, and next block stand for the same CompCert memory although their
+`Std.TreeMap`s can differ in shape, so no statement about the copy should compare memories with
+`=`.  Each operation here maps an image of a CompCert memory to an image of CompCert's result,
+so the memories that `init_mem` and these operations produce are images, and a theorem that holds
+for every `mem` holds for the images of CompCert's memories; a statement about a `mem` outside
+the image says nothing about CompCert.  An external call under an arbitrary `ExtSem` can produce
+a memory outside the image, so a theorem should hold for every `X` and be applied with `X` the
+image of CompCert's `external_functions_sem`.  Carrying a conclusion about the copy over to
+CompCert relies on a rule-for-rule correspondence between the copy's derivations and CompCert's,
+which the reviews and the differential tests support and no proof covers.
 -/
 
 namespace LClight

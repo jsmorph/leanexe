@@ -68,7 +68,7 @@ theorem VT.code_inj {t t' : VT} (h : t.code = t'.code) : t = t' := by
 
 theorem slotId_ne_localId (h : Nat) (t : VT) (i : Nat) : slotId h t ≠ localId i := by
   have := VT.code_pos t
-  show ¬ ((8 * h + t.code : Nat) = 8 * i)
+  show ¬ ((8 * h + t.code : Nat) = 8 * i + 8)
   omega
 
 theorem slotId_ne_brkId (h : Nat) (t : VT) : slotId h t ≠ brkId := by
@@ -77,7 +77,7 @@ theorem slotId_ne_brkId (h : Nat) (t : VT) : slotId h t ≠ brkId := by
   omega
 
 theorem localId_ne_brkId (i : Nat) : localId i ≠ brkId := by
-  show ¬ ((8 * i : Nat) = 5)
+  show ¬ ((8 * i + 8 : Nat) = 5)
   omega
 
 theorem callId_ne_slotId (k h : Nat) (t : VT) : callId k ≠ slotId h t := by
@@ -86,7 +86,7 @@ theorem callId_ne_slotId (k h : Nat) (t : VT) : callId k ≠ slotId h t := by
   omega
 
 theorem callId_ne_localId (k i : Nat) : callId k ≠ localId i := by
-  show ¬ ((8 * k + 6 : Nat) = 8 * i)
+  show ¬ ((8 * k + 6 : Nat) = 8 * i + 8)
   omega
 
 theorem callId_ne_brkId (k : Nat) : callId k ≠ brkId := by
@@ -105,7 +105,7 @@ theorem slotId_ne_of_type (h : Nat) {t t' : VT} (hne : t ≠ t') : slotId h t �
   exact hne (VT.code_inj (by omega))
 
 theorem localId_inj {i j : Nat} (h : localId i = localId j) : i = j := by
-  have e : (8 * i : Nat) = 8 * j := h
+  have e : (8 * i + 8 : Nat) = 8 * j + 8 := h
   omega
 
 /-! ## The relation -/
