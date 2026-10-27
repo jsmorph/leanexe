@@ -37070,8 +37070,23 @@ Each module was built alone after its dependencies at `--threads 1 --memory-high
 The split meets the coordinator's target: the scope peaks lie 0.12 and 0.45 GiB above main's, and both resident sets stay below 6 GiB.  It costs time, 105 and 79 seconds more than main's command, about 16 percent for each module, although single runs vary by tens of seconds while other builds run.  A probe that restates single parts of `Lgamma.Compiled` locates the time: a function's two parts take 0.2 to 0.5 seconds each, and the module-level checks take 2.0 seconds for the globals, 4.5 for the shape, and 7.4 for the memory, each of which computes the literal pool again.  A run whose dependencies' `.olean` files were not in the page cache charged their pages to the scope, so its scope peak of 7.47 GiB for `Lgamma.Compiled`, at a resident set of 6.35 GiB, does not compare with the others; the table gives runs with the files cached, as before the split.
 
 - [x] `p.inSubset` and `p.translation_funcs` from one part per function.
-- [ ] `p.native_module`: the module-level checks in one declaration, which computes the literal pool once, measured the same way.
+- [x] `p.native_module`: the module-level checks in one declaration, which computes the literal pool once, measured the same way; reverted (below).
 
 ### The module-level checks in one theorem
 
 `p.native_module` states the module's shape and memory and, when the module translates, the guards of `translate` on the memory and the globals, in one declaration, so that the kernel computes the literal pool once instead of once per check.  `p.inSubset` and `p.translation_funcs` take its components, and their statements are unchanged.
+
+The three versions of the command were measured in one run after the merge with main, on AArch64, each module built alone after its dependencies at `--threads 1 --memory-high 10G` with the dependencies' `.olean` files in the page cache.
+
+| Module | Command | Time | Maximum resident set | Scope peak |
+|--------|---------|------|----------------------|------------|
+| `Tgamma.Compiled` | main | 541 s | 5.34 GiB | 2.56 GiB |
+| `Tgamma.Compiled` | split | 556 s | 5.48 GiB | 2.98 GiB |
+| `Tgamma.Compiled` | split with `p.native_module` | 556 s | 5.46 GiB | 2.88 GiB |
+| `Lgamma.Compiled` | main | 683 s | 5.90 GiB | 3.07 GiB |
+| `Lgamma.Compiled` | split | 736 s | 5.97 GiB | 3.21 GiB |
+| `Lgamma.Compiled` | split with `p.native_module` | 763 s | 5.78 GiB | 3.41 GiB |
+
+The split costs 15 and 53 seconds over main's command, 3 and 8 percent, less than the earlier single runs gave, and its scope peaks lie 0.42 and 0.14 GiB above main's.  `p.native_module` changes neither time nor memory beyond the variation of single runs: `Tgamma.Compiled` takes the same time with a peak 0.10 GiB lower, and `Lgamma.Compiled` 27 seconds longer with a peak 0.20 GiB higher, since its one declaration holds the computation of the literal pool for all four checks.  The revision adds a theorem without a measurable gain, so this entry's next commit reverts it, and the module-level checks stay in the proofs of `p.inSubset` and `p.translation_funcs`.
+
+After the merge, on AArch64, every corpus module builds, 31,302 corpus cases pass natively and none fails (the slew planner adds 2,077), 3,951 do not run as before, and the 3,322 module cases pass.  `tests/native/run.sh` agrees with Talos on all nineteen modules, and the differential test agrees on all 318 programs.  The same counts hold with the x86_64 tree, whose programs run under `qemu-x86_64` user-mode emulation.

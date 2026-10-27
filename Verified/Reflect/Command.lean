@@ -470,8 +470,7 @@ entry when its code takes the call depth, or, for a wrapper, at the wrapper's en
 that holds the tables; `p.initial`, that the store in which the module starts meets the
 allocator invariant and holds the tables; `p.inSubset`, that the module is in the subset that
 the translator to C accepts, when it is, from the theorems `p.native_part_k`, one per function,
-which also give the callees of each function's C function as `p.translation_infos` lists them,
-and `p.native_module` for the parts outside the functions;
+which also give the callees of each function's C function as `p.translation_infos` lists them;
 when the module translates, its translation
 `p.translation` to C, with `lx_mem` of `nativeCap` pages, the list `p.translation_funcs` of the
 functions that the translation contains, the equation `p.translation_eq`, and, for each
@@ -892,29 +891,15 @@ def elabVerifiedCompile : CommandElab
             LeanExe.Native.functionViolation k ($moduleId).funcs[k]! = none ∧
               LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId k = ($infosId)[k]?.join :=
           $nativeChain))
-        -- The parts of the module outside its functions, in one theorem, since each of them
-        -- computes the literal pool: the shape and the memory of the subset and, when the module
-        -- translates, the guards of `translate` on the memory and the globals.
-        let translated := LeanExe.Native.translate LeanExe.Native.nativeCap evaluated
-        let moduleOkId := mkIdent (target.getId ++ `native_module)
-        let subsetParts ← `(LeanExe.Native.shapeViolation $moduleId = none ∧
-          LeanExe.Native.memoryViolation ($moduleId).memory = none)
-        let moduleParts ← if translated.isSome then
-            `($subsetParts ∧ LeanExe.Native.memoryOk LeanExe.Native.nativeCap $moduleId = true ∧
-              (($moduleId).globals.mapM LeanExe.Native.globalDef).isSome = true)
-          else pure subsetParts
-        elabCommand (← `(set_option maxRecDepth 100000 in
-          theorem $moduleOkId : $moduleParts := by
-            decide +kernel))
-        let subsetOk ← if translated.isSome then `(($moduleOkId).1) else `($moduleOkId)
         let inSubsetId := mkIdent (target.getId ++ `inSubset)
-        elabCommand (← `(theorem $inSubsetId : LeanExe.Native.InSubset $moduleId :=
-          LeanExe.Native.inSubset_of_parts ($subsetOk).1 ($subsetOk).2 $countId
-            fun k hk => ($partsId k hk).1))
+        elabCommand (← `(set_option maxRecDepth 100000 in
+          theorem $inSubsetId : LeanExe.Native.InSubset $moduleId :=
+            LeanExe.Native.inSubset_of_parts (by decide +kernel) (by decide +kernel) $countId
+              fun k hk => ($partsId k hk).1))
         -- The translation to C.  The native translator gives the list of the functions that it
         -- contains, which follows from the parts; each function's theorem then follows from the
         -- function's theorem and its membership in that list.
-        match translated with
+        match LeanExe.Native.translate LeanExe.Native.nativeCap evaluated with
         | none =>
             logWarning m!"verified_compile: the module does not translate to C with \
               {LeanExe.Native.nativeCap} pages"
@@ -926,7 +911,7 @@ def elabVerifiedCompile : CommandElab
               theorem $funcsId : (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId).map
                   LeanExe.Native.Translation.funcs = some $(Lean.quote t.funcs) :=
                 LeanExe.Native.translate_funcs_of_parts (infos := $infosId) $inSubsetId
-                  ($moduleOkId).2.1 ($moduleOkId).2.2 $countId (by decide +kernel)
+                  (by decide +kernel) (by decide +kernel) $countId (by decide +kernel)
                   (fun k hk => ($partsId k hk).2) (by decide +kernel) (by decide +kernel)))
             elabCommand (← `(noncomputable def $translationId : LeanExe.Native.Translation :=
               (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId).get
