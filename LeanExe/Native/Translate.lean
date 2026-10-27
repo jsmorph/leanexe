@@ -24,11 +24,12 @@ when the address is a multiple of 8, and eight bytes in little-endian order othe
 writes the module's data segments into `lx_mem`, with a word store for each aligned word that a
 segment covers and a byte store for each other byte.
 
-This version handles the integer forms of milestones M2 to M4: locals, globals, the `i64` and
-`i32` operations of the subset, `block`, `loop`, `iff`, `br`, `br_if`, `ret`, `call`,
-`unreachable`, `load64`, `store64`, `memory.size`, and `memory.grow`, in functions with at most
-one result or with several results of integer types, which return them in the globals
-`lx_r<i>_<t>`.  A function that uses another form, or that calls a function the translator omits,
+This version handles the forms of milestones M2 to M5: locals, globals, the `i64` and `i32`
+operations of the subset, `block`, `loop`, `iff`, `br`, `br_if`, `ret`, `call`, `unreachable`,
+`load64`, `store64`, `memory.size`, `memory.grow`, and the binary64 forms, in functions with at
+most one result or with several results of integer or binary64 types, which return them in the
+globals `lx_r<i>_<t>`.  A binary64 operation that rounds replaces a NaN result by Talos's
+canonical NaN, and a value changes type through the cell `lx_pun`.  A function that uses another form, or that calls a function the translator omits,
 is omitted, and `translate` returns the program of the remaining functions.  A function of the
 program is `lxf_<name>` when the module exports it under a name that is a C identifier, and
 `lxf_<k>` for its index `k` otherwise.
@@ -352,6 +353,86 @@ def resLoads : List VT → Nat → Nat → List statement
   | [], _, _ => []
   | t :: rs, i, h => .Sset (slotId h t) (resVar i t) :: resLoads rs (i + 1) (h + 1)
 
+/-- `lx_pun`, an array of one `unsigned long long`, the cell through which a value changes
+type. -/
+def punType : type := .Tarray tulong 1 noattr
+
+def punDef : globvar type :=
+  { gvar_info := punType, gvar_init := [.Init_space 8], gvar_readonly := false
+    gvar_volatile := false }
+
+def tdouble : type := VT.ty .f64
+
+/-- The signature of `__builtin_fsqrt`, as CompCert's table of built-ins gives it. -/
+def sqrtSig : signature := { sig_args := [.Xfloat], sig_res := .Xfloat, sig_cc := cc_default }
+
+/-- The declaration of `__builtin_fsqrt`, an external built-in function, as `clightgen` writes
+it. -/
+def sqrtFun : fundef function :=
+  .External (.EF_builtin "__builtin_fsqrt" sqrtSig) [tdouble] tdouble cc_default
+
+def sqrtDef : globdef (fundef function) type := .Gfun sqrtFun
+
+/-! ## Binary64
+
+A binary64 operation that Talos rounds computes its C result, and a NaN result becomes Talos's
+positive canonical quiet NaN, which C cannot write as a literal: `if (t != t)` stores its bits
+in `lx_pun` as a word and loads them back as a double.  A value changes type through `lx_pun`
+as well, and so does a constant that is a NaN or an infinity; a finite constant is an exact
+literal, negated when it is negative, as `clightgen` reads a negative literal. -/
+
+/-- `*(ty *) lx_pun`. -/
+def punAt (ty : type) : expr := .Ederef (.Ecast (.Evar punId punType) (.Tpointer ty noattr)) ty
+
+/-- The double in `lx_pun` after a store of the word `w`. -/
+def punStore (w : expr) (h : Nat) : statement :=
+  .Ssequence (.Sassign (punAt tulong) w) (.Sset (slotId h .f64) (punAt tdouble))
+
+/-- `if (t != t) t = <the canonical NaN>;` for the double slot at height `h`. -/
+def canonStmt (h : Nat) : statement :=
+  .Sifthenelse (.Ebinop .One (tmp h .f64) (tmp h .f64) tint)
+    (punStore (.Econst_long IEEE64.canonicalNaN tulong) h) .Sskip
+
+/-- The binary64 operations that round. -/
+def f64Op : Instruction → Option binary_operation
+  | .f64Add => some .Oadd
+  | .f64Sub => some .Osub
+  | .f64Mul => some .Omul
+  | .f64Div => some .Odiv
+  | _ => none
+
+/-- The binary64 comparisons. -/
+def f64Cmp : Instruction → Option binary_operation
+  | .f64Eq => some .Oeq
+  | .f64Lt => some .Olt
+  | .f64Le => some .Ole
+  | _ => none
+
+/-- The binary64 constant `v` in the slot at height `h`. -/
+def f64ConstStmt (h : Nat) (v : UInt64) : statement :=
+  if IEEE64.isFinite v then
+    if IEEE64.sign v then
+      .Sset (slotId h .f64) (.Eunop .Oneg (.Econst_float (IEEE64.negate v) tdouble) tdouble)
+    else .Sset (slotId h .f64) (.Econst_float v tdouble)
+  else punStore (.Econst_long v tulong) h
+
+def sqrtVar : expr := .Evar sqrtId (.Tfunction [tdouble] tdouble cc_default)
+
+/-- -1.0. -/
+def minusOne : expr := .Eunop .Oneg (.Econst_float 0x3FF0000000000000 tdouble) tdouble
+
+/-- 2^64. -/
+def twoTo64 : expr := .Econst_float 0x43F0000000000000 tdouble
+
+/-- `i64.trunc_sat_f64_u` of the double slot at height `h` into the word slot: 0 for a NaN and
+below -1, the largest word at 2^64 and above, and the C conversion between. -/
+def truncSatStmt (h : Nat) : statement :=
+  .Sifthenelse (.Ebinop .One (tmp h .f64) (tmp h .f64) tint) (.Sset (slotId h .i64) (clong 0))
+    (.Sifthenelse (.Ebinop .Ole (tmp h .f64) minusOne tint) (.Sset (slotId h .i64) (clong 0))
+      (.Sifthenelse (.Ebinop .Oge (tmp h .f64) twoTo64 tint)
+        (.Sset (slotId h .i64) (.Econst_long 0xFFFFFFFFFFFFFFFF tulong))
+        (.Sset (slotId h .i64) (.Ecast (tmp h .f64) tulong))))
+
 /-- The arguments of a call with parameters `ps`: the slots from height `base` up, deepest
 first. -/
 def callArgs (base : Nat) : List VT → List expr
@@ -497,6 +578,61 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
               (.Ssequence (.Sset r pagesVar) (.Sassign pagesVar (.Ecast (.Etempvar t tulong) tuint)))
               (.Sset r (.Econst_int 0xFFFFFFFF tuint))),
           some (.i32 :: σ'), n)
+      else none
+  | .f64Const v => some (f64ConstStmt h v, some (.f64 :: σ), n)
+  | .f64Add | .f64Sub | .f64Mul | .f64Div => do
+      let op ← f64Op inst
+      let σ' ← pops L σ 2
+      if σ.take 2 = [.f64, .f64] then
+        pure (.Ssequence
+            (.Sset (slotId (h - 2) .f64) (.Ebinop op (tmp (h - 2) .f64) (tmp (h - 1) .f64) tdouble))
+            (canonStmt (h - 2)),
+          some (.f64 :: σ'), n)
+      else none
+  | .f64Sqrt => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .f64 then
+        pure (.Ssequence
+            (.Ssequence (.Scall (some (callId n)) sqrtVar [tmp (h - 1) .f64])
+              (.Sset (slotId (h - 1) .f64) (.Etempvar (callId n) tdouble)))
+            (canonStmt (h - 1)),
+          some (.f64 :: σ'), n + 1)
+      else none
+  | .f64Eq | .f64Lt | .f64Le => do
+      let op ← f64Cmp inst
+      let σ' ← pops L σ 2
+      if σ.take 2 = [.f64, .f64] then
+        pure (.Sset (slotId (h - 2) .i32)
+            (.Ecast (.Ebinop op (tmp (h - 2) .f64) (tmp (h - 1) .f64) tint) tuint),
+          some (.i32 :: σ'), n)
+      else none
+  | .f64Abs => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .f64 then
+        pure (.Sset (slotId (h - 1) .f64) (.Eunop .Oabsfloat (tmp (h - 1) .f64) tdouble),
+          some (.f64 :: σ'), n)
+      else none
+  | .f64ConvertI64U => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .i64 then
+        pure (.Sset (slotId (h - 1) .f64) (.Ecast (tmp (h - 1) .i64) tdouble), some (.f64 :: σ'), n)
+      else none
+  | .f64ReinterpretI64 => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .i64 then
+        pure (punStore (tmp (h - 1) .i64) (h - 1), some (.f64 :: σ'), n)
+      else none
+  | .i64ReinterpretF64 => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .f64 then
+        pure (.Ssequence (.Sassign (punAt tdouble) (tmp (h - 1) .f64))
+            (.Sset (slotId (h - 1) .i64) (punAt tulong)),
+          some (.i64 :: σ'), n)
+      else none
+  | .i64TruncSatF64U => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .f64 then
+        pure (truncSatStmt (h - 1), some (.i64 :: σ'), n)
       else none
   | .unreachable => some (trapStmt trapUnreachable c.result, none, n)
   | .br k => do
@@ -701,7 +837,7 @@ def fdefsOf (cap : Nat) (m : Module) : List (Option function) :=
 /-- The functions that the C function of `k` calls. -/
 def callsOf (cap : Nat) (m : Module) (k : Nat) : List Nat :=
   match (fdefsOf cap m)[k]?.join with
-  | some f => (callees f.fn_body).map (· / 4)
+  | some f => (callees f.fn_body).filterMap fun id => if id % 4 = 3 then some (id / 4) else none
   | none => []
 
 /-- The functions that the program contains: those that translate and call only such
@@ -782,25 +918,7 @@ def resDefs (nres : Nat) : List (ident × globdef (fundef function) type) :=
 def resNames (nres : Nat) : List (ident × String) :=
   (List.range nres).flatMap fun i => resTypes.map fun t => (resId i t, s!"lx_r{i}_{t.letter}")
 
-/-- `lx_pun`, an array of one `unsigned long long`, the cell through which a value changes
-type. -/
-def punType : type := .Tarray tulong 1 noattr
 
-def punDef : globvar type :=
-  { gvar_info := punType, gvar_init := [.Init_space 8], gvar_readonly := false
-    gvar_volatile := false }
-
-def tdouble : type := VT.ty .f64
-
-/-- The signature of `__builtin_fsqrt`, as CompCert's table of built-ins gives it. -/
-def sqrtSig : signature := { sig_args := [.Xfloat], sig_res := .Xfloat, sig_cc := cc_default }
-
-/-- The declaration of `__builtin_fsqrt`, an external built-in function, as `clightgen` writes
-it. -/
-def sqrtFun : fundef function :=
-  .External (.EF_builtin "__builtin_fsqrt" sqrtSig) [tdouble] tdouble cc_default
-
-def sqrtDef : globdef (fundef function) type := .Gfun sqrtFun
 
 /-- `acc`, raised to the results of function `k` when it has several. -/
 def maxStep (m : Module) (acc k : Nat) : Nat :=

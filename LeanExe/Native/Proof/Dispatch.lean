@@ -1,5 +1,6 @@
 import LeanExe.Native.Proof.Calls
 import LeanExe.Native.Proof.MemOps
+import LeanExe.Native.Proof.Floats
 
 /-!
 The simulation of every instruction, and of instruction lists at every fuel up to a bound, for
@@ -58,6 +59,20 @@ theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.
   case store64 off => exact (sim_store64 hE F off).toL
   case memorySize => exact (sim_memorySize hE h64 F).toL
   case memoryGrow => exact (sim_memoryGrow hE hcap F).toL
+  case f64Const v => exact (sim_f64Const hE F v).toL
+  case f64Add => exact (sim_f64Add hE F).toL
+  case f64Sub => exact (sim_f64Sub hE F).toL
+  case f64Mul => exact (sim_f64Mul hE F).toL
+  case f64Div => exact (sim_f64Div hE F).toL
+  case f64Sqrt => exact (sim_f64Sqrt hE F).toL
+  case f64Eq => exact (sim_f64Eq F).toL
+  case f64Lt => exact (sim_f64Lt F).toL
+  case f64Le => exact (sim_f64Le F).toL
+  case f64Abs => exact (sim_f64Abs F).toL
+  case f64ConvertI64U => exact (sim_f64ConvertI64U F).toL
+  case f64ReinterpretI64 => exact (sim_f64ReinterpretI64 hE F).toL
+  case i64ReinterpretF64 => exact (sim_i64ReinterpretF64 hE F).toL
+  case i64TruncSatF64U => exact (sim_i64TruncSatF64U F).toL
   case br k => exact sim_br F k
   case br_if k => exact sim_br_if F k
   case ret => exact sim_ret hE hres F

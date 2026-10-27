@@ -110,7 +110,8 @@ theorem translate_spec {m : Module} {cap : Nat} {T : Translation} (h : translate
     have hcall : k' ∈ callsOf cap m k0 := by
       unfold callsOf
       rw [hfd0]
-      exact List.mem_map.mpr ⟨funId k', hk', funId_div k'⟩
+      have hm : funId k' % 4 = 3 := by show (4 * k' + 3 : Nat) % 4 = 3; omega
+      exact List.mem_filterMap.mpr ⟨funId k', hk', by rw [ite_eq_left hm, funId_div]⟩
     have hin := hclosed k0 hk0 k' hcall
     obtain ⟨d, hd, hfd⟩ := mapM_mem hfuns k' hin
     cases hfd' : (fdefsOf cap m)[k']?.join with

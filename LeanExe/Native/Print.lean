@@ -100,7 +100,7 @@ def cexpr : expr → Except String String
       | .Onotbool => pure s!"(!{s})"
       | .Onotint => pure s!"(~{s})"
       | .Oneg => pure s!"(-{s})"
-      | .Oabsfloat => throw "Oabsfloat"
+      | .Oabsfloat => pure s!"__builtin_fabs({s})"
   | .Ebinop op a1 a2 _ => do pure s!"({← cexpr a1} {binop op} {← cexpr a2})"
   | .Ecast a ty => do pure s!"(({← ctype ty}){← cexpr a})"
   | .Efield _ _ _ => throw "Efield"
