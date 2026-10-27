@@ -19,6 +19,10 @@ The semantics of an external function is a parameter, and nothing makes it invar
 renaming.  `ExtRen g X X'` states that `X'` does on renamed symbols what `X` does, and
 `ExtSem.none`, which relates nothing, meets it with every `X'`: a run that calls no external
 function holds for `ExtSem.none`, and its renaming then holds for every semantics.
+
+`bigstep_program_terminates_rename_on` asks for injectivity only on the identifiers that occur in
+the program, which is what the numbering of a compiler gives, and `exists_injective_extension`
+supplies the injective maps on all identifiers that the other theorems take.
 -/
 
 namespace LClight
@@ -592,5 +596,305 @@ theorem bigstep_program_terminates_rename_none {A : Archi} {g : ident → ident}
     (h : bigstep_program_terminates A ExtSem.none p tr r) (X' : ExtSem) :
     bigstep_program_terminates A X' p' (renTrace g tr) r :=
   bigstep_program_terminates_rename hg hτ (ExtRen.none g X') hdefs hmain h
+
+/-! ## Renamings of the program's own identifiers
+
+`bigstep_program_terminates_rename` asks for renamings injective on all identifiers.  A
+renaming that a compiler gives is defined, and injective, on the identifiers of the program
+alone.  Every such map agrees on those identifiers with an injective map on all identifiers,
+`exists_injective_extension`, and renaming depends only on the identifiers that occur, so
+`bigstep_program_terminates_rename_on` needs injectivity only on the program's identifiers. -/
+
+theorem le_sum_of_mem : ∀ {l : List Nat} {a : Nat}, a ∈ l → a ≤ l.sum
+  | _ :: _, _, .head _ => by simp only [List.sum_cons]; omega
+  | _ :: _, _, .tail _ h => by have := le_sum_of_mem h; simp only [List.sum_cons]; omega
+
+theorem exists_injective_extension_nat (s : List Nat) (f : Nat → Nat)
+    (hf : ∀ x ∈ s, ∀ y ∈ s, f x = f y → x = y) :
+    ∃ g : Nat → Nat, Function.Injective g ∧ ∀ x ∈ s, g x = f x := by
+  have hlt : ∀ x ∈ s, f x < (s.map f).sum + 1 := fun x hx =>
+    Nat.lt_succ_of_le (le_sum_of_mem (List.mem_map_of_mem hx))
+  refine ⟨fun x => if x ∈ s then f x else (s.map f).sum + 1 + x, fun x y hxy => ?_,
+    fun x hx => by simp [hx]⟩
+  by_cases hx : x ∈ s <;> by_cases hy : y ∈ s <;> simp only [hx, hy, ↓reduceIte] at hxy
+  · exact hf x hx y hy hxy
+  · have := hlt x hx; omega
+  · have := hlt y hy; omega
+  · omega
+
+/-- A map injective on the finite set `s` agrees on `s` with an injective map: the map that
+sends each identifier outside `s` above every value on `s`. -/
+theorem exists_injective_extension (s : List ident) (f : ident → ident)
+    (hf : ∀ x ∈ s, ∀ y ∈ s, f x = f y → x = y) :
+    ∃ g : ident → ident, Function.Injective g ∧ ∀ x ∈ s, g x = f x :=
+  exists_injective_extension_nat s f hf
+
+/-! ### The identifiers that occur -/
+
+/-- The identifiers of globals in an expression. -/
+def exprG : expr → List ident
+  | .Evar id _ => [id]
+  | .Ederef a _ | .Eaddrof a _ | .Eunop _ a _ | .Ecast a _ | .Efield a _ _ => exprG a
+  | .Ebinop _ a1 a2 _ => exprG a1 ++ exprG a2
+  | _ => []
+
+/-- The temporaries in an expression. -/
+def exprT : expr → List ident
+  | .Etempvar id _ => [id]
+  | .Ederef a _ | .Eaddrof a _ | .Eunop _ a _ | .Ecast a _ | .Efield a _ _ => exprT a
+  | .Ebinop _ a1 a2 _ => exprT a1 ++ exprT a2
+  | _ => []
+
+mutual
+  /-- The identifiers of globals in a statement. -/
+  def stmtG : statement → List ident
+    | .Sassign a1 a2 => exprG a1 ++ exprG a2
+    | .Sset _ a => exprG a
+    | .Scall _ a al => exprG a ++ al.flatMap exprG
+    | .Sbuiltin _ _ _ al => al.flatMap exprG
+    | .Ssequence s1 s2 => stmtG s1 ++ stmtG s2
+    | .Sifthenelse a s1 s2 => exprG a ++ stmtG s1 ++ stmtG s2
+    | .Sloop s1 s2 => stmtG s1 ++ stmtG s2
+    | .Sreturn oa => (oa.map exprG).getD []
+    | .Sswitch a sl => exprG a ++ lsG sl
+    | .Slabel _ s => stmtG s
+    | .Sskip | .Sbreak | .Scontinue | .Sgoto _ => []
+
+  def lsG : labeled_statements → List ident
+    | .LSnil => []
+    | .LScons _ s sl => stmtG s ++ lsG sl
+end
+
+mutual
+  /-- The temporaries in a statement. -/
+  def stmtT : statement → List ident
+    | .Sassign a1 a2 => exprT a1 ++ exprT a2
+    | .Sset id a => id :: exprT a
+    | .Scall optid a al => optid.toList ++ exprT a ++ al.flatMap exprT
+    | .Sbuiltin optid _ _ al => optid.toList ++ al.flatMap exprT
+    | .Ssequence s1 s2 => stmtT s1 ++ stmtT s2
+    | .Sifthenelse a s1 s2 => exprT a ++ stmtT s1 ++ stmtT s2
+    | .Sloop s1 s2 => stmtT s1 ++ stmtT s2
+    | .Sreturn oa => (oa.map exprT).getD []
+    | .Sswitch a sl => exprT a ++ lsT sl
+    | .Slabel _ s => stmtT s
+    | .Sskip | .Sbreak | .Scontinue | .Sgoto _ => []
+
+  def lsT : labeled_statements → List ident
+    | .LSnil => []
+    | .LScons _ s sl => stmtT s ++ lsT sl
+end
+
+/-- The identifiers of globals in a definition: the local variables and the globals of the body
+of an internal function, and the targets of `Init_addrof` of a variable. -/
+def globdefG : globdef (fundef function) type → List ident
+  | .Gfun (.Internal f) => f.fn_vars.map (·.1) ++ stmtG f.fn_body
+  | .Gfun (.External ..) => []
+  | .Gvar v => v.gvar_init.flatMap fun
+      | .Init_addrof id _ => [id]
+      | _ => []
+
+/-- The temporaries of a definition: the parameters, temporaries, and temporaries of the body
+of an internal function. -/
+def globdefT : globdef (fundef function) type → List ident
+  | .Gfun (.Internal f) => f.fn_params.map (·.1) ++ f.fn_temps.map (·.1) ++ stmtT f.fn_body
+  | _ => []
+
+/-- The identifiers of globals in a program: its `main`, and the identifier and the globals of
+each definition. -/
+def progG (p : program function) : List ident :=
+  p.prog_main :: p.prog_defs.flatMap fun d => d.1 :: globdefG d.2
+
+/-- The temporaries of the definitions under the identifier `id`. -/
+def tempsOf (defs : List (ident × globdef (fundef function) type)) (id : ident) : List ident :=
+  (defs.filter fun d => d.1 == id).flatMap fun d => globdefT d.2
+
+/-! ### Renaming depends only on the identifiers that occur -/
+
+section Congr
+
+variable {g g' t t' : ident → ident}
+
+theorem renExpr_congr : ∀ (a : expr), (∀ x ∈ exprG a, g x = g' x) →
+    (∀ x ∈ exprT a, t x = t' x) → renExpr g t a = renExpr g' t' a
+  | .Econst_int .., _, _ | .Econst_float .., _, _ | .Econst_single .., _, _
+  | .Econst_long .., _, _ | .Esizeof .., _, _ | .Ealignof .., _, _ => rfl
+  | .Evar id ty, hg, _ => by simp [renExpr, hg id (by simp [exprG])]
+  | .Etempvar id ty, _, ht => by simp [renExpr, ht id (by simp [exprT])]
+  | .Ederef a ty, hg, ht => by
+      simp only [renExpr, renExpr_congr a (fun x hx => hg x (by simpa [exprG] using hx))
+        (fun x hx => ht x (by simpa [exprT] using hx))]
+  | .Eaddrof a ty, hg, ht => by
+      simp only [renExpr, renExpr_congr a (fun x hx => hg x (by simpa [exprG] using hx))
+        (fun x hx => ht x (by simpa [exprT] using hx))]
+  | .Eunop op a ty, hg, ht => by
+      simp only [renExpr, renExpr_congr a (fun x hx => hg x (by simpa [exprG] using hx))
+        (fun x hx => ht x (by simpa [exprT] using hx))]
+  | .Ecast a ty, hg, ht => by
+      simp only [renExpr, renExpr_congr a (fun x hx => hg x (by simpa [exprG] using hx))
+        (fun x hx => ht x (by simpa [exprT] using hx))]
+  | .Efield a f ty, hg, ht => by
+      simp only [renExpr, renExpr_congr a (fun x hx => hg x (by simpa [exprG] using hx))
+        (fun x hx => ht x (by simpa [exprT] using hx))]
+  | .Ebinop op a1 a2 ty, hg, ht => by
+      simp only [renExpr,
+        renExpr_congr a1 (fun x hx => hg x (by simp [exprG, hx]))
+          (fun x hx => ht x (by simp [exprT, hx])),
+        renExpr_congr a2 (fun x hx => hg x (by simp [exprG, hx]))
+          (fun x hx => ht x (by simp [exprT, hx]))]
+
+theorem renExprs_congr {al : List expr} (hg : ∀ x ∈ al.flatMap exprG, g x = g' x)
+    (ht : ∀ x ∈ al.flatMap exprT, t x = t' x) :
+    al.map (renExpr g t) = al.map (renExpr g' t') :=
+  List.map_congr_left fun a ha =>
+    renExpr_congr a (fun x hx => hg x (List.mem_flatMap.mpr ⟨a, ha, hx⟩))
+      (fun x hx => ht x (List.mem_flatMap.mpr ⟨a, ha, hx⟩))
+
+theorem optmap_congr {o : Option ident} (ht : ∀ x ∈ o.toList, t x = t' x) :
+    o.map t = o.map t' := by
+  cases o with
+  | none => rfl
+  | some x => simp [ht x (by simp)]
+
+mutual
+  theorem renStmt_congr : ∀ (s : statement), (∀ x ∈ stmtG s, g x = g' x) →
+      (∀ x ∈ stmtT s, t x = t' x) → renStmt g t s = renStmt g' t' s
+    | .Sskip, _, _ | .Sbreak, _, _ | .Scontinue, _, _ | .Sgoto _, _, _ => rfl
+    | .Sassign a1 a2, hg, ht => by
+        simp only [renStmt,
+          renExpr_congr a1 (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx])),
+          renExpr_congr a2 (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx]))]
+    | .Sset id a, hg, ht => by
+        simp only [renStmt, ht id (by simp [stmtT]),
+          renExpr_congr a (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx]))]
+    | .Scall optid a al, hg, ht => by
+        simp only [renStmt,
+          optmap_congr (o := optid) (fun x hx => ht x (by simp [stmtT, hx])),
+          renExpr_congr a (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx])),
+          renExprs_congr (al := al)
+            (fun x hx => hg x (by rw [stmtG]; exact List.mem_append_right _ hx))
+            (fun x hx => ht x (by rw [stmtT]; exact List.mem_append_right _ hx))]
+    | .Sbuiltin optid ef tys al, hg, ht => by
+        simp only [renStmt,
+          optmap_congr (o := optid) (fun x hx => ht x (by simp [stmtT, hx])),
+          renExprs_congr (al := al) (fun x hx => hg x (by rw [stmtG]; exact hx))
+            (fun x hx => ht x (by rw [stmtT]; exact List.mem_append_right _ hx))]
+    | .Ssequence s1 s2, hg, ht => by
+        simp only [renStmt,
+          renStmt_congr s1 (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx])),
+          renStmt_congr s2 (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx]))]
+    | .Sifthenelse a s1 s2, hg, ht => by
+        simp only [renStmt,
+          renExpr_congr a (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx])),
+          renStmt_congr s1 (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx])),
+          renStmt_congr s2 (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx]))]
+    | .Sloop s1 s2, hg, ht => by
+        simp only [renStmt,
+          renStmt_congr s1 (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx])),
+          renStmt_congr s2 (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx]))]
+    | .Sreturn none, _, _ => rfl
+    | .Sreturn (some a), hg, ht => by
+        simp only [renStmt, Option.map_some,
+          renExpr_congr a (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx]))]
+    | .Sswitch a sl, hg, ht => by
+        simp only [renStmt,
+          renExpr_congr a (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx])),
+          renLabeled_congr sl (fun x hx => hg x (by simp [stmtG, hx]))
+            (fun x hx => ht x (by simp [stmtT, hx]))]
+    | .Slabel lbl s, hg, ht => by
+        simp only [renStmt,
+          renStmt_congr s (fun x hx => hg x (by simpa [stmtG] using hx))
+            (fun x hx => ht x (by simpa [stmtT] using hx))]
+
+  theorem renLabeled_congr : ∀ (sl : labeled_statements), (∀ x ∈ lsG sl, g x = g' x) →
+      (∀ x ∈ lsT sl, t x = t' x) → renLabeled g t sl = renLabeled g' t' sl
+    | .LSnil, _, _ => rfl
+    | .LScons c s sl, hg, ht => by
+        simp only [renLabeled,
+          renStmt_congr s (fun x hx => hg x (by simp [lsG, hx]))
+            (fun x hx => ht x (by simp [lsT, hx])),
+          renLabeled_congr sl (fun x hx => hg x (by simp [lsG, hx]))
+            (fun x hx => ht x (by simp [lsT, hx]))]
+end
+
+theorem renBindings_congr {r r' : ident → ident} {l : List (ident × type)}
+    (h : ∀ x ∈ l.map (·.1), r x = r' x) : renBindings r l = renBindings r' l :=
+  List.map_congr_left fun p hp => by rw [h p.1 (List.mem_map_of_mem hp)]
+
+theorem renGlobdef_congr (d : globdef (fundef function) type) (hg : ∀ x ∈ globdefG d, g x = g' x)
+    (ht : ∀ x ∈ globdefT d, t x = t' x) : renGlobdef g t d = renGlobdef g' t' d := by
+  cases d with
+  | Gfun fd =>
+      cases fd with
+      | Internal f =>
+          have hp : renBindings t f.fn_params = renBindings t' f.fn_params :=
+            renBindings_congr fun x hx => ht x (by
+              rw [globdefT]; exact List.mem_append_left _ (List.mem_append_left _ hx))
+          have hv : renBindings g f.fn_vars = renBindings g' f.fn_vars :=
+            renBindings_congr fun x hx => hg x (by
+              rw [globdefG]; exact List.mem_append_left _ hx)
+          have htm : renBindings t f.fn_temps = renBindings t' f.fn_temps :=
+            renBindings_congr fun x hx => ht x (by
+              rw [globdefT]; exact List.mem_append_left _ (List.mem_append_right _ hx))
+          have hb : renStmt g t f.fn_body = renStmt g' t' f.fn_body :=
+            renStmt_congr f.fn_body
+              (fun x hx => hg x (by rw [globdefG]; exact List.mem_append_right _ hx))
+              (fun x hx => ht x (by rw [globdefT]; exact List.mem_append_right _ hx))
+          simp only [renGlobdef, renFundef, renFunction, hp, hv, htm, hb]
+      | External => rfl
+  | Gvar v =>
+      have hi : v.gvar_init.map (renInit g) = v.gvar_init.map (renInit g') := by
+        refine List.map_congr_left fun i hi => ?_
+        cases i with
+        | Init_addrof id ofs =>
+            simp only [renInit, hg id (List.mem_flatMap.mpr ⟨_, hi, by simp⟩)]
+        | _ => rfl
+      simp only [renGlobdef, hi]
+
+end Congr
+
+/-- The judgment of a whole program survives every renaming that is injective on the
+identifiers of globals in the program, `progG p`, and, for each identifier `id`, on the
+temporaries of the definitions under `id`.  The trace is renamed by an injective map that agrees
+with `g` on `progG p`. -/
+theorem bigstep_program_terminates_rename_on {A : Archi} {g : ident → ident}
+    {τ : ident → ident → ident} {p p' : program function}
+    (hg : ∀ x ∈ progG p, ∀ y ∈ progG p, g x = g y → x = y)
+    (hτ : ∀ id, ∀ x ∈ tempsOf p.prog_defs id, ∀ y ∈ tempsOf p.prog_defs id,
+      τ id x = τ id y → x = y)
+    (hdefs : p'.prog_defs = renDefs g τ p.prog_defs) (hmain : p'.prog_main = g p.prog_main)
+    {tr : trace} {r : int} (h : bigstep_program_terminates A ExtSem.none p tr r) (X' : ExtSem) :
+    ∃ g' : ident → ident, (∀ x ∈ progG p, g' x = g x) ∧
+      bigstep_program_terminates A X' p' (renTrace g' tr) r := by
+  obtain ⟨g', hinj, heq⟩ := exists_injective_extension (progG p) g hg
+  have hext := fun id => exists_injective_extension (tempsOf p.prog_defs id) (τ id) (hτ id)
+  let τ' := fun id => Classical.choose (hext id)
+  have hτ' : ∀ id, Function.Injective (τ' id) := fun id => (Classical.choose_spec (hext id)).1
+  have hτeq : ∀ id, ∀ x ∈ tempsOf p.prog_defs id, τ' id x = τ id x :=
+    fun id => (Classical.choose_spec (hext id)).2
+  have hsame : renDefs g' τ' p.prog_defs = renDefs g τ p.prog_defs := by
+    refine List.map_congr_left fun d hd => ?_
+    have hd1 : d.1 ∈ progG p := List.mem_cons_of_mem _
+      (List.mem_flatMap.mpr ⟨d, hd, List.mem_cons_self ..⟩)
+    rw [heq d.1 hd1, renGlobdef_congr d.2
+      (fun x hx => heq x (List.mem_cons_of_mem _
+        (List.mem_flatMap.mpr ⟨d, hd, List.mem_cons_of_mem _ hx⟩)))
+      (fun x hx => hτeq d.1 x (List.mem_flatMap.mpr
+        ⟨d, List.mem_filter.mpr ⟨hd, by simp⟩, hx⟩))]
+  exact ⟨g', heq, bigstep_program_terminates_rename_none hinj hτ' (by rw [hdefs, hsame])
+    (by rw [hmain, heq _ (List.mem_cons_self ..)]) h X'⟩
 
 end LClight
