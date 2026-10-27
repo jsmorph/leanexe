@@ -660,13 +660,13 @@ theorem Ty.Rep.step {mode : Mode} {heap heap' : Heap} {store store' : Store Unit
     · have hKept := fun r (hr : r ∈ value.toNode.slotRegions store ptr) =>
         hStep.keeps r (NodeBorrowed.regions ptr value.toNode ha r hr)
           (Node.slotRegions_pos value.toNode_slotted r hr) (hKeep r hr)
-      obtain ⟨hNode, hRegions⟩ := NodeBorrowed.frame ptr value.toNode ha
+      obtain ⟨hNode, hRegions⟩ := NodeBorrowed.frame hStep.at_ ptr value.toNode ha
         (fun r hr => ⟨(hKept r hr).1, (hKept r hr).2.1⟩)
       exact ⟨⟨ptr, rfl, hNode⟩, hRegions, fun r hr => (hKept r hr).2.2⟩
     · have hKept := fun r (hr : r ∈ value.toNode.blocks store ptr) =>
         hStep.keeps r (NodeOwned.regions ptr value.toNode ha.1 r hr)
           (Node.blocks_pos store ptr value.toNode r hr) (hKeep r hr)
-      obtain ⟨hNode, hBlocks⟩ := NodeOwned.frame ptr value.toNode ha.1
+      obtain ⟨hNode, hBlocks⟩ := NodeOwned.frame hStep.at_ ptr value.toNode ha.1
         (fun r hr => ⟨(hKept r hr).1, (hKept r hr).2.1⟩)
       exact ⟨⟨ptr, rfl, hNode, by rw [hBlocks]; exact ha.2⟩, hBlocks,
         fun r hr => (hKept r hr).2.2⟩
@@ -680,7 +680,7 @@ theorem Ty.Rep.step {mode : Mode} {heap heap' : Heap} {store store' : Store Unit
       obtain ⟨hHeader, hCapacity⟩ :=
         TreeHeader.Owned.frame ⟨words, hLength, hHead, hSlots⟩
           (fun a hLow hHigh => hKept.1 a (by simp only [block]; omega)
-            (by simp only [block]; omega)) hKept.2.1
+            (by simp only [block]; omega)) hKept.2.1 hStep.at_
       refine ⟨⟨ptr, rfl, hHeader⟩, ?_, ?_⟩
       · simp only [Ty.regions, Ty.blocks, block_eq hCapacity]
       · intro r hr

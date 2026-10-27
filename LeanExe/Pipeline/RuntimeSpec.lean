@@ -155,16 +155,6 @@ theorem releaseLocals_eq (ptr pending object previous current : UInt64) :
       ReleaseVars.toLocals ⟨ptr, 1, pending, object, 0, 0, 0, 0, 0, 0, 0, previous, current⟩ :=
   rfl
 
-/-- The block facts of an object that `release` frees: its header lies above the reserved
-area, and its block lies inside the 32-bit address space, below `top`, and outside every
-free block. -/
-structure Heap.Object (heap : Heap) (store : Store Unit) (ptr : UInt64) : Prop where
-  base : 4096 + 48 ≤ ptr.toNat
-  address : ptr.toNat + capacityAt store ptr < 4294967296
-  below : ptr.toNat + capacityAt store ptr ≤ heap.top.toNat
-  separate : ∀ node ∈ heap.free,
-    regionsDisjoint node.region (ptr.toNat - 48, 48 + capacityAt store ptr)
-
 theorem Heap.Owned.object {heap : Heap} {store : Store Unit} {ptr : UInt64}
     {words : Array UInt64} (h : heap.Owned store ptr words) : heap.Object store ptr :=
   ⟨h.base, h.address, h.below, h.separate⟩

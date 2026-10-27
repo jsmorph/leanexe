@@ -7,7 +7,7 @@ open Wasm LeanExe.Pipeline LeanExe.ProofKit
 theorem wp_storeWord {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
     {s : Locals} {root index value : UInt64} {bytes : LeanExe.Bytes}
     {vs : List Value} {rest : Program} {Q : Assertion Unit}
-    (hHeap : heap.At store) (h : Allocated heap store root bytes)
+    (hHeap : heap.At store) (h : Heap.Buffer heap store root bytes)
     (hi : index.toNat < bytes.data.size)
     (hNext : wp m rest Q (writeByte store root index value.toUInt8)
       { s with values := vs } host) :

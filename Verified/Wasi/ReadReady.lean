@@ -6,7 +6,7 @@ open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
 def ReadReady (heap : Heap) (store : Store Unit) (root capacity : UInt64) : Prop :=
   (root = 0 ∧ capacity = 0) ∨
-    ∃ previous, Bytes.Allocated heap store root previous ∧ capacity.toNat ≤ capacityAt store root
+    ∃ previous, Heap.Buffer heap store root previous ∧ capacity.toNat ≤ capacityAt store root
 
 theorem ReadReady.address {heap : Heap} {store : Store Unit} {root capacity : UInt64}
     (h : ReadReady heap store root capacity) : root.toNat + capacity.toNat < 4294967296 := by

@@ -25,7 +25,7 @@ theorem After.writeByte {Γ : List Ty} {env : Env Γ} {slots : List Slot} {liveI
       (Bytes.updated bytes index.toNat value hi) heap1 (Bytes.writeByte store1 root index value)
       s1 [.i64 root, .i64 length] := by
   have hRep := a.bytes_rep
-  have hBuffer : Bytes.Allocated heap1 store1 root bytes :=
+  have hBuffer : Heap.Buffer heap1 store1 root bytes :=
     hRep.buffer.resolve_left fun hEmpty => by omega
   obtain ⟨hWrite, hCapacity⟩ := hBuffer.write_step a.step.at_ index hi value
   have hOutput := (hBuffer.write a.step.at_ index hi value).2

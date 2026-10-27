@@ -122,6 +122,10 @@ theorem wp_treeCopySlot {m : Module} (hm : Runtime m) {host : HostEnv Unit}
       intro heap' store' ptr s' hInv hVars
       exact hAfter heap' store' s' _ (current :: parents) hInv hVars
         (CopyRecord.work_descend (parents := parents) hBound hSlot rfl)
+  | array _ | bytes _ =>
+    obtain ⟨-, -, -, -, hLayout⟩ := id h.frames.current.layout
+    rcases SlotsLayout.word_or_child hLayout current.next hBound with ⟨_, he⟩ | ⟨_, he⟩ <;>
+      rw [hSlot] at he <;> cases he
 
 #print axioms wp_treeCopySlot
 

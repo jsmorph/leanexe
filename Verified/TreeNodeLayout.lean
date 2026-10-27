@@ -19,6 +19,13 @@ theorem slotsBlocks_length (store : Wasm.Store Unit) (ptr : UInt64) (i : Nat) :
   | .word _ :: rest => slotsBlocks_length store ptr (i + 1) rest
   | .child value :: rest => by
     simp only [slotsBlocks, List.length_append, Node.blocks_length, slotsBlocks_length, slotsRecords]
+  | .array _ :: rest => by
+    simp only [slotsBlocks, List.length_cons, slotsBlocks_length, slotsRecords]
+    omega
+  | .bytes data :: rest => by
+    simp only [slotsBlocks, List.length_append, List.length_map, slotsBlocks_length, slotsRecords]
+    unfold bufferRoots
+    split <;> rfl
 end
 
 mutual
@@ -31,6 +38,8 @@ def SlotsLayout (shape : TreeShape) : List Slot → Prop
   | [] => True
   | .word _ :: rest => SlotsLayout shape rest
   | .child value :: rest => NodeLayout shape value ∧ SlotsLayout shape rest
+  | .array _ :: _ => False
+  | .bytes _ :: _ => False
 end
 
 mutual
@@ -50,6 +59,8 @@ theorem SlotsLayout.slotted {shape : TreeShape} :
   | .word _ :: rest, h => SlotsLayout.slotted (slots := rest) h
   | .child value :: rest, h =>
     ⟨NodeLayout.slotted (value := value) h.1, SlotsLayout.slotted (slots := rest) h.2⟩
+  | .array _ :: _, h => False.elim h
+  | .bytes _ :: _, h => False.elim h
 end
 
 theorem treeSlots_layout (shape : TreeShape) (fields : List Bool) :
@@ -87,6 +98,22 @@ theorem SlotsLayout.child {shape : TreeShape} :
   | .child _ :: _, h, 0, _, _, he => by cases he; exact h.1
   | .child _ :: rest, h, i + 1, hi, value, he =>
     SlotsLayout.child (slots := rest) h.2 i (by simpa using hi) value he
+  | .array _ :: _, h, _, _, _, _ => False.elim h
+  | .bytes _ :: _, h, _, _, _, _ => False.elim h
+
+/-- A slot of a record laid out by a shape is a word or a child. -/
+theorem SlotsLayout.word_or_child {shape : TreeShape} :
+    ∀ {slots : List Slot}, SlotsLayout shape slots → ∀ i (hi : i < slots.length),
+      (∃ w, slots[i] = .word w) ∨ ∃ value, slots[i] = .child value
+  | [], _, i, hi => by simp at hi
+  | .word w :: _, _, 0, _ => .inl ⟨w, rfl⟩
+  | .word _ :: rest, h, i + 1, hi =>
+    SlotsLayout.word_or_child (slots := rest) h i (by simpa using hi)
+  | .child value :: _, _, 0, _ => .inr ⟨value, rfl⟩
+  | .child _ :: rest, h, i + 1, hi =>
+    SlotsLayout.word_or_child (slots := rest) h.2 i (by simpa using hi)
+  | .array _ :: _, h, _, _ => False.elim h
+  | .bytes _ :: _, h, _, _ => False.elim h
 
 theorem treeSlots_records (fields : List Bool) :
     ∀ words children, slotsRecords (treeSlots fields words children) =
@@ -168,5 +195,6 @@ theorem Tree.copyCost_eq {shape : TreeShape} (value : Tree shape) :
 #print axioms Tree.toNode_records
 #print axioms Tree.copyCost_eq
 #print axioms NodeLayout.slotted
+#print axioms SlotsLayout.word_or_child
 
 end Verified

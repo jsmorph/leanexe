@@ -26,11 +26,11 @@ theorem GuestFrame.readStep {before after : Store World} {heap : Heap}
 
 theorem allocated_afterRead {before after : Store World} {heap : Heap}
     {root : UInt64} {capacity : Nat} {previous bytes : LeanExe.Bytes}
-    (h : Bytes.Allocated heap (PureTransport.erase before) root previous)
+    (h : Heap.Buffer heap (PureTransport.erase before) root previous)
     (hFrame : GuestFrame before after [ABI.scratch, (root.toNat, capacity)])
     (hSize : bytes.data.size ≤ capacityAt (PureTransport.erase before) root)
     (hData : Bytes.At after.mem root bytes) :
-    Bytes.Allocated heap (PureTransport.erase after) root bytes := by
+    Heap.Buffer heap (PureTransport.erase after) root bytes := by
   have hBase := h.object.base
   have hFit := h.object.address
   have hRead (offset : UInt64) (hLow : 8 ≤ offset.toNat) (hHigh : offset.toNat ≤ 48) :

@@ -1516,8 +1516,8 @@ theorem addAll_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 20) addAllMo
             heap1 store1 q1 (encode (KeyTree.addAll a l)) := hR1
         rwa [Node.pointers_blocks] at h
       -- The borrowed tree and the right subtree survive the first call.
-      obtain ⟨hA1, hSlots1, -⟩ := Heap.Keeps.nodeBorrowed hR1'.region hA (EncodeSlotted.slotRegions_pos a)
-        hApartL
+      obtain ⟨hA1, hSlots1, -⟩ := Heap.Keeps.nodeBorrowed hR1'.region hR1'.at_ hA
+        (EncodeSlotted.slotRegions_pos a) hApartL
       obtain ⟨hr1, hrBlocks1, -⟩ := hR1'.keepNode hr fun b hb g hg =>
         regionsDisjoint_symm (hlr g hg b hb)
       have hPr1 : (Node.blocks store1 pr (encode r)).Pairwise regionsDisjoint := by
@@ -1935,7 +1935,7 @@ theorem leftSpine_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 21) leftS
             heap1 store1 q1 (encode (KeyTree.leftSpine r l)) := hR1
         rwa [Node.pointers_blocks] at h
       -- The borrowed tree and the lent right child survive the call.
-      obtain ⟨hA1, -, -⟩ := Heap.Keeps.nodeBorrowed hR1'.region hA
+      obtain ⟨hA1, -, -⟩ := Heap.Keeps.nodeBorrowed hR1'.region hR1'.at_ hA
         (EncodeSlotted.slotRegions_pos g) hApartL
       obtain ⟨hr1, hrBlocks1, -⟩ := hR1'.keepNode hr fun b hb c hc =>
         regionsDisjoint_symm (hlr c hc b hb)
@@ -2178,7 +2178,7 @@ theorem splitRoot_children {heap heap' : Heap} {initial final : Store Unit} {p k
       (∀ b ∈ Node.blocks (clearedBoth initial p) p
           (.record [.child .null, .word k, .child .null]), regionsDisjoint q b) →
       (∀ a, q.1 ≤ a → a < q.1 + q.2 → final.mem.bytes a = (clearedBoth initial p).mem.bytes a) ∧
-        heap'.Region q) :
+        heap'.Region q) (hAt : heap'.At final) :
     Represent.owned heap' final
         [.i64 (initial.mem.read64 (slotAddress p 0)), .i64 (initial.mem.read64 (slotAddress p 2))]
         (l, r) ∧
@@ -2228,12 +2228,14 @@ theorem splitRoot_children {heap heap' : Heap} {initial final : Store Unit} {p k
     refine ⟨fun a hLow hHigh => (hBytes a hLow hHigh).trans (hW.2.2 a ?_), hReg⟩
     simp only [regionsDisjoint, block] at hp
     omega
-  obtain ⟨hlF, hlBlocksF⟩ := NodeOwned.frame (heap' := heap') (store' := final) _ (encode l) hl
-    fun b hb => hKeep b (NodeOwned.regions _ _ hl b hb) (Node.blocks_pos initial _ _ b hb)
-      (regionsDisjoint_symm (hP0 b (List.mem_append_left _ hb)))
-  obtain ⟨hrF, hrBlocksF⟩ := NodeOwned.frame (heap' := heap') (store' := final) _ (encode r) hr
-    fun b hb => hKeep b (NodeOwned.regions _ _ hr b hb) (Node.blocks_pos initial _ _ b hb)
-      (regionsDisjoint_symm (hP0 b (List.mem_append_right _ hb)))
+  obtain ⟨hlF, hlBlocksF⟩ :=
+    NodeOwned.frame (heap' := heap') (store' := final) hAt _ (encode l) hl fun b hb =>
+      hKeep b (NodeOwned.regions _ _ hl b hb) (Node.blocks_pos initial _ _ b hb)
+        (regionsDisjoint_symm (hP0 b (List.mem_append_left _ hb)))
+  obtain ⟨hrF, hrBlocksF⟩ :=
+    NodeOwned.frame (heap' := heap') (store' := final) hAt _ (encode r) hr fun b hb =>
+      hKeep b (NodeOwned.regions _ _ hr b hb) (Node.blocks_pos initial _ _ b hb)
+        (regionsDisjoint_symm (hP0 b (List.mem_append_right _ hb)))
   rw [treePair_blocks]
   refine ⟨treePair_owned hlF (by rw [hlBlocksF]; exact hPl) hrF (by rw [hrBlocksF]; exact hPr)
     (by rw [hlBlocksF, hrBlocksF]; exact hlr), fun q hq hpos hGone => ?_⟩
@@ -2354,7 +2356,7 @@ theorem splitRoot_implements : Implements treeMoves.module 15 splitRootMoved := 
       · refine (Stmt.releaseNode_spec hImports hRelease rfl hAt2 hC2 hD2).mono
           (fun _ _ h => h) ?_
         rintro s st ⟨rfl, heap', hAt, hCaps, hRegion⟩
-        obtain ⟨hPair, hKeeps⟩ := splitRoot_children hHeap hOwned hDisjoint hRegion
+        obtain ⟨hPair, hKeeps⟩ := splitRoot_children hHeap hOwned hDisjoint hRegion hAt
         exact ⟨heap', hAt, hCaps, [.i64 pl, .i64 pr], s5, rfl, hPair, hKeeps⟩
     · rintro s st ⟨rfl, rfl⟩
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
@@ -2606,12 +2608,12 @@ theorem splitOr_implements : Implements treeMoves.module 17 splitOrMoved := by
         refine (Stmt.releaseNode_spec hImports hRelease rfl hAt2 hC2 hD2).mono
           (fun _ _ h => h) ?_
         rintro s st ⟨rfl, heap', hAt, hCaps, hRegion⟩
-        obtain ⟨hPair, hKeeps⟩ := splitRoot_children hHeap hOwned hDisjoint hRegion
+        obtain ⟨hPair, hKeeps⟩ := splitRoot_children hHeap hOwned hDisjoint hRegion hAt
         exact ⟨rfl, heap', hAt, hCaps, hPair, hKeeps⟩
       · -- `b`, released: the other branch moves it.
         refine Triple.of_forall fun s st ⟨hst, heap', hAt, hCaps, hPair, hKeeps⟩ => ?_
         subst hst
-        obtain ⟨hB', hBlocksB, hApartB⟩ := Heap.Keeps.node hKeeps hB fun x hx g hg =>
+        obtain ⟨hB', hBlocksB, hApartB⟩ := Heap.Keeps.node hKeeps hAt hB fun x hx g hg =>
           regionsDisjoint_symm (hTB g hg x hx)
         have hDb' : (Node.blocks s pb (encode b)).Pairwise regionsDisjoint := by
           rw [hBlocksB]; exact hDb
@@ -2632,9 +2634,9 @@ theorem splitOr_implements : Implements treeMoves.module 17 splitOrMoved := by
             ∀ g ∈ Node.blocks s pb (encode b), regionsDisjoint x g := fun x hx g hg =>
           regionsDisjoint_symm (hApartB g (by rwa [hBlocksB] at hg) x
             (by rw [treePair_blocks]; exact hx))
-        obtain ⟨hl'', hlBlocks, -⟩ := Heap.Keeps.node hK'' hl fun x hx g hg =>
+        obtain ⟨hl'', hlBlocks, -⟩ := Heap.Keeps.node hK'' hAt'' hl fun x hx g hg =>
           hFresh x (List.mem_append_left _ hx) g hg
-        obtain ⟨hr'', hrBlocks, -⟩ := Heap.Keeps.node hK'' hr fun x hx g hg =>
+        obtain ⟨hr'', hrBlocks, -⟩ := Heap.Keeps.node hK'' hAt'' hr fun x hx g hg =>
           hFresh x (List.mem_append_right _ hx) g hg
         refine ⟨heap'', hAt'', hCaps''.trans hCaps, [.i64 pl, .i64 pr], s5, rfl, ?_, ?_⟩
         · exact treePair_owned hl'' (by rw [hlBlocks]; exact hDl) hr'' (by rw [hrBlocks]; exact hDr)
@@ -2695,7 +2697,7 @@ theorem keepOld_implements : Implements treeMoves.module 18 keepOldMoved := by
   -- The tree keeps its records through the copy, which consumes nothing, and through `incr`,
   -- which consumes only the copy.
   obtain ⟨hT1, hBlocks1, hApart1⟩ := hR1.keepNode hOwned fun _ _ _ hg => nomatch hg
-  obtain ⟨hT2, hBlocks2, hApart2⟩ := Heap.Keeps.node hK2 hT1 fun b hb g hg =>
+  obtain ⟨hT2, hBlocks2, hApart2⟩ := Heap.Keeps.node hK2 hAt2 hT1 fun b hb g hg =>
     hApart1 b (hBlocks1 ▸ hb) g hg
   have hBlocks : Node.blocks store2 p (encode t) = Node.blocks initial p (encode t) :=
     hBlocks2.trans hBlocks1
@@ -2738,7 +2740,7 @@ theorem addSelf_implements : Implements treeMoves.module 19 KeyTree.addSelf := b
       fun q => by simp [State.setAll, State.set?, start]) ?_
   refine Triple.of_forall fun store1 st1 ⟨heap1, q1, hst, hR1⟩ => ?_
   subst hst
-  obtain ⟨hB1, hRegions1, hApart1⟩ := Heap.Keeps.nodeBorrowed hR1.region hB
+  obtain ⟨hB1, hRegions1, hApart1⟩ := Heap.Keeps.nodeBorrowed hR1.region hR1.at_ hB
     (EncodeSlotted.slotRegions_pos t) fun _ _ _ hg => nomatch hg
   obtain ⟨hArgs, hSep⟩ := treePair_args hB1 hR1.owned hR1.disjoint fun s hs c hc =>
     hApart1 s (hRegions1 ▸ hs) c hc

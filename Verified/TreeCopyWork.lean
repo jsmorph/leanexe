@@ -1,5 +1,6 @@
 import LeanExe.Pipeline.ReleaseTree
 import Verified.AllocCost
+import Verified.Bytes.Cost
 
 namespace Verified
 
@@ -14,11 +15,13 @@ def slotsCopySteps : List Slot → Nat
   | [] => 0
   | .word _ :: rest => 1 + slotsCopySteps rest
   | .child value :: rest => 1 + nodeCopySteps value + slotsCopySteps rest
+  | .array _ :: rest => 1 + slotsCopySteps rest
+  | .bytes _ :: rest => 1 + slotsCopySteps rest
 end
 
 mutual
-/-- The growth of `top` for the copies of the records of a node, `allocCost (8 * w)` for a record
-of `w` slots. -/
+/-- The growth of `top` for the copies of the objects of a node: `allocCost (8 * w)` for a record
+of `w` slots, and the costs of `Ty.copyCost` for an array of words and for a buffer. -/
 def nodeCopyCost : Node → Nat
   | .null => 0
   | .record slots => allocCost (8 * slots.length) + slotsCopyCost slots
@@ -27,6 +30,8 @@ def slotsCopyCost : List Slot → Nat
   | [] => 0
   | .word _ :: rest => slotsCopyCost rest
   | .child value :: rest => nodeCopyCost value + slotsCopyCost rest
+  | .array words :: rest => allocCost ((words.size + 1) * 8) + slotsCopyCost rest
+  | .bytes data :: rest => Bytes.allocationCost data.data.size + slotsCopyCost rest
 end
 
 inductive CopyWork where
@@ -48,6 +53,10 @@ inductive CopyWork.Step : CopyWork → CopyWork → Prop where
   | null {rest parents} : Step (.current (.child .null :: rest) parents) (.current rest parents)
   | descend {children rest parents} :
       Step (.current (.child (.record children) :: rest) parents) (.current children (rest :: parents))
+  | array {words rest parents} :
+      Step (.current (.array words :: rest) parents) (.current rest parents)
+  | bytes {data rest parents} :
+      Step (.current (.bytes data :: rest) parents) (.current rest parents)
   | ascend {rest parents} : Step (.current [] (rest :: parents)) (.current rest parents)
   | finish : Step (.current [] []) .done
 
@@ -59,9 +68,12 @@ theorem CopyWork.Step.steps {before after : CopyWork} (h : Step before after) :
 theorem CopyWork.Step.decreases {before after : CopyWork} (h : Step before after) :
     after.steps < before.steps := by rw [h.steps]; omega
 
-/-- The growth of `top` for the step from `work`: the copy of a record child's record. -/
+/-- The growth of `top` for the step from `work`: the copy of a record child's record, of an
+array, or of a buffer. -/
 def CopyWork.charge : CopyWork → Nat
   | .current (.child (.record children) :: _) _ => allocCost (8 * children.length)
+  | .current (.array words :: _) _ => allocCost ((words.size + 1) * 8)
+  | .current (.bytes data :: _) _ => Bytes.allocationCost data.data.size
   | _ => 0
 
 theorem CopyWork.Step.cost {before after : CopyWork} (h : Step before after) :
@@ -90,6 +102,8 @@ theorem CopyWork.next (slots : List Slot) (parents : List (List Slot)) :
       cases value with
       | null => exact ⟨.current rest parents, .null⟩
       | record children => exact ⟨.current children (rest :: parents), .descend⟩
+    | array _ => exact ⟨.current rest parents, .array⟩
+    | bytes _ => exact ⟨.current rest parents, .bytes⟩
 
 inductive CopyWork.Run : CopyWork → CopyWork → Nat → Prop where
   | refl {work} : Run work work 0

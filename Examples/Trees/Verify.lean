@@ -243,7 +243,7 @@ theorem sizeSum_implements : Implements trees.module 5 KeyTree.sizeSum := by
   obtain rfl : st1 = { params := [.i64 p], locals := [.i64 t.size, .i64 0] } :=
     (Option.some.inj (hSet1.symm.trans rfl))
   have hB1 : NodeBorrowed heap1 s1 p (encode t) :=
-    (hK1.nodeBorrowed hNode (EncodeSlotted.slotRegions_pos t) fun _ _ _ hg => nomatch hg).1
+    (hK1.nodeBorrowed hAt1 hNode (EncodeSlotted.slotRegions_pos t) fun _ _ _ hg => nomatch hg).1
   refine (Stmt.callImplements_spec sum_implements rfl (compile_funcs (i := 1) rfl) rfl
     (results := [2]) (x := t) rfl hAt1 ⟨p, rfl, hB1⟩ Separate.nil
     (memoryCap_le_of_caps hCaps1 hCap)
@@ -294,7 +294,7 @@ theorem pushSum_implements : Implements trees.module 6 pushSumMoved := by
   rintro s2 st2 ⟨heap1, p1, hL1, hF1, g20⟩
   -- The tree is kept through the push: its slot regions lie apart from the consumed block.
   have hB1 : NodeBorrowed heap1 s2 q (encode t) :=
-    (hL1.keeps.nodeBorrowed hNode (EncodeSlotted.slotRegions_pos t) fun b hb g hg => by
+    (hL1.keeps.nodeBorrowed hL1.at_ hNode (EncodeSlotted.slotRegions_pos t) fun b hb g hg => by
       simp only [List.map_cons, List.map_nil, List.mem_singleton] at hg
       subst hg
       exact hApart b hb).1
@@ -365,7 +365,7 @@ theorem dropSmall_implements : Implements trees.module 7 dropSmallMoved := by
   obtain rfl : values1 = [.i64 t.size] := hOwned1
   obtain rfl : st = s1 := (Option.some.inj (hSet1.symm.trans rfl))
   -- The tree comes back owned with the same blocks, since `size` consumes nothing.
-  obtain ⟨hOwnedT, hBlocks, -⟩ := Heap.Keeps.node hK1 hOwned fun _ _ _ hg => nomatch hg
+  obtain ⟨hOwnedT, hBlocks, -⟩ := Heap.Keeps.node hK1 hAt1 hOwned fun _ _ _ hg => nomatch hg
   have hDisjoint1 : (Node.blocks store1 p (encode t)).Pairwise regionsDisjoint := by
     rw [hBlocks]; exact hDisjoint
   have hK : heap.Keeps initial (Node.blocks initial p (encode t)) heap1 store1 [] :=
@@ -443,7 +443,7 @@ theorem sizeDrop_implements : Implements trees.module 8 sizeDropMoved := by
   obtain rfl : values1 = [.i64 c] := hOwned1
   obtain rfl : st = s1 := (Option.some.inj (hSet1.symm.trans rfl))
   -- The tree comes back owned with the same blocks, since `size` consumes nothing.
-  obtain ⟨hOwnedT, hBlocks, -⟩ := Heap.Keeps.node hK1 hOwned fun _ _ _ hg => nomatch hg
+  obtain ⟨hOwnedT, hBlocks, -⟩ := Heap.Keeps.node hK1 hAt1 hOwned fun _ _ _ hg => nomatch hg
   have hDisjoint1 : (Node.blocks store1 p (encode t)).Pairwise regionsDisjoint := by
     rw [hBlocks]; exact hDisjoint
   have hK : heap.Keeps initial (Node.blocks initial p (encode t)) heap1 store1 [] :=
@@ -741,7 +741,7 @@ theorem droppedSize_implements : Implements trees.module 13 droppedSizeMoved := 
   let s2 : State := ⟨[.i64 n, .i64 p], [.i64 q, .i64 u.size, .i64 0]⟩
   let s3 : State := ⟨[.i64 n, .i64 p], [.i64 q, .i64 u.size, .i64 u.size]⟩
   obtain rfl : st = s2 := (Option.some.inj (hSet2.symm.trans rfl))
-  obtain ⟨hQ2, hBlocks2, -⟩ := Heap.Keeps.node hK2 hQ fun _ _ _ hg => nomatch hg
+  obtain ⟨hQ2, hBlocks2, -⟩ := Heap.Keeps.node hK2 hAt2 hQ fun _ _ _ hg => nomatch hg
   have hDQ2 : (Node.blocks store2 q (encode u)).Pairwise regionsDisjoint := by
     rw [hBlocks2]; exact hDQ
   refine Stmt.seq_spec (M := fun s st => s = store2 ∧ st = s3)
@@ -785,7 +785,7 @@ theorem dropWithSize_implements : Implements trees.module 14 dropWithSizeMoved :
   obtain rfl : values2 = [.i64 u.size] := hOwned2
   obtain rfl : st = ⟨[.i64 n, .i64 p], [.i64 q, .i64 u.size]⟩ :=
     (Option.some.inj (hSet2.symm.trans rfl))
-  obtain ⟨hQ2, hBlocks2, -⟩ := Heap.Keeps.node hK2 hQ fun _ _ _ hg => nomatch hg
+  obtain ⟨hQ2, hBlocks2, -⟩ := Heap.Keeps.node hK2 hAt2 hQ fun _ _ _ hg => nomatch hg
   have hDQ2 : (Node.blocks store2 q (encode u)).Pairwise regionsDisjoint := by
     rw [hBlocks2]; exact hDQ
   refine ⟨heap2, hAt2, hCaps2.trans hCaps1, [.i64 u.size, .i64 q], _, rfl,

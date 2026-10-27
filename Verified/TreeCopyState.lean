@@ -38,17 +38,19 @@ theorem CopyRecord.Holds.frame {shape : TreeShape} {heap heap' : Heap}
     (hSource : ∀ r ∈ (Node.record record.slots).slotRegions store record.source,
       (∀ a, r.1 ≤ a → a < r.1 + r.2 → store'.mem.bytes a = store.mem.bytes a) ∧ heap'.Region r)
     (hChildren : ∀ b ∈ slotsBlocks store record.pointer 0 (record.slots.take record.next),
-      (∀ a, b.1 ≤ a → a < b.1 + b.2 → store'.mem.bytes a = store.mem.bytes a) ∧ heap'.Region b) :
+      (∀ a, b.1 ≤ a → a < b.1 + b.2 → store'.mem.bytes a = store.mem.bytes a) ∧ heap'.Region b)
+    (hAt : heap'.At store') :
     record.Holds shape heap' store' parent ∧ record.blocks store' = record.blocks store := by
   obtain ⟨hStorage, hCapacity⟩ := h.storage.frame hBytes hRegion
-  obtain ⟨hBorrowed, _⟩ := NodeBorrowed.frame record.source (.record record.slots) h.borrowed hSource
+  obtain ⟨hBorrowed, _⟩ :=
+    NodeBorrowed.frame hAt record.source (.record record.slots) h.borrowed hSource
   have hBase := h.storage.base
   have hRoom := h.storage.capacity
   have hAddress := h.storage.address
   have hBound := h.bound
   have hTaken : (record.slots.take record.next).length = record.next :=
     List.length_take_of_le h.bound
-  obtain ⟨hPrefix, hBlocks⟩ := SlotsOwned.frame record.pointer 0
+  obtain ⟨hPrefix, hBlocks⟩ := SlotsOwned.frame hAt record.pointer 0
     (record.slots.take record.next) h.filled (by rw [hTaken]; omega)
     (fun a hLow hHigh => hBytes a (by omega) (by rw [hTaken] at hHigh; omega)) hChildren
   have hRead (back : UInt64) (h8 : 8 ≤ back.toNat) (h40 : back.toNat ≤ 40) :

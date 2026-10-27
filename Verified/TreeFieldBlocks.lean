@@ -10,7 +10,7 @@ def fieldBlocks (store : Store Unit) : List UInt64 → List LeanExe.Pipeline.Slo
   | _, _ => []
 
 theorem fieldValues_frame {heap heap' : Heap} {store store' : Store Unit}
-    {words : List UInt64} {slots : List LeanExe.Pipeline.Slot}
+    {words : List UInt64} {slots : List LeanExe.Pipeline.Slot} (hAt : heap'.At store')
     (hValues : List.Forall₂ (fun word slot => slot.ValueOwned heap store word) words slots)
     (hRegions : ∀ b ∈ fieldBlocks store words slots,
       (∀ a, b.1 ≤ a → a < b.1 + b.2 → store'.mem.bytes a = store.mem.bytes a) ∧
@@ -21,7 +21,7 @@ theorem fieldValues_frame {heap heap' : Heap} {store store' : Store Unit}
   | nil => exact ⟨.nil, rfl⟩
   | cons hValue hValues ih =>
     simp only [fieldBlocks] at hRegions ⊢
-    obtain ⟨hValue', hFirst⟩ := hValue.frame
+    obtain ⟨hValue', hFirst⟩ := hValue.frame hAt
       (fun b hb => hRegions b (List.mem_append_left _ hb))
     obtain ⟨hValues', hRest⟩ := ih (fun b hb => hRegions b (List.mem_append_right _ hb))
     exact ⟨.cons hValue' hValues', by rw [hFirst, hRest]⟩

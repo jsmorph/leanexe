@@ -30,6 +30,19 @@ theorem SlotsOwned.pointers_from_blocks {heap : Heap} {store : Store Unit} :
     simp only [slotsBlocks, slotsPointers, List.map_append,
       NodeOwned.pointers_from_blocks _ value hChild,
       SlotsOwned.pointers_from_blocks ptr (i + 1) rest hRest]
+  | ptr, i, .array _ :: rest, ⟨hArray, hRest⟩ => by
+    have hBase := hArray.base
+    simp only [slotsBlocks, slotsPointers, List.map_cons,
+      block_pointer (ptr := store.mem.read64 (slotAddress ptr i)) (by omega),
+      SlotsOwned.pointers_from_blocks ptr (i + 1) rest hRest]
+  | ptr, i, .bytes data :: rest, ⟨hBuffer, hRest⟩ => by
+    rw [slotsBlocks, slotsPointers, List.map_append,
+      SlotsOwned.pointers_from_blocks ptr (i + 1) rest hRest]
+    rcases hBuffer with ⟨-, hEmpty⟩ | ⟨hNonempty, hBuffer⟩
+    · simp only [bufferRoots, hEmpty, ↓reduceIte, List.map_nil]
+    · have hBase := hBuffer.object.base
+      simp only [bufferRoots, hNonempty, ↓reduceIte, List.map_cons, List.map_nil,
+        block_pointer (ptr := store.mem.read64 (slotAddress ptr i)) (by omega)]
 end
 
 end LeanExe.Pipeline

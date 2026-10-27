@@ -15,7 +15,7 @@ theorem Step.nodeBorrowed {heap heap' : Heap} {store store' : Store Unit}
   have hRegions := fun r (hr : r ∈ value.slotRegions store p) =>
     h.keeps r (NodeBorrowed.regions p value hNode r hr)
       (Node.slotRegions_pos hSlotted r hr) trivial
-  obtain ⟨hNode', _⟩ := NodeBorrowed.frame p value hNode
+  obtain ⟨hNode', _⟩ := NodeBorrowed.frame h.at_ p value hNode
     (fun r hr => ⟨(hRegions r hr).1, (hRegions r hr).2.1⟩)
   exact ⟨hNode', fun r hr => (hRegions r hr).2.2⟩
 
@@ -41,7 +41,7 @@ theorem CopyRecord.Holds.stepKeeping {shape : TreeShape} {heap heap' : Heap}
     (fun a hLow hHigh => hRaw.1 a (by simp only [block]; omega)
       (by simp only [block]; omega)) hRaw.2.1
     (fun r hr => ⟨(hSource r hr).1, (hSource r hr).2.1⟩)
-    (fun b hb => ⟨(hChildren b hb).1, (hChildren b hb).2.1⟩)
+    (fun b hb => ⟨(hChildren b hb).1, (hChildren b hb).2.1⟩) hStep.at_
   refine ⟨hRecord, hBlocks, fun b hb => ?_⟩
   rcases List.mem_cons.mp hb with rfl | hb
   · exact hRaw.2.2

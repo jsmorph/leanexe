@@ -46,12 +46,12 @@ theorem TreeHeader.Owned.frame {shape : TreeShape} {r : Fin shape.records} {heap
     {store store' : Store Unit} {p : UInt64} (h : Owned shape r heap store p)
     (hBytes : ∀ a, p.toNat - 48 ≤ a → a < p.toNat + capacityAt store p →
       store'.mem.bytes a = store.mem.bytes a)
-    (hRegion : heap'.Region (block store p)) :
+    (hRegion : heap'.Region (block store p)) (hAt : heap'.At store') :
     Owned shape r heap' store' p ∧ capacityAt store' p = capacityAt store p := by
   obtain ⟨words, hLength, hHead, hSlots⟩ := h
   have hBlocks : Node.blocks store p (.record (words.map Slot.word)) = [block store p] := by
     simp only [Node.blocks, wordSlots_blocks]
-  obtain ⟨hNode, _⟩ := NodeOwned.frame p (.record (words.map Slot.word)) ⟨hHead, hSlots⟩
+  obtain ⟨hNode, _⟩ := NodeOwned.frame hAt p (.record (words.map Slot.word)) ⟨hHead, hSlots⟩
     (fun b hb => by
       rw [hBlocks, List.mem_singleton] at hb
       subst b

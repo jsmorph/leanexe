@@ -32,6 +32,21 @@ theorem slots_blocks_scratch {heap : Heap} {store : Store Unit} :
       rcases List.mem_append.mp member with member | member
       · exact node_blocks_scratch _ value child region member
       · exact slots_blocks_scratch root (index + 1) rest fields region member
+  | root, index, .array _ :: rest, ⟨array, fields⟩, region, member => by
+      rcases List.mem_cons.mp member with rfl | member
+      · exact block_scratch array.base
+      · exact slots_blocks_scratch root (index + 1) rest fields region member
+  | root, index, .bytes data :: rest, ⟨buffer, fields⟩, region, member => by
+      rcases List.mem_append.mp member with member | member
+      · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp member
+        rcases buffer with ⟨-, hEmpty⟩ | ⟨-, buffer⟩
+        · simp [bufferRoots, hEmpty] at hq
+        · have : q = store.mem.read64 (slotAddress root index) := by
+            unfold bufferRoots at hq
+            split at hq <;> simp_all
+          subst this
+          exact block_scratch buffer.object.base
+      · exact slots_blocks_scratch root (index + 1) rest fields region member
 
 end
 

@@ -9,7 +9,7 @@ theorem wp_copyByte {m : Module} {host : HostEnv Unit} {heap : Heap} {store : St
     {s : Locals} {source destination index : UInt64} {input output : LeanExe.Bytes}
     {sourceSlot destinationSlot indexSlot : Nat} {rest : Program} {Q : Assertion Unit}
     (hHeap : heap.At store) (hSource : At store.mem source input)
-    (hDestination : Allocated heap store destination output)
+    (hDestination : Heap.Buffer heap store destination output)
     (hIndex : index.toNat < input.data.size) (hOutput : index.toNat < output.data.size)
     (hSourceLocal : s.get sourceSlot = some (.i64 source))
     (hDestinationLocal : s.get destinationSlot = some (.i64 destination))

@@ -1,5 +1,6 @@
 import LeanExe.Runtime.FreeList
 import LeanExe.ProofKit.Array
+import LeanExe.Dialect.Bytes
 
 namespace LeanExe.Pipeline
 
@@ -63,6 +64,32 @@ structure Heap.Owned (heap : Heap) (store : Store Unit) (ptr : UInt64)
   below : ptr.toNat + capacityAt store ptr ≤ heap.top.toNat
   separate : ∀ node ∈ heap.free,
     regionsDisjoint node.region (ptr.toNat - 48, 48 + capacityAt store ptr)
+
+/-- The block facts of an object that `release` frees: its header lies above the reserved
+area, and its block lies inside the 32-bit address space, below `top`, and outside every
+free block. -/
+structure Heap.Object (heap : Heap) (store : Store Unit) (ptr : UInt64) : Prop where
+  base : 4096 + 48 ≤ ptr.toNat
+  address : ptr.toNat + capacityAt store ptr < 4294967296
+  below : ptr.toNat + capacityAt store ptr ≤ heap.top.toNat
+  separate : ∀ node ∈ heap.free,
+    regionsDisjoint node.region (ptr.toNat - 48, 48 + capacityAt store ptr)
+
+/-- A runtime buffer object at root `root` holding `bytes`, packed from the root: reference
+count one, element width one, no child pointers, and a capacity of at least one word that
+holds the bytes. -/
+structure Heap.Buffer (heap : Heap) (store : Store Unit) (root : UInt64)
+    (bytes : LeanExe.Bytes) : Prop where
+  object : heap.Object store root
+  magic : store.mem.read64 (root - 48).toUInt32 = objectMagic
+  count : store.mem.read64 (root - 40).toUInt32 = 1
+  minimum : 8 ≤ capacityAt store root
+  capacity : bytes.data.size ≤ capacityAt store root
+  kind : store.mem.read64 (root - 24).toUInt32 = 2
+  width : store.mem.read64 (root - 16).toUInt32 = 1
+  childMask : store.mem.read64 (root - 8).toUInt32 = 0
+  contents : ∀ (i : Nat) (hi : i < bytes.data.size),
+    store.mem.bytes (root.toNat + i) = bytes.data[i]
 
 /-- A region below `top` and outside every free block, which allocation leaves alone. -/
 structure Heap.Region (heap : Heap) (r : Nat × Nat) : Prop where

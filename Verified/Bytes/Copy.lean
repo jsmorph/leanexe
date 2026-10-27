@@ -9,7 +9,7 @@ theorem wp_copy {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store 
     {s : Locals} {source destination : UInt64} {input output : LeanExe.Bytes}
     {sourceSlot destinationSlot countSlot indexSlot : Nat} {rest : Program} {Q : Assertion Unit}
     (hHeap : heap.At store) (hSource : At store.mem source input)
-    (hDestination : Allocated heap store destination output)
+    (hDestination : Heap.Buffer heap store destination output)
     (hSize : input.data.size = output.data.size)
     (hApart : source.toNat + input.data.size ≤ destination.toNat ∨
       destination.toNat + output.data.size ≤ source.toNat)
@@ -21,7 +21,7 @@ theorem wp_copy {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store 
     (hLow : s.params.length ≤ indexSlot) (hHigh : indexSlot < s.params.length + s.locals.length)
     (hNext : ∀ (store' : Store Unit) (s' : Locals), heap.At store' →
       Memory.WritesRange store store' destination.toNat (destination.toNat + output.data.size) →
-      Allocated heap store' destination input → s'.params = s.params →
+      Heap.Buffer heap store' destination input → s'.params = s.params →
       s'.locals.length = s.locals.length →
       (∀ j, j ≠ indexSlot → s'.get j = s.get j) → s'.values = s.values →
       wp m rest Q store' s' host) :
@@ -37,7 +37,7 @@ theorem wp_copy {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store 
   refine wp_loop_cons
     (fun st si => ∃ i, i ≤ input.data.size ∧ heap.At st ∧
       Memory.WritesRange store st destination.toNat (destination.toNat + output.data.size) ∧
-      Allocated heap st destination (overlay input output hSize i) ∧
+      Heap.Buffer heap st destination (overlay input output hSize i) ∧
       si.params = s.params ∧ si.locals.length = s.locals.length ∧
       (∀ j, j ≠ indexSlot → si.get j = s.get j) ∧
       si.get indexSlot = some (.i64 (UInt64.ofNat i)))
@@ -84,7 +84,7 @@ theorem wp_copy {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store 
       simp only [hi64]
       let st' := writeByte st destination (UInt64.ofNat i) input.data[i]
       have hWrite := hDestinationNow.write hHeapNow (UInt64.ofNat i) hOutput input.data[i]
-      have hDestinationNext : Allocated heap st' destination
+      have hDestinationNext : Heap.Buffer heap st' destination
           (overlay input output hSize (i + 1)) := by
         simpa only [hi64, overlay_succ input output hSize i hLessOutput] using hWrite.2
       have hWriteRange := hDestinationNow.write_range (UInt64.ofNat i) hOutput input.data[i]

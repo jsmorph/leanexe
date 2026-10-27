@@ -10,7 +10,7 @@ theorem wp_buildLoop {m : Module} {host : HostEnv Unit} {heap : Heap} {store : S
     {s : Locals} {count root : UInt64} {output initial : LeanExe.Bytes}
     {base : Nat} {element rest : Program} {Q : Assertion Unit} {aborts : Bool}
     (P : Nat → Heap → Store Unit → Locals → Prop)
-    (hHeap : heap.At store) (hBuffer : Allocated heap store root initial)
+    (hHeap : heap.At store) (hBuffer : Heap.Buffer heap store root initial)
     (hSize : output.data.size = initial.data.size)
     (hLength : output.data.size = count.toNat)
     (hCount : s.get base = some (.i64 count))
@@ -20,14 +20,14 @@ theorem wp_buildLoop {m : Module} {host : HostEnv Unit} {heap : Heap} {store : S
     (hInitial : P 0 heap store (setLocal { s with values := s.values } (base + 2) (.i64 0)))
     (hElement : ∀ (i : Nat) (hi : i < output.data.size)
         (heapI : Heap) (st : Store Unit) (si : Locals),
-      heapI.At st → Allocated heapI st root (overlay output initial hSize i) →
+      heapI.At st → Heap.Buffer heapI st root (overlay output initial hSize i) →
       Frame base s si → si.get base = some (.i64 count) →
       si.get (base + 1) = some (.i64 root) →
       si.get (base + 2) = some (.i64 (UInt64.ofNat i)) → si.values = s.values →
       P i heapI st si → ∀ (tail : Program) (Post : Assertion Unit),
       TrapOK aborts Post →
       (∀ (heapE : Heap) (stE : Store Unit) (se : Locals) (value : UInt64),
-        heapE.At stE → Allocated heapE stE root (overlay output initial hSize i) →
+        heapE.At stE → Heap.Buffer heapE stE root (overlay output initial hSize i) →
         Frame (base + 3) si se → value.toUInt8 = output.data[i] →
         P (i + 1) heapE (writeByte stE root (UInt64.ofNat i) value.toUInt8)
           (setLocal { se with values := si.values } (base + 2) (.i64 (UInt64.ofNat (i + 1)))) →
@@ -37,7 +37,7 @@ theorem wp_buildLoop {m : Module} {host : HostEnv Unit} {heap : Heap} {store : S
       wp m (element ++ tail) Post st
         { si with values := .i32 (root + UInt64.ofNat i).toUInt32 :: si.values } host)
     (hNext : ∀ (heap' : Heap) (store' : Store Unit) (s' : Locals), heap'.At store' →
-      Allocated heap' store' root output → Frame base s s' →
+      Heap.Buffer heap' store' root output → Frame base s s' →
       s'.get base = some (.i64 count) → s'.get (base + 1) = some (.i64 root) →
       s'.get (base + 2) = some (.i64 (UInt64.ofNat output.data.size)) →
       P output.data.size heap' store' s' → s'.values = s.values →
@@ -49,7 +49,7 @@ theorem wp_buildLoop {m : Module} {host : HostEnv Unit} {heap : Heap} {store : S
   refine wp_block_cons ?_
   refine wp_loop_cons
     (fun st si => ∃ heapI i, i ≤ output.data.size ∧ heapI.At st ∧
-      Allocated heapI st root (overlay output initial hSize i) ∧ Frame base s si ∧
+      Heap.Buffer heapI st root (overlay output initial hSize i) ∧ Frame base s si ∧
       si.get base = some (.i64 count) ∧ si.get (base + 1) = some (.i64 root) ∧
       si.get (base + 2) = some (.i64 (UInt64.ofNat i)) ∧ si.values = s.values ∧
       P i heapI st si)
@@ -96,7 +96,7 @@ theorem wp_buildLoop {m : Module} {host : HostEnv Unit} {heap : Heap} {store : S
         exact hLess
       refine wp_storeWord hHeapE hBufferE hOutput ?_
       have hWrite := hBufferE.write hHeapE (UInt64.ofNat i) hOutput value.toUInt8
-      have hBufferNext : Allocated heapE (writeByte stE root (UInt64.ofNat i) value.toUInt8)
+      have hBufferNext : Heap.Buffer heapE (writeByte stE root (UInt64.ofNat i) value.toUInt8)
           root (overlay output initial hSize (i + 1)) := by
         simpa only [hi64, hValue, overlay_succ output initial hSize i (by omega)] using hWrite.2
       have hCountE : se.get base = some (.i64 count) :=
