@@ -1,6 +1,6 @@
 import Demos.RunningSum.Limits
 import Demos.RunningSum.Module
-import Verified.LoopCostLast
+import Verified.ChargeFacts
 import Verified.Wasi.ResourceRules
 
 /-! The allocation charges of the integer running sum's `begin` and steps, and their bounds for
@@ -10,23 +10,6 @@ namespace Demos.RunningSum
 
 open Verified Verified.Wasi Verified.Wasi.Resource LeanExe LeanExe.Wasi
 open Demos.StreamFold (StreamPosition StreamHost observedStreamRep)
-
-theorem allocationCost_le (count : Nat) : Bytes.allocationCost count ≤ count + 55 := by
-  unfold Bytes.allocationCost
-  split
-  · omega
-  · rw [Nat.max_def]
-    split <;> omega
-
-theorem allocationCost_mono {small large : Nat} (le : small ≤ large) :
-    Bytes.allocationCost small ≤ Bytes.allocationCost large := by
-  unfold Bytes.allocationCost
-  split
-  · omega
-  · split
-    · omega
-    · rw [Nat.max_def, Nat.max_def]
-      split <;> split <;> omega
 
 /-- The bytes of a copy of a state whose total has `total` digits, whose line has `line` words,
 and whose buffers have `input` and `output` bytes. -/
@@ -61,40 +44,6 @@ theorem finishDigits_size_le (raw : Array UInt64) (bound : raw.size < UInt64.siz
   rw [Magnitude.reverseAscii_size raw _ (by omega)]
   exact trimmed
 
-theorem fold_push_size {α β : Type} {F : UInt64 → Array α × β → Array α × β}
-    (pushes : ∀ i state, (F i state).1.size = state.1.size + 1) (init : Array α × β) :
-    ∀ count : Nat,
-      (Nat.fold count (fun i _ state => F (UInt64.ofNat i) state) init).1.size =
-        init.1.size + count
-  | 0 => by simp
-  | count + 1 => by
-      simp only [Nat.fold_succ, pushes, fold_push_size pushes init count]
-      omega
-
-theorem loop_push_size {α β : Type} {F : UInt64 → Array α × β → Array α × β}
-    (pushes : ∀ i state, (F i state).1.size = state.1.size + 1) (count : UInt64)
-    (init : Array α × β) : (LeanExe.loop count init F).1.size = init.1.size + count.toNat :=
-  fold_push_size pushes init count.toNat
-
-theorem repeatWhile_pred_le (fuel start : UInt64) (cond : UInt64 → Bool)
-    (positive : ∀ size, cond size = true → 0 < size.toNat) :
-    (LeanExe.repeatWhile fuel start cond (fun size => size - 1)).toNat ≤ start.toNat := by
-  unfold LeanExe.repeatWhile
-  generalize fuel.toNat = steps
-  induction steps generalizing start with
-  | zero => simp [LeanExe.repeatWhile.go]
-  | succ steps ih =>
-      simp only [LeanExe.repeatWhile.go]
-      split
-      · rename_i holds
-        have startPositive := positive start holds
-        have one : (1 : UInt64) ≤ start :=
-          UInt64.le_iff_toNat_le.mpr (by rw [UInt64.toNat_one]; omega)
-        have previous := ih (start - 1)
-        rw [UInt64.toNat_sub_of_le _ _ one] at previous
-        omega
-      · exact Nat.le_refl _
-
 theorem combineMagnitude_size_le (a b : Array UInt64) (subtract : Bool)
     (bound : max a.size b.size + 1 < UInt64.size) :
     (combineMagnitude a b subtract).size ≤ max a.size b.size + 1 := by
@@ -117,11 +66,6 @@ theorem add_digits_le (a b : Decimal)
       change (combineMagnitude b.digits a.digits true).size ≤ _
       omega
     · exact combineMagnitude_size_le _ _ _ bound
-
-theorem blockCost_le_of_le {small large : Nat} (le : small ≤ large) :
-    blockCost small ≤ blockCost large := by
-  rw [blockCost_eq, blockCost_eq]
-  omega
 
 theorem parse_bound_le (line : Array UInt64) (bound : line.size < UInt64.size) :
     io.pureSources.parse.bound line ≤ blockCost line.size := by
@@ -190,18 +134,6 @@ theorem max_toNat_le (a b : Array UInt64) (bound : a.size + b.size < UInt64.size
   have bNat : b.size.toUInt64.toNat = b.size := UInt64.toNat_ofNat_of_lt' (by omega)
   change (if a.size.toUInt64 ≤ b.size.toUInt64 then b.size.toUInt64 else a.size.toUInt64).toNat ≤ _
   split <;> omega
-
-theorem toUInt64_toNat_le (n : Nat) : n.toUInt64.toNat ≤ n := by
-  simp only [Nat.toUInt64_eq, UInt64.toNat_ofNat']
-  exact Nat.mod_le _ _
-
-theorem ite_zero_le (condition : Prop) [Decidable condition] (x : Nat) :
-    (if condition then x else 0) ≤ x := by
-  split <;> omega
-
-theorem ite_push_size_le {α : Type} (condition : Prop) [Decidable condition] (xs : Array α)
-    (x : α) : (if condition then xs.push x else xs).size ≤ xs.size + 1 := by
-  split <;> simp
 
 /-- A bound on `combineMagnitude`'s charge for arrays of `m` words in all. -/
 def combineCost (m : Nat) : Nat := 104 * m + 232
