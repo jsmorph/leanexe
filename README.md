@@ -124,16 +124,16 @@ engines, hosts, and file emission.
 
 | Document | Contents |
 |---|---|
-| [The LeanExe compiler manual](docs/leanexe-manual.md) | Dialect, compilation, proof rules, tests, examples, and development practice. |
-| [The verified compiler manual](docs/verified-manual.md) | The verified compiler's dialect, the declarations that `verified_compile` adds, bounds, tests, and examples. |
-| [The verified compiler's internals](Verified/README.md) | Its code scheme, the structure of its proof, and the reflector. |
-| [The WASI manual](docs/wasi.md) | Native action and byte APIs, `verified_compile_wasi`, callable and command exports, execution proofs, host policies, and tests. |
-| [The WASI design](docs/verified-wasi-design.md) | Reviewed architecture, pinned sources, host assumptions, proof boundaries, acceptance work, and design decisions. |
-| [The design document](docs/design.md) | Architecture, decisions, proof scope, tests, and open work. |
-| [The development journal](devnotes.md) | The record of the work. |
-| [The algorithm library](Library/README.md) | Native algorithms, compilation modules, mathematical proofs, and imports. |
-| [The application demos](Demos/README.md) | Application definitions, proofs, host programs, and tests. |
-| [The algorithm index](index.md) | Algorithms, applications, compiler examples, and their proved results. |
+| [LeanExe compiler manual](docs/leanexe-manual.md) | Dialect, compilation, proof rules, tests, examples, and development practice. |
+| [Verified compiler manual](docs/verified-manual.md) | Dialect of the verified compiler, declarations that `verified_compile` adds, bounds, tests, and examples. |
+| [Verified compiler internals](Verified/README.md) | Code scheme, proof structure, and reflector. |
+| [WASI manual](docs/wasi.md) | Native action and byte APIs, `verified_compile_wasi`, callable and command exports, execution proofs, host policies, and tests. |
+| [WASI design](docs/verified-wasi-design.md) | Reviewed architecture, pinned sources, host assumptions, proof boundaries, acceptance work, and design decisions. |
+| [Design document](docs/design.md) | Architecture, decisions, proof scope, tests, and open work. |
+| [Development journal](devnotes.md) | Record of the work. |
+| [Algorithm library](Library/README.md) | Native algorithms, compilation modules, mathematical proofs, and imports. |
+| [Application demos](Demos/README.md) | Application definitions, proofs, host programs, and tests. |
+| [Algorithm index](index.md) | Algorithms, applications, compiler examples, and their proved results. |
 
 ## Layout
 

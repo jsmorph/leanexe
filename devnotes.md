@@ -36166,6 +36166,45 @@ The byte comparison with main passed.  All 98 verified modules emitted from main
 
 With the rebuilt host, `tests/verified/run.sh` passed in 3,491 seconds: 32,806 verified cases with no failure, the GPT cases (2,733), the GPT sessions (3,096), and the library cases (226).  The module and drone drivers passed again with the rebuilt host.  The full check of the merged tree is complete.  The WASI and running-sum drivers, the default and `Verified Library` builds, module emission, the LTG check, the module, chunk, drone, regex, and hashing tests, the verified driver, the GPU tests on the reference drivers, and the byte comparison of all 133 of main's modules passed.  `origin/main` is still `d1f851729`, an ancestor of the branch.
 
+## 2026-10-26: Sums with heap fields: design
+
+The task extends the verified compiler in two stages: constructor fields of a flat sum that hold heap values (`Bytes`, arrays, and recursive types), and then typed fields of tree records.  The work happens on `typed-fields`, edited in a worktree and built in an independent clone.  The baseline bytes come from the unchanged compiler: every module of `tests/verified/modules.txt`, the WASI byte and literal modules, and the two running-sum modules.  The range proofs of the numerical library import the compiled modules, so any change to the compiler rebuilds them, and the baseline builds only the emitted modules and their imports.  I stopped the first baseline job, which had begun the full library build, after its first range proof, for that reason.
+
+A sum is already represented as its `Flat` tuple.  `instRepresentOfFlat` gives a sum whose tuple holds heap values the `Represent` instance of that tuple, as it gives a record with array fields, and the source language holds such a tuple as a `Ty.pair`.  The compiler, its proofs, and the runtime therefore need no change: the extension lies in the reflector, and existing programs keep their bytes because no path they take changes.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Inactive fields | The values that the user's `Flat` instance gives, reflected as ordinary terms | The instance is the representation that the theorems state.  `Bytes.empty` is `(0, 0)` and allocates nothing, a null tree allocates nothing, and `#[]` allocates an empty array, since an array value is a pointer to a block.  A compiler-chosen placeholder, such as a null array pointer, would represent no Lean value and would need a new `Represent` instance in the trusted base. |
+| Variables | A variable of such a sum stays whole; the reflector does not split it as it splits pairs and records | The sum cannot be rebuilt from its tuple without a decoder, whose inverse law fails on tuples that encode no constructor. |
+| Match | `let p := Flat.flat x` followed by the chain of tag tests over the components of `p`, proved by constructor cases as for a scalar sum | The `let` destructures the variable once with `letPair`, and the ownership rules release each owned component that a branch does not use.  A scalar sum keeps its projection form, term for term. |
+| Field types | Scalars, `Bytes`, arrays, and recursive types | These are the types that a component of the tuple holds directly.  A field that is itself a record with arrays or a sum with heap fields is rejected with a message. |
+| Parameters | Borrowed, as records are | `Ty.paramMode` gives a pair type the borrowed mode, so a callee that consumes a field copies it. |
+| Recursive types inside a sum | `prepareRecursiveTypes` also reads the `Flat` tuples of the sums that the listed types use | A program may use a recursive type only inside a sum. |
+
+A wildcard alternative that names the matched value reads the whole variable, so the match on an owned variable copies it before it takes the copy apart, as for trees.  An alternative that rebuilds its constructor from the fields instead allocates a fresh `#[]` for each inactive array.  The example uses both forms, and the manual states the costs.  The Wasmtime host gains a `bytes` item for `list:` results, which takes the root and the length.
+
+- [x] `shapeOf`, `sumLayout`, `reflectDataMatch`, variable splitting, `pairView`, `recordFlat?`, and `prepareRecursiveTypes`.
+- [x] The example `Verified/Examples/HeapSums.lean` with native guards, its cases, and its axiom audit.
+- [x] Baseline bytes from the unchanged compiler.
+- [x] Build, run the cases, and compare bytes.
+- [x] Manual, README, and restrictions.
+- [x] Full build, `tests/verified/run.sh`, `tests/wasi/run.sh`, byte comparison, and commit.
+
+## 2026-10-26: Sums with heap fields: results
+
+The baseline from the unchanged compiler holds 98 modules of the registry and the four extra modules, and `sum.wasm` and `sumfp.wasm` have the SHA-256 values `1bf77c05…a70c5` and `2491ed85…39614` that the task states.  It took 45 minutes: Lgamma's compiled module alone with one worker, then the emitted modules and their imports with three workers.
+
+The first build of the example stopped at `measure`, whose code took the call depth through `KeyTree.size` and needed 39 positions.  The destructuring of `Item`'s seven-word tuple stores each nested pair in fresh locals, 22 positions in all, beside the seven of the parameter.  The example now reads the root key instead, and a smaller sum, `Cell`, whose tuple has three words, carries the guarded call.  The manual states the cost.  With that change the example built in under a minute, with its 20 native guards, and `tests/verified/run.sh --cases heapsums` passed 235 of 286 cases, and each of the 51 failures exceeded the allocation bound of a `grow` case.  My account had assumed that `grow` moves its state, but its wildcard `| other => other` names the matched state, so each step copies the state before taking the copy apart, the cost that the design entry describes.  The bound now charges that copy, and `regrow`, which rebuilds each constructor, shows the other form.  The rerun passed all 370 cases, and the audit found 155 theorems of the example with only the permitted axioms.
+
+The first full gate built the sixteen heavy proofs one at a time with one worker, then `lake build Verified Library` with two workers from 17:05 to 20:57 UTC.  Every library target built, and `Verified` failed with one error: `Verified.lean` could not import `Verified.Examples.HeapSums`, because the environment already held `Library.Trees.WordTree.verifiedKeyTree.fromTree._f` from `Verified.Examples.RecursiveTypes`.  The reflector derives a recursive type's conversions and lemmas in the type's namespace, in the first module that compiles a program over the type, and both examples compiled programs over the library's `KeyTree`.  The case run imports the example alone, so it did not reveal the conflict.  The example now declares its own tree `Keys`, with `KeyTree`'s layout, and its cases convert to `KeyTree` only for the host's `tree-u64` text.  The manual states the limit.  The user asked for a command that derives a type's declarations next to the type's definition, as a separate change after the scalar fields of stage 2.
+
+The second gate found the heavy proofs and the library built, rebuilt the example and its importers, and built the default targets.  `tests/verified/run.sh` passed 33,176 cases with no failure, the heap sum audit and the accuracy checks included, and `tests/wasi/run.sh` exited with status 0.  The 98 registry modules, the WASI byte and literal modules, and the two running-sum modules are byte-identical to the baseline, and `sum.wasm` and `sumfp.wasm` keep their SHA-256 values.
+
+- [x] Baseline bytes from the unchanged compiler.
+- [x] Build, run the cases.
+- [x] Manual, README, and restrictions.
+- [x] Full build, `tests/verified/run.sh`, `tests/wasi/run.sh`, byte comparison, and commit.
+
 ## 2026-10-26: The slew planner: program, theorems, and tests
 
 The user asked to bring the Lean program of a slew-planner demo into the repository, to compile it with the verified compiler and test it in WebAssembly, and then to prove its theorems, starting with the lemmas of the edge check.  The work runs on the branch `slew-planner` from `d1f851729`, and phase A ran no Lean and connected to no build host.  The delivery also held a browser page, a JavaScript reference with a generated corpus, and a design document.  The branch first imported them and then removed them at the user's direction, since they will live outside the repository and the user does not take the JavaScript corpus as authoritative.  The repository keeps `Demos/Slew/Program.lean`, `Flat.lean`, `Verified.lean`, and a README that describes the Lean program alone.

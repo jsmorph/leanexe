@@ -95,15 +95,25 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     induction value <;> simp_all only [LeanExe.Pipeline.Encode.encode, $encode:term,
       $flatten:term] <;> rfl))
 
+/-- Derives the declarations of each recursive type that the types of the definitions `names`
+use, directly or through the `Flat` tuple of a sum, in the order of first use. -/
 def prepareRecursiveTypes (names : Array Name) : CommandElabM Unit := do
   let mut types : List Name := []
+  let mut pending : List Name := []
   for name in names do
-    let info ← getConstInfo name
-    for type in info.type.getUsedConstants do
-      unless types.contains type do
-        types := type :: types
-        if let some layout ← liftTermElabM (recursiveLayout? (mkConst type)) then
-          deriveRecursiveType layout
-          deriveRecursiveMatch layout
+    pending := pending ++ (← getConstInfo name).type.getUsedConstants.toList
+  repeat
+    let type :: rest := pending | break
+    pending := rest
+    if types.contains type then continue
+    types := type :: types
+    if let some layout ← liftTermElabM (recursiveLayout? (mkConst type)) then
+      deriveRecursiveType layout
+      deriveRecursiveMatch layout
+    let tuple ← liftTermElabM do
+      if (← sumName? (mkConst type)).isNone then return none
+      return (← flatInstance? (mkConst type)).map (·.1)
+    if let some β := tuple then
+      pending := pending ++ β.getUsedConstants.toList
 
 end Verified.Reflect

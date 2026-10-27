@@ -88,7 +88,7 @@ partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
   if let .letE n type value body _ := e then
     if ← isPlace value then return ← reflectTailBody t c (body.instantiate1 value)
     let ty ← tyOf type
-    if let .pair _ _ := ty then
+    if (ty matches .pair _ _) && !(← heapSum? type) then
       let view ← pairView c.base type
       let r ← destructureTail t c [] value fun a b => do
         return body.instantiate1 (← view.rebuild a b)
@@ -256,6 +256,7 @@ partial def reflectTailSplit (t : TailContext) (c : Ctx) (xs : List Lean.Expr)
   | x :: rest =>
     match ← tyOf (← inferType x) with
     | .pair _ _ =>
+      if ← heapSum? (← inferType x) then return ← reflectTailSplit t c rest body
       let view ← pairView c.base (← inferType x)
       let r ← destructureTail t c rest x fun a b => do
         return body.replaceFVar x (← view.rebuild a b)

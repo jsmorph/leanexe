@@ -188,6 +188,16 @@ partial def flatTree (type β inst : Lean.Expr) (ctor : ConstructorVal) :
       throwError "verified_compile: the `Flat` instance of {type} repeats a field"
     return leaves
 
+/-- The name of a sum: an inductive type without parameters or indices that is neither recursive,
+a structure, nor an enumeration. -/
+def sumName? (type : Lean.Expr) : MetaM (Option Name) := do
+  let .const name _ ← whnfR type | return none
+  let some (.inductInfo info) := (← getEnv).find? name | return none
+  unless info.numParams == 0 && info.numIndices == 0 && !info.isRec &&
+      !isStructure (← getEnv) name do return none
+  if ← isEnumType name then return none
+  return some name
+
 partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
   if let some e ← elemOf? type then return ⟨.elem e, none⟩
   let type ← whnfR type
@@ -218,7 +228,9 @@ partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
     return ⟨.array e, some f⟩
   if let some (β, inst) ← flatInstance? type then
     let sβ ← shapeOf β
-    unless sβ.ty matches .elem _ do
+    -- A sum whose tuple holds heap values is represented as its tuple, and `sumLayout` checks
+    -- the tuple where a constructor or a match needs it.
+    if !(sβ.ty matches .elem _) && (← sumName? type).isNone then
       -- A structure that holds arrays is split as its tuple, which must be a pair of all its
       -- fields.
       let some (ctor, _) ← structOf? type
@@ -235,6 +247,12 @@ partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
     `Flat` instance, an array, or a pair"
 
 def tyOf (type : Lean.Expr) : MetaM Ty := return (← shapeOf type).ty
+
+/-- Whether `type` is a sum whose `Flat` tuple holds heap values.  A variable of such a sum stays
+whole, since the sum cannot be rebuilt from its tuple, and a match destructures it. -/
+def heapSum? (type : Lean.Expr) : MetaM Bool := do
+  if (← sumName? type).isNone then return false
+  return !((← shapeOf type).ty matches .elem _)
 
 /-- The steps to field `i` of a structure value in its flattening, if the type is a structure
 with a `Flat` instance. -/
@@ -704,11 +722,23 @@ structure PairView where
 /-- The view of `type` as a pair.  A pair's eta is `pair_eta`.  A record's is the theorem
 `base.flat_eta.R`, added once per program and record type and proved by `rfl` with `B` and `v`
 free, so that the kernel unfolds only the `Flat` instance and structure eta, never the terms that
-`B` and `v` stand for. -/
+`B` and `v` stand for.  A sum that holds heap values has the components of its tuple, for the costs
+of its parts, and neither a rebuild nor an eta law. -/
 def pairView (base : Name) (type : Lean.Expr) : MetaM PairView := do
   let type ← whnfR type
   if let (``Prod, #[α, β]) := type.getAppFnArgs then
     return ⟨α, β, fun a b => mkAppM ``Prod.mk #[a, b], id, fun B v => mkAppM ``pair_eta #[B, v]⟩
+  if ← heapSum? type then
+    -- A sum's components are those of its tuple, and nothing rebuilds the sum from them.
+    let some (τ, inst) ← flatInstance? type
+      | throwError "verified_compile: the sum {type} has no `Flat` instance"
+    let (``Prod, #[α, β]) := (← whnfR τ).getAppFnArgs
+      | throwError "verified_compile: the `Flat` instance of {type} is not a pair"
+    let missing (what : String) : MetaM Lean.Expr :=
+      throwError "verified_compile: the sum {type} has no {what}; its variables stay whole"
+    return ⟨α, β, fun _ _ => missing "rebuild from its components",
+      fun p => mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type τ inst p,
+      fun _ _ => missing "eta law"⟩
   let some (ctor, _) ← structOf? type
     | throwError "verified_compile: {type} is not a pair or a record"
   let some (τ, inst) ← flatInstance? type
@@ -1638,14 +1668,6 @@ def projectTuple (value : Lean.Expr) : List Bool → MetaM Lean.Expr
   | false :: rest => do projectTuple (← mkAppM ``Prod.fst #[value]) rest
   | true :: rest => do projectTuple (← mkAppM ``Prod.snd #[value]) rest
 
-def sumName? (type : Lean.Expr) : MetaM (Option Name) := do
-  let .const name _ ← whnfR type | return none
-  let some (.inductInfo info) := (← getEnv).find? name | return none
-  unless info.numParams == 0 && info.numIndices == 0 && !info.isRec &&
-      !isStructure (← getEnv) name do return none
-  if ← isEnumType name then return none
-  return some name
-
 partial def firstTuplePath (type : Lean.Expr) : MetaM (List Bool) := do
   if let (``Prod, #[a, _]) := (← whnfR type).getAppFnArgs then
     return false :: (← firstTuplePath a)
@@ -1656,8 +1678,6 @@ partial def firstTuplePath (type : Lean.Expr) : MetaM (List Bool) := do
 partial def sumLayout (type : Lean.Expr) (name : Name) : MetaM SumLayout := do
   let some (β, inst) ← flatInstance? type
     | throwError "verified_compile: {type} needs a Flat instance"
-  let .elem _ := (← shapeOf β).ty
-    | throwError "verified_compile: a sum's Flat tuple must hold scalar fields"
   let tagPath ← firstTuplePath β
   let info ← getConstInfoInduct name
   let ctors ← info.ctors.toArray.mapM fun ctorName => do
@@ -1685,8 +1705,10 @@ partial def sumLayout (type : Lean.Expr) (name : Name) : MetaM SumLayout := do
               {ctorName} exactly once"
         if path == tagPath then
           throwError "verified_compile: the Flat instance of {type} uses a field as its tag"
-        let .elem _ := (← shapeOf (← inferType field)).ty
-          | throwError "verified_compile: a sum field must be scalar: {field}"
+        match (← shapeOf (← inferType field)).ty with
+        | .elem _ | .bytes | .array _ | .tree _ => pure ()
+        | _ => throwError "verified_compile: a sum field must be a scalar, `Bytes`, an array, or \
+            a recursive type: {field}"
         return path
       return ({ name := ctorName, tag := UInt64.ofNat tag, fields := slots } : SumCtorLayout)
   unless (ctors.toList.map (·.tag)).eraseDups.length == ctors.size do
@@ -1779,7 +1801,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
   if let .letE n type value body _ := e then
     if ← isPlace value then return ← reflectAs (body.instantiate1 value) e
     let s ← tyOf type
-    if let .pair _ _ := s then
+    if (s matches .pair _ _) && !(← heapSum? type) then
       let view ← pairView c.base type
       let r ← destructure c [] value fun a b => do
         return body.instantiate1 (← view.rebuild a b)
@@ -3117,57 +3139,68 @@ where
     let flat := mkApp3 (mkConst ``LeanExe.Pipeline.Flat.flat) type layout.flatType layout.inst
     let altTys ← app.alts.mapM inferType
     let hyps := (List.range app.alts.size).toArray.map fun i => (Name.mkSimple s!"h{i}", altTys[i]!)
+    let heap ← heapSum? type
     withLocalDeclsDND hyps fun hs => withLocalDeclD `x type fun x => do
-      let choices ← layout.ctors.toList.mapM fun ctor => do
-        let info ← getConstInfoCtor ctor.name
-        forallTelescope info.type fun fields _ => do
-          let value := mkAppN (mkConst ctor.name) fields
-          let .reduced v ← reduceMatcher? { app with discrs := #[value], alts := hs }.toExpr
-            | throwError "verified_compile: cannot reduce the match {app.toExpr} at {ctor.name}"
-          let some j := hs.findIdx? (· == v.getAppFn)
-            | throwError "verified_compile: the match {app.toExpr} at {ctor.name} gives {v}"
-          let replacements ← ctor.fields.mapM (projectTuple (mkApp flat x))
-          let args := v.getAppArgs.map fun arg =>
-            (arg.replace fun term => if term == value then some x else none).replaceFVars
-              fields replacements
-          return (ctor.tag, j, args)
-      let groups ← (List.range app.alts.size).filterMapM fun j => do
-        let cs := choices.filter (·.2.1 == j)
-        let (_, _, args) :: _ := cs | return none
-        for (_, _, other) in cs do
-          unless args.size == other.size do
-            throwError "verified_compile: inconsistent alternative arguments in {app.toExpr}"
-          for i in [:args.size] do
-            unless ← kernelDefEq args[i]! other[i]! do
-              throwError "verified_compile: an alternative of {app.toExpr} binds different fields"
-        return some (cs.map (·.1), j, args)
-      let tag ← projectTuple (mkApp flat x) layout.tagPath
-      let rec chain (alts : Array Lean.Expr) (beta : Bool) :
-          List (List UInt64 × Nat × Array Lean.Expr) → MetaM Lean.Expr
-        | [] => throwError "verified_compile: the match {app.toExpr} has no alternatives"
-        | [(_, j, args)] => return if beta then alts[j]!.beta args else mkAppN alts[j]! args
-        | ([w], j, args) :: rest => do
-          let test ← mkAppM ``BEq.beq #[tag, toExpr w]
-          let branch := if beta then alts[j]!.beta args else mkAppN alts[j]! args
-          mkAppM ``ite #[← mkEq test (mkConst ``Bool.true), branch, ← chain alts beta rest]
-        | _ :: _ => throwError "verified_compile: a wildcard alternative must be last in {app.toExpr}"
-      let chainAbs ← chain hs false groups
-      let matchAbs := { app with discrs := #[x], alts := hs }.toExpr
-      let motive ← mkLambdaFVars #[x] (← mkEq chainAbs matchAbs)
-      let minors ← layout.ctors.mapM fun ctor => do
-        let info ← getConstInfoCtor ctor.name
-        forallTelescope info.type fun fields _ => do
-          let value := mkAppN (mkConst ctor.name) fields
-          let lhs := chainAbs.replaceFVar x value
-          let rhs := matchAbs.replaceFVar x value
-          unless ← kernelDefEq lhs rhs do
-            throwError "verified_compile: the Flat fields of {ctor.name} do not reproduce its match"
-          mkLambdaFVars fields (← mkExpectedTypeHint (← mkEqRefl lhs) (← mkEq lhs rhs))
-      let cases := mkAppN (mkConst (name ++ `casesOn) [Level.zero]) (#[motive, x] ++ minors)
-      let gen ← mkLambdaFVars (hs.push x) cases
-      let eq := mkAppN gen (app.alts.push d)
-      let chainReal := (← chain app.alts true groups).replaceFVar x d
-      reflectVia chainReal eq
+      -- The chain reads the components of the tuple `P` of `x` and closes it with `close`.  A sum
+      -- that holds heap values binds its tuple once with `let`, which the reflector destructures
+      -- into variables, one for each component; a scalar sum projects its variable.
+      let run (P : Lean.Expr) (close : Lean.Expr → MetaM Lean.Expr) : MetaM Reflection := do
+        let choices ← layout.ctors.toList.mapM fun ctor => do
+          let info ← getConstInfoCtor ctor.name
+          forallTelescope info.type fun fields _ => do
+            let value := mkAppN (mkConst ctor.name) fields
+            let .reduced v ← reduceMatcher? { app with discrs := #[value], alts := hs }.toExpr
+              | throwError "verified_compile: cannot reduce the match {app.toExpr} at {ctor.name}"
+            let some j := hs.findIdx? (· == v.getAppFn)
+              | throwError "verified_compile: the match {app.toExpr} at {ctor.name} gives {v}"
+            let replacements ← ctor.fields.mapM (projectTuple P)
+            let args := v.getAppArgs.map fun arg =>
+              (arg.replace fun term => if term == value then some x else none).replaceFVars
+                fields replacements
+            return (ctor.tag, j, args)
+        let groups ← (List.range app.alts.size).filterMapM fun j => do
+          let cs := choices.filter (·.2.1 == j)
+          let (_, _, args) :: _ := cs | return none
+          for (_, _, other) in cs do
+            unless args.size == other.size do
+              throwError "verified_compile: inconsistent alternative arguments in {app.toExpr}"
+            for i in [:args.size] do
+              unless ← kernelDefEq args[i]! other[i]! do
+                throwError "verified_compile: an alternative of {app.toExpr} binds different \
+                  fields"
+          return some (cs.map (·.1), j, args)
+        let tag ← projectTuple P layout.tagPath
+        let rec chain (alts : Array Lean.Expr) (beta : Bool) :
+            List (List UInt64 × Nat × Array Lean.Expr) → MetaM Lean.Expr
+          | [] => throwError "verified_compile: the match {app.toExpr} has no alternatives"
+          | [(_, j, args)] => return if beta then alts[j]!.beta args else mkAppN alts[j]! args
+          | ([w], j, args) :: rest => do
+            let test ← mkAppM ``BEq.beq #[tag, toExpr w]
+            let branch := if beta then alts[j]!.beta args else mkAppN alts[j]! args
+            mkAppM ``ite #[← mkEq test (mkConst ``Bool.true), branch, ← chain alts beta rest]
+          | _ :: _ =>
+            throwError "verified_compile: a wildcard alternative must be last in {app.toExpr}"
+        let chainAbs ← close (← chain hs false groups)
+        let matchAbs := { app with discrs := #[x], alts := hs }.toExpr
+        let motive ← mkLambdaFVars #[x] (← mkEq chainAbs matchAbs)
+        let minors ← layout.ctors.mapM fun ctor => do
+          let info ← getConstInfoCtor ctor.name
+          forallTelescope info.type fun fields _ => do
+            let value := mkAppN (mkConst ctor.name) fields
+            let lhs := chainAbs.replaceFVar x value
+            let rhs := matchAbs.replaceFVar x value
+            unless ← kernelDefEq lhs rhs do
+              throwError "verified_compile: the Flat fields of {ctor.name} do not reproduce its \
+                match"
+            mkLambdaFVars fields (← mkExpectedTypeHint (← mkEqRefl lhs) (← mkEq lhs rhs))
+        let cases := mkAppN (mkConst (name ++ `casesOn) [Level.zero]) (#[motive, x] ++ minors)
+        let gen ← mkLambdaFVars (hs.push x) cases
+        let eq := mkAppN gen (app.alts.push d)
+        let chainReal := (← close (← chain app.alts true groups)).replaceFVar x d
+        reflectVia chainReal eq
+      if heap then
+        withLetDecl `p layout.flatType (mkApp flat x) fun p => run p (mkLetFVars #[p])
+      else run (mkApp flat x) pure
 
   /-- An `if` on the condition `p` between `a` and `b`, whose meaning is the `if` of their
   flattenings. -/
@@ -3254,12 +3287,13 @@ where
       iteFits fthm [(`l, rl.src), (`r, rr.src)] [(`hl, rl), (`hr, rr)]
         (binFits c ``cmp_fits [(`op, cmpExpr op)] rl rr)⟩
   /-- The reflection of `body` in the context `c`, with each variable of `xs` that has a pair
-  type split first into its components. -/
+  type split first into its components, except a variable of a sum that holds heap values. -/
   reflectSplit (c : Ctx) : List Lean.Expr → Lean.Expr → MetaM Reflection
     | [], body => reflect c body
     | x :: rest, body => do
       match ← tyOf (← inferType x) with
       | .pair _ _ =>
+        if ← heapSum? (← inferType x) then return ← reflectSplit c rest body
         let view ← pairView c.base (← inferType x)
         let r ← destructure c rest x fun a b => do
           return body.replaceFVar x (← view.rebuild a b)
@@ -3874,6 +3908,7 @@ def recordFlat? (e : Lean.Expr) :
   let (``LeanExe.Pipeline.Flat.flat, #[type, τ, inst, x]) := e.getAppFnArgs | return none
   let .const _ _ := type | return none
   if (← shapeOf type).ty matches .elem _ then return none
+  if (← structOf? type).isNone then return none
   return some (type, τ, inst, x)
 
 /-- The proof of `(Flat.flat x).path = x.f`, for field `f` of a record type that holds arrays at
@@ -4359,7 +4394,8 @@ partial def inverseOf? (type : Lean.Expr) : MetaM (Option Inverse) := do
     return some (inverse u left right)
   let some (ctor, _) ← structOf? type
     | throwError "verified_compile: the parameter type {type} of a recursive definition holds an \
-        enumeration, whose flattening has no inverse on the words that encode no constructor"
+        enumeration or a sum, whose flattening has no inverse on the values that encode no \
+        constructor"
   let some (β, inst) ← flatInstance? type
     | throwError "verified_compile: the structure {type} has no `Flat` instance"
   let tree ← flatTree type β inst ctor
