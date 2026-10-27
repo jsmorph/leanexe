@@ -31,7 +31,7 @@ theorem bind_params (ps : List VT) (start : Nat) (vs : List val) (le0 : temp_env
             cases i with
             | zero =>
                 rw [hother _ (fun j _ e => by have := localId_inj e; omega)]
-                simpa using te_insert_same le0 (localId start) v
+                simp
             | succ i =>
                 have := hget i (by simp at hi; omega)
                 rw [show start + (i + 1) = start + 1 + i by omega, this]
@@ -62,7 +62,7 @@ theorem setLocals_get (le : temp_env) (np : Nat) (ls : List VT) (start : Nat) :
         | zero =>
             refine ⟨t, rfl, ?_⟩
             rw [hother _ (fun j _ e => by have := localId_inj e; omega)]
-            simpa using te_insert_same le (localId (np + start)) (zval t)
+            simp
         | succ j =>
             obtain ⟨t', ht', hl⟩ := hget j (by simp at hj; omega)
             exact ⟨t', by simpa using ht', by rw [show np + start + (j + 1) = np + (start + 1) + j by omega]; exact hl⟩
@@ -94,29 +94,22 @@ theorem exec_setLocals {A : Archi} {X : ExtSem} {ge : genv} (np : Nat) (ls : Lis
       exact .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hs (by simpa [setLocals] using h')
 
 /-- The inversion of `trFunction`. -/
-theorem trFunction_spec {cap : Nat} {sigs : List (Option (List VT × Option VT))} {G : Nat}
+theorem trFunction_spec {cap : Nat} {sigs : List (Option (List VT × List VT))} {G : Nat}
     {f : Function} {fd : function} (h : trFunction cap sigs G f = some fd) :
-    ∃ ps ls r body nc, f.params.mapM VT.ofValueType = some ps ∧
-      f.locals.mapM VT.ofValueType = some ls ∧ f.results.mapM VT.ofValueType = some r.toList ∧
-      trProg { locals := ps ++ ls, result := r, nglobals := G, sigs := sigs, cap := cap }
-        [{ isLoop := false, base := 0, result := r }] [] r.toList 0 f.body = some (body, nc) ∧
-      fd = { fn_return := (r.map VT.ty).getD .Tvoid, fn_callconv := cc_default,
+    ∃ ps ls rs body nc, f.params.mapM VT.ofValueType = some ps ∧
+      f.locals.mapM VT.ofValueType = some ls ∧ f.results.mapM VT.ofValueType = some rs ∧
+      resultsOk rs = true ∧
+      trProg { locals := ps ++ ls, results := rs, nglobals := G, sigs := sigs, cap := cap }
+        [{ isLoop := false, base := 0, result := retOf rs, final := 2 ≤ rs.length }] []
+        rs.reverse 0 f.body = some (body, nc) ∧
+      fd = { fn_return := ((retOf rs).map VT.ty).getD .Tvoid, fn_callconv := cc_default,
              fn_params := (ps.zipIdx).map fun x => (localId x.2, x.1.ty), fn_vars := [],
              fn_temps := (ls.zipIdx).map (fun x => (localId (ps.length + x.2), x.1.ty)) ++
                bodyTemps body,
              fn_body := seqList ((ls.zipIdx).map (fun x => statement.Sset (localId (ps.length + x.2))
-               x.1.zero) ++ [.Sset brkId (cint 0), wrapLoop body, retStmt r]) } := by
+               x.1.zero) ++ [.Sset brkId (cint 0), wrapLoop body, retStmt rs]) } := by
   simp [trFunction, Option.bind_eq_some_iff] at h
-  obtain ⟨ps, hps, ls, hls, rs, hrs, h⟩ := h
-  match rs, hrs, h with
-  | [], hrs, h =>
-      simp [Option.bind_eq_some_iff] at h
-      obtain ⟨body, ⟨nc, hb⟩, rfl⟩ := h
-      exact ⟨ps, ls, none, body, nc, hps, hls, hrs, hb, rfl⟩
-  | [t], hrs, h =>
-      simp [Option.bind_eq_some_iff] at h
-      obtain ⟨body, ⟨nc, hb⟩, rfl⟩ := h
-      exact ⟨ps, ls, some t, body, nc, hps, hls, hrs, hb, rfl⟩
-  | _ :: _ :: _, _, h => simp at h
+  obtain ⟨ps, hps, ls, hls, rs, hrs, hok, body, ⟨nc, hb⟩, rfl⟩ := h
+  exact ⟨ps, ls, rs, body, nc, hps, hls, hrs, hok, hb, rfl⟩
 
 end LeanExe.Native

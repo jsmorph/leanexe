@@ -24,10 +24,11 @@ when the address is a multiple of 8, and eight bytes in little-endian order othe
 writes the module's data segments into `lx_mem`, with a word store for each aligned word that a
 segment covers and a byte store for each other byte.
 
-This version handles the integer forms of milestones M2 and M3: locals, globals, the `i64` and
+This version handles the integer forms of milestones M2 to M4: locals, globals, the `i64` and
 `i32` operations of the subset, `block`, `loop`, `iff`, `br`, `br_if`, `ret`, `call`,
 `unreachable`, `load64`, `store64`, `memory.size`, and `memory.grow`, in functions with at most
-one result.  A function that uses another form, or that calls a function the translator omits,
+one result or with several results of integer types, which return them in the globals
+`lx_r<i>_<t>`.  A function that uses another form, or that calls a function the translator omits,
 is omitted, and `translate` returns the program of the remaining functions.  A function of the
 program is `lxf_<name>` when the module exports it under a name that is a C identifier, and
 `lxf_<k>` for its index `k` otherwise.
@@ -122,22 +123,34 @@ def tempName (id : ident) : String :=
 
 /-- An enclosing construct: a loop, whose branch target is its start, or a `block`, `iff`, or
 function body, whose branch target is its end and which keeps `result`.  `base` is the height of
-the stack at its entry, where its result goes. -/
+the stack at its entry, where its result goes.  A branch may not target a `final` construct: the
+body of a function with several results, which a branch would have to leave with all of
+them. -/
 structure Label where
   isLoop : Bool
   base : Nat
   result : Option VT
+  final : Bool := false
   deriving Repr, DecidableEq
 
+/-- The C result of a function whose results have the types `rs`: the one result, if there is
+exactly one. -/
+def retOf : List VT → Option VT
+  | [t] => some t
+  | _ => none
+
 /-- What the translation of a function body needs: the types of the parameters and declared
-locals, the function's result, the number of globals, the parameter and result types of each
+locals, the function's results, the number of globals, the parameter and result types of each
 function, `none` for one the translator does not call, and the number of pages of `lx_mem`. -/
 structure FCtx where
   locals : List VT
-  result : Option VT
+  results : List VT
   nglobals : Nat
-  sigs : List (Option (List VT × Option VT))
+  sigs : List (Option (List VT × List VT))
   cap : Nat
+
+/-- The C result of the function. -/
+def FCtx.result (c : FCtx) : Option VT := retOf c.results
 
 def tmp (h : Nat) (t : VT) : expr := .Etempvar (slotId h t) t.ty
 
@@ -203,7 +216,7 @@ def pops (L : List Label) (σ : List VT) (n : Nat) : Option (List VT) :=
 then `break` or `continue` for `n = 0`, or set `brk` to `n` and `break`. -/
 def brStmt (L : List Label) (σ : List VT) (n : Nat) : Option statement := do
   let target ← L[n]?
-  if n < 2 ^ 31 then
+  if n < 2 ^ 31 ∧ target.final = false then
     let copy ← match target.isLoop, target.result with
       | false, some t =>
           match σ with
@@ -293,9 +306,43 @@ def i64Cmp : Instruction → Option binary_operation
   | .geUI64 => some .Oge
   | _ => none
 
-/-- The C function type of a callee with parameters `ps` and result `r`. -/
-def funType (ps : List VT) (r : Option VT) : type :=
-  .Tfunction (ps.map VT.ty) ((r.map VT.ty).getD .Tvoid) cc_default
+/-- The C function type of a callee with parameters `ps` and results `rs`. -/
+def funType (ps : List VT) (rs : List VT) : type :=
+  .Tfunction (ps.map VT.ty) (((retOf rs).map VT.ty).getD .Tvoid) cc_default
+
+/-! ## Several results
+
+A function with several results returns `void` and leaves result `i`, of type `t`, in the global
+`lx_r<i>_<t>`, which the caller copies into its stack slot.  The translator declares the
+globals of `unsigned int` and `unsigned long long` for each position up to the most results of
+a function, and translates only functions whose several results have those types. -/
+
+/-- `lx_r<i>_<t>`. -/
+def resId (i : Nat) (t : VT) : ident := 32 * (i + 1) + 4 * t.code
+
+def resVar (i : Nat) (t : VT) : expr := .Evar (resId i t) t.ty
+
+def VT.isInt : VT → Bool
+  | .i32 | .i64 => true
+  | _ => false
+
+/-- `Ssequence` of the statements in order. -/
+def seqList : List statement → statement
+  | [] => .Sskip
+  | [s] => s
+  | s :: rest => .Ssequence s (seqList rest)
+
+/-- The stores of the slots from height `h` up, of the types `rs`, to the result globals from
+position `i` up. -/
+def resStores : List VT → Nat → Nat → List statement
+  | [], _, _ => []
+  | t :: rs, i, h => .Sassign (resVar i t) (tmp h t) :: resStores rs (i + 1) (h + 1)
+
+/-- The copies of the result globals of the types `rs` from position `i` up to the slots from
+height `h` up. -/
+def resLoads : List VT → Nat → Nat → List statement
+  | [], _, _ => []
+  | t :: rs, i, h => .Sset (slotId h t) (resVar i t) :: resLoads rs (i + 1) (h + 1)
 
 /-- The arguments of a call with parameters `ps`: the slots from height `base` up, deepest
 first. -/
@@ -454,26 +501,35 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
         pure (.Sifthenelse (tmp (h - 1) .i32) s .Sskip, some σ', n)
       else none
   | .ret =>
-      match c.result with
-      | none => some (.Sreturn none, none, n)
-      | some t =>
+      match c.results with
+      | [] => some (.Sreturn none, none, n)
+      | [t] =>
           if σ.head? = some t ∧ curBase L + 1 ≤ h then
             some (.Sreturn (some (tmp (h - 1) t)), none, n)
           else none
+      | rs =>
+          if σ.take rs.length = rs.reverse ∧ curBase L + rs.length ≤ h then
+            some (seqList (resStores rs 0 (h - rs.length) ++ [.Sreturn none]), none, n)
+          else none
   | .call k => do
-      let (ps, r) ← (c.sigs[k]?).join
+      let (ps, rs) ← (c.sigs[k]?).join
       let σ' ← pops L σ ps.length
       if σ.take ps.length = ps.reverse then
-        let callee : expr := .Evar (funId k) (funType ps r)
+        let callee : expr := .Evar (funId k) (funType ps rs)
         let args := callArgs (h - ps.length) ps
-        match r with
-        | none => pure (.Ssequence (.Scall none callee args) (statusCheck c.result), some σ', n)
-        | some t =>
+        match rs with
+        | [] => pure (.Ssequence (.Scall none callee args) (statusCheck c.result), some σ', n)
+        | [t] =>
             pure (.Ssequence
                 (.Ssequence (.Scall (some (callId n)) callee args)
                   (.Sset (slotId (h - ps.length) t) (.Etempvar (callId n) t.ty)))
                 (statusCheck c.result),
               some (t :: σ'), n + 1)
+        | rs =>
+            pure (.Ssequence
+                (.Ssequence (.Scall none callee args) (seqList (resLoads rs 0 (h - ps.length))))
+                (statusCheck c.result),
+              some (rs.reverse ++ σ'), n)
       else none
   | .block pa ra body pts rts => do
       if blockTypeOk pa ra pts rts then
@@ -526,12 +582,6 @@ end
 
 /-! ## Functions and modules -/
 
-/-- `Ssequence` of the statements in order. -/
-def seqList : List statement → statement
-  | [] => .Sskip
-  | [s] => s
-  | s :: rest => .Ssequence s (seqList rest)
-
 /-- The temporaries that `s` assigns, with their types, in order of first assignment. -/
 def assigned : statement → List (ident × type)
   | .Sset id a => [(id, typeof a)]
@@ -562,27 +612,30 @@ def bodyTemps (s : statement) : List (ident × type) :=
   let calls := all.filter fun (id, _) => id % 8 = 6
   slots ++ [(brkId, tuint)] ++ calls.reverse
 
-/-- The `return` at the end of a function with result `r`, of the result's slot. -/
-def retStmt : Option VT → statement
-  | some t => .Sreturn (some (tmp 0 t))
-  | none => .Sreturn none
+/-- The `return` at the end of a function with results `rs`: of the result's slot for one
+result, and after the stores of the slots to the result globals for several. -/
+def retStmt : List VT → statement
+  | [] => .Sreturn none
+  | [t] => .Sreturn (some (tmp 0 t))
+  | rs => seqList (resStores rs 0 0 ++ [.Sreturn none])
+
+/-- The results that the translator handles: at most one, or several of `unsigned int` and
+`unsigned long long`. -/
+def resultsOk (rs : List VT) : Bool := rs.length ≤ 1 || rs.all VT.isInt
 
 /-- The C function of a Talos function, with `lx_mem` of `cap` pages. -/
-def trFunction (cap : Nat) (sigs : List (Option (List VT × Option VT))) (nglobals : Nat)
+def trFunction (cap : Nat) (sigs : List (Option (List VT × List VT))) (nglobals : Nat)
     (f : Function) : Option function := do
   let ps ← f.params.mapM VT.ofValueType
   let ls ← f.locals.mapM VT.ofValueType
   let rs ← f.results.mapM VT.ofValueType
-  let r ← match rs with
-    | [] => some none
-    | [t] => some (some t)
-    | _ => none
-  let c : FCtx := { locals := ps ++ ls, result := r, nglobals := nglobals, sigs := sigs, cap := cap }
-  let funLabel : Label := { isLoop := false, base := 0, result := r }
-  let (body, _) ← trProg c [funLabel] [] r.toList 0 f.body
+  guard (resultsOk rs)
+  let c : FCtx := { locals := ps ++ ls, results := rs, nglobals := nglobals, sigs := sigs, cap := cap }
+  let funLabel : Label := { isLoop := false, base := 0, result := retOf rs, final := 2 ≤ rs.length }
+  let (body, _) ← trProg c [funLabel] [] rs.reverse 0 f.body
   let inits := ls.zipIdx.map fun (t, j) => statement.Sset (localId (ps.length + j)) t.zero
-  let fbody := seqList (inits ++ [.Sset brkId (cint 0), wrapLoop body, retStmt r])
-  pure { fn_return := (r.map VT.ty).getD .Tvoid
+  let fbody := seqList (inits ++ [.Sset brkId (cint 0), wrapLoop body, retStmt rs])
+  pure { fn_return := ((retOf rs).map VT.ty).getD .Tvoid
          fn_callconv := cc_default
          fn_params := ps.zipIdx.map fun (t, i) => (localId i, t.ty)
          fn_vars := []
@@ -590,14 +643,11 @@ def trFunction (cap : Nat) (sigs : List (Option (List VT × Option VT))) (ngloba
            bodyTemps body
          fn_body := fbody }
 
-/-- The parameter and result types of a function with at most one result. -/
-def signatureOf (f : Function) : Option (List VT × Option VT) := do
+/-- The parameter and result types of a function whose results the translator handles. -/
+def signatureOf (f : Function) : Option (List VT × List VT) := do
   let ps ← f.params.mapM VT.ofValueType
   let rs ← f.results.mapM VT.ofValueType
-  match rs with
-  | [] => some (ps, none)
-  | [t] => some (ps, some t)
-  | _ => none
+  if resultsOk rs then some (ps, rs) else none
 
 /-- The indices `k` in `candidates` whose callees all lie in the result, by removing a function
 whose callee is missing until none is: at most one pass per function. -/
@@ -620,12 +670,13 @@ def functionName (m : Module) (k : Nat) : String :=
       | [] => s!"lxf_{k}"
   | none => s!"lxf_{k}"
 
-/-- The translated program, the names of its globals and functions, and the indices of the
-functions it contains. -/
+/-- The translated program, the names of its globals and functions, the indices of the functions
+it contains, and the number of positions of its result globals. -/
 structure Translation where
   cprogram : program function
   names : List (ident × String)
   funcs : List Nat
+  nres : Nat
 
 /-- The global `lx_g<i>` of a Talos global, whose initial value is an `i64`. -/
 def globalDef (g : GlobalDecl) : Option (globvar type) :=
@@ -705,6 +756,35 @@ def initFunction (cap : Nat) (segs : List DataSegment) : function :=
   { fn_return := .Tvoid, fn_callconv := cc_default, fn_params := [], fn_vars := [], fn_temps := []
     fn_body := seqList (segs.flatMap (segmentStores cap)) }
 
+/-- A result global of the type `t`, initially 0. -/
+def resDef (t : VT) : globvar type :=
+  { gvar_info := t.ty
+    gvar_init := [if t = .i32 then .Init_int32 0 else .Init_int64 0]
+    gvar_readonly := false
+    gvar_volatile := false }
+
+/-- The result globals of the positions below `nres`, of `unsigned int` and of `unsigned long
+long` for each. -/
+def resDefs (nres : Nat) : List (ident × globdef (fundef function) type) :=
+  (List.range nres).flatMap fun i =>
+    [(resId i .i32, .Gvar (resDef .i32)), (resId i .i64, .Gvar (resDef .i64))]
+
+def resNames (nres : Nat) : List (ident × String) :=
+  (List.range nres).flatMap fun i => [(resId i .i32, s!"lx_r{i}_i"), (resId i .i64, s!"lx_r{i}_l")]
+
+/-- `acc`, raised to the results of function `k` when it has several. -/
+def maxStep (m : Module) (acc k : Nat) : Nat :=
+  match m.funcs[k]? with
+  | some f => if 2 ≤ f.results.length then max acc f.results.length else acc
+  | none => acc
+
+/-- The most results of a function among `ks` with several. -/
+def maxResults (m : Module) (ks : List Nat) : Nat := ks.foldl (maxStep m) 0
+
+/-- The pages of `lx_mem` in the translations that `verified_compile` adds: 4,096 pages, or
+256 MiB. -/
+def nativeCap : Nat := 4096
+
 /-- The translation of `m` with `lx_mem` of `cap` pages.  The module's initial pages must not
 exceed `cap`, and `cap` must not exceed 65,535, the most pages that the compiled modules
 declare. -/
@@ -716,16 +796,18 @@ def translate (cap : Nat) (m : Module) : Option Translation := do
   let included := includedOf cap m
   guard (included.all fun k => (callsOf cap m k).all (included.contains ·))
   let funs ← included.mapM (funDef cap m)
+  let nres := maxResults m included
   let defs := (statusId, globdef.Gvar statusVar) ::
     (gdefs.zipIdx.map fun (g, i) => (globalId i, globdef.Gvar g)) ++
     [(pagesId, globdef.Gvar (pagesDef decl.pagesMin.toNat)), (memId, globdef.Gvar (memDef cap))] ++
-    funs ++ [(initId, globdef.Gfun (.Internal (initFunction cap decl.data)))]
+    resDefs nres ++ funs ++ [(initId, globdef.Gfun (.Internal (initFunction cap decl.data)))]
   let names := (statusId, "lx_status") ::
     ((List.range m.globals.length).map fun i => (globalId i, s!"lx_g{i}")) ++
-    [(pagesId, "lx_pages"), (memId, "lx_mem")] ++
+    [(pagesId, "lx_pages"), (memId, "lx_mem")] ++ resNames nres ++
     included.map (fun k => (funId k, functionName m k)) ++ [(initId, "lx_init")]
   pure { cprogram := { prog_defs := defs, prog_public := defs.map (·.1), prog_main := mainId }
          names := names
-         funcs := included }
+         funcs := included
+         nres := nres }
 
 end LeanExe.Native

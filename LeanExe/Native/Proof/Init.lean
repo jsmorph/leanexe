@@ -383,22 +383,83 @@ open Wasm LClight
 /-! ## The definitions of a translation -/
 
 /-- The definitions of a translated program. -/
-def progDefs (cap : Nat) (decl : MemDecl) (gdefs : List (globvar type))
+def progDefs (cap : Nat) (decl : MemDecl) (gdefs : List (globvar type)) (nres : Nat)
     (funs : List (ident × globdef (fundef function) type)) :
     List (ident × globdef (fundef function) type) :=
   (statusId, .Gvar statusVar) ::
     (gdefs.zipIdx.map (fun x => (globalId x.2, globdef.Gvar x.1)) ++
       (pagesId, .Gvar (pagesDef decl.pagesMin.toNat)) :: (memId, .Gvar (memDef cap)) ::
-        (funs ++ [(initId, .Gfun (.Internal (initFunction cap decl.data)))]))
+        (resDefs nres ++ (funs ++ [(initId, .Gfun (.Internal (initFunction cap decl.data)))])))
 
 theorem translate_defs {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T) :
     ∃ decl gdefs funs, m.memory = some decl ∧ violation m = none ∧
       decl.pagesMin.toNat ≤ cap ∧ cap ≤ 65535 ∧ m.globals.mapM globalDef = some gdefs ∧
       (includedOf cap m).mapM (funDef cap m) = some funs ∧
-      T.cprogram.prog_defs = progDefs cap decl gdefs funs := by
+      T.cprogram.prog_defs = progDefs cap decl gdefs T.nres funs := by
   simp [translate, Option.bind_eq_some_iff] at h
   obtain ⟨hv, decl, hdecl, ⟨hc1, hc2⟩, gdefs, hg, -, funs, hfuns, rfl⟩ := h
   exact ⟨decl, gdefs, funs, hdecl, hv, hc1, hc2, hg, hfuns, rfl⟩
+
+/-- The identifiers of the result globals. -/
+def resIds (nres : Nat) : List Nat :=
+  (List.range nres).flatMap fun i => [resId i .i32, resId i .i64]
+
+theorem resDefs_ids (nres : Nat) : (resDefs nres).map (·.1) = resIds nres := by
+  simp [resDefs, resIds, List.map_flatMap]
+
+theorem resIds_succ (n : Nat) : resIds (n + 1) = resIds n ++ [resId n .i32, resId n .i64] := by
+  simp [resIds, List.range_succ, List.flatMap_append]
+
+theorem mem_resIds {n x : Nat} (h : x ∈ resIds n) :
+    x % 4 = 0 ∧ 36 ≤ x ∧ x < 32 * n + 36 := by
+  induction n with
+  | zero => simp [resIds] at h
+  | succ n ih =>
+      rw [resIds_succ] at h
+      rcases List.mem_append.mp h with h | h
+      · have := ih h; omega
+      · simp only [List.mem_cons, List.not_mem_nil, or_false] at h
+        rcases h with rfl | rfl <;> simp [resId, VT.code] <;> omega
+
+theorem resIds_nodup (n : Nat) : List.Nodup (α := Nat) (resIds n) := by
+  induction n with
+  | zero => simp [resIds]
+  | succ n ih =>
+      rw [resIds_succ]
+      unfold List.Nodup at *
+      refine List.pairwise_append.mpr ⟨ih, ?_, fun a ha b hb => ?_⟩
+      · simp [resId, VT.code]
+      · have := mem_resIds ha
+        simp only [List.mem_cons, List.not_mem_nil, or_false] at hb
+        rcases hb with rfl | rfl <;> simp [resId, VT.code] <;> omega
+
+theorem resDefs_succ (n : Nat) : resDefs (n + 1) = resDefs n ++
+    [(resId n .i32, .Gvar (resDef .i32)), (resId n .i64, .Gvar (resDef .i64))] := by
+  simp [resDefs, List.range_succ, List.flatMap_append]
+
+theorem resDefs_length (n : Nat) : (resDefs n).length = 2 * n := by
+  induction n with
+  | zero => rfl
+  | succ n ih => rw [resDefs_succ]; simp [ih]; omega
+
+/-- The offset of result global `(i, t)` among the result globals. -/
+def resOfs (i : Nat) (t : VT) : Nat := 2 * i + (if t = .i64 then 1 else 0)
+
+theorem resDefs_get (n i : Nat) (hi : i < n) (t : VT) (ht : t.isInt = true) :
+    (resDefs n)[resOfs i t]? = some (resId i t, .Gvar (resDef t)) := by
+  unfold resOfs
+  induction n with
+  | zero => omega
+  | succ n ih =>
+      have hlen := resDefs_length n
+      rw [resDefs_succ]
+      by_cases hin : i < n
+      · rw [List.getElem?_append_left (by split <;> omega)]
+        exact ih hin
+      · have : i = n := by omega
+        subst this
+        rw [List.getElem?_append_right (by split <;> omega), hlen]
+        rcases VT.isInt_cases ht with rfl | rfl <;> simp
 
 theorem closeUnderCalls_sublist (calls : Nat → List Nat) :
     ∀ (fuel : Nat) (ks : List Nat), (closeUnderCalls calls fuel ks).Sublist ks
@@ -451,9 +512,10 @@ theorem zipIdx_ids (gdefs : List (globvar type)) :
       globalId ∘ Prod.snd := rfl
   rw [this, ← List.map_map, List.zipIdx_map_snd]
 
-theorem ids_nodup (G : Nat) (ks : List Nat) (hks : ks.Nodup) :
+theorem ids_nodup (G nres : Nat) (ks : List Nat) (hks : ks.Nodup) :
     List.Nodup (α := Nat)
-      (statusId :: ((List.range G).map globalId ++ pagesId :: memId :: (ks.map funId ++ [initId]))) := by
+      (statusId :: ((List.range G).map globalId ++ pagesId :: memId ::
+        (resIds nres ++ (ks.map funId ++ [initId])))) := by
   have hg : List.Nodup (α := Nat) ((List.range G).map globalId) :=
     List.Nodup.map (fun a b h => by
       have h' : 4 * a + 2 = 4 * b + 2 := h
@@ -476,27 +538,40 @@ theorem ids_nodup (G : Nat) (ks : List Nat) (hks : ks.Nodup) :
       subst hb
       have := hmf a ha
       unfold initId; omega⟩
-  have h2 : List.Pairwise (α := Nat) (· ≠ ·) (pagesId :: memId :: (ks.map funId ++ [initId])) := by
-    refine List.pairwise_cons.mpr ⟨fun a ha => ?_, List.pairwise_cons.mpr ⟨fun a ha => ?_, h3⟩⟩
+  have hr := resIds_nodup nres
+  unfold List.Nodup at hr
+  have h4 : List.Pairwise (α := Nat) (· ≠ ·) (resIds nres ++ (ks.map funId ++ [initId])) := by
+    refine List.pairwise_append.mpr ⟨hr, h3, fun a ha b hb => ?_⟩
+    have := mem_resIds ha
+    rcases List.mem_append.mp hb with hb | hb
+    · have := hmf b hb; omega
+    · rw [List.mem_singleton] at hb; subst hb; unfold initId; omega
+  -- Membership in the tail after `lx_mem`: residues and bounds.
+  have htail : ∀ a : Nat, a ∈ resIds nres ++ (ks.map funId ++ [initId]) →
+      (a % 4 = 0 ∧ 16 ≤ a) ∨ a % 4 = 3 := by
+    intro a ha
+    rcases List.mem_append.mp ha with ha | ha
+    · have := mem_resIds ha; omega
+    rcases List.mem_append.mp ha with ha | ha
+    · have := hmf a ha; omega
+    · rw [List.mem_singleton] at ha; subst ha; unfold initId; omega
+  have h2 : List.Pairwise (α := Nat) (· ≠ ·)
+      (pagesId :: memId :: (resIds nres ++ (ks.map funId ++ [initId]))) := by
+    refine List.pairwise_cons.mpr ⟨fun a ha => ?_, List.pairwise_cons.mpr ⟨fun a ha => ?_, h4⟩⟩
     · rcases List.mem_cons.mp ha with rfl | ha
       · decide
-      · rcases List.mem_append.mp ha with ha | ha
-        · have := hmf a ha; unfold pagesId; omega
-        · rw [List.mem_singleton] at ha; subst ha; decide
-    · rcases List.mem_append.mp ha with ha | ha
-      · have := hmf a ha; unfold memId; omega
-      · rw [List.mem_singleton] at ha; subst ha; decide
+      · have := htail a ha; unfold pagesId; omega
+    · have := htail a ha; unfold memId; omega
   have h1 : List.Pairwise (α := Nat) (· ≠ ·)
-      ((List.range G).map globalId ++ pagesId :: memId :: (ks.map funId ++ [initId])) := by
+      ((List.range G).map globalId ++ pagesId :: memId ::
+        (resIds nres ++ (ks.map funId ++ [initId]))) := by
     refine List.pairwise_append.mpr ⟨hg, h2, fun a ha b hb => ?_⟩
     have := hmg a ha
     rcases List.mem_cons.mp hb with rfl | hb
     · unfold pagesId; omega
     rcases List.mem_cons.mp hb with rfl | hb
     · unfold memId; omega
-    rcases List.mem_append.mp hb with hb | hb
-    · have := hmf b hb; omega
-    · rw [List.mem_singleton] at hb; subst hb; unfold initId; omega
+    have := htail b hb; omega
   refine List.pairwise_cons.mpr ⟨fun a ha => ?_, h1⟩
   rcases List.mem_append.mp ha with ha | ha
   · have := hmg a ha; unfold statusId; omega
@@ -504,32 +579,38 @@ theorem ids_nodup (G : Nat) (ks : List Nat) (hks : ks.Nodup) :
   · decide
   rcases List.mem_cons.mp ha with rfl | ha
   · decide
-  rcases List.mem_append.mp ha with ha | ha
-  · have := hmf a ha; unfold statusId; omega
-  · rw [List.mem_singleton] at ha; subst ha; decide
+  have := htail a ha; unfold statusId; omega
 
-theorem progDefs_ids (cap : Nat) (decl : MemDecl) (gdefs : List (globvar type))
+theorem progDefs_ids (cap : Nat) (decl : MemDecl) (gdefs : List (globvar type)) (nres : Nat)
     (funs : List (ident × globdef (fundef function) type)) :
-    (progDefs cap decl gdefs funs).map (·.1) = statusId :: ((List.range gdefs.length).map globalId ++
-      pagesId :: memId :: (funs.map (·.1) ++ [initId])) := by
-  simp only [progDefs, List.map_cons, List.map_append, zipIdx_ids, List.map_nil]
+    (progDefs cap decl gdefs nres funs).map (·.1) =
+      statusId :: ((List.range gdefs.length).map globalId ++
+        pagesId :: memId :: (resIds nres ++ (funs.map (·.1) ++ [initId]))) := by
+  simp only [progDefs, List.map_cons, List.map_append, zipIdx_ids, List.map_nil, resDefs_ids]
 
 theorem progDefs_nodup {cap : Nat} {m : Module} {decl : MemDecl} {gdefs : List (globvar type)}
-    {funs : List (ident × globdef (fundef function) type)}
+    {nres : Nat} {funs : List (ident × globdef (fundef function) type)}
     (hfuns : (includedOf cap m).mapM (funDef cap m) = some funs) :
-    ((progDefs cap decl gdefs funs).map (·.1)).Nodup := by
+    ((progDefs cap decl gdefs nres funs).map (·.1)).Nodup := by
   rw [progDefs_ids, (funDef_ids hfuns).1]
-  exact ids_nodup _ _ (includedOf_nodup cap m)
+  exact ids_nodup _ _ _ (includedOf_nodup cap m)
 
 theorem progDefs_shape {cap : Nat} {m : Module} {decl : MemDecl} {gdefs : List (globvar type)}
-    {funs : List (ident × globdef (fundef function) type)}
+    {nres : Nat} {funs : List (ident × globdef (fundef function) type)}
     (hg : m.globals.mapM globalDef = some gdefs)
     (hfuns : (includedOf cap m).mapM (funDef cap m) = some funs) :
-    ∀ g ∈ progDefs cap decl gdefs funs, Genv.InitShape g.2 := by
+    ∀ g ∈ progDefs cap decl gdefs nres funs, Genv.InitShape g.2 := by
   intro g hg'
   simp only [progDefs, List.mem_cons, List.mem_append, List.mem_map, List.not_mem_nil,
     or_false] at hg'
-  rcases hg' with rfl | ⟨⟨gv, i⟩, hi, rfl⟩ | rfl | rfl | hg' | rfl
+  rcases hg' with rfl | ⟨⟨gv, i⟩, hi, rfl⟩ | rfl | rfl | hg' | hg' | rfl
+  rotate_left 4
+  · simp only [resDefs, List.mem_flatMap, List.mem_range, List.mem_cons, List.not_mem_nil,
+      or_false] at hg'
+    obtain ⟨i, -, rfl | rfl⟩ := hg'
+    · exact ⟨rfl, rfl, .inl ⟨0, rfl⟩⟩
+    · exact ⟨rfl, rfl, .inr (.inl ⟨0, rfl⟩)⟩
+  rotate_right 4
   · exact ⟨rfl, rfl, .inl ⟨0, rfl⟩⟩
   · have hmem : gv ∈ gdefs := by
       have := List.mem_map_of_mem (f := Prod.fst) hi
@@ -545,39 +626,51 @@ theorem progDefs_shape {cap : Nat} {m : Module} {decl : MemDecl} {gdefs : List (
 
 section Indices
 
-variable (cap : Nat) (decl : MemDecl) (gdefs : List (globvar type))
+variable (cap : Nat) (decl : MemDecl) (gdefs : List (globvar type)) (nres : Nat)
   (funs : List (ident × globdef (fundef function) type))
 
-theorem progDefs_status : (progDefs cap decl gdefs funs)[0]? = some (statusId, .Gvar statusVar) :=
+theorem progDefs_status : (progDefs cap decl gdefs nres funs)[0]? = some (statusId, .Gvar statusVar) :=
   rfl
 
 theorem progDefs_global (i : Nat) (hi : i < gdefs.length) :
-    (progDefs cap decl gdefs funs)[1 + i]? = some (globalId i, .Gvar gdefs[i]) := by
+    (progDefs cap decl gdefs nres funs)[1 + i]? = some (globalId i, .Gvar gdefs[i]) := by
   rw [Nat.add_comm, progDefs, List.getElem?_cons_succ,
     List.getElem?_append_left (by simp; exact hi), List.getElem?_map, List.getElem?_zipIdx,
     List.getElem?_eq_getElem hi]
   simp
 
 theorem progDefs_pages :
-    (progDefs cap decl gdefs funs)[1 + gdefs.length]? =
+    (progDefs cap decl gdefs nres funs)[1 + gdefs.length]? =
       some (pagesId, .Gvar (pagesDef decl.pagesMin.toNat)) := by
   rw [Nat.add_comm, progDefs, List.getElem?_cons_succ, List.getElem?_append_right (by simp)]
   simp
 
 theorem progDefs_mem :
-    (progDefs cap decl gdefs funs)[2 + gdefs.length]? = some (memId, .Gvar (memDef cap)) := by
+    (progDefs cap decl gdefs nres funs)[2 + gdefs.length]? = some (memId, .Gvar (memDef cap)) := by
   rw [show 2 + gdefs.length = gdefs.length + 1 + 1 by omega, progDefs, List.getElem?_cons_succ,
     List.getElem?_append_right (by simp)]
   simp
 
+theorem progDefs_res (i : Nat) (hi : i < nres) (t : VT) (ht : t.isInt = true) :
+    (progDefs cap decl gdefs nres funs)[3 + gdefs.length + resOfs i t]? =
+      some (resId i t, .Gvar (resDef t)) := by
+  have hk : resOfs i t < (resDefs nres).length := by
+    rw [resDefs_length]; unfold resOfs; split <;> omega
+  rw [show 3 + gdefs.length + resOfs i t = gdefs.length + (resOfs i t + 2) + 1 by omega, progDefs,
+    List.getElem?_cons_succ, List.getElem?_append_right (by simp)]
+  simp only [List.length_map, List.length_zipIdx, Nat.add_sub_cancel_left, List.getElem?_cons_succ]
+  rw [List.getElem?_append_left hk]
+  exact resDefs_get nres i hi t ht
+
 end Indices
 
 /-- The environment of a translated program in its own global environment: `lx_status` is block
-1, the Wasm global `i` block `i + 2`, `lx_pages` block `G + 2`, and `lx_mem` block `G + 3`, for
-`G` globals. -/
+1, the Wasm global `i` block `i + 2`, `lx_pages` block `G + 2`, `lx_mem` block `G + 3`, and the
+result global of position `i` and type `t` block `G + 4 + resOfs i t`, for `G` globals. -/
 def envOf (T : Translation) (G cap : Nat) : Env :=
   { ge := globalenv T.cprogram, status := 1, globals := (List.range G).map (· + 2),
-    pages := G + 2, mem := G + 3, cap := cap }
+    pages := G + 2, mem := G + 3, cap := cap, res := fun i t => G + 4 + resOfs i t,
+    nres := T.nres }
 
 /-- The initial memory of a translated program: its blocks are those of `envOf`, `lx_status` is
 0, the C globals hold the module's initial globals, `lx_pages` holds the initial pages, and
@@ -589,16 +682,16 @@ theorem init_spec {m : Module} {cap : Nat} {T : Translation} (h : translate cap 
       MemRel (envOf T m.globals.length cap) (Wasm.Mem.empty decl.pagesMin.toNat) [cap] m0 := by
   obtain ⟨decl, gdefs, funs, hdecl, -, hc1, hc2, hg, hfuns, hdefs⟩ := translate_defs h
   have hG : gdefs.length = m.globals.length := mapM_length hg
-  have hnd := progDefs_nodup (decl := decl) (gdefs := gdefs) hfuns
-  have hsh := progDefs_shape (decl := decl) hg hfuns
+  have hnd := progDefs_nodup (decl := decl) (gdefs := gdefs) (nres := T.nres) hfuns
+  have hsh := progDefs_shape (decl := decl) (nres := T.nres) hg hfuns
   obtain ⟨m0, hm0, -, -, hfact⟩ := Genv.alloc_globals_spec (globalenv T.cprogram)
-    (progDefs cap decl gdefs funs) Mem.empty hsh
+    (progDefs cap decl gdefs T.nres funs) Mem.empty hsh
   have hsym := Genv.find_add_globals_idx (Genv.empty_genv T.cprogram.prog_public)
-    (progDefs cap decl gdefs funs) hnd
+    (progDefs cap decl gdefs T.nres funs) hnd
   have hge : globalenv T.cprogram = Genv.add_globals (Genv.empty_genv T.cprogram.prog_public)
-      (progDefs cap decl gdefs funs) := by
+      (progDefs cap decl gdefs T.nres funs) := by
     unfold globalenv; rw [hdefs]
-  have at_idx : ∀ k x, (progDefs cap decl gdefs funs)[k]? = some x →
+  have at_idx : ∀ k x, (progDefs cap decl gdefs T.nres funs)[k]? = some x →
       Genv.find_symbol (globalenv T.cprogram) x.1 = some (1 + k) ∧ Genv.InitFact m0 (1 + k) x.2 := by
     intro k x hk
     obtain ⟨hlt, heq⟩ := List.getElem?_eq_some_iff.mp hk
@@ -606,9 +699,20 @@ theorem init_spec {m : Module} {cap : Nat} {T : Translation} (h : translate cap 
     have h2 := hfact k hlt
     rw [heq] at h1 h2
     exact ⟨by rw [hge]; exact h1, h2⟩
-  obtain ⟨hs1, hs2⟩ := at_idx 0 _ (progDefs_status cap decl gdefs funs)
-  obtain ⟨hp1, hp2⟩ := at_idx _ _ (progDefs_pages cap decl gdefs funs)
-  obtain ⟨hm1, hm2⟩ := at_idx _ _ (progDefs_mem cap decl gdefs funs)
+  obtain ⟨hs1, hs2⟩ := at_idx 0 _ (progDefs_status cap decl gdefs T.nres funs)
+  obtain ⟨hp1, hp2⟩ := at_idx _ _ (progDefs_pages cap decl gdefs T.nres funs)
+  obtain ⟨hm1, hm2⟩ := at_idx _ _ (progDefs_mem cap decl gdefs T.nres funs)
+  have hr : ∀ i < T.nres, ∀ t : VT, t.isInt = true →
+      Genv.find_symbol (globalenv T.cprogram) (resId i t) = some (m.globals.length + 4 + resOfs i t) ∧
+        Mem.valid_access m0 t.chunk (m.globals.length + 4 + resOfs i t) 0 .Writable := by
+    intro i hi t ht
+    obtain ⟨h1, h2⟩ := at_idx _ _ (progDefs_res cap decl gdefs T.nres funs i hi t ht)
+    rw [show 1 + (3 + gdefs.length + resOfs i t) = m.globals.length + 4 + resOfs i t by omega]
+      at h1 h2
+    refine ⟨h1, ?_⟩
+    rcases VT.isInt_cases ht with rfl | rfl
+    · exact ((h2 _ rfl).1 0 (by simp [resDef])).2
+    · exact ((h2 _ rfl).2.1 0 (by simp [resDef])).2
   have hpg : 1 + (1 + gdefs.length) = m.globals.length + 2 := by omega
   have hmb : 1 + (2 + gdefs.length) = m.globals.length + 3 := by omega
   rw [hpg] at hp1 hp2
@@ -618,9 +722,10 @@ theorem init_spec {m : Module} {cap : Nat} {T : Translation} (h : translate cap 
     rw [hdefs]; exact hm0
   · refine { status := hs1, globals := fun i hi => ?_, nodup := ?_, status_not := ?_, pages := hp1,
              mem := hm1, pages_not := ?_, mem_not := ?_, pages_status := ?_, mem_status := ?_,
-             mem_pages := ?_, cap := hc2 }
+             mem_pages := ?_, cap := hc2, res := fun i hi t ht => (hr i hi t ht).1,
+             res_inj := fun i j t u _ _ ht hu he => ?_, res_other := fun i _ t ht => ?_ }
     · simp only [envOf, List.length_map, List.length_range] at hi
-      have := (at_idx _ _ (progDefs_global cap decl gdefs funs i (by omega))).1
+      have := (at_idx _ _ (progDefs_global cap decl gdefs T.nres funs i (by omega))).1
       simp only [envOf, List.getElem_map, List.getElem_range]
       rw [show i + 2 = 1 + (1 + i) by omega]
       exact this
@@ -631,13 +736,30 @@ theorem init_spec {m : Module} {cap : Nat} {T : Translation} (h : translate cap 
     · simp [envOf]
     · simp [envOf]
     · simp [envOf]
+    · have he' : m.globals.length + 4 + resOfs i t = (m.globals.length + 4 + resOfs j u : Nat) :=
+        he
+      unfold resOfs at he'
+      rcases VT.isInt_cases ht with rfl | rfl <;> rcases VT.isInt_cases hu with rfl | rfl <;>
+        simp at he' <;> first | exact ⟨by omega, rfl⟩ | omega
+    · refine ⟨fun h => ?_, fun h => ?_, fun h => ?_, fun hmem => ?_⟩
+      · have h' : m.globals.length + 4 + resOfs i t = (1 : Nat) := h; omega
+      · have h' : m.globals.length + 4 + resOfs i t = (m.globals.length + 2 : Nat) := h; omega
+      · have h' : m.globals.length + 4 + resOfs i t = (m.globals.length + 3 : Nat) := h; omega
+      · have hlt : ∀ x : Nat, x ∈ (List.range m.globals.length).map (· + 2) →
+            x < m.globals.length + 2 := by
+          intro x hx
+          simp only [List.mem_map, List.mem_range] at hx
+          obtain ⟨a, ha, rfl⟩ := hx
+          omega
+        have h2 : m.globals.length + 4 + resOfs i t < (m.globals.length + 2 : Nat) := hlt _ hmem
+        omega
   · exact (hs2 _ rfl).1 0 rfl
   · refine ⟨by simp [envOf], fun i hi => ?_⟩
     simp only [envOf, List.length_map, List.length_range] at hi
     obtain ⟨gv, hgv, hgi⟩ := mapM_get hg i hi
     obtain ⟨n, hinit, hn, -, -⟩ := globalDef_shape hgv
     have hgi' : gdefs[i]'(by omega) = gv := (List.getElem?_eq_some_iff.mp hgi).2
-    have h2 := (at_idx _ _ (progDefs_global cap decl gdefs funs i (by omega))).2
+    have h2 := (at_idx _ _ (progDefs_global cap decl gdefs T.nres funs i (by omega))).2
     rw [hgi'] at h2
     obtain ⟨hl, hva⟩ := (h2 _ rfl).2.1 n hn
     refine ⟨n, by simp only [List.getElem?_map]; rw [List.getElem?_eq_getElem hi]; simp [hinit], ?_, ?_⟩
@@ -649,7 +771,8 @@ theorem init_spec {m : Module} {cap : Nat} {T : Translation} (h : translate cap 
     obtain hz := (hm2 _ rfl).2.2 _ rfl
     exact { pages := hl, pagesW := hva, le_cap := hc1, memCap := rfl
             bytes := fun i hi => (hz i (by simp [envOf] at hi ⊢; omega)).1
-            perm := fun i hi => (hz i (by simp [envOf] at hi ⊢; omega)).2 }
+            perm := fun i hi => (hz i (by simp [envOf] at hi ⊢; omega)).2
+            resW := fun i hi t ht => (hr i hi t ht).2 }
 
 /-! ## The data segments -/
 
@@ -672,6 +795,7 @@ theorem MemRel.congr {E : Env} {wm wm' : Wasm.Mem} {caps : List Nat} {m : mem}
   memCap := h.memCap
   bytes := fun i hi => by rw [hb i hi]; exact h.bytes i hi
   perm := h.perm
+  resW := h.resW
 
 theorem write8_same (wm : Wasm.Mem) (a : UInt32) (b : UInt8) : (wm.write8 a b).bytes a.toNat = b := by
   simp [Wasm.Mem.write8]

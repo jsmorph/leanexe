@@ -72,8 +72,8 @@ theorem StackRel.cons_inv {le : temp_env} {t : VT} {σ : List VT} {vs : List Val
 
 /-! ## Environments and globals -/
 
-/-- The blocks of `E` are those of `lx_status`, the C globals, `lx_pages`, and `lx_mem` in
-`E.ge`, all distinct, and `lx_mem` has at most 65,535 pages. -/
+/-- The blocks of `E` are those of `lx_status`, the C globals, `lx_pages`, `lx_mem`, and the result
+globals in `E.ge`, all distinct, and `lx_mem` has at most 65,535 pages. -/
 structure EnvOk (E : Env) : Prop where
   status : Genv.find_symbol E.ge statusId = some E.status
   globals : ∀ i (h : i < E.globals.length), Genv.find_symbol E.ge (globalId i) = some E.globals[i]
@@ -87,6 +87,12 @@ structure EnvOk (E : Env) : Prop where
   mem_status : E.mem ≠ E.status
   mem_pages : E.mem ≠ E.pages
   cap : E.cap ≤ 65535
+  res : ∀ i < E.nres, ∀ t : VT, t.isInt = true →
+    Genv.find_symbol E.ge (resId i t) = some (E.res i t)
+  res_inj : ∀ i j (t u : VT), i < E.nres → j < E.nres → t.isInt = true → u.isInt = true →
+    E.res i t = E.res j u → i = j ∧ t = u
+  res_other : ∀ i < E.nres, ∀ t : VT, t.isInt = true →
+    E.res i t ≠ E.status ∧ E.res i t ≠ E.pages ∧ E.res i t ≠ E.mem ∧ E.res i t ∉ E.globals
 
 theorem empty_env_none (id : ident) : empty_env[id]? = none := Std.TreeMap.getElem?_emptyc
 
@@ -159,6 +165,7 @@ theorem MemRel.store_other {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem}
   memCap := h.memCap
   bytes := fun i hi => by rw [Mem.contents_stored_other _ _ _ _ _ _ hm]; exact h.bytes i hi
   perm := h.perm
+  resW := h.resW
 
 theorem GlobalsRel.store_status {E : Env} {gs : List Value} {m : mem} (hE : EnvOk E)
     (h : GlobalsRel E gs m) (v : val) :

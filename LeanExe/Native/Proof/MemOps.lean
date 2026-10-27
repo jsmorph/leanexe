@@ -43,6 +43,7 @@ theorem MemRel.of_contents {E : Env} {wm wm' : Wasm.Mem} {caps : List Nat} {m m'
   memCap := h.memCap
   bytes := hb
   perm := fun i hi => by rw [hs.perm_eq]; exact h.perm i hi
+  resW := fun i hi t ht => by rw [hs.valid_access_eq]; exact h.resW i hi t ht
 
 /-- `lx_pages` set to `p`, the pages of a grown memory. -/
 theorem MemRel.grow {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem} (hE : EnvOk E)
@@ -55,6 +56,7 @@ theorem MemRel.grow {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem} (hE : 
   bytes := fun i hi => by
     rw [Mem.contents_stored_other _ _ _ _ _ _ (fun e => hE.mem_pages e.symm)]; exact h.bytes i hi
   perm := h.perm
+  resW := h.resW
 
 theorem MemRel.valid_byte {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem}
     (h : MemRel E wm caps m) {i : Nat} (hi : i < 65536 * E.cap) :

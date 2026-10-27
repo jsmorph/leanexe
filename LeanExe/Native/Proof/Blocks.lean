@@ -121,7 +121,7 @@ theorem construct_of_body {L : List Label} {σb : List VT} {r : Option VT} {α :
       obtain ⟨t, le', m', out, hx, hrel, hf⟩ := h
       cases k with
       | zero =>
-          obtain ⟨l, hl, h0, hkept⟩ := hrel.target
+          obtain ⟨l, hl, h0, -, hkept⟩ := hrel.target
           simp at hl; subst hl
           have hout : out = .Out_break := by simpa using h0 rfl
           subst hout
@@ -140,21 +140,14 @@ theorem construct_of_body {L : List Label} {σb : List VT} {r : Option VT} {α :
           have hout := hrel.outer (by omega)
           subst hout
           obtain ⟨t', hW⟩ := exec_wrap_exit hx (.inr rfl)
-          obtain ⟨l, hl, -, hkept⟩ := hrel.target
+          obtain ⟨l, hl, -, hfin, hkept⟩ := hrel.target
           simp at hl
           refine ⟨t', le', m', hW, ?_, fun l' hl' => hf l' (by simpa using hl')⟩
-          exact { target := ⟨l, hl, hkept⟩, brk := hrel.brk, small := hrel.small,
+          exact { target := ⟨l, hl, hfin, hkept⟩, brk := hrel.brk, small := hrel.small,
                   locals := hrel.locals, store := hrel.store, status := hrel.status }
   | Return st' vs =>
       obtain ⟨t, le', m', out, hx, hrel, hg, hs⟩ := h
-      have : ∃ rv, out = .Out_return rv := by
-        cases hc : c.result with
-        | none => rw [hc] at hrel; exact ⟨none, hrel⟩
-        | some t0 =>
-            rw [hc] at hrel
-            obtain ⟨v, -, -, e⟩ := hrel
-            exact ⟨_, e⟩
-      obtain ⟨rv, rfl⟩ := this
+      obtain ⟨rv, rfl⟩ := ReturnRel.isReturn hrel
       exact ⟨_, le', m', _, exec_wrap_return hx, hrel, hg, hs⟩
   | Trap st' msg =>
       obtain ⟨t, le', m', hx, hg, hs, hc⟩ := h
@@ -322,7 +315,7 @@ theorem sim_loop {CallOk : Nat → Prop} {F : Nat} (hP : ∀ g, g < F → ProgSi
           obtain ⟨t, le', m', out, hx, hrel, hf⟩ := ho
           cases k with
           | zero =>
-              obtain ⟨l, hl, h0, -⟩ := hrel.target
+              obtain ⟨l, hl, h0, -, -⟩ := hrel.target
               simp [L'] at hl; subst hl
               have hout : out = .Out_continue := by simpa using h0 rfl
               subst hout
@@ -338,22 +331,15 @@ theorem sim_loop {CallOk : Nat → Prop} {F : Nat} (hP : ∀ g, g < F → ProgSi
               have hout := hrel.outer (by omega)
               subst hout
               obtain ⟨t', hW⟩ := exec_wrap_exit hx (.inr rfl)
-              obtain ⟨l, hl, -, hkept⟩ := hrel.target
+              obtain ⟨l, hl, -, hfin, hkept⟩ := hrel.target
               simp [L'] at hl
               refine ⟨t', le', m', hW, ?_, fun l' hl' => hf l' (by simpa [L'] using hl')⟩
-              exact { target := ⟨l, hl, hkept⟩, brk := hrel.brk, small := hrel.small,
+              exact { target := ⟨l, hl, hfin, hkept⟩, brk := hrel.brk, small := hrel.small,
                       locals := hrel.locals, store := hrel.store, status := hrel.status }
       | Return st' vs =>
           rw [hres] at ho
           obtain ⟨t, le', m', out, hx, hrel, hg', hs⟩ := ho
-          have : ∃ rv, out = .Out_return rv := by
-            cases hc : c.result with
-            | none => rw [hc] at hrel; exact ⟨none, hrel⟩
-            | some t0 =>
-                rw [hc] at hrel
-                obtain ⟨v, -, -, e⟩ := hrel
-                exact ⟨_, e⟩
-          obtain ⟨rv, rfl⟩ := this
+          obtain ⟨rv, rfl⟩ := ReturnRel.isReturn hrel
           exact ⟨_, le', m', _, exec_wrap_return hx, hrel, hg', hs⟩
       | Trap st' msg =>
           rw [hres] at ho

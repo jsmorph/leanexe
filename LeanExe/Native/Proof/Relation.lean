@@ -125,8 +125,9 @@ def LocalsRel (le : temp_env) (tys : List VT) (vals : List Value) : Prop :=
     ∀ i (hi : i < tys.length), ∃ v, vals[i]? = some v ∧ tys[i].has v = true ∧
       le[localId i]? = some (cval v)
 
-/-- The blocks of `lx_status`, of the C globals `lx_g<i>`, of `lx_pages`, and of `lx_mem`, the
-number of pages of `lx_mem`, and the global environment. -/
+/-- The blocks of `lx_status`, of the C globals `lx_g<i>`, of `lx_pages`, of `lx_mem`, and of the
+result globals `lx_r<i>_<t>` for the positions below `nres`, the number of pages of `lx_mem`, and
+the global environment. -/
 structure Env where
   ge : genv
   status : block
@@ -134,6 +135,15 @@ structure Env where
   pages : block
   mem : block
   cap : Nat
+  res : Nat → VT → block
+  nres : Nat
+
+/-- The chunk of a value of the type. -/
+def VT.chunk : VT → memory_chunk
+  | .i32 => .Mint32
+  | .i64 => .Mint64
+  | .f32 => .Mfloat32
+  | .f64 => .Mfloat64
 
 /-- The C globals hold the Talos globals `gs`, each an `i64`, and can be written. -/
 def GlobalsRel (E : Env) (gs : List Value) (m : mem) : Prop :=
@@ -144,7 +154,8 @@ def GlobalsRel (E : Env) (gs : List Value) (m : mem) : Prop :=
 
 /-- The memory `wm` of a store whose caps are `caps`: below `cap` pages, each byte of `lx_mem`
 holds the byte of `wm` at the same address and can be written; `lx_pages` holds the number of
-pages, at most `cap`, and can be written; and the store's cap on the memory's pages is `cap`. -/
+pages, at most `cap`, and can be written; the store's cap on the memory's pages is `cap`; and the
+result globals can be written. -/
 structure MemRel (E : Env) (wm : Wasm.Mem) (caps : List Nat) (m : mem) : Prop where
   pages : Mem.load .Mint32 m E.pages 0 = some (.Vint (UInt32.ofNat wm.pages))
   pagesW : Mem.valid_access m .Mint32 E.pages 0 .Writable
@@ -153,6 +164,8 @@ structure MemRel (E : Env) (wm : Wasm.Mem) (caps : List Nat) (m : mem) : Prop wh
   bytes : ∀ i : Nat, i < 65536 * E.cap →
     ZMap.get (i : _root_.Int) (Mem.contents_of m E.mem) = .Byte (wm.bytes i)
   perm : ∀ i : Nat, i < 65536 * E.cap → Mem.perm m E.mem (i : _root_.Int) .Cur .Writable
+  resW : ∀ i < E.nres, ∀ t : VT, t.isInt = true →
+    Mem.valid_access m t.chunk (E.res i t) 0 .Writable
 
 /-- The C globals and `lx_mem` hold Talos's globals and memory. -/
 def StoreRel (E : Env) {α : Type} (st : Store α) (m : mem) : Prop :=
@@ -182,6 +195,7 @@ structure BreakRel (E : Env) (c : FCtx) (L : List Label) (k : Nat) {α : Type} (
     (sl : Locals) (le : temp_env) (m : mem) (out : outcome) : Prop where
   target : ∃ l, L[k]? = some l ∧
     (k = 0 → out = (if l.isLoop then .Out_continue else .Out_break)) ∧
+    l.final = false ∧
     (l.isLoop = false → ∀ t, l.result = some t →
       ∃ v, sl.values.head? = some v ∧ t.has v = true ∧ le[slotId l.base t]? = some (cval v))
   outer : k ≠ 0 → out = .Out_break
@@ -191,11 +205,20 @@ structure BreakRel (E : Env) (c : FCtx) (L : List Label) (k : Nat) {α : Type} (
   store : StoreRel E st m
   status : StatusRel E m 0
 
-/-- A return with the values `vs`, top first, from a function with result `r`. -/
-def ReturnRel (r : Option VT) (vs : List Value) (out : outcome) : Prop :=
-  match r with
-  | none => out = .Out_return none
-  | some t => ∃ v, vs.head? = some v ∧ t.has v = true ∧ out = .Out_return (some (cval v, t.ty))
+/-- The results of the types `rs` of a return with the values `vs`, top first, are in the result
+globals: `lx_r<i>_<t>` holds result `i`, the value at depth `rs.length - 1 - i`. -/
+def ResultsIn (E : Env) (rs : List VT) (vs : List Value) (m : mem) : Prop :=
+  rs.length ≤ vs.length ∧ ∀ i (hi : i < rs.length), ∃ v, (vs.take rs.length).reverse[i]? = some v ∧
+    rs[i].has v = true ∧ Mem.load rs[i].chunk m (E.res i rs[i]) 0 = some (cval v)
+
+/-- A return with the values `vs`, top first, from a function with results `rs`, in the memory
+`m`: with none, `return;`; with one, `return` of its value; with several, `return;` with the
+results in the result globals. -/
+def ReturnRel (E : Env) (rs : List VT) (vs : List Value) (out : outcome) (m : mem) : Prop :=
+  match rs with
+  | [] => out = .Out_return none
+  | [t] => ∃ v, vs.head? = some v ∧ t.has v = true ∧ out = .Out_return (some (cval v, t.ty))
+  | rs => out = .Out_return none ∧ ResultsIn E rs vs m
 
 /-- The outcome of the `return` after a trap. -/
 def trapOut : Option VT → outcome
@@ -215,7 +238,7 @@ def Outcome (A : Archi) (X : ExtSem) (E : Env) (c : FCtx) (L : List Label) (σ' 
       exec_stmt A X E.ge empty_env le m s t le' m' out ∧ BreakRel E c L k st' sl' le' m' out ∧
       ∀ l, L[k]? = some l → Frame l.base le le'
   | .Return st' vs => ∃ t le' m' out,
-      exec_stmt A X E.ge empty_env le m s t le' m' out ∧ ReturnRel c.result vs out ∧
+      exec_stmt A X E.ge empty_env le m s t le' m' out ∧ ReturnRel E c.results vs out m' ∧
       StoreRel E st' m' ∧ StatusRel E m' 0
   | .Trap st' msg => ∃ t le' m',
       exec_stmt A X E.ge empty_env le m s t le' m' (trapOut c.result) ∧

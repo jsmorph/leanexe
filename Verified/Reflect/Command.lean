@@ -1,4 +1,5 @@
 import LeanExe.Native.Subset
+import Verified.Native
 import Verified.Reflect.Definitions
 import Verified.Reflect.TailDefinition
 import Verified.Reflect.TailOptions
@@ -362,7 +363,11 @@ theorem `p.f.implements` that the module computes `f`, at the function's index, 
 entry when its code takes the call depth, or, for a wrapper, at the wrapper's entry from a store
 that holds the tables; `p.initial`, that the store in which the module starts meets the
 allocator invariant and holds the tables; `p.inSubset`, that the module is in the subset that
-the translator to C accepts, when it is; and `p.bytes`, the module's bytes with all the
+the translator to C accepts, when it is; when the module translates, its translation
+`p.translation` to C, with `lx_mem` of `nativeCap` pages, the list `p.translation_funcs` of the
+functions that the translation contains, the equation `p.translation_eq`, and, for each
+definition `f` whose function the translation contains, the theorem `p.f.native` that the C
+function computes `f` as `p.f.implements` states; and `p.bytes`, the module's bytes with all the
 functions' theorems. -/
 @[command_elab verifiedCompile]
 def elabVerifiedCompile : CommandElab
@@ -430,6 +435,8 @@ def elabVerifiedCompile : CommandElab
     let mut proofs : Array Term := #[]
     let mut entries := 0
     let mut scalarCallees : List (Nat × Lean.Expr) := []
+    -- Each function's simple name, the index of its theorem, and whether it is a wrapper.
+    let mut natives : Array (Name × Nat × Bool) := #[]
     for k in [0:n] do
       let r := reflected[k]!
       trace[Verified.reflect] "prove {r.name}"
@@ -473,6 +480,7 @@ def elabVerifiedCompile : CommandElab
       if let some uniform := uniform? then scalarCallees := (index, uniform) :: scalarCallees
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)
+      natives := natives.push (simple, index, false)
       -- The theorem without a trap, with the growth of `top` bounded by the function's bound on
       -- Lean's argument tuple.  For a function whose code takes no call depth, it holds when the
       -- bound fits, if the function may trap; for one whose code does, with the frames that the
@@ -577,6 +585,7 @@ def elabVerifiedCompile : CommandElab
         addTheorem implName claim proof
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)
+      natives := natives.push (simple, 2 + n + entries + j, true)
       -- For a wrapper whose callee's code takes no call depth, its bound and its theorem without
       -- a trap, as for a function.
       unless r.depth do
@@ -641,6 +650,41 @@ def elabVerifiedCompile : CommandElab
         elabCommand (← `(set_option maxRecDepth 100000 in
           theorem $inSubsetId : LeanExe.Native.InSubset $(mkIdent (base ++ `module)) := by
             decide +kernel))
+        -- The translation to C.  The native translator gives the list of the functions that it
+        -- contains, which the kernel checks once; each function's theorem then follows from the
+        -- function's theorem and its membership in that list.
+        match LeanExe.Native.translate LeanExe.Native.nativeCap evaluated with
+        | none =>
+            logWarning m!"verified_compile: the module does not translate to C with \
+              {LeanExe.Native.nativeCap} pages"
+        | some t =>
+            let funcsId := mkIdent (target.getId ++ `translation_funcs)
+            let translationId := mkIdent (target.getId ++ `translation)
+            let eqId := mkIdent (target.getId ++ `translation_eq)
+            elabCommand (← `(set_option maxRecDepth 100000 in
+              theorem $funcsId : (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId).map
+                  LeanExe.Native.Translation.funcs = some $(Lean.quote t.funcs) := by
+                decide +kernel))
+            elabCommand (← `(noncomputable def $translationId : LeanExe.Native.Translation :=
+              (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId).get
+                (LeanExe.Native.translate_isSome $funcsId)))
+            elabCommand (← `(theorem $eqId :
+                LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId = some $translationId :=
+              (Option.some_get _).symm))
+            elabCommand (← `(attribute [irreducible] $translationId:ident))
+            for (simple, index, wrapper) in natives do
+              unless t.funcs.contains index do continue
+              let implId := mkIdent (base ++ simple ++ `implements)
+              let nativeId := mkIdent (target.getId ++ simple ++ `native)
+              let hk ← `(LeanExe.Native.translate_mem_funcs $eqId $funcsId (by decide))
+              if wrapper then
+                elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
+                    Verified.NativeTablesImpl $implId A X LeanExe.Native.nativeCap $translationId :=
+                  Verified.ImplementsTables.nativeImpl _ $eqId $hk))
+              else
+                elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
+                    LeanExe.Native.NativeImpl $implId A X LeanExe.Native.nativeCap $translationId :=
+                  LeanExe.Native.ImplementsA.nativeImpl _ $eqId $hk))
     -- The encoding, part by part: the native encoder gives the bytes of each part, and the kernel
     -- checks each function's body in its own theorem, so that one check holds one function.
     let parts ← match Wasm.Encoding.encodeParts evaluated with

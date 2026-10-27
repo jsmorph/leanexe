@@ -8,6 +8,11 @@ import Library.Arrays.Word.Compiled
 import Library.Hashing.Crc.Compiled
 import Library.Lists.Word.Compiled
 import Library.Sorting.Insertion.Compiled
+import Library.Hashing.Sha256.Compiled
+import Library.Hashing.Sha512.Compiled
+import Library.Hashing.Sha3.Compiled
+import Library.Hashing.SipHash.Compiled
+import Library.Hashing.XxHash64.Compiled
 import LeanExe.Native.ClightCheck
 
 /-!
@@ -21,10 +26,11 @@ The host calls `lx_init`, then makes each call of the case in order, in the same
 argument in memory is allocated with the module's `alloc` and written byte by byte: an array as
 its length and words, a list as a chain of records of two slots, and bytes as themselves, passed
 as their address and length.  After each call the host prints the export's name, `lx_status`,
-the result, the four globals, and a 64-bit FNV-1a checksum of the memory below global 0, the
-allocator's bump pointer.  Talos runs the same allocations, writes, and calls from the module's
-initial store with its memory cap set to `cap`, and the expected line of a call that traps has
-the result 0, which the translated function returns after a trap, and the trap's code.
+the results, read from the result globals for a function with several, the four globals, and a
+64-bit FNV-1a checksum of the memory below global 0, the allocator's bump pointer.  Talos runs
+the same allocations, writes, and calls from the module's initial store with its memory cap set
+to `cap`, and the line of a call that traps has the trap's code and the word `trap` in place of
+the results.
 -/
 
 open LeanExe.Native Wasm
@@ -126,10 +132,19 @@ def globalWords (st : Store Unit) : List UInt64 :=
     | .i64 n => n
     | _ => 0
 
-def resultLine (name : String) (status : Nat) (r : UInt64) (st : Store Unit) : String :=
+def valueWord : Value → UInt64
+  | .i64 n => n
+  | .i32 n => n.toUInt64
+  | _ => 0
+
+def resultLine (name : String) (status : Nat) (rs : Option (List UInt64)) (st : Store Unit) :
+    String :=
   let gs := globalWords st
   let top := (gs.headD 0).toNat
-  s!"{name} {status} {r} " ++ " ".intercalate (gs.map toString) ++ s!" {fnv st.mem top}"
+  let results := match rs with
+    | some ws => String.join (ws.map fun w => s!" {w}")
+    | none => " trap"
+  s!"{name} {status}{results} " ++ " ".intercalate (gs.map toString) ++ s!" {fnv st.mem top}"
 
 /-- Runs the call in Talos, writes the host's statements for it, and returns the expected
 line. -/
@@ -140,21 +155,23 @@ def simCall (m : Module) (c : Call) : SimM String := do
   let cargs := ", ".intercalate (vals.map (·.2))
   let f := functionName m k
   let rs := (m.funcs[k]?.map (·.results)).getD []
-  let callText := if rs.isEmpty then s!"  lx_status = 0U; {f}({cargs}); r = 0ULL;"
-    else s!"  lx_status = 0U; r = {f}({cargs});"
+  let letter : ValueType → String := fun t => if t == .i32 then "i" else "l"
+  let callText := match rs with
+    | [] => s!"  lx_status = 0U; {f}({cargs}); nres = 0;"
+    | [_] => s!"  lx_status = 0U; res[0] = {f}({cargs}); nres = 1;"
+    | _ => s!"  lx_status = 0U; {f}({cargs});" ++
+        String.join (rs.zipIdx.map fun (t, i) => s!" res[{i}] = lx_r{i}_{letter t};") ++
+        s!" nres = {rs.length};"
   emitLine callText
-  emitLine s!"  report(\"{c.name}\", r);"
+  emitLine s!"  report(\"{c.name}\");"
   match run fuel m k (← get).store args.reverse with
-  | .Success [.i64 r] store' =>
+  | .Success vs store' =>
       modify fun st => { st with store := store' }
-      pure (resultLine c.name 0 r store')
-  | .Success [] store' =>
-      modify fun st => { st with store := store' }
-      pure (resultLine c.name 0 0 store')
+      pure (resultLine c.name 0 (some (vs.reverse.map valueWord)) store')
   | .Trap store' msg =>
       modify fun st => { st with store := store' }
-      pure (resultLine c.name (trapCode msg) 0 store')
-  | _ => throw s!"{c.name}: the run does not return at most one i64 or trap"
+      pure (resultLine c.name (trapCode msg) none store')
+  | _ => throw s!"{c.name}: the run neither returns nor traps"
 
 def initialStore (m : Module) : Store Unit :=
   { (m.initialStore : Store Unit) with memoryCaps := [cap] }
@@ -170,13 +187,18 @@ def hostText (t : Translation) (m : Module) (body : Array String) (vars : Nat) :
     | _ => none
   let gfmt := " ".intercalate (globals.map fun _ => "%llu")
   let gargs := String.join (globals.map fun g => s!", {g}")
+  let resGlobals := t.names.filterMap fun (_, n) =>
+    if n.startsWith "lx_r" then
+      some s!"extern unsigned {if n.endsWith "_i" then "int" else "long long"} {n};\n"
+    else none
   let decls := if vars = 0 then "" else
     "  unsigned long long " ++ ", ".intercalate ((List.range vars).map fun i => s!"p{i}") ++ ";\n"
   "int printf(const char *, ...);\n" ++
   "extern unsigned int lx_status;\n" ++
   "extern unsigned long long lx_mem[];\n" ++
   String.join (globals.map fun g => s!"extern unsigned long long {g};\n") ++
-  String.join protos ++
+  String.join resGlobals ++ String.join protos ++
+  "static unsigned long long res[64];\nstatic int nres;\n" ++
   "static void put8(unsigned long long a, unsigned int b) {\n" ++
   "  ((unsigned char *) lx_mem)[a] = (unsigned char) b;\n}\n" ++
   "static void put64(unsigned long long a, unsigned long long w) {\n" ++
@@ -185,13 +207,15 @@ def hostText (t : Translation) (m : Module) (body : Array String) (vars : Nat) :
   "  unsigned long long h = 14695981039346656037ULL, a;\n" ++
   "  for (a = 0; a < lx_g0; a++) h = (h ^ ((unsigned char *) lx_mem)[a]) * 1099511628211ULL;\n" ++
   "  return h;\n}\n" ++
-  "static void report(const char *name, unsigned long long r) {\n" ++
-  s!"  printf(\"%s %u %llu {gfmt} %llu\\n\", name, lx_status, r{gargs}, fnv());\n}\n" ++
+  "static void report(const char *name) {\n  int i;\n  printf(\"%s %u\", name, lx_status);\n" ++
+  "  if (lx_status != 0U) printf(\" trap\");\n" ++
+  "  else for (i = 0; i < nres; i++) printf(\" %llu\", res[i]);\n" ++
+  s!"  printf(\" {gfmt} %llu\\n\"{gargs}, fnv());\n}\n" ++
   (if vars = 0 then "" else
     "static unsigned long long alloc(unsigned long long n) {\n" ++
     "  unsigned long long p;\n  lx_status = 0U;\n  p = lxf_alloc(n);\n" ++
     "  if (lx_status != 0U) printf(\"alloc %llu: trap %u\\n\", n, lx_status);\n  return p;\n}\n") ++
-  "int main(void) {\n" ++ decls ++ "  unsigned long long r;\n  lx_init();\n" ++
+  "int main(void) {\n" ++ decls ++ "  lx_init();\n" ++
   String.join (body.toList.map (· ++ "\n")) ++ "  return 0;\n}\n"
 
 def emitCase (dir : String) (c : Case) : IO Unit := do
@@ -322,7 +346,34 @@ def cases : List Case :=
        { name := "crc32", args := [.array [0x3837363534333231, 0x39], .word 9] },
        { name := "crc32c", args := [.array [0x3837363534333231, 0x39], .word 9] },
        { name := "crc32Update", args := [.word 0xCBF43926, .array [0x61], .word 1] },
-       { name := "crc32", args := [.array (words 40 fun i => UInt64.ofNat (i * 0x0101010101010101)), .word 317] }] }]
+       { name := "crc32", args := [.array (words 40 fun i => UInt64.ofNat (i * 0x0101010101010101)), .word 317] }] },
+   { name := "arrays_ab", module := Verified.Examples.Arrays.compiled.module
+     calls := [
+       { name := "firstAbove", args := [.array [1, 9, 3, 12], .word 5] },
+       { name := "firstAbove", args := [.array [1, 2], .word 5] }] },
+   { name := "sha256", module := Library.Hashing.Sha256.compiled.module
+     calls := [
+       { name := "sha256", args := [.array [], .word 0] },
+       { name := "sha256", args := [.array [0x636261], .word 3] },
+       { name := "sha224", args := [.array (words 20 fun i => UInt64.ofNat (i * 977)), .word 150] }] },
+   { name := "sha512", module := Library.Hashing.Sha512.compiled.module
+     calls := [
+       { name := "sha512", args := [.array [0x636261], .word 3] },
+       { name := "sha384", args := [.array (words 30 fun i => UInt64.ofNat (i * 977)), .word 230] }] },
+   { name := "sha3", module := Library.Hashing.Sha3.compiled.module
+     calls := [
+       { name := "sha3_256", args := [.array [], .word 0] },
+       { name := "sha3_512", args := [.array (words 30 fun i => UInt64.ofNat (i * 977)), .word 200] },
+       { name := "shake128", args := [.array [0x636261], .word 3, .word 40] }] },
+   { name := "siphash", module := Library.Hashing.SipHash.compiled.module
+     calls := [
+       { name := "siphash24", args := [.word 0x0706050403020100, .word 0x0F0E0D0C0B0A0908,
+           .array [0x0706050403020100, 0x0E0D0C0B0A0908], .word 15] },
+       { name := "sipRound", args := [.word 1, .word 2, .word 3, .word 4] }] },
+   { name := "xxhash64", module := Library.Hashing.XxHash64.compiled.module
+     calls := [
+       { name := "xxh64", args := [.array [], .word 0, .word 0] },
+       { name := "xxh64", args := [.array (words 9 fun i => UInt64.ofNat (i * 0x0101010101010101)), .word 70, .word 7] }] }]
 
 def emit (dir : String) : IO Unit := do
   IO.FS.createDirAll dir

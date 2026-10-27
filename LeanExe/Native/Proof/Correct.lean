@@ -76,7 +76,7 @@ theorem guard_some {p : Prop} [Decidable p] {x : Unit} (h : (guard p : Option Un
 theorem translate_spec {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T) :
     m.imports = [] ∧ m.memIs64 = false ∧
     ∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
-      ∃ f, m.funcs[k]? = some f ∧
+      ∃ f, m.funcs[k]? = some f ∧ k ∈ T.funcs ∧
         trFunction cap (m.funcs.map signatureOf) m.globals.length f = some fd ∧
         ∀ k', funId k' ∈ callees fd.fn_body →
           ∃ fd', (funId k', globdef.Gfun (fundef.Internal fd')) ∈ T.cprogram.prog_defs := by
@@ -85,11 +85,12 @@ theorem translate_spec {m : Module} {cap : Nat} {T : Translation} (h : translate
   refine ⟨violation_imports hv, violation_memIs64 hv, ?_⟩
   intro k fd hk
   simp only [List.mem_cons, List.mem_append, List.mem_map] at hk
-  rcases hk with hk | ⟨⟨g, i⟩, -, hk⟩ | hk | hk | hk | hk | hk
+  rcases hk with hk | ⟨⟨g, i⟩, -, hk⟩ | hk | hk | hk | hk | hk | hk
   · simp at hk
   · simp at hk
   · simp at hk
   · simp at hk
+  · simp [resDefs] at hk
   · obtain ⟨k0, hk0, hdef⟩ := mapM_mem' hfuns _ hk
     cases hfd0 : (fdefsOf cap m)[k0]?.join with
     | none => simp [funDef, hfd0] at hdef
@@ -103,7 +104,7 @@ theorem translate_spec {m : Module} {cap : Nat} {T : Translation} (h : translate
     | some f =>
     have htr : trFunction cap (m.funcs.map signatureOf) m.globals.length f = some fd0 := by
       simpa [fdefsOf, hf] using hfd0
-    refine ⟨f, rfl, htr, fun k' hk' => ?_⟩
+    refine ⟨f, rfl, hk0, htr, fun k' hk' => ?_⟩
     have hcall : k' ∈ callsOf cap m k0 := by
       unfold callsOf
       rw [hfd0]
@@ -120,6 +121,12 @@ theorem translate_spec {m : Module} {cap : Nat} {T : Translation} (h : translate
     have e : (4 * k + 3 : Nat) = 16 := hk.1
     omega
   · simp at hk
+
+theorem translate_nres {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T) :
+    T.nres = maxResults m T.funcs := by
+  simp [translate, Option.bind_eq_some_iff] at h
+  obtain ⟨-, decl, -, -, gdefs, -, -, funs, -, rfl⟩ := h
+  rfl
 
 /-- Each function index of a translation has its definition in the program. -/
 theorem translate_funcs {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
@@ -143,16 +150,57 @@ theorem type_of_params_zipIdx (ps : List VT) (start : Nat) :
       simp only [List.zipIdx_cons, List.map_cons, type_of_params] at ih ⊢
       rw [ih]
 
-theorem trFunction_sig {cap : Nat} {sigs : List (Option (List VT × Option VT))} {G : Nat}
+theorem trFunction_sig {cap : Nat} {sigs : List (Option (List VT × List VT))} {G : Nat}
     {f : Function} {fd : function} (h : trFunction cap sigs G f = some fd) :
-    ∃ ps r, signatureOf f = some (ps, r) ∧ type_of_function fd = funType ps r := by
-  obtain ⟨ps, ls, r, body, nc, hps, -, hrs, -, rfl⟩ := trFunction_spec h
-  refine ⟨ps, r, ?_, ?_⟩
+    ∃ ps rs, signatureOf f = some (ps, rs) ∧ type_of_function fd = funType ps rs ∧
+      resultsOk rs = true ∧ f.results.length = rs.length := by
+  obtain ⟨ps, ls, rs, body, nc, hps, -, hrs, hok, -, rfl⟩ := trFunction_spec h
+  refine ⟨ps, rs, ?_, ?_, hok, (mapM_length hrs).symm⟩
   · unfold signatureOf
     rw [hps, hrs]
-    cases r <;> rfl
+    simp [hok]
   · simp only [type_of_function, funType]
     rw [type_of_params_zipIdx]
+
+theorem maxStep_le (m : Module) (acc k : Nat) : acc ≤ maxStep m acc k := by
+  unfold maxStep
+  split
+  · split
+    · exact Nat.le_max_left _ _
+    · exact Nat.le_refl _
+  · exact Nat.le_refl _
+
+theorem foldl_maxStep_le (m : Module) : ∀ (ks : List Nat) (acc : Nat),
+    acc ≤ ks.foldl (maxStep m) acc
+  | [], _ => Nat.le_refl _
+  | k :: ks, acc => Nat.le_trans (maxStep_le m acc k) (foldl_maxStep_le m ks _)
+
+theorem le_maxResults (m : Module) {k : Nat} {f : Function} (hf : m.funcs[k]? = some f)
+    (h2 : 2 ≤ f.results.length) :
+    ∀ (ks : List Nat) (acc : Nat), k ∈ ks → f.results.length ≤ ks.foldl (maxStep m) acc
+  | [], _, h => by simp at h
+  | k' :: ks, acc, h => by
+      rcases List.mem_cons.mp h with rfl | h
+      · refine Nat.le_trans ?_ (foldl_maxStep_le m ks _)
+        simp only [maxStep, hf, ite_eq_left h2]
+        exact Nat.le_max_right _ _
+      · exact le_maxResults m hf h2 ks _ h
+
+/-- Several results of a function of a translation fit in `nres` result globals that the
+translation's `maxResults` bounds. -/
+theorem resOk_of {E : Env} {m : Module} {k : Nat} {f : Function} {ks : List Nat} {rs : List VT}
+    (hf : m.funcs[k]? = some f) (hk : k ∈ ks) (hnres : maxResults m ks ≤ E.nres)
+    (hok : resultsOk rs = true) (hlen : f.results.length = rs.length) : ResOk E rs := by
+  intro h2
+  refine ⟨?_, ?_⟩
+  · have := le_maxResults m hf (by omega) ks 0 hk
+    unfold maxResults at hnres
+    omega
+  · unfold resultsOk at hok
+    simp only [Bool.or_eq_true, decide_eq_true_eq] at hok
+    rcases hok with h | h
+    · omega
+    · exact h
 
 section
 
@@ -161,33 +209,35 @@ variable {A : Archi} {X : ExtSem} {E : Env}
 /-- Every function of a translated program simulates its Talos function at every fuel. -/
 theorem translate_correct {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
     (hE : EnvOk E) (hG : E.globals.length = m.globals.length) (hcap : E.cap = cap)
+    (hnres : T.nres ≤ E.nres)
     (hF : ∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
       ∃ b, Genv.find_symbol E.ge (funId k) = some b ∧
         Genv.find_funct_ptr E.ge b = some (.Internal fd)) :
     ∀ F k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
-      ∃ f ps r, m.funcs[k]? = some f ∧ signatureOf f = some (ps, r) ∧
-        RunSimFun A X E m F k ps r fd := by
+      ∃ f ps rs, m.funcs[k]? = some f ∧ signatureOf f = some (ps, rs) ∧
+        RunSimFun A X E m F k ps rs fd := by
   obtain ⟨himp, h64, hfuns⟩ := translate_spec h
+  rw [translate_nres h] at hnres
   intro F
   induction F using Nat.strongRecOn with
   | _ F ih =>
       intro k fd hk
-      obtain ⟨f, hf, htr, hclosed⟩ := hfuns k fd hk
-      obtain ⟨ps, r, hsig, -⟩ := trFunction_sig htr
-      refine ⟨f, ps, r, hf, hsig, ?_⟩
+      obtain ⟨f, hf, hkf, htr, hclosed⟩ := hfuns k fd hk
+      obtain ⟨ps, rs, hsig, -, hok, hlen⟩ := trFunction_sig htr
+      refine ⟨f, ps, rs, hf, hsig, ?_⟩
       refine run_sim_fun (CallOk := fun k' => ∃ fd',
           (funId k', globdef.Gfun (fundef.Internal fd')) ∈ T.cprogram.prog_defs)
-        hE himp hf hG.symm hcap.symm h64 htr hsig ?_ hclosed
+        hE himp hf hG.symm hcap.symm h64 htr hsig (resOk_of hf hkf hnres hok hlen) ?_ hclosed
       intro k' ⟨fd', hk'⟩ g hg c hc
-      obtain ⟨f', ps', r', hf', hsig', hrun⟩ := ih g hg k' fd' hk'
-      obtain ⟨f'', hf'', htr', -⟩ := hfuns k' fd' hk'
+      obtain ⟨f', ps', rs', hf', hsig', hrun⟩ := ih g hg k' fd' hk'
+      obtain ⟨f'', hf'', hkf', htr', -⟩ := hfuns k' fd' hk'
       rw [hf'] at hf''
       cases hf''
-      obtain ⟨ps'', r'', hsig'', hty⟩ := trFunction_sig htr'
+      obtain ⟨ps'', rs'', hsig'', hty, hok', hlen'⟩ := trFunction_sig htr'
       rw [hsig'] at hsig''
       obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hsig'')
       obtain ⟨b, hsym, hptr⟩ := hF k' fd' hk'
-      refine ⟨ps', r', b, fd', ?_, hsym, hptr, hty, hrun⟩
+      refine ⟨ps', rs', b, fd', ?_, hsym, hptr, hty, resOk_of hf' hkf' hnres hok' hlen', hrun⟩
       rw [hc]
       simp [List.getElem?_map, hf', hsig']
 

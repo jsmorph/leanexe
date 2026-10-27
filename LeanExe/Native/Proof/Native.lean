@@ -42,22 +42,23 @@ translation terminates, with a final store `st'` related to the final memory, an
 or `aborts` holds and `lx_status` holds the code of `unreachable`. -/
 theorem Runs.native {mod : Module} {cap : Nat} {T : Translation} (hT : translate cap mod = some T)
     {E : Env} (hE : EnvOk E) (hG : E.globals.length = mod.globals.length) (hcap : E.cap = cap)
+    (hnres : T.nres ≤ E.nres)
     (hF : ∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
       ∃ b, Genv.find_symbol E.ge (funId k) = some b ∧
         Genv.find_funct_ptr E.ge b = some (.Internal fd))
     {k : Nat} {fd : function} (hfd : (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs)
-    {ps : List VT} {r : Option VT}
-    (hsig : ∀ f, mod.funcs[k]? = some f → signatureOf f = some (ps, r))
+    {ps rs : List VT}
+    (hsig : ∀ f, mod.funcs[k]? = some f → signatureOf f = some (ps, rs))
     {aborts : Bool} {env : HostEnv Unit} {st : Store Unit} {args : List Value}
     {P : Store Unit → List Value → Prop} (hrun : Runs aborts env mod k st args P)
     (htyped : ArgsTyped ps args) {m : mem} (hst : StoreRel E st m) (hs : StatusRel E m 0) :
     ∃ t m' vres st', eval_funcall A X E.ge m (.Internal fd) (argVals ps args) t m' vres ∧
       StoreRel E st' m' ∧
-      ((StatusRel E m' 0 ∧ ∃ vs, P st' vs ∧ ResultRel r vs (args.drop ps.length) vres) ∨
+      ((StatusRel E m' 0 ∧ ∃ vs, P st' vs ∧ ResultRel E rs vs (args.drop ps.length) vres m') ∨
         (aborts = true ∧ StatusRel E m' trapUnreachable)) := by
   obtain ⟨N, hN⟩ := hrun
   obtain ⟨f, ps', r', hf, hsig', hsim⟩ :=
-    translate_correct (A := A) (X := X) hT hE hG hcap hF N k fd hfd
+    translate_correct (A := A) (X := X) hT hE hG hcap hnres hF N k fd hfd
   rw [hsig f hf] at hsig'
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hsig')
   have ho := hsim st args m env htyped hst hs
@@ -76,14 +77,15 @@ theorem Runs.native {mod : Module} {cap : Nat} {T : Translation} (hT : translate
 end
 
 open LeanExe.Pipeline in
-/-- The C function `fd`, the translation of entry `k` of `mod` with parameters `ps` and result
-`r`, computes `f` as `ImplementsA aborts mod k f Pre Post` states for the module. -/
+/-- The C function `fd` of the translation `T` of `mod`, with parameters `ps` and results `rs`,
+computes `f` as `ImplementsA aborts mod k f Pre Post` states for the function `k` that `fd`
+translates. -/
 def NativeA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : ExtSem) (cap : Nat)
-    (mod : Module) (T : Translation) (k : Nat) (ps : List VT) (r : Option VT) (fd : function)
+    (mod : Module) (T : Translation) (ps rs : List VT) (fd : function)
     (aborts : Bool) (f : α → β) (Pre : α → Heap → Store Unit → Prop)
     (Post : α → Heap → Store Unit → Heap → Store Unit → Prop) : Prop :=
   ∀ (E : Env), EnvOk E → E.globals.length = mod.globals.length → E.cap = cap →
-    (∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
+    T.nres ≤ E.nres → (∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
       ∃ b, Genv.find_symbol E.ge (funId k) = some b ∧
         Genv.find_funct_ptr E.ge b = some (.Internal fd)) →
     ∀ (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
@@ -94,7 +96,7 @@ def NativeA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : ExtSem
       ∃ t m' vres final, eval_funcall A X E.ge m (.Internal fd) (argVals ps params.reverse) t m'
           vres ∧ StoreRel E final m' ∧
         ((StatusRel E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
-            ResultRel r vs (params.reverse.drop ps.length) vres ∧
+            ResultRel E rs vs (params.reverse.drop ps.length) vres m' ∧
             heap'.At final ∧ Represent.owned heap' final vs.reverse (f x) ∧
             Post x heap store heap' final) ∨
           (aborts = true ∧ StatusRel E m' trapUnreachable))
@@ -106,11 +108,12 @@ theorem ImplementsA.native {α β : Type} [Represent α] [Represent β] {A : Arc
     (h : ImplementsA aborts mod k f Pre Post) {cap : Nat} {T : Translation}
     (hT : translate cap mod = some T) {fd : function}
     (hfd : (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs)
-    {ps : List VT} {r : Option VT}
-    (hsig : ∀ f, mod.funcs[k]? = some f → signatureOf f = some (ps, r)) :
-    NativeA A X cap mod T k ps r fd aborts f Pre Post := by
-  intro E hE hG hcap hF store heap params x hHeap hPre hArgs hSep hCapS htyped m hst hs
-  obtain ⟨t, m', vres, st', hcall, hst', hres⟩ := Runs.native (A := A) (X := X) hT hE hG hcap hF
+    {ps rs : List VT}
+    (hsig : ∀ f, mod.funcs[k]? = some f → signatureOf f = some (ps, rs)) :
+    NativeA A X cap mod T ps rs fd aborts f Pre Post := by
+  intro E hE hG hcap hnres hF store heap params x hHeap hPre hArgs hSep hCapS htyped m hst hs
+  obtain ⟨t, m', vres, st', hcall, hst', hres⟩ := Runs.native (A := A) (X := X) hT hE hG hcap
+    hnres hF
     hfd hsig (h {} store heap params x hHeap hPre hArgs hSep hCapS) htyped hst hs
   refine ⟨t, m', vres, st', hcall, hst', ?_⟩
   rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, -, -, hPost⟩, hr⟩ | habort
@@ -119,26 +122,48 @@ theorem ImplementsA.native {α β : Type} [Represent α] [Represent β] {A : Arc
 
 open LeanExe.Pipeline in
 /-- The translation of the entry of the theorem `h` computes its function as `h` states, under
-the function's parameters `ps` and result `r`. -/
+the function's parameters `ps` and results `rs`. -/
 def NativeImpl {α β : Type} [Represent α] [Represent β] {aborts : Bool} {mod : Module} {k : Nat}
     {f : α → β} {Pre : α → Heap → Store Unit → Prop}
     {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
     (_h : ImplementsA aborts mod k f Pre Post) (A : Archi) (X : ExtSem) (cap : Nat)
     (T : Translation) : Prop :=
-  ∃ fd ps r, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
-    (∀ g, mod.funcs[k]? = some g → signatureOf g = some (ps, r)) ∧
-    NativeA A X cap mod T k ps r fd aborts f Pre Post
+  ∃ fd ps rs, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
+    (∀ g, mod.funcs[k]? = some g → signatureOf g = some (ps, rs)) ∧
+    NativeA A X cap mod T ps rs fd aborts f Pre Post
 
 /-- The signature of a function of a translation. -/
 theorem translate_sig {mod : Module} {cap : Nat} {T : Translation} (hT : translate cap mod = some T)
     {k : Nat} (hk : k ∈ T.funcs) :
-    ∃ fd ps r, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
-      ∀ g, mod.funcs[k]? = some g → signatureOf g = some (ps, r) := by
+    ∃ fd ps rs, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
+      ∀ g, mod.funcs[k]? = some g → signatureOf g = some (ps, rs) := by
   obtain ⟨fd, hfd⟩ := translate_funcs hT hk
   obtain ⟨-, -, hfuns⟩ := translate_spec hT
-  obtain ⟨g, hg, htr, -⟩ := hfuns k fd hfd
-  obtain ⟨ps, r, hsig, -⟩ := trFunction_sig htr
-  exact ⟨fd, ps, r, hfd, fun g' hg' => by rw [hg] at hg'; cases hg'; exact hsig⟩
+  obtain ⟨g, hg, -, htr, -⟩ := hfuns k fd hfd
+  obtain ⟨ps, rs, hsig, -⟩ := trFunction_sig htr
+  exact ⟨fd, ps, rs, hfd, fun g' hg' => by rw [hg] at hg'; cases hg'; exact hsig⟩
+
+/-- A translation exists when its list of functions does. -/
+theorem translate_isSome {mod : Module} {cap : Nat} {L : List Nat}
+    (h : (translate cap mod).map Translation.funcs = some L) : (translate cap mod).isSome = true := by
+  cases hT : translate cap mod with
+  | none => rw [hT] at h; cases h
+  | some _ => rfl
+
+/-- The functions of a translation, from the list that `(translate cap mod).map funcs` gives. -/
+theorem translate_mem_funcs {mod : Module} {cap : Nat} {T : Translation} {L : List Nat}
+    (hT : translate cap mod = some T) (h : (translate cap mod).map Translation.funcs = some L)
+    {k : Nat} (hk : k ∈ L) : k ∈ T.funcs := by
+  rw [hT] at h
+  cases h
+  exact hk
+
+theorem translate_funcs_eq {mod : Module} {cap : Nat} {T : Translation} {L : List Nat}
+    (hT : translate cap mod = some T) (h : (translate cap mod).map Translation.funcs = some L) :
+    T.funcs = L := by
+  rw [hT] at h
+  cases h
+  rfl
 
 open LeanExe.Pipeline in
 theorem ImplementsA.nativeImpl {α β : Type} [Represent α] [Represent β] {A : Archi} {X : ExtSem}
@@ -146,8 +171,8 @@ theorem ImplementsA.nativeImpl {α β : Type} [Represent α] [Represent β] {A :
     {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
     (h : ImplementsA aborts mod k f Pre Post) {cap : Nat} {T : Translation}
     (hT : translate cap mod = some T) (hk : k ∈ T.funcs) : NativeImpl h A X cap T := by
-  obtain ⟨fd, ps, r, hfd, hsig⟩ := translate_sig hT hk
-  exact ⟨fd, ps, r, hfd, hsig, ImplementsA.native h hT hfd hsig⟩
+  obtain ⟨fd, ps, rs, hfd, hsig⟩ := translate_sig hT hk
+  exact ⟨fd, ps, rs, hfd, hsig, ImplementsA.native h hT hfd hsig⟩
 
 /-! ## The runtime -/
 
@@ -164,6 +189,7 @@ grow. -/
 theorem alloc_native {mod : Module} {cap : Nat} {T : Translation} (hT : translate cap mod = some T)
     {typeIdx : Nat} (hFunc : mod.funcs[0]? = some (allocFunction typeIdx)) (h0 : 0 ∈ T.funcs)
     {E : Env} (hE : EnvOk E) (hG : E.globals.length = mod.globals.length) (hcap : E.cap = cap)
+    (hnres : T.nres ≤ E.nres)
     (hF : ∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
       ∃ b, Genv.find_symbol E.ge (funId k) = some b ∧
         Genv.find_funct_ptr E.ge b = some (.Internal fd))
@@ -178,10 +204,11 @@ theorem alloc_native {mod : Module} {cap : Nat} {T : Translation} (hT : translat
             vres = .Vlong (FixedArrayAllocate.root heap.top (allocSize bytes) heap.free)) ∨
           StatusRel E m' trapUnreachable) := by
   obtain ⟨himp, h64, -⟩ := translate_spec hT
-  obtain ⟨fd, ps, r, hfd, hsig⟩ := translate_sig hT h0
-  have hpr : signatureOf (allocFunction typeIdx) = some (ps, r) := hsig _ hFunc
+  obtain ⟨fd, ps, rs, hfd, hsig⟩ := translate_sig hT h0
+  have hpr : signatureOf (allocFunction typeIdx) = some (ps, rs) := hsig _ hFunc
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hpr)
-  obtain ⟨t, m', vres, st', hcall, hst', hres⟩ := Runs.native (A := A) (X := X) hT hE hG hcap hF
+  obtain ⟨t, m', vres, st', hcall, hst', hres⟩ := Runs.native (A := A) (X := X) hT hE hG hcap
+    hnres hF
     hfd hsig (alloc_spec_runs true h64 himp hFunc {} heap store bytes hHeap hBytes hCapS
       (fun h => nomatch h)) ⟨by simp, by simp [AllHas, VT.has]⟩ hst hs
   refine ⟨fd, hfd, t, m', vres, st', hcall, hst', ?_⟩
@@ -200,6 +227,7 @@ theorem release_native {mod : Module} {cap : Nat} {T : Translation}
     (hT : translate cap mod = some T) {typeIdx : Nat}
     (hFunc : mod.funcs[1]? = some (releaseFunction typeIdx)) (h1 : 1 ∈ T.funcs)
     {E : Env} (hE : EnvOk E) (hG : E.globals.length = mod.globals.length) (hcap : E.cap = cap)
+    (hnres : T.nres ≤ E.nres)
     (hF : ∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
       ∃ b, Genv.find_symbol E.ge (funId k) = some b ∧
         Genv.find_funct_ptr E.ge b = some (.Internal fd))
@@ -210,11 +238,11 @@ theorem release_native {mod : Module} {cap : Nat} {T : Translation}
       ∃ t m', eval_funcall A X E.ge m (.Internal fd) [.Vlong ptr] t m' .Vundef ∧
         StoreRel E (heap.releaseStore store ptr) m' ∧ StatusRel E m' 0 := by
   obtain ⟨himp, -, -⟩ := translate_spec hT
-  obtain ⟨fd, ps, r, hfd, hsig⟩ := translate_sig hT h1
-  have hpr : signatureOf (releaseFunction typeIdx) = some (ps, r) := hsig _ hFunc
+  obtain ⟨fd, ps, rs, hfd, hsig⟩ := translate_sig hT h1
+  have hpr : signatureOf (releaseFunction typeIdx) = some (ps, rs) := hsig _ hFunc
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hpr)
   obtain ⟨t, m', vres, st', hcall, hst', hres⟩ := Runs.native (A := A) (X := X) (aborts := false)
-    hT hE hG hcap hF hfd hsig
+    hT hE hG hcap hnres hF hfd hsig
     (TerminatesWith.runs (release_run himp hFunc {} heap store ptr words hHeap hOwned))
     ⟨by simp, by simp [AllHas, VT.has]⟩ hst hs
   rcases hres with ⟨hs', vs, ⟨-, rfl⟩, hr⟩ | ⟨habs, -⟩

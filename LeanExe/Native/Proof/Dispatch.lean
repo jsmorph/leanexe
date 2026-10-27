@@ -20,7 +20,7 @@ theorem sim_zero {CallOk : Nat → Prop} (inst : Instruction) :
   rw [execOne_zero]; trivial
 
 theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.cap = E.cap)
-    (h64 : mod.memIs64 = false) {CallOk : Nat → Prop}
+    (h64 : mod.memIs64 = false) (hres : ResOk E c.results) {CallOk : Nat → Prop}
     {F : Nat} (hP : ∀ g, g < F → ProgSim A X E mod c CallOk g)
     (hC : ∀ k, CallOk k → ∀ g, g < F → CallSim A X E mod c g k) (inst : Instruction) :
     InstrSimL A X E mod c CallOk F inst := by
@@ -60,7 +60,7 @@ theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.
   case memoryGrow => exact (sim_memoryGrow hE hcap F).toL
   case br k => exact sim_br F k
   case br_if k => exact sim_br_if F k
-  case ret => exact sim_ret F
+  case ret => exact sim_ret hE hres F
   case block pa ra body pts rts =>
       cases F with
       | zero => exact sim_zero _
@@ -81,14 +81,14 @@ theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.
 /-- Instruction lists simulate at every fuel up to `Fmax`, for code whose calls go to functions
 whose simulation holds below `Fmax`. -/
 theorem body_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.cap = E.cap)
-    (h64 : mod.memIs64 = false) {CallOk : Nat → Prop}
+    (h64 : mod.memIs64 = false) (hres : ResOk E c.results) {CallOk : Nat → Prop}
     {Fmax : Nat} (hC : ∀ k, CallOk k → ∀ g, g < Fmax → CallSim A X E mod c g k) :
     ∀ F, F ≤ Fmax → ProgSim A X E mod c CallOk F := by
   intro F
   induction F using Nat.strongRecOn with
   | _ F ih =>
       intro hF
-      exact prog_sim (fun inst => instr_sim hE hG hcap h64 (fun g hg => ih g hg (by omega))
+      exact prog_sim (fun inst => instr_sim hE hG hcap h64 hres (fun g hg => ih g hg (by omega))
         (fun k hk g hg => hC k hk g (by omega)) inst)
 
 end

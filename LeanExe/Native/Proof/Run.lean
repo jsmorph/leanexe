@@ -101,26 +101,27 @@ theorem outcome_zero (t : VT) (m : mem) :
 
 /-- The simulation of a call of a translated function whose callees are simulated below `F`. -/
 theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Function}
-    (hf : mod.funcs[k]? = some f) {sigs : List (Option (List VT × Option VT))} {G cap : Nat}
+    (hf : mod.funcs[k]? = some f) {sigs : List (Option (List VT × List VT))} {G cap : Nat}
     (hG : G = E.globals.length) (hcap : cap = E.cap) (h64 : mod.memIs64 = false) {fd : function}
     (htr : trFunction cap sigs G f = some fd)
-    {ps : List VT} {r : Option VT} (hsig : signatureOf f = some (ps, r))
+    {ps rs : List VT} (hsig : signatureOf f = some (ps, rs)) (hres : ResOk E rs)
     {CallOk : Nat → Prop} {F : Nat}
     (hC : ∀ k', CallOk k' → ∀ g, g < F → ∀ c : FCtx, c.sigs = sigs → CallSim A X E mod c g k')
     (hcalls : ∀ k', funId k' ∈ callees fd.fn_body → CallOk k') :
-    RunSimFun A X E mod F k ps r fd := by
+    RunSimFun A X E mod F k ps rs fd := by
   intro α st args m env htyped hg hs
-  obtain ⟨ps0, ls, r0, body, nc, hps, hls, hrs, hbody, hfd⟩ := trFunction_spec htr
-  have hpr : ps0 = ps ∧ r0 = r := by
+  obtain ⟨ps0, ls, rs0, body, nc, hps, hls, hrs, hok, hbody, hfd⟩ := trFunction_spec htr
+  have hpr : ps0 = ps ∧ rs0 = rs := by
     unfold signatureOf at hsig
     rw [hps, hrs] at hsig
-    cases r0 <;> simp at hsig <;> exact ⟨hsig.1, hsig.2⟩
+    simp [hok] at hsig
+    exact ⟨hsig.1, hsig.2⟩
   obtain ⟨rfl, rfl⟩ := hpr
-  let c : FCtx := { locals := ps0 ++ ls, result := r0, nglobals := G, sigs := sigs, cap := cap }
+  let c : FCtx := { locals := ps0 ++ ls, results := rs0, nglobals := G, sigs := sigs, cap := cap }
   have hP := body_sim (c := c) (A := A) (X := X) (mod := mod) hE (by simp [c, hG]) hcap h64
-    (fun k' hk' g hg => hC k' hk' g hg c rfl) F (Nat.le_refl _)
+    hres (fun k' hk' g hg => hC k' hk' g hg c rfl) F (Nat.le_refl _)
   have hnp : f.params.length = ps0.length := (mapM_length hps).symm
-  have hnr : f.results.length = r0.toList.length := (mapM_length hrs).symm
+  have hnr : f.results.length = rs0.length := (mapM_length hrs).symm
   have hnl : f.locals.length = ls.length := (mapM_length hls).symm
   have hargs_len : ps0.length ≤ args.length := htyped.1
   have hvargs_len : (argVals ps0 args).length = ps0.length := by
@@ -204,18 +205,19 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
     right
     refine ⟨wrapLoop body, by simp, ?_⟩
     simp [wrapLoop, callees, callees_seq_break, hk])
-  have ho := hP [{ isLoop := false, base := 0, result := r0 }] [] r0.toList 0 f.body body nc hbody
+  have ho := hP [{ isLoop := false, base := 0, result := retOf rs0, final := 2 ≤ rs0.length }] []
+    rs0.reverse 0 f.body body nc hbody
     (Nat.le_refl _) (fun k l hl => by cases k <;> simp at hl; subst hl; exact Nat.le_refl _)
     hcalls' st _ le3 m env hinv
   -- The function's tail after the declared locals.
-  let ret : statement := retStmt r0
+  let ret : statement := retStmt rs0
   have hbodyEq : fd.fn_body = seqList ((ls.zipIdx).map (fun x => statement.Sset
       (localId (ps0.length + x.2)) x.1.zero) ++ [.Sset brkId (cint 0), wrapLoop body, ret]) := by
     rw [hfd]
-  have hretEq : fd.fn_return = (r0.map VT.ty).getD .Tvoid := by rw [hfd]
+  have hretEq : fd.fn_return = ((retOf rs0).map VT.ty).getD .Tvoid := by rw [hfd]
   have hfun : ∀ {t le' m' out} vres,
       exec_stmt A X E.ge empty_env le3 m (.Ssequence (wrapLoop body) ret) t le' m' out →
-      outcome_result_value out ((r0.map VT.ty).getD .Tvoid) vres m' →
+      outcome_result_value out (((retOf rs0).map VT.ty).getD .Tvoid) vres m' →
       ∃ t', eval_funcall A X E.ge m (.Internal fd) (argVals ps0 args) t' m' vres := by
     intro t le' m' out vres hx hov
     have hx2 : exec_stmt A X E.ge empty_env le2 m
@@ -231,88 +233,108 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
   rw [run_eq (by simp [himp])]
   simp only [himp, List.length_nil, Nat.sub_zero, hf]
   simp only [Function.numParams, hnp, hnr]
-  cases hres : exec F mod st (f.toLocals ((args.take ps0.length).reverse)) f.body env with
+  cases hres' : exec F mod st (f.toLocals ((args.take ps0.length).reverse)) f.body env with
   | Fallthrough st' sl' =>
-      rw [hres] at ho
+      rw [hres'] at ho
       obtain ⟨σ'', hσ, -, t, le', m', hx, hinv', -⟩ := ho
       cases hσ
       obtain ⟨tw, hW⟩ := exec_wrap_exit hx (.inl rfl)
-      cases r0 with
-      | none =>
-          obtain ⟨t', hcall⟩ := hfun .Vundef
-            (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW (.exec_Sreturn_none _ _ _)) rfl
-          exact ⟨t', m', .Vundef, hcall, hinv'.store, hinv'.status, by simp, rfl⟩
-      | some t0 =>
-          obtain ⟨v, vr, hvs, ht, hl, hrest⟩ := hinv'.stack.cons_inv
-          have hret := exec_stmt.exec_Sreturn_some (A := A) (X := X) (ge := E.ge) empty_env le' m'
-            (tmp 0 t0) (cval v) (.eval_Etempvar _ _ _ hl)
-          obtain ⟨t', hcall⟩ := hfun (cval v) (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW hret)
-            (outcome_value ht m')
-          have hvr : vr = [] := by cases vr <;> simp_all [StackRel]
-          subst hvr
-          exact ⟨t', m', cval v, hcall, hinv'.store, hinv'.status, v, by simp [hvs], ht, rfl⟩
+      rcases rs0 with _ | ⟨t0, _ | ⟨t1, rs⟩⟩
+      · obtain ⟨t', hcall⟩ := hfun .Vundef
+          (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW (.exec_Sreturn_none _ _ _)) rfl
+        exact ⟨t', m', .Vundef, hcall, hinv'.store, hinv'.status, by simp, rfl⟩
+      · obtain ⟨v, vr, hvs, ht, hl, hrest⟩ := hinv'.stack.cons_inv
+        have hret := exec_stmt.exec_Sreturn_some (A := A) (X := X) (ge := E.ge) empty_env le' m'
+          (tmp 0 t0) (cval v) (.eval_Etempvar _ _ _ hl)
+        obtain ⟨t', hcall⟩ := hfun (cval v) (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW hret)
+          (outcome_value ht m')
+        have hvr : vr = [] := by cases vr <;> simp_all [StackRel]
+        subst hvr
+        exact ⟨t', m', cval v, hcall, hinv'.store, hinv'.status, v, by simp [hvs], ht, rfl⟩
+      · obtain ⟨hlen, hint⟩ := hres (by simp)
+        have hst : StackRel le' ((t0 :: t1 :: rs).reverse ++ []) sl'.values := by
+          simpa using hinv'.stack
+        obtain ⟨vtop, vr, hvs, hvlen, hvr, hargs⟩ := stack_args (t0 :: t1 :: rs) hst
+        have hvr0 : vr = [] := by cases vr <;> simp_all [StackRel]
+        subst hvr0
+        obtain ⟨m'', hx2, hst'', hs'', hload, -⟩ := exec_resStores (A := A) (X := X) hE
+          (t0 :: t1 :: rs) 0 0 vtop.reverse m' (by simpa using hlen) hint (by simpa using hargs)
+          hinv'.store hinv'.status
+        obtain ⟨t', hcall⟩ := hfun .Vundef (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW hx2) rfl
+        refine ⟨t', m'', .Vundef, hcall, hst'', hs'', vtop, ?_, hvlen, rfl, ⟨by omega, ?_⟩⟩
+        · rw [hvs]; simp [hvlen]
+        · intro j hj
+          obtain ⟨v, hv, htv, hl⟩ := hload j hj
+          refine ⟨v, ?_, htv, by simpa using hl⟩
+          rw [List.take_of_length_le (by omega)]
+          exact hv
   | Break k st' sl' =>
-      rw [hres] at ho
+      rw [hres'] at ho
       obtain ⟨t, le', m', out, hx, hrel, -⟩ := ho
       cases k with
       | succ k => trivial
       | zero =>
-          obtain ⟨l, hl, h0, hkept⟩ := hrel.target
+          obtain ⟨l, hl, h0, hfin, hkept⟩ := hrel.target
           simp at hl; subst hl
           have hout : out = .Out_break := by simpa using h0 rfl
           subst hout
           obtain ⟨tw, hW⟩ := exec_wrap_exit hx (.inr rfl)
-          cases r0 with
-          | none =>
-              obtain ⟨t', hcall⟩ := hfun .Vundef
-                (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW (.exec_Sreturn_none _ _ _)) rfl
-              exact ⟨t', m', .Vundef, hcall, hrel.store, hrel.status, by simp, rfl⟩
-          | some t0 =>
-              obtain ⟨v, hv, ht, hl⟩ := hkept rfl t0 rfl
-              have hret := exec_stmt.exec_Sreturn_some (A := A) (X := X) (ge := E.ge) empty_env le'
-                m' (tmp 0 t0) (cval v) (.eval_Etempvar _ _ _ hl)
-              obtain ⟨t', hcall⟩ := hfun (cval v) (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW hret)
-                (outcome_value ht m')
-              refine ⟨t', m', cval v, hcall, hrel.store, hrel.status, v, ?_, ht, rfl⟩
-              cases hsv : sl'.values with
-              | nil => rw [hsv] at hv; simp at hv
-              | cons w ws => rw [hsv] at hv; simp at hv; subst hv; simp
+          rcases rs0 with _ | ⟨t0, _ | ⟨t1, rs⟩⟩
+          · obtain ⟨t', hcall⟩ := hfun .Vundef
+              (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW (.exec_Sreturn_none _ _ _)) rfl
+            exact ⟨t', m', .Vundef, hcall, hrel.store, hrel.status, by simp, rfl⟩
+          · obtain ⟨v, hv, ht, hl⟩ := hkept rfl t0 rfl
+            have hret := exec_stmt.exec_Sreturn_some (A := A) (X := X) (ge := E.ge) empty_env le'
+              m' (tmp 0 t0) (cval v) (.eval_Etempvar _ _ _ hl)
+            obtain ⟨t', hcall⟩ := hfun (cval v) (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW hret)
+              (outcome_value ht m')
+            refine ⟨t', m', cval v, hcall, hrel.store, hrel.status, v, ?_, ht, rfl⟩
+            cases hsv : sl'.values with
+            | nil => rw [hsv] at hv; simp at hv
+            | cons w ws => rw [hsv] at hv; simp at hv; subst hv; simp
+          · simp at hfin
   | Return st' vs =>
-      rw [hres] at ho
+      rw [hres'] at ho
       obtain ⟨t, le', m', out, hx, hrel, hg', hs'⟩ := ho
-      cases r0 with
-      | none =>
-          simp only [ReturnRel] at hrel
-          subst hrel
-          obtain ⟨t', hcall⟩ := hfun .Vundef
-            (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ (exec_wrap_return hx) (by simp)) rfl
-          exact ⟨t', m', .Vundef, hcall, hg', hs', by simp, rfl⟩
-      | some t0 =>
-          simp only [ReturnRel] at hrel
-          obtain ⟨v, hv, ht, rfl⟩ := hrel
-          obtain ⟨t', hcall⟩ := hfun (cval v)
-            (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ (exec_wrap_return hx) (by simp)) (outcome_value ht m')
-          refine ⟨t', m', cval v, hcall, hg', hs', v, ?_, ht, rfl⟩
-          cases vs with
-          | nil => simp at hv
-          | cons w ws => simp at hv; subst hv; simp
+      rcases rs0 with _ | ⟨t0, _ | ⟨t1, rs⟩⟩
+      · have hout : out = .Out_return none := hrel
+        subst hout
+        obtain ⟨t', hcall⟩ := hfun .Vundef
+          (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ (exec_wrap_return hx) (by simp)) rfl
+        exact ⟨t', m', .Vundef, hcall, hg', hs', by simp, rfl⟩
+      · obtain ⟨v, hv, ht, rfl⟩ := hrel
+        obtain ⟨t', hcall⟩ := hfun (cval v)
+          (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ (exec_wrap_return hx) (by simp)) (outcome_value ht m')
+        refine ⟨t', m', cval v, hcall, hg', hs', v, ?_, ht, rfl⟩
+        cases vs with
+        | nil => simp at hv
+        | cons w ws => simp at hv; subst hv; simp
+      · obtain ⟨rfl, hin⟩ := hrel
+        obtain ⟨t', hcall⟩ := hfun .Vundef
+          (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ (exec_wrap_return hx) (by simp)) rfl
+        refine ⟨t', m', .Vundef, hcall, hg', hs', vs.take (t0 :: t1 :: rs).length, rfl, ?_, rfl,
+          ⟨by rw [List.length_take, Nat.min_eq_left hin.1], fun j hj => ?_⟩⟩
+        · rw [List.length_take, Nat.min_eq_left hin.1]
+        · obtain ⟨v, hv, htv, hl⟩ := hin.2 j hj
+          exact ⟨v, by rw [List.take_take, Nat.min_self]; exact hv, htv, hl⟩
   | Trap st' msg =>
-      rw [hres] at ho
+      rw [hres'] at ho
       obtain ⟨t, le', m', hx, hg', hs', hc⟩ := ho
-      cases r0 with
-      | none =>
-          obtain ⟨t', hcall⟩ := hfun .Vundef
-            (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ (exec_wrap_return hx) (by simp [trapOut])) rfl
-          exact ⟨t', m', .Vundef, hcall, hg', hs', hc⟩
-      | some t0 =>
-          obtain ⟨t', hcall⟩ := hfun (zval t0)
-            (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ (exec_wrap_return hx) (by simp [trapOut]))
-            (outcome_zero t0 m')
-          exact ⟨t', m', zval t0, hcall, hg', hs', hc⟩
+      rcases rs0 with _ | ⟨t0, _ | ⟨t1, rs⟩⟩
+      · obtain ⟨t', hcall⟩ := hfun .Vundef
+          (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ (exec_wrap_return hx) (by simp)) rfl
+        exact ⟨t', m', .Vundef, hcall, hg', hs', hc⟩
+      · obtain ⟨t', hcall⟩ := hfun (zval t0)
+          (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ (exec_wrap_return hx) (by simp))
+          (outcome_zero t0 m')
+        exact ⟨t', m', zval t0, hcall, hg', hs', hc⟩
+      · obtain ⟨t', hcall⟩ := hfun .Vundef
+          (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ (exec_wrap_return hx) (by simp)) rfl
+        exact ⟨t', m', .Vundef, hcall, hg', hs', hc⟩
   | Invalid _ => trivial
   | OutOfFuel => trivial
-  | ReturnCall _ _ _ => rw [hres] at ho; exact ho.elim
-  | Throwing _ _ _ _ => rw [hres] at ho; exact ho.elim
+  | ReturnCall _ _ _ => rw [hres'] at ho; exact ho.elim
+  | Throwing _ _ _ _ => rw [hres'] at ho; exact ho.elim
 
 end
 

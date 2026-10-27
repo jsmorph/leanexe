@@ -85,3 +85,11 @@ root = "TestSupport.Native.ClightDiff"
 name = "native-emit"
 srcDir = "tests"
 root = "TestSupport.Native.Emit"
+
+# The translation of the tests/verified corpus to C (tests/native/verified.sh); not a default
+# target.
+[[lean_exe]]
+name = "native-verified"
+srcDir = "tests"
+root = "TestSupport.Native.Verified"
+supportInterpreter = true

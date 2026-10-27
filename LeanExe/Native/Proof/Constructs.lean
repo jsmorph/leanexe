@@ -84,7 +84,7 @@ variable (A : Archi) (X : ExtSem) (E : Env) (c : FCtx)
 construct: `brk` is `k + 1` when the construct's loop ends. -/
 structure PendingBreak (L : List Label) (k : Nat) {α : Type} (st : Store α) (sl : Locals)
     (le : temp_env) (m : mem) : Prop where
-  target : ∃ l, L[k]? = some l ∧
+  target : ∃ l, L[k]? = some l ∧ l.final = false ∧
     (l.isLoop = false → ∀ t, l.result = some t →
       ∃ v, sl.values.head? = some v ∧ t.has v = true ∧ le[slotId l.base t]? = some (cval v))
   brk : le[brkId]? = some (.Vint (UInt32.ofNat (k + 1)))
@@ -104,7 +104,7 @@ def ConstructOutcome (L : List Label) (σ' : List VT) {α : Type} (r : Continuat
       exec_stmt A X E.ge empty_env le m W t le' m' .Out_normal ∧
       PendingBreak E c L k st' sl' le' m' ∧ ∀ l, L[k]? = some l → Frame l.base le le'
   | .Return st' vs => ∃ t le' m' out,
-      exec_stmt A X E.ge empty_env le m W t le' m' out ∧ ReturnRel c.result vs out ∧
+      exec_stmt A X E.ge empty_env le m W t le' m' out ∧ ReturnRel E c.results vs out m' ∧
       StoreRel E st' m' ∧ StatusRel E m' 0
   | .Trap st' msg => ∃ t le' m',
       exec_stmt A X E.ge empty_env le m W t le' m' (trapOut c.result) ∧
@@ -182,7 +182,7 @@ theorem ConstructOutcome.toOutcome {L : List Label} {σ' : List VT} {α : Type}
       have hc2 := eval_brk_eq (A := A) (E := E) (m := m') hb2 (by omega)
       have hframe : ∀ x t', le2[slotId x t']? = le'[slotId x t']? := fun x t' =>
         te_insert_ne _ (slotId_ne_brkId x t').symm
-      obtain ⟨l, hl, hkept⟩ := hpb.target
+      obtain ⟨l, hl, hfin, hkept⟩ := hpb.target
       let out := if k = 0 then (if parent.isLoop then outcome.Out_continue else .Out_break)
         else .Out_break
       have hinner : exec_stmt A X E.ge empty_env le2 m'
@@ -202,14 +202,14 @@ theorem ConstructOutcome.toOutcome {L : List Label} {σ' : List VT} {α : Type}
       have hd : exec_stmt A X E.ge empty_env le' m' (dispatch parent) (E0 ++ E0) le2 m' out := by
         refine .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hc1 ?_
           (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (.exec_Sset _ _ _ _ _ _ hsub) hinner)
-        simp only [ne_eq, ite_true]
+        simp only [ne_eq]
         have : UInt32.ofNat (k + 1) ≠ 0 := fun e => by
           have := (uint32_ofNat_eq_zero hk1).mp e; omega
-        simp [this]
+        simp
         exact bool_int m' 1
       refine ⟨t ++ (E0 ++ E0), le2, m', out, .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hx hd, ?_,
         fun l' hl' => fun x hx' t' => by rw [hframe]; exact hf l' hl' x hx' t'⟩
-      refine { target := ⟨l, hl, ?_, ?_⟩, outer := ?_, brk := hb2,
+      refine { target := ⟨l, hl, ?_, hfin, ?_⟩, outer := ?_, brk := hb2,
                small := by have := hpb.small; omega,
                locals := hpb.locals.insert_other _ (fun i => (localId_ne_brkId i).symm)
                store := hpb.store, status := hpb.status }
@@ -227,7 +227,7 @@ theorem ConstructOutcome.toOutcome {L : List Label} {σ' : List VT} {α : Type}
       · intro hk0; simp [out, hk0]
   | Return st' vs =>
       obtain ⟨t, le', m', out, hx, hrel, hg, hs⟩ := h
-      exact ⟨t, le', m', out, .exec_Sseq_2 _ _ _ _ _ _ _ _ _ hx hrel.ne_normal, hrel, hg, hs⟩
+      exact ⟨t, le', m', out, .exec_Sseq_2 _ _ _ _ _ _ _ _ _ hx (ReturnRel.ne_normal hrel), hrel, hg, hs⟩
   | Trap st' msg =>
       obtain ⟨t, le', m', hx, hg, hs, hc⟩ := h
       exact ⟨t, le', m', .exec_Sseq_2 _ _ _ _ _ _ _ _ _ hx (trapOut_ne_normal _), hg, hs, hc⟩

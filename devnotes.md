@@ -35760,3 +35760,42 @@ Three limits remain.  The theorems speak of the translated program's own global 
 - [x] `lx_init_correct` and the general initial memory.
 - [x] `NativeImpl` for the array, list, sorting, and CRC examples, and the runtime's theorems.
 - [ ] Functions with several results, which SHA-2, SipHash, XXH64, and SHA-3 need.
+
+## 2026-10-26: The Wasm-to-C translator: M4
+
+### Functions with several results
+
+A function with two or more results, all integers, writes result `i` to `lx_r<i>_i` when it is an `i32` and to `lx_r<i>_l` when it is an `i64`, returns `void`, and its caller copies the results into its stack slots straight after the call, before the test of `lx_status`.  The design planned one untyped global per position.  A global of each integer type per position keeps every store and load at the global's own type, so the C text needs no cast and `clightgen` reads it back unchanged.  The program holds the globals of as many positions as its function with the most results, `maxResults` over the functions of the translation.  A function with a float among several results stays out of the translation until the float milestones.  In a function with several results, the function's own label is final: a branch to it, which returns in Talos, is refused, so the function returns by `ret` or at the end of its body.  That restriction keeps the result globals out of `BreakRel`, and the survey found no function that it alone keeps out: the three functions with two integer results that do not translate, the frontend example's `entries`, GPT-2's `sampleFrom`, and the binary32 example's `borrowedPush`, convert or store floats.
+
+The relation gains the result globals.  `Env` holds the block of each position and type and the number of positions, `EnvOk` finds each by its identifier and keeps the blocks apart from each other and from the other globals, and `MemRel.resW` keeps them writable.  `ReturnRel` for several results is `return;` with `ResultsIn`: result `i`, counted from the deepest, lies in the block of position `i` and its type.  `Results.lean` proves the stores before `return;` and the loads after the call, and `sim_ret`, `sim_call`, `run_sim_fun`, and `translate_correct` cover the third case of each.  `Init.lean` places the result globals after `lx_mem` in the program's definitions and proves their blocks and permissions from `init_mem`.
+
+### What `verified_compile` adds
+
+For a module in the subset, `verified_compile` runs `translate nativeCap` on the evaluated module, and the kernel checks one theorem, `p.translation_funcs : (translate nativeCap p.module).map funcs = some L`, with `L` the list of the native result.  `p.translation` is `Option.get` of the translation from that theorem, made irreducible after `p.translation_eq`, so that later proofs use the equation rather than unfold the translation, and for each definition `f` whose function lies in `L`, `p.f.native` follows from `p.f.implements` by `ImplementsA.nativeImpl`, or from a wrapper's theorem by `ImplementsTables.nativeImpl`, in one line.  `NativeTablesA` and `NativeTablesImpl` moved from the tests to `Verified/Native.lean`, and `nativeCap`, 4,096 pages or 256 MiB, lives beside `translate`.  The tests now use the generated translations and theorems instead of their own translations with 256 pages, and `firstAbove_native_init` calls the loop example's `firstAbove` from the state that `lx_init` leaves and finds its two results in `lx_r0_l` and `lx_r1_l`.
+
+The additions cost about a tenth of the build time.  With four workers, 68 corpus modules whose times an earlier build log also records took 1,726 seconds before and 1,922 after, between 1 and 20 seconds more each; the largest differences are the Euler demo (487 to 507 seconds), `PrintFloat` (88 to 104), GPT-2 (188 to 200), `ParseFloat` (103 to 114), and SHA-3 (110 to 120).  These are single builds, so each difference carries the variation of one run.
+
+### The corpus
+
+All 98 modules of `tests/verified/modules.txt` lie in the subset and translate with 4,096 pages, and 47 translate entirely.  The translations hold 847 of the 1,371 functions and 819 of the 1,338 exports.  The functions left out use a float form (317), return several results with a float among them (156), or call such a function (48).  Seven of the modules, `byhand`, `composition`, `relocation`, `tailcore`, `treecopy`, `treecore`, and `tuples`, are not built by `verified_compile`, so their translations run without generated theorems.
+
+`tools/native-host.c` takes the commands `call` and `call-stats` of the Wasmtime host, with the same argument specs and result kinds, and prints the same lines; a trap prints Wasmtime's message for its code and exits with status 2.  It is compiled by `ccomp` with the module's C text and the glue that `native-verified emit` writes, which lists the exported functions that the translation contains, with a call function for each, and the exported globals.  CompCert passes no structure by value without `-fstruct-passing`, so the host passes its lists by pointer.  `tests/native/verified.sh` writes, reads back with `clightgen`, checks, and compiles every module, then runs each case of `Verified/Examples/Cases.lean`, with the library entries, whose export the translation contains, under the rules of `tests/verified/run.sh` for results, traps, and allocation counters.
+
+On AArch64, `clightgen` reads back all 98 programs unchanged.  Of the 32,806 cases, the 21,805 whose export the translation contains all pass natively, traps and allocation counts included; 94 of them pass binary32 or binary64 values through functions that do no float arithmetic.  The other 11,001 cases call functions outside the translation.  The whole run takes about 15 minutes.  `tests/native/run.sh` now translates eighteen modules, SHA-256, SHA-512, SHA-3, SipHash, XXH64, and the arrays example's `firstAbove` among them, and all 96 calls agree with Talos; the differential test of the Clight copy with seed 7 still finds no difference in 311 programs.
+
+### Choices of M4
+
+Five choices of M4 depart from or refine the design, and [the design](docs/native-translator.md) now describes the first four.
+
+1. The result globals are typed: `lx_r<i>_i` and `lx_r<i>_l` per position rather than one `lx_r<i>`.
+2. A function with several results may not branch to its own label; no function of the corpus is left out for that reason alone.
+3. `nativeCap`, the pages of `lx_mem` in the translations that `verified_compile` adds and in the corpus test, is 4,096, or 256 MiB.
+4. `verified_compile` adds the translation and the native theorems to every module in the subset, at about a tenth of the build time, and adds no `p.c`; the C text comes from `native-verified`, which runs the same translator.
+5. The tests use the generated translations, with 4,096 pages, rather than their own with 256; `native-emit` keeps 256 pages for the memory test, which grows memory to the cap.
+
+- [x] Functions with several results in the translator and the proof.
+- [x] `p.translation`, `p.translation_eq`, and `p.f.native` from `verified_compile`.
+- [x] The native host and `tests/native/verified.sh`, with every translated case passing.
+- [ ] The step from `eval_funcall` to a whole program through a generated `main`.
+- [ ] The hypotheses of `translate_correct` for the program that `clightgen` reads.
+- [ ] Merge `main` before the full gate.

@@ -15,41 +15,31 @@ top `ps.length` values, deepest first. -/
 def argVals (ps : List VT) (args : List Value) : List val :=
   ((args.take ps.length).reverse).map cval
 
-/-- Each value has the type at its position. -/
-def AllHas : List VT → List Value → Prop
-  | [], [] => True
-  | t :: ts, v :: vs => t.has v = true ∧ AllHas ts vs
-  | _, _ => False
-
 /-- The arguments have the parameters' types. -/
 def ArgsTyped (ps : List VT) (args : List Value) : Prop :=
   ps.length ≤ args.length ∧ AllHas ps (args.take ps.length).reverse
 
-/-- Talos's results `vs` over the caller's remaining stack `rest`, and the C result `vres`. -/
-def ResultRel (r : Option VT) (vs rest : List Value) (vres : val) : Prop :=
-  match r with
-  | none => vs = rest ∧ vres = .Vundef
-  | some t => ∃ v, vs = v :: rest ∧ t.has v = true ∧ vres = cval v
-
-/-- The slots from height `base` up hold `vals`, deepest first, of the types `ps`. -/
-def ArgsRel (le : temp_env) : Nat → List VT → List Value → Prop
-  | _, [], [] => True
-  | base, t :: ts, v :: vs =>
-      t.has v = true ∧ le[slotId base t]? = some (cval v) ∧ ArgsRel le (base + 1) ts vs
-  | _, _, _ => False
+/-- Talos's results `vs` over the caller's remaining stack `rest`, and the C result `vres` with
+the memory `m` after the call: with several results, `vres` is undefined and the result globals
+hold the results. -/
+def ResultRel (E : Env) (rs : List VT) (vs rest : List Value) (vres : val) (m : mem) : Prop :=
+  match rs with
+  | [] => vs = rest ∧ vres = .Vundef
+  | [t] => ∃ v, vs = v :: rest ∧ t.has v = true ∧ vres = cval v
+  | rs => ∃ ws, vs = ws ++ rest ∧ ws.length = rs.length ∧ vres = .Vundef ∧ ResultsIn E rs ws m
 
 section
 
 variable (A : Archi) (X : ExtSem) (E : Env) (mod : Module)
 
 /-- The C call of `fd` from `m` with the arguments of `args` does what Talos's `res` says. -/
-def RunOutcome (ps : List VT) (r : Option VT) (fd : function) {α : Type} (res : Result α)
+def RunOutcome (ps : List VT) (rs : List VT) (fd : function) {α : Type} (res : Result α)
     (args : List Value) (m : mem) : Prop :=
   match res with
   | .Success vs st' => ∃ t m' vres,
       eval_funcall A X E.ge m (.Internal fd) (argVals ps args) t m' vres ∧
       StoreRel E st' m' ∧ StatusRel E m' 0 ∧
-      ResultRel r vs (args.drop ps.length) vres
+      ResultRel E rs vs (args.drop ps.length) vres m'
   | .Trap st' msg => ∃ t m' vres,
       eval_funcall A X E.ge m (.Internal fd) (argVals ps args) t m' vres ∧
       StoreRel E st' m' ∧ StatusRel E m' (trapCode msg) ∧ trapCode msg ≠ 0
@@ -58,88 +48,63 @@ def RunOutcome (ps : List VT) (r : Option VT) (fd : function) {α : Type} (res :
   | .Thrown _ _ _ => False
 
 /-- The simulation of a call of function `k`, whose C translation is `fd`, at fuel `g`. -/
-def RunSimFun (g k : Nat) (ps : List VT) (r : Option VT) (fd : function) : Prop :=
+def RunSimFun (g k : Nat) (ps : List VT) (rs : List VT) (fd : function) : Prop :=
   ∀ {α : Type} (st : Store α) (args : List Value) (m : mem) (env : HostEnv α),
     ArgsTyped ps args → StoreRel E st m → StatusRel E m 0 →
-    RunOutcome A X E ps r fd (run g mod k st args env) args m
+    RunOutcome A X E ps rs fd (run g mod k st args env) args m
 
 /-- What a call of function `k` needs at fuel `g`, for a caller whose context is `c`. -/
 def CallSim (c : FCtx) (g k : Nat) : Prop :=
-  ∃ ps r b fd, (c.sigs[k]?).join = some (ps, r) ∧ Genv.find_symbol E.ge (funId k) = some b ∧
-    Genv.find_funct_ptr E.ge b = some (.Internal fd) ∧ type_of_function fd = funType ps r ∧
-    RunSimFun A X E mod g k ps r fd
+  ∃ ps rs b fd, (c.sigs[k]?).join = some (ps, rs) ∧ Genv.find_symbol E.ge (funId k) = some b ∧
+    Genv.find_funct_ptr E.ge b = some (.Internal fd) ∧ type_of_function fd = funType ps rs ∧
+    ResOk E rs ∧ RunSimFun A X E mod g k ps rs fd
 
 end
 
 theorem tr_call {c : FCtx} {L : List Label} {σ : List VT} {n k : Nat} {s : statement}
     {σ' : Option (List VT)} {n' : Nat} (h : trInstr c L σ n (.call k) = some (s, σ', n')) :
-    ∃ (ps : List VT) (r : Option VT) (σr : List VT), (c.sigs[k]?).join = some (ps, r) ∧
+    ∃ (ps rs σr : List VT), (c.sigs[k]?).join = some (ps, rs) ∧
       σ = ps.reverse ++ σr ∧
       curBase L ≤ σr.length ∧
-      ((r = none ∧ σ' = some σr ∧ n' = n ∧
-          s = .Ssequence (.Scall none (.Evar (funId k) (funType ps r)) (callArgs σr.length ps))
+      ((rs = [] ∧ σ' = some σr ∧ n' = n ∧
+          s = .Ssequence (.Scall none (.Evar (funId k) (funType ps rs)) (callArgs σr.length ps))
             (statusCheck c.result)) ∨
-        (∃ t, r = some t ∧ σ' = some (t :: σr) ∧ n' = n + 1 ∧
+        (∃ t, rs = [t] ∧ σ' = some (t :: σr) ∧ n' = n + 1 ∧
           s = .Ssequence
-            (.Ssequence (.Scall (some (callId n)) (.Evar (funId k) (funType ps r))
+            (.Ssequence (.Scall (some (callId n)) (.Evar (funId k) (funType ps rs))
                 (callArgs σr.length ps))
               (.Sset (slotId σr.length t) (.Etempvar (callId n) t.ty)))
+            (statusCheck c.result)) ∨
+        (2 ≤ rs.length ∧ σ' = some (rs.reverse ++ σr) ∧ n' = n ∧
+          s = .Ssequence
+            (.Ssequence (.Scall none (.Evar (funId k) (funType ps rs)) (callArgs σr.length ps))
+              (seqList (resLoads rs 0 σr.length)))
             (statusCheck c.result))) := by
   simp [trInstr, pops, Option.bind_eq_some_iff] at h
-  obtain ⟨ps, r, hsig, σr, ⟨hb, hd⟩, htake, hm⟩ := h
-  have hσ : σ = ps.reverse ++ σr := by
-    rw [← List.take_append_drop ps.length σ, htake, hd]
-  have hlen : σ.length - ps.length = σr.length := by
-    rw [hσ]; simp
-  refine ⟨ps, r, σr, hsig, hσ, by rw [← hd]; simp; omega, ?_⟩
+  obtain ⟨ps, rs, hsig, hb, htake, hm⟩ := h
+  have hσ : σ = ps.reverse ++ σ.drop ps.length := by
+    rw [← htake, List.take_append_drop]
+  have hlen : σ.length - ps.length = (σ.drop ps.length).length := by simp
+  refine ⟨ps, rs, σ.drop ps.length, hsig, hσ, by simp; omega, ?_⟩
   rw [hlen] at hm
-  cases r with
-  | none =>
-      simp at hm
-      obtain ⟨rfl, rfl, rfl⟩ := hm
-      exact .inl ⟨rfl, rfl, rfl, rfl⟩
-  | some t =>
-      simp at hm
-      obtain ⟨rfl, rfl, rfl⟩ := hm
-      exact .inr ⟨t, rfl, rfl, rfl, rfl⟩
-
-theorem stack_args {le : temp_env} (ps : List VT) {σr : List VT} {vs : List Value}
-    (h : StackRel le (ps.reverse ++ σr) vs) :
-    ∃ vtop vr, vs = vtop ++ vr ∧ vtop.length = ps.length ∧ StackRel le σr vr ∧
-      ArgsRel le σr.length ps vtop.reverse := by
-  induction ps generalizing σr vs with
-  | nil => exact ⟨[], vs, rfl, rfl, by simpa using h, trivial⟩
-  | cons p ps ih =>
-      have h' : StackRel le (ps.reverse ++ (p :: σr)) vs := by simpa using h
-      obtain ⟨vtop, vr', rfl, hlen, hrest, hargs⟩ := ih h'
-      obtain ⟨v, vr, rfl, ht, hl, hrest'⟩ := hrest.cons_inv
-      refine ⟨vtop ++ [v], vr, by simp, by simp [hlen], hrest', ?_⟩
-      simp only [List.reverse_append, List.reverse_singleton, List.singleton_append]
-      exact ⟨ht, hl, by simpa using hargs⟩
-
-theorem ArgsRel.length {le : temp_env} {base : Nat} {ps : List VT} {vs : List Value}
-    (h : ArgsRel le base ps vs) : vs.length = ps.length := by
-  induction ps generalizing base vs with
-  | nil => cases vs <;> simp_all [ArgsRel]
-  | cons p ps ih =>
-      cases vs with
-      | nil => simp [ArgsRel] at h
-      | cons v vs => simp [ih h.2.2]
-
-theorem ArgsRel.allHas {le : temp_env} {base : Nat} {ps : List VT} {vs : List Value}
-    (h : ArgsRel le base ps vs) : AllHas ps vs := by
-  induction ps generalizing base vs with
-  | nil => cases vs <;> simp_all [ArgsRel, AllHas]
-  | cons p ps ih =>
-      cases vs with
-      | nil => simp [ArgsRel] at h
-      | cons v vs => exact ⟨h.1, ih h.2.2⟩
+  rcases rs with _ | ⟨t, _ | ⟨t2, rs⟩⟩
+  · simp at hm
+    obtain ⟨rfl, rfl, rfl⟩ := hm
+    exact .inl ⟨rfl, rfl, rfl, by rw [List.length_drop]⟩
+  · simp at hm
+    obtain ⟨rfl, rfl, rfl⟩ := hm
+    exact .inr (.inl ⟨t, rfl, rfl, rfl, by rw [List.length_drop]⟩)
+  · simp at hm
+    obtain ⟨rfl, rfl, rfl⟩ := hm
+    exact .inr (.inr ⟨by simp, by simp, rfl, by rw [List.length_drop]⟩)
 
 theorem ArgsRel.eval {A : Archi} {ge : genv} {le : temp_env} {m : mem} {base : Nat}
     {ps : List VT} {vs : List Value} (h : ArgsRel le base ps vs) :
     eval_exprlist A ge empty_env le m (callArgs base ps) (ps.map VT.ty) (vs.map cval) := by
   induction ps generalizing base vs with
-  | nil => cases vs <;> simp_all [ArgsRel, callArgs] <;> exact .eval_Enil
+  | nil =>
+      cases vs <;> simp_all [ArgsRel, callArgs]
+      exact .eval_Enil
   | cons p ps ih =>
       cases vs with
       | nil => simp [ArgsRel] at h
@@ -189,10 +154,10 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
     (hok : CallOk k → CallSim A X E mod c f k) :
     InstrSimL A X E mod c CallOk (f + 1) (.call k) := by
   intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hinv
-  obtain ⟨ps, r, σr, hsig, rfl, hb, hcase⟩ := tr_call htr
+  obtain ⟨ps, rs, σr, hsig, rfl, hb, hcase⟩ := tr_call htr
   have hk : CallOk k := hcalls k (by
-    rcases hcase with ⟨-, -, -, rfl⟩ | ⟨t, -, -, -, rfl⟩ <;> simp [callees])
-  obtain ⟨ps', r', b, fd, hsig', hsym, hfun, hty, hrun⟩ := hok hk
+    rcases hcase with ⟨-, -, -, rfl⟩ | ⟨t, -, -, -, rfl⟩ | ⟨-, -, -, rfl⟩ <;> simp [callees])
+  obtain ⟨ps', rs', b, fd, hsig', hsym, hfun, hty, hresok, hrun⟩ := hok hk
   rw [hsig] at hsig'
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hsig')
   obtain ⟨vtop, vr, hvs, hlen, hrest, hargs⟩ := stack_args ps hinv.stack
@@ -204,7 +169,7 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
     exact hargs.allHas
   have hargv : argVals ps sl.values = vtop.reverse.map cval := by
     simp [argVals, htake]
-  have hcallee : eval_expr A E.ge empty_env le m (.Evar (funId k) (funType ps r)) (.Vptr b Ptrofs.zero) :=
+  have hcallee : eval_expr A E.ge empty_env le m (.Evar (funId k) (funType ps rs)) (.Vptr b Ptrofs.zero) :=
     .eval_Elvalue _ _ _ _ _ (eval_lvalue_global hsym) (.deref_loc_reference rfl)
   have hfind : Genv.find_funct E.ge (.Vptr b Ptrofs.zero) = some (.Internal fd) := by
     simp [Genv.find_funct, hfun]
@@ -218,11 +183,11 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
       rw [hres] at hrun'
       obtain ⟨t, m', vres, hcall, hg, hs, hrel⟩ := hrun'
       have hscall : ∀ optid, exec_stmt A X E.ge empty_env le m
-          (.Scall optid (.Evar (funId k) (funType ps r)) (callArgs σr.length ps)) t
+          (.Scall optid (.Evar (funId k) (funType ps rs)) (callArgs σr.length ps)) t
           (set_opttemp optid vres le) m' .Out_normal := fun optid =>
         .exec_Scall _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ rfl hcallee hevl hfind hty hcall
       have hchk := exec_statusCheck (A := A) (X := X) (le := le) (E := E) hE hs (by decide) c.result
-      rcases hcase with ⟨rfl, rfl, rfl, rfl⟩ | ⟨t0, rfl, rfl, rfl, rfl⟩
+      rcases hcase with ⟨rfl, rfl, rfl, rfl⟩ | ⟨t0, rfl, rfl, rfl, rfl⟩ | ⟨h2, rfl, rfl, rfl⟩
       · obtain ⟨rfl, -⟩ := hrel
         rw [hdrop]
         refine ⟨σr, rfl, hb, t ++ E0, le, m', .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none)
@@ -251,15 +216,50 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
             (fun i => slotId_ne_localId _ _ i)
         · rw [te_insert_ne _ (slotId_ne_brkId _ _), te_insert_ne _ (callId_ne_brkId _)]
           exact hinv.brk
+      · have hmany : ∃ ws, vs = ws ++ vr ∧ ws.length = rs.length ∧ vres = .Vundef ∧
+            ResultsIn E rs ws m' := by
+          rw [← hdrop]
+          rcases rs with _ | ⟨t1, _ | ⟨t2, rs⟩⟩
+          · simp at h2
+          · simp at h2
+          · exact hrel
+        obtain ⟨ws, rfl, hwlen, rfl, hin⟩ := hmany
+        obtain ⟨hnres, hint⟩ := hresok h2
+        have hload : ∀ j (hj : j < rs.length), ∃ v, ws.reverse[j]? = some v ∧ rs[j].has v = true ∧
+            Mem.load rs[j].chunk m' (E.res (0 + j) rs[j]) 0 = some (cval v) := by
+          intro j hj
+          obtain ⟨v, hv, htv, hl⟩ := hin.2 j hj
+          rw [List.take_of_length_le (by omega)] at hv
+          exact ⟨v, hv, htv, by simpa using hl⟩
+        obtain ⟨le', hx, hargs', hother⟩ := exec_resLoads (A := A) (X := X) hE (m := m') rs 0
+          σr.length ws.reverse le (by intro e; rw [e] at h2; simp at h2) (by omega) hint
+          (by simp [hwlen]) hload
+        have hframe : Frame σr.length le le' := fun x hx t' =>
+          hother _ (fun j _ t'' => slotId_ne_of_height _ _ (by omega))
+        have hchk2 := exec_statusCheck (A := A) (X := X) (le := le') (E := E) hE hs (by decide)
+          c.result
+        refine ⟨rs.reverse ++ σr, rfl, by simp; omega, (t ++ E0) ++ E0, le', m',
+          .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
+            (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none) hx)
+            (by simpa using hchk2), ?_, hframe.mono hb⟩
+        have hstack := stack_of_args rs hargs' (hrest.frame hframe)
+        rw [List.reverse_reverse] at hstack
+        refine { stack := hstack, locals := ?_, store := hg, status := hs, brk := ?_ }
+        · refine ⟨hinv.locals.1, fun i hi => ?_⟩
+          obtain ⟨w, hw, htw, hlw⟩ := hinv.locals.2 i hi
+          exact ⟨w, hw, htw, by
+            rw [hother _ (fun j _ t'' => (slotId_ne_localId _ _ i).symm)]; exact hlw⟩
+        · rw [hother _ (fun j _ t'' => (slotId_ne_brkId _ _).symm)]
+          exact hinv.brk
   | Trap st' msg =>
       rw [hres] at hrun'
       obtain ⟨t, m', vres, hcall, hg, hs, hc⟩ := hrun'
       have hscall : ∀ optid, exec_stmt A X E.ge empty_env le m
-          (.Scall optid (.Evar (funId k) (funType ps r)) (callArgs σr.length ps)) t
+          (.Scall optid (.Evar (funId k) (funType ps rs)) (callArgs σr.length ps)) t
           (set_opttemp optid vres le) m' .Out_normal := fun optid =>
         .exec_Scall _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ rfl hcallee hevl hfind hty hcall
       have hcode := trapCode_le msg
-      rcases hcase with ⟨rfl, rfl, rfl, rfl⟩ | ⟨t0, rfl, rfl, rfl, rfl⟩
+      rcases hcase with ⟨rfl, rfl, rfl, rfl⟩ | ⟨t0, rfl, rfl, rfl, rfl⟩ | ⟨h2, rfl, rfl, rfl⟩
       · have hchk := exec_statusCheck (A := A) (X := X) (le := le) (E := E) hE hs hcode c.result
         refine ⟨t ++ E0, le, m', .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none)
           (by simpa [hc, set_opttemp] using hchk), hg, hs, hc⟩
@@ -271,6 +271,13 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
         have hchk := exec_statusCheck (A := A) (X := X) (le := le2) (E := E) hE hs hcode c.result
         exact ⟨(t ++ E0) ++ E0, le2, m', .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
           (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall (some (callId n))) hset)
+          (by simpa [hc] using hchk), hg, hs, hc⟩
+      · obtain ⟨hnres, hint⟩ := hresok h2
+        obtain ⟨le', hx⟩ := exec_resLoads_any (A := A) (X := X) hE hg.2.resW rs 0 σr.length
+          le (by intro e; rw [e] at h2; simp at h2) (by omega) hint
+        have hchk := exec_statusCheck (A := A) (X := X) (le := le') (E := E) hE hs hcode c.result
+        exact ⟨(t ++ E0) ++ E0, le', m', .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
+          (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none) hx)
           (by simpa [hc] using hchk), hg, hs, hc⟩
   | Invalid _ => trivial
   | OutOfFuel => trivial

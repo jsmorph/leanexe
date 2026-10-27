@@ -25,7 +25,7 @@ theorem setN_outside (vl : List memval) (p q : _root_.Int) (c : contents) (h : q
   | nil => rfl
   | cons v vl ih =>
       simp only [setN]
-      rw [ih (p + 1) _ (by omega), zget_zset, if_neg (by omega)]
+      rw [ih (p + 1) _ (by omega), zget_zset, ite_eq_right (by omega)]
 
 theorem getN_setN (vl : List memval) (p : _root_.Int) (c : contents) :
     getN vl.length p (setN vl p c) = vl := by
@@ -33,7 +33,7 @@ theorem getN_setN (vl : List memval) (p : _root_.Int) (c : contents) :
   | nil => rfl
   | cons v vl ih =>
       simp only [List.length_cons, getN, setN]
-      rw [ih, setN_outside _ _ _ _ (by omega), zget_zset, if_pos rfl]
+      rw [ih, setN_outside _ _ _ _ (by omega), zget_zset, ite_eq_left rfl]
 
 theorem proj_inj_bytes (bl : List byte) : proj_bytes (inj_bytes bl) = some bl := by
   induction bl with

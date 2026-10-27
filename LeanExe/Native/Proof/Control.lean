@@ -49,16 +49,24 @@ theorem BreakRel.ne_normal {L : List Label} {k : Nat} {α : Type} {st : Store α
     {le : temp_env} {m : mem} {out : outcome} (h : BreakRel E c L k st sl le m out) :
     out ≠ .Out_normal := by
   by_cases hk : k = 0
-  · obtain ⟨l, _, h0, _⟩ := h.target
+  · obtain ⟨l, _, h0, _, _⟩ := h.target
     rw [h0 hk]
     cases l.isLoop <;> simp
   · rw [h.outer hk]; simp
 
-theorem ReturnRel.ne_normal {r : Option VT} {vs : List Value} {out : outcome}
-    (h : ReturnRel r vs out) : out ≠ .Out_normal := by
-  cases r with
-  | none => rw [h]; simp
-  | some t => obtain ⟨_, _, _, h⟩ := h; rw [h]; simp
+theorem ReturnRel.ne_normal {E : Env} {rs : List VT} {vs : List Value} {out : outcome} {m : mem}
+    (h : ReturnRel E rs vs out m) : out ≠ .Out_normal := by
+  match rs, h with
+  | [], h => rw [h]; simp
+  | [_], h => obtain ⟨_, _, _, h⟩ := h; rw [h]; simp
+  | _ :: _ :: _, h => rw [h.1]; simp
+
+theorem ReturnRel.isReturn {E : Env} {rs : List VT} {vs : List Value} {out : outcome} {m : mem}
+    (h : ReturnRel E rs vs out m) : ∃ rv, out = .Out_return rv := by
+  match rs, h with
+  | [], h => exact ⟨none, h⟩
+  | [_], h => obtain ⟨_, _, _, h⟩ := h; exact ⟨_, h⟩
+  | _ :: _ :: _, h => exact ⟨none, h.1⟩
 
 theorem trapOut_ne_normal (r : Option VT) : trapOut r ≠ .Out_normal := by
   cases r <;> simp [trapOut]
@@ -75,7 +83,7 @@ theorem Outcome.seq_abrupt {L : List Label} {σ' : Option (List VT)} (σend : Li
       exact ⟨t, le', m', out, .exec_Sseq_2 _ _ _ _ _ _ _ _ _ hx hrel.ne_normal, hrel, hf⟩
   | Return st' vs =>
       obtain ⟨t, le', m', out, hx, hrel, hg, hs⟩ := h
-      exact ⟨t, le', m', out, .exec_Sseq_2 _ _ _ _ _ _ _ _ _ hx hrel.ne_normal, hrel, hg, hs⟩
+      exact ⟨t, le', m', out, .exec_Sseq_2 _ _ _ _ _ _ _ _ _ hx (ReturnRel.ne_normal hrel), hrel, hg, hs⟩
   | Trap st' msg =>
       obtain ⟨t, le', m', hx, hg, hs, hc⟩ := h
       exact ⟨t, le', m', .exec_Sseq_2 _ _ _ _ _ _ _ _ _ hx (trapOut_ne_normal _), hg, hs, hc⟩
