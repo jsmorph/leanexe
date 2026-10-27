@@ -8,8 +8,10 @@ that the simulation relates.
 A Talos value is a C value of the same bits, `cval`.  At a point whose static stack is `σ`, the
 temporary of the slot at height `h` and type `σ`'s entry holds the Talos stack's value at that
 height (`StackRel`), the temporary `l<i>` holds local `i` (`LocalsRel`), the C global `lx_g<i>`
-holds global `i` (`GlobalsRel`), `lx_status` is 0, and `brk` is 0.  The blocks of the globals and
-`lx_status` are fixed by an environment `Env` that `EnvOk` relates to a translation.
+holds global `i` (`GlobalsRel`), `lx_mem` holds the bytes of Talos's memory and `lx_pages` its
+number of pages (`MemRel`), `lx_status` is 0, and `brk` is 0.  The blocks of the globals,
+`lx_pages`, `lx_mem`, and `lx_status`, and the number of pages of `lx_mem`, are fixed by an
+environment `Env` that `EnvOk` relates to a translation.
 -/
 
 namespace LeanExe.Native
@@ -123,11 +125,15 @@ def LocalsRel (le : temp_env) (tys : List VT) (vals : List Value) : Prop :=
     ∀ i (hi : i < tys.length), ∃ v, vals[i]? = some v ∧ tys[i].has v = true ∧
       le[localId i]? = some (cval v)
 
-/-- The blocks of `lx_status` and of the C globals `lx_g<i>`, and the global environment. -/
+/-- The blocks of `lx_status`, of the C globals `lx_g<i>`, of `lx_pages`, and of `lx_mem`, the
+number of pages of `lx_mem`, and the global environment. -/
 structure Env where
   ge : genv
   status : block
   globals : List block
+  pages : block
+  mem : block
+  cap : Nat
 
 /-- The C globals hold the Talos globals `gs`, each an `i64`, and can be written. -/
 def GlobalsRel (E : Env) (gs : List Value) (m : mem) : Prop :=
@@ -135,6 +141,22 @@ def GlobalsRel (E : Env) (gs : List Value) (m : mem) : Prop :=
     ∀ i (hi : i < E.globals.length), ∃ n, gs[i]? = some (.i64 n) ∧
       Mem.load .Mint64 m E.globals[i] 0 = some (.Vlong n) ∧
       Mem.valid_access m .Mint64 E.globals[i] 0 .Writable
+
+/-- The memory `wm` of a store whose caps are `caps`: below `cap` pages, each byte of `lx_mem`
+holds the byte of `wm` at the same address and can be written; `lx_pages` holds the number of
+pages, at most `cap`, and can be written; and the store's cap on the memory's pages is `cap`. -/
+structure MemRel (E : Env) (wm : Wasm.Mem) (caps : List Nat) (m : mem) : Prop where
+  pages : Mem.load .Mint32 m E.pages 0 = some (.Vint (UInt32.ofNat wm.pages))
+  pagesW : Mem.valid_access m .Mint32 E.pages 0 .Writable
+  le_cap : wm.pages ≤ E.cap
+  memCap : caps[0]? = some E.cap
+  bytes : ∀ i : Nat, i < 65536 * E.cap →
+    ZMap.get (i : _root_.Int) (Mem.contents_of m E.mem) = .Byte (wm.bytes i)
+  perm : ∀ i : Nat, i < 65536 * E.cap → Mem.perm m E.mem (i : _root_.Int) .Cur .Writable
+
+/-- The C globals and `lx_mem` hold Talos's globals and memory. -/
+def StoreRel (E : Env) {α : Type} (st : Store α) (m : mem) : Prop :=
+  GlobalsRel E st.globals.globals m ∧ MemRel E st.mem st.memoryCaps m
 
 /-- `lx_status` holds `code` and can be written. -/
 def StatusRel (E : Env) (m : mem) (code : Nat) : Prop :=
@@ -146,7 +168,7 @@ structure Inv (E : Env) (c : FCtx) (σ : List VT) {α : Type} (st : Store α) (s
     (le : temp_env) (m : mem) : Prop where
   stack : StackRel le σ sl.values
   locals : LocalsRel le c.locals (sl.params ++ sl.locals)
-  globals : GlobalsRel E st.globals.globals m
+  store : StoreRel E st m
   status : StatusRel E m 0
   brk : le[brkId]? = some (.Vint 0)
 
@@ -166,7 +188,7 @@ structure BreakRel (E : Env) (c : FCtx) (L : List Label) (k : Nat) {α : Type} (
   brk : le[brkId]? = some (.Vint (UInt32.ofNat k))
   small : k < 2 ^ 31
   locals : LocalsRel le c.locals (sl.params ++ sl.locals)
-  globals : GlobalsRel E st.globals.globals m
+  store : StoreRel E st m
   status : StatusRel E m 0
 
 /-- A return with the values `vs`, top first, from a function with result `r`. -/
@@ -194,10 +216,10 @@ def Outcome (A : Archi) (X : ExtSem) (E : Env) (c : FCtx) (L : List Label) (σ' 
       ∀ l, L[k]? = some l → Frame l.base le le'
   | .Return st' vs => ∃ t le' m' out,
       exec_stmt A X E.ge empty_env le m s t le' m' out ∧ ReturnRel c.result vs out ∧
-      GlobalsRel E st'.globals.globals m' ∧ StatusRel E m' 0
+      StoreRel E st' m' ∧ StatusRel E m' 0
   | .Trap st' msg => ∃ t le' m',
       exec_stmt A X E.ge empty_env le m s t le' m' (trapOut c.result) ∧
-      GlobalsRel E st'.globals.globals m' ∧ StatusRel E m' (trapCode msg) ∧ trapCode msg ≠ 0
+      StoreRel E st' m' ∧ StatusRel E m' (trapCode msg) ∧ trapCode msg ≠ 0
   | .Invalid _ => True
   | .OutOfFuel => True
   | .ReturnCall _ _ _ => False

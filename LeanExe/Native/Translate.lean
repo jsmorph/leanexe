@@ -15,12 +15,22 @@ after each construct decrements `brk` and continues the branch.  A trap stores i
 `lx_status` and returns, and the code after each call returns at once when `lx_status` is not 0.
 The Wasm globals are the C globals `lx_g<i>`.
 
-This version handles the integer forms of milestone M2: locals, globals, the `i64` and `i32`
-operations of the subset, `block`, `loop`, `iff`, `br`, `br_if`, `ret`, `call`, and
-`unreachable`, in functions with at most one result.  A function that uses another form, or that
-calls a function the translator omits, is omitted, and `translate` returns the program of the
-remaining functions.  A function of the program is `lxf_<name>` when the module exports it under
-a name that is a C identifier, and `lxf_<k>` for its index `k` otherwise.
+The linear memory is the array `lx_mem` of `cap` pages, where `cap` is a parameter of
+`translate`, and `lx_pages` holds the current number of pages.  A `load64` or `store64` computes
+its address in 64-bit arithmetic in the `i64` slot at the height of its address, traps when the
+eight bytes do not lie below `lx_pages × 65536`, and then reads or writes one word of `lx_mem`
+when the address is a multiple of 8, and eight bytes in little-endian order otherwise.
+`memory.grow` succeeds when the new number of pages is at most `cap`.  The function `lx_init`
+writes the module's data segments into `lx_mem`, with a word store for each aligned word that a
+segment covers and a byte store for each other byte.
+
+This version handles the integer forms of milestones M2 and M3: locals, globals, the `i64` and
+`i32` operations of the subset, `block`, `loop`, `iff`, `br`, `br_if`, `ret`, `call`,
+`unreachable`, `load64`, `store64`, `memory.size`, and `memory.grow`, in functions with at most
+one result.  A function that uses another form, or that calls a function the translator omits,
+is omitted, and `translate` returns the program of the remaining functions.  A function of the
+program is `lxf_<name>` when the module exports it under a name that is a C identifier, and
+`lxf_<k>` for its index `k` otherwise.
 -/
 
 namespace LeanExe.Native
@@ -72,14 +82,15 @@ end VT
 def tuint : type := VT.ty .i32
 def tulong : type := VT.ty .i64
 def tint : type := .Tint .I32 .Signed noattr
+def tuchar : type := .Tint .I8 .Unsigned noattr
 
 /-! ## Identifiers
 
 A temporary is `8 n + r`: local `n - 1` for `r = 0` and `n ≥ 1`, the stack slot at height `n` of
 the type with code `r` for `r` from 1 to 4, `brk` for `n = 0` and `r = 5`, and the result of call
 site `n` for `r = 6`.  A global is `lx_status`, 1, the Wasm global `i`, `4 i + 2`, or the function
-`k`, `4 k + 3`, and the program's `main` is 4.  Every identifier is at least 1, as CompCert's
-identifiers, which are positive, are. -/
+`k`, `4 k + 3`, `lx_pages`, 8, `lx_mem`, 12, or `lx_init`, 16, and the program's `main` is 4.
+Every identifier is at least 1, as CompCert's identifiers, which are positive, are. -/
 
 def localId (i : Nat) : ident := 8 * i + 8
 def slotId (h : Nat) (t : VT) : ident := 8 * h + t.code
@@ -90,6 +101,9 @@ def statusId : ident := 1
 def globalId (i : Nat) : ident := 4 * i + 2
 def funId (k : Nat) : ident := 4 * k + 3
 def mainId : ident := 4
+def pagesId : ident := 8
+def memId : ident := 12
+def initId : ident := 16
 
 /-- The C name of a temporary. -/
 def tempName (id : ident) : String :=
@@ -116,13 +130,14 @@ structure Label where
   deriving Repr, DecidableEq
 
 /-- What the translation of a function body needs: the types of the parameters and declared
-locals, the function's result, the number of globals, and the parameter and result types of each
-function, `none` for one the translator does not call. -/
+locals, the function's result, the number of globals, the parameter and result types of each
+function, `none` for one the translator does not call, and the number of pages of `lx_mem`. -/
 structure FCtx where
   locals : List VT
   result : Option VT
   nglobals : Nat
   sigs : List (Option (List VT × Option VT))
+  cap : Nat
 
 def tmp (h : Nat) (t : VT) : expr := .Etempvar (slotId h t) t.ty
 
@@ -201,6 +216,63 @@ def brStmt (L : List Label) (σ : List VT) (n : Nat) : Option statement := do
     let go := if n = 0 then jump target.isLoop else .Ssequence (.Sset brkId (cint n)) .Sbreak
     pure (seq copy go)
   else none
+
+/-! ## Memory -/
+
+def clong (n : Nat) : expr := .Econst_long (UInt64.ofNat n) tulong
+
+/-- The type of `lx_mem`, an array of `8192 cap` words. -/
+def memType (cap : Nat) : type := .Tarray tulong (8192 * cap : Nat) noattr
+
+def memVar (cap : Nat) : expr := .Evar memId (memType cap)
+
+def pagesVar : expr := .Evar pagesId tuint
+
+/-- The address in the temporary `t` plus `k`: `t + k`, or `t` for `k = 0`. -/
+def addrPlus (t : ident) (k : Nat) : expr :=
+  if k = 0 then .Etempvar t tulong else .Ebinop .Oadd (.Etempvar t tulong) (clong k) tulong
+
+/-- The word of `lx_mem` at the byte address in `t`, a multiple of 8: `lx_mem[t >> 3]`. -/
+def wordAt (cap : Nat) (t : ident) : expr :=
+  .Ederef (.Ebinop .Oadd (memVar cap) (.Ebinop .Oshr (.Etempvar t tulong) (clong 3) tulong)
+    (.Tpointer tulong noattr)) tulong
+
+/-- The byte of `lx_mem` at the address `a`: `((unsigned char *) lx_mem)[a]`. -/
+def byteAt (cap : Nat) (a : expr) : expr :=
+  .Ederef (.Ebinop .Oadd (.Ecast (memVar cap) (.Tpointer tuchar noattr)) a
+    (.Tpointer tuchar noattr)) tuchar
+
+/-- Bytes 0 to `k` from the address in `t`, combined little-endian as `Mem.read64` combines
+them. -/
+def loadBytes (cap : Nat) (t : ident) : Nat → expr
+  | 0 => .Ecast (byteAt cap (addrPlus t 0)) tulong
+  | k + 1 => .Ebinop .Oor (loadBytes cap t k)
+      (.Ebinop .Oshl (.Ecast (byteAt cap (addrPlus t (k + 1))) tulong) (clong (8 * (k + 1)))
+        tulong) tulong
+
+/-- Byte `k` of the value `v`: `(unsigned char) (v >> 8 k)`. -/
+def byteOfVal (v : expr) (k : Nat) : expr :=
+  .Ecast (if k = 0 then v else .Ebinop .Oshr v (clong (8 * k)) tulong) tuchar
+
+/-- The stores of bytes `k` to `k + n` of `v` from the address in `t`, in increasing order. -/
+def storeBytes (cap : Nat) (t : ident) (v : expr) : Nat → Nat → statement
+  | k, 0 => .Sassign (byteAt cap (addrPlus t k)) (byteOfVal v k)
+  | k, n + 1 => .Ssequence (.Sassign (byteAt cap (addrPlus t k)) (byteOfVal v k))
+      (storeBytes cap t v (k + 1) n)
+
+/-- `t = (unsigned long long) a + off`: the address of an access, without wrapping. -/
+def addrStmt (t : ident) (a : expr) (off : UInt32) : statement :=
+  .Sset t (.Ebinop .Oadd (.Ecast a tulong) (.Econst_long off.toUInt64 tulong) tulong)
+
+/-- The trap of an access whose eight bytes from the address in `t` do not lie in memory. -/
+def boundsCheck (r : Option VT) (t : ident) : statement :=
+  .Sifthenelse (.Ebinop .Ogt (.Ebinop .Oadd (.Etempvar t tulong) (clong 8) tulong)
+      (.Ebinop .Omul (.Ecast pagesVar tulong) (clong 65536) tulong) tint)
+    (trapStmt trapOutOfBounds r) .Sskip
+
+/-- The address in `t` is a multiple of 8. -/
+def aligned (t : ident) : expr :=
+  .Ebinop .Oeq (.Ebinop .Oand (.Etempvar t tulong) (clong 7) tulong) (clong 0) tint
 
 /-- The binary `i64` operations other than division and shifts. -/
 def i64Op : Instruction → Option binary_operation
@@ -338,6 +410,39 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
       if σ.head? = some .i32 then
         pure (.Sset (slotId (h - 1) .i64) (.Ecast (tmp (h - 1) .i32) tulong), some (.i64 :: σ'), n)
       else none
+  | .load64 off => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .i32 then
+        let t := slotId (h - 1) .i64
+        pure (.Ssequence (addrStmt t (tmp (h - 1) .i32) off)
+            (.Ssequence (boundsCheck c.result t)
+              (.Sifthenelse (aligned t) (.Sset t (wordAt c.cap t)) (.Sset t (loadBytes c.cap t 7)))),
+          some (.i64 :: σ'), n)
+      else none
+  | .store64 off => do
+      let σ' ← pops L σ 2
+      if σ.take 2 = [.i64, .i32] then
+        let t := slotId (h - 2) .i64
+        let v := tmp (h - 1) .i64
+        pure (.Ssequence (addrStmt t (tmp (h - 2) .i32) off)
+            (.Ssequence (boundsCheck c.result t)
+              (.Sifthenelse (aligned t) (.Sassign (wordAt c.cap t) v) (storeBytes c.cap t v 0 7))),
+          some σ', n)
+      else none
+  | .memorySize => some (.Sset (slotId h .i32) pagesVar, some (.i32 :: σ), n)
+  | .memoryGrow => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .i32 then
+        let t := slotId (h - 1) .i64
+        let r := slotId (h - 1) .i32
+        pure (.Ssequence
+            (.Sset t (.Ebinop .Oadd (.Ecast pagesVar tulong) (.Ecast (tmp (h - 1) .i32) tulong)
+              tulong))
+            (.Sifthenelse (.Ebinop .Ole (.Etempvar t tulong) (clong c.cap) tint)
+              (.Ssequence (.Sset r pagesVar) (.Sassign pagesVar (.Ecast (.Etempvar t tulong) tuint)))
+              (.Sset r (.Econst_int 0xFFFFFFFF tuint))),
+          some (.i32 :: σ'), n)
+      else none
   | .unreachable => some (trapStmt trapUnreachable c.result, none, n)
   | .br k => do
       let s ← brStmt L σ k
@@ -462,9 +567,9 @@ def retStmt : Option VT → statement
   | some t => .Sreturn (some (tmp 0 t))
   | none => .Sreturn none
 
-/-- The C function of a Talos function. -/
-def trFunction (sigs : List (Option (List VT × Option VT))) (nglobals : Nat) (f : Function) :
-    Option function := do
+/-- The C function of a Talos function, with `lx_mem` of `cap` pages. -/
+def trFunction (cap : Nat) (sigs : List (Option (List VT × Option VT))) (nglobals : Nat)
+    (f : Function) : Option function := do
   let ps ← f.params.mapM VT.ofValueType
   let ls ← f.locals.mapM VT.ofValueType
   let rs ← f.results.mapM VT.ofValueType
@@ -472,7 +577,7 @@ def trFunction (sigs : List (Option (List VT × Option VT))) (nglobals : Nat) (f
     | [] => some none
     | [t] => some (some t)
     | _ => none
-  let c : FCtx := { locals := ps ++ ls, result := r, nglobals := nglobals, sigs := sigs }
+  let c : FCtx := { locals := ps ++ ls, result := r, nglobals := nglobals, sigs := sigs, cap := cap }
   let funLabel : Label := { isLoop := false, base := 0, result := r }
   let (body, _) ← trProg c [funLabel] [] r.toList 0 f.body
   let inits := ls.zipIdx.map fun (t, j) => statement.Sset (localId (ps.length + j)) t.zero
@@ -531,24 +636,24 @@ def globalDef (g : GlobalDecl) : Option (globvar type) :=
   | _ => none
 
 /-- The C function of each function of `m`, `none` for one the translator does not handle. -/
-def fdefsOf (m : Module) : List (Option function) :=
-  m.funcs.map (trFunction (m.funcs.map signatureOf) m.globals.length)
+def fdefsOf (cap : Nat) (m : Module) : List (Option function) :=
+  m.funcs.map (trFunction cap (m.funcs.map signatureOf) m.globals.length)
 
 /-- The functions that the C function of `k` calls. -/
-def callsOf (m : Module) (k : Nat) : List Nat :=
-  match (fdefsOf m)[k]?.join with
+def callsOf (cap : Nat) (m : Module) (k : Nat) : List Nat :=
+  match (fdefsOf cap m)[k]?.join with
   | some f => (callees f.fn_body).map (· / 4)
   | none => []
 
 /-- The functions that the program contains: those that translate and call only such
 functions. -/
-def includedOf (m : Module) : List Nat :=
-  closeUnderCalls (callsOf m) (m.funcs.length + 1)
-    ((List.range m.funcs.length).filter fun k => ((fdefsOf m)[k]?.join).isSome)
+def includedOf (cap : Nat) (m : Module) : List Nat :=
+  closeUnderCalls (callsOf cap m) (m.funcs.length + 1)
+    ((List.range m.funcs.length).filter fun k => ((fdefsOf cap m)[k]?.join).isSome)
 
 /-- The definition of function `k` in the program. -/
-def funDef (m : Module) (k : Nat) : Option (ident × globdef (fundef function) type) := do
-  let f ← (fdefsOf m)[k]?.join
+def funDef (cap : Nat) (m : Module) (k : Nat) : Option (ident × globdef (fundef function) type) := do
+  let f ← (fdefsOf cap m)[k]?.join
   pure (funId k, .Gfun (.Internal f))
 
 /-- `lx_status`, initially 0. -/
@@ -556,17 +661,69 @@ def statusVar : globvar type :=
   { gvar_info := tuint, gvar_init := [.Init_int32 0], gvar_readonly := false
     gvar_volatile := false }
 
-def translate (m : Module) : Option Translation := do
+/-- `lx_pages`, initially `pages`. -/
+def pagesDef (pages : Nat) : globvar type :=
+  { gvar_info := tuint, gvar_init := [.Init_int32 (UInt32.ofNat pages)], gvar_readonly := false
+    gvar_volatile := false }
+
+/-- `lx_mem`, of `cap` pages, initially zero. -/
+def memDef (cap : Nat) : globvar type :=
+  { gvar_info := memType cap, gvar_init := [.Init_space (65536 * cap : Nat)], gvar_readonly := false
+    gvar_volatile := false }
+
+/-- The value of eight bytes read little-endian, as `decode_val` reads them. -/
+def wordOfBytes (bs : List UInt8) : UInt64 := Int64.repr (int_of_bytes bs)
+
+/-- The store of the word of the bytes `bs` at the address `a`, a multiple of 8. -/
+def wordStore (cap : Nat) (a : Nat) (bs : List UInt8) : statement :=
+  .Sassign (.Ederef (.Ebinop .Oadd (memVar cap) (clong (a / 8)) (.Tpointer tulong noattr)) tulong)
+    (.Econst_long (wordOfBytes bs) tulong)
+
+/-- The store of the byte `b` at the address `a`. -/
+def byteStore (cap : Nat) (a : Nat) (b : UInt8) : statement :=
+  .Sassign (byteAt cap (clong a)) (.Ecast (.Econst_int b.toUInt32 tuint) tuchar)
+
+/-- The stores that write the bytes `bs` from the address `a`: a word store where `a` is a
+multiple of 8 and eight bytes remain, and a byte store otherwise. -/
+def initStores (cap : Nat) : Nat → List UInt8 → List statement
+  | a, b0 :: rest@(b1 :: b2 :: b3 :: b4 :: b5 :: b6 :: b7 :: rest') =>
+      if a % 8 = 0 then
+        wordStore cap a [b0, b1, b2, b3, b4, b5, b6, b7] :: initStores cap (a + 8) rest'
+      else byteStore cap a b0 :: initStores cap (a + 1) rest
+  | a, b0 :: rest => byteStore cap a b0 :: initStores cap (a + 1) rest
+  | _, [] => []
+
+/-- The stores of a data segment, which the subset check requires to be active at a literal
+offset. -/
+def segmentStores (cap : Nat) (seg : DataSegment) : List statement :=
+  match seg.offset with
+  | some off => initStores cap off.toNat seg.bytes
+  | none => []
+
+/-- `lx_init`, which writes the data segments into `lx_mem` in order. -/
+def initFunction (cap : Nat) (segs : List DataSegment) : function :=
+  { fn_return := .Tvoid, fn_callconv := cc_default, fn_params := [], fn_vars := [], fn_temps := []
+    fn_body := seqList (segs.flatMap (segmentStores cap)) }
+
+/-- The translation of `m` with `lx_mem` of `cap` pages.  The module's initial pages must not
+exceed `cap`, and `cap` must not exceed 65,535, the most pages that the compiled modules
+declare. -/
+def translate (cap : Nat) (m : Module) : Option Translation := do
   guard (violation m = none)
+  let decl ← m.memory
+  guard (decl.pagesMin.toNat ≤ cap ∧ cap ≤ 65535)
   let gdefs ← m.globals.mapM globalDef
-  let included := includedOf m
-  guard (included.all fun k => (callsOf m k).all (included.contains ·))
-  let funs ← included.mapM (funDef m)
+  let included := includedOf cap m
+  guard (included.all fun k => (callsOf cap m k).all (included.contains ·))
+  let funs ← included.mapM (funDef cap m)
   let defs := (statusId, globdef.Gvar statusVar) ::
-    (gdefs.zipIdx.map fun (g, i) => (globalId i, globdef.Gvar g)) ++ funs
+    (gdefs.zipIdx.map fun (g, i) => (globalId i, globdef.Gvar g)) ++
+    [(pagesId, globdef.Gvar (pagesDef decl.pagesMin.toNat)), (memId, globdef.Gvar (memDef cap))] ++
+    funs ++ [(initId, globdef.Gfun (.Internal (initFunction cap decl.data)))]
   let names := (statusId, "lx_status") ::
     ((List.range m.globals.length).map fun i => (globalId i, s!"lx_g{i}")) ++
-    included.map fun k => (funId k, functionName m k)
+    [(pagesId, "lx_pages"), (memId, "lx_mem")] ++
+    included.map (fun k => (funId k, functionName m k)) ++ [(initId, "lx_init")]
   pure { cprogram := { prog_defs := defs, prog_public := defs.map (·.1), prog_main := mainId }
          names := names
          funcs := included }

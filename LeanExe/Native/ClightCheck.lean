@@ -252,9 +252,12 @@ partial def toType : Term → Except String type
   | .atom "tuint" => pure (.Tint .I32 .Unsigned noattr)
   | .atom "tlong" => pure (.Tlong .Signed noattr)
   | .atom "tulong" => pure (.Tlong .Unsigned noattr)
+  | .atom "tschar" => pure (.Tint .I8 .Signed noattr)
+  | .atom "tuchar" => pure (.Tint .I8 .Unsigned noattr)
   | .atom "tfloat" => pure (.Tfloat .F32 noattr)
   | .atom "tdouble" => pure (.Tfloat .F64 noattr)
   | .app "tptr" [t] => do pure (.Tpointer (← toType t) noattr)
+  | .app "tarray" [t, .num n] => do pure (.Tarray (← toType t) n noattr)
   | .app "Tfunction" [args, res, .atom "cc_default"] => do
       let as ← match args with
         | .list items => items.mapM toType
@@ -356,6 +359,7 @@ def toFunction (n : Names) : Term → Except String function
 def toInitData : Term → Except String init_data
   | .app "Init_int32" [i] => do pure (.Init_int32 (← toInt32 i))
   | .app "Init_int64" [i] => do pure (.Init_int64 (← toInt64 i))
+  | .app "Init_space" [.num n] => pure (.Init_space n)
   | t => throw s!"the initializer {repr t}"
 
 def toVar : Term → Except String (globvar type)

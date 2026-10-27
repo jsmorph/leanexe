@@ -85,7 +85,7 @@ theorem br_outcome {L : List Label} {σ : List VT} {k : Nat} {s : statement}
       .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (.exec_Sset _ _ _ _ _ _ (.eval_Etempvar _ _ _ hslot)) hgo,
       ?_, ?_⟩
     · refine { target := ⟨l, hl, ?_, ?_⟩, outer := ?_, brk := hb', small := hk,
-               locals := ?_, globals := hinv.globals, status := hinv.status }
+               locals := ?_, store := hinv.store, status := hinv.status }
       · intro hk0; exact (h0 hk0).1
       · intro _ t' ht'
         rw [hres] at ht'; cases ht'
@@ -105,7 +105,7 @@ theorem br_outcome {L : List Label} {σ : List VT} {k : Nat} {s : statement}
     obtain ⟨hb', hother⟩ := hbrk le hinv.brk le' out h0 h1
     refine ⟨E0, le', out, hgo, ?_, ?_⟩
     · refine { target := ⟨l, hl, ?_, ?_⟩, outer := ?_, brk := hb', small := hk,
-               locals := ?_, globals := hinv.globals, status := hinv.status }
+               locals := ?_, store := hinv.store, status := hinv.status }
       · intro hk0; exact (h0 hk0).1
       · intro hloop t' ht'
         rw [hnone hloop] at ht'; cases ht'
@@ -139,7 +139,7 @@ theorem sim_br_if (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c Ca
   | succ f =>
       obtain ⟨x, vs, hvs, hx, hrest⟩ := pop1_i32 hinv.stack
       have hinv' : Inv E c σr st { params := sl.params, locals := sl.locals, values := vs } le m :=
-        { stack := hrest, locals := hinv.locals, globals := hinv.globals, status := hinv.status,
+        { stack := hrest, locals := hinv.locals, store := hinv.store, status := hinv.status,
           brk := hinv.brk }
       have hc : eval_expr A E.ge empty_env le m (tmp σr.length .i32) (.Vint x) :=
         .eval_Etempvar _ _ _ hx
@@ -169,7 +169,7 @@ theorem sim_ret (F : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c CallOk
       | none =>
           simp [trInstr, hr] at htr
           obtain ⟨rfl, rfl, rfl⟩ := htr
-          refine ⟨E0, le, m, .Out_return none, .exec_Sreturn_none _ _ _, ?_, hinv.globals,
+          refine ⟨E0, le, m, .Out_return none, .exec_Sreturn_none _ _ _, ?_, hinv.store,
             hinv.status⟩
           simp [ReturnRel, hr]
       | some t =>
@@ -180,7 +180,7 @@ theorem sim_ret (F : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c CallOk
           | cons t' σr =>
               simp at hh; subst hh
               obtain ⟨v, vr, hvs, ht, hslot, -⟩ := hinv.stack.cons_inv
-              refine ⟨E0, le, m, .Out_return (some (cval v, t'.ty)), ?_, ?_, hinv.globals,
+              refine ⟨E0, le, m, .Out_return (some (cval v, t'.ty)), ?_, ?_, hinv.store,
                 hinv.status⟩
               · have := exec_stmt.exec_Sreturn_some (A := A) (X := X) (ge := E.ge) empty_env le m
                   (tmp σr.length t') (cval v) (.eval_Etempvar _ _ _ hslot)

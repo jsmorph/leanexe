@@ -94,11 +94,11 @@ theorem exec_setLocals {A : Archi} {X : ExtSem} {ge : genv} (np : Nat) (ls : Lis
       exact .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hs (by simpa [setLocals] using h')
 
 /-- The inversion of `trFunction`. -/
-theorem trFunction_spec {sigs : List (Option (List VT × Option VT))} {G : Nat} {f : Function}
-    {fd : function} (h : trFunction sigs G f = some fd) :
+theorem trFunction_spec {cap : Nat} {sigs : List (Option (List VT × Option VT))} {G : Nat}
+    {f : Function} {fd : function} (h : trFunction cap sigs G f = some fd) :
     ∃ ps ls r body nc, f.params.mapM VT.ofValueType = some ps ∧
       f.locals.mapM VT.ofValueType = some ls ∧ f.results.mapM VT.ofValueType = some r.toList ∧
-      trProg { locals := ps ++ ls, result := r, nglobals := G, sigs := sigs }
+      trProg { locals := ps ++ ls, result := r, nglobals := G, sigs := sigs, cap := cap }
         [{ isLoop := false, base := 0, result := r }] [] r.toList 0 f.body = some (body, nc) ∧
       fd = { fn_return := (r.map VT.ty).getD .Tvoid, fn_callconv := cc_default,
              fn_params := (ps.zipIdx).map fun x => (localId x.2, x.1.ty), fn_vars := [],

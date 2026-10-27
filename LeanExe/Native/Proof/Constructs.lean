@@ -90,7 +90,7 @@ structure PendingBreak (L : List Label) (k : Nat) {α : Type} (st : Store α) (s
   brk : le[brkId]? = some (.Vint (UInt32.ofNat (k + 1)))
   small : k + 1 < 2 ^ 31
   locals : LocalsRel le c.locals (sl.params ++ sl.locals)
-  globals : GlobalsRel E st.globals.globals m
+  store : StoreRel E st m
   status : StatusRel E m 0
 
 /-- What the construct's loop `W` does when Talos's result for the construct is `r`. -/
@@ -105,10 +105,10 @@ def ConstructOutcome (L : List Label) (σ' : List VT) {α : Type} (r : Continuat
       PendingBreak E c L k st' sl' le' m' ∧ ∀ l, L[k]? = some l → Frame l.base le le'
   | .Return st' vs => ∃ t le' m' out,
       exec_stmt A X E.ge empty_env le m W t le' m' out ∧ ReturnRel c.result vs out ∧
-      GlobalsRel E st'.globals.globals m' ∧ StatusRel E m' 0
+      StoreRel E st' m' ∧ StatusRel E m' 0
   | .Trap st' msg => ∃ t le' m',
       exec_stmt A X E.ge empty_env le m W t le' m' (trapOut c.result) ∧
-      GlobalsRel E st'.globals.globals m' ∧ StatusRel E m' (trapCode msg) ∧ trapCode msg ≠ 0
+      StoreRel E st' m' ∧ StatusRel E m' (trapCode msg) ∧ trapCode msg ≠ 0
   | .Invalid _ => True
   | .OutOfFuel => True
   | .ReturnCall _ _ _ => False
@@ -212,7 +212,7 @@ theorem ConstructOutcome.toOutcome {L : List Label} {σ' : List VT} {α : Type}
       refine { target := ⟨l, hl, ?_, ?_⟩, outer := ?_, brk := hb2,
                small := by have := hpb.small; omega,
                locals := hpb.locals.insert_other _ (fun i => (localId_ne_brkId i).symm)
-               globals := hpb.globals, status := hpb.status }
+               store := hpb.store, status := hpb.status }
       · intro hk0
         subst hk0
         have : l = parent := by

@@ -17,4 +17,4 @@ import LeanExe.Native.Print
 import LeanExe.Native.Translate
 import LeanExe.Native.CText
 import LeanExe.Native.ClightCheck
-import LeanExe.Native.Proof.Correct
+import LeanExe.Native.Proof.Native

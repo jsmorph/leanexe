@@ -48,11 +48,11 @@ def RunOutcome (ps : List VT) (r : Option VT) (fd : function) {α : Type} (res :
   match res with
   | .Success vs st' => ∃ t m' vres,
       eval_funcall A X E.ge m (.Internal fd) (argVals ps args) t m' vres ∧
-      GlobalsRel E st'.globals.globals m' ∧ StatusRel E m' 0 ∧
+      StoreRel E st' m' ∧ StatusRel E m' 0 ∧
       ResultRel r vs (args.drop ps.length) vres
   | .Trap st' msg => ∃ t m' vres,
       eval_funcall A X E.ge m (.Internal fd) (argVals ps args) t m' vres ∧
-      GlobalsRel E st'.globals.globals m' ∧ StatusRel E m' (trapCode msg) ∧ trapCode msg ≠ 0
+      StoreRel E st' m' ∧ StatusRel E m' (trapCode msg) ∧ trapCode msg ≠ 0
   | .Invalid _ => True
   | .OutOfFuel => True
   | .Thrown _ _ _ => False
@@ -60,7 +60,7 @@ def RunOutcome (ps : List VT) (r : Option VT) (fd : function) {α : Type} (res :
 /-- The simulation of a call of function `k`, whose C translation is `fd`, at fuel `g`. -/
 def RunSimFun (g k : Nat) (ps : List VT) (r : Option VT) (fd : function) : Prop :=
   ∀ {α : Type} (st : Store α) (args : List Value) (m : mem) (env : HostEnv α),
-    ArgsTyped ps args → GlobalsRel E st.globals.globals m → StatusRel E m 0 →
+    ArgsTyped ps args → StoreRel E st m → StatusRel E m 0 →
     RunOutcome A X E ps r fd (run g mod k st args env) args m
 
 /-- What a call of function `k` needs at fuel `g`, for a caller whose context is `c`. -/
@@ -211,7 +211,7 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
   have hevl : eval_exprlist A E.ge empty_env le m (callArgs σr.length ps) (ps.map VT.ty)
       (argVals ps sl.values) := by
     rw [hargv]; exact hargs.eval
-  have hrun' := hrun st sl.values m env htyped hinv.globals hinv.status
+  have hrun' := hrun st sl.values m env htyped hinv.store hinv.status
   simp only [execOne.eq_def]
   cases hres : run f mod k st sl.values env with
   | Success vs st' =>
@@ -227,7 +227,7 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
         rw [hdrop]
         refine ⟨σr, rfl, hb, t ++ E0, le, m', .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none)
           (by simpa [set_opttemp] using hchk), ?_, Frame.refl _ _⟩
-        exact { stack := hrest, locals := hinv.locals, globals := hg, status := hs,
+        exact { stack := hrest, locals := hinv.locals, store := hg, status := hs,
                 brk := hinv.brk }
       · obtain ⟨v, rfl, ht, rfl⟩ := hrel
         rw [hdrop]
@@ -246,7 +246,7 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
             (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall (some (callId n))) hset)
             (by simpa using hchk2), ?_, hframe.mono hb⟩
         refine { stack := ⟨ht, te_insert_same _ _ _, hrest.frame hframe⟩, locals := ?_,
-                 globals := hg, status := hs, brk := ?_ }
+                 store := hg, status := hs, brk := ?_ }
         · exact (hinv.locals.insert_other _ (fun i => callId_ne_localId _ i)).insert_other _
             (fun i => slotId_ne_localId _ _ i)
         · rw [te_insert_ne _ (slotId_ne_brkId _ _), te_insert_ne _ (callId_ne_brkId _)]

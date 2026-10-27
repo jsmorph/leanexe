@@ -72,12 +72,21 @@ theorem StackRel.cons_inv {le : temp_env} {t : VT} {σ : List VT} {vs : List Val
 
 /-! ## Environments and globals -/
 
-/-- The blocks of `E` are those of `lx_status` and the C globals in `E.ge`, all distinct. -/
+/-- The blocks of `E` are those of `lx_status`, the C globals, `lx_pages`, and `lx_mem` in
+`E.ge`, all distinct, and `lx_mem` has at most 65,535 pages. -/
 structure EnvOk (E : Env) : Prop where
   status : Genv.find_symbol E.ge statusId = some E.status
   globals : ∀ i (h : i < E.globals.length), Genv.find_symbol E.ge (globalId i) = some E.globals[i]
   nodup : E.globals.Nodup
   status_not : E.status ∉ E.globals
+  pages : Genv.find_symbol E.ge pagesId = some E.pages
+  mem : Genv.find_symbol E.ge memId = some E.mem
+  pages_not : E.pages ∉ E.globals
+  mem_not : E.mem ∉ E.globals
+  pages_status : E.pages ≠ E.status
+  mem_status : E.mem ≠ E.status
+  mem_pages : E.mem ≠ E.pages
+  cap : E.cap ≤ 65535
 
 theorem empty_env_none (id : ident) : empty_env[id]? = none := Std.TreeMap.getElem?_emptyc
 
@@ -139,6 +148,18 @@ theorem exec_assign_int {A : Archi} {X : ExtSem} {ge : genv} {le : temp_env} {m 
     (.assign_loc_value _ .Mint32 _ rfl
       (by rw [storev_zero _ _ _ _ (by decide)]; exact Mem.store_ok _ hva))
 
+/-- A store to a block other than those of `lx_pages` and `lx_mem` keeps the memory. -/
+theorem MemRel.store_other {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem}
+    (h : MemRel E wm caps m) (chunk : memory_chunk) {b : block} (hp : b ≠ E.pages)
+    (hm : b ≠ E.mem) (ofs : _root_.Int) (v : val) :
+    MemRel E wm caps (Mem.stored chunk m b ofs v) where
+  pages := by rw [Mem.load_stored_other _ _ _ _ _ _ _ _ hp]; exact h.pages
+  pagesW := h.pagesW
+  le_cap := h.le_cap
+  memCap := h.memCap
+  bytes := fun i hi => by rw [Mem.contents_stored_other _ _ _ _ _ _ hm]; exact h.bytes i hi
+  perm := h.perm
+
 theorem GlobalsRel.store_status {E : Env} {gs : List Value} {m : mem} (hE : EnvOk E)
     (h : GlobalsRel E gs m) (v : val) :
     GlobalsRel E gs (Mem.stored .Mint32 m E.status 0 v) := by
@@ -146,6 +167,11 @@ theorem GlobalsRel.store_status {E : Env} {gs : List Value} {m : mem} (hE : EnvO
   obtain ⟨n, hn, hl, hv⟩ := h.2 i hi
   have hne : E.status ≠ E.globals[i] := fun e => hE.status_not (e ▸ List.getElem_mem hi)
   exact ⟨n, hn, by rw [Mem.load_stored_other _ _ _ _ _ _ _ _ hne]; exact hl, hv⟩
+
+theorem StoreRel.store_status {E : Env} {α : Type} {st : Store α} {m : mem} (hE : EnvOk E)
+    (h : StoreRel E st m) (v : val) : StoreRel E st (Mem.stored .Mint32 m E.status 0 v) :=
+  ⟨GlobalsRel.store_status hE h.1 v,
+    h.2.store_other _ (Ne.symm hE.pages_status) (Ne.symm hE.mem_status) _ _⟩
 
 theorem StatusRel.store_status {E : Env} {m : mem} {k : Nat} (h : StatusRel E m k) (code : Nat) :
     StatusRel E (Mem.stored .Mint32 m E.status 0 (.Vint (UInt32.ofNat code))) code :=
@@ -164,6 +190,12 @@ theorem GlobalsRel.store_global {E : Env} {gs : List Value} {m : mem} (hE : EnvO
       hij (hE.nodup.getElem_inj.mp e)
     exact ⟨w, by rw [List.getElem?_set_ne hij]; exact hw,
       by rw [Mem.load_stored_other _ _ _ _ _ _ _ _ hne]; exact hl, hv⟩
+
+theorem MemRel.store_global {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem} (hE : EnvOk E)
+    (h : MemRel E wm caps m) {i : Nat} (hi : i < E.globals.length) (v : val) :
+    MemRel E wm caps (Mem.stored .Mint64 m E.globals[i] 0 v) :=
+  h.store_other _ (fun e => hE.pages_not (e ▸ List.getElem_mem hi))
+    (fun e => hE.mem_not (e ▸ List.getElem_mem hi)) _ _
 
 theorem StatusRel.store_global {E : Env} {m : mem} {k : Nat} (hE : EnvOk E) (h : StatusRel E m k)
     {i : Nat} (hi : i < E.globals.length) (v : val) :
@@ -186,10 +218,10 @@ theorem exec_retZero (A : Archi) (X : ExtSem) (ge : genv) (le : temp_env) (m : m
       exact this
 
 theorem trap_exec {A : Archi} {X : ExtSem} {E : Env} (hE : EnvOk E) {le : temp_env} {m : mem}
-    {gs : List Value} (hg : GlobalsRel E gs m) (hs : StatusRel E m 0) (code : Nat)
+    {α : Type} {st : Store α} (hg : StoreRel E st m) (hs : StatusRel E m 0) (code : Nat)
     (r : Option VT) :
     ∃ m', exec_stmt A X E.ge empty_env le m (trapStmt code r) E0 le m' (trapOut r) ∧
-      GlobalsRel E gs m' ∧ StatusRel E m' code := by
+      StoreRel E st m' ∧ StatusRel E m' code := by
   refine ⟨Mem.stored .Mint32 m E.status 0 (.Vint (UInt32.ofNat code)), ?_,
     hg.store_status hE _, hs.store_status code⟩
   have h1 := exec_assign_int (A := A) (X := X) (le := le) hE.status
@@ -217,7 +249,7 @@ height `σr.length` to `e`. -/
 theorem push_step {L : List Label} {σr : List VT} {α : Type} {st : Store α} {sl : Locals}
     {le : temp_env} {m : mem} {e : expr} {v : Value} {t : VT} {vr : List Value}
     (hrest : StackRel le σr vr) (hloc : LocalsRel le c.locals (sl.params ++ sl.locals))
-    (hg : GlobalsRel E st.globals.globals m) (hs : StatusRel E m 0)
+    (hg : StoreRel E st m) (hs : StatusRel E m 0)
     (hb : le[brkId]? = some (.Vint 0))
     (he : eval_expr A E.ge empty_env le m e (cval v)) (ht : t.has v = true)
     (hbase : curBase L ≤ σr.length) :
@@ -228,7 +260,7 @@ theorem push_step {L : List Label} {σr : List VT} {α : Type} {st : Store α} {
     .exec_Sset _ _ _ _ _ _ he, ?_, Frame.insert_slot _ _ _ _ hbase⟩
   exact { stack := ⟨ht, te_insert_same _ _ _, hrest.frame (Frame.insert_slot _ _ _ _ (Nat.le_refl _))⟩
           locals := hloc.insert_other _ (fun i => slotId_ne_localId _ _ i)
-          globals := hg
+          store := hg
           status := hs
           brk := by rw [te_insert_ne _ (slotId_ne_brkId _ _)]; exact hb }
 
@@ -247,7 +279,7 @@ theorem sim_localGet (F i : Nat) : InstrSim A X E mod c F (.localGet i) := by
   | succ f =>
       obtain ⟨v, hv, htv, hl⟩ := hinv.locals.get ht
       simp only [execOne.eq_def, locals_get, hv]
-      exact push_step hinv.stack hinv.locals hinv.globals hinv.status hinv.brk
+      exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk
         (.eval_Etempvar _ _ _ hl) htv hbase
 
 theorem sim_localSet (F i : Nat) : InstrSim A X E mod c F (.localSet i) := by
@@ -269,7 +301,7 @@ theorem sim_localSet (F i : Nat) : InstrSim A X E mod c F (.localSet i) := by
               locals := by
                 show LocalsRel _ _ (s'.params ++ s'.locals)
                 rw [hpl]; exact hinv.locals.set ht htv
-              globals := hinv.globals
+              store := hinv.store
               status := hinv.status
               brk := brk_insert_local i _ hinv.brk }
 
@@ -293,7 +325,7 @@ theorem sim_localTee (F i : Nat) : InstrSim A X E mod c F (.localTee i) := by
                 exact ⟨htv, by rw [te_insert_ne _ (slotId_ne_localId _ _ i).symm]; exact hl,
                   hrest.insert_other _ (fun x t' => (slotId_ne_localId x t' i).symm)⟩
               locals := by rw [hpl]; exact hinv.locals.set ht htv
-              globals := hinv.globals
+              store := hinv.store
               status := hinv.status
               brk := brk_insert_local i _ hinv.brk }
 

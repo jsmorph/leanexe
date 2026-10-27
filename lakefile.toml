@@ -79,9 +79,9 @@ name = "clight-diff"
 srcDir = "tests"
 root = "TestSupport.Native.ClightDiff"
 
-# The C text of the GCD modules for the translator's end-to-end test (tests/native/gcd.sh); not a
-# default target.
+# The C text, host programs, and Talos's results for the translator's end-to-end test
+# (tests/native/run.sh); not a default target.
 [[lean_exe]]
-name = "native-gcd"
+name = "native-emit"
 srcDir = "tests"
-root = "TestSupport.Native.GcdEmit"
+root = "TestSupport.Native.Emit"

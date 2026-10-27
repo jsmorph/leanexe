@@ -101,8 +101,9 @@ theorem outcome_zero (t : VT) (m : mem) :
 
 /-- The simulation of a call of a translated function whose callees are simulated below `F`. -/
 theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Function}
-    (hf : mod.funcs[k]? = some f) {sigs : List (Option (List VT × Option VT))} {G : Nat}
-    (hG : G = E.globals.length) {fd : function} (htr : trFunction sigs G f = some fd)
+    (hf : mod.funcs[k]? = some f) {sigs : List (Option (List VT × Option VT))} {G cap : Nat}
+    (hG : G = E.globals.length) (hcap : cap = E.cap) (h64 : mod.memIs64 = false) {fd : function}
+    (htr : trFunction cap sigs G f = some fd)
     {ps : List VT} {r : Option VT} (hsig : signatureOf f = some (ps, r))
     {CallOk : Nat → Prop} {F : Nat}
     (hC : ∀ k', CallOk k' → ∀ g, g < F → ∀ c : FCtx, c.sigs = sigs → CallSim A X E mod c g k')
@@ -115,8 +116,8 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
     rw [hps, hrs] at hsig
     cases r0 <;> simp at hsig <;> exact ⟨hsig.1, hsig.2⟩
   obtain ⟨rfl, rfl⟩ := hpr
-  let c : FCtx := { locals := ps0 ++ ls, result := r0, nglobals := G, sigs := sigs }
-  have hP := body_sim (c := c) (A := A) (X := X) (mod := mod) hE (by simp [c, hG])
+  let c : FCtx := { locals := ps0 ++ ls, result := r0, nglobals := G, sigs := sigs, cap := cap }
+  have hP := body_sim (c := c) (A := A) (X := X) (mod := mod) hE (by simp [c, hG]) hcap h64
     (fun k' hk' g hg => hC k' hk' g hg c rfl) F (Nat.le_refl _)
   have hnp : f.params.length = ps0.length := (mapM_length hps).symm
   have hnr : f.results.length = r0.toList.length := (mapM_length hrs).symm
@@ -153,7 +154,7 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
   let le3 := le2.insert brkId (.Vint (UInt32.ofNat 0))
   obtain ⟨hset2, hother2⟩ := setLocals_get le1 ps0.length ls 0
   have hinv : Inv E c [] st (f.toLocals ((args.take ps0.length).reverse)) le3 m := by
-    refine { stack := trivial, locals := ?_, globals := hg, status := hs,
+    refine { stack := trivial, locals := ?_, store := hg, status := hs,
              brk := te_insert_same _ _ _ }
     refine ⟨by simp [Function.toLocals, c, hnl]; omega, ?_⟩
     intro i hi
@@ -240,7 +241,7 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
       | none =>
           obtain ⟨t', hcall⟩ := hfun .Vundef
             (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW (.exec_Sreturn_none _ _ _)) rfl
-          exact ⟨t', m', .Vundef, hcall, hinv'.globals, hinv'.status, by simp, rfl⟩
+          exact ⟨t', m', .Vundef, hcall, hinv'.store, hinv'.status, by simp, rfl⟩
       | some t0 =>
           obtain ⟨v, vr, hvs, ht, hl, hrest⟩ := hinv'.stack.cons_inv
           have hret := exec_stmt.exec_Sreturn_some (A := A) (X := X) (ge := E.ge) empty_env le' m'
@@ -249,7 +250,7 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
             (outcome_value ht m')
           have hvr : vr = [] := by cases vr <;> simp_all [StackRel]
           subst hvr
-          exact ⟨t', m', cval v, hcall, hinv'.globals, hinv'.status, v, by simp [hvs], ht, rfl⟩
+          exact ⟨t', m', cval v, hcall, hinv'.store, hinv'.status, v, by simp [hvs], ht, rfl⟩
   | Break k st' sl' =>
       rw [hres] at ho
       obtain ⟨t, le', m', out, hx, hrel, -⟩ := ho
@@ -265,14 +266,14 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
           | none =>
               obtain ⟨t', hcall⟩ := hfun .Vundef
                 (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW (.exec_Sreturn_none _ _ _)) rfl
-              exact ⟨t', m', .Vundef, hcall, hrel.globals, hrel.status, by simp, rfl⟩
+              exact ⟨t', m', .Vundef, hcall, hrel.store, hrel.status, by simp, rfl⟩
           | some t0 =>
               obtain ⟨v, hv, ht, hl⟩ := hkept rfl t0 rfl
               have hret := exec_stmt.exec_Sreturn_some (A := A) (X := X) (ge := E.ge) empty_env le'
                 m' (tmp 0 t0) (cval v) (.eval_Etempvar _ _ _ hl)
               obtain ⟨t', hcall⟩ := hfun (cval v) (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hW hret)
                 (outcome_value ht m')
-              refine ⟨t', m', cval v, hcall, hrel.globals, hrel.status, v, ?_, ht, rfl⟩
+              refine ⟨t', m', cval v, hcall, hrel.store, hrel.status, v, ?_, ht, rfl⟩
               cases hsv : sl'.values with
               | nil => rw [hsv] at hv; simp at hv
               | cons w ws => rw [hsv] at hv; simp at hv; subst hv; simp

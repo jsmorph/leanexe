@@ -1,4 +1,5 @@
 import LeanExe.Native.Proof.Calls
+import LeanExe.Native.Proof.MemOps
 
 /-!
 The simulation of every instruction, and of instruction lists at every fuel up to a bound, for
@@ -18,7 +19,8 @@ theorem sim_zero {CallOk : Nat → Prop} (inst : Instruction) :
   intro L σ n s σ' n' _ _ _ _ α st sl le m env _
   rw [execOne_zero]; trivial
 
-theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) {CallOk : Nat → Prop}
+theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.cap = E.cap)
+    (h64 : mod.memIs64 = false) {CallOk : Nat → Prop}
     {F : Nat} (hP : ∀ g, g < F → ProgSim A X E mod c CallOk g)
     (hC : ∀ k, CallOk k → ∀ g, g < F → CallSim A X E mod c g k) (inst : Instruction) :
     InstrSimL A X E mod c CallOk F inst := by
@@ -52,6 +54,10 @@ theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) {CallOk : 
   case wrapI64 => exact (sim_wrapI64 F).toL
   case extendUI32 => exact (sim_extendUI32 F).toL
   case unreachable => exact (sim_unreachable hE F).toL
+  case load64 off => exact (sim_load64 hE F off).toL
+  case store64 off => exact (sim_store64 hE F off).toL
+  case memorySize => exact (sim_memorySize hE h64 F).toL
+  case memoryGrow => exact (sim_memoryGrow hE hcap F).toL
   case br k => exact sim_br F k
   case br_if k => exact sim_br_if F k
   case ret => exact sim_ret F
@@ -74,14 +80,15 @@ theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) {CallOk : 
 
 /-- Instruction lists simulate at every fuel up to `Fmax`, for code whose calls go to functions
 whose simulation holds below `Fmax`. -/
-theorem body_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) {CallOk : Nat → Prop}
+theorem body_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.cap = E.cap)
+    (h64 : mod.memIs64 = false) {CallOk : Nat → Prop}
     {Fmax : Nat} (hC : ∀ k, CallOk k → ∀ g, g < Fmax → CallSim A X E mod c g k) :
     ∀ F, F ≤ Fmax → ProgSim A X E mod c CallOk F := by
   intro F
   induction F using Nat.strongRecOn with
   | _ F ih =>
       intro hF
-      exact prog_sim (fun inst => instr_sim hE hG (fun g hg => ih g hg (by omega))
+      exact prog_sim (fun inst => instr_sim hE hG hcap h64 (fun g hg => ih g hg (by omega))
         (fun k hk g hg => hC k hk g (by omega)) inst)
 
 end

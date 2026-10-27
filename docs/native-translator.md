@@ -80,7 +80,7 @@ The proofs target CompCert's Clight in the form `clightgen` produces: after `Sim
 **What the generated C uses** (prefix `lx_` throughout):
 
 - Types: `unsigned int`, `int` (comparison results), `unsigned long long`, `float`, `double`, `unsigned char`, and pointers to these.
-- Globals: `lx_mem`, an array of `unsigned long long` holding the linear memory, zero-initialized; `lx_pages`; `lx_g0` to `lx_g3`, the Wasm globals; `lx_r0`, `lx_r1`, …, the result slots for functions with several results; `lx_pun`, an 8-byte scratch cell for reinterpreting bits; `lx_tables`, a constant array holding the data segments; `lx_status`, the code of a trap, 0 while none has occurred.
+- Globals: `lx_mem`, an array of `unsigned long long` holding the linear memory, zero-initialized; `lx_pages`; `lx_g0` to `lx_g3`, the Wasm globals; `lx_r0`, `lx_r1`, …, the result slots for functions with several results; `lx_pun`, an 8-byte scratch cell for reinterpreting bits; `lx_status`, the code of a trap, 0 while none has occurred.
 - Locals: one C local per Wasm local and per operand-stack slot, plus `brk` for multi-level branches. None has its address taken, so `SimplLocals` turns them all into temporaries.
 - Expressions: integer constants, temporaries, global variables, dereferences of `lx_mem` and `lx_pun`, address-of for punning, the binary operators at the types above, and casts between the scalar types. Float constants are printed as literals; `clightgen` exports them as bit patterns, so the per-build check (section 6) compares them exactly.
 - Statements: `Sset`, `Sassign`, `Scall`, `Sbuiltin` (only `__builtin_fsqrt`), `Ssequence`, `Sifthenelse`, `Sloop`, `Sbreak`, `Scontinue`, `Sreturn`, `Sskip`.
@@ -131,18 +131,20 @@ A branch first copies the target's kept values (at most one) into the target's r
 
 After every construct the translator emits a dispatch, which does nothing unless a branch left the construct by more than one level: `if (brk != 0) { brk = brk - 1; if (brk == 0) <break or continue, for the parent> else break; }`. `br_if` wraps the same code in `if (cond != 0)`. `ret` copies the results and returns. This needs no `goto`, so it stays inside the big-step semantics.
 
-**Memory.** `lx_mem` holds `LX_CAP` pages, fixed when the module is translated, and `lx_pages` is the current page count. A `load64` with offset `off` becomes:
+**Memory.** `lx_mem` holds `LX_CAP` pages and `lx_pages` is the current page count.  `LX_CAP` is the argument `cap` of `translate`, which refuses a module whose initial pages exceed it and a cap above 65,535 pages, the most that the compiled modules declare.  A `load64` with offset `off` computes its address in the `i64` slot at the height of its address, here `s4`:
 
 ```c
-a = (unsigned long long) s4_i + 16;                 /* off = 16; 64-bit sum, no wrap */
-if (a + 8 > (unsigned long long) lx_pages * 65536) { lx_status = LX_OOB; return 0; }
-if ((a & 7) == 0) s4_l = lx_mem[a >> 3];            /* aligned: one 8-byte load */
-else s4_l = lx_load64_bytes(a);                     /* eight byte loads, little-endian */
+s4_l = (unsigned long long) s4_i + 16ULL;           /* off = 16; 64-bit sum, no wrap */
+if (s4_l + 8ULL > (unsigned long long) lx_pages * 65536ULL) { lx_status = 2U; return 0ULL; }
+if ((s4_l & 7ULL) == 0ULL) s4_l = lx_mem[s4_l >> 3ULL];   /* aligned: one 8-byte load */
+else s4_l = (unsigned long long) ((unsigned char *) lx_mem)[s4_l]
+          | (unsigned long long) ((unsigned char *) lx_mem)[s4_l + 1ULL] << 8ULL
+          | ...                                     /* eight byte loads, little-endian */
 ```
 
-`store64` mirrors it. The byte-wise helpers are emitted once per module and proved once. `memory.size` reads `lx_pages`. `memory.grow` adds in 64-bit arithmetic, succeeds when the sum is at most `LX_CAP`, and otherwise yields `0xFFFFFFFF`, exactly Talos's rule with the store's cap set to `LX_CAP`. Bytes past `lx_pages` stay zero in both semantics, because every write is bounds-checked.
+`store64` mirrors it, with eight byte stores of `(unsigned char) (v >> 8 k)` on the unaligned path.  The byte-wise expressions are emitted inline rather than as helper functions, which would add calls and their `lx_status` tests; the proof covers them once, for every address.  `memory.size` reads `lx_pages`.  `memory.grow` adds in 64-bit arithmetic, succeeds when the sum is at most `LX_CAP`, and otherwise yields `0xFFFFFFFF`, exactly Talos's rule with the store's cap set to `LX_CAP`.  Bytes past `lx_pages` hold the same values in both semantics, because every write is bounds-checked and neither semantics changes a byte on growth.
 
-**Initialization.** `lx_g0` to `lx_g3` and `lx_pages` have static initializers. `lx_init()` copies the data segments from `lx_tables` into `lx_mem`; a static initializer on `lx_mem` itself would put the whole array into the binary. The host calls `lx_init()` once before anything else.
+**Initialization.** `lx_g0` to `lx_g3` and `lx_pages` have static initializers.  `lx_init()` writes the data segments into `lx_mem` with straight-line stores: a word store for each 8-byte-aligned word that a segment covers, and a byte store for each other byte.  A static initializer on `lx_mem` itself would put the whole array into the binary, and a copy loop from a constant table would need a loop invariant in the proof; the stores' text grows with the data, as a table would.  The host calls `lx_init()` once before anything else.
 
 **Numeric operations.** Integer operations map one-to-one, with the guards CompCert's semantics needs:
 
@@ -171,7 +173,7 @@ One simulation theorem, `translate_correct`, carries every Talos `run` that ends
 - Locals: each `l_i` holds `s.get i`, as `Vint`, `Vlong`, `Vsingle` or `Vfloat` of the same bits.
 - Stack: `s.values` has length `|σ|`, and slot `k` holds the value at depth `|σ| − 1 − k`.
 - Globals: the blocks of `lx_g0` to `lx_g3` hold the encoding of `st.globals`.
-- Memory: every byte of `lx_mem` below `LX_CAP × 65536` equals `st.mem.bytes` at that address; `lx_pages = st.mem.pages`; and `st.memoryCap m 0 = LX_CAP`.
+- Memory: every byte of `lx_mem` below `LX_CAP × 65536` equals `st.mem.bytes` at that address and can be written; `lx_pages = st.mem.pages ≤ LX_CAP`; and the store's first memory cap, `st.memoryCaps[0]`, is `LX_CAP`.
 - `brk` and `lx_status` are 0. `lx_pun`, `lx_r*` and slots above the stack are unconstrained.
 
 **Outcomes.** Each Talos continuation corresponds to one C outcome:
@@ -190,8 +192,8 @@ One simulation theorem, `translate_correct`, carries every Talos `run` that ends
 3. **Control and calls** (3,000–5,000 lines): a mutual induction on fuel over `execOne`, `exec` and `run`, following Talos's own mutual definition. It covers sequences, the loop wrappers and the `brk` dispatch, `br`, `br_if`, `ret`, function entry through `function_entry2`, and calls with the test of `lx_status` after them. A loop that re-runs itself and a call each use the hypothesis at fuel − 1, exactly where Talos spends fuel.
 4. **Float lemmas** (1,000–3,000 lines): canonicalization equals Talos's NaN result for every NaN choice CompCert might make; the `trunc_sat` guards; f32 square root through binary64 (the double-rounding lemma); `f32Nearest` by integer arithmetic; the conversions agree with Talos's IEEE 754 functions. LeanExe's existing `F32*` and `F64*` lemmas in `LeanExe/ProofKit` cover part of this.
 5. **Module theorem.** `translate_correct`: if `translate m = some p` and `run fuel m id st args` returns `Success vs st'` or `Trap st' msg`, then from any C state matching `st` and the arguments, `eval_funcall` of the C function terminates with results matching `vs` and a state matching `st'`, or terminates with the code for `msg` in `lx_status` and globals and memory matching `st'`.
-6. **Initialization.** `lx_init_correct`: running `lx_init` from CompCert's initial memory gives a state matching Talos's `Module.initialStore`, with the cap set to `LX_CAP`. A variant of `compileWith_initialStore` for that cap supplies the allocator invariant for the first call.
-7. **Composition.** `ImplementsA.native` takes `p.f.implements` and `translate_correct`. It picks a fuel at least the `N` from `Runs`, and transports the `Represent`, heap and region facts through `Match`; the bytes are equal, so every heap reading carries over unchanged.
+6. **Initialization.** `lx_init_correct`: running `lx_init` from CompCert's initial memory gives a state matching Talos's `Module.initialStore`, with the cap set to `LX_CAP`.  The allocator invariant and the tables of `compileWith_initialStore` do not depend on the cap, so they hold of that store for the first call.
+7. **Composition.** `ImplementsA.native` takes `p.f.implements` and `translate_correct`. It picks a fuel at least the `N` from `Runs` and concludes, for a C memory related to the store, that the call terminates in a memory related to a final store that meets the postcondition of `p.f.implements`; the bytes are equal, so every heap reading of that postcondition carries over unchanged.
 
 **What `verified_compile` adds.** As with `p.encoded` today, the command evaluates `translate p.module` natively to a literal `p.cprogram`. The kernel then checks `translate p.module = some p.cprogram`, one function per theorem. It adds `p.f.native` for every function, and `p.c`, the C text printed from `p.cprogram`.
 
