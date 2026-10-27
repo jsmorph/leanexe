@@ -36530,4 +36530,29 @@ The survey that the decision on M4's second choice requires ran again with the t
 - [x] The fourteen binary64 forms in the translator and the proof.
 - [x] The float module of `run.sh`, `__builtin_fabs` in the differential test on both trees, and the corpus with the module cases of Euler.
 - [x] The Euler solvers native with their theorems.
-- [ ] The merge with `main`, after typed-fields stage 1.
+- [x] The merge with `main`, after typed-fields stage 1.
+
+## 2026-10-27: The Wasm-to-C translator: merge with main after typed-fields stage 1
+
+The merge of `origin/main` into the translator branch had two conflicts.  In `devnotes.md` main's entries come first and the translator's follow.  Main replaced `lakefile.toml` with `lakefile.lean`, so the executables `clight-diff`, `native-emit`, and `native-verified` moved to `lakefile.lean` and `lakefile.toml` is gone.  `Verified/Reflect/Command.lean` merged without a conflict, and both sides' changes are in it: main's literal pools, with the theorems `ImplementsStatic` for a module with literals, and the translation and native theorems of this branch.  Main's `p.f.implements` of a module with literals is an `ImplementsStatic`, whose premises add that the literal pool holds the arguments' literals, so `Verified/Native.lean` gains `NativeStaticA`, `NativeStaticImpl`, and `ImplementsStatic.nativeImpl`, and `verified_compile` states `p.f.native` for those theorems too.
+
+Three adjustments followed.  Main's Wasmtime host reads a `bytes` item of a `list:` result as two results, the address and the length, and `tools/native-host.c` now does the same.  The corpus driver skips a module that has no translation and counts its cases, since `native-verified emit` exits with status 3 for a module outside the subset.  `crc_start` raises the recursion limit, as main's own uses of `p.initial` do, because the unification of the initial store now passes through the literal pool.
+
+After the merge, on AArch64, every corpus module and the translator's tests build, and `tests/native/run.sh` agrees with Talos on all nineteen modules, `fops` among them, with `clightgen` reading each back unchanged.  The differential test agrees on all 318 programs.  Of the corpus cases, 29,225 pass natively and none fails; 3,581 call functions that use binary32 forms, and 370 belong to main's new module `heapsums`, which lies outside the subset: its functions use `load8U` and `store8`, the byte loads and stores of typed fields, which the subset of M0 does not contain.  The 3,322 module cases of Euler and of shapes on sums all pass.
+
+### Memory of the two largest numeric modules
+
+The theorems that `verified_compile` adds for the translation raise the scope's peak memory of `Lgamma.Compiled` by 5.9 GiB and of `Tgamma.Compiled` by 4.9 GiB, and their times by 21 and 41 seconds.  Each module was built alone after its dependencies, at `--threads 1 --memory-high 10G`, once with main's `Verified/Reflect/Command.lean` and once with this branch's, while other builds ran at the same time.  The table gives lake's time, the maximum resident set that GNU `time` reports, which includes the mapped `.olean` files, and the scope's `memory.peak`, the charge that `--memory-high` limits.
+
+| Module | Command | Time | Maximum resident set | Scope peak |
+|--------|---------|------|----------------------|------------|
+| `Lgamma.Compiled` | main | 671 s | 6.45 GiB | 3.06 GiB |
+| `Lgamma.Compiled` | translator | 692 s | 12.14 GiB | 8.95 GiB |
+| `Tgamma.Compiled` | main | 474 s | 5.97 GiB | 2.53 GiB |
+| `Tgamma.Compiled` | translator | 515 s | 10.69 GiB | 7.41 GiB |
+
+Probes that import `Lgamma.Compiled` and restate one theorem each locate the cost.  The import alone peaks at 0.48 GiB in the scope, `InSubset` by `decide +kernel` at 6.08 GiB in 20 seconds, and `translation_funcs` by `decide +kernel` at 8.27 GiB in 28 seconds.  `verified_compile` defines `module` as `compileWith` of the reflected program, so each of the two theorems makes the kernel compile the whole module in one declaration, and `translate` repeats the subset check and builds every included function's Clight body before it yields the list of functions.  Main's encoding theorems reduce the same definition one function per declaration, in `func_ok_k`.  The two theorems can split the same way: `violation` is the first violation of the module's shape, its memory, or one of its functions, and a lemma would derive `translate`'s success and its list of functions from the module-level guards and from each included function's `funDef`.  Whether that split lowers the peak to that of one function needs a measurement.
+
+The scope of `Lgamma.Compiled` stays under the limit of `--memory-high 10G`, and about 3.2 GiB of its resident set of 12.14 GiB is mapped `.olean` pages, which the kernel can drop and read again.
+
+### The tests on x86-64
