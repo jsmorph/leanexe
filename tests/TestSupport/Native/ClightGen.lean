@@ -8,7 +8,7 @@ eight words, and `pun`), a function `helper (x, y)`, and a function `test ()` th
 `unsigned long long`.  The statements assign temporaries, globals, array elements, and `pun`
 read as a `double`; they branch, loop a bounded number of times, call `helper`, and call
 `__builtin_fsqrt`.  The expressions combine constants biased toward edge values, temporaries,
-and globals with the operators and casts of `Cop.lean` other than `Oabsfloat`, at the types
+and globals with the operators and casts of `Cop.lean`, `Oabsfloat` among them, at the types
 `unsigned int`, `int`, `unsigned long long`, `double`, and `float`.  Some operations can be undefined, such as a shift
 by the word size or more, a division by zero, and a conversion of a float out of range; most are
 guarded so that they are defined.  `pun` starts as a NaN or an infinity half of the time, the
@@ -280,7 +280,9 @@ def genExpr (c : Ctx) : Nat → Ty → Gen expr
           | 2 => do pure (.Ecast (← genExpr c d .f32) tdouble)
           | 3 => do pure (.Ecast (← genExpr c d .i32) tdouble)
           | 4 => do pure (.Ecast (← genExpr c d .u32) tdouble)
-          | 5 => do pure (.Eunop .Oneg (← genExpr c d .f64) tdouble)
+          | 5 => do
+              let op ← pick [unary_operation.Oneg, .Oabsfloat]
+              pure (.Eunop op (← genExpr c d .f64) tdouble)
           | _ => do
               let op ← pick floatOps
               pure (.Ebinop op (← genExpr c d .f32) (← genExpr c d .f64) tdouble)
@@ -434,7 +436,8 @@ def setF32 (e : expr) : statement := .Sassign (.Evar idF32 tfloat) e
 /-- Statements whose results depend on the NaN parameters of `Archi`, each with the initial bits
 of `pun`: the default NaNs of both formats, a quiet and a signaling operand in both orders, two
 quiet operands, the square root of a negative number, conversions of NaNs between the formats,
-and negation of a NaN. -/
+and negation of a NaN; then `__builtin_fabs` of zeros, infinities, and NaNs, whose results the
+parameters do not change. -/
 def nanCases : List (UInt64 × statement) := [
   (0, setF64 dnan),
   (0, setF32 fnan),
@@ -449,7 +452,12 @@ def nanCases : List (UInt64 × statement) := [
   (0, setF64 (.Ecast fnan tdouble)),
   (0x7FF4000000000000, setF32 (.Ecast punDouble tfloat)),
   (0x7FF8000000000003, setF64 (.Eunop .Oneg punDouble tdouble)),
-  (0x7FFC000000000000, setF32 (.Ebinop .Oadd fnan (.Ecast punDouble tfloat) tfloat))]
+  (0x7FFC000000000000, setF32 (.Ebinop .Oadd fnan (.Ecast punDouble tfloat) tfloat))] ++
+  -- `__builtin_fabs` of both zeros, both infinities, a positive and a negative quiet NaN with
+  -- payloads, and a signaling NaN.
+  ([0, 0x8000000000000000, 0x7FF0000000000000, 0xFFF0000000000000, 0x7FF8000000000005,
+    0xFFF8000000000007, 0x7FF0000000000003].map fun bits =>
+    (bits, setF64 (.Eunop .Oabsfloat punDouble tdouble)))
 
 def nanPrograms : List (program function) :=
   let helper : function :=
