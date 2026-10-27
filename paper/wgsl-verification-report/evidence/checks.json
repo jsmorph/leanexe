@@ -1,7 +1,7 @@
 {
   "reviewed_revision": "ba9f02ce930243a3d35d4d10df6f9c97850ca1e8",
   "date": "2026-09-19",
-  "host": "Linux AArch64",
+  "host": "Linux on AArch64",
   "checkout": "a temporary clone of the reviewed revision",
   "limits": {
     "MemoryHigh": "4G",
