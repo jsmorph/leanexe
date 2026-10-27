@@ -51,17 +51,17 @@ interpreter, and Wasmtime's exit-acceptance policy.
 short writes.  [Its compiled theorem](Demos/RunningSum/Correct.lean) proves canonical cumulative
 integer output and eventual accepted exit under separate line and prefix-sum size bounds.  A line
 that is not a decimal integer stops the command with status 28 after the output of the lines before
-it.  The theorem assumes stream-host progress, a run budget for allocation, and final-exit
-acceptance.  No proof yet supplies a run budget, and none exists for inputs above about one million
-bytes when the host may return one byte per read, because the heap model credits no released
-memory.
+it.  The theorem assumes stream-host progress, limits on the bytes of each line and the digits of
+each total whose memory need fits within the memory cap, and final-exit acceptance.  The process
+compacts its state after each step, so its memory need does not grow with the input, and a
+corollary covers lines of up to 9,000,000 bytes and totals of up to 9,000,000 digits.
 
 [The floating-point version, `sumfp`](Demos/RunningSumFp/README.md), parses binary64 values and
 prints each sequential binary64 total in scientific notation.  Its proofs compose the existing
 parser and printer theorems with IEEE-754 addition and the WASI process proof.  The total starts
 at positive zero.  Its theorem requires fewer than `2^32` bytes per line, covers lines that denote
-no number, and assumes host progress, a run budget for allocation, and final-exit acceptance, with
-the same limits on the budget.
+no number, and assumes host progress, allocation charges for begin and each step, and final-exit
+acceptance.  No proof yet supplies those charges, which depend on the float parser and printer.
 
 ### Comparison
 
@@ -107,9 +107,9 @@ accepted exits, and host traps to source executions with the same world and orde
 Permitted guest resource traps match source prefixes and residual actions.  Generated action
 total-execution theorems require allocation room, the typed prefix budget, and `NoTrapsAlong`
 for the native action.  [The total-process theorem](Verified/Wasi/ProcessTotalCorrect.lean)
-uses a well-founded progress relation, a charge that bounds the cost of each step, a potential
-that bounds the charges of the remaining steps, and final-exit acceptance.  Both running-sum
-applications retain those cost bounds as premises.  The modeled initial-store theorem establishes allocator and
+uses a well-founded progress relation, a charge that bounds the cost of each step with room for
+the copies of the state, and final-exit acceptance.  The integer running sum proves those charges
+from limits on its input, and the binary64 running sum retains them as premises.  The modeled initial-store theorem establishes allocator and
 static-data invariants.  Real engine instantiation, OS streams, and the native stream adapter
 require conformance to the modeled behavior, which execution tests check on concrete inputs.
 

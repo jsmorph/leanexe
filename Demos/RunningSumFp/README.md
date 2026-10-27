@@ -67,16 +67,14 @@ event journal and output history and uses these premises:
 |---|---|
 | [Line sizes](Model.lean) | `ShortLines` requires each line of the input to hold fewer than `2^32` bytes. |
 | [Host progress](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful transfers, input-prefix consumption, EOF, and committed output prefixes.  Each zero-byte write decreases a proof-only natural-valued credit, and a read or a write of at least one byte may set the credit to any value. |
-| [Allocation](Correct.lean) | `RunBudget` supplies a `charge` and a `potential` on native states and stream positions.  The charge bounds the typed `Resource.CallPrefixBound` of the step from each represented running state, and the potential covers that charge and decreases by at least it along each step.  The initial heap satisfies `Heap.Within` for `start`, which covers the begin charge plus the initial potential. |
+| [Allocation](Correct.lean) | `RunCharges` supplies a begin charge and a step charge on native states and stream positions.  The charges bound the typed `Resource.CallPrefixBound` of `begin` and of the step from each represented running state, and the heap has room above its initial top for each charge with the copies of the state before and after it. |
 | [Exit acceptance](Correct.lean) | `ExitAccepted` excludes rejected exits with status 0 or 28 at represented worlds. |
 
-The run budget is a premise: no proof yet supplies the step charges, and the potential covers the
-allocation of the whole run because the heap model charges each allocation against `top`.  A
-4,096-byte read charges 4,144 bytes, so no budget exists for an input above about one million
-bytes when the host may return one byte per read, or above about four gigabytes when it returns
-full chunks, as [the WASI manual](../../docs/wasi.md#resources-host-assumptions-and-total-execution) states.  The
-host also satisfies the WASI specification, with valid heap and
-static-data representations and a memory cap of at most 65,535 pages.
+The charges are a premise: no proof yet bounds the allocation of the float parser and printer.
+The process compacts its state after `begin` and after each step, so between steps the heap holds
+the literal pool and one state, and the charges concern single steps.  The host also satisfies the
+WASI specification, with valid heap and static-data representations and a memory cap of at most
+65,535 pages.
 
 `implements` and `run_initial` classify modeled executions that complete without exhausting Talos
 fuel.  They preserve ordered effects and terminal outcomes.  A permitted guest resource failure
