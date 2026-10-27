@@ -135,6 +135,8 @@ def globalWords (st : Store Unit) : List UInt64 :=
 def valueWord : Value → UInt64
   | .i64 n => n
   | .i32 n => n.toUInt64
+  | .f64 b => b
+  | .f32 b => b.toUInt64
   | _ => 0
 
 def resultLine (name : String) (status : Nat) (rs : Option (List UInt64)) (st : Store Unit) :
@@ -155,12 +157,16 @@ def simCall (m : Module) (c : Call) : SimM String := do
   let cargs := ", ".intercalate (vals.map (·.2))
   let f := functionName m k
   let rs := (m.funcs[k]?.map (·.results)).getD []
-  let letter : ValueType → String := fun t => if t == .i32 then "i" else "l"
+  -- The bits of a result of type `t`, a C expression.
+  let bits : ValueType → String → String := fun t e => if t == .f64 then s!"lx_bits({e})" else e
+  let letter : ValueType → String := fun t =>
+    if t == .i32 then "i" else if t == .f64 then "d" else "l"
   let callText := match rs with
     | [] => s!"  lx_status = 0U; {f}({cargs}); nres = 0;"
-    | [_] => s!"  lx_status = 0U; res[0] = {f}({cargs}); nres = 1;"
+    | [t] => s!"  lx_status = 0U; res[0] = {bits t s!"{f}({cargs})"}; nres = 1;"
     | _ => s!"  lx_status = 0U; {f}({cargs});" ++
-        String.join (rs.zipIdx.map fun (t, i) => s!" res[{i}] = lx_r{i}_{letter t};") ++
+        String.join (rs.zipIdx.map fun (t, i) =>
+          s!" res[{i}] = {bits t s!"lx_r{i}_{letter t}"};") ++
         s!" nres = {rs.length};"
   emitLine callText
   emitLine s!"  report(\"{c.name}\");"
@@ -204,6 +210,8 @@ def hostText (t : Translation) (m : Module) (body : Array String) (vars : Nat) :
   String.join (globals.map fun g => s!"extern unsigned long long {g};\n") ++
   String.join resGlobals ++ String.join protos ++
   "static unsigned long long res[64];\nstatic int nres;\n" ++
+  "static unsigned long long lx_bits(double d) {\n" ++
+  "  union { double d; unsigned long long u; } x;\n  x.d = d;\n  return x.u;\n}\n" ++
   "static void put8(unsigned long long a, unsigned int b) {\n" ++
   "  ((unsigned char *) lx_mem)[a] = (unsigned char) b;\n}\n" ++
   "static void put64(unsigned long long a, unsigned long long w) {\n" ++
@@ -265,6 +273,40 @@ def memops : Module :=
                               { offset := some 70, bytes := [0xAA, 0xBB] }] }
     globals := [{ init := .i64 128 }, { init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }] }
 
+/-- The binary64 forms on words: each function reads its arguments' bits as doubles and returns
+the result's bits, so that the expected lines hold Talos's bits.  The calls produce NaNs from
+numbers and from NaN operands with payloads, compare NaNs, convert at the bounds of
+`trunc_sat`, and load the constants that go through `lx_pun` and those that are negated. -/
+def fops : Module :=
+  let d (i : Nat) : List Instruction := [.localGet i, .f64ReinterpretI64]
+  let bin (op : Instruction) : Function :=
+    { params := [.i64, .i64], results := [.i64], body := d 0 ++ d 1 ++ [op, .i64ReinterpretF64] }
+  let cmp (op : Instruction) : Function :=
+    { params := [.i64, .i64], results := [.i64], body := d 0 ++ d 1 ++ [op, .extendUI32] }
+  let un (op : Instruction) : Function :=
+    { params := [.i64], results := [.i64], body := d 0 ++ [op, .i64ReinterpretF64] }
+  let k (v : UInt64) : Function := { results := [.i64], body := [.f64Const v, .i64ReinterpretF64] }
+  { funcs := [bin .f64Add, bin .f64Sub, bin .f64Mul, bin .f64Div, un .f64Sqrt,
+      cmp .f64Eq, cmp .f64Lt, cmp .f64Le, un .f64Abs,
+      { params := [.i64], results := [.i64], body := [.localGet 0, .f64ConvertI64U, .i64ReinterpretF64] },
+      { params := [.i64], results := [.i64], body := d 0 ++ [.i64TruncSatF64U] },
+      k 0x7FF4000000000001, k 0x8000000000000000, k 0xBFF8000000000000, k 0xFFF0000000000000,
+      k 0x7FEFFFFFFFFFFFFF,
+      { params := [.i64, .i64], results := [.f64, .f64],
+        body := d 0 ++ d 1 ++ [.f64Div] ++ d 0 ++ d 1 ++ [.f64Mul] }]
+    exports := [⟨"add", 0⟩, ⟨"sub", 1⟩, ⟨"mul", 2⟩, ⟨"div", 3⟩, ⟨"sqrt", 4⟩, ⟨"eq", 5⟩,
+      ⟨"lt", 6⟩, ⟨"le", 7⟩, ⟨"abs", 8⟩, ⟨"conv", 9⟩, ⟨"trunc", 10⟩, ⟨"snan", 11⟩,
+      ⟨"negzero", 12⟩, ⟨"neg", 13⟩, ⟨"neginf", 14⟩, ⟨"max", 15⟩, ⟨"divmul", 16⟩]
+    memory := some { pagesMin := 1 }
+    globals := [{ init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }] }
+
+/-- Doubles at the edges: zeros, ones, infinities, a signaling and two quiet NaNs with
+payloads, the smallest subnormal, the largest double, and the bounds of `trunc_sat`. -/
+def edges : List UInt64 :=
+  [0, 0x8000000000000000, 0x3FF0000000000000, 0xBFF0000000000000, 0x7FF0000000000000,
+   0xFFF0000000000000, 0x7FF0000000000001, 0xFFF8000000000005, 0x7FF8000000000000, 1,
+   0x7FEFFFFFFFFFFFFF, 0x43F0000000000000, 0x43EFFFFFFFFFFFFF, 0xBFE0000000000000]
+
 def cases : List Case :=
   [{ name := "memops", module := memops
      calls := [
@@ -296,6 +338,15 @@ def cases : List Case :=
        { name := "size", args := [] },
        { name := "load", args := [.word (UInt64.ofNat (cap * 65536 - 8))] },
        { name := "load", args := [.word (UInt64.ofNat (cap * 65536 - 7))] }] },
+   { name := "fops", module := fops
+     calls :=
+       (["add", "sub", "mul", "div", "eq", "lt", "le", "divmul"].flatMap fun f =>
+         edges.flatMap fun a => [0x7FF0000000000001, 0xFFF0000000000000, 0x3FF0000000000000,
+           0].map fun b => { name := f, args := [.word a, .word b] }) ++
+       (["sqrt", "abs", "trunc"].flatMap fun f => edges.map fun a => { name := f, args := [.word a] }) ++
+       ([0, 1, 0xFFFFFFFFFFFFFFFF, 0x8000000000000000, 9007199254740993].map fun a =>
+         { name := "conv", args := [.word a] }) ++
+       (["snan", "negzero", "neg", "neginf", "max"].map fun f => { name := f, args := [] }) },
    { name := "gcd_loop", module := TestSupport.Native.Gcd.loopCompiled.module
      calls := pairs.map fun (a, b) => { name := "gcd", args := [.word a, .word b] } },
    { name := "gcd_rec", module := TestSupport.Native.Gcd.recCompiled.module
