@@ -455,6 +455,11 @@ def bodyTemps (s : statement) : List (ident × type) :=
   let calls := all.filter fun (id, _) => id % 8 = 6
   slots ++ [(brkId, tuint)] ++ calls.reverse
 
+/-- The `return` at the end of a function with result `r`, of the result's slot. -/
+def retStmt : Option VT → statement
+  | some t => .Sreturn (some (tmp 0 t))
+  | none => .Sreturn none
+
 /-- The C function of a Talos function. -/
 def trFunction (sigs : List (Option (List VT × Option VT))) (nglobals : Nat) (f : Function) :
     Option function := do
@@ -469,10 +474,7 @@ def trFunction (sigs : List (Option (List VT × Option VT))) (nglobals : Nat) (f
   let funLabel : Label := { isLoop := false, base := 0, result := r }
   let (body, _) ← trProg c [funLabel] [] r.toList 0 f.body
   let inits := ls.zipIdx.map fun (t, j) => statement.Sset (localId (ps.length + j)) t.zero
-  let ret : statement := match r with
-    | some t => .Sreturn (some (tmp 0 t))
-    | none => .Sreturn none
-  let fbody := seqList (inits ++ [.Sset brkId (cint 0), wrapLoop body, ret])
+  let fbody := seqList (inits ++ [.Sset brkId (cint 0), wrapLoop body, retStmt r])
   pure { fn_return := (r.map VT.ty).getD .Tvoid
          fn_callconv := cc_default
          fn_params := ps.zipIdx.map fun (t, i) => (localId i, t.ty)
@@ -526,29 +528,42 @@ def globalDef (g : GlobalDecl) : Option (globvar type) :=
              gvar_volatile := false }
   | _ => none
 
+/-- The C function of each function of `m`, `none` for one the translator does not handle. -/
+def fdefsOf (m : Module) : List (Option function) :=
+  m.funcs.map (trFunction (m.funcs.map signatureOf) m.globals.length)
+
+/-- The functions that the C function of `k` calls. -/
+def callsOf (m : Module) (k : Nat) : List Nat :=
+  match (fdefsOf m)[k]?.join with
+  | some f => (callees f.fn_body).map (· / 4)
+  | none => []
+
+/-- The functions that the program contains: those that translate and call only such
+functions. -/
+def includedOf (m : Module) : List Nat :=
+  closeUnderCalls (callsOf m) (m.funcs.length + 1)
+    ((List.range m.funcs.length).filter fun k => ((fdefsOf m)[k]?.join).isSome)
+
+/-- The definition of function `k` in the program. -/
+def funDef (m : Module) (k : Nat) : Option (ident × globdef (fundef function) type) := do
+  let f ← (fdefsOf m)[k]?.join
+  pure (funId k, .Gfun (.Internal f))
+
+/-- `lx_status`, initially 0. -/
+def statusVar : globvar type :=
+  { gvar_info := tuint, gvar_init := [.Init_int32 0], gvar_readonly := false
+    gvar_volatile := false }
+
 def translate (m : Module) : Option Translation := do
   guard (violation m = none)
-  let sigs := m.funcs.map signatureOf
-  let nglobals := m.globals.length
   let gdefs ← m.globals.mapM globalDef
-  let fdefs := m.funcs.map (trFunction sigs nglobals)
-  let candidates := (List.range m.funcs.length).filter fun k => (fdefs[k]?.join).isSome
-  let calls (k : Nat) : List Nat :=
-    match fdefs[k]?.join with
-    | some f => (callees f.fn_body).map (· / 4)
-    | none => []
-  let included := closeUnderCalls calls (m.funcs.length + 1) candidates
-  guard (included.all fun k => (calls k).all (included.contains ·))
-  let funs ← included.mapM fun k => do
-    let f ← fdefs[k]?.join
-    pure (funId k, globdef.Gfun (fundef.Internal f))
-  let status : globvar type :=
-    { gvar_info := tuint, gvar_init := [.Init_int32 0], gvar_readonly := false
-      gvar_volatile := false }
-  let defs := (statusId, globdef.Gvar status) ::
+  let included := includedOf m
+  guard (included.all fun k => (callsOf m k).all (included.contains ·))
+  let funs ← included.mapM (funDef m)
+  let defs := (statusId, globdef.Gvar statusVar) ::
     (gdefs.zipIdx.map fun (g, i) => (globalId i, globdef.Gvar g)) ++ funs
   let names := (statusId, "lx_status") ::
-    ((List.range nglobals).map fun i => (globalId i, s!"lx_g{i}")) ++
+    ((List.range m.globals.length).map fun i => (globalId i, s!"lx_g{i}")) ++
     included.map fun k => (funId k, functionName m k)
   pure { cprogram := { prog_defs := defs, prog_public := defs.map (·.1), prog_main := 0 }
          names := names
