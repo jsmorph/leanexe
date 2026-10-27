@@ -36402,3 +36402,9 @@ The proof extended `plan_segments` to state that each node of the output's walk 
 The entry `slew:Demos.Slew.Verified:Demos/Slew/File.lean` of `tests/verified/numerics.txt` makes the full `tests/verified/run.sh` build the compilation, check the file module against the file it writes, and require exactly two axiom reports with the permitted axioms, as it does for the regex and hashing modules.  `--cases slew` skips that loop, as it does for every other module.  `Demos.lean` does not import the file module, because the module reads the written file.
 
 All seven theorems of the plan are proved.  The branch still needs the merge with `origin/main`, the full `lake build Verified Library`, and the full `tests/verified/run.sh` before a push, which the coordinator schedules.
+
+## 2026-10-26: The slew planner merged with main and added to the index
+
+Merging `origin/main` at `bab4a8fbe` into `slew-planner` conflicted in `Demos/README.md`, `Demos/Verified.lean`, and `devnotes.md`, where both sides had added rows, imports, or entries, and each resolution keeps both sides, with main's entries first.  `tests/verified/run.sh`, `tests/verified/modules.txt`, `Verified/Examples/Cases.lean`, and `docs/verified-manual.md` merged without conflicts.  The full gate waits for typed-fields stage 1 to reach `main` and a second merge.
+
+Section 14 of `index.md` now has a row for the slew planner, after the drone planner's pattern, with links to `plan_safe`, `plan_premise`, `plan_optimal`, `plan_finite`, `plan_bound` and `slew_trapFree`, and the file theorems, and with their premises and limits.  The verified manual's description of `--cases slew` still described the sampled safety check that the generator no longer runs, and it now omits it, and the manual's `Slew` row names `slew_trapFree`.  The link check passes, and `tools/source-layout` reports no problems after the merge.
