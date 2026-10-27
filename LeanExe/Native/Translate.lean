@@ -223,10 +223,11 @@ def i64Cmp : Instruction → Option binary_operation
 def funType (ps : List VT) (r : Option VT) : type :=
   .Tfunction (ps.map VT.ty) ((r.map VT.ty).getD .Tvoid) cc_default
 
-/-- The arguments of a call with parameters `ps` from the stack of height `h`: the slots from
-`h - ps.length` up, deepest first. -/
-def callArgs (h : Nat) (ps : List VT) : List expr :=
-  ps.zipIdx.map fun (t, j) => tmp (h - ps.length + j) t
+/-- The arguments of a call with parameters `ps`: the slots from height `base` up, deepest
+first. -/
+def callArgs (base : Nat) : List VT → List expr
+  | [] => []
+  | t :: ts => tmp base t :: callArgs (base + 1) ts
 
 mutual
 
@@ -357,7 +358,7 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
       let σ' ← pops L σ ps.length
       if σ.take ps.length = ps.reverse then
         let callee : expr := .Evar (funId k) (funType ps r)
-        let args := callArgs h ps
+        let args := callArgs (h - ps.length) ps
         match r with
         | none => pure (.Ssequence (.Scall none callee args) (statusCheck c.result), some σ', n)
         | some t =>
@@ -537,6 +538,7 @@ def translate (m : Module) : Option Translation := do
     | some f => (callees f.fn_body).map (· / 4)
     | none => []
   let included := closeUnderCalls calls (m.funcs.length + 1) candidates
+  guard (included.all fun k => (calls k).all (included.contains ·))
   let funs ← included.mapM fun k => do
     let f ← fdefs[k]?.join
     pure (funId k, globdef.Gfun (fundef.Internal f))
