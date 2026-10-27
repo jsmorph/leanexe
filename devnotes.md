@@ -36580,3 +36580,7 @@ The split meets the coordinator's target: the scope peaks lie 0.12 and 0.45 GiB 
 
 - [x] `p.inSubset` and `p.translation_funcs` from one part per function.
 - [ ] `p.native_module`: the module-level checks in one declaration, which computes the literal pool once, measured the same way.
+
+### The module-level checks in one theorem
+
+`p.native_module` states the module's shape and memory and, when the module translates, the guards of `translate` on the memory and the globals, in one declaration, so that the kernel computes the literal pool once instead of once per check.  `p.inSubset` and `p.translation_funcs` take its components, and their statements are unchanged.
