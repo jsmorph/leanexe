@@ -36331,7 +36331,7 @@ The full build with the minimum passed, with the heavy proofs one at a time and 
 
 ## 2026-10-27: The charges of the integer running sum
 
-The integer running sum's final theorem now replaces the `RunCharges` premise with `InputLimits L D` and one inequality, `heap.top + limitMemory L D ≤ 65536 · cap`, with `limitMemory L D = 220 · (L + D) + 1,010,000`.  A corollary fixes `L` and `D` at 9,000,000: the module's literal pool ends at 4,104 bytes and its memory may grow to 65,535 pages, so the inequality holds by computation.  Both running-sum drivers pass, the correctness axiom check now covers 34 theorems, and the module bytes do not change.
+The integer running sum's final theorem now replaces the `RunCharges` premise with `InputLimits L D` and one inequality, `4104 + limitMemory L D ≤ 65536 · 65535`, with `limitMemory L D = 220 · (L + D) + 1,010,000`: the module's literal pool ends at 4,104 bytes, and its memory may grow to 65,535 pages, which `initial_top` and `initial_memoryCap` compute.  `terminates_limits` states the same result for any initial heap and memory cap.  A corollary fixes `L` and `D` at 9,000,000.  Both running-sum drivers pass, the correctness axiom check now covers 34 theorems, and the module bytes do not change.
 
 ### The invariant
 

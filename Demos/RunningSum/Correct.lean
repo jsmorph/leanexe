@@ -184,29 +184,6 @@ theorem terminates_limits {World : Type} (host : Host World)
     (limit_advances streams L D)
     (limitCharges streams (by rw [← memoryCap_pure]; exact cap) room) accepted
 
-/-- For every input within the size bounds and the limits `L` and `D`, when the module's memory
-holds `limitMemory L D` bytes above the literal pool, the compiled command exits with status 0
-when every line is a decimal integer and with status 28 at the first line that is not, after
-writing the cumulative totals of the lines before it. -/
-theorem initial_terminates_integer {World : Type} (host : Host World)
-    (targetHost : HostEnv (Observed World)) (world : Observed World)
-    (rep : StreamPosition → World → Prop) (streams : StreamHost host rep)
-    {position : StreamPosition} (represented : rep position world.world)
-    (events : world.events = []) (empty : position.output = [])
-    (bounds : InputBounds position.input) {L D : Nat} (limits : InputLimits L D position.input)
-    (valid : targetHost.Satisfies module (hostSpec host))
-    (room : (initialStaticHeap io.literalPool).top.toNat + limitMemory L D ≤
-      65536 * (PureTransport.erase (initialStore world)).memoryCap io.pure.module 0)
-    (accepted : ExitAccepted host rep) :
-    ∃ values status, InputValues position.input values status ∧
-      ∃ bound, ∀ fuel ≥ bound, ∃ final,
-        run fuel module startIndex (initialStore world) [] targetHost = .Trap final exitTrap ∧
-          stdoutWords final.host.events = cumulativeOutput values ∧
-          host.exited final.host.world = some status :=
-  terminates_limits host targetHost (initialStore world) (initialStaticHeap io.literalPool)
-    rep streams represented events empty bounds limits valid
-    (initialState world).1 rfl (initialState world).2.2 (initialState world).2.1 room accepted
-
 theorem initial_memoryCap {World : Type} (world : Observed World) :
     (PureTransport.erase (initialStore world)).memoryCap io.pure.module 0 = 65535 := by
   show (module.initialStore : Store Unit).memoryCap io.pure.module 0 = 65535
@@ -214,6 +191,29 @@ theorem initial_memoryCap {World : Type} (world : Observed World) :
 
 theorem initial_top : (initialStaticHeap io.literalPool).top.toNat = 4104 := by
   decide +kernel
+
+/-- For every input within the size bounds and the limits `L` and `D`, when `limitMemory L D`
+bytes fit in the module's memory of 65,535 pages above the literal pool, which ends at 4,104
+bytes, the compiled command exits with status 0 when every line is a decimal integer and with
+status 28 at the first line that is not, after writing the cumulative totals of the lines before
+it. -/
+theorem initial_terminates_integer {World : Type} (host : Host World)
+    (targetHost : HostEnv (Observed World)) (world : Observed World)
+    (rep : StreamPosition → World → Prop) (streams : StreamHost host rep)
+    {position : StreamPosition} (represented : rep position world.world)
+    (events : world.events = []) (empty : position.output = [])
+    (bounds : InputBounds position.input) {L D : Nat} (limits : InputLimits L D position.input)
+    (valid : targetHost.Satisfies module (hostSpec host))
+    (room : 4104 + limitMemory L D ≤ 65536 * 65535) (accepted : ExitAccepted host rep) :
+    ∃ values status, InputValues position.input values status ∧
+      ∃ bound, ∀ fuel ≥ bound, ∃ final,
+        run fuel module startIndex (initialStore world) [] targetHost = .Trap final exitTrap ∧
+          stdoutWords final.host.events = cumulativeOutput values ∧
+          host.exited final.host.world = some status :=
+  terminates_limits host targetHost (initialStore world) (initialStaticHeap io.literalPool)
+    rep streams represented events empty bounds limits valid
+    (initialState world).1 rfl (initialState world).2.2 (initialState world).2.1
+    (by rw [initial_top, initial_memoryCap]; exact room) accepted
 
 /-- For every input within the size bounds whose lines up to the first line without an integer
 have at most 9,000,000 bytes and whose totals have at most 9,000,000 digits, the compiled command
@@ -232,7 +232,7 @@ theorem initial_terminates_integer_9000000 {World : Type} (host : Host World)
           stdoutWords final.host.events = cumulativeOutput values ∧
           host.exited final.host.world = some status :=
   initial_terminates_integer host targetHost world rep streams represented events empty bounds
-    limits valid (by rw [initial_top, initial_memoryCap]; unfold limitMemory; omega) accepted
+    limits valid (by unfold limitMemory; omega) accepted
 
 theorem integer_bytes : ∃ bytes,
     Encoding.encode module = .ok bytes ∧ Encoding.decode bytes = .ok module ∧
