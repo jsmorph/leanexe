@@ -36390,7 +36390,7 @@ The cost lemmas follow the call graph from the bottom, each for the generated `b
 4. `divStep` and `divBits`: 63 steps of a shift and a subtraction, with the remainder no longer than the dividend.
 5. `scaledQuot`: the two shifts and `divBits`.
 6. `mulPow10`: `k / 9` products by `10 ^ 9` and one more, the result `k / 9 + 1` limbs longer.
-7. `limbsOf`, `quotAt`, `range`, and `found`, at exponents within 330 of the bias.
+7. `limbsOf`, `quotAt`, `range`, and `found`, at exponents within 350 of the bias.
 8. `shortest`: at most 28 tests of `found`, then `range`, `quotAt`, and at most one more of each.
 9. `numDigits`, `digitAt`, `digitsFrom`, `byte1`, `noBytes`, `zeros`, `sciLayoutW`, `special`, `fixed`, `print64With`, and `print64`.
 10. The parser: `span`, `expPart`, `leadingZeros`, `anyNonzero`, `chunkVal`, `digitsVal` (at most 768 digits), `decParse`, `fastPath`, `roundUnits`, `decRound` (exponents limited by its range tests), `parse64`, and `stripCR`.
@@ -36400,7 +36400,7 @@ The cost lemmas follow the call graph from the bottom, each for the generated `b
 
 `PrintFloatSteps.steps_le` proves at most 27 steps for every word with `WordBounds Q E 1074`, and `search_le` states it for the code's `repeatWhile`.  The proof refutes `steps ≥ 28` with `width_le`, `width_eq`, and `jstart ≤ jfor 1074 E 55`, where `jfor` is `jstart` with the bits of `4 Q + 2` as a parameter and grows with them.  `wide_binary64` checks `10 ^ (jfor 1074 E 55 - 27) < 3 · 2 ^ (E - 1) / 2 ^ 1076` in natural numbers for each `E` from 1 to 2,048 by `decide +kernel`.  The same argument gives at most 10 steps for a binary32 word (`steps_le_binary32`), whose significand has at most 24 bits and whose binade is below 256.  The loop tests `found` at most 28 times.
 
-The cost of one test and of one call follows from the paid sides of the generated equations, which the cost lemmas will prove.  `mulSmall` on `n` limbs costs at most `96 n + 168` bytes, `shl` at most `104 n + 232 + 8 ⌊k / 32⌋`, `sub` at most `80 n + 72`, and `divBits` 63 steps of a shift and a subtraction.  At the search's exponents, within 330 of the bias, one `found` costs at most about 1.79 MB, the most at binade 2,035, where the shift of the numerator by `E - 1` bits makes the division's operands longest.  One call of the printer then costs at most about 54 MB: 28 tests, the final `range` and `quotAt`, and at most one more of each.  These figures are estimates from the formulas, not yet theorems.
+The cost of one test and of one call follows from the paid sides of the generated equations, which the cost lemmas will prove.  `mulSmall` on `n` limbs costs at most `96 n + 168` bytes, `shl` at most `104 n + 232 + 8 ⌊k / 32⌋`, `sub` at most `80 n + 72`, and `divBits` 63 steps of a shift and a subtraction.  At the search's exponents, within 350 of the bias, one `found` costs at most about 1.79 MB, the most at binade 2,035, where the shift of the numerator by `E - 1` bits makes the division's operands longest.  One call of the printer then costs at most about 54 MB: 28 tests, the final `range` and `quotAt`, and at most one more of each.  These figures are estimates from the formulas, not yet theorems.
 
 - [x] Write the stage 3 plan.
 - [x] Prove the search-length theorem for binary64, and report the cost of one iteration and of one call of the printer.
