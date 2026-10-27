@@ -36262,7 +36262,7 @@ The drafts have not met Lean.  The main risks are the low-level `wp` stepping in
 
 ## 2026-10-26: Building the process compaction
 
-The build ran on the AArch64 build host in an independent clone, with at most eight Lean workers and a 44 GiB memory limit.  The baseline came from the fully built base commit `ed77fa248` before the branch was checked out.  A scratch program outside the repository, `EmitAll.lean`, imports a group of modules, encodes every definition of type `Wasm.Module` from the repository's libraries with the encoder and decoder check of `tools/Emit.lean`, and prints the statement of every imported theorem whose name mentions a bound or a cost.  The groups follow the library roots, because some modules of different roots define the same names, and they leave out the test drivers that define `main`.  The baseline holds 171 modules, every module of `tests/verified/modules.txt`, `tests/modules/modules.txt`, and the WASI and running-sum drivers among them, and 1,876 distinct statements.
+The baseline came from the fully built base commit `ed77fa248` before the branch was checked out.  A scratch program outside the repository, `EmitAll.lean`, imports a group of modules, encodes every definition of type `Wasm.Module` from the repository's libraries with the encoder and decoder check of `tools/Emit.lean`, and prints the statement of every imported theorem whose name mentions a bound or a cost.  The groups follow the library roots, because some modules of different roots define the same names, and they leave out the test drivers that define `main`.  The baseline holds 171 modules, every module of `tests/verified/modules.txt`, `tests/modules/modules.txt`, and the WASI and running-sum drivers among them, and 1,876 distinct statements.
 
 ### Stage 1
 
@@ -36371,3 +36371,32 @@ The bodies of `begin`, `step`, `readStep`, and `writeStep` take their charges by
 - [x] Run both running-sum drivers.
 - [x] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audit of the integer program.
 - [ ] Repeat the charges and limits for the binary64 program, and update its guide.
+
+## 2026-10-27: Stage 3, the charges of the binary64 printer and parser
+
+The coordinator decided on 2026-10-27, for the sleeping user, that `process-compaction` keeps the binary64 program's `RunCharges` premise and that stage 3 proves its charges for the parser and the printer as they stand, with no change to either.  A smaller search fuel or a tighter start would still need a bound on the search's length, for correctness or for the shortest output, and would change the bytes of every module that prints floats.  The search-length theorem also bounds the allocation of every module that uses `PrintFloat`, so it comes first.  Work proceeds on the local branch `printfloat-charges`, taken at the integer stage 2 commit, and leaves every module's bytes unchanged.
+
+### The search length
+
+`shortest` searches with `repeatWhile 2000` for the largest exponent `J` at which a multiple of `10 ^ J` lies in the rounding interval, calling `found` at `j0 - i` for `i = 0, 1, …`.  `search_spec` states that the search returns `steps = jstart - top`.  The generated bound of the loop follows the iterations that the code takes, so it is finite only with a bound on `steps`.  `width_le` gives `hi - lo ≤ 10 ^ (top + 1)`, and the width is at least `3 · 2 ^ (E - 1) / 2 ^ (nu + 2)`.  `jstart` grows with the size of `4 Q + 2`, at most 55 bits for a binary64 significand.  If `steps ≥ N + 1`, then `10 ^ (jstart - N) ≥ hi - lo`, which an exact check at each of the 2,048 binades refutes.  An exact computation over the binades gives `N = 27` as the smallest value that this argument supports.  The check runs in the kernel on natural numbers of about 3,400 bits.
+
+### Plan
+
+The cost lemmas follow the call graph from the bottom, each for the generated `bound` of the binary64 running sum's program, with the size of each array result where a caller needs it.
+
+1. `mulSmall`: cost linear in the array's length, result one limb longer.
+2. `shl`: `mulSmall` and a block of the shifted length.
+3. `sub`, with the result as long as the minuend; `le`, `cmpStep`, `bitLen`, and `wordBits`, which allocate nothing.
+4. `divStep` and `divBits`: 63 steps of a shift and a subtraction, with the remainder no longer than the dividend.
+5. `scaledQuot`: the two shifts and `divBits`.
+6. `mulPow10`: `k / 9` products by `10 ^ 9` and one more, the result `k / 9 + 1` limbs longer.
+7. `limbsOf`, `quotAt`, `range`, and `found`, at exponents within 330 of the bias.
+8. `shortest`: at most 28 tests of `found`, then `range`, `quotAt`, and at most one more of each.
+9. `numDigits`, `digitAt`, `digitsFrom`, `byte1`, `noBytes`, `zeros`, `sciLayoutW`, `special`, `fixed`, `print64With`, and `print64`.
+10. The parser: `span`, `expPart`, `leadingZeros`, `anyNonzero`, `chunkVal`, `digitsVal` (at most 768 digits), `decParse`, `fastPath`, `roundUnits`, `decRound` (exponents limited by its range tests), `parse64`, and `stripCR`.
+11. `completeLine`, `consumeInput`, the effect bodies, and the binary64 `RunCharges` from limits on line length, as for the integer program.
+
+- [x] Write the stage 3 plan.
+- [ ] Prove the search-length theorem for binary64, and report the cost of one iteration and of one call of the printer.
+- [ ] Prove the cost lemmas in the order above.
+- [ ] State the binary64 theorem over limits on line length, with its inequality against the memory cap.
