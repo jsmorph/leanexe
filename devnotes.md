@@ -35769,7 +35769,7 @@ The coordinator asked for the remaining theorems in the plan's order: NaN-freedo
 - [x] The premise theorem: `plan_premise`.
 - [x] The constant allocation bound: `plan_bound` and `slew_trapFree`.
 - [x] Optimality: `plan_optimal`.
-- [ ] The file theorem.
+- [x] The file theorem: `slew_file` and `slew_file_decode`.
 
 ## 2026-10-26: The slew premise theorem
 
@@ -35819,3 +35819,11 @@ The user decided to keep `round` and `relax` as they are, with the proved bound,
 The invariant `Opt` holds of every state of the search.  Its fields state that a finalized node holds the least cost of any walk to it (`lower`), that a node with a finite cost other than the start holds the cost of the walk through its parent, whose edge is in the graph (`edge`), that a node not yet finalized holds at most the cost through each finalized node other than the goal with an edge to it (`relaxed`), that every finite cost is at most `(card done) · 2^34` (`bound`), and that a finished search has finalized the goal or left every open admitted node unreached (`stop`).  `select_lower` is the step of Dijkstra's proof: a walk to the selected node leaves the finalized nodes at a first open node whose cost is at most the walk's cost up to it, and the selected node costs at most every open admitted node.  `relax_opt` carries `relaxed` through the loop with the pairs from the new node pending above the loop index, and the branch that skips `edgeOk` for a candidate that does not improve its target satisfies `relaxed` from the candidate's cost alone.  Each round that does not stop finalizes one more node, so the `n + 1` rounds of `search` end finished.
 
 The proof extended `plan_segments` to state that each node of the output's walk after the start is not the start and has the node before it as its parent, so that the walk is the parent chain, and moved `go_count` and `pathLength_le` from `Bound.lean` to `Search.lean`, so that `Optimal.lean` does not import the compilation.  `Cost.toUInt64_le` takes the truncation of `Float.toUInt64` from the library's `Expm1ReduceWords.truncSat_spec`, and `ticks_le` repeats the enclosures of `NanFree.slew_clean` to bound the computed duration by `1.05 · 10¹⁰` ms.
+
+## 2026-10-26: The slew planner's file theorems
+
+`Demos/Slew/File.lean` states item 7 of [the theorem list](#theorems) as the repository's other file theorems do.  `slew_file` states that `encode compiled.module` equals the bytes of `build/verified/slew.wasm`, from `compiled.encoded` and a kernel comparison of the literal bytes, and `slew_file_decode` states that the file decodes to `compiled.module`, from `compiled.bytes`.  Both depend on `propext`, `Classical.choice`, and `Quot.sound` alone, and the check takes 5.8 s and 5.3 GB on the build host after the module of 26,362 bytes was written again from the current compilation.
+
+The entry `slew:Demos.Slew.Verified:Demos/Slew/File.lean` of `tests/verified/numerics.txt` makes the full `tests/verified/run.sh` build the compilation, check the file module against the file it writes, and require exactly two axiom reports with the permitted axioms, as it does for the regex and hashing modules.  `--cases slew` skips that loop, as it does for every other module.  `Demos.lean` does not import the file module, because the module reads the written file.
+
+All seven theorems of the plan are proved.  The branch still needs the merge with `origin/main`, the full `lake build Verified Library`, and the full `tests/verified/run.sh` before a push, which the coordinator schedules.

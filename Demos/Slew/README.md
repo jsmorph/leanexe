@@ -11,13 +11,17 @@ for its compilation, its tests, and its theorems.
 
 `verified_compile` compiles the program into a module of 26,362 bytes, whose `plan` export agrees
 with native Lean, bit for bit, on all 852 generated plans and 1,225 `atan2` calls in Wasmtime.
-The compiler's generated theorems state that the module computes `plan`.  [The safety
+The compiler's generated theorems state that the module computes `plan`, and [the file
+theorems](File.lean) state that the written `slew.wasm` holds the module.  [The safety
 section](#safety) states the theorem that every plan of status 1 keeps every cone along its
 commanded rotations, which rests on the soundness of the edge check and the static check
 ([the soundness section](#soundness-of-the-checks)), and [the NaN-freedom
 section](#nan-freedom) states that every floating-point value that the planner computes from a
-validated input is finite.  [The test section](#tests) describes the cases, and [the theorem
-section](#theorems-to-prove) lists the theorems that remain.
+validated input is finite.  [The premises section](#premises) relates a plan to a flown slew,
+[the optimality section](#optimality) states that a plan is a least-cost walk of the graph that the
+program's checks define, and [the compilation section](#compilation) bounds the memory of a call.
+[The test section](#tests) describes the cases, and [the theorem section](#theorems) lists every
+theorem.
 
 | File | Contents |
 |---|---|
@@ -45,6 +49,7 @@ section](#theorems-to-prove) lists the theorems that remain.
 | [The allocation bound](Bound.lean) | `plan_bound` and `slew_trapFree` |
 | [The edge cost](Cost.lean) | `edge_cost_le` |
 | [Optimality](Optimal.lean) | `plan_optimal` |
+| [The file theorems](File.lean) | `slew_file` and `slew_file_decode` |
 
 The program imports only the dialect modules and `Library.Numerics.Float64.Atan.Program`, which
 build from Lean's core library.  The representations need `LeanExe.Pipeline`, which depends on
@@ -133,9 +138,10 @@ costs `2^62`, and no path cost comes near it, since an edge costs less than `3.2
 
 ## Compilation
 
-These commands build the compilation, write the module, and validate it.  The build of
-`Verified.lean` takes about 3 minutes, and `tests/verified/run.sh --cases slew` runs the same steps
-before it runs the cases.
+These commands build the compilation, write the module, validate it, and check the file theorems.
+The build of `Verified.lean` takes about 3 minutes.  `tests/verified/run.sh --cases slew` runs the
+first four steps before it runs the cases, and the full `tests/verified/run.sh` also checks the
+file theorems.
 
 ```sh
 tools/leanrun --timeout 60m lake build Demos.Slew.Verified
@@ -143,6 +149,7 @@ mkdir -p build/verified
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Demos.Slew.Verified Demos.Slew.Verified.compiled.module build/verified/slew.wasm
 wasm-tools validate build/verified/slew.wasm
+tools/leanrun --timeout 10m lake env lean Demos/Slew/File.lean
 ```
 
 The reflector needed one change to the program: `segmentField` bound `let big := sn ≥ axisMin`,
@@ -163,6 +170,9 @@ compilation yields these results:
   for every input: four arrays of at most 1,026 words from `initial`, two copies of them in each
   round, and an output of at most 11,294 words.  `slew_trapFree` states that the export computes
   `plan` without a trap whenever `top` can rise by 68,020,488 bytes within the memory's cap, and
+  both depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+- [The file theorems](File.lean) `slew_file` and `slew_file_decode` state that
+  `build/verified/slew.wasm` holds `encode compiled.module` and decodes to `compiled.module`, and
   both depend only on `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Soundness of the checks
@@ -216,9 +226,9 @@ and the rotation by `θ_g` about `n̄_g` carries the attitude `R(q̄_g)` to with
 `R(q̄_{g+1})`, where the distance between attitudes is the largest displacement of a unit vector.
 For each angle `φ` in `[0, θ_g]` and each map `R'` that moves every unit vector at most `1e-9`
 from `R(n̄_g, φ) R(q̄_g)`, every input cone holds for `R'` applied to the cone's normalized body
-vector, against its normalized axis.  `R(q̄)` is the program's rotation formula on the normalized quaternion, which
-equals `v ↦ q̄ v q̄*`, `R(n, φ)` is Rodrigues' formula, and the theorem depends only on `propext`,
-`Classical.choice`, and `Quot.sound`.
+vector, against its normalized axis.  `R(q̄)` is the program's rotation formula on the normalized
+quaternion, which equals `v ↦ q̄ v q̄*`, `R(n, φ)` is Rodrigues' formula, and the theorem depends
+only on `propext`, `Classical.choice`, and `Quot.sound`.
 
 The proof has five parts.  `validInput`'s norm tests give every node and cone the hypotheses of
 the edge check: a component above 2 in magnitude makes the computed sum of squares at least about
@@ -363,7 +373,7 @@ The generator takes 14 s, the edge test 9 s, and the whole run of `tests/verifie
 slew` 80 s.  A plan of 500 waypoints takes at most 51 ms in the host, of which about 20 ms is the
 start of the host and the compilation of the module.
 
-## Theorems to prove
+## Theorems
 
 The journal states each theorem and the order of the work.
 
@@ -382,4 +392,5 @@ The journal states each theorem and the order of the work.
   slew.  [The premises section](#premises) states the proved theorem, `plan_premise`.
 - **Optimality:** no path in the graph that the program's own checks define costs less than the
   plan.  [The optimality section](#optimality) states the proved theorem, `plan_optimal`.
-- **File:** the written `slew.wasm` holds the encoding of `compiled.module`.
+- **File:** the written `slew.wasm` holds the encoding of `compiled.module`.  [The compilation
+  section](#compilation) states the proved theorems, `slew_file` and `slew_file_decode`.
