@@ -130,6 +130,43 @@ def CodeSpec {S : List Sig} {Γ : List Ty} {t : Ty} (m : Module) (funs : Funs S)
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) →
     wp m (e.code (pool := pool) h slots base live ++ rest) Q store s host
 
+/-- `CodeSpec` with the paid flag `pays` of the value and the bound `bound` in place of
+`Expr.paid` and `Expr.allocs`. -/
+def CodeSpecWith {S : List Sig} {Γ : List Ty} {t : Ty} (pays : Bool) (bound : Nat) (m : Module)
+    (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit)
+    (pv : List Value) (e : Expr S Γ t) (env : Env Γ) (slots : List Slot) (paid : List Bool)
+    (live : Nat → Bool) (pool : Bytes.LiteralPool) : Prop :=
+  ∀ (h base : Nat) (heap : Heap) (store : Store Unit) (s : Locals), s.positions = h → s.params = pv →
+    Holds env slots (fun i => live i || e.uses i) base heap store s → heap.At store →
+    pool.Safe env slots (fun i => live i || e.uses i) heap store s →
+    store.memoryCap m 0 ≤ 65535 → s.params.length ≤ base → base + e.width ≤ h →
+    e.placeArgs = true →
+    ∀ (rest : Program) (Q : Assertion Unit),
+    TrapOK (trapFlag m e slots heap store
+      (dyingPot store s env slots paid (fun i => live i || e.uses i) live + bound)
+      (e.fits funs fits env)) Q →
+    (∀ heap' store' s' ws,
+      After env slots (fun i => live i || e.uses i) live base heap store s t
+        (e.mode (slots.map Slot.mode)) (e.denote funs env) heap' store' s' ws →
+      (e.fits funs fits env = true →
+        heap'.top.toNat + (if pays then t.pot store' ws (e.denote funs env) else 0) ≤
+          heap.top.toNat + dyingPot store s env slots paid (fun i => live i || e.uses i) live +
+            bound) →
+      wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) →
+    wp m (e.code (pool := pool) h slots base live ++ rest) Q store s host
+
+theorem CodeSpec.of_with {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module} {funs : Funs S}
+    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+    {e : Expr S Γ t} {env : Env Γ} {slots : List Slot} {paid : List Bool} {live : Nat → Bool}
+    {pool : Bytes.LiteralPool} {bound : Nat}
+    (hb : e.allocs funs flags bounds (slots.map Slot.mode) paid live env = bound)
+    (h : CodeSpecWith (e.paid flags (slots.map Slot.mode) paid live) bound m funs flags bounds fits
+      host pv e env slots paid live pool) :
+    CodeSpec m funs flags bounds fits host pv e env slots paid live pool := by
+  unfold CodeSpec
+  rw [hb]
+  exact h
+
 /-- Whether an expression's value is paid: as `Expr.bodyPaid` states in the result of the body
 of a loop whose state grows, when `buy` holds, and as `Expr.paid` states otherwise. -/
 def Expr.paidIn {S : List Sig} {Γ : List Ty} {t : Ty} (buy : Bool) (flags : Flags S)
@@ -453,7 +490,7 @@ theorem loopCost_zero {α : Type} {cc : α → Nat} {cond : α → Bool} {bc : U
 `Expr.allocs` counts them. -/
 def Expr.loopRest {S : List Sig} {Γ : List Ty} {t : Ty} (funs : Funs S) (flags : Flags S)
     (bounds : Bounds S)
-    (modes : List Mode) (paid : List Bool) (live : Nat → Bool) (init : Expr S Γ t)
+    (modes : List Mode) (paid : List Bool) (live : Nat → Bool) (ps : Bool) (init : Expr S Γ t)
     (cond : Expr S (t :: Γ) .bool)
     (body : Expr S (t :: .word :: Γ) t) (env : Env Γ) (n : Nat) (i : UInt64) (x : t.denote) :
     Nat :=
@@ -465,28 +502,46 @@ def Expr.loopRest {S : List Sig} {Γ : List Ty} {t : Ty} (funs : Funs S) (flags 
     (fun i s =>
       body.allocs funs flags bounds (((init.mode modes).join (body.mode (.borrowed :: .borrowed ::
           modes))) :: .borrowed :: modes)
-          (Expr.statePaid flags modes paid live init cond body :: false :: paid)
+          (ps :: false :: paid)
           (shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)))
           (.cons s (.cons i env)) +
         coerceCost t (body.mode (((init.mode modes).join (body.mode (.borrowed :: .borrowed ::
           modes))) :: .borrowed :: modes))
           ((init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)))
           (body.denote funs (.cons s (.cons i env))) +
-        (if Expr.statePaid flags modes paid live init cond body then
+        (if ps then
           body.buys funs flags (((init.mode modes).join (body.mode (.borrowed :: .borrowed ::
               modes))) :: .borrowed :: modes)
-            (Expr.statePaid flags modes paid live init cond body :: false :: paid)
+            (ps :: false :: paid)
             (shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)))
             (.cons s (.cons i env))
         else 0))
     (fun i s => body.denote funs (.cons s (.cons i env))) n i x
 
-theorem Expr.allocs_loop {S : List Sig} {Γ : List Ty} {t : Ty} (funs : Funs S)
+/-- The bound of a loop with the state's flag `ps`, as `loopAllocWith` states it. -/
+def Expr.loopBound {S : List Sig} {Γ : List Ty} {t : Ty} (ps : Bool) (funs : Funs S)
     (flags : Flags S) (bounds : Bounds S) (modes : List Mode) (paid : List Bool) (live : Nat → Bool)
-    (count : Expr S Γ .word)
-    (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool) (body : Expr S (t :: .word :: Γ) t)
-    (env : Env Γ) :
-    (Expr.loop count init cond body).allocs funs flags bounds modes paid live env =
+    (count : Expr S Γ .word) (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool)
+    (body : Expr S (t :: .word :: Γ) t) (env : Env Γ) : Nat :=
+  count.allocs funs flags bounds modes paid
+      (fun i => (live i || cond.uses (i + 1) || body.uses (i + 2)) || init.uses i) env +
+    init.allocs funs flags bounds modes paid
+        (fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
+      env +
+    coerceCost t (init.mode modes)
+      ((init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)))
+      (init.denote funs env) +
+    (if ps &&
+        !init.paid flags modes paid (fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
+      then t.credit (init.denote funs env) else 0) +
+    Expr.loopRest funs flags bounds modes paid live ps init cond body env
+      (count.denote funs env).toNat 0 (init.denote funs env)
+
+theorem Expr.loopBound_def {S : List Sig} {Γ : List Ty} {t : Ty} (ps : Bool) (funs : Funs S)
+    (flags : Flags S) (bounds : Bounds S) (modes : List Mode) (paid : List Bool) (live : Nat → Bool)
+    (count : Expr S Γ .word) (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool)
+    (body : Expr S (t :: .word :: Γ) t) (env : Env Γ) :
+    Expr.loopBound ps funs flags bounds modes paid live count init cond body env =
       count.allocs funs flags bounds modes paid
           (fun i => (live i || cond.uses (i + 1) || body.uses (i + 2)) || init.uses i) env +
         init.allocs funs flags bounds modes paid
@@ -495,48 +550,61 @@ theorem Expr.allocs_loop {S : List Sig} {Γ : List Ty} {t : Ty} (funs : Funs S)
         coerceCost t (init.mode modes)
           ((init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)))
           (init.denote funs env) +
-        (if Expr.statePaid flags modes paid live init cond body &&
+        (if ps &&
             !init.paid flags modes paid (fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
           then t.credit (init.denote funs env) else 0) +
-        Expr.loopRest funs flags bounds modes paid live init cond body env (count.denote funs env).toNat 0
-          (init.denote funs env) := rfl
+        Expr.loopRest funs flags bounds modes paid live ps init cond body env
+          (count.denote funs env).toNat 0 (init.denote funs env) := rfl
+
+theorem Expr.allocs_loop {S : List Sig} {Γ : List Ty} {t : Ty} (funs : Funs S)
+    (flags : Flags S) (bounds : Bounds S) (modes : List Mode) (paid : List Bool) (live : Nat → Bool)
+    (count : Expr S Γ .word)
+    (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool) (body : Expr S (t :: .word :: Γ) t)
+    (env : Env Γ) :
+    (Expr.loop count init cond body).allocs funs flags bounds modes paid live env =
+      if (Expr.statePaid flags modes paid live init cond body && t.isPair) = true then
+        min (Expr.loopBound false funs flags bounds modes paid live count init cond body env)
+          (Expr.loopBound true funs flags bounds modes paid live count init cond body env)
+      else
+        Expr.loopBound (Expr.statePaid flags modes paid live init cond body) funs flags bounds
+          modes paid live count init cond body env := rfl
 
 theorem Expr.loopRest_true {S : List Sig} {Γ : List Ty} {t : Ty} {funs : Funs S}
     {flags : Flags S} {bounds : Bounds S} {modes : List Mode} {paid : List Bool}
-    {live : Nat → Bool} {init : Expr S Γ t}
+    {live : Nat → Bool} {ps : Bool} {init : Expr S Γ t}
     {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {env : Env Γ} {n : Nat}
     {i : UInt64} {x : t.denote} (h : cond.denote funs (.cons x env) = true) :
-    Expr.loopRest funs flags bounds modes paid live init cond body env (n + 1) i x =
+    Expr.loopRest funs flags bounds modes paid live ps init cond body env (n + 1) i x =
       cond.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
           (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j)
           (.cons x env) +
         (body.allocs funs flags bounds (((init.mode modes).join (body.mode (.borrowed :: .borrowed ::
             modes))) :: .borrowed :: modes)
-            (Expr.statePaid flags modes paid live init cond body :: false :: paid)
+            (ps :: false :: paid)
             (shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)))
             (.cons x (.cons i env)) +
           coerceCost t (body.mode (((init.mode modes).join (body.mode (.borrowed :: .borrowed ::
             modes))) :: .borrowed :: modes))
             ((init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)))
             (body.denote funs (.cons x (.cons i env))) +
-          (if Expr.statePaid flags modes paid live init cond body then
+          (if ps then
             body.buys funs flags (((init.mode modes).join (body.mode (.borrowed :: .borrowed ::
                 modes))) :: .borrowed :: modes)
-              (Expr.statePaid flags modes paid live init cond body :: false :: paid)
+              (ps :: false :: paid)
               (shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)))
               (.cons x (.cons i env))
           else 0) +
-          Expr.loopRest funs flags bounds modes paid live init cond body env n (i + 1)
+          Expr.loopRest funs flags bounds modes paid live ps init cond body env n (i + 1)
             (body.denote funs (.cons x (.cons i env)))) := by
   unfold Expr.loopRest
   exact loopCost_succ_true (cond := fun s => cond.denote funs (.cons s env)) h
 
 theorem Expr.loopRest_false {S : List Sig} {Γ : List Ty} {t : Ty} {funs : Funs S}
     {flags : Flags S} {bounds : Bounds S} {modes : List Mode} {paid : List Bool}
-    {live : Nat → Bool} {init : Expr S Γ t}
+    {live : Nat → Bool} {ps : Bool} {init : Expr S Γ t}
     {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {env : Env Γ} {n : Nat}
     {i : UInt64} {x : t.denote} (h : cond.denote funs (.cons x env) = false) :
-    Expr.loopRest funs flags bounds modes paid live init cond body env (n + 1) i x =
+    Expr.loopRest funs flags bounds modes paid live ps init cond body env (n + 1) i x =
       cond.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
           (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j)
           (.cons x env) := by
@@ -545,10 +613,10 @@ theorem Expr.loopRest_false {S : List Sig} {Γ : List Ty} {t : Ty} {funs : Funs 
 
 theorem Expr.loopRest_zero {S : List Sig} {Γ : List Ty} {t : Ty} {funs : Funs S}
     {flags : Flags S} {bounds : Bounds S} {modes : List Mode} {paid : List Bool}
-    {live : Nat → Bool} {init : Expr S Γ t}
+    {live : Nat → Bool} {ps : Bool} {init : Expr S Γ t}
     {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {env : Env Γ}
     {i : UInt64} {x : t.denote} :
-    Expr.loopRest funs flags bounds modes paid live init cond body env 0 i x = 0 := rfl
+    Expr.loopRest funs flags bounds modes paid live ps init cond body env 0 i x = 0 := rfl
 
 /-- Whether a loop's passes from index `i`, with `n` indices left, from the state `x`, find their
 frames, as `Expr.fits` states for the loop. -/
@@ -587,13 +655,13 @@ theorem _root_.LeanExe.Pipeline.Heap.Within.of_le {heap heap1 : Heap} {store sto
 
 theorem Expr.loopRest_cond_le {S : List Sig} {Γ : List Ty} {t : Ty} {funs : Funs S}
     {flags : Flags S} {bounds : Bounds S} {modes : List Mode} {paid : List Bool}
-    {live : Nat → Bool} {init : Expr S Γ t}
+    {live : Nat → Bool} {ps : Bool} {init : Expr S Γ t}
     {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {env : Env Γ} {n : Nat}
     {i : UInt64} {x : t.denote} :
     cond.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
         (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j)
         (.cons x env) ≤
-      Expr.loopRest funs flags bounds modes paid live init cond body env (n + 1) i x := by
+      Expr.loopRest funs flags bounds modes paid live ps init cond body env (n + 1) i x := by
   cases h : cond.denote funs (.cons x env)
   · rw [Expr.loopRest_false h]
   · rw [Expr.loopRest_true h]; omega

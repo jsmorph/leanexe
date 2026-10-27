@@ -1308,27 +1308,43 @@ def zeroBuys (c : Ctx) (src : Lean.Expr) : BoundBuilder := fun modes paid live =
   app.assign `h (← evalEq free (boolConst true))
   boundOf (← app.finish)
 
+/-- The proof that the credits `credits`, `if ps = true then e.buys … else 0`, are 0: by the
+flag `false`, or by `Expr.buyFree`, which the kernel evaluates.  None when the credits are not 0
+by these. -/
+def zeroCredits (credits : Lean.Expr) : MetaM (Option Lean.Expr) := do
+  let (``ite, #[_, cnd, _, buys, _]) := credits.getAppFnArgs
+    | throwError "verified_compile: the credits {credits}"
+  let (``Eq, #[_, ps, _]) := cnd.getAppFnArgs
+    | throwError "verified_compile: the credits {credits}"
+  if ps.isConstOf ``Bool.false then
+    return some (← mkExpectedTypeHint (← mkEqRefl natZero) (← mkEq credits natZero))
+  let (``Expr.buys, #[S, funs, flags, modes, paid, live, Γ, _, e, env]) := buys.getAppFnArgs
+    | throwError "verified_compile: the credits {buys}"
+  let app ← LemmaApp.start ``buys_free [(`S, S), (`Γ, Γ), (`funs, funs), (`flags, flags),
+    (`modes, modes), (`paid, paid), (`live, live), (`env, env), (`ps, ps), (`e, e)]
+  let some (_, free, _) := (← app.hypType `h).eq?
+    | throwError "verified_compile: the argument h of buys_free is not an equation"
+  unless ← evalBool m!"whether a loop's body charges no credit" free do return none
+  app.assign `h (← evalEq free (boolConst true))
+  return some (← app.finish)
+
 /-- The proof of the hypothesis `ty`, `∀ i s, (if ps = true then body.buys … else 0) = 0`, of a
-loop's pass: by the state's flag `false`, or by `Expr.buyFree`, which the kernel evaluates.  None
-when the body's code charges credits at the `if`s in its result. -/
+loop's pass, by `zeroCredits` under the binders. -/
 def zeroBuysAll (ty : Lean.Expr) : MetaM (Option Lean.Expr) :=
   forallTelescope ty fun xs eq => do
     let some (_, lhs, _) := eq.eq? | throwError "verified_compile: the credits {ty}"
-    let (``ite, #[_, cnd, _, buys, _]) := lhs.getAppFnArgs
-      | throwError "verified_compile: the credits {lhs}"
-    let (``Eq, #[_, ps, _]) := cnd.getAppFnArgs
-      | throwError "verified_compile: the credits {lhs}"
-    if ps.isConstOf ``Bool.false then
-      return some (← mkExpectedTypeHint (← mkLambdaFVars xs (← mkEqRefl natZero)) ty)
-    let (``Expr.buys, #[S, funs, flags, modes, paid, live, Γ, _, e, env]) := buys.getAppFnArgs
-      | throwError "verified_compile: the credits {buys}"
-    let app ← LemmaApp.start ``buys_free [(`S, S), (`Γ, Γ), (`funs, funs), (`flags, flags),
-      (`modes, modes), (`paid, paid), (`live, live), (`env, env), (`ps, ps), (`e, e)]
-    let some (_, free, _) := (← app.hypType `h).eq?
-      | throwError "verified_compile: the argument h of buys_free is not an equation"
-    unless ← evalBool m!"whether a loop's body charges no credit" free do return none
-    app.assign `h (← evalEq free (boolConst true))
-    return some (← mkLambdaFVars xs (← app.finish))
+    let some p ← zeroCredits lhs | return none
+    return some (← mkLambdaFVars xs p)
+
+/-- Assigns the argument `name` of `app`, an equation between a closed Boolean term and `true` or
+`false`, its proof by the kernel's evaluation. -/
+def assignFlag (app : LemmaApp) (name : Name) : MetaM Unit := do
+  let some (_, lhs, rhs) := (← app.hypType name).eq?
+    | throwError "verified_compile: the argument {name} of {app.name} is not an equation"
+  let value ← evalBool m!"the argument {name} of {app.name}" lhs
+  unless boolConst value == rhs do
+    throwError "verified_compile: the argument {name} of {app.name} does not hold"
+  app.assign name (← evalEq lhs rhs)
 
 /-- The builder of the credits of `r`, a reflection in the context `c`. -/
 def buysOf (c : Ctx) (r : Reflection) : BoundBuilder :=
@@ -2729,7 +2745,7 @@ where
     let flatArgs ← match sa.flat with
       | none => pure []
       | some φ => pure [(`φ, φ), (`I, init)]
-    -- Every argument but the body's pass and its credits.
+    -- Every argument but the passes and their credits.
     let fill (thm : Name) : MetaM LemmaApp := do
       let app ← LemmaApp.start thm (boundArgs c bounds modes paid live ++
         [(`count, rn.src), (`init, ri.src), (`cond, cond), (`body, u.r.src), (`C, C), (`F, F)] ++
@@ -2739,11 +2755,15 @@ where
       app.assign `all allRhs
       app.assign `hall (← mkEqRefl allRhs)
       let _ ← assignMode app `M `hM
-      let some (_, statePaid, _) := (← app.hypType `hps).eq?
-        | throwError "verified_compile: the loop's state flag"
-      let ps := boolConst (← evalBool m!"whether the state of a loop is paid" statePaid)
-      app.assign `ps ps
-      app.assign `hps (← evalEq statePaid ps)
+      if app.names.contains `ps then
+        let some (_, statePaid, _) := (← app.hypType `hps).eq?
+          | throwError "verified_compile: the loop's state flag"
+        let ps := boolConst (← evalBool m!"whether the state of a loop is paid" statePaid)
+        app.assign `ps ps
+        app.assign `hps (← evalEq statePaid ps)
+      else
+        assignFlag app `hps
+      assignFlag app `hpair
       app.assign `hn (← userProof c rn)
       app.assign `hi (← userProof c ri)
       app.assign `hc (← hc (← app.hypType `hc))
@@ -2784,62 +2804,83 @@ where
       let value ← projReduce (F.beta u.xs)
       let (K, hk) ← coerceEq c.base ri.ty s M' v value
       boundOf (← congr2 sum.appFn!.appFn! allocs b.term coerce K (some b.proof) (some hk))
+    -- The bound of a pass with its credits, `allocs + coerce + credits`.
+    let passBuys (lhs : Lean.Expr) : MetaM Bound := do
+      let (``HAdd.hAdd, #[_, _, _, _, sum, credits]) := lhs.getAppFnArgs
+        | throwError "verified_compile: the loop's body"
+      let b ← pass sum
+      if let some zero ← zeroCredits credits then
+        return ⟨b.term, ← mkAppM ``add_zero_eq #[b.proof, zero]⟩
+      let (``ite, #[_, _, _, buys, _]) := credits.getAppFnArgs
+        | throwError "verified_compile: the loop's credits {credits}"
+      let (``Expr.buys, args) := buys.getAppFnArgs
+        | throwError "verified_compile: the loop's credits {buys}"
+      let some bb := u.r.buys
+        | throwError "verified_compile: the credits of a loop's body are not available"
+      let y ← bb args[3]! args[4]! args[5]!
+      let hy ← mkAppM ``buys_on #[y.proof]
+      boundOf (← congr2 lhs.appFn!.appFn! sum b.term credits y.term (some b.proof) (some hy))
+    -- The function of the index and the state that a pass hypothesis `name` states, built by `f`.
+    let passes (app : LemmaApp) (cost proof : Name) (f : Lean.Expr → MetaM Bound) : MetaM Unit := do
+      let ty ← app.hypType proof
+      let (term, prf) ← withExistingLocalDecls u.decls do
+        let ty ← u.instantiate ty
+        let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the loop's body"
+        let b ← f lhs
+        return (← mkLambdaFVars u.xs b.term, ← mkLambdaFVars u.xs b.proof)
+      app.assign cost term
+      app.assign proof prf
+    let statePaid ← mkAppM ``Expr.statePaid #[c.tables.flags, modes, paid, live, ri.src, cond,
+      u.r.src]
+    let paidState ← evalBool m!"whether the state of a loop is paid" statePaid
+    let pairState ← evalBool m!"whether the state of a loop is a pair"
+      (mkApp (mkConst ``Ty.isPair) (tyExpr ri.ty))
+    if paidState && pairState then
+      -- The smaller of the bounds with an unpaid and a paid state.
+      let app ← fill (if sa.flat.isNone then ``loop_min_bound else ``loop_min_flat_bound)
+      passes app `BA0 `hba0 pass
+      passes app `BA1 `hba1 passBuys
+      return ← boundOf (← app.finish)
     let app ← fill (if sa.flat.isNone then ``loop_bound else ``loop_flat_bound)
-    let hbyTy ← app.hypType `hby
-    match ← zeroBuysAll hbyTy with
+    match ← zeroBuysAll (← app.hypType `hby) with
     | some hby =>
       app.assign `hby hby
-      let hbaTy ← app.hypType `hba
-      let (cost, proof) ← withExistingLocalDecls u.decls do
-        let ty ← u.instantiate hbaTy
-        let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the loop's body"
-        let b ← pass lhs
-        return (← mkLambdaFVars u.xs b.term, ← mkLambdaFVars u.xs b.proof)
-      app.assign `BA cost
-      app.assign `hba proof
+      passes app `BA `hba pass
       boundOf (← app.finish)
     | none =>
       -- The state is paid, and the body's code charges credits at the `if`s in its result.
       let app ← fill (if sa.flat.isNone then ``loop_buy_bound else ``loop_buy_flat_bound)
-      let hbaTy ← app.hypType `hba
-      let (cost, proof) ← withExistingLocalDecls u.decls do
-        let ty ← u.instantiate hbaTy
-        let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the loop's body"
-        let (``HAdd.hAdd, #[_, _, _, _, sum, credits]) := lhs.getAppFnArgs
-          | throwError "verified_compile: the loop's body"
-        let b ← pass sum
-        let (``ite, #[_, _, _, buys, _]) := credits.getAppFnArgs
-          | throwError "verified_compile: the loop's credits {credits}"
-        let (``Expr.buys, args) := buys.getAppFnArgs
-          | throwError "verified_compile: the loop's credits {buys}"
-        let some bb := u.r.buys
-          | throwError "verified_compile: the credits of a loop's body are not available"
-        let y ← bb args[3]! args[4]! args[5]!
-        let hy ← mkAppM ``buys_on #[y.proof]
-        let total ← boundOf
-          (← congr2 lhs.appFn!.appFn! sum b.term credits y.term (some b.proof) (some hy))
-        return (← mkLambdaFVars u.xs total.term, ← mkLambdaFVars u.xs total.proof)
-      app.assign `BA cost
-      app.assign `hba proof
+      passes app `BA `hba passBuys
       boundOf (← app.finish)
   foldBound (ri : Reflection) (u : Under) (α β xs init F x hx : Lean.Expr) :
       BoundBuilder := fun modes paid live => do
     let sa ← shapeOf α
     let sb ← shapeOf β
-    let app ← LemmaApp.start ``fold_flat_bound
-      (boundArgs c (c.tables.table false) modes paid live ++
+    let start (thm : Name) : MetaM LemmaApp := do
+      LemmaApp.start thm (boundArgs c (c.tables.table false) modes paid live ++
         [(`φ, ← sb.fn β), (`ψ, ← sa.fn α), (`xs, xs), (`I, init), (`F, F), (`x, x),
           (`init, ri.src), (`body, u.r.src), (`hx, hx)])
+    let probe ← start ``fold_flat_bound
+    let some (_, statePaid, _) := (← probe.hypType `hps).eq?
+      | throwError "verified_compile: the fold's state flag"
+    let minimum := (← evalBool m!"whether the state of a fold is paid" statePaid) &&
+      (← evalBool m!"whether the state of a fold is a pair"
+        (mkApp (mkConst ``Ty.isPair) (tyExpr ri.ty)))
+    let app ← if minimum then start ``fold_min_flat_bound else pure probe
     let some (_, _, allRhs) := (← app.hypType `hall).eq?
       | throwError "verified_compile: the fold's live variables"
     app.assign `all allRhs
     app.assign `hall (← mkEqRefl allRhs)
     let _ ← assignMode app `M `hM
-    let some (_, statePaid, _) := (← app.hypType `hps).eq?
-      | throwError "verified_compile: the fold's state flag"
-    let ps := boolConst (← evalBool m!"whether the state of a fold is paid" statePaid)
-    app.assign `ps ps
-    app.assign `hps (← evalEq statePaid ps)
+    if app.names.contains `ps then
+      let some (_, statePaid, _) := (← app.hypType `hps).eq?
+        | throwError "verified_compile: the fold's state flag"
+      let ps := boolConst (← evalBool m!"whether the state of a fold is paid" statePaid)
+      app.assign `ps ps
+      app.assign `hps (← evalEq statePaid ps)
+    else
+      assignFlag app `hps
+    assignFlag app `hpair
     app.assign `hi (← mkExpectedTypeHint ri.proof (← app.hypType `hi))
     app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
     let _ ← app.child `hia ri.bound
@@ -2864,23 +2905,29 @@ where
     | some hby => app.assign `hby hby
     | none => throwError "verified_compile: a fold whose body charges credits at the `if`s in its \
         result is not supported"
-    let hbaTy ← app.hypType `hba
-    let (cost, proof) ← withExistingLocalDecls u.decls do
-      let ty ← u.instantiate hbaTy
-      let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the fold's body"
-      let (``HAdd.hAdd, #[_, _, _, _, allocs, coerce]) := lhs.getAppFnArgs
-        | throwError "verified_compile: the fold's body"
-      let args := allocs.getAppArgs
-      let b ← u.r.bound args[4]! args[5]! args[6]!
-      let (``coerceCost, #[_, s, M, v]) := coerce.getAppFnArgs
-        | throwError "verified_compile: the fold's body"
-      let value ← projReduce (F.beta #[u.xs[1]!, u.xs[2]!])
-      let (K, hk) ← coerceEq c.base ri.ty s M v value
-      let b ← boundOf
-        (← congr2 lhs.appFn!.appFn! allocs b.term coerce K (some b.proof) (some hk))
-      return (← mkLambdaFVars u.xs b.term, ← mkLambdaFVars u.xs b.proof)
-    app.assign `BA cost
-    app.assign `hba proof
+    let pass (cost proof : Name) : MetaM Unit := do
+      let hbaTy ← app.hypType proof
+      let (term, prf) ← withExistingLocalDecls u.decls do
+        let ty ← u.instantiate hbaTy
+        let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the fold's body"
+        let (``HAdd.hAdd, #[_, _, _, _, allocs, coerce]) := lhs.getAppFnArgs
+          | throwError "verified_compile: the fold's body"
+        let args := allocs.getAppArgs
+        let b ← u.r.bound args[4]! args[5]! args[6]!
+        let (``coerceCost, #[_, s, M, v]) := coerce.getAppFnArgs
+          | throwError "verified_compile: the fold's body"
+        let value ← projReduce (F.beta #[u.xs[1]!, u.xs[2]!])
+        let (K, hk) ← coerceEq c.base ri.ty s M v value
+        let b ← boundOf
+          (← congr2 lhs.appFn!.appFn! allocs b.term coerce K (some b.proof) (some hk))
+        return (← mkLambdaFVars u.xs b.term, ← mkLambdaFVars u.xs b.proof)
+      app.assign cost term
+      app.assign proof prf
+    if minimum then
+      pass `BA0 `hba0
+      pass `BA1 `hba1
+    else
+      pass `BA `hba
     boundOf (← app.finish)
   foldFits (ri : Reflection) (u : Under) (α β xs init F x hx : Lean.Expr) : FitsBuilder := do
     let sa ← shapeOf α

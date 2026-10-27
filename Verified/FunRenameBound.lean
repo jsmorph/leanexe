@@ -140,6 +140,7 @@ theorem callCredits_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
   simp only [callCredits, params, callMovesAt_renameFuns, Expr.paidVar_renameFuns,
     Expr.denote_renameFuns ρ funs targetFuns functions]
 
+set_option maxHeartbeats 1000000 in
 theorem Expr.allocs_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (funs : Funs S) (targetFuns : Funs T)
     (functions : ∀ {g : Sig} (f : FVar S g) env, targetFuns.get (ρ f) env = funs.get f env)
@@ -162,7 +163,7 @@ theorem Expr.allocs_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
       Expr.denote_renameFuns ρ funs targetFuns functions]
   | _ =>
     simp_all
-      [Expr.renameFuns, Expr.allocs, loopAlloc, Expr.foldStep_renameFuns, Expr.statePaid,
+      [Expr.renameFuns, Expr.allocs, loopAlloc, loopAllocWith, Expr.foldStep_renameFuns, Expr.statePaid,
       Expr.mode_renameFuns, Expr.uses_renameFuns, Expr.ownedCost_renameFuns,
       Expr.paid_renameFuns ρ flags targetFlags params result,
       Expr.bodyPaid_renameFuns ρ flags targetFlags params result,

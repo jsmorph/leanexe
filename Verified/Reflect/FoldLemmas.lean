@@ -135,16 +135,16 @@ namespace Verified.Reflect
 variable {S : List Sig} {Γ : List Ty} {funs : Funs S} {flags : Flags S}
   {bounds : Bounds S} {modes : List Mode} {paid : List Bool} {live : Nat → Bool} {env : Env Γ}
 
-theorem fold_flat_bound {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote)
+/-- The bound of a fold with the state's flag `ps`, as `loopAllocWith` states it. -/
+theorem fold_flat_with {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote)
     (ψ : α → e.denote) (xs : Array α) (I : β) (F : β → α → β)
     {x : Var Γ (.array e)} {init : Expr S Γ t}
     {body : Expr S (.elem e :: t :: .word :: Γ) t}
-    {all : Nat → Bool} {M : Mode} {ps : Bool} {IA KA CR : Nat}
+    {all : Nat → Bool} {M : Mode} (ps : Bool) {IA KA CR : Nat}
     {BA : UInt64 → β → α → Nat}
     (hall : all = fun i => live i || false || (Expr.foldStep x body).uses (i + 2))
     (hM : (init.mode modes).join
       (body.mode (.borrowed :: .borrowed :: .borrowed :: modes)) = M)
-    (hps : Expr.statePaid flags modes paid live init (.bool true) (Expr.foldStep x body) = ps)
     (hx : env.get x = xs.map ψ) (hi : init.denote funs env = φ I)
     (hb : ∀ i s v, body.denote funs (.cons (ψ v) (.cons (φ s) (.cons i env))) = φ (F s v))
     (hia : init.allocs funs flags bounds modes paid all env = IA)
@@ -158,9 +158,14 @@ theorem fold_flat_bound {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote
     (hby : ∀ (i : UInt64) (s : t.denote), (if ps = true then (Expr.foldStep x body).buys funs flags
         (M :: .borrowed :: modes) (ps :: false :: paid) (shift 2 all) (.cons s (.cons i env))
       else 0) = 0) :
-    (Expr.fold x init body).allocs funs flags bounds modes paid live env =
+    loopAllocWith ps funs flags modes paid live (.size x) init (.bool true) (Expr.foldStep x body)
+        (fun _ _ => 0) (fun live env => init.allocs funs flags bounds modes paid live env)
+        (fun _ _ _ _ => 0)
+        (fun modes paid live env =>
+          body.allocs funs flags bounds (.borrowed :: modes) (false :: paid) (shift 1 live)
+            (.cons ((env.get (.there (.there x)))[(env.get (.there .here)).toNat]!) env)) env =
       IA + KA + CR + foldCost xs I F BA := by
-  subst hall hM hps hia hka hcr
+  subst hall hM hia hka hcr
   show _ + _ + _ + _ + loopCost _ _ _ _ _ 0 (init.denote funs env) = _
   rw [hi]
   simp only [Expr.denote, Env.get, hx, Array.size_map, Nat.zero_add]
@@ -184,6 +189,75 @@ theorem fold_flat_bound {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote
       UInt64.toNat_ofNat_of_lt' hk64,
       getElem!_pos (xs.map ψ) k (by simpa using hkxs), Array.getElem_map, hb, hz, Nat.add_zero]
       using hba (UInt64.ofNat k) s xs[k]
+
+theorem fold_flat_bound {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote)
+    (ψ : α → e.denote) (xs : Array α) (I : β) (F : β → α → β)
+    {x : Var Γ (.array e)} {init : Expr S Γ t}
+    {body : Expr S (.elem e :: t :: .word :: Γ) t}
+    {all : Nat → Bool} {M : Mode} {ps : Bool} {IA KA CR : Nat}
+    {BA : UInt64 → β → α → Nat}
+    (hall : all = fun i => live i || false || (Expr.foldStep x body).uses (i + 2))
+    (hM : (init.mode modes).join
+      (body.mode (.borrowed :: .borrowed :: .borrowed :: modes)) = M)
+    (hps : Expr.statePaid flags modes paid live init (.bool true) (Expr.foldStep x body) = ps)
+    (hpair : (ps && t.isPair) = false)
+    (hx : env.get x = xs.map ψ) (hi : init.denote funs env = φ I)
+    (hb : ∀ i s v, body.denote funs (.cons (ψ v) (.cons (φ s) (.cons i env))) = φ (F s v))
+    (hia : init.allocs funs flags bounds modes paid all env = IA)
+    (hka : coerceCost t (init.mode modes) M (φ I) = KA)
+    (hcr : (if (ps && !init.paid flags modes paid all) = true then t.credit (φ I) else 0) = CR)
+    (hba : ∀ i s v, body.allocs funs flags bounds (.borrowed :: M :: .borrowed :: modes)
+        (false :: ps :: false :: paid) (shift 1 (shift 2 all))
+        (.cons (ψ v) (.cons (φ s) (.cons i env))) +
+        coerceCost t (body.mode (.borrowed :: M :: .borrowed :: modes)) M (φ (F s v)) =
+      BA i s v)
+    (hby : ∀ (i : UInt64) (s : t.denote), (if ps = true then (Expr.foldStep x body).buys funs flags
+        (M :: .borrowed :: modes) (ps :: false :: paid) (shift 2 all) (.cons s (.cons i env))
+      else 0) = 0) :
+    (Expr.fold x init body).allocs funs flags bounds modes paid live env =
+      IA + KA + CR + foldCost xs I F BA := by
+  subst hps
+  simp only [Expr.allocs]
+  rw [loopAlloc_of_not_min hpair]
+  exact fold_flat_with φ ψ xs I F _ hall hM hx hi hb hia hka hcr hba hby
+
+/-- The bound of a fold whose state is a paid pair: the smaller of the bounds with an unpaid and a
+paid state. -/
+theorem fold_min_flat_bound {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote)
+    (ψ : α → e.denote) (xs : Array α) (I : β) (F : β → α → β)
+    {x : Var Γ (.array e)} {init : Expr S Γ t}
+    {body : Expr S (.elem e :: t :: .word :: Γ) t}
+    {all : Nat → Bool} {M : Mode} {IA KA CR : Nat}
+    {BA0 BA1 : UInt64 → β → α → Nat}
+    (hall : all = fun i => live i || false || (Expr.foldStep x body).uses (i + 2))
+    (hM : (init.mode modes).join
+      (body.mode (.borrowed :: .borrowed :: .borrowed :: modes)) = M)
+    (hps : Expr.statePaid flags modes paid live init (.bool true) (Expr.foldStep x body) = true)
+    (hpair : t.isPair = true)
+    (hx : env.get x = xs.map ψ) (hi : init.denote funs env = φ I)
+    (hb : ∀ i s v, body.denote funs (.cons (ψ v) (.cons (φ s) (.cons i env))) = φ (F s v))
+    (hia : init.allocs funs flags bounds modes paid all env = IA)
+    (hka : coerceCost t (init.mode modes) M (φ I) = KA)
+    (hcr : (if (true && !init.paid flags modes paid all) = true then t.credit (φ I) else 0) = CR)
+    (hba0 : ∀ i s v, body.allocs funs flags bounds (.borrowed :: M :: .borrowed :: modes)
+        (false :: false :: false :: paid) (shift 1 (shift 2 all))
+        (.cons (ψ v) (.cons (φ s) (.cons i env))) +
+        coerceCost t (body.mode (.borrowed :: M :: .borrowed :: modes)) M (φ (F s v)) =
+      BA0 i s v)
+    (hba1 : ∀ i s v, body.allocs funs flags bounds (.borrowed :: M :: .borrowed :: modes)
+        (false :: true :: false :: paid) (shift 1 (shift 2 all))
+        (.cons (ψ v) (.cons (φ s) (.cons i env))) +
+        coerceCost t (body.mode (.borrowed :: M :: .borrowed :: modes)) M (φ (F s v)) =
+      BA1 i s v)
+    (hby : ∀ (i : UInt64) (s : t.denote), (if true = true then (Expr.foldStep x body).buys funs
+        flags (M :: .borrowed :: modes) (true :: false :: paid) (shift 2 all) (.cons s (.cons i env))
+      else 0) = 0) :
+    (Expr.fold x init body).allocs funs flags bounds modes paid live env =
+      min (IA + KA + foldCost xs I F BA0) (IA + KA + CR + foldCost xs I F BA1) := by
+  simp only [Expr.allocs]
+  rw [loopAlloc_of_min (by rw [hps, hpair]; rfl),
+    fold_flat_with φ ψ xs I F false hall hM hx hi hb hia hka (CR := 0) rfl hba0 (fun _ _ => rfl),
+    fold_flat_with φ ψ xs I F true hall hM hx hi hb hia hka hcr hba1 hby, Nat.add_zero]
 
 theorem fold_flat_fits {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote)
     (ψ : α → e.denote) (xs : Array α) (I : β) (F : β → α → β)
@@ -212,6 +286,7 @@ theorem fold_flat_fits {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote)
       using hbf (UInt64.ofNat k) s xs[k]
 
 #print axioms fold_flat_bound
+#print axioms fold_min_flat_bound
 #print axioms fold_flat_fits
 #print axioms Verified.foldCost_eq_loop
 #print axioms Verified.foldFits_eq_loop

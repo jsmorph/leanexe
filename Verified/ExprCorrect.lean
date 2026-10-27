@@ -2008,6 +2008,20 @@ theorem loop_body_pot {ps bp : Bool} {top6 top6' top2 D B Y K P6 P6' Pi : Nat}
     simp only [↓reduceIte] at hB hD ⊢
     omega
 
+/-- The body of a loop at the state's flag `ps`, which holds only when the state is paid, gives a
+value paid as `Expr.bodyPaid` states. -/
+theorem Expr.statePaid_body_of {Γ : List Ty} {t : Ty} {modes : List Mode} {paid : List Bool}
+    {live : Nat → Bool} {init : Expr S Γ t} {cond : Expr S (t :: Γ) .bool}
+    {body : Expr S (t :: .word :: Γ) t} {ps : Bool}
+    (hpsS : ps = true → Expr.statePaid flags modes paid live init cond body = true)
+    (h : ps = true) :
+    body.paidIn ps flags (((init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))) ::
+        .borrowed :: modes) (ps :: false :: paid)
+      (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) = true := by
+  subst h
+  have h2 := Expr.statePaid_body (hpsS rfl)
+  rwa [hpsS rfl] at h2
+
 /-- `LeanExe.loop` with a condition: the count in local `base`, the initial state, coerced to the
 loop's mode, from local `base + 2` on, and the index in local `base + 1`.  The invariant at the top
 of the WebAssembly `loop` holds the count, the index `i`, and the state after `i` passes, with the
@@ -2018,7 +2032,7 @@ false condition leaves with the state, which `loopState_stop` shows is the loop'
 Otherwise the pass releases a state that the body does not use, runs the body, coerces its value
 to the loop's mode, and stores it as the next state.  After the loop the outer variables that only
 the condition or the body uses are released. -/
-theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ' .word}
+theorem spec_loop_with (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ' .word}
     {init : Expr S Γ' tTy} {cond : Expr S (tTy :: Γ') .bool}
     {body : Expr S (tTy :: .word :: Γ') tTy}
     (countSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv count env
@@ -2027,12 +2041,17 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     (condSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv cond env slots paid live)
     (bodySpec : ∀ buy env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host
         pv body env slots paid live) :
-    ∀ env slots paid live,
-      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.loop count init cond body) env slots paid live :=
-        by
-  intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom
-      hPlace rest Q hTrap
-    hNext
+    ∀ env slots paid live (ps : Bool),
+      (ps = true → Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true) →
+      ((Expr.loop count init cond body).paid flags (slots.map Slot.mode) paid live = true →
+        ps = true) →
+      CodeSpecWith (pool := pool)
+        ((Expr.loop count init cond body).paid flags (slots.map Slot.mode) paid live)
+        (Expr.loopBound ps funs flags bounds (slots.map Slot.mode) paid live count init cond body
+          env)
+        m funs flags bounds fits host pv (Expr.loop count init cond body) env slots paid live := by
+  intro env slots paid live ps hpsS hlpS h base heap store s hh hpv hVars hAt hSafe hCap hBase
+      hRoom hPlace rest Q hTrap hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
   have hc := Nat.le_max_left count.width (max (1 + max init.width (copyWidth tTy))
@@ -2063,7 +2082,8 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     fun hd => by
       simp only [Expr.fits, Bool.and_eq_true] at hd
       exact ⟨hd.1.1, hd.1.2, hd.2⟩
-  have hT := Expr.allocs_loop funs flags bounds (slots.map Slot.mode) paid live count init cond body env
+  have hT := Expr.loopBound_def ps funs flags bounds (slots.map Slot.mode) paid live count init cond
+    body env
   simp only [Expr.code, loopCode, Expr.usesFast_eq, List.append_assoc, List.cons_append,
     List.nil_append]
   -- The count, in local `base`.
@@ -2178,20 +2198,19 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
   -- The first state's potential: a paid initial value's, which the coercion keeps, or the credit.
   have hTopEntry : (Expr.loop count init cond body).fits funs fits env = true →
       heap2'.top.toNat +
-          (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+          (if ps = true then
             tTy.pot store2 ws0 (init.denote funs env) else 0) +
-          Expr.loopRest funs flags bounds (slots.map Slot.mode) paid live init cond body env
+          Expr.loopRest funs flags bounds (slots.map Slot.mode) paid live ps init cond body env
             (count.denote funs env).toNat 0 (init.denote funs env) ≤
         heap.top.toNat +
           (dyingPot store s env slots paid
               (fun i => live i || (Expr.loop count init cond body).uses i)
             live +
-          (Expr.loop count init cond body).allocs funs flags bounds (slots.map Slot.mode) paid
-              live env) := fun hd => by
+          Expr.loopBound ps funs flags bounds (slots.map Slot.mode) paid live count init cond body env) := fun hd => by
     have hK := hTopK (hdl hd).1
     have hI := hTopI (hdl hd).2.1
     rw [hDi] at hI
-    have hE := loop_entry_pot (ps := Expr.statePaid flags (slots.map Slot.mode) paid live init cond body)
+    have hE := loop_entry_pot (ps := ps)
       (ip := init.paid flags (slots.map Slot.mode) paid
         (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)))
       (P0 := tTy.pot storeV wsV (init.denote funs env))
@@ -2201,7 +2220,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
         rfl)
       (fun hps _ => by
         have hr := a2.rep
-        rw [Expr.statePaid_mode hps] at hr
+        rw [Expr.statePaid_mode (hpsS hps)] at hr
         exact Ty.pot_le_credit tTy ws0 _ hr)
     rw [hT]
     omega
@@ -2251,14 +2270,13 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
         ((Expr.loop count init cond body).denote funs env) heapX stX sX wsX →
       ((Expr.loop count init cond body).fits funs fits env = true →
         heapX.top.toNat +
-            (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+            (if ps = true then
               tTy.pot stX wsX ((Expr.loop count init cond body).denote funs env) else 0) ≤
           heap.top.toNat +
           (dyingPot store s env slots paid
               (fun i => live i || (Expr.loop count init cond body).uses i)
             live +
-          (Expr.loop count init cond body).allocs funs flags bounds (slots.map Slot.mode) paid
-              live env)) →
+          Expr.loopBound ps funs flags bounds (slots.map Slot.mode) paid live count init cond body env)) →
       wp m (releaseWhere Γ' slots (fun i => (cond.uses (i + 1) || body.uses (i + 2)) && !live i) ++
         (loadCode h (base + 2) tTy.types ++ rest)) Q stX { sX with values := vals } host := by
     intro heapX stX sX wsX vals hv holdX aX hTopX
@@ -2273,21 +2291,21 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     have h1 := hTopX hd
     have h2 := congrArg UInt64.toNat hTopR
     -- The loop's value has the last state's potential, which the release keeps.
-    have hP : (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+    have hP : (if ps = true then
           tTy.pot store' wsX ((Expr.loop count init cond body).denote funs env) else 0) =
-        (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+        (if ps = true then
           tTy.pot stX wsX ((Expr.loop count init cond body).denote funs env) else 0) := by
       split
-      · next hps => rw [Ty.pot_of_regions (Expr.statePaid_mode hps) hReg]
+      · next hps => rw [Ty.pot_of_regions (Expr.statePaid_mode (hpsS hps)) hReg]
       · rfl
     -- A paid loop has a paid state.
     have hLoopPaid : (if (Expr.loop count init cond body).paid flags (slots.map Slot.mode) paid live =
           true then tTy.pot store' wsX ((Expr.loop count init cond body).denote funs env) else 0) ≤
-        (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+        (if ps = true then
           tTy.pot store' wsX ((Expr.loop count init cond body).denote funs env) else 0) := by
       split
       · next hlp =>
-        rw [ite_eq_left (Expr.paid_loop flags _ paid live count init cond body hlp)]
+        rw [ite_eq_left (hlpS hlp)]
       · exact Nat.zero_le _
     rw [hP] at hLoopPaid
     omega
@@ -2311,11 +2329,11 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
             (fun i acc => bif cond.denote funs (.cons acc env) then
               body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) = true ∧
         heapI.top.toNat +
-            (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+            (if ps = true then
               tTy.pot st wsI (loopState (init.denote funs env)
                 (fun i acc => bif cond.denote funs (.cons acc env) then
                   body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) else 0) +
-          Expr.loopRest funs flags bounds (slots.map Slot.mode) paid live init cond body env
+          Expr.loopRest funs flags bounds (slots.map Slot.mode) paid live ps init cond body env
           ((count.denote funs env).toNat - i.toNat) i
           (loopState (init.denote funs env)
             (fun i acc => bif cond.denote funs (.cons acc env) then
@@ -2323,8 +2341,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
           heap.top.toNat +
             (dyingPot store s env slots paid
               (fun i => live i || (Expr.loop count init cond body).uses i) live +
-            (Expr.loop count init cond body).allocs funs flags bounds (slots.map Slot.mode) paid
-                live env)))
+            Expr.loopBound ps funs flags bounds (slots.map Slot.mode) paid live count init cond body env)))
     (fun _ s' => match s'.get (base + 1) with
       | some (.i64 i) => (count.denote funs env).toNat - i.toNat
       | _ => 0)
@@ -2422,7 +2439,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
         (by
           have := (hInv (fits_of_not hd)).2
           have := Expr.loopRest_cond_le (funs := funs) (flags := flags) (bounds := bounds)
-            (modes := slots.map Slot.mode) (paid := paid) (live := live) (init := init)
+            (modes := slots.map Slot.mode) (paid := paid) (live := live) (ps := ps) (init := init)
                 (cond := cond)
             (body := body) (env := env) (n := (count.denote funs env).toNat - i.toNat - 1) (i := i)
             (x := loopState (init.denote funs env)
@@ -2438,17 +2455,17 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
   subst hRC
   have aI2 := After.test aI aC (by omega) (cond_live _ _ hdAll) rfl
   -- The condition keeps the state's blocks, and so its potential.
-  have hPotC : (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+  have hPotC : (if ps = true then
         tTy.pot stC wsI (loopState (init.denote funs env)
           (fun i acc => bif cond.denote funs (.cons acc env) then
             body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) else 0) =
-      (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+      (if ps = true then
         tTy.pot st wsI (loopState (init.denote funs env)
           (fun i acc => bif cond.denote funs (.cons acc env) then
             body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) else 0) := by
     split
     · next hps =>
-      rw [Ty.pot_of_regions (Expr.statePaid_mode hps)
+      rw [Ty.pot_of_regions (Expr.statePaid_mode (hpsS hps))
         (After.test_regions aI aC (cond_live _ _ hdAll))]
     · rfl
   have hiiC : sC.get (base + 1) = some (.i64 i) :=
@@ -2590,19 +2607,19 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
       (⟨base + 2, (init.mode (slots.map Slot.mode)).join
         (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode))⟩ ::
         ⟨base + 1, .borrowed⟩ :: slots)
-      (Expr.statePaid flags (slots.map Slot.mode) paid live init cond body :: false :: paid)
+      (ps :: false :: paid)
       (fun j => shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j ||
         body.uses j)
       (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) ≤
-      (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+      (if ps = true then
         tTy.pot st wsI (loopState (init.denote funs env)
           (fun i acc => bif cond.denote funs (.cons acc env) then
             body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) else 0) := by
     rw [dyingPot_evolves hVarsB e2' (fun j h => live_right _ _ _ h) _ _ fun _ h => h, ← hPotC,
       ← holdB.read_eq (by rw [aB0.rep.length, Ty.types_length])]
     exact dyingPot_le_head _ _ _ _ _ loop_body_dies
-  refine bodySpec (Expr.statePaid flags (slots.map Slot.mode) paid live init cond body) _ _
-    (Expr.statePaid flags (slots.map Slot.mode) paid live init cond body :: false :: paid)
+  refine bodySpec (ps) _ _
+    (ps :: false :: paid)
     (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) h
     (base + 2 + tTy.width) heap2 store2 sB hhB (aB0.frame.params.trans hpv) e2'.holds e2'.step.at_
     (hSafeB.evolves hVarsB e2' (fun j hj => live_right _ _ _ hj))
@@ -2735,15 +2752,49 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     -- The body's value, which is paid when the state is, keeps its potential through the
     -- coercion, the identity on an owned value.
     simp only [Expr.buysIn] at h6
-    have := loop_body_pot Expr.statePaid_body
+    have := loop_body_pot (Expr.statePaid_body_of hpsS)
       (fun hps => by
-        obtain ⟨rfl, rfl⟩ := hSame6 (Expr.mode_of_paidIn body (Expr.statePaid_body hps))
+        obtain ⟨rfl, rfl⟩ := hSame6 (Expr.mode_of_paidIn body (Expr.statePaid_body_of hpsS hps))
         rfl)
       h6 hDbody hTopCo2
     omega
   · have := UInt64.lt_iff_toNat_lt.mp hlt
     simp only [hget8]
     omega
+
+/-- A loop: the bound of `spec_loop_with` at the state's flag, or, for a state of pair type that
+is paid, at the flag whose bound is smaller. -/
+theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ' .word}
+    {init : Expr S Γ' tTy} {cond : Expr S (tTy :: Γ') .bool}
+    {body : Expr S (tTy :: .word :: Γ') tTy}
+    (countSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv count env
+        slots paid live)
+    (initSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv init env slots paid live)
+    (condSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv cond env slots paid live)
+    (bodySpec : ∀ buy env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host
+        pv body env slots paid live) :
+    ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.loop count init cond body) env slots paid live := by
+  intro env slots paid live
+  have hT := Expr.allocs_loop funs flags bounds (slots.map Slot.mode) paid live count init cond body
+    env
+  have core := spec_loop_with hm countSpec initSpec condSpec bodySpec env slots paid live
+  by_cases hmin :
+      (Expr.statePaid flags (slots.map Slot.mode) paid live init cond body && tTy.isPair) = true
+  · rw [ite_eq_left hmin] at hT
+    simp only [Bool.and_eq_true] at hmin
+    have hnp : (Expr.loop count init cond body).paid flags (slots.map Slot.mode) paid live = false := by
+      simp only [Expr.paid, hmin.2, Bool.not_true, Bool.and_false]
+    by_cases hle : Expr.loopBound false funs flags bounds (slots.map Slot.mode) paid live count init
+        cond body env ≤
+      Expr.loopBound true funs flags bounds (slots.map Slot.mode) paid live count init cond body env
+    · rw [Nat.min_eq_left hle] at hT
+      exact CodeSpec.of_with hT (core false (fun h => nomatch h) fun h => by
+        rw [hnp] at h; exact nomatch h)
+    · rw [Nat.min_eq_right (by omega)] at hT
+      exact CodeSpec.of_with hT (core true (fun _ => hmin.1) fun _ => rfl)
+  · rw [ite_eq_right hmin] at hT
+    exact CodeSpec.of_with hT (core _ id (Expr.paid_loop flags _ paid live count init cond body))
 
 theorem spec_fold (hm : Runtime m) {Γ' : List Ty} {e : Elem} {t : Ty}
     (x : Var Γ' (.array e)) {init : Expr S Γ' t}
