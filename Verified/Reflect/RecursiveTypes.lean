@@ -38,7 +38,7 @@ partial def rebuild? (type : Lean.Expr) (pre : List Bool) (paths : List (List Bo
     return some (.pair ra rb)
   let some (ctor, _) ← structOf? type | return none
   let some (β, inst) ← flatInstance? type | return none
-  let tree ← flatTree type β inst ctor
+  let tree ← flatTree "verified_recursive_type" type β inst ctor
   let fieldTypes ← forallTelescope ctor.type fun xs _ => xs.toList.mapM inferType
   let mut fields := []
   for (fieldType, j) in fieldTypes.zipIdx do
@@ -150,7 +150,8 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     let encode ← mkAppOptM ``LeanExe.Pipeline.Encode.encode #[some type, some inst]
     withTransparency .instances (whnf encode)
   let .const encodeName _ := encodeFn.getAppFn
-    | throwError "verified_compile: recursive encoding of {layout.name} must name its function"
+    | throwError "verified_recursive_type: recursive encoding of {layout.name} must name its \
+        function"
   let encode := mkIdent encodeName
   elabCommand (← `(theorem $encoding (value : $native) :
       LeanExe.Pipeline.Encode.encode value = ($flatten value).toNode := by
@@ -178,9 +179,10 @@ def elabVerifiedRecursiveType : CommandElab
     deriveRecursiveMatch layout
   | _ => throwUnsupportedSyntax
 
-/-- Checks that each recursive type that the types of the definitions `names` use, directly or
-through the `Flat` tuple of a sum, has the declarations of `verified_recursive_type`. -/
-def requireRecursiveTypes (names : Array Name) : CommandElabM Unit := do
+/-- Checks for the command `command` that each recursive type that the types of the definitions
+`names` use, directly or through the `Flat` tuple of a sum, has the declarations of
+`verified_recursive_type`. -/
+def requireRecursiveTypes (command : String) (names : Array Name) : CommandElabM Unit := do
   let mut types : List Name := []
   let mut pending : List Name := []
   for name in names do
@@ -192,8 +194,8 @@ def requireRecursiveTypes (names : Array Name) : CommandElabM Unit := do
     types := type :: types
     if let some layout ← liftTermElabM (recursiveLayout? (mkConst type)) then
       unless (← getEnv).contains (layout.decl `toTree) do
-        throwError "verified_compile: {type} needs `verified_recursive_type {type}` after its \
-          `Encode` instance, in a module that the program imports"
+        throwError "{command}: {type} needs `verified_recursive_type {type}` after its \
+          `Encode` instance, in the program's module or a module that it imports"
     let tuple ← liftTermElabM do
       if (← sumName? (mkConst type)).isNone then return none
       return (← flatInstance? (mkConst type)).map (·.1)

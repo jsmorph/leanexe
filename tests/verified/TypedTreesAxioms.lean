@@ -2,7 +2,8 @@ import Verified.Examples.TypedTrees
 
 /-! Every theorem of the example of trees whose records hold typed fields uses only the axioms
 `propext`, `Classical.choice`, and `Quot.sound`: the theorems that `verified_compile` adds under
-`compiled`, and the laws, encodings, and match lemmas that it derives for the recursive types. -/
+`compiled`, and the conversions' laws, the encodings, and the match lemmas that
+`verified_recursive_type` derives for the recursive types. -/
 
 open Lean Elab Command in
 elab "check_typed_tree_axioms" : command => do

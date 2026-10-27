@@ -161,8 +161,8 @@ def structOf? (type : Lean.Expr) : MetaM (Option (ConstructorVal × Array Name))
 /-- The tuple tree of a structure's `Flat` instance: `Flat.flat` of the structure built from fresh
 variables, reduced down the tuple's pairs, has those variables at its leaves.  Each leaf is the
 index of a field, and a leaf is reached by steps `false` for a pair's first component and `true`
-for its second.  The reflector rejects an instance whose leaves are not distinct fields. -/
-partial def flatTree (type β inst : Lean.Expr) (ctor : ConstructorVal) :
+for its second.  The command `command` rejects an instance whose leaves are not distinct fields. -/
+partial def flatTree (command : String) (type β inst : Lean.Expr) (ctor : ConstructorVal) :
     MetaM (List (Nat × List Bool)) := do
   let type ← whnfR type
   let ctorApp := mkAppN (mkConst ctor.name type.getAppFn.constLevels!) type.getAppArgs
@@ -175,10 +175,10 @@ partial def flatTree (type β inst : Lean.Expr) (ctor : ConstructorVal) :
       if let (``Prod, #[a, b]) := ty.getAppFnArgs then
         if let (``Prod.mk, #[_, _, x, y]) := t'.getAppFnArgs then
           return (← descend x a (false :: steps)) ++ (← descend y b (true :: steps))
-      throwError "verified_compile: the `Flat` instance of {type} is not a tuple of its fields"
+      throwError "{command}: the `Flat` instance of {type} is not a tuple of its fields"
     let leaves ← descend t β []
     unless (leaves.map (·.1)).eraseDups.length == leaves.length do
-      throwError "verified_compile: the `Flat` instance of {type} repeats a field"
+      throwError "{command}: the `Flat` instance of {type} repeats a field"
     return leaves
 
 /-- The name of a sum: an inductive type without parameters or indices that is neither recursive,
@@ -231,7 +231,7 @@ partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
       let (``Prod, _) := (← whnfR β).getAppFnArgs
         | throwError "verified_compile: the `Flat` instance of {type} holds arrays and is not a \
             pair"
-      unless (← flatTree type β inst ctor).length == ctor.numFields do
+      unless (← flatTree "verified_compile" type β inst ctor).length == ctor.numFields do
         throwError "verified_compile: the `Flat` instance of {type} does not hold all its fields"
     let f ← withLocalDeclD `x type fun x => do
       mkLambdaFVars #[x] (sβ.apply (mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type β inst x))
@@ -252,7 +252,7 @@ with a `Flat` instance. -/
 def fieldPath? (type : Lean.Expr) (i : Nat) : MetaM (Option (List Bool)) := do
   let some (ctor, _) ← structOf? type | return none
   let some (β, inst) ← flatInstance? type | return none
-  let tree ← flatTree type β inst ctor
+  let tree ← flatTree "verified_compile" type β inst ctor
   return (tree.find? (·.1 == i)).map (·.2)
 
 /-- Field `i` and the structure value `p` of a structure projection `e`. -/
@@ -667,7 +667,7 @@ partial def ctorTuple? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
   let args := e.getAppArgs
   unless args.size == ctor.numParams + ctor.numFields do return none
   let some (β, inst) ← flatInstance? type | return none
-  let tree ← flatTree type β inst ctor
+  let tree ← flatTree "verified_compile" type β inst ctor
   let fields := args.extract ctor.numParams args.size
   let rec build (pre : List Bool) (ty : Lean.Expr) : MetaM Lean.Expr := do
     if let some (i, _) := tree.find? (·.2 == pre.reverse) then return fields[i]!
@@ -821,7 +821,7 @@ def pairView (base : Name) (type : Lean.Expr) : MetaM PairView := do
     | throwError "verified_compile: the record {type} has no `Flat` instance"
   let (``Prod, #[α, β]) := (← whnfR τ).getAppFnArgs
     | throwError "verified_compile: the `Flat` instance of {type} is not a pair"
-  let tree ← flatTree type τ inst ctor
+  let tree ← flatTree "verified_compile" type τ inst ctor
   let rebuild (a b : Lean.Expr) : MetaM Lean.Expr := do
     let fields ← (List.range ctor.numFields).mapM fun i => do
       match tree.find? (·.1 == i) with
@@ -4092,7 +4092,7 @@ def placeField? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
   let some (type, τ, inst, x) ← recordFlat? flat | return none
   unless ← isVarPlace x do return none
   let some (ctor, fields) ← structOf? type | return none
-  let tree ← flatTree type τ inst ctor
+  let tree ← flatTree "verified_compile" type τ inst ctor
   let some (i, _) := tree.find? (·.2 == path) | return none
   return some (← mkProjection x fields[i]!)
 
@@ -4151,7 +4151,7 @@ def fieldTerms (base : Name) (b : Bound) : MetaM Bound := do
     done := done.push flat
     let some (ctor, fields) ← structOf? type
       | throwError "verified_compile: the record {type} is not a structure"
-    let tree ← flatTree type τ inst ctor
+    let tree ← flatTree "verified_compile" type τ inst ctor
     for (i, path) in tree do
       let occ ← tuplePath flat path
       let abst ← withReducible (kabstract term occ)
@@ -4447,6 +4447,23 @@ definition. -/
 def rflEq (x y : Lean.Expr) : MetaM Lean.Expr := do
   mkExpectedTypeHint (← mkEqRefl y) (← mkEq x y)
 
+/-- A structure in a value of type `type`, through pairs and nested structures, whose `Flat`
+tuple leaves out one of its fields, with the name of that field. -/
+partial def flatOmission? (type : Lean.Expr) : MetaM (Option (Lean.Expr × Name)) := do
+  let type ← withReducible (whnf type)
+  if (fieldElem? type).isSome then return none
+  if let (``Prod, #[a, b]) := type.getAppFnArgs then
+    if let some found ← flatOmission? a then return some found
+    return ← flatOmission? b
+  let some (ctor, names) ← structOf? type | return none
+  let some (β, inst) ← flatInstance? type | return none
+  let tree ← flatTree "verified_compile" type β inst ctor
+  let fieldTypes ← forallTelescope ctor.type fun xs _ => xs.toList.mapM inferType
+  for (fieldType, j) in fieldTypes.zipIdx do
+    if (tree.find? (·.1 == j)).isNone then return some (type, names[j]!)
+    if let some found ← flatOmission? fieldType then return some found
+  return none
+
 /-- The inverse of the flattening of a Lean type, `none` for a type that flattening leaves as it
 is.  A pair maps its components, an array maps its elements, and a structure whose `Flat` instance
 is a tuple of all its fields builds the structure from the tuple's components.  The laws hold by
@@ -4467,6 +4484,13 @@ partial def inverseOf? (type : Lean.Expr) : MetaM (Option Inverse) := do
         (fun v => mkAppM ``Tree.ofList_toList #[v]))
   if let some layout ← recursiveLayout? type then
     unless (← getEnv).contains (layout.decl `fromTree) do
+      for (_, fields) in layout.ctors do
+        for field in fields do
+          let .flat fieldType _ := field | continue
+          if let some (holder, name) ← flatOmission? fieldType then
+            throwError "verified_compile: the parameter type {type} of a recursive definition has \
+              a field that holds the structure {holder}, whose `Flat` tuple leaves out its \
+              field {name}"
       throwError "verified_compile: the parameter type {type} of a recursive definition holds an \
         enumeration or a sum, whose flattening has no inverse on the values that encode no \
         constructor"
@@ -4524,7 +4548,7 @@ partial def inverseOf? (type : Lean.Expr) : MetaM (Option Inverse) := do
         constructor"
   let some (β, inst) ← flatInstance? type
     | throwError "verified_compile: the structure {type} has no `Flat` instance"
-  let tree ← flatTree type β inst ctor
+  let tree ← flatTree "verified_compile" type β inst ctor
   unless tree.length == ctor.numFields do
     throwError "verified_compile: the `Flat` instance of {type} does not hold all its fields"
   let iβ ← inverseOf? β
