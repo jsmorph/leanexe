@@ -36163,7 +36163,6 @@ The verified driver failed with "unknown result kind" at the `taggedtypes` case 
 With the split driver, the GPU step passed on the reference drivers.  The build host emitted the default and `--verified` kernels and cases, an AArch64 host emitted the `--verified-gpt32` ones, and the local machine ran them on SwiftShader (LLVM 16.0.0) and llvmpipe (LLVM 19.1.7): 474 of 474, 233 of 233, and 694 of 694 cases on each driver.  `tests/gpt32/native.sh --verified` passed with Node.js 20.19.2 installed there, with 15 of 15 steps equal bit for bit on SwiftShader and on llvmpipe.  Its random models evidently reach no subnormal operand, since the Subzero backend passed them.
 
 The byte comparison with main passed.  All 98 verified modules emitted from main at `d1f851729` on AArch64 have the same SHA-256 as those emitted from the merged tree at `ed77fa248` (x86_64), with identical registries.  All 35 original-compiler modules from `tests/modules/run.sh --emit-from`, main's and the merged tree's, also match.  The merge therefore leaves the bytes of all 133 of main's modules unchanged, and emission gives the same bytes on both architectures.
-
 With the rebuilt host, `tests/verified/run.sh` passed in 3,491 seconds: 32,806 verified cases with no failure, the GPT cases (2,733), the GPT sessions (3,096), and the library cases (226).  The module and drone drivers passed again with the rebuilt host.  The full check of the merged tree is complete.  The WASI and running-sum drivers, the default and `Verified Library` builds, module emission, the LTG check, the module, chunk, drone, regex, and hashing tests, the verified driver, the GPU tests on the reference drivers, and the byte comparison of all 133 of main's modules passed.  `origin/main` is still `d1f851729`, an ancestor of the branch.
 
 ## 2026-10-26: Sums with heap fields: design
@@ -36210,7 +36209,6 @@ The second gate found the heavy proofs and the library built, rebuilt the exampl
 The user asked to bring the Lean program of a slew-planner demo into the repository, to compile it with the verified compiler and test it in WebAssembly, and then to prove its theorems, starting with the lemmas of the edge check.  The work runs on the branch `slew-planner` from `d1f851729`, and phase A ran no Lean and connected to no build host.  The delivery also held a browser page, a JavaScript reference with a generated corpus, and a design document.  The branch first imported them and then removed them at the user's direction, since they will live outside the repository and the user does not take the JavaScript corpus as authoritative.  The repository keeps `Demos/Slew/Program.lean`, `Flat.lean`, `Verified.lean`, and a README that describes the Lean program alone.
 
 The review against [the verified compiler manual](docs/verified-manual.md#the-dialect) found one required change.  `Verified/Compile.lean` compiles `&&` as both operands followed by `i64.and`, so `relax` would have run `edgeOk` on every candidate edge instead of only on the improving ones, and a nested `if` now keeps the check lazy with the same Lean meaning.  The other points wait for the reflector: `round` and `relax` borrow their record parameter and copy its arrays each round, which inflates the generated bound, the index forms `p.1.toNat` and `(1 : UInt64).toNat` may need a `let`, and `plan` should borrow its input.  `tools/source-layout` reports five programs that `main` lacks in `Library.Native`, and the user decided that they arrive with the WASI review fixes.
-
 Regenerating the JavaScript corpus under Node.js 24.13.0 changed the last bits of 798 of its 5,361 lines.  ECMAScript leaves `**` and the `Math` functions to the implementation ([Number::exponentiate](https://tc39.es/ecma262/#sec-numeric-types-number-exponentiate), [the Math functions](https://tc39.es/ecma262/#sec-function-properties-of-the-math-object), cited without fetching them), and the engine that wrote the corpus computed `10 ** e` one unit in the last place off at four exponents.  The Lean generator below therefore uses only correctly rounded operations and Lean definitions, so that its inputs are the same on every host.
 
 ### Theorems
@@ -36584,7 +36582,7 @@ The drafts have not met Lean.  The main risks are the low-level `wp` stepping in
 
 ## 2026-10-26: Building the process compaction
 
-The baseline came from the fully built base commit `ed77fa248` before the branch was checked out.  A scratch program outside the repository, `EmitAll.lean`, imports a group of modules, encodes every definition of type `Wasm.Module` from the repository's libraries with the encoder and decoder check of `tools/Emit.lean`, and prints the statement of every imported theorem whose name mentions a bound or a cost.  The groups follow the library roots, because some modules of different roots define the same names, and they leave out the test drivers that define `main`.  The baseline holds 171 modules, every module of `tests/verified/modules.txt`, `tests/modules/modules.txt`, and the WASI and running-sum drivers among them, and 1,876 distinct statements.
+The build ran in an independent clone, with at most eight Lean workers and a 44 GiB memory limit.  The baseline came from the fully built base commit `ed77fa248` before the branch was checked out.  A scratch program outside the repository, `EmitAll.lean`, imports a group of modules, encodes every definition of type `Wasm.Module` from the repository's libraries with the encoder and decoder check of `tools/Emit.lean`, and prints the statement of every imported theorem whose name mentions a bound or a cost.  The groups follow the library roots, because some modules of different roots define the same names, and they leave out the test drivers that define `main`.  The baseline holds 171 modules, every module of `tests/verified/modules.txt`, `tests/modules/modules.txt`, and the WASI and running-sum drivers among them, and 1,876 distinct statements.
 
 ### Stage 1
 
@@ -36693,6 +36691,10 @@ The bodies of `begin`, `step`, `readStep`, and `writeStep` take their charges by
 - [x] Run both running-sum drivers.
 - [x] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audit of the integer program.
 - [ ] Repeat the charges and limits for the binary64 program, and update its guide.
+
+## 2026-10-27: An unbuilt module in the WASI axiom check
+
+`tests/wasi/Axioms.lean` imports `Verified.ProgramLiterals`, which no module imported and no build list of `tests/wasi/run.sh` named.  The aggregate `lake build Verified Library` therefore never checked its proofs, and the WASI driver failed on a fresh build when the axiom check found no `.olean` for it.  Earlier runs passed only in checkouts that still held an `.olean` from an earlier build.  `Verified.lean` now imports the module, so the aggregate checks it, and the driver's byte-values build names it, so the driver builds what its axiom check imports.  Every other top-level module of `Verified/` is imported by `Verified.lean` or by another module.
 
 ## 2026-10-27: Stage 3, the charges of the binary64 printer and parser
 
