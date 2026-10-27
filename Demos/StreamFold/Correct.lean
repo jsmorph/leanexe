@@ -24,7 +24,7 @@ theorem process_exec_correct {World : Type} {host : Host World}
   | next execution running continuation ih =>
       obtain ⟨nextPosition, nextRep, continued, _⟩ :=
         streamFuture_step spec streams represented future execution
-      obtain ⟨nextHistory, nextFuture⟩ := continued running
+      obtain ⟨_, nextHistory, nextFuture⟩ := continued running
       exact ih nextRep nextFuture
   | exit execution =>
       obtain ⟨next, impossible⟩ :=

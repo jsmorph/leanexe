@@ -91,8 +91,13 @@ theorem terminates_fp {World : Type} (host : Host World)
   obtain ⟨numbers, status, values⟩ := inputValues_exist short
   obtain ⟨bound, executions⟩ := Termination.target_terminates host targetHost initial heap
     (observedStreamRep rep) (fun position => position.input.length) StreamPosition.zeroWrites
-    streams.observed.progress observed valid at_ free static cap charges.charge charges.beginCharge
-    charges.beginRoom charges.beginBounded charges.stepBounded charges.stepRoom accepted
+    streams.observed.progress (fun _ _ => True)
+    (Termination.true_advances streams.observed.progress) observed trivial valid at_ free static
+    cap charges.charge charges.beginCharge charges.beginRoom charges.beginBounded
+    (fun native position world safe ready running _ =>
+      charges.stepBounded native position world safe ready running)
+    (fun native position world safe ready running _ =>
+      charges.stepRoom native position world safe ready running) accepted
   refine ⟨numbers, status, values, bound, fun fuel enough => ?_⟩
   obtain ⟨total, native⟩ := executions fuel enough
   generalize executed : run fuel module startIndex initial [] targetHost = result at total native ⊢

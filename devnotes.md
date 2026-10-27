@@ -36328,3 +36328,46 @@ The user chose the second option.  `loopAllocWith ps` is the former `loopAlloc` 
 The full build with the minimum passed, with the heavy proofs one at a time and the rest with four workers.  The emission again differs from the baseline only in the three process modules, and the other 168 modules keep their bytes.  The same sixteen generated bound statements change, and each now holds one `min`.  A script outside the repository, `minfirst.py`, replaces each `min` by its first argument and drops additions of 0, and the result equals the baseline's statement for all sixteen.  Each new bound is therefore at most the old one at every argument, and no existing bound rises.  The drone's bound is unchanged.  The other changed statements are those of the reflector's loop and destructuring lemmas, which gained hypotheses, and of the retained-buffer example, whose `Bounded` moved to `Verified/Wasi/ResourceRules.lean`.
 
 - [x] Build with the minimum, compare the statements and modules with the baseline, and check that no changed bound rises.
+
+## 2026-10-27: The charges of the integer running sum
+
+The integer running sum's final theorem now replaces the `RunCharges` premise with `InputLimits L D` and one inequality, `heap.top + limitMemory L D ≤ 65536 · cap`, with `limitMemory L D = 220 · (L + D) + 1,010,000`.  A corollary fixes `L` and `D` at 9,000,000: the module's literal pool ends at 4,104 bytes and its memory may grow to 65,535 pages, so the inequality holds by computation.  Both running-sum drivers pass, the correctness axiom check now covers 34 theorems, and the module bytes do not change.
+
+### The invariant
+
+`target_terminates` takes an invariant `Inv` of the native state and the ghost, its initial instance, and `StepAdvances`, which gives for each step from a safe state where `Inv` holds a represented ghost of the final world at which `Inv` holds and the rank falls while the process runs.  `ControlRep` carries `Inv` for running states, and the step conditions of `RunCharges` hold only where it does.  The ghost of `StepAdvances` must be the one at which the rank falls, because the host's representation relation is not functional: two applications of the reply axioms of `StreamHost` may give different positions for the same world.  `streamFuture_writeStep`, `streamFuture_readStep`, and `streamFuture_step` therefore also state the fall of the rank at the position they produce.  The binary64 program passes the invariant that always holds, through `true_advances`, until its charges are proved.
+
+| Part | Statement |
+|---|---|
+| `LimitsFrom L D`, `InputLimits L D` | each line up to and including the first line without an integer has at most `L` bytes, and each total after a line with an integer has at most `D` digits |
+| `limitSpec L D` | `kernelSpec` with `Good` bounding the total's digits by `D` and `Room` bounding the line by `L` and the next total by `D` |
+| `LimitInv L D` | a `StreamFuture` under `limitSpec L D`, and `Within outputSize` of the buffers |
+| `Model.pending_le`, `StreamFuture.line_le` | the pending line is a prefix of a line whose room holds, so it has at most `L` bytes |
+| `step_within` | every returned step keeps the input buffer at most 4,096 bytes and the output buffer at most `outputSize` of the total, whatever the host replies |
+| `Model.error_room`, `streamFuture_stopped` | a step that stops leaves a good total and a line of at most `L` bytes |
+| `step_sized` | every state that a step from a state within the limits returns has the sizes of `Sized L D` |
+
+`outputSize` is the rendering's size, `digits + 2`, when it fits in a word, so that `Within` needs no premise on the totals.
+
+### The charges
+
+`Rule` for `bind` now asks for a bound on the second command only at values that some run of the first returns, through `Returns`.  The read step needs this: `afterRead` borrows the reply and copies its bytes into the state, so its charge depends on the read's size, which `Returns.read_size` bounds by the capacity.  `CallBoundRule`, `callBounded_here`, and `callBounded_there` give a call's bound from its body's, for the first function of a program and for a later one; the phase A drafts failed by dependent elimination because they fixed the program and the callee before the case analysis, and the rule now cases on general indices and reduces by its own pattern matching.
+
+The bodies of `begin`, `step`, `readStep`, and `writeStep` take their charges by `bounded_of_rule` at each command.  A cost of an expression in an effect body reduces by `simp +decide` with the equations of `Expr.allocs` and `Var.cost`: every variable of the step is borrowed or scalar, so each variable's cost is 0, and what remains is the table entry of the called function, which `show` identifies with the generated `bound` of the pure function.  `Ty.copyCost_of_scalar` removes the copy of the write's reply, a scalar argument, whose type is an unreduced entry of the parameter list.  The conditions' frames follow from `Expr.fits_of_depthCalls`, since no condition calls a function.
+
+| Charge | Bound for a state within the limits |
+|---|---|
+| `writeCharge` | `remainingOutput.bound` and a copy of the state |
+| `consumeInput.bound` | the paid side of its `min`: the copy and credit of the state, 80 bytes for each of at most 4,096 pushes, and one `completeLine` with the credits of its result, by `loopCost_le_last` |
+| `endCharge` | a copy of the state, or `completeLine.bound` |
+| `readCharge` | the read's 4,144 bytes and two copies of the state |
+| `stepCharge L D` | `200 · (L + D) + 1,000,500`, at least every branch |
+| `copyLimit L D` | `9 · D + 8 · L + 4,320`, at least the copy of any state of `Sized L D` |
+
+`loopCost_le_last` bounds a loop whose passes cost at most `c` each, except one pass after which the condition fails: in `consumeInput`, the pass at a newline runs `completeLine`, whose result either stops or holds output, and either way ends the loop.  The line at that pass has at most `L + 4,096` bytes, a coarse bound that the pushes of one chunk give.  The closed forms of `parse`, `add`, `combineMagnitude`, and `render` come from their generated equations: `parse` costs a block of at most the line's words, `combineMagnitude` at most `104 · m + 232` bytes for arrays of `m` words in all, and `render` at most the digits and 57 bytes.
+
+- [x] Prove the `Bounded` charges of `begin`, `step`, `readStep`, and `writeStep` for the integer program, and their closed-form bounds.
+- [x] Prove the size invariant and the room lemma, and state the final integer theorem over `InputLimits L D` with its inequality against the memory cap, and a corollary with concrete `L` and `D`.
+- [x] Run both running-sum drivers.
+- [ ] Repeat the charges and limits for the binary64 program.
+- [ ] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audits.

@@ -39,6 +39,15 @@ def CallBounded {World : Type} (host : Host World) (pure : PureContext pureSigs)
       spent ≤ budget ∧ fits = true) ∧
   ∀ world, CallPrefixBound host pure program callee depth env world budget
 
+/-- Some run of `command` returns `value`. -/
+def Returns {World : Type} (host : Host World) (pure : PureContext pureSigs)
+    (program : EffectProg pureSigs effectSigs) (depth : UInt64) (modes : List Mode)
+    (live : Nat → Bool) (command : Command pureSigs effectSigs context result) (env : Env context)
+    (value : result.denote) : Prop :=
+  ∃ world trace final spent fits,
+    ResourceExec host pure program depth modes live command env world trace (.returned value) final
+      spent fits
+
 def Rule {World : Type} (host : Host World) (pure : PureContext pureSigs)
     (program : EffectProg pureSigs effectSigs) (depth : UInt64) (modes : List Mode)
     (live : Nat → Bool) {context result}
@@ -57,8 +66,10 @@ def Rule {World : Type} (host : Host World) (pure : PureContext pureSigs)
   | .bind (intermediate := intermediate) first next =>
       ∀ firstBudget nextBudget, firstBudget + nextBudget ≤ budget →
         Bounded host pure program depth modes (bindLive intermediate next live) first env firstBudget →
-        (∀ value, Bounded host pure program depth (bindModes intermediate modes)
-          (shift intermediate.bindCount live) next (intermediate.bindEnv value env) nextBudget) →
+        (∀ value, Returns host pure program depth modes (bindLive intermediate next live) first env
+            value →
+          Bounded host pure program depth (bindModes intermediate modes)
+            (shift intermediate.bindCount live) next (intermediate.bindEnv value env) nextBudget) →
         conclusion
   | .ite condition yes no =>
       ∀ yesBudget noBudget,
@@ -97,7 +108,8 @@ theorem exec_rule {World : Type} {host : Host World} {pure : PureContext pureSig
   | bind_return firstRun nextRun =>
     intro firstBudget nextBudget total firstBound nextBound
     obtain ⟨firstCost, firstFits⟩ := firstBound.1 _ _ _ _ _ _ firstRun
-    obtain ⟨nextCost, nextFits⟩ := (nextBound _).1 _ _ _ _ _ _ nextRun
+    obtain ⟨nextCost, nextFits⟩ :=
+      (nextBound _ ⟨_, _, _, _, _, firstRun⟩).1 _ _ _ _ _ _ nextRun
     exact ⟨by omega, by simp only [firstFits, nextFits, Bool.true_and]⟩
   | bind_exit firstRun =>
     intro firstBudget nextBudget total firstBound _
@@ -146,7 +158,8 @@ theorem prefix_rule {World : Type} {host : Host World} {pure : PureContext pureS
   | bind_right firstRun progress =>
     intro firstBudget nextBudget total firstBound nextBound
     obtain ⟨firstCost, firstFits⟩ := firstBound.1 _ _ _ _ _ _ firstRun
-    obtain ⟨nextCost, nextFits⟩ := (nextBound _).2 _ _ _ _ _ _ progress
+    obtain ⟨nextCost, nextFits⟩ :=
+      (nextBound _ ⟨_, _, _, _, _, firstRun⟩).2 _ _ _ _ _ _ progress
     exact ⟨by omega, by simp only [firstFits, nextFits, Bool.true_and]⟩
   | ite_charge =>
     intro yesBudget noBudget total conditionFits _ _
@@ -232,5 +245,142 @@ theorem call_prefix_rule {World : Type} {host : Host World} {pure : PureContext 
     obtain ⟨cost, fits⟩ := bounded _ _ _ _ _ progress
     exact ⟨cost, by simp only [valid, fits, Bool.true_and]⟩
   | there progress => trivial
+
+/-- The facts about a call's parts from which every run and every prefix of it spends at most
+`budget` and finds its frames: for the first function, a frame at the call's depth and a bound on
+its body, and for a later one, a bound on the call in the rest of the program. -/
+def CallBoundRule {World : Type} (host : Host World) (pure : PureContext pureSigs) :
+    {effectSigs : List EffectSig} → (program : EffectProg pureSigs effectSigs) →
+    {signature : EffectSig} → EffectVar effectSigs signature → UInt64 → Env signature.params →
+    Nat → Bool → Nat → Prop
+  | _, .cons function rest, _, .here, depth, env, spent, fits, budget =>
+      entryFits depth = true →
+      Bounded host pure rest depth (entryModes function.params function.modes) (fun _ => false)
+        function.body env budget → spent ≤ budget ∧ fits = true
+  | _, .cons _ rest, _, .there callee, depth, env, spent, fits, budget =>
+      CallBounded host pure rest callee depth env budget → spent ≤ budget ∧ fits = true
+  | _, _, _, _, _, _, _, _, _ => True
+
+theorem call_exec_bound_rule {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {signature : EffectSig}
+    {callee : EffectVar effectSigs signature} {depth : UInt64} {env : Env signature.params}
+    {world trace outcome final spent fits} (budget : Nat)
+    (execution : ResourceCall host pure program callee depth env world trace outcome final spent
+      fits) :
+    CallBoundRule host pure program callee depth env spent fits budget := by
+  cases execution with
+  | here execution =>
+    intro valid bounded
+    obtain ⟨cost, fits⟩ := bounded.1 _ _ _ _ _ _ execution
+    exact ⟨cost, by simp only [valid, fits, Bool.true_and]⟩
+  | there execution =>
+    intro bounded
+    exact bounded.1 _ _ _ _ _ _ execution
+
+theorem call_prefix_bound_rule {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {signature : EffectSig}
+    {callee : EffectVar effectSigs signature} {depth : UInt64} {env : Env signature.params}
+    {world trace residual final spent fits} (budget : Nat)
+    (progress : ResourceCallPrefix host pure program callee depth env world trace residual final
+      spent fits) :
+    CallBoundRule host pure program callee depth env spent fits budget := by
+  cases progress with
+  | guard program callee depth env world =>
+    cases program with
+    | nil => exact nomatch callee
+    | cons function rest =>
+      cases callee with
+      | here => exact fun valid _ => ⟨Nat.zero_le _, valid⟩
+      | there callee =>
+        intro bounded
+        exact ⟨Nat.zero_le _, (bounded.2 world _ _ _ _ _ (.guard rest callee depth env world)).2⟩
+  | here progress =>
+    intro valid bounded
+    obtain ⟨cost, fits⟩ := bounded.2 _ _ _ _ _ _ progress
+    exact ⟨cost, by simp only [valid, fits, Bool.true_and]⟩
+  | there progress =>
+    intro bounded
+    exact bounded.2 _ _ _ _ _ _ progress
+
+theorem callBounded_of_rule {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {signature : EffectSig}
+    {callee : EffectVar effectSigs signature} {depth : UInt64} {env : Env signature.params}
+    {budget : Nat}
+    (applyRule : ∀ spent fits, CallBoundRule host pure program callee depth env spent fits budget →
+      spent ≤ budget ∧ fits = true) :
+    CallBounded host pure program callee depth env budget :=
+  ⟨fun _ _ _ _ _ _ execution => applyRule _ _ (call_exec_bound_rule budget execution),
+    fun _ _ _ _ _ _ progress => applyRule _ _ (call_prefix_bound_rule budget progress)⟩
+
+theorem callBounded_here {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {function : EffectFunc pureSigs effectSigs} {rest : EffectProg pureSigs effectSigs}
+    {depth : UInt64} {env : Env function.params} {budget : Nat}
+    (valid : entryFits depth = true)
+    (bounded : Bounded host pure rest depth (entryModes function.params function.modes)
+      (fun _ => false) function.body env budget) :
+    CallBounded host pure (.cons function rest) .here depth env budget :=
+  callBounded_of_rule fun _ _ rule => rule valid bounded
+
+theorem callBounded_there {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {function : EffectFunc pureSigs effectSigs} {rest : EffectProg pureSigs effectSigs}
+    {signature : EffectSig} {callee : EffectVar effectSigs signature} {depth : UInt64}
+    {env : Env signature.params} {budget : Nat}
+    (bounded : CallBounded host pure rest callee depth env budget) :
+    CallBounded host pure (.cons function rest) (.there callee) depth env budget :=
+  callBounded_of_rule fun _ _ rule => rule bounded
+
+theorem CallBounded.mono {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {signature : EffectSig}
+    {callee : EffectVar effectSigs signature} {depth : UInt64} {env : Env signature.params}
+    {budget budget' : Nat} (bounded : CallBounded host pure program callee depth env budget)
+    (le : budget ≤ budget') : CallBounded host pure program callee depth env budget' :=
+  ⟨fun _ _ _ _ _ _ execution => by
+      obtain ⟨cost, valid⟩ := bounded.1 _ _ _ _ _ _ execution
+      exact ⟨by omega, valid⟩,
+    fun _ _ _ _ _ _ progress => by
+      obtain ⟨cost, valid⟩ := bounded.2 _ _ _ _ _ _ progress
+      exact ⟨by omega, valid⟩⟩
+
+/-- What a run that returns a value tells of it: a read returns at most its capacity's bytes. -/
+def ReadReturns (pure : PureContext pureSigs) {context : List Ty} {result : ResultTy}
+    (command : Command pureSigs effectSigs context result)
+    (env : Env context) (outcome : Outcome result.denote) : Prop :=
+  match command, outcome with
+  | .read capacity, .returned value => value.2.data.size ≤ (capacity.denote pure.funs env).toNat
+  | _, _ => True
+
+theorem exec_readReturns {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth modes live context result}
+    {command : Command pureSigs effectSigs context result} {env : Env context}
+    {world trace outcome final spent fits}
+    (run : ResourceExec host pure program depth modes live command env world trace outcome final
+      spent fits) : ReadReturns pure command env outcome := by
+  cases run with
+  | read _ _ _ _ capacity env execution =>
+    change Exec host (.read (capacity.denote pure.funs env) fun result =>
+      .pure (result.errno, result.bytes)) _ _ _ _ at execution
+    cases execution with
+    | read_reject _ continuation =>
+      cases continuation
+      exact Nat.zero_le _
+    | read_return _ operation continuation =>
+      cases continuation
+      have bound := (host.read_bound operation).1
+      simp only [ReadReturns, readResult]
+      split
+      · exact bound
+      · exact Nat.zero_le _
+    | read_trap => trivial
+  | _ => trivial
+
+/-- A read returns at most its capacity's bytes. -/
+theorem Returns.read_size {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {capacity : Expr pureSigs context .word} {env : Env context}
+    {value : (Ty.pair .word .bytes).denote}
+    (returns : Returns host pure program depth modes live (.read capacity) env value) :
+    value.2.data.size ≤ (capacity.denote pure.funs env).toNat := by
+  obtain ⟨_, _, _, _, _, run⟩ := returns
+  exact exec_readReturns run
 
 end Verified.Wasi.Resource

@@ -31,7 +31,7 @@ private theorem writePrevious_bounded {World : Type} (host : Host World) (pure :
   · apply bounded_of_rule
     intro spent fits rule
     exact rule
-  · intro value
+  · intro value _
     exact returnRead_bounded host pure depth live _
 
 private theorem step_bounded {World : Type} (host : Host World) (pure : PureContext [])
@@ -46,7 +46,7 @@ private theorem step_bounded {World : Type} (host : Host World) (pure : PureCont
     · rw [word_readCost]
       simp [Verified.Wasi.readCost, UInt64.reduceToNat, Verified.Bytes.allocationCost]
     · rfl
-  · intro value
+  · intro value _
     exact writePrevious_bounded host pure depth live _
 
 private theorem loop_exec_bound {World : Type} {host : Host World} {pure : PureContext []}
