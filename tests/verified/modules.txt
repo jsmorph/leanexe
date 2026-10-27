@@ -19,6 +19,7 @@ Verified.Examples.ListLoops:Verified.Examples.ListLoops.compiled.module:listloop
 Verified.Examples.ListTail:Verified.Examples.ListTail.compiled.module:listtail
 Verified.Examples.RecursiveTypes:Verified.Examples.RecursiveTypes.compiled.module:recursivetypes
 Verified.Examples.TaggedTypes:Verified.Examples.TaggedTypes.compiled.module:taggedtypes
+Verified.Examples.HeapSums:Verified.Examples.HeapSums.compiled.module:heapsums
 Verified.Examples.Tail:Verified.Examples.Tail.compiled.module:tail
 Verified.Examples.TailConditions:Verified.Examples.TailConditions.compiled.module:tailconditions
 Demos.Gpt.Verified:Demos.Gpt.Verified.compiled.module:gpt
@@ -65,6 +66,7 @@ Library.Numerics.Float64.Erf.Compiled:Library.Numerics.Float64.Erf.compiled.modu
 Library.Numerics.Decimal.ParseFloat.Compiled:Library.Numerics.Decimal.ParseFloat.compiled.module:parsefloat
 Library.Numerics.Decimal.PrintFloat.Compiled:Library.Numerics.Decimal.PrintFloat.compiled.module:printfloat
 Demos.Drone.Verified:Demos.Drone.Verified.compiled.module:drone
+Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew
 Library.Random.Lcg.Verified:Library.Random.Lcg.compiled.module:lcg
 Library.Random.ParkMiller.Verified:Library.Random.ParkMiller.compiled.module:parkmiller
 Library.Random.Xorshift.Verified:Library.Random.Xorshift.compiled.module:xorshift

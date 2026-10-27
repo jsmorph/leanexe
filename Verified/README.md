@@ -723,6 +723,17 @@ projections, and conditionals, and arrays use the existing element representatio
 rules.  [The sum example](Examples/Sums.lean) checks these forms with binary64 shapes and a sum
 with binary32 and enumeration fields.
 
+A sum whose `Flat` tuple holds `Bytes`, arrays, or recursive types has the source type of that
+tuple, a `Ty.pair`, and `instRepresentOfFlat` represents it as the tuple, so the compiler and its
+proofs treat it as a pair.  The reflector does not split its variables, since no function rebuilds
+the sum from the tuple: `reflectSplit` and the `let` rule leave a variable of such a sum whole, and
+`pairView` gives its components for copy costs but no rebuild.  `reflectDataMatch` binds
+`p := Flat.flat x` with `let` before the chain of tag tests, so the match destructures the variable
+once with `letPair` and each branch reads its fields as variables, while a scalar sum keeps its
+projections.  `prepareRecursiveTypes` also derives the recursive types that only a sum's tuple
+names.  [The heap sum example](Examples/HeapSums.lean) covers construction, borrowed and owned
+matches, results, pairs, loop state, and lists, trees, bytes, and arrays as fields.
+
 A variable that holds a pair or a record with arrays is split into the components of
 its pair, and the body at the value rebuilt from them is the body at the variable by `pair_eta` or
 by `p.flat_eta.R`, a theorem added once per program and record and proved by `rfl` with the body and

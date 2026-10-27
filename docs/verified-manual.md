@@ -66,6 +66,7 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | `Array α`, for `α` a word, `Bool`, float, tuple, flat structure, enumeration, or sum | The address of a length word followed by the elements' words | An element of `k` words occupies `k` consecutive words.  An array of tuples may only be a local value, since Lean has no `Represent` instance for it. |
 | `LeanExe.Bytes` | An allocation root and UInt64 logical length | Packed bytes, with owned and borrowed parameters, results, pairs, copying, and release. |
 | A pair that holds arrays, or a structure whose `Flat` tuple holds arrays | Its components' words | A structure of this kind is a record with array fields. |
+| A sum with a `Flat` instance whose tuple holds `Bytes`, arrays, or recursive types | A word tag and the words of the tuple's components | The inactive components hold the instance's values: `Bytes.empty` and a null tree allocate nothing, and `#[]` allocates an empty array.  Parameters are borrowed. |
 | `List UInt64` | Null for `[]`, otherwise a record holding the head word and tail pointer | Construction, matching, identity, duplication, tuples, calls, tail recursion, and folds with scalar state |
 | A recursive type whose fields are `UInt64` or the type itself | Null for the first constructor without fields, and for any other constructor a record of its fields in declaration order, after a tag word that holds the constructor's index when the type has more than one record constructor | Each record has between 1 and 64 slots, the tag included, at least one constructor has no child field, and at least one has a child field.  Construction, one-level matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state. |
 
@@ -151,7 +152,11 @@ copy as that constructor applied to the fields, which reuses the matched header 
 matched variable owned.  A branch that names the matched variable itself, as in `| _ => f t`,
 reads it, and when that variable is owned the match works on a copy.  The
 reflector proves conversions to and from its typed layout, both inverse laws, and preservation of
-its `Encode` instance.  An encoding that disagrees with the layout fails that proof.  Tail matching
+its `Encode` instance.  An encoding that disagrees with the layout fails that proof.  The reflector
+adds these declarations in the type's namespace, in the first module that compiles a program over
+the type, so two modules that each compile programs over the same type cannot be imported
+together.  A module that both import and that compiles a program over the type first avoids the
+conflict.  Tail matching
 preserves ownership across return and continue steps.
 
 ### Records, tuples, and sums
@@ -178,6 +183,24 @@ instance : Flat Phase UInt64 := ⟨fun | .solid => 0 | .liquid => 1 | .gas => 2�
 ```
 
 A sum's `Flat` instance maps it to a scalar tuple with a distinct constant word tag for each constructor and each constructor field in one position.  The standard layout places the tag first, then every constructor's fields, with zeros in inactive fields.  Fields may themselves be scalar tuples, structures, or enumerations.  An accepted sum has no type parameters or indices.  Matching uses the tag to choose an alternative and its field positions to supply the alternative's arguments.  The kernel checks the translation by constructor cases.  Wildcard alternatives may bind the original value, and an expression used as a discriminant is evaluated once.  [The sum example](../Verified/Examples/Sums.lean) compiles the existing shape program, arrays of shapes, and a sum with Float32 and enumeration fields.
+
+A sum's fields may also be `Bytes`, arrays, and recursive types, each one component of the tuple, as in [the heap sum example](../Verified/Examples/HeapSums.lean):
+
+```lean
+inductive Item where
+  | text (body : LeanExe.Bytes)
+  | words (xs : Array UInt64) (scale : UInt64)
+  | keys (tree : Keys) (weight : Float)
+  | none
+
+instance : Flat Item (UInt64 × LeanExe.Bytes × Array UInt64 × UInt64 × Keys × Float) := ⟨fun
+  | .text body => (0, body, #[], 0, .leaf, 0)
+  | .words xs scale => (1, .empty, xs, scale, .leaf, 0)
+  | .keys tree weight => (2, .empty, #[], 0, tree, weight)
+  | .none => (3, .empty, #[], 0, .leaf, 0)⟩
+```
+
+Such a sum is represented as its tuple, as a record with array fields is, and the instance's values for inactive fields are part of that representation: a construction of `.text body` allocates the empty array of the instance, while `Bytes.empty` and a null tree allocate nothing.  A variable of the sum is not split into components, since no function rebuilds the sum from its tuple.  A match destructures the variable once and tests the tag, and each branch releases the owned components that it does not use.  An owned value whose alternative names the matched value, as in `| other => other`, is copied before the match takes it apart, while an alternative that rebuilds its constructor, as in `| .text b => .text b`, moves the fields and allocates the constructor's empty arrays again.  A parameter of such a sum is borrowed, so a function that returns or consumes a field copies it.  The destructuring stores each nested pair of the tuple in fresh locals, the whole tuple first and then each remaining part, so a match on `Item`, whose tuple has seven words, takes 22 positions, and a function whose code takes the call depth may exceed its 32 positions.  A field may not itself be a record with arrays or a sum with heap fields, and arrays cannot hold such sums.
 
 ### Calls and recursion
 
@@ -209,7 +232,8 @@ A table is a Lean constant of type `Array UInt64`, which the module writes in a 
 | `the branches of … use the hypothesis of the if` | `if h : c` with a branch that uses `h` | Read with `xs[i.toNat]!`, which needs no proof of the bound. |
 | `… must be applied to all n arguments` | A partial application of a listed definition | Apply the definition to all its arguments. |
 | `the code of … takes the call depth and needs k positions, more than the 32 …` | A recursive function, or a caller of one, with many live values | Move work into a function that calls no recursive function, or bind fewer values. |
-| `the parameter type … of a recursive definition holds an enumeration …` | An enumeration parameter of a recursive definition | Pass the enumeration's word. |
+| `the parameter type … of a recursive definition holds an enumeration or a sum …` | An enumeration or sum parameter of a recursive definition | Pass the enumeration's word, or the fields of the sum's constructor. |
+| `a sum field must be a scalar, Bytes, an array, or a recursive type: …` | A sum field that is a record with arrays or a sum with heap fields | Give the constructor the record's fields as its own fields. |
 | `the flattening of the default … is not the default element …` | A structure whose default does not take each field's default | Use `deriving Inhabited`. |
 | `` `==` on … needs `LawfulBEq` `` | `==` on an enumeration without `LawfulBEq` | Use `deriving DecidableEq`. |
 | `… must take the tables of … as borrowed arrays of words before its other parameters` | A wrapper whose callee takes the tables elsewhere | Put the table parameters first. |
@@ -448,7 +472,18 @@ that `double` allocates one copy of its argument and one record.  `eval` and `si
 depth 999 and trap at `unreachable` at depth 1,000, and `spine` compiles as a loop and returns on
 every chain.
 
-`tests/verified/run.sh --cases gpt` tests binary64 GPT with the existing corpus in [`tests/gpt/Cases.lean`](../tests/gpt/Cases.lean) and the release and cache-growth checks of [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh).  `tests/verified/run.sh --cases euler` uses [the existing Euler corpus](../Demos/Euler/Cases.lean) through `tests/modules/run.sh --module euler PATH`.  The full invocation includes both application checks.
+`tests/verified/run.sh --cases heapsums` checks the sums with `Bytes`, array, tree, and list
+fields: construction from owned arguments, borrowed reads, copies into results and pairs, an owned
+match on a constructed value, and two loops whose state is such a sum.  Each case states the blocks
+that stay allocated and bounds the allocations, from the costs of the code: the empty array that a
+construction of a text, a tree, or an empty item allocates, one block for each array, nonempty
+bytes, and tree node of a copy, and the release of each component that a branch does not use.
+`grow`, whose wildcard names the matched state, copies its state at every step, and `regrow`, which
+rebuilds each constructor, allocates only the rebuilt constructor's empty array.  A guarded call
+inside a match returns on 998 cells and traps on 999.  Before the cases, the driver checks that
+every theorem of the example uses only the three permitted axioms.
+
+`tests/verified/run.sh --cases gpt` tests binary64 GPT with the existing corpus in [`tests/gpt/Cases.lean`](../tests/gpt/Cases.lean) and the release and cache-growth checks of [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh).  `tests/verified/run.sh --cases euler` uses [the existing Euler corpus](../Demos/Euler/Cases.lean) through `tests/modules/run.sh --module euler PATH`.  The full invocation includes both application checks.  `tests/verified/run.sh --cases slew` compares the slew planner with native Lean on 852 plans and 1,225 `atan2` calls that [a generator in Lean](../tests/TestSupport/Slew/Cases.lean) builds from SplitMix64.  [`tests/slew/edges.sh`](../tests/slew/edges.sh) compares the module's `edgeOk` export with native Lean on 100,000 single-cone edges in one host session, and the same run checks the planner's theorems with [the axiom audit](../tests/slew/Axioms.lean) and its file theorems against the written module.
 
 The cases cover words near 0, `2^32`, `2^63`, and `2^64`, zero divisors, shift amounts of 64 or more, loop counts of 0, 1, and up to 65,537, empty arrays, reads and updates past the end, and floats that are zeros of both signs, infinities, NaN, and the smallest subnormal.  Native Lean returns the canonical NaN for every NaN result, and the host enables Cranelift's NaN canonicalization, so the cases compare float results bit for bit.  The release counts show that a call leaves allocated exactly the result's arrays and the host's arrays at borrowed parameters.  The allocation counts show the updates in place and the growth by doubling: a loop of `n` pushes allocates at most `2 + log₂ (n + 1)` blocks, and an insertion sort of `n` elements at most `3 + log₂ (n + 1)` with the host's array.  One case asks for an array of `2^29` words and must trap.  A recursion case runs `deep`, whose frame has 32 positions, 26 of them live across the self-call, to depth 999, where its deepest frame calls `top1` and `top2`, two functions without the call depth that hold many values live.  The drone's cases include the 116 terrains of [`tests/drone/corpus.txt`](../tests/drone/corpus.txt).
 
@@ -462,7 +497,7 @@ The checks of `Trig`, `Exp`, and `Log` also compare the stored tables with integ
 
 The full library includes the numerical proofs and can take several hours.  The lgamma root-range proofs need `--memory-high 10G`, which sets a 12 GiB memory maximum.  The [compilation example](#compiling-and-running) builds only its selected module and imports at the default limits.
 
-After a change to the verified compiler or its examples, `tools/leanrun --threads 3 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and `tests/verified/run.sh`, run with `LEANRUN_THREADS=3` and `LEANRUN_MEMORY_HIGH=10G`, must pass with no failed case.  A new pure compiler fixture needs an import in [`Verified.lean`](../Verified.lean), an entry in [the module registry](../tests/verified/modules.txt), and checked cases.  Reusable algorithm compilations belong in [`Library.lean`](../Library.lean), and verified application compilations belong in [`Demos/Verified.lean`](../Demos/Verified.lean), which `Verified` imports.  An application port reuses its existing corpus.  Other pure examples add cases to `Verified/Examples/Cases.lean`.  WASI changes also use [the maintained WASI driver](../tests/wasi/run.sh), with its proof and axiom targets, frontend examples, stream fixtures, and host tests.  [The LeanExe compiler manual's full check](leanexe-manual.md#the-full-check) covers the rest of the repository, and [the journal](../devnotes.md) records the counts of each run.
+After a change to the verified compiler or its examples, `tools/leanrun --threads 2 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and `tests/verified/run.sh`, run with `LEANRUN_THREADS=3` and `LEANRUN_MEMORY_HIGH=10G`, must pass with no failed case.  A new pure compiler fixture needs an import in [`Verified.lean`](../Verified.lean), an entry in [the module registry](../tests/verified/modules.txt), and checked cases.  Reusable algorithm compilations belong in [`Library.lean`](../Library.lean), and verified application compilations belong in [`Demos/Verified.lean`](../Demos/Verified.lean), which `Verified` imports.  An application port reuses its existing corpus.  Other pure examples add cases to `Verified/Examples/Cases.lean`.  WASI changes also use [the maintained WASI driver](../tests/wasi/run.sh), with its proof and axiom targets, frontend examples, stream fixtures, and host tests.  [The LeanExe compiler manual's full check](leanexe-manual.md#the-full-check) covers the rest of the repository, and [the journal](../devnotes.md) records the counts of each run.
 
 ## Examples
 
@@ -506,6 +541,7 @@ Reusable implementations and their compilations live in [the library](../Library
 | [`Floats`](../Verified/Examples/Floats.lean) | A piecewise function, a scaled hypotenuse, float comparisons as conditions and as `Bool` values, `min`, `max`, negation, a loop over a pair of floats, a function with a word, a float, an array, and a pair as parameters and a pair result with a float, a call of float functions, the conversions between words and floats, a power of two built from its exponent field, and literal NaN patterns. |
 | [Binary32 operations](../Verified/Examples/Floats32.lean) | Arithmetic, comparisons, conditional branches, square root, signs, nearest, unsigned and signed word conversions, bit-pattern conversions, mixed f32/f64 parameters and results, arrays, updates, folds, builds, and tail loops.  Guarded recursion includes a proved 32-position mixed-format frame. |
 | [Sums with fields](../Verified/Examples/Sums.lean) | The existing shape program, matches and wildcard bindings, constructors, calls, arrays, updates, folds, loop state, and mixed Float32 and enumeration fields. |
+| [Sums with heap fields](../Verified/Examples/HeapSums.lean) | A sum with `Bytes`, array, tree, word, and float fields and a sum with a list field: construction from owned arguments, borrowed and owned matches, wildcards that name the matched value, results, pairs, loop state, and a guarded call inside a match. |
 | [`Records`](../Verified/Examples/Records.lean) | Structures with a nested structure and a `Bool` field, built, updated with `{ s with … }`, read field by field, taken apart with `match`, chosen with `if`, passed to calls, and used as a loop's state, with theorems stated for the structures. |
 | [`Tuples`](../Verified/Examples/Tuples.lean) | Arrays of tuples of a float and a word and of a nested tuple, built, read along a path, updated in place, extended, and appended, written without the reflector, with an `example` per function stating by `rfl` that it means a Lean function. |
 | [`Grids`](../Verified/Examples/Grids.lean) | Arrays of the structures of `Records.lean`, built, read element by element and field by field, also past the end, updated in place in a loop, extended with a new structure, appended, counted, reduced to a total and a `Bool`, and returned in a pair with a total, and a local array of pairs. |
@@ -522,5 +558,6 @@ Reusable implementations and their compilations live in [the library](../Library
 | [`Insert`](../Verified/Examples/Insert.lean) | `LeanExe.insertAt` and `LeanExe.eraseAt` on parameters, built arrays, an array that stays live, a loop's state in an insertion sort and in a removal loop, a local array of pairs, and arrays of structures, also past the end. |
 | [`Clob`](../Demos/Clob/Verified.lean) | The bid side of an order book, as two arrays of prices and sizes, with insertions and removals of levels in place, a market buy, cancellations, and command streams, and the theorems that a stream run in two chunks gives the book of one run and that `runOut` leaves the book of `runCommands`. |
 | [`Drone`](../Demos/Drone/Verified.lean) | The drone planner of [`Demos/Drone`](../Demos/Drone/README.md), compiled unchanged, with its named constants reflected as their values, and the theorems `drone_compute` and `drone_safe`, from the planner's `compute_correct` and `compute_safe`, that the module's results are optimal and safe flights, and `drone_trapFree`, from `compute_bound` on `compiled.compute.bound_eq`, that the module computes `compute` without a trap whenever `top` can rise by 2,251,064 bytes within the memory's cap. |
+| [`Slew`](../Demos/Slew/Verified.lean) | The slew planner of [`Demos/Slew`](../Demos/Slew/README.md), which plans rest-to-rest eigenaxis rotations of a spacecraft under cone constraints through a graph of waypoint attitudes, compiled with the library's `atan` and `atan2` into one module, with the generated `implements`, `trapFree`, and bytes theorems, and [`slew_trapFree`](../Demos/Slew/Bound.lean), from `plan_bound` on `compiled.plan.bound_eq`, that the module computes `plan` without a trap whenever `top` can rise by 68,020,488 bytes within the memory's cap. |
 | [`Elements`](../Verified/Examples/Elements.lean) | A sum, a dot product, and a maximum over arrays of floats, a grid built from converted indices, an `axpy` that updates an owned array of floats in place, an extension, flags of negative elements, a count and a selection by flags, an update and a push of an owned array of `Bool`s, and a sieve of Eratosthenes. |
 | [`Lcg`](../Library/Random/Lcg/Verified.lean), [`ParkMiller`](../Library/Random/ParkMiller/Verified.lean), [`Xorshift`](../Library/Random/Xorshift/Verified.lean) | The generators of [`Library/Random/Lcg`](../Library/Random/Lcg/README.md), [`Library/Random/ParkMiller`](../Library/Random/ParkMiller/README.md), and [`Library/Random/Xorshift`](../Library/Random/Xorshift/README.md), compiled unchanged, with the theorems `lcg_advance`, `parkMiller_advance`, and `xorshift_advance`, which combine each module's bytes with the generator's theorems about `advance`, and `lcg_jump` and `xorshift_jump`, which state that the modules' jump-ahead functions compute `advance`, the second when `top` can rise by 36,920 bytes, by `jump_bound`. |

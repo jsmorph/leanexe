@@ -5,3 +5,5 @@ import Demos.Clob.Verified
 import Demos.Drone.Verified
 import Demos.RunningSum.Correct
 import Demos.RunningSumFp.Correct
+import Demos.Slew.Bound
+import Demos.Slew.Verified
