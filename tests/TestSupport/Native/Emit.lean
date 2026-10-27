@@ -255,8 +255,8 @@ def pairs : List (UInt64 × UInt64) :=
 
 def big : List UInt64 := words 300 fun i => UInt64.ofNat ((i * 7919 + 13) % 1000)
 
-/-- A module of memory operations: loads and stores at offsets 0, 5, and 3, `memory.size`, and
-`memory.grow`, with two pages, data segments that begin and end off a word boundary, and global 0
+/-- A module of memory operations: loads and stores of words at offsets 0, 5, and 3 and of bytes
+at offsets 0, 7, and 2, `memory.size`, and `memory.grow`, with two pages, data segments that begin and end off a word boundary, and global 0
 at 128, so that the checksum covers the first 128 bytes. -/
 def memops : Module :=
   { funcs := [
@@ -265,8 +265,13 @@ def memops : Module :=
       { params := [.i64, .i64], body := [.localGet 0, .wrapI64, .localGet 1, .store64 0] },
       { params := [.i64, .i64], body := [.localGet 0, .wrapI64, .localGet 1, .store64 3] },
       { results := [.i64], body := [.memorySize, .extendUI32] },
-      { params := [.i64], results := [.i64], body := [.localGet 0, .wrapI64, .memoryGrow, .extendUI32] }]
-    exports := [⟨"load", 0⟩, ⟨"load5", 1⟩, ⟨"store", 2⟩, ⟨"store3", 3⟩, ⟨"size", 4⟩, ⟨"grow", 5⟩]
+      { params := [.i64], results := [.i64], body := [.localGet 0, .wrapI64, .memoryGrow, .extendUI32] },
+      { params := [.i64], results := [.i64], body := [.localGet 0, .wrapI64, .load8U 0, .extendUI32] },
+      { params := [.i64], results := [.i64], body := [.localGet 0, .wrapI64, .load8U 7, .extendUI32] },
+      { params := [.i64, .i64], body := [.localGet 0, .wrapI64, .localGet 1, .wrapI64, .store8 0] },
+      { params := [.i64, .i64], body := [.localGet 0, .wrapI64, .localGet 1, .wrapI64, .store8 2] }]
+    exports := [⟨"load", 0⟩, ⟨"load5", 1⟩, ⟨"store", 2⟩, ⟨"store3", 3⟩, ⟨"size", 4⟩, ⟨"grow", 5⟩,
+      ⟨"load8", 6⟩, ⟨"load8o", 7⟩, ⟨"store8", 8⟩, ⟨"store8o", 9⟩]
     memory := some { pagesMin := 2
                      data := [{ offset := some 13, bytes := (List.range 20).map fun i => UInt8.ofNat (i + 1) },
                               { offset := some 64, bytes := (List.range 24).map fun i => UInt8.ofNat (200 + i) },
@@ -324,6 +329,26 @@ def cases : List Case :=
        { name := "store3", args := [.word 131061, .word 7] },
        { name := "store3", args := [.word 131062, .word 7] },
        { name := "load", args := [.word 0xFFFFFFF8] },
+       { name := "load8", args := [.word 13] },
+       { name := "load8", args := [.word 12] },
+       { name := "load8o", args := [.word 63] },
+       { name := "store8", args := [.word 100, .word 0x1FF] },
+       { name := "load8", args := [.word 100] },
+       { name := "store8o", args := [.word 99, .word 0x12345] },
+       { name := "load8", args := [.word 101] },
+       { name := "load", args := [.word 96] },
+       { name := "load8", args := [.word 131071] },
+       { name := "load8", args := [.word 131072] },
+       { name := "load8o", args := [.word 131064] },
+       { name := "load8o", args := [.word 131065] },
+       { name := "store8", args := [.word 131071, .word 7] },
+       { name := "load8", args := [.word 131071] },
+       { name := "store8", args := [.word 131072, .word 7] },
+       { name := "store8o", args := [.word 131069, .word 9] },
+       { name := "store8o", args := [.word 131070, .word 9] },
+       { name := "load8", args := [.word 0xFFFFFFFF] },
+       { name := "load8o", args := [.word 0xFFFFFFFA] },
+       { name := "store8o", args := [.word 0xFFFFFFFE, .word 1] },
        { name := "size", args := [] },
        { name := "grow", args := [.word 3] },
        { name := "size", args := [] },
@@ -337,7 +362,10 @@ def cases : List Case :=
        { name := "grow", args := [.word 0xFFFFFFFF] },
        { name := "size", args := [] },
        { name := "load", args := [.word (UInt64.ofNat (cap * 65536 - 8))] },
-       { name := "load", args := [.word (UInt64.ofNat (cap * 65536 - 7))] }] },
+       { name := "load", args := [.word (UInt64.ofNat (cap * 65536 - 7))] },
+       { name := "store8", args := [.word (UInt64.ofNat (cap * 65536 - 1)), .word 0xAB] },
+       { name := "load8", args := [.word (UInt64.ofNat (cap * 65536 - 1))] },
+       { name := "load8", args := [.word (UInt64.ofNat (cap * 65536))] }] },
    { name := "fops", module := fops
      calls :=
        (["add", "sub", "mul", "div", "eq", "lt", "le", "divmul"].flatMap fun f =>

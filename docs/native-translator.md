@@ -30,7 +30,7 @@ Not in scope: Wasm features outside the subset, WGSL kernels, verified I/O, and 
 
 ## Input: the Wasm subset and the semantics to simulate
 
-The Verified compiler emits 71 instruction forms, one memory, four i64 globals, and no imports, tables or exceptions. The translator accepts exactly the modules that pass a decidable subset check (milestone M0), so the proof never meets anything else.
+The Verified compiler emits 73 instruction forms, one memory, four i64 globals, and no imports, tables or exceptions. The translator accepts exactly the modules that pass a decidable subset check (milestone M0), so the proof never meets anything else.
 
 **Module shape** (`compileWith` in `Verified/Compile.lean`):
 
@@ -40,14 +40,14 @@ The Verified compiler emits 71 instruction forms, one memory, four i64 globals, 
 - Exports: `alloc`, `release`, each function by name, the wrappers, the memory and the two counters.
 - Locals: parameters are i64, f64 or f32; each function also has an i64, an f64 and an f32 local for every position it uses.
 
-**Instruction forms**, from the code generators in `Verified/` (`Compile.lean` and the `Tree*` and `ListFold*` code files), `LeanExe/Runtime/` and the allocator programs in `LeanExe/ProofKit/`, at LeanExe `d1f8517` against Talos `87e3aa5`:
+**Instruction forms**, from the code generators in `Verified/` (`Compile.lean` and the `Tree*` and `ListFold*` code files), `LeanExe/Runtime/` and the allocator programs in `LeanExe/ProofKit/`, at LeanExe `d1f8517` against Talos `87e3aa5`, with the byte loads and stores of `Verified/Bytes/`, which typed fields added later:
 
 | Group | Forms | Count |
 | --- | --- | --- |
 | i64 arithmetic and comparison | `constI64` `addI64` `subI64` `mulI64` `divUI64` `remUI64` `andI64` `orI64` `xorI64` `shlI64` `shrUI64` `eqI64` `neI64` `ltUI64` `leUI64` `geUI64` `eqzI64` | 17 |
 | i32 | `const` `eq` `eqz` `and` `wrapI64` `extendUI32` | 6 |
 | Variables | `localGet` `localSet` `localTee` `globalGet` `globalSet` | 5 |
-| Memory | `load64` `store64` `memorySize` `memoryGrow` | 4 |
+| Memory | `load64` `store64` `load8U` `store8` `memorySize` `memoryGrow` | 6 |
 | Control | `block` `loop` `iff` `br` `br_if` `call` `ret` `unreachable` | 8 |
 | binary64 | `f64Const` `f64Add` `f64Sub` `f64Mul` `f64Div` `f64Eq` `f64Lt` `f64Le` `f64Sqrt` `f64Abs` `f64ConvertI64U` `f64ReinterpretI64` `i64ReinterpretF64` `i64TruncSatF64U` | 14 |
 | binary32 | `f32Const` `f32Add` `f32Sub` `f32Mul` `f32Div` `f32Eq` `f32Lt` `f32Le` `f32Sqrt` `f32Abs` `f32Nearest` `f32ConvertI64U` `f32ConvertI32S` `f32ReinterpretI32` `i32ReinterpretF32` `i64TruncSatF32U` `i32TruncSatF32S` | 17 |
@@ -56,7 +56,7 @@ The count comes from a text search; M0 replaces it with the decidable check. Fiv
 
 - Branches leave more than one level: tail bodies branch to `exitLabel` and `nextLabel` through nested `iff`s, whose depth grows by one per level.
 - Every `block`, `loop` and `iff` has at most one result, for example `.iff 0 1 … [.i64]`.
-- Every memory access is 8 bytes wide. `memory.size` and `memory.grow` appear only in the allocator's growth code.
+- Every memory access is 8 bytes wide, except the byte loads and stores of byte buffers (`Verified/Bytes/`), which typed fields added. `memory.size` and `memory.grow` appear only in the allocator's growth code.
 - Division and remainder are guarded against a zero divisor by the emitted code. The translator still handles zero, because its theorem covers every module in the subset.
 - f64 negation is emitted as subtraction from −0, and `Float.ofBits` as a reinterpretation followed by adding −0, which canonicalizes NaN.
 
@@ -66,7 +66,7 @@ The count comes from a text search; M0 replaces it with the decidable check. Fiv
 - `execOne` returns a `Continuation`: `Fallthrough`, `Break k`, `Return`, `Trap store msg`, `Invalid` or `OutOfFuel`. `ReturnCall` and `Throwing` never arise in the subset.
 - `block`, `loop` and `iff` each consume one unit of fuel. `Break 0` leaves a block or `iff` keeping its top `resultArity` values; `Break 0` to a loop re-runs it with one less fuel; `Break (k+1)` becomes `Break k`.
 - `call` runs the callee with one less fuel.
-- `load64` and `store64` trap with `"out of bounds memory access"` when `a + off + 8 > pages × 65536`; otherwise they read or write 8 little-endian bytes.
+- `load64` and `store64` trap with `"out of bounds memory access"` when `a + off + 8 > pages × 65536`; otherwise they read or write 8 little-endian bytes. `load8U` and `store8` trap when `a + off + 1 > pages × 65536`; otherwise `load8U` reads one byte as an unsigned i32, and `store8` writes the low byte of its i32 value.
 - `memory.grow` succeeds when `pages + delta ≤ memoryCap`, the cap recorded in the store, and returns the old page count; otherwise it returns −1. `memory.size` returns the page count as an i32.
 - Float operations are Talos's IEEE 754 functions on bit patterns. Every NaN result is the positive canonical quiet NaN. `abs` acts on the bits.
 - `unreachable`, and division or remainder by zero, return `Trap`.
@@ -145,7 +145,7 @@ else s4_l = (unsigned long long) ((unsigned char *) lx_mem)[s4_l]
           | ...                                     /* eight byte loads, little-endian */
 ```
 
-`store64` mirrors it, with eight byte stores of `(unsigned char) (v >> 8 k)` on the unaligned path.  The byte-wise expressions are emitted inline rather than as helper functions, which would add calls and their `lx_status` tests; the proof covers them once, for every address.  `memory.size` reads `lx_pages`.  `memory.grow` adds in 64-bit arithmetic, succeeds when the sum is at most `LX_CAP`, and otherwise yields `0xFFFFFFFF`, exactly Talos's rule with the store's cap set to `LX_CAP`.  Bytes past `lx_pages` hold the same values in both semantics, because every write is bounds-checked and neither semantics changes a byte on growth.
+`store64` mirrors it, with eight byte stores of `(unsigned char) (v >> 8 k)` on the unaligned path.  `load8U` and `store8` compute the address and test the bound in the same way for one byte, and then access one `unsigned char` of `lx_mem`: `s4_i = (unsigned int) ((unsigned char *) lx_mem)[s4_l]`, and `((unsigned char *) lx_mem)[s4_l] = (unsigned char) s5_i`, whose conversion to `unsigned char` reduces the value modulo 256, which is `store8`'s meaning.  The byte-wise expressions are emitted inline rather than as helper functions, which would add calls and their `lx_status` tests; the proof covers them once, for every address.  `memory.size` reads `lx_pages`.  `memory.grow` adds in 64-bit arithmetic, succeeds when the sum is at most `LX_CAP`, and otherwise yields `0xFFFFFFFF`, exactly Talos's rule with the store's cap set to `LX_CAP`.  Bytes past `lx_pages` hold the same values in both semantics, because every write is bounds-checked and neither semantics changes a byte on growth.
 
 **Initialization.** `lx_g0` to `lx_g3` and `lx_pages` have static initializers.  `lx_init()` writes the data segments into `lx_mem` with straight-line stores: a word store for each 8-byte-aligned word that a segment covers, and a byte store for each other byte.  A static initializer on `lx_mem` itself would put the whole array into the binary, and a copy loop from a constant table would need a loop invariant in the proof; the stores' text grows with the data, as a table would.  The host calls `lx_init()` once before anything else.
 

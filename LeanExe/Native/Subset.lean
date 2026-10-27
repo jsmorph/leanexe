@@ -2,7 +2,7 @@ import Interpreter.Wasm.Syntax
 
 /-!
 The modules that the translator to C accepts.  `InSubset m` holds when `m` has the shape of the
-modules that `compileWith` produces and every function body uses only the 71 instruction forms
+modules that `compileWith` produces and every function body uses only the 73 instruction forms
 of the design's table, with blocks, loops, and conditionals that take no parameters and declare
 at most one numeric result.  The check is syntactic.  The translator's static analysis of the
 operand stack, which also checks local, global, and function indices, comes after it.
@@ -34,7 +34,7 @@ mutual
     | .eqzI64 => true
     | .const _ | .eq | .eqz | .and | .wrapI64 | .extendUI32 => true
     | .localGet _ | .localSet _ | .localTee _ | .globalGet _ | .globalSet _ => true
-    | .load64 _ | .store64 _ | .memorySize | .memoryGrow => true
+    | .load64 _ | .store64 _ | .load8U _ | .store8 _ | .memorySize | .memoryGrow => true
     | .br _ | .br_if _ | .call _ | .ret | .unreachable => true
     | .f64Const _ | .f64Add | .f64Sub | .f64Mul | .f64Div | .f64Eq | .f64Lt | .f64Le | .f64Sqrt
     | .f64Abs | .f64ConvertI64U | .f64ReinterpretI64 | .i64ReinterpretF64

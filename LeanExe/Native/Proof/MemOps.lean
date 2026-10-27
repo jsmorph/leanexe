@@ -3,12 +3,13 @@ import LeanExe.Native.Proof.Control
 
 /-!
 The simulation of the memory instructions.  `MemRel` survives a change of memory that keeps the
-blocks of the globals, `lx_status`, and `lx_pages` (`SameExcept`), and the stores that `store64`
-and `memory.grow` perform carry it to Talos's new memory.  `load64` and `store64` compute the
-address in the slot of their address with `addrStmt`, trap with `boundsCheck` when the eight
-bytes do not lie below `lx_pages × 65536`, and then access one word of `lx_mem` when the address
-is a multiple of 8 and eight bytes otherwise; `lbval` is the value that `loadBytes` combines,
-which is `Mem.read64`.  Each `sim_` lemma states `InstrSim` for one instruction.
+blocks of the globals, `lx_status`, and `lx_pages` (`SameExcept`), and the stores that `store64`,
+`store8`, and `memory.grow` perform carry it to Talos's new memory.  `load64` and `store64`
+compute the address in the slot of their address with `addrStmt`, trap with `boundsCheck 8` when
+the eight bytes do not lie below `lx_pages × 65536`, and then access one word of `lx_mem` when
+the address is a multiple of 8 and eight bytes otherwise; `lbval` is the value that `loadBytes`
+combines, which is `Mem.read64`.  `load8U` and `store8` trap with `boundsCheck 1` and access one
+byte.  Each `sim_` lemma states `InstrSim` for one instruction.
 -/
 
 namespace LeanExe.Native
@@ -132,6 +133,29 @@ theorem MemRel.store_word {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem} 
     · rw [Mem.setN_above _ _ _ _ (by rw [Mem.length_encode_long]; push_cast; omega)]
       exact h.bytes i hi
 
+
+theorem write8_same (wm : Wasm.Mem) (a : UInt32) (b : UInt8) : (wm.write8 a b).bytes a.toNat = b := by
+  simp [Wasm.Mem.write8]
+
+theorem write8_ne (wm : Wasm.Mem) (a : UInt32) (b : UInt8) {i : Nat} (h : i ≠ a.toNat) :
+    (wm.write8 a b).bytes i = wm.bytes i := by
+  simp [Wasm.Mem.write8, h]
+
+theorem MemRel.store_byte {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem} (hE : EnvOk E)
+    (h : MemRel E wm caps m) (a : UInt32) (b : UInt8) :
+    MemRel E (wm.write8 a b) caps
+      (Mem.stored .Mint8unsigned m E.mem a.toNat (.Vint (UInt32.ofNat (b.toNat % 256)))) := by
+  refine h.of_contents hE (Mem.SameExcept.of_stored _ _ _ _ _) rfl fun i hi => ?_
+  rw [Mem.contents_stored_same, encode_cbyte, UInt8.ofNat_toNat]
+  by_cases hia : i = a.toNat
+  · subst hia
+    rw [write8_same]
+    have := Mem.setN_at [memval.Byte b] (a.toNat : _root_.Int) (Mem.contents_of m E.mem) 0 (by simp)
+    simpa using this
+  · rw [write8_ne _ _ _ hia]
+    rcases Nat.lt_or_gt_of_ne hia with hlt | hgt
+    · rw [Mem.setN_outside _ _ _ _ (by omega)]; exact h.bytes i hi
+    · rw [Mem.setN_above _ _ _ _ (by simp; omega)]; exact h.bytes i hi
 
 /-! ## Expressions -/
 
@@ -283,6 +307,18 @@ theorem eval_loadByte (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
   rw [loadv_mem _ (by simp [size_chunk]; omega) (by decide)]
   exact h.load_byte hin
 
+theorem eval_loadByte32 (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
+    (h : MemRel E wm caps m) {le : temp_env} (cap : Nat) {e : expr} {q : UInt64}
+    (he : eval_expr A E.ge empty_env le m e (.Vlong q)) (hty : typeof e = tulong)
+    (hin : q.toNat < 65536 * E.cap) :
+    eval_expr A E.ge empty_env le m (.Ecast (byteAt cap e) tuint)
+      (.Vint (wm.bytes q.toNat).toUInt32) := by
+  refine .eval_Ecast _ _ _ _ (.eval_Elvalue _ _ _ _ _ (eval_byteAt_lvalue hE cap he hty)
+    (.deref_loc_value .Mint8unsigned _ rfl ?_)) (cast_byte_uint _ m)
+  have := hE.cap
+  rw [loadv_mem _ (by simp [size_chunk]; omega) (by decide)]
+  exact h.load_byte hin
+
 /-- The value of bytes 0 to `k` from `q`, combined as `loadBytes` combines them. -/
 def lbval (wm : Wasm.Mem) (q : Nat) : Nat → UInt64
   | 0 => (wm.bytes q).toUInt64
@@ -402,6 +438,31 @@ theorem exec_byteStore (hE : EnvOk E) {le : temp_env} (cap : Nat) {t vid : ident
       · exact Mem.setN_outside _ _ _ _ (by omega)
       · exact Mem.setN_above _ _ _ _ (by simp; omega)
 
+/-- The byte store of `store8`. -/
+theorem exec_store8 (hE : EnvOk E) {le : temp_env} (cap : Nat) {t vid : ident}
+    {q : UInt64} {x : UInt32} (ht : le[t]? = some (.Vlong q)) (hv : le[vid]? = some (.Vint x))
+    {m : mem} (hin : q.toNat < 65536 * E.cap)
+    (hp : ∀ i : Nat, i < 65536 * E.cap → Mem.perm m E.mem i .Cur .Writable) :
+    exec_stmt A X E.ge empty_env le m
+        (.Sassign (byteAt cap (addrPlus t 0)) (.Ecast (.Etempvar vid tuint) tuchar)) E0 le
+        (Mem.stored .Mint8unsigned m E.mem q.toNat (.Vint (UInt32.ofNat (x.toUInt8.toNat % 256))))
+        .Out_normal := by
+  have hcap := hE.cap
+  have ha := eval_addrPlus (A := A) (E := E) (m := m) ht 0 (by omega)
+  rw [Nat.add_zero, UInt64.ofNat_toNat] at ha
+  have hlv := eval_byteAt_lvalue hE cap ha (typeof_addrPlus t 0)
+  have hva : Mem.valid_access m .Mint8unsigned E.mem q.toNat .Writable := by
+    refine ⟨fun ofs h1 h2 => ?_, ⟨q.toNat, by simp [align_chunk]⟩⟩
+    have h2' : ofs < (q.toNat : _root_.Int) + 1 := h2
+    have : ofs = (q.toNat : _root_.Int) := by omega
+    subst this
+    exact hp _ hin
+  refine .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ hlv
+    (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hv) (cast_uint_uchar x m))
+    (cast_uchar _ m) (.assign_loc_value _ .Mint8unsigned _ rfl ?_)
+  rw [storev_mem _ (by simp [size_chunk]; omega) (by decide)]
+  exact Mem.store_ok _ hva
+
 theorem exec_storeBytes (hE : EnvOk E) {le : temp_env} (cap : Nat) {t vid : ident}
     {q x : UInt64} (ht : le[t]? = some (.Vlong q)) (hv : le[vid]? = some (.Vlong x)) :
     ∀ n k (m : mem), k + n < 8 → q.toNat + 8 ≤ 65536 * E.cap →
@@ -477,12 +538,12 @@ theorem exec_addr {le : temp_env} {m : mem} {h : Nat} {a : UInt32}
   omega
 
 theorem eval_bounds (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
-    (h : MemRel E wm caps m) {le : temp_env} {t : ident} {q : UInt64}
+    (h : MemRel E wm caps m) {le : temp_env} {t : ident} {q : UInt64} (w : Nat) (hw : w ≤ 8)
     (ht : le[t]? = some (.Vlong q)) (hq : q.toNat < 2 ^ 33) :
     ∃ v, eval_expr A E.ge empty_env le m
-      (.Ebinop .Ogt (.Ebinop .Oadd (.Etempvar t tulong) (clong 8) tulong)
+      (.Ebinop .Ogt (.Ebinop .Oadd (.Etempvar t tulong) (clong w) tulong)
         (.Ebinop .Omul (.Ecast pagesVar tulong) (clong 65536) tulong) tint) v ∧
-      bool_val v tint m = some (decide (wm.pages * 65536 < q.toNat + 8)) := by
+      bool_val v tint m = some (decide (wm.pages * 65536 < q.toNat + w)) := by
   have hcap := hE.cap
   have hp := h.le_cap
   refine ⟨_, .eval_Ebinop _ _ _ _ _ _ _
@@ -491,14 +552,14 @@ theorem eval_bounds (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
     (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Ecast _ _ _ _ (eval_global_int hE.pages h.pages)
       (cast_uint_long m _)) (.eval_Econst_long _ _) (sem_mul_ll A m _ _))
     (sem_gt_ll A m _ _), ?_⟩
-  have e : (UInt64.ofNat (UInt32.ofNat wm.pages).toNat * UInt64.ofNat 65536 < q + UInt64.ofNat 8) ↔
-      wm.pages * 65536 < q.toNat + 8 := by
+  have e : (UInt64.ofNat (UInt32.ofNat wm.pages).toNat * UInt64.ofNat 65536 < q + UInt64.ofNat w) ↔
+      wm.pages * 65536 < q.toNat + w := by
     have hP : (UInt32.ofNat wm.pages).toNat = wm.pages := by
       rw [UInt32.toNat_ofNat']; omega
     rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_mul, UInt64.toNat_add, hP,
       toNat_ofNat64 (by omega), toNat_ofNat64 (by omega), toNat_ofNat64 (by omega),
       Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
-  by_cases hc : wm.pages * 65536 < q.toNat + 8
+  by_cases hc : wm.pages * 65536 < q.toNat + w
   · rw [ite_eq_left (e.mpr hc), decide_eq_true hc]; exact bool_int m 1
   · rw [ite_eq_right (fun x => hc (e.mp x)), decide_eq_false hc]; exact bool_int m 0
 
@@ -528,9 +589,9 @@ variable {A : Archi} {X : ExtSem} {E : Env} {mod : Module} {c : FCtx}
 /-- The address of an access whose eight bytes lie in memory is below `2 ^ 32` and does not wrap
 in Talos's 32-bit sum. -/
 theorem addr_fits (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
-    (h : MemRel E wm caps m) {a off : UInt32}
-    (hin : ¬ a.toNat + off.toNat + 8 > wm.pages * 65536) :
-    (a + off).toNat = a.toNat + off.toNat ∧ a.toNat + off.toNat + 8 ≤ 65536 * E.cap := by
+    (h : MemRel E wm caps m) {a off : UInt32} {w : Nat}
+    (hin : ¬ a.toNat + off.toNat + w > wm.pages * 65536) :
+    (a + off).toNat = a.toNat + off.toNat ∧ a.toNat + off.toNat + w ≤ 65536 * E.cap := by
   have := hE.cap
   have := h.le_cap
   refine ⟨?_, by omega⟩
@@ -559,7 +620,7 @@ theorem sim_load64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
       have ht1 : (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat))))[
           slotId σr.length .i64]? = some (.Vlong (UInt64.ofNat (a.toNat + off.toNat))) :=
         te_insert_same _ _ _
-      obtain ⟨vb, hvb, hbb⟩ := eval_bounds (A := A) hE hmr ht1 (by rw [hq]; omega)
+      obtain ⟨vb, hvb, hbb⟩ := eval_bounds (A := A) hE hmr 8 (by omega) ht1 (by rw [hq]; omega)
       by_cases hob : a.toNat + off.toNat + 8 > st.mem.pages * 65536
       · rw [ite_eq_left hob]
         obtain ⟨m', hxt, hg, hs⟩ := trap_exec (A := A) (X := X)
@@ -597,7 +658,7 @@ theorem sim_load64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
             exact .exec_Sset _ _ _ _ _ _ e
         have hbo : exec_stmt A X E.ge empty_env
             (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
-            (boundsCheck c.result (slotId σr.length .i64)) E0
+            (boundsCheck 8 c.result (slotId σr.length .i64)) E0
             (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
             .Out_normal := by
           refine .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hvb ?_ (.exec_Sskip _ _ _)
@@ -645,7 +706,7 @@ theorem sim_store64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
       have hx' : (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat))))[
           slotId (σr.length + 1) .i64]? = some (.Vlong x) := by
         rw [te_insert_ne _ (slotId_ne_of_height _ _ (by omega))]; exact hx
-      obtain ⟨vb, hvb, hbb⟩ := eval_bounds (A := A) hE hmr ht1 (by rw [hq]; omega)
+      obtain ⟨vb, hvb, hbb⟩ := eval_bounds (A := A) hE hmr 8 (by omega) ht1 (by rw [hq]; omega)
       have hfr : Frame σr.length le
           (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) :=
         Frame.insert_slot _ _ _ _ (Nat.le_refl _)
@@ -667,7 +728,7 @@ theorem sim_store64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
         obtain ⟨va, hva, hba⟩ := eval_aligned (A := A) (E := E) (m := m) ht1
         have hbo : exec_stmt A X E.ge empty_env
             (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
-            (boundsCheck c.result (slotId σr.length .i64)) E0
+            (boundsCheck 8 c.result (slotId σr.length .i64)) E0
             (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
             .Out_normal := by
           refine .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hvb ?_ (.exec_Sskip _ _ _)
@@ -701,6 +762,153 @@ theorem sim_store64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
         obtain ⟨m', hx2, hs', hmr'⟩ := hst
         refine ⟨σr, rfl, hb, E0 ++ (E0 ++ E0),
           le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat))), m',
+          .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hx1 (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hbo hx2),
+          ?_, hfr.mono hb⟩
+        exact { stack := hrest.frame hfr
+                locals := hinv.locals.insert_other _ (fun i => slotId_ne_localId _ _ i)
+                store := ⟨GlobalsRel.sameExcept hinv.store.1 hs' hE.mem_not, hmr'⟩
+                status := hinv.status.sameExcept hs' (Ne.symm hE.mem_status)
+                brk := brk_insert_slot _ _ _ hinv.brk }
+
+theorem sim_load8U (hE : EnvOk E) (F : Nat) (off : UInt32) :
+    InstrSim A X E mod c F (.load8U off) := by
+  intro L σ n s σ' n' h hbase α st sl le m env hinv
+  rcases σ with _ | ⟨a0, σr⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at h
+  obtain ⟨_, ⟨_, rfl⟩, rfl, rfl, rfl, rfl⟩ := h
+  have hb : curBase L ≤ σr.length := by simp at hbase; omega
+  cases F with
+  | zero => simp only [execOne.eq_def, Outcome]
+  | succ f' =>
+      obtain ⟨a, vr, hvs, ha, hrest⟩ := pop1_i32 hinv.stack
+      simp only [execOne.eq_def, hvs]
+      have hmr := hinv.store.2
+      have hcapE := hE.cap
+      have hpg := hmr.le_cap
+      have h32a := a.toNat_lt
+      have h32o := off.toNat_lt
+      have hq : (UInt64.ofNat (a.toNat + off.toNat)).toNat = a.toNat + off.toNat :=
+        toNat_ofNat64 (by omega)
+      have hx1 := exec_addr (A := A) (X := X) (E := E) (m := m) ha (slotId σr.length .i64) off
+      have ht1 : (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat))))[
+          slotId σr.length .i64]? = some (.Vlong (UInt64.ofNat (a.toNat + off.toNat))) :=
+        te_insert_same _ _ _
+      obtain ⟨vb, hvb, hbb⟩ := eval_bounds (A := A) hE hmr 1 (by omega) ht1 (by rw [hq]; omega)
+      by_cases hob : a.toNat + off.toNat + 1 > st.mem.pages * 65536
+      · rw [ite_eq_left hob]
+        obtain ⟨m', hxt, hg, hs⟩ := trap_exec (A := A) (X := X)
+          (le := le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat))))
+          hE hinv.store hinv.status trapOutOfBounds c.result
+        refine ⟨E0 ++ E0,
+          le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat))), m', ?_,
+          hg, by rw [trapCode_oob]; exact hs, by rw [trapCode_oob]; decide⟩
+        refine .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hx1
+          (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ ?_ (trapOut_ne_normal _))
+        refine .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hvb ?_ hxt
+        show bool_val vb tint m = some true
+        rw [hbb, hq]; simp; omega
+      · rw [ite_eq_right hob]
+        obtain ⟨hfit, hin⟩ := addr_fits hE hmr hob
+        have hr8 : st.mem.read8 (a + off) = st.mem.bytes (a.toNat + off.toNat) := by
+          rw [Wasm.Mem.read8, hfit]
+        simp only [hr8]
+        have hval : exec_stmt A X E.ge empty_env
+            (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
+            (.Sset (slotId σr.length .i32)
+              (.Ecast (byteAt c.cap (addrPlus (slotId σr.length .i64) 0)) tuint)) E0
+            ((le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))).insert
+              (slotId σr.length .i32) (.Vint (st.mem.bytes (a.toNat + off.toNat)).toUInt32)) m
+            .Out_normal := by
+          have ea := eval_addrPlus (A := A) (E := E) (m := m) ht1 0 (by rw [hq]; omega)
+          rw [Nat.add_zero, UInt64.ofNat_toNat] at ea
+          have e := eval_loadByte32 (A := A) hE hmr c.cap ea (typeof_addrPlus _ 0)
+            (by rw [hq]; omega)
+          rw [hq] at e
+          exact .exec_Sset _ _ _ _ _ _ e
+        have hbo : exec_stmt A X E.ge empty_env
+            (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
+            (boundsCheck 1 c.result (slotId σr.length .i64)) E0
+            (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
+            .Out_normal := by
+          refine .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hvb ?_ (.exec_Sskip _ _ _)
+          show bool_val vb tint m = some false
+          rw [hbb, hq]; simp; omega
+        have hfr : Frame σr.length le
+            ((le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))).insert
+              (slotId σr.length .i32) (.Vint (st.mem.bytes (a.toNat + off.toNat)).toUInt32)) :=
+          (Frame.insert_slot _ _ _ _ (Nat.le_refl _)).trans
+            (Frame.insert_slot _ _ _ _ (Nat.le_refl _))
+        refine ⟨.i32 :: σr, rfl, by simp; omega, E0 ++ (E0 ++ E0),
+          (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))).insert
+            (slotId σr.length .i32) (.Vint (st.mem.bytes (a.toNat + off.toNat)).toUInt32), m,
+          .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hx1 (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hbo hval),
+          ?_, hfr.mono hb⟩
+        exact { stack := ⟨rfl, te_insert_same _ _ _, hrest.frame hfr⟩
+                locals := (hinv.locals.insert_other _ (fun i => slotId_ne_localId _ _ i)).insert_other _
+                  (fun i => slotId_ne_localId _ _ i)
+                store := hinv.store
+                status := hinv.status
+                brk := brk_insert_slot _ _ _ (brk_insert_slot _ _ _ hinv.brk) }
+
+theorem sim_store8 (hE : EnvOk E) (F : Nat) (off : UInt32) :
+    InstrSim A X E mod c F (.store8 off) := by
+  intro L σ n s σ' n' h hbase α st sl le m env hinv
+  rcases σ with _ | ⟨a0, _ | ⟨b0, σr⟩⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at h
+  obtain ⟨hb, ⟨rfl, rfl⟩, rfl, rfl, rfl⟩ := h
+  cases F with
+  | zero => simp only [execOne.eq_def, Outcome]
+  | succ f' =>
+      obtain ⟨x, a, vr, hvs, hx, ha, hrest⟩ := pop2_i32 hinv.stack
+      simp only [execOne.eq_def, hvs]
+      have hmr := hinv.store.2
+      have hcapE := hE.cap
+      have hpg := hmr.le_cap
+      have h32a := a.toNat_lt
+      have h32o := off.toNat_lt
+      have hq : (UInt64.ofNat (a.toNat + off.toNat)).toNat = a.toNat + off.toNat :=
+        toNat_ofNat64 (by omega)
+      have hx1 := exec_addr (A := A) (X := X) (E := E) (m := m) ha (slotId σr.length .i64) off
+      have ht1 : (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat))))[
+          slotId σr.length .i64]? = some (.Vlong (UInt64.ofNat (a.toNat + off.toNat))) :=
+        te_insert_same _ _ _
+      have hx' : (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat))))[
+          slotId (σr.length + 1) .i32]? = some (.Vint x) := by
+        rw [te_insert_ne _ (slotId_ne_of_height _ _ (by omega))]; exact hx
+      obtain ⟨vb, hvb, hbb⟩ := eval_bounds (A := A) hE hmr 1 (by omega) ht1 (by rw [hq]; omega)
+      have hfr : Frame σr.length le
+          (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) :=
+        Frame.insert_slot _ _ _ _ (Nat.le_refl _)
+      by_cases hob : a.toNat + off.toNat + 1 > st.mem.pages * 65536
+      · rw [ite_eq_left hob]
+        obtain ⟨m', hxt, hg, hs⟩ := trap_exec (A := A) (X := X)
+          (le := le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat))))
+          hE hinv.store hinv.status trapOutOfBounds c.result
+        refine ⟨E0 ++ E0,
+          le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat))), m', ?_,
+          hg, by rw [trapCode_oob]; exact hs, by rw [trapCode_oob]; decide⟩
+        refine .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hx1
+          (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ ?_ (trapOut_ne_normal _))
+        refine .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hvb ?_ hxt
+        show bool_val vb tint m = some true
+        rw [hbb, hq]; simp; omega
+      · rw [ite_eq_right hob]
+        obtain ⟨hfit, hin⟩ := addr_fits hE hmr hob
+        have hbo : exec_stmt A X E.ge empty_env
+            (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
+            (boundsCheck 1 c.result (slotId σr.length .i64)) E0
+            (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
+            .Out_normal := by
+          refine .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hvb ?_ (.exec_Sskip _ _ _)
+          show bool_val vb tint m = some false
+          rw [hbb, hq]; simp; omega
+        have hx2 := exec_store8 (A := A) (X := X) hE c.cap ht1 hx' (by rw [hq]; omega)
+          (fun i hi => hmr.perm i hi)
+        rw [hq] at hx2
+        have hmr' := hmr.store_byte hE (a + off) x.toUInt8
+        rw [hfit] at hmr'
+        have hs' : Mem.SameExcept E.mem m (Mem.stored .Mint8unsigned m E.mem (a.toNat + off.toNat)
+            (.Vint (UInt32.ofNat (x.toUInt8.toNat % 256)))) := Mem.SameExcept.of_stored _ _ _ _ _
+        refine ⟨σr, rfl, hb, E0 ++ (E0 ++ E0),
+          le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat))), _,
           .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hx1 (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hbo hx2),
           ?_, hfr.mono hb⟩
         exact { stack := hrest.frame hfr
