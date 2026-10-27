@@ -36463,3 +36463,7 @@ The review's figures held against the code except where noted here.  The output 
 | Timings | Stated for one run on one aarch64 Linux machine, with a sentence that they vary | They come from one run. |
 
 On the build host, `tests/verified/run.sh --cases slew` passed in 92 s after `tools/build-wasmtime-host.sh` rebuilt the host, which `main`'s newer `tools/wasmtime-host.c` required: 100,000 edges agree, the audit passed for 12 theorems, the file theorems carry only the permitted axioms, and 2,077 cases passed with none failing.  The link check passes, and `tools/source-layout` reports no problems.
+
+## 2026-10-27: The slew branch's full check after the merge
+
+The slew branch's full check, after the merge with typed-fields stage 1, passed the host rebuild and the 16 heavy proofs one at a time.  The aggregate build then failed at job 10,659 of 10,848, and the check reruns on another build host.
