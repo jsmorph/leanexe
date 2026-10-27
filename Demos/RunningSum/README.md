@@ -42,7 +42,7 @@ Each completed line produces output before the next blocking read.
 | [Integer process correctness](StreamCorrect.lean) | `InputValues`, native process termination, and the canonical cumulative output of the lines before the first rejected line. |
 | [Compiled termination](TerminationTarget.lean) | Well-founded process progress, an invariant of the reached states, typed allocation charges, and accepted exit. |
 | [Limits and invariant](Limits.lean) | `InputLimits L D`, the kernel specification `limitSpec L D`, the invariant `LimitInv L D` of the reached states, and the sizes of every state that a step returns. |
-| [Charges](Charges.lean) | The allocation charges of `begin` and of each step, from the generated bounds of the pure functions, and their bound `stepCharge L D` for states within the limits. |
+| [Charges](Charges.lean) | The allocation charges of `begin` and of each step, from the generated bounds of the pure functions, the bound of 4,320 bytes on the charge of `begin`, and the bound `stepCharge L D` on the charge of a step from a state within the limits. |
 | [Compiled integer correctness](Correct.lean) | Cumulative stdout and eventual accepted exit with status 0 or 28 from the modeled initial store, with an encoded-byte theorem. |
 | [Native executable](Native.lean) | The same process with a [POSIX fd 0 reader](read.c) and flushed Lean output streams. |
 
@@ -51,12 +51,13 @@ Each completed line produces output before the next blocking read.
 the first line that is not a decimal integer, with `status` 0 when every line is one and 28
 otherwise.  `inputValues_exist` and `inputValues_unique` show that every input within the size
 bounds determines one such pair.  `process_terminates_integer` connects the native process to
-the cumulative sums of `values`.  `initial_terminates_integer` proves, for every input within the
-size bounds and the limits `L` and `D` whose memory need fits, that the compiled command
-eventually exits with accepted status `status` and writes exactly those sums in canonical signed
-decimal form, each followed by LF.  It supplies a fuel threshold valid for every larger Talos fuel
-value.  `initial_terminates_integer_9000000` fixes both limits at 9,000,000, for which the
-memory need fits.  `integer_bytes` combines the general theorem with encoding, exact decoding, and
+the cumulative sums of `values`.  `initial_terminates_integer` proves, for all limits `L` and `D`
+with `4104 + limitMemory L D ≤ 65536 · 65535` and every input within the size bounds and those
+limits, that the compiled command eventually exits with accepted status `status` and writes
+exactly those sums in canonical signed decimal form, each followed by LF.  It supplies a fuel
+threshold valid for every larger Talos fuel value.  `initial_terminates_integer_9000000` fixes
+both limits at 9,000,000, for which that inequality holds.  `integer_bytes` combines the general
+theorem with encoding, exact decoding, and
 binary validity.  Talos represents accepted `proc_exit` by the
 designated exit trap and records the status in the final host world.
 
@@ -64,20 +65,24 @@ The theorem starts with an empty event journal and output history and uses these
 
 | Premise | Requirement |
 |---|---|
-| [Integer sizes](Model.lean) | `InputBounds` requires `line.size + 3 < 2^64` for each line of the input and `integerDigitCount total + 3 < 2^64` for the total of each prefix of valid lines.  These conditions bound lines and sums for their meaning. |
+| [Integer sizes](Model.lean) | `InputBounds` requires `line.size + 3 < 2^64` for each line of the input and `integerDigitCount total + 3 < 2^64` for the total of each prefix of valid lines.  These conditions give the kernel's size condition `Room`, `max total.digits.size line.size + 3 < 2^64`, at each line. |
 | [Limits](Limits.lean) | `InputLimits L D` requires at most `L` bytes in each line up to and including the first line that is not a decimal integer, and at most `D` digits in the total after each line before it. |
 | [Memory](Correct.lean) | The literal pool ends 4,104 bytes into memory, and that end plus `limitMemory L D = 220 · (L + D) + 1,010,000` bytes must lie within the memory cap of 65,535 pages. |
 | [Host behavior](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful reads and writes, consumes input prefixes, reports empty input only at EOF, and commits output prefixes.  Each zero-byte write decreases a proof-only natural-valued credit, and a read or a write of at least one byte may set the credit to any value.  The Talos host also satisfies the WASI specification. |
 | [Final exit](Correct.lean) | `ExitAccepted` excludes rejection of status 0 or 28 at represented host worlds. |
 
 The process compacts its state after `begin` and after each step: it copies the state above the
-heap's top and moves the copy down to the heap's base, so between steps the heap holds the literal
-pool and one state.  The memory a run needs therefore does not grow with the input.  Each step
-needs room for the copy of the state before it, its allocation, and the copy of the state after
-it.  Within the limits, a copy of a state costs at most `9 · D + 8 · L + 4,320` bytes, and a step at
-most `200 · (L + D) + 1,000,500` bytes: a step that consumes input pushes at most 4,096 bytes onto
-the pending line at 80 bytes each and completes at most one line.  These bounds concern native
-states and stream positions, and the invariant `LimitInv L D` carries them from step to step.
+heap's top and moves the copy down to the heap's base, the heap top when `_start` began, so
+between steps the heap holds the literal pool and one state.  The memory a run needs therefore does
+not grow with the number of lines or the total length of the input.  Each step needs room for the
+copy of the state before it, its allocation, and the copy of the state after it.  Within the
+limits, a copy of a state costs at most `9 · D + 8 · L + 4,320` bytes, and a step at most
+`200 · (L + D) + 1,000,500` bytes: a step that consumes input pushes at most 4,096 bytes onto the
+pending line at 80 bytes each and completes at most one line.  `limitMemory L D` covers both
+copies and the step, as `limitMemory_room` proves:
+`2 · (9 · D + 8 · L + 4,320) + 200 · (L + D) + 1,000,500 ≤ 220 · (L + D) + 1,010,000`.  These
+bounds concern native states and stream positions, and the invariant `LimitInv L D` carries them
+from step to step.
 
 `implements` and `run_initial` remain partial refinement theorems.  They classify every modeled
 run that completes without exhausting Talos fuel.  A normally stopped native process returns
@@ -89,9 +94,9 @@ store.  `bytes` combines the execution statement with encoding, exact decoding, 
 validity.
 
 The compiled refinement requires a host satisfying the WASI specification, the allocator
-invariant, valid static bytes, and a memory cap of at most 65,535 pages.  The loop compacts the
-state after `begin` and after each completed step.  [The WASI manual](../../docs/wasi.md) states the host, engine, and
-file-emission assumptions.  The generic
+invariant with an empty free list, valid static bytes, and a memory cap of at most 65,535 pages.
+[The WASI manual](../../docs/wasi.md) states the host, engine, and file-emission assumptions.
+The generic
 [total-process theorem](../../Verified/Wasi/ProcessTotalCorrect.lean) uses an application-supplied
 well-founded progress relation, step charges with room for the copies of the state, and final-exit
 acceptance.
