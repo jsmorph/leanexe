@@ -10,8 +10,8 @@
 # image at EL2 and EL3, it must report the level and exit with status 254.  QEMU's
 # device tree must place the PL011 at the address of lx_out in tools/baremetal/link.ld.  The
 # reports' stack high-water marks, 16,048 and 48 bytes, are those of CompCert 3.18's code.  CCOMP
-# and CCOMP_STDLIB are as for tools/baremetal/build.sh; NM, QEMU, and DTC name nm for AArch64
-# objects, qemu-system-aarch64, and the device-tree compiler.
+# and CCOMP_STDLIB are as for tools/baremetal/build.sh, and NM, QEMU, and DTC name nm for
+# AArch64 objects, qemu-system-aarch64, and the device-tree compiler.
 # Usage: tests/baremetal/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -39,8 +39,8 @@ run() {
     -kernel "$1" </dev/null || code=$?
 }
 
-"$root/tools/baremetal/build.sh" "$here/probe.c" "$out/probe.elf"
-undefined=$("$nm" -u "$out/probe.elf.program.o" | awk '{print $2}' | paste -sd' ')
+"$root/tools/baremetal/build.sh" "$out/probe.elf" "$here/probe.c"
+undefined=$("$nm" -u "$out/probe.elf.probe.o" | awk '{print $2}' | paste -sd' ')
 if [ "$undefined" != "lx_out" ]; then
   fail "probe.c names undefined symbols other than lx_out: $undefined"
 fi
@@ -50,19 +50,19 @@ if [ "$code" -ne 42 ] || ! diff "$here/probe.expected" <(grep -v '^R:' "$out/ser
   fail "probe.c gave status $code and $(paste -sd' ' "$out/serial.txt")"
 fi
 
-"$root/tools/baremetal/build.sh" "$here/probe.c" "$out/unaligned.elf" -DUNALIGNED_TEST
+"$root/tools/baremetal/build.sh" "$out/unaligned.elf" "$here/probe.c" -- -DUNALIGNED_TEST
 run "$out/unaligned.elf"
 if [ "$code" -ne 42 ] || ! diff "$here/probe.expected" <(grep -v '^R:' "$out/serial.txt"); then
   fail "probe.c after an unaligned load gave status $code and $(paste -sd' ' "$out/serial.txt")"
 fi
 
-"$root/tools/baremetal/build.sh" "$here/probe.c" "$out/nofp.elf" -DNO_FPEN
+"$root/tools/baremetal/build.sh" "$out/nofp.elf" "$here/probe.c" -- -DNO_FPEN
 run "$out/nofp.elf"
 if [ "$code" -ne 255 ] || ! grep -q '^R:exception 4 esr 0x000000001fe00000 ' "$out/serial.txt"; then
   fail "probe.c without floating point gave status $code and $(paste -sd' ' "$out/serial.txt")"
 fi
 
-"$root/tools/baremetal/build.sh" "$here/entry.c" "$out/entry.elf"
+"$root/tools/baremetal/build.sh" "$out/entry.elf" "$here/entry.c"
 run "$out/entry.elf"
 if [ "$code" -ne 0 ] || ! diff "$here/entry.expected" <(grep -v '^R:' "$out/serial.txt") ||
     ! grep -qx 'R:exit 0 el 1 stack 48' "$out/serial.txt"; then

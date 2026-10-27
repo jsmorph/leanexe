@@ -36619,7 +36619,7 @@ The module cases of `tests/TestSupport/Native/ModuleCases.lean`, 3,096 of `euler
 ### Plan
 
 - [x] B0 · Toolchain: `tools/baremetal/` with the startup code, the linker script, the build script, and the device-tree check.  Exit: the experiment's programs build from the repository and run under QEMU.
-- [ ] B1 · Corpus under QEMU: the freestanding test host and a driver beside `tests/native/verified.sh`.  Exit: every translated case and every module case passes under QEMU.
+- [x] B1 · Corpus under QEMU: the freestanding test host and a driver beside `tests/native/verified.sh`.  Exit: every translated case and every module case passes under QEMU.
 - [ ] B2 · Lean copy: `bigstep_program_terminates`, `type_int32s`, `find_var_info`, `block_is_volatile`, `eventval_match`, `load_result`, `volatile_store`, `EF_vstore`, and differential tests against `ccomp -interp -trace 1`.  Exit: no difference in either CompCert configuration.
 - [ ] B3 · Whole program: `bareProgram`, the prefix of CompCert's declarations, `init_mem` and `start` for it, the renaming lemma, and the check of the whole program.  Exit: `start` holds for `bareProgram` of every corpus module, and the check passes for each.
 - [ ] B4 · Generated `main`: its writer, its proof, and `p.run.program` from a command.  Exit: GCD, CRC-32, SHA-256, an Euler solve, and a recursion at the depth limit run under QEMU with their theorems, and their output equals `encode` of the Lean result.
@@ -36660,3 +36660,97 @@ Four changes close B0.  The volatile global is `lx_out`, as the design names it.
 - [x] B0: `tests/baremetal/run.sh` passes with the check of the exception level, the masking of interrupts, and `lx_out`.
 - [x] `rocq/check.sh` passes against CompCert 3.18's proofs for AArch64.
 - [ ] B5: the uniqueness lemma.
+
+### B1
+
+`tests/baremetal/verified.sh` runs the cases of `tests/native/verified.sh` under QEMU.  `native-verified` writes the C text, the glue, and the exports of each module of `tests/verified/modules.txt`, and CompCert compiles them with `tools/native-host.c`, unchanged except that `-Dmain=host_main` renames its `main`, and with `tools/baremetal/libc`, the replacement of the parts of libc that the host uses, about 160 lines of C and three headers.  `tools/baremetal/build.sh` now takes C files and objects after the output's name and the startup code's definitions after `--`, so it links the host's four objects.  Each case runs in its own QEMU process with a stack of 4 MiB, four processes at a time, under the rules of `tests/native/verified.sh`.  A case also fails when it reports an exception or a stack high-water mark of the whole stack.
+
+The whole corpus ran under qemu-system-aarch64 8.2.2 on AArch64 with CompCert 3.18 configured for `aarch64-linux`.  All 32,547 cases that run passed, the module cases of `euler` and of `shapes` on `sums` included, in 1,512 seconds.  The 3,581 cases that do not run call functions that use binary32 forms, which the translation leaves out until M6.  `heapsums`, whose typed fields use `load8U` and `store8`, has no translation, and every other module compiled and linked without libc.  The first run stopped at `Library.Numerics.Float64.Tgamma.Compiled`, whose build the clone lacked, and the second ran after building it.
+
+The table gives, for each module with cases, the cases that pass, the cases that do not run, the largest stack high-water mark of its cases, and the static bound of its deepest function from the script of the stack experiment, with 1,001 frames of functions that take the depth.  No case failed.
+
+| Module | Passed | Not run | High-water mark | Bound |
+| --- | --- | --- | --- | --- |
+| `arrays` | 170 | 0 | 6,160 | 48 |
+| `byhand` | 10 | 0 | 6,112 | 48 |
+| `calls` | 372 | 0 | 6,112 | 96 |
+| `clob` | 3,990 | 0 | 6,160 | 320 |
+| `composition` | 120 | 0 | 6,160 | 32 |
+| `crc` | 270 | 0 | 6,112 | 48 |
+| `drone` | 577 | 0 | 6,368 | 576 |
+| `elements` | 158 | 0 | 6,160 | 112 |
+| `enums` | 214 | 0 | 6,160 | 112 |
+| `euler` | 3,096 | 0 | 7,552 | 1,760 |
+| `exp` | 337 | 0 | 6,160 | 80 |
+| `fields` | 97 | 0 | 6,160 | 160 |
+| `floats32` | 99 | 2,678 | 6,160 | 48 |
+| `floats` | 1,141 | 0 | 6,160 | 48 |
+| `fold` | 108 | 0 | 21,872 | 16,064 |
+| `fourier` | 118 | 0 | 6,160 | 560 |
+| `frontend` | 308 | 0 | 6,160 | 128 |
+| `gpt32` | 0 | 220 | none | 16 |
+| `grids` | 84 | 0 | 6,160 | 128 |
+| `grow` | 154 | 0 | 6,160 | 128 |
+| `hmac_sha256` | 136 | 0 | 7,120 | 1,328 |
+| `hmac_sha512` | 136 | 0 | 7,120 | 1,328 |
+| `insert` | 327 | 0 | 6,160 | 160 |
+| `lcg` | 192 | 0 | 6,160 | 64 |
+| `lets` | 196 | 0 | 6,112 | 16 |
+| `libbounds` | 2,112 | 0 | 6,160 | 144 |
+| `libceilsqrt` | 10 | 0 | 6,112 | 16 |
+| `libfilter` | 80 | 0 | 6,160 | 160 |
+| `libfloatreductions` | 60 | 0 | 6,256 | 64,064 |
+| `liblinalg32` | 0 | 185 | none | 16 |
+| `liblinalg64` | 62 | 0 | 6,160 | 96 |
+| `liblists` | 283 | 0 | 37,840 | 32,048 |
+| `libminmod` | 256 | 0 | 6,160 | 16 |
+| `librange` | 9 | 0 | 6,160 | 112 |
+| `librepeat` | 20 | 0 | 6,160 | 128 |
+| `libsearch` | 155 | 0 | 6,160 | 16 |
+| `libsort` | 5 | 0 | 6,160 | 128 |
+| `libtrees` | 144 | 0 | 333,584 | 64,080 |
+| `libwordarray` | 10 | 0 | 6,160 | 80 |
+| `libwordreductions` | 75 | 0 | 6,112 | 16 |
+| `listloops` | 151 | 0 | 6,160 | 80 |
+| `listrecursion` | 82 | 0 | 37,840 | 32,048 |
+| `lists` | 2,080 | 117 | 21,856 | 16,048 |
+| `listtail` | 234 | 0 | 6,160 | 48 |
+| `log` | 230 | 0 | 6,160 | 80 |
+| `loops` | 488 | 0 | 6,160 | 64 |
+| `mix` | 184 | 0 | 6,112 | 16 |
+| `modes` | 120 | 0 | 6,160 | 80 |
+| `owned` | 187 | 0 | 6,160 | 80 |
+| `pairs` | 2,525 | 0 | 6,160 | 144 |
+| `parkmiller` | 78 | 0 | 6,112 | 48 |
+| `poly` | 184 | 0 | 6,112 | 16 |
+| `records` | 195 | 0 | 6,160 | 80 |
+| `recursion` | 589 | 0 | 230,128 | 224,544 |
+| `recursivetypes` | 892 | 0 | 333,584 | 64,080 |
+| `regex` | 280 | 0 | 6,592 | 800 |
+| `relocation` | 167 | 22 | 6,160 | 80 |
+| `repeat` | 115 | 0 | 6,160 | 160 |
+| `scalarcomposition` | 152 | 22 | 6,160 | 48 |
+| `select` | 840 | 0 | 6,112 | 16 |
+| `sha256` | 145 | 0 | 6,608 | 816 |
+| `sha3` | 384 | 0 | 7,440 | 1,648 |
+| `sha512` | 405 | 0 | 6,624 | 832 |
+| `siphash` | 266 | 0 | 6,160 | 192 |
+| `sums` | 361 | 153 | 6,160 | 112 |
+| `tables` | 56 | 0 | 6,160 | 96 |
+| `taggedtypes` | 331 | 0 | 2,431,280 | 48,048 |
+| `tailconditions` | 72 | 0 | 6,160 | 16 |
+| `tailcore` | 20 | 0 | 6,160 | 128 |
+| `tail` | 116 | 0 | 21,824 | 16,048 |
+| `tanh` | 488 | 0 | 6,160 | 112 |
+| `treecopy` | 345 | 0 | 333,584 | 80 |
+| `treecore` | 1,950 | 0 | 6,160 | 112 |
+| `trig` | 1,540 | 0 | 6,160 | 336 |
+| `tuples` | 80 | 0 | 6,160 | 96 |
+| `updates` | 116 | 0 | 6,160 | 80 |
+| `wgsl` | 49 | 184 | 6,160 | 80 |
+| `xorshift` | 193 | 0 | 6,160 | 160 |
+| `xxhash64` | 166 | 0 | 6,112 | 112 |
+
+The high-water mark includes the test host's frames, 5,792 bytes on the path to an export.  In ten modules the mark equals that sum plus the bound: `drone`, `euler`, `hmac_sha256`, `hmac_sha512`, `liblists`, `listrecursion`, `regex`, `sha256`, `sha3`, and `sha512`.  In four it lies below the sum, by 16 to 63,600 bytes, because no case reaches the deepest chain: `recursion` reaches 230,128 bytes through `deep`, whose bound, 224,336 bytes, is 208 below that of the module's deepest function, and the cases of `libfloatreductions` stay far from the depth limit.  In 59 modules the mark exceeds the sum by 16 to 352 bytes, which the host's parsing and printing take.  In four modules the host's recursion over its arguments takes most of the stack: `alloc_records` takes 592 bytes for each record of a `records-u64` argument nested 4,096 deep in `taggedtypes`, which gives 2,431,280 bytes, and `alloc_u64_tree` takes 80 bytes for each node of the trees of `libtrees`, `recursivetypes`, and `treecopy`, which gives 333,584.  The largest bound of module code in all 98 translations is 224,544 bytes, in `recursion`, so a program with a generated `main` needs a quarter of the stack of 1 MiB that the design plans, while the test host needs the 4 MiB that `verified.sh` gives it.
+
+- [x] B1: the freestanding host, the libc replacement, and `tests/baremetal/verified.sh`; every case that runs passes under QEMU, and every translated module builds.
