@@ -1,22 +1,31 @@
 /* The layout of a CompCert program on QEMU's virt machine for AArch64.  RAM starts at
    0x40000000, where QEMU places the device tree for a bare-metal guest, so the image starts 1 MiB
-   higher.  An exception stack of 4 KiB and the stack of STACK_SIZE bytes, which the linker's
-   --defsym sets, follow .bss.  lx_uart_dr is the data register of the PL011 UART that QEMU 8.2.2's
-   device tree gives. */
+   higher.  Code and read-only data form one segment, readable and executable, and data and .bss
+   another, readable and writable.  An exception stack of 4 KiB and the stack of STACK_SIZE bytes,
+   which the linker's --defsym sets, follow .bss.  lx_out is the data register of the PL011 UART
+   that QEMU 8.2.2's device tree gives. */
 ENTRY(_start)
+PHDRS
+{
+  text PT_LOAD FLAGS(5);
+  data PT_LOAD FLAGS(6);
+}
 SECTIONS
 {
   . = 0x40100000;
-  .text : { KEEP(*(.text.boot)) *(.text .text.*) }
-  .rodata : { *(.rodata .rodata.*) }
-  .data : { *(.data .data.*) }
+  .text : { KEEP(*(.text.boot)) *(.text .text.*) } :text
+  .rodata : { *(.rodata .rodata.*) } :text
+  .eh_frame : { *(.eh_frame) } :text
+  . = ALIGN(4096);
+  .data : { *(.data .data.*) } :data
+  .got : { *(.got .got.plt) } :data
   .bss (NOLOAD) : {
     . = ALIGN(16);
     __bss_start = .;
     *(.bss .bss.*) *(COMMON)
     . = ALIGN(16);
     __bss_end = .;
-  }
+  } :data
   . = ALIGN(4096);
   __exc_stack_bottom = .;
   . += 0x1000;
@@ -24,5 +33,5 @@ SECTIONS
   __stack_bottom = .;
   . += STACK_SIZE;
   __stack_top = .;
-  lx_uart_dr = 0x09000000;
+  lx_out = 0x09000000;
 }

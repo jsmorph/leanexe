@@ -2,13 +2,14 @@
    writes "R:exit", the status, the exception level at entry, and the stack's high-water mark in
    bytes, the part of the stack whose fill pattern changed.  lx_report_exception writes
    "R:exception", the vector's index, ESR_EL1, ELR_EL1, and FAR_EL1, and returns 255, the exit
-   status. */
+   status.  lx_report_level writes "R:level" and the exception level at entry when it is not 1, and
+   returns 254. */
 
-extern volatile unsigned int lx_uart_dr;
+extern volatile unsigned int lx_out;
 extern unsigned long long __stack_bottom[];
 extern unsigned long long __stack_top[];
 
-static void out(char c) { lx_uart_dr = (unsigned char) c; }
+static void out(char c) { lx_out = (unsigned char) c; }
 
 static void outs(const char *s) { while (*s) out(*s++); }
 
@@ -50,4 +51,11 @@ unsigned int lx_report_exception(unsigned long long n, unsigned long long esr,
   outhex(far);
   outs("\n");
   return 255U;
+}
+
+unsigned int lx_report_level(unsigned long long el) {
+  outs("R:level ");
+  outdec(el);
+  outs("\n");
+  return 254U;
 }

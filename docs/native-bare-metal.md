@@ -147,8 +147,8 @@ The startup code is GNU assembly, about fifty instructions and a table of except
 
 | Step | Instructions | Reason |
 | --- | --- | --- |
-| Check the exception level | `mrs CurrentEL` | QEMU enters the image at EL1, as the experiment found.  At another level the code stops with a message |
-| Mask interrupts | `msr daifset, #0xf` | DAIF was `0x3c0`, all masked, at entry under QEMU.  A board's firmware may differ |
+| Mask interrupts | `msr daifset, #0xf`, after recording DAIF | DAIF was `0x3c0`, all masked, at entry under QEMU.  A board's firmware may differ |
+| Check the exception level | `mrs CurrentEL` | QEMU enters the image at EL1, as the experiment found.  At another level the code reports the level and exits with status 254, which QEMU's machines with the virtualization and security extensions, entering at EL2 and EL3, confirm |
 | Install the vectors | `msr VBAR_EL1` | 16 entries of 128 bytes at a 2 KiB boundary.  Each reports `ESR_EL1`, `ELR_EL1`, and `FAR_EL1` and exits with status 255 |
 | Enable floating point | `CPACR_EL1.FPEN = 0b11`, then `isb` | FPEN's reset value is unknown.  Without this step `main` trapped at its third instruction with exception class `0x07` |
 | Set the stack | `mov sp, __stack_top` | `SCTLR_EL1.SA` was 1 at entry, so the stack pointer must stay 16-byte aligned |

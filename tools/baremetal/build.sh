@@ -26,5 +26,6 @@ stack=${STACK_SIZE:-0x100000}
 "$ccomp" "${stdlib[@]}" -c "$program" -o "$out.program.o"
 "$ccomp" "${stdlib[@]}" -c "$here/report.c" -o "$out.report.o"
 "$ccomp" "${stdlib[@]}" "$@" -c "$here/start.S" -o "$out.start.o"
-"$ccomp" "${stdlib[@]}" -nostdlib -static -T "$here/link.ld" -Wl,--defsym,STACK_SIZE="$stack" \
+"$ccomp" "${stdlib[@]}" -nostdlib -static -T "$here/link.ld" -Wl,--build-id=none \
+  -Wl,--defsym,STACK_SIZE="$stack" \
   "$out.start.o" "$out.report.o" "$out.program.o" -o "$out"

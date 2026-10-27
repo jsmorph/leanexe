@@ -1,5 +1,5 @@
 /* A program in the form of the translator's output, with a main that writes nine words in
-   hexadecimal through lx_uart_dr, a volatile global at the UART's data register, and returns 42.
+   hexadecimal through lx_out, a volatile global at the UART's data register, and returns 42.
    The words are a recursion of depth 900 and its status, the same recursion past the depth limit
    of 1,000 and its status 1, the bits and the truncation of a sum of square roots computed
    through __builtin_fsqrt with the canonical-NaN test through lx_pun, an in-bounds update of
@@ -10,7 +10,7 @@ unsigned long long lx_g0 = 4096ULL;
 unsigned int lx_pages = 16U;
 unsigned long long lx_mem[33554432];
 unsigned long long lx_pun[1];
-extern volatile unsigned int lx_uart_dr;
+extern volatile unsigned int lx_out;
 
 unsigned long long lxf_depth(unsigned long long d, unsigned long long n) {
   unsigned long long r;
@@ -46,9 +46,9 @@ unsigned long long lxf_touch(unsigned long long a) {
 void emit_word(unsigned long long w) {
   int k;
   for (k = 60; k >= 0; k = k - 4) {
-    lx_uart_dr = (unsigned int) "0123456789abcdef"[(w >> k) & 15ULL];
+    lx_out = (unsigned int) "0123456789abcdef"[(w >> k) & 15ULL];
   }
-  lx_uart_dr = 10U;
+  lx_out = 10U;
 }
 
 int main(void) {

@@ -1,20 +1,26 @@
 /* The startup code of a CompCert program on QEMU's virt machine for AArch64, outside every
-   proof (docs/native-bare-metal.md).  It records the exception level, DAIF, and SCTLR_EL1 in
-   lx_boot_el, installs the exception vectors, enables floating point, sets the stack, fills the
-   stack with a pattern for the high-water mark, clears .bss, and calls main.  After main returns,
-   or after a call of lx_exit, it reports through lx_report_exit and exits through semihosting
-   with the status.  An exception reports its registers and exits with status 255.  Defining
-   NO_FPEN leaves floating point disabled, and defining UNALIGNED_TEST adds an unaligned 8-byte
-   load before main.  Both reproduce results of the design's experiments. */
+   proof (docs/native-bare-metal.md).  It masks interrupts, requires exception level 1, records
+   the exception level and the DAIF and SCTLR_EL1 that it found at entry in lx_boot_el, installs
+   the exception vectors, enables floating point, sets the stack, fills the stack with a pattern
+   for the high-water mark, clears .bss, and calls main.  After main returns, or after a call of
+   lx_exit, it reports through lx_report_exit and exits through semihosting with the status.  At
+   another exception level it reports the level and exits with status 254, and an exception
+   reports its registers and exits with status 255.  Defining NO_FPEN leaves floating point
+   disabled, and defining UNALIGNED_TEST adds an unaligned 8-byte load before main.  Both
+   reproduce results of the design's experiments. */
 
 #define PATTERN 0x5354414b5354414b
 
         .section .text.boot, "ax"
         .global _start
 _start:
+        mrs     x20, DAIF
+        msr     daifset, #0xf
         mrs     x19, CurrentEL
         lsr     x19, x19, #2
         and     x19, x19, #3
+        cmp     x19, #1
+        b.ne    wrong_level
         ldr     x0, =vectors
         msr     VBAR_EL1, x0
 #ifndef NO_FPEN
@@ -45,8 +51,7 @@ _start:
 #endif
         ldr     x0, =lx_boot_el
         str     x19, [x0]
-        mrs     x1, DAIF
-        str     x1, [x0, #8]
+        str     x20, [x0, #8]
         mrs     x1, SCTLR_EL1
         str     x1, [x0, #16]
         bl      main
@@ -73,6 +78,13 @@ vectors:
         mov     x0, #\n
         b       exception
         .endr
+
+wrong_level:
+        ldr     x1, =__exc_stack_top
+        mov     sp, x1
+        mov     x0, x19
+        bl      lx_report_level
+        b       exit
 
 exception:
         ldr     x1, =__exc_stack_top

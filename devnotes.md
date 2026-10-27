@@ -36618,7 +36618,7 @@ The module cases of `tests/TestSupport/Native/ModuleCases.lean`, 3,096 of `euler
 
 ### Plan
 
-- [ ] B0 · Toolchain: `tools/baremetal/` with the startup code, the linker script, the build script, and the device-tree check.  Exit: the experiment's programs build from the repository and run under QEMU.
+- [x] B0 · Toolchain: `tools/baremetal/` with the startup code, the linker script, the build script, and the device-tree check.  Exit: the experiment's programs build from the repository and run under QEMU.
 - [ ] B1 · Corpus under QEMU: the freestanding test host and a driver beside `tests/native/verified.sh`.  Exit: every translated case and every module case passes under QEMU.
 - [ ] B2 · Lean copy: `bigstep_program_terminates`, `type_int32s`, `find_var_info`, `block_is_volatile`, `eventval_match`, `load_result`, `volatile_store`, `EF_vstore`, and differential tests against `ccomp -interp -trace 1`.  Exit: no difference in either CompCert configuration.
 - [ ] B3 · Whole program: `bareProgram`, the prefix of CompCert's declarations, `init_mem` and `start` for it, the renaming lemma, and the check of the whole program.  Exit: `start` holds for `bareProgram` of every corpus module, and the check passes for each.
@@ -36648,5 +36648,15 @@ On 2026-10-27 the user approved a directory of its own for the Rocq proofs, chec
 Three results rest on files that stay outside the repository until their milestones.  The corpus runs of B1 used `tools/native-host.c` unchanged, a replacement of about 160 lines for the parts of libc it uses with three headers, and the drivers that emitted the C text and ran the cases.  The stack bounds of B6 came from a script of about 80 lines, which the plan rewrites as the bound tool with the cross-check against the translator's list of functions that take the depth.  The design's `lx_out` is `lx_uart_dr` in these files, and the design's check of the exception level and masking of interrupts at entry are not in `start.S` yet.
 
 - [x] The experiment files of B0 and B5 at their planned places, with `tests/baremetal/run.sh` and `rocq/check.sh`.
-- [ ] B0: run `tests/baremetal/run.sh`, add the check of the exception level and `msr daifset`, and rename `lx_uart_dr` to `lx_out`.
-- [ ] B5: run `rocq/check.sh` against a CompCert 3.18 tree with built proofs.
+- [x] B0: run `tests/baremetal/run.sh`, add the check of the exception level and `msr daifset`, and rename `lx_uart_dr` to `lx_out`.
+- [x] B5: run `rocq/check.sh` against a CompCert 3.18 tree with built proofs.
+
+### B0
+
+The startup files ran under qemu-system-aarch64 8.2.2 on AArch64 with CompCert 3.18 configured for `aarch64-linux`.  `tests/baremetal/run.sh` passed as committed, with the probe's nine words and status 42, `lx_uart_dr` its object's only undefined symbol, the same output after an unaligned load, the trap of class `0x07` at vector 4 without floating point, the entry state of `entry.expected`, the stack marks of 16,048 and 48 bytes, and the PL011 at `9000000` in QEMU's device tree.  `rocq/check.sh` passed against the same tree in 12 seconds: `Clight2Asm.v` compiles, and its assumptions are those of `transf_c_program_correct` and `ClassicalEpsilon.constructive_indefinite_description`.  Both runs used the files of the previous commit, so the experiments' results now hold for the repository's versions of the files.
+
+Four changes close B0.  The volatile global is `lx_out`, as the design names it.  The startup code records DAIF and then masks interrupts with `msr daifset, #0xf`, and it requires EL1: at another level it reports `R:level` and the level through `lx_report_level` of `report.c` and exits with status 254.  The linker script places code and read-only data in a segment that is readable and executable and data and `.bss` in one that is readable and writable, which removes the linker's warning about a segment with all three permissions, and `build.sh` links without a build ID, whose note section the script does not place.  `tests/baremetal/run.sh` also runs `entry.c` on `-M virt,virtualization=on` and `-M virt,secure=on`, where QEMU enters the image at EL2 and EL3, and requires the report of the level and status 254.  After the changes the script passes in full, with the same words, statuses, and stack marks.
+
+- [x] B0: `tests/baremetal/run.sh` passes with the check of the exception level, the masking of interrupts, and `lx_out`.
+- [x] `rocq/check.sh` passes against CompCert 3.18's proofs for AArch64.
+- [ ] B5: the uniqueness lemma.
