@@ -886,29 +886,6 @@ theorem MemRel.congr {E : Env} {wm wm' : Wasm.Mem} {caps : List Nat} {m : mem}
   resW := h.resW
   punW := h.punW
 
-theorem write8_same (wm : Wasm.Mem) (a : UInt32) (b : UInt8) : (wm.write8 a b).bytes a.toNat = b := by
-  simp [Wasm.Mem.write8]
-
-theorem write8_ne (wm : Wasm.Mem) (a : UInt32) (b : UInt8) {i : Nat} (h : i ≠ a.toNat) :
-    (wm.write8 a b).bytes i = wm.bytes i := by
-  simp [Wasm.Mem.write8, h]
-
-theorem MemRel.store_byte {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem} (hE : EnvOk E)
-    (h : MemRel E wm caps m) (a : UInt32) (b : UInt8) :
-    MemRel E (wm.write8 a b) caps
-      (Mem.stored .Mint8unsigned m E.mem a.toNat (.Vint (UInt32.ofNat (b.toNat % 256)))) := by
-  refine h.of_contents hE (Mem.SameExcept.of_stored _ _ _ _ _) rfl fun i hi => ?_
-  rw [Mem.contents_stored_same, encode_cbyte, UInt8.ofNat_toNat]
-  by_cases hia : i = a.toNat
-  · subst hia
-    rw [write8_same]
-    have := Mem.setN_at [memval.Byte b] (a.toNat : _root_.Int) (Mem.contents_of m E.mem) 0 (by simp)
-    simpa using this
-  · rw [write8_ne _ _ _ hia]
-    rcases Nat.lt_or_gt_of_ne hia with hlt | hgt
-    · rw [Mem.setN_outside _ _ _ _ (by omega)]; exact h.bytes i hi
-    · rw [Mem.setN_above _ _ _ _ (by simp; omega)]; exact h.bytes i hi
-
 theorem toNat_ofNat32 {n : Nat} (h : n < 2 ^ 32) : (UInt32.ofNat n).toNat = n :=
   UInt32.toNat_ofNat_of_lt' (by rw [show UInt32.size = 2 ^ 32 from rfl]; exact h)
 

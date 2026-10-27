@@ -1,4 +1,5 @@
 import LeanExe.Native.Subset
+import LeanExe.Native.Proof.Parts
 import Verified.Native
 import Verified.Reflect.Definitions
 import Verified.Reflect.TailDefinition
@@ -468,7 +469,10 @@ theorem `p.f.implements` that the module computes `f`, at the function's index, 
 entry when its code takes the call depth, or, for a wrapper, at the wrapper's entry from a store
 that holds the tables; `p.initial`, that the store in which the module starts meets the
 allocator invariant and holds the tables; `p.inSubset`, that the module is in the subset that
-the translator to C accepts, when it is; when the module translates, its translation
+the translator to C accepts, when it is, from the theorems `p.native_part_k`, one per function,
+which also give the callees of each function's C function as `p.translation_infos` lists them,
+and `p.native_module` for the parts outside the functions;
+when the module translates, its translation
 `p.translation` to C, with `lx_mem` of `nativeCap` pages, the list `p.translation_funcs` of the
 functions that the translation contains, the equation `p.translation_eq`, and, for each
 definition `f` whose function the translation contains, the theorem `p.f.native` that the C
@@ -791,60 +795,6 @@ def elabVerifiedCompile : CommandElab
     let evaluated ← match evalModule (← getEnv) (← getOptions) (base ++ `module) with
       | .ok m => pure m
       | .error e => throwError "verified_compile: cannot evaluate the module: {e}"
-    -- The subset of WebAssembly that the translator to C accepts.  The native check gives the
-    -- reason for a module outside it, which has no native path; the kernel checks the theorem.
-    match LeanExe.Native.violation evaluated with
-    | some reason =>
-        logWarning m!"verified_compile: the module is outside the subset of the translator to C: \
-          {reason}"
-    | none =>
-        let inSubsetId := mkIdent (target.getId ++ `inSubset)
-        elabCommand (← `(set_option maxRecDepth 100000 in
-          theorem $inSubsetId : LeanExe.Native.InSubset $(mkIdent (base ++ `module)) := by
-            decide +kernel))
-        -- The translation to C.  The native translator gives the list of the functions that it
-        -- contains, which the kernel checks once; each function's theorem then follows from the
-        -- function's theorem and its membership in that list.
-        match LeanExe.Native.translate LeanExe.Native.nativeCap evaluated with
-        | none =>
-            logWarning m!"verified_compile: the module does not translate to C with \
-              {LeanExe.Native.nativeCap} pages"
-        | some t =>
-            let funcsId := mkIdent (target.getId ++ `translation_funcs)
-            let translationId := mkIdent (target.getId ++ `translation)
-            let eqId := mkIdent (target.getId ++ `translation_eq)
-            elabCommand (← `(set_option maxRecDepth 100000 in
-              theorem $funcsId : (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId).map
-                  LeanExe.Native.Translation.funcs = some $(Lean.quote t.funcs) := by
-                decide +kernel))
-            elabCommand (← `(noncomputable def $translationId : LeanExe.Native.Translation :=
-              (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId).get
-                (LeanExe.Native.translate_isSome $funcsId)))
-            elabCommand (← `(theorem $eqId :
-                LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId = some $translationId :=
-              (Option.some_get _).symm))
-            elabCommand (← `(attribute [irreducible] $translationId:ident))
-            for (simple, index, kind) in natives do
-              unless t.funcs.contains index do continue
-              let implId := mkIdent (base ++ simple ++ `implements)
-              let nativeId := mkIdent (target.getId ++ simple ++ `native)
-              let hk ← `(LeanExe.Native.translate_mem_funcs $eqId $funcsId (by decide))
-              match kind with
-              | .tables =>
-                  elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
-                      Verified.NativeTablesImpl $implId A X LeanExe.Native.nativeCap
-                        $translationId :=
-                    Verified.ImplementsTables.nativeImpl _ $eqId $hk))
-              | .static =>
-                  elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
-                      Verified.NativeStaticImpl $implId A X LeanExe.Native.nativeCap
-                        $translationId :=
-                    Verified.ImplementsStatic.nativeImpl _ $eqId $hk))
-              | .plain =>
-                  elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
-                      LeanExe.Native.NativeImpl $implId A X LeanExe.Native.nativeCap
-                        $translationId :=
-                    LeanExe.Native.ImplementsA.nativeImpl _ $eqId $hk))
     -- The encoding, part by part: the native encoder gives the bytes of each part, and the kernel
     -- checks each function's body in its own theorem, so that one check holds one function.
     let parts ← match Wasm.Encoding.encodeParts evaluated with
@@ -910,6 +860,102 @@ def elabVerifiedCompile : CommandElab
         Wasm.Encoding.decode bytes = .ok $moduleId ∧ $conj := by
       obtain ⟨success, locals⟩ := $encodedId
       exact ⟨_, success, Wasm.Encoding.decode_encode $moduleId _ locals success, $impls⟩))
+    -- The subset of WebAssembly that the translator to C accepts, and the translation to C.  The
+    -- native check gives the reason for a module outside the subset, which has no native path.
+    -- The kernel checks each function's part of both in its own theorem, as it checks the
+    -- encoding, and the module's theorems follow from the parts.
+    match LeanExe.Native.violation evaluated with
+    | some reason =>
+        logWarning m!"verified_compile: the module is outside the subset of the translator to C: \
+          {reason}"
+    | none =>
+        let infos := (List.range nb).map (LeanExe.Native.callInfo LeanExe.Native.nativeCap evaluated)
+        liftCoreM <| addLiteral (base ++ `translation_infos) (toTypeExpr (List (Option (List Nat))))
+          (toExpr infos)
+        let infosId := mkIdent (base ++ `translation_infos)
+        let P ← `(fun k : Nat => LeanExe.Native.functionViolation k ($moduleId).funcs[k]! = none ∧
+          LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId k = ($infosId)[k]?.join)
+        let mut nativeChain ← `(Wasm.Encoding.forall_lt_zero $P)
+        for k in [0:nb] do
+          trace[Verified.reflect] "native part of function {k}"
+          let partId := mkIdent (target.getId ++ Name.mkSimple s!"native_part_{k}")
+          let kq := Lean.quote k
+          elabCommand (← `(set_option maxRecDepth 100000 in
+            theorem $partId :
+                LeanExe.Native.functionViolation $kq ($moduleId).funcs[$kq]! = none ∧
+                  LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId $kq =
+                    ($infosId)[$kq]?.join := by
+              decide +kernel))
+          nativeChain ← `(Wasm.Encoding.forall_lt_succ (P := $P) (n := $kq) $nativeChain $partId)
+        let partsId := mkIdent (target.getId ++ `native_parts)
+        elabCommand (← `(theorem $partsId : ∀ k < $(Lean.quote nb),
+            LeanExe.Native.functionViolation k ($moduleId).funcs[k]! = none ∧
+              LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId k = ($infosId)[k]?.join :=
+          $nativeChain))
+        -- The parts of the module outside its functions, in one theorem, since each of them
+        -- computes the literal pool: the shape and the memory of the subset and, when the module
+        -- translates, the guards of `translate` on the memory and the globals.
+        let translated := LeanExe.Native.translate LeanExe.Native.nativeCap evaluated
+        let moduleOkId := mkIdent (target.getId ++ `native_module)
+        let subsetParts ← `(LeanExe.Native.shapeViolation $moduleId = none ∧
+          LeanExe.Native.memoryViolation ($moduleId).memory = none)
+        let moduleParts ← if translated.isSome then
+            `($subsetParts ∧ LeanExe.Native.memoryOk LeanExe.Native.nativeCap $moduleId = true ∧
+              (($moduleId).globals.mapM LeanExe.Native.globalDef).isSome = true)
+          else pure subsetParts
+        elabCommand (← `(set_option maxRecDepth 100000 in
+          theorem $moduleOkId : $moduleParts := by
+            decide +kernel))
+        let subsetOk ← if translated.isSome then `(($moduleOkId).1) else `($moduleOkId)
+        let inSubsetId := mkIdent (target.getId ++ `inSubset)
+        elabCommand (← `(theorem $inSubsetId : LeanExe.Native.InSubset $moduleId :=
+          LeanExe.Native.inSubset_of_parts ($subsetOk).1 ($subsetOk).2 $countId
+            fun k hk => ($partsId k hk).1))
+        -- The translation to C.  The native translator gives the list of the functions that it
+        -- contains, which follows from the parts; each function's theorem then follows from the
+        -- function's theorem and its membership in that list.
+        match translated with
+        | none =>
+            logWarning m!"verified_compile: the module does not translate to C with \
+              {LeanExe.Native.nativeCap} pages"
+        | some t =>
+            let funcsId := mkIdent (target.getId ++ `translation_funcs)
+            let translationId := mkIdent (target.getId ++ `translation)
+            let eqId := mkIdent (target.getId ++ `translation_eq)
+            elabCommand (← `(set_option maxRecDepth 100000 in
+              theorem $funcsId : (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId).map
+                  LeanExe.Native.Translation.funcs = some $(Lean.quote t.funcs) :=
+                LeanExe.Native.translate_funcs_of_parts (infos := $infosId) $inSubsetId
+                  ($moduleOkId).2.1 ($moduleOkId).2.2 $countId (by decide +kernel)
+                  (fun k hk => ($partsId k hk).2) (by decide +kernel) (by decide +kernel)))
+            elabCommand (← `(noncomputable def $translationId : LeanExe.Native.Translation :=
+              (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId).get
+                (LeanExe.Native.translate_isSome $funcsId)))
+            elabCommand (← `(theorem $eqId :
+                LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId = some $translationId :=
+              (Option.some_get _).symm))
+            elabCommand (← `(attribute [irreducible] $translationId:ident))
+            for (simple, index, kind) in natives do
+              unless t.funcs.contains index do continue
+              let implId := mkIdent (base ++ simple ++ `implements)
+              let nativeId := mkIdent (target.getId ++ simple ++ `native)
+              let hk ← `(LeanExe.Native.translate_mem_funcs $eqId $funcsId (by decide))
+              match kind with
+              | .tables =>
+                  elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
+                      Verified.NativeTablesImpl $implId A X LeanExe.Native.nativeCap
+                        $translationId :=
+                    Verified.ImplementsTables.nativeImpl _ $eqId $hk))
+              | .static =>
+                  elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
+                      Verified.NativeStaticImpl $implId A X LeanExe.Native.nativeCap
+                        $translationId :=
+                    Verified.ImplementsStatic.nativeImpl _ $eqId $hk))
+              | .plain =>
+                  elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
+                      LeanExe.Native.NativeImpl $implId A X LeanExe.Native.nativeCap
+                        $translationId :=
+                    LeanExe.Native.ImplementsA.nativeImpl _ $eqId $hk))
   | _ => throwUnsupportedSyntax
 
 end Verified.Reflect

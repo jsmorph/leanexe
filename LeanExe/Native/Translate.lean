@@ -19,14 +19,18 @@ The linear memory is the array `lx_mem` of `cap` pages, where `cap` is a paramet
 `translate`, and `lx_pages` holds the current number of pages.  A `load64` or `store64` computes
 its address in 64-bit arithmetic in the `i64` slot at the height of its address, traps when the
 eight bytes do not lie below `lx_pages × 65536`, and then reads or writes one word of `lx_mem`
-when the address is a multiple of 8, and eight bytes in little-endian order otherwise.
+when the address is a multiple of 8, and eight bytes in little-endian order otherwise.  A
+`load8U` or `store8` computes its address and traps in the same way for its one byte, which it
+reads or writes as an `unsigned char` of `lx_mem`: `load8U` converts the byte to
+`unsigned int`, and `store8` stores `(unsigned char) v`, the low byte of its `i32` value.
 `memory.grow` succeeds when the new number of pages is at most `cap`.  The function `lx_init`
 writes the module's data segments into `lx_mem`, with a word store for each aligned word that a
 segment covers and a byte store for each other byte.
 
 This version handles the forms of milestones M2 to M5: locals, globals, the `i64` and `i32`
 operations of the subset, `block`, `loop`, `iff`, `br`, `br_if`, `ret`, `call`, `unreachable`,
-`load64`, `store64`, `memory.size`, `memory.grow`, and the binary64 forms, in functions with at
+`load64`, `store64`, `load8U`, `store8`, `memory.size`, `memory.grow`, and the binary64 forms,
+in functions with at
 most one result or with several results of integer or binary64 types, which return them in the
 globals `lx_r<i>_<t>`.  A binary64 operation that rounds replaces a NaN result by Talos's
 canonical NaN, and a value changes type through the cell `lx_pun`.  A function that uses another form, or that calls a function the translator omits,
@@ -282,9 +286,9 @@ def storeBytes (cap : Nat) (t : ident) (v : expr) : Nat → Nat → statement
 def addrStmt (t : ident) (a : expr) (off : UInt32) : statement :=
   .Sset t (.Ebinop .Oadd (.Ecast a tulong) (.Econst_long off.toUInt64 tulong) tulong)
 
-/-- The trap of an access whose eight bytes from the address in `t` do not lie in memory. -/
-def boundsCheck (r : Option VT) (t : ident) : statement :=
-  .Sifthenelse (.Ebinop .Ogt (.Ebinop .Oadd (.Etempvar t tulong) (clong 8) tulong)
+/-- The trap of an access whose `w` bytes from the address in `t` do not lie in memory. -/
+def boundsCheck (w : Nat) (r : Option VT) (t : ident) : statement :=
+  .Sifthenelse (.Ebinop .Ogt (.Ebinop .Oadd (.Etempvar t tulong) (clong w) tulong)
       (.Ebinop .Omul (.Ecast pagesVar tulong) (clong 65536) tulong) tint)
     (trapStmt trapOutOfBounds r) .Sskip
 
@@ -551,7 +555,7 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
       if σ.head? = some .i32 then
         let t := slotId (h - 1) .i64
         pure (.Ssequence (addrStmt t (tmp (h - 1) .i32) off)
-            (.Ssequence (boundsCheck c.result t)
+            (.Ssequence (boundsCheck 8 c.result t)
               (.Sifthenelse (aligned t) (.Sset t (wordAt c.cap t)) (.Sset t (loadBytes c.cap t 7)))),
           some (.i64 :: σ'), n)
       else none
@@ -561,8 +565,26 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
         let t := slotId (h - 2) .i64
         let v := tmp (h - 1) .i64
         pure (.Ssequence (addrStmt t (tmp (h - 2) .i32) off)
-            (.Ssequence (boundsCheck c.result t)
+            (.Ssequence (boundsCheck 8 c.result t)
               (.Sifthenelse (aligned t) (.Sassign (wordAt c.cap t) v) (storeBytes c.cap t v 0 7))),
+          some σ', n)
+      else none
+  | .load8U off => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .i32 then
+        let t := slotId (h - 1) .i64
+        pure (.Ssequence (addrStmt t (tmp (h - 1) .i32) off)
+            (.Ssequence (boundsCheck 1 c.result t)
+              (.Sset (slotId (h - 1) .i32) (.Ecast (byteAt c.cap (addrPlus t 0)) tuint))),
+          some (.i32 :: σ'), n)
+      else none
+  | .store8 off => do
+      let σ' ← pops L σ 2
+      if σ.take 2 = [.i32, .i32] then
+        let t := slotId (h - 2) .i64
+        pure (.Ssequence (addrStmt t (tmp (h - 2) .i32) off)
+            (.Ssequence (boundsCheck 1 c.result t)
+              (.Sassign (byteAt c.cap (addrPlus t 0)) (.Ecast (tmp (h - 1) .i32) tuchar))),
           some σ', n)
       else none
   | .memorySize => some (.Sset (slotId h .i32) pagesVar, some (.i32 :: σ), n)
