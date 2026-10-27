@@ -129,6 +129,23 @@ theorem repeatWhile_count_ge (C : UInt64 → Bool) :
         omega
       · rw [UInt64.toNat_ofNat_of_lt' (show k < UInt64.size by omega)]
 
+/-- A loop that counts up while its condition holds only below `B` stops at `B` or below. -/
+theorem repeatWhile_count_le (C : UInt64 → Bool) (B : Nat) (bound : B < UInt64.size)
+    (below : ∀ k, C k = true → k.toNat < B) :
+    ∀ (fuel : Nat) (s : UInt64), s.toNat ≤ B →
+      (LeanExe.repeatWhile.go C (fun i => i + 1) fuel s).toNat ≤ B
+  | 0, _, le => le
+  | fuel + 1, s, le => by
+      have usize : UInt64.size = 18446744073709551616 := rfl
+      simp only [LeanExe.repeatWhile.go]
+      split
+      · rename_i holds
+        have lt := below s holds
+        apply repeatWhile_count_le C B bound below fuel
+        rw [UInt64.toNat_add, UInt64.toNat_one]
+        omega
+      · exact le
+
 /-- The charge of a loop that counts up from `k` and charges only its condition: at most `c` for
 each count from `k` to the count where the loop stops. -/
 theorem loopCost_count_le (CA : UInt64 → Nat) (C : UInt64 → Bool) (c : Nat) :

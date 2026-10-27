@@ -342,4 +342,143 @@ theorem shortest_bound_le {Q E : Nat} (low : Bool) (hb : WordBounds Q E 1074) (h
     exact ite_add_ite_le (range_bound_le _ _ _ _ _ _ hsn hsd range.1 range.2)
       (quotAt_bound_le _ _ _ _ hsv hsd range.1 range.2)
 
+theorem shortest_word_bound_le (Q E : UInt64) (low : Bool) (hQ : 1 ≤ Q.toNat)
+    (hQ53 : Q.toNat < 2 ^ 53) (hE : 1 ≤ E.toNat) (hE2 : E.toNat ≤ 2047) :
+    io.pureSources.shortest.bound (Q, E, 1074, low) ≤ 62 * quotAtCost := by
+  have bound := shortest_bound_le (Q := Q.toNat) (E := E.toNat) low
+    ⟨hQ, hQ53, hE, by omega, by norm_num, by norm_num⟩ hE2
+  have nu : UInt64.ofNat 1074 = 1074 := rfl
+  simpa only [UInt64.ofNat_toNat, nu] using bound
+
+open Library.Numerics.Decimal.PrintFloat
+  (numDigits digitsFrom byte1 noBytes special fixed sciLayoutW print64 print64With)
+
+theorem numDigits_range (t : UInt64) : 1 ≤ (numDigits t).toNat ∧ (numDigits t).toNat ≤ 19 := by
+  unfold numDigits LeanExe.repeatWhile
+  refine ⟨repeatWhile_count_ge _ 19 1 (by decide), repeatWhile_count_le _ 19 (by decide) ?_ _ _
+    (by decide)⟩
+  intro k holds
+  simp only [Bool.and_eq_true, decide_eq_true_eq] at holds
+  have lt := UInt64.lt_iff_toNat_lt.mp holds.1
+  simpa only [UInt64.reduceToNat] using lt
+
+theorem digitsFrom_size (t nd s cnt : UInt64) : (digitsFrom t nd s cnt).size = cnt.toNat := by
+  unfold digitsFrom
+  rw [LeanExe.IR.build_size]
+
+theorem byte1_size (b : UInt64) : (byte1 b).size = 1 := by
+  unfold byte1
+  rw [LeanExe.IR.build_size]
+  rfl
+
+theorem noBytes_size : noBytes.size = 0 := by
+  unfold noBytes
+  rw [LeanExe.IR.build_size]
+  rfl
+
+theorem numDigits_pred (t : UInt64) : (numDigits t - 1).toNat = (numDigits t).toNat - 1 := by
+  have range := numDigits_range t
+  rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [UInt64.toNat_one]; omega)),
+    UInt64.toNat_one]
+
+/-- The charge of the scientific layout.  The lemma takes the pair of digits and exponent whole, so
+that a caller's pair `shortest Q E nu low` matches it without structure eta, which would make the
+kernel reduce `shortest` on a symbolic word. -/
+theorem sciLayoutW_bound_le (neg : Bool) (p : UInt64 × UInt64) :
+    io.pureSources.sciLayoutW.bound (neg, p) ≤ 2968 := by
+  obtain ⟨t, kb⟩ := p
+  have digits := numDigits_range t
+  have below := numDigits_range (4611686018427387904 - (kb + numDigits t - 1))
+  have above := numDigits_range (kb + numDigits t - 1 - 4611686018427387904)
+  have pred := numDigits_pred t
+  rw [io.pureSources.sciLayoutW.bound_eq]
+  simp only [io.pureSources.digitsFrom.bound_eq, io.pureSources.byte1.bound_eq,
+    io.pureSources.noBytes.bound_eq]
+  split_ifs <;>
+    simp only [digitsFrom_size, byte1_size, noBytes_size, Array.size_append, blockCost_eq,
+      growCost_eq, paidGrowCost, allocCost, UInt64.reduceToNat, pred] <;>
+    omega
+
+theorem sciLayoutW_size_le (neg : Bool) (t kb : UInt64) : (sciLayoutW neg t kb).size ≤ 42 := by
+  have digits := numDigits_range t
+  have below := numDigits_range (4611686018427387904 - (kb + numDigits t - 1))
+  have above := numDigits_range (kb + numDigits t - 1 - 4611686018427387904)
+  have pred := numDigits_pred t
+  unfold sciLayoutW
+  dsimp only
+  split_ifs <;>
+    simp only [digitsFrom_size, byte1_size, noBytes_size, Array.size_append, UInt64.reduceToNat,
+      pred] <;>
+    omega
+
+theorem special_bound_le (neg inf nan ecma : Bool) :
+    io.pureSources.special.bound (neg, inf, nan, ecma) ≤ 128 := by
+  rw [io.pureSources.special.bound_eq]
+  simp only [io.pureSources.fixed.bound_eq, blockCost_eq, UInt64.reduceToNat]
+  split_ifs <;> omega
+
+theorem special_size_le (neg inf nan ecma : Bool) : (special neg inf nan ecma).size ≤ 9 := by
+  unfold special fixed
+  split_ifs <;> simp only [LeanExe.IR.build_size, UInt64.reduceToNat] <;> omega
+
+theorem word_fields (w : UInt64) :
+    (w >>> 52 &&& 2047).toNat ≤ 2047 ∧ (w &&& 4503599627370495).toNat ≤ 4503599627370495 := by
+  constructor
+  · rw [UInt64.toNat_and]
+    exact Nat.and_le_right
+  · rw [UInt64.toNat_and]
+    exact Nat.and_le_right
+
+/-- The charge of printing a binary64 word: `shortest` and the scientific layout, or a special
+string. -/
+theorem print64_bound_le (w : UInt64) :
+    io.pureSources.print64.bound w ≤ 62 * quotAtCost + 2968 := by
+  obtain ⟨field, fraction⟩ := word_fields w
+  rw [io.pureSources.print64.bound_eq, io.pureSources.print64With.bound_eq]
+  simp only [Bool.false_eq_true, ↓reduceIte]
+  split_ifs with infinite zero subnormal
+  · have := special_bound_le (w >>> 63 == 1) true (w &&& 4503599627370495 != 0) false
+    omega
+  · have := special_bound_le (w >>> 63 == 1) false false false
+    omega
+  · simp only [Bool.and_eq_true, beq_iff_eq, ← UInt64.toNat_inj,
+      UInt64.reduceToNat] at infinite zero subnormal
+    exact Nat.add_le_add
+      (shortest_word_bound_le _ _ _ (by omega) (by omega) (by rw [UInt64.toNat_one])
+        (by rw [UInt64.toNat_one]; omega))
+      (sciLayoutW_bound_le _ _)
+  · simp only [Bool.and_eq_true, beq_iff_eq, ← UInt64.toNat_inj,
+      UInt64.reduceToNat] at infinite zero subnormal
+    have significand : ((w &&& 4503599627370495) + 4503599627370496).toNat =
+        (w &&& 4503599627370495).toNat + 4503599627370496 := by
+      rw [UInt64.toNat_add]
+      simp only [UInt64.reduceToNat]
+      omega
+    exact Nat.add_le_add
+      (shortest_word_bound_le _ _ _ (by rw [significand]; omega) (by rw [significand]; omega)
+        (by omega) (by omega))
+      (sciLayoutW_bound_le _ _)
+
+theorem print64_size_le (w : UInt64) : (print64 w).size ≤ 42 := by
+  unfold print64 print64With
+  dsimp only
+  simp only [Bool.false_eq_true, ↓reduceIte]
+  split_ifs
+  · exact le_trans (special_size_le _ _ _ _) (by decide)
+  · exact le_trans (special_size_le _ _ _ _) (by decide)
+  all_goals exact sciLayoutW_size_le _ _ _
+
+/-- The charge of rendering a total: the printer and the byte string with its newline. -/
+theorem render_bound_le (value : Float) :
+    io.pureSources.render.bound value ≤ 62 * quotAtCost + 3066 := by
+  have printed := print64_bound_le value.toBits
+  have size := print64_size_le value.toBits
+  have small := toUInt64_toNat_le (print64 value.toBits).size
+  rw [io.pureSources.render.bound_eq]
+  have count : ((print64 value.toBits).size.toUInt64 + 1).toNat ≤ 43 := by
+    rw [UInt64.toNat_add, UInt64.toNat_one]
+    omega
+  have cost := allocationCost_le ((print64 value.toBits).size.toUInt64 + 1).toNat
+  omega
+
 end Demos.RunningSumFp

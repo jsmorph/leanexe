@@ -36738,8 +36738,15 @@ The cost of one test and of one call follows from the paid sides of the generate
 
 - [x] Write the stage 3 plan.
 - [x] Prove the search-length theorem for binary64, and report the cost of one iteration and of one call of the printer.
+### The layout's charge and a kernel reduction
+
+Step 9 adds `numDigits_range`, which places the digit count of every word between 1 and 19, and bounds the scientific layout by 2,968 bytes and 42 bytes of output.  `special` costs at most 128 bytes.  `print64_bound_le` bounds the printer by `62 · quotAtCost + 2,968`, 59,112,280 bytes, and `render_bound_le` bounds `render`, which adds the byte string with its newline, by `62 · quotAtCost + 3,066`.  `Verified/ChargeFacts.lean` gains `repeatWhile_count_le`, the upper bound of a counting loop whose condition holds only below a limit.
+
+The first build of `print64_bound_le` failed with a kernel deep-recursion error.  I bisected the proof in scratch files to find the step that made the kernel recurse.  The error came from the branch of normal words, and with every hypothesis of that branch replaced by `sorry` the scratch run still exceeded its 12 GiB memory limit and did not finish.  The cause was the application of the layout's lemma, then stated over `(neg, t, kb)`, to the generated bound's argument `(neg, shortest Q E 1074 low)`.  The elaborator matches the pair by structure eta, and the kernel, to check the same match, reduces `shortest` on a symbolic word, which unrolls its loops.  `sciLayoutW_bound_le` now takes the pair whole, and the module builds in 2.5 s.  Lemmas over generated bounds will take a tuple argument whole wherever a caller passes the result of a call.
+
 - [x] Prove the cost lemmas of steps 1 to 8, through `shortest`.
-- [ ] Prove the cost lemmas of steps 9 to 11: the layout, the parser, and the effect bodies.
+- [x] Prove the cost lemmas of step 9, the layout, `print64`, and `render`.
+- [ ] Prove the cost lemmas of steps 10 and 11: the parser and the effect bodies.
 - [ ] State the binary64 theorem over limits on line length, with its inequality against the memory cap, and correct the comment of `RunCharges`, which names that theorem before it exists.
 
 ## 2026-10-27: The merge with main and the slew planner
