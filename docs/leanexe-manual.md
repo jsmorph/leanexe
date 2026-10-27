@@ -597,7 +597,7 @@ uv run tests/modules/chunks.py
 3. [`tests/modules/run.sh`](../tests/modules/run.sh), with the module cases, the release counts, and the depth guard, and `uv run tests/modules/chunks.py`.
 4. [`tests/drone/run.sh`](../tests/drone/run.sh), and [`tests/gpt/run.sh`](../tests/gpt/run.sh) and [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh) when the GPT module changed.
 5. The LTG check.
-6. A cold numerical proof cache first needs the [separate one-worker builds](#memory-heavy-numerical-proofs).  Then `tools/leanrun --threads 3 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh) must pass, since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
+6. A cold numerical proof cache first needs the [separate one-worker builds](#memory-heavy-numerical-proofs).  Then `tools/leanrun --threads 2 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh) must pass, since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
 7. [`tests/wgsl/run.sh`](../tests/wgsl/run.sh), `tests/wgsl/run.sh --verified`, and `tests/wgsl/run.sh --verified-gpt32` on both Vulkan drivers.  `tests/gpt32/native.sh --verified` also compares complete binary32 generation with native Lean on Wasm and both drivers.
 
 Changes to packed bytes or WASI also require [the maintained WASI driver](../tests/wasi/run.sh) after the build and before the GPU checks.  It checks the byte representations, universal and generated proofs, native actions, emitted modules, and execution hosts, as [the WASI manual](wasi.md#tests) describes.
@@ -665,7 +665,7 @@ The default memory limits are 4 GiB high and 6 GiB maximum.  `--memory-high SIZE
 
 ### Memory-heavy numerical proofs
 
-Some gamma and lgamma range checks need several gibibytes each.  On an 8-CPU host with about 12 GiB of memory, a cold numerical proof cache uses the following one-worker builds before the three-worker aggregate.  Each target has a separate invocation, which bounds the working set to one heavy proof and its imports.  The aggregate reuses the accepted results.
+Some gamma and lgamma range checks need several gibibytes each.  On an 8-CPU host with about 12 GiB of memory, a cold numerical proof cache uses the following one-worker builds before the two-worker aggregate.  Each target has a separate invocation, which bounds the working set to one heavy proof and its imports.  The aggregate reuses the accepted results.  With three workers, the aggregate ran three other `Lgamma` modules together at about 3.5 GB each and paged, and with two it passed with memory pressure below 2 percent.
 
 ```sh
 tools/leanrun --cpus auto --threads 1 --memory-high 10G --timeout 12h lake build MODULE

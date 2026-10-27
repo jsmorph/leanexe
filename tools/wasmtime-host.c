@@ -691,6 +691,22 @@ static void print_records(Runtime *runtime, uint64_t ptr) {
   fprintf(control_output, "\n");
 }
 
+/* Writes the `len` bytes at `ptr` in hexadecimal on one line. */
+static void print_bytes(Runtime *runtime, uint64_t ptr, uint64_t len) {
+  if (!runtime->has_memory) {
+    die("ByteArray result requires exported memory");
+  }
+  size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+  if (ptr > memory_len || len > memory_len - (size_t)ptr) {
+    die("ByteArray result is outside memory");
+  }
+  uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+  for (uint64_t i = 0; i < len; i++) {
+    fprintf(control_output, "%02x", memory[ptr + i]);
+  }
+  fprintf(control_output, "\n");
+}
+
 /* Writes the elements of the array at `ptr`, as little-endian words, to the file at `path`,
    and returns the number of elements. */
 static uint64_t save_u64_array(Runtime *runtime, uint64_t ptr, const char *path) {
@@ -861,11 +877,21 @@ static size_t result_count_from_kind(const char *kind) {
     return 1;
   }
   if (strncmp(kind, "list:", 5) == 0) {
-    size_t count = 1;
+    size_t items = 1;
     for (const char *c = kind + 5; *c != 0; c++) {
       if (*c == ',') {
-        count++;
+        items++;
       }
+    }
+    if (items > 128) {
+      die("too many results");
+    }
+    /* A `bytes` item is two results, the root and the length. */
+    size_t count = 0;
+    for (size_t i = 0; i < items; i++) {
+      char item[32];
+      list_result_kind(kind, i, item, sizeof item);
+      count += strcmp(item, "bytes") == 0 ? 2 : 1;
     }
     if (count > 128) {
       die("too many results");
@@ -916,26 +942,33 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
   size_t nresults = result_count_from_kind(result_kind);
   bool list = strncmp(result_kind, "list:", 5) == 0;
   wasmtime_val_t results[128];
-  for (size_t i = 0; i < nresults; i++) {
+  /* Result `i` belongs to item `item` of a list; a `bytes` item covers two results. */
+  for (size_t i = 0, item = 0; i < nresults; item++) {
     const char *kind = result_kind;
-    char item[32];
+    char text[32];
     if (list) {
-      list_result_kind(result_kind, i, item, sizeof item);
-      kind = item;
+      list_result_kind(result_kind, item, text, sizeof text);
+      kind = text;
     }
-    results[i].kind = strcmp(kind, "f64") == 0   ? WASMTIME_F64
-                      : strcmp(kind, "f32") == 0 ? WASMTIME_F32
-                                                 : WASMTIME_I64;
+    size_t width = list && strcmp(kind, "bytes") == 0 ? 2 : 1;
+    for (size_t j = 0; j < width; j++, i++) {
+      results[i].kind = strcmp(kind, "f64") == 0   ? WASMTIME_F64
+                        : strcmp(kind, "f32") == 0 ? WASMTIME_F32
+                                                   : WASMTIME_I64;
+    }
   }
   call_func(runtime, &func, args, nargs, results, nresults, 2);
 
   if (list) {
-    /* One line per result: an i64 or f64 as a decimal word, an array as its elements, a tree
-       in the notation of its argument. */
-    for (size_t i = 0; i < nresults; i++) {
+    /* One line per item: an i64 or f64 as a decimal word, bytes in hexadecimal, an array as its
+       elements, a tree in the notation of its argument. */
+    for (size_t i = 0, item = 0; i < nresults; i++, item++) {
       char kind[32];
-      list_result_kind(result_kind, i, kind, sizeof kind);
-      if (strcmp(kind, "f64") == 0) {
+      list_result_kind(result_kind, item, kind, sizeof kind);
+      if (strcmp(kind, "bytes") == 0) {
+        print_bytes(runtime, (uint64_t)results[i].of.i64, (uint64_t)results[i + 1].of.i64);
+        i++;
+      } else if (strcmp(kind, "f64") == 0) {
         uint64_t bits = 0;
         memcpy(&bits, &results[i].of.f64, sizeof bits);
         fprintf(control_output, "%" PRIu64 "\n", bits);
@@ -1007,20 +1040,7 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
   }
 
   if (strcmp(result_kind, "bytes") == 0) {
-    if (!runtime->has_memory) {
-      die("ByteArray result requires exported memory");
-    }
-    uint64_t ptr = (uint64_t)results[0].of.i64;
-    uint64_t len = (uint64_t)results[1].of.i64;
-    size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
-    if (ptr > memory_len || len > memory_len - (size_t)ptr) {
-      die("ByteArray result is outside memory");
-    }
-    uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
-    for (uint64_t i = 0; i < len; i++) {
-      fprintf(control_output, "%02x", memory[ptr + i]);
-    }
-    fprintf(control_output, "\n");
+    print_bytes(runtime, (uint64_t)results[0].of.i64, (uint64_t)results[1].of.i64);
     return;
   }
 

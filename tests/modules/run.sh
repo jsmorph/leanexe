@@ -51,6 +51,10 @@ else
   exit 2
 fi
 host=$root/build/tools/leanexe-wasmtime-host
+if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+  echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
+  exit 1
+fi
 tools/leanrun --timeout 30m lake --log-level error build TestSupport
 cases=$(mktemp)
 errors=$(mktemp)
