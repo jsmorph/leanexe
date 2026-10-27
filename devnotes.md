@@ -35799,3 +35799,16 @@ Five choices of M4 depart from or refine the design, and [the design](docs/nativ
 - [ ] The step from `eval_funcall` to a whole program through a generated `main`.
 - [ ] The hypotheses of `translate_correct` for the program that `clightgen` reads.
 - [ ] Merge `main` before the full gate.
+
+### The decisions on the five choices of M4
+
+The user asked the coordinator to decide open questions while the user is away, and on 2026-10-26 the coordinator decided the five choices of M4.  The coordinator also checked, at the commit of M4, that `firstAbove.native` of the loop example, `sha256.native`, `siphash24.native`, `crc32.native`, CRC's `translation_funcs` and `translation_eq`, and `firstAbove_native_init` depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+1. The typed result globals are accepted, because each load and store keeps its own type and the C text needs no cast.
+2. The restriction on a branch to the outermost label of a function with several results is accepted as a documented restriction, because the survey found no function left out for that reason alone.  [The design](docs/native-translator.md) now states it with the other kinds of function that the translation leaves out.  When M5 and M6 admit functions with several results that include floats, the survey runs again, and a function left out for that reason alone is reported before the restriction is lifted.
+3. `nativeCap` of 4,096 pages is accepted as a fixed constant.  A larger static `lx_mem` approaches the 2 GiB limit on static data under the small code model, every translated case of the corpus fits, and so does the slew planner's bound of 68,020,488 bytes.  The design now says that a module needing more memory needs a cap of its own, which is future work.
+4. The translation and the native theorems in every module that `verified_compile` builds, without `p.c`, are accepted, because the plan of M4 already had `verified_compile` emit `p.f.native`.  Two conditions apply.  The merge gate of this branch builds the heavy proofs and `Library.Numerics.Float64.Lgamma.Compiled` and `Tgamma.Compiled` one at a time and records each one's time and peak memory before and after the change, by `/usr/bin/time -v` or the scope's `memory.peak`; if any rises past what the 11.6 GiB hosts build at `--threads 1 --memory-high 10G`, the gate stops and the result goes to the user.  The design's M7 now includes a file theorem that the `.c` file `native-verified` writes equals the printer's output for `p.translation`, in the form of the Wasm file theorems, which removes the run of `native-verified` from the trusted base.
+5. The tests' use of the generated translations with 4,096 pages, with `native-emit` keeping 256 pages for its memory-growth test, is accepted.
+
+- [ ] At the merge gate, build the heavy proofs and the `Lgamma` and `Tgamma` modules one at a time, with time and peak memory before and after.
+- [ ] M7: the file theorem for the written C text.
