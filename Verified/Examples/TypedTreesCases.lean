@@ -4,10 +4,10 @@ import TestSupport.Records
 
 /-! The cases of the trees whose records hold typed fields.  The host passes and prints a tree in
 the `records-u64` form, which native Lean computes from the `Encode` instance, so each case also
-checks the slot words of the `Bool`, binary64, binary32, structure, and enumeration fields.  The
-block counts follow the code: a borrowed tree keeps the host's records, a construction allocates
+checks the slot words of the `Bool`, binary64, binary32, structure, enumeration, and sum fields.
+The block counts follow the code: a borrowed tree keeps the host's records, a construction allocates
 one record, a copy one record for each record of the tree, and `flip`, `scale`, `settle`, `bump`,
-and `blacken` reuse the records of their owned argument. -/
+`blacken`, and `tally` reuse the records of their owned argument. -/
 
 namespace Verified.Examples.TypedTrees
 
@@ -72,9 +72,18 @@ def Tinted.records : Tinted → Nat
   | .leaf => 0
   | .node l _ _ r => 1 + l.records + r.records
 
+def Logged.records : Logged → Nat
+  | .nil => 0
+  | .node l _ r => 1 + l.records + r.records
+
 def f64 (x : Float) : String := s!"f64:{x.toBits}"
 
 def f32 (x : Float32) : String := s!"f32:{x.toBits}"
+
+/-- A reading's arguments: the words of its tag, its value, and its count. -/
+def readingArg (s : Reading) : String :=
+  let (tag, x, n) := Flat.flat s
+  s!"i64:{tag} {f64 x} i64:{n}"
 
 def cases : IO Unit := do
   let trees := [Samples.empty, .mark true 1.5, .mark false (-0.0),
@@ -151,5 +160,21 @@ def cases : IO Unit := do
         let n := l.records + r.records + 1
         let args := s!"{recordsArg l} i64:{Flat.flat c} i64:6 {recordsArg r}"
         IO.println s!"typedtrees|tinted|records-u64|{args}|{records (tinted l c 6 r)}|{n}|{n}"
+  let logs := [Logged.nil, counted 3, logged .nil (.value 1.5) .nil,
+    logged (counted 1) .none (logged .nil (.value (0.0 / 0.0)) .nil),
+    logged (counted maxU) (.count maxU) .nil]
+  for t in logs do
+    let n := t.records
+    let arg := recordsArg t
+    IO.println s!"typedtrees|rootValue|f64|{arg}|{(rootValue t).toBits}|{n}|{n}"
+    IO.println s!"typedtrees|tally|records-u64|{arg}|{records (tally t)}|{n}|{n}"
+  for k in [0, 7, maxU] do
+    IO.println s!"typedtrees|counted|records-u64|i64:{k}|{records (counted k)}|1|1"
+  for l in logs.take 3 do
+    for r in logs.take 3 do
+      for x in [Reading.value (-2.5), .count 9, .none] do
+        let n := l.records + r.records + 1
+        let args := s!"{recordsArg l} {readingArg x} {recordsArg r}"
+        IO.println s!"typedtrees|logged|records-u64|{args}|{records (logged l x r)}|{n}|{n}"
 
 end Verified.Examples.TypedTrees

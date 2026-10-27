@@ -1,9 +1,9 @@
 import Verified.Reflect.Command
 
 /-! Recursive types whose records hold `Bool`, binary64, binary32, and word fields, structures,
-and enumerations beside their children.  Each word, `Bool`, or float occupies one slot: a `Bool`
-as 1 or 0, a float as its bit pattern, and a binary32 pattern in the low 32 bits.  A field of a
-type with a `Flat` instance occupies one slot for each leaf of its flattening. -/
+enumerations, and sums beside their children.  Each word, `Bool`, or float occupies one slot: a
+`Bool` as 1 or 0, a float as its bit pattern, and a binary32 pattern in the low 32 bits.  A field of
+a type with a `Flat` instance occupies one slot for each leaf of its flattening. -/
 
 namespace Verified.Examples.TypedTrees
 
@@ -176,9 +176,61 @@ def rootTint (t : Tinted) : Tint × UInt64 :=
   | .leaf => (.black, 0)
   | .node _ c k _ => (c, k)
 
+/-- A reading: a binary64 value, a count, or nothing. -/
+inductive Reading where
+  | value (x : Float)
+  | count (n : UInt64)
+  | none
+
+instance : Flat Reading (UInt64 × Float × UInt64) := ⟨fun
+  | .value x => (0, x, 0)
+  | .count n => (1, 0, n)
+  | .none => (2, 0, 0)⟩
+
+/-- A tree whose nodes carry a reading, which occupies three slots: its tag, its value, and its
+count.  The words that encode no reading have no value of the type, so no recursive definition or
+loop takes the tree as a parameter. -/
+inductive Logged where
+  | nil
+  | node (left : Logged) (reading : Reading) (right : Logged)
+
+def Logged.encode : Logged → Node
+  | .nil => .null
+  | .node l s r => .record [.child l.encode, .word (Flat.flat s).1, .word (Flat.flat s).2.1.toBits,
+      .word (Flat.flat s).2.2, .child r.encode]
+
+instance : Encode Logged := ⟨Logged.encode⟩
+
+verified_recursive_type Logged
+
+def logged (l : Logged) (s : Reading) (r : Logged) : Logged := .node l s r
+
+/-- A node that counts `n` between two empty trees. -/
+def counted (n : UInt64) : Logged := .node .nil (.count n) .nil
+
+/-- The root's reading as a float: its value, its count, or -1. -/
+def rootValue (t : Logged) : Float :=
+  match t with
+  | .nil => 0
+  | .node _ s _ =>
+    match s with
+    | .value x => x
+    | .count n => n.toFloat
+    | .none => -1
+
+/-- The tree with the root's count incremented and a missing reading replaced by a count of 0. -/
+def tally (t : Logged) : Logged :=
+  match t with
+  | .nil => .nil
+  | .node l s r =>
+    match s with
+    | .value x => .node l (.value x) r
+    | .count n => .node l (.count (n + 1)) r
+    | .none => .node l (.count 0) r
+
 verified_compile compiled := [keep, mark, sample, double, weight, flags, offsets, flip, scale,
   rightWeight, keepRanges, span, counts, settle, bump, rootSpan, leftWeight, tinted, blacken,
-  redRoot, rootTint]
+  redRoot, rootTint, logged, counted, rootValue, tally]
 
 #print axioms compiled.bytes
 #print axioms compiled.flip.implements
@@ -187,6 +239,8 @@ verified_compile compiled := [keep, mark, sample, double, weight, flags, offsets
 #print axioms compiled.settle.implements
 #print axioms compiled.leftWeight.implements
 #print axioms compiled.rootTint.implements
+#print axioms compiled.rootValue.implements
+#print axioms compiled.tally.implements
 
 #guard weight (.sample (.mark true 1.5) false 2.0 0.5 3 .empty) == 3.5
 #guard flags (flip (.sample (.mark true 1.5) false 2.0 0.5 3 .empty)) == 1
@@ -199,5 +253,8 @@ verified_compile compiled := [keep, mark, sample, double, weight, flags, offsets
 #guard leftWeight 0 (span (span .none 1 true 0 2.0 .none) 1 true 0 1.0 .none) == 3.0
 #guard redRoot (blacken (tinted .leaf .red 1 .leaf)) == false
 #guard (rootTint (tinted .leaf .red 7 .leaf)).2 == 7
+#guard rootValue (tally (counted 4)) == 5.0
+#guard rootValue (tally (logged .nil .none .nil)) == 0.0
+#guard rootValue (logged .nil (.value 2.5) (counted 1)) == 2.5
 
 end Verified.Examples.TypedTrees
