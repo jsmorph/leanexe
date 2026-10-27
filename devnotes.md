@@ -37103,3 +37103,11 @@ Each form computes its address as `load64` does, in the `i64` slot at the height
 
 - [x] `load8U` and `store8` in the subset, the translator, and the proof.
 - [x] The corpus with `heapsums`, on both CompCert trees.
+
+## 2026-10-27: The Wasm-to-C translator: the literal and byte examples
+
+The coordinator asked for `Verified.Examples.Literals` to run natively, since no corpus module reached the native form of the theorems `ImplementsStatic`.  The example reads its literals with `Bytes.get`, a `load8U`, so it entered the subset with the byte forms of the previous entry, and with them every one of its 21 functions translates; so do the 22 functions of `Verified.Examples.Bytes`.  No new module was needed.
+
+`tests/TestSupport/Native/LiteralsNative.lean` states that each translation contains every function of its module and checks the types of five theorems `p.f.native`: `constant`, `lookup`, and `tail` of the literal example are `NativeStaticImpl`, and `copyByBuild` and `readByte` of the byte example are `NativeImpl`.  `lookup.native` and `tail.native` depend on `propext`, `Classical.choice`, and `Quot.sound`.  `tests/native/bytes.sh` translates both modules, has `clightgen` read each back, compiles them with the native host, and runs the cases that `tests/wasi/run.sh` checks with Wasmtime: all 48 cases of `bytes.tsv` and all 36 of `literals.tsv` give Wasmtime's lines and allocation counts, and both cases of `byte-traps.tsv` stop at `unreachable`.  The results hold with the aarch64 tree on AArch64 and with the x86_64 tree under `qemu-x86_64`.
+
+- [x] `Verified.Examples.Literals` native, with its theorems and its cases.
