@@ -6,7 +6,9 @@ structural recursion.  Statements and calls take fuel, which each statement and 
 consumes, so a result `.ok` means a derivation of at most that height exists.  `RunSound.lean`
 proves that every `.ok` result is an execution of `exec_stmt` or `eval_funcall`.  A result
 `.error .stuck` means that no rule applies at the point the evaluator reached; the evaluator
-gives `EF_external` calls no result, since their semantics is a parameter.
+gives `EF_external` calls no result, since their semantics is a parameter.  `run` calls one
+function from the initial memory, and `run_program` runs `main` as `bigstep_program_terminates`
+describes.
 -/
 
 namespace LClight
@@ -116,7 +118,20 @@ def eval_exprlist_fn (e : env) (le : temp_env) (m : mem) :
       | none => none
   | _, _ => none
 
-/-- `external_call` for the known built-in functions; other external functions are stuck. -/
+/-- An identifier whose symbol is the block `b`, the identifier of a volatile store's event. -/
+def invert_symbol_fn (b : block) : Option ident :=
+  (ge.genv_symb.toList.find? fun e => e.2 == b).map (·.1)
+
+/-- The event value that `eventval_match` relates to `v` at `ty`. -/
+def eventval_of_val : val → typ → Option eventval
+  | .Vint i, .Tint => some (.EVint i)
+  | .Vlong i, .Tlong => some (.EVlong i)
+  | .Vfloat f, .Tfloat => some (.EVfloat f)
+  | .Vsingle f, .Tsingle => some (.EVsingle f)
+  | _, _ => none
+
+/-- `external_call` for the known built-in functions and `EF_vstore`; other external functions
+are stuck. -/
 def external_call_fn (ef : external_function) (vargs : List val) (m : mem) :
     Option (trace × val × mem) :=
   match ef with
@@ -127,6 +142,19 @@ def external_call_fn (ef : external_function) (vargs : List val) (m : mem) :
           | some vres => some (E0, vres, m)
           | none => none
       | none => none
+  | .EF_vstore chunk =>
+      match vargs with
+      | [.Vptr b ofs, v] =>
+          if Genv.block_is_volatile ge b then
+            match invert_symbol_fn ge b,
+                eventval_of_val (Val.load_result chunk v) (type_of_chunk chunk) with
+            | some id, some ev => some ([.Event_vstore chunk id ofs ev], .Vundef, m)
+            | _, _ => none
+          else
+            match Mem.storev chunk m (.Vptr b ofs) v with
+            | some m' => some (E0, .Vundef, m')
+            | none => none
+      | _ => none
   | _ => none
 
 def function_entry2_fn (f : function) (vargs : List val) : Option temp_env :=
@@ -188,7 +216,7 @@ mutual
       | .Sbuiltin optid ef tyargs al =>
           match eval_exprlist_fn A ge e le m al tyargs with
           | some vargs =>
-              match external_call_fn A ef vargs m with
+              match external_call_fn A ge ef vargs m with
               | some (t, vres, m') => .ok (t, set_opttemp optid vres le, m', .Out_normal)
               | none => .error .stuck
           | none => .error .stuck
@@ -252,7 +280,7 @@ mutual
               | .error err => .error err
           | none => .error .stuck
       | .External ef _ _ _ =>
-          match external_call_fn A ef vargs m with
+          match external_call_fn A ge ef vargs m with
           | some (t, vres, m') => .ok (t, m', vres)
           | none => .error .stuck
 end
@@ -274,5 +302,26 @@ def run (A : Archi) (p : program function) (name : ident) (args : List val) (fue
           match Genv.find_funct_ptr ge b with
           | none => .error .stuck
           | some fd => eval_funcall_fn A ge fuel m0 fd args
+
+/-- Runs the program `p` as `bigstep_program_terminates` describes: its `main`, of the type
+`int(void)`, from the initial memory of `p`, with `fuel` for the statements and calls it runs.
+The result is the trace and the returned `int`. -/
+def run_program (A : Archi) (p : program function) (fuel : Nat) : Except Failure (trace × int) :=
+  let ge := globalenv p
+  match init_mem p with
+  | none => .error .stuck
+  | some m0 =>
+      match Genv.find_symbol ge p.prog_main with
+      | none => .error .stuck
+      | some b =>
+          match Genv.find_funct_ptr ge b with
+          | none => .error .stuck
+          | some fd =>
+              if type_of_fundef fd = .Tfunction [] type_int32s cc_default then
+                match eval_funcall_fn A ge fuel m0 fd [] with
+                | .ok (t, _, .Vint r) => .ok (t, r)
+                | .ok _ => .error .stuck
+                | .error err => .error err
+              else .error .stuck
 
 end LClight

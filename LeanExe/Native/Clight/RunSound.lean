@@ -3,10 +3,9 @@ import LeanExe.Native.Clight.Run
 /-!
 The soundness of `run` against the big-step semantics: an `.ok` result of `exec_fn` or
 `eval_funcall_fn` is an execution of `exec_stmt` or `eval_funcall`, for every semantics `X` of
-external functions, and `run_sound` states it for a call from the initial memory.  `run_sound`
-concludes `eval_funcall` for any function and arguments, while CompCert's program-level
-judgment, which `Bigstep.lean` omits, calls `main` with no arguments.  The proofs go by
-induction on the fuel and, within one unit of fuel, by cases on the statement.
+external functions.  `run_sound` states it for a call from the initial memory, and
+`run_program_sound` concludes `bigstep_program_terminates` from a result of `run_program`.  The
+proofs go by induction on the fuel and, within one unit of fuel, by cases on the statement.
 -/
 
 namespace LClight
@@ -232,10 +231,27 @@ theorem eval_exprlist_fn_sound {e : env} {le : temp_env} {m : mem} :
   | [], _ :: _, vl, h => by simp [eval_exprlist_fn] at h
   | _ :: _, [], vl, h => by simp [eval_exprlist_fn] at h
 
+theorem invert_symbol_fn_sound {b : block} {id : ident} (h : invert_symbol_fn ge b = some id) :
+    Genv.find_symbol ge id = some b := by
+  unfold invert_symbol_fn at h
+  cases hf : ge.genv_symb.toList.find? (fun e => e.2 == b) with
+  | none => simp [hf] at h
+  | some e =>
+      simp only [hf, Option.map_some, Option.some.injEq] at h
+      subst h
+      have hb : e.2 = b := by simpa using List.find?_some hf
+      have hmem : (e.1, e.2) ∈ ge.genv_symb.toList := List.mem_of_find?_eq_some hf
+      rw [Std.TreeMap.mem_toList_iff_getElem?_eq_some] at hmem
+      simp only [Genv.find_symbol, hmem, hb]
+
+theorem eventval_of_val_sound {v : val} {ty : typ} {ev : eventval}
+    (h : eventval_of_val v ty = some ev) : eventval_match ev ty v := by
+  cases v <;> cases ty <;> simp [eventval_of_val] at h <;> subst h <;> constructor
+
 theorem external_call_fn_sound {ef : external_function} {vargs : List val} {m : mem}
-    {t : trace} {vres : val} {m' : mem} {symb : Std.TreeMap ident block}
-    (h : external_call_fn A ef vargs m = some (t, vres, m')) :
-    external_call A X ef symb vargs m t vres m' := by
+    {t : trace} {vres : val} {m' : mem}
+    (h : external_call_fn A ge ef vargs m = some (t, vres, m')) :
+    external_call A X ef ge vargs m t vres m' := by
   unfold external_call_fn at h
   cases ef with
   | EF_builtin name sg =>
@@ -249,6 +265,40 @@ theorem external_call_fn_sound {ef : external_function} {vargs : List val} {m : 
               cases h
               simp only [external_call, hb]
               exact ⟨hs, rfl, rfl⟩
+  | EF_vstore chunk =>
+      match vargs, h with
+      | [.Vptr b ofs, v], h =>
+          simp only [external_call]
+          by_cases hv : Genv.block_is_volatile ge b = true
+          · simp only [hv, ite_true] at h
+            cases hi : invert_symbol_fn ge b with
+            | none => simp [hi] at h
+            | some id =>
+                cases he : eventval_of_val (Val.load_result chunk v) (type_of_chunk chunk) with
+                | none => simp [hi, he] at h
+                | some ev =>
+                    simp only [hi, he, Option.some.injEq, Prod.mk.injEq] at h
+                    obtain ⟨rfl, rfl, rfl⟩ := h
+                    exact .volatile_store_sem_intro b ofs m v _ m
+                      (.volatile_store_vol chunk m b ofs id ev v hv (invert_symbol_fn_sound hi)
+                        (eventval_of_val_sound he))
+          · have hv' : Genv.block_is_volatile ge b = false := by simpa using hv
+            simp only [hv', Bool.false_eq_true, ite_false] at h
+            cases hs : Mem.storev chunk m (.Vptr b ofs) v with
+            | none => simp [hs] at h
+            | some m1 =>
+                simp only [hs, Option.some.injEq, Prod.mk.injEq] at h
+                obtain ⟨rfl, rfl, rfl⟩ := h
+                exact .volatile_store_sem_intro b ofs m v _ m1
+                  (.volatile_store_nonvol chunk m b ofs v m1 hv' hs)
+      | [], h => simp at h
+      | [.Vptr _ _], h => simp at h
+      | .Vptr _ _ :: _ :: _ :: _, h => simp at h
+      | .Vundef :: _, h => simp at h
+      | .Vint _ :: _, h => simp at h
+      | .Vlong _ :: _, h => simp at h
+      | .Vfloat _ :: _, h => simp at h
+      | .Vsingle _ :: _, h => simp at h
   | _ => simp at h
 
 theorem function_entry2_fn_sound {f : function} {vargs : List val} {le : temp_env} {m : mem}
@@ -370,7 +420,7 @@ theorem fn_sound (fuel : Nat) :
           cases hv : eval_exprlist_fn A ge e le m al tyargs with
           | none => simp [hv] at h
           | some vargs =>
-              cases hx : external_call_fn A ef vargs m with
+              cases hx : external_call_fn A ge ef vargs m with
               | none => simp [hv, hx] at h
               | some r =>
                   obtain ⟨t0, vres, m0⟩ := r
@@ -551,7 +601,7 @@ theorem fn_sound (fuel : Nat) :
                             (outcome_result_value_fn_sound hr) hfl
       | External ef targs tres cconv =>
           simp only [eval_funcall_fn] at h
-          cases hx : external_call_fn A ef vargs m with
+          cases hx : external_call_fn A ge ef vargs m with
           | none => simp [hx] at h
           | some r =>
               obtain ⟨t0, vres0, m0⟩ := r
@@ -594,5 +644,37 @@ theorem run_sound {A : Archi} {X : ExtSem} {p : program function} {name : ident}
           | some fd =>
               simp only [hm, hs, hf] at h
               exact ⟨m0, b, fd, rfl, rfl, hf, eval_funcall_fn_sound h⟩
+
+/-- A result of `run_program` is an execution of the whole program, as
+`bigstep_program_terminates` states it. -/
+theorem run_program_sound {A : Archi} {X : ExtSem} {p : program function} {fuel : Nat}
+    {t : trace} {r : int} (h : run_program A p fuel = .ok (t, r)) :
+    bigstep_program_terminates A X p t r := by
+  unfold run_program at h
+  cases hm : init_mem p with
+  | none => simp [hm] at h
+  | some m0 =>
+      cases hs : Genv.find_symbol (globalenv p) p.prog_main with
+      | none => simp [hm, hs] at h
+      | some b =>
+          cases hf : Genv.find_funct_ptr (globalenv p) b with
+          | none => simp [hm, hs, hf] at h
+          | some fd =>
+              simp only [hm, hs, hf] at h
+              by_cases hty : type_of_fundef fd = .Tfunction [] type_int32s cc_default
+              · rw [ite_eq_left hty] at h
+                cases he : eval_funcall_fn A (globalenv p) fuel m0 fd [] with
+                | error err => simp [he] at h
+                | ok res =>
+                    obtain ⟨t0, m1, v⟩ := res
+                    cases v with
+                    | Vint r0 =>
+                        simp only [he, Except.ok.injEq, Prod.mk.injEq] at h
+                        obtain ⟨rfl, rfl⟩ := h
+                        exact .bigstep_program_terminates_intro b fd m0 m1 _ _ hm hs hf hty
+                          (eval_funcall_fn_sound he)
+                    | _ => simp [he] at h
+              · rw [ite_eq_right hty] at h
+                cases h
 
 end LClight

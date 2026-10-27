@@ -7,8 +7,8 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
-`LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26 and 2026-10-27: transcribed from Coq into Lean, with the
+changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.Floats
 
@@ -62,6 +62,15 @@ inductive memory_chunk where
 
 /-- `Mptr` on a 64-bit target. -/
 def Mptr : memory_chunk := .Mint64
+
+/-- `type_of_chunk` (`AST.v`, lines 219 to 232). -/
+def type_of_chunk : memory_chunk → typ
+  | .Mbool | .Mint8signed | .Mint8unsigned | .Mint16signed | .Mint16unsigned | .Mint32 => .Tint
+  | .Mint64 => .Tlong
+  | .Mfloat32 => .Tsingle
+  | .Mfloat64 => .Tfloat
+  | .Many32 => .Tany32
+  | .Many64 => .Tany64
 
 /-- `init_data`. -/
 inductive init_data where

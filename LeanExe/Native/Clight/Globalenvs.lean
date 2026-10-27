@@ -7,8 +7,8 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
-`LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26 and 2026-10-27: transcribed from Coq into Lean, with the
+changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.Ctypes
 
@@ -18,8 +18,7 @@ without the proof fields of `Genv.t`; `Clight.lean` applies them to a program as
 `init_mem`.  A program's globals take the blocks `1, 2, …` in the order of `prog_defs`, and
 `alloc_globals` allocates and initializes them in that order.  `store_zeros` writes one byte at a
 time, as in CompCert, so evaluating the initial memory of a large global costs time in proportion
-to its size.  `public_symbol`, `invert_symbol`, `find_var_info`, `block_is_volatile`, and
-`to_senv` are omitted.
+to its size.  `public_symbol`, `invert_symbol`, and `to_senv` are omitted.
 
 `Genv.t` drops the invariants `genv_symb_range`, `genv_defs_range`, and `genv_vars_inj`.  The
 environments that CompCert's semantics uses are those of `globalenv p`, which satisfy them; a
@@ -47,6 +46,18 @@ def find_funct_ptr (ge : t F V) (b : block) : Option F :=
   match find_def ge b with
   | some (.Gfun f) => some f
   | _ => none
+
+/-- `find_var_info` (`Globalenvs.v`, lines 211 and 212). -/
+def find_var_info (ge : t F V) (b : block) : Option (globvar V) :=
+  match find_def ge b with
+  | some (.Gvar v) => some v
+  | _ => none
+
+/-- `block_is_volatile` (`Globalenvs.v`, lines 217 to 221). -/
+def block_is_volatile (ge : t F V) (b : block) : Bool :=
+  match find_var_info ge b with
+  | none => false
+  | some gv => gv.gvar_volatile
 
 def find_funct (ge : t F V) (v : val) : Option F :=
   match v with

@@ -8,8 +8,8 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
-`LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26 and 2026-10-27: transcribed from Coq into Lean, with the
+changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.Globalenvs
 
@@ -25,9 +25,12 @@ corresponds to CompCert's compiler theorem only when it holds for every `ExtSem`
 theorems in this directory do.  `builtin_function` lists the three functions directly, where
 `Builtins.v` nests them under `BI_standard`.  Of the built-in functions, the copy
 gives meaning to `__builtin_fsqrt` and its alias `__builtin_sqrt`, `__builtin_fabs`, and
-`__builtin_fabsf`, each at the signature of CompCert's table.  Every other built-in, run-time
-function, volatile access, `malloc`, `free`, `memcpy`, annotation, inline assembly, and debug
-information has no rule.
+`__builtin_fabsf`, each at the signature of CompCert's table.  `EF_vstore` has the semantics of
+`volatile_store_sem`, so a store to a volatile global is an output event, as in CompCert.
+`eventval_match` omits the case `ev_match_ptr`, so a volatile store of a pointer has no rule.
+`external_call` takes the global environment, where CompCert takes a `Senv.t`, and passes its
+symbol map to `ExtSem`.  Every other built-in, run-time function, volatile load, `malloc`,
+`free`, `memcpy`, annotation, inline assembly, and debug information has no rule.
 -/
 
 namespace LClight
@@ -100,11 +103,44 @@ def known_builtin_sem (A : Archi) (bf : builtin_function) (vargs : List val) (m 
     (t : trace) (vres : val) (m' : mem) : Prop :=
   builtin_function_sem A bf vargs = some vres ∧ t = E0 ∧ m' = m
 
-def external_call (A : Archi) (X : ExtSem) (ef : external_function)
-    (symb : Std.TreeMap ident block) (vargs : List val) (m : mem) (t : trace) (vres : val)
-    (m' : mem) : Prop :=
+/-- `eventval_match` (`Events.v`, lines 270 to 283) without `ev_match_ptr`. -/
+inductive eventval_match : eventval → typ → val → Prop
+  | ev_match_int (i : int) : eventval_match (.EVint i) .Tint (.Vint i)
+  | ev_match_long (i : int64) : eventval_match (.EVlong i) .Tlong (.Vlong i)
+  | ev_match_float (f : float) : eventval_match (.EVfloat f) .Tfloat (.Vfloat f)
+  | ev_match_single (f : float32) : eventval_match (.EVsingle f) .Tsingle (.Vsingle f)
+
+/-- `volatile_store` (`Events.v`, lines 571 to 583), with `Senv.block_is_volatile` and
+`Senv.find_symbol` of the global environment `ge`. -/
+inductive volatile_store {F V : Type} (ge : Genv.t F V) :
+    memory_chunk → mem → block → ptrofs → val → trace → mem → Prop
+  | volatile_store_vol (chunk : memory_chunk) (m : mem) (b : block) (ofs : ptrofs) (id : ident)
+      (ev : eventval) (v : val) :
+      Genv.block_is_volatile ge b = true →
+      Genv.find_symbol ge id = some b →
+      eventval_match ev (type_of_chunk chunk) (Val.load_result chunk v) →
+      volatile_store ge chunk m b ofs v [.Event_vstore chunk id ofs ev] m
+  | volatile_store_nonvol (chunk : memory_chunk) (m : mem) (b : block) (ofs : ptrofs) (v : val)
+      (m' : mem) :
+      Genv.block_is_volatile ge b = false →
+      Mem.storev chunk m (.Vptr b ofs) v = some m' →
+      volatile_store ge chunk m b ofs v E0 m'
+
+/-- `volatile_store_sem` (`Events.v`, lines 820 to 824). -/
+inductive volatile_store_sem {F V : Type} (chunk : memory_chunk) (ge : Genv.t F V) :
+    List val → mem → trace → val → mem → Prop
+  | volatile_store_sem_intro (b : block) (ofs : ptrofs) (m1 : mem) (v : val) (t : trace)
+      (m2 : mem) :
+      volatile_store ge chunk m1 b ofs v t m2 →
+      volatile_store_sem chunk ge [.Vptr b ofs, v] m1 t .Vundef m2
+
+/-- `external_call` (`Events.v`, lines 1524 to 1538) for `EF_external`, the built-in functions
+of `builtin_table`, and `EF_vstore`. -/
+def external_call {F V : Type} (A : Archi) (X : ExtSem) (ef : external_function)
+    (ge : Genv.t F V) (vargs : List val) (m : mem) (t : trace) (vres : val) (m' : mem) : Prop :=
   match ef with
-  | .EF_external name sg => X.external_functions_sem name sg symb vargs m t vres m'
+  | .EF_external name sg => X.external_functions_sem name sg ge.genv_symb vargs m t vres m'
+  | .EF_vstore chunk => volatile_store_sem chunk ge vargs m t vres m'
   | .EF_builtin name sg =>
       match lookup_builtin_function name sg with
       | some bf => known_builtin_sem A bf vargs m t vres m'
