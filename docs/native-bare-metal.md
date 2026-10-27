@@ -92,13 +92,14 @@ inductive bigstep_program_terminates (A : Archi) (X : ExtSem) (p : program funct
       bigstep_program_terminates A X p t r
 ```
 
-The program is `bareProgram pre T args`: CompCert's external declarations `pre`, the translation's definitions in the order of the C text, the declaration of `lx_out`, and `main`, with `prog_main` naming `main`.  `clightgen` puts its declarations of CompCert's built-in and run-time functions first, among them `__builtin_fsqrt`, which the translation now places between `lx_pun` and the result globals, so that declaration moves into `pre`.  The theorem holds for every `pre` of external function declarations whose identifiers are distinct from the program's and which declares `__builtin_fsqrt` at its signature, and the per-build check confirms that the program `clightgen` reads has that shape.
+The program is `bareProgram pre T (bareMain args)` (`LeanExe/Native/Proof/Whole.lean`): CompCert's external declarations `pre`, the translation's definitions in the order of the C text, the declaration of `lx_out`, and `main`, the function `bareMain args` that the writer of B4 gives, with `prog_main` naming `main`.  `clightgen` puts its declarations of CompCert's built-in and run-time functions first, among them `__builtin_fsqrt`, which the translation now places between `lx_pun` and the result globals, so that declaration moves into `pre`.  The theorem holds for every `pre` of external function declarations whose identifiers are distinct from the program's and which declares `__builtin_fsqrt` at its signature, the hypotheses of `wholeOk_bare` that `PrefixOk pre` collects, and the per-build check confirms that the program `clightgen` reads has that shape.
 
 ```lean
 theorem p.run.program (A : Archi) (X : ExtSem) (pre) (hpre : PrefixOk pre) :
-    bigstep_program_terminates A X (bareProgram pre p.translation args)
+    bigstep_program_terminates A X (bareProgram pre p.translation (bareMain args))
         (outTrace (encode (run args))) 0 ∨
-      (aborts = true ∧ bigstep_program_terminates A X (bareProgram pre p.translation args) E0 1)
+      (aborts = true ∧ bigstep_program_terminates A X (bareProgram pre p.translation (bareMain args))
+        E0 1)
 ```
 
 `encode xs` is the eight bytes of `xs.size` followed by the eight bytes of each element, and `outTrace` maps each byte `b` to `Event_vstore Mint32 outId 0 (EVint b)`.  The proof follows `main`'s body: `init_mem` of the whole program, with the prefix and `lx_out` before and after the translation's blocks; `lx_init_correct` for the call of `lx_init`; `p.run.native` for the call of the entry, with the premises that `start` already proves for the state after `lx_init`; the test of `lx_status`; a loop lemma that produces one event per byte from `Heap.Owned` and `MemRel`; and `outcome_result_value` for the returned `int`.
@@ -113,13 +114,13 @@ theorem p.run.program (A : Archi) (X : ExtSem) (pre) (hpre : PrefixOk pre) :
 | `Val.load_result` | `common/Values.v`, line 1069 |
 | `volatile_store`, `volatile_store_sem`, and the case `EF_vstore` of `external_call` | `common/Events.v`, lines 571 to 583, 820 to 824, and 1530 |
 | for inputs only: `volatile_load`, `volatile_load_sem`, and the case `EF_vload` | `common/Events.v`, lines 557 to 569, 709 to 713, and 1529 |
-| a renaming lemma: `bigstep_program_terminates A X p t r` implies the same of `p.rename ρ` with the trace renamed, for every injective `ρ` | none |
+| a renaming lemma, `bigstep_program_terminates_rename`: `bigstep_program_terminates A X p t r` implies `bigstep_program_terminates A X' p' (renTrace g t) r` when `p'` renames the globals of `p` by an injective `g` and the temporaries of each function by an injective `τ`, and `X'` does on renamed symbols what `X` does | none |
 
 `external_call` passes `ExtSem` the symbol table alone today, and the volatile cases also need the volatility of blocks, so it gains the global environment's variable information while `ExtSem` keeps its type.  The differential test of the copy gains volatile stores, and volatile loads with B7, compared with `ccomp -interp`, which prints each volatile event at its default level of tracing (`driver/Interp.ml`, lines 56 to 75 and 421 to 424).  The interpreter treats a volatile variable as memory (lines 568 to 582), so the test programs define their volatile globals instead of declaring them `extern`, which leaves the semantics of a store unchanged.
 
 ### From the Lean theorem to the machine code
 
-**The program `clightgen` reads.**  The per-build check compares the whole program, prefix and `main` included, with `bareProgram`, up to an injective renaming of identifiers, and the renaming lemma moves the theorem across it.  The check's current rule, which ignores CompCert's external declarations, changes accordingly.
+**The program `clightgen` reads.**  The per-build check compares the whole program, prefix and `main` included, with `bareProgram`, up to an injective renaming of identifiers, and the renaming lemma moves the theorem across it.  The check compares CompCert's external declarations and the translation's definitions since B3, and B4 adds `lx_out` and `main`.
 
 **The program `ccomp` compiles.**  `clightgen` numbers identifiers by a canonical encoding of their names (`export/ExportDriver.ml`, line 207, and `lib/Camlcoq.ml`, lines 288 to 301 and 337 to 345), and SimplExpr's temporaries then start at 128.  `ccomp` numbers names from 1 in the order it meets them, and its temporaries start after the last name (`lib/Camlcoq.ml`, lines 374 to 377).  The Clight program that `clightgen` prints and the one inside `ccomp` therefore differ by a renaming of identifiers, if the two front ends otherwise agree.  The renaming lemma holds for every injective renaming, so the trusted assumption shrinks to this: for the same C text, the Csyntax program `p` inside `ccomp` is the one inside `clightgen` with its identifiers renamed injectively.
 
