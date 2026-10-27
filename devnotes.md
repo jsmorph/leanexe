@@ -36248,13 +36248,13 @@ A restricted rule would need the loop context in `Expr.paid` and `Expr.allocs`: 
 - [x] Write the paid-flag rules, their proofs, and the reflector changes (stage 2), unbuilt.
 - [x] Move and extend the effect-command resource rules (stage 2), unbuilt.
 - [x] Build `Verified.Wasi.CompactHeap`, `Verified.Wasi.ProcessCompact`, and the process modules; fix the drafts (against the base bound rules).
-- [ ] Build `Verified.ExprCorrect`, the reflector, and every program that the paid rules reach; compare all module bytes with the previous emissions, which must match except the process modules.
-- [ ] List every existing program whose proved allocation bound changes, the drone's 2,251,064 bytes among them; if any bound rises, restrict the `if` rule to the bodies of loops whose state grows and list the changed bounds.
-- [ ] Re-check `stackFits`, the process modules' validity and encoding, and the WASI and running-sum drivers, including the Talos groups.
-- [ ] Prove the `Bounded` charges of `begin`, `step`, `readStep`, and `writeStep` for the integer program, and their closed-form bounds.
-- [ ] Prove the size invariant and the room lemma, and state the final integer theorem over `InputLimits L D` with its inequality against the memory cap, and a corollary with concrete `L` and `D`.
+- [x] Build `Verified.ExprCorrect`, the reflector, and every program that the paid rules reach; compare all module bytes with the previous emissions, which must match except the process modules.
+- [x] List every existing program whose proved allocation bound changes, the drone's 2,251,064 bytes among them; if any bound rises, restrict the `if` rule to the bodies of loops whose state grows and list the changed bounds.
+- [x] Re-check `stackFits`, the process modules' validity and encoding, and the WASI and running-sum drivers, including the Talos groups.
+- [x] Prove the `Bounded` charges of `begin`, `step`, `readStep`, and `writeStep` for the integer program, and their closed-form bounds.
+- [x] Prove the size invariant and the room lemma, and state the final integer theorem over `InputLimits L D` with its inequality against the memory cap, and a corollary with concrete `L` and `D`.
 - [ ] Repeat the charges and limits for the binary64 program.
-- [ ] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audits.
+- [ ] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audits.  The integer program is done.
 
 ### Risks
 
@@ -36369,5 +36369,5 @@ The bodies of `begin`, `step`, `readStep`, and `writeStep` take their charges by
 - [x] Prove the `Bounded` charges of `begin`, `step`, `readStep`, and `writeStep` for the integer program, and their closed-form bounds.
 - [x] Prove the size invariant and the room lemma, and state the final integer theorem over `InputLimits L D` with its inequality against the memory cap, and a corollary with concrete `L` and `D`.
 - [x] Run both running-sum drivers.
-- [ ] Repeat the charges and limits for the binary64 program.
-- [ ] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audits.
+- [x] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audit of the integer program.
+- [ ] Repeat the charges and limits for the binary64 program, and update its guide.
