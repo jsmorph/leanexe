@@ -68,6 +68,7 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 | `nearest_spec`, `clamp_spec` | `PrintFloatQuot` | `nearest` rounds `y` to the nearest integer, the even one at a tie, from `⌊2 y⌋` and its remainder flag, and `clamp` of that integer into a run is the nearest member of the run. |
 | `top_top`, `width_le`, `quot_bound` | `PrintFloatSearch` | The top exponent `J` has no multiple of a power of ten above it in the interval, the interval is at most `10 ^ (J + 1)` wide, and the quotients from `J - 1` on stay below `2 ^ 62`. |
 | `startExp_spec`, `found_iff`, `search_spec` | `PrintFloatPick` | The search starts above the interval's upper end, `found` decides whether a multiple lies in the interval, and the search returns `J`. |
+| `steps_le`, `search_le`, `steps_le_binary32`, `search_le_binary32`, `jstart_binary64` | `PrintFloatSteps` | The search of a binary64 word stops at most 27 exponents below its start exponent `j0`, so it tests at most 28, and that of a binary32 word at most 10 below.  An exact check at each binade shows that the interval is wider than `10 ^ (j0 - 27)`, or `10 ^ (j0 - 10)` for binary32, which `width_le` excludes for a later stop.  The start exponent of a binary64 word lies between -321 and 319. |
 | `no_tie` | `PrintFloatChoice` | A one-digit multiple of `10 ^ J` and one of `10 ^ (J - 1)` in the interval are never at the same distance from the value: a tie would need `5 ^ (1 - J)` to divide a number below 100. |
 | `shortest_spec` | `PrintFloatShortest` | `shortest` returns a decimal of the interval at `J` or `J - 1` that is the printers' choice, so `shortest_of_choice` applies. |
 | `numDigits_spec`, `digitAt_spec`, `decValue_digitsOf` | `PrintFloatDigits` | `numDigits` counts the decimal digits of a word below `10 ^ 19`, `digitAt` returns its digit `i` as an ASCII byte, and `decValue` reads `digitsOf t` back as `t`. |
@@ -85,7 +86,7 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 
 ## Limits
 
-The byte theorems trust Talos's semantics of WebAssembly and its decoder, as every theorem of the verified compiler does.  The printers write one byte per word, which costs eight bytes of memory per character.  Every NaN prints as `NaN`, since the grammar carries no payload, and the round trip recovers the canonical NaN.  The search costs about twenty exact quotients of integers of up to 18 limbs per word; the native check of 889 words, four strings and four parses each, takes 372 seconds under `lean --run`, and no faster method, such as Cox's or Schubfach's tables, is used.
+The byte theorems trust Talos's semantics of WebAssembly and its decoder, as every theorem of the verified compiler does.  The printers write one byte per word, which costs eight bytes of memory per character.  Every NaN prints as `NaN`, since the grammar carries no payload, and the round trip recovers the canonical NaN.  The search tests at most 28 exponents for a binary64 word (`search_le`), with two exact quotients each.  The native check of 889 words, four strings and four parses each, takes 372 seconds under `lean --run`, and no faster method, such as Cox's or Schubfach's tables, is used.
 
 ## References
 

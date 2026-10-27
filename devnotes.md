@@ -36696,8 +36696,101 @@ The bodies of `begin`, `step`, `readStep`, and `writeStep` take their charges by
 
 `tests/wasi/Axioms.lean` imports `Verified.ProgramLiterals`, which no module imported and no build list of `tests/wasi/run.sh` named.  The aggregate `lake build Verified Library` therefore never checked its proofs, and the WASI driver failed on a fresh build when the axiom check found no `.olean` for it.  Earlier runs passed only in checkouts that still held an `.olean` from an earlier build.  `Verified.lean` now imports the module, so the aggregate checks it, and the driver's byte-values build names it, so the driver builds what its axiom check imports.  Every other top-level module of `Verified/` is imported by `Verified.lean` or by another module.
 
+## 2026-10-27: Stage 3, the charges of the binary64 printer and parser
+
+The coordinator decided on 2026-10-27, for the sleeping user, that `process-compaction` keeps the binary64 program's `RunCharges` premise and that stage 3 proves its charges for the parser and the printer as they stand, with no change to either.  A smaller search fuel or a tighter start would still need a bound on the search's length, for correctness or for the shortest output, and would change the bytes of every module that prints floats.  The search-length theorem also bounds the allocation of every module that uses `PrintFloat`, so it comes first.  Work proceeds on the local branch `printfloat-charges`, taken at the integer stage 2 commit, and leaves every module's bytes unchanged.
+
+### The search length
+
+`shortest` searches with `repeatWhile 2000` for the largest exponent `J` at which a multiple of `10 ^ J` lies in the rounding interval, calling `found` at `j0 - i` for `i = 0, 1, …`.  `search_spec` states that the search returns `steps = jstart - top`.  The generated bound of the loop follows the iterations that the code takes, so it is finite only with a bound on `steps`.  `width_le` gives `hi - lo ≤ 10 ^ (top + 1)`, and the width is at least `3 · 2 ^ (E - 1) / 2 ^ (nu + 2)`.  `jstart` grows with the size of `4 Q + 2`, at most 55 bits for a binary64 significand.  If `steps ≥ N + 1`, then `10 ^ (jstart - N) ≥ hi - lo`, which an exact check at each of the 2,048 binades refutes.  An exact computation over the binades gives `N = 27` as the smallest value that this argument supports.  The check runs in the kernel on natural numbers of at most about 2,200 bits.
+
+### Plan
+
+The cost lemmas follow the call graph from the bottom, each for the generated `bound` of the binary64 running sum's program, with the size of each array result where a caller needs it.
+
+1. `mulSmall`: cost linear in the array's length, result one limb longer.
+2. `shl`: `mulSmall` and a block of the shifted length.
+3. `sub`, with the result as long as the minuend; `le`, `cmpStep`, `bitLen`, and `wordBits`, which allocate nothing.
+4. `divStep` and `divBits`: 63 steps of a shift and a subtraction, with the remainder no longer than the dividend.
+5. `scaledQuot`: the two shifts and `divBits`.
+6. `mulPow10`: `k / 9` products by `10 ^ 9` and one more, the result `k / 9 + 1` limbs longer.
+7. `limbsOf`, `quotAt`, `range`, and `found`, at exponents within 350 of the bias.
+8. `shortest`: at most 28 tests of `found`, then `range`, `quotAt`, and at most one more of each.
+9. `numDigits`, `digitAt`, `digitsFrom`, `byte1`, `noBytes`, `zeros`, `sciLayoutW`, `special`, `fixed`, `print64With`, and `print64`.
+10. The parser: `span`, `expPart`, `leadingZeros`, `anyNonzero`, `chunkVal`, `digitsVal` (at most 768 digits), `decParse`, `fastPath`, `roundUnits`, `decRound` (exponents limited by its range tests), `parse64`, and `stripCR`.
+11. `completeLine`, `consumeInput`, the effect bodies, and the binary64 `RunCharges` from limits on line length, as for the integer program.
+
+### The search length as proved
+
+`PrintFloatSteps.steps_le` proves at most 27 steps for every word with `WordBounds Q E 1074`, and `search_le` states it for the code's `repeatWhile`.  The proof refutes `steps ≥ 28` with `width_le`, `width_eq`, and `jstart ≤ jfor 1074 E 55`, where `jfor` is `jstart` with the bits of `4 Q + 2` as a parameter and grows with them.  `wide_binary64` checks `10 ^ (jfor 1074 E 55 - 27) < 3 · 2 ^ (E - 1) / 2 ^ 1076` in natural numbers for each `E` from 1 to 2,048 by `decide +kernel`.  The same argument gives at most 10 steps for a binary32 word (`steps_le_binary32`), whose significand has at most 24 bits and whose binade is below 256.  The loop tests `found` at most 28 times.
+
+The cost of one test and of one call follows from the paid sides of the generated equations, which the cost lemmas will prove.  `mulSmall` on `n` limbs costs at most `96 n + 168` bytes, `shl` at most `104 n + 232 + 8 ⌊k / 32⌋`, `sub` at most `80 n + 72`, and `divBits` 63 steps of a shift and a subtraction.  At the search's exponents, within 350 of the bias, one `found` costs at most about 1.79 MB, the most at binade 2,035, where the shift of the numerator by `E - 1` bits makes the division's operands longest.  One call of the printer then costs at most about 54 MB: 28 tests, the final `range` and `quotAt`, and at most one more of each.  These figures are estimates from the formulas, not yet theorems.
+
+### The search's charge as proved
+
+`Demos/RunningSumFp/PrintCharges.lean` proves steps 1 to 8 of the plan for the generated bounds of the binary64 running sum.  `mulSmall` on `n` limbs costs at most `96 n + 168` bytes, `shl` at most `104 n + 232 + 8 ⌊k / 32⌋`, `sub` at most `80 n + 72`, and one step of `divBits` at most `104 d + 80 n + 312` for a shift below 64 bits, with the sizes of the results that the callers need.  `mulPow10 a k` costs at most `(m + 1) (96 (|a| + m) + 168)` bytes for `m = ⌊k / 9⌋` and returns `|a| + m + 1` limbs.  `quotAt_bound_le` bounds one quotient by `quotAtCost`, 953,376 bytes, for a numerator shift below 2,048, a denominator shift of at most 1,076, and a biased exponent from `2 ^ 62 - 349` to `2 ^ 62 + 319`.  The bound takes the worst case of each factor: 35 products by `10 ^ 9` above the bias and 38 below it, the largest shifts, and 63 quotient bits.  `range` and `found` cost at most two quotients.
+
+`jstart_binary64` places the start exponent of a binary64 word between -321 and 319, so every exponent that `shortest` tests, and the one below the last, lies in the range of `quotAt_bound_le`.  `shortest_bound_le` bounds `shortest` for every word with `WordBounds Q E 1074` and `E ≤ 2047` by 62 quotients, 59,109,312 bytes: at most 28 tests of `found`, the final `range` and `quotAt`, and at most one more of each.  The estimate of about 54 MB above used the operand sizes at each exponent, and the proved bound uses the largest sizes at every exponent.  `Verified/ChargeFacts.lean` gains `loopCost_le_upto`, which needs a loop's cost and step only at its passes, and `loopCost_repeatWhile_le`, which bounds the charge of a counting loop by the condition's charge at each count up to the result of the matching `repeatWhile`.  No theorem of the application imports the new module yet, so the binary64 driver builds it by name.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The form of the printer's bound | One constant per quotient over the exponents of a binary64 word, and 62 quotients for `shortest` | The constant needs only linear arithmetic, and a sum over the exponents would lower the bound by about 5 MB by the estimate above. |
+| The search's charge | A lemma over any counting `repeatWhile` whose body costs nothing, in `Verified/ChargeFacts.lean` | The charge depends only on the count where the loop stops, which `search_le` bounds. |
+| The base of `printfloat-charges` | Merge the compaction merge commit now, and main at the push commit or later after the push | The checkout then keeps its build, and a return to the old base would rebuild most of `Verified` and `Demos`. |
+
+- [x] Write the stage 3 plan.
+- [x] Prove the search-length theorem for binary64, and report the cost of one iteration and of one call of the printer.
+### The layout's charge and a kernel reduction
+
+Step 9 adds `numDigits_range`, which places the digit count of every word between 1 and 19, and bounds the scientific layout by 2,968 bytes and 42 bytes of output.  `special` costs at most 128 bytes.  `print64_bound_le` bounds the printer by `62 · quotAtCost + 2,968`, 59,112,280 bytes, and `render_bound_le` bounds `render`, which adds the byte string with its newline, by `62 · quotAtCost + 3,066`.  `Verified/ChargeFacts.lean` gains `repeatWhile_count_le`, the upper bound of a counting loop whose condition holds only below a limit.
+
+The first build of `print64_bound_le` failed with a kernel deep-recursion error.  I bisected the proof in scratch files to find the step that made the kernel recurse.  The error came from the branch of normal words, and with every hypothesis of that branch replaced by `sorry` the scratch run still exceeded its 12 GiB memory limit and did not finish.  The cause was the application of the layout's lemma, then stated over `(neg, t, kb)`, to the generated bound's argument `(neg, shortest Q E 1074 low)`.  The elaborator matches the pair by structure eta, and the kernel, to check the same match, reduces `shortest` on a symbolic word, which unrolls its loops.  `sciLayoutW_bound_le` now takes the pair whole, and the module builds in 2.5 s.  Lemmas over generated bounds will take a tuple argument whole wherever a caller passes the result of a call.
+
+- [x] Prove the cost lemmas of steps 1 to 8, through `shortest`.
+### The parser's charge as proved
+
+`Demos/RunningSumFp/ParseCharges.lean` proves step 10.  `decParse` keeps at most 768 digits, so `digitsVal` builds at most 86 limbs with as many products, at most 716,264 bytes.  `decRound` reaches its products and quotient only past its range tests, which leave biased exponents from `2 ^ 62 - 1,092` to `2 ^ 62 + 309`, at most 121 products by `10 ^ 9`.  With `bitLen_le`, which bounds the bits of `n` limbs by `32 n + 32`, the quotient's shifts stay within a few limbs of the other operand, and `decRound` costs at most 3,688,256 bytes.  The hexadecimal and special forms and the fast path allocate nothing, and `stripCR` copies the line, so `parse` costs at most `8 L + 4,404,576` bytes for a line of `L` bytes.
+
+Two steps of the first proofs were expensive in the same way as the layout's.  A `first` combinator that tried `Nat.zero_le` against the goal of the rounding branch made the elaborator reduce `decRound`'s bound toward 0, and the build stopped at the heartbeat limit.  The proof now splits the branches in order and applies each lemma to its own goal, after generalizing the sign's offset, whose condition `split` would otherwise take first.  `decRound_bound_le` takes the digit count, exponent, and flag whole, as the caller passes them.
+
+- [x] Prove the cost lemmas of step 9, the layout, `print64`, and `render`.
+### The binary64 theorem over a line limit
+
+Step 11 follows the integer program.  `Demos/RunningSumFp/Limits.lean` defines `InputLimits L`: each line up to and including the first line that denotes no number has at most `L` bytes.  The kernel specification `limitSpec L` adds the limit to each line's room, and `LimitInv L` carries a stream future under it with the buffers' bounds, so every reached state has a line of at most `L` bytes, an input buffer of at most 4,096 bytes, and an output buffer of at most 43 bytes.  `Demos/RunningSumFp/Charges.lean` bounds the effect bodies as the integer program's charges do: a copy of a state costs at most `8 L + 4,305` bytes, and a step at most `64 L + 4,910,000` bytes plus the charge of one rendering, 59,112,378 bytes.  The consumption of one input buffer dominates the line term: up to 4,096 bytes join the line, and the line that completes is parsed and copied.
+
+`RunCharges` now takes the invariant, as the integer program's does, and `limitCharges` derives it from the limit when `limitMemory L = 80 L + 64,031,000` bytes fit above the heap's top.  `terminates_fp` takes the invariant, its initial case, and its preservation, and `terminates_limits` supplies them from `InputLimits L`.  `initial_terminates_fp` now takes `InputLimits L` and `4,096 + limitMemory L ≤ 65,536 · 65,535` in place of `RunCharges`, with the same conclusion, and `initial_terminates_fp_50000000` discharges the inequality for lines of at most 50,000,000 bytes.  The binary64 module has no literals, so its heap starts at 4,096 bytes, where the integer module's starts at 4,104.  `initial_memoryCap` rewrites the initial store with `erase_restore` before its kernel check, since the `show` that the integer proof uses made the elaborator unfold the compiled module past its recursion limit.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The extent of the limit | The lines up to and including the first that denotes no number, stated with `InputLine` | The program reads no further line into its line buffer, and the integer limits take the same extent. |
+| The statement of `initial_terminates_fp` | Replace its `RunCharges` premise with the limit and the room inequality | This change mirrors the integer program's stage 2, and the conclusion is unchanged. |
+| A concrete corollary | Lines of at most 50,000,000 bytes | `80 · 50,000,000 + 64,035,096` bytes fit in 65,535 pages with about 230 MB to spare. |
+
+- [x] Prove the cost lemmas of step 10, the parser.
+- [x] Prove the cost lemmas of step 11, the effect bodies.
+- [x] State the binary64 theorem over limits on line length, with its inequality against the memory cap, and correct the comment of `RunCharges`, which named that theorem before it existed.
+- [x] Run both running-sum drivers.  The binary64 axiom check passes for 61 theorems, the integer checks as before, and `sum.wasm`, `sumfp.wasm`, and `process.wasm` equal the stage 2 emission.
+- [x] Update the guides, the index, and the WASI documents after the merge of main.
+- [ ] Run the gate on x86-64.
+
+## 2026-10-27: The merge with main and the slew planner
+
+The coordinator asked me to merge `bbb840a34`, main with typed-fields stage 1 and the slew planner, into `process-compaction` and to check the result.  The merge is `2498ad7cf`.  Git reported conflicts only in `devnotes.md`, where main's entries now come before the three compaction entries, and in `index.md`, where the compaction rows for the two running sums stand with main's new slew row.  In `README.md`, `Verified.lean`, and `Verified/Reflect/Definitions.lean`, every line that either side added relative to `ed77fa248` is present in the merge.  The development gate on AArch64 ran the host program's rebuild, the 16 heavy proofs one at a time, the aggregate, the default build, the verified, running-sum, binary64 running-sum, and WASI drivers, and the byte comparison.
+
+The WASI driver failed at first, because `tests/wasi/Axioms.lean` imports `Verified.ProgramLiterals`, which no target built.  After an explicit build of that module the driver passed, and the coordinator added the module to the `Verified` library and to the driver's build on the push branch.  The aggregate took 823 s, the default build 32 s, the verified driver 3,243 s, the two running-sum drivers 32 s and 22 s, and the WASI driver 164 s.  All 98 baseline modules, `slew.wasm`, and `heapsums.wasm` equal their references, and `sum.wasm`, `sumfp.wasm`, and `process.wasm` equal the stage 2 emission.  I then merged `2498ad7cf` into `printfloat-charges`, and main at `3e87e69a9` or later follows after the push.
+
+## 2026-10-27: Stage 3 merged with main
+
+`printfloat-charges` merged main at `51fd1c06c`, which holds the compaction work, the slew planner, and the journal without machine names.  The merge takes main's text for every file outside the stage 3 work and for every inherited part of this journal, and the stage 3 sections follow main's entries.  Git reported a conflict only in this journal, and `Verified.lean` keeps main's import of `Verified.ProgramLiterals` with the import of `Verified.ChargeFacts`.  The top-level README, the index, the WASI manual and design, and the StreamFold guide now state that the binary64 application proves its charges from the line limit, with the inequality `80 L + 64,031,000` against the memory cap above the heap's start.
+
+## 2026-10-27: The review of the stage 3 documents
+
+An independent review of the stage 3 documents found twelve problems, and each holds against the code.  `search_le` bounds the search at 27 steps below the start exponent, so the search tests at most 28 exponents, and the documents now say both instead of crediting 28 tests to `search_le`.  The limit covers each line up to and including the first line that denotes no number, as `LimitsFrom` states, and the guide now shows that `limitMemory L` covers both copies and the step through `limitMemory_room`.  The printer's guide had said that the search divides integers of up to 18 limbs, but `shl` of the two-limb numerator by up to 2,045 bits gives 66 limbs, and 105 when `mulPow10` first scales the numerator by up to `10 ^ 349`, so the guide now states the number of quotients instead.  `PrintFloatSteps` now reports the axioms of its theorems, and the binary64 axiom check covers `search_le`, `steps_le_binary32`, `search_le_binary32`, and `jstart_binary64`.
+
 ## 2026-10-27: Compiled case generators in the verified driver
 
 `tests/verified/run.sh` ran its case generator with `lake env lean --run` under a ten-minute limit.  On AArch64 that step took between 6 min 51 s and 7 min 34 s, and on an x86-64 host it used one core for the full 600 seconds, with a peak of 1 GB, until `timeout` ended it and the driver reported "native Lean exited with an error".  The interpreter, not the cases, set the time.  The user chose to compile the generators.  The lakefile now declares one executable per generator, `verified-cases` for the full run and `verified-cases-NAME` for each `--cases NAME` that has a generator of its own, and the driver builds the selected executable and runs `.lake/build/bin/NAME` under the same ten-minute limit.  The build step's limit rises from 30 minutes to 12 hours, because the first build compiles the generator's import closure to native code.
 
-- [ ] Full `tests/verified/run.sh` with the compiled generators on AArch64 and on x86-64, with the time of the case step and of the first executable build.
+The first build of `verified-cases` took 398 seconds on AArch64 and 737 seconds on x86-64, and the compiled generator then runs in 2 and 3 seconds, where the interpreted run took about seven minutes on AArch64 and more than ten on x86-64.  Both compiled runs printed the same 34,330 case lines and 13,186 out-of-bounds messages as the interpreted run, and the full driver passed 35,253 cases with no failure on both architectures.
+
+- [x] Full `tests/verified/run.sh` with the compiled generators on AArch64 and on x86-64, with the time of the case step and of the first executable build.
