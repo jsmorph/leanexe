@@ -6,41 +6,46 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-/-- Every heap of `store` can raise `top` by `budget` bytes within the memory cap. -/
-def ProcessFits {World : Type} (source : Wasm.Module) (store : Store (Observed World))
-    (budget : Nat) : Prop :=
-  ∀ heap : Heap, heap.At (PureTransport.erase store) →
-    heap.Within (PureTransport.erase store) source budget
-
+/-- The loop invariant of the total process proof: a stored state that `represented` relates to
+the ghost, in a store whose memory cap leaves `limit` bytes of address space. -/
 def ProcessTotalInvariant {World Ghost : Type} (source target : Wasm.Module) (state : Ty)
-    (pool : Bytes.LiteralPool)
+    (pool : Bytes.LiteralPool) (base : UInt64) (limit : Nat)
     (represented : Ghost → ProcessStep state.denote → Observed World → Prop)
-    (potential : Ghost → ProcessStep state.denote → Nat)
     (ghost : Ghost) (store : Store (Observed World)) (locals : Locals) : Prop :=
-  ∃ current, ProcessStored target state pool current store locals ∧
-    represented ghost current store.host ∧ ProcessFits source store (potential ghost current)
+  ∃ current, ProcessStored target state pool base current store locals ∧
+    represented ghost current store.host ∧
+    limit ≤ 65536 * (PureTransport.erase store).memoryCap source 0
 
 def ProcessTotalStopped {World Ghost : Type} (target : Wasm.Module) (state : Ty)
-    (pool : Bytes.LiteralPool)
+    (pool : Bytes.LiteralPool) (base : UInt64)
     (represented : Ghost → ProcessStep state.denote → Observed World → Prop) :
     Assertion (Observed World)
   | .Break 0 final after =>
-      ∃ ghost current, ProcessStored target state pool current final after ∧
+      ∃ ghost current, ProcessStored target state pool base current final after ∧
         represented ghost current final.host ∧ current.running = false
   | _ => False
+
+/-- The compaction after a call finds room when the call's charge and the next state's copy fit
+under the limit. -/
+theorem compaction_room {state : Ty} (compactable : state.compactable = true)
+    {value : state.denote} {top bound cap : Nat} (rise : top ≤ bound)
+    (room : bound + state.copyCost value ≤ 65536 * cap) :
+    roundWord top + state.copyCost value ≤ 65536 * cap :=
+  roundWord_add_le (by omega) (Ty.copyCost_mod state compactable value) (by omega)
 
 theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
     {entry : ProcessEntry effectSigs} {host : Host World}
-    {targetHost : HostEnv (Observed World)} {pool : Bytes.LiteralPool}
-    {initial : Store (Observed World)} {locals : Locals}
+    {targetHost : HostEnv (Observed World)} {pool : Bytes.LiteralPool} {base : UInt64}
+    {limit : Nat} {initial : Store (Observed World)} {locals : Locals}
     {current : ProcessStep entry.state.denote} {function : Wasm.Function}
     (represented : Ghost → ProcessStep entry.state.denote → Observed World → Prop)
-    (relation : Ghost → Ghost → Prop) (potential charge : Ghost → ProcessStep entry.state.denote → Nat)
+    (relation : Ghost → Ghost → Prop) (charge : Ghost → ProcessStep entry.state.denote → Nat)
     (ghost : Ghost) (runtime : Runtime source) (layout : Relocation.Layout source target)
-    (profile : Relocation.Profile source)
-    (releaseForm : Encoding.ProgramForm (releaseCode entry.state 2))
-    (releaseClosed : Relocation.programClosed source.funcs.length (releaseCode entry.state 2) = true)
+    (profile : Relocation.Profile source) (compactable : entry.state.compactable = true)
+    (compactForm : Encoding.ProgramForm (processCompaction entry.state))
+    (compactClosed :
+      Relocation.programClosed source.funcs.length (processCompaction entry.state) = true)
     (spec : CostEffectSpec source target pure program entry.step
       (Wrappers.effectIndex source entry.step.index) pool)
     (noImport : target.imports[Wrappers.effectIndex source entry.step.index]? = none)
@@ -49,25 +54,27 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
     (arity : function.numParams = 1 + widthSum [entry.state])
     (valid : targetHost.Satisfies target (hostSpec host))
     (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
-    (stored : ProcessStored target entry.state pool current initial locals)
+    (stored : ProcessStored target entry.state pool base current initial locals)
     (held : represented ghost current initial.host)
-    (fits : ProcessFits source initial (potential ghost current))
-    (resources : current.running = true → charge ghost current ≤ potential ghost current ∧
+    (limitCap : limit ≤ 65536 * (PureTransport.erase initial).memoryCap source 0)
+    (resources : current.running = true →
+      base.toNat + entry.state.copyCost current.state + charge ghost current ≤ limit ∧
       Resource.CallPrefixBound (observedHost host) pure program entry.step 0
         (.cons current.state .nil) initial.host (charge ghost current))
     (replies : current.running = true → ∀ trace outcome final,
       LeanExe.Wasi.Exec (observedHost host) (entry.action (program.funs pure.funs) current.state)
         initial.host trace outcome final →
       ∃ nextGhost next, outcome = .returned next ∧ represented nextGhost next final ∧
-        relation nextGhost ghost ∧ potential nextGhost next + charge ghost current ≤
-          potential ghost current) :
+        relation nextGhost ghost ∧
+        base.toNat + entry.state.copyCost current.state + charge ghost current +
+          entry.state.copyCost next.state ≤ limit) :
     wp target (entry.iteration source)
-      (GhostLoopPost (ProcessTotalInvariant source target entry.state pool represented potential)
-        relation ghost (ProcessTotalStopped target entry.state pool represented) locals.values)
+      (GhostLoopPost (ProcessTotalInvariant source target entry.state pool base limit represented)
+        relation ghost (ProcessTotalStopped target entry.state pool base represented) locals.values)
       initial locals targetHost := by
-  let Q := GhostLoopPost (ProcessTotalInvariant source target entry.state pool represented potential)
-    relation ghost (ProcessTotalStopped target entry.state pool represented) locals.values
-  obtain ⟨heap, stateWords, memory, stateHeld, control⟩ := stored.parts
+  let Q := GhostLoopPost (ProcessTotalInvariant source target entry.state pool base limit represented)
+    relation ghost (ProcessTotalStopped target entry.state pool base represented) locals.values
+  obtain ⟨heap, stateWords, memory, stateHeld, control, free, baseTop, used⟩ := stored.parts
   simp only [ProcessEntry.iteration, ProcessEntry.result, List.append_assoc,
     List.cons_append, List.nil_append, wp_localGet_cons, control, wp_eqzI64_cons]
   cases running : current.running with
@@ -116,17 +123,14 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
         rw [reads]
         exact memory.rep.reads_apart ABI.scratch (owned_scratch memory.rep)
       obtain ⟨affordable, bounded⟩ := resources running
-      have within : heap.Within (PureTransport.erase initial) source (charge ghost current) :=
-        (fits heap memory.at_).mono affordable
+      have within : heap.Within (PureTransport.erase initial) source (charge ghost current) := by
+        unfold Heap.Within
+        omega
       have callExecution := wp_cost_effect_helper (locals := locals) (values := locals.values)
         (depth := 0) (params := stateWords) (args := args) (Q := Q) (budget := charge ghost current)
         (aborts := false)
-        (rest := storeCode (2 * (processResultTy entry.state).width) (processResultTy entry.state).width
-            (processResultTy entry.state).types ++
-          Relocation.program (releaseCode entry.state 2) ++
-          loadCode (2 * (processResultTy entry.state).width) (processResultTy entry.state).width
-            (processResultTy entry.state).types ++
-          storeCode (2 * (processResultTy entry.state).width) 0 (processResultTy entry.state).types ++ [.br 0])
+        (rest := storeCode (processPositions entry.state) 0 (processResultTy entry.state).types ++
+          (Relocation.program (processCompaction entry.state) ++ [.br 0]))
         spec noImport lookup arity valid memory.at_ argsRep separate input scratch stored.cap
         (fun _ => ⟨within, bounded⟩)
         (fun value finalHeap final words trace spent callFits execution callStep representation rise => by
@@ -149,22 +153,33 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
               (next := fun result => Action.pure (processNative entry.state result))
               (Exec.pure final.host (processNative entry.state value))
             simpa only [ProcessEntry.action, List.append_nil] using composed
-          obtain ⟨nextGhost, next, same, nextRep, smaller, decreased⟩ :=
-            replies running trace (.returned (processNative entry.state value)) final.host nativeExecution
+          obtain ⟨nextGhost, next, same, nextRep, smaller, room⟩ :=
+            replies running trace (.returned (processNative entry.state value)) final.host
+              nativeExecution
           cases same
-          apply wp_process_replace runtime layout profile releaseForm releaseClosed memory stateHeld
-            stored.params stored.positions stored.cap poolScratch called representation
-          intro released after sameWorld nextStored releasedTop releasedCaps
-          refine ⟨nextGhost, ⟨_, nextStored.values locals.values,
-            by simpa only [sameWorld] using nextRep, fun other otherAt => ?_⟩, smaller⟩
-          have heapWithin := fits heap memory.at_
-          have sameCaps := releasedCaps.trans callStep.caps
-          have capEq : (PureTransport.erase released).memoryCap source 0 =
+          have resultMemory : ProcessMemory (processResultTy entry.state) pool finalHeap
+              (PureTransport.erase final) words
+              (processValue entry.state (processNative entry.state value)) := by
+            rw [processValue_native entry.state value]
+            exact memory.called poolScratch called representation
+          have grown := called.top_le memory.at_ free (scratch_apart_above _)
+          have sameCap : (PureTransport.erase final).memoryCap source 0 =
               (PureTransport.erase initial).memoryCap source 0 := by
+            simp only [Store.memoryCap, called.caps]
+          refine wp_process_store_compact runtime layout profile compactable compactForm
+            compactClosed resultMemory (by omega) stored.baseLocal stored.low stored.pool stored.params
+            stored.positions (by rw [called.cap target]; exact stored.cap)
+            (fun noRoom _ _ => absurd (compaction_room compactable topBound (by
+              rw [sameCap]; omega)) noRoom)
+            fun ended after sameHost sameCaps nextStored _ => ?_
+          rw [wp_br_cons]
+          refine ⟨nextGhost, ⟨_, nextStored.values locals.values,
+            by simpa only [sameHost] using nextRep, ?_⟩, smaller⟩
+          have endedCap : (PureTransport.erase ended).memoryCap source 0 =
+              (PureTransport.erase final).memoryCap source 0 := by
             simp only [Store.memoryCap, sameCaps]
-          unfold Heap.Within at heapWithin ⊢
-          rw [releasedTop other otherAt, capEq]
-          omega)
+          rw [endedCap, sameCap]
+          exact limitCap)
         (fun final message classification => by
           cases classification with
           | terminal final trace outcome message execution terminal =>

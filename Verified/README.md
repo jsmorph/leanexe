@@ -431,8 +431,17 @@ flags.  `Prog.flags` collects these flags for a program.  A recursive function's
 count its calls of itself as extending nothing, and its result flag assumes that its calls of itself
 return paid values and holds when its body's value is then paid.  A call charges the credit of each
 argument at a paid parameter, except an argument that is a paid owned variable that the call moves,
-whose potential the caller holds.  Pairs and the results of `build`, `set`, and `eraseAt` are not
-paid.  A function's bound is its body's plus the copy of a borrowed result.  `ImplementsB aborts m e
+whose potential the caller holds.  An owned pair is paid when each component is paid or holds no
+array, and the components of a destructured paid pair are paid.  In the result of the body of a
+loop whose state grows, an `if` reached through `let`s, destructurings, and branches is paid when
+either branch is, as `Expr.bodyPaid` checks, and `Expr.buys` charges the credit of the value of the
+branch taken when that branch is unpaid and the other is paid.  A loop whose state is a paid pair
+is charged the smaller of its bounds with an unpaid and with a paid state, `loopAllocWith false`
+and `loopAllocWith true`.  The paid bound charges the credit of an unpaid initial state once and
+the credits that `Expr.buys` counts, and the minimum keeps the bound at or below the bound with an
+unpaid state.  The value of a loop whose state is a pair is not paid, and neither are the results
+of `build`, `set`, and `eraseAt`.  A function's bound is its body's plus the copy of a borrowed
+result.  `ImplementsB aborts m e
 f bound` is the theorem with the bound: the call traps only when `aborts` holds and `heap.Within
 store m (bound x)` fails, and it raises `top` by at most `bound x`.  `Heap.Within`, defined in
 the [runtime facts](RuntimeFacts.lean), states that `top + bound x` is at most `65536` times the memory's cap in
@@ -820,7 +829,8 @@ no bound and no `trapFree`.
 definition: the user's loop counts, initial states, steps, conditions, and call arguments,
 `blockCost`, `growCost`, `paidGrowCost`, and `creditCost` of [`BoundFacts.lean`](BoundFacts.lean)
 for each block and credit that the modes, paid flags, and live sets call for, `loopCost` and
-`sumBelow` for loops and builds, and `p.g.bound` at the arguments of a call, or the numeral that
+`sumBelow` for loops and builds, `min` of the unpaid and paid bounds for a loop whose state is a
+paid pair, and `p.g.bound` at the arguments of a call, or the numeral that
 `p.g.bound_eq` states, with `let` values substituted and summands `0` dropped, so that a function
 that allocates nothing gets `p.f.bound x = 0`.  A call of a function `g` with a paid parameter shows
 `p.g.cost` and `creditCost` of each argument that the call charges.  For a function with a paid

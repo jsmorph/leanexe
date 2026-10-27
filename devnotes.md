@@ -36163,7 +36163,6 @@ The verified driver failed with "unknown result kind" at the `taggedtypes` case 
 With the split driver, the GPU step passed on the reference drivers.  The build host emitted the default and `--verified` kernels and cases, an AArch64 host emitted the `--verified-gpt32` ones, and the local machine ran them on SwiftShader (LLVM 16.0.0) and llvmpipe (LLVM 19.1.7): 474 of 474, 233 of 233, and 694 of 694 cases on each driver.  `tests/gpt32/native.sh --verified` passed with Node.js 20.19.2 installed there, with 15 of 15 steps equal bit for bit on SwiftShader and on llvmpipe.  Its random models evidently reach no subnormal operand, since the Subzero backend passed them.
 
 The byte comparison with main passed.  All 98 verified modules emitted from main at `d1f851729` on AArch64 have the same SHA-256 as those emitted from the merged tree at `ed77fa248` (x86_64), with identical registries.  All 35 original-compiler modules from `tests/modules/run.sh --emit-from`, main's and the merged tree's, also match.  The merge therefore leaves the bytes of all 133 of main's modules unchanged, and emission gives the same bytes on both architectures.
-
 With the rebuilt host, `tests/verified/run.sh` passed in 3,491 seconds: 32,806 verified cases with no failure, the GPT cases (2,733), the GPT sessions (3,096), and the library cases (226).  The module and drone drivers passed again with the rebuilt host.  The full check of the merged tree is complete.  The WASI and running-sum drivers, the default and `Verified Library` builds, module emission, the LTG check, the module, chunk, drone, regex, and hashing tests, the verified driver, the GPU tests on the reference drivers, and the byte comparison of all 133 of main's modules passed.  `origin/main` is still `d1f851729`, an ancestor of the branch.
 
 ## 2026-10-26: Sums with heap fields: design
@@ -36210,7 +36209,6 @@ The second gate found the heavy proofs and the library built, rebuilt the exampl
 The user asked to bring the Lean program of a slew-planner demo into the repository, to compile it with the verified compiler and test it in WebAssembly, and then to prove its theorems, starting with the lemmas of the edge check.  The work runs on the branch `slew-planner` from `d1f851729`, and phase A ran no Lean and connected to no build host.  The delivery also held a browser page, a JavaScript reference with a generated corpus, and a design document.  The branch first imported them and then removed them at the user's direction, since they will live outside the repository and the user does not take the JavaScript corpus as authoritative.  The repository keeps `Demos/Slew/Program.lean`, `Flat.lean`, `Verified.lean`, and a README that describes the Lean program alone.
 
 The review against [the verified compiler manual](docs/verified-manual.md#the-dialect) found one required change.  `Verified/Compile.lean` compiles `&&` as both operands followed by `i64.and`, so `relax` would have run `edgeOk` on every candidate edge instead of only on the improving ones, and a nested `if` now keeps the check lazy with the same Lean meaning.  The other points wait for the reflector: `round` and `relax` borrow their record parameter and copy its arrays each round, which inflates the generated bound, the index forms `p.1.toNat` and `(1 : UInt64).toNat` may need a `let`, and `plan` should borrow its input.  `tools/source-layout` reports five programs that `main` lacks in `Library.Native`, and the user decided that they arrive with the WASI review fixes.
-
 Regenerating the JavaScript corpus under Node.js 24.13.0 changed the last bits of 798 of its 5,361 lines.  ECMAScript leaves `**` and the `Math` functions to the implementation ([Number::exponentiate](https://tc39.es/ecma262/#sec-numeric-types-number-exponentiate), [the Math functions](https://tc39.es/ecma262/#sec-function-properties-of-the-math-object), cited without fetching them), and the engine that wrote the corpus computed `10 ** e` one unit in the last place off at four exponents.  The Lean generator below therefore uses only correctly rounded operations and Lean definitions, so that its inputs are the same on every host.
 
 ### Theorems
@@ -36464,9 +36462,239 @@ The review's figures held against the code except where noted here.  The output 
 
 On the build host, `tests/verified/run.sh --cases slew` passed in 92 s after `tools/build-wasmtime-host.sh` rebuilt the host, which `main`'s newer `tools/wasmtime-host.c` required: 100,000 edges agree, the audit passed for 12 theorems, the file theorems carry only the permitted axioms, and 2,077 cases passed with none failing.  The link check passes, and `tools/source-layout` reports no problems.
 
-## 2026-10-27: The slew branch's full check after the merge
+## 2026-10-26: Memory accounting for the process loop
 
-The slew branch's full check, after the merge with typed-fields stage 1, passed the host rebuild and the 16 heavy proofs one at a time.  The aggregate build then failed at job 10,659 of 10,848, and the check reruns on another build host.
+The user approved a two-stage design that replaces the unproved `RunBudget` premise of both running-sum theorems.  Stage 1 compacts the process state after `begin` and after each step, so the heap between steps holds the literal pool and one state, and the total-process theorem takes room conditions on one step at a time.  Stage 2 removes the quadratic append charges, proves a charge for each running step as a function of the state, and derives the room conditions from explicit limits on line length and total size.  Work proceeds on the local branch `process-compaction`, taken at `ed77fa248`, in a scratch worktree.  Phase A wrote the code below without running Lean, so none of it has been checked.
+
+### Stage 1: compaction
+
+`_start` saves the heap top in a local before `begin`.  That value, `base`, is at least 4096, lies above the literal pool, and stays fixed for the run.  After `begin` and after each step, `processCompaction` runs on the stored result's state.  It empties the free list, rounds the top up to a word, copies the state with `copyCode`, moves the copy's bytes down to `base` a word at a time from the lowest address, subtracts the distance from each array root and each nonzero byte root, sets the top just past the moved bytes, and empties the free list again.  The step borrows the state, so once its result is stored the old state is garbage, and the release that followed the step is gone.
+
+| Positions of `_start` | Contents |
+|---|---|
+| `0` to `W - 1`, with `W` the result's width | running flag, status, and the state's words from position 2 |
+| `W` | `base` |
+| `W + 1` | the rounded top, where the copy starts |
+| `W + 2` | the copy's byte count |
+| `W + 3` | the move's byte offset |
+| `W + 4` | the distance of the move |
+| `W + 5` on | the copy's scratch, `state.copyScratch` positions |
+
+The step's result goes straight into positions 0 to `W - 1`, so the second result slot of the old layout is gone.  The copy's scratch lies above the five scalars because `wp_copyCode` keeps only the positions below its scratch base.  For the integer state, `W` is 12 and the function has 20 positions, against 24 before, so `stackFits` should still hold.
+
+Rounding the top makes the move's last word end at the top rounded up, which lies in memory because memory ends on a page.  Without it, a heap whose top is not a multiple of 8 could make the last word reach past memory.  The copy cost of a compactable value is a multiple of 8 (`Ty.copyCost_mod`), and so is the memory bound, so the rounding costs no room: `roundWord_add_le` turns `top + copy ≤ limit` into `roundWord top + copy ≤ limit`.  Emptying the free list before the copy makes every allocation of the copy raise the top, so each fresh block lies above the rounded top, which `Step.keeps` on the region `(0, T8)` proves.  Emptying it again at the end makes the final heap independent of the free list after the copy, which `wp_copyCode` does not state.
+
+The move is proved at the byte level (`wp_moveCode`, `write64_read64_byte`), because a byte string's contents are bytes and an array's header and words are read as words at arbitrary offsets.  The translation lemma `Ty.Rep.relocate` takes a `Moved` store, whose bytes at `a - d` are the old bytes at `a` for every `a` in the moved range, and transports `Heap.Owned` and `Bytes.Allocated` field by field.  Its heap has the new top and no free block.
+
+| File | Contents |
+|---|---|
+| `Verified/Wasi/CompactCode.lean` | `Ty.compactable`, `relocateWords`, `relocateCode`, `moveCode`, `compactCode`, `roundWord` and its lemmas, `Ty.copyCost_mod` |
+| `Verified/Wasi/CompactMove.lean` | `write64_read64_byte`, `wp_moveCode` |
+| `Verified/Wasi/CompactRep.lean` | `Moved`, `arrayAt_relocate`, `Heap.Owned.relocate`, `Bytes.Allocated.relocate`, `Ty.Rep.relocate`, `wp_relocateCode` |
+| `Verified/Wasi/CompactHeap.lean` | `resetHeap`, `wp_emptyFree`, `wp_roundTop`, `wp_resetTop`, `Ty.Rep.blocks_inside`, `wp_compactCode` |
+| `Verified/Wasi/ProcessCompact.lean` | the new `ProcessStored`, `Step.top_le`, `ProcessMemory.called`, `ProcessMemory.compacted`, `wp_process_compact` |
+
+`ProcessStored target state pool base current store locals` now carries `base`: the heap has no free block, its top lies between `base` and `base + state.copyCost current.state`, local `processAux state` holds `base`, and the pool lies below `base`.  `wp_process_compact` transports `wp_compactCode` through `PureTransport.wp_prefix` and rebuilds `ProcessMemory` and `pool.Static` from the bytes below `base`.  In the partial-refinement theorems, a trap during the compaction after a returned step is `ProcessIterationResult.resource` with residual `.pure next`, from `Exec.returned_prefix`, and the same holds after `begin`.  `Step.top_le` shows that a step from a heap with no free block does not lower the top, which gives `base ≤ top` before each compaction.  The process theorems therefore take `heap.free = []` for the initial heap, which `initialStaticHeap` satisfies by `rfl`.
+
+The total theorem drops the potential, `start`, the decrease premises, and `ProcessFits`.  Its premises are a structure, with `base` the initial heap top and `limit` the memory cap in bytes.
+
+| Field of `ProcessTotalPremises` | Statement |
+|---|---|
+| `beginRoom` | `base + beginCharge ≤ limit` |
+| `beginBounded` | `CallPrefixBound` for `begin` at `beginCharge` |
+| `beginReplies` | every outcome of `begin` returns a represented state `S₀` with `base + beginCharge + copyCost S₀ ≤ limit` |
+| `stepRoom` | `base + copyCost S + charge S ≤ limit` for each represented running state |
+| `stepBounded` | `CallPrefixBound` for the step from `S` at `charge S` |
+| `stepReplies` | every outcome of the step returns a represented state `S'`, lower in the well-founded relation, with `base + copyCost S + charge S + copyCost S' ≤ limit` |
+
+`beginRoom` and `stepRoom` give the room that a call needs before any reply exists.  The loop invariant is `ProcessStored` with the represented state and `limit ≤ 65536 · cap`.  In each application, the intermediate premise `RunCharges` replaces `RunBudget`: a charge function on native states and stream positions, a begin charge, their prefix bounds, and the room conditions above.  Stage 2 proves `RunCharges` from the limits.
+
+### Stage 2: paid flags
+
+Stage 2 fixes the quadratic append charges with one flag per variable, which states that every array of the variable carries its potential, and with a rule at `if`.  The approved design asked for a flag for each array leaf.  The user approved the departure under the condition in the decisions below.
+
+Per-leaf flags alone do not remove the charge in `consumeInput`.  Its loop body is `if byte == 10 then completeLine next else ⟨true, 0, {next with line := next.line.push byte}⟩`.  `completeLine` resets `line` to `#[]`, a `build` of zero elements, whose leaf is unpaid, so the `if` of two leaf masks leaves `line` unpaid and every push in the other branch is charged its quadratic cost.  The missing rule is at the `if`: the `if` is paid when either branch is, and the unpaid branch is charged the credit of its value.  `completeLine` is taken at most once per step, at the newline that ends the loop, so that charge is linear.  With that rule, a per-variable flag that covers every array of a pair suffices for both running sums, and per-leaf masks would add precision only for a record with an unpaid array beside a growing one, which neither program has.  Per-leaf masks would also change the type of `paid` across `ExprCorrect.lean`, about 460 references, in files that the typed-fields work also changes.
+
+| Rule | Change |
+|---|---|
+| `Ty.creditFree` | a type without arrays, whose credit and potential are 0 |
+| `Expr.paid` of `.pair a b` | owned, and each component paid or `creditFree` |
+| `Expr.paid` of `.letPair e body` | the body's, with both components flagged as `e` is |
+| `Expr.paid` of `.ite` | either branch paid, in place of both |
+| `Expr.allocs` of `.ite` | each branch adds `t.buyCost other own value`, the value's credit when the other branch is paid and this one is not |
+| `Expr.allocs` of `.letPair` | the body's flags for the components are `e.paid` in place of `false` |
+
+The proofs change in `spec_pair` (`pair_top`, `After.seq_regions`), `spec_letPair` (the dying potential of the components is at most the pair's), `ite_branch` (an unpaid branch's charge bounds the owned result's potential by `Ty.pot_le_credit`), `Expr.mode_of_paid`, the reflector's `ite_bound` family and `letPair_bound`, and the builders in `Reflect/Definitions.lean` (`assignBuy`, and `assignPaid` for the destructuring).  No code generator reads `Expr.paid` or `Expr.allocs`, so module bytes do not change.  Bounds do change: an `if` with one paid branch now charges a credit, and pushes on arrays in paid pairs become cheaper.  The examples that rewrite with generated `bound_eq` theorems, such as `Grow`, `Insert`, `Tables`, `Recursion`, and the xorshift and regex proofs, may need new arithmetic.
+
+In the integer program, `combineMagnitude`'s loop state `(#[], carry)` becomes paid, so its pushes cost 80 bytes each in place of a growing block, and `consumeInput`'s record state becomes paid, so its line pushes cost 80 bytes each.  The loop buys the credit of its initial state once, and the newline branch buys the credit of `completeLine`'s result.
+
+### Stage 2: charges and limits
+
+The compositional rules moved to `Verified/Wasi/ResourceRules.lean` and gained `unit`, `exit`, `ite`, and `call`, with `CallBounded`, `callBounded_here`, and `callBounded_there` for calls of effect functions.  The retained-buffer example now imports them.
+
+A generated closed form for an effect command meets `bind`: the charge after a read or a write is a function of the host's reply, so a closed form needs a bound over all replies, which generation cannot supply in general.  For the running sums the replies do not affect the charges, because the read's bytes move into the state and the write's count is a word.  The plan is one `Bounded` proof per effect function, with the charge a Lean function of the native state written from the pure functions' generated `bound_eq` theorems.  This replaces the generated effect-command equations of the approved design, and the user approved the change.
+
+The step charge of the integer program, from the bounds of the pure functions it calls, is linear in the line length and the digit count.  The consume step copies the state and buys its credit, pushes at most 4,096 bytes at 80 bytes each, and runs `completeLine` at most once.  `completeLine` parses the line, adds with `combineMagnitude` at 80 bytes per digit, renders the total, and copies the parts of its borrowed state that its result keeps.  The write step builds the remaining output and copies the state, and the read step charges the 4,144-byte read and copies the state.  The loop over a chunk needs a refined `loopCost` lemma: every iteration costs at most a push except the last, which may run `completeLine`, so the chunk's charge is `4096 · 80` plus one `completeLine`.
+
+The size invariant on reachable states comes from `StreamFuture` with a stronger kernel specification.
+
+| Part | Definition |
+|---|---|
+| `InputLimits L D input` | each line up to and including the first rejected line has at most `L` bytes, and each prefix sum of valid lines has at most `D` digits |
+| `limitSpec L D` | `Good` adds `total.digits.size ≤ D`, and `Room` adds `line.size ≤ L` and, for a valid line, the next total's digit bound |
+| line bound | `Model.Safe` with `finalRoom` bounds the pending line by `L`, by induction on the remaining input, because the pending line is a prefix of a line whose `Room` holds |
+| input bound | `Host.read_bound` keeps the input buffer at most 4,096 bytes |
+| output bound | the output is empty or the rendering of the current total, at most `D + 2` bytes |
+
+`target_terminates` gains an invariant parameter with an initial and a preservation premise, and `RunCharges` quantifies over states that satisfy it.  A lemma derives `RunCharges` from `InputLimits L D` and one explicit inequality on `L` and `D` against the memory cap and the pool's top.  The final integer theorem keeps `StreamHost`, `InputBounds`, and `ExitAccepted`, and replaces `RunBudget` with `InputLimits L D` and that inequality.  The binary64 program follows with the same stream structure; its total is a scalar, and its line parser and printer need their own closed-form bounds.
+
+### Decisions
+
+The user approved the four questions of the phase A report on 2026-10-26.  The paid rule stays one flag per variable, with the `if` paid when either branch is and the unpaid branch charged the credit of its value.  The approval carries a condition: the build lists every existing program whose proved allocation bound changes, the drone's 2,251,064-byte bound among them.  If any existing bound rises, the new `if` rule applies only in the bodies of loops whose state grows, the old rule, which requires both branches paid, applies elsewhere, and the report names each changed bound.
+
+| Question | Decision |
+|---|---|
+| Paid flags | one flag per variable with the `if` rule, under the condition above |
+| Effect-command charges | hand-written `Bounded` proofs for `begin`, `step`, `readStep`, and `writeStep` |
+| Final hypothesis | a general theorem over `InputLimits L D` with one explicit inequality against the memory cap, and a corollary with concrete `L` and `D` |
+| Trees in process states | rejected in stage 1: `Ty.compactable` is false for trees |
+
+A restricted rule would need the loop context in `Expr.paid` and `Expr.allocs`: a flag, set when the recursion enters the body of a loop whose `grows` holds, that selects between the two `if` rules.  The proofs of `ite_branch` and the reflector's `ite_bound` family would then case on that flag.  That variant is not written.  The build's comparison of bounds decides whether it is needed.
+
+### Plan
+
+- [x] Write the compaction code and its proofs (stage 1), unbuilt.
+- [x] Rewrite the partial and total process theorems and both applications' uses (stage 1), unbuilt.
+- [x] Write the paid-flag rules, their proofs, and the reflector changes (stage 2), unbuilt.
+- [x] Move and extend the effect-command resource rules (stage 2), unbuilt.
+- [x] Build `Verified.Wasi.CompactHeap`, `Verified.Wasi.ProcessCompact`, and the process modules; fix the drafts (against the base bound rules).
+- [x] Build `Verified.ExprCorrect`, the reflector, and every program that the paid rules reach; compare all module bytes with the previous emissions, which must match except the process modules.
+- [x] List every existing program whose proved allocation bound changes, the drone's 2,251,064 bytes among them; if any bound rises, restrict the `if` rule to the bodies of loops whose state grows and list the changed bounds.
+- [x] Re-check `stackFits`, the process modules' validity and encoding, and the WASI and running-sum drivers, including the Talos groups.
+- [x] Prove the `Bounded` charges of `begin`, `step`, `readStep`, and `writeStep` for the integer program, and their closed-form bounds.
+- [x] Prove the size invariant and the room lemma, and state the final integer theorem over `InputLimits L D` with its inequality against the memory cap, and a corollary with concrete `L` and `D`.
+- [ ] Repeat the charges and limits for the binary64 program.
+- [ ] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audits.  The integer program is done.
+
+### Risks
+
+The drafts have not met Lean.  The main risks are the low-level `wp` stepping in `wp_compactCode`, where several `simp only` calls must reduce stores, globals, and locals exactly as written, and the bit-level proof of `write64_read64_byte`.  The paid rules change the generated bounds of many programs, and the reflector evaluates `Expr.paid` at each `let`, destructuring, and loop, which now recurses through destructurings and pairs; large programs such as the binary64 printer may elaborate more slowly.  Compaction adds one copy and one move of the state per step.  The integer step already copies the 4,096-byte input buffer when it consumes or writes, so the per-step memory traffic roughly doubles, and the Talos tests, whose memory model grows with each write, may exceed their time limits.
+
+## 2026-10-26: Building the process compaction
+
+The build ran in an independent clone, with at most eight Lean workers and a 44 GiB memory limit.  The baseline came from the fully built base commit `ed77fa248` before the branch was checked out.  A scratch program outside the repository, `EmitAll.lean`, imports a group of modules, encodes every definition of type `Wasm.Module` from the repository's libraries with the encoder and decoder check of `tools/Emit.lean`, and prints the statement of every imported theorem whose name mentions a bound or a cost.  The groups follow the library roots, because some modules of different roots define the same names, and they leave out the test drivers that define `main`.  The baseline holds 171 modules, every module of `tests/verified/modules.txt`, `tests/modules/modules.txt`, and the WASI and running-sum drivers among them, and 1,876 distinct statements.
+
+### Stage 1
+
+Stage 1 changes no bound rule, so the stage 2 files went back to their base contents in the build clone's working tree, and stage 1 built alone.  The drafts needed small repairs: a structure instance that a line break ended early, a `nomatch` that read the next argument as a second discriminant, a structure field named `base` that shadowed the parameter of the same name, a missing `open LeanExe.Pipeline`, which made `Heap` an automatically bound type variable, a few `simp` sets, and an explicit instance of `processValue_native`.  The compaction modules, the partial and total process theorems, and both running sums then built.  Both running-sum drivers passed, the axiom checks among them, including the Wasm runs of every case with the compacting modules.
+
+The emission from this state differs from the baseline in exactly three modules: `Demos.RunningSum.module` (17,972 bytes before, 18,820 after), `Demos.RunningSumFp.module` (31,559 and 32,231), and `Verified.Examples.WasiProcess.module` (2,185 and 2,378).  The other 168 modules are identical.  The statements differ only in the fields of `RunBudget`, now `RunCharges`, the premises of the total process theorem, and the new lemmas `Ty.copyCost_mod` and `Bytes.allocationCost_mod`.
+
+### Stage 2: the uniform `if` rule raises existing bounds
+
+The first build with the stage 2 rules failed in `Verified.TailAllocExpand`, whose theorem equates the allocations of a tail-recursive body with those of its expansion into an expression.  The failure exposes a rise.  `tailGrow` in `Verified/Examples/TailReflection.lean` is `if n = 0 then xs else tailGrow weights (n - 1) (xs.push ...)`, with `xs` a paid parameter.  In the expansion the `then` branch is a paid moved variable, and the `else` branch is the function's own call, whose result is unpaid.  The uniform rule makes the `if` paid and charges the `else` branch the credit of the call's result, the final array, at every step, so the bound of `tailGrow` becomes quadratic in the array's length.  An ordinary function whose body is an `if` with one paid branch rises in the same way whenever its callers do not use the result's potential.
+
+Following the user's decision, the new rule applies only in the bodies of loops whose state grows, and the old rule applies elsewhere.  The design keeps `Expr.paid` and `Expr.allocs` as the base rules plus the pair and destructuring rules, and adds two functions for loop bodies.
+
+| Part | Definition |
+|---|---|
+| `Expr.bodyPaid` | `Expr.paid`, except that an `if` reached through `let`s, destructurings, and branches from the body's result is paid when either branch is |
+| `Expr.buys` | the credit of the value of the branch taken at such an `if` when that branch is not paid and the other is, summed along the path taken |
+| `Expr.statePaid` | uses `Expr.bodyPaid` for the body |
+| `loopAlloc` | adds the body's `Expr.buys` at each step when the state is paid |
+| `CodeSpecIn buy` | `CodeSpec` with the conclusion stated for `Expr.bodyPaid` and the bound plus `Expr.buys` when `buy` holds; the trap condition is unchanged |
+
+`spec_ite`, `spec_letE`, and `spec_letPair` produce `CodeSpecIn buy` from `CodeSpecIn buy` of the parts in result position, `spec_loop` uses `CodeSpecIn` of the body at the state's flag, and `Expr.code_spec` proves `CodeSpecIn` for every flag, from which `CodeSpec` follows.  The other constructors take `CodeSpecIn` from `CodeSpec`, since their `Expr.bodyPaid` is `Expr.paid` and their `Expr.buys` is 0 by definition.  The reflector gives a loop's state step a zero buy charge when the state is unpaid or when no `if` in the body's result positions has branches with different flags, which a kernel-evaluated test decides; otherwise it builds the charge with builders that it records when it reflects an `if`, a `let`, or a destructuring.  `TailBody.allocs` gives the components of a destructured pair the pair's flag, as `Expr.allocs` does, so that `TailBody.allocs_toExpr` holds again.
+
+The pair rule applies everywhere, and it can still raise a bound: a loop whose state is a pair can now be paid, and such a loop buys the credit of an unpaid initial state once, which exceeds what the old charges cost when the loop runs zero times or once.  The comparison of statements after the stage 2 build decides whether any existing bound rises this way.
+
+- [x] Build stage 1 alone, run both running-sum drivers, and compare all modules and bound statements with the baseline.
+- [x] Write the restricted `if` rule: `Expr.bodyPaid`, `Expr.buys`, `CodeSpecIn`, the generalized specifications, the loop and fold proofs, the renaming lemmas, the tail destructuring, and the reflector's buy charges.
+- [x] Build everything with stage 2, compare modules and statements with the baseline, and list every changed bound with its direction.
+
+### The restricted rule as built
+
+The user approved the restricted rule on 2026-10-26.  `Expr.paid` keeps the base rule at `if` and the new rules for pairs and destructurings.  `Expr.bodyPaid` follows the result of a loop's body through `let`s, destructurings, and branches, and treats every other form as `Expr.paid` does.  `Expr.buys` sums along the path taken the credit of each unpaid branch whose sibling is paid, and `Expr.buyFree` states that no `if` on that path has branches with different flags, so that `Expr.buys` is 0.  `Expr.statePaid` uses `Expr.bodyPaid`, and `loopAlloc` adds the body's `Expr.buys` at each pass when the state is paid.  `Expr.paid` of a loop still asks for a paid body under the base rule, and `Expr.paid_loop` now states that such a loop has a paid state.
+
+`CodeSpecIn buy` is `CodeSpec` with the potential counted as `Expr.paidIn buy` states and the bound, both after the code and in the condition for a trap, increased by `Expr.buysIn buy`.  The trap condition needs the charge: a coercion or a store after a branch finds its room only if the branch's bound includes the branch's credits.  `spec_ite`, `spec_letE`, and `spec_letPair` take `CodeSpecIn buy` of their result parts and give it for the whole.  `spec_loop` and `spec_fold` take it for every flag of the body and use the state's flag.  `Expr.code_specIn` proves it for every expression by one induction, in which each other constructor converts its `CodeSpec` with `specInOf`, and `Expr.code_spec` follows at the flag `false`.
+
+`TailBody.allocs` and `TailBody.paidResult` give the components of a destructured pair the pair's flag, as `Expr.allocs` does, so that `TailBody.allocs_toExpr` holds, and `tail_letPair_spec` bounds the components' potential by the pair's.  The reflector's loop builder evaluates the state's flag and `Expr.buyFree`, and, when both allow it, proves the credits 0 with `buys_free` and keeps the lemma `loop_bound`, whose conclusion has the base form.  Otherwise it uses `loop_buy_bound`, whose pass includes the credits, which the builders that the reflection of an `if` with a Boolean condition, a `let`, and a destructuring records compute with `ite_buys`, `letE_buys`, and `letPair_buys`.  The other forms of condition and folds whose bodies charge credits fail with a message.  The integer and binary64 running sums take the second path for the loop of `consumeInput`.  `callBounded_here` and `callBounded_there`, drafts from phase A, failed by dependent elimination and were removed until the charge proofs need them.
+
+### Stage 2: the comparison
+
+The full build with the restricted rule passed: the heavy gamma and lgamma proofs one at a time, then every module of the import list with four workers.  The emission differs from the baseline in the same three process modules as stage 1, and the other 168 modules keep their bytes.  Sixteen generated bound statements changed, and the drone's `compute` bound, with the theorem of 2,251,064 bytes, did not.
+
+| Changed bound | Loop state |
+|---|---|
+| `Verified.Examples.Repeat.compiled.below` | a word and an array |
+| `Verified.Examples.Fold.compiled.pair` | a word and an array, in a fold |
+| `Verified.Examples.Fields.compiled.pushPrices` | a record with the arrays `prices` and `sizes` |
+| `Library.Arrays.Filter.compiled.below` | a word and an array |
+| `Library.Numerics.Arithmetic.Uscale.compiled.mulSmall`, `.sub` | an array and a carry |
+| the same two functions in `ParseFloat` and `PrintFloat`, and in the binary64 running sum | an array and a carry |
+| `combineMagnitude` of the integer running sum, twice | an array and a carry |
+| `consumeInput` of both running sums | the process record |
+
+Every change has one cause: the pair rule makes a loop's state that is a pair or a record paid.  The loop then buys the credit of its initial state once, 16 bytes for each word of each array plus 16, and each push costs `paidGrowCost 1`, 80 bytes, in place of `growCost (n + 1) 1`, 16·n + 96 bytes at length n.  A push saves 16·n + 16 bytes, which is the credit of the array before it, so the new bound is at most the old one once each array of the state has grown once.  It is higher by the unrecovered credit otherwise: by 16 bytes when a loop that starts from an empty array pushes nothing, as in `Filter.below` with no element below the limit or `combineMagnitude` on empty inputs, by the credit of `sizes` in `Fields.pushPrices`, which never grows, and in `consumeInput` by the credits of the state's arrays at entry and of the completed state when a chunk ends a line before it pushes a byte.  The rule that no existing bound rises therefore fails for all sixteen, and restricting the pair rule to loop states does not help, since every case is a loop state.  The work stops here for the user's decision.
+
+The options are these.  The first accepts the rises, each at most the credit of the arrays of a loop's state, in exchange for the linear bound of `consumeInput`.  The second charges a loop the smaller of its unpaid and paid accountings, `min (loopAlloc false) (loopAlloc ps)`, which needs the loop's proof for both flags, a loop whose state is newly paid to give an unpaid value, and the reflector to write `min` only where the two flags differ, so that no other statement changes.  The diffs differ from the old bounds only in the initial credit, the credits at `if`s, and the push charges, all of which the unpaid accounting drops, so under the second option none of the sixteen bounds rises.  The third buys the credit only for the arrays that grow, with flags per array, which removes the rise of `Fields.pushPrices` but not the 16 bytes of a loop that pushes nothing.  The second meets the rule exactly and keeps the running sums' linear bound.
+
+### Stage 2: the smaller of two bounds
+
+The user chose the second option.  `loopAllocWith ps` is the former `loopAlloc` at the state's flag `ps`, and `loopAlloc` charges a loop whose state is paid and of pair type, `Ty.isPair`, the smaller of `loopAllocWith false` and `loopAllocWith true`, and every other loop `loopAllocWith` at its flag.  A pair-typed state is paid only through the rules for pairs and destructurings, so the minimum appears exactly where those rules make a state paid, and the bound of every other loop keeps its form.  `Expr.paid` of a loop or a fold now also requires a state that is not a pair, since the unpaid accounting does not count the value's potential.
+
+`spec_loop_with` is the former loop proof at any flag `ps` that holds only when the state is paid, with the bound `Expr.loopBound ps`, stated as `CodeSpecWith`, the specification with an explicit paid flag and bound.  `spec_loop` chooses the flag: for a paid pair state, the flag whose bound is the smaller at the given environment, and otherwise the state's flag.  The reflector evaluates the state's flag and `Ty.isPair` and uses `loop_min_bound`, `loop_min_flat_bound`, or `fold_min_flat_bound`, whose conclusion is the `min` of the two closed forms, only when both hold.  The other loop lemmas take the hypothesis that they do not.
+
+The full build with the minimum passed, with the heavy proofs one at a time and the rest with four workers.  The emission again differs from the baseline only in the three process modules, and the other 168 modules keep their bytes.  The same sixteen generated bound statements change, and each now holds one `min`.  A script outside the repository, `minfirst.py`, replaces each `min` by its first argument and drops additions of 0, and the result equals the baseline's statement for all sixteen.  Each new bound is therefore at most the old one at every argument, and no existing bound rises.  The drone's bound is unchanged.  The other changed statements are those of the reflector's loop and destructuring lemmas, which gained hypotheses, and of the retained-buffer example, whose `Bounded` moved to `Verified/Wasi/ResourceRules.lean`.
+
+- [x] Build with the minimum, compare the statements and modules with the baseline, and check that no changed bound rises.
+
+## 2026-10-27: The charges of the integer running sum
+
+The integer running sum's final theorem now replaces the `RunCharges` premise with `InputLimits L D` and one inequality, `4104 + limitMemory L D ≤ 65536 · 65535`, with `limitMemory L D = 220 · (L + D) + 1,010,000`: the module's literal pool ends at 4,104 bytes, and its memory may grow to 65,535 pages, which `initial_top` and `initial_memoryCap` compute.  `terminates_limits` states the same result for any initial heap and memory cap.  A corollary fixes `L` and `D` at 9,000,000.  Both running-sum drivers pass, the correctness axiom check now covers 34 theorems, and the module bytes do not change.
+
+### The invariant
+
+`target_terminates` takes an invariant `Inv` of the native state and the ghost, its initial instance, and `StepAdvances`, which gives for each step from a safe state where `Inv` holds a represented ghost of the final world at which `Inv` holds and the rank falls while the process runs.  `ControlRep` carries `Inv` for running states, and the step conditions of `RunCharges` hold only where it does.  The ghost of `StepAdvances` must be the one at which the rank falls, because the host's representation relation is not functional: two applications of the reply axioms of `StreamHost` may give different positions for the same world.  `streamFuture_writeStep`, `streamFuture_readStep`, and `streamFuture_step` therefore also state the fall of the rank at the position they produce.  The binary64 program passes the invariant that always holds, through `true_advances`, until its charges are proved.
+
+| Part | Statement |
+|---|---|
+| `LimitsFrom L D`, `InputLimits L D` | each line up to and including the first line without an integer has at most `L` bytes, and each total after a line with an integer has at most `D` digits |
+| `limitSpec L D` | `kernelSpec` with `Good` bounding the total's digits by `D` and `Room` bounding the line by `L` and the next total by `D` |
+| `LimitInv L D` | a `StreamFuture` under `limitSpec L D`, and `Within outputSize` of the buffers |
+| `Model.pending_le`, `StreamFuture.line_le` | the pending line is a prefix of a line whose room holds, so it has at most `L` bytes |
+| `step_within` | every returned step keeps the input buffer at most 4,096 bytes and the output buffer at most `outputSize` of the total, whatever the host replies |
+| `Model.error_room`, `streamFuture_stopped` | a step that stops leaves a good total and a line of at most `L` bytes |
+| `step_sized` | every state that a step from a state within the limits returns has the sizes of `Sized L D` |
+
+`outputSize` is the rendering's size, `digits + 2`, when it fits in a word, so that `Within` needs no premise on the totals.
+
+### The charges
+
+`Rule` for `bind` now asks for a bound on the second command only at values that some run of the first returns, through `Returns`.  The read step needs this: `afterRead` borrows the reply and copies its bytes into the state, so its charge depends on the read's size, which `Returns.read_size` bounds by the capacity.  `CallBoundRule`, `callBounded_here`, and `callBounded_there` give a call's bound from its body's, for the first function of a program and for a later one; the phase A drafts failed by dependent elimination because they fixed the program and the callee before the case analysis, and the rule now cases on general indices and reduces by its own pattern matching.
+
+The bodies of `begin`, `step`, `readStep`, and `writeStep` take their charges by `bounded_of_rule` at each command.  A cost of an expression in an effect body reduces by `simp +decide` with the equations of `Expr.allocs` and `Var.cost`: every variable of the step is borrowed or scalar, so each variable's cost is 0, and what remains is the table entry of the called function, which `show` identifies with the generated `bound` of the pure function.  `Ty.copyCost_of_scalar` removes the copy of the write's reply, a scalar argument, whose type is an unreduced entry of the parameter list.  The conditions' frames follow from `Expr.fits_of_depthCalls`, since no condition calls a function.
+
+| Charge | Bound for a state within the limits |
+|---|---|
+| `writeCharge` | `remainingOutput.bound` and a copy of the state |
+| `consumeInput.bound` | the paid side of its `min`: the copy and credit of the state, 80 bytes for each of at most 4,096 pushes, and one `completeLine` with the credits of its result, by `loopCost_le_last` |
+| `endCharge` | a copy of the state, or `completeLine.bound` |
+| `readCharge` | the read's 4,144 bytes and two copies of the state |
+| `stepCharge L D` | `200 · (L + D) + 1,000,500`, at least every branch |
+| `copyLimit L D` | `9 · D + 8 · L + 4,320`, at least the copy of any state of `Sized L D` |
+
+`loopCost_le_last` bounds a loop whose passes cost at most `c` each, except one pass after which the condition fails: in `consumeInput`, the pass at a newline runs `completeLine`, whose result either stops or holds output, and either way ends the loop.  The line at that pass has at most `L + 4,096` bytes, a coarse bound that the pushes of one chunk give.  The closed forms of `parse`, `add`, `combineMagnitude`, and `render` come from their generated equations: `parse` costs a block of at most the line's words, `combineMagnitude` at most `104 · m + 232` bytes for arrays of `m` words in all, and `render` at most the digits and 57 bytes.
+
+- [x] Prove the `Bounded` charges of `begin`, `step`, `readStep`, and `writeStep` for the integer program, and their closed-form bounds.
+- [x] Prove the size invariant and the room lemma, and state the final integer theorem over `InputLimits L D` with its inequality against the memory cap, and a corollary with concrete `L` and `D`.
+- [x] Run both running-sum drivers.
+- [x] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audit of the integer program.
+- [ ] Repeat the charges and limits for the binary64 program, and update its guide.
+
+## 2026-10-27: An unbuilt module in the WASI axiom check
+
+`tests/wasi/Axioms.lean` imports `Verified.ProgramLiterals`, which no module imported and no build list of `tests/wasi/run.sh` named.  The aggregate `lake build Verified Library` therefore never checked its proofs, and the WASI driver failed on a fresh build when the axiom check found no `.olean` for it.  Earlier runs passed only in checkouts that still held an `.olean` from an earlier build.  `Verified.lean` now imports the module, so the aggregate checks it, and the driver's byte-values build names it, so the driver builds what its axiom check imports.  Every other top-level module of `Verified/` is imported by `Verified.lean` or by another module.
 
 ## 2026-10-26: Typed fields of tree records: design
 

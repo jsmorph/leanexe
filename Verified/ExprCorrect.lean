@@ -824,8 +824,9 @@ theorem spec_proj {Γ' : List Ty} {e e' : Elem} (x : Var Γ' (.elem e)) (p : Pat
 its entry, its code, the coercion of its value to the `if`'s mode, and the store of its words,
 which the code loads after the `if`. -/
 theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bool}
-    {thenE elseE b : Expr S Γ' tTy}
-    (bSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv b env slots paid live)
+    {thenE elseE b : Expr S Γ' tTy} {buy : Bool}
+    (bSpec : ∀ env slots paid live,
+      CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv b env slots paid live)
     {env : Env Γ'} {slots : List Slot} {paid : List Bool} {live : Nat → Bool} {h base : Nat}
     {heap : Heap} {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit}
     (hh : s.positions = h) (hpv : s.params = pv)
@@ -835,15 +836,14 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
       heap store s)
     (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ base)
     (hRoomB : base + tTy.width + max b.width (copyWidth tTy) ≤ h)
-    {B cA Db : Nat} {wf : Bool}
+    {B cA Db K : Nat} {wf P : Bool}
     (hTrap : TrapOK (trapFlag m (Expr.ite c thenE elseE) slots heap store B wf) Q)
     (hNext : ∀ heap' store' s' ws,
       After env slots (fun i => live i || (Expr.ite c thenE elseE).uses i) live base heap store s
         tTy ((Expr.ite c thenE elseE).mode (slots.map Slot.mode))
         ((Expr.ite c thenE elseE).denote funs env) heap' store' s' ws →
       (wf = true → heap'.top.toNat +
-          (if (Expr.ite c thenE elseE).paid flags (slots.map Slot.mode) paid live = true then
-            tTy.pot store' ws ((Expr.ite c thenE elseE).denote funs env) else 0) ≤
+          (if P = true then tTy.pot store' ws ((Expr.ite c thenE elseE).denote funs env) else 0) ≤
         heap.top.toNat + B) →
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host)
     {heap1 : Heap} {store1 : Store Unit} {s1 : Locals}
@@ -853,7 +853,8 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
     (hTop1 : wf = true → heap1.top.toNat ≤ heap.top.toNat + cA)
     (hB : B = cA + (Db + (b.allocs funs flags bounds (slots.map Slot.mode) paid live env +
       coerceCost tTy (b.mode (slots.map Slot.mode))
-        ((Expr.ite c thenE elseE).mode (slots.map Slot.mode)) (b.denote funs env))))
+        ((Expr.ite c thenE elseE).mode (slots.map Slot.mode)) (b.denote funs env) +
+      (b.buysIn buy funs flags (slots.map Slot.mode) paid live env + K))))
     (hDb : dyingPot store s env slots paid (fun i => live i || b.uses i) live ≤ Db)
     (hbd : wf = true → b.fits funs fits env = true)
     (hbPlace : b.placeArgs = true)
@@ -862,8 +863,9 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
     (hval : b.denote funs env = (Expr.ite c thenE elseE).denote funs env)
     (hbm : b.mode (slots.map Slot.mode) = .owned →
       (Expr.ite c thenE elseE).mode (slots.map Slot.mode) = .owned)
-    (hbp : (Expr.ite c thenE elseE).paid flags (slots.map Slot.mode) paid live = true →
-      b.paid flags (slots.map Slot.mode) paid live = true)
+    (hPm : P = true → (Expr.ite c thenE elseE).mode (slots.map Slot.mode) = .owned)
+    (hK : P = true → b.paidIn buy flags (slots.map Slot.mode) paid live = false →
+      tTy.credit (b.denote funs env) ≤ K)
     (Qb : Assertion Unit) (hQbTrap : ∀ st, Q (.Trap st "unreachable") → Qb (.Trap st "unreachable"))
     (hQb : ∀ st' s', wp m (loadCode h base tTy.types ++ rest) Q st'
       { s' with values := s.values } host → Qb (.Fallthrough st' s')) :
@@ -926,7 +928,8 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
       have := (Expr.ite c thenE elseE).mode_owned (slots.map Slot.mode) ht
       rw [Slot.any_map] at this; exact this) fun hd hw => by
         have h3 := hw.shift (heap1 := heap3) (store1 := store3)
-          (c1 := cA + Db + b.allocs funs flags bounds (slots.map Slot.mode) paid live env)
+          (c1 := cA + Db + b.allocs funs flags bounds (slots.map Slot.mode) paid live env +
+            b.buysIn buy funs flags (slots.map Slot.mode) paid live env)
           (c2 := coerceCost tTy (b.mode (slots.map Slot.mode))
             ((Expr.ite c thenE elseE).mode (slots.map Slot.mode)) (b.denote funs env))
           (by have := hTop3 (hbd' hd); have := hTop1 (hwf hd); have := congrArg UInt64.toNat hTop2
@@ -952,23 +955,38 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
   refine hNext heap4 store4 _ ws4 ⟨aAll.step, hFrame, aAll.holds.agree hF45, aAll.rep, ?_⟩
     fun hd => by
       have := hTop1 hd; have := hTop3 (hbd hd); have := congrArg UInt64.toNat hTop2
-      -- A paid `if` has a paid branch, whose owned value the coercion keeps.
-      have := pot_keep (b := tTy.pot store3 ws3 (b.denote funs env)) hbp fun hp => by
-        obtain ⟨rfl, rfl⟩ := hSame4 (Expr.mode_of_paid b (hbp hp))
-        rw [hval]
+      -- A paid branch keeps its owned value through the coercion.  The charge `K` of an unpaid
+      -- branch of a paid `if` bounds the potential of the owned result.
+      have hPot : (if P = true then
+            tTy.pot store4 ws4 ((Expr.ite c thenE elseE).denote funs env) else 0) ≤
+          (if b.paidIn buy flags (slots.map Slot.mode) paid live = true then
+            tTy.pot store3 ws3 (b.denote funs env) else 0) + K := by
+        by_cases hP : P = true
+        · by_cases hbP : b.paidIn buy flags (slots.map Slot.mode) paid live = true
+          · obtain ⟨rfl, rfl⟩ := hSame4 (Expr.mode_of_paidIn b hbP)
+            rw [ite_eq_left hP, ite_eq_left hbP, ← hval]
+            omega
+          · have hRep4 := a4.rep
+            rw [hPm hP] at hRep4
+            have hle := Ty.pot_le_credit tTy ws4 _ hRep4
+            have hk := hK hP (by simpa using hbP)
+            rw [ite_eq_left hP, ite_eq_right hbP, ← hval]
+            omega
+        · rw [ite_eq_right hP]
+          omega
       rw [hB]; omega
   exact aAll.apart.agree aAll.holds hF45
 
 /-- An `if`: the condition, then each branch as `ite_branch` describes. -/
 theorem spec_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bool}
-    {thenE elseE : Expr S Γ' tTy}
+    {thenE elseE : Expr S Γ' tTy} {buy : Bool}
     (cSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv c env slots paid live)
-    (thenSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv thenE env
-        slots paid live)
-    (elseSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv elseE env
-        slots paid live) :
-    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.ite c thenE elseE) env
-        slots paid live := by
+    (thenSpec : ∀ env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+        thenE env slots paid live)
+    (elseSpec : ∀ env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+        elseE env slots paid live) :
+    ∀ env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+        (Expr.ite c thenE elseE) env slots paid live := by
   intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom
       hPlace rest Q hTrap
     hNext
@@ -1038,15 +1056,19 @@ theorem spec_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bo
         ((Expr.ite c thenE elseE).denote funs env) heap' store' s' ws →
       ((Expr.ite c thenE elseE).fits funs fits env = true →
         heap'.top.toNat +
-            (if (Expr.ite c thenE elseE).paid flags (slots.map Slot.mode) paid live = true then
+            (if (Expr.ite c thenE elseE).paidIn buy flags (slots.map Slot.mode) paid live = true then
               tTy.pot store' ws ((Expr.ite c thenE elseE).denote funs env) else 0) ≤
           heap.top.toNat +
           (dyingPot store s env slots paid (fun i => live i || (Expr.ite c thenE elseE).uses i)
             live + (Expr.ite c thenE elseE).allocs funs flags bounds (slots.map Slot.mode) paid live
-              env)) →
+              env +
+            (Expr.ite c thenE elseE).buysIn buy funs flags (slots.map Slot.mode) paid live env)) →
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host :=
     fun heap' store' s' ws a hT => hNext heap' store' s' ws a fun hf => by
       have := hT hf; omega
+  have hPm : (Expr.ite c thenE elseE).paidIn buy flags (slots.map Slot.mode) paid live = true →
+      (Expr.ite c thenE elseE).mode (slots.map Slot.mode) = .owned :=
+    Expr.mode_of_paidIn _
   have hTopC : (Expr.ite c thenE elseE).fits funs fits env = true →
       heap1.top.toNat ≤ heap.top.toNat +
         (dyingPot store s env slots paid (fun i => (live i || thenE.uses i || elseE.uses i) ||
@@ -1057,9 +1079,18 @@ theorem spec_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bo
     omega
   cases hcv : c.denote funs env
   · simp (config := { decide := true }) only [↓reduceIte]
+    have hBuys : (Expr.ite c thenE elseE).buysIn buy funs flags (slots.map Slot.mode) paid live env =
+        elseE.buysIn buy funs flags (slots.map Slot.mode) paid live env +
+          (if buy then tTy.buyCost (thenE.bodyPaid flags (slots.map Slot.mode) paid live)
+            (elseE.bodyPaid flags (slots.map Slot.mode) paid live) (elseE.denote funs env)
+          else 0) := by
+      cases buy <;> simp [Expr.buysIn, Expr.buys, hcv]
     exact ite_branch hm elseSpec hh hpv hVars hSafe hCap hBase hRoomE hTrap hNextB e1 hTopC
+      (P := (Expr.ite c thenE elseE).paidIn buy flags (slots.map Slot.mode) paid live)
+      (K := if buy then tTy.buyCost (thenE.bodyPaid flags (slots.map Slot.mode) paid live)
+        (elseE.bodyPaid flags (slots.map Slot.mode) paid live) (elseE.denote funs env) else 0)
       (Db := dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live)
-      (by rw [hSplitI]; simp only [Expr.allocs, Expr.mode, hcv, Bool.false_eq_true, ↓reduceIte]
+      (by rw [hSplitI, hBuys]; simp only [Expr.allocs, Expr.mode, hcv, Bool.false_eq_true, ↓reduceIte]
           omega)
       (show dyingPot store s env slots paid (fun i => live i || elseE.uses i) live ≤
           dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live
@@ -1070,33 +1101,58 @@ theorem spec_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bo
           simp only [Expr.fits, hcv, Bool.and_eq_true, Bool.false_eq_true, ↓reduceIte] at h
           exact h.2) hPlaceE
       (fun i h => by simp [h]) (fun h => by simp [Expr.aborts, h])
-      (by simp [Expr.denote, hcv]) hModeE
-      (fun h => by simp only [Expr.paid, Bool.and_eq_true] at h; exact h.2) _ (fun _ h => h)
+      (by simp [Expr.denote, hcv]) hModeE hPm
+      (fun hP hb => by
+        cases buy
+        · simp only [Expr.paidIn, Bool.false_eq_true, ↓reduceIte, Expr.paid,
+            Bool.and_eq_true] at hP hb
+          simp [hP.2] at hb
+        · simp only [Expr.paidIn, ↓reduceIte, Expr.bodyPaid, Bool.or_eq_true] at hP hb
+          have hT : thenE.bodyPaid flags (slots.map Slot.mode) paid live = true :=
+            hP.resolve_right (by simp [hb])
+          simp [Ty.buyCost, hT, hb]) _ (fun _ h => h)
       fun _ _ h => by simpa using h
   · simp (config := { decide := true }) only [↓reduceIte]
+    have hBuys : (Expr.ite c thenE elseE).buysIn buy funs flags (slots.map Slot.mode) paid live env =
+        thenE.buysIn buy funs flags (slots.map Slot.mode) paid live env +
+          (if buy then tTy.buyCost (elseE.bodyPaid flags (slots.map Slot.mode) paid live)
+            (thenE.bodyPaid flags (slots.map Slot.mode) paid live) (thenE.denote funs env)
+          else 0) := by
+      cases buy <;> simp [Expr.buysIn, Expr.buys, hcv]
     exact ite_branch hm thenSpec hh hpv hVars hSafe hCap hBase hRoomT hTrap hNextB e1 hTopC
+      (P := (Expr.ite c thenE elseE).paidIn buy flags (slots.map Slot.mode) paid live)
+      (K := if buy then tTy.buyCost (elseE.bodyPaid flags (slots.map Slot.mode) paid live)
+        (thenE.bodyPaid flags (slots.map Slot.mode) paid live) (thenE.denote funs env) else 0)
       (Db := dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live)
-      (by rw [hSplitI]; simp only [Expr.allocs, Expr.mode, hcv, ↓reduceIte]; omega)
+      (by rw [hSplitI, hBuys]; simp only [Expr.allocs, Expr.mode, hcv, ↓reduceIte]; omega)
       (show dyingPot store s env slots paid (fun i => live i || thenE.uses i) live ≤
           dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live
         from dyingPot_mono (fun i h => by
           simp only [Bool.or_eq_true] at h ⊢; rcases h with h | h <;> simp [h]) fun _ h => h)
       (fun h => by simp only [Expr.fits, hcv, Bool.and_eq_true] at h; simpa using h.2) hPlaceT
       (fun i h => by simp [h]) (fun h => by simp [Expr.aborts, h])
-      (by simp [Expr.denote, hcv]) hModeT
-      (fun h => by simp only [Expr.paid, Bool.and_eq_true] at h; exact h.1) _ (fun _ h => h)
+      (by simp [Expr.denote, hcv]) hModeT hPm
+      (fun hP hb => by
+        cases buy
+        · simp only [Expr.paidIn, Bool.false_eq_true, ↓reduceIte, Expr.paid,
+            Bool.and_eq_true] at hP hb
+          simp [hP.1] at hb
+        · simp only [Expr.paidIn, ↓reduceIte, Expr.bodyPaid, Bool.or_eq_true] at hP hb
+          have hE : elseE.bodyPaid flags (slots.map Slot.mode) paid live = true :=
+            hP.resolve_left (by simp [hb])
+          simp [Ty.buyCost, hE, hb]) _ (fun _ h => h)
       fun _ _ h => by simpa using h
 
 /-- A `let` binding: the value's code, the store of its words from local `base` on, the release
 of the value when it is owned and the body does not use it, and the body's code. -/
 theorem spec_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr S Γ' sTy}
-    {body : Expr S (sTy :: Γ') tTy}
+    {body : Expr S (sTy :: Γ') tTy} {buy : Bool}
     (valueSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv value env
         slots paid live)
-    (bodySpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv body env
-        slots paid live) :
-    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.letE value body) env
-        slots paid live := by
+    (bodySpec : ∀ env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+        body env slots paid live) :
+    ∀ env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+        (Expr.letE value body) env slots paid live := by
   intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom
       hPlace rest Q hTrap
     hNext
@@ -1196,6 +1252,11 @@ theorem spec_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr 
       simp only [Bool.and_eq_true] at hc
       simp only [hc.1.2, ↓reduceIte, le_refl]
     · exact Nat.zero_le _
+  have hbuys : (Expr.letE value body).buysIn buy funs flags (slots.map Slot.mode) paid live env =
+      body.buysIn buy funs flags ((⟨base, value.mode (slots.map Slot.mode)⟩ :: slots).map Slot.mode)
+        (value.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) ::
+          paid) (shift 1 live) (.cons (value.denote funs env) env) :=
+    rfl
   refine bodySpec _ _
     (value.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) :: paid)
     (shift 1 live) h (base + sTy.width) heap2 store2
@@ -1212,7 +1273,7 @@ theorem spec_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr 
         have h1 := hTop1 (hd1 (fits_of_not hd)); have := congrArg UInt64.toNat hTop2
         dsimp only at h1
         refine hw.of_le ?_ (by rw [e2'.step.cap m, a1.step.cap m])
-        rw [hSplitL]
+        rw [hSplitL, hbuys]
         simp only [Expr.allocs, List.map_cons]
         omega)
     fun heap3 store3 s3 ws3 aB hTop3 => ?_
@@ -1222,16 +1283,57 @@ theorem spec_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr 
       (fun i h => by simp [h]) fun i h => by simp [h]).liveIn hV) fun hd => by
       have h1 := hTop1 (hd1 hd); have h3 := hTop3 (hd3 hd); have := congrArg UInt64.toNat hTop2
       dsimp only at h1
-      have hpot : (if (Expr.letE value body).paid flags (slots.map Slot.mode) paid live = true then
-          tTy.pot store3 ws3 ((Expr.letE value body).denote funs env) else 0) =
-          (if body.paid flags ((⟨base, value.mode (slots.map Slot.mode)⟩ :: slots).map Slot.mode)
+      have hpot : (if (Expr.letE value body).paidIn buy flags (slots.map Slot.mode) paid live = true
+            then tTy.pot store3 ws3 ((Expr.letE value body).denote funs env) else 0) =
+          (if body.paidIn buy flags ((⟨base, value.mode (slots.map Slot.mode)⟩ :: slots).map Slot.mode)
               (value.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) ::
                 paid) (shift 1 live) = true then
             tTy.pot store3 ws3 (body.denote funs (.cons (value.denote funs env) env)) else 0) :=
         rfl
-      rw [hpot, hSplitL]
+      rw [hpot, hbuys, hSplitL]
       simp only [Expr.allocs, List.map_cons] at h3 ⊢
       omega
+
+/-- The regions of the first of two values in a row, which the second's code keeps. -/
+theorem After.seq_regions {Γ : List Ty} {env : Env Γ} {slots : List Slot}
+    {L0 L1 live : Nat → Bool} {base : Nat} {heap heap1 heap2 : Heap}
+    {store store1 store2 : Store Unit} {s s1 s2 : Locals} {t u : Ty} {m1 m2 : Mode}
+    {v1 : t.denote} {v2 : u.denote} {ws1 ws2 vs : List Value}
+    (a1 : After env slots L0 L1 base heap store s t m1 v1 heap1 store1 s1 ws1)
+    (a2 : After env slots L1 live base heap1 store1 { s1 with values := vs } u m2 v2 heap2
+      store2 s2 ws2) :
+    t.regions m1 store2 ws1 v1 = t.regions m1 store1 ws1 v1 := by
+  have hKeep1 : ∀ c ∈ t.regions m1 store1 ws1 v1,
+      Holds.KeepDying env slots L1 live store1 { s1 with values := vs } c := by
+    intro c hc w x hx _ hm wx hwx hlx b hb
+    have hb' : b ∈ w.regions (slots.getD x.index default).mode store1 wx (env.get x) := by
+      rw [hm]; exact hb
+    exact a1.apart w x hx (Or.inr hm) wx hwx hlx c hc b hb'
+  exact (a1.rep.step a2.step hKeep1).2.1
+
+/-- The bound of a pair from those of its components and their coercions: a paid pair's
+potential is the sum of its components', each paid or 0. -/
+theorem pair_top {T0 T1' T1 T2' T2 D1 D2 A1 C1 A2 C2 P1 P2 P1' P2' : Nat} {p1 p2 pp : Bool}
+    (hF : T1' + (if p1 = true then P1' else 0) ≤ T0 + D1 + A1) (hC1 : T1 ≤ T1' + C1)
+    (hS : T2' + (if p2 = true then P2' else 0) ≤ T1 + D2 + A2) (hC2 : T2 ≤ T2' + C2)
+    (h1 : pp = true → (p1 = true ∧ P1 = P1') ∨ P1 = 0)
+    (h2 : pp = true → (p2 = true ∧ P2 = P2') ∨ P2 = 0) :
+    T2 + (if pp = true then P1 + P2 else 0) ≤ T0 + (D1 + D2) + (A1 + C1 + A2 + C2) := by
+  cases pp with
+  | false =>
+    simp only [Bool.false_eq_true, ↓reduceIte, Nat.add_zero]
+    omega
+  | true =>
+    simp only [↓reduceIte]
+    have e1 : P1 ≤ (if p1 = true then P1' else 0) := by
+      rcases h1 rfl with ⟨hp1, rfl⟩ | h1
+      · simp [hp1]
+      · omega
+    have e2 : P2 ≤ (if p2 = true then P2' else 0) := by
+      rcases h2 rfl with ⟨hp2, rfl⟩ | h2
+      · simp [hp2]
+      · omega
+    omega
 
 /-- A pair: the code of each component, each followed by its coercion to the pair's mode. -/
 theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr S Γ' sTy}
@@ -1296,10 +1398,10 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
     (hSafe.mono hIn) hCap hBase (by omega) hPlace.1 _ _
     (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_left _ _ _ h)
       fun _ hw => hw.mono (by rw [hB, hSplitP]; omega))
-    fun heap1 store1 s1 ws1 a1 hTopF => ?_
-  refine After.coerce hm a1 (fun h => by simp [Mode.join, h]) le_rfl
-    (by rw [a1.frame.params]; exact hBase) (a1.frame.positions.trans hh) (by omega)
-    (by rw [a1.step.cap m]; exact hCap) (fun hs ht _ => hTrap.alloc (hOwnedA ht) fun hd hw => by
+    fun heap0 store0 s0 ws0 a0 hTopF => ?_
+  refine After.coerce hm a0 (fun h => by simp [Mode.join, h]) le_rfl
+    (by rw [a0.frame.params]; exact hBase) (a0.frame.positions.trans hh) (by omega)
+    (by rw [a0.step.cap m]; exact hCap) (fun hs ht _ => hTrap.alloc (hOwnedA ht) fun hd hw => by
       have hcc : coerceCost sTy (first.mode (slots.map Slot.mode))
           ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
           (first.denote funs env) =
@@ -1308,8 +1410,8 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
       exact hw.shift (c1 := dyingPot store s env slots paid
           (fun i => live i || second.uses i || first.uses i) (fun i => live i || second.uses i) +
         first.allocs funs flags bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i) env)
-        (by omega) (by rw [hB, hSplitP]; omega) (a1.step.cap m))
-    fun heap1 store1 s1 ws1 a1 hTopC1 _ => ?_
+        (by omega) (by rw [hB, hSplitP]; omega) (a0.step.cap m))
+    fun heap1 store1 s1 ws1 a1 hTopC1 hSame1 => ?_
   have hDs : dyingPot store1 { s1 with values := ws1.reverse ++ s.values } env slots paid
       (fun i => live i || second.uses i) live =
         dyingPot store s env slots paid (fun i => live i || second.uses i) live := by
@@ -1333,18 +1435,18 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
               (first.denote funs env))
           (by have := hTopF (hdF (fits_of_not hd)); have := hTopC1; omega)
           (by rw [hB, hSplitP]; omega) (a1.step.cap m))
-    fun heap2 store2 s2 ws2 a2 hTopS => ?_
-  refine After.coerce hm a2 (fun h => by
+    fun heap3 store3 s3 ws3 a3 hTopS => ?_
+  refine After.coerce hm a3 (fun h => by
       simp only [Mode.join, h]; cases first.mode (slots.map Slot.mode) <;> rfl) le_rfl
-    (by rw [a2.frame.params, a1.frame.params]; exact hBase)
-    (a2.frame.positions.trans (a1.frame.positions.trans hh)) (by omega)
-    (by rw [a2.step.cap m, a1.step.cap m]; exact hCap)
+    (by rw [a3.frame.params, a1.frame.params]; exact hBase)
+    (a3.frame.positions.trans (a1.frame.positions.trans hh)) (by omega)
+    (by rw [a3.step.cap m, a1.step.cap m]; exact hCap)
     (fun hs ht _ => hTrap.alloc (hOwnedA ht) fun hd hw => by
       have hcc : coerceCost tTy (second.mode (slots.map Slot.mode))
           ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
           (second.denote funs env) =
           tTy.copyCost (second.denote funs env) := by rw [coerceCost, if_pos ⟨hs, ht⟩]
-      exact hw.shift (heap1 := heap2) (store1 := store2)
+      exact hw.shift (heap1 := heap3) (store1 := store3)
         (c1 := dyingPot store s env slots paid (fun i => live i || second.uses i || first.uses i)
           (fun i => live i || second.uses i) +
           first.allocs funs flags bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i)
@@ -1356,8 +1458,8 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
         (by have := hTopF (hdF (fits_of_not hd)); have := hTopC1
             have := hTopS (hdS (fits_of_not hd)); rw [hDs] at this; omega)
         (by rw [hB, hSplitP]; omega)
-        (by rw [a2.step.cap m, a1.step.cap m]))
-    fun heap2 store2 s2 ws2 a2 hTopC2 _ => ?_
+        (by rw [a3.step.cap m, a1.step.cap m]))
+    fun heap2 store2 s2 ws2 a2 hTopC2 hSame2 => ?_
   obtain ⟨hStep, hFrame, hRep1, hApart1, hDisjoint⟩ :=
     After.seq hVarsL a1 a2 (fun i h => by simp [h]) fun i h => by simp [h]
   have hl1 := hRep1.length
@@ -1373,21 +1475,37 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
       rcases List.mem_append.mp hb with hb | hb
       · exact hApart1 w y hy hmo wy hwy hly b hb c hc
       · exact a2.apart w y hy hmo wy hwy hly b hb c hc⟩
-      (fun hd => top_unpaid rfl (by
-        have := hTopF (hdF hd); have := hTopC1; have h3 := hTopS (hdS hd); have := hTopC2
-        rw [hDs] at h3
-        rw [hB, hSplitP]; omega))
+      (fun hd => by
+        have hF := hTopF (hdF hd)
+        have hS := hTopS (hdS hd)
+        rw [hDs] at hS
+        have hRegions1 := After.seq_regions a1 a2
+        have hValue : (Expr.pair first second).denote funs env =
+            (first.denote funs env, second.denote funs env) := rfl
+        rw [hB, hSplitP, hValue]
+        simp only [Ty.pot, List.take_left' hl1, List.drop_left' hl1]
+        refine pair_top hF hTopC1 hS hTopC2 (fun hp => ?_) (fun hp => ?_)
+        · simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq, Bool.or_eq_true] at hp
+          rcases hp.1.2 with hp1 | hc1
+          · obtain ⟨rfl, rfl⟩ := hSame1 (Expr.mode_of_paid first hp1)
+            exact Or.inl ⟨hp1, Ty.pot_of_regions hp.1.1 hRegions1⟩
+          · exact Or.inr (Ty.pot_creditFree sTy hc1 _ _)
+        · simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq, Bool.or_eq_true] at hp
+          rcases hp.2 with hp2 | hc2
+          · obtain ⟨rfl, rfl⟩ := hSame2 (Expr.mode_of_paid second hp2)
+            exact Or.inl ⟨hp2, rfl⟩
+          · exact Or.inr (Ty.pot_creditFree tTy hc2 _ _))
   simpa [List.reverse_append, List.append_assoc] using hv
 
 /-- A binding of a pair's components: the pair's code, the stores of its components' words, the
 release of each component that is owned and that the body does not use, and the body's code. -/
 theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
-    {e : Expr S Γ' (.pair sTy tTy)} {body : Expr S (tTy :: sTy :: Γ') uTy}
+    {e : Expr S Γ' (.pair sTy tTy)} {body : Expr S (tTy :: sTy :: Γ') uTy} {buy : Bool}
     (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live)
-    (bodySpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv body env
-        slots paid live) :
-    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.letPair e body) env
-        slots paid live := by
+    (bodySpec : ∀ env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+        body env slots paid live) :
+    ∀ env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+        (Expr.letPair e body) env slots paid live := by
   intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom
       hPlace rest Q hTrap
     hNext
@@ -1490,23 +1608,47 @@ theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
       have h1 : body.uses 1 = true := by simpa [shift] using h
       simp [h1]
     | k + 2 => split <;> split <;> simpa using h
-  -- The body's dying variables: the components, which are unpaid, and the others, whose potential
-  -- the pair's code and the releases keep.
+  -- The body's dying variables: the components, paid when the pair is, whose potential is the
+  -- pair's, and the others, whose potential the pair's code and the releases keep.
+  have hPotE : (Ty.pair sTy tTy).pot store1 (wf ++ wsec) (e.denote funs env) =
+      sTy.pot store1 wf (e.denote funs env).1 + tTy.pot store1 wsec (e.denote funs env).2 := by
+    simp only [Ty.pot, List.take_left' hlf, List.drop_left' hlf]
   have hDb : dyingPot store2 { s3 with values := s.values }
       (Env.cons (e.denote funs env).2 (Env.cons (e.denote funs env).1 env))
       (⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
-        ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots) (false :: false :: paid)
-      (fun i => shift 2 live i || body.uses i) (shift 2 live) =
+        ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots)
+      (e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+        e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) :: paid)
+      (fun i => shift 2 live i || body.uses i) (shift 2 live) ≤
+        (if e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+          then (Ty.pair sTy tTy).pot store1 (wf ++ wsec) (e.denote funs env) else 0) +
         dyingPot store s env slots paid (fun i => live i || body.uses (i + 2)) live := by
     rw [dyingPot_evolves hVarsB e2' (fun i h => by
       simp only [Bool.or_eq_true] at h ⊢; rcases h with h | h <;> simp [h]) _ _ fun _ h => h,
       dyingPot_cons, dyingPot_cons]
-    simp only [Bool.and_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte, Nat.zero_add]
     rw [dyingPot_congr (L0' := fun i => live i || body.uses (i + 2)) (L1' := live)
       (fun i => by simp [shift]) (fun i => by simp [shift])]
-    exact dyingPot_step (hVars.live_mono hV) a1'.step (a1'.frame.trans f3)
-      (fun i h => by simp [h]) _ _ fun _ h => h
-  refine bodySpec _ _ (false :: false :: paid) (shift 2 live) h (base + sTy.width + tTy.width)
+    rw [dyingPot_step (hVars.live_mono hV) a1'.step (a1'.frame.trans f3)
+      (fun i h => by simp [h]) _ _ fun _ h => h]
+    dsimp only
+    rw [hold2'.read_eq (by rw [hls, Ty.types_length]), hold1'.read_eq (by rw [hlf, Ty.types_length]),
+      hPotE]
+    by_cases hpp : e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+    · rw [ite_eq_left hpp]
+      split <;> split <;> omega
+    · simp only [hpp, Bool.and_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte] <;> omega
+  have hbuys : (Expr.letPair e body).buysIn buy funs flags (slots.map Slot.mode) paid live env =
+      body.buysIn buy funs flags ((⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+          ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots).map Slot.mode)
+        (e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+          e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+            paid) (shift 2 live)
+        (.cons (e.denote funs env).2 (.cons (e.denote funs env).1 env)) :=
+    rfl
+  refine bodySpec _ _
+    (e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+      e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) :: paid)
+    (shift 2 live) h (base + sTy.width + tTy.width)
     heap2 store2
     { s3 with values := s.values } (f3.positions.trans hh1) (hp3.trans hpv) e2'.holds e2'.step.at_
     (hSafeB.evolves hVarsB e2' (fun i hi => live_right _ _ _ hi))
@@ -1519,10 +1661,14 @@ theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
       simp only [List.any_cons, Expr.aborts] at h ⊢
       exact let_trap_body2 _ _ _ _ (fun hv => hmo (by simpa using hv)) h) fun hd hw => by
         have h1 := hTop1 (hd1 (fits_of_not hd)); have := congrArg UInt64.toNat hTop2
+        have hDb' := hDb
         refine hw.of_le ?_ (by rw [e2'.step.cap m, a1.step.cap m])
-        rw [hSplitL, hDb]
+        rw [hSplitL, hbuys]
         simp only [Expr.allocs, List.map_cons]
-        omega)
+        by_cases hpp :
+            e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+        · rw [ite_eq_left hpp] at h1 hDb'; omega
+        · rw [ite_eq_right hpp] at h1 hDb'; omega)
     fun heap3 store3 s4 ws4 aB hTop3 => ?_
   have aB' := After.prepend hVarsB e2' aB (fun i h => live_right _ _ _ h) fun i h => by simp [h]
   have hNew : ∀ r, (∀ b ∈ (e.mode (slots.map Slot.mode)).fresh store1 (.pair sTy tTy) (wf ++ wsec)
@@ -1546,12 +1692,26 @@ theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
   exact hNext heap3 store3 s4 ws4
     ((After.bind2 (hVars.live_mono hV) a1' f3 aB' (by omega) hNew
       (fun i h => by simpa using h) (fun i h => by simp [h]) fun i h => by simp [h]).liveIn hV)
-    fun hd => top_unpaid rfl (by
+    fun hd => by
       have h1 := hTop1 (hd1 hd); have h3 := hTop3 (hd3 hd); have := congrArg UInt64.toNat hTop2
-      rw [hDb] at h3
-      simp only [List.map_cons] at h3
-      rw [hSplitL]
-      simp only [Expr.allocs]; omega)
+      have hDb' := hDb
+      have hpot : (if (Expr.letPair e body).paidIn buy flags (slots.map Slot.mode) paid live = true
+            then uTy.pot store3 ws4 ((Expr.letPair e body).denote funs env) else 0) =
+          (if body.paidIn buy flags ((⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+              ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots).map Slot.mode)
+              (e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+                e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+                  paid) (shift 2 live) = true then
+            uTy.pot store3 ws4 (body.denote funs
+              (.cons (e.denote funs env).2 (.cons (e.denote funs env).1 env))) else 0) :=
+        rfl
+      rw [hpot, hbuys, hSplitL]
+      simp only [List.map_cons] at h3 ⊢
+      simp only [Expr.allocs]
+      by_cases hpp :
+          e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+      · rw [ite_eq_left hpp] at h1 hDb'; omega
+      · rw [ite_eq_right hpp] at h1 hDb'; omega
 
 /-- A call: the arguments, the callee, whose theorem `Calls` gives, and the release of the owned
 variables that the arguments use and that die at the call, other than those that the call
@@ -1798,16 +1958,17 @@ theorem Expr.statePaid_mode {Γ : List Ty} {t : Ty} {modes : List Mode} {paid : 
   simp only [Expr.statePaid, Bool.and_eq_true, beq_iff_eq] at h
   exact h.1.1
 
-/-- The body of a loop whose state is paid gives a paid value. -/
+/-- The body of a loop whose state is paid gives a value paid as `Expr.bodyPaid` states. -/
 theorem Expr.statePaid_body {Γ : List Ty} {t : Ty} {modes : List Mode} {paid : List Bool}
     {live : Nat → Bool} {init : Expr S Γ t} {cond : Expr S (t :: Γ) .bool}
     {body : Expr S (t :: .word :: Γ) t} (h : Expr.statePaid flags modes paid live init cond body = true) :
-    body.paid flags (((init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))) ::
+    body.paidIn (Expr.statePaid flags modes paid live init cond body) flags
+      (((init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))) ::
         .borrowed :: modes) (Expr.statePaid flags modes paid live init cond body :: false :: paid)
       (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) = true := by
   rw [h]
   simp only [Expr.statePaid, Bool.and_eq_true] at h
-  exact h.2
+  simpa only [Expr.paidIn, ↓reduceIte] using h.2
 
 /-- In a loop's body, no paid variable dies other than the state: the index is unpaid, and the outer
 variables that the body uses stay live. -/
@@ -1834,11 +1995,11 @@ theorem loop_entry_pot {ps ip : Bool} {P0 P1 C : Nat} (h1 : ps = true → ip = t
 
 /-- A pass of a loop: the body's bound with the state's potential among its dying variables, and
 the coercion of its value, which keeps a paid value's potential. -/
-theorem loop_body_pot {ps bp : Bool} {top6 top6' top2 D B K P6 P6' Pi : Nat}
+theorem loop_body_pot {ps bp : Bool} {top6 top6' top2 D B Y K P6 P6' Pi : Nat}
     (hbp : ps = true → bp = true) (hsame : ps = true → P6' = P6)
-    (hB : top6 + (if bp = true then P6 else 0) ≤ top2 + D + B)
+    (hB : top6 + (if bp = true then P6 else 0) ≤ top2 + D + B + Y)
     (hD : D ≤ (if ps = true then Pi else 0)) (hK : top6' ≤ top6 + K) :
-    top6' + (if ps = true then P6' else 0) ≤ top2 + (if ps = true then Pi else 0) + B + K := by
+    top6' + (if ps = true then P6' else 0) ≤ top2 + (if ps = true then Pi else 0) + B + K + Y := by
   cases ps
   · simp only [Bool.false_eq_true, ↓reduceIte] at hD ⊢
     split at hB <;> omega
@@ -1846,6 +2007,20 @@ theorem loop_body_pot {ps bp : Bool} {top6 top6' top2 D B K P6 P6' Pi : Nat}
     rw [hsame rfl]
     simp only [↓reduceIte] at hB hD ⊢
     omega
+
+/-- The body of a loop at the state's flag `ps`, which holds only when the state is paid, gives a
+value paid as `Expr.bodyPaid` states. -/
+theorem Expr.statePaid_body_of {Γ : List Ty} {t : Ty} {modes : List Mode} {paid : List Bool}
+    {live : Nat → Bool} {init : Expr S Γ t} {cond : Expr S (t :: Γ) .bool}
+    {body : Expr S (t :: .word :: Γ) t} {ps : Bool}
+    (hpsS : ps = true → Expr.statePaid flags modes paid live init cond body = true)
+    (h : ps = true) :
+    body.paidIn ps flags (((init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))) ::
+        .borrowed :: modes) (ps :: false :: paid)
+      (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) = true := by
+  subst h
+  have h2 := Expr.statePaid_body (hpsS rfl)
+  rwa [hpsS rfl] at h2
 
 /-- `LeanExe.loop` with a condition: the count in local `base`, the initial state, coerced to the
 loop's mode, from local `base + 2` on, and the index in local `base + 1`.  The invariant at the top
@@ -1857,21 +2032,26 @@ false condition leaves with the state, which `loopState_stop` shows is the loop'
 Otherwise the pass releases a state that the body does not use, runs the body, coerces its value
 to the loop's mode, and stores it as the next state.  After the loop the outer variables that only
 the condition or the body uses are released. -/
-theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ' .word}
+theorem spec_loop_with (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ' .word}
     {init : Expr S Γ' tTy} {cond : Expr S (tTy :: Γ') .bool}
     {body : Expr S (tTy :: .word :: Γ') tTy}
     (countSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv count env
         slots paid live)
     (initSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv init env slots paid live)
     (condSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv cond env slots paid live)
-    (bodySpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv body env
-        slots paid live) :
-    ∀ env slots paid live,
-      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.loop count init cond body) env slots paid live :=
-        by
-  intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom
-      hPlace rest Q hTrap
-    hNext
+    (bodySpec : ∀ buy env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host
+        pv body env slots paid live) :
+    ∀ env slots paid live (ps : Bool),
+      (ps = true → Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true) →
+      ((Expr.loop count init cond body).paid flags (slots.map Slot.mode) paid live = true →
+        ps = true) →
+      CodeSpecWith (pool := pool)
+        ((Expr.loop count init cond body).paid flags (slots.map Slot.mode) paid live)
+        (Expr.loopBound ps funs flags bounds (slots.map Slot.mode) paid live count init cond body
+          env)
+        m funs flags bounds fits host pv (Expr.loop count init cond body) env slots paid live := by
+  intro env slots paid live ps hpsS hlpS h base heap store s hh hpv hVars hAt hSafe hCap hBase
+      hRoom hPlace rest Q hTrap hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
   have hc := Nat.le_max_left count.width (max (1 + max init.width (copyWidth tTy))
@@ -1902,7 +2082,8 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     fun hd => by
       simp only [Expr.fits, Bool.and_eq_true] at hd
       exact ⟨hd.1.1, hd.1.2, hd.2⟩
-  have hT := Expr.allocs_loop funs flags bounds (slots.map Slot.mode) paid live count init cond body env
+  have hT := Expr.loopBound_def ps funs flags bounds (slots.map Slot.mode) paid live count init cond
+    body env
   simp only [Expr.code, loopCode, Expr.usesFast_eq, List.append_assoc, List.cons_append,
     List.nil_append]
   -- The count, in local `base`.
@@ -2017,20 +2198,19 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
   -- The first state's potential: a paid initial value's, which the coercion keeps, or the credit.
   have hTopEntry : (Expr.loop count init cond body).fits funs fits env = true →
       heap2'.top.toNat +
-          (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+          (if ps = true then
             tTy.pot store2 ws0 (init.denote funs env) else 0) +
-          Expr.loopRest funs flags bounds (slots.map Slot.mode) paid live init cond body env
+          Expr.loopRest funs flags bounds (slots.map Slot.mode) paid live ps init cond body env
             (count.denote funs env).toNat 0 (init.denote funs env) ≤
         heap.top.toNat +
           (dyingPot store s env slots paid
               (fun i => live i || (Expr.loop count init cond body).uses i)
             live +
-          (Expr.loop count init cond body).allocs funs flags bounds (slots.map Slot.mode) paid
-              live env) := fun hd => by
+          Expr.loopBound ps funs flags bounds (slots.map Slot.mode) paid live count init cond body env) := fun hd => by
     have hK := hTopK (hdl hd).1
     have hI := hTopI (hdl hd).2.1
     rw [hDi] at hI
-    have hE := loop_entry_pot (ps := Expr.statePaid flags (slots.map Slot.mode) paid live init cond body)
+    have hE := loop_entry_pot (ps := ps)
       (ip := init.paid flags (slots.map Slot.mode) paid
         (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)))
       (P0 := tTy.pot storeV wsV (init.denote funs env))
@@ -2040,7 +2220,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
         rfl)
       (fun hps _ => by
         have hr := a2.rep
-        rw [Expr.statePaid_mode hps] at hr
+        rw [Expr.statePaid_mode (hpsS hps)] at hr
         exact Ty.pot_le_credit tTy ws0 _ hr)
     rw [hT]
     omega
@@ -2090,14 +2270,13 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
         ((Expr.loop count init cond body).denote funs env) heapX stX sX wsX →
       ((Expr.loop count init cond body).fits funs fits env = true →
         heapX.top.toNat +
-            (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+            (if ps = true then
               tTy.pot stX wsX ((Expr.loop count init cond body).denote funs env) else 0) ≤
           heap.top.toNat +
           (dyingPot store s env slots paid
               (fun i => live i || (Expr.loop count init cond body).uses i)
             live +
-          (Expr.loop count init cond body).allocs funs flags bounds (slots.map Slot.mode) paid
-              live env)) →
+          Expr.loopBound ps funs flags bounds (slots.map Slot.mode) paid live count init cond body env)) →
       wp m (releaseWhere Γ' slots (fun i => (cond.uses (i + 1) || body.uses (i + 2)) && !live i) ++
         (loadCode h (base + 2) tTy.types ++ rest)) Q stX { sX with values := vals } host := by
     intro heapX stX sX wsX vals hv holdX aX hTopX
@@ -2112,14 +2291,23 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     have h1 := hTopX hd
     have h2 := congrArg UInt64.toNat hTopR
     -- The loop's value has the last state's potential, which the release keeps.
-    have hP : (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+    have hP : (if ps = true then
           tTy.pot store' wsX ((Expr.loop count init cond body).denote funs env) else 0) =
-        (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+        (if ps = true then
           tTy.pot stX wsX ((Expr.loop count init cond body).denote funs env) else 0) := by
       split
-      · next hps => rw [Ty.pot_of_regions (Expr.statePaid_mode hps) hReg]
+      · next hps => rw [Ty.pot_of_regions (Expr.statePaid_mode (hpsS hps)) hReg]
       · rfl
-    rw [Expr.paid_loop, hP]
+    -- A paid loop has a paid state.
+    have hLoopPaid : (if (Expr.loop count init cond body).paid flags (slots.map Slot.mode) paid live =
+          true then tTy.pot store' wsX ((Expr.loop count init cond body).denote funs env) else 0) ≤
+        (if ps = true then
+          tTy.pot store' wsX ((Expr.loop count init cond body).denote funs env) else 0) := by
+      split
+      · next hlp =>
+        rw [ite_eq_left (hlpS hlp)]
+      · exact Nat.zero_le _
+    rw [hP] at hLoopPaid
     omega
   -- The loop.  The invariant holds the count, the index `i`, and the state after `i` passes, and
   -- the count less the index decreases.
@@ -2141,11 +2329,11 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
             (fun i acc => bif cond.denote funs (.cons acc env) then
               body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) = true ∧
         heapI.top.toNat +
-            (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+            (if ps = true then
               tTy.pot st wsI (loopState (init.denote funs env)
                 (fun i acc => bif cond.denote funs (.cons acc env) then
                   body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) else 0) +
-          Expr.loopRest funs flags bounds (slots.map Slot.mode) paid live init cond body env
+          Expr.loopRest funs flags bounds (slots.map Slot.mode) paid live ps init cond body env
           ((count.denote funs env).toNat - i.toNat) i
           (loopState (init.denote funs env)
             (fun i acc => bif cond.denote funs (.cons acc env) then
@@ -2153,8 +2341,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
           heap.top.toNat +
             (dyingPot store s env slots paid
               (fun i => live i || (Expr.loop count init cond body).uses i) live +
-            (Expr.loop count init cond body).allocs funs flags bounds (slots.map Slot.mode) paid
-                live env)))
+            Expr.loopBound ps funs flags bounds (slots.map Slot.mode) paid live count init cond body env)))
     (fun _ s' => match s'.get (base + 1) with
       | some (.i64 i) => (count.denote funs env).toNat - i.toNat
       | _ => 0)
@@ -2252,7 +2439,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
         (by
           have := (hInv (fits_of_not hd)).2
           have := Expr.loopRest_cond_le (funs := funs) (flags := flags) (bounds := bounds)
-            (modes := slots.map Slot.mode) (paid := paid) (live := live) (init := init)
+            (modes := slots.map Slot.mode) (paid := paid) (live := live) (ps := ps) (init := init)
                 (cond := cond)
             (body := body) (env := env) (n := (count.denote funs env).toNat - i.toNat - 1) (i := i)
             (x := loopState (init.denote funs env)
@@ -2268,17 +2455,17 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
   subst hRC
   have aI2 := After.test aI aC (by omega) (cond_live _ _ hdAll) rfl
   -- The condition keeps the state's blocks, and so its potential.
-  have hPotC : (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+  have hPotC : (if ps = true then
         tTy.pot stC wsI (loopState (init.denote funs env)
           (fun i acc => bif cond.denote funs (.cons acc env) then
             body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) else 0) =
-      (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+      (if ps = true then
         tTy.pot st wsI (loopState (init.denote funs env)
           (fun i acc => bif cond.denote funs (.cons acc env) then
             body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) else 0) := by
     split
     · next hps =>
-      rw [Ty.pot_of_regions (Expr.statePaid_mode hps)
+      rw [Ty.pot_of_regions (Expr.statePaid_mode (hpsS hps))
         (After.test_regions aI aC (cond_live _ _ hdAll))]
     · rfl
   have hiiC : sC.get (base + 1) = some (.i64 i) :=
@@ -2420,19 +2607,19 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
       (⟨base + 2, (init.mode (slots.map Slot.mode)).join
         (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode))⟩ ::
         ⟨base + 1, .borrowed⟩ :: slots)
-      (Expr.statePaid flags (slots.map Slot.mode) paid live init cond body :: false :: paid)
+      (ps :: false :: paid)
       (fun j => shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j ||
         body.uses j)
       (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) ≤
-      (if Expr.statePaid flags (slots.map Slot.mode) paid live init cond body = true then
+      (if ps = true then
         tTy.pot st wsI (loopState (init.denote funs env)
           (fun i acc => bif cond.denote funs (.cons acc env) then
             body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) else 0) := by
     rw [dyingPot_evolves hVarsB e2' (fun j h => live_right _ _ _ h) _ _ fun _ h => h, ← hPotC,
       ← holdB.read_eq (by rw [aB0.rep.length, Ty.types_length])]
     exact dyingPot_le_head _ _ _ _ _ loop_body_dies
-  refine bodySpec _ _ (Expr.statePaid flags (slots.map Slot.mode) paid live init cond body :: false ::
-      paid)
+  refine bodySpec (ps) _ _
+    (ps :: false :: paid)
     (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) h
     (base + 2 + tTy.width) heap2 store2 sB hhB (aB0.frame.params.trans hpv) e2'.holds e2'.step.at_
     (hSafeB.evolves hVarsB e2' (fun j hj => live_right _ _ _ hj))
@@ -2450,7 +2637,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
           have := hInv' (fits_of_not hd); have := hTopC' (fits_of_not hd)
           have := congrArg UInt64.toNat hTopRel
           have := hDbody
-          simp only [List.map_cons]; omega)
+          simp only [List.map_cons, Expr.buysIn]; omega)
         (by rw [e2'.step.cap m, aB0.step.cap m])).imp
         fun _ h => h)
     fun heap6 _ s6b _ aBb hTopB => ?_
@@ -2478,7 +2665,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
           have := congrArg UInt64.toNat hTopRel
           have h6 := hTopB (hFitsB (fits_of_not hd)).1
           have := hDbody
-          simp only [List.map_cons] at h6
+          simp only [List.map_cons, Expr.buysIn] at h6
           omega)
         (by rw [aBb.step.cap m, e2'.step.cap m, aB0.step.cap m])).imp fun _ h => h)
     fun heap6' store6 s6 ws6 aB hTopCo2 hSame6 => ?_
@@ -2564,9 +2751,10 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     simp only [List.map_cons] at h6 hTopCo2
     -- The body's value, which is paid when the state is, keeps its potential through the
     -- coercion, the identity on an owned value.
-    have := loop_body_pot Expr.statePaid_body
+    simp only [Expr.buysIn] at h6
+    have := loop_body_pot (Expr.statePaid_body_of hpsS)
       (fun hps => by
-        obtain ⟨rfl, rfl⟩ := hSame6 (Expr.mode_of_paid body (Expr.statePaid_body hps))
+        obtain ⟨rfl, rfl⟩ := hSame6 (Expr.mode_of_paidIn body (Expr.statePaid_body_of hpsS hps))
         rfl)
       h6 hDbody hTopCo2
     omega
@@ -2574,13 +2762,47 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     simp only [hget8]
     omega
 
+/-- A loop: the bound of `spec_loop_with` at the state's flag, or, for a state of pair type that
+is paid, at the flag whose bound is smaller. -/
+theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ' .word}
+    {init : Expr S Γ' tTy} {cond : Expr S (tTy :: Γ') .bool}
+    {body : Expr S (tTy :: .word :: Γ') tTy}
+    (countSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv count env
+        slots paid live)
+    (initSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv init env slots paid live)
+    (condSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv cond env slots paid live)
+    (bodySpec : ∀ buy env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host
+        pv body env slots paid live) :
+    ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.loop count init cond body) env slots paid live := by
+  intro env slots paid live
+  have hT := Expr.allocs_loop funs flags bounds (slots.map Slot.mode) paid live count init cond body
+    env
+  have core := spec_loop_with hm countSpec initSpec condSpec bodySpec env slots paid live
+  by_cases hmin :
+      (Expr.statePaid flags (slots.map Slot.mode) paid live init cond body && tTy.isPair) = true
+  · rw [ite_eq_left hmin] at hT
+    simp only [Bool.and_eq_true] at hmin
+    have hnp : (Expr.loop count init cond body).paid flags (slots.map Slot.mode) paid live = false := by
+      simp only [Expr.paid, hmin.2, Bool.not_true, Bool.and_false]
+    by_cases hle : Expr.loopBound false funs flags bounds (slots.map Slot.mode) paid live count init
+        cond body env ≤
+      Expr.loopBound true funs flags bounds (slots.map Slot.mode) paid live count init cond body env
+    · rw [Nat.min_eq_left hle] at hT
+      exact CodeSpec.of_with hT (core false (fun h => nomatch h) fun h => by
+        rw [hnp] at h; exact nomatch h)
+    · rw [Nat.min_eq_right (by omega)] at hT
+      exact CodeSpec.of_with hT (core true (fun _ => hmin.1) fun _ => rfl)
+  · rw [ite_eq_right hmin] at hT
+    exact CodeSpec.of_with hT (core _ id (Expr.paid_loop flags _ paid live count init cond body))
+
 theorem spec_fold (hm : Runtime m) {Γ' : List Ty} {e : Elem} {t : Ty}
     (x : Var Γ' (.array e)) {init : Expr S Γ' t}
     {body : Expr S (.elem e :: t :: .word :: Γ') t}
     (initSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv init env
       slots paid live)
-    (bodySpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv body env
-      slots paid live) :
+    (bodySpec : ∀ buy env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits
+      host pv body env slots paid live) :
     ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.fold x init body)
       env slots paid live := by
   intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom
@@ -2590,7 +2812,8 @@ theorem spec_fold (hm : Runtime m) {Γ' : List Ty} {e : Elem} {t : Ty}
   have hLoop : CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.foldExpand x init body)
       env slots paid live :=
     spec_loop hm (spec_size hm x) initSpec (spec_bool true)
-      (spec_letE hm (spec_get hm (.there (.there x)) (spec_var hm (.there .here))) bodySpec)
+      (fun buy => spec_letE hm (spec_get hm (.there (.there x)) (spec_var hm (.there .here)))
+        (bodySpec buy))
       env slots paid live
   simp only [CodeSpec, trapFlag, Expr.foldExpand_uses, Expr.foldExpand_width,
     Expr.foldExpand_placeArgs, Expr.foldExpand_aborts, Expr.foldExpand_allocs,
@@ -4795,7 +5018,248 @@ theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (
       (by simp only [Array.size_extract]; omega)
       (aR.rewriteRange hWL hAL (by simp only [Array.size_extract]; omega))
 
+/-- `CodeSpec` from `CodeSpecIn` of every flag. -/
+theorem specOf {Γ : List Ty} {t : Ty} {e : Expr S Γ t}
+    (h : ∀ buy env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+      e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots
+      paid live :=
+  fun env slots paid live => (h false env slots paid live).spec
+
+/-- `CodeSpecIn` of every flag for an expression that `Expr.bodyPaid` and `Expr.buys` treat as
+`Expr.paid` does. -/
+theorem specInOf {Γ : List Ty} {t : Ty} {e : Expr S Γ t}
+    (hp : ∀ modes paid live, e.bodyPaid flags modes paid live = e.paid flags modes paid live)
+    (hb : ∀ modes paid live env, e.buys funs flags modes paid live env = 0)
+    (h : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots
+      paid live) :
+    ∀ buy env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv e env
+      slots paid live :=
+  fun buy env slots paid live => CodeSpec.specIn buy (hp _ _ _) (hb _ _ _ _) (h env slots paid live)
+
 end Cases
+
+/-- The code of every expression meets its specification, also in the result of a loop's body. -/
+theorem Expr.code_specIn {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S)
+    (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (hm : Runtime m) {pv : List Value}
+    {d0 : UInt64} (hCalls : CallsAt m funs flags bounds fits d0 pool) {Γ : List Ty} {t : Ty}
+    (expr : Expr S Γ t) :
+    expr.Covered pool →
+    (expr.depthCalls = true → pv.head? = some (.i64 d0)) →
+    ∀ buy env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv expr env
+      slots paid live := by
+  induction expr with
+  | word value =>
+    intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_word value
+  | bool value =>
+    intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_bool value
+  | var x =>
+    intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_var hm x
+  | treeNil shape hn =>
+    intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_treeNil shape hn
+  | treeNode r reuse words children wordSpec childSpec =>
+    have wordSpec := fun i c d => specOf (pool := pool) (wordSpec i c d)
+    have childSpec := fun i c d => specOf (pool := pool) (childSpec i c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_treeNode hm reuse words children
+      (fun i => wordSpec i ((Expr.covered_treeNode hCover).1 i) fun hd => hD (by
+        simp only [Expr.depthCalls, Bool.or_eq_true]
+        exact Or.inl (le_argsAny _ i hd)))
+      (fun i => childSpec i ((Expr.covered_treeNode hCover).2 i) fun hd => hD (by
+        simp only [Expr.depthCalls, Bool.or_eq_true]
+        exact Or.inr (le_argsAny _ i hd)))
+  | treeCase x empty nodes emptySpec nodeSpec =>
+    have emptySpec := fun hn c d => specOf (pool := pool) (emptySpec hn c d)
+    have nodeSpec := fun r c d => specOf (pool := pool) (nodeSpec r c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_treeCase hm x empty nodes
+      (fun hn => emptySpec hn ((Expr.covered_treeCase hCover).1 hn) fun hd => hD (by
+        simp only [Expr.depthCalls, dite_eq_left hn, hd, Bool.true_or]))
+      (fun r => nodeSpec r ((Expr.covered_treeCase hCover).2 r) fun hd => hD (by
+        simp only [Expr.depthCalls, Bool.or_eq_true]
+        exact Or.inr (le_argsAny _ r hd)))
+  | bin op left right leftSpec rightSpec =>
+    have leftSpec := fun c d => specOf (pool := pool) (leftSpec c d)
+    have rightSpec := fun c d => specOf (pool := pool) (rightSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_bin op (leftSpec ((Expr.covered_bin hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec ((Expr.covered_bin hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | cmp op left right leftSpec rightSpec =>
+    have leftSpec := fun c d => specOf (pool := pool) (leftSpec c d)
+    have rightSpec := fun c d => specOf (pool := pool) (rightSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_cmp op (leftSpec ((Expr.covered_cmp hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec ((Expr.covered_cmp hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | not e eSpec =>
+    have eSpec := fun c d => specOf (pool := pool) (eSpec c d)
+    intro hCover hD; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_not (eSpec ((Expr.covered_not hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
+  | and left right leftSpec rightSpec =>
+    have leftSpec := fun c d => specOf (pool := pool) (leftSpec c d)
+    have rightSpec := fun c d => specOf (pool := pool) (rightSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_and (leftSpec ((Expr.covered_and hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec ((Expr.covered_and hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | or left right leftSpec rightSpec =>
+    have leftSpec := fun c d => specOf (pool := pool) (leftSpec c d)
+    have rightSpec := fun c d => specOf (pool := pool) (rightSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_or (leftSpec ((Expr.covered_or hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec ((Expr.covered_or hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | ite c thenE elseE cSpec thenSpec elseSpec =>
+    have cSpec := fun c d => specOf (pool := pool) (cSpec c d)
+    intro hCover hD
+    exact fun buy => spec_ite hm (cSpec ((Expr.covered_ite hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (thenSpec ((Expr.covered_ite hCover).2.1) (fun h => hD (by simp [Expr.depthCalls, h])) buy)
+      (elseSpec ((Expr.covered_ite hCover).2.2) (fun h => hD (by simp [Expr.depthCalls, h])) buy)
+  | letE value body valueSpec bodySpec =>
+    have valueSpec := fun c d => specOf (pool := pool) (valueSpec c d)
+    intro hCover hD
+    exact fun buy => spec_letE hm (valueSpec ((Expr.covered_letE hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (bodySpec ((Expr.covered_letE hCover).2) (fun h => hD (by simp [Expr.depthCalls, h])) buy)
+  | call g args argsSpec =>
+    have argsSpec := fun i c d => specOf (pool := pool) (argsSpec i c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_call hm hCalls g args (fun i => argsSpec i ((Expr.covered_call hCover) i) fun h => hD (by
+      simp only [Expr.depthCalls, Bool.or_eq_true]
+      exact Or.inr (le_argsAny _ i h))) hD
+  | pair first second firstSpec secondSpec =>
+    have firstSpec := fun c d => specOf (pool := pool) (firstSpec c d)
+    have secondSpec := fun c d => specOf (pool := pool) (secondSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_pair hm (firstSpec ((Expr.covered_pair hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (secondSpec ((Expr.covered_pair hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | letPair e body eSpec bodySpec =>
+    have eSpec := fun c d => specOf (pool := pool) (eSpec c d)
+    intro hCover hD
+    exact fun buy => spec_letPair hm (eSpec ((Expr.covered_letPair hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (bodySpec ((Expr.covered_letPair hCover).2) (fun h => hD (by simp [Expr.depthCalls, h])) buy)
+  | loop count init cond body countSpec initSpec condSpec bodySpec =>
+    have countSpec := fun c d => specOf (pool := pool) (countSpec c d)
+    have initSpec := fun c d => specOf (pool := pool) (initSpec c d)
+    have condSpec := fun c d => specOf (pool := pool) (condSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_loop hm (countSpec ((Expr.covered_loop hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (initSpec ((Expr.covered_loop hCover).2.1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (condSpec ((Expr.covered_loop hCover).2.2.1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (bodySpec ((Expr.covered_loop hCover).2.2.2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | fold x init body initSpec bodySpec =>
+    have initSpec := fun c d => specOf (pool := pool) (initSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_fold hm x (initSpec ((Expr.covered_fold hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (bodySpec ((Expr.covered_fold hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | listFold args body argsSpec bodySpec =>
+    have argsSpec := fun i c d => specOf (pool := pool) (argsSpec i c d)
+    have bodySpec := fun c d => specOf (pool := pool) (bodySpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_listFold hm args body
+      (fun i => argsSpec i ((Expr.covered_listFold hCover).1 i) fun hd => hD (by
+        simp only [Expr.depthCalls, Bool.or_eq_true]
+        exact Or.inl (le_argsAny _ i hd)))
+      (bodySpec ((Expr.covered_listFold hCover).2) fun hd => hD (by simp [Expr.depthCalls, hd]))
+  | size x =>
+    intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_size hm x
+  | bytesLiteral bytes =>
+    intro hCover _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_bytesLiteral hm bytes hCover
+  | bytesEmpty =>
+    intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_bytesEmpty
+  | bytesSize x =>
+    intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_bytesSize hm x
+  | bytesGet x index indexSpec =>
+    have indexSpec := fun c d => specOf (pool := pool) (indexSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_bytesGet hm x (indexSpec ((Expr.covered_bytesGet hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
+  | leSize x i =>
+    intro _ _
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_leSize hm x i
+  | get x i iSpec =>
+    have iSpec := fun c d => specOf (pool := pool) (iSpec c d)
+    intro hCover hD; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_get hm x (iSpec ((Expr.covered_get hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
+  | build count elem countSpec elemSpec =>
+    have countSpec := fun c d => specOf (pool := pool) (countSpec c d)
+    have elemSpec := fun c d => specOf (pool := pool) (elemSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_build hm (countSpec ((Expr.covered_build hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (elemSpec ((Expr.covered_build hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | bytesBuild count elem countSpec elemSpec =>
+    have countSpec := fun c d => specOf (pool := pool) (countSpec c d)
+    have elemSpec := fun c d => specOf (pool := pool) (elemSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_bytesBuild hm (countSpec ((Expr.covered_bytesBuild hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (elemSpec ((Expr.covered_bytesBuild hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | set x i v iSpec vSpec =>
+    have iSpec := fun c d => specOf (pool := pool) (iSpec c d)
+    have vSpec := fun c d => specOf (pool := pool) (vSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_set hm x (iSpec ((Expr.covered_set hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (vSpec ((Expr.covered_set hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | push x v vSpec =>
+    have vSpec := fun c d => specOf (pool := pool) (vSpec c d)
+    intro hCover hD; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_push hm x (vSpec ((Expr.covered_push hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
+  | append x y =>
+    intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_append hm x y
+  | insertAt x i v iSpec vSpec =>
+    have iSpec := fun c d => specOf (pool := pool) (iSpec c d)
+    have vSpec := fun c d => specOf (pool := pool) (vSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_insertAt hm x (iSpec ((Expr.covered_insertAt hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (vSpec ((Expr.covered_insertAt hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | eraseAt x i iSpec =>
+    have iSpec := fun c d => specOf (pool := pool) (iSpec c d)
+    intro hCover hD; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_eraseAt hm x (iSpec ((Expr.covered_eraseAt hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
+  | float bits =>
+    intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_float bits
+  | float32 bits =>
+    intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_float32 bits
+  | fbin op left right leftSpec rightSpec =>
+    have leftSpec := fun c d => specOf (pool := pool) (leftSpec c d)
+    have rightSpec := fun c d => specOf (pool := pool) (rightSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_fbin op (leftSpec ((Expr.covered_fbin hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec ((Expr.covered_fbin hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | fbin32 op left right leftSpec rightSpec =>
+    have leftSpec := fun c d => specOf (pool := pool) (leftSpec c d)
+    have rightSpec := fun c d => specOf (pool := pool) (rightSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_fbin32 op (leftSpec ((Expr.covered_fbin32 hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec ((Expr.covered_fbin32 hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | funary op e eSpec =>
+    have eSpec := fun c d => specOf (pool := pool) (eSpec c d)
+    intro hCover hD; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_funary op (eSpec ((Expr.covered_funary hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
+  | funary32 op e eSpec =>
+    have eSpec := fun c d => specOf (pool := pool) (eSpec c d)
+    intro hCover hD; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_funary32 op (eSpec ((Expr.covered_funary32 hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
+  | fcmp op left right leftSpec rightSpec =>
+    have leftSpec := fun c d => specOf (pool := pool) (leftSpec c d)
+    have rightSpec := fun c d => specOf (pool := pool) (rightSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_fcmp op (leftSpec ((Expr.covered_fcmp hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec ((Expr.covered_fcmp hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | fcmp32 op left right leftSpec rightSpec =>
+    have leftSpec := fun c d => specOf (pool := pool) (leftSpec c d)
+    have rightSpec := fun c d => specOf (pool := pool) (rightSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_fcmp32 op (leftSpec ((Expr.covered_fcmp32 hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec ((Expr.covered_fcmp32 hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | toFloat op e eSpec =>
+    have eSpec := fun c d => specOf (pool := pool) (eSpec c d)
+    intro hCover hD; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_toFloat op (eSpec ((Expr.covered_toFloat hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
+  | toFloat32 op e eSpec =>
+    have eSpec := fun c d => specOf (pool := pool) (eSpec c d)
+    intro hCover hD; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_toFloat32 op (eSpec ((Expr.covered_toFloat32 hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
+  | toWord op e eSpec =>
+    have eSpec := fun c d => specOf (pool := pool) (eSpec c d)
+    intro hCover hD; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_toWord op (eSpec ((Expr.covered_toWord hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
+  | toWord32 op e eSpec =>
+    have eSpec := fun c d => specOf (pool := pool) (eSpec c d)
+    intro hCover hD; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_toWord32 op (eSpec ((Expr.covered_toWord32 hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
+  | mk first second firstSpec secondSpec =>
+    have firstSpec := fun c d => specOf (pool := pool) (firstSpec c d)
+    have secondSpec := fun c d => specOf (pool := pool) (secondSpec c d)
+    intro hCover hD
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_mk (firstSpec ((Expr.covered_mk hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
+      (secondSpec ((Expr.covered_mk hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
+  | proj x p =>
+    intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_proj x p
 
 /-- The code of every expression meets its specification. -/
 theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S)
@@ -4804,153 +5268,10 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flag
     (expr : Expr S Γ t) :
     expr.Covered pool →
     (expr.depthCalls = true → pv.head? = some (.i64 d0)) →
-    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv expr env slots paid live := by
-  induction expr with
-  | word value => intro _ _; exact spec_word value
-  | bool value => intro _ _; exact spec_bool value
-  | var x => intro _ _; exact spec_var hm x
-  | treeNil shape hn => intro _ _; exact spec_treeNil shape hn
-  | treeNode r reuse words children wordSpec childSpec =>
-    intro hCover hD
-    exact spec_treeNode hm reuse words children
-      (fun i => wordSpec i ((Expr.covered_treeNode hCover).1 i) fun hd => hD (by
-        simp only [Expr.depthCalls, Bool.or_eq_true]
-        exact Or.inl (le_argsAny _ i hd)))
-      (fun i => childSpec i ((Expr.covered_treeNode hCover).2 i) fun hd => hD (by
-        simp only [Expr.depthCalls, Bool.or_eq_true]
-        exact Or.inr (le_argsAny _ i hd)))
-  | treeCase x empty nodes emptySpec nodeSpec =>
-    intro hCover hD
-    exact spec_treeCase hm x empty nodes
-      (fun hn => emptySpec hn ((Expr.covered_treeCase hCover).1 hn) fun hd => hD (by
-        simp only [Expr.depthCalls, dite_eq_left hn, hd, Bool.true_or]))
-      (fun r => nodeSpec r ((Expr.covered_treeCase hCover).2 r) fun hd => hD (by
-        simp only [Expr.depthCalls, Bool.or_eq_true]
-        exact Or.inr (le_argsAny _ r hd)))
-  | bin op left right leftSpec rightSpec =>
-    intro hCover hD
-    exact spec_bin op (leftSpec ((Expr.covered_bin hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (rightSpec ((Expr.covered_bin hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | cmp op left right leftSpec rightSpec =>
-    intro hCover hD
-    exact spec_cmp op (leftSpec ((Expr.covered_cmp hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (rightSpec ((Expr.covered_cmp hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | not e eSpec => intro hCover hD; exact spec_not (eSpec ((Expr.covered_not hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
-  | and left right leftSpec rightSpec =>
-    intro hCover hD
-    exact spec_and (leftSpec ((Expr.covered_and hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (rightSpec ((Expr.covered_and hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | or left right leftSpec rightSpec =>
-    intro hCover hD
-    exact spec_or (leftSpec ((Expr.covered_or hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (rightSpec ((Expr.covered_or hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | ite c thenE elseE cSpec thenSpec elseSpec =>
-    intro hCover hD
-    exact spec_ite hm (cSpec ((Expr.covered_ite hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (thenSpec ((Expr.covered_ite hCover).2.1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (elseSpec ((Expr.covered_ite hCover).2.2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | letE value body valueSpec bodySpec =>
-    intro hCover hD
-    exact spec_letE hm (valueSpec ((Expr.covered_letE hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (bodySpec ((Expr.covered_letE hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | call g args argsSpec =>
-    intro hCover hD
-    exact spec_call hm hCalls g args (fun i => argsSpec i ((Expr.covered_call hCover) i) fun h => hD (by
-      simp only [Expr.depthCalls, Bool.or_eq_true]
-      exact Or.inr (le_argsAny _ i h))) hD
-  | pair first second firstSpec secondSpec =>
-    intro hCover hD
-    exact spec_pair hm (firstSpec ((Expr.covered_pair hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (secondSpec ((Expr.covered_pair hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | letPair e body eSpec bodySpec =>
-    intro hCover hD
-    exact spec_letPair hm (eSpec ((Expr.covered_letPair hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (bodySpec ((Expr.covered_letPair hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | loop count init cond body countSpec initSpec condSpec bodySpec =>
-    intro hCover hD
-    exact spec_loop hm (countSpec ((Expr.covered_loop hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (initSpec ((Expr.covered_loop hCover).2.1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (condSpec ((Expr.covered_loop hCover).2.2.1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (bodySpec ((Expr.covered_loop hCover).2.2.2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | fold x init body initSpec bodySpec =>
-    intro hCover hD
-    exact spec_fold hm x (initSpec ((Expr.covered_fold hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (bodySpec ((Expr.covered_fold hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | listFold args body argsSpec bodySpec =>
-    intro hCover hD
-    exact spec_listFold hm args body
-      (fun i => argsSpec i ((Expr.covered_listFold hCover).1 i) fun hd => hD (by
-        simp only [Expr.depthCalls, Bool.or_eq_true]
-        exact Or.inl (le_argsAny _ i hd)))
-      (bodySpec ((Expr.covered_listFold hCover).2) fun hd => hD (by simp [Expr.depthCalls, hd]))
-  | size x => intro _ _; exact spec_size hm x
-  | bytesLiteral bytes => intro hCover _; exact spec_bytesLiteral hm bytes hCover
-  | bytesEmpty => intro _ _; exact spec_bytesEmpty
-  | bytesSize x => intro _ _; exact spec_bytesSize hm x
-  | bytesGet x index indexSpec =>
-    intro hCover hD
-    exact spec_bytesGet hm x (indexSpec ((Expr.covered_bytesGet hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
-  | leSize x i =>
-    intro _ _
-    exact spec_leSize hm x i
-  | get x i iSpec =>
-    intro hCover hD; exact spec_get hm x (iSpec ((Expr.covered_get hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
-  | build count elem countSpec elemSpec =>
-    intro hCover hD
-    exact spec_build hm (countSpec ((Expr.covered_build hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (elemSpec ((Expr.covered_build hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | bytesBuild count elem countSpec elemSpec =>
-    intro hCover hD
-    exact spec_bytesBuild hm (countSpec ((Expr.covered_bytesBuild hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (elemSpec ((Expr.covered_bytesBuild hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | set x i v iSpec vSpec =>
-    intro hCover hD
-    exact spec_set hm x (iSpec ((Expr.covered_set hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (vSpec ((Expr.covered_set hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | push x v vSpec =>
-    intro hCover hD; exact spec_push hm x (vSpec ((Expr.covered_push hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
-  | append x y => intro _ _; exact spec_append hm x y
-  | insertAt x i v iSpec vSpec =>
-    intro hCover hD
-    exact spec_insertAt hm x (iSpec ((Expr.covered_insertAt hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (vSpec ((Expr.covered_insertAt hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | eraseAt x i iSpec =>
-    intro hCover hD; exact spec_eraseAt hm x (iSpec ((Expr.covered_eraseAt hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
-  | float bits => intro _ _; exact spec_float bits
-  | float32 bits => intro _ _; exact spec_float32 bits
-  | fbin op left right leftSpec rightSpec =>
-    intro hCover hD
-    exact spec_fbin op (leftSpec ((Expr.covered_fbin hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (rightSpec ((Expr.covered_fbin hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | fbin32 op left right leftSpec rightSpec =>
-    intro hCover hD
-    exact spec_fbin32 op (leftSpec ((Expr.covered_fbin32 hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (rightSpec ((Expr.covered_fbin32 hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | funary op e eSpec =>
-    intro hCover hD; exact spec_funary op (eSpec ((Expr.covered_funary hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
-  | funary32 op e eSpec =>
-    intro hCover hD; exact spec_funary32 op (eSpec ((Expr.covered_funary32 hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
-  | fcmp op left right leftSpec rightSpec =>
-    intro hCover hD
-    exact spec_fcmp op (leftSpec ((Expr.covered_fcmp hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (rightSpec ((Expr.covered_fcmp hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | fcmp32 op left right leftSpec rightSpec =>
-    intro hCover hD
-    exact spec_fcmp32 op (leftSpec ((Expr.covered_fcmp32 hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (rightSpec ((Expr.covered_fcmp32 hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | toFloat op e eSpec =>
-    intro hCover hD; exact spec_toFloat op (eSpec ((Expr.covered_toFloat hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
-  | toFloat32 op e eSpec =>
-    intro hCover hD; exact spec_toFloat32 op (eSpec ((Expr.covered_toFloat32 hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
-  | toWord op e eSpec =>
-    intro hCover hD; exact spec_toWord op (eSpec ((Expr.covered_toWord hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
-  | toWord32 op e eSpec =>
-    intro hCover hD; exact spec_toWord32 op (eSpec ((Expr.covered_toWord32 hCover)) fun h => hD (by simp [Expr.depthCalls, h]))
-  | mk first second firstSpec secondSpec =>
-    intro hCover hD
-    exact spec_mk (firstSpec ((Expr.covered_mk hCover).1) fun h => hD (by simp [Expr.depthCalls, h]))
-      (secondSpec ((Expr.covered_mk hCover).2) fun h => hD (by simp [Expr.depthCalls, h]))
-  | proj x p => intro _ _; exact spec_proj x p
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv expr env slots paid live :=
+  fun hCover hD env slots paid live =>
+    (Expr.code_specIn m funs flags bounds fits host hm hCalls expr hCover hD false env slots paid
+      live).spec
 
 /-- A function's code after the copy of its parameters, whose words start at position `p0`: the
 release of the owned parameters that the body does not use, the body's code, and the coercion of

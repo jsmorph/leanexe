@@ -60,20 +60,24 @@ theorem streamFuture_writeStep {host : Host World} {rep : StreamPosition → Wor
     (pending : state.written < state.output.size)
     (execution : LeanExe.Wasi.Exec host (writeStep state) world trace (.returned next) final) :
     ∃ nextPosition, rep nextPosition final ∧ next.running = true ∧ next.status = 0 ∧
-      StreamFuture spec next.state nextPosition history expected status := by
+      StreamFuture spec next.state nextPosition history expected status ∧
+      RankLt (rank (fun position => position.input.length) StreamPosition.zeroWrites next.state
+        nextPosition) (rank (fun position => position.input.length) StreamPosition.zeroWrites state
+        position) := by
   change LeanExe.Wasi.Exec host
     (.write .stdout (remainingOutput state) fun reply => .pure (afterWrite state reply))
     world trace (.returned next) final at execution
   cases execution with
   | write_return operation continuation =>
       cases continuation
-      obtain ⟨count, nextPosition, replyEq, nextRep, input, output, _⟩ :=
+      obtain ⟨count, nextPosition, replyEq, nextRep, input, output, zeroDrop⟩ :=
         streams.write_reply represented (remainingOutput_nonempty future.safe pending)
           operation
       cases replyEq
       simp only [writeResult, ↓reduceIte]
       have bound := (host.write_bound operation).1
-      refine ⟨nextPosition, nextRep, ?_, ?_, streamFuture_afterWrite spec future _ bound input output⟩
+      refine ⟨nextPosition, nextRep, ?_, ?_,
+        streamFuture_afterWrite spec future _ bound input output, rank_afterWrite _ _ future.safe pending _ bound (congrArg List.length input) zeroDrop⟩
       · simp only [afterWrite, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
         split <;> rfl
       · simp only [afterWrite, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte]
@@ -84,10 +88,13 @@ theorem streamFuture_readStep {host : Host World} {rep : StreamPosition → Worl
     {history expected : List Bytes} {status : UInt64} {world final : World} {trace : List Event}
     {next : ProcessStep (BufferState Acc)} (represented : rep position world)
     (future : StreamFuture spec state position history expected status)
-    (exhausted : ¬ state.cursor < state.input.size)
+    (exhausted : ¬ state.cursor < state.input.size) (reading : state.eof = false)
     (execution : LeanExe.Wasi.Exec host (readStep state) world trace (.returned next) final) :
     ∃ nextPosition, rep nextPosition final ∧ next.running = true ∧ next.status = 0 ∧
-      StreamFuture spec next.state nextPosition history expected status := by
+      StreamFuture spec next.state nextPosition history expected status ∧
+      RankLt (rank (fun position => position.input.length) StreamPosition.zeroWrites next.state
+        nextPosition) (rank (fun position => position.input.length) StreamPosition.zeroWrites state
+        position) := by
   change LeanExe.Wasi.Exec host (.read 4096 fun reply => .pure (afterRead state reply))
     world trace (.returned next) final at execution
   cases execution with
@@ -99,8 +106,11 @@ theorem streamFuture_readStep {host : Host World} {rep : StreamPosition → Worl
         streams.read_reply represented operation
       cases replyEq
       simp only [readResult, ↓reduceIte]
+      have length := congrArg List.length input
+      simp only [List.length_append, byteWords_length] at length
       exact ⟨nextPosition, nextRep, by simp [afterRead], by simp [afterRead],
-        streamFuture_afterRead spec future _ (host.read_bound operation).1 exhausted input eof output⟩
+        streamFuture_afterRead spec future _ (host.read_bound operation).1 exhausted input eof
+          output, rank_afterRead _ _ reading (by omega) (fun nonempty => by omega)⟩
 
 theorem streamFuture_empty_line {state : BufferState Acc} {position : StreamPosition}
     {history expected : List Bytes} {status : UInt64}
@@ -217,14 +227,17 @@ theorem streamFuture_step {host : Host World} {rep : StreamPosition → World �
     (execution : LeanExe.Wasi.Exec host (step kernel state) world trace (.returned next) final) :
     ∃ nextPosition, rep nextPosition final ∧
       (next.running = true →
+        RankLt (rank (fun position => position.input.length) StreamPosition.zeroWrites next.state
+          nextPosition) (rank (fun position => position.input.length) StreamPosition.zeroWrites
+          state position) ∧
         ∃ history', StreamFuture spec next.state nextPosition history' expected status) ∧
       (next.running = false → next.status = status ∧ StreamDone nextPosition expected status) := by
   by_cases pending : state.written < state.output.size
   · have code : step kernel state = writeStep state := by simp [step, pending]
     rw [code] at execution
-    obtain ⟨nextPosition, nextRep, running, _, preserved⟩ :=
+    obtain ⟨nextPosition, nextRep, running, _, preserved, smaller⟩ :=
       streamFuture_writeStep spec streams represented future pending execution
-    refine ⟨nextPosition, nextRep, fun _ => ⟨history, preserved⟩, ?_⟩
+    refine ⟨nextPosition, nextRep, fun _ => ⟨smaller, history, preserved⟩, ?_⟩
     intro stopped
     rw [running] at stopped
     cases stopped
@@ -234,15 +247,19 @@ theorem streamFuture_step {host : Host World} {rep : StreamPosition → World �
         rfl
       rw [code] at execution
       cases execution
+      have empty : state.output.size = 0 := by
+        simp [Bytes.size, (future.safe.no_output pending).1]
       obtain ⟨continued, stopped⟩ := streamFuture_consumeInput spec future pending
-      exact ⟨position, represented, fun running => ⟨_, (continued running).2⟩, stopped⟩
+      exact ⟨position, represented, fun running =>
+        ⟨rank_consumeInput spec _ _ position future.safe empty remaining, _, (continued running).2⟩,
+        stopped⟩
     · cases eof : state.eof with
       | false =>
           have code : step kernel state = readStep state := by simp [step, pending, remaining, eof]
           rw [code] at execution
-          obtain ⟨nextPosition, nextRep, running, _, preserved⟩ :=
-            streamFuture_readStep spec streams represented future remaining execution
-          refine ⟨nextPosition, nextRep, fun _ => ⟨history, preserved⟩, ?_⟩
+          obtain ⟨nextPosition, nextRep, running, _, preserved, smaller⟩ :=
+            streamFuture_readStep spec streams represented future remaining eof execution
+          refine ⟨nextPosition, nextRep, fun _ => ⟨smaller, history, preserved⟩, ?_⟩
           intro stopped
           rw [running] at stopped
           cases stopped
@@ -264,6 +281,8 @@ theorem streamFuture_step {host : Host World} {rep : StreamPosition → World �
             rw [code] at execution
             cases execution
             obtain ⟨continued, stopped⟩ := streamFuture_completeLine spec future pending eof empty
-            exact ⟨position, represented, fun running => ⟨_, (continued running).2⟩, stopped⟩
+            exact ⟨position, represented, fun running =>
+              ⟨rank_completeLine (kernel := kernel) _ _ position empty running, _,
+                (continued running).2⟩, stopped⟩
 
 end Demos.StreamFold

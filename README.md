@@ -47,21 +47,22 @@ operations.  [The WASI manual](docs/wasi.md) defines the API, export forms, proo
 interpreter, and Wasmtime's exit-acceptance policy.
 
 `LeanExe.Wasi.Process` composes bounded actions through an unbounded outer loop.  The
-[running-sum application](Demos/RunningSum/README.md) reads decimal integers through EOF, handles
-short writes.  [Its compiled theorem](Demos/RunningSum/Correct.lean) proves canonical cumulative
-integer output and eventual accepted exit under separate line and prefix-sum size bounds.  A line
-that is not a decimal integer stops the command with status 28 after the output of the lines before
-it.  The theorem assumes stream-host progress, a run budget for allocation, and final-exit
-acceptance.  No proof yet supplies a run budget, and none exists for inputs above about one million
-bytes when the host may return one byte per read, because the heap model credits no released
-memory.
+[running-sum application](Demos/RunningSum/README.md) reads decimal integers through EOF and
+handles short writes.  [Its compiled theorem](Demos/RunningSum/Correct.lean) proves canonical
+cumulative integer output and eventual accepted exit under separate line and prefix-sum size
+bounds.  A line that is not a decimal integer stops the command with status 28 after the output of
+the lines before it.  The theorem assumes stream-host progress, limits `L` and `D` on the bytes of
+each line and the digits of each total such that `220 · (L + D) + 1,010,000` bytes fit in the
+memory cap above the literal pool, and final-exit acceptance.  The process compacts its state after
+each step, so its memory need does not grow with the number of lines or the total length of the
+input, and a corollary covers lines of up to 9,000,000 bytes and totals of up to 9,000,000 digits.
 
 [The floating-point version, `sumfp`](Demos/RunningSumFp/README.md), parses binary64 values and
 prints each sequential binary64 total in scientific notation.  Its proofs compose the existing
 parser and printer theorems with IEEE-754 addition and the WASI process proof.  The total starts
 at positive zero.  Its theorem requires fewer than `2^32` bytes per line, covers lines that denote
-no number, and assumes host progress, a run budget for allocation, and final-exit acceptance, with
-the same limits on the budget.
+no number, and assumes host progress, allocation charges for begin and each step, and final-exit
+acceptance.  No proof yet supplies those charges, which depend on the float parser and printer.
 
 ### Comparison
 
@@ -70,7 +71,7 @@ the same limits on the budget.
 | Correctness proof | A theorem per program, from rule lemmas and hints | A universal typed-source compiler theorem, combined with generated source-correspondence proofs |
 | Pure compilation command | `leanexe_compile p := [f, …]` | `verified_compile p := [f, …]` |
 | WASI Preview 1 I/O | Application hosts perform I/O around compiled calls. | `verified_compile_wasi` compiles stdin reads, stdout and stderr writes, and exit, with native source-to-export refinement proofs. |
-| Total execution | `ImplementsA false` with a proved memory budget | Pure `p.f.trapFree` under generated allocation and depth conditions.  WASI `.total` under typed resource-prefix and reached-host conditions.  Processes require application progress proofs and a run budget for allocation. |
+| Total execution | `ImplementsA false` with a proved memory budget | Pure `p.f.trapFree` under generated allocation and depth conditions.  WASI `.total` under typed resource-prefix and reached-host conditions.  Processes require application progress proofs and allocation charges for begin and each step, with room for the copies of the state. |
 | `Float32` and WGSL kernels | Binary32 arithmetic and proved WGSL kernels | Binary32 arithmetic and a proved WGSL path for supported word, Boolean, and binary32 array builds |
 | Lists and recursive types | `List UInt64` and user recursive types | Lists and fixed-layout recursive types, including matching, guarded recursion, tail loops, copying, release, and header reuse |
 | Sum types | Supported, with fields | Enumerations and sums with scalar fields |
@@ -107,9 +108,9 @@ accepted exits, and host traps to source executions with the same world and orde
 Permitted guest resource traps match source prefixes and residual actions.  Generated action
 total-execution theorems require allocation room, the typed prefix budget, and `NoTrapsAlong`
 for the native action.  [The total-process theorem](Verified/Wasi/ProcessTotalCorrect.lean)
-uses a well-founded progress relation, a charge that bounds the cost of each step, a potential
-that bounds the charges of the remaining steps, and final-exit acceptance.  Both running-sum
-applications retain those cost bounds as premises.  The modeled initial-store theorem establishes allocator and
+uses a well-founded progress relation, a charge that bounds the cost of each step with room for
+the copies of the state, and final-exit acceptance.  The integer running sum proves those charges
+from limits on its input, and the binary64 running sum retains them as premises.  The modeled initial-store theorem establishes allocator and
 static-data invariants.  Real engine instantiation, OS streams, and the native stream adapter
 require conformance to the modeled behavior, which execution tests check on concrete inputs.
 

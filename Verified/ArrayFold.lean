@@ -127,7 +127,7 @@ theorem Expr.foldExpand_allocs (x : Var Γ (.array e)) (init : Expr S Γ t)
     (bounds : Bounds S) (modes : List Mode) (paid : List Bool) (live : Nat → Bool) (env : Env Γ) :
     (Expr.foldExpand x init body).allocs funs flags bounds modes paid live env =
       (Expr.fold x init body).allocs funs flags bounds modes paid live env := by
-  simp [Expr.foldExpand, Expr.foldStep, Expr.allocs, loopAlloc, Expr.mode, Expr.paid,
+  simp [Expr.foldExpand, Expr.foldStep, Expr.allocs, loopAlloc, loopAllocWith, Expr.mode, Expr.paid,
     Expr.denote, Var.cost, modeAt, Env.get, Var.index]
 
 theorem Expr.foldExpand_fits (x : Var Γ (.array e)) (init : Expr S Γ t)

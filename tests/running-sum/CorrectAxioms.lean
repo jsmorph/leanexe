@@ -28,7 +28,15 @@ elab "check_running_sum_correctness_axioms" : command => do
     ``Demos.RunningSum.command_integer,
     ``Demos.RunningSum.result_integer,
     ``Demos.RunningSum.terminates_integer,
+    ``Demos.RunningSum.limitRooms,
+    ``Demos.RunningSum.limit_advances,
+    ``Demos.RunningSum.step_sized,
+    ``Demos.RunningSum.consumeInput_bound_le,
+    ``Demos.RunningSum.step_bounded,
+    ``Demos.RunningSum.stepBudget_le,
+    ``Demos.RunningSum.terminates_limits,
     ``Demos.RunningSum.initial_terminates_integer,
+    ``Demos.RunningSum.initial_terminates_integer_9000000,
     ``Demos.RunningSum.integer_bytes]
   for declaration in declarations do
     for axiomName in ← collectAxioms declaration do
