@@ -36770,10 +36770,15 @@ Step 11 follows the integer program.  `Demos/RunningSumFp/Limits.lean` defines `
 - [x] Prove the cost lemmas of step 11, the effect bodies.
 - [x] State the binary64 theorem over limits on line length, with its inequality against the memory cap, and correct the comment of `RunCharges`, which named that theorem before it existed.
 - [x] Run both running-sum drivers.  The binary64 axiom check passes for 61 theorems, the integer checks as before, and `sum.wasm`, `sumfp.wasm`, and `process.wasm` equal the stage 2 emission.
-- [ ] Update the guides, the index, and the WASI documents after the merge of main.
+- [x] Update the guides, the index, and the WASI documents after the merge of main.
+- [ ] Run the gate on x86-64.
 
 ## 2026-10-27: The merge with main and the slew planner
 
 The coordinator asked me to merge `bbb840a34`, main with typed-fields stage 1 and the slew planner, into `process-compaction` and to check the result.  The merge is `2498ad7cf`.  Git reported conflicts only in `devnotes.md`, where main's entries now come before the three compaction entries, and in `index.md`, where the compaction rows for the two running sums stand with main's new slew row.  In `README.md`, `Verified.lean`, and `Verified/Reflect/Definitions.lean`, every line that either side added relative to `ed77fa248` is present in the merge.  The development gate on AArch64 ran the host program's rebuild, the 16 heavy proofs one at a time, the aggregate, the default build, the verified, running-sum, binary64 running-sum, and WASI drivers, and the byte comparison.
 
 The WASI driver failed at first, because `tests/wasi/Axioms.lean` imports `Verified.ProgramLiterals`, which no target built.  After an explicit build of that module the driver passed, and the coordinator added the module to the `Verified` library and to the driver's build on the push branch.  The aggregate took 823 s, the default build 32 s, the verified driver 3,243 s, the two running-sum drivers 32 s and 22 s, and the WASI driver 164 s.  All 98 baseline modules, `slew.wasm`, and `heapsums.wasm` equal their references, and `sum.wasm`, `sumfp.wasm`, and `process.wasm` equal the stage 2 emission.  I then merged `2498ad7cf` into `printfloat-charges`, and main at `3e87e69a9` or later follows after the push.
+
+## 2026-10-27: Stage 3 merged with main
+
+`printfloat-charges` merged main at `51fd1c06c`, which holds the compaction work, the slew planner, and the journal without machine names.  The merge takes main's text for every file outside the stage 3 work and for every inherited part of this journal, and the stage 3 sections follow main's entries.  Git reported a conflict only in this journal, and `Verified.lean` keeps main's import of `Verified.ProgramLiterals` with the import of `Verified.ChargeFacts`.  The top-level README, the index, the WASI manual and design, and the StreamFold guide now state that the binary64 application proves its charges from the line limit, with the inequality `80 L + 64,031,000` against the memory cap above the heap's start.
