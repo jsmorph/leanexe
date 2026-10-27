@@ -36752,9 +36752,23 @@ The first build of `print64_bound_le` failed with a kernel deep-recursion error.
 Two steps of the first proofs were expensive in the same way as the layout's.  A `first` combinator that tried `Nat.zero_le` against the goal of the rounding branch made the elaborator reduce `decRound`'s bound toward 0, and the build stopped at the heartbeat limit.  The proof now splits the branches in order and applies each lemma to its own goal, after generalizing the sign's offset, whose condition `split` would otherwise take first.  `decRound_bound_le` takes the digit count, exponent, and flag whole, as the caller passes them.
 
 - [x] Prove the cost lemmas of step 9, the layout, `print64`, and `render`.
+### The binary64 theorem over a line limit
+
+Step 11 follows the integer program.  `Demos/RunningSumFp/Limits.lean` defines `InputLimits L`: each line up to and including the first line that denotes no number has at most `L` bytes.  The kernel specification `limitSpec L` adds the limit to each line's room, and `LimitInv L` carries a stream future under it with the buffers' bounds, so every reached state has a line of at most `L` bytes, an input buffer of at most 4,096 bytes, and an output buffer of at most 43 bytes.  `Demos/RunningSumFp/Charges.lean` bounds the effect bodies as the integer program's charges do: a copy of a state costs at most `8 L + 4,305` bytes, and a step at most `64 L + 4,910,000` bytes plus the charge of one rendering, 59,112,378 bytes.  The consumption of one input buffer dominates the line term: up to 4,096 bytes join the line, and the line that completes is parsed and copied.
+
+`RunCharges` now takes the invariant, as the integer program's does, and `limitCharges` derives it from the limit when `limitMemory L = 80 L + 64,031,000` bytes fit above the heap's top.  `terminates_fp` takes the invariant, its initial case, and its preservation, and `terminates_limits` supplies them from `InputLimits L`.  `initial_terminates_fp` now takes `InputLimits L` and `4,096 + limitMemory L ≤ 65,536 · 65,535` in place of `RunCharges`, with the same conclusion, and `initial_terminates_fp_50000000` discharges the inequality for lines of at most 50,000,000 bytes.  The binary64 module has no literals, so its heap starts at 4,096 bytes, where the integer module's starts at 4,104.  `initial_memoryCap` rewrites the initial store with `erase_restore` before its kernel check, since the `show` that the integer proof uses made the elaborator unfold the compiled module past its recursion limit.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The extent of the limit | The lines up to and including the first that denotes no number, stated with `InputLine` | The program reads no further line into its line buffer, and the integer limits take the same extent. |
+| The statement of `initial_terminates_fp` | Replace its `RunCharges` premise with the limit and the room inequality | This change mirrors the integer program's stage 2, and the conclusion is unchanged. |
+| A concrete corollary | Lines of at most 50,000,000 bytes | `80 · 50,000,000 + 64,035,096` bytes fit in 65,535 pages with about 230 MB to spare. |
+
 - [x] Prove the cost lemmas of step 10, the parser.
-- [ ] Prove the cost lemmas of step 11, the effect bodies.
-- [ ] State the binary64 theorem over limits on line length, with its inequality against the memory cap, and correct the comment of `RunCharges`, which names that theorem before it exists.
+- [x] Prove the cost lemmas of step 11, the effect bodies.
+- [x] State the binary64 theorem over limits on line length, with its inequality against the memory cap, and correct the comment of `RunCharges`, which named that theorem before it existed.
+- [x] Run both running-sum drivers.  The binary64 axiom check passes for 61 theorems, the integer checks as before, and `sum.wasm`, `sumfp.wasm`, and `process.wasm` equal the stage 2 emission.
+- [ ] Update the guides, the index, and the WASI documents after the merge of main.
 
 ## 2026-10-27: The merge with main and the slew planner
 

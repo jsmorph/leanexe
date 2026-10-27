@@ -21,8 +21,7 @@ host="$root/build/tools/leanexe-wasmtime-host"
 case "$group" in
   full)
     tools/leanrun --timeout 30m --log build/running-sumfp/build.log lake build \
-      Demos.RunningSumFp.Correct Demos.RunningSumFp.PrintCharges Demos.RunningSumFp.ParseCharges \
-      Verified.Wasi.ScriptHostContracts running-sumfp-native ;;
+      Demos.RunningSumFp.Correct Verified.Wasi.ScriptHostContracts running-sumfp-native ;;
   native-wasm)
     tools/leanrun --timeout 30m --log build/running-sumfp/build.log lake build \
       Demos.RunningSumFp.Correct running-sumfp-native ;;
