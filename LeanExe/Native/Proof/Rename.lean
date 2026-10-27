@@ -20,9 +20,10 @@ renaming.  `ExtRen g X X'` states that `X'` does on renamed symbols what `X` doe
 `ExtSem.none`, which relates nothing, meets it with every `X'`: a run that calls no external
 function holds for `ExtSem.none`, and its renaming then holds for every semantics.
 
-`bigstep_program_terminates_rename_on` asks for injectivity only on the identifiers that occur in
-the program, which is what the numbering of a compiler gives, and `exists_injective_extension`
-supplies the injective maps on all identifiers that the other theorems take.
+A compiler numbers the identifiers of the program alone, so its renaming is injective on them
+and undefined elsewhere.  `exists_injective_extension` extends such a map to an injective map on
+all identifiers, and renaming depends only on the identifiers that occur.
+`bigstep_program_terminates_rename_on` therefore asks for injectivity only on those identifiers.
 -/
 
 namespace LClight
