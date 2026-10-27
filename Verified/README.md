@@ -201,14 +201,15 @@ rule, and `Cases.spec_leSize` reuses that rule's ownership, release, and allocat
 
 The [tree model](Tree.lean) has a null value and records with a fixed layout of at most 64 slots.
 Each field is a child with the same layout or a word field, `TreeField.word e`, that holds an
-element `e` of one word: a `UInt64`, a `Bool`, or a float of either width.  `TreeShape.fields`
-derives the slot kinds from the fields, so `Node`, the release and copy loops, and their proofs read
-one child mask.  `Tree.node` takes its words as a family typed by `TreeShape.elem`, which is
-`Elem.word` by reduction when every field of the shape is a `UInt64` word or a child
-(`TreeShape.allWords`, `TreeField.plain`), so the words of such a shape, as of lists, have the type
-`UInt64`.  A load converts a slot's word with `ofWordCode` into the local of the element's slot
-type, and a store converts with `toWordCode`.  Both are empty for a `UInt64` word.  The model proves
-the conversion laws for `List UInt64` and uses the shared runtime's record encoding.
+element `e` of one word: a `UInt64`, a `Bool`, or a float of either width.  `TreeShape.kinds r`
+lists the fields of record constructor `r`, and `TreeShape.fields r` maps them to the child bits
+that `Node`, the release and copy loops, and their proofs read.  `Tree.node` takes its words as a
+family typed by `TreeShape.elem`, which reduces to `Elem.word` when every field of the shape is a
+`UInt64` word or a child (`TreeShape.allWords`), so the words of a list and of such a type have type
+`UInt64`.  A load converts a slot's word with `ofWordCode` into a local of the element's slot type,
+and a store converts with `toWordCode`.  Both are empty for a `UInt64` and a `Bool`, so a field of
+either type needs no conversion instructions.  The model proves the conversion laws for `List
+UInt64` and uses the shared runtime's record encoding.
 
 The [copy theorem](TreeCopy.lean), `wp_copyTree`, covers every borrowed value with that layout.
 It proves termination, ownership and pairwise separation of the copied records, preservation of
@@ -746,11 +747,12 @@ matches, results, pairs, loop state, and lists, trees, bytes, and arrays as fiel
 The reflector spreads a field of a type with a `Flat` instance over the leaves of its flattening,
 one word field for each leaf, and `NativeField.flat` holds each leaf's element and path.  In a
 branch the field is one Lean variable and each leaf a source variable keyed by the leaf's term, and
-`keyedComponent?` reads the field, a component, or a leaf from those variables.  `fromTree` and the
-inverse laws exist when every such field is a structure whose `Flat` tuple holds each of its fields,
-since a word that encodes no constructor of an enumeration or a sum has no Lean value.  [The
-typed-field example](Examples/TypedTrees.lean) covers `Bool`, float, nested structure, enumeration,
-and sum fields.
+`keyedComponent?` reads the field, a component, or a leaf from those variables.
+`verified_recursive_type` derives `fromTree` and the inverse laws only when every such field is a
+structure whose `Flat` tuple holds each of its fields and whose leaves, through nested structures,
+are words, `Bool`s, and floats, since a word that encodes no constructor of an enumeration or a sum
+has no Lean value.  [The typed-field example](Examples/TypedTrees.lean) covers `Bool`, float, nested
+structure, enumeration, and sum fields.
 
 A variable that holds a pair or a record with arrays is split into the components of
 its pair, and the body at the value rebuilt from them is the body at the variable by `pair_eta` or

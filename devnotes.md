@@ -36563,7 +36563,7 @@ An independent reviewer read the documents of typed tree fields and of `verified
 | A structure that leaves out a field | Its own message, `the parameter type … has a field that holds the structure …, whose Flat tuple leaves out its field …`, from `flatOmission?` | The coordinator asked for a message that names the field.  The search follows pairs and nested structures, as `rebuild?` does. |
 | The prefix of shared messages | `flatTree` takes the running command's name, and `requireRecursiveTypes` takes it from its caller | Errors that `verified_recursive_type` and `verified_compile_wasi` raise then name the command that the user ran. |
 | A sum field | `Logged`, whose records hold a `Reading` sum of three slots, with construction, a match that reads the sum, a rebuilding match, and cases | The manual and the design document claimed sum fields, and no example had one. |
-| README paragraph on typed fields | Written from the review's three corrections | The review's full replacement paragraph did not reach me. |
+| README paragraph on typed fields | The review's paragraph, with the sentences on the tree model under "Recursive records", the `Flat`-tuple condition above, and sum fields in the example's list | The coordinator sent the paragraph after the first version, which I had written from the review's three corrections. |
 
 - [x] Manual, README, design document, and the two READMEs.
 - [x] Messages, the omission check, and the audit's docstring.
