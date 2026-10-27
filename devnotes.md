@@ -37202,3 +37202,68 @@ The coordinator asked for `Verified.Examples.Literals` to run natively, since no
 `tests/TestSupport/Native/LiteralsNative.lean` states that each translation contains every function of its module and checks the types of five theorems `p.f.native`: `constant`, `lookup`, and `tail` of the literal example are `NativeStaticImpl`, and `copyByBuild` and `readByte` of the byte example are `NativeImpl`.  `lookup.native` and `tail.native` depend on `propext`, `Classical.choice`, and `Quot.sound`.  `tests/native/bytes.sh` translates both modules, has `clightgen` read each back, compiles them with the native host, and runs the cases that `tests/wasi/run.sh` checks with Wasmtime: all 48 cases of `bytes.tsv` and all 36 of `literals.tsv` give Wasmtime's lines and allocation counts, and both cases of `byte-traps.tsv` stop at `unreachable`.  The results hold with the aarch64 tree on AArch64 and with the x86_64 tree under `qemu-x86_64`.
 
 - [x] `Verified.Examples.Literals` native, with its theorems and its cases.
+
+## 2026-10-27: The Wasm-to-C translator: plan for M6 (binary32)
+
+### What the corpus needs
+
+A survey of the 100 modules of `tests/verified` after the merge with main lists, for each of the 1,420 functions, the forms it uses that the translator does not handle, its result types, and its callees, with M5's script under `lake env lean --run`.  1,356 functions translate.  Every unhandled form is one of the seventeen binary32 forms of the subset, and the 64 functions outside the translation are 34 in `floats32`, 13 in `gpt32`, 5 in `liblinalg32`, 4 in `sums`, 3 in `wgsl`, 2 each in `scalarcomposition` and `relocation`, and 1 in `lists`.  Six of them return several results with a binary32 value among them.  The table orders the features greedily, as M5's did, where a function enters when every form it uses is handled and every function it calls has entered, a recursive call included.  With all seventeen forms and several results with binary32 values, all 1,420 functions translate.
+
+| Feature | Omitted functions that use it | Functions added | Translated after |
+| --- | --- | --- | --- |
+| `i32ReinterpretF32` | 32 | 5 | 1,361 |
+| `f32Le` | 9 | 2 | 1,363 |
+| `f32ReinterpretI32` | 30 | 3 | 1,366 |
+| `f32Add` | 30 | 4 | 1,370 |
+| `f32Const` | 30 | 6 | 1,376 |
+| `f32Mul` | 21 | 10 | 1,386 |
+| several results with a binary32 value | 6 | 5 | 1,391 |
+| `f32Sub` | 14 | 4 | 1,395 |
+| `f32Nearest` | 9 | 3 | 1,398 |
+| `f32Lt` | 6 | 6 | 1,404 |
+| `f32ConvertI64U` | 3 | 4 | 1,408 |
+| `f32Div` | 5 | 3 | 1,411 |
+| `f32Sqrt` | 3 | 3 | 1,414 |
+| `f32Abs` | 2 | 2 | 1,416 |
+| `f32ConvertI32S` | 1 | 1 | 1,417 |
+| `f32Eq` | 1 | 1 | 1,418 |
+| `i32TruncSatF32S` | 1 | 1 | 1,419 |
+| `i64TruncSatF32U` | 1 | 1 | 1,420 |
+
+The exit criterion, binary32 GPT-2 native, needs ten of the forms: the two reinterpretations, constants, the four arithmetic operations, `f32Le`, `f32Nearest`, and `f32Sqrt`.  `layerNorm32` takes a square root, and `expArray32`, `headSum32`, `probs32`, and `geluArray32` round to the nearest integer in their range reductions.
+
+### The semantics
+
+Talos's binary32 operations are integer definitions on bit patterns in `Interpreter/Wasm/IEEE32.lean`, as the binary64 ones are.  Every NaN result of `add`, `sub`, `mul`, `div`, `sqrt`, and `nearest` is the canonical NaN `0x7FC00000`, `abs` clears the sign bit of any value, and the comparisons are false on a NaN.  `sqrt` rounds `Nat.sqrt` of the scaled magnitude with an exact midpoint test, `nearest` is `roundScaledMagnitude` of `roundShift magnitude 149`, the conversions are `fromInt` of the signed or unsigned integer, and the saturating truncations take `truncatedInt` and saturate at the bounds.  The Lean copy's `Float32.add`, `sub`, `mul`, and `div` are Talos's results when those are numbers and Flocq's NaN otherwise, as at binary64; its conversions between integers and `float` are `IEEE32.fromInt` and `truncatedInt` with CompCert's ranges, and `Float.of_single` and `Float.to_single` convert between `float` and `double`, exactly for `of_single` and with one rounding for `to_single`.  CompCert has no binary32 square root, no rounding to an integer, and no binary32 absolute value: `__builtin_fabs` of a `float` is the `double` absolute value of `Float.of_single`, which quiets a signaling NaN.
+
+### Choices of M6
+
+Each choice below was recommended, reviewed, and revised before it was taken.
+
+1. **Canonicalization.**  Taken as at binary64: after `+`, `-`, `*`, `/`, `sqrt`, and `nearest`, the translation emits `if (t != t) t = <canonical NaN>;`, where the canonical NaN is the word `0x7FC00000U` stored into `lx_pun` and loaded as a `float`.  The proof holds for every `Archi`.
+2. **The cell.**  Recommended: a second cell of four bytes.  Review: `lx_pun` holds eight writable bytes, which `MemRel` already requires, and a binary32 access at its offset 0 is a store of one chunk and a load of the other, as at binary64.  Taken: `*(float *) lx_pun` and `*(unsigned int *) lx_pun`, with the shapes fixed by probing `clightgen`.
+3. **Constants.**  Taken as at binary64: a finite `f32Const` is the printer's exact hexadecimal literal with the suffix `f`, a negative one is `Oneg` of the positive literal, and a NaN or an infinity goes through `lx_pun`.
+4. **Comparisons.**  Taken as at binary64: `(unsigned int) (a == b)`, `<`, and `<=` on `float`s, whose semantics `Float32.cmp` agrees with `IEEE32.eq`, `lt`, and `le`.
+5. **Conversions.**  Taken: `f32ConvertI64U` is `(float) a` of the `unsigned long long`, whose semantics is `Float32.of_longu`, and `f32ConvertI32S` is `(float) (int) a`, whose semantics is `Float32.of_int` of the signed reading of the word; both equal Talos's `fromInt` by definition.
+6. **Saturating truncations.**  Taken as at binary64: three nested guards around the C cast.  `i64.trunc_sat_f32_u` tests `t != t`, `t <= -1.0f`, and `t >= 0x1p64f` before `(unsigned long long) t`, and `i32.trunc_sat_f32_s` tests `t != t`, `t <= -0x1p31f`, and `t >= 0x1p31f` before `(unsigned int) (int) t`, where the bounds give Talos's saturated values; no `float` lies strictly between `2^31 - 128` and `2^31`, or between `2^64 - 2^40` and `2^64`, so each guard matches Talos's test on the truncated integer.
+7. **`abs`.**  Recommended: `(float) __builtin_fabs (t)`.  Review: `Oabsfloat` of a `float` takes the `double` absolute value of `Float.of_single`, which quiets a signaling NaN, so the result differs from Talos's on a signaling NaN.  Revised and taken: the bits through `lx_pun`, the mask `0x7FFFFFFFU`, and back, which is exact on every value; only two functions of `floats32` use `abs`.
+8. **`sqrt`.**  Recommended: `(float) __builtin_fsqrt ((double) t)`, followed by the canonicalization.  Review: the conversion to `double` is exact for a number, the square root rounds to 53 bits, and the conversion back rounds to 24, so the result is Talos's only if the two roundings agree with one; for the square root they do whenever the wider format has at least `2p + 2` bits, which 53 ≥ 2 · 24 + 2 satisfies.  The proof is a midpoint argument on Talos's integer definitions: a binary32 midpoint has a 25-bit odd significand, its square is never the radicand, the distance between them is at least one unit of the radicand's last place, and the 53-bit rounding moves the root by less than that, so it neither crosses nor reaches a midpoint.  An integer square root in C would need a loop with its own invariant.  Taken: the path through `double`, with the double-rounding lemma; the estimate is 600 to 900 lines.
+9. **`nearest`.**  Recommended: `(t + 0x1p23f) - 0x1p23f` with a sign correction.  Review: its proof rests on the exactness and rounding of `IEEE32.add`, which Talos defines through rational rounding, and the sign of a zero result needs a separate repair.  Revised and taken: integer code on the bits, which reads `t` as a word `u` through `lx_pun` and takes the biased exponent `e = (u >> 23) & 255`.  For `e ≥ 150` the value is integral, infinite, or a NaN, and the result is `t`; for `e < 126` the magnitude is below one half, and the result is `0.0f` or `-0.0f` by the sign; otherwise, with `m` the significand, the shift `s = 150 - e`, the quotient `q = m >> s`, the remainder `r = m & ((1 << s) - 1)`, and the half `h = 1 << (s - 1)`, `q` is incremented when `r > h` or when `r == h` and `q` is odd, and the result is `(float) q`, negated when the sign bit is set.  The canonicalization of choice 1 follows.  These steps are `roundShift` and `roundScaledMagnitude` of Talos's `nearest`, with `fromInt` of `q`, which is exact below `2^24`, in place of the packing, so the proof is integer arithmetic; the scratch values live in the `i32` slots above the stack's top, which the frame lets a statement change.
+10. **Several results with binary32 values.**  Taken as at binary64: a `float` result global `lx_r<i>_f` per position, initialized with four bytes of zeros, and `EnvOk.res` and `MemRel.resW` widened to it.
+11. **Order of work.**  Taken: the probe of `clightgen`; the 32-bit accesses of `lx_pun` and both reinterpretations; constants; the four arithmetic operations with the canonicalization; `f32Le`, `f32Lt`, and `f32Eq`; several results; the two conversions; `nearest`; `sqrt`; `abs`; and last the two saturating truncations.  This follows the table, except that `nearest` and `sqrt` come before the forms that GPT-2 does not use.
+
+### The proof
+
+The widening of choice 10 is a premise of `NativeA` of the kind accepted in M4 and M5: `start` discharges it for the program's own environment, and no conclusion changes.  `Proof/Floats32.lean` holds the binary32 lemmas in the pattern of `Proof/Floats.lean`: the 32-bit store and load at `lx_pun`, the canonicalization, one lemma per form, the integer reasoning of `nearest` against `roundShift`, and the double-rounding lemma of `sqrt` against `IEEE32.roundSqrtMagnitude`, `IEEE64.roundSqrtMagnitude`, and `IEEE32.roundDyadicMagnitude`.  The estimate is 2,000 to 3,000 lines.
+
+### Tests
+
+`tests/native/run.sh` gains a module `f32ops`, the binary32 counterpart of `fops`: each form on words read as `float`s, with NaNs with payloads, a signaling NaN, both zeros, the smallest subnormal, the largest `float`, both infinities, the ties of `nearest` (0.5, 1.5, 2.5, -0.5, -2.5, `2^23 - 0.5`), squares and non-squares under `sqrt`, a negative operand of `sqrt`, and the bounds of both truncations.  The differential test gains binary32 NaN programs for `+`, the conversions between `float` and `double`, and the square root through `double`, under both targets' parameters.  The corpus driver needs no change.
+
+- [ ] Probe `clightgen` for the binary32 shapes of the choices.
+- [ ] `lx_pun` at binary32 and both reinterpretations; constants.
+- [ ] The arithmetic with the canonicalization; the comparisons; several results; the conversions.
+- [ ] `nearest`.
+- [ ] `sqrt` with the double-rounding lemma.
+- [ ] `abs` and the saturating truncations.
+- [ ] `f32ops` in `tests/native/run.sh`, the differential test, the corpus driver, and binary32 GPT-2 native with theorems.
