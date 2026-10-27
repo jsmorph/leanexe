@@ -6,15 +6,16 @@ namespace Verified
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
-    {L0 L1 live : Nat → Bool} {base fieldBase ptr : Nat} {shape : TreeShape}
+    {L0 L1 live : Nat → Bool} {base fieldBase ptr h : Nat} {shape : TreeShape}
     {r : Fin shape.records}
     {heap heap1 heap2 : Heap} {store store1 store2 : Store Unit} {s s1 s2 : Locals}
-    {words : Fin (shape.words r) → UInt64} {children : Fin (shape.children r) → Tree shape}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {children : Fin (shape.children r) → Tree shape}
     {ws : List Value} {p : UInt64} {m : Module} {host : HostEnv Unit}
     {rest : Program} {Q : Assertion Unit}
     (h0 : Holds env slots L0 base heap store s)
     (a : FieldsAfter env slots L0 L1 base heap store s
-      (Env.prependRepeat .word (shape.words r) words
+      (Env.prependFn (shape.words r) (shape.wordTy r) words
         (Env.prependRepeat (.tree shape) (shape.children r) children .nil)) heap1 store1 s1 ws)
     (hStep : Step heap1 store1 (Holds.KeepDying env slots L1 live store1 s1)
       heap2 store2 [block store2 p])
@@ -23,19 +24,22 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     (hRaw : RecordStorage (shape.width r) heap2 store2 p)
     (hCount : store2.mem.read64 (p - 40).toUInt32 = 1)
     (hPtr : s2.get ptr = some (.i64 p)) (hStack : s2.values = s.values)
-    (hLocals : LocalsHold s2 fieldBase (List.replicate (shape.words r + shape.children r) .i64) ws)
+    (hh : s2.positions = h)
+    (hLocals : LocalsHold s2 fieldBase
+      (shape.wordTypes r ++ List.replicate (shape.children r) .i64) ws)
     (hRootApart : Holds.Apart env slots live store2 s2 (.treeHeader shape r) .owned [.i64 p] .unit)
     (hNext : ∀ store',
       After env slots L0 live base heap store s (.tree shape) .owned (.node r words children)
         heap2 store' s2 [.i64 p] →
       wp m rest Q store' { s2 with values := .i64 p :: s.values } host) :
     wp m (shape.tagStoreCode r ptr ++
-      treeStoreFields ptr fieldBase (fieldBase + shape.words r) shape.fieldStart (shape.fields r) ++
+      treeStoreFields h ptr (shape.wordTypes r) fieldBase (fieldBase + shape.words r)
+        shape.fieldStart (shape.fields r) ++
       sealRecordCode (shape.width r) ptr (shape.mask r) ++ (.localGet ptr :: rest))
       Q store2 s2 host := by
   obtain ⟨a2, hBoth, hSame, hFresh⟩ := a.advance h0 hStep hFrame hHolds hL1 hLive
   have hApart : (block store2 p ::
-      (Env.prependRepeat .word (shape.words r) words
+      (Env.prependFn (shape.words r) (shape.wordTy r) words
         (Env.prependRepeat (.tree shape) (shape.children r) children .nil)).blocks store2
           ws).Pairwise regionsDisjoint := by
     refine List.pairwise_cons.mpr ⟨?_, a2.pairwise⟩
@@ -49,7 +53,7 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     intro u x hx wx hold length c hc
     exact regionsDisjoint_symm (hRootApart u x hx (Or.inl rfl) wx hold length
       (block store2 p) (by simp [Ty.regions, Ty.blocks]) c hc)
-  refine wp_assembleTree hRaw hStep.at_ hPtr hCount a2.rep hLocals hApart
+  refine wp_assembleTree hh hRaw hStep.at_ hPtr hCount a2.rep hLocals hApart
     fun store3 hAt3 hRep hBlocks hWrite => ?_
   have hWhole := hBoth.transBoth hWrite
     (keep := Holds.KeepDying env slots L0 live store s)

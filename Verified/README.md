@@ -272,8 +272,8 @@ Its branches preserve the enclosing loop's return and continue labels.  The
 and [its equations](Reflect/TailListLemmas.lean) connect the native step to the typed match.
 For a user-defined recursive type with one empty constructor and one record constructor,
 the reflector derives conversions to and from the typed tree and proves both inverse laws and
-agreement with the type's `Encode` instance.  Record fields may be words or recursive children,
-with at most 64 fields.  [The derivation](Reflect/RecursiveTypes.lean) supports construction,
+agreement with the type's `Encode` instance.  Record fields may be words, `Bool`s, floats, fields
+with a `Flat` instance, or recursive children, with at most 64 slots.  [The derivation](Reflect/RecursiveTypes.lean) supports construction,
 matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state.
 [Native matcher normalization](Reflect/NativeTree.lean) abstracts the alternatives before proving
 their constructor cases.  [Generated branch equations](Reflect/RecursiveMatch.lean) preserve
@@ -733,6 +733,22 @@ once with `letPair` and each branch reads its fields as variables, while a scala
 projections.  `prepareRecursiveTypes` also derives the recursive types that only a sum's tuple
 names.  [The heap sum example](Examples/HeapSums.lean) covers construction, borrowed and owned
 matches, results, pairs, loop state, and lists, trees, bytes, and arrays as fields.
+
+A field of a record of a recursive type is a child or a word field, `TreeField.word e` for an
+element `e` of one word: a `UInt64`, a `Bool`, or a float of either width.  `TreeShape.fields`
+derives the slot kinds from the fields, so `Node`, the release and copy loops, and their proofs
+read the same child mask as before.  `Tree.node` takes its words as a family typed by
+`TreeShape.elem`, which is `Elem.word` by reduction when every field of the shape is a word or a
+child, so lists and the earlier recursive types keep `UInt64` words.  A load converts a slot's word
+with `ofWordCode` into the local of the element's slot type, and a store converts with
+`toWordCode`.  Both are empty for a word, so the modules of the earlier types keep their bytes.  The
+reflector spreads a field of a type with a `Flat` instance over the leaves of its flattening, one
+word field for each leaf, as `NativeField.flat` records.  In a branch the field is one Lean
+variable and each leaf a source variable keyed by the leaf's term, and `keyedComponent?` reads the
+field, a component, or a leaf from those variables.  `fromTree` and the inverse laws exist when
+every such field is a structure, since a word that encodes no enumeration constructor has no Lean
+value.  [The typed-field example](Examples/TypedTrees.lean) covers `Bool`, float, nested structure,
+and enumeration fields.
 
 A variable that holds a pair or a record with arrays is split into the components of
 its pair, and the body at the value rebuilt from them is the body at the variable by `pair_eta` or

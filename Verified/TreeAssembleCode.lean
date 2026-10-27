@@ -72,20 +72,22 @@ its header. -/
 theorem wp_assembleRecord {m : Module} {host : HostEnv Unit} {heap : Heap}
     {width : Nat} {store : Store Unit} {s : Locals} {ptr : Nat} {p : UInt64}
     {pre words : List UInt64} {slots : List LeanExe.Pipeline.Slot} {srcs : List Nat}
+    {tys : List ValueType}
     {rest : Program} {Q : Assertion Unit}
     (hRaw : RecordStorage width heap store p) (hAt : heap.At store)
     (hPtr : s.get ptr = some (.i64 p)) (hLength : (pre ++ words).length = width)
     (hShort : width ≤ 64) (hCount : store.mem.read64 (p - 40).toUInt32 = 1)
     (hValues : List.Forall₂ (fun word slot => slot.ValueOwned heap store word) (pre ++ words)
       slots)
-    (hLocals : List.Forall₂ (fun src word => s.get src = some (.i64 word)) srcs words)
+    (hLocals : SourcesHold s s.positions srcs tys words)
     (hApart : (block store p :: fieldBlocks store (pre ++ words) slots).Pairwise regionsDisjoint)
     (hNext : ∀ store', heap.At store' → NodeOwned heap store' p (.record slots) →
       Node.blocks store' p (.record slots) =
         block store p :: fieldBlocks store (pre ++ words) slots →
       Step heap store (fun r => regionsDisjoint r (block store p)) heap store' [] →
       wp m rest Q store' s host) :
-    wp m (recordStoreCode ptr pre.length srcs ++ sealRecordCode width ptr (maskOf slots) ++ rest)
+    wp m (recordStoreCode s.positions ptr pre.length srcs tys ++
+      sealRecordCode width ptr (maskOf slots) ++ rest)
       Q (recordWriteValues p 0 pre store) s host := by
   have hAddress := hRaw.address
   have hRoom := hRaw.capacity
@@ -100,7 +102,7 @@ theorem wp_assembleRecord {m : Module} {host : HostEnv Unit} {heap : Heap}
   have hAppend := recordWriteValues_append p 0 pre words store
   rw [Nat.zero_add] at hAppend
   rw [List.append_assoc]
-  refine wp_recordStoreCode hPtr pre.length srcs words (recordWriteValues p 0 pre store)
+  refine wp_recordStoreCode hPtr pre.length srcs tys words (recordWriteValues p 0 pre store)
     hLocals (by omega) (by rw [hPreWrites.2.1]; omega) ?_
   rw [← hAppend]
   exact wp_sealRecord hRaw1 hAt1 hPtr (hNext _ hAt2 hNode2 hBlocks2 hStep2)

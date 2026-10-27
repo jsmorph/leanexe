@@ -10,10 +10,10 @@ open Wasm LeanExe.Runtime
 
 theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : Fin shape.records}
     (reuse : Option (Var Γ (.treeHeader shape r)))
-    (words : Fin (shape.words r) → Expr S Γ .word)
+    (words : (i : Fin (shape.words r)) → Expr S Γ (shape.wordTy r i))
     (children : Fin (shape.children r) → Expr S Γ (.tree shape))
     (h base : Nat) (slots : List Slot) (live : Nat → Bool) :
-    let ps := List.replicate (shape.words r) .word ++
+    let ps := tysOfFn (shape.words r) (shape.wordTy r) ++
       (List.replicate (shape.children r) (.tree shape) ++ [])
     let args := treeArgs words children
     let kept := fun k => live k || optionVarUses reuse k
@@ -25,7 +25,8 @@ theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : 
           (base + shape.bindCount r) ++
         storeCode h (base + 1 + i.val) (ps.get i).types) ++
       treeParentCode shape r reuse slots base live ++ shape.tagStoreCode r base ++
-      treeStoreFields base (base + 1) (base + 1 + shape.words r) shape.fieldStart (shape.fields r) ++
+      treeStoreFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
+        shape.fieldStart (shape.fields r) ++
       sealRecordCode (shape.width r) base (shape.mask r) ++ [.localGet base] := by
   let kept := fun k => live k || optionVarUses reuse k
   let L := fieldLive (treeArgs words children).get kept
@@ -37,7 +38,7 @@ theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : 
       kept k ||
       (argsAny fun j => decide (i.val < j.val) && (children j).uses k) :=
     fun i => funext (treeArgs_childLive words children kept i)
-  have hCode := Args.code_prependRepeat (pool := pool) .word (shape.words r) words
+  have hCode := Args.code_prependFn (pool := pool) (shape.words r) (shape.wordTy r) words
     (Args.prependRepeat (.tree shape) (shape.children r) children Args.nil)
     h (base + 1) (base + shape.bindCount r) slots L
   have hChildCode := Args.code_prependRepeat (pool := pool)
@@ -51,9 +52,10 @@ theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : 
   dsimp only [L, kept, treeArgs] at hCode hWords hChildren ⊢
   simp only [Nat.add_assoc, List.append_assoc] at hCode ⊢
   rw [hCode]
-  have hWordCoerce (mode : Mode) :
-      coerceCode h .word mode .owned (base + shape.bindCount r) = [] := by
-    simp only [coerceCode, Ty.scalar, Bool.true_eq_false, and_false, ↓reduceIte]
+  have hWordCoerce (i : Fin (shape.words r)) (mode : Mode) :
+      coerceCode h (shape.wordTy r i) mode .owned (base + shape.bindCount r) = [] := by
+    simp only [coerceCode, TreeShape.wordTy, Ty.scalar, Bool.true_eq_false, and_false,
+      ↓reduceIte]
   simp only [Nat.add_assoc, hWords, hChildren, hWordCoerce, List.nil_append,
     Expr.code, Expr.usesFast_eq, Ty.types, Elem.types, storeCode, slotIndex, treeParentCode,
     recordAllocate, UInt64.ofNat_mul, sealRecordCode, List.append_assoc]

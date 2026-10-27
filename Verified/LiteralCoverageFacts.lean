@@ -59,7 +59,7 @@ theorem Expr.covered_call {g : Sig} {func : FVar S g}
 
 theorem Expr.covered_treeNode {shape : TreeShape} {r : Fin shape.records}
     {reuse : Option (Var Γ (.treeHeader shape r))}
-    {words : Fin (shape.words r) → Expr S Γ .word}
+    {words : (i : Fin (shape.words r)) → Expr S Γ (shape.wordTy r i)}
     {children : Fin (shape.children r) → Expr S Γ (.tree shape)}
     (h : (Expr.treeNode r reuse words children).Covered pool) :
     (∀ i, (words i).Covered pool) ∧ (∀ i, (children i).Covered pool) := by

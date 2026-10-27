@@ -68,7 +68,7 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | A pair that holds arrays, or a structure whose `Flat` tuple holds arrays | Its components' words | A structure of this kind is a record with array fields. |
 | A sum with a `Flat` instance whose tuple holds `Bytes`, arrays, or recursive types | A word tag and the words of the tuple's components | The inactive components hold the instance's values: `Bytes.empty` and a null tree allocate nothing, and `#[]` allocates an empty array.  Parameters are borrowed. |
 | `List UInt64` | Null for `[]`, otherwise a record holding the head word and tail pointer | Construction, matching, identity, duplication, tuples, calls, tail recursion, and folds with scalar state |
-| A recursive type whose fields are `UInt64` or the type itself | Null for the first constructor without fields, and for any other constructor a record of its fields in declaration order, after a tag word that holds the constructor's index when the type has more than one record constructor | Each record has between 1 and 64 slots, the tag included, at least one constructor has no child field, and at least one has a child field.  Construction, one-level matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state. |
+| A recursive type whose fields are `UInt64`, `Bool`, `Float`, `Float32`, types with a `Flat` instance whose flattening holds these, or the type itself | Null for the first constructor without fields, and for any other constructor a record of its fields in declaration order, after a tag word that holds the constructor's index when the type has more than one record constructor.  A `Bool` slot holds 1 or 0, a `Float` slot its bit pattern, and a `Float32` slot its bit pattern in the low 32 bits.  A field of a type with a `Flat` instance occupies one slot for each leaf of its flattening, in order. | Each record has between 1 and 64 slots, the tag included, at least one constructor has no child field, and at least one has a child field.  Construction, one-level matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state.  A type with an enumeration or sum field may not be a parameter of a recursive or tail-recursive definition. |
 
 `Nat`, `Int`, `String`, `Option`, recursive types outside the listed layout, and arrays of arrays are outside the dialect.  Integers are `UInt64`, so that a program and its module compute the same values, wraparound included.  A read past the end of an array gives Lean's default element, whose flattening must have zero words.  An array stores each Float32 bit pattern in the low 32 bits of an eight-byte word.
 
@@ -141,9 +141,18 @@ reconstruction consumes the cell at its last use, the code reuses its header.  C
 allocates one record per cell.  A borrowed list retains its records.
 
 The same ownership rules apply to accepted user-defined recursive types.  Such a type has no
-parameters or indices, is neither mutual nor nested, and has fields of type `UInt64` or of the
-type itself.  Its first constructor without fields is null, and each other constructor is a
-record constructor.  A type with several record constructors is tagged: slot 0 of each record
+parameters or indices, is neither mutual nor nested, and has fields of type `UInt64`, `Bool`,
+`Float`, `Float32`, or the type itself, or of a type with a `Flat` instance whose flattening holds
+words, `Bool`s, and floats, such as a structure, an enumeration, or a sum.  Its first constructor
+without fields is null, and each other constructor is a record constructor.  A `Bool`, a float, or a
+word occupies one slot, and a field with a `Flat` instance one slot for each leaf of its
+flattening, nested structures included.  The `Encode` instance writes a `Bool` as `cond b 1 0`, a
+`Float` as its bit pattern, a `Float32` as its bit pattern in the low 32 bits, and a flattened
+field as the words of its leaves.  A match binds such a field as one variable, and the code holds
+each leaf in a local of its type.  A word that encodes no enumeration constructor has no Lean
+value, so the reflector proves the conversion from the typed layout and its inverse laws only for
+types whose flattened fields are structures, and a type with an enumeration or sum field may not
+be a parameter of a recursive or tail-recursive definition.  A type with several record constructors is tagged: slot 0 of each record
 holds its constructor's index in declaration order, and a match tests the tag against the record
 constructors in that order and runs the last one's branch without a test.  A pattern matches one
 constructor level, and a wildcard alternative compiles once for each constructor it covers.  A
@@ -232,7 +241,7 @@ A table is a Lean constant of type `Array UInt64`, which the module writes in a 
 | `the branches of … use the hypothesis of the if` | `if h : c` with a branch that uses `h` | Read with `xs[i.toNat]!`, which needs no proof of the bound. |
 | `… must be applied to all n arguments` | A partial application of a listed definition | Apply the definition to all its arguments. |
 | `the code of … takes the call depth and needs k positions, more than the 32 …` | A recursive function, or a caller of one, with many live values | Move work into a function that calls no recursive function, or bind fewer values. |
-| `the parameter type … of a recursive definition holds an enumeration or a sum …` | An enumeration or sum parameter of a recursive definition | Pass the enumeration's word, or the fields of the sum's constructor. |
+| `the parameter type … of a recursive definition holds an enumeration or a sum …` | A parameter of a recursive or tail-recursive definition that is an enumeration or a sum, or a recursive type with an enumeration or sum field | Pass the enumeration's word, or the fields of the sum's constructor.  A recursive type with such a field may be a parameter of a definition that does not call itself. |
 | `a sum field must be a scalar, Bytes, an array, or a recursive type: …` | A sum field that is a record with arrays or a sum with heap fields | Give the constructor the record's fields as its own fields. |
 | `the flattening of the default … is not the default element …` | A structure whose default does not take each field's default | Use `deriving Inhabited`. |
 | `` `==` on … needs `LawfulBEq` `` | `==` on an enumeration without `LawfulBEq` | Use `deriving DecidableEq`. |
@@ -483,6 +492,15 @@ rebuilds each constructor, allocates only the rebuilt constructor's empty array.
 inside a match returns on 998 cells and traps on 999.  Before the cases, the driver checks that
 every theorem of the example uses only the three permitted axioms.
 
+`tests/verified/run.sh --cases typedtrees` checks the trees whose records hold `Bool`, float,
+structure, and enumeration fields in the `records-u64` form, which native Lean computes from each
+type's `Encode` instance, so each case also checks the slot words of the typed fields.  The cases
+construct, copy, borrow, and rebuild records and read fields through nested structures.  The
+recursions return at depth 999 and trap at `unreachable` on a chain of 1,200 records, and the
+loops return on that chain.  Each case states the blocks that stay allocated.  Before the cases,
+the driver checks that every theorem of the example and of its derived declarations uses only the
+three permitted axioms.
+
 `tests/verified/run.sh --cases gpt` tests binary64 GPT with the existing corpus in [`tests/gpt/Cases.lean`](../tests/gpt/Cases.lean) and the release and cache-growth checks of [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh).  `tests/verified/run.sh --cases euler` uses [the existing Euler corpus](../Demos/Euler/Cases.lean) through `tests/modules/run.sh --module euler PATH`.  The full invocation includes both application checks.
 
 The cases cover words near 0, `2^32`, `2^63`, and `2^64`, zero divisors, shift amounts of 64 or more, loop counts of 0, 1, and up to 65,537, empty arrays, reads and updates past the end, and floats that are zeros of both signs, infinities, NaN, and the smallest subnormal.  Native Lean returns the canonical NaN for every NaN result, and the host enables Cranelift's NaN canonicalization, so the cases compare float results bit for bit.  The release counts show that a call leaves allocated exactly the result's arrays and the host's arrays at borrowed parameters.  The allocation counts show the updates in place and the growth by doubling: a loop of `n` pushes allocates at most `2 + log₂ (n + 1)` blocks, and an insertion sort of `n` elements at most `3 + log₂ (n + 1)` with the host's array.  One case asks for an array of `2^29` words and must trap.  A recursion case runs `deep`, whose frame has 32 positions, 26 of them live across the self-call, to depth 999, where its deepest frame calls `top1` and `top2`, two functions without the call depth that hold many values live.  The drone's cases include the 116 terrains of [`tests/drone/corpus.txt`](../tests/drone/corpus.txt).
@@ -542,6 +560,7 @@ Reusable implementations and their compilations live in [the library](../Library
 | [Binary32 operations](../Verified/Examples/Floats32.lean) | Arithmetic, comparisons, conditional branches, square root, signs, nearest, unsigned and signed word conversions, bit-pattern conversions, mixed f32/f64 parameters and results, arrays, updates, folds, builds, and tail loops.  Guarded recursion includes a proved 32-position mixed-format frame. |
 | [Sums with fields](../Verified/Examples/Sums.lean) | The existing shape program, matches and wildcard bindings, constructors, calls, arrays, updates, folds, loop state, and mixed Float32 and enumeration fields. |
 | [Sums with heap fields](../Verified/Examples/HeapSums.lean) | A sum with `Bytes`, array, tree, word, and float fields and a sum with a list field: construction from owned arguments, borrowed and owned matches, wildcards that name the matched value, results, pairs, loop state, and a guarded call inside a match. |
+| [Trees with typed fields](../Verified/Examples/TypedTrees.lean) | A tree with `Bool`, binary64, binary32, and word fields, a tree whose records hold a structure with a nested structure, and a tree with an enumeration field: construction, copies, record reuse, borrowed reads, recursion, loops, and functions that take or return the fields. |
 | [`Records`](../Verified/Examples/Records.lean) | Structures with a nested structure and a `Bool` field, built, updated with `{ s with … }`, read field by field, taken apart with `match`, chosen with `if`, passed to calls, and used as a loop's state, with theorems stated for the structures. |
 | [`Tuples`](../Verified/Examples/Tuples.lean) | Arrays of tuples of a float and a word and of a nested tuple, built, read along a path, updated in place, extended, and appended, written without the reflector, with an `example` per function stating by `rfl` that it means a Lean function. |
 | [`Grids`](../Verified/Examples/Grids.lean) | Arrays of the structures of `Records.lean`, built, read element by element and field by field, also past the end, updated in place in a loop, extended with a new structure, appended, counted, reduced to a total and a `Bool`, and returned in a pair with a total, and a local array of pairs. |

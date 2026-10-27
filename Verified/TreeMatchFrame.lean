@@ -8,7 +8,7 @@ open Wasm LeanExe.Pipeline LeanExe.Runtime
 theorem After.openTreeFields {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     {L0 L1 : Nat → Bool} {base fieldBase : Nat} {heap0 heap : Heap}
     {store0 store : Store Unit} {s0 s s' : Locals} {shape : TreeShape} {r : Fin shape.records}
-    {mode : Mode} {p : UInt64} {words : Fin (shape.words r) → UInt64}
+    {mode : Mode} {p : UInt64} {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
     {children : Fin (shape.children r) → Tree shape}
     (a : After env slots L0 L1 base heap0 store0 s0 (.tree shape) mode (.node r words children)
       heap store s [.i64 p])
