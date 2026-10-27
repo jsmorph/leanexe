@@ -170,6 +170,105 @@ theorem resId_inj {i j : Nat} {t u : VT} (ht : t.isRes = true) (hu : u.isRes = t
   rcases VT.isRes_cases ht with rfl | rfl | rfl <;> rcases VT.isRes_cases hu with rfl | rfl | rfl <;>
     simp only [VT.code] at h' <;> first | exact ⟨by omega, rfl⟩ | (exfalso; omega)
 
+/-- The identifiers of a translation: `statusId`, the constant identifiers 8 to 24, those of the
+globals and functions, which leave the remainder 2 or 3 modulo 4, and those of the result
+globals, multiples of 4 from 36. -/
+theorem translation_ids {m : Module} {cap : Nat} {T : Translation}
+    (h : translate cap m = some T) :
+    ∀ x : Nat, x ∈ T.cprogram.prog_defs.map (·.1) →
+      x = 1 ∨ x = 8 ∨ x = 12 ∨ x = 16 ∨ x = 20 ∨ x = 24 ∨ x % 4 = 2 ∨ x % 4 = 3 ∨
+        (36 ≤ x ∧ x % 4 = 0) := by
+  obtain ⟨decl, gdefs, funs, -, -, -, -, -, hfuns, hdefs⟩ := translate_defs h
+  intro x hx
+  rw [hdefs, progDefs_ids, (funDef_ids hfuns).1] at hx
+  simp only [List.mem_cons, List.mem_append, List.mem_map, List.mem_range, List.not_mem_nil,
+    or_false] at hx
+  rcases hx with hx | ⟨i, -, hi⟩ | hx | hx | hx | hx | hx | ⟨k, -, hk⟩ | hx
+  · have : x = 1 := hx; omega
+  · have : x = 4 * i + 2 := hi.symm; omega
+  · have : x = 8 := hx; omega
+  · have : x = 12 := hx; omega
+  · have : x = 20 := hx; omega
+  · have : x = 24 := hx; omega
+  · have := mem_resIds hx; omega
+  · have : x = 4 * k + 3 := hk.symm; omega
+  · have : x = 16 := hx; omega
+
+/-- `WholeOk` from conditions that the per-build check confirms: `pre` declares functions with
+distinct identifiers, `sqrtId` or numbers other than 1 that leave the remainder 1 modulo 4, among
+them `__builtin_fsqrt`, and `post` has distinct identifiers among `mainId` and 28. -/
+theorem wholeOk_of {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
+    {pre post : List (ident × globdef (fundef function) type)} (hsq : (sqrtId, sqrtDef) ∈ pre)
+    (hfun : ∀ d ∈ pre, ∃ f, d.2 = .Gfun f) (hpost : ∀ d ∈ post, Genv.InitShapeW d.2)
+    (hnd : (pre.map (·.1)).Nodup) (hndp : (post.map (·.1)).Nodup)
+    (hids : ∀ x : Nat, x ∈ pre.map (·.1) → x = 24 ∨ (x % 4 = 1 ∧ x ≠ 1))
+    (hidp : ∀ x : Nat, x ∈ post.map (·.1) → x = 4 ∨ x = 28) :
+    WholeOk pre post T := by
+  obtain ⟨decl, gdefs, funs, -, -, -, -, -, hfuns, hdefs⟩ := translate_defs h
+  have hT : (T.cprogram.prog_defs.map (·.1)).Nodup := by
+    rw [hdefs]; exact progDefs_nodup hfuns
+  have hF : ((T.cprogram.prog_defs.filter fun d => d.1 != sqrtId).map (·.1)).Nodup :=
+    (List.Sublist.map _ List.filter_sublist).nodup hT
+  have hmid : ∀ x : Nat,
+      x ∈ (T.cprogram.prog_defs.filter (fun d => d.1 != sqrtId)).map (·.1) →
+      x ≠ 24 ∧ (x = 1 ∨ x = 8 ∨ x = 12 ∨ x = 16 ∨ x = 20 ∨ x = 24 ∨ x % 4 = 2 ∨ x % 4 = 3 ∨
+        (36 ≤ x ∧ x % 4 = 0)) := by
+    intro x hx
+    obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hx
+    rw [List.mem_filter] at hq
+    have hqs : q.1 ≠ sqrtId := by simpa using hq.2
+    exact ⟨hqs, translation_ids h q.1 (List.mem_map_of_mem hq.1)⟩
+  refine ⟨hsq, fun d hd => ?_, hpost, ?_⟩
+  · obtain ⟨f, hf⟩ := hfun d hd
+    rw [hf]
+    exact .inl trivial
+  · simp only [wholeDefs, List.map_append]
+    refine List.nodup_append.mpr ⟨List.nodup_append.mpr ⟨hnd, hF, fun a ha b hb hab => ?_⟩,
+      hndp, fun a ha b hb hab => ?_⟩
+    · have h1 := hids a ha
+      have h2 := hmid b hb
+      have hab' : @Eq Nat a b := hab
+      omega
+    · have h3 := hidp b hb
+      have hab' : @Eq Nat a b := hab
+      rcases List.mem_append.mp ha with ha | ha
+      · have := hids a ha; omega
+      · have := hmid a ha; omega
+
+/-- The identifier of `lx_out`. -/
+def outId : ident := 28
+
+/-- `extern volatile unsigned int lx_out;` -/
+def outVar : globvar type :=
+  { gvar_info := .Tint .I32 .Unsigned { attr_volatile := true, attr_alignas := none },
+    gvar_init := [], gvar_readonly := false, gvar_volatile := true }
+
+/-- The definitions after the translation's in a bare-metal program: `lx_out` and `main`. -/
+def bareTail (main : function) : List (ident × globdef (fundef function) type) :=
+  [(outId, .Gvar outVar), (mainId, .Gfun (.Internal main))]
+
+/-- The bare-metal program of a translation with the function `main`. -/
+def bareProgram (pre : List (ident × globdef (fundef function) type)) (T : Translation)
+    (main : function) : program function :=
+  wholeProgram pre (bareTail main) T
+
+theorem wholeOk_bare {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
+    {pre : List (ident × globdef (fundef function) type)} (hsq : (sqrtId, sqrtDef) ∈ pre)
+    (hfun : ∀ d ∈ pre, ∃ f, d.2 = .Gfun f) (hnd : (pre.map (·.1)).Nodup)
+    (hids : ∀ x : Nat, x ∈ pre.map (·.1) → x = 24 ∨ (x % 4 = 1 ∧ x ≠ 1)) (main : function) :
+    WholeOk pre (bareTail main) T := by
+  refine wholeOk_of h hsq hfun (fun d hd => ?_) hnd (by simp [bareTail, outId, mainId]) hids
+    (fun x hx => ?_)
+  · simp only [bareTail, List.mem_cons, List.not_mem_nil, or_false] at hd
+    rcases hd with rfl | rfl
+    · exact .inr ⟨outVar, rfl, rfl⟩
+    · exact .inl trivial
+  · simp only [bareTail, List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil,
+      or_false] at hx
+    rcases hx with hx | hx
+    · have : x = 28 := hx; omega
+    · have : x = 4 := hx; omega
+
 /-! ## The initial memory -/
 
 theorem init_whole {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
