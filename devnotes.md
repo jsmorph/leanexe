@@ -36556,3 +36556,5 @@ Probes that import `Lgamma.Compiled` and restate one theorem each locate the cos
 The scope of `Lgamma.Compiled` stays under the limit of `--memory-high 10G`, and about 3.2 GiB of its resident set of 12.14 GiB is mapped `.olean` pages, which the kernel can drop and read again.
 
 ### The tests on x86-64
+
+The native programs of the translator's tests had been compiled for AArch64 only, and the merge gate runs on x86-64, so the tests ran again with the x86_64 tree, its programs running under `qemu-x86_64` user-mode emulation on AArch64 with the x86-64 C library of the cross toolchain.  `tests/native/run.sh` agrees with Talos on all nineteen modules, with the x86_64 `clightgen` reading each back unchanged, and the differential test agrees on all 318 programs under the NaN rules of x86_64.  The corpus gives the same counts as on AArch64: 29,225 cases pass and none fails, the same 3,951 do not run, and the 3,322 module cases all pass.
