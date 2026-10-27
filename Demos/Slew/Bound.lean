@@ -86,31 +86,6 @@ theorem search_bound (xs : Array Float) (d : Dims) (n settleTicks : UInt64)
   case hI => exact ⟨initial_inv xs d n, LeanExe.IR.build_size _ _⟩
   exact Nat.le_of_eq (by rw [_root_.Verified.sumBelow_const, hn1])
 
-/-- `pathLength` counts at most one edge for each step of its fuel. -/
-theorem go_count (s : Search) : ∀ (k : Nat) (a c : UInt64), c.toNat + k < 2 ^ 64 →
-    (LeanExe.repeatWhile.go (fun p : UInt64 × UInt64 => p.1 != 0)
-      (fun p => (s.parent[p.1.toNat]!, p.2 + 1)) k (a, c)).2.toNat ≤ c.toNat + k
-  | 0, _, _, _ => Nat.le_add_right _ _
-  | k + 1, a, c, h => by
-    have e : (c + 1).toNat = c.toNat + 1 := by
-      rw [UInt64.toNat_add]; simp only [UInt64.reduceToNat]; omega
-    simp only [LeanExe.repeatWhile.go]
-    split
-    · have := go_count s k s.parent[a.toNat]! (c + 1) (by omega)
-      omega
-    · exact Nat.le_add_right _ _
-
-theorem pathLength_le (s : Search) (n : UInt64) : (pathLength s n).toNat ≤ n.toNat := by
-  have h := go_count s n.toNat 1 0
-    (by have := UInt64.toNat_lt n; simp only [UInt64.reduceToNat]; omega)
-  simp only [UInt64.reduceToNat, Nat.zero_add] at h
-  unfold pathLength LeanExe.repeatWhile
-  revert h
-  generalize LeanExe.repeatWhile.go (fun p : UInt64 × UInt64 => p.1 != 0)
-    (fun p => (s.parent[p.1.toNat]!, p.2 + 1)) n.toNat (1, 0) = p
-  obtain ⟨_, k⟩ := p
-  exact id
-
 theorem statusOnly_bound (status : Float) (examined : UInt64) :
     compiled.statusOnly.bound (status, examined) = 88 := by
   rw [compiled.statusOnly.bound_eq, blockCost_eq]

@@ -353,6 +353,31 @@ theorem go_path (s : Search) : ∀ (j fuel : Nat) (v c : UInt64), j ≤ fuel →
     simp only [UInt64.reduceToNat]
     omega
 
+/-- `pathLength` counts at most one edge for each step of its fuel. -/
+theorem go_count (s : Search) : ∀ (k : Nat) (a c : UInt64), c.toNat + k < 2 ^ 64 →
+    (LeanExe.repeatWhile.go (fun p : UInt64 × UInt64 => p.1 != 0)
+      (fun p => (s.parent[p.1.toNat]!, p.2 + 1)) k (a, c)).2.toNat ≤ c.toNat + k
+  | 0, _, _, _ => Nat.le_add_right _ _
+  | k + 1, a, c, h => by
+    have e : (c + 1).toNat = c.toNat + 1 := by
+      rw [UInt64.toNat_add]; simp only [UInt64.reduceToNat]; omega
+    simp only [LeanExe.repeatWhile.go]
+    split
+    · have := go_count s k s.parent[a.toNat]! (c + 1) (by omega)
+      omega
+    · exact Nat.le_add_right _ _
+
+theorem pathLength_le (s : Search) (n : UInt64) : (pathLength s n).toNat ≤ n.toNat := by
+  have h := go_count s n.toNat 1 0
+    (by have := UInt64.toNat_lt n; simp only [UInt64.reduceToNat]; omega)
+  simp only [UInt64.reduceToNat, Nat.zero_add] at h
+  unfold pathLength LeanExe.repeatWhile
+  revert h
+  generalize LeanExe.repeatWhile.go (fun p : UInt64 × UInt64 => p.1 != 0)
+    (fun p => (s.parent[p.1.toNat]!, p.2 + 1)) n.toNat (1, 0) = p
+  obtain ⟨_, k⟩ := p
+  exact id
+
 /-- The output's segment fields for the segment from node `a` to node `b`, as `segmentField`
 computes them. -/
 def segValue (xs : Array Float) (d : Dims) (settleTicks a b f : UInt64) : Float :=
@@ -548,7 +573,8 @@ theorem chain_links {xs : Array Float} {d : Dims} {n : UInt64} {s : Search} (h :
     rwa [Function.iterate_succ_apply'] at this
 
 /-- The segments of an output of status 1: `K` segments join nodes `node 0 = 0` (the start) to
-`node K = 1` (the goal), each by an edge that `edgeOk` accepted. -/
+`node K = 1` (the goal), each by an edge that `edgeOk` accepted, and each node after the start is
+not the start and has the node before it as its parent in the final state of the search. -/
 theorem plan_segments {xs : Array Float} (h : (plan xs)[0]! = 1.0)
     (hnw : (dims xs).nw.toNat ≤ 1024) :
     validInput xs = true ∧ ∃ K : Nat, (plan xs).size = 8 + 11 * K ∧ ∃ node : Nat → UInt64,
@@ -556,7 +582,10 @@ theorem plan_segments {xs : Array Float} (h : (plan xs)[0]! = 1.0)
       (∀ g < K, Accepted xs (dims xs) (node g) (node (g + 1))) ∧
       (∀ g < K, ∀ f < 11, (plan xs)[4 + 11 * g + f]! =
         segValue xs (dims xs) (ceilMs (rd xs 6)) (node g) (node (g + 1)) (UInt64.ofNat f)) ∧
-      (∀ i < 4, (plan xs)[4 + 11 * K + i]! = rd xs (12 + UInt64.ofNat i)) := by
+      (∀ i < 4, (plan xs)[4 + 11 * K + i]! = rd xs (12 + UInt64.ofNat i)) ∧
+      ∀ g < K, node (g + 1) ≠ 0 ∧
+        par (search xs (dims xs) ((dims xs).nw + 2) (ceilMs (rd xs 6))) (node (g + 1)) =
+          node g := by
   obtain ⟨hv, hc, hp⟩ := plan_cases h
   refine ⟨hv, ?_⟩
   set d := dims xs
@@ -599,7 +628,7 @@ theorem plan_segments {xs : Array Float} (h : (plan xs)[0]! = 1.0)
     (by omega)
   rw [hp]
   refine ⟨K, hsz, fun g => pathNode S (pathLength S n) (UInt64.ofNat g), ?_, ?_, ?_, ?_, ?_,
-    hgoal⟩
+    hgoal, ?_⟩
   · simp only; rw [hnode 0 (by omega), Nat.sub_zero, hK0]
   · simp only; rw [hnode K le_rfl, Nat.sub_self]; rfl
   · intro g hg
@@ -614,5 +643,10 @@ theorem plan_segments {xs : Array Float} (h : (plan xs)[0]! = 1.0)
     exact (links (K - (g + 1)) (by omega)).2.2.2
   · intro g hg f hf
     exact hseg g hg f hf
+  · intro g hg
+    simp only
+    rw [hnode g hg.le, hnode (g + 1) hg]
+    refine ⟨hKmin (K - (g + 1)) (by omega), ?_⟩
+    rw [show K - g = (K - (g + 1)) + 1 by omega, Function.iterate_succ_apply']
 
 end Demos.Slew.Search

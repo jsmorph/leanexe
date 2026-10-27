@@ -331,7 +331,7 @@ theorem plan_safe {xs : Array Float} (h : (plan xs)[0]! = 1.0) :
               (R' (Vec.unit (vecOf (coneBody xs (dims xs) (UInt64.ofNat k))))) := by
   have hv0 := (plan_cases h).1
   obtain ⟨hnodes, hcones, hnw⟩ := valid_good hv0
-  obtain ⟨_, K, hsz, node, h0, hK, hlt, hacc, hseg, hgoal⟩ := plan_segments h hnw
+  obtain ⟨_, K, hsz, node, h0, hK, hlt, hacc, hseg, hgoal, _⟩ := plan_segments h hnw
   have hK1 : 1 ≤ K := by
     rcases Nat.eq_zero_or_pos K with e | e
     · rw [e] at hK; rw [hK] at h0; exact absurd h0 (by decide)

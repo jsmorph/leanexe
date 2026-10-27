@@ -35768,7 +35768,7 @@ The coordinator asked for the remaining theorems in the plan's order: NaN-freedo
 - [x] NaN-freedom: `plan_finite`.
 - [x] The premise theorem: `plan_premise`.
 - [x] The constant allocation bound: `plan_bound` and `slew_trapFree`.
-- [ ] Optimality.
+- [x] Optimality: `plan_optimal`.
 - [ ] The file theorem.
 
 ## 2026-10-26: The slew premise theorem
@@ -35804,3 +35804,18 @@ The user accepted the formulation of NaN-freedom as `plan_finite` states it.  Th
 The proof follows `compute_bound` of the drone planner.  `loopCost_le` bounds the rounds with the invariant `Inv` of the search, which already fixes the sizes of `cost`, `parent`, and `done`, and the fact that `round` and `relax` leave `ok` unchanged (`round_ok`, `relax_ok`).  `pathLength_le` bounds the edge count of `pathLength` by its fuel for every search state, so the output's size needs no assumption about the parent chains.  The bound charges every copy and ignores the reuse of freed blocks.  The plan cases leave only the host's input and the result allocated after a call, so the module frees its copies, but neither the theorem nor the tests measure the peak use of a call.
 
 The user decided to keep `round` and `relax` as they are, with the proved bound, rather than restructure them so that a round copies fewer arrays.  The bound is proved, and its 68,020,488 bytes come to 1,038 pages of 64 KiB, far below the module's declared maximum of 65,535 pages.  The program therefore stays as delivered, and its module, tests, and theorems do not change.
+
+## 2026-10-26: Optimality of the slew planner
+
+`Demos.Slew.Optimal.plan_optimal` proves item 6 of [the theorem list](#theorems).  For an input that passes `validInput` and whose start and goal pass the static check, a walk from the start to the goal in the graph that the program's checks define gives an output of status 1 whose segments join the nodes of such a walk, whose header reports its cost, and which no walk from the start to the goal undercuts, and the absence of such a walk gives status 0.  The theorem depends on `propext`, `Classical.choice`, and `Quot.sound` alone, and `Optimal.lean` builds in 2.7 s and `Cost.lean` in 2.7 s.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The graph | `Edge u v`: both nodes below `n`, both admitted (`okNode`, the start, the goal, or a node that passes `attitudeOk`), `v ≠ u`, `¬(θ > maxEdge ∧ ¬(u = 0 ∧ v = 1))` on the computed angle, and `edgeOk` accepts the rotation, with the cost `slewTicks θ + settleTicks` | These are the tests of `relax`, so the theorem states what the program computes, as item 6 asks. |
+| Walks or paths | Walks, which may repeat nodes | With costs that are not negative, the least cost over walks equals the least cost over simple paths, and walks need no distinctness condition. |
+| The status | Two implications, a walk gives status 1 and no walk gives status 0 | Together with `1.0 ≠ 0.0` they give "exactly when" in both directions. |
+| Overflow | `Cost.edge_cost_le` bounds each edge's cost by `2^34` ms from the limits of `validInput` | Costs are `UInt64` sums with the sentinel `infinity = 2^62`, and at most 1,026 finalized nodes keep every cost below `1027 · 2^34 < 2^62`, so the theorem needs no hypothesis on costs. |
+
+The invariant `Opt` holds of every state of the search.  Its fields state that a finalized node holds the least cost of any walk to it (`lower`), that a node with a finite cost other than the start holds the cost of the walk through its parent, whose edge is in the graph (`edge`), that a node not yet finalized holds at most the cost through each finalized node other than the goal with an edge to it (`relaxed`), that every finite cost is at most `(card done) · 2^34` (`bound`), and that a finished search has finalized the goal or left every open admitted node unreached (`stop`).  `select_lower` is the step of Dijkstra's proof: a walk to the selected node leaves the finalized nodes at a first open node whose cost is at most the walk's cost up to it, and the selected node costs at most every open admitted node.  `relax_opt` carries `relaxed` through the loop with the pairs from the new node pending above the loop index, and the branch that skips `edgeOk` for a candidate that does not improve its target satisfies `relaxed` from the candidate's cost alone.  Each round that does not stop finalizes one more node, so the `n + 1` rounds of `search` end finished.
+
+The proof extended `plan_segments` to state that each node of the output's walk after the start is not the start and has the node before it as its parent, so that the walk is the parent chain, and moved `go_count` and `pathLength_le` from `Bound.lean` to `Search.lean`, so that `Optimal.lean` does not import the compilation.  `Cost.toUInt64_le` takes the truncation of `Float.toUInt64` from the library's `Expm1ReduceWords.truncSat_spec`, and `ticks_le` repeats the enclosures of `NanFree.slew_clean` to bound the computed duration by `1.05 · 10¹⁰` ms.

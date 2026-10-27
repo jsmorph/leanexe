@@ -43,6 +43,8 @@ section](#theorems-to-prove) lists the theorems that remain.
 | [NaN-freedom](NanFree.lean) | `plan_finite` |
 | [The premise theorem](Premise.lean) | `plan_premise` |
 | [The allocation bound](Bound.lean) | `plan_bound` and `slew_trapFree` |
+| [The edge cost](Cost.lean) | `edge_cost_le` |
+| [Optimality](Optimal.lean) | `plan_optimal` |
 
 The program imports only the dialect modules and `Library.Numerics.Float64.Atan.Program`, which
 build from Lean's core library.  The representations need `LeanExe.Pipeline`, which depends on
@@ -211,10 +213,10 @@ goal quaternions equal the input's, bit for bit, and that segment `g` of `K` sto
 quaternion `q_g` at offset `4 + 11g`, its axis `n_g` at `8 + 11g`, and its angle `θ_g` at
 `11 + 11g`, with the goal as `q_K`.  For each segment, the normalized axis `n̄_g` has length 1,
 and the rotation by `θ_g` about `n̄_g` carries the attitude `R(q̄_g)` to within `1e-9` of
-`R(q̄_{g+1})`, where the distance between attitudes is the largest displacement of a unit vector.  For each angle `φ` in
-`[0, θ_g]` and each map `R'` that moves every unit vector at most `1e-9` from `R(n̄_g, φ) R(q̄_g)`,
-every input cone holds for `R'` applied to the cone's normalized body vector, against its
-normalized axis.  `R(q̄)` is the program's rotation formula on the normalized quaternion, which
+`R(q̄_{g+1})`, where the distance between attitudes is the largest displacement of a unit vector.
+For each angle `φ` in `[0, θ_g]` and each map `R'` that moves every unit vector at most `1e-9`
+from `R(n̄_g, φ) R(q̄_g)`, every input cone holds for `R'` applied to the cone's normalized body
+vector, against its normalized axis.  `R(q̄)` is the program's rotation formula on the normalized quaternion, which
 equals `v ↦ q̄ v q̄*`, `R(n, φ)` is Rodrigues' formula, and the theorem depends only on `propext`,
 `Classical.choice`, and `Quot.sound`.
 
@@ -283,6 +285,32 @@ commanded attitude preserves length, because `n̄_g` has length 1 and `R(q̄)` p
 every `q`, so `b̄` maps to a unit vector, and the cone's bound on its cosine with `ū` bounds its
 angle with `ū` through `arccos`, which is decreasing.  The triangle inequality for angles,
 `InnerProductGeometry.angle_le_angle_add_angle`, holds for all vectors and adds `d` and `ε`.
+
+## Optimality
+
+[The optimality proof](Optimal.lean) `plan_optimal` concerns an input that passes `validInput` and
+whose start and goal pass the static check, so that the output's status is 1 or 0.  The graph is
+the one that the program's checks define: nodes `u` and `v` below `n = nw + 2` are joined by an
+edge when each passes the static check or is the start or the goal, `v ≠ u`, the computed angle of
+the rotation is not greater than `maxEdge` or the edge joins the start to the goal, and `edgeOk`
+accepts the rotation.  An edge costs the computed duration of its rotation plus the settling time,
+both in whole milliseconds.  When the graph has a walk from the start to the goal, the output has
+status 1, its segments join the nodes of such a walk, as `segValue` gives each field, its header
+reports the walk's cost, and no walk from the start to the goal costs less.  When the graph has no
+such walk, the output has status 0.  `compiled.plan.implements` carries the theorem to every
+output of the module's `plan` export, and the theorem depends only on `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+The proof is the correctness of Dijkstra's algorithm with integer costs, stated as an invariant of
+every state of the search.  A finalized node holds the least cost of a walk to it, a node with a
+finite cost holds the cost of the walk through its parent, and every node not yet finalized holds
+at most the cost through each finalized node with an edge to it.  `relax` checks an edge only when
+its candidate cost improves the target, and a candidate that does not improve the target already
+satisfies the last property, so skipping the check changes nothing.  [The edge cost](Cost.lean)
+`edge_cost_le` bounds the cost of every edge by `2^34` ms, from the limits that `validInput` checks
+and the truncation of `Float.toUInt64`, so no sum of costs wraps and no finite cost reaches the
+sentinel `infinity = 2^62`.  Each round that does not stop finalizes one more node, so the `n + 1`
+rounds of `search` end with the goal finalized or with every open admitted node unreached.
 
 ## Tests
 
@@ -353,5 +381,5 @@ The journal states each theorem and the order of the work.
   computed with half-angles enlarged by `ε + d + γ` keeps the nominal limits along the flown
   slew.  [The premises section](#premises) states the proved theorem, `plan_premise`.
 - **Optimality:** no path in the graph that the program's own checks define costs less than the
-  plan.
+  plan.  [The optimality section](#optimality) states the proved theorem, `plan_optimal`.
 - **File:** the written `slew.wasm` holds the encoding of `compiled.module`.
