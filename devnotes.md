@@ -36697,3 +36697,7 @@ The bodies of `begin`, `step`, `readStep`, and `writeStep` take their charges by
 - [x] Run both running-sum drivers.
 - [x] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audit of the integer program.
 - [ ] Repeat the charges and limits for the binary64 program, and update its guide.
+
+## 2026-10-27: An unbuilt module in the WASI axiom check
+
+`tests/wasi/Axioms.lean` imports `Verified.ProgramLiterals`, which no module imported and no build list of `tests/wasi/run.sh` named.  The aggregate `lake build Verified Library` therefore never checked its proofs, and the WASI driver failed on a fresh build when the axiom check found no `.olean` for it.  Earlier runs passed only in checkouts that still held an `.olean` from an earlier build.  `Verified.lean` now imports the module, so the aggregate checks it, and the driver's byte-values build names it, so the driver builds what its axiom check imports.  Every other top-level module of `Verified/` is imported by `Verified.lean` or by another module.
