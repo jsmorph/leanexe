@@ -36378,7 +36378,7 @@ The coordinator decided on 2026-10-27, for the sleeping user, that `process-comp
 
 ### The search length
 
-`shortest` searches with `repeatWhile 2000` for the largest exponent `J` at which a multiple of `10 ^ J` lies in the rounding interval, calling `found` at `j0 - i` for `i = 0, 1, …`.  `search_spec` states that the search returns `steps = jstart - top`.  The generated bound of the loop follows the iterations that the code takes, so it is finite only with a bound on `steps`.  `width_le` gives `hi - lo ≤ 10 ^ (top + 1)`, and the width is at least `3 · 2 ^ (E - 1) / 2 ^ (nu + 2)`.  `jstart` grows with the size of `4 Q + 2`, at most 55 bits for a binary64 significand.  If `steps ≥ N + 1`, then `10 ^ (jstart - N) ≥ hi - lo`, which an exact check at each of the 2,048 binades refutes.  An exact computation over the binades gives `N = 27` as the smallest value that this argument supports.  The check runs in the kernel on natural numbers of about 3,400 bits.
+`shortest` searches with `repeatWhile 2000` for the largest exponent `J` at which a multiple of `10 ^ J` lies in the rounding interval, calling `found` at `j0 - i` for `i = 0, 1, …`.  `search_spec` states that the search returns `steps = jstart - top`.  The generated bound of the loop follows the iterations that the code takes, so it is finite only with a bound on `steps`.  `width_le` gives `hi - lo ≤ 10 ^ (top + 1)`, and the width is at least `3 · 2 ^ (E - 1) / 2 ^ (nu + 2)`.  `jstart` grows with the size of `4 Q + 2`, at most 55 bits for a binary64 significand.  If `steps ≥ N + 1`, then `10 ^ (jstart - N) ≥ hi - lo`, which an exact check at each of the 2,048 binades refutes.  An exact computation over the binades gives `N = 27` as the smallest value that this argument supports.  The check runs in the kernel on natural numbers of at most about 2,200 bits.
 
 ### Plan
 
@@ -36396,7 +36396,13 @@ The cost lemmas follow the call graph from the bottom, each for the generated `b
 10. The parser: `span`, `expPart`, `leadingZeros`, `anyNonzero`, `chunkVal`, `digitsVal` (at most 768 digits), `decParse`, `fastPath`, `roundUnits`, `decRound` (exponents limited by its range tests), `parse64`, and `stripCR`.
 11. `completeLine`, `consumeInput`, the effect bodies, and the binary64 `RunCharges` from limits on line length, as for the integer program.
 
+### The search length as proved
+
+`PrintFloatSteps.steps_le` proves at most 27 steps for every word with `WordBounds Q E 1074`, and `search_le` states it for the code's `repeatWhile`.  The proof refutes `steps ≥ 28` with `width_le`, `width_eq`, and `jstart ≤ jfor 1074 E 55`, where `jfor` is `jstart` with the bits of `4 Q + 2` as a parameter and grows with them.  `wide_binary64` checks `10 ^ (jfor 1074 E 55 - 27) < 3 · 2 ^ (E - 1) / 2 ^ 1076` in natural numbers for each `E` from 1 to 2,048 by `decide +kernel`.  The same argument gives at most 10 steps for a binary32 word (`steps_le_binary32`), whose significand has at most 24 bits and whose binade is below 256.  The loop tests `found` at most 28 times.
+
+The cost of one test and of one call follows from the paid sides of the generated equations, which the cost lemmas will prove.  `mulSmall` on `n` limbs costs at most `96 n + 168` bytes, `shl` at most `104 n + 232 + 8 ⌊k / 32⌋`, `sub` at most `80 n + 72`, and `divBits` 63 steps of a shift and a subtraction.  At the search's exponents, within 330 of the bias, one `found` costs at most about 1.79 MB, the most at binade 2,035, where the shift of the numerator by `E - 1` bits makes the division's operands longest.  One call of the printer then costs at most about 54 MB: 28 tests, the final `range` and `quotAt`, and at most one more of each.  These figures are estimates from the formulas, not yet theorems.
+
 - [x] Write the stage 3 plan.
-- [ ] Prove the search-length theorem for binary64, and report the cost of one iteration and of one call of the printer.
+- [x] Prove the search-length theorem for binary64, and report the cost of one iteration and of one call of the printer.
 - [ ] Prove the cost lemmas in the order above.
 - [ ] State the binary64 theorem over limits on line length, with its inequality against the memory cap.
