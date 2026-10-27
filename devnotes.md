@@ -35702,6 +35702,20 @@ A read-only review of `LeanExe/Native/Clight` against CompCert 3.18, which the c
 
 - [x] The translator, the printer's `clightgen` forms, and the check, for both GCD modules.
 - [x] GCD runs natively and agrees with Talos, traps included.
-- [ ] Layer 1: memory lemmas for loads and stores of the globals, evaluation of the emitted expressions, and the frame of `exec_stmt`.
-- [ ] Layers 2 and 3: the relation, the instruction lemmas, and the induction on fuel over `execOne`, `exec`, and `run`.
-- [ ] `translate_correct` and the GCD theorem from `p.gcd.implements` or `p.gcd.pure`.
+- [x] Layer 1: memory lemmas for loads and stores of the globals, evaluation of the emitted expressions, and the frame of `exec_stmt`.
+- [x] Layers 2 and 3: the relation, the instruction lemmas, and the induction on fuel over `execOne`, `exec`, and `run`.
+- [x] `translate_correct` and the GCD theorem from `p.gcd.implements` or `p.gcd.pure`.
+
+### The proof of M2
+
+`LeanExe/Native/Proof/` holds the proof, about 3,600 lines in sixteen files, and `translate_correct` in `Correct.lean` is its result: for every global environment whose `lx_status`, `lx_g<i>`, and functions are those of the translation, every function of the translated program simulates its Talos function at every fuel.  When Talos's `run` returns, the C call terminates in CompCert's big-step semantics with the result's value, the globals hold the final store's globals, and `lx_status` is 0; when `run` traps, the call terminates with the trap's code in `lx_status`.  It depends on `propext`, `Classical.choice`, and `Quot.sound`.
+
+The relation at a point of static stack `σ` (`Relation.lean`) gives the slot temporaries of `σ`, the local temporaries, the C globals, `lx_status = 0`, and `brk = 0`.  `Outcome` relates each Talos continuation of an instruction or list to the C statement's outcome: a fall-through to normal completion with the relation at the next stack and the slots below the current construct's base unchanged, a branch `k` levels out to `break` or `continue` with `brk = k` and the kept value in the target's slot, and a return or trap to `Out_return`.  The straight-line forms each take a few lines from `push_step` (`Straight.lean`, `Ops.lean`), `prog_sim` composes a list, and a construct's loop is related to Talos's result for the construct by `ConstructOutcome`, to which `ConstructOutcome.toOutcome` adds the dispatch.  `sim_loop` goes by an inner induction on the fuel, since Talos re-runs a loop with one unit less.  `sim_call` uses `CallSim` for the callee at one unit less, and `translate_correct` closes the circle by strong induction on the fuel, with `run_sim_fun` (`Run.lean`) relating function entry, the zeroed locals, and the return.
+
+`tests/TestSupport/Native/GcdNative.lean` states the GCD theorems.  `loop_native` follows from `loopCompiled.gcd.pure`: from any C memory whose globals hold a Talos store's and whose `lx_status` is 0, `lxf_gcd` on `a` and `b` returns `gcd a b` and leaves both as they were.  `rec_native` follows from `recCompiled.gcd.implements` for a store that meets that theorem's premises, and allows the call instead to end with `lx_status` set to the code of `unreachable`.  `loop_native_init` and `rec_native_init` instantiate both for `globalenv` and `init_mem` of the translated program and the module's initial store; `Genv.find_add_globals` (`Genv.lean`) finds the functions, and the kernel checks the blocks, the initial globals, and `lx_status` by `decide`.  All four depend on the three standard axioms.
+
+Three limits remain.  The relation holds no memory, so the functions that M3 adds cannot yet be covered.  The theorems conclude `eval_funcall` of one function in the Lean copy; the step to `bigstep_program_terminates` through a generated `main` is not written.  The `*_init` theorems are about the translated program itself, while the program that `ccomp` compiles also declares CompCert's built-in functions first, which moves every block; `translate_correct` applies to that program once its environment and initial memory are shown to meet the hypotheses, for example by having the `clightgen` check build that program in Lean and checking them by `decide`.
+
+- [ ] The step from `eval_funcall` to a whole program through a generated `main`.
+- [ ] The hypotheses of `translate_correct` for the program that `clightgen` reads, built by the check.
+- [ ] Merge `main`, which now carries the corrected `Library.Native` layout, before the full gate.

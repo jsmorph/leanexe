@@ -1,4 +1,5 @@
 import LeanExe.Native.Proof.Run
+import LeanExe.Native.Proof.Genv
 
 /-!
 `translate_correct`: every function of a translated program simulates its Talos function.  For
@@ -98,6 +99,20 @@ theorem translate_spec {m : Module} {T : Translation} (h : translate m = some T)
     simp [funDef, hfd'] at hfd
     subst hfd
     exact ⟨fd', List.mem_cons_of_mem _ (List.mem_append_right _ hd)⟩
+
+/-- Each function index of a translation has its definition in the program. -/
+theorem translate_funcs {m : Module} {T : Translation} (h : translate m = some T) {k : Nat}
+    (hk : k ∈ T.funcs) :
+    ∃ fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs := by
+  simp [translate, Option.bind_eq_some_iff] at h
+  obtain ⟨-, gdefs, -, -, funs, hfuns, rfl⟩ := h
+  obtain ⟨d, hd, hfd⟩ := mapM_mem hfuns k hk
+  cases hfd' : (fdefsOf m)[k]?.join with
+  | none => simp [funDef, hfd'] at hfd
+  | some fd =>
+  simp [funDef, hfd'] at hfd
+  subst hfd
+  exact ⟨fd, List.mem_cons_of_mem _ (List.mem_append_right _ hd)⟩
 
 theorem type_of_params_zipIdx (ps : List VT) (start : Nat) :
     type_of_params ((ps.zipIdx start).map fun x => (localId x.2, x.1.ty)) = ps.map VT.ty := by

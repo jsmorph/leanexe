@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# The translator's end-to-end test on GCD (milestone M2).  The executable native-gcd
+# The translator's end-to-end test on GCD (milestone M2).  It builds the theorems of
+# tests/TestSupport/Native/GcdNative.lean, which the kernel checks.  The executable native-gcd
 # (tests/TestSupport/Native/GcdEmit.lean) translates the two GCD modules of
 # tests/TestSupport/Native/Gcd.lean to C and writes a host program for each, with the lines that
 # Talos's run gives for the host's calls.  clightgen reads each C file back, and native-gcd check
@@ -19,7 +20,7 @@ fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out=$root/build/native/gcd
 cd "$root"
-tools/leanrun --timeout 60m lake build native-gcd
+tools/leanrun --timeout 60m lake build native-gcd TestSupport.Native.GcdNative
 rm -rf "$out"
 tools/leanrun --timeout 10m .lake/build/bin/native-gcd emit "$out"
 for name in gcd_loop gcd_rec; do
