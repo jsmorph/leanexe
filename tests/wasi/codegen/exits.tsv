@@ -1,0 +1,8 @@
+exit-zero	exitCode	0	0	0	empty
+exit-125	exitCode	125	125	125	empty
+exit-rejected	exitCode	126	1	error	diagnostic
+exit-narrow	exitCode	4294967303	7	7	empty
+exit-narrow-zero	exitCode	4294967296	0	0	empty
+exit-narrow-rejected	exitCode	4294967422	1	error	diagnostic
+exit-max	exitCode	18446744073709551615	1	error	diagnostic
+exit-closed	exitMain	_	7	7	empty

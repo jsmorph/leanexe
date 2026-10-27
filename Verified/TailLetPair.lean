@@ -44,16 +44,16 @@ def TailAfter.bind2 {Γ params : List Ty} {result valueTy firstTy secondTy : Ty}
         hxLength b hb
 
 theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy secondTy : Ty}
-    {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m) (targetModes : List Mode)
     (value : Expr S Γ (.pair firstTy secondTy))
     (body : TailBody S params result (secondTy :: firstTy :: Γ))
     (valueSpec : ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv value env slots paid live)
-    (bodySpec : TailCodeSpec m funs flags bounds fits host pv targetModes body) :
-    TailCodeSpec m funs flags bounds fits host pv targetModes (.letPair value body) := by
+      CodeSpec (pool := pool) m funs flags bounds fits host pv value env slots paid live)
+    (bodySpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes body) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (.letPair value body) := by
   intro env slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel heap
-    store s hh hpv hVars hAt hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
+    store s hh hpv hVars hAt hSafe hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
   let outer := TailBody.letPair value body
   let mid := fun i => body.uses (i + 2)
   let input := fun i => mid i || value.uses i
@@ -73,7 +73,8 @@ theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy s
   simp only [TailBody.code, TailBody.codeWith, TailBody.usesFast_eq, List.append_assoc]
   refine valueSpec env slots paid mid h (base + firstTy.width + secondTy.width) heap store s hh hpv
     ((hVars.mono (by omega)).live_mono fun i hi => by rw [← hInput]; exact hi)
-    hAt hCap (by omega) (by omega) hPlace.1 _ _
+    hAt (hSafe.mono fun i hi => by rw [← hInput]; exact hi)
+    hCap (by omega) (by omega) hPlace.1 _ _
     (hTrap.part (by simp only [TailBody.fits]; flag_tac)
       (fun ha => by simp only [TailBody.aborts, Bool.or_eq_true] at ha ⊢; tauto)
       fun _ hw => hw.mono (by
@@ -118,6 +119,13 @@ theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy s
     have hm' : value.mode (slots.map Slot.mode) = .owned := by simpa using hm
     rw [hm'] at hb hc apart
     exact regionsDisjoint_symm (apart rfl c hc b hb)
+  have safeB : pool.Safe
+      (Env.cons (value.denote funs env).2 (Env.cons (value.denote funs env).1 env))
+      (⟨base + firstTy.width, value.mode (slots.map Slot.mode)⟩ ::
+        ⟨base, value.mode (slots.map Slot.mode)⟩ :: slots)
+      (fun i => decide (i < 2) || body.uses i) heap1 store1 { s3 with values := s.values } :=
+    (hSafe.mono fun i hi => by rw [← hInput]; exact hi).bind2 vars0 a1' hMid
+      (fun _ hi => by simpa [mid] using hi) f3 repFirst repSecond holdFirst' holdSecond'
   have releaseEq : ∀ rest : Program,
       (if value.mode (slots.map Slot.mode) = .owned ∧ body.uses 1 = false then
         releaseCode firstTy base else []) ++
@@ -162,6 +170,11 @@ theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy s
     (base + firstTy.width + secondTy.width) exitLabel nextLabel heap2 store2
     { s3 with values := s.values } (f3.positions.trans (a1.frame.positions.trans hh))
     (f3.params.trans (a1.frame.params.trans hpv)) release'.holds release'.step.at_
+    (safeB.evolves varsB release' (fun i hi => by
+      match i with
+      | 0 => simp [hi]
+      | 1 => simp [hi]
+      | k + 2 => simp [hi]))
     (by rw [release'.step.cap m, a1.step.cap m]; exact hCap)
     (by change s3.params.length ≤ stateBase; rw [frame3.params, frame2.params, a1.frame.params]; exact hLow)
     hState (by omega) (by omega) hPlace.2 hPaid _

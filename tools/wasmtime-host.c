@@ -1,4 +1,5 @@
 #include <inttypes.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -8,9 +9,11 @@
 
 #include <wasm.h>
 #include <wasmtime.h>
+#include <wasi.h>
 
 typedef struct {
   wasm_engine_t *engine;
+  wasmtime_module_t *module;
   wasmtime_store_t *store;
   wasmtime_context_t *context;
   wasmtime_instance_t instance;
@@ -21,13 +24,68 @@ typedef struct {
 } Runtime;
 
 typedef struct {
+  bool wasi;
+  bool command;
+  bool control_records;
+  const char *stdin_file;
+  const char *stdout_file;
+  const char *stderr_file;
+  const char *control_file;
+} HostOptions;
+
+static HostOptions options;
+static Runtime *active_runtime;
+static FILE *control_output;
+static bool owns_control_output;
+static bool outcome_recorded;
+
+typedef struct {
   uint64_t *items;
   size_t len;
 } U64List;
 
-static void die(const char *message) {
+static void dispose_runtime(Runtime *runtime) {
+  if (runtime == NULL) {
+    return;
+  }
+  if (runtime->store != NULL) {
+    wasmtime_store_delete(runtime->store);
+  }
+  if (runtime->module != NULL) {
+    wasmtime_module_delete(runtime->module);
+  }
+  if (runtime->engine != NULL) {
+    wasm_engine_delete(runtime->engine);
+  }
+  memset(runtime, 0, sizeof(*runtime));
+}
+
+/* Exits with `status`.  In WASI mode with control records, a failure that `check_outcome` has
+   not recorded as `wasi-exit` or `trap` ends the control output with `error`. */
+static _Noreturn void finish_host(int status) {
+  dispose_runtime(active_runtime);
+  if (status != 0 && !outcome_recorded && options.wasi && options.control_records &&
+      control_output != NULL) {
+    fprintf(control_output, "error\n");
+  }
+  if (control_output != NULL) {
+    bool failed = ferror(control_output) != 0;
+    int result = owns_control_output ? fclose(control_output) : fflush(control_output);
+    control_output = NULL;
+    if (result != 0) {
+      perror("cannot finish control output");
+      status = 1;
+    } else if (failed) {
+      fprintf(stderr, "cannot write control output\n");
+      status = 1;
+    }
+  }
+  exit(status);
+}
+
+static _Noreturn void die(const char *message) {
   fprintf(stderr, "%s\n", message);
-  exit(1);
+  finish_host(1);
 }
 
 static void print_error(wasmtime_error_t *error) {
@@ -46,34 +104,77 @@ static void print_trap(wasm_trap_t *trap) {
   wasm_trap_delete(trap);
 }
 
+static void check_outcome(wasmtime_error_t *error, wasm_trap_t *trap, int trap_status) {
+  if (error != NULL) {
+    int status = 0;
+    if (options.wasi && wasmtime_error_exit_status(error, &status)) {
+      uint32_t raw_status = (uint32_t)status;
+      wasmtime_error_delete(error);
+      if (options.control_records) {
+        fprintf(control_output, "wasi-exit %" PRIu32 "\n", raw_status);
+      }
+      outcome_recorded = true;
+      finish_host((int)(raw_status & UINT32_C(255)));
+    }
+    print_error(error);
+    if (trap != NULL) {
+      print_trap(trap);
+    }
+    finish_host(1);
+  }
+  if (trap != NULL) {
+    print_trap(trap);
+    if (trap_status == 2 && options.wasi && options.control_records) {
+      fprintf(control_output, "trap\n");
+      outcome_recorded = true;
+    }
+    finish_host(trap_status);
+  }
+}
+
+static void call_func(Runtime *runtime, wasmtime_func_t *func, const wasmtime_val_t *args,
+                      size_t nargs, wasmtime_val_t *results, size_t nresults, int trap_status) {
+  wasm_trap_t *trap = NULL;
+  wasmtime_error_t *error =
+      wasmtime_func_call(runtime->context, func, args, nargs, results, nresults, &trap);
+  check_outcome(error, trap, trap_status);
+}
+
 static uint8_t *read_file(const char *path, size_t *len_out) {
   FILE *file = fopen(path, "rb");
   if (file == NULL) {
     perror(path);
-    exit(1);
+    finish_host(1);
   }
   if (fseek(file, 0, SEEK_END) != 0) {
     perror("fseek");
-    exit(1);
+    finish_host(1);
   }
   long size = ftell(file);
   if (size < 0) {
     perror("ftell");
-    exit(1);
+    finish_host(1);
   }
   if (fseek(file, 0, SEEK_SET) != 0) {
     perror("fseek");
-    exit(1);
+    finish_host(1);
   }
   uint8_t *bytes = malloc((size_t)size);
   if (bytes == NULL && size != 0) {
     die("out of memory");
   }
   if (size != 0 && fread(bytes, 1, (size_t)size, file) != (size_t)size) {
-    perror("fread");
-    exit(1);
+    if (ferror(file)) {
+      perror("fread");
+    } else {
+      fprintf(stderr, "unexpected end of file: %s\n", path);
+    }
+    finish_host(1);
   }
-  fclose(file);
+  if (fclose(file) != 0) {
+    perror("fclose");
+    finish_host(1);
+  }
   *len_out = (size_t)size;
   return bytes;
 }
@@ -159,6 +260,39 @@ static void free_u64_list(U64List list) {
   free(list.items);
 }
 
+static wasi_config_t *configure_wasi(void) {
+  wasi_config_t *config = wasi_config_new();
+  if (config == NULL) {
+    die("failed to create WASI configuration");
+  }
+  const char *failed_path = NULL;
+  if (options.stdin_file == NULL) {
+    wasi_config_inherit_stdin(config);
+  } else if (!wasi_config_set_stdin_file(config, options.stdin_file)) {
+    failed_path = options.stdin_file;
+  }
+  if (failed_path == NULL) {
+    if (options.stdout_file == NULL) {
+      wasi_config_inherit_stdout(config);
+    } else if (!wasi_config_set_stdout_file(config, options.stdout_file)) {
+      failed_path = options.stdout_file;
+    }
+  }
+  if (failed_path == NULL) {
+    if (options.stderr_file == NULL) {
+      wasi_config_inherit_stderr(config);
+    } else if (!wasi_config_set_stderr_file(config, options.stderr_file)) {
+      failed_path = options.stderr_file;
+    }
+  }
+  if (failed_path != NULL) {
+    fprintf(stderr, "cannot open WASI stream file: %s\n", failed_path);
+    wasi_config_delete(config);
+    finish_host(1);
+  }
+  return config;
+}
+
 static void init_runtime(Runtime *runtime, const char *wasm_path) {
   memset(runtime, 0, sizeof(*runtime));
   size_t wasm_len = 0;
@@ -175,13 +309,10 @@ static void init_runtime(Runtime *runtime, const char *wasm_path) {
     die("failed to create Wasmtime engine");
   }
 
-  wasmtime_module_t *module = NULL;
-  wasmtime_error_t *error = wasmtime_module_new(runtime->engine, wasm_bytes, wasm_len, &module);
+  wasmtime_error_t *error =
+      wasmtime_module_new(runtime->engine, wasm_bytes, wasm_len, &runtime->module);
   free(wasm_bytes);
-  if (error != NULL) {
-    print_error(error);
-    exit(1);
-  }
+  check_outcome(error, NULL, 1);
 
   runtime->store = wasmtime_store_new(runtime->engine, NULL, NULL);
   if (runtime->store == NULL) {
@@ -190,16 +321,27 @@ static void init_runtime(Runtime *runtime, const char *wasm_path) {
   runtime->context = wasmtime_store_context(runtime->store);
 
   wasm_trap_t *trap = NULL;
-  error = wasmtime_instance_new(runtime->context, module, NULL, 0, &runtime->instance, &trap);
-  wasmtime_module_delete(module);
-  if (error != NULL) {
-    print_error(error);
-    exit(1);
+  if (options.wasi) {
+    wasi_config_t *wasi = configure_wasi();
+    error = wasmtime_context_set_wasi(runtime->context, wasi);
+    check_outcome(error, NULL, 1);
+    wasmtime_linker_t *linker = wasmtime_linker_new(runtime->engine);
+    if (linker == NULL) {
+      die("failed to create Wasmtime linker");
+    }
+    error = wasmtime_linker_define_wasi(linker);
+    if (error == NULL) {
+      error = wasmtime_linker_instantiate(linker, runtime->context, runtime->module,
+                                         &runtime->instance, &trap);
+    }
+    wasmtime_linker_delete(linker);
+  } else {
+    error = wasmtime_instance_new(runtime->context, runtime->module, NULL, 0,
+                                  &runtime->instance, &trap);
   }
-  if (trap != NULL) {
-    print_trap(trap);
-    exit(1);
-  }
+  wasmtime_module_delete(runtime->module);
+  runtime->module = NULL;
+  check_outcome(error, trap, 1);
 
   wasmtime_extern_t item;
   if (wasmtime_instance_export_get(runtime->context, &runtime->instance, "memory", 6, &item)) {
@@ -216,22 +358,12 @@ static void init_runtime(Runtime *runtime, const char *wasm_path) {
     runtime->alloc = item.of.func;
     runtime->has_alloc = true;
   }
-  if (wasmtime_instance_export_get(runtime->context, &runtime->instance, "reset", 5, &item)) {
+  if (!options.command &&
+      wasmtime_instance_export_get(runtime->context, &runtime->instance, "reset", 5, &item)) {
     if (item.kind != WASMTIME_EXTERN_FUNC) {
       die("export reset is not a function");
     }
-    wasmtime_val_t args[1];
-    wasmtime_val_t results[1];
-    trap = NULL;
-    error = wasmtime_func_call(runtime->context, &item.of.func, args, 0, results, 0, &trap);
-    if (error != NULL) {
-      print_error(error);
-      exit(1);
-    }
-    if (trap != NULL) {
-      print_trap(trap);
-      exit(1);
-    }
+    call_func(runtime, &item.of.func, NULL, 0, NULL, 0, 1);
   }
 }
 
@@ -239,11 +371,11 @@ static wasmtime_func_t get_func(Runtime *runtime, const char *name) {
   wasmtime_extern_t item;
   if (!wasmtime_instance_export_get(runtime->context, &runtime->instance, name, strlen(name), &item)) {
     fprintf(stderr, "missing export: %s\n", name);
-    exit(1);
+    finish_host(1);
   }
   if (item.kind != WASMTIME_EXTERN_FUNC) {
     fprintf(stderr, "export is not a function: %s\n", name);
-    exit(1);
+    finish_host(1);
   }
   return item.of.func;
 }
@@ -256,16 +388,7 @@ static uint64_t call_i64_func(Runtime *runtime, wasmtime_func_t *func, uint64_t 
   args[0].kind = WASMTIME_I64;
   args[0].of.i64 = (int64_t)arg;
   results[0].kind = WASMTIME_I64;
-  wasm_trap_t *trap = NULL;
-  wasmtime_error_t *error = wasmtime_func_call(runtime->context, func, args, 1, results, 1, &trap);
-  if (error != NULL) {
-    print_error(error);
-    exit(1);
-  }
-  if (trap != NULL) {
-    print_trap(trap);
-    exit(1);
-  }
+  call_func(runtime, func, args, 1, results, 1, 1);
   if (results[0].kind != WASMTIME_I64) {
     die("expected i64 result");
   }
@@ -279,16 +402,7 @@ static void call_void_i64_func(Runtime *runtime, wasmtime_func_t *func, uint64_t
   memset(results, 0, sizeof(results));
   args[0].kind = WASMTIME_I64;
   args[0].of.i64 = (int64_t)arg;
-  wasm_trap_t *trap = NULL;
-  wasmtime_error_t *error = wasmtime_func_call(runtime->context, func, args, 1, results, 0, &trap);
-  if (error != NULL) {
-    print_error(error);
-    exit(1);
-  }
-  if (trap != NULL) {
-    print_trap(trap);
-    exit(1);
-  }
+  call_func(runtime, func, args, 1, results, 0, 1);
 }
 
 static void call_void_func(Runtime *runtime, wasmtime_func_t *func) {
@@ -296,16 +410,7 @@ static void call_void_func(Runtime *runtime, wasmtime_func_t *func) {
   wasmtime_val_t results[1];
   memset(args, 0, sizeof(args));
   memset(results, 0, sizeof(results));
-  wasm_trap_t *trap = NULL;
-  wasmtime_error_t *error = wasmtime_func_call(runtime->context, func, args, 0, results, 0, &trap);
-  if (error != NULL) {
-    print_error(error);
-    exit(1);
-  }
-  if (trap != NULL) {
-    print_trap(trap);
-    exit(1);
-  }
+  call_func(runtime, func, args, 0, results, 0, 1);
 }
 
 static uint64_t call_alloc(Runtime *runtime, uint64_t len) {
@@ -474,11 +579,23 @@ static uint64_t alloc_records(Runtime *runtime, const char **text) {
 
 #define OBJECT_MAGIC UINT64_C(5501223100278326855)
 
-/* Prints the chain of records at `ptr` as `[x, y, ...]`, after checking that each record's
+/* Writes to `out` unless `out` is NULL.  The result printers walk a result once with NULL to
+   check it and once with the control output to print it, so a malformed result prints nothing. */
+static void emit(FILE *out, const char *format, ...) {
+  if (out == NULL) {
+    return;
+  }
+  va_list args;
+  va_start(args, format);
+  vfprintf(out, format, args);
+  va_end(args);
+}
+
+/* Writes the chain of records at `ptr` as `[x, y, ...]`, after checking that each record's
    header holds the magic number, count 1, kind 1, width 2, and mask 2. */
-static void print_u64_chain(Runtime *runtime, uint64_t ptr) {
+static void walk_u64_chain(Runtime *runtime, uint64_t ptr, FILE *out) {
   size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
-  printf("[");
+  emit(out, "[");
   for (uint64_t k = 0; ptr != 0; k++) {
     if (k > memory_len / 16) {
       die("list result does not end");
@@ -489,20 +606,25 @@ static void print_u64_chain(Runtime *runtime, uint64_t ptr) {
       die("list result has a wrong record header");
     }
     if (k != 0) {
-      printf(", ");
+      emit(out, ", ");
     }
-    printf("%" PRIu64, read_u64_at(runtime, ptr));
+    emit(out, "%" PRIu64, read_u64_at(runtime, ptr));
     ptr = read_u64_at(runtime, ptr + 8);
   }
-  printf("]\n");
+  emit(out, "]\n");
 }
 
-/* Prints the tree of records at `ptr` in preorder, `.` for a leaf and a node's key followed
+static void print_u64_chain(Runtime *runtime, uint64_t ptr) {
+  walk_u64_chain(runtime, ptr, NULL);
+  walk_u64_chain(runtime, ptr, control_output);
+}
+
+/* Writes the tree of records at `ptr` in preorder, `.` for a leaf and a node's key followed
    by its subtrees, separated by commas, after checking that each record's header holds the
    magic number, count 1, kind 1, width 3, and mask 5.  `count` bounds the records visited. */
-static void print_u64_tree_at(Runtime *runtime, uint64_t ptr, uint64_t *count) {
+static void walk_u64_tree(Runtime *runtime, uint64_t ptr, uint64_t *count, FILE *out) {
   if (ptr == 0) {
-    printf(".");
+    emit(out, ".");
     return;
   }
   size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
@@ -514,24 +636,26 @@ static void print_u64_tree_at(Runtime *runtime, uint64_t ptr, uint64_t *count) {
       read_u64_at(runtime, ptr - 16) != 3 || read_u64_at(runtime, ptr - 8) != 5) {
     die("tree result has a wrong record header");
   }
-  printf("%" PRIu64 ",", read_u64_at(runtime, ptr + 8));
-  print_u64_tree_at(runtime, read_u64_at(runtime, ptr), count);
-  printf(",");
-  print_u64_tree_at(runtime, read_u64_at(runtime, ptr + 16), count);
+  emit(out, "%" PRIu64 ",", read_u64_at(runtime, ptr + 8));
+  walk_u64_tree(runtime, read_u64_at(runtime, ptr), count, out);
+  emit(out, ",");
+  walk_u64_tree(runtime, read_u64_at(runtime, ptr + 16), count, out);
 }
 
 static void print_u64_tree(Runtime *runtime, uint64_t ptr) {
   uint64_t count = 0;
-  print_u64_tree_at(runtime, ptr, &count);
-  printf("\n");
+  walk_u64_tree(runtime, ptr, &count, NULL);
+  count = 0;
+  walk_u64_tree(runtime, ptr, &count, control_output);
+  fprintf(control_output, "\n");
 }
 
-/* Prints the tree of records at `ptr` in the preorder description of `alloc_records`, after
+/* Writes the tree of records at `ptr` in the preorder description of `alloc_records`, after
    checking that each record's header holds the magic number, count 1, kind 1, and a valid
    width and mask.  `count` bounds the records visited. */
-static void print_records_at(Runtime *runtime, uint64_t ptr, uint64_t *count) {
+static void walk_records(Runtime *runtime, uint64_t ptr, uint64_t *count, FILE *out) {
   if (ptr == 0) {
-    printf(".");
+    emit(out, ".");
     return;
   }
   size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
@@ -547,22 +671,40 @@ static void print_records_at(Runtime *runtime, uint64_t ptr, uint64_t *count) {
   if (!record_header_valid(width, mask)) {
     die("tree result has a wrong record header");
   }
-  printf("%" PRIu64 ",%" PRIu64, width, mask);
+  emit(out, "%" PRIu64 ",%" PRIu64, width, mask);
   for (uint64_t i = 0; i < width; i++) {
-    printf(",");
+    emit(out, ",");
     uint64_t slot = read_u64_at(runtime, ptr + 8 * i);
     if ((mask >> i) & 1) {
-      print_records_at(runtime, slot, count);
+      walk_records(runtime, slot, count, out);
     } else {
-      printf("%" PRIu64, slot);
+      emit(out, "%" PRIu64, slot);
     }
   }
 }
 
 static void print_records(Runtime *runtime, uint64_t ptr) {
   uint64_t count = 0;
-  print_records_at(runtime, ptr, &count);
-  printf("\n");
+  walk_records(runtime, ptr, &count, NULL);
+  count = 0;
+  walk_records(runtime, ptr, &count, control_output);
+  fprintf(control_output, "\n");
+}
+
+/* Writes the `len` bytes at `ptr` in hexadecimal on one line. */
+static void print_bytes(Runtime *runtime, uint64_t ptr, uint64_t len) {
+  if (!runtime->has_memory) {
+    die("ByteArray result requires exported memory");
+  }
+  size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+  if (ptr > memory_len || len > memory_len - (size_t)ptr) {
+    die("ByteArray result is outside memory");
+  }
+  uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+  for (uint64_t i = 0; i < len; i++) {
+    fprintf(control_output, "%02x", memory[ptr + i]);
+  }
+  fprintf(control_output, "\n");
 }
 
 /* Writes the elements of the array at `ptr`, as little-endian words, to the file at `path`,
@@ -581,15 +723,15 @@ static uint64_t save_u64_array(Runtime *runtime, uint64_t ptr, const char *path)
   FILE *file = fopen(path, "wb");
   if (file == NULL) {
     perror(path);
-    exit(1);
+    finish_host(1);
   }
   if (len != 0 && fwrite(memory + ptr + 8, 8, (size_t)len, file) != (size_t)len) {
     perror("fwrite");
-    exit(1);
+    finish_host(1);
   }
   if (fclose(file) != 0) {
     perror("fclose");
-    exit(1);
+    finish_host(1);
   }
   return len;
 }
@@ -735,11 +877,21 @@ static size_t result_count_from_kind(const char *kind) {
     return 1;
   }
   if (strncmp(kind, "list:", 5) == 0) {
-    size_t count = 1;
+    size_t items = 1;
     for (const char *c = kind + 5; *c != 0; c++) {
       if (*c == ',') {
-        count++;
+        items++;
       }
+    }
+    if (items > 128) {
+      die("too many results");
+    }
+    /* A `bytes` item is two results, the root and the length. */
+    size_t count = 0;
+    for (size_t i = 0; i < items; i++) {
+      char item[32];
+      list_result_kind(kind, i, item, sizeof item);
+      count += strcmp(item, "bytes") == 0 ? 2 : 1;
     }
     if (count > 128) {
       die("too many results");
@@ -771,59 +923,61 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
   wasmtime_val_t args[256];
   size_t nargs = 0;
   for (int i = 0; i < argc; i++) {
-    size_t count = 0;
-    if (!parse_arg(runtime, argv[i], &args[nargs], &count)) {
-      fprintf(stderr, "unknown argument spec: %s\n", argv[i]);
-      exit(1);
-    }
-    nargs += count;
-    if (nargs > 256) {
+    if (nargs == 256) {
       die("too many arguments");
     }
+    wasmtime_val_t parsed[2];
+    size_t count = 0;
+    if (!parse_arg(runtime, argv[i], parsed, &count)) {
+      fprintf(stderr, "unknown argument spec: %s\n", argv[i]);
+      finish_host(1);
+    }
+    if (count > 256 - nargs) {
+      die("too many arguments");
+    }
+    memcpy(args + nargs, parsed, count * sizeof(*parsed));
+    nargs += count;
   }
 
   size_t nresults = result_count_from_kind(result_kind);
   bool list = strncmp(result_kind, "list:", 5) == 0;
   wasmtime_val_t results[128];
-  for (size_t i = 0; i < nresults; i++) {
+  /* Result `i` belongs to item `item` of a list; a `bytes` item covers two results. */
+  for (size_t i = 0, item = 0; i < nresults; item++) {
     const char *kind = result_kind;
-    char item[32];
+    char text[32];
     if (list) {
-      list_result_kind(result_kind, i, item, sizeof item);
-      kind = item;
+      list_result_kind(result_kind, item, text, sizeof text);
+      kind = text;
     }
-    results[i].kind = strcmp(kind, "f64") == 0   ? WASMTIME_F64
-                      : strcmp(kind, "f32") == 0 ? WASMTIME_F32
-                                                 : WASMTIME_I64;
+    size_t width = list && strcmp(kind, "bytes") == 0 ? 2 : 1;
+    for (size_t j = 0; j < width; j++, i++) {
+      results[i].kind = strcmp(kind, "f64") == 0   ? WASMTIME_F64
+                        : strcmp(kind, "f32") == 0 ? WASMTIME_F32
+                                                   : WASMTIME_I64;
+    }
   }
-  wasm_trap_t *trap = NULL;
-  wasmtime_error_t *error =
-      wasmtime_func_call(runtime->context, &func, args, nargs, results, nresults, &trap);
-  if (error != NULL) {
-    print_error(error);
-    exit(1);
-  }
-  if (trap != NULL) {
-    print_trap(trap);
-    exit(2);
-  }
+  call_func(runtime, &func, args, nargs, results, nresults, 2);
 
   if (list) {
-    /* One line per result: an i64 or f64 as a decimal word, an array as its elements, a tree
-       in the notation of its argument. */
-    for (size_t i = 0; i < nresults; i++) {
+    /* One line per item: an i64 or f64 as a decimal word, bytes in hexadecimal, an array as its
+       elements, a tree in the notation of its argument. */
+    for (size_t i = 0, item = 0; i < nresults; i++, item++) {
       char kind[32];
-      list_result_kind(result_kind, i, kind, sizeof kind);
-      if (strcmp(kind, "f64") == 0) {
+      list_result_kind(result_kind, item, kind, sizeof kind);
+      if (strcmp(kind, "bytes") == 0) {
+        print_bytes(runtime, (uint64_t)results[i].of.i64, (uint64_t)results[i + 1].of.i64);
+        i++;
+      } else if (strcmp(kind, "f64") == 0) {
         uint64_t bits = 0;
         memcpy(&bits, &results[i].of.f64, sizeof bits);
-        printf("%" PRIu64 "\n", bits);
+        fprintf(control_output, "%" PRIu64 "\n", bits);
       } else if (strcmp(kind, "f32") == 0) {
         uint32_t bits = 0;
         memcpy(&bits, &results[i].of.f32, sizeof bits);
-        printf("%" PRIu32 "\n", bits);
+        fprintf(control_output, "%" PRIu32 "\n", bits);
       } else if (strcmp(kind, "i64") == 0) {
-        printf("%" PRIu64 "\n", (uint64_t)results[i].of.i64);
+        fprintf(control_output, "%" PRIu64 "\n", (uint64_t)results[i].of.i64);
       } else if (strcmp(kind, "array-u64") == 0) {
         if (!runtime->has_memory) {
           die("Array UInt64 result requires exported memory");
@@ -835,14 +989,14 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
             8 + (size_t)len * 8 > memory_len - (size_t)ptr) {
           die("Array UInt64 result is outside memory");
         }
-        printf("[");
+        fprintf(control_output, "[");
         for (uint64_t j = 0; j < len; j++) {
           if (j != 0) {
-            printf(", ");
+            fprintf(control_output, ", ");
           }
-          printf("%" PRIu64, read_u64_at(runtime, ptr + 8 + j * 8));
+          fprintf(control_output, "%" PRIu64, read_u64_at(runtime, ptr + 8 + j * 8));
         }
-        printf("]\n");
+        fprintf(control_output, "]\n");
       } else if (strcmp(kind, "chain-u64") == 0) {
         if (!runtime->has_memory) {
           die("List UInt64 result requires exported memory");
@@ -871,7 +1025,7 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
     }
     uint64_t bits = 0;
     memcpy(&bits, &results[0].of.f64, sizeof bits);
-    printf("%" PRIu64 "\n", bits);
+    fprintf(control_output, "%" PRIu64 "\n", bits);
     return;
   }
 
@@ -881,25 +1035,12 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
     }
     uint32_t bits = 0;
     memcpy(&bits, &results[0].of.f32, sizeof bits);
-    printf("%" PRIu32 "\n", bits);
+    fprintf(control_output, "%" PRIu32 "\n", bits);
     return;
   }
 
   if (strcmp(result_kind, "bytes") == 0) {
-    if (!runtime->has_memory) {
-      die("ByteArray result requires exported memory");
-    }
-    uint64_t ptr = (uint64_t)results[0].of.i64;
-    uint64_t len = (uint64_t)results[1].of.i64;
-    size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
-    if (ptr > memory_len || len > memory_len - (size_t)ptr) {
-      die("ByteArray result is outside memory");
-    }
-    uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
-    for (uint64_t i = 0; i < len; i++) {
-      printf("%02x", memory[ptr + i]);
-    }
-    printf("\n");
+    print_bytes(runtime, (uint64_t)results[0].of.i64, (uint64_t)results[1].of.i64);
     return;
   }
 
@@ -917,14 +1058,14 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
     if (ptr > memory_len || byte_len > memory_len - (size_t)ptr) {
       die("Array UInt64 result is outside memory");
     }
-    printf("[");
+    fprintf(control_output, "[");
     for (uint64_t i = 0; i < len; i++) {
       if (i != 0) {
-        printf(", ");
+        fprintf(control_output, ", ");
       }
-      printf("%" PRIu64, read_u64_at(runtime, ptr + 8 + i * 8));
+      fprintf(control_output, "%" PRIu64, read_u64_at(runtime, ptr + 8 + i * 8));
     }
-    printf("]\n");
+    fprintf(control_output, "]\n");
     return;
   }
 
@@ -962,22 +1103,22 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
       die("expected i64 result");
     }
     if (i != 0) {
-      printf(" ");
+      fprintf(control_output, " ");
     }
-    printf("%" PRIu64, (uint64_t)results[i].of.i64);
+    fprintf(control_output, "%" PRIu64, (uint64_t)results[i].of.i64);
   }
-  printf("\n");
+  fprintf(control_output, "\n");
 }
 
 static uint64_t read_global_u64(Runtime *runtime, const char *name) {
   wasmtime_extern_t item;
   if (!wasmtime_instance_export_get(runtime->context, &runtime->instance, name, strlen(name), &item)) {
     fprintf(stderr, "missing export: %s\n", name);
-    exit(1);
+    finish_host(1);
   }
   if (item.kind != WASMTIME_EXTERN_GLOBAL) {
     fprintf(stderr, "export is not a global: %s\n", name);
-    exit(1);
+    finish_host(1);
   }
   wasmtime_val_t value;
   wasmtime_global_get(runtime->context, &item.of.global, &value);
@@ -988,8 +1129,8 @@ static uint64_t read_global_u64(Runtime *runtime, const char *name) {
 }
 
 static void print_stats(Runtime *runtime) {
-  printf("stats %" PRIu64 " %" PRIu64 "\n", read_global_u64(runtime, "allocCount"),
-         read_global_u64(runtime, "freeCount"));
+  fprintf(control_output, "stats %" PRIu64 " %" PRIu64 "\n", read_global_u64(runtime, "allocCount"),
+          read_global_u64(runtime, "freeCount"));
 }
 
 static void invoke_func(Runtime *runtime, wasmtime_func_t *func, wasmtime_val_t *args,
@@ -997,17 +1138,7 @@ static void invoke_func(Runtime *runtime, wasmtime_func_t *func, wasmtime_val_t 
   for (size_t i = 0; i < nresults; i++) {
     results[i].kind = WASMTIME_I64;
   }
-  wasm_trap_t *trap = NULL;
-  wasmtime_error_t *error =
-      wasmtime_func_call(runtime->context, func, args, nargs, results, nresults, &trap);
-  if (error != NULL) {
-    print_error(error);
-    exit(1);
-  }
-  if (trap != NULL) {
-    print_trap(trap);
-    exit(2);
-  }
+  call_func(runtime, func, args, nargs, results, nresults, 2);
   for (size_t i = 0; i < nresults; i++) {
     if (results[i].kind != WASMTIME_I64) {
       die("expected i64 result");
@@ -1024,7 +1155,7 @@ static void invoke_noarg(Runtime *runtime, const char *func_name, wasmtime_val_t
 static void expect_eq_u64(const char *label, uint64_t expected, uint64_t actual) {
   if (expected != actual) {
     fprintf(stderr, "%s: expected %" PRIu64 ", got %" PRIu64 "\n", label, expected, actual);
-    exit(1);
+    finish_host(1);
   }
 }
 
@@ -1041,7 +1172,7 @@ static void expect_same_multiset(const char *label, uint64_t *expected, uint64_t
   for (size_t i = 0; i < len; i++) {
     if (expected[i] != actual[i]) {
       fprintf(stderr, "%s: pointer set differs\n", label);
-      exit(1);
+      finish_host(1);
     }
   }
 }
@@ -1240,11 +1371,11 @@ static void print_memory_range(Runtime *runtime, uint64_t ptr, uint64_t len) {
     die("memory read is outside memory");
   }
   uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
-  printf("memory %" PRIu64 " %" PRIu64 " ", ptr, len);
+  fprintf(control_output, "memory %" PRIu64 " %" PRIu64 " ", ptr, len);
   for (uint64_t i = 0; i < len; i++) {
-    printf("%02x", memory[ptr + i]);
+    fprintf(control_output, "%02x", memory[ptr + i]);
   }
-  printf("\n");
+  fprintf(control_output, "\n");
 }
 
 static void command_script(Runtime *runtime, int argc, char **argv, bool session) {
@@ -1332,7 +1463,7 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
         die("save-u64 requires a pointer and a path");
       }
       uint64_t ptr = resolve_script_value(value_text, results, nresults, vars);
-      printf("saved %" PRIu64 "\n", save_u64_array(runtime, ptr, path));
+      fprintf(control_output, "saved %" PRIu64 "\n", save_u64_array(runtime, ptr, path));
     } else if (strcmp(command, "bytes") == 0) {
       char *id_text = strtok(NULL, " ");
       char *hex = strtok(NULL, " ");
@@ -1368,7 +1499,7 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
       } else {
         value = parse_u64(value_text);
       }
-      write_u64_at(runtime, ids[id] + parse_u64(offset_text), value);
+      write_u64_at(runtime, checked_add_u64(ids[id], parse_u64(offset_text)), value);
     } else if (strcmp(command, "write-bytes") == 0) {
       char *id_text = strtok(NULL, " ");
       char *offset_text = strtok(NULL, " ");
@@ -1382,7 +1513,7 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
       }
       size_t byte_len = 0;
       uint8_t *bytes = parse_hex(hex, &byte_len);
-      write_bytes_at(runtime, ids[id] + parse_u64(offset_text), bytes, byte_len);
+      write_bytes_at(runtime, checked_add_u64(ids[id], parse_u64(offset_text)), bytes, byte_len);
       free(bytes);
     } else if (strcmp(command, "arg-u64") == 0 || strcmp(command, "arg-ptr") == 0) {
       char *value_text = strtok(NULL, " ");
@@ -1438,11 +1569,11 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
       invoke_func(runtime, &func, args, nargs, results, nresults);
       nargs = 0;
       called = true;
-      printf("results");
+      fprintf(control_output, "results");
       for (size_t i = 0; i < nresults; i++) {
-        printf(" %" PRIu64, (uint64_t)results[i].of.i64);
+        fprintf(control_output, " %" PRIu64, (uint64_t)results[i].of.i64);
       }
-      printf("\n");
+      fprintf(control_output, "\n");
     } else if (strcmp(command, "read-u64") == 0) {
       char *id_text = strtok(NULL, " ");
       char *ptr_text = strtok(NULL, " ");
@@ -1460,7 +1591,7 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
       uint64_t ptr = resolve_script_value(ptr_text, results, nresults, vars);
       uint64_t offset = resolve_script_value(offset_text, results, nresults, vars);
       vars[id] = read_u64_at(runtime, checked_add_u64(ptr, offset));
-      printf("u64 %" PRIu64 " %" PRIu64 "\n", id, vars[id]);
+      fprintf(control_output, "u64 %" PRIu64 " %" PRIu64 "\n", id, vars[id]);
     } else if (strcmp(command, "read-memory") == 0) {
       char *ptr_text = strtok(NULL, " ");
       char *len_text = strtok(NULL, " ");
@@ -1479,7 +1610,8 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
       if (!runtime->has_memory) {
         die("missing memory export");
       }
-      printf("memory-size %zu\n", wasmtime_memory_data_size(runtime->context, &runtime->memory));
+      fprintf(control_output, "memory-size %zu\n",
+              wasmtime_memory_data_size(runtime->context, &runtime->memory));
     } else if (strcmp(command, "done") == 0) {
       if (!called) {
         die("done requires a prior call");
@@ -1488,7 +1620,7 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
     } else {
       die("unknown script command");
     }
-    if (session && fflush(stdout) != 0) {
+    if (session && fflush(control_output) != 0) {
       die("cannot flush session output");
     }
   }
@@ -1500,22 +1632,104 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
   }
 }
 
-static void usage(void) {
+static _Noreturn void usage(void) {
   fprintf(stderr,
-          "usage: wasmtime-host call|call-stats <module.wasm> <function> "
+          "usage: wasmtime-host [--wasi] [--stdin-file PATH] [--stdout-file PATH] "
+          "[--stderr-file PATH] [--control-file PATH] <mode> <module.wasm> [arguments]\n"
+          "       wasmtime-host [options] run <module.wasm>\n"
+          "       wasmtime-host [options] call|call-stats <module.wasm> <function> "
           "<i64|f64|f32|bytes|array-u64|chain-u64|tree-u64|records-u64|file-u64:PATH|slots:N|"
           "list:K1,K2,...> "
           "[i64:N|f64:BITS|f32:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|chain-u64:N,N|tree-u64:K,.,.|"
-          "records-u64:W,M,S,...|file-u64:PATH ...]\n");
-  exit(1);
+          "records-u64:W,M,S,...|file-u64:PATH ...]\n"
+          "       wasmtime-host [options] script|session <module.wasm> < commands\n"
+          "       wasmtime-host release-reuse|free-alias|temp-byte-call|temp-array-call|"
+          "noarg-temp-reuse|allocator-grows <module.wasm> [arguments]\n");
+  finish_host(1);
+}
+
+static int parse_options(int argc, char **argv) {
+  int i = 1;
+  while (i < argc && strncmp(argv[i], "--", 2) == 0) {
+    const char *option = argv[i++];
+    if (strcmp(option, "--") == 0) {
+      break;
+    }
+    if (strcmp(option, "--wasi") == 0) {
+      options.wasi = true;
+      continue;
+    }
+    const char **path = NULL;
+    if (strcmp(option, "--stdin-file") == 0) {
+      path = &options.stdin_file;
+    } else if (strcmp(option, "--stdout-file") == 0) {
+      path = &options.stdout_file;
+    } else if (strcmp(option, "--stderr-file") == 0) {
+      path = &options.stderr_file;
+    } else if (strcmp(option, "--control-file") == 0) {
+      path = &options.control_file;
+    } else {
+      fprintf(stderr, "unknown host option: %s\n", option);
+      usage();
+    }
+    if (i == argc) {
+      fprintf(stderr, "missing path for %s\n", option);
+      usage();
+    }
+    *path = argv[i++];
+  }
+  if (i >= argc) {
+    usage();
+  }
+  options.command = strcmp(argv[i], "run") == 0;
+  if (options.command) {
+    options.wasi = true;
+  }
+  if (!options.wasi &&
+      (options.stdin_file != NULL || options.stdout_file != NULL || options.stderr_file != NULL)) {
+    die("guest stream options require --wasi or run");
+  }
+  if (options.wasi && !options.command && options.control_file == NULL &&
+      options.stdout_file == NULL) {
+    die("WASI callable modes require --control-file or --stdout-file");
+  }
+  if (options.wasi && options.stdin_file == NULL &&
+      (strcmp(argv[i], "script") == 0 || strcmp(argv[i], "session") == 0)) {
+    die("WASI script/session requires --stdin-file for guest input");
+  }
+  options.control_records = !options.command || options.control_file != NULL;
+  if (options.control_file != NULL) {
+    control_output = fopen(options.control_file, "wb");
+    if (control_output == NULL) {
+      perror(options.control_file);
+      finish_host(1);
+    }
+    owns_control_output = true;
+  }
+  return i;
 }
 
 int main(int argc, char **argv) {
+  control_output = stdout;
+  int first = parse_options(argc, argv);
+  argc -= first - 1;
+  argv += first - 1;
   if (argc < 3) {
     usage();
   }
-  Runtime runtime;
-  if (strcmp(argv[1], "call") == 0) {
+  Runtime runtime = {0};
+  active_runtime = &runtime;
+  if (options.command) {
+    if (argc != 3) {
+      usage();
+    }
+    init_runtime(&runtime, argv[2]);
+    wasmtime_func_t start = get_func(&runtime, "_start");
+    call_func(&runtime, &start, NULL, 0, NULL, 0, 2);
+    if (options.control_records) {
+      fprintf(control_output, "return\n");
+    }
+  } else if (strcmp(argv[1], "call") == 0) {
     if (argc < 5) {
       usage();
     }
@@ -1552,7 +1766,5 @@ int main(int argc, char **argv) {
   } else {
     usage();
   }
-  wasmtime_store_delete(runtime.store);
-  wasm_engine_delete(runtime.engine);
-  return 0;
+  finish_host(0);
 }

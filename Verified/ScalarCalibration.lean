@@ -26,7 +26,7 @@ def scalarReferenceStore : Store Unit := (compile Prog.nil).initialStore
 def scalarReferenceHeap : Heap := initialHeap []
 
 theorem scalarReference_at : scalarReferenceHeap.At scalarReferenceStore :=
-  (compileWith_initialStore Prog.nil [] [] (by decide)).1
+  (compileWith_initialStore Prog.nil [] [] (by decide) rfl).1
 
 theorem scalarReference_cap (m : Module) : scalarReferenceStore.memoryCap m 0 ≤ 65535 := by
   change 65535 ≤ 65535

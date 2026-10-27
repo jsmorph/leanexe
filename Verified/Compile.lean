@@ -1,9 +1,13 @@
 import Verified.Source
+import Verified.Literals
 import Verified.ListFoldDefs
 import Verified.LocalFrame
 import Verified.TreeCopyCode
 import Verified.TreeHeaderCode
 import Verified.TreeFieldsCode
+import Verified.Bytes.Code
+import Verified.Bytes.BuildCode
+import Verified.Bytes.LiteralCode
 import LeanExe.Runtime.Defs
 
 /-! The verified compiler: a Lean function from source functions to a WebAssembly module.  The
@@ -30,6 +34,7 @@ def Elem.types : Elem → List ValueType
 def Ty.types : Ty → List ValueType
   | .elem e => e.types
   | .array _ | .tree _ | .treeHeader _ _ => [.i64]
+  | .bytes => [.i64, .i64]
   | .pair a b => a.types ++ b.types
 
 /-- The instructions that turn a word of type `ty` on top of the stack into the i64 that holds it
@@ -267,21 +272,22 @@ def copyCode (h : Nat) : Ty → Nat → Nat → Program
   | .elem e, src, _ => loadCode h src e.types
   | .pair a b, src, base => copyCode h a src base ++ copyCode h b (src + a.width) base
   | .array _, src, base => copyArrayCode src base
+  | .bytes, src, base => Bytes.copyOwnedCode src (src + 1) base
   | .tree shape, src, base => treeCopyCode shape src base
   | .treeHeader shape r, _, base => treeHeaderCopyCode shape r base
 
-/-- The instructions that release the arrays of the owned value of type `t` whose words locals
+/-- The instructions that release the allocations of the owned value of type `t` whose words locals
 `src` on hold. -/
 def releaseCode : Ty → Nat → Program
   | .elem _, _ => []
   | .pair a b, src => releaseCode a src ++ releaseCode b (src + a.width)
-  | .array _, src | .tree _, src | .treeHeader _ _, src => [.localGet src, .call 1]
+  | .array _, src | .tree _, src | .treeHeader _ _, src | .bytes, src => [.localGet src, .call 1]
 
-/-- The locals that a copy of a value of type `t` uses: three for each array's copy, and none
-for a value without arrays. -/
+/-- The scratch positions needed to copy a value of type `t`. -/
 def Ty.copyScratch : Ty → Nat
   | .elem _ => 0
   | .array _ => 3
+  | .bytes => 2
   | .tree _ => treeCopyScratch
   | .treeHeader _ _ => 1
   | .pair a b => max a.copyScratch b.copyScratch
@@ -420,6 +426,9 @@ words on the stack, so they share their locals. -/
 def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .word _ | _, _, .bool _ | _, _, .size _ | _, _, .float _ | _, _, .float32 _
   | _, _, .leSize _ _ => 0
+  | _, _, .bytesEmpty | _, _, .bytesSize _ => 0
+  | _, _, .bytesLiteral bytes => if bytes = [] then 0 else 4
+  | _, _, .bytesGet _ index => max index.width 1
   | _, _, .var (t := t) _ => t.copyScratch
   | _, _, .bin op left right => max op.scratch (max left.width right.width)
   | _, _, .cmp _ left right | _, _, .and left right | _, _, .or left right
@@ -449,6 +458,7 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
         max treeCopyScratch (e.width + max body.width treeCopyScratch))
   | _, _, .get _ i => max i.width 2
   | _, _, .build (e := e) count elem => max count.width (3 + max elem.width (e.width + 1))
+  | _, _, .bytesBuild count elem => max count.width (3 + elem.width)
   | _, _, .set (e := e) _ i v =>
     max i.width (max (1 + v.width) (1 + e.width + copyWidth (.array e)))
   | _, _, .push (e := e) _ v => max v.width (e.width + 7)
@@ -645,20 +655,43 @@ the size, it moves the words after the element down by the element's word count 
 `copyIntoCode`, whose source and destination lie in the same block, and writes the shorter length.
 `mk` pushes its components' words in order, and `proj` loads the words of the
 component from the tuple variable's positions. -/
-def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
+def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
+    (pool : Bytes.LiteralPool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
+  | _, _, .bytesEmpty => [.constI64 0, .constI64 0]
+  | _, _, .bytesLiteral bytes =>
+    if bytes = [] then [.constI64 0, .constI64 0] else
+      match Bytes.literalOffset pool.values bytes with
+      | some offset => Bytes.literalCode (UInt64.ofNat (pool.base + offset)) bytes base
+      | none => [.unreachable]
+  | _, _, .bytesSize x =>
+    [.localGet ((slots.getD x.index default).loc + 1)] ++
+      (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
+        releaseCode .bytes (slots.getD x.index default).loc else [])
+  | _, _, .bytesGet x index =>
+    index.code (pool := pool) h slots base (fun i => live i || i == x.index) ++ [.localSet base] ++
+      Bytes.getCode (slots.getD x.index default).loc
+        ((slots.getD x.index default).loc + 1) base ++
+      (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
+        releaseCode .bytes (slots.getD x.index default).loc else [])
+  | Γ, _, .bytesBuild count elem =>
+    let all := fun i => live i || elem.usesFast (i + 1)
+    count.code (pool := pool) h slots base all ++ [.localSet base] ++
+      Bytes.buildCode base (base + 1) (base + 2)
+        (elem.code (pool := pool) h (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (shift 1 all)) ++
+      releaseWhere Γ slots (fun i => elem.usesFast (i + 1) && !live i)
   | _, _, .treeNil _ _ => [.constI64 0]
   | _, _, .treeNode (shape := shape) r reuse words children =>
     let modes := slots.map Slot.mode
     let scratch := base + shape.bindCount r
     let kept := fun k => live k || optionVarUses reuse k
     argsCode (fun i =>
-      (words i).code h slots scratch (fun k => kept k ||
+      (words i).code (pool := pool) h slots scratch (fun k => kept k ||
         (argsAny fun j => decide (i.val < j.val) && (words j).usesFast k) ||
         (argsAny fun j => (children j).usesFast k)) ++ [.localSet (base + 1 + i.val)]) ++
     argsCode (fun i =>
-      (children i).code h slots scratch (fun k => kept k ||
+      (children i).code (pool := pool) h slots scratch (fun k => kept k ||
         (argsAny fun j => decide (i.val < j.val) && (children j).usesFast k)) ++
       coerceCode h (.tree shape) ((children i).mode modes) .owned scratch ++
       [.localSet (base + 1 + shape.words r + i.val)]) ++
@@ -695,14 +728,14 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
           LeanExe.Runtime.headerStore fieldBase 8 [.constI64 0] else []) ++
         releaseWhere (shape.context r Γ) (shape.slots r fieldBase rootMode slots)
           (fun i => decide (i < shape.bindCount r) && !(nodes r).usesFast i) ++
-        (nodes r).code h (shape.slots r fieldBase rootMode slots) scratch
+        (nodes r).code (pool := pool) h (shape.slots r fieldBase rootMode slots) scratch
           (shift (shape.bindCount r) live) ++
         coerceCode h t ((nodes r).mode (nodeModes r)) resultMode scratch ++ storeCode h base t.types
     let recordsCode := shape.dispatchCode (slots.getD x.index default).loc nodeCode
     (if hn : shape.hasNull = true then
       [.localGet (slots.getD x.index default).loc, .eqzI64, .iff 0 0
         (releaseWhere Γ slots (fun i => mid i && !(live i || emptyUses i)) ++
-          (empty hn).code h slots fieldBase live ++
+          (empty hn).code (pool := pool) h slots fieldBase live ++
           coerceCode h t ((empty hn).mode modes) resultMode fieldBase ++ storeCode h base t.types)
         recordsCode [] []]
     else recordsCode) ++ loadCode h base t.types
@@ -712,63 +745,63 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
   | _, _, .float bits =>
     [.f64Const (if Wasm.IEEE64.isNaN bits then Wasm.IEEE64.canonicalNaN else bits)]
   | _, _, .fbin op left right =>
-    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
+    left.code (pool := pool) h slots base (fun i => live i || right.usesFast i) ++ right.code (pool := pool) h slots base live ++
       [op.instr]
-  | _, _, .funary op e => op.code (e.code h slots base live)
+  | _, _, .funary op e => op.code (e.code (pool := pool) h slots base live)
   | _, _, .fcmp op left right =>
-    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
+    left.code (pool := pool) h slots base (fun i => live i || right.usesFast i) ++ right.code (pool := pool) h slots base live ++
       [op.instr, .extendUI32]
-  | _, _, .toFloat op e => e.code h slots base live ++ op.code
-  | _, _, .toWord op e => e.code h slots base live ++ [op.instr]
+  | _, _, .toFloat op e => e.code (pool := pool) h slots base live ++ op.code
+  | _, _, .toWord op e => e.code (pool := pool) h slots base live ++ [op.instr]
   | _, _, .fbin32 op left right =>
-    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
+    left.code (pool := pool) h slots base (fun i => live i || right.usesFast i) ++ right.code (pool := pool) h slots base live ++
       [op.instr32]
-  | _, _, .funary32 op e => op.code (e.code h slots base live)
+  | _, _, .funary32 op e => op.code (e.code (pool := pool) h slots base live)
   | _, _, .fcmp32 op left right =>
-    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
+    left.code (pool := pool) h slots base (fun i => live i || right.usesFast i) ++ right.code (pool := pool) h slots base live ++
       [op.instr32, .extendUI32]
-  | _, _, .toFloat32 op e => e.code h slots base live ++ op.code
-  | _, _, .toWord32 op e => e.code h slots base live ++ op.code
+  | _, _, .toFloat32 op e => e.code (pool := pool) h slots base live ++ op.code
+  | _, _, .toWord32 op e => e.code (pool := pool) h slots base live ++ op.code
   | _, _, .var x => x.code h slots base live
   | _, _, .bin op left right =>
-    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
+    left.code (pool := pool) h slots base (fun i => live i || right.usesFast i) ++ right.code (pool := pool) h slots base live ++
       op.code base
   | _, _, .cmp op left right =>
-    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
+    left.code (pool := pool) h slots base (fun i => live i || right.usesFast i) ++ right.code (pool := pool) h slots base live ++
       [op.instr, .extendUI32]
-  | _, _, .not e => e.code h slots base live ++ [.eqzI64, .extendUI32]
+  | _, _, .not e => e.code (pool := pool) h slots base live ++ [.eqzI64, .extendUI32]
   | _, _, .and left right =>
-    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
+    left.code (pool := pool) h slots base (fun i => live i || right.usesFast i) ++ right.code (pool := pool) h slots base live ++
       [.andI64]
   | _, _, .or left right =>
-    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
+    left.code (pool := pool) h slots base (fun i => live i || right.usesFast i) ++ right.code (pool := pool) h slots base live ++
       [.orI64]
   | Γ, _, .ite (t := t) c thenE elseE =>
     let modes := slots.map Slot.mode
     let mode := (thenE.mode modes).join (elseE.mode modes)
     let mid := fun i => live i || thenE.usesFast i || elseE.usesFast i
-    c.code h slots base mid ++
+    c.code (pool := pool) h slots base mid ++
       [.eqzI64, .iff 0 0
         (releaseWhere Γ slots (fun i => mid i && !(live i || elseE.usesFast i)) ++
-          elseE.code h slots (base + t.width) live ++
+          elseE.code (pool := pool) h slots (base + t.width) live ++
           coerceCode h t (elseE.mode modes) mode (base + t.width) ++ storeCode h base t.types)
         (releaseWhere Γ slots (fun i => mid i && !(live i || thenE.usesFast i)) ++
-          thenE.code h slots (base + t.width) live ++
+          thenE.code (pool := pool) h slots (base + t.width) live ++
           coerceCode h t (thenE.mode modes) mode (base + t.width) ++ storeCode h base t.types)
         [] []] ++
       loadCode h base t.types
   | _, _, .letE (s := s) value body =>
     let mode := value.mode (slots.map Slot.mode)
-    value.code h slots (base + s.width) (fun i => live i || body.usesFast (i + 1)) ++
+    value.code (pool := pool) h slots (base + s.width) (fun i => live i || body.usesFast (i + 1)) ++
       storeCode h base s.types ++
       (if mode = .owned ∧ body.usesFast 0 = false then releaseCode s base else []) ++
-      body.code h (⟨base, mode⟩ :: slots) (base + s.width) (shift 1 live)
+      body.code (pool := pool) h (⟨base, mode⟩ :: slots) (base + s.width) (shift 1 live)
   | Γ, _, .call (g := g) f args =>
     let all := fun i => live i || argsAny fun j => (args j).usesFast i
     let kept := fun i => all i && !(argsAny fun j => callMoves slots live args j && (args j).usesFast i)
     (if g.depth then [.localGet 0, .constI64 1, .addI64] else []) ++
     argsCode (fun i =>
-      if (g.params.get i).scalar then (args i).code h slots base all
+      if (g.params.get i).scalar then (args i).code (pool := pool) h slots base all
       else if g.mode i = .owned then (args i).ownedCode h slots base kept
       else (args i).placeCode h slots) ++
       [.call f.callIndex] ++
@@ -776,27 +809,27 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
   | _, _, .pair (s := s) (t := t) first second =>
     let modes := slots.map Slot.mode
     let mode := (first.mode modes).join (second.mode modes)
-    first.code h slots base (fun i => live i || second.usesFast i) ++
+    first.code (pool := pool) h slots base (fun i => live i || second.usesFast i) ++
       coerceCode h s (first.mode modes) mode base ++
-      second.code h slots base live ++ coerceCode h t (second.mode modes) mode base
+      second.code (pool := pool) h slots base live ++ coerceCode h t (second.mode modes) mode base
   | _, _, .letPair (s := s) (t := t) e body =>
     let mode := e.mode (slots.map Slot.mode)
-    e.code h slots (base + s.width + t.width) (fun i => live i || body.usesFast (i + 2)) ++
+    e.code (pool := pool) h slots (base + s.width + t.width) (fun i => live i || body.usesFast (i + 2)) ++
       storeCode h (base + s.width) t.types ++ storeCode h base s.types ++
       (if mode = .owned ∧ body.usesFast 1 = false then releaseCode s base else []) ++
       (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t (base + s.width) else []) ++
-      body.code h (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots) (base + s.width + t.width)
+      body.code (pool := pool) h (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots) (base + s.width + t.width)
         (shift 2 live)
   | _, _, .loop count init cond body =>
     loopCode h slots base live init cond body
-      (fun slots base live => count.code h slots base live)
-      (fun slots base live => init.code h slots base live)
-      (fun slots base live => cond.code h slots base live)
-      (fun slots base live => body.code h slots base live)
+      (fun slots base live => count.code (pool := pool) h slots base live)
+      (fun slots base live => init.code (pool := pool) h slots base live)
+      (fun slots base live => cond.code (pool := pool) h slots base live)
+      (fun slots base live => body.code (pool := pool) h slots base live)
   | Γ, _, .fold (e := e) (t := t) x init body =>
     loopCode h slots base live init (.bool true) (Expr.foldStep x body)
       (fun slots _ live => x.sizeCode slots live)
-      (fun slots base live => init.code h slots base live)
+      (fun slots base live => init.code (pool := pool) h slots base live)
       (fun _ _ _ => [.constI64 1])
       (fun slots base live =>
         getCode (Γ := t :: .word :: Γ) slots (base + e.width)
@@ -805,24 +838,24 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
             (fun live => Var.code (Γ := t :: .word :: Γ) (t := .word)
               h slots (base + e.width) live (.there .here)) ++
           storeCode h base e.types ++
-          body.code h (⟨base, .borrowed⟩ :: slots) (base + e.width) (shift 1 live))
+          body.code (pool := pool) h (⟨base, .borrowed⟩ :: slots) (base + e.width) (shift 1 live))
   | Γ, _, .listFold (e := e) (captures := captures) args body =>
     let all := fun i => live i || argsAny fun j => (args j).usesFast i
     argsCode (fun i =>
-      if ((ListFold.params e captures).get i).scalar then (args i).code h slots base all
+      if ((ListFold.params e captures).get i).scalar then (args i).code (pool := pool) h slots base all
       else (args i).placeCode h slots) ++
       storeParamsCode h base (ListFold.params e captures) ++
-      ListFold.loopCode body h base (fun slots base live => body.code h slots base live) ++
+      ListFold.loopCode body h base (fun slots base live => body.code (pool := pool) h slots base live) ++
       releaseWhere Γ slots (fun i => all i && !live i) ++
       loadCode h (base + widthSum (ListFold.params e captures)) e.types
   | _, _, .size x => x.sizeCode slots live
   | _, _, .leSize x i =>
     i.code h slots base (fun j => live j || j == x.index) ++
       x.sizeCode slots live ++ [.leUI64, .extendUI32]
-  | _, _, .get x i => getCode slots base live x (fun live => i.code h slots base live)
+  | _, _, .get x i => getCode slots base live x (fun live => i.code (pool := pool) h slots base live)
   | _, _, .set (e := e) x i v =>
-    i.code h slots base (fun j => live j || j == x.index || v.usesFast j) ++ [.localSet base] ++
-      v.code h slots (base + 1) (fun j => live j || j == x.index) ++
+    i.code (pool := pool) h slots base (fun j => live j || j == x.index || v.usesFast j) ++ [.localSet base] ++
+      v.code (pool := pool) h slots (base + 1) (fun j => live j || j == x.index) ++
       storeCode h (base + 1) e.types ++ x.ownedCode h slots (base + 1 + e.width) live ++
       [.localSet (base + 1 + e.width), .localGet base, .localGet (base + 1 + e.width), .wrapI64,
         .load64 0] ++ divCode e.width ++
@@ -831,7 +864,7 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
           storeWordsCode h (base + 1 + e.width) (base + 2 + e.width) 0 (base + 1) e.types) [] [] [],
         .localGet (base + 1 + e.width)]
   | _, _, .push (e := e) x v =>
-    v.code h slots base (fun j => live j || j == x.index) ++ storeCode h base e.types ++
+    v.code (pool := pool) h slots base (fun j => live j || j == x.index) ++ storeCode h base e.types ++
       [.constI64 (wordCount e.width), .localSet (base + e.width)] ++
       x.roomCode slots (base + e.width + 1) live (base + e.width) ++
       storeWordsCode h (base + e.width + 5) (base + e.width + 2) 0 base e.types ++
@@ -844,8 +877,8 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
       copyIntoCode (slots.getD y.index default).loc (base + 4) base (base + 6) ++
       releaseWhere Γ slots (fun k => k == y.index && !live k) ++ [.localGet (base + 5)]
   | _, _, .insertAt (e := e) x i v =>
-    i.code h slots base (fun j => live j || j == x.index || v.usesFast j) ++ [.localSet base] ++
-      v.code h slots (base + 1) (fun j => live j || j == x.index) ++
+    i.code (pool := pool) h slots base (fun j => live j || j == x.index || v.usesFast j) ++ [.localSet base] ++
+      v.code (pool := pool) h slots (base + 1) (fun j => live j || j == x.index) ++
       storeCode h (base + 1) e.types ++
       [.constI64 (wordCount e.width), .localSet (base + e.width + 1)] ++
       x.roomCode slots (base + e.width + 2) live (base + e.width + 1) ++
@@ -859,7 +892,7 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
         [] [],
         .localGet (base + e.width + 6)]
   | _, _, .eraseAt (e := e) x i =>
-    i.code h slots base (fun j => live j || j == x.index) ++ [.localSet base] ++
+    i.code (pool := pool) h slots base (fun j => live j || j == x.index) ++ [.localSet base] ++
       x.ownedCode h slots (base + 1) live ++
       [.localSet (base + 1), .localGet (base + 1), .wrapI64, .load64 0, .localSet (base + 2),
         .localGet base, .localGet (base + 2)] ++ divCode e.width ++
@@ -876,14 +909,14 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
         .localGet (base + 1)]
   | Γ, _, .build (e := e) count elem =>
     let all := fun i => live i || elem.usesFast (i + 1)
-    count.code h slots base all ++
+    count.code (pool := pool) h slots base all ++
       [.localSet base, .localGet base,
         .constI64 (UInt64.ofNat ((536870912 + e.width - 1) / e.width)), .geUI64,
         .iff 0 0 [.unreachable] [] [] [], .localGet base] ++ scaleCode e.width ++
       [.localSet (base + 2)] ++ allocArrayCode (base + 2) (base + 1) ++
       [.constI64 0, .localSet (base + 2),
         .block 0 0 [.loop 0 0 ([.localGet (base + 2), .localGet base, .geUI64, .br_if 1] ++
-          elem.code h (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (shift 1 all) ++
+          elem.code (pool := pool) h (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (shift 1 all) ++
           storeCode h (base + 3) e.types ++ [.localGet (base + 2)] ++ scaleCode e.width ++
           [.localSet (base + 3 + e.width)] ++
           storeWordsCode h (base + 1) (base + 3 + e.width) 0 (base + 3) e.types ++
@@ -891,7 +924,7 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
           [] []] [] []] ++
       releaseWhere Γ slots (fun i => elem.usesFast (i + 1) && !live i) ++ [.localGet (base + 1)]
   | _, _, .mk first second =>
-    first.code h slots base (fun i => live i || second.usesFast i) ++ second.code h slots base live
+    first.code (pool := pool) h slots base (fun i => live i || second.usesFast i) ++ second.code (pool := pool) h slots base live
   | _, _, .proj (e' := e') x p =>
     loadCode h ((slots.getD x.index default).loc + p.offset) e'.types
 
@@ -936,7 +969,8 @@ f64 and f32 locals for every position follow the parameters.  The code tests the
 floating parameters to their typed locals, releases the owned parameters that the body does not use, and runs
 the body, which leaves the words of the result on the stack. -/
 def bodyFunction {S : List Sig} {params : List Ty} {result : Ty} (modes : List Mode)
-    (body : Expr S params result) (depth : Bool) (typeIdx : Nat) : Wasm.Function :=
+    (body : Expr S params result) (depth : Bool) (typeIdx : Nat)
+    (pool : Bytes.LiteralPool) : Wasm.Function :=
   let p0 := if depth then 1 else 0
   let slots := paramSlots params modes p0
   let h := positions body depth
@@ -946,17 +980,19 @@ def bodyFunction {S : List Sig} {params : List Ty} {result : Ty} (modes : List M
     body := (if depth then guardCode else []) ++
       paramCopyCode h p0 (params.flatMap Ty.types) ++
       releaseWhere params slots (fun i => !body.usesFast i) ++
-      body.code h slots (p0 + widthSum params) (fun _ => false) ++
+      body.code (pool := pool) h slots (p0 + widthSum params) (fun _ => false) ++
       coerceCode h result (body.mode (slots.map Slot.mode)) .owned
         (p0 + widthSum params + body.width)
     results := result.types
     typeIdx := some typeIdx }
 
-def Func.function (func : Func S) (typeIdx : Nat) : Wasm.Function :=
-  bodyFunction func.modes func.body func.depth typeIdx
+def Func.function (func : Func S) (typeIdx : Nat)
+    (pool : Bytes.LiteralPool) : Wasm.Function :=
+  bodyFunction func.modes func.body func.depth typeIdx pool
 
-def RecFunc.function (func : RecFunc S) (typeIdx : Nat) : Wasm.Function :=
-  bodyFunction func.modes func.body true typeIdx
+def RecFunc.function (func : RecFunc S) (typeIdx : Nat)
+    (pool : Bytes.LiteralPool) : Wasm.Function :=
+  bodyFunction func.modes func.body true typeIdx pool
 
 /-- The entry of a function whose code takes the call depth, exported under its name: it calls
 the function at `idx` with depth 0 and its own arguments. -/
@@ -1051,15 +1087,17 @@ def TailBody.width (targetModes : List Mode) :
 
 def TailBody.code (targetModes : List Mode) (h p0 resultBase : Nat)
     {Γ : List Ty} (body : TailBody S params result Γ) (slots : List Slot)
-    (base exitLabel nextLabel : Nat) : Program :=
-  body.codeWith (fun value slots base live => value.code h slots base live)
+    (base exitLabel nextLabel : Nat)
+    (pool : Bytes.LiteralPool) : Program :=
+  body.codeWith (fun value slots base live => value.code (pool := pool) h slots base live)
     targetModes h p0 resultBase slots base exitLabel nextLabel
 
 def TailFunc.positions (func : TailFunc S) : Nat :=
   (if func.depth then 1 else 0) + 2 * widthSum func.params + func.result.width +
     func.body.width func.modes
 
-def TailFunc.function (func : TailFunc S) (typeIdx : Nat) : Wasm.Function :=
+def TailFunc.function (func : TailFunc S) (typeIdx : Nat)
+    (pool : Bytes.LiteralPool) : Wasm.Function :=
   let p0 := if func.depth then 1 else 0
   let stateBase := p0 + widthSum func.params
   let slots := paramSlots func.params func.modes stateBase
@@ -1075,17 +1113,18 @@ def TailFunc.function (func : TailFunc S) (typeIdx : Nat) : Wasm.Function :=
       [.block 0 0 [.loop 0 0
         (releaseWhere func.params slots (fun i => !func.body.usesFast i) ++
           func.body.code func.modes h stateBase resultBase slots
-            (resultBase + func.result.width) 1 0)
+            (resultBase + func.result.width) 1 0 pool)
         [] []] [] []] ++ loadCode h resultBase func.result.types
     results := func.result.types
     typeIdx := some typeIdx }
 
 /-- A program's functions in module order, the last of the list first, from position 2. -/
-def Prog.functions : {S : List Sig} → Prog S → List Wasm.Function
+def Prog.functions (pool : Bytes.LiteralPool) :
+    {S : List Sig} → Prog S → List Wasm.Function
   | _, .nil => []
-  | _, .cons (S := S) f rest => rest.functions ++ [f.function (2 + S.length)]
-  | _, .consRec (S := S) f rest => rest.functions ++ [f.function (2 + S.length)]
-  | _, .consTail (S := S) f rest => rest.functions ++ [f.function (2 + S.length)]
+  | _, .cons (S := S) f rest => rest.functions (pool := pool) ++ [f.function (2 + S.length) pool]
+  | _, .consRec (S := S) f rest => rest.functions (pool := pool) ++ [f.function (2 + S.length) pool]
+  | _, .consTail (S := S) f rest => rest.functions (pool := pool) ++ [f.function (2 + S.length) pool]
 
 def Prog.types : {S : List Sig} → Prog S → List FuncType
   | _, .nil => []
@@ -1127,28 +1166,32 @@ program's functions follow them, then the entries of the functions that take the
 then the wrappers, each with the type of its own index.  Data segments write the tables from the
 heap base on, and the allocator's bump pointer starts after them. -/
 def compileWith (prog : Prog S) (tables : List (Array UInt64))
-    (wrappers : List (Wrapper S tables.length)) : Module :=
+    (wrappers : List (Wrapper S tables.length))
+    (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) : Module :=
   let n := 2 + S.length + prog.depthFuns.length
   let types := [wordToWord, wordToNone] ++ prog.types ++ prog.entryTypes ++
     wrappers.map Wrapper.type
   { funcs := [LeanExe.Runtime.allocFunction 0, LeanExe.Runtime.releaseFunction 1] ++
-      prog.functions ++ prog.entries S.length ++
+      prog.functions (pool := pool) ++ prog.entries S.length ++
       wrappers.mapIdx fun j w => wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
         w.params w.result w.depth w.callee.callIndex (n + j)
     exports := [{ name := "alloc", funcIdx := 0 }, { name := "release", funcIdx := 1 }] ++
       prog.exports S.length ++ wrappers.mapIdx fun j w => { name := w.name, funcIdx := n + j }
-    memory := some { pagesMin := UInt32.ofNat (max 16 ((tablesEnd tables + 65535) / 65536))
-                     pagesMax := some 65535, data := tableSegments tables }
-    globals := runtimeGlobals (UInt64.ofNat (tablesEnd tables))
+    memory := some { pagesMin := UInt32.ofNat (max 16 ((pool.top + 65535) / 65536))
+                     pagesMax := some 65535, data := tableSegments tables ++ pool.segments }
+    globals := runtimeGlobals (UInt64.ofNat pool.top)
     types
     gcTypes := types.map fun type => { comp := .func type }
     globalExports := [("allocCount", 2), ("freeCount", 3)]
     memoryExports := [("memory", 0)] }
 
 /-- The module of a program without tables. -/
-def compile (prog : Prog S) : Module := compileWith prog [] []
+def compile (prog : Prog S)
+    (pool : Bytes.LiteralPool := prog.literalPool 4096) : Module := compileWith prog [] [] pool
 
-theorem Prog.functions_length (prog : Prog S) : prog.functions.length = S.length := by
+theorem Prog.functions_length (prog : Prog S)
+    (pool : Bytes.LiteralPool) :
+    (prog.functions (pool := pool)).length = S.length := by
   induction prog with
   | nil => rfl
   | cons f rest ih => simp [Prog.functions, ih]
@@ -1156,51 +1199,56 @@ theorem Prog.functions_length (prog : Prog S) : prog.functions.length = S.length
   | consTail f rest ih => simp [Prog.functions, ih]
 
 theorem compileWith_funcs (prog : Prog S) (tables : List (Array UInt64))
-    (wrappers : List (Wrapper S tables.length)) {k : Nat} (hk : k < S.length) :
-    (compileWith prog tables wrappers).funcs[2 + k]? = prog.functions[k]? := by
+    (wrappers : List (Wrapper S tables.length)) {k : Nat} (hk : k < S.length)
+    (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) :
+    (compileWith prog tables wrappers pool).funcs[2 + k]? = (prog.functions (pool := pool))[k]? := by
   conv_lhs => rw [show 2 + k = k + 1 + 1 by omega]
   simp only [compileWith, List.cons_append, List.nil_append, List.getElem?_cons_succ,
     List.append_assoc]
-  rw [List.getElem?_append_left (by rw [prog.functions_length]; exact hk)]
+  rw [List.getElem?_append_left (by rw [prog.functions_length pool]; exact hk)]
 
-theorem compile_funcs (prog : Prog S) {k : Nat} (hk : k < S.length) :
-    (compile prog).funcs[2 + k]? = prog.functions[k]? :=
-  compileWith_funcs prog [] [] hk
+theorem compile_funcs (prog : Prog S) {k : Nat} (hk : k < S.length)
+    (pool : Bytes.LiteralPool := prog.literalPool 4096) :
+    (compile prog pool).funcs[2 + k]? = (prog.functions (pool := pool))[k]? :=
+  compileWith_funcs prog [] [] hk pool
 
 /-- The entry of the `j`-th function whose code takes the call depth follows the program's
 functions. -/
 theorem compileWith_entries (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j idx : Nat} {params : List Ty} {result : Ty}
-    (hj : prog.depthFuns[j]? = some (idx, params, result)) :
-    (compileWith prog tables wrappers).funcs[2 + S.length + j]? =
+    (hj : prog.depthFuns[j]? = some (idx, params, result))
+    (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) :
+    (compileWith prog tables wrappers pool).funcs[2 + S.length + j]? =
       some (entryFunction params result idx (2 + S.length + j)) := by
   have hlt : j < prog.depthFuns.length := (List.getElem?_eq_some_iff.mp hj).1
   simp only [compileWith, List.cons_append, List.nil_append, List.append_assoc]
   rw [show 2 + S.length + j = (S.length + j) + 1 + 1 by omega, List.getElem?_cons_succ,
-    List.getElem?_cons_succ, List.getElem?_append_right (by rw [prog.functions_length]; omega),
-    prog.functions_length, Nat.add_sub_cancel_left,
+    List.getElem?_cons_succ, List.getElem?_append_right (by rw [prog.functions_length pool]; omega),
+    prog.functions_length pool, Nat.add_sub_cancel_left,
     List.getElem?_append_left (by simp [Prog.entries, hlt]), Prog.entries,
     List.getElem?_mapIdx, hj, show S.length + j + 1 + 1 = 2 + S.length + j by omega]
   rfl
 
 theorem compile_entries (prog : Prog S) {j idx : Nat} {params : List Ty} {result : Ty}
-    (hj : prog.depthFuns[j]? = some (idx, params, result)) :
-    (compile prog).funcs[2 + S.length + j]? =
+    (hj : prog.depthFuns[j]? = some (idx, params, result))
+    (pool : Bytes.LiteralPool := prog.literalPool 4096) :
+    (compile prog pool).funcs[2 + S.length + j]? =
       some (entryFunction params result idx (2 + S.length + j)) :=
-  compileWith_entries prog [] [] hj
+  compileWith_entries prog [] [] hj pool
 
 /-- The `j`-th wrapper follows the entries. -/
 theorem compileWith_wrappers (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
-    (hj : wrappers[j]? = some w) :
-    (compileWith prog tables wrappers).funcs[2 + S.length + prog.depthFuns.length + j]? =
+    (hj : wrappers[j]? = some w)
+    (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) :
+    (compileWith prog tables wrappers pool).funcs[2 + S.length + prog.depthFuns.length + j]? =
       some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val) w.params w.result
         w.depth w.callee.callIndex (2 + S.length + prog.depthFuns.length + j)) := by
   simp only [compileWith, List.cons_append, List.nil_append, List.append_assoc]
   rw [show 2 + S.length + prog.depthFuns.length + j =
       (S.length + prog.depthFuns.length + j) + 1 + 1 by omega, List.getElem?_cons_succ,
-    List.getElem?_cons_succ, List.getElem?_append_right (by rw [prog.functions_length]; omega),
-    prog.functions_length,
+    List.getElem?_cons_succ, List.getElem?_append_right (by rw [prog.functions_length pool]; omega),
+    prog.functions_length pool,
     List.getElem?_append_right (by simp [Prog.entries]; omega),
     show S.length + prog.depthFuns.length + j - S.length - (prog.entries S.length).length = j by
       simp [Prog.entries]; omega,

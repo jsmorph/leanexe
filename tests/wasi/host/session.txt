@@ -1,0 +1,9 @@
+call zero 4
+call echo 5
+call stderr 2
+call echo 5
+call echo 5
+call badFd 2
+call echo 5
+stats
+done

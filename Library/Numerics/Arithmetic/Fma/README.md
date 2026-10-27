@@ -1,6 +1,8 @@
 # The software fused multiply-add
 
-[The implementation](Program.lean) exports `fma a b c`, the fused multiply-add of IEEE 754-2019 [1]: the exact `a · b + c` rounded once to the nearest double, ties to even, computed from the operands' bit patterns with 64-bit word arithmetic.  WebAssembly has no scalar fused multiply-add instruction, its relaxed SIMD multiply-add returns the unfused result in the deterministic profile [2], and CORE-MATH's correctly rounded `tgamma`, `lgamma`, and `erfc` call one [4, 5, 6, 7], so the repository's ports of `tgamma`, `lgamma`, and `erfc` call this function.  The decision of 2026-10-10 calls for a software fused multiply-add "proved correct once", and the review that proposed it states the theorem as the nearest-even rounding of the exact `a · b + c`.  `FmaTheorem.fma_toBits` proves that `(fma a b c).toBits` is IEEE 754's fusedMultiplyAdd with roundTiesToEven for every triple of operands, with the canonical NaN for every NaN result, and the corollary `FmaSpecTheorem.fma_nearest` states it in the form that the proofs of `erfc`, `tgamma`, and `lgamma` use.  The Verified compiler compiles the function, and a native check compares it with an exact reference at 763,816 operand triples.
+[The implementation](Program.lean) computes IEEE 754-2019 fused multiply-add [1]: the exact `a · b + c` rounded once to binary64, ties to even, using 64-bit word arithmetic.  [`FmaTheorem.fma_toBits`](FmaTheorem.lean) proves the result for every triple of operands, including signed zeros, infinities, and canonical NaN results.  [`FmaSpecTheorem.fma_nearest`](FmaSpecTheorem.lean) supplies the form used by the accuracy proofs of `erfc`, `tgamma`, and `lgamma`.
+
+The repository's CORE-MATH ports call this function [4, 5, 6, 7] because WebAssembly has no scalar fused multiply-add instruction and relaxed SIMD multiply-add returns the unfused result in the deterministic profile [2].  The verified compiler compiles it, and a native test compares it with an exact reference at 763,816 operand triples.
 
 ## Specification
 
@@ -50,7 +52,7 @@ The sticky bit makes the shifted operand the rounding to odd of its exact value 
 | 2400, 250, 1325 | the offset of `w`, and its values for the product, `ea + eb + 250 - shift`, and for `c`, `ec + 1325 - shift` |
 | 1378, 1326 | `w + m ≥ 1378` for a normal result, and bit `1326 - w` of weight `2^-1074` |
 
-`Tgamma.lean` and `Lgamma.lean` call `Fma.fma` for each `__builtin_fma` of CORE-MATH's sources [5, 6], as [the journal section on the ports](../../../../devnotes.md#2026-10-11-a-software-fused-multiply-add-core-maths-gamma-functions-and-fdlibms-bessel-functions) records.  `tgamma.c` has 15 such calls and `Tgamma.lean` 15 calls of `Fma.fma`, and `lgamma.c` has 14, of which `Lgamma.lean` makes 12 and takes the 2 of `muldd` and `mulddd` from `Tgamma`'s helpers.  `Lgamma.lean` also writes `__builtin_clzll` as `63 - Fma.msb64`.  WebAssembly 3.0 has a relaxed multiply-add in its SIMD instructions, which may return the fused or the unfused result, and in the deterministic profile it returns the unfused one [2], so it cannot replace this function.  A call costs about 150 word operations, by the review's estimate, against one instruction on hardware with a fused multiply-add.
+The [gamma implementation](../../Float64/Tgamma/Program.lean) and [log-gamma implementation](../../Float64/Lgamma/Program.lean) call `Fma.fma` for each `__builtin_fma` of CORE-MATH's sources [5, 6].  Gamma has 15 such calls.  Log-gamma has 12 direct calls and uses the two calls in the shared `mulDD` and `mulDDD` helpers for the remaining two.  Log-gamma also implements `__builtin_clzll` as `63 - Fma.msb64`.
 
 ## Theorems
 

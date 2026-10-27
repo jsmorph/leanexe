@@ -1,0 +1,4 @@
+arg-u64 126
+call exit 0
+call after 2
+done

@@ -3,10 +3,14 @@ import Library.Arrays.Range.Program
 import Library.Arrays.Repeat.Program
 import Library.Arrays.Search.Program
 import Library.Arrays.Word.Program
+import Library.Hashing.Crc.Program
 import Library.Hashing.Hmac.Program
 import Library.Hashing.Sha256.Program
+import Library.Hashing.Sha3.Program
 import Library.Hashing.Sha512.Program
+import Library.Hashing.SipHash.Program
 import Library.Hashing.Words.Program
+import Library.Hashing.XxHash64.Program
 import Library.Lists.Word.Program
 import Library.Numerics.Arithmetic.CeilSqrt.Program
 import Library.Numerics.Arithmetic.Fma.Program
@@ -48,5 +52,6 @@ import Library.Random.Lcg.Program
 import Library.Random.ParkMiller.Program
 import Library.Random.SplitMix64.Program
 import Library.Random.Xorshift.Program
+import Library.Regex.Program
 import Library.Sorting.Insertion.Program
 import Library.Trees.WordTree.Program

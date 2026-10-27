@@ -1,0 +1,7 @@
+caller-base	depth	effectCaller	0	i64	empty.bin	11	1	1	depth.bin	0
+helper-boundary	depth	effectHelper	997	i64	empty.bin	1008	1	1	depth.bin	0
+caller-boundary	depth	effectCaller	996	i64	empty.bin	1007	1	1	depth.bin	0
+caller-depth-trap	depth	effectCaller	997	i64	empty.bin	trap	_	_	depth.bin	2
+retained-two	retain	retain	_	bytes	input.bin	42	2	1	first.bin	0
+retained-eof	retain	retain	_	bytes	empty.bin	_	2	2	empty.bin	0
+retained-binary	retain	retain	_	bytes	binary.bin	00	2	1	ff.bin	0

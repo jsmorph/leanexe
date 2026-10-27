@@ -5,11 +5,11 @@ namespace Verified
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 theorem tail_loop_spec {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S}
-    {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+    {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool} {host : HostEnv Unit} {pv : List Value}
     (hm : Runtime m) (func : TailFunc S) (decreases : func.Decreases funs)
     (meaning : Env func.params → func.result.denote)
     (fixed : ∀ state, meaning state = (func.body.denote funs state).elim meaning id)
-    (bodySpec : TailCodeSpec m funs flags bounds fits host pv func.modes func.body)
+    (bodySpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv func.modes func.body)
     (h stateBase resultBase base : Nat) (env : Env func.params)
     (heap : Heap) (store : Store Unit) (s : Locals) (ws : List Value)
     (hh : s.positions = h) (hpv : s.params = pv)
@@ -17,7 +17,10 @@ theorem tail_loop_spec {S : List Sig} {m : Module} {funs : Funs S} {flags : Flag
     (hSep : Separate store (Env.moves store (paramMode func.params func.modes) ws env)
       (Env.reads store (paramMode func.params func.modes) ws env))
     (hold : LocalsHold s stateBase (func.params.flatMap Ty.types) ws)
-    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hAt : heap.At store)
+    (hInput : @Bytes.LiteralPool.Input (Env func.params) (Env.represent func.params func.modes)
+      pool heap store ws env)
+    (hCap : store.memoryCap m 0 ≤ 65535)
     (hLow : s.params.length ≤ stateBase)
     (hState : stateBase + widthSum func.params ≤ resultBase)
     (hResult : resultBase + func.result.width ≤ base)
@@ -41,7 +44,7 @@ theorem tail_loop_spec {S : List Sig} {m : Module} {funs : Funs S} {flags : Flag
     wp m [.loop 0 0
       (releaseWhere func.params (paramSlots func.params func.modes stateBase)
         (fun i => !func.body.usesFast i) ++
-        func.body.code func.modes h stateBase resultBase
+        func.body.code (pool := pool) func.modes h stateBase resultBase
           (paramSlots func.params func.modes stateBase) base 1 0) [] []] Q store s host := by
   let pf := func.paidParams flags
   let sel := fun i => paidAt pf i && paramMode func.params func.modes i == .owned
@@ -70,6 +73,12 @@ theorem tail_loop_spec {S : List Sig} {m : Module} {funs : Funs S} {flags : Flag
   intro q store1 s1 hi
   rcases q with ⟨state, heap1, words1⟩
   rcases hi with ⟨before, rep1, sep1, hold1, frame1, values1, meaning1, remaining⟩
+  obtain ⟨static1, fresh1⟩ := hInput.1.step before hInput.2
+  have input1 : @Bytes.LiteralPool.Input (Env func.params)
+      (Env.represent func.params func.modes) pool heap1 store1 words1 state := by
+    refine ⟨static1, fun region hRegion pointer hPointer => ?_⟩
+    exact fresh1 region hRegion _ (List.mem_map.mpr ⟨pointer, hPointer, rfl⟩)
+  have safe1 := input1.params rep1 (fun x => hold1.var x)
   let Qstep : Assertion Unit := fun cont => match cont with
     | .Fallthrough st ss => wp m [] Q st { ss with values := s1.values } host
     | .Break 0 st ss => ∃ next, Inv next st { ss with values := s1.values } ∧
@@ -102,7 +111,7 @@ theorem tail_loop_spec {S : List Sig} {m : Module} {funs : Funs S} {flags : Flag
   refine tail_step_spec hm func.modes func.body bodySpec
     (by simpa only [entryModes, paramSlots_modes] using func.placeArgs)
     pf (func.paidResult flags) hPaid h stateBase resultBase base 1 0 state heap1 store1 s1 words1
-    (frame1.positions.trans hh) (frame1.params.trans hpv) rep1 sep1 hold1 before.at_
+    (frame1.positions.trans hh) (frame1.params.trans hpv) rep1 sep1 hold1 before.at_ safe1
     (by rw [before.cap m]; exact hCap)
     (by rw [frame1.params]; exact hLow) hState hResult hRoom _
     ((hTrap.imp (Q' := Qstep) (fun _ ht => ht)).part

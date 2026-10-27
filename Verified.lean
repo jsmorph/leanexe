@@ -84,12 +84,14 @@ import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
 import Verified.Examples.Owned
+import Verified.Examples.Bytes
 import Verified.Examples.Updates
 import Verified.Examples.Grow
 import Verified.Examples.Modes
 import Verified.Examples.Floats
 import Verified.Examples.Floats32
 import Verified.Examples.Sums
+import Verified.Examples.HeapSums
 import Verified.Examples.Elements
 import Verified.Examples.Tuples
 import Verified.Examples.Records
@@ -101,3 +103,8 @@ import Verified.Examples.Fields
 import Verified.Examples.Insert
 import Verified.Examples.Tables
 import Demos.Verified
+import Verified.Wasi
+import Verified.Examples.Literals
+import Verified.Examples.WasiDepth
+import Verified.Examples.WasiRetainTotal
+import Verified.Examples.WasiStdio

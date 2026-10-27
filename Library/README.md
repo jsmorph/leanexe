@@ -52,7 +52,7 @@ reference calculators use [test support](../tests/TestSupport).
 
 The generated compiler theorems state that the module computes its Lean definition under the
 representation, ownership, memory, and recursion premises.  Mathematical theorems state further
-properties: period, rounding error, sortedness, or an equation with an independent specification.
+properties: period, rounding error, or an equation with an independent specification.
 The named statements determine each function's guarantees.
 
 Insertion sort currently has compiler correctness and an allocation bound in its worked example.
@@ -68,13 +68,12 @@ tools/source-layout
 tools/check-doc-links.mjs
 tools/leanrun --timeout 30m lake build Library.Native
 tools/leanrun --timeout 30m lake build Library.Sorting.Insertion.Compiled
-tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library
-tests/verified/run.sh
 ```
 
 The static checks cover import boundaries, registry paths, and local documentation links.
-`Library.Native` builds the native definitions.  The full library build includes the numerical
-proofs, whose lgamma root-range proofs use a 10 GiB memory high limit and a 12 GiB maximum.  The
-test driver reads the checked module registries, emits and validates the modules, compares their
-cases with native Lean, and checks numerical file theorems and accuracy tests.  [The full-check
-procedure](../docs/leanexe-manual.md#the-full-check) covers both compilers and the GPU tests.
+`Library.Native` builds the native definitions.  The [full-check procedure](../docs/leanexe-manual.md#the-full-check)
+gives the complete library build and its resource settings.  Its [cold-cache procedure](../docs/leanexe-manual.md#memory-heavy-numerical-proofs)
+stages the memory-heavy proofs before the parallel aggregate.  The verified test
+driver reads the checked module registries, emits and validates the modules, compares their
+cases with native Lean, and checks numerical file theorems and accuracy tests.  The full check
+also covers the LeanExe compiler and GPU tests.

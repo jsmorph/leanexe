@@ -554,18 +554,21 @@ theorem Heap.Object.clearCount {heap : Heap} {store : Store Unit} {ptr : UInt64}
     simp only [Heap.releaseStore, hRead]
     simp only [releaseEntry, hw, write64_write64_same]
 
-theorem release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
+theorem release_leaf_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
     (hFunc : m.funcs[1]? = some (releaseFunction typeIdx)) (env : HostEnv Unit) (heap : Heap)
-    (store : Store Unit) (ptr : UInt64) (words : Array UInt64) (hHeap : heap.At store)
-    (hOwned : heap.Owned store ptr words) :
+    (store : Store Unit) (ptr : UInt64) (hHeap : heap.At store)
+    (hObject : heap.Object store ptr)
+    (hHeaderMagic : store.mem.read64 (ptr - 48).toUInt32 = objectMagic)
+    (hHeaderCount : store.mem.read64 (ptr - 40).toUInt32 = 1)
+    (hHeaderMask : store.mem.read64 (ptr - 8).toUInt32 = 0) :
     TerminatesWith env m 1 store [.i64 ptr] fun final out =>
       out = [] ∧ final = heap.releaseStore store ptr := by
   refine TerminatesWith.of_wp_entry_for (f := releaseFunction typeIdx)
     (by simpa [hImports] using hFunc) ?_ (by simp [hImports])
-  have hBase := hOwned.base
-  have hBelow := hOwned.below
+  have hBase := hObject.base
+  have hBelow := hObject.below
   have hTop := hHeap.top
-  have hFit := hOwned.address
+  have hFit := hObject.address
   have hPtr : ptr ≠ 0 := by rintro rfl; simp at hBase
   have hSub : ∀ k : UInt64, k.toNat ≤ 48 → (ptr - k).toNat = ptr.toNat - k.toNat := fun k hk =>
     UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le]; omega)
@@ -582,9 +585,9 @@ theorem release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
   have hA40 : (ptr - 40).toUInt32 = UInt32.ofNat (ptr.toNat - 40) := hAt 40 (by decide)
   have hA8 : (ptr - 8).toUInt32 = UInt32.ofNat (ptr.toNat - 8) := hAt 8 (by decide)
   have hMagic : store.mem.read64 (UInt32.ofNat (ptr.toNat - 48)) = magic := by
-    rw [← hA48]; exact hOwned.magic
+    rw [← hA48]; exact hHeaderMagic
   have hCount : store.mem.read64 (UInt32.ofNat (ptr.toNat - 40)) = 1 := by
-    rw [← hA40]; exact hOwned.count
+    rw [← hA40]; exact hHeaderCount
   have hMask : (store.mem.write64 (UInt32.ofNat (ptr.toNat - 40)) 0).read64
       (UInt32.ofNat (ptr.toNat - 8)) = 0 := by
     rw [← hA40, ← hA8,
@@ -593,7 +596,7 @@ theorem release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
           headerAddress_toNat (by simp; omega) (by omega)]
         simp only [UInt64.reduceToNat]
         omega)]
-    exact hOwned.childMask
+    exact hHeaderMask
   have hGlobals := hHeap.globals
   have hb48 : ptr.toNat - 48 + 8 ≤ store.mem.pages * 65536 := by omega
   have hb40 : ptr.toNat - 40 + 8 ≤ store.mem.pages * 65536 := by omega
@@ -627,7 +630,7 @@ theorem release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
     simp [hs8, hm8, hc8, hMask]
     refine wp_iff_cons rfl ?_
     simp only [ite_true, ne_eq, not_true_eq_false, ite_false, List.nil_append, wp_nil]
-    obtain ⟨hHeap1, hObject1, hRelease1⟩ := hOwned.object.clearCount hHeap
+    obtain ⟨hHeap1, hObject1, hRelease1⟩ := hObject.clearCount hHeap
     change wp m (freeObject ++ [.br 0]) _ (releaseEntry store ptr)
       (ReleaseVars.toLocals ⟨ptr, 1, 0, ptr, 0, 0, 0, 0, 0, 0, 0, 0, 0⟩) env
     refine freeObject_spec env heap _ _ hHeap1 hObject1 _ _ fun previous current => ?_
@@ -636,6 +639,15 @@ theorem release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
     simp [wp_simp, ReleaseVars.atPlace, ReleaseVars.toLocals, releaseLocals, releasePending]
     omega
   · simp [releaseLocals, wp_simp]
+
+theorem release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
+    (hFunc : m.funcs[1]? = some (releaseFunction typeIdx)) (env : HostEnv Unit) (heap : Heap)
+    (store : Store Unit) (ptr : UInt64) (words : Array UInt64) (hHeap : heap.At store)
+    (hOwned : heap.Owned store ptr words) :
+    TerminatesWith env m 1 store [.i64 ptr] fun final out =>
+      out = [] ∧ final = heap.releaseStore store ptr :=
+  release_leaf_run hImports hFunc env heap store ptr hHeap hOwned.object
+    hOwned.magic hOwned.count hOwned.childMask
 
 /-- `release` changes no byte outside the header of the freed object and the
 headers of free blocks. -/

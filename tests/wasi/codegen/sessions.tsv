@@ -1,0 +1,4 @@
+persistent-reads	input.bin	reads.txt	reads.control	input.bin	empty.bin	0	empty
+discard-progress	input.bin	discard.txt	discard.control	last-three.bin	empty.bin	0	empty
+queued-exit	empty.bin	exit.txt	exit.control	literal-x.bin	empty.bin	7	empty
+queued-rejection	empty.bin	rejected.txt	rejected.control	literal-x.bin	empty.bin	1	diagnostic

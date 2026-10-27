@@ -210,7 +210,7 @@ structure ImportReady (types : List Wasm.FuncType) (decl : Wasm.ImportDecl) : Pr
   fieldName : decl.name.toUTF8.size < 2 ^ 32
 
 structure ExportReady (entry : UInt8 × String × Nat) : Prop where
-  kind : entry.1 = 0 ∨ entry.1 = 2 ∨ entry.1 = 3
+  kind : entry.1 = 0 ∨ entry.1 = 1 ∨ entry.1 = 2 ∨ entry.1 = 3
   name : entry.2.1.toUTF8.size < 2 ^ 32
   index : entry.2.2 < 2 ^ 32
 

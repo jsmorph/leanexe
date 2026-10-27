@@ -154,21 +154,25 @@ the [official module grammar][modules].
 | Component | Checked correspondence |
 | --- | --- |
 | Header | Magic `00 61 73 6d`, version `01 00 00 00`. |
-| Sections | IDs `1, 2, 3, 5, 6, 7, 10`, once each, in the prescribed order, then ID `11` when the memory has data segments.  Empty vectors are permitted. |
+| Sections | IDs `1, 2, 3, 5, 6, 7, 10`, once each, in the prescribed order, then ID `11` when the memory has data segments.  The WASI profile adds ID `4` between `3` and `5`.  Empty vectors are permitted. |
+| Table section | `04 04 01 70 00 00` declares one 32-bit nullable `funcref` table with minimum zero and no maximum.  The table-free profile omits this section. |
 | Data section | Each segment uses mode `0`, an active segment of memory 0, with the offset as `i32.const` and `end`, then the bytes as a vector.  The memory section carries the declaration without its segments, and the decoder joins the segments back to the memory. |
 | Type and import sections | Preserve the type table and import order.  Each imported function's selected type index resolves to its recorded signature. |
 | Function and code sections | Both range over `m.funcs` in the same order.  Their counts agree.  Each type index resolves to that function's parameter and result lists. |
 | Locals | Each local forms a group with count one.  Vector count therefore also bounds the expanded local count. |
 | Function body | Local vector, instruction sequence, `end`, enclosed by the exact body byte length. |
-| Exports | Names, kinds, and indices are retained.  The chosen order is function, global, then memory exports, preserving order within each list. |
+| Exports | Names, kinds, and indices are retained.  The chosen order is function, global, memory, then table exports, preserving order within each list.  The table export uses kind `01`. |
 | Section lengths | Each length counts exactly its payload. |
 
-The eight fields represented by sections are `types`, `imports`, `funcs`,
-`memory`, `globals`, `exports`, `globalExports`, and `memoryExports`.
-`Shape` accounts for the other thirteen `Wasm.Module` fields: canonical
-`gcTypes`; empty additional memories, tables, elements, imported non-function
-entities, table exports, tag exports, and tags; absent start function; and
-`dataWithoutMemory = false`.  The memory-section declaration omits the data
+The fields represented by sections are `types`, `imports`, `funcs`,
+`memory`, `globals`, `exports`, `globalExports`, `memoryExports`, `tables`,
+and `tableExports`.  `Shape` fixes canonical `gcTypes`, empty additional
+memories, elements, imported non-function entities, tag exports, and tags,
+an absent start function, and `dataWithoutMemory = false`.  Its table profile
+admits either no table and no table exports, or the one empty function table
+and exactly `__indirect_function_table` at index zero.  Other table types,
+limits, widths, counts, names, and export indices fail the profile check.
+The memory-section declaration omits the data
 segments that the data section carries.
 Every field of the pinned Talos module record is accounted for.
 

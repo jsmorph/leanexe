@@ -1,0 +1,15 @@
+call retain 2
+read-memory result:0 result:1
+stats
+arg-u64 result:0
+call release 0
+stats
+call retain 2
+read-memory result:0 result:1
+stats
+arg-u64 result:0
+call release 0
+stats
+call retain 2
+stats
+done

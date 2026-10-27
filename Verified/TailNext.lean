@@ -6,14 +6,14 @@ namespace Verified
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 theorem tail_next_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
-    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m) (targetModes : List Mode)
     (args : (i : Fin params.length) → Expr S Γ (params.get i))
     (argsSpec : ∀ i env slots paid live,
-      CodeSpec m funs flags bounds fits host pv (args i) env slots paid live) :
-    TailCodeSpec m funs flags bounds fits host pv targetModes (.next (result := result) args) := by
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (args i) env slots paid live) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (.next (result := result) args) := by
   intro env slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel heap
-    store s hh hpv hVars hAt hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
+    store s hh hpv hVars hAt hSafe hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
   let g := tailSig params result targetModes
   let all := fun k => argsAny fun i => (args i).uses k
   let kept := fun k => all k && !(argsAny fun i => callMoves slots (fun _ => false) (g := g)
@@ -58,7 +58,7 @@ theorem tail_next_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : M
     g.mode args argsSpec hUses
     hKept (fun i hi => paramMode_owned hi) (fun i hs hi => (hProps.2.2 i hs hi).1)
     (fun i hi => ?_) hProps.1 (fun i hi => ?_) (fun i hi => ?_)
-    heap store s hh hpv vars0 hAt hCap (by omega) hRoomArgs _ _
+    heap store s hh hpv vars0 hAt hSafe hCap (by omega) hRoomArgs _ _
     (hTrap.part id id fun _ hw => hw.mono (by rw [hCharge]; dsimp [charge]; omega))
     fun heap1 store1 s1 ws1 fresh step1 frame1 vars1 rep1 separate1 movedApart readsApart top1 pot1 => ?_
   · obtain ⟨x, hx⟩ := hVar i hi

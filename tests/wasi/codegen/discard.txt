@@ -1,0 +1,7 @@
+arg-u64 2
+call discardRead 1
+stats
+arg-u64 5
+call echo 1
+stats
+done

@@ -13,23 +13,33 @@
 # within the bound its docstring states, and tests/TestSupport/Numerics/FourierAccuracy.lean checks that
 # Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
 # Run `tools/leanrun --timeout 60m lake build`, whose default targets include the module cases of
-# the Euler check, and `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library`
-# first.
-# Usage: tests/verified/run.sh [--cases MODULE]
+# the Euler check, and `tools/leanrun --threads 2 --memory-high 10G --timeout 12h lake build Verified
+# Library` first.
+# Usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]
 set -euo pipefail
-export PATH="$PATH:$HOME/.cargo/bin"
+export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
 case_module=""
+reference=""
 if [ "$#" -ne 0 ]; then
-  if [ "$#" -ne 2 ] || [ "$1" != "--cases" ] || [ -z "$2" ]; then
-    echo "usage: tests/verified/run.sh [--cases MODULE]" >&2
+  if [ "$#" -ne 2 ] || [ -z "$2" ]; then
+    echo "usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]" >&2
     exit 2
   fi
-  case_module=$2
+  case "$1" in
+    --cases) case_module=$2 ;;
+    --check-bytes) reference=$(cd "$2" && pwd -P) ;;
+    *) echo "usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]" >&2; exit 2 ;;
+  esac
 fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 host=$root/build/tools/leanexe-wasmtime-host
 out=$root/build/verified
+if [ -n "$reference" ]; then out=$root/build/byte-check/verified; fi
 mkdir -p "$out"
+if [ "$reference" = "$(cd "$out" && pwd -P)" ]; then
+  echo "fail: byte reference and emission directories must differ" >&2
+  exit 2
+fi
 cd "$root"
 emitted=0
 while IFS=: read -r module constant name; do
@@ -40,11 +50,23 @@ while IFS=: read -r module constant name; do
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$constant" \
     "$out/$name.wasm"
   wasm-tools validate "$out/$name.wasm"
+  if [ -n "$reference" ]; then
+    cmp "$reference/$name.wasm" "$out/$name.wasm"
+    echo "$name: bytes unchanged"
+  fi
   emitted=$((emitted + 1))
 done <"$root/tests/verified/modules.txt"
 if [ "$emitted" -eq 0 ]; then
   echo "fail: unknown module $case_module" >&2
   exit 2
+fi
+if [ -n "$reference" ]; then
+  echo "verified byte comparison passed: $emitted modules"
+  exit 0
+fi
+if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+  echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
+  exit 1
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "gpt" ]; then
   tests/gpt/run.sh "$out/gpt.wasm"
@@ -141,6 +163,9 @@ elif [ "$case_module" = "hmac_sha256" ] || [ "$case_module" = "hmac_sha512" ]; t
 elif [ "$case_module" = "taggedtypes" ]; then
   cases_module=Verified.Examples.TaggedTypesCasesMain
   cases_source=Verified/Examples/TaggedTypesCasesMain.lean
+elif [ "$case_module" = "heapsums" ]; then
+  cases_module=Verified.Examples.HeapSumsCasesMain
+  cases_source=Verified/Examples/HeapSumsCasesMain.lean
 elif [ "$case_module" = "regex" ]; then
   cases_module=TestSupport.Regex.CasesMain
   cases_source=tests/TestSupport/Regex/CasesMain.lean
@@ -156,6 +181,9 @@ elif [ "$case_module" = "siphash" ]; then
 elif [ "$case_module" = "xxhash64" ]; then
   cases_module=TestSupport.Hashing.XxHash64CasesMain
   cases_source=tests/TestSupport/Hashing/XxHash64CasesMain.lean
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "heapsums" ]; then
+  tools/leanrun --timeout 10m lake env lean tests/verified/HeapSumsAxioms.lean
 fi
 tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
 cases=$(mktemp)

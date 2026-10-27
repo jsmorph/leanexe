@@ -287,7 +287,26 @@ open Wasm LeanExe.Pipeline in
 theorem ready_initial :
     Ready (Verified.initialHeap Exp.compiled.tables) Exp.compiled.module.initialStore := by
   obtain ⟨hAt, hCap, hBor⟩ := Exp.compiled.initial
-  exact ⟨hAt, hBor 0 (by decide), hCap⟩
+  have hPool : Exp.compiled.literalPool =
+      Exp.compiled.program.literalPool (Verified.tablesEnd Exp.compiled.tables) := by
+    unfold Exp.compiled.literalPool
+    rfl
+  have hModule : Exp.compiled.module =
+      Verified.compileWith Exp.compiled.program Exp.compiled.tables Exp.compiled.wrappers := by
+    unfold Exp.compiled.module
+    exact congrArg
+      (fun pool => Verified.compileWith Exp.compiled.program Exp.compiled.tables
+        Exp.compiled.wrappers pool) hPool
+  have hAddress : Verified.tableAddr Exp.compiled.tables 0 = 4096 := by
+    simp only [Verified.tableAddr, List.take_zero, List.map_nil, List.sum_nil,
+      Nat.mul_zero, Nat.add_zero]
+    rfl
+  have hTable : Exp.compiled.tables[0] = Exp.expTable := rfl
+  have hBorrowed := hBor 0 (by decide)
+  rw [hAddress, hTable] at hBorrowed
+  unfold Ready
+  rw [hModule]
+  exact ⟨hAt, hBorrowed, hCap⟩
 
 open Wasm LeanExe.Pipeline in
 /-- A borrowed array stays borrowed through a step that keeps the bytes of every region.  Stated

@@ -133,14 +133,17 @@ rule and its declaration rules.
 | Function exports | Each index refers to an imported or defined function. |
 | Global exports | Each index refers to a declared global. |
 | Memory exports | Index zero exists and refers to the sole memory. |
-| `distinctExports` | Names are distinct across all three export kinds together. |
+| Tables and table exports | The shape admits an empty 32-bit nullable `funcref` table with minimum zero and no maximum, exported as `__indirect_function_table` at index zero, or no table and no table exports.  `tableProfile_valid` proves the declaration shape and export-index bound. |
+| `distinctExports` | Names are distinct across all four export kinds together. |
 
 Function bodies see all function signatures, allowing mutual recursion.
 Global initializers contain one integer constant, so their validity is
 independent of the preceding-global context.  Each active data segment targets
 the declared memory, and its `i32.const` offset is a constant expression of the
-memory's address type.  The fixed empty fields discharge the remaining table,
-element, tag, non-function-import, and start obligations.
+memory's address type.  The admitted table type has a valid zero minimum,
+an optional maximum of none, and a nullable reference element type.  Its zero
+length needs no element initializer.  The fixed empty fields discharge the
+remaining element, tag, non-function-import, and start obligations.
 
 The combined claim uses both `Encodes m bytes` and `Spec.Validity.Module m`.
 The encoding derivation supplies binary bounds on type vectors, names,

@@ -37,6 +37,21 @@ theorem float32_bound (bits : UInt32) :
 theorem size_bound {e : Elem} (x : Var Γ (.array e)) :
     (Expr.size x : Expr S Γ .word).allocs funs flags bounds modes paid live env = 0 := rfl
 
+theorem bytesEmpty_bound :
+    (Expr.bytesEmpty : Expr S Γ .bytes).allocs funs flags bounds modes paid live env = 0 := rfl
+
+theorem bytesLiteral_bound (bytes : List UInt8) :
+    (Expr.bytesLiteral bytes : Expr S Γ .bytes).allocs funs flags bounds modes paid live env =
+      Bytes.allocationCost bytes.length := rfl
+
+theorem bytesSize_bound (x : Var Γ .bytes) :
+    (Expr.bytesSize x : Expr S Γ .word).allocs funs flags bounds modes paid live env = 0 := rfl
+
+theorem bytesGet_bound (x : Var Γ .bytes) {i : Expr S Γ .word} {IA : Nat}
+    (hi : i.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env = IA) :
+    (Expr.bytesGet x i).allocs funs flags bounds modes paid live env = IA := by
+  subst hi; rfl
+
 theorem leSize_bound {e : Elem} (x : Var Γ (.array e)) (i : Var Γ .word) :
     (Expr.leSize x i : Expr S Γ .bool).allocs funs flags bounds modes paid live env = 0 := rfl
 
@@ -613,6 +628,19 @@ theorem build_bound {e : Elem} {count : Expr S Γ .word} {elem : Expr S (.word :
     (Expr.build count elem).allocs funs flags bounds modes paid live env =
       NA + blockCost (N.toNat * w) + sumBelow EA N.toNat := by
   subst hall hw hn hna
+  obtain rfl := funext hea
+  rfl
+
+theorem bytesBuild_bound {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) .word}
+    {N : UInt64} {all : Nat → Bool} {NA : Nat} {EA : Nat → Nat}
+    (hall : all = fun i => live i || elem.uses (i + 1))
+    (hn : count.denote funs env = N)
+    (hna : count.allocs funs flags bounds modes paid all env = NA)
+    (hea : ∀ k : Nat, elem.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
+      (shift 1 all) (.cons (UInt64.ofNat k) env) = EA k) :
+    (Expr.bytesBuild count elem).allocs funs flags bounds modes paid live env =
+      NA + Bytes.allocationCost N.toNat + sumBelow EA N.toNat := by
+  subst hall hn hna
   obtain rfl := funext hea
   rfl
 

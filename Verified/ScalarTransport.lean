@@ -1,4 +1,5 @@
 import Verified.ScalarCalibration
+import LeanExe.ProofKit.Sequencing
 
 namespace Wasm
 
@@ -33,26 +34,6 @@ def OneNoReturnCall (m : Module) (instruction : Instruction) : Prop :=
 def CodeNoReturnCall (m : Module) (program : Program) : Prop :=
   ∀ (fuel : Nat) (host : HostEnv Unit) (store : Store Unit) (locals : Locals),
     (exec fuel m store locals program host).noReturnCall = true
-
-theorem exec_append_match (fuel : Nat) (m : Module) (host : HostEnv Unit)
-    (store : Store Unit) (locals : Locals) (first next : Program) :
-    exec fuel m store locals (first ++ next) host =
-      match exec fuel m store locals first host with
-      | .Fallthrough state after => exec fuel m state after next host
-      | other => other := by
-  induction first generalizing store locals with
-  | nil => simp only [List.nil_append, exec]
-  | cons instruction rest ih =>
-    simp only [List.cons_append, exec]
-    cases h : execOne fuel m store locals instruction host with
-    | Fallthrough state after => exact ih state after
-    | Break label state after => rfl
-    | Return state values => rfl
-    | Trap state message => rfl
-    | Invalid message => rfl
-    | OutOfFuel => rfl
-    | ReturnCall entry state values => rfl
-    | Throwing tag values state after => rfl
 
 theorem CodeUniform.nil (m : Module) : CodeUniform m [] := by
   intro fuel host store reference locals

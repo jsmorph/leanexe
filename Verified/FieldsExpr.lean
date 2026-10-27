@@ -3,6 +3,8 @@ import Verified.FieldsAfter
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 def fieldCost {S : List Sig} {Γ : List Ty} {ps : List Ty} (funs : Funs S) (flags : Flags S)
@@ -20,14 +22,15 @@ theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
     (L : Nat → Nat → Bool) →
     (∀ i, (ps.get i).width = 1) → (∀ i, (ps.get i).types = [.i64]) →
     (∀ i k, (L (i.val + 1) k || (args i).uses k) = L i.val k) →
-    (∀ i, CodeSpec m funs flags bounds fits host pv (args i) env slots paid (L (i.val + 1))) →
+    (∀ i, CodeSpec (pool := pool) m funs flags bounds fits host pv (args i) env slots paid (L (i.val + 1))) →
     (∀ i, (args i).placeArgs = true) →
     (∀ i, (!(args i).fits funs fits env) = true → d = true) →
     base ≤ fieldBase → fieldBase + ps.length ≤ scratch →
     (∀ i, scratch + max (args i).width (copyWidth (ps.get i)) ≤ h) →
     ∀ (heap : Heap) (store : Store Unit) (s : Locals),
     s.positions = h → s.params = pv → s.params.length ≤ base →
-    Holds env slots (L 0) base heap store s → heap.At store → store.memoryCap m 0 ≤ 65535 →
+    Holds env slots (L 0) base heap store s → heap.At store →
+    pool.Safe env slots (L 0) heap store s → store.memoryCap m 0 ≤ 65535 →
     ∀ (rest : Program) (Q : Assertion Unit),
     TrapOK (d || !decide (heap.Within store m
       (dyingPot store s env slots paid (L 0) (L ps.length) +
@@ -40,16 +43,16 @@ theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
         dyingPot store s env slots paid (L 0) (L ps.length) +
         argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args env)) →
       wp m rest Q store' { s' with values := s.values } host) →
-    wp m (argsCode (fun i => (args i).code h slots scratch (L (i.val + 1)) ++
+    wp m (argsCode (fun i => (args i).code (pool := pool) h slots scratch (L (i.val + 1)) ++
       coerceCode h (ps.get i) ((args i).mode (slots.map Slot.mode)) .owned scratch ++
       storeCode h (fieldBase + i.val) (ps.get i).types) ++ rest) Q store s host
-  | [], _, L, _, _, _, _, _, _, _, _, _, heap, store, s, _, _, _, hVars, hAt, _, rest, Q, _,
+  | [], _, L, _, _, _, _, _, _, _, _, _, heap, store, s, _, _, _, hVars, hAt, _, _, rest, Q, _,
       hNext => by
     simpa only [argsCode, List.nil_append, Env.ofFn] using
       hNext heap store s [] (FieldsAfter.nil hAt hVars) (Frame.refl fieldBase s)
         (fun k hk => nomatch hk) (fun _ => by simp [argsSum])
   | p :: ps, args, L, hWidth, hTypes, hLink, hSpec, hPlace, hd, hBaseField, hScratch,
-      hRoom, heap, store, s, hh, hpv, hBase, hVars, hAt, hCap, rest, Q, hTrap, hNext => by
+      hRoom, heap, store, s, hh, hpv, hBase, hVars, hAt, hSafe, hCap, rest, Q, hTrap, hNext => by
     let first : Fin (p :: ps).length := ⟨0, by simp⟩
     have hTypes0 : p.types = [.i64] := hTypes first
     simp only [List.length_cons] at hScratch
@@ -83,7 +86,8 @@ theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
             (fun i : Fin ps.length => args i.succ) env) := rfl
     simp only [argsCode, List.append_assoc]
     refine (hSpec first).owned hm hh hpv
-      (by rw [hIn]; exact hVars.mono (by omega)) hAt hCap (by omega) (hRoom first)
+      (by rw [hIn]; exact hVars.mono (by omega)) hAt (by rw [hIn]; exact hSafe)
+      hCap (by omega) (hRoom first)
       (hPlace first) (rest := storeCode h fieldBase p.types ++ _)
       (hTrap.allocPart (hd first) (fun _ hw => hw.mono (by
         rw [hIn]
@@ -113,6 +117,7 @@ theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
       (fieldBase := fieldBase + 1) (by omega) (by omega) (fun i => hRoom i.succ)
       heap1 store1 sNext (hFrame1.positions.trans hh) (hFrame1.params.trans hpv)
       (by rw [hFrame1.params]; exact hBase) aStored.holds aStored.step.at_
+      ((hSafe.after hVars aStored h01).1)
       (by rw [aStored.step.cap m]; exact hCap) rest Q
       (hTrap.allocPart id (fun hdv hw => by
         rw [hDr]

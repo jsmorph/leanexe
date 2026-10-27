@@ -7,16 +7,16 @@ open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 theorem tail_treeCase_empty {S : List Sig} {Γ params : List Ty} {result : Ty}
     {shape : TreeShape} {m : Module} {funs : Funs S} {flags : Flags S}
-    {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+    {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool} {host : HostEnv Unit} {pv : List Value}
     (hm : Runtime m) (targetModes : List Mode) (x : Var Γ (.tree shape))
     (empty : shape.hasNull = true → TailBody S params result Γ)
     (nodes : (r : Fin shape.records) → TailBody S params result (shape.context r Γ))
     (hn : shape.hasNull = true)
-    (emptySpec : TailCodeSpec m funs flags bounds fits host pv targetModes (empty hn))
+    (emptySpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (empty hn))
     (env : Env Γ) (hNil : env.get x = .nil hn) :
-    TailCodeSpecAt m funs flags bounds fits host pv targetModes (.treeCase x empty nodes) env := by
+    TailCodeSpecAt (pool := pool) m funs flags bounds fits host pv targetModes (.treeCase x empty nodes) env := by
   intro slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel heap
-    store s hh hpv hVars hAt hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
+    store s hh hpv hVars hAt hSafe hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
   let outer := TailBody.treeCase x empty nodes
   let L0 := outer.uses
   have hx : L0 x.index = true := by simp [L0, outer, TailBody.uses]
@@ -64,10 +64,10 @@ theorem tail_treeCase_empty {S : List Sig} {Γ params : List Ty} {result : Ty}
   simp_rw [← nat_beq_decide]
   change wp m (releaseWhere Γ slots (fun i => L0 i &&
       !(if h : shape.hasNull = true then (empty h).uses i else false)) ++
-    (empty hn).code targetModes h stateBase resultBase slots base (exitLabel + 1)
+    (empty hn).code (pool := pool) targetModes h stateBase resultBase slots base (exitLabel + 1)
       (nextLabel + 1)) _ store s host
   simp only [dite_eq_left hn]
-  refine emptySpec.released hm hh hpv hVars hAt hCap hLow hState hResult hRoomE hPlaceE
+  refine emptySpec.released hm hh hpv hVars hAt hSafe hCap hLow hState hResult hRoomE hPlaceE
     hPaidE hEntry (hBudget.imp (fun _ hi => hi)) (fun heap1 store1 s1 after hTop => ?_)
   have done := hNext heap1 store1 s1 (after.congr hValue) (fun hf => by
     have hfE : (empty hn).fits funs fits env = true := by
