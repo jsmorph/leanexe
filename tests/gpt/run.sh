@@ -9,6 +9,10 @@ fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 wasm=${1:-$root/build/gpt/gpt.wasm}
 host=$root/build/tools/leanexe-wasmtime-host
+if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+  echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
+  exit 1
+fi
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT

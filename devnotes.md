@@ -36128,7 +36128,7 @@ The tests gain a rejected final line without LF, a blank line after valid lines,
 - [x] Add the tests and the host fixes.
 - [x] Remove the superseded plan and the rule violations from the documents.
 - [x] Bring in the `uv` conversion of the hashing and regex scripts and fix `tools/source-layout`.
-- [ ] Rebuild, run every driver, and record the results.
+- [x] Rebuild, run every driver, and record the results.
 
 ### Results and failures
 
@@ -36141,6 +36141,30 @@ The restarted `Verified Library` build used three workers under a 9 GiB limit, c
 I created my remote checkouts in the previous session by copying other checkouts with `cp -a` to reuse their builds.  The copies kept the originals' `.git` files, which name shared worktree directories, so my branch switches changed the recorded branch of three other checkouts from `siphash` to `wasi-integration`, and that of a fourth from `verified-wasi` to `wasi-integration`.  Their files did not change.  My four checkouts now have independent repositories.  The user directed that I leave the affected checkouts and the branches I created in the two the main checkout repositories as they are.
 
 The byte comparison with main uses a fresh clone of `d1f851729`, whose manifest and toolchain equal the branch's.  It emits main's 98 registered modules for comparison with the merged tree's emissions.
+
+After the one-at-a-time heavy proofs passed, the three-worker aggregate build ran three other `Lgamma` modules together at about 3.5 GB each.  Full memory pressure reached 45 percent, with about 250 MB/s of swap reads and 36 percent system CPU time, and the watcher reported it after two five-minute samples.  I stopped the build and restarted it with two workers and a 10 GiB limit, under a watcher that stops the job itself after two samples above 30 percent.  The manual's three-worker aggregate is therefore too wide for the 11.6 GiB hosts with the merged tree.
+
+The GPU step of the full check needs SwiftShader, from Debian's `chromium` package, and llvmpipe, from `mesa-vulkan-drivers`, with the Vulkan loader.  No host had them.  I installed `gcc`, `chromium`, `mesa-vulkan-drivers`, `libvulkan1`, and `unzip` through `apt`.  I also installed `wasm-tools` 1.251.0 in `~/.cargo/bin` and `uv` 0.13.0 in `~/.local/bin` from their release archives.  The `uv` archive matched its published SHA-256, and both binaries are identical to those.  The WebGPU host, built against the pinned `wgpu-native`, reports the SwiftShader device (Subzero) and llvmpipe (Mesa 25.0.7, LLVM 19.1.7).
+
+A watcher that stops a whole session is safe only when its job runs under its own `setsid`.  Main's reference build was started without `setsid`, so its session was that of the SSH daemon, which every SSH command of the account shares.  I attached a session watcher to it by mistake and removed it within a minute, before it took any sample.  That build now has a watcher that stops only its own process tree.
+
+The two-worker aggregate passed with all 10,829 jobs, no error, and no `sorry`, in about 1 hour 51 minutes.  The highest one-minute full memory pressure was 1.9 percent.  The manuals, the README, and the verified driver's header now prescribe two workers for the aggregate on hosts with about 12 GiB of memory.
+
+The full check found a stale entry on main.  The library-layout change moved `Examples/Prng` to `Library/Random/SplitMix64`, but `ltg/entries/splitmix64/entry.json` still named `Examples.Prng.Verify`, `Examples.Prng.Program`, and declarations in the `Examples.Prng` namespace, so `ltg/Check.lean` failed on a missing module.  The entry now names the `Library.Random.SplitMix64` modules and declarations, and the LTG check passes.  No other entry names a missing module.
+
+`tests/modules/run.sh` reads `build/NAME/NAME.wasm`, which `leanexe_compile` writes only when it elaborates the module.  A checkout whose modules come from a cached build has none of those files, and the module tests stopped at the first.  The full-check procedure emits every module into a scratch directory first, so I copied those 35 emissions of the merged source into `build/` and reran the tests from that step.
+
+The GPU step ran.  `tests/wgsl/run.sh` passed all 474 cases on llvmpipe (Mesa 25.0.7, LLVM 19.1.7) and failed 101 of 474 on SwiftShader from Debian's Chromium 156, whose device reports the Subzero backend.  The failing cases are those of `scale`, `axpyArray`, `matVec`, `condMix`, `exp`, and `linear` with subnormal operands.  In the first, 1.9e28 times the smallest subnormal, 1.4e-45, should give 2.7e-17, and SwiftShader returns 0, so it flushes subnormal inputs to zero, as WGSL 15.7.2 permits.  The merge changes none of the WGSL code: the diff of `LeanExe/WGSL`, `tools/EmitWgsl.lean`, `tools/webgpu-host.c`, `tests/wgsl`, `Examples/Binary32`, and `Demos/Gpt32` against main is empty.  The earlier passing runs used the SwiftShader that Chromium 145 bundled, built on LLVM 16.  The failure is therefore a change of driver, which the strict-profile tests detect as intended.
+
+SwiftShader's backend depends on the architecture, not the Chromium version.  Chromium 145.0.7632.109 (amd64) also reports the Subzero backend, while the same version on the local arm64 machine reports LLVM 16.0.0, the driver of the earlier passing runs.  Pinning Chromium on an x86 host therefore cannot reproduce them, and the build host is back on Chromium 156 with no hold.  `tests/wgsl/run.sh` now has `--emit-only`, which writes the kernels and cases with Lean, and `--drivers-only`, which runs existing ones.  A Lean host emits them, and the local machine runs them on its SwiftShader and llvmpipe, so no Lean runs there.  `tests/gpt32/native.sh` interleaves Lean and the WebGPU host step by step and cannot be split this way, so it runs on a Lean host, where the exact SwiftShader backend is unavailable.
+
+The verified driver failed with "unknown result kind" at the `taggedtypes` case of `lit` with result kind `records-u64`.  The cause was a stale host.  That checkout's `build/` came from my earlier copy of another checkout, and its `leanexe-wasmtime-host` was built on 2026-10-25 from source without `records-u64`, while `tools/wasmtime-host.c` is newer.  The stale-host check existed only in the WASI drivers.  `tests/verified/run.sh`, `tests/modules/run.sh`, `tests/drone/run.sh`, `tests/gpt/run.sh`, and `tests/gpt/sessions.sh` now also stop when the host is missing or older than its source, the first before its case stage so that `--check-bytes` needs no host.  I rebuilt the host and reran the module, drone, and verified drivers, because the earlier module and drone passes used the stale host.
+
+With the split driver, the GPU step passed on the reference drivers.  The build host emitted the default and `--verified` kernels and cases, an AArch64 host emitted the `--verified-gpt32` ones, and the local machine ran them on SwiftShader (LLVM 16.0.0) and llvmpipe (LLVM 19.1.7): 474 of 474, 233 of 233, and 694 of 694 cases on each driver.  `tests/gpt32/native.sh --verified` passed with Node.js 20.19.2 installed there, with 15 of 15 steps equal bit for bit on SwiftShader and on llvmpipe.  Its random models evidently reach no subnormal operand, since the Subzero backend passed them.
+
+The byte comparison with main passed.  All 98 verified modules emitted from main at `d1f851729` on AArch64 have the same SHA-256 as those emitted from the merged tree at `ed77fa248` (x86_64), with identical registries.  All 35 original-compiler modules from `tests/modules/run.sh --emit-from`, main's and the merged tree's, also match.  The merge therefore leaves the bytes of all 133 of main's modules unchanged, and emission gives the same bytes on both architectures.
+
+With the rebuilt host, `tests/verified/run.sh` passed in 3,491 seconds: 32,806 verified cases with no failure, the GPT cases (2,733), the GPT sessions (3,096), and the library cases (226).  The module and drone drivers passed again with the rebuilt host.  The full check of the merged tree is complete.  The WASI and running-sum drivers, the default and `Verified Library` builds, module emission, the LTG check, the module, chunk, drone, regex, and hashing tests, the verified driver, the GPU tests on the reference drivers, and the byte comparison of all 133 of main's modules passed.  `origin/main` is still `d1f851729`, an ancestor of the branch.
 
 ## 2026-10-26: Sums with heap fields: design
 
@@ -36180,6 +36204,269 @@ The second gate found the heavy proofs and the library built, rebuilt the exampl
 - [x] Build, run the cases.
 - [x] Manual, README, and restrictions.
 - [x] Full build, `tests/verified/run.sh`, `tests/wasi/run.sh`, byte comparison, and commit.
+
+## 2026-10-26: The slew planner: program, theorems, and tests
+
+The user asked to bring the Lean program of a slew-planner demo into the repository, to compile it with the verified compiler and test it in WebAssembly, and then to prove its theorems, starting with the lemmas of the edge check.  The work runs on the branch `slew-planner` from `d1f851729`, and phase A ran no Lean and connected to no build host.  The delivery also held a browser page, a JavaScript reference with a generated corpus, and a design document.  The branch first imported them and then removed them at the user's direction, since they will live outside the repository and the user does not take the JavaScript corpus as authoritative.  The repository keeps `Demos/Slew/Program.lean`, `Flat.lean`, `Verified.lean`, and a README that describes the Lean program alone.
+
+The review against [the verified compiler manual](docs/verified-manual.md#the-dialect) found one required change.  `Verified/Compile.lean` compiles `&&` as both operands followed by `i64.and`, so `relax` would have run `edgeOk` on every candidate edge instead of only on the improving ones, and a nested `if` now keeps the check lazy with the same Lean meaning.  The other points wait for the reflector: `round` and `relax` borrow their record parameter and copy its arrays each round, which inflates the generated bound, the index forms `p.1.toNat` and `(1 : UInt64).toNat` may need a `let`, and `plan` should borrow its input.  `tools/source-layout` reports five programs that `main` lacks in `Library.Native`, and the user decided that they arrive with the WASI review fixes.
+
+Regenerating the JavaScript corpus under Node.js 24.13.0 changed the last bits of 798 of its 5,361 lines.  ECMAScript leaves `**` and the `Math` functions to the implementation ([Number::exponentiate](https://tc39.es/ecma262/#sec-numeric-types-number-exponentiate), [the Math functions](https://tc39.es/ecma262/#sec-function-properties-of-the-math-object), cited without fetching them), and the engine that wrote the corpus computed `10 ** e` one unit in the last place off at four exponents.  The Lean generator below therefore uses only correctly rounded operations and Lean definitions, so that its inputs are the same on every host.
+
+### Theorems
+
+The theorems concern `Demos.Slew.plan` and the module of `Demos/Slew/Verified.lean`, in this order of work.  An attitude `q` acts by its rotation matrix `R(q̄)`, where `q̄` is the normalization of `q`, and `R(n, φ)` is the rotation by `φ` about the unit axis `n`.  Two attitudes lie within `ρ` of each other when they move no unit vector apart by more than `ρ`, and the tube radius is `ρ = 10⁻⁹`.
+
+1. **Compilation (generated).**  `compiled.plan.implements`: the module's `plan` export, called with a representation of an input array, returns a representation of `plan` of the array, or traps at `unreachable` when an allocation finds no memory.
+2. **Execution (generated, then bounded).**  `compiled.plan.trapFree` with a stated bound: for inputs within the validated sizes, the call returns without a trap whenever `top` can rise by a constant number of bytes within the memory cap, which `compiled.plan.bound_eq` yields as `compute_bound` does for the drone planner.
+3. **NaN-freedom.**  For every input that passes `validInput`, no floating-point operation in the evaluation of `plan` has a NaN operand or result.  The program takes square roots only of sums of squares and of `θ/a` with `θ ≥ 0`, divides only by quantities bounded away from zero, and writes each acceptance test so that a false comparison rejects.  Transferring the statement to the bytes needs either a statement in Talos's terms or an argument from the compilation theorem that the code performs the same operations, which stays open until the semantics are in hand.
+4. **Safety.**  Let the output have status 1, segments `(q_k, n_k, θ_k)` for `k < K`, and goal `q_K`.  Then `q_0` and `q_K` are the input start and goal bit for bit, and `R(n̄_k, θ_k) R(q̄_k)` lies within `ρ` of `R(q̄_{k+1})`.  For each `k`, each `φ` in `[0, θ_k]`, each attitude `R′` within `ρ` of `R(n̄_k, φ) R(q̄_k)`, and each input cone `(b, u, c, kind)`, a keep-out cone gives `ū · R′ b̄ ≤ c` and a keep-in cone `ū · R′ b̄ ≥ c`.  The theorem assumes nothing about the waypoints or cones beyond validation.
+5. **Premises.**  For a keep-out cone with body vector `b` and a nominal half-angle `α(t)` that may change during the slew, suppose that the true axis `u(t)` stays within angle `d` of the planning axis `u₀`, that `α(t) ≤ α(t₀) + g`, and that the flown attitude `A(t)` stays within angle `ε` of a commanded attitude on the plan's path.  If the plan's half-angle was at least `α(t₀) + g + d + ε`, then `∠(A(t) b, u(t)) ≥ α(t)` throughout.  The proof is the triangle inequality on the sphere and the fact that a rotation by `ε` moves no unit vector by more than `ε`, and keep-in cones are symmetric.
+6. **Optimality.**  Let `G` be the graph that the program's own predicates define: a waypoint is a node when it passes `attitudeOk`, and an edge exists when its computed angle is at most `maxEdge` or it joins the start to the goal, and `edgeOk` accepts it, weighted by its computed integer cost.  Status 1 holds exactly when `G` has a path from the start to the goal, and then the output is such a path of least total cost, and status 0 holds exactly when no path exists.  The proof is the correctness of array Dijkstra with integer weights and the observation that skipping the check of a candidate that cannot strictly improve its target leaves the result unchanged, and it comes last, because a change of the motion model would change `G`.
+7. **File.**  The written `build/verified/slew.wasm` holds `encode compiled.module`, as the numerical file theorems state for their modules.
+
+The safety proof divides into the arc lemmas, the error lemmas, the soundness of the edge check and of its small-angle branch, the tube lemma, the relation of the output's axis and angle to the relative quaternion, and the path structure, which is a loop invariant of the search.  Phase 1 proves the first four, and the safety phase proves the rest.
+
+### Phase 1: the edge-check lemmas
+
+| Question | Decision | Reason |
+|---|---|---|
+| Subject | Prove soundness of the program's own `edgeOk` and `attitudeOk`, with the per-cone body moved into an `@[inline]` helper if the proofs need one | A second implementation would need an equivalence proof, and an inline helper should leave the bytes unchanged, which a byte comparison confirms. |
+| Statement | Soundness for an attitude `qa` and a relative quaternion `rel` with near-unit norm and `w ≥ 0`, with the axis `rel.v/|rel.v|` and the angle `2 arg (w + s i)` of `rel`'s real value: if `edgeOk` accepts, every attitude within `r` of `R(n, φ) R(q̄a)` for `φ` in `[0, θ]` satisfies every cone | The check computes from `rel`, the output's axis comes from the same `rel`, and the relation of `rel` to the target attitude belongs to the safety phase. |
+| Vectors | A structure of three reals with explicit `dot`, `cross`, and norm | The error lemmas follow the program field by field, `ring` and `nlinarith` do the algebra, and Cauchy–Schwarz in three dimensions is Lagrange's identity. |
+| Tube distance | The largest displacement of a unit vector, `‖R′b − Rb‖ ≤ r` for every unit `b` | The tube lemma is then one Cauchy–Schwarz step, and a rotation by `α` displaces a unit vector by at most `2 sin(α/2) ≤ α`, so the theorem implies the statement in angles. |
+| Arc lemma | Prove the endpoint case from the identity `sin(β−α) p(γ) = sin(β−γ) p(α) + sin(γ−α) p(β)` for `p = P cos + Q sin`, applied to `f′` with the mean value theorem, and the interior case from `|A cos φ + B sin φ| ≤ √(A² + B²)` | The identity shows that `f′` keeps its sign between two points of the same sign less than `π` apart, so `f′(0) ≤ 0` or `f′(θ) ≥ 0` excludes a rise followed by a fall on `[0, θ]`. |
+| Error budget | Bound the rounding errors against the program's formulas evaluated in real arithmetic on the unnormalized inputs, and add the normalization error, a few times `10⁻¹²`, only to the extremum's bound | The stationary-point tests need errors below `η = 10⁻¹²`, which the normalization of inputs at the tolerance can exceed, and the sign of `f′` for the unnormalized arc is the one the case split uses. |
+| Margin split | Prove soundness with `r = 1.05 · 10⁻⁹` and an error bound of `4.9 · 10⁻¹¹`, which together fit within `margin`, the double just below `1.1 · 10⁻⁹` | The safety theorem can then state `ρ = 10⁻⁹` and absorb the output's axis, angle, and connection discrepancies, each near `10⁻¹⁵`.  The split stays open until the error lemmas give their constants, and larger margins or interval arithmetic for a resistant expression are the fallbacks. |
+
+The rounding model is `FApprox` of [the error tracking for straight-line code](LeanExe/ProofKit/F64Approx.lean): `FApprox x v e` states that the float `x` is finite and within `e` of the real `v`, and its rules for addition, subtraction, multiplication, division, and square root take magnitude bounds that validation supplies.  The words' real values are `value` of Talos's `CodeLib.IEEE64`.  The specification uses explicit formulas on real triples, the rotation matrix of a normalized quaternion and Rodrigues' formula, rather than Mathlib's quaternions, which have little theory of rotations.
+
+### Tests
+
+The tests follow the other verified examples, and the build phase writes them.  `tests/TestSupport/Slew/Cases.lean` generates the inputs and prints one line per case, `slew|plan|array-u64|INPUT|OUTPUT|2` or `slew|atan2|f64|f64:Y f64:X|RESULT`, with native Lean's results.  `tests/TestSupport/Slew/CasesMain.lean` runs it for `tests/verified/run.sh --cases slew`, `Verified/Examples/Cases.lean` includes it in the full run, and `tests/verified/modules.txt` registers `Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew`, so the driver writes `build/verified/slew.wasm` and compares every case in Wasmtime, bit for bit.  The live-block field 2 counts the host's input and the result, which holds if `plan` borrows its input.
+
+The generator draws from `Library.Random.SplitMix64` with fixed seeds and uses only correctly rounded operations: sums, products, quotients, square roots, and `unitFloat`.  It builds angles from their half-angle tangents `t`, with `cos = (1 − t²)/(1 + t²)` and `sin = 2t/(1 + t²)`, and attitudes from orthonormal frames by the standard trace-based conversion, so it calls neither Lean's `Float.sin` nor any other function of the platform's library.
+
+| Class | Construction |
+|---|---|
+| Realistic plans | Three constraint directions drawn as unit vectors by rejection in the cube; six cones of a telescope's usual shape (boresight `+X` at least 50° from the first direction and 20° and 15° beyond the angular radii of the other two, `+Z` within 70° of the first, and `±Y` at least 75° from it), with cosines as fixed bit patterns; waypoint attitudes at random boresights with the first direction in the body's `X`–`Z` plane; a start and a goal drawn until they pass every cone with `10⁻⁶` to spare; 0, 60, 200, and 500 waypoints; and variations of the rate, acceleration, settling, and `maxEdge`. |
+| Grazing | `v₀ = cos γ p + sin γ n` with `p ⊥ n`, and `u = cos β R(n, φ*) p + sin β n`, so `f(φ) = cos β cos γ cos(φ − φ*) + sin β sin γ` has the extremum `cos(β − γ)` at `φ*` inside `(0, θ)`; the limit sits at the extremum plus each of `−10⁻⁸`, `−2·10⁻⁹`, `−1.1·10⁻⁹`, `−10⁻¹⁰`, 0, `10⁻¹⁰`, `1.1·10⁻⁹`, `1.2·10⁻⁹`, `2·10⁻⁹`, and `10⁻⁸`, for both kinds. |
+| Stationary points | `u` with a component `t (n × v₀)` for `t` in `{0, ±10⁻¹³, ±10⁻¹¹, ±10⁻⁶}`, so that `B` is proportional to `t`, at the start and, by reversing the rotation, at the end, with limits `2·10⁻⁹` and `10⁻¹²` beyond the start's value. |
+| Angles near 0 and `π` | The relative quaternion's vector length `s` set directly to 0, `10⁻¹⁵`, `10⁻¹²`, `10⁻⁹`, `0.995·10⁻⁷`, `10⁻⁷`, `1.005·10⁻⁷`, `10⁻⁶`, and `10⁻³`, and its scalar part `w` to `10⁻³`, `10⁻⁶`, `10⁻⁹`, `10⁻¹⁵`, and 0; antipodal quaternions `q` and `−q`; and small rotations whose start lies `10⁻⁸` inside the limit. |
+| Extreme cones | Keep-out and keep-in cones of cosine 0, 1, and −1, and of half-angles near 0°, on and beside the path. |
+| Norms at the tolerance | One body vector or quaternion scaled by `1 ± 4.9·10⁻¹³` and `1 ± 5.1·10⁻¹³`. |
+| Invalid inputs | NaN and infinities in each section, version 1, 0 and 3.5 bodies, 17 cones, 1,025 waypoints at the matching length, a length off by one, a body index out of range, kind 2, cosine 1.0000001, rate 0, acceleration 2, settling −1, `maxEdge` 5, a start off the unit sphere, inputs of 4 and 0 values, a start and a goal that violate a cone, and no cones. |
+| `atan2` | All pairs of ±0, ± the smallest subnormal, ±1, ±infinity, NaN, 0.5, 2, `10^±8`, and `10^±300`, random bit patterns, and random values with decimal exponents from −20 to 19. |
+
+Two limits shape the corpus.  Linux limits one argument to 128 KiB (`MAX_ARG_STRLEN`), and a plan of 1,024 waypoints, about 4,200 words in decimal, takes about 84 KB, so every plan fits.  The driver runs the generator interpreted, under a 10-minute limit, and the delivered native run took about 5 s for three plans of 500 waypoints, so the realistic class keeps about 20 such plans until the build phase measures the time.
+
+| Question | Decision | Reason |
+|---|---|---|
+| A sampled safety check before the safety theorem | Have the generator also evaluate every cone of every status-1 plan at 1,000 angles per segment, with Rodrigues' formula and the library's `Trig.sin` and `Trig.cos`, and fail when a cone has less than `10⁻⁹` to spare.  The generator and the journal label it a test, which the safety theorem replaces. | The comparison of the module with native Lean cannot detect an error that both share.  The library's `sin` and `cos` are Lean definitions with proved accuracy, so the check is the same on every host.  The user approved the check on 2026-10-26. |
+| Edge-check cases | Add calls of the module's `edgeOk` export on single-cone edges whose endpoints have not passed a static check | The plans never reach an endpoint-only rejection, since both ends of every edge in a plan pass the static check with the same margin. |
+
+### Plan
+
+Phase A:
+
+- [x] Import the program, review it against the dialect, make `relax`'s edge check lazy, and document it.
+- [x] Remove the page, the JavaScript, the corpus, and the design document at the user's direction, and move the theorem plan here.
+
+Build phase:
+
+- [x] Build `Demos.Slew.Program`, `Demos.Slew.Flat`, and `Demos.Slew.Verified`, and record each change that the reflector needs.
+- [x] Write the generator and its main module, register the module and the cases, and run `tests/verified/run.sh --cases slew`, recording the counts and the times of the largest plans against a target of 100 ms.
+- [x] Write the sampled safety check in the generator, labeled a test until the safety theorem replaces it, and record the least spare it finds.
+- [x] Confirm from `compiled.plan.implements` that `plan` borrows its input, and check the axioms of `compiled.bytes`.
+- [x] Read `compiled.plan.bound_eq`, and decide whether `cost` and `parent` leave the `Search` record.
+- [x] Add the imports to `Demos.lean` and `Demos/Verified.lean`, run `tools/source-layout`, and update the README and the verified compiler manual's examples.
+
+Phase 1:
+
+- [x] `Spec.lean`: real vectors, the rotation of a normalized quaternion, Rodrigues' rotation, and the cone predicate.  The tube moved to `Check.lean`.
+- [x] `Arc.lean`: Rodrigues' formula in the `A, B, C` form, the global bound, the interpolation identity, and the endpoint lemma for maxima and, by negation, minima.
+- [x] The error lemmas, in `Rounding`, `Error`, `Axis`, `Normalize`, `Cone`, and `Hypot`: bounds for `s`, `n`, `cos θ`, `sin θ`, `v₀`, `n·u`, `n·v₀`, `f₀`, `A`, `B`, `C`, `f₁`, `f′(θ)`, and `√(A² + B²)`.
+- [x] `Decide.lean` and `Check.lean`: soundness of one cone in both kinds and both branches, of the small-angle branch, of `edgeOk` over all cones by `loop_induction`, and of `attitudeOk`.
+- [x] Compare the module's `edgeOk` export with native Lean on 10⁵ generated single-cone edges.
+- [x] No `sorry`, no new axiom, no `bv_decide`, and an axiom check of the soundness theorems.
+
+Later phases: the path structure and the safety theorem, the premise theorem, NaN-freedom, then the motion model and optimality, with the file theorem once the module is stable.
+
+## 2026-10-26: The slew planner compiled and tested in Wasmtime
+
+The build phase ran in a clone whose `.lake` held `main`'s full build, with at most 6 workers and `--memory-high 32G`.  `Demos.Slew.Program` built in 0.4 s and `Demos.Slew.Flat` in 1.5 s.  The first build of `Demos.Slew.Verified` failed with `the type Prop is not UInt64, Bool, Float, …`, which names no function, and the same command with `set_option trace.Verified.reflect true` stopped after `reflect Demos.Slew.segmentField`.  Its `let big := sn ≥ axisMin` bound a proposition, and `let big : Bool := sn ≥ axisMin` gives the same meaning in the dialect, after which the compilation built in 170 s.  The reflector accepted the index forms `p.1.toNat` and `(1 : UInt64).toNat` that the review had flagged.
+
+`compiled.plan.implements` is `ImplementsA true compiled.module 28 (fun x => Demos.Slew.plan x)` with an argument of type `Array Float`, so `plan` borrows its input, and `compiled.bytes` and `compiled.plan.trapFree` depend on `propext`, `Classical.choice`, and `Quot.sound` alone.  `compiled.plan.bound_eq` gives the bound of validated input as `compiled.search.bound` plus `compiled.output.bound` at the search's result, so a constant bound needs the bound equations of `search`, `round`, and `relax` in turn.  The record parameter of `round` and `relax` stays, because the plans run far inside the time target and the copies it causes enlarge only that bound, whose derivation belongs to the execution theorem and can reopen the question with numbers.
+
+`tests/TestSupport/Slew/Cases.lean` generates 852 plans in eight classes and 1,225 `atan2` calls, and `Demos/Slew/README.md` tabulates the classes with their statuses.  The `atan2` cases are the 225 pairs of 15 special values and 1,000 random pairs, half of them random bit patterns, in which a NaN pattern becomes the canonical NaN, since the host canonicalizes NaN results and native code need not keep that form.  The generator runs interpreted in 18 s.  Lean requires a structure instance's continuation lines to start at or right of its first field, which the first version broke, and a helper for the one-cone scenes replaced the long instances.
+
+`tests/verified/run.sh --cases slew` wrote and validated the 26,362-byte `build/verified/slew.wasm` and reported `verified: passed 2077 failed 0` in 74 s, with no access past the end of an array in native Lean.  Every plan case left two blocks allocated, the host's input and the result, which agrees with the borrowed parameter.  In the host, a plan of 500 waypoints took at most 51 ms, for one that finalized 348 nodes, against 18 to 28 ms for a call of `atan2`, the start of the host and the compilation of the module.
+
+The sampled safety check passed on every one of the 433 plans of status 1, with a least spare of `1.23 · 10⁻⁹` in a grazing case.  Its samples lie `θ/1000` apart and can miss an interior extremum by up to about `10⁻⁶` in cosine, so it confirms the shape of the decisions without resolving the grazing cases at the scale of the margin.  The comparison with native Lean and the check are tests, and the edge-check lemmas of Phase 1 are the next step toward a proof.
+
+`Demos`, `Demos.Verified`, and `Verified.Examples.Cases` build with the new imports, `tools/source-layout` reports only the five programs that `main` lacks in `Library.Native`, and the link check passes.  The full `lake build Verified Library` and the full `tests/verified/run.sh`, which the repository requires before a merge into `main`, have not run on this branch.
+
+## 2026-10-26: The slew edge check proved sound
+
+Phase 1 proved the program's own `edgeOk` and `attitudeOk` sound in ten modules under `Demos/Slew`, built with the build phase's limits of 6 workers and 32 GB.  `edgeOk_sound` assumes an attitude `qa` with finite components and a squared norm within `3·10⁻¹²` of 1, a relative quaternion `rel` that is finite with `w ≥ 0` and a squared norm within `10⁻¹¹` of 1, and cones whose body vectors and axes are finite with squared norms within `3·10⁻¹²` of 1 and whose cosines are finite and in `[−1, 1]`.  If `edgeOk xs d qa rel` holds, then for every cone, every `φ` in `[0, θ]`, and every vector within `1.05·10⁻⁹` of `R(n, φ) R(q̄a) b̄`, the cone of `ū` and `c` holds, where `n` and `θ` are the axis and angle of `rel`'s real value (`ArcSafe`).  `attitudeOk_sound` states the same at one attitude for the check without slack (`PointSafe`).  Both theorems depend on `propext`, `Classical.choice`, and `Quot.sound` alone, and the modules use no `sorry` and no `bv_decide`.
+
+The plan changed in three places.  The per-cone helper was unnecessary: `coneEdge` and `coneStatic` in `Check.lean` repeat the bodies of the loops, `edgeOk_eq` and `attitudeOk_eq` hold by `rfl`, and the program and its bytes are unchanged.  `Spec.lean` states a rotation by the program's formula `v + w t + q × t` in exact arithmetic applied to the normalized quaternion, which for a unit quaternion is the rotation, in place of the rotation matrix, and the tube appears in `ArcSafe` and `PointSafe`.  The error lemmas grew into `Rounding`, `Error`, `Axis`, `Normalize`, `Cone`, and `Hypot`, and the decisions went into `Decide`.
+
+The planned split of the margin, a tube of `1.05·10⁻⁹` and errors of at most `4.9·10⁻¹¹`, holds with errors of `3.63·10⁻¹¹`.  The rounding errors are bounded against the program's formulas in exact arithmetic on the given inputs, so the stationary-point tests see errors of at most `1057 u` against `eta = 10⁻¹²`, and the normalization enters only at the end.
+
+| Part of the budget | Bound | Lemmas |
+|---|---|---|
+| Rounding of `f₀`, `f₁`, the stationary value, and the limit | `2300 u ≈ 2.6·10⁻¹³` | `cone_values`, `hypot_bnd`, `small_amplitude`, `low_limit` |
+| `w² − s²` and `2ws`, which are `cos θ` and `sin θ` times `w² + s²` | `2.3·10⁻¹¹` | `keepout_arc`, `keepin_arc` |
+| Normalization of the attitude, the body vector, and the cone axis | `1.3·10⁻¹¹` | `spec_close` |
+| The tube | `1.05·10⁻⁹` | `near_bounds` |
+| Total, against `margin ≥ 1.0999·10⁻⁹` | `1.0863·10⁻⁹` | `finish_out`, `finish_in` |
+
+Lean's `max a b` is `if a ≤ b then b else a`, which returns `a` when `b` is a NaN, so the keep-out test would drop a NaN `f₁` or stationary value without failing.  The proof derives the finiteness of each value it uses from the error bounds, that of `cc + r` from `hypot_bnd` when `a² + b² ≥ 2⁻¹⁰⁰⁰`, and needs no stationary value when the amplitude is below `1014 u`, so soundness does not depend on that behavior.  The proof does not exclude a NaN `s`, although a sum of squares of finite floats is never negative.  `nan_tiny` shows that a NaN `s` requires `S² ≤ 5 · 2⁻¹⁰⁷⁵`, and then every keep-in check fails and every keep-out check bounds the start, which covers a rotation that small.  Below `sMin`, `s` is finite and non-negative, `2.125 s` is at least `2.0003 S − 10⁻²⁰`, and the cosine moves by at most `2.0003 S` along the rotation, so the start's check with that slack covers the rotation.
+
+`Demos.Slew.Hypot` builds in 12 s and `Demos.Slew.Check` in 4.3 s.  `Demos` builds with `Demos.Slew.Check` imported, `tools/source-layout` reports the same five programs, and the link check passes.  `nlinarith` failed on `(1 + 3·10⁻¹²) · 1.0001 · (2S/0.99999) ≤ 2.0003 S`, and a `ring` step to a constant times `S` replaced it.  `Axis.lean` lost `sqrt_nonneg_of_lt`, which the proof no longer uses, since `s_facts` takes the sign of `s` from `sqrt_cases`.
+
+`tests/slew/edges.sh` runs the last test of Phase 1.  `tests/TestSupport/Slew/Edges.lean` generates 100,000 single-cone edges, and one host session calls the module's `edgeOk` on each, with one input array whose body vector and cone it rewrites between calls.  The classes are random edges (40,000, of which 13,866 accepted), cones that graze a designed extremum anywhere in the rotation within `10⁻⁸` (30,000, 7,447 accepted), stationary points at either end with `B` within and beyond `eta` (15,000, 7,933 accepted), and vector lengths near 0, `sMin`, and 1 (15,000, 4,967 accepted).  Every result agrees with native Lean, and the session's one allocation is its input, which shows that `edgeOk` borrows the array.  The test takes 9 s, so `tests/verified/run.sh --cases slew` runs it, and that run passed in 85 s.
+
+## 2026-10-26: The slew safety theorem: plan
+
+The coordinator asked for the safety theorem for whole plans, starting from the hypotheses of the edge check: `GoodQ` and `ConeGood` from `validInput`, `GoodRel` from `relative`, and a bound on the distance between the rotation of `rel`'s real value and the exact relative rotation.  The statement is item 4 of [the theorem list](#theorems): for an output of status 1, the start and goal are the input's bit for bit, and for each segment `g`, each `φ` in `[0, θ_g]`, each map `R′` that moves every unit vector at most `ρ = 10⁻⁹` from `R(n̄_g, φ) R(q̄_g)`, and each input cone, the cone holds for `ū · R′ b̄`.  Each segment's rotation `R(n̄_g, θ_g) R(q̄_g)` also lies within `ρ` of `R(q̄_{g+1})`.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Rotations | `R(q̄)` is `Quat.rot (Quat.unit q)`, the program's formula on the normalized quaternion, and the proofs pass through the homogeneous form `q v q*`, which equals it for unit `q` | Composition becomes the associativity of the quaternion product, and the distance between two rotations is at most twice the distance between their unit quaternions, by the multiplicativity of the quaternion norm. |
+| Axis and angle | `R(n, φ)` equals the action of `(cos(φ/2), sin(φ/2) n)`, and the axis and angle of `rel`'s real value give `rel` normalized | Differences in axis, angle, and quaternion then reduce to one bound on quaternion distance. |
+| Output angle | Convert `AtanTwoTheorem.atan2_within_two`, two steps from the reference of `arg (w + i s)`, into an absolute error, and relate `2 arg (W + i S)` to `angle W S` | The output angle comes from the library's `atan2`, and the check uses `rel` alone. |
+| Path structure | An invariant of `search` over the finalized nodes: every node with a finite cost other than the start, and every finalized node other than the start, has a finalized parent whose edge `edgeOk` accepted, and the parent chain of a finalized node reaches the start within as many steps as there are finalized nodes | The invariant needs no ghost state, and the count of finalized nodes bounds the chain by `n`, the fuel of `pathLength`. |
+| Large inputs | `validInput`'s norm tests reject a component above 2 in magnitude, which the proof shows from the enclosure lemmas of the rounding of a finite result | `FApprox` needs magnitude bounds on its operands, and `allFinite` bounds the values only by the largest finite double. |
+
+- [x] `Rotation.lean`: quaternion product, conjugate, and action; the action equals `Quat.rot` for unit quaternions, composes, and moves vectors by at most twice the quaternion distance; Rodrigues' rotation as an action.
+- [x] `Valid.lean`: `GoodQ` for every node and `ConeGood` for every cone of a validated input.
+- [x] `Relative.lean`: `GoodRel` for `relative qa qb`, and the distance between `rel` normalized and `±q̄b q̄a*`.
+- [x] `Search.lean`: the invariant of `search`, `pathLength`, and `pathNode`, and the segments of the output as accepted edges.
+- [x] `Angle.lean`: the output axis and angle against the axis and angle of `rel`'s real value.
+- [x] `Safety.lean`: the safety theorem, its axioms, and the documentation.
+
+## 2026-10-26: The slew safety theorem proved
+
+`Demos.Slew.Safety.plan_safe` proves the safety theorem for whole plans, and it depends on `propext`, `Classical.choice`, and `Quot.sound` alone.  For an output of status 1 with `K` segments, the start and goal quaternions equal the input's, bit for bit, and segment `g` stores its start quaternion at offset `4 + 11g`, its axis at `8 + 11g`, and its angle at `11 + 11g`, with the goal as the start of segment `K`.  The rotation of each segment by its angle about its normalized axis carries `R(q̄_g)` to within `10⁻⁹` of `R(q̄_{g+1})`, and for every `φ` from 0 to the angle and every map `R′` that moves every unit vector at most `10⁻⁹` from `R(n̄_g, φ) R(q̄_g)`, every input cone holds for `R′ b̄`.  `R(q̄)` is `Quat.rot (Quat.unit q)`, which `rot_eq_act` equates with `v ↦ q̄ v q̄*`, so the statement follows item 4 of [the theorem list](#theorems) with a map in place of an attitude, which makes it stronger.
+
+| Module | Content | Build |
+|---|---|---|
+| `Rotation.lean` | The quaternion product, conjugate, and action; `rot_eq_act`; composition; the distance bound `act_sub_le` from the multiplicative norm and Cauchy–Schwarz in four dimensions; `rod_eq_act`; and `half_axis_angle` | 3.1 s |
+| `Relative.lean` | `relative_good` and `relative_rot`: each component within `13.04 u` of `±q_b q_a*`, and the rotation within `1.2·10⁻¹⁴` of `R(q̄_b)` | 2.6 s |
+| `Valid.lean` | `valid_good`: `GoodQ` for every node and `ConeGood` for every cone of a validated input | 4.7 s |
+| `Search.lean` | The invariant of `search` and `plan_segments` | 2.3 s |
+| `Angle.lean` | `angle_out` and `axis_out` | 10 s |
+| `Safety.lean` | `segment_close`, `segment_safe`, and `plan_safe` | 8.0 s |
+
+Each design decision of the plan held.  The norm tests needed the most new floating-point work, since `FApprox` needs magnitude bounds on its operands: a NaN or infinite operand of a sum, difference, or product gives a NaN or infinite result (`finite_of_add`, `finite_of_mul`), the enclosure of a finite result between its neighbors gives a lower bound by any float below the exact value (`lower_of_enclosure`), and a component above 2 then makes the computed sum of squares at least `4 − 60 u`, so the test fails.  The search invariant tracks finalized nodes instead of costs, because an edge can cost zero ticks when the settling time is zero, so costs alone do not exclude cycles of parents.  The count of finalized nodes, a `Finset`, bounds the parent chains, and the proof needs no ghost state and no assumption about the cost arithmetic, so a sum of costs that wrapped could change which path the search reports but not its safety.  `output` reads the parent array past its end only when a chain fails to reach the start, which the invariant excludes.
+
+The output angle needed two conversions.  `AtanTwoTheorem.atan2_within_two` gives two steps from the nearest-even reference of `arg (w + i s)`, and `within_two_abs` turns that into `2⁻⁴⁹` for an argument in `[0, 2]` from the spacing of words below 4 and `F64NearestHalf.nearest_half`.  `angle_eq_two_arg` identifies `angle W S` with `2 arg (W + i S)`, and `arg_sub_le` bounds the change of the argument by `4 |Δy|` from the sine of the difference and Jordan's inequality.  The edge check's proof had left a NaN `s` possible.  `radicand_nonneg` shows that the computed sum of squares is never negative, from the enclosures, so `s` is finite and `atan2` receives finite arguments.
+
+`lake build Demos` passed with `Demos.Slew.Safety` imported in place of `Demos.Slew.Check`, `tools/source-layout` reports the same five programs, the link check passes.  The sampled safety check of the generator stays as a test, and removing it is a question for the user.  The remaining theorems are the premise theorem, NaN-freedom, the constant allocation bound, optimality, and the file theorem.
+
+## 2026-10-26: NaN-freedom of the slew planner
+
+The coordinator asked for the remaining theorems in the plan's order: NaN-freedom, the premise theorem, the constant allocation bound, optimality, and the file theorem, with the sampled safety check left in place until the user decides on its removal.
+
+| Question | Decision | Reason |
+|---|---|---|
+| What "every operation" means | A theorem about `plan` in Lean that lists every floating-point value the program's functions bind: each `let` value, each operand of a comparison, conversion, `min`, `max`, or `abs`, each divisor, each argument of a square root, and the arguments and result of each `atan2` call.  An operation inside one of these expressions is a sum, difference, product, or negation, and `fin_add`, `fin_sub`, and `fin_mul` make its result finite when the expression's is. | Lean has no trace of the operations a function performs, and a statement about the module's instructions needs Talos's semantics, which the plan left open.  The list follows the program text, so a reader can check it against each function. |
+| Finite or only not NaN | Finite | Every value is finite, and finiteness carries from an expression to its parts, while being not NaN does not. |
+| Which evaluations | Every node and every pair of nodes, whether or not the search evaluates them | The statement needs no model of which pairs `relax` reaches. |
+| The library's functions | The arguments and result of `atan2` are in the statement, and its internal operations and those of `atan` are not | The library proves accuracy, and a NaN-freedom proof of its internals belongs to the library. |
+
+`Demos.Slew.NanFree.plan_finite` proves the statement, with `StaticClean`, `ConeClean`, `EdgeClean`, `SegClean`, and `InputClean` mirroring `attitudeOk`, the cone loop of `edgeOk`, `edgeOk`, the segment computations (`relative`, `angleOf`, `slewTicks`, `ceilMs`, and `segmentField`), and `validInput`.  It depends on `propext`, `Classical.choice`, and `Quot.sound` alone, and the module builds in 4.1 s.  Most values come from the bounds of the edge-check proofs.  The new work was the duration: `slewTicks` takes the square root of `θ / a`, so the output angle `2 atan2 s w` must not be negative, and the library's accuracy theorem allows a result two steps below a tiny positive argument, which would be negative.  `atan2_nonneg` therefore follows the library's branch lemmas: for a positive `s` and a `w` that is not negative, `atan2` returns a positive constant or `atan` of a quotient that is not negative, and `atan_nonneg` shows from the small-argument branch and the accuracy within one step that `atan` keeps the sign of its argument.  Quotients and square roots of values that are not negative are not negative from the enclosure lemmas, with exact zeros handled from the definitions of `mul` and `div`.
+
+- [x] NaN-freedom: `plan_finite`.
+- [x] The premise theorem: `plan_premise`.
+- [x] The constant allocation bound: `plan_bound` and `slew_trapFree`.
+- [x] Optimality: `plan_optimal`.
+- [x] The file theorem: `slew_file` and `slew_file_decode`.
+
+## 2026-10-26: The slew premise theorem
+
+`Demos.Slew.Premise.plan_premise` proves item 5 of [the theorem list](#theorems) for one instant of a segment.  For an output of status 1, a segment `g`, an angle `φ` in `[0, θ_g]`, a map `A` that moves every unit vector by an angle of at most `ε` from `R(n̄_g, φ) R(q̄_g)`, and a cone with a true axis `u` within angle `d` of `ū` and a true half-angle `α`, a keep-out cone with `α + d + ε ≤ arccos c` gives `∠(A b̄, u) ≥ α`, and a keep-in cone with `arccos c + d + ε ≤ α` gives `∠(A b̄, u) ≤ α`.  The theorem depends on `propext`, `Classical.choice`, and `Quot.sound` alone, and the module builds in 1.9 s.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The angle between vectors | Mathlib's `InnerProductGeometry.angle` on `EuclideanSpace ℝ (Fin 3)`, through `toE` | Its definition is an arccosine that a reader checks directly, and Mathlib proves the triangle inequality for it (`angle_le_angle_add_angle`) with no hypothesis that the vectors are nonzero. |
+| The flown attitude | A map `A : Vec → Vec` with every unit vector within angle `ε` of its commanded image | A map, as in `plan_safe`, makes the hypothesis weaker than one about a rotation, and an angle bound matches item 5. |
+| The growth of the half-angle | The theorem takes the true half-angle `α` and the hypothesis `α + d + ε ≤ arccos c`, and the README derives the condition for `α ≤ α₀ + γ` | `α₀` and `γ` enter item 5 only through `α₀ + γ`, so the two forms are equivalent, and the theorem's form has fewer variables. |
+| Time | One instant: one `φ`, `A`, `u`, and `α` | A statement over time follows by applying the theorem at each instant, and a model of time would add nothing to the proof. |
+| The tube of `plan_safe` | The proof applies `plan_safe` to the commanded attitude, at distance 0 | `ε` covers the whole difference between the flown and commanded attitudes, so the tube is unused here. |
+
+The proof needed the commanded attitude to preserve length, and Rodrigues' formula does so only for a unit axis.  `plan_safe` now states that the normalized output axis has length 1, which `segment_close` already proved, and `norm_attitude_any` covers `attitude q` for every `q`, with `q = 0` giving the identity.  The cone's bound on the cosine of two unit vectors becomes a bound on their angle by `Real.arccos_le_arccos`, and the triangle inequality adds `d` and `ε`.
+
+## 2026-10-26: The user's decisions on the sampled check and NaN-freedom
+
+The user decided the two questions that the safety and NaN-freedom entries left open.  The generator no longer runs the sampled safety check, because `plan_safe` covers every angle of every segment for every input that passes `validInput`, while the check sampled 1,001 angles of each segment of the generated plans.  `sampledSpare` is gone from `tests/TestSupport/Slew/Cases.lean`, `--summary` prints the counts of statuses alone, and the README's table of classes drops the column of spares and records that the theorem replaces the check, which had found at least `1.23 · 10⁻⁹` to spare.  `tests/verified/run.sh --cases slew` passed afterwards with the same counts of statuses, 2,077 cases in all, in 80 s, and the generator alone takes 14 s.
+
+The user accepted the formulation of NaN-freedom as `plan_finite` states it.  The theorem concerns `plan` in Lean, and it covers each call of the library's `atan2` at its arguments and its result, while the internal operations of `atan2` and of the `atan` that it calls lie outside it.  Carrying the statement to the module's instructions stays open until a statement in Talos's semantics is in hand.
+
+## 2026-10-26: The slew planner's allocation bound
+
+`Demos.Slew.Bound.plan_bound` states that `compiled.plan.bound xs ≤ 68,020,488` for every input, and `slew_trapFree` states, as `drone_trapFree` does for the drone planner, that entry 28 computes `plan` without a trap whenever `top` can rise by 68,020,488 bytes within the memory's cap.  Both depend on `propext`, `Classical.choice`, and `Quot.sound` alone, and the module builds in 1.8 s.  The module sits beside the compilation, with `Demos/Verified.lean` importing it, and keeps the safety proofs out of the compilation's imports.
+
+| Term | Bytes | Source |
+|---|---:|---|
+| `initial` | 33,056 | four blocks of `n ≤ 1,026` words, `blockCost n = 8n + 56` |
+| Rounds | 67,897,024 | at most `n + 1 = 1,027` rounds, each charged eight blocks of `n` words: four for the copy in `round` and four for the copy in `relax` |
+| `output` | 90,408 | a block of `8 + 11k` words with `k ≤ n` |
+
+The proof follows `compute_bound` of the drone planner.  `loopCost_le` bounds the rounds with the invariant `Inv` of the search, which already fixes the sizes of `cost`, `parent`, and `done`, and the fact that `round` and `relax` leave `ok` unchanged (`round_ok`, `relax_ok`).  `pathLength_le` bounds the edge count of `pathLength` by its fuel for every search state, so the output's size needs no assumption about the parent chains.  The bound charges every copy and ignores the reuse of freed blocks.  The plan cases leave only the host's input and the result allocated after a call, so the module frees its copies, but neither the theorem nor the tests measure the peak use of a call.
+
+The user decided to keep `round` and `relax` as they are, with the proved bound, rather than restructure them so that a round copies fewer arrays.  The bound is proved, and its 68,020,488 bytes come to 1,038 pages of 64 KiB, far below the module's declared maximum of 65,535 pages.  The program therefore stays as delivered, and its module, tests, and theorems do not change.
+
+## 2026-10-26: Optimality of the slew planner
+
+`Demos.Slew.Optimal.plan_optimal` proves item 6 of [the theorem list](#theorems).  For an input that passes `validInput` and whose start and goal pass the static check, a walk from the start to the goal in the graph that the program's checks define gives an output of status 1 whose segments join the nodes of such a walk, whose header reports its cost, and which no walk from the start to the goal undercuts, and the absence of such a walk gives status 0.  The theorem depends on `propext`, `Classical.choice`, and `Quot.sound` alone, and `Optimal.lean` builds in 2.7 s and `Cost.lean` in 2.7 s.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The graph | `Edge u v`: both nodes below `n`, both admitted (`okNode`, the start, the goal, or a node that passes `attitudeOk`), `v ≠ u`, `¬(θ > maxEdge ∧ ¬(u = 0 ∧ v = 1))` on the computed angle, and `edgeOk` accepts the rotation, with the cost `slewTicks θ + settleTicks` | These are the tests of `relax`, so the theorem states what the program computes, as item 6 asks. |
+| Walks or paths | Walks, which may repeat nodes | With costs that are not negative, the least cost over walks equals the least cost over simple paths, and walks need no distinctness condition. |
+| The status | Two implications, a walk gives status 1 and no walk gives status 0 | Together with `1.0 ≠ 0.0` they give "exactly when" in both directions. |
+| Overflow | `Cost.edge_cost_le` bounds each edge's cost by `2^34` ms from the limits of `validInput` | Costs are `UInt64` sums with the sentinel `infinity = 2^62`, and at most 1,026 finalized nodes keep every cost below `1027 · 2^34 < 2^62`, so the theorem needs no hypothesis on costs. |
+
+The invariant `Opt` holds of every state of the search.  Its fields state that a finalized node holds the least cost of any walk to it (`lower`), that a node with a finite cost other than the start holds the cost of the walk through its parent, whose edge is in the graph (`edge`), that a node not yet finalized holds at most the cost through each finalized node other than the goal with an edge to it (`relaxed`), that every finite cost is at most `(card done) · 2^34` (`bound`), and that a finished search has finalized the goal or left every open admitted node unreached (`stop`).  `select_lower` is the step of Dijkstra's proof: a walk to the selected node leaves the finalized nodes at a first open node whose cost is at most the walk's cost up to it, and the selected node costs at most every open admitted node.  `relax_opt` carries `relaxed` through the loop with the pairs from the new node pending above the loop index, and the branch that skips `edgeOk` for a candidate that does not improve its target satisfies `relaxed` from the candidate's cost alone.  Each round that does not stop finalizes one more node, so the `n + 1` rounds of `search` end finished.
+
+The proof extended `plan_segments` to state that each node of the output's walk after the start is not the start and has the node before it as its parent, so that the walk is the parent chain, and moved `go_count` and `pathLength_le` from `Bound.lean` to `Search.lean`, so that `Optimal.lean` does not import the compilation.  `Cost.toUInt64_le` takes the truncation of `Float.toUInt64` from the library's `Expm1ReduceWords.truncSat_spec`, and `ticks_le` repeats the enclosures of `NanFree.slew_clean` to bound the computed duration by `1.05 · 10¹⁰` ms.
+
+## 2026-10-26: The slew planner's file theorems
+
+`Demos/Slew/File.lean` states item 7 of [the theorem list](#theorems) as the repository's other file theorems do.  `slew_file` states that `encode compiled.module` equals the bytes of `build/verified/slew.wasm`, from `compiled.encoded` and a kernel comparison of the literal bytes, and `slew_file_decode` states that the file decodes to `compiled.module`, from `compiled.bytes`.  Both depend on `propext`, `Classical.choice`, and `Quot.sound` alone, and the check takes 5.8 s and 5.3 GB on the build host after the module of 26,362 bytes was written again from the current compilation.
+
+The entry `slew:Demos.Slew.Verified:Demos/Slew/File.lean` of `tests/verified/numerics.txt` makes the full `tests/verified/run.sh` build the compilation, check the file module against the file it writes, and require exactly two axiom reports with the permitted axioms, as it does for the regex and hashing modules.  `--cases slew` skips that loop, as it does for every other module.  `Demos.lean` does not import the file module, because the module reads the written file.
+
+All seven theorems of the plan are proved.  The branch still needs the merge with `origin/main`, the full `lake build Verified Library`, and the full `tests/verified/run.sh` before a push, which the coordinator schedules.
+
+## 2026-10-26: The slew planner merged with main and added to the index
+
+Merging `origin/main` at `bab4a8fbe` into `slew-planner` conflicted in `Demos/README.md`, `Demos/Verified.lean`, and `devnotes.md`, where both sides had added rows, imports, or entries, and each resolution keeps both sides, with main's entries first.  `tests/verified/run.sh`, `tests/verified/modules.txt`, `Verified/Examples/Cases.lean`, and `docs/verified-manual.md` merged without conflicts.  The full gate waits for typed-fields stage 1 to reach `main` and a second merge.
+
+Section 14 of `index.md` now has a row for the slew planner, after the drone planner's pattern, with links to `plan_safe`, `plan_premise`, `plan_optimal`, `plan_finite`, `plan_bound` and `slew_trapFree`, and the file theorems, and with their premises and limits.  The verified manual's description of `--cases slew` still described the sampled safety check that the generator no longer runs, and it now omits it, and the manual's `Slew` row names `slew_trapFree`.  The link check passes, and `tools/source-layout` reports no problems after the merge.
+
+## 2026-10-26: The slew documents after an independent review
+
+An independent reviewer read the slew README, the index row, and the demos table against the Lean statements and reported eleven groups of problems, which this revision addresses after checking each proposed text against the code.  The README now leads with the problem, the interface, and the program, gives every theorem in one table with its file, hypotheses, and conclusion, states the three axioms once, and adds a section on the limits of the theorems and one on building and testing with the expected output.  It defines `R(q)`, eigenaxis and rest-to-rest rotation, `T(θ)`, the settling time, the static and edge checks, finalized nodes, admitted nodes, and the tube as the displacement of a unit vector, and it drops the development history.
+
+The review's figures held against the code except where noted here.  The output of statuses 0, -1, -2, and -3 is four values, `[status, 0, 0, F]`, with `F` the count of finalized nodes for status 0 and 0 otherwise, from `statusOnly`.  The invalid-input class fails fifteen of the tests of `validInput`, the norm class fails the test of a body vector's norm, and the README lists the eleven tests that no case fails, from the indices that `invalid` in the generator modifies for a scene with four body vectors.  `plan_finite` omits `m1` and `m2` of the edge check, the margin of `1.1e-9` leaves about `1.37e-11` after the tube `ρ = 1.05e-9` and the rounding errors of `3.63e-11`, and the unit roundoff is now `μ`, since `u` names the cone axis.  The program's docstring still describes the tube in radians, and changing it would change `Program.lean`, which stays as delivered.
+
+`tests/slew/Axioms.lean` audits twelve theorems with an elaborator that fails on any axiom outside the three: the generated `compiled.bytes`, `compiled.plan.implements`, and `compiled.plan.trapFree`, `edgeOk_sound`, `attitudeOk_sound`, `plan_safe`, `plan_finite`, `plan_premise`, `edge_cost_le`, `plan_optimal`, `plan_bound`, and `slew_trapFree`.  The file theorems stay out of it, because importing `Demos.Slew.File` needs a built module whose proof reads the written file, and Lake does not track that file, so a stale build could pass after the file changes.  `tests/verified/run.sh` runs the audit for `--cases slew` and for the full run, and for `--cases slew` it also elaborates `Demos/Slew/File.lean` again and requires its two permitted reports, through a `check_file` function that the loop over `tests/verified/numerics.txt` now shares.
+
+| Question | Decision | Reason |
+|---|---|---|
+| The file theorems in the audit | Checked by elaborating `File.lean` again, as the numeric file theorems are | A module import of the file theorems could use a build that predates the written file. |
+| `check_file` | One shell function for the numeric loop and the slew case | The two checks are the same, and the function also corrects the failure message, which printed `.lean.lean`. |
+| Timings | Stated for one run on one aarch64 Linux machine, with a sentence that they vary | They come from one run. |
+
+On the build host, `tests/verified/run.sh --cases slew` passed in 92 s after `tools/build-wasmtime-host.sh` rebuilt the host, which `main`'s newer `tools/wasmtime-host.c` required: 100,000 edges agree, the audit passed for 12 theorems, the file theorems carry only the permitted axioms, and 2,077 cases passed with none failing.  The link check passes, and `tools/source-layout` reports no problems.
+
+## 2026-10-27: The slew branch's full check after the merge
+
+The slew branch's full check, after the merge with typed-fields stage 1, passed the host rebuild and the 16 heavy proofs one at a time.  The aggregate build then failed at job 10,659 of 10,848, and the check reruns on another build host.
 
 ## 2026-10-26: Typed fields of tree records: design
 
