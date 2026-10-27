@@ -36628,3 +36628,25 @@ The module cases of `tests/TestSupport/Native/ModuleCases.lean`, 3,096 of `euler
 - [ ] B7 · Inputs, optional: `EF_vload`, the theorem about `alloc` followed by stores, and the theorem quantified over the input.  Exit: SHA-256 of a loaded message with its theorem.
 - [ ] B8 · Board, optional: the MMU with a guard page, the board's entry and UART, and the output question.  Exit: the programs of B4 on a board.
 - [ ] The user's decisions on the open questions of the design.
+
+### The experiment files in the repository
+
+On 2026-10-27 the user approved a directory of its own for the Rocq proofs, checked by a script against a built CompCert 3.18 tree outside the default build, and the seven recommendations of the design.  The experiment files now lie at the places that B0 and B5 plan, with three kinds of change: the toolchain comes from `CCOMP` and `CCOMP_STDLIB`, as in `tests/native/run.sh`, instead of a fixed path; CompCert assembles the startup code through its configured assembler instead of gcc directly; and each file's opening comment describes it.  None of the committed versions has run since these changes, so B0 and B5 begin by running `tests/baremetal/run.sh` and `rocq/check.sh`.
+
+| File | Experiment file | Result it reproduced |
+| --- | --- | --- |
+| `tools/baremetal/start.S` | `start.S` | Every run of the experiments: entry at EL1, `main`'s status as QEMU's exit status through semihosting, and the values in `lx_boot_el`.  With `-DNO_FPEN`, the trap at vector 4 with `ESR_EL1` `0x1fe00000` at `main`'s third instruction; with `-DUNALIGNED_TEST`, the unaligned 8-byte load that QEMU did not fault. |
+| `tools/baremetal/link.ld` | `link.ld` | The image at `0x40100000` above the device tree, `lx_uart_dr` at `0x09000000`, and the stack after `.bss`, 1 MiB for the probes and 4 MiB (`STACK_SIZE=0x400000`) for the corpus runs. |
+| `tools/baremetal/report.c` | `report.c` | The `R:exit` and `R:exception` lines, with the stack's high-water marks: 16,048 bytes for the probe, 48 for the entry program, and 230,128, 37,840, and 7,552 bytes for `recursion`, `listrecursion`, and `euler` in the corpus runs. |
+| `tools/baremetal/build.sh` | the compile and link commands of `build.sh` and of the corpus host's `run-module.sh` | Every link with `-nostdlib -static -T link.ld` and no undefined symbol.  The QEMU runs moved to `tests/baremetal/run.sh`. |
+| `tests/baremetal/probe.c` and `probe.expected` | `prog.c` | The freestanding program: the nine words, status 42, and one undefined symbol in its object, `lx_uart_dr`. |
+| `tests/baremetal/entry.c` and `entry.expected` | `regs.c` | The state at entry: EL1, DAIF `0x3c0`, `SCTLR_EL1` `0x00c50838`. |
+| `tests/baremetal/run.sh` | the commands run by hand | The four runs above and the PL011 at `9000000` in the device tree that `-machine virt,dumpdtb=` writes. |
+| `rocq/Clight2Asm.v` | `Clight2Asm.v` | `clight2_to_asm_forward` and `clight2_bigstep_to_asm`, which `coqc` checked in 6.5 seconds.  The file differs from the checked one, SHA-256 `c01caef6…`, only in its opening comment; its SHA-256 is now `c5f9c364397343136aa444f14e0419b0e826c294ed0ecc9e5a72b863c479a85e`. |
+| `rocq/check.sh` | the comparison of `Print Assumptions` outputs run by hand | The assumptions of `clight2_bigstep_to_asm`: those of `transf_c_program_correct` and `ClassicalEpsilon.constructive_indefinite_description`, after dropping the qualifier `Compopts.`, which the import of `Compopts` removes. |
+
+Three results rest on files that stay outside the repository until their milestones.  The corpus runs of B1 used `tools/native-host.c` unchanged, a replacement of about 160 lines for the parts of libc it uses with three headers, and the drivers that emitted the C text and ran the cases.  The stack bounds of B6 came from a script of about 80 lines, which the plan rewrites as the bound tool with the cross-check against the translator's list of functions that take the depth.  The design's `lx_out` is `lx_uart_dr` in these files, and the design's check of the exception level and masking of interrupts at entry are not in `start.S` yet.
+
+- [x] The experiment files of B0 and B5 at their planned places, with `tests/baremetal/run.sh` and `rocq/check.sh`.
+- [ ] B0: run `tests/baremetal/run.sh`, add the check of the exception level and `msr daifset`, and rename `lx_uart_dr` to `lx_out`.
+- [ ] B5: run `rocq/check.sh` against a CompCert 3.18 tree with built proofs.

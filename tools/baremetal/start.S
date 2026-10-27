@@ -1,0 +1,92 @@
+/* The startup code of a CompCert program on QEMU's virt machine for AArch64, outside every
+   proof (docs/native-bare-metal.md).  It records the exception level, DAIF, and SCTLR_EL1 in
+   lx_boot_el, installs the exception vectors, enables floating point, sets the stack, fills the
+   stack with a pattern for the high-water mark, clears .bss, and calls main.  After main returns,
+   or after a call of lx_exit, it reports through lx_report_exit and exits through semihosting
+   with the status.  An exception reports its registers and exits with status 255.  Defining
+   NO_FPEN leaves floating point disabled, and defining UNALIGNED_TEST adds an unaligned 8-byte
+   load before main.  Both reproduce results of the design's experiments. */
+
+#define PATTERN 0x5354414b5354414b
+
+        .section .text.boot, "ax"
+        .global _start
+_start:
+        mrs     x19, CurrentEL
+        lsr     x19, x19, #2
+        and     x19, x19, #3
+        ldr     x0, =vectors
+        msr     VBAR_EL1, x0
+#ifndef NO_FPEN
+        mov     x0, #(3 << 20)
+        msr     CPACR_EL1, x0
+#endif
+        isb
+        ldr     x0, =__stack_top
+        mov     sp, x0
+        ldr     x0, =__stack_bottom
+        ldr     x1, =__stack_top
+        ldr     x2, =PATTERN
+1:      cmp     x0, x1
+        b.hs    2f
+        str     x2, [x0], #8
+        b       1b
+2:      ldr     x0, =__bss_start
+        ldr     x1, =__bss_end
+3:      cmp     x0, x1
+        b.hs    4f
+        stp     xzr, xzr, [x0], #16
+        b       3b
+4:
+#ifdef UNALIGNED_TEST
+        ldr     x1, =__bss_start
+        add     x1, x1, #3
+        ldr     x0, [x1]
+#endif
+        ldr     x0, =lx_boot_el
+        str     x19, [x0]
+        mrs     x1, DAIF
+        str     x1, [x0, #8]
+        mrs     x1, SCTLR_EL1
+        str     x1, [x0, #16]
+        bl      main
+        .global lx_exit
+lx_exit:
+        ldr     x1, =lx_boot_el
+        ldr     x1, [x1]
+        bl      lx_report_exit
+exit:
+        ldr     x1, =exit_block
+        ldr     x2, =0x20026
+        str     x2, [x1]
+        mov     w0, w0
+        str     x0, [x1, #8]
+        mov     w0, #0x18
+        hlt     #0xf000
+5:      wfe
+        b       5b
+
+        .balign 2048
+vectors:
+        .irp    n, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+        .balign 128
+        mov     x0, #\n
+        b       exception
+        .endr
+
+exception:
+        ldr     x1, =__exc_stack_top
+        mov     sp, x1
+        mrs     x1, ESR_EL1
+        mrs     x2, ELR_EL1
+        mrs     x3, FAR_EL1
+        bl      lx_report_exception
+        b       exit
+
+        .bss
+        .balign 16
+exit_block:
+        .skip   16
+        .global lx_boot_el
+lx_boot_el:
+        .skip   24
