@@ -11,7 +11,8 @@ Lean module that defines it, as `tools/Emit.lean` does.
   others do not.
 * `emit MODULE CONSTANT NAME DIR` writes the C text of the translation as `DIR/NAME.c`, the glue
   of `tools/native-host.h` as `DIR/NAME_glue.c`, and the names of the exported functions that
-  the translation contains, one per line, as `DIR/NAME.exports`.
+  the translation contains, one per line, as `DIR/NAME.exports`; for a module outside the subset
+  or one that does not translate, it writes nothing and exits with status 3.
 * `check MODULE CONSTANT NAME DIR` compares the translation with the Clight that `clightgen`
   wrote for `DIR/NAME.c` as `DIR/NAME.v`.
 -/
@@ -148,7 +149,12 @@ def glue (t : Translation) (m : Wasm.Module) : Except String String := do
 
 unsafe def emit (moduleName constName : Name) (name dir : String) : IO UInt32 := do
   let m ← loadModule moduleName constName
-  let t ← translation m name
+  if let some v := violation m then
+    IO.println s!"{name}: outside the subset: {v}"
+    return 3
+  let some t := translate nativeCap m
+    | IO.println s!"{name}: does not translate"
+      return 3
   let text ← IO.ofExcept <| t.text.mapError fun e => IO.userError s!"{name}: {e}"
   let glueText ← IO.ofExcept <| (glue t m).mapError fun e => IO.userError s!"{name}: {e}"
   IO.FS.createDirAll dir

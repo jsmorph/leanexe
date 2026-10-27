@@ -218,6 +218,7 @@ example (A : Archi) (X : ExtSem) :
     Verified.NativeTablesImpl compiled.crc32cUpdate.implements A X cap compiled.translation :=
   compiled.crc32cUpdate.native A X
 
+set_option maxRecDepth 100000 in
 /-- The state that `lx_init` leaves in the CRC program's initial memory: it is related to the
 module's initial store, capped at `cap` pages, in which the allocator invariant holds and both
 tables are borrowed arrays at their addresses. -/

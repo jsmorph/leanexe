@@ -552,12 +552,21 @@ static size_t result_count_from_kind(const char *kind) {
     return 1;
   }
   if (strncmp(kind, "list:", 5) == 0) {
-    size_t count = 1;
+    size_t items = 1, count = 0, i;
     const char *c;
     for (c = kind + 5; *c != 0; c++) {
       if (*c == ',') {
-        count++;
+        items++;
       }
+    }
+    if (items > 128) {
+      die("too many results");
+    }
+    /* A `bytes` item is two results, the address and the length. */
+    for (i = 0; i < items; i++) {
+      char item[32];
+      list_result_kind(kind, i, item, sizeof item);
+      count += strcmp(item, "bytes") == 0 ? 2 : 1;
     }
     if (count > 128) {
       die("too many results");
@@ -581,6 +590,15 @@ static size_t result_count_from_kind(const char *kind) {
   }
   die("unknown result kind");
   return 0;
+}
+
+static void print_bytes(u64 ptr, u64 len) {
+  u64 i;
+  check_range(ptr, len, "ByteArray result is outside memory");
+  for (i = 0; i < len; i++) {
+    printf("%02x", memory()[ptr + i]);
+  }
+  printf("\n");
 }
 
 static void print_result(const char *kind, u64 value) {
@@ -625,21 +643,21 @@ static void call_export(const char *func_name, const char *result_kind, int argc
   invoke(e, args, results);
 
   if (strncmp(result_kind, "list:", 5) == 0) {
-    for (i = 0; i < nresults; i++) {
+    size_t item = 0;
+    for (i = 0; i < nresults; i++, item++) {
       char kind[32];
-      list_result_kind(result_kind, i, kind, sizeof kind);
-      print_result(kind, results[i]);
+      list_result_kind(result_kind, item, kind, sizeof kind);
+      if (strcmp(kind, "bytes") == 0) {
+        print_bytes(results[i], results[i + 1]);
+        i++;
+      } else {
+        print_result(kind, results[i]);
+      }
     }
     return;
   }
   if (strcmp(result_kind, "bytes") == 0) {
-    u64 ptr = results[0];
-    u64 len = results[1];
-    check_range(ptr, len, "ByteArray result is outside memory");
-    for (i = 0; i < len; i++) {
-      printf("%02x", memory()[ptr + i]);
-    }
-    printf("\n");
+    print_bytes(results[0], results[1]);
     return;
   }
   if (strcmp(result_kind, "array-u64") == 0 || strcmp(result_kind, "chain-u64") == 0 ||

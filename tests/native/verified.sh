@@ -7,7 +7,8 @@
 # with tools/native-host.c, which takes the commands of the Wasmtime host.  The cases are the
 # lines of Verified/Examples/Cases.lean, with the library entries of
 # tests/verified/library-cases.txt, which tests/verified/run.sh checks with Wasmtime.  A case
-# runs when the translation contains its export, and it must give the line that the Wasmtime
+# runs when the translation contains its export, and a module outside the subset, which has no
+# translation, runs none of its cases.  A case that runs must give the line that the Wasmtime
 # host gives, with the same rules for traps and allocation counters.  The module cases of
 # tests/modules/Cases.lean that tests/verified/run.sh checks for the corpus, those of euler and
 # of shapes on sums (tests/TestSupport/Native/ModuleCases.lean), run the same way under the rules
@@ -38,18 +39,26 @@ tools/leanrun --timeout 30m lake --log-level error build native-verified Verifie
 rm -rf "$out"
 mkdir -p "$out"
 modules=0
+untranslated=""
 while IFS=: read -r module constant name; do
   if [ -n "$only" ] && [ "$name" != "$only" ]; then
     continue
   fi
+  modules=$((modules + 1))
+  status=0
   tools/leanrun --timeout 10m lake env .lake/build/bin/native-verified emit "$module" "$constant" \
-    "$name" "$out"
+    "$name" "$out" || status=$?
+  if [ "$status" -eq 3 ]; then
+    untranslated="$untranslated $name"
+    continue
+  elif [ "$status" -ne 0 ]; then
+    exit "$status"
+  fi
   (cd "$out" && "$clightgen" "$name.c")
   tools/leanrun --timeout 10m lake env .lake/build/bin/native-verified check "$module" "$constant" \
     "$name" "$out"
   "$ccomp" "${stdlib[@]}" -I "$root/tools" -o "$out/$name" "$out/$name.c" "$out/${name}_glue.c" \
     "$root/tools/native-host.c"
-  modules=$((modules + 1))
 done <"$root/tests/verified/modules.txt"
 if [ "$modules" -eq 0 ]; then
   echo "fail: unknown module $only" >&2
@@ -134,7 +143,8 @@ while IFS='|' read -r name export result args expected live allocsMax; do
   fi
 done <"$cases"
 echo "native verified: passed $passed failed $failed"
-echo "native verified: not run: $omitted outside the translation, $others of modules that modules.txt omits"
+echo "native verified: not run: $omitted outside the translation, $others of modules without a translation"
+echo "native verified: modules without a translation:${untranslated:- none}"
 tools/leanrun --timeout 30m lake --log-level error build Demos.Euler.Cases Examples.Shape.Cases
 modcases=$out/module-cases.txt
 if ! tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Native/ModuleCases.lean \
