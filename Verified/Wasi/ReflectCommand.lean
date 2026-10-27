@@ -189,7 +189,7 @@ private def compileProgram (target : Ident) (sources : Array Ident) (main? : Opt
       if ["alloc", "release", "allocCount", "freeCount", "memory", "__indirect_function_table"].contains
           name.getString! then
         throwError "verified_compile_wasi: {name.getString!} is a reserved module export"
-  prepareRecursiveTypes pureNames
+  requireRecursiveTypes pureNames
   let mut pureState : Verified.Reflect.ProgramReflection := {}
   for name in pureNames do
     trace[verified.wasi] "Reflect pure: {name}"

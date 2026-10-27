@@ -161,12 +161,12 @@ copy as that constructor applied to the fields, which reuses the matched header 
 matched variable owned.  A branch that names the matched variable itself, as in `| _ => f t`,
 reads it, and when that variable is owned the match works on a copy.  The
 reflector proves conversions to and from its typed layout, both inverse laws, and preservation of
-its `Encode` instance.  An encoding that disagrees with the layout fails that proof.  The reflector
-adds these declarations in the type's namespace, in the first module that compiles a program over
-the type, so two modules that each compile programs over the same type cannot be imported
-together.  A module that both import and that compiles a program over the type first avoids the
-conflict.  Tail matching
-preserves ownership across return and continue steps.
+its `Encode` instance.  An encoding that disagrees with the layout fails that proof.  The command
+`verified_recursive_type T`, placed once after `T`'s `Encode` instance, adds these declarations in
+`T`'s namespace, and every module that compiles a program over `T` imports the module that runs
+it, so any number of such modules can be imported together.  [The derivation for the
+library's `KeyTree`](../Library/Trees/WordTree/Reflected.lean) runs it in a module of its own.
+Tail matching preserves ownership across return and continue steps.
 
 ### Records, tuples, and sums
 
@@ -199,10 +199,10 @@ A sum's fields may also be `Bytes`, arrays, and recursive types, each one compon
 inductive Item where
   | text (body : LeanExe.Bytes)
   | words (xs : Array UInt64) (scale : UInt64)
-  | keys (tree : Keys) (weight : Float)
+  | keys (tree : KeyTree) (weight : Float)
   | none
 
-instance : Flat Item (UInt64 × LeanExe.Bytes × Array UInt64 × UInt64 × Keys × Float) := ⟨fun
+instance : Flat Item (UInt64 × LeanExe.Bytes × Array UInt64 × UInt64 × KeyTree × Float) := ⟨fun
   | .text body => (0, body, #[], 0, .leaf, 0)
   | .words xs scale => (1, .empty, xs, scale, .leaf, 0)
   | .keys tree weight => (2, .empty, #[], 0, tree, weight)
@@ -242,6 +242,7 @@ A table is a Lean constant of type `Array UInt64`, which the module writes in a 
 | `… must be applied to all n arguments` | A partial application of a listed definition | Apply the definition to all its arguments. |
 | `the code of … takes the call depth and needs k positions, more than the 32 …` | A recursive function, or a caller of one, with many live values | Move work into a function that calls no recursive function, or bind fewer values. |
 | `the parameter type … of a recursive definition holds an enumeration or a sum …` | A parameter of a recursive or tail-recursive definition that is an enumeration or a sum, or a recursive type with an enumeration or sum field | Pass the enumeration's word, or the fields of the sum's constructor.  A recursive type with such a field may be a parameter of a definition that does not call itself. |
+| ``… needs `verified_recursive_type …` after its `Encode` instance, in a module that the program imports`` | A program over a recursive type whose declarations no imported module derives | Run `verified_recursive_type T` after `T`'s `Encode` instance, and import that module. |
 | `a sum field must be a scalar, Bytes, an array, or a recursive type: …` | A sum field that is a record with arrays or a sum with heap fields | Give the constructor the record's fields as its own fields. |
 | `the flattening of the default … is not the default element …` | A structure whose default does not take each field's default | Use `deriving Inhabited`. |
 | `` `==` on … needs `LawfulBEq` `` | `==` on an enumeration without `LawfulBEq` | Use `deriving DecidableEq`. |

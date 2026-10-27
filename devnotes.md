@@ -36214,3 +36214,23 @@ The first eleven builds stopped on errors local to single proofs.  `default` ins
 The first case run stopped because the argument that passed a chain of 4,096 records to the Wasm host program exceeded the limit of 128 KiB on one command-line argument, and the deepest chains now hold 1,200 records.  The second run reported three failures: `flip` and `scale` recurse on both children and trap at depth 1,000 on the chain of 1,200 records, which the cases had expected to return.  With traps expected there, `tests/verified/run.sh --cases typedtrees` passed all 473 cases.
 
 The gate built the sixteen heavy proofs one at a time, `lake build Verified Library` from 00:35 to 04:29 UTC with two workers, and the default targets, without error.  `tests/verified/run.sh` passed 33,649 cases with no failure, both audits and the accuracy checks included.  The first run of `tests/wasi/run.sh` stopped at once, because a reset of the checkout to the stage-1 commit had made `tools/wasmtime-host.c` newer than the compiled host program.  The source is unchanged, and after a rebuild of the host the driver passed.  The 98 registry modules, the WASI byte and literal modules, and the two running-sum modules are byte-identical to the baseline, `sum.wasm` and `sumfp.wasm` keep their SHA-256 values, and `heapsums.wasm` keeps its stage-1 bytes.
+
+## 2026-10-27: Deriving a recursive type's declarations once
+
+`verified_compile` derived a recursive type's conversions, laws, encoding theorem, and match lemmas in the type's namespace, in the first module that compiled a program over the type.  Two modules that each compiled programs over one type then held the same declarations, and no module could import both: the first stage-1 gate failed on that conflict between `Verified.Examples.HeapSums` and `Verified.Examples.RecursiveTypes`.  The user asked for a command next to the type's definition that derives the declarations once.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Command | `verified_recursive_type T` derives the declarations, and it fails when `T` already has them | One module holds the declarations, so every module that compiles a program over `T` imports them from there. |
+| `verified_compile` | `requireRecursiveTypes` checks each recursive type that the listed definitions use, also through a sum's `Flat` tuple, and fails with a message that names the command | A program that derived the declarations itself would bring back the conflict. |
+| Placement | After the `Encode` instance in the module that defines a type of an example, and in a module of its own beside the encoding for the library's `KeyTree` and the examples' `Words` | The encodings of `KeyTree` and `Words` serve the LeanExe compiler as well, and a module beside them keeps the verified compiler out of their imports. |
+| HeapSums | Returns to the library's `KeyTree` | Its local `Keys` copied `KeyTree` only to avoid the conflict.  With the derivation in `Library.Trees.WordTree.Reflected`, the example and `RecursiveTypes` share it, and the aggregate build checks that the two import together. |
+
+The names and statements of the derived declarations do not change, so no theorem of an existing program changes, and no module changes its bytes.  The change also writes `assignFiniteEquation` through `assignFamilyEquation`, whose steps it repeated.
+
+- [x] The command, the check, and the derivation modules.
+- [x] The examples: `TaggedTypes`, `TypedTrees`, `Literals`, `RecursiveTypes`, `HeapSums`, and the library's `Compiled`.
+- [x] Manual, README, and the restriction row.
+- [x] Full build, drivers, byte comparison, and commit.
+
+A module that compiles a program over a type without the command fails with the message that names it, a second command for one type fails, and the module compiles once the command follows the `Encode` instance.  The first gate stopped in the aggregate build at `Verified.Examples.Literals`, whose `Pick` lacked the command, and I stopped that run and restarted the gate with the command added.  The second gate built the sixteen heavy proofs one at a time, `lake build Verified Library` from 07:41 to 11:18 UTC with two workers, and the default targets, without error.  `tests/verified/run.sh` passed 33,649 cases with no failure, both audits included, and `tests/wasi/run.sh` passed.  The 98 registry modules, the WASI byte and literal modules, and the two running-sum modules are byte-identical to the baseline, `heapsums.wasm` keeps its stage-1 bytes with the library's `KeyTree`, and `typedtrees.wasm` keeps its stage-2 bytes.

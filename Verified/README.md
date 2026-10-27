@@ -270,9 +270,10 @@ The [tail-match rule](TailTreeCase.lean) enters `TailBody.code_spec` and the who
 Its branches preserve the enclosing loop's return and continue labels.  The
 [recursive-tail reflector](Reflect/TailBody.lean) shares the expression reflector's field context,
 and [its equations](Reflect/TailListLemmas.lean) connect the native step to the typed match.
-For a user-defined recursive type with one empty constructor and one record constructor,
-the reflector derives conversions to and from the typed tree and proves both inverse laws and
-agreement with the type's `Encode` instance.  Record fields may be words, `Bool`s, floats, fields
+For a user-defined recursive type, the command `verified_recursive_type`, run once after the
+type's `Encode` instance, derives conversions to and from the typed tree and proves both inverse
+laws and agreement with the instance, and `verified_compile` requires these declarations of every
+recursive type that a program uses.  Record fields may be words, `Bool`s, floats, fields
 with a `Flat` instance, or recursive children, with at most 64 slots.  [The derivation](Reflect/RecursiveTypes.lean) supports construction,
 matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state.
 [Native matcher normalization](Reflect/NativeTree.lean) abstracts the alternatives before proving
@@ -730,7 +731,7 @@ the sum from the tuple: `reflectSplit` and the `let` rule leave a variable of su
 `pairView` gives its components for copy costs but no rebuild.  `reflectDataMatch` binds
 `p := Flat.flat x` with `let` before the chain of tag tests, so the match destructures the variable
 once with `letPair` and each branch reads its fields as variables, while a scalar sum keeps its
-projections.  `prepareRecursiveTypes` also derives the recursive types that only a sum's tuple
+projections.  `requireRecursiveTypes` also checks the recursive types that only a sum's tuple
 names.  [The heap sum example](Examples/HeapSums.lean) covers construction, borrowed and owned
 matches, results, pairs, loop state, and lists, trees, bytes, and arrays as fields.
 

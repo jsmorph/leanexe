@@ -60,7 +60,6 @@ instance with `Tree.toNode`, and, unless a field holds an enumeration or a sum, 
 laws that `toTree` and `fromTree` are inverse. -/
 def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     withScope (fun scope => { scope with currNamespace := .anonymous }) do
-  if (← getEnv).contains (layout.decl `toTree) then return
   let root (name : Name) := mkIdent name
   let flatten := root (layout.decl `toTree)
   let unflatten := root (layout.decl `fromTree)
@@ -158,9 +157,30 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     induction value <;> simp_all only [LeanExe.Pipeline.Encode.encode, $encode:term,
       $flatten:term] <;> rfl))
 
-/-- Derives the declarations of each recursive type that the types of the definitions `names`
-use, directly or through the `Flat` tuple of a sum, in the order of first use. -/
-def prepareRecursiveTypes (names : Array Name) : CommandElabM Unit := do
+syntax (name := verifiedRecursiveType) "verified_recursive_type " ident : command
+
+/-- `verified_recursive_type T` derives the declarations through which `verified_compile` compiles
+programs over the recursive type `T`: the conversion to the tree of `T`'s layout, the agreement of
+`T`'s `Encode` instance with the layout, the lemmas of a match on `T`, and, unless a field of `T`
+holds an enumeration or a sum, the conversion back and the laws that the two are inverse.  The
+command follows `T`'s `Encode` instance, once, and every module that compiles a program over `T`
+imports the module that runs it. -/
+@[command_elab verifiedRecursiveType]
+def elabVerifiedRecursiveType : CommandElab
+  | `(verified_recursive_type $type) => do
+    let name ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo type
+    let some layout ← liftTermElabM (recursiveLayout? (mkConst name))
+      | throwError "verified_recursive_type: {name} is not a recursive type that the compiler \
+          supports"
+    if (← getEnv).contains (layout.decl `toTree) then
+      throwError "verified_recursive_type: {name} already has its declarations"
+    deriveRecursiveType layout
+    deriveRecursiveMatch layout
+  | _ => throwUnsupportedSyntax
+
+/-- Checks that each recursive type that the types of the definitions `names` use, directly or
+through the `Flat` tuple of a sum, has the declarations of `verified_recursive_type`. -/
+def requireRecursiveTypes (names : Array Name) : CommandElabM Unit := do
   let mut types : List Name := []
   let mut pending : List Name := []
   for name in names do
@@ -171,8 +191,9 @@ def prepareRecursiveTypes (names : Array Name) : CommandElabM Unit := do
     if types.contains type then continue
     types := type :: types
     if let some layout ← liftTermElabM (recursiveLayout? (mkConst type)) then
-      deriveRecursiveType layout
-      deriveRecursiveMatch layout
+      unless (← getEnv).contains (layout.decl `toTree) do
+        throwError "verified_compile: {type} needs `verified_recursive_type {type}` after its \
+          `Encode` instance, in a module that the program imports"
     let tuple ← liftTermElabM do
       if (← sumName? (mkConst type)).isNone then return none
       return (← flatInstance? (mkConst type)).map (·.1)

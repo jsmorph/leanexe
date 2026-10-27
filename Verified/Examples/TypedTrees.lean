@@ -27,6 +27,8 @@ def Samples.encode : Samples → Node
 
 instance : Encode Samples := ⟨Samples.encode⟩
 
+verified_recursive_type Samples
+
 def keep (t : Samples) : Samples := t
 
 def mark (f : Bool) (w : Float) : Samples := .mark f w
@@ -99,6 +101,8 @@ def Ranges.encode : Ranges → Node
 
 instance : Encode Ranges := ⟨Ranges.encode⟩
 
+verified_recursive_type Ranges
+
 def keepRanges (t : Ranges) : Ranges := t
 
 def span (l : Ranges) (c : UInt64) (f : Bool) (v : Float32) (w : Float) (r : Ranges) : Ranges :=
@@ -149,6 +153,8 @@ def Tinted.encode : Tinted → Node
   | .node l t k r => .record [.child l.encode, .word (Flat.flat t), .word k, .child r.encode]
 
 instance : Encode Tinted := ⟨Tinted.encode⟩
+
+verified_recursive_type Tinted
 
 def tinted (l : Tinted) (t : Tint) (k : UInt64) (r : Tinted) : Tinted := .node l t k r
 

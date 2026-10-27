@@ -1411,20 +1411,7 @@ def assignFamilyEquation (app : LemmaApp) (valueName proofName : Name)
 
 def assignFiniteEquation (app : LemmaApp) (valueName proofName : Name)
     (type : Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
-  let family ← finiteFn type (values.map (·.term))
-  app.assign valueName (← mkExpectedTypeHint family (← app.hypType valueName))
-  let expected ← app.hypType proofName
-  let .forallE name domain body _ := expected
-    | throwError "verified_compile: a finite field equation must quantify its index"
-  let P := Lean.mkLambda name .default domain body
-  let proof ← finiteForall values.length P fun i => do
-    let some j := natOf (← kernelWhnf (← mkAppM ``Fin.val #[i]))
-      | throwError "verified_compile: a finite field index is not a numeral"
-    let some value := values[j]?
-      | throwError "verified_compile: finite field index {j} is out of range"
-    mkExpectedTypeHint value.proof (P.beta #[i])
-  app.assign proofName (← mkExpectedTypeHint proof expected)
-  return family
+  assignFamilyEquation app valueName proofName (← finiteFn type (values.map (·.term))) values
 
 def finiteFieldBounds (app : LemmaApp) (name : Name) (fields : List Reflection) :
     MetaM (List Bound) :=
