@@ -36521,3 +36521,34 @@ The names and statements of the derived declarations do not change, so no theore
 - [x] Full build, drivers, byte comparison, and commit.
 
 A module that compiles a program over a type without the command fails with the message that names it, a second command for one type fails, and the module compiles once the command follows the `Encode` instance.  The first gate stopped in the aggregate build at `Verified.Examples.Literals`, whose `Pick` lacked the command, and I stopped that run and restarted the gate with the command added.  The second gate built the sixteen heavy proofs one at a time, `lake build Verified Library` from 07:41 to 11:18 UTC with two workers, and the default targets, without error.  `tests/verified/run.sh` passed 33,649 cases with no failure, both audits included, and `tests/wasi/run.sh` passed.  The 98 registry modules, the WASI byte and literal modules, and the two running-sum modules are byte-identical to the baseline, `heapsums.wasm` keeps its stage-1 bytes with the library's `KeyTree`, and `typedtrees.wasm` keeps its stage-2 bytes.
+
+## 2026-10-27: Heap fields of tree records: the model change
+
+`Bytes` and array fields of tree records need a change to the trusted model of recursive values.  A record's slot was a word or a child (`Slot.word`, `Slot.child` in `LeanExe/Pipeline/Implements.lean`), and the `Represent` instance of every type with an `Encode` instance states its values through `NodeOwned`, `NodeBorrowed`, `Node.blocks`, `Node.slotRegions`, and `Node.pointers`.  A slot that points to an array or a byte buffer is neither kind: its object is a runtime object of kind 2, which `RecordHeader` does not describe, and its contents are words or bytes rather than slots.  I proposed the change below, the coordinator reviewed it for the user, and the decisions follow it.
+
+| Part | Before | After |
+|---|---|---|
+| `Slot` | `word w`, `child n` | adds `array (words : Array UInt64)`, a pointer to an array object that holds `words`, and `bytes (data : LeanExe.Bytes)`, the root of a byte buffer.  An encoding writes a buffer as `.bytes b` followed by `.word (UInt64.ofNat b.data.size)`, the two values that `Represent LeanExe.Bytes` gives a buffer. |
+| `Slot.bit`, `maskOf` | 1 for a child | 1 for a child, an array, and a buffer, so that `release` drops the object. |
+| `SlotsOwned` | a word's value, a child's `NodeOwned` | an array: `heap.Owned store ptr words`, the predicate of an owned `Array UInt64`.  A buffer: root 0 and no bytes, or a nonempty buffer that `heap.Buffer` describes. |
+| `SlotsBorrowed` | a word's value, a child's `NodeBorrowed` | an array: `heap.Borrowed store ptr words`.  A buffer: as owned, since `Represent LeanExe.Bytes` gives one predicate for both. |
+| Buffer predicate | `Verified.Bytes.Allocated` | `LeanExe.Pipeline.Heap.Buffer`, unchanged, beside `Heap.Owned` in `LeanExe/Pipeline/Runtime.lean`, with no alias at the old name.  `Heap.Object`, which it uses, moves unchanged from `RuntimeSpec.lean`, because `Implements.lean` cannot import `RuntimeSpec.lean` without a cycle. |
+| `Node.blocks` | each record's block | adds the block of each array and of each nonempty buffer. |
+| `Node.slotRegions` (reads) | each record's slots | adds an array's words, `(ptr, 8 * (words.size + 1))`, and a nonempty buffer's block, as the `reads` of the two `Represent` instances. |
+| `Node.pointers` (moves) | each record | adds each array and each nonempty buffer, which a moved value consumes. |
+| `RecordHeader` | kind 1, at most 64 slots, the mask of child slots | unchanged in form: the mask covers the new slots, and the slot count bounds them. |
+
+| Question | Decision | Reason |
+|---|---|---|
+| A buffer in one slot or two | Two slots, the root and the length | Two slots hold the two values that `Represent LeanExe.Bytes` gives a buffer, so no existing representation changes. |
+| A buffer's root | In a record, the root is 0 exactly when the buffer is empty | The release proof counts a value's objects with `Node.records`, a function of the value.  With an empty buffer that may or may not have an object, the count would depend on memory.  A `LeanExe.Bytes` parameter may have a nonzero root and no bytes, so a construction that stores such an owned buffer releases its object and stores 0.  A buffer read or moved out of a record is a valid `Bytes` value as it is. |
+| `Allocated` in the trusted base | Moves unchanged | The `implements` statement of every program with a `Bytes` parameter already depends on it. |
+| Arrays of tuples | Outside these fields | They have no `Represent` instance, as they have none as parameters and results. |
+| One generic slot over any `Represent` instance | Rejected | It would put a type and an instance inside the mutual `Slot`/`Node` inductive and raise its universe, and two concrete constructors are checked against the existing instances directly. |
+| Pending objects of the release proof | An array or a buffer is a pending object without slots, and `RecordBody` requires kind 1 and the slot count only for a nonzero mask | `dropChildren` reads neither field when the mask is 0, so the release loop frees such an object without reading its payload. |
+
+The review set four conditions: (a) the trusted change goes in a commit of its own, which goes with the diff of `LeanExe/Pipeline` to an independent reviewer who compares each new case with the `Array UInt64` and `LeanExe.Bytes` instances; (b) a gate shows every existing module's bytes and every existing axiom audit unchanged; (c) the manual's trusted-base section describes the two slot kinds, the moved predicate, and the buffer invariant; and (d) this entry goes in a commit of its own after the derivation command.
+
+- [x] Proposal and review.
+- [ ] The trusted change, with the proofs that case on `Slot` extended, and its gate.
+- [ ] The compiler's heap fields of tree records.
