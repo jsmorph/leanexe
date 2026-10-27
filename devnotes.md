@@ -35777,7 +35777,7 @@ The additions cost about a tenth of the build time.  With four workers, 68 corpu
 
 ### The corpus
 
-All 98 modules of `tests/verified/modules.txt` lie in the subset and translate with 4,096 pages, and 47 translate entirely.  The translations hold 847 of the 1,371 functions and 819 of the 1,338 exports.  The functions left out use a float form (317), return several results with a float among them (156), or call such a function (48).  Seven of the modules, `byhand`, `composition`, `relocation`, `tailcore`, `treecopy`, `treecore`, and `tuples`, are not built by `verified_compile`, so their translations run without generated theorems.
+All 98 modules of `tests/verified/modules.txt` lie in the subset and translate with 4,096 pages, and 47 translate entirely.  The translations hold 847 of the 1,371 functions and 819 of the 1,338 exports.  The functions left out use a float form (320), return several results with a float among them (156), or call such a function (48).  Seven of the modules, `byhand`, `composition`, `relocation`, `tailcore`, `treecopy`, `treecore`, and `tuples`, are not built by `verified_compile`, so their translations run without generated theorems.
 
 `tools/native-host.c` takes the commands `call` and `call-stats` of the Wasmtime host, with the same argument specs and result kinds, and prints the same lines; a trap prints Wasmtime's message for its code and exits with status 2.  It is compiled by `ccomp` with the module's C text and the glue that `native-verified emit` writes, which lists the exported functions that the translation contains, with a call function for each, and the exported globals.  CompCert passes no structure by value without `-fstruct-passing`, so the host passes its lists by pointer.  `tests/native/verified.sh` writes, reads back with `clightgen`, checks, and compiles every module, then runs each case of `Verified/Examples/Cases.lean`, with the library entries, whose export the translation contains, under the rules of `tests/verified/run.sh` for results, traps, and allocation counters.
 
@@ -35812,3 +35812,74 @@ The user asked the coordinator to decide open questions while the user is away, 
 
 - [ ] At the merge gate, build the heavy proofs and the `Lgamma` and `Tgamma` modules one at a time, with time and peak memory before and after.
 - [ ] M7: the file theorem for the written C text.
+
+## 2026-10-26: The Wasm-to-C translator: plan for M5 (binary64)
+
+### What the corpus needs
+
+A survey of the 98 modules of `tests/verified` at the commit of M4 lists, for each of the 1,371 functions, the forms it uses that the translator does not handle, its result types, and its callees.  It ran as a Lean script under `lake env lean --run`, without a build.  Every unhandled form is a float form, and the forms are exactly the fourteen binary64 and seventeen binary32 forms of the subset that M0 fixed: no function uses `floor`, `ceil`, `trunc`, `nearest` at binary64, `min`, `max`, `neg`, `copysign`, `promote`, or `demote`.  The 524 functions outside the translation are the 320 that M4's survey left out for an instruction form, the 156 that return several results with a float among them, and the 48 that call a function left out; 150 of the 156 have only binary64 floats.
+
+The table orders the binary64 features greedily: each row adds the feature that brings the most functions into the translation, given the rows above it, where a function enters when every form it uses is handled and every function it calls has entered.  The first rows add few functions because almost every float function uses several of these forms.  With all fourteen forms and several results with binary64 floats, 1,307 of the 1,371 functions translate, among them all 57 of the Euler module, all 50 of GPT-2 at binary64, all 17 of `trig`, and all 6 of `exp`.  The 64 others need binary32 (M6): 34 in `floats32`, 13 in `gpt32`, 5 in `liblinalg32`, and 12 in five other modules.
+
+| Feature | Omitted functions that use it | Functions added | Translated after |
+| --- | --- | --- | --- |
+| `i64ReinterpretF64` | 191 | 9 | 856 |
+| `f64ReinterpretI64` | 135 | 8 | 864 |
+| `f64Const` | 319 | 7 | 871 |
+| `f64Add` | 245 | 29 | 900 |
+| `f64Mul` | 196 | 23 | 923 |
+| several results with a binary64 float | 150 | 24 | 947 |
+| `f64Sub` | 178 | 60 | 1,007 |
+| `f64ConvertI64U` | 52 | 33 | 1,040 |
+| `f64Div` | 82 | 27 | 1,067 |
+| `f64Sqrt` | 18 | 23 | 1,090 |
+| `f64Lt` | 68 | 21 | 1,111 |
+| `f64Abs` | 38 | 38 | 1,149 |
+| `i64TruncSatF64U` | 24 | 55 | 1,204 |
+| `f64Eq` | 24 | 45 | 1,249 |
+| `f64Le` | 30 | 58 | 1,307 |
+
+### The NaN model
+
+Wasm leaves a NaN result partly open: an arithmetic operation returns a canonical NaN when every NaN operand is canonical and an arithmetic NaN otherwise, with either sign, and `abs`, `neg`, `copysign`, and the reinterpretations act on the bits.  Talos resolves the choice: every NaN result of `IEEE64.add`, `sub`, `mul`, `div`, and `sqrt` is the positive canonical quiet NaN `0x7FF8000000000000`, and `abs` clears the sign bit of any value, a NaN's payload included.  The verified compiler's theorems are proved against Talos, and the Wasmtime host runs with Cranelift's NaN canonicalization, which gives the same NaN.
+
+CompCert chooses NaN results per target.  The Lean copy's `Float.add A x y` is Talos's `IEEE64.add x y` when that result is a number and otherwise `quiet_nan_64 (A.choose_nan_64 …)`, the NaN of `Floats.v`: on `x86_64` the first NaN operand's sign and payload, quieted, or the negative default NaN; on `aarch64` the first signaling NaN operand, else the first NaN operand, else the positive default NaN.  The differential test finds that 8 of its 11 NaN programs print different bits under the two targets' parameters, and `ccomp -interp` of the AArch64 tree agrees with the copy on all of them and on 300 random programs of seed 7.  `Float.abs` and `Float.neg` keep the payload, as Talos's do, so they need nothing.
+
+The translation therefore canonicalizes every result that Talos canonicalizes: after `+`, `-`, `*`, `/`, and `__builtin_fsqrt`, it emits `if (t != t) t = <canonical NaN>;`.  When Talos's result is a number, the copy's result is the same bit pattern by definition, `t != t` is false, and nothing changes.  When Talos's result is a NaN, it is the canonical NaN, the copy's result is some quiet NaN, `t != t` is true, and the assignment gives the canonical NaN.  The proof holds for every `Archi`, so the C text computes Talos's bits on both targets, which is stricter than Wasm requires of an engine.  The equality of the copy's numeric results with Flocq's rests, as in M1, on the review of the transcription and the differential tests; M5 extends those tests to the new forms.
+
+### Choices of M5
+
+Each choice below was recommended, reviewed, and revised before it was taken.
+
+1. **Where to canonicalize.**  Recommended: after every operation whose Talos result can be a NaN, unconditionally.  Review: a weaker relation that let a slot hold any NaN where Talos holds the canonical one would allow canonicalizing only where bits become observable, at stores, reinterpretations, results, and calls, but it complicates every lemma of the relation, and a reinterpretation makes the bits observable anywhere.  The test costs a compare and a branch.  Decision: canonicalize after `+`, `-`, `*`, `/`, and `sqrt`, never after `abs`, comparisons, conversions from integers, reinterpretations, or moves; leave omitting provably needless tests to M7.
+2. **How to write the canonical NaN.**  Recommended: `__builtin_fabs(0.0 / 0.0)`, which gives the canonical NaN on both targets, since both default NaNs have the payload `2^51`.  Review: for an arbitrary `Archi` the default NaN is arbitrary, so the proof would need a hypothesis on `A`, which changes what the theorem states.  Revised and taken: store `0x7FF8000000000000ULL` as an integer into the scratch cell `lx_pun` and load it as a double, which holds for every `Archi`; it runs only on the NaN path.
+3. **The scratch cell.**  Recommended: `unsigned long long lx_pun`, accessed as `*(double *) &lx_pun`.  Review: the address-of form is new to the translator and the reader of `clightgen`'s output, whereas M3 already handles a cast of an array to another pointer type followed by an index.  Revised and taken: `unsigned long long lx_pun[1]`, accessed as `lx_pun[0]` and `((double *) lx_pun)[0]`, with the shapes fixed by probing `clightgen` first.  Reinterpretation in either direction is a store of one type and a load of the other, and non-finite `f64Const` values go through it too.
+4. **`abs`.**  Recommended: bits through `lx_pun`, clearing the sign with a mask.  Review: four memory operations per `abs`, which the Euler solvers use in their loops, while CompCert's standard built-in `__builtin_fabs` (`Builtins0.v`, `BI_fabs`, semantics `Float.abs`) is one instruction on both targets and keeps the payload as Talos's `abs` does.  Revised and taken: `__builtin_fabs`, which adds one built-in to the Lean copy beside `__builtin_fsqrt`, with its citation, a reviewer's check, and cases in the differential test.  It adds no dependency.
+5. **Constants.**  Taken as recommended: a finite `f64Const` is the printer's exact hexadecimal literal, which `clightgen` exports as bits; a NaN or an infinity, which C cannot write as a literal, goes through `lx_pun`.  A probe confirms that `clightgen` folds a negative literal, `-0.0` included, into one constant.
+6. **Comparisons.**  Taken as recommended: `(unsigned int) (a == b)`, `<`, and `<=` on doubles, whose Clight semantics `Float.cmp` agrees with `IEEE64.eq`, `lt`, and `le`, false on any NaN; a lemma shows that `Cle` is `lt` or `eq`.
+7. **`f64ConvertI64U`.**  Taken as recommended: the C cast `(double) a`, whose semantics `Float.of_longu` is Talos's `IEEE64.fromInt` of the same integer.
+8. **`i64TruncSatF64U`.**  Recommended: `d != d ? 0 : d <= -1.0 ? 0 : d >= 0x1p64 ? 0xFFFFFFFFFFFFFFFFULL : (unsigned long long) d`.  Review: the cast is defined, as `Float.to_longu`, exactly when the truncation lies in `[0, 2^64 - 1]`, which the guards ensure, and the guards reproduce Talos's `truncSatI64U` on NaN, on both infinities, below 0, and at or above `2^64`, since no double lies strictly between `2^64 - 2048` and `2^64`.  Taken, as nested `if` statements in the shapes `clightgen` produces.
+9. **Several results with floats.**  Recommended: extend the typed result globals of M4 with `lx_r<i>_d` per position, as the identifier scheme `resId` already allows, and accept several results of `i32`, `i64`, and `f64`.  Review: emitting only the types a module uses would complicate the index lemmas of `Init.lean`, and an unused global costs eight bytes.  Taken.  Before the restriction on a branch to the outermost label applies to these functions, the survey runs again, as the decision on M4's second choice requires, and any function left out for that reason alone goes to the coordinator.
+10. **Order of work.**  Taken: `lx_pun` and both reinterpretations first, since every later form's tests need them; then constants, the four arithmetic operations and `sqrt` with the canonicalization, several results with `f64`, `f64ConvertI64U`, the comparisons, `abs`, and last `i64TruncSatF64U`, whose proof is the longest.  This follows the table, except that `sqrt` and `div` join the arithmetic, since they share its lemma.
+
+### The proof
+
+`Env` gains the block of `lx_pun`, `EnvOk` finds it and keeps it apart from the other globals, and `MemRel` requires it to be writable, with its contents unconstrained, as `MemRel.resW` does for the result globals.  These premises are part of `NativeA`, so the statement of every `p.f.native` changes in what it assumes of the environment, as it did in M4; `start` discharges them for the program's own environment, and no conclusion changes.  Choice 9 widens `EnvOk.res` and `MemRel.resW` from integer types to the types of choice 9 in the same way.
+
+A new file, `Proof/Floats.lean`, holds the lemmas: a store of `Mint64` followed by a load of `Mfloat64` at `lx_pun` gives `Vfloat` of the same bits and the reverse, from `encode_val` and `decode_val`; the canonicalization statement maps each copy result to Talos's; and one lemma per form, in the pattern of `Ops.lean`.  `trunc_sat` needs integer reasoning on `IEEE64.truncatedInt` against the guards.  The estimate is 1,500 to 2,500 lines, mostly in the relation's new fields and in `trunc_sat`.
+
+### Tests
+
+The differential test gains random float expressions over edge values (NaNs with payloads, both zeros, subnormals, infinities, and conversion boundaries) and `__builtin_fabs`, under both targets' parameters, against `ccomp -interp` of each tree; the tests run the AArch64 code, and the `x86_64` tree serves as an interpreter only.  `tests/native/run.sh` gains a float module whose calls produce NaNs from numbers (`0 / 0`, `inf - inf`, `sqrt (-1)`) and from NaN operands with payloads, and compares the bits with Talos.  The corpus driver needs no change: it already runs every translated case, float arguments included.
+
+### Concerns for M6 and for the coordinator
+
+The statement change above is the one point where M5 alters existing theorems, and it is of the kind accepted in M4.  For M6, Talos computes `f64PromoteF32` and `f32DemoteF64` with Lean's native floats, whose operations Lean's logic leaves opaque; the subset does not contain them and the survey finds no use, so they block nothing now, but a module that uses them would need Talos to define them by its exact helpers, as the Lean copy defines `of_single` and `to_single`, which would change a dependency.
+
+- [ ] Probe `clightgen` for `lx_pun[1]`, `((double *) lx_pun)[0]`, `__builtin_fabs`, `t != t`, negative literals, and the guard of `trunc_sat`.
+- [ ] Add `__builtin_fabs` to the Lean copy, with its citation and differential cases.
+- [ ] `lx_pun` in the translator, `Env`, `EnvOk`, `MemRel`, and `Init.lean`; both reinterpretations.
+- [ ] Constants, arithmetic and `sqrt` with canonicalization.
+- [ ] Several results with `f64`, after the survey that decision 2 of M4 requires.
+- [ ] `f64ConvertI64U`, the comparisons, `abs`, and `i64TruncSatF64U`.
+- [ ] Float cases in `tests/native/run.sh` and the differential test; the corpus driver; the Euler solvers native with theorems.
