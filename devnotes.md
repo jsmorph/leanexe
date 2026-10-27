@@ -36558,3 +36558,25 @@ The scope of `Lgamma.Compiled` stays under the limit of `--memory-high 10G`, and
 ### The tests on x86-64
 
 The native programs of the translator's tests had been compiled for AArch64 only, and the merge gate runs on x86-64, so the tests ran again with the x86_64 tree, its programs running under `qemu-x86_64` user-mode emulation on AArch64 with the x86-64 C library of the cross toolchain.  `tests/native/run.sh` agrees with Talos on all nineteen modules, with the x86_64 `clightgen` reading each back unchanged, and the differential test agrees on all 318 programs under the NaN rules of x86_64.  The corpus gives the same counts as on AArch64: 29,225 cases pass and none fails, the same 3,951 do not run, and the 3,322 module cases all pass.
+
+## 2026-10-27: The Wasm-to-C translator: the native theorems by parts
+
+The coordinator chose to split `p.inSubset` and `p.translation_funcs` one function per declaration, as main's encoding theorems `func_ok_k` are split, so that no declaration makes the kernel compile the whole module.  `verified_compile` now states `p.native_part_k` for each function `k`: its `functionViolation` is `none`, and its `callInfo`, the functions that its C function calls or `none` when it has no C function, is entry `k` of `p.translation_infos`, a literal that the native translator computes.  `p.native_parts` chains the parts, and `inSubset_of_parts` and `translate_funcs_of_parts` of `LeanExe/Native/Proof/Parts.lean` derive the two theorems from them and from the module-level checks, the module's shape and memory and the guards of `translate` on the memory and the globals, each by `decide +kernel`.  The statements of `p.inSubset` and `p.translation_funcs` are unchanged, and the native block of `verified_compile` now follows the encoding, whose `funcs_count` it uses.
+
+The module, its bytes, and the C text are unchanged: the 220 C files of the corpus run and of `tests/native/run.sh` are byte-identical to those of the run before the split.  On AArch64 every corpus module builds, 29,225 corpus cases pass and none fails, the 3,322 module cases pass, `tests/native/run.sh` agrees with Talos on all nineteen modules, and the differential test agrees on all 318 programs.  `translation_funcs` and `inSubset` of `Verified.Examples.Poly` depend on `propext`, `Classical.choice`, and `Quot.sound`.
+
+Each module was built alone after its dependencies at `--threads 1 --memory-high 10G`, as in the previous entry.
+
+| Module | Command | Time | Maximum resident set | Scope peak |
+|--------|---------|------|----------------------|------------|
+| `Lgamma.Compiled` | main | 671 s | 6.45 GiB | 3.06 GiB |
+| `Lgamma.Compiled` | before the split | 692 s | 12.14 GiB | 8.95 GiB |
+| `Lgamma.Compiled` | split | 776 s | 5.64 GiB | 3.18 GiB |
+| `Tgamma.Compiled` | main | 474 s | 5.97 GiB | 2.53 GiB |
+| `Tgamma.Compiled` | before the split | 515 s | 10.69 GiB | 7.41 GiB |
+| `Tgamma.Compiled` | split | 553 s | 5.14 GiB | 2.98 GiB |
+
+The split meets the coordinator's target: the scope peaks lie 0.12 and 0.45 GiB above main's, and both resident sets stay below 6 GiB.  It costs time, 105 and 79 seconds more than main's command, about 16 percent for each module, although single runs vary by tens of seconds while other builds run.  A probe that restates single parts of `Lgamma.Compiled` locates the time: a function's two parts take 0.2 to 0.5 seconds each, and the module-level checks take 2.0 seconds for the globals, 4.5 for the shape, and 7.4 for the memory, each of which computes the literal pool again.  A run whose dependencies' `.olean` files were not in the page cache charged their pages to the scope, so its scope peak of 7.47 GiB for `Lgamma.Compiled`, at a resident set of 6.35 GiB, does not compare with the others; the table gives runs with the files cached, as before the split.
+
+- [x] `p.inSubset` and `p.translation_funcs` from one part per function.
+- [ ] `p.native_module`: the module-level checks in one declaration, which computes the literal pool once, measured the same way.

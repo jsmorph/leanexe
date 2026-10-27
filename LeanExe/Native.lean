@@ -18,3 +18,4 @@ import LeanExe.Native.Translate
 import LeanExe.Native.CText
 import LeanExe.Native.ClightCheck
 import LeanExe.Native.Proof.Native
+import LeanExe.Native.Proof.Parts
