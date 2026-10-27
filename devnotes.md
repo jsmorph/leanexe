@@ -36552,3 +36552,23 @@ The review set four conditions: (a) the trusted change goes in a commit of its o
 - [x] Proposal and review.
 - [ ] The trusted change, with the proofs that case on `Slot` extended, and its gate.
 - [ ] The compiler's heap fields of tree records.
+
+## 2026-10-27: Review of the stage-2 and Q5 documents
+
+An independent reviewer read the documents of typed tree fields and of `verified_recursive_type` and reported seventeen findings and four code issues, which the coordinator passed on with decisions.  I checked each finding against the code before applying it.  The manual had said that the derived declarations go in `T`'s namespace and that every type gets both conversions and both inverse laws, while `RecursiveLayout.decl` puts them in the sibling namespace `verifiedT`, and a type with a field that holds an enumeration or a sum gets no `fromTree`.  The manual's ownership section now keeps the layout and matching rules in one paragraph and describes the command in a second, the restrictions table gains rows for the command's own errors, and the README, the design document, and the READMEs of `KeyTree` and `Words` describe the derivation modules.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Wording of the inverse condition | "a structure whose `Flat` tuple holds each of its fields", where the review wrote "a structure" | `rebuild?` also fails for a structure whose tuple leaves out a field, so the shorter wording claims `fromTree` for types that lack it. |
+| A structure that leaves out a field | Its own message, `the parameter type … has a field that holds the structure …, whose Flat tuple leaves out its field …`, from `flatOmission?` | The coordinator asked for a message that names the field.  The search follows pairs and nested structures, as `rebuild?` does. |
+| The prefix of shared messages | `flatTree` takes the running command's name, and `requireRecursiveTypes` takes it from its caller | Errors that `verified_recursive_type` and `verified_compile_wasi` raise then name the command that the user ran. |
+| A sum field | `Logged`, whose records hold a `Reading` sum of three slots, with construction, a match that reads the sum, a rebuilding match, and cases | The manual and the design document claimed sum fields, and no example had one. |
+| README paragraph on typed fields | Written from the review's three corrections | The review's full replacement paragraph did not reach me. |
+
+- [x] Manual, README, design document, and the two READMEs.
+- [x] Messages, the omission check, and the audit's docstring.
+- [x] `Logged` and its cases.
+- [x] Negative checks and the typed-tree cases.
+- [ ] The gate of the merge with main.
+
+Six negative checks give the new messages: a program over a type without the command under `verified_compile` and under `verified_compile_wasi`, an `Encode` instance that names no function, a structure field whose `Flat` instance is not a tuple of its fields, a recursive parameter whose type has a structure field that leaves out a field, which names the field `b`, and a recursive parameter whose type has an enumeration field.  With the command present, the WASI program passes the check and stops at its next error, the missing `Action` definition.  `tests/verified/run.sh --cases typedtrees` passed 513 cases with no failure, 40 of them on `Logged`, and the audit found 422 theorems of the example with only the permitted axioms.

@@ -199,9 +199,16 @@ rule, and `Cases.spec_leSize` reuses that rule's ownership, release, and allocat
 
 ## Recursive records
 
-The [tree model](Tree.lean) has a null value and records with a fixed layout of at most 64
-fields.  Each field holds a `UInt64` or a child with the same layout.  The model proves the
-conversion laws for `List UInt64` and uses the shared runtime's record encoding.
+The [tree model](Tree.lean) has a null value and records with a fixed layout of at most 64 slots.
+Each field is a child with the same layout or a word field, `TreeField.word e`, that holds an
+element `e` of one word: a `UInt64`, a `Bool`, or a float of either width.  `TreeShape.fields`
+derives the slot kinds from the fields, so `Node`, the release and copy loops, and their proofs read
+one child mask.  `Tree.node` takes its words as a family typed by `TreeShape.elem`, which is
+`Elem.word` by reduction when every field of the shape is a `UInt64` word or a child
+(`TreeShape.allWords`, `TreeField.plain`), so the words of such a shape, as of lists, have the type
+`UInt64`.  A load converts a slot's word with `ofWordCode` into the local of the element's slot
+type, and a store converts with `toWordCode`.  Both are empty for a `UInt64` word.  The model proves
+the conversion laws for `List UInt64` and uses the shared runtime's record encoding.
 
 The [copy theorem](TreeCopy.lean), `wp_copyTree`, covers every borrowed value with that layout.
 It proves termination, ownership and pairwise separation of the copied records, preservation of
@@ -253,35 +260,37 @@ header writes, preserving child ownership and proving the completed record's exa
 [Local-state rules](LocalFrame.lean), [heap steps](HeapStep.lean), and [runtime rules](RuntimeFacts.lean)
 give these proofs interfaces independent of the source language.
 
-The source types `Ty.tree` and `Ty.treeHeader` record the layout.  The
-[constructor rule](TreeNodeCorrect.lean) composes field evaluation, parent allocation or reuse,
-and record assembly.  The [matching rule](TreeCaseCorrect.lean) handles null and nonempty values,
-loads the fields, detaches an owned header, releases unused bindings, and composes the branch's
-ownership and allocation bound.  Both rules enter `Expr.code_spec` and the whole-program
-correctness theorems.  Borrowed aliases retain their regions, and moving or copying a recursive
-value uses its exact record blocks at the current store.  The reflector supports `List UInt64`
-construction, matching, identity, duplication, tuples, and calls.  [Representation agreement](TreeAgree.lean)
-proves that borrowed and consumed lists use the typed tree's encoding.  The
-[list example](Examples/Lists.lean) derives execution theorems for ordinary Lean definitions.
-The [match equations](Reflect/TreeLemmas.lean) preserve both branch meanings and their allocation
-and frames conditions.  [Matcher normalization](Reflect/NativeList.lean) derives the equation from
-Lean's elaborated match to its two list cases, which the kernel checks with the generated theorem.
-The [tail-match rule](TailTreeCase.lean) enters `TailBody.code_spec` and the whole-loop theorem.
-Its branches preserve the enclosing loop's return and continue labels.  The
-[recursive-tail reflector](Reflect/TailBody.lean) shares the expression reflector's field context,
-and [its equations](Reflect/TailListLemmas.lean) connect the native step to the typed match.
-For a user-defined recursive type, the command `verified_recursive_type`, run once after the
-type's `Encode` instance, derives conversions to and from the typed tree and proves both inverse
-laws and agreement with the instance, and `verified_compile` requires these declarations of every
-recursive type that a program uses.  Record fields may be words, `Bool`s, floats, fields
-with a `Flat` instance, or recursive children, with at most 64 slots.  [The derivation](Reflect/RecursiveTypes.lean) supports construction,
-matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state.
-[Native matcher normalization](Reflect/NativeTree.lean) abstracts the alternatives before proving
-their constructor cases.  [Generated branch equations](Reflect/RecursiveMatch.lean) preserve
-denotation, allocation bounds, and frames conditions.  The
-[native-type example](Examples/RecursiveTypes.lean) checks the existing `Words` and `KeyTree`
-layouts, including subtree release and header reuse.  Native tail matching uses the same field
-context and branch equations as expression matching.
+The source types `Ty.tree` and `Ty.treeHeader` record the layout.  The [constructor
+rule](TreeNodeCorrect.lean) composes field evaluation, parent allocation or reuse, and record
+assembly.  The [matching rule](TreeCaseCorrect.lean) handles null and nonempty values, loads the
+fields, detaches an owned header, releases unused bindings, and composes the branch's ownership and
+allocation bound.  Both rules enter `Expr.code_spec` and the whole-program correctness theorems.
+Borrowed aliases retain their regions, and moving or copying a recursive value uses its exact record
+blocks at the current store.  The reflector supports `List UInt64` construction, matching, identity,
+duplication, tuples, and calls.  [Representation agreement](TreeAgree.lean) proves that borrowed and
+consumed lists use the typed tree's encoding.  The [list example](Examples/Lists.lean) derives
+execution theorems for ordinary Lean definitions.  The [match equations](Reflect/TreeLemmas.lean)
+preserve both branch meanings and their allocation and frames conditions.  [Matcher
+normalization](Reflect/NativeList.lean) derives the equation from Lean's elaborated match to its two
+list cases, which the kernel checks with the generated theorem.  The [tail-match
+rule](TailTreeCase.lean) enters `TailBody.code_spec` and the whole-loop theorem.  Its branches
+preserve the enclosing loop's return and continue labels.  The [recursive-tail
+reflector](Reflect/TailBody.lean) shares the expression reflector's field context, and [its
+equations](Reflect/TailListLemmas.lean) connect the native step to the typed match.  For a
+user-defined recursive type, the command `verified_recursive_type`, run once after the type's
+`Encode` instance, derives the conversion to the typed tree, the agreement of the instance with it,
+and the match lemmas, and, when no field holds an enumeration or a sum, the conversion back and both
+inverse laws.  `verified_compile` requires these declarations of every recursive type that a program
+uses.  A record's fields may be words, `Bool`s, floats, children, and values of a type with a `Flat`
+instance, one slot for each leaf of its flattening, with at most 64 slots, the tag included.  [The
+derivation](Reflect/RecursiveTypes.lean) supports construction, matching, guarded and tail
+recursion, identity, duplication, tuples, calls, and loop state, and it excludes a type with a field
+that holds an enumeration or a sum from recursive parameters.  [Native matcher
+normalization](Reflect/NativeTree.lean) abstracts the alternatives before proving their constructor
+cases.  [Generated branch equations](Reflect/RecursiveMatch.lean) preserve denotation, allocation
+bounds, and frames conditions.  The [native-type example](Examples/RecursiveTypes.lean) checks the
+existing `Words` and `KeyTree` layouts, including subtree release and header reuse.  Native tail
+matching uses the same field context and branch equations as expression matching.
 
 The typed `Expr.listFold` traverses a list with a scalar accumulator and borrowed captures.
 Its state contains the list pointer, accumulator, and captures.  Null returns the accumulator,
@@ -620,77 +629,76 @@ separate Wasm and device-model claims.
 ## The reflector
 
 The reflector, `verified_compile p := [f, g, …]` in [`Reflect/Command.lean`](Reflect/Command.lean),
-writes ordinary Lean definitions as a source program.  [Definition reflection](Reflect/Definitions.lean)
-holds the expression translation, bound builders, and shared recursive-parameter flattening.
-Each source definition has a separate term-elaboration action and its own Lean heartbeat
-allowance.  The command transfers closed reflection state between definitions, then assembles
-the program, wrappers, meaning proof, byte proofs, and exported theorems.
-For each definition `f` it adds the source
-function `p.f.func`, the equation `p.f.denote_eq` that it means `f`, and `p.f.implements`, which
-states that function `2 + k` of the module `p.module`, or the entry `2 + n + j` of the `j`-th
-function whose code takes the call depth, computes `f` on the tuple of its arguments, with the
-`Represent` instances that Lean synthesizes for the tuple and the result.  It also adds the meanings
-`p.funs` and the proof `p.meaning` of `Prog.Meaning p.program p.funs`.  `p.bytes` states that the
-module's bytes decode to the module, which computes every listed definition.  The reflector is meta
-code and is not trusted: it builds each equation from the lemmas of
-[`Reflect/Lemmas.lean`](Reflect/Lemmas.lean), one per Lean form, and Lean's kernel checks it.  An
-`if` on a `Prop` comparison needs a lemma, because Lean elaborates it with `UInt64`'s `Decidable`
-instance, which is not definitionally the source's test of a `Bool`.  A call of an earlier listed
-definition becomes a source call, proved from the callee's equation, `LeanExe.loop` becomes a loop
-whose condition is `true` and whose body is the reflection of the loop function's body, and
-`LeanExe.repeatWhile` becomes a loop with the reflections of its condition and its step.
-An unlisted `@[inline]` helper is unfolded when no source rule covers its application, and its
-expanded body's equation gives the equation for the application.  Listed definitions retain
+writes ordinary Lean definitions as a source program.  [Definition
+reflection](Reflect/Definitions.lean) holds the expression translation, bound builders, and shared
+recursive-parameter flattening.  Each source definition has a separate term-elaboration action and
+its own Lean heartbeat allowance.  The command transfers closed reflection state between
+definitions, then assembles the program, wrappers, meaning proof, byte proofs, and exported
+theorems.  For each definition `f` it adds the source function `p.f.func`, the equation
+`p.f.denote_eq` that it means `f`, and `p.f.implements`, which states that function `2 + k` of the
+module `p.module`, or the entry `2 + n + j` of the `j`-th function whose code takes the call depth,
+computes `f` on the tuple of its arguments, with the `Represent` instances that Lean synthesizes for
+the tuple and the result.  It also adds the meanings `p.funs` and the proof `p.meaning` of
+`Prog.Meaning p.program p.funs`.  `p.bytes` states that the module's bytes decode to the module,
+which computes every listed definition.  The reflector is meta code and is not trusted: it builds
+each equation from the lemmas of [`Reflect/Lemmas.lean`](Reflect/Lemmas.lean), one per Lean form,
+and Lean's kernel checks it.  An `if` on a `Prop` comparison needs a lemma, because Lean elaborates
+it with `UInt64`'s `Decidable` instance, which is not definitionally the source's test of a `Bool`.
+A call of an earlier listed definition becomes a source call, proved from the callee's equation,
+`LeanExe.loop` becomes a loop whose condition is `true` and whose body is the reflection of the loop
+function's body, and `LeanExe.repeatWhile` becomes a loop with the reflections of its condition and
+its step.  An unlisted `@[inline]` helper is unfolded when no source rule covers its application,
+and its expanded body's equation gives the equation for the application.  Listed definitions retain
 their source calls.  `setIfInBounds`, `insertIdxIfInBounds`, and `eraseIdxIfInBounds` use the
-existing set, insertion, and removal expressions through definitional equalities.
-`insertIdx!` expands to the proved conditional form, after binding its array and index when
-either is an expression.
-`repeatWhile_eq_loop` states that `repeatWhile` is the loop over its fuel whose function applies the
-step to a state that satisfies the condition and keeps any other.  The reflector chooses the
-parameter modes with `Expr.paramChoice` in [`Reflect/Modes.lean`](Reflect/Modes.lean): an array
-parameter is owned when the body consumes it where it dies, as the array of an update or an
-extension, at a call that moves it into an owned parameter, or as the result, directly or through a
-binding, a branch, a pair, or a loop's state, and borrowed otherwise.  The choice is not trusted,
-since the theorem holds for every choice of modes.  The reflector binds with `let` an array that a
-size or a read reads, a call's argument with arrays that is not a place, and an argument at an owned
-parameter that is not a variable.  It replaces a `let` of a place by its body with the place for the
-variable, and splits every variable of a pair type that holds arrays into variables for its
-components, so that a projection reads a component without a copy of the pair.  A Lean pair without
-arrays becomes a tuple: `(a, b)` becomes `Expr.mk`, a chain of `.1` and `.2` on a tuple variable
-becomes one `Expr.proj`, and a projection of another tuple, or a `match` on it, binds the tuple with
-`let` first.  A structure with a `Flat` instance whose tuple is its fields becomes the tuple of its
-fields' source values, its flattening `φ`, so that a nested structure is flattened in turn.  The
-environment of each equation holds `φ x` for each variable `x`, and each equation states that the
-source expression means `φ` of the Lean term, with `φ` the identity for the other types.  A
-constructor or `{ s with … }` becomes the tuple of the fields in the instance's order, a chain of
-field reads, `.1`, and `.2` on a structure variable becomes one `Expr.proj`, and a `match` on a
-structure binds its fields.  `letE_flat_eq`, `letPair_flat_eq`, `loop_flat_eq` and
-`repeatWhile_flat_eq` with `loop_map`, and `apply_ite` state that `φ` commutes with bindings, pairs,
-loops, and `if`.  An array of structures is the array of its elements' flattenings, `Array.map φ`,
-and `size_map_eq` through `build_map_eq` move the map through a size, a read, an update, an
-extension, and a build.  A read past the end gives the flattening of Lean's default structure, which
-the reflector checks by unfolding to be the default element, as it is when the default takes each
-field's default, as `deriving Inhabited` gives.  The theorem for a definition on structures follows
-from the theorem for its flattened function by `ImplementsA.transferAgree`, from proofs of `Agree`
-that Lean's instances for the argument tuple and the result represent each value as the source
-instances represent its flattening.  The reflector builds these proofs by recursion over the source
-types, as `argsInst` and `Ty.leanInst` build the source instances: `Agree.scalar` for a type without
-arrays, whose words are the words of its flattening, `Agree.flatArray` and `Agree.flatMoved` for an
-array of structures, borrowed or owned, whose elements Lean's instance stores as the words of their
-`Flat` tuples, `Agree.refl` for another array, `Agree.flat` for a record with array fields, and
-`Agree.prod` for a pair that holds arrays, each restated along the flattening of the equation's
-right side.  The kernel checks each step by unfolding, and the reflector checks it first to name the
-type that fails.  The reflector builds the equations and the theorems as terms so that the kernel
-never unfolds a definition, because it would evaluate a loop over literal data pass by pass.
-`p.f.denote_eq` relates `f` to its body through `f = fun params => body`, which the kernel checks by
-unfolding `f` against the lambda.  A call and `p.f.implements` reach a function's meaning through
-`Funs.get_there` and `Funs.get_here`, which take `p.funs.get` to the function's meaning.  A
-recursive definition, one that Lean records as recursive, is reflected from its unfolding equation
-`f.eq_def` with a callee for itself, and its meaning `p.f.meaning` is `f` at the inverses of the
-flattenings of an environment's values.  Both laws of the inverse hold, by `rfl` for structures and
-pairs and by `map_inverse` for arrays, and they give the self-call's equation `p.f.meaning_eq` and
-the fixed-point equation `p.f.fixed`, which the kernel checks without comparing `f` at two different
-arguments, since `f`'s value is a `WellFounded.fix`.  An enumeration in a parameter type has no
+existing set, insertion, and removal expressions through definitional equalities.  `insertIdx!`
+expands to the proved conditional form, after binding its array and index when either is an
+expression.  `repeatWhile_eq_loop` states that `repeatWhile` is the loop over its fuel whose
+function applies the step to a state that satisfies the condition and keeps any other.  The
+reflector chooses the parameter modes with `Expr.paramChoice` in
+[`Reflect/Modes.lean`](Reflect/Modes.lean): an array parameter is owned when the body consumes it
+where it dies, as the array of an update or an extension, at a call that moves it into an owned
+parameter, or as the result, directly or through a binding, a branch, a pair, or a loop's state, and
+borrowed otherwise.  The choice is not trusted, since the theorem holds for every choice of modes.
+The reflector binds with `let` an array that a size or a read reads, a call's argument with arrays
+that is not a place, and an argument at an owned parameter that is not a variable.  It replaces a
+`let` of a place by its body with the place for the variable, and splits every variable of a pair
+type that holds arrays into variables for its components, so that a projection reads a component
+without a copy of the pair.  A Lean pair without arrays becomes a tuple: `(a, b)` becomes `Expr.mk`,
+a chain of `.1` and `.2` on a tuple variable becomes one `Expr.proj`, and a projection of another
+tuple, or a `match` on it, binds the tuple with `let` first.  A structure with a `Flat` instance
+whose tuple is its fields becomes the tuple of its fields' source values, its flattening `φ`, so
+that a nested structure is flattened in turn.  The environment of each equation holds `φ x` for each
+variable `x`, and each equation states that the source expression means `φ` of the Lean term, with
+`φ` the identity for the other types.  A constructor or `{ s with … }` becomes the tuple of the
+fields in the instance's order, a chain of field reads, `.1`, and `.2` on a structure variable
+becomes one `Expr.proj`, and a `match` on a structure binds its fields.  `letE_flat_eq`,
+`letPair_flat_eq`, `loop_flat_eq` and `repeatWhile_flat_eq` with `loop_map`, and `apply_ite` state
+that `φ` commutes with bindings, pairs, loops, and `if`.  An array of structures is the array of its
+elements' flattenings, `Array.map φ`, and `size_map_eq` through `build_map_eq` move the map through
+a size, a read, an update, an extension, and a build.  A read past the end gives the flattening of
+Lean's default structure, which the reflector checks by unfolding to be the default element, as it
+is when the default takes each field's default, as `deriving Inhabited` gives.  The theorem for a
+definition on structures follows from the theorem for its flattened function by
+`ImplementsA.transferAgree`, from proofs of `Agree` that Lean's instances for the argument tuple and
+the result represent each value as the source instances represent its flattening.  The reflector
+builds these proofs by recursion over the source types, as `argsInst` and `Ty.leanInst` build the
+source instances: `Agree.scalar` for a type without arrays, whose words are the words of its
+flattening, `Agree.flatArray` and `Agree.flatMoved` for an array of structures, borrowed or owned,
+whose elements Lean's instance stores as the words of their `Flat` tuples, `Agree.refl` for another
+array, `Agree.flat` for a record with array fields, and `Agree.prod` for a pair that holds arrays,
+each restated along the flattening of the equation's right side.  The kernel checks each step by
+unfolding, and the reflector checks it first to name the type that fails.  The reflector builds the
+equations and the theorems as terms so that the kernel never unfolds a definition, because it would
+evaluate a loop over literal data pass by pass.  `p.f.denote_eq` relates `f` to its body through `f
+= fun params => body`, which the kernel checks by unfolding `f` against the lambda.  A call and
+`p.f.implements` reach a function's meaning through `Funs.get_there` and `Funs.get_here`, which take
+`p.funs.get` to the function's meaning.  A recursive definition, one that Lean records as recursive,
+is reflected from its unfolding equation `f.eq_def` with a callee for itself, and its meaning
+`p.f.meaning` is `f` at the inverses of the flattenings of an environment's values.  Both laws of
+the inverse hold, by `rfl` for structures and pairs and by `map_inverse` for arrays, and they give
+the self-call's equation `p.f.meaning_eq` and the fixed-point equation `p.f.fixed`, which the kernel
+checks without comparing `f` at two different arguments, since `f`'s value is a `WellFounded.fix`.
+An enumeration or a sum in a parameter type, directly or in a field of a recursive type, has no
 inverse on the words that encode no constructor, so the reflector rejects it in a recursive
 definition, as it rejects a recursive definition that uses `sorry`.  Its parameter modes are the
 choice of `Expr.paramChoice` for the body reflected with the modes before, from all borrowed, until
@@ -708,8 +716,8 @@ compiled as written.  An enumeration, an inductive type whose constructors have 
 constructor becomes its word.  A `match` on an enumeration becomes a chain of `if`s on the word that
 chooses each constructor's alternative, which `reduceMatcher?` reads off the match.  The equation of
 the chain and the match is proved by `casesOn` on a variable for the value, with variables for the
-alternatives, so the kernel evaluates the tests and field projections.  `==`, `!=`, `decide`, and `if` on
-enumerations become the same comparisons of words, by `flat_beq`, `flat_bne`, `flat_decide`,
+alternatives, so the kernel evaluates the tests and field projections.  `==`, `!=`, `decide`, and
+`if` on enumerations become the same comparisons of words, by `flat_beq`, `flat_bne`, `flat_decide`,
 `flat_ite`, and `flat_ite_ne` from a theorem, added once per program and enumeration, that the
 flattening is injective, which follows from a decoder by one case per constructor.  `==` needs
 `LawfulBEq`, which `deriving DecidableEq` gives, and `decide (a ≠ b)` becomes `!decide (a = b)` by
@@ -735,21 +743,14 @@ projections.  `requireRecursiveTypes` also checks the recursive types that only 
 names.  [The heap sum example](Examples/HeapSums.lean) covers construction, borrowed and owned
 matches, results, pairs, loop state, and lists, trees, bytes, and arrays as fields.
 
-A field of a record of a recursive type is a child or a word field, `TreeField.word e` for an
-element `e` of one word: a `UInt64`, a `Bool`, or a float of either width.  `TreeShape.fields`
-derives the slot kinds from the fields, so `Node`, the release and copy loops, and their proofs
-read the same child mask as before.  `Tree.node` takes its words as a family typed by
-`TreeShape.elem`, which is `Elem.word` by reduction when every field of the shape is a word or a
-child, so lists and the earlier recursive types keep `UInt64` words.  A load converts a slot's word
-with `ofWordCode` into the local of the element's slot type, and a store converts with
-`toWordCode`.  Both are empty for a word, so the modules of the earlier types keep their bytes.  The
-reflector spreads a field of a type with a `Flat` instance over the leaves of its flattening, one
-word field for each leaf, as `NativeField.flat` records.  In a branch the field is one Lean
-variable and each leaf a source variable keyed by the leaf's term, and `keyedComponent?` reads the
-field, a component, or a leaf from those variables.  `fromTree` and the inverse laws exist when
-every such field is a structure, since a word that encodes no enumeration constructor has no Lean
-value.  [The typed-field example](Examples/TypedTrees.lean) covers `Bool`, float, nested structure,
-and enumeration fields.
+The reflector spreads a field of a type with a `Flat` instance over the leaves of its flattening,
+one word field for each leaf, and `NativeField.flat` holds each leaf's element and path.  In a
+branch the field is one Lean variable and each leaf a source variable keyed by the leaf's term, and
+`keyedComponent?` reads the field, a component, or a leaf from those variables.  `fromTree` and the
+inverse laws exist when every such field is a structure whose `Flat` tuple holds each of its fields,
+since a word that encodes no constructor of an enumeration or a sum has no Lean value.  [The
+typed-field example](Examples/TypedTrees.lean) covers `Bool`, float, nested structure, enumeration,
+and sum fields.
 
 A variable that holds a pair or a record with arrays is split into the components of
 its pair, and the body at the value rebuilt from them is the body at the variable by `pair_eta` or
