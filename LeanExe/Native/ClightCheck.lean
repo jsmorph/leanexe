@@ -8,13 +8,16 @@ expressions, and types of `Clight.lean`, lists, pairs, and records, with identif
 the file's `Definition _x : ident := $"x".` lines and the temporaries that `clightgen` creates
 named by `Definition _t'k : ident := n%positive.` lines.
 
-The comparison requires each global variable and each internal function of the translation to
-appear under its name with the same definition, and the file to define no other variable or
-internal function.  A temporary is read back through `tempName`.  The temporaries of calls are
-compared up to renaming: both programs number them in order of first occurrence in the body.
-A built-in function that the translation declares must be declared alike by `clightgen`, and
-the other external functions that `clightgen` declares for CompCert's built-ins and run-time
-library are not compared.  The reader is not verified, and a file it cannot read fails the check.
+The comparison covers the whole program (`LeanExe/Native/Proof/Whole.lean`): CompCert's
+external declarations, which come first, the translation's definitions in order, and the
+program's `main`.  Each global variable and each internal function of the translation must
+appear under its name with the same definition, and `__builtin_fsqrt` must be declared as the
+translation declares it.  A temporary is read back through `tempName`, and the temporaries of
+calls are compared up to renaming: both programs number them in order of first occurrence in
+the body.  When the check passes, the program of the file is the whole program `wholeProgram pre
+[] t` with its identifiers renamed injectively, by name for globals and per function for
+temporaries, where `pre` holds the external declarations, and `pre` meets `WholeOk`.  The
+reader is not verified, and a file it cannot read fails the check.
 -/
 
 namespace LeanExe.Native.ClightCheck
@@ -254,6 +257,15 @@ partial def toType : Term → Except String type
   | .atom "tlong" => pure (.Tlong .Signed noattr)
   | .atom "tulong" => pure (.Tlong .Unsigned noattr)
   | .atom "tschar" => pure (.Tint .I8 .Signed noattr)
+  | .atom "tshort" => pure (.Tint .I16 .Signed noattr)
+  | .atom "tushort" => pure (.Tint .I16 .Unsigned noattr)
+  | .atom "tbool" => pure (.Tint .IBool .Unsigned noattr)
+  | .app "tvolatile" [t] => do
+      match ← toType t with
+      | .Tint sz sg _ => pure (.Tint sz sg { attr_volatile := true, attr_alignas := none })
+      | .Tlong sg _ => pure (.Tlong sg { attr_volatile := true, attr_alignas := none })
+      | .Tfloat sz _ => pure (.Tfloat sz { attr_volatile := true, attr_alignas := none })
+      | t => throw s!"a volatile type {repr t}"
   | .atom "tuchar" => pure (.Tint .I8 .Unsigned noattr)
   | .atom "tfloat" => pure (.Tfloat .F32 noattr)
   | .atom "tdouble" => pure (.Tfloat .F64 noattr)
@@ -459,46 +471,79 @@ def toXtype : Term → Except String xtype
   | .atom "AST.Xint" => pure .Xint
   | .atom "AST.Xlong" => pure .Xlong
   | .atom "AST.Xvoid" => pure .Xvoid
+  | .atom "AST.Xbool" => pure .Xbool
+  | .atom "AST.Xint8signed" => pure .Xint8signed
+  | .atom "AST.Xint8unsigned" => pure .Xint8unsigned
+  | .atom "AST.Xint16signed" => pure .Xint16signed
+  | .atom "AST.Xint16unsigned" => pure .Xint16unsigned
+  | .atom "AST.Xptr" => pure .Xptr
+  | .atom "AST.Xany32" => pure .Xany32
+  | .atom "AST.Xany64" => pure .Xany64
   | t => throw s!"the type of a signature {repr t}"
 
+/-- A calling convention: `cc_default`, or a record as `clightgen` prints a variadic one. -/
+def toCC : Term → Except String calling_convention
+  | .atom "cc_default" => pure cc_default
+  | .record fs => do
+      let va ← match ← field fs "cc_vararg" with
+        | .atom "None" => pure none
+        | .app "Some" [.num n] => pure (some n)
+        | t => throw s!"the field cc_vararg {repr t}"
+      pure { cc_vararg := va, cc_unproto := ← toBool (← field fs "cc_unproto")
+             cc_structret := ← toBool (← field fs "cc_structret") }
+  | t => throw s!"the calling convention {repr t}"
+
 def toSignature : Term → Except String signature
-  | .app "mksignature" [args, res, .atom "cc_default"] => do
+  | .app "mksignature" [args, res, cc] => do
       pure { sig_args := ← (← toList args).mapM toXtype, sig_res := ← toXtype res
-             sig_cc := cc_default }
+             sig_cc := ← toCC cc }
   | t => throw s!"the signature {repr t}"
 
-/-- An external built-in function as `global_definitions` lists it. -/
-def toBuiltinDef : Term → Except String (fundef function)
-  | .app "Gfun" [.app "External" [.app "EF_builtin" [.str name, sg], targs, tres,
-      .atom "cc_default"]] => do
-      pure (.External (.EF_builtin name (← toSignature sg)) (← (← toList targs).mapM toType)
-        (← toType tres) cc_default)
+/-- An external function as `global_definitions` lists it: a built-in, run-time, or external
+function of CompCert. -/
+def toExternalDef : Term → Except String (fundef function)
+  | .app "Gfun" [.app "External" [.app kind [.str name, sg], targs, tres, cc]] => do
+      let ef ← match kind with
+        | "EF_builtin" => pure (external_function.EF_builtin name (← toSignature sg))
+        | "EF_runtime" => pure (external_function.EF_runtime name (← toSignature sg))
+        | "EF_external" => pure (external_function.EF_external name (← toSignature sg))
+        | k => throw s!"the external function kind {k}"
+      pure (.External ef (← (← toList targs).mapM toType) (← toType tres) (← toCC cc))
   | t => throw s!"the external function {repr t}"
 
-def builtinEq : fundef function → fundef function → Bool
-  | .External (.EF_builtin n sg) as r cc, .External (.EF_builtin n' sg') as' r' cc' =>
-      n == n' && sg == sg' && as == as' && r == r' && cc == cc'
+/-- An external function compared with another: kind, name, signature, types, and calling
+convention. -/
+def externalEq : fundef function → fundef function → Bool
+  | .External ef as r cc, .External ef' as' r' cc' => ef == ef' && as == as' && r == r' && cc == cc'
   | _, _ => false
 
-/-- The entry of `global_definitions` for the name `x`. -/
-partial def entryOf (x : String) : Term → Option Term
-  | .tuple [.atom y, g] => if x == y then some g else none
-  | .app _ args => args.findSome? (entryOf x)
-  | .list items => items.findSome? (entryOf x)
-  | .tuple items => items.findSome? (entryOf x)
-  | _ => none
+/-- The entries of `global_definitions` in order, each a name and its definition. -/
+def globalEntries (t : Term) : Except String (List (String × Term)) := do
+  (← toList t).mapM fun e =>
+    match e with
+    | .tuple [.atom x, g] => pure (x, g)
+    | e => throw s!"an entry of global_definitions {repr e}"
 
-/-- The names of the variables and internal functions that `global_definitions` lists. -/
-partial def definedNames : Term → List String
-  | .app "Gvar" [.atom v] => [v]
-  | .app "Gfun" [.app "Internal" [.atom f]] => [f]
-  | .app _ args => args.flatMap definedNames
-  | .list items => items.flatMap definedNames
-  | .tuple items => items.flatMap definedNames
-  | _ => []
+/-- The identifier that the whole program gives the `j`-th of CompCert's declarations other than
+`__builtin_fsqrt`: `4 j + 5`, which no identifier of a translation takes. -/
+def preId (j : Nat) : ident := 4 * j + 5
 
-/-- The differences between the translation `t` and the Coq file `text` that `clightgen` wrote
-for its C text, or none. -/
+/-- Whether the list has no repeated element. -/
+def nodupB [BEq α] : List α → Bool
+  | [] => true
+  | x :: xs => !xs.contains x && nodupB xs
+
+/-- The differences between the whole program that the Coq file `text` of `clightgen` describes
+and the whole program of the translation `t`, or none.  The file's `global_definitions` must list
+CompCert's external declarations, then the translation's definitions but `__builtin_fsqrt` in
+order, and nothing after them.  Each external declaration must be a built-in, run-time, or
+external function, and `__builtin_fsqrt` must be declared as the translation declares it.  Each
+variable and internal function must equal the translation's under its name, with the
+temporaries of calls compared up to renaming.  The program has no composite types, and its
+`main` is the name `main`.  The names of the entries are distinct, and so are the identifiers
+that the whole program gives them, `preId j` for the external declarations, `sqrtId` for
+`__builtin_fsqrt`, and the translation's own; the program of the file is then the whole program
+of `wholeDefs` with its identifiers renamed injectively. -/
 def check (t : Translation) (text : String) : Except String (List String) := do
   let toks ← tokenize text
   let defs := definitions toks
@@ -510,42 +555,80 @@ def check (t : Translation) (text : String) : Except String (List String) := do
       | _ => none
     else none
   let n : Names := { names, globals := t.names.map fun (id, s) => (s, id) }
+  let some gdTerm := defs.lookup "global_definitions"
+    | throw "the file has no global_definitions"
+  let entries ← globalEntries gdTerm
+  let source (x : String) : Option String :=
+    match names.lookup x with
+    | some (.source s) => some s
+    | _ => none
+  let tdefs := t.cprogram.prog_defs.filter fun d => d.1 != sqrtId
+  let tnames := tdefs.map fun d => t.gname d.1
+  let isT (x : String) : Bool := match source x with
+    | some s => tnames.contains s
+    | none => false
+  let firstT := entries.findIdx fun e => isT e.1
+  let pre := entries.take firstT
+  let mid := (entries.drop firstT).take tdefs.length
+  let post := (entries.drop firstT).drop tdefs.length
   let mut errors : Array String := #[]
-  let mut expected : List String := []
-  for (id, g) in t.cprogram.prog_defs do
+  -- The order of the translation's definitions.
+  let midNames := mid.map fun e => (source e.1).getD e.1
+  if midNames != tnames then
+    errors := errors.push s!"the definitions are not in the translation's order: {midNames}"
+  for (x, _) in post do
+    errors := errors.push s!"{(source x).getD x}: a definition after the translation's"
+  -- CompCert's declarations, and the identifiers that the whole program gives them.
+  let mut preIds : List ident := []
+  let mut sqrtSeen := false
+  let mut j := 0
+  for (x, g) in pre do
+    let s := (source x).getD x
+    match toExternalDef g with
+    | .error e => errors := errors.push s!"{s}: {e}"
+    | .ok fd =>
+        if s == "__builtin_fsqrt" then
+          sqrtSeen := true
+          preIds := preIds ++ [sqrtId]
+          if !externalEq fd sqrtFun then
+            errors := errors.push s!"{s}: the built-in declarations differ"
+        else
+          preIds := preIds ++ [preId j]
+          j := j + 1
+  if !sqrtSeen then
+    errors := errors.push "__builtin_fsqrt: clightgen declares no such built-in"
+  -- The translation's definitions.
+  for ((_, g), (id, d)) in mid.zip tdefs do
     let name := t.gname id
-    match g with
-    | .Gvar v =>
-        expected := expected ++ [s!"v_{name}"]
-        match defs.lookup s!"v_{name}" with
+    match d, g with
+    | .Gvar v, .app "Gvar" [.atom vx] =>
+        match defs.lookup vx with
         | none => errors := errors.push s!"{name}: clightgen defines no variable"
         | some term =>
             match toVar term with
             | .error e => errors := errors.push s!"{name}: {e}"
             | .ok w => if !varEq v w then errors := errors.push s!"{name}: the variables differ"
-    | .Gfun (.Internal f) =>
-        expected := expected ++ [s!"f_{name}"]
-        match defs.lookup s!"f_{name}" with
+    | .Gfun (.Internal f), .app "Gfun" [.app "Internal" [.atom fx]] =>
+        match defs.lookup fx with
         | none => errors := errors.push s!"{name}: clightgen defines no function"
         | some term =>
             match toFunction n term with
             | .error e => errors := errors.push s!"{name}: {e}"
             | .ok g => if !functionEq f g then errors := errors.push s!"{name}: the functions differ"
-    | .Gfun fd@(.External (.EF_builtin _ _) _ _ _) =>
-        match defs.lookup "global_definitions" >>= entryOf s!"_{name}" with
-        | none => errors := errors.push s!"{name}: clightgen declares no such built-in"
-        | some term =>
-            match toBuiltinDef term with
-            | .error e => errors := errors.push s!"{name}: {e}"
-            | .ok fd' =>
-                if !builtinEq fd fd' then
-                  errors := errors.push s!"{name}: the built-in declarations differ"
-    | .Gfun (.External _ _ _ _) => errors := errors.push s!"{name}: an external function"
-  match defs.lookup "global_definitions" with
-  | none => errors := errors.push "the file has no global_definitions"
-  | some term =>
-      for d in definedNames term do
-        if !expected.contains d then errors := errors.push s!"{d}: not in the translation"
+    | _, _ => errors := errors.push s!"{name}: the kinds of definition differ"
+  -- Distinct names and identifiers, no composite types, and `main`.
+  if !nodupB (entries.map fun e => (source e.1).getD e.1) then
+    errors := errors.push "two entries of global_definitions have one name"
+  if !nodupB (preIds ++ tdefs.map (·.1)) then
+    errors := errors.push "two definitions of the whole program have one identifier"
+  match defs.lookup "composites" with
+  | some (.atom "nil") => pure ()
+  | _ => errors := errors.push "the program has composite types"
+  match defs.lookup "prog" with
+  | some (.app "mkprogram" [.atom "composites", .atom "global_definitions", .atom "public_idents",
+      .atom m, _]) =>
+      if source m != some "main" then errors := errors.push "the program's main is not main"
+  | _ => errors := errors.push "the file has no program in the form of mkprogram"
   pure errors.toList
 
 end LeanExe.Native.ClightCheck
