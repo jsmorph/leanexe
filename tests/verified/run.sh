@@ -4,17 +4,16 @@
 # A case with a sixth field also checks the allocation counters: the blocks allocated less those
 # released must equal the field, the result's arrays and the host's arrays at borrowed parameters.
 # A seventh field bounds the number of allocations, the host's included.  A case whose expected
-# result is
-# `trap` must trap at `unreachable`.  After writing the modules, it builds each function's theorem
-# module and checks its file theorem module, whose theorems state that the written file holds the
-# module of the function's byte theorem, and it fails unless both file theorems report only the
-# axioms propext, Classical.choice, and Quot.sound.  For the slew planner, it also compares the
-# edgeOk export with native Lean and runs the axiom audit of tests/slew/Axioms.lean, and with
+# result is `trap` must trap at `unreachable`.  After writing the modules, it builds each function's
+# theorem module and checks its file theorem module, whose theorems state that the written file
+# holds the module of the function's byte theorem, and it fails unless both file theorems report
+# only the axioms propext, Classical.choice, and Quot.sound.  For the slew planner, it also compares
+# the edgeOk export with native Lean and runs the axiom audit of tests/slew/Axioms.lean, and with
 # --cases slew it checks the planner's file theorem module as well.  Last, the
-# tests/TestSupport/Numerics/*Accuracy.lean
-# checks compare the transcendental functions with references computed with Lean's integers, each
-# within the bound its docstring states, and tests/TestSupport/Numerics/FourierAccuracy.lean checks that
-# Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
+# tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
+# references computed with Lean's integers, each within the bound its docstring states, and
+# tests/TestSupport/Numerics/FourierAccuracy.lean checks that Fourier.dft, inverse, and
+# powerSpectrum behave as their mathematical counterparts.
 # Run `tools/leanrun --timeout 60m lake build`, whose default targets include the module cases of
 # the Euler check, and `tools/leanrun --threads 2 --memory-high 10G --timeout 12h lake build Verified
 # Library` first.

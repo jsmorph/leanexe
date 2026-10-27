@@ -10,8 +10,9 @@ array of binary64 values, and returns one.
 `verified_compile` compiles the program, with the library's `atan` and `atan2`, into a module of
 26,362 bytes.  In Wasmtime, the module's `plan` export agrees with native Lean, bit for bit, on 852
 generated inputs, its `atan2` export on 1,225 calls, and its `edgeOk` export on 100,000 edges.
-[The theorems](#theorems) state that every plan keeps every cone along its commanded rotations and
-along a flown slew near them, that the evaluation in Lean produces no NaN, that a plan is a
+[The theorems](#theorems) state that every plan keeps every cone along its commanded rotations,
+that it keeps the true cones along a flown slew when the input cones allow for the errors of the
+flown attitude and of the cone axes, that the evaluation in Lean produces no NaN, that a plan is a
 least-cost walk of the graph, that a call allocates at most 68,020,488 bytes, and that the written
 file holds the module.  [The limits](#limits-of-the-theorems) state what the theorems leave out.
 
@@ -116,24 +117,26 @@ an `if` of its own, since the compiled code evaluates both operands of `&&`.  Th
 it finalizes the goal or when no open admitted node has a finite cost, and `output` follows the
 parent chain from the goal and writes the segments.
 
-During a rotation by `φ` about the unit axis `n`, the cosine between the computed body vector
-`v₀ = R(q_a) b` of the start attitude `q_a` and a cone axis `u` is `f(φ) = A cos φ + B sin φ + C`,
-with `A = u·v₀ - (n·u)(n·v₀)`, `B = u·(n × v₀)`, and `C = (n·u)(n·v₀)`.  On `[0, θ]` with `θ ≤ π`,
-`f` has an interior maximum only when `B > 0` and `f′(θ) = B cos θ - A sin θ < 0`, of value
-`C + √(A² + B²)`, and an interior minimum only when `B < 0` and `f′(θ) > 0`, of value
-`C - √(A² + B²)`.  The relative quaternion `[w, v]` with `w ≥ 0` gives `cos θ = w² - s²` and
-`sin θ = 2ws` for `s = |v|`, so the check needs no trigonometric function.
+During a rotation by `φ` about the unit axis `n`, the cosine between the inertial image
+`v₀ = R(q_a) b` of a body vector at the start attitude `q_a` and a cone axis `u` is
+`f(φ) = A cos φ + B sin φ + C`, with `A = u·v₀ - (n·u)(n·v₀)`, `B = u·(n × v₀)`, and
+`C = (n·u)(n·v₀)`.  On `[0, θ]` with `θ ≤ π`, `f` has an interior maximum only when `B > 0` and
+`f′(θ) = B cos θ - A sin θ < 0`, of value `C + √(A² + B²)`, and an interior minimum only when
+`B < 0` and `f′(θ) > 0`, of value `C - √(A² + B²)`.  The relative quaternion `[w, v]` with `w ≥ 0`
+gives `cos θ = w² - s²` and `sin θ = 2ws` for `s = |v|`, so the check needs no trigonometric
+function.
 
 The edge check compares the endpoint values, and the stationary value unless a computed test
 excludes it by more than `eta = 1e-12`, with the cone's cosine tightened by `margin`, the double
 nearest `1.1e-9`.  The margin was chosen as a tube of `1e-9` around the commanded rotation plus a
 rounding allowance of `1e-10`, and [the soundness proof](#soundness-of-the-checks) spends it as a
-tube of `ρ = 1.05e-9` and rounding errors of at most `3.63e-11`.  Below `s = 1e-7` the computed
-axis `v/s` is unreliable, and the check tests the start attitude with `2.125 · s` more slack, since
-no vector moves farther than the rotation angle.  Each ceiling of a cost is built from the
-saturating `Float.toUInt64`, because the verified compiler has no rule for `Float.ceil`.  An
-unreached node costs `2^62`, and no path cost comes near it, since `edge_cost_le` bounds the cost of
-an edge by `2^34` ms and a walk that the search returns has at most 1,025 edges.
+tube of `ρ = 1.05e-9` and rounding errors of at most `3.63e-11`.  Below `s = 1e-7`, the computed
+axis `v/s` loses relative accuracy, and the check tests the start attitude with `2.125 · s` more
+slack, since the rotation angle is about `2s` and no unit vector moves farther than the rotation
+angle.  Each ceiling of a cost is built from the saturating `Float.toUInt64`, because the verified
+compiler has no rule for `Float.ceil`.  An unreached node costs `2^62`, and no path cost comes near
+it, since `edge_cost_le` bounds the cost of an edge by `2^34` ms and a walk that the search returns
+has at most 1,025 edges.
 
 ## Theorems
 
@@ -141,6 +144,9 @@ Every theorem in the table depends only on the axioms `propext`, `Classical.choi
 `Quot.sound`, which [the axiom audit](../../tests/slew/Axioms.lean) and the file check confirm.
 For an input `xs`, status 1 means `(plan xs)[0] = 1`, and `q_g`, `n_g`, and `θ_g` are the
 quaternion, axis, and angle of segment `g` of the output, with the goal quaternion as `q_K`.
+The real value of a float is the real number that it represents, and the real value of a
+quaternion of floats, such as the relative quaternion `rel` of `edgeOk_sound`, is the quaternion of
+the real values of its components.
 [The verified compiler manual](../../docs/verified-manual.md#the-implements-and-trapfree-theorems)
 defines the terms of the generated theorems.  A heap's `top` is the end of the memory that the
 allocator has handed out, the memory cap is the largest number of 64 KiB pages that the store
@@ -159,7 +165,7 @@ the value that `segmentField` writes at field `f` of the segment from node `a` t
 | `plan_safe` | [The safety theorem](Safety.lean) | Status 1 | For some `K ≥ 1`, the output has `8 + 11K` values and starts and ends with the input's start and goal quaternions, bit for bit.  For each segment `g`, `n̄_g` has length 1, `R(n̄_g, θ_g) R(q̄_g)` lies within `1e-9` of `R(q̄_{g+1})`, and for every `φ` in `[0, θ_g]` and every map within `1e-9` of `R(n̄_g, φ) R(q̄_g)`, the map's image of `b̄` satisfies every cone against `ū`. |
 | `plan_finite` | [NaN-freedom](NanFree.lean) | `validInput xs` | The values that `validInput` computes, the conversion of every word to a float, the values of the static check of every node without slack, and, for every pair of nodes, the values of the edge check, the relative quaternion, the angle and the arguments and result of its `atan2` call, the duration, and the output axis are finite. |
 | `plan_premise` | [The premise theorem](Premise.lean) | Status 1 with `K` segments, `g < K`, `φ` in `[0, θ_g]`, a map `F` that moves every unit vector by an angle of at most `ε` from `R(n̄_g, φ) R(q̄_g)`, a cone with a true axis `u` within angle `d` of `ū`, and a real `α` | For a keep-out cone with `α + d + ε ≤ arccos c`, the angle between `F b̄` and `u` is at least `α`.  For a keep-in cone with `arccos c + d + ε ≤ α`, it is at most `α`. |
-| `edge_cost_le` | [The edge cost](Cost.lean) | `validInput xs`, and nodes `a` and `b` below `nw + 2` | The cost of the edge from `a` to `b`, `⌈1000 T(θ)⌉ + ⌈1000 t_s⌉` as computed, is at most `2^34`. |
+| `edge_cost_le` | [The edge cost](Cost.lean) | `validInput xs`, and nodes `a` and `b` below `nw + 2` | The cost of the edge from `a` to `b`, `⌈1000 T(θ)⌉ + ⌈1000 t_s⌉` as computed, is at most `2^34` ms. |
 | `plan_optimal` | [Optimality](Optimal.lean) | `validInput xs`, and the start and the goal pass the static check without slack | When the graph has a walk from the start to the goal, the output has status 1, its segments join the nodes of such a walk, each field as `segValue` gives it, its header reports the walk's cost, and no walk from the start to the goal costs less.  Otherwise the output has status 0. |
 | `plan_bound` | [The allocation bound](Bound.lean) | None | `compiled.plan.bound xs ≤ 68,020,488`. |
 | `slew_trapFree` | [The allocation bound](Bound.lean) | Those of `implements`, and room for `top` to rise by 68,020,488 bytes within the cap | Entry 28 returns words that represent `plan xs` without a trap, and `top` rises by at most 68,020,488 bytes. |
@@ -176,7 +182,7 @@ threshold, with `μ = 2⁻⁵³`, the margin covers these parts.
 | Part | Bound |
 |---|---|
 | Rounding of `f₀`, `f₁`, the stationary value, and the tightened cosine `c ∓ margin` | `2300 μ`, about `2.6e-13` |
-| `w² - s²` and `2ws`, which are `cos θ` and `sin θ` times `w² + s²` | `2.3e-11` |
+| The use of `w² - s²` and `2ws`, which equal `cos θ` and `sin θ` times `w² + s²`, in place of `cos θ` and `sin θ` | `2.3e-11` |
 | Normalization of the attitude, the body vector, and the cone axis | `1.3e-11` |
 | The tube `ρ` | `1.05e-9` |
 | Total | about `1.0863e-9`, about `1.4e-11` below `margin` |
@@ -195,7 +201,7 @@ that difference.
 ## Safety
 
 `plan_safe`'s only hypothesis is status 1, which `plan` returns only for an input that passes
-`validInput` and whose start and goal pass the static check.  The proof has five parts.
+`validInput` and whose start and goal pass the static check.
 `validInput`'s norm tests give every node and cone the hypotheses of `edgeOk_sound`: a component
 above 2 in magnitude makes the computed sum of squares at least about 4, so the test fails, and
 otherwise the test's rounding stays below `70 μ`.  `relative` computes each component within
@@ -277,7 +283,8 @@ admitted node unreached.
 The theorems rest on the verified compiler's
 [trusted base](../../docs/verified-manual.md#trusted-base): Lean's kernel with the three axioms,
 the semantics of WebAssembly of [Talos](../../docs/leanexe-manual.md#trusted-base), an interpreter
-written in Lean, the binary decoder, and the module emitter.  The manual's section
+written in Lean, the binary decoder, the module emitter, and, for the file theorems, the elaborator
+`binary_file%`, which reads the written file.  The manual's section
 [outside the proofs](../../docs/verified-manual.md#outside-the-proofs) lists what those semantics
 leave out, such as engine instantiation and the call depth of a real engine.  `plan_safe`,
 `plan_premise`, and `plan_optimal` concern `plan` in Lean, and `compiled.plan.implements` carries
@@ -338,11 +345,11 @@ verified: passed 2077 failed 0
 
 `Demos/Slew/File.lean` prints the axiom reports of `slew_file` and `slew_file_decode`, and
 `CasesMain.lean --summary` prints the count of each class's statuses, as the table of
-[the tests](#tests) gives them.  In one run on an aarch64 Linux machine with the proof modules
+[the tests](#tests) gives them.  In runs on an aarch64 Linux machine with the proof modules
 built, the generator took 14 s, the edge test 9 s, and the whole of
 `tests/verified/run.sh --cases slew` 92 s.  In the host, a call took at most 51 ms for a plan of 500
 waypoints and 18 to 28 ms for a call of `atan2`, which measures the start of the host and the
-compilation of the module.  These times come from one run and vary by machine.
+compilation of the module.  These times come from single runs and vary by machine.
 
 ## Tests
 
@@ -382,7 +389,8 @@ module's exports through Wasmtime.  The edges are 40,000 random rotations, 30,00
 rotation's designed extremum within `1e-8`, 15,000 stationary points at either end with `B` within
 and beyond `eta`, and 15,000 relative quaternions with vector lengths near 0, near the small-angle
 threshold, and near 1.  All 100,000 results agree, 34,213 of them acceptances, and the test checks
-that the session frees every block it allocates, of which the only one is the input.
+that the session frees every block it allocates.  In the recorded run, the session's only block was
+its input.
 
 ## Files
 
