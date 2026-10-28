@@ -51,6 +51,7 @@ inductive NativeField where
   | leaf (e : Elem)
   | flat (type : Lean.Expr) (leaves : List (Elem × List (List Bool)))
   | array (e : Elem)
+  | bytes
   deriving Inhabited
 
 /-- The kinds of the slots that a field occupies. -/
@@ -59,6 +60,7 @@ def NativeField.kinds : NativeField → List TreeField
   | .leaf e => [.word e]
   | .flat _ leaves => leaves.map fun (e, _) => .word e
   | .array e => [.array e]
+  | .bytes => [.bytes]
 
 /-- The `Flat` instance of a type and its tuple type, if Lean finds one. -/
 def flatInstance? (type : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr)) := do
@@ -163,7 +165,7 @@ def flatField? (field : Lean.Expr) : MetaM (Option NativeField) := do
 /-- The layout of `type` when it is an inductive type without parameters or indices, neither
 mutual nor nested, whose constructors' fields are `UInt64`, `Bool`, `Float`, `Float32`, types
 whose `Flat` instance gives a tuple of these, arrays of `UInt64`, `Bool`, `Float`, or `Float32`,
-or the type itself, and whose constructors meet `shapeValid`. -/
+`LeanExe.Bytes`, or the type itself, and whose constructors meet `shapeValid`. -/
 def recursiveLayout? (type : Lean.Expr) : MetaM (Option RecursiveLayout) := do
   let .const name _ ← withReducible (whnf type) | return none
   if name == ``Nat || name == ``Int then return none
@@ -180,6 +182,7 @@ def recursiveLayout? (type : Lean.Expr) : MetaM (Option RecursiveLayout) := do
       if let some e := fieldElem? field then natives := natives ++ [.leaf e]
       else if field.isConstOf name then natives := natives ++ [.child]
       else if let some e ← arrayFieldElem? field then natives := natives ++ [.array e]
+      else if field.isConstOf ``LeanExe.Bytes then natives := natives ++ [.bytes]
       else if let some flat ← flatField? field then natives := natives ++ [flat]
       else return none
     ctors := ctors.push (ctor, natives)

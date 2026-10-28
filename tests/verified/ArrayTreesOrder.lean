@@ -19,7 +19,7 @@ def Mixed.encode : Mixed → Node
 instance : Encode Mixed := ⟨Mixed.encode⟩
 
 /--
-error: verified_recursive_type: the `Encode` instance of Verified.Tests.ArrayTreesOrder.Mixed places the array field `items` of Verified.Tests.ArrayTreesOrder.Mixed.node before a word or child slot; a record holds its word and child slots first and then its array slots, each group in the order of the fields
+error: verified_recursive_type: the `Encode` instance of Verified.Tests.ArrayTreesOrder.Mixed places the array field `items` of Verified.Tests.ArrayTreesOrder.Mixed.node before a word or child slot; a record holds its word and child slots first and then its array and buffer slots, each group in the order of the fields, and a buffer's length slot after its root
 -/
 #guard_msgs in
 verified_recursive_type Mixed

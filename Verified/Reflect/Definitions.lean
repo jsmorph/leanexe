@@ -584,11 +584,16 @@ def arrayFamily (shapeValue : TreeShape) (r : Fin shapeValue.records)
     mkApp4 (mkConst ``Sigma.mk [.zero, .zero]) (mkConst ``Elem) family (toExpr e) v
   return mkApp3 (mkConst ``TreeShape.arraysOf) shape record (listExpr sigma entries)
 
-/-- The buffer family of record constructor `r`, which has no buffer fields. -/
-def bufferFamily (shapeValue : TreeShape) (r : Fin shapeValue.records) : MetaM Lean.Expr := do
+/-- The buffer family of record constructor `r` with the buffers `values`, or `noFields` for a
+record constructor without buffer fields. -/
+def bufferFamily (shapeValue : TreeShape) (r : Fin shapeValue.records)
+    (values : List Lean.Expr) : MetaM Lean.Expr := do
   let count ← mkAppM ``TreeShape.buffers #[treeShapeExpr shapeValue, recordExpr shapeValue r]
-  emptyFamily count (← withLocalDeclD `i (mkApp (mkConst ``Fin) count) fun i =>
-    mkLambdaFVars #[i] (mkConst ``LeanExe.Bytes))
+  if values.isEmpty then
+    return ← emptyFamily count (← withLocalDeclD `i (mkApp (mkConst ``Fin) count) fun i =>
+      mkLambdaFVars #[i] (mkConst ``LeanExe.Bytes))
+  mkExpectedTypeHint (← finiteFn (mkConst ``LeanExe.Bytes) values)
+    (← mkArrow (mkApp (mkConst ``Fin) count) (mkConst ``LeanExe.Bytes))
 
 /-- The family of the array expressions `exprs` of a construction of record constructor `r`, of
 the elements of the fields, in the form of `arrayFamily`. -/
@@ -610,18 +615,22 @@ def arrayExprFamily (c : Ctx) (shapeValue : TreeShape) (r : Fin shapeValue.recor
   return mkAppN (mkConst ``TreeShape.arrayExprsOf) #[c.sigs, c.ctx, shape, record,
     listExpr sigma entries]
 
-/-- The family of the buffer expressions of a construction of record constructor `r`, which has
-no buffer fields. -/
-def bufferExprFamily (c : Ctx) (shapeValue : TreeShape) (r : Fin shapeValue.records) :
-    MetaM Lean.Expr := do
+/-- The family of the buffer expressions `exprs` of a construction of record constructor `r`, or
+`noFields` for a record constructor without buffer fields. -/
+def bufferExprFamily (c : Ctx) (shapeValue : TreeShape) (r : Fin shapeValue.records)
+    (exprs : List Lean.Expr) : MetaM Lean.Expr := do
   let count ← mkAppM ``TreeShape.buffers #[treeShapeExpr shapeValue, recordExpr shapeValue r]
-  emptyFamily count (← withLocalDeclD `i (mkApp (mkConst ``Fin) count) fun i =>
-    mkLambdaFVars #[i] (mkApp3 (mkConst ``Expr) c.sigs c.ctx (mkConst ``Ty.bytes)))
+  let exprType := mkApp3 (mkConst ``Expr) c.sigs c.ctx (mkConst ``Ty.bytes)
+  if exprs.isEmpty then
+    return ← emptyFamily count (← withLocalDeclD `i (mkApp (mkConst ``Fin) count) fun i =>
+      mkLambdaFVars #[i] exprType)
+  mkExpectedTypeHint (← finiteFn exprType exprs)
+    (← mkArrow (mkApp (mkConst ``Fin) count) exprType)
 
 /-- The words of a field `x` of the kind `kind`, each with its element: the field itself for a
 word field, and the leaves of its flattening for a flat field. -/
 def nativeWords (x : Lean.Expr) : NativeField → MetaM (List (Elem × Lean.Expr))
-  | .child | .array _ => pure []
+  | .child | .array _ | .bytes => pure []
   | .leaf e => pure [(e, x)]
   | .flat _ leaves => leaves.mapM fun (e, segments) => return (e, ← leafTerm x segments)
 
@@ -638,8 +647,8 @@ partial def componentTerm (x : Lean.Expr) (steps : List Bool) : MetaM Lean.Expr 
   componentTerm (← flatTerm x) steps
 
 /-- Runs `k` with the variables of a match's branch on record constructor `r`: the header, then
-each word, then each child, then each array.  The fields `natives` are the constructor's fields
-with their types.
+each word, then each child, then each array, then each buffer.  The fields `natives` are the
+constructor's fields with their types.
 A flat field is one Lean variable, and the branch holds a variable for each leaf of its tuple,
 keyed in the context by the leaf's projection of the field. -/
 def withTreeCaseFields {α : Type} (c : Ctx) (shapeValue : TreeShape)
@@ -673,11 +682,14 @@ def withTreeCaseFields {α : Type} (c : Ctx) (shapeValue : TreeShape)
       | _ => none
     let arrayFn ← arrayFamily shapeValue r (← arrays.mapM fun (x, e) => do
       return (e, ← flatValue x))
+    let buffers := values.filterMap fun (x, kind) =>
+      if kind matches .bytes then some x else none
+    let bufferFn ← bufferFamily shapeValue r (← buffers.mapM flatValue)
     let env ← mkAppM ``Env.treeFields
-      #[shape, record, wordFn, arrayFn, ← bufferFamily shapeValue r, childFn, c.env]
+      #[shape, record, wordFn, arrayFn, bufferFn, childFn, c.env]
     let vars := [(marker, .treeHeader shapeValue r)] ++
       words.map (fun (w, e) => (w, Ty.elem e)) ++ children.map (·, Ty.tree shapeValue) ++
-      arrays.map (fun (x, e) => (x, Ty.array e)) ++ c.vars
+      arrays.map (fun (x, e) => (x, Ty.array e)) ++ buffers.map (·, Ty.bytes) ++ c.vars
     let inner := { c with ctx, env, vars }
     k inner fields
 
@@ -693,7 +705,8 @@ def withRecursiveCaseFields {α : Type} (c : Ctx) (layout : RecursiveLayout)
     | .child => (mkConst layout.name, .child)
     | .leaf e => (elemType e, .leaf e)
     | .flat type leaves => (type, .flat type leaves)
-    | .array e => (mkApp (mkConst ``Array [.zero]) (elemType e), .array e)) k
+    | .array e => (mkApp (mkConst ``Array [.zero]) (elemType e), .array e)
+    | .bytes => (mkConst ``LeanExe.Bytes, .bytes)) k
 
 /-- `e` with each projection of a pair `(a, b)` or of a structure's constructor at its head
 replaced by the component, and each pair `(y.1, y.2)` of the components of `y` replaced by `y`,
@@ -2332,7 +2345,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 1)) fun i =>
         mkLambdaFVars #[i] r.src
     let src ← mkAppM ``Expr.treeNode #[mkConst ``listCell, reuse, ← family ra,
-      ← arrayExprFamily c listShape listCell [], ← bufferExprFamily c listShape listCell,
+      ← arrayExprFamily c listShape listCell [], ← bufferExprFamily c listShape listCell [],
       ← family rb]
     let parts := [(`reuse, reuse), (`head, ra.src), (`tail, rb.src)]
     let proof ← (← LemmaApp.start ``listCons_eq
@@ -3198,10 +3211,12 @@ where
     let mut typedWords : List (Elem × Reflection) := []
     let mut children : List Reflection := []
     let mut typedArrays : List (Elem × Reflection) := []
+    let mut buffers : List Reflection := []
     for ((a, kind), tuple) in (args.zip natives).zip (tuples.filterMap id) do
       match kind with
       | .child => children := children ++ [← reflect c a]
       | .array el => typedArrays := typedArrays ++ [(el, ← reflect c a)]
+      | .bytes => buffers := buffers ++ [← reflect c a]
       | .leaf el => typedWords := typedWords ++ [(el, ← reflect c a)]
       | .flat _ leaves =>
         -- The first segment of a leaf of a field is empty, and the tuple is the field's flattening.
@@ -3216,7 +3231,7 @@ where
         (sourceType ty))
     let arrays := typedArrays.map (·.2)
     let arrayFn ← arrayExprFamily c layout.shape r (typedArrays.map fun (e, ra) => (e, ra.src))
-    let bufferFn ← bufferExprFamily c layout.shape r
+    let bufferFn ← bufferExprFamily c layout.shape r (buffers.map (·.src))
     let header := mkApp2 (mkConst ``Var) c.ctx (tyExpr (.treeHeader layout.shape r))
     let reuse ← match c.vars.find? (fun (_, t) => t == .treeHeader layout.shape r) with
       | none => mkAppOptM ``Option.none #[some header]
@@ -3242,7 +3257,9 @@ where
     let _ ← assignFamilyEquation app `arrayValues `ha
       (← arrayFamily layout.shape r ((typedArrays.map (·.1)).zip (arrayValues.map (·.term))))
       arrayValues
-    let _ ← assignFamilyEquation app `bufferValues `hb (← bufferFamily layout.shape r) []
+    let bufferValues ← values buffers
+    let _ ← assignFamilyEquation app `bufferValues `hb
+      (← bufferFamily layout.shape r (bufferValues.map (·.term))) bufferValues
     let proof ← app.finish
     let (_, value) ← eqSides proof
     let proof ← transHint proof (← bareEq value (← flatValue e))
@@ -3279,8 +3296,18 @@ where
       let _ ← assignFiniteEquation app `K `hk (mkConst ``Nat) kb
       let _ ← assignFiniteEquation app `A `ha (mkConst ``Nat) ab
       let _ ← assignFiniteEquation app `AK `hak (mkConst ``Nat) akb
-      let _ ← assignFiniteEquation app `B `hb (mkConst ``Nat) []
-      let _ ← assignFiniteEquation app `BK `hbk (mkConst ``Nat) []
+      let bb ← finiteFieldBounds app `hb buffers
+      let bkb ← buffers.zipIdx.mapM fun (field, i) => do
+        let expected ← instantiateForall (← app.hypType `hbk) #[← finiteIndex buffers.length i]
+        let some (_, lhs, _) := expected.eq?
+          | throwError "verified_compile: recursive buffer coercion is not an equation"
+        let (``coerceCost, #[_, s, M, value]) := lhs.getAppFnArgs
+          | throwError "verified_compile: recursive buffer coercion has an invalid form"
+        let value ← mkExpectedTypeHint value (mkApp (mkConst ``Ty.denote) (tyExpr .bytes))
+        let (cost, proof) ← coerceEq c.base .bytes s M value field.lean
+        return (⟨cost, proof⟩ : Bound)
+      let _ ← assignFiniteEquation app `B `hb (mkConst ``Nat) bb
+      let _ ← assignFiniteEquation app `BK `hbk (mkConst ``Nat) bkb
       let some (_, parent, _) := (← app.hypType `hp).eq?
         | throwError "verified_compile: recursive parent cost is not an equation"
       let p ← evalNat parent
@@ -3288,7 +3315,7 @@ where
       let fieldsBound ← addBounds (← addBounds (← addBounds (← finiteSumBound wb)
         (← addBounds (← finiteSumBound cb) (← finiteSumBound kb)))
         (← addBounds (← finiteSumBound ab) (← finiteSumBound akb)))
-        (← addBounds (← finiteSumBound []) (← finiteSumBound []))
+        (← addBounds (← finiteSumBound bb) (← finiteSumBound bkb))
       let total ← addBounds fieldsBound ⟨p, ← mkEqRefl p⟩
       boundOf (← transHint (← app.finish) total.proof)
     let fits : FitsBuilder := do
@@ -3296,10 +3323,11 @@ where
       let wb ← words.mapM (·.fits)
       let cb ← children.mapM (·.fits)
       let ab ← arrays.mapM (·.fits)
+      let bf ← buffers.mapM (·.fits)
       let _ ← assignFiniteEquation app `W `hw (mkConst ``Bool) wb
       let _ ← assignFiniteEquation app `C `hc (mkConst ``Bool) cb
       let _ ← assignFiniteEquation app `A `ha (mkConst ``Bool) ab
-      let _ ← assignFiniteEquation app `B `hb (mkConst ``Bool) []
+      let _ ← assignFiniteEquation app `B `hb (mkConst ``Bool) bf
       let andBound (a b : Bound) : MetaM Bound := do
         let (left, _) ← eqSides a.proof
         let (right, _) ← eqSides b.proof
@@ -3307,7 +3335,7 @@ where
           (some a.proof) (some b.proof))
       let words ← finiteAllFits wb
       let all ← andBound (← andBound (← andBound words (← finiteAllFits cb))
-        (← finiteAllFits ab)) (← finiteAllFits [])
+        (← finiteAllFits ab)) (← finiteAllFits bf)
       fitsOf (← transHint (← app.finish) all.proof)
     return some ⟨src, proof, ty, e, bound, fits, none⟩
   reflectSumConstructor? (e : Lean.Expr) : MetaM (Option Reflection) := do
