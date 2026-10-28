@@ -6,9 +6,10 @@
 # compares the whole program, CompCert's declarations and main included, with the program of the
 # theorem.  Each program is built with tools/baremetal/build.sh and run in its own QEMU process:
 # its UART output must begin with the expected bytes, followed by the startup code's report of
-# exit status 0, and QEMU must exit with status 0.  CCOMP, CCOMP_STDLIB, and CLIGHTGEN name
-# CompCert 3.18's driver, run-time library, and clightgen for AArch64, and QEMU names
-# qemu-system-aarch64.
+# the expected exit status, with which QEMU must exit: 0 after the result's bytes, or the code of
+# unreachable, with no byte before the report, for a run that Talos ends with that trap.  CCOMP,
+# CCOMP_STDLIB, and CLIGHTGEN name CompCert 3.18's driver, run-time library, and clightgen for
+# AArch64, and QEMU names qemu-system-aarch64.
 # Usage: tests/baremetal/programs.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -39,8 +40,9 @@ for c in "$out"/*.c; do
     -serial "file:$out/$name.serial" -semihosting-config enable=on,target=native \
     -kernel "$out/$name.elf" </dev/null || code=$?
   n=$(stat -c %s "$out/$name.expected")
-  if [ "$code" -ne 0 ] || ! cmp -s -n "$n" "$out/$name.expected" "$out/$name.serial" ||
-      ! tail -c +"$((n + 1))" "$out/$name.serial" | grep -q '^R:exit 0 '; then
+  want=$(cat "$out/$name.status")
+  if [ "$code" -ne "$want" ] || ! cmp -s -n "$n" "$out/$name.expected" "$out/$name.serial" ||
+      ! tail -c +"$((n + 1))" "$out/$name.serial" | grep -q "^R:exit $want "; then
     echo "fail: $name: status $code, output $(od -An -tx1 "$out/$name.serial" | head -c 200)"
     status=1
   else

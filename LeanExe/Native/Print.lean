@@ -5,10 +5,11 @@ A printer of Clight programs as C text, for the programs the translator and the 
 tests produce: globals of scalar or array type, functions whose parameters and temporaries are
 scalars or pointers, and the statements and expressions of `Clight.lean` other than `Sswitch`,
 `Slabel`, `Sgoto`, `Efield`, `Esizeof`, and `Ealignof`.  `Sloop s1 s2` prints only when `s2` is
-`Sskip`, as `while (c)` when `s1` begins with `if (c) ; else break;` and as `for (;;)` otherwise.  Every subexpression is parenthesized, integer constants carry the
-suffix of their type, and floating-point constants print as hexadecimal literals, which C reads
-exactly; a NaN or infinite constant has no literal and is an error.  The printer is not
-verified: `clightgen` reads its output back for comparison.
+`Sskip`, as `while (c)` when `s1` begins with `if (c) ; else break;` and as `for (;;)`
+otherwise.  Every subexpression is parenthesized, integer constants carry the suffix of their
+type, and floating-point constants print as hexadecimal literals, which C reads exactly; a NaN
+or infinite constant has no literal and is an error.  The printer is not verified: `clightgen`
+reads its output back for comparison.
 
 The printer writes the forms that `clightgen` produces so that they come back unchanged.  A
 sequence nested as the first part of a sequence prints as a block, since C's blocks nest to the

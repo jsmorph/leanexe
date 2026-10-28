@@ -618,4 +618,85 @@ theorem outOk_array {E : Env} {vs rest : List Wasm.Value} {vres : val} {m' : mem
   subst hv'
   exact ⟨ptr, ws, rfl, hO.values, rfl⟩
 
+
+/-! ## From the native theorems -/
+
+theorem allHas_i64 : ∀ args : List UInt64,
+    AllHas (args.map fun _ => VT.i64) (args.map Wasm.Value.i64)
+  | [] => trivial
+  | _ :: as => ⟨rfl, allHas_i64 as⟩
+
+theorem argVals_i64 (args : List UInt64) :
+    argVals (args.map fun _ => VT.i64) (args.map Wasm.Value.i64).reverse = args.map val.Vlong := by
+  simp [argVals, List.take_of_length_le, Function.comp_def, cval]
+
+theorem argsTyped_i64 (args : List UInt64) :
+    ArgsTyped (args.map fun _ => VT.i64) (args.map Wasm.Value.i64).reverse := by
+  refine ⟨by simp, ?_⟩
+  rw [List.take_of_length_le (by simp), List.reverse_reverse]
+  exact allHas_i64 args
+
+theorem funType_i64 (args : List UInt64) :
+    funType (args.map fun _ => VT.i64) [.i64] =
+      .Tfunction (args.map fun _ => tulong) tulong cc_default := by
+  simp [funType, retOf, VT.ty, tulong]
+
+open LeanExe.Pipeline in
+theorem heapAt_nativeStore {heap : Heap} {m : Wasm.Module} (h : heap.At (m.initialStore : Wasm.Store Unit))
+    (cap : Nat) : heap.At (nativeStore m cap) :=
+  ⟨h.globals, h.freeList, h.base, h.top, h.pages, h.above, h.below⟩
+
+theorem sig_eq {m : Wasm.Module} {k : Nat} {ps ps0 rs rs0 : List VT}
+    (hsig : ∀ g, m.funcs[k]? = some g → signatureOf g = some (ps, rs))
+    (h0 : (m.funcs[k]?).bind signatureOf = some (ps0, rs0)) : ps = ps0 ∧ rs = rs0 := by
+  cases hk : m.funcs[k]? with
+  | none => rw [hk] at h0; cases h0
+  | some g =>
+      rw [hk] at h0
+      rw [show (some g).bind signatureOf = signatureOf g from rfl, hsig g hk] at h0
+      obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj h0)
+      exact ⟨rfl, rfl⟩
+
+open LeanExe.Pipeline in
+/-- The theorem of a bare-metal program from `NativeImpl` of its entry `k`, which takes words and
+returns one word, for the argument `x` whose words are `args`, from the module's initial store
+with the heap `heap`. -/
+theorem bare_of_nativeA {α β : Type} [Represent α] [Represent β] {A : Archi} {X : ExtSem}
+    {cap : Nat} {m : Wasm.Module} {T : Translation} (h : translate cap m = some T)
+    {pre : List (ident × globdef (fundef function) type)} (hpre : PrefixOk pre) {k : Nat}
+    {aborts : Bool} {f : α → β} {Pre : α → Heap → Wasm.Store Unit → Prop}
+    {Post : α → Heap → Wasm.Store Unit → Heap → Wasm.Store Unit → Prop}
+    (hn : ∃ fd ps rs, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
+      (∀ g, m.funcs[k]? = some g → signatureOf g = some (ps, rs)) ∧
+      NativeA A X cap m T ps rs fd aborts f Pre Post)
+    (args : List UInt64)
+    (hk : (m.funcs[k]?).bind signatureOf = some (args.map fun _ => .i64, [.i64]))
+    (kind : OutKind) (x : α) (heap : Heap) {bs : List UInt8}
+    (hheap : heap.At (m.initialStore : Wasm.Store Unit)) (hPre : Pre x heap (nativeStore m cap))
+    (hb : Represent.borrowed heap (nativeStore m cap) (args.map Wasm.Value.i64) x)
+    (hsep : Separate (nativeStore m cap) (Represent.moves (nativeStore m cap) (args.map .i64) x)
+      (Represent.reads (nativeStore m cap) (args.map .i64) x))
+    (hcap : cap ≤ 65535)
+    (hout : ∀ (E : Env) vs vres m' (heap' : Heap) final, ResultRel E [.i64] vs [] vres m' →
+      Represent.owned heap' final vs.reverse (f x) → OutOk kind final vres bs) :
+    bigstep_program_terminates A X (bareProgram pre T (bareMain cap k args kind)) (outTrace bs) 0 ∨
+      (aborts = true ∧ bigstep_program_terminates A X (bareProgram pre T (bareMain cap k args kind))
+        E0 (UInt32.ofNat trapUnreachable)) := by
+  obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := hn
+  obtain ⟨rfl, rfl⟩ := sig_eq hsig hk
+  have hty := entry_type h hfd hsig
+  rw [funType_i64] at hty
+  refine bare_program h hpre hfd args kind hty A X fun E hE hG hcap' hnres hF m1 hst hs => ?_
+  obtain ⟨t, m', vres, final, hcall, hst', hres⟩ := hnat E hE hG hcap' hnres hF
+    (nativeStore m cap) heap (args.map .i64) x (heapAt_nativeStore hheap cap) hPre hb hsep hcap
+    (argsTyped_i64 args) m1 hst hs
+  rw [argVals_i64] at hcall
+  refine ⟨t, m', vres, final, hcall, hst', ?_⟩
+  rcases hres with ⟨hs', vs, heap', hr, -, hown, -⟩ | habort
+  · have hd : (args.map Wasm.Value.i64).reverse.drop (args.map fun _ => VT.i64).length = [] := by
+      simp
+    rw [hd] at hr
+    exact .inl ⟨hs', hout E vs vres m' heap' final hr hown⟩
+  · exact .inr habort
+
 end LeanExe.Native
