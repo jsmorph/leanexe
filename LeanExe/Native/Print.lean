@@ -14,9 +14,10 @@ The printer writes the forms that `clightgen` produces so that they come back un
 sequence nested as the first part of a sequence prints as a block, since C's blocks nest to the
 right.  `Sloop (Ssequence Sskip s) Sskip` prints as `for (;;) { s }`, from which `clightgen`
 restores the `Sskip`.  A call through a temporary `t` that `isCall` accepts, `Scall (some t) f
-args` followed by `Sset x (Etempvar t)`, prints as `x = f(args);`, and `t` is not declared;
-`clightgen` creates such a temporary for every call whose result is stored.  `gname` names the
-globals and functions, and `tname` the temporaries.
+args` followed by `Sset x (Etempvar t)` or by `Sset x (Ecast (Etempvar t) ty)`, prints as
+`x = f(args);` or `x = ((ty)f(args));`, and `t` is not declared; `clightgen` creates such a
+temporary for every call whose result is stored.  `gname` names the globals and functions, and
+`tname` the temporaries.
 -/
 
 namespace LeanExe.Native
@@ -117,11 +118,14 @@ def builtinName : external_function → Except String String
 
 def indent (depth : Nat) : String := String.ofList (List.replicate (2 * depth) ' ')
 
-/-- The call `Scall (some t) f args` followed by `Sset x (Etempvar t)`, for a temporary `t` that
-`isCall` accepts: `x`, `f`, and `args`. -/
-def callPair? : statement → Option (ident × expr × List expr)
+/-- The call `Scall (some t) f args` followed by `Sset x (Etempvar t)` or by
+`Sset x (Ecast (Etempvar t) ty)`, for a temporary `t` that `isCall` accepts: `x`, `f`, `args`,
+and the type `ty` of the cast, if any. -/
+def callPair? : statement → Option (ident × expr × List expr × Option type)
   | .Ssequence (.Scall (some t) a al) (.Sset x (.Etempvar t' _)) =>
-      if isCall t && t == t' then some (x, a, al) else none
+      if isCall t && t == t' then some (x, a, al, none) else none
+  | .Ssequence (.Scall (some t) a al) (.Sset x (.Ecast (.Etempvar t' _) ty)) =>
+      if isCall t && t == t' then some (x, a, al, some ty) else none
   | _ => none
 
 /-- The C text of a statement.  It is `partial`: its recursion is structural, but the matches
@@ -143,8 +147,12 @@ partial def cstmt (depth : Nat) : statement → Except String String
       pure s!"{indent depth}{lhs}{← builtinName ef}({← cargs gname tname al});\n"
   | .Ssequence s1 s2 =>
       match callPair? isCall (.Ssequence s1 s2) with
-      | some (x, a, al) => do
-          pure s!"{indent depth}{tname x} = {← cexpr gname tname a}({← cargs gname tname al});\n"
+      | some (x, a, al, cast) => do
+          let call := s!"{← cexpr gname tname a}({← cargs gname tname al})"
+          let rhs ← match cast with
+            | none => pure call
+            | some ty => do pure s!"(({← ctype ty}){call})"
+          pure s!"{indent depth}{tname x} = {rhs};\n"
       | none => do
           let first ← match s1 with
             | .Ssequence _ _ =>

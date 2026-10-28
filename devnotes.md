@@ -37317,3 +37317,14 @@ With `sqrt`, the translation of the binary32 GPT-2 module contains all of its fu
 
 - [x] `sqrt` with the double-rounding lemma.
 - [x] Binary32 GPT-2 native with theorems.
+
+## 2026-10-27: The Wasm-to-C translator: the M6 gate
+
+The first full run after the merge with main stopped at `ccomp`, which found an undeclared call temporary in the C text of `f32.sqrt`.  The printer folds a call and the copy of its result into one C assignment, and leaves the call temporary undeclared, since `clightgen` creates it; it recognized only a copy with a bare `Etempvar`, so it printed the call of `__builtin_fsqrt`, whose copy is `Ecast (Etempvar t) tfloat`, as an assignment to the undeclared temporary.  `callPair?` now accepts the copy with a cast and prints `x = ((ty)f(args));`, which `clightgen` reads back as a call into a temporary followed by the cast, the shape that the probe of M6 found.  The printer is not verified, so no proof changes; the `clightgen` comparison checks the printed text of every translation.
+
+The second run passed on both trees.  The build of every target after the change to the translator took 33 minutes, with four workers.  The translations of the 100 corpus modules contain all 1,420 of their functions and all 1,385 of their exports, and `clightgen` reads each of the 100 C texts back as its translation.  All 35,253 cases of the compiled generator `verified-cases` pass natively, with none outside a translation, as do the 3,322 module cases.  `run.sh`'s 20 modules agree with Talos, `f32ops` in all 1,082 calls, the byte and literal examples agree with Wasmtime, and the differential test agrees on its 318 programs.  The same counts hold with the x86_64 tree under `qemu-x86_64`.
+
+The exit criterion of M6 holds: the translation of the binary32 GPT-2 module contains all 15 of its functions (`gpt32_all`), `compiled.f.native` states each kernel's theorem for its C function, the kernels' cases pass natively on both trees, and the theorems depend on `propext`, `Classical.choice`, and `Quot.sound` only.
+
+- [x] `f32ops` in `tests/native/run.sh`, the differential test, the corpus driver, and binary32 GPT-2 native with theorems.
+- [x] The merge with `main`, after the compiled case generators.
