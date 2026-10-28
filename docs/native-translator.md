@@ -104,7 +104,7 @@ The proofs target CompCert's Clight in the form `clightgen` produces: after `Sim
 Three rules keep the copy honest:
 
 - **Undefined stays undefined.** Where CompCert returns `None` or `Vundef`, so does the copy: a shift by the type's width or more, division or remainder by zero, a float-to-integer conversion out of range, a misaligned or out-of-bounds access, and a read of `Undef`. A stuck program has no outcome, so the theorem can never lean on it.
-- **NaN is a parameter.** CompCert chooses NaN results per architecture: the default NaN is negative on x86-64 and positive on AArch64, and operand payloads may propagate. The copy leaves the choice abstract, so every theorem holds on both targets. Non-NaN results use the IEEE 754 model the LeanExe proofs already relate to Lean's `Float` and `Float32`.
+- **NaN is a parameter.** CompCert chooses NaN results per architecture: the default NaN is negative on x86-64 and positive on AArch64, and operand payloads may propagate. The copy leaves the choice abstract, so every theorem holds on both targets.  A result that is a number or an infinity is the result of Talos's `Wasm.IEEE64` or `Wasm.IEEE32`, the functions that the translation simulates, which LeanExe's `F64*` and `F32*` lemmas relate to Lean's `Float` and `Float32`.  Talos computes the conversions between the two formats with Lean's native floats, so the copy defines `of_single` and `to_single` from Talos's exact rounding helpers.
 - **No rule, no outcome.** The AST type covers all of Clight, so the `clightgen` output always parses. Constructs outside the subset have no evaluation rule.
 
 An executable evaluator, `LClight.run` with fuel, is proved sound against the relation. It is what the conformance tests in section 6 run. Estimated size: 2,500–4,000 lines of Lean.
@@ -274,25 +274,22 @@ M2 carries the most design risk, because it proves the `brk` control-flow encodi
 
 ## Risks, open decisions, and effort
 
-The largest risk is a gap between the Lean copy and CompCert's Clight in some case the translator reaches; the largest unknown is how long the binary32 float lemmas take.
+The largest risk is a gap between the Lean copy and CompCert's Clight in some case the translator reaches.  The `brk` encoding of M2 and the binary32 lemmas of M6, which earlier versions of this table listed as risks to the schedule, are proved.  The cost of the emitted checks is the subject of M7's benchmark against Wasmtime.
 
 | Risk | Effect | Mitigation |
 | --- | --- | --- |
 | The Lean copy differs from CompCert in a reachable case | The theorem is about a different program | Keep the subset small; cite every definition; run differential tests; review again on each CompCert upgrade |
 | `clightgen` and `ccomp` front ends diverge | The per-build check proves nothing | Build both from one tree with the same options; also diff `ccomp -dclight` against `clightgen -dclight` on every build |
-| binary32 `nearest`, `sqrt` and `trunc_sat` lemmas run long | M6 slips | Schedule them last; meanwhile keep the few programs that need them on the Wasm path, or have the compiler emit helper functions instead |
 | `lx_mem` outgrows the static-array limit | Large demos cannot be built | CompCert's x86-64 code reaches globals through 32-bit PC-relative offsets, and a static array past 2 GiB risks relocation overflow, so `LX_CAP` should stay below about 32,767 pages unless tests show more works; beyond that, switch to an allocated region zeroed on growth, which adds `malloc` to the Lean copy |
 | The emitted checks cost too much time | Native code is slower than expected | Measure against Wasmtime from M2; later prove 8-byte alignment to drop the byte-wise path, and canonicalize NaN only where bits become observable |
 | Stack use under `ccomp` is unknown | The 1,000-call guard may not fit the default stack | Measure the deepest frame chain and set the thread stack size from it |
-| The `brk` encoding proof is harder than estimated | M2 slips | M2 exists to prove the encoding first, on integer programs |
 | CompCert licensing | Commercial use needs a license | Free for research; buy an AbsInt license before commercial use |
 
 **Open decisions:**
 
 - A cap per module, or a region allocated at run time, for a module that needs more than `nativeCap` pages.
 - Whether to prove 8-byte alignment of every address in the Verified compiler's invariants, which removes the byte-wise path.
-- Which IEEE 754 model backs the Lean copy's floats: Talos's `IEEE754`, which shortens layer 4, or Lean's `Float.Model`.
-- Whether the per-program LeanExe compiler is in scope from M4. It shares the runtime, and the subset check decides module by module.
+- Whether the per-program LeanExe compiler emits the translation and the native theorems, as `verified_compile` has since M4.  It shares the runtime, and the subset check decides module by module.
 
 **Effort**, in lines of Lean:
 
