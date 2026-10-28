@@ -51,7 +51,7 @@ theorem TreeHeader.clearMask_spec {shape : TreeShape} {r : Fin shape.records} {h
   have hWords : (words.map Slot.word).length = slots.length := by
     simp only [List.length_map, words, recordWords_length]
   have hHead : RecordHeader heap (clearMask store p) p (words.map Slot.word) := by
-    refine ⟨hBase, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨hBase, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · rw [hRead 48 (by decide) (by decide)]; exact h.magic
     · rw [hRead 40 (by decide) (by decide)]; exact h.count
     · rw [hRead 24 (by decide) (by decide)]; exact h.kind
