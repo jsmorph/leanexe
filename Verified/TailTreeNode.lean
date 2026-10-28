@@ -30,7 +30,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
   let L0 := outer.uses
   let L1 := fun i => (nodes r).uses (i + shape.bindCount r)
   let rootMode := (slots.getD x.index default).mode
-  let scratch := base + shape.bindCount r
+  let scratch := base + shape.bindWidth r
   let boundSlots := shape.slots r base rootMode slots
   let boundEnv := Env.treeFields shape r words arrays buffers children env
   let boundPaid := List.replicate (shape.bindCount r) false ++ paid
@@ -75,13 +75,13 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
     have hg := hold0 0 (by simp)
     simpa [Ty.types, slotIndex] using hg
   have hScratch : scratch + max treeCopyScratch ((nodes r).width targetModes) ≤ h := by
-    have hr : shape.bindCount r + max treeCopyScratch ((nodes r).width targetModes) ≤
-        argsMax (fun r => shape.bindCount r + max treeCopyScratch ((nodes r).width targetModes)) :=
-      le_argsMax (fun r => shape.bindCount r + max treeCopyScratch
+    have hr : shape.bindWidth r + max treeCopyScratch ((nodes r).width targetModes) ≤
+        argsMax (fun r => shape.bindWidth r + max treeCopyScratch ((nodes r).width targetModes)) :=
+      le_argsMax (fun r => shape.bindWidth r + max treeCopyScratch
         ((nodes r).width targetModes)) r
     have := Nat.le_max_right
       (if h : shape.hasNull = true then (empty h).width targetModes else 0)
-      (argsMax fun r => shape.bindCount r + max treeCopyScratch ((nodes r).width targetModes))
+      (argsMax fun r => shape.bindWidth r + max treeCopyScratch ((nodes r).width targetModes))
     simp only [TailBody.width] at hRoom
     dsimp only [scratch]
     omega
@@ -91,11 +91,11 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
   have hBodyRoom : scratch + (nodes r).width targetModes ≤ h := by
     have := Nat.le_max_right treeCopyScratch ((nodes r).width targetModes)
     omega
-  have hFieldRoom : base + shape.bindCount r ≤ h := by
+  have hFieldRoom : base + shape.bindWidth r ≤ h := by
     dsimp only [scratch] at hScratch
     omega
-  have hBindPos : 1 ≤ shape.bindCount r := by
-    simp only [TreeShape.bindCount]
+  have hBindPos : 1 ≤ shape.bindWidth r := by
+    simp only [TreeShape.bindWidth, TreeShape.bindCount]
     omega
   have hModes : boundSlots.map Slot.mode = shape.modes r rootMode (slots.map Slot.mode) :=
     shape.slots_modes_full r base rootMode slots
@@ -137,7 +137,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
         (if hn : shape.hasNull = true then (empty hn).uses i else false) ||
         argsAny fun r => (nodes r).uses (i + shape.bindCount r)) &&
       !((nodes r).uses (i + shape.bindCount r) || decide (i = x.index))) ++
-    x.code h slots (base + shape.bindCount r) (fun i => (nodes r).uses (i + shape.bindCount r)) ++
+    x.code h slots (base + shape.bindWidth r) (fun i => (nodes r).uses (i + shape.bindCount r)) ++
     [.localSet base] ++
     treeLoadFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
       shape.fieldStart (shape.fields r) ++
@@ -149,7 +149,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
     releaseWhere (shape.context r Γ) (shape.slots r base (slots.getD x.index default).mode slots)
       (fun i => decide (i < shape.bindCount r) && !(nodes r).uses i) ++
     (nodes r).code (pool := pool) targetModes h stateBase resultBase
-      (shape.slots r base (slots.getD x.index default).mode slots) (base + shape.bindCount r)
+      (shape.slots r base (slots.getD x.index default).mode slots) (base + shape.bindWidth r)
       (exitLabel + labels + depth r) (nextLabel + labels + depth r)
   have hBranch : RunsTailBranch m host (nc r) (labels + depth r) Q store s := by
     intro Q' hb ht

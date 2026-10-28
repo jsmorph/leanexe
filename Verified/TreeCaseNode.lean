@@ -30,7 +30,7 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
   let L1 := fun i => live i || (nodes r).uses (i + shape.bindCount r)
   let rootMode := (slots.getD x.index default).mode
   let fieldBase := base + t.width
-  let scratch := fieldBase + shape.bindCount r
+  let scratch := fieldBase + shape.bindWidth r
   let boundSlots := shape.slots r fieldBase rootMode slots
   let boundEnv := Env.treeFields shape r words arrays buffers children env
   let boundPaid := List.replicate (shape.bindCount r) false ++ paid
@@ -84,17 +84,17 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
   have hGet : s.get (slots.getD x.index default).loc = some (.i64 p0) := by
     have hg := hold 0 (by simp)
     simpa [Ty.types, slotIndex] using hg
-  have hNodeRoom : base + t.width + (shape.bindCount r +
+  have hNodeRoom : base + t.width + (shape.bindWidth r +
       max treeCopyScratch (max (nodes r).width (copyWidth t))) ≤ h := by
     simp only [Expr.width] at hRoom
-    have hr : shape.bindCount r + max treeCopyScratch (max (nodes r).width (copyWidth t)) ≤
-        argsMax (fun r => shape.bindCount r + max treeCopyScratch
+    have hr : shape.bindWidth r + max treeCopyScratch (max (nodes r).width (copyWidth t)) ≤
+        argsMax (fun r => shape.bindWidth r + max treeCopyScratch
           (max (nodes r).width (copyWidth t))) :=
-      le_argsMax (fun r => shape.bindCount r + max treeCopyScratch
+      le_argsMax (fun r => shape.bindWidth r + max treeCopyScratch
         (max (nodes r).width (copyWidth t))) r
     have hmx := Nat.le_max_right
       (max (if h : shape.hasNull = true then (empty h).width else 0) (copyWidth t))
-      (argsMax fun r => shape.bindCount r + max treeCopyScratch
+      (argsMax fun r => shape.bindWidth r + max treeCopyScratch
         (max (nodes r).width (copyWidth t)))
     omega
   have hScratch : scratch + max treeCopyScratch (max (nodes r).width (copyWidth t)) ≤ h := by
@@ -106,11 +106,11 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
   have hBodyRoom : scratch + max (nodes r).width (copyWidth t) ≤ h := by
     have := Nat.le_max_right treeCopyScratch (max (nodes r).width (copyWidth t))
     omega
-  have hFieldRoom : fieldBase + shape.bindCount r ≤ h := by
+  have hFieldRoom : fieldBase + shape.bindWidth r ≤ h := by
     dsimp only [scratch] at hScratch
     omega
-  have hBindPos : 1 ≤ shape.bindCount r := by
-    simp only [TreeShape.bindCount]
+  have hBindPos : 1 ≤ shape.bindWidth r := by
+    simp only [TreeShape.bindWidth, TreeShape.bindCount]
     omega
   have hPlaceN : (nodes r).placeArgs = true := by
     simp only [Expr.placeArgs, Bool.and_eq_true, Bool.not_eq_true'] at hPlace
@@ -141,7 +141,7 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
         (if hn : shape.hasNull = true then (empty hn).uses i else false) ||
         argsAny fun r => (nodes r).uses (i + shape.bindCount r)) &&
       !((live i || (nodes r).uses (i + shape.bindCount r)) || decide (i = x.index))) ++
-    x.code h slots (base + t.width + shape.bindCount r)
+    x.code h slots (base + t.width + shape.bindWidth r)
       (fun i => live i || (nodes r).uses (i + shape.bindCount r)) ++
     [.localSet (base + t.width)] ++
     treeLoadFields h (base + t.width) (shape.wordTypes r) (base + t.width + 1)
@@ -157,14 +157,14 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
       (fun i => decide (i < shape.bindCount r) && !(nodes r).uses i) ++
     (nodes r).code (pool := pool) h
       (shape.slots r (base + t.width) (slots.getD x.index default).mode slots)
-      (base + t.width + shape.bindCount r) (shift (shape.bindCount r) live) ++
+      (base + t.width + shape.bindWidth r) (shift (shape.bindCount r) live) ++
     coerceCode h t ((nodes r).mode
         (shape.modes r (slots.getD x.index default).mode (slots.map Slot.mode)))
       (recordsJoin (fun r => (nodes r).mode
           (shape.modes r (slots.getD x.index default).mode (slots.map Slot.mode)))
         (if hn : shape.hasNull = true then (empty hn).mode (slots.map Slot.mode)
           else .borrowed))
-      (base + t.width + shape.bindCount r) ++
+      (base + t.width + shape.bindWidth r) ++
     storeCode h base t.types
   have hBranch : RunsBranch m host (nc r) (loadCode h base t.types ++ rest) Q store s := by
     intro rest' Q' hf ht

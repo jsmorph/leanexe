@@ -45,7 +45,7 @@ theorem spec_treeCase_empty {S : List Sig} {Γ : List Ty} {t : Ty} {shape : Tree
   have hRoomE : base + t.width + max (empty hn).width (copyWidth t) ≤ h := by
     simp only [Expr.width, dite_eq_left hn] at hRoom
     have := Nat.le_max_left (max (empty hn).width (copyWidth t))
-      (argsMax fun r => shape.bindCount r + max treeCopyScratch
+      (argsMax fun r => shape.bindWidth r + max treeCopyScratch
         (max (nodes r).width (copyWidth t)))
     omega
   have hPlaceE : (empty hn).placeArgs = true := by
