@@ -96,6 +96,20 @@ theorem decode_float_of_long (n : UInt64) :
     int_of_bytes_of_int, Float.of_bits]
   rw [Nat.mod_eq_of_lt n.toNat_lt, Int64.repr_toNat]
 
+/-- A float read back as a word of 32 bits: its bits. -/
+theorem decode_int_of_single (n : UInt32) :
+    decode_val .Mint32 (encode_val .Mfloat32 (.Vsingle n)) = .Vint n := by
+  simp only [encode_val, decode_val, proj_inj_bytes, decode_int, encode_int, Int.unsigned,
+    int_of_bytes_of_int, Float32.to_bits]
+  rw [Nat.mod_eq_of_lt n.toNat_lt, Int.repr_toNat]
+
+/-- A word of 32 bits read back as a float: the float of its bits. -/
+theorem decode_single_of_int (n : UInt32) :
+    decode_val .Mfloat32 (encode_val .Mint32 (.Vint n)) = .Vsingle n := by
+  simp only [encode_val, decode_val, proj_inj_bytes, decode_int, encode_int, Int.unsigned,
+    int_of_bytes_of_int, Float32.of_bits]
+  rw [Nat.mod_eq_of_lt n.toNat_lt, Int.repr_toNat]
+
 theorem length_encode_long (n : UInt64) : (encode_val .Mint64 (.Vlong n)).length = 8 := by
   simp [encode_val, inj_bytes, encode_int, bytes_of_int]
 
@@ -218,6 +232,37 @@ theorem load_float_stored_long (m : mem) (b : block) (ofs : _root_.Int) (n : UIn
   have : size_chunk_nat .Mfloat64 = (encode_val .Mint64 (.Vlong n)).length := by
     rw [length_encode_long]; rfl
   rw [this, getN_setN, decode_float_of_long]
+
+/-- A load of `Mint32` after a store of `Mfloat32` at the same place: the float's bits. -/
+theorem load_int_stored_single (m : mem) (b : block) (ofs : _root_.Int) (n : UInt32)
+    (h : valid_access m .Mint32 b ofs .Writable) :
+    load .Mint32 (stored .Mfloat32 m b ofs (.Vsingle n)) b ofs = some (.Vint n) := by
+  unfold load
+  rw [ite_eq_left ((valid_access_stored _ _ _ _ _ _ _ _ _).mpr (valid_access_readable h)),
+    contents_stored_same]
+  have : size_chunk_nat .Mint32 = (encode_val .Mfloat32 (.Vsingle n)).length := by
+    rw [length_encode_single]; rfl
+  rw [this, getN_setN, decode_int_of_single]
+
+/-- A load of `Mfloat32` after a store of `Mint32` at the same place: the float of the word's
+bits. -/
+theorem load_single_stored_int (m : mem) (b : block) (ofs : _root_.Int) (n : UInt32)
+    (h : valid_access m .Mfloat32 b ofs .Writable) :
+    load .Mfloat32 (stored .Mint32 m b ofs (.Vint n)) b ofs = some (.Vsingle n) := by
+  unfold load
+  rw [ite_eq_left ((valid_access_stored _ _ _ _ _ _ _ _ _).mpr (valid_access_readable h)),
+    contents_stored_same]
+  have : size_chunk_nat .Mfloat32 = (encode_val .Mint32 (.Vint n)).length := by
+    rw [length_encode_int]; rfl
+  rw [this, getN_setN, decode_single_of_int]
+
+/-- An access of four bytes at offset 0 is valid where one of eight is. -/
+theorem valid_access_four {m : mem} {b : block} {chunk : memory_chunk} {p : permission}
+    (h : valid_access m .Mint64 b 0 p) (hc : size_chunk chunk = 4) (ha : align_chunk chunk = 4) :
+    valid_access m chunk b 0 p := by
+  refine ⟨fun ofs h1 h2 => h.1 ofs h1 (by rw [hc] at h2; simp [size_chunk] at h2 ⊢; omega), ?_⟩
+  rw [ha]
+  exact Int.dvd_zero _
 
 theorem load_stored_other (chunk chunk' : memory_chunk) (m : mem) (b b' : block)
     (ofs ofs' : _root_.Int) (v : val) (h : b ≠ b') :

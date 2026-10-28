@@ -437,6 +437,130 @@ def truncSatStmt (h : Nat) : statement :=
         (.Sset (slotId h .i64) (.Econst_long 0xFFFFFFFFFFFFFFFF tulong))
         (.Sset (slotId h .i64) (.Ecast (tmp h .f64) tulong))))
 
+/-! ## Binary32
+
+The binary32 forms follow the binary64 ones, with the first four bytes of `lx_pun` as the cell:
+a NaN result of a rounding operation becomes Talos's canonical NaN, and a value changes type
+through the cell.  `abs` clears the sign bit of the word, since `__builtin_fabs` of a `float`
+converts it to `double` first, which quiets a signaling NaN.  `sqrt` takes the square root of the
+`double` conversion and converts the result back, which rounds twice but gives the correctly
+rounded result, and `nearest` computes the integer from the word with shifts and masks. -/
+
+def tfloat : type := VT.ty .f32
+
+/-- The float in `lx_pun` after a store of the word `w`, into the float slot at height `h`. -/
+def punStore32 (w : expr) (h : Nat) : statement :=
+  .Ssequence (.Sassign (punAt tuint) w) (.Sset (slotId h .f32) (punAt tfloat))
+
+/-- The word of the float slot at height `h`, through `lx_pun`, into the word slot at height
+`k`. -/
+def punBits32 (h k : Nat) : statement :=
+  .Ssequence (.Sassign (punAt tfloat) (tmp h .f32)) (.Sset (slotId k .i32) (punAt tuint))
+
+/-- `if (t != t) t = <the canonical NaN>;` for the float slot at height `h`. -/
+def canonStmt32 (h : Nat) : statement :=
+  .Sifthenelse (.Ebinop .One (tmp h .f32) (tmp h .f32) tint)
+    (punStore32 (.Econst_int IEEE32.canonicalNaN tuint) h) .Sskip
+
+/-- The binary32 operations that round. -/
+def f32Op : Instruction → Option binary_operation
+  | .f32Add => some .Oadd
+  | .f32Sub => some .Osub
+  | .f32Mul => some .Omul
+  | .f32Div => some .Odiv
+  | _ => none
+
+/-- The binary32 comparisons. -/
+def f32Cmp : Instruction → Option binary_operation
+  | .f32Eq => some .Oeq
+  | .f32Lt => some .Olt
+  | .f32Le => some .Ole
+  | _ => none
+
+/-- The binary32 constant `v` in the slot at height `h`. -/
+def f32ConstStmt (h : Nat) (v : UInt32) : statement :=
+  if IEEE32.isFinite v then
+    if IEEE32.sign v then
+      .Sset (slotId h .f32) (.Eunop .Oneg (.Econst_single (IEEE32.negate v) tfloat) tfloat)
+    else .Sset (slotId h .f32) (.Econst_single v tfloat)
+  else punStore32 (.Econst_int v tuint) h
+
+/-- `abs` of the float slot at height `h`: its word with the sign bit cleared. -/
+def abs32Stmt (h : Nat) : statement :=
+  .Ssequence (punBits32 h h)
+    (punStore32 (.Ebinop .Oand (tmp h .i32) (cint 0x7FFFFFFF) tuint) h)
+
+/-- `sqrt` of the float slot at height `h`: the square root of its `double` conversion, which
+the call `n` takes, converted back. -/
+def sqrt32Stmt (h n : Nat) : statement :=
+  .Ssequence
+    (.Ssequence (.Scall (some (callId n)) sqrtVar [.Ecast (tmp h .f32) tdouble])
+      (.Sset (slotId h .f32) (.Ecast (.Etempvar (callId n) tdouble) tfloat)))
+    (canonStmt32 h)
+
+/-- `nearest` of the float slot at height `h`.  The word `u` goes to the word slot at height
+`h` and its biased exponent `e` to the one above.  For `e ≥ 150` the value is integral, infinite,
+or a NaN, and stays; for `e < 126` its magnitude is below one half, and the result is a zero of
+its sign.  Otherwise, with the significand `m` and `s = 150 - e`, the quotient `q = m >> s` rises
+by one when the remainder `m & ((1 << s) - 1)` exceeds the half `1 << (s - 1)`, or equals it and
+`q` is odd, and the result is `(float) q`, negated when the sign bit is set.  The slots at
+heights `h + 2` to `h + 5` hold `s`, `q`, the remainder, and the half. -/
+def nearest32Stmt (h : Nat) : statement :=
+  let w (k : Nat) : expr := tmp k .i32
+  let set (k : Nat) (e : expr) : statement := .Sset (slotId k .i32) e
+  let mant : expr := .Ebinop .Oor (.Ebinop .Oand (w h) (cint 0x7FFFFF) tuint) (cint 0x800000) tuint
+  let negative : expr := .Ebinop .Oshr (w h) (cint 31) tuint
+  seqList [
+    punBits32 h h,
+    set (h + 1) (.Ebinop .Oand (.Ebinop .Oshr (w h) (cint 23) tuint) (cint 255) tuint),
+    .Sifthenelse (.Ebinop .Oge (w (h + 1)) (cint 150) tint) .Sskip
+      (.Sifthenelse (.Ebinop .Olt (w (h + 1)) (cint 126) tint)
+        (.Sifthenelse negative
+          (.Sset (slotId h .f32) (.Eunop .Oneg (.Econst_single 0 tfloat) tfloat))
+          (.Sset (slotId h .f32) (.Econst_single 0 tfloat)))
+        (seqList [
+          set (h + 2) (.Ebinop .Osub (cint 150) (w (h + 1)) tuint),
+          set (h + 3) (.Ebinop .Oshr mant (w (h + 2)) tuint),
+          set (h + 4) (.Ebinop .Oand mant
+            (.Ebinop .Osub (.Ebinop .Oshl (cint 1) (w (h + 2)) tuint) (cint 1) tuint) tuint),
+          set (h + 5) (.Ebinop .Oshl (cint 1) (.Ebinop .Osub (w (h + 2)) (cint 1) tuint) tuint),
+          .Sifthenelse (.Ebinop .Ogt (w (h + 4)) (w (h + 5)) tint)
+            (set (h + 3) (.Ebinop .Oadd (w (h + 3)) (cint 1) tuint))
+            (.Sifthenelse (.Ebinop .Oeq (w (h + 4)) (w (h + 5)) tint)
+              (.Sifthenelse (.Ebinop .Oand (w (h + 3)) (cint 1) tuint)
+                (set (h + 3) (.Ebinop .Oadd (w (h + 3)) (cint 1) tuint)) .Sskip)
+              .Sskip),
+          .Sset (slotId h .f32) (.Ecast (w (h + 3)) tfloat),
+          .Sifthenelse negative
+            (.Sset (slotId h .f32) (.Eunop .Oneg (tmp h .f32) tfloat)) .Sskip])),
+    canonStmt32 h]
+
+/-- -1.0f, 2^31, -2^31, and 2^64 as `float`s. -/
+def minusOne32 : expr := .Eunop .Oneg (.Econst_single 0x3F800000 tfloat) tfloat
+def two31f : expr := .Econst_single 0x4F000000 tfloat
+def minusTwo31f : expr := .Eunop .Oneg two31f tfloat
+def two64f : expr := .Econst_single 0x5F800000 tfloat
+
+/-- `i64.trunc_sat_f32_u` of the float slot at height `h` into the word slot of `i64`: 0 for a
+NaN and below -1, the largest word at 2^64 and above, and the C conversion between. -/
+def truncSat32UStmt (h : Nat) : statement :=
+  .Sifthenelse (.Ebinop .One (tmp h .f32) (tmp h .f32) tint) (.Sset (slotId h .i64) (clong 0))
+    (.Sifthenelse (.Ebinop .Ole (tmp h .f32) minusOne32 tint) (.Sset (slotId h .i64) (clong 0))
+      (.Sifthenelse (.Ebinop .Oge (tmp h .f32) two64f tint)
+        (.Sset (slotId h .i64) (.Econst_long 0xFFFFFFFFFFFFFFFF tulong))
+        (.Sset (slotId h .i64) (.Ecast (tmp h .f32) tulong))))
+
+/-- `i32.trunc_sat_f32_s` of the float slot at height `h` into the word slot of `i32`: 0 for a
+NaN, `0x80000000` at -2^31 and below, `0x7FFFFFFF` at 2^31 and above, and the C conversion to
+`int` between. -/
+def truncSat32SStmt (h : Nat) : statement :=
+  .Sifthenelse (.Ebinop .One (tmp h .f32) (tmp h .f32) tint) (.Sset (slotId h .i32) (cint 0))
+    (.Sifthenelse (.Ebinop .Ole (tmp h .f32) minusTwo31f tint)
+      (.Sset (slotId h .i32) (cint 0x80000000))
+      (.Sifthenelse (.Ebinop .Oge (tmp h .f32) two31f tint)
+        (.Sset (slotId h .i32) (cint 0x7FFFFFFF))
+        (.Sset (slotId h .i32) (.Ecast (.Ecast (tmp h .f32) tint) tuint))))
+
 /-- The arguments of a call with parameters `ps`: the slots from height `base` up, deepest
 first. -/
 def callArgs (base : Nat) : List VT → List expr
@@ -655,6 +779,55 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
       let σ' ← pops L σ 1
       if σ.head? = some .f64 then
         pure (truncSatStmt (h - 1), some (.i64 :: σ'), n)
+      else none
+  | .f32Const v => some (f32ConstStmt h v, some (.f32 :: σ), n)
+  | .f32Add | .f32Sub | .f32Mul | .f32Div => do
+      let op ← f32Op inst
+      let σ' ← pops L σ 2
+      if σ.take 2 = [.f32, .f32] then
+        pure (.Ssequence
+            (.Sset (slotId (h - 2) .f32) (.Ebinop op (tmp (h - 2) .f32) (tmp (h - 1) .f32) tfloat))
+            (canonStmt32 (h - 2)),
+          some (.f32 :: σ'), n)
+      else none
+  | .f32Eq | .f32Lt | .f32Le => do
+      let op ← f32Cmp inst
+      let σ' ← pops L σ 2
+      if σ.take 2 = [.f32, .f32] then
+        pure (.Sset (slotId (h - 2) .i32)
+            (.Ecast (.Ebinop op (tmp (h - 2) .f32) (tmp (h - 1) .f32) tint) tuint),
+          some (.i32 :: σ'), n)
+      else none
+  | .f32Abs => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .f32 then pure (abs32Stmt (h - 1), some (.f32 :: σ'), n)
+      else none
+  | .f32ConvertI64U => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .i64 then
+        pure (.Sset (slotId (h - 1) .f32) (.Ecast (tmp (h - 1) .i64) tfloat), some (.f32 :: σ'), n)
+      else none
+  | .f32ConvertI32S => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .i32 then
+        pure (.Sset (slotId (h - 1) .f32) (.Ecast (.Ecast (tmp (h - 1) .i32) tint) tfloat),
+          some (.f32 :: σ'), n)
+      else none
+  | .f32ReinterpretI32 => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .i32 then pure (punStore32 (tmp (h - 1) .i32) (h - 1), some (.f32 :: σ'), n)
+      else none
+  | .i32ReinterpretF32 => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .f32 then pure (punBits32 (h - 1) (h - 1), some (.i32 :: σ'), n)
+      else none
+  | .i64TruncSatF32U => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .f32 then pure (truncSat32UStmt (h - 1), some (.i64 :: σ'), n)
+      else none
+  | .i32TruncSatF32S => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .f32 then pure (truncSat32SStmt (h - 1), some (.i32 :: σ'), n)
       else none
   | .unreachable => some (trapStmt trapUnreachable c.result, none, n)
   | .br k => do

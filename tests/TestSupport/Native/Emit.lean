@@ -247,6 +247,43 @@ def emitCase (dir : String) (c : Case) : IO Unit := do
 
 /-! ## The cases -/
 
+/-- The binary32 forms on words: each function reads its arguments' low 32 bits as floats and
+returns the result's bits, so that the expected lines hold Talos's bits.  The calls cover NaNs
+with payloads, both zeros, the smallest subnormal, the largest float, both infinities, the
+values near the bounds of the saturating truncations, and integers and halves for `nearest`. -/
+def f32ops : Module :=
+  let d (i : Nat) : List Instruction := [.localGet i, .wrapI64, .f32ReinterpretI32]
+  let res : List Instruction := [.i32ReinterpretF32, .extendUI32]
+  let bin (op : Instruction) : Function :=
+    { params := [.i64, .i64], results := [.i64], body := d 0 ++ d 1 ++ [op] ++ res }
+  let cmp (op : Instruction) : Function :=
+    { params := [.i64, .i64], results := [.i64], body := d 0 ++ d 1 ++ [op, .extendUI32] }
+  let un (op : Instruction) : Function :=
+    { params := [.i64], results := [.i64], body := d 0 ++ [op] ++ res }
+  let k (v : UInt32) : Function := { results := [.i64], body := [.f32Const v] ++ res }
+  { funcs := [bin .f32Add, bin .f32Sub, bin .f32Mul, bin .f32Div,
+      cmp .f32Eq, cmp .f32Lt, cmp .f32Le, un .f32Abs,
+      { params := [.i64], results := [.i64], body := [.localGet 0, .f32ConvertI64U] ++ res },
+      { params := [.i64], results := [.i64],
+        body := [.localGet 0, .wrapI64, .f32ConvertI32S] ++ res },
+      { params := [.i64], results := [.i64], body := d 0 ++ [.i64TruncSatF32U] },
+      { params := [.i64], results := [.i64], body := d 0 ++ [.i32TruncSatF32S, .extendUI32] },
+      k 0x7FA00001, k 0x80000000, k 0xBFC00000, k 0xFF800000, k 0x7F7FFFFF]
+    exports := [⟨"add", 0⟩, ⟨"sub", 1⟩, ⟨"mul", 2⟩, ⟨"div", 3⟩, ⟨"eq", 4⟩, ⟨"lt", 5⟩,
+      ⟨"le", 6⟩, ⟨"abs", 7⟩, ⟨"convu", 8⟩, ⟨"convs", 9⟩, ⟨"truncu", 10⟩, ⟨"truncs", 11⟩,
+      ⟨"snan", 12⟩, ⟨"negzero", 13⟩, ⟨"neg", 14⟩, ⟨"neginf", 15⟩, ⟨"max", 16⟩]
+    memory := some { pagesMin := 1 }
+    globals := [{ init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }] }
+
+/-- Binary32 operands: both zeros, ±1, the smallest subnormal, the largest float, both
+infinities, NaNs with payloads (a signaling one among them), halves and their neighbours for
+`nearest`, and the values at the bounds of the saturating truncations. -/
+def edges32 : List UInt64 :=
+  [0, 0x80000000, 0x3F800000, 0xBF800000, 0x00000001, 0x7F7FFFFF, 0x7F800000, 0xFF800000,
+   0x7FC00000, 0x7FA00001, 0xFFC12345, 0x3F000000, 0x3FC00000, 0x40200000, 0xBF000000,
+   0xC0200000, 0x4AFFFFFF, 0x4B000000, 0x4F000000, 0x4EFFFFFF, 0xCF000000, 0x5F800000,
+   0x5F7FFFFF, 0xBF7FFFFF, 0x40400000, 0x41100000]
+
 def words (n : Nat) (f : Nat → UInt64) : List UInt64 := (List.range n).map f
 
 def pairs : List (UInt64 × UInt64) :=
@@ -374,6 +411,17 @@ def cases : List Case :=
        (["sqrt", "abs", "trunc"].flatMap fun f => edges.map fun a => { name := f, args := [.word a] }) ++
        ([0, 1, 0xFFFFFFFFFFFFFFFF, 0x8000000000000000, 9007199254740993].map fun a =>
          { name := "conv", args := [.word a] }) ++
+       (["snan", "negzero", "neg", "neginf", "max"].map fun f => { name := f, args := [] }) },
+   { name := "f32ops", module := f32ops
+     calls :=
+       (["add", "sub", "mul", "div", "eq", "lt", "le"].flatMap fun f =>
+         edges32.flatMap fun a => [0x7FA00001, 0xFF800000, 0x3F800000, 0, 0x4F000000].map fun b =>
+           { name := f, args := [.word a, .word b] }) ++
+       (["abs", "truncu", "truncs"].flatMap fun f => edges32.map fun a => { name := f, args := [.word a] }) ++
+       ([0, 1, 0xFFFFFFFFFFFFFFFF, 0x8000000000000000, 16777217, 0xFFFFFFFFFFFFFF7F].map fun a =>
+         { name := "convu", args := [.word a] }) ++
+       ([0, 1, 0xFFFFFFFF, 0x80000000, 0x7FFFFFFF, 16777217, 0xFF000001].map fun a =>
+         { name := "convs", args := [.word a] }) ++
        (["snan", "negzero", "neg", "neginf", "max"].map fun f => { name := f, args := [] }) },
    { name := "gcd_loop", module := TestSupport.Native.Gcd.loopCompiled.module
      calls := pairs.map fun (a, b) => { name := "gcd", args := [.word a, .word b] } },

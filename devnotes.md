@@ -37267,3 +37267,19 @@ The widening of choice 10 is a premise of `NativeA` of the kind accepted in M4 a
 - [ ] `sqrt` with the double-rounding lemma.
 - [ ] `abs` and the saturating truncations.
 - [ ] `f32ops` in `tests/native/run.sh`, the differential test, the corpus driver, and binary32 GPT-2 native with theorems.
+
+## 2026-10-27: The Wasm-to-C translator: M6, the binary32 forms without `sqrt` and `nearest`
+
+### The probe and the translation
+
+A probe of `clightgen` on the shapes of the plan confirmed them.  The cell's first four bytes are `Ederef (Ecast (Evar lx_pun (tarray tulong 1)) (tptr tuint)) tuint` and the same at `tptr tfloat`; a comparison is `Ecast (Ebinop Ole a b tint) tuint`; `(float) (int) a` is two `Ecast`s; `(unsigned int) (int) t` of a `float` is two `Ecast`s; a negative literal, `-0.0f` included, is `Oneg` of the positive constant; the square root through `double` is a call of `__builtin_fsqrt` on `Ecast t tdouble` into a call temporary followed by `Ecast` to `tfloat`; and a `float` global without an initializer is `Init_space 4`.
+
+The translator now handles fifteen of the seventeen binary32 forms, as choices 1 to 7 of the plan describe: constants, the four arithmetic operations with the canonicalization, the three comparisons, `abs` through the cell with the mask `0x7FFFFFFFU`, the two conversions, both reinterpretations through the cell, and both saturating truncations with their guards.  `Proof/Floats32.lean` proves them in the pattern of `Proof/Floats.lean`: `F32Bits` gives that Talos's rounding operations return the canonical NaN whenever their result is a NaN, the comparisons and conversions agree with Talos's by the copy's definitions, and `truncSat32U_cases` and `truncSat32S_cases` follow Talos's case analysis through the guards.  `abs` uses a scratch word slot at the height of its operand, so `push_exec_scratch` takes the frame of the slots below that height in place of `push_exec`'s condition on every other temporary.  `Mem.lean` gains the 32-bit loads after stores of the other type and the validity of a four-byte access where an eight-byte one is valid.
+
+### Tests
+
+`tests/native/run.sh` gains `f32ops`, the binary32 counterpart of `fops`, whose 1,006 calls on 26 operands (NaNs with payloads, a signaling one among them, both zeros, the smallest subnormal, the largest float, both infinities, halves, and the bounds of the truncations) agree with Talos bit for bit.  All twenty modules agree, the differential test agrees on all 318 programs, and 34,555 corpus cases pass natively with none failing; the 698 that do not run call functions that use `sqrt`, `nearest`, or several results with a binary32 value.  The same counts hold with the x86_64 tree under `qemu-x86_64`.
+
+- [x] Probe `clightgen` for the binary32 shapes of the choices.
+- [x] `lx_pun` at binary32 and both reinterpretations; constants.
+- [x] The arithmetic with the canonicalization; the comparisons; the conversions; `abs`; the saturating truncations.
