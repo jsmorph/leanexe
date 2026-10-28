@@ -1,16 +1,11 @@
 import Verified.Bytes.Release
+import Verified.Bytes.Code
 import Verified.LocalFrame
 import LeanExe.TalosCompat
 
 namespace Verified.Bytes
 
 open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
-
-/-- Code that releases the object of the buffer whose root and length are in the locals `root`
-and `length` when its length is 0, and then sets the root to 0, so that the root of an empty
-buffer is 0. -/
-def normalizeCode (root length : Nat) : Program :=
-  [.localGet length, .eqzI64, .iff 0 0 [.localGet root, .call 1, .constI64 0, .localSet root] []]
 
 /-- `normalizeCode` on an owned buffer: an empty buffer's object is released and its root set
 to 0, and a nonempty buffer is left as it is. -/
@@ -43,5 +38,7 @@ theorem wp_normalize {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
       List.nil_append]
     rw [wp_nil]
     simpa using hFull hZero
+
+#print axioms wp_normalize
 
 end Verified.Bytes
