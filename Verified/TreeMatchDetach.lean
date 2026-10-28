@@ -32,13 +32,22 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
         (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
           heapArraySlot (shape.kinds r) i)))
         ((shape.arrayElem r i).words (arrays i))) ∧
+      (∀ i, Bytes.Rep heap store'
+        (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+          heapBufferSlot (shape.kinds r) i)))
+        (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+          heapBufferSlot (shape.kinds r) i + 1)))
+        (buffers i)) ∧
       (mode = .owned → (block store' p :: ((List.ofFn fun i =>
         (children i).toNode.blocks store'
           (store.mem.read64 (slotAddress p
             (shape.fieldStart + (fieldPosition true (shape.fields r) i).val)))).flatten ++
-        (List.ofFn fun i => [block store'
+        ((List.ofFn fun i => [block store'
           (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
-            heapArraySlot (shape.kinds r) i)))]).flatten)).Pairwise regionsDisjoint) ∧
+            heapArraySlot (shape.kinds r) i)))]).flatten ++
+        (List.ofFn fun i => Bytes.regions store'
+          (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+            heapBufferSlot (shape.kinds r) i)))).flatten))).Pairwise regionsDisjoint) ∧
       (∀ i : Fin (shape.width r), store'.mem.read64 (slotAddress p i.val) =
         store.mem.read64 (slotAddress p i.val)) ∧
       (Ty.tree shape).regions mode store' [.i64 p] (.node r words arrays buffers children) =
@@ -48,7 +57,7 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
     shape.fieldSlot_lt r true i
   cases mode
   · exact ⟨hAt, trivial, Step.refl hAt _, treeNode_child_rep hNode, treeNode_array_rep hNode,
-      nofun, fun _ => rfl, rfl⟩
+      treeNode_bytes_rep hNode, nofun, fun _ => rfl, rfl⟩
   · obtain ⟨hOwned, hApart⟩ := hNode
     obtain ⟨hHead, hSlots⟩ := hOwned
     have hLength := shape.recordSlots_length r (shape.slotWords r words)
@@ -97,33 +106,54 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
       have h := recordSlots_array_owned hSlots' i
       rw [hReadNat _ (shape.heapArraySlot_lt_width r i)] at h
       exact h
-    have hFieldBlocks : slotsBlocks (TreeHeader.clearMask store p) p 0
+    have hBufferAt : ∀ i, RecordBuffer heap (TreeHeader.clearMask store p)
+        (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+          heapBufferSlot (shape.kinds r) i)))
+        (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+          heapBufferSlot (shape.kinds r) i + 1)))
+        (buffers i) := by
+      intro i
+      have h := recordSlots_recordBuffer_owned hSlots' i
+      have hLt := shape.heapBufferSlot_lt_width r i
+      rw [hReadNat _ (by omega), hReadNat _ hLt] at h
+      exact h
+    have hFieldBlocks : (slotsBlocks (TreeHeader.clearMask store p) p 0
         (shape.recordSlots r (shape.slotWords r words) (shape.arrayWords r arrays) buffers
-          (fun i => (children i).toNode)) =
-        (List.ofFn fun i => (children i).toNode.blocks (TreeHeader.clearMask store p)
+          (fun i => (children i).toNode))).Perm
+        ((List.ofFn fun i => (children i).toNode.blocks (TreeHeader.clearMask store p)
           (store.mem.read64 (slotAddress p
             (shape.fieldStart + (fieldPosition true (shape.fields r) i).val)))).flatten ++
-        (List.ofFn fun i => [block (TreeHeader.clearMask store p)
+        ((List.ofFn fun i => [block (TreeHeader.clearMask store p)
           (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
-            heapArraySlot (shape.kinds r) i)))]).flatten := by
+            heapArraySlot (shape.kinds r) i)))]).flatten ++
+        (List.ofFn fun i => Bytes.regions (TreeHeader.clearMask store p)
+          (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+            heapBufferSlot (shape.kinds r) i)))).flatten)) := by
       rw [recordSlots_blocks]
-      erw [treeSlots_blocks_read,
-        heapSlots_blocks_read _ _ _ (shape.buffers_eq_zero r)]
-      congr 3
-      · funext i
+      erw [treeSlots_blocks_read]
+      refine List.Perm.append (List.Perm.of_eq ?_)
+        ((heapSlots_blocks_perm _ p (shape.kinds r) _ _ _).trans (List.Perm.of_eq ?_))
+      · congr 2
+        funext i
         rw [hReadNat _ (hBound i)]
-      · funext i
-        rw [hReadNat _ (shape.heapArraySlot_lt_width r i)]
+      · congr 2
+        · congr 1
+          funext i
+          rw [hReadNat _ (shape.heapArraySlot_lt_width r i)]
+        · congr 1
+          funext i
+          have hLt := shape.heapBufferSlot_lt_width r i
+          rw [hReadNat _ (by omega), (hBufferAt i).blocks]
     have hStep := Step.ofWritesRange (region := block store p) hAt' hWrites
       (by simp only [block]; omega) (by simp only [block]; omega)
     refine ⟨hAt', hHeader, hStep.mono (fun _ hr => hr rfl) nofun,
-      hChildren, hArrays, ?_, fun i => hReadNat i.val i.isLt, ?_⟩
+      hChildren, hArrays, fun i => (hBufferAt i).rep, ?_, fun i => hReadNat i.val i.isLt, ?_⟩
     · intro _
       have hList := hApart'
       change (block _ p :: slotsBlocks _ p 0
         (shape.recordSlots r (shape.slotWords r words) (shape.arrayWords r arrays) buffers
           (fun i => (children i).toNode))).Pairwise _ at hList
-      rwa [hFieldBlocks] at hList
+      exact hList.perm (hFieldBlocks.cons _) (fun h => regionsDisjoint_symm h)
     · change block (TreeHeader.clearMask store p) p ::
         slotsBlocks (TreeHeader.clearMask store p) p 0
           (shape.recordSlots r (shape.slotWords r words) (shape.arrayWords r arrays) buffers

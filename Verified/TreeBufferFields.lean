@@ -248,6 +248,35 @@ theorem heapSlots_regions_perm (store : Store Unit) (p : UInt64) (fields : List 
 
 #print axioms heapSlots_blocks_perm
 #print axioms heapSlots_regions_perm
+/-- Locals that hold the roots and lengths of buffers hold their words. -/
+theorem LocalsHold.ofFn_pairs_of {s : Locals} :
+    (n : Nat) → (loc : Nat) → (roots lengths : Fin n → UInt64) →
+    (∀ i, s.get (loc + 2 * i.val) = some (.i64 (roots i)) ∧
+      s.get (loc + 2 * i.val + 1) = some (.i64 (lengths i))) →
+    LocalsHold s loc (List.replicate (2 * n) .i64)
+      (List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten
+  | 0, _, _, _, _ => fun k hk => by simp at hk
+  | n + 1, loc, roots, lengths, h => by
+    have hTypes : List.replicate (2 * (n + 1)) ValueType.i64 =
+        [.i64, .i64] ++ List.replicate (2 * n) .i64 := by
+      rw [show 2 * (n + 1) = 2 + 2 * n by omega, List.replicate_add]
+      rfl
+    rw [hTypes, List.ofFn_succ, List.flatten_cons]
+    refine (LocalsHold.append (by rfl)).mpr ⟨?_, ?_⟩
+    · intro k hk
+      match k, hk with
+      | 0, _ => simpa [slotIndex] using (h 0).1
+      | 1, _ => simpa [slotIndex] using (h 0).2
+      | k + 2, hk => simp at hk
+    · have hTail := LocalsHold.ofFn_pairs_of n (loc + 2) (fun i => roots i.succ)
+        (fun i => lengths i.succ) (fun i => by
+          have := h i.succ
+          simp only [Fin.val_succ] at this
+          have e1 : loc + 2 * (i.val + 1) = loc + 2 + 2 * i.val := by omega
+          rw [e1] at this
+          exact this)
+      simpa using hTail
+
 #print axioms heapFieldBlocks_perm
 #print axioms FieldsNormal.drop_prefix
 #print axioms FieldsNormal.bytesFields
