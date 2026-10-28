@@ -73,7 +73,9 @@ def checkEncodingOrder (layout : RecursiveLayout) : CommandElabM Unit := liftTer
         xs.findIdx? fun x => slot.containsFVar x.fvarId!
       let fail (j : Nat) (rule : String) : MetaM Unit := do
         let name := (← xs[j]!.fvarId!.getDecl).userName
-        throwError "verified_recursive_type: the `Encode` instance of {layout.name} places the           array field `{name}` of {ctor} {rule}; a record holds its word and child slots first and           then its array slots, each group in the order of the fields"
+        throwError (m!"verified_recursive_type: the `Encode` instance of {layout.name} places " ++
+          m!"the array field `{name}` of {ctor} {rule}; a record holds its word and child slots " ++
+          m!"first and then its array slots, each group in the order of the fields")
       let mut lastArray : Option Nat := none
       for slot in slots do
         match slot.getAppFn.constName? with

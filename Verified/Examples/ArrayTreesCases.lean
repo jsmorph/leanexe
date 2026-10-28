@@ -3,8 +3,8 @@ import TestSupport.Host
 
 /-! The cases of the trees whose records hold arrays.  Each case passes an array of words and a
 word and returns a word, and the code builds, copies, updates, and consumes the trees in between.
-The block count of each case is 1, the host's array: every record and every array that the code
-allocates is released before the function returns. -/
+The block count of each case is 0: the function takes its array argument as owned, and the code
+releases that array and every record and array that it allocates before the function returns. -/
 
 namespace Verified.Examples.ArrayTrees
 
@@ -19,7 +19,7 @@ def cases : IO Unit := do
     (List.range 12).map fun i => (List.range (3 * i)).toArray.map fun j => rw (17 * i + j)
   for xs in arrays do
     for x in [0, 5, maxU] do
-      IO.println s!"arraytrees|grown|i64|{arrayArg xs} i64:{x}|{grown xs x}|1"
-      IO.println s!"arraytrees|grownRoot|i64|{arrayArg xs} i64:{x}|{grownRoot xs x}|1"
+      IO.println s!"arraytrees|grown|i64|{arrayArg xs} i64:{x}|{grown xs x}|0"
+      IO.println s!"arraytrees|grownRoot|i64|{arrayArg xs} i64:{x}|{grownRoot xs x}|0"
 
 end Verified.Examples.ArrayTrees
