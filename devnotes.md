@@ -37556,6 +37556,8 @@ A second change waits for the user's decision on native speed: keeping `lx_pages
 
 With the option, the native corpus driver on the AArch64 tree passed all 35,766 cases and the 3,322 module cases, and none of the 101 objects it compiled has a global-offset-table relocation of `lx_mem`, where the sort module's object compiled without the option had 288.  The job's watcher recorded no memory pressure.  The benchmark job built before the change was stopped while it waited, without measuring, and started again on the new build.
 
+`tests/native/bench.sh` had written its inputs with `python3` directly, against the rule that Python runs only through `uv run`.  The generator is now `tests/native/bench_inputs.py`, with the inline script metadata of the repository's other Python scripts, and the driver runs it with `uv run`; it writes the same six files, byte for byte.
+
 ## 2026-10-27: Bare-metal native code: design and plan
 
 The user asked for the design and plan of running the translator's CompCert-compiled code on bare metal, with a startup routine and a generated `main` in place of the C host, libc, and the operating system, and for experiments where an experiment settles a question, stopping for review before implementation.  The work is on the branch `native-bare-metal`, created from `native-translator` at `748a23aae`.  [The design](docs/native-bare-metal.md) states the decisions and the plan, and this entry records the sources, the reasons, the experiments, and the milestones.  No Lean file changed, and the only Lean runs were the existing executable `native-verified emit` and `Verified/Examples/Cases.lean`, which wrote the C text and the cases for the experiments.
