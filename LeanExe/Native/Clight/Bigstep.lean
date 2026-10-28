@@ -7,27 +7,27 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
-`LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26 and 2026-10-27: transcribed from Coq into Lean, with the
+changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.Clight
 
 /-!
 The big-step semantics of terminating Clight statements and calls, from CompCert 3.18's
-`cfrontend/ClightBigstep.v`, with `function_entry2`.  CompCert's `bigstep_semantics_sound`
-relates it to the small-step semantics `semantics2`, which its compiler theorem is about.  The
+`cfrontend/ClightBigstep.v`, with `function_entry2`, the module `Clight2` of that file (lines
+622 to 634).  CompCert's `bigstep_semantics_sound` relates it to the small-step semantics
+`semantics2`, from which the compiler's passes after SimplLocals prove forward simulations.  The
 copy has no rule for `Sswitch`, whose rule `exec_Sswitch` it omits; `ClightBigstep.v` itself has
 none for `Slabel` and `Sgoto`.  `A` gives the NaN results of floating-point operations and `X`
 the semantics of external functions.
 
-The copy omits the judgments about divergence, `execinf_stmt` and `evalinf_funcall`, and the
-judgments about a whole program, `bigstep_program_terminates`, `bigstep_program_diverges`, and
-`bigstep_semantics` (`ClightBigstep.v`, lines 252 to 273 and 627 to 630).
-`bigstep_program_terminates` requires a `main` of type `int(void)`, called with no arguments
-from the memory of `init_mem`, whose result is a `Vint`, and CompCert's `bigstep_semantics_sound`
-is about that judgment only.  The theorems about the copy conclude `eval_funcall` of one
-function.  The design of the translator describes the step from such a theorem to a whole
-program.
+The copy omits the judgments about divergence, `execinf_stmt` and `evalinf_funcall` (lines
+198 to 246) and `bigstep_program_diverges` (lines 262 to 270), and `bigstep_semantics` (lines 272
+and 273).  `bigstep_program_terminates` (lines 252 to 260) is the judgment about a whole program
+that CompCert's `bigstep_semantics_sound` relates to the small-step semantics: a `main` of type
+`int(void)`, called with no arguments from the memory of `init_mem`, terminates with a `Vint`.
+The design of bare-metal native code (`docs/native-bare-metal.md`) describes the step from it to
+the machine code.
 -/
 
 namespace LClight
@@ -84,7 +84,7 @@ mutual
         (ef : external_function) (al : List expr) (tyargs : List type) (vargs : List val)
         (t : trace) (m' : mem) (vres : val) :
         eval_exprlist A ge e le m al tyargs vargs →
-        external_call A X ef ge.genv_symb vargs m t vres m' →
+        external_call A X ef ge vargs m t vres m' →
         exec_stmt A X ge e le m (.Sbuiltin optid ef tyargs al) t (set_opttemp optid vres le) m'
           .Out_normal
     | exec_Sseq_1 (e : env) (le : temp_env) (m : mem) (s1 s2 : statement) (t1 : trace)
@@ -146,8 +146,21 @@ mutual
     | eval_funcall_external (m : mem) (ef : external_function) (targs : List type)
         (tres : type) (cconv : calling_convention) (vargs : List val) (t : trace) (vres : val)
         (m' : mem) :
-        external_call A X ef ge.genv_symb vargs m t vres m' →
+        external_call A X ef ge vargs m t vres m' →
         eval_funcall A X ge m (.External ef targs tres cconv) vargs t m' vres
 end
+
+/-- `bigstep_program_terminates` (`ClightBigstep.v`, lines 252 to 260): `main` of the type
+`int(void)` terminates, from the memory of `init_mem`, with the trace `t` and the result `r`. -/
+inductive bigstep_program_terminates (A : Archi) (X : ExtSem) (p : program function) :
+    trace → int → Prop
+  | bigstep_program_terminates_intro (b : block) (f : fundef function) (m0 m1 : mem) (t : trace)
+      (r : int) :
+      init_mem p = some m0 →
+      Genv.find_symbol (globalenv p) p.prog_main = some b →
+      Genv.find_funct_ptr (globalenv p) b = some f →
+      type_of_fundef f = .Tfunction [] type_int32s cc_default →
+      eval_funcall A X (globalenv p) m0 f [] t m1 (.Vint r) →
+      bigstep_program_terminates A X p t r
 
 end LClight

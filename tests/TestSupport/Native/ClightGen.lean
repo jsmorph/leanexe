@@ -16,6 +16,23 @@ only way a NaN with a chosen payload can enter a program.
 
 `cText` is the program in C with a `main` that calls `test` and prints the result and the
 globals' bits, and `expected` is what `LClight.run` gives for the same lines, or `UB`.
+
+A trace program, from `genTraceProgram`, has five more globals, volatile ones of the types
+`unsigned char`, `signed char`, `unsigned short`, `unsigned int`, and `unsigned long long`
+(`g_v8`, `g_vs8`, `g_v16`, `g_v32`, and `g_v64`), and its function `main ()`, of the type
+`int(void)`, has the statements of `test` and stores of integers to the volatile globals, in the
+form `Sbuiltin None (EF_vstore chunk)` that SimplExpr gives an assignment to a volatile lvalue.
+`traceText` is the program in C, and `expectedTrace` is what `LClight.run_program` gives: one
+line per volatile store and the exit code, as CompCert's reference interpreter prints them, or
+`UB`.
+
+An input program, from `genInputProgram`, is a trace program with five more globals, `const
+volatile` arrays of four elements of the same five types with random initial values (`g_in8`,
+`g_ins8`, `g_in16`, `g_in32`, and `g_in64`), and its statements also load from them into
+temporaries, in the form `Sbuiltin (Some t) (EF_vload chunk)` that SimplExpr gives a read of a
+volatile lvalue.  The index is usually masked to the array's bounds.  The reference interpreter
+answers each load with the initial value, as `LClight.world_vload` does, and a load outside the
+array is undefined for both.
 -/
 
 namespace TestSupport.Native.ClightGen
@@ -25,6 +42,8 @@ open LClight
 instance : Inhabited statement := ⟨.Sskip⟩
 instance : Inhabited binary_operation := ⟨.Oadd⟩
 instance : Inhabited unary_operation := ⟨.Oneg⟩
+instance : Inhabited type := ⟨.Tvoid⟩
+instance : Inhabited memory_chunk := ⟨.Mint32⟩
 
 abbrev Gen := StateM StdGen
 
@@ -75,6 +94,25 @@ def idTest : ident := 8
 def idX : ident := 20
 def idY : ident := 21
 def idHr : ident := 22
+def idMain : ident := 9
+
+/-- The volatile globals of a trace program: identifier, type, and memory chunk. -/
+def volatileAttr : attr := { attr_volatile := true, attr_alignas := none }
+def volatileGlobals : List (ident × type × memory_chunk) := [
+  (10, .Tint .I8 .Unsigned volatileAttr, .Mint8unsigned),
+  (11, .Tint .I8 .Signed volatileAttr, .Mint8signed),
+  (12, .Tint .I16 .Unsigned volatileAttr, .Mint16unsigned),
+  (13, .Tint .I32 .Unsigned volatileAttr, .Mint32),
+  (14, .Tlong .Unsigned volatileAttr, .Mint64)]
+
+/-- The input globals of an input program, arrays of four elements: identifier, element type,
+and memory chunk. -/
+def inputGlobals : List (ident × type × memory_chunk) := [
+  (15, .Tint .I8 .Unsigned volatileAttr, .Mint8unsigned),
+  (16, .Tint .I8 .Signed volatileAttr, .Mint8signed),
+  (17, .Tint .I16 .Unsigned volatileAttr, .Mint16unsigned),
+  (18, .Tint .I32 .Unsigned volatileAttr, .Mint32),
+  (19, .Tlong .Unsigned volatileAttr, .Mint64)]
 
 /-- The temporaries of `test`, three of each type but `int`, which has one, and then the loop
 counters. -/
@@ -91,7 +129,9 @@ def counters : List ident := [43, 44, 45]
 def name (id : ident) : String :=
   match id with
   | 1 => "g_u32" | 2 => "g_u64" | 3 => "g_f64" | 4 => "g_f32" | 5 => "arr" | 6 => "pun"
-  | 7 => "helper" | 8 => "test" | 20 => "x" | 21 => "y" | 22 => "hr"
+  | 7 => "helper" | 8 => "test" | 9 => "main" | 10 => "g_v8" | 11 => "g_vs8" | 12 => "g_v16"
+  | 13 => "g_v32" | 14 => "g_v64" | 15 => "g_in8" | 16 => "g_ins8" | 17 => "g_in16"
+  | 18 => "g_in32" | 19 => "g_in64" | 20 => "x" | 21 => "y" | 22 => "hr"
   | n => s!"t{n}"
 
 /-! ## Constants -/
@@ -171,6 +211,10 @@ def globalOf : Ty → Gen expr
 
 structure Ctx where
   temps : Ty → List ident
+  /-- Whether statements may store to the volatile globals of a trace program. -/
+  volatiles : Bool := false
+  /-- Whether statements may load from the input globals of an input program. -/
+  inputs : Bool := false
 
 def leaf (c : Ctx) (t : Ty) : Gen expr := do
   let k ← rand 4
@@ -315,7 +359,7 @@ def genStmt (c : Ctx) : Nat → Nat → List ident → Gen statement
       let t ← pick [Ty.u32, .u64, .f64, .f32, .i32]
       pure (.Sset (← pick (testTemps t)) (← genExpr c 3 t))
   | depth + 1, loops, free => do
-      match (← rand 12) with
+      match (← rand (if c.inputs then 16 else if c.volatiles then 14 else 12)) with
       | 0 | 1 => do
           let t ← pick allTys
           pure (.Sset (← pick (testTemps t)) (← genExpr c 3 t))
@@ -358,6 +402,20 @@ def genStmt (c : Ctx) : Nat → Nat → List ident → Gen statement
       | 10 =>
           if loops == 0 then genStmt c depth loops free
           else pick [statement.Sbreak, .Scontinue]
+      | 12 | 13 => do
+          let (id, ty, chunk) ← pick volatileGlobals
+          let ptr : type := .Tpointer ty noattr
+          let e ← genExpr c 3 (← pick [Ty.u32, .i32, .u64])
+          pure (.Sbuiltin none (.EF_vstore chunk) [ptr, ty] [.Eaddrof (.Evar id ty) ptr, e])
+      | 14 | 15 => do
+          let (id, ty, chunk) ← pick inputGlobals
+          let i ← genExpr c 2 .u64
+          let index ← if (← rand 16) == 0 then pure i
+            else pure (.Ebinop .Oand i (.Econst_long 3 tulong) tulong)
+          let r ← pick (testTemps (if chunk == .Mint64 then .u64 else .u32))
+          let ptr : type := .Tpointer ty noattr
+          let elem : expr := .Ederef (.Ebinop .Oadd (.Evar id (.Tarray ty 4 noattr)) index ptr) ty
+          pure (.Sbuiltin (some r) (.EF_vload chunk) [ptr] [.Eaddrof elem ptr])
       | _ => do
           let s1 ← genStmt c depth loops free
           let s2 ← genStmt c depth loops free
@@ -367,8 +425,10 @@ def allTestTemps : List (ident × type) :=
   (allTys.flatMap fun t => (testTemps t).map fun id => (id, t.type)) ++
     counters.map fun id => (id, tulong)
 
-def genTest : Gen function := do
-  let c : Ctx := { temps := testTemps }
+/-- The function `test`, or with `vol` the function `main` of a trace program, which stores to
+the volatile globals and returns an `int`. -/
+def genTest (vol : Bool := false) (inp : Bool := false) : Gen function := do
+  let c : Ctx := { temps := testTemps, volatiles := vol, inputs := inp }
   let temps := allTys.flatMap fun t => (testTemps t).map fun id => (id, t)
   let inits ← temps.mapM fun (id, t) => do pure (statement.Sset id (← constOf t))
   let n ← rand 6
@@ -379,8 +439,8 @@ def genTest : Gen function := do
   let finalStores := [statement.Sassign lhs (← genExpr c 3 .f64),
     .Sassign (.Evar idF32 tfloat) (← genExpr c 3 .f32)]
   let result ← genExpr c 3 .u64
-  pure { fn_return := tulong, fn_callconv := cc_default, fn_params := [], fn_vars := [],
-         fn_temps := allTestTemps,
+  pure { fn_return := if vol then tint else tulong, fn_callconv := cc_default, fn_params := [],
+         fn_vars := [], fn_temps := allTestTemps,
          fn_body := seqs (inits ++ body ++ finalStores ++ [.Sreturn (some result)]) }
 
 def genHelper : Gen function := do
@@ -422,6 +482,66 @@ def genProgram : Gen (program function) := do
   let helper ← genHelper
   let test ← genTest
   pure (programOf u32 u64 f64 f32 arr pun helper test)
+
+/-- A volatile global of the type `ty` with `size` zero bytes. -/
+def volatileVar (ty : type) (size : Nat) : globdef (fundef function) type :=
+  .Gvar { gvar_info := ty, gvar_init := [.Init_space size], gvar_readonly := false,
+          gvar_volatile := true }
+
+def chunkSize : memory_chunk → Nat
+  | .Mint8signed | .Mint8unsigned | .Mbool => 1
+  | .Mint16signed | .Mint16unsigned => 2
+  | .Mint32 | .Mfloat32 | .Many32 => 4
+  | .Mint64 | .Mfloat64 | .Many64 => 8
+
+/-- A trace program: the globals of `programOf`, the volatile globals, `helper`, and `main`. -/
+def genTraceProgram : Gen (program function) := do
+  let u32 := UInt32.ofNat (← rand (2 ^ 32))
+  let u64 := UInt64.ofNat (← rand (2 ^ 64))
+  let f64 := UInt64.ofNat (← finiteDouble)
+  let f32 := UInt32.ofNat (← finiteFloat)
+  let arr ← (List.range 8).mapM fun _ => do pure (init_data.Init_int64 (UInt64.ofNat (← rand (2 ^ 64))))
+  let pun := UInt64.ofNat (← punBits)
+  let helper ← genHelper
+  let main ← genTest true
+  let base := programOf u32 u64 f64 f32 arr pun helper main
+  let vars := volatileGlobals.map fun (id, ty, chunk) => (id, volatileVar ty (chunkSize chunk))
+  pure { prog_defs := base.prog_defs.take 6 ++ vars ++
+           [(idHelper, .Gfun (.Internal helper)), (idMain, .Gfun (.Internal main))],
+         prog_public := [], prog_main := idMain }
+
+/-- The initialization data of an element of an input global of the chunk `chunk`. -/
+def inputInit (chunk : memory_chunk) : Gen init_data := do
+  match chunk with
+  | .Mint8unsigned | .Mint8signed => do
+      pure (.Init_int8 (UInt32.ofNat (← edgeOr [0, 1, 127, 128, 255] 256)))
+  | .Mint16unsigned => do
+      pure (.Init_int16 (UInt32.ofNat (← edgeOr [0, 1, 0x7FFF, 0xFFFF] (2 ^ 16))))
+  | .Mint64 => do pure (.Init_int64 (UInt64.ofNat (← edgeOr [0, 1, 2 ^ 63, 2 ^ 64 - 1] (2 ^ 64))))
+  | _ => do pure (.Init_int32 (UInt32.ofNat (← edgeOr [0, 1, 2 ^ 31, 2 ^ 32 - 1] (2 ^ 32))))
+
+/-- An input program: a trace program with the input globals, whose `main` also loads from
+them. -/
+def genInputProgram : Gen (program function) := do
+  let u32 := UInt32.ofNat (← rand (2 ^ 32))
+  let u64 := UInt64.ofNat (← rand (2 ^ 64))
+  let f64 := UInt64.ofNat (← finiteDouble)
+  let f32 := UInt32.ofNat (← finiteFloat)
+  let arr ← (List.range 8).mapM fun _ => do pure (init_data.Init_int64 (UInt64.ofNat (← rand (2 ^ 64))))
+  let pun := UInt64.ofNat (← punBits)
+  let helper ← genHelper
+  let inputs ← inputGlobals.mapM fun (id, ty, chunk) => do
+    let data ← (List.range 4).mapM fun _ => inputInit chunk
+    let v : globvar type :=
+      { gvar_info := .Tarray ty 4 noattr, gvar_init := data, gvar_readonly := true,
+        gvar_volatile := true }
+    pure (id, globdef.Gvar v)
+  let main ← genTest true true
+  let base := programOf u32 u64 f64 f32 arr pun helper main
+  let vars := volatileGlobals.map fun (id, ty, chunk) => (id, volatileVar ty (chunkSize chunk))
+  pure { prog_defs := base.prog_defs.take 6 ++ vars ++ inputs ++
+           [(idHelper, .Gfun (.Internal helper)), (idMain, .Gfun (.Internal main))],
+         prog_public := [], prog_main := idMain }
 
 /-! ## Programs for the NaN parameters -/
 
@@ -522,5 +642,53 @@ def expected (A : Archi) (p : program function) (fuel : Nat) : String :=
       line "g_f32" (bitsAt p m idF32 .Mint32 0) ++
       String.join ((List.range 8).map fun (i : Nat) => line "arr" (bitsAt p m idArr .Mint64 (8 * (i : Int)))) ++
       line "pun" (bitsAt p m idPun .Mint64 0)
+
+/-! ## Trace programs: C text and expected output -/
+
+def traceText (p : program function) : Except String String :=
+  LeanExe.Native.cprogram name name (fun _ => false) p
+
+/-- `PrintAST.name_of_chunk` of CompCert's `common/PrintAST.ml`. -/
+def chunkName : memory_chunk → String
+  | .Mbool => "bool" | .Mint8signed => "int8s" | .Mint8unsigned => "int8u"
+  | .Mint16signed => "int16s" | .Mint16unsigned => "int16u" | .Mint32 => "int32"
+  | .Mint64 => "int64" | .Mfloat32 => "float32" | .Mfloat64 => "float64" | .Many32 => "any32"
+  | .Many64 => "any64"
+
+def signed32 (n : int) : Int := if n.toNat < 2 ^ 31 then n.toNat else (n.toNat : Int) - 2 ^ 32
+
+def signed64 (n : int64) : Int :=
+  if n.toNat < 2 ^ 63 then n.toNat else (n.toNat : Int) - 2 ^ 64
+
+/-- An event as `ccomp -interp` prints it after `Time N: `, `print_event` of
+`driver/Interp.ml`, for the integer event values that trace programs produce. -/
+def eventLine : event → String
+  | .Event_vstore chunk id ofs ev =>
+      let o := signed64 ofs
+      let ofsText := if o < 0 then s!"{o}" else s!"+{o}"
+      let v := match ev with
+        | .EVint n => s!"{signed32 n}"
+        | .EVlong n => s!"{signed64 n}LL"
+        | _ => "?"
+      s!"observable event: volatile store {chunkName chunk}[&{name id}{ofsText}] <- {v}"
+  | .Event_vload chunk id ofs ev =>
+      let o := signed64 ofs
+      let ofsText := if o < 0 then s!"{o}" else s!"+{o}"
+      let v := match ev with
+        | .EVint n => s!"{signed32 n}"
+        | .EVlong n => s!"{signed64 n}LL"
+        | _ => "?"
+      s!"observable event: volatile load {chunkName chunk}[&{name id}{ofsText}] -> {v}"
+  | _ => "observable event: ?"
+
+/-- The lines that `ccomp -interp` prints for a trace program, without the prefix `Time N: `,
+or `UB`, or `FUEL` when the fuel ran out. -/
+def expectedTrace (A : Archi) (p : program function) (fuel : Nat) : String :=
+  match run_program A p fuel with
+  | .error .stuck => "UB\n"
+  | .error .outOfFuel => "FUEL\n"
+  | .ok (t, r) =>
+      String.join (t.map fun ev => eventLine ev ++ "\n") ++
+        s!"program terminated (exit code = {signed32 r})\n"
 
 end TestSupport.Native.ClightGen
