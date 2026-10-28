@@ -130,80 +130,55 @@ while IFS=: read -r name theorem file; do
   check_file "$name" "$theorem" "$file"
 done <"$root/tests/verified/numerics.txt"
 fi
-cases_module=Verified.Examples.Cases
-cases_source=Verified/Examples/Cases.lean
+cases_exe=verified-cases
 if [ "$case_module" = "treecopy" ]; then
-  cases_module=Verified.Examples.TreeCopyCasesMain
-  cases_source=Verified/Examples/TreeCopyCasesMain.lean
+  cases_exe=verified-cases-treecopy
 elif [ "$case_module" = "treecore" ]; then
-  cases_module=Verified.Examples.TreeCasesMain
-  cases_source=Verified/Examples/TreeCasesMain.lean
+  cases_exe=verified-cases-treecore
 elif [ "$case_module" = "lists" ]; then
-  cases_module=Verified.Examples.ListsCasesMain
-  cases_source=Verified/Examples/ListsCasesMain.lean
+  cases_exe=verified-cases-lists
 elif [ "$case_module" = "composition" ]; then
-  cases_module=Verified.Examples.CompositionCasesMain
-  cases_source=Verified/Examples/CompositionCasesMain.lean
+  cases_exe=verified-cases-composition
 elif [ "$case_module" = "scalarcomposition" ]; then
-  cases_module=Verified.Examples.ScalarCompositionCasesMain
-  cases_source=Verified/Examples/ScalarCompositionCasesMain.lean
+  cases_exe=verified-cases-scalarcomposition
 elif [ "$case_module" = "relocation" ]; then
-  cases_module=Verified.Examples.RelocationCasesMain
-  cases_source=Verified/Examples/RelocationCasesMain.lean
+  cases_exe=verified-cases-relocation
 elif [ "$case_module" = "wgsl" ]; then
-  cases_module=Verified.Examples.WgslWasmCasesMain
-  cases_source=Verified/Examples/WgslWasmCasesMain.lean
+  cases_exe=verified-cases-wgsl
 elif [ "$case_module" = "gpt32" ]; then
-  cases_module=Demos.Gpt32.VerifiedWasmCasesMain
-  cases_source=Demos/Gpt32/VerifiedWasmCasesMain.lean
+  cases_exe=verified-cases-gpt32
 elif [ "$case_module" = "listrecursion" ]; then
-  cases_module=Verified.Examples.ListRecursionCasesMain
-  cases_source=Verified/Examples/ListRecursionCasesMain.lean
+  cases_exe=verified-cases-listrecursion
 elif [ "$case_module" = "listloops" ]; then
-  cases_module=Verified.Examples.ListLoopsCasesMain
-  cases_source=Verified/Examples/ListLoopsCasesMain.lean
+  cases_exe=verified-cases-listloops
 elif [ "$case_module" = "listtail" ]; then
-  cases_module=Verified.Examples.ListTailCasesMain
-  cases_source=Verified/Examples/ListTailCasesMain.lean
+  cases_exe=verified-cases-listtail
 elif [ "$case_module" = "recursivetypes" ]; then
-  cases_module=Verified.Examples.RecursiveTypesCasesMain
-  cases_source=Verified/Examples/RecursiveTypesCasesMain.lean
+  cases_exe=verified-cases-recursivetypes
 elif [ "$case_module" = "sha256" ]; then
-  cases_module=TestSupport.Hashing.Sha256CasesMain
-  cases_source=tests/TestSupport/Hashing/Sha256CasesMain.lean
+  cases_exe=verified-cases-sha256
 elif [ "$case_module" = "sha512" ]; then
-  cases_module=TestSupport.Hashing.Sha512CasesMain
-  cases_source=tests/TestSupport/Hashing/Sha512CasesMain.lean
+  cases_exe=verified-cases-sha512
 elif [ "$case_module" = "hmac_sha256" ] || [ "$case_module" = "hmac_sha512" ]; then
-  cases_module=TestSupport.Hashing.HmacCasesMain
-  cases_source=tests/TestSupport/Hashing/HmacCasesMain.lean
+  cases_exe=verified-cases-hmac
 elif [ "$case_module" = "taggedtypes" ]; then
-  cases_module=Verified.Examples.TaggedTypesCasesMain
-  cases_source=Verified/Examples/TaggedTypesCasesMain.lean
+  cases_exe=verified-cases-taggedtypes
 elif [ "$case_module" = "heapsums" ]; then
-  cases_module=Verified.Examples.HeapSumsCasesMain
-  cases_source=Verified/Examples/HeapSumsCasesMain.lean
+  cases_exe=verified-cases-heapsums
 elif [ "$case_module" = "typedtrees" ]; then
-  cases_module=Verified.Examples.TypedTreesCasesMain
-  cases_source=Verified/Examples/TypedTreesCasesMain.lean
+  cases_exe=verified-cases-typedtrees
 elif [ "$case_module" = "regex" ]; then
-  cases_module=TestSupport.Regex.CasesMain
-  cases_source=tests/TestSupport/Regex/CasesMain.lean
+  cases_exe=verified-cases-regex
 elif [ "$case_module" = "sha3" ]; then
-  cases_module=TestSupport.Hashing.Sha3CasesMain
-  cases_source=tests/TestSupport/Hashing/Sha3CasesMain.lean
+  cases_exe=verified-cases-sha3
 elif [ "$case_module" = "crc" ]; then
-  cases_module=TestSupport.Hashing.CrcCasesMain
-  cases_source=tests/TestSupport/Hashing/CrcCasesMain.lean
+  cases_exe=verified-cases-crc
 elif [ "$case_module" = "siphash" ]; then
-  cases_module=TestSupport.Hashing.SipHashCasesMain
-  cases_source=tests/TestSupport/Hashing/SipHashCasesMain.lean
+  cases_exe=verified-cases-siphash
 elif [ "$case_module" = "xxhash64" ]; then
-  cases_module=TestSupport.Hashing.XxHash64CasesMain
-  cases_source=tests/TestSupport/Hashing/XxHash64CasesMain.lean
+  cases_exe=verified-cases-xxhash64
 elif [ "$case_module" = "slew" ]; then
-  cases_module=TestSupport.Slew.CasesMain
-  cases_source=tests/TestSupport/Slew/CasesMain.lean
+  cases_exe=verified-cases-slew
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "heapsums" ]; then
   tools/leanrun --timeout 10m lake env lean tests/verified/HeapSumsAxioms.lean
@@ -211,7 +186,7 @@ fi
 if [ -z "$case_module" ] || [ "$case_module" = "typedtrees" ]; then
   tools/leanrun --timeout 10m lake env lean tests/verified/TypedTreesAxioms.lean
 fi
-tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
+tools/leanrun --timeout 12h lake --log-level error build "$cases_exe"
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT
@@ -219,7 +194,7 @@ trap 'rm -f "$cases" "$errors"' EXIT
 # writes a message and a backtrace to standard error.  A read returns Lean's default element,
 # an update the array unchanged, and insertIdx! an empty array.  The run fails when Lean exits
 # with an error or writes any other message.
-if ! tools/leanrun --timeout 10m lake env lean --run "$cases_source" \
+if ! tools/leanrun --timeout 10m ".lake/build/bin/$cases_exe" \
     >"$cases" 2>"$errors"; then
   cat "$errors" >&2
   echo "fail: native Lean exited with an error" >&2

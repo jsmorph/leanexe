@@ -33,6 +33,7 @@ import Verified.State
 import Verified.Correct
 import Verified.BoundFacts
 import Verified.LoopCostLast
+import Verified.ChargeFacts
 import Verified.Reflect.Lemmas
 import Verified.Reflect.BoundLemmas
 import Verified.Reflect.FitsLemmas
