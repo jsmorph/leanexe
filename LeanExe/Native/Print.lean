@@ -19,7 +19,10 @@ args` followed by `Sset x (Etempvar t)`, prints as `x = f(args);`, and `t` is no
 `clightgen` creates such a temporary for every call whose result is stored.  A store to a volatile
 lvalue, `Sbuiltin None (EF_vstore chunk) tys [Eaddrof l ty, e]`, the form that SimplExpr gives
 it, prints as the assignment `l = e;`, a load from one, `Sbuiltin (Some t) (EF_vload chunk) tys
-[Eaddrof l ty]`, prints as `t = l;`, and a volatile type prints with the qualifier `volatile`.
+[Eaddrof l ty]`, prints as `t = l;`, and a volatile type prints with the qualifier `volatile`.  A
+load through a temporary `t` that `isCall` accepts, followed by `Sset x (Ecast (Etempvar t) ty)`,
+prints as `x = l;`, and `t` is not declared, since `clightgen` creates such a temporary for every
+read of a volatile lvalue.
 A global without initialization data prints as an `extern` declaration.  `gname` names the
 globals and functions, and `tname` the temporaries.
 -/
@@ -132,6 +135,14 @@ def callPair? : statement → Option (ident × expr × List expr)
       if isCall t && t == t' then some (x, a, al) else none
   | _ => none
 
+/-- The load `Sbuiltin (some t) (EF_vload chunk) tys [Eaddrof l ty]` followed by
+`Sset x (Ecast (Etempvar t) ty')`, for a temporary `t` that `isCall` accepts: `x` and `l`. -/
+def loadPair? : statement → Option (ident × expr)
+  | .Ssequence (.Sbuiltin (some t) (.EF_vload _) _ [.Eaddrof l _])
+      (.Sset x (.Ecast (.Etempvar t' _) _)) =>
+      if isCall t && t == t' then some (x, l) else none
+  | _ => none
+
 /-- The C text of a statement.  It is `partial`: its recursion is structural, but the matches
 that recognize `clightgen`'s forms hide that from Lean's checker. -/
 partial def cstmt (depth : Nat) : statement → Except String String
@@ -154,16 +165,18 @@ partial def cstmt (depth : Nat) : statement → Except String String
         | none => ""
       pure s!"{indent depth}{lhs}{← builtinName ef}({← cargs gname tname al});\n"
   | .Ssequence s1 s2 =>
-      match callPair? isCall (.Ssequence s1 s2) with
-      | some (x, a, al) => do
+      match callPair? isCall (.Ssequence s1 s2), loadPair? isCall (.Ssequence s1 s2) with
+      | some (x, a, al), _ => do
           pure s!"{indent depth}{tname x} = {← cexpr gname tname a}({← cargs gname tname al});\n"
-      | none => do
+      | none, some (x, l) => do
+          pure s!"{indent depth}{tname x} = {← cexpr gname tname l};\n"
+      | none, none => do
           let first ← match s1 with
             | .Ssequence _ _ =>
-                match callPair? isCall s1 with
-                | some _ => cstmt depth s1
-                | none => do
+                match callPair? isCall s1, loadPair? isCall s1 with
+                | none, none => do
                     pure (s!"{indent depth}\{\n" ++ (← cstmt (depth + 1) s1) ++ s!"{indent depth}}\n")
+                | _, _ => cstmt depth s1
             | _ => cstmt depth s1
           pure (first ++ (← cstmt depth s2))
   | .Sifthenelse a s1 s2 => do

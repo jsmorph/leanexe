@@ -36,7 +36,7 @@ theorem bare_of_nativeTables {α β : Type} [Represent α] [Represent β] {A : A
       NativeTablesA A X cap m T ps rs fd aborts f tables Pre Post)
     (args : List UInt64)
     (hk : (m.funcs[k]?).bind signatureOf = some (args.map fun _ => .i64, [.i64]))
-    (kind : OutKind) (x : α) (heap : Heap) {bs : List UInt8}
+    (kind : OutKind) (hkind : outRet kind = tulong) (x : α) (heap : Heap) {bs : List UInt8}
     (hheap : heap.At (m.initialStore : Store Unit))
     (htables : ∀ t ∈ tables, heap.Borrowed (m.initialStore : Store Unit) t.1 t.2)
     (hPre : Pre x heap (nativeStore m cap))
@@ -45,8 +45,9 @@ theorem bare_of_nativeTables {α β : Type} [Represent α] [Represent β] {A : A
     (hsep : Separate (nativeStore m cap) (Represent.moves (nativeStore m cap) (args.map .i64) x)
       (Represent.reads (nativeStore m cap) (args.map .i64) x))
     (hcap : cap ≤ 65535)
-    (hout : ∀ (E : LeanExe.Native.Env) vs vres m' (heap' : Heap) final, ResultRel E [.i64] vs [] vres m' →
-      Represent.owned heap' final vs.reverse (f x) → OutOk kind final vres bs) :
+    (hout : ∀ (E : LeanExe.Native.Env) vs vres m' (heap' : Heap) final,
+      ResultRel E [.i64] vs [] vres m' →
+      Represent.owned heap' final vs.reverse (f x) → OutOk E kind final m' vres bs) :
     bigstep_program_terminates A X (bareProgram pre T (bareMain cap k args kind)) (outTrace bs) 0 ∨
       (aborts = true ∧ bigstep_program_terminates A X (bareProgram pre T (bareMain cap k args kind))
         E0 (UInt32.ofNat trapUnreachable)) := by
@@ -54,6 +55,8 @@ theorem bare_of_nativeTables {α β : Type} [Represent α] [Represent β] {A : A
   obtain ⟨rfl, rfl⟩ := sig_eq hsig hk
   have hty := entry_type h hfd hsig
   rw [funType_i64] at hty
+  have hty : type_of_function fd = .Tfunction (args.map fun _ => tulong) (outRet kind)
+      cc_default := by rw [hkind]; exact hty
   refine bare_program h hpre hfd args kind hty A X fun E hE hG hcap' hnres hF m1 hst hs => ?_
   obtain ⟨t, m', vres, final, hcall, hst', hres⟩ := hnat E hE hG hcap' hnres hF
     (nativeStore m cap) heap (args.map .i64) x (heapAt_nativeStore hheap cap) hPre
@@ -112,7 +115,7 @@ def elabBareProgram : CommandElab
     let prog ← `(LeanExe.Native.bareProgram pre $trans
       (LeanExe.Native.bareMain LeanExe.Native.nativeCap $kStx [$args,*] $kind))
     let proof ← if tables then
-        `(Verified.bare_of_nativeTables $eqn hpre ($native A X) [$args,*] rfl $kind $x _
+        `(Verified.bare_of_nativeTables $eqn hpre ($native A X) [$args,*] rfl $kind rfl $x _
           $initial.1
           (fun t ht => by
             simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
@@ -123,7 +126,7 @@ def elabBareProgram : CommandElab
           trivial rfl rfl LeanExe.Pipeline.Separate.nil (by decide)
           (fun _ _ _ _ _ _ hr hown => $outOk hr rfl hown))
       else
-        `(LeanExe.Native.bare_of_nativeA $eqn hpre ($native A X) [$args,*] rfl $kind $x _
+        `(LeanExe.Native.bare_of_nativeA $eqn hpre ($native A X) [$args,*] rfl $kind rfl $x _
           $initial.1 trivial rfl LeanExe.Pipeline.Separate.nil (by decide)
           (fun _ _ _ _ _ _ hr hown => $outOk hr rfl hown))
     elabCommand (← `(

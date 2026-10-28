@@ -352,6 +352,10 @@ partial def toStmt (n : Names) : Term → Except String statement
       let chunk ← toChunk ch
       pure (.Sbuiltin none (.EF_vstore chunk) (← (← toList tys).mapM toType)
         (← (← toList args).mapM (toExpr n)))
+  | .app "Sbuiltin" [.app "Some" [.atom x], .app "EF_vload" [.atom ch], tys, args] => do
+      let chunk ← toChunk ch
+      pure (.Sbuiltin (some (← n.temp x)) (.EF_vload chunk) (← (← toList tys).mapM toType)
+        (← (← toList args).mapM (toExpr n)))
   | t => throw s!"the statement {repr t}"
 
 def toBool : Term → Except String Bool
@@ -432,9 +436,22 @@ def stmtEq : statement → statement → Bool
   | .Sbuiltin d ef ts as, .Sbuiltin e ef' us bs => d == e && ef == ef' && ts == us && exprsEq as bs
   | _, _ => false
 
-/-- The call temporaries of a body in order of first occurrence. -/
+/-- The temporaries that `s` assigns, as `assigned` lists them, with the results of built-in
+functions among them. -/
+def assignedAll : statement → List ident
+  | .Sset id _ => [id]
+  | .Scall (some id) _ _ => [id]
+  | .Sbuiltin (some id) _ _ _ => [id]
+  | .Ssequence s1 s2 => assignedAll s1 ++ assignedAll s2
+  | .Sifthenelse _ s1 s2 => assignedAll s1 ++ assignedAll s2
+  | .Sloop s1 s2 => assignedAll s1 ++ assignedAll s2
+  | _ => []
+
+/-- The call temporaries of a body in order of first occurrence, those of calls and those of
+built-in functions such as volatile loads. -/
 def callTemps (s : statement) : List ident :=
-  (assigned s).foldl (fun acc (id, _) => if id % 8 == 6 && !acc.contains id then acc ++ [id] else acc) []
+  (assignedAll s).foldl
+    (fun acc id => if id % 8 == 6 && !acc.contains id then acc ++ [id] else acc) []
 
 def renameExpr (r : ident → ident) : expr → expr
   | .Etempvar x t => .Etempvar (r x) t
@@ -572,11 +589,12 @@ def compareDef (defs : List (String × Term)) (n : Names) (name : String)
 /-- The differences between the whole program that the Coq file `text` of `clightgen` describes
 and the whole program of the translation `t`, or none.  The file's `global_definitions` must list
 CompCert's external declarations, then the translation's definitions but `__builtin_fsqrt` in
-order, then the definitions of `tail`: none for the translation alone, and `bareTail` of the
-`main` of a bare-metal program.  Each external declaration must be a built-in, run-time, or
-external function, and `__builtin_fsqrt` must be declared as the translation declares it.  Each
-variable and internal function must equal the translation's under its name, with the
-temporaries of calls compared up to renaming.  The program has no composite types, and its
+order, then the definitions of `tail`: none for the translation alone, `bareTail` of the
+`main` of a bare-metal program, and `inTail` of the `main` of a program with input.  Each
+external declaration must be a built-in, run-time, or external function, and `__builtin_fsqrt`
+must be declared as the translation declares it.  Each variable and internal function must
+equal the translation's under its name, with the temporaries of calls and of built-in functions
+compared up to renaming.  The program has no composite types, and its
 `main` is the name `main`.  The names of the entries are distinct, and so are the identifiers
 that the whole program gives them, `preId j` for the external declarations, `sqrtId` for
 `__builtin_fsqrt`, and the translation's and the tail's own.  The program of the file is then
@@ -592,7 +610,8 @@ def check (t : Translation) (text : String)
       | .num k => if d.startsWith "_t'" then some (d, .created k.toNat) else none
       | _ => none
     else none
-  let tailName (id : ident) : String := if id == outId then "lx_out" else if id == mainId then "main"
+  let tailName (id : ident) : String :=
+    if id == outId then "lx_out" else if id == mainId then "main" else if id == inId then "lx_in"
     else s!"lx_unnamed_{id}"
   let allNames := t.names ++ tail.map fun (id, _) => (id, tailName id)
   let n : Names := { names, globals := allNames.map fun (id, s) => (s, id) }

@@ -1,5 +1,6 @@
 import TestSupport.Bare.Gcd
 import TestSupport.Bare.Theorems
+import Library.Hashing.Sha256.Compiled
 import LeanExe.Native.ClightCheck
 
 /-!
@@ -15,6 +16,12 @@ must have the bytes of the theorem and the status is 0; when it traps at `unreac
 the theorem allows only for an entry that may abort, no byte is expected and the status is the
 code of `unreachable`.  `native-bare check DIR` compares each whole program with the Clight that
 `clightgen` wrote for it as `DIR/NAME.v`, `main` and `lx_out` included.
+
+The programs with input of `tests/baremetal/inputs.sh` are the cases of `inCases`, each an entry
+that takes an array and a length.  `native-bare emit-in DIR` writes each one's C text, its
+translation followed by `lx_in`, `lx_out`, and the `main` of `inMain`, and the names of its
+functions that take the call depth, and `native-bare check-in DIR` compares each whole program
+with the Clight that `clightgen` wrote for it.
 -/
 
 open LeanExe.Native LClight Wasm
@@ -75,13 +82,19 @@ returns, or `none` when it traps at `unreachable`. -/
 def talosBytes (c : BareCase) : Except String (Option (List UInt8)) := do
   let st : Store Unit := { (c.module.initialStore : Store Unit) with memoryCaps := [nativeCap] }
   match run fuel c.module c.k st (c.args.reverse.map Value.i64) with
-  | .Success [.i64 x] st' =>
-      match c.kind with
-      | .word => pure (some (encodeWord x))
-      | .array =>
+  | .Success vs st' =>
+      match c.kind, vs with
+      | .word, [.i64 x] => pure (some (encodeWord x))
+      | .array, [.i64 x] =>
           let n := (st'.mem.read64 x.toUInt32).toNat
           pure (some ((List.range (8 * n + 8)).map fun i => st'.mem.bytes (x.toNat + i)))
-  | .Success vs _ => throw s!"Talos returned {vs.length} values"
+      | .words k, vs =>
+          let ws := vs.reverse.filterMap fun v => match v with
+            | .i64 x => some x
+            | _ => none
+          if ws.length = k then pure (some (encodeWords ws))
+          else throw s!"Talos returned {vs.length} values"
+      | _, _ => throw s!"Talos returned {vs.length} values"
   | .Trap _ msg => if msg == "unreachable" then pure none else throw s!"Talos trapped: {msg}"
   | _ => throw "Talos did not finish"
 
@@ -107,6 +120,45 @@ def emitCase (dir : String) (c : BareCase) : IO Unit := do
       IO.FS.writeFile s!"{dir}/{c.name}.status" s!"{trapUnreachable}\n"
       IO.println s!"native-bare: {c.name}: Talos traps at unreachable"
 
+/-- A program with input: the entry `k` of `module`, which takes the address of an array and a
+length and returns a result of the kind `kind`. -/
+structure InCase where
+  name : String
+  module : Module
+  k : Nat
+  kind : OutKind
+
+def inCases : List InCase := [
+  { name := "sha256in", module := Library.Hashing.Sha256.compiled.module, k := 11,
+    kind := .words 4 }]
+
+def emitIn (dir : String) (c : InCase) : IO Unit := do
+  let some t := translate nativeCap c.module
+    | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
+  match t.inText nativeCap c.k c.kind with
+  | .error e => throw <| IO.userError s!"native-bare: {c.name}: {e}"
+  | .ok text => IO.FS.writeFile s!"{dir}/{c.name}.c" text
+  IO.FS.writeFile s!"{dir}/{c.name}.depth"
+    (String.join ((t.depthNames c.module).map (· ++ "\n")))
+  IO.println s!"native-bare: {c.name}: written"
+
+def checkIn (dir : String) : IO UInt32 := do
+  let mut failed := false
+  for c in inCases do
+    let some t := translate nativeCap c.module
+      | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
+    let text ← IO.FS.readFile s!"{dir}/{c.name}.v"
+    match ClightCheck.check t text (inTail (inMain nativeCap c.k c.kind)) with
+    | .error e =>
+        IO.eprintln s!"native-bare: {c.name}: {e}"
+        failed := true
+    | .ok [] =>
+        IO.println s!"native-bare: {c.name}: the clightgen program matches the whole program"
+    | .ok errors =>
+        for e in errors do IO.eprintln s!"native-bare: {c.name}: {e}"
+        failed := true
+  pure (if failed then 1 else 0)
+
 def check (dir : String) : IO UInt32 := do
   let mut failed := false
   for c in cases do
@@ -123,6 +175,9 @@ def check (dir : String) : IO UInt32 := do
         failed := true
   pure (if failed then 1 else 0)
 
+def usage : String :=
+  "usage: native-bare emit|check|emit-in|check-in DIR, or native-bare names"
+
 def main (args : List String) : IO UInt32 := do
   match args with
   | ["emit", dir] =>
@@ -133,4 +188,9 @@ def main (args : List String) : IO UInt32 := do
   | ["names"] => do
       for c in cases do IO.println c.name
       pure 0
-  | _ => throw <| IO.userError "usage: native-bare emit|check DIR, or native-bare names"
+  | ["emit-in", dir] =>
+      IO.FS.createDirAll dir
+      for c in inCases do emitIn dir c
+      pure 0
+  | ["check-in", dir] => checkIn dir
+  | _ => throw <| IO.userError usage
