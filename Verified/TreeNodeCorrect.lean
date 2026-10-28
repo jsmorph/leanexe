@@ -94,7 +94,7 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
     · intro i
       exact (shape.no_buffer r i).elim
   have hWidths : ∀ i,
-      base + shape.bindCount r + max (args.get i).width (copyWidth (ps.get i)) ≤ h := by
+      base + shape.bindWidth r + max (args.get i).width (copyWidth (ps.get i)) ≤ h := by
     simp only [Expr.width] at hRoom
     let W := argsMax fun j => (words j).width
     let C := argsMax fun j => max (children j).width (copyWidth (.tree shape))
@@ -106,7 +106,7 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
     have hAB := Nat.le_max_right C (max A B)
     have hA := Nat.le_max_left A B
     apply treeArgs_forall (fun {t} _ (value : Expr S Γ t) =>
-      base + shape.bindCount r + max value.width (copyWidth t) ≤ h) words children arrays buffers
+      base + shape.bindWidth r + max value.width (copyWidth t) ≤ h) words children arrays buffers
     · intro i
       have hi := le_argsMax (fun j => (words j).width) i
       have hCopy : copyWidth (shape.wordTy r i) = 0 := by
@@ -122,7 +122,9 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
     · intro i
       exact (shape.no_buffer r i).elim
   have hParentRoom : base < h := by
-    have hb : 1 ≤ shape.bindCount r := by simp only [TreeShape.bindCount]; omega
+    have hb : 1 ≤ shape.bindWidth r := by
+      simp only [TreeShape.bindWidth, TreeShape.bindCount]
+      omega
     simp only [Expr.width] at hRoom
     omega
   have hValues : (Env.ofFn fun i => (args.get i).denote funs env) =
@@ -138,8 +140,8 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
   simp only [List.append_assoc]
   have hRun := fields_spec hm ps args.get L hTypes
     (fieldLive_step args.get kept) (fun i => hArgsSpec i (L (i.val + 1))) hArgsPlace hArgsD
-    (fieldBase := base + 1) (scratch := base + shape.bindCount r) (by omega)
-    (by rw [hLen]; simp only [TreeShape.bindCount]; omega) hWidths
+    (fieldBase := base + 1) (scratch := base + shape.bindWidth r) (by omega)
+    (by rw [hLen]; simp only [TreeShape.bindWidth, TreeShape.bindCount]; omega) hWidths
     heap store s hh hpv hBase hVars0 hAt (by rw [hIn]; exact hSafe) hCap
     (treeParentCode shape r reuse slots base live ++ (shape.tagStoreCode r base ++
       (treeStoreFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)

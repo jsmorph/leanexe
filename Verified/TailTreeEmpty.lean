@@ -36,7 +36,7 @@ theorem tail_treeCase_empty {S : List Sig} {Γ params : List Ty} {result : Ty}
   have hRoomE : base + (empty hn).width targetModes ≤ h := by
     simp only [TailBody.width, dite_eq_left hn] at hRoom
     have := Nat.le_max_left ((empty hn).width targetModes)
-      (argsMax fun r => shape.bindCount r + max treeCopyScratch ((nodes r).width targetModes))
+      (argsMax fun r => shape.bindWidth r + max treeCopyScratch ((nodes r).width targetModes))
     omega
   have hPlaceE : (empty hn).placeArgs targetModes (slots.map Slot.mode) = true := by
     simp only [TailBody.placeArgs, dite_eq_left hn, Bool.and_eq_true] at hPlace

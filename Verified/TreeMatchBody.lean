@@ -19,7 +19,7 @@ theorem After.treeBody {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     (hFields : Holds (Env.treeFields shape r words arrays buffers children env)
     (shape.slots r fieldBase rootMode slots)
       (fun i => decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i)
-      (fieldBase + shape.bindCount r) heap store s)
+      (fieldBase + shape.bindWidth r) heap store s)
     (hFresh : ∀ (u : Ty) (x : Var (shape.context r []) u),
       ((shape.slots r fieldBase rootMode []).getD x.index default).mode = .owned → ∀ w,
       LocalsHold s ((shape.slots r fieldBase rootMode []).getD x.index default).loc u.types w →
@@ -30,15 +30,15 @@ theorem After.treeBody {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     (released : Evolves (Env.treeFields shape r words arrays buffers children env)
     (shape.slots r fieldBase rootMode slots)
       (fun i => decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i) bodyIn
-      (fieldBase + shape.bindCount r) heap store s heap1 store1 s)
+      (fieldBase + shape.bindWidth r) heap store s heap1 store1 s)
     (body : After (Env.treeFields shape r words arrays buffers children env)
     (shape.slots r fieldBase rootMode slots)
-      bodyIn (shift (shape.bindCount r) live) (fieldBase + shape.bindCount r) heap1 store1 s
+      bodyIn (shift (shape.bindCount r) live) (fieldBase + shape.bindWidth r) heap1 store1 s
       t mode value heap' store' s' ws)
     (hBodyIn : ∀ i, bodyIn i = true →
       (decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i) = true)
     (hFinal : ∀ i, shift (shape.bindCount r) live i = true → bodyIn i = true)
-    (hBase : base ≤ fieldBase + shape.bindCount r)
+    (hBase : base ≤ fieldBase + shape.bindWidth r)
     (hL1 : ∀ i, L1 i = true → L0 i = true) (hLive : ∀ i, live i = true → L1 i = true) :
     After env slots L0 live base heap0 store0 s0 t mode value heap' store' s' ws := by
   have hBody := After.prepend hFields released body hBodyIn hFinal

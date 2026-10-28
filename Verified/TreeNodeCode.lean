@@ -24,9 +24,9 @@ theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : 
     let L := fieldLive args.get kept
     (Expr.treeNode r reuse words arrays buffers children).code (pool := pool) h slots base live =
       argsCode (fun i : Fin ps.length =>
-        (args.get i).code (pool := pool) h slots (base + shape.bindCount r) (L (i.val + 1)) ++
+        (args.get i).code (pool := pool) h slots (base + shape.bindWidth r) (L (i.val + 1)) ++
         coerceCode h (ps.get i) ((args.get i).mode (slots.map Slot.mode)) .owned
-          (base + shape.bindCount r) ++
+          (base + shape.bindWidth r) ++
         storeCode h (base + 1 + i.val) (ps.get i).types) ++
       treeParentCode shape r reuse slots base live ++ shape.tagStoreCode r base ++
       treeStoreFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
@@ -59,20 +59,20 @@ theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : 
     (Args.prependRepeat (.tree shape) (shape.children r) children
       (Args.prependFn (shape.arrays r) (shape.arrayTy r) arrays
         (Args.prependRepeat .bytes (shape.buffers r) buffers Args.nil)))
-    h (base + 1) (base + shape.bindCount r) slots L
+    h (base + 1) (base + shape.bindWidth r) slots L
   have hChildCode := Args.code_prependRepeat (pool := pool)
     (.tree shape) (shape.children r) children
     (Args.prependFn (shape.arrays r) (shape.arrayTy r) arrays
       (Args.prependRepeat .bytes (shape.buffers r) buffers Args.nil))
-    h (base + 1 + shape.words r) (base + shape.bindCount r) slots
+    h (base + 1 + shape.words r) (base + shape.bindWidth r) slots
     (fun j => L (shape.words r + j))
   have hArrayCode := Args.code_prependFn (pool := pool) (shape.arrays r) (shape.arrayTy r) arrays
     (Args.prependRepeat .bytes (shape.buffers r) buffers Args.nil)
-    h (base + 1 + shape.words r + shape.children r) (base + shape.bindCount r) slots
+    h (base + 1 + shape.words r + shape.children r) (base + shape.bindWidth r) slots
     (fun j => L (shape.words r + shape.children r + j))
   have hBufferCode := Args.code_prependRepeat (pool := pool) .bytes (shape.buffers r) buffers
     Args.nil h (base + 1 + shape.words r + shape.children r + shape.arrays r)
-    (base + shape.bindCount r) slots
+    (base + shape.bindWidth r) slots
     (fun j => L (shape.words r + shape.children r + shape.arrays r + j))
   simp only [Nat.add_assoc] at hCode hChildCode hArrayCode hBufferCode hChildren hArrays hBuffers
   rw [hBufferCode] at hArrayCode
@@ -84,7 +84,7 @@ theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : 
   simp only [Nat.add_assoc, List.append_assoc] at hCode ⊢
   rw [hCode]
   have hWordCoerce (i : Fin (shape.words r)) (mode : Mode) :
-      coerceCode h (shape.wordTy r i) mode .owned (base + shape.bindCount r) = [] := by
+      coerceCode h (shape.wordTy r i) mode .owned (base + shape.bindWidth r) = [] := by
     simp only [coerceCode, TreeShape.wordTy, Ty.scalar, Bool.true_eq_false, and_false,
       ↓reduceIte]
   simp only [Nat.add_assoc, hWords, hChildren, hArrays, hBuffers, hWordCoerce, List.nil_append,

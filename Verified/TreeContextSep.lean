@@ -48,11 +48,10 @@ theorem widthSum_replicate (n : Nat) (t : Ty) : widthSum (List.replicate n t) = 
   simp [widthSum]
 
 theorem TreeShape.context_width (shape : TreeShape) (r : Fin shape.records) :
-    widthSum (shape.context r []) = shape.bindCount r := by
-  have hb := shape.buffers_eq_zero r
+    widthSum (shape.context r []) = shape.bindWidth r := by
   simp only [TreeShape.context, widthSum_cons, widthSum_fn _ (shape.wordTy_width r),
     widthSum_append, widthSum_fn _ (shape.arrayTy_width r), widthSum_replicate]
-  simp [widthSum, Ty.width, TreeShape.bindCount, hb]
+  simp [widthSum, Ty.width, TreeShape.bindWidth, TreeShape.bindCount]
   omega
 
 theorem Holds.treePrefix {heap : Heap} {store : Store Unit} {s : Locals}
@@ -71,7 +70,7 @@ theorem Holds.treePrefix {heap : Heap} {store : Store Unit} {s : Locals}
     (hold : LocalsHold s base ((shape.context r []).flatMap Ty.types)
       (shape.branchValues r p words pointers arrayPtrs)) :
     Holds (Env.treeFields shape r words arrays buffers children .nil) (shape.slots r base mode [])
-      (fun _ => true) (base + shape.bindCount r) heap store s := by
+      (fun _ => true) (base + shape.bindWidth r) heap store s := by
   have h := Holds.ofEnvRep (treeFields_rep (buffers := buffers) hHeader hChildren hArrays)
     (treeFields_separate hApart) hold
   rw [shape.paramSlots r, shape.context_width r] at h

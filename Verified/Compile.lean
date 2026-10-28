@@ -356,7 +356,8 @@ def TreeShape.slots (shape : TreeShape) (r : Fin shape.records) (base : Nat) (mo
       ((List.range (shape.arrays r)).map
         (fun i => ⟨base + 1 + shape.words r + shape.children r + i, mode⟩) ++
         ((List.range (shape.buffers r)).map (fun i =>
-          ⟨base + 1 + shape.words r + shape.children r + shape.arrays r + i, mode⟩) ++ rest))))
+          ⟨base + 1 + shape.words r + shape.children r + shape.arrays r + 2 * i, mode⟩) ++
+          rest))))
 
 /-- Code that runs `branch r` for the record constructor `r` of the record at local `ptr`: tests
 of its tag against the record constructors in order, the last one untested.  For an untagged
@@ -430,13 +431,13 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .proj _ _ => 0
   | _, _, .treeNil _ _ => 0
   | _, _, .treeNode (shape := shape) r _ words arrays buffers children =>
-    shape.bindCount r + max (argsMax fun i => (words i).width)
+    shape.bindWidth r + max (argsMax fun i => (words i).width)
       (max (argsMax fun i => max (children i).width (copyWidth (.tree shape)))
         (max (argsMax fun i => max (arrays i).width (copyWidth (shape.arrayTy r i)))
           (argsMax fun i => max (buffers i).width (copyWidth .bytes))))
   | _, _, .treeCase (shape := shape) (t := t) _ empty nodes =>
     t.width + max (max (if h : shape.hasNull = true then (empty h).width else 0) (copyWidth t))
-      (argsMax fun r => shape.bindCount r + max treeCopyScratch (max (nodes r).width (copyWidth t)))
+      (argsMax fun r => shape.bindWidth r + max treeCopyScratch (max (nodes r).width (copyWidth t)))
 
 def Var.sizeCode (slots : List Slot) (live : Nat → Bool) {Γ : List Ty} {e : Elem}
     (x : Var Γ (.array e)) : Program :=
@@ -533,7 +534,7 @@ def TailBody.codeWith
     let labels := (if shape.hasNull then 1 else 0)
     let nodeCode := fun r : Fin shape.records =>
       releaseWhere Γ slots (fun i => mid i && !(nodeLive r i || decide (i = x.index))) ++
-        x.code h slots (base + shape.bindCount r) (nodeLive r) ++ [.localSet base] ++
+        x.code h slots (base + shape.bindWidth r) (nodeLive r) ++ [.localSet base] ++
         treeLoadFields h base (shape.wordTypes r) (base + 1)
           (base + 1 + shape.words r) shape.fieldStart (shape.fields r) ++
         treeLoadHeaps base (shape.kinds r) (base + 1 + shape.words r + shape.children r)
@@ -544,7 +545,7 @@ def TailBody.codeWith
         releaseWhere (shape.context r Γ) (shape.slots r base rootMode slots)
           (fun i => decide (i < shape.bindCount r) && !(nodes r).usesFast i) ++
         (nodes r).codeWith exprCode targetModes h p0 resultBase (shape.slots r base rootMode slots)
-          (base + shape.bindCount r) (exitLabel + labels + depth r) (nextLabel + labels + depth r)
+          (base + shape.bindWidth r) (exitLabel + labels + depth r) (nextLabel + labels + depth r)
     let recordsCode := shape.dispatchCode (slots.getD x.index default).loc nodeCode
     if hn : shape.hasNull = true then
       [.localGet (slots.getD x.index default).loc, .eqzI64, .iff 0 0
@@ -650,7 +651,7 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
   | _, _, .treeNil _ _ => [.constI64 0]
   | _, _, .treeNode (shape := shape) r reuse words arrays buffers children =>
     let modes := slots.map Slot.mode
-    let scratch := base + shape.bindCount r
+    let scratch := base + shape.bindWidth r
     let kept := fun k => live k || optionVarUses reuse k
     argsCode (fun i =>
       (words i).code (pool := pool) h slots scratch (fun k => kept k ||
@@ -674,7 +675,7 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
       (buffers i).code (pool := pool) h slots scratch (fun k => kept k ||
         (argsAny fun j => decide (i.val < j.val) && (buffers j).usesFast k)) ++
       coerceCode h .bytes ((buffers i).mode modes) .owned scratch ++
-      storeCode h (base + 1 + shape.words r + shape.children r + shape.arrays r + i.val)
+      storeCode h (base + 1 + shape.words r + shape.children r + shape.arrays r + 2 * i.val)
         Ty.bytes.types) ++
     (match reuse with
       | some x =>
@@ -703,7 +704,7 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
     let mid := fun i => live i || decide (i = x.index) || emptyUses i ||
       argsAny fun r => nodeUses r i
     let nodeCode := fun r : Fin shape.records =>
-      let scratch := fieldBase + shape.bindCount r
+      let scratch := fieldBase + shape.bindWidth r
       releaseWhere Γ slots
           (fun i => mid i && !((live i || nodeUses r i) || decide (i = x.index))) ++
         x.code h slots scratch (fun i => live i || nodeUses r i) ++ [.localSet fieldBase] ++
@@ -1071,7 +1072,7 @@ def TailBody.width (targetModes : List Mode) :
     s.width + t.width + max value.width (body.width targetModes)
   | _, .treeCase (shape := shape) _ empty nodes =>
     max (if h : shape.hasNull = true then (empty h).width targetModes else 0)
-      (argsMax fun r => shape.bindCount r + max treeCopyScratch ((nodes r).width targetModes))
+      (argsMax fun r => shape.bindWidth r + max treeCopyScratch ((nodes r).width targetModes))
 
 def TailBody.code (targetModes : List Mode) (h p0 resultBase : Nat)
     {Γ : List Ty} (body : TailBody S params result Γ) (slots : List Slot)

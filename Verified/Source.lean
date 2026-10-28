@@ -261,6 +261,11 @@ its children, its arrays, and its buffers. -/
 def TreeShape.bindCount (shape : TreeShape) (r : Fin shape.records) : Nat :=
   1 + shape.words r + shape.children r + shape.arrays r + shape.buffers r
 
+/-- The positions that a match on record constructor `r` binds: one for its header and for each
+word, child, and array, and two for each buffer, its root and its length. -/
+def TreeShape.bindWidth (shape : TreeShape) (r : Fin shape.records) : Nat :=
+  shape.bindCount r + shape.buffers r
+
 def TreeShape.context (shape : TreeShape) (r : Fin shape.records) (Γ : List Ty) : List Ty :=
   .treeHeader shape r :: (tysOfFn (shape.words r) (shape.wordTy r) ++
     (List.replicate (shape.children r) (.tree shape) ++

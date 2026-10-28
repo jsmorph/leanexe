@@ -20,7 +20,7 @@ theorem After.openTreeFields {Γ : List Ty} {env : Env Γ} {slots : List Slot}
       heap (treeDetachStore mode store p) [])
     (hPrefix : Holds (Env.treeFields shape r words arrays buffers children .nil)
       (shape.slots r fieldBase mode [])
-      (fun _ => true) (fieldBase + shape.bindCount r) heap (treeDetachStore mode store p) s')
+      (fun _ => true) (fieldBase + shape.bindWidth r) heap (treeDetachStore mode store p) s')
     (hSubset : ∀ (t : Ty) (x : Var (shape.context r []) t) (ws : List Value),
       LocalsHold s' ((shape.slots r fieldBase mode []).getD x.index default).loc t.types ws →
       ws.length = t.width →
@@ -36,7 +36,7 @@ theorem After.openTreeFields {Γ : List Ty} {env : Env Γ} {slots : List Slot}
       Holds (Env.treeFields shape r words arrays buffers children env)
         (shape.slots r fieldBase mode slots)
         (fun i => decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i)
-        (fieldBase + shape.bindCount r) heap (treeDetachStore mode store p) s' ∧
+        (fieldBase + shape.bindWidth r) heap (treeDetachStore mode store p) s' ∧
       (∀ (t : Ty) (x : Var (shape.context r []) t),
         ((shape.slots r fieldBase mode []).getD x.index default).mode = .owned →
         ∀ ws, LocalsHold s' ((shape.slots r fieldBase mode []).getD x.index default).loc
@@ -71,7 +71,7 @@ theorem After.openTreeFields {Γ : List Ty} {env : Env Γ} {slots : List Slot}
   have hLength : (shape.slots r fieldBase mode []).length = (shape.context r []).length := by
     simp only [shape.slots_length r, shape.context_length r, List.length_nil, Nat.add_zero]
   have hTail : Holds env slots (fun i => LB ((shape.context r []).length + i))
-      (fieldBase + shape.bindCount r) heap (treeDetachStore mode store p) s' := by
+      (fieldBase + shape.bindWidth r) heap (treeDetachStore mode store p) s' := by
     apply (hOuter.mono (by omega)).live_mono
     intro i hi
     simpa [LB, shape.context_length r, shift] using hi

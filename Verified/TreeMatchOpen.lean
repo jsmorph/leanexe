@@ -15,11 +15,11 @@ theorem wp_openTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : St
     {rest : Program} {Q : Assertion Unit} (hh : s.positions = h) (hAt : heap.At store)
     (hNode : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
     (hPtr : s.get base = some (.i64 p)) (hLow : s.params.length ≤ base + 1)
-    (hRoom : base + shape.bindCount r ≤ s.positions)
+    (hRoom : base + shape.bindWidth r ≤ s.positions)
     (hNext : ∀ s', Frame (base + 1) s s' → s'.values = s.values →
       Holds (Env.treeFields shape r words arrays buffers children .nil)
         (shape.slots r base mode [])
-        (fun _ => true) (base + shape.bindCount r) heap (treeDetachStore mode store p) s' →
+        (fun _ => true) (base + shape.bindWidth r) heap (treeDetachStore mode store p) s' →
       Step heap store (fun b => mode = .owned → regionsDisjoint b (block store p))
         heap (treeDetachStore mode store p) [] →
       (∀ (t : Ty) (x : Var (shape.context r []) t) (ws : List Value),
@@ -42,7 +42,7 @@ theorem wp_openTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : St
   have hb := shape.buffers_eq_zero r
   have hRun := wp_loadTree (m := m) (host := host) (Q := Q)
     (rest := (if mode = .owned then headerStore base 8 [.constI64 0] else []) ++ rest) hh hAt
-    hPtr hNode hLow (by omega) (by simp only [TreeShape.bindCount] at hRoom; omega)
+    hPtr hNode hLow (by omega) (by simp only [TreeShape.bindWidth, TreeShape.bindCount] at hRoom; omega)
     (fun s' hFrame hStack hPtr' hWordLocals hChildLocals hArrayLocals => by
     have hold := LocalsHold.treeFields hPtr' (by rw [hFrame.positions]; exact hWordLocals)
       hChildLocals hArrayLocals
