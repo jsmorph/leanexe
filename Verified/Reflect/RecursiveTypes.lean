@@ -89,9 +89,10 @@ def checkEncodingOrder (layout : RecursiveLayout) : CommandElabM Unit := liftTer
         | _ => pure ()
 
 open Lean.Parser.Term in
-/-- `toTree` from a recursive type to `Tree` of its shape and the agreement of the type's `Encode`
-instance with `Tree.toNode`, and, unless a field holds an enumeration or a sum, `fromTree` and the
-laws that `toTree` and `fromTree` are inverse. -/
+/-- `toTree` from a recursive type to `Tree` of its shape, the agreement of the type's `Encode`
+instance with `Tree.toNode`, the theorem `wellFormed` and the `EncodeWellFormed` instance that it
+gives, and, unless a field holds an enumeration or a sum, `fromTree` and the laws that `toTree`
+and `fromTree` are inverse. -/
 def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     withScope (fun scope => { scope with currNamespace := .anonymous }) do
   let root (name : Name) := mkIdent name
@@ -100,6 +101,7 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
   let left := root (layout.decl `from_to)
   let right := root (layout.decl `to_from)
   let encoding := root (layout.decl `encoding)
+  let wellFormed := root (layout.decl `wellFormed)
   let native := root layout.name
   let shape ← shapeTerm layout.shape
   let records := layout.shape.records
@@ -201,13 +203,19 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
       LeanExe.Pipeline.Encode.encode value = ($flatten value).toNode := by
     induction value <;> simp_all only [LeanExe.Pipeline.Encode.encode, $encode:term,
       $flatten:term] <;> rfl))
+  elabCommand (← `(theorem $wellFormed (value : $native) :
+      LeanExe.Pipeline.Node.WellFormed (LeanExe.Pipeline.Encode.encode value) := by
+    rw [$encoding:ident value]
+    exact Verified.Tree.toNode_wellFormed _))
+  elabCommand (← `(instance : LeanExe.Pipeline.EncodeWellFormed $native := ⟨$wellFormed⟩))
 
 syntax (name := verifiedRecursiveType) "verified_recursive_type " ident : command
 
 /-- `verified_recursive_type T` derives the declarations through which `verified_compile` compiles
 programs over the recursive type `T`: the conversion to the tree of `T`'s layout, the agreement of
-`T`'s `Encode` instance with the layout, the lemmas of a match on `T`, and, unless a field of `T`
-holds an enumeration or a sum, the conversion back and the laws that the two are inverse.  The
+`T`'s `Encode` instance with the layout, the theorem that every record of an encoded value is well
+formed, the lemmas of a match on `T`, and, unless a field of `T` holds an enumeration or a sum, the
+conversion back and the laws that the two are inverse.  The
 command follows `T`'s `Encode` instance, once, and every module that compiles a program over `T`
 imports the module that runs it. -/
 @[command_elab verifiedRecursiveType]
