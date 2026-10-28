@@ -17,7 +17,8 @@ theorem tail_treeCase_spec {S : List Sig} {Γ params : List Ty} {result : Ty}
   cases hv : env.get x with
   | nil hn => exact tail_treeCase_empty hm targetModes x empty nodes hn (emptySpec hn) env hv
   | node r words arrays buffers children =>
-    exact tail_treeCase_node hm targetModes x empty nodes r (nodeSpec r) env words children hv
+    exact tail_treeCase_node hm targetModes x empty nodes r (nodeSpec r) env words arrays buffers
+      children hv
 
 #print axioms tail_treeCase_spec
 

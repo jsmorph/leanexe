@@ -9,6 +9,8 @@ theorem After.openTreeFields {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     {L0 L1 : Nat → Bool} {base fieldBase : Nat} {heap0 heap : Heap}
     {store0 store : Store Unit} {s0 s s' : Locals} {shape : TreeShape} {r : Fin shape.records}
     {mode : Mode} {p : UInt64} {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
     {children : Fin (shape.children r) → Tree shape}
     (a : After env slots L0 L1 base heap0 store0 s0 (.tree shape) mode (.node r words arrays buffers children)
       heap store s [.i64 p])
@@ -81,7 +83,7 @@ theorem After.openTreeFields {Γ : List Ty} {env : Env Γ} {slots : List Slot}
         b (hSubset t x ws hold length b hb) c hc)
   rw [← shape.slots_append r] at hCombined
   have hBound := hCombined.ofHEq (shape.context_append r Γ)
-    (Env.treeFields_append shape r words children env)
+    (Env.treeFields_append shape r words arrays buffers children env)
   refine ⟨by simpa only [List.append_nil] using hWhole, a.frame.trans hFrame, hOuter,
     hBound, ?_⟩
   intro t x hm ws hold length b hb

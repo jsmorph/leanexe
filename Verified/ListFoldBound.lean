@@ -84,6 +84,8 @@ theorem body_allocs {S : List Sig} {e : Elem} {captures : List Ty}
       paramMode_default _ 0
     simp only [Var.cost, modeAt, Var.index, rootMode, reduceCtorEq, false_and,
       ↓reduceIte, Nat.zero_add]
+    rw [noFields_eq rfl arrays, noFields_eq rfl buffers]
+    rfl
 
 #print axioms next_allocs
 #print axioms next_fits
@@ -107,6 +109,8 @@ theorem body_fits {S : List Sig} {e : Elem} {captures : List Ty}
     simp only [Env.get, listBranch_cell]
     rw [← listCell_words_eq words, ← listCell_children_eq children]
     rw [TailBody.fits, next_fits, Bool.and_true]
+    rw [noFields_eq rfl arrays, noFields_eq rfl buffers]
+    rfl
 
 end ListFold
 end Verified

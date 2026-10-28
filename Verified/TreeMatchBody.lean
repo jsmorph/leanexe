@@ -9,6 +9,8 @@ theorem After.treeBody {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     {store0 store store' : Store Unit} {s0 s s' : Locals} {shape : TreeShape}
     {r : Fin shape.records} {rootMode : Mode}
     {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
     {children : Fin (shape.children r) → Tree shape}
     {fresh : List (Nat × Nat)} {t : Ty} {mode : Mode} {value : t.denote} {ws : List Value}
     (h0 : Holds env slots L0 base heap0 store0 s0)
@@ -45,7 +47,7 @@ theorem After.treeBody {Γ : List Ty} {env : Env Γ} {slots : List Slot}
   have hLength : (shape.slots r fieldBase rootMode []).length = (shape.context r []).length := by
     rw [shape.slots_length r, hCount]
   have hBound := hBody.ofHEq (shape.context_append r Γ).symm
-    (Env.treeFields_append shape r words children env).symm
+    (Env.treeFields_append shape r words arrays buffers children env).symm
   apply After.bindPrefixStep h0 hStep hFrame hOuter (Frame.refl _ _) hLength
     (by simpa only [hCount] using hBound) hBase
   · intro keep hr u x hm w hold length b hb
