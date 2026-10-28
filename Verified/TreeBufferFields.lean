@@ -152,6 +152,102 @@ theorem LocalsHold.ofFn_pairs {s : Locals} :
       rw [e1]
       exact hTail
 
+/-- The blocks of the array and buffer slots from slot `start` on of the record at `p`, the
+arrays first: each array's block and each nonempty buffer's block, at the addresses that the
+slots hold. -/
+theorem heapSlots_blocks_perm (store : Store Unit) (p : UInt64) (fields : List TreeField) :
+    ∀ start arrays buffers,
+      (slotsBlocks store p start (heapSlots fields arrays buffers)).Perm
+        ((List.ofFn fun i => [block store
+          (store.mem.read64 (slotAddress p (start + heapArraySlot fields i)))]).flatten ++
+        (List.ofFn fun i => (bufferRoots (buffers i)
+          (store.mem.read64 (slotAddress p (start + heapBufferSlot fields i)))).map
+            (block store)).flatten) := by
+  induction fields with
+  | nil => intros; simp [heapSlots, slotsBlocks]
+  | cons field rest ih =>
+    intro start arrays buffers
+    cases field with
+    | word e => exact ih _ _ _
+    | child => exact ih _ _ _
+    | array e =>
+      simp only [heapSlots, slotsBlocks]
+      rw [ofFn_flatten_cast (m := (rest.filterMap TreeField.arrayElem?).length)
+        (by simp [TreeField.arrayElem?]) (fun i => [block store
+          (store.mem.read64 (slotAddress p (start + heapArraySlot (.array e :: rest) i)))])]
+      simp only [heapArraySlot, heapBufferSlot, Nat.succ_ne_zero, ↓reduceDIte,
+        Nat.add_sub_cancel, Nat.add_zero, List.singleton_append]
+      have hIH := ih (start + 1) (fun i => arrays ⟨i.val + 1, by simp [TreeField.arrayElem?]⟩)
+        (fun i => buffers ⟨i.val, by simpa using i.isLt⟩)
+      have e : ∀ x, start + 1 + x = start + (x + 1) := fun x => by omega
+      simp only [e] at hIH
+      exact hIH.cons _
+    | bytes =>
+      simp only [heapSlots, slotsBlocks, List.nil_append]
+      rw [ofFn_flatten_cast (m := rest.count .bytes) (by simp)
+        (fun i => (bufferRoots (buffers i) (store.mem.read64
+          (slotAddress p (start + heapBufferSlot (.bytes :: rest) i)))).map (block store))]
+      simp only [heapArraySlot, heapBufferSlot, Nat.succ_ne_zero, ↓reduceDIte,
+        Nat.add_sub_cancel, Nat.add_zero]
+      have hIH := ih (start + 1 + 1) (fun i => arrays ⟨i.val, by
+          simp only [List.filterMap_cons, TreeField.arrayElem?]; exact i.isLt⟩)
+        (fun i => buffers ⟨i.val + 1, by simp⟩)
+      have e : ∀ x, start + 1 + 1 + x = start + (x + 2) := fun x => by omega
+      simp only [e] at hIH
+      refine (hIH.append_left _).trans ?_
+      rw [← List.append_assoc, ← List.append_assoc]
+      exact List.perm_append_comm.append_right _
+
+/-- The regions of the array and buffer slots from slot `start` on of the record at `p`, the
+arrays first: each array's length word and elements and each nonempty buffer's block, at the
+addresses that the slots hold. -/
+theorem heapSlots_regions_perm (store : Store Unit) (p : UInt64) (fields : List TreeField) :
+    ∀ start arrays buffers,
+      (slotsRegions store p start (heapSlots fields arrays buffers)).Perm
+        ((List.ofFn fun i => [((store.mem.read64
+          (slotAddress p (start + heapArraySlot fields i))).toNat,
+            8 * ((arrays i).size + 1))]).flatten ++
+        (List.ofFn fun i => (bufferRoots (buffers i)
+          (store.mem.read64 (slotAddress p (start + heapBufferSlot fields i)))).map
+            (block store)).flatten) := by
+  induction fields with
+  | nil => intros; simp [heapSlots, slotsRegions]
+  | cons field rest ih =>
+    intro start arrays buffers
+    cases field with
+    | word e => exact ih _ _ _
+    | child => exact ih _ _ _
+    | array e =>
+      simp only [heapSlots, slotsRegions]
+      rw [ofFn_flatten_cast (m := (rest.filterMap TreeField.arrayElem?).length)
+        (by simp [TreeField.arrayElem?]) (fun i => [((store.mem.read64
+          (slotAddress p (start + heapArraySlot (.array e :: rest) i))).toNat,
+            8 * ((arrays i).size + 1))])]
+      simp only [heapArraySlot, heapBufferSlot, Nat.succ_ne_zero, ↓reduceDIte,
+        Nat.add_sub_cancel, Nat.add_zero, List.singleton_append]
+      have hIH := ih (start + 1) (fun i => arrays ⟨i.val + 1, by simp [TreeField.arrayElem?]⟩)
+        (fun i => buffers ⟨i.val, by simpa using i.isLt⟩)
+      have e : ∀ x, start + 1 + x = start + (x + 1) := fun x => by omega
+      simp only [e] at hIH
+      exact hIH.cons _
+    | bytes =>
+      simp only [heapSlots, slotsRegions, List.nil_append]
+      rw [ofFn_flatten_cast (m := rest.count .bytes) (by simp)
+        (fun i => (bufferRoots (buffers i) (store.mem.read64
+          (slotAddress p (start + heapBufferSlot (.bytes :: rest) i)))).map (block store))]
+      simp only [heapArraySlot, heapBufferSlot, Nat.succ_ne_zero, ↓reduceDIte,
+        Nat.add_sub_cancel, Nat.add_zero]
+      have hIH := ih (start + 1 + 1) (fun i => arrays ⟨i.val, by
+          simp only [List.filterMap_cons, TreeField.arrayElem?]; exact i.isLt⟩)
+        (fun i => buffers ⟨i.val + 1, by simp⟩)
+      have e : ∀ x, start + 1 + 1 + x = start + (x + 2) := fun x => by omega
+      simp only [e] at hIH
+      refine (hIH.append_left _).trans ?_
+      rw [← List.append_assoc, ← List.append_assoc]
+      exact List.perm_append_comm.append_right _
+
+#print axioms heapSlots_blocks_perm
+#print axioms heapSlots_regions_perm
 #print axioms heapFieldBlocks_perm
 #print axioms FieldsNormal.drop_prefix
 #print axioms FieldsNormal.bytesFields
