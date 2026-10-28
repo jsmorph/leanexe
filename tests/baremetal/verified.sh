@@ -2,7 +2,8 @@
 # The cases of tests/native/verified.sh under QEMU's virt machine for AArch64, without libc or an
 # operating system (docs/native-bare-metal.md, milestone B1).  native-verified writes the C text,
 # the glue, and the exports of each module of tests/verified/modules.txt.  CompCert compiles
-# them with tools/native-host.c, whose main becomes host_main, and with the C library of
+# them, each translation with -fno-common, as tools/baremetal/build.sh compiles its inputs, with
+# tools/native-host.c, whose main becomes host_main, and with the C library of
 # tools/baremetal/libc, and tools/baremetal/build.sh links them with the startup code and a stack
 # of STACK_SIZE bytes, 0x400000 by default.  The host reads its command line from a block that
 # QEMU's generic loader places at 0x7F000000.  Each case runs in its own QEMU process, JOBS at a
@@ -70,8 +71,8 @@ while IFS=: read -r module constant name; do
   fi
   b=$out/$name.bm
   mkdir -p "$b"
-  if ! { "$ccomp" "${stdlib[@]}" -c "$out/$name.c" -o "$b/module.o" &&
-      "$ccomp" "${stdlib[@]}" -S "$out/$name.c" -o "$b/module.s" &&
+  if ! { "$ccomp" "${stdlib[@]}" -fno-common -c "$out/$name.c" -o "$b/module.o" &&
+      "$ccomp" "${stdlib[@]}" -fno-common -S "$out/$name.c" -o "$b/module.s" &&
       tools/baremetal/stack-bound.sh "$out/$name.depth" "$b/module.s" >"$b/bounds.txt" &&
       "$ccomp" "${stdlib[@]}" -I tools -DLX_STACK_MARK -c "$out/${name}_glue.c" -o "$b/glue.o" &&
       tools/baremetal/build.sh "$b/host.elf" "$out/host.o" "$out/libc.o" "$b/glue.o" \
