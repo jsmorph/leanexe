@@ -36,7 +36,7 @@ theorem RecordStorage.seal {width : Nat} {heap : Heap} {store : Store Unit}
     (h : RecordStorage width heap store ptr) (hAt : heap.At store)
     (hLength : slots.length = width) (hShort : width ≤ 64)
     (hCount : store.mem.read64 (ptr - 40).toUInt32 = 1)
-    (hSlots : SlotsOwned heap store ptr 0 slots)
+    (hSlots : SlotsOwned heap store ptr 0 slots) (hLengths : BufferLengths slots)
     (hApart : (block store ptr :: slotsBlocks store ptr 0 slots).Pairwise regionsDisjoint) :
     let store' := recordSeal width store ptr (maskOf slots)
     heap.At store' ∧ NodeOwned heap store' ptr (.record slots) ∧
@@ -80,7 +80,7 @@ theorem RecordStorage.seal {width : Nat} {heap : Heap} {store : Store Unit}
         have := (List.pairwise_cons.mp hApart).1 b hb
         simp only [regionsDisjoint, block] at this
         omega), SlotsOwned.regions ptr 0 slots hSlots b hb⟩)
-  refine ⟨hAt3, hRaw3.record hLength hCount3 hKind3 hWidth3 hMask3 hShort hSlots3, ?_,
+  refine ⟨hAt3, hRaw3.record hLength hCount3 hKind3 hWidth3 hMask3 hShort hSlots3 hLengths, ?_,
     Step.ofWritesRange hAt3 hWrites (by simp only [block]; omega)
       (by simp only [block]; omega)⟩
   change block st3 ptr :: slotsBlocks st3 ptr 0 slots = _
@@ -93,6 +93,7 @@ theorem RecordStorage.assemble {width : Nat} {heap : Heap} {store : Store Unit}
     (hLength : words.length = width) (hShort : width ≤ 64)
     (hCount : store.mem.read64 (ptr - 40).toUInt32 = 1)
     (hValues : List.Forall₂ (fun word slot => slot.ValueOwned heap store word) words slots)
+    (hLengths : BufferLengths slots)
     (hApart : (block store ptr :: fieldBlocks store words slots).Pairwise regionsDisjoint) :
     let store' := recordAssemble width store ptr words (maskOf slots)
     heap.At store' ∧ NodeOwned heap store' ptr (.record slots) ∧
@@ -118,7 +119,7 @@ theorem RecordStorage.assemble {width : Nat} {heap : Heap} {store : Store Unit}
     rw [block_eq hCap1, hSlotBlocks, hBlocks1]
     exact hApart
   obtain ⟨hAt2, hNode2, hBlocks2, hStep2⟩ := hRaw1.seal hAt1
-    (by rw [← hLength]; exact hValues.length_eq.symm) hShort hCount1 hSlots1 hApart1
+    (by rw [← hLength]; exact hValues.length_eq.symm) hShort hCount1 hSlots1 hLengths hApart1
   refine ⟨hAt2, hNode2, ?_, ?_⟩
   · change Node.blocks (recordSeal width (recordWriteValues ptr 0 words store) ptr (maskOf slots))
       ptr (.record slots) = _
