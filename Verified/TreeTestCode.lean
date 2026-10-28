@@ -13,13 +13,15 @@ def copyBranch : LeanExe.Pipeline.Slot → UInt32
   | .child (.record _) => 1
   | _ => 0
 
+/-- The condition of the slot test: the slot is a child pointer, and the word is not null. -/
 theorem treeCopyCondition_spec {shape : TreeShape} {heap : Heap} {store : Store Unit}
     {parent : UInt64} {record : CopyRecord} (h : record.Holds shape heap store parent)
-    (hBound : record.next < record.slots.length) :
+    (hBound : record.next < record.slots.length)
+    (hNotArray : ∀ words, record.slots[record.next] ≠ .array words) :
     treeCopyCondition (maskOf record.slots) record.next
       (store.mem.read64 (slotAddress record.source record.next)) =
       copyBranch record.slots[record.next] := by
-  obtain ⟨r, hLength, -, -, hLayout⟩ := id h.layout
+  obtain ⟨r, hLength, -, -, hLayout, -⟩ := id h.layout
   have hBit : ((maskOf record.slots >>> (UInt64.ofNat record.next % 64)) &&& 1) =
       record.slots[record.next].bit :=
     maskOf_test _ (by rw [hLength]; exact shape.width_le r) _ hBound
@@ -36,9 +38,27 @@ theorem treeCopyCondition_spec {shape : TreeShape} {heap : Heap} {store : Store 
     | record children =>
       have hNonzero := hBorrow.1.1.nonzero
       simp [treeCopyCondition, hBit, hSlot, Slot.bit, copyBranch, hNonzero]
-  | array _ | bytes _ =>
-    rcases SlotsLayout.word_or_child hLayout record.next hBound with ⟨_, he⟩ | ⟨_, he⟩ <;>
-      rw [hSlot] at he <;> cases he
+  | array words => exact absurd hSlot (hNotArray words)
+  | bytes data => exact absurd hSlot (hLayout.not_bytes record.next hBound data)
+
+def treeCopyArrayCondition (mask : UInt64) (i : Nat) : UInt32 :=
+  if ((mask >>> (UInt64.ofNat i % 64)) &&& 1) = 0 then 0 else 1
+
+def arrayBranch : LeanExe.Pipeline.Slot → UInt32
+  | .array _ => 1
+  | _ => 0
+
+/-- The condition of the array test: the slot is an array slot. -/
+theorem treeCopyArrayCondition_spec {shape : TreeShape} {heap : Heap} {store : Store Unit}
+    {parent : UInt64} {record : CopyRecord} (h : record.Holds shape heap store parent)
+    (hBound : record.next < record.slots.length) :
+    treeCopyArrayCondition (arrayMaskOf record.slots) record.next =
+      arrayBranch record.slots[record.next] := by
+  obtain ⟨r, hLength, -, -, -, -⟩ := id h.layout
+  have hBit := arrayMaskOf_test _ (by rw [hLength]; exact shape.width_le r) _ hBound
+  unfold treeCopyArrayCondition
+  rw [hBit]
+  cases record.slots[record.next] <;> simp [Slot.arrayBit, arrayBranch]
 
 /-- The mask code of the slot test pushes the mask of the record whose source is at local
 `src`. -/
@@ -54,6 +74,36 @@ theorem CopyRecord.Holds.maskPushes {m : Module} {host : HostEnv Unit} {shape : 
   rw [hMask]
   exact PushesWord.selectCode r shape.mask (PushesWord.tag hSrc hRoom)
     (fun ht => NodeBorrowed.tag h.borrowed hPrefix ht)
+
+/-- The mask code of the array test pushes the array mask of the record whose source is at local
+`src`. -/
+theorem CopyRecord.Holds.arrayMaskPushes {m : Module} {host : HostEnv Unit} {shape : TreeShape}
+    {heap : Heap} {store : Store Unit} {parent : UInt64} {record : CopyRecord} {s : Locals}
+    {src : Nat} (h : record.Holds shape heap store parent) (hHeap : heap.At store)
+    (hSrc : s.get src = some (.i64 record.source)) :
+    PushesWord m host (shape.selectCode (treeTagCode src) shape.arrayMask) store s
+      (arrayMaskOf record.slots) := by
+  obtain ⟨r, -, -, hPrefix, -, hArrays⟩ := id h.layout
+  have hSlotted : record.slots ≠ [] := (NodeLayout.slotted h.layout).1
+  obtain ⟨-, hRoom⟩ := NodeBorrowed.tagRoom h.borrowed hHeap hSlotted
+  rw [hArrays]
+  exact PushesWord.selectCode r shape.arrayMask (PushesWord.tag hSrc hRoom)
+    (fun ht => NodeBorrowed.tag h.borrowed hPrefix ht)
+
+theorem wp_treeCopyArrayTest {m : Module} {host : HostEnv Unit} {store : Store Unit}
+    {s : Locals} {shape : TreeShape} {base i : Nat} {mask : UInt64}
+    {rest : Program} {Q : Assertion Unit}
+    (hMask : PushesWord m host (shape.selectCode (treeTagCode (base + 3)) shape.arrayMask) store
+      s mask)
+    (hIndex : s.get (base + 2) = some (.i64 (UInt64.ofNat i)))
+    (hNext : wp m rest Q store
+      { s with values := .i32 (treeCopyArrayCondition mask i) :: s.values } host) :
+    wp m (treeCopyArrayTest shape base ++ rest) Q store s host := by
+  rw [treeCopyArrayTest, List.append_assoc]
+  apply hMask s.values
+  simp only [Locals.get] at hIndex
+  by_cases hBit : ((mask >>> (UInt64.ofNat i % 64)) &&& 1) = 0 <;>
+    simpa [wp_simp, hIndex, treeCopyArrayCondition, hBit] using hNext
 
 theorem wp_treeCopyTest {m : Module} {host : HostEnv Unit} {store : Store Unit}
     {s : Locals} {shape : TreeShape} {base i : Nat} {word mask : UInt64}
@@ -74,5 +124,8 @@ theorem wp_treeCopyTest {m : Module} {host : HostEnv Unit} {store : Store Unit}
 #print axioms treeCopyCondition_spec
 #print axioms CopyRecord.Holds.maskPushes
 #print axioms wp_treeCopyTest
+#print axioms treeCopyArrayCondition_spec
+#print axioms CopyRecord.Holds.arrayMaskPushes
+#print axioms wp_treeCopyArrayTest
 
 end Verified

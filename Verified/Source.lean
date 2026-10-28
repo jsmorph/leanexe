@@ -259,7 +259,7 @@ def TreeShape.arrayTy (shape : TreeShape) (r : Fin shape.records) (i : Fin (shap
 /-- The number of variables that a match on record constructor `r` binds: its header, its words,
 its children, its arrays, and its buffers. -/
 def TreeShape.bindCount (shape : TreeShape) (r : Fin shape.records) : Nat :=
-  1 + shape.words r + shape.arrays r + shape.buffers r + shape.children r
+  1 + shape.words r + shape.children r + shape.arrays r + shape.buffers r
 
 def TreeShape.context (shape : TreeShape) (r : Fin shape.records) (Γ : List Ty) : List Ty :=
   .treeHeader shape r :: (tysOfFn (shape.words r) (shape.wordTy r) ++
@@ -663,8 +663,8 @@ def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .append _ _ => false
   | _, _, .treeNil _ _ => false
   | _, _, .treeNode _ _ words arrays buffers children =>
-    (argsAny fun i => (words i).depthCalls) || (argsAny fun i => (arrays i).depthCalls) ||
-      (argsAny fun i => (buffers i).depthCalls) || argsAny fun i => (children i).depthCalls
+    (argsAny fun i => (words i).depthCalls) || (argsAny fun i => (children i).depthCalls) ||
+      (argsAny fun i => (arrays i).depthCalls) || argsAny fun i => (buffers i).depthCalls
   | _, _, .treeCase (shape := shape) _ empty nodes =>
     (if h : shape.hasNull = true then (empty h).depthCalls else false) ||
       argsAny fun r => (nodes r).depthCalls
@@ -718,8 +718,8 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .treeNil _ _, _ => false
   | _, _, .treeNode _ reuse words arrays buffers children, i =>
     optionVarUses reuse i || (argsAny fun j => (words j).uses i) ||
-      (argsAny fun j => (arrays j).uses i) || (argsAny fun j => (buffers j).uses i) ||
-      argsAny fun j => (children j).uses i
+      (argsAny fun j => (children j).uses i) || (argsAny fun j => (arrays j).uses i) ||
+      argsAny fun j => (buffers j).uses i
   | _, _, .treeCase (shape := shape) x empty nodes, i =>
     (i == x.index) || (if h : shape.hasNull = true then (empty h).uses i else false) ||
       argsAny fun r => (nodes r).uses (i + shape.bindCount r)
@@ -772,8 +772,8 @@ def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .treeNil _ _ => 0
   | _, _, .treeNode _ reuse words arrays buffers children =>
     optionVarMask reuse ||| (argsMask fun j => (words j).useMask) |||
-      (argsMask fun j => (arrays j).useMask) ||| (argsMask fun j => (buffers j).useMask) |||
-      argsMask fun j => (children j).useMask
+      (argsMask fun j => (children j).useMask) ||| (argsMask fun j => (arrays j).useMask) |||
+      argsMask fun j => (buffers j).useMask
   | _, _, .treeCase (shape := shape) x empty nodes =>
     (1 <<< x.index) ||| (if h : shape.hasNull = true then (empty h).useMask else 0) |||
       argsMask fun r => (nodes r).useMask >>> shape.bindCount r
@@ -880,8 +880,8 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .append _ _ => true
   | _, _, .treeNil _ _ => true
   | _, _, .treeNode _ _ words arrays buffers children =>
-    !(argsAny fun i => !(words i).placeArgs) && !(argsAny fun i => !(arrays i).placeArgs) &&
-      !(argsAny fun i => !(buffers i).placeArgs) && !(argsAny fun i => !(children i).placeArgs)
+    !(argsAny fun i => !(words i).placeArgs) && !(argsAny fun i => !(children i).placeArgs) &&
+      !(argsAny fun i => !(arrays i).placeArgs) && !(argsAny fun i => !(buffers i).placeArgs)
   | _, _, .treeCase (shape := shape) _ empty nodes =>
     (if h : shape.hasNull = true then (empty h).placeArgs else true) &&
       !(argsAny fun r => !(nodes r).placeArgs)

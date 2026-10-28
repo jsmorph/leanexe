@@ -31,7 +31,7 @@ theorem wp_treeCopyDescendInv {m : Module} (hm : Runtime m) {host : HostEnv Unit
       [.localGet (base + 5), .localSet (base + 1)] ++ rest) Q store s host := by
   have hCurrent := h.frames.current
   have hLayout : NodeLayout shape (.record children) := by
-    obtain ⟨-, -, -, -, hSlots⟩ := id hCurrent.layout
+    obtain ⟨-, -, -, -, hSlots, -⟩ := id hCurrent.layout
     exact SlotsLayout.child (slots := current.slots) hSlots current.next hBound
       (.record children) hSlot
   have hBorrow := SlotsBorrowed.get current.slots 0 hCurrent.borrowed.2 current.next hBound

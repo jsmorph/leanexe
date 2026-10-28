@@ -211,8 +211,8 @@ def Expr.grows (flags : Flags S) : {Γ : List Ty} → {t : Ty} → Expr S Γ t �
   | _, _, .get _ i | _, _, .eraseAt _ i | _, _, .bytesGet _ i => i.grows flags
   | _, _, .set _ i v => i.grows flags || v.grows flags
   | _, _, .treeNode _ _ words arrays buffers children =>
-    (argsAny fun i => (words i).grows flags) || (argsAny fun i => (arrays i).grows flags) ||
-      (argsAny fun i => (buffers i).grows flags) || (argsAny fun i => (children i).grows flags)
+    (argsAny fun i => (words i).grows flags) || (argsAny fun i => (children i).grows flags) ||
+      (argsAny fun i => (arrays i).grows flags) || (argsAny fun i => (buffers i).grows flags)
   | _, _, .treeCase (shape := shape) _ empty nodes =>
     (if h : shape.hasNull = true then (empty h).grows flags else false) ||
       argsAny fun r => (nodes r).grows flags
@@ -853,9 +853,9 @@ def Expr.fits (funs : Funs S) (fits : Fits S) :
   | _, _, .treeNil _ _, _ => true
   | _, _, .treeNode _ _ words arrays buffers children, env =>
     (argsAll fun i => (words i).fits funs fits env) &&
+      (argsAll fun i => (children i).fits funs fits env) &&
       (argsAll fun i => (arrays i).fits funs fits env) &&
-      (argsAll fun i => (buffers i).fits funs fits env) &&
-      (argsAll fun i => (children i).fits funs fits env)
+      (argsAll fun i => (buffers i).fits funs fits env)
   | _, _, .treeCase (shape := shape) x empty nodes, env =>
     match env.get x with
     | .nil h => (empty h).fits funs fits env
@@ -970,9 +970,9 @@ theorem Expr.fits_of_depthCalls (funs : Funs S) (fits : Fits S) {Γ : List Ty} {
     simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd
     simp only [Expr.fits, Bool.and_eq_true]
     exact ⟨⟨⟨argsAll_true fun i => hw i (argsAny_eq_false hd.1.1.1 i) env,
-      argsAll_true fun i => ha i (argsAny_eq_false hd.1.1.2 i) env⟩,
-      argsAll_true fun i => hb i (argsAny_eq_false hd.1.2 i) env⟩,
-      argsAll_true fun i => hc i (argsAny_eq_false hd.2 i) env⟩
+      argsAll_true fun i => hc i (argsAny_eq_false hd.1.1.2 i) env⟩,
+      argsAll_true fun i => ha i (argsAny_eq_false hd.1.2 i) env⟩,
+      argsAll_true fun i => hb i (argsAny_eq_false hd.2 i) env⟩
   | treeCase x empty nodes he hn =>
     intro hd env
     simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd

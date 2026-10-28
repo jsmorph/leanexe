@@ -10,13 +10,14 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     {r : Fin shape.records}
     {heap heap1 heap2 : Heap} {store store1 store2 : Store Unit} {s s1 s2 : Locals}
     {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
     {children : Fin (shape.children r) → Tree shape}
     {ws : List Value} {p : UInt64} {m : Module} {host : HostEnv Unit}
     {rest : Program} {Q : Assertion Unit}
     (h0 : Holds env slots L0 base heap store s)
     (a : FieldsAfter env slots L0 L1 base heap store s
-      (Env.prependFn (shape.words r) (shape.wordTy r) words
-        (Env.prependRepeat (.tree shape) (shape.children r) children .nil)) heap1 store1 s1 ws)
+      (shape.fieldEnv r words arrays buffers children) heap1 store1 s1 ws)
     (hStep : Step heap1 store1 (Holds.KeepDying env slots L1 live store1 s1)
       heap2 store2 [block store2 p])
     (hFrame : Frame base s1 s2) (hHolds : Holds env slots live base heap2 store2 s2)
@@ -25,8 +26,7 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     (hCount : store2.mem.read64 (p - 40).toUInt32 = 1)
     (hPtr : s2.get ptr = some (.i64 p)) (hStack : s2.values = s.values)
     (hh : s2.positions = h)
-    (hLocals : LocalsHold s2 fieldBase
-      (shape.wordTypes r ++ List.replicate (shape.children r) .i64) ws)
+    (hLocals : LocalsHold s2 fieldBase (shape.fieldTypes r) ws)
     (hRootApart : Holds.Apart env slots live store2 s2 (.treeHeader shape r) .owned [.i64 p] .unit)
     (hNext : ∀ store',
       After env slots L0 live base heap store s (.tree shape) .owned (.node r words arrays buffers children)
@@ -35,13 +35,15 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     wp m (shape.tagStoreCode r ptr ++
       treeStoreFields h ptr (shape.wordTypes r) fieldBase (fieldBase + shape.words r)
         shape.fieldStart (shape.fields r) ++
+      treeStoreHeaps ptr (shape.kinds r) (fieldBase + shape.words r + shape.children r)
+        (fieldBase + shape.words r + shape.children r + shape.arrays r)
+        (shape.fieldStart + (shape.fields r).length) ++
       sealRecordCode (shape.width r) ptr (shape.mask r) ++ (.localGet ptr :: rest))
       Q store2 s2 host := by
   obtain ⟨a2, hBoth, hSame, hFresh⟩ := a.advance h0 hStep hFrame hHolds hL1 hLive
   have hApart : (block store2 p ::
-      (Env.prependFn (shape.words r) (shape.wordTy r) words
-        (Env.prependRepeat (.tree shape) (shape.children r) children .nil)).blocks store2
-          ws).Pairwise regionsDisjoint := by
+      (shape.fieldEnv r words arrays buffers children).blocks store2 ws).Pairwise
+        regionsDisjoint := by
     refine List.pairwise_cons.mpr ⟨?_, a2.pairwise⟩
     intro b hb
     rw [hSame] at hb

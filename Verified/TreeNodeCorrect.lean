@@ -14,25 +14,34 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
     (reuse : Option (Var Γ (.treeHeader shape r)))
     (words : (i : Fin (shape.words r)) → Expr S Γ (shape.wordTy r i))
+    (arrays : (i : Fin (shape.arrays r)) → Expr S Γ (shape.arrayTy r i))
+    (buffers : Fin (shape.buffers r) → Expr S Γ .bytes)
     (children : Fin (shape.children r) → Expr S Γ (.tree shape))
     (wordSpec : ∀ i env slots paid live,
       CodeSpec (pool := pool) m funs flags bounds fits host pv (words i) env slots paid live)
+    (arraySpec : ∀ i env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (arrays i) env slots paid live)
     (childSpec : ∀ i env slots paid live,
       CodeSpec (pool := pool) m funs flags bounds fits host pv (children i) env slots paid live) :
     ∀ env slots paid live,
-      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.treeNode r reuse words children)
-        env slots paid live := by
+      CodeSpec (pool := pool) m funs flags bounds fits host pv
+        (Expr.treeNode r reuse words arrays buffers children) env slots paid live := by
   intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom hPlace
     rest Q hTrap hNext
-  let e := Expr.treeNode r reuse words children
+  let e := Expr.treeNode r reuse words arrays buffers children
   let ps : List Ty := tysOfFn (shape.words r) (shape.wordTy r) ++
-    (List.replicate (shape.children r) (.tree shape) ++ [])
-  let args := treeArgs words children
+    (List.replicate (shape.children r) (.tree shape) ++
+      (tysOfFn (shape.arrays r) (shape.arrayTy r) ++
+        (List.replicate (shape.buffers r) .bytes ++ [])))
+  let args := treeArgs words children arrays buffers
   let kept := fun k => live k || optionVarUses reuse k
   let L := fieldLive args.get kept
   let cost := argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args.get env)
-  have hLen : ps.length = shape.words r + shape.children r := by simp [ps, tysOfFn_length]
-  have hIn : L 0 = fun i => live i || e.uses i := treeNode_entryLive reuse words children live
+  have hLen : ps.length =
+      shape.words r + shape.children r + shape.arrays r + shape.buffers r := by
+    simp [ps, tysOfFn_length, Nat.add_assoc]
+  have hIn : L 0 = fun i => live i || e.uses i :=
+    treeNode_entryLive reuse words arrays buffers children live
   have hEnd : L ps.length = kept := funext (fieldLive_end args.get kept)
   have hVars0 : Holds env slots (L 0) base heap store s := by rw [hIn]; exact hVars
   have hKept : ∀ i, kept i = true → L 0 i = true := by
@@ -45,59 +54,82 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
     (paid := paid) (L 0) kept live hKept hLive
   have hCost : cost + treeParentCost shape r reuse slots live =
       e.allocs funs flags bounds (slots.map Slot.mode) paid live env :=
-    treeNode_fieldCost reuse words children funs flags bounds slots paid live env
+    treeNode_fieldCost reuse words arrays buffers children funs flags bounds slots paid live env
   have hTypes : ∀ i : Fin ps.length, (ps.get i).width = 1 :=
-    treeArgs_forall (fun {t} _ (_ : Expr S Γ t) => t.width = 1) words children
-      (fun i => shape.elem_width r i) (fun _ => rfl)
+    treeArgs_forall (fun {t} _ (_ : Expr S Γ t) => t.width = 1) words children arrays buffers
+      (fun i => shape.elem_width r i) (fun _ => rfl) (fun _ => rfl)
+      (fun i => (shape.no_buffer r i).elim)
   have hArgsSpec : ∀ i live,
       CodeSpec (pool := pool) m funs flags bounds fits host pv (args.get i) env slots paid live :=
     treeArgs_forall (fun {t} _ (value : Expr S Γ t) => ∀ live,
-      CodeSpec (pool := pool) m funs flags bounds fits host pv value env slots paid live) words children
+      CodeSpec (pool := pool) m funs flags bounds fits host pv value env slots paid live) words
+      children arrays buffers
       (fun i => wordSpec i env slots paid) (fun i => childSpec i env slots paid)
+      (fun i => arraySpec i env slots paid) (fun i => (shape.no_buffer r i).elim)
   simp only [Expr.placeArgs, Bool.and_eq_true, Bool.not_eq_true'] at hPlace
   have hArgsPlace : ∀ i, (args.get i).placeArgs = true :=
     treeArgs_forall (fun {t} _ (value : Expr S Γ t) => value.placeArgs = true) words children
-      (fun i => by simpa using argsAny_eq_false hPlace.1 i)
+      arrays buffers
+      (fun i => by simpa using argsAny_eq_false hPlace.1.1.1 i)
+      (fun i => by simpa using argsAny_eq_false hPlace.1.1.2 i)
+      (fun i => by simpa using argsAny_eq_false hPlace.1.2 i)
       (fun i => by simpa using argsAny_eq_false hPlace.2 i)
   have hArgsD : ∀ i, (!(args.get i).fits funs fits env) = true →
       (!(e.fits funs fits env)) = true := by
     apply treeArgs_forall (fun {t} _ (value : Expr S Γ t) =>
       (!(value.fits funs fits env)) = true → (!(e.fits funs fits env)) = true) words children
+      arrays buffers
     · intro i hi
       have hf : (words i).fits funs fits env = false := by simpa using hi
       simp only [e, Expr.fits, argsAll_false (fun j => (words j).fits funs fits env) i hf,
-        Bool.false_and, Bool.not_false]
+        Bool.false_and, Bool.and_false, Bool.not_false]
     · intro i hi
       have hf : (children i).fits funs fits env = false := by simpa using hi
       simp only [e, Expr.fits, argsAll_false (fun j => (children j).fits funs fits env) i hf,
-        Bool.and_false, Bool.not_false]
+        Bool.false_and, Bool.and_false, Bool.not_false]
+    · intro i hi
+      have hf : (arrays i).fits funs fits env = false := by simpa using hi
+      simp only [e, Expr.fits, argsAll_false (fun j => (arrays j).fits funs fits env) i hf,
+        Bool.false_and, Bool.and_false, Bool.not_false]
+    · intro i
+      exact (shape.no_buffer r i).elim
   have hWidths : ∀ i,
       base + shape.bindCount r + max (args.get i).width (copyWidth (ps.get i)) ≤ h := by
     simp only [Expr.width] at hRoom
+    let W := argsMax fun j => (words j).width
+    let C := argsMax fun j => max (children j).width (copyWidth (.tree shape))
+    let A := argsMax fun j => max (arrays j).width (copyWidth (shape.arrayTy r j))
+    let B := argsMax fun j => max (buffers j).width (copyWidth .bytes)
+    have hW := Nat.le_max_left W (max C (max A B))
+    have hCAB := Nat.le_max_right W (max C (max A B))
+    have hC := Nat.le_max_left C (max A B)
+    have hAB := Nat.le_max_right C (max A B)
+    have hA := Nat.le_max_left A B
     apply treeArgs_forall (fun {t} _ (value : Expr S Γ t) =>
-      base + shape.bindCount r + max value.width (copyWidth t) ≤ h) words children
+      base + shape.bindCount r + max value.width (copyWidth t) ≤ h) words children arrays buffers
     · intro i
       have hi := le_argsMax (fun j => (words j).width) i
-      have hm := Nat.le_max_left (argsMax fun j => (words j).width)
-        (argsMax fun j => max (children j).width (copyWidth (.tree shape)))
       have hCopy : copyWidth (shape.wordTy r i) = 0 := by
         simp only [copyWidth, TreeShape.wordTy, Ty.scalar, ↓reduceIte]
       rw [hCopy, Nat.max_zero]
       omega
     · intro i
       have hi := le_argsMax (fun j => max (children j).width (copyWidth (.tree shape))) i
-      have hm := Nat.le_max_right (argsMax fun j => (words j).width)
-        (argsMax fun j => max (children j).width (copyWidth (.tree shape)))
       omega
+    · intro i
+      have hi := le_argsMax (fun j => max (arrays j).width (copyWidth (shape.arrayTy r j))) i
+      omega
+    · intro i
+      exact (shape.no_buffer r i).elim
   have hParentRoom : base < h := by
     have hb : 1 ≤ shape.bindCount r := by simp only [TreeShape.bindCount]; omega
     simp only [Expr.width] at hRoom
     omega
   have hValues : (Env.ofFn fun i => (args.get i).denote funs env) =
-      Env.prependFn (shape.words r) (shape.wordTy r) (fun i => (words i).denote funs env)
-        (Env.prependRepeat (.tree shape) (shape.children r)
-          (fun i => (children i).denote funs env) .nil) :=
-    (Args.denote_eq_ofFn funs env args).symm.trans (treeArgs_denote funs env words children)
+      shape.fieldEnv r (fun i => (words i).denote funs env) (fun i => (arrays i).denote funs env)
+        (fun i => (buffers i).denote funs env) (fun i => (children i).denote funs env) :=
+    (Args.denote_eq_ofFn funs env args).symm.trans
+      (treeArgs_denote funs env words children arrays buffers)
   have hBudget : TrapOK (!(e.fits funs fits env) || !decide (heap.Within store m
       (dyingPot store s env slots paid (L 0) live +
         e.allocs funs flags bounds (slots.map Slot.mode) paid live env))) Q := by
@@ -112,7 +144,10 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
     (treeParentCode shape r reuse slots base live ++ (shape.tagStoreCode r base ++
       (treeStoreFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
         shape.fieldStart (shape.fields r) ++
-        (sealRecordCode (shape.width r) base (shape.mask r) ++ (.localGet base :: rest))))) Q
+        (treeStoreHeaps base (shape.kinds r) (base + 1 + shape.words r + shape.children r)
+          (base + 1 + shape.words r + shape.children r + shape.arrays r)
+          (shape.fieldStart + (shape.fields r).length) ++
+          (sealRecordCode (shape.width r) base (shape.mask r) ++ (.localGet base :: rest)))))) Q
     (hBudget.allocPart id (fun _ hw => hw.mono (by rw [hEnd, hSplit, ← hCost]; omega)))
     (fun heap1 store1 s1 ws aFields hFrameFields holdFields hTopFields => by
       rw [hEnd] at aFields hTopFields
@@ -127,21 +162,22 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
           (by rw [hSplit, ← hCost]; omega) (a.step.cap m)))
         fun heap2 store2 s2 p hRootStep hRootFrame hRootHolds hRaw hCount hPtr hStack hOther hApart
           hTopRoot => ?_
-      have holdFields2 : LocalsHold s2 (base + 1)
-          (shape.wordTypes r ++ List.replicate (shape.children r) .i64) ws := by
+      have holdFields2 : LocalsHold s2 (base + 1) (shape.fieldTypes r) ws := by
         intro k hk
         have hold := holdFields k hk
         rw [hRootFrame.positions, hOther _ (by
-          cases ((shape.wordTypes r ++ List.replicate (shape.children r) ValueType.i64).getD k
-              .i64) <;>
-            simp only [slotIndex] <;> omega)]
+          cases (shape.fieldTypes r).getD k .i64 <;> simp only [slotIndex] <;> omega)]
         exact hold
       have hFinish := wp_finishTree (m := m) (host := host) (Q := Q) (rest := rest)
         hVars0 a hRootStep hRootFrame hRootHolds hKept hLive hRaw hCount hPtr
         hStack (hRootFrame.positions.trans (a.frame.positions.trans hh)) holdFields2 hApart
         (fun store3 hAfter => by
           refine hNext heap2 store3 s2 [.i64 p]
-            (by simpa only [hIn, e, Expr.mode, Expr.denote] using hAfter) fun hf => ?_
+            (by
+              have hNorm := normalFamily_eq (α := fun i => Array (shape.arrayElem r i).denote)
+                (fun i => (arrays i).denote funs env)
+              simpa only [hIn, e, Expr.mode, Expr.denote, normalFamily_eq, hNorm] using hAfter)
+            fun hf => ?_
           have hd : (!(e.fits funs fits env)) = false := by simpa only [Bool.not_eq_false'] using hf
           have hTop1 := hTopFields hd
           change heap2.top.toNat ≤ heap.top.toNat +

@@ -184,6 +184,39 @@ theorem treeNode_child_rep {mode : Mode} {heap : Heap} {store : Store Unit}
     rw [recordSlots_blocks] at hApart
     exact treeSlots_child_owned hFields (List.pairwise_append.mp hApart).1 i
 
+theorem TreeShape.heapArraySlot_lt_width (shape : TreeShape) (r : Fin shape.records)
+    (i : Fin (shape.arrays r)) :
+    shape.fieldStart + (shape.fields r).length + heapArraySlot (shape.kinds r) i <
+      shape.width r := by
+  have hLt := heapArraySlot_lt (shape.kinds r) (fun _ => #[]) (fun _ => .empty) i
+  rw [heapSlots_length] at hLt
+  rw [shape.fieldStart_tagSlots r]
+  unfold TreeShape.width TreeShape.heapWidth
+  omega
+
+/-- The array of array field `i` of a record whose slots are owned. -/
+theorem recordSlots_array_owned {heap : Heap} {store : Store Unit} {shape : TreeShape}
+    {r : Fin shape.records} {p : UInt64} {words : Fin (shape.words r) → UInt64}
+    {arrays : Fin (shape.arrays r) → Array UInt64}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes} {children : Fin (shape.children r) → Node}
+    (hSlots : SlotsOwned heap store p 0 (shape.recordSlots r words arrays buffers children))
+    (i : Fin (shape.arrays r)) :
+    heap.Owned store (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+      heapArraySlot (shape.kinds r) i))) (arrays i) := by
+  have hLt := heapArraySlot_lt (shape.kinds r) arrays buffers i
+  have hGet := heapArraySlot_get (shape.kinds r) arrays buffers i hLt
+  have hPrefixLength : (shape.tagSlots r ++ treeSlots (shape.fields r) words children).length =
+      shape.fieldStart + (shape.fields r).length := by
+    rw [List.length_append, ← shape.fieldStart_tagSlots r]
+    exact congrArg (shape.fieldStart + ·) (treeSlots_length _ _ _)
+  have hAll : SlotsOwned heap store p 0 (shape.tagSlots r ++ treeSlots (shape.fields r) words
+      children ++ heapSlots (shape.kinds r) arrays buffers) := hSlots
+  obtain ⟨-, hHeap⟩ := (SlotsOwned.append_iff _ _ _).mp hAll
+  rw [Nat.zero_add, hPrefixLength] at hHeap
+  have hi := SlotsOwned.get _ _ hHeap _ hLt
+  rw [hGet] at hi
+  exact hi.1
+
 /-- The array of array field `i` of a record, held in the record's mode. -/
 theorem treeNode_array_rep {mode : Mode} {heap : Heap} {store : Store Unit}
     {shape : TreeShape} {r : Fin shape.records} {p : UInt64}
@@ -212,13 +245,6 @@ theorem treeNode_array_rep {mode : Mode} {heap : Heap} {store : Store Unit}
     have hi := SlotsBorrowed.get _ _ hHeap _ hLt
     rw [hGet] at hi
     exact hi.1
-  · have hSlots : SlotsOwned heap store p 0 (shape.tagSlots r ++
-        treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode) ++
-        heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) := h.1.2
-    obtain ⟨-, hHeap⟩ := (SlotsOwned.append_iff _ _ _).mp hSlots
-    rw [Nat.zero_add, hPrefixLength] at hHeap
-    have hi := SlotsOwned.get _ _ hHeap _ hLt
-    rw [hGet] at hi
-    exact hi.1
+  · exact recordSlots_array_owned h.1.2 i
 
 end Verified

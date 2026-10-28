@@ -76,7 +76,7 @@ theorem listFold_eq {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List Ty
     (hargs : Env.ofFn (fun i => (args i).denote funs env) =
       .cons (Tree.ofList xs) (.cons (flatten init) captured))
     (hstep : ∀ head tail acc, body.denote funs
-      (Env.treeFields listShape listCell (fun _ => head) (fun _ => Tree.ofList tail)
+      (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => Tree.ofList tail)
         (.cons (Tree.ofList (head :: tail)) (.cons (flatten acc) captured))) = flatten (step acc head)) :
     (Expr.listFold args body).denote funs env = flatten (xs.foldl step init) := by
   rw [Expr.denote, hargs]
@@ -92,7 +92,7 @@ theorem listFold_bound {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List
     (hargs : Env.ofFn (fun i => (argList.get i).denote funs env) =
       .cons (Tree.ofList xs) (.cons (flatten init) captured))
     (hstep : ∀ head tail acc, body.denote funs
-      (Env.treeFields listShape listCell (fun _ => head) (fun _ => Tree.ofList tail)
+      (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => Tree.ofList tail)
         (.cons (Tree.ofList (head :: tail)) (.cons (flatten acc) captured))) = flatten (step acc head))
     (hI : ArgsCost funs flags bounds modes paid
       (fun k => live k || argsAny fun j => (argList.get j).uses k) live env
@@ -102,7 +102,7 @@ theorem listFold_bound {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List
       (List.replicate (listShape.bindCount listCell) false ++
         List.replicate (ListFold.params e captures).length false)
       (ListFold.bodyLive e captures)
-      (Env.treeFields listShape listCell (fun _ => head) (fun _ => Tree.ofList tail)
+      (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => Tree.ofList tail)
         (.cons (Tree.ofList (head :: tail)) (.cons (flatten acc) captured))) = B head tail acc) :
     (Expr.listFold argList.get body).allocs funs flags bounds modes paid live env =
       I + ListFold.nativeCost step B xs init := by
@@ -124,11 +124,11 @@ theorem listFold_fits {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List 
     (hargs : Env.ofFn (fun i => (argList.get i).denote funs env) =
       .cons (Tree.ofList xs) (.cons (flatten init) captured))
     (hstep : ∀ head tail acc, body.denote funs
-      (Env.treeFields listShape listCell (fun _ => head) (fun _ => Tree.ofList tail)
+      (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => Tree.ofList tail)
         (.cons (Tree.ofList (head :: tail)) (.cons (flatten acc) captured))) = flatten (step acc head))
     (hI : ArgsFits funs fits env argList = I)
     (hB : ∀ head tail acc, body.fits funs fits
-      (Env.treeFields listShape listCell (fun _ => head) (fun _ => Tree.ofList tail)
+      (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => Tree.ofList tail)
         (.cons (Tree.ofList (head :: tail)) (.cons (flatten acc) captured))) = B head tail acc) :
     (Expr.listFold argList.get body).fits funs fits env = (I && ListFold.nativeFits step B xs init) := by
   rw [Expr.fits, argsAll_eq_argsFits, hI, hargs]

@@ -33,18 +33,18 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
           (argsAny fun next => (children next).uses j) ||
           (argsAny fun next => (arrays next).uses j) ||
           (argsAny fun next => (buffers next).uses j)) false k) ||
+      (argsAny fun i => (children i).demands
+        (fun j => kept j ||
+          (argsAny fun next => decide (i.val < next.val) && (children next).uses j) ||
+          (argsAny fun next => (arrays next).uses j) ||
+          (argsAny fun next => (buffers next).uses j)) true k) ||
       (argsAny fun i => (arrays i).demands
         (fun j => kept j ||
           (argsAny fun next => decide (i.val < next.val) && (arrays next).uses j) ||
           (argsAny fun next => (buffers next).uses j)) true k) ||
       (argsAny fun i => (buffers i).demands
         (fun j => kept j ||
-          (argsAny fun next => decide (i.val < next.val) && (buffers next).uses j)) true k) ||
-      (argsAny fun i => (children i).demands
-        (fun j => kept j ||
-          (argsAny fun next => decide (i.val < next.val) && (children next).uses j) ||
-          (argsAny fun next => (arrays next).uses j) ||
-          (argsAny fun next => (buffers next).uses j)) true k)
+          (argsAny fun next => decide (i.val < next.val) && (buffers next).uses j)) true k)
   | _, _, .treeCase (shape := shape) x empty nodes, live, owned, k =>
     let branch := owned ||
       (if h : shape.hasNull = true then (empty h).mode [] == .owned else false) ||

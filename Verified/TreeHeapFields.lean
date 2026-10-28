@@ -430,4 +430,68 @@ theorem heapLocs_nodup (fields : List TreeField) :
       · have := heapLocs_mem rest _ _ _ hMem
         omega
 
+/-- The blocks of the array slots from slot `start` on of the record at `p`, when no field is a
+buffer: the block of each array, at the address that its slot holds. -/
+theorem heapSlots_blocks_read (store : Store Unit) (p : UInt64) (fields : List TreeField)
+    (hNoBytes : fields.count .bytes = 0) :
+    ∀ start arrays buffers,
+      slotsBlocks store p start (heapSlots fields arrays buffers) =
+        (List.ofFn fun i => [block store
+          (store.mem.read64 (slotAddress p (start + heapArraySlot fields i)))]).flatten := by
+  induction fields with
+  | nil => intros; rfl
+  | cons field rest ih =>
+    intro start arrays buffers
+    cases field with
+    | word e => exact ih (by simpa using hNoBytes) _ _ _
+    | child => exact ih (by simpa using hNoBytes) _ _ _
+    | bytes => simp at hNoBytes
+    | array e =>
+      simp only [heapSlots, slotsBlocks]
+      rw [ih (by simpa using hNoBytes)]
+      change _ = (List.ofFn (n := (rest.filterMap TreeField.arrayElem?).length + 1)
+        fun i => [block store (store.mem.read64
+          (slotAddress p (start + heapArraySlot (.array e :: rest) i)))]).flatten
+      rw [List.ofFn_succ, List.flatten_cons]
+      simp only [heapArraySlot, Fin.val_zero, Fin.val_succ, Nat.add_zero, Nat.succ_ne_zero,
+        ↓reduceDIte, Nat.add_sub_cancel, List.singleton_append]
+      congr 3
+      funext i
+      congr 4
+      simp only [Fin.eta]
+      omega
+
+/-- The regions of the array slots from slot `start` on of the record at `p`, when no field is
+a buffer: each array's length word and elements, at the address that its slot holds. -/
+theorem heapSlots_regions_read (store : Store Unit) (p : UInt64) (fields : List TreeField)
+    (hNoBytes : fields.count .bytes = 0) :
+    ∀ start arrays buffers,
+      slotsRegions store p start (heapSlots fields arrays buffers) =
+        (List.ofFn fun i => [((store.mem.read64
+          (slotAddress p (start + heapArraySlot fields i))).toNat,
+            8 * ((arrays i).size + 1))]).flatten := by
+  induction fields with
+  | nil => intros; rfl
+  | cons field rest ih =>
+    intro start arrays buffers
+    cases field with
+    | word e => exact ih (by simpa using hNoBytes) _ _ _
+    | child => exact ih (by simpa using hNoBytes) _ _ _
+    | bytes => simp at hNoBytes
+    | array e =>
+      simp only [heapSlots, slotsRegions]
+      rw [ih (by simpa using hNoBytes)]
+      change _ = (List.ofFn (n := (rest.filterMap TreeField.arrayElem?).length + 1)
+        fun i => [((store.mem.read64
+          (slotAddress p (start + heapArraySlot (.array e :: rest) i))).toNat,
+            8 * ((arrays i).size + 1))]).flatten
+      rw [List.ofFn_succ, List.flatten_cons]
+      simp only [heapArraySlot, Fin.val_zero, Fin.val_succ, Nat.add_zero, Nat.succ_ne_zero,
+        ↓reduceDIte, Nat.add_sub_cancel, List.singleton_append]
+      congr 3
+      funext i
+      congr 5
+      simp only [Fin.eta]
+      omega
+
 end Verified
