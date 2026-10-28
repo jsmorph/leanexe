@@ -1,4 +1,4 @@
-import TestSupport.Native.Gcd
+import TestSupport.Bare.Gcd
 import LeanExe.Native.ClightCheck
 
 /-!
@@ -8,7 +8,8 @@ emit DIR` writes, for each program of `cases`, the C text of its translation wit
 must write as `DIR/NAME.expected`: `encodeWord` or `encodeArray` of the Lean function's result.
 It also runs the module's entry in Talos from the module's initial store and fails unless Talos's
 result has the same bytes.  `native-bare check DIR` compares each whole program with the Clight
-that `clightgen` wrote for it as `DIR/NAME.v`, `main` and `lx_out` included.
+that `clightgen` wrote for it as `DIR/NAME.v`, `main` and `lx_out` included.  The executable
+imports the programs' theorems, so that building it checks them.
 -/
 
 open LeanExe.Native Wasm

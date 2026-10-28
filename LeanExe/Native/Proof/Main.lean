@@ -1,5 +1,6 @@
 import LeanExe.Native.Proof.Quiet
 import LeanExe.ProofKit.Array
+import LeanExe.Native.Proof.Native
 
 /-!
 The run of `main` of a bare-metal program (`LeanExe/Native/Bare.lean`), statement by statement:
@@ -509,10 +510,26 @@ structure PrefixOk (pre : List (ident × globdef (fundef function) type)) : Prop
   nodup : (pre.map (·.1)).Nodup
   ids : ∀ x : Nat, x ∈ pre.map (·.1) → x = 24 ∨ (x % 4 = 1 ∧ x ≠ 1)
 
+/-- The call of the entry `fd` on `args` in every environment that meets the hypotheses of
+`NativeA`, from every memory related to `nativeStore` with `lx_status` 0: it returns with
+`lx_status` 0 and a result that gives the bytes `bs`, or, when `aborts`, it ends with `lx_status`
+holding the code of `unreachable`. -/
+def EntryRuns (A : Archi) (X : ExtSem) (cap : Nat) (m : Wasm.Module) (T : Translation)
+    (fd : function) (args : List UInt64) (kind : OutKind) (aborts : Bool) (bs : List UInt8) :
+    Prop :=
+  ∀ E : Env, EnvOk E → E.globals.length = m.globals.length → E.cap = cap → T.nres ≤ E.nres →
+    (∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
+      ∃ b, Genv.find_symbol E.ge (funId k) = some b ∧
+        Genv.find_funct_ptr E.ge b = some (.Internal fd)) →
+    ∀ m1, StoreRel E (nativeStore m cap) m1 → StatusRel E m1 0 →
+      ∃ t m' vres st', eval_funcall A X E.ge m1 (.Internal fd) (args.map .Vlong) t m' vres ∧
+        StoreRel E st' m' ∧
+        ((StatusRel E m' 0 ∧ OutOk kind st' vres bs) ∨
+          (aborts = true ∧ StatusRel E m' trapUnreachable))
+
 /-- The bare-metal program of a translation terminates with the trace of the bytes `bs` and
 the result 0, or, when the entry may abort, with no event and the code of `unreachable`, given
-the run of the entry from the state that `lx_init` leaves, in the terms of `NativeA`: the call
-returns with `lx_status` 0 and a result that gives the bytes `bs`, or aborts. -/
+the run of the entry that `EntryRuns` states. -/
 theorem bare_program {m : Wasm.Module} {cap : Nat} {T : Translation}
     (h : translate cap m = some T) {pre : List (ident × globdef (fundef function) type)}
     (hpre : PrefixOk pre) {k : Nat} {fd : function}
@@ -520,23 +537,13 @@ theorem bare_program {m : Wasm.Module} {cap : Nat} {T : Translation}
     (args : List UInt64) (kind : OutKind)
     (hty : type_of_function fd = .Tfunction (args.map fun _ => tulong) tulong cc_default)
     (A : Archi) (X : ExtSem) {aborts : Bool} {bs : List UInt8}
-    (hcall : ∀ m1,
-      StoreRel (envWhole pre (bareTail (bareMain cap k args kind)) T m.globals.length cap)
-        (nativeStore m cap) m1 →
-      StatusRel (envWhole pre (bareTail (bareMain cap k args kind)) T m.globals.length cap) m1 0 →
-      ∃ t m' vres st', eval_funcall A X
-          (envWhole pre (bareTail (bareMain cap k args kind)) T m.globals.length cap).ge m1
-          (.Internal fd) (args.map .Vlong) t m' vres ∧
-        StoreRel (envWhole pre (bareTail (bareMain cap k args kind)) T m.globals.length cap) st' m' ∧
-        ((StatusRel (envWhole pre (bareTail (bareMain cap k args kind)) T m.globals.length cap) m'
-            0 ∧ OutOk kind st' vres bs) ∨
-          (aborts = true ∧ StatusRel (envWhole pre (bareTail (bareMain cap k args kind)) T
-            m.globals.length cap) m' trapUnreachable))) :
+    (hruns : EntryRuns A X cap m T fd args kind aborts bs) :
     bigstep_program_terminates A X (bareProgram pre T (bareMain cap k args kind)) (outTrace bs) 0 ∨
       (aborts = true ∧ bigstep_program_terminates A X (bareProgram pre T (bareMain cap k args kind))
         E0 (UInt32.ofNat trapUnreachable)) := by
   have hw := wholeOk_bare h hpre.sqrt hpre.funs hpre.nodup hpre.ids (bareMain cap k args kind)
-  obtain ⟨decl, m0, m1, -, hinit, hmemi, hcalli, hst1, hs1, hE, -, -, -, hF⟩ := start_whole h hw A X
+  obtain ⟨decl, m0, m1, -, hinit, hmemi, hcalli, hst1, hs1, hE, hG, hcap, hnres, hF⟩ :=
+    start_whole h hw A X
   have hidp : ∀ x : Nat, x ∈ (bareTail (bareMain cap k args kind)).map (·.1) → x = 4 ∨ x = 28 := by
     intro x hx
     simp only [bareTail, List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil,
@@ -561,7 +568,7 @@ theorem bare_program {m : Wasm.Module} {cap : Nat} {T : Translation}
   have hvo : Genv.block_is_volatile (Genv.add_globals (Genv.empty_genv [])
       (wholeDefs pre (bareTail (bareMain cap k args kind)) T)) bo = true := by
     simp [Genv.block_is_volatile, Genv.find_var_info, hdo, outVar]
-  obtain ⟨t, m', vres, st', hc, hst', hres⟩ := hcall m1 hst1 hs1
+  obtain ⟨t, m', vres, st', hc, hst', hres⟩ := hruns _ hE hG hcap hnres hF m1 hst1 hs1
   have ht : t = E0 := funcall_quiet hq hc hqf
   subst ht
   have hmain := eval_main hE cap k args kind hsi (Genv.find_funct_ptr_of_def hdi) rfl hsk hfk hty
@@ -571,5 +578,44 @@ theorem bare_program {m : Wasm.Module} {cap : Nat} {T : Translation}
       (Genv.find_funct_ptr_of_def hdm) rfl (hmain.1 bs hs' hout))
   · exact .inr ⟨hab, .bigstep_program_terminates_intro bm _ m0 m' _ _ hinit hsm
       (Genv.find_funct_ptr_of_def hdm) rfl (hmain.2 _ hs' (by decide) (by decide))⟩
+
+
+/-- The type of the translation of a function with parameters `ps` and results `rs`. -/
+theorem entry_type {m : Wasm.Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
+    {k : Nat} {fd : function}
+    (hfd : (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs) {ps rs : List VT}
+    (hsig : ∀ g, m.funcs[k]? = some g → signatureOf g = some (ps, rs)) :
+    type_of_function fd = funType ps rs := by
+  obtain ⟨-, -, hspec⟩ := translate_spec h
+  obtain ⟨g, hg, -, htr, -⟩ := hspec k fd hfd
+  obtain ⟨ps', rs', hsig', hty, -⟩ := trFunction_sig htr
+  rw [hsig g hg] at hsig'
+  obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hsig')
+  exact hty
+
+open LeanExe.Pipeline in
+/-- A result of type `UInt64` gives its eight bytes. -/
+theorem outOk_word {E : Env} {vs rest : List Wasm.Value} {vres : val} {m' : mem} {heap' : Heap}
+    {final : Wasm.Store Unit} {y : UInt64} (hr : ResultRel E [.i64] vs rest vres m')
+    (hrest : rest = []) (hown : Represent.owned heap' final vs.reverse y) :
+    OutOk .word final vres (encodeWord y) := by
+  subst hrest
+  obtain ⟨v, rfl, -, rfl⟩ := hr
+  have hv : [v] = [Wasm.Value.i64 y] := hown
+  cases hv
+  exact ⟨y, rfl, rfl⟩
+
+open LeanExe.Pipeline in
+/-- A result of type `Array UInt64` gives the bytes of the array in memory. -/
+theorem outOk_array {E : Env} {vs rest : List Wasm.Value} {vres : val} {m' : mem} {heap' : Heap}
+    {final : Wasm.Store Unit} {ws : Array UInt64} (hr : ResultRel E [.i64] vs rest vres m')
+    (hrest : rest = []) (hown : Represent.owned heap' final vs.reverse ws) :
+    OutOk .array final vres (encodeArray ws) := by
+  subst hrest
+  obtain ⟨v, rfl, -, rfl⟩ := hr
+  obtain ⟨ptr, hv, hO⟩ := hown
+  have hv' : v = .i64 ptr := by simpa using hv
+  subst hv'
+  exact ⟨ptr, ws, rfl, hO.values, rfl⟩
 
 end LeanExe.Native
