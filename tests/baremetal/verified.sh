@@ -9,10 +9,16 @@
 # time (4 by default), under the rules of tests/native/verified.sh for results, traps, and
 # allocation counters, and the module cases of euler and of shapes on sums under the rules of
 # tests/modules/run.sh.  A case also fails when it reports an exception or a stack high-water mark
-# of the whole stack.  The script prints, for each module, the cases that pass, that fail, and
-# that do not run because the translation lacks their export, and the largest high-water mark,
-# then each failure, the modules without a translation, and the modules that CompCert cannot
-# compile or link, with the first lines of the error.  It fails unless every case that runs passes
+# of the whole stack.  CompCert also compiles each module to assembly, from which
+# tools/baremetal/stack-bound.sh computes the bound of every function with the list of the
+# functions that take the call depth that native-verified writes, and the glue, compiled with
+# LX_STACK_MARK, reports the stack that each call of a module function used: a case fails when a
+# call used more than its function's bound (docs/native-bare-metal.md, test 3), and a module whose
+# stack the tool cannot bound does not build.  The script prints, for each module, the cases that
+# pass, that fail, and that do not run because the translation lacks their export, the largest
+# high-water mark, and the largest stack of a call with its bound, then each failure, the modules
+# without a translation, and the modules that CompCert cannot compile or link, with the first
+# lines of the error.  It fails unless every case that runs passes
 # and every translated module builds.  CCOMP and CCOMP_STDLIB are as for tools/baremetal/build.sh,
 # and QEMU names qemu-system-aarch64.  Build the modules' targets first, as tests/verified/run.sh
 # requires.
@@ -65,7 +71,9 @@ while IFS=: read -r module constant name; do
   b=$out/$name.bm
   mkdir -p "$b"
   if ! { "$ccomp" "${stdlib[@]}" -c "$out/$name.c" -o "$b/module.o" &&
-      "$ccomp" "${stdlib[@]}" -I tools -c "$out/${name}_glue.c" -o "$b/glue.o" &&
+      "$ccomp" "${stdlib[@]}" -S "$out/$name.c" -o "$b/module.s" &&
+      tools/baremetal/stack-bound.sh "$out/$name.depth" "$b/module.s" >"$b/bounds.txt" &&
+      "$ccomp" "${stdlib[@]}" -I tools -DLX_STACK_MARK -c "$out/${name}_glue.c" -o "$b/glue.o" &&
       tools/baremetal/build.sh "$b/host.elf" "$out/host.o" "$out/libc.o" "$b/glue.o" \
         "$b/module.o"; } >"$b/build.err" 2>&1; then
     unbuilt+=("$name: $(head -n 3 "$b/build.err" | paste -sd' ')")
@@ -155,6 +163,7 @@ run_host() {
   grep -v '^E:\|^R:' "$w/serial.txt" >"$w/stdout.txt" || true
   sed -n 's/^E://p' "$w/serial.txt" >"$w/stderr.txt"
   stack=$(sed -n 's/^R:exit .* stack \([0-9]*\)$/\1/p' "$w/serial.txt")
+  sed -n 's/^R:call \([^ ]*\) stack \([0-9]*\)$/\1 \2/p' "$w/serial.txt" >"$w/calls.txt"
   exception=$(grep '^R:exception\|^R:level' "$w/serial.txt" || true)
 }
 
@@ -202,15 +211,28 @@ run_shard() {
         message="$export $args: $got, expected $expected; live blocks $held, expected $live"
       fi
     fi
+    check=$(awk 'NR == FNR { b[$2] = $1; next }
+      {
+        u = $2 + 0
+        if (!($1 in b)) print "bad " $1 " used " u " bytes of stack without a bound"
+        else if (u > b[$1] + 0) print "bad " $1 " used " u " bytes of stack, above its bound " b[$1]
+        if (u >= used) { used = u; bound = ($1 in b) ? b[$1] : 0 }
+      }
+      END { print "max " used + 0, bound + 0 }' "$out/$name.bm/bounds.txt" "$w/calls.txt")
+    read -r _ used ubound < <(grep '^max ' <<<"$check")
+    bad=$(sed -n 's/^bad //p' <<<"$check" | paste -sd';' -)
+    if [ -z "$message" ] && [ -n "$bad" ]; then
+      message="$export $args: $bad"
+    fi
     if [ -n "$exception" ]; then
       message="$export $args: $exception"
     elif [ -n "$stack" ] && [ "$stack" -ge "$((STACK_SIZE))" ]; then
       message="$export $args: the stack's high-water mark reached its size"
     fi
     if [ -z "$message" ]; then
-      printf '%s|pass|%s|\n' "$name" "${stack:-0}" >>"$res"
+      printf '%s|pass|%s|%s|%s|\n' "$name" "${stack:-0}" "$used" "$ubound" >>"$res"
     else
-      printf '%s|fail|%s|%s\n' "$name" "${stack:-0}" "$message" >>"$res"
+      printf '%s|fail|%s|%s|%s|%s\n' "$name" "${stack:-0}" "$used" "$ubound" "$message" >>"$res"
     fi
   done < <(awk -v k="$1" -v n="$jobs" '(NR - 1) % n == k' "$out/work.txt")
 }
@@ -229,19 +251,22 @@ done
 awk -F'|' '
   $2 == "pass" { pass[$1]++; seen[$1] = 1 }
   $2 == "fail" { fail[$1]++; seen[$1] = 1 }
-  $2 == "pass" || $2 == "fail" { if ($3 + 0 > stack[$1]) stack[$1] = $3 + 0 }
+  $2 == "pass" || $2 == "fail" {
+    if ($3 + 0 > stack[$1]) stack[$1] = $3 + 0
+    if ($4 + 0 >= used[$1]) { used[$1] = $4 + 0; bound[$1] = $5 + 0 }
+  }
   $2 == "omitted" { omit[$1] += $3; seen[$1] = 1 }
   END {
     for (m in seen) {
-      printf "baremetal verified: %s passed %d failed %d not run %d stack %d\n",
-        m, pass[m], fail[m], omit[m], stack[m]
+      printf "baremetal verified: %s passed %d failed %d not run %d stack %d module %d bound %d\n",
+        m, pass[m], fail[m], omit[m], stack[m], used[m], bound[m]
       tp += pass[m]; tf += fail[m]; to += omit[m]
     }
     printf "baremetal verified: total passed %d failed %d not run %d\n", tp, tf, to > "/dev/stderr"
   }' "$out/results.txt" 2>"$out/total.txt" | sort
 cat "$out/total.txt"
 echo "baremetal verified: $(wc -l <"$out/work.txt") cases in $seconds s with $jobs jobs"
-awk -F'|' '$2 == "fail" { print "fail: " $1 " " $4 }' "$out/results.txt"
+awk -F'|' '$2 == "fail" { print "fail: " $1 " " $6 }' "$out/results.txt"
 echo "baremetal verified: modules without a translation:${untranslated:- none}"
 if [ "${#unbuilt[@]}" -eq 0 ]; then
   echo "baremetal verified: modules that do not build: none"

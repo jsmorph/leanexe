@@ -8,13 +8,13 @@ holds the theorem `p.f.program` of its program, whose type fixes the entry, the 
 kind of result, and the bytes of the trace, so that the C text that the executable writes is
 that of the program of the theorem.  `native-bare emit DIR` writes, for each case, the C text of
 its translation with `lx_mem` of `nativeCap` pages followed by `lx_out` and `main` as
-`DIR/NAME.c`, the bytes that `main` must write as `DIR/NAME.expected`, and the exit status as
-`DIR/NAME.status`.  It runs the entry in Talos from the module's initial store: when Talos
-returns, its result must have the bytes of the theorem and the status is 0; when it traps at
-`unreachable`, which the theorem allows only for an entry that may abort, no byte is expected
-and the status is the code of `unreachable`.  `native-bare check DIR` compares each whole
-program with the Clight that `clightgen` wrote for it as `DIR/NAME.v`, `main` and `lx_out`
-included.
+`DIR/NAME.c`, the C names of its functions that take the call depth as `DIR/NAME.depth`, the
+bytes that `main` must write as `DIR/NAME.expected`, and the exit status as `DIR/NAME.status`.
+It runs the entry in Talos from the module's initial store: when Talos returns, its result
+must have the bytes of the theorem and the status is 0; when it traps at `unreachable`, which
+the theorem allows only for an entry that may abort, no byte is expected and the status is the
+code of `unreachable`.  `native-bare check DIR` compares each whole program with the Clight that
+`clightgen` wrote for it as `DIR/NAME.v`, `main` and `lx_out` included.
 -/
 
 open LeanExe.Native LClight Wasm
@@ -91,6 +91,8 @@ def emitCase (dir : String) (c : BareCase) : IO Unit := do
   match t.bareText nativeCap c.k c.args c.kind with
   | .error e => throw <| IO.userError s!"native-bare: {c.name}: {e}"
   | .ok text => IO.FS.writeFile s!"{dir}/{c.name}.c" text
+  IO.FS.writeFile s!"{dir}/{c.name}.depth"
+    (String.join ((t.depthNames c.module).map (· ++ "\n")))
   match ← IO.ofExcept (talosBytes c) with
   | some talos =>
       if talos != c.bytes then

@@ -3,7 +3,8 @@
    bytes, the part of the stack whose fill pattern changed.  lx_report_exception writes
    "R:exception", the vector's index, ESR_EL1, ELR_EL1, and FAR_EL1, and returns 255, the exit
    status.  lx_report_level writes "R:level" and the exception level at entry when it is not 1, and
-   returns 254. */
+   returns 254.  lx_stack_report writes "R:call", a function's name, and the bytes of stack that
+   a call of it used. */
 
 extern volatile unsigned int lx_out;
 extern unsigned long long __stack_bottom[];
@@ -58,4 +59,12 @@ unsigned int lx_report_level(unsigned long long el) {
   outdec(el);
   outs("\n");
   return 254U;
+}
+
+void lx_stack_report(const char *name, unsigned long long used) {
+  outs("R:call ");
+  outs(name);
+  outs(" stack ");
+  outdec(used);
+  outs("\n");
 }

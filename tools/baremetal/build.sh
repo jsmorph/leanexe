@@ -6,7 +6,11 @@
 # the file's base name, and .o.  CCOMP names CompCert 3.18's driver configured for aarch64-linux,
 # and CCOMP_STDLIB, when set, names the directory of its run-time library for a tree that is not
 # installed.  STACK_SIZE is the size of the stack in bytes, 0x100000 by default.  The arguments
-# after -- go to the preprocessor of the startup code, for example -DNO_FPEN.
+# after -- go to the preprocessor of the startup code, for example -DNO_FPEN.  When STACK_DEPTHS
+# names the list of the functions that take the call depth, as native-verified and native-bare
+# write it, every input must be a C file: the script also compiles each to assembly beside OUT,
+# named as its object with .s for .o, and fails unless tools/baremetal/stack-bound.sh bounds the
+# stack of main within STACK_SIZE, writing the bound as OUT.bound.
 # Usage: tools/baremetal/build.sh OUT INPUT... [-- -DNAME...]
 set -euo pipefail
 usage() {
@@ -51,5 +55,22 @@ for input in "${inputs[@]}"; do
       ;;
   esac
 done
+if [ -n "${STACK_DEPTHS:-}" ]; then
+  asm=()
+  for input in "${inputs[@]}"; do
+    case "$input" in
+      *.c)
+        s=$out.$(basename "${input%.c}").s
+        "$ccomp" "${stdlib[@]}" -S "$input" -o "$s"
+        asm+=("$s")
+        ;;
+      *)
+        echo "tools/baremetal/build.sh: with STACK_DEPTHS, $input is not a C file" >&2
+        exit 2
+        ;;
+    esac
+  done
+  "$here/stack-bound.sh" -r main -l "$((stack))" "$STACK_DEPTHS" "${asm[@]}" >"$out.bound"
+fi
 "$ccomp" "${stdlib[@]}" -nostdlib -static -T "$here/link.ld" -Wl,--build-id=none \
   -Wl,--defsym,STACK_SIZE="$stack" "${objects[@]}" -o "$out"
