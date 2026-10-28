@@ -193,6 +193,9 @@ fi
 if [ -z "$case_module" ] || [ "$case_module" = "arraytrees" ]; then
   tools/leanrun --timeout 10m lake env lean tests/verified/ArrayTreesOrder.lean
 fi
+if [ -z "$case_module" ] || [ "$case_module" = "buffertrees" ]; then
+  tools/leanrun --timeout 10m lake env lean tests/verified/BufferTreesOrder.lean
+fi
 tools/leanrun --timeout 12h lake --log-level error build "$cases_exe"
 cases=$(mktemp)
 errors=$(mktemp)

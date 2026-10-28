@@ -36997,8 +36997,10 @@ The compiler now compiles records with buffer fields, in the layout that the coo
 | Copies | The copy loop tests a buffer mask after the array mask, copies a buffer's bytes with `Bytes.copyOwnedCode`, and copies the length word as the next slot. |
 | Reflector | `RecursiveLayout` reads fields of type `LeanExe.Bytes`, the derived conversions and match lemmas write the buffer family as the list of the fields, and the order check also requires each buffer's length slot after its root. |
 
+`lake build Verified` passes, and every existing example compiles unchanged.  `Verified/Examples/BufferTrees.lean` declares `Names`, whose records hold a word, two children, and a byte buffer, and its theorems for `keep`, a copy of a borrowed tree, `three`, which copies a borrowed buffer into two records and moves it into a third, and `counted`, whose owned matches release the buffers, use only propext, Classical.choice, and Quot.sound.  `tests/verified/run.sh --cases buffertrees` passed 15 cases with no failure, each with no live block after the call, and `--cases arraytrees` passed 108 cases with the order check's new message.  `tests/verified/BufferTreesOrder.lean` gives the order check's message for an instance that writes a buffer's root without its length slot.
+
 - [x] The copy of buffer slots.
 - [x] Construction and matches of buffer fields.
-- [ ] The reflector, the example, its cases, and the order check.
-- [ ] The manual.
+- [x] The reflector, the example, its cases, and the order check.
+- [x] The manual.
 - [ ] The gate of the buffers half.
