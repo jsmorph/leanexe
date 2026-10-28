@@ -226,7 +226,13 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
       LeanExe.Pipeline.Node.WellFormed (LeanExe.Pipeline.Encode.encode value) := by
     rw [$encoding:ident value]
     exact Verified.Tree.toNode_wellFormed _))
-  elabCommand (← `(instance : LeanExe.Pipeline.EncodeWellFormed $native := ⟨$wellFormed⟩))
+  let hasInstance ← liftTermElabM do
+    let type := mkConst layout.name
+    let inst ← synthInstance (mkApp (mkConst ``LeanExe.Pipeline.Encode) type)
+    return (← synthInstance?
+      (mkApp2 (mkConst ``LeanExe.Pipeline.EncodeWellFormed) type inst)).isSome
+  unless hasInstance do
+    elabCommand (← `(instance : LeanExe.Pipeline.EncodeWellFormed $native := ⟨$wellFormed⟩))
 
 syntax (name := verifiedRecursiveType) "verified_recursive_type " ident : command
 

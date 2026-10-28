@@ -155,31 +155,6 @@ theorem NodeLayout.lengths {shape : TreeShape} {slots : List Slot}
   obtain ⟨_, -, -, -, hSlots, -, -⟩ := h
   exact SlotsLayout.lengths hSlots
 
-mutual
-theorem NodeLayout.wellFormed {shape : TreeShape} :
-    ∀ {value : Node}, NodeLayout shape value → value.WellFormed
-  | .null, _ => trivial
-  | .record slots, h => by
-    obtain ⟨r, hLength, -, -, hSlots, -, -⟩ := h
-    exact ⟨by rw [hLength]; exact shape.width_le r, SlotsLayout.lengths hSlots,
-      SlotsLayout.wellFormed (slots := slots) hSlots⟩
-
-theorem SlotsLayout.wellFormed {shape : TreeShape} :
-    ∀ {slots : List Slot}, SlotsLayout shape slots → slotsWellFormed slots
-  | [], _ => trivial
-  | .word _ :: rest, h => SlotsLayout.wellFormed (slots := rest) h
-  | .child value :: rest, h =>
-    ⟨NodeLayout.wellFormed (value := value) h.1, SlotsLayout.wellFormed (slots := rest) h.2⟩
-  | .array _ :: rest, h => SlotsLayout.wellFormed (slots := rest) h
-  | .bytes _ :: rest, h => SlotsLayout.wellFormed (slots := rest) h.2
-end
-
-theorem Tree.toNode_wellFormed {shape : TreeShape} (value : Tree shape) :
-    value.toNode.WellFormed :=
-  NodeLayout.wellFormed (Tree.toNode_layout value)
-
-instance {shape : TreeShape} : EncodeWellFormed (Tree shape) := ⟨Tree.toNode_wellFormed⟩
-
 /-- The slot after a buffer's root in a record laid out by a shape holds the buffer's length. -/
 theorem SlotsLayout.bytes_next {shape : TreeShape} :
     ∀ {slots : List Slot}, SlotsLayout shape slots → ∀ i (hi : i < slots.length) data,
@@ -451,8 +426,6 @@ theorem Tree.copyCost_eq {shape : TreeShape} (value : Tree shape) :
 #print axioms Tree.copyCost_eq
 #print axioms NodeLayout.slotted
 #print axioms SlotsLayout.bytes_next
-#print axioms NodeLayout.wellFormed
-#print axioms Tree.toNode_wellFormed
 #print axioms arrayMaskOf_test
 
 end Verified

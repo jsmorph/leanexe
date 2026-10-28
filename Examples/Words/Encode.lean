@@ -19,4 +19,10 @@ theorem encode_slotted : ∀ w : Words, (encode w).Slotted
 
 instance : EncodeSlotted Words := ⟨encode_slotted⟩
 
+theorem encode_wellFormed : ∀ w : Words, (encode w).WellFormed
+  | .nil => trivial
+  | .cons _ w => ⟨by simp, trivial, encode_wellFormed w, trivial⟩
+
+instance : EncodeWellFormed Words := ⟨encode_wellFormed⟩
+
 end Examples.Words

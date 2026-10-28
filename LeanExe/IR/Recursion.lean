@@ -271,7 +271,8 @@ theorem Stmt.selfCall_rebuilds [Represent α] [Encode β] {m : Module} {idx : Na
 
 /-- A function whose body leaves one pointer to a value rebuilt from the consumed blocks
 implements `f`. -/
-theorem Func.implements_rebuilt [Represent α] [Encode β] (funcs : List (Func × String)) (i : Nat)
+theorem Func.implements_rebuilt [Represent α] [Encode β] [EncodeWellFormed β]
+    (funcs : List (Func × String)) (i : Nat)
     (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name)) (f : α → β)
     (arity : ∀ heap store params (x : α), Represent.borrowed heap store params x →
       params.length = func.params.length)
@@ -294,7 +295,8 @@ theorem Func.implements_rebuilt [Represent α] [Encode β] (funcs : List (Func �
             hR.region⟩
 
 /-- The entry of a consumed recursion: one call of the internal function at depth 0. -/
-theorem Func.entry_rebuilds [Represent α] [Encode β] (funcs : List (Func × String)) (i : Nat)
+theorem Func.entry_rebuilds [Represent α] [Encode β] [EncodeWellFormed β]
+    (funcs : List (Func × String)) (i : Nat)
     (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name)) (f : α → β)
     {index : Nat} {g : Wasm.Function} {args : List ((type : ScalarType) × Expr type)}
     (arity : ∀ heap store params (x : α), Represent.borrowed heap store params x →
