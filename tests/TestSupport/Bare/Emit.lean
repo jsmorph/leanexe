@@ -1,6 +1,6 @@
 import TestSupport.Bare.Gcd
 import TestSupport.Bare.Theorems
-import Library.Hashing.Sha256.Compiled
+import TestSupport.Bare.Input
 import LeanExe.Native.ClightCheck
 
 /-!
@@ -18,7 +18,8 @@ code of `unreachable`.  `native-bare check DIR` compares each whole program with
 `clightgen` wrote for it as `DIR/NAME.v`, `main` and `lx_out` included.
 
 The programs with input of `tests/baremetal/inputs.sh` are the cases of `inCases`, each an entry
-that takes an array and a length.  `native-bare emit-in DIR` writes each one's C text, its
+that takes an array and a length, with the theorem of its program, whose type fixes the entry and
+the kind of result.  `native-bare emit-in DIR` writes each one's C text, its
 translation followed by `lx_in`, `lx_out`, and the `main` of `inMain`, and the names of its
 functions that take the call depth, and `native-bare check-in DIR` compares each whole program
 with the Clight that `clightgen` wrote for it.
@@ -127,10 +128,17 @@ structure InCase where
   module : Module
   k : Nat
   kind : OutKind
+  thm : ∀ T, translate nativeCap module = some T → ∀ (A : Archi) (X : ExtSem)
+    (pre : List (ident × globdef (fundef function) type)), PrefixOk pre → ∀ σ : Nat → int,
+    ∃ t r, bigstep_program_terminates A X (inProgram pre T (inMain nativeCap k kind)) t r ∧
+      Reads σ t
 
 def inCases : List InCase := [
   { name := "sha256in", module := Library.Hashing.Sha256.compiled.module, k := 11,
-    kind := .words 4 }]
+    kind := .words 4,
+    thm := thm_of Library.Hashing.Sha256.compiled.translation_eq fun A X pre hpre σ => by
+      obtain ⟨t, r, h, hr, -⟩ := TestSupport.Bare.sha256_input A X pre hpre σ
+      exact ⟨t, r, h, hr⟩ }]
 
 def emitIn (dir : String) (c : InCase) : IO Unit := do
   let some t := translate nativeCap c.module

@@ -460,7 +460,7 @@ under an identifier of `trCallable` is quiet. -/
 theorem genvQuiet_whole {m : Wasm.Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
     {pre post : List (ident × globdef (fundef function) type)} (hw : WholeOk pre post T)
     (hids : ∀ x : Nat, x ∈ pre.map (·.1) → x = 24 ∨ (x % 4 = 1 ∧ x ≠ 1))
-    (hidp : ∀ x : Nat, x ∈ post.map (·.1) → x = 4 ∨ x = 28) :
+    (hidp : ∀ x : Nat, x ∈ post.map (·.1) → x = 4 ∨ x = 28 ∨ x = 32) :
     GenvQuiet trCallable (globalenv (wholeProgram pre post T)) := by
   intro id b fd hq hs hf
   have hd : Genv.find_def (globalenv (wholeProgram pre post T)) b = some (.Gfun fd) := by

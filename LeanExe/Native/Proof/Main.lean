@@ -35,21 +35,21 @@ theorem exec_seqList_stop {e : env} {le : temp_env} {m : mem} {s : statement}
   | [] => exact h1
   | _ :: _ => exact .exec_Sseq_2 _ _ _ _ _ _ _ _ _ h1 hout
 
-/-- A sequence of two lists of statements that both complete. -/
+/-- A sequence of two lists of statements, the first of which completes. -/
 theorem exec_seqList_append {e : env} :
     ∀ (l1 l2 : List statement) {le : temp_env} {m : mem} {t1 : trace} {le1 : temp_env}
-      {m1 : mem} {t2 : trace} {le2 : temp_env} {m2 : mem},
+      {m1 : mem} {t2 : trace} {le2 : temp_env} {m2 : mem} {out : outcome},
       exec_stmt A X ge e le m (seqList l1) t1 le1 m1 .Out_normal →
-      exec_stmt A X ge e le1 m1 (seqList l2) t2 le2 m2 .Out_normal →
-      exec_stmt A X ge e le m (seqList (l1 ++ l2)) (t1 ++ t2) le2 m2 .Out_normal
-  | [], _, _, _, _, _, _, _, _, _, h1, h2 => by
+      exec_stmt A X ge e le1 m1 (seqList l2) t2 le2 m2 out →
+      exec_stmt A X ge e le m (seqList (l1 ++ l2)) (t1 ++ t2) le2 m2 out
+  | [], _, _, _, _, _, _, _, _, _, _, h1, h2 => by
       cases h1
       exact h2
-  | [_], [], _, _, _, _, _, _, _, _, h1, h2 => by
+  | [_], [], _, _, _, _, _, _, _, _, _, h1, h2 => by
       cases h2
       simpa [E0] using h1
-  | [_], _ :: _, _, _, _, _, _, _, _, _, h1, h2 => .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ h1 h2
-  | _ :: s' :: l1, l2, _, _, _, _, _, _, _, _, h1, h2 => by
+  | [_], _ :: _, _, _, _, _, _, _, _, _, _, h1, h2 => .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ h1 h2
+  | _ :: s' :: l1, l2, _, _, _, _, _, _, _, _, _, h1, h2 => by
       cases h1 with
       | exec_Sseq_1 _ _ _ _ _ ta le' m' tb _ _ _ ha hb =>
           have h := exec_seqList_append (s' :: l1) l2 hb h2
@@ -672,7 +672,8 @@ theorem bare_program {m : Wasm.Module} {cap : Nat} {T : Translation}
   have hw := wholeOk_bare h hpre.sqrt hpre.funs hpre.nodup hpre.ids (bareMain cap k args kind)
   obtain ⟨decl, m0, m1, -, hinit, hmemi, hcalli, hst1, hs1, hE, hG, hcap, hnres, hF⟩ :=
     start_whole h hw A X
-  have hidp : ∀ x : Nat, x ∈ (bareTail (bareMain cap k args kind)).map (·.1) → x = 4 ∨ x = 28 := by
+  have hidp : ∀ x : Nat, x ∈ (bareTail (bareMain cap k args kind)).map (·.1) →
+      x = 4 ∨ x = 28 ∨ x = 32 := by
     intro x hx
     simp only [bareTail, List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil,
       or_false] at hx
