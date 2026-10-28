@@ -6,7 +6,17 @@ structural recursion.  Statements and calls take fuel, which each statement and 
 consumes, so a result `.ok` means a derivation of at most that height exists.  `RunSound.lean`
 proves that every `.ok` result is an execution of `exec_stmt` or `eval_funcall`.  A result
 `.error .stuck` means that no rule applies at the point the evaluator reached; the evaluator
-gives `EF_external` calls no result, since their semantics is a parameter.
+gives `EF_external` calls no result, since their semantics is a parameter.  `run` calls one
+function from the initial memory, and `run_program` runs `main` as `bigstep_program_terminates`
+describes.
+
+The semantics lets a volatile load return any value of its type.  The evaluator takes the event
+value of a load of a chunk at an offset of a volatile global from `vload`, as CompCert's
+reference interpreter takes it from its world (`cfrontend/Cexec.v`, lines 204 to 216).  `run` and `run_program` pass `world_vload`, which reads the value from the
+initial memory of `world_program`, where the interpreter's world starts (`driver/Interp.ml`,
+lines 409 to 413 and 566 to 580).  The interpreter's world also records volatile stores, so the
+two agree on a program that does not load from a volatile global after storing to it, such as a
+program whose volatile loads read `const` globals.
 -/
 
 namespace LClight
@@ -19,6 +29,8 @@ inductive Failure where
 section Eval
 
 variable (A : Archi) (ge : genv)
+
+variable (vload : memory_chunk → ident → ptrofs → Option eventval)
 
 /-- The block and offset of the variable `id` at type `ty`, as `eval_Evar_local` and
 `eval_Evar_global` give them. -/
@@ -116,7 +128,28 @@ def eval_exprlist_fn (e : env) (le : temp_env) (m : mem) :
       | none => none
   | _, _ => none
 
-/-- `external_call` for the known built-in functions; other external functions are stuck. -/
+/-- An identifier whose symbol is the block `b`, the identifier of a volatile store's event. -/
+def invert_symbol_fn (b : block) : Option ident :=
+  (ge.genv_symb.toList.find? fun e => e.2 == b).map (·.1)
+
+/-- The event value that `eventval_match` relates to `v` at `ty`. -/
+def eventval_of_val : val → typ → Option eventval
+  | .Vint i, .Tint => some (.EVint i)
+  | .Vlong i, .Tlong => some (.EVlong i)
+  | .Vfloat f, .Tfloat => some (.EVfloat f)
+  | .Vsingle f, .Tsingle => some (.EVsingle f)
+  | _, _ => none
+
+/-- `val_of_eventval` (`cfrontend/Cexec.v`, lines 126 to 137) without pointers. -/
+def val_of_eventval : eventval → typ → Option val
+  | .EVint i, .Tint => some (.Vint i)
+  | .EVlong i, .Tlong => some (.Vlong i)
+  | .EVfloat f, .Tfloat => some (.Vfloat f)
+  | .EVsingle f, .Tsingle => some (.Vsingle f)
+  | _, _ => none
+
+/-- `external_call` for the known built-in functions, `EF_vload` with the values of `vload`, and
+`EF_vstore`; other external functions are stuck. -/
 def external_call_fn (ef : external_function) (vargs : List val) (m : mem) :
     Option (trace × val × mem) :=
   match ef with
@@ -127,6 +160,37 @@ def external_call_fn (ef : external_function) (vargs : List val) (m : mem) :
           | some vres => some (E0, vres, m)
           | none => none
       | none => none
+  | .EF_vload chunk =>
+      match vargs with
+      | [.Vptr b ofs] =>
+          if Genv.block_is_volatile ge b then
+            match invert_symbol_fn ge b with
+            | some id =>
+                match vload chunk id ofs with
+                | some ev =>
+                    match val_of_eventval ev (type_of_chunk chunk) with
+                    | some v => some ([.Event_vload chunk id ofs ev], Val.load_result chunk v, m)
+                    | none => none
+                | none => none
+            | none => none
+          else
+            match Mem.loadv chunk m (.Vptr b ofs) with
+            | some v => some (E0, v, m)
+            | none => none
+      | _ => none
+  | .EF_vstore chunk =>
+      match vargs with
+      | [.Vptr b ofs, v] =>
+          if Genv.block_is_volatile ge b then
+            match invert_symbol_fn ge b,
+                eventval_of_val (Val.load_result chunk v) (type_of_chunk chunk) with
+            | some id, some ev => some ([.Event_vstore chunk id ofs ev], .Vundef, m)
+            | _, _ => none
+          else
+            match Mem.storev chunk m (.Vptr b ofs) v with
+            | some m' => some (E0, .Vundef, m')
+            | none => none
+      | _ => none
   | _ => none
 
 def function_entry2_fn (f : function) (vargs : List val) : Option temp_env :=
@@ -188,7 +252,7 @@ mutual
       | .Sbuiltin optid ef tyargs al =>
           match eval_exprlist_fn A ge e le m al tyargs with
           | some vargs =>
-              match external_call_fn A ef vargs m with
+              match external_call_fn A ge vload ef vargs m with
               | some (t, vres, m') => .ok (t, set_opttemp optid vres le, m', .Out_normal)
               | none => .error .stuck
           | none => .error .stuck
@@ -252,12 +316,39 @@ mutual
               | .error err => .error err
           | none => .error .stuck
       | .External ef _ _ _ =>
-          match external_call_fn A ef vargs m with
+          match external_call_fn A ge vload ef vargs m with
           | some (t, vres, m') => .ok (t, m', vres)
           | none => .error .stuck
 end
 
 end Eval
+
+/-- The program whose initial memory is the reference interpreter's first world: each volatile
+global becomes an ordinary global that can be written, and every other global loses its
+initialization data (`driver/Interp.ml`, lines 566 to 580). -/
+def world_program (p : program function) : program function :=
+  { p with prog_defs := p.prog_defs.map fun (id, g) =>
+      match g with
+      | .Gvar v =>
+          let v' := if v.gvar_volatile
+            then { v with gvar_readonly := false, gvar_volatile := false }
+            else { v with gvar_init := [] }
+          (id, .Gvar v')
+      | .Gfun f => (id, .Gfun f) }
+
+/-- The value of a volatile load as the reference interpreter's world gives it, from the initial
+memory of `world_program p` (`driver/Interp.ml`, lines 409 to 413). -/
+def world_vload (p : program function) : memory_chunk → ident → ptrofs → Option eventval :=
+  let wp := world_program p
+  match init_mem wp with
+  | none => fun _ _ _ => none
+  | some wm => fun chunk id ofs =>
+      match Genv.find_symbol (globalenv wp) id with
+      | none => none
+      | some b =>
+          match Mem.load chunk wm b (Ptrofs.unsigned ofs) with
+          | some v => eventval_of_val v (type_of_chunk chunk)
+          | none => none
 
 /-- Calls the function at symbol `name` of `p` with `args` from the initial memory of `p`, with
 `fuel` for the statements and calls it runs.  The result is the trace, the final memory, and the
@@ -273,6 +364,27 @@ def run (A : Archi) (p : program function) (name : ident) (args : List val) (fue
       | some b =>
           match Genv.find_funct_ptr ge b with
           | none => .error .stuck
-          | some fd => eval_funcall_fn A ge fuel m0 fd args
+          | some fd => eval_funcall_fn A ge (world_vload p) fuel m0 fd args
+
+/-- Runs the program `p` as `bigstep_program_terminates` describes: its `main`, of the type
+`int(void)`, from the initial memory of `p`, with `fuel` for the statements and calls it runs.
+The result is the trace and the returned `int`. -/
+def run_program (A : Archi) (p : program function) (fuel : Nat) : Except Failure (trace × int) :=
+  let ge := globalenv p
+  match init_mem p with
+  | none => .error .stuck
+  | some m0 =>
+      match Genv.find_symbol ge p.prog_main with
+      | none => .error .stuck
+      | some b =>
+          match Genv.find_funct_ptr ge b with
+          | none => .error .stuck
+          | some fd =>
+              if type_of_fundef fd = .Tfunction [] type_int32s cc_default then
+                match eval_funcall_fn A ge (world_vload p) fuel m0 fd [] with
+                | .ok (t, _, .Vint r) => .ok (t, r)
+                | .ok _ => .error .stuck
+                | .error err => .error err
+              else .error .stuck
 
 end LClight

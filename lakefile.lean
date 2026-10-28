@@ -162,6 +162,12 @@ lean_exe «native-emit» where
   srcDir := "tests"
   root := `TestSupport.Native.Emit
 
+-- The bare-metal programs, their C text with `main`, and their expected output
+-- (tests/baremetal/programs.sh); not a default target.
+lean_exe «native-bare» where
+  srcDir := "tests"
+  root := `TestSupport.Bare.Emit
+
 -- The translation of the tests/verified corpus to C (tests/native/verified.sh); not a default
 -- target.
 lean_exe «native-verified» where

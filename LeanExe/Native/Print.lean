@@ -5,10 +5,11 @@ A printer of Clight programs as C text, for the programs the translator and the 
 tests produce: globals of scalar or array type, functions whose parameters and temporaries are
 scalars or pointers, and the statements and expressions of `Clight.lean` other than `Sswitch`,
 `Slabel`, `Sgoto`, `Efield`, `Esizeof`, and `Ealignof`.  `Sloop s1 s2` prints only when `s2` is
-`Sskip`, as `for (;;)`.  Every subexpression is parenthesized, integer constants carry the
-suffix of their type, and floating-point constants print as hexadecimal literals, which C reads
-exactly; a NaN or infinite constant has no literal and is an error.  The printer is not
-verified: `clightgen` reads its output back for comparison.
+`Sskip`, as `while (c)` when `s1` begins with `if (c) ; else break;` and as `for (;;)`
+otherwise.  Every subexpression is parenthesized, integer constants carry the suffix of their
+type, and floating-point constants print as hexadecimal literals, which C reads exactly; a NaN
+or infinite constant has no literal and is an error.  The printer is not verified: `clightgen`
+reads its output back for comparison.
 
 The printer writes the forms that `clightgen` produces so that they come back unchanged.  A
 sequence nested as the first part of a sequence prints as a block, since C's blocks nest to the
@@ -16,8 +17,14 @@ right.  `Sloop (Ssequence Sskip s) Sskip` prints as `for (;;) { s }`, from which
 restores the `Sskip`.  A call through a temporary `t` that `isCall` accepts, `Scall (some t) f
 args` followed by `Sset x (Etempvar t)` or by `Sset x (Ecast (Etempvar t) ty)`, prints as
 `x = f(args);` or `x = ((ty)f(args));`, and `t` is not declared; `clightgen` creates such a
-temporary for every call whose result is stored.  `gname` names the globals and functions, and
-`tname` the temporaries.
+temporary for every call whose result is stored.  A store to a volatile lvalue, `Sbuiltin None
+(EF_vstore chunk) tys [Eaddrof l ty, e]`, the form that SimplExpr gives it, prints as the
+assignment `l = e;`, a load from one, `Sbuiltin (Some t) (EF_vload chunk) tys [Eaddrof l ty]`,
+prints as `t = l;`, and a volatile type prints with the qualifier `volatile`.  A load through a
+temporary `t` that `isCall` accepts, followed by `Sset x (Ecast (Etempvar t) ty)`, prints as
+`x = l;`, and `t` is not declared, since `clightgen` creates such a temporary for every read of a
+volatile lvalue.  A global without initialization data prints as an `extern` declaration.
+`gname` names the globals and functions, and `tname` the temporaries.
 -/
 
 namespace LeanExe.Native
@@ -29,19 +36,22 @@ def hexDigits (n width : Nat) : String :=
   let s := String.ofList (Nat.toDigits 16 n)
   String.ofList (List.replicate (width - s.length) '0') ++ s
 
+/-- `volatile ` for a volatile type, and nothing otherwise. -/
+def volatileQual (a : attr) : String := if a.attr_volatile then "volatile " else ""
+
 def ctype : type → Except String String
   | .Tvoid => pure "void"
-  | .Tint .I8 .Signed _ => pure "signed char"
-  | .Tint .I8 .Unsigned _ => pure "unsigned char"
-  | .Tint .I16 .Signed _ => pure "short"
-  | .Tint .I16 .Unsigned _ => pure "unsigned short"
-  | .Tint .I32 .Signed _ => pure "int"
-  | .Tint .I32 .Unsigned _ => pure "unsigned int"
-  | .Tint .IBool _ _ => pure "_Bool"
-  | .Tlong .Signed _ => pure "long long"
-  | .Tlong .Unsigned _ => pure "unsigned long long"
-  | .Tfloat .F32 _ => pure "float"
-  | .Tfloat .F64 _ => pure "double"
+  | .Tint .I8 .Signed a => pure (volatileQual a ++ "signed char")
+  | .Tint .I8 .Unsigned a => pure (volatileQual a ++ "unsigned char")
+  | .Tint .I16 .Signed a => pure (volatileQual a ++ "short")
+  | .Tint .I16 .Unsigned a => pure (volatileQual a ++ "unsigned short")
+  | .Tint .I32 .Signed a => pure (volatileQual a ++ "int")
+  | .Tint .I32 .Unsigned a => pure (volatileQual a ++ "unsigned int")
+  | .Tint .IBool _ a => pure (volatileQual a ++ "_Bool")
+  | .Tlong .Signed a => pure (volatileQual a ++ "long long")
+  | .Tlong .Unsigned a => pure (volatileQual a ++ "unsigned long long")
+  | .Tfloat .F32 a => pure (volatileQual a ++ "float")
+  | .Tfloat .F64 a => pure (volatileQual a ++ "double")
   | .Tpointer t _ => do pure ((← ctype t) ++ " *")
   | _ => throw "a type the printer does not declare"
 
@@ -128,6 +138,14 @@ def callPair? : statement → Option (ident × expr × List expr × Option type)
       if isCall t && t == t' then some (x, a, al, some ty) else none
   | _ => none
 
+/-- The load `Sbuiltin (some t) (EF_vload chunk) tys [Eaddrof l ty]` followed by
+`Sset x (Ecast (Etempvar t) ty')`, for a temporary `t` that `isCall` accepts: `x` and `l`. -/
+def loadPair? : statement → Option (ident × expr)
+  | .Ssequence (.Sbuiltin (some t) (.EF_vload _) _ [.Eaddrof l _])
+      (.Sset x (.Ecast (.Etempvar t' _) _)) =>
+      if isCall t && t == t' then some (x, l) else none
+  | _ => none
+
 /-- The C text of a statement.  It is `partial`: its recursion is structural, but the matches
 that recognize `clightgen`'s forms hide that from Lean's checker. -/
 partial def cstmt (depth : Nat) : statement → Except String String
@@ -140,26 +158,32 @@ partial def cstmt (depth : Nat) : statement → Except String String
         | some id => s!"{tname id} = "
         | none => ""
       pure s!"{indent depth}{lhs}{← cexpr gname tname a}({← cargs gname tname al});\n"
+  | .Sbuiltin none (.EF_vstore _) _ [.Eaddrof a _, e] => do
+      pure s!"{indent depth}{← cexpr gname tname a} = {← cexpr gname tname e};\n"
+  | .Sbuiltin (some id) (.EF_vload _) _ [.Eaddrof a _] => do
+      pure s!"{indent depth}{tname id} = {← cexpr gname tname a};\n"
   | .Sbuiltin optid ef _ al => do
       let lhs := match optid with
         | some id => s!"{tname id} = "
         | none => ""
       pure s!"{indent depth}{lhs}{← builtinName ef}({← cargs gname tname al});\n"
   | .Ssequence s1 s2 =>
-      match callPair? isCall (.Ssequence s1 s2) with
-      | some (x, a, al, cast) => do
+      match callPair? isCall (.Ssequence s1 s2), loadPair? isCall (.Ssequence s1 s2) with
+      | some (x, a, al, cast), _ => do
           let call := s!"{← cexpr gname tname a}({← cargs gname tname al})"
           let rhs ← match cast with
             | none => pure call
             | some ty => do pure s!"(({← ctype ty}){call})"
           pure s!"{indent depth}{tname x} = {rhs};\n"
-      | none => do
+      | none, some (x, l) => do
+          pure s!"{indent depth}{tname x} = {← cexpr gname tname l};\n"
+      | none, none => do
           let first ← match s1 with
             | .Ssequence _ _ =>
-                match callPair? isCall s1 with
-                | some _ => cstmt depth s1
-                | none => do
+                match callPair? isCall s1, loadPair? isCall s1 with
+                | none, none => do
                     pure (s!"{indent depth}\{\n" ++ (← cstmt (depth + 1) s1) ++ s!"{indent depth}}\n")
+                | _, _ => cstmt depth s1
             | _ => cstmt depth s1
           pure (first ++ (← cstmt depth s2))
   | .Sifthenelse a s1 s2 => do
@@ -171,13 +195,16 @@ partial def cstmt (depth : Nat) : statement → Except String String
           pure (s!"{indent depth}if ({c}) \{\n" ++ thn ++ s!"{indent depth}} else \{\n" ++
             (← cstmt (depth + 1) s2) ++ s!"{indent depth}}\n")
   | .Sloop s1 s2 => do
-      match s2 with
-      | .Sskip =>
+      match s2, s1 with
+      | .Sskip, .Ssequence (.Sifthenelse c .Sskip .Sbreak) b => do
+          pure (s!"{indent depth}while ({← cexpr gname tname c}) \{\n" ++ (← cstmt (depth + 1) b) ++
+            s!"{indent depth}}\n")
+      | .Sskip, _ =>
           let body ← match s1 with
             | .Ssequence .Sskip b => cstmt (depth + 1) b
             | _ => cstmt (depth + 1) s1
           pure (s!"{indent depth}for (;;) \{\n" ++ body ++ s!"{indent depth}}\n")
-      | _ => throw "a loop with a statement after its body"
+      | _, _ => throw "a loop with a statement after its body"
   | .Sbreak => pure s!"{indent depth}break;\n"
   | .Scontinue => pure s!"{indent depth}continue;\n"
   | .Sreturn none => pure s!"{indent depth}return;\n"
@@ -221,6 +248,7 @@ def cglobal (id : ident) (v : globvar type) : Except String String := do
       let body := ", ".intercalate items
       pure s!"{qual}{← ctype elt} {gname id}[{n}] = \{{body}};\n"
   | ty, [.Init_space _] => pure s!"{qual}{← ctype ty} {gname id};\n"
+  | ty, [] => pure s!"extern {qual}{← ctype ty} {gname id};\n"
   | ty, [d] => pure s!"{qual}{← ctype ty} {gname id} = {← cinit ty d};\n"
   | _, _ => throw "a scalar global with several initializers"
 
