@@ -57,21 +57,41 @@ theorem tagSlots_blocks (store : Store Unit) (p : UInt64) (shape : TreeShape)
   split <;> rfl
 
 theorem recordSlots_blocks (store : Store Unit) (p : UInt64) (shape : TreeShape)
-    (r : Fin shape.records) (words children) :
-    slotsBlocks store p 0 (shape.recordSlots r words children) =
-      slotsBlocks store p shape.fieldStart (treeSlots (shape.fields r) words children) := by
+    (r : Fin shape.records) (words arrays buffers children) :
+    slotsBlocks store p 0 (shape.recordSlots r words arrays buffers children) =
+      slotsBlocks store p shape.fieldStart (treeSlots (shape.fields r) words children) ++
+        slotsBlocks store p (shape.fieldStart + (shape.fields r).length)
+          (heapSlots (shape.kinds r) arrays buffers) := by
   unfold TreeShape.recordSlots
-  rw [slotsBlocks_append, tagSlots_blocks, List.nil_append, Nat.zero_add,
-    ← shape.fieldStart_tagSlots r]
+  rw [slotsBlocks_append, slotsBlocks_append, tagSlots_blocks, List.nil_append, Nat.zero_add,
+    ← shape.fieldStart_tagSlots r, List.length_append, ← shape.fieldStart_tagSlots r,
+    shape.treeSlots_length' r, Nat.zero_add]
+
+theorem tagSlots_regions (store : Store Unit) (p : UInt64) (shape : TreeShape)
+    (r : Fin shape.records) (i : Nat) : slotsRegions store p i (shape.tagSlots r) = [] := by
+  unfold TreeShape.tagSlots
+  split <;> rfl
+
+theorem slotsRegions_append (store : Store Unit) (p : UInt64) (first : List LeanExe.Pipeline.Slot) :
+    ∀ second i, slotsRegions store p i (first ++ second) =
+      slotsRegions store p i first ++ slotsRegions store p (i + first.length) second := by
+  induction first with
+  | nil => intros; simp [slotsRegions]
+  | cons slot rest ih =>
+    intro second i
+    cases slot <;> simp only [List.cons_append, slotsRegions, ih, List.length_cons,
+      List.append_assoc, Nat.add_assoc, Nat.add_comm 1]
 
 theorem recordSlots_regions (store : Store Unit) (p : UInt64) (shape : TreeShape)
-    (r : Fin shape.records) (words children) :
-    slotsRegions store p 0 (shape.recordSlots r words children) =
-      slotsRegions store p shape.fieldStart (treeSlots (shape.fields r) words children) := by
+    (r : Fin shape.records) (words arrays buffers children) :
+    slotsRegions store p 0 (shape.recordSlots r words arrays buffers children) =
+      slotsRegions store p shape.fieldStart (treeSlots (shape.fields r) words children) ++
+        slotsRegions store p (shape.fieldStart + (shape.fields r).length)
+          (heapSlots (shape.kinds r) arrays buffers) := by
   unfold TreeShape.recordSlots
-  rw [shape.fieldStart_tagSlots r]
-  unfold TreeShape.tagSlots
-  by_cases ht : shape.tagged = true <;> simp [ht, slotsRegions]
+  rw [slotsRegions_append, slotsRegions_append, tagSlots_regions, List.nil_append, Nat.zero_add,
+    ← shape.fieldStart_tagSlots r, List.length_append, ← shape.fieldStart_tagSlots r,
+    shape.treeSlots_length' r, Nat.zero_add]
 
 theorem treeSlots_child_owned {heap : Heap} {store : Store Unit} {shape : TreeShape}
     {r : Fin shape.records} {p : UInt64} {start : Nat} {words : Fin (shape.words r) → UInt64}
@@ -101,15 +121,20 @@ theorem treeSlots_child_owned {heap : Heap} {store : Store Unit} {shape : TreeSh
 theorem treeNode_word_read {mode : Mode} {heap : Heap} {store : Store Unit}
     {shape : TreeShape} {r : Fin shape.records} {p : UInt64}
     {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
     {children : Fin (shape.children r) → Tree shape}
-    (h : mode.node heap store p (Tree.node r words arrays buffers children).toNode) (i : Fin (shape.words r)) :
+    (h : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
+    (i : Fin (shape.words r)) :
     store.mem.read64
         (slotAddress p (shape.fieldStart + (fieldPosition false (shape.fields r) i).val)) =
       shape.slotWords r words i := by
   have hSlots : SlotsBorrowed heap store p 0 (shape.tagSlots r ++
-      treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode)) :=
+      treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode) ++
+      heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) :=
     h.borrow.2
-  obtain ⟨-, hFields⟩ := (SlotsBorrowed.append_iff _ _ _).mp hSlots
+  obtain ⟨hPrefix, -⟩ := (SlotsBorrowed.append_iff _ _ _).mp hSlots
+  obtain ⟨-, hFields⟩ := (SlotsBorrowed.append_iff _ _ _).mp hPrefix
   rw [Nat.zero_add, ← shape.fieldStart_tagSlots r] at hFields
   have hLength := treeSlots_length (shape.fields r) (shape.slotWords r words)
     (fun i => (children i).toNode)
@@ -122,6 +147,8 @@ theorem treeNode_word_read {mode : Mode} {heap : Heap} {store : Store Unit}
 theorem treeNode_child_rep {mode : Mode} {heap : Heap} {store : Store Unit}
     {shape : TreeShape} {r : Fin shape.records} {p : UInt64}
     {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
     {children : Fin (shape.children r) → Tree shape}
     (h : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
     (i : Fin (shape.children r)) :
@@ -131,8 +158,10 @@ theorem treeNode_child_rep {mode : Mode} {heap : Heap} {store : Store Unit}
       (children i).toNode := by
   cases mode
   · have hSlots : SlotsBorrowed heap store p 0 (shape.tagSlots r ++
-        treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode)) := h.2
-    obtain ⟨-, hFields⟩ := (SlotsBorrowed.append_iff _ _ _).mp hSlots
+        treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode) ++
+        heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) := h.2
+    obtain ⟨hPrefix, -⟩ := (SlotsBorrowed.append_iff _ _ _).mp hSlots
+    obtain ⟨-, hFields⟩ := (SlotsBorrowed.append_iff _ _ _).mp hPrefix
     rw [Nat.zero_add, ← shape.fieldStart_tagSlots r] at hFields
     have hLength := treeSlots_length (shape.fields r) (shape.slotWords r words)
       (fun i => (children i).toNode)
@@ -142,16 +171,54 @@ theorem treeNode_child_rep {mode : Mode} {heap : Heap} {store : Store Unit}
       (fun i => (children i).toNode) i] at hi
     exact hi.1
   · have hSlots : SlotsOwned heap store p 0 (shape.tagSlots r ++
-        treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode)) :=
+        treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode) ++
+        heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) :=
       h.1.2
-    obtain ⟨-, hFields⟩ := (SlotsOwned.append_iff _ _ _).mp hSlots
+    obtain ⟨hPrefix, -⟩ := (SlotsOwned.append_iff _ _ _).mp hSlots
+    obtain ⟨-, hFields⟩ := (SlotsOwned.append_iff _ _ _).mp hPrefix
     rw [Nat.zero_add, ← shape.fieldStart_tagSlots r] at hFields
     have hApart := (List.pairwise_cons.mp h.2).2
-    change (slotsBlocks store p 0 (shape.tagSlots r ++
-      treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode))).Pairwise
+    change (slotsBlocks store p 0 (shape.recordSlots r (shape.slotWords r words)
+      (shape.arrayWords r arrays) buffers (fun i => (children i).toNode))).Pairwise
         regionsDisjoint at hApart
-    rw [slotsBlocks_append, tagSlots_blocks, List.nil_append, Nat.zero_add,
-      ← shape.fieldStart_tagSlots r] at hApart
-    exact treeSlots_child_owned hFields hApart i
+    rw [recordSlots_blocks] at hApart
+    exact treeSlots_child_owned hFields (List.pairwise_append.mp hApart).1 i
+
+/-- The array of array field `i` of a record, held in the record's mode. -/
+theorem treeNode_array_rep {mode : Mode} {heap : Heap} {store : Store Unit}
+    {shape : TreeShape} {r : Fin shape.records} {p : UInt64}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
+    {children : Fin (shape.children r) → Tree shape}
+    (h : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
+    (i : Fin (shape.arrays r)) :
+    mode.array heap store
+      (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+        heapArraySlot (shape.kinds r) i)))
+      ((shape.arrayElem r i).words (arrays i)) := by
+  have hLt := heapArraySlot_lt (shape.kinds r) (shape.arrayWords r arrays) buffers i
+  have hGet := heapArraySlot_get (shape.kinds r) (shape.arrayWords r arrays) buffers i hLt
+  have hPrefixLength : (shape.tagSlots r ++ treeSlots (shape.fields r) (shape.slotWords r words)
+      (fun i => (children i).toNode)).length = shape.fieldStart + (shape.fields r).length := by
+    rw [List.length_append, ← shape.fieldStart_tagSlots r]
+    exact congrArg (shape.fieldStart + ·) (treeSlots_length _ _ _)
+  cases mode
+  · have hSlots : SlotsBorrowed heap store p 0 (shape.tagSlots r ++
+        treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode) ++
+        heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) := h.2
+    obtain ⟨-, hHeap⟩ := (SlotsBorrowed.append_iff _ _ _).mp hSlots
+    rw [Nat.zero_add, hPrefixLength] at hHeap
+    have hi := SlotsBorrowed.get _ _ hHeap _ hLt
+    rw [hGet] at hi
+    exact hi.1
+  · have hSlots : SlotsOwned heap store p 0 (shape.tagSlots r ++
+        treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode) ++
+        heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) := h.1.2
+    obtain ⟨-, hHeap⟩ := (SlotsOwned.append_iff _ _ _).mp hSlots
+    rw [Nat.zero_add, hPrefixLength] at hHeap
+    have hi := SlotsOwned.get _ _ hHeap _ hLt
+    rw [hGet] at hi
+    exact hi.1
 
 end Verified

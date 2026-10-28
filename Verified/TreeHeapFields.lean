@@ -8,6 +8,22 @@ namespace Verified
 
 open Wasm LeanExe.Pipeline
 
+@[simp] theorem filterMap_arrayElem_word (e : Elem) (rest : List TreeField) :
+    (TreeField.word e :: rest).filterMap TreeField.arrayElem? =
+      rest.filterMap TreeField.arrayElem? := rfl
+
+@[simp] theorem filterMap_arrayElem_child (rest : List TreeField) :
+    (TreeField.child :: rest).filterMap TreeField.arrayElem? =
+      rest.filterMap TreeField.arrayElem? := rfl
+
+@[simp] theorem filterMap_arrayElem_array (e : Elem) (rest : List TreeField) :
+    (TreeField.array e :: rest).filterMap TreeField.arrayElem? =
+      e :: rest.filterMap TreeField.arrayElem? := rfl
+
+@[simp] theorem filterMap_arrayElem_bytes (rest : List TreeField) :
+    (TreeField.bytes :: rest).filterMap TreeField.arrayElem? =
+      rest.filterMap TreeField.arrayElem? := rfl
+
 /-- The words of the slots of the array and buffer fields among `fields`, in order: each array's
 address, and each buffer's root followed by its length. -/
 def heapValues : (fields : List TreeField) →
@@ -223,5 +239,195 @@ theorem forall₂_append {α β : Type} {R : α → β → Prop} :
       List.Forall₂ R l1 l2 → List.Forall₂ R l3 l4 → List.Forall₂ R (l1 ++ l3) (l2 ++ l4)
   | _, _, _, _, .nil, h => h
   | _, _, _, _, .cons hab h, h' => .cons hab (forall₂_append h h')
+
+/-- The offset, among the slots of the array and buffer fields of `fields`, of the slot of array
+field `i`. -/
+def heapArraySlot : (fields : List TreeField) →
+    Fin (fields.filterMap TreeField.arrayElem?).length → Nat
+  | [], i => i.val
+  | .array _ :: rest, i =>
+    if h : i.val = 0 then 0 else
+      heapArraySlot rest ⟨i.val - 1, by
+        have := i.isLt
+        simp only [List.filterMap_cons, TreeField.arrayElem?, List.length_cons] at this
+        omega⟩ + 1
+  | .bytes :: rest, i =>
+    heapArraySlot rest ⟨i.val, by
+      have := i.isLt
+      simp only [List.filterMap_cons, TreeField.arrayElem?] at this
+      exact this⟩ + 2
+  | .word _ :: rest, i | .child :: rest, i =>
+    heapArraySlot rest ⟨i.val, by
+      have := i.isLt
+      simp only [List.filterMap_cons, TreeField.arrayElem?] at this
+      exact this⟩
+
+theorem heapSlots_length' (fields : List TreeField) (arrays buffers) :
+    (heapSlots fields arrays buffers).length =
+      ((fields.filter fun f => (f.bit?).isNone).map TreeField.width).sum :=
+  heapSlots_length fields arrays buffers
+
+theorem heapLocs_length (fields : List TreeField) :
+    ∀ arrays buffers, (heapLocs fields arrays buffers).length =
+      ((fields.filter fun f => (f.bit?).isNone).map TreeField.width).sum := by
+  induction fields with
+  | nil => intros; rfl
+  | cons field rest ih =>
+    intro arrays buffers
+    cases field <;>
+      simp only [heapLocs, ih, List.filter_cons, List.map_cons, List.sum_cons, List.length_cons,
+        TreeField.bit?_word, TreeField.bit?_child, TreeField.bit?_array, TreeField.bit?_bytes,
+        Option.isNone_some, Option.isNone_none, Bool.false_eq_true, ↓reduceIte,
+        TreeField.width] <;> omega
+
+theorem heapArraySlot_get (fields : List TreeField) :
+    ∀ arrays buffers (i : Fin (fields.filterMap TreeField.arrayElem?).length)
+      (h : heapArraySlot fields i < (heapSlots fields arrays buffers).length),
+      (heapSlots fields arrays buffers)[heapArraySlot fields i] = .array (arrays i) := by
+  induction fields with
+  | nil => intro _ _ i; exact Fin.elim0 i
+  | cons field rest ih =>
+    intro arrays buffers i h
+    cases field with
+    | word e => exact ih _ _ _ h
+    | child => exact ih _ _ _ h
+    | bytes =>
+      simp only [heapArraySlot, heapSlots, List.getElem_cons_succ]
+      exact ih _ _ _ _
+    | array e =>
+      by_cases hz : i.val = 0
+      · have hi : i = ⟨0, by simp [TreeField.arrayElem?]⟩ := Fin.ext hz
+        subst hi
+        simp [heapArraySlot, heapSlots]
+      · simp only [heapArraySlot, dite_eq_right hz, heapSlots, List.getElem_cons_succ]
+        rw [ih]
+        congr 1
+        apply congrArg arrays
+        apply Fin.ext
+        simp only
+        omega
+
+theorem heapArraySlot_lt (fields : List TreeField) :
+    ∀ arrays buffers (i : Fin (fields.filterMap TreeField.arrayElem?).length),
+      heapArraySlot fields i < (heapSlots fields arrays buffers).length := by
+  induction fields with
+  | nil => intro _ _ i; exact Fin.elim0 i
+  | cons field rest ih =>
+    intro arrays buffers i
+    cases field with
+    | word e => exact ih _ _ _
+    | child => exact ih _ _ _
+    | bytes =>
+      simp only [heapArraySlot, heapSlots, List.length_cons]
+      have := ih (fun i => arrays ⟨i.val, by
+        simp only [List.filterMap_cons, TreeField.arrayElem?]; exact i.isLt⟩)
+        (fun i => buffers ⟨i.val + 1, by simp⟩) ⟨i.val, by
+          have := i.isLt
+          simp only [List.filterMap_cons, TreeField.arrayElem?] at this
+          exact this⟩
+      omega
+    | array e =>
+      by_cases hz : i.val = 0
+      · simp [heapArraySlot, hz, heapSlots]
+      · simp only [heapArraySlot, dite_eq_right hz, heapSlots, List.length_cons]
+        have := ih (fun i => arrays ⟨i.val + 1, by simp [TreeField.arrayElem?]⟩)
+          (fun i => buffers ⟨i.val, by simpa using i.isLt⟩) ⟨i.val - 1, by
+            have := i.isLt
+            simp only [List.filterMap_cons, TreeField.arrayElem?, List.length_cons] at this
+            omega⟩
+        omega
+
+theorem heapLocs_array_get (fields : List TreeField) :
+    ∀ arraysBase buffersBase (i : Fin (fields.filterMap TreeField.arrayElem?).length)
+      (h : heapArraySlot fields i < (heapLocs fields arraysBase buffersBase).length),
+      (heapLocs fields arraysBase buffersBase)[heapArraySlot fields i] = arraysBase + i.val := by
+  induction fields with
+  | nil => intro _ _ i; exact Fin.elim0 i
+  | cons field rest ih =>
+    intro arraysBase buffersBase i h
+    cases field with
+    | word e => exact ih _ _ _ h
+    | child => exact ih _ _ _ h
+    | bytes =>
+      simp only [heapArraySlot, heapLocs, List.getElem_cons_succ]
+      exact ih _ _ _ _
+    | array e =>
+      by_cases hz : i.val = 0
+      · simp [heapArraySlot, hz, heapLocs]
+      · simp only [heapArraySlot, dite_eq_right hz, heapLocs, List.getElem_cons_succ]
+        rw [ih]
+        simp only
+        omega
+
+theorem heapLocs_mem (fields : List TreeField) :
+    ∀ arraysBase buffersBase loc, loc ∈ heapLocs fields arraysBase buffersBase →
+      (arraysBase ≤ loc ∧ loc < arraysBase + (fields.filterMap TreeField.arrayElem?).length) ∨
+        (buffersBase ≤ loc ∧ loc < buffersBase + 2 * fields.count .bytes) := by
+  induction fields with
+  | nil => intros _ _ _ h; simp [heapLocs] at h
+  | cons field rest ih =>
+    intro arraysBase buffersBase loc hMem
+    cases field with
+    | word e =>
+      have := ih _ _ _ hMem
+      simp only [filterMap_arrayElem_word, List.count_cons, reduceCtorEq, beq_iff_eq,
+        ↓reduceIte, Nat.add_zero]
+      exact this
+    | child =>
+      have := ih _ _ _ hMem
+      simp only [filterMap_arrayElem_child, List.count_cons, reduceCtorEq, beq_iff_eq,
+        ↓reduceIte, Nat.add_zero]
+      exact this
+    | array e =>
+      simp only [heapLocs, List.mem_cons] at hMem
+      simp only [filterMap_arrayElem_array, List.length_cons, List.count_cons, reduceCtorEq,
+        beq_iff_eq, ↓reduceIte, Nat.add_zero]
+      rcases hMem with rfl | hMem
+      · left; omega
+      · have := ih _ _ _ hMem
+        omega
+    | bytes =>
+      simp only [heapLocs, List.mem_cons] at hMem
+      simp only [filterMap_arrayElem_bytes, List.count_cons, beq_self_eq_true, ↓reduceIte]
+      rcases hMem with rfl | rfl | hMem
+      · right; omega
+      · right; omega
+      · have := ih _ _ _ hMem
+        omega
+
+theorem heapLocs_nodup (fields : List TreeField) :
+    ∀ arraysBase buffersBase,
+      (arraysBase + (fields.filterMap TreeField.arrayElem?).length ≤ buffersBase ∨
+        buffersBase + 2 * fields.count .bytes ≤ arraysBase) →
+      (heapLocs fields arraysBase buffersBase).Nodup := by
+  induction fields with
+  | nil => intros; exact List.nodup_nil
+  | cons field rest ih =>
+    intro arraysBase buffersBase hApart
+    cases field with
+    | word e =>
+      simp only [filterMap_arrayElem_word, List.count_cons, reduceCtorEq, beq_iff_eq,
+        ↓reduceIte, Nat.add_zero] at hApart
+      exact ih _ _ hApart
+    | child =>
+      simp only [filterMap_arrayElem_child, List.count_cons, reduceCtorEq, beq_iff_eq,
+        ↓reduceIte, Nat.add_zero] at hApart
+      exact ih _ _ hApart
+    | array e =>
+      simp only [filterMap_arrayElem_array, List.length_cons, List.count_cons, reduceCtorEq,
+        beq_iff_eq, ↓reduceIte, Nat.add_zero] at hApart
+      simp only [heapLocs, List.nodup_cons]
+      refine ⟨fun hMem => ?_, ih _ _ (by omega)⟩
+      have := heapLocs_mem rest _ _ _ hMem
+      omega
+    | bytes =>
+      simp only [filterMap_arrayElem_bytes, List.count_cons, beq_self_eq_true,
+        ↓reduceIte] at hApart
+      simp only [heapLocs, List.nodup_cons, List.mem_cons, not_or]
+      refine ⟨⟨by omega, fun hMem => ?_⟩, fun hMem => ?_, ih _ _ (by omega)⟩
+      · have := heapLocs_mem rest _ _ _ hMem
+        omega
+      · have := heapLocs_mem rest _ _ _ hMem
+        omega
 
 end Verified
