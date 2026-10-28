@@ -36949,3 +36949,23 @@ The compiler now compiles records with array fields.  A construction moves each 
 - [x] The manual.
 - [ ] The gate of the arrays half.
 - [ ] Buffers.
+
+## 2026-10-28: Review of the model change for heap fields
+
+An independent reviewer read the diff of `LeanExe/Pipeline` of the model change and found no unsatisfiable precondition, no missing disjointness, and no block owned twice.  The reviewer also confirmed that every predicate unfolds to the proposition it stated before the change for a type without heap fields.  The review reported five findings, and the coordinator decided each one.
+
+| Finding | Decision | Change |
+|---|---|---|
+| Nothing in the trusted definitions tied a buffer's root to its length.  The docstring of `Slot` and the manual said that the slot after the root holds the length, but the `.bytes` cases of `SlotsOwned` and `SlotsBorrowed` read only the root's slot, so an `Encode` instance with no length slot, or with another word there, gave values that satisfy `NodeOwned`. | State the rule in the trusted model. | `BufferLengths slots` states that each buffer slot is followed by a word slot that holds the buffer's length, and `RecordHeader` and `RecordSlots` gain the field `lengths : BufferLengths slots`.  The docstrings of `Slot`, `SlotsOwned`, and `SlotsBorrowed` point to the field. |
+| The docstrings of `Represent.reads`, of the `Encode` and `Moved` instances, and of `Implements` did not mention arrays or buffers. | Complete them. | The four docstrings, and that of `Represent.moves`, which named only arrays, now name the arrays and buffers of records. |
+| A borrowed buffer must meet the full `Heap.Buffer`, count 1 included, as a borrowed `LeanExe.Bytes` argument does. | Intended. | The manual's paragraph on the representation of recursive values states it. |
+| An empty buffer in a record has root 0, where a `LeanExe.Bytes` parameter may have a nonzero root and no bytes. | Intended and documented. | None. |
+| `ItemOwned` and the weakened `RecordBody` appear in no statement that a reader relies on, and could leave the trusted directory. | Deferred.  The coordinator is asking the user whether to move such definitions. | None. |
+
+The length rule had two forms.  As a condition on the next slot in the `.bytes` cases of `SlotsOwned` and `SlotsBorrowed`, it makes both predicates false for a list that ends in a buffer slot.  `append_iff`, `get`, and `Slot.ValueOwned.singleton` would then need premises at 22 calls in nine files, and the copy loop's invariant, which states the filled prefix of a record's slots with `SlotsOwned`, would fail between a buffer's root and its length.  As a field of the record structures, the rule constrains a record's whole slot list, as the width and the mask already do, and the slot predicates keep their lemmas as they stand.  The coordinator chose the field.  `RecordHeader.rewrite`, `Heap.NewRecord.header`, `RecordStorage.record`, `RecordStorage.restore`, `RecordStorage.seal`, `RecordStorage.assemble`, `wp_assembleRecord`, and `TreeHeader.attach_spec` take the rule for the slots of the record they give.  `NodeOwned.writeWord` requires that the written slot follow no buffer slot, and `BufferLengths.set_word` keeps the rule through the write.  A record of words meets the rule by `wordSlots_lengths`, and a record that a tree shape lays out by `NodeLayout.lengths`.
+
+Before building, I checked by reading which trusted predicates that admit a buffer slot reach one of the two structures.  `NodeOwned` and `NodeBorrowed` state each record through `RecordHeader` and `RecordSlots` and each child through themselves.  `Represent.owned` and `Represent.borrowed` of a type with `Encode`, the `Moved` instance, `Heap.Built`, `Heap.Rebuilt`, and `Heap.NewRecord` state their records through `NodeOwned`, `NodeBorrowed`, or `RecordHeader`.  `Separate` and `Represent.reads` consult `Node.pointers` and `Node.slotRegions`, functions of a value whose `Represent.borrowed` premise of `Implements` carries the rule.  Four predicates do not reach either structure: `SlotsOwned` and `SlotsBorrowed`, which state a list of slots without its record, `Slot.ValueOwned`, which states one slot, and `ItemOwned` with its `RecordBody`, the pending objects of the release proof that finding 5 concerns.  `Node.Slotted` also admits buffer slots, and it states only that every record has a slot.
+
+- [x] The `lengths` field and the lemmas that build records.
+- [x] The docstrings and the manual.
+- [ ] The gate of the arrays half on the new commit.
