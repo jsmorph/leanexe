@@ -37435,3 +37435,19 @@ The exit criterion of M6 holds: the translation of the binary32 GPT-2 module con
 
 - [x] `f32ops` in `tests/native/run.sh`, the differential test, the corpus driver, and binary32 GPT-2 native with theorems.
 - [x] The merge with `main`, after the compiled case generators.
+
+## 2026-10-28: The Wasm-to-C translator: merge with typed fields stage 2, and the start of M7
+
+The merge with main after typed fields stage 2 conflicted only in this journal, where main's entries come first.  `Verified/Reflect/Command.lean` merged without a conflict: main replaces `prepareRecursiveTypes` by `requireRecursiveTypes` in the elaborator of `verified_compile`, away from the native part.  The corpus gains `typedtrees`.
+
+The gate on the merge passed on both trees, with four workers and a memory limit of 16 GB.  The build after the merge took 47 minutes, and the memory watcher's largest sample of full memory pressure was 10 percent.  All 101 corpus modules translate entirely, with 1,454 functions and 1,412 exports, and `clightgen` reads each C text back as its translation.  The 35,766 cases of `verified-cases` pass natively, none outside a translation, as do the 3,322 module cases.  `run.sh`'s 20 modules agree with Talos, `f32ops` in all 1,082 calls, the byte and literal examples agree with Wasmtime, and the differential test agrees on its 318 programs.  The same counts hold with the x86_64 tree under `qemu-x86_64`.
+
+### The trusted base
+
+`docs/native-translator.md` now has a section that lists the native path's trusted base in a table: Lean, the Lean copy of Clight, the CompCert theorems that the argument uses (`bigstep_semantics_sound`, `transf_c_program_correct`, and `separate_transf_c_program_correct`) with the axioms and target hypotheses they rest on, CompCert's unverified parts, the printer, the written file, `clightgen` and the comparison as a check, the host glue, the run-time library, the call depth and the stack, and the toolchain.  The facts come from the CompCert 3.18 sources and from the compiled corpus.  `lib/Axioms.v` states functional extensionality and proof irrelevance, and `clightgen`'s driver runs `SimplExpr` and `SimplLocals` and, without `-normalize`, no other pass.  On x86-64 the translated code links `__compcert_i64_utod`, `__compcert_i64_utof`, and `__compcert_i64_dtou` from `libcompcert.a`, and the host calls no floating-point conversion.
+
+### The file theorem: measurements
+
+`Translation.text` cannot be evaluated by the kernel, because `cstmt` is `partial`.  A structural copy prints the same text for `poly` and `gpt32`.  It needs `cstmt` in a `mutual` block with a function on `labeled_statements`, since `statement` is mutual with it, and its matches on sub-statements moved into top-level patterns.  Every translation contains the runtime functions `alloc` and `release`, about 2,050 lines of C, so the smallest text, `poly`'s, has 112,418 bytes, and `gpt32`'s has 474,495.  The kernel evaluated the whole translation of `poly` in 0.85 s.
+
+The kernel's check of the text against the file is expensive.  Comparing the printed text of `poly` with the file as one `String` exceeded the kernel's recursion depth after 16 s.  Printing it as 2,067 lines and comparing their UTF-8 bytes with the file's (`binary_file%`, `List.beq`) took 31 s and 12 GB.  The comparison of two 112 KB byte lists alone took 5.4 s, and 11.7 s with the bytes as `Nat`s.  A printer that emitted bytes directly, with its constant text turned into byte literals when the source elaborates, used 21 GB without finishing in ten minutes, and the probe was stopped.  The kernel represents an array by a list, so `String.append` pushes each byte onto a list, and it expands a string literal through `String.ofList`.  At the rate of the line printer, the file theorem for `gpt32` would need minutes and more than 16 GB, so its form needs a decision before it is built.
