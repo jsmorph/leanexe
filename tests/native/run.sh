@@ -8,8 +8,12 @@
 # lines.  CCOMP and CLIGHTGEN name CompCert 3.18's driver and clightgen, built from one tree for
 # the machine that runs the test, and CCOMP_STDLIB, when set, names the directory of CompCert's
 # run-time library for a tree that is not installed.
+# LEANRUN_MEMORY_HIGH is the memory limit of each step that runs under tools/leanrun, 6G unless
+# the caller sets it.  The largest step measured, the elaboration of a native theorem file that
+# the build compiles, keeps 3.7 GB resident.
 # Usage: tests/native/run.sh
 set -euo pipefail
+export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-6G}
 ccomp=${CCOMP:-ccomp}
 clightgen=${CLIGHTGEN:-clightgen}
 stdlib=()

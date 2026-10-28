@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # The cases of tests/verified, run on the modules translated to C and compiled with CompCert.
-# For each module of tests/verified/modules.txt, native-verified (tests/TestSupport/Native/
+# For each module of tests/verified/modules.txt, native-verified build (tests/TestSupport/Native/
 # Verified.lean) writes the C text of its translation, the glue of tools/native-host.h, and the
-# exports that the translation contains.  clightgen reads the C text back, native-verified check
-# compares the Clight it wrote with the translation, and ccomp compiles the text and the glue
-# with tools/native-host.c, which takes the commands of the Wasmtime host.  The cases are the
+# exports that the translation contains, has clightgen read the C text back, compares that Clight
+# with the translation, and compiles the text with ccomp only when they match.  ccomp then links
+# the object with the glue and tools/native-host.c, which takes the commands of the Wasmtime host.  The cases are the
 # lines of the compiled generator verified-cases (Verified/Examples/Cases.lean), with the library
 # entries of tests/verified/library-cases.txt, which tests/verified/run.sh checks with Wasmtime.
 # A case runs when the translation contains its export, and a module outside the subset, which
@@ -17,8 +17,12 @@
 # not run, and fails unless every case that runs passes.  Build the modules' targets first, as
 # tests/verified/run.sh requires.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as for
 # tests/native/run.sh.
+# LEANRUN_MEMORY_HIGH is the memory limit of each step that runs under tools/leanrun, 6G unless
+# the caller sets it.  The largest step measured, native-verified build of the largest corpus
+# module, keeps 3.7 GB resident.
 # Usage: tests/native/verified.sh [--module NAME]
 set -euo pipefail
+export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-6G}
 only=""
 if [ "$#" -ne 0 ]; then
   if [ "$#" -ne 2 ] || [ "$1" != "--module" ] || [ -z "$2" ]; then
@@ -48,18 +52,15 @@ while IFS=: read -r module constant name; do
   fi
   modules=$((modules + 1))
   status=0
-  tools/leanrun --timeout 10m lake env .lake/build/bin/native-verified emit "$module" "$constant" \
-    "$name" "$out" || status=$?
+  CLIGHTGEN=$clightgen CCOMP=$ccomp tools/leanrun --timeout 10m lake env \
+    .lake/build/bin/native-verified build "$module" "$constant" "$name" "$out" || status=$?
   if [ "$status" -eq 3 ]; then
     untranslated="$untranslated $name"
     continue
   elif [ "$status" -ne 0 ]; then
     exit "$status"
   fi
-  (cd "$out" && "$clightgen" "$name.c")
-  tools/leanrun --timeout 10m lake env .lake/build/bin/native-verified check "$module" "$constant" \
-    "$name" "$out"
-  "$ccomp" "${stdlib[@]}" -I "$root/tools" -o "$out/$name" "$out/$name.c" "$out/${name}_glue.c" \
+  "$ccomp" "${stdlib[@]}" -I "$root/tools" -o "$out/$name" "$out/$name.o" "$out/${name}_glue.c" \
     "$root/tools/native-host.c"
 done <"$root/tests/verified/modules.txt"
 if [ "$modules" -eq 0 ]; then

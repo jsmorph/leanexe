@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
-# The byte and literal examples translated to C.  native-verified translates
-# Verified.Examples.Bytes and Verified.Examples.Literals, clightgen reads each C text back,
-# native-verified check compares the Clight it wrote with the translation, and ccomp compiles
-# each with its glue and tools/native-host.c.  The cases of tests/wasi/bytes.tsv,
+# The byte and literal examples translated to C.  native-verified build translates
+# Verified.Examples.Bytes and Verified.Examples.Literals, has clightgen read each C text back,
+# compares that Clight with the translation, and compiles the text with ccomp only when they
+# match; ccomp then links the object with its glue and tools/native-host.c.  The cases of tests/wasi/bytes.tsv,
 # tests/wasi/literals.tsv, and tests/wasi/byte-traps.tsv, which tests/wasi/run.sh checks with
 # Wasmtime, must give the same lines and allocation counts natively, and each trap case must stop
 # at `unreachable`.  The build includes tests/TestSupport/Native/LiteralsNative.lean, which states
 # the examples' native theorems.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as for
 # tests/native/run.sh.
+# LEANRUN_MEMORY_HIGH is the memory limit of each step that runs under tools/leanrun, 6G unless
+# the caller sets it.  The largest step measured, the elaboration of the native theorem file
+# that the build compiles, keeps 3.7 GB resident.
 # Usage: tests/native/bytes.sh
 set -euo pipefail
+export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-6G}
 ccomp=${CCOMP:-ccomp}
 clightgen=${CLIGHTGEN:-clightgen}
 stdlib=()
@@ -25,12 +29,9 @@ mkdir -p "$out"
 for name in Bytes Literals; do
   module=Verified.Examples.$name
   lower=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')
-  tools/leanrun --timeout 10m lake env .lake/build/bin/native-verified emit "$module" \
-    "$module.compiled.module" "$lower" "$out"
-  (cd "$out" && "$clightgen" "$lower.c")
-  tools/leanrun --timeout 10m lake env .lake/build/bin/native-verified check "$module" \
-    "$module.compiled.module" "$lower" "$out"
-  "$ccomp" "${stdlib[@]}" -I "$root/tools" -o "$out/$lower" "$out/$lower.c" \
+  CLIGHTGEN=$clightgen CCOMP=$ccomp tools/leanrun --timeout 10m lake env \
+    .lake/build/bin/native-verified build "$module" "$module.compiled.module" "$lower" "$out"
+  "$ccomp" "${stdlib[@]}" -I "$root/tools" -o "$out/$lower" "$out/$lower.o" \
     "$out/${lower}_glue.c" "$root/tools/native-host.c"
 done
 tab=$(printf '\t')

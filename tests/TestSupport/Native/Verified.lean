@@ -15,6 +15,12 @@ Lean module that defines it, as `tools/Emit.lean` does.
   or one that does not translate, it writes nothing and exits with status 3.
 * `check MODULE CONSTANT NAME DIR` compares the translation with the Clight that `clightgen`
   wrote for `DIR/NAME.c` as `DIR/NAME.v`.
+* `build MODULE CONSTANT NAME DIR` is the native build of a module: it writes the files of
+  `emit`, runs `clightgen` on `DIR/NAME.c`, compares its Clight with the translation as `check`
+  does, and only when they match compiles the same `DIR/NAME.c` with `ccomp -c` to `DIR/NAME.o`.
+  A mismatch, or a failure of either tool, stops it with a nonzero status before `ccomp` runs or
+  after it fails.  The environment variables `CLIGHTGEN` and `CCOMP` name the tools, `clightgen`
+  and `ccomp` by default, which must come from one CompCert 3.18 tree.
 -/
 
 open Lean LeanExe.Native
@@ -147,14 +153,15 @@ def glue (t : Translation) (m : Wasm.Module) : Except String String := do
     s!"const lx_global_export lx_global_exports[] = \{\n{table gentries "  {0, 0}"}};\n" ++
     s!"const int lx_global_export_count = {gentries.length};\n"
 
-unsafe def emit (moduleName constName : Name) (name dir : String) : IO UInt32 := do
-  let m ← loadModule moduleName constName
+/-- Writes the files of `emit` for the module `m`, and returns its translation, or `none` for a
+module outside the subset or one that does not translate. -/
+def emitModule (m : Wasm.Module) (name dir : String) : IO (Option Translation) := do
   if let some v := violation m then
     IO.println s!"{name}: outside the subset: {v}"
-    return 3
+    return none
   let some t := translate nativeCap m
     | IO.println s!"{name}: does not translate"
-      return 3
+      return none
   let text ← IO.ofExcept <| t.text.mapError fun e => IO.userError s!"{name}: {e}"
   let glueText ← IO.ofExcept <| (glue t m).mapError fun e => IO.userError s!"{name}: {e}"
   IO.FS.createDirAll dir
@@ -164,11 +171,16 @@ unsafe def emit (moduleName constName : Name) (name dir : String) : IO UInt32 :=
   IO.FS.writeFile s!"{dir}/{name}.exports" (String.join (exports.map (·.name ++ "\n")))
   IO.println s!"{name}: {t.funcs.length} of {m.funcs.length} functions, \
     {exports.length} of {m.exports.length} exports"
-  return 0
+  return some t
 
-unsafe def check (moduleName constName : Name) (name dir : String) : IO UInt32 := do
+unsafe def emit (moduleName constName : Name) (name dir : String) : IO UInt32 := do
   let m ← loadModule moduleName constName
-  let t ← translation m name
+  match ← emitModule m name dir with
+  | none => return 3
+  | some _ => return 0
+
+/-- Compares the translation `t` with the Clight that `clightgen` wrote as `DIR/NAME.v`. -/
+def checkTranslation (t : Translation) (name dir : String) : IO UInt32 := do
   let text ← IO.FS.readFile s!"{dir}/{name}.v"
   match ClightCheck.check t text with
   | .error e =>
@@ -181,6 +193,26 @@ unsafe def check (moduleName constName : Name) (name dir : String) : IO UInt32 :
       for e in errors do IO.eprintln s!"{name}: {e}"
       return 1
 
+unsafe def check (moduleName constName : Name) (name dir : String) : IO UInt32 := do
+  let m ← loadModule moduleName constName
+  checkTranslation (← translation m name) name dir
+
+/-- Runs `cmd` with `args` in `cwd`, and fails with its standard error unless it exits with 0. -/
+def runTool (cmd : String) (args : Array String) (cwd : Option System.FilePath := none) :
+    IO Unit := do
+  let out ← IO.Process.output { cmd, args, cwd }
+  if out.exitCode != 0 then
+    throw <| IO.userError s!"{cmd} exited with status {out.exitCode}:\n{out.stdout}{out.stderr}"
+
+unsafe def build (moduleName constName : Name) (name dir : String) : IO UInt32 := do
+  let m ← loadModule moduleName constName
+  let some t ← emitModule m name dir | return 3
+  runTool ((← IO.getEnv "CLIGHTGEN").getD "clightgen") #[s!"{name}.c"] (some dir)
+  let status ← checkTranslation t name dir
+  if status != 0 then return status
+  runTool ((← IO.getEnv "CCOMP").getD "ccomp") #["-c", "-o", s!"{dir}/{name}.o", s!"{dir}/{name}.c"]
+  return 0
+
 unsafe def main (args : List String) : IO UInt32 := do
   match args with
   | ["survey", moduleText, constText, name] => survey moduleText.toName constText.toName name
@@ -188,4 +220,7 @@ unsafe def main (args : List String) : IO UInt32 := do
       emit moduleText.toName constText.toName name dir
   | ["check", moduleText, constText, name, dir] =>
       check moduleText.toName constText.toName name dir
-  | _ => throw (IO.userError "usage: native-verified survey|emit|check MODULE CONSTANT NAME [DIR]")
+  | ["build", moduleText, constText, name, dir] =>
+      build moduleText.toName constText.toName name dir
+  | _ => throw (IO.userError
+      "usage: native-verified survey|emit|check|build MODULE CONSTANT NAME [DIR]")

@@ -37451,3 +37451,29 @@ The gate on the merge passed on both trees, with four workers and a memory limit
 `Translation.text` cannot be evaluated by the kernel, because `cstmt` is `partial`.  A structural copy prints the same text for `poly` and `gpt32`.  It needs `cstmt` in a `mutual` block with a function on `labeled_statements`, since `statement` is mutual with it, and its matches on sub-statements moved into top-level patterns.  Every translation contains the runtime functions `alloc` and `release`, about 2,050 lines of C, so the smallest text, `poly`'s, has 112,418 bytes, and `gpt32`'s has 474,495.  The kernel evaluated the whole translation of `poly` in 0.85 s.
 
 The kernel's check of the text against the file is expensive.  Comparing the printed text of `poly` with the file as one `String` exceeded the kernel's recursion depth after 16 s.  Printing it as 2,067 lines and comparing their UTF-8 bytes with the file's (`binary_file%`, `List.beq`) took 31 s and 12 GB.  The comparison of two 112 KB byte lists alone took 5.4 s, and 11.7 s with the bytes as `Nat`s.  A printer that emitted bytes directly, with its constant text turned into byte literals when the source elaborates, used 21 GB without finishing in ten minutes, and the probe was stopped.  The kernel represents an array by a list, so `String.append` pushes each byte onto a list, and it expands a string literal through `String.ofList`.  At the rate of the line printer, the file theorem for `gpt32` would need minutes and more than 16 GB, so its form needs a decision before it is built.
+
+### The file theorem dropped from M7, and the comparison in the native build
+
+The coordinator dropped the file theorem from M7 after the measurements above.  `clightgen` reads the same file that `ccomp` compiles, so comparing its reading with the translation covers the printer and the write of the file together.  A file theorem would remove only the write from the trusted base and would leave the printer trusted.  It would cost 12 GB for the smallest module, and more than any machine can spare for `gpt32`.  The printer stays `partial`, since only a kernel evaluation needed it structural.
+
+The comparison ran only in the tests: `tests/native/verified.sh` and `tests/native/bytes.sh` ran `native-verified emit`, `clightgen`, `native-verified check`, and `ccomp` as separate steps, and `tests/native/run.sh` does the same with `native-emit`.  A user who ran `native-verified emit` and then `ccomp` skipped it.  `native-verified build` is now the native build of a module.  It writes the files of `emit`, runs `clightgen` on the C file, compares the result with the translation, and only when they match runs `ccomp -c` on the same file.  It stops with a nonzero status on a mismatch or on a failure of either tool.  Both scripts now call it and link the object with the glue and `tools/native-host.c`.  The trusted-base table now lists the printer and the written file as covered by the per-build comparison, and the design's M7 entry names the comparison in the native build instead of the file theorem.
+
+### The memory limit of the native test scripts
+
+The first test of `native-verified build` thrashed, and it was stopped.  `tools/leanrun` gives each step a cgroup with `MemoryHigh` set to `LEANRUN_MEMORY_HIGH`, 4G by default, and none of the native test scripts set it.  The new command also loaded each module twice in one process, once to write the files and once for the comparison, and needed about 7 GB.  Under the 4 GiB limit its cgroup showed 85 percent full memory pressure, and the job's watcher recorded 15 to 42 percent.  The bare-metal agent met the same default in `tests/native/run.sh`.  The command now loads the module once.
+
+Each step was then measured alone under a 16 GB limit:
+
+| Step | Largest resident set |
+| --- | --- |
+| `native-verified build`, largest corpus module (`slew`) | 3.65 GB |
+| `native-verified build`, smallest corpus module | 3.04 GB |
+| Elaboration of each native theorem file of `run.sh` and `bytes.sh` | 3.67 to 3.72 GB |
+| `lake env lean --run tools/Subset.lean` on `slew` and on `euler` (`subset.sh`) | 5.52 and 5.53 GB |
+| `native-emit emit` (`run.sh`) | 0.12 GB |
+| `verified-cases` and `native-module-cases` | 0.12 GB and 0.01 GB |
+| `clight-diff` (`clight.sh`) | 0.01 GB |
+
+The memory charged to each scope was lower, at most 0.87 GB, because the mapped `.olean` files that were already in the page cache stay charged to the cgroups that read them first.  With a cold cache they are charged to the step, so the limits follow the resident sets.  `verified.sh`, `run.sh`, `bytes.sh`, and `clight.sh` now set `LEANRUN_MEMORY_HIGH` to 6G, and `subset.sh` to 8G, unless the caller sets it, as callers of `tests/verified/run.sh` do.
+
+With these limits and the single load, the test passed on the AArch64 tree, and the job's watcher recorded at most 0.00 percent full memory pressure.  The corpus driver, now through `native-verified build`, passed 35,766 cases and the 3,322 module cases, and the byte and literal examples agreed with Wasmtime.  A run of `native-verified build` on `poly` with a `clightgen` wrapper that changed one trap code in the C file before reading it stopped with status 1, reporting `lxf_alloc: the functions differ`, and wrote no object file.
