@@ -262,4 +262,7 @@ theorem bytesFields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs
       simpa only [Fin.val_succ, List.get_cons_succ', List.append_assoc, Nat.mul_zero,
         Nat.add_zero] using hRun
 
+#print axioms After.releaseBytes
+#print axioms bytesFields_spec
+
 end Verified

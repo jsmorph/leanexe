@@ -676,7 +676,9 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
         (argsAny fun j => decide (i.val < j.val) && (buffers j).usesFast k)) ++
       coerceCode h .bytes ((buffers i).mode modes) .owned scratch ++
       storeCode h (base + 1 + shape.words r + shape.children r + shape.arrays r + 2 * i.val)
-        Ty.bytes.types) ++
+        Ty.bytes.types ++
+      Bytes.normalizeCode (base + 1 + shape.words r + shape.children r + shape.arrays r + 2 * i.val)
+        (base + 1 + shape.words r + shape.children r + shape.arrays r + 2 * i.val + 1)) ++
     (match reuse with
       | some x =>
         if (slots.getD x.index default).mode = .owned ∧ live x.index = false then

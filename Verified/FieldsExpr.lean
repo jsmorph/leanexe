@@ -195,4 +195,7 @@ theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
     rest Q hTrap hNext
   simpa only [Nat.one_mul] using hRun
 
+#print axioms fieldsWidth_spec
+#print axioms fields_spec
+
 end Verified

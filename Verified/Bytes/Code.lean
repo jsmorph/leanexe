@@ -28,4 +28,10 @@ def copyOwnedCode (source length base : Nat) : Program :=
       copyCode source base length (base + 1) ++ [.localGet base]) [] [.i64],
    .localGet length]
 
+/-- Code that releases the object of the buffer whose root and length are in the locals `root`
+and `length` when its length is 0, and then sets the root to 0, so that the root of an empty
+buffer is 0. -/
+def normalizeCode (root length : Nat) : Program :=
+  [.localGet length, .eqzI64, .iff 0 0 [.localGet root, .call 1, .constI64 0, .localSet root] []]
+
 end Verified.Bytes
