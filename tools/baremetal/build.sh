@@ -13,7 +13,8 @@
 # names the list of the functions that take the call depth, as native-verified and native-bare
 # write it, every input must be a C file: the script also compiles each to assembly beside OUT,
 # named as its object with .s for .o, and fails unless tools/baremetal/stack-bound.sh bounds the
-# stack of main within STACK_SIZE, writing the bound as OUT.bound.
+# stack of main within STACK_SIZE, writing the bound as OUT.bound, and unless
+# tools/baremetal/access-check.sh finds no instruction that requires an aligned access.
 # Usage: tools/baremetal/build.sh OUT INPUT... [-- -DNAME...]
 set -euo pipefail
 usage() {
@@ -74,6 +75,7 @@ if [ -n "${STACK_DEPTHS:-}" ]; then
     esac
   done
   "$here/stack-bound.sh" -r main -l "$((stack))" "$STACK_DEPTHS" "${asm[@]}" >"$out.bound"
+  "$here/access-check.sh" "${asm[@]}"
 fi
 "$ccomp" "${stdlib[@]}" -nostdlib -static -T "$here/link.ld" -Wl,--build-id=none \
   -Wl,--defsym,STACK_SIZE="$stack" "${objects[@]}" -o "$out"

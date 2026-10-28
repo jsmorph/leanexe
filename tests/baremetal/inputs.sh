@@ -8,11 +8,11 @@
 # of the report, with QEMU's generic loader placing the file at lx_in, 0x70000000: the length in
 # eight bytes, the lowest first, then the message.  For sha256in, the UART output must be the
 # message's SHA-256 digest as sha256sum computes it, followed by the startup code's report of exit
-# status 0, with which QEMU must exit.  A length above 2^24 - 8 must give no output and the status
-# 64.  The messages have the lengths 0, 3 (abc), 55, 56, 63, 64, 65, 1,000, 65,536, 1,048,576, and
-# 2^24 - 8, the largest accepted, with random bytes beyond abc.  CCOMP, CCOMP_STDLIB, and
-# CLIGHTGEN name CompCert 3.18's driver, run-time library, and clightgen for AArch64, and QEMU
-# names qemu-system-aarch64.
+# status 0, which must be the program's exit status.  A length above 2^24 - 8 must give no output
+# and the status 64.  The messages have the lengths 0, 3 (abc), 55, 56, 63, 64, 65, 1,000,
+# 65,536, 1,048,576, and 2^24 - 8, the largest accepted, with random bytes beyond abc.  ACCEL
+# selects the accelerator, as tests/baremetal/qemu.sh describes.  CCOMP, CCOMP_STDLIB, and
+# CLIGHTGEN name CompCert 3.18's driver, run-time library, and clightgen for AArch64.
 # Usage: tests/baremetal/inputs.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -24,7 +24,7 @@ stdlib=()
 if [ -n "${CCOMP_STDLIB:-}" ]; then
   stdlib=(-stdlib "$CCOMP_STDLIB")
 fi
-qemu=${QEMU:-qemu-system-aarch64}
+source tests/baremetal/qemu.sh
 rm -rf "$out"
 mkdir -p "$out"
 
@@ -52,8 +52,8 @@ input() {
 }
 
 name=sha256in
-if ! STACK_DEPTHS=$out/$name.depth tools/baremetal/build.sh "$out/$name.elf" "$out/$name.c" \
-    >"$out/$name.build" 2>&1; then
+if ! STACK_DEPTHS=$out/$name.depth tools/baremetal/build.sh "$out/$name.elf" "$out/$name.c" -- \
+    "${bm_defines[@]}" >"$out/$name.build" 2>&1; then
   echo "fail: $name: $(head -n 3 "$out/$name.build" | paste -sd' ')"
   exit 1
 fi
@@ -62,17 +62,15 @@ status=0
 # Runs the program on the input file $1 and compares its output with the file $2 and its exit
 # status with $3.
 run() {
-  local in=$1 want=$2 code=0 label
+  local in=$1 want=$2 code label
   label=$(basename "$in")
-  timeout 1200 "$qemu" -M virt -cpu cortex-a57 -m 1G -display none -monitor none \
-    -serial "file:$in.serial" -semihosting-config enable=on,target=native \
-    -device "loader,file=$in,addr=0x70000000,force-raw=on" \
-    -kernel "$out/$name.elf" </dev/null || code=$?
+  TIMEOUT=1200 bm_run virt "$in.serial" "$out/$name.elf" \
+    -device "loader,file=$in,addr=0x70000000,force-raw=on"
   local n bound mark
   n=$(stat -c %s "$want")
   bound=$(cut -d' ' -f1 "$out/$name.elf.bound")
   mark=$(tail -c +"$((n + 1))" "$in.serial" | sed -n 's/^R:exit .* stack \([0-9]*\)$/\1/p')
-  if [ "$code" -ne "$3" ] || ! cmp -s -n "$n" "$want" "$in.serial" ||
+  if [ "$code" != "$3" ] || ! cmp -s -n "$n" "$want" "$in.serial" ||
       ! tail -c +"$((n + 1))" "$in.serial" | grep -q "^R:exit $3 "; then
     echo "fail: $name $label: status $code, output $(od -An -tx1 "$in.serial" | head -c 200)"
     status=1

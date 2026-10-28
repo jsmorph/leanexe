@@ -8,10 +8,11 @@
 # the build fails unless tools/baremetal/stack-bound.sh bounds the stack of main within the
 # stack size, and the stack's high-water mark must not exceed the larger of the bounds of main
 # and of the report after it.  Its UART output must begin with the expected bytes, followed by
-# the startup code's report of the expected exit status, with which QEMU must exit: 0 after the
-# result's bytes, or the code of unreachable, with no byte before the report, for a run that
-# Talos ends with that trap.  CCOMP, CCOMP_STDLIB, and CLIGHTGEN name CompCert 3.18's driver,
-# run-time library, and clightgen for AArch64, and QEMU names qemu-system-aarch64.
+# the startup code's report of the expected exit status, which must be the program's exit status:
+# 0 after the result's bytes, or the code of unreachable, with no byte before the report, for a
+# run that Talos ends with that trap.  ACCEL selects the accelerator, as tests/baremetal/qemu.sh
+# describes.  CCOMP, CCOMP_STDLIB, and CLIGHTGEN name CompCert 3.18's driver, run-time library,
+# and clightgen for AArch64.
 # Usage: tests/baremetal/programs.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -23,7 +24,7 @@ stdlib=()
 if [ -n "${CCOMP_STDLIB:-}" ]; then
   stdlib=(-stdlib "$CCOMP_STDLIB")
 fi
-qemu=${QEMU:-qemu-system-aarch64}
+source tests/baremetal/qemu.sh
 rm -rf "$out"
 mkdir -p "$out"
 
@@ -39,21 +40,18 @@ report=$(tools/baremetal/stack-bound.sh -r lx_report_exit /dev/null "$out/report
 status=0
 for c in "$out"/*.c; do
   name=$(basename "${c%.c}")
-  if ! STACK_DEPTHS=$out/$name.depth tools/baremetal/build.sh "$out/$name.elf" "$c" \
-      >"$out/$name.build" 2>&1; then
+  if ! STACK_DEPTHS=$out/$name.depth tools/baremetal/build.sh "$out/$name.elf" "$c" -- \
+      "${bm_defines[@]}" >"$out/$name.build" 2>&1; then
     echo "fail: $name: $(head -n 3 "$out/$name.build" | paste -sd' ')"
     status=1
     continue
   fi
-  code=0
-  timeout 600 "$qemu" -M virt -cpu cortex-a57 -m 1G -display none -monitor none \
-    -serial "file:$out/$name.serial" -semihosting-config enable=on,target=native \
-    -kernel "$out/$name.elf" </dev/null || code=$?
+  TIMEOUT=600 bm_run virt "$out/$name.serial" "$out/$name.elf"
   n=$(stat -c %s "$out/$name.expected")
   want=$(cat "$out/$name.status")
   bound=$(cut -d' ' -f1 "$out/$name.elf.bound")
   mark=$(tail -c +"$((n + 1))" "$out/$name.serial" | sed -n 's/^R:exit .* stack \([0-9]*\)$/\1/p')
-  if [ "$code" -ne "$want" ] || ! cmp -s -n "$n" "$out/$name.expected" "$out/$name.serial" ||
+  if [ "$code" != "$want" ] || ! cmp -s -n "$n" "$out/$name.expected" "$out/$name.serial" ||
       ! tail -c +"$((n + 1))" "$out/$name.serial" | grep -q "^R:exit $want "; then
     echo "fail: $name: status $code, output $(od -An -tx1 "$out/$name.serial" | head -c 200)"
     status=1

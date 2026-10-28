@@ -14,13 +14,14 @@
 # tools/baremetal/stack-bound.sh computes the bound of every function with the list of the
 # functions that take the call depth that native-verified writes, and the glue, compiled with
 # LX_STACK_MARK, reports the stack that each call of a module function used: a case fails when a
-# call used more than its function's bound (docs/native-bare-metal.md, test 3), and a module whose
-# stack the tool cannot bound does not build.  The script prints, for each module, the cases that
-# pass, that fail, and that do not run because the translation lacks their export, the largest
-# high-water mark, and the largest stack of a call with its bound, then each failure, the modules
-# without a translation, and the modules that CompCert cannot compile or link, with the first
-# lines of the error.  It fails unless every case that runs passes
-# and every translated module builds.  CCOMP and CCOMP_STDLIB are as for tools/baremetal/build.sh,
+# call used more than its function's bound (docs/native-bare-metal.md, test 3).  A module does
+# not build when the tool cannot bound its stack or when tools/baremetal/access-check.sh finds an
+# instruction in its assembly that requires an aligned access.  The script prints, for each
+# module, the cases that pass, that fail, and that do not run because the translation lacks their
+# export, the largest high-water mark, and the largest stack of a call with its bound, then each
+# failure, the modules without a translation, and the modules that CompCert cannot compile or
+# link, with the first lines of the error.  It fails unless every case that runs passes and every
+# translated module builds.  CCOMP and CCOMP_STDLIB are as for tools/baremetal/build.sh,
 # and QEMU names qemu-system-aarch64.  Build the modules' targets first, as tests/verified/run.sh
 # requires.
 # Usage: tests/baremetal/verified.sh [--module NAME]
@@ -74,6 +75,7 @@ while IFS=: read -r module constant name; do
   if ! { "$ccomp" "${stdlib[@]}" -fno-common -c "$out/$name.c" -o "$b/module.o" &&
       "$ccomp" "${stdlib[@]}" -fno-common -S "$out/$name.c" -o "$b/module.s" &&
       tools/baremetal/stack-bound.sh "$out/$name.depth" "$b/module.s" >"$b/bounds.txt" &&
+      tools/baremetal/access-check.sh "$b/module.s" &&
       "$ccomp" "${stdlib[@]}" -I tools -DLX_STACK_MARK -c "$out/${name}_glue.c" -o "$b/glue.o" &&
       tools/baremetal/build.sh "$b/host.elf" "$out/host.o" "$out/libc.o" "$b/glue.o" \
         "$b/module.o"; } >"$b/build.err" 2>&1; then
