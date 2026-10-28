@@ -21,6 +21,8 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
       CodeSpec (pool := pool) m funs flags bounds fits host pv (words i) env slots paid live)
     (arraySpec : ∀ i env slots paid live,
       CodeSpec (pool := pool) m funs flags bounds fits host pv (arrays i) env slots paid live)
+    (bufferSpec : ∀ i env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (buffers i) env slots paid live)
     (childSpec : ∀ i env slots paid live,
       CodeSpec (pool := pool) m funs flags bounds fits host pv (children i) env slots paid live) :
     ∀ env slots paid live,
@@ -55,17 +57,16 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
   have hCost : cost + treeParentCost shape r reuse slots live =
       e.allocs funs flags bounds (slots.map Slot.mode) paid live env :=
     treeNode_fieldCost reuse words arrays buffers children funs flags bounds slots paid live env
-  have hTypes : ∀ i : Fin ps.length, (ps.get i).width = 1 :=
-    treeArgs_forall (fun {t} _ (_ : Expr S Γ t) => t.width = 1) words children arrays buffers
-      (fun i => shape.elem_width r i) (fun _ => rfl) (fun _ => rfl)
-      (fun i => (shape.no_buffer r i).elim)
+  have hWidthSum : (ps.map Ty.width).sum =
+      shape.words r + shape.children r + shape.arrays r + 2 * shape.buffers r :=
+    treeArgs_widths shape r
   have hArgsSpec : ∀ i live,
       CodeSpec (pool := pool) m funs flags bounds fits host pv (args.get i) env slots paid live :=
     treeArgs_forall (fun {t} _ (value : Expr S Γ t) => ∀ live,
       CodeSpec (pool := pool) m funs flags bounds fits host pv value env slots paid live) words
       children arrays buffers
       (fun i => wordSpec i env slots paid) (fun i => childSpec i env slots paid)
-      (fun i => arraySpec i env slots paid) (fun i => (shape.no_buffer r i).elim)
+      (fun i => arraySpec i env slots paid) (fun i => bufferSpec i env slots paid)
   simp only [Expr.placeArgs, Bool.and_eq_true, Bool.not_eq_true'] at hPlace
   have hArgsPlace : ∀ i, (args.get i).placeArgs = true :=
     treeArgs_forall (fun {t} _ (value : Expr S Γ t) => value.placeArgs = true) words children
@@ -91,8 +92,10 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
       have hf : (arrays i).fits funs fits env = false := by simpa using hi
       simp only [e, Expr.fits, argsAll_false (fun j => (arrays j).fits funs fits env) i hf,
         Bool.false_and, Bool.and_false, Bool.not_false]
-    · intro i
-      exact (shape.no_buffer r i).elim
+    · intro i hi
+      have hf : (buffers i).fits funs fits env = false := by simpa using hi
+      simp only [e, Expr.fits, argsAll_false (fun j => (buffers j).fits funs fits env) i hf,
+        Bool.and_false, Bool.not_false]
   have hWidths : ∀ i,
       base + shape.bindWidth r + max (args.get i).width (copyWidth (ps.get i)) ≤ h := by
     simp only [Expr.width] at hRoom
@@ -120,7 +123,9 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
       have hi := le_argsMax (fun j => max (arrays j).width (copyWidth (shape.arrayTy r j))) i
       omega
     · intro i
-      exact (shape.no_buffer r i).elim
+      have hi := le_argsMax (fun j => max (buffers j).width (copyWidth .bytes)) i
+      have hB := Nat.le_max_right A B
+      omega
   have hParentRoom : base < h := by
     have hb : 1 ≤ shape.bindWidth r := by
       simp only [TreeShape.bindWidth, TreeShape.bindCount]
@@ -138,10 +143,10 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
     simpa only [trapFlag, Expr.aborts, Bool.true_or, Bool.true_and, hIn] using hTrap
   rw [treeNode_code_eq]
   simp only [List.append_assoc]
-  have hRun := fields_spec hm ps args.get L hTypes
+  have hRun := fieldsMixed_spec hm ps args.get L
     (fieldLive_step args.get kept) (fun i => hArgsSpec i (L (i.val + 1))) hArgsPlace hArgsD
     (fieldBase := base + 1) (scratch := base + shape.bindWidth r) (by omega)
-    (by rw [hLen]; simp only [TreeShape.bindWidth, TreeShape.bindCount]; omega) hWidths
+    (by rw [hWidthSum]; simp only [TreeShape.bindWidth, TreeShape.bindCount]; omega) hWidths
     heap store s hh hpv hBase hVars0 hAt (by rw [hIn]; exact hSafe) hCap
     (treeParentCode shape r reuse slots base live ++ (shape.tagStoreCode r base ++
       (treeStoreFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
@@ -151,7 +156,7 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
           (shape.fieldStart + (shape.fields r).length) ++
           (sealRecordCode (shape.width r) base (shape.mask r) ++ (.localGet base :: rest)))))) Q
     (hBudget.allocPart id (fun _ hw => hw.mono (by rw [hEnd, hSplit, ← hCost]; omega)))
-    (fun heap1 store1 s1 ws aFields hFrameFields holdFields hTopFields => by
+    (fun heap1 store1 s1 ws aFields hFrameFields holdFields hNormalFields hTopFields => by
       rw [hEnd] at aFields hTopFields
       rw [hValues] at aFields
       rw [treeArgs_types] at holdFields
@@ -172,7 +177,8 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
         exact hold
       have hFinish := wp_finishTree (m := m) (host := host) (Q := Q) (rest := rest)
         hVars0 a hRootStep hRootFrame hRootHolds hKept hLive hRaw hCount hPtr
-        hStack (hRootFrame.positions.trans (a.frame.positions.trans hh)) holdFields2 hApart
+        hStack (hRootFrame.positions.trans (a.frame.positions.trans hh)) hNormalFields holdFields2
+        hApart
         (fun store3 hAfter => by
           refine hNext heap2 store3 s2 [.i64 p]
             (by

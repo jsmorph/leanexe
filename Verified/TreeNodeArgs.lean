@@ -329,6 +329,38 @@ theorem flatMap_types_replicate_bytes :
 
 /-- The WebAssembly types of a construction's arguments in its locals: each word field's slot type,
 then i64 for each child and each array, and two for each buffer. -/
+theorem tysOfFn_widthSum : (n : Nat) → (ts : Fin n → Ty) → (∀ i, (ts i).width = 1) →
+    ((tysOfFn n ts).map Ty.width).sum = n
+  | 0, _, _ => rfl
+  | n + 1, ts, h => by
+    simp only [tysOfFn, List.map_cons, List.sum_cons, h 0,
+      tysOfFn_widthSum n (fun i => ts i.succ) (fun i => h i.succ)]
+    omega
+
+theorem replicate_widthSum (t : Ty) : (n : Nat) →
+    ((List.replicate n t).map Ty.width).sum = n * t.width
+  | 0 => by simp
+  | n + 1 => by
+    simp only [List.replicate_succ, List.map_cons, List.sum_cons, replicate_widthSum t n,
+      Nat.add_mul, Nat.one_mul]
+    omega
+
+/-- The locals that a record's arguments take: one for each word, child, and array, and two for
+each buffer. -/
+theorem treeArgs_widths (shape : TreeShape) (r : Fin shape.records) :
+    ((tysOfFn (shape.words r) (shape.wordTy r) ++
+      (List.replicate (shape.children r) (Ty.tree shape) ++
+        (tysOfFn (shape.arrays r) (shape.arrayTy r) ++
+          (List.replicate (shape.buffers r) Ty.bytes ++ [])))).map Ty.width).sum =
+      shape.words r + shape.children r + shape.arrays r + 2 * shape.buffers r := by
+  have hTree : (Ty.tree shape).width = 1 := rfl
+  have hBytes : Ty.bytes.width = 2 := rfl
+  simp only [List.map_append, List.sum_append, List.append_nil,
+    tysOfFn_widthSum (shape.words r) (shape.wordTy r) (fun i => shape.elem_width r i),
+    tysOfFn_widthSum (shape.arrays r) (shape.arrayTy r) (fun _ => rfl),
+    replicate_widthSum, hTree, hBytes]
+  omega
+
 theorem treeArgs_types (shape : TreeShape) (r : Fin shape.records) :
     (tysOfFn (shape.words r) (shape.wordTy r) ++
       (List.replicate (shape.children r) (Ty.tree shape) ++
