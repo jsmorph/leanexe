@@ -10,9 +10,9 @@ gives `EF_external` calls no result, since their semantics is a parameter.  `run
 function from the initial memory, and `run_program` runs `main` as `bigstep_program_terminates`
 describes.
 
-The semantics lets a volatile load return any value of its type.  The evaluator takes the value
-from `vload`, as CompCert's reference interpreter takes it from its world (`cfrontend/Cexec.v`,
-lines 204 to 216).  `run` and `run_program` pass `world_vload`, which reads the value from the
+The semantics lets a volatile load return any value of its type.  The evaluator takes the event
+value of a load of a chunk at an offset of a volatile global from `vload`, as CompCert's
+reference interpreter takes it from its world (`cfrontend/Cexec.v`, lines 204 to 216).  `run` and `run_program` pass `world_vload`, which reads the value from the
 initial memory of `world_program`, where the interpreter's world starts (`driver/Interp.ml`,
 lines 409 to 413 and 566 to 580).  The interpreter's world also records volatile stores, so the
 two agree on a program that does not load from a volatile global after storing to it, such as a
@@ -30,7 +30,6 @@ section Eval
 
 variable (A : Archi) (ge : genv)
 
-/-- The event value of each volatile load, by its chunk, global, and offset. -/
 variable (vload : memory_chunk → ident → ptrofs → Option eventval)
 
 /-- The block and offset of the variable `id` at type `ty`, as `eval_Evar_local` and
