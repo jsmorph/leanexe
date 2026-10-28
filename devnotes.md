@@ -37692,8 +37692,13 @@ An independent review of the diff found the moved bodies identical and the docst
 
 A later change could move `UInt64Array.At` and the free-list definitions into `LeanExe/Pipeline/`, so that the directory would hold every trusted definition except `LeanExe.Bytes` and the verified compiler's additions.  `LeanExe/Pipeline/Runtime.lean` imports `LeanExe.Runtime.FreeList` and `LeanExe.ProofKit.Array`, and modules such as `LeanExe/ProofKit/FreeListMemory.lean` and `LeanExe/IR/Read.lean` import them in turn, so the move risks import cycles and would pull those modules' lemmas along or split the files.  Renaming the release proof's namespace to match its directory would change the declaration names that LTG entries cite, among them eight in `ltg/entries/release-list`, such as `LeanExe.Pipeline.release_tree_run` and `LeanExe.Pipeline.Releasing`.
 
+The first check of the move, at 5112eec72, failed in its heavy step.  Three lemmas about `Bytes.Rep`, `recordBuffer` in `Verified/TreeBufferFields.lean` and `slotOwned` and `slotBlocks` in `Verified/TreeCopyBufferCode.lean`, still had names in `Verified.Bytes.Rep`, so dot notation on a value of the moved structure did not find them.  The build of 489fd9fae that should have revealed the error had been stopped three minutes after it started, to start the check.  The fix renames the three lemmas through `_root_` as the ten were renamed.  A grep over every Lean file finds no other declaration under `Rep`, `represented`, or `roots` in the old namespace, and the other declarations named `Rep.*` belong to `Env.Rep`, `Ty.Rep`, `ResultTy.Rep`, and the WGSL `Rep`.
+
+The rule that follows is to build in full before launching a check: `lake build Verified Library`, the default target, and the native targets, with no step stopped early.
+
 - [x] The new module, the moved file, and the renamed lemmas.
 - [x] The independent review of the diff.
 - [x] The list of trusted definitions in both manuals.
-- [ ] `lake build Verified Library`, the default target, `native-verified`, and the byte and WASI drivers.
-- [ ] The full check.
+- [x] The three lemmas that kept the old namespace.
+- [ ] `lake build Verified Library`, the default target, and `native-verified`, in full.
+- [ ] The full check, combined with the bare-metal branch.
