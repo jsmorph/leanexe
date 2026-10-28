@@ -14,9 +14,11 @@
 # and of shapes on sums, come from the compiled generator native-module-cases
 # (tests/TestSupport/Native/ModuleCases.lean) and run the same way under the rules of
 # tests/modules/run.sh.  The script prints the numbers of cases that pass, that fail, and that do
-# not run, and fails unless every case that runs passes.  Build the modules' targets first, as
-# tests/verified/run.sh requires.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as for
-# tests/native/run.sh.
+# not run, and fails unless every case that runs passes.  Before it loads any module, it builds
+# every module it loads and the executables it runs in one `lake build` under tools/leanrun, with
+# the caller's LEANRUN_THREADS and LEANRUN_MEMORY_HIGH, since native-verified reads a module's
+# compiled file without checking it against the source.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are
+# as for tests/native/run.sh.
 # LEANRUN_MEMORY_HIGH is the memory limit of each step that runs under tools/leanrun, 6G unless
 # the caller sets it.  The largest step measured, native-verified build of the largest corpus
 # module, keeps 3.7 GB resident.
@@ -40,8 +42,13 @@ fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out=$root/build/native/verified
 cd "$root"
-tools/leanrun --timeout 12h lake --log-level error build native-verified verified-cases \
-  native-module-cases
+targets=(native-verified verified-cases native-module-cases)
+while IFS=: read -r module constant name; do
+  if [ -z "$only" ] || [ "$name" = "$only" ]; then
+    targets+=("$module")
+  fi
+done <"$root/tests/verified/modules.txt"
+tools/leanrun --timeout 12h lake --log-level error build "${targets[@]}"
 rm -rf "$out"
 mkdir -p "$out"
 modules=0
