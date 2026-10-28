@@ -42,6 +42,7 @@ theorem RecordStorage.copyHeader {shape : TreeShape} {r : Fin shape.records} {he
     hAt2, ⟨words, recordWords_length .., ?_⟩, hCap2.trans hCap1⟩
   exact hRaw2.record hLength hReadCount hReadKind (Memory.read64_write64 ..)
     (by rw [wordSlots_mask]; exact hReadMask) (shape.width_le r) (recordWords_owned ..)
+    (wordSlots_lengths _)
 
 #print axioms Step.allocate
 #print axioms RecordStorage.copyHeader
