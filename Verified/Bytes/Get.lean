@@ -5,7 +5,7 @@ import LeanExe.TalosCompat
 
 namespace Verified.Bytes
 
-open Wasm LeanExe.Pipeline LeanExe.ProofKit
+open Wasm LeanExe.Pipeline LeanExe.Pipeline.Bytes LeanExe.ProofKit
 
 theorem wp_get {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
     {s : Locals} {root length index : UInt64} {bytes : LeanExe.Bytes}

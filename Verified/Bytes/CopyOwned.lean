@@ -3,7 +3,7 @@ import LeanExe.TalosCompat
 
 namespace Verified.Bytes
 
-open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
+open Wasm LeanExe.Pipeline LeanExe.Pipeline.Bytes LeanExe.ProofKit LeanExe.Runtime
 
 theorem wp_copyOwned {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {source length : UInt64} {input : LeanExe.Bytes}

@@ -3,7 +3,7 @@ import Verified.HeapStep
 
 namespace Verified.Bytes
 
-open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
+open Wasm LeanExe.Pipeline LeanExe.Pipeline.Bytes LeanExe.ProofKit LeanExe.Runtime
 
 def regions (store : Store Unit) (root : UInt64) : List (Nat × Nat) :=
   if root = 0 then [] else [block store root]
@@ -32,7 +32,8 @@ theorem _root_.LeanExe.Pipeline.Heap.Buffer.step {heap heap' : Heap} {store stor
   intro a hl hh
   exact hBytes a hl (by have := h.object.base; omega)
 
-theorem Rep.step {heap heap' : Heap} {store store' : Store Unit} {root length : UInt64}
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.step
+    {heap heap' : Heap} {store store' : Store Unit} {root length : UInt64}
     {bytes : LeanExe.Bytes} {keep : Nat × Nat → Prop} {fresh : List (Nat × Nat)}
     (h : Rep heap store root length bytes) (hStep : Step heap store keep heap' store' fresh)
     (hKeep : ∀ r ∈ regions store root, keep r) :

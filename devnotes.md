@@ -37674,3 +37674,22 @@ A review of the well-formedness change found two problems and a limit.  The comm
 - [x] The class in `Implements.lean` and the instance arguments.
 - [x] The instances and the corrected comment and manual.
 - [ ] The gates of both branches.
+
+## 2026-10-28: The meaning of Bytes parameters in the trusted directory
+
+`Represent LeanExe.Bytes` gives every buffer parameter and result of an `Implements` statement its meaning, and it lived in `Verified/Bytes/Represent.lean`, with `Rep` in `Verified/Bytes/Basic.lean`, while the verified manual's list of trusted definitions did not name it.  The release proof's `ItemOwned` and `RecordBody` were in `LeanExe/Pipeline/`, where a reader looks for the trusted definitions, and appear in no statement that a reader relies on.  The coordinator decided to move the buffer definitions into `LeanExe/Pipeline/` and the release proof's definitions out of it, a question that the review of the model change for heap fields had deferred.
+
+| Question | Decision | Alternative | Reason |
+|---|---|---|---|
+| What leaves `LeanExe/Pipeline/` | All of `ReleaseTree.lean`, unchanged, as `LeanExe/ProofKit/ReleaseTree.lean` | `ItemOwned`, `RecordBody`, and their lemmas in a module that `ReleaseTree.lean` imports | `Releasing`, which would stay, states its pending records with `RecordBody`, and every other definition of the file serves only the release proof.  No module of `LeanExe/Pipeline/` imports the file. |
+| The namespace of the moved file | `LeanExe.Pipeline`, as before | `LeanExe.ProofKit` | No declaration changes its name, and dot notation on `Heap.Owned`, `NodeOwned`, and `RecordHeader` keeps finding the lemmas.  The verified manual states that the trusted definitions are the files under `LeanExe/Pipeline/` and names the modules elsewhere that declare names in that namespace. |
+| The namespace of the buffer definitions | `LeanExe.Pipeline.Bytes`, in `LeanExe/Pipeline/Bytes.lean` | Names in `LeanExe.Pipeline` itself | `Bytes.Rep`, `Bytes.represented`, and `Bytes.roots` keep their short names in code that opens `LeanExe.Pipeline`.  The ten lemmas about `Rep` in `Verified/Bytes` are declared through `_root_` as `LeanExe.Pipeline.Bytes.Rep.*`, as the lemmas about `Heap.Buffer` already are. |
+| The moved instance | `Represent (Moved LeanExe.Bytes)` moves with `Represent LeanExe.Bytes` | Only the borrowed and owned instance | Statements over a moved buffer parameter use it. |
+
+The definitions and both instances keep their bodies, and the docstrings are new.  `tests/wasi/Axioms.lean` names the four renamed lemmas that it audits, and the design document and the WASI design document point to the new module.  Other files of `LeanExe/Pipeline/` hold definitions that serve only proofs, such as `ReleaseVars` in `RuntimeSpec.lean`, and this change leaves them in place.
+
+- [x] The new module, the moved file, and the renamed lemmas.
+- [x] The manual's statement of the trusted directory.
+- [ ] `lake build Verified Library`, the default target, `native-verified`, and the byte and WASI drivers.
+- [ ] The independent review of the diff.
+- [ ] The full check.
