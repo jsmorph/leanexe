@@ -19,4 +19,10 @@ theorem encode_slotted : ∀ t : Library.Trees.WordTree.KeyTree, (encode t).Slot
 
 instance : EncodeSlotted Library.Trees.WordTree.KeyTree := ⟨encode_slotted⟩
 
+theorem encode_wellFormed : ∀ t : Library.Trees.WordTree.KeyTree, (encode t).WellFormed
+  | .leaf => trivial
+  | .node l _ r => ⟨by simp, trivial, encode_wellFormed l, encode_wellFormed r, trivial⟩
+
+instance : EncodeWellFormed Library.Trees.WordTree.KeyTree := ⟨encode_wellFormed⟩
+
 end Library.Trees.WordTree

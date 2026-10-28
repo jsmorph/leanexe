@@ -36986,3 +36986,18 @@ A second review of the lengths change confirmed that `BufferLengths` states the 
 - [x] The class, its instances, the derived theorem, and the audit.
 - [x] The docstrings and the manual.
 - [ ] The gate of the new commit.
+
+## 2026-10-28: The well-formedness guard in every statement
+
+A review of the well-formedness change found two problems and a limit.  The comment of `Slotted.lean` and the manual said that breaking either value-only condition makes both predicates false.  `RecordHeader.short` is only in `RecordHeader`, so breaking it makes `Represent.owned` and the precondition of a moved value false while `NodeBorrowed` can still hold, and breaking `lengths` makes both false.  The guard also held by convention only: the class was a theorem beside each type, and a hand-written `Encode` that only the LeanExe compiler compiles would reach `Implements` without it.
+
+| Question | Decision | Alternative | Reason |
+|---|---|---|---|
+| Where the guard lives | The `Represent` instances of a type with `Encode` require `[EncodeWellFormed α]`, and `Node.WellFormed`, `slotsWellFormed`, and `EncodeWellFormed` move into `Implements.lean` ahead of them | A field of `Encode` that states the condition | The coordinator chose the instance argument because `Encode` stays unchanged. |
+| The instances for hand-written encodings | `List UInt64` in `Implements.lean`, `Words` and `KeyTree` beside their `Encode` instances, and `Tree shape` in `Tree.lean`, by structural proofs | The derived instance of `verified_recursive_type` only | A module that states `Implements` over such a type imports its encoding but not always its derivation.  The command derives the theorem `wellFormed` for every type and adds its instance only when the type has none. |
+| Values too large for memory | Stated in the manual | A further condition | A buffer of 2^32 bytes or an array of about 2^29 words has no representation, which limits single values and never every value of a type. |
+
+- [x] The class in `Implements.lean` and the instance arguments.
+- [x] The instances and the corrected comment and manual.
+- [ ] The gates of both branches.
+

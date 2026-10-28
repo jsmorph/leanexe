@@ -435,12 +435,39 @@ end
 class Encode (α : Type) where
   encode : α → Node
 
-/-- A value of a type with `Encode` is a pointer to the records that `encode` gives.  The
-caller lends records that hold the right words and pointers, with their arrays and buffers.  A
-result's records, arrays, and nonempty buffers are owned and occupy pairwise disjoint blocks.
-The call reads the slots of the records, the words of their arrays, and the blocks of their
-nonempty buffers, which `Separate` keeps apart from the consumed blocks. -/
-instance [Encode α] : Represent α where
+mutual
+/-- Every record of `n` has at most 64 slots, and each of its buffer slots is followed by a word
+slot that holds the buffer's length: the conditions of `RecordHeader` on the value alone, which
+include the one condition of `RecordSlots` on the value alone. -/
+def Node.WellFormed : Node → Prop
+  | .null => True
+  | .record slots => slots.length ≤ 64 ∧ BufferLengths slots ∧ slotsWellFormed slots
+
+/-- Every record of the children among `slots` is well formed. -/
+def slotsWellFormed : List Slot → Prop
+  | [] => True
+  | .word _ :: rest => slotsWellFormed rest
+  | .child n :: rest => n.WellFormed ∧ slotsWellFormed rest
+  | .array _ :: rest => slotsWellFormed rest
+  | .bytes _ :: rest => slotsWellFormed rest
+end
+
+/-- An encoding whose records all meet the conditions of `RecordHeader` and `RecordSlots` on the
+value alone.  An encoding that breaks `RecordSlots.lengths` makes `Represent.borrowed` and
+`Represent.owned` false for its values in every store, and one that breaks `RecordHeader.short`
+makes `Represent.owned` and the precondition of a moved value false, while `NodeBorrowed` can
+still hold.  Either way an `Implements` statement over the type would hold for every module, so
+the instances of `Represent` for a type with `Encode` require this class. -/
+class EncodeWellFormed (α : Type) [Encode α] : Prop where
+  wellFormed : ∀ x : α, (Encode.encode x).WellFormed
+
+/-- A value of a type with `Encode` is a pointer to the records that `encode` gives, for an
+encoding whose records meet the conditions on the value alone.  The caller lends records that
+hold the right words and pointers, with their arrays and buffers.  A result's records, arrays,
+and nonempty buffers are owned and occupy pairwise disjoint blocks.  The call reads the slots of
+the records, the words of their arrays, and the blocks of their nonempty buffers, which
+`Separate` keeps apart from the consumed blocks. -/
+instance [Encode α] [EncodeWellFormed α] : Represent α where
   width _ := 1
   borrowed heap store vs x := ∃ p, vs = [.i64 p] ∧ NodeBorrowed heap store p (Encode.encode x)
   owned heap store vs x := ∃ p, vs = [.i64 p] ∧ NodeOwned heap store p (Encode.encode x) ∧
@@ -456,7 +483,7 @@ instance [Encode α] : Represent α where
 /-- A value of a recursive type that the caller hands over: the call receives its records,
 arrays, and buffers as owned, reads nothing else of it, and consumes every record, array, and
 nonempty buffer. -/
-instance [Encode α] : Represent (Moved α) where
+instance [Encode α] [EncodeWellFormed α] : Represent (Moved α) where
   width _ := 1
   borrowed heap store vs x := Represent.owned heap store vs x.val
   owned heap store vs x := Represent.owned heap store vs x.val
@@ -473,6 +500,12 @@ def encodeList : List UInt64 → Node
   | x :: xs => .record [.word x, .child (encodeList xs)]
 
 instance : Encode (List UInt64) := ⟨encodeList⟩
+
+theorem encodeList_wellFormed : ∀ xs : List UInt64, (encodeList xs).WellFormed
+  | [] => trivial
+  | _ :: xs => ⟨by simp, trivial, encodeList_wellFormed xs, trivial⟩
+
+instance : EncodeWellFormed (List UInt64) := ⟨encodeList_wellFormed⟩
 
 example : maskOf [.word 5, .child .null] = 2 := rfl
 
