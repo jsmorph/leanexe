@@ -3270,6 +3270,7 @@ where
           | throwError "verified_compile: recursive array coercion is not an equation"
         let (``coerceCost, #[_, s, M, value]) := lhs.getAppFnArgs
           | throwError "verified_compile: recursive array coercion has an invalid form"
+        let value ← mkExpectedTypeHint value (mkApp (mkConst ``Ty.denote) (tyExpr (.array el)))
         let (cost, proof) ← coerceEq c.base (.array el) s M value field.lean
         return (⟨cost, proof⟩ : Bound)
       let _ ← assignFiniteEquation app `W `hw (mkConst ``Nat) wb
