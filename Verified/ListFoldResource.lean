@@ -26,7 +26,8 @@ theorem func_bound {S : List Sig} {e : Elem} {captures : List Ty}
           (List.replicate (listShape.bindCount listCell) false ++
             List.replicate (params e captures).length false)
           (bodyLive e captures)
-          (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩) (noFields rfl) (noFields rfl)
+          (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩)
+            (noFields rfl) (noFields rfl)
             (fun _ => children ⟨0, listShape_children_pos r⟩)
             (.cons root (.cons acc captured))) := by
     rw [func_paidParams]
@@ -38,8 +39,10 @@ theorem func_bound {S : List Sig} {e : Elem} {captures : List Ty}
       (func body place).body.denote funs (.cons root (.cons acc captured)) =
       match root with
       | .nil _ => .inr acc
-      | .node r words arrays buffers children => .inl (.cons (children ⟨0, listShape_children_pos r⟩)
-          (.cons (body.denote funs (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩) (noFields rfl) (noFields rfl)
+      | .node r words arrays buffers children => .inl
+        (.cons (children ⟨0, listShape_children_pos r⟩)
+          (.cons (body.denote funs (Env.treeFields listShape listCell
+            (fun _ => words ⟨0, listShape_words_pos r⟩) (noFields rfl) (noFields rfl)
             (fun _ => children ⟨0, listShape_children_pos r⟩)
             (.cons root (.cons acc captured)))) captured)) :=
     tailBody_denote body funs root acc captured

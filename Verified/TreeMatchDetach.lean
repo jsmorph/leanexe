@@ -137,7 +137,8 @@ theorem wp_detachTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : 
     {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
     {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
     {children : Fin (shape.children r) → Tree shape} {rest : Program} {Q : Assertion Unit}
-    (hAt : heap.At store) (hNode : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
+    (hAt : heap.At store) (hNode : mode.node heap store p
+      (Tree.node r words arrays buffers children).toNode)
     (hPtr : s.get ptr = some (.i64 p))
     (hNext : wp m rest Q (treeDetachStore mode store p) s host) :
     wp m ((if mode = .owned then headerStore ptr 8 [.constI64 0] else []) ++ rest)

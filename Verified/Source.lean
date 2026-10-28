@@ -263,7 +263,8 @@ def TreeShape.bindCount (shape : TreeShape) (r : Fin shape.records) : Nat :=
 
 def TreeShape.context (shape : TreeShape) (r : Fin shape.records) (Γ : List Ty) : List Ty :=
   .treeHeader shape r :: (tysOfFn (shape.words r) (shape.wordTy r) ++
-    (List.replicate (shape.children r) (.tree shape) ++ (tysOfFn (shape.arrays r) (shape.arrayTy r) ++
+    (List.replicate (shape.children r) (.tree shape) ++
+      (tysOfFn (shape.arrays r) (shape.arrayTy r) ++
       (List.replicate (shape.buffers r) .bytes ++ Γ))))
 
 def Env.treeFields (shape : TreeShape) (r : Fin shape.records)

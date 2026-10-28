@@ -23,7 +23,8 @@ theorem CopyPath.advance {root : List LeanExe.Pipeline.Slot} {result : UInt64}
 theorem CopyRecord.work_advance {current : CopyRecord} {parents : List CopyRecord}
     {word : UInt64} (h : current.next < current.slots.length)
     (hSlot : current.slots[current.next] = .word word) :
-    CopyWork.Step (current.work parents) ({ current with next := current.next + 1 }.work parents) := by
+    CopyWork.Step (current.work parents)
+      ({ current with next := current.next + 1 }.work parents) := by
   unfold CopyRecord.work
   rw [List.drop_eq_getElem_cons h, hSlot]
   exact .word
@@ -31,14 +32,16 @@ theorem CopyRecord.work_advance {current : CopyRecord} {parents : List CopyRecor
 theorem CopyRecord.work_array {current : CopyRecord} {parents : List CopyRecord}
     {words : Array UInt64} (h : current.next < current.slots.length)
     (hSlot : current.slots[current.next] = .array words) :
-    CopyWork.Step (current.work parents) ({ current with next := current.next + 1 }.work parents) := by
+    CopyWork.Step (current.work parents)
+      ({ current with next := current.next + 1 }.work parents) := by
   unfold CopyRecord.work
   rw [List.drop_eq_getElem_cons h, hSlot]
   exact .array
 
 theorem CopyRecord.work_null {current : CopyRecord} {parents : List CopyRecord}
     (h : current.next < current.slots.length) (hSlot : current.slots[current.next] = .child .null) :
-    CopyWork.Step (current.work parents) ({ current with next := current.next + 1 }.work parents) := by
+    CopyWork.Step (current.work parents)
+      ({ current with next := current.next + 1 }.work parents) := by
   unfold CopyRecord.work
   rw [List.drop_eq_getElem_cons h, hSlot]
   exact .null

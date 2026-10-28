@@ -92,7 +92,8 @@ theorem treeFields_regions_subset (store : Store Unit) (shape : TreeShape)
         (Env.treeFields shape r words arrays buffers children .nil)).map (block store) ++
       Env.reads store (paramMode (shape.context r []) (shape.modes r mode [])) ws
         (Env.treeFields shape r words arrays buffers children .nil),
-      b ∈ (Ty.tree shape).regions mode store [.i64 p] (.node r words arrays buffers children) := by
+      b ∈ (Ty.tree shape).regions mode store [.i64 p]
+        (.node r words arrays buffers children) := by
   intro pointers arrayPtrs ws b hr
   dsimp only [ws] at hr
   erw [treeFields_moves, treeFields_reads] at hr

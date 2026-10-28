@@ -12,25 +12,29 @@ theorem After.openTreeFields {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
     {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
     {children : Fin (shape.children r) → Tree shape}
-    (a : After env slots L0 L1 base heap0 store0 s0 (.tree shape) mode (.node r words arrays buffers children)
+    (a : After env slots L0 L1 base heap0 store0 s0 (.tree shape) mode
+      (.node r words arrays buffers children)
       heap store s [.i64 p])
     (hFrame : Frame base s s') (hBase : base ≤ fieldBase)
     (hStep : Step heap store (fun b => mode = .owned → regionsDisjoint b (block store p))
       heap (treeDetachStore mode store p) [])
-    (hPrefix : Holds (Env.treeFields shape r words arrays buffers children .nil) (shape.slots r fieldBase mode [])
+    (hPrefix : Holds (Env.treeFields shape r words arrays buffers children .nil)
+      (shape.slots r fieldBase mode [])
       (fun _ => true) (fieldBase + shape.bindCount r) heap (treeDetachStore mode store p) s')
     (hSubset : ∀ (t : Ty) (x : Var (shape.context r []) t) (ws : List Value),
       LocalsHold s' ((shape.slots r fieldBase mode []).getD x.index default).loc t.types ws →
       ws.length = t.width →
       ∀ b ∈ t.regions ((shape.slots r fieldBase mode []).getD x.index default).mode
-        (treeDetachStore mode store p) ws ((Env.treeFields shape r words arrays buffers children .nil).get x),
+        (treeDetachStore mode store p) ws
+          ((Env.treeFields shape r words arrays buffers children .nil).get x),
         b ∈ (Ty.tree shape).regions mode store [.i64 p] (.node r words arrays buffers children)) :
     Step heap0 store0 (Holds.KeepDying env slots L0 L1 store0 s0)
         heap (treeDetachStore mode store p)
         (mode.fresh store (.tree shape) [.i64 p] (.node r words arrays buffers children)) ∧
       Frame base s0 s' ∧
       Holds env slots L1 base heap (treeDetachStore mode store p) s' ∧
-      Holds (Env.treeFields shape r words arrays buffers children env) (shape.slots r fieldBase mode slots)
+      Holds (Env.treeFields shape r words arrays buffers children env)
+        (shape.slots r fieldBase mode slots)
         (fun i => decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i)
         (fieldBase + shape.bindCount r) heap (treeDetachStore mode store p) s' ∧
       (∀ (t : Ty) (x : Var (shape.context r []) t),
@@ -39,9 +43,11 @@ theorem After.openTreeFields {Γ : List Ty} {env : Env Γ} {slots : List Slot}
           t.types ws →
         ws.length = t.width → ∀ b ∈ t.blocks (treeDetachStore mode store p) ws
           ((Env.treeFields shape r words arrays buffers children .nil).get x),
-          b ∈ mode.fresh store (.tree shape) [.i64 p] (.node r words arrays buffers children)) := by
+          b ∈ mode.fresh store (.tree shape) [.i64 p]
+            (.node r words arrays buffers children)) := by
   have hParent (hm : mode = .owned) :
-      block store p ∈ mode.fresh store (.tree shape) [.i64 p] (.node r words arrays buffers children) := by
+      block store p ∈ mode.fresh store (.tree shape) [.i64 p]
+        (.node r words arrays buffers children) := by
     subst hm
     exact List.mem_cons_self
   have hKeep : ∀ (u : Ty) (y : Var Γ u), L1 y.index = true → ∀ wy,
@@ -89,7 +95,8 @@ theorem After.openTreeFields {Γ : List Ty} {env : Env Γ} {slots : List Slot}
   intro t x hm ws hold length b hb
   have hRootMode := hMode x.index hm
   have hr : b ∈ t.regions ((shape.slots r fieldBase mode []).getD x.index default).mode
-      (treeDetachStore mode store p) ws ((Env.treeFields shape r words arrays buffers children .nil).get x) := by
+      (treeDetachStore mode store p) ws
+        ((Env.treeFields shape r words arrays buffers children .nil).get x) := by
     rw [hm]; exact hb
   have h := hSubset t x ws hold length b hr
   simpa only [hRootMode, Mode.fresh, Ty.regions] using h

@@ -129,7 +129,10 @@ theorem wp_treeCopyArrayInv {m : Module} (hm : Runtime m) {host : HostEnv Unit}
   intro heap1 store1 s3 ptr hNew hOwned hFrame3 hTop
   obtain ⟨hFrames1, hSame1, hFresh1⟩ := h.frames.step hNew
   have hCurrent1 := hFrames1.current
-  have hLow4 : s3.params.length ≤ base + 4 := by rw [hFrame3.params]; show s.params.length ≤ _; omega
+  have hLow4 : s3.params.length ≤ base + 4 := by
+    rw [hFrame3.params]
+    show s.params.length ≤ _
+    omega
   have hHigh4 : base + 4 < s3.params.length + s3.locals.length :=
     Locals.lt_total (by rw [hFrame3.positions, hPositions2]; omega)
   refine wp_localSet_local hLow4 hHigh4 ?_

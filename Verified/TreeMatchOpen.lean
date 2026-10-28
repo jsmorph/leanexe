@@ -28,7 +28,8 @@ theorem wp_openTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : St
         ∀ b ∈ t.regions ((shape.slots r base mode []).getD x.index default).mode
           (treeDetachStore mode store p) ws
             ((Env.treeFields shape r words arrays buffers children .nil).get x),
-          b ∈ (Ty.tree shape).regions mode store [.i64 p] (.node r words arrays buffers children)) →
+          b ∈ (Ty.tree shape).regions mode store [.i64 p]
+            (.node r words arrays buffers children)) →
       wp m rest Q (treeDetachStore mode store p) s' host) :
     wp m (treeLoadFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
       shape.fieldStart (shape.fields r) ++

@@ -134,7 +134,8 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
         | .array e =>
           arrays := arrays.push (← `(⟨$(quote e), $field⟩))
           let k := quote (arrays.size - 1)
-          decoded := decoded.push (← `(arrays ⟨$k, (by decide : $k < ($shape).arrays $record)⟩))
+          decoded := decoded.push
+            (← `(arrays ⟨$k, (by decide : $k < ($shape).arrays $record)⟩))
         | .leaf _ => decoded := decoded.push (← wordAt words.size)
         | .flat type leaves =>
           let paths := leaves.map fun (_, segments) => segments.flatten
@@ -167,8 +168,8 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     fromAlts := fromAlts.push (← `(matchAltExpr| | .nil h => absurd h (by decide)))
   fromAlts := fromAlts.push (← `(matchAltExpr| | .node ⟨_ + $(quote records), h⟩ _ _ _ _ =>
     absurd h $outOfRange))
-  rightCases := rightCases.push (← `(matchAltExpr| | ⟨_ + $(quote records), h⟩, _, _, _, _, _ =>
-    absurd h $outOfRange))
+  rightCases := rightCases.push (← `(matchAltExpr|
+    | ⟨_ + $(quote records), h⟩, _, _, _, _, _ => absurd h $outOfRange))
   elabCommand (← `(def $flatten : $native → Verified.Tree $shape := fun value =>
     match value with $toAlts:matchAlt*))
   if inverse then

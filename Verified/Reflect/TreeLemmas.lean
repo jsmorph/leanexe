@@ -23,7 +23,8 @@ theorem listCons_eq {reuse : Option (Var Γ (.treeHeader listShape listCell))}
     {head : Expr S Γ .word} {tail : Expr S Γ (.tree listShape)}
     {x : UInt64} {xs : List UInt64}
     (hh : head.denote funs env = x) (ht : tail.denote funs env = Tree.ofList xs) :
-    (Expr.treeNode listCell reuse (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => tail)).denote funs env =
+    (Expr.treeNode listCell reuse (fun _ => head) (noFields rfl) (noFields rfl)
+      (fun _ => tail)).denote funs env =
       Tree.ofList (x :: xs) := by
   subst hh
   simp only [Expr.denote, Tree.ofList, ht]
@@ -61,7 +62,8 @@ theorem listCons_bound {reuse : Option (Var Γ (.treeHeader listShape listCell))
     (hp : (match reuse with
       | some x => if modeAt modes x.index = .owned ∧ live x.index = false then 0 else 64
       | none => 64) = P) :
-    (Expr.treeNode listCell reuse (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => tail)).allocs
+    (Expr.treeNode listCell reuse (fun _ => head) (noFields rfl) (noFields rfl)
+      (fun _ => tail)).allocs
       funs flags bounds modes paid live env = H + (T + K) + P := by
   simp only [Expr.allocs, listCell_argsSum_arrays, listCell_argsSum_buffers,
     listCell_argsAny_arrays, listCell_argsAny_buffers, Bool.or_false, Nat.add_zero]
@@ -85,7 +87,8 @@ theorem listCons_bound {reuse : Option (Var Γ (.treeHeader listShape listCell))
 theorem listCons_fits {reuse : Option (Var Γ (.treeHeader listShape listCell))}
     {head : Expr S Γ .word} {tail : Expr S Γ (.tree listShape)} {H T : Bool}
     (hh : head.fits funs fits env = H) (ht : tail.fits funs fits env = T) :
-    (Expr.treeNode listCell reuse (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => tail)).fits funs fits env =
+    (Expr.treeNode listCell reuse (fun _ => head) (noFields rfl) (noFields rfl)
+      (fun _ => tail)).fits funs fits env =
       (H && T) := by
   simp only [Expr.fits, listCell_argsAll_arrays, listCell_argsAll_buffers, Bool.and_true]
   erw [argsAll_one, argsAll_one, hh, ht]
@@ -95,7 +98,8 @@ theorem listCase_eq {t : Ty} (x : Var Γ (.tree listShape))
     {α : Type} (flatten : α → t.denote) (xs : List UInt64) (a : α) (b : UInt64 → List UInt64 → α)
     (hx : env.get x = Tree.ofList xs)
     (he : empty.denote funs env = flatten a)
-    (hn : ∀ y ys, node.denote funs (Env.treeFields listShape listCell (fun _ => y) (noFields rfl) (noFields rfl)
+    (hn : ∀ y ys, node.denote funs (Env.treeFields listShape listCell (fun _ => y) (noFields rfl)
+      (noFields rfl)
       (fun _ => Tree.ofList ys) env) = flatten (b y ys)) :
     (Expr.treeCase x (fun _ => empty) (listBranch node)).denote funs env =
       flatten (xs.casesOn a b) := by
@@ -131,11 +135,13 @@ theorem listCase_bound {t : Ty} (x : Var Γ (.tree listShape))
       node.allocs funs flags bounds (listShape.modes listCell (modeAt modes x.index) modes)
         (List.replicate (listShape.bindCount listCell) false ++ paid)
         (shift (listShape.bindCount listCell) live)
-        (Env.treeFields listShape listCell (fun _ => y) (noFields rfl) (noFields rfl) (fun _ => Tree.ofList ys) env) +
+        (Env.treeFields listShape listCell (fun _ => y) (noFields rfl) (noFields rfl)
+          (fun _ => Tree.ofList ys) env) +
       coerceCost t (node.mode (listShape.modes listCell (modeAt modes x.index) modes))
         ((node.mode (listShape.modes listCell (modeAt modes x.index) modes)).join
           (empty.mode modes))
-        (node.denote funs (Env.treeFields listShape listCell (fun _ => y) (noFields rfl) (noFields rfl)
+        (node.denote funs (Env.treeFields listShape listCell (fun _ => y) (noFields rfl)
+          (noFields rfl)
           (fun _ => Tree.ofList ys) env)) = N y ys) :
     (Expr.treeCase x (fun _ => empty) (listBranch node)).allocs funs flags bounds modes paid
       live env = xs.casesOn E (fun y ys => C + N y ys) := by
@@ -156,7 +162,8 @@ theorem listCase_fits {t : Ty} (x : Var Γ (.tree listShape))
     (hx : env.get x = Tree.ofList xs)
     (he : empty.fits funs fits env = E)
     (hn : ∀ y ys, node.fits funs fits
-      (Env.treeFields listShape listCell (fun _ => y) (noFields rfl) (noFields rfl) (fun _ => Tree.ofList ys) env) = N y ys) :
+      (Env.treeFields listShape listCell (fun _ => y) (noFields rfl) (noFields rfl)
+        (fun _ => Tree.ofList ys) env) = N y ys) :
     (Expr.treeCase x (fun _ => empty) (listBranch node)).fits funs fits env = xs.casesOn E N := by
   cases xs with
   | nil => simpa only [Expr.fits, hx, Tree.ofList] using he

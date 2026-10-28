@@ -174,7 +174,8 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
         have aRoot : After env slots L0 L1 base heap store s (.tree shape) rootMode
             (.node r words arrays buffers children) heap1 store1 s1 [.i64 p] := by
           simpa only [Expr.mode, Expr.denote, hValue, Slot.modes_getD, rootMode] using lower
-        have hRoot : rootMode.node heap1 store1 p (Tree.node r words arrays buffers children).toNode := by
+        have hRoot : rootMode.node heap1 store1 p
+            (Tree.node r words arrays buffers children).toNode := by
           simpa only [Expr.mode, Expr.denote, hValue, Slot.modes_getD, rootMode] using root
         have hTopRoot : heap1.top.toNat ≤ heap.top.toNat +
             dyingPot store s env slots paid L0 L1 + rootCost := by

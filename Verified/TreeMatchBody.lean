@@ -23,7 +23,8 @@ theorem After.treeBody {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     (hFresh : ∀ (u : Ty) (x : Var (shape.context r []) u),
       ((shape.slots r fieldBase rootMode []).getD x.index default).mode = .owned → ∀ w,
       LocalsHold s ((shape.slots r fieldBase rootMode []).getD x.index default).loc u.types w →
-      w.length = u.width → ∀ b ∈ u.blocks store w ((Env.treeFields shape r words arrays buffers children .nil).get x),
+      w.length = u.width → ∀ b ∈ u.blocks store w
+        ((Env.treeFields shape r words arrays buffers children .nil).get x),
         b ∈ fresh)
     {heap1 : Heap} {store1 : Store Unit}
     (released : Evolves (Env.treeFields shape r words arrays buffers children env)

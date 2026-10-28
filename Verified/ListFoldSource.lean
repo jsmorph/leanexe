@@ -76,13 +76,15 @@ theorem nextArgs_denote {S : List Sig} {e : Elem} {captures : List Ty}
     (funs : Funs S) (root tail : Tree listShape) (head : UInt64)
     (acc value : e.denote) (captured : Env captures) :
     Env.ofFn (fun i => ((nextArgs (S := S) e captures).get i).denote funs
-      (.cons value (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => tail)
+      (.cons value (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl)
+        (fun _ => tail)
         (.cons root (.cons acc captured))))) = .cons tail (.cons value captured) := by
   change Env.cons (t := .tree listShape) tail (Env.cons (t := .elem e) value
     (Env.ofFn (fun i => ((Args.vars captures (fun x => x.suffix
       [.elem e, .treeHeader listShape listCell, .word, .tree listShape, .tree listShape,
         .elem e])).get i).denote
-        funs (.cons (t := .elem e) value (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl)
+        funs (.cons (t := .elem e) value (Env.treeFields listShape listCell (fun _ => head)
+          (noFields rfl) (noFields rfl)
           (fun _ => tail)
           (.cons root (.cons acc captured))))))) = _
   rw [Args.vars_denote]
@@ -98,8 +100,10 @@ theorem tailBody_denote {S : List Sig} {e : Elem} {captures : List Ty}
     (tailBody body).denote funs (.cons root (.cons acc captured)) =
       match root with
       | .nil _ => .inr acc
-      | .node r words arrays buffers children => .inl (.cons (children ⟨0, listShape_children_pos r⟩)
-          (.cons (body.denote funs (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩) (noFields rfl) (noFields rfl)
+      | .node r words arrays buffers children => .inl
+        (.cons (children ⟨0, listShape_children_pos r⟩)
+          (.cons (body.denote funs (Env.treeFields listShape listCell
+            (fun _ => words ⟨0, listShape_words_pos r⟩) (noFields rfl) (noFields rfl)
             (fun _ => children ⟨0, listShape_children_pos r⟩)
             (.cons root (.cons acc captured)))) captured)) := by
   cases root with
