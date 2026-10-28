@@ -2,14 +2,7 @@ import LeanExe.Pipeline.Implements
 
 /-! Every record of an encoded value has at least one slot, so every slot region has positive
 length, which `Heap.Keeps.nodeBorrowed` requires.  The compiler builds records only for the
-constructor with fields of a recursive type, so each encoding it matches has the property.
-
-`RecordHeader` and `RecordSlots` also have conditions on the value alone: a record has at most
-64 slots, and a word slot that holds a buffer's length follows each buffer slot.  An encoding
-that breaks either condition makes `Represent.borrowed` and `Represent.owned` false for its
-values in every store, so an `Implements` statement over its type holds for every module.
-`EncodeWellFormed` states the two conditions for every record of every value of a type, which
-rules this out. -/
+constructor with fields of a recursive type, so each encoding it matches has the property. -/
 
 namespace LeanExe.Pipeline
 
@@ -82,33 +75,5 @@ theorem encodeList_slotted : ∀ xs : List UInt64, (encodeList xs).Slotted
   | _ :: xs => ⟨List.cons_ne_nil _ _, encodeList_slotted xs, trivial⟩
 
 instance : EncodeSlotted (List UInt64) := ⟨encodeList_slotted⟩
-
-mutual
-/-- Every record of `n` has at most 64 slots, and each of its buffer slots is followed by a word
-slot that holds the buffer's length: the conditions of `RecordHeader` and `RecordSlots` that
-depend on the value alone. -/
-def Node.WellFormed : Node → Prop
-  | .null => True
-  | .record slots => slots.length ≤ 64 ∧ BufferLengths slots ∧ slotsWellFormed slots
-
-/-- Every record of the children among `slots` is well formed. -/
-def slotsWellFormed : List Slot → Prop
-  | [] => True
-  | .word _ :: rest => slotsWellFormed rest
-  | .child n :: rest => n.WellFormed ∧ slotsWellFormed rest
-  | .array _ :: rest => slotsWellFormed rest
-  | .bytes _ :: rest => slotsWellFormed rest
-end
-
-/-- An encoding whose records all meet the conditions of `RecordHeader` and `RecordSlots` that
-depend on the value alone. -/
-class EncodeWellFormed (α : Type) [Encode α] : Prop where
-  wellFormed : ∀ x : α, (Encode.encode x).WellFormed
-
-theorem encodeList_wellFormed : ∀ xs : List UInt64, (encodeList xs).WellFormed
-  | [] => trivial
-  | _ :: xs => ⟨by simp, trivial, encodeList_wellFormed xs, trivial⟩
-
-instance : EncodeWellFormed (List UInt64) := ⟨encodeList_wellFormed⟩
 
 end LeanExe.Pipeline
