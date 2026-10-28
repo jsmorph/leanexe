@@ -263,6 +263,76 @@ def heapArraySlot : (fields : List TreeField) →
       simp only [List.filterMap_cons, TreeField.arrayElem?] at this
       exact this⟩
 
+/-- The position among the heap slots of `fields` of the root of buffer `i`, whose length
+follows it. -/
+def heapBufferSlot : (fields : List TreeField) → Fin (fields.count .bytes) → Nat
+  | [], i => i.val
+  | .bytes :: rest, i =>
+    if h : i.val = 0 then 0 else
+      heapBufferSlot rest ⟨i.val - 1, by have := i.isLt; simp at this; omega⟩ + 2
+  | .array _ :: rest, i =>
+    heapBufferSlot rest ⟨i.val, by have := i.isLt; simpa using this⟩ + 1
+  | .word _ :: rest, i | .child :: rest, i =>
+    heapBufferSlot rest ⟨i.val, by have := i.isLt; simpa using this⟩
+
+theorem heapBufferSlot_lt (fields : List TreeField) :
+    ∀ arrays buffers (i : Fin (fields.count .bytes)),
+      heapBufferSlot fields i + 1 < (heapSlots fields arrays buffers).length := by
+  induction fields with
+  | nil => intro _ _ i; exact Fin.elim0 (i.cast (by simp))
+  | cons field rest ih =>
+    intro arrays buffers i
+    cases field with
+    | word e => exact ih _ _ _
+    | child => exact ih _ _ _
+    | array e =>
+      simp only [heapBufferSlot, heapSlots, List.length_cons]
+      have := ih (fun j => arrays ⟨j.val + 1, by simp [TreeField.arrayElem?]⟩)
+        (fun j => buffers ⟨j.val, by simpa using j.isLt⟩)
+        ⟨i.val, by have := i.isLt; simpa using this⟩
+      omega
+    | bytes =>
+      by_cases hz : i.val = 0
+      · simp [heapBufferSlot, hz, heapSlots]
+      · simp only [heapBufferSlot, dite_eq_right hz, heapSlots, List.length_cons]
+        have := ih (fun j => arrays ⟨j.val, by
+            simp only [List.filterMap_cons, TreeField.arrayElem?]; exact j.isLt⟩)
+          (fun j => buffers ⟨j.val + 1, by simp⟩)
+          ⟨i.val - 1, by have := i.isLt; simp at this; omega⟩
+        omega
+
+theorem heapBufferSlot_get (fields : List TreeField) :
+    ∀ arrays buffers (i : Fin (fields.count .bytes))
+      (h : heapBufferSlot fields i + 1 < (heapSlots fields arrays buffers).length),
+      (heapSlots fields arrays buffers)[heapBufferSlot fields i] = .bytes (buffers i) ∧
+        (heapSlots fields arrays buffers)[heapBufferSlot fields i + 1] =
+          .word (UInt64.ofNat (buffers i).data.size) := by
+  induction fields with
+  | nil => intro _ _ i; exact Fin.elim0 (i.cast (by simp))
+  | cons field rest ih =>
+    intro arrays buffers i h
+    cases field with
+    | word e => exact ih _ _ _ h
+    | child => exact ih _ _ _ h
+    | array e =>
+      simp only [heapBufferSlot, heapSlots, List.getElem_cons_succ]
+      exact ih _ _ _ _
+    | bytes =>
+      by_cases hz : i.val = 0
+      · have hi : i = ⟨0, by simp⟩ := Fin.ext hz
+        subst hi
+        simp [heapBufferSlot, heapSlots]
+      · simp only [heapBufferSlot, dite_eq_right hz, heapSlots, List.getElem_cons_succ]
+        have hLt := heapBufferSlot_lt rest (fun j => arrays ⟨j.val, by
+            simp only [List.filterMap_cons, TreeField.arrayElem?]; exact j.isLt⟩)
+          (fun j => buffers ⟨j.val + 1, by simp⟩)
+          ⟨i.val - 1, by have := i.isLt; simp at this; omega⟩
+        obtain ⟨h1, h2⟩ := ih _ _ _ hLt
+        have hb : buffers ⟨i.val - 1 + 1, by have := i.isLt; simp at this; omega⟩ = buffers i :=
+          congrArg buffers (Fin.ext (by simp only; omega))
+        exact ⟨h1.trans (congrArg Slot.bytes hb),
+          h2.trans (congrArg (fun d : LeanExe.Bytes => Slot.word (UInt64.ofNat d.data.size)) hb)⟩
+
 theorem heapSlots_length' (fields : List TreeField) (arrays buffers) :
     (heapSlots fields arrays buffers).length =
       ((fields.filter fun f => (f.bit?).isNone).map TreeField.width).sum :=

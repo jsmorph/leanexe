@@ -141,11 +141,12 @@ theorem wp_assembleTree {m : Module} {host : HostEnv Unit} {heap : Heap}
   -- Each buffer has root 0 when it is empty.
   have hNormalBuffers : ∀ i, lengths i = 0 → roots i = 0 := by
     have h1 := FieldsNormal.drop_prefix (tysOfFn (shape.words r) (shape.wordTy r)) _ _
-      (by rw [tysOfFn_widthSum _ _ (fun i => shape.elem_width r i)]; simp) hNormal
+      (by rw [tysOfFn_widthSum (shape.words r) (shape.wordTy r) (fun i => shape.elem_width r i)]
+          simp) hNormal
     have h2 := FieldsNormal.drop_prefix (List.replicate (shape.children r) (.tree shape)) _ _
       (by rw [replicate_widthSum, show (Ty.tree shape).width = 1 from rfl]; simp) h1
     have h3 := FieldsNormal.drop_prefix (tysOfFn (shape.arrays r) (shape.arrayTy r)) _ _
-      (by rw [tysOfFn_widthSum _ _ (fun _ => rfl)]; simp) h2
+      (by rw [tysOfFn_widthSum (shape.arrays r) (shape.arrayTy r) (fun _ => rfl)]; simp) h2
     exact FieldsNormal.bytesFields (ps := []) _ roots lengths [] (by simpa using h3)
   have hRecordBuffers : ∀ i, RecordBuffer heap store (roots i) (lengths i) (buffers i) :=
     fun i => (hBuffersRep i).recordBuffer (hNormalBuffers i)
@@ -213,8 +214,9 @@ theorem wp_assembleTree {m : Module} {host : HostEnv Unit} {heap : Heap}
           ((List.ofFn fun i => Value.i64 (pointers i)) ++
             ((List.ofFn fun i => Value.i64 (arrayPtrs i)) ++
               (List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten)))) := by
-    rw [tagWords_fieldBlocks store shape r _ _, fieldBlocks_append store
-      (hTreeLength.trans (treeSlots_length (shape.fields r) _ _).symm), hTreeBlocks, hEnvBlocks]
+    rw [(tagWords_fieldBlocks store shape r _ _).trans ((fieldBlocks_append store
+      (hTreeLength.trans (treeSlots_length (shape.fields r) _ _).symm)).trans
+      (congrArg (· ++ _) hTreeBlocks)), hEnvBlocks]
     exact hHeapBlocks.append_left _
   have hPayloadApart : (block store p :: fieldBlocks store
       (shape.tagWords r ++ (treeFieldValues (shape.fields r) (shape.slotWords r words) pointers ++
