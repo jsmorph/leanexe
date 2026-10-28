@@ -19,6 +19,7 @@ import LeanExe.Native.CText
 import LeanExe.Native.ClightCheck
 import LeanExe.Native.Proof.Native
 import LeanExe.Native.Proof.Rename
+import LeanExe.Native.Proof.Export
 import LeanExe.Native.Proof.Whole
 import LeanExe.Native.Proof.Quiet
 import LeanExe.Native.Proof.Main
