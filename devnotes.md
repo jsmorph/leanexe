@@ -36947,7 +36947,7 @@ The compiler now compiles records with array fields.  A construction moves each 
 - [x] Construction, matches, and release of array fields.
 - [x] The reflector, the example, its cases, and the order check.
 - [x] The manual.
-- [ ] The gate of the arrays half.
+- [x] The gate of the arrays half, after the review of the model change.
 - [ ] Buffers.
 
 ## 2026-10-28: Review of the model change for heap fields
@@ -36968,7 +36968,9 @@ Before building, I checked by reading which trusted predicates that admit a buff
 
 - [x] The `lengths` field and the lemmas that build records.
 - [x] The docstrings and the manual.
-- [ ] The gate of the arrays half on the new commit.
+- [x] The gate of the arrays half on the new commit.
+
+The gate of the arrays half ran on the commit of the `lengths` field and its documents.  It built the sixteen heavy proofs one at a time, `lake build Verified Library`, and the default targets without error.  `tests/verified/run.sh` passed 35,766 cases with no failure, with the heap-sum audit of 155 theorems, the typed-tree audit of 423 theorems, and every file theorem module reporting only the permitted axioms.  `--cases typedtrees` passed 513 cases and `--cases arraytrees` 108, and the running-sum, binary64 running-sum, and WASI drivers passed.  The 101 modules of the gate of main, the baseline modules, and the slew, heap-sum, byte, literal, running-sum, binary64 running-sum, and process modules are byte-identical to their references.
 
 ## 2026-10-28: The follow-up review of the lengths field
 
