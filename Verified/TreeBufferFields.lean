@@ -19,7 +19,8 @@ theorem ofFn_flatten_cast {α : Type} {n m : Nat} (h : n = m + 1) (f : Fin n →
   rfl
 
 /-- A buffer with a normal root, as a record holds it. -/
-theorem Bytes.Rep.recordBuffer {heap : Heap} {store : Store Unit} {root length : UInt64}
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.recordBuffer
+    {heap : Heap} {store : Store Unit} {root length : UInt64}
     {data : LeanExe.Bytes} (h : Bytes.Rep heap store root length data)
     (hNormal : length = 0 → root = 0) : RecordBuffer heap store root length data := by
   refine ⟨?_, ?_⟩

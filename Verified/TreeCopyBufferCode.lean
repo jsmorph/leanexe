@@ -114,7 +114,8 @@ theorem CopyInv.freshStep {shape : TreeShape} {heap0 heap heap' : Heap}
 
 /-- The value of a buffer slot that the copy writes: the root of a copy of the buffer, which is 0
 for an empty buffer. -/
-theorem Bytes.Rep.slotOwned {heap : Heap} {store : Store Unit} {root length : UInt64}
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.slotOwned
+    {heap : Heap} {store : Store Unit} {root length : UInt64}
     {data : LeanExe.Bytes} (h : Bytes.Rep heap store root length data)
     (hZero : length = 0 → root = 0) :
     (Slot.bytes data).ValueOwned heap store root := by
@@ -128,7 +129,8 @@ theorem Bytes.Rep.slotOwned {heap : Heap} {store : Store Unit} {root length : UI
       exact Or.inl ⟨hZero hLength, hSize⟩
     · exact Or.inr ⟨hSize, hBuffer⟩
 
-theorem Bytes.Rep.slotBlocks {heap : Heap} {store : Store Unit} {root length : UInt64}
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.slotBlocks
+    {heap : Heap} {store : Store Unit} {root length : UInt64}
     {data : LeanExe.Bytes} (h : Bytes.Rep heap store root length data)
     (hZero : length = 0 → root = 0) :
     (Slot.bytes data).valueBlocks store root = Bytes.regions store root := by
