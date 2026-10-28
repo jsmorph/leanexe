@@ -506,6 +506,17 @@ def TreeShape.exprsOf {S : List Sig} {Γ : List Ty} (shape : TreeShape) (r : Fin
     else Elem.zeroExpr _
   | none => Elem.zeroExpr _
 
+/-- The array expressions of a construction of record constructor `r`, in the form of
+`TreeShape.arraysOf`. -/
+def TreeShape.arrayExprsOf {S : List Sig} {Γ : List Ty} (shape : TreeShape)
+    (r : Fin shape.records) (exprs : List (Σ e : Elem, Expr S Γ (.array e)))
+    (i : Fin (shape.arrays r)) : Expr S Γ (shape.arrayTy r i) :=
+  match exprs[i.val]? with
+  | some ⟨e, x⟩ =>
+    if h : e = shape.arrayElem r i then (h ▸ x : Expr S Γ (.array (shape.arrayElem r i)))
+    else .build (.word 0) (shape.arrayElem r i).zeroExpr
+  | none => .build (.word 0) (shape.arrayElem r i).zeroExpr
+
 def Expr.insertIdx (x : Var Γ (.array e)) (i : Var Γ .word)
     (value : Expr S Γ (.elem e)) : Expr S Γ (.array e) :=
   .ite (.leSize x i) (.insertAt x (.var i) value) (.build (.word 0) e.zeroExpr)

@@ -50,6 +50,7 @@ inductive NativeField where
   | child
   | leaf (e : Elem)
   | flat (type : Lean.Expr) (leaves : List (Elem × List (List Bool)))
+  | array (e : Elem)
   deriving Inhabited
 
 /-- The kinds of the slots that a field occupies. -/
@@ -57,6 +58,7 @@ def NativeField.kinds : NativeField → List TreeField
   | .child => [.child]
   | .leaf e => [.word e]
   | .flat _ leaves => leaves.map fun (e, _) => .word e
+  | .array e => [.array e]
 
 /-- The `Flat` instance of a type and its tuple type, if Lean finds one. -/
 def flatInstance? (type : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr)) := do
@@ -121,6 +123,11 @@ def fieldElem? (field : Lean.Expr) : Option Elem :=
   else if field.isConstOf ``Float32 then some .float32
   else none
 
+/-- The element of an array field of type `field`: an `Array` of an element of one word. -/
+def arrayFieldElem? (field : Lean.Expr) : MetaM (Option Elem) := do
+  let (``Array, #[α]) := field.getAppFnArgs | return none
+  return fieldElem? (← withReducible (whnf α))
+
 /-- The Lean type of a word field's element. -/
 def elemType : Elem → Lean.Expr
   | .word => mkConst ``UInt64
@@ -155,8 +162,8 @@ def flatField? (field : Lean.Expr) : MetaM (Option NativeField) := do
 
 /-- The layout of `type` when it is an inductive type without parameters or indices, neither
 mutual nor nested, whose constructors' fields are `UInt64`, `Bool`, `Float`, `Float32`, types
-whose `Flat` instance gives a tuple of these, or the type itself, and whose constructors meet
-`shapeValid`. -/
+whose `Flat` instance gives a tuple of these, arrays of `UInt64`, `Bool`, `Float`, or `Float32`,
+or the type itself, and whose constructors meet `shapeValid`. -/
 def recursiveLayout? (type : Lean.Expr) : MetaM (Option RecursiveLayout) := do
   let .const name _ ← withReducible (whnf type) | return none
   if name == ``Nat || name == ``Int then return none
@@ -172,6 +179,7 @@ def recursiveLayout? (type : Lean.Expr) : MetaM (Option RecursiveLayout) := do
       let field ← withReducible (whnf field)
       if let some e := fieldElem? field then natives := natives ++ [.leaf e]
       else if field.isConstOf name then natives := natives ++ [.child]
+      else if let some e ← arrayFieldElem? field then natives := natives ++ [.array e]
       else if let some flat ← flatField? field then natives := natives ++ [flat]
       else return none
     ctors := ctors.push (ctor, natives)
