@@ -37487,3 +37487,61 @@ The coordinator approved a plan for timing native code against Wasmtime.  Seven 
 `tests/native/bench.sh` builds each program through `native-verified build` and writes each module's Wasm with `tools/Emit.lean`.  Both runs of a pair are pinned with `taskset` to the same core, the highest-numbered online core of the highest maximum clock rate, and the pairs alternate which form runs first.  A pair runs only when no `lean` or `lake` process runs and the one-minute load average is below 1, checked before and after the pair; a pair that fails the check after it ran is discarded.  If the machine does not become idle within a day, the script stops.  It records the architecture, the core's clock rate, the frequency governor, the `ccomp` version and options, and the Wasmtime version and options, and it writes the time per call of every pair and a summary with medians, quartiles, and the ratio of the medians.  The two forms must print the same results.
 
 A short test run of one pair per workload, with a timed period of 0.05 s and no idle check, built all seven programs and agreed on every result.  The core it chose is an AArch64 core.  Those times are not measurements, since the machine was busy.  The Euler grid of 64 took about a second per call, so the workload uses 32.
+
+### The insertion-sort hint, analysed
+
+The test run had insertion sort of 4,096 words at 26.6 ms per call natively against 6.2 ms under Wasmtime.  These times are not measurements.  The analysis compared the translated C of `sortInsert`, `ccomp -S` from the AArch64 tree, and `wasmtime compile -W nan-canonicalization=y` of the same module, disassembled with `objdump`.  Hardware counters are not open to the user on the build host, so the counts below are static, taken from the path that each iteration executes.
+
+Both compilations run the same algorithm.  For each element, a counting loop runs over the whole sorted prefix and counts the elements below it, with no early exit, and a shifting loop moves the larger elements up by one.  For 4,096 random words the counting loop runs about 8.4 million iterations and the shifting loop about 4.2 million.  Both keep the redundancies of the Lean source: the length of the array is reloaded each iteration, and a constant test `1 == 0` remains.
+
+| Loop | Compiler | Instructions | Loads | Stores | Branches |
+| --- | --- | --- | --- | --- | --- |
+| counting | CompCert | about 52 | 7 | 0 | about 11 |
+| counting | Cranelift | about 16 | 2 | 0 | 5 |
+| shifting | CompCert | 38 | 5 | 1 | 6 |
+| shifting | Cranelift | 8 | 1 | 1 | 2 |
+
+The totals are about 600 million instructions for CompCert's code and 165 million for Cranelift's, a ratio of 3.7, where the test run's times differed by 4.3.  One aligned eight-byte read in CompCert's counting loop is:
+
+```
+uxtw  x5, w10
+add   x1, x5, #8
+adrp  x16, lx_pages
+ldr   w13, [x16, #:lo12:lx_pages]
+uxtw  x2, w13
+add   x2, xzr, x2, lsl #16
+cmp   x1, x2
+b.ls  .L356
+.L356:
+ubfiz x4, x5, 0, 3
+cbz   x4, .L357
+.L357:
+adrp  x9, :got:lx_mem
+ldr   x9, [x9, #:got_lo12:lx_mem]
+orr   x2, xzr, x5, lsr #3
+ldr   x26, [x9, x2, lsl #3]
+```
+
+The same read in Cranelift's code is:
+
+```
+add   x2, x1, #0x1
+add   x2, x4, x2, lsl #3
+ldr   x2, [x19, w2, uxtw]
+```
+
+and Cranelift's whole counting loop is:
+
+```
+620: cmp x1, x0           ; b.cs 668
+     mov w2, #0           ; mov w2, w2 ; cbnz x2, 668
+     ldr x2, [x19, w4, uxtw]
+     cmp x1, x2           ; b.cc 648
+648: add x2, x1, #1       ; add x2, x4, x2, lsl #3
+     ldr x2, [x19, w2, uxtw]
+     cmp x2, x23          ; b.cs 660
+     add x24, x24, #1
+660: add x1, x1, #1       ; b 620
+```
+
+Four things in CompCert's code account for the difference.  First, every load and store tests `addr + 8 > lx_pages * 65536`, as the translation requires for Talos's trap, and CompCert, which does not move invariant loads out of loops, reloads `lx_pages` and recomputes the limit at each access.  Wasmtime needs no test, because its reservation of 4 GiB with guard pages makes a 32-bit index safe.  Second, each access tests the alignment of the address.  Third, each access loads the address of `lx_mem` through the global offset table, where Cranelift keeps the memory's base in a register for the whole function.  Fourth, each index is shifted right and the load scales it left again.  The counting loop also tests `brk` twice and reloads one spilled local from the stack.  About 25 of its 52 instructions and 5 of its 7 loads belong to the checks and the addressing.  The coordinator will ask the user whether to spend effort on native speed, and until the user decides, the translation, the runtime, and their proofs stay as they are.
