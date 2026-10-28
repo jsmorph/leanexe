@@ -5,17 +5,18 @@
 # exports that the translation contains.  clightgen reads the C text back, native-verified check
 # compares the Clight it wrote with the translation, and ccomp compiles the text and the glue
 # with tools/native-host.c, which takes the commands of the Wasmtime host.  The cases are the
-# lines of Verified/Examples/Cases.lean, with the library entries of
-# tests/verified/library-cases.txt, which tests/verified/run.sh checks with Wasmtime.  A case
-# runs when the translation contains its export, and a module outside the subset, which has no
-# translation, runs none of its cases.  A case that runs must give the line that the Wasmtime
-# host gives, with the same rules for traps and allocation counters.  The module cases of
-# tests/modules/Cases.lean that tests/verified/run.sh checks for the corpus, those of euler and
-# of shapes on sums (tests/TestSupport/Native/ModuleCases.lean), run the same way under the rules
-# of tests/modules/run.sh.  The script prints the numbers of cases that pass, that fail, and
-# that do not run, and fails unless every case that runs passes.  Build the modules'
-# targets first, as tests/verified/run.sh requires.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as
-# for tests/native/run.sh.
+# lines of the compiled generator verified-cases (Verified/Examples/Cases.lean), with the library
+# entries of tests/verified/library-cases.txt, which tests/verified/run.sh checks with Wasmtime.
+# A case runs when the translation contains its export, and a module outside the subset, which
+# has no translation, runs none of its cases.  A case that runs must give the line that the
+# Wasmtime host gives, with the same rules for traps and allocation counters.  The module cases
+# of tests/modules/Cases.lean that tests/verified/run.sh checks for the corpus, those of euler
+# and of shapes on sums, come from the compiled generator native-module-cases
+# (tests/TestSupport/Native/ModuleCases.lean) and run the same way under the rules of
+# tests/modules/run.sh.  The script prints the numbers of cases that pass, that fail, and that do
+# not run, and fails unless every case that runs passes.  Build the modules' targets first, as
+# tests/verified/run.sh requires.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as for
+# tests/native/run.sh.
 # Usage: tests/native/verified.sh [--module NAME]
 set -euo pipefail
 only=""
@@ -35,7 +36,8 @@ fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out=$root/build/native/verified
 cd "$root"
-tools/leanrun --timeout 30m lake --log-level error build native-verified Verified.Examples.Cases
+tools/leanrun --timeout 12h lake --log-level error build native-verified verified-cases \
+  native-module-cases
 rm -rf "$out"
 mkdir -p "$out"
 modules=0
@@ -68,8 +70,7 @@ cases=$out/cases.txt
 errors=$out/errors.txt
 # Native Lean writes the panics that the cases exercise to standard error, which
 # tests/verified/run.sh checks; here only its exit status counts.
-if ! tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Cases.lean \
-    >"$cases" 2>"$out/cases.err"; then
+if ! tools/leanrun --timeout 10m .lake/build/bin/verified-cases >"$cases" 2>"$out/cases.err"; then
   cat "$out/cases.err" >&2
   echo "fail: native Lean exited with an error" >&2
   exit 1
@@ -145,9 +146,8 @@ done <"$cases"
 echo "native verified: passed $passed failed $failed"
 echo "native verified: not run: $omitted outside the translation, $others of modules without a translation"
 echo "native verified: modules without a translation:${untranslated:- none}"
-tools/leanrun --timeout 30m lake --log-level error build Demos.Euler.Cases Examples.Shape.Cases
 modcases=$out/module-cases.txt
-if ! tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Native/ModuleCases.lean \
+if ! tools/leanrun --timeout 10m .lake/build/bin/native-module-cases \
     >"$modcases" 2>"$out/module-cases.err"; then
   cat "$out/module-cases.err" >&2
   echo "fail: native Lean exited with an error" >&2
