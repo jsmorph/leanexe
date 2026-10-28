@@ -149,3 +149,28 @@ lean_exe «verified-cases-xxhash64» where
 lean_exe «verified-cases-slew» where
   srcDir := "tests"
   root := `TestSupport.Slew.CasesMain
+
+-- The differential test of the Lean copy of Clight against CompCert's reference interpreter
+-- (tests/native/clight.sh); not a default target.
+lean_exe «clight-diff» where
+  srcDir := "tests"
+  root := `TestSupport.Native.ClightDiff
+
+-- The C text, host programs, and Talos's results for the translator's end-to-end test
+-- (tests/native/run.sh); not a default target.
+lean_exe «native-emit» where
+  srcDir := "tests"
+  root := `TestSupport.Native.Emit
+
+-- The translation of the tests/verified corpus to C (tests/native/verified.sh); not a default
+-- target.
+lean_exe «native-verified» where
+  srcDir := "tests"
+  root := `TestSupport.Native.Verified
+  supportInterpreter := true
+
+-- The module cases that tests/native/verified.sh runs natively, compiled as the case generators
+-- of tests/verified/run.sh are; not a default target.
+lean_exe «native-module-cases» where
+  srcDir := "tests"
+  root := `TestSupport.Native.ModuleCases

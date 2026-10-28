@@ -1,0 +1,42 @@
+LeanExe/Native/Clight/
+
+The files Integers.lean, Floats.lean, AST.lean, Values.lean, Memdata.lean, Memory.lean,
+Ctypes.lean, Globalenvs.lean, Events.lean, Cop.lean, Clight.lean, and Bigstep.lean in
+LeanExe/Native/Clight/ transcribe definitions of the CompCert verified compiler, release 3.18,
+into Lean, and are a derived work of it.  CompCert is Copyright Institut National de Recherche en
+Informatique et en Automatique (INRIA) and AbsInt Angewandte Informatik GmbH.
+
+Source: the archive of the release tag v3.18, https://github.com/AbsInt/CompCert/archive/v3.18.tar.gz,
+which https://compcert.org/download.html names as the source distribution of version 3.18,
+downloaded on 2026-10-26, SHA-256 564b312b3ed3162f02605f0108feb555bd28fe7a80b97ea269c546bcc60c1cf0
+and SHA-512 764ff4cea9e8504337610f8c922d3b18790601df92515e7bb56b90601469bf2af881819dba54d9d7c3bb1cea87887062925e1003ec07078be86c0376eb3b7cd5,
+the digests that the package coq-compcert.3.18 of the Rocq opam repository publishes for the same
+URL.  The archive's Changelog.md begins with Release 3.18, and its VERSION file reads 3.17.
+
+The transcribed CompCert files are lib/Integers.v, lib/Floats.v, lib/IEEE754_extra.v,
+lib/Maps.v, common/AST.v, common/Values.v, common/Memdata.v, common/Memtype.v, common/Memory.v,
+common/Globalenvs.v, common/Events.v, common/Builtins0.v, common/Builtins.v, cfrontend/Ctypes.v,
+cfrontend/Cop.v, cfrontend/Clight.v, cfrontend/ClightBigstep.v, x86_64/Archi.v, and
+aarch64/Archi.v.  Each carries the copyright of INRIA, and CompCert's LICENSE file lists each of
+them among the files distributed both under the INRIA Non-Commercial License Agreement and under
+the GNU Lesser General Public License, version 2.1 or any later version, with the choice left to
+the user.  The rest of CompCert, including the compiler's back end, is under the INRIA agreement
+only, and its commercial use requires a Software Usage Agreement from AbsInt.
+
+License: LeanExe takes the GNU Lesser General Public License, version 2.1 or (at your option) any
+later version, for the twelve Lean files named above.  The text of version 2.1 is
+LeanExe/Native/Clight/LICENSE-LGPL-2.1, copied unchanged from lines 173 to 674 of CompCert's
+LICENSE file (SHA-256 dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551).  Each of
+the twelve files begins with a notice that names its CompCert sources, CompCert's copyright
+holders, this license, and the date of the change from CompCert.  The rest of LeanExe, including
+the files that import these twelve, such as Run.lean, RunSound.lean, and the translator, is not
+covered by the LGPL; it uses the twelve files as a library.
+
+Changes, made on 2026-10-26: the Lean files keep CompCert's names and only the definitions that the
+semantics of this directory uses, without proof fields.  Machine integers are Lean's fixed-width
+words, floating-point numbers are their bit patterns, and the numerical results of floating-point
+operations come from Talos's integer implementation of IEEE 754 instead of Flocq, with NaN results
+computed as Floats.v computes them.  Block contents are tree maps, and the parameters of x86-64 and
+AArch64 that both targets share are fixed.  Rules for constructs outside the translator's subset
+are omitted, and each file's documentation comment lists what it omits.  The other files of
+LeanExe/Native/ are not derived from CompCert.
