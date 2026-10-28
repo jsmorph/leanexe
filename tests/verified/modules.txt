@@ -22,6 +22,7 @@ Verified.Examples.TaggedTypes:Verified.Examples.TaggedTypes.compiled.module:tagg
 Verified.Examples.HeapSums:Verified.Examples.HeapSums.compiled.module:heapsums
 Verified.Examples.TypedTrees:Verified.Examples.TypedTrees.compiled.module:typedtrees
 Verified.Examples.ArrayTrees:Verified.Examples.ArrayTrees.compiled.module:arraytrees
+Verified.Examples.BufferTrees:Verified.Examples.BufferTrees.compiled.module:buffertrees
 Verified.Examples.Tail:Verified.Examples.Tail.compiled.module:tail
 Verified.Examples.TailConditions:Verified.Examples.TailConditions.compiled.module:tailconditions
 Demos.Gpt.Verified:Demos.Gpt.Verified.compiled.module:gpt
