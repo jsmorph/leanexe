@@ -432,12 +432,21 @@ def dnan : expr := .Ebinop .Odiv dzero dzero tdouble
 def fnan : expr := .Ebinop .Odiv fzero fzero tfloat
 def setF64 (e : expr) : statement := .Sassign (.Evar idF64 tdouble) e
 def setF32 (e : expr) : statement := .Sassign (.Evar idF32 tfloat) e
+def fOne : expr := .Econst_single 0x3F800000 tfloat
+
+/-- `g_f32 = (float) __builtin_fsqrt((double) x)`, the square root through `double` that the
+translation of `f32.sqrt` computes. -/
+def sqrtF32 (x : expr) : statement :=
+  .Ssequence
+    (.Sbuiltin (some 36) (.EF_builtin "__builtin_fsqrt" sqrtSig) [tdouble] [.Ecast x tdouble])
+    (setF32 (.Ecast (.Etempvar 36 tdouble) tfloat))
 
 /-- Statements whose results depend on the NaN parameters of `Archi`, each with the initial bits
 of `pun`: the default NaNs of both formats, a quiet and a signaling operand in both orders, two
 quiet operands, the square root of a negative number, conversions of NaNs between the formats,
 and negation of a NaN; then `__builtin_fabs` of zeros, infinities, and NaNs, whose results the
-parameters do not change. -/
+parameters do not change; then the binary32 square root through `double` of the default NaN, of
+a NaN with a payload, and of a negative operand. -/
 def nanCases : List (UInt64 × statement) := [
   (0, setF64 dnan),
   (0, setF32 fnan),
@@ -457,7 +466,10 @@ def nanCases : List (UInt64 × statement) := [
   -- payloads, and a signaling NaN.
   ([0, 0x8000000000000000, 0x7FF0000000000000, 0xFFF0000000000000, 0x7FF8000000000005,
     0xFFF8000000000007, 0x7FF0000000000003].map fun bits =>
-    (bits, setF64 (.Eunop .Oabsfloat punDouble tdouble)))
+    (bits, setF64 (.Eunop .Oabsfloat punDouble tdouble))) ++
+  [(0, sqrtF32 fnan),
+   (0x7FF4000000000000, sqrtF32 (.Ecast punDouble tfloat)),
+   (0, sqrtF32 (.Eunop .Oneg fOne tfloat))]
 
 def nanPrograms : List (program function) :=
   let helper : function :=
