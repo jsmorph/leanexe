@@ -37688,8 +37688,12 @@ A review of the well-formedness change found two problems and a limit.  The comm
 
 The definitions and both instances keep their bodies, and the docstrings are new.  `tests/wasi/Axioms.lean` names the four renamed lemmas that it audits, and the design document and the WASI design document point to the new module.  Other files of `LeanExe/Pipeline/` hold definitions that serve only proofs, such as `ReleaseVars` in `RuntimeSpec.lean`, and this change leaves them in place.
 
+An independent review of the diff found the moved bodies identical and the docstrings accurate.  It also found that statements reach definitions in other directories: `UInt64Array.At` in `LeanExe/ProofKit/Array.lean`, the layout of every array; `FreeNode`, `freeHead`, `FreeNode.region`, and `FreeListAt` in `LeanExe/Runtime/FreeList.lean`; `regionsDisjoint` in `LeanExe/Runtime/Tree.lean`; `Heap.Within` in `Verified/RuntimeFacts.lean`; and `LeanExe.Bytes` in `LeanExe/Dialect/Bytes.lean`.  The first draft of the manual said that the trusted definitions are the files under `LeanExe/Pipeline/`, which these definitions make false.  The coordinator decided to list in both manuals the definitions that statements reach and the definitions that those use, and to move nothing more now.  The verified manual's paragraph and a row of the LeanExe manual's trusted-base table give the list, and both state that the namespace `LeanExe.Pipeline` does not mark trust and that a lemma in any directory can only make a proof fail.
+
+A later change could move `UInt64Array.At` and the free-list definitions into `LeanExe/Pipeline/`, so that the directory would hold every trusted definition except `LeanExe.Bytes` and the verified compiler's additions.  `LeanExe/Pipeline/Runtime.lean` imports `LeanExe.Runtime.FreeList` and `LeanExe.ProofKit.Array`, and modules such as `LeanExe/ProofKit/FreeListMemory.lean` and `LeanExe/IR/Read.lean` import them in turn, so the move risks import cycles and would pull those modules' lemmas along or split the files.  Renaming the release proof's namespace to match its directory would change the declaration names that LTG entries cite, among them eight in `ltg/entries/release-list`, such as `LeanExe.Pipeline.release_tree_run` and `LeanExe.Pipeline.Releasing`.
+
 - [x] The new module, the moved file, and the renamed lemmas.
-- [x] The manual's statement of the trusted directory.
+- [x] The independent review of the diff.
+- [x] The list of trusted definitions in both manuals.
 - [ ] `lake build Verified Library`, the default target, `native-verified`, and the byte and WASI drivers.
-- [ ] The independent review of the diff.
 - [ ] The full check.

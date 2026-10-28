@@ -63,7 +63,7 @@ end StdioExample
 
 Nonempty literals have deduplicated raw data in the module's static pool, after its constant word arrays.  Each literal evaluation makes an owned copy, including evaluations inside pure helpers, builders, branches, and loops.  Empty literals and empty builders return canonical empty values without allocation.  These byte operations also belong to the pure verified compiler.
 
-Ownership follows the pure compiler's rules.  Writes borrow their buffer.  Reads return owned bytes.  Passing bytes to an owned parameter or returning owned bytes transfers ownership, while returning borrowed bytes makes a copy.  Cleanup releases an unused owned allocation after its last use.  An empty argument may have a nonzero allocated root.  Cleanup tests the root, and borrowed representations protect the allocation's header and capacity even when its logical length is zero.  [The byte representation](../Verified/Bytes/Basic.lean) states these memory requirements.
+Ownership follows the pure compiler's rules.  Writes borrow their buffer.  Reads return owned bytes.  Passing bytes to an owned parameter or returning owned bytes transfers ownership, while returning borrowed bytes makes a copy.  Cleanup releases an unused owned allocation after its last use.  An empty argument may have a nonzero allocated root.  Cleanup tests the root, and borrowed representations protect the allocation's header and capacity even when its logical length is zero.  [The byte representation](../LeanExe/Pipeline/Bytes.lean) states these memory requirements.
 
 ### Control and helper functions
 
