@@ -237,33 +237,42 @@ instance [Flat α β] [Scalar β] : Represent (Moved (Array α)) where
   moves store vs xs := Represent.moves store vs (Moved.mk (flatWords xs.val))
 
 mutual
-/-- A slot of a record: a word, or a child value held by its pointer. -/
+/-- A slot of a record: a word, a child value held by its pointer, an array object held by its
+pointer, or a byte buffer held by its root.  A buffer's root is 0 exactly when the buffer is
+empty, and the slot after the root holds the buffer's length as a word. -/
 inductive Slot where
   | word (w : UInt64)
   | child (n : Node)
+  | array (words : Array UInt64)
+  | bytes (data : LeanExe.Bytes)
 
 /-- How a value of a recursive type sits in memory: the null pointer, or a record whose slots
-hold words and child values. -/
+hold words, child values, arrays, and byte buffers. -/
 inductive Node where
   | null
   | record (slots : List Slot)
 end
 
-/-- 1 for a child slot and 0 for a word. -/
+/-- 0 for a word, and 1 for a slot that holds a pointer: a child, an array, or a buffer. -/
 def Slot.bit : Slot → UInt64
   | .word _ => 0
-  | .child _ => 1
+  | .child _ | .array _ | .bytes _ => 1
 
-/-- The child mask of a record: bit `i` is set when slot `i` holds a child. -/
+/-- The root `root` of the object of the buffer `data` in a record, none for an empty buffer,
+whose root is 0. -/
+def bufferRoots (data : LeanExe.Bytes) (root : UInt64) : List UInt64 :=
+  if data.data.size = 0 then [] else [root]
+
+/-- The pointer mask of a record: bit `i` is set when slot `i` holds a pointer. -/
 def maskOf (slots : List Slot) : UInt64 := slots.foldr (fun slot acc => 2 * acc + slot.bit) 0
 
 /-- The address of slot `i` of the record at `p`. -/
 def slotAddress (p : UInt64) (i : Nat) : UInt32 := (p + UInt64.ofNat (8 * i)).toUInt32
 
 /-- An owned record at `p` with `slots`: its header holds the magic number, count one, kind 1,
-the number of slots, at most 64, and the mask of its child slots; its block has room for the
-slots, lies inside the 32-bit address space and below `top`, and is outside every free
-block. -/
+the number of slots, at most 64, and the mask of its slots that hold pointers; its block has
+room for the slots, lies inside the 32-bit address space and below `top`, and is outside every
+free block. -/
 structure RecordHeader (heap : Heap) (store : Store Unit) (p : UInt64) (slots : List Slot) :
     Prop where
   base : 4096 + 48 ≤ p.toNat
@@ -293,13 +302,22 @@ def NodeOwned (heap : Heap) (store : Store Unit) (p : UInt64) : Node → Prop
   | .null => p = 0
   | .record slots => RecordHeader heap store p slots ∧ SlotsOwned heap store p 0 slots
 
-/-- Slots `i` on of the record at `p` hold `slots`, with every child owned. -/
+/-- Slots `i` on of the record at `p` hold `slots`, with every child, array, and buffer owned.
+A buffer's root is 0 exactly when the buffer is empty, and a nonempty buffer is as
+`Represent LeanExe.Bytes` states it. -/
 def SlotsOwned (heap : Heap) (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → Prop
   | [] => True
   | .word w :: rest =>
       store.mem.read64 (slotAddress p i) = w ∧ SlotsOwned heap store p (i + 1) rest
   | .child n :: rest =>
       NodeOwned heap store (store.mem.read64 (slotAddress p i)) n ∧
+        SlotsOwned heap store p (i + 1) rest
+  | .array words :: rest =>
+      heap.Owned store (store.mem.read64 (slotAddress p i)) words ∧
+        SlotsOwned heap store p (i + 1) rest
+  | .bytes data :: rest =>
+      ((store.mem.read64 (slotAddress p i) = 0 ∧ data.data.size = 0) ∨
+        (data.data.size ≠ 0 ∧ heap.Buffer store (store.mem.read64 (slotAddress p i)) data)) ∧
         SlotsOwned heap store p (i + 1) rest
 end
 
@@ -309,7 +327,9 @@ def NodeBorrowed (heap : Heap) (store : Store Unit) (p : UInt64) : Node → Prop
   | .null => p = 0
   | .record slots => RecordSlots heap p slots ∧ SlotsBorrowed heap store p 0 slots
 
-/-- Slots `i` on of the record at `p` hold `slots`, with every child borrowed. -/
+/-- Slots `i` on of the record at `p` hold `slots`, with every child and array borrowed.  A
+buffer is as owned, as `Represent LeanExe.Bytes` states a borrowed buffer, with its root 0
+exactly when it is empty. -/
 def SlotsBorrowed (heap : Heap) (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → Prop
   | [] => True
   | .word w :: rest =>
@@ -317,50 +337,77 @@ def SlotsBorrowed (heap : Heap) (store : Store Unit) (p : UInt64) (i : Nat) : Li
   | .child n :: rest =>
       NodeBorrowed heap store (store.mem.read64 (slotAddress p i)) n ∧
         SlotsBorrowed heap store p (i + 1) rest
+  | .array words :: rest =>
+      heap.Borrowed store (store.mem.read64 (slotAddress p i)) words ∧
+        SlotsBorrowed heap store p (i + 1) rest
+  | .bytes data :: rest =>
+      ((store.mem.read64 (slotAddress p i) = 0 ∧ data.data.size = 0) ∨
+        (data.data.size ≠ 0 ∧ heap.Buffer store (store.mem.read64 (slotAddress p i)) data)) ∧
+        SlotsBorrowed heap store p (i + 1) rest
 end
 
 mutual
-/-- The blocks of the records of `n` at `p`, found by following its child pointers. -/
+/-- The blocks of the records of `n` at `p`, found by following its child pointers, and of
+their arrays and buffers. -/
 def Node.blocks (store : Store Unit) (p : UInt64) : Node → List (Nat × Nat)
   | .null => []
   | .record slots => block store p :: slotsBlocks store p 0 slots
 
-/-- The blocks of the children in slots `i` on of the record at `p`. -/
+/-- The blocks of the children, arrays, and buffers in slots `i` on of the record at `p`. -/
 def slotsBlocks (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → List (Nat × Nat)
   | [] => []
   | .word _ :: rest => slotsBlocks store p (i + 1) rest
   | .child n :: rest =>
       Node.blocks store (store.mem.read64 (slotAddress p i)) n ++ slotsBlocks store p (i + 1) rest
+  | .array _ :: rest =>
+      block store (store.mem.read64 (slotAddress p i)) :: slotsBlocks store p (i + 1) rest
+  | .bytes data :: rest =>
+      (bufferRoots data (store.mem.read64 (slotAddress p i))).map (block store) ++
+        slotsBlocks store p (i + 1) rest
 end
 
 mutual
-/-- The pointers of the records of `n` at `p`, found by following its child pointers. -/
+/-- The pointers of the records of `n` at `p`, found by following its child pointers, and of
+their arrays and nonzero buffer roots. -/
 def Node.pointers (store : Store Unit) (p : UInt64) : Node → List UInt64
   | .null => []
   | .record slots => p :: slotsPointers store p 0 slots
 
-/-- The pointers of the records of the children in slots `i` on of the record at `p`. -/
+/-- The pointers of the records of the children, of the arrays, and of the nonzero buffer roots
+in slots `i` on of the record at `p`. -/
 def slotsPointers (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → List UInt64
   | [] => []
   | .word _ :: rest => slotsPointers store p (i + 1) rest
   | .child n :: rest =>
       Node.pointers store (store.mem.read64 (slotAddress p i)) n ++
         slotsPointers store p (i + 1) rest
+  | .array _ :: rest =>
+      store.mem.read64 (slotAddress p i) :: slotsPointers store p (i + 1) rest
+  | .bytes data :: rest =>
+      bufferRoots data (store.mem.read64 (slotAddress p i)) ++ slotsPointers store p (i + 1) rest
 end
 
 mutual
-/-- The slot regions of the records of a value: each record's slots, `8` bytes each from its
-pointer, then those of its children. -/
+/-- The regions of a value that a call reads: each record's slots, `8` bytes each from its
+pointer, then those of its children, arrays, and buffers. -/
 def Node.slotRegions (store : Store Unit) (p : UInt64) : Node → List (Nat × Nat)
   | .null => []
   | .record slots => (p.toNat, 8 * slots.length) :: slotsRegions store p 0 slots
 
-/-- The slot regions of the children in slots `i` on of the record at `p`. -/
+/-- The regions that a call reads of the children, arrays, and buffers in slots `i` on of the
+record at `p`: a child's slot regions, an array's length word and elements, and a buffer's
+block. -/
 def slotsRegions (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → List (Nat × Nat)
   | [] => []
   | .word _ :: rest => slotsRegions store p (i + 1) rest
   | .child n :: rest =>
       Node.slotRegions store (store.mem.read64 (slotAddress p i)) n ++
+        slotsRegions store p (i + 1) rest
+  | .array words :: rest =>
+      ((store.mem.read64 (slotAddress p i)).toNat, 8 * (words.size + 1)) ::
+        slotsRegions store p (i + 1) rest
+  | .bytes data :: rest =>
+      (bufferRoots data (store.mem.read64 (slotAddress p i))).map (block store) ++
         slotsRegions store p (i + 1) rest
 end
 

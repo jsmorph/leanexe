@@ -19,6 +19,8 @@ def slotsSlotted : List Slot → Prop
   | [] => True
   | .word _ :: rest => slotsSlotted rest
   | .child n :: rest => n.Slotted ∧ slotsSlotted rest
+  | .array _ :: rest => slotsSlotted rest
+  | .bytes _ :: rest => slotsSlotted rest
 end
 
 mutual
@@ -41,6 +43,17 @@ theorem slotsSlotted_pos (store : Store Unit) :
       rcases List.mem_append.mp hb with hb | hb
       · exact Node.slotted_pos store _ n h.1 b hb
       · exact slotsSlotted_pos store p (i + 1) rest h.2 b hb
+  | p, i, .array words :: rest, h, b, hb => by
+      rcases List.mem_cons.mp hb with rfl | hb
+      · show 0 < 8 * (words.size + 1)
+        omega
+      · exact slotsSlotted_pos store p (i + 1) rest h b hb
+  | p, i, .bytes _ :: rest, h, b, hb => by
+      rcases List.mem_append.mp hb with hb | hb
+      · obtain ⟨q, -, rfl⟩ := List.mem_map.mp hb
+        show 0 < 48 + capacityAt store q
+        omega
+      · exact slotsSlotted_pos store p (i + 1) rest h b hb
 end
 
 /-- Every slot region of a value whose records have slots has positive length. -/

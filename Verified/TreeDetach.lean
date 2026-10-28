@@ -89,7 +89,7 @@ theorem TreeHeader.detach_spec {shape : TreeShape} {r : Fin shape.records} {heap
   have hRoom := hHead.capacity
   have hBase := hHead.base
   have hSeparate := (List.pairwise_cons.mp hApart).1
-  obtain ⟨hSlots', hBlocks⟩ := SlotsOwned.frame p 0 slots hSlots (by omega)
+  obtain ⟨hSlots', hBlocks⟩ := SlotsOwned.frame hHeap' p 0 slots hSlots (by omega)
     (fun a hLow _ => hWrites.2.2 a (.inr (by omega)))
     (fun b hb => ⟨fun a hLow hHigh => hWrites.2.2 a (by
       have := hSeparate b hb

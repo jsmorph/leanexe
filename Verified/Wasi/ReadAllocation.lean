@@ -18,7 +18,7 @@ theorem read_allocation_buffer {before after : Store World} {heap : Heap} {capac
     let root := FixedArrayAllocate.root heap.top (allocSize capacity) heap.free
     Step heap (PureTransport.erase before) (fun _ => True)
         heap' (PureTransport.erase after) [block (PureTransport.erase after) root] ∧
-      Bytes.Allocated heap' (PureTransport.erase after) root
+      Heap.Buffer heap' (PureTransport.erase after) root
         (Bytes.snapshot (PureTransport.erase after) root capacity.toNat) ∧
       capacity.toNat ≤ capacityAt (PureTransport.erase after) root ∧
       heap'.top.toNat ≤ heap.top.toNat + allocCost (allocSize capacity).toNat := by

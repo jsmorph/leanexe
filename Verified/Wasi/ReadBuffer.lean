@@ -7,7 +7,7 @@ open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
 theorem read_payload_region {heap : Heap} {store : Store Unit} {root : UInt64}
     {previous : LeanExe.Bytes} {capacity : Nat}
-    (h : Bytes.Allocated heap store root previous)
+    (h : Heap.Buffer heap store root previous)
     (hCapacity : capacity ≤ capacityAt store root) : heap.Region (root.toNat, capacity) := by
   refine ⟨by have := h.object.below; omega, ?_⟩
   intro node hNode
@@ -18,7 +18,7 @@ theorem read_payload_region {heap : Heap} {store : Store Unit} {root : UInt64}
 
 theorem read_capacity {before after : Store World} {heap : Heap} {root : UInt64}
     {capacity : Nat} {previous : LeanExe.Bytes}
-    (h : Bytes.Allocated heap (PureTransport.erase before) root previous)
+    (h : Heap.Buffer heap (PureTransport.erase before) root previous)
     (hFrame : GuestFrame before after [ABI.scratch, (root.toNat, capacity)]) :
     capacityAt (PureTransport.erase after) root = capacityAt (PureTransport.erase before) root := by
   unfold capacityAt
@@ -40,7 +40,7 @@ theorem read_capacity {before after : Store World} {heap : Heap} {root : UInt64}
 
 theorem read_empty_at {before after : Store World} {heap : Heap} {root : UInt64}
     {capacity : Nat} {previous : LeanExe.Bytes}
-    (h : Bytes.Allocated heap (PureTransport.erase before) root previous)
+    (h : Heap.Buffer heap (PureTransport.erase before) root previous)
     (hHeap : heap.At (PureTransport.erase before))
     (hFrame : GuestFrame before after [ABI.scratch, (root.toNat, capacity)]) :
     Bytes.At after.mem root LeanExe.Bytes.empty := by
@@ -60,14 +60,14 @@ theorem read_empty_at {before after : Store World} {heap : Heap} {root : UInt64}
 
 theorem read_buffer {World : Type} {host : Host World} {before after : Store World}
     {heap : Heap} {root capacity errno : UInt64} {previous committed : LeanExe.Bytes}
-    (h : Bytes.Allocated heap (PureTransport.erase before) root previous)
+    (h : Heap.Buffer heap (PureTransport.erase before) root previous)
     (hHeap : heap.At (PureTransport.erase before))
     (hCapacity : capacity.toNat ≤ capacityAt (PureTransport.erase before) root)
     (hRead : host.read before.host capacity (.returned errno committed) after.host)
     (hFrame : GuestFrame before after [ABI.scratch, (root.toNat, capacity.toNat)])
     (hData : errno = 0 → Bytes.At after.mem root committed) :
     heap.At (PureTransport.erase after) ∧
-      Bytes.Allocated heap (PureTransport.erase after) root (readResult errno committed).bytes ∧
+      Heap.Buffer heap (PureTransport.erase after) root (readResult errno committed).bytes ∧
       capacityAt (PureTransport.erase after) root =
         capacityAt (PureTransport.erase before) root := by
   have hStep := hFrame.readStep hHeap (read_payload_region h hCapacity)

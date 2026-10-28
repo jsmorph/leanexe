@@ -17,7 +17,7 @@ theorem of_block {heap : Heap} {store : Store Unit} {root capacity : UInt64}
     (bytes : LeanExe.Bytes) (hCount : bytes.data.size ≤ capacity.toNat)
     (hContents : ∀ (i : Nat) (hi : i < bytes.data.size),
       store.mem.bytes (root.toNat + i) = bytes.data[i]) :
-    Allocated heap store root bytes := by
+    Heap.Buffer heap store root bytes := by
   obtain ⟨hMagic, hReference, _, hKind, hWidth, hMask⟩ := h.fresh
   refine ⟨⟨h.base, ?_, ?_, ?_⟩, hMagic, hReference, ?_, ?_, hKind, hWidth, hMask, ?_⟩
   · rw [h.capacity_eq]; exact h.address
@@ -30,13 +30,14 @@ theorem of_block {heap : Heap} {store : Store Unit} {root capacity : UInt64}
 theorem block_snapshot {heap : Heap} {store : Store Unit} {root capacity : UInt64}
     (h : heap.Block store root capacity 1) (hMin : 8 ≤ capacity.toNat)
     (count : Nat) (hCount : count ≤ capacity.toNat) :
-    Allocated heap store root (snapshot store root count) :=
+    Heap.Buffer heap store root (snapshot store root count) :=
   of_block h hMin _ (by rw [snapshot_size]; exact hCount) (by
     intro i hi
     simp only [snapshot, ByteArray.getElem_eq_getElem_data, Array.getElem_ofFn])
 
-theorem Allocated.toBlock {heap : Heap} {store : Store Unit} {root : UInt64}
-    {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (hHeap : heap.At store) :
+theorem _root_.LeanExe.Pipeline.Heap.Buffer.toBlock {heap : Heap} {store : Store Unit}
+    {root : UInt64} {bytes : LeanExe.Bytes} (h : Heap.Buffer heap store root bytes)
+    (hHeap : heap.At store) :
     heap.Block store root (store.mem.read64 (root - 32).toUInt32) 1 :=
   ⟨⟨h.magic, h.count, rfl, h.kind, h.width, h.childMask⟩, h.object.base,
     h.object.address, h.object.below.trans hHeap.top, h.object.below, h.object.separate⟩
@@ -74,7 +75,7 @@ theorem wp_allocate {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : 
     (hNext : ∀ (heap' : Heap) (store' : Store Unit) (root : UInt64) (bytes : LeanExe.Bytes),
       bytes.data.size = count.toNat →
       Step heap store (fun _ => True) heap' store' [block store' root] →
-      Allocated heap' store' root bytes →
+      Heap.Buffer heap' store' root bytes →
       AllocShape heap heap' count (capacityAt store' root) →
       heap'.top.toNat ≤ heap.top.toNat + c →
       wp m rest Q store' { s with values := .i64 root :: vs } host) :

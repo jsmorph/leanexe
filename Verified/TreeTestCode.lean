@@ -19,7 +19,7 @@ theorem treeCopyCondition_spec {shape : TreeShape} {heap : Heap} {store : Store 
     treeCopyCondition (maskOf record.slots) record.next
       (store.mem.read64 (slotAddress record.source record.next)) =
       copyBranch record.slots[record.next] := by
-  obtain ⟨r, hLength, -, -, -⟩ := id h.layout
+  obtain ⟨r, hLength, -, -, hLayout⟩ := id h.layout
   have hBit : ((maskOf record.slots >>> (UInt64.ofNat record.next % 64)) &&& 1) =
       record.slots[record.next].bit :=
     maskOf_test _ (by rw [hLength]; exact shape.width_le r) _ hBound
@@ -36,6 +36,9 @@ theorem treeCopyCondition_spec {shape : TreeShape} {heap : Heap} {store : Store 
     | record children =>
       have hNonzero := hBorrow.1.1.nonzero
       simp [treeCopyCondition, hBit, hSlot, Slot.bit, copyBranch, hNonzero]
+  | array _ | bytes _ =>
+    rcases SlotsLayout.word_or_child hLayout record.next hBound with ⟨_, he⟩ | ⟨_, he⟩ <;>
+      rw [hSlot] at he <;> cases he
 
 /-- The mask code of the slot test pushes the mask of the record whose source is at local
 `src`. -/

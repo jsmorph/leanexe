@@ -49,20 +49,20 @@ theorem TreeHeader.attach_spec {shape : TreeShape} {r : Fin shape.records} {heap
     · rw [hCapacity]; exact hHead.below
     · rw [hCapacity]; exact hHead.separate
   have hSeparate := (List.pairwise_cons.mp hApart).1
-  obtain ⟨hSlots', hBlocks⟩ := SlotsOwned.frame p 0 slots hSlots (by omega)
+  have hHeap' : heap.At store' := hHeap.writesApart hWrites fun node hNode => by
+    have := hHead.separate node hNode
+    simp only [regionsDisjoint] at this ⊢
+    omega
+  obtain ⟨hSlots', hBlocks⟩ := SlotsOwned.frame hHeap' p 0 slots hSlots (by omega)
     (fun a hLow _ => hWrites.2.2 a (.inr (by omega)))
     (fun b hb => ⟨fun a hLow hHigh => hWrites.2.2 a (by
       have := hSeparate b hb
       simp only [regionsDisjoint, block] at this
       omega), SlotsOwned.regions p 0 slots hSlots b hb⟩)
-  refine ⟨hWrites, hHeap.writesApart hWrites ?_, ⟨hHead', hSlots'⟩, ?_⟩
-  · intro node hNode
-    have := hHead.separate node hNode
-    simp only [regionsDisjoint] at this ⊢
-    omega
-  · change block store' p :: slotsBlocks store' p 0 slots = _
-    rw [block_eq hCapacity, hBlocks]
-    rfl
+  refine ⟨hWrites, hHeap', ⟨hHead', hSlots'⟩, ?_⟩
+  change block store' p :: slotsBlocks store' p 0 slots = _
+  rw [block_eq hCapacity, hBlocks]
+  rfl
 
 #print axioms TreeHeader.attach_spec
 

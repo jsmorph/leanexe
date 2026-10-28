@@ -117,12 +117,12 @@ theorem _root_.LeanExe.Pipeline.Heap.Owned.relocate {heap heap' : Heap} {store s
 
 /-- A byte string's block moved down by `d` bytes is allocated at `root - d` in a heap that ends
 past its block and has no free block. -/
-theorem _root_.Verified.Bytes.Allocated.relocate {heap heap' : Heap} {store store' : Store Unit} {root d : UInt64}
-    {bytes : LeanExe.Bytes} {lo hi : Nat}
-    (h : Bytes.Allocated heap store root bytes) (moved : Moved store store' lo hi d.toNat)
+theorem _root_.LeanExe.Pipeline.Heap.Buffer.relocate {heap heap' : Heap}
+    {store store' : Store Unit} {root d : UInt64} {bytes : LeanExe.Bytes} {lo hi : Nat}
+    (h : Heap.Buffer heap store root bytes) (moved : Moved store store' lo hi d.toNat)
     (hlo : lo ≤ root.toNat - 48) (hhi : root.toNat + capacityAt store root ≤ hi)
     (low : 4096 + d.toNat ≤ lo) (top : hi - d.toNat ≤ heap'.top.toNat) (free : heap'.free = []) :
-    Bytes.Allocated heap' store' (root - d) bytes ∧
+    Heap.Buffer heap' store' (root - d) bytes ∧
       capacityAt store' (root - d) = capacityAt store root := by
   have hBase := h.object.base
   have hAddress := h.object.address
@@ -189,7 +189,7 @@ theorem _root_.Verified.Ty.Rep.relocate {heap heap' : Heap} {store store' : Stor
         · exact absurd rfl h.nonzero
       refine ⟨⟨0, length, by simp [relocateWords], rep.length_eq, Or.inl ⟨rfl, hEmpty⟩⟩, ?_⟩
       simp [relocateWords, Ty.blocks, Bytes.roots]
-    · have allocated : Bytes.Allocated heap store root value := by
+    · have allocated : Heap.Buffer heap store root value := by
         rcases rep.buffer with ⟨h, _⟩ | h
         · exact absurd h hZero
         · exact h

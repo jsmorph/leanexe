@@ -7,13 +7,18 @@ open Wasm
 def Slot.ValueOwned (heap : Heap) (store : Store Unit) (word : UInt64) : Slot → Prop
   | .word value => word = value
   | .child value => NodeOwned heap store word value
+  | .array words => heap.Owned store word words
+  | .bytes data =>
+      (word = 0 ∧ data.data.size = 0) ∨ (data.data.size ≠ 0 ∧ heap.Buffer store word data)
 
 def Slot.valueBlocks (store : Store Unit) (word : UInt64) : Slot → List (Nat × Nat)
   | .word _ => []
   | .child value => value.blocks store word
+  | .array _ => [block store word]
+  | .bytes data => (bufferRoots data word).map (block store)
 
 theorem Slot.ValueOwned.frame {heap heap' : Heap} {store store' : Store Unit}
-    {word : UInt64} {slot : Slot} (h : slot.ValueOwned heap store word)
+    {word : UInt64} {slot : Slot} (hAt : heap'.At store') (h : slot.ValueOwned heap store word)
     (hRegions : ∀ b ∈ slot.valueBlocks store word,
       (∀ a, b.1 ≤ a → a < b.1 + b.2 → store'.mem.bytes a = store.mem.bytes a) ∧
         heap'.Region b) :
@@ -21,7 +26,24 @@ theorem Slot.ValueOwned.frame {heap heap' : Heap} {store store' : Store Unit}
       slot.valueBlocks store' word = slot.valueBlocks store word := by
   cases slot with
   | word value => exact ⟨h, rfl⟩
-  | child value => exact NodeOwned.frame word value h hRegions
+  | child value => exact NodeOwned.frame hAt word value h hRegions
+  | array words =>
+    have hFirst := hRegions _ List.mem_cons_self
+    obtain ⟨hArray, hCapacity⟩ :=
+      Heap.Owned.keepIn (q := word) (ws := words) h hAt hFirst.1 hFirst.2
+    exact ⟨hArray, by simp only [Slot.valueBlocks, block_eq hCapacity]⟩
+  | bytes data =>
+    rcases h with ⟨hZero, hEmpty⟩ | ⟨hNonempty, hBuffer⟩
+    · exact ⟨.inl ⟨hZero, hEmpty⟩, by simp only [Slot.valueBlocks, bufferRoots, hEmpty,
+        ↓reduceIte, List.map_nil]⟩
+    · have hFirst := hRegions (block store word)
+        (by simp [Slot.valueBlocks, bufferRoots, hNonempty])
+      obtain ⟨hBuffer', hCapacity⟩ := hBuffer.frameIn
+        (fun a hLow hHigh => hFirst.1 a (by simp only [block]; omega)
+          (by have := hBuffer.object.base; simp only [block]; omega)) hFirst.2
+      exact ⟨.inr ⟨hNonempty, hBuffer'⟩, by
+        simp only [Slot.valueBlocks, bufferRoots, hNonempty, ↓reduceIte, List.map_cons,
+          List.map_nil, block_eq hCapacity]⟩
 
 theorem Slot.ValueOwned.regions {heap : Heap} {store : Store Unit}
     {word : UInt64} {slot : Slot} (h : slot.ValueOwned heap store word) :
@@ -29,15 +51,28 @@ theorem Slot.ValueOwned.regions {heap : Heap} {store : Store Unit}
   cases slot with
   | word value => exact nofun
   | child value => exact NodeOwned.regions word value h
+  | array words =>
+    intro b hb
+    rw [List.mem_singleton.mp hb]
+    exact Heap.Owned.region h
+  | bytes data =>
+    intro b hb
+    rcases h with ⟨-, hEmpty⟩ | ⟨-, hBuffer⟩
+    · simp [Slot.valueBlocks, bufferRoots, hEmpty] at hb
+    · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hb
+      have : q = word := by
+        unfold bufferRoots at hq
+        split at hq <;> simp_all
+      subst this
+      exact hBuffer.region
 
 theorem Slot.ValueOwned.singleton {heap : Heap} {store : Store Unit}
     {word p : UInt64} {slot : Slot} {i : Nat} (h : slot.ValueOwned heap store word)
     (hRead : store.mem.read64 (slotAddress p i) = word) :
     SlotsOwned heap store p i [slot] ∧
       slotsBlocks store p i [slot] = slot.valueBlocks store word := by
-  cases slot <;> simp only [SlotsOwned, slotsBlocks, hRead, Node.blocks, List.append_nil]
-  · exact ⟨⟨h, trivial⟩, rfl⟩
-  · exact ⟨⟨h, trivial⟩, rfl⟩
+  cases slot <;> simp only [SlotsOwned, slotsBlocks, hRead, Node.blocks, List.append_nil] <;>
+    exact ⟨⟨h, trivial⟩, rfl⟩
 
 theorem SlotsOwned.append_iff {heap : Heap} {store : Store Unit} {p : UInt64}
     (first : List Slot) : ∀ second i,

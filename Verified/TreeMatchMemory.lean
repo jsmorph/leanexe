@@ -15,10 +15,20 @@ theorem slotsBlocks_get_sublist (store : Store Unit) (p : UInt64) :
       exact List.nil_sublist _
     · simpa only [List.getElem_cons_zero, slotsBlocks, List.append_nil, Nat.add_zero] using
         List.sublist_append_left _ (slotsBlocks store p (i + 1) slots)
+    · simpa only [List.getElem_cons_zero, slotsBlocks, Nat.add_zero] using
+        List.Sublist.cons₂ _ (List.nil_sublist (slotsBlocks store p (i + 1) slots))
+    · simpa only [List.getElem_cons_zero, slotsBlocks, List.append_nil, Nat.add_zero] using
+        List.sublist_append_left _ (slotsBlocks store p (i + 1) slots)
   | slot :: slots, i, j + 1, hj => by
     have h := slotsBlocks_get_sublist store p slots (i + 1) j (by simpa using hj)
     cases slot
     · simpa only [slotsBlocks, List.getElem_cons_succ, Nat.add_assoc, Nat.add_comm 1 j] using h
+    · simp only [List.getElem_cons_succ, slotsBlocks]
+      rw [show i + (j + 1) = i + 1 + j by omega]
+      exact h.trans (List.sublist_append_right _ _)
+    · simp only [List.getElem_cons_succ, slotsBlocks]
+      rw [show i + (j + 1) = i + 1 + j by omega]
+      exact h.trans (List.sublist_cons_self _ _)
     · simp only [List.getElem_cons_succ, slotsBlocks]
       rw [show i + (j + 1) = i + 1 + j by omega]
       exact h.trans (List.sublist_append_right _ _)

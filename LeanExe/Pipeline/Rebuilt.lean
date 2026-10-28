@@ -75,27 +75,39 @@ theorem slotsBlocks_pos (store : Store Unit) : ∀ (p : UInt64) (i : Nat) (slots
       rcases List.mem_append.mp hb with hb | hb
       · exact Node.blocks_pos store _ n b hb
       · exact slotsBlocks_pos store p (i + 1) rest b hb
+  | p, i, .array _ :: rest, b, hb => by
+      rcases List.mem_cons.mp hb with rfl | hb
+      · exact block_pos store _
+      · exact slotsBlocks_pos store p (i + 1) rest b hb
+  | p, i, .bytes _ :: rest, b, hb => by
+      rcases List.mem_append.mp hb with hb | hb
+      · obtain ⟨q, -, rfl⟩ := List.mem_map.mp hb
+        exact block_pos store q
+      · exact slotsBlocks_pos store p (i + 1) rest b hb
 end
 
 /-- A step that keeps the regions apart from `gone` keeps each owned value of a recursive type
 whose blocks lie apart from `gone`, with the same blocks, and leaves its blocks apart from the
 blocks `fresh`. -/
 theorem Heap.Keeps.node {heap heap' : Heap} {initial store : Store Unit}
-    {gone fresh : List (Nat × Nat)} (h : heap.Keeps initial gone heap' store fresh) {q : UInt64}
+    {gone fresh : List (Nat × Nat)} (h : heap.Keeps initial gone heap' store fresh)
+    (hAt : heap'.At store) {q : UInt64}
     {m : Node} (hm : NodeOwned heap initial q m)
     (hApart : ∀ b ∈ m.blocks initial q, ∀ g ∈ gone, regionsDisjoint b g) :
     NodeOwned heap' store q m ∧ m.blocks store q = m.blocks initial q ∧
       ∀ b ∈ m.blocks initial q, ∀ c ∈ fresh, regionsDisjoint b c := by
   have hKeep := fun b (hb : b ∈ m.blocks initial q) =>
     h b (NodeOwned.regions q m hm b hb) (Node.blocks_pos initial q m b hb) (hApart b hb)
-  obtain ⟨hOwned, hBlocks⟩ := NodeOwned.frame q m hm fun b hb => ⟨(hKeep b hb).1, (hKeep b hb).2.1⟩
+  obtain ⟨hOwned, hBlocks⟩ :=
+    NodeOwned.frame hAt q m hm fun b hb => ⟨(hKeep b hb).1, (hKeep b hb).2.1⟩
   exact ⟨hOwned, hBlocks, fun b hb => (hKeep b hb).2.2⟩
 
 /-- A step that keeps the regions apart from `gone` keeps each borrowed value of a recursive
 type whose slot regions have positive length and lie apart from `gone`, with the same slot
 regions, and leaves them apart from the blocks `fresh`. -/
 theorem Heap.Keeps.nodeBorrowed {heap heap' : Heap} {initial store : Store Unit}
-    {gone fresh : List (Nat × Nat)} (h : heap.Keeps initial gone heap' store fresh) {q : UInt64}
+    {gone fresh : List (Nat × Nat)} (h : heap.Keeps initial gone heap' store fresh)
+    (hAt : heap'.At store) {q : UInt64}
     {m : Node} (hm : NodeBorrowed heap initial q m)
     (hPos : ∀ b ∈ m.slotRegions initial q, 0 < b.2)
     (hApart : ∀ b ∈ m.slotRegions initial q, ∀ g ∈ gone, regionsDisjoint b g) :
@@ -104,7 +116,7 @@ theorem Heap.Keeps.nodeBorrowed {heap heap' : Heap} {initial store : Store Unit}
   have hKeep := fun b (hb : b ∈ m.slotRegions initial q) =>
     h b (NodeBorrowed.regions q m hm b hb) (hPos b hb) (hApart b hb)
   obtain ⟨hB, hRegions⟩ :=
-    NodeBorrowed.frame q m hm fun b hb => ⟨(hKeep b hb).1, (hKeep b hb).2.1⟩
+    NodeBorrowed.frame hAt q m hm fun b hb => ⟨(hKeep b hb).1, (hKeep b hb).2.1⟩
   exact ⟨hB, hRegions, fun b hb => (hKeep b hb).2.2⟩
 
 /-- A value owned before a call that consumed `gone`, apart from `gone`, stays owned with the
@@ -115,7 +127,7 @@ theorem Heap.Rebuilt.keepNode {heap heap' : Heap} {initial store : Store Unit}
     (hApart : ∀ b ∈ m.blocks initial q, ∀ g ∈ gone, regionsDisjoint b g) :
     NodeOwned heap' store q m ∧ m.blocks store q = m.blocks initial q ∧
       ∀ b ∈ m.blocks initial q, ∀ c ∈ n.blocks store p, regionsDisjoint b c :=
-  Heap.Keeps.node h.region hm hApart
+  Heap.Keeps.node h.region h.at_ hm hApart
 
 /-- A region of the heap before, of positive length and apart from the consumed blocks, lies
 inside the memory after. -/
@@ -178,19 +190,19 @@ theorem Heap.Rebuilt.node {heap heap1 heap2 : Heap} {initial store1 store2 final
       (by simp only [block]; omega) (by simp only [block]; omega)).trans
       (hBytesP1 a (by simp only [block]; omega) (by simp only [block]; omega))))
     rfl rfl hRegP2
-  obtain ⟨hlF, hlBlocksF⟩ := NodeOwned.frame q1 ml hl2 fun b hb =>
+  have hAtF : heap2.At final := h2.at_.writesApart hWrites fun node hNode => by
+    have := hRegP2.separate node hNode
+    simp only [regionsDisjoint, block] at this ⊢
+    omega
+  obtain ⟨hlF, hlBlocksF⟩ := NodeOwned.frame hAtF q1 ml hl2 fun b hb =>
     ⟨hOutside b (hApartP1 b (hlBlocks2 ▸ hb)), NodeOwned.regions q1 ml hl2 b hb⟩
-  obtain ⟨hrF, hrBlocksF⟩ := NodeOwned.frame q2 mr h2.owned fun b hb =>
+  obtain ⟨hrF, hrBlocksF⟩ := NodeOwned.frame hAtF q2 mr h2.owned fun b hb =>
     ⟨hOutside b (hApartP2 b hb), NodeOwned.regions q2 mr h2.owned b hb⟩
   have hNewBlocks : Node.blocks final p (.record [.child ml, .word k', .child mr]) =
       block initial p :: (ml.blocks store1 q1 ++ mr.blocks store2 q2) := by
     simp only [Node.blocks, slotsBlocks, Nat.zero_add, Nat.reduceAdd, List.append_nil, hq1, hq2,
       hlBlocksF, hlBlocks2, hrBlocksF, block_eq hCapacity]
-  refine ⟨h2.at_.writesApart hWrites fun node hNode => ?_, ⟨hHead', ?_, hk', ?_, trivial⟩, ?_,
-    fun r hr hpos hGone => ?_, ?_⟩
-  · have := hRegP2.separate node hNode
-    simp only [regionsDisjoint, block] at this ⊢
-    omega
+  refine ⟨hAtF, ⟨hHead', ?_, hk', ?_, trivial⟩, ?_, fun r hr hpos hGone => ?_, ?_⟩
   · rw [hq1]; exact hlF
   · show NodeOwned heap2 final (final.mem.read64 (slotAddress p 2)) mr
     rw [hq2]; exact hrF
@@ -276,10 +288,14 @@ theorem NodeOwned.clearLeft {heap : Heap} {initial : Store Unit} {p k : UInt64} 
   obtain ⟨hHead', hCapacity⟩ := hHead.rewrite (heap' := heap) (store' := store1)
     (slots' := [.child .null, .word k, .child nr])
     (fun a _ hHigh => hW.2.2 a (.inl hHigh)) rfl rfl hHead.region
-  obtain ⟨hl1, hlBlocks⟩ := NodeOwned.frame (heap' := heap) (store' := store1) _ nl hl
+  have hAt1 : heap.At store1 := hHeap.writesApart hW fun node hNode => by
+    have := hHead.separate node hNode
+    simp only [regionsDisjoint] at this ⊢
+    omega
+  obtain ⟨hl1, hlBlocks⟩ := NodeOwned.frame (heap' := heap) (store' := store1) hAt1 _ nl hl
     fun b hb => ⟨hApartBytes b (hP0 b (List.mem_append_left _ hb)),
       NodeOwned.regions _ nl hl b hb⟩
-  obtain ⟨hr1, hrBlocks⟩ := NodeOwned.frame (heap' := heap) (store' := store1) _ nr hr
+  obtain ⟨hr1, hrBlocks⟩ := NodeOwned.frame (heap' := heap) (store' := store1) hAt1 _ nr hr
     fun b hb => ⟨hApartBytes b (hP0 b (List.mem_append_right _ hb)),
       NodeOwned.regions _ nr hr b hb⟩
   have hRead0 : store1.mem.read64 (slotAddress p 0) = 0 := Memory.read64_write64 _ _ _
@@ -295,11 +311,8 @@ theorem NodeOwned.clearLeft {heap : Heap} {initial : Store Unit} {p k : UInt64} 
       (block initial p :: (nl.blocks initial (initial.mem.read64 (slotAddress p 0)) ++
         nr.blocks initial (initial.mem.read64 (slotAddress p 2)))) :=
     (List.sublist_append_right _ _).cons_cons _
-  refine ⟨hW, hHeap.writesApart hW fun node hNode => ?_, ⟨hHead', hRead0, ?_, ?_, trivial⟩,
+  refine ⟨hW, hAt1, ⟨hHead', hRead0, ?_, ?_, trivial⟩,
     hClearedBlocks, by rw [hClearedBlocks]; exact hDisjoint.sublist hSub, hl1, hlBlocks⟩
-  · have := hHead.separate node hNode
-    simp only [regionsDisjoint] at this ⊢
-    omega
   · show store1.mem.read64 (slotAddress p (0 + 1)) = k
     rw [hRead1]; exact hk
   · show NodeOwned heap store1 (store1.mem.read64 (slotAddress p (0 + 1 + 1))) nr
@@ -349,10 +362,14 @@ theorem NodeOwned.clearRight {heap : Heap} {initial : Store Unit} {p k : UInt64}
   obtain ⟨hHead', hCapacity⟩ := hHead.rewrite (heap' := heap) (store' := store1)
     (slots' := [.child nl, .word k, .child .null])
     (fun a _ hHigh => hW.2.2 a (.inl hHigh)) rfl rfl hHead.region
-  obtain ⟨hl1, hlBlocks⟩ := NodeOwned.frame (heap' := heap) (store' := store1) _ nl hl
+  have hAt1 : heap.At store1 := hHeap.writesApart hW8 fun node hNode => by
+    have := hHead.separate node hNode
+    simp only [regionsDisjoint] at this ⊢
+    omega
+  obtain ⟨hl1, hlBlocks⟩ := NodeOwned.frame (heap' := heap) (store' := store1) hAt1 _ nl hl
     fun b hb => ⟨hApartBytes b (hP0 b (List.mem_append_left _ hb)),
       NodeOwned.regions _ nl hl b hb⟩
-  obtain ⟨hr1, hrBlocks⟩ := NodeOwned.frame (heap' := heap) (store' := store1) _ nr hr
+  obtain ⟨hr1, hrBlocks⟩ := NodeOwned.frame (heap' := heap) (store' := store1) hAt1 _ nr hr
     fun b hb => ⟨hApartBytes b (hP0 b (List.mem_append_right _ hb)),
       NodeOwned.regions _ nr hr b hb⟩
   have hRead0 : store1.mem.read64 (slotAddress p 0) = initial.mem.read64 (slotAddress p 0) :=
@@ -368,11 +385,8 @@ theorem NodeOwned.clearRight {heap : Heap} {initial : Store Unit} {p k : UInt64}
       (block initial p :: (nl.blocks initial (initial.mem.read64 (slotAddress p 0)) ++
         nr.blocks initial (initial.mem.read64 (slotAddress p 2)))) :=
     (List.sublist_append_left _ _).cons_cons _
-  refine ⟨hW, hHeap.writesApart hW8 fun node hNode => ?_, ⟨hHead', ?_, ?_, hRead2, trivial⟩,
+  refine ⟨hW, hAt1, ⟨hHead', ?_, ?_, hRead2, trivial⟩,
     hClearedBlocks, by rw [hClearedBlocks]; exact hDisjoint.sublist hSub, hr1, hrBlocks⟩
-  · have := hHead.separate node hNode
-    simp only [regionsDisjoint] at this ⊢
-    omega
   · rw [hRead0]; exact hl1
   · show store1.mem.read64 (slotAddress p (0 + 1)) = k
     rw [hRead1]; exact hk
@@ -425,7 +439,8 @@ theorem Heap.Rebuilt.leftChild {heap heap' : Heap} {initial final : Store Unit}
     hKeep b (NodeOwned.regions _ nl hl b hb) (Node.blocks_pos initial _ nl b hb)
       (regionsDisjoint_symm (hP0 b (List.mem_append_left _ hb)))
       fun c hc => hlr b hb c hc
-  obtain ⟨hlF, hlBlocksF⟩ := NodeOwned.frame (heap' := heap') (store' := final) _ nl hl hlKeep
+  obtain ⟨hlF, hlBlocksF⟩ :=
+    NodeOwned.frame (heap' := heap') (store' := final) hAt _ nl hl hlKeep
   refine ⟨hAt, hlF, by rw [hlBlocksF]; exact hPl, fun r hr hpos hGone => ?_, ?_⟩
   · obtain ⟨hBytes, hReg⟩ := hKeep r hr hpos (hGone _ List.mem_cons_self)
       fun b hb => hGone b (List.mem_cons_of_mem _ (List.mem_append_right _ hb))
@@ -510,9 +525,9 @@ theorem Heap.Rebuilt.newNode {heap heap1 heap2 heap3 : Heap} {initial store1 sto
   obtain ⟨hl2, hlBlocks2, hlApart2⟩ := h2.keepNode h1.owned fun _ _ _ hg => nomatch hg
   have hOld1 := NodeOwned.regions q1 ml hl2
   have hOld2 := NodeOwned.regions q2 mr h2.owned
-  obtain ⟨hl3, hlBlocks3⟩ := NodeOwned.frame q1 ml hl2 fun b hb =>
+  obtain ⟨hl3, hlBlocks3⟩ := NodeOwned.frame hNew.at_ q1 ml hl2 fun b hb =>
     ⟨(hNew.region b (hOld1 b hb)).1, (hNew.region b (hOld1 b hb)).2.1⟩
-  obtain ⟨hr3, hrBlocks3⟩ := NodeOwned.frame q2 mr h2.owned fun b hb =>
+  obtain ⟨hr3, hrBlocks3⟩ := NodeOwned.frame hNew.at_ q2 mr h2.owned fun b hb =>
     ⟨(hNew.region b (hOld2 b hb)).1, (hNew.region b (hOld2 b hb)).2.1⟩
   have h0 : store3.mem.read64 (slotAddress ptr 0) = q1 := hNew.slots 0 (by simp)
   have hk : store3.mem.read64 (slotAddress ptr 1) = k := hNew.slots 1 (by simp)

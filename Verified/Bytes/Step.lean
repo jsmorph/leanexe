@@ -21,11 +21,11 @@ theorem At.step {heap heap' : Heap} {store store' : Store Unit} {root : UInt64}
   · intro i hi
     exact (hBytes _ (by simp) (by dsimp; omega)).trans (h.contents i hi)
 
-theorem Allocated.step {heap heap' : Heap} {store store' : Store Unit} {root : UInt64}
-    {bytes : LeanExe.Bytes} {keep : Nat × Nat → Prop} {fresh : List (Nat × Nat)}
-    (h : Allocated heap store root bytes) (hStep : Step heap store keep heap' store' fresh)
+theorem _root_.LeanExe.Pipeline.Heap.Buffer.step {heap heap' : Heap} {store store' : Store Unit}
+    {root : UInt64} {bytes : LeanExe.Bytes} {keep : Nat × Nat → Prop} {fresh : List (Nat × Nat)}
+    (h : Heap.Buffer heap store root bytes) (hStep : Step heap store keep heap' store' fresh)
     (hKeep : keep (block store root)) :
-    (Allocated heap' store' root bytes ∧ capacityAt store' root = capacityAt store root) ∧
+    (Heap.Buffer heap' store' root bytes ∧ capacityAt store' root = capacityAt store root) ∧
       ∀ b ∈ fresh, regionsDisjoint (block store root) b := by
   obtain ⟨hBytes, hRegion, hFresh⟩ := hStep.keeps _ h.region (by simp) hKeep
   refine ⟨h.frameIn ?_ hRegion, hFresh⟩

@@ -101,7 +101,7 @@ theorem _root_.Verified.Ty.Rep.blocks_inside {heap : Heap} {store : Store Unit} 
     · rename_i hZero
       simp only [List.map_cons, List.map_nil, List.mem_singleton] at hb
       subst hb
-      have allocated : Bytes.Allocated heap store root value := by
+      have allocated : Heap.Buffer heap store root value := by
         rcases rep.buffer with ⟨h, _⟩ | h
         · exact absurd h hZero
         · exact h

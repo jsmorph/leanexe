@@ -13,7 +13,7 @@ theorem Step.nodeBorrowedView {heap heap' : Heap} {store store' : Store Unit}
   have hRegions := fun r (hr : r ∈ value.slotRegions store p) =>
     h.keeps r (NodeBorrowed.regions p value hNode r hr)
       (Node.slotRegions_pos hSlotted r hr) trivial
-  obtain ⟨hNode', hReads⟩ := NodeBorrowed.frame p value hNode
+  obtain ⟨hNode', hReads⟩ := NodeBorrowed.frame h.at_ p value hNode
     (fun r hr => ⟨(hRegions r hr).1, (hRegions r hr).2.1⟩)
   refine ⟨hNode', hReads, ?_⟩
   intro r hr

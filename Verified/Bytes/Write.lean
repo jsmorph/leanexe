@@ -16,8 +16,8 @@ def updated (bytes : LeanExe.Bytes) (index : Nat) (value : UInt8)
     (h : index < bytes.data.size) : (updated bytes index value h).data.size = bytes.data.size :=
   Array.size_set (h := h)
 
-theorem Allocated.write_within {heap : Heap} {store : Store Unit} {root : UInt64}
-    {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (index : UInt64)
+theorem _root_.LeanExe.Pipeline.Heap.Buffer.write_within {heap : Heap} {store : Store Unit}
+    {root : UInt64} {bytes : LeanExe.Bytes} (h : Heap.Buffer heap store root bytes) (index : UInt64)
     (hi : index.toNat < bytes.data.size) (value : UInt8) :
     WritesWithin store (writeByte store root index value) root.toNat (capacityAt store root) := by
   refine ⟨rfl, rfl, ?_⟩
@@ -27,11 +27,11 @@ theorem Allocated.write_within {heap : Heap} {store : Store Unit} {root : UInt64
   simp only [writeByte, Mem.write8]
   rw [ite_eq_right (by rw [hAddress]; omega)]
 
-theorem Allocated.write {heap : Heap} {store : Store Unit} {root : UInt64}
-    {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (hHeap : heap.At store)
+theorem _root_.LeanExe.Pipeline.Heap.Buffer.write {heap : Heap} {store : Store Unit} {root : UInt64}
+    {bytes : LeanExe.Bytes} (h : Heap.Buffer heap store root bytes) (hHeap : heap.At store)
     (index : UInt64) (hi : index.toNat < bytes.data.size) (value : UInt8) :
     heap.At (writeByte store root index value) ∧
-      Allocated heap (writeByte store root index value) root
+      Heap.Buffer heap (writeByte store root index value) root
         (updated bytes index.toNat value hi) := by
   have hBlock := h.toBlock hHeap
   have hWrites := h.write_within index hi value
@@ -53,8 +53,8 @@ theorem Allocated.write {heap : Heap} {store : Store Unit} {root : UInt64}
         Nat.add_left_cancel_iff, hij, hji, ite_false]
       exact h.contents j hj
 
-theorem Allocated.write_range {heap : Heap} {store : Store Unit} {root : UInt64}
-    {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (index : UInt64)
+theorem _root_.LeanExe.Pipeline.Heap.Buffer.write_range {heap : Heap} {store : Store Unit}
+    {root : UInt64} {bytes : LeanExe.Bytes} (h : Heap.Buffer heap store root bytes) (index : UInt64)
     (hi : index.toNat < bytes.data.size) (value : UInt8) :
     Memory.WritesRange store (writeByte store root index value)
       root.toNat (root.toNat + bytes.data.size) :=
@@ -62,9 +62,9 @@ theorem Allocated.write_range {heap : Heap} {store : Store Unit} {root : UInt64}
     (by rw [h.index_address index hi]; omega)
     (by rw [h.index_address index hi]; omega)
 
-theorem Allocated.capacity_writesRange {heap : Heap} {store store' : Store Unit}
-    {root : UInt64} {bytes : LeanExe.Bytes} {stop : Nat}
-    (h : Allocated heap store root bytes)
+theorem _root_.LeanExe.Pipeline.Heap.Buffer.capacity_writesRange {heap : Heap}
+    {store store' : Store Unit} {root : UInt64} {bytes : LeanExe.Bytes} {stop : Nat}
+    (h : Heap.Buffer heap store root bytes)
     (hWrites : Memory.WritesRange store store' root.toNat stop) :
     capacityAt store' root = capacityAt store root := by
   unfold capacityAt
@@ -77,8 +77,9 @@ theorem Allocated.capacity_writesRange {heap : Heap} {store store' : Store Unit}
   simp only [UInt64.reduceToNat]
   omega
 
-theorem Allocated.write_step {heap : Heap} {store : Store Unit} {root : UInt64}
-    {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (hHeap : heap.At store)
+theorem _root_.LeanExe.Pipeline.Heap.Buffer.write_step {heap : Heap} {store : Store Unit}
+    {root : UInt64}
+    {bytes : LeanExe.Bytes} (h : Heap.Buffer heap store root bytes) (hHeap : heap.At store)
     (index : UInt64) (hi : index.toNat < bytes.data.size) (value : UInt8) :
     Step heap store (fun r => LeanExe.Runtime.regionsDisjoint r (block store root))
       heap (writeByte store root index value) [] ∧
@@ -95,7 +96,7 @@ theorem Allocated.write_step {heap : Heap} {store : Store Unit} {root : UInt64}
 theorem wp_store {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
     {s : Locals} {root index : UInt64} {bytes : LeanExe.Bytes} {value : UInt32}
     {vs : List Value} {rest : Program} {Q : Assertion Unit}
-    (hHeap : heap.At store) (h : Allocated heap store root bytes)
+    (hHeap : heap.At store) (h : Heap.Buffer heap store root bytes)
     (hi : index.toNat < bytes.data.size)
     (hNext : wp m rest Q (writeByte store root index value.toUInt8)
       { s with values := vs } host) :

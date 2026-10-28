@@ -1022,4 +1022,61 @@ theorem Heap.Owned.borrowed {heap : Heap} {store : Store Unit} {p : UInt64} {ws 
   unfold regionsDisjoint at hSeparate ⊢
   omega
 
+theorem Heap.Buffer.nonzero {heap : Heap} {store : Store Unit} {root : UInt64}
+    {bytes : LeanExe.Bytes} (h : heap.Buffer store root bytes) : root ≠ 0 := by
+  have := h.object.base
+  rintro rfl
+  simp at this
+
+/-- A buffer's block is a region of the heap. -/
+theorem Heap.Buffer.region {heap : Heap} {store : Store Unit} {root : UInt64}
+    {bytes : LeanExe.Bytes} (h : heap.Buffer store root bytes) :
+    heap.Region (root.toNat - 48, 48 + capacityAt store root) := by
+  have := h.object.base
+  exact ⟨by have := h.object.below; dsimp; omega, h.object.separate⟩
+
+/-- A buffer keeps its bytes and its capacity when the bytes of its block are unchanged and the
+block is a region of the new heap. -/
+theorem Heap.Buffer.frameIn {heap heap' : Heap} {store store' : Store Unit} {root : UInt64}
+    {bytes : LeanExe.Bytes} (h : heap.Buffer store root bytes)
+    (hBytes : ∀ a, root.toNat - 48 ≤ a → a < root.toNat + capacityAt store root →
+      store'.mem.bytes a = store.mem.bytes a)
+    (hRegion : heap'.Region (block store root)) :
+    heap'.Buffer store' root bytes ∧ capacityAt store' root = capacityAt store root := by
+  have hBase := h.object.base
+  have hFit := h.object.address
+  have hRead (offset : UInt64) (hl : 8 ≤ offset.toNat) (hh : offset.toNat ≤ 48) :
+      store'.mem.read64 (root - offset).toUInt32 =
+        store.mem.read64 (root - offset).toUInt32 := by
+    apply Memory.read64_congr
+    intro i hi
+    rw [headerAddress_toNat (by omega) (by omega)]
+    exact hBytes _ (by omega) (by omega)
+  have hCapacity : capacityAt store' root = capacityAt store root := by
+    unfold capacityAt
+    rw [hRead 32 (by decide) (by decide)]
+  refine ⟨?_, hCapacity⟩
+  refine ⟨⟨hBase, by rw [hCapacity]; exact hFit,
+      by rw [hCapacity]; have := hRegion.below; simp only [block] at this; omega,
+      by rw [hCapacity]; exact hRegion.separate⟩,
+    ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [hRead 48 (by decide) (by decide)]; exact h.magic
+  · rw [hRead 40 (by decide) (by decide)]; exact h.count
+  · rw [hCapacity]; exact h.minimum
+  · rw [hCapacity]; exact h.capacity
+  · rw [hRead 24 (by decide) (by decide)]; exact h.kind
+  · rw [hRead 16 (by decide) (by decide)]; exact h.width
+  · rw [hRead 8 (by decide) (by decide)]; exact h.childMask
+  · intro i hi
+    rw [hBytes _ (by omega) (by have := h.capacity; omega)]
+    exact h.contents i hi
+
+/-- A buffer keeps its bytes in the same heap when the bytes of its block are unchanged. -/
+theorem Heap.Buffer.frame {heap : Heap} {store store' : Store Unit} {root : UInt64}
+    {bytes : LeanExe.Bytes} (h : heap.Buffer store root bytes)
+    (hBytes : ∀ a, root.toNat - 48 ≤ a → a < root.toNat + capacityAt store root →
+      store'.mem.bytes a = store.mem.bytes a) :
+    heap.Buffer store' root bytes :=
+  (h.frameIn hBytes h.region).1
+
 end LeanExe.Pipeline

@@ -83,13 +83,18 @@ theorem dropReference_spec {m : Module} (env : HostEnv Unit) (store : Store Unit
   simp [wp_simp, hs40, hm40, hc40]
   exact hNext
 
-/-- The non-null children of slots `i` on of the record at `p`, with their slots. -/
+/-- The objects that slots `i` on of the record at `p` point to, with their slots: each
+non-null child with its slots, and each array and nonempty buffer with no slots. -/
 def childRecords (mem : Mem) (p : UInt64) (i : Nat) : List Slot → List (UInt64 × List Slot)
   | [] => []
   | .word _ :: rest => childRecords mem p (i + 1) rest
   | .child .null :: rest => childRecords mem p (i + 1) rest
   | .child (.record cs) :: rest =>
       (mem.read64 (slotAddress p i), cs) :: childRecords mem p (i + 1) rest
+  | .array _ :: rest => (mem.read64 (slotAddress p i), []) :: childRecords mem p (i + 1) rest
+  | .bytes data :: rest =>
+      (bufferRoots data (mem.read64 (slotAddress p i))).map (·, []) ++
+        childRecords mem p (i + 1) rest
 
 /-- The memory and pending head after linking `children`, in order, onto the pending list
 whose head is `pending`, through their count words. -/
@@ -122,9 +127,9 @@ theorem dropSlot_spec {m : Module} (env : HostEnv Unit) (store : Store Unit) (v 
     (hMask : v.mask = maskOf slots) (hSlotLocal : v.slot = UInt64.ofNat i)
     (hAddress : v.object.toNat + 8 * slots.length < 4294967296)
     (hMemory : v.object.toNat + 8 * slots.length ≤ store.mem.pages * 65536)
-    (hNull : slots[i] = .child .null → store.mem.read64 (slotAddress v.object i) = 0)
-    (hRecord : ∀ cs, slots[i] = .child (.record cs) →
-      ChildHeader store (store.mem.read64 (slotAddress v.object i)))
+    (hNull : slots[i].bit = 1 → childRecords store.mem v.object i [slots[i]] = [] →
+      store.mem.read64 (slotAddress v.object i) = 0)
+    (hKid : ∀ k ∈ childRecords store.mem v.object i [slots[i]], ChildHeader store k.1)
     (Q : Assertion Unit) (after : Program)
     (hNext : ∀ count child, wp m after Q
       { store with mem := (linkChildren store.mem v.pending
@@ -134,7 +139,7 @@ theorem dropSlot_spec {m : Module} (env : HostEnv Unit) (store : Store Unit) (v 
     wp m (dropSlot ++ after) Q store v.toLocals env := by
   obtain ⟨root, count, pending, q, kind, length, width, mask, element, slot, child, previous,
     current⟩ := v
-  simp only at hMask hSlotLocal hAddress hMemory hNull hRecord hNext ⊢
+  simp only at hMask hSlotLocal hAddress hMemory hNull hKid hNext ⊢
   subst hMask hSlotLocal
   have hTest := maskOf_test slots hShort i hi
   have hSlotAt : (slotAddress q i).toNat = q.toNat + 8 * i := slotAddress_toNat (by omega)
@@ -148,7 +153,7 @@ theorem dropSlot_spec {m : Module} (env : HostEnv Unit) (store : Store Unit) (v 
     omega
   simp [dropSlot, dropMaskedSlot, ReleaseVars.toLocals, releaseMask, releaseSlot, releaseChild,
     releaseCount, releasePending, releaseObject, wp_simp, hTest]
-  generalize hs : slots[i] = s at hNull hRecord hNext
+  generalize hs : slots[i] = s at hNull hKid hNext
   cases s with
   | word w =>
     simp [Slot.bit]
@@ -166,16 +171,17 @@ theorem dropSlot_spec {m : Module} (env : HostEnv Unit) (store : Store Unit) (v 
     simp [wp_simp, hmod, hAddrEq, hb2]
     cases n with
     | null =>
-      simp [hNull rfl]
+      simp [hNull (by simp [Slot.bit]) (by simp [childRecords])]
       refine wp_iff_cons rfl ?_
       simp [wp_simp]
       simpa [childRecords, linkChildren, ReleaseVars.afterSlot, ReleaseVars.toLocals] using
         hNext count 0
     | record cs =>
-      have hc := hRecord cs rfl
+      have hc := hKid _ (List.mem_singleton_self (store.mem.read64 (slotAddress q i), cs))
       have hNe : store.mem.read64 (slotAddress q i) ≠ 0 := by
         intro h
         have := hc.base
+        simp only at this
         rw [h] at this
         simp at this
       simp [hNe]
@@ -189,6 +195,65 @@ theorem dropSlot_spec {m : Module} (env : HostEnv Unit) (store : Store Unit) (v 
       simp [wp_simp]
       simpa [childRecords, linkChildren, ReleaseVars.afterSlot, ReleaseVars.link,
         ReleaseVars.toLocals] using hNext 1 (store.mem.read64 (slotAddress q i))
+  | array ws =>
+    have hmod : (q.toNat + i * 8) % 4294967296 = q.toNat + i * 8 := Nat.mod_eq_of_lt (by omega)
+    have hAddrEq : UInt32.ofNat (q.toNat + i * 8) = slotAddress q i :=
+      UInt32.toNat_inj.mp (by rw [hSlotAt, UInt32.toNat_ofNat']; omega)
+    simp [Slot.bit]
+    refine wp_iff_cons rfl ?_
+    have hb2 : ¬ store.mem.pages * 65536 < (slotAddress q i).toNat + 8 := by omega
+    simp [wp_simp, hmod, hAddrEq, hb2]
+    have hc := hKid _ (List.mem_singleton_self (store.mem.read64 (slotAddress q i), []))
+    have hNe : store.mem.read64 (slotAddress q i) ≠ 0 := by
+      intro h
+      have := hc.base
+      simp only at this
+      rw [h] at this
+      simp at this
+    simp [hNe]
+    refine wp_iff_cons rfl ?_
+    rw [show (if ¬(1 : UInt32) = 0 then dropReference 10 1 2 else []) = dropReference 10 1 2
+      from rfl, ← List.append_nil (dropReference 10 1 2)]
+    refine dropReference_spec env store
+      ⟨root, count, pending, q, kind, length, width, maskOf slots, element, UInt64.ofNat i,
+        store.mem.read64 (slotAddress q i), previous, current⟩ hc.base hc.address hc.memory
+      hc.magic hc.count _ _ ?_
+    simp [wp_simp]
+    simpa [childRecords, linkChildren, ReleaseVars.afterSlot, ReleaseVars.link,
+      ReleaseVars.toLocals] using hNext 1 (store.mem.read64 (slotAddress q i))
+  | bytes data =>
+    have hmod : (q.toNat + i * 8) % 4294967296 = q.toNat + i * 8 := Nat.mod_eq_of_lt (by omega)
+    have hAddrEq : UInt32.ofNat (q.toNat + i * 8) = slotAddress q i :=
+      UInt32.toNat_inj.mp (by rw [hSlotAt, UInt32.toNat_ofNat']; omega)
+    simp [Slot.bit]
+    refine wp_iff_cons rfl ?_
+    have hb2 : ¬ store.mem.pages * 65536 < (slotAddress q i).toNat + 8 := by omega
+    simp [wp_simp, hmod, hAddrEq, hb2]
+    by_cases hEmpty : data.data.size = 0
+    · simp [hNull (by simp [Slot.bit]) (by simp [childRecords, bufferRoots, hEmpty])]
+      refine wp_iff_cons rfl ?_
+      simp [wp_simp]
+      simpa [childRecords, bufferRoots, hEmpty, linkChildren, ReleaseVars.afterSlot,
+        ReleaseVars.toLocals] using hNext count 0
+    · have hc := hKid _ (by
+        simp [childRecords, bufferRoots, hEmpty] : (store.mem.read64 (slotAddress q i), []) ∈ _)
+      have hNe : store.mem.read64 (slotAddress q i) ≠ 0 := by
+        intro h
+        have := hc.base
+        simp only at this
+        rw [h] at this
+        simp at this
+      simp [hNe]
+      refine wp_iff_cons rfl ?_
+      rw [show (if ¬(1 : UInt32) = 0 then dropReference 10 1 2 else []) = dropReference 10 1 2
+        from rfl, ← List.append_nil (dropReference 10 1 2)]
+      refine dropReference_spec env store
+        ⟨root, count, pending, q, kind, length, width, maskOf slots, element, UInt64.ofNat i,
+          store.mem.read64 (slotAddress q i), previous, current⟩ hc.base hc.address hc.memory
+        hc.magic hc.count _ _ ?_
+      simp [wp_simp]
+      simpa [childRecords, bufferRoots, hEmpty, linkChildren, ReleaseVars.afterSlot,
+        ReleaseVars.link, ReleaseVars.toLocals] using hNext 1 (store.mem.read64 (slotAddress q i))
 
 theorem childRecords_append (mem : Mem) (p : UInt64) :
     ∀ (i : Nat) (xs ys : List Slot),
@@ -199,6 +264,10 @@ theorem childRecords_append (mem : Mem) (p : UInt64) :
   | i, .child .null :: xs, ys => by
       simp [childRecords, childRecords_append mem p (i + 1) xs ys, Nat.add_assoc, Nat.add_comm 1]
   | i, .child (.record _) :: xs, ys => by
+      simp [childRecords, childRecords_append mem p (i + 1) xs ys, Nat.add_assoc, Nat.add_comm 1]
+  | i, .array _ :: xs, ys => by
+      simp [childRecords, childRecords_append mem p (i + 1) xs ys, Nat.add_assoc, Nat.add_comm 1]
+  | i, .bytes _ :: xs, ys => by
       simp [childRecords, childRecords_append mem p (i + 1) xs ys, Nat.add_assoc, Nat.add_comm 1]
 
 theorem linkChildren_append (mem : Mem) (pending : UInt64) :
@@ -250,7 +319,7 @@ theorem linkChildren_read64 (mem : Mem) (pending : UInt64) (address : UInt32)
 theorem childRecords_single_congr {m1 m2 : Mem} {p : UInt64} {i : Nat} (s : Slot)
     (h : m1.read64 (slotAddress p i) = m2.read64 (slotAddress p i)) :
     childRecords m1 p i [s] = childRecords m2 p i [s] := by
-  rcases s with _ | (_ | _) <;> simp [childRecords, h]
+  rcases s with _ | (_ | _) | _ | _ <;> simp [childRecords, h]
 
 /-- The slot loop of `dropChildren` for the record at `v.object`, whose mask and width
 locals describe `slots`, links its non-null children onto the pending list in slot order.
@@ -260,7 +329,8 @@ theorem slotLoop_spec {m : Module} (env : HostEnv Unit) (store : Store Unit) (v 
     (hMask : v.mask = maskOf slots) (hWidth : v.width = UInt64.ofNat slots.length)
     (hAddress : v.object.toNat + 8 * slots.length < 4294967296)
     (hMemory : v.object.toNat + 8 * slots.length ≤ store.mem.pages * 65536)
-    (hNull : ∀ i (h : i < slots.length), slots[i] = .child .null →
+    (hNull : ∀ i (h : i < slots.length), slots[i].bit = 1 →
+      childRecords store.mem v.object i [slots[i]] = [] →
       store.mem.read64 (slotAddress v.object i) = 0)
     (hKids : ∀ k ∈ childRecords store.mem v.object 0 slots, ChildHeader store k.1)
     (hApart : ((childRecords store.mem v.object 0 slots).map fun k => (k.1.toNat - 48, 48)).Pairwise
@@ -350,11 +420,14 @@ theorem slotLoop_spec {m : Module} (env : HostEnv Unit) (store : Store Unit) (v 
         kind, length, UInt64.ofNat slots.length, maskOf slots, element, UInt64.ofNat i, ch,
         previous, current⟩ slots i hLt hShort rfl rfl hAddress
       (by simp only [linkChildren_pages]; exact hMemory)
-      (fun h => by simp only; rw [hRead]; exact hNull i hLt h)
-      (fun cs h => by
+      (fun hBit hNone => by
         simp only
         rw [hRead]
-        exact hHeaderS (store.mem.read64 (slotAddress q i), cs) (by simp [h, childRecords]))
+        exact hNull i hLt hBit (by rw [← childRecords_single_congr _ hRead]; exact hNone))
+      (fun k hk => by
+        simp only at hk
+        rw [childRecords_single_congr _ hRead] at hk
+        exact hHeaderS k hk)
       _ _ fun c' ch' => ?_
     have hStep : childRecords (linkChildren store.mem pending
         (childRecords store.mem q 0 (slots.take i))).1 q i [slots[i]] =
@@ -385,6 +458,8 @@ theorem childRecords_words (mem : Mem) (p : UInt64) :
   | _, [], _ => rfl
   | i, .word _ :: rest, h => childRecords_words mem p (i + 1) rest fun s hs => h s (by simp [hs])
   | _, .child _ :: _, h => absurd (h _ List.mem_cons_self) (by simp [Slot.bit])
+  | _, .array _ :: _, h => absurd (h _ List.mem_cons_self) (by simp [Slot.bit])
+  | _, .bytes _ :: _, h => absurd (h _ List.mem_cons_self) (by simp [Slot.bit])
 
 /-- A record whose mask is 0 has no children. -/
 theorem childRecords_of_mask (mem : Mem) (p : UInt64) (i : Nat) (slots : List Slot)
@@ -404,9 +479,11 @@ theorem dropChildren_spec {m : Module} (env : HostEnv Unit) (store : Store Unit)
     (hAddress : v.object.toNat + 8 * slots.length < 4294967296)
     (hMemory : v.object.toNat + 8 * slots.length ≤ store.mem.pages * 65536)
     (hMaskWord : store.mem.read64 (v.object - 8).toUInt32 = maskOf slots)
-    (hKind : store.mem.read64 (v.object - 24).toUInt32 = 1)
-    (hWidth : store.mem.read64 (v.object - 16).toUInt32 = UInt64.ofNat slots.length)
-    (hNull : ∀ i (h : i < slots.length), slots[i] = .child .null →
+    (hKind : maskOf slots ≠ 0 → store.mem.read64 (v.object - 24).toUInt32 = 1)
+    (hWidth : maskOf slots ≠ 0 →
+      store.mem.read64 (v.object - 16).toUInt32 = UInt64.ofNat slots.length)
+    (hNull : ∀ i (h : i < slots.length), slots[i].bit = 1 →
+      childRecords store.mem v.object i [slots[i]] = [] →
       store.mem.read64 (slotAddress v.object i) = 0)
     (hKids : ∀ k ∈ childRecords store.mem v.object 0 slots, ChildHeader store k.1)
     (hApart : ((childRecords store.mem v.object 0 slots).map fun k => (k.1.toNat - 48, 48)).Pairwise
@@ -451,7 +528,7 @@ theorem dropChildren_spec {m : Module} (env : HostEnv Unit) (store : Store Unit)
       rfl rfl (by simp [hNone, linkChildren])
   · simp only [hZero, ite_false]
     refine wp_iff_cons rfl ?_
-    simp [wp_simp, hs24, hm24, hc24, hKind, hs16, hm16, hc16, hWidth]
+    simp [wp_simp, hs24, hm24, hc24, hKind hZero, hs16, hm16, hc16, hWidth hZero]
     refine wp_iff_cons rfl ?_
     simp only [show (if (1 : UInt32) ≠ 0 then countedLoop releaseSlot 6
         (dropMaskedSlot 7 releaseSlot releaseChild releaseCount releasePending
@@ -472,13 +549,15 @@ theorem dropChildren_spec {m : Module} (env : HostEnv Unit) (store : Store Unit)
       ⟨root', count', _, q', 1, length', width', mask', element', slot', child', previous',
         current'⟩ rfl rfl rfl
 
-/-- A pending record: the header facts of `RecordHeader` except the count word, which holds
-the link to the next pending record. -/
+/-- A pending object with the slots `slots`: the header facts of `RecordHeader` except the count
+word, which holds the link to the next pending object.  The kind and the width are facts only
+for a nonzero mask, since `dropChildren` reads neither when the mask is 0, so an array or a
+buffer object is a pending object without slots. -/
 structure RecordBody (heap : Heap) (store : Store Unit) (p : UInt64) (slots : List Slot) :
     Prop where
   base : 4096 + 48 ≤ p.toNat
-  kind : store.mem.read64 (p - 24).toUInt32 = 1
-  width : store.mem.read64 (p - 16).toUInt32 = UInt64.ofNat slots.length
+  kind : maskOf slots ≠ 0 → store.mem.read64 (p - 24).toUInt32 = 1
+  width : maskOf slots ≠ 0 → store.mem.read64 (p - 16).toUInt32 = UInt64.ofNat slots.length
   mask : store.mem.read64 (p - 8).toUInt32 = maskOf slots
   short : slots.length ≤ 64
   capacity : 8 * slots.length ≤ capacityAt store p
@@ -489,7 +568,33 @@ structure RecordBody (heap : Heap) (store : Store Unit) (p : UInt64) (slots : Li
 
 theorem RecordHeader.body {heap : Heap} {store : Store Unit} {p : UInt64} {slots : List Slot}
     (h : RecordHeader heap store p slots) : RecordBody heap store p slots :=
-  ⟨h.base, h.kind, h.width, h.mask, h.short, h.capacity, h.address, h.below, h.separate⟩
+  ⟨h.base, fun _ => h.kind, fun _ => h.width, h.mask, h.short, h.capacity, h.address, h.below,
+    h.separate⟩
+
+/-- An object that `release` frees as a pending object with the slots `slots`: the magic number
+and count 1, the facts of `RecordBody`, and owned slots.  A record is such an object with its
+slots, and an array or a buffer one without slots. -/
+structure ItemOwned (heap : Heap) (store : Store Unit) (p : UInt64) (slots : List Slot) :
+    Prop where
+  magic : store.mem.read64 (p - 48).toUInt32 = objectMagic
+  count : store.mem.read64 (p - 40).toUInt32 = 1
+  body : RecordBody heap store p slots
+  slots : SlotsOwned heap store p 0 slots
+
+theorem NodeOwned.item {heap : Heap} {store : Store Unit} {p : UInt64} {slots : List Slot}
+    (h : NodeOwned heap store p (.record slots)) : ItemOwned heap store p slots :=
+  ⟨h.1.magic, h.1.count, h.1.body, h.2⟩
+
+theorem Heap.Owned.item {heap : Heap} {store : Store Unit} {p : UInt64} {ws : Array UInt64}
+    (h : heap.Owned store p ws) : ItemOwned heap store p [] :=
+  ⟨h.magic, h.count, ⟨h.base, fun hm => (hm rfl).elim, fun hm => (hm rfl).elim, h.childMask,
+    by simp, by simp, h.address, h.below, h.separate⟩, trivial⟩
+
+theorem Heap.Buffer.item {heap : Heap} {store : Store Unit} {p : UInt64} {bytes : LeanExe.Bytes}
+    (h : heap.Buffer store p bytes) : ItemOwned heap store p [] :=
+  ⟨h.magic, h.count, ⟨h.object.base, fun hm => (hm rfl).elim, fun hm => (hm rfl).elim,
+    h.childMask, by simp, by simp, h.object.address, h.object.below, h.object.separate⟩,
+    trivial⟩
 
 /-- The pending list from `head`: each record's count word holds the next record, and the
 last holds 0. -/
@@ -502,7 +607,7 @@ def forestBlocks (store : Store Unit) (items : List (UInt64 × List Slot)) : Lis
   items.flatMap fun k => Node.blocks store k.1 (.record k.2)
 
 mutual
-/-- The number of records of a value. -/
+/-- The number of objects of a value: its records, arrays, and nonempty buffers. -/
 def Node.records : Node → Nat
   | .null => 0
   | .record slots => 1 + slotsRecords slots
@@ -511,38 +616,63 @@ def slotsRecords : List Slot → Nat
   | [] => 0
   | .word _ :: rest => slotsRecords rest
   | .child n :: rest => n.records + slotsRecords rest
+  | .array _ :: rest => 1 + slotsRecords rest
+  | .bytes data :: rest => (if data.data.size = 0 then 0 else 1) + slotsRecords rest
 end
 
 /-- The number of records of the pending records and their subtrees. -/
 def forestRecords (items : List (UInt64 × List Slot)) : Nat :=
   (items.map fun k => (Node.record k.2).records).sum
 
-theorem SlotsOwned.childRecords {heap : Heap} {store : Store Unit} {p : UInt64} :
+theorem SlotsOwned.items {heap : Heap} {store : Store Unit} {p : UInt64} :
     ∀ (i : Nat) (slots : List Slot), SlotsOwned heap store p i slots →
-      ∀ k ∈ childRecords store.mem p i slots, NodeOwned heap store k.1 (.record k.2)
+      ∀ k ∈ childRecords store.mem p i slots, ItemOwned heap store k.1 k.2
   | _, [], _, _, hk => nomatch hk
-  | i, .word _ :: rest, ⟨_, hRest⟩, k, hk => SlotsOwned.childRecords (i + 1) rest hRest k hk
-  | i, .child .null :: rest, ⟨_, hRest⟩, k, hk => SlotsOwned.childRecords (i + 1) rest hRest k hk
+  | i, .word _ :: rest, ⟨_, hRest⟩, k, hk => SlotsOwned.items (i + 1) rest hRest k hk
+  | i, .child .null :: rest, ⟨_, hRest⟩, k, hk => SlotsOwned.items (i + 1) rest hRest k hk
   | i, .child (.record cs) :: rest, ⟨hChild, hRest⟩, k, hk => by
       rcases List.mem_cons.mp hk with rfl | hk
-      · exact hChild
-      · exact SlotsOwned.childRecords (i + 1) rest hRest k hk
+      · exact hChild.item
+      · exact SlotsOwned.items (i + 1) rest hRest k hk
+  | i, .array _ :: rest, ⟨hArray, hRest⟩, k, hk => by
+      rcases List.mem_cons.mp hk with rfl | hk
+      · exact hArray.item
+      · exact SlotsOwned.items (i + 1) rest hRest k hk
+  | i, .bytes data :: rest, ⟨hBuffer, hRest⟩, k, hk => by
+      rcases List.mem_append.mp hk with hk | hk
+      · rcases hBuffer with ⟨-, hEmpty⟩ | ⟨hNonempty, hBuffer⟩
+        · simp [bufferRoots, hEmpty] at hk
+        · simp only [bufferRoots, hNonempty, ↓reduceIte, List.map_cons, List.map_nil,
+            List.mem_singleton] at hk
+          subst hk
+          exact hBuffer.item
+      · exact SlotsOwned.items (i + 1) rest hRest k hk
 
+/-- A slot of an owned record that holds a pointer but no object, a null child or an empty
+buffer, holds 0. -/
 theorem SlotsOwned.null {heap : Heap} {store : Store Unit} {p : UInt64} :
     ∀ (i : Nat) (slots : List Slot), SlotsOwned heap store p i slots →
-      ∀ j (h : j < slots.length), slots[j] = .child .null →
+      ∀ j (h : j < slots.length), slots[j].bit = 1 →
+        childRecords store.mem p (i + j) [slots[j]] = [] →
         store.mem.read64 (slotAddress p (i + j)) = 0
-  | _, [], _, _, h, _ => absurd h (by simp)
-  | i, s :: rest, hSlots, 0, _, hj => by
-      simp only [List.getElem_cons_zero] at hj
-      subst hj
-      exact hSlots.1
-  | i, s :: rest, hSlots, j + 1, h, hj => by
-      simp only [List.getElem_cons_succ] at hj
+  | _, [], _, _, h, _, _ => absurd h (by simp)
+  | i, s :: rest, hSlots, 0, _, hBit, hNone => by
+      simp only [List.getElem_cons_zero, Nat.add_zero] at hBit hNone ⊢
+      rcases s with w | n | ws | data
+      · simp [Slot.bit] at hBit
+      · cases n with
+        | null => exact hSlots.1
+        | record cs => simp [childRecords] at hNone
+      · simp [childRecords] at hNone
+      · rcases hSlots.1 with ⟨hZero, -⟩ | ⟨hNonempty, -⟩
+        · exact hZero
+        · simp [childRecords, bufferRoots, hNonempty] at hNone
+  | i, s :: rest, hSlots, j + 1, h, hBit, hNone => by
+      simp only [List.getElem_cons_succ] at hBit hNone
       have hRest : SlotsOwned heap store p (i + 1) rest := by
-        rcases s with _ | _ <;> exact hSlots.2
-      rw [show i + (j + 1) = i + 1 + j by omega]
-      exact SlotsOwned.null (i + 1) rest hRest j (by simp at h; omega) hj
+        rcases s with _ | _ | _ | _ <;> exact hSlots.2
+      rw [show i + (j + 1) = i + 1 + j by omega] at hNone ⊢
+      exact SlotsOwned.null (i + 1) rest hRest j (by simp at h; omega) hBit hNone
 
 theorem slotsBlocks_childRecords (store : Store Unit) (p : UInt64) :
     ∀ (i : Nat) (slots : List Slot), slotsBlocks store p i slots =
@@ -557,6 +687,16 @@ theorem slotsBlocks_childRecords (store : Store Unit) (p : UInt64) :
   | i, .child (.record cs) :: rest => by
       simp only [slotsBlocks, childRecords, List.flatMap_cons]
       rw [slotsBlocks_childRecords store p (i + 1) rest]
+  | i, .array _ :: rest => by
+      simp only [slotsBlocks, childRecords, List.flatMap_cons]
+      rw [slotsBlocks_childRecords store p (i + 1) rest]
+      rfl
+  | i, .bytes data :: rest => by
+      simp only [slotsBlocks, childRecords, List.flatMap_append]
+      rw [slotsBlocks_childRecords store p (i + 1) rest]
+      congr 1
+      unfold bufferRoots
+      split <;> simp [Node.blocks, slotsBlocks]
 
 theorem slotsRecords_childRecords (mem : Mem) (p : UInt64) :
     ∀ (i : Nat) (slots : List Slot), slotsRecords slots =
@@ -571,6 +711,17 @@ theorem slotsRecords_childRecords (mem : Mem) (p : UInt64) :
   | i, .child (.record cs) :: rest => by
       simp only [slotsRecords, childRecords, forestRecords, List.map_cons, List.sum_cons]
       rw [slotsRecords_childRecords mem p (i + 1) rest, forestRecords]
+  | i, .array _ :: rest => by
+      simp only [slotsRecords, childRecords, forestRecords, List.map_cons, List.sum_cons,
+        Node.records]
+      rw [slotsRecords_childRecords mem p (i + 1) rest, forestRecords]
+      rfl
+  | i, .bytes data :: rest => by
+      simp only [slotsRecords, childRecords, forestRecords, List.map_append, List.sum_append]
+      rw [slotsRecords_childRecords mem p (i + 1) rest, forestRecords]
+      congr 1
+      unfold bufferRoots
+      split <;> simp_all [Node.records, slotsRecords]
 
 /-- A pending record keeps its header facts and capacity when the bytes of its header
 words from the capacity on are unchanged and its block stays a region of the new heap. -/
@@ -593,8 +744,8 @@ theorem RecordBody.frame {heap heap' : Heap} {store store' : Store Unit} {p : UI
   have hSeparate := hRegion.separate
   simp only [block] at hBelow hSeparate
   refine ⟨⟨hBase, ?_, ?_, ?_, h.short, ?_, ?_, ?_, ?_⟩, hCapacity⟩
-  · rw [hHeader 24 (by decide) (by decide)]; exact h.kind
-  · rw [hHeader 16 (by decide) (by decide)]; exact h.width
+  · intro hm; rw [hHeader 24 (by decide) (by decide)]; exact h.kind hm
+  · intro hm; rw [hHeader 16 (by decide) (by decide)]; exact h.width hm
   · rw [hHeader 8 (by decide) (by decide)]; exact h.mask
   · rw [hCapacity]; exact h.capacity
   · rw [hCapacity]; exact hAddress
@@ -786,6 +937,22 @@ theorem RecordHeader.childHeader {heap : Heap} {store : Store Unit} {c : UInt64}
     rw [toUInt32_sub_ofNat (by decide) (by omega) (by omega)] at this
     exact this
 
+/-- An object that `release` frees carries the header facts that `dropReference` reads. -/
+theorem ItemOwned.childHeader {heap : Heap} {store : Store Unit} {c : UInt64}
+    {cs : List Slot} (h : ItemOwned heap store c cs) (hHeap : heap.At store) :
+    ChildHeader store c := by
+  have hBase := h.body.base
+  have hFit := h.body.address
+  have hBelow := h.body.below
+  have hTop := hHeap.top
+  refine ⟨by omega, by omega, by omega, ?_, ?_⟩
+  · have := h.magic
+    rw [toUInt32_sub_ofNat (by decide) (by omega) (by omega)] at this
+    exact this
+  · have := h.count
+    rw [toUInt32_sub_ofNat (by decide) (by omega) (by omega)] at this
+    exact this
+
 /-- The block facts of the head of the pending list: its block lies apart from every other
 pending block, and the subtrees of its children form disjoint groups. -/
 theorem Releasing.groups {heap0 heap : Heap} {initial store : Store Unit}
@@ -815,10 +982,10 @@ theorem Releasing.dropFacts {heap0 heap : Heap} {initial store : Store Unit}
       q.toNat + 8 * slots.length < 4294967296 ∧
       q.toNat + 8 * slots.length ≤ store.mem.pages * 65536 ∧
       store.mem.read64 (q - 8).toUInt32 = maskOf slots ∧
-      store.mem.read64 (q - 24).toUInt32 = 1 ∧
-      store.mem.read64 (q - 16).toUInt32 = UInt64.ofNat slots.length ∧
-      (∀ i (hi : i < slots.length), slots[i] = .child .null →
-        store.mem.read64 (slotAddress q i) = 0) ∧
+      (maskOf slots ≠ 0 → store.mem.read64 (q - 24).toUInt32 = 1) ∧
+      (maskOf slots ≠ 0 → store.mem.read64 (q - 16).toUInt32 = UInt64.ofNat slots.length) ∧
+      (∀ i (hi : i < slots.length), slots[i].bit = 1 →
+        childRecords store.mem q i [slots[i]] = [] → store.mem.read64 (slotAddress q i) = 0) ∧
       (∀ k ∈ childRecords store.mem q 0 slots, ChildHeader store k.1) ∧
       ((childRecords store.mem q 0 slots).map fun k => (k.1.toNat - 48, 48)).Pairwise
         regionsDisjoint ∧
@@ -828,24 +995,25 @@ theorem Releasing.dropFacts {heap0 heap : Heap} {initial store : Store Unit}
   have hq := h.records (q, slots) List.mem_cons_self
   simp only at hq
   obtain ⟨hBody, hSlots⟩ := hq
-  have hKidOwned := SlotsOwned.childRecords 0 slots hSlots
+  have hKidOwned := SlotsOwned.items 0 slots hSlots
   have hCap := hBody.capacity
   have hFit := hBody.address
   have hBelow := hBody.below
   have hTop := h.at_.top
   refine ⟨h.chain.1, by have := hBody.base; omega, hBody.short, by omega, by omega, hBody.mask,
-    hBody.kind, hBody.width, fun i hi hNull => by simpa using SlotsOwned.null 0 slots hSlots i hi hNull,
-    fun k hk => (hKidOwned k hk).1.childHeader h.at_, ?_, fun k hk => ?_⟩
+    hBody.kind, hBody.width, fun i hi hBit hNone => by
+      simpa using SlotsOwned.null 0 slots hSlots i hi hBit (by simpa using hNone),
+    fun k hk => (hKidOwned k hk).childHeader h.at_, ?_, fun k hk => ?_⟩
   · rw [List.pairwise_map]
     refine hGroups.imp_of_mem fun {a b} ha hb hab => ?_
     have hd := hab _ (mem_blocks_record store a) _ (mem_blocks_record store b)
-    have := (hKidOwned a ha).1.base
-    have := (hKidOwned b hb).1.base
+    have := (hKidOwned a ha).body.base
+    have := (hKidOwned b hb).body.base
     simp only [block, regionsDisjoint] at hd ⊢
     omega
   · have hd := hHead _ (List.mem_append_left _ (List.mem_flatMap.mpr ⟨k, hk,
       mem_blocks_record store k⟩))
-    have := (hKidOwned k hk).1.base
+    have := (hKidOwned k hk).body.base
     simp only [block, regionsDisjoint] at hd ⊢
     omega
 
@@ -865,6 +1033,15 @@ theorem slotsBlocks_size (store : Store Unit) :
   | p, i, .child n :: rest, b, hb => by
       rcases List.mem_append.mp hb with hb | hb
       · exact Node.blocks_size store _ n b hb
+      · exact slotsBlocks_size store p (i + 1) rest b hb
+  | p, i, .array _ :: rest, b, hb => by
+      rcases List.mem_cons.mp hb with rfl | hb
+      · simp [block]
+      · exact slotsBlocks_size store p (i + 1) rest b hb
+  | p, i, .bytes _ :: rest, b, hb => by
+      rcases List.mem_append.mp hb with hb | hb
+      · obtain ⟨q, -, rfl⟩ := List.mem_map.mp hb
+        simp [block]
       · exact slotsBlocks_size store p (i + 1) rest b hb
 end
 
@@ -908,12 +1085,12 @@ theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
   have hq := h.records (q, slots) List.mem_cons_self
   simp only at hq
   obtain ⟨hBody, hSlots⟩ := hq
-  have hKidOwned : ∀ k ∈ kids, RecordHeader heap store k.1 k.2 ∧ SlotsOwned heap store k.1 0 k.2 :=
-    SlotsOwned.childRecords 0 slots hSlots
+  have hKidOwned : ∀ k ∈ kids, ItemOwned heap store k.1 k.2 :=
+    SlotsOwned.items 0 slots hSlots
   have hItem : ∀ k ∈ kids ++ rest,
       RecordBody heap store k.1 k.2 ∧ SlotsOwned heap store k.1 0 k.2 := fun k hk => by
     rcases List.mem_append.mp hk with hk | hk
-    · exact ⟨(hKidOwned k hk).1.body, (hKidOwned k hk).2⟩
+    · exact ⟨(hKidOwned k hk).body, (hKidOwned k hk).slots⟩
     · exact h.records k (List.mem_cons_of_mem _ hk)
   have hBlockMem : ∀ k ∈ kids ++ rest, block store k.1 ∈ forestBlocks store (kids ++ rest) :=
     fun k hk => List.mem_flatMap.mpr ⟨k, hk, mem_blocks_record store k⟩
@@ -938,8 +1115,8 @@ theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
   have hLinkBytes : ∀ R : Nat × Nat, (∀ k ∈ kids, regionsDisjoint R (k.1.toNat - 40, 8)) →
       ∀ a, R.1 ≤ a → a < R.1 + R.2 → store1.mem.bytes a = store.mem.bytes a :=
     fun R hR a hLow hHigh => linkChildren_bytes store.mem next a kids fun k hk => by
-      have := (hKidOwned k hk).1.base
-      have := (hKidOwned k hk).1.address
+      have := (hKidOwned k hk).body.base
+      have := (hKidOwned k hk).body.address
       have hd := hR k hk
       unfold regionsDisjoint at hd
       exact ⟨by omega, by omega, by omega⟩
@@ -947,8 +1124,8 @@ theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
     fun node hNode a hLow hHigh => by
       have := h.at_.above node hNode
       refine hLinkBytes (node.root.toNat - 48, 48) (fun k hk => ?_) a hLow (by simp; omega)
-      have hSep := (hKidOwned k hk).1.separate node hNode
-      have := (hKidOwned k hk).1.base
+      have hSep := (hKidOwned k hk).body.separate node hNode
+      have := (hKidOwned k hk).body.base
       simp only [regionsDisjoint, FreeNode.region] at hSep ⊢
       omega
   have hQKids : ∀ k ∈ kids, regionsDisjoint (block store q) (k.1.toNat - 40, 8) := fun k hk =>
@@ -1016,7 +1193,8 @@ theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
     obtain ⟨hBody2, hCapEq⟩ := hB.frame
       (fun a hl hh => hBytesR a (by simp only; omega) (by simp only; omega))
       (hRel _ hRegK (by simp [block]) (regionsDisjoint_symm hQk)).1
-    obtain ⟨hSlots2, hBlocksEq⟩ := SlotsOwned.frame k.1 0 k.2 hS (by omega)
+    obtain ⟨hSlots2, hBlocksEq⟩ := SlotsOwned.frame (Heap.At.release hAt1 hObj1) k.1 0 k.2 hS
+      (by omega)
       (fun a hl hh => hBytesR a (by simp only; omega) (by simp only; omega)) fun b hb => by
         have hbMem : b ∈ Node.blocks store k.1 (.record k.2) := List.mem_cons_of_mem _ hb
         have hRb := SlotsOwned.regions k.1 0 k.2 hS b hb
@@ -1111,7 +1289,7 @@ theorem Releasing.start {heap : Heap} {store : Store Unit} {p : UInt64} {slots :
     unfold regionsDisjoint at this
     omega)
   obtain ⟨hBody1, hCapEq⟩ := hHeader.body.frame (fun a hl hh => hBytes a (by omega)) hHeader.region
-  obtain ⟨hSlots1, hBlocksEq⟩ := SlotsOwned.frame p 0 slots hSlots (by omega)
+  obtain ⟨hSlots1, hBlocksEq⟩ := SlotsOwned.frame hAt1 p 0 slots hSlots (by omega)
     (fun a hl hh => hBytes a (by omega)) fun b hb =>
       ⟨hApart b (regionsDisjoint_symm (hW.1 b hb)), SlotsOwned.regions p 0 slots hSlots b hb⟩
   have hTree : forestBlocks (releaseEntry store p) [(p, slots)] = Node.blocks store p (.record slots) := by

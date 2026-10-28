@@ -10,7 +10,7 @@ theorem read_fresh_step {World : Type} {initial before after : Store World}
     (hAllocate : Step heap0 (PureTransport.erase initial)
       (fun region => regionsDisjoint region ABI.scratch)
       heap (PureTransport.erase before) [block (PureTransport.erase before) root])
-    (hBuffer : Bytes.Allocated heap (PureTransport.erase before) root previous)
+    (hBuffer : Heap.Buffer heap (PureTransport.erase before) root previous)
     (hCapacity : capacity ≤ capacityAt (PureTransport.erase before) root)
     (hFrame : GuestFrame before after [ABI.scratch, (root.toNat, capacity)]) :
     Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)

@@ -73,12 +73,13 @@ theorem RecordStorage.seal {width : Nat} {heap : Heap} {store : Store Unit}
       (by decide)]
     exact Memory.read64_write64 ..
   have hMask3 : st3.mem.read64 (ptr - 8).toUInt32 = maskOf slots := Memory.read64_write64 ..
-  obtain ⟨hSlots3, hBlocks3⟩ := SlotsOwned.frame ptr 0 slots hSlots (by omega)
-    (fun a ha _ => hWrites.2.2 a (Or.inr (by omega)))
-    (fun b hb => ⟨fun a ha hHigh => hWrites.2.2 a (by
-      have := (List.pairwise_cons.mp hApart).1 b hb
-      simp only [regionsDisjoint, block] at this
-      omega), SlotsOwned.regions ptr 0 slots hSlots b hb⟩)
+  obtain ⟨hSlots3, hBlocks3⟩ :=
+    SlotsOwned.frame (store' := st3) hAt3 ptr 0 slots hSlots (by omega)
+      (fun a ha _ => hWrites.2.2 a (Or.inr (by omega)))
+      (fun b hb => ⟨fun a ha hHigh => hWrites.2.2 a (by
+        have := (List.pairwise_cons.mp hApart).1 b hb
+        simp only [regionsDisjoint, block] at this
+        omega), SlotsOwned.regions ptr 0 slots hSlots b hb⟩)
   refine ⟨hAt3, hRaw3.record hLength hCount3 hKind3 hWidth3 hMask3 hShort hSlots3, ?_,
     Step.ofWritesRange hAt3 hWrites (by simp only [block]; omega)
       (by simp only [block]; omega)⟩
@@ -103,7 +104,7 @@ theorem RecordStorage.assemble {width : Nat} {heap : Heap} {store : Store Unit}
   let st := recordWriteValues ptr 0 words store
   obtain ⟨hAt1, hRaw1, hCap1, hStep1⟩ := h.writeValues hAt 0 words (by omega)
   have hWrites := recordWriteValues_range ptr 0 words store (by omega)
-  obtain ⟨hValues1, hBlocks1⟩ := fieldValues_frame hValues
+  obtain ⟨hValues1, hBlocks1⟩ := fieldValues_frame hAt1 hValues
     (fun b hb => ⟨fun a ha hHigh => hWrites.2.2 a (by
       have := (List.pairwise_cons.mp hApart).1 b hb
       simp only [regionsDisjoint, block] at this

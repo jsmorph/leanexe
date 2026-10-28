@@ -69,7 +69,7 @@ theorem RecordStorage.restore {heap : Heap} {store : Store Unit}
     exact Memory.read64_write64 ..
   have hMask : store4.mem.read64 (p - 8).toUInt32 = maskOf slots := Memory.read64_write64 ..
   have hSeparate := (List.pairwise_cons.mp hApart).1
-  obtain ⟨hSlots4, hBlocks⟩ := SlotsOwned.frame p 0 slots hSlots (by omega)
+  obtain ⟨hSlots4, hBlocks⟩ := SlotsOwned.frame hAt4 p 0 slots hSlots (by omega)
     (fun a hLow _ => hAll.2.2 a (.inr (by omega)))
     (fun b hb => ⟨fun a hLow hHigh => hAll.2.2 a (by
       have := hSeparate b hb

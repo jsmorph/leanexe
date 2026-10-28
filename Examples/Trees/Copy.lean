@@ -107,7 +107,7 @@ theorem copy_rec (funcs : List (Func × String)) (i : Nat) (name : String)
       refine Triple.of_forall fun store1 st ⟨heap1, q1, hst, hR1⟩ => ?_
       subst hst
       have hB2 : NodeBorrowed heap1 store1 pr (encode r) :=
-        (Heap.Keeps.nodeBorrowed hR1.region hr (EncodeSlotted.slotRegions_pos r)
+        (Heap.Keeps.nodeBorrowed hR1.region hR1.at_ hr (EncodeSlotted.slotRegions_pos r)
           fun _ _ _ hg => nomatch hg).1
       have hCap1 := memoryCap_le_of_caps hR1.caps hCap
       refine Stmt.seq_spec (M := fun s st => ∃ (heap2 : Heap) (q2 : UInt64),

@@ -53,15 +53,15 @@ theorem CopyRecord.Holds.advance {shape : TreeShape} {heap : Heap} {store : Stor
     simp only [regionsDisjoint, block] at hApart
     dsimp [p, i] at *
     omega
-  obtain ⟨hSource', _⟩ := NodeBorrowed.frame record.source (.record record.slots) h.borrowed
-    (fun r hr => ⟨hBytes r (hSourceApart r hr),
-      NodeBorrowed.regions _ _ h.borrowed r hr⟩)
-  obtain ⟨hPrefix', hPrefixBlocks⟩ := SlotsOwned.frame p 0 (record.slots.take i) h.filled
+  obtain ⟨hSource', _⟩ :=
+    NodeBorrowed.frame hAt' record.source (.record record.slots) h.borrowed
+      (fun r hr => ⟨hBytes r (hSourceApart r hr), NodeBorrowed.regions _ _ h.borrowed r hr⟩)
+  obtain ⟨hPrefix', hPrefixBlocks⟩ := SlotsOwned.frame hAt' p 0 (record.slots.take i) h.filled
     (by dsimp [p, i] at *; omega)
     (fun a hLow hHigh =>
       (hHeader.2.2 a (.inr (by omega))).trans (hData.2.2 a (.inl (by rw [hTaken] at hHigh; omega))))
     (fun b hb => ⟨hBytes b (hPrefixApart b hb), SlotsOwned.regions p 0 _ h.filled b hb⟩)
-  obtain ⟨hValue', hValueBlocks⟩ := hValue.frame
+  obtain ⟨hValue', hValueBlocks⟩ := hValue.frame hAt'
     (fun b hb => ⟨hBytes b (hValueApart b hb), hValue.regions b hb⟩)
   have hRead : store'.mem.read64 (slotAddress p i) = word := by
     rw [hHeader.read64 _ (.inr (by rw [hSlotAddress]; omega))]
