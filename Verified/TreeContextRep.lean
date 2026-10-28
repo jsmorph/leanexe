@@ -47,26 +47,50 @@ theorem Env.Rep.fnFields {heap : Heap} {store : Store Unit} {Γ : List Ty}
       simpa only [paramMode, tysOfFn, List.replicate_succ, List.cons_append, paramModes,
         List.headD_cons, List.tail_cons, List.getD_cons_succ] using hRest
 
+/-- An empty repetition represents nothing beyond its tail. -/
+theorem Env.Rep.repeatZero {heap : Heap} {store : Store Unit} {Γ : List Ty}
+    {tail : Env Γ} {modes : List Mode} {rest : List Value}
+    (hTail : Env.Rep (paramMode Γ modes) heap store rest tail) (t : Ty) (mode : Mode) :
+    ∀ n, n = 0 → ∀ values : Fin n → t.denote,
+      Env.Rep (paramMode (List.replicate n t ++ Γ) (List.replicate n mode ++ modes))
+        heap store rest (Env.prependRepeat t n values tail)
+  | 0, _, _ => hTail
+
+/-- The words of a branch's variables: the record's address, its word fields, the addresses of its
+children, and the addresses of its arrays. -/
+def TreeShape.branchValues (shape : TreeShape) (r : Fin shape.records) (p : UInt64)
+    (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
+    (pointers : Fin (shape.children r) → UInt64) (arrayPtrs : Fin (shape.arrays r) → UInt64) :
+    List Value :=
+  .i64 p :: (shape.wordValues r words ++ ((List.ofFn fun i => Value.i64 (pointers i)) ++
+    (List.ofFn fun i => Value.i64 (arrayPtrs i))))
+
 theorem treeFields_rep {heap : Heap} {store : Store Unit} {shape : TreeShape}
     {r : Fin shape.records} {mode : Mode} {p : UInt64}
     {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
     {children : Fin (shape.children r) → Tree shape}
-    {pointers : Fin (shape.children r) → UInt64}
+    {pointers : Fin (shape.children r) → UInt64} {arrayPtrs : Fin (shape.arrays r) → UInt64}
     (hHeader : mode.header shape r heap store p)
-    (hChildren : ∀ i, mode.node heap store (pointers i) (children i).toNode) :
+    (hChildren : ∀ i, mode.node heap store (pointers i) (children i).toNode)
+    (hArrays : ∀ i, mode.array heap store (arrayPtrs i) ((shape.arrayElem r i).words (arrays i))) :
     Env.Rep (paramMode (shape.context r []) (shape.modes r mode [])) heap store
-      (.i64 p :: (shape.wordValues r words ++
-        (List.ofFn fun i => Value.i64 (pointers i))))
+      (shape.branchValues r p words pointers arrayPtrs)
       (Env.treeFields shape r words arrays buffers children .nil) := by
-  have hTrees := Env.Rep.repeatFields (heap := heap) (store := store) (Γ := [])
-    (modes := []) (tail := .nil) (rest := []) rfl (.tree shape) mode (shape.children r)
+  have hBuffers := Env.Rep.repeatZero (heap := heap) (store := store) (Γ := []) (modes := [])
+    (tail := .nil) (rest := []) rfl .bytes mode (shape.buffers r) (shape.buffers_eq_zero r)
+    buffers
+  have hArrayRep := Env.Rep.fnFields hBuffers mode (shape.arrays r) (shape.arrayTy r) arrays
+    (fun i => Value.i64 (arrayPtrs i)) (fun i => ⟨arrayPtrs i, rfl, hArrays i⟩)
+  have hTrees := Env.Rep.repeatFields hArrayRep (.tree shape) mode (shape.children r)
     children pointers (fun i => ⟨pointers i, rfl, hChildren i⟩)
   have hWords := Env.Rep.fnFields hTrees .borrowed (shape.words r) (shape.wordTy r) words
     (fun i => typedValue (shape.elem r i).slotType (shape.slotWords r words i))
     (fun i => shape.wordValues_rep r words i)
   unfold Verified.paramMode at hWords
-  rw [show (List.ofFn fun i => Value.i64 (pointers i)) ++ [] =
-    (List.ofFn fun i => Value.i64 (pointers i)) from List.append_nil _] at hWords
+  rw [show (List.ofFn fun i => Value.i64 (arrayPtrs i)) ++ [] =
+    (List.ofFn fun i => Value.i64 (arrayPtrs i)) from List.append_nil _] at hWords
   refine ⟨[.i64 p], _, rfl, ?_, ?_⟩
   · exact ⟨p, rfl, hHeader⟩
   · convert hWords using 1
