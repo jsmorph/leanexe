@@ -1,4 +1,4 @@
-import LeanExe.Pipeline.ReleaseTree
+import LeanExe.ProofKit.ReleaseTree
 import Verified.AllocCost
 import Verified.Bytes.Cost
 

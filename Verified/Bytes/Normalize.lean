@@ -5,7 +5,7 @@ import LeanExe.TalosCompat
 
 namespace Verified.Bytes
 
-open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
+open Wasm LeanExe.Pipeline LeanExe.Pipeline.Bytes LeanExe.ProofKit LeanExe.Runtime
 
 /-- `normalizeCode` on an owned buffer: an empty buffer's object is released and its root set
 to 0, and a nonempty buffer is left as it is. -/

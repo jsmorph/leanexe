@@ -1,7 +1,7 @@
 import Verified.HeapStep
 import Verified.TreeHeader
 import Verified.RuntimeFacts
-import LeanExe.Pipeline.ReleaseTree
+import LeanExe.ProofKit.ReleaseTree
 
 namespace Verified
 

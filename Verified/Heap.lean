@@ -8,7 +8,7 @@ import Verified.TreeHeaderCopyCode
 import Verified.Bytes.CopyOwned
 import Verified.Bytes.Release
 import LeanExe.Pipeline.RuntimeSpec
-import LeanExe.Pipeline.ReleaseTree
+import LeanExe.ProofKit.ReleaseTree
 import LeanExe.ProofKit.ArrayPrefix
 
 /-! The code that allocates, copies, and releases arrays, and its specifications: a release of an

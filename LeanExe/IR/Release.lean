@@ -1,5 +1,5 @@
 import LeanExe.IR.Stmt
-import LeanExe.Pipeline.ReleaseTree
+import LeanExe.ProofKit.ReleaseTree
 import LeanExe.Pipeline.Rebuilt
 
 /-!

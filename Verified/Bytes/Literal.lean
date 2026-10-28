@@ -4,7 +4,7 @@ import Verified.Bytes.CopyOwned
 
 namespace Verified.Bytes
 
-open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
+open Wasm LeanExe.Pipeline LeanExe.Pipeline.Bytes LeanExe.ProofKit LeanExe.Runtime
 
 theorem wp_literal {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {pool : LiteralPool} {bytes : Literal} {offset base : Nat}

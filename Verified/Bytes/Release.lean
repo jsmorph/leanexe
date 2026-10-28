@@ -1,10 +1,10 @@
 import Verified.Bytes.Step
 import Verified.RuntimeFacts
-import LeanExe.Pipeline.ReleaseTree
+import LeanExe.ProofKit.ReleaseTree
 
 namespace Verified.Bytes
 
-open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
+open Wasm LeanExe.Pipeline LeanExe.Pipeline.Bytes LeanExe.ProofKit LeanExe.Runtime
 
 def releasedHeap (heap : Heap) (store : Store Unit) (root : UInt64) : Heap :=
   if root = 0 then heap else heap.release root (store.mem.read64 (root - 32).toUInt32)
@@ -12,7 +12,8 @@ def releasedHeap (heap : Heap) (store : Store Unit) (root : UInt64) : Heap :=
 def releasedStore (heap : Heap) (store : Store Unit) (root : UInt64) : Store Unit :=
   if root = 0 then store else heap.releaseStore store root
 
-theorem Rep.release_step {heap : Heap} {store : Store Unit} {root length : UInt64}
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.release_step
+    {heap : Heap} {store : Store Unit} {root length : UInt64}
     {bytes : LeanExe.Bytes} (hHeap : heap.At store) (h : Rep heap store root length bytes) :
     Step heap store (fun r => ∀ b ∈ regions store root, regionsDisjoint r b)
       (releasedHeap heap store root) (releasedStore heap store root) [] ∧

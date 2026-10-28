@@ -1,14 +1,10 @@
 import Verified.Bytes.Memory
 import LeanExe.Pipeline.RuntimeSpec
+import LeanExe.Pipeline.Bytes
 
 namespace Verified.Bytes
 
-open Wasm LeanExe.Pipeline LeanExe.ProofKit
-
-structure Rep (heap : Heap) (store : Store Unit) (root length : UInt64)
-    (bytes : LeanExe.Bytes) : Prop where
-  length_eq : length.toNat = bytes.data.size
-  buffer : (root = 0 ∧ bytes.data.size = 0) ∨ Heap.Buffer heap store root bytes
+open Wasm LeanExe.Pipeline LeanExe.Pipeline.Bytes LeanExe.ProofKit
 
 theorem _root_.LeanExe.Pipeline.Heap.Buffer.payload_region {heap : Heap} {store : Store Unit}
     {root : UInt64} {bytes : LeanExe.Bytes} (h : Heap.Buffer heap store root bytes) :
@@ -28,12 +24,14 @@ theorem _root_.LeanExe.Pipeline.Heap.Buffer.size_lt {heap : Heap} {store : Store
   have := h.capacity
   omega
 
-theorem Rep.size_eq {heap : Heap} {store : Store Unit} {root length : UInt64}
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.size_eq
+    {heap : Heap} {store : Store Unit} {root length : UInt64}
     {bytes : LeanExe.Bytes} (h : Rep heap store root length bytes) :
     LeanExe.Bytes.size bytes = length := by
   rw [LeanExe.Bytes.size, ← h.length_eq, UInt64.ofNat_toNat]
 
-theorem Rep.size_lt {heap : Heap} {store : Store Unit} {root length : UInt64}
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.size_lt
+    {heap : Heap} {store : Store Unit} {root length : UInt64}
     {bytes : LeanExe.Bytes} (h : Rep heap store root length bytes) :
     bytes.data.size < 2 ^ 32 := by
   rcases h.buffer with h | h
@@ -72,7 +70,7 @@ theorem _root_.LeanExe.Pipeline.Heap.Buffer.get {heap : Heap} {store : Store Uni
   rw [h.read8 index hi]
   simp only [LeanExe.Bytes.get, dite_eq_left hi]
 
-theorem Rep.empty (heap : Heap) (store : Store Unit) :
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.empty (heap : Heap) (store : Store Unit) :
     Rep heap store 0 0 LeanExe.Bytes.empty :=
   ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
 
@@ -81,7 +79,8 @@ theorem _root_.LeanExe.Pipeline.Heap.Buffer.rep {heap : Heap} {store : Store Uni
     Rep heap store root bytes.size bytes :=
   ⟨LeanExe.Bytes.size_toNat bytes (by have := h.size_lt; omega), Or.inr h⟩
 
-theorem Rep.frame {heap : Heap} {store store' : Store Unit} {root length : UInt64}
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.frame
+    {heap : Heap} {store store' : Store Unit} {root length : UInt64}
     {bytes : LeanExe.Bytes} (h : Rep heap store root length bytes)
     (hBytes : root ≠ 0 → ∀ a, root.toNat - 48 ≤ a →
       a < root.toNat + capacityAt store root → store'.mem.bytes a = store.mem.bytes a) :
@@ -91,7 +90,8 @@ theorem Rep.frame {heap : Heap} {store store' : Store Unit} {root length : UInt6
   · exact Or.inl h
   · exact Or.inr (h.frame (hBytes h.nonzero))
 
-theorem Rep.null_length {heap : Heap} {store : Store Unit} {length : UInt64}
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.null_length
+    {heap : Heap} {store : Store Unit} {length : UInt64}
     {bytes : LeanExe.Bytes} (h : Rep heap store 0 length bytes) : length = 0 := by
   rcases h.buffer with hBuffer | hBuffer
   · apply UInt64.toNat_inj.mp
@@ -99,14 +99,16 @@ theorem Rep.null_length {heap : Heap} {store : Store Unit} {length : UInt64}
     rfl
   · exact False.elim (hBuffer.nonzero rfl)
 
-theorem Rep.toAt {heap : Heap} {store : Store Unit} {root length : UInt64}
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.toAt
+    {heap : Heap} {store : Store Unit} {root length : UInt64}
     {bytes : LeanExe.Bytes} (h : Rep heap store root length bytes) (hHeap : heap.At store) :
     At store.mem root bytes := by
   rcases h.buffer with ⟨rfl, hEmpty⟩ | hBuffer
   · exact ⟨by simp [hEmpty], by simp [hEmpty], fun i hi => by omega⟩
   · exact hBuffer.toAt hHeap
 
-theorem Rep.payload_region {heap : Heap} {store : Store Unit} {root length : UInt64}
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.payload_region
+    {heap : Heap} {store : Store Unit} {root length : UInt64}
     {bytes : LeanExe.Bytes} (h : Rep heap store root length bytes) :
     heap.Region (root.toNat, bytes.data.size) := by
   rcases h.buffer with ⟨rfl, hEmpty⟩ | hBuffer
@@ -134,7 +136,8 @@ theorem release_null_run {m : Module} {typeIdx : Nat} (hImports : m.imports = []
   refine wp_iff_cons rfl ?_
   simp [wp_simp]
 
-theorem Rep.release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
+theorem _root_.LeanExe.Pipeline.Bytes.Rep.release_run
+    {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
     (hFunc : m.funcs[1]? = some (LeanExe.Runtime.releaseFunction typeIdx))
     (env : HostEnv Unit) {heap : Heap} {store : Store Unit} {root length : UInt64}
     {bytes : LeanExe.Bytes} (hHeap : heap.At store) (h : Rep heap store root length bytes) :

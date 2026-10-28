@@ -60,12 +60,12 @@ import LeanExe.IR.TailLoop
 import LeanExe.IR.Words
 import LeanExe.Pipeline.Allocation
 import LeanExe.Pipeline.Budget
+import LeanExe.Pipeline.Bytes
 import LeanExe.Pipeline.FileBytes
 import LeanExe.Pipeline.FlatRecords
 import LeanExe.Pipeline.Implements
 import LeanExe.Pipeline.Records
 import LeanExe.Pipeline.RecordSlots
-import LeanExe.Pipeline.ReleaseTree
 import LeanExe.Pipeline.Runtime
 import LeanExe.Pipeline.RuntimeSpec
 import LeanExe.Pipeline.Slotted
@@ -318,6 +318,7 @@ import LeanExe.ProofKit.RealProductError
 import LeanExe.ProofKit.RealRoundedError
 import LeanExe.ProofKit.RealRusanovError
 import LeanExe.ProofKit.RealSqrtError
+import LeanExe.ProofKit.ReleaseTree
 import LeanExe.ProofKit.Signed32
 import LeanExe.ProofKit.TaylorCheck
 import LeanExe.ProofKit.TaylorModel

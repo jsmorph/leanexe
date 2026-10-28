@@ -84,7 +84,7 @@ New empty results use `(0, 0)`.  Incoming owned and borrowed empty values may al
 
 Writes borrow their input.  Reads return a fresh owned root on nonempty success.  If an owned value has multiple live source uses, the compiler's mode and lifetime analysis preserves its owner until the last use.  Converting a borrowed byte value to an owned result copies its bytes.  Result construction, branch cleanup, unused results, and effectful helper returns use the same separation and last-use obligations as existing arrays.  [Owned copying](../Verified/Bytes/CopyOwned.lean) and [release](../Verified/Bytes/Release.lean) prove preservation of the caller's retained regions.
 
-The [execution host](../tools/wasmtime-host.c) allocates raw packed bytes and passes byte values as pointer and length.  [The representation instance](../Verified/Bytes/Represent.lean) connects that ABI to owned and borrowed source bytes.  Host execution tests check the external allocator and argument handling.
+The [execution host](../tools/wasmtime-host.c) allocates raw packed bytes and passes byte values as pointer and length.  [The representation instance](../LeanExe/Pipeline/Bytes.lean) connects that ABI to owned and borrowed source bytes.  Host execution tests check the external allocator and argument handling.
 
 For positive read capacity, the wrapper allocates the requested byte capacity.  A short read retains the root with the returned logical length.  Unused capacity stays private to the allocation.  Error and zero-byte paths release it.  A zero-capacity read uses `(0, 0)` as its empty writable range and needs no allocation.
 
@@ -240,7 +240,7 @@ The pure typed source and compiler include byte operations and the literal-pool 
 | Stage | Implemented proof boundary | Source |
 |---|---|---|
 | 1 | Reviewed API, byte layout, host-error relation, exit behavior, and reuse plan. | [Review decisions](#review-decisions). |
-| 2 | Packed bytes, ownership, copying, release, access, construction, and literals. | [Byte representation](../Verified/Bytes/Basic.lean), [byte construction](../Verified/BytesBuildCorrect.lean), and [literal correctness](../Verified/Bytes/Literal.lean). |
+| 2 | Packed bytes, ownership, copying, release, access, construction, and literals. | [Byte representation](../LeanExe/Pipeline/Bytes.lean), [byte construction](../Verified/BytesBuildCorrect.lean), and [literal correctness](../Verified/Bytes/Literal.lean). |
 | 3 | Import relocation, host-state preservation, and empty-table encoding and validity. | [Module transport](../Verified/Wasi/ModuleTransport.lean), [module grammar](../LeanExe/Encoding/Spec/Modules.lean), and [validity rules](../LeanExe/Encoding/Spec/Validity.lean). |
 | 4 | Universal one-iovec read and write wrappers with scratch framing. | [Read execution](../Verified/Wasi/ReadFunction.lean) and [write execution](../Verified/Wasi/Write.lean). |
 | 5 | Universal safety and cost-aware compilation for commands, calls, branches, and bounded loops. | [Command safety](../Verified/Wasi/CommandCorrect.lean), [command cost correctness](../Verified/Wasi/CostCommandCorrect.lean), and [program correctness](../Verified/Wasi/Correct.lean). |
