@@ -251,6 +251,11 @@ theorem treeSlots_foldr (fields : List Bool) :
     · exact congrArg (fun mask : UInt64 => 2 * mask + 0) (ih _ _ _ _ init)
     · exact congrArg (fun mask : UInt64 => 2 * mask + 1) (ih _ _ _ _ init)
 
+theorem TreeShape.treeSlots_length' (shape : TreeShape) (r : Fin shape.records)
+    (words : Fin (shape.words r) → UInt64) (children : Fin (shape.children r) → Node) :
+    (treeSlots (shape.fields r) words children).length = (shape.fields r).length :=
+  treeSlots_length _ _ _
+
 /-- The slots of the array and buffer fields among `fields`, in order: an array's object, and a
 buffer's root followed by its length.  The word and child fields have their slots before these. -/
 def heapSlots : (fields : List TreeField) →
