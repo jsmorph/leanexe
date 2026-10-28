@@ -545,7 +545,7 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     exact Bytes.wp_copyOwned hm hAt (hBytes.toAt hAt) hBytes.payload_region hBytes.length_eq
       hRoot hLength (by change src + 2 ≤ base at hSrc; omega)
       (by change src + 2 ≤ base at hSrc; omega) hBase hRoom hCap hTrap
-      fun heap' store' s' root' hStep hRep hFrame hTop =>
+      fun heap' store' s' root' hStep hRep hFrame hTop _ =>
         hNext heap' store' s' [.i64 root', .i64 length]
           (by simpa only [Ty.blocks, Bytes.roots_regions] using hStep)
           ⟨root', length, rfl, hRep⟩ hFrame hTop
