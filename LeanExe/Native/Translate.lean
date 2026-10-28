@@ -27,14 +27,14 @@ reads or writes as an `unsigned char` of `lx_mem`: `load8U` converts the byte to
 writes the module's data segments into `lx_mem`, with a word store for each aligned word that a
 segment covers and a byte store for each other byte.
 
-This version handles the forms of milestones M2 to M5 and the byte forms: locals, globals, the
-`i64` and `i32` operations of the subset, `block`, `loop`, `iff`, `br`, `br_if`, `ret`, `call`,
-`unreachable`, `load64`, `store64`, `load8U`, `store8`, `memory.size`, `memory.grow`, and the
-binary64 forms, in functions with at most one result or with several results of integer or
-binary64 types, which return them in the globals `lx_r<i>_<t>`.  A binary64 operation that rounds
-replaces a NaN result by Talos's canonical NaN, and a value changes type through the cell
-`lx_pun`.  A function that uses another form, or that calls a function the translator omits, is
-omitted, and `translate` returns the program of the remaining functions.  A function of the
+This version handles the forms of milestones M2 to M5, the byte forms, and the binary32 forms
+other than `sqrt`: locals, globals, the `i64` and `i32` operations of the subset, `block`, `loop`,
+`iff`, `br`, `br_if`, `ret`, `call`, `unreachable`, `load64`, `store64`, `load8U`, `store8`,
+`memory.size`, `memory.grow`, the binary64 forms, and those binary32 forms, in functions with one
+result or several, which return several results in the globals `lx_r<i>_<t>`.  An operation
+that rounds replaces a NaN result by Talos's canonical NaN, and a value changes type through the
+cell `lx_pun`.  A function that uses another form, or that calls a function the translator omits,
+is omitted, and `translate` returns the program of the remaining functions.  A function of the
 program is `lxf_<name>` when the module exports it under a name that is a C identifier, and
 `lxf_<k>` for its index `k` otherwise.
 -/
@@ -323,21 +323,20 @@ def funType (ps : List VT) (rs : List VT) : type :=
 
 A function with several results returns `void` and leaves result `i`, of type `t`, in the global
 `lx_r<i>_<t>`, which the caller copies into its stack slot.  The translator declares the
-globals of `unsigned int`, `unsigned long long`, and `double` for each position up to the most
-results of a function, and translates only functions whose several results have those types. -/
+globals of `unsigned int`, `unsigned long long`, `double`, and `float` for each position up to
+the most results of a function. -/
 
 /-- `lx_r<i>_<t>`. -/
 def resId (i : Nat) (t : VT) : ident := 32 * (i + 1) + 4 * t.code
 
 def resVar (i : Nat) (t : VT) : expr := .Evar (resId i t) t.ty
 
-/-- The types of the result globals. -/
+/-- The types of the result globals: all four. -/
 def VT.isRes : VT → Bool
-  | .f32 => false
   | _ => true
 
 /-- The types of the result globals of a position, in the order of the program's definitions. -/
-def resTypes : List VT := [.i32, .i64, .f64]
+def resTypes : List VT := [.i32, .i64, .f64, .f32]
 
 /-- `Ssequence` of the statements in order. -/
 def seqList : List statement → statement
@@ -508,7 +507,7 @@ heights `h + 2` to `h + 5` hold `s`, `q`, the remainder, and the half. -/
 def nearest32Stmt (h : Nat) : statement :=
   let w (k : Nat) : expr := tmp k .i32
   let set (k : Nat) (e : expr) : statement := .Sset (slotId k .i32) e
-  let mant : expr := .Ebinop .Oor (.Ebinop .Oand (w h) (cint 0x7FFFFF) tuint) (cint 0x800000) tuint
+  let mant : expr := .Ebinop .Oadd (.Ebinop .Oand (w h) (cint 0x7FFFFF) tuint) (cint 0x800000) tuint
   let negative : expr := .Ebinop .Oshr (w h) (cint 31) tuint
   seqList [
     punBits32 h h,
@@ -790,6 +789,10 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
             (canonStmt32 (h - 2)),
           some (.f32 :: σ'), n)
       else none
+  | .f32Nearest => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .f32 then pure (nearest32Stmt (h - 1), some (.f32 :: σ'), n)
+      else none
   | .f32Eq | .f32Lt | .f32Le => do
       let op ← f32Cmp inst
       let σ' ← pops L σ 2
@@ -958,8 +961,8 @@ def retStmt : List VT → statement
   | [t] => .Sreturn (some (tmp 0 t))
   | rs => seqList (resStores rs 0 0 ++ [.Sreturn none])
 
-/-- The results that the translator handles: at most one, or several of `unsigned int`,
-`unsigned long long`, and `double`. -/
+/-- The results that the translator handles: at most one, or several whose types have result
+globals. -/
 def resultsOk (rs : List VT) : Bool := rs.length ≤ 1 || rs.all VT.isRes
 
 /-- The C function of a Talos function, with `lx_mem` of `cap` pages. -/
@@ -1102,7 +1105,8 @@ def resDef (t : VT) : globvar type :=
     gvar_init := [match t with
       | .i32 => .Init_int32 0
       | .i64 => .Init_int64 0
-      | _ => .Init_space 8]
+      | .f64 => .Init_space 8
+      | .f32 => .Init_space 4]
     gvar_readonly := false
     gvar_volatile := false }
 

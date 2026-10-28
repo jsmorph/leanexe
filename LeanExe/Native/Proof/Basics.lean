@@ -142,6 +142,52 @@ theorem Int.and_eq (x y : UInt32) : Int.and x y = x &&& y := by
   simp only [Int.and, Int.unsigned, Int.toNat_natCast, UInt32.toNat_ofNat', UInt32.toNat_and]
   exact Nat.mod_eq_of_lt (Nat.and_lt_two_pow _ y.toNat_lt)
 
+theorem Int.add_eq (x y : UInt32) : Int.add x y = x + y := by
+  simp only [Int.add, Int.unsigned]
+  rw [← Int.natCast_add, Int.repr_natCast]
+  apply UInt32.toNat_inj.mp
+  simp only [UInt32.toNat_ofNat', UInt32.toNat_add]
+
+theorem Int.sub_eq (x y : UInt32) : Int.sub x y = x - y := by
+  apply UInt32.toNat_inj.mp
+  have hx := x.toNat_lt
+  have hy := y.toNat_lt
+  simp only [Int.sub, Int.repr, Int.unsigned, Int.modulus, UInt32.toNat_ofNat',
+    UInt32.toNat_sub]
+  omega
+
+theorem Int.or_eq (x y : UInt32) : Int.or x y = x ||| y := by
+  apply UInt32.toNat_inj.mp
+  simp only [Int.or, Int.unsigned, Int.toNat_natCast, UInt32.toNat_ofNat', UInt32.toNat_or]
+  exact Nat.mod_eq_of_lt (Nat.or_lt_two_pow x.toNat_lt y.toNat_lt)
+
+theorem Int.shl_eq (x k : UInt32) (hk : k.toNat < 32) : Int.shl x k = x <<< k := by
+  unfold Int.shl
+  rw [ite_eq_left (by simp only [Int.unsigned]; omega)]
+  simp only [Int.unsigned, Int.toNat_natCast]
+  have e : (x.toNat : _root_.Int) * 2 ^ k.toNat = ((x.toNat * 2 ^ k.toNat : Nat) : _root_.Int) := by
+    norm_cast
+  rw [e, Int.repr_natCast]
+  apply UInt32.toNat_inj.mp
+  simp only [UInt32.toNat_ofNat', UInt32.toNat_shiftLeft, Nat.shiftLeft_eq, Nat.mod_eq_of_lt hk]
+
+theorem Int.shru_eq (x k : UInt32) (hk : k.toNat < 32) : Int.shru x k = x >>> k := by
+  unfold Int.shru
+  rw [ite_eq_left (by simp only [Int.unsigned]; omega)]
+  simp only [Int.unsigned, Int.toNat_natCast]
+  have e : (x.toNat : _root_.Int) / 2 ^ k.toNat = ((x.toNat / 2 ^ k.toNat : Nat) : _root_.Int) := by
+    norm_cast
+  rw [e, Int.repr_natCast]
+  apply UInt32.toNat_inj.mp
+  have hx := x.toNat_lt
+  have : x.toNat / 2 ^ k.toNat < 2 ^ 32 := Nat.lt_of_le_of_lt (Nat.div_le_self _ _) hx
+  simp only [UInt32.toNat_ofNat', UInt32.toNat_shiftRight, Nat.shiftRight_eq_div_pow,
+    Nat.mod_eq_of_lt hk, Nat.mod_eq_of_lt this]
+
+theorem Int.ltu_eq (x y : UInt32) : Int.ltu x y = decide (x < y) := by
+  simp only [Int.ltu, Int.unsigned, Int.ofNat_lt, decide_eq_decide]
+  exact UInt32.lt_iff_toNat_lt.symm
+
 theorem Int.sub_one_eq (k : Nat) (_hk : k + 1 < 2 ^ 32) :
     Int.sub (UInt32.ofNat (k + 1)) (UInt32.ofNat 1) = UInt32.ofNat k := by
   apply UInt32.toNat_inj.mp

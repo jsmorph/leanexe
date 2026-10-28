@@ -94,8 +94,9 @@ theorem ArgsRel.frame {le le' : temp_env} {base : Nat} {ts : List VT} {ws : List
 def ResOk (E : Env) (rs : List VT) : Prop :=
   2 ≤ rs.length → rs.length ≤ E.nres ∧ rs.all VT.isRes = true
 
-theorem VT.isRes_cases {t : VT} (h : t.isRes = true) : t = .i32 ∨ t = .i64 ∨ t = .f64 := by
-  cases t <;> simp_all [VT.isRes]
+theorem VT.isRes_cases {t : VT} (_h : t.isRes = true) :
+    t = .i32 ∨ t = .i64 ∨ t = .f64 ∨ t = .f32 := by
+  cases t <;> simp
 
 section
 

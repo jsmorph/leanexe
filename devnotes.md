@@ -37283,3 +37283,16 @@ The translator now handles fifteen of the seventeen binary32 forms, as choices 1
 - [x] Probe `clightgen` for the binary32 shapes of the choices.
 - [x] `lx_pun` at binary32 and both reinterpretations; constants.
 - [x] The arithmetic with the canonicalization; the comparisons; the conversions; `abs`; the saturating truncations.
+
+## 2026-10-27: The Wasm-to-C translator: M6, `nearest` and binary32 results
+
+The translator now handles `f32.nearest` and functions whose several results include a binary32 value.  `nearest32Stmt` follows choice 9 of the plan, except that it forms the significand as `(u & 0x7FFFFF) + 0x800000` where the plan had `|`: the two agree, and the proof has the lemma for the sum.  `Proof/Nearest32.lean` splits Talos's `nearest` by the biased exponent as the C code does, into `nearest_big` for `e ≥ 150`, `nearest_small` for `e < 126`, `nearest_255` for infinities and NaNs, and `nearest_mid` between them, where `roundShift_scale` turns the rounding of the magnitude by 149 bits into the rounding of the significand by `150 - e` bits and `fromInt_nat` turns the packing into the conversion of the quotient.  The statement keeps its words in the `i32` slots from the operand's height up, and `Keeps` states which temporaries it leaves unchanged.  `nearest_mid` gives the result as `roundScaledMagnitude (sign x)` of the rounded magnitude, because a form with `if sign then negate else id` made the kernel unfold the rounding at `2^149` until it exceeded its recursion depth.
+
+Each position of the result globals now has a `float`, `lx_r<i>_f`, of four bytes of zeros, so `VT.isRes` holds for all four types.  `Init.lean` counts four result globals per position where it counted three, and `valid_access_of_bytes4` gives the four-byte access of a `float` global.
+
+### Tests
+
+`f32ops` gains `nearest` on its 26 operands and on nine more: ±0.75, ±3.5, 0.25, `2^24 - 1`, `2^22 + 0.5`, the smallest normal, and the smallest negative subnormal.  It also gains `pair`, which returns a float and a word, on three pairs of arguments.  The first run failed in `pair` and in 83 corpus cases, all calls of functions that return a float among several results: `packetTurn` and `packetMake` of `sums`, and `paired`, `mixed`, and `deep` of `floats32`.  The C programs were right, and the test glue was wrong in two places.  Both glue generators declared `lx_r<i>_f` as `unsigned long long`, so the host read eight bytes and converted the integer to a float; `resultCType` in `Emit.lean` and in `Verified.lean` now declares it `float`.  The end-to-end glue also read a float result from `lx_r<i>_l` and printed its value rather than its bits, and it now reads `lx_r<i>_f` through `lx_bits32`.  With both fixes, the 288 cases of `sums` and the 2,439 of `floats32` that run pass natively, and `f32ops` agrees with Talos in all 1,044 calls, with the other 19 modules, on both trees.  Every other case of that run passed: 34,817 of the corpus, the 3,322 module cases, the 19 other modules of `run.sh`, the byte and literal examples, and the 318 programs of the differential test, with the same counts on the x86_64 tree under `qemu-x86_64`.  The 353 corpus cases that did not run call functions that use `sqrt`.
+
+- [x] `nearest`.
+- [x] Several results with binary32 values.

@@ -89,7 +89,7 @@ def resultText (e : String) : VT → String
 /-- The C type of the result global `n`, from its suffix. -/
 def resultCType (n : String) : String :=
   if n.endsWith "_i" then "unsigned int" else if n.endsWith "_d" then "double"
-  else "unsigned long long"
+  else if n.endsWith "_f" then "float" else "unsigned long long"
 
 /-- The lines of the entries of a C array, or `empty` for none, since C has no empty array. -/
 def table (entries : List String) (empty : String) : String :=

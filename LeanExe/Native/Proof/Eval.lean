@@ -132,6 +132,59 @@ theorem sem_sub_ii (x y : UInt32) :
       some (.Vint (LClight.Int.sub x y)) :=
   rfl
 
+theorem sem_add_ii (x y : UInt32) :
+    sem_binary_operation A .Oadd (.Vint x) tuint (.Vint y) tuint m = some (.Vint (x + y)) := by
+  rw [← LClight.Int.add_eq]; rfl
+
+theorem sem_sub_ii' (x y : UInt32) :
+    sem_binary_operation A .Osub (.Vint x) tuint (.Vint y) tuint m = some (.Vint (x - y)) := by
+  rw [← LClight.Int.sub_eq]; rfl
+
+theorem sem_or_ii (x y : UInt32) :
+    sem_binary_operation A .Oor (.Vint x) tuint (.Vint y) tuint m = some (.Vint (x ||| y)) := by
+  rw [← LClight.Int.or_eq]; rfl
+
+theorem sem_shl_ii (x k : UInt32) (hk : k.toNat < 32) :
+    sem_binary_operation A .Oshl (.Vint x) tuint (.Vint k) tuint m = some (.Vint (x <<< k)) := by
+  rw [← LClight.Int.shl_eq _ _ hk]
+  have : LClight.Int.ltu k LClight.Int.iwordsize = true := by
+    rw [LClight.Int.ltu_eq]
+    simp only [decide_eq_true_eq]
+    exact UInt32.lt_iff_toNat_lt.mpr hk
+  show (if LClight.Int.ltu k LClight.Int.iwordsize then some (val.Vint (LClight.Int.shl x k))
+    else (none : Option val)) = _
+  rw [this]; rfl
+
+theorem sem_shr_ii (x k : UInt32) (hk : k.toNat < 32) :
+    sem_binary_operation A .Oshr (.Vint x) tuint (.Vint k) tuint m = some (.Vint (x >>> k)) := by
+  rw [← LClight.Int.shru_eq _ _ hk]
+  have : LClight.Int.ltu k LClight.Int.iwordsize = true := by
+    rw [LClight.Int.ltu_eq]
+    simp only [decide_eq_true_eq]
+    exact UInt32.lt_iff_toNat_lt.mpr hk
+  show (if LClight.Int.ltu k LClight.Int.iwordsize then some (val.Vint (LClight.Int.shru x k))
+    else (none : Option val)) = _
+  rw [this]; rfl
+
+theorem sem_lt_ii (x y : UInt32) :
+    sem_binary_operation A .Olt (.Vint x) tuint (.Vint y) tuint m =
+      some (.Vint (if x < y then 1 else 0)) := by
+  show some (Val.of_bool (LClight.Int.ltu x y)) = _
+  rw [LClight.Int.ltu_eq, of_bool_decide]
+
+theorem sem_ge_ii (x y : UInt32) :
+    sem_binary_operation A .Oge (.Vint x) tuint (.Vint y) tuint m =
+      some (.Vint (if x ≥ y then 1 else 0)) := by
+  show some (Val.of_bool (!LClight.Int.ltu x y)) = _
+  rw [LClight.Int.ltu_eq, ← decide_not, of_bool_decide]
+  simp only [UInt32.not_lt, ge_iff_le]
+
+theorem sem_gt_ii (x y : UInt32) :
+    sem_binary_operation A .Ogt (.Vint x) tuint (.Vint y) tuint m =
+      some (.Vint (if y < x then 1 else 0)) := by
+  show some (Val.of_bool (LClight.Int.ltu y x)) = _
+  rw [LClight.Int.ltu_eq, of_bool_decide]
+
 /-! ## Casts and conditions -/
 
 theorem cast_int_uint (x : UInt32) : sem_cast (.Vint x) tint tuint m = some (.Vint x) := rfl
