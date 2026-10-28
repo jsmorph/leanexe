@@ -7,9 +7,9 @@ variable {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : Fin shape.record
   {paid : List Bool} {live : Nat → Bool} {env : Env Γ}
 
 theorem treeNode_eq (reuse : Option (Var Γ (.treeHeader shape r)))
-    (words : Fin (shape.words r) → Expr S Γ .word)
+    (words : (i : Fin (shape.words r)) → Expr S Γ (shape.wordTy r i))
     (children : Fin (shape.children r) → Expr S Γ (.tree shape))
-    (wordValues : Fin (shape.words r) → UInt64)
+    (wordValues : (i : Fin (shape.words r)) → (shape.elem r i).denote)
     (childValues : Fin (shape.children r) → Tree shape)
     (hw : ∀ i, (words i).denote funs env = wordValues i)
     (hc : ∀ i, (children i).denote funs env = childValues i) :
@@ -18,7 +18,7 @@ theorem treeNode_eq (reuse : Option (Var Γ (.treeHeader shape r)))
   exact congrArg₂ (Tree.node r) (funext hw) (funext hc)
 
 theorem treeNode_bound (reuse : Option (Var Γ (.treeHeader shape r)))
-    (words : Fin (shape.words r) → Expr S Γ .word)
+    (words : (i : Fin (shape.words r)) → Expr S Γ (shape.wordTy r i))
     (children : Fin (shape.children r) → Expr S Γ (.tree shape))
     (W : Fin (shape.words r) → Nat) (C K : Fin (shape.children r) → Nat) (P : Nat)
     (hw : ∀ i, (words i).allocs funs flags bounds modes paid
@@ -40,7 +40,7 @@ theorem treeNode_bound (reuse : Option (Var Γ (.treeHeader shape r)))
   cases reuse <;> exact congrArg (fun p => argsSum W + (argsSum C + argsSum K) + p) hp
 
 theorem treeNode_fits (reuse : Option (Var Γ (.treeHeader shape r)))
-    (words : Fin (shape.words r) → Expr S Γ .word)
+    (words : (i : Fin (shape.words r)) → Expr S Γ (shape.wordTy r i))
     (children : Fin (shape.children r) → Expr S Γ (.tree shape))
     (W : Fin (shape.words r) → Bool) (C : Fin (shape.children r) → Bool)
     (hw : ∀ i, (words i).fits funs fits env = W i)

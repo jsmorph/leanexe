@@ -1,4 +1,5 @@
 import Verified.Reflect.Command
+import Library.Trees.WordTree.Reflected
 
 /-! Sums whose constructors hold heap values: packed bytes, arrays, and recursive types.  Each
 sum's `Flat` instance places a constructor's fields in the tuple and fills the other components
@@ -8,48 +9,30 @@ releases the owned components that its branch does not use. -/
 
 namespace Verified.Examples.HeapSums
 
-open LeanExe.Pipeline
-
-/-- A tree of keys.  The reflector derives a recursive type's conversions and lemmas in the first
-module that compiles a program over it, so this example declares its own tree rather than share
-the library's with another example. -/
-inductive Keys where
-  | leaf
-  | node (left : Keys) (key : UInt64) (right : Keys)
-
-def Keys.encode : Keys → Node
-  | .leaf => .null
-  | .node l k r => .record [.child l.encode, .word k, .child r.encode]
-
-instance : Encode Keys := ⟨Keys.encode⟩
-
-/-- The tree with the root's key replaced by `k`. -/
-def Keys.setKey (k : UInt64) : Keys → Keys
-  | .leaf => .leaf
-  | .node l _ r => .node l k r
+open LeanExe.Pipeline Library.Trees.WordTree
 
 /-- A message: packed text, a scaled array of words, a weighted tree of keys, or nothing. -/
 inductive Item where
   | text (body : LeanExe.Bytes)
   | words (xs : Array UInt64) (scale : UInt64)
-  | keys (tree : Keys) (weight : Float)
+  | keys (tree : KeyTree) (weight : Float)
   | none
 
-instance : Flat Item (UInt64 × LeanExe.Bytes × Array UInt64 × UInt64 × Keys × Float) := ⟨fun
+instance : Flat Item (UInt64 × LeanExe.Bytes × Array UInt64 × UInt64 × KeyTree × Float) := ⟨fun
   | .text body => (0, body, #[], 0, .leaf, 0)
   | .words xs scale => (1, .empty, xs, scale, .leaf, 0)
   | .keys tree weight => (2, .empty, #[], 0, tree, weight)
   | .none => (3, .empty, #[], 0, .leaf, 0)⟩
 
 /-- The item that `k` selects, holding the argument of its constructor. -/
-def make (k : UInt64) (body : LeanExe.Bytes) (xs : Array UInt64) (tree : Keys) : Item :=
+def make (k : UInt64) (body : LeanExe.Bytes) (xs : Array UInt64) (tree : KeyTree) : Item :=
   if k = 0 then .text body
   else if k = 1 then .words xs k
   else if k = 2 then .keys tree 1.5
   else .none
 
 /-- The key at the root of a tree, or 0. -/
-def rootKey (t : Keys) : UInt64 :=
+def rootKey (t : KeyTree) : UInt64 :=
   match t with
   | .leaf => 0
   | .node _ k _ => k
@@ -75,14 +58,14 @@ def rescale (i : Item) : Item :=
   | other => other
 
 /-- The words of the item that `k` selects, which the match takes from an owned value. -/
-def extract (k : UInt64) (b : LeanExe.Bytes) (xs : Array UInt64) (tree : Keys) :
+def extract (k : UInt64) (b : LeanExe.Bytes) (xs : Array UInt64) (tree : KeyTree) :
     Array UInt64 :=
   match make k b xs tree with
   | .words ys _ => ys
   | _ => #[]
 
 /-- The size of the item that `k` selects, which is released after the read. -/
-def consume (k : UInt64) (b : LeanExe.Bytes) (xs : Array UInt64) (tree : Keys) : UInt64 :=
+def consume (k : UInt64) (b : LeanExe.Bytes) (xs : Array UInt64) (tree : KeyTree) : UInt64 :=
   measure (make k b xs tree)
 
 /-- The item with its size added to `n`. -/
@@ -143,7 +126,7 @@ def cellSize (c : Cell) : UInt64 :=
   | .chain xs => total xs
   | .count n => n
 
-verified_compile compiled := [rootKey, Keys.setKey, make, measure, textOf, rescale, extract,
+verified_compile compiled := [rootKey, KeyTree.setKey, make, measure, textOf, rescale, extract,
   consume, tally, grow, regrow, convert, cellOf, cellTotal, total, cellSize]
 
 #print axioms compiled.bytes

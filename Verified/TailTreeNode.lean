@@ -18,7 +18,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
     (nodes : (r : Fin shape.records) → TailBody S params result (shape.context r Γ))
     (r : Fin shape.records)
     (nodeSpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (nodes r))
-    (env : Env Γ) (words : Fin (shape.words r) → UInt64)
+    (env : Env Γ) (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
     (children : Fin (shape.children r) → Tree shape)
     (hValue : env.get x = .node r words children) :
     TailCodeSpecAt (pool := pool) m funs flags bounds fits host pv targetModes (.treeCase x empty nodes) env := by
@@ -52,12 +52,13 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
   obtain ⟨_, ws0, hold0, rep0⟩ := hVars.get x hx
   obtain ⟨p0, rfl, node0⟩ := rep0
   have hBorrow0 : NodeBorrowed heap store p0
-      (.record (shape.recordSlots r words (fun i => (children i).toNode))) := by
+      (.record (shape.recordSlots r (shape.slotWords r words) (fun i => (children i).toNode))) := by
     have hb := node0.borrow
     rw [hValue] at hb
     exact hb
   have hNonzero : p0 ≠ 0 := hBorrow0.1.nonzero
-  have hSlotted : shape.recordSlots r words (fun i => (children i).toNode) ≠ [] := by
+  have hSlotted :
+      shape.recordSlots r (shape.slotWords r words) (fun i => (children i).toNode) ≠ [] := by
     intro hEmpty
     have hl := congrArg List.length hEmpty
     rw [shape.recordSlots_length] at hl
@@ -133,7 +134,8 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
       !((nodes r).uses (i + shape.bindCount r) || decide (i = x.index))) ++
     x.code h slots (base + shape.bindCount r) (fun i => (nodes r).uses (i + shape.bindCount r)) ++
     [.localSet base] ++
-    treeLoadFields base (base + 1) (base + 1 + shape.words r) shape.fieldStart (shape.fields r) ++
+    treeLoadFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
+      shape.fieldStart (shape.fields r) ++
     (if (slots.getD x.index default).mode = .owned then
       LeanExe.Runtime.headerStore base 8 [.constI64 0] else []) ++
     releaseWhere (shape.context r Γ) (shape.slots r base (slots.getD x.index default).mode slots)
@@ -150,8 +152,8 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
     have hRun := (spec_var (S := S) (funs := funs) (flags := flags) (bounds := bounds)
       (fits := fits) (host := host) (pv := pv) hm x env slots paid L1).released (Q := Q')
       (rest := storeCode h base [.i64] ++
-        ((treeLoadFields base (base + 1) (base + 1 + shape.words r) shape.fieldStart
-          (shape.fields r) ++
+        ((treeLoadFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
+          shape.fieldStart (shape.fields r) ++
           (if rootMode = .owned then headerStore base 8 [.constI64 0] else [])) ++ nodeCode))
       hm hh hpv (hVars.mono (by dsimp only [scratch]; omega)) hAt hSafe hCap
       (by dsimp only [scratch]; omega) hRootRoom rfl hEntry
@@ -178,7 +180,8 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
           simpa [slotIndex] using hg
         have f2' : Frame base s1 { s2 with values := s.values } := f2.trans Frame.ofValues
         have hOpen := wp_openTree (m := m) (host := host) (Q := Q') (rest := nodeCode)
-          aRoot.step.at_ hRoot hPtr (by rw [f2.params, aRoot.frame.params]; omega)
+          (by rw [Locals.positions_values, f2.positions, hh1]) aRoot.step.at_ hRoot hPtr
+          (by rw [f2.params, aRoot.frame.params]; omega)
           (by rw [Locals.positions_values, f2.positions, hh1]; exact hFieldRoom)
           (fun s3 f3 hStack fields detached subset => by
             have openFrame : Frame base s1 s3 := f2'.trans (f3.mono (Nat.le_succ base))

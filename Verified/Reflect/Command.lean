@@ -483,7 +483,7 @@ def elabVerifiedCompile : CommandElab
   | `(verified_compile $target := [$sources,*]) => do
     let names ← sources.getElems.mapM fun s => liftCoreM <| realizeGlobalConstNoOverloadWithInfo s
     let base := (← getCurrNamespace) ++ target.getId
-    prepareRecursiveTypes names
+    requireRecursiveTypes "verified_compile" names
     let mut state : ProgramReflection := {}
     for name in names do
       state ← liftTermElabM (reflectProgramFunction base name state)

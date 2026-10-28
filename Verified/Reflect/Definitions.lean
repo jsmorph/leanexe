@@ -95,7 +95,7 @@ def pathExpr : Elem → List Bool → MetaM (Lean.Expr × Elem)
     return (mkApp4 (mkConst ``Path.snd) (elemExpr b) (elemExpr t) (elemExpr a) p, t)
   | _, _ :: _ => throwError "verified_compile: a projection of an element that is not a tuple"
 
-abbrev reflectedTreeShape (ctors : List (List Bool)) (valid : shapeValid ctors = true) :
+abbrev reflectedTreeShape (ctors : List (List TreeField)) (valid : shapeValid ctors = true) :
     TreeShape :=
   ⟨ctors, valid⟩
 
@@ -148,13 +148,6 @@ def Shape.fn (sh : Shape) (type : Lean.Expr) : MetaM Lean.Expr := do
     | none => withLocalDeclD `x type fun x => mkLambdaFVars #[x] x
   mkExpectedTypeHint f (← mkArrow type (mkApp (mkConst ``Ty.denote) (tyExpr sh.ty)))
 
-/-- The `Flat` instance of a type and its tuple type, if Lean finds one. -/
-def flatInstance? (type : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr)) := do
-  let β ← mkFreshTypeMVar
-  let some inst ← synthInstance? (mkApp2 (mkConst ``LeanExe.Pipeline.Flat) type β)
-    | return none
-  return some (← instantiateMVars β, inst)
-
 /-- The constructor and field names of a structure type other than `Prod`. -/
 def structOf? (type : Lean.Expr) : MetaM (Option (ConstructorVal × Array Name)) := do
   let type ← whnfR type
@@ -168,8 +161,8 @@ def structOf? (type : Lean.Expr) : MetaM (Option (ConstructorVal × Array Name))
 /-- The tuple tree of a structure's `Flat` instance: `Flat.flat` of the structure built from fresh
 variables, reduced down the tuple's pairs, has those variables at its leaves.  Each leaf is the
 index of a field, and a leaf is reached by steps `false` for a pair's first component and `true`
-for its second.  The reflector rejects an instance whose leaves are not distinct fields. -/
-partial def flatTree (type β inst : Lean.Expr) (ctor : ConstructorVal) :
+for its second.  The command `command` rejects an instance whose leaves are not distinct fields. -/
+partial def flatTree (command : String) (type β inst : Lean.Expr) (ctor : ConstructorVal) :
     MetaM (List (Nat × List Bool)) := do
   let type ← whnfR type
   let ctorApp := mkAppN (mkConst ctor.name type.getAppFn.constLevels!) type.getAppArgs
@@ -182,10 +175,10 @@ partial def flatTree (type β inst : Lean.Expr) (ctor : ConstructorVal) :
       if let (``Prod, #[a, b]) := ty.getAppFnArgs then
         if let (``Prod.mk, #[_, _, x, y]) := t'.getAppFnArgs then
           return (← descend x a (false :: steps)) ++ (← descend y b (true :: steps))
-      throwError "verified_compile: the `Flat` instance of {type} is not a tuple of its fields"
+      throwError "{command}: the `Flat` instance of {type} is not a tuple of its fields"
     let leaves ← descend t β []
     unless (leaves.map (·.1)).eraseDups.length == leaves.length do
-      throwError "verified_compile: the `Flat` instance of {type} repeats a field"
+      throwError "{command}: the `Flat` instance of {type} repeats a field"
     return leaves
 
 /-- The name of a sum: an inductive type without parameters or indices that is neither recursive,
@@ -238,7 +231,7 @@ partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
       let (``Prod, _) := (← whnfR β).getAppFnArgs
         | throwError "verified_compile: the `Flat` instance of {type} holds arrays and is not a \
             pair"
-      unless (← flatTree type β inst ctor).length == ctor.numFields do
+      unless (← flatTree "verified_compile" type β inst ctor).length == ctor.numFields do
         throwError "verified_compile: the `Flat` instance of {type} does not hold all its fields"
     let f ← withLocalDeclD `x type fun x => do
       mkLambdaFVars #[x] (sβ.apply (mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type β inst x))
@@ -259,7 +252,7 @@ with a `Flat` instance. -/
 def fieldPath? (type : Lean.Expr) (i : Nat) : MetaM (Option (List Bool)) := do
   let some (ctor, _) ← structOf? type | return none
   let some (β, inst) ← flatInstance? type | return none
-  let tree ← flatTree type β inst ctor
+  let tree ← flatTree "verified_compile" type β inst ctor
   return (tree.find? (·.1 == i)).map (·.2)
 
 /-- Field `i` and the structure value `p` of a structure projection `e`. -/
@@ -528,14 +521,76 @@ def ctxEnvExpr : List (Lean.Expr × Ty) → MetaM (Lean.Expr × Lean.Expr)
 def envExpr (vars : List (Lean.Expr × Ty)) : MetaM Lean.Expr :=
   return (← ctxEnvExpr vars).2
 
+/-- The word family of record constructor `r` with the values `values` of their elements: for a
+shape whose fields are words and children, the list of the words, and otherwise
+`TreeShape.wordsOf`, which states each word's element. -/
+def wordFamily (shapeValue : TreeShape) (r : Fin shapeValue.records)
+    (values : List (Elem × Lean.Expr)) : MetaM Lean.Expr := do
+  let shape := treeShapeExpr shapeValue
+  let record := recordExpr shapeValue r
+  if shapeValue.allWords then
+    return ← mkExpectedTypeHint (← finiteFn (mkConst ``UInt64) (values.map (·.2)))
+      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.words #[shape, record]))
+        (mkConst ``UInt64))
+  let sigma := mkApp2 (mkConst ``Sigma [.zero, .zero]) (mkConst ``Elem) (mkConst ``Elem.denote)
+  let entries := values.map fun (e, v) =>
+    mkApp4 (mkConst ``Sigma.mk [.zero, .zero]) (mkConst ``Elem) (mkConst ``Elem.denote)
+      (toExpr e) v
+  return mkApp3 (mkConst ``TreeShape.wordsOf) shape record (listExpr sigma entries)
+
+/-- The family of the word expressions `exprs` of a construction of record constructor `r`, of
+the elements of the fields, in the form of `wordFamily`. -/
+def exprFamily (c : Ctx) (shapeValue : TreeShape) (r : Fin shapeValue.records)
+    (exprs : List (Elem × Lean.Expr)) : MetaM Lean.Expr := do
+  let shape := treeShapeExpr shapeValue
+  let record := recordExpr shapeValue r
+  let sourceType (t : Ty) := mkApp3 (mkConst ``Expr) c.sigs c.ctx (tyExpr t)
+  if shapeValue.allWords then
+    -- The type that `Expr.treeNode` states, whose word types reduce to `Ty.word`.
+    let fin := mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.words #[shape, record])
+    let type ← withLocalDeclD `i fin fun i => do
+      mkForallFVars #[i] (mkApp3 (mkConst ``Expr) c.sigs c.ctx
+        (← mkAppM ``TreeShape.wordTy #[shape, record, i]))
+    return ← mkExpectedTypeHint (← finiteFn (sourceType .word) (exprs.map (·.2))) type
+  let family ← withLocalDeclD `e (mkConst ``Elem) fun e => do
+    mkLambdaFVars #[e] (mkApp3 (mkConst ``Expr) c.sigs c.ctx (mkApp (mkConst ``Ty.elem) e))
+  let sigma := mkApp2 (mkConst ``Sigma [.zero, .zero]) (mkConst ``Elem) family
+  let entries := exprs.map fun (e, x) =>
+    mkApp4 (mkConst ``Sigma.mk [.zero, .zero]) (mkConst ``Elem) family (toExpr e) x
+  return mkAppN (mkConst ``TreeShape.exprsOf) #[c.sigs, c.ctx, shape, record,
+    listExpr sigma entries]
+
+/-- The words of a field `x` of the kind `kind`, each with its element: the field itself for a
+word field, and the leaves of its flattening for a flat field. -/
+def nativeWords (x : Lean.Expr) : NativeField → MetaM (List (Elem × Lean.Expr))
+  | .child => pure []
+  | .leaf e => pure [(e, x)]
+  | .flat _ leaves => leaves.mapM fun (e, segments) => return (e, ← leafTerm x segments)
+
+/-- The component of the flattening of `x` along `steps`: a pair takes a step, and a value of a
+type with a `Flat` instance is its tuple, down to a word, a `Bool`, a float, or a pair.  At a leaf
+it is the leaf's term. -/
+partial def componentTerm (x : Lean.Expr) (steps : List Bool) : MetaM Lean.Expr := do
+  let type ← withReducible (whnf (← inferType x))
+  if (fieldElem? type).isSome then return x
+  if let (``Prod, #[_, _]) := type.getAppFnArgs then
+    let step :: rest := steps | return x
+    return ← componentTerm (← mkAppM (if step then ``Prod.snd else ``Prod.fst) #[x]) rest
+  if (← flatInstance? type).isNone then return x
+  componentTerm (← flatTerm x) steps
+
+/-- Runs `k` with the variables of a match's branch on record constructor `r`: the header, then
+each word, then each child.  The fields `natives` are the constructor's fields with their types.
+A flat field is one Lean variable, and the branch holds a variable for each leaf of its tuple,
+keyed in the context by the leaf's projection of the field. -/
 def withTreeCaseFields {α : Type} (c : Ctx) (shapeValue : TreeShape)
-    (r : Fin shapeValue.records) (types : List (Lean.Expr × Ty))
+    (r : Fin shapeValue.records) (natives : List (Lean.Expr × NativeField))
     (k : Ctx → Array Lean.Expr → MetaM α) : MetaM α := do
   let shape := treeShapeExpr shapeValue
   let record := recordExpr shapeValue r
   let ctx ← mkAppM ``TreeShape.context #[shape, record, c.ctx]
   let marker ← mkAppOptM ``TreeHeader.unit #[some shape, some record]
-  let decls := types.toArray.mapIdx fun i (type, _) => (Name.mkSimple s!"field{i}", type)
+  let decls := natives.toArray.mapIdx fun i (type, _) => (Name.mkSimple s!"field{i}", type)
   let rec bindFields (decls : List (Name × Lean.Expr)) (fields : Array Lean.Expr)
       (body : Array Lean.Expr → MetaM α) : MetaM α :=
     match decls with
@@ -543,32 +598,35 @@ def withTreeCaseFields {α : Type} (c : Ctx) (shapeValue : TreeShape)
     | (name, type) :: rest =>
       withLocalDeclD name type fun field => bindFields rest (fields.push field) body
   bindFields decls.toList #[] fun fields => do
-    let values := fields.toList.zip (types.map (·.2))
-    let words := values.filter fun (_, ty) => ty == .word
-    let children := values.filter fun (_, ty) => ty == .tree shapeValue
-    let wordFn ← mkExpectedTypeHint
-      (← finiteFn (mkConst ``UInt64) (words.map (·.1)))
-      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.words #[shape, record]))
-        (mkConst ``UInt64))
+    let values := fields.toList.zip (natives.map (·.2))
+    let words := (← values.mapM fun (x, kind) => do
+      return (← nativeWords x kind).map fun (e, w) => (w, e)).flatten
+    let children := values.filterMap fun (x, kind) =>
+      if kind matches .child then some x else none
+    let wordFn ← wordFamily shapeValue r (← words.mapM fun (w, e) => do
+      return (e, ← flatValue w))
     let childFn ← mkExpectedTypeHint
-      (← finiteFn (mkApp (mkConst ``Tree) shape) (← children.mapM fun (x, _) => flatValue x))
+      (← finiteFn (mkApp (mkConst ``Tree) shape) (← children.mapM flatValue))
       (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.children #[shape, record]))
         (mkApp (mkConst ``Tree) shape))
     let env ← mkAppM ``Env.treeFields #[shape, record, wordFn, childFn, c.env]
-    let inner := { c with ctx, env, vars :=
-      [(marker, .treeHeader shapeValue r)] ++ words ++ children ++ c.vars }
+    let vars := [(marker, .treeHeader shapeValue r)] ++
+      words.map (fun (w, e) => (w, Ty.elem e)) ++ children.map (·, Ty.tree shapeValue) ++ c.vars
+    let inner := { c with ctx, env, vars }
     k inner fields
 
 def withListCaseFields {α : Type} (c : Ctx) (xs : Lean.Expr)
     (k : Ctx → Lean.Expr → Lean.Expr → MetaM α) : MetaM α := do
   withTreeCaseFields c listShape listCell
-    [(mkConst ``UInt64, .word), (← inferType xs, .tree listShape)]
+    [(mkConst ``UInt64, .leaf .word), (← inferType xs, .child)]
     fun inner fields => k inner fields[0]! fields[1]!
 
 def withRecursiveCaseFields {α : Type} (c : Ctx) (layout : RecursiveLayout)
     (r : Fin layout.shape.records) (k : Ctx → Array Lean.Expr → MetaM α) : MetaM α :=
-  withTreeCaseFields c layout.shape r ((layout.shape.fields r).map fun child =>
-    if child then (mkConst layout.name, .tree layout.shape) else (mkConst ``UInt64, .word)) k
+  withTreeCaseFields c layout.shape r ((layout.recordCtor r).2.map fun
+    | .child => (mkConst layout.name, .child)
+    | .leaf e => (elemType e, .leaf e)
+    | .flat type leaves => (type, .flat type leaves)) k
 
 /-- `e` with each projection of a pair `(a, b)` or of a structure's constructor at its head
 replaced by the component, and each pair `(y.1, y.2)` of the components of `y` replaced by `y`,
@@ -609,7 +667,7 @@ partial def ctorTuple? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
   let args := e.getAppArgs
   unless args.size == ctor.numParams + ctor.numFields do return none
   let some (β, inst) ← flatInstance? type | return none
-  let tree ← flatTree type β inst ctor
+  let tree ← flatTree "verified_compile" type β inst ctor
   let fields := args.extract ctor.numParams args.size
   let rec build (pre : List Bool) (ty : Lean.Expr) : MetaM Lean.Expr := do
     if let some (i, _) := tree.find? (·.2 == pre.reverse) then return fields[i]!
@@ -618,6 +676,18 @@ partial def ctorTuple? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
       | throwError "verified_compile: the `Flat` instance of {type} is not a tuple of its fields"
     mkAppM ``Prod.mk #[← build (false :: pre) a, ← build (true :: pre) b]
   return some (← build [] β)
+
+/-- The leaf with segments `segments` of a value whose tuple is `tuple`, with the tuple of each
+structure's constructor in place of its `Flat.flat`, so that the reflector reads the constructor's
+fields. -/
+partial def tupleLeaf (tuple : Lean.Expr) : List (List Bool) → MetaM Lean.Expr
+  | [] => pure tuple
+  | [steps] => do projReduce (← stepsTerm tuple steps)
+  | steps :: rest => do
+    let t ← projReduce (← stepsTerm tuple steps)
+    tupleLeaf (← match ← ctorTuple? t with
+      | some u => pure u
+      | none => flatTerm t) rest
 
 /-- Whether a Lean term reflects to a place: a variable, a pair of places, or a structure's
 constructor whose tuple of fields is a place, as `reflectStruct?` reflects it. -/
@@ -640,15 +710,21 @@ def bindArgs (fn : Lean.Expr) : List Lean.Expr → List Bool → Array Lean.Expr
     else bindArgs fn as bs (newArgs.push a) fvars
   | a :: as, [], newArgs, fvars => bindArgs fn as [] (newArgs.push a) fvars
 
-/-- The source variable for the Lean variable `e` in scope, and its type. -/
-def varOf (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Ty) := do
-  let some i := c.vars.findIdx? (·.1 == e)
-    | throwError "verified_compile: {e} is not a variable in scope"
-  let some (_, t) := c.vars[i]? | throwError "verified_compile: variable index {i}"
+/-- The source variable whose key in the context is `key`, and its type.  The key of a variable
+is its Lean variable, or, for a leaf of a flat field of a matched record, the leaf's projection of
+the field. -/
+def keyVar? (c : Ctx) (key : Lean.Expr) : MetaM (Option (Lean.Expr × Ty)) := do
+  let some i := c.vars.findIdx? (·.1 == key) | return none
+  let some (_, t) := c.vars[i]? | return none
   let proof ← mkEqRefl (mkApp (mkConst ``Option.some [Level.zero]) (mkConst ``Ty) |>.app
     (tyExpr t))
-  return (← mkAppOptM ``Var.ofIndex #[some (tyExpr t), some c.ctx, some (toExpr i), some proof],
-    t)
+  return some (← mkAppOptM ``Var.ofIndex
+    #[some (tyExpr t), some c.ctx, some (toExpr i), some proof], t)
+
+/-- The source variable for the Lean variable `e` in scope, and its type. -/
+def varOf (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Ty) := do
+  let some v ← keyVar? c e | throwError "verified_compile: {e} is not a variable in scope"
+  return v
 
 /-- `Eq.trans p q` with the middle term of `p`.  The elaborator does not unify the two middle
 terms; the kernel checks that `q`'s left side is the same term, which the reflector arranges up to
@@ -745,7 +821,7 @@ def pairView (base : Name) (type : Lean.Expr) : MetaM PairView := do
     | throwError "verified_compile: the record {type} has no `Flat` instance"
   let (``Prod, #[α, β]) := (← whnfR τ).getAppFnArgs
     | throwError "verified_compile: the `Flat` instance of {type} is not a pair"
-  let tree ← flatTree type τ inst ctor
+  let tree ← flatTree "verified_compile" type τ inst ctor
   let rebuild (a b : Lean.Expr) : MetaM Lean.Expr := do
     let fields ← (List.range ctor.numFields).mapM fun i => do
       match tree.find? (·.1 == i) with
@@ -1409,9 +1485,10 @@ def branchBound (base : Name) (ty : Lean.Expr) (t : Ty) (r : Reflection) :
   boundOf
     (← congr2 lhs.appFn!.appFn! allocs b.term coerce K (some b.proof) (some hk))
 
-def assignFiniteEquation (app : LemmaApp) (valueName proofName : Name)
-    (type : Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
-  let family ← finiteFn type (values.map (·.term))
+/-- Assigns the family `valueName` of `app` to `family`, and its equation `proofName`, which
+states each entry, from the proofs of `values`. -/
+def assignFamilyEquation (app : LemmaApp) (valueName proofName : Name)
+    (family : Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
   app.assign valueName (← mkExpectedTypeHint family (← app.hypType valueName))
   let expected ← app.hypType proofName
   let .forallE name domain body _ := expected
@@ -1425,6 +1502,10 @@ def assignFiniteEquation (app : LemmaApp) (valueName proofName : Name)
     mkExpectedTypeHint value.proof (P.beta #[i])
   app.assign proofName (← mkExpectedTypeHint proof expected)
   return family
+
+def assignFiniteEquation (app : LemmaApp) (valueName proofName : Name)
+    (type : Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
+  assignFamilyEquation app valueName proofName (← finiteFn type (values.map (·.term))) values
 
 def finiteFieldBounds (app : LemmaApp) (name : Name) (fields : List Reflection) :
     MetaM (List Bound) :=
@@ -1594,6 +1675,25 @@ def varBound (c : Ctx) (x : Lean.Expr) (t : Ty) (u : Lean.Expr) : BoundBuilder :
     return ⟨C, ← (← LemmaApp.start ``var_copy_bound (args ++
       [(`hm, ← evalEq mode (modeConst true)), (`hl, ← evalEq isLive (boolConst true)),
         (`hc, hc)])).finish⟩
+
+/-- The component along `steps` of the `Flat` tuple of `base`, a flat field of a matched record
+whose leaves the context holds as variables keyed by their projections of the field: the leaf's
+variable, or the tuple of the variables of the leaves under the component. -/
+partial def keyedComponent? (c : Ctx) (base : Lean.Expr) (steps : List Bool) :
+    MetaM (Option Reflection) := do
+  if c.vars.any (·.1 == base) then return none
+  if (← flatInstance? (← inferType base)).isNone then return none
+  let key ← componentTerm base steps
+  if let some (x, t) ← keyVar? c key then
+    let src ← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr t), some x]
+    return some ⟨src, ← rflProof c src key, t, key, varBound c x t key, leafFits c src, none⟩
+  let (``Prod, #[_, _]) := (← whnfR (← inferType key)).getAppFnArgs | return none
+  let some ra ← keyedComponent? c base (steps ++ [false]) | return none
+  let some rb ← keyedComponent? c base (steps ++ [true]) | return none
+  let (.elem ea, .elem eb) := (ra.ty, rb.ty) | return none
+  return some ⟨← mkAppM ``Expr.mk #[ra.src, rb.src], ← mkAppM ``mk_eq #[ra.proof, rb.proof],
+    .elem (.prod ea eb), ← mkAppM ``Prod.mk #[ra.lean, rb.lean], binBound c ``mk_bound [] ra rb,
+    binFits c ``mk_fits [] ra rb, none⟩
 
 /-- The type `shape.hasNull = true`. -/
 def hasNullType (shape : TreeShape) : MetaM Lean.Expr :=
@@ -1835,6 +1935,7 @@ that a projection reads a component and a use of the whole is the pair of the co
 partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
   let e ← projReduce e
   if e.isFVar then
+    if let some r ← keyedComponent? c e [] then return r.as' e
     let (x, t) ← varOf c e
     let src ← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr t), some x]
     return ⟨src, ← rflProof c src (← flatValue e), t, e, varBound c x t e, leafFits c src, none⟩
@@ -3011,19 +3112,34 @@ where
       let src ← mkAppOptM ``Expr.treeNil #[some c.sigs, some c.ctx, some shape, some h]
       return some ⟨src, ← rflProof c src (← flatValue e), ty, e,
         leafBound c ``treeNil_bound [(`shape, shape), (`h, h)], leafFits c src, none⟩
-    let kinds := layout.shape.fields r
     let record := recordExpr layout.shape r
-    let fields ← e.getAppArgs.toList.mapM (reflect c)
-    unless fields.length == kinds.length do
+    let natives := (layout.recordCtor r).2
+    let args := e.getAppArgs.toList
+    unless args.length == natives.length do
       throwError "verified_compile: incomplete recursive constructor {e}"
-    let words := (fields.zip kinds).filterMap fun (field, child) =>
-      if child then none else some field
-    let children := (fields.zip kinds).filterMap fun (field, child) =>
-      if child then some field else none
+    -- The record reads each leaf of a flat field from the field's tuple: the `Flat` tuple of a
+    -- variable, or the tuple of a structure's constructor.  Any other field is bound first.
+    let tuples ← (args.zip natives).mapM fun (a, kind) => do
+      let .flat _ _ := kind | return some a
+      let a ← projReduce a
+      if a.isFVar then return some (← flatTerm a)
+      ctorTuple? a
+    if tuples.any (·.isNone) then
+      return some (← reflectAs (← bindArgs e.getAppFn args (tuples.map (·.isNone)) #[] #[]) e)
+    let mut typedWords : List (Elem × Reflection) := []
+    let mut children : List Reflection := []
+    for ((a, kind), tuple) in (args.zip natives).zip (tuples.filterMap id) do
+      match kind with
+      | .child => children := children ++ [← reflect c a]
+      | .leaf el => typedWords := typedWords ++ [(el, ← reflect c a)]
+      | .flat _ leaves =>
+        -- The first segment of a leaf of a field is empty, and the tuple is the field's flattening.
+        for (el, segments) in leaves do
+          typedWords := typedWords ++ [(el, ← reflect c (← tupleLeaf tuple segments.tail))]
+    let elems := typedWords.map (·.1)
+    let words := typedWords.map (·.2)
     let sourceType (t : Ty) := mkApp3 (mkConst ``Expr) c.sigs c.ctx (tyExpr t)
-    let wordFn ← mkExpectedTypeHint (← finiteFn (sourceType .word) (words.map (·.src)))
-      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.words #[shape, record]))
-        (sourceType .word))
+    let wordFn ← exprFamily c layout.shape r (elems.zip (words.map (·.src)))
     let childFn ← mkExpectedTypeHint (← finiteFn (sourceType ty) (children.map (·.src)))
       (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.children #[shape, record]))
         (sourceType ty))
@@ -3040,7 +3156,12 @@ where
       ([(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env)] ++ parts)
     let values (rs : List Reflection) : MetaM (List Bound) :=
       rs.mapM fun r => return ⟨← flatValue r.lean, ← userProof c r⟩
-    let _ ← assignFiniteEquation app `wordValues `hw (mkConst ``UInt64) (← values words)
+    let wordValues ← values words
+    if layout.shape.allWords then
+      let _ ← assignFiniteEquation app `wordValues `hw (mkConst ``UInt64) wordValues
+    else
+      let _ ← assignFamilyEquation app `wordValues `hw
+        (← wordFamily layout.shape r (elems.zip (wordValues.map (·.term)))) wordValues
     let _ ← assignFiniteEquation app `childValues `hc (mkApp (mkConst ``Tree) shape)
       (← values children)
     let proof ← app.finish
@@ -3578,6 +3699,7 @@ where
         down p path (mkProjection · fields[i]!)
     let (base, steps, chain) ← walk e []
     if base.isFVar then
+      if let some r ← keyedComponent? c base steps then return r.as' e
       let (x, t) ← varOf c base
       let .elem be := t | throwError "verified_compile: {base} is not a tuple"
       let (path, target) ← pathExpr be steps
@@ -4181,7 +4303,7 @@ def placeField? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
   let some (type, τ, inst, x) ← recordFlat? flat | return none
   unless ← isVarPlace x do return none
   let some (ctor, fields) ← structOf? type | return none
-  let tree ← flatTree type τ inst ctor
+  let tree ← flatTree "verified_compile" type τ inst ctor
   let some (i, _) := tree.find? (·.2 == path) | return none
   return some (← mkProjection x fields[i]!)
 
@@ -4240,7 +4362,7 @@ def fieldTerms (base : Name) (b : Bound) : MetaM Bound := do
     done := done.push flat
     let some (ctor, fields) ← structOf? type
       | throwError "verified_compile: the record {type} is not a structure"
-    let tree ← flatTree type τ inst ctor
+    let tree ← flatTree "verified_compile" type τ inst ctor
     for (i, path) in tree do
       let occ ← tuplePath flat path
       let abst ← withReducible (kabstract term occ)
@@ -4536,6 +4658,23 @@ definition. -/
 def rflEq (x y : Lean.Expr) : MetaM Lean.Expr := do
   mkExpectedTypeHint (← mkEqRefl y) (← mkEq x y)
 
+/-- A structure in a value of type `type`, through pairs and nested structures, whose `Flat`
+tuple leaves out one of its fields, with the name of that field. -/
+partial def flatOmission? (type : Lean.Expr) : MetaM (Option (Lean.Expr × Name)) := do
+  let type ← withReducible (whnf type)
+  if (fieldElem? type).isSome then return none
+  if let (``Prod, #[a, b]) := type.getAppFnArgs then
+    if let some found ← flatOmission? a then return some found
+    return ← flatOmission? b
+  let some (ctor, names) ← structOf? type | return none
+  let some (β, inst) ← flatInstance? type | return none
+  let tree ← flatTree "verified_compile" type β inst ctor
+  let fieldTypes ← forallTelescope ctor.type fun xs _ => xs.toList.mapM inferType
+  for (fieldType, j) in fieldTypes.zipIdx do
+    if (tree.find? (·.1 == j)).isNone then return some (type, names[j]!)
+    if let some found ← flatOmission? fieldType then return some found
+  return none
+
 /-- The inverse of the flattening of a Lean type, `none` for a type that flattening leaves as it
 is.  A pair maps its components, an array maps its elements, and a structure whose `Flat` instance
 is a tuple of all its fields builds the structure from the tuple's components.  The laws hold by
@@ -4555,6 +4694,17 @@ partial def inverseOf? (type : Lean.Expr) : MetaM (Option Inverse) := do
         (fun x => mkAppM ``Tree.toList_ofList #[x])
         (fun v => mkAppM ``Tree.ofList_toList #[v]))
   if let some layout ← recursiveLayout? type then
+    unless (← getEnv).contains (layout.decl `fromTree) do
+      for (_, fields) in layout.ctors do
+        for field in fields do
+          let .flat fieldType _ := field | continue
+          if let some (holder, name) ← flatOmission? fieldType then
+            throwError "verified_compile: the parameter type {type} of a recursive definition has \
+              a field that holds the structure {holder}, whose `Flat` tuple leaves out its \
+              field {name}"
+      throwError "verified_compile: the parameter type {type} of a recursive definition holds an \
+        enumeration or a sum, whose flattening has no inverse on the values that encode no \
+        constructor"
     return some (inverse (mkConst (layout.decl `fromTree))
       (fun x => pure (mkApp (mkConst (layout.decl `from_to)) x))
       (fun v => pure (mkApp (mkConst (layout.decl `to_from)) v)))
@@ -4609,7 +4759,7 @@ partial def inverseOf? (type : Lean.Expr) : MetaM (Option Inverse) := do
         constructor"
   let some (β, inst) ← flatInstance? type
     | throwError "verified_compile: the structure {type} has no `Flat` instance"
-  let tree ← flatTree type β inst ctor
+  let tree ← flatTree "verified_compile" type β inst ctor
   unless tree.length == ctor.numFields do
     throwError "verified_compile: the `Flat` instance of {type} does not hold all its fields"
   let iβ ← inverseOf? β

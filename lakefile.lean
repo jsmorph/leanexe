@@ -117,6 +117,9 @@ lean_exe «verified-cases-taggedtypes» where
 lean_exe «verified-cases-heapsums» where
   root := `Verified.Examples.HeapSumsCasesMain
 
+lean_exe «verified-cases-typedtrees» where
+  root := `Verified.Examples.TypedTreesCasesMain
+
 lean_exe «verified-cases-regex» where
   srcDir := "tests"
   root := `TestSupport.Regex.CasesMain

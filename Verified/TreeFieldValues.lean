@@ -1,5 +1,6 @@
 import Verified.TreeLayout
 import Verified.TreeFieldsCode
+import Verified.TreeFieldsStore
 import LeanExe.Pipeline.RecordSlots
 
 namespace Verified
@@ -35,23 +36,32 @@ theorem treeFieldValues_owned {heap : Heap} {store : Store Unit} (fields : List 
     · exact .cons rfl (ih _ _ _ fun i => hChildren ⟨i.val, by simp⟩)
     · exact .cons (hChildren ⟨0, by simp⟩) (ih _ _ _ fun i => hChildren ⟨i.val + 1, by simp⟩)
 
-theorem treeFieldLocs_values {s : Locals} (fields : List Bool) :
-    ∀ wordBase childBase words pointers,
-      (∀ i, s.get (wordBase + i.val) = some (.i64 (words i))) →
+/-- The words at positions from `wordBase` on, of the types `tys`, and the pointers at the
+positions from `childBase` on are the sources of a record's slots in the order of `fields`. -/
+theorem treeFieldLocs_values {s : Locals} {h : Nat} (fields : List Bool) :
+    ∀ (tys : List ValueType) wordBase childBase words pointers,
+      (∀ i, s.get (slotIndex h (wordBase + i.val) (tys.getD i.val .i64)) =
+          some (typedValue (tys.getD i.val .i64) (words i)) ∧
+        Value.word (typedValue (tys.getD i.val .i64) (words i)) = words i) →
       (∀ i, s.get (childBase + i.val) = some (.i64 (pointers i))) →
-      List.Forall₂ (fun src word => s.get src = some (.i64 word))
-        (treeFieldLocs fields wordBase childBase) (treeFieldValues fields words pointers) := by
+      SourcesHold s h (treeFieldLocs fields wordBase childBase) (treeFieldTypes fields tys)
+        (treeFieldValues fields words pointers) := by
   induction fields with
-  | nil => intros; exact .nil
+  | nil => intros; trivial
   | cons bit rest ih =>
-    intro wordBase childBase words pointers hWords hPointers
-    cases bit <;> simp only [treeFieldLocs, treeFieldValues]
-    · exact .cons (by simpa using hWords ⟨0, by simp⟩)
-        (ih _ _ _ _ (fun i => by
-          simpa only [Nat.add_assoc, Nat.add_comm 1 i.val] using hWords ⟨i.val + 1, by simp⟩)
-          (fun i => hPointers ⟨i.val, by simp⟩))
-    · exact .cons (by simpa using hPointers ⟨0, by simp⟩)
-        (ih _ _ _ _ (fun i => hWords ⟨i.val, by simp⟩) (fun i => by
-          simpa only [Nat.add_assoc, Nat.add_comm 1 i.val] using hPointers ⟨i.val + 1, by simp⟩))
+    intro tys wordBase childBase words pointers hWords hPointers
+    cases bit <;> simp only [treeFieldLocs, treeFieldValues, treeFieldTypes, SourcesHold]
+    · have h0 := hWords ⟨0, by simp⟩
+      have hHead : tys.getD 0 .i64 = tys.headD .i64 := by cases tys <;> rfl
+      simp only [Nat.add_zero, hHead] at h0
+      exact ⟨h0.1, h0.2, ih _ _ _ _ _ (fun i => by
+          have hi := hWords ⟨i.val + 1, by simp⟩
+          have hTail : tys.getD (i.val + 1) .i64 = tys.tail.getD i.val .i64 := by
+            cases tys <;> simp
+          simpa only [Nat.add_assoc, Nat.add_comm 1 i.val, hTail] using hi)
+          (fun i => hPointers ⟨i.val, by simp⟩)⟩
+    · exact ⟨by simpa [slotIndex, typedValue] using hPointers ⟨0, by simp⟩, rfl,
+        ih _ _ _ _ _ (fun i => hWords ⟨i.val, by simp⟩) (fun i => by
+          simpa only [Nat.add_assoc, Nat.add_comm 1 i.val] using hPointers ⟨i.val + 1, by simp⟩)⟩
 
 end Verified

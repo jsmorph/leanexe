@@ -1,5 +1,6 @@
 import LeanExe.Pipeline.Slotted
 import Verified.AllocCost
+import Verified.Elem
 
 universe u
 
@@ -7,34 +8,62 @@ namespace Verified
 
 open LeanExe.Pipeline
 
+/-- The kind of a field of a recursive type: a word slot that holds an element of one word, a
+`UInt64`, a `Bool`, or a float of either width, or a child of the type. -/
+inductive TreeField where
+  | word (e : Elem)
+  | child
+  deriving DecidableEq, Repr
+
+/-- Whether a field is a child. -/
+def TreeField.isChild : TreeField → Bool
+  | .word _ => false
+  | .child => true
+
+/-- The element of a word field. -/
+def TreeField.elem? : TreeField → Option Elem
+  | .word e => some e
+  | .child => none
+
+/-- Whether a field is a `UInt64` word or a child, the kinds that every field had before fields
+of other elements. -/
+def TreeField.plain : TreeField → Bool
+  | .word .word | .child => true
+  | _ => false
+
+/-- Whether a field fits in one slot: a child, or an element of one word. -/
+def TreeField.fits : TreeField → Bool
+  | .word e => e.width == 1
+  | .child => true
+
 /-- The index of the null constructor among `ctors`: the first constructor without fields. -/
-def nullIndex (ctors : List (List Bool)) : Option Nat := ctors.findIdx? (·.isEmpty)
+def nullIndex (ctors : List (List TreeField)) : Option Nat := ctors.findIdx? (·.isEmpty)
 
 /-- The indices of the record constructors among `ctors`: every constructor but the null one, in
 declaration order. -/
-def recordIndices (ctors : List (List Bool)) : List Nat :=
+def recordIndices (ctors : List (List TreeField)) : List Nat :=
   (List.range ctors.length).filter fun i => some i != nullIndex ctors
 
 /-- The number of slots of the record of constructor `i` among `ctors`: a tag word when more than
 one constructor is a record, then one slot for each field. -/
-def recordWidth (ctors : List (List Bool)) (i : Nat) : Nat :=
+def recordWidth (ctors : List (List TreeField)) (i : Nat) : Nat :=
   (if 1 < (recordIndices ctors).length then 1 else 0) + (ctors.getD i []).length
 
 /-- The conditions on the constructors of a recursive type: some constructor has a child field;
 the type has a null constructor or a record constructor without children, so that it has a
-value; every record has between 1 and 64 slots, the width of the child mask; and every
-constructor index fits in the tag word. -/
-def shapeValid (ctors : List (List Bool)) : Bool :=
-  ctors.any (·.contains true) &&
+value; every record has between 1 and 64 slots, the width of the child mask; every constructor
+index fits in the tag word; and every word field holds an element of one word. -/
+def shapeValid (ctors : List (List TreeField)) : Bool :=
+  ctors.any (·.any TreeField.isChild) &&
     ((nullIndex ctors).isSome ||
-      (recordIndices ctors).any fun i => !(ctors.getD i []).contains true) &&
+      (recordIndices ctors).any fun i => !(ctors.getD i []).any TreeField.isChild) &&
     ((recordIndices ctors).all fun i => 1 ≤ recordWidth ctors i && recordWidth ctors i ≤ 64) &&
-    ctors.length < UInt64.size
+    ctors.length < UInt64.size &&
+    ctors.all (·.all TreeField.fits)
 
-/-- The constructors of a recursive type in declaration order, each the kinds of its fields:
-`false` for a `UInt64` word and `true` for a child of the type. -/
+/-- The constructors of a recursive type in declaration order, each the kinds of its fields. -/
 structure TreeShape where
-  ctors : List (List Bool)
+  ctors : List (List TreeField)
   valid : shapeValid ctors = true
   deriving DecidableEq, Repr
 
@@ -52,14 +81,32 @@ def TreeShape.ctorIndex (shape : TreeShape) (r : Fin shape.records) : Nat :=
   (recordIndices shape.ctors)[r.val]'r.isLt
 
 /-- The field kinds of record constructor `r`. -/
-def TreeShape.fields (shape : TreeShape) (r : Fin shape.records) : List Bool :=
+def TreeShape.kinds (shape : TreeShape) (r : Fin shape.records) : List TreeField :=
   shape.ctors.getD (shape.ctorIndex r) []
+
+/-- The slot kinds of record constructor `r`'s fields: `false` for a word and `true` for a
+child. -/
+def TreeShape.fields (shape : TreeShape) (r : Fin shape.records) : List Bool :=
+  (shape.kinds r).map TreeField.isChild
 
 def TreeShape.words (shape : TreeShape) (r : Fin shape.records) : Nat :=
   (shape.fields r).count false
 
 def TreeShape.children (shape : TreeShape) (r : Fin shape.records) : Nat :=
   (shape.fields r).count true
+
+/-- Whether every field of the type is a `UInt64` word or a child. -/
+def TreeShape.allWords (shape : TreeShape) : Bool := shape.ctors.all (·.all TreeField.plain)
+
+/-- The elements of record constructor `r`'s word fields, in order. -/
+def TreeShape.elems (shape : TreeShape) (r : Fin shape.records) : List Elem :=
+  (shape.kinds r).filterMap TreeField.elem?
+
+/-- The element of word field `i` of record constructor `r`.  A type whose fields are all words
+or children gives `Elem.word` without reading `r` or `i`, so that its word fields have the type
+`UInt64` by reduction. -/
+def TreeShape.elem (shape : TreeShape) (r : Fin shape.records) (i : Fin (shape.words r)) : Elem :=
+  cond shape.allWords .word ((shape.elems r).getD i.val .word)
 
 /-- The tag slot of record constructor `r`: its constructor index when the type is tagged. -/
 def TreeShape.tagSlots (shape : TreeShape) (r : Fin shape.records) : List Slot :=
@@ -83,7 +130,7 @@ words and children.  Every value corresponds to one value of the native type, si
 of `h` are equal. -/
 inductive Tree (shape : TreeShape) where
   | nil (h : shape.hasNull = true)
-  | node (r : Fin shape.records) (words : Fin (shape.words r) → UInt64)
+  | node (r : Fin shape.records) (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
       (children : Fin (shape.children r) → Tree shape)
 
 inductive TreeHeader (shape : TreeShape) (r : Fin shape.records) where
@@ -158,8 +205,8 @@ theorem TreeShape.recordSlots_length (shape : TreeShape) (r : Fin shape.records)
 
 theorem TreeShape.width_eq (shape : TreeShape) (r : Fin shape.records) :
     shape.width r = recordWidth shape.ctors (shape.ctorIndex r) := by
-  unfold TreeShape.width TreeShape.tagSlots TreeShape.tagged TreeShape.fields recordWidth
-    TreeShape.records
+  unfold TreeShape.width TreeShape.tagSlots TreeShape.tagged TreeShape.fields TreeShape.kinds
+    recordWidth TreeShape.records
   split <;> simp_all
 
 theorem TreeShape.width_bounds (shape : TreeShape) (r : Fin shape.records) :
@@ -167,7 +214,7 @@ theorem TreeShape.width_bounds (shape : TreeShape) (r : Fin shape.records) :
   have hv := shape.valid
   simp only [shapeValid, Bool.and_eq_true, List.all_eq_true, decide_eq_true_eq] at hv
   rw [shape.width_eq]
-  exact hv.1.2 _ (List.getElem_mem _)
+  exact hv.1.1.2 _ (List.getElem_mem _)
 
 theorem TreeShape.width_pos (shape : TreeShape) (r : Fin shape.records) : 0 < shape.width r :=
   (shape.width_bounds r).1
@@ -181,7 +228,42 @@ theorem TreeShape.ctorIndex_lt (shape : TreeShape) (r : Fin shape.records) :
   simp only [shapeValid, Bool.and_eq_true, decide_eq_true_eq] at hv
   have hMem := List.getElem_mem (l := recordIndices shape.ctors) r.isLt
   simp only [recordIndices, List.mem_filter, List.mem_range] at hMem
-  exact Nat.lt_trans hMem.1 hv.2
+  exact Nat.lt_trans hMem.1 hv.1.2
+
+theorem TreeShape.ctorIndex_lt_length (shape : TreeShape) (r : Fin shape.records) :
+    shape.ctorIndex r < shape.ctors.length := by
+  have hMem := List.getElem_mem (l := recordIndices shape.ctors) r.isLt
+  simp only [recordIndices, List.mem_filter, List.mem_range] at hMem
+  exact hMem.1
+
+theorem TreeShape.kinds_mem (shape : TreeShape) (r : Fin shape.records) :
+    shape.kinds r ∈ shape.ctors := by
+  unfold TreeShape.kinds
+  rw [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (shape.ctorIndex_lt_length r)]
+  exact List.getElem_mem _
+
+/-- Every word field holds an element of one word. -/
+theorem TreeShape.elem_width (shape : TreeShape) (r : Fin shape.records)
+    (i : Fin (shape.words r)) : (shape.elem r i).width = 1 := by
+  unfold TreeShape.elem
+  cases shape.allWords
+  · simp only [cond_false, List.getD_eq_getElem?_getD]
+    cases hGet : (shape.elems r)[i.val]? with
+    | none => rfl
+    | some e =>
+      have hMem : e ∈ shape.elems r := List.mem_of_getElem? hGet
+      simp only [TreeShape.elems, List.mem_filterMap] at hMem
+      obtain ⟨f, hf, hfe⟩ := hMem
+      have hv := shape.valid
+      simp only [shapeValid, Bool.and_eq_true, List.all_eq_true] at hv
+      have hFits := hv.2 _ (shape.kinds_mem r) f hf
+      cases f with
+      | word e' =>
+        simp only [TreeField.elem?, Option.some.injEq] at hfe
+        subst hfe
+        simpa [TreeField.fits] using hFits
+      | child => simp [TreeField.elem?] at hfe
+  · rfl
 
 theorem TreeShape.ctorIndex_injective (shape : TreeShape) {r r' : Fin shape.records}
     (h : UInt64.ofNat (shape.ctorIndex r) = UInt64.ofNat (shape.ctorIndex r')) : r = r' := by
@@ -266,9 +348,24 @@ def Tree.copyCost {shape : TreeShape} : Tree shape → Nat
   | .node r _ children =>
     allocCost (8 * shape.width r) + (List.ofFn fun i => (children i).copyCost).sum
 
+/-- The slot words of record constructor `r`'s word fields: each element's word. -/
+def TreeShape.slotWords (shape : TreeShape) (r : Fin shape.records)
+    (words : (i : Fin (shape.words r)) → (shape.elem r i).denote) : Fin (shape.words r) → UInt64 :=
+  fun i => (shape.elem r i).slotWord (words i)
+
+/-- The word family of record constructor `r` whose word `i` is value `i` of `values` when that
+value's element is word `i`'s, and the default otherwise.  The reflector writes the words of a
+record whose fields hold other elements than `UInt64` in this form. -/
+def TreeShape.wordsOf (shape : TreeShape) (r : Fin shape.records)
+    (values : List (Σ e : Elem, e.denote)) (i : Fin (shape.words r)) : (shape.elem r i).denote :=
+  match values[i.val]? with
+  | some ⟨e, v⟩ => if h : e = shape.elem r i then h ▸ v else @default _ (Elem.instInhabited _)
+  | none => @default _ (Elem.instInhabited _)
+
 def Tree.toNode {shape : TreeShape} : Tree shape → Node
   | .nil _ => .null
-  | .node r words children => .record (shape.recordSlots r words (fun i => (children i).toNode))
+  | .node r words children =>
+    .record (shape.recordSlots r (shape.slotWords r words) (fun i => (children i).toNode))
 
 theorem Tree.toNode_slotted {shape : TreeShape} (tree : Tree shape) : tree.toNode.Slotted := by
   induction tree with
@@ -296,14 +393,15 @@ theorem TreeShape.leaf?_isSome (shape : TreeShape) (h : ¬shape.hasNull = true) 
     shape.leaf? ≠ none := by
   have hv := shape.valid
   simp only [shapeValid, Bool.and_eq_true, Bool.or_eq_true, List.any_eq_true] at hv
-  obtain ⟨⟨⟨-, hn | ⟨i, hi, hc⟩⟩, -⟩, -⟩ := hv
+  obtain ⟨⟨⟨⟨-, hn | ⟨i, hi, hc⟩⟩, -⟩, -⟩, -⟩ := hv
   · exact absurd hn h
   · obtain ⟨k, hk, rfl⟩ := List.mem_iff_getElem.mp hi
     intro hnone
     have hk' : k < shape.records := hk
     apply List.find?_eq_none.mp hnone ⟨k, hk'⟩ (List.mem_finRange _)
     rw [beq_iff_eq]
-    show List.count true (shape.ctors.getD ((recordIndices shape.ctors)[k]'hk) []) = 0
+    show List.count true ((shape.ctors.getD ((recordIndices shape.ctors)[k]'hk) []).map
+      TreeField.isChild) = 0
     rw [List.count_eq_zero]
     simpa using hc
 
@@ -317,12 +415,13 @@ def Tree.default (shape : TreeShape) : Tree shape :=
       have hr : shape.children r = 0 := by
         have := List.find?_some hl
         simpa using this
-      .node r (fun _ => 0) (fun i => absurd i.isLt (by omega))
+      .node r (fun i => @Inhabited.default _ (Elem.instInhabited (shape.elem r i)))
+        (fun i => absurd i.isLt (by omega))
     | none => absurd hl (shape.leaf?_isSome h)
 
 instance {shape : TreeShape} : Inhabited (Tree shape) := ⟨Tree.default shape⟩
 
-def listShape : TreeShape := ⟨[[], [false, true]], by decide⟩
+def listShape : TreeShape := ⟨[[], [.word .word, .child]], by decide⟩
 
 instance : Inhabited TreeShape := ⟨listShape⟩
 

@@ -165,6 +165,8 @@ elif [ "$case_module" = "taggedtypes" ]; then
   cases_exe=verified-cases-taggedtypes
 elif [ "$case_module" = "heapsums" ]; then
   cases_exe=verified-cases-heapsums
+elif [ "$case_module" = "typedtrees" ]; then
+  cases_exe=verified-cases-typedtrees
 elif [ "$case_module" = "regex" ]; then
   cases_exe=verified-cases-regex
 elif [ "$case_module" = "sha3" ]; then
@@ -180,6 +182,9 @@ elif [ "$case_module" = "slew" ]; then
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "heapsums" ]; then
   tools/leanrun --timeout 10m lake env lean tests/verified/HeapSumsAxioms.lean
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "typedtrees" ]; then
+  tools/leanrun --timeout 10m lake env lean tests/verified/TypedTreesAxioms.lean
 fi
 tools/leanrun --timeout 12h lake --log-level error build "$cases_exe"
 cases=$(mktemp)

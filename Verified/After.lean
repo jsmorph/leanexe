@@ -1,4 +1,5 @@
 import Verified.Heap
+import Verified.WordCode
 import LeanExe.Pipeline.FlatRecords
 import LeanExe.ProofKit.F64Bits
 import LeanExe.ProofKit.F64Convert
@@ -785,20 +786,6 @@ theorem After.storeWord {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L 
     Frame.setValues hLow1 hLoc hHigh1
   exact hNext ⟨e.step, e.frame.trans f, e.holds.agree f⟩
     (Locals.get_setLocal_same hLow1 (Locals.lt_total hHigh1))
-
-theorem wp_ofWordCode {st : Store Unit} {env' : HostEnv Unit} {s : Locals} {vs : List Value}
-    {rest : Program} {Q : Assertion Unit} (ty : ValueType) (w : UInt64) :
-    wp m (ofWordCode ty ++ rest) Q st { s with values := .i64 w :: vs } env' ↔
-      wp m rest Q st { s with values := typedValue ty w :: vs } env' := by
-  cases ty <;> simp [ofWordCode, typedValue, wrap_toUInt32_num]
-
-theorem wp_toWordCode {st : Store Unit} {env' : HostEnv Unit} {s : Locals} {vs : List Value}
-    {rest : Program} {Q : Assertion Unit} (ty : ValueType) (w : UInt64) :
-    wp m (toWordCode ty ++ rest) Q st { s with values := typedValue ty w :: vs } env' ↔
-      wp m rest Q st { s with values := .i64 (Value.word (typedValue ty w)) :: vs } env' := by
-  cases ty <;> simp [toWordCode, typedValue, Value.word]
-  rw [UInt64.ofNat_mod w.toNat_lt (by decide), UInt64.ofNat_toNat]
-  rfl
 
 theorem wordCount_toNat (k : Nat) : (wordCount k).toNat = min k 536870912 :=
   UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)

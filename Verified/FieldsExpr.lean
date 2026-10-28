@@ -20,7 +20,7 @@ theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
     {h base fieldBase scratch : Nat} {d : Bool} :
     (ps : List Ty) → (args : (i : Fin ps.length) → Expr S Γ (ps.get i)) →
     (L : Nat → Nat → Bool) →
-    (∀ i, (ps.get i).width = 1) → (∀ i, (ps.get i).types = [.i64]) →
+    (∀ i, (ps.get i).width = 1) →
     (∀ i k, (L (i.val + 1) k || (args i).uses k) = L i.val k) →
     (∀ i, CodeSpec (pool := pool) m funs flags bounds fits host pv (args i) env slots paid (L (i.val + 1))) →
     (∀ i, (args i).placeArgs = true) →
@@ -38,7 +38,7 @@ theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
     (∀ heap' store' s' ws,
       FieldsAfter env slots (L 0) (L ps.length) base heap store s
         (Env.ofFn fun i => (args i).denote funs env) heap' store' s' ws →
-      Frame fieldBase s s' → LocalsHold s' fieldBase (List.replicate ps.length .i64) ws →
+      Frame fieldBase s s' → LocalsHold s' fieldBase (ps.flatMap Ty.types) ws →
       (d = false → heap'.top.toNat ≤ heap.top.toNat +
         dyingPot store s env slots paid (L 0) (L ps.length) +
         argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args env)) →
@@ -46,15 +46,15 @@ theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
     wp m (argsCode (fun i => (args i).code (pool := pool) h slots scratch (L (i.val + 1)) ++
       coerceCode h (ps.get i) ((args i).mode (slots.map Slot.mode)) .owned scratch ++
       storeCode h (fieldBase + i.val) (ps.get i).types) ++ rest) Q store s host
-  | [], _, L, _, _, _, _, _, _, _, _, _, heap, store, s, _, _, _, hVars, hAt, _, _, rest, Q, _,
+  | [], _, L, _, _, _, _, _, _, _, _, heap, store, s, _, _, _, hVars, hAt, _, _, rest, Q, _,
       hNext => by
     simpa only [argsCode, List.nil_append, Env.ofFn] using
       hNext heap store s [] (FieldsAfter.nil hAt hVars) (Frame.refl fieldBase s)
         (fun k hk => nomatch hk) (fun _ => by simp [argsSum])
-  | p :: ps, args, L, hWidth, hTypes, hLink, hSpec, hPlace, hd, hBaseField, hScratch,
+  | p :: ps, args, L, hWidth, hLink, hSpec, hPlace, hd, hBaseField, hScratch,
       hRoom, heap, store, s, hh, hpv, hBase, hVars, hAt, hSafe, hCap, rest, Q, hTrap, hNext => by
     let first : Fin (p :: ps).length := ⟨0, by simp⟩
-    have hTypes0 : p.types = [.i64] := hTypes first
+    have hTyLen : p.types.length = 1 := (Ty.types_length p).trans (hWidth first)
     simp only [List.length_cons] at hScratch
     have hIn : (fun k => L 1 k || (args first).uses k) = L 0 := funext (hLink first)
     have h01 : ∀ k, L 1 k = true → L 0 k = true := by
@@ -98,9 +98,9 @@ theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
     rw [hIn] at a1 hTop1
     have hLen : ws1.length = 1 := a1.rep.length.trans (hWidth first)
     refine wp_storeCode ws1 h fieldBase p.types s1 s.values
-      (by rw [hTypes0]; exact hLen) (a1.frame.positions.trans hh)
+      (hLen.trans hTyLen.symm) (a1.frame.positions.trans hh)
       (by rw [a1.frame.params]; omega)
-      (by rw [hTypes0, a1.frame.positions, hh]; simp; have := hRoom first; omega)
+      (by rw [hTyLen, a1.frame.positions, hh]; have := hRoom first; omega)
       fun sStored hStore holdFirst _ => ?_
     let sNext : Locals := { sStored with values := s.values }
     have hFrame1 : Frame fieldBase s sNext :=
@@ -112,7 +112,7 @@ theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
         dyingPot store s env slots paid (L 1) (L (ps.length + 1)) :=
       dyingPot_after hVars aStored h01 _ _ (fun _ hi => hi)
     have hTail := fields_spec hm ps (fun i => args i.succ) (fun n => L (n + 1))
-      (fun i => hWidth i.succ) (fun i => hTypes i.succ) (fun i => hLink i.succ)
+      (fun i => hWidth i.succ) (fun i => hLink i.succ)
       (fun i => hSpec i.succ) (fun i => hPlace i.succ) (fun i => hd i.succ)
       (fieldBase := fieldBase + 1) (by omega) (by omega) (fun i => hRoom i.succ)
       heap1 store1 sNext (hFrame1.positions.trans hh) (hFrame1.params.trans hpv)
@@ -130,16 +130,19 @@ theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
         have aBoth := FieldsAfter.prepend hVars aStored a2 h01 hTailLive
         refine hNext heap2 store2 s2 (ws1 ++ ws2) aBoth
           (hFrame1.trans (hFrame2.mono (by omega))) ?_ ?_
-        · rw [List.length_cons, List.replicate_succ]
-          apply (LocalsHold.append (tys1 := [.i64])
-            (tys2 := List.replicate ps.length .i64) (first := ws1) (second := ws2) hLen).mpr
+        · rw [List.flatMap_cons]
+          apply (LocalsHold.append (tys1 := p.types)
+            (tys2 := ps.flatMap Ty.types) (first := ws1) (second := ws2)
+            (hLen.trans hTyLen.symm)).mpr
           refine ⟨?_, ?_⟩
-          · rw [hTypes0] at holdFirst
-            intro k hk
+          · intro k hk
             have hk0 : k = 0 := by omega
             subst hk0
-            simpa only [slotIndex, Nat.add_zero, List.getD_cons_zero] using
-              (hFrame2.below fieldBase (by omega)).1.trans (holdFirst 0 (by omega))
+            have hStored := holdFirst 0 (by omega)
+            have hSlot := Frame.slot hFrame2 (p := fieldBase) (by omega) (p.types.getD 0 .i64)
+            simp only [Nat.add_zero] at hStored ⊢
+            rw [hFrame2.positions, hSlot]
+            exact hStored
           · simpa only [hLen] using holdRest
         · intro hdv
           have h1 := hTop1 (hf hdv)

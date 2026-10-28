@@ -27,10 +27,10 @@ The verified compiler shares the runtime, `Implements`, the encoding, and the tr
 
 | Component | Design |
 |---|---|
-| Source language | `Expr S Γ t`, typed by the callees' signatures `S` and the context `Γ`, with a meaning `denote` in Lean.  Values include words, `Bool`s, binary32 and binary64 floats, scalar tuples and sums, flat arrays, packed byte buffers, records with array fields, sums whose fields hold packed bytes, arrays, and recursive values, `List UInt64`, and fixed-layout recursive types.  `LeanExe.loop` and `LeanExe.repeatWhile` use one loop construct with a condition. |
+| Source language | `Expr S Γ t`, typed by the callees' signatures `S` and the context `Γ`, with a meaning `denote` in Lean.  Values include words, `Bool`s, binary32 and binary64 floats, scalar tuples and sums, flat arrays, packed byte buffers, records with array fields, sums whose fields hold packed bytes, arrays, and recursive values, `List UInt64`, and fixed-layout recursive types whose records hold words, `Bool`s, floats, and flattened structures, enumerations, and sums.  `LeanExe.loop` and `LeanExe.repeatWhile` use one loop construct with a condition. |
 | Compiler | `compileWith`, a Lean function from a program, tables, wrappers, and a byte-literal pool to a module using the shared runtime. |
 | Theorem | `Prog.correctStaticWith`, under heap, table, ownership, and literal-coverage premises.  Its proof combines one lemma per construct through the facts of `After`.  `Prog.correctWith` specializes to programs without nonempty byte literals, and `Prog.correct` also omits tables and wrappers. |
-| Reflector | `verified_compile`, meta code that writes Lean definitions as source functions and proves each equation from one lemma per Lean form.  The kernel checks every equation, so the reflector is not trusted. |
+| Reflector | `verified_compile`, meta code that writes Lean definitions as source functions and proves each equation from one lemma per Lean form, and `verified_recursive_type`, which derives a recursive type's conversions, encoding theorem, and match lemmas once beside the type.  The kernel checks every equation, so the reflector is not trusted. |
 | Modes | `Expr.paramChoice` chooses each array or recursive-value parameter's mode, borrowed or owned.  The theorem holds for every choice. |
 | Bounds | `Expr.allocs` follows the code with the same modes and live sets, and an owned array has a potential, a number of bytes that covers its later moves to larger blocks. |
 | Recursion | Recognized tail recursion uses a loop with a proved decreasing rank.  Other recursion and its callers take the call depth, trap at depth 1,000, and have at most 32 positions per frame.  An entry starts each depth-taking function at depth 0. |
@@ -333,6 +333,7 @@ their native dispatch theorems to the shared item, layer, and generation proofs.
 - [ ] LeanExe compiler: `Array Float` literals.
 - [ ] LeanExe compiler: LTG entries for `Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop`.
 - [ ] Verified compiler: owned record and pair parameters.
+- [ ] Verified compiler: `Bytes` and array fields of tree records, which need array and buffer slots in the trusted `Slot` and `Node` model.
 
 The interpreter testsuite run recorded on 2026-10-10 passed 64,751 commands, with 346 skips and 27 decode errors on unsupported text forms.  [The exponential guide](../Library/Numerics/Float64/Exp/README.md#limits) and the journal record its scope.  The interpreter remains trusted.  Talos bounds no call depth.  Guarded recursive calls in both compilers trap at depth 1,000.  Tail continuations use loop branches.
 

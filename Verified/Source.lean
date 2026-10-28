@@ -138,13 +138,6 @@ def ToWord32.apply : ToWord32 → Float32 → UInt64
   | .toBits, a => a.toBits.toUInt64
   | .signed32, a => a.toInt32.toUInt32.toUInt64
 
-/-- The types of the values that hold no arrays and that an array may hold: words, `Bool`s,
-floats, and tuples of these. -/
-inductive Elem where
-  | word | bool | float | float32
-  | prod (first second : Elem)
-  deriving Repr, DecidableEq, Inhabited
-
 /-- The types of source values. -/
 inductive Ty where
   | elem (e : Elem)
@@ -160,14 +153,6 @@ inductive Ty where
 @[match_pattern] abbrev Ty.float : Ty := .elem .float
 @[match_pattern] abbrev Ty.float32 : Ty := .elem .float32
 
-/-- The Lean type of an element. -/
-abbrev Elem.denote : Elem → Type
-  | .word => UInt64
-  | .bool => Bool
-  | .float => Float
-  | .float32 => Float32
-  | .prod a b => a.denote × b.denote
-
 /-- The Lean type of a value. -/
 abbrev Ty.denote : Ty → Type
   | .elem e => e.denote
@@ -176,36 +161,6 @@ abbrev Ty.denote : Ty → Type
   | .bytes => LeanExe.Bytes
   | .tree shape => Tree shape
   | .treeHeader shape r => TreeHeader shape r
-
-/-- Lean's default value of an element type, which a read past the end of an array gives. -/
-instance Elem.instInhabited : (e : Elem) → Inhabited e.denote
-  | .word => inferInstanceAs (Inhabited UInt64)
-  | .bool => inferInstanceAs (Inhabited Bool)
-  | .float => inferInstanceAs (Inhabited Float)
-  | .float32 => inferInstanceAs (Inhabited Float32)
-  | .prod a b => ⟨(@default _ a.instInhabited, @default _ b.instInhabited)⟩
-
-/-- The word that holds a `Bool`: 1 or 0, as `Implements` passes a `Bool`. -/
-def boolWord (b : Bool) : UInt64 := cond b 1 0
-
-/-- The number of words that hold an element. -/
-def Elem.width : Elem → Nat
-  | .word | .bool | .float | .float32 => 1
-  | .prod a b => a.width + b.width
-
-@[simp] theorem Elem.width_word : Elem.width .word = 1 := rfl
-@[simp] theorem Elem.width_bool : Elem.width .bool = 1 := rfl
-@[simp] theorem Elem.width_float : Elem.width .float = 1 := rfl
-@[simp] theorem Elem.width_float32 : Elem.width .float32 = 1 := rfl
-
-/-- The words that hold an element in an array, in order: a word as itself, a `Bool` as 1 or 0,
-a float as its bit pattern, and a tuple as its first part's words followed by its second's. -/
-def Elem.toWords : (e : Elem) → e.denote → List UInt64
-  | .word, x => [x]
-  | .bool, b => [boolWord b]
-  | .float, x => [x.toBits]
-  | .float32, x => [x.toBits.toUInt64]
-  | .prod a b, v => a.toWords v.1 ++ b.toWords v.2
 
 /-- A component of type `e'` of an element of type `e`: the element, or a component of its first
 or its second part. -/
@@ -276,19 +231,39 @@ def Env.prependRepeat (t : Ty) : (n : Nat) → (Fin n → t.denote) → Env Γ �
   | n + 1, values, env =>
     .cons (values 0) (prependRepeat t n (fun i => values i.succ) env)
 
+/-- The types `ts 0, …, ts (n - 1)`, in order. -/
+def tysOfFn : (n : Nat) → (Fin n → Ty) → List Ty
+  | 0, _ => []
+  | n + 1, ts => ts 0 :: tysOfFn n fun i => ts i.succ
+
+@[simp] theorem tysOfFn_length : (n : Nat) → (ts : Fin n → Ty) → (tysOfFn n ts).length = n
+  | 0, _ => rfl
+  | n + 1, ts => congrArg (· + 1) (tysOfFn_length n fun i => ts i.succ)
+
+/-- The context of the values `values` of the types `ts`, in order, before `Γ`. -/
+def Env.prependFn : (n : Nat) → (ts : Fin n → Ty) → ((i : Fin n) → (ts i).denote) → Env Γ →
+    Env (tysOfFn n ts ++ Γ)
+  | 0, _, _, env => env
+  | n + 1, ts, values, env =>
+    .cons (values 0) (prependFn n (fun i => ts i.succ) (fun i => values i.succ) env)
+
+/-- The types of the word fields of record constructor `r`. -/
+def TreeShape.wordTy (shape : TreeShape) (r : Fin shape.records) (i : Fin (shape.words r)) : Ty :=
+  .elem (shape.elem r i)
+
 /-- The number of variables that a match on record constructor `r` binds: its header, its words,
 and its children. -/
 def TreeShape.bindCount (shape : TreeShape) (r : Fin shape.records) : Nat :=
   1 + shape.words r + shape.children r
 
 def TreeShape.context (shape : TreeShape) (r : Fin shape.records) (Γ : List Ty) : List Ty :=
-  .treeHeader shape r :: (List.replicate (shape.words r) .word ++
+  .treeHeader shape r :: (tysOfFn (shape.words r) (shape.wordTy r) ++
     (List.replicate (shape.children r) (.tree shape) ++ Γ))
 
 def Env.treeFields (shape : TreeShape) (r : Fin shape.records)
-    (words : Fin (shape.words r) → UInt64)
+    (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
     (children : Fin (shape.children r) → Tree shape) (env : Env Γ) : Env (shape.context r Γ) :=
-  .cons .unit (prependRepeat .word (shape.words r) words
+  .cons .unit (prependFn (shape.words r) (shape.wordTy r) words
     (prependRepeat (.tree shape) (shape.children r) children env))
 
 def Var.ofFin : (Γ : List Ty) → (i : Fin Γ.length) → Var Γ (Γ.get i)
@@ -416,7 +391,7 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | treeNil (shape : TreeShape) (h : shape.hasNull = true) : Expr S Γ (.tree shape)
   | treeNode {shape : TreeShape} (r : Fin shape.records)
       (reuse : Option (Var Γ (.treeHeader shape r)))
-      (words : Fin (shape.words r) → Expr S Γ .word)
+      (words : (i : Fin (shape.words r)) → Expr S Γ (shape.wordTy r i))
       (children : Fin (shape.children r) → Expr S Γ (.tree shape)) : Expr S Γ (.tree shape)
   | treeCase {shape : TreeShape} (x : Var Γ (.tree shape))
       (empty : shape.hasNull = true → Expr S Γ t)
@@ -505,6 +480,19 @@ def Elem.zeroExpr {S : List Sig} {Γ : List Ty} : (e : Elem) → Expr S Γ (.ele
   | .float => .float 0
   | .float32 => .float32 0
   | .prod a b => .mk a.zeroExpr b.zeroExpr
+
+/-- The family of word expressions of record constructor `r` whose expression `i` is entry `i` of
+`exprs` when that entry's element is word `i`'s, and a zero otherwise.  The reflector writes the
+words of a construction of a record whose fields hold other elements than `UInt64` in this
+form. -/
+def TreeShape.exprsOf {S : List Sig} {Γ : List Ty} (shape : TreeShape) (r : Fin shape.records)
+    (exprs : List (Σ e : Elem, Expr S Γ (.elem e))) (i : Fin (shape.words r)) :
+    Expr S Γ (shape.wordTy r i) :=
+  match exprs[i.val]? with
+  | some ⟨e, x⟩ =>
+    if h : e = shape.elem r i then (h ▸ x : Expr S Γ (.elem (shape.elem r i)))
+    else Elem.zeroExpr _
+  | none => Elem.zeroExpr _
 
 def Expr.insertIdx (x : Var Γ (.array e)) (i : Var Γ .word)
     (value : Expr S Γ (.elem e)) : Expr S Γ (.array e) :=

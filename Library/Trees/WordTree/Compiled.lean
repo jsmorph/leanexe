@@ -1,6 +1,6 @@
 import Library.Trees.WordTree.Program
 import Verified.Reflect.Command
-import Library.Trees.WordTree.Encoding
+import Library.Trees.WordTree.Reflected
 
 namespace Library.Trees.WordTree
 

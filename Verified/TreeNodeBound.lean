@@ -5,7 +5,7 @@ namespace Verified
 
 theorem treeNode_entryLive {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : Fin shape.records}
     (reuse : Option (Var Γ (.treeHeader shape r)))
-    (words : Fin (shape.words r) → Expr S Γ .word)
+    (words : (i : Fin (shape.words r)) → Expr S Γ (shape.wordTy r i))
     (children : Fin (shape.children r) → Expr S Γ (.tree shape)) (live : Nat → Bool) :
     fieldLive (treeArgs words children).get (fun k => live k || optionVarUses reuse k) 0 =
       fun k => live k || (Expr.treeNode r reuse words children).uses k := by
@@ -15,7 +15,7 @@ theorem treeNode_entryLive {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r 
 
 theorem treeNode_fieldCost {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : Fin shape.records}
     (reuse : Option (Var Γ (.treeHeader shape r)))
-    (words : Fin (shape.words r) → Expr S Γ .word)
+    (words : (i : Fin (shape.words r)) → Expr S Γ (shape.wordTy r i))
     (children : Fin (shape.children r) → Expr S Γ (.tree shape)) (funs : Funs S)
     (flags : Flags S) (bounds : Bounds S) (slots : List Slot) (paid : List Bool)
     (live : Nat → Bool) (env : Env Γ) :
@@ -44,7 +44,7 @@ theorem treeNode_fieldCost {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r 
           (argsAny fun j => (children j).uses k)) env := by
     dsimp only [P]
     rw [hWords i]
-    simp only [coerceCost, Ty.copyCost, ite_self, Nat.add_zero]
+    simp only [coerceCost, TreeShape.wordTy, Ty.copyCost, ite_self, Nat.add_zero]
   have hChildCost (i : Fin (shape.children r)) : P (shape.words r + i.val) (children i) =
       (children i).allocs funs flags bounds (slots.map Slot.mode) paid
         (fun k => kept k || (argsAny fun j => decide (i.val < j.val) && (children j).uses k)) env +

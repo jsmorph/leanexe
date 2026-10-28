@@ -13,9 +13,14 @@ def Renaming.liftRepeat (t : Ty) : (n : Nat) → Renaming Γ Δ →
   | 0, ρ => ρ
   | n + 1, ρ => Renaming.lift (Renaming.liftRepeat t n ρ)
 
+def Renaming.liftFn : (n : Nat) → (ts : Fin n → Ty) → Renaming Γ Δ →
+    Renaming (tysOfFn n ts ++ Γ) (tysOfFn n ts ++ Δ)
+  | 0, _, ρ => ρ
+  | n + 1, ts, ρ => Renaming.lift (Renaming.liftFn n (fun i => ts i.succ) ρ)
+
 def Renaming.treeFields (shape : TreeShape) (r : Fin shape.records) (ρ : Renaming Γ Δ) :
     Renaming (shape.context r Γ) (shape.context r Δ) :=
-  Renaming.lift (Renaming.liftRepeat .word (shape.words r)
+  Renaming.lift (Renaming.liftFn (shape.words r) (shape.wordTy r)
     (Renaming.liftRepeat (.tree shape) (shape.children r) ρ))
 
 def Env.remap : {Γ Δ : List Ty} → Renaming Γ Δ → Env Δ → Env Γ
@@ -61,27 +66,38 @@ theorem Env.ext_get {env env' : Env Γ} (h : ∀ {t} (x : Var Γ t), env.get x =
   | zero => rfl
   | succ n ih => simp only [Env.prependRepeat, Renaming.liftRepeat, Env.remap_lift, ih]
 
+@[simp] theorem Env.remap_prependFn (n : Nat) (ts : Fin n → Ty)
+    (values : (i : Fin n) → (ts i).denote) (env : Env Δ) (ρ : Renaming Γ Δ) :
+    (env.prependFn n ts values).remap (ρ.liftFn n ts) =
+      (env.remap ρ).prependFn n ts values := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    exact (Env.remap_lift (Renaming.liftFn n (fun i => ts i.succ) ρ) _ (values 0)).trans
+      (congrArg (Env.cons (values 0)) (ih (fun i => ts i.succ) (fun i => values i.succ)))
+
 @[simp] theorem Env.remap_treeFields (shape : TreeShape) (r : Fin shape.records)
-    (words : Fin (shape.words r) → UInt64) (children : Fin (shape.children r) → Tree shape)
+    (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
+    (children : Fin (shape.children r) → Tree shape)
     (env : Env Δ) (ρ : Renaming Γ Δ) :
     (env.treeFields shape r words children).remap (ρ.treeFields shape r) =
       (env.remap ρ).treeFields shape r words children := by
   let rc : Renaming (List.replicate (shape.children r) (.tree shape) ++ Γ)
       (List.replicate (shape.children r) (.tree shape) ++ Δ) :=
     Renaming.liftRepeat (.tree shape) (shape.children r) ρ
-  let rwds : Renaming (List.replicate (shape.words r) .word ++
+  let rwds : Renaming (tysOfFn (shape.words r) (shape.wordTy r) ++
       (List.replicate (shape.children r) (.tree shape) ++ Γ))
-      (List.replicate (shape.words r) .word ++
+      (tysOfFn (shape.words r) (shape.wordTy r) ++
       (List.replicate (shape.children r) (.tree shape) ++ Δ)) :=
-    Renaming.liftRepeat .word (shape.words r) rc
+    Renaming.liftFn (shape.words r) (shape.wordTy r) rc
   exact (Env.remap_lift (s := .treeHeader shape r) rwds
-    (Env.prependRepeat .word (shape.words r) words
+    (Env.prependFn (shape.words r) (shape.wordTy r) words
       (env.prependRepeat (.tree shape) (shape.children r) children))
     (TreeHeader.unit (shape := shape) (r := r))).trans
     (congrArg (Env.cons (t := .treeHeader shape r) TreeHeader.unit)
-      ((Env.remap_prependRepeat .word (shape.words r) words
+      ((Env.remap_prependFn (shape.words r) (shape.wordTy r) words
         (env.prependRepeat (.tree shape) (shape.children r) children) rc).trans
-        (congrArg (Env.prependRepeat .word (shape.words r) words)
+        (congrArg (Env.prependFn (shape.words r) (shape.wordTy r) words)
           (Env.remap_prependRepeat (.tree shape) (shape.children r) children env ρ))))
 
 def Expr.rename : {Γ Δ : List Ty} → {t : Ty} → Renaming Γ Δ → Expr S Γ t → Expr S Δ t

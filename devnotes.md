@@ -36795,6 +36795,113 @@ The first build of `verified-cases` took 398 seconds on AArch64 and 737 seconds 
 
 - [x] Full `tests/verified/run.sh` with the compiled generators on AArch64 and on x86-64, with the time of the case step and of the first executable build.
 
+## 2026-10-26: Typed fields of tree records: design
+
+A record of a recursive type holds `UInt64` words and child pointers, and `TreeShape.ctors : List (List Bool)` records which is which.  The task extends the fields to `Bool`, floats, flat structures and sums, `Bytes`, and arrays.
+
+The fields fall into two groups.  A `Bool`, a float, a flat structure, an enumeration, and a scalar sum are words: each occupies one or more slots that the record's child mask leaves clear, so `Node`, the release loop, the copy loop, and their proofs stay as they are.  `Bytes` and arrays are blocks of their own.  A record slot that points to one is neither a word nor a child in `Node`, the trusted model of `Encode` in `LeanExe/Pipeline/Implements.lean`: `RecordHeader` requires kind 1 and at most 64 slots, and an array's block has neither.  `Represent` of every recursive type is stated through `NodeOwned` and `NodeBorrowed`, and the release proof in `LeanExe/Pipeline/ReleaseTree.lean` and both compilers' tree proofs case on `Slot`.  Heap fields therefore need a new kind of slot in the trusted base, a change to the statement of correctness that the user decides.  This entry covers the word fields.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Field kinds | `TreeField.word (e : Elem)` for an element of one word and `TreeField.child`, with `TreeShape.fields` derived as the slot kinds | Every proof at the level of `Node` reads only the slot kinds, so it keeps its statement. |
+| Typed values | `Tree.node r words children` with `words : (i : Fin (shape.words r)) → (shape.elem r i).denote` | A recursive parameter needs `toTree (fromTree t) = t` on every source value.  Words that hold float bit patterns would admit non-canonical NaN patterns, and words that hold `Bool`s would admit words other than 0 and 1, and neither has a native value. |
+| Plain shapes | `shape.elem r i` is `Elem.word` without reading `r` or `i` when every field is a word or a child, through `shape.allWords` | Lists and today's recursive types keep the type `UInt64` for their words by reduction, so their definitions and the list proofs keep their terms. |
+| Width | Each word field is one slot and one source variable | A variable then occupies one position, so `bindCount` still counts both the bound variables and the positions of a branch. |
+| Code | A load converts the slot word with `ofWordCode` into the local of the element's type, and a store converts with `toWordCode` | For a word field both are empty, so every existing module keeps its bytes. |
+| Flat fields | A field of a type with a `Flat` instance occupies one slot for each leaf of its flattening, nested instances included.  A branch binds the native field as one Lean variable and a source variable for each leaf, keyed in the context by the leaf's term, and the reflector reads the field, a component, or a leaf from those variables | One source variable per slot keeps the width rule, and a field passed whole becomes the tuple of its leaves. |
+| Construction | A record reads each leaf from the field's tuple: the `Flat` tuple of a variable, or the tuple of a structure's constructor, nested constructors included.  Any other field is bound with `let` first | Each leaf then reads a variable or a constructor's argument, and no leaf evaluates the field again. |
+| Inverse | `fromTree` and both laws exist when each flat field rebuilds: a structure whose `Flat` tuple holds each field once, nested in turn.  A type with an enumeration or a sum field has `toTree`, its encoding theorem, and its match lemmas, and the reflector rejects it as a parameter of a recursive definition or a loop | The fixed-point equation of a recursive definition holds at every source environment, which needs `toTree (fromTree t) = t`, and a word that encodes no constructor has no native value. |
+| `Encode` | Written by the user, a `Bool` as `cond b 1 0`, a float as its bit pattern, and a binary32 float as its pattern in the low 32 bits, which the reflector checks | The words of `Tree.toNode` are `Elem.slotWord` of the values. |
+
+The user decided three questions on 2026-10-26.  The restriction on enumeration and sum fields stands, and the manual's restrictions table states it.  `Bytes` and array fields in tree records come as a later stage, after this one is committed, with a proposed change to the trusted `Node` and `RecordHeader` model written here first for a separate review.  The reflector should derive a recursive type's declarations once, by a command next to the type's definition, in a separate commit after this stage.
+
+- [x] `TreeField`, typed `Tree.node`, typed loads and stores, and the proofs of the tree rules.
+- [x] Reflector: native fields, flat fields with keyed leaves, `fromTree` only for rebuildable fields.
+- [x] The example `Verified/Examples/TypedTrees.lean`, its cases, and its axiom audit.
+- [x] Manual, README, design table, and the restriction.
+- [x] Full build, `tests/verified/run.sh`, `tests/wasi/run.sh`, byte comparison, and commit.
+
+## 2026-10-26: Typed fields of tree records: results
+
+The first eleven builds stopped on errors local to single proofs.  `default` inside `Tree.default` named the tree's own default.  Several proofs unfolded `TreeShape.words` over a typed word family, which left their context ill-typed, and others needed `TreeShape.wordTy` unfolded to reach `Ty.word`.  A remap lemma and two argument lemmas needed `exact` where `simp` could not rewrite through the dependent context, and a structure instance needed its field on a line of its own to parse.  The reflector failed once: `LemmaApp` checks argument types at reducible transparency, at which the word family of a plain shape, of type `Fin n → Expr S Γ .word`, does not match the dependent family of `Expr.treeNode`, so `exprFamily` now states that type.  The right inverse law needed the impossible branch of `wordsOf`'s element test closed.  After these fixes the core, the reflector, `TreeCopy`, `RecursiveTypes`, and the example built, and the audit found 363 theorems of the example with only the permitted axioms.
+
+The first case run stopped because the argument that passed a chain of 4,096 records to the Wasm host program exceeded the limit of 128 KiB on one command-line argument, and the deepest chains now hold 1,200 records.  The second run reported three failures: `flip` and `scale` recurse on both children and trap at depth 1,000 on the chain of 1,200 records, which the cases had expected to return.  With traps expected there, `tests/verified/run.sh --cases typedtrees` passed all 473 cases.
+
+The gate built the sixteen heavy proofs one at a time, `lake build Verified Library` from 00:35 to 04:29 UTC with two workers, and the default targets, without error.  `tests/verified/run.sh` passed 33,649 cases with no failure, both audits and the accuracy checks included.  The first run of `tests/wasi/run.sh` stopped at once, because a reset of the checkout to the stage-1 commit had made `tools/wasmtime-host.c` newer than the compiled host program.  The source is unchanged, and after a rebuild of the host the driver passed.  The 98 registry modules, the WASI byte and literal modules, and the two running-sum modules are byte-identical to the baseline, `sum.wasm` and `sumfp.wasm` keep their SHA-256 values, and `heapsums.wasm` keeps its stage-1 bytes.
+
+## 2026-10-27: Deriving a recursive type's declarations once
+
+`verified_compile` derived a recursive type's conversions, laws, encoding theorem, and match lemmas in the type's namespace, in the first module that compiled a program over the type.  Two modules that each compiled programs over one type then held the same declarations, and no module could import both: the first stage-1 gate failed on that conflict between `Verified.Examples.HeapSums` and `Verified.Examples.RecursiveTypes`.  The user asked for a command next to the type's definition that derives the declarations once.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Command | `verified_recursive_type T` derives the declarations, and it fails when `T` already has them | One module holds the declarations, so every module that compiles a program over `T` imports them from there. |
+| `verified_compile` | `requireRecursiveTypes` checks each recursive type that the listed definitions use, also through a sum's `Flat` tuple, and fails with a message that names the command | A program that derived the declarations itself would bring back the conflict. |
+| Placement | After the `Encode` instance in the module that defines a type of an example, and in a module of its own beside the encoding for the library's `KeyTree` and the examples' `Words` | The encodings of `KeyTree` and `Words` serve the LeanExe compiler as well, and a module beside them keeps the verified compiler out of their imports. |
+| HeapSums | Returns to the library's `KeyTree` | Its local `Keys` copied `KeyTree` only to avoid the conflict.  With the derivation in `Library.Trees.WordTree.Reflected`, the example and `RecursiveTypes` share it, and the aggregate build checks that the two import together. |
+
+The names and statements of the derived declarations do not change, so no theorem of an existing program changes, and no module changes its bytes.  The change also writes `assignFiniteEquation` through `assignFamilyEquation`, whose steps it repeated.
+
+- [x] The command, the check, and the derivation modules.
+- [x] The examples: `TaggedTypes`, `TypedTrees`, `Literals`, `RecursiveTypes`, `HeapSums`, and the library's `Compiled`.
+- [x] Manual, README, and the restriction row.
+- [x] Full build, drivers, byte comparison, and commit.
+
+A module that compiles a program over a type without the command fails with the message that names it, a second command for one type fails, and the module compiles once the command follows the `Encode` instance.  The first gate stopped in the aggregate build at `Verified.Examples.Literals`, whose `Pick` lacked the command, and I stopped that run and restarted the gate with the command added.  The second gate built the sixteen heavy proofs one at a time, `lake build Verified Library` from 07:41 to 11:18 UTC with two workers, and the default targets, without error.  `tests/verified/run.sh` passed 33,649 cases with no failure, both audits included, and `tests/wasi/run.sh` passed.  The 98 registry modules, the WASI byte and literal modules, and the two running-sum modules are byte-identical to the baseline, `heapsums.wasm` keeps its stage-1 bytes with the library's `KeyTree`, and `typedtrees.wasm` keeps its stage-2 bytes.
+
+## 2026-10-27: Heap fields of tree records: the model change
+
+`Bytes` and array fields of tree records need a change to the trusted model of recursive values.  A record's slot was a word or a child (`Slot.word`, `Slot.child` in `LeanExe/Pipeline/Implements.lean`), and the `Represent` instance of every type with an `Encode` instance states its values through `NodeOwned`, `NodeBorrowed`, `Node.blocks`, `Node.slotRegions`, and `Node.pointers`.  A slot that points to an array or a byte buffer is neither kind: its object is a runtime object of kind 2, which `RecordHeader` does not describe, and its contents are words or bytes rather than slots.  I proposed the change below, the coordinator reviewed it for the user, and the decisions follow it.
+
+| Part | Before | After |
+|---|---|---|
+| `Slot` | `word w`, `child n` | adds `array (words : Array UInt64)`, a pointer to an array object that holds `words`, and `bytes (data : LeanExe.Bytes)`, the root of a byte buffer.  An encoding writes a buffer as `.bytes b` followed by `.word (UInt64.ofNat b.data.size)`, the two values that `Represent LeanExe.Bytes` gives a buffer. |
+| `Slot.bit`, `maskOf` | 1 for a child | 1 for a child, an array, and a buffer, so that `release` drops the object. |
+| `SlotsOwned` | a word's value, a child's `NodeOwned` | an array: `heap.Owned store ptr words`, the predicate of an owned `Array UInt64`.  A buffer: root 0 and no bytes, or a nonempty buffer that `heap.Buffer` describes. |
+| `SlotsBorrowed` | a word's value, a child's `NodeBorrowed` | an array: `heap.Borrowed store ptr words`.  A buffer: as owned, since `Represent LeanExe.Bytes` gives one predicate for both. |
+| Buffer predicate | `Verified.Bytes.Allocated` | `LeanExe.Pipeline.Heap.Buffer`, unchanged, beside `Heap.Owned` in `LeanExe/Pipeline/Runtime.lean`, with no alias at the old name.  `Heap.Object`, which it uses, moves unchanged from `RuntimeSpec.lean`, because `Implements.lean` cannot import `RuntimeSpec.lean` without a cycle. |
+| `Node.blocks` | each record's block | adds the block of each array and of each nonempty buffer. |
+| `Node.slotRegions` (reads) | each record's slots | adds an array's words, `(ptr, 8 * (words.size + 1))`, and a nonempty buffer's block, as the `reads` of the two `Represent` instances. |
+| `Node.pointers` (moves) | each record | adds each array and each nonempty buffer, which a moved value consumes. |
+| `RecordHeader` | kind 1, at most 64 slots, the mask of child slots | unchanged in form: the mask covers the new slots, and the slot count bounds them. |
+
+| Question | Decision | Reason |
+|---|---|---|
+| A buffer in one slot or two | Two slots, the root and the length | Two slots hold the two values that `Represent LeanExe.Bytes` gives a buffer, so no existing representation changes. |
+| A buffer's root | In a record, the root is 0 exactly when the buffer is empty | The release proof counts a value's objects with `Node.records`, a function of the value.  With an empty buffer that may or may not have an object, the count would depend on memory.  A `LeanExe.Bytes` parameter may have a nonzero root and no bytes, so a construction that stores such an owned buffer releases its object and stores 0.  A buffer read or moved out of a record is a valid `Bytes` value as it is. |
+| `Allocated` in the trusted base | Moves unchanged | The `implements` statement of every program with a `Bytes` parameter already depends on it. |
+| Arrays of tuples | Outside these fields | They have no `Represent` instance, as they have none as parameters and results. |
+| One generic slot over any `Represent` instance | Rejected | It would put a type and an instance inside the mutual `Slot`/`Node` inductive and raise its universe, and two concrete constructors are checked against the existing instances directly. |
+| Pending objects of the release proof | An array or a buffer is a pending object without slots, and `RecordBody` requires kind 1 and the slot count only for a nonzero mask | `dropChildren` reads neither field when the mask is 0, so the release loop frees such an object without reading its payload. |
+
+The review set four conditions: (a) the trusted change goes in a commit of its own, which goes with the diff of `LeanExe/Pipeline` to an independent reviewer who compares each new case with the `Array UInt64` and `LeanExe.Bytes` instances; (b) a gate shows every existing module's bytes and every existing axiom audit unchanged; (c) the manual's trusted-base section describes the two slot kinds, the moved predicate, and the buffer invariant; and (d) this entry goes in a commit of its own after the derivation command.
+
+- [x] Proposal and review.
+- [ ] The trusted change, with the proofs that case on `Slot` extended, and its gate.
+- [ ] The compiler's heap fields of tree records.
+
+## 2026-10-27: Review of the stage-2 and Q5 documents
+
+An independent reviewer read the documents of typed tree fields and of `verified_recursive_type` and reported seventeen findings and four code issues, which the coordinator passed on with decisions.  I checked each finding against the code before applying it.  The manual had said that the derived declarations go in `T`'s namespace and that every type gets both conversions and both inverse laws, while `RecursiveLayout.decl` puts them in the sibling namespace `verifiedT`, and a type with a field that holds an enumeration or a sum gets no `fromTree`.  The manual's ownership section now keeps the layout and matching rules in one paragraph and describes the command in a second, the restrictions table gains rows for the command's own errors, and the README, the design document, and the READMEs of `KeyTree` and `Words` describe the derivation modules.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Wording of the inverse condition | "a structure whose `Flat` tuple holds each of its fields", where the review wrote "a structure" | `rebuild?` also fails for a structure whose tuple leaves out a field, so the shorter wording claims `fromTree` for types that lack it. |
+| A structure that leaves out a field | Its own message, `the parameter type … has a field that holds the structure …, whose Flat tuple leaves out its field …`, from `flatOmission?` | The coordinator asked for a message that names the field.  The search follows pairs and nested structures, as `rebuild?` does. |
+| The prefix of shared messages | `flatTree` takes the running command's name, and `requireRecursiveTypes` takes it from its caller | Errors that `verified_recursive_type` and `verified_compile_wasi` raise then name the command that the user ran. |
+| A sum field | `Logged`, whose records hold a `Reading` sum of three slots, with construction, a match that reads the sum, a rebuilding match, and cases | The manual and the design document claimed sum fields, and no example had one. |
+| README paragraph on typed fields | The review's paragraph, with the sentences on the tree model under "Recursive records", the `Flat`-tuple condition above, and sum fields in the example's list | The coordinator sent the paragraph after the first version, which I had written from the review's three corrections. |
+
+- [x] Manual, README, design document, and the two READMEs.
+- [x] Messages, the omission check, and the audit's docstring.
+- [x] `Logged` and its cases.
+- [x] Negative checks and the typed-tree cases.
+- [x] The gates of the merges with main.
+
+Six negative checks give the new messages: a program over a type without the command under `verified_compile` and under `verified_compile_wasi`, an `Encode` instance that names no function, a structure field whose `Flat` instance is not a tuple of its fields, a recursive parameter whose type has a structure field that leaves out a field, which names the field `b`, and a recursive parameter whose type has an enumeration field.  With the command present, the WASI program passes the check and stops at its next error, the missing `Action` definition.  `tests/verified/run.sh --cases typedtrees` passed 513 cases with no failure, 40 of them on `Logged`, and the audit found 422 theorems of the example with only the permitted axioms.
+
+The branch merged main twice, after process compaction and after the compiled case generators, and the gate of each merge built the sixteen heavy proofs one at a time, `lake build Verified Library`, and the default targets without error.  In each, `tests/verified/run.sh` passed 35,766 cases with no failure, the typed-tree audit of 422 theorems included, and the WASI and running-sum drivers passed.  The second merge gives `tests/verified/run.sh --cases typedtrees` its compiled generator, `verified-cases-typedtrees`, which passed 513 cases.  The 98 registry modules of the baseline, the heap-sum, slew, byte, and literal modules, and the running-sum, binary64 running-sum, and process modules of process compaction are byte-identical to their references, and `typedtrees.wasm` changed with the functions on `Logged`.
+
 ## 2026-10-26: The Wasm-to-C translator: phase A of M0 and M1
 
 The user approved [the translator's design](docs/native-translator.md) and asked for milestones M0 and M1 on the branch `native-translator`, which starts from `origin/main` (`d1f851729`) plus the commit of the design.  Phase A reads the sources, settles the design questions that M0 and M1 depend on, and writes the code; it runs no Lean anywhere, so nothing below has been compiled or checked.  The sources are Talos at the pinned revision `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and the CompCert 3.18 release, both read as data under the session's scratchpad.  The CompCert archive is the tag archive `https://github.com/AbsInt/CompCert/archive/v3.18.tar.gz`, which [the CompCert download page](https://compcert.org/download.html) names as the 3.18 source distribution.  Its SHA-256 is `564b312b3ed3162f02605f0108feb555bd28fe7a80b97ea269c546bcc60c1cf0` and its SHA-512 `764ff4cea9e8504337610f8c922d3b18790601df92515e7bb56b90601469bf2af881819dba54d9d7c3bb1cea87887062925e1003ec07078be86c0376eb3b7cd5`, both equal to the digests of the package `coq-compcert.3.18` in [the Rocq opam repository](https://github.com/rocq-prover/opam/blob/master/released/packages/coq-compcert/coq-compcert.3.18/opam).  The archive's `Changelog.md` begins with Release 3.18, but its `VERSION` file still reads `version=3.17`, so `ccomp -version` may report 3.17.

@@ -15,19 +15,6 @@ namespace Verified.Examples.HeapSums
 
 open LeanExe.Pipeline TestSupport.Host Examples.Trees Library.Trees.WordTree
 
-/-- The library's tree of the same layout, whose `tree-u64` form the host reads and prints. -/
-def Keys.toKeyTree : Keys → KeyTree
-  | .leaf => .leaf
-  | .node l k r => .node l.toKeyTree k r.toKeyTree
-
-def Keys.ofKeyTree : KeyTree → Keys
-  | .leaf => .leaf
-  | .node l k r => .node (Keys.ofKeyTree l) k (Keys.ofKeyTree r)
-
-def Keys.describe (t : Keys) : String := KeyTree.describe t.toKeyTree
-
-def Keys.size (t : Keys) : UInt64 := t.toKeyTree.size
-
 def hex (b : LeanExe.Bytes) : String :=
   String.join (b.data.toList.map fun byte =>
     let digits := Nat.toDigits 16 byte.toNat
@@ -42,7 +29,7 @@ def arrayOut (xs : Array UInt64) : String :=
 def itemArg : Item → String
   | .text b => s!"i64:0 bytes:{hex b} array-u64: i64:0 tree-u64:. f64:0"
   | .words xs scale => s!"i64:1 i64:0 i64:0 array-u64:{arrayText xs} i64:{scale} tree-u64:. f64:0"
-  | .keys t w => s!"i64:2 i64:0 i64:0 array-u64: i64:0 tree-u64:{Keys.describe t} \
+  | .keys t w => s!"i64:2 i64:0 i64:0 array-u64: i64:0 tree-u64:{KeyTree.describe t} \
       f64:{w.toBits}"
   | .none => "i64:3 i64:0 i64:0 array-u64: i64:0 tree-u64:. f64:0"
 
@@ -51,7 +38,7 @@ def itemKind : String := "list:i64,bytes,array-u64,i64,tree-u64,f64"
 /-- The host's output for an item: its tuple, one component per item of `itemKind`. -/
 def itemOut (i : Item) : String :=
   let (tag, b, xs, scale, t, w) := Flat.flat i
-  s!"{tag} {hex b} {arrayOut xs} {scale} {Keys.describe t} {w.toBits}"
+  s!"{tag} {hex b} {arrayOut xs} {scale} {KeyTree.describe t} {w.toBits}"
 
 /-- The blocks of the host's representation of an item. -/
 def hostBlocks : Item → Nat
@@ -75,8 +62,7 @@ def texts : List LeanExe.Bytes := [.empty, bytes![0], bytes![1, 2, 3, 255], long
 
 def wordLists : List (Array UInt64) := [#[], #[5], #[1, 2, 3, maxU], longWords]
 
-def trees : List Keys := [.leaf, .node .leaf 5 .leaf, .ofKeyTree (KeyTree.arbitrary 6 3),
-  .ofKeyTree (KeyTree.chain 20)]
+def trees : List KeyTree := [.leaf, .node .leaf 5 .leaf, KeyTree.arbitrary 6 3, KeyTree.chain 20]
 
 def items : List Item :=
   texts.map .text ++ (wordLists.flatMap fun xs => [Item.words xs 0, .words xs 3]) ++
@@ -92,12 +78,12 @@ def cellOut (c : Cell) : String :=
 
 def cases : IO Unit := do
   for k in [0, 1, 2, 3, maxU] do
-    let inputs : List (LeanExe.Bytes × Array UInt64 × Keys) :=
-      [(bytes![1, 2, 3, 255], #[1, 2, 3, maxU], .ofKeyTree (KeyTree.arbitrary 6 3)),
-        (.empty, #[], .leaf), (longText, longWords, .ofKeyTree (KeyTree.chain 20))]
+    let inputs : List (LeanExe.Bytes × Array UInt64 × KeyTree) :=
+      [(bytes![1, 2, 3, 255], #[1, 2, 3, maxU], KeyTree.arbitrary 6 3), (.empty, #[], .leaf),
+        (longText, longWords, KeyTree.chain 20)]
     for (b, xs, t) in inputs do
       let n := t.size.toNat
-      let args := s!"i64:{k} bytes:{hex b} array-u64:{arrayText xs} tree-u64:{Keys.describe t}"
+      let args := s!"i64:{k} bytes:{hex b} array-u64:{arrayText xs} tree-u64:{KeyTree.describe t}"
       let placeholder := if k = 1 then 0 else 1
       let live := if k = 0 then 2 else if k = 1 then 1 else if k = 2 then n + 1 else 1
       IO.println s!"heapsums|make|{itemKind}|{args}|{itemOut (make k b xs t)}|{live}|\

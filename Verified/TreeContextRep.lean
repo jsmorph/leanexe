@@ -1,5 +1,6 @@
 import Verified.TreeContextLayout
 import Verified.TreeMatchMemory
+import Verified.WordCode
 
 namespace Verified
 
@@ -25,21 +26,44 @@ theorem Env.Rep.repeatFields {heap : Heap} {store : Store Unit} {Γ : List Ty}
       simpa only [paramMode, List.replicate_succ, List.cons_append, paramModes,
         List.headD_cons, List.tail_cons, List.getD_cons_succ] using hRest
 
+/-- The values `vals` of the types `ts`, one value each, represent `values` before the rest of a
+context. -/
+theorem Env.Rep.fnFields {heap : Heap} {store : Store Unit} {Γ : List Ty}
+    {tail : Env Γ} {modes : List Mode} {rest : List Value}
+    (hTail : Env.Rep (paramMode Γ modes) heap store rest tail) (mode : Mode) :
+    ∀ n (ts : Fin n → Ty) (values : (i : Fin n) → (ts i).denote) (vals : Fin n → Value),
+      (∀ i, (ts i).Rep ((ts i).paramMode mode) heap store [vals i] (values i)) →
+      Env.Rep (paramMode (tysOfFn n ts ++ Γ) (List.replicate n mode ++ modes))
+        heap store (List.ofFn vals ++ rest) (Env.prependFn n ts values tail)
+  | 0, _, _, _, _ => hTail
+  | n + 1, ts, values, vals, hValues => by
+    refine ⟨[vals 0], List.ofFn (fun i => vals i.succ) ++ rest,
+      by simp only [List.ofFn_succ, List.cons_append, List.nil_append], ?_, ?_⟩
+    · simpa only [paramMode, tysOfFn, List.replicate_succ, List.cons_append, paramModes,
+        List.headD_cons, List.getD_cons_zero] using hValues 0
+    · have hRest := Env.Rep.fnFields hTail mode n (fun i => ts i.succ)
+        (fun i => values i.succ) (fun i => vals i.succ) (fun i => hValues i.succ)
+      unfold Verified.paramMode at hRest
+      simpa only [paramMode, tysOfFn, List.replicate_succ, List.cons_append, paramModes,
+        List.headD_cons, List.tail_cons, List.getD_cons_succ] using hRest
+
 theorem treeFields_rep {heap : Heap} {store : Store Unit} {shape : TreeShape}
-    {r : Fin shape.records} {mode : Mode} {p : UInt64} {words : Fin (shape.words r) → UInt64}
+    {r : Fin shape.records} {mode : Mode} {p : UInt64}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
     {children : Fin (shape.children r) → Tree shape}
     {pointers : Fin (shape.children r) → UInt64}
     (hHeader : mode.header shape r heap store p)
     (hChildren : ∀ i, mode.node heap store (pointers i) (children i).toNode) :
     Env.Rep (paramMode (shape.context r []) (shape.modes r mode [])) heap store
-      (.i64 p :: ((List.ofFn fun i => Value.i64 (words i)) ++
+      (.i64 p :: (shape.wordValues r words ++
         (List.ofFn fun i => Value.i64 (pointers i))))
       (Env.treeFields shape r words children .nil) := by
   have hTrees := Env.Rep.repeatFields (heap := heap) (store := store) (Γ := [])
     (modes := []) (tail := .nil) (rest := []) rfl (.tree shape) mode (shape.children r)
     children pointers (fun i => ⟨pointers i, rfl, hChildren i⟩)
-  have hWords := Env.Rep.repeatFields hTrees .word .borrowed (shape.words r) words words
-    (fun _ => rfl)
+  have hWords := Env.Rep.fnFields hTrees .borrowed (shape.words r) (shape.wordTy r) words
+    (fun i => typedValue (shape.elem r i).slotType (shape.slotWords r words i))
+    (fun i => shape.wordValues_rep r words i)
   unfold Verified.paramMode at hWords
   rw [show (List.ofFn fun i => Value.i64 (pointers i)) ++ [] =
     (List.ofFn fun i => Value.i64 (pointers i)) from List.append_nil _] at hWords

@@ -25,7 +25,9 @@ theorem listCons_eq {reuse : Option (Var Γ (.treeHeader listShape listCell))}
     (hh : head.denote funs env = x) (ht : tail.denote funs env = Tree.ofList xs) :
     (Expr.treeNode listCell reuse (fun _ => head) (fun _ => tail)).denote funs env =
       Tree.ofList (x :: xs) := by
-  simp only [Expr.denote, Tree.ofList, hh, ht]
+  subst hh
+  simp only [Expr.denote, Tree.ofList, ht]
+  rfl
 
 theorem listCons_bound {reuse : Option (Var Γ (.treeHeader listShape listCell))}
     {head : Expr S Γ .word} {tail : Expr S Γ (.tree listShape)} {H T K P : Nat}

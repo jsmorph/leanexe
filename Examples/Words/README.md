@@ -14,7 +14,9 @@ of `List UInt64`: `nil` is the null pointer, and `cons x w` is a record of two s
 states that layout through the `Encode` and `EncodeSlotted` instances in
 [`Encode.lean`](Encode.lean), which the theorems use.  `sumAcc` is tail recursion over records: the
 compiler turns it into a loop that reads the record's slots and follows the pointer, and
-`sumAcc_step` proves one iteration.
+`sumAcc_step` proves one iteration.  [The derivation](Reflected.lean) runs `verified_recursive_type`
+for `Words` in a module apart from the encoding, so that the verified compiler's programs over the
+type share one set of conversions and lemmas.
 
 | Theorem | Statement |
 |---------|-----------|

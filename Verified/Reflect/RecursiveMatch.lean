@@ -15,6 +15,36 @@ def recordTerm (shape : TreeShape) (r : Fin shape.records) : CommandElabM Term :
   if shape = listShape then `(Verified.listCell)
   else `(Verified.Reflect.reflectedRecord $(← shapeTerm shape) $(quote r.val) rfl)
 
+/-- The Lean type of a word field's element. -/
+def elemTypeTerm : Elem → CommandElabM Term
+  | .word => `(UInt64)
+  | .bool => `(Bool)
+  | .float => `(Float)
+  | .float32 => `(Float32)
+  | .prod a b => do `($(← elemTypeTerm a) × $(← elemTypeTerm b))
+
+/-- The Lean type of a field of a constructor of the recursive type `native`. -/
+def nativeTypeTerm (native : Ident) : NativeField → CommandElabM Term
+  | .child => pure native
+  | .leaf e => elemTypeTerm e
+  | .flat type _ => pure (mkCIdent type.constName!)
+
+/-- The leaf of `field` with segments `segments`, as `leafTerm` builds it. -/
+def leafSyntax (field : Term) (segments : List (List Bool)) : CommandElabM Term := do
+  let mut term := field
+  for (steps, i) in segments.zipIdx do
+    if i > 0 then term ← `(LeanExe.Pipeline.Flat.flat $term)
+    for step in steps do
+      term ← if step then `(Prod.snd $term) else `(Prod.fst $term)
+  return term
+
+/-- The words of the field `field` of the kind `kind`, each with its element. -/
+def nativeWordTerms (field : Term) : NativeField → CommandElabM (Array (Elem × Term))
+  | .child => pure #[]
+  | .leaf e => pure #[(e, field)]
+  | .flat _ leaves => leaves.toArray.mapM fun (e, segments) =>
+    return (e, ← leafSyntax field segments)
+
 /-- The field variables of a constructor with `n` fields. -/
 def fieldNames (n : Nat) : Array Ident :=
   (List.range n).toArray.map fun i => mkIdent (Name.mkSimple s!"field{i}")
@@ -42,20 +72,26 @@ def deriveRecursiveMatch (layout : RecursiveLayout) : CommandElabM Unit :=
   let shape ← shapeTerm layout.shape
   let parts ← layout.ctors.toArray.mapM fun (ctor, kinds) => do
     let fields := fieldNames kinds.length
-    let types : Array Term ← kinds.toArray.mapM fun child =>
-      if child then pure (native : Term) else `(UInt64)
+    let types : Array Term ← kinds.toArray.mapM (nativeTypeTerm native)
     let mut words : Array Term := #[]
+    let mut entries : Array Term := #[]
     let mut children : Array Term := #[]
     for i in [:fields.size] do
-      if kinds[i]! then children := children.push (← `($flatten $(fields[i]!)))
-      else words := words.push fields[i]!
+      if kinds[i]! matches .child then children := children.push (← `($flatten $(fields[i]!)))
+      for (e, w) in ← nativeWordTerms fields[i]! kinds[i]! do
+        words := words.push w
+        entries := entries.push (← `(⟨$(quote e), $w⟩))
     let record ← match layout.record? ctor with
       | none => pure none
       | some r => some <$> recordTerm layout.shape r
     let boundEnv ← match record with
       | none => `(env)
       | some record =>
-        `(Verified.Env.treeFields $shape $record ([$words,*]).get ([$children,*]).get env)
+        if layout.shape.allWords then
+          `(Verified.Env.treeFields $shape $record ([$words,*]).get ([$children,*]).get env)
+        else
+          `(Verified.Env.treeFields $shape $record
+            (Verified.TreeShape.wordsOf $shape $record [$entries,*]) ([$children,*]).get env)
     return ({ record, fields, types, boundEnv } : CtorParts)
   let bindAll (part : CtorParts) (body : Term) : CommandElabM Term := do
     let mut result := body
