@@ -86,16 +86,16 @@ theorem Args.code_prependBytes_mixed {S : List Sig} {Γ ps : List Ty}
     (n : Nat) (args : Fin n → Expr S Γ .bytes) (tail : Args S Γ ps)
     (h fieldBase scratch : Nat) (slots : List Slot) (L : Nat → Nat → Bool) :
     argsCode (fun i =>
-      ((prependRepeat .bytes n args tail).get i).code (pool := pool) h slots scratch
+      ((prependRepeat Ty.bytes n args tail).get i).code (pool := pool) h slots scratch
         (L (i.val + 1)) ++
-      coerceCode h ((List.replicate n .bytes ++ ps).get i)
-        (((prependRepeat .bytes n args tail).get i).mode (slots.map Slot.mode)) .owned scratch ++
-      storeCode h (fieldBase + fieldOffset (List.replicate n .bytes ++ ps) i.val)
-        ((List.replicate n .bytes ++ ps).get i).types ++
-      ((List.replicate n .bytes ++ ps).get i).normalizeCode
-        (fieldBase + fieldOffset (List.replicate n .bytes ++ ps) i.val)) =
+      coerceCode h ((List.replicate n Ty.bytes ++ ps).get i)
+        (((prependRepeat Ty.bytes n args tail).get i).mode (slots.map Slot.mode)) .owned scratch ++
+      storeCode h (fieldBase + fieldOffset (List.replicate n Ty.bytes ++ ps) i.val)
+        ((List.replicate n Ty.bytes ++ ps).get i).types ++
+      ((List.replicate n Ty.bytes ++ ps).get i).normalizeCode
+        (fieldBase + fieldOffset (List.replicate n Ty.bytes ++ ps) i.val)) =
     argsCode (fun i => (args i).code (pool := pool) h slots scratch (L (i.val + 1)) ++
-      coerceCode h .bytes ((args i).mode (slots.map Slot.mode)) .owned scratch ++
+      coerceCode h Ty.bytes ((args i).mode (slots.map Slot.mode)) .owned scratch ++
       storeCode h (fieldBase + 2 * i.val) Ty.bytes.types ++
       Bytes.normalizeCode (fieldBase + 2 * i.val) (fieldBase + 2 * i.val + 1)) ++
     argsCode (fun i => (tail.get i).code (pool := pool) h slots scratch (L (n + i.val + 1)) ++

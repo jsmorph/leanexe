@@ -64,7 +64,12 @@ theorem heapFieldBlocks_perm (store : Store Unit) {heap : Heap} (fields : List T
       rw [(hBuffers ⟨0, by simp⟩).blocks,
         ofFn_flatten_cast (m := rest.count .bytes) (by simp)
           (fun i => Bytes.regions store (roots i))]
-      have hRest := ih _ _ _ _ _ (fun i => hBuffers _)
+      have hRest := ih (fun i => pointers ⟨i.val, by
+          simp only [List.filterMap_cons, TreeField.arrayElem?]; exact i.isLt⟩)
+        (fun i => words ⟨i.val, by
+          simp only [List.filterMap_cons, TreeField.arrayElem?]; exact i.isLt⟩)
+        (fun i => roots ⟨i.val + 1, by simp⟩) (fun i => lengths ⟨i.val + 1, by simp⟩)
+        (fun i => buffers ⟨i.val + 1, by simp⟩) (fun i => hBuffers _)
       refine (hRest.append_left _).trans ?_
       rw [← List.append_assoc, ← List.append_assoc]
       exact List.perm_append_comm.append_right _
@@ -74,8 +79,9 @@ theorem FieldsNormal.drop_prefix {qs : List Ty} :
     (ps : List Ty) → (first rest : List Value) → first.length = (ps.map Ty.width).sum →
       FieldsNormal (ps ++ qs) (first ++ rest) → FieldsNormal qs rest
   | [], first, rest, hLength, h => by
-    rw [List.length_eq_zero_iff.mp (by simpa using hLength), List.nil_append] at h
-    exact h
+    have hNil : first = [] := List.length_eq_zero_iff.mp (by simpa using hLength)
+    subst hNil
+    simpa using h
   | p :: ps, first, rest, hLength, h => by
     simp only [List.map_cons, List.sum_cons] at hLength
     have hDrop : (first ++ rest).drop p.width = first.drop p.width ++ rest :=
@@ -111,7 +117,7 @@ theorem FieldsNormal.bytesFields {ps : List Ty} :
     cases i using Fin.cases with
     | zero =>
       intro hZero
-      have := hFirst.1 (by rw [hZero]; rfl)
+      have := hFirst.1 (by rw [hZero])
       simpa using this
     | succ i =>
       exact FieldsNormal.bytesFields n (fun i => roots i.succ) (fun i => lengths i.succ) rest

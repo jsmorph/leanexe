@@ -85,7 +85,7 @@ theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : 
   simp only [argsCode, List.append_nil] at hCode
   dsimp only
   dsimp only [L, kept, treeArgs] at hCode hWords hChildren hArrays hBuffers ⊢
-  simp only [Nat.add_assoc, List.append_assoc] at hCode ⊢
+  simp only [Nat.add_assoc, List.append_assoc, List.append_nil] at hCode ⊢
   rw [hCode]
   have hWordCoerce (i : Fin (shape.words r)) (mode : Mode) :
       coerceCode h (shape.wordTy r i) mode .owned (base + shape.bindWidth r) = [] := by
