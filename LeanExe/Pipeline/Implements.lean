@@ -456,8 +456,11 @@ end
 value alone.  An encoding that breaks `RecordSlots.lengths` makes `Represent.borrowed` and
 `Represent.owned` false for its values in every store, and one that breaks `RecordHeader.short`
 makes `Represent.owned` and the precondition of a moved value false, while `NodeBorrowed` can
-still hold.  Either way an `Implements` statement over the type would hold for every module, so
-the instances of `Represent` for a type with `Encode` require this class. -/
+still hold.  An `Implements` statement over the type then holds for every module whenever the
+type is an argument, for a broken length condition, or a moved argument, for a broken slot bound.
+A type that appears only as a result constrains nothing in either case, because only modules
+that always trap satisfy the statement, and those satisfy every `Implements` statement.  The
+instances of `Represent` for a type with `Encode` therefore require this class. -/
 class EncodeWellFormed (α : Type) [Encode α] : Prop where
   wellFormed : ∀ x : α, (Encode.encode x).WellFormed
 

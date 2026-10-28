@@ -103,9 +103,9 @@ def checkEncodingOrder (layout : RecursiveLayout) : CommandElabM Unit := liftTer
 
 open Lean.Parser.Term in
 /-- `toTree` from a recursive type to `Tree` of its shape, the agreement of the type's `Encode`
-instance with `Tree.toNode`, the theorem `wellFormed` and the `EncodeWellFormed` instance that it
-gives, and, unless a field holds an enumeration or a sum, `fromTree` and the laws that `toTree`
-and `fromTree` are inverse. -/
+instance with `Tree.toNode`, the theorem `wellFormed`, always, and the `EncodeWellFormed`
+instance that it gives, only when the type has none, and, unless a field holds an enumeration
+or a sum, `fromTree` and the laws that `toTree` and `fromTree` are inverse. -/
 def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     withScope (fun scope => { scope with currNamespace := .anonymous }) do
   let root (name : Name) := mkIdent name
