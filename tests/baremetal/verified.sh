@@ -49,7 +49,8 @@ tools/leanrun --timeout 30m lake --log-level error build native-verified Verifie
 rm -rf "$out"
 mkdir -p "$out"
 
-"$ccomp" "${stdlib[@]}" -I tools/baremetal/libc -I tools -Dmain=host_main -c tools/native-host.c \
+"$ccomp" "${stdlib[@]}" -I tools/baremetal/libc -I tools -Dmain=host_main \
+  -Werror=implicit-function-declaration -c tools/native-host.c \
   -o "$out/host.o"
 "$ccomp" "${stdlib[@]}" -I tools/baremetal/libc -c tools/baremetal/libc/libc.c -o "$out/libc.o"
 

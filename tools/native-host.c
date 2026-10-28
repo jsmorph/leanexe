@@ -3,25 +3,19 @@
    kinds, and prints the same lines, so that the corpus of tests/verified runs unchanged.  It is
    compiled with ccomp together with the module's C text and its glue (tools/native-host.h).
 
-   `bench SECONDS MAX FUNC RESULT [ARG...]`, which tools/wasmtime-host.c also takes, calls the
-   export once to warm up, and then repeatedly until SECONDS have passed or MAX timed calls have
-   run.  Before each call it places the arguments again, since a call may consume them, and it
-   times only the call, with CLOCK_MONOTONIC.  It prints the results of the last call as `call`
-   does, then `bench N NS`, the number of timed calls and their total time in nanoseconds.
+   tools/native-bench.c adds the command `bench` for tests/native/bench.sh, which compiles this
+   file with -Dmain=host_main and links it with the functions that tools/native-call.h declares.
 
    The host calls lx_init, then the export `reset` when the module has it.  Each call of an
    export is followed by a test of lx_status: a nonzero code is a trap, which the host reports
    on standard error with Wasmtime's message for the trap and exit status 2. */
 
-/* For clock_gettime and CLOCK_MONOTONIC. */
-#define _POSIX_C_SOURCE 199309L
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include "native-host.h"
+#include "native-call.h"
 
 typedef unsigned long long u64;
 
@@ -58,7 +52,7 @@ static const lx_export *find_export(const char *name) {
   return NULL;
 }
 
-static const lx_export *get_export(const char *name) {
+const lx_export *host_get_export(const char *name) {
   const lx_export *e = find_export(name);
   if (e == NULL) {
     fprintf(stderr, "missing export: %s\n", name);
@@ -68,7 +62,7 @@ static const lx_export *get_export(const char *name) {
 }
 
 /* Calls `e` and exits with status 2 after a trap. */
-static void invoke(const lx_export *e, const u64 *args, u64 *results) {
+void host_invoke(const lx_export *e, const u64 *args, u64 *results) {
   lx_status = 0;
   e->call(args, results);
   if (lx_status != 0) {
@@ -152,7 +146,7 @@ static unsigned char *parse_hex(const char *text, size_t *len_out) {
   return bytes;
 }
 
-static u64 parse_u64(const char *text) {
+u64 host_parse_u64(const char *text) {
   char *end = NULL;
   u64 value = strtoull(text, &end, 10);
   if (end == NULL || end == text || *end != 0) {
@@ -189,7 +183,7 @@ static void parse_u64_list(const char *text, U64List *list) {
     }
     memcpy(part, start, len);
     part[len] = 0;
-    list->items[list->len++] = parse_u64(part);
+    list->items[list->len++] = host_parse_u64(part);
     free(part);
     if (comma == NULL) {
       break;
@@ -231,7 +225,7 @@ static u64 call_alloc(u64 len) {
     die("missing alloc export");
   }
   args[0] = len;
-  invoke(alloc, args, results);
+  host_invoke(alloc, args, results);
   return results[0];
 }
 
@@ -288,7 +282,7 @@ static u64 alloc_u64_tree(const char **text) {
   if (strcmp(token, ".") == 0) {
     return 0;
   }
-  key = parse_u64(token);
+  key = host_parse_u64(token);
   left = alloc_u64_tree(text);
   right = alloc_u64_tree(text);
   cell = call_alloc(24);
@@ -315,9 +309,9 @@ static u64 alloc_records(const char **text) {
   if (strcmp(token, ".") == 0) {
     return 0;
   }
-  width = parse_u64(token);
+  width = host_parse_u64(token);
   read_token(text, token, sizeof token);
-  mask = parse_u64(token);
+  mask = host_parse_u64(token);
   if (!record_header_valid(width, mask)) {
     die("bad record header in tree description");
   }
@@ -326,7 +320,7 @@ static u64 alloc_records(const char **text) {
       slots[i] = alloc_records(text);
     } else {
       read_token(text, token, sizeof token);
-      slots[i] = parse_u64(token);
+      slots[i] = host_parse_u64(token);
     }
   }
   cell = call_alloc(8 * width);
@@ -480,11 +474,11 @@ static u64 alloc_u64_file(const char *path) {
    of values, or 0 for an unknown spec. */
 static size_t parse_arg(const char *spec, u64 *out) {
   if (strncmp(spec, "i64:", 4) == 0 || strncmp(spec, "f64:", 4) == 0) {
-    out[0] = parse_u64(spec + 4);
+    out[0] = host_parse_u64(spec + 4);
     return 1;
   }
   if (strncmp(spec, "f32:", 4) == 0) {
-    out[0] = parse_u64(spec + 4);
+    out[0] = host_parse_u64(spec + 4);
     if (out[0] > 0xFFFFFFFFULL) {
       die("f32 bits exceed 32 bits");
     }
@@ -592,7 +586,7 @@ static size_t result_count_from_kind(const char *kind) {
     return 1;
   }
   if (strncmp(kind, "slots:", 6) == 0) {
-    u64 count = parse_u64(kind + 6);
+    u64 count = host_parse_u64(kind + 6);
     if (count > 128) {
       die("too many result slots");
     }
@@ -629,8 +623,8 @@ static void print_result(const char *kind, u64 value) {
 
 /* Places the arguments `argv` of a call of `e` into `args` and returns the number of results
    that `result_kind` describes, after checking both against the type of `e`. */
-static size_t place_args(const lx_export *e, const char *func_name, const char *result_kind,
-                         int argc, char **argv, u64 *args) {
+size_t host_place_args(const lx_export *e, const char *func_name, const char *result_kind,
+                       int argc, char **argv, u64 *args) {
   size_t nargs = 0, nresults;
   int j;
   for (j = 0; j < argc; j++) {
@@ -654,7 +648,7 @@ static size_t place_args(const lx_export *e, const char *func_name, const char *
 }
 
 /* Prints the results of a call as `result_kind` describes them. */
-static void print_results(const char *result_kind, const u64 *results, size_t nresults) {
+void host_print_results(const char *result_kind, const u64 *results, size_t nresults) {
   size_t i;
   if (strncmp(result_kind, "list:", 5) == 0) {
     size_t item = 0;
@@ -694,40 +688,12 @@ static void print_results(const char *result_kind, const u64 *results, size_t nr
 }
 
 static void call_export(const char *func_name, const char *result_kind, int argc, char **argv) {
-  const lx_export *e = get_export(func_name);
+  const lx_export *e = host_get_export(func_name);
   u64 args[256];
   u64 results[128];
-  size_t nresults = place_args(e, func_name, result_kind, argc, argv, args);
-  invoke(e, args, results);
-  print_results(result_kind, results, nresults);
-}
-
-static u64 now_ns(void) {
-  struct timespec t;
-  clock_gettime(CLOCK_MONOTONIC, &t);
-  return (u64)t.tv_sec * 1000000000ULL + (u64)t.tv_nsec;
-}
-
-static void bench_export(const char *seconds, const char *max, const char *func_name,
-                         const char *result_kind, int argc, char **argv) {
-  const lx_export *e = get_export(func_name);
-  u64 args[256];
-  u64 results[128];
-  u64 limit = (u64)(atof(seconds) * 1e9), most = parse_u64(max);
-  u64 start, count = 0, total = 0, before, after;
-  size_t nresults = place_args(e, func_name, result_kind, argc, argv, args);
-  invoke(e, args, results);
-  start = now_ns();
-  while (count < most && now_ns() - start < limit) {
-    place_args(e, func_name, result_kind, argc, argv, args);
-    before = now_ns();
-    invoke(e, args, results);
-    after = now_ns();
-    total += after - before;
-    count++;
-  }
-  print_results(result_kind, results, nresults);
-  printf("bench %llu %llu\n", count, total);
+  size_t nresults = host_place_args(e, func_name, result_kind, argc, argv, args);
+  host_invoke(e, args, results);
+  host_print_results(result_kind, results, nresults);
 }
 
 static u64 read_global(const char *name) {
@@ -743,18 +709,12 @@ static u64 read_global(const char *name) {
 }
 
 static void usage(void) {
-  fprintf(stderr, "usage: HOST call|call-stats FUNC RESULT [ARG...]\n"
-                  "       HOST bench SECONDS MAX FUNC RESULT [ARG...]\n");
+  fprintf(stderr, "usage: HOST call|call-stats FUNC RESULT [ARG...]\n");
   exit(2);
 }
 
-int main(int argc, char **argv) {
+void host_start(void) {
   const lx_export *reset;
-  int bench = argc >= 2 && strcmp(argv[1], "bench") == 0;
-  if (bench ? argc < 6
-            : argc < 4 || (strcmp(argv[1], "call") != 0 && strcmp(argv[1], "call-stats") != 0)) {
-    usage();
-  }
   lx_status = 0;
   lx_init();
   if (lx_status != 0) {
@@ -762,12 +722,15 @@ int main(int argc, char **argv) {
   }
   reset = find_export("reset");
   if (reset != NULL) {
-    invoke(reset, NULL, NULL);
+    host_invoke(reset, NULL, NULL);
   }
-  if (bench) {
-    bench_export(argv[2], argv[3], argv[4], argv[5], argc - 6, argv + 6);
-    return 0;
+}
+
+int main(int argc, char **argv) {
+  if (argc < 4 || (strcmp(argv[1], "call") != 0 && strcmp(argv[1], "call-stats") != 0)) {
+    usage();
   }
+  host_start();
   call_export(argv[2], argv[3], argc - 4, argv + 4);
   if (strcmp(argv[1], "call-stats") == 0) {
     printf("stats %llu %llu\n", read_global("allocCount"), read_global("freeCount"));

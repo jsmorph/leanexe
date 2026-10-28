@@ -76,7 +76,10 @@ write("b-768.bin", floats(768))
 write("w-768x768.bin", floats(768 * 768))
 EOF
 
-# The programs.
+# The programs.  The native host is tools/native-host.c, compiled with -Dmain=host_main, and
+# tools/native-bench.c, which adds `bench`.
+"$ccomp" "${stdlib[@]}" -I "$root/tools" -Dmain=host_main -c "$root/tools/native-host.c" \
+  -o "$out/native/host.o"
 for name in sha256 sha3 crc libsort euler gpt32; do
   line=$(grep ":$name\$" tests/verified/modules.txt)
   module=${line%%:*}
@@ -85,7 +88,7 @@ for name in sha256 sha3 crc libsort euler gpt32; do
   CLIGHTGEN=$clightgen CCOMP=$ccomp tools/leanrun --timeout 10m lake env \
     .lake/build/bin/native-verified build "$module" "$constant" "$name" "$out/native"
   "$ccomp" "${stdlib[@]}" -I "$root/tools" -o "$out/native/$name" "$out/native/$name.o" \
-    "$out/native/${name}_glue.c" "$root/tools/native-host.c"
+    "$out/native/${name}_glue.c" "$root/tools/native-bench.c" "$out/native/host.o"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$constant" \
     "$out/wasm/$name.wasm"
 done
