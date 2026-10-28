@@ -140,6 +140,21 @@ theorem SlotsLayout.child {shape : TreeShape} :
   | .bytes _ :: rest, h, i + 1, hi, value, he =>
     SlotsLayout.child (slots := rest) h.2 i (by simpa using hi) value he
 
+theorem SlotsLayout.lengths {shape : TreeShape} :
+    ∀ {slots : List Slot}, SlotsLayout shape slots → BufferLengths slots
+  | [], _ => trivial
+  | .word _ :: rest, h => SlotsLayout.lengths (slots := rest) h
+  | .child _ :: rest, h => SlotsLayout.lengths (slots := rest) h.2
+  | .array _ :: rest, h => SlotsLayout.lengths (slots := rest) h
+  | .bytes _ :: rest, h => by
+    obtain ⟨⟨more, hMore⟩, hRest⟩ := h
+    exact ⟨by rw [hMore]; rfl, SlotsLayout.lengths (slots := rest) hRest⟩
+
+theorem NodeLayout.lengths {shape : TreeShape} {slots : List Slot}
+    (h : NodeLayout shape (.record slots)) : BufferLengths slots := by
+  obtain ⟨_, -, -, -, hSlots, -, -⟩ := h
+  exact SlotsLayout.lengths hSlots
+
 /-- The slot after a buffer's root in a record laid out by a shape holds the buffer's length. -/
 theorem SlotsLayout.bytes_next {shape : TreeShape} :
     ∀ {slots : List Slot}, SlotsLayout shape slots → ∀ i (hi : i < slots.length) data,

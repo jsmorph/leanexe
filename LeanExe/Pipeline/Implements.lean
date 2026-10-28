@@ -18,10 +18,12 @@ class Represent (α : Type) where
   its start and length. -/
   blocks : Store Unit → List Value → α → List (Nat × Nat)
   /-- The regions of memory among the arguments `vs` of `x` that the call reads and leaves
-  intact: an array's words, and the slots of a borrowed value's records. -/
+  intact: an array's words, and the slots of a borrowed value's records with the words of the
+  arrays and the blocks of the buffers that they hold. -/
   reads : Store Unit → List Value → α → List (Nat × Nat)
-  /-- The pointers of the arrays among the arguments `vs` of `x` that the call
-  consumes. -/
+  /-- The pointers of the objects among the arguments `vs` of `x` that the call consumes: an
+  array, or the records of a value of a recursive type with their arrays and nonempty
+  buffers. -/
   moves : Store Unit → List Value → α → List UInt64
 
 /-- The objects that the owned values `vs` of `x` occupy lie outside the memory region
@@ -239,7 +241,8 @@ instance [Flat α β] [Scalar β] : Represent (Moved (Array α)) where
 mutual
 /-- A slot of a record: a word, a child value held by its pointer, an array object held by its
 pointer, or a byte buffer held by its root.  A buffer's root is 0 exactly when the buffer is
-empty, and the slot after the root holds the buffer's length as a word. -/
+empty, and the slot after the root is a word slot that holds the buffer's length, as the field
+`lengths` of `RecordHeader` and of `RecordSlots` requires. -/
 inductive Slot where
   | word (w : UInt64)
   | child (n : Node)
@@ -269,10 +272,20 @@ def maskOf (slots : List Slot) : UInt64 := slots.foldr (fun slot acc => 2 * acc 
 /-- The address of slot `i` of the record at `p`. -/
 def slotAddress (p : UInt64) (i : Nat) : UInt32 := (p + UInt64.ofNat (8 * i)).toUInt32
 
+/-- Each buffer slot among `slots` is followed by a word slot that holds the buffer's
+length. -/
+def BufferLengths : List Slot → Prop
+  | [] => True
+  | .word _ :: rest => BufferLengths rest
+  | .child _ :: rest => BufferLengths rest
+  | .array _ :: rest => BufferLengths rest
+  | .bytes data :: rest =>
+      rest.head? = some (.word (UInt64.ofNat data.data.size)) ∧ BufferLengths rest
+
 /-- An owned record at `p` with `slots`: its header holds the magic number, count one, kind 1,
 the number of slots, at most 64, and the mask of its slots that hold pointers; its block has
 room for the slots, lies inside the 32-bit address space and below `top`, and is outside every
-free block. -/
+free block.  Each buffer slot is followed by a word slot that holds the buffer's length. -/
 structure RecordHeader (heap : Heap) (store : Store Unit) (p : UInt64) (slots : List Slot) :
     Prop where
   base : 4096 + 48 ≤ p.toNat
@@ -287,14 +300,17 @@ structure RecordHeader (heap : Heap) (store : Store Unit) (p : UInt64) (slots : 
   below : p.toNat + capacityAt store p ≤ heap.top.toNat
   separate : ∀ node ∈ heap.free,
     regionsDisjoint node.region (p.toNat - 48, 48 + capacityAt store p)
+  lengths : BufferLengths slots
 
 /-- The slots of a borrowed record at `p`, at a nonzero address, inside the 32-bit address
-space, below `top`, and outside every free block. -/
+space, below `top`, and outside every free block.  Each buffer slot is followed by a word slot
+that holds the buffer's length. -/
 structure RecordSlots (heap : Heap) (p : UInt64) (slots : List Slot) : Prop where
   nonzero : p ≠ 0
   address : p.toNat + 8 * slots.length < 4294967296
   below : p.toNat + 8 * slots.length ≤ heap.top.toNat
   separate : ∀ node ∈ heap.free, regionsDisjoint (p.toNat, 8 * slots.length) node.region
+  lengths : BufferLengths slots
 
 mutual
 /-- The value at `p` is `n`, and every record of it is owned. -/
@@ -304,7 +320,8 @@ def NodeOwned (heap : Heap) (store : Store Unit) (p : UInt64) : Node → Prop
 
 /-- Slots `i` on of the record at `p` hold `slots`, with every child, array, and buffer owned.
 A buffer's root is 0 exactly when the buffer is empty, and a nonempty buffer is as
-`Represent LeanExe.Bytes` states it. -/
+`Represent LeanExe.Bytes` states it.  The field `lengths` of `RecordHeader` places the buffer's
+length in the slot after its root. -/
 def SlotsOwned (heap : Heap) (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → Prop
   | [] => True
   | .word w :: rest =>
@@ -329,7 +346,8 @@ def NodeBorrowed (heap : Heap) (store : Store Unit) (p : UInt64) : Node → Prop
 
 /-- Slots `i` on of the record at `p` hold `slots`, with every child and array borrowed.  A
 buffer is as owned, as `Represent LeanExe.Bytes` states a borrowed buffer, with its root 0
-exactly when it is empty. -/
+exactly when it is empty.  The field `lengths` of `RecordSlots` places the buffer's length in the
+slot after its root. -/
 def SlotsBorrowed (heap : Heap) (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → Prop
   | [] => True
   | .word w :: rest =>
@@ -417,9 +435,10 @@ class Encode (α : Type) where
   encode : α → Node
 
 /-- A value of a type with `Encode` is a pointer to the records that `encode` gives.  The
-caller lends records that hold the right words and pointers; a result's records are owned
-and occupy pairwise disjoint blocks.  The call reads the slots of the records, which
-`Separate` keeps apart from the consumed blocks. -/
+caller lends records that hold the right words and pointers, with their arrays and buffers.  A
+result's records, arrays, and nonempty buffers are owned and occupy pairwise disjoint blocks.
+The call reads the slots of the records, the words of their arrays, and the blocks of their
+buffers, which `Separate` keeps apart from the consumed blocks. -/
 instance [Encode α] : Represent α where
   width _ := 1
   borrowed heap store vs x := ∃ p, vs = [.i64 p] ∧ NodeBorrowed heap store p (Encode.encode x)
@@ -433,8 +452,9 @@ instance [Encode α] : Represent α where
     | _ => []
   moves _ _ _ := []
 
-/-- A value of a recursive type that the caller hands over: the call receives its records as
-owned, reads nothing else of it, and consumes every record. -/
+/-- A value of a recursive type that the caller hands over: the call receives its records,
+arrays, and buffers as owned, reads nothing else of it, and consumes every record, array, and
+nonempty buffer. -/
 instance [Encode α] : Represent (Moved α) where
   width _ := 1
   borrowed heap store vs x := Represent.owned heap store vs x.val
@@ -503,9 +523,10 @@ theorem memoryCap_le_of_caps {m : Module} {store store' : Store Unit}
 /-- Entry `entry` of `m` computes `f` exactly.  From any store that satisfies the
 allocator invariant, with arguments `params` (in declaration order) representing
 `x`, whose consumed blocks are pairwise disjoint and apart from the memory the call
-reads (an array's words and a borrowed value's record slots), in a memory whose cap is at most 65,535 pages, the call aborts at `unreachable`
-or returns values that, in declaration order, represent `f x` and that the caller
-owns.  Talos lists arguments and results with the top of the stack first, hence the
+reads (an array's words, and a borrowed value's record slots with the words of their arrays
+and the blocks of their buffers), in a memory whose cap is at most 65,535 pages, the call
+aborts at `unreachable` or returns values that, in declaration order, represent `f x` and that
+the caller owns.  Talos lists arguments and results with the top of the stack first, hence the
 reversals.  The allocator invariant holds again, and the memory's maximum size is
 unchanged.  Every region of the heap before the call, below `top` and outside every free
 block, that lies apart from the consumed blocks keeps its bytes, is still such a region, and

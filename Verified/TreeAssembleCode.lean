@@ -78,7 +78,7 @@ theorem wp_assembleRecord {m : Module} {host : HostEnv Unit} {heap : Heap}
     (hPtr : s.get ptr = some (.i64 p)) (hLength : (pre ++ words).length = width)
     (hShort : width ≤ 64) (hCount : store.mem.read64 (p - 40).toUInt32 = 1)
     (hValues : List.Forall₂ (fun word slot => slot.ValueOwned heap store word) (pre ++ words)
-      slots)
+      slots) (hLengths : BufferLengths slots)
     (hLocals : SourcesHold s s.positions srcs tys words)
     (hApart : (block store p :: fieldBlocks store (pre ++ words) slots).Pairwise regionsDisjoint)
     (hNext : ∀ store', heap.At store' → NodeOwned heap store' p (.record slots) →
@@ -98,7 +98,7 @@ theorem wp_assembleRecord {m : Module} {host : HostEnv Unit} {heap : Heap}
   have hPreWrites := recordWriteValues_range p 0 pre store (by omega)
   obtain ⟨hAt1, hRaw1, _, _⟩ := hRaw.writeValues hAt 0 (pre ++ words) (by omega)
   obtain ⟨hAt2, hNode2, hBlocks2, hStep2⟩ :=
-    hRaw.assemble hAt hLength hShort hCount hValues hApart
+    hRaw.assemble hAt hLength hShort hCount hValues hLengths hApart
   have hAppend := recordWriteValues_append p 0 pre words store
   rw [Nat.zero_add] at hAppend
   rw [List.append_assoc]

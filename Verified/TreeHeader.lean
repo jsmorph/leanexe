@@ -18,6 +18,10 @@ theorem wordSlots_mask (words : List UInt64) : maskOf (words.map Slot.word) = 0 
     rw [ih]
     rfl
 
+theorem wordSlots_lengths : ∀ words : List UInt64, BufferLengths (words.map Slot.word)
+  | [] => trivial
+  | _ :: rest => wordSlots_lengths rest
+
 theorem wordSlots_blocks (store : Store Unit) (p : UInt64) (words : List UInt64) :
     ∀ i, slotsBlocks store p i (words.map Slot.word) = [] := by
   induction words with

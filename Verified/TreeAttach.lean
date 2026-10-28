@@ -11,6 +11,7 @@ theorem TreeHeader.attach_spec {shape : TreeShape} {r : Fin shape.records} {heap
     {store : Store Unit} {p : UInt64} {slots : List Slot}
     (hHeap : heap.At store) (hHeader : Owned shape r heap store p)
     (hLength : slots.length = shape.width r) (hSlots : SlotsOwned heap store p 0 slots)
+    (hLengths : BufferLengths slots)
     (hApart : (Node.blocks store p (.record slots)).Pairwise regionsDisjoint) :
     let store' := setMask store p (maskOf slots)
     Memory.WritesRange store store' (p.toNat - 8) p.toNat ∧ heap.At store' ∧
@@ -37,7 +38,7 @@ theorem TreeHeader.attach_spec {shape : TreeShape} {r : Fin shape.records} {heap
     unfold capacityAt
     rw [hRead 32 (by decide) (by decide)]
   have hHead' : RecordHeader heap store' p slots := by
-    refine ⟨hBase, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨hBase, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hLengths⟩
     · rw [hRead 48 (by decide) (by decide)]; exact hHead.magic
     · rw [hRead 40 (by decide) (by decide)]; exact hHead.count
     · rw [hRead 24 (by decide) (by decide)]; exact hHead.kind
