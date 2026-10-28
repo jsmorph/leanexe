@@ -36944,12 +36944,12 @@ The design calls `lx_trap(code)` at a trap and lists "`lx_trap` never returns" a
 - [x] `Print.lean`, the C printer; `ClightGen.lean`, `ClightDiff.lean`, the executable `clight-diff`, and `tests/native/clight.sh`.
 - [x] Build `LeanExe.Native` and fix what the compiler rejects.  The unchecked proofs are `perm_order_b_iff` and `Mem.range_perm_b_iff` in `Memory.lean`, `type_beq_eq` and `type_beq_refl` in `Ctypes.lean`, and every theorem of `RunSound.lean`; none uses `sorry`.
 - [x] `#print axioms LClight.run_sound` shows at most `propext`, `Classical.choice`, and `Quot.sound`.
-- [ ] Build `Verified Library` with the change to `verified_compile`; every `verified_compile` emits `p.inSubset` without a warning, and the kernel's time for it on the largest modules (GPT-2, binary32 GPT-2, the Euler solvers) is recorded.
+- [x] Build `Verified Library` with the change to `verified_compile`; every `verified_compile` emits `p.inSubset` without a warning, and the kernel's time for it on the largest modules (GPT-2, binary32 GPT-2, the Euler solvers) is recorded.  Done: the next entry records both builds and the kernel's times, in the commits "Record the CompCert build and the M1 results" and "Record the Library build with the subset theorems".
 - [x] `tests/native/subset.sh`: all 98 modules of the corpus inside the subset (M0's exit criterion).
 - [x] Build CompCert 3.18 with `clightgen` from the verified archive, for x86-64 and, for `ccomp -interp` alone, for AArch64.
 - [x] `tests/native/clight.sh` on many seeds for both targets, with every difference explained and the counts recorded (M1's exit criterion).
 - [x] An independent review of the copy against the CompCert sources, file by file.
-- [ ] Import `LeanExe.Native` from `LeanExe.lean` once it builds without `sorry`.
+- [ ] Import `LeanExe.Native` from `LeanExe.lean` once it builds without `sorry`.  Open: every module that `LeanExe/Native.lean` imports builds without `sorry` in the `Verified` build, which reaches them through `Verified.Reflect.Command` and `Verified.Native`.  `LeanExe.lean` still does not import it.  The import and a build of the default targets remain, and the import makes the default library `LeanExe` contain the translator and its proofs.
 - [x] The user's decision on the trap mechanism (below).
 - [x] The user's decision on the license of the Lean copy (below).
 
@@ -37033,7 +37033,7 @@ Three limits remain.  The relation holds no memory, so the functions that M3 add
 
 - [x] The step from `eval_funcall` to a whole program through a generated `main`.  Done by the bare-metal work for its programs, as the entry of 2026-10-29 on the bound in a temporary records.
 - [x] The hypotheses of `translate_correct` for the program that `clightgen` reads, built by the check.  Done by the bare-metal work for its programs, as the same entry records.
-- [ ] Merge `main`, which now carries the corrected `Library.Native` layout, before the full gate.
+- [x] Merge `main`, which now carries the corrected `Library.Native` layout, before the full gate.  Done: the branch has merged main five times since, the last time in the commit "Merge main with typed fields stage 2", and `Library/Native.lean` now imports the CRC, SHA-3, SipHash, XXH64, and regex programs.
 
 ### The reviewer's answer on findings 2 and 3
 
@@ -37070,7 +37070,7 @@ Three limits remain.  The theorems speak of the translated program's own global 
 - [x] `MemRel`, the four memory instructions, and `translate_correct` with memory.
 - [x] `lx_init_correct` and the general initial memory.
 - [x] `NativeImpl` for the array, list, sorting, and CRC examples, and the runtime's theorems.
-- [ ] Functions with several results, which SHA-2, SipHash, XXH64, and SHA-3 need.
+- [x] Functions with several results, which SHA-2, SipHash, XXH64, and SHA-3 need.  Done in M4, in the commit "Add several results and the generated native theorems".
 
 ## 2026-10-26: The Wasm-to-C translator: M4
 
@@ -37109,7 +37109,7 @@ Five choices of M4 depart from or refine the design, and [the design](docs/nativ
 - [x] The native host and `tests/native/verified.sh`, with every translated case passing.
 - [x] The step from `eval_funcall` to a whole program through a generated `main`.  Done, as in M2's list.
 - [x] The hypotheses of `translate_correct` for the program that `clightgen` reads.  Done, as in M2's list.
-- [ ] Merge `main` before the full gate.
+- [x] Merge `main` before the full gate.  Done, as in M2's list.
 
 ### The decisions on the five choices of M4
 
@@ -37118,11 +37118,11 @@ The user asked the coordinator to decide open questions while the user is away, 
 1. The typed result globals are accepted, because each load and store keeps its own type and the C text needs no cast.
 2. The restriction on a branch to the outermost label of a function with several results is accepted as a documented restriction, because the survey found no function left out for that reason alone.  [The design](docs/native-translator.md) now states it with the other kinds of function that the translation leaves out.  When M5 and M6 admit functions with several results that include floats, the survey runs again, and a function left out for that reason alone is reported before the restriction is lifted.
 3. `nativeCap` of 4,096 pages is accepted as a fixed constant.  A larger static `lx_mem` approaches the 2 GiB limit on static data under the small code model, every translated case of the corpus fits, and so does the slew planner's bound of 68,020,488 bytes.  The design now says that a module needing more memory needs a cap of its own, which is future work.
-4. The translation and the native theorems in every module that `verified_compile` builds, without `p.c`, are accepted, because the plan of M4 already had `verified_compile` emit `p.f.native`.  Two conditions apply.  The merge gate of this branch builds the heavy proofs and `Library.Numerics.Float64.Lgamma.Compiled` and `Tgamma.Compiled` one at a time and records each one's time and peak memory before and after the change, by `/usr/bin/time -v` or the scope's `memory.peak`; if any rises past what the 11.6 GiB hosts build at `--threads 1 --memory-high 10G`, the gate stops and the result goes to the user.  The design's M7 now includes a file theorem that the `.c` file `native-verified` writes equals the printer's output for `p.translation`, in the form of the Wasm file theorems, which removes the run of `native-verified` from the trusted base.
+4. The translation and the native theorems in every module that `verified_compile` builds, without `p.c`, are accepted, because the plan of M4 already had `verified_compile` emit `p.f.native`.  Two conditions apply.  The merge gate of this branch builds the heavy proofs and `Library.Numerics.Float64.Lgamma.Compiled` and `Tgamma.Compiled` one at a time and records each one's time and peak memory before and after the change, by `/usr/bin/time -v` or the scope's `memory.peak`; if any rises past what a build at `--threads 1 --memory-high 10G` allows, the gate stops and the result goes to the user.  The design's M7 now includes a file theorem that the `.c` file `native-verified` writes equals the printer's output for `p.translation`, in the form of the Wasm file theorems, which removes the run of `native-verified` from the trusted base.
 5. The tests' use of the generated translations with 4,096 pages, with `native-emit` keeping 256 pages for its memory-growth test, is accepted.
 
-- [ ] At the merge gate, build the heavy proofs and the `Lgamma` and `Tgamma` modules one at a time, with time and peak memory before and after.
-- [ ] M7: the file theorem for the written C text.
+- [ ] At the merge gate, build the heavy proofs and the `Lgamma` and `Tgamma` modules one at a time, with time and peak memory before and after.  Open in part: the entries on the merge after typed-fields stage 1 and on the native theorems by parts give the time, resident set, and scope peak of `Lgamma.Compiled` and `Tgamma.Compiled` with main's command and with this branch's, in the commits "Record the merge with main and the gamma measurements", "Prove the native theorems one function at a time", and "Revert the module-level native theorem".  No entry gives the time and peak memory of the fifteen other heavy proofs, `TgammaAccRangeA`, `B`, and `C` and the twelve `LgammaRoot` modules, before and after the change.  They call no `verified_compile`, so the change reaches them only through the larger `.olean` files they import.
+- [x] M7: the file theorem for the written C text.  Dropped: on 2026-10-28 the coordinator dropped it from M7, as that day's entry records, because `native-verified build` has `clightgen` read the file that `ccomp` then compiles, which covers the printer and the write (commit "Check the C text in the native build").
 
 ## 2026-10-26: The Wasm-to-C translator: plan for M5 (binary64)
 
@@ -37187,13 +37187,13 @@ The differential test gains random float expressions over edge values (NaNs with
 
 The statement change above is the one point where M5 alters existing theorems, and it is of the kind accepted in M4.  For M6, Talos computes `f64PromoteF32` and `f32DemoteF64` with Lean's native floats, whose operations Lean's logic leaves opaque; the subset does not contain them and the survey finds no use, so they block nothing now, but a module that uses them would need Talos to define them by its exact helpers, as the Lean copy defines `of_single` and `to_single`, which would change a dependency.
 
-- [ ] Probe `clightgen` for `lx_pun[1]`, `((double *) lx_pun)[0]`, `__builtin_fabs`, `t != t`, negative literals, and the guard of `trunc_sat`.
-- [ ] Add `__builtin_fabs` to the Lean copy, with its citation and differential cases.
-- [ ] `lx_pun` in the translator, `Env`, `EnvOk`, `MemRel`, and `Init.lean`; both reinterpretations.
-- [ ] Constants, arithmetic and `sqrt` with canonicalization.
-- [ ] Several results with `f64`, after the survey that decision 2 of M4 requires.
-- [ ] `f64ConvertI64U`, the comparisons, `abs`, and `i64TruncSatF64U`.
-- [ ] Float cases in `tests/native/run.sh` and the differential test; the corpus driver; the Euler solvers native with theorems.
+- [x] Probe `clightgen` for `lx_pun[1]`, `((double *) lx_pun)[0]`, `__builtin_fabs`, `t != t`, negative literals, and the guard of `trunc_sat`.  Done in the commit "Record the M5 decisions and the probe of clightgen".
+- [x] Add `__builtin_fabs` to the Lean copy, with its citation and differential cases.  Done in a changed form: the probe found that CompCert's front end turns the call into `Oabsfloat`, which the copy already transcribes, so the copy gained no built-in, as the next section records.  The differential cases came in the commit "Add fabs to the differential test of the Clight copy".
+- [x] `lx_pun` in the translator, `Env`, `EnvOk`, `MemRel`, and `Init.lean`; both reinterpretations.  Done in the commits "Add lx_pun, the sqrt built-in, and double result globals" and "Translate and prove the binary64 forms".
+- [x] Constants, arithmetic and `sqrt` with canonicalization.  Done in the commit "Translate and prove the binary64 forms".
+- [x] Several results with `f64`, after the survey that decision 2 of M4 requires.  Done in the commit "Translate and prove the binary64 forms".  The M5 entry, from the commit "Run the Euler cases natively and record M5", gives the survey's second run.
+- [x] `f64ConvertI64U`, the comparisons, `abs`, and `i64TruncSatF64U`.  Done in the commit "Translate and prove the binary64 forms".
+- [x] Float cases in `tests/native/run.sh` and the differential test; the corpus driver; the Euler solvers native with theorems.  Done in the commits "Test the binary64 forms against Talos end to end", "Add fabs to the differential test of the Clight copy", and "Run the Euler cases natively and record M5".
 
 ### The decisions on the two questions of M5, and the probe of `clightgen`
 
@@ -37375,13 +37375,13 @@ The widening of choice 10 is a premise of `NativeA` of the kind accepted in M4 a
 
 `tests/native/run.sh` gains a module `f32ops`, the binary32 counterpart of `fops`: each form on words read as `float`s, with NaNs with payloads, a signaling NaN, both zeros, the smallest subnormal, the largest `float`, both infinities, the ties of `nearest` (0.5, 1.5, 2.5, -0.5, -2.5, `2^23 - 0.5`), squares and non-squares under `sqrt`, a negative operand of `sqrt`, and the bounds of both truncations.  The differential test gains binary32 NaN programs for `+`, the conversions between `float` and `double`, and the square root through `double`, under both targets' parameters.  The corpus driver needs no change.
 
-- [ ] Probe `clightgen` for the binary32 shapes of the choices.
-- [ ] `lx_pun` at binary32 and both reinterpretations; constants.
-- [ ] The arithmetic with the canonicalization; the comparisons; several results; the conversions.
-- [ ] `nearest`.
-- [ ] `sqrt` with the double-rounding lemma.
-- [ ] `abs` and the saturating truncations.
-- [ ] `f32ops` in `tests/native/run.sh`, the differential test, the corpus driver, and binary32 GPT-2 native with theorems.
+- [x] Probe `clightgen` for the binary32 shapes of the choices.  Done in the commit "Translate the binary32 forms other than sqrt and nearest", whose entry follows.
+- [x] `lx_pun` at binary32 and both reinterpretations; constants.  Done in the same commit.
+- [x] The arithmetic with the canonicalization; the comparisons; several results; the conversions.  Done in the same commit, except several results, which came in the commit "Translate f32.nearest and binary32 results".
+- [x] `nearest`.  Done in the commit "Translate f32.nearest and binary32 results".
+- [x] `sqrt` with the double-rounding lemma.  Done in the commit "Translate f32.sqrt through double".
+- [x] `abs` and the saturating truncations.  Done in the commit "Translate the binary32 forms other than sqrt and nearest".
+- [x] `f32ops` in `tests/native/run.sh`, the differential test, the corpus driver, and binary32 GPT-2 native with theorems.  Done: `f32ops` came in the commit "Translate the binary32 forms other than sqrt and nearest" and grew in the next two, binary32 GPT-2 in "Translate f32.sqrt through double", and the gate in "Print a cast call result as one assignment".  The differential test gained no programs in M6.  Its NaN programs since M1 include binary32 `+` of NaNs and both conversions between `float` and `double`, and the square root through `double` appears only as its two parts, the square root of a negative `double` and the conversion of a `double` NaN to `float`.
 
 ## 2026-10-27: The Wasm-to-C translator: M6, the binary32 forms without `sqrt` and `nearest`
 
@@ -37557,6 +37557,12 @@ A second change waits for the user's decision on native speed: keeping `lx_pages
 With the option, the native corpus driver on the AArch64 tree passed all 35,766 cases and the 3,322 module cases, and none of the 101 objects it compiled has a global-offset-table relocation of `lx_mem`, where the sort module's object compiled without the option had 288.  The job's watcher recorded no memory pressure.  The benchmark job built before the change was stopped while it waited, without measuring, and started again on the new build.
 
 `tests/native/bench.sh` had written its inputs with `python3` directly, against the rule that Python runs only through `uv run`.  The generator is now `tests/native/bench_inputs.py`, with the inline script metadata of the repository's other Python scripts, and the driver runs it with `uv run`; it writes the same six files, byte for byte.
+
+## 2026-10-28: The Wasm-to-C translator: the plan items and the open decisions
+
+The translator's entries left 25 plan items unchecked, and each is now marked in place with the commits that did it, the decision that dropped it, or what remains.  Eighteen are done, and the file theorem of M7 is dropped.  The other six are four open items, since M2 and M4 both list the first two: the generated `main`, the hypotheses of `translate_correct` for the program that `ccomp` compiles, the import of `LeanExe.Native` in `LeanExe.lean`, and the time and peak memory of the fifteen heavy proofs other than `Lgamma.Compiled` before and after the change to `verified_compile`.  The differential test gained no binary32 programs in M6, although the plan of M6 said it would.  Its NaN programs since M1 contain binary32 `+` of NaNs and both conversions between the formats, and the square root through `double` appears only as its two parts.
+
+[The design](docs/native-translator.md) no longer lists the IEEE 754 model among its open decisions.  M0 and M1 chose Talos's `Wasm.IEEE64` and `Wasm.IEEE32` for every result that is a number or an infinity and the `Archi` choice functions for NaNs, M5 and M6 proved the float forms on that model, and the design's section on the Lean copy now states it.  The risks to the schedules of M2 and M6 are gone from the table, since both proofs are complete, and the question about the per-program LeanExe compiler now asks whether it emits the native theorems, as `verified_compile` has since M4.  The entry on M4's decisions now states its memory condition by the build's limit alone.
 
 ## 2026-10-27: Bare-metal native code: design and plan
 
