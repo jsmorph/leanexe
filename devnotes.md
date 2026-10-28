@@ -36623,7 +36623,7 @@ The module cases of `tests/TestSupport/Native/ModuleCases.lean`, 3,096 of `euler
 - [x] B2 · Lean copy: `bigstep_program_terminates`, `type_int32s`, `find_var_info`, `block_is_volatile`, `eventval_match`, `load_result`, `volatile_store`, `EF_vstore`, and differential tests against `ccomp -interp`.  Exit: no difference in either CompCert configuration.
 - [x] B3 · Whole program: `bareProgram`, the prefix of CompCert's declarations, `init_mem` and `start` for it, the renaming lemma, and the check of the whole program.  Exit: `start` holds for `bareProgram` of every corpus module, and the check passes for each.
 - [x] B4 · Generated `main`: its writer, its proof, and `p.f.program` from the command `bare_program`.  Exit: GCD, CRC-32, SHA-256, an Euler solve, and a recursion at the depth limit run under QEMU with their theorems, and their output equals `encode` of the Lean result.
-- [ ] B5 · Rocq: `Clight2Asm.v` and the uniqueness lemma.  Exit: both check against CompCert 3.18's proofs, with the assumptions recorded.
+- [x] B5 · Rocq: `Clight2Asm.v` and the uniqueness lemma.  Exit: both check against CompCert 3.18's proofs, with the assumptions recorded.
 - [ ] B6 · Stack bound: the tool, its cross-check with the translator's list of functions that take the depth, and the build's comparison with the stack size.  Exit: the bound exceeds the high-water mark of every case of every corpus module.
 - [ ] B7 · Inputs, optional: `EF_vload`, the theorem about `alloc` followed by stores, and the theorem quantified over the input.  Exit: SHA-256 of a loaded message with its theorem.
 - [ ] B8 · Board, optional: the MMU with a guard page, the board's entry and UART, and the output question.  Exit: the programs of B4 on a board.
@@ -36659,7 +36659,7 @@ Four changes close B0.  The volatile global is `lx_out`, as the design names it.
 
 - [x] B0: `tests/baremetal/run.sh` passes with the check of the exception level, the masking of interrupts, and `lx_out`.
 - [x] `rocq/check.sh` passes against CompCert 3.18's proofs for AArch64.
-- [ ] B5: the uniqueness lemma.
+- [x] B5: the uniqueness lemma.
 
 ### B1
 
@@ -36833,6 +36833,19 @@ The exporter of `clightgen` changes some statements as it prints them (`export/E
 - [x] The quietness of the translation and of the whole program.
 - [x] The theorems `bare_program`, `bare_of_nativeA`, and `bare_of_nativeTables`, and the command `bare_program`.
 - [x] The five programs of test 2, with their theorems, under QEMU.
-- [ ] The lemma for the exporter's elision of `Sskip`.
+- [x] The lemma for the exporter's elision of `Sskip`, in B5.
 - [ ] `ImplementsStatic` in the command `bare_program`.
 - [x] B4 · Generated `main`.
+
+### B5
+
+B4's review asked for the step from the program of `clightgen`'s Coq file to the program inside `clightgen` first.  `LeanExe/Native/Proof/Export.lean` transcribes the exporter's `stmt` (`export/ExportClight.ml`, lines 88 to 136) as `exportStmt`, the statement that its output denotes, with the same order of cases, and `print_function` (lines 140 to 149) as `exportProgram`, which changes only function bodies.  `ExportRel s' s` relates `s'` to every statement from which removing sequences with `Sskip` gives it, and `exportStmt_rel` shows that it relates `exportStmt s` to `s`, both forms of `Swhile` included.  `ExportRel.core` splits a related statement into a core, whose last step relates its constructor, wrapped in sequences with `Sskip`, and `Wrap.exec` shows that wrapping preserves every execution.  `exec_export_core` and `funcall_export` follow the file's derivation, and `bigstep_program_terminates_export` concludes that a run of `exportProgram p` is a run of `p` with the same trace and result.  Lean's structural recursion over the derivations rejected recursive calls on derivations whose types `cases` had rewritten, so the proof keeps each derivation as it is and states the equations that `cases` would substitute as separate facts.  The theorem depends on `propext`, `Classical.choice`, and `Quot.sound`, and the file has 490 lines, where the estimate was 300.
+
+The design states the step in its argument about the program `clightgen` reads, and the trusted base adds the transcription of the exporter to its item on the printer and the front end.  The translator's design records that it took the printed program to be the program inside `clightgen`, and that `bigstep_program_terminates_export` closes the step.  The design's open decisions add `ImplementsStatic`, the theorem of a program with byte literals, to the command `bare_program` when a program needs it.
+
+`rocq/Clight2Asm.v` gains the uniqueness of the Asm program's behavior.  `no_inputs t` holds of a trace without system calls and volatile loads, the two events whose results `match_traces` lets differ (`common/Events.v`, lines 505 to 517), and `match_traces_no_inputs` shows that `match_traces` relates such a trace only to itself.  For a determinate semantics, `star_follows` shows that every run from a state follows a run from that state to a state without steps whose trace has no inputs.  `no_forever_silent` and `no_forever_reactive`, the second by induction on the length of that trace, show that no run from such a state diverges or reacts forever.  `determinate_unique_behavior` concludes that a program that terminates with a trace without inputs has no other behavior, and `clight2_bigstep_asm_unique` applies it with `Asm.semantics_determinate` (`aarch64/Asm.v`, line 1282): for the C program of a Clight run that terminates with `t` and `r`, a behavior of the Asm program is `Terminates t r` and nothing else.  The proofs take 120 lines, where the estimate was 150.  `rocq/check.sh` passes against CompCert 3.18's proofs for AArch64, with `Print Assumptions` of both theorems equal to those of `transf_c_program_correct` and `ClassicalEpsilon.constructive_indefinite_description`.  The file now imports `Events`, so `Print Assumptions` names CompCert's parameters of external functions and inline assembly without the qualifier that the reference prints, and the script's comparison drops that qualifier as it drops `Compopts`.
+
+- [x] `exportStmt`, `ExportRel`, and `bigstep_program_terminates_export`.
+- [x] The exporter's step in both designs, and `ImplementsStatic` in the open decisions.
+- [x] `determinate_unique_behavior` and `clight2_bigstep_asm_unique`, checked by `rocq/check.sh`.
+- [x] B5 · Rocq.
