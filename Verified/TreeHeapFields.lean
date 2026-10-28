@@ -430,6 +430,40 @@ theorem heapLocs_array_get (fields : List TreeField) :
         simp only
         omega
 
+theorem heapLocs_buffer_get (fields : List TreeField) :
+    ∀ arraysBase buffersBase (i : Fin (fields.count .bytes))
+      (h : heapBufferSlot fields i + 1 < (heapLocs fields arraysBase buffersBase).length),
+      (heapLocs fields arraysBase buffersBase)[heapBufferSlot fields i] =
+          buffersBase + 2 * i.val ∧
+        (heapLocs fields arraysBase buffersBase)[heapBufferSlot fields i + 1] =
+          buffersBase + 2 * i.val + 1 := by
+  induction fields with
+  | nil => intro _ _ i; exact Fin.elim0 (i.cast (by simp))
+  | cons field rest ih =>
+    intro arraysBase buffersBase i h
+    cases field with
+    | word e => exact ih _ _ _ h
+    | child => exact ih _ _ _ h
+    | array e =>
+      simp only [heapBufferSlot, heapLocs, List.getElem_cons_succ]
+      exact ih _ _ _ _
+    | bytes =>
+      by_cases hz : i.val = 0
+      · simp [heapBufferSlot, hz, heapLocs]
+      · simp only [heapBufferSlot, dite_eq_right hz, heapLocs, List.getElem_cons_succ]
+        have hLt : heapBufferSlot rest ⟨i.val - 1, by have := i.isLt; simp at this; omega⟩ + 1 <
+            (heapLocs rest arraysBase (buffersBase + 2)).length := by
+          simp only [heapBufferSlot, dite_eq_right hz, heapLocs, List.length_cons] at h
+          omega
+        obtain ⟨h1, h2⟩ := ih arraysBase (buffersBase + 2) _ hLt
+        refine ⟨?_, ?_⟩
+        · rw [h1]
+          simp only
+          omega
+        · rw [h2]
+          simp only
+          omega
+
 theorem heapLocs_mem (fields : List TreeField) :
     ∀ arraysBase buffersBase loc, loc ∈ heapLocs fields arraysBase buffersBase →
       (arraysBase ≤ loc ∧ loc < arraysBase + (fields.filterMap TreeField.arrayElem?).length) ∨

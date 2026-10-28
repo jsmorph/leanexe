@@ -95,7 +95,12 @@ theorem treeFields_variable_regions {heap : Heap} {store : Store Unit} {s : Loca
     {children : Fin (shape.children r) → Tree shape}
     {pointers : Fin (shape.children r) → UInt64} {arrayPtrs : Fin (shape.arrays r) → UInt64}
     {roots lengths : Fin (shape.buffers r) → UInt64}
-    (hNode : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
+    (hBuffers : ∀ i, RecordBuffer heap store
+      (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+        heapBufferSlot (shape.kinds r) i)))
+      (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+        heapBufferSlot (shape.kinds r) i + 1)))
+      (buffers i))
     (hPointers : ∀ i, pointers i = store.mem.read64
       (slotAddress p (shape.fieldStart + (fieldPosition true (shape.fields r) i).val)))
     (hArrayPtrs : ∀ i, arrayPtrs i = store.mem.read64
@@ -136,7 +141,7 @@ theorem treeFields_variable_regions {heap : Heap} {store : Store Unit} {s : Loca
   rw [shape.paramSlots r] at hSlot
   rw [hSlot] at hLocal hr
   obtain rfl := LocalsHold.unique hLocal (hold.var x) (hLength.trans (hRep.var x).length.symm)
-  exact treeFields_regions_subset store shape r mode p words arrays buffers children hNode b
+  exact treeFields_regions_subset store shape r mode p words arrays buffers children hBuffers b
     (hRep.regions_var x b hr)
 
 end Verified
