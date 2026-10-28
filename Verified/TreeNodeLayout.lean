@@ -33,14 +33,17 @@ def NodeLayout (shape : TreeShape) : Node → Prop
   | .null => True
   | .record slots => ∃ r, slots.length = shape.width r ∧ maskOf slots = shape.mask r ∧
       slots.take (shape.tagSlots r).length = shape.tagSlots r ∧ SlotsLayout shape slots ∧
-      arrayMaskOf slots = shape.arrayMask r
+      arrayMaskOf slots = shape.arrayMask r ∧ bufferMaskOf slots = shape.bufferMask r
 
+/-- The slots of a record in the copy loop's layout: each child in the layout, and each buffer's
+root followed by the buffer's length. -/
 def SlotsLayout (shape : TreeShape) : List Slot → Prop
   | [] => True
   | .word _ :: rest => SlotsLayout shape rest
   | .child value :: rest => NodeLayout shape value ∧ SlotsLayout shape rest
   | .array _ :: rest => SlotsLayout shape rest
-  | .bytes _ :: _ => False
+  | .bytes data :: rest => (∃ more, rest = .word (UInt64.ofNat data.data.size) :: more) ∧
+      SlotsLayout shape rest
 end
 
 mutual
@@ -61,7 +64,7 @@ theorem SlotsLayout.slotted {shape : TreeShape} :
   | .child value :: rest, h =>
     ⟨NodeLayout.slotted (value := value) h.1, SlotsLayout.slotted (slots := rest) h.2⟩
   | .array _ :: rest, h => SlotsLayout.slotted (slots := rest) h
-  | .bytes _ :: _, h => False.elim h
+  | .bytes _ :: rest, h => SlotsLayout.slotted (slots := rest) h.2
 end
 
 theorem treeSlots_layout (shape : TreeShape) (fields : List Bool) :
@@ -88,21 +91,22 @@ theorem SlotsLayout.append {shape : TreeShape} :
   | .word _ :: rest, _, h1, h2 => SlotsLayout.append (first := rest) h1 h2
   | .child _ :: rest, _, h1, h2 => ⟨h1.1, SlotsLayout.append (first := rest) h1.2 h2⟩
   | .array _ :: rest, _, h1, h2 => SlotsLayout.append (first := rest) h1 h2
-  | .bytes _ :: _, _, h1, _ => False.elim h1
+  | .bytes _ :: rest, second, h1, h2 => by
+    obtain ⟨⟨more, hMore⟩, h1⟩ := h1
+    exact ⟨⟨more ++ second, by rw [hMore]; rfl⟩, SlotsLayout.append (first := rest) h1 h2⟩
 
-/-- The array slots of fields none of which is a buffer have the copy loop's layout. -/
-theorem heapSlots_layout (shape : TreeShape) (fields : List TreeField)
-    (hNoBytes : fields.count .bytes = 0) :
+/-- The array and buffer slots of fields have the copy loop's layout. -/
+theorem heapSlots_layout (shape : TreeShape) (fields : List TreeField) :
     ∀ arrays buffers, SlotsLayout shape (heapSlots fields arrays buffers) := by
   induction fields with
   | nil => intros; trivial
   | cons field rest ih =>
     intro arrays buffers
     cases field with
-    | word e => exact ih (by simpa using hNoBytes) _ _
-    | child => exact ih (by simpa using hNoBytes) _ _
-    | array e => exact ih (by simpa using hNoBytes) _ _
-    | bytes => simp at hNoBytes
+    | word e => exact ih _ _
+    | child => exact ih _ _
+    | array e => exact ih _ _
+    | bytes => exact ⟨⟨_, rfl⟩, ih _ _⟩
 
 /-- The records of a value have the copy loop's layout. -/
 theorem Tree.toNode_layout {shape : TreeShape} (value : Tree shape) :
@@ -111,13 +115,13 @@ theorem Tree.toNode_layout {shape : TreeShape} (value : Tree shape) :
   | nil => trivial
   | node r words arrays buffers children ih =>
     refine ⟨r, shape.recordSlots_length .., shape.mask_eq .., by simp [TreeShape.recordSlots], ?_,
-      shape.arrayMask_eq ..⟩
+      shape.arrayMask_eq .., shape.bufferMask_eq ..⟩
     show SlotsLayout shape (shape.tagSlots r ++ treeSlots (shape.fields r) (shape.slotWords r words)
       (fun i => (children i).toNode) ++
         heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers)
     rw [List.append_assoc]
     exact tagSlots_layout shape r _ (SlotsLayout.append (treeSlots_layout shape _ _ _ ih)
-      (heapSlots_layout shape _ (shape.buffers_eq_zero r) _ _))
+      (heapSlots_layout shape _ _ _))
 
 theorem SlotsLayout.child {shape : TreeShape} :
     ∀ {slots : List Slot}, SlotsLayout shape slots →
@@ -132,23 +136,36 @@ theorem SlotsLayout.child {shape : TreeShape} :
   | .array _ :: _, _, 0, _, _, he => by cases he
   | .array _ :: rest, h, i + 1, hi, value, he =>
     SlotsLayout.child (slots := rest) h i (by simpa using hi) value he
-  | .bytes _ :: _, h, _, _, _, _ => False.elim h
+  | .bytes _ :: _, _, 0, _, _, he => by cases he
+  | .bytes _ :: rest, h, i + 1, hi, value, he =>
+    SlotsLayout.child (slots := rest) h.2 i (by simpa using hi) value he
 
-/-- No slot of a record laid out by a shape is a buffer. -/
-theorem SlotsLayout.not_bytes {shape : TreeShape} :
+/-- The slot after a buffer's root in a record laid out by a shape holds the buffer's length. -/
+theorem SlotsLayout.bytes_next {shape : TreeShape} :
     ∀ {slots : List Slot}, SlotsLayout shape slots → ∀ i (hi : i < slots.length) data,
-      slots[i] ≠ .bytes data
-  | [], _, i, hi, _ => by simp at hi
-  | .word _ :: _, _, 0, _, _ => nofun
-  | .word _ :: rest, h, i + 1, hi, data =>
-    SlotsLayout.not_bytes (slots := rest) h i (by simpa using hi) data
-  | .child _ :: _, _, 0, _, _ => nofun
-  | .child _ :: rest, h, i + 1, hi, data =>
-    SlotsLayout.not_bytes (slots := rest) h.2 i (by simpa using hi) data
-  | .array _ :: _, _, 0, _, _ => nofun
-  | .array _ :: rest, h, i + 1, hi, data =>
-    SlotsLayout.not_bytes (slots := rest) h i (by simpa using hi) data
-  | .bytes _ :: _, h, _, _, _ => False.elim h
+      slots[i] = .bytes data →
+        ∃ hn : i + 1 < slots.length, slots[i + 1] = .word (UInt64.ofNat data.data.size)
+  | [], _, i, hi, _, _ => by simp at hi
+  | .word _ :: _, _, 0, _, _, he => by cases he
+  | .word _ :: rest, h, i + 1, hi, data, he => by
+    obtain ⟨hn, hw⟩ := SlotsLayout.bytes_next (slots := rest) h i (by simpa using hi) data he
+    exact ⟨by simpa using hn, hw⟩
+  | .child _ :: _, _, 0, _, _, he => by cases he
+  | .child _ :: rest, h, i + 1, hi, data, he => by
+    obtain ⟨hn, hw⟩ := SlotsLayout.bytes_next (slots := rest) h.2 i (by simpa using hi) data he
+    exact ⟨by simpa using hn, hw⟩
+  | .array _ :: _, _, 0, _, _, he => by cases he
+  | .array _ :: rest, h, i + 1, hi, data, he => by
+    obtain ⟨hn, hw⟩ := SlotsLayout.bytes_next (slots := rest) h i (by simpa using hi) data he
+    exact ⟨by simpa using hn, hw⟩
+  | .bytes _ :: rest, h, 0, _, data, he => by
+    cases he
+    obtain ⟨⟨more, hMore⟩, -⟩ := h
+    subst hMore
+    exact ⟨by simp, rfl⟩
+  | .bytes _ :: rest, h, i + 1, hi, data, he => by
+    obtain ⟨hn, hw⟩ := SlotsLayout.bytes_next (slots := rest) h.2 i (by simpa using hi) data he
+    exact ⟨by simpa using hn, hw⟩
 
 theorem _root_.LeanExe.Pipeline.Slot.arrayBit_le (s : Slot) : s.arrayBit.toNat ≤ 1 := by
   cases s <;> simp [Slot.arrayBit]
@@ -197,11 +214,67 @@ theorem arrayMaskOf_test (slots : List Slot) (hLen : slots.length ≤ 64) (i : N
   have : (1 : UInt64).toNat = 1 := rfl
   rw [this, Nat.and_one_is_mod, hBits i h]
 
+theorem _root_.LeanExe.Pipeline.Slot.bufferBit_le (s : Slot) : s.bufferBit.toNat ≤ 1 := by
+  cases s <;> simp [Slot.bufferBit]
+
+/-- The buffer mask of at most 64 slots is below `2 ^ length`, and its bit `i` is slot `i`'s buffer
+bit. -/
+theorem bufferMaskOf_toNat : ∀ (slots : List Slot), slots.length ≤ 64 →
+    (bufferMaskOf slots).toNat < 2 ^ slots.length ∧
+    ∀ i (h : i < slots.length), (bufferMaskOf slots).toNat / 2 ^ i % 2 = (slots[i].bufferBit).toNat
+  | [], _ => ⟨by decide, fun i h => absurd h (by simp)⟩
+  | s :: rest, hLen => by
+      simp only [List.length_cons] at hLen
+      obtain ⟨hLt, hBits⟩ := bufferMaskOf_toNat rest (by omega)
+      have hb := Slot.bufferBit_le s
+      have hPow : 2 ^ rest.length ≤ 2 ^ 63 := Nat.pow_le_pow_right (by decide) (by omega)
+      have hEq : (bufferMaskOf (s :: rest)).toNat =
+          2 * (bufferMaskOf rest).toNat + s.bufferBit.toNat := by
+        change (2 * bufferMaskOf rest + s.bufferBit).toNat = _
+        rw [UInt64.toNat_add, UInt64.toNat_mul]
+        have : (2 : UInt64).toNat = 2 := rfl
+        rw [this, Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
+      refine ⟨by rw [hEq, List.length_cons, Nat.pow_succ]; omega, fun i h => ?_⟩
+      rw [hEq]
+      cases i with
+      | zero => simp; omega
+      | succ j =>
+        simp only [List.getElem_cons_succ]
+        rw [← hBits j (by simp at h; omega), Nat.pow_succ', ← Nat.div_div_eq_div_mul]
+        congr 2
+        omega
+
+/-- The copy loop's buffer test for slot `i` reads the slot's buffer bit. -/
+theorem bufferMaskOf_test (slots : List Slot) (hLen : slots.length ≤ 64) (i : Nat)
+    (h : i < slots.length) :
+    ((bufferMaskOf slots >>> (UInt64.ofNat i % 64)) &&& 1) = slots[i].bufferBit := by
+  obtain ⟨-, hBits⟩ := bufferMaskOf_toNat slots hLen
+  apply UInt64.toNat_inj.mp
+  rw [UInt64.toNat_and, UInt64.toNat_shiftRight]
+  have hi : (UInt64.ofNat i % 64).toNat % 64 = i := by
+    rw [UInt64.toNat_mod, UInt64.toNat_ofNat']
+    have : (64 : UInt64).toNat = 64 := rfl
+    rw [this]
+    omega
+  rw [hi, Nat.shiftRight_eq_div_pow]
+  have : (1 : UInt64).toNat = 1 := rfl
+  rw [this, Nat.and_one_is_mod, hBits i h]
+
+/-- A record of a shape without buffer fields has no buffer slot. -/
+theorem NodeLayout.not_bytes {shape : TreeShape} {slots : List Slot}
+    (h : NodeLayout shape (.record slots)) (hNone : shape.hasBuffers = false) (i : Nat)
+    (hi : i < slots.length) (data : LeanExe.Bytes) : slots[i] ≠ .bytes data := by
+  obtain ⟨r, hLength, -, -, -, -, hBuffers⟩ := h
+  intro hSlot
+  have hBit := bufferMaskOf_test slots (by rw [hLength]; exact shape.width_le r) i hi
+  rw [hBuffers, shape.bufferMask_zero hNone r, hSlot] at hBit
+  simp [Slot.bufferBit] at hBit
+
 /-- A record of a shape without array fields has no array slot. -/
 theorem NodeLayout.not_array {shape : TreeShape} {slots : List Slot}
     (h : NodeLayout shape (.record slots)) (hNone : shape.hasArrays = false) (i : Nat)
     (hi : i < slots.length) (words : Array UInt64) : slots[i] ≠ .array words := by
-  obtain ⟨r, hLength, -, -, -, hArrays⟩ := h
+  obtain ⟨r, hLength, -, -, -, hArrays, -⟩ := h
   intro hSlot
   have hBit := arrayMaskOf_test slots (by rw [hLength]; exact shape.width_le r) i hi
   rw [hArrays, shape.arrayMask_zero hNone r, hSlot] at hBit
@@ -337,7 +410,7 @@ theorem Tree.copyCost_eq {shape : TreeShape} (value : Tree shape) :
 #print axioms Tree.toNode_records
 #print axioms Tree.copyCost_eq
 #print axioms NodeLayout.slotted
-#print axioms SlotsLayout.not_bytes
+#print axioms SlotsLayout.bytes_next
 #print axioms arrayMaskOf_test
 
 end Verified

@@ -57,7 +57,7 @@ theorem wp_literal {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : H
     (by omega) (by omega) (by rw [hFrame2.params, hFrame1.params]; omega)
     (by rw [hFrame2.positions, hFrame1.positions]; omega) hCap
     (by simpa only [Literal.value, ByteArray.size, List.size_toArray] using hTrap)
-    fun heap' store' s' root hStep hRep hFrame hTop => ?_
+    fun heap' store' s' root hStep hRep hFrame hTop _ => ?_
   have hNext' := hNext heap' store' s' root hStep hRep
     (hFrame1.trans (hFrame2.trans (hFrame.mono (by omega))))
     (by simpa only [Literal.value, ByteArray.size, List.size_toArray] using hTop)

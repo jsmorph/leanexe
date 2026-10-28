@@ -28,6 +28,28 @@ theorem paramSlots_repeat (t : Ty) (mode : Mode) (Γ : List Ty) (modes : List Mo
     · congr 1
       omega
 
+/-- The slots of `n` values of type `t`, each of `w` positions. -/
+theorem paramSlots_repeatWidth (t : Ty) (mode : Mode) (Γ : List Ty) (modes : List Mode)
+    (w : Nat) (hWidth : t.width = w) : ∀ n base,
+    paramSlots (List.replicate n t ++ Γ) (List.replicate n mode ++ modes) base =
+      (List.range n).map (fun i => Slot.mk (base + w * i) (t.paramMode mode)) ++
+        paramSlots Γ modes (base + w * n)
+  | 0, base => by simp
+  | n + 1, base => by
+    simp only [List.replicate_succ, List.cons_append, paramSlots, List.headD_cons,
+      List.tail_cons, hWidth, paramSlots_repeatWidth t mode Γ modes w hWidth n,
+      List.range_succ_eq_map, List.map_cons, List.map_map, List.cons_append,
+      Function.comp_def, Nat.mul_zero, Nat.add_zero]
+    congr 2
+    · congr 1
+      funext i
+      congr 1
+      rw [Nat.mul_succ]
+      omega
+    · congr 1
+      rw [Nat.mul_succ]
+      omega
+
 theorem paramModes_fn {n : Nat} (ts : Fin n → Ty) (mode : Mode) (Γ : List Ty)
     (modes : List Mode) {m : Mode} (hb : ∀ i, (ts i).paramMode mode = m) :
     paramModes (tysOfFn n ts ++ Γ) (List.replicate n mode ++ modes) =
@@ -107,8 +129,7 @@ theorem TreeShape.paramSlots (shape : TreeShape) (r : Fin shape.records) (mode :
     paramSlots_fn _ .borrowed _ _ (shape.wordTy_width r) (fun i => shape.wordTy_paramMode r i _),
     paramSlots_repeat (.tree shape) mode _ _ rfl,
     paramSlots_fn _ mode _ _ (shape.arrayTy_width r) (fun i => shape.arrayTy_paramMode r i _),
-    shape.buffers_eq_zero r, List.replicate_zero, List.range_zero, List.map_nil, List.nil_append,
-    Ty.paramMode]
+    paramSlots_repeatWidth .bytes mode [] [] 2 rfl, Ty.paramMode, List.append_nil]
 
 theorem TreeShape.slots_modes (shape : TreeShape) (r : Fin shape.records) (mode : Mode)
     (base : Nat) :

@@ -21,6 +21,7 @@ theorem wp_copyOwned {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
       Step heap store (fun _ => True) heap' store' (regions store' root) →
       Rep heap' store' root length input → Frame base s s' →
       heap'.top.toNat ≤ heap.top.toNat + allocationCost input.data.size →
+      (length = 0 → root = 0) →
       wp m rest Q store' { s' with values := .i64 length :: .i64 root :: s.values } host) :
     wp m (copyOwnedCode sourceSlot lengthSlot base ++ rest) Q store s host := by
   have hSize : input.data.size < 2 ^ 32 := by
@@ -38,7 +39,7 @@ theorem wp_copyOwned {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     simp only [Locals.get] at hLengthLocal
     simpa [wp_simp, hLengthLocal, regions, allocationCost, hEmpty] using
       hNext heap store s 0 (by simpa [regions] using Step.refl hHeap (fun _ => True))
-        hRep (Frame.refl base s) (by simp [allocationCost, hEmpty])
+        hRep (Frame.refl base s) (by simp [allocationCost, hEmpty]) (fun _ => rfl)
   · have hPositive : 0 < input.data.size := by
       have : length.toNat ≠ 0 := fun h => hZero (UInt64.toNat_inj.mp h)
       omega
@@ -96,6 +97,7 @@ theorem wp_copyOwned {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     simp only [Locals.get] at hLength2
     simp only [wp_localGet_cons, hRoot2, Locals.get_values]
     have hFinal := hNext heap1 store2 s2 root hStep' hRep (hFrame.trans hCopyFrame) hTop
+      (fun h => absurd h hZero)
     simpa [hValues, s1, setLocal, wp_simp, hLength2] using hFinal
 
 end Verified.Bytes
