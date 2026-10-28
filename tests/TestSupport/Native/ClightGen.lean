@@ -25,6 +25,14 @@ form `Sbuiltin None (EF_vstore chunk)` that SimplExpr gives an assignment to a v
 `traceText` is the program in C, and `expectedTrace` is what `LClight.run_program` gives: one
 line per volatile store and the exit code, as CompCert's reference interpreter prints them, or
 `UB`.
+
+An input program, from `genInputProgram`, is a trace program with five more globals, `const
+volatile` arrays of four elements of the same five types with random initial values (`g_in8`,
+`g_ins8`, `g_in16`, `g_in32`, and `g_in64`), and its statements also load from them into
+temporaries, in the form `Sbuiltin (Some t) (EF_vload chunk)` that SimplExpr gives a read of a
+volatile lvalue.  The index is usually masked to the array's bounds.  The reference interpreter
+answers each load with the initial value, as `LClight.world_vload` does, and a load outside the
+array is undefined for both.
 -/
 
 namespace TestSupport.Native.ClightGen
@@ -97,6 +105,15 @@ def volatileGlobals : List (ident × type × memory_chunk) := [
   (13, .Tint .I32 .Unsigned volatileAttr, .Mint32),
   (14, .Tlong .Unsigned volatileAttr, .Mint64)]
 
+/-- The input globals of an input program, arrays of four elements: identifier, element type,
+and memory chunk. -/
+def inputGlobals : List (ident × type × memory_chunk) := [
+  (15, .Tint .I8 .Unsigned volatileAttr, .Mint8unsigned),
+  (16, .Tint .I8 .Signed volatileAttr, .Mint8signed),
+  (17, .Tint .I16 .Unsigned volatileAttr, .Mint16unsigned),
+  (18, .Tint .I32 .Unsigned volatileAttr, .Mint32),
+  (19, .Tlong .Unsigned volatileAttr, .Mint64)]
+
 /-- The temporaries of `test`, three of each type but `int`, which has one, and then the loop
 counters. -/
 def testTemps (t : Ty) : List ident :=
@@ -113,7 +130,8 @@ def name (id : ident) : String :=
   match id with
   | 1 => "g_u32" | 2 => "g_u64" | 3 => "g_f64" | 4 => "g_f32" | 5 => "arr" | 6 => "pun"
   | 7 => "helper" | 8 => "test" | 9 => "main" | 10 => "g_v8" | 11 => "g_vs8" | 12 => "g_v16"
-  | 13 => "g_v32" | 14 => "g_v64" | 20 => "x" | 21 => "y" | 22 => "hr"
+  | 13 => "g_v32" | 14 => "g_v64" | 15 => "g_in8" | 16 => "g_ins8" | 17 => "g_in16"
+  | 18 => "g_in32" | 19 => "g_in64" | 20 => "x" | 21 => "y" | 22 => "hr"
   | n => s!"t{n}"
 
 /-! ## Constants -/
@@ -195,6 +213,8 @@ structure Ctx where
   temps : Ty → List ident
   /-- Whether statements may store to the volatile globals of a trace program. -/
   volatiles : Bool := false
+  /-- Whether statements may load from the input globals of an input program. -/
+  inputs : Bool := false
 
 def leaf (c : Ctx) (t : Ty) : Gen expr := do
   let k ← rand 4
@@ -339,7 +359,7 @@ def genStmt (c : Ctx) : Nat → Nat → List ident → Gen statement
       let t ← pick [Ty.u32, .u64, .f64, .f32, .i32]
       pure (.Sset (← pick (testTemps t)) (← genExpr c 3 t))
   | depth + 1, loops, free => do
-      match (← rand (if c.volatiles then 14 else 12)) with
+      match (← rand (if c.inputs then 16 else if c.volatiles then 14 else 12)) with
       | 0 | 1 => do
           let t ← pick allTys
           pure (.Sset (← pick (testTemps t)) (← genExpr c 3 t))
@@ -387,6 +407,15 @@ def genStmt (c : Ctx) : Nat → Nat → List ident → Gen statement
           let ptr : type := .Tpointer ty noattr
           let e ← genExpr c 3 (← pick [Ty.u32, .i32, .u64])
           pure (.Sbuiltin none (.EF_vstore chunk) [ptr, ty] [.Eaddrof (.Evar id ty) ptr, e])
+      | 14 | 15 => do
+          let (id, ty, chunk) ← pick inputGlobals
+          let i ← genExpr c 2 .u64
+          let index ← if (← rand 16) == 0 then pure i
+            else pure (.Ebinop .Oand i (.Econst_long 3 tulong) tulong)
+          let r ← pick (testTemps (if chunk == .Mint64 then .u64 else .u32))
+          let ptr : type := .Tpointer ty noattr
+          let elem : expr := .Ederef (.Ebinop .Oadd (.Evar id (.Tarray ty 4 noattr)) index ptr) ty
+          pure (.Sbuiltin (some r) (.EF_vload chunk) [ptr] [.Eaddrof elem ptr])
       | _ => do
           let s1 ← genStmt c depth loops free
           let s2 ← genStmt c depth loops free
@@ -398,8 +427,8 @@ def allTestTemps : List (ident × type) :=
 
 /-- The function `test`, or with `vol` the function `main` of a trace program, which stores to
 the volatile globals and returns an `int`. -/
-def genTest (vol : Bool := false) : Gen function := do
-  let c : Ctx := { temps := testTemps, volatiles := vol }
+def genTest (vol : Bool := false) (inp : Bool := false) : Gen function := do
+  let c : Ctx := { temps := testTemps, volatiles := vol, inputs := inp }
   let temps := allTys.flatMap fun t => (testTemps t).map fun id => (id, t)
   let inits ← temps.mapM fun (id, t) => do pure (statement.Sset id (← constOf t))
   let n ← rand 6
@@ -478,6 +507,37 @@ def genTraceProgram : Gen (program function) := do
   let base := programOf u32 u64 f64 f32 arr pun helper main
   let vars := volatileGlobals.map fun (id, ty, chunk) => (id, volatileVar ty (chunkSize chunk))
   pure { prog_defs := base.prog_defs.take 6 ++ vars ++
+           [(idHelper, .Gfun (.Internal helper)), (idMain, .Gfun (.Internal main))],
+         prog_public := [], prog_main := idMain }
+
+/-- The initialization data of an element of an input global of the chunk `chunk`. -/
+def inputInit (chunk : memory_chunk) : Gen init_data := do
+  match chunk with
+  | .Mint8unsigned | .Mint8signed => do
+      pure (.Init_int8 (UInt32.ofNat (← edgeOr [0, 1, 127, 128, 255] 256)))
+  | .Mint16unsigned => do
+      pure (.Init_int16 (UInt32.ofNat (← edgeOr [0, 1, 0x7FFF, 0xFFFF] (2 ^ 16))))
+  | .Mint64 => do pure (.Init_int64 (UInt64.ofNat (← edgeOr [0, 1, 2 ^ 63, 2 ^ 64 - 1] (2 ^ 64))))
+  | _ => do pure (.Init_int32 (UInt32.ofNat (← edgeOr [0, 1, 2 ^ 31, 2 ^ 32 - 1] (2 ^ 32))))
+
+/-- An input program: a trace program with the input globals, whose `main` also loads from
+them. -/
+def genInputProgram : Gen (program function) := do
+  let u32 := UInt32.ofNat (← rand (2 ^ 32))
+  let u64 := UInt64.ofNat (← rand (2 ^ 64))
+  let f64 := UInt64.ofNat (← finiteDouble)
+  let f32 := UInt32.ofNat (← finiteFloat)
+  let arr ← (List.range 8).mapM fun _ => do pure (init_data.Init_int64 (UInt64.ofNat (← rand (2 ^ 64))))
+  let pun := UInt64.ofNat (← punBits)
+  let helper ← genHelper
+  let inputs ← inputGlobals.mapM fun (id, ty, chunk) => do
+    let init ← (List.range 4).mapM fun _ => inputInit chunk
+    pure (id, globdef.Gvar { gvar_info := .Tarray ty 4 noattr, gvar_init := init,
+      gvar_readonly := true, gvar_volatile := true })
+  let main ← genTest true true
+  let base := programOf u32 u64 f64 f32 arr pun helper main
+  let vars := volatileGlobals.map fun (id, ty, chunk) => (id, volatileVar ty (chunkSize chunk))
+  pure { prog_defs := base.prog_defs.take 6 ++ vars ++ inputs ++
            [(idHelper, .Gfun (.Internal helper)), (idMain, .Gfun (.Internal main))],
          prog_public := [], prog_main := idMain }
 
@@ -609,6 +669,14 @@ def eventLine : event → String
         | .EVlong n => s!"{signed64 n}LL"
         | _ => "?"
       s!"observable event: volatile store {chunkName chunk}[&{name id}{ofsText}] <- {v}"
+  | .Event_vload chunk id ofs ev =>
+      let o := signed64 ofs
+      let ofsText := if o < 0 then s!"{o}" else s!"+{o}"
+      let v := match ev with
+        | .EVint n => s!"{signed32 n}"
+        | .EVlong n => s!"{signed64 n}LL"
+        | _ => "?"
+      s!"observable event: volatile load {chunkName chunk}[&{name id}{ofsText}] -> {v}"
   | _ => "observable event: ?"
 
 /-- The lines that `ccomp -interp` prints for a trace program, without the prefix `Time N: `,

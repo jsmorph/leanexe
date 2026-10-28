@@ -26,11 +26,13 @@ theorems in this directory do.  `builtin_function` lists the three functions dir
 `Builtins.v` nests them under `BI_standard`.  Of the built-in functions, the copy
 gives meaning to `__builtin_fsqrt` and its alias `__builtin_sqrt`, `__builtin_fabs`, and
 `__builtin_fabsf`, each at the signature of CompCert's table.  `EF_vstore` has the semantics of
-`volatile_store_sem`, so a store to a volatile global is an output event, as in CompCert.
-`eventval_match` omits the case `ev_match_ptr`, so a volatile store of a pointer has no rule.
-`external_call` takes the global environment, where CompCert takes a `Senv.t`, and passes its
-symbol map to `ExtSem`.  Every other built-in, run-time function, volatile load, `malloc`,
-`free`, `memcpy`, annotation, inline assembly, and debug information has no rule.
+`volatile_store_sem`, so a store to a volatile global is an output event, as in CompCert, and
+`EF_vload` has the semantics of `volatile_load_sem`, so a load from a volatile global is an input
+event whose value is any value of the access's type.  `eventval_match` omits the case
+`ev_match_ptr`, so a volatile store of a pointer has no rule, and a volatile load returns no
+pointer.  `external_call` takes the global environment, where CompCert takes a `Senv.t`, and
+passes its symbol map to `ExtSem`.  Every other built-in, run-time function, `malloc`, `free`,
+`memcpy`, annotation, inline assembly, and debug information has no rule.
 -/
 
 namespace LClight
@@ -110,6 +112,21 @@ inductive eventval_match : eventval → typ → val → Prop
   | ev_match_float (f : float) : eventval_match (.EVfloat f) .Tfloat (.Vfloat f)
   | ev_match_single (f : float32) : eventval_match (.EVsingle f) .Tsingle (.Vsingle f)
 
+/-- `volatile_load` (`Events.v`, lines 557 to 569), with `Senv.block_is_volatile` and
+`Senv.find_symbol` of the global environment `ge`. -/
+inductive volatile_load {F V : Type} (ge : Genv.t F V) :
+    memory_chunk → mem → block → ptrofs → trace → val → Prop
+  | volatile_load_vol (chunk : memory_chunk) (m : mem) (b : block) (ofs : ptrofs) (id : ident)
+      (ev : eventval) (v : val) :
+      Genv.block_is_volatile ge b = true →
+      Genv.find_symbol ge id = some b →
+      eventval_match ev (type_of_chunk chunk) v →
+      volatile_load ge chunk m b ofs [.Event_vload chunk id ofs ev] (Val.load_result chunk v)
+  | volatile_load_nonvol (chunk : memory_chunk) (m : mem) (b : block) (ofs : ptrofs) (v : val) :
+      Genv.block_is_volatile ge b = false →
+      Mem.loadv chunk m (.Vptr b ofs) = some v →
+      volatile_load ge chunk m b ofs E0 v
+
 /-- `volatile_store` (`Events.v`, lines 571 to 583), with `Senv.block_is_volatile` and
 `Senv.find_symbol` of the global environment `ge`. -/
 inductive volatile_store {F V : Type} (ge : Genv.t F V) :
@@ -134,12 +151,20 @@ inductive volatile_store_sem {F V : Type} (chunk : memory_chunk) (ge : Genv.t F 
       volatile_store ge chunk m1 b ofs v t m2 →
       volatile_store_sem chunk ge [.Vptr b ofs, v] m1 t .Vundef m2
 
+/-- `volatile_load_sem` (`Events.v`, lines 709 to 713). -/
+inductive volatile_load_sem {F V : Type} (chunk : memory_chunk) (ge : Genv.t F V) :
+    List val → mem → trace → val → mem → Prop
+  | volatile_load_sem_intro (b : block) (ofs : ptrofs) (m : mem) (t : trace) (v : val) :
+      volatile_load ge chunk m b ofs t v →
+      volatile_load_sem chunk ge [.Vptr b ofs] m t v m
+
 /-- `external_call` (`Events.v`, lines 1524 to 1538) for `EF_external`, the built-in functions
-of `builtin_table`, and `EF_vstore`. -/
+of `builtin_table`, `EF_vload`, and `EF_vstore`. -/
 def external_call {F V : Type} (A : Archi) (X : ExtSem) (ef : external_function)
     (ge : Genv.t F V) (vargs : List val) (m : mem) (t : trace) (vres : val) (m' : mem) : Prop :=
   match ef with
   | .EF_external name sg => X.external_functions_sem name sg ge.genv_symb vargs m t vres m'
+  | .EF_vload chunk => volatile_load_sem chunk ge vargs m t vres m'
   | .EF_vstore chunk => volatile_store_sem chunk ge vargs m t vres m'
   | .EF_builtin name sg =>
       match lookup_builtin_function name sg with

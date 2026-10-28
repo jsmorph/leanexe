@@ -3,9 +3,10 @@ import LeanExe.Native.Clight.Run
 /-!
 The soundness of `run` against the big-step semantics: an `.ok` result of `exec_fn` or
 `eval_funcall_fn` is an execution of `exec_stmt` or `eval_funcall`, for every semantics `X` of
-external functions.  `run_sound` states it for a call from the initial memory, and
-`run_program_sound` concludes `bigstep_program_terminates` from a result of `run_program`.  The
-proofs go by induction on the fuel and, within one unit of fuel, by cases on the statement.
+external functions and every choice `vload` of the values of volatile loads.  `run_sound` states
+it for a call from the initial memory, and `run_program_sound` concludes
+`bigstep_program_terminates` from a result of `run_program`.  The proofs go by induction on the
+fuel and, within one unit of fuel, by cases on the statement.
 -/
 
 namespace LClight
@@ -13,6 +14,7 @@ namespace LClight
 section Sound
 
 variable {A : Archi} {X : ExtSem} {ge : genv}
+  {vload : memory_chunk → ident → ptrofs → Option eventval}
 
 theorem lvar_sound {e : env} {le : temp_env} {m : mem} {id : ident} {ty : type} {l : block}
     {ofs : ptrofs} (h : lvar ge e id ty = some (l, ofs)) :
@@ -248,9 +250,13 @@ theorem eventval_of_val_sound {v : val} {ty : typ} {ev : eventval}
     (h : eventval_of_val v ty = some ev) : eventval_match ev ty v := by
   cases v <;> cases ty <;> simp [eventval_of_val] at h <;> subst h <;> constructor
 
+theorem val_of_eventval_sound {ev : eventval} {ty : typ} {v : val}
+    (h : val_of_eventval ev ty = some v) : eventval_match ev ty v := by
+  cases ev <;> cases ty <;> simp [val_of_eventval] at h <;> subst h <;> constructor
+
 theorem external_call_fn_sound {ef : external_function} {vargs : List val} {m : mem}
     {t : trace} {vres : val} {m' : mem}
-    (h : external_call_fn A ge ef vargs m = some (t, vres, m')) :
+    (h : external_call_fn A ge vload ef vargs m = some (t, vres, m')) :
     external_call A X ef ge vargs m t vres m' := by
   unfold external_call_fn at h
   cases ef with
@@ -265,6 +271,42 @@ theorem external_call_fn_sound {ef : external_function} {vargs : List val} {m : 
               cases h
               simp only [external_call, hb]
               exact ⟨hs, rfl, rfl⟩
+  | EF_vload chunk =>
+      match vargs, h with
+      | [.Vptr b ofs], h =>
+          simp only [external_call]
+          by_cases hv : Genv.block_is_volatile ge b = true
+          · simp only [hv, ite_true] at h
+            cases hi : invert_symbol_fn ge b with
+            | none => simp [hi] at h
+            | some id =>
+                cases hl : vload chunk id ofs with
+                | none => simp [hi, hl] at h
+                | some ev =>
+                    cases he : val_of_eventval ev (type_of_chunk chunk) with
+                    | none => simp [hi, hl, he] at h
+                    | some v =>
+                        simp only [hi, hl, he, Option.some.injEq, Prod.mk.injEq] at h
+                        obtain ⟨rfl, rfl, rfl⟩ := h
+                        exact .volatile_load_sem_intro b ofs m _ _
+                          (.volatile_load_vol chunk m b ofs id ev v hv (invert_symbol_fn_sound hi)
+                            (val_of_eventval_sound he))
+          · have hv' : Genv.block_is_volatile ge b = false := by simpa using hv
+            simp only [hv', Bool.false_eq_true, ite_false] at h
+            cases hs : Mem.loadv chunk m (.Vptr b ofs) with
+            | none => simp [hs] at h
+            | some v =>
+                simp only [hs, Option.some.injEq, Prod.mk.injEq] at h
+                obtain ⟨rfl, rfl, rfl⟩ := h
+                exact .volatile_load_sem_intro b ofs m _ v
+                  (.volatile_load_nonvol chunk m b ofs v hv' hs)
+      | [], h => simp at h
+      | .Vptr _ _ :: _ :: _, h => simp at h
+      | .Vundef :: _, h => simp at h
+      | .Vint _ :: _, h => simp at h
+      | .Vlong _ :: _, h => simp at h
+      | .Vfloat _ :: _, h => simp at h
+      | .Vsingle _ :: _, h => simp at h
   | EF_vstore chunk =>
       match vargs, h with
       | [.Vptr b ofs, v], h =>
@@ -342,9 +384,9 @@ theorem outcome_result_value_fn_sound {out : outcome} {t : type} {m : mem} {v : 
   | Out_continue => simp [outcome_result_value_fn] at h
 
 theorem fn_sound (fuel : Nat) :
-    (∀ e le m s t le' m' out, exec_fn A ge fuel e le m s = .ok (t, le', m', out) →
+    (∀ e le m s t le' m' out, exec_fn A ge vload fuel e le m s = .ok (t, le', m', out) →
       exec_stmt A X ge e le m s t le' m' out) ∧
-    (∀ m fd vargs t m' vres, eval_funcall_fn A ge fuel m fd vargs = .ok (t, m', vres) →
+    (∀ m fd vargs t m' vres, eval_funcall_fn A ge vload fuel m fd vargs = .ok (t, m', vres) →
       eval_funcall A X ge m fd vargs t m' vres) := by
   induction fuel with
   | zero =>
@@ -403,7 +445,7 @@ theorem fn_sound (fuel : Nat) :
                           simp only [hcf, hvf, hva, hf] at h
                           by_cases hty : type_of_fundef f = .Tfunction tyargs tyres cconv
                           · rw [ite_eq_left hty] at h
-                            cases hc : eval_funcall_fn A ge fuel m f vargs with
+                            cases hc : eval_funcall_fn A ge vload fuel m f vargs with
                             | error err => simp [hc] at h
                             | ok r =>
                                 obtain ⟨t0, m0, vres⟩ := r
@@ -420,7 +462,7 @@ theorem fn_sound (fuel : Nat) :
           cases hv : eval_exprlist_fn A ge e le m al tyargs with
           | none => simp [hv] at h
           | some vargs =>
-              cases hx : external_call_fn A ge ef vargs m with
+              cases hx : external_call_fn A ge vload ef vargs m with
               | none => simp [hv, hx] at h
               | some r =>
                   obtain ⟨t0, vres, m0⟩ := r
@@ -430,7 +472,7 @@ theorem fn_sound (fuel : Nat) :
                     (eval_exprlist_fn_sound _ _ _ hv) (external_call_fn_sound hx)
       | Ssequence s1 s2 =>
           simp only [exec_fn] at h
-          cases h1 : exec_fn A ge fuel e le m s1 with
+          cases h1 : exec_fn A ge vload fuel e le m s1 with
           | error err => simp [h1] at h
           | ok r1 =>
               obtain ⟨t1, le1, m1, out1⟩ := r1
@@ -438,7 +480,7 @@ theorem fn_sound (fuel : Nat) :
               cases out1 with
               | Out_normal =>
                   simp only [h1] at h
-                  cases h2 : exec_fn A ge fuel e le1 m1 s2 with
+                  cases h2 : exec_fn A ge vload fuel e le1 m1 s2 with
                   | error err => simp [h2] at h
                   | ok r2 =>
                       obtain ⟨t2, le2, m2, out2⟩ := r2
@@ -473,7 +515,7 @@ theorem fn_sound (fuel : Nat) :
                     hb (ihs _ _ _ _ _ _ _ _ h)
       | Sloop s1 s2 =>
           simp only [exec_fn] at h
-          cases h1 : exec_fn A ge fuel e le m s1 with
+          cases h1 : exec_fn A ge vload fuel e le m s1 with
           | error err => simp [h1] at h
           | ok r1 =>
               obtain ⟨t1, le1, m1, out1⟩ := r1
@@ -491,7 +533,7 @@ theorem fn_sound (fuel : Nat) :
                     d1 (.Out_break_or_return_R ov)
               | Out_normal =>
                   simp only [h1] at h
-                  cases h2 : exec_fn A ge fuel e le1 m1 s2 with
+                  cases h2 : exec_fn A ge vload fuel e le1 m1 s2 with
                   | error err => simp [h2] at h
                   | ok r2 =>
                       obtain ⟨t2, le2, m2, out2⟩ := r2
@@ -499,7 +541,7 @@ theorem fn_sound (fuel : Nat) :
                       cases out2 with
                       | Out_normal =>
                           simp only [h2] at h
-                          cases h3 : exec_fn A ge fuel e le2 m2 (.Sloop s1 s2) with
+                          cases h3 : exec_fn A ge vload fuel e le2 m2 (.Sloop s1 s2) with
                           | error err => simp [h3] at h
                           | ok r3 =>
                               obtain ⟨t3, le3, m3, out3⟩ := r3
@@ -523,7 +565,7 @@ theorem fn_sound (fuel : Nat) :
                       | Out_continue => simp [h2] at h
               | Out_continue =>
                   simp only [h1] at h
-                  cases h2 : exec_fn A ge fuel e le1 m1 s2 with
+                  cases h2 : exec_fn A ge vload fuel e le1 m1 s2 with
                   | error err => simp [h2] at h
                   | ok r2 =>
                       obtain ⟨t2, le2, m2, out2⟩ := r2
@@ -531,7 +573,7 @@ theorem fn_sound (fuel : Nat) :
                       cases out2 with
                       | Out_normal =>
                           simp only [h2] at h
-                          cases h3 : exec_fn A ge fuel e le2 m2 (.Sloop s1 s2) with
+                          cases h3 : exec_fn A ge vload fuel e le2 m2 (.Sloop s1 s2) with
                           | error err => simp [h3] at h
                           | ok r3 =>
                               obtain ⟨t3, le3, m3, out3⟩ := r3
@@ -584,7 +626,7 @@ theorem fn_sound (fuel : Nat) :
           cases he : function_entry2_fn f vargs with
           | none => simp [he] at h
           | some le1 =>
-              cases hb : exec_fn A ge fuel empty_env le1 m f.fn_body with
+              cases hb : exec_fn A ge vload fuel empty_env le1 m f.fn_body with
               | error err => simp [he, hb] at h
               | ok r =>
                   obtain ⟨t0, le2, m2, out⟩ := r
@@ -601,7 +643,7 @@ theorem fn_sound (fuel : Nat) :
                             (outcome_result_value_fn_sound hr) hfl
       | External ef targs tres cconv =>
           simp only [eval_funcall_fn] at h
-          cases hx : external_call_fn A ge ef vargs m with
+          cases hx : external_call_fn A ge vload ef vargs m with
           | none => simp [hx] at h
           | some r =>
               obtain ⟨t0, vres0, m0⟩ := r
@@ -612,13 +654,13 @@ theorem fn_sound (fuel : Nat) :
 
 theorem exec_fn_sound {fuel : Nat} {e : env} {le : temp_env} {m : mem} {s : statement}
     {t : trace} {le' : temp_env} {m' : mem} {out : outcome}
-    (h : exec_fn A ge fuel e le m s = .ok (t, le', m', out)) :
+    (h : exec_fn A ge vload fuel e le m s = .ok (t, le', m', out)) :
     exec_stmt A X ge e le m s t le' m' out :=
   (fn_sound fuel).1 _ _ _ _ _ _ _ _ h
 
 theorem eval_funcall_fn_sound {fuel : Nat} {m : mem} {fd : fundef function} {vargs : List val}
     {t : trace} {m' : mem} {vres : val}
-    (h : eval_funcall_fn A ge fuel m fd vargs = .ok (t, m', vres)) :
+    (h : eval_funcall_fn A ge vload fuel m fd vargs = .ok (t, m', vres)) :
     eval_funcall A X ge m fd vargs t m' vres :=
   (fn_sound fuel).2 _ _ _ _ _ _ h
 
@@ -663,7 +705,7 @@ theorem run_program_sound {A : Archi} {X : ExtSem} {p : program function} {fuel 
               simp only [hm, hs, hf] at h
               by_cases hty : type_of_fundef fd = .Tfunction [] type_int32s cc_default
               · rw [ite_eq_left hty] at h
-                cases he : eval_funcall_fn A (globalenv p) fuel m0 fd [] with
+                cases he : eval_funcall_fn A (globalenv p) (world_vload p) fuel m0 fd [] with
                 | error err => simp [he] at h
                 | ok res =>
                     obtain ⟨t0, m1, v⟩ := res

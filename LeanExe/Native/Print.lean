@@ -18,7 +18,8 @@ restores the `Sskip`.  A call through a temporary `t` that `isCall` accepts, `Sc
 args` followed by `Sset x (Etempvar t)`, prints as `x = f(args);`, and `t` is not declared;
 `clightgen` creates such a temporary for every call whose result is stored.  A store to a volatile
 lvalue, `Sbuiltin None (EF_vstore chunk) tys [Eaddrof l ty, e]`, the form that SimplExpr gives
-it, prints as the assignment `l = e;`, and a volatile type prints with the qualifier `volatile`.
+it, prints as the assignment `l = e;`, a load from one, `Sbuiltin (Some t) (EF_vload chunk) tys
+[Eaddrof l ty]`, prints as `t = l;`, and a volatile type prints with the qualifier `volatile`.
 A global without initialization data prints as an `extern` declaration.  `gname` names the
 globals and functions, and `tname` the temporaries.
 -/
@@ -145,6 +146,8 @@ partial def cstmt (depth : Nat) : statement → Except String String
       pure s!"{indent depth}{lhs}{← cexpr gname tname a}({← cargs gname tname al});\n"
   | .Sbuiltin none (.EF_vstore _) _ [.Eaddrof a _, e] => do
       pure s!"{indent depth}{← cexpr gname tname a} = {← cexpr gname tname e};\n"
+  | .Sbuiltin (some id) (.EF_vload _) _ [.Eaddrof a _] => do
+      pure s!"{indent depth}{tname id} = {← cexpr gname tname a};\n"
   | .Sbuiltin optid ef _ al => do
       let lhs := match optid with
         | some id => s!"{tname id} = "

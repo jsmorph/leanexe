@@ -4,7 +4,8 @@
 # and the fixed programs of ClightGen.nanPrograms, each with the output that LClight.run gives
 # under the NaN parameters of ARCHI, and `ccomp -interp -quiet` runs each C file.  It also writes
 # COUNT trace programs, whose main stores to volatile globals, with the events and the exit code
-# that LClight.run_program gives, and `ccomp -interp` runs each of them.  A program that the
+# that LClight.run_program gives, and `ccomp -interp` runs each of them, and COUNT input
+# programs, which also load from const volatile globals, in the same way.  A program that the
 # copy finds stuck must stop with CompCert's "Undefined behavior", and every other program must
 # print the same lines, the events and the exit code for a trace program.  A program whose run
 # exhausts the fuel is counted and skipped.  CCOMP names the CompCert 3.18 driver, `ccomp` by
@@ -30,6 +31,7 @@ undefined=0
 fuel=0
 fail=0
 traces=0
+inputs=0
 for c in "$out"/t*.c "$out"/nan*.c; do
   t=${c%.c}
   expected=$(cat "$t.expected")
@@ -61,7 +63,7 @@ for c in "$out"/t*.c "$out"/nan*.c; do
 done
 # Trace programs: ccomp -interp prints each observable event and the exit code, each line after
 # the prefix "Time N: ", and may break a long line before an indented continuation.
-for c in "$out"/v*.c; do
+for c in "$out"/v*.c "$out"/w*.c; do
   t=${c%.c}
   expected=$(cat "$t.expected")
   if [ "$expected" = "FUEL" ]; then
@@ -80,7 +82,10 @@ for c in "$out"/v*.c; do
   fi
   if [ "$actual" = "$expected" ]; then
     pass=$((pass + 1))
-    traces=$((traces + 1))
+    case ${t##*/} in
+      v*) traces=$((traces + 1)) ;;
+      *) inputs=$((inputs + 1)) ;;
+    esac
     if [ "$actual" = UB ]; then
       undefined=$((undefined + 1))
     fi
@@ -90,5 +95,5 @@ for c in "$out"/v*.c; do
     fail=$((fail + 1))
   fi
 done
-echo "clight: $pass agree ($undefined undefined, $traces of them trace programs), $fail differ, $fuel out of fuel"
+echo "clight: $pass agree ($undefined undefined, $traces trace programs, $inputs input programs), $fail differ, $fuel out of fuel"
 [ "$fail" -eq 0 ]

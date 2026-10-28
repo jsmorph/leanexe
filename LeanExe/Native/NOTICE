@@ -42,8 +42,9 @@ are omitted, and each file's documentation comment lists what it omits.  The oth
 LeanExe/Native/ are not derived from CompCert.
 
 Changes, made on 2026-10-27: AST.lean gains type_of_chunk, Globalenvs.lean find_var_info and
-block_is_volatile, Events.lean eventval_match without the case of pointers, volatile_store, and
-volatile_store_sem, with the case EF_vstore of external_call, and Bigstep.lean the judgment about
-a whole program, bigstep_program_terminates.  external_call takes the global environment, where
+block_is_volatile, Events.lean eventval_match without the case of pointers, volatile_load,
+volatile_load_sem, volatile_store, and volatile_store_sem, with the cases EF_vload and EF_vstore
+of external_call, and Bigstep.lean the judgment about a whole program,
+bigstep_program_terminates.  external_call takes the global environment, where
 CompCert takes a symbol environment, and passes its symbol map to the parameter of external
 functions as before.

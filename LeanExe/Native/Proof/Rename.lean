@@ -258,6 +258,19 @@ theorem external_call_ren {A : Archi} {X X' : ExtSem} {g : ident → ident}
           simp only [hb] at h ⊢
           obtain ⟨h1, rfl, rfl⟩ := h
           exact ⟨h1, rfl, rfl⟩
+  | EF_vload chunk =>
+      simp only [external_call] at h ⊢
+      cases h with
+      | volatile_load_sem_intro b ofs m1 t1 v hv =>
+      match hv with
+      | .volatile_load_vol _ _ _ _ id ev v hvol hsym hev =>
+          exact .volatile_load_sem_intro b ofs m _ _
+            (.volatile_load_vol chunk m b ofs (g id) (renEventval g ev) v
+              (by rw [hge.block_is_volatile]; exact hvol) (by rw [hge.symb]; exact hsym)
+              (eventval_match_ren g hev))
+      | .volatile_load_nonvol _ _ _ _ v hvol hl =>
+          exact .volatile_load_sem_intro b ofs m _ v
+            (.volatile_load_nonvol chunk m b ofs v (by rw [hge.block_is_volatile]; exact hvol) hl)
   | EF_vstore chunk =>
       simp only [external_call] at h ⊢
       cases h with

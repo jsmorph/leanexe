@@ -260,6 +260,21 @@ theorem volatile_store_sem_export (hge : GenvExport ge' ge) {chunk : memory_chun
   | _, _, _, _, _, .volatile_store_sem_intro b ofs m1 v t m2 hv =>
       .volatile_store_sem_intro b ofs m1 v t m2 (volatile_store_export hge hv)
 
+theorem volatile_load_export (hge : GenvExport ge' ge) :
+    ∀ {chunk : memory_chunk} {m : mem} {b : block} {ofs : ptrofs} {t : trace} {v : val},
+      volatile_load ge' chunk m b ofs t v → volatile_load ge chunk m b ofs t v
+  | _, _, _, _, _, _, .volatile_load_vol chunk m b ofs id ev v hvol hs hm =>
+      .volatile_load_vol chunk m b ofs id ev v (hge.block_is_volatile b ▸ hvol)
+        (hge.find_symbol id ▸ hs) hm
+  | _, _, _, _, _, _, .volatile_load_nonvol chunk m b ofs v hvol hl =>
+      .volatile_load_nonvol chunk m b ofs v (hge.block_is_volatile b ▸ hvol) hl
+
+theorem volatile_load_sem_export (hge : GenvExport ge' ge) {chunk : memory_chunk} :
+    ∀ {vargs : List val} {m : mem} {t : trace} {vres : val} {m' : mem},
+      volatile_load_sem chunk ge' vargs m t vres m' → volatile_load_sem chunk ge vargs m t vres m'
+  | _, _, _, _, _, .volatile_load_sem_intro b ofs m t v hv =>
+      .volatile_load_sem_intro b ofs m t v (volatile_load_export hge hv)
+
 theorem external_call_export (hge : GenvExport ge' ge) {ef : external_function}
     {vargs : List val} {m : mem} {t : trace} {vres : val} {m' : mem}
     (h : external_call A X ef ge' vargs m t vres m') : external_call A X ef ge vargs m t vres m' := by
@@ -268,6 +283,9 @@ theorem external_call_export (hge : GenvExport ge' ge) {ef : external_function}
       simp only [external_call] at h ⊢
       rw [← hge.symb]
       exact h
+  | EF_vload chunk =>
+      simp only [external_call] at h ⊢
+      exact volatile_load_sem_export hge h
   | EF_vstore chunk =>
       simp only [external_call] at h ⊢
       exact volatile_store_sem_export hge h

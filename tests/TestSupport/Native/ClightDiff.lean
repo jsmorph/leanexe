@@ -5,7 +5,8 @@ The executable `clight-diff SEED COUNT ARCHI DIR` writes `COUNT` random programs
 `ClightGen` from the seed `SEED` as `DIR/tI.c`, with the output that `LClight.run` gives for each
 under the NaN parameters of `ARCHI`, `x86_64` or `aarch64`, as `DIR/tI.expected`, and the
 programs of `nanPrograms` as `DIR/nanI.c` and `DIR/nanI.expected`, and `COUNT` trace programs
-as `DIR/vI.c`, with the lines of `expectedTrace` as `DIR/vI.expected`.  It prints the number of
+as `DIR/vI.c`, with the lines of `expectedTrace` as `DIR/vI.expected`, and `COUNT` input
+programs as `DIR/wI.c` and `DIR/wI.expected`.  It prints the number of
 programs of each kind whose output differs between the two targets, which measures how often the
 NaN parameters come into play.  `tests/native/clight.sh` runs CompCert's reference interpreter
 on the C files and compares.
@@ -62,5 +63,18 @@ def main (args : List String) : IO UInt32 := do
             IO.FS.writeFile s!"{dir}/v{i}.expected" (if onX86 then x86 else arm)
             if x86 != arm then traceDependent := traceDependent + 1
       IO.println s!"clight-diff: {traceDependent} of {count} trace programs differ between x86_64 and aarch64"
+      let mut inputDependent := 0
+      for i in [0:count] do
+        let (p, gen') := Id.run (genInputProgram.run gen)
+        gen := gen'
+        match traceText p with
+        | .error e => throw <| IO.userError s!"clight-diff: w{i}: {e}"
+        | .ok text =>
+            let x86 := expectedTrace Archi.x86_64 p fuel
+            let arm := expectedTrace Archi.aarch64 p fuel
+            IO.FS.writeFile s!"{dir}/w{i}.c" text
+            IO.FS.writeFile s!"{dir}/w{i}.expected" (if onX86 then x86 else arm)
+            if x86 != arm then inputDependent := inputDependent + 1
+      IO.println s!"clight-diff: {inputDependent} of {count} input programs differ between x86_64 and aarch64"
       pure 0
   | _ => throw <| IO.userError "usage: clight-diff SEED COUNT x86_64|aarch64 DIR"
