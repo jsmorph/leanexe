@@ -3,7 +3,8 @@
    higher.  Code and read-only data form one segment, readable and executable, and data and .bss
    another, readable and writable.  An exception stack of 4 KiB and the stack of STACK_SIZE bytes,
    which the linker's --defsym sets, follow .bss.  lx_out is the data register of the PL011 UART
-   that QEMU 8.2.2's device tree gives. */
+   that QEMU 8.2.2's device tree gives.  lx_in is the start of the 16 MiB of RAM into which
+   QEMU's generic loader places a program's input, above the stack. */
 ENTRY(_start)
 PHDRS
 {
@@ -34,4 +35,6 @@ SECTIONS
   . += STACK_SIZE;
   __stack_top = .;
   lx_out = 0x09000000;
+  lx_in = 0x70000000;
+  ASSERT(__stack_top <= lx_in, "the stack overlaps lx_in")
 }
