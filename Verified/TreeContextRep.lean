@@ -57,7 +57,7 @@ theorem treeFields_rep {heap : Heap} {store : Store Unit} {shape : TreeShape}
     Env.Rep (paramMode (shape.context r []) (shape.modes r mode [])) heap store
       (.i64 p :: (shape.wordValues r words ++
         (List.ofFn fun i => Value.i64 (pointers i))))
-      (Env.treeFields shape r words children .nil) := by
+      (Env.treeFields shape r words arrays buffers children .nil) := by
   have hTrees := Env.Rep.repeatFields (heap := heap) (store := store) (Γ := [])
     (modes := []) (tail := .nil) (rest := []) rfl (.tree shape) mode (shape.children r)
     children pointers (fun i => ⟨pointers i, rfl, hChildren i⟩)

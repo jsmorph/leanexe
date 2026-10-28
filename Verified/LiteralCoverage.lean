@@ -22,9 +22,11 @@ theorem Expr.literals_rename (expr : Expr S Γ t) (renameVars : Renaming Γ Δ) 
     (expr.rename renameVars).literals = expr.literals := by
   induction expr generalizing Δ with
   | call func args ih => exact literals_args_congr fun i => ih i renameVars
-  | treeNode r reuse words children ihWords ihChildren =>
-    exact congrArg₂ List.append
+  | treeNode r reuse words arrays buffers children ihWords ihArrays ihBuffers ihChildren =>
+    exact congrArg₂ List.append (congrArg₂ List.append (congrArg₂ List.append
       (literals_args_congr fun i => ihWords i renameVars)
+      (literals_args_congr fun i => ihArrays i renameVars))
+      (literals_args_congr fun i => ihBuffers i renameVars))
       (literals_args_congr fun i => ihChildren i renameVars)
   | listFold args body ihArgs ihBody =>
     exact congrArg₂ List.append (literals_args_congr fun i => ihArgs i renameVars)
@@ -91,8 +93,10 @@ theorem Expr.literals_renameFuns (expr : Expr S Γ t)
     (expr.renameFuns renameFuncs).literals = expr.literals := by
   induction expr with
   | call func args ih => exact literals_args_congr ih
-  | treeNode r reuse words children ihWords ihChildren =>
-    exact congrArg₂ List.append (literals_args_congr ihWords) (literals_args_congr ihChildren)
+  | treeNode r reuse words arrays buffers children ihWords ihArrays ihBuffers ihChildren =>
+    exact congrArg₂ List.append (congrArg₂ List.append (congrArg₂ List.append
+      (literals_args_congr ihWords) (literals_args_congr ihArrays)) (literals_args_congr ihBuffers))
+      (literals_args_congr ihChildren)
   | listFold args body ihArgs ihBody =>
     exact congrArg₂ List.append (literals_args_congr ihArgs) ihBody
   | treeCase x empty nodes ihEmpty ihNodes =>

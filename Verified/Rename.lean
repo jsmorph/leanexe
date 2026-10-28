@@ -21,7 +21,9 @@ def Renaming.liftFn : (n : Nat) → (ts : Fin n → Ty) → Renaming Γ Δ →
 def Renaming.treeFields (shape : TreeShape) (r : Fin shape.records) (ρ : Renaming Γ Δ) :
     Renaming (shape.context r Γ) (shape.context r Δ) :=
   Renaming.lift (Renaming.liftFn (shape.words r) (shape.wordTy r)
-    (Renaming.liftRepeat (.tree shape) (shape.children r) ρ))
+    (Renaming.liftRepeat (.tree shape) (shape.children r)
+      (Renaming.liftFn (shape.arrays r) (shape.arrayTy r)
+        (Renaming.liftRepeat .bytes (shape.buffers r) ρ))))
 
 def Env.remap : {Γ Δ : List Ty} → Renaming Γ Δ → Env Δ → Env Γ
   | [], _, _, _ => .nil
@@ -78,35 +80,39 @@ theorem Env.ext_get {env env' : Env Γ} (h : ∀ {t} (x : Var Γ t), env.get x =
 
 @[simp] theorem Env.remap_treeFields (shape : TreeShape) (r : Fin shape.records)
     (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
+    (arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote)
+    (buffers : Fin (shape.buffers r) → LeanExe.Bytes)
     (children : Fin (shape.children r) → Tree shape)
     (env : Env Δ) (ρ : Renaming Γ Δ) :
-    (env.treeFields shape r words children).remap (ρ.treeFields shape r) =
-      (env.remap ρ).treeFields shape r words children := by
-  let rc : Renaming (List.replicate (shape.children r) (.tree shape) ++ Γ)
-      (List.replicate (shape.children r) (.tree shape) ++ Δ) :=
-    Renaming.liftRepeat (.tree shape) (shape.children r) ρ
-  let rwds : Renaming (tysOfFn (shape.words r) (shape.wordTy r) ++
-      (List.replicate (shape.children r) (.tree shape) ++ Γ))
-      (tysOfFn (shape.words r) (shape.wordTy r) ++
-      (List.replicate (shape.children r) (.tree shape) ++ Δ)) :=
-    Renaming.liftFn (shape.words r) (shape.wordTy r) rc
-  exact (Env.remap_lift (s := .treeHeader shape r) rwds
-    (Env.prependFn (shape.words r) (shape.wordTy r) words
-      (env.prependRepeat (.tree shape) (shape.children r) children))
+    (env.treeFields shape r words arrays buffers children).remap (ρ.treeFields shape r) =
+      (env.remap ρ).treeFields shape r words arrays buffers children := by
+  let rb : Renaming _ _ := Renaming.liftRepeat (Γ := Γ) (Δ := Δ) .bytes (shape.buffers r) ρ
+  let ra : Renaming _ _ := Renaming.liftFn (shape.arrays r) (shape.arrayTy r) rb
+  let rc : Renaming _ _ := Renaming.liftRepeat (.tree shape) (shape.children r) ra
+  let rw' : Renaming _ _ := Renaming.liftFn (shape.words r) (shape.wordTy r) rc
+  let eb := env.prependRepeat .bytes (shape.buffers r) buffers
+  let ea := Env.prependFn (shape.arrays r) (shape.arrayTy r) arrays eb
+  let ec := ea.prependRepeat (.tree shape) (shape.children r) children
+  have hb := Env.remap_prependRepeat .bytes (shape.buffers r) buffers env ρ
+  have ha := Env.remap_prependFn (shape.arrays r) (shape.arrayTy r) arrays eb rb
+  have hc := Env.remap_prependRepeat (.tree shape) (shape.children r) children ea ra
+  have hw := Env.remap_prependFn (shape.words r) (shape.wordTy r) words ec rc
+  exact (Env.remap_lift (s := .treeHeader shape r) rw'
+    (Env.prependFn (shape.words r) (shape.wordTy r) words ec)
     (TreeHeader.unit (shape := shape) (r := r))).trans
     (congrArg (Env.cons (t := .treeHeader shape r) TreeHeader.unit)
-      ((Env.remap_prependFn (shape.words r) (shape.wordTy r) words
-        (env.prependRepeat (.tree shape) (shape.children r) children) rc).trans
-        (congrArg (Env.prependFn (shape.words r) (shape.wordTy r) words)
-          (Env.remap_prependRepeat (.tree shape) (shape.children r) children env ρ))))
+      (hw.trans (congrArg (Env.prependFn (shape.words r) (shape.wordTy r) words)
+        (hc.trans (congrArg (Env.prependRepeat (.tree shape) (shape.children r) children)
+          (ha.trans (congrArg (Env.prependFn (shape.arrays r) (shape.arrayTy r) arrays) hb)))))))
 
 def Expr.rename : {Γ Δ : List Ty} → {t : Ty} → Renaming Γ Δ → Expr S Γ t → Expr S Δ t
   | _, _, _, _, .word n => .word n
   | _, _, _, _, .bool b => .bool b
   | _, _, _, ρ, .var x => .var (ρ x)
   | _, _, _, _, .treeNil shape h => .treeNil shape h
-  | _, _, _, ρ, .treeNode r reuse words children =>
+  | _, _, _, ρ, .treeNode r reuse words arrays buffers children =>
     .treeNode r (reuse.map fun x => ρ x) (fun i => (words i).rename ρ)
+      (fun i => (arrays i).rename ρ) (fun i => (buffers i).rename ρ)
       (fun i => (children i).rename ρ)
   | _, _, _, ρ, .treeCase (shape := shape) x empty nodes =>
     .treeCase (ρ x) (fun h => (empty h).rename ρ) (fun r => (nodes r).rename (ρ.treeFields shape r))
@@ -169,22 +175,26 @@ theorem Expr.denote_rename (e : Expr S Γ t) (ρ : Renaming Γ Δ) (funs : Funs 
     funext i
     exact ihArgs i ρ env
   | treeNil => rfl
-  | treeNode r reuse words children ihWords ihChildren =>
+  | treeNode r reuse words arrays buffers children ihWords ihArrays ihBuffers ihChildren =>
     simp only [Expr.rename, Expr.denote]
     congr 1
     · funext i
       exact ihWords i ρ env
+    · exact congrArg normalFamily (funext fun i => ihArrays i ρ env)
+    · exact congrArg normalFamily (funext fun i => ihBuffers i ρ env)
     · funext i
       exact ihChildren i ρ env
   | treeCase x empty nodes ihEmpty ihNodes =>
     simp only [Expr.rename, Expr.denote, Env.get_remap]
     cases hv : env.get (ρ x) with
     | nil h => exact ihEmpty h ρ env
-    | node r words children =>
-      change ((nodes r).rename (ρ.treeFields _ r)).denote funs (env.treeFields _ r words children) =
-        (nodes r).denote funs ((env.remap ρ).treeFields _ r words children)
-      exact (ihNodes r (ρ.treeFields _ r) (env.treeFields _ r words children)).trans
-        (congrArg ((nodes r).denote funs) (Env.remap_treeFields _ r words children env ρ))
+    | node r words arrays buffers children =>
+      change ((nodes r).rename (ρ.treeFields _ r)).denote funs
+          (env.treeFields _ r words arrays buffers children) =
+        (nodes r).denote funs ((env.remap ρ).treeFields _ r words arrays buffers children)
+      exact (ihNodes r (ρ.treeFields _ r) (env.treeFields _ r words arrays buffers children)).trans
+        (congrArg ((nodes r).denote funs)
+          (Env.remap_treeFields _ r words arrays buffers children env ρ))
   | _ => simp_all only [Expr.rename, Expr.denote, Env.get_remap, Env.remap_lift]
 
 #print axioms Expr.denote_rename

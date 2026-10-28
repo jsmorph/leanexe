@@ -110,7 +110,7 @@ theorem treeFields_moves (store : Store Unit) (shape : TreeShape)
     Env.moves store (paramMode (shape.context r []) (shape.modes r mode []))
       (.i64 p :: (shape.wordValues r words ++
         (List.ofFn fun i => Value.i64 (pointers i))))
-      (Env.treeFields shape r words children .nil) = match mode with
+      (Env.treeFields shape r words arrays buffers children .nil) = match mode with
       | .borrowed => []
       | .owned => p :: (List.ofFn fun i =>
           (children i).toNode.pointers store (pointers i)).flatten := by
@@ -141,7 +141,7 @@ theorem treeFields_reads (store : Store Unit) (shape : TreeShape)
     Env.reads store (paramMode (shape.context r []) (shape.modes r mode []))
       (.i64 p :: (shape.wordValues r words ++
         (List.ofFn fun i => Value.i64 (pointers i))))
-      (Env.treeFields shape r words children .nil) = match mode with
+      (Env.treeFields shape r words arrays buffers children .nil) = match mode with
       | .owned => []
       | .borrowed => (List.ofFn fun i =>
           (children i).toNode.slotRegions store (pointers i)).flatten := by
@@ -172,7 +172,7 @@ theorem treeFields_reads_owned (store : Store Unit) (shape : TreeShape)
     Env.reads store (paramMode (shape.context r []) (shape.modes r .owned []))
       (.i64 p :: (shape.wordValues r words ++
         (List.ofFn fun i => Value.i64 (pointers i))))
-      (Env.treeFields shape r words children .nil) = [] :=
+      (Env.treeFields shape r words arrays buffers children .nil) = [] :=
   treeFields_reads store shape r .owned p words children pointers
 
 end Verified

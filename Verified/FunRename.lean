@@ -10,8 +10,9 @@ def Expr.renameFuns {S T : List Sig} (ρ : FunRenaming S T) :
   | _, _, .bool b => .bool b
   | _, _, .var x => .var x
   | _, _, .treeNil shape h => .treeNil shape h
-  | _, _, .treeNode r reuse words children =>
-    .treeNode r reuse (fun i => (words i).renameFuns ρ) (fun i => (children i).renameFuns ρ)
+  | _, _, .treeNode r reuse words arrays buffers children =>
+    .treeNode r reuse (fun i => (words i).renameFuns ρ) (fun i => (arrays i).renameFuns ρ)
+      (fun i => (buffers i).renameFuns ρ) (fun i => (children i).renameFuns ρ)
   | _, _, .treeCase x empty nodes =>
     .treeCase x (fun h => (empty h).renameFuns ρ) (fun r => (nodes r).renameFuns ρ)
   | _, _, .bin op a b => .bin op (a.renameFuns ρ) (b.renameFuns ρ)

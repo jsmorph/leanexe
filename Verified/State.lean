@@ -24,16 +24,6 @@ def Mode.array : Mode → Heap → Store Unit → UInt64 → Array UInt64 → Pr
   | .borrowed, heap, store, ptr, xs => heap.Borrowed store ptr xs
   | .owned, heap, store, ptr, xs => heap.Owned store ptr xs
 
-/-- The words that hold the elements of an array of element type `e`, as `Implements` stores
-them: an array of words as itself, an array of floats as their bit patterns, an array of `Bool`s
-as its `flatWords`, 1 or 0 each, and an array of tuples as its elements' words in order. -/
-def Elem.words : (e : Elem) → Array e.denote → Array UInt64
-  | .word, xs => xs
-  | .bool, xs => flatWords xs
-  | .float, xs => xs.map Float.toBits
-  | .float32, xs => xs.map fun x : Float32 => x.toBits.toUInt64
-  | .prod a b, xs => (xs.toList.flatMap (Elem.toWords (.prod a b))).toArray
-
 theorem Elem.words_eq : (e : Elem) → (xs : Array e.denote) →
     e.words xs = (xs.toList.flatMap e.toWords).toArray
   | .word, xs => by

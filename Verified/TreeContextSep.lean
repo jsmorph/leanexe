@@ -18,11 +18,11 @@ theorem treeFields_separate {store : Store Unit} {shape : TreeShape} {r : Fin sh
       (Env.moves store (paramMode (shape.context r []) (shape.modes r mode []))
         (.i64 p :: (shape.wordValues r words ++
           (List.ofFn fun i => Value.i64 (pointers i))))
-        (Env.treeFields shape r words children .nil))
+        (Env.treeFields shape r words arrays buffers children .nil))
       (Env.reads store (paramMode (shape.context r []) (shape.modes r mode []))
         (.i64 p :: (shape.wordValues r words ++
           (List.ofFn fun i => Value.i64 (pointers i))))
-        (Env.treeFields shape r words children .nil)) := by
+        (Env.treeFields shape r words arrays buffers children .nil)) := by
   rw [treeFields_moves]
   cases mode
   · exact Separate.nil
@@ -59,7 +59,7 @@ theorem Holds.treePrefix {heap : Heap} {store : Store Unit} {s : Locals}
     (hold : LocalsHold s base ((shape.context r []).flatMap Ty.types)
       (.i64 p :: (shape.wordValues r words ++
         (List.ofFn fun i => Value.i64 (pointers i))))) :
-    Holds (Env.treeFields shape r words children .nil) (shape.slots r base mode [])
+    Holds (Env.treeFields shape r words arrays buffers children .nil) (shape.slots r base mode [])
       (fun _ => true) (base + shape.bindCount r) heap store s := by
   have h := Holds.ofEnvRep (treeFields_rep hHeader hChildren)
     (treeFields_separate hApart) hold
@@ -75,10 +75,10 @@ theorem treeFields_regions_subset (store : Store Unit) (shape : TreeShape)
     let ws := .i64 p :: (shape.wordValues r words ++
       (List.ofFn fun i => Value.i64 (pointers i)))
     ∀ b ∈ (Env.moves store (paramMode (shape.context r []) (shape.modes r mode [])) ws
-        (Env.treeFields shape r words children .nil)).map (block store) ++
+        (Env.treeFields shape r words arrays buffers children .nil)).map (block store) ++
       Env.reads store (paramMode (shape.context r []) (shape.modes r mode [])) ws
-        (Env.treeFields shape r words children .nil),
-      b ∈ (Ty.tree shape).regions mode store [.i64 p] (.node r words children) := by
+        (Env.treeFields shape r words arrays buffers children .nil),
+      b ∈ (Ty.tree shape).regions mode store [.i64 p] (.node r words arrays buffers children) := by
   intro pointers ws b hr
   dsimp only [ws] at hr
   erw [treeFields_moves, treeFields_reads] at hr

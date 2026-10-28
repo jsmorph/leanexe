@@ -80,13 +80,20 @@ theorem tagSlots_layout (shape : TreeShape) (r : Fin shape.records) (rest : List
   · exact h
   · exact h
 
-theorem Tree.toNode_layout {shape : TreeShape} (value : Tree shape) :
-    NodeLayout shape value.toNode := by
+/-- The records of a value of a shape without array and buffer fields have the copy loop's
+layout. -/
+theorem Tree.toNode_layout {shape : TreeShape} (hFree : shape.heapFree = true)
+    (value : Tree shape) : NodeLayout shape value.toNode := by
   induction value with
   | nil => trivial
-  | node r words children ih =>
-    exact ⟨r, shape.recordSlots_length .., shape.mask_eq .., by simp [TreeShape.recordSlots],
-      tagSlots_layout shape r _ (treeSlots_layout shape _ _ _ ih)⟩
+  | node r words arrays buffers children ih =>
+    refine ⟨r, shape.recordSlots_length .., shape.mask_eq .., by simp [TreeShape.recordSlots], ?_⟩
+    have hNil : heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers = [] :=
+      shape.heapSlots_nil hFree r _ _
+    show SlotsLayout shape (shape.tagSlots r ++ treeSlots (shape.fields r) (shape.slotWords r words)
+      (fun i => (children i).toNode) ++ heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers)
+    rw [hNil, List.append_nil]
+    exact tagSlots_layout shape r _ (treeSlots_layout shape _ _ _ ih)
 
 theorem SlotsLayout.child {shape : TreeShape} :
     ∀ {slots : List Slot}, SlotsLayout shape slots →
@@ -131,24 +138,49 @@ theorem treeSlots_records (fields : List Bool) :
       simp only [List.count_cons, beq_self_eq_true, ite_true, List.ofFn_succ, List.sum_cons]
       rfl
 
-theorem tagSlots_records (shape : TreeShape) (r : Fin shape.records) (words children) :
-    slotsRecords (shape.recordSlots r words children) =
-      slotsRecords (treeSlots (shape.fields r) words children) := by
-  unfold TreeShape.recordSlots TreeShape.tagSlots
-  split
-  · rfl
-  · rfl
+theorem slotsRecords_append : ∀ (s t : List Slot),
+    slotsRecords (s ++ t) = slotsRecords s + slotsRecords t
+  | [], _ => by simp [slotsRecords]
+  | .word _ :: rest, t => by
+    simp only [List.cons_append, slotsRecords]
+    exact slotsRecords_append rest t
+  | .child _ :: rest, t => by
+    simp only [List.cons_append, slotsRecords, slotsRecords_append rest t]
+    omega
+  | .array _ :: rest, t => by
+    simp only [List.cons_append, slotsRecords, slotsRecords_append rest t]
+    omega
+  | .bytes _ :: rest, t => by
+    simp only [List.cons_append, slotsRecords, slotsRecords_append rest t]
+    omega
+
+theorem tagSlots_records (shape : TreeShape) (r : Fin shape.records) (words arrays buffers
+    children) :
+    slotsRecords (shape.recordSlots r words arrays buffers children) =
+      slotsRecords (treeSlots (shape.fields r) words children) +
+        slotsRecords (heapSlots (shape.kinds r) arrays buffers) := by
+  unfold TreeShape.recordSlots
+  rw [slotsRecords_append, slotsRecords_append]
+  unfold TreeShape.tagSlots
+  split <;> simp [slotsRecords]
+
+private theorem records_arith {x a b c : Nat} (h1 : x = a + b) (h2 : a = c) :
+    1 + x = 1 + b + c := by
+  omega
 
 theorem Tree.toNode_records {shape : TreeShape} (value : Tree shape) :
     value.toNode.records = value.nodes := by
   induction value with
   | nil => rfl
-  | node r words children ih =>
+  | node r words arrays buffers children ih =>
     change 1 + slotsRecords (shape.recordSlots r (shape.slotWords r words)
-        (fun i => (children i).toNode)) = 1 + (List.ofFn fun i => (children i).nodes).sum
-    rw [tagSlots_records shape r]
-    exact congrArg (1 + ·) ((treeSlots_records (shape.fields r) (shape.slotWords r words)
-      (fun i => (children i).toNode)).trans
+        (shape.arrayWords r arrays) buffers (fun i => (children i).toNode)) =
+      1 + slotsRecords (heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) +
+        (List.ofFn fun i => (children i).nodes).sum
+    exact records_arith (tagSlots_records shape r (shape.slotWords r words)
+      (shape.arrayWords r arrays) buffers (fun i => (children i).toNode))
+      ((treeSlots_records (shape.fields r) (shape.slotWords r words)
+        (fun i => (children i).toNode)).trans
         (congrArg (fun f : Fin (shape.children r) → Nat => (List.ofFn f).sum) (funext ih)))
 
 theorem treeSlots_copyCost (fields : List Bool) :
@@ -167,29 +199,54 @@ theorem treeSlots_copyCost (fields : List Bool) :
       simp only [List.count_cons, beq_self_eq_true, ite_true, List.ofFn_succ, List.sum_cons]
       rfl
 
-theorem tagSlots_copyCost (shape : TreeShape) (r : Fin shape.records) (words children) :
-    slotsCopyCost (shape.recordSlots r words children) =
-      slotsCopyCost (treeSlots (shape.fields r) words children) := by
-  unfold TreeShape.recordSlots TreeShape.tagSlots
-  split
-  · rfl
-  · rfl
+theorem slotsCopyCost_append : ∀ (s t : List Slot),
+    slotsCopyCost (s ++ t) = slotsCopyCost s + slotsCopyCost t
+  | [], _ => by simp [slotsCopyCost]
+  | .word _ :: rest, t => by
+    simp only [List.cons_append, slotsCopyCost]
+    exact slotsCopyCost_append rest t
+  | .child _ :: rest, t => by
+    simp only [List.cons_append, slotsCopyCost, slotsCopyCost_append rest t]
+    omega
+  | .array _ :: rest, t => by
+    simp only [List.cons_append, slotsCopyCost, slotsCopyCost_append rest t]
+    omega
+  | .bytes _ :: rest, t => by
+    simp only [List.cons_append, slotsCopyCost, slotsCopyCost_append rest t]
+    omega
+
+theorem tagSlots_copyCost (shape : TreeShape) (r : Fin shape.records) (words arrays buffers
+    children) :
+    slotsCopyCost (shape.recordSlots r words arrays buffers children) =
+      slotsCopyCost (treeSlots (shape.fields r) words children) +
+        slotsCopyCost (heapSlots (shape.kinds r) arrays buffers) := by
+  unfold TreeShape.recordSlots
+  rw [slotsCopyCost_append, slotsCopyCost_append]
+  unfold TreeShape.tagSlots
+  split <;> simp [slotsCopyCost]
+
+private theorem copyCost_arith {k x a b c d : Nat} (h1 : x = a + b) (h2 : a = c)
+    (h3 : d = c) : k + b + d = k + x := by
+  omega
 
 theorem Tree.copyCost_eq {shape : TreeShape} (value : Tree shape) :
     value.copyCost = nodeCopyCost value.toNode := by
   induction value with
   | nil => rfl
-  | node r words children ih =>
-    change allocCost (8 * shape.width r) + (List.ofFn fun i => (children i).copyCost).sum =
-      allocCost (8 * (shape.recordSlots r (shape.slotWords r words)
-          (fun i => (children i).toNode)).length) +
-        slotsCopyCost (shape.recordSlots r (shape.slotWords r words)
-          (fun i => (children i).toNode))
-    rw [shape.recordSlots_length, tagSlots_copyCost shape r]
-    exact congrArg (allocCost (8 * shape.width r) + ·)
-      ((congrArg (fun f : Fin (shape.children r) → Nat => (List.ofFn f).sum) (funext ih)).trans
-        (treeSlots_copyCost (shape.fields r) (shape.slotWords r words)
-          (fun i => (children i).toNode)).symm)
+  | node r words arrays buffers children ih =>
+    change allocCost (8 * shape.width r) +
+        slotsCopyCost (heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) +
+        (List.ofFn fun i => (children i).copyCost).sum =
+      allocCost (8 * (shape.recordSlots r (shape.slotWords r words) (shape.arrayWords r arrays)
+          buffers (fun i => (children i).toNode)).length) +
+        slotsCopyCost (shape.recordSlots r (shape.slotWords r words) (shape.arrayWords r arrays)
+          buffers (fun i => (children i).toNode))
+    rw [shape.recordSlots_length]
+    exact copyCost_arith (tagSlots_copyCost shape r (shape.slotWords r words)
+      (shape.arrayWords r arrays) buffers (fun i => (children i).toNode))
+      (treeSlots_copyCost (shape.fields r) (shape.slotWords r words)
+        (fun i => (children i).toNode))
+      (congrArg (fun f : Fin (shape.children r) → Nat => (List.ofFn f).sum) (funext ih))
 
 #print axioms Tree.toNode_layout
 #print axioms Tree.toNode_records

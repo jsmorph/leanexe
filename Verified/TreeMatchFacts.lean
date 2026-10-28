@@ -26,7 +26,7 @@ theorem Mode.node.zero_iff {heap : Heap} {store : Store Unit} {shape : TreeShape
     (h : mode.node heap store p value.toNode) : p = 0 ↔ ∃ hn, value = .nil hn := by
   cases value with
   | nil hn => exact ⟨fun _ => ⟨hn, rfl⟩, fun _ => h.borrow⟩
-  | node r words children =>
+  | node r words arrays buffers children =>
     have hp := h.borrow.1.nonzero
     exact ⟨fun hz => False.elim (hp hz), fun ⟨_, he⟩ => by cases he⟩
 

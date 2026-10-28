@@ -20,6 +20,8 @@ instance : ToExpr TreeField where
   toExpr
     | .word e => mkApp (mkConst ``TreeField.word) (toExpr e)
     | .child => mkConst ``TreeField.child
+    | .array e => mkApp (mkConst ``TreeField.array) (toExpr e)
+    | .bytes => mkConst ``TreeField.bytes
   toTypeExpr := mkConst ``TreeField
 
 instance : Quote Elem where
@@ -36,6 +38,8 @@ instance : Quote TreeField where
   quote
     | .word e => Unhygienic.run `(Verified.TreeField.word $(quote e))
     | .child => Unhygienic.run `(Verified.TreeField.child)
+    | .array e => Unhygienic.run `(Verified.TreeField.array $(quote e))
+    | .bytes => Unhygienic.run `(Verified.TreeField.bytes)
 
 /-- How a field of a constructor occupies its record: a child, a word field of an element, or a
 field of a type with a `Flat` instance, one word field for each leaf of its flattening.  A leaf has

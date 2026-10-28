@@ -102,7 +102,7 @@ theorem treeNode_word_read {mode : Mode} {heap : Heap} {store : Store Unit}
     {shape : TreeShape} {r : Fin shape.records} {p : UInt64}
     {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
     {children : Fin (shape.children r) → Tree shape}
-    (h : mode.node heap store p (Tree.node r words children).toNode) (i : Fin (shape.words r)) :
+    (h : mode.node heap store p (Tree.node r words arrays buffers children).toNode) (i : Fin (shape.words r)) :
     store.mem.read64
         (slotAddress p (shape.fieldStart + (fieldPosition false (shape.fields r) i).val)) =
       shape.slotWords r words i := by
@@ -123,7 +123,7 @@ theorem treeNode_child_rep {mode : Mode} {heap : Heap} {store : Store Unit}
     {shape : TreeShape} {r : Fin shape.records} {p : UInt64}
     {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
     {children : Fin (shape.children r) → Tree shape}
-    (h : mode.node heap store p (Tree.node r words children).toNode)
+    (h : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
     (i : Fin (shape.children r)) :
     mode.node heap store
       (store.mem.read64

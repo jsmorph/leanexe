@@ -15,7 +15,7 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
     {r : Fin shape.records} {mode : Mode} {p : UInt64}
     {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
     {children : Fin (shape.children r) → Tree shape}
-    (hAt : heap.At store) (hNode : mode.node heap store p (Tree.node r words children).toNode) :
+    (hAt : heap.At store) (hNode : mode.node heap store p (Tree.node r words arrays buffers children).toNode) :
     let store' := treeDetachStore mode store p
     heap.At store' ∧ mode.header shape r heap store' p ∧
       Step heap store (fun b => mode = .owned → regionsDisjoint b (block store p))
@@ -31,8 +31,8 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
             regionsDisjoint) ∧
       (∀ i : Fin (shape.width r), store'.mem.read64 (slotAddress p i.val) =
         store.mem.read64 (slotAddress p i.val)) ∧
-      (Ty.tree shape).regions mode store' [.i64 p] (.node r words children) =
-        (Ty.tree shape).regions mode store [.i64 p] (.node r words children) := by
+      (Ty.tree shape).regions mode store' [.i64 p] (.node r words arrays buffers children) =
+        (Ty.tree shape).regions mode store [.i64 p] (.node r words arrays buffers children) := by
   have hBound (i : Fin (shape.children r)) :
       shape.fieldStart + (fieldPosition true (shape.fields r) i).val < shape.width r :=
     shape.fieldSlot_lt r true i
@@ -112,7 +112,7 @@ theorem wp_detachTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : 
     {s : Locals} {shape : TreeShape} {r : Fin shape.records} {mode : Mode} {p : UInt64}
     {ptr : Nat} {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
     {children : Fin (shape.children r) → Tree shape} {rest : Program} {Q : Assertion Unit}
-    (hAt : heap.At store) (hNode : mode.node heap store p (Tree.node r words children).toNode)
+    (hAt : heap.At store) (hNode : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
     (hPtr : s.get ptr = some (.i64 p))
     (hNext : wp m rest Q (treeDetachStore mode store p) s host) :
     wp m ((if mode = .owned then headerStore ptr 8 [.constI64 0] else []) ++ rest)

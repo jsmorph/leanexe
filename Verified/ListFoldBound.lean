@@ -59,7 +59,7 @@ theorem body_allocs {S : List Sig} {e : Elem} {captures : List Ty}
       (.cons root (.cons acc captured)) =
       match root with
       | .nil _ => 0
-      | .node r words children => body.allocs funs flags bounds
+      | .node r words arrays buffers children => body.allocs funs flags bounds
           (listShape.modes listCell .borrowed (paramModes (params e captures) []))
           (List.replicate (listShape.bindCount listCell) false ++
             List.replicate (params e captures).length false)
@@ -70,7 +70,7 @@ theorem body_allocs {S : List Sig} {e : Elem} {captures : List Ty}
   cases root with
   | nil => simp [tailBody, TailBody.allocs, Expr.allocs, Var.cost, modeAt,
       paramMode, coerceCost, Ty.copyCost, Expr.denote, Env.get, Expr.mode, Var.index]
-  | node r words children =>
+  | node r words arrays buffers children =>
     obtain rfl := listShape_cell r
     rw [tailBody, TailBody.allocs]
     simp only [Env.get, listBranch_cell]
@@ -95,13 +95,13 @@ theorem body_fits {S : List Sig} {e : Elem} {captures : List Ty}
     (tailBody body).fits funs fits (.cons root (.cons acc captured)) =
       match root with
       | .nil _ => true
-      | .node r words children => body.fits funs fits
+      | .node r words arrays buffers children => body.fits funs fits
           (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩)
             (fun _ => children ⟨0, listShape_children_pos r⟩)
             (.cons root (.cons acc captured))) := by
   cases root with
   | nil => rfl
-  | node r words children =>
+  | node r words arrays buffers children =>
     obtain rfl := listShape_cell r
     rw [tailBody, TailBody.fits]
     simp only [Env.get, listBranch_cell]

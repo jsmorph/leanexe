@@ -13,7 +13,7 @@ theorem wp_loadTree {m : Module} {host : HostEnv Unit} {heap : Heap}
     {children : Fin (shape.children r) → Tree shape} {rest : Program} {Q : Assertion Unit}
     (hh : s.positions = h)
     (hAt : heap.At store) (hPtr : s.get ptr = some (.i64 p))
-    (hNode : mode.node heap store p (Tree.node r words children).toNode)
+    (hNode : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
     (hLow : s.params.length ≤ fieldBase) (hPtrLow : ptr < fieldBase)
     (hRoom : fieldBase + (shape.fields r).length ≤ s.positions)
     (hNext : ∀ s', Frame fieldBase s s' → s'.values = s.values →

@@ -17,8 +17,8 @@ theorem TailBody.fits_of_depthCalls (funs : Funs S) (fits : Fits S)
     simp only [TailBody.fits]
     cases env.get x with
     | nil h => exact he h (by simpa only [dite_eq_left h] using hd.1) env
-    | node r words children =>
-      exact hn r (argsAny_eq_false hd.2 r) (Env.treeFields _ r words children env)
+    | node r words arrays buffers children =>
+      exact hn r (argsAny_eq_false hd.2 r) (Env.treeFields _ r words arrays buffers children env)
   | _ => intro hd env; simp_all [TailBody.depthCalls, TailBody.fits,
       Bool.or_eq_false_iff, Expr.fits_of_depthCalls]
 

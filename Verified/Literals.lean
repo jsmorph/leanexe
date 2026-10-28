@@ -31,8 +31,10 @@ def Expr.literals : {Γ : List Ty} → {t : Ty} → Expr S Γ t → List Bytes.L
   | _, _, .build count elem | _, _, .bytesBuild count elem => count.literals ++ elem.literals
   | _, _, .set _ index value | _, _, .insertAt _ index value => index.literals ++ value.literals
   | _, _, .push _ value => value.literals
-  | _, _, .treeNode _ _ words children =>
+  | _, _, .treeNode _ _ words arrays buffers children =>
     (List.ofFn fun i => (words i).literals).flatten ++
+      (List.ofFn fun i => (arrays i).literals).flatten ++
+      (List.ofFn fun i => (buffers i).literals).flatten ++
       (List.ofFn fun i => (children i).literals).flatten
   | _, _, .treeCase (shape := shape) _ empty nodes =>
     (if h : shape.hasNull = true then (empty h).literals else []) ++

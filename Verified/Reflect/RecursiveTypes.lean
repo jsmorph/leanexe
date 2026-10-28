@@ -142,7 +142,7 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
         $flatten ($unflatten value) = value := by
       induction value with
       | nil h => $nilCase:tactic
-      | node r words children ih =>
+      | node r words arrays buffers children ih =>
         exact match r, words, children, ih with $rightCases:matchAlt*))
   let encodeFn ← liftTermElabM do
     let type := mkConst layout.name

@@ -3,7 +3,7 @@ import Verified.Source
 namespace Verified
 
 def listConsExpr : Expr S [.word, .tree listShape] (.tree listShape) :=
-  .treeNode listCell none (fun _ => .v 0) (fun _ => .v 1)
+  .treeNode listCell none (fun _ => .v 0) (noFields rfl) (noFields rfl) (fun _ => .v 1)
 
 def listFirstExpr : Expr S [.tree listShape] .word :=
   .treeCase .here (fun _ => .word 0) (listBranch (.v 1))
@@ -13,7 +13,8 @@ def listRestExpr : Expr S [.tree listShape] (.tree listShape) :=
 
 def listRebuildExpr : Expr S [.tree listShape] (.tree listShape) :=
   .treeCase .here (fun _ => .treeNil listShape rfl)
-    (listBranch (.treeNode listCell (some .here) (fun _ => .v 1) (fun _ => .v 2)))
+    (listBranch (.treeNode listCell (some .here) (fun _ => .v 1) (noFields rfl) (noFields rfl)
+      (fun _ => .v 2)))
 
 theorem listConsExpr_denote (x : UInt64) (xs : List UInt64) :
     listConsExpr.denote .nil (.cons x (.cons (.ofList xs) .nil)) = .ofList (x :: xs) := rfl

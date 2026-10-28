@@ -381,7 +381,11 @@ def Expr.placeCode (h : Nat) (slots : List Slot) :
 def TreeShape.slots (shape : TreeShape) (r : Fin shape.records) (base : Nat) (mode : Mode)
     (rest : List Slot) : List Slot :=
   ⟨base, mode⟩ :: ((List.range (shape.words r)).map (fun i => ⟨base + 1 + i, .borrowed⟩) ++
-    ((List.range (shape.children r)).map (fun i => ⟨base + 1 + shape.words r + i, mode⟩) ++ rest))
+    ((List.range (shape.children r)).map (fun i => ⟨base + 1 + shape.words r + i, mode⟩) ++
+      ((List.range (shape.arrays r)).map
+        (fun i => ⟨base + 1 + shape.words r + shape.children r + i, mode⟩) ++
+        ((List.range (shape.buffers r)).map (fun i =>
+          ⟨base + 1 + shape.words r + shape.children r + shape.arrays r + i, mode⟩) ++ rest))))
 
 /-- Code that runs `branch r` for the record constructor `r` of the record at local `ptr`: tests
 of its tag against the record constructors in order, the last one untested.  For an untagged
@@ -454,9 +458,11 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .mk first second => max first.width second.width
   | _, _, .proj _ _ => 0
   | _, _, .treeNil _ _ => 0
-  | _, _, .treeNode (shape := shape) r _ words children =>
+  | _, _, .treeNode (shape := shape) r _ words arrays buffers children =>
     shape.bindCount r + max (argsMax fun i => (words i).width)
-      (argsMax fun i => max (children i).width (copyWidth (.tree shape)))
+      (max (argsMax fun i => max (children i).width (copyWidth (.tree shape)))
+        (max (argsMax fun i => max (arrays i).width (copyWidth (shape.arrayTy r i)))
+          (argsMax fun i => max (buffers i).width (copyWidth .bytes))))
   | _, _, .treeCase (shape := shape) (t := t) _ empty nodes =>
     t.width + max (max (if h : shape.hasNull = true then (empty h).width else 0) (copyWidth t))
       (argsMax fun r => shape.bindCount r + max treeCopyScratch (max (nodes r).width (copyWidth t)))
@@ -557,8 +563,11 @@ def TailBody.codeWith
     let nodeCode := fun r : Fin shape.records =>
       releaseWhere Γ slots (fun i => mid i && !(nodeLive r i || decide (i = x.index))) ++
         x.code h slots (base + shape.bindCount r) (nodeLive r) ++ [.localSet base] ++
-        treeLoadFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
-          shape.fieldStart (shape.fields r) ++
+        treeLoadFields h base (shape.wordTypes r) (base + 1)
+          (base + 1 + shape.words r) shape.fieldStart (shape.fields r) ++
+        treeLoadHeaps base (shape.kinds r) (base + 1 + shape.words r + shape.children r)
+          (base + 1 + shape.words r + shape.children r + shape.arrays r)
+          (shape.fieldStart + (shape.fields r).length) ++
         (if rootMode = .owned then
           LeanExe.Runtime.headerStore base 8 [.constI64 0] else []) ++
         releaseWhere (shape.context r Γ) (shape.slots r base rootMode slots)
@@ -668,20 +677,34 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
         (elem.code (pool := pool) h (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (shift 1 all)) ++
       releaseWhere Γ slots (fun i => elem.usesFast (i + 1) && !live i)
   | _, _, .treeNil _ _ => [.constI64 0]
-  | _, _, .treeNode (shape := shape) r reuse words children =>
+  | _, _, .treeNode (shape := shape) r reuse words arrays buffers children =>
     let modes := slots.map Slot.mode
     let scratch := base + shape.bindCount r
     let kept := fun k => live k || optionVarUses reuse k
     argsCode (fun i =>
       (words i).code (pool := pool) h slots scratch (fun k => kept k ||
         (argsAny fun j => decide (i.val < j.val) && (words j).usesFast k) ||
-        (argsAny fun j => (children j).usesFast k)) ++
+        (argsAny fun j => (children j).usesFast k) || (argsAny fun j => (arrays j).usesFast k) ||
+        (argsAny fun j => (buffers j).usesFast k)) ++
         storeCode h (base + 1 + i.val) (shape.wordTy r i).types) ++
     argsCode (fun i =>
       (children i).code (pool := pool) h slots scratch (fun k => kept k ||
-        (argsAny fun j => decide (i.val < j.val) && (children j).usesFast k)) ++
+        (argsAny fun j => decide (i.val < j.val) && (children j).usesFast k) ||
+        (argsAny fun j => (arrays j).usesFast k) || (argsAny fun j => (buffers j).usesFast k)) ++
       coerceCode h (.tree shape) ((children i).mode modes) .owned scratch ++
       [.localSet (base + 1 + shape.words r + i.val)]) ++
+    argsCode (fun i =>
+      (arrays i).code (pool := pool) h slots scratch (fun k => kept k ||
+        (argsAny fun j => decide (i.val < j.val) && (arrays j).usesFast k) ||
+        (argsAny fun j => (buffers j).usesFast k)) ++
+      coerceCode h (shape.arrayTy r i) ((arrays i).mode modes) .owned scratch ++
+      [.localSet (base + 1 + shape.words r + shape.children r + i.val)]) ++
+    argsCode (fun i =>
+      (buffers i).code (pool := pool) h slots scratch (fun k => kept k ||
+        (argsAny fun j => decide (i.val < j.val) && (buffers j).usesFast k)) ++
+      coerceCode h .bytes ((buffers i).mode modes) .owned scratch ++
+      storeCode h (base + 1 + shape.words r + shape.children r + shape.arrays r + i.val)
+        Ty.bytes.types) ++
     (match reuse with
       | some x =>
         if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
@@ -691,6 +714,9 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
     shape.tagStoreCode r base ++
     treeStoreFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
       shape.fieldStart (shape.fields r) ++
+    treeStoreHeaps base (shape.kinds r) (base + 1 + shape.words r + shape.children r)
+      (base + 1 + shape.words r + shape.children r + shape.arrays r)
+      (shape.fieldStart + (shape.fields r).length) ++
     LeanExe.Runtime.headerStore base 24 [.constI64 1] ++
     LeanExe.Runtime.headerStore base 16 [.constI64 (UInt64.ofNat (shape.width r))] ++
     LeanExe.Runtime.headerStore base 8 [.constI64 (shape.mask r)] ++ [.localGet base]
@@ -711,8 +737,10 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
           (fun i => mid i && !((live i || nodeUses r i) || decide (i = x.index))) ++
         x.code h slots scratch (fun i => live i || nodeUses r i) ++ [.localSet fieldBase] ++
         treeLoadFields h fieldBase (shape.wordTypes r) (fieldBase + 1)
-          (fieldBase + 1 + shape.words r)
-          shape.fieldStart (shape.fields r) ++
+          (fieldBase + 1 + shape.words r) shape.fieldStart (shape.fields r) ++
+        treeLoadHeaps fieldBase (shape.kinds r) (fieldBase + 1 + shape.words r + shape.children r)
+          (fieldBase + 1 + shape.words r + shape.children r + shape.arrays r)
+          (shape.fieldStart + (shape.fields r).length) ++
         (if rootMode = .owned then
           LeanExe.Runtime.headerStore fieldBase 8 [.constI64 0] else []) ++
         releaseWhere (shape.context r Γ) (shape.slots r fieldBase rootMode slots)
