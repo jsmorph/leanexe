@@ -176,7 +176,8 @@ theorem NodeBorrowed.frame {heap heap' : Heap} {store store' : Store Unit}
         (fun a hLow hHigh => hFirst.1 a (by simp only; omega) (by simp only; omega))
         (fun b hb => hR b (List.mem_cons_of_mem _ hb))
       exact ⟨⟨⟨hRec.nonzero, hRec.address, hFirst.2.below,
-          fun node hNode => regionsDisjoint_symm (hFirst.2.separate node hNode)⟩, hSlots'⟩,
+          fun node hNode => regionsDisjoint_symm (hFirst.2.separate node hNode), hRec.lengths⟩,
+          hSlots'⟩,
         by simp only [Node.slotRegions, hRest]⟩
 
 theorem SlotsBorrowed.frame {heap heap' : Heap} {store store' : Store Unit}
