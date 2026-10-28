@@ -221,13 +221,14 @@ theorem Stmt.record_spec {typeIdx scratch dst : Nat} {values : List (Expr .u64)}
   have hFresh := hBlock.fresh
   obtain ⟨hMagic1, hCount1, -, -, -, -⟩ := hFresh
   have hGlobals : s.memoryCaps = store1.memoryCaps := by rw [hAll.1]
-  refine ⟨ptr, hFrame, hPtr, ⟨?_, fun slots hLen hMaskOf => ?_, hSlots, fun r hR => ?_, ?_⟩⟩
+  refine ⟨ptr, hFrame, hPtr, ⟨?_, fun slots hLen hMaskOf hLengths => ?_, hSlots, fun r hR => ?_,
+    ?_⟩⟩
   · refine (hHeap.allocate 1 hFitsNeed).writesApart hAll fun node hNode => ?_
     have hSep := hBlock.separate node hNode
     simp only [regionsDisjoint] at hSep ⊢
     omega
   · refine ⟨hBlockBase', ?_, ?_, ?_, ?_, ?_, by omega, by rw [hCapS]; omega, by rw [hCapS]; omega,
-      ?_, ?_⟩
+      ?_, ?_, hLengths⟩
     · rw [hAll.read64 _ (by rw [hHeaderAddress 48 (by decide)]; simp; omega)]; exact hMagic1
     · rw [hAll.read64 _ (by rw [hHeaderAddress 40 (by decide)]; simp; omega)]; exact hCount1
     · rw [hKind.read64 _ (by rw [h24]; simp; omega)]; exact Memory.read64_write64 ..

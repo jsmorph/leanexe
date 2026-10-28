@@ -53,6 +53,7 @@ theorem setKey_implements : Implements treeMoves.module 2 setKeyMoved := by
     have hRecord : NodeOwned heap initial p (.record slots) := hOwned
     obtain ⟨hWrites, hAt, hOwned', hBlocks⟩ :=
       NodeOwned.writeWord (i := 1) (w := k) hHeap hRecord hDisjoint ⟨key, rfl⟩
+        fun j _ h hj => by obtain rfl : j = 0 := by omega; cases h
     have hResult :
         Encode.encode (setKeyMoved (k, ⟨.node l key r⟩)) = .record (slots.set 1 (.word k)) := rfl
     obtain ⟨hHead, -, hKey, -, -⟩ := hRecord
@@ -363,7 +364,7 @@ theorem newLeafNode {heap heap' : Heap} {initial store : Store Unit} {ptr x : UI
   have h2 : store.mem.read64 (slotAddress ptr 2) = 0 := hNew.slots 2 (by simp)
   have hBlocks : Node.blocks store ptr (encode (.node .leaf x .leaf)) = [block store ptr] := by
     simp [encode, Node.blocks, slotsBlocks]
-  refine ⟨hNew.at_, ⟨hNew.header _ rfl rfl, h0, hNew.slots 1 (by simp), h2, trivial⟩,
+  refine ⟨hNew.at_, ⟨hNew.header _ rfl rfl trivial, h0, hNew.slots 1 (by simp), h2, trivial⟩,
     by rw [hBlocks]; exact List.pairwise_singleton _ _, fun r hr => ?_, hNew.caps⟩
   obtain ⟨hBytes, hRegion, hApart⟩ := hNew.region r hr
   refine ⟨hBytes, hRegion, fun b hb => ?_⟩
@@ -1238,6 +1239,7 @@ theorem addRoot_implements : Implements treeMoves.module 10 addRootMoved := by
         have ga2 := slotAddress_toNat (p := pa) (i := 2) (by omega)
         obtain ⟨hWrites, hAt, hOwned', hBlocks⟩ :=
           NodeOwned.writeWord (i := 1) (w := key + ak) hHeap hOwned hDisjoint ⟨key, rfl⟩
+            fun j _ h hj => by obtain rfl : j = 0 := by omega; cases h
         have hResult : Encode.encode (addRootMoved (.node al ak ar, ⟨.node l key r⟩)) =
             .record (slots.set 1 (.word (key + ak))) := rfl
         let final : Store Unit :=
@@ -2426,6 +2428,7 @@ theorem rootAndRest_implements : Implements treeMoves.module 16 rootAndRestMoved
     let final : Store Unit := { initial with mem := initial.mem.write64 (slotAddress p 1) 0 }
     obtain ⟨hWrites, hAt, hOwned', hBlocks⟩ :=
       NodeOwned.writeWord (i := 1) (w := 0) hHeap hRecord hRecordDisjoint ⟨k, rfl⟩
+        fun j _ h hj => by obtain rfl : j = 0 := by omega; cases h
     have hResult : encode (.node l 0 r) = .record (slots.set 1 (.word 0)) := rfl
     have hRebuilt : heap.Rebuilt initial (Node.blocks initial p (encode (.node l k r))) heap final p
         (encode (.node l 0 r)) := by

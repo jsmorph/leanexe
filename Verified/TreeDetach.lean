@@ -63,6 +63,7 @@ theorem TreeHeader.clearMask_spec {shape : TreeShape} {r : Fin shape.records} {h
     · rw [hCapacity]; exact h.address
     · rw [hCapacity]; exact h.below
     · rw [hCapacity]; exact h.separate
+    · exact wordSlots_lengths _
   refine ⟨hWrites, hHeap.writesApart hWrites ?_, ⟨words, ?_, hHead, recordWords_owned ..⟩,
     hCapacity⟩
   · intro node hNode
