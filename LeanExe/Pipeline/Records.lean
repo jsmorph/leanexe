@@ -305,7 +305,8 @@ theorem Heap.At.writesApart {heap : Heap} {store store' : Store Unit} {start sto
 
 /-- What allocating a record at `ptr` and filling it leaves, with `heap'` the heap after the
 allocation: the allocator invariant; a header with kind 1, the number of words, and the child
-mask `mask`; the words in the slots; and every region of the old heap with its bytes, still
+mask `mask`, for any slots of that number and mask whose buffer slots are each followed by the
+buffer's length; the words in the slots; and every region of the old heap with its bytes, still
 a region, and apart from the new block. -/
 structure Heap.NewRecord (heap : Heap) (initial : Store Unit) (heap' : Heap) (store : Store Unit)
     (ptr : UInt64) (words : List UInt64) (mask : UInt64) : Prop where
