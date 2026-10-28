@@ -36896,6 +36896,8 @@ An independent reviewer read the documents of typed tree fields and of `verified
 - [x] Messages, the omission check, and the audit's docstring.
 - [x] `Logged` and its cases.
 - [x] Negative checks and the typed-tree cases.
-- [ ] The gate of the merge with main.
+- [x] The gates of the merges with main.
 
 Six negative checks give the new messages: a program over a type without the command under `verified_compile` and under `verified_compile_wasi`, an `Encode` instance that names no function, a structure field whose `Flat` instance is not a tuple of its fields, a recursive parameter whose type has a structure field that leaves out a field, which names the field `b`, and a recursive parameter whose type has an enumeration field.  With the command present, the WASI program passes the check and stops at its next error, the missing `Action` definition.  `tests/verified/run.sh --cases typedtrees` passed 513 cases with no failure, 40 of them on `Logged`, and the audit found 422 theorems of the example with only the permitted axioms.
+
+The branch merged main twice, after process compaction and after the compiled case generators, and the gate of each merge built the sixteen heavy proofs one at a time, `lake build Verified Library`, and the default targets without error.  In each, `tests/verified/run.sh` passed 35,766 cases with no failure, the typed-tree audit of 422 theorems included, and the WASI and running-sum drivers passed.  The second merge gives `tests/verified/run.sh --cases typedtrees` its compiled generator, `verified-cases-typedtrees`, which passed 513 cases.  The 98 registry modules of the baseline, the heap-sum, slew, byte, and literal modules, and the running-sum, binary64 running-sum, and process modules of process compaction are byte-identical to their references, and `typedtrees.wasm` changed with the functions on `Logged`.
