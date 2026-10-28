@@ -92,7 +92,8 @@ theorem Env.pot_treeFields {Γ : List Ty} (store : Store Unit) (s : Locals) (env
           (((List.range (shape.arrays r)).map
             (fun i => Slot.mk (base + 1 + shape.words r + shape.children r + i) mode)) ++
             (((List.range (shape.buffers r)).map (fun i =>
-              Slot.mk (base + 1 + shape.words r + shape.children r + shape.arrays r + i) mode)) ++
+              Slot.mk (base + 1 + shape.words r + shape.children r + shape.arrays r + 2 * i)
+                mode)) ++
               slots)))) (fun i => sel (i + 1)) = _
   simp only [ite_self, Nat.zero_add]
   rw [Env.pot_fnZero store s _ (shape.words r) (shape.wordTy r) words
@@ -108,7 +109,7 @@ theorem Env.pot_treeFields {Γ : List Ty} (store : Store Unit) (s : Locals) (env
     (fun i hi => hSel _ (by simp only [TreeShape.bindCount]; omega)) (by simp)]
   rw [Env.pot_repeatZero store s env .bytes (fun _ _ => rfl) (shape.buffers r) buffers
     ((List.range (shape.buffers r)).map (fun i =>
-      Slot.mk (base + 1 + shape.words r + shape.children r + shape.arrays r + i) mode))
+      Slot.mk (base + 1 + shape.words r + shape.children r + shape.arrays r + 2 * i) mode))
     slots (fun i => sel (i + shape.arrays r + shape.children r + shape.words r + 1)) (by simp)]
   congr 1
   funext i

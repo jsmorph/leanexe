@@ -29,6 +29,7 @@ def nativeTypeTerm (native : Ident) : NativeField → CommandElabM Term
   | .leaf e => elemTypeTerm e
   | .flat type _ => pure (mkCIdent type.constName!)
   | .array e => do `(Array $(← elemTypeTerm e))
+  | .bytes => `(LeanExe.Bytes)
 
 /-- The leaf of `field` with segments `segments`, as `leafTerm` builds it. -/
 def leafSyntax (field : Term) (segments : List (List Bool)) : CommandElabM Term := do
@@ -41,7 +42,7 @@ def leafSyntax (field : Term) (segments : List (List Bool)) : CommandElabM Term 
 
 /-- The words of the field `field` of the kind `kind`, each with its element. -/
 def nativeWordTerms (field : Term) : NativeField → CommandElabM (Array (Elem × Term))
-  | .child | .array _ => pure #[]
+  | .child | .array _ | .bytes => pure #[]
   | .leaf e => pure #[(e, field)]
   | .flat _ leaves => leaves.toArray.mapM fun (e, segments) =>
     return (e, ← leafSyntax field segments)
@@ -52,6 +53,12 @@ def arrayFamilyTerm (shape : TreeShape) (r : Fin shape.records) (entries : Array
     CommandElabM Term := do
   if entries.isEmpty then return ← `(Verified.noFields rfl)
   `(Verified.TreeShape.arraysOf $(← shapeTerm shape) $(← recordTerm shape r) [$entries,*])
+
+/-- The buffer family of record constructor `r` with the buffer fields `buffers`: the list of
+the fields, or `noFields` when the record has no buffer fields. -/
+def bufferFamilyTerm (buffers : Array Term) : CommandElabM Term := do
+  if buffers.isEmpty then return ← `(Verified.noFields rfl)
+  `(([$buffers,*]).get)
 
 /-- The field variables of a constructor with `n` fields. -/
 def fieldNames (n : Nat) : Array Ident :=
@@ -85,10 +92,12 @@ def deriveRecursiveMatch (layout : RecursiveLayout) : CommandElabM Unit :=
     let mut entries : Array Term := #[]
     let mut children : Array Term := #[]
     let mut arrays : Array Term := #[]
+    let mut buffers : Array Term := #[]
     for i in [:fields.size] do
       if kinds[i]! matches .child then children := children.push (← `($flatten $(fields[i]!)))
       if let .array e := kinds[i]! then
         arrays := arrays.push (← `(⟨$(quote e), $(fields[i]!)⟩))
+      if kinds[i]! matches .bytes then buffers := buffers.push fields[i]!
       for (e, w) in ← nativeWordTerms fields[i]! kinds[i]! do
         words := words.push w
         entries := entries.push (← `(⟨$(quote e), $w⟩))
@@ -98,13 +107,14 @@ def deriveRecursiveMatch (layout : RecursiveLayout) : CommandElabM Unit :=
     let boundEnv ← match layout.record? ctor, record with
       | some r, some record =>
         let arrayFamily ← arrayFamilyTerm layout.shape r arrays
+        let bufferFamily ← bufferFamilyTerm buffers
         if layout.shape.allWords then
           `(Verified.Env.treeFields $shape $record ([$words,*]).get $arrayFamily
-            (Verified.noFields rfl) ([$children,*]).get env)
+            $bufferFamily ([$children,*]).get env)
         else
           `(Verified.Env.treeFields $shape $record
             (Verified.TreeShape.wordsOf $shape $record [$entries,*]) $arrayFamily
-            (Verified.noFields rfl) ([$children,*]).get env)
+            $bufferFamily ([$children,*]).get env)
       | _, _ => `(env)
     return ({ record, fields, types, boundEnv } : CtorParts)
   let bindAll (part : CtorParts) (body : Term) : CommandElabM Term := do

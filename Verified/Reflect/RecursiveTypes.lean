@@ -54,16 +54,17 @@ partial def Rebuild.term (word : Nat → CommandElabM Term) : Rebuild → Comman
   | .pair a b => do `(($(← a.term word), $(← b.term word)))
   | .ctor name fields => do `($(mkCIdent name) $(← fields.toArray.mapM (·.term word))*)
 
-/-- Checks that the `Encode` instance of the type of `layout` places the array slots of each record
-after its word and child slots, in the order of their fields.  Each constructor with an array field
-is encoded with variables for its fields, and an instance whose record list is a literal must have
-that order; the error names the first field out of place.  An instance that does not reduce to a
-literal record list is left to the agreement theorem. -/
+/-- Checks that the `Encode` instance of the type of `layout` places the array and buffer slots of
+each record after its word and child slots, in the order of their fields, with each buffer's
+length slot after its root.  Each constructor with an array or buffer field is encoded with
+variables for its fields, and an instance whose record list is a literal must have that order.
+The error names the first field out of place.  An instance that does not reduce to a literal
+record list is left to the agreement theorem. -/
 def checkEncodingOrder (layout : RecursiveLayout) : CommandElabM Unit := liftTermElabM do
   let type := mkConst layout.name
   let inst ← synthInstance (mkApp (mkConst ``LeanExe.Pipeline.Encode) type)
   for (ctor, kinds) in layout.ctors do
-    unless kinds.any (· matches .array _) do continue
+    unless kinds.any (fun k => k matches .array _ || k matches .bytes) do continue
     forallTelescope (← getConstInfoCtor ctor).type fun xs _ => do
       let node ← whnf (← mkAppOptM ``LeanExe.Pipeline.Encode.encode
         #[some type, some inst, some (mkAppN (mkConst ctor) xs)])
@@ -73,20 +74,32 @@ def checkEncodingOrder (layout : RecursiveLayout) : CommandElabM Unit := liftTer
         xs.findIdx? fun x => slot.containsFVar x.fvarId!
       let fail (j : Nat) (rule : String) : MetaM Unit := do
         let name := (← xs[j]!.fvarId!.getDecl).userName
+        let kind := if kinds[j]! matches .bytes then "buffer" else "array"
         throwError (m!"verified_recursive_type: the `Encode` instance of {layout.name} places " ++
-          m!"the array field `{name}` of {ctor} {rule}; a record holds its word and child slots " ++
-          m!"first and then its array slots, each group in the order of the fields")
-      let mut lastArray : Option Nat := none
+          m!"the {kind} field `{name}` of {ctor} {rule}; a record holds its word and child " ++
+          m!"slots first and then its array and buffer slots, each group in the order of the " ++
+          m!"fields, and a buffer's length slot after its root")
+      let mut lastHeap : Option Nat := none
+      let mut lengthOf : Option Nat := none
       for slot in slots do
+        if let some j := lengthOf then
+          lengthOf := none
+          unless slot.getAppFn.constName? == some ``LeanExe.Pipeline.Slot.word &&
+              fieldOf slot == some j do
+            fail j "without its length slot after it"
+          continue
         match slot.getAppFn.constName? with
-        | some ``LeanExe.Pipeline.Slot.array =>
+        | some ``LeanExe.Pipeline.Slot.array | some ``LeanExe.Pipeline.Slot.bytes =>
           let some j := fieldOf slot | continue
-          if let some previous := lastArray then
-            if j < previous then fail previous "after a later array field"
-          lastArray := some j
+          if let some previous := lastHeap then
+            if j < previous then fail previous "after a later array or buffer field"
+          lastHeap := some j
+          if slot.getAppFn.constName? == some ``LeanExe.Pipeline.Slot.bytes then
+            lengthOf := some j
         | some ``LeanExe.Pipeline.Slot.word | some ``LeanExe.Pipeline.Slot.child =>
-          if let some j := lastArray then fail j "before a word or child slot"
+          if let some j := lastHeap then fail j "before a word or child slot"
         | _ => pure ()
+      if let some j := lengthOf then fail j "without its length slot after it"
 
 open Lean.Parser.Term in
 /-- `toTree` from a recursive type to `Tree` of its shape, the agreement of the type's `Encode`
@@ -122,6 +135,7 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
       let mut elems : Array Elem := #[]
       let mut children : Array Term := #[]
       let mut arrays : Array Term := #[]
+      let mut buffers : Array Term := #[]
       let mut decoded : Array Term := #[]
       for i in [:fields.size] do
         let field := fields[i]!
@@ -138,6 +152,11 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
           let k := quote (arrays.size - 1)
           decoded := decoded.push
             (← `(arrays ⟨$k, (by decide : $k < ($shape).arrays $record)⟩))
+        | .bytes =>
+          buffers := buffers.push field
+          let k := quote (buffers.size - 1)
+          decoded := decoded.push
+            (← `(buffers ⟨$k, (by decide : $k < ($shape).buffers $record)⟩))
         | .leaf _ => decoded := decoded.push (← wordAt words.size)
         | .flat type leaves =>
           let paths := leaves.map fun (_, segments) => segments.flatten
@@ -151,10 +170,10 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
           elems := elems.push e
       toAlts := toAlts.push (← `(matchAltExpr| | $pattern =>
         Verified.Tree.node $record $(← wordFamilyTerm layout.shape r elems words)
-          $(← arrayFamilyTerm layout.shape r arrays) (Verified.noFields rfl)
+          $(← arrayFamilyTerm layout.shape r arrays) $(← bufferFamilyTerm buffers)
           $(← fieldFamily children)))
       fromAlts := fromAlts.push (← `(matchAltExpr|
-        | .node ⟨$(quote r.val), _⟩ words arrays _ children => $(mkIdent ctor) $decoded*))
+        | .node ⟨$(quote r.val), _⟩ words arrays buffers children => $(mkIdent ctor) $decoded*))
       rightCases := rightCases.push (← `(matchAltExpr|
         | ⟨$(quote r.val), _⟩, words, arrays, buffers, children, ih =>
         by
