@@ -251,6 +251,35 @@ theorem quietS_truncSatStmt (Q : ident → Bool) (h : Nat) : quietS Q (truncSatS
 theorem quietS_punStore (Q : ident → Bool) (w : expr) (h : Nat) :
     quietS Q (punStore w h) = true := rfl
 
+theorem quietS_f32ConstStmt (Q : ident → Bool) (h : Nat) (v : UInt32) :
+    quietS Q (f32ConstStmt h v) = true := by
+  unfold f32ConstStmt
+  split
+  · split <;> rfl
+  · rfl
+
+theorem quietS_punStore32 (Q : ident → Bool) (w : expr) (h : Nat) :
+    quietS Q (punStore32 w h) = true := rfl
+
+theorem quietS_punBits32 (Q : ident → Bool) (h k : Nat) : quietS Q (punBits32 h k) = true := rfl
+
+theorem quietS_canonStmt32 (Q : ident → Bool) (h : Nat) : quietS Q (canonStmt32 h) = true := rfl
+
+theorem quietS_abs32Stmt (Q : ident → Bool) (h : Nat) : quietS Q (abs32Stmt h) = true := rfl
+
+theorem quietS_nearest32Stmt (Q : ident → Bool) (h : Nat) : quietS Q (nearest32Stmt h) = true :=
+  rfl
+
+theorem quietS_truncSat32SStmt (Q : ident → Bool) (h : Nat) :
+    quietS Q (truncSat32SStmt h) = true := rfl
+
+theorem quietS_truncSat32UStmt (Q : ident → Bool) (h : Nat) :
+    quietS Q (truncSat32UStmt h) = true := rfl
+
+theorem quietS_sqrt32Stmt (Q : ident → Bool) (h n : Nat) :
+    quietS Q (sqrt32Stmt h n) = Q sqrtId := by
+  simp [sqrt32Stmt, sqrtVar, quietS, quietS_canonStmt32]
+
 theorem brStmt_quiet (Q : ident → Bool) {L : List Label} {σ : List VT} {n : Nat} {s : statement}
     (h : brStmt L σ n = some s) : quietS Q s = true := by
   cases hL : L[n]? with
@@ -288,6 +317,8 @@ theorem trCallable_sqrtId : trCallable sqrtId = true := rfl
 macro "oq_close" : tactic => `(tactic| simp [quietS, quietS_seq, quietS_seqList,
   quietS_storeBytes, quietS_trapStmt, quietS_statusCheck, quietS_dispatch, quietS_wrapLoop,
   quietS_f64ConstStmt, quietS_canonStmt, quietS_truncSatStmt, quietS_punStore, quietS_retZero,
+  quietS_f32ConstStmt, quietS_punStore32, quietS_punBits32, quietS_canonStmt32, quietS_abs32Stmt,
+  quietS_nearest32Stmt, quietS_truncSat32SStmt, quietS_truncSat32UStmt, quietS_sqrt32Stmt,
   quietS_jump, all_resStores, all_resLoads, addrStmt, boundsCheck, trCallable_funId,
   trCallable_sqrtId, funType, sqrtVar])
 
