@@ -324,7 +324,8 @@ theorem TreeShape.arrayMask_zero {shape : TreeShape} (h : shape.hasArrays = fals
 def TreeShape.heapFree (shape : TreeShape) : Bool :=
   shape.ctors.all fun fields => fields.all fun f => (f.bit?).isSome
 
-theorem heapSlots_eq_nil : ∀ (fields : List TreeField), (∀ f ∈ fields, (f.bit?).isSome = true) →
+theorem heapSlots_eq_nil :
+    ∀ (fields : List TreeField), (∀ f ∈ fields, (f.bit?).isSome = true) →
     ∀ arrays buffers, heapSlots fields arrays buffers = []
   | [], _, _, _ => rfl
   | .word _ :: rest, h, _, _ =>
@@ -653,7 +654,8 @@ theorem noFields_eq {n : Nat} (h : n = 0) {α : Fin n → Sort u} (f : (i : Fin 
 /-- The family `f`, or `noFields` when the index type is empty, so that every family over an empty
 index type is the same term.  The meaning of a construction writes its array and buffer families
 in this form. -/
-def normalFamily {n : Nat} {α : Fin n → Sort u} (f : (i : Fin n) → α i) : (i : Fin n) → α i :=
+def normalFamily {n : Nat} {α : Fin n → Sort u} (f : (i : Fin n) → α i) :
+    (i : Fin n) → α i :=
   if h : n = 0 then noFields h else f
 
 @[simp] theorem normalFamily_apply {n : Nat} {α : Fin n → Sort u} (f : (i : Fin n) → α i)

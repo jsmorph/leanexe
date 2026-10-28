@@ -74,7 +74,8 @@ theorem treeFields_rep {heap : Heap} {store : Store Unit} {shape : TreeShape}
     {pointers : Fin (shape.children r) → UInt64} {arrayPtrs : Fin (shape.arrays r) → UInt64}
     (hHeader : mode.header shape r heap store p)
     (hChildren : ∀ i, mode.node heap store (pointers i) (children i).toNode)
-    (hArrays : ∀ i, mode.array heap store (arrayPtrs i) ((shape.arrayElem r i).words (arrays i))) :
+    (hArrays : ∀ i,
+      mode.array heap store (arrayPtrs i) ((shape.arrayElem r i).words (arrays i))) :
     Env.Rep (paramMode (shape.context r []) (shape.modes r mode [])) heap store
       (shape.branchValues r p words pointers arrayPtrs)
       (Env.treeFields shape r words arrays buffers children .nil) := by

@@ -171,8 +171,8 @@ theorem treeArgs_wordLive {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r :
         (buffers j).uses k) =
       fun j => (buffers j).uses k := by
     funext j
-    simp only [show i.val + 1 ≤ shape.words r + shape.children r + shape.arrays r + j.val by omega,
-      decide_true, Bool.true_and]
+    simp only [show i.val + 1 ≤ shape.words r + shape.children r + shape.arrays r + j.val by
+      omega, decide_true, Bool.true_and]
   rw [hChildren, hArrays, hBuffers]
   simp only [Nat.add_one_le_iff]
 
@@ -239,8 +239,8 @@ theorem treeArgs_arrayLive {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r 
         (children j).uses k) = fun _ => false := by
     funext j
     have hj := j.isLt
-    simp only [show ¬shape.words r + shape.children r + i.val + 1 ≤ shape.words r + j.val by omega,
-      decide_false, Bool.false_and]
+    simp only [show ¬shape.words r + shape.children r + i.val + 1 ≤ shape.words r + j.val by
+      omega, decide_false, Bool.false_and]
   have hArrays : (fun j : Fin (shape.arrays r) =>
       decide (shape.words r + shape.children r + i.val + 1 ≤
         shape.words r + shape.children r + j.val) && (arrays j).uses k) =

@@ -28,7 +28,8 @@ open Wasm LeanExe.Pipeline
 address, and each buffer's root followed by its length. -/
 def heapValues : (fields : List TreeField) →
     (Fin (fields.filterMap TreeField.arrayElem?).length → UInt64) →
-    (Fin (fields.count .bytes) → UInt64) → (Fin (fields.count .bytes) → UInt64) → List UInt64
+    (Fin (fields.count .bytes) → UInt64) → (Fin (fields.count .bytes) → UInt64) →
+      List UInt64
   | [], _, _, _ => []
   | .array _ :: rest, arrays, roots, lengths =>
     arrays ⟨0, by simp [TreeField.arrayElem?]⟩ ::
@@ -99,8 +100,8 @@ theorem heapLocs_values {s : Locals} {h : Nat} (fields : List TreeField) :
       exact ih arraysBase buffersBase _ _ _ (fun i => hArrays ⟨i.val, _⟩)
         (fun i => hBuffers ⟨i.val, _⟩)
     | array e =>
-      refine ⟨by simpa [slotIndex, typedValue] using hArrays ⟨0, by simp [TreeField.arrayElem?]⟩,
-        rfl, ?_⟩
+      refine ⟨by
+        simpa [slotIndex, typedValue] using hArrays ⟨0, by simp [TreeField.arrayElem?]⟩, rfl, ?_⟩
       exact ih (arraysBase + 1) buffersBase _ _ _
         (fun i => by
           simpa [Nat.add_assoc, Nat.add_comm 1] using

@@ -26,7 +26,8 @@ def rebuild (mode : Mode) : Func S :=
 
 def duplicateExpr : Expr S [.tree listShape] (.pair (.tree listShape) (.tree listShape)) :=
   .treeCase .here (fun _ => .pair (.treeNil listShape rfl) (.v 0))
-    (listBranch (.pair (.treeNode listCell (some .here) (fun _ => .v 1) (noFields rfl) (noFields rfl)
+    (listBranch (.pair
+      (.treeNode listCell (some .here) (fun _ => .v 1) (noFields rfl) (noFields rfl)
       (fun _ => .v 2)) (.v 3)))
 
 def duplicate (mode : Mode) : Func S :=

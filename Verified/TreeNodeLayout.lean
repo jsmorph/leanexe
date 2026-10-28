@@ -113,7 +113,8 @@ theorem Tree.toNode_layout {shape : TreeShape} (value : Tree shape) :
     refine ⟨r, shape.recordSlots_length .., shape.mask_eq .., by simp [TreeShape.recordSlots], ?_,
       shape.arrayMask_eq ..⟩
     show SlotsLayout shape (shape.tagSlots r ++ treeSlots (shape.fields r) (shape.slotWords r words)
-      (fun i => (children i).toNode) ++ heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers)
+      (fun i => (children i).toNode) ++
+        heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers)
     rw [List.append_assoc]
     exact tagSlots_layout shape r _ (SlotsLayout.append (treeSlots_layout shape _ _ _ ih)
       (heapSlots_layout shape _ (shape.buffers_eq_zero r) _ _))

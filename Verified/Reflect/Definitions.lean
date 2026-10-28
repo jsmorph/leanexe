@@ -638,7 +638,8 @@ partial def componentTerm (x : Lean.Expr) (steps : List Bool) : MetaM Lean.Expr 
   componentTerm (← flatTerm x) steps
 
 /-- Runs `k` with the variables of a match's branch on record constructor `r`: the header, then
-each word, then each child, then each array.  The fields `natives` are the constructor's fields with their types.
+each word, then each child, then each array.  The fields `natives` are the constructor's fields
+with their types.
 A flat field is one Lean variable, and the branch holds a variable for each leaf of its tuple,
 keyed in the context by the leaf's projection of the field. -/
 def withTreeCaseFields {α : Type} (c : Ctx) (shapeValue : TreeShape)
@@ -3304,7 +3305,8 @@ where
         let (right, _) ← eqSides b.proof
         fitsOf (← congr2 (mkConst ``Bool.and) left a.term right b.term
           (some a.proof) (some b.proof))
-      let all ← andBound (← andBound (← andBound (← finiteAllFits wb) (← finiteAllFits cb))
+      let words ← finiteAllFits wb
+      let all ← andBound (← andBound (← andBound words (← finiteAllFits cb))
         (← finiteAllFits ab)) (← finiteAllFits [])
       fitsOf (← transHint (← app.finish) all.proof)
     return some ⟨src, proof, ty, e, bound, fits, none⟩

@@ -1054,7 +1054,8 @@ def TailBody.fits (funs : Funs S) (fits : Fits S) :
   | _, .treeCase x empty nodes, env =>
     match env.get x with
     | .nil h => (empty h).fits funs fits env
-    | .node r words arrays buffers children => (nodes r).fits funs fits (Env.treeFields _ r words arrays buffers children env)
+    | .node r words arrays buffers children => (nodes r).fits funs fits
+      (Env.treeFields _ r words arrays buffers children env)
 
 def TailFunc.bound (func : TailFunc S) (funs : Funs S) (flags : Flags S) (bounds : Bounds S)
     (state : Env func.params) : Nat :=

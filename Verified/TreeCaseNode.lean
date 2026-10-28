@@ -194,7 +194,8 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
         have aRoot : After env slots L0 L1 base heap store s (.tree shape) rootMode
             (.node r words arrays buffers children) heap1 store1 s1 [.i64 p] := by
           simpa only [Expr.mode, Expr.denote, hValue, Slot.modes_getD, rootMode] using hAfter
-        have hRootNode : rootMode.node heap1 store1 p (Tree.node r words arrays buffers children).toNode := by
+        have hRootNode : rootMode.node heap1 store1 p
+            (Tree.node r words arrays buffers children).toNode := by
           simpa only [Expr.mode, Expr.denote, hValue, Slot.modes_getD, rootMode] using hRoot
         have hTopRoot : heap1.top.toNat ≤ heap.top.toNat +
             dyingPot store s env slots paid L0 L1 + rootCost := by
