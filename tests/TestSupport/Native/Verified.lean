@@ -17,7 +17,9 @@ Lean module that defines it, as `tools/Emit.lean` does.
   wrote for `DIR/NAME.c` as `DIR/NAME.v`.
 * `build MODULE CONSTANT NAME DIR` is the native build of a module: it writes the files of
   `emit`, runs `clightgen` on `DIR/NAME.c`, compares its Clight with the translation as `check`
-  does, and only when they match compiles the same `DIR/NAME.c` with `ccomp -c` to `DIR/NAME.o`.
+  does, and only when they match compiles the same `DIR/NAME.c` with `ccomp -fno-common -c` to
+  `DIR/NAME.o`.  `-fno-common` makes `lx_mem` and `lx_pun` definitions rather than common symbols,
+  so that `ccomp` addresses them directly rather than through the global offset table.
   A mismatch, or a failure of either tool, stops it with a nonzero status before `ccomp` runs or
   after it fails.  The environment variables `CLIGHTGEN` and `CCOMP` name the tools, `clightgen`
   and `ccomp` by default, which must come from one CompCert 3.18 tree.
@@ -210,7 +212,8 @@ unsafe def build (moduleName constName : Name) (name dir : String) : IO UInt32 :
   runTool ((← IO.getEnv "CLIGHTGEN").getD "clightgen") #[s!"{name}.c"] (some dir)
   let status ← checkTranslation t name dir
   if status != 0 then return status
-  runTool ((← IO.getEnv "CCOMP").getD "ccomp") #["-c", "-o", s!"{dir}/{name}.o", s!"{dir}/{name}.c"]
+  runTool ((← IO.getEnv "CCOMP").getD "ccomp")
+    #["-fno-common", "-c", "-o", s!"{dir}/{name}.o", s!"{dir}/{name}.c"]
   return 0
 
 unsafe def main (args : List String) : IO UInt32 := do
