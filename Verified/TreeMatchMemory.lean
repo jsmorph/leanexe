@@ -247,6 +247,69 @@ theorem treeNode_array_rep {mode : Mode} {heap : Heap} {store : Store Unit}
     exact hi.1
   · exact recordSlots_array_owned h.1.2 i
 
+/-- A buffer field of a matched record: its root slot holds 0 exactly when it is empty, a
+nonempty buffer otherwise, and the slot after it holds its length. -/
+theorem treeNode_recordBuffer {mode : Mode} {heap : Heap} {store : Store Unit}
+    {shape : TreeShape} {r : Fin shape.records} {p : UInt64}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
+    {children : Fin (shape.children r) → Tree shape}
+    (h : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
+    (i : Fin (shape.buffers r)) :
+    RecordBuffer heap store
+      (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+        heapBufferSlot (shape.kinds r) i)))
+      (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+        heapBufferSlot (shape.kinds r) i + 1)))
+      (buffers i) := by
+  have hLt := heapBufferSlot_lt (shape.kinds r) (shape.arrayWords r arrays) buffers i
+  obtain ⟨hGet, hGetLength⟩ :=
+    heapBufferSlot_get (shape.kinds r) (shape.arrayWords r arrays) buffers i hLt
+  have hPrefixLength : (shape.tagSlots r ++ treeSlots (shape.fields r) (shape.slotWords r words)
+      (fun i => (children i).toNode)).length = shape.fieldStart + (shape.fields r).length := by
+    rw [List.length_append, ← shape.fieldStart_tagSlots r]
+    exact congrArg (shape.fieldStart + ·) (treeSlots_length _ _ _)
+  cases mode
+  · have hSlots : SlotsBorrowed heap store p 0 (shape.tagSlots r ++
+        treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode) ++
+        heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) := h.2
+    obtain ⟨-, hHeap⟩ := (SlotsBorrowed.append_iff _ _ _).mp hSlots
+    rw [Nat.zero_add, hPrefixLength] at hHeap
+    have hRoot := SlotsBorrowed.get _ _ hHeap (heapBufferSlot (shape.kinds r) i) (by omega)
+    have hLength := SlotsBorrowed.get _ _ hHeap (heapBufferSlot (shape.kinds r) i + 1) hLt
+    rw [hGet] at hRoot
+    rw [hGetLength, ← Nat.add_assoc] at hLength
+    exact ⟨hRoot.1, hLength.1⟩
+  · have hSlots : SlotsOwned heap store p 0 (shape.tagSlots r ++
+        treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode) ++
+        heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) := h.1.2
+    obtain ⟨-, hHeap⟩ := (SlotsOwned.append_iff _ _ _).mp hSlots
+    rw [Nat.zero_add, hPrefixLength] at hHeap
+    have hRoot := SlotsOwned.get _ _ hHeap (heapBufferSlot (shape.kinds r) i) (by omega)
+    have hLength := SlotsOwned.get _ _ hHeap (heapBufferSlot (shape.kinds r) i + 1) hLt
+    rw [hGet] at hRoot
+    rw [hGetLength, ← Nat.add_assoc] at hLength
+    exact ⟨hRoot.1, hLength.1⟩
+
+/-- A buffer that a record holds is a buffer value at its root and length. -/
+theorem RecordBuffer.rep {heap : Heap} {store : Store Unit} {root length : UInt64}
+    {data : LeanExe.Bytes} (h : RecordBuffer heap store root length data) :
+    Bytes.Rep heap store root length data := by
+  obtain ⟨hBuffer, hLength⟩ := h
+  refine ⟨?_, ?_⟩
+  · rw [hLength]
+    apply UInt64.toNat_ofNat_of_lt'
+    rcases hBuffer with ⟨-, hEmpty⟩ | ⟨-, hBuffer⟩
+    · simp [UInt64.size, hEmpty]
+    · have := hBuffer.capacity
+      have := hBuffer.object.address
+      simp only [UInt64.size]
+      omega
+  · rcases hBuffer with ⟨hZero, hEmpty⟩ | ⟨-, hBuffer⟩
+    · exact .inl ⟨hZero, hEmpty⟩
+    · exact .inr hBuffer
+
 /-- A buffer field of a matched record: its root slot and the length slot after it hold the
 buffer. -/
 theorem treeNode_bytes_rep {mode : Mode} {heap : Heap} {store : Store Unit}
@@ -262,54 +325,7 @@ theorem treeNode_bytes_rep {mode : Mode} {heap : Heap} {store : Store Unit}
         heapBufferSlot (shape.kinds r) i)))
       (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
         heapBufferSlot (shape.kinds r) i + 1)))
-      (buffers i) := by
-  have hLt := heapBufferSlot_lt (shape.kinds r) (shape.arrayWords r arrays) buffers i
-  obtain ⟨hGet, hGetLength⟩ :=
-    heapBufferSlot_get (shape.kinds r) (shape.arrayWords r arrays) buffers i hLt
-  have hPrefixLength : (shape.tagSlots r ++ treeSlots (shape.fields r) (shape.slotWords r words)
-      (fun i => (children i).toNode)).length = shape.fieldStart + (shape.fields r).length := by
-    rw [List.length_append, ← shape.fieldStart_tagSlots r]
-    exact congrArg (shape.fieldStart + ·) (treeSlots_length _ _ _)
-  have hSlot : ((store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
-        heapBufferSlot (shape.kinds r) i)) = 0 ∧ (buffers i).data.size = 0) ∨
-      ((buffers i).data.size ≠ 0 ∧ heap.Buffer store
-        (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
-          heapBufferSlot (shape.kinds r) i))) (buffers i))) ∧
-      store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
-        heapBufferSlot (shape.kinds r) i + 1)) = UInt64.ofNat (buffers i).data.size := by
-    cases mode
-    · have hSlots : SlotsBorrowed heap store p 0 (shape.tagSlots r ++
-          treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode) ++
-          heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) := h.2
-      obtain ⟨-, hHeap⟩ := (SlotsBorrowed.append_iff _ _ _).mp hSlots
-      rw [Nat.zero_add, hPrefixLength] at hHeap
-      have hRoot := SlotsBorrowed.get _ _ hHeap (heapBufferSlot (shape.kinds r) i) (by omega)
-      have hLength := SlotsBorrowed.get _ _ hHeap (heapBufferSlot (shape.kinds r) i + 1) hLt
-      rw [hGet] at hRoot
-      rw [hGetLength, ← Nat.add_assoc] at hLength
-      exact ⟨hRoot.1, hLength.1⟩
-    · have hSlots : SlotsOwned heap store p 0 (shape.tagSlots r ++
-          treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode) ++
-          heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers) := h.1.2
-      obtain ⟨-, hHeap⟩ := (SlotsOwned.append_iff _ _ _).mp hSlots
-      rw [Nat.zero_add, hPrefixLength] at hHeap
-      have hRoot := SlotsOwned.get _ _ hHeap (heapBufferSlot (shape.kinds r) i) (by omega)
-      have hLength := SlotsOwned.get _ _ hHeap (heapBufferSlot (shape.kinds r) i + 1) hLt
-      rw [hGet] at hRoot
-      rw [hGetLength, ← Nat.add_assoc] at hLength
-      exact ⟨hRoot.1, hLength.1⟩
-  obtain ⟨hBuffer, hLength⟩ := hSlot
-  refine ⟨?_, ?_⟩
-  · rw [hLength]
-    apply UInt64.toNat_ofNat_of_lt'
-    rcases hBuffer with ⟨-, hEmpty⟩ | ⟨-, hBuffer⟩
-    · simp [UInt64.size, hEmpty]
-    · have := hBuffer.capacity
-      have := hBuffer.object.address
-      simp only [UInt64.size]
-      omega
-  · rcases hBuffer with ⟨hZero, hEmpty⟩ | ⟨-, hBuffer⟩
-    · exact .inl ⟨hZero, hEmpty⟩
-    · exact .inr hBuffer
+      (buffers i) :=
+  (treeNode_recordBuffer h i).rep
 
 end Verified

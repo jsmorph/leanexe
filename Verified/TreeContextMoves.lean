@@ -157,6 +157,61 @@ theorem Env.reads_fnFieldsMode {Γ : List Ty} {tail : Env Γ} {modes : List Mode
     simp only [List.ofFn_succ, List.flatten_cons, List.append_assoc]
     rfl
 
+/-- Buffer values, two words each, move their roots in owned mode. -/
+theorem Env.moves_bytesFields {Γ : List Ty} {tail : Env Γ} {modes : List Mode}
+    (store : Store Unit) (rest : List Value) (mode : Mode) :
+    ∀ n (values : Fin n → LeanExe.Bytes) (roots lengths : Fin n → UInt64),
+      Env.moves store (paramMode (List.replicate n .bytes ++ Γ) (List.replicate n mode ++ modes))
+        ((List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten ++ rest)
+        (Env.prependRepeat .bytes n values tail) =
+      (List.ofFn fun i => match Ty.bytes.paramMode mode with
+        | .owned => Bytes.roots [.i64 (roots i), .i64 (lengths i)]
+        | .borrowed => []).flatten ++ Env.moves store (paramMode Γ modes) rest tail
+  | 0, _, _, _ => rfl
+  | n + 1, values, roots, lengths => by
+    rw [List.ofFn_succ, List.flatten_cons]
+    change Env.moves store _ ([.i64 (roots 0), .i64 (lengths 0)] ++
+      ((List.ofFn fun i => [Value.i64 (roots i.succ), .i64 (lengths i.succ)]).flatten ++ rest))
+      (.cons _ _) = _
+    rw [Env.moves_cons rfl]
+    unfold Verified.paramMode
+    simp only [List.replicate_succ, List.cons_append, paramModes, List.headD_cons,
+      List.tail_cons, List.getD_cons_zero, List.getD_cons_succ]
+    have h := Env.moves_bytesFields (tail := tail) (modes := modes) store rest mode n
+      (fun i => values i.succ) (fun i => roots i.succ) (fun i => lengths i.succ)
+    unfold Verified.paramMode at h
+    rw [h]
+    simp only [List.ofFn_succ, List.flatten_cons, List.append_assoc]
+    rfl
+
+/-- Buffer values, two words each, protect their blocks in borrowed mode. -/
+theorem Env.reads_bytesFields {Γ : List Ty} {tail : Env Γ} {modes : List Mode}
+    (store : Store Unit) (rest : List Value) (mode : Mode) :
+    ∀ n (values : Fin n → LeanExe.Bytes) (roots lengths : Fin n → UInt64),
+      Env.reads store (paramMode (List.replicate n .bytes ++ Γ) (List.replicate n mode ++ modes))
+        ((List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten ++ rest)
+        (Env.prependRepeat .bytes n values tail) =
+      (List.ofFn fun i => match Ty.bytes.paramMode mode with
+        | .owned => []
+        | .borrowed => Bytes.regions store (roots i)).flatten ++
+        Env.reads store (paramMode Γ modes) rest tail
+  | 0, _, _, _ => rfl
+  | n + 1, values, roots, lengths => by
+    rw [List.ofFn_succ, List.flatten_cons]
+    change Env.reads store _ ([.i64 (roots 0), .i64 (lengths 0)] ++
+      ((List.ofFn fun i => [Value.i64 (roots i.succ), .i64 (lengths i.succ)]).flatten ++ rest))
+      (.cons _ _) = _
+    rw [Env.reads_cons rfl]
+    unfold Verified.paramMode
+    simp only [List.replicate_succ, List.cons_append, paramModes, List.headD_cons,
+      List.tail_cons, List.getD_cons_zero, List.getD_cons_succ]
+    have h := Env.reads_bytesFields (tail := tail) (modes := modes) store rest mode n
+      (fun i => values i.succ) (fun i => roots i.succ) (fun i => lengths i.succ)
+    unfold Verified.paramMode at h
+    rw [h]
+    simp only [List.ofFn_succ, List.flatten_cons, List.append_assoc]
+    cases mode <;> simp [Ty.paramMode, Ty.reads, Bytes.roots_regions]
+
 theorem Env.moves_repeatZero {Γ : List Ty} {tail : Env Γ} {modes : List Mode}
     (store : Store Unit) (rest : List Value) (t : Ty) (mode : Mode) :
     ∀ n, n = 0 → ∀ values : Fin n → t.denote,
@@ -177,26 +232,30 @@ theorem treeFields_moves (store : Store Unit) (shape : TreeShape)
     (arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote)
     (buffers : Fin (shape.buffers r) → LeanExe.Bytes)
     (children : Fin (shape.children r) → Tree shape)
-    (pointers : Fin (shape.children r) → UInt64) (arrayPtrs : Fin (shape.arrays r) → UInt64) :
+    (pointers : Fin (shape.children r) → UInt64) (arrayPtrs : Fin (shape.arrays r) → UInt64)
+    (roots lengths : Fin (shape.buffers r) → UInt64) :
     Env.moves store (paramMode (shape.context r []) (shape.modes r mode []))
-      (shape.branchValues r p words pointers arrayPtrs)
+      (shape.branchValues r p words pointers arrayPtrs roots lengths)
       (Env.treeFields shape r words arrays buffers children .nil) = match mode with
       | .borrowed => []
       | .owned => p :: ((List.ofFn fun i =>
           (children i).toNode.pointers store (pointers i)).flatten ++
-          (List.ofFn fun i => [arrayPtrs i]).flatten) := by
-  have hBuffers := Env.moves_repeatZero (tail := Env.nil) (modes := []) store [] .bytes mode
-    (shape.buffers r) (shape.buffers_eq_zero r) buffers
+          ((List.ofFn fun i => [arrayPtrs i]).flatten ++
+            (List.ofFn fun i => Bytes.roots [.i64 (roots i), .i64 (lengths i)]).flatten)) := by
+  have hBuffers := Env.moves_bytesFields (tail := Env.nil) (modes := []) store [] mode
+    (shape.buffers r) buffers roots lengths
   have hArrays := Env.moves_fnFieldsMode
     (tail := Env.prependRepeat .bytes (shape.buffers r) buffers Env.nil)
-    (modes := List.replicate (shape.buffers r) mode ++ []) store [] mode (shape.arrays r)
-    (shape.arrayTy r) arrays arrayPtrs (shape.arrayTy_width r)
+    (modes := List.replicate (shape.buffers r) mode ++ []) store
+    ((List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten ++ []) mode
+    (shape.arrays r) (shape.arrayTy r) arrays arrayPtrs (shape.arrayTy_width r)
   have hChildren := Env.moves_repeatFields
     (tail := Env.prependFn (shape.arrays r) (shape.arrayTy r) arrays
       (Env.prependRepeat .bytes (shape.buffers r) buffers Env.nil))
     (modes := List.replicate (shape.arrays r) mode ++ (List.replicate (shape.buffers r) mode ++ []))
-    store (List.ofFn fun i => Value.i64 (arrayPtrs i)) (.tree shape) mode rfl (shape.children r)
-    children pointers
+    store ((List.ofFn fun i => Value.i64 (arrayPtrs i)) ++
+      ((List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten ++ []))
+    (.tree shape) mode rfl (shape.children r) children pointers
   have hWords := Env.moves_fnFields
     (tail := Env.prependRepeat (.tree shape) (shape.children r) children
       (Env.prependFn (shape.arrays r) (shape.arrayTy r) arrays
@@ -204,12 +263,15 @@ theorem treeFields_moves (store : Store Unit) (shape : TreeShape)
     (modes := List.replicate (shape.children r) mode ++
       (List.replicate (shape.arrays r) mode ++ (List.replicate (shape.buffers r) mode ++ [])))
     store ((List.ofFn fun i => Value.i64 (pointers i)) ++
-      (List.ofFn fun i => Value.i64 (arrayPtrs i))) .borrowed (shape.words r)
+      ((List.ofFn fun i => Value.i64 (arrayPtrs i)) ++
+        ((List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten ++ [])))
+    .borrowed (shape.words r)
     (shape.wordTy r) words
     (fun i => typedValue (shape.elem r i).slotType (shape.slotWords r words i))
     (shape.wordTy_width r) (fun i => shape.wordTy_paramMode r i _)
-  rw [show (List.ofFn fun i => Value.i64 (arrayPtrs i)) ++ [] =
-    (List.ofFn fun i => Value.i64 (arrayPtrs i)) from List.append_nil _] at hArrays
+  rw [show (List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten ++ [] =
+    (List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten from
+      List.append_nil _] at hWords hChildren hArrays hBuffers
   unfold Verified.paramMode at hWords hChildren hArrays hBuffers ⊢
   change Env.moves store _ ([.i64 p] ++ _)
     (Env.cons (t := .treeHeader shape r) .unit _) = _
@@ -225,27 +287,31 @@ theorem treeFields_reads (store : Store Unit) (shape : TreeShape)
     (arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote)
     (buffers : Fin (shape.buffers r) → LeanExe.Bytes)
     (children : Fin (shape.children r) → Tree shape)
-    (pointers : Fin (shape.children r) → UInt64) (arrayPtrs : Fin (shape.arrays r) → UInt64) :
+    (pointers : Fin (shape.children r) → UInt64) (arrayPtrs : Fin (shape.arrays r) → UInt64)
+    (roots lengths : Fin (shape.buffers r) → UInt64) :
     Env.reads store (paramMode (shape.context r []) (shape.modes r mode []))
-      (shape.branchValues r p words pointers arrayPtrs)
+      (shape.branchValues r p words pointers arrayPtrs roots lengths)
       (Env.treeFields shape r words arrays buffers children .nil) = match mode with
       | .owned => []
       | .borrowed => (List.ofFn fun i =>
           (children i).toNode.slotRegions store (pointers i)).flatten ++
-          (List.ofFn fun i => [((arrayPtrs i).toNat,
-            8 * (((shape.arrayElem r i).words (arrays i)).size + 1))]).flatten := by
-  have hBuffers := Env.reads_repeatZero (tail := Env.nil) (modes := []) store [] .bytes mode
-    (shape.buffers r) (shape.buffers_eq_zero r) buffers
+          ((List.ofFn fun i => [((arrayPtrs i).toNat,
+            8 * (((shape.arrayElem r i).words (arrays i)).size + 1))]).flatten ++
+            (List.ofFn fun i => Bytes.regions store (roots i)).flatten) := by
+  have hBuffers := Env.reads_bytesFields (tail := Env.nil) (modes := []) store [] mode
+    (shape.buffers r) buffers roots lengths
   have hArrays := Env.reads_fnFieldsMode
     (tail := Env.prependRepeat .bytes (shape.buffers r) buffers Env.nil)
-    (modes := List.replicate (shape.buffers r) mode ++ []) store [] mode (shape.arrays r)
-    (shape.arrayTy r) arrays arrayPtrs (shape.arrayTy_width r)
+    (modes := List.replicate (shape.buffers r) mode ++ []) store
+    ((List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten ++ []) mode
+    (shape.arrays r) (shape.arrayTy r) arrays arrayPtrs (shape.arrayTy_width r)
   have hChildren := Env.reads_repeatFields
     (tail := Env.prependFn (shape.arrays r) (shape.arrayTy r) arrays
       (Env.prependRepeat .bytes (shape.buffers r) buffers Env.nil))
     (modes := List.replicate (shape.arrays r) mode ++ (List.replicate (shape.buffers r) mode ++ []))
-    store (List.ofFn fun i => Value.i64 (arrayPtrs i)) (.tree shape) mode rfl (shape.children r)
-    children pointers
+    store ((List.ofFn fun i => Value.i64 (arrayPtrs i)) ++
+      ((List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten ++ []))
+    (.tree shape) mode rfl (shape.children r) children pointers
   have hWords := Env.reads_fnFields
     (tail := Env.prependRepeat (.tree shape) (shape.children r) children
       (Env.prependFn (shape.arrays r) (shape.arrayTy r) arrays
@@ -253,12 +319,15 @@ theorem treeFields_reads (store : Store Unit) (shape : TreeShape)
     (modes := List.replicate (shape.children r) mode ++
       (List.replicate (shape.arrays r) mode ++ (List.replicate (shape.buffers r) mode ++ [])))
     store ((List.ofFn fun i => Value.i64 (pointers i)) ++
-      (List.ofFn fun i => Value.i64 (arrayPtrs i))) .borrowed (shape.words r)
+      ((List.ofFn fun i => Value.i64 (arrayPtrs i)) ++
+        ((List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten ++ [])))
+    .borrowed (shape.words r)
     (shape.wordTy r) words
     (fun i => typedValue (shape.elem r i).slotType (shape.slotWords r words i))
     (shape.wordTy_width r) (fun i => shape.wordTy_paramMode r i _) (fun _ _ => rfl)
-  rw [show (List.ofFn fun i => Value.i64 (arrayPtrs i)) ++ [] =
-    (List.ofFn fun i => Value.i64 (arrayPtrs i)) from List.append_nil _] at hArrays
+  rw [show (List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten ++ [] =
+    (List.ofFn fun i => [Value.i64 (roots i), .i64 (lengths i)]).flatten from
+      List.append_nil _] at hWords hChildren hArrays hBuffers
   unfold Verified.paramMode at hWords hChildren hArrays hBuffers ⊢
   change Env.reads store _ ([.i64 p] ++ _)
     (Env.cons (t := .treeHeader shape r) .unit _) = _
@@ -274,10 +343,12 @@ theorem treeFields_reads_owned (store : Store Unit) (shape : TreeShape)
     (arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote)
     (buffers : Fin (shape.buffers r) → LeanExe.Bytes)
     (children : Fin (shape.children r) → Tree shape)
-    (pointers : Fin (shape.children r) → UInt64) (arrayPtrs : Fin (shape.arrays r) → UInt64) :
+    (pointers : Fin (shape.children r) → UInt64) (arrayPtrs : Fin (shape.arrays r) → UInt64)
+    (roots lengths : Fin (shape.buffers r) → UInt64) :
     Env.reads store (paramMode (shape.context r []) (shape.modes r .owned []))
-      (shape.branchValues r p words pointers arrayPtrs)
+      (shape.branchValues r p words pointers arrayPtrs roots lengths)
       (Env.treeFields shape r words arrays buffers children .nil) = [] :=
-  treeFields_reads store shape r .owned p words arrays buffers children pointers arrayPtrs
+  treeFields_reads store shape r .owned p words arrays buffers children pointers arrayPtrs roots
+    lengths
 
 end Verified
