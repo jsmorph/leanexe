@@ -93,7 +93,7 @@ theorem CopyInv.freshStep {shape : TreeShape} {heap0 heap heap' : Heap}
     budget := ?_
   }
   · rw [hCopyBlocks] at hb
-    simp only [List.mem_append] at hb ⊢
+    simp only [copyBlocks, List.mem_append] at hb ⊢
     rcases hb with hb | hb | hb
     · exact Or.inl (Or.inl hb)
     · exact Or.inr hb
@@ -176,6 +176,7 @@ theorem wp_treeCopyBufferInv {m : Module} (hm : Runtime m) {host : HostEnv Unit}
   have hSourceRep : Bytes.Rep heap store rootWord length data := by
     rcases hRootBorrow.1 with hEmpty | ⟨_, hBuffer⟩
     · refine ⟨?_, Or.inl hEmpty⟩
+      show (UInt64.ofNat data.data.size).toNat = data.data.size
       rw [hEmpty.2]
       rfl
     · have hAt := hBuffer.toAt h.step.at_
@@ -200,52 +201,72 @@ theorem wp_treeCopyBufferInv {m : Module} (hm : Runtime m) {host : HostEnv Unit}
   have hHigh3 : base + 3 < s.params.length + s.locals.length := Locals.lt_total (by omega)
   -- The index of the length slot, in local `base + 5`.
   simp only [treeCopyBuffer, List.append_assoc, List.cons_append, List.nil_append]
-  simp only [Locals.get] at hIndex
   simp only [wp_localGet_cons, hIndex, wp_constI64_cons, wp_addI64_cons]
   refine wp_localSet_local hLow5 hHigh5 ?_
   let s1 := setLocal s (base + 5) (.i64 (UInt64.ofNat current.next + 1))
   change wp m _ Q store s1 host
+  have hPositions1 : s1.positions = s.positions := by
+    simp only [s1, Locals.positions_setLocal]
   have hSource1 : s1.get (base + 3) = some (.i64 current.source) := by
-    rw [Locals.get_setLocal_ne hLow5 (by omega)]
+    show (setLocal s (base + 5) _).get (base + 3) = _
+    rw [Locals.get_setLocal_ne (s := s) hLow5 (by omega)]
     exact hSource
   have hIndex1 : s1.get (base + 5) = some (.i64 (UInt64.ofNat (current.next + 1))) := by
-    rw [Locals.get_setLocal_same hLow5 hHigh5, UInt64.ofNat_add, UInt64.ofNat_one]
+    show (setLocal s (base + 5) _).get (base + 5) = _
+    rw [Locals.get_setLocal_same (s := s) hLow5 hHigh5, UInt64.ofNat_add, UInt64.ofNat_one]
   -- The length, from the source record's slot after the root.
   refine wp_treeSlotLoad hSource1 hIndex1 ?_ ?_
   · rw [slotAddress_toNat (by omega)]
     omega
   rw [hLengthRead]
-  refine wp_localSet_local hLow5 hHigh5 ?_
+  have hHigh5s1 : base + 5 < s1.params.length + s1.locals.length :=
+    Locals.lt_total (by rw [hPositions1]; omega)
+  refine wp_localSet_local (s := s1) hLow5 hHigh5s1 ?_
   let s2 := setLocal s1 (base + 5) (.i64 length)
   change wp m _ Q store s2 host
+  have hPositions2 : s2.positions = s.positions := by
+    simp only [s2, Locals.positions_setLocal]
+    exact hPositions1
   have hWord2 : s2.get (base + 4) = some (.i64 rootWord) := by
-    rw [Locals.get_setLocal_ne hLow5 (by omega), Locals.get_setLocal_ne hLow5 (by omega)]
+    show (setLocal s1 (base + 5) _).get (base + 4) = _
+    rw [Locals.get_setLocal_ne (s := s1) hLow5 (by omega)]
+    show (setLocal s (base + 5) _).get (base + 4) = _
+    rw [Locals.get_setLocal_ne (s := s) hLow5 (by omega)]
     exact hWord
-  simp only [Locals.get] at hWord2
   simp only [wp_localGet_cons, hWord2]
-  refine wp_localSet_local hLow2 hHigh2 ?_
+  have hHigh2s2 : base + 2 < s2.params.length + s2.locals.length :=
+    Locals.lt_total (by rw [hPositions2]; omega)
+  refine wp_localSet_local (s := s2) hLow2 hHigh2s2 ?_
   let s3 := setLocal s2 (base + 2) (.i64 rootWord)
   change wp m _ Q store s3 host
+  have hPositions3 : s3.positions = s.positions := by
+    simp only [s3, Locals.positions_setLocal]
+    exact hPositions2
+  have hHigh5s1' : base + 5 < s1.params.length + s1.locals.length := hHigh5s1
   have hLength3 : s3.get (base + 5) = some (.i64 length) := by
-    rw [Locals.get_setLocal_ne hLow2 (by omega)]
-    exact Locals.get_setLocal_same hLow5 hHigh5
-  simp only [Locals.get] at hLength3
+    show (setLocal s2 (base + 2) _).get (base + 5) = _
+    rw [Locals.get_setLocal_ne (s := s2) hLow2 (by omega)]
+    exact Locals.get_setLocal_same (s := s1) hLow5 hHigh5s1'
   simp only [wp_localGet_cons, hLength3]
-  refine wp_localSet_local hLow3 hHigh3 ?_
+  have hHigh3s3 : base + 3 < s3.params.length + s3.locals.length :=
+    Locals.lt_total (by rw [hPositions3]; omega)
+  refine wp_localSet_local (s := s3) hLow3 hHigh3s3 ?_
   let s4 := setLocal s3 (base + 3) (.i64 length)
   change wp m _ Q store s4 host
   have hRoot4 : s4.get (base + 2) = some (.i64 rootWord) := by
-    rw [Locals.get_setLocal_ne hLow3 (by omega)]
-    exact Locals.get_setLocal_same hLow2 hHigh2
+    show (setLocal s3 (base + 3) _).get (base + 2) = _
+    rw [Locals.get_setLocal_ne (s := s3) hLow3 (by omega)]
+    exact Locals.get_setLocal_same (s := s2) hLow2 hHigh2s2
   have hLength4 : s4.get (base + 3) = some (.i64 length) :=
-    Locals.get_setLocal_same hLow3 hHigh3
+    Locals.get_setLocal_same (s := s3) hLow3 hHigh3s3
   have hPositions4 : s4.positions = s.positions := by
-    simp only [s4, s3, s2, s1, Locals.positions_setLocal]
+    simp only [s4, Locals.positions_setLocal]
+    exact hPositions3
   have hLocals4 : CopyLocals base s0 result current.pointer s4 :=
-    (((hLocals.scratch hLow5 (by omega) (by omega)).scratch hLow5 (by omega)
-      (by simp only [s1, Locals.positions_setLocal]; omega)).scratch hLow2 (by omega)
-      (by simp only [s2, s1, Locals.positions_setLocal]; omega)).scratch hLow3 (by omega)
-      (by simp only [s3, s2, s1, Locals.positions_setLocal]; omega)
+    (((hLocals.scratch hLow5 (by omega) (by omega)).scratch (s := s1) hLow5 (by omega)
+      (by rw [hPositions1]; omega)).scratch (s := s2) hLow2 (by omega)
+      (by rw [hPositions2]; omega)).scratch (s := s3) hLow3 (by omega)
+      (by rw [hPositions3]; omega)
   -- The copy of the buffer.
   refine Bytes.wp_copyOwned hm h.step.at_ (hSourceRep.toAt h.step.at_)
     hSourceRep.payload_region hSourceRep.length_eq hRoot4 hLength4 (by omega) (by omega)
@@ -273,9 +294,8 @@ theorem wp_treeCopyBufferInv {m : Module} (hm : Runtime m) {host : HostEnv Unit}
   let s7 := setLocal { s6 with values := s4.values } (base + 4) (.i64 root')
   change wp m _ Q store1 s7 host
   have hPositions7 : s7.positions = s.positions := by
-    simp only [s7, s6, Locals.positions_setLocal]
-    rw [← hPositions4, ← hFrame5.positions]
-    rfl
+    simp only [s7, s6, Locals.positions_setLocal, Locals.positions_values]
+    rw [hFrame5.positions, hPositions4]
   have hBelow7 (j : Nat) (hj : j < base + 4) : s7.get j = s4.get j := by
     rw [Locals.get_setLocal_ne (s := { s6 with values := s4.values }) hLow4' (by omega)]
     change s6.get j = _
@@ -287,8 +307,10 @@ theorem wp_treeCopyBufferInv {m : Module} (hm : Runtime m) {host : HostEnv Unit}
       ((Frame.setValues hLow5' (by omega)
         (by rw [hFrame5.positions, hPositions4]; omega)).trans
         (Frame.setValues hLow4' (by omega)
-          (by simp only [s6, Locals.positions_setLocal]; rw [hFrame5.positions, hPositions4]
-              omega)))),
+          (by
+            simp only [s6, Locals.positions_setLocal, Locals.positions_values]
+            rw [hFrame5.positions, hPositions4]
+            omega)))),
       (hBelow7 base (by omega)).trans hLocals4.result,
       (hBelow7 (base + 1) (by omega)).trans hLocals4.current, hLocals4.values⟩
   have hRoot7 : s7.get (base + 4) = some (.i64 root') :=
