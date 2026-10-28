@@ -38037,7 +38037,7 @@ The compiler now compiles records with buffer fields, in the layout that the coo
 - [x] Construction and matches of buffer fields.
 - [x] The reflector, the example, its cases, and the order check.
 - [x] The manual.
-- [ ] The gate of the buffers half.
+- [x] The gate of the buffers half, as part of the combined check that the entry on the meaning of Bytes parameters records.
 
 ## 2026-10-28: The well-formedness guard in every statement
 
@@ -38051,7 +38051,7 @@ A review of the well-formedness change found two problems and a limit.  The comm
 
 - [x] The class in `Implements.lean` and the instance arguments.
 - [x] The instances and the corrected comment and manual.
-- [ ] The gates of both branches.
+- [x] The gates of both branches, as part of the combined check that the entry on the meaning of Bytes parameters records.
 
 ## 2026-10-28: The meaning of Bytes parameters in the trusted directory
 
@@ -38077,6 +38077,9 @@ The rule that follows is to build in full before launching a check: `lake build 
 - [x] The new module, the moved file, and the renamed lemmas.
 - [x] The independent review of the diff.
 - [x] The list of trusted definitions in both manuals.
+The well-formedness change, the buffers half, and the move were checked together, at b6502d24c, which merges this work with the bare-metal branch at 5a7bc066a.  The separate checks of the two branches were stopped before they ended, because the combined check covers both.  The combined build passed in full: the heavy proofs in 1733 s, the default target in 561 s, `lake build Verified Library` in 2939 s, `native-bare` in 75 s, and `native-verified` in 1 s.  Every main step of the combined check passed, among them the verified driver's 35,766 cases, the typed-tree, array-tree, and buffer-tree cases, and the running-sum, WASI, native, and native byte drivers.  The byte comparison found every module of the arrays gate, the 101 modules of the gate of main, `slew.wasm`, `heapsums.wasm`, `bytes.wasm`, `literals.wasm`, `sum.wasm`, `sumfp.wasm`, and `process.wasm` identical.  The bare-metal steps failed to link the shared native host, a fault of the bare-metal branch that its fix at 5daace3a5 removes.  A separate check of 5daace3a5 runs the bare-metal steps under TCG and under KVM, and its result is pending.
+
 - [x] The three lemmas that kept the old namespace.
-- [ ] `lake build Verified Library`, the default target, and `native-verified`, in full.
-- [ ] The full check, combined with the bare-metal branch.
+- [x] `lake build Verified Library`, the default target, and `native-verified`, in full.
+- [x] The full check, combined with the bare-metal branch, for every main step.
+- [ ] The bare-metal steps on 5daace3a5.
