@@ -1,4 +1,4 @@
-import LeanExe.Native.CText
+import LeanExe.Native.Bare
 
 /-!
 The per-build check of the printed C text: a reader of the Coq file that `clightgen` writes for
@@ -321,6 +321,13 @@ partial def toExpr (n : Names) : Term → Except String expr
   | .app "Ecast" [a, t] => do pure (.Ecast (← toExpr n a) (← toType t))
   | t => throw s!"the expression {repr t}"
 
+/-- A memory chunk, as `EF_vstore` names it. -/
+def toChunk : String → Except String memory_chunk
+  | "Mint8signed" => pure .Mint8signed | "Mint8unsigned" => pure .Mint8unsigned
+  | "Mint16signed" => pure .Mint16signed | "Mint16unsigned" => pure .Mint16unsigned
+  | "Mint32" => pure .Mint32 | "Mint64" => pure .Mint64
+  | s => throw s!"the chunk {s}"
+
 partial def toStmt (n : Names) : Term → Except String statement
   | .atom "Sskip" => pure .Sskip
   | .atom "Sbreak" => pure .Sbreak
@@ -339,6 +346,12 @@ partial def toStmt (n : Names) : Term → Except String statement
   | .app "Sifthenelse" [c, a, b] => do
       pure (.Sifthenelse (← toExpr n c) (← toStmt n a) (← toStmt n b))
   | .app "Sloop" [a, b] => do pure (.Sloop (← toStmt n a) (← toStmt n b))
+  | .app "Swhile" [c, a] => do
+      pure (.Sloop (.Ssequence (.Sifthenelse (← toExpr n c) .Sskip .Sbreak) (← toStmt n a)) .Sskip)
+  | .app "Sbuiltin" [.atom "None", .app "EF_vstore" [.atom ch], tys, args] => do
+      let chunk ← toChunk ch
+      pure (.Sbuiltin none (.EF_vstore chunk) (← (← toList tys).mapM toType)
+        (← (← toList args).mapM (toExpr n)))
   | t => throw s!"the statement {repr t}"
 
 def toBool : Term → Except String Bool
@@ -416,6 +429,7 @@ def stmtEq : statement → statement → Bool
   | .Ssequence a1 a2, .Ssequence b1 b2 => stmtEq a1 b1 && stmtEq a2 b2
   | .Sifthenelse c a1 a2, .Sifthenelse d b1 b2 => exprEq c d && stmtEq a1 b1 && stmtEq a2 b2
   | .Sloop a1 a2, .Sloop b1 b2 => stmtEq a1 b1 && stmtEq a2 b2
+  | .Sbuiltin d ef ts as, .Sbuiltin e ef' us bs => d == e && ef == ef' && ts == us && exprsEq as bs
   | _, _ => false
 
 /-- The call temporaries of a body in order of first occurrence. -/
@@ -439,6 +453,7 @@ def renameStmt (r : ident → ident) : statement → statement
   | .Ssequence a b => .Ssequence (renameStmt r a) (renameStmt r b)
   | .Sifthenelse c a b => .Sifthenelse (renameExpr r c) (renameStmt r a) (renameStmt r b)
   | .Sloop a b => .Sloop (renameStmt r a) (renameStmt r b)
+  | .Sbuiltin d ef ts as => .Sbuiltin (d.map r) ef ts (as.map (renameExpr r))
   | s => s
 
 /-- The function with its call temporaries renamed to `callId 0`, `callId 1`, … in order of first
@@ -533,18 +548,41 @@ def nodupB [BEq α] : List α → Bool
   | [] => true
   | x :: xs => !xs.contains x && nodupB xs
 
+/-- The differences between the definition `d` of the global `name` and the entry `g` of
+`global_definitions`, whose variable or function the file defines among `defs`. -/
+def compareDef (defs : List (String × Term)) (n : Names) (name : String)
+    (d : globdef (fundef function) type) (g : Term) : List String :=
+  match d, g with
+  | .Gvar v, .app "Gvar" [.atom vx] =>
+      match defs.lookup vx with
+      | none => [s!"{name}: clightgen defines no variable"]
+      | some term =>
+          match toVar term with
+          | .error e => [s!"{name}: {e}"]
+          | .ok w => if varEq v w then [] else [s!"{name}: the variables differ"]
+  | .Gfun (.Internal f), .app "Gfun" [.app "Internal" [.atom fx]] =>
+      match defs.lookup fx with
+      | none => [s!"{name}: clightgen defines no function"]
+      | some term =>
+          match toFunction n term with
+          | .error e => [s!"{name}: {e}"]
+          | .ok g => if functionEq f g then [] else [s!"{name}: the functions differ"]
+  | _, _ => [s!"{name}: the kinds of definition differ"]
+
 /-- The differences between the whole program that the Coq file `text` of `clightgen` describes
 and the whole program of the translation `t`, or none.  The file's `global_definitions` must list
 CompCert's external declarations, then the translation's definitions but `__builtin_fsqrt` in
-order, and nothing after them.  Each external declaration must be a built-in, run-time, or
+order, then the definitions of `tail`: none for the translation alone, and `bareTail` of the
+`main` of a bare-metal program.  Each external declaration must be a built-in, run-time, or
 external function, and `__builtin_fsqrt` must be declared as the translation declares it.  Each
 variable and internal function must equal the translation's under its name, with the
 temporaries of calls compared up to renaming.  The program has no composite types, and its
 `main` is the name `main`.  The names of the entries are distinct, and so are the identifiers
 that the whole program gives them, `preId j` for the external declarations, `sqrtId` for
-`__builtin_fsqrt`, and the translation's own; the program of the file is then the whole program
-of `wholeDefs` with its identifiers renamed injectively. -/
-def check (t : Translation) (text : String) : Except String (List String) := do
+`__builtin_fsqrt`, and the translation's and the tail's own.  The program of the file is then
+the whole program of `wholeDefs` with its identifiers renamed injectively. -/
+def check (t : Translation) (text : String)
+    (tail : List (ident × globdef (fundef function) type) := []) : Except String (List String) := do
   let toks ← tokenize text
   let defs := definitions toks
   let names : List (String × Name) := defs.filterMap fun (d, term) =>
@@ -554,7 +592,10 @@ def check (t : Translation) (text : String) : Except String (List String) := do
       | .num k => if d.startsWith "_t'" then some (d, .created k.toNat) else none
       | _ => none
     else none
-  let n : Names := { names, globals := t.names.map fun (id, s) => (s, id) }
+  let tailName (id : ident) : String := if id == outId then "lx_out" else if id == mainId then "main"
+    else s!"lx_unnamed_{id}"
+  let allNames := t.names ++ tail.map fun (id, _) => (id, tailName id)
+  let n : Names := { names, globals := allNames.map fun (id, s) => (s, id) }
   let some gdTerm := defs.lookup "global_definitions"
     | throw "the file has no global_definitions"
   let entries ← globalEntries gdTerm
@@ -576,8 +617,14 @@ def check (t : Translation) (text : String) : Except String (List String) := do
   let midNames := mid.map fun e => (source e.1).getD e.1
   if midNames != tnames then
     errors := errors.push s!"the definitions are not in the translation's order: {midNames}"
-  for (x, _) in post do
-    errors := errors.push s!"{(source x).getD x}: a definition after the translation's"
+  if post.length != tail.length then
+    for (x, _) in post do
+      errors := errors.push s!"{(source x).getD x}: the definitions after the translation's differ"
+  for ((x, g), (id, d)) in post.zip tail do
+    let name := tailName id
+    if (source x).getD x != name then
+      errors := errors.push s!"{(source x).getD x}: in place of {name} after the translation's"
+    errors := errors ++ (compareDef defs n name d g).toArray
   -- CompCert's declarations, and the identifiers that the whole program gives them.
   let mut preIds : List ident := []
   let mut sqrtSeen := false
@@ -599,27 +646,11 @@ def check (t : Translation) (text : String) : Except String (List String) := do
     errors := errors.push "__builtin_fsqrt: clightgen declares no such built-in"
   -- The translation's definitions.
   for ((_, g), (id, d)) in mid.zip tdefs do
-    let name := t.gname id
-    match d, g with
-    | .Gvar v, .app "Gvar" [.atom vx] =>
-        match defs.lookup vx with
-        | none => errors := errors.push s!"{name}: clightgen defines no variable"
-        | some term =>
-            match toVar term with
-            | .error e => errors := errors.push s!"{name}: {e}"
-            | .ok w => if !varEq v w then errors := errors.push s!"{name}: the variables differ"
-    | .Gfun (.Internal f), .app "Gfun" [.app "Internal" [.atom fx]] =>
-        match defs.lookup fx with
-        | none => errors := errors.push s!"{name}: clightgen defines no function"
-        | some term =>
-            match toFunction n term with
-            | .error e => errors := errors.push s!"{name}: {e}"
-            | .ok g => if !functionEq f g then errors := errors.push s!"{name}: the functions differ"
-    | _, _ => errors := errors.push s!"{name}: the kinds of definition differ"
+    errors := errors ++ (compareDef defs n (t.gname id) d g).toArray
   -- Distinct names and identifiers, no composite types, and `main`.
   if !nodupB (entries.map fun e => (source e.1).getD e.1) then
     errors := errors.push "two entries of global_definitions have one name"
-  if !nodupB (preIds ++ tdefs.map (·.1)) then
+  if !nodupB (preIds ++ tdefs.map (·.1) ++ tail.map (·.1)) then
     errors := errors.push "two definitions of the whole program have one identifier"
   match defs.lookup "composites" with
   | some (.atom "nil") => pure ()

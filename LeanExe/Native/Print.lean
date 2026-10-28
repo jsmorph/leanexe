@@ -5,7 +5,7 @@ A printer of Clight programs as C text, for the programs the translator and the 
 tests produce: globals of scalar or array type, functions whose parameters and temporaries are
 scalars or pointers, and the statements and expressions of `Clight.lean` other than `Sswitch`,
 `Slabel`, `Sgoto`, `Efield`, `Esizeof`, and `Ealignof`.  `Sloop s1 s2` prints only when `s2` is
-`Sskip`, as `for (;;)`.  Every subexpression is parenthesized, integer constants carry the
+`Sskip`, as `while (c)` when `s1` begins with `if (c) ; else break;` and as `for (;;)` otherwise.  Every subexpression is parenthesized, integer constants carry the
 suffix of their type, and floating-point constants print as hexadecimal literals, which C reads
 exactly; a NaN or infinite constant has no literal and is an error.  The printer is not
 verified: `clightgen` reads its output back for comparison.
@@ -171,13 +171,16 @@ partial def cstmt (depth : Nat) : statement → Except String String
           pure (s!"{indent depth}if ({c}) \{\n" ++ thn ++ s!"{indent depth}} else \{\n" ++
             (← cstmt (depth + 1) s2) ++ s!"{indent depth}}\n")
   | .Sloop s1 s2 => do
-      match s2 with
-      | .Sskip =>
+      match s2, s1 with
+      | .Sskip, .Ssequence (.Sifthenelse c .Sskip .Sbreak) b => do
+          pure (s!"{indent depth}while ({← cexpr gname tname c}) \{\n" ++ (← cstmt (depth + 1) b) ++
+            s!"{indent depth}}\n")
+      | .Sskip, _ =>
           let body ← match s1 with
             | .Ssequence .Sskip b => cstmt (depth + 1) b
             | _ => cstmt (depth + 1) s1
           pure (s!"{indent depth}for (;;) \{\n" ++ body ++ s!"{indent depth}}\n")
-      | _ => throw "a loop with a statement after its body"
+      | _, _ => throw "a loop with a statement after its body"
   | .Sbreak => pure s!"{indent depth}break;\n"
   | .Scontinue => pure s!"{indent depth}continue;\n"
   | .Sreturn none => pure s!"{indent depth}return;\n"

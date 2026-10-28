@@ -1,4 +1,5 @@
 import LeanExe.Native.Proof.Init
+import LeanExe.Native.Bare
 
 /-!
 The whole program that `ccomp` compiles for a translation (`docs/native-bare-metal.md`):
@@ -237,19 +238,6 @@ theorem wholeOk_of {m : Module} {cap : Nat} {T : Translation} (h : translate cap
       rcases List.mem_append.mp ha with ha | ha
       · have := hids a ha; omega
       · have := hmid a ha; omega
-
-/-- The identifier of `lx_out`. -/
-def outId : ident := 28
-
-/-- `extern volatile unsigned int lx_out;`, which `clightgen` prints as `tvolatile tuint`
-(`export/Ctypesdefs.v`, lines 30, 39, and 41 to 54). -/
-def outVar : globvar type :=
-  { gvar_info := .Tint .I32 .Unsigned { attr_volatile := true, attr_alignas := none },
-    gvar_init := [], gvar_readonly := false, gvar_volatile := true }
-
-/-- The definitions after the translation's in a bare-metal program: `lx_out` and `main`. -/
-def bareTail (main : function) : List (ident × globdef (fundef function) type) :=
-  [(outId, .Gvar outVar), (mainId, .Gfun (.Internal main))]
 
 /-- The bare-metal program of a translation with the function `main`. -/
 def bareProgram (pre : List (ident × globdef (fundef function) type)) (T : Translation)
