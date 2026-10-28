@@ -1,4 +1,5 @@
 import Verified.TreeNodeArgs
+import Verified.FieldsMixedArgs
 import Verified.TreeParent
 import Verified.TreeAssembleCode
 
@@ -27,7 +28,8 @@ theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : 
         (args.get i).code (pool := pool) h slots (base + shape.bindWidth r) (L (i.val + 1)) ++
         coerceCode h (ps.get i) ((args.get i).mode (slots.map Slot.mode)) .owned
           (base + shape.bindWidth r) ++
-        storeCode h (base + 1 + i.val) (ps.get i).types) ++
+        storeCode h (base + 1 + fieldOffset ps i.val) (ps.get i).types ++
+        (ps.get i).normalizeCode (base + 1 + fieldOffset ps i.val)) ++
       treeParentCode shape r reuse slots base live ++ shape.tagStoreCode r base ++
       treeStoreFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
         shape.fieldStart (shape.fields r) ++
@@ -55,22 +57,24 @@ theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape} {r : 
       L (shape.words r + shape.children r + shape.arrays r + i.val + 1) = fun k =>
       kept k || (argsAny fun j => decide (i.val < j.val) && (buffers j).uses k) :=
     fun i => funext (treeArgs_bufferLive words children arrays buffers kept i)
-  have hCode := Args.code_prependFn (pool := pool) (shape.words r) (shape.wordTy r) words
+  have hCode := Args.code_prependFn_mixed (pool := pool) (shape.words r) (shape.wordTy r) words
     (Args.prependRepeat (.tree shape) (shape.children r) children
       (Args.prependFn (shape.arrays r) (shape.arrayTy r) arrays
         (Args.prependRepeat .bytes (shape.buffers r) buffers Args.nil)))
+    (fun i => shape.elem_width r i) (fun _ _ => rfl)
     h (base + 1) (base + shape.bindWidth r) slots L
-  have hChildCode := Args.code_prependRepeat (pool := pool)
+  have hChildCode := Args.code_prependRepeat_mixed (pool := pool)
     (.tree shape) (shape.children r) children
     (Args.prependFn (shape.arrays r) (shape.arrayTy r) arrays
-      (Args.prependRepeat .bytes (shape.buffers r) buffers Args.nil))
+      (Args.prependRepeat .bytes (shape.buffers r) buffers Args.nil)) rfl (fun _ => rfl)
     h (base + 1 + shape.words r) (base + shape.bindWidth r) slots
     (fun j => L (shape.words r + j))
-  have hArrayCode := Args.code_prependFn (pool := pool) (shape.arrays r) (shape.arrayTy r) arrays
-    (Args.prependRepeat .bytes (shape.buffers r) buffers Args.nil)
+  have hArrayCode := Args.code_prependFn_mixed (pool := pool) (shape.arrays r) (shape.arrayTy r)
+    arrays (Args.prependRepeat .bytes (shape.buffers r) buffers Args.nil) (fun _ => rfl)
+    (fun _ _ => rfl)
     h (base + 1 + shape.words r + shape.children r) (base + shape.bindWidth r) slots
     (fun j => L (shape.words r + shape.children r + j))
-  have hBufferCode := Args.code_prependRepeat (pool := pool) .bytes (shape.buffers r) buffers
+  have hBufferCode := Args.code_prependBytes_mixed (pool := pool) (shape.buffers r) buffers
     Args.nil h (base + 1 + shape.words r + shape.children r + shape.arrays r)
     (base + shape.bindWidth r) slots
     (fun j => L (shape.words r + shape.children r + shape.arrays r + j))

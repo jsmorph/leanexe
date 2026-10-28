@@ -26,6 +26,10 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     (hCount : store2.mem.read64 (p - 40).toUInt32 = 1)
     (hPtr : s2.get ptr = some (.i64 p)) (hStack : s2.values = s.values)
     (hh : s2.positions = h)
+    (hNormal : FieldsNormal (tysOfFn (shape.words r) (shape.wordTy r) ++
+      (List.replicate (shape.children r) (.tree shape) ++
+        (tysOfFn (shape.arrays r) (shape.arrayTy r) ++
+          (List.replicate (shape.buffers r) .bytes ++ [])))) ws)
     (hLocals : LocalsHold s2 fieldBase (shape.fieldTypes r) ws)
     (hRootApart : Holds.Apart env slots live store2 s2 (.treeHeader shape r) .owned [.i64 p] .unit)
     (hNext : ∀ store',
@@ -56,7 +60,7 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     intro u x hx wx hold length c hc
     exact regionsDisjoint_symm (hRootApart u x hx (Or.inl rfl) wx hold length
       (block store2 p) (by simp [Ty.regions, Ty.blocks]) c hc)
-  refine wp_assembleTree hh hRaw hStep.at_ hPtr hCount a2.rep hLocals hApart
+  refine wp_assembleTree hh hRaw hStep.at_ hPtr hCount a2.rep hNormal hLocals hApart
     fun store3 hAt3 hRep hBlocks hWrite => ?_
   have hWhole := hBoth.transBoth hWrite
     (keep := Holds.KeepDying env slots L0 live store s)
@@ -67,9 +71,9 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     refine ⟨?_, a2.frame, hHolds.step hWrite hKeepLive, hRep, ?_⟩
     · change Step heap store (Holds.KeepDying env slots L0 live store s) heap2 store3
         ((Ty.tree shape).blocks store3 [.i64 p] (.node r words arrays buffers children))
-      rw [hBlocks]
       apply hWhole.mono (fun _ hr => hr)
       intro b hb
+      have hb := hBlocks.mem_iff.mp hb
       apply List.mem_append_left []
       rcases List.mem_cons.mp hb with rfl | hb
       · exact List.mem_append_right _ (by simp)
@@ -77,7 +81,7 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     · intro u x hx _ wx hold length b hb c hc
       change b ∈ (Ty.tree shape).blocks store3 [.i64 p]
         (.node r words arrays buffers children) at hb
-      rw [hBlocks] at hb
+      have hb := hBlocks.mem_iff.mp hb
       have hRegions := (hHolds.regions_after hWrite hx hold length
         (hKeepLive u x hx wx hold length)).1
       rw [hRegions] at hc
