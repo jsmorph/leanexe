@@ -757,6 +757,71 @@ instance {shape : TreeShape} : Encode (Tree shape) := ⟨Tree.toNode⟩
 
 instance {shape : TreeShape} : EncodeSlotted (Tree shape) := ⟨Tree.toNode_slotted⟩
 
+theorem treeSlots_lengths (fields : List Bool) :
+    ∀ words children (t : List Slot), BufferLengths t →
+      BufferLengths (treeSlots fields words children ++ t) := by
+  induction fields with
+  | nil => intros _ _ _ ht; exact ht
+  | cons bit rest ih =>
+    cases bit <;> intro words children t ht
+    · exact ih _ _ t ht
+    · exact ih _ _ t ht
+
+theorem heapSlots_lengths (fields : List TreeField) :
+    ∀ arrays buffers, BufferLengths (heapSlots fields arrays buffers) := by
+  induction fields with
+  | nil => intros; trivial
+  | cons field rest ih =>
+    intro arrays buffers
+    cases field with
+    | word e => exact ih _ _
+    | child => exact ih _ _
+    | array e => exact ih _ _
+    | bytes => exact ⟨rfl, ih _ _⟩
+
+theorem treeSlots_wellFormed (fields : List Bool) :
+    ∀ words children (t : List Slot), (∀ i, (children i).WellFormed) → slotsWellFormed t →
+      slotsWellFormed (treeSlots fields words children ++ t) := by
+  induction fields with
+  | nil => intros _ _ _ _ ht; exact ht
+  | cons bit rest ih =>
+    cases bit <;> intro words children t hc ht
+    · exact ih _ _ t (fun i => hc _) ht
+    · exact ⟨hc _, ih _ _ t (fun i => hc _) ht⟩
+
+theorem heapSlots_wellFormed (fields : List TreeField) :
+    ∀ arrays buffers, slotsWellFormed (heapSlots fields arrays buffers) := by
+  induction fields with
+  | nil => intros; trivial
+  | cons field rest ih => cases field <;> intro arrays buffers <;> exact ih _ _
+
+/-- Every record of a tree has at most 64 slots, and each buffer slot is followed by its length. -/
+theorem Tree.toNode_wellFormed {shape : TreeShape} (tree : Tree shape) :
+    tree.toNode.WellFormed := by
+  induction tree with
+  | nil => trivial
+  | node r words arrays buffers children ih =>
+    refine ⟨?_, ?_, ?_⟩
+    · change (shape.recordSlots r _ _ _ _).length ≤ 64
+      rw [TreeShape.recordSlots_length]
+      exact shape.width_le r
+    · change BufferLengths (shape.tagSlots r ++ treeSlots (shape.fields r) _ _ ++
+        heapSlots (shape.kinds r) _ _)
+      rw [List.append_assoc]
+      unfold TreeShape.tagSlots
+      split
+      · exact treeSlots_lengths _ _ _ _ (heapSlots_lengths _ _ _)
+      · exact treeSlots_lengths _ _ _ _ (heapSlots_lengths _ _ _)
+    · change slotsWellFormed (shape.tagSlots r ++ treeSlots (shape.fields r) _ _ ++
+        heapSlots (shape.kinds r) _ _)
+      rw [List.append_assoc]
+      unfold TreeShape.tagSlots
+      split
+      · exact treeSlots_wellFormed _ _ _ _ ih (heapSlots_wellFormed _ _ _)
+      · exact treeSlots_wellFormed _ _ _ _ ih (heapSlots_wellFormed _ _ _)
+
+instance {shape : TreeShape} : EncodeWellFormed (Tree shape) := ⟨Tree.toNode_wellFormed⟩
+
 /-- A record constructor without children, when the type has no null constructor. -/
 def TreeShape.leaf? (shape : TreeShape) : Option (Fin shape.records) :=
   (List.finRange shape.records).find? (shape.children · == 0)
@@ -876,6 +941,7 @@ def Tree.toList : Tree listShape → List UInt64
   | cons x xs ih => exact congrArg (fun n => Node.record [.word x, .child n]) ih
 
 #print axioms Tree.toNode_slotted
+#print axioms Tree.toNode_wellFormed
 #print axioms Tree.toList_ofList
 #print axioms Tree.ofList_toList
 #print axioms Tree.toNode_ofList

@@ -4,7 +4,8 @@ namespace Verified
 
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
-theorem Agree.encode {α β : Type} [Encode α] [Encode β] (φ : α → β)
+theorem Agree.encode {α β : Type} [Encode α] [Encode β] [EncodeWellFormed α]
+    [EncodeWellFormed β] (φ : α → β)
     (h : ∀ x, Encode.encode x = Encode.encode (φ x)) :
     Agree (inferInstanceAs (Represent α)) (inferInstanceAs (Represent β)) φ where
   borrowed heap store vs x := by
@@ -23,7 +24,8 @@ theorem Agree.encode {α β : Type} [Encode α] [Encode β] (φ : α → β)
     | cons v vs => cases v <;> cases vs <;> simp only [Represent.reads, h]
   moves _ _ _ := rfl
 
-theorem Agree.movedEncode {α β : Type} [Encode α] [Encode β] (φ : α → β)
+theorem Agree.movedEncode {α β : Type} [Encode α] [Encode β] [EncodeWellFormed α]
+    [EncodeWellFormed β] (φ : α → β)
     (h : ∀ x, Encode.encode x = Encode.encode (φ x)) :
     Agree (inferInstanceAs (Represent (Moved α)))
       (inferInstanceAs (Represent (Moved β))) (fun x : Moved α => (⟨φ x.val⟩ : Moved β)) where

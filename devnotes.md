@@ -36947,7 +36947,7 @@ The compiler now compiles records with array fields.  A construction moves each 
 - [x] Construction, matches, and release of array fields.
 - [x] The reflector, the example, its cases, and the order check.
 - [x] The manual.
-- [ ] The gate of the arrays half.
+- [x] The gate of the arrays half, after the review of the model change.
 - [ ] Buffers.
 
 ## 2026-10-28: Review of the model change for heap fields
@@ -36968,7 +36968,9 @@ Before building, I checked by reading which trusted predicates that admit a buff
 
 - [x] The `lengths` field and the lemmas that build records.
 - [x] The docstrings and the manual.
-- [ ] The gate of the arrays half on the new commit.
+- [x] The gate of the arrays half on the new commit.
+
+The gate of the arrays half ran on the commit of the `lengths` field and its documents.  It built the sixteen heavy proofs one at a time, `lake build Verified Library`, and the default targets without error.  `tests/verified/run.sh` passed 35,766 cases with no failure, with the heap-sum audit of 155 theorems, the typed-tree audit of 423 theorems, and every file theorem module reporting only the permitted axioms.  `--cases typedtrees` passed 513 cases and `--cases arraytrees` 108, and the running-sum, binary64 running-sum, and WASI drivers passed.  The 101 modules of the gate of main, the baseline modules, and the slew, heap-sum, byte, literal, running-sum, binary64 running-sum, and process modules are byte-identical to their references.
 
 ## 2026-10-28: The follow-up review of the lengths field
 
@@ -37004,3 +37006,17 @@ The compiler now compiles records with buffer fields, in the layout that the coo
 - [x] The reflector, the example, its cases, and the order check.
 - [x] The manual.
 - [ ] The gate of the buffers half.
+
+## 2026-10-28: The well-formedness guard in every statement
+
+A review of the well-formedness change found two problems and a limit.  The comment of `Slotted.lean` and the manual said that breaking either value-only condition makes both predicates false.  `RecordHeader.short` is only in `RecordHeader`, so breaking it makes `Represent.owned` and the precondition of a moved value false while `NodeBorrowed` can still hold, and breaking `lengths` makes both false.  The guard also held by convention only: the class was a theorem beside each type, and a hand-written `Encode` that only the LeanExe compiler compiles would reach `Implements` without it.
+
+| Question | Decision | Alternative | Reason |
+|---|---|---|---|
+| Where the guard lives | The `Represent` instances of a type with `Encode` require `[EncodeWellFormed α]`, and `Node.WellFormed`, `slotsWellFormed`, and `EncodeWellFormed` move into `Implements.lean` ahead of them | A field of `Encode` that states the condition | The coordinator chose the instance argument because `Encode` stays unchanged. |
+| The instances for hand-written encodings | `List UInt64` in `Implements.lean`, `Words` and `KeyTree` beside their `Encode` instances, and `Tree shape` in `Tree.lean`, by structural proofs | The derived instance of `verified_recursive_type` only | A module that states `Implements` over such a type imports its encoding but not always its derivation.  The command derives the theorem `wellFormed` for every type and adds its instance only when the type has none. |
+| Values too large for memory | Stated in the manual | A further condition | A buffer of 2^32 bytes or an array of about 2^29 words has no representation, which limits single values and never every value of a type. |
+
+- [x] The class in `Implements.lean` and the instance arguments.
+- [x] The instances and the corrected comment and manual.
+- [ ] The gates of both branches.
