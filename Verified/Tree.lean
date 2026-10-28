@@ -574,17 +574,6 @@ theorem TreeShape.arrayElem_width (shape : TreeShape) (r : Fin shape.records)
     simpa [TreeField.fits] using hFits
   | word _ | child | bytes => simp [TreeField.arrayElem?] at hfe
 
-/-- No record holds a buffer: the compiler supports no buffer fields yet. -/
-theorem TreeShape.buffers_eq_zero (shape : TreeShape) (r : Fin shape.records) :
-    shape.buffers r = 0 := by
-  have hv := shape.valid
-  simp only [shapeValid, Bool.and_eq_true, List.all_eq_true] at hv
-  have hAll := hv.2 _ (shape.kinds_mem r)
-  unfold TreeShape.buffers
-  rw [List.count_eq_zero]
-  intro hMem
-  simpa [TreeField.fits] using hAll _ hMem
-
 theorem TreeShape.ctorIndex_injective (shape : TreeShape) {r r' : Fin shape.records}
     (h : UInt64.ofNat (shape.ctorIndex r) = UInt64.ofNat (shape.ctorIndex r')) : r = r' := by
   have hNat : shape.ctorIndex r = shape.ctorIndex r' := by
