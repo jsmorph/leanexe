@@ -136,7 +136,7 @@ def encodeArray (xs : Array UInt64) : List UInt8 :=
 
 /-- The trace of `main`'s output: one store of `unsigned int` to `lx_out` per byte. -/
 def outTrace (bs : List UInt8) : trace :=
-  bs.map fun b => .Event_vstore .Mint32 outId 0 (.EVint (UInt32.ofNat b.toNat))
+  bs.map fun b => .Event_vstore .Mint32 outId Ptrofs.zero (.EVint (UInt32.ofNat b.toNat))
 
 /-- The C text of the bare-metal program of the translation `t`: the translation's text, then
 `lx_out` and `main`. -/
