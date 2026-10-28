@@ -6,7 +6,7 @@
 
 [The translator's design](native-translator.md) ends at `p.f.native`, a theorem about one call of one C function in the Lean copy of CompCert's Clight.  A C host, linked with libc and run under an operating system, places that call's arguments and reads its results, outside every proof.  This design replaces the host, libc, and the operating system with a startup routine of about fifty instructions and a `main` that the translator writes and proves.  The binary runs on QEMU's `virt` machine for AArch64 and, in a later milestone, on a board.  The goal is one theorem per program that states the program's whole observable behaviour in the terms of CompCert's semantics, and an argument, checked in Rocq where CompCert's proofs reach, that carries the theorem to the Asm program that `ccomp` produces.
 
-The program is the translation of a module, a volatile global `lx_out` that the linker places at the UART's data register, and a generated `main`.  `main` calls `lx_init`, calls an entry `run` that the verified compiler compiled, on arguments fixed when the program is built, and writes the bytes of the result to `lx_out`.  The theorem `p.run.program` has two cases.  Either the program terminates with result 0 and a trace of one volatile store per byte of the result's encoding, or, when `run` may abort, it terminates with result 1 and an empty trace.  The design covers no interrupts, no second core, no input device other than a memory region that a loader fills, and no timing.
+The program is the translation of a module, a volatile global `lx_out` that the linker places at the UART's data register, and a generated `main`.  `main` calls `lx_init`, calls an entry `run` that the verified compiler compiled, on arguments fixed when the program is built, and writes the bytes of the result to `lx_out`.  The theorem `p.f.program` of an entry `f` has two cases.  Either the program terminates with result 0 and a trace of one volatile store per byte of the result's encoding, or, when `run` may abort, it terminates with result 1 and an empty trace.  The design covers no interrupts, no second core, no input device other than a memory region that a loader fills, and no timing.
 
 | Step | From | To | Covered by |
 | --- | --- | --- | --- |
@@ -35,31 +35,32 @@ A board differs in four ways, each outside the proofs: the exception level at en
 
 ## The generated main and its outputs
 
-The translator writes `main` after the translation's functions, in the same C file, so that `ccomp` compiles one whole program and `transf_c_program` covers it in one run.  `main` never takes the address of a local, so SimplLocals turns its locals into temporaries, as it does for the translation's functions.  For an entry `run` with scalar parameters and an `Array UInt64` result, `main` is:
+The translator writes `main` after the translation's functions, in the same C file, so that `ccomp` compiles one whole program and `transf_c_program` covers it in one run.  `main` never takes the address of a local, so SimplLocals turns its locals into temporaries, as it does for the translation's functions.  For an entry `lxf_run` with scalar parameters and an `Array UInt64` result, `cmain` (`LeanExe/Native/Bare.lean`) writes:
 
 ```c
 extern volatile unsigned int lx_out;
-
 int main(void) {
-  unsigned long long r, n, i;
+  unsigned long long l0;
+  unsigned long long l1;
+  unsigned long long l2;
   lx_init();
-  r = lxf_run(7ULL, 9ULL);                 /* the arguments fixed at build time */
-  if (lx_status != 0U) return (int) lx_status;
-  n = /* the word at r, by the translator's load64 code */;
-  n = 8ULL * n + 8ULL;                     /* the length word and the elements */
-  i = 0ULL;
-  for (;;) {
-    if (!(i < n)) break;
-    lx_out = (unsigned int) ((unsigned char *) lx_mem)[r + i];
-    i = i + 1ULL;
+  l0 = lxf_run(7ULL, 9ULL);                /* the arguments fixed at build time */
+  if ((lx_status != 0U)) {
+    return ((int)lx_status);
   }
-  return 0;
+  l1 = /* the word at l0, by the translator's loadBytes */;
+  l1 = ((8ULL * l1) + 8ULL);               /* the length word and the elements */
+  l2 = 0ULL;
+  while ((l2 < l1)) {
+    lx_out = ((unsigned int)(*(((unsigned char *)lx_mem) + (l0 + l2))));
+    l2 = (l2 + 1ULL);
+  }
 }
 ```
 
-For a `UInt64` result, eight stores `lx_out = (unsigned int) ((r >> 8k) & 255ULL)` replace the loop.  The output is the array's representation in `lx_mem`, the length word and then the elements, little-endian, which `Heap.Owned` and `MemRel` describe byte by byte.  Byte loads need no alignment fact about `r`.  Other result types reach this form through a Lean function that encodes them as an `Array UInt64`, compiled with the rest of the program, so that `main` and its proof stay the same for every program.
+`clightgen` and `ccomp` append `return 0;` to `main`.  For a `UInt64` result, eight stores `lx_out = ((unsigned int)((l0 >> 8kULL) & 255ULL));` replace the loop.  The output is the array's representation in `lx_mem`, the length word and then the elements, little-endian, which `Heap.Owned` and `MemRel` describe byte by byte.  Byte loads need no alignment fact about `l0`.  Other result types reach this form through a Lean function that encodes them as an `Array UInt64`, compiled with the rest of the program, so that `main` and its proof stay the same for every program.
 
-Arguments fixed in advance take two forms.  A scalar argument is a constant in the call.  A heap argument, such as an array or a byte string, is a constant inside a Lean definition without parameters, `def run : Array UInt64 := encode (f input)`, for which the reflector's theorems take the argument type `Unit` (`Verified/README.md`, lines 772 and 773).  The verified compiler compiles the constant with the rest of the definition, and `p.run.implements` covers the construction of the value.  `main` therefore places nothing in `lx_mem` before the call, and no theorem about a sequence of host calls is needed.  Whether the reflector accepts every such definition is checked in milestone B4.
+Arguments fixed in advance take two forms.  A scalar argument is a constant in the call.  A heap argument, such as an array or a byte string, is a constant inside a Lean definition without parameters, `def run : Array UInt64 := encode (f input)`, for which the reflector's theorems take the argument type `Unit` (`Verified/README.md`, lines 772 and 773).  The verified compiler compiles the constant with the rest of the definition, and `p.run.implements` covers the construction of the value.  `main` therefore places nothing in `lx_mem` before the call, and no theorem about a sequence of host calls is needed.  The programs of B4 take their messages as words instead and build them in the heap, since the command `bare_program` does not yet cover `ImplementsStatic`, the theorem of a program with byte literals, which such a constant gives.  A constant table is an argument that a wrapper applies (`Verified/README.md`, lines 448 to 462), so the CRC and SHA programs of B4 are wrappers.
 
 The program can report results in four ways, and CompCert's semantics observes two of them:
 
@@ -92,17 +93,17 @@ inductive bigstep_program_terminates (A : Archi) (X : ExtSem) (p : program funct
       bigstep_program_terminates A X p t r
 ```
 
-The program is `bareProgram pre T (bareMain args)` (`LeanExe/Native/Proof/Whole.lean`): CompCert's external declarations `pre`, the translation's definitions in the order of the C text, the declaration of `lx_out`, and `main`, the function `bareMain args` that the writer of B4 gives, with `prog_main` naming `main`.  `clightgen` puts its declarations of CompCert's built-in and run-time functions first, among them `__builtin_fsqrt`, which the translation now places between `lx_pun` and the result globals, so that declaration moves into `pre`.  The theorem holds for every `pre` of external function declarations whose identifiers are distinct from the program's and which declares `__builtin_fsqrt` at its signature, the hypotheses of `wholeOk_bare` that `PrefixOk pre` collects, and the per-build check confirms that the program `clightgen` reads has that shape.
+The program is `bareProgram pre T (bareMain cap k args kind)` (`LeanExe/Native/Proof/Whole.lean` and `LeanExe/Native/Bare.lean`): CompCert's external declarations `pre`, the translation's definitions in the order of the C text, the declaration of `lx_out`, and `main`, which calls the entry `k` on the words `args` and writes a result of the kind `kind`, with `prog_main` naming `main`.  `clightgen` puts its declarations of CompCert's built-in and run-time functions first, among them `__builtin_fsqrt`, which the translation places between `lx_pun` and the result globals, so that declaration moves into `pre`.  The theorem holds for every `pre` of external function declarations whose identifiers are distinct from the program's and which declares `__builtin_fsqrt` at its signature, the hypotheses of `wholeOk_bare` that `PrefixOk pre` collects, and the per-build check confirms that the program `clightgen` reads has that shape.  The command `bare_program p.f x [args] r` (`Verified/Bare.lean`) states and proves it for the entry of `f`, its argument `x`, whose words are `args`, and its result `r`, which is `f x`:
 
 ```lean
-theorem p.run.program (A : Archi) (X : ExtSem) (pre) (hpre : PrefixOk pre) :
-    bigstep_program_terminates A X (bareProgram pre p.translation (bareMain args))
-        (outTrace (encode (run args))) 0 ∨
-      (aborts = true ∧ bigstep_program_terminates A X (bareProgram pre p.translation (bareMain args))
-        E0 1)
+theorem p.f.program (A : Archi) (X : ExtSem) (pre) (hpre : PrefixOk pre) :
+    bigstep_program_terminates A X (bareProgram pre p.translation (bareMain nativeCap k args kind))
+        (outTrace (encode r)) 0 ∨
+      (aborts = true ∧ bigstep_program_terminates A X
+        (bareProgram pre p.translation (bareMain nativeCap k args kind)) E0 (UInt32.ofNat 1))
 ```
 
-`encode xs` is the eight bytes of `xs.size` followed by the eight bytes of each element, and `outTrace` maps each byte `b` to `Event_vstore Mint32 outId 0 (EVint b)`.  The proof follows `main`'s body: `init_mem` of the whole program, with the prefix and `lx_out` before and after the translation's blocks; `lx_init_correct` for the call of `lx_init`; `p.run.native` for the call of the entry, with the premises that `start` already proves for the state after `lx_init`; the test of `lx_status`; a loop lemma that produces one event per byte from `Heap.Owned` and `MemRel`; and `outcome_result_value` for the returned `int`.
+`encode` is `encodeWord`, the eight bytes of a word from the lowest, or `encodeArray`, the eight bytes of the array's size followed by the eight bytes of each element, and `outTrace` maps each byte `b` to `Event_vstore Mint32 outId 0 (EVint b)`.  The proof follows `main`'s body: `init_mem` of the whole program, with the prefix and `lx_out` before and after the translation's blocks; `lx_init_correct` for the call of `lx_init`; `p.f.native` for the call of the entry, with the premises that `start_whole` proves for the state after `lx_init`, and the quietness of the translation, which makes the call's trace empty; the test of `lx_status`; a loop lemma that produces one event per byte from `UInt64Array.At` and `MemRel`; and `outcome_result_value` for the returned `int`.
 
 ### What the Lean copy must add
 
@@ -206,7 +207,7 @@ Compared with the translator's design, libc, the operating system, and the C hos
 ## Test plan
 
 1. **The corpus under QEMU.**  A freestanding build of `tools/native-host.c`, with small replacements for the parts of libc it uses, reads its command line from a block that QEMU's generic loader places in RAM and runs each case of `tests/native/verified.sh` in its own QEMU process.  Each case must give the line that the Wasmtime host and the native host give, under the same rules for traps and allocation counters.  `tests/baremetal/verified.sh` does this with `tools/baremetal/libc`, four QEMU processes at a time.  All 32,547 cases that run passed in 1,512 seconds, the module cases of `euler` and of `shapes` on `sums` included, and the 3,581 others call functions that use binary32 forms.  The test host lies outside the proofs, as the native host does.
-2. **Programs with generated `main`.**  GCD on constants, CRC-32 of `123456789`, SHA-256 of `abc`, an Euler solve, and a recursion that reaches the depth limit run under QEMU.  The UART's bytes and the exit status must equal `encode` of the Lean result, which `#eval` computes, and the Wasmtime result of the same entry, and each program's theorem must check with the three standard axioms.
+2. **Programs with generated `main`.**  GCD on constants, CRC-32 of `123456789`, SHA-256 of `abc`, an Euler solve, and a recursion that reaches the depth limit run under QEMU.  The UART's bytes and the exit status must equal `encode` of the Lean result and Talos's result of the same entry, or, for a run that Talos ends at `unreachable`, be no byte and the code 1, and each program's theorem must check with the three standard axioms.  `tests/baremetal/programs.sh` runs this test.
 3. **Stack.**  For every corpus module, the static bound must exceed the high-water mark of every case, the deep recursion cases at depths 999 and 1,000 included.
 4. **The Lean copy.**  The differential tests gain volatile stores and, for inputs, volatile loads, against `ccomp -interp` on AArch64 and x86-64.
 5. **The per-build check.**  `clightgen` reads the whole program, CompCert's declarations and `main` included, and the check compares it with `bareProgram` up to renaming.
@@ -220,7 +221,7 @@ Compared with the translator's design, libc, the operating system, and the C hos
 | B1 · Corpus under QEMU | the freestanding test host and a driver beside `tests/native/verified.sh` | every translated case of the corpus and every module case passes under QEMU |
 | B2 · Lean copy | the program-level judgment, volatile stores, their differential tests | no difference from `ccomp -interp` in either CompCert configuration |
 | B3 · Whole program | `bareProgram`, the prefix of external declarations, `init_mem` and `start` for it, the renaming lemma, the check on the whole program | `start` holds for `bareProgram` of every corpus module, and the check passes for all of them |
-| B4 · Generated `main` | the `main` writer, its proof, and `p.run.program` from a command | the programs of test 2 run under QEMU with their theorems |
+| B4 · Generated `main` | the `main` writer, its proof, and `p.f.program` from the command `bare_program` | the programs of test 2 run under QEMU with their theorems |
 | B5 · Rocq | `clight2_bigstep_to_asm` and the uniqueness lemma, built against CompCert 3.18's proofs | both check with the assumptions recorded |
 | B6 · Stack bound | the bound tool, its cross-check with the translator, and the build's test | test 3 passes for every corpus module |
 | B7 · Inputs (optional) | volatile loads, the theorem about `alloc` and stores, the quantified theorem | SHA-256 of a loaded message, with its theorem |
