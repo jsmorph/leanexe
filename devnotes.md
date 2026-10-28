@@ -36902,6 +36902,660 @@ Six negative checks give the new messages: a program over a type without the com
 
 The branch merged main twice, after process compaction and after the compiled case generators, and the gate of each merge built the sixteen heavy proofs one at a time, `lake build Verified Library`, and the default targets without error.  In each, `tests/verified/run.sh` passed 35,766 cases with no failure, the typed-tree audit of 422 theorems included, and the WASI and running-sum drivers passed.  The second merge gives `tests/verified/run.sh --cases typedtrees` its compiled generator, `verified-cases-typedtrees`, which passed 513 cases.  The 98 registry modules of the baseline, the heap-sum, slew, byte, and literal modules, and the running-sum, binary64 running-sum, and process modules of process compaction are byte-identical to their references, and `typedtrees.wasm` changed with the functions on `Logged`.
 
+## 2026-10-26: The Wasm-to-C translator: phase A of M0 and M1
+
+The user approved [the translator's design](docs/native-translator.md) and asked for milestones M0 and M1 on the branch `native-translator`, which starts from `origin/main` (`d1f851729`) plus the commit of the design.  Phase A reads the sources, settles the design questions that M0 and M1 depend on, and writes the code; it runs no Lean anywhere, so nothing below has been compiled or checked.  The sources are Talos at the pinned revision `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and the CompCert 3.18 release, both read as data under the session's scratchpad.  The CompCert archive is the tag archive `https://github.com/AbsInt/CompCert/archive/v3.18.tar.gz`, which [the CompCert download page](https://compcert.org/download.html) names as the 3.18 source distribution.  Its SHA-256 is `564b312b3ed3162f02605f0108feb555bd28fe7a80b97ea269c546bcc60c1cf0` and its SHA-512 `764ff4cea9e8504337610f8c922d3b18790601df92515e7bb56b90601469bf2af881819dba54d9d7c3bb1cea87887062925e1003ec07078be86c0376eb3b7cd5`, both equal to the digests of the package `coq-compcert.3.18` in [the Rocq opam repository](https://github.com/rocq-prover/opam/blob/master/released/packages/coq-compcert/coq-compcert.3.18/opam).  The archive's `Changelog.md` begins with Release 3.18, but its `VERSION` file still reads `version=3.17`, so `ccomp -version` may report 3.17.
+
+CompCert's `LICENSE` lists every file that the copy transcribes, `lib/`, `common/`, `cfrontend/Clight.v`, `ClightBigstep.v`, `Cop.v`, `Ctypes.v`, and the targets' `Archi.v`, among the files under both the INRIA Non-Commercial License Agreement and the GNU LGPL 2.1 or later, at the user's choice.  The INRIA agreement allows use and derivative works for education, research, and evaluation only, requires a derivative to carry the same terms, and asks for acknowledgment of the INRIA CompCert project in publications; the rest of CompCert, the back end included, is under the INRIA agreement alone.  [The NOTICE of the new directory](LeanExe/Native/NOTICE) records the source, the digests, the transcribed files, the terms, and the changes.  The user has not chosen between the two licenses for the Lean copy, which matters only for commercial use.
+
+### Decisions
+
+| Question | Decision | Reason |
+|---|---|---|
+| Placement | `LeanExe/Native/`: `Subset.lean`, `Print.lean`, and later the translator and its proofs, with the CompCert transcription in `LeanExe/Native/Clight/` under the namespace `LClight` | The translator takes the Talos module of either compiler, as the shared WGSL translation in `LeanExe/WGSL/` takes kernels of both, and `tools/source-layout` lets `Verified` import `LeanExe` but not the reverse.  The CompCert-derived files sit in one subdirectory that the NOTICE names.  The design's `LClight.run` fixes the namespace.  Tests go to `tests/native/`, `tests/TestSupport/Native/`, and `tools/Subset.lean`, as the existing drivers, test support, and tools do. |
+| Default build | `LeanExe.lean` does not import `LeanExe.Native` yet; `Verified.Reflect.Command` imports only `LeanExe.Native.Subset` | Nothing in the directory has been compiled.  `Demos.lean` does not import the verified compiler, so the default targets do not change; the `Verified` build does. |
+| The subset check (M0) | `violation m : Option String` names the first part outside the subset, `InSubset m` is `violation m = none`, and the kernel decides it; the instruction check is structural recursion over `Instruction` and `List Instruction` | The check is syntactic: the module shape of `compileWith`, i64 globals with literal values, active data segments inside the initial pages (Talos's `initialStore` skips the others), numeric value types, the 71 forms, and blocks with no parameters and at most one declared numeric result, which the encoder already requires.  Index bounds and stack types belong to the translator's static analysis, as the design says.  Structural recursion keeps the kernel's evaluation cheap; the encoder's `termination_by sizeOf` would make it reduce well-founded recursion. |
+| A module outside the subset | `verified_compile` emits `p.inSubset` when the native check passes and otherwise a warning with the reason and no theorem; `tests/native/subset.sh` requires every corpus module to pass | The design lets the subset check decide module by module.  A hard error would make every later extension of the verified compiler wait for the translator. |
+| Machine integers | `int`, `int64`, `ptrofs`, `byte` are `UInt32`, `UInt64`, `UInt64`, `UInt8`, and each operation is defined as `Integers.v` defines it through `unsigned`, `signed`, and `repr` on `Int` | The definitions read side by side with `Integers.v`, and Talos's values are the same words.  The shifts state the result at an amount of the word size or more, which equals CompCert's and avoids a power of two that large. |
+| IEEE 754 model (open decision 4) | Talos's `Wasm.IEEE64` and `Wasm.IEEE32` give every numerical result; a NaN result is `quiet_nan_64 (choose_nan_64 …)` as in `Floats.v` | Talos's functions act on bit patterns with NaN payloads, are executable, and are the functions the translator must simulate, so layer 4 reduces to NaN canonicalization.  LeanExe's `F64Add.add_eq` and its companions prove them equal to Lean's `Float.Model` for the arithmetic, square root, and the conversions they cover.  `Float.Model` keeps one canonical NaN and has no conversion between binary32 and binary64, which `of_single` and `to_single` need; the copy defines those from Talos's exact rounding helpers. |
+| NaN parameter | `structure Archi` holds `default_nan_64`, `default_nan_32`, `choose_nan_64`, and `choose_nan_32`; `Archi.x86_64` and `Archi.aarch64` transcribe the two `Archi.v` files | A theorem for every `Archi` holds on both targets.  Both targets agree on `ptr64`, little-endian layout, `align_int64 = align_float64 = 8`, `float_conversion_default_nan = false`, and `float_of_single_preserves_sNaN = false`, which the copy fixes. |
+| Coverage of the copy | The AST of Clight is complete; the semantics omits `Sswitch`, `Efield`, `Esizeof`, `Ealignof`, struct and bit-field accesses, pointer comparisons (`cmp_ptr`), and every external function but the parameter `EF_external` and the built-ins `__builtin_fsqrt`, `__builtin_sqrt`, `__builtin_fabs`, and `__builtin_fabsf`; `function_entry2` admits only functions with `fn_vars = []` | Each omission removes rules and adds none, so an execution of the copy is an execution of CompCert's semantics, which is the direction the theorem needs.  The integer and floating-point operators are copied in full, signed forms included, so that `Cop.lean` follows `Cop.v` without gaps.  `__builtin_fabs` clears the sign bit and keeps a NaN's payload, which gives `f64Abs` without punning. |
+| Memory representation | A block's contents are `Std.TreeMap Int memval` with default `Undef`, the blocks' contents a tree map, and permissions functions, as in `Memory.v`; `store_zeros` writes byte by byte as CompCert does | The evaluator then costs a logarithm per byte access.  A large global, such as the static `lx_mem`, costs time in proportion to its size at `init_mem`, here and in `ccomp -interp` alike, so the tests use small caps.  The proofs reason about `store_zeros` by induction. |
+| `LX_CAP` (open decision 1) | Not needed by M0 or M1: the copy has no `malloc`, which the static array of the design avoids; the decision waits for M3 | The static array costs nothing at run time and needs no pointer in memory.  Its 2 GiB relocation limit and its initialization cost in evaluators stay as the design records them. |
+| Multi-result functions (open decision 2) | Results in globals, as designed | A returned struct would add struct types, `By_copy` assignment, and a composite environment to the trusted copy. |
+| Alignment proof (open decision 3) | Deferred to M7, as the design plans | M0 and M1 do not depend on it; the copy checks alignment as `Memory.v` does. |
+| Per-program LeanExe compiler (open decision 5) | Deferred to M4 | `InSubset` applies to any module, so the decision changes no code of M0 or M1. |
+| External functions | `ExtSem` stands for CompCert's `Parameter external_functions_sem`, with the symbol map `genv_symb` for its `Senv.t` | CompCert proves its compiler for every such semantics, so a theorem of the copy for every `ExtSem` transfers. |
+| Decidable equality of `type` | `type_beq` with `type_beq_eq` and `type_beq_refl`, by structural recursion | `Tfunction` holds a `List type`, and Lean derives no `DecidableEq` for a nested inductive type.  The evaluator compares the type of a callee with the type of the call. |
+| Evaluator | `exec_fn` and `eval_funcall_fn` take fuel, which each statement and each call consumes, and return `Except Failure`, with `stuck` and `outOfFuel`; expressions evaluate by structural recursion; `EF_external` is stuck | Structural recursion on fuel gives equation lemmas that the soundness proof unfolds one step at a time.  The proof `fn_sound` goes by induction on the fuel and cases on the statement. |
+| Differential test | `clight-diff` generates programs from a seed, prints them as C with a `main` that prints the result and the globals' bits, and writes `LClight.run`'s lines or `UB`; `tests/native/clight.sh` compares with `ccomp -interp -quiet` | `ccomp -interp` reports undefined behavior with status 126, so a stuck run of the copy must be undefined in CompCert, and the comparison checks the NaN parameter against the configured target.  The interpreter runs CompCert C before `SimplExpr` and `SimplLocals`, which CompCert proves correct. |
+
+### A gap in the design: traps
+
+The design calls `lx_trap(code)` at a trap and lists "`lx_trap` never returns" among the host's assumptions, while the Lean copy has to give that external call a semantics.  If the call has no rule, a trap is a stuck state, and CompCert's theorem then guarantees nothing after the trace that precedes the call: the compiled code need not call `lx_trap` at all.  If the call emits an event and returns, CompCert preserves the event, but the C function then continues after the trap and need not terminate, so the terminating big-step semantics cannot state the result, and the copy has no coinductive `execinf_stmt`.  I recommend a third form that needs no external function: a trap stores its code in a global `lx_status` and returns at once, each call site whose callee can trap tests `lx_status` after the call and returns, and the host reads `lx_status` after the exported function returns.  Every Talos run that ends in `Success` or `Trap` then has a terminating C execution, and CompCert's preservation of terminating behavior covers both cases, at the cost of one load and one branch after such a call.  M1 does not depend on the choice, since `ExtSem` supports the event form, but M2 does, and the decision belongs to the user.
+
+### Plan
+
+- [x] `LeanExe/Native/Subset.lean`: `violation`, `InSubset`, and its decision.
+- [x] `verified_compile` emits `p.inSubset`; the verified compiler's manual lists it.
+- [x] `tools/Subset.lean` and `tests/native/subset.sh` check the corpus of `tests/verified/modules.txt`.
+- [x] The Lean copy: `Integers.lean`, `Floats.lean`, `AST.lean`, `Values.lean`, `Memdata.lean`, `Memory.lean`, `Ctypes.lean`, `Globalenvs.lean`, `Events.lean`, `Cop.lean`, `Clight.lean`, `Bigstep.lean`, and the NOTICE.
+- [x] `Run.lean` (`LClight.run`) and `RunSound.lean` (`run_sound`), with complete proofs that have not been checked.
+- [x] `Print.lean`, the C printer; `ClightGen.lean`, `ClightDiff.lean`, the executable `clight-diff`, and `tests/native/clight.sh`.
+- [x] Build `LeanExe.Native` and fix what the compiler rejects.  The unchecked proofs are `perm_order_b_iff` and `Mem.range_perm_b_iff` in `Memory.lean`, `type_beq_eq` and `type_beq_refl` in `Ctypes.lean`, and every theorem of `RunSound.lean`; none uses `sorry`.
+- [x] `#print axioms LClight.run_sound` shows at most `propext`, `Classical.choice`, and `Quot.sound`.
+- [ ] Build `Verified Library` with the change to `verified_compile`; every `verified_compile` emits `p.inSubset` without a warning, and the kernel's time for it on the largest modules (GPT-2, binary32 GPT-2, the Euler solvers) is recorded.
+- [x] `tests/native/subset.sh`: all 98 modules of the corpus inside the subset (M0's exit criterion).
+- [x] Build CompCert 3.18 with `clightgen` from the verified archive, for x86-64 and, for `ccomp -interp` alone, for AArch64.
+- [x] `tests/native/clight.sh` on many seeds for both targets, with every difference explained and the counts recorded (M1's exit criterion).
+- [x] An independent review of the copy against the CompCert sources, file by file.
+- [ ] Import `LeanExe.Native` from `LeanExe.lean` once it builds without `sorry`.
+- [x] The user's decision on the trap mechanism (below).
+- [x] The user's decision on the license of the Lean copy (below).
+
+`tools/source-layout` reports five errors in this worktree, all present on `main`: the programs of `Library/Hashing/Crc`, `Sha3`, `SipHash`, and `XxHash64` and of `Library/Regex` are missing from `Library.Native`.  It reports none for the new files.
+
+### Review of the copy
+
+An independent agent read every file of `LeanExe/Native/Clight/` against the CompCert 3.18 sources and Talos's `IEEE32.lean` and `IEEE64.lean`, and checked the Lean names against the toolchain's sources, without running Lean.  It found no rule that admits an outcome CompCert does not and no function that computes a different value at `ptr64 = true`.  It found one proof step that cannot work, the third `rfl` of `run_sound`, whose goal lies under the existential's binder; the step is now `hf`.  It found three headers that did not list all omissions, in `Cop.lean`, `Clight.lean`, and `Globalenvs.lean`, now corrected.  Its float analysis confirms that every operation but `to_single` relies only on Talos's correctness, and that `to_single` relies on `IEEE32.roundDyadicMagnitude` at 925 fractional bits, an argument that Talos itself never uses; the exhaustive binary32 tests of M6 and the differential tests must cover it.
+
+The review also bounds what a containment theorem can say, and the build phase has to state these limits.  Identifiers and blocks are `Nat`, so a block 0 in a call's arguments has no CompCert counterpart.  A `mem` carries none of CompCert's invariants, which the copy's operations preserve but an arbitrary `ExtSem` result need not.  A theorem for every `Archi` corresponds to CompCert only at the two instances.  `run_sound` concludes `eval_funcall` for any function and arguments, while CompCert's `bigstep_program_terminates` is about `main`; the trust argument has to connect the two through the host.
+
+### The user's decisions
+
+The user approved the recommended trap mechanism and dropped `lx_trap`.  A trap stores its code in the global `lx_status` and returns at once, each call site whose callee can trap tests `lx_status` after the call and returns, and the host reads `lx_status` after the exported function returns.  [The design](docs/native-translator.md) now says so in its list of what the generated C uses, its translation scheme (a new paragraph on traps, the memory and division code, and the externals row), the relation (`lx_status` is 0 at a matched point), the outcome of `Trap`, proof layers 2, 3, and 5, the transfer to the binary, and the host's assumptions.  The claude.ai copy linked from the design's header predates this change.
+
+A module outside the subset stays a warning in `verified_compile`, as implemented, and `tests/native/subset.sh` enforces M0's exit criterion.  CompCert 3.18 will be built from the verified archive in two configurations, `x86_64-linux` with `-clightgen` for compilation and the `clightgen` check, and `aarch64-linux` for `ccomp -interp` alone, with Rocq, OCaml, and Menhir from opam at versions that 3.18 supports (Rocq or Coq 8.15 to 9.2, OCaml 4.05 or later, Menhir 20200624 or later but not 20260122).   The license of the Lean copy remains with the user, and the NOTICE keeps both options.
+
+- [x] Build CompCert 3.18 in both configurations from the archive with the recorded digests.
+
+The user chose the GNU LGPL, version 2.1 or later, for the twelve files of `LeanExe/Native/Clight/` that transcribe CompCert, one of the two licenses CompCert offers for their sources.  `LeanExe/Native/Clight/LICENSE-LGPL-2.1` holds the text of version 2.1, copied unchanged from lines 173 to 674 of CompCert 3.18's `LICENSE` (SHA-256 `dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551`).  Each of the twelve files now begins with a notice that names its CompCert sources, CompCert's copyright holders (INRIA, whose copyright the source files carry, and AbsInt, which `LICENSE` names for CompCert as a whole), the license, and the change from CompCert on 2026-10-26, as section 2(a) of the LGPL 2.1 requires of a modified file.  The NOTICE records the choice and states that the rest of LeanExe, including `Run.lean`, `RunSound.lean`, and the translator, which import these files, is not covered by the LGPL.  The transcribed sources also include `lib/IEEE754_extra.v` (`ZofB_range`, `BofZ`) and `lib/Maps.v` (`ZMap`), which the NOTICE now lists.
+
+## 2026-10-26: The Wasm-to-C translator: build phase of M0 and M1
+
+The first `lake build LeanExe.Native` compiled every file of the copy but `Memory.lean` and `RunSound.lean`, whose proofs needed three changes.  In the second half of `perm_order_b_iff`, `cases h` unifies the constructor's argument with the existing variables and leaves no name to bind, so the proof now decides each of the sixteen pairs.  In `RunSound.lean`, `cases h` on an equation of two result tuples eliminates the evaluator's names, such as `t0` and `m0`, in favor of the goal's, so the `exact` terms leave those arguments to unification.  The equation lemmas of `eval_expr_fn` split its `Eaddrof` case by the operand, so the proof unfolds the evaluator after the case split.  `if_pos` and `if_neg` are deprecated in this toolchain, and `ite_eq_left` and `ite_eq_right` replace them.  The build then succeeded with no warning in the new files, and `run_sound`, `exec_fn_sound`, and `Mem.range_perm_b_iff` depend on `propext`, `Classical.choice`, and `Quot.sound`, `type_beq_eq` on `propext` and `Quot.sound`, and `perm_order_b_iff` on `propext`.
+
+`tests/native/subset.sh` found all 98 modules of `tests/verified/modules.txt` inside the subset, which is M0's exit criterion.  It evaluated the modules of `main`'s build, whose definitions the branch leaves unchanged.  `Verified.Examples.Poly`, rebuilt with the change to `verified_compile`, has `compiled.inSubset : LeanExe.Native.InSubset compiled.module`, checked by the kernel, with the three standard axioms; `lake build Verified` is running to emit it for the other examples and applications.
+
+`clight-diff` compiled after two corrections to the generator, a bound variable that a type ascription had made an `Int` and an `Int` offset.  Of the first five programs, four were undefined, mostly from unguarded shifts and from conversions of random floating-point values out of the integer ranges.  The generator now gives floating-point constants a magnitude between `2^-10` and `2^32` a third of the time and leaves a divisor or a shift amount unguarded one time in sixteen; 93 of 200 programs are then undefined.  As a smoke test only, gcc on AArch64 compiled the 107 defined programs with `-O0 -fno-strict-aliasing` and `__builtin_fsqrt` mapped to `__builtin_sqrt`, and all 107 printed the lines that `LClight.run` gives with `Archi.aarch64`.  gcc's semantics is not CompCert's, so M1's exit criterion still needs `ccomp -interp`.
+
+The CompCert build is blocked: opam cannot sandbox its package builds, and the choice of another route is with the user.  The archive's SHA-256 and SHA-512 match the recorded digests.
+
+- [x] `lake build LeanExe.Native` with no warning in the new files; axioms as above.
+- [x] `tests/native/subset.sh`: 98 of 98 modules inside the subset (M0).
+- [x] `clight-diff` builds; 107 defined programs of 200 agree with gcc on aarch64 (smoke test).
+- [x] `lake build Verified` with `p.inSubset` everywhere, with the kernel's time on the largest modules.
+- [x] `lake build Library` with `p.inSubset` everywhere.
+- [x] CompCert 3.18 in both configurations.
+- [x] `tests/native/clight.sh` against `ccomp -interp` for both targets (M1).
+
+`lake build Verified` succeeded, and every `verified_compile` in it emitted `p.inSubset` without the warning for a module outside the subset.  With one thread and the profiler, the kernel checked `InSubset` by `decide +kernel` in 7.98 s for `Demos.Gpt.Verified`, 2.74 s for `Demos.Gpt32.Verified`, and 14.9 s for `Demos.Euler.Verified`.  The first `lake build Library`, with two threads, rebuilt 441 modules without an error in about 75 minutes, and I stopped it to free the Lean slot for the differential tests.  The second, with three threads, rebuilt the remaining 291 and succeeded in 65 minutes.  The 732 rebuilt modules include all 51 that call `verified_compile`, none of which logged the warning for a module outside the subset.
+
+The user chose Ubuntu's packages over opam for CompCert's toolchain.  apt installed `coq` 8.18.0+dfsg-1build2, `ocaml-nox` 4.14.1-1ubuntu1, `menhir` 20231231+ds-1, and `libmenhir-ocaml-dev` 20231231+ds-1, the Menhir API library that `configure` requires.  On AArch64, gcc rejects the `-m64` that the `x86_64-linux` configuration passes to the preprocessor and to the runtime's build, so that configuration uses the cross compiler `gcc-x86-64-linux-gnu` 13.3.0.  One copy of the archive is configured with `./configure -toolprefix x86_64-linux-gnu- -clightgen x86_64-linux` and another with `./configure -clightgen aarch64-linux`, and `make -j2 all` built `ccomp` and `clightgen` in both.  The archive's `VERSION` file says 3.17, and its `Changelog.md` begins with an undated section for release 3.18, so `ccomp -version` reports 3.17 although the sources are those of 3.18.
+
+Both interpreters printed the expected lines for all 200 programs of the gcc smoke test, 93 of them undefined, although those lines were computed under `Archi.aarch64`, so no output of these programs depends on a NaN parameter.  `clight-diff` now counts the programs whose output differs between `Archi.x86_64` and `Archi.aarch64`.  With `pun` starting as a NaN or an infinity half of the time, it still found none among 1,000.  The two targets differ only in the NaN that an invalid operation creates and in the choice between two NaN operands, and no printed value of these programs depended on either.  The generator now also produces `Onotint`, `Oneg`, and `Onotbool` (the printer rejects `Oabsfloat`) and ends `test` with stores of a computed `double` and `float`; 8 of 1,000 programs then depended on the target.  `ClightGen.nanPrograms` adds eleven fixed programs for the default NaNs of both formats, a quiet and a signaling operand in both orders, two quiet operands, the square root of −1, conversions of NaNs between the formats, and negation of a NaN.
+
+`tests/native/clight.sh` ran for seeds 1 to 20 with 1,000 random programs each, plus the eleven fixed programs, against the interpreter of each target.  All 20,220 programs agreed on each target, 8,656 of them undefined under both semantics and none out of fuel.  237 of the 20,000 random programs and 8 of the 11 fixed ones print different lines on the two targets, so for these programs the test checks each target's NaN parameters.  The three fixed programs that print the same lines on both targets are the sum whose first operand is the signaling NaN, the conversion of a signaling `double` to `float`, and the negation, as the two targets' rules predict.  For an undefined program the test checks only that both semantics stop: of the 424 undefined programs of seed 20, `ccomp` reported 362 at a conversion of a float out of the integer range, 53 at a shift, and 9 at a division or remainder.
+
+## 2026-10-26: The Wasm-to-C translator: M2
+
+### Second review of the copy
+
+A read-only review of `LeanExe/Native/Clight` against CompCert 3.18, which the coordinator started, read all thirteen files and every proof case of `RunSound.lean`.  It found no rule admitting an outcome that CompCert does not and no function computing a different value in the transcribed domain, and it traced `to_single` through every branch of `IEEE32.roundDyadicMagnitude` at 925 fractional bits.  It found four omissions that the file headers did not state: the program-level judgments of `ClightBigstep.v`, the invariants of `mem`, the invariants of `Genv.t`, and the hypothesis `external_functions_properties` on `ExtSem`.  The headers now state each, and [the design](docs/native-translator.md) now describes the step from a function's `eval_funcall` to a whole program, through a generated `main` for fixed arguments or through separate compilation for a host.  For `mem` and `Genv.t`, the headers give the argument by which a theorem for every `mem` or every `Genv.t` applies to CompCert: forgetting the invariants maps CompCert's values into the copy, and each operation commutes with that map.  The headers also record the review's cosmetic findings: identifiers and blocks as natural numbers, the order of `blocks_of_env`, the default-NaN fields of `Archi`, `Float.binop`, the flattened `builtin_function`, the constructor `function_entry2.intro`, and the operations missing from `Memory.lean`'s list.
+
+### The translator and the clightgen check
+
+`LeanExe/Native/Translate.lean` translates the forms of M2: locals, globals, the integer forms of the subset, `block`, `loop`, `iff`, `br`, `br_if`, `ret`, `call`, and `unreachable`, in functions with at most one result.  `translate` omits a function that uses another form or calls an omitted function, so the runtime's `alloc` and `release`, which use memory, are missing until M3, and the theorem will cover the functions that remain.  The static analysis types the stack at every instruction, refuses a pop below the current construct's base, and requires `br`, `ret`, and `unreachable` to end their instruction list, which every function the verified compiler emits for GCD does.  Several choices simplify the proofs and cost a little time at run time: the `brk` dispatch follows every construct, not only those that a branch leaves by more than one level, and `lx_status` is tested after every call, not only after calls that can trap.  `lx_status` and the Wasm globals are the only C globals of M2.
+
+`clightgen` fixed the shapes of the generated Clight, from probes of its output.  `for (;;) { s }` becomes `Sloop (Ssequence Sskip s) Sskip`, a C block nests its sequence to the right, an empty block or statement disappears from a sequence, and a call `x = f(args);` becomes `Scall (Some t) f args` followed by `Sset x (Etempvar t)` with a fresh temporary `t` per call site, which `fn_temps` lists last in reverse order.  The translator emits these shapes directly, and the printer writes a left-nested sequence as a block and the call pair as one assignment.  A function is `lxf_<name>` under its export name and `lxf_<k>` otherwise, a departure from the design's plan to keep export names: the verified compiler exports names such as `double`, a C keyword, and a bare name could collide with libc's or with the `lx_` globals.
+
+`LeanExe/Native/ClightCheck.lean` reads the Coq file that `clightgen` writes, converts its terms to the Lean AST, and compares each global and function by name, with the call temporaries renamed in order of first occurrence; the file must define no other variable or internal function, and the external declarations of CompCert's built-ins are ignored.  `tests/native/gcd.sh` translates GCD compiled as a loop and as a recursion with the call depth, runs the check, compiles each translation with a host program by `ccomp`, and compares the output with Talos's `run` on the same calls.  On AArch64, with the AArch64 tree's `clightgen` and `ccomp` and `-stdlib` set to its `runtime` directory, both checks match, the loop agrees with Talos on 13 calls, and the recursion agrees on 17, four of which call the recursion directly from depths 997 to 1,000 and trap at `unreachable` with code 1.
+
+- [x] The translator, the printer's `clightgen` forms, and the check, for both GCD modules.
+- [x] GCD runs natively and agrees with Talos, traps included.
+- [x] Layer 1: memory lemmas for loads and stores of the globals, evaluation of the emitted expressions, and the frame of `exec_stmt`.
+- [x] Layers 2 and 3: the relation, the instruction lemmas, and the induction on fuel over `execOne`, `exec`, and `run`.
+- [x] `translate_correct` and the GCD theorem from `p.gcd.implements` or `p.gcd.pure`.
+
+### The user's decision on four choices of M2
+
+On 2026-10-26 the user accepted four choices of M2 that departed from or refined the design: a translated function is `lxf_<export name>` when its export name is a C identifier and `lxf_<k>` otherwise; a function that uses a form of a later milestone, or calls such a function, is left out of the translation until that milestone; the `brk` dispatch follows every construct and `lx_status` is tested after every call; and functions with several results wait for a later milestone.
+
+### The proof of M2
+
+`LeanExe/Native/Proof/` holds the proof, about 3,600 lines in sixteen files, and `translate_correct` in `Correct.lean` is its result: for every global environment whose `lx_status`, `lx_g<i>`, and functions are those of the translation, every function of the translated program simulates its Talos function at every fuel.  When Talos's `run` returns, the C call terminates in CompCert's big-step semantics with the result's value, the globals hold the final store's globals, and `lx_status` is 0; when `run` traps, the call terminates with the trap's code in `lx_status`.  It depends on `propext`, `Classical.choice`, and `Quot.sound`.
+
+The relation at a point of static stack `σ` (`Relation.lean`) gives the slot temporaries of `σ`, the local temporaries, the C globals, `lx_status = 0`, and `brk = 0`.  `Outcome` relates each Talos continuation of an instruction or list to the C statement's outcome: a fall-through to normal completion with the relation at the next stack and the slots below the current construct's base unchanged, a branch `k` levels out to `break` or `continue` with `brk = k` and the kept value in the target's slot, and a return or trap to `Out_return`.  The straight-line forms each take a few lines from `push_step` (`Straight.lean`, `Ops.lean`), `prog_sim` composes a list, and a construct's loop is related to Talos's result for the construct by `ConstructOutcome`, to which `ConstructOutcome.toOutcome` adds the dispatch.  `sim_loop` goes by an inner induction on the fuel, since Talos re-runs a loop with one unit less.  `sim_call` uses `CallSim` for the callee at one unit less, and `translate_correct` closes the circle by strong induction on the fuel, with `run_sim_fun` (`Run.lean`) relating function entry, the zeroed locals, and the return.
+
+`tests/TestSupport/Native/GcdNative.lean` states the GCD theorems.  `loop_native` follows from `loopCompiled.gcd.pure`: from any C memory whose globals hold a Talos store's and whose `lx_status` is 0, `lxf_gcd` on `a` and `b` returns `gcd a b` and leaves both as they were.  `rec_native` follows from `recCompiled.gcd.implements` for a store that meets that theorem's premises, and allows the call instead to end with `lx_status` set to the code of `unreachable`.  `loop_native_init` and `rec_native_init` instantiate both for `globalenv` and `init_mem` of the translated program and the module's initial store; `Genv.find_add_globals` (`Genv.lean`) finds the functions, and the kernel checks the blocks, the initial globals, and `lx_status` by `decide`.  All four depend on the three standard axioms.
+
+Three limits remain.  The relation holds no memory, so the functions that M3 adds cannot yet be covered.  The theorems conclude `eval_funcall` of one function in the Lean copy; the step to `bigstep_program_terminates` through a generated `main` is not written.  The `*_init` theorems are about the translated program itself, while the program that `ccomp` compiles also declares CompCert's built-in functions first, which moves every block; `translate_correct` applies to that program once its environment and initial memory are shown to meet the hypotheses, for example by having the `clightgen` check build that program in Lean and checking them by `decide`.
+
+- [ ] The step from `eval_funcall` to a whole program through a generated `main`.
+- [ ] The hypotheses of `translate_correct` for the program that `clightgen` reads, built by the check.
+- [ ] Merge `main`, which now carries the corrected `Library.Native` layout, before the full gate.
+
+### The reviewer's answer on findings 2 and 3
+
+The reviewer accepted the argument that a theorem quantified over every `mem`, `Genv.t`, `ExtSem`, and `Archi` applies to CompCert's values, and `translate_correct` is such a theorem, with three corrections.  The header of `Memory.lean` now says that images are taken up to extensional equality, since tree maps of different shapes can hold the same memory, that an external call under an arbitrary `ExtSem` can leave the image, so `X` must be instantiated with the image of CompCert's `external_functions_sem`, and that the transfer rests on a rule-for-rule correspondence of derivations that no proof covers.  The translator gave local 0 the identifier 0, which no CompCert identifier can be, and relied on the `clightgen` comparison's renaming; `localId i` is now `8 i + 8` and the program's `main` is 4, so every emitted identifier is at least 1.  [The design](docs/native-translator.md) now lists the conditions under which the conclusion of `translate_correct` is a CompCert `eval_funcall`: `A` and `X` are CompCert's values, `E.ge` is the image of `Genv.globalenv` of the whole linked program that `ccomp` compiles, built-ins included, the memory is extensionally the image of CompCert's memory at the call, identifiers are positive, and the copy's rules correspond to CompCert's.  The program-level step through `main` remains open.
+
+## 2026-10-26: The Wasm-to-C translator: M3
+
+### The modules of the exit criterion
+
+A survey of fifteen compiled modules found that every one holds the runtime's `alloc` and `release` as functions 0 and 1, starts with 16 pages, and uses `load64`, `store64`, `memory.size`, and `memory.grow`.  Functions with several results occur in the arrays example (`firstAbove`), the lists example, `Library.Arrays.Search`, and every hashing module but CRC: SHA-256, SHA-512, SipHash, and SHA-3 pass their state between rounds that way, and XXH64's `stripeAt` returns two words.  Data segments occur in SHA-256 (520 bytes), SHA-512 (648 bytes), and CRC (two tables of 2,056 bytes at 4096 and 6152).  Since functions with several results wait for a later milestone, the hashing example of M3 is CRC, the list example is `Library.Lists.Word`, the sorting example is `Library.Sorting.Insertion`, and the arrays example is `Verified.Examples.Arrays` without `firstAbove`.
+
+### The translator
+
+`translate` takes the number of pages `cap` of `lx_mem`, refuses a module whose initial pages exceed it or a cap above 65,535 pages, and adds the globals `lx_pages`, `lx_mem` (an `Init_space` of `65536 × cap` bytes), and the function `lx_init` to the program; the tests use 256 pages.  A `load64` or `store64` computes its address in the `i64` slot at the height of its address, traps with code 2 when the eight bytes do not lie below `lx_pages × 65536`, and accesses one word of `lx_mem` when the address is a multiple of 8 and eight bytes otherwise.  Two choices depart from the design, and [the design](docs/native-translator.md) now describes both: the byte-wise path is an inline expression rather than a helper function, which would need a call and a status test, and `lx_init` writes the data segments with straight-line stores, a word store for each aligned word of a segment and a byte store for each other byte, rather than copying from a constant table, which would need a loop invariant in the proof.  A probe of `clightgen` confirmed that it returns each emitted form unchanged, including `lx_mem[t >> 3]`, `((unsigned char *) lx_mem)[t + k]`, and `Int.repr (-1)` for `4294967295U`, and the reader of its output now accepts `tuchar`, `tarray`, and `Init_space`.
+
+### The user's decision on three choices of M3
+
+On 2026-10-26 the user accepted three choices of M3 that depart from the design: an unaligned `load64` or `store64` uses an inline byte-wise expression rather than a helper function; `lx_init` writes the data segments with straight-line word and byte stores rather than copying from a constant table; and a memory access computes its address in the `i64` slot at the height of its address.
+
+### The end-to-end test
+
+`tests/native/run.sh` replaces `gcd.sh`.  The executable `native-emit` (`tests/TestSupport/Native/Emit.lean`) translates twelve modules, writes a host for each that calls `lx_init` and then makes the module's calls in one memory, allocating array, list, and byte arguments through the module's `alloc`, and computes the expected lines with Talos's `run` from the module's initial store with the memory capped at 256 pages.  Each line holds `lx_status`, the result, the four globals, and an FNV-1a checksum of the memory below the allocator's bump pointer, so a call that writes memory differently fails.  A hand-built module `memops` covers what the compiled modules do not: unaligned loads and stores at offsets 0, 3, and 5, accesses at the end of memory that fit and that trap, data segments that begin and end off a word boundary, and `memory.grow` within the cap, past it, by 0, and by `0xFFFFFFFF`.  On AArch64, `clightgen` reads back all twelve programs unchanged, and 85 calls agree with Talos, among them the recursion of `increment` that traps at depth 1,000 and the CRC-32 check value `0xCBF43926`.
+
+### The proof of M3
+
+The relation now holds the memory: `MemRel` (`Relation.lean`) relates every byte of `lx_mem` below `cap` pages to Talos's memory, `lx_pages` to its pages, and the store's first memory cap to `cap`, and `StoreRel` joins it to the globals in `Inv`, `BreakRel`, and the outcomes.  `MemBytes.lean` relates the bytes of `Mem.write64` and `Mem.read64` to those of `encode_val` and `decode_val` through `nbyte`, and `SameExcept` describes a change of one block.  `MemOps.lean` proves the four memory instructions, and `translate_correct` now covers every function of a translation, the runtime's included.  `Init.lean` follows `Genv.init_mem` through the program's definitions in the general case, by `alloc_globals_spec` and `find_add_globals_idx`, so no test evaluates the initial memory of a 16 MiB array, and `lx_init_correct` relates the memory that `lx_init` leaves to `nativeStore`, the module's initial store with its cap set to `cap`.  `Native.lean` gives `Runs.native`, which joins a `Runs` statement to `translate_correct`, `NativeA` and `NativeImpl`, which state a function's theorem for its translation in the terms of `ImplementsA`, and `alloc_native` and `release_native` for the runtime.
+
+`tests/TestSupport/Native/ExamplesNative.lean` states `NativeImpl` for every function of the arrays, list, and sorting examples except `firstAbove`, the same for CRC's `updateWith` and `crcWith`, and `NativeTablesImpl` for its four wrappers, each in one line from the verified compiler's theorem.  `crc_start` relates the state after `lx_init` to a store in which the allocator invariant holds and both tables are borrowed arrays, and `GcdNative.lean` calls `lxf_gcd` from that state for both GCD modules.  All of these depend on `propext`, `Classical.choice`, and `Quot.sound`.  The proof now has about 6,000 lines in twenty files.
+
+Three limits remain.  The theorems speak of the translated program's own global environment, which differs from that of the program `ccomp` compiles, as M2's notes describe.  A host that places arguments in memory is outside the theorems: `start` and `alloc_native` cover `lx_init` and each call of `alloc`, but no theorem follows a sequence of host calls.  The step to a whole program through a generated `main` remains open.
+
+- [x] The memory forms in the translator, the printer, and the `clightgen` check.
+- [x] `run.sh` with twelve modules, the hand-built `memops` among them.
+- [x] `MemRel`, the four memory instructions, and `translate_correct` with memory.
+- [x] `lx_init_correct` and the general initial memory.
+- [x] `NativeImpl` for the array, list, sorting, and CRC examples, and the runtime's theorems.
+- [ ] Functions with several results, which SHA-2, SipHash, XXH64, and SHA-3 need.
+
+## 2026-10-26: The Wasm-to-C translator: M4
+
+### Functions with several results
+
+A function with two or more results, all integers, writes result `i` to `lx_r<i>_i` when it is an `i32` and to `lx_r<i>_l` when it is an `i64`, returns `void`, and its caller copies the results into its stack slots straight after the call, before the test of `lx_status`.  The design planned one untyped global per position.  A global of each integer type per position keeps every store and load at the global's own type, so the C text needs no cast and `clightgen` reads it back unchanged.  The program holds the globals of as many positions as its function with the most results, `maxResults` over the functions of the translation.  A function with a float among several results stays out of the translation until the float milestones.  In a function with several results, the function's own label is final: a branch to it, which returns in Talos, is refused, so the function returns by `ret` or at the end of its body.  That restriction keeps the result globals out of `BreakRel`, and the survey found no function that it alone keeps out: the three functions with two integer results that do not translate, the frontend example's `entries`, GPT-2's `sampleFrom`, and the binary32 example's `borrowedPush`, convert or store floats.
+
+The relation gains the result globals.  `Env` holds the block of each position and type and the number of positions, `EnvOk` finds each by its identifier and keeps the blocks apart from each other and from the other globals, and `MemRel.resW` keeps them writable.  `ReturnRel` for several results is `return;` with `ResultsIn`: result `i`, counted from the deepest, lies in the block of position `i` and its type.  `Results.lean` proves the stores before `return;` and the loads after the call, and `sim_ret`, `sim_call`, `run_sim_fun`, and `translate_correct` cover the third case of each.  `Init.lean` places the result globals after `lx_mem` in the program's definitions and proves their blocks and permissions from `init_mem`.
+
+### What `verified_compile` adds
+
+For a module in the subset, `verified_compile` runs `translate nativeCap` on the evaluated module, and the kernel checks one theorem, `p.translation_funcs : (translate nativeCap p.module).map funcs = some L`, with `L` the list of the native result.  `p.translation` is `Option.get` of the translation from that theorem, made irreducible after `p.translation_eq`, so that later proofs use the equation rather than unfold the translation, and for each definition `f` whose function lies in `L`, `p.f.native` follows from `p.f.implements` by `ImplementsA.nativeImpl`, or from a wrapper's theorem by `ImplementsTables.nativeImpl`, in one line.  `NativeTablesA` and `NativeTablesImpl` moved from the tests to `Verified/Native.lean`, and `nativeCap`, 4,096 pages or 256 MiB, lives beside `translate`.  The tests now use the generated translations and theorems instead of their own translations with 256 pages, and `firstAbove_native_init` calls the loop example's `firstAbove` from the state that `lx_init` leaves and finds its two results in `lx_r0_l` and `lx_r1_l`.
+
+The additions cost about a tenth of the build time.  With four workers, 68 corpus modules whose times an earlier build log also records took 1,726 seconds before and 1,922 after, between 1 and 20 seconds more each; the largest differences are the Euler demo (487 to 507 seconds), `PrintFloat` (88 to 104), GPT-2 (188 to 200), `ParseFloat` (103 to 114), and SHA-3 (110 to 120).  These are single builds, so each difference carries the variation of one run.
+
+### The corpus
+
+All 98 modules of `tests/verified/modules.txt` lie in the subset and translate with 4,096 pages, and 47 translate entirely.  The translations hold 847 of the 1,371 functions and 819 of the 1,338 exports.  The functions left out use a float form (320), return several results with a float among them (156), or call such a function (48).  Seven of the modules, `byhand`, `composition`, `relocation`, `tailcore`, `treecopy`, `treecore`, and `tuples`, are not built by `verified_compile`, so their translations run without generated theorems.
+
+`tools/native-host.c` takes the commands `call` and `call-stats` of the Wasmtime host, with the same argument specs and result kinds, and prints the same lines; a trap prints Wasmtime's message for its code and exits with status 2.  It is compiled by `ccomp` with the module's C text and the glue that `native-verified emit` writes, which lists the exported functions that the translation contains, with a call function for each, and the exported globals.  CompCert passes no structure by value without `-fstruct-passing`, so the host passes its lists by pointer.  `tests/native/verified.sh` writes, reads back with `clightgen`, checks, and compiles every module, then runs each case of `Verified/Examples/Cases.lean`, with the library entries, whose export the translation contains, under the rules of `tests/verified/run.sh` for results, traps, and allocation counters.
+
+On AArch64, `clightgen` reads back all 98 programs unchanged.  Of the 32,806 cases, the 21,805 whose export the translation contains all pass natively, traps and allocation counts included; 94 of them pass binary32 or binary64 values through functions that do no float arithmetic.  The other 11,001 cases call functions outside the translation.  The whole run takes about 15 minutes.  `tests/native/run.sh` now translates eighteen modules, SHA-256, SHA-512, SHA-3, SipHash, XXH64, and the arrays example's `firstAbove` among them, and all 96 calls agree with Talos; the differential test of the Clight copy with seed 7 still finds no difference in 311 programs.
+
+### Choices of M4
+
+Five choices of M4 depart from or refine the design, and [the design](docs/native-translator.md) now describes the first four.
+
+1. The result globals are typed: `lx_r<i>_i` and `lx_r<i>_l` per position rather than one `lx_r<i>`.
+2. A function with several results may not branch to its own label; no function of the corpus is left out for that reason alone.
+3. `nativeCap`, the pages of `lx_mem` in the translations that `verified_compile` adds and in the corpus test, is 4,096, or 256 MiB.
+4. `verified_compile` adds the translation and the native theorems to every module in the subset, at about a tenth of the build time, and adds no `p.c`; the C text comes from `native-verified`, which runs the same translator.
+5. The tests use the generated translations, with 4,096 pages, rather than their own with 256; `native-emit` keeps 256 pages for the memory test, which grows memory to the cap.
+
+- [x] Functions with several results in the translator and the proof.
+- [x] `p.translation`, `p.translation_eq`, and `p.f.native` from `verified_compile`.
+- [x] The native host and `tests/native/verified.sh`, with every translated case passing.
+- [ ] The step from `eval_funcall` to a whole program through a generated `main`.
+- [ ] The hypotheses of `translate_correct` for the program that `clightgen` reads.
+- [ ] Merge `main` before the full gate.
+
+### The decisions on the five choices of M4
+
+The user asked the coordinator to decide open questions while the user is away, and on 2026-10-26 the coordinator decided the five choices of M4.  The coordinator also checked, at the commit of M4, that `firstAbove.native` of the loop example, `sha256.native`, `siphash24.native`, `crc32.native`, CRC's `translation_funcs` and `translation_eq`, and `firstAbove_native_init` depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+1. The typed result globals are accepted, because each load and store keeps its own type and the C text needs no cast.
+2. The restriction on a branch to the outermost label of a function with several results is accepted as a documented restriction, because the survey found no function left out for that reason alone.  [The design](docs/native-translator.md) now states it with the other kinds of function that the translation leaves out.  When M5 and M6 admit functions with several results that include floats, the survey runs again, and a function left out for that reason alone is reported before the restriction is lifted.
+3. `nativeCap` of 4,096 pages is accepted as a fixed constant.  A larger static `lx_mem` approaches the 2 GiB limit on static data under the small code model, every translated case of the corpus fits, and so does the slew planner's bound of 68,020,488 bytes.  The design now says that a module needing more memory needs a cap of its own, which is future work.
+4. The translation and the native theorems in every module that `verified_compile` builds, without `p.c`, are accepted, because the plan of M4 already had `verified_compile` emit `p.f.native`.  Two conditions apply.  The merge gate of this branch builds the heavy proofs and `Library.Numerics.Float64.Lgamma.Compiled` and `Tgamma.Compiled` one at a time and records each one's time and peak memory before and after the change, by `/usr/bin/time -v` or the scope's `memory.peak`; if any rises past what the 11.6 GiB hosts build at `--threads 1 --memory-high 10G`, the gate stops and the result goes to the user.  The design's M7 now includes a file theorem that the `.c` file `native-verified` writes equals the printer's output for `p.translation`, in the form of the Wasm file theorems, which removes the run of `native-verified` from the trusted base.
+5. The tests' use of the generated translations with 4,096 pages, with `native-emit` keeping 256 pages for its memory-growth test, is accepted.
+
+- [ ] At the merge gate, build the heavy proofs and the `Lgamma` and `Tgamma` modules one at a time, with time and peak memory before and after.
+- [ ] M7: the file theorem for the written C text.
+
+## 2026-10-26: The Wasm-to-C translator: plan for M5 (binary64)
+
+### What the corpus needs
+
+A survey of the 98 modules of `tests/verified` at the commit of M4 lists, for each of the 1,371 functions, the forms it uses that the translator does not handle, its result types, and its callees.  It ran as a Lean script under `lake env lean --run`, without a build.  Every unhandled form is a float form, and the forms are exactly the fourteen binary64 and seventeen binary32 forms of the subset that M0 fixed: no function uses `floor`, `ceil`, `trunc`, `nearest` at binary64, `min`, `max`, `neg`, `copysign`, `promote`, or `demote`.  The 524 functions outside the translation are the 320 that M4's survey left out for an instruction form, the 156 that return several results with a float among them, and the 48 that call a function left out; 150 of the 156 have only binary64 floats.
+
+The table orders the binary64 features greedily: each row adds the feature that brings the most functions into the translation, given the rows above it, where a function enters when every form it uses is handled and every function it calls has entered.  The first rows add few functions because almost every float function uses several of these forms.  With all fourteen forms and several results with binary64 floats, 1,307 of the 1,371 functions translate, among them all 57 of the Euler module, all 50 of GPT-2 at binary64, all 17 of `trig`, and all 6 of `exp`.  The 64 others need binary32 (M6): 34 in `floats32`, 13 in `gpt32`, 5 in `liblinalg32`, and 12 in five other modules.
+
+| Feature | Omitted functions that use it | Functions added | Translated after |
+| --- | --- | --- | --- |
+| `i64ReinterpretF64` | 191 | 9 | 856 |
+| `f64ReinterpretI64` | 135 | 8 | 864 |
+| `f64Const` | 319 | 7 | 871 |
+| `f64Add` | 245 | 29 | 900 |
+| `f64Mul` | 196 | 23 | 923 |
+| several results with a binary64 float | 150 | 24 | 947 |
+| `f64Sub` | 178 | 60 | 1,007 |
+| `f64ConvertI64U` | 52 | 33 | 1,040 |
+| `f64Div` | 82 | 27 | 1,067 |
+| `f64Sqrt` | 18 | 23 | 1,090 |
+| `f64Lt` | 68 | 21 | 1,111 |
+| `f64Abs` | 38 | 38 | 1,149 |
+| `i64TruncSatF64U` | 24 | 55 | 1,204 |
+| `f64Eq` | 24 | 45 | 1,249 |
+| `f64Le` | 30 | 58 | 1,307 |
+
+### The NaN model
+
+Wasm leaves a NaN result partly open: an arithmetic operation returns a canonical NaN when every NaN operand is canonical and an arithmetic NaN otherwise, with either sign, and `abs`, `neg`, `copysign`, and the reinterpretations act on the bits.  Talos resolves the choice: every NaN result of `IEEE64.add`, `sub`, `mul`, `div`, and `sqrt` is the positive canonical quiet NaN `0x7FF8000000000000`, and `abs` clears the sign bit of any value, a NaN's payload included.  The verified compiler's theorems are proved against Talos, and the Wasmtime host runs with Cranelift's NaN canonicalization, which gives the same NaN.
+
+CompCert chooses NaN results per target.  The Lean copy's `Float.add A x y` is Talos's `IEEE64.add x y` when that result is a number and otherwise `quiet_nan_64 (A.choose_nan_64 …)`, the NaN of `Floats.v`: on `x86_64` the first NaN operand's sign and payload, quieted, or the negative default NaN; on `aarch64` the first signaling NaN operand, else the first NaN operand, else the positive default NaN.  The differential test finds that 8 of its 11 NaN programs print different bits under the two targets' parameters, and `ccomp -interp` of the AArch64 tree agrees with the copy on all of them and on 300 random programs of seed 7.  `Float.abs` and `Float.neg` keep the payload, as Talos's do, so they need nothing.
+
+The translation therefore canonicalizes every result that Talos canonicalizes: after `+`, `-`, `*`, `/`, and `__builtin_fsqrt`, it emits `if (t != t) t = <canonical NaN>;`.  When Talos's result is a number, the copy's result is the same bit pattern by definition, `t != t` is false, and nothing changes.  When Talos's result is a NaN, it is the canonical NaN, the copy's result is some quiet NaN, `t != t` is true, and the assignment gives the canonical NaN.  The proof holds for every `Archi`, so the C text computes Talos's bits on both targets, which is stricter than Wasm requires of an engine.  The equality of the copy's numeric results with Flocq's rests, as in M1, on the review of the transcription and the differential tests; M5 extends those tests to the new forms.
+
+### Choices of M5
+
+Each choice below was recommended, reviewed, and revised before it was taken.
+
+1. **Where to canonicalize.**  Recommended: after every operation whose Talos result can be a NaN, unconditionally.  Review: a weaker relation that let a slot hold any NaN where Talos holds the canonical one would allow canonicalizing only where bits become observable, at stores, reinterpretations, results, and calls, but it complicates every lemma of the relation, and a reinterpretation makes the bits observable anywhere.  The test costs a compare and a branch.  Decision: canonicalize after `+`, `-`, `*`, `/`, and `sqrt`, never after `abs`, comparisons, conversions from integers, reinterpretations, or moves; leave omitting provably needless tests to M7.
+2. **How to write the canonical NaN.**  Recommended: `__builtin_fabs(0.0 / 0.0)`, which gives the canonical NaN on both targets, since both default NaNs have the payload `2^51`.  Review: for an arbitrary `Archi` the default NaN is arbitrary, so the proof would need a hypothesis on `A`, which changes what the theorem states.  Revised and taken: store `0x7FF8000000000000ULL` as an integer into the scratch cell `lx_pun` and load it as a double, which holds for every `Archi`; it runs only on the NaN path.
+3. **The scratch cell.**  Recommended: `unsigned long long lx_pun`, accessed as `*(double *) &lx_pun`.  Review: the address-of form is new to the translator and the reader of `clightgen`'s output, whereas M3 already handles a cast of an array to another pointer type followed by an index.  Revised and taken: `unsigned long long lx_pun[1]`, accessed as `lx_pun[0]` and `((double *) lx_pun)[0]`, with the shapes fixed by probing `clightgen` first.  Reinterpretation in either direction is a store of one type and a load of the other, and non-finite `f64Const` values go through it too.
+4. **`abs`.**  Recommended: bits through `lx_pun`, clearing the sign with a mask.  Review: four memory operations per `abs`, which the Euler solvers use in their loops, while CompCert's standard built-in `__builtin_fabs` (`Builtins0.v`, `BI_fabs`, semantics `Float.abs`) is one instruction on both targets and keeps the payload as Talos's `abs` does.  Revised and taken: `__builtin_fabs`, which adds one built-in to the Lean copy beside `__builtin_fsqrt`, with its citation, a reviewer's check, and cases in the differential test.  It adds no dependency.
+5. **Constants.**  Taken as recommended: a finite `f64Const` is the printer's exact hexadecimal literal, which `clightgen` exports as bits; a NaN or an infinity, which C cannot write as a literal, goes through `lx_pun`.  A probe confirms that `clightgen` folds a negative literal, `-0.0` included, into one constant.
+6. **Comparisons.**  Taken as recommended: `(unsigned int) (a == b)`, `<`, and `<=` on doubles, whose Clight semantics `Float.cmp` agrees with `IEEE64.eq`, `lt`, and `le`, false on any NaN; a lemma shows that `Cle` is `lt` or `eq`.
+7. **`f64ConvertI64U`.**  Taken as recommended: the C cast `(double) a`, whose semantics `Float.of_longu` is Talos's `IEEE64.fromInt` of the same integer.
+8. **`i64TruncSatF64U`.**  Recommended: `d != d ? 0 : d <= -1.0 ? 0 : d >= 0x1p64 ? 0xFFFFFFFFFFFFFFFFULL : (unsigned long long) d`.  Review: the cast is defined, as `Float.to_longu`, exactly when the truncation lies in `[0, 2^64 - 1]`, which the guards ensure, and the guards reproduce Talos's `truncSatI64U` on NaN, on both infinities, below 0, and at or above `2^64`, since no double lies strictly between `2^64 - 2048` and `2^64`.  Taken, as nested `if` statements in the shapes `clightgen` produces.
+9. **Several results with floats.**  Recommended: extend the typed result globals of M4 with `lx_r<i>_d` per position, as the identifier scheme `resId` already allows, and accept several results of `i32`, `i64`, and `f64`.  Review: emitting only the types a module uses would complicate the index lemmas of `Init.lean`, and an unused global costs eight bytes.  Taken.  Before the restriction on a branch to the outermost label applies to these functions, the survey runs again, as the decision on M4's second choice requires, and any function left out for that reason alone goes to the coordinator.
+10. **Order of work.**  Taken: `lx_pun` and both reinterpretations first, since every later form's tests need them; then constants, the four arithmetic operations and `sqrt` with the canonicalization, several results with `f64`, `f64ConvertI64U`, the comparisons, `abs`, and last `i64TruncSatF64U`, whose proof is the longest.  This follows the table, except that `sqrt` and `div` join the arithmetic, since they share its lemma.
+
+### The proof
+
+`Env` gains the block of `lx_pun`, `EnvOk` finds it and keeps it apart from the other globals, and `MemRel` requires it to be writable, with its contents unconstrained, as `MemRel.resW` does for the result globals.  These premises are part of `NativeA`, so the statement of every `p.f.native` changes in what it assumes of the environment, as it did in M4; `start` discharges them for the program's own environment, and no conclusion changes.  Choice 9 widens `EnvOk.res` and `MemRel.resW` from integer types to the types of choice 9 in the same way.
+
+A new file, `Proof/Floats.lean`, holds the lemmas: a store of `Mint64` followed by a load of `Mfloat64` at `lx_pun` gives `Vfloat` of the same bits and the reverse, from `encode_val` and `decode_val`; the canonicalization statement maps each copy result to Talos's; and one lemma per form, in the pattern of `Ops.lean`.  `trunc_sat` needs integer reasoning on `IEEE64.truncatedInt` against the guards.  The estimate is 1,500 to 2,500 lines, mostly in the relation's new fields and in `trunc_sat`.
+
+### Tests
+
+The differential test gains random float expressions over edge values (NaNs with payloads, both zeros, subnormals, infinities, and conversion boundaries) and `__builtin_fabs`, under both targets' parameters, against `ccomp -interp` of each tree; the tests run the AArch64 code, and the `x86_64` tree serves as an interpreter only.  `tests/native/run.sh` gains a float module whose calls produce NaNs from numbers (`0 / 0`, `inf - inf`, `sqrt (-1)`) and from NaN operands with payloads, and compares the bits with Talos.  The corpus driver needs no change: it already runs every translated case, float arguments included.
+
+### Concerns for M6 and for the coordinator
+
+The statement change above is the one point where M5 alters existing theorems, and it is of the kind accepted in M4.  For M6, Talos computes `f64PromoteF32` and `f32DemoteF64` with Lean's native floats, whose operations Lean's logic leaves opaque; the subset does not contain them and the survey finds no use, so they block nothing now, but a module that uses them would need Talos to define them by its exact helpers, as the Lean copy defines `of_single` and `to_single`, which would change a dependency.
+
+- [ ] Probe `clightgen` for `lx_pun[1]`, `((double *) lx_pun)[0]`, `__builtin_fabs`, `t != t`, negative literals, and the guard of `trunc_sat`.
+- [ ] Add `__builtin_fabs` to the Lean copy, with its citation and differential cases.
+- [ ] `lx_pun` in the translator, `Env`, `EnvOk`, `MemRel`, and `Init.lean`; both reinterpretations.
+- [ ] Constants, arithmetic and `sqrt` with canonicalization.
+- [ ] Several results with `f64`, after the survey that decision 2 of M4 requires.
+- [ ] `f64ConvertI64U`, the comparisons, `abs`, and `i64TruncSatF64U`.
+- [ ] Float cases in `tests/native/run.sh` and the differential test; the corpus driver; the Euler solvers native with theorems.
+
+### The decisions on the two questions of M5, and the probe of `clightgen`
+
+On 2026-10-26 the coordinator, deciding for the user, accepted both questions and the ten choices.  The wider premises of `p.f.native`, the cell `lx_pun` in `EnvOk` and `MemRel` and the `double` result globals in `EnvOk.res` and `MemRel.resW`, are accepted: Clight's casts convert values, so a reinterpretation needs a memory cell, a global cell follows the result globals of M4, and an addressable local would move the same facts into every function's frame.  No conclusion changes, `start` discharges the new premises, and `p.f.native` exists only on this branch.  [The design](docs/native-translator.md) now states the premises where it describes `p.f.native`.  `abs` by `__builtin_fabs` is accepted, after the coordinator checked CompCert 3.18: `common/Builtins0.v`, line 470, maps `BI_fabs` to `Float.abs`; `lib/Floats.v`, line 279, defines `abs` as `Babs` with `abs_nan`; and `abs_nan`, line 215, maps `B754_nan s p` to `B754_nan false p`, which keeps the payload and clears the sign, as Wasm's `f64.abs` and Talos's `IEEE64.abs` do.  For M6, `f64PromoteF32` and `f32DemoteF64` stay outside the subset with the subset check's warning, which the design's row of M6 now says.
+
+A probe of `clightgen` on the forms of the plan corrected two assumptions.  First, CompCert's front end turns a call of `__builtin_fabs` into the unary operator `Oabsfloat` (`cfrontend/C2C.ml`, lines 974 and 975), whose semantics is `sem_absfloat` (`cfrontend/Cop.v`, line 490), `Float.abs` of a `double`.  The Lean copy already transcribes `Oabsfloat` and `sem_absfloat` in `Cop.lean` and defines `Float.abs` as Talos's `IEEE64.abs` in `Floats.lean`, so the copy gains no built-in; the trusted definitions are `sem_absfloat` and `Float.abs`, which the design now lists, and the translator emits `Oabsfloat`, which the printer writes as `__builtin_fabs`.  Second, `__builtin_fsqrt` stays a call: `clightgen` writes `Scall (Some t) (Evar ___builtin_fsqrt …) [a]` followed by a copy, and declares the external function `EF_builtin "__builtin_fsqrt"` among the program's definitions.  The translation therefore declares that external function, `EnvOk` finds it, and the call follows the pattern of a call with one result, without the test of `lx_status`, since the built-in cannot trap; `eval_funcall_external` and `external_call` of the copy give it the semantics `Float.sqrt` for every `ExtSem`.  This premise is of the same kind as `lx_pun`, and the design lists it with the others.
+
+The probe fixed the other shapes.  `lx_pun[0]` is `Ederef (Ebinop Oadd (Evar lx_pun (tarray tulong 1)) (Econst_int 0 tint) (tptr tulong)) tulong`, and `((double *) lx_pun)[0]` casts the array to `tptr tdouble` before the addition.  `t != t` is `Ebinop One t t tint`, a comparison of doubles is `Ecast (Ebinop Olt a b tint) tuint`, and `(double) a` of an `unsigned long long` is one `Ecast`.  A negative literal, `-0.0` included, is `Eunop Oneg` of the positive constant, so the translator emits that form, which `Float.neg` makes exact.  The guard of `i64TruncSatF64U` is three nested `Sifthenelse`, with `Int64.repr (-1)` for the maximum.
+
+## 2026-10-27: The Wasm-to-C translator: M5
+
+### The translator
+
+The translator now handles the fourteen binary64 forms of the subset and functions with several results that include `double`s.  Every translation declares `lx_pun`, an array of one `unsigned long long` without an initializer, and the external function `__builtin_fsqrt`, and each position of the result globals has a `double`, `lx_r<i>_d`, besides its two integers.  A finite constant is its exact hexadecimal literal, and a negative one is `Oneg` of the positive literal, the form `clightgen` gives a negative literal; a NaN or an infinity is stored into `lx_pun` as a word and loaded as a double.  `+`, `-`, `*`, `/`, and `__builtin_fsqrt` are followed by `if (t != t)` with the canonical NaN through `lx_pun`.  The comparisons are C comparisons cast to `unsigned int`, `abs` is the operator `Oabsfloat`, which the printer writes as `__builtin_fabs`, the conversion from a word is a C cast, the reinterpretations store into `lx_pun` at one type and load at the other, and `i64.trunc_sat_f64_u` is three nested guards around the C cast.
+
+Three details of the implementation depart from the plan of M5.  The cell is read and written as `*(double *) lx_pun` and `*(unsigned long long *) lx_pun`, which `clightgen` gives as a dereference of a cast with no pointer arithmetic, rather than through an index.  `__builtin_fsqrt` is a call of the declared external function into a call temporary, as `clightgen` keeps it, rather than an `Sbuiltin`, and the call needs no test of `lx_status`.  `callsOf` keeps only the callees that are functions of the module, since the built-in is a callee too.
+
+### The proof
+
+`Proof/Floats.lean` holds the simulation of the fourteen forms, about 800 lines.  `canon_add` and its siblings show that every NaN result of Talos's `IEEE64.add`, `sub`, `mul`, `div`, and `sqrt` is the canonical NaN: a NaN operand gives it directly, and otherwise `LeanExe.ProofKit.F64Bits` equates the operation on bits with Lean's `Float` operation, whose only NaN is the canonical one.  `canonOf_binop` shows that the copy's result, canonicalized, is Talos's, for every `Archi`, since the copy returns a quiet NaN exactly where Talos returns a NaN.  `cmp_eq`, `cmp_lt`, `cmp_le`, and `cmp_ge` equate the copy's comparisons with Talos's, `negate_negate` gives the negated literals, and `truncSat_cases` follows `trunc_sat` through the guards by integer reasoning on `scaledMagnitude`.  `push_exec` turns a statement that sets the slot of its result and changes no other temporary but call results into an `Outcome`, and `exec_canon`, `exec_punStore`, `exec_sqrt_call`, and `exec_truncSat` run the statements of the forms.  `Env`, `EnvOk`, and `MemRel` gain the cell, the built-in, and the `double` result globals, `Init.lean` lays the program out as `lx_status`, the globals, `lx_pages`, `lx_mem`, `lx_pun`, `__builtin_fsqrt`, the result globals, the functions, and `lx_init`, and `Mem.lean` gains the loads after stores of the float chunks and across the two chunks of eight bytes.  `translate_correct`, `lx_init_correct`, the generated theorems of the Euler solvers, and the tests depend on `propext`, `Classical.choice`, and `Quot.sound` only.
+
+### Tests and the exit criterion
+
+`tests/native/run.sh` gains a module `fops` that applies each binary64 form to words read as doubles: zeros, ones, infinities, a signaling NaN, two quiet NaNs with payloads, the smallest subnormal, the largest double, and the bounds of `trunc_sat`.  Its 500 calls agree with Talos bit for bit on AArch64, and `clightgen` reads it and the eighteen programs of M4 back unchanged.  The differential test of the Clight copy gains `Oabsfloat` among its random expressions and seven programs that apply `__builtin_fabs` to both zeros, both infinities, a positive and a negative quiet NaN with payloads, and a signaling NaN; under seed 7 the copy agrees with `ccomp -interp` on all 318 programs with both the AArch64 and the `x86_64` trees, and 8 of the 18 NaN programs print different bits under the two targets' parameters, none of them a `__builtin_fabs` program.
+
+The translations of the 98 corpus modules now hold 1,307 of the 1,371 functions and 1,276 of the 1,338 exports, as the plan's survey predicted, and 90 modules translate entirely.  Of the 32,806 cases of `Cases.lean`, the 29,225 whose export the translation contains all pass natively, and the other 3,581 call functions that use binary32 forms.  `tests/native/verified.sh` now also runs the module cases of `tests/modules/Cases.lean` that `tests/verified/run.sh` checks for the corpus, those of `euler` and of `shapes` on `sums`, through `tests/TestSupport/Native/ModuleCases.lean`: all 3,322 run natively and pass.  The exit criterion of M5 holds: the translation of the Euler module contains all 57 of its functions (`euler_all` in `tests/TestSupport/Native/EulerNative.lean`), `compiled.solve.native` and `compiled.reconstructedSolve.native` state the solvers' theorems for the C functions, and the solvers' cases pass natively.
+
+The survey that the decision on M4's second choice requires ran again with the translator of M5, which admits several results of `double`s.  Of the 64 functions still left out, 56 use a binary32 form, 6 return several results with a binary32 one among them, one calls a function left out, and one, the binary32 example's `borrowedPush`, returns two integers and uses the binary32 form `i32ReinterpretF32`.  No function is left out for a branch to its own outermost label alone, so the restriction stays as documented.
+
+- [x] `lx_pun`, the built-in `__builtin_fsqrt`, and the `double` result globals.
+- [x] The fourteen binary64 forms in the translator and the proof.
+- [x] The float module of `run.sh`, `__builtin_fabs` in the differential test on both trees, and the corpus with the module cases of Euler.
+- [x] The Euler solvers native with their theorems.
+- [x] The merge with `main`, after typed-fields stage 1.
+
+## 2026-10-27: The Wasm-to-C translator: merge with main after typed-fields stage 1
+
+The merge of `origin/main` into the translator branch had two conflicts.  In `devnotes.md` main's entries come first and the translator's follow.  Main replaced `lakefile.toml` with `lakefile.lean`, so the executables `clight-diff`, `native-emit`, and `native-verified` moved to `lakefile.lean` and `lakefile.toml` is gone.  `Verified/Reflect/Command.lean` merged without a conflict, and both sides' changes are in it: main's literal pools, with the theorems `ImplementsStatic` for a module with literals, and the translation and native theorems of this branch.  Main's `p.f.implements` of a module with literals is an `ImplementsStatic`, whose premises add that the literal pool holds the arguments' literals, so `Verified/Native.lean` gains `NativeStaticA`, `NativeStaticImpl`, and `ImplementsStatic.nativeImpl`, and `verified_compile` states `p.f.native` for those theorems too.
+
+Three adjustments followed.  Main's Wasmtime host reads a `bytes` item of a `list:` result as two results, the address and the length, and `tools/native-host.c` now does the same.  The corpus driver skips a module that has no translation and counts its cases, since `native-verified emit` exits with status 3 for a module outside the subset.  `crc_start` raises the recursion limit, as main's own uses of `p.initial` do, because the unification of the initial store now passes through the literal pool.
+
+After the merge, on AArch64, every corpus module and the translator's tests build, and `tests/native/run.sh` agrees with Talos on all nineteen modules, `fops` among them, with `clightgen` reading each back unchanged.  The differential test agrees on all 318 programs.  Of the corpus cases, 29,225 pass natively and none fails; 3,581 call functions that use binary32 forms, and 370 belong to main's new module `heapsums`, which lies outside the subset: its functions use `load8U` and `store8`, the byte loads and stores of typed fields, which the subset of M0 does not contain.  The 3,322 module cases of Euler and of shapes on sums all pass.
+
+### Memory of the two largest numeric modules
+
+The theorems that `verified_compile` adds for the translation raise the scope's peak memory of `Lgamma.Compiled` by 5.9 GiB and of `Tgamma.Compiled` by 4.9 GiB, and their times by 21 and 41 seconds.  Each module was built alone after its dependencies, at `--threads 1 --memory-high 10G`, once with main's `Verified/Reflect/Command.lean` and once with this branch's, while other builds ran at the same time.  The table gives lake's time, the maximum resident set that GNU `time` reports, which includes the mapped `.olean` files, and the scope's `memory.peak`, the charge that `--memory-high` limits.
+
+| Module | Command | Time | Maximum resident set | Scope peak |
+|--------|---------|------|----------------------|------------|
+| `Lgamma.Compiled` | main | 671 s | 6.45 GiB | 3.06 GiB |
+| `Lgamma.Compiled` | translator | 692 s | 12.14 GiB | 8.95 GiB |
+| `Tgamma.Compiled` | main | 474 s | 5.97 GiB | 2.53 GiB |
+| `Tgamma.Compiled` | translator | 515 s | 10.69 GiB | 7.41 GiB |
+
+Probes that import `Lgamma.Compiled` and restate one theorem each locate the cost.  The import alone peaks at 0.48 GiB in the scope, `InSubset` by `decide +kernel` at 6.08 GiB in 20 seconds, and `translation_funcs` by `decide +kernel` at 8.27 GiB in 28 seconds.  `verified_compile` defines `module` as `compileWith` of the reflected program, so each of the two theorems makes the kernel compile the whole module in one declaration, and `translate` repeats the subset check and builds every included function's Clight body before it yields the list of functions.  Main's encoding theorems reduce the same definition one function per declaration, in `func_ok_k`.  The two theorems can split the same way: `violation` is the first violation of the module's shape, its memory, or one of its functions, and a lemma would derive `translate`'s success and its list of functions from the module-level guards and from each included function's `funDef`.  Whether that split lowers the peak to that of one function needs a measurement.
+
+The scope of `Lgamma.Compiled` stays under the limit of `--memory-high 10G`, and about 3.2 GiB of its resident set of 12.14 GiB is mapped `.olean` pages, which the kernel can drop and read again.
+
+### The tests on x86-64
+
+The native programs of the translator's tests had been compiled for AArch64 only, and the merge gate runs on x86-64, so the tests ran again with the x86_64 tree, its programs running under `qemu-x86_64` user-mode emulation on AArch64 with the x86-64 C library of the cross toolchain.  `tests/native/run.sh` agrees with Talos on all nineteen modules, with the x86_64 `clightgen` reading each back unchanged, and the differential test agrees on all 318 programs under the NaN rules of x86_64.  The corpus gives the same counts as on AArch64: 29,225 cases pass and none fails, the same 3,951 do not run, and the 3,322 module cases all pass.
+
+## 2026-10-27: The Wasm-to-C translator: the native theorems by parts
+
+The coordinator chose to split `p.inSubset` and `p.translation_funcs` one function per declaration, as main's encoding theorems `func_ok_k` are split, so that no declaration makes the kernel compile the whole module.  `verified_compile` now states `p.native_part_k` for each function `k`: its `functionViolation` is `none`, and its `callInfo`, the functions that its C function calls or `none` when it has no C function, is entry `k` of `p.translation_infos`, a literal that the native translator computes.  `p.native_parts` chains the parts, and `inSubset_of_parts` and `translate_funcs_of_parts` of `LeanExe/Native/Proof/Parts.lean` derive the two theorems from them and from the module-level checks, the module's shape and memory and the guards of `translate` on the memory and the globals, each by `decide +kernel`.  The statements of `p.inSubset` and `p.translation_funcs` are unchanged, and the native block of `verified_compile` now follows the encoding, whose `funcs_count` it uses.
+
+The module, its bytes, and the C text are unchanged: the 220 C files of the corpus run and of `tests/native/run.sh` are byte-identical to those of the run before the split.  On AArch64 every corpus module builds, 29,225 corpus cases pass and none fails, the 3,322 module cases pass, `tests/native/run.sh` agrees with Talos on all nineteen modules, and the differential test agrees on all 318 programs.  `translation_funcs` and `inSubset` of `Verified.Examples.Poly` depend on `propext`, `Classical.choice`, and `Quot.sound`.
+
+Each module was built alone after its dependencies at `--threads 1 --memory-high 10G`, as in the previous entry.
+
+| Module | Command | Time | Maximum resident set | Scope peak |
+|--------|---------|------|----------------------|------------|
+| `Lgamma.Compiled` | main | 671 s | 6.45 GiB | 3.06 GiB |
+| `Lgamma.Compiled` | before the split | 692 s | 12.14 GiB | 8.95 GiB |
+| `Lgamma.Compiled` | split | 776 s | 5.64 GiB | 3.18 GiB |
+| `Tgamma.Compiled` | main | 474 s | 5.97 GiB | 2.53 GiB |
+| `Tgamma.Compiled` | before the split | 515 s | 10.69 GiB | 7.41 GiB |
+| `Tgamma.Compiled` | split | 553 s | 5.14 GiB | 2.98 GiB |
+
+The split meets the coordinator's target: the scope peaks lie 0.12 and 0.45 GiB above main's, and both resident sets stay below 6 GiB.  It costs time, 105 and 79 seconds more than main's command, about 16 percent for each module, although single runs vary by tens of seconds while other builds run.  A probe that restates single parts of `Lgamma.Compiled` locates the time: a function's two parts take 0.2 to 0.5 seconds each, and the module-level checks take 2.0 seconds for the globals, 4.5 for the shape, and 7.4 for the memory, each of which computes the literal pool again.  A run whose dependencies' `.olean` files were not in the page cache charged their pages to the scope, so its scope peak of 7.47 GiB for `Lgamma.Compiled`, at a resident set of 6.35 GiB, does not compare with the others; the table gives runs with the files cached, as before the split.
+
+- [x] `p.inSubset` and `p.translation_funcs` from one part per function.
+- [x] `p.native_module`: the module-level checks in one declaration, which computes the literal pool once, measured the same way; reverted (below).
+
+### The module-level checks in one theorem
+
+`p.native_module` states the module's shape and memory and, when the module translates, the guards of `translate` on the memory and the globals, in one declaration, so that the kernel computes the literal pool once instead of once per check.  `p.inSubset` and `p.translation_funcs` take its components, and their statements are unchanged.
+
+The three versions of the command were measured in one run after the merge with main, on AArch64, each module built alone after its dependencies at `--threads 1 --memory-high 10G` with the dependencies' `.olean` files in the page cache.
+
+| Module | Command | Time | Maximum resident set | Scope peak |
+|--------|---------|------|----------------------|------------|
+| `Tgamma.Compiled` | main | 541 s | 5.34 GiB | 2.56 GiB |
+| `Tgamma.Compiled` | split | 556 s | 5.48 GiB | 2.98 GiB |
+| `Tgamma.Compiled` | split with `p.native_module` | 556 s | 5.46 GiB | 2.88 GiB |
+| `Lgamma.Compiled` | main | 683 s | 5.90 GiB | 3.07 GiB |
+| `Lgamma.Compiled` | split | 736 s | 5.97 GiB | 3.21 GiB |
+| `Lgamma.Compiled` | split with `p.native_module` | 763 s | 5.78 GiB | 3.41 GiB |
+
+The split costs 15 and 53 seconds over main's command, 3 and 8 percent, less than the earlier single runs gave, and its scope peaks lie 0.42 and 0.14 GiB above main's.  `p.native_module` changes neither time nor memory beyond the variation of single runs: `Tgamma.Compiled` takes the same time with a peak 0.10 GiB lower, and `Lgamma.Compiled` 27 seconds longer with a peak 0.20 GiB higher, since its one declaration holds the computation of the literal pool for all four checks.  The revision adds a theorem without a measurable gain, so this entry's next commit reverts it, and the module-level checks stay in the proofs of `p.inSubset` and `p.translation_funcs`.
+
+After the merge, on AArch64, every corpus module builds, 31,302 corpus cases pass natively and none fails (the slew planner adds 2,077), 3,951 do not run as before, and the 3,322 module cases pass.  `tests/native/run.sh` agrees with Talos on all nineteen modules, and the differential test agrees on all 318 programs.  The same counts hold with the x86_64 tree, whose programs run under `qemu-x86_64` user-mode emulation.
+
+## 2026-10-27: The Wasm-to-C translator: byte loads and stores
+
+The coordinator asked for the byte forms before M6, since typed fields make byte buffers common.  In the pure compiler only the byte code of `Verified/Bytes/` emits a memory access narrower than a word: `load8U` in the reads and copies and `store8` in the writes, both at offset 0, with an `i32` address that `wrapI64` makes and, for `store8`, an `i32` value.  The WASI compiler also emits `load32` and `store32`, but its modules import functions and lie outside the subset.  With `load8U` and `store8` in the subset, every module of the corpus translates, `heapsums` included, and so do `Verified.Examples.Bytes` and `Verified.Examples.Literals`.
+
+Each form computes its address as `load64` does, in the `i64` slot at the height of its address, and traps through `boundsCheck 1`, the bounds check of `load64` and `store64` with its width as a parameter.  `load8U` then reads `(unsigned int) ((unsigned char *) lx_mem)[t]`, and `store8` writes `((unsigned char *) lx_mem)[t] = (unsigned char) v`.  The coordinator decided on that cast: the conversion to `unsigned char` is defined as reduction modulo 256, which is `store8`'s meaning, and M3's byte stores use the same conversion.  The coordinator's earlier phrase "no casts that change value" was imprecise.
+
+`sim_load8U` and `sim_store8` follow `sim_load64` and `sim_store64` without the alignment branch.  `eval_loadByte32` reads the byte and converts it to `unsigned int` (`cast_byte_uint`), `exec_store8` stores the converted value (`cast_uint_uchar`), and `MemRel.store_byte`, which `lx_init`'s proof already used, moves from `Init.lean` to `MemOps.lean` to carry the relation to Talos's `write8`.  `eval_bounds` and `addr_fits` take the access's width.  `translate_correct`, `sim_load8U`, `sim_store8`, and the native theorems of `heapsums` depend on `propext`, `Classical.choice`, and `Quot.sound`.
+
+`memops` of `tests/native/run.sh` gains byte loads at offsets 0 and 7 and byte stores at offsets 0 and 2, with 23 calls: bytes of the data segments, values above 255 that the store reduces, the last byte of memory and the byte past it, offsets that carry an access past the end, addresses near `2^32`, and the last byte below the cap after growth.  Its 51 calls agree with Talos.  On AArch64, 31,672 corpus cases pass natively and none fails, the 370 of `heapsums` among them; 3,581 call functions that use binary32 forms, and the 3,322 module cases pass.  `tests/native/run.sh` agrees with Talos on all nineteen modules, and the differential test agrees on all 318 programs.  The same counts hold with the x86_64 tree, whose programs run under `qemu-x86_64` user-mode emulation.
+
+- [x] `load8U` and `store8` in the subset, the translator, and the proof.
+- [x] The corpus with `heapsums`, on both CompCert trees.
+
+## 2026-10-27: The Wasm-to-C translator: the literal and byte examples
+
+The coordinator asked for `Verified.Examples.Literals` to run natively, since no corpus module reached the native form of the theorems `ImplementsStatic`.  The example reads its literals with `Bytes.get`, a `load8U`, so it entered the subset with the byte forms of the previous entry, and with them every one of its 21 functions translates; so do the 22 functions of `Verified.Examples.Bytes`.  No new module was needed.
+
+`tests/TestSupport/Native/LiteralsNative.lean` states that each translation contains every function of its module and checks the types of five theorems `p.f.native`: `constant`, `lookup`, and `tail` of the literal example are `NativeStaticImpl`, and `copyByBuild` and `readByte` of the byte example are `NativeImpl`.  `lookup.native` and `tail.native` depend on `propext`, `Classical.choice`, and `Quot.sound`.  `tests/native/bytes.sh` translates both modules, has `clightgen` read each back, compiles them with the native host, and runs the cases that `tests/wasi/run.sh` checks with Wasmtime: all 48 cases of `bytes.tsv` and all 36 of `literals.tsv` give Wasmtime's lines and allocation counts, and both cases of `byte-traps.tsv` stop at `unreachable`.  The results hold with the aarch64 tree on AArch64 and with the x86_64 tree under `qemu-x86_64`.
+
+- [x] `Verified.Examples.Literals` native, with its theorems and its cases.
+
+## 2026-10-27: The Wasm-to-C translator: plan for M6 (binary32)
+
+### What the corpus needs
+
+A survey of the 100 modules of `tests/verified` after the merge with main lists, for each of the 1,420 functions, the forms it uses that the translator does not handle, its result types, and its callees, with M5's script under `lake env lean --run`.  1,356 functions translate.  Every unhandled form is one of the seventeen binary32 forms of the subset, and the 64 functions outside the translation are 34 in `floats32`, 13 in `gpt32`, 5 in `liblinalg32`, 4 in `sums`, 3 in `wgsl`, 2 each in `scalarcomposition` and `relocation`, and 1 in `lists`.  Six of them return several results with a binary32 value among them.  The table orders the features greedily, as M5's did, where a function enters when every form it uses is handled and every function it calls has entered, a recursive call included.  With all seventeen forms and several results with binary32 values, all 1,420 functions translate.
+
+| Feature | Omitted functions that use it | Functions added | Translated after |
+| --- | --- | --- | --- |
+| `i32ReinterpretF32` | 32 | 5 | 1,361 |
+| `f32Le` | 9 | 2 | 1,363 |
+| `f32ReinterpretI32` | 30 | 3 | 1,366 |
+| `f32Add` | 30 | 4 | 1,370 |
+| `f32Const` | 30 | 6 | 1,376 |
+| `f32Mul` | 21 | 10 | 1,386 |
+| several results with a binary32 value | 6 | 5 | 1,391 |
+| `f32Sub` | 14 | 4 | 1,395 |
+| `f32Nearest` | 9 | 3 | 1,398 |
+| `f32Lt` | 6 | 6 | 1,404 |
+| `f32ConvertI64U` | 3 | 4 | 1,408 |
+| `f32Div` | 5 | 3 | 1,411 |
+| `f32Sqrt` | 3 | 3 | 1,414 |
+| `f32Abs` | 2 | 2 | 1,416 |
+| `f32ConvertI32S` | 1 | 1 | 1,417 |
+| `f32Eq` | 1 | 1 | 1,418 |
+| `i32TruncSatF32S` | 1 | 1 | 1,419 |
+| `i64TruncSatF32U` | 1 | 1 | 1,420 |
+
+The exit criterion, binary32 GPT-2 native, needs ten of the forms: the two reinterpretations, constants, the four arithmetic operations, `f32Le`, `f32Nearest`, and `f32Sqrt`.  `layerNorm32` takes a square root, and `expArray32`, `headSum32`, `probs32`, and `geluArray32` round to the nearest integer in their range reductions.
+
+### The semantics
+
+Talos's binary32 operations are integer definitions on bit patterns in `Interpreter/Wasm/IEEE32.lean`, as the binary64 ones are.  Every NaN result of `add`, `sub`, `mul`, `div`, `sqrt`, and `nearest` is the canonical NaN `0x7FC00000`, `abs` clears the sign bit of any value, and the comparisons are false on a NaN.  `sqrt` rounds `Nat.sqrt` of the scaled magnitude with an exact midpoint test, `nearest` is `roundScaledMagnitude` of `roundShift magnitude 149`, the conversions are `fromInt` of the signed or unsigned integer, and the saturating truncations take `truncatedInt` and saturate at the bounds.  The Lean copy's `Float32.add`, `sub`, `mul`, and `div` are Talos's results when those are numbers and Flocq's NaN otherwise, as at binary64; its conversions between integers and `float` are `IEEE32.fromInt` and `truncatedInt` with CompCert's ranges, and `Float.of_single` and `Float.to_single` convert between `float` and `double`, exactly for `of_single` and with one rounding for `to_single`.  CompCert has no binary32 square root, no rounding to an integer, and no binary32 absolute value: `__builtin_fabs` of a `float` is the `double` absolute value of `Float.of_single`, which quiets a signaling NaN.
+
+### Choices of M6
+
+Each choice below was recommended, reviewed, and revised before it was taken.
+
+1. **Canonicalization.**  Taken as at binary64: after `+`, `-`, `*`, `/`, `sqrt`, and `nearest`, the translation emits `if (t != t) t = <canonical NaN>;`, where the canonical NaN is the word `0x7FC00000U` stored into `lx_pun` and loaded as a `float`.  The proof holds for every `Archi`.
+2. **The cell.**  Recommended: a second cell of four bytes.  Review: `lx_pun` holds eight writable bytes, which `MemRel` already requires, and a binary32 access at its offset 0 is a store of one chunk and a load of the other, as at binary64.  Taken: `*(float *) lx_pun` and `*(unsigned int *) lx_pun`, with the shapes fixed by probing `clightgen`.
+3. **Constants.**  Taken as at binary64: a finite `f32Const` is the printer's exact hexadecimal literal with the suffix `f`, a negative one is `Oneg` of the positive literal, and a NaN or an infinity goes through `lx_pun`.
+4. **Comparisons.**  Taken as at binary64: `(unsigned int) (a == b)`, `<`, and `<=` on `float`s, whose semantics `Float32.cmp` agrees with `IEEE32.eq`, `lt`, and `le`.
+5. **Conversions.**  Taken: `f32ConvertI64U` is `(float) a` of the `unsigned long long`, whose semantics is `Float32.of_longu`, and `f32ConvertI32S` is `(float) (int) a`, whose semantics is `Float32.of_int` of the signed reading of the word; both equal Talos's `fromInt` by definition.
+6. **Saturating truncations.**  Taken as at binary64: three nested guards around the C cast.  `i64.trunc_sat_f32_u` tests `t != t`, `t <= -1.0f`, and `t >= 0x1p64f` before `(unsigned long long) t`, and `i32.trunc_sat_f32_s` tests `t != t`, `t <= -0x1p31f`, and `t >= 0x1p31f` before `(unsigned int) (int) t`, where the bounds give Talos's saturated values; no `float` lies strictly between `2^31 - 128` and `2^31`, or between `2^64 - 2^40` and `2^64`, so each guard matches Talos's test on the truncated integer.
+7. **`abs`.**  Recommended: `(float) __builtin_fabs (t)`.  Review: `Oabsfloat` of a `float` takes the `double` absolute value of `Float.of_single`, which quiets a signaling NaN, so the result differs from Talos's on a signaling NaN.  Revised and taken: the bits through `lx_pun`, the mask `0x7FFFFFFFU`, and back, which is exact on every value; only two functions of `floats32` use `abs`.
+8. **`sqrt`.**  Recommended: `(float) __builtin_fsqrt ((double) t)`, followed by the canonicalization.  Review: the conversion to `double` is exact for a number, the square root rounds to 53 bits, and the conversion back rounds to 24, so the result is Talos's only if the two roundings agree with one; for the square root they do whenever the wider format has at least `2p + 2` bits, which 53 ≥ 2 · 24 + 2 satisfies.  The proof is a midpoint argument on Talos's integer definitions: a binary32 midpoint has a 25-bit odd significand, its square is never the radicand, the distance between them is at least one unit of the radicand's last place, and the 53-bit rounding moves the root by less than that, so it neither crosses nor reaches a midpoint.  An integer square root in C would need a loop with its own invariant.  Taken: the path through `double`, with the double-rounding lemma; the estimate is 600 to 900 lines.
+9. **`nearest`.**  Recommended: `(t + 0x1p23f) - 0x1p23f` with a sign correction.  Review: its proof rests on the exactness and rounding of `IEEE32.add`, which Talos defines through rational rounding, and the sign of a zero result needs a separate repair.  Revised and taken: integer code on the bits, which reads `t` as a word `u` through `lx_pun` and takes the biased exponent `e = (u >> 23) & 255`.  For `e ≥ 150` the value is integral, infinite, or a NaN, and the result is `t`; for `e < 126` the magnitude is below one half, and the result is `0.0f` or `-0.0f` by the sign; otherwise, with `m` the significand, the shift `s = 150 - e`, the quotient `q = m >> s`, the remainder `r = m & ((1 << s) - 1)`, and the half `h = 1 << (s - 1)`, `q` is incremented when `r > h` or when `r == h` and `q` is odd, and the result is `(float) q`, negated when the sign bit is set.  The canonicalization of choice 1 follows.  These steps are `roundShift` and `roundScaledMagnitude` of Talos's `nearest`, with `fromInt` of `q`, which is exact below `2^24`, in place of the packing, so the proof is integer arithmetic; the scratch values live in the `i32` slots above the stack's top, which the frame lets a statement change.
+10. **Several results with binary32 values.**  Taken as at binary64: a `float` result global `lx_r<i>_f` per position, initialized with four bytes of zeros, and `EnvOk.res` and `MemRel.resW` widened to it.
+11. **Order of work.**  Taken: the probe of `clightgen`; the 32-bit accesses of `lx_pun` and both reinterpretations; constants; the four arithmetic operations with the canonicalization; `f32Le`, `f32Lt`, and `f32Eq`; several results; the two conversions; `nearest`; `sqrt`; `abs`; and last the two saturating truncations.  This follows the table, except that `nearest` and `sqrt` come before the forms that GPT-2 does not use.
+
+### The proof
+
+The widening of choice 10 is a premise of `NativeA` of the kind accepted in M4 and M5: `start` discharges it for the program's own environment, and no conclusion changes.  `Proof/Floats32.lean` holds the binary32 lemmas in the pattern of `Proof/Floats.lean`: the 32-bit store and load at `lx_pun`, the canonicalization, one lemma per form, the integer reasoning of `nearest` against `roundShift`, and the double-rounding lemma of `sqrt` against `IEEE32.roundSqrtMagnitude`, `IEEE64.roundSqrtMagnitude`, and `IEEE32.roundDyadicMagnitude`.  The estimate is 2,000 to 3,000 lines.
+
+### Tests
+
+`tests/native/run.sh` gains a module `f32ops`, the binary32 counterpart of `fops`: each form on words read as `float`s, with NaNs with payloads, a signaling NaN, both zeros, the smallest subnormal, the largest `float`, both infinities, the ties of `nearest` (0.5, 1.5, 2.5, -0.5, -2.5, `2^23 - 0.5`), squares and non-squares under `sqrt`, a negative operand of `sqrt`, and the bounds of both truncations.  The differential test gains binary32 NaN programs for `+`, the conversions between `float` and `double`, and the square root through `double`, under both targets' parameters.  The corpus driver needs no change.
+
+- [ ] Probe `clightgen` for the binary32 shapes of the choices.
+- [ ] `lx_pun` at binary32 and both reinterpretations; constants.
+- [ ] The arithmetic with the canonicalization; the comparisons; several results; the conversions.
+- [ ] `nearest`.
+- [ ] `sqrt` with the double-rounding lemma.
+- [ ] `abs` and the saturating truncations.
+- [ ] `f32ops` in `tests/native/run.sh`, the differential test, the corpus driver, and binary32 GPT-2 native with theorems.
+
+## 2026-10-27: The Wasm-to-C translator: M6, the binary32 forms without `sqrt` and `nearest`
+
+### The probe and the translation
+
+A probe of `clightgen` on the shapes of the plan confirmed them.  The cell's first four bytes are `Ederef (Ecast (Evar lx_pun (tarray tulong 1)) (tptr tuint)) tuint` and the same at `tptr tfloat`; a comparison is `Ecast (Ebinop Ole a b tint) tuint`; `(float) (int) a` is two `Ecast`s; `(unsigned int) (int) t` of a `float` is two `Ecast`s; a negative literal, `-0.0f` included, is `Oneg` of the positive constant; the square root through `double` is a call of `__builtin_fsqrt` on `Ecast t tdouble` into a call temporary followed by `Ecast` to `tfloat`; and a `float` global without an initializer is `Init_space 4`.
+
+The translator now handles fifteen of the seventeen binary32 forms, as choices 1 to 7 of the plan describe: constants, the four arithmetic operations with the canonicalization, the three comparisons, `abs` through the cell with the mask `0x7FFFFFFFU`, the two conversions, both reinterpretations through the cell, and both saturating truncations with their guards.  `Proof/Floats32.lean` proves them in the pattern of `Proof/Floats.lean`: `F32Bits` gives that Talos's rounding operations return the canonical NaN whenever their result is a NaN, the comparisons and conversions agree with Talos's by the copy's definitions, and `truncSat32U_cases` and `truncSat32S_cases` follow Talos's case analysis through the guards.  `abs` uses a scratch word slot at the height of its operand, so `push_exec_scratch` takes the frame of the slots below that height in place of `push_exec`'s condition on every other temporary.  `Mem.lean` gains the 32-bit loads after stores of the other type and the validity of a four-byte access where an eight-byte one is valid.
+
+### Tests
+
+`tests/native/run.sh` gains `f32ops`, the binary32 counterpart of `fops`, whose 1,006 calls on 26 operands (NaNs with payloads, a signaling one among them, both zeros, the smallest subnormal, the largest float, both infinities, halves, and the bounds of the truncations) agree with Talos bit for bit.  All twenty modules agree, the differential test agrees on all 318 programs, and 34,555 corpus cases pass natively with none failing; the 698 that do not run call functions that use `sqrt`, `nearest`, or several results with a binary32 value.  The same counts hold with the x86_64 tree under `qemu-x86_64`.
+
+- [x] Probe `clightgen` for the binary32 shapes of the choices.
+- [x] `lx_pun` at binary32 and both reinterpretations; constants.
+- [x] The arithmetic with the canonicalization; the comparisons; the conversions; `abs`; the saturating truncations.
+
+## 2026-10-27: The Wasm-to-C translator: M6, `nearest` and binary32 results
+
+The translator now handles `f32.nearest` and functions whose several results include a binary32 value.  `nearest32Stmt` follows choice 9 of the plan, except that it forms the significand as `(u & 0x7FFFFF) + 0x800000` where the plan had `|`: the two agree, and the proof has the lemma for the sum.  `Proof/Nearest32.lean` splits Talos's `nearest` by the biased exponent as the C code does, into `nearest_big` for `e ≥ 150`, `nearest_small` for `e < 126`, `nearest_255` for infinities and NaNs, and `nearest_mid` between them, where `roundShift_scale` turns the rounding of the magnitude by 149 bits into the rounding of the significand by `150 - e` bits and `fromInt_nat` turns the packing into the conversion of the quotient.  The statement keeps its words in the `i32` slots from the operand's height up, and `Keeps` states which temporaries it leaves unchanged.  `nearest_mid` gives the result as `roundScaledMagnitude (sign x)` of the rounded magnitude, because a form with `if sign then negate else id` made the kernel unfold the rounding at `2^149` until it exceeded its recursion depth.
+
+Each position of the result globals now has a `float`, `lx_r<i>_f`, of four bytes of zeros, so `VT.isRes` holds for all four types.  `Init.lean` counts four result globals per position where it counted three, and `valid_access_of_bytes4` gives the four-byte access of a `float` global.
+
+### Tests
+
+`f32ops` gains `nearest` on its 26 operands and on nine more: ±0.75, ±3.5, 0.25, `2^24 - 1`, `2^22 + 0.5`, the smallest normal, and the smallest negative subnormal.  It also gains `pair`, which returns a float and a word, on three pairs of arguments.  The first run failed in `pair` and in 83 corpus cases, all calls of functions that return a float among several results: `packetTurn` and `packetMake` of `sums`, and `paired`, `mixed`, and `deep` of `floats32`.  The C programs were right, and the test glue was wrong in two places.  Both glue generators declared `lx_r<i>_f` as `unsigned long long`, so the host read eight bytes and converted the integer to a float; `resultCType` in `Emit.lean` and in `Verified.lean` now declares it `float`.  The end-to-end glue also read a float result from `lx_r<i>_l` and printed its value rather than its bits, and it now reads `lx_r<i>_f` through `lx_bits32`.  With both fixes, the 288 cases of `sums` and the 2,439 of `floats32` that run pass natively, and `f32ops` agrees with Talos in all 1,044 calls, with the other 19 modules, on both trees.  Every other case of that run passed: 34,817 of the corpus, the 3,322 module cases, the 19 other modules of `run.sh`, the byte and literal examples, and the 318 programs of the differential test, with the same counts on the x86_64 tree under `qemu-x86_64`.  The 353 corpus cases that did not run call functions that use `sqrt`.
+
+- [x] `nearest`.
+- [x] Several results with binary32 values.
+
+## 2026-10-27: The Wasm-to-C translator: M6, `sqrt`
+
+The translator now handles `f32.sqrt` as choice 8 of the plan describes: `__builtin_fsqrt` of `(double) t` into a call temporary, `(float)` of the result, and the canonicalization.  `Proof/Sqrt32.lean`, about 700 lines, proves for every `Archi` that this statement computes Talos's `IEEE32.sqrt`, and `exec_sqrt_call` now takes any argument of type `double`, so that both square roots share it.
+
+The proof works on Talos's integer definitions.  For a positive finite value of magnitude `M`, Talos's binary32 square root rounds the integer square root of `R = M · 2^149` at the shift `s = log2 ⌊√R⌋ - 23` with `roundSqrtIntegral`.  Its binary64 square root of the converted value rounds the root of `R · 4^925` at the shift `s + 896` (`log2_sqrt_scale`), which is the rounding of the root of `R · 4^29` at `s` (`roundSqrtIntegral_scale`).  `double_round` shows that `roundShift` of that rounding by 29 bits is the binary32 rounding.  Since the significand of a binary32 value has at most 24 bits, `4R` is a multiple of `2^(2s+1)`, while the square of a midpoint `(2k + 1) · 2^s` is an odd multiple of `2^(2s)`, so `4R` differs from it by at least `2^(2s)`.  `rsi_le` and `le_rsi` characterize the rounding by the midpoints, and with them the 53-bit rounding lies in `[k · 2^29, (2k + 1) · 2^28 - 1]` or in `[(2k + 1) · 2^28 + 1, (k + 1) · 2^29]`, whose rounding by 29 bits is `k` or `k + 1` as the binary32 rounding is.  The binary64 packing of the 53-bit result is exact (`pack64`, through `F64Decoded.roundScaled_value`), and `Float.to_single`'s `roundDyadicMagnitude` of it and Talos's packing of the binary32 result give the same encoding (`dyadic_pack`, `rsm32_pack`).  Zeros and infinities are checked by `decide +kernel`, and a NaN or a negative value gives a NaN on both paths, which the canonicalization replaces.
+
+Two difficulties shaped the proof.  A rewrite or `generalize` in a goal that holds two products with large literal factors, such as `M * 2 ^ 149` and `M * 2 ^ 925 * 2 ^ 1074`, made the elaborator unfold `Nat.mul` against the literals until it exceeded its recursion depth.  `sqrt_core` therefore takes the radicands as variables with their equations, and `single_sqrt_pos` supplies them by `exact`.  Where a definitional check meets `2 ^ 925` or `2 ^ 1074`, Lean warns that the exponent exceeds `exponentiation.threshold`, 256 by default, so three lemmas raise it to 2048, as CodeLib does for its binary64 files.  `double_round`, `single_sqrt`, `sim_f32Sqrt`, `sim_f32Nearest`, and `translate_correct` depend on `propext`, `Classical.choice`, and `Quot.sound` only.
+
+With `sqrt`, the translation of the binary32 GPT-2 module contains all of its functions (`gpt32_all` in `tests/TestSupport/Native/Gpt32Native.lean`), and `compiled.f.native` holds for each kernel, among them `layerNorm32`, which takes a square root, and `probs32`, which rounds to the nearest integer; their theorems depend on the same three axioms.  `f32ops` gains `sqrt` on its 26 operands and on twelve more: 2, 4, 0.1, the neighbors of 1, two subnormals, the smallest normal, `2^24 - 1`, a value near `10^16`, and two negative values.
+
+- [x] `sqrt` with the double-rounding lemma.
+- [x] Binary32 GPT-2 native with theorems.
+
+## 2026-10-27: The Wasm-to-C translator: the M6 gate
+
+The first full run after the merge with main stopped at `ccomp`, which found an undeclared call temporary in the C text of `f32.sqrt`.  The printer folds a call and the copy of its result into one C assignment, and leaves the call temporary undeclared, since `clightgen` creates it; it recognized only a copy with a bare `Etempvar`, so it printed the call of `__builtin_fsqrt`, whose copy is `Ecast (Etempvar t) tfloat`, as an assignment to the undeclared temporary.  `callPair?` now accepts the copy with a cast and prints `x = ((ty)f(args));`, which `clightgen` reads back as a call into a temporary followed by the cast, the shape that the probe of M6 found.  The printer is not verified, so no proof changes; the `clightgen` comparison checks the printed text of every translation.
+
+The second run passed on both trees.  The build of every target after the change to the translator took 33 minutes, with four workers.  The translations of the 100 corpus modules contain all 1,420 of their functions and all 1,385 of their exports, and `clightgen` reads each of the 100 C texts back as its translation.  All 35,253 cases of the compiled generator `verified-cases` pass natively, with none outside a translation, as do the 3,322 module cases.  `run.sh`'s 20 modules agree with Talos, `f32ops` in all 1,082 calls, the byte and literal examples agree with Wasmtime, and the differential test agrees on its 318 programs.  The same counts hold with the x86_64 tree under `qemu-x86_64`.
+
+The exit criterion of M6 holds: the translation of the binary32 GPT-2 module contains all 15 of its functions (`gpt32_all`), `compiled.f.native` states each kernel's theorem for its C function, the kernels' cases pass natively on both trees, and the theorems depend on `propext`, `Classical.choice`, and `Quot.sound` only.
+
+- [x] `f32ops` in `tests/native/run.sh`, the differential test, the corpus driver, and binary32 GPT-2 native with theorems.
+- [x] The merge with `main`, after the compiled case generators.
+
+## 2026-10-28: The Wasm-to-C translator: merge with typed fields stage 2, and the start of M7
+
+The merge with main after typed fields stage 2 conflicted only in this journal, where main's entries come first.  `Verified/Reflect/Command.lean` merged without a conflict: main replaces `prepareRecursiveTypes` by `requireRecursiveTypes` in the elaborator of `verified_compile`, away from the native part.  The corpus gains `typedtrees`.
+
+The gate on the merge passed on both trees, with four workers and a memory limit of 16 GB.  The build after the merge took 47 minutes, and the memory watcher's largest sample of full memory pressure was 10 percent.  All 101 corpus modules translate entirely, with 1,454 functions and 1,412 exports, and `clightgen` reads each C text back as its translation.  The 35,766 cases of `verified-cases` pass natively, none outside a translation, as do the 3,322 module cases.  `run.sh`'s 20 modules agree with Talos, `f32ops` in all 1,082 calls, the byte and literal examples agree with Wasmtime, and the differential test agrees on its 318 programs.  The same counts hold with the x86_64 tree under `qemu-x86_64`.
+
+### The trusted base
+
+`docs/native-translator.md` now has a section that lists the native path's trusted base in a table: Lean, the Lean copy of Clight, the CompCert theorems that the argument uses (`bigstep_semantics_sound`, `transf_c_program_correct`, and `separate_transf_c_program_correct`) with the axioms and target hypotheses they rest on, CompCert's unverified parts, the printer, the written file, `clightgen` and the comparison as a check, the host glue, the run-time library, the call depth and the stack, and the toolchain.  The facts come from the CompCert 3.18 sources and from the compiled corpus.  `lib/Axioms.v` states functional extensionality and proof irrelevance, and `clightgen`'s driver runs `SimplExpr` and `SimplLocals` and, without `-normalize`, no other pass.  On x86-64 the translated code links `__compcert_i64_utod`, `__compcert_i64_utof`, and `__compcert_i64_dtou` from `libcompcert.a`, and the host calls no floating-point conversion.
+
+### The file theorem: measurements
+
+`Translation.text` cannot be evaluated by the kernel, because `cstmt` is `partial`.  A structural copy prints the same text for `poly` and `gpt32`.  It needs `cstmt` in a `mutual` block with a function on `labeled_statements`, since `statement` is mutual with it, and its matches on sub-statements moved into top-level patterns.  Every translation contains the runtime functions `alloc` and `release`, about 2,050 lines of C, so the smallest text, `poly`'s, has 112,418 bytes, and `gpt32`'s has 474,495.  The kernel evaluated the whole translation of `poly` in 0.85 s.
+
+The kernel's check of the text against the file is expensive.  Comparing the printed text of `poly` with the file as one `String` exceeded the kernel's recursion depth after 16 s.  Printing it as 2,067 lines and comparing their UTF-8 bytes with the file's (`binary_file%`, `List.beq`) took 31 s and 12 GB.  The comparison of two 112 KB byte lists alone took 5.4 s, and 11.7 s with the bytes as `Nat`s.  A printer that emitted bytes directly, with its constant text turned into byte literals when the source elaborates, used 21 GB without finishing in ten minutes, and the probe was stopped.  The kernel represents an array by a list, so `String.append` pushes each byte onto a list, and it expands a string literal through `String.ofList`.  At the rate of the line printer, the file theorem for `gpt32` would need minutes and more than 16 GB, so its form needs a decision before it is built.
+
+### The file theorem dropped from M7, and the comparison in the native build
+
+The coordinator dropped the file theorem from M7 after the measurements above.  `clightgen` reads the same file that `ccomp` compiles, so comparing its reading with the translation covers the printer and the write of the file together.  A file theorem would remove only the write from the trusted base and would leave the printer trusted.  It would cost 12 GB for the smallest module, and more than any machine can spare for `gpt32`.  The printer stays `partial`, since only a kernel evaluation needed it structural.
+
+The comparison ran only in the tests: `tests/native/verified.sh` and `tests/native/bytes.sh` ran `native-verified emit`, `clightgen`, `native-verified check`, and `ccomp` as separate steps, and `tests/native/run.sh` does the same with `native-emit`.  A user who ran `native-verified emit` and then `ccomp` skipped it.  `native-verified build` is now the native build of a module.  It writes the files of `emit`, runs `clightgen` on the C file, compares the result with the translation, and only when they match runs `ccomp -c` on the same file.  It stops with a nonzero status on a mismatch or on a failure of either tool.  Both scripts now call it and link the object with the glue and `tools/native-host.c`.  The trusted-base table now lists the printer and the written file as covered by the per-build comparison, and the design's M7 entry names the comparison in the native build instead of the file theorem.
+
+### The memory limit of the native test scripts
+
+The first test of `native-verified build` thrashed, and it was stopped.  `tools/leanrun` gives each step a cgroup with `MemoryHigh` set to `LEANRUN_MEMORY_HIGH`, 4G by default, and none of the native test scripts set it.  The new command also loaded each module twice in one process, once to write the files and once for the comparison, and needed about 7 GB.  Under the 4 GiB limit its cgroup showed 85 percent full memory pressure, and the job's watcher recorded 15 to 42 percent.  The bare-metal agent met the same default in `tests/native/run.sh`.  The command now loads the module once.
+
+Each step was then measured alone under a 16 GB limit:
+
+| Step | Largest resident set |
+| --- | --- |
+| `native-verified build`, largest corpus module (`slew`) | 3.65 GB |
+| `native-verified build`, smallest corpus module | 3.04 GB |
+| Elaboration of each native theorem file of `run.sh` and `bytes.sh` | 3.67 to 3.72 GB |
+| `lake env lean --run tools/Subset.lean` on `slew` and on `euler` (`subset.sh`) | 5.52 and 5.53 GB |
+| `native-emit emit` (`run.sh`) | 0.12 GB |
+| `verified-cases` and `native-module-cases` | 0.12 GB and 0.01 GB |
+| `clight-diff` (`clight.sh`) | 0.01 GB |
+
+The memory charged to each scope was lower, at most 0.87 GB, because the mapped `.olean` files that were already in the page cache stay charged to the cgroups that read them first.  With a cold cache they are charged to the step, so the limits follow the resident sets.  `verified.sh`, `run.sh`, `bytes.sh`, and `clight.sh` now set `LEANRUN_MEMORY_HIGH` to 6G, and `subset.sh` to 8G, unless the caller sets it, as callers of `tests/verified/run.sh` do.
+
+With these limits and the single load, the test passed on the AArch64 tree, and the job's watcher recorded at most 0.00 percent full memory pressure.  The corpus driver, now through `native-verified build`, passed 35,766 cases and the 3,322 module cases, and the byte and literal examples agreed with Wasmtime.  A run of `native-verified build` on `poly` with a `clightgen` wrapper that changed one trap code in the C file before reading it stopped with status 1, reporting `lxf_alloc: the functions differ`, and wrote no object file.
+
+## 2026-10-28: The Wasm-to-C translator: the benchmark against Wasmtime
+
+The coordinator approved a plan for timing native code against Wasmtime.  Seven workloads from the corpus run in two forms: translated to C and compiled with CompCert, and as WebAssembly in Wasmtime 44.0.0 through the C API, with Cranelift and NaN canonicalization on, as `tools/wasmtime-host.c` configures it.  The workloads are SHA-256, SHA3-256, and CRC-32 of 1 MiB, insertion sort of 4,096 words, the Euler solver on a grid of 32, and the binary32 GPT-2 kernels `linear32` and `layerNorm32` at width 768.
+
+`tools/native-host.c` and `tools/wasmtime-host.c` take a new command, `bench SECONDS MAX FUNC RESULT [ARG...]`.  It calls the export once to warm up, then repeats the call until SECONDS have passed or MAX calls have run.  Before each call it places the arguments again, since a call may consume them, and it times only the call, with `CLOCK_MONOTONIC`.  It prints the last call's results as `call` does, then the number of timed calls and their total time.  The Wasmtime host also prints the time of loading and compiling the module, and both define `_POSIX_C_SOURCE` for `clock_gettime`, since the Wasmtime host is compiled with `-std=c11` and `ccomp` is strict too.
+
+`tests/native/bench.sh` builds each program through `native-verified build` and writes each module's Wasm with `tools/Emit.lean`.  Both runs of a pair are pinned with `taskset` to the same core, the highest-numbered online core of the highest maximum clock rate, and the pairs alternate which form runs first.  A pair runs only when no `lean` or `lake` process runs and the one-minute load average is below 1, checked before and after the pair; a pair that fails the check after it ran is discarded.  If the machine does not become idle within a day, the script stops.  It records the architecture, the core's clock rate, the frequency governor, the `ccomp` version and options, and the Wasmtime version and options, and it writes the time per call of every pair and a summary with medians, quartiles, and the ratio of the medians.  The two forms must print the same results.
+
+A short test run of one pair per workload, with a timed period of 0.05 s and no idle check, built all seven programs and agreed on every result.  The core it chose is an AArch64 core.  Those times are not measurements, since the machine was busy.  The Euler grid of 64 took about a second per call, so the workload uses 32.
+
+### The insertion-sort hint, analysed
+
+The test run had insertion sort of 4,096 words at 26.6 ms per call natively against 6.2 ms under Wasmtime.  These times are not measurements.  The analysis compared the translated C of `sortInsert`, `ccomp -S` from the AArch64 tree, and `wasmtime compile -W nan-canonicalization=y` of the same module, disassembled with `objdump`.  Hardware counters are not open to the user on the build host, so the counts below are static, taken from the path that each iteration executes.
+
+Both compilations run the same algorithm.  For each element, a counting loop runs over the whole sorted prefix and counts the elements below it, with no early exit, and a shifting loop moves the larger elements up by one.  For 4,096 random words the counting loop runs about 8.4 million iterations and the shifting loop about 4.2 million.  Both keep the redundancies of the Lean source: the length of the array is reloaded each iteration, and a constant test `1 == 0` remains.
+
+| Loop | Compiler | Instructions | Loads | Stores | Branches |
+| --- | --- | --- | --- | --- | --- |
+| counting | CompCert | about 52 | 7 | 0 | about 11 |
+| counting | Cranelift | about 16 | 2 | 0 | 5 |
+| shifting | CompCert | 38 | 5 | 1 | 6 |
+| shifting | Cranelift | 8 | 1 | 1 | 2 |
+
+The totals are about 600 million instructions for CompCert's code and 165 million for Cranelift's, a ratio of 3.7, where the test run's times differed by 4.3.  One aligned eight-byte read in CompCert's counting loop is:
+
+```
+uxtw  x5, w10
+add   x1, x5, #8
+adrp  x16, lx_pages
+ldr   w13, [x16, #:lo12:lx_pages]
+uxtw  x2, w13
+add   x2, xzr, x2, lsl #16
+cmp   x1, x2
+b.ls  .L356
+.L356:
+ubfiz x4, x5, 0, 3
+cbz   x4, .L357
+.L357:
+adrp  x9, :got:lx_mem
+ldr   x9, [x9, #:got_lo12:lx_mem]
+orr   x2, xzr, x5, lsr #3
+ldr   x26, [x9, x2, lsl #3]
+```
+
+The same read in Cranelift's code is:
+
+```
+add   x2, x1, #0x1
+add   x2, x4, x2, lsl #3
+ldr   x2, [x19, w2, uxtw]
+```
+
+and Cranelift's whole counting loop is:
+
+```
+620: cmp x1, x0           ; b.cs 668
+     mov w2, #0           ; mov w2, w2 ; cbnz x2, 668
+     ldr x2, [x19, w4, uxtw]
+     cmp x1, x2           ; b.cc 648
+648: add x2, x1, #1       ; add x2, x4, x2, lsl #3
+     ldr x2, [x19, w2, uxtw]
+     cmp x2, x23          ; b.cs 660
+     add x24, x24, #1
+660: add x1, x1, #1       ; b 620
+```
+
+Four things in CompCert's code account for the difference.  First, every load and store tests `addr + 8 > lx_pages * 65536`, as the translation requires for Talos's trap, and CompCert, which does not move invariant loads out of loops, reloads `lx_pages` and recomputes the limit at each access.  Wasmtime needs no test, because its reservation of 4 GiB with guard pages makes a 32-bit index safe.  Second, each access tests the alignment of the address.  Third, each access loads the address of `lx_mem` through the global offset table, where Cranelift keeps the memory's base in a register for the whole function.  Fourth, each index is shifted right and the load scales it left again.  The counting loop also tests `brk` twice and reloads one spilled local from the stack.  About 25 of its 52 instructions and 5 of its 7 loads belong to the checks and the addressing.  The coordinator will ask the user whether to spend effort on native speed, and until the user decides, the translation, the runtime, and their proofs stay as they are.
+
+### `-fno-common`, and the bound in a temporary as a candidate
+
+The native code reached `lx_mem` through the global offset table, and the cause lies in CompCert 3.18's sources.  AArch64's `Asmgen.loadsymbol` emits `Ploadsymbol`, which `TargetPrinter` prints as `adrp :got:` followed by `ldr :got_lo12:`, when `SelectOp.symbol_is_relocatable` holds of the symbol, and `Padrp` followed by `Paddadr`, printed as `adrp` and `add :lo12:`, otherwise.  `aarch64/extractionMachdep.v` extracts `symbol_is_relocatable` as `C2C.atom_needs_GOT_access` on Linux.  In position-independent executables, which `ccomp` produces by default (`option_fpie` is `Configuration.pic_supported`), that function is `atom_is_external`.  `atom_is_external` is false for a symbol with `a_defined`, which `C2C` sets only for a global with an initializer, and for a non-static global without an initializer it returns `option_fcommon`, true by default.  `lx_mem`, printed as `unsigned long long lx_mem[33554432];`, has no initializer, so `ccomp` emitted it as `.comm` and loaded its address from the table at every access.  `lx_pages` has an initializer and was addressed directly.  x86-64 follows the same rule through `lx_mem@GOTPCREL`.
+
+In CompCert 3.18, `option_fcommon` is read only by `C2C.atom_is_external` and by `PrintAsmaux.variable_section`, which chooses between `.comm` and `.bss`.  `convertGlobvar` produces `[Init_space sz]` for the array either way, so the Clight program that the proofs and the `clightgen` comparison are about does not change.  The compiler's proof holds for any value of `symbol_is_relocatable`, which is a `Parameter`.  With `-fno-common`, `ccomp -S` on the sort module gave no `:got:lx_mem` on AArch64, where there had been 144, and no `lx_mem@GOTPCREL` on x86-64, where there had also been 144.  Each access became `adrp` and `add`, with no load.  An initializer on `lx_mem` would change its `gvar_init` and the proof of `lx_init`, `static` would hide it from the host, and `-fno-pie` would change the link, so the coordinator approved the option.  `native-verified build` and `tests/native/run.sh` now pass it to `ccomp`, and the trusted-base table's row for CompCert's unverified parts records it.  The bare-metal branch, which also compiles with `ccomp`, is the coordinator's to change.
+
+A second change waits for the user's decision on native speed: keeping `lx_pages * 65536` in a temporary `lim` of each function, set after `brk = 0` at entry and refreshed after the copy of each call's results and after `memory.grow`.  In the translator, about 25 lines would change: `boundsCheck` would compare against the temporary, which `tempName` names and `bodyTemps` declares.  In the proof, `Inv` and `BreakRel` would each gain a field stating that the temporary holds the store's pages times 65536; `BreakRel` needs it because the code after a construct continues with the same temporaries.  `MemRel`, `StoreRel`, `ResultRel`, `NativeA`, and the generated theorems would not change.  `push_exec`, `push_step`, and `push_exec_scratch` in `Straight.lean` would carry the field, with a short argument that the store's pages are unchanged after stores and writes to globals.  In `MemOps.lean`, `eval_bounds` would become a lookup, and `memory.grow` would add the refresh.  The call simulation in `Calls.lean` would add the refresh after the results, and the entry would add the initialization.  The roughly 15 places in `Blocks`, `Branches`, `Calls`, `Constructs`, `Control`, and `Run` that build `Inv`, and the 5 that build `BreakRel`, would gain the field mechanically.  The estimate is about ten files and 200 to 300 lines, then a full rebuild and a gate.  It would save the load of `lx_pages` and the multiplication, about three instructions and one load per access, and leave the comparison, the alignment test, and the address of `lx_mem`.
+
+With the option, the native corpus driver on the AArch64 tree passed all 35,766 cases and the 3,322 module cases, and none of the 101 objects it compiled has a global-offset-table relocation of `lx_mem`, where the sort module's object compiled without the option had 288.  The job's watcher recorded no memory pressure.  The benchmark job built before the change was stopped while it waited, without measuring, and started again on the new build.
+
 ## 2026-10-28: Heap fields of tree records: the model change's results
 
 The trusted change and the proofs that case on `Slot` compiled after a few rounds of local fixes.  Three choices arose outside the review's list.  The frame lemmas of `NodeOwned`, `SlotsOwned`, `NodeBorrowed`, `SlotsBorrowed`, and `Slot.ValueOwned` take `heap'.At store'`, as the review accepted, because an array keeps `Heap.Owned` through `Heap.Owned.keepIn`, which needs it.  The copy loop's layout, `SlotsLayout`, admits only word and child slots, so its proofs rule out the new kinds until the copy handles them, while `CopyWork` gains steps for an array and a buffer whose charges are the `Ty.copyCost` of an array of words and of a buffer.  The release proof's lemma `SlotsOwned.childRecords` became `SlotsOwned.items`, since it now gives `ItemOwned` for records, arrays, and buffers, and its old name hid the definition `childRecords` inside `SlotsOwned.null`.  Process compaction's relocation lemma for buffers became `Heap.Buffer.relocate`.

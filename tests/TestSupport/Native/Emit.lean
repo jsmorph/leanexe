@@ -1,0 +1,553 @@
+import TestSupport.Native.Gcd
+import Verified.Examples.Arrays
+import Library.Arrays.Filter.Compiled
+import Library.Arrays.Range.Compiled
+import Library.Arrays.Repeat.Compiled
+import Library.Arrays.Search.Compiled
+import Library.Arrays.Word.Compiled
+import Library.Hashing.Crc.Compiled
+import Library.Lists.Word.Compiled
+import Library.Sorting.Insertion.Compiled
+import Library.Hashing.Sha256.Compiled
+import Library.Hashing.Sha512.Compiled
+import Library.Hashing.Sha3.Compiled
+import Library.Hashing.SipHash.Compiled
+import Library.Hashing.XxHash64.Compiled
+import LeanExe.Native.ClightCheck
+
+/-!
+The executable of the translator's end-to-end test (`tests/native/run.sh`).  `native-emit emit
+DIR` writes, for each module of `cases`, the C text of its translation with `lx_mem` of `cap`
+pages as `DIR/NAME.c`, a host program `DIR/NAME_host.c`, and the lines that Talos's `run` gives
+for the host's calls as `DIR/NAME.expected`.  `native-emit check DIR` compares each translation
+with the Clight that `clightgen` wrote for it as `DIR/NAME.v`.
+
+The host calls `lx_init`, then makes each call of the case in order, in the same memory.  An
+argument in memory is allocated with the module's `alloc` and written byte by byte: an array as
+its length and words, a list as a chain of records of two slots, and bytes as themselves, passed
+as their address and length.  After each call the host prints the export's name, `lx_status`,
+the results, read from the result globals for a function with several, the four globals, and a
+64-bit FNV-1a checksum of the memory below global 0, the allocator's bump pointer.  Talos runs
+the same allocations, writes, and calls from the module's initial store with its memory cap set
+to `cap`, and the line of a call that traps has the trap's code and the word `trap` in place of
+the results.
+-/
+
+open LeanExe.Native Wasm
+
+/-- The pages of `lx_mem` in the test. -/
+def cap : Nat := 256
+
+inductive Arg where
+  | word (n : UInt64)
+  | array (ws : List UInt64)
+  | chain (ws : List UInt64)
+  | bytes (bs : List UInt8)
+
+structure Call where
+  name : String
+  args : List Arg
+
+structure Case where
+  name : String
+  module : Module
+  calls : List Call
+
+/-- The state of the test: Talos's store, the host's statements, and the number of pointer
+variables the host has used. -/
+structure Sim where
+  store : Store Unit
+  lines : Array String := #[]
+  vars : Nat := 0
+
+abbrev SimM := StateT Sim (Except String)
+
+def fuel : Nat := 100000000
+
+def exportIndex (m : Module) (name : String) : Except String Nat :=
+  match m.exports.find? (·.name == name) with
+  | some e => pure e.funcIdx
+  | none => throw s!"no export {name}"
+
+def emitLine (s : String) : SimM Unit :=
+  modify fun st => { st with lines := st.lines.push s }
+
+/-- Allocates `len` bytes with the module's `alloc` in Talos and in the host, and returns the
+address and the host's variable that holds it. -/
+def alloc (m : Module) (len : Nat) : SimM (UInt64 × String) := do
+  let k ← exportIndex m "alloc"
+  let st ← get
+  match run fuel m k st.store [.i64 (UInt64.ofNat len)] with
+  | .Success [.i64 p] store' =>
+      let v := s!"p{st.vars}"
+      set { st with store := store', vars := st.vars + 1 }
+      emitLine s!"  {v} = alloc({len}ULL);"
+      pure (p, v)
+  | _ => throw s!"alloc {len} does not return an address"
+
+/-- Writes the word `w`, which the host computes as `wText`, at `a + off`. -/
+def write64 (a : UInt64) (aText : String) (off : Nat) (w : UInt64) (wText : String := s!"{w}ULL") :
+    SimM Unit := do
+  modify fun st =>
+    { st with store := { st.store with mem := st.store.mem.write64 (a.toUInt32 + UInt32.ofNat off) w } }
+  emitLine s!"  put64({aText} + {off}ULL, {wText});"
+
+def write8 (a : UInt64) (aText : String) (off : Nat) (b : UInt8) : SimM Unit := do
+  modify fun st =>
+    { st with store := { st.store with mem := st.store.mem.write8 (a.toUInt32 + UInt32.ofNat off) b } }
+  emitLine s!"  put8({aText} + {off}ULL, {b}U);"
+
+/-- The values of an argument, as Talos's values and as the host's C expressions. -/
+def argValues (m : Module) : Arg → SimM (List (UInt64 × String))
+  | .word n => pure [(n, s!"{n}ULL")]
+  | .array ws => do
+      let (p, v) ← alloc m (8 + 8 * ws.length)
+      write64 p v 0 (UInt64.ofNat ws.length)
+      for (w, i) in ws.zipIdx do write64 p v (8 + 8 * i) w
+      pure [(p, v)]
+  | .chain ws => do
+      let mut next : UInt64 × String := (0, "0ULL")
+      for w in ws.reverse do
+        let (p, v) ← alloc m 16
+        write64 (p - 24) s!"{v} - 24ULL" 0 1
+        write64 (p - 16) s!"{v} - 16ULL" 0 2
+        write64 (p - 8) s!"{v} - 8ULL" 0 2
+        write64 p v 0 w
+        write64 p v 8 next.1 next.2
+        next := (p, v)
+      pure [next]
+  | .bytes bs => do
+      let (p, v) ← alloc m bs.length
+      for (b, i) in bs.zipIdx do write8 p v i b
+      pure [(p, v), (UInt64.ofNat bs.length, s!"{bs.length}ULL")]
+
+def fnv (mem : Mem) (stop : Nat) : UInt64 := Id.run do
+  let mut h : UInt64 := 14695981039346656037
+  for a in [0:stop] do
+    h := (h ^^^ (mem.bytes a).toUInt64) * 1099511628211
+  pure h
+
+def globalWords (st : Store Unit) : List UInt64 :=
+  st.globals.globals.map fun
+    | .i64 n => n
+    | _ => 0
+
+def valueWord : Value → UInt64
+  | .i64 n => n
+  | .i32 n => n.toUInt64
+  | .f64 b => b
+  | .f32 b => b.toUInt64
+  | _ => 0
+
+def resultLine (name : String) (status : Nat) (rs : Option (List UInt64)) (st : Store Unit) :
+    String :=
+  let gs := globalWords st
+  let top := (gs.headD 0).toNat
+  let results := match rs with
+    | some ws => String.join (ws.map fun w => s!" {w}")
+    | none => " trap"
+  s!"{name} {status}{results} " ++ " ".intercalate (gs.map toString) ++ s!" {fnv st.mem top}"
+
+/-- Runs the call in Talos, writes the host's statements for it, and returns the expected
+line. -/
+def simCall (m : Module) (c : Call) : SimM String := do
+  let k ← exportIndex m c.name
+  let vals := (← c.args.mapM (argValues m)).flatten
+  let args := vals.map fun (n, _) => Value.i64 n
+  let cargs := ", ".intercalate (vals.map (·.2))
+  let f := functionName m k
+  let rs := (m.funcs[k]?.map (·.results)).getD []
+  -- The bits of a result of type `t`, a C expression.
+  let bits : ValueType → String → String := fun t e =>
+    if t == .f64 then s!"lx_bits({e})" else if t == .f32 then s!"lx_bits32({e})" else e
+  let letter : ValueType → String := fun t =>
+    if t == .i32 then "i" else if t == .f64 then "d" else if t == .f32 then "f" else "l"
+  let callText := match rs with
+    | [] => s!"  lx_status = 0U; {f}({cargs}); nres = 0;"
+    | [t] => s!"  lx_status = 0U; res[0] = {bits t s!"{f}({cargs})"}; nres = 1;"
+    | _ => s!"  lx_status = 0U; {f}({cargs});" ++
+        String.join (rs.zipIdx.map fun (t, i) =>
+          s!" res[{i}] = {bits t s!"lx_r{i}_{letter t}"};") ++
+        s!" nres = {rs.length};"
+  emitLine callText
+  emitLine s!"  report(\"{c.name}\");"
+  match run fuel m k (← get).store args.reverse with
+  | .Success vs store' =>
+      modify fun st => { st with store := store' }
+      pure (resultLine c.name 0 (some (vs.reverse.map valueWord)) store')
+  | .Trap store' msg =>
+      modify fun st => { st with store := store' }
+      pure (resultLine c.name (trapCode msg) none store')
+  | _ => throw s!"{c.name}: the run neither returns nor traps"
+
+def initialStore (m : Module) : Store Unit :=
+  { (m.initialStore : Store Unit) with memoryCaps := [cap] }
+
+/-- The C type of the result global `n`, from its suffix. -/
+def resultCType (n : String) : String :=
+  if n.endsWith "_i" then "unsigned int" else if n.endsWith "_d" then "double"
+  else if n.endsWith "_f" then "float" else "unsigned long long"
+
+def hostText (t : Translation) (m : Module) (body : Array String) (vars : Nat) : String :=
+  let globals := (List.range m.globals.length).map fun i => s!"lx_g{i}"
+  let protos := t.cprogram.prog_defs.filterMap fun (id, g) =>
+    match g with
+    | .Gfun (.Internal f) =>
+        match cprototype t.gname tempName id f with
+        | .ok s => some s
+        | .error _ => none
+    | _ => none
+  let gfmt := " ".intercalate (globals.map fun _ => "%llu")
+  let gargs := String.join (globals.map fun g => s!", {g}")
+  let resGlobals := t.names.filterMap fun (_, n) =>
+    if n.startsWith "lx_r" then
+      some s!"extern {resultCType n} {n};\n"
+    else none
+  let decls := if vars = 0 then "" else
+    "  unsigned long long " ++ ", ".intercalate ((List.range vars).map fun i => s!"p{i}") ++ ";\n"
+  "int printf(const char *, ...);\n" ++
+  "extern unsigned int lx_status;\n" ++
+  "extern unsigned long long lx_mem[];\n" ++
+  String.join (globals.map fun g => s!"extern unsigned long long {g};\n") ++
+  String.join resGlobals ++ String.join protos ++
+  "static unsigned long long res[64];\nstatic int nres;\n" ++
+  "static unsigned long long lx_bits(double d) {\n" ++
+  "  union { double d; unsigned long long u; } x;\n  x.d = d;\n  return x.u;\n}\n" ++
+  "static unsigned long long lx_bits32(float f) {\n" ++
+  "  union { float f; unsigned int u; } x;\n  x.f = f;\n  return x.u;\n}\n" ++
+  "static void put8(unsigned long long a, unsigned int b) {\n" ++
+  "  ((unsigned char *) lx_mem)[a] = (unsigned char) b;\n}\n" ++
+  "static void put64(unsigned long long a, unsigned long long w) {\n" ++
+  "  int i;\n  for (i = 0; i < 8; i++) put8(a + i, (unsigned int) (w >> (8 * i)) & 255U);\n}\n" ++
+  "static unsigned long long fnv(void) {\n" ++
+  "  unsigned long long h = 14695981039346656037ULL, a;\n" ++
+  "  for (a = 0; a < lx_g0; a++) h = (h ^ ((unsigned char *) lx_mem)[a]) * 1099511628211ULL;\n" ++
+  "  return h;\n}\n" ++
+  "static void report(const char *name) {\n  int i;\n  printf(\"%s %u\", name, lx_status);\n" ++
+  "  if (lx_status != 0U) printf(\" trap\");\n" ++
+  "  else for (i = 0; i < nres; i++) printf(\" %llu\", res[i]);\n" ++
+  s!"  printf(\" {gfmt} %llu\\n\"{gargs}, fnv());\n}\n" ++
+  (if vars = 0 then "" else
+    "static unsigned long long alloc(unsigned long long n) {\n" ++
+    "  unsigned long long p;\n  lx_status = 0U;\n  p = lxf_alloc(n);\n" ++
+    "  if (lx_status != 0U) printf(\"alloc %llu: trap %u\\n\", n, lx_status);\n  return p;\n}\n") ++
+  "int main(void) {\n" ++ decls ++ "  lx_init();\n" ++
+  String.join (body.toList.map (· ++ "\n")) ++ "  return 0;\n}\n"
+
+def emitCase (dir : String) (c : Case) : IO Unit := do
+  let some t := translate cap c.module
+    | throw <| IO.userError s!"native-emit: {c.name}: the module does not translate"
+  match t.text with
+  | .error e => throw <| IO.userError s!"native-emit: {c.name}: {e}"
+  | .ok text => IO.FS.writeFile s!"{dir}/{c.name}.c" text
+  let run : SimM (List String) := c.calls.mapM (simCall c.module)
+  match run.run { store := initialStore c.module } with
+  | .error e => throw <| IO.userError s!"native-emit: {c.name}: {e}"
+  | .ok (lines, st) =>
+      IO.FS.writeFile s!"{dir}/{c.name}.expected" (String.join (lines.map (· ++ "\n")))
+      IO.FS.writeFile s!"{dir}/{c.name}_host.c" (hostText t c.module st.lines st.vars)
+  IO.println s!"native-emit: {c.name}: functions {t.funcs}"
+
+/-! ## The cases -/
+
+/-- The binary32 forms on words: each function reads its arguments' low 32 bits as floats and
+returns the result's bits, so that the expected lines hold Talos's bits, except `pair`, which
+returns a float and a word.  The calls cover NaNs with payloads, both zeros, the smallest
+subnormal, the largest float, both infinities, the values near the bounds of the saturating
+truncations, integers, halves, and quarters for `nearest`, and squares, non-squares, subnormals,
+and negative values for `sqrt`. -/
+def f32ops : Module :=
+  let d (i : Nat) : List Instruction := [.localGet i, .wrapI64, .f32ReinterpretI32]
+  let res : List Instruction := [.i32ReinterpretF32, .extendUI32]
+  let bin (op : Instruction) : Function :=
+    { params := [.i64, .i64], results := [.i64], body := d 0 ++ d 1 ++ [op] ++ res }
+  let cmp (op : Instruction) : Function :=
+    { params := [.i64, .i64], results := [.i64], body := d 0 ++ d 1 ++ [op, .extendUI32] }
+  let un (op : Instruction) : Function :=
+    { params := [.i64], results := [.i64], body := d 0 ++ [op] ++ res }
+  let k (v : UInt32) : Function := { results := [.i64], body := [.f32Const v] ++ res }
+  { funcs := [bin .f32Add, bin .f32Sub, bin .f32Mul, bin .f32Div,
+      cmp .f32Eq, cmp .f32Lt, cmp .f32Le, un .f32Abs,
+      { params := [.i64], results := [.i64], body := [.localGet 0, .f32ConvertI64U] ++ res },
+      { params := [.i64], results := [.i64],
+        body := [.localGet 0, .wrapI64, .f32ConvertI32S] ++ res },
+      { params := [.i64], results := [.i64], body := d 0 ++ [.i64TruncSatF32U] },
+      { params := [.i64], results := [.i64], body := d 0 ++ [.i32TruncSatF32S, .extendUI32] },
+      k 0x7FA00001, k 0x80000000, k 0xBFC00000, k 0xFF800000, k 0x7F7FFFFF, un .f32Nearest,
+      { params := [.i64, .i64], results := [.f32, .i64], body := d 0 ++ [.localGet 1] },
+      un .f32Sqrt]
+    exports := [⟨"add", 0⟩, ⟨"sub", 1⟩, ⟨"mul", 2⟩, ⟨"div", 3⟩, ⟨"eq", 4⟩, ⟨"lt", 5⟩,
+      ⟨"le", 6⟩, ⟨"abs", 7⟩, ⟨"convu", 8⟩, ⟨"convs", 9⟩, ⟨"truncu", 10⟩, ⟨"truncs", 11⟩,
+      ⟨"snan", 12⟩, ⟨"negzero", 13⟩, ⟨"neg", 14⟩, ⟨"neginf", 15⟩, ⟨"max", 16⟩,
+      ⟨"nearest", 17⟩, ⟨"pair", 18⟩, ⟨"sqrt", 19⟩]
+    memory := some { pagesMin := 1 }
+    globals := [{ init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }] }
+
+/-- Binary32 operands: both zeros, ±1, the smallest subnormal, the largest float, both
+infinities, NaNs with payloads (a signaling one among them), halves and their neighbours for
+`nearest`, and the values at the bounds of the saturating truncations. -/
+def edges32 : List UInt64 :=
+  [0, 0x80000000, 0x3F800000, 0xBF800000, 0x00000001, 0x7F7FFFFF, 0x7F800000, 0xFF800000,
+   0x7FC00000, 0x7FA00001, 0xFFC12345, 0x3F000000, 0x3FC00000, 0x40200000, 0xBF000000,
+   0xC0200000, 0x4AFFFFFF, 0x4B000000, 0x4F000000, 0x4EFFFFFF, 0xCF000000, 0x5F800000,
+   0x5F7FFFFF, 0xBF7FFFFF, 0x40400000, 0x41100000]
+
+def words (n : Nat) (f : Nat → UInt64) : List UInt64 := (List.range n).map f
+
+def pairs : List (UInt64 × UInt64) :=
+  [(0, 0), (0, 7), (7, 0), (12, 18), (1071, 462), (0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFE),
+   (12200160415121876738, 7540113804746346429), (2 ^ 63, 2 ^ 62)]
+
+def big : List UInt64 := words 300 fun i => UInt64.ofNat ((i * 7919 + 13) % 1000)
+
+/-- A module of memory operations: loads and stores of words at offsets 0, 5, and 3 and of bytes
+at offsets 0, 7, and 2, `memory.size`, and `memory.grow`, with two pages, data segments that begin and end off a word boundary, and global 0
+at 128, so that the checksum covers the first 128 bytes. -/
+def memops : Module :=
+  { funcs := [
+      { params := [.i64], results := [.i64], body := [.localGet 0, .wrapI64, .load64 0] },
+      { params := [.i64], results := [.i64], body := [.localGet 0, .wrapI64, .load64 5] },
+      { params := [.i64, .i64], body := [.localGet 0, .wrapI64, .localGet 1, .store64 0] },
+      { params := [.i64, .i64], body := [.localGet 0, .wrapI64, .localGet 1, .store64 3] },
+      { results := [.i64], body := [.memorySize, .extendUI32] },
+      { params := [.i64], results := [.i64], body := [.localGet 0, .wrapI64, .memoryGrow, .extendUI32] },
+      { params := [.i64], results := [.i64], body := [.localGet 0, .wrapI64, .load8U 0, .extendUI32] },
+      { params := [.i64], results := [.i64], body := [.localGet 0, .wrapI64, .load8U 7, .extendUI32] },
+      { params := [.i64, .i64], body := [.localGet 0, .wrapI64, .localGet 1, .wrapI64, .store8 0] },
+      { params := [.i64, .i64], body := [.localGet 0, .wrapI64, .localGet 1, .wrapI64, .store8 2] }]
+    exports := [⟨"load", 0⟩, ⟨"load5", 1⟩, ⟨"store", 2⟩, ⟨"store3", 3⟩, ⟨"size", 4⟩, ⟨"grow", 5⟩,
+      ⟨"load8", 6⟩, ⟨"load8o", 7⟩, ⟨"store8", 8⟩, ⟨"store8o", 9⟩]
+    memory := some { pagesMin := 2
+                     data := [{ offset := some 13, bytes := (List.range 20).map fun i => UInt8.ofNat (i + 1) },
+                              { offset := some 64, bytes := (List.range 24).map fun i => UInt8.ofNat (200 + i) },
+                              { offset := some 70, bytes := [0xAA, 0xBB] }] }
+    globals := [{ init := .i64 128 }, { init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }] }
+
+/-- The binary64 forms on words: each function reads its arguments' bits as doubles and returns
+the result's bits, so that the expected lines hold Talos's bits.  The calls produce NaNs from
+numbers and from NaN operands with payloads, compare NaNs, convert at the bounds of
+`trunc_sat`, and load the constants that go through `lx_pun` and those that are negated. -/
+def fops : Module :=
+  let d (i : Nat) : List Instruction := [.localGet i, .f64ReinterpretI64]
+  let bin (op : Instruction) : Function :=
+    { params := [.i64, .i64], results := [.i64], body := d 0 ++ d 1 ++ [op, .i64ReinterpretF64] }
+  let cmp (op : Instruction) : Function :=
+    { params := [.i64, .i64], results := [.i64], body := d 0 ++ d 1 ++ [op, .extendUI32] }
+  let un (op : Instruction) : Function :=
+    { params := [.i64], results := [.i64], body := d 0 ++ [op, .i64ReinterpretF64] }
+  let k (v : UInt64) : Function := { results := [.i64], body := [.f64Const v, .i64ReinterpretF64] }
+  { funcs := [bin .f64Add, bin .f64Sub, bin .f64Mul, bin .f64Div, un .f64Sqrt,
+      cmp .f64Eq, cmp .f64Lt, cmp .f64Le, un .f64Abs,
+      { params := [.i64], results := [.i64], body := [.localGet 0, .f64ConvertI64U, .i64ReinterpretF64] },
+      { params := [.i64], results := [.i64], body := d 0 ++ [.i64TruncSatF64U] },
+      k 0x7FF4000000000001, k 0x8000000000000000, k 0xBFF8000000000000, k 0xFFF0000000000000,
+      k 0x7FEFFFFFFFFFFFFF,
+      { params := [.i64, .i64], results := [.f64, .f64],
+        body := d 0 ++ d 1 ++ [.f64Div] ++ d 0 ++ d 1 ++ [.f64Mul] }]
+    exports := [⟨"add", 0⟩, ⟨"sub", 1⟩, ⟨"mul", 2⟩, ⟨"div", 3⟩, ⟨"sqrt", 4⟩, ⟨"eq", 5⟩,
+      ⟨"lt", 6⟩, ⟨"le", 7⟩, ⟨"abs", 8⟩, ⟨"conv", 9⟩, ⟨"trunc", 10⟩, ⟨"snan", 11⟩,
+      ⟨"negzero", 12⟩, ⟨"neg", 13⟩, ⟨"neginf", 14⟩, ⟨"max", 15⟩, ⟨"divmul", 16⟩]
+    memory := some { pagesMin := 1 }
+    globals := [{ init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }] }
+
+/-- Doubles at the edges: zeros, ones, infinities, a signaling and two quiet NaNs with
+payloads, the smallest subnormal, the largest double, and the bounds of `trunc_sat`. -/
+def edges : List UInt64 :=
+  [0, 0x8000000000000000, 0x3FF0000000000000, 0xBFF0000000000000, 0x7FF0000000000000,
+   0xFFF0000000000000, 0x7FF0000000000001, 0xFFF8000000000005, 0x7FF8000000000000, 1,
+   0x7FEFFFFFFFFFFFFF, 0x43F0000000000000, 0x43EFFFFFFFFFFFFF, 0xBFE0000000000000]
+
+def cases : List Case :=
+  [{ name := "memops", module := memops
+     calls := [
+       { name := "load", args := [.word 8] },
+       { name := "load", args := [.word 13] },
+       { name := "load5", args := [.word 60] },
+       { name := "store3", args := [.word 0, .word 0x0102030405060708] },
+       { name := "load", args := [.word 0] },
+       { name := "load", args := [.word 3] },
+       { name := "store", args := [.word 40, .word 0xFFEEDDCCBBAA9988] },
+       { name := "load5", args := [.word 37] },
+       { name := "load", args := [.word 131064] },
+       { name := "load", args := [.word 131065] },
+       { name := "load5", args := [.word 131060] },
+       { name := "store3", args := [.word 131061, .word 7] },
+       { name := "store3", args := [.word 131062, .word 7] },
+       { name := "load", args := [.word 0xFFFFFFF8] },
+       { name := "load8", args := [.word 13] },
+       { name := "load8", args := [.word 12] },
+       { name := "load8o", args := [.word 63] },
+       { name := "store8", args := [.word 100, .word 0x1FF] },
+       { name := "load8", args := [.word 100] },
+       { name := "store8o", args := [.word 99, .word 0x12345] },
+       { name := "load8", args := [.word 101] },
+       { name := "load", args := [.word 96] },
+       { name := "load8", args := [.word 131071] },
+       { name := "load8", args := [.word 131072] },
+       { name := "load8o", args := [.word 131064] },
+       { name := "load8o", args := [.word 131065] },
+       { name := "store8", args := [.word 131071, .word 7] },
+       { name := "load8", args := [.word 131071] },
+       { name := "store8", args := [.word 131072, .word 7] },
+       { name := "store8o", args := [.word 131069, .word 9] },
+       { name := "store8o", args := [.word 131070, .word 9] },
+       { name := "load8", args := [.word 0xFFFFFFFF] },
+       { name := "load8o", args := [.word 0xFFFFFFFA] },
+       { name := "store8o", args := [.word 0xFFFFFFFE, .word 1] },
+       { name := "size", args := [] },
+       { name := "grow", args := [.word 3] },
+       { name := "size", args := [] },
+       { name := "store3", args := [.word 327666, .word 0x1122334455667788] },
+       { name := "load5", args := [.word 327664] },
+       { name := "load", args := [.word 327672] },
+       { name := "load", args := [.word 327673] },
+       { name := "grow", args := [.word (UInt64.ofNat (cap - 5))] },
+       { name := "grow", args := [.word 1] },
+       { name := "grow", args := [.word 0] },
+       { name := "grow", args := [.word 0xFFFFFFFF] },
+       { name := "size", args := [] },
+       { name := "load", args := [.word (UInt64.ofNat (cap * 65536 - 8))] },
+       { name := "load", args := [.word (UInt64.ofNat (cap * 65536 - 7))] },
+       { name := "store8", args := [.word (UInt64.ofNat (cap * 65536 - 1)), .word 0xAB] },
+       { name := "load8", args := [.word (UInt64.ofNat (cap * 65536 - 1))] },
+       { name := "load8", args := [.word (UInt64.ofNat (cap * 65536))] }] },
+   { name := "fops", module := fops
+     calls :=
+       (["add", "sub", "mul", "div", "eq", "lt", "le", "divmul"].flatMap fun f =>
+         edges.flatMap fun a => [0x7FF0000000000001, 0xFFF0000000000000, 0x3FF0000000000000,
+           0].map fun b => { name := f, args := [.word a, .word b] }) ++
+       (["sqrt", "abs", "trunc"].flatMap fun f => edges.map fun a => { name := f, args := [.word a] }) ++
+       ([0, 1, 0xFFFFFFFFFFFFFFFF, 0x8000000000000000, 9007199254740993].map fun a =>
+         { name := "conv", args := [.word a] }) ++
+       (["snan", "negzero", "neg", "neginf", "max"].map fun f => { name := f, args := [] }) },
+   { name := "f32ops", module := f32ops
+     calls :=
+       (["add", "sub", "mul", "div", "eq", "lt", "le"].flatMap fun f =>
+         edges32.flatMap fun a => [0x7FA00001, 0xFF800000, 0x3F800000, 0, 0x4F000000].map fun b =>
+           { name := f, args := [.word a, .word b] }) ++
+       (["abs", "truncu", "truncs", "nearest", "sqrt"].flatMap fun f =>
+         edges32.map fun a => { name := f, args := [.word a] }) ++
+       ([0x3E800000, 0x3F400000, 0xBF400000, 0x40600000, 0xC0600000, 0x4B7FFFFF, 0x4A800001,
+         0x00800000, 0x80000001].map fun a => { name := "nearest", args := [.word a] }) ++
+       ([0x40000000, 0x40800000, 0x3DCCCCCD, 0x3F800001, 0x3F7FFFFF, 0x00000002, 0x00800000,
+         0x007FFFFF, 0x80000001, 0xC0800000, 0x4B7FFFFF, 0x5A0E1BCA].map fun a =>
+         { name := "sqrt", args := [.word a] }) ++
+       ([(0x7FA00001, 5), (0x80000000, 0xFFFFFFFFFFFFFFFF), (0x3F800000, 0)].map fun (a, b) =>
+         { name := "pair", args := [.word a, .word b] }) ++
+       ([0, 1, 0xFFFFFFFFFFFFFFFF, 0x8000000000000000, 16777217, 0xFFFFFFFFFFFFFF7F].map fun a =>
+         { name := "convu", args := [.word a] }) ++
+       ([0, 1, 0xFFFFFFFF, 0x80000000, 0x7FFFFFFF, 16777217, 0xFF000001].map fun a =>
+         { name := "convs", args := [.word a] }) ++
+       (["snan", "negzero", "neg", "neginf", "max"].map fun f => { name := f, args := [] }) },
+   { name := "gcd_loop", module := TestSupport.Native.Gcd.loopCompiled.module
+     calls := pairs.map fun (a, b) => { name := "gcd", args := [.word a, .word b] } },
+   { name := "gcd_rec", module := TestSupport.Native.Gcd.recCompiled.module
+     calls := pairs.map fun (a, b) => { name := "gcd", args := [.word a, .word b] } },
+   { name := "arrays", module := Verified.Examples.Arrays.compiled.module
+     calls := [
+       { name := "sum", args := [.array []] },
+       { name := "sum", args := [.array [1, 2, 3, 0xFFFFFFFFFFFFFFFF]] },
+       { name := "sum", args := [.array big] },
+       { name := "dot", args := [.array [1, 2, 3], .array [4, 5, 6]] },
+       { name := "dot", args := [.array [1, 2, 3], .array [4]] },
+       { name := "count", args := [.array [5, 1, 5, 5, 2], .word 5] },
+       { name := "at3", args := [.array [10, 20, 30, 40], .word 2] },
+       { name := "at3", args := [.array [10, 20, 30, 40], .word 3] },
+       { name := "at3", args := [.array [10, 20, 30, 40], .word 0xFFFFFFFFFFFFFFFF] },
+       { name := "sumBoth", args := [.array [1, 2], .array [30, 40, 50]] },
+       { name := "larger", args := [.array [1, 2], .array [30, 40, 50]] },
+       { name := "larger", args := [.array [1, 2, 3, 4], .array [30]] }] },
+   { name := "liblists", module := Library.Lists.Word.compiled.module
+     calls := [
+       { name := "listSum", args := [.chain []] },
+       { name := "listSum", args := [.chain [1, 2, 3, 4]] },
+       { name := "range", args := [.word 0] },
+       { name := "range", args := [.word 12] },
+       { name := "sum", args := [.chain [5, 6, 7], .word 100] },
+       { name := "reverse", args := [.chain [1, 2, 3], .chain [9]] },
+       { name := "increment", args := [.chain [1, 2, 0xFFFFFFFFFFFFFFFF]] },
+       { name := "increment", args := [.chain (words 999 UInt64.ofNat)] },
+       { name := "increment", args := [.chain (words 1001 UInt64.ofNat)] }] },
+   { name := "libsort", module := Library.Sorting.Insertion.compiled.module
+     calls := [
+       { name := "sortInsert", args := [.array []] },
+       { name := "sortInsert", args := [.array [3, 1, 2]] },
+       { name := "sortInsert", args := [.array big] }] },
+   { name := "libsearch", module := Library.Arrays.Search.compiled.module
+     calls := [
+       { name := "count", args := [.array [1, 7, 7, 3], .word 7] },
+       { name := "firstZero", args := [.array [4, 5, 0, 6], .word 4] }] },
+   { name := "libfilter", module := Library.Arrays.Filter.compiled.module
+     calls := [
+       { name := "removeAll", args := [.array [1, 2, 1, 3, 1], .word 1] },
+       { name := "below", args := [.array [9, 1, 8, 2, 7, 3], .word 5, .word 2] },
+       { name := "clearUntil", args := [.array [1, 2, 3, 4], .word 3] }] },
+   { name := "librepeat", module := Library.Arrays.Repeat.compiled.module
+     calls := [{ name := "repeated", args := [.array [1, 2, 3], .word 4] }] },
+   { name := "librange", module := Library.Arrays.Range.compiled.module
+     calls := [{ name := "evens", args := [.word 0] }, { name := "evens", args := [.word 9] }] },
+   { name := "libwordarray", module := Library.Arrays.Word.compiled.module
+     calls := [{ name := "scaled", args := [.array [1, 2, 3], .word 0x100000001] }] },
+   { name := "crc", module := Library.Hashing.Crc.compiled.module
+     calls := [
+       { name := "crc32", args := [.array [], .word 0] },
+       { name := "crc32", args := [.array [0x3837363534333231, 0x39], .word 9] },
+       { name := "crc32c", args := [.array [0x3837363534333231, 0x39], .word 9] },
+       { name := "crc32Update", args := [.word 0xCBF43926, .array [0x61], .word 1] },
+       { name := "crc32", args := [.array (words 40 fun i => UInt64.ofNat (i * 0x0101010101010101)), .word 317] }] },
+   { name := "arrays_ab", module := Verified.Examples.Arrays.compiled.module
+     calls := [
+       { name := "firstAbove", args := [.array [1, 9, 3, 12], .word 5] },
+       { name := "firstAbove", args := [.array [1, 2], .word 5] }] },
+   { name := "sha256", module := Library.Hashing.Sha256.compiled.module
+     calls := [
+       { name := "sha256", args := [.array [], .word 0] },
+       { name := "sha256", args := [.array [0x636261], .word 3] },
+       { name := "sha224", args := [.array (words 20 fun i => UInt64.ofNat (i * 977)), .word 150] }] },
+   { name := "sha512", module := Library.Hashing.Sha512.compiled.module
+     calls := [
+       { name := "sha512", args := [.array [0x636261], .word 3] },
+       { name := "sha384", args := [.array (words 30 fun i => UInt64.ofNat (i * 977)), .word 230] }] },
+   { name := "sha3", module := Library.Hashing.Sha3.compiled.module
+     calls := [
+       { name := "sha3_256", args := [.array [], .word 0] },
+       { name := "sha3_512", args := [.array (words 30 fun i => UInt64.ofNat (i * 977)), .word 200] },
+       { name := "shake128", args := [.array [0x636261], .word 3, .word 40] }] },
+   { name := "siphash", module := Library.Hashing.SipHash.compiled.module
+     calls := [
+       { name := "siphash24", args := [.word 0x0706050403020100, .word 0x0F0E0D0C0B0A0908,
+           .array [0x0706050403020100, 0x0E0D0C0B0A0908], .word 15] },
+       { name := "sipRound", args := [.word 1, .word 2, .word 3, .word 4] }] },
+   { name := "xxhash64", module := Library.Hashing.XxHash64.compiled.module
+     calls := [
+       { name := "xxh64", args := [.array [], .word 0, .word 0] },
+       { name := "xxh64", args := [.array (words 9 fun i => UInt64.ofNat (i * 0x0101010101010101)), .word 70, .word 7] }] }]
+
+def emit (dir : String) : IO Unit := do
+  IO.FS.createDirAll dir
+  for c in cases do emitCase dir c
+
+def check (dir : String) : IO UInt32 := do
+  let mut failed := false
+  for c in cases do
+    let some t := translate cap c.module
+      | throw <| IO.userError s!"native-emit: {c.name}: the module does not translate"
+    let text ← IO.FS.readFile s!"{dir}/{c.name}.v"
+    match ClightCheck.check t text with
+    | .error e =>
+        IO.eprintln s!"native-emit: {c.name}: {e}"
+        failed := true
+    | .ok [] => IO.println s!"native-emit: {c.name}: the clightgen program matches the translation"
+    | .ok errors =>
+        for e in errors do IO.eprintln s!"native-emit: {c.name}: {e}"
+        failed := true
+  pure (if failed then 1 else 0)
+
+def main (args : List String) : IO UInt32 := do
+  match args with
+  | ["emit", dir] => emit dir; pure 0
+  | ["check", dir] => check dir
+  | ["names"] => do
+      for c in cases do IO.println c.name
+      pure 0
+  | _ => throw <| IO.userError "usage: native-emit emit|check DIR, or native-emit names"
