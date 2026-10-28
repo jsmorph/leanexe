@@ -254,7 +254,8 @@ def emitCase (dir : String) (c : Case) : IO Unit := do
 returns the result's bits, so that the expected lines hold Talos's bits, except `pair`, which
 returns a float and a word.  The calls cover NaNs with payloads, both zeros, the smallest
 subnormal, the largest float, both infinities, the values near the bounds of the saturating
-truncations, and integers, halves, and quarters for `nearest`. -/
+truncations, integers, halves, and quarters for `nearest`, and squares, non-squares, subnormals,
+and negative values for `sqrt`. -/
 def f32ops : Module :=
   let d (i : Nat) : List Instruction := [.localGet i, .wrapI64, .f32ReinterpretI32]
   let res : List Instruction := [.i32ReinterpretF32, .extendUI32]
@@ -273,11 +274,12 @@ def f32ops : Module :=
       { params := [.i64], results := [.i64], body := d 0 ++ [.i64TruncSatF32U] },
       { params := [.i64], results := [.i64], body := d 0 ++ [.i32TruncSatF32S, .extendUI32] },
       k 0x7FA00001, k 0x80000000, k 0xBFC00000, k 0xFF800000, k 0x7F7FFFFF, un .f32Nearest,
-      { params := [.i64, .i64], results := [.f32, .i64], body := d 0 ++ [.localGet 1] }]
+      { params := [.i64, .i64], results := [.f32, .i64], body := d 0 ++ [.localGet 1] },
+      un .f32Sqrt]
     exports := [⟨"add", 0⟩, ⟨"sub", 1⟩, ⟨"mul", 2⟩, ⟨"div", 3⟩, ⟨"eq", 4⟩, ⟨"lt", 5⟩,
       ⟨"le", 6⟩, ⟨"abs", 7⟩, ⟨"convu", 8⟩, ⟨"convs", 9⟩, ⟨"truncu", 10⟩, ⟨"truncs", 11⟩,
       ⟨"snan", 12⟩, ⟨"negzero", 13⟩, ⟨"neg", 14⟩, ⟨"neginf", 15⟩, ⟨"max", 16⟩,
-      ⟨"nearest", 17⟩, ⟨"pair", 18⟩]
+      ⟨"nearest", 17⟩, ⟨"pair", 18⟩, ⟨"sqrt", 19⟩]
     memory := some { pagesMin := 1 }
     globals := [{ init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }, { init := .i64 0 }] }
 
@@ -423,10 +425,13 @@ def cases : List Case :=
        (["add", "sub", "mul", "div", "eq", "lt", "le"].flatMap fun f =>
          edges32.flatMap fun a => [0x7FA00001, 0xFF800000, 0x3F800000, 0, 0x4F000000].map fun b =>
            { name := f, args := [.word a, .word b] }) ++
-       (["abs", "truncu", "truncs", "nearest"].flatMap fun f =>
+       (["abs", "truncu", "truncs", "nearest", "sqrt"].flatMap fun f =>
          edges32.map fun a => { name := f, args := [.word a] }) ++
        ([0x3E800000, 0x3F400000, 0xBF400000, 0x40600000, 0xC0600000, 0x4B7FFFFF, 0x4A800001,
          0x00800000, 0x80000001].map fun a => { name := "nearest", args := [.word a] }) ++
+       ([0x40000000, 0x40800000, 0x3DCCCCCD, 0x3F800001, 0x3F7FFFFF, 0x00000002, 0x00800000,
+         0x007FFFFF, 0x80000001, 0xC0800000, 0x4B7FFFFF, 0x5A0E1BCA].map fun a =>
+         { name := "sqrt", args := [.word a] }) ++
        ([(0x7FA00001, 5), (0x80000000, 0xFFFFFFFFFFFFFFFF), (0x3F800000, 0)].map fun (a, b) =>
          { name := "pair", args := [.word a, .word b] }) ++
        ([0, 1, 0xFFFFFFFFFFFFFFFF, 0x8000000000000000, 16777217, 0xFFFFFFFFFFFFFF7F].map fun a =>

@@ -1,6 +1,6 @@
 import LeanExe.Native.Proof.Calls
 import LeanExe.Native.Proof.MemOps
-import LeanExe.Native.Proof.Nearest32
+import LeanExe.Native.Proof.Sqrt32
 
 /-!
 The simulation of every instruction, and of instruction lists at every fuel up to a bound, for
@@ -85,6 +85,7 @@ theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.
   case f32Le => exact (sim_f32Le F).toL
   case f32Abs => exact (sim_f32Abs hE F).toL
   case f32Nearest => exact (sim_f32Nearest hE F).toL
+  case f32Sqrt => exact (sim_f32Sqrt hE F).toL
   case f32ConvertI64U => exact (sim_f32ConvertI64U F).toL
   case f32ConvertI32S => exact (sim_f32ConvertI32S F).toL
   case f32ReinterpretI32 => exact (sim_f32ReinterpretI32 hE F).toL

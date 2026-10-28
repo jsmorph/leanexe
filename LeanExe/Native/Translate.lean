@@ -27,11 +27,11 @@ reads or writes as an `unsigned char` of `lx_mem`: `load8U` converts the byte to
 writes the module's data segments into `lx_mem`, with a word store for each aligned word that a
 segment covers and a byte store for each other byte.
 
-This version handles the forms of milestones M2 to M5, the byte forms, and the binary32 forms
-other than `sqrt`: locals, globals, the `i64` and `i32` operations of the subset, `block`, `loop`,
-`iff`, `br`, `br_if`, `ret`, `call`, `unreachable`, `load64`, `store64`, `load8U`, `store8`,
-`memory.size`, `memory.grow`, the binary64 forms, and those binary32 forms, in functions with one
-result or several, which return several results in the globals `lx_r<i>_<t>`.  An operation
+This version handles the forms of milestones M2 to M6 and the byte forms: locals, globals, the
+`i64` and `i32` operations of the subset, `block`, `loop`, `iff`, `br`, `br_if`, `ret`, `call`,
+`unreachable`, `load64`, `store64`, `load8U`, `store8`, `memory.size`, `memory.grow`, and the
+binary64 and binary32 forms, in functions with one result or several, which return several
+results in the globals `lx_r<i>_<t>`.  An operation
 that rounds replaces a NaN result by Talos's canonical NaN, and a value changes type through the
 cell `lx_pun`.  A function that uses another form, or that calls a function the translator omits,
 is omitted, and `translate` returns the program of the remaining functions.  A function of the
@@ -788,6 +788,10 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
             (.Sset (slotId (h - 2) .f32) (.Ebinop op (tmp (h - 2) .f32) (tmp (h - 1) .f32) tfloat))
             (canonStmt32 (h - 2)),
           some (.f32 :: σ'), n)
+      else none
+  | .f32Sqrt => do
+      let σ' ← pops L σ 1
+      if σ.head? = some .f32 then pure (sqrt32Stmt (h - 1) n, some (.f32 :: σ'), n + 1)
       else none
   | .f32Nearest => do
       let σ' ← pops L σ 1

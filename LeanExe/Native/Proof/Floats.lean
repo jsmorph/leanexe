@@ -702,17 +702,17 @@ section
 
 variable {A : Archi} {X : ExtSem} {E : Env} {mod : Module} {c : FCtx}
 
-/-- The call of `__builtin_fsqrt`. -/
-theorem exec_sqrt_call (hE : EnvOk E) {le : temp_env} {m : mem} {h k : Nat} {x : UInt64}
-    (hx : le[slotId h .f64]? = some (.Vfloat x)) :
-    exec_stmt A X E.ge empty_env le m (.Scall (some (callId k)) sqrtVar [tmp h .f64]) E0
+/-- The call of `__builtin_fsqrt` on an expression of type `double`. -/
+theorem exec_sqrt_call (hE : EnvOk E) {le : temp_env} {m : mem} {k : Nat} {a : expr}
+    {x : UInt64} (ha : eval_expr A E.ge empty_env le m a (.Vfloat x)) (hty : typeof a = tdouble) :
+    exec_stmt A X E.ge empty_env le m (.Scall (some (callId k)) sqrtVar [a]) E0
       (le.insert (callId k) (.Vfloat (LClight.Float.sqrt A x))) m .Out_normal := by
   have hcallee : eval_expr A E.ge empty_env le m sqrtVar (.Vptr E.sqrt Ptrofs.zero) :=
     .eval_Elvalue _ _ _ _ _ (eval_lvalue_global hE.sqrt) (.deref_loc_reference rfl)
   have hfind : Genv.find_funct E.ge (.Vptr E.sqrt Ptrofs.zero) = some sqrtFun := by
     simp [Genv.find_funct, hE.sqrt_fun]
-  have hevl : eval_exprlist A E.ge empty_env le m [tmp h .f64] [tdouble] [.Vfloat x] :=
-    .eval_Econs _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx) rfl .eval_Enil
+  have hevl : eval_exprlist A E.ge empty_env le m [a] [tdouble] [.Vfloat x] :=
+    .eval_Econs _ _ _ _ _ _ _ ha (by rw [hty]; rfl) .eval_Enil
   have hlook : lookup_builtin_function "__builtin_fsqrt" sqrtSig = some .BI_fsqrt := by decide
   have hcall : eval_funcall A X E.ge m sqrtFun [.Vfloat x] E0 m
       (.Vfloat (LClight.Float.sqrt A x)) := by
@@ -733,7 +733,8 @@ theorem sim_f64Sqrt (hE : EnvOk E) (F : Nat) : InstrSim A X E mod c F .f64Sqrt :
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_f64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      have h1 := exec_sqrt_call (A := A) (X := X) (m := m) (k := n) hE hx
+      have h1 := exec_sqrt_call (A := A) (X := X) (m := m) (k := n) hE
+        (.eval_Etempvar _ _ _ hx) rfl
       let le1 := le.insert (callId n) (.Vfloat (LClight.Float.sqrt A x))
       have h2 : exec_stmt A X E.ge empty_env le1 m
           (.Sset (slotId σr.length .f64) (.Etempvar (callId n) tdouble)) E0
