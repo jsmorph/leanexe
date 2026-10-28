@@ -171,7 +171,8 @@ theorem mem_wholeDefs_of_mem {pre post : List (ident × globdef (fundef function
 theorem resId_inj {i j : Nat} {t u : VT} (ht : t.isRes = true) (hu : u.isRes = true)
     (h : resId i t = resId j u) : i = j ∧ t = u := by
   have h' : 32 * (i + 1) + 4 * t.code = 32 * (j + 1) + 4 * u.code := h
-  rcases VT.isRes_cases ht with rfl | rfl | rfl <;> rcases VT.isRes_cases hu with rfl | rfl | rfl <;>
+  rcases VT.isRes_cases ht with rfl | rfl | rfl | rfl <;>
+    rcases VT.isRes_cases hu with rfl | rfl | rfl | rfl <;>
     simp only [VT.code] at h' <;> first | exact ⟨by omega, rfl⟩ | (exfalso; omega)
 
 /-- The identifiers of a translation: `statusId`, the constant identifiers 8 to 24, those of the
@@ -345,7 +346,7 @@ theorem init_whole {m : Module} {cap : Nat} {T : Translation} (h : translate cap
   have hres : ∀ (i : Nat) (t : VT), t.isRes = true →
       36 ≤ 32 * (i + 1) + 4 * t.code ∧ (32 * (i + 1) + 4 * t.code) % 4 = 0 := by
     intro i t ht
-    rcases VT.isRes_cases ht with rfl | rfl | rfl <;> simp only [VT.code] <;> omega
+    rcases VT.isRes_cases ht with rfl | rfl | rfl | rfl <;> simp only [VT.code] <;> omega
   have memR : ∀ i < T.nres, ∀ t : VT, t.isRes = true → (resId i t, globdef.Gvar (resDef t)) ∈ D :=
     fun i hi t ht => mT (5 + gdefs.length + resOfs i t, resId i t) _
       (progDefs_res cap decl gdefs T.nres funs i hi t ht)
@@ -367,11 +368,13 @@ theorem init_whole {m : Module} {cap : Nat} {T : Translation} (h : translate cap
       Mem.valid_access m0 t.chunk (blockOf D (resId i t)) 0 .Writable := by
     intro i hi t ht
     have h2 := (at_mem _ _ (memR i hi t ht)).2.2
-    rcases VT.isRes_cases ht with rfl | rfl | rfl
+    rcases VT.isRes_cases ht with rfl | rfl | rfl | rfl
     · exact ((h2 _ rfl).1 0 (by simp [resDef])).2
     · exact ((h2 _ rfl).2.1 0 (by simp [resDef])).2
     · exact valid_access_of_bytes (by decide) (by decide)
         (fun j hj => ((h2 _ rfl).2.2 8 (by simp [resDef]) j hj).2)
+    · exact valid_access_of_bytes4 (by decide) (by decide)
+        (fun j hj => ((h2 _ rfl).2.2 4 (by simp [resDef]) j hj).2)
   obtain ⟨hs1, -, hs2⟩ := at_mem _ _ memS
   obtain ⟨hp1, -, hp2⟩ := at_mem _ _ memP
   obtain ⟨hm1, -, hm2⟩ := at_mem _ _ memM
