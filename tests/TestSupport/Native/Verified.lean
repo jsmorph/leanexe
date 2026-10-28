@@ -111,19 +111,21 @@ def glue (t : Translation) (m : Wasm.Module) : Except String String := do
     let ret := match rs with | [r] => r.cname | _ => "void"
     let params := if ps.isEmpty then "void" else ", ".intercalate (ps.map VT.cname)
     protos := protos ++ s!"{ret} {fname}({params});\n"
-    let args := ", ".intercalate ((ps.zipIdx).map fun (p, j) => argText j p)
+    let decls := String.join ((ps.zipIdx).map fun (p, j) =>
+      s!"  {p.cname} x{j} = {argText j p};\n")
+    let args := ", ".intercalate ((ps.zipIdx).map fun (_, j) => s!"x{j}")
     let call := s!"{fname}({args})"
-    let body := match rs with
-      | [] => s!"  {call};\n"
-      | [r] => s!"  r[0] = {resultText call r};\n"
-      | rs => s!"  {call};\n" ++ String.join ((rs.zipIdx).map fun (r, i) =>
-          s!"  r[{i}] = {resultText (t.gname (resId i r)) r};\n")
+    let (callStmt, results) := match rs with
+      | [] => (s!"  {call};\n", "")
+      | [r] => (s!"  {r.cname} v = {call};\n", s!"  r[0] = {resultText "v" r};\n")
+      | rs => (s!"  {call};\n", String.join ((rs.zipIdx).map fun (r, i) =>
+          s!"  r[{i}] = {resultText (t.gname (resId i r)) r};\n"))
     let cname := s!"lx_call_{e.funcIdx}"
     calls := calls ++
       s!"static void {cname}(const unsigned long long *a, unsigned long long *r) \{\n" ++
       (if ps.isEmpty then "  (void) a;\n" else "") ++
-      (if rs.isEmpty then "  (void) r;\n" else "") ++ "  LX_MARK();\n" ++ body ++
-      s!"  LX_REPORT(\"{fname}\");\n}\n"
+      (if rs.isEmpty then "  (void) r;\n" else "") ++ decls ++ "  LX_MARK();\n" ++ callStmt ++
+      s!"  LX_REPORT(\"{fname}\");\n" ++ results ++ "}\n"
     let ptext := String.join (ps.map VT.letter)
     let rtext := String.join (rs.map VT.letter)
     entries := entries.push s!"  \{\"{e.name}\", \"{ptext}\", \"{rtext}\", {cname}}"
