@@ -531,9 +531,11 @@ def genInputProgram : Gen (program function) := do
   let pun := UInt64.ofNat (← punBits)
   let helper ← genHelper
   let inputs ← inputGlobals.mapM fun (id, ty, chunk) => do
-    let init ← (List.range 4).mapM fun _ => inputInit chunk
-    pure (id, globdef.Gvar { gvar_info := .Tarray ty 4 noattr, gvar_init := init,
-      gvar_readonly := true, gvar_volatile := true })
+    let data ← (List.range 4).mapM fun _ => inputInit chunk
+    let v : globvar type :=
+      { gvar_info := .Tarray ty 4 noattr, gvar_init := data, gvar_readonly := true,
+        gvar_volatile := true }
+    pure (id, globdef.Gvar v)
   let main ← genTest true true
   let base := programOf u32 u64 f64 f32 arr pun helper main
   let vars := volatileGlobals.map fun (id, ty, chunk) => (id, volatileVar ty (chunkSize chunk))
