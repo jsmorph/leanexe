@@ -15,24 +15,25 @@ theorem LocalsHold.i64_ofFn {s : Locals} {base n : Nat} {words : Fin n → UInt6
 
 theorem TreeShape.context_types (shape : TreeShape) (r : Fin shape.records) :
     (shape.context r []).flatMap Ty.types =
-      .i64 :: (shape.wordTypes r ++ List.replicate (shape.children r) .i64) := by
+      .i64 :: (shape.wordTypes r ++ (List.replicate (shape.children r) .i64 ++
+        (List.replicate (shape.arrays r) .i64 ++ List.replicate (2 * shape.buffers r) .i64))) := by
   have h := treeArgs_types shape r
-  simp only [List.append_nil] at h
-  simp only [TreeShape.context, List.flatMap_cons, List.append_nil, h]
+  simp only [TreeShape.context, List.flatMap_cons, h]
   rfl
 
-/-- The locals of a record's header, words, and children hold its branch's values. -/
+/-- The locals of a record's header, words, children, and arrays hold its branch's values. -/
 theorem LocalsHold.treeFields {s : Locals} {shape : TreeShape} {r : Fin shape.records} {base : Nat}
     {p : UInt64}
     {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
-    {pointers : Fin (shape.children r) → UInt64}
+    {pointers : Fin (shape.children r) → UInt64} {arrayPtrs : Fin (shape.arrays r) → UInt64}
     (hPtr : s.get base = some (.i64 p))
     (hWords : ∀ i, s.get (slotIndex s.positions (base + 1 + i.val) (shape.elem r i).slotType) =
       some (typedValue (shape.elem r i).slotType (shape.slotWords r words i)))
-    (hChildren : ∀ i, s.get (base + 1 + shape.words r + i.val) = some (.i64 (pointers i))) :
+    (hChildren : ∀ i, s.get (base + 1 + shape.words r + i.val) = some (.i64 (pointers i)))
+    (hArrays : ∀ i, s.get (base + 1 + shape.words r + shape.children r + i.val) =
+      some (.i64 (arrayPtrs i))) :
     LocalsHold s base ((shape.context r []).flatMap Ty.types)
-      (.i64 p :: (shape.wordValues r words ++
-        (List.ofFn fun i => Value.i64 (pointers i)))) := by
+      (shape.branchValues r p words pointers arrayPtrs) := by
   have hHead : LocalsHold s base [.i64] [.i64 p] := by
     intro k hk
     have hk0 : k = 0 := by simp only [List.length_singleton] at hk; omega
@@ -46,32 +47,49 @@ theorem LocalsHold.treeFields {s : Locals} {shape : TreeShape} {r : Fin shape.re
       simp [TreeShape.wordTypes, hkn]
     rw [hType]
     simpa [TreeShape.wordValues, hkn] using hWords ⟨k, hkn⟩
+  have hHeap := (LocalsHold.append (tys1 := List.replicate (shape.children r) .i64)
+    (tys2 := List.replicate (shape.arrays r) .i64)
+    (first := List.ofFn fun i => Value.i64 (pointers i))
+    (second := List.ofFn fun i => Value.i64 (arrayPtrs i))
+    (by rw [List.length_ofFn, List.length_replicate])).mpr
+      ⟨LocalsHold.i64_ofFn hChildren, by
+        simpa only [List.length_ofFn] using LocalsHold.i64_ofFn hArrays⟩
   have hTail := (LocalsHold.append (tys1 := shape.wordTypes r)
-    (tys2 := List.replicate (shape.children r) .i64)
+    (tys2 := List.replicate (shape.children r) .i64 ++ List.replicate (shape.arrays r) .i64)
     (first := shape.wordValues r words)
-    (second := List.ofFn fun i => Value.i64 (pointers i))
+    (second := (List.ofFn fun i => Value.i64 (pointers i)) ++
+      (List.ofFn fun i => Value.i64 (arrayPtrs i)))
     (by simp [TreeShape.wordValues, TreeShape.wordTypes])).mpr
-      ⟨hWordHold, by
-        simpa only [TreeShape.wordValues, List.length_ofFn] using LocalsHold.i64_ofFn hChildren⟩
-  have hAll := (LocalsHold.append (tys1 := [.i64])
-    (tys2 := shape.wordTypes r ++ List.replicate (shape.children r) .i64)
-    (first := [.i64 p]) (by rfl)).mpr ⟨hHead, hTail⟩
-  simpa only [shape.context_types r, List.singleton_append] using hAll
+      ⟨hWordHold, by simpa only [TreeShape.wordValues, List.length_ofFn] using hHeap⟩
+  have hAll : LocalsHold s base ([.i64] ++ (shape.wordTypes r ++
+      (List.replicate (shape.children r) .i64 ++ List.replicate (shape.arrays r) .i64)))
+      ([.i64 p] ++ (shape.wordValues r words ++ ((List.ofFn fun i => Value.i64 (pointers i)) ++
+        (List.ofFn fun i => Value.i64 (arrayPtrs i))))) :=
+    (LocalsHold.append (by rfl)).mpr ⟨hHead, hTail⟩
+  have hTypes : (shape.context r []).flatMap Ty.types = [.i64] ++ (shape.wordTypes r ++
+      (List.replicate (shape.children r) .i64 ++ List.replicate (shape.arrays r) .i64)) := by
+    rw [shape.context_types r, shape.buffers_eq_zero r, Nat.mul_zero, List.replicate_zero,
+      List.append_nil]
+    rfl
+  rw [hTypes]
+  exact hAll
 
 theorem treeFields_variable_regions {heap : Heap} {store : Store Unit} {s : Locals}
     {shape : TreeShape} {r : Fin shape.records} {mode : Mode} {base : Nat} {p : UInt64}
     {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
     {children : Fin (shape.children r) → Tree shape}
-    {pointers : Fin (shape.children r) → UInt64}
+    {pointers : Fin (shape.children r) → UInt64} {arrayPtrs : Fin (shape.arrays r) → UInt64}
     (hPointers : ∀ i, pointers i = store.mem.read64
       (slotAddress p (shape.fieldStart + (fieldPosition true (shape.fields r) i).val)))
+    (hArrayPtrs : ∀ i, arrayPtrs i = store.mem.read64
+      (slotAddress p (shape.fieldStart + (shape.fields r).length + heapArraySlot (shape.kinds r) i)))
     (hRep : Env.Rep (paramMode (shape.context r []) (shape.modes r mode [])) heap store
-      (.i64 p :: (shape.wordValues r words ++
-        (List.ofFn fun i => Value.i64 (pointers i))))
+      (shape.branchValues r p words pointers arrayPtrs)
       (Env.treeFields shape r words arrays buffers children .nil))
     (hold : LocalsHold s base ((shape.context r []).flatMap Ty.types)
-      (.i64 p :: (shape.wordValues r words ++
-        (List.ofFn fun i => Value.i64 (pointers i))))) :
+      (shape.branchValues r p words pointers arrayPtrs)) :
     ∀ (t : Ty) (x : Var (shape.context r []) t) (ws : List Value),
       LocalsHold s ((shape.slots r base mode []).getD x.index default).loc t.types ws →
       ws.length = t.width →
@@ -82,11 +100,16 @@ theorem treeFields_variable_regions {heap : Heap} {store : Store Unit} {s : Loca
   have hPointers' : pointers = fun i => store.mem.read64
       (slotAddress p (shape.fieldStart + (fieldPosition true (shape.fields r) i).val)) :=
     funext hPointers
-  subst pointers
+  have hArrayPtrs' : arrayPtrs = fun i => store.mem.read64
+      (slotAddress p (shape.fieldStart + (shape.fields r).length +
+        heapArraySlot (shape.kinds r) i)) :=
+    funext hArrayPtrs
+  subst pointers arrayPtrs
   have hSlot := paramSlots_getD x (shape.modes r mode []) base
   rw [shape.paramSlots r] at hSlot
   rw [hSlot] at hLocal hr
   obtain rfl := LocalsHold.unique hLocal (hold.var x) (hLength.trans (hRep.var x).length.symm)
-  exact treeFields_regions_subset store shape r mode p words children b (hRep.regions_var x b hr)
+  exact treeFields_regions_subset store shape r mode p words arrays buffers children b
+    (hRep.regions_var x b hr)
 
 end Verified

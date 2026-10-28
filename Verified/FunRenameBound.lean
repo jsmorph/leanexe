@@ -43,7 +43,7 @@ theorem Expr.grows_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
       (congrArg (fun values : List Bool => values.any id) (params f))
   | treeNode r reuse words arrays buffers children hw ha hb hc =>
     exact congrArg₂ Bool.or (congrArg₂ Bool.or (congrArg₂ Bool.or (congrArg argsAny (funext hw))
-      (congrArg argsAny (funext ha))) (congrArg argsAny (funext hb))) (congrArg argsAny (funext hc))
+      (congrArg argsAny (funext hc))) (congrArg argsAny (funext ha))) (congrArg argsAny (funext hb))
   | treeCase x empty nodes he hn =>
     simp only [Expr.renameFuns, Expr.grows_treeCase]
     exact congrArg₂ Bool.or (by split <;> simp_all) (congrArg argsAny (funext hn))
