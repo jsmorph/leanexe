@@ -42,7 +42,8 @@ theorem TailBody.toExpr_denote (body : TailBody S params result Γ) (g : Sig)
     simp only [TailBody.toExpr, Expr.denote, TailBody.denote]
     cases env.get x with
     | nil h => exact he h env
-    | node r words children => exact hn r (Env.treeFields _ r words children env)
+    | node r words arrays buffers children =>
+      exact hn r (Env.treeFields _ r words arrays buffers children env)
 
 theorem TailBody.usesFast_eq (body : TailBody S params result Γ) (i : Nat) :
     body.usesFast i = body.uses i := by

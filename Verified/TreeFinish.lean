@@ -29,7 +29,7 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
       (shape.wordTypes r ++ List.replicate (shape.children r) .i64) ws)
     (hRootApart : Holds.Apart env slots live store2 s2 (.treeHeader shape r) .owned [.i64 p] .unit)
     (hNext : ∀ store',
-      After env slots L0 live base heap store s (.tree shape) .owned (.node r words children)
+      After env slots L0 live base heap store s (.tree shape) .owned (.node r words arrays buffers children)
         heap2 store' s2 [.i64 p] →
       wp m rest Q store' { s2 with values := .i64 p :: s.values } host) :
     wp m (shape.tagStoreCode r ptr ++
@@ -60,10 +60,10 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     (fun r hr => ⟨hr, fun hApart => hApart (block store2 p)
       (List.mem_append_right _ (by simp))⟩)
   have hAfter : After env slots L0 live base heap store s (.tree shape) .owned
-      (.node r words children) heap2 store3 s2 [.i64 p] := by
+      (.node r words arrays buffers children) heap2 store3 s2 [.i64 p] := by
     refine ⟨?_, a2.frame, hHolds.step hWrite hKeepLive, hRep, ?_⟩
     · change Step heap store (Holds.KeepDying env slots L0 live store s) heap2 store3
-        ((Ty.tree shape).blocks store3 [.i64 p] (.node r words children))
+        ((Ty.tree shape).blocks store3 [.i64 p] (.node r words arrays buffers children))
       rw [hBlocks]
       apply hWhole.mono (fun _ hr => hr)
       intro b hb
@@ -72,7 +72,7 @@ theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
       · exact List.mem_append_right _ (by simp)
       · exact List.mem_append_left _ hb
     · intro u x hx _ wx hold length b hb c hc
-      change b ∈ (Ty.tree shape).blocks store3 [.i64 p] (.node r words children) at hb
+      change b ∈ (Ty.tree shape).blocks store3 [.i64 p] (.node r words arrays buffers children) at hb
       rw [hBlocks] at hb
       have hRegions := (hHolds.regions_after hWrite hx hold length
         (hKeepLive u x hx wx hold length)).1

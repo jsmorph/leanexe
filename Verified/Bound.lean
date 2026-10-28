@@ -210,8 +210,9 @@ def Expr.grows (flags : Flags S) : {Γ : List Ty} → {t : Ty} → Expr S Γ t �
     count.grows flags || elem.grows flags
   | _, _, .get _ i | _, _, .eraseAt _ i | _, _, .bytesGet _ i => i.grows flags
   | _, _, .set _ i v => i.grows flags || v.grows flags
-  | _, _, .treeNode _ _ words children =>
-    (argsAny fun i => (words i).grows flags) || (argsAny fun i => (children i).grows flags)
+  | _, _, .treeNode _ _ words arrays buffers children =>
+    (argsAny fun i => (words i).grows flags) || (argsAny fun i => (arrays i).grows flags) ||
+      (argsAny fun i => (buffers i).grows flags) || (argsAny fun i => (children i).grows flags)
   | _, _, .treeCase (shape := shape) _ empty nodes =>
     (if h : shape.hasNull = true then (empty h).grows flags else false) ||
       argsAny fun r => (nodes r).grows flags
@@ -518,10 +519,12 @@ def ListFold.costWith {e : Elem} {captures : List Ty}
     (charge : Env (ListFold.context e captures) → Nat) : Env (ListFold.params e captures) → Nat
   | .cons root (.cons init captured) =>
     root.foldCostWith (fun cell head tail acc =>
-      body (Env.treeFields listShape listCell (fun _ => head) (fun _ => tail)
+      body (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl)
+          (fun _ => tail)
         (.cons cell (.cons acc captured))))
       (fun cell head tail acc =>
-        charge (Env.treeFields listShape listCell (fun _ => head) (fun _ => tail)
+        charge (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl)
+          (fun _ => tail)
           (.cons cell (.cons acc captured)))) init
 
 def ListFold.fitsWith {e : Elem} {captures : List Ty}
@@ -529,10 +532,12 @@ def ListFold.fitsWith {e : Elem} {captures : List Ty}
     (valid : Env (ListFold.context e captures) → Bool) : Env (ListFold.params e captures) → Bool
   | .cons root (.cons init captured) =>
     root.foldFitsWith (fun cell head tail acc =>
-      body (Env.treeFields listShape listCell (fun _ => head) (fun _ => tail)
+      body (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl)
+          (fun _ => tail)
         (.cons cell (.cons acc captured))))
       (fun cell head tail acc =>
-        valid (Env.treeFields listShape listCell (fun _ => head) (fun _ => tail)
+        valid (Env.treeFields listShape listCell (fun _ => head) (noFields rfl) (noFields rfl)
+          (fun _ => tail)
           (.cons cell (.cons acc captured)))) init
 
 theorem ListFold.fitsWith_true {e : Elem} {captures : List Ty}
@@ -553,15 +558,27 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
   | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ | _, _, .float32 _, _ => 0
   | _, _, .var x, env => x.cost modes live (env.get x)
   | _, _, .treeNil _ _, _ => 0
-  | _, _, .treeNode (shape := shape) r reuse words children, env =>
+  | _, _, .treeNode (shape := shape) r reuse words arrays buffers children, env =>
     let kept := fun k => live k || optionVarUses reuse k
     (argsSum fun i => (words i).allocs funs flags bounds modes paid
       (fun k => kept k || (argsAny fun j => decide (i.val < j.val) && (words j).uses k) ||
-        (argsAny fun j => (children j).uses k)) env) +
+        (argsAny fun j => (children j).uses k) || (argsAny fun j => (arrays j).uses k) ||
+        (argsAny fun j => (buffers j).uses k)) env) +
     (argsSum fun i =>
       (children i).allocs funs flags bounds modes paid
-        (fun k => kept k || (argsAny fun j => decide (i.val < j.val) && (children j).uses k)) env +
+        (fun k => kept k || (argsAny fun j => decide (i.val < j.val) && (children j).uses k) ||
+          (argsAny fun j => (arrays j).uses k) || (argsAny fun j => (buffers j).uses k)) env +
       coerceCost (.tree shape) ((children i).mode modes) .owned ((children i).denote funs env)) +
+    (argsSum fun i =>
+      (arrays i).allocs funs flags bounds modes paid
+        (fun k => kept k || (argsAny fun j => decide (i.val < j.val) && (arrays j).uses k) ||
+          (argsAny fun j => (buffers j).uses k)) env +
+      coerceCost (shape.arrayTy r i) ((arrays i).mode modes) .owned
+        ((arrays i).denote funs env)) +
+    (argsSum fun i =>
+      (buffers i).allocs funs flags bounds modes paid
+        (fun k => kept k || (argsAny fun j => decide (i.val < j.val) && (buffers j).uses k)) env +
+      coerceCost .bytes ((buffers i).mode modes) .owned ((buffers i).denote funs env)) +
     (match reuse with
       | some x => if modeAt modes x.index = .owned ∧ live x.index = false then 0
           else allocCost (8 * shape.width r)
@@ -574,13 +591,14 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
     match env.get x with
     | .nil h => (empty h).allocs funs flags bounds modes paid live env +
         coerceCost t ((empty h).mode modes) resultMode ((empty h).denote funs env)
-    | .node r words children =>
+    | .node r words arrays buffers children =>
       x.cost modes (fun i => live i || (nodes r).uses (i + shape.bindCount r)) (env.get x) +
       (nodes r).allocs funs flags bounds (nodeModes r)
         (List.replicate (shape.bindCount r) false ++ paid)
-        (shift (shape.bindCount r) live) (Env.treeFields shape r words children env) +
+        (shift (shape.bindCount r) live)
+        (Env.treeFields shape r words arrays buffers children env) +
       coerceCost t ((nodes r).mode (nodeModes r)) resultMode
-        ((nodes r).denote funs (Env.treeFields shape r words children env))
+        ((nodes r).denote funs (Env.treeFields shape r words arrays buffers children env))
   | _, _, .bin _ left right, env | _, _, .cmp _ left right, env
   | _, _, .fbin _ left right, env | _, _, .fcmp _ left right, env
   | _, _, .fbin32 _ left right, env | _, _, .fcmp32 _ left right, env
@@ -833,13 +851,16 @@ def Expr.fits (funs : Funs S) (fits : Fits S) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Env Γ → Bool
   | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ | _, _, .float32 _, _ | _, _, .var _, _ => true
   | _, _, .treeNil _ _, _ => true
-  | _, _, .treeNode _ _ words children, env =>
+  | _, _, .treeNode _ _ words arrays buffers children, env =>
     (argsAll fun i => (words i).fits funs fits env) &&
+      (argsAll fun i => (arrays i).fits funs fits env) &&
+      (argsAll fun i => (buffers i).fits funs fits env) &&
       (argsAll fun i => (children i).fits funs fits env)
   | _, _, .treeCase (shape := shape) x empty nodes, env =>
     match env.get x with
     | .nil h => (empty h).fits funs fits env
-    | .node r words children => (nodes r).fits funs fits (Env.treeFields shape r words children env)
+    | .node r words arrays buffers children =>
+      (nodes r).fits funs fits (Env.treeFields shape r words arrays buffers children env)
   | _, _, .bin _ left right, env | _, _, .cmp _ left right, env
   | _, _, .fbin _ left right, env | _, _, .fcmp _ left right, env
   | _, _, .fbin32 _ left right, env | _, _, .fcmp32 _ left right, env
@@ -944,11 +965,13 @@ theorem Expr.fits_of_depthCalls (funs : Funs S) (fits : Fits S) {Γ : List Ty} {
     simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd
     simp only [Expr.fits, hc hd.1, Bool.true_and]
     exact allBelow_true (fun k => he hd.2 _) _
-  | treeNode r reuse words children hw hc =>
+  | treeNode r reuse words arrays buffers children hw ha hb hc =>
     intro hd env
     simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd
     simp only [Expr.fits, Bool.and_eq_true]
-    exact ⟨argsAll_true fun i => hw i (argsAny_eq_false hd.1 i) env,
+    exact ⟨⟨⟨argsAll_true fun i => hw i (argsAny_eq_false hd.1.1.1 i) env,
+      argsAll_true fun i => ha i (argsAny_eq_false hd.1.1.2 i) env⟩,
+      argsAll_true fun i => hb i (argsAny_eq_false hd.1.2 i) env⟩,
       argsAll_true fun i => hc i (argsAny_eq_false hd.2 i) env⟩
   | treeCase x empty nodes he hn =>
     intro hd env
@@ -957,7 +980,7 @@ theorem Expr.fits_of_depthCalls (funs : Funs S) (fits : Fits S) {Γ : List Ty} {
     split
     · rename_i h _
       exact he h (by simpa only [h, dite_true] using hd.1) env
-    · rename_i r _ _ _
+    · rename_i r _ _ _ _ _
       exact hn r (argsAny_eq_false hd.2 r) _
   | _ =>
     intro hd env
@@ -1009,12 +1032,12 @@ def TailBody.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S)
   | _, .treeCase (shape := shape) x empty nodes, modes, paid, env =>
     match env.get x with
     | .nil h => (empty h).allocs funs flags bounds targetModes targetPaid modes paid env
-    | .node r words children =>
+    | .node r words arrays buffers children =>
       x.cost modes (fun i => (nodes r).uses (i + shape.bindCount r)) (env.get x) +
       (nodes r).allocs funs flags bounds targetModes targetPaid
         (shape.modes r (modeAt modes x.index) modes)
         (List.replicate (shape.bindCount r) false ++ paid)
-        (Env.treeFields shape r words children env)
+        (Env.treeFields shape r words arrays buffers children env)
 
 def TailBody.fits (funs : Funs S) (fits : Fits S) :
     {Γ : List Ty} → TailBody S params result Γ → Env Γ → Bool
@@ -1031,7 +1054,7 @@ def TailBody.fits (funs : Funs S) (fits : Fits S) :
   | _, .treeCase x empty nodes, env =>
     match env.get x with
     | .nil h => (empty h).fits funs fits env
-    | .node r words children => (nodes r).fits funs fits (Env.treeFields _ r words children env)
+    | .node r words arrays buffers children => (nodes r).fits funs fits (Env.treeFields _ r words arrays buffers children env)
 
 def TailFunc.bound (func : TailFunc S) (funs : Funs S) (flags : Flags S) (bounds : Bounds S)
     (state : Env func.params) : Nat :=

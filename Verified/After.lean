@@ -476,7 +476,7 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
       · exact nomatch h1
       · exact Or.inr h1
   | build _ _ _ _ | bytesBuild _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ | insertAt _ _ _ _ _
-  | eraseAt _ _ _ | treeNil _ _ | treeNode _ _ _ _ | treeCase _ _ _ | bytesEmpty | bytesLiteral _ =>
+  | eraseAt _ _ _ | treeNil _ _ | treeNode _ _ _ _ _ _ | treeCase _ _ _ | bytesEmpty | bytesLiteral _ =>
     intro _ _; simp [Expr.aborts]
   | _ => intro modes h; simp [Expr.mode] at h
 
@@ -1212,7 +1212,7 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .funary32 _ _, hp, _, _, _, _, _ | _, .toFloat32 _ _, hp, _, _, _, _, _
   | _, .toWord32 _ _, hp, _, _, _, _, _
   | _, .float32 _, hp, _, _, _, _, _
-  | _, .treeNil _ _, hp, _, _, _, _, _ | _, .treeNode _ _ _ _, hp, _, _, _, _, _
+  | _, .treeNil _ _, hp, _, _, _, _, _ | _, .treeNode _ _ _ _ _ _, hp, _, _, _, _, _
   | _, .treeCase _ _ _, hp, _, _, _, _, _
   | _, .float _, hp, _, _, _, _, _ | _, .fbin _ _ _, hp, _, _, _, _, _
   | _, .funary _ _, hp, _, _, _, _, _ | _, .fcmp _ _ _, hp, _, _, _, _, _

@@ -66,6 +66,37 @@ def treeLoadFields (h ptr : Nat) : List ValueType → Nat → Nat → Nat → Li
     [.localGet ptr, .constI64 (UInt64.ofNat (8 * i)), .addI64, .wrapI64,
       .load64 0, .localSet children] ++ treeLoadFields h ptr tys words (children + 1) (i + 1) rest
 
+/-- Code that stores the arrays from local `arrays` on, and the buffers, two locals each, from
+local `buffers` on, into the slots of the array and buffer fields among `fields`, from slot `i` on
+of the record at local `ptr`. -/
+def treeStoreHeaps (ptr : Nat) : List TreeField → Nat → Nat → Nat → Program
+  | [], _, _, _ => []
+  | .array _ :: rest, arrays, buffers, i =>
+    [.localGet ptr, .constI64 (UInt64.ofNat (8 * i)), .addI64, .wrapI64, .localGet arrays,
+      .store64 0] ++ treeStoreHeaps ptr rest (arrays + 1) buffers (i + 1)
+  | .bytes :: rest, arrays, buffers, i =>
+    [.localGet ptr, .constI64 (UInt64.ofNat (8 * i)), .addI64, .wrapI64, .localGet buffers,
+      .store64 0, .localGet ptr, .constI64 (UInt64.ofNat (8 * (i + 1))), .addI64, .wrapI64,
+      .localGet (buffers + 1), .store64 0] ++ treeStoreHeaps ptr rest arrays (buffers + 2) (i + 2)
+  | .word _ :: rest, arrays, buffers, i | .child :: rest, arrays, buffers, i =>
+    treeStoreHeaps ptr rest arrays buffers i
+
+/-- Code that loads the slots of the array and buffer fields among `fields`, from slot `i` on of
+the record at local `ptr`, into the arrays from local `arrays` on, and the buffers, two locals
+each, from local `buffers` on. -/
+def treeLoadHeaps (ptr : Nat) : List TreeField → Nat → Nat → Nat → Program
+  | [], _, _, _ => []
+  | .array _ :: rest, arrays, buffers, i =>
+    [.localGet ptr, .constI64 (UInt64.ofNat (8 * i)), .addI64, .wrapI64, .load64 0,
+      .localSet arrays] ++ treeLoadHeaps ptr rest (arrays + 1) buffers (i + 1)
+  | .bytes :: rest, arrays, buffers, i =>
+    [.localGet ptr, .constI64 (UInt64.ofNat (8 * i)), .addI64, .wrapI64, .load64 0,
+      .localSet buffers, .localGet ptr, .constI64 (UInt64.ofNat (8 * (i + 1))), .addI64,
+      .wrapI64, .load64 0, .localSet (buffers + 1)] ++
+      treeLoadHeaps ptr rest arrays (buffers + 2) (i + 2)
+  | .word _ :: rest, arrays, buffers, i | .child :: rest, arrays, buffers, i =>
+    treeLoadHeaps ptr rest arrays buffers i
+
 def treeFieldLocs : List Bool → Nat → Nat → List Nat
   | [], _, _ => []
   | false :: rest, words, children => words :: treeFieldLocs rest (words + 1) children

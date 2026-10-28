@@ -77,7 +77,7 @@ theorem TailBody.allocs_toExpr {S : List Sig} {params Γ : List Ty} {result : Ty
       congr 1
       exact (coerceCost_trans _ _ _ _ (fun hm => recordsJoin_init _ _ (by
         rw [dite_eq_left h]; exact hm))).symm
-    | node r words children =>
+    | node r words arrays buffers children =>
       simp only [modeAt, shift_false]
       rw [hn r]
       simp only [shift_false, Nat.add_assoc]

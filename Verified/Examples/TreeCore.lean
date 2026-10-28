@@ -26,7 +26,8 @@ def rebuild (mode : Mode) : Func S :=
 
 def duplicateExpr : Expr S [.tree listShape] (.pair (.tree listShape) (.tree listShape)) :=
   .treeCase .here (fun _ => .pair (.treeNil listShape rfl) (.v 0))
-    (listBranch (.pair (.treeNode listCell (some .here) (fun _ => .v 1) (fun _ => .v 2)) (.v 3)))
+    (listBranch (.pair (.treeNode listCell (some .here) (fun _ => .v 1) (noFields rfl) (noFields rfl)
+      (fun _ => .v 2)) (.v 3)))
 
 def duplicate (mode : Mode) : Func S :=
   { name := if mode = .owned then "duplicateOwned" else "duplicate"
@@ -36,7 +37,8 @@ def duplicate (mode : Mode) : Func S :=
 def changeExpr : Expr S [.word, .tree listShape] (.tree listShape) :=
   .treeCase (.there .here) (fun _ => .treeNil listShape rfl)
     (listBranch
-      (.treeNode listCell (some .here) (fun _ => .bin .add (.v 1) (.v 3)) (fun _ => .v 2)))
+      (.treeNode listCell (some .here) (fun _ => .bin .add (.v 1) (.v 3)) (noFields rfl)
+        (noFields rfl) (fun _ => .v 2)))
 
 def change (mode : Mode) : Func S :=
   { name := if mode = .owned then "changeOwned" else "change"

@@ -98,13 +98,13 @@ theorem tailBody_denote {S : List Sig} {e : Elem} {captures : List Ty}
     (tailBody body).denote funs (.cons root (.cons acc captured)) =
       match root with
       | .nil _ => .inr acc
-      | .node r words children => .inl (.cons (children ⟨0, listShape_children_pos r⟩)
+      | .node r words arrays buffers children => .inl (.cons (children ⟨0, listShape_children_pos r⟩)
           (.cons (body.denote funs (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩)
             (fun _ => children ⟨0, listShape_children_pos r⟩)
             (.cons root (.cons acc captured)))) captured)) := by
   cases root with
   | nil => rfl
-  | node r words children =>
+  | node r words arrays buffers children =>
     obtain rfl := listShape_cell r
     simp only [tailBody, TailBody.denote, Env.get, listCell, listBranch]
     congr 1
@@ -122,7 +122,7 @@ theorem fixed {S : List Sig} {e : Elem} {captures : List Ty}
       rw [tailBody_denote]
       cases root with
       | nil => rfl
-      | node r words children =>
+      | node r words arrays buffers children =>
         simp only [meaning, denoteWith, Sum.elim_inl]
         congr 2
 
@@ -138,7 +138,7 @@ theorem decreases {S : List Sig} {e : Elem} {captures : List Ty}
       rw [tailBody_denote] at h
       cases root with
       | nil => contradiction
-      | node r words children =>
+      | node r words arrays buffers children =>
         obtain rfl := listShape_cell r
         cases h
         change (children ⟨0, listShape_children_pos listCell⟩).nodes <

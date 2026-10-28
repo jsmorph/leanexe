@@ -68,7 +68,7 @@ theorem treeFields_variable_regions {heap : Heap} {store : Store Unit} {s : Loca
     (hRep : Env.Rep (paramMode (shape.context r []) (shape.modes r mode [])) heap store
       (.i64 p :: (shape.wordValues r words ++
         (List.ofFn fun i => Value.i64 (pointers i))))
-      (Env.treeFields shape r words children .nil))
+      (Env.treeFields shape r words arrays buffers children .nil))
     (hold : LocalsHold s base ((shape.context r []).flatMap Ty.types)
       (.i64 p :: (shape.wordValues r words ++
         (List.ofFn fun i => Value.i64 (pointers i))))) :
@@ -76,8 +76,8 @@ theorem treeFields_variable_regions {heap : Heap} {store : Store Unit} {s : Loca
       LocalsHold s ((shape.slots r base mode []).getD x.index default).loc t.types ws →
       ws.length = t.width →
       ∀ b ∈ t.regions ((shape.slots r base mode []).getD x.index default).mode store ws
-        ((Env.treeFields shape r words children .nil).get x),
-        b ∈ (Ty.tree shape).regions mode store [.i64 p] (.node r words children) := by
+        ((Env.treeFields shape r words arrays buffers children .nil).get x),
+        b ∈ (Ty.tree shape).regions mode store [.i64 p] (.node r words arrays buffers children) := by
   intro t x ws hLocal hLength b hr
   have hPointers' : pointers = fun i => store.mem.read64
       (slotAddress p (shape.fieldStart + (fieldPosition true (shape.fields r) i).val)) :=

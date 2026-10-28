@@ -20,7 +20,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
     (nodeSpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (nodes r))
     (env : Env Γ) (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
     (children : Fin (shape.children r) → Tree shape)
-    (hValue : env.get x = .node r words children) :
+    (hValue : env.get x = .node r words arrays buffers children) :
     TailCodeSpecAt (pool := pool) m funs flags bounds fits host pv targetModes (.treeCase x empty nodes) env := by
   intro slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel heap
     store s hh hpv hVars hAt hSafe hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
@@ -30,10 +30,10 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
   let rootMode := (slots.getD x.index default).mode
   let scratch := base + shape.bindCount r
   let boundSlots := shape.slots r base rootMode slots
-  let boundEnv := Env.treeFields shape r words children env
+  let boundEnv := Env.treeFields shape r words arrays buffers children env
   let boundPaid := List.replicate (shape.bindCount r) false ++ paid
   let LB := fun i => decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i
-  let rootCost := x.cost (slots.map Slot.mode) L1 (.node r words children)
+  let rootCost := x.cost (slots.map Slot.mode) L1 (.node r words arrays buffers children)
   let bodyCost := (nodes r).allocs funs flags bounds targetModes nextPaid
     (boundSlots.map Slot.mode) boundPaid boundEnv
   have hL1 : ∀ i, L1 i = true → L0 i = true := by
@@ -161,9 +161,9 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
         obtain ⟨p, rfl, root⟩ := afterRoot.rep
         have lower := afterRoot.lower hVars (by dsimp only [scratch]; omega) hL1
         have aRoot : After env slots L0 L1 base heap store s (.tree shape) rootMode
-            (.node r words children) heap1 store1 s1 [.i64 p] := by
+            (.node r words arrays buffers children) heap1 store1 s1 [.i64 p] := by
           simpa only [Expr.mode, Expr.denote, hValue, Slot.modes_getD, rootMode] using lower
-        have hRoot : rootMode.node heap1 store1 p (Tree.node r words children).toNode := by
+        have hRoot : rootMode.node heap1 store1 p (Tree.node r words arrays buffers children).toNode := by
           simpa only [Expr.mode, Expr.denote, hValue, Slot.modes_getD, rootMode] using root
         have hTopRoot : heap1.top.toNat ≤ heap.top.toNat +
             dyingPot store s env slots paid L0 L1 + rootCost := by

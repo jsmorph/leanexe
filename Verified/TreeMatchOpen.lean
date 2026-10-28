@@ -11,11 +11,11 @@ theorem wp_openTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : St
     {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
     {children : Fin (shape.children r) → Tree shape}
     {rest : Program} {Q : Assertion Unit} (hh : s.positions = h) (hAt : heap.At store)
-    (hNode : mode.node heap store p (Tree.node r words children).toNode)
+    (hNode : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
     (hPtr : s.get base = some (.i64 p)) (hLow : s.params.length ≤ base + 1)
     (hRoom : base + 1 + (shape.fields r).length ≤ s.positions)
     (hNext : ∀ s', Frame (base + 1) s s' → s'.values = s.values →
-      Holds (Env.treeFields shape r words children .nil) (shape.slots r base mode [])
+      Holds (Env.treeFields shape r words arrays buffers children .nil) (shape.slots r base mode [])
         (fun _ => true) (base + shape.bindCount r) heap (treeDetachStore mode store p) s' →
       Step heap store (fun b => mode = .owned → regionsDisjoint b (block store p))
         heap (treeDetachStore mode store p) [] →
@@ -23,8 +23,8 @@ theorem wp_openTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : St
         LocalsHold s' ((shape.slots r base mode []).getD x.index default).loc t.types ws →
         ws.length = t.width →
         ∀ b ∈ t.regions ((shape.slots r base mode []).getD x.index default).mode
-          (treeDetachStore mode store p) ws ((Env.treeFields shape r words children .nil).get x),
-          b ∈ (Ty.tree shape).regions mode store [.i64 p] (.node r words children)) →
+          (treeDetachStore mode store p) ws ((Env.treeFields shape r words arrays buffers children .nil).get x),
+          b ∈ (Ty.tree shape).regions mode store [.i64 p] (.node r words arrays buffers children)) →
       wp m rest Q (treeDetachStore mode store p) s' host) :
     wp m (treeLoadFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
       shape.fieldStart (shape.fields r) ++

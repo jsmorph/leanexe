@@ -251,20 +251,30 @@ def Env.prependFn : (n : Nat) → (ts : Fin n → Ty) → ((i : Fin n) → (ts i
 def TreeShape.wordTy (shape : TreeShape) (r : Fin shape.records) (i : Fin (shape.words r)) : Ty :=
   .elem (shape.elem r i)
 
+/-- The types of the array fields of record constructor `r`. -/
+def TreeShape.arrayTy (shape : TreeShape) (r : Fin shape.records) (i : Fin (shape.arrays r)) :
+    Ty :=
+  .array (shape.arrayElem r i)
+
 /-- The number of variables that a match on record constructor `r` binds: its header, its words,
-and its children. -/
+its children, its arrays, and its buffers. -/
 def TreeShape.bindCount (shape : TreeShape) (r : Fin shape.records) : Nat :=
-  1 + shape.words r + shape.children r
+  1 + shape.words r + shape.arrays r + shape.buffers r + shape.children r
 
 def TreeShape.context (shape : TreeShape) (r : Fin shape.records) (Γ : List Ty) : List Ty :=
   .treeHeader shape r :: (tysOfFn (shape.words r) (shape.wordTy r) ++
-    (List.replicate (shape.children r) (.tree shape) ++ Γ))
+    (List.replicate (shape.children r) (.tree shape) ++ (tysOfFn (shape.arrays r) (shape.arrayTy r) ++
+      (List.replicate (shape.buffers r) .bytes ++ Γ))))
 
 def Env.treeFields (shape : TreeShape) (r : Fin shape.records)
     (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
+    (arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote)
+    (buffers : Fin (shape.buffers r) → LeanExe.Bytes)
     (children : Fin (shape.children r) → Tree shape) (env : Env Γ) : Env (shape.context r Γ) :=
   .cons .unit (prependFn (shape.words r) (shape.wordTy r) words
-    (prependRepeat (.tree shape) (shape.children r) children env))
+    (prependRepeat (.tree shape) (shape.children r) children
+      (prependFn (shape.arrays r) (shape.arrayTy r) arrays
+        (prependRepeat .bytes (shape.buffers r) buffers env))))
 
 def Var.ofFin : (Γ : List Ty) → (i : Fin Γ.length) → Var Γ (Γ.get i)
   | _ :: _, ⟨0, _⟩ => .here
@@ -289,8 +299,8 @@ def denoteWith {e : Elem} {captures : List Ty}
     (body : Env (context e captures) → e.denote) : Env (params e captures) → e.denote
   | .cons root (.cons init captured) =>
     root.foldlWith (fun cell head tail acc =>
-      body (Env.treeFields listShape listCell (fun _ => head) (fun _ => tail)
-        (.cons cell (.cons acc captured)))) init
+      body (Env.treeFields listShape listCell (fun _ => head)
+        (noFields rfl) (noFields rfl) (fun _ => tail) (.cons cell (.cons acc captured)))) init
 
 end ListFold
 
@@ -392,6 +402,8 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | treeNode {shape : TreeShape} (r : Fin shape.records)
       (reuse : Option (Var Γ (.treeHeader shape r)))
       (words : (i : Fin (shape.words r)) → Expr S Γ (shape.wordTy r i))
+      (arrays : (i : Fin (shape.arrays r)) → Expr S Γ (shape.arrayTy r i))
+      (buffers : Fin (shape.buffers r) → Expr S Γ .bytes)
       (children : Fin (shape.children r) → Expr S Γ (.tree shape)) : Expr S Γ (.tree shape)
   | treeCase {shape : TreeShape} (x : Var Γ (.tree shape))
       (empty : shape.hasNull = true → Expr S Γ t)
@@ -508,12 +520,14 @@ def Expr.denote (funs : Funs S) :
   | _, _, .word value, _ => value
   | _, _, .bool value, _ => value
   | _, _, .treeNil _ h, _ => .nil h
-  | _, _, .treeNode r _ words children, env =>
-    .node r (fun i => (words i).denote funs env) (fun i => (children i).denote funs env)
+  | _, _, .treeNode r _ words arrays buffers children, env =>
+    .node r (fun i => (words i).denote funs env) (normalFamily fun i => (arrays i).denote funs env)
+      (normalFamily fun i => (buffers i).denote funs env) (fun i => (children i).denote funs env)
   | _, _, .treeCase x empty nodes, env =>
     match env.get x with
     | .nil h => (empty h).denote funs env
-    | .node r words children => (nodes r).denote funs (env.treeFields _ r words children)
+    | .node r words arrays buffers children =>
+      (nodes r).denote funs (env.treeFields _ r words arrays buffers children)
   | _, _, .var x, env => env.get x
   | _, _, .bin op left right, env => op.apply (left.denote funs env) (right.denote funs env)
   | _, _, .cmp op left right, env => op.apply (left.denote funs env) (right.denote funs env)
@@ -613,7 +627,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .get _ i => i.aborts
   | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _
   | _, _, .insertAt _ _ _ | _, _, .eraseAt _ _ => true
-  | _, _, .treeNil _ _ | _, _, .treeNode _ _ _ _ | _, _, .treeCase _ _ _ => true
+  | _, _, .treeNil _ _ | _, _, .treeNode _ _ _ _ _ _ | _, _, .treeCase _ _ _ => true
 
 /-- Whether an expression calls a function whose code takes the call depth. -/
 def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
@@ -648,8 +662,9 @@ def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .push _ v => v.depthCalls
   | _, _, .append _ _ => false
   | _, _, .treeNil _ _ => false
-  | _, _, .treeNode _ _ words children =>
-    (argsAny fun i => (words i).depthCalls) || argsAny fun i => (children i).depthCalls
+  | _, _, .treeNode _ _ words arrays buffers children =>
+    (argsAny fun i => (words i).depthCalls) || (argsAny fun i => (arrays i).depthCalls) ||
+      (argsAny fun i => (buffers i).depthCalls) || argsAny fun i => (children i).depthCalls
   | _, _, .treeCase (shape := shape) _ empty nodes =>
     (if h : shape.hasNull = true then (empty h).depthCalls else false) ||
       argsAny fun r => (nodes r).depthCalls
@@ -701,8 +716,9 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .push x v, i => i == x.index || v.uses i
   | _, _, .append x y, i => i == x.index || i == y.index
   | _, _, .treeNil _ _, _ => false
-  | _, _, .treeNode _ reuse words children, i =>
+  | _, _, .treeNode _ reuse words arrays buffers children, i =>
     optionVarUses reuse i || (argsAny fun j => (words j).uses i) ||
+      (argsAny fun j => (arrays j).uses i) || (argsAny fun j => (buffers j).uses i) ||
       argsAny fun j => (children j).uses i
   | _, _, .treeCase (shape := shape) x empty nodes, i =>
     (i == x.index) || (if h : shape.hasNull = true then (empty h).uses i else false) ||
@@ -754,8 +770,9 @@ def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .push x v => 1 <<< x.index ||| v.useMask
   | _, _, .append x y => 1 <<< x.index ||| 1 <<< y.index
   | _, _, .treeNil _ _ => 0
-  | _, _, .treeNode _ reuse words children =>
+  | _, _, .treeNode _ reuse words arrays buffers children =>
     optionVarMask reuse ||| (argsMask fun j => (words j).useMask) |||
+      (argsMask fun j => (arrays j).useMask) ||| (argsMask fun j => (buffers j).useMask) |||
       argsMask fun j => (children j).useMask
   | _, _, .treeCase (shape := shape) x empty nodes =>
     (1 <<< x.index) ||| (if h : shape.hasNull = true then (empty h).useMask else 0) |||
@@ -799,7 +816,7 @@ theorem Expr.usesFast_eq {Γ : List Ty} {t : Ty} (e : Expr S Γ t) (i : Nat) :
     congr 1
     funext j
     exact ihArgs j i
-  | treeNode r reuse words children wordIh childIh =>
+  | treeNode r reuse words arrays buffers children wordIh arrayIh bufferIh childIh =>
     simp_all only [Expr.useMask, Expr.uses, Nat.testBit_or, argsMask_testBit,
       optionVarMask_testBit]
   | treeCase x empty nodes emptyIh nodesIh =>
@@ -862,8 +879,9 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .push _ v => v.placeArgs
   | _, _, .append _ _ => true
   | _, _, .treeNil _ _ => true
-  | _, _, .treeNode _ _ words children =>
-    !(argsAny fun i => !(words i).placeArgs) && !(argsAny fun i => !(children i).placeArgs)
+  | _, _, .treeNode _ _ words arrays buffers children =>
+    !(argsAny fun i => !(words i).placeArgs) && !(argsAny fun i => !(arrays i).placeArgs) &&
+      !(argsAny fun i => !(buffers i).placeArgs) && !(argsAny fun i => !(children i).placeArgs)
   | _, _, .treeCase (shape := shape) _ empty nodes =>
     (if h : shape.hasNull = true then (empty h).placeArgs else true) &&
       !(argsAny fun r => !(nodes r).placeArgs)
@@ -917,8 +935,8 @@ def Mode.join : Mode → Mode → Mode
 
 def TreeShape.modes (shape : TreeShape) (r : Fin shape.records) (mode : Mode)
     (modes : List Mode) : List Mode :=
-  mode :: (List.replicate (shape.words r) .borrowed ++
-    (List.replicate (shape.children r) mode ++ modes))
+  mode :: (List.replicate (shape.words r) .borrowed ++ (List.replicate (shape.children r) mode ++
+    (List.replicate (shape.arrays r) mode ++ (List.replicate (shape.buffers r) mode ++ modes))))
 
 /-- The join of the modes `m r` over the record constructors, from `init`. -/
 def recordsJoin : {n : Nat} → (Fin n → Mode) → Mode → Mode
@@ -959,7 +977,7 @@ def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t 
     (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
   | _, _, .fold _ init body =>
     (init.mode modes).join (body.mode (.borrowed :: .borrowed :: .borrowed :: modes))
-  | _, _, .treeNil _ _ | _, _, .treeNode _ _ _ _ => .owned
+  | _, _, .treeNil _ _ | _, _, .treeNode _ _ _ _ _ _ => .owned
   | _, _, .bytesEmpty | _, _, .bytesLiteral _ | _, _, .bytesBuild _ _ => .owned
   | _, _, .treeCase (shape := shape) x empty nodes =>
     recordsJoin (fun r => (nodes r).mode (shape.modes r (modes.getD x.index .borrowed) modes))
@@ -994,7 +1012,8 @@ def TailBody.denote (funs : Funs S) : {Γ : List Ty} → TailBody S params resul
   | _, .treeCase x empty nodes, env =>
     match env.get x with
     | .nil h => (empty h).denote funs env
-    | .node r words children => (nodes r).denote funs (Env.treeFields _ r words children env)
+    | .node r words arrays buffers children =>
+      (nodes r).denote funs (Env.treeFields _ r words arrays buffers children env)
 
 def TailBody.uses : {Γ : List Ty} → TailBody S params result Γ → Nat → Bool
   | _, .ret value, i => value.uses i

@@ -25,15 +25,26 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
   | _, _, .bytesSize _, _, _, _ => false
   | _, _, .bytesGet x index, live, _, k =>
     index.demands (fun j => live j || j == x.index) false k
-  | _, _, .treeNode _ reuse words children, live, _, k =>
+  | _, _, .treeNode _ reuse words arrays buffers children, live, _, k =>
     let kept := fun i => live i || optionVarUses reuse i
     (optionVarUses reuse k && !live k) ||
       (argsAny fun i => (words i).demands
         (fun j => kept j || (argsAny fun next => decide (i.val < next.val) && (words next).uses j) ||
-          (argsAny fun next => (children next).uses j)) false k) ||
+          (argsAny fun next => (children next).uses j) ||
+          (argsAny fun next => (arrays next).uses j) ||
+          (argsAny fun next => (buffers next).uses j)) false k) ||
+      (argsAny fun i => (arrays i).demands
+        (fun j => kept j ||
+          (argsAny fun next => decide (i.val < next.val) && (arrays next).uses j) ||
+          (argsAny fun next => (buffers next).uses j)) true k) ||
+      (argsAny fun i => (buffers i).demands
+        (fun j => kept j ||
+          (argsAny fun next => decide (i.val < next.val) && (buffers next).uses j)) true k) ||
       (argsAny fun i => (children i).demands
-        (fun j => kept j || (argsAny fun next => decide (i.val < next.val) && (children next).uses j))
-        true k)
+        (fun j => kept j ||
+          (argsAny fun next => decide (i.val < next.val) && (children next).uses j) ||
+          (argsAny fun next => (arrays next).uses j) ||
+          (argsAny fun next => (buffers next).uses j)) true k)
   | _, _, .treeCase (shape := shape) x empty nodes, live, owned, k =>
     let branch := owned ||
       (if h : shape.hasNull = true then (empty h).mode [] == .owned else false) ||

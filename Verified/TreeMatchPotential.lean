@@ -52,7 +52,7 @@ theorem Env.pot_treeFields {Γ : List Ty} (store : Store Unit) (s : Locals) (env
     (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
     (children : Fin (shape.children r) → Tree shape) (base : Nat) (mode : Mode)
     (slots : List Slot) (sel : Nat → Bool) :
-    (Env.treeFields shape r words children env).pot store s (shape.slots r base mode slots) sel =
+    (Env.treeFields shape r words arrays buffers children env).pot store s (shape.slots r base mode slots) sel =
       env.pot store s slots (fun i => sel (i + shape.bindCount r)) := by
   change (if sel 0 then 0 else 0) +
     (Env.prependFn (shape.words r) (shape.wordTy r) words
@@ -90,7 +90,7 @@ theorem dyingPot_treeFields {Γ : List Ty} (store : Store Unit) (s : Locals) (en
     (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
     (children : Fin (shape.children r) → Tree shape) (base : Nat) (mode : Mode)
     (slots : List Slot) (paid : List Bool) (L0 L1 : Nat → Bool) :
-    dyingPot store s (Env.treeFields shape r words children env) (shape.slots r base mode slots)
+    dyingPot store s (Env.treeFields shape r words arrays buffers children env) (shape.slots r base mode slots)
       (List.replicate (shape.bindCount r) false ++ paid) L0 L1 =
       dyingPot store s env slots paid (fun i => L0 (i + shape.bindCount r))
         (fun i => L1 (i + shape.bindCount r)) := by
@@ -108,7 +108,7 @@ theorem dyingPot_treeEntry {Γ : List Ty} (store : Store Unit) (s : Locals) (env
     (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
     (children : Fin (shape.children r) → Tree shape) (base : Nat) (mode : Mode)
     (slots : List Slot) (paid : List Bool) (L1 live : Nat → Bool) :
-    dyingPot store s (Env.treeFields shape r words children env) (shape.slots r base mode slots)
+    dyingPot store s (Env.treeFields shape r words arrays buffers children env) (shape.slots r base mode slots)
       (List.replicate (shape.bindCount r) false ++ paid)
       (fun i => decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i)
       (shift (shape.bindCount r) live) = dyingPot store s env slots paid L1 live := by
@@ -131,7 +131,7 @@ theorem treeCase_bodyWithin {Γ : List Ty} {env : Env Γ} {slots : List Slot} {p
     (hWithin : heap0.Within store0 m
       (dyingPot store0 s0 env slots paid L0 live + rootCost + bodyCost)) :
     heap.Within store m
-      (dyingPot store s (Env.treeFields shape r words children env)
+      (dyingPot store s (Env.treeFields shape r words arrays buffers children env)
         (shape.slots r fieldBase mode slots) (List.replicate (shape.bindCount r) false ++ paid)
         (fun i => decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i)
         (shift (shape.bindCount r) live) + bodyCost) := by

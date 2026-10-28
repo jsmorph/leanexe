@@ -14,21 +14,21 @@ theorem After.treeBody {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     (h0 : Holds env slots L0 base heap0 store0 s0)
     (hStep : Step heap0 store0 (Holds.KeepDying env slots L0 L1 store0 s0) heap store fresh)
     (hFrame : Frame base s0 s) (hOuter : Holds env slots L1 base heap store s)
-    (hFields : Holds (Env.treeFields shape r words children env)
+    (hFields : Holds (Env.treeFields shape r words arrays buffers children env)
     (shape.slots r fieldBase rootMode slots)
       (fun i => decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i)
       (fieldBase + shape.bindCount r) heap store s)
     (hFresh : ∀ (u : Ty) (x : Var (shape.context r []) u),
       ((shape.slots r fieldBase rootMode []).getD x.index default).mode = .owned → ∀ w,
       LocalsHold s ((shape.slots r fieldBase rootMode []).getD x.index default).loc u.types w →
-      w.length = u.width → ∀ b ∈ u.blocks store w ((Env.treeFields shape r words children .nil).get x),
+      w.length = u.width → ∀ b ∈ u.blocks store w ((Env.treeFields shape r words arrays buffers children .nil).get x),
         b ∈ fresh)
     {heap1 : Heap} {store1 : Store Unit}
-    (released : Evolves (Env.treeFields shape r words children env)
+    (released : Evolves (Env.treeFields shape r words arrays buffers children env)
     (shape.slots r fieldBase rootMode slots)
       (fun i => decide (i < shape.bindCount r) || shift (shape.bindCount r) L1 i) bodyIn
       (fieldBase + shape.bindCount r) heap store s heap1 store1 s)
-    (body : After (Env.treeFields shape r words children env)
+    (body : After (Env.treeFields shape r words arrays buffers children env)
     (shape.slots r fieldBase rootMode slots)
       bodyIn (shift (shape.bindCount r) live) (fieldBase + shape.bindCount r) heap1 store1 s
       t mode value heap' store' s' ws)

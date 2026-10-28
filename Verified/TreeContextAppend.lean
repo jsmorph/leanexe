@@ -10,8 +10,8 @@ theorem TreeShape.context_append (shape : TreeShape) (r : Fin shape.records) (Γ
 theorem Env.treeFields_append {Γ : List Ty} (shape : TreeShape) (r : Fin shape.records)
     (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
     (children : Fin (shape.children r) → Tree shape) (env : Env Γ) :
-    HEq ((Env.treeFields shape r words children .nil).append env)
-      (Env.treeFields shape r words children env) := by
+    HEq ((Env.treeFields shape r words arrays buffers children .nil).append env)
+      (Env.treeFields shape r words arrays buffers children env) := by
   have hChildren := Env.repeat_append Env.nil env (.tree shape) (shape.children r) children
   have hWords := Env.fn_append
     (Env.prependRepeat (.tree shape) (shape.children r) children Env.nil) env

@@ -21,7 +21,7 @@ theorem func_bound {S : List Sig} {e : Elem} {captures : List Ty}
         ((func body place).paidParams flags) (.cons root (.cons acc captured)) =
       match root with
       | .nil _ => 0
-      | .node r words children => body.allocs funs flags bounds
+      | .node r words arrays buffers children => body.allocs funs flags bounds
           (listShape.modes listCell .borrowed (paramModes (params e captures) []))
           (List.replicate (listShape.bindCount listCell) false ++
             List.replicate (params e captures).length false)
@@ -38,7 +38,7 @@ theorem func_bound {S : List Sig} {e : Elem} {captures : List Ty}
       (func body place).body.denote funs (.cons root (.cons acc captured)) =
       match root with
       | .nil _ => .inr acc
-      | .node r words children => .inl (.cons (children ⟨0, listShape_children_pos r⟩)
+      | .node r words arrays buffers children => .inl (.cons (children ⟨0, listShape_children_pos r⟩)
           (.cons (body.denote funs (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩)
             (fun _ => children ⟨0, listShape_children_pos r⟩)
             (.cons root (.cons acc captured)))) captured)) :=
