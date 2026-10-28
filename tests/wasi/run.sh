@@ -98,7 +98,7 @@ tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/ExitModel.lean
 if "$foundations_only"; then exit 0; fi
 tools/leanrun --timeout 30m --log build/wasi/byte-values.log lake build \
-  Verified.Examples.Bytes Verified.Examples.Literals
+  Verified.Examples.Bytes Verified.Examples.Literals Verified.ProgramLiterals
 tools/leanrun --timeout 5m lake env lean tests/wasi/Bytes.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Literals.lean
 tools/leanrun --timeout 5m lake env lean tests/decoder/TableProfile.lean

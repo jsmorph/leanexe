@@ -24,6 +24,8 @@ def Term.encode : Term → Node
 
 instance : Encode Term := ⟨Term.encode⟩
 
+verified_recursive_type Term
+
 def keep (t : Term) : Term := t
 
 def lit (n : UInt64) : Term := .lit n

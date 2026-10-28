@@ -12,7 +12,8 @@ def treeDetachStore (mode : Mode) (store : Store Unit) (p : UInt64) : Store Unit
   | .owned => TreeHeader.clearMask store p
 
 theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
-    {r : Fin shape.records} {mode : Mode} {p : UInt64} {words : Fin (shape.words r) → UInt64}
+    {r : Fin shape.records} {mode : Mode} {p : UInt64}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
     {children : Fin (shape.children r) → Tree shape}
     (hAt : heap.At store) (hNode : mode.node heap store p (Tree.node r words children).toNode) :
     let store' := treeDetachStore mode store p
@@ -39,7 +40,8 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
   · exact ⟨hAt, trivial, Step.refl hAt _, treeNode_child_rep hNode, nofun, fun _ => rfl, rfl⟩
   · obtain ⟨hOwned, hApart⟩ := hNode
     obtain ⟨hHead, hSlots⟩ := hOwned
-    have hLength := shape.recordSlots_length r words (fun i => (children i).toNode)
+    have hLength :=
+      shape.recordSlots_length r (shape.slotWords r words) (fun i => (children i).toNode)
     obtain ⟨hAt', hHeader, hSlots', hBlocks, hApart'⟩ :=
       TreeHeader.detach_spec hAt ⟨hHead, hSlots⟩ hLength hApart
     obtain ⟨hWrites, _, _, hCap⟩ := TreeHeader.clearMask_spec hAt hHead hLength
@@ -55,18 +57,19 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
       rw [slotAddress_toNat (by omega)]
       omega
     have hFieldSlots : SlotsOwned heap (TreeHeader.clearMask store p) p shape.fieldStart
-        (treeSlots (shape.fields r) words (fun i => (children i).toNode)) := by
+        (treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode)) := by
       have hAll : SlotsOwned heap (TreeHeader.clearMask store p) p 0 (shape.tagSlots r ++
-          treeSlots (shape.fields r) words (fun i => (children i).toNode)) := hSlots'
+          treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode)) :=
+        hSlots'
       have := ((SlotsOwned.append_iff _ _ _).mp hAll).2
       rwa [Nat.zero_add, ← shape.fieldStart_tagSlots r] at this
     have hFieldApart : (slotsBlocks (TreeHeader.clearMask store p) p shape.fieldStart
-        (treeSlots (shape.fields r) words (fun i => (children i).toNode))).Pairwise
-          regionsDisjoint := by
+        (treeSlots (shape.fields r) (shape.slotWords r words)
+          (fun i => (children i).toNode))).Pairwise regionsDisjoint := by
       have := (List.pairwise_cons.mp hApart').2
       change (slotsBlocks _ p 0 (shape.tagSlots r ++
-        treeSlots (shape.fields r) words (fun i => (children i).toNode))).Pairwise
-          regionsDisjoint at this
+        treeSlots (shape.fields r) (shape.slotWords r words)
+          (fun i => (children i).toNode))).Pairwise regionsDisjoint at this
       rwa [slotsBlocks_append, tagSlots_blocks, List.nil_append, Nat.zero_add,
         ← shape.fieldStart_tagSlots r] at this
     have hChildren : ∀ i, Mode.owned.node heap (TreeHeader.clearMask store p)
@@ -78,7 +81,7 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
       rw [hReadNat _ (hBound i)] at h
       exact h
     have hFieldBlocks : slotsBlocks (TreeHeader.clearMask store p) p 0
-        (shape.recordSlots r words (fun i => (children i).toNode)) =
+        (shape.recordSlots r (shape.slotWords r words) (fun i => (children i).toNode)) =
         (List.ofFn fun i => (children i).toNode.blocks (TreeHeader.clearMask store p)
           (store.mem.read64 (slotAddress p
             (shape.fieldStart + (fieldPosition true (shape.fields r) i).val)))).flatten := by
@@ -96,16 +99,18 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
     · intro _
       have hAll := hApart'
       change (block _ p :: slotsBlocks _ p 0
-        (shape.recordSlots r words (fun i => (children i).toNode))).Pairwise _ at hAll
+        (shape.recordSlots r (shape.slotWords r words) (fun i => (children i).toNode))).Pairwise _
+        at hAll
       rwa [hFieldBlocks] at hAll
     · change block (TreeHeader.clearMask store p) p ::
-        slotsBlocks (TreeHeader.clearMask store p) p 0 (shape.recordSlots r words
-          (fun i => (children i).toNode)) = block store p :: _
+        slotsBlocks (TreeHeader.clearMask store p) p 0
+          (shape.recordSlots r (shape.slotWords r words) (fun i => (children i).toNode)) =
+        block store p :: _
       rw [block_eq hCap, hBlocks]
 
 theorem wp_detachTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
     {s : Locals} {shape : TreeShape} {r : Fin shape.records} {mode : Mode} {p : UInt64}
-    {ptr : Nat} {words : Fin (shape.words r) → UInt64}
+    {ptr : Nat} {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
     {children : Fin (shape.children r) → Tree shape} {rest : Program} {Q : Assertion Unit}
     (hAt : heap.At store) (hNode : mode.node heap store p (Tree.node r words children).toNode)
     (hPtr : s.get ptr = some (.i64 p))

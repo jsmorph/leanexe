@@ -51,6 +51,8 @@ def Pick.encode : Pick → LeanExe.Pipeline.Node
 
 instance : LeanExe.Pipeline.Encode Pick := ⟨Pick.encode⟩
 
+verified_recursive_type Pick
+
 def pick (n : UInt64) : Pick := if n % 2 = 0 then .first n else .second n (.first 0)
 
 def pickCase (value : Pick) : UInt64 :=

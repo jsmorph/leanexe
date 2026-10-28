@@ -6,7 +6,7 @@ namespace Verified.Examples.TreeCopy
 
 open Wasm LeanExe.Runtime
 
-def binaryShape : TreeShape := ⟨[[], [true, false, true]], by decide⟩
+def binaryShape : TreeShape := ⟨[[], [.child, .word .word, .child]], by decide⟩
 
 def function (shape : TreeShape) (action : Nat) : Wasm.Function :=
   { params := [.i64], locals := List.replicate 7 .i64, results := [.i64]
@@ -31,8 +31,8 @@ def headerWidth (shape : TreeShape) (r : Fin shape.records) : Wasm.Function :=
       [.localSet 6, .localGet 7, .call 1, .localGet 6] }
 
 def headerEntries : List (String × Wasm.Function) :=
-  [("headerWidth1", headerWidth ⟨[[], [true]], by decide⟩ ⟨0, by decide⟩),
-   ("headerWidth64", headerWidth ⟨[[], List.replicate 64 true], by decide⟩ ⟨0, by decide⟩),
+  [("headerWidth1", headerWidth ⟨[[], [.child]], by decide⟩ ⟨0, by decide⟩),
+   ("headerWidth64", headerWidth ⟨[[], List.replicate 64 .child], by decide⟩ ⟨0, by decide⟩),
    ("headerAfterList",
     { params := [.i64], locals := List.replicate 7 .i64, results := [.i64]
       typeIdx := some 0

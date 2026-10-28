@@ -37,20 +37,6 @@ def Ty.types : Ty → List ValueType
   | .bytes => [.i64, .i64]
   | .pair a b => a.types ++ b.types
 
-/-- The instructions that turn a word of type `ty` on top of the stack into the i64 that holds it
-in an array: an f64 becomes an i64 bit pattern, and an f32 bit pattern is zero-extended to i64. -/
-def toWordCode : ValueType → Program
-  | .f64 => [.i64ReinterpretF64]
-  | .f32 => [.i32ReinterpretF32, .extendUI32]
-  | _ => []
-
-/-- The instructions that turn the i64 that holds a word of type `ty` in an array into the
-word. -/
-def ofWordCode : ValueType → Program
-  | .f64 => [.f64ReinterpretI64]
-  | .f32 => [.wrapI64, .f32ReinterpretI32]
-  | _ => []
-
 /-- The word count `k` of an element as the code uses it, at most `2 ^ 29`.  An element of
 `2 ^ 29` words or more is in no array that memory holds, so the code may use any positive count
 for it, and `2 ^ 29` keeps the count positive and below `2 ^ 64`. -/
@@ -571,8 +557,8 @@ def TailBody.codeWith
     let nodeCode := fun r : Fin shape.records =>
       releaseWhere Γ slots (fun i => mid i && !(nodeLive r i || decide (i = x.index))) ++
         x.code h slots (base + shape.bindCount r) (nodeLive r) ++ [.localSet base] ++
-        treeLoadFields base (base + 1) (base + 1 + shape.words r) shape.fieldStart
-          (shape.fields r) ++
+        treeLoadFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
+          shape.fieldStart (shape.fields r) ++
         (if rootMode = .owned then
           LeanExe.Runtime.headerStore base 8 [.constI64 0] else []) ++
         releaseWhere (shape.context r Γ) (shape.slots r base rootMode slots)
@@ -689,7 +675,8 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
     argsCode (fun i =>
       (words i).code (pool := pool) h slots scratch (fun k => kept k ||
         (argsAny fun j => decide (i.val < j.val) && (words j).usesFast k) ||
-        (argsAny fun j => (children j).usesFast k)) ++ [.localSet (base + 1 + i.val)]) ++
+        (argsAny fun j => (children j).usesFast k)) ++
+        storeCode h (base + 1 + i.val) (shape.wordTy r i).types) ++
     argsCode (fun i =>
       (children i).code (pool := pool) h slots scratch (fun k => kept k ||
         (argsAny fun j => decide (i.val < j.val) && (children j).usesFast k)) ++
@@ -702,7 +689,8 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
         else [.constI64 (UInt64.ofNat (8 * shape.width r)), .call 0, .localSet base]
       | none => [.constI64 (UInt64.ofNat (8 * shape.width r)), .call 0, .localSet base]) ++
     shape.tagStoreCode r base ++
-    treeStoreFields base (base + 1) (base + 1 + shape.words r) shape.fieldStart (shape.fields r) ++
+    treeStoreFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
+      shape.fieldStart (shape.fields r) ++
     LeanExe.Runtime.headerStore base 24 [.constI64 1] ++
     LeanExe.Runtime.headerStore base 16 [.constI64 (UInt64.ofNat (shape.width r))] ++
     LeanExe.Runtime.headerStore base 8 [.constI64 (shape.mask r)] ++ [.localGet base]
@@ -722,8 +710,9 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
       releaseWhere Γ slots
           (fun i => mid i && !((live i || nodeUses r i) || decide (i = x.index))) ++
         x.code h slots scratch (fun i => live i || nodeUses r i) ++ [.localSet fieldBase] ++
-        treeLoadFields fieldBase (fieldBase + 1) (fieldBase + 1 + shape.words r) shape.fieldStart
-          (shape.fields r) ++
+        treeLoadFields h fieldBase (shape.wordTypes r) (fieldBase + 1)
+          (fieldBase + 1 + shape.words r)
+          shape.fieldStart (shape.fields r) ++
         (if rootMode = .owned then
           LeanExe.Runtime.headerStore fieldBase 8 [.constI64 0] else []) ++
         releaseWhere (shape.context r Γ) (shape.slots r fieldBase rootMode slots)

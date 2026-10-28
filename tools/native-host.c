@@ -3,13 +3,23 @@
    kinds, and prints the same lines, so that the corpus of tests/verified runs unchanged.  It is
    compiled with ccomp together with the module's C text and its glue (tools/native-host.h).
 
+   `bench SECONDS MAX FUNC RESULT [ARG...]`, which tools/wasmtime-host.c also takes, calls the
+   export once to warm up, and then repeatedly until SECONDS have passed or MAX timed calls have
+   run.  Before each call it places the arguments again, since a call may consume them, and it
+   times only the call, with CLOCK_MONOTONIC.  It prints the results of the last call as `call`
+   does, then `bench N NS`, the number of timed calls and their total time in nanoseconds.
+
    The host calls lx_init, then the export `reset` when the module has it.  Each call of an
    export is followed by a test of lx_status: a nonzero code is a trap, which the host reports
    on standard error with Wasmtime's message for the trap and exit status 2. */
 
+/* For clock_gettime and CLOCK_MONOTONIC. */
+#define _POSIX_C_SOURCE 199309L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "native-host.h"
 
@@ -617,11 +627,11 @@ static void print_result(const char *kind, u64 value) {
   }
 }
 
-static void call_export(const char *func_name, const char *result_kind, int argc, char **argv) {
-  const lx_export *e = get_export(func_name);
-  u64 args[256];
-  u64 results[128];
-  size_t nargs = 0, nresults, i;
+/* Places the arguments `argv` of a call of `e` into `args` and returns the number of results
+   that `result_kind` describes, after checking both against the type of `e`. */
+static size_t place_args(const lx_export *e, const char *func_name, const char *result_kind,
+                         int argc, char **argv, u64 *args) {
+  size_t nargs = 0, nresults;
   int j;
   for (j = 0; j < argc; j++) {
     size_t count;
@@ -640,8 +650,12 @@ static void call_export(const char *func_name, const char *result_kind, int argc
     fprintf(stderr, "the call of %s does not match its type\n", func_name);
     exit(1);
   }
-  invoke(e, args, results);
+  return nresults;
+}
 
+/* Prints the results of a call as `result_kind` describes them. */
+static void print_results(const char *result_kind, const u64 *results, size_t nresults) {
+  size_t i;
   if (strncmp(result_kind, "list:", 5) == 0) {
     size_t item = 0;
     for (i = 0; i < nresults; i++, item++) {
@@ -679,6 +693,43 @@ static void call_export(const char *func_name, const char *result_kind, int argc
   printf("\n");
 }
 
+static void call_export(const char *func_name, const char *result_kind, int argc, char **argv) {
+  const lx_export *e = get_export(func_name);
+  u64 args[256];
+  u64 results[128];
+  size_t nresults = place_args(e, func_name, result_kind, argc, argv, args);
+  invoke(e, args, results);
+  print_results(result_kind, results, nresults);
+}
+
+static u64 now_ns(void) {
+  struct timespec t;
+  clock_gettime(CLOCK_MONOTONIC, &t);
+  return (u64)t.tv_sec * 1000000000ULL + (u64)t.tv_nsec;
+}
+
+static void bench_export(const char *seconds, const char *max, const char *func_name,
+                         const char *result_kind, int argc, char **argv) {
+  const lx_export *e = get_export(func_name);
+  u64 args[256];
+  u64 results[128];
+  u64 limit = (u64)(atof(seconds) * 1e9), most = parse_u64(max);
+  u64 start, count = 0, total = 0, before, after;
+  size_t nresults = place_args(e, func_name, result_kind, argc, argv, args);
+  invoke(e, args, results);
+  start = now_ns();
+  while (count < most && now_ns() - start < limit) {
+    place_args(e, func_name, result_kind, argc, argv, args);
+    before = now_ns();
+    invoke(e, args, results);
+    after = now_ns();
+    total += after - before;
+    count++;
+  }
+  print_results(result_kind, results, nresults);
+  printf("bench %llu %llu\n", count, total);
+}
+
 static u64 read_global(const char *name) {
   int i;
   for (i = 0; i < lx_global_export_count; i++) {
@@ -692,13 +743,16 @@ static u64 read_global(const char *name) {
 }
 
 static void usage(void) {
-  fprintf(stderr, "usage: HOST call|call-stats FUNC RESULT [ARG...]\n");
+  fprintf(stderr, "usage: HOST call|call-stats FUNC RESULT [ARG...]\n"
+                  "       HOST bench SECONDS MAX FUNC RESULT [ARG...]\n");
   exit(2);
 }
 
 int main(int argc, char **argv) {
   const lx_export *reset;
-  if (argc < 4 || (strcmp(argv[1], "call") != 0 && strcmp(argv[1], "call-stats") != 0)) {
+  int bench = argc >= 2 && strcmp(argv[1], "bench") == 0;
+  if (bench ? argc < 6
+            : argc < 4 || (strcmp(argv[1], "call") != 0 && strcmp(argv[1], "call-stats") != 0)) {
     usage();
   }
   lx_status = 0;
@@ -709,6 +763,10 @@ int main(int argc, char **argv) {
   reset = find_export("reset");
   if (reset != NULL) {
     invoke(reset, NULL, NULL);
+  }
+  if (bench) {
+    bench_export(argv[2], argv[3], argv[4], argv[5], argc - 6, argv + 6);
+    return 0;
   }
   call_export(argv[2], argv[3], argc - 4, argv + 4);
   if (strcmp(argv[1], "call-stats") == 0) {

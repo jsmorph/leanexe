@@ -32,6 +32,8 @@ import Verified.Compile
 import Verified.State
 import Verified.Correct
 import Verified.BoundFacts
+import Verified.LoopCostLast
+import Verified.ChargeFacts
 import Verified.Reflect.Lemmas
 import Verified.Reflect.BoundLemmas
 import Verified.Reflect.FitsLemmas
@@ -92,6 +94,7 @@ import Verified.Examples.Floats
 import Verified.Examples.Floats32
 import Verified.Examples.Sums
 import Verified.Examples.HeapSums
+import Verified.Examples.TypedTrees
 import Verified.Examples.Elements
 import Verified.Examples.Tuples
 import Verified.Examples.Records
@@ -105,6 +108,7 @@ import Verified.Examples.Tables
 import Demos.Verified
 import Verified.Wasi
 import Verified.Examples.Literals
+import Verified.ProgramLiterals
 import Verified.Examples.WasiDepth
 import Verified.Examples.WasiRetainTotal
 import Verified.Examples.WasiStdio

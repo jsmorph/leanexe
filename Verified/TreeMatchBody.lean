@@ -8,7 +8,8 @@ theorem After.treeBody {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     {L0 L1 live bodyIn : Nat → Bool} {base fieldBase : Nat} {heap0 heap heap' : Heap}
     {store0 store store' : Store Unit} {s0 s s' : Locals} {shape : TreeShape}
     {r : Fin shape.records} {rootMode : Mode}
-    {words : Fin (shape.words r) → UInt64} {children : Fin (shape.children r) → Tree shape}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {children : Fin (shape.children r) → Tree shape}
     {fresh : List (Nat × Nat)} {t : Ty} {mode : Mode} {value : t.denote} {ws : List Value}
     (h0 : Holds env slots L0 base heap0 store0 s0)
     (hStep : Step heap0 store0 (Holds.KeepDying env slots L0 L1 store0 s0) heap store fresh)

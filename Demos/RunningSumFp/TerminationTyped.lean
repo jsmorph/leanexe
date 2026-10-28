@@ -20,56 +20,79 @@ theorem control_wellFounded (unread zeroWrites : Ghost → Nat) :
     WellFounded (ControlLt unread zeroWrites) :=
   InvImage.wf (controlRank unread zeroWrites) controlOrder.wf
 
-def ControlRep (rep : Ghost → World → Prop) (ghost : ControlGhost Ghost)
-    (current : ProcessStep stateTy.denote) (world : World) : Prop :=
+/-- The ghost's native state is related to the compiled state, safe, and represented with the
+world, its status is accepted when it stops, and `Inv` holds of it and its ghost while it runs. -/
+def ControlRep (rep : Ghost → World → Prop) (Inv : State → Ghost → Prop)
+    (ghost : ControlGhost Ghost) (current : ProcessStep stateTy.denote) (world : World) : Prop :=
   ProcessStep.Rel (fun native flat => flat = sourceState native) ghost.1 current ∧
     Safe ghost.1.state ∧ rep ghost.2 world ∧
-    (ghost.1.running = false → ghost.1.status = 0 ∨ ghost.1.status = 28)
+    (ghost.1.running = false → ghost.1.status = 0 ∨ ghost.1.status = 28) ∧
+    (ghost.1.running = true → Inv ghost.1.state ghost.2)
+
+/-- Each step from a safe state where `Inv` holds returns a state whose ghost is represented with
+the final world and, while the process runs, satisfies `Inv` at a lower rank. -/
+def StepAdvances {World Ghost : Type} (host : Host World) (rep : Ghost → World → Prop)
+    (unread zeroWrites : Ghost → Nat) (Inv : State → Ghost → Prop) : Prop :=
+  ∀ {state : State} {ghost : Ghost} {world final : World} {trace : List Event}
+    {next : ProcessStep State}, Safe state → Inv state ghost → rep ghost world →
+    LeanExe.Wasi.Exec host (step state) world trace (.returned next) final →
+    ∃ nextGhost, rep nextGhost final ∧
+      (next.running = true → Inv next.state nextGhost ∧
+        RankLt (rank unread zeroWrites next.state nextGhost) (rank unread zeroWrites state ghost))
+
+/-- Without an invariant, each step advances by `step_advances`. -/
+theorem true_advances {World Ghost : Type} {host : Host World} {rep : Ghost → World → Prop}
+    {unread zeroWrites : Ghost → Nat} (progress : StreamProgress host rep unread zeroWrites) :
+    StepAdvances host rep unread zeroWrites (fun _ _ => True) := by
+  intro state ghost world final trace next safe _ ready execution
+  obtain ⟨nextGhost, nextRep, _, _, smaller⟩ := step_advances progress ready safe execution
+  exact ⟨nextGhost, nextRep, fun running => ⟨trivial, smaller running⟩⟩
 
 theorem control_begin_replies {World Ghost : Type} {host : Host World}
-    {rep : Ghost → World → Prop} {ghost : Ghost} {world : World} (ready : rep ghost world)
-    {trace outcome final}
+    {rep : Ghost → World → Prop} {Inv : State → Ghost → Prop} {ghost : Ghost} {world : World}
+    (ready : rep ghost world) (initialInv : Inv initial ghost) {trace outcome final}
     (execution : LeanExe.Wasi.Exec host (entry.beginAction (io.program.funs io.pure.funs))
       world trace outcome final) :
     ∃ current, outcome = .returned current ∧
-      ControlRep rep (⟨true, 0, initial⟩, ghost) current final := by
+      ControlRep rep Inv (⟨true, 0, initial⟩, ghost) current final := by
   obtain ⟨nativeOutcome, nativeExecution, related⟩ := begin_related.exec_back execution
   change LeanExe.Wasi.Exec host (.pure ⟨true, 0, initial⟩) world trace nativeOutcome final
     at nativeExecution
   cases nativeExecution
   cases related with
   | returned related =>
-      exact ⟨_, rfl, related, Safe.initial, ready, fun impossible => Bool.noConfusion impossible⟩
+      exact ⟨_, rfl, related, Safe.initial, ready, fun impossible => Bool.noConfusion impossible,
+        fun _ => initialInv⟩
 
+/-- A step from a represented running state returns a represented state of lower rank, and the
+native step from the ghost's state returns the ghost's next state. -/
 theorem control_step_replies {World Ghost : Type} {host : Host World}
-    {rep : Ghost → World → Prop} {unread zeroWrites : Ghost → Nat}
+    {rep : Ghost → World → Prop} {unread zeroWrites : Ghost → Nat} {Inv : State → Ghost → Prop}
     (progress : StreamProgress host rep unread zeroWrites)
-    (potential charge : ProcessStep State → Ghost → Nat)
-    (decreases : ∀ (native : ProcessStep State) ghost world, Safe native.state → rep ghost world →
-      native.running = true → ∀ trace next final nextGhost,
-      LeanExe.Wasi.Exec host (step native.state) world trace (.returned next) final →
-      rep nextGhost final → potential next nextGhost + charge native ghost ≤ potential native ghost)
+    (advances : StepAdvances host rep unread zeroWrites Inv)
     {ghost : ControlGhost Ghost} {current : ProcessStep stateTy.denote}
-    {world : World} (held : ControlRep rep ghost current world) (running : current.running = true)
+    {world : World} (held : ControlRep rep Inv ghost current world)
+    (running : current.running = true)
     {trace outcome final}
     (execution : LeanExe.Wasi.Exec host (entry.action (io.program.funs io.pure.funs) current.state)
       world trace outcome final) :
-    ∃ nextGhost next, outcome = .returned next ∧ ControlRep rep nextGhost next final ∧
+    ∃ nextGhost next, outcome = .returned next ∧ ControlRep rep Inv nextGhost next final ∧
       ControlLt unread zeroWrites nextGhost ghost ∧
-      potential nextGhost.1 nextGhost.2 + charge ghost.1 ghost.2 ≤ potential ghost.1 ghost.2 := by
-  obtain ⟨related, safe, ready, _⟩ := held
+      LeanExe.Wasi.Exec host (step ghost.1.state) world trace (.returned nextGhost.1) final := by
+  obtain ⟨related, safe, ready, _, invariant⟩ := held
+  have beforeRunning : ghost.1.running = true := related.running.trans running
   obtain ⟨nativeOutcome, nativeExecution, resultRelated⟩ :=
     (step_related ghost.1.state current.state related.state).exec_back execution
   obtain ⟨nativeNext, same⟩ := step_returned progress ready safe nativeExecution
   cases same
   cases resultRelated with
   | returned nextRelated =>
-      obtain ⟨nextGhost, nextRep, nextSafe, status, smaller⟩ :=
-        step_advances progress ready safe nativeExecution
-      have beforeRunning : ghost.1.running = true := related.running.trans running
-      refine ⟨(nativeNext, nextGhost), _, rfl, ⟨nextRelated, nextSafe, nextRep, status⟩, ?_,
-        decreases ghost.1 ghost.2 world safe ready beforeRunning trace nativeNext final nextGhost
-          nativeExecution nextRep⟩
+      obtain ⟨_, _, nextSafe, status, _⟩ := step_advances progress ready safe nativeExecution
+      obtain ⟨nextGhost, nextRep, after⟩ :=
+        advances safe (invariant beforeRunning) ready nativeExecution
+      refine ⟨(nativeNext, nextGhost), _, rfl,
+        ⟨nextRelated, nextSafe, nextRep, status, fun nextRunning => (after nextRunning).1⟩, ?_,
+        nativeExecution⟩
       change controlOrder.rel (controlRank unread zeroWrites (nativeNext, nextGhost))
         (controlRank unread zeroWrites ghost)
       cases afterRunning : nativeNext.running with
@@ -78,18 +101,18 @@ theorem control_step_replies {World Ghost : Type} {host : Host World}
           exact Prod.Lex.left _ _ (show (0 : Nat) < 1 by decide)
       | true =>
           simp only [controlRank, afterRunning, beforeRunning, ↓reduceIte]
-          exact Prod.Lex.right _ (smaller afterRunning)
+          exact Prod.Lex.right _ (after afterRunning).2
 
 theorem control_exit_accepted {World Ghost : Type} {host : Host World}
-    {rep : Ghost → Observed World → Prop}
+    {rep : Ghost → Observed World → Prop} {Inv : State → Ghost → Prop}
     (accepted : ∀ ghost world, rep ghost world → ∀ status,
       status = 0 ∨ status = 28 → ∀ message final,
       (observedHost host).exitTrap world (exitStatus status) message final → False)
     {ghost : ControlGhost Ghost} {current : ProcessStep stateTy.denote}
-    {world : Observed World} (held : ControlRep rep ghost current world)
+    {world : Observed World} (held : ControlRep rep Inv ghost current world)
     (stopped : current.running = false) {message final}
     (rejected : (observedHost host).exitTrap world (exitStatus current.status) message final) : False := by
-  obtain ⟨related, _, ready, status⟩ := held
+  obtain ⟨related, _, ready, status, _⟩ := held
   have nativeStopped := related.running.trans stopped
   exact accepted ghost.2 world ready current.status
     (by simpa only [← related.status] using status nativeStopped) message final rejected

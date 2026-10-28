@@ -27,6 +27,23 @@ theorem Env.repeat_append {Γ Δ : List Ty} (first : Env Γ) (second : Env Δ)
     Env.cons_heq (List.append_assoc (List.replicate n t) Γ Δ)
       (Env.repeat_append first second t n (fun i => values i.succ)) (values 0)
 
+theorem Env.fn_heq {Γ Δ : List Ty} {first : Env Γ} {second : Env Δ}
+    (hΓ : Γ = Δ) (h : HEq first second) (n : Nat) (ts : Fin n → Ty)
+    (values : (i : Fin n) → (ts i).denote) :
+    HEq (Env.prependFn n ts values first) (Env.prependFn n ts values second) := by
+  cases hΓ
+  cases h
+  rfl
+
+theorem Env.fn_append {Γ Δ : List Ty} (first : Env Γ) (second : Env Δ) :
+    ∀ n (ts : Fin n → Ty) (values : (i : Fin n) → (ts i).denote),
+    HEq ((Env.prependFn n ts values first).append second)
+      (Env.prependFn n ts values (first.append second))
+  | 0, _, _ => HEq.rfl
+  | n + 1, ts, values =>
+    Env.cons_heq (List.append_assoc (tysOfFn n fun i => ts i.succ) Γ Δ)
+      (Env.fn_append first second n (fun i => ts i.succ) (fun i => values i.succ)) (values 0)
+
 theorem Holds.ofHEq {Γ Δ : List Ty} {first : Env Γ} {second : Env Δ}
     (hΓ : Γ = Δ) (h : HEq first second) {slots : List Slot} {live : Nat → Bool}
     {base : Nat} {heap : Heap} {store : Store Unit} {s : Locals}

@@ -1,33 +1,39 @@
 import Verified.OwnedValues
+import Verified.WordCode
 
 namespace Verified
 
 open Wasm LeanExe.Pipeline
 
+/-- The words of word fields, elements of one word each, and the rest of a context. -/
 theorem Env.Rep.wordFields {heap : Heap} {store : Store Unit} {ps : List Ty}
-    (tail : Env ps) : (n : Nat) → (words : Fin n → UInt64) →
+    (tail : Env ps) : (n : Nat) → (es : Fin n → Elem) → (∀ i, (es i).width = 1) →
+    (words : (i : Fin n) → (es i).denote) →
     ∀ (modes : Nat → Mode) (ws : List Value),
-      Env.Rep modes heap store ws (Env.prependRepeat .word n words tail) →
-      ∃ rest, ws = (List.ofFn fun i => Value.i64 (words i)) ++ rest ∧
+      Env.Rep modes heap store ws (Env.prependFn n (fun i => .elem (es i)) words tail) →
+      ∃ rest, ws = (List.ofFn fun i =>
+          typedValue (es i).slotType ((es i).slotWord (words i))) ++ rest ∧
         Env.Rep (fun i => modes (i + n)) heap store rest tail ∧
-        (Env.prependRepeat .word n words tail).blocks store ws = tail.blocks store rest
-  | 0, _, modes, ws, hRep => ⟨ws, rfl, by
-      simpa only [Env.prependRepeat, List.replicate_zero, List.nil_append, Nat.add_zero]
-        using hRep, rfl⟩
-  | n + 1, words, modes, ws, hRep => by
+        (Env.prependFn n (fun i => .elem (es i)) words tail).blocks store ws =
+          tail.blocks store rest
+  | 0, _, _, _, _, ws, hRep => ⟨ws, rfl, hRep, rfl⟩
+  | n + 1, es, hWidth, words, modes, ws, hRep => by
     obtain ⟨first, middle, rfl, hFirst, hMiddle⟩ := hRep
-    have hFirst' : first = [.i64 (words 0)] := hFirst
+    have hFirst' : first = [typedValue (es 0).slotType ((es 0).slotWord (words 0))] :=
+      hFirst.trans (Elem.values_one (es 0) (hWidth 0) (words 0))
     subst hFirst'
-    obtain ⟨rest, hWords, hRep, hBlocks⟩ := Env.Rep.wordFields tail n
-      (fun i => words i.succ) (fun i => modes (i + 1)) middle hMiddle
+    obtain ⟨rest, hWords, hRep, hBlocks⟩ := Env.Rep.wordFields tail n (fun i => es i.succ)
+      (fun i => hWidth i.succ) (fun i => words i.succ) (fun i => modes (i + 1)) middle hMiddle
     refine ⟨rest, ?_, ?_, ?_⟩
     · rw [List.ofFn_succ]
       simpa only [List.singleton_append, List.cons_append, List.nil_append] using congrArg
-        (List.cons (.i64 (words 0))) hWords
+        (List.cons (typedValue (es 0).slotType ((es 0).slotWord (words 0)))) hWords
     · simpa only [Nat.add_assoc] using hRep
-    · change (Env.cons (t := .word) (words 0)
-        (Env.prependRepeat .word n (fun i => words i.succ) tail)).blocks store _ = _
-      rw [Env.blocks_cons (t := .word) rfl]
+    · change (Env.cons (t := .elem (es 0)) (words 0)
+        (Env.prependFn n (fun i => .elem (es i.succ)) (fun i => words i.succ) tail)).blocks
+          store _ = _
+      rw [Env.blocks_cons (t := .elem (es 0))
+        (by simp only [List.length_singleton, Ty.width, hWidth 0])]
       exact hBlocks
 
 theorem Env.Rep.treeFields {heap : Heap} {store : Store Unit} {ps : List Ty}

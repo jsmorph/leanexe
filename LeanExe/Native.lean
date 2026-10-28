@@ -24,3 +24,4 @@ import LeanExe.Native.Proof.Whole
 import LeanExe.Native.Proof.Quiet
 import LeanExe.Native.Proof.Main
 import LeanExe.Native.Proof.Input
+import LeanExe.Native.Proof.Parts

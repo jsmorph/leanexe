@@ -15,16 +15,16 @@ The printer writes the forms that `clightgen` produces so that they come back un
 sequence nested as the first part of a sequence prints as a block, since C's blocks nest to the
 right.  `Sloop (Ssequence Sskip s) Sskip` prints as `for (;;) { s }`, from which `clightgen`
 restores the `Sskip`.  A call through a temporary `t` that `isCall` accepts, `Scall (some t) f
-args` followed by `Sset x (Etempvar t)`, prints as `x = f(args);`, and `t` is not declared;
-`clightgen` creates such a temporary for every call whose result is stored.  A store to a volatile
-lvalue, `Sbuiltin None (EF_vstore chunk) tys [Eaddrof l ty, e]`, the form that SimplExpr gives
-it, prints as the assignment `l = e;`, a load from one, `Sbuiltin (Some t) (EF_vload chunk) tys
-[Eaddrof l ty]`, prints as `t = l;`, and a volatile type prints with the qualifier `volatile`.  A
-load through a temporary `t` that `isCall` accepts, followed by `Sset x (Ecast (Etempvar t) ty)`,
-prints as `x = l;`, and `t` is not declared, since `clightgen` creates such a temporary for every
-read of a volatile lvalue.
-A global without initialization data prints as an `extern` declaration.  `gname` names the
-globals and functions, and `tname` the temporaries.
+args` followed by `Sset x (Etempvar t)` or by `Sset x (Ecast (Etempvar t) ty)`, prints as
+`x = f(args);` or `x = ((ty)f(args));`, and `t` is not declared; `clightgen` creates such a
+temporary for every call whose result is stored.  A store to a volatile lvalue, `Sbuiltin None
+(EF_vstore chunk) tys [Eaddrof l ty, e]`, the form that SimplExpr gives it, prints as the
+assignment `l = e;`, a load from one, `Sbuiltin (Some t) (EF_vload chunk) tys [Eaddrof l ty]`,
+prints as `t = l;`, and a volatile type prints with the qualifier `volatile`.  A load through a
+temporary `t` that `isCall` accepts, followed by `Sset x (Ecast (Etempvar t) ty)`, prints as
+`x = l;`, and `t` is not declared, since `clightgen` creates such a temporary for every read of a
+volatile lvalue.  A global without initialization data prints as an `extern` declaration.
+`gname` names the globals and functions, and `tname` the temporaries.
 -/
 
 namespace LeanExe.Native
@@ -128,11 +128,14 @@ def builtinName : external_function → Except String String
 
 def indent (depth : Nat) : String := String.ofList (List.replicate (2 * depth) ' ')
 
-/-- The call `Scall (some t) f args` followed by `Sset x (Etempvar t)`, for a temporary `t` that
-`isCall` accepts: `x`, `f`, and `args`. -/
-def callPair? : statement → Option (ident × expr × List expr)
+/-- The call `Scall (some t) f args` followed by `Sset x (Etempvar t)` or by
+`Sset x (Ecast (Etempvar t) ty)`, for a temporary `t` that `isCall` accepts: `x`, `f`, `args`,
+and the type `ty` of the cast, if any. -/
+def callPair? : statement → Option (ident × expr × List expr × Option type)
   | .Ssequence (.Scall (some t) a al) (.Sset x (.Etempvar t' _)) =>
-      if isCall t && t == t' then some (x, a, al) else none
+      if isCall t && t == t' then some (x, a, al, none) else none
+  | .Ssequence (.Scall (some t) a al) (.Sset x (.Ecast (.Etempvar t' _) ty)) =>
+      if isCall t && t == t' then some (x, a, al, some ty) else none
   | _ => none
 
 /-- The load `Sbuiltin (some t) (EF_vload chunk) tys [Eaddrof l ty]` followed by
@@ -166,8 +169,12 @@ partial def cstmt (depth : Nat) : statement → Except String String
       pure s!"{indent depth}{lhs}{← builtinName ef}({← cargs gname tname al});\n"
   | .Ssequence s1 s2 =>
       match callPair? isCall (.Ssequence s1 s2), loadPair? isCall (.Ssequence s1 s2) with
-      | some (x, a, al), _ => do
-          pure s!"{indent depth}{tname x} = {← cexpr gname tname a}({← cargs gname tname al});\n"
+      | some (x, a, al, cast), _ => do
+          let call := s!"{← cexpr gname tname a}({← cargs gname tname al})"
+          let rhs ← match cast with
+            | none => pure call
+            | some ty => do pure s!"(({← ctype ty}){call})"
+          pure s!"{indent depth}{tname x} = {rhs};\n"
       | none, some (x, l) => do
           pure s!"{indent depth}{tname x} = {← cexpr gname tname l};\n"
       | none, none => do

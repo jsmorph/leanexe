@@ -1,6 +1,6 @@
 import LeanExe.Native.Proof.Calls
 import LeanExe.Native.Proof.MemOps
-import LeanExe.Native.Proof.Floats
+import LeanExe.Native.Proof.Sqrt32
 
 /-!
 The simulation of every instruction, and of instruction lists at every fuel up to a bound, for
@@ -57,6 +57,8 @@ theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.
   case unreachable => exact (sim_unreachable hE F).toL
   case load64 off => exact (sim_load64 hE F off).toL
   case store64 off => exact (sim_store64 hE F off).toL
+  case load8U off => exact (sim_load8U hE F off).toL
+  case store8 off => exact (sim_store8 hE F off).toL
   case memorySize => exact (sim_memorySize hE h64 F).toL
   case memoryGrow => exact (sim_memoryGrow hE hcap F).toL
   case f64Const v => exact (sim_f64Const hE F v).toL
@@ -73,6 +75,23 @@ theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.
   case f64ReinterpretI64 => exact (sim_f64ReinterpretI64 hE F).toL
   case i64ReinterpretF64 => exact (sim_i64ReinterpretF64 hE F).toL
   case i64TruncSatF64U => exact (sim_i64TruncSatF64U F).toL
+  case f32Const v => exact (sim_f32Const hE F v).toL
+  case f32Add => exact (sim_f32Add hE F).toL
+  case f32Sub => exact (sim_f32Sub hE F).toL
+  case f32Mul => exact (sim_f32Mul hE F).toL
+  case f32Div => exact (sim_f32Div hE F).toL
+  case f32Eq => exact (sim_f32Eq F).toL
+  case f32Lt => exact (sim_f32Lt F).toL
+  case f32Le => exact (sim_f32Le F).toL
+  case f32Abs => exact (sim_f32Abs hE F).toL
+  case f32Nearest => exact (sim_f32Nearest hE F).toL
+  case f32Sqrt => exact (sim_f32Sqrt hE F).toL
+  case f32ConvertI64U => exact (sim_f32ConvertI64U F).toL
+  case f32ConvertI32S => exact (sim_f32ConvertI32S F).toL
+  case f32ReinterpretI32 => exact (sim_f32ReinterpretI32 hE F).toL
+  case i32ReinterpretF32 => exact (sim_i32ReinterpretF32 hE F).toL
+  case i64TruncSatF32U => exact (sim_i64TruncSatF32U F).toL
+  case i32TruncSatF32S => exact (sim_i32TruncSatF32S F).toL
   case br k => exact sim_br F k
   case br_if k => exact sim_br_if F k
   case ret => exact sim_ret hE hres F

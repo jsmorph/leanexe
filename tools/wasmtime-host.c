@@ -1,3 +1,6 @@
+/* For clock_gettime and CLOCK_MONOTONIC under -std=c11. */
+#define _POSIX_C_SOURCE 199309L
+
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -6,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <wasm.h>
 #include <wasmtime.h>
@@ -917,10 +921,8 @@ static size_t result_count_from_kind(const char *kind) {
   return 0;
 }
 
-static void call_export(Runtime *runtime, const char *func_name, const char *result_kind,
-                        int argc, char **argv) {
-  wasmtime_func_t func = get_func(runtime, func_name);
-  wasmtime_val_t args[256];
+/* Places the arguments `argv` of a call into `args` and returns their number. */
+static size_t place_args(Runtime *runtime, int argc, char **argv, wasmtime_val_t *args) {
   size_t nargs = 0;
   for (int i = 0; i < argc; i++) {
     if (nargs == 256) {
@@ -938,10 +940,13 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
     memcpy(args + nargs, parsed, count * sizeof(*parsed));
     nargs += count;
   }
+  return nargs;
+}
 
+/* Sets the kinds of the results that `result_kind` describes and returns their number. */
+static size_t result_slots(const char *result_kind, wasmtime_val_t *results) {
   size_t nresults = result_count_from_kind(result_kind);
   bool list = strncmp(result_kind, "list:", 5) == 0;
-  wasmtime_val_t results[128];
   /* Result `i` belongs to item `item` of a list; a `bytes` item covers two results. */
   for (size_t i = 0, item = 0; i < nresults; item++) {
     const char *kind = result_kind;
@@ -957,7 +962,13 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
                                                    : WASMTIME_I64;
     }
   }
-  call_func(runtime, &func, args, nargs, results, nresults, 2);
+  return nresults;
+}
+
+/* Prints the results of a call as `result_kind` describes them. */
+static void print_call_results(Runtime *runtime, const char *result_kind, wasmtime_val_t *results,
+                               size_t nresults) {
+  bool list = strncmp(result_kind, "list:", 5) == 0;
 
   if (list) {
     /* One line per item: an i64 or f64 as a decimal word, bytes in hexadecimal, an array as its
@@ -1108,6 +1119,49 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
     fprintf(control_output, "%" PRIu64, (uint64_t)results[i].of.i64);
   }
   fprintf(control_output, "\n");
+}
+
+static void call_export(Runtime *runtime, const char *func_name, const char *result_kind,
+                        int argc, char **argv) {
+  wasmtime_func_t func = get_func(runtime, func_name);
+  wasmtime_val_t args[256];
+  wasmtime_val_t results[128];
+  size_t nargs = place_args(runtime, argc, argv, args);
+  size_t nresults = result_slots(result_kind, results);
+  call_func(runtime, &func, args, nargs, results, nresults, 2);
+  print_call_results(runtime, result_kind, results, nresults);
+}
+
+static uint64_t now_ns(void) {
+  struct timespec t;
+  clock_gettime(CLOCK_MONOTONIC, &t);
+  return (uint64_t)t.tv_sec * 1000000000u + (uint64_t)t.tv_nsec;
+}
+
+/* Calls the export once to warm up, and then repeatedly until `seconds` have passed or `max`
+   timed calls have run, placing the arguments again before each call and timing only the
+   call.  Prints the results of the last call, then `bench N NS`. */
+static void bench_export(Runtime *runtime, const char *seconds, const char *max,
+                         const char *func_name, const char *result_kind, int argc, char **argv) {
+  wasmtime_func_t func = get_func(runtime, func_name);
+  wasmtime_val_t args[256];
+  wasmtime_val_t results[128];
+  uint64_t limit = (uint64_t)(atof(seconds) * 1e9), most = parse_u64(max);
+  uint64_t count = 0, total = 0;
+  size_t nargs = place_args(runtime, argc, argv, args);
+  size_t nresults = result_slots(result_kind, results);
+  call_func(runtime, &func, args, nargs, results, nresults, 2);
+  uint64_t start = now_ns();
+  while (count < most && now_ns() - start < limit) {
+    place_args(runtime, argc, argv, args);
+    result_slots(result_kind, results);
+    uint64_t before = now_ns();
+    call_func(runtime, &func, args, nargs, results, nresults, 2);
+    total += now_ns() - before;
+    count++;
+  }
+  print_call_results(runtime, result_kind, results, nresults);
+  fprintf(control_output, "bench %" PRIu64 " %" PRIu64 "\n", count, total);
 }
 
 static uint64_t read_global_u64(Runtime *runtime, const char *name) {
@@ -1642,6 +1696,7 @@ static _Noreturn void usage(void) {
           "list:K1,K2,...> "
           "[i64:N|f64:BITS|f32:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|chain-u64:N,N|tree-u64:K,.,.|"
           "records-u64:W,M,S,...|file-u64:PATH ...]\n"
+          "       wasmtime-host bench <module.wasm> SECONDS MAX <function> <result> [arguments]\n"
           "       wasmtime-host [options] script|session <module.wasm> < commands\n"
           "       wasmtime-host release-reuse|free-alias|temp-byte-call|temp-array-call|"
           "noarg-temp-reuse|allocator-grows <module.wasm> [arguments]\n");
@@ -1742,6 +1797,15 @@ int main(int argc, char **argv) {
     init_runtime(&runtime, argv[2]);
     call_export(&runtime, argv[3], argv[4], argc - 5, argv + 5);
     print_stats(&runtime);
+  } else if (strcmp(argv[1], "bench") == 0) {
+    if (argc < 7) {
+      usage();
+    }
+    uint64_t before = now_ns();
+    init_runtime(&runtime, argv[2]);
+    uint64_t init = now_ns() - before;
+    bench_export(&runtime, argv[3], argv[4], argv[5], argv[6], argc - 7, argv + 7);
+    fprintf(control_output, "init %" PRIu64 "\n", init);
   } else if (strcmp(argv[1], "release-reuse") == 0) {
     init_runtime(&runtime, argv[2]);
     command_release_reuse(&runtime, argc - 3, argv + 3);

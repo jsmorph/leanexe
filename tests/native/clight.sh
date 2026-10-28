@@ -10,8 +10,11 @@
 # print the same lines, the events and the exit code for a trace program.  A program whose run
 # exhausts the fuel is counted and skipped.  CCOMP names the CompCert 3.18 driver, `ccomp` by
 # default, configured for the target of ARCHI.
+# LEANRUN_MEMORY_HIGH is the memory limit of each step that runs under tools/leanrun, 6G unless
+# the caller sets it, as for tests/native/run.sh.
 # Usage: tests/native/clight.sh SEED COUNT [x86_64|aarch64]
 set -euo pipefail
+export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-6G}
 if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
   echo "usage: tests/native/clight.sh SEED COUNT [x86_64|aarch64]" >&2
   exit 2

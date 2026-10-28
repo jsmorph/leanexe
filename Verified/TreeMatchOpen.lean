@@ -6,9 +6,11 @@ namespace Verified
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 theorem wp_openTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
-    {s : Locals} {shape : TreeShape} {r : Fin shape.records} {mode : Mode} {p : UInt64} {base : Nat}
-    {words : Fin (shape.words r) → UInt64} {children : Fin (shape.children r) → Tree shape}
-    {rest : Program} {Q : Assertion Unit} (hAt : heap.At store)
+    {s : Locals} {shape : TreeShape} {r : Fin shape.records} {mode : Mode} {p : UInt64}
+    {h base : Nat}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {children : Fin (shape.children r) → Tree shape}
+    {rest : Program} {Q : Assertion Unit} (hh : s.positions = h) (hAt : heap.At store)
     (hNode : mode.node heap store p (Tree.node r words children).toNode)
     (hPtr : s.get base = some (.i64 p)) (hLow : s.params.length ≤ base + 1)
     (hRoom : base + 1 + (shape.fields r).length ≤ s.positions)
@@ -24,15 +26,16 @@ theorem wp_openTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : St
           (treeDetachStore mode store p) ws ((Env.treeFields shape r words children .nil).get x),
           b ∈ (Ty.tree shape).regions mode store [.i64 p] (.node r words children)) →
       wp m rest Q (treeDetachStore mode store p) s' host) :
-    wp m (treeLoadFields base (base + 1) (base + 1 + shape.words r) shape.fieldStart
-      (shape.fields r) ++
+    wp m (treeLoadFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
+      shape.fieldStart (shape.fields r) ++
       (if mode = .owned then headerStore base 8 [.constI64 0] else []) ++ rest) Q store s host := by
   obtain ⟨hAt', hHeader, hStep, hChildren, hApart, hReads, hRegions⟩ := treeNode_detach hAt hNode
   have hRun := wp_loadTree (m := m) (host := host) (Q := Q)
-    (rest := (if mode = .owned then headerStore base 8 [.constI64 0] else []) ++ rest) hAt hPtr
-    hNode hLow (by omega) hRoom
+    (rest := (if mode = .owned then headerStore base 8 [.constI64 0] else []) ++ rest) hh hAt
+    hPtr hNode hLow (by omega) hRoom
     (fun s' hFrame hStack hPtr' hWordLocals hChildLocals => by
-    have hold := LocalsHold.treeFields hPtr' hWordLocals hChildLocals
+    have hold := LocalsHold.treeFields hPtr' (by rw [hFrame.positions]; exact hWordLocals)
+      hChildLocals
     have hRep := treeFields_rep (words := words) hHeader hChildren
     have hPrefix := Holds.treePrefix hHeader hChildren hApart hold
     have hPointers : ∀ i, store.mem.read64

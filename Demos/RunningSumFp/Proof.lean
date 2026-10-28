@@ -15,6 +15,15 @@ def sourceProcess : Process stateTy.denote :=
 
 def startIndex : Nat := entry.startIndex io.pure.module
 
+theorem compactable : stateTy.compactable = true := by decide
+
+theorem compactForm : Encoding.ProgramForm (processCompaction stateTy) :=
+  Encoding.checkProgramForm_sound (by decide +kernel)
+
+theorem compactClosed :
+    Relocation.programClosed io.pure.module.funcs.length (processCompaction stateTy) = true := by
+  decide +kernel
+
 private def sourceResult (value : ProcessStep State) : (processResultTy stateTy).denote :=
   processValue stateTy ⟨value.running, value.status, sourceState value.state⟩
 
@@ -59,7 +68,7 @@ theorem initialState {World : Type} (world : Observed World) :
 theorem source_run {World : Type} (host : Host World) (targetHost : HostEnv (Observed World))
     (initial : Store (Observed World)) (heap : LeanExe.Pipeline.Heap) (fuel : Nat)
     (valid : targetHost.Satisfies module (hostSpec host))
-    (at_ : heap.At (PureTransport.erase initial))
+    (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : io.literalPool.Static heap (PureTransport.erase initial))
     (cap : (PureTransport.erase initial).memoryCap module 0 ≤ 65535)
     (completed : run fuel module startIndex initial [] targetHost ≠ .OutOfFuel) :
@@ -68,20 +77,19 @@ theorem source_run {World : Type} (host : Host World) (targetHost : HostEnv (Obs
       (run fuel module startIndex initial [] targetHost) :=
   compiled_process_run io.program entry io.literalPool calls
     (compileWith_runtime io.pure.program io.pure.tables io.pure.wrappers io.literalPool)
-    io.profile (Encoding.checkProgramForm_sound (by decide +kernel))
-    (by decide +kernel) (fun _ => rfl)
-    valid at_ static io.pool_apart cap completed
+    io.profile compactable compactForm compactClosed (fun _ => rfl)
+    valid at_ free static io.pool_apart cap completed
 
 theorem implements {World : Type} (host : Host World) (targetHost : HostEnv (Observed World))
     (initial : Store (Observed World)) (heap : LeanExe.Pipeline.Heap) (fuel : Nat)
     (valid : targetHost.Satisfies module (hostSpec host))
-    (at_ : heap.At (PureTransport.erase initial))
+    (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : io.literalPool.Static heap (PureTransport.erase initial))
     (cap : (PureTransport.erase initial).memoryCap module 0 ≤ 65535)
     (completed : run fuel module startIndex initial [] targetHost ≠ .OutOfFuel) :
     ProcessEntryRunResult (observedHost host) begin process initial.host
       (run fuel module startIndex initial [] targetHost) :=
-  (source_run host targetHost initial heap fuel valid at_ static cap completed).transport_back
+  (source_run host targetHost initial heap fuel valid at_ free static cap completed).transport_back
     step_related begin_related
 
 theorem exported : ({ name := "_start", funcIdx := startIndex } : Export) ∈ module.exports :=
@@ -94,7 +102,7 @@ theorem run_initial {World : Type} (host : Host World) (targetHost : HostEnv (Ob
     ProcessEntryRunResult (observedHost host) begin process world
       (run fuel module startIndex (initialStore world) [] targetHost) :=
   implements host targetHost (initialStore world) (initialStaticHeap io.literalPool) fuel valid
-    (initialState world).1 (initialState world).2.2 (initialState world).2.1 completed
+    (initialState world).1 rfl (initialState world).2.2 (initialState world).2.1 completed
 
 theorem bytes : ∃ bytes, Encoding.encode module = .ok bytes ∧ Encoding.decode bytes = .ok module ∧
     Encoding.ValidBinary bytes ∧ (type_of% @implements) := by

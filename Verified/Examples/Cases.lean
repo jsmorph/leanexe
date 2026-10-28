@@ -7,6 +7,7 @@ import TestSupport.Hashing.CrcCases
 import TestSupport.Hashing.SipHashCases
 import TestSupport.Hashing.XxHash64Cases
 import TestSupport.Regex.Cases
+import TestSupport.Slew.Cases
 import Verified.Examples.Poly
 import Verified.Examples.Mix
 import Verified.Examples.Lets
@@ -28,6 +29,7 @@ import Verified.Examples.ListTailCases
 import Verified.Examples.RecursiveTypesCases
 import Verified.Examples.TaggedTypesCases
 import Verified.Examples.HeapSumsCases
+import Verified.Examples.TypedTreesCases
 import Verified.Examples.TailCore
 import Verified.Examples.Tail
 import Verified.Examples.TailConditions
@@ -445,6 +447,7 @@ def main : IO Unit := do
   TestSupport.Hashing.SipHashCases.cases
   TestSupport.Hashing.XxHash64Cases.cases
   TestSupport.Regex.Cases.cases
+  TestSupport.Slew.Cases.cases
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases
@@ -459,6 +462,7 @@ def main : IO Unit := do
   Verified.Examples.RecursiveTypes.cases
   Verified.Examples.TaggedTypes.cases
   Verified.Examples.HeapSums.cases
+  Verified.Examples.TypedTrees.cases
   for n in ([0, 1, 2, 7, 999, 1000, 1024, 4096] : List UInt64) do
     for acc in [(0 : UInt64), 18446744073709551615] do
       IO.println s!"tailconditions|boolCount|i64|i64:{n} i64:{acc}|\

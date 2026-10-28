@@ -103,6 +103,82 @@ theorem credit_some {c : Bool} {x X : Nat} (h : c = true) (hx : x = X) :
 theorem credit_none {c : Bool} {x : Nat} (h : c = false) : (if c = true then x else 0) = 0 := by
   subst h; rfl
 
+theorem buy_some {t : Ty} {want held : Bool} {v : t.denote} {X : Nat}
+    (h : (want && !held) = true) (hx : t.credit v = X) : t.buyCost want held v = X := by
+  simp only [Ty.buyCost, h, ↓reduceIte, hx]
+
+theorem buy_none {t : Ty} {want held : Bool} {v : t.denote} (h : (want && !held) = false) :
+    t.buyCost want held v = 0 := by
+  simp only [Ty.buyCost, h, Bool.false_eq_true, ↓reduceIte]
+
+/-! The credits that the code of a loop's body charges at the `if`s in its result. -/
+
+theorem add_zero_eq {a b c : Nat} (h1 : a = b) (h2 : c = 0) : a + c = b := by
+  subst h1 h2; rfl
+
+theorem buys_free (ps : Bool) {t : Ty} {e : Expr S Γ t}
+    (h : e.buyFree flags modes paid live = true) :
+    (if ps = true then e.buys funs flags modes paid live env else 0) = 0 := by
+  split
+  · exact Expr.buys_eq_zero e h
+  · rfl
+
+theorem buys_on {t : Ty} {e : Expr S Γ t} {Y : Nat}
+    (h : e.buys funs flags modes paid live env = Y) :
+    (if true = true then e.buys funs flags modes paid live env else 0) = Y := by
+  simp only [↓reduceIte, h]
+
+theorem buys_zero {t : Ty} {e : Expr S Γ t} (h : e.buyFree flags modes paid live = true) :
+    e.buys funs flags modes paid live env = 0 :=
+  Expr.buys_eq_zero e h
+
+theorem ite_buys {t : Ty} {c : Expr S Γ .bool} {a b : Expr S Γ t} {C : Bool} {A B : t.denote}
+    {YA YB KA KB : Nat}
+    (hc : c.denote funs env = C) (ha : a.denote funs env = A) (hb : b.denote funs env = B)
+    (hya : a.buys funs flags modes paid live env = YA)
+    (hyb : b.buys funs flags modes paid live env = YB)
+    (hka : t.buyCost (b.bodyPaid flags modes paid live) (a.bodyPaid flags modes paid live) A = KA)
+    (hkb : t.buyCost (a.bodyPaid flags modes paid live) (b.bodyPaid flags modes paid live) B = KB) :
+    (Expr.ite c a b).buys funs flags modes paid live env = if C then YA + KA else YB + KB := by
+  subst hc ha hb hya hyb hka hkb; rfl
+
+theorem letE_buys {s t : Ty} {v : Expr S Γ s} {b : Expr S (s :: Γ) t} {m : Mode} {p : Bool}
+    {V : s.denote} {Y : Nat}
+    (hm : v.mode modes = m) (hp : v.paid flags modes paid (fun i => live i || b.uses (i + 1)) = p)
+    (hv : v.denote funs env = V)
+    (hy : b.buys funs flags (m :: modes) (p :: paid) (shift 1 live) (.cons V env) = Y) :
+    (Expr.letE v b).buys funs flags modes paid live env = Y := by
+  subst hm hp hv hy; rfl
+
+theorem letE_flat_buys {s t : Ty} {α : Type} (φ : α → s.denote) (X : α)
+    {v : Expr S Γ s} {b : Expr S (s :: Γ) t} {m : Mode} {p : Bool} {Y : Nat}
+    (hm : v.mode modes = m) (hp : v.paid flags modes paid (fun i => live i || b.uses (i + 1)) = p)
+    (hv : v.denote funs env = φ X)
+    (hy : b.buys funs flags (m :: modes) (p :: paid) (shift 1 live) (.cons (φ X) env) = Y) :
+    (Expr.letE v b).buys funs flags modes paid live env = Y := by
+  subst hm hp hy; rw [← hv]; rfl
+
+theorem letPair_buys {s t u : Ty} {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u}
+    {m : Mode} {p : Bool} {E : s.denote × t.denote} {A : s.denote} {B : t.denote} {Y : Nat}
+    (hm : e.mode modes = m)
+    (hp : e.paid flags modes paid (fun i => live i || body.uses (i + 2)) = p)
+    (he : e.denote funs env = E) (hA : E.1 = A) (hB : E.2 = B)
+    (hy : body.buys funs flags (m :: m :: modes) (p :: p :: paid) (shift 2 live)
+      (.cons B (.cons A env)) = Y) :
+    (Expr.letPair e body).buys funs flags modes paid live env = Y := by
+  subst hm hp he hA hB hy; rfl
+
+theorem letPair_flat_buys {s t u : Ty} {α β : Type} (φa : α → s.denote) (φb : β → t.denote)
+    (P : α × β) {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u} {m : Mode} {p : Bool}
+    {A : α} {B : β} {Y : Nat}
+    (hm : e.mode modes = m)
+    (hp : e.paid flags modes paid (fun i => live i || body.uses (i + 2)) = p)
+    (he : e.denote funs env = (φa P.1, φb P.2)) (hA : P.1 = A) (hB : P.2 = B)
+    (hy : body.buys funs flags (m :: m :: modes) (p :: p :: paid) (shift 2 live)
+      (.cons (φb B) (.cons (φa A) env)) = Y) :
+    (Expr.letPair e body).buys funs flags modes paid live env = Y := by
+  subst hm hp hA hB hy; simp only [Expr.buys, he]
+
 theorem coerce_copy {t : Ty} {s m : Mode} {v : t.denote} {C : Nat}
     (hs : s = .borrowed) (hm : m = .owned) (hc : t.copyCost v = C) : coerceCost t s m v = C := by
   subst hs hm hc; rfl
@@ -376,27 +452,31 @@ theorem pair_bound {s t : Ty} {a : Expr S Γ s} {b : Expr S Γ t} {M : Mode}
 /-- The bound of a destructuring, with the body's at the components `A` and `B` of the pair's
 value `E`: its projections, or the components themselves when the value is built in place. -/
 theorem letPair_bound {s t u : Ty} {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u}
-    {m : Mode} {E : s.denote × t.denote} {A : s.denote} {B : t.denote} {EA BA : Nat}
-    (hm : e.mode modes = m) (he : e.denote funs env = E) (hA : E.1 = A) (hB : E.2 = B)
+    {m : Mode} {p : Bool} {E : s.denote × t.denote} {A : s.denote} {B : t.denote} {EA BA : Nat}
+    (hm : e.mode modes = m)
+    (hp : e.paid flags modes paid (fun i => live i || body.uses (i + 2)) = p)
+    (he : e.denote funs env = E) (hA : E.1 = A) (hB : E.2 = B)
     (hea : e.allocs funs flags bounds modes paid (fun i => live i || body.uses (i + 2)) env = EA)
-    (hba : body.allocs funs flags bounds (m :: m :: modes) (false :: false :: paid) (shift 2 live)
+    (hba : body.allocs funs flags bounds (m :: m :: modes) (p :: p :: paid) (shift 2 live)
         (.cons B (.cons A env)) =
       BA) :
     (Expr.letPair e body).allocs funs flags bounds modes paid live env = EA + BA := by
-  subst hm he hA hB hea hba; rfl
+  subst hm hp he hA hB hea hba; rfl
 
 /-- `letPair_bound` for a pair whose components are the flattenings `φa P.1` and `φb P.2` of a
 Lean pair `P`. -/
 theorem letPair_flat_bound {s t u : Ty} {α β : Type} (φa : α → s.denote) (φb : β → t.denote)
-    (P : α × β) {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u} {m : Mode}
+    (P : α × β) {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u} {m : Mode} {p : Bool}
     {A : α} {B : β} {EA BA : Nat}
-    (hm : e.mode modes = m) (he : e.denote funs env = (φa P.1, φb P.2)) (hA : P.1 = A)
+    (hm : e.mode modes = m)
+    (hp : e.paid flags modes paid (fun i => live i || body.uses (i + 2)) = p)
+    (he : e.denote funs env = (φa P.1, φb P.2)) (hA : P.1 = A)
     (hB : P.2 = B)
     (hea : e.allocs funs flags bounds modes paid (fun i => live i || body.uses (i + 2)) env = EA)
-    (hba : body.allocs funs flags bounds (m :: m :: modes) (false :: false :: paid) (shift 2 live)
+    (hba : body.allocs funs flags bounds (m :: m :: modes) (p :: p :: paid) (shift 2 live)
       (.cons (φb B) (.cons (φa A) env)) = BA) :
     (Expr.letPair e body).allocs funs flags bounds modes paid live env = EA + BA := by
-  subst hm hA hB hea hba; simp only [Expr.allocs, he]
+  subst hm hp hA hB hea hba; simp only [Expr.allocs, he]
 
 /-! Calls. -/
 
@@ -555,6 +635,45 @@ theorem loopCost_map {α β : Type} (φ : α → β) {CA : β → Nat} {C : β �
   | n + 1, i, s => by
     simp only [loopCost, h, loopCost_map φ h n]
 
+/-- The bound of a loop whose state is paid, with the credits that the body's code charges at the
+`if`s in its result. -/
+theorem loop_buy_bound {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
+    {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t}
+    {N : UInt64} {I : t.denote} {C : t.denote → Bool} {F : UInt64 → t.denote → t.denote}
+    {all : Nat → Bool} {M : Mode} {ps : Bool} {NA IA KA CR : Nat} {CA : t.denote → Nat}
+    {BA : UInt64 → t.denote → Nat}
+    (hall : all = fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
+    (hM : (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)) = M)
+    (hps : Expr.statePaid flags modes paid live init cond body = ps)
+    (hpair : (ps && t.isPair) = false)
+    (hn : count.denote funs env = N) (hi : init.denote funs env = I)
+    (hc : ∀ s, cond.denote funs (.cons s env) = C s)
+    (hb : ∀ i s, body.denote funs (.cons s (.cons i env)) = F i s)
+    (hna : count.allocs funs flags bounds modes paid (fun i => all i || init.uses i) env = NA)
+    (hia : init.allocs funs flags bounds modes paid all env = IA)
+    (hka : coerceCost t (init.mode modes) M I = KA)
+    (hcr : (if (ps && !init.paid flags modes paid all) = true then t.credit I else 0) = CR)
+    (hca : ∀ s, cond.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
+      (fun j => j == 0 || shift 1 all j) (.cons s env) = CA s)
+    (hba : ∀ i s, body.allocs funs flags bounds (M :: .borrowed :: modes)
+        (ps :: false :: paid) (shift 2 all)
+        (.cons s (.cons i env)) + coerceCost t (body.mode (M :: .borrowed :: modes)) M (F i s) +
+        (if ps = true then body.buys funs flags (M :: .borrowed :: modes)
+          (ps :: false :: paid) (shift 2 all) (.cons s (.cons i env)) else 0) = BA i s) :
+    (Expr.loop count init cond body).allocs funs flags bounds modes paid live env =
+      NA + IA + KA + CR + loopCost CA C BA F N.toNat 0 I := by
+  subst hall hM hps hn hi hna hia hka hcr
+  obtain rfl : (fun s => cond.denote funs (.cons s env)) = C := funext hc
+  obtain rfl : (fun i s => body.denote funs (.cons s (.cons i env))) = F :=
+    funext fun i => funext (hb i)
+  obtain rfl : (fun s => cond.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
+      (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j)
+      (.cons s env)) = CA := funext hca
+  obtain rfl := funext fun i => funext (hba i)
+  simp only [Expr.allocs]
+  rw [loopAlloc_of_not_min hpair]
+  rfl
+
 theorem loop_bound {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
     {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t}
     {N : UInt64} {I : t.denote} {C : t.denote → Bool} {F : UInt64 → t.denote → t.denote}
@@ -563,6 +682,7 @@ theorem loop_bound {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
     (hall : all = fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
     (hM : (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)) = M)
     (hps : Expr.statePaid flags modes paid live init cond body = ps)
+    (hpair : (ps && t.isPair) = false)
     (hn : count.denote funs env = N) (hi : init.denote funs env = I)
     (hc : ∀ s, cond.denote funs (.cons s env) = C s)
     (hb : ∀ i s, body.denote funs (.cons s (.cons i env)) = F i s)
@@ -575,18 +695,18 @@ theorem loop_bound {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
     (hba : ∀ i s, body.allocs funs flags bounds (M :: .borrowed :: modes)
         (ps :: false :: paid) (shift 2 all)
         (.cons s (.cons i env)) + coerceCost t (body.mode (M :: .borrowed :: modes)) M (F i s) =
-      BA i s) :
+      BA i s)
+    (hby : ∀ i s, (if ps = true then body.buys funs flags (M :: .borrowed :: modes)
+        (ps :: false :: paid) (shift 2 all) (.cons s (.cons i env)) else 0) = 0) :
     (Expr.loop count init cond body).allocs funs flags bounds modes paid live env =
       NA + IA + KA + CR + loopCost CA C BA F N.toNat 0 I := by
-  subst hall hM hps hn hi hna hia hka hcr
-  obtain rfl : (fun s => cond.denote funs (.cons s env)) = C := funext hc
-  obtain rfl : (fun i s => body.denote funs (.cons s (.cons i env))) = F :=
-    funext fun i => funext (hb i)
-  obtain rfl : (fun s => cond.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
-      (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j)
-      (.cons s env)) = CA := funext hca
-  obtain rfl := funext fun i => funext (hba i)
-  rfl
+  have hba' : ∀ i s, body.allocs funs flags bounds (M :: .borrowed :: modes)
+      (ps :: false :: paid) (shift 2 all) (.cons s (.cons i env)) +
+        coerceCost t (body.mode (M :: .borrowed :: modes)) M (F i s) +
+        (if ps = true then body.buys funs flags (M :: .borrowed :: modes)
+          (ps :: false :: paid) (shift 2 all) (.cons s (.cons i env)) else 0) = BA i s :=
+    fun i s => by rw [hby i s, Nat.add_zero]; exact hba i s
+  exact loop_buy_bound hall hM hps hpair hn hi hc hb hna hia hka hcr hca hba'
 
 /-- `loop_bound` for a state that is the flattening `φ s` of a Lean state `s`. -/
 theorem loop_flat_bound {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (C : α → Bool)
@@ -597,6 +717,7 @@ theorem loop_flat_bound {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (C 
     (hall : all = fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
     (hM : (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)) = M)
     (hps : Expr.statePaid flags modes paid live init cond body = ps)
+    (hpair : (ps && t.isPair) = false)
     (hn : count.denote funs env = N) (hi : init.denote funs env = φ I)
     (hc : ∀ s, cond.denote funs (.cons (φ s) env) = C s)
     (hb : ∀ i s, body.denote funs (.cons (φ s) (.cons i env)) = φ (F i s))
@@ -609,14 +730,149 @@ theorem loop_flat_bound {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (C 
     (hba : ∀ i s, body.allocs funs flags bounds (M :: .borrowed :: modes)
         (ps :: false :: paid) (shift 2 all)
         (.cons (φ s) (.cons i env)) +
-          coerceCost t (body.mode (M :: .borrowed :: modes)) M (φ (F i s)) = BA i s) :
+          coerceCost t (body.mode (M :: .borrowed :: modes)) M (φ (F i s)) = BA i s)
+    (hby : ∀ i s, (if ps = true then body.buys funs flags (M :: .borrowed :: modes)
+        (ps :: false :: paid) (shift 2 all) (.cons (φ s) (.cons i env)) else 0) = 0) :
     (Expr.loop count init cond body).allocs funs flags bounds modes paid live env =
       NA + IA + KA + CR + loopCost CA C BA F N.toNat 0 I := by
   subst hall hM hps hn hna hia hka hcr
+  simp only [Expr.allocs]
+  rw [loopAlloc_of_not_min hpair]
+  show _ + _ + _ + _ + loopCost _ _ _ (fun i s => body.denote funs (.cons s (.cons i env))) _ 0
+    (init.denote funs env) = _
+  rw [hi, loopCost_map φ hb]
+  simp only [hc, hb, hca, hby, Nat.add_zero, hba]
+
+/-- `loop_buy_bound` for a state that is the flattening `φ s` of a Lean state `s`. -/
+theorem loop_buy_flat_bound {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (C : α → Bool)
+    (F : UInt64 → α → α) {count : Expr S Γ .word} {init : Expr S Γ t}
+    {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {N : UInt64}
+    {all : Nat → Bool} {M : Mode} {ps : Bool} {NA IA KA CR : Nat} {CA : α → Nat}
+    {BA : UInt64 → α → Nat}
+    (hall : all = fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
+    (hM : (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)) = M)
+    (hps : Expr.statePaid flags modes paid live init cond body = ps)
+    (hpair : (ps && t.isPair) = false)
+    (hn : count.denote funs env = N) (hi : init.denote funs env = φ I)
+    (hc : ∀ s, cond.denote funs (.cons (φ s) env) = C s)
+    (hb : ∀ i s, body.denote funs (.cons (φ s) (.cons i env)) = φ (F i s))
+    (hna : count.allocs funs flags bounds modes paid (fun i => all i || init.uses i) env = NA)
+    (hia : init.allocs funs flags bounds modes paid all env = IA)
+    (hka : coerceCost t (init.mode modes) M (φ I) = KA)
+    (hcr : (if (ps && !init.paid flags modes paid all) = true then t.credit (φ I) else 0) = CR)
+    (hca : ∀ s, cond.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
+      (fun j => j == 0 || shift 1 all j) (.cons (φ s) env) = CA s)
+    (hba : ∀ i s, body.allocs funs flags bounds (M :: .borrowed :: modes)
+        (ps :: false :: paid) (shift 2 all)
+        (.cons (φ s) (.cons i env)) +
+          coerceCost t (body.mode (M :: .borrowed :: modes)) M (φ (F i s)) +
+          (if ps = true then body.buys funs flags (M :: .borrowed :: modes)
+            (ps :: false :: paid) (shift 2 all) (.cons (φ s) (.cons i env)) else 0) = BA i s) :
+    (Expr.loop count init cond body).allocs funs flags bounds modes paid live env =
+      NA + IA + KA + CR + loopCost CA C BA F N.toNat 0 I := by
+  subst hall hM hps hn hna hia hka hcr
+  simp only [Expr.allocs]
+  rw [loopAlloc_of_not_min hpair]
   show _ + _ + _ + _ + loopCost _ _ _ (fun i s => body.denote funs (.cons s (.cons i env))) _ 0
     (init.denote funs env) = _
   rw [hi, loopCost_map φ hb]
   simp only [hc, hb, hca, hba]
+
+
+/-- The bound of a loop whose state is a paid pair: the smaller of the bounds with an unpaid and a
+paid state. -/
+theorem loop_min_bound {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
+    {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t}
+    {N : UInt64} {I : t.denote} {C : t.denote → Bool} {F : UInt64 → t.denote → t.denote}
+    {all : Nat → Bool} {M : Mode} {NA IA KA CR : Nat} {CA : t.denote → Nat}
+    {BA0 BA1 : UInt64 → t.denote → Nat}
+    (hall : all = fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
+    (hM : (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)) = M)
+    (hps : Expr.statePaid flags modes paid live init cond body = true)
+    (hpair : t.isPair = true)
+    (hn : count.denote funs env = N) (hi : init.denote funs env = I)
+    (hc : ∀ s, cond.denote funs (.cons s env) = C s)
+    (hb : ∀ i s, body.denote funs (.cons s (.cons i env)) = F i s)
+    (hna : count.allocs funs flags bounds modes paid (fun i => all i || init.uses i) env = NA)
+    (hia : init.allocs funs flags bounds modes paid all env = IA)
+    (hka : coerceCost t (init.mode modes) M I = KA)
+    (hcr : (if (true && !init.paid flags modes paid all) = true then t.credit I else 0) = CR)
+    (hca : ∀ s, cond.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
+      (fun j => j == 0 || shift 1 all j) (.cons s env) = CA s)
+    (hba0 : ∀ i s, body.allocs funs flags bounds (M :: .borrowed :: modes)
+        (false :: false :: paid) (shift 2 all)
+        (.cons s (.cons i env)) + coerceCost t (body.mode (M :: .borrowed :: modes)) M (F i s) =
+      BA0 i s)
+    (hba1 : ∀ i s, body.allocs funs flags bounds (M :: .borrowed :: modes)
+        (true :: false :: paid) (shift 2 all)
+        (.cons s (.cons i env)) + coerceCost t (body.mode (M :: .borrowed :: modes)) M (F i s) +
+        (if true = true then body.buys funs flags (M :: .borrowed :: modes)
+          (true :: false :: paid) (shift 2 all) (.cons s (.cons i env)) else 0) = BA1 i s) :
+    (Expr.loop count init cond body).allocs funs flags bounds modes paid live env =
+      min (NA + IA + KA + loopCost CA C BA0 F N.toNat 0 I)
+        (NA + IA + KA + CR + loopCost CA C BA1 F N.toNat 0 I) := by
+  have h0 : BA0 = fun i s => body.allocs funs flags bounds (M :: .borrowed :: modes)
+      (false :: false :: paid) (shift 2 all) (.cons s (.cons i env)) +
+        coerceCost t (body.mode (M :: .borrowed :: modes)) M (F i s) :=
+    funext fun i => funext fun s => (hba0 i s).symm
+  subst h0
+  subst hall hM hn hi hna hia hka hcr
+  obtain rfl : (fun s => cond.denote funs (.cons s env)) = C := funext hc
+  obtain rfl : (fun i s => body.denote funs (.cons s (.cons i env))) = F :=
+    funext fun i => funext (hb i)
+  obtain rfl : (fun s => cond.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
+      (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j)
+      (.cons s env)) = CA := funext hca
+  obtain rfl := funext fun i => funext (hba1 i)
+  simp only [Expr.allocs]
+  rw [loopAlloc_of_min (by rw [hps, hpair]; rfl)]
+  rfl
+
+/-- `loop_min_bound` for a state that is the flattening `φ s` of a Lean state `s`. -/
+theorem loop_min_flat_bound {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (C : α → Bool)
+    (F : UInt64 → α → α) {count : Expr S Γ .word} {init : Expr S Γ t}
+    {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {N : UInt64}
+    {all : Nat → Bool} {M : Mode} {NA IA KA CR : Nat} {CA : α → Nat}
+    {BA0 BA1 : UInt64 → α → Nat}
+    (hall : all = fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
+    (hM : (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)) = M)
+    (hps : Expr.statePaid flags modes paid live init cond body = true)
+    (hpair : t.isPair = true)
+    (hn : count.denote funs env = N) (hi : init.denote funs env = φ I)
+    (hc : ∀ s, cond.denote funs (.cons (φ s) env) = C s)
+    (hb : ∀ i s, body.denote funs (.cons (φ s) (.cons i env)) = φ (F i s))
+    (hna : count.allocs funs flags bounds modes paid (fun i => all i || init.uses i) env = NA)
+    (hia : init.allocs funs flags bounds modes paid all env = IA)
+    (hka : coerceCost t (init.mode modes) M (φ I) = KA)
+    (hcr : (if (true && !init.paid flags modes paid all) = true then t.credit (φ I) else 0) = CR)
+    (hca : ∀ s, cond.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
+      (fun j => j == 0 || shift 1 all j) (.cons (φ s) env) = CA s)
+    (hba0 : ∀ i s, body.allocs funs flags bounds (M :: .borrowed :: modes)
+        (false :: false :: paid) (shift 2 all)
+        (.cons (φ s) (.cons i env)) +
+          coerceCost t (body.mode (M :: .borrowed :: modes)) M (φ (F i s)) = BA0 i s)
+    (hba1 : ∀ i s, body.allocs funs flags bounds (M :: .borrowed :: modes)
+        (true :: false :: paid) (shift 2 all)
+        (.cons (φ s) (.cons i env)) +
+          coerceCost t (body.mode (M :: .borrowed :: modes)) M (φ (F i s)) +
+          (if true = true then body.buys funs flags (M :: .borrowed :: modes)
+            (true :: false :: paid) (shift 2 all) (.cons (φ s) (.cons i env)) else 0) = BA1 i s) :
+    (Expr.loop count init cond body).allocs funs flags bounds modes paid live env =
+      min (NA + IA + KA + loopCost CA C BA0 F N.toNat 0 I)
+        (NA + IA + KA + CR + loopCost CA C BA1 F N.toNat 0 I) := by
+  subst hall hM hn hna hia hka hcr
+  simp only [Expr.allocs]
+  rw [loopAlloc_of_min (by rw [hps, hpair]; rfl)]
+  congr 1
+  · show _ + _ + _ + _ + loopCost _ _ _ (fun i s => body.denote funs (.cons s (.cons i env))) _ 0
+      (init.denote funs env) = _
+    rw [hi, loopCost_map φ hb]
+    simp only [hc, hb, hca, Bool.false_and, Bool.false_eq_true, ↓reduceIte, Nat.add_zero, hba0]
+  · show _ + _ + _ + _ + loopCost _ _ _ (fun i s => body.denote funs (.cons s (.cons i env))) _ 0
+      (init.denote funs env) = _
+    rw [hi, loopCost_map φ hb]
+    simp only [↓reduceIte] at hba1
+    simp only [hc, hb, hca, ↓reduceIte, hba1]
 
 theorem build_bound {e : Elem} {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) (.elem e)}
     {N : UInt64} {all : Nat → Bool} {w NA : Nat} {EA : Nat → Nat}

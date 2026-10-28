@@ -2,9 +2,12 @@
 # Checks that every module of the verified corpus, tests/verified/modules.txt, is in the subset of
 # WebAssembly that the translator to C accepts (LeanExe/Native/Subset.lean).  Each check loads the
 # built module, so run `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library`
-# first.
+# first.  LEANRUN_MEMORY_HIGH is the memory limit of each step that runs under tools/leanrun, 8G
+# unless the caller sets it.  The largest step measured, the check of the largest corpus module,
+# keeps 5.5 GB resident.
 # Usage: tests/native/subset.sh
 set -euo pipefail
+export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-8G}
 if [ "$#" -ne 0 ]; then
   echo "usage: tests/native/subset.sh" >&2
   exit 2

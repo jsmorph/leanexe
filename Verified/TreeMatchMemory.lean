@@ -90,24 +90,29 @@ theorem treeSlots_child_owned {heap : Heap} {store : Store Unit} {shape : TreeSh
 
 theorem treeNode_word_read {mode : Mode} {heap : Heap} {store : Store Unit}
     {shape : TreeShape} {r : Fin shape.records} {p : UInt64}
-    {words : Fin (shape.words r) → UInt64} {children : Fin (shape.children r) → Tree shape}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {children : Fin (shape.children r) → Tree shape}
     (h : mode.node heap store p (Tree.node r words children).toNode) (i : Fin (shape.words r)) :
     store.mem.read64
         (slotAddress p (shape.fieldStart + (fieldPosition false (shape.fields r) i).val)) =
-      words i := by
+      shape.slotWords r words i := by
   have hSlots : SlotsBorrowed heap store p 0 (shape.tagSlots r ++
-      treeSlots (shape.fields r) words (fun i => (children i).toNode)) := h.borrow.2
+      treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode)) :=
+    h.borrow.2
   obtain ⟨-, hFields⟩ := (SlotsBorrowed.append_iff _ _ _).mp hSlots
   rw [Nat.zero_add, ← shape.fieldStart_tagSlots r] at hFields
-  unfold TreeShape.words TreeShape.children at *
+  have hLength := treeSlots_length (shape.fields r) (shape.slotWords r words)
+    (fun i => (children i).toNode)
   have hi := SlotsBorrowed.get _ _ hFields (fieldPosition false (shape.fields r) i).val
-    (by rw [treeSlots_length]; exact (fieldPosition false (shape.fields r) i).isLt)
-  rw [treeSlots_word_get] at hi
+    (by rw [hLength]; exact (fieldPosition false (shape.fields r) i).isLt)
+  rw [treeSlots_word_get (shape.fields r) (shape.slotWords r words)
+    (fun i => (children i).toNode) i] at hi
   exact hi.1
 
 theorem treeNode_child_rep {mode : Mode} {heap : Heap} {store : Store Unit}
     {shape : TreeShape} {r : Fin shape.records} {p : UInt64}
-    {words : Fin (shape.words r) → UInt64} {children : Fin (shape.children r) → Tree shape}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {children : Fin (shape.children r) → Tree shape}
     (h : mode.node heap store p (Tree.node r words children).toNode)
     (i : Fin (shape.children r)) :
     mode.node heap store
@@ -116,21 +121,24 @@ theorem treeNode_child_rep {mode : Mode} {heap : Heap} {store : Store Unit}
       (children i).toNode := by
   cases mode
   · have hSlots : SlotsBorrowed heap store p 0 (shape.tagSlots r ++
-        treeSlots (shape.fields r) words (fun i => (children i).toNode)) := h.2
+        treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode)) := h.2
     obtain ⟨-, hFields⟩ := (SlotsBorrowed.append_iff _ _ _).mp hSlots
     rw [Nat.zero_add, ← shape.fieldStart_tagSlots r] at hFields
-    unfold TreeShape.words TreeShape.children at *
+    have hLength := treeSlots_length (shape.fields r) (shape.slotWords r words)
+      (fun i => (children i).toNode)
     have hi := SlotsBorrowed.get _ _ hFields (fieldPosition true (shape.fields r) i).val
-      (by rw [treeSlots_length]; exact (fieldPosition true (shape.fields r) i).isLt)
-    rw [treeSlots_child_get] at hi
+      (by rw [hLength]; exact (fieldPosition true (shape.fields r) i).isLt)
+    rw [treeSlots_child_get (shape.fields r) (shape.slotWords r words)
+      (fun i => (children i).toNode) i] at hi
     exact hi.1
   · have hSlots : SlotsOwned heap store p 0 (shape.tagSlots r ++
-        treeSlots (shape.fields r) words (fun i => (children i).toNode)) := h.1.2
+        treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode)) :=
+      h.1.2
     obtain ⟨-, hFields⟩ := (SlotsOwned.append_iff _ _ _).mp hSlots
     rw [Nat.zero_add, ← shape.fieldStart_tagSlots r] at hFields
     have hApart := (List.pairwise_cons.mp h.2).2
     change (slotsBlocks store p 0 (shape.tagSlots r ++
-      treeSlots (shape.fields r) words (fun i => (children i).toNode))).Pairwise
+      treeSlots (shape.fields r) (shape.slotWords r words) (fun i => (children i).toNode))).Pairwise
         regionsDisjoint at hApart
     rw [slotsBlocks_append, tagSlots_blocks, List.nil_append, Nat.zero_add,
       ← shape.fieldStart_tagSlots r] at hApart

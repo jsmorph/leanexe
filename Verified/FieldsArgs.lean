@@ -125,4 +125,102 @@ theorem Args.any_prependRepeat {S : List Sig} {Γ ps : List Ty}
     simpa only [List.get_eq_getElem, Nat.add_assoc, Nat.add_comm 1, Bool.or_assoc, Fin.zero_eta] using
       congrArg (fun any => P 0 (args 0) || any) hRest
 
+/-- The arguments `args`, of the types `ts`, before `tail`. -/
+def Args.prependFn {S : List Sig} {Γ ps : List Ty} :
+    (n : Nat) → (ts : Fin n → Ty) → ((i : Fin n) → Expr S Γ (ts i)) → Args S Γ ps →
+      Args S Γ (tysOfFn n ts ++ ps)
+  | 0, _, _, tail => tail
+  | n + 1, ts, args, tail =>
+    .cons (args 0) (prependFn n (fun i => ts i.succ) (fun i => args i.succ) tail)
+
+theorem Args.denote_prependFn {S : List Sig} {Γ ps : List Ty}
+    (funs : Funs S) (env : Env Γ) (n : Nat) (ts : Fin n → Ty) (args : (i : Fin n) → Expr S Γ (ts i))
+    (tail : Args S Γ ps) :
+    (prependFn n ts args tail).denote funs env =
+      Env.prependFn n ts (fun i => (args i).denote funs env) (tail.denote funs env) := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    exact congrArg (Env.cons ((args 0).denote funs env))
+      (ih (fun i => ts i.succ) (fun i => args i.succ))
+
+theorem Args.code_prependFn {S : List Sig} {Γ ps : List Ty}
+    (n : Nat) (ts : Fin n → Ty) (args : (i : Fin n) → Expr S Γ (ts i)) (tail : Args S Γ ps)
+    (h fieldBase scratch : Nat) (slots : List Slot) (L : Nat → Nat → Bool) :
+    argsCode (fun i =>
+      ((prependFn n ts args tail).get i).code (pool := pool) h slots scratch (L (i.val + 1)) ++
+      coerceCode h ((tysOfFn n ts ++ ps).get i)
+        (((prependFn n ts args tail).get i).mode (slots.map Slot.mode)) .owned scratch ++
+      storeCode h (fieldBase + i.val) ((tysOfFn n ts ++ ps).get i).types) =
+    argsCode (fun i => (args i).code (pool := pool) h slots scratch (L (i.val + 1)) ++
+      coerceCode h (ts i) ((args i).mode (slots.map Slot.mode)) .owned scratch ++
+      storeCode h (fieldBase + i.val) (ts i).types) ++
+    argsCode (fun i => (tail.get i).code (pool := pool) h slots scratch (L (n + i.val + 1)) ++
+      coerceCode h (ps.get i) ((tail.get i).mode (slots.map Slot.mode)) .owned scratch ++
+      storeCode h (fieldBase + n + i.val) (ps.get i).types) := by
+  induction n generalizing fieldBase L with
+  | zero =>
+    simp only [Args.prependFn, argsCode, tysOfFn, Nat.zero_add, Nat.add_zero, List.nil_append]
+  | succ n ih =>
+    simp only [tysOfFn, List.cons_append, argsCode, Args.prependFn,
+      Args.get_cons_zero, Args.get_cons_succ, List.get_eq_getElem, List.getElem_cons_zero,
+      List.getElem_cons_succ, Fin.val_succ, Nat.zero_add,
+      Nat.add_zero, List.append_assoc]
+    have hTail := ih (fun i => ts i.succ) (fun i => args i.succ) (fieldBase + 1)
+      (fun j => L (j + 1))
+    simp only [List.get_eq_getElem, Nat.add_assoc, Nat.add_comm 1, List.append_assoc] at hTail ⊢
+    rw [hTail]
+    simp only [Fin.zero_eta]
+
+theorem Args.forall_get_prependFn {S : List Sig} {Γ ps : List Ty}
+    (P : {t : Ty} → Nat → Expr S Γ t → Prop) (n : Nat) (ts : Fin n → Ty)
+    (args : (i : Fin n) → Expr S Γ (ts i)) (tail : Args S Γ ps)
+    (hArgs : ∀ i, P i.val (args i)) (hTail : ∀ i, P (n + i.val) (tail.get i)) :
+    ∀ i, P i.val ((prependFn n ts args tail).get i) := by
+  induction n generalizing P with
+  | zero => simpa only [Args.prependFn, tysOfFn, List.nil_append, Nat.zero_add] using hTail
+  | succ n ih =>
+    intro i
+    cases i using Fin.cases with
+    | zero => simpa only [Args.prependFn, tysOfFn, List.cons_append,
+        Args.get_cons_zero', List.get_cons_zero, Fin.val_zero] using hArgs 0
+    | succ i =>
+      have hRest := ih (P := fun k value => P (k + 1) value) (fun j => ts j.succ)
+        (fun j => args j.succ) (fun j => hArgs j.succ) (fun j => by
+          simpa only [Nat.add_assoc, Nat.add_comm 1] using hTail j) i
+      exact hRest
+
+theorem Args.sum_prependFn {S : List Sig} {Γ ps : List Ty}
+    (P : {t : Ty} → Nat → Expr S Γ t → Nat) (n : Nat) (ts : Fin n → Ty)
+    (args : (i : Fin n) → Expr S Γ (ts i)) (tail : Args S Γ ps) :
+    (argsSum fun i => P i.val ((prependFn n ts args tail).get i)) =
+      (argsSum fun i => P i.val (args i)) + (argsSum fun i => P (n + i.val) (tail.get i)) := by
+  induction n generalizing P with
+  | zero => simp only [Args.prependFn, tysOfFn, List.nil_append, argsSum, Nat.zero_add]
+  | succ n ih =>
+    simp only [Args.prependFn, tysOfFn, List.cons_append, argsSum,
+      Args.get_cons_zero', Args.get_cons_succ, List.get_eq_getElem,
+      List.getElem_cons_zero, List.getElem_cons_succ, Fin.val_succ, Fin.val_zero]
+    have hRest := ih (P := fun k value => P (k + 1) value) (fun j => ts j.succ)
+      (fun j => args j.succ)
+    simpa only [List.get_eq_getElem, Nat.add_assoc, Nat.add_comm 1, Fin.zero_eta] using
+      congrArg (fun total => P 0 (args 0) + total) hRest
+
+theorem Args.any_prependFn {S : List Sig} {Γ ps : List Ty}
+    (P : {t : Ty} → Nat → Expr S Γ t → Bool) (n : Nat) (ts : Fin n → Ty)
+    (args : (i : Fin n) → Expr S Γ (ts i)) (tail : Args S Γ ps) :
+    (argsAny fun i => P i.val ((prependFn n ts args tail).get i)) =
+      ((argsAny fun i => P i.val (args i)) || (argsAny fun i => P (n + i.val) (tail.get i))) := by
+  induction n generalizing P with
+  | zero => simp only [Args.prependFn, tysOfFn, List.nil_append, argsAny, Nat.zero_add,
+      Bool.false_or]
+  | succ n ih =>
+    simp only [Args.prependFn, tysOfFn, List.cons_append, argsAny,
+      Args.get_cons_zero', Args.get_cons_succ, List.get_eq_getElem,
+      List.getElem_cons_zero, List.getElem_cons_succ, Fin.val_succ, Fin.val_zero]
+    have hRest := ih (P := fun k value => P (k + 1) value) (fun j => ts j.succ)
+      (fun j => args j.succ)
+    simpa only [List.get_eq_getElem, Nat.add_assoc, Nat.add_comm 1, Bool.or_assoc, Fin.zero_eta]
+      using congrArg (fun any => P 0 (args 0) || any) hRest
+
 end Verified

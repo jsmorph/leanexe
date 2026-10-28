@@ -62,7 +62,7 @@ theorem TailBody.allocs_toExpr {S : List Sig} {params Γ : List Ty} {result : Ty
     simp only [shift_false, Nat.add_assoc]
   | letPair value body ih =>
     simp only [TailBody.toExpr, TailBody.allocs, Expr.allocs, Expr.mode, Expr.denote,
-      Expr.allocs_weakenFuns, Expr.mode_renameFuns, Expr.denote_weakenFuns,
+      Expr.allocs_weakenFuns, Expr.mode_renameFuns, Expr.denote_weakenFuns, Expr.paid_weakenFuns,
       TailBody.uses_toExpr, Bool.false_or]
     rw [ih]
     simp only [shift_false, Nat.add_assoc]

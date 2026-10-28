@@ -183,6 +183,23 @@ theorem cast_byte_long (b : UInt8) (m : mem) :
   congr 1
   simp
 
+theorem cast_byte_uint (b : UInt8) (m : mem) :
+    sem_cast (.Vint (UInt32.ofNat b.toNat)) tuchar tuint m = some (.Vint b.toUInt32) := by
+  show some (val.Vint (cast_int_int .I32 .Unsigned (UInt32.ofNat b.toNat))) = _
+  congr 2
+  apply UInt32.toNat_inj.mp
+  simp [cast_int_int]
+
+theorem cast_uint_uchar (x : UInt32) (m : mem) :
+    sem_cast (.Vint x) tuint tuchar m = some (.Vint (UInt32.ofNat (x.toUInt8.toNat % 256))) := by
+  show some (val.Vint (cast_int_int .I8 .Unsigned x)) = _
+  congr 2
+  apply UInt32.toNat_inj.mp
+  simp only [cast_int_int, LClight.Int.zero_ext, LClight.Int.repr, LClight.Int.unsigned,
+    LClight.Int.modulus]
+  simp
+  omega
+
 end LeanExe.Native
 
 namespace LClight.Mem

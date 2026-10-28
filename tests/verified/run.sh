@@ -4,14 +4,16 @@
 # A case with a sixth field also checks the allocation counters: the blocks allocated less those
 # released must equal the field, the result's arrays and the host's arrays at borrowed parameters.
 # A seventh field bounds the number of allocations, the host's included.  A case whose expected
-# result is
-# `trap` must trap at `unreachable`.  After writing the modules, it builds each function's theorem
-# module and checks its file theorem module, whose theorems state that the written file holds the
-# module of the function's byte theorem, and it fails unless both file theorems report only the
-# axioms propext, Classical.choice, and Quot.sound.  Last, the tests/TestSupport/Numerics/*Accuracy.lean
-# checks compare the transcendental functions with references computed with Lean's integers, each
-# within the bound its docstring states, and tests/TestSupport/Numerics/FourierAccuracy.lean checks that
-# Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
+# result is `trap` must trap at `unreachable`.  After writing the modules, it builds each function's
+# theorem module and checks its file theorem module, whose theorems state that the written file
+# holds the module of the function's byte theorem, and it fails unless both file theorems report
+# only the axioms propext, Classical.choice, and Quot.sound.  For the slew planner, it also compares
+# the edgeOk export with native Lean and runs the axiom audit of tests/slew/Axioms.lean, and with
+# --cases slew it checks the planner's file theorem module as well.  Last, the
+# tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
+# references computed with Lean's integers, each within the bound its docstring states, and
+# tests/TestSupport/Numerics/FourierAccuracy.lean checks that Fourier.dft, inverse, and
+# powerSpectrum behave as their mathematical counterparts.
 # Run `tools/leanrun --timeout 60m lake build`, whose default targets include the module cases of
 # the Euler check, and `tools/leanrun --threads 2 --memory-high 10G --timeout 12h lake build Verified
 # Library` first.
@@ -84,11 +86,12 @@ fi
 if [ -z "$case_module" ] || [ "$case_module" = "sums" ]; then
   tests/modules/run.sh --module shapes "$out/sums.wasm"
 fi
-# Each entry names the written module, the theorem module, and the file theorem module.  The file
-# module's second theorem depends on every byte theorem of the module, so its axiom report covers
-# them all.
-if [ -z "$case_module" ]; then
-while IFS=: read -r name theorem file; do
+# Checks the file theorem module of a written module: builds the theorem module, elaborates the file
+# module against the file, and requires both of its axiom reports to name only the three permitted
+# axioms.  The file module's second theorem depends on every byte theorem of the module, so its
+# axiom report covers them all.
+check_file() {
+  local name=$1 theorem=$2 file=$3 reports axiom_counts
   tools/leanrun --timeout 30m lake --log-level error build "$theorem"
   reports=$(tools/leanrun --timeout 10m lake env lean "$file") || {
     echo "$reports"
@@ -107,85 +110,83 @@ while IFS=: read -r name theorem file; do
     END { print count + 0, permitted + 0 }' <<<"$reports")
   if [ "$axiom_counts" != "2 2" ]; then
     echo "$reports"
-    echo "fail: the theorems of $file.lean must report only the three permitted axioms" >&2
+    echo "fail: the theorems of $file must report only the three permitted axioms" >&2
     exit 1
   fi
   echo "$name: $name.wasm holds the module of $theorem, with the permitted axioms"
+}
+if [ -z "$case_module" ] || [ "$case_module" = "slew" ]; then
+  tests/slew/edges.sh "$out/slew.wasm"
+  tools/leanrun --timeout 60m lake --log-level error build Demos.Slew.Optimal Demos.Slew.Premise \
+    Demos.Slew.Bound
+  tools/leanrun --timeout 10m lake env lean tests/slew/Axioms.lean
+  if [ "$case_module" = "slew" ]; then
+    check_file slew Demos.Slew.Verified Demos/Slew/File.lean
+  fi
+fi
+# Each entry names the written module, the theorem module, and the file theorem module.
+if [ -z "$case_module" ]; then
+while IFS=: read -r name theorem file; do
+  check_file "$name" "$theorem" "$file"
 done <"$root/tests/verified/numerics.txt"
 fi
-cases_module=Verified.Examples.Cases
-cases_source=Verified/Examples/Cases.lean
+cases_exe=verified-cases
 if [ "$case_module" = "treecopy" ]; then
-  cases_module=Verified.Examples.TreeCopyCasesMain
-  cases_source=Verified/Examples/TreeCopyCasesMain.lean
+  cases_exe=verified-cases-treecopy
 elif [ "$case_module" = "treecore" ]; then
-  cases_module=Verified.Examples.TreeCasesMain
-  cases_source=Verified/Examples/TreeCasesMain.lean
+  cases_exe=verified-cases-treecore
 elif [ "$case_module" = "lists" ]; then
-  cases_module=Verified.Examples.ListsCasesMain
-  cases_source=Verified/Examples/ListsCasesMain.lean
+  cases_exe=verified-cases-lists
 elif [ "$case_module" = "composition" ]; then
-  cases_module=Verified.Examples.CompositionCasesMain
-  cases_source=Verified/Examples/CompositionCasesMain.lean
+  cases_exe=verified-cases-composition
 elif [ "$case_module" = "scalarcomposition" ]; then
-  cases_module=Verified.Examples.ScalarCompositionCasesMain
-  cases_source=Verified/Examples/ScalarCompositionCasesMain.lean
+  cases_exe=verified-cases-scalarcomposition
 elif [ "$case_module" = "relocation" ]; then
-  cases_module=Verified.Examples.RelocationCasesMain
-  cases_source=Verified/Examples/RelocationCasesMain.lean
+  cases_exe=verified-cases-relocation
 elif [ "$case_module" = "wgsl" ]; then
-  cases_module=Verified.Examples.WgslWasmCasesMain
-  cases_source=Verified/Examples/WgslWasmCasesMain.lean
+  cases_exe=verified-cases-wgsl
 elif [ "$case_module" = "gpt32" ]; then
-  cases_module=Demos.Gpt32.VerifiedWasmCasesMain
-  cases_source=Demos/Gpt32/VerifiedWasmCasesMain.lean
+  cases_exe=verified-cases-gpt32
 elif [ "$case_module" = "listrecursion" ]; then
-  cases_module=Verified.Examples.ListRecursionCasesMain
-  cases_source=Verified/Examples/ListRecursionCasesMain.lean
+  cases_exe=verified-cases-listrecursion
 elif [ "$case_module" = "listloops" ]; then
-  cases_module=Verified.Examples.ListLoopsCasesMain
-  cases_source=Verified/Examples/ListLoopsCasesMain.lean
+  cases_exe=verified-cases-listloops
 elif [ "$case_module" = "listtail" ]; then
-  cases_module=Verified.Examples.ListTailCasesMain
-  cases_source=Verified/Examples/ListTailCasesMain.lean
+  cases_exe=verified-cases-listtail
 elif [ "$case_module" = "recursivetypes" ]; then
-  cases_module=Verified.Examples.RecursiveTypesCasesMain
-  cases_source=Verified/Examples/RecursiveTypesCasesMain.lean
+  cases_exe=verified-cases-recursivetypes
 elif [ "$case_module" = "sha256" ]; then
-  cases_module=TestSupport.Hashing.Sha256CasesMain
-  cases_source=tests/TestSupport/Hashing/Sha256CasesMain.lean
+  cases_exe=verified-cases-sha256
 elif [ "$case_module" = "sha512" ]; then
-  cases_module=TestSupport.Hashing.Sha512CasesMain
-  cases_source=tests/TestSupport/Hashing/Sha512CasesMain.lean
+  cases_exe=verified-cases-sha512
 elif [ "$case_module" = "hmac_sha256" ] || [ "$case_module" = "hmac_sha512" ]; then
-  cases_module=TestSupport.Hashing.HmacCasesMain
-  cases_source=tests/TestSupport/Hashing/HmacCasesMain.lean
+  cases_exe=verified-cases-hmac
 elif [ "$case_module" = "taggedtypes" ]; then
-  cases_module=Verified.Examples.TaggedTypesCasesMain
-  cases_source=Verified/Examples/TaggedTypesCasesMain.lean
+  cases_exe=verified-cases-taggedtypes
 elif [ "$case_module" = "heapsums" ]; then
-  cases_module=Verified.Examples.HeapSumsCasesMain
-  cases_source=Verified/Examples/HeapSumsCasesMain.lean
+  cases_exe=verified-cases-heapsums
+elif [ "$case_module" = "typedtrees" ]; then
+  cases_exe=verified-cases-typedtrees
 elif [ "$case_module" = "regex" ]; then
-  cases_module=TestSupport.Regex.CasesMain
-  cases_source=tests/TestSupport/Regex/CasesMain.lean
+  cases_exe=verified-cases-regex
 elif [ "$case_module" = "sha3" ]; then
-  cases_module=TestSupport.Hashing.Sha3CasesMain
-  cases_source=tests/TestSupport/Hashing/Sha3CasesMain.lean
+  cases_exe=verified-cases-sha3
 elif [ "$case_module" = "crc" ]; then
-  cases_module=TestSupport.Hashing.CrcCasesMain
-  cases_source=tests/TestSupport/Hashing/CrcCasesMain.lean
+  cases_exe=verified-cases-crc
 elif [ "$case_module" = "siphash" ]; then
-  cases_module=TestSupport.Hashing.SipHashCasesMain
-  cases_source=tests/TestSupport/Hashing/SipHashCasesMain.lean
+  cases_exe=verified-cases-siphash
 elif [ "$case_module" = "xxhash64" ]; then
-  cases_module=TestSupport.Hashing.XxHash64CasesMain
-  cases_source=tests/TestSupport/Hashing/XxHash64CasesMain.lean
+  cases_exe=verified-cases-xxhash64
+elif [ "$case_module" = "slew" ]; then
+  cases_exe=verified-cases-slew
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "heapsums" ]; then
   tools/leanrun --timeout 10m lake env lean tests/verified/HeapSumsAxioms.lean
 fi
-tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
+if [ -z "$case_module" ] || [ "$case_module" = "typedtrees" ]; then
+  tools/leanrun --timeout 10m lake env lean tests/verified/TypedTreesAxioms.lean
+fi
+tools/leanrun --timeout 12h lake --log-level error build "$cases_exe"
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT
@@ -193,7 +194,7 @@ trap 'rm -f "$cases" "$errors"' EXIT
 # writes a message and a backtrace to standard error.  A read returns Lean's default element,
 # an update the array unchanged, and insertIdx! an empty array.  The run fails when Lean exits
 # with an error or writes any other message.
-if ! tools/leanrun --timeout 10m lake env lean --run "$cases_source" \
+if ! tools/leanrun --timeout 10m ".lake/build/bin/$cases_exe" \
     >"$cases" 2>"$errors"; then
   cat "$errors" >&2
   echo "fail: native Lean exited with an error" >&2

@@ -29,3 +29,4 @@ sha3:Library.Hashing.Sha3.Bytes:Library/Hashing/Sha3/File.lean
 crc:Library.Hashing.Crc.Bytes:Library/Hashing/Crc/File.lean
 siphash:Library.Hashing.SipHash.Bytes:Library/Hashing/SipHash/File.lean
 xxhash64:Library.Hashing.XxHash64.Bytes:Library/Hashing/XxHash64/File.lean
+slew:Demos.Slew.Verified:Demos/Slew/File.lean
