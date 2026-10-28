@@ -30,6 +30,12 @@ theorem wp_loadTree {m : Module} {host : HostEnv Unit} {heap : Heap}
       (∀ i, s'.get (fieldBase + shape.words r + shape.children r + i.val) = some (.i64
         (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
           heapArraySlot (shape.kinds r) i))))) →
+      (∀ i, s'.get (fieldBase + shape.words r + shape.children r + shape.arrays r + 2 * i.val) =
+          some (.i64 (store.mem.read64 (slotAddress p (shape.fieldStart +
+            (shape.fields r).length + heapBufferSlot (shape.kinds r) i)))) ∧
+        s'.get (fieldBase + shape.words r + shape.children r + shape.arrays r + 2 * i.val + 1) =
+          some (.i64 (store.mem.read64 (slotAddress p (shape.fieldStart +
+            (shape.fields r).length + heapBufferSlot (shape.kinds r) i + 1))))) →
       wp m rest Q store s' host) :
     wp m (treeLoadFields h ptr (shape.wordTypes r) fieldBase (fieldBase + shape.words r)
       shape.fieldStart (shape.fields r) ++
@@ -146,6 +152,38 @@ theorem wp_loadTree {m : Module} {host : HostEnv Unit} {heap : Heap}
       rfl
     rw [hTy, hFieldLen, ← Nat.add_assoc] at hj
     simpa only [slotIndex, typedValue, arraysBase] using hj
+  have hBuffers : ∀ i, (recordLoadLocals store p s.positions shape.fieldStart dsts tys s).get
+        (fieldBase + shape.words r + shape.children r + shape.arrays r + 2 * i.val) =
+        some (.i64 (store.mem.read64 (slotAddress p (shape.fieldStart +
+          (shape.fields r).length + heapBufferSlot (shape.kinds r) i)))) ∧
+      (recordLoadLocals store p s.positions shape.fieldStart dsts tys s).get
+        (fieldBase + shape.words r + shape.children r + shape.arrays r + 2 * i.val + 1) =
+        some (.i64 (store.mem.read64 (slotAddress p (shape.fieldStart +
+          (shape.fields r).length + heapBufferSlot (shape.kinds r) i + 1)))) := by
+    intro i
+    have hLt := heapBufferSlot_lt (shape.kinds r) (fun _ => #[]) (fun _ => .empty) i
+    rw [heapSlots_length] at hLt
+    have hHeapLen := heapLocs_length (shape.kinds r) arraysBase buffersBase
+    obtain ⟨hLoc1, hLoc2⟩ := heapLocs_buffer_get (shape.kinds r) arraysBase buffersBase i
+      (by rw [hHeapLen]; omega)
+    have hj1 := hGet (fieldDsts.length + heapBufferSlot (shape.kinds r) i)
+      (by rw [List.length_append, hHeapLen]; omega)
+    have hj2 := hGet (fieldDsts.length + (heapBufferSlot (shape.kinds r) i + 1))
+      (by rw [List.length_append, hHeapLen]; omega)
+    rw [List.getElem_append_right (by omega)] at hj1 hj2
+    simp only [Nat.add_sub_cancel_left] at hj1 hj2
+    rw [hLoc1] at hj1
+    rw [hLoc2] at hj2
+    have hTy (k : Nat) : tys.getD (fieldDsts.length + k) .i64 = .i64 := by
+      rw [List.getD_eq_getElem?_getD, List.getElem?_eq_none (by
+        dsimp only [tys]
+        rw [treeFieldTypes_length, ← hFieldLen]
+        omega)]
+      rfl
+    rw [hTy, hFieldLen] at hj1 hj2
+    refine ⟨?_, ?_⟩
+    · simpa only [slotIndex, typedValue, buffersBase, Nat.add_assoc] using hj1
+    · simpa only [slotIndex, typedValue, buffersBase, Nat.add_assoc] using hj2
   have hSlots := hNode.borrow.1
   change RecordSlots heap p (shape.recordSlots r (shape.slotWords r words)
     (shape.arrayWords r arrays) buffers (fun i => (children i).toNode)) at hSlots
@@ -175,6 +213,6 @@ theorem wp_loadTree {m : Module} {host : HostEnv Unit} {heap : Heap}
       rw [treeFieldTypes_length, treeFieldLocs_length]), List.append_nil]
   exact wp_recordLoadCode shape.fieldStart dsts tys s hPtr hPtrPos hDsts hAddress hMemory
     (hNext _ hFrame (recordLoadLocals_values store p s.positions shape.fieldStart dsts tys s)
-      hPtr' hWords hChildren hArrays)
+      hPtr' hWords hChildren hArrays hBuffers)
 
 end Verified

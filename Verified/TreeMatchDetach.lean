@@ -32,7 +32,7 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
         (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
           heapArraySlot (shape.kinds r) i)))
         ((shape.arrayElem r i).words (arrays i))) ∧
-      (∀ i, Bytes.Rep heap store'
+      (∀ i, RecordBuffer heap store'
         (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
           heapBufferSlot (shape.kinds r) i)))
         (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
@@ -57,7 +57,7 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
     shape.fieldSlot_lt r true i
   cases mode
   · exact ⟨hAt, trivial, Step.refl hAt _, treeNode_child_rep hNode, treeNode_array_rep hNode,
-      treeNode_bytes_rep hNode, nofun, fun _ => rfl, rfl⟩
+      treeNode_recordBuffer hNode, nofun, fun _ => rfl, rfl⟩
   · obtain ⟨hOwned, hApart⟩ := hNode
     obtain ⟨hHead, hSlots⟩ := hOwned
     have hLength := shape.recordSlots_length r (shape.slotWords r words)
@@ -147,7 +147,7 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
     have hStep := Step.ofWritesRange (region := block store p) hAt' hWrites
       (by simp only [block]; omega) (by simp only [block]; omega)
     refine ⟨hAt', hHeader, hStep.mono (fun _ hr => hr rfl) nofun,
-      hChildren, hArrays, fun i => (hBufferAt i).rep, ?_, fun i => hReadNat i.val i.isLt, ?_⟩
+      hChildren, hArrays, hBufferAt, ?_, fun i => hReadNat i.val i.isLt, ?_⟩
     · intro _
       have hList := hApart'
       change (block _ p :: slotsBlocks _ p 0

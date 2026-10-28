@@ -89,7 +89,12 @@ theorem treeFields_regions_subset {heap : Heap} (store : Store Unit) (shape : Tr
     (arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote)
     (buffers : Fin (shape.buffers r) → LeanExe.Bytes)
     (children : Fin (shape.children r) → Tree shape)
-    (hNode : mode.node heap store p (Tree.node r words arrays buffers children).toNode) :
+    (hBuffers : ∀ i, RecordBuffer heap store
+      (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+        heapBufferSlot (shape.kinds r) i)))
+      (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+        heapBufferSlot (shape.kinds r) i + 1)))
+      (buffers i)) :
     let pointers := fun i => store.mem.read64
       (slotAddress p (shape.fieldStart + (fieldPosition true (shape.fields r) i).val))
     let arrayPtrs := fun i => store.mem.read64
@@ -110,7 +115,7 @@ theorem treeFields_regions_subset {heap : Heap} (store : Store Unit) (shape : Tr
   erw [treeFields_moves, treeFields_reads] at hr
   have hBuffer : ∀ i, Bytes.regions store (roots i) =
       (bufferRoots (buffers i) (roots i)).map (block store) :=
-    fun i => (treeNode_recordBuffer hNode i).blocks.symm
+    fun i => (hBuffers i).blocks.symm
   cases mode
   · simp only [List.map_nil, List.nil_append] at hr
     change b ∈ Node.slotRegions store p (.record (shape.recordSlots r (shape.slotWords r words)

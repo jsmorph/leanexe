@@ -37,17 +37,18 @@ theorem wp_openTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : St
         (base + 1 + shape.words r + shape.children r + shape.arrays r)
         (shape.fieldStart + (shape.fields r).length) ++
       (if mode = .owned then headerStore base 8 [.constI64 0] else []) ++ rest) Q store s host := by
-  obtain ⟨hAt', hHeader, hStep, hChildren, hArrays, hApart, hReads, hRegions⟩ :=
+  obtain ⟨hAt', hHeader, hStep, hChildren, hArrays, hRecordBuffers, hApart, hReads, hRegions⟩ :=
     treeNode_detach hAt hNode
-  have hb := shape.buffers_eq_zero r
   have hRun := wp_loadTree (m := m) (host := host) (Q := Q)
     (rest := (if mode = .owned then headerStore base 8 [.constI64 0] else []) ++ rest) hh hAt
     hPtr hNode hLow (by omega) (by simp only [TreeShape.bindWidth, TreeShape.bindCount] at hRoom; omega)
-    (fun s' hFrame hStack hPtr' hWordLocals hChildLocals hArrayLocals => by
+    (fun s' hFrame hStack hPtr' hWordLocals hChildLocals hArrayLocals hBufferLocals => by
     have hold := LocalsHold.treeFields hPtr' (by rw [hFrame.positions]; exact hWordLocals)
-      hChildLocals hArrayLocals
+      hChildLocals hArrayLocals hBufferLocals
     have hRep := treeFields_rep (words := words) (buffers := buffers) hHeader hChildren hArrays
-    have hPrefix := Holds.treePrefix (buffers := buffers) hHeader hChildren hArrays hApart hold
+      (fun i => (hRecordBuffers i).rep)
+    have hPrefix := Holds.treePrefix (buffers := buffers) hHeader hChildren hArrays
+      (fun i => (hRecordBuffers i).rep) hApart hold
     have hPointers : ∀ i, store.mem.read64
         (slotAddress p (shape.fieldStart + (fieldPosition true (shape.fields r) i).val)) =
         (treeDetachStore mode store p).mem.read64
@@ -64,7 +65,26 @@ theorem wp_openTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : St
       (hNext s' hFrame hStack hPrefix hStep ?_)
     intro t x ws hLocal hLength b hr
     rw [← hRegions]
-    exact treeFields_variable_regions hPointers hArrayPtrs hRep hold t x ws hLocal hLength b hr)
+    have hRootReads : ∀ i, store.mem.read64 (slotAddress p (shape.fieldStart +
+        (shape.fields r).length + heapBufferSlot (shape.kinds r) i)) =
+        (treeDetachStore mode store p).mem.read64 (slotAddress p (shape.fieldStart +
+          (shape.fields r).length + heapBufferSlot (shape.kinds r) i)) :=
+      fun i => (hReads ⟨_, by have := shape.heapBufferSlot_lt_width r i; omega⟩).symm
+    have hLengthReads : ∀ i, store.mem.read64 (slotAddress p (shape.fieldStart +
+        (shape.fields r).length + heapBufferSlot (shape.kinds r) i + 1)) =
+        (treeDetachStore mode store p).mem.read64 (slotAddress p (shape.fieldStart +
+          (shape.fields r).length + heapBufferSlot (shape.kinds r) i + 1)) :=
+      fun i => (hReads ⟨_, shape.heapBufferSlot_lt_width r i⟩).symm
+    have hDetachBuffers : ∀ i, RecordBuffer heap (treeDetachStore mode store p)
+        ((treeDetachStore mode store p).mem.read64 (slotAddress p (shape.fieldStart +
+          (shape.fields r).length + heapBufferSlot (shape.kinds r) i)))
+        ((treeDetachStore mode store p).mem.read64 (slotAddress p (shape.fieldStart +
+          (shape.fields r).length + heapBufferSlot (shape.kinds r) i + 1)))
+        (buffers i) := fun i => by
+      rw [← hRootReads, ← hLengthReads]
+      exact hRecordBuffers i
+    exact treeFields_variable_regions hDetachBuffers hPointers hArrayPtrs hRootReads
+      hLengthReads hRep hold t x ws hLocal hLength b hr)
   simpa only [List.append_assoc] using hRun
 
 end Verified
