@@ -23,10 +23,32 @@ theorem listCons_eq {reuse : Option (Var Γ (.treeHeader listShape listCell))}
     {head : Expr S Γ .word} {tail : Expr S Γ (.tree listShape)}
     {x : UInt64} {xs : List UInt64}
     (hh : head.denote funs env = x) (ht : tail.denote funs env = Tree.ofList xs) :
-    (Expr.treeNode listCell reuse (fun _ => head) (fun _ => tail)).denote funs env =
+    (Expr.treeNode listCell reuse (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => tail)).denote funs env =
       Tree.ofList (x :: xs) := by
   subst hh
   simp only [Expr.denote, Tree.ofList, ht]
+  rfl
+
+theorem listCell_argsSum_arrays (f : Fin (listShape.arrays listCell) → Nat) : argsSum f = 0 :=
+  rfl
+
+theorem listCell_argsSum_buffers (f : Fin (listShape.buffers listCell) → Nat) : argsSum f = 0 :=
+  rfl
+
+theorem listCell_argsAny_arrays (f : Fin (listShape.arrays listCell) → Bool) :
+    argsAny f = false :=
+  rfl
+
+theorem listCell_argsAny_buffers (f : Fin (listShape.buffers listCell) → Bool) :
+    argsAny f = false :=
+  rfl
+
+theorem listCell_argsAll_arrays (f : Fin (listShape.arrays listCell) → Bool) :
+    argsAll f = true :=
+  rfl
+
+theorem listCell_argsAll_buffers (f : Fin (listShape.buffers listCell) → Bool) :
+    argsAll f = true :=
   rfl
 
 theorem listCons_bound {reuse : Option (Var Γ (.treeHeader listShape listCell))}
@@ -39,9 +61,10 @@ theorem listCons_bound {reuse : Option (Var Γ (.treeHeader listShape listCell))
     (hp : (match reuse with
       | some x => if modeAt modes x.index = .owned ∧ live x.index = false then 0 else 64
       | none => 64) = P) :
-    (Expr.treeNode listCell reuse (fun _ => head) (fun _ => tail)).allocs
+    (Expr.treeNode listCell reuse (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => tail)).allocs
       funs flags bounds modes paid live env = H + (T + K) + P := by
-  simp only [Expr.allocs]
+  simp only [Expr.allocs, listCell_argsSum_arrays, listCell_argsSum_buffers,
+    listCell_argsAny_arrays, listCell_argsAny_buffers, Bool.or_false, Nat.add_zero]
   erw [argsSum_one, argsSum_one]
   change head.allocs funs flags bounds modes paid
       (fun k => ((live k || optionVarUses reuse k) ||
@@ -62,9 +85,9 @@ theorem listCons_bound {reuse : Option (Var Γ (.treeHeader listShape listCell))
 theorem listCons_fits {reuse : Option (Var Γ (.treeHeader listShape listCell))}
     {head : Expr S Γ .word} {tail : Expr S Γ (.tree listShape)} {H T : Bool}
     (hh : head.fits funs fits env = H) (ht : tail.fits funs fits env = T) :
-    (Expr.treeNode listCell reuse (fun _ => head) (fun _ => tail)).fits funs fits env =
+    (Expr.treeNode listCell reuse (fun _ => head) (noFields rfl) (noFields rfl) (fun _ => tail)).fits funs fits env =
       (H && T) := by
-  simp only [Expr.fits]
+  simp only [Expr.fits, listCell_argsAll_arrays, listCell_argsAll_buffers, Bool.and_true]
   erw [argsAll_one, argsAll_one, hh, ht]
 
 theorem listCase_eq {t : Ty} (x : Var Γ (.tree listShape))

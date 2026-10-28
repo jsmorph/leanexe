@@ -560,10 +560,68 @@ def exprFamily (c : Ctx) (shapeValue : TreeShape) (r : Fin shapeValue.records)
   return mkAppN (mkConst ``TreeShape.exprsOf) #[c.sigs, c.ctx, shape, record,
     listExpr sigma entries]
 
+/-- `noFields` over the index type `Fin count`, which is empty, of the motive `motive`. -/
+def emptyFamily (count motive : Lean.Expr) : MetaM Lean.Expr := do
+  mkAppOptM ``noFields
+    #[some count, some (← mkDecideProof (← mkEq count (mkNatLit 0))), some motive]
+
+/-- The array family of record constructor `r` with the arrays `values` of their elements:
+`TreeShape.arraysOf`, or `noFields` for a record constructor without array fields. -/
+def arrayFamily (shapeValue : TreeShape) (r : Fin shapeValue.records)
+    (values : List (Elem × Lean.Expr)) : MetaM Lean.Expr := do
+  let shape := treeShapeExpr shapeValue
+  let record := recordExpr shapeValue r
+  let arrayOf (e : Lean.Expr) : Lean.Expr :=
+    mkApp (mkConst ``Array [.zero]) (mkApp (mkConst ``Elem.denote) e)
+  if values.isEmpty then
+    let count ← mkAppM ``TreeShape.arrays #[shape, record]
+    let motive ← withLocalDeclD `i (mkApp (mkConst ``Fin) count) fun i => do
+      mkLambdaFVars #[i] (arrayOf (← mkAppM ``TreeShape.arrayElem #[shape, record, i]))
+    return ← emptyFamily count motive
+  let family ← withLocalDeclD `e (mkConst ``Elem) fun e => mkLambdaFVars #[e] (arrayOf e)
+  let sigma := mkApp2 (mkConst ``Sigma [.zero, .zero]) (mkConst ``Elem) family
+  let entries := values.map fun (e, v) =>
+    mkApp4 (mkConst ``Sigma.mk [.zero, .zero]) (mkConst ``Elem) family (toExpr e) v
+  return mkApp3 (mkConst ``TreeShape.arraysOf) shape record (listExpr sigma entries)
+
+/-- The buffer family of record constructor `r`, which has no buffer fields. -/
+def bufferFamily (shapeValue : TreeShape) (r : Fin shapeValue.records) : MetaM Lean.Expr := do
+  let count ← mkAppM ``TreeShape.buffers #[treeShapeExpr shapeValue, recordExpr shapeValue r]
+  emptyFamily count (← withLocalDeclD `i (mkApp (mkConst ``Fin) count) fun i =>
+    mkLambdaFVars #[i] (mkConst ``LeanExe.Bytes))
+
+/-- The family of the array expressions `exprs` of a construction of record constructor `r`, of
+the elements of the fields, in the form of `arrayFamily`. -/
+def arrayExprFamily (c : Ctx) (shapeValue : TreeShape) (r : Fin shapeValue.records)
+    (exprs : List (Elem × Lean.Expr)) : MetaM Lean.Expr := do
+  let shape := treeShapeExpr shapeValue
+  let record := recordExpr shapeValue r
+  if exprs.isEmpty then
+    let count ← mkAppM ``TreeShape.arrays #[shape, record]
+    let motive ← withLocalDeclD `i (mkApp (mkConst ``Fin) count) fun i => do
+      mkLambdaFVars #[i] (mkApp3 (mkConst ``Expr) c.sigs c.ctx
+        (← mkAppM ``TreeShape.arrayTy #[shape, record, i]))
+    return ← emptyFamily count motive
+  let family ← withLocalDeclD `e (mkConst ``Elem) fun e => do
+    mkLambdaFVars #[e] (mkApp3 (mkConst ``Expr) c.sigs c.ctx (mkApp (mkConst ``Ty.array) e))
+  let sigma := mkApp2 (mkConst ``Sigma [.zero, .zero]) (mkConst ``Elem) family
+  let entries := exprs.map fun (e, x) =>
+    mkApp4 (mkConst ``Sigma.mk [.zero, .zero]) (mkConst ``Elem) family (toExpr e) x
+  return mkAppN (mkConst ``TreeShape.arrayExprsOf) #[c.sigs, c.ctx, shape, record,
+    listExpr sigma entries]
+
+/-- The family of the buffer expressions of a construction of record constructor `r`, which has
+no buffer fields. -/
+def bufferExprFamily (c : Ctx) (shapeValue : TreeShape) (r : Fin shapeValue.records) :
+    MetaM Lean.Expr := do
+  let count ← mkAppM ``TreeShape.buffers #[treeShapeExpr shapeValue, recordExpr shapeValue r]
+  emptyFamily count (← withLocalDeclD `i (mkApp (mkConst ``Fin) count) fun i =>
+    mkLambdaFVars #[i] (mkApp3 (mkConst ``Expr) c.sigs c.ctx (mkConst ``Ty.bytes)))
+
 /-- The words of a field `x` of the kind `kind`, each with its element: the field itself for a
 word field, and the leaves of its flattening for a flat field. -/
 def nativeWords (x : Lean.Expr) : NativeField → MetaM (List (Elem × Lean.Expr))
-  | .child => pure []
+  | .child | .array _ => pure []
   | .leaf e => pure [(e, x)]
   | .flat _ leaves => leaves.mapM fun (e, segments) => return (e, ← leafTerm x segments)
 
@@ -580,7 +638,7 @@ partial def componentTerm (x : Lean.Expr) (steps : List Bool) : MetaM Lean.Expr 
   componentTerm (← flatTerm x) steps
 
 /-- Runs `k` with the variables of a match's branch on record constructor `r`: the header, then
-each word, then each child.  The fields `natives` are the constructor's fields with their types.
+each word, then each child, then each array.  The fields `natives` are the constructor's fields with their types.
 A flat field is one Lean variable, and the branch holds a variable for each leaf of its tuple,
 keyed in the context by the leaf's projection of the field. -/
 def withTreeCaseFields {α : Type} (c : Ctx) (shapeValue : TreeShape)
@@ -609,9 +667,16 @@ def withTreeCaseFields {α : Type} (c : Ctx) (shapeValue : TreeShape)
       (← finiteFn (mkApp (mkConst ``Tree) shape) (← children.mapM flatValue))
       (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.children #[shape, record]))
         (mkApp (mkConst ``Tree) shape))
-    let env ← mkAppM ``Env.treeFields #[shape, record, wordFn, childFn, c.env]
+    let arrays := values.filterMap fun (x, kind) => match kind with
+      | .array e => some (x, e)
+      | _ => none
+    let arrayFn ← arrayFamily shapeValue r (← arrays.mapM fun (x, e) => do
+      return (e, ← flatValue x))
+    let env ← mkAppM ``Env.treeFields
+      #[shape, record, wordFn, arrayFn, ← bufferFamily shapeValue r, childFn, c.env]
     let vars := [(marker, .treeHeader shapeValue r)] ++
-      words.map (fun (w, e) => (w, Ty.elem e)) ++ children.map (·, Ty.tree shapeValue) ++ c.vars
+      words.map (fun (w, e) => (w, Ty.elem e)) ++ children.map (·, Ty.tree shapeValue) ++
+      arrays.map (fun (x, e) => (x, Ty.array e)) ++ c.vars
     let inner := { c with ctx, env, vars }
     k inner fields
 
@@ -626,7 +691,8 @@ def withRecursiveCaseFields {α : Type} (c : Ctx) (layout : RecursiveLayout)
   withTreeCaseFields c layout.shape r ((layout.recordCtor r).2.map fun
     | .child => (mkConst layout.name, .child)
     | .leaf e => (elemType e, .leaf e)
-    | .flat type leaves => (type, .flat type leaves)) k
+    | .flat type leaves => (type, .flat type leaves)
+    | .array e => (mkApp (mkConst ``Array [.zero]) (elemType e), .array e)) k
 
 /-- `e` with each projection of a pair `(a, b)` or of a structure's constructor at its head
 replaced by the component, and each pair `(y.1, y.2)` of the components of `y` replaced by `y`,
@@ -2264,7 +2330,9 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let family (r : Reflection) : MetaM Lean.Expr :=
       withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 1)) fun i =>
         mkLambdaFVars #[i] r.src
-    let src ← mkAppM ``Expr.treeNode #[mkConst ``listCell, reuse, ← family ra, ← family rb]
+    let src ← mkAppM ``Expr.treeNode #[mkConst ``listCell, reuse, ← family ra,
+      ← arrayExprFamily c listShape listCell [], ← bufferExprFamily c listShape listCell,
+      ← family rb]
     let parts := [(`reuse, reuse), (`head, ra.src), (`tail, rb.src)]
     let proof ← (← LemmaApp.start ``listCons_eq
       ([(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env)] ++ parts ++
@@ -3128,9 +3196,11 @@ where
       return some (← reflectAs (← bindArgs e.getAppFn args (tuples.map (·.isNone)) #[] #[]) e)
     let mut typedWords : List (Elem × Reflection) := []
     let mut children : List Reflection := []
+    let mut typedArrays : List (Elem × Reflection) := []
     for ((a, kind), tuple) in (args.zip natives).zip (tuples.filterMap id) do
       match kind with
       | .child => children := children ++ [← reflect c a]
+      | .array el => typedArrays := typedArrays ++ [(el, ← reflect c a)]
       | .leaf el => typedWords := typedWords ++ [(el, ← reflect c a)]
       | .flat _ leaves =>
         -- The first segment of a leaf of a field is empty, and the tuple is the field's flattening.
@@ -3143,15 +3213,18 @@ where
     let childFn ← mkExpectedTypeHint (← finiteFn (sourceType ty) (children.map (·.src)))
       (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.children #[shape, record]))
         (sourceType ty))
+    let arrays := typedArrays.map (·.2)
+    let arrayFn ← arrayExprFamily c layout.shape r (typedArrays.map fun (e, ra) => (e, ra.src))
+    let bufferFn ← bufferExprFamily c layout.shape r
     let header := mkApp2 (mkConst ``Var) c.ctx (tyExpr (.treeHeader layout.shape r))
     let reuse ← match c.vars.find? (fun (_, t) => t == .treeHeader layout.shape r) with
       | none => mkAppOptM ``Option.none #[some header]
       | some (value, _) => do
         let (x, _) ← varOf c value
         mkAppOptM ``Option.some #[some header, some x]
-    let src ← mkAppM ``Expr.treeNode #[record, reuse, wordFn, childFn]
+    let src ← mkAppM ``Expr.treeNode #[record, reuse, wordFn, arrayFn, bufferFn, childFn]
     let parts := [(`shape, shape), (`r, record), (`reuse, reuse), (`words, wordFn),
-      (`children, childFn)]
+      (`arrays, arrayFn), (`buffers, bufferFn), (`children, childFn)]
     let app ← LemmaApp.start ``treeNode_eq
       ([(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env)] ++ parts)
     let values (rs : List Reflection) : MetaM (List Bound) :=
@@ -3164,6 +3237,11 @@ where
         (← wordFamily layout.shape r (elems.zip (wordValues.map (·.term)))) wordValues
     let _ ← assignFiniteEquation app `childValues `hc (mkApp (mkConst ``Tree) shape)
       (← values children)
+    let arrayValues ← values arrays
+    let _ ← assignFamilyEquation app `arrayValues `ha
+      (← arrayFamily layout.shape r ((typedArrays.map (·.1)).zip (arrayValues.map (·.term))))
+      arrayValues
+    let _ ← assignFamilyEquation app `bufferValues `hb (← bufferFamily layout.shape r) []
     let proof ← app.finish
     let (_, value) ← eqSides proof
     let proof ← transHint proof (← bareEq value (← flatValue e))
@@ -3184,29 +3262,50 @@ where
           | throwError "verified_compile: recursive child coercion has an invalid form"
         let (cost, proof) ← coerceEq c.base ty s M value field.lean
         return (⟨cost, proof⟩ : Bound)
+      let ab ← finiteFieldBounds app `ha arrays
+      let akb ← typedArrays.zipIdx.mapM fun ((el, field), i) => do
+        let expected ← instantiateForall (← app.hypType `hak)
+          #[← finiteIndex typedArrays.length i]
+        let some (_, lhs, _) := expected.eq?
+          | throwError "verified_compile: recursive array coercion is not an equation"
+        let (``coerceCost, #[_, s, M, value]) := lhs.getAppFnArgs
+          | throwError "verified_compile: recursive array coercion has an invalid form"
+        let (cost, proof) ← coerceEq c.base (.array el) s M value field.lean
+        return (⟨cost, proof⟩ : Bound)
       let _ ← assignFiniteEquation app `W `hw (mkConst ``Nat) wb
       let _ ← assignFiniteEquation app `C `hc (mkConst ``Nat) cb
       let _ ← assignFiniteEquation app `K `hk (mkConst ``Nat) kb
+      let _ ← assignFiniteEquation app `A `ha (mkConst ``Nat) ab
+      let _ ← assignFiniteEquation app `AK `hak (mkConst ``Nat) akb
+      let _ ← assignFiniteEquation app `B `hb (mkConst ``Nat) []
+      let _ ← assignFiniteEquation app `BK `hbk (mkConst ``Nat) []
       let some (_, parent, _) := (← app.hypType `hp).eq?
         | throwError "verified_compile: recursive parent cost is not an equation"
       let p ← evalNat parent
       app.assign `hp (← evalEq parent p)
-      let total ← addBounds (← addBounds (← finiteSumBound wb)
-        (← addBounds (← finiteSumBound cb) (← finiteSumBound kb))) ⟨p, ← mkEqRefl p⟩
+      let fieldsBound ← addBounds (← addBounds (← addBounds (← finiteSumBound wb)
+        (← addBounds (← finiteSumBound cb) (← finiteSumBound kb)))
+        (← addBounds (← finiteSumBound ab) (← finiteSumBound akb)))
+        (← addBounds (← finiteSumBound []) (← finiteSumBound []))
+      let total ← addBounds fieldsBound ⟨p, ← mkEqRefl p⟩
       boundOf (← transHint (← app.finish) total.proof)
     let fits : FitsBuilder := do
       let app ← LemmaApp.start ``treeNode_fits (fitsArgs c ++ parts)
       let wb ← words.mapM (·.fits)
       let cb ← children.mapM (·.fits)
+      let ab ← arrays.mapM (·.fits)
       let _ ← assignFiniteEquation app `W `hw (mkConst ``Bool) wb
       let _ ← assignFiniteEquation app `C `hc (mkConst ``Bool) cb
-      let w ← finiteAllFits wb
-      let ch ← finiteAllFits cb
-      let (left, _) ← eqSides w.proof
-      let (right, _) ← eqSides ch.proof
-      fitsOf (← transHint (← app.finish)
-        (← congr2 (mkConst ``Bool.and) left w.term right ch.term
-          (some w.proof) (some ch.proof)))
+      let _ ← assignFiniteEquation app `A `ha (mkConst ``Bool) ab
+      let _ ← assignFiniteEquation app `B `hb (mkConst ``Bool) []
+      let andBound (a b : Bound) : MetaM Bound := do
+        let (left, _) ← eqSides a.proof
+        let (right, _) ← eqSides b.proof
+        fitsOf (← congr2 (mkConst ``Bool.and) left a.term right b.term
+          (some a.proof) (some b.proof))
+      let all ← andBound (← andBound (← andBound (← finiteAllFits wb) (← finiteAllFits cb))
+        (← finiteAllFits ab)) (← finiteAllFits [])
+      fitsOf (← transHint (← app.finish) all.proof)
     return some ⟨src, proof, ty, e, bound, fits, none⟩
   reflectSumConstructor? (e : Lean.Expr) : MetaM (Option Reflection) := do
     let .const ctorName _ := e.getAppFn | return none

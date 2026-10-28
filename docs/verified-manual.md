@@ -70,7 +70,7 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | A pair that holds arrays, or a structure whose `Flat` tuple holds arrays | Its components' words | A structure of this kind is a record with array fields. |
 | A sum with a `Flat` instance whose tuple holds `Bytes`, arrays, or recursive types | A word tag and the words of the tuple's components | The inactive components hold the instance's values: `Bytes.empty` and a null tree allocate nothing, and `#[]` allocates an empty array.  Parameters are borrowed. |
 | `List UInt64` | Null for `[]`, otherwise a record holding the head word and tail pointer | Construction, matching, identity, duplication, tuples, calls, tail recursion, and folds with scalar state |
-| A recursive type whose fields are `UInt64`, `Bool`, `Float`, `Float32`, types with a `Flat` instance whose flattening holds these, or the type itself | Null for the first constructor without fields, and for any other constructor a record of its fields in declaration order, after a tag word that holds the constructor's index when the type has more than one record constructor.  A `Bool` slot holds 1 or 0, a `Float` slot its bit pattern, and a `Float32` slot its bit pattern in the low 32 bits.  A field of a type with a `Flat` instance occupies one slot for each leaf of its flattening, in order. | Each record has between 1 and 64 slots, the tag included, at least one constructor has no child field, and at least one has a child field.  Construction, one-level matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state.  A type with a field that holds an enumeration or a sum cannot be a parameter of a recursive or tail-recursive definition. |
+| A recursive type whose fields are `UInt64`, `Bool`, `Float`, `Float32`, arrays of these, types with a `Flat` instance whose flattening holds these, or the type itself | Null for the first constructor without fields, and for any other constructor a record of its word and child fields in declaration order, then its array fields in declaration order, after a tag word that holds the constructor's index when the type has more than one record constructor.  A `Bool` slot holds 1 or 0, a `Float` slot its bit pattern, and a `Float32` slot its bit pattern in the low 32 bits.  A field of a type with a `Flat` instance occupies one slot for each leaf of its flattening, in order. | Each record has between 1 and 64 slots, the tag included, at least one constructor has no child field, and at least one has a child field.  Construction, one-level matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state.  A type with a field that holds an enumeration or a sum cannot be a parameter of a recursive or tail-recursive definition. |
 
 `Nat`, `Int`, `String`, `Option`, recursive types outside the listed layout, and arrays of arrays are outside the dialect.  Integers are `UInt64`, so that a program and its module compute the same values, wraparound included.  A read past the end of an array gives Lean's default element, whose flattening must have zero words.  An array stores each Float32 bit pattern in the low 32 bits of an eight-byte word.
 
@@ -144,13 +144,20 @@ allocates one record per cell.  A borrowed list retains its records.
 
 The same ownership rules apply to accepted user-defined recursive types.  Such a type has no
 parameters or indices, is neither mutual nor nested, and has fields of type `UInt64`, `Bool`,
-`Float`, `Float32`, or the type itself, or of a type with a `Flat` instance whose flattening holds
-words, `Bool`s, and floats, such as a structure, an enumeration, or a sum.  Its first constructor
-without fields is null, and each other constructor is a record constructor.  A `Bool`, a float, or a
-word occupies one slot, and a field with a `Flat` instance one slot for each leaf of its flattening,
-nested structures included.  The `Encode` instance writes a `Bool` as `cond b 1 0`, a `Float` as its
-bit pattern, a `Float32` as its bit pattern in the low 32 bits, and a flattened field as the words
-of its leaves.  A match binds such a field as one variable, and the code holds each leaf in a local
+`Float`, `Float32`, an array of one of these, or the type itself, or of a type with a `Flat`
+instance whose flattening holds words, `Bool`s, and floats, such as a structure, an enumeration, or
+a sum.  Its first constructor without fields is null, and each other constructor is a record
+constructor.  A `Bool`, a float, or a word occupies one slot, a field with a `Flat` instance one
+slot for each leaf of its flattening, nested structures included, and an array one slot, which
+holds the address of an array object.  A record holds its word and child slots in the order of the
+fields and then its array slots in the order of the fields, so the `Encode` instance writes each
+array slot after the record's other slots, as `Slot.array` of the array's words.  The `Encode`
+instance writes a `Bool` as `cond b 1 0`, a `Float` as its bit pattern, a `Float32` as its bit
+pattern in the low 32 bits, a flattened field as the words of its leaves, and an array of `Bool`s or
+floats as the words of its elements.  A construction moves an owned array into its record and
+copies a borrowed one.  A match binds an array field as an array variable, owned in an owned match,
+which releases the array when the branch does not use it, and a copy of a tree copies the array of
+each record.  A match binds such a field as one variable, and the code holds each leaf in a local
 of its type.  A type with several record constructors is tagged: slot 0 of each record holds its
 constructor's index in declaration order, and a match tests the tag against the record constructors
 in that order and runs the last one's branch without a test.  A pattern matches one constructor
@@ -172,8 +179,11 @@ floats, the command also derives the conversion `fromTree` and the inverse laws 
 `to_from`.  A word that encodes no constructor of an enumeration or a sum has no Lean value, so a
 type with a field that holds an enumeration or a sum has no `fromTree` and cannot be a parameter of
 a recursive or tail-recursive definition, and neither can a type with a structure field whose `Flat`
-tuple leaves out one of the structure's fields.  An encoding that disagrees with the layout fails
-the proof of `encoding`.  The command runs once, after `T`'s `Encode` instance, and fails when `T`
+tuple leaves out one of the structure's fields.  The command first encodes each constructor with an
+array field at variables for its fields, and an instance that writes an array slot before a word
+or child slot, or two array slots out of the order of their fields, fails with a message that
+names the field.  Any other encoding that disagrees with the layout fails the proof of
+`encoding`.  The command runs once, after `T`'s `Encode` instance, and fails when `T`
 already has the declarations.  A program over `T` fails to compile unless its own module or a module
 that it imports runs the command, so the declarations exist in one module and any number of modules
 that compile programs over `T` can be imported together.  [The derivation for the library's
@@ -259,6 +269,7 @@ A table is a Lean constant of type `Array UInt64`, which the module writes in a 
 | ``… needs `verified_recursive_type …` after its `Encode` instance, in the program's module or a module that it imports`` | A program over a recursive type `T` for which neither the program's module nor a module that it imports runs `verified_recursive_type T` | Run `verified_recursive_type T` once, after `T`'s `Encode` instance, in the program's module or in a module that it imports. |
 | `verified_recursive_type: … is not a recursive type that the compiler supports` | A type with parameters or indices, a mutual or nested type, a field of a type outside the listed kinds, or a shape outside the layout rules of the types table | Give the type the fields and constructors that the types table lists. |
 | `verified_recursive_type: … already has its declarations` | A second run of the command for one type | Keep one run and import its module. |
+| ``verified_recursive_type: the `Encode` instance of … places the array field … before a word or child slot`` or ``… after a later array field`` | An `Encode` instance that writes an array slot of a record before a word or child slot, or two array slots out of the order of their fields | Write each record's word and child slots first and its array slots after them, each group in the order of the fields. |
 | `a sum field must be a scalar, Bytes, an array, or a recursive type: …` | A sum field that is a record with arrays or a sum with heap fields | Give the constructor the record's fields as its own fields. |
 | `the flattening of the default … is not the default element …` | A structure whose default does not take each field's default | Use `deriving Inhabited`. |
 | `` `==` on … needs `LawfulBEq` `` | `==` on an enumeration without `LawfulBEq` | Use `deriving DecidableEq`. |
@@ -577,6 +588,7 @@ Reusable implementations and their compilations live in [the library](../Library
 | [Binary32 operations](../Verified/Examples/Floats32.lean) | Arithmetic, comparisons, conditional branches, square root, signs, nearest, unsigned and signed word conversions, bit-pattern conversions, mixed f32/f64 parameters and results, arrays, updates, folds, builds, and tail loops.  Guarded recursion includes a proved 32-position mixed-format frame. |
 | [Sums with fields](../Verified/Examples/Sums.lean) | The existing shape program, matches and wildcard bindings, constructors, calls, arrays, updates, folds, loop state, and mixed Float32 and enumeration fields. |
 | [Sums with heap fields](../Verified/Examples/HeapSums.lean) | A sum with `Bytes`, array, tree, word, and float fields and a sum with a list field: construction from owned arguments, borrowed and owned matches, wildcards that name the matched value, results, pairs, loop state, and a guarded call inside a match. |
+| [Trees with array fields](../Verified/Examples/ArrayTrees.lean) | A tree whose records hold an array of words beside a word and two children: construction from owned and borrowed arrays, owned matches that move the arrays out and release those that die, borrowed reads of the arrays' elements, record reuse, and copies of a borrowed tree that copy each record's array. |
 | [Trees with typed fields](../Verified/Examples/TypedTrees.lean) | A tree with `Bool`, binary64, binary32, and word fields, a tree whose records hold a structure with a nested structure, a tree with an enumeration field, and a tree with a sum field: construction, copies, record reuse, borrowed reads, matches on the sum, recursion, loops, and functions that take or return the fields. |
 | [`Records`](../Verified/Examples/Records.lean) | Structures with a nested structure and a `Bool` field, built, updated with `{ s with … }`, read field by field, taken apart with `match`, chosen with `if`, passed to calls, and used as a loop's state, with theorems stated for the structures. |
 | [`Tuples`](../Verified/Examples/Tuples.lean) | Arrays of tuples of a float and a word and of a nested tuple, built, read along a path, updated in place, extended, and appended, written without the reflector, with an `example` per function stating by `rfl` that it means a Lean function. |

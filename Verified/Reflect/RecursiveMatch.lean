@@ -28,6 +28,7 @@ def nativeTypeTerm (native : Ident) : NativeField → CommandElabM Term
   | .child => pure native
   | .leaf e => elemTypeTerm e
   | .flat type _ => pure (mkCIdent type.constName!)
+  | .array e => do `(Array $(← elemTypeTerm e))
 
 /-- The leaf of `field` with segments `segments`, as `leafTerm` builds it. -/
 def leafSyntax (field : Term) (segments : List (List Bool)) : CommandElabM Term := do
@@ -40,10 +41,17 @@ def leafSyntax (field : Term) (segments : List (List Bool)) : CommandElabM Term 
 
 /-- The words of the field `field` of the kind `kind`, each with its element. -/
 def nativeWordTerms (field : Term) : NativeField → CommandElabM (Array (Elem × Term))
-  | .child => pure #[]
+  | .child | .array _ => pure #[]
   | .leaf e => pure #[(e, field)]
   | .flat _ leaves => leaves.toArray.mapM fun (e, segments) =>
     return (e, ← leafSyntax field segments)
+
+/-- The array family of record constructor `r` with the array fields `entries`, each a pair of an
+element and a field: `TreeShape.arraysOf`, or `noFields` when the record has no array fields. -/
+def arrayFamilyTerm (shape : TreeShape) (r : Fin shape.records) (entries : Array Term) :
+    CommandElabM Term := do
+  if entries.isEmpty then return ← `(Verified.noFields rfl)
+  `(Verified.TreeShape.arraysOf $(← shapeTerm shape) $(← recordTerm shape r) [$entries,*])
 
 /-- The field variables of a constructor with `n` fields. -/
 def fieldNames (n : Nat) : Array Ident :=
@@ -76,22 +84,28 @@ def deriveRecursiveMatch (layout : RecursiveLayout) : CommandElabM Unit :=
     let mut words : Array Term := #[]
     let mut entries : Array Term := #[]
     let mut children : Array Term := #[]
+    let mut arrays : Array Term := #[]
     for i in [:fields.size] do
       if kinds[i]! matches .child then children := children.push (← `($flatten $(fields[i]!)))
+      if let .array e := kinds[i]! then
+        arrays := arrays.push (← `(⟨$(quote e), $(fields[i]!)⟩))
       for (e, w) in ← nativeWordTerms fields[i]! kinds[i]! do
         words := words.push w
         entries := entries.push (← `(⟨$(quote e), $w⟩))
     let record ← match layout.record? ctor with
       | none => pure none
       | some r => some <$> recordTerm layout.shape r
-    let boundEnv ← match record with
-      | none => `(env)
-      | some record =>
+    let boundEnv ← match layout.record? ctor, record with
+      | some r, some record =>
+        let arrayFamily ← arrayFamilyTerm layout.shape r arrays
         if layout.shape.allWords then
-          `(Verified.Env.treeFields $shape $record ([$words,*]).get ([$children,*]).get env)
+          `(Verified.Env.treeFields $shape $record ([$words,*]).get $arrayFamily
+            (Verified.noFields rfl) ([$children,*]).get env)
         else
           `(Verified.Env.treeFields $shape $record
-            (Verified.TreeShape.wordsOf $shape $record [$entries,*]) ([$children,*]).get env)
+            (Verified.TreeShape.wordsOf $shape $record [$entries,*]) $arrayFamily
+            (Verified.noFields rfl) ([$children,*]).get env)
+      | _, _ => `(env)
     return ({ record, fields, types, boundEnv } : CtorParts)
   let bindAll (part : CtorParts) (body : Term) : CommandElabM Term := do
     let mut result := body

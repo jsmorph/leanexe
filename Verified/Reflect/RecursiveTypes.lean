@@ -54,6 +54,38 @@ partial def Rebuild.term (word : Nat → CommandElabM Term) : Rebuild → Comman
   | .pair a b => do `(($(← a.term word), $(← b.term word)))
   | .ctor name fields => do `($(mkCIdent name) $(← fields.toArray.mapM (·.term word))*)
 
+/-- Checks that the `Encode` instance of the type of `layout` places the array slots of each record
+after its word and child slots, in the order of their fields.  Each constructor with an array field
+is encoded with variables for its fields, and an instance whose record list is a literal must have
+that order; the error names the first field out of place.  An instance that does not reduce to a
+literal record list is left to the agreement theorem. -/
+def checkEncodingOrder (layout : RecursiveLayout) : CommandElabM Unit := liftTermElabM do
+  let type := mkConst layout.name
+  let inst ← synthInstance (mkApp (mkConst ``LeanExe.Pipeline.Encode) type)
+  for (ctor, kinds) in layout.ctors do
+    unless kinds.any (· matches .array _) do continue
+    forallTelescope (← getConstInfoCtor ctor).type fun xs _ => do
+      let node ← whnf (← mkAppOptM ``LeanExe.Pipeline.Encode.encode
+        #[some type, some inst, some (mkAppN (mkConst ctor) xs)])
+      let (``LeanExe.Pipeline.Node.record, #[slots]) := node.getAppFnArgs | return
+      let some (_, slots) := slots.listLit? | return
+      let fieldOf (slot : Lean.Expr) : Option Nat :=
+        xs.findIdx? fun x => slot.containsFVar x.fvarId!
+      let fail (j : Nat) (rule : String) : MetaM Unit := do
+        let name := (← xs[j]!.fvarId!.getDecl).userName
+        throwError "verified_recursive_type: the `Encode` instance of {layout.name} places the           array field `{name}` of {ctor} {rule}; a record holds its word and child slots first and           then its array slots, each group in the order of the fields"
+      let mut lastArray : Option Nat := none
+      for slot in slots do
+        match slot.getAppFn.constName? with
+        | some ``LeanExe.Pipeline.Slot.array =>
+          let some j := fieldOf slot | continue
+          if let some previous := lastArray then
+            if j < previous then fail previous "after a later array field"
+          lastArray := some j
+        | some ``LeanExe.Pipeline.Slot.word | some ``LeanExe.Pipeline.Slot.child =>
+          if let some j := lastArray then fail j "before a word or child slot"
+        | _ => pure ()
+
 open Lean.Parser.Term in
 /-- `toTree` from a recursive type to `Tree` of its shape and the agreement of the type's `Encode`
 instance with `Tree.toNode`, and, unless a field holds an enumeration or a sum, `fromTree` and the
@@ -85,6 +117,7 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
       let mut words : Array Term := #[]
       let mut elems : Array Elem := #[]
       let mut children : Array Term := #[]
+      let mut arrays : Array Term := #[]
       let mut decoded : Array Term := #[]
       for i in [:fields.size] do
         let field := fields[i]!
@@ -96,6 +129,10 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
           let k := quote (children.size - 1)
           decoded := decoded.push (← `($unflatten
             (children ⟨$k, (by decide : $k < ($shape).children $record)⟩)))
+        | .array e =>
+          arrays := arrays.push (← `(⟨$(quote e), $field⟩))
+          let k := quote (arrays.size - 1)
+          decoded := decoded.push (← `(arrays ⟨$k, (by decide : $k < ($shape).arrays $record)⟩))
         | .leaf _ => decoded := decoded.push (← wordAt words.size)
         | .flat type leaves =>
           let paths := leaves.map fun (_, segments) => segments.flatten
@@ -109,14 +146,16 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
           elems := elems.push e
       toAlts := toAlts.push (← `(matchAltExpr| | $pattern =>
         Verified.Tree.node $record $(← wordFamilyTerm layout.shape r elems words)
+          $(← arrayFamilyTerm layout.shape r arrays) (Verified.noFields rfl)
           $(← fieldFamily children)))
-      fromAlts := fromAlts.push (← `(matchAltExpr| | .node ⟨$(quote r.val), _⟩ words children =>
-        $(mkIdent ctor) $decoded*))
-      rightCases := rightCases.push (← `(matchAltExpr| | ⟨$(quote r.val), _⟩, words, children, ih =>
+      fromAlts := fromAlts.push (← `(matchAltExpr|
+        | .node ⟨$(quote r.val), _⟩ words arrays _ children => $(mkIdent ctor) $decoded*))
+      rightCases := rightCases.push (← `(matchAltExpr|
+        | ⟨$(quote r.val), _⟩, words, arrays, buffers, children, ih =>
         by
           simp only [$unflatten:term, $flatten:term, Verified.listCell]
           congr 1 <;> funext i <;> fin_cases i <;>
-            simp [ih, List.get, Verified.TreeShape.wordsOf] <;>
+            simp [ih, List.get, Verified.TreeShape.wordsOf, Verified.TreeShape.arraysOf] <;>
             first | rfl | (intro h; exact absurd rfl h)))
   let recordsCount : Term ← `(($shape).records)
   let outOfRange ← `(by
@@ -124,9 +163,9 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     omega)
   if layout.null?.isNone then
     fromAlts := fromAlts.push (← `(matchAltExpr| | .nil h => absurd h (by decide)))
-  fromAlts := fromAlts.push (← `(matchAltExpr| | .node ⟨_ + $(quote records), h⟩ _ _ =>
+  fromAlts := fromAlts.push (← `(matchAltExpr| | .node ⟨_ + $(quote records), h⟩ _ _ _ _ =>
     absurd h $outOfRange))
-  rightCases := rightCases.push (← `(matchAltExpr| | ⟨_ + $(quote records), h⟩, _, _, _ =>
+  rightCases := rightCases.push (← `(matchAltExpr| | ⟨_ + $(quote records), h⟩, _, _, _, _, _ =>
     absurd h $outOfRange))
   elabCommand (← `(def $flatten : $native → Verified.Tree $shape := fun value =>
     match value with $toAlts:matchAlt*))
@@ -134,7 +173,8 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     elabCommand (← `(def $unflatten : Verified.Tree $shape → $native := fun value =>
       match value with $fromAlts:matchAlt*))
     elabCommand (← `(theorem $left (value : $native) : $unflatten ($flatten value) = value := by
-      induction value <;> simp_all [$flatten:term, $unflatten:term, Verified.listCell, List.get] <;>
+      induction value <;> simp_all [$flatten:term, $unflatten:term, Verified.listCell, List.get,
+        Verified.TreeShape.arraysOf] <;>
         repeat' constructor))
     let nilCase ← if layout.null?.isSome then `(tactic| rfl)
       else `(tactic| exact absurd h (by decide))
@@ -143,7 +183,7 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
       induction value with
       | nil h => $nilCase:tactic
       | node r words arrays buffers children ih =>
-        exact match r, words, children, ih with $rightCases:matchAlt*))
+        exact match r, words, arrays, buffers, children, ih with $rightCases:matchAlt*))
   let encodeFn ← liftTermElabM do
     let type := mkConst layout.name
     let inst ← synthInstance (mkApp (mkConst ``LeanExe.Pipeline.Encode) type)
@@ -153,6 +193,7 @@ def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     | throwError "verified_recursive_type: recursive encoding of {layout.name} must name its \
         function"
   let encode := mkIdent encodeName
+  checkEncodingOrder layout
   elabCommand (← `(theorem $encoding (value : $native) :
       LeanExe.Pipeline.Encode.encode value = ($flatten value).toNode := by
     induction value <;> simp_all only [LeanExe.Pipeline.Encode.encode, $encode:term,

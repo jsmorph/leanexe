@@ -632,6 +632,16 @@ def TreeShape.wordsOf (shape : TreeShape) (r : Fin shape.records)
   | some ⟨e, v⟩ => if h : e = shape.elem r i then h ▸ v else @default _ (Elem.instInhabited _)
   | none => @default _ (Elem.instInhabited _)
 
+/-- The array family of record constructor `r` whose array `i` is array `i` of `values` when that
+array's element is field `i`'s, and empty otherwise.  The reflector writes the arrays of a record
+in this form. -/
+def TreeShape.arraysOf (shape : TreeShape) (r : Fin shape.records)
+    (values : List (Σ e : Elem, Array e.denote)) (i : Fin (shape.arrays r)) :
+    Array (shape.arrayElem r i).denote :=
+  match values[i.val]? with
+  | some ⟨e, v⟩ => if h : e = shape.arrayElem r i then h ▸ v else #[]
+  | none => #[]
+
 /-- The family over an empty index type, for a record constructor without fields of a kind. -/
 def noFields {n : Nat} (h : n = 0) {α : Fin n → Sort u} : (i : Fin n) → α i :=
   fun i => absurd (Nat.lt_of_lt_of_eq i.isLt h) (Nat.not_lt_zero _)
