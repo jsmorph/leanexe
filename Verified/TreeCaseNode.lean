@@ -18,6 +18,8 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
       CodeSpec (pool := pool) m funs flags bounds fits host pv (nodes r) env slots paid live)
     (env : Env Γ) (slots : List Slot) (paid : List Bool) (live : Nat → Bool)
     (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
+    (arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote)
+    (buffers : Fin (shape.buffers r) → LeanExe.Bytes)
     (children : Fin (shape.children r) → Tree shape)
     (hValue : env.get x = .node r words arrays buffers children) :
     CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.treeCase x empty nodes) env slots paid
@@ -62,13 +64,15 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
   obtain ⟨hBelow, ws, hold, hRep⟩ := hVars.get x hx
   obtain ⟨p0, rfl, hNode0⟩ := hRep
   have hBorrow0 : NodeBorrowed heap store p0
-      (.record (shape.recordSlots r (shape.slotWords r words) (fun i => (children i).toNode))) := by
+      (.record (shape.recordSlots r (shape.slotWords r words) (shape.arrayWords r arrays) buffers
+        (fun i => (children i).toNode))) := by
     have hb := hNode0.borrow
     rw [hValue] at hb
     exact hb
   have hNonzero : p0 ≠ 0 := hBorrow0.1.nonzero
   have hSlotted :
-      shape.recordSlots r (shape.slotWords r words) (fun i => (children i).toNode) ≠ [] := by
+      shape.recordSlots r (shape.slotWords r words) (shape.arrayWords r arrays) buffers
+        (fun i => (children i).toNode) ≠ [] := by
     intro hEmpty
     have hl := congrArg List.length hEmpty
     rw [shape.recordSlots_length] at hl
@@ -102,10 +106,11 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
   have hBodyRoom : scratch + max (nodes r).width (copyWidth t) ≤ h := by
     have := Nat.le_max_right treeCopyScratch (max (nodes r).width (copyWidth t))
     omega
-  have hFieldRoom : fieldBase + 1 + (shape.fields r).length ≤ h := by
-    have hc := shape.words_children r
+  have hFieldRoom : fieldBase + shape.bindCount r ≤ h := by
     dsimp only [scratch] at hScratch
-    simp only [TreeShape.bindCount] at hScratch
+    omega
+  have hBindPos : 1 ≤ shape.bindCount r := by
+    simp only [TreeShape.bindCount]
     omega
   have hPlaceN : (nodes r).placeArgs = true := by
     simp only [Expr.placeArgs, Bool.and_eq_true, Bool.not_eq_true'] at hPlace
@@ -141,6 +146,10 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
     [.localSet (base + t.width)] ++
     treeLoadFields h (base + t.width) (shape.wordTypes r) (base + t.width + 1)
       (base + t.width + 1 + shape.words r) shape.fieldStart (shape.fields r) ++
+    treeLoadHeaps (base + t.width) (shape.kinds r)
+      (base + t.width + 1 + shape.words r + shape.children r)
+      (base + t.width + 1 + shape.words r + shape.children r + shape.arrays r)
+      (shape.fieldStart + (shape.fields r).length) ++
     (if (slots.getD x.index default).mode = .owned then
       LeanExe.Runtime.headerStore (base + t.width) 8 [.constI64 0] else []) ++
     releaseWhere (shape.context r Γ)
@@ -169,6 +178,10 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
       (rest := storeCode h fieldBase [.i64] ++
         ((treeLoadFields h fieldBase (shape.wordTypes r) (fieldBase + 1)
           (fieldBase + 1 + shape.words r) shape.fieldStart (shape.fields r) ++
+          treeLoadHeaps fieldBase (shape.kinds r)
+            (fieldBase + 1 + shape.words r + shape.children r)
+            (fieldBase + 1 + shape.words r + shape.children r + shape.arrays r)
+            (shape.fieldStart + (shape.fields r).length) ++
           (if rootMode = .owned then headerStore fieldBase 8 [.constI64 0] else [])) ++
           (nodeTail ++ rest')))
       hm hh hpv
@@ -216,7 +229,7 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
             (bodyLive := LB) (fun i hi => by simpa [LB, hSafeCount, shift] using hi)
           rw [← shape.slots_append r] at hSafePrefix
           have hSafeFields := hSafePrefix.ofHEq (shape.context_append r Γ)
-            (Env.treeFields_append shape r words children env)
+            (Env.treeFields_append shape r words arrays buffers children env)
           have hh3 := frame3.positions.trans hh
           have hp3 := frame3.params.trans hpv
           have hStack : s3.values = s.values := hStack3
@@ -237,6 +250,7 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
                     ((nodes r).denote funs boundEnv)))) Q := by
             have hB := hBudget.allocPart id (fun _ hw => treeCase_bodyWithin (shape := shape)
               (r := r) (mode := rootMode) (fieldBase := fieldBase) (words := words)
+              (arrays := arrays) (buffers := buffers)
               (children := children) hVars step3 frame3 hL1 hLive hTopRoot hw)
             simpa only [bodyCost, boundEnv, boundSlots, boundPaid, boundLive, LB,
               Nat.add_assoc] using hB
@@ -258,7 +272,7 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
                   (shape.context r []).length := by
                 rw [shape.slots_length r, hCount]
               have body' := body.ofHEq (shape.context_append r Γ).symm
-                (Env.treeFields_append shape r words children env).symm
+                (Env.treeFields_append shape r words arrays buffers children env).symm
               have aAll := After.bindPrefixStep hVars step3 frame3 outer3 (Frame.refl _ _)
                 hLength (by simpa only [hCount] using body')
                 (by dsimp only [scratch, fieldBase]; omega)
@@ -284,7 +298,7 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
                   simpa only [Expr.fits, hValue, boundEnv] using hfit
                 have ht4 := hTop4 hf'
                 have hd := dyingPot_treeEntry (treeDetachStore rootMode store1 p) s3 env
-                  shape r words children fieldBase rootMode slots paid L1 live
+                  shape r words arrays buffers children fieldBase rootMode slots paid L1 live
                 rw [dyingPot_step hVars step3 frame3 hL1 L1 live (fun _ hi => hi)] at hd
                 have hs := dyingPot_split (store := store) (s := s) (env := env) (slots := slots)
                   (paid := paid) L0 L1 live hL1 hLive

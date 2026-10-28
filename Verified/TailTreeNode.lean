@@ -19,6 +19,8 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
     (r : Fin shape.records)
     (nodeSpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (nodes r))
     (env : Env Γ) (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
+    (arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote)
+    (buffers : Fin (shape.buffers r) → LeanExe.Bytes)
     (children : Fin (shape.children r) → Tree shape)
     (hValue : env.get x = .node r words arrays buffers children) :
     TailCodeSpecAt (pool := pool) m funs flags bounds fits host pv targetModes (.treeCase x empty nodes) env := by
@@ -52,13 +54,15 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
   obtain ⟨_, ws0, hold0, rep0⟩ := hVars.get x hx
   obtain ⟨p0, rfl, node0⟩ := rep0
   have hBorrow0 : NodeBorrowed heap store p0
-      (.record (shape.recordSlots r (shape.slotWords r words) (fun i => (children i).toNode))) := by
+      (.record (shape.recordSlots r (shape.slotWords r words) (shape.arrayWords r arrays) buffers
+        (fun i => (children i).toNode))) := by
     have hb := node0.borrow
     rw [hValue] at hb
     exact hb
   have hNonzero : p0 ≠ 0 := hBorrow0.1.nonzero
   have hSlotted :
-      shape.recordSlots r (shape.slotWords r words) (fun i => (children i).toNode) ≠ [] := by
+      shape.recordSlots r (shape.slotWords r words) (shape.arrayWords r arrays) buffers
+        (fun i => (children i).toNode) ≠ [] := by
     intro hEmpty
     have hl := congrArg List.length hEmpty
     rw [shape.recordSlots_length] at hl
@@ -87,10 +91,11 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
   have hBodyRoom : scratch + (nodes r).width targetModes ≤ h := by
     have := Nat.le_max_right treeCopyScratch ((nodes r).width targetModes)
     omega
-  have hFieldRoom : base + 1 + (shape.fields r).length ≤ h := by
-    have hc := shape.words_children r
+  have hFieldRoom : base + shape.bindCount r ≤ h := by
     dsimp only [scratch] at hScratch
-    simp only [TreeShape.bindCount] at hScratch
+    omega
+  have hBindPos : 1 ≤ shape.bindCount r := by
+    simp only [TreeShape.bindCount]
     omega
   have hModes : boundSlots.map Slot.mode = shape.modes r rootMode (slots.map Slot.mode) :=
     shape.slots_modes_full r base rootMode slots
@@ -136,6 +141,9 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
     [.localSet base] ++
     treeLoadFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
       shape.fieldStart (shape.fields r) ++
+    treeLoadHeaps base (shape.kinds r) (base + 1 + shape.words r + shape.children r)
+      (base + 1 + shape.words r + shape.children r + shape.arrays r)
+      (shape.fieldStart + (shape.fields r).length) ++
     (if (slots.getD x.index default).mode = .owned then
       LeanExe.Runtime.headerStore base 8 [.constI64 0] else []) ++
     releaseWhere (shape.context r Γ) (shape.slots r base (slots.getD x.index default).mode slots)
@@ -154,6 +162,9 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
       (rest := storeCode h base [.i64] ++
         ((treeLoadFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
           shape.fieldStart (shape.fields r) ++
+          treeLoadHeaps base (shape.kinds r) (base + 1 + shape.words r + shape.children r)
+            (base + 1 + shape.words r + shape.children r + shape.arrays r)
+            (shape.fieldStart + (shape.fields r).length) ++
           (if rootMode = .owned then headerStore base 8 [.constI64 0] else [])) ++ nodeCode))
       hm hh hpv (hVars.mono (by dsimp only [scratch]; omega)) hAt hSafe hCap
       (by dsimp only [scratch]; omega) hRootRoom rfl hEntry
@@ -195,6 +206,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
                     LB (fun _ => false) + bodyCost))) Q := by
               have hb := hBudget.allocPart id (fun _ hw => treeCase_bodyWithin (shape := shape)
                 (r := r) (mode := rootMode) (fieldBase := base) (words := words)
+                (arrays := arrays) (buffers := buffers)
                 (children := children) (live := fun _ => false)
                 hVars step3 frame3 hL1 nofun hTopRoot hw)
               simpa only [boundEnv, boundSlots, boundPaid, LB, shift_false] using hb
@@ -215,7 +227,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
                 (bodyLive := LB) (fun i hi => by simpa [hCount, LB, shift] using hi)
               rw [← shape.slots_append r base rootMode slots] at hs
               exact hs.ofHEq (shape.context_append r Γ)
-                (Env.treeFields_append shape r words children env)
+                (Env.treeFields_append shape r words arrays buffers children env)
             dsimp only [nodeCode]
             have hRelease : (fun i => decide (i < shape.bindCount r) && !(nodes r).uses i) =
                 (fun i => LB i && !(nodes r).uses i) := by
@@ -236,7 +248,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
                     (shape.context r []).length := by
                   rw [shape.slots_length r, hCount]
                 let body' := bodySlots.ofHEq (shape.context_append r Γ).symm
-                  (Env.treeFields_append shape r words children env).symm
+                  (Env.treeFields_append shape r words arrays buffers children env).symm
                 let all := TailAfter.bindPrefixStep hVars step3 frame3 outer3 (Frame.refl _ _)
                   hLength body' (by omega)
                   (fun keep hr t y hm w hold length b hb =>
@@ -249,7 +261,8 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
                     simpa only [outer, TailBody.fits, hValue, boundEnv] using hf
                   have ht4 := hTop4 hfN
                   have hd := dyingPot_treeEntry (treeDetachStore rootMode store1 p) s3 env
-                    shape r words children base rootMode slots paid L1 (fun _ => false)
+                    shape r words arrays buffers children base rootMode slots paid L1
+                    (fun _ => false)
                   rw [dyingPot_step hVars step3 frame3 hL1 L1 (fun _ => false)
                     (fun _ hi => hi)] at hd
                   simp only [shift_false] at hd

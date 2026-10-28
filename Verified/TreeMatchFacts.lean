@@ -19,7 +19,7 @@ theorem TreeShape.slots_modes_full (shape : TreeShape) (r : Fin shape.records) (
     (mode : Mode) (slots : List Slot) :
     (shape.slots r base mode slots).map Slot.mode = shape.modes r mode (slots.map Slot.mode) := by
   rw [shape.slots_append r, List.map_append, shape.slots_modes r]
-  simp [TreeShape.modes, List.append_assoc]
+  simp only [TreeShape.modes, List.cons_append, List.append_assoc, List.append_nil]
 
 theorem Mode.node.zero_iff {heap : Heap} {store : Store Unit} {shape : TreeShape}
     {mode : Mode} {p : UInt64} {value : Tree shape}

@@ -636,6 +636,10 @@ def TreeShape.wordsOf (shape : TreeShape) (r : Fin shape.records)
 def noFields {n : Nat} (h : n = 0) {α : Fin n → Sort u} : (i : Fin n) → α i :=
   fun i => absurd (Nat.lt_of_lt_of_eq i.isLt h) (Nat.not_lt_zero _)
 
+theorem noFields_eq {n : Nat} (h : n = 0) {α : Fin n → Sort u} (f : (i : Fin n) → α i) :
+    f = noFields h :=
+  funext fun i => absurd (Nat.lt_of_lt_of_eq i.isLt h) (Nat.not_lt_zero _)
+
 /-- The family `f`, or `noFields` when the index type is empty, so that every family over an empty
 index type is the same term.  The meaning of a construction writes its array and buffer families
 in this form. -/

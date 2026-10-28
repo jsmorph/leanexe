@@ -23,7 +23,7 @@ theorem spec_treeCase {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeShape}
   | nil hn =>
     exact spec_treeCase_empty hm x empty nodes hn (emptySpec hn) env slots paid live hv
   | node r words arrays buffers children =>
-    exact spec_treeCase_node hm x empty nodes r (nodeSpec r) env slots paid live words children
-      hv
+    exact spec_treeCase_node hm x empty nodes r (nodeSpec r) env slots paid live words arrays
+      buffers children hv
 
 end Verified
