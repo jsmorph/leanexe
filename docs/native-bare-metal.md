@@ -19,7 +19,7 @@ The program is the translation of a module, a volatile global `lx_out` that the 
 
 ## Target machine
 
-The target is AArch64, on QEMU's `virt` machine with a Cortex-A57 and 1 GiB of RAM, compiled with CompCert's `aarch64-linux` configuration.  Boards follow as an optional milestone.  CompCert 3.18 has no bare-metal configuration for any 64-bit target: its `configure` lists `-eabi` variants only for PowerPC and 32-bit ARM (lines 43 to 62).  The Lean copy fixes `ptr64 = true`, so x86-64, RISC-V, and AArch64 remain, and AArch64 needs the least outside the proofs:
+The target is AArch64, on QEMU's `virt` machine with 1 GiB of RAM, compiled with CompCert's `aarch64-linux` configuration.  QEMU runs the image on an emulated Cortex-A57 under TCG and, in B8, on the processor of AArch64 hardware under KVM.  CompCert 3.18 has no bare-metal configuration for any 64-bit target: its `configure` lists `-eabi` variants only for PowerPC and 32-bit ARM (lines 43 to 62).  The Lean copy fixes `ptr64 = true`, so x86-64, RISC-V, and AArch64 remain, and AArch64 needs the least outside the proofs:
 
 | Target | CompCert run-time functions that the translations need | The Lean copy | Startup |
 | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ The target is AArch64, on QEMU's `virt` machine with a Cortex-A57 and 1 GiB of R
 
 QEMU documents two fixed addresses of `virt` for bare-metal guests, flash at 0 and RAM at `0x4000_0000`, and places the device tree at the start of RAM.  Every other device address may change between QEMU versions and must come from the device tree.  The image is linked at `0x4010_0000`, above the device tree.  The UART address is fixed in the linker script, and the test harness compares it with the device tree that `-machine virt,dumpdtb=FILE` writes for the QEMU in use: QEMU 8.2.2 gives `pl011@9000000` with `reg = <0x00 0x9000000 0x00 0x1000>` and `stdout-path = "/pl011@9000000"`.  Reading the device tree at startup would avoid the check at the cost of a parser in the trusted startup code.
 
-A board differs in four ways, each outside the proofs: the exception level at entry, the UART's address and setup, the RAM base, and the need for the MMU and caches, without which every data access is uncached.  QEMU 8.2.2 emulates the Raspberry Pi 3B (`raspi3b`, Cortex-A53) but not the 4B, which newer QEMU documentation lists.  The project has not chosen a board, and the board milestone starts with that choice.
+A board differs in four ways, each outside the proofs: the exception level at entry, the UART's address and setup, the RAM base, and the state of the caches and TLBs at reset, which may need invalidation sequences that the implementation defines (DDI 0487 issue M.d, sections D7.5.6 and D8.16.1, pages D7-7650 and D8-7852).  QEMU 8.2.2 emulates the Raspberry Pi 3B (`raspi3b`, Cortex-A53) but not the 4B, which newer QEMU documentation lists.  The project has not chosen a board.  B8 runs the programs under KVM instead, where the processor, its memory system, and its alignment checks are those of AArch64 hardware and the devices are QEMU's models of `virt`'s.
 
 ## The generated main and its outputs
 
@@ -83,7 +83,7 @@ The exit status of a program is therefore one of these codes:
 | 254 | the startup code found an exception level other than 1 |
 | 255 | an exception, which the vectors report |
 
-On QEMU, the PL011 model passed every byte to its output in the experiments.  On hardware the transmitter can be busy when `main` writes, and `main` cannot wait for it: a volatile read of the UART's flag register is an input event whose value the theorem would have to quantify over, and a loop that waits on it has no termination proof.  The board milestone has to settle how output reaches a device that may not accept every write.
+On QEMU, the PL011 model passed every byte to its output in the experiments.  On hardware the transmitter can be busy when `main` writes, and `main` cannot wait for it: a volatile read of the UART's flag register is an input event whose value the theorem would have to quantify over, and a loop that waits on it has no termination proof.  Under KVM each store to the UART reaches QEMU's PL011 model, as under TCG, so B8 leaves the question to a board, which has to settle how output reaches a device that may not accept every write.
 
 ## The program-level theorem
 
@@ -157,21 +157,30 @@ With volatile loads, runs differ in the values read.  `determinate_behavior_leav
 
 ## Startup code
 
-The startup code is GNU assembly, about fifty instructions and a table of exception vectors, linked first:
+The startup code is GNU assembly, about 120 instructions and a table of exception vectors, linked first:
 
 | Step | Instructions | Reason |
 | --- | --- | --- |
 | Mask interrupts | `msr daifset, #0xf`, after recording DAIF | DAIF was `0x3c0`, all masked, at entry under QEMU.  A board's firmware may differ |
 | Check the exception level | `mrs CurrentEL` | QEMU enters the image at EL1, as the experiment found.  At another level the code reports the level and exits with status 254, which QEMU's machines with the virtualization and security extensions, entering at EL2 and EL3, confirm |
+| Record `SCTLR_EL1` | `mrs SCTLR_EL1` | the value at entry, which `tests/baremetal/entry.c` reports: `0x00c50838` under TCG, with `M`, `C`, and `I` clear, and `0x30c509d8` under KVM |
 | Install the vectors | `msr VBAR_EL1` | 16 entries of 128 bytes at a 2 KiB boundary.  Each reports `ESR_EL1`, `ELR_EL1`, and `FAR_EL1` and exits with status 255 |
+| Build the translation tables | about 50 instructions, with the MMU off | five tables of 4 KiB at `__tables`, as described below |
+| Turn on the MMU and the caches | `MAIR_EL1`, `TCR_EL1`, `TTBR0_EL1`, `dsb sy`, `isb`, `tlbi vmalle1`, `dsb nsh`, `isb`, then `SCTLR_EL1` with `M`, `C`, and `I` set and `A` and `WXN` clear, and `isb` | the TLBs' contents at reset are IMPLEMENTATION DEFINED and might be UNKNOWN (section D8.16.1, page D8-7852) |
 | Enable floating point | `CPACR_EL1.FPEN = 0b11`, then `isb` | FPEN's reset value is unknown.  Without this step `main` trapped at its third instruction with exception class `0x07` |
 | Set the stack | `mov sp, __stack_top` | `SCTLR_EL1.SA` was 1 at entry, so the stack pointer must stay 16-byte aligned |
+| Fill the stack with a pattern | a loop of `str` | the high-water mark that the report gives and that the section on the stack uses |
 | Clear `.bss` | a loop of `stp xzr, xzr` | `lx_mem` and the uninitialized globals lie in `.bss`, and `init_mem` gives them zeros |
-| Fill the stack with a pattern | test builds only | the high-water mark that the section on the stack uses |
 | Call `main` | `bl main` | |
-| Exit | semihosting `SYS_EXIT` with `ADP_Stopped_ApplicationExit` and `w0` | QEMU exits with `main`'s result.  A board waits in a loop of `wfe` after writing the result to the UART |
+| Exit | semihosting `SYS_EXIT` with `ADP_Stopped_ApplicationExit` and `w0`, or, built with `PSCI_EXIT`, PSCI `SYSTEM_OFF` through `hvc #0` | under TCG, QEMU exits with `main`'s result.  Under KVM, QEMU exits with status 0 and the report gives the result |
 
-The MMU and the caches stay off on QEMU: `SCTLR_EL1` was `0x00c50838` at entry, with `M`, `C`, and `I` clear.  With stage 1 translation off, the architecture gives every data access the memory type Device-nGnRnE (Arm Architecture Reference Manual, DDI 0487 issue M.d, section D8.2.12.1, page D8-7730).  An unaligned access to Device memory generates an Alignment fault where the location cannot support unaligned accesses, and otherwise whether it faults is IMPLEMENTATION DEFINED (section B2.8.2, page B2-312).  With the MMU off, an unaligned access by the translated code therefore faults on hardware where the location cannot support unaligned accesses, and otherwise may fault, as the implementation defines.  QEMU 8.2.2 runs such an access without a fault, so tests on QEMU cannot find one.  A board under B8 therefore needs either the MMU to map RAM as Normal memory or a proof that the translated code makes only aligned accesses, the translator's optional M7 alignment proof.  The translator issues an 8-byte access only at a multiple of 8 and byte accesses otherwise, and CompCert's frames are aligned, but no proof covers that yet.  On a board the MMU must be on for speed in any case, with an identity map of RAM as normal write-back memory and of the UART as device memory, and with an unmapped page below the stack.  That adds page tables and their setup, an estimated eighty instructions, to the trusted code.
+The startup code turns the MMU and the caches on in every build, under TCG and under KVM, so the runs under TCG execute the code that runs on hardware.  With stage 1 translation off, the architecture gives every data access the memory type Device-nGnRnE (Arm Architecture Reference Manual, DDI 0487 issue M.d, section D8.2.12.1, page D8-7730).  An unaligned access to Device memory generates an Alignment fault where the location cannot support unaligned accesses, and otherwise whether it faults is IMPLEMENTATION DEFINED (section B2.8.2, page B2-312).  QEMU 8.2.2 under TCG runs such an access without a fault (QEMU issue 1204).  Under KVM on AArch64 hardware, before the MMU was on, the probe's unaligned 8-byte load took a data abort with `ESR_EL1` `0x96000021`, exception class `0x25` and fault status `0x21`, an alignment fault, at `ELR_EL1` `0x40100074` with `FAR_EL1` `0x40102053`.
+
+The tables map RAM, `0x4000_0000` to `0x7FFF_FFFF`, in blocks of 2 MiB as Normal Inner and Outer Write-Back Read-Allocate Write-Allocate memory, the attribute `0xFF` of `MAIR_EL1`, Inner Shareable, writable and executable at EL1.  They map the 4 KiB page of `lx_out` as Device-nGnRnE memory, the attribute `0x00`, not executable, and leave every other address unmapped.  A level 3 table covers the 2 MiB that hold the guard page below the stack, with an invalid entry for that page, so an access to it takes a level 3 translation fault.  `TCR_EL1` gives a 32-bit input address range, `T0SZ` 32, so walks start at level 1 (Table D8-18, page D8-7711), with the 4 KiB granule, no walks through `TTBR1_EL1`, a 32-bit output range, and Non-cacheable walks.  The code writes the tables with the MMU off, as Device-nGnRnE accesses, so Non-cacheable walks read what it stored without cache maintenance, and it fills the stack and clears `.bss` after the MMU is on, as Cacheable writes.  The descriptors' fields are those of section D8.3.1.2 (pages D8-7739 to D8-7744), and the registers' those of sections D24.2.126, D24.2.174, and D24.2.193 (`MAIR_EL1` from page D24-9450, `SCTLR_EL1` from D24-9690, and `TCR_EL1` from D24-9904).
+
+With RAM as Normal memory and `SCTLR_EL1.A` clear, an unaligned load or store of single or multiple registers is performed (section B2.8.2.1.1, page B2-312).  The rule excludes the Load-Exclusive, Store-Exclusive, Load-Acquire, Store-Release, and atomic instructions, `SETG*`, and the memory copy and set instructions, which keep alignment rules, and the 64-byte single-copy atomic and Read-Check-Write instructions fault on any unaligned address (section B2.8.2.1.2, page B2-313).  `tools/baremetal/access-check.sh` fails the build of a program or a corpus module whose assembly contains one of them.  The bare-metal path therefore needs no proof that the translated code makes only aligned accesses, which settles the translator's optional M7 alignment proof for bare metal.  Under KVM with the MMU on, the probe's unaligned load ran without a fault.
+
+Semihosting is unavailable under KVM: the probe's `hlt #0xf000` raised `ESR_EL1` `0x02000000`, exception class 0, at `0x401000b8`, and the exception handler's own exit raised it again, so the run looped until its time limit.  Built with `PSCI_EXIT`, the startup code ends a run with PSCI `SYSTEM_OFF`, function ID `0x8400_0008` (Arm DEN0022E, section 5.1.9, page 36), through `hvc #0`.  The device tree names the conduit (DEN0022E, section 6.7, page 86), and QEMU 8.2.2 gives `method = "hvc"` under both accelerators, which the Linux binding defines as `HVC #0` with the binding's register assignments.  KVM turns the call into an exit to QEMU of type `KVM_SYSTEM_EVENT_SHUTDOWN` (Linux `Documentation/virt/kvm/api.rst`, section 5), and QEMU exits on a guest's shutdown unless given `-no-shutdown`.  QEMU's status is then 0, so the tests under KVM take the program's status from the report.  Builds for TCG keep semihosting, since QEMU's exit status is the program's there and the runs at EL2 and EL3 exit through it with status 254.
 
 Outside every proof stay the startup code, the vectors and their reporting code, the linker script with its addresses and stack size, and, in test builds, a reporting routine in C that runs only after `main` returns or after an exception.  That routine is a second compilation unit outside the program of the theorem.  It shares only the UART's symbol with that program and runs only after `main` returns or after an exception has stopped it, so the deployment build replaces it with assembly.
 
@@ -202,7 +211,7 @@ CompCert's Asm semantics gives each frame a fresh block, so its theorem assumes 
 | `euler` | 352 bytes | 1,760 bytes | 1,760 bytes | 7,568 bytes |
 | `gpt` | 368 bytes | 944 bytes | not measured | not measured |
 
-The bounds and the stacks of calls are those of the tool and of test 3.  In 77 of the 79 modules with cases, the largest stack of a call equals the bound of its function, so the bounds are tight.  The test host's frames on the path to an exported function took 5,792 bytes in B1, and the glue's locals for the arguments add 16 bytes in some modules, which the whole stack's high-water mark shows: 230,144 bytes is 5,808 plus the 224,336 of `deep` at depth 0.  For `sha256` and `crc` the high-water mark lies in the host's own code.  The bound tool is unverified, so it joins the trusted base, and two tests back it.  In the corpus under QEMU, the glue measures each call of a module function: `lx_stack_mark` of the startup code fills the stack below the caller with the pattern, and `lx_stack_used` returns the bytes below it whose pattern changed, so the mark is the callee's alone, and a call whose mark exceeds its function's bound fails the test.  The programs of test 2 must keep the whole stack's mark within the bounds of `main` and of the report that follows it.  The largest bound of module code in all 98 translations of the corpus is the 224,336 bytes of `deep` in `recursion`, so a stack of 1 MiB holds more than four times any of them.  The test host needs more: its recursion over nested arguments reached 2,431,280 bytes in `taggedtypes`, so `tests/baremetal/verified.sh` gives it 4 MiB.  On a board with the MMU on, an unmapped page below the stack turns an overflow into a fault.
+The bounds and the stacks of calls are those of the tool and of test 3.  In 77 of the 79 modules with cases, the largest stack of a call equals the bound of its function, so the bounds are tight.  The test host's frames on the path to an exported function took 5,792 bytes in B1, and the glue's locals for the arguments add 16 bytes in some modules, which the whole stack's high-water mark shows: 230,144 bytes is 5,808 plus the 224,336 of `deep` at depth 0.  For `sha256` and `crc` the high-water mark lies in the host's own code.  The bound tool is unverified, so it joins the trusted base, and two tests back it.  In the corpus under QEMU, the glue measures each call of a module function: `lx_stack_mark` of the startup code fills the stack below the caller with the pattern, and `lx_stack_used` returns the bytes below it whose pattern changed, so the mark is the callee's alone, and a call whose mark exceeds its function's bound fails the test.  The programs of test 2 must keep the whole stack's mark within the bounds of `main` and of the report that follows it.  The largest bound of module code in all 98 translations of the corpus is the 224,336 bytes of `deep` in `recursion`, so a stack of 1 MiB holds more than four times any of them.  The test host needs more: its recursion over nested arguments reached 2,431,280 bytes in `taggedtypes`, so `tests/baremetal/verified.sh` gives it 4 MiB.  The unmapped guard page below the stack turns an overflow into a level 3 translation fault when the overflowing frame's first access below the stack lands in that page.  Under KVM, a store to the word below the stack reported `ESR_EL1` `0x96000047`, exception class `0x25`, a write, and fault status `0b000111`, with that word's address in `FAR_EL1`.
 
 ## Trusted base
 
@@ -214,11 +223,12 @@ After the change, the trusted base is:
 4. CompCert's Rocq proofs of the passes from Cshmgen to Asmgen, of `bigstep_semantics_sound`, and of Asm's determinacy, with CompCert's parameters and Coq's classical axioms, and Coq's kernel, which checks the composition and the uniqueness lemma.
 5. CompCert's extraction to OCaml and its printer of assembly.
 6. The GNU assembler and linker, and the linker script, with the addresses of `lx_out` and `lx_in`.
-7. The startup code, the exception vectors, and the reporting code of test builds.
+7. The startup code with its translation tables, the exception vectors, and the reporting code of test builds.
 8. The static stack bound, its tool, and the stack size, with the translator's list of the functions that take the call depth and the compiler's passing of the depth plus one to them.
 9. CompCert's model of AArch64 in `aarch64/Asm.v` as a description of the processor.
-10. QEMU, or the board: the ELF loader, the generic loader of the input, the processor, and the UART's acceptance of each store to its data register.
-11. QEMU's semihosting, for the exit status in tests.
+10. QEMU, with KVM and the AArch64 hardware under KVM: the ELF loader, the generic loader of the input, the processor, and the UART's acceptance of each store to its data register.
+11. QEMU's semihosting, for the exit status under TCG, and PSCI `SYSTEM_OFF` through KVM, which ends a run under KVM.
+12. The absence from the compiled code of the instructions that require aligned accesses in Normal memory, which `tools/baremetal/access-check.sh` checks.
 
 Compared with the translator's design, libc, the operating system, and the C host leave the trusted base, and `main` enters the proofs.  The startup code, the linker script, and the device's behaviour enter the trusted base.  The stack, an assumption about the size of a thread's stack in the translator's design, becomes a bound that a tool computes and the build compares with the stack it reserves.
 
@@ -229,8 +239,9 @@ Compared with the translator's design, libc, the operating system, and the C hos
 3. **Stack.**  For every corpus module, the stack of every call of a module function in every case must stay within its function's static bound, the deep recursion cases at depths 999 and 1,000 included.  `tests/baremetal/verified.sh` runs this test.
 4. **The Lean copy.**  The differential tests compare volatile stores and volatile loads with `ccomp -interp` on AArch64 and x86-64.
 5. **The per-build check.**  `clightgen` reads the whole program, CompCert's declarations and `main` included, and the check compares it with `bareProgram` up to renaming.
-6. **The checks themselves.**  A build without the FP enable, a stack below the bound, and a UART address that differs from the device tree must each fail visibly.
+6. **The checks themselves.**  A build without the FP enable, a store to the guard page, a stack below the bound, and a UART address that differs from the device tree must each fail visibly.
 7. **Inputs.**  The program with input around SHA-256 runs under QEMU on messages of 0, 3, 55, 56, 63, 64, 65, 1,000, 65,536, 1,048,576, and `2 ^ 24 - 8` bytes, whose output must be the digest that `sha256sum` computes, and on the lengths `2 ^ 24 - 7` and `2 ^ 64 - 1`, which must give no output and the status 64.  `tests/baremetal/inputs.sh` runs this test.
+8. **AArch64 hardware under KVM.**  With `ACCEL=kvm`, `tests/baremetal/run.sh`, `programs.sh`, and `inputs.sh` build with `PSCI_EXIT` and run under KVM, and the probes, the programs of test 2, and the program with input must give the results that they give under TCG.  The device tree must name PSCI with the method `hvc` and give the RAM of the linker script.
 
 ## Milestones and exit criteria
 
@@ -244,7 +255,7 @@ Compared with the translator's design, libc, the operating system, and the C hos
 | B5 · Rocq | `clight2_bigstep_to_asm` and the uniqueness lemma, built against CompCert 3.18's proofs | both check with the assumptions recorded |
 | B6 · Stack bound | the bound tool, its cross-check with the translator, and the build's test | test 3 passes for every corpus module |
 | B7 · Inputs (optional) | volatile loads, the theorem about `alloc` and stores, the quantified theorem, and the uniqueness lemma for traces with inputs | SHA-256 of a loaded message, with its theorem |
-| B8 · Board (optional) | MMU, guard page, the board's entry and UART, the output question of the section on `main` | the programs of test 2 on a board |
+| B8 · KVM | the MMU with an identity map and a guard page, the PSCI exit, the tests' KVM mode, and the check for instructions that require alignment | under KVM with the MMU on, the programs of test 2 and the program with input pass, the unaligned probe runs without a fault, and the guard probe takes a translation fault |
 
 B0 and B1 need no new Lean code and can start at once.  B2 and B5 are independent of each other.  B3 carries the most risk, because it generalizes the proofs of `Init.lean` from the translation's own program to one with a prefix and two more definitions.  B4 depends on B2 and B3.
 
@@ -265,12 +276,13 @@ These figures are estimates.
 | --- | --- |
 | Do the Rocq files of B5 belong in the repository?  They add a build that needs a CompCert 3.18 tree with its proofs compiled. | Yes, in a directory of their own, checked by a script that takes the tree's path, outside the default build. |
 | A renaming lemma in Lean (B3), or a per-build check that treats the renaming as trusted? | The lemma, since the numbering differs between `clightgen` and `ccomp` in any case and the lemma covers every injective renaming. |
-| How does output reach a device on a board, where `main` cannot wait for the UART? | Decide at B8, with the board in hand. |
+| How does output reach a device on a board, where `main` cannot wait for the UART? | Decide with a board in hand.  B8 runs under KVM, where QEMU's UART takes every store. |
 | Are inputs not fixed in advance (B7) in scope? | Yes, as B7 implements them: a packed array for the hashing library's exports, and `LeanExe.Bytes` when an entry needs it. |
-| The MMU on QEMU: off, or on, which would give QEMU's runs a board's memory types? | Off on QEMU, on for a board. |
+| The MMU on QEMU: off, or on, which would give QEMU's runs a board's memory types? | On in every build, decided at B8.  Under KVM an unaligned load faulted with the MMU off, and one startup path lets the runs under TCG test the code that runs on hardware. |
+| A proof that the translated code makes only aligned accesses, the translator's optional M7 alignment proof? | None for bare metal, decided at B8.  With RAM as Normal memory and `SCTLR_EL1.A` clear, unaligned loads and stores of single or multiple registers are performed (B2.8.2.1.1), and `tools/baremetal/access-check.sh` excludes the instructions that keep alignment rules. |
 | The entry's form: scalar constants in `main`, heap constants inside a Lean definition without parameters, and a result of type `UInt64` or `Array UInt64` | As designed, with other result types encoded in Lean. |
 | The UART's address: fixed in the linker script and checked against QEMU's device tree by the test harness, or read from the device tree at startup? | The linker script and the harness's check. |
-| Programs with byte literals, whose theorem is `ImplementsStatic`, in the command `bare_program`? | Add the case when a program needs it. |
+| Programs with byte literals, whose theorem is `ImplementsStatic`, in the command `bare_program`? | Add the case when a program needs it, decided on 2026-10-28.  No program of test 2 or of the input test needs it, and code that no program uses has no test behind it. |
 
 ## Sources
 
@@ -281,6 +293,10 @@ These figures are estimates.
 - QEMU, Raspberry Pi machines: https://www.qemu.org/docs/master/system/arm/raspi.html
 - Arm, semihosting specification (`HLT #0xF000`, `SYS_EXIT`, `ADP_Stopped_ApplicationExit`): https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst
 - Arm, `CPACR_EL1`: https://developer.arm.com/documentation/ddi0601/latest/AArch64-Registers/CPACR-EL1--Architectural-Feature-Access-Control-Register
-- Arm Architecture Reference Manual for A-profile architecture, DDI 0487 issue M.d, sections D8.2.12.1, behavior when stage 1 address translation is disabled (page D8-7730), and B2.8.2, alignment of data accesses (page B2-312): https://developer.arm.com/documentation/ddi0487/latest
+- Arm Architecture Reference Manual for A-profile architecture, DDI 0487 issue M.d: sections B2.8.2, B2.8.2.1.1, and B2.8.2.1.2, alignment of data accesses and unaligned accesses to Normal memory (pages B2-312 and B2-313); D7.5.6, caches at reset (page D7-7650); D8.2.8, Table D8-18, the initial lookup level of the 4KB granule (page D8-7711); D8.2.12.1, behavior when stage 1 address translation is disabled (page D8-7730); D8.3.1.2, block and page descriptors (pages D8-7739 to D8-7744); D8.16.1, TLB behavior at reset (page D8-7852); D24.2.126, D24.2.174, and D24.2.193, `MAIR_EL1`, `SCTLR_EL1`, and `TCR_EL1` (pages D24-9450, D24-9690, and D24-9904): https://developer.arm.com/documentation/ddi0487/latest
+- Arm Power State Coordination Interface, DEN0022E: sections 5.1.9, `SYSTEM_OFF` (page 36), 5.10 (page 58), and 6.7, discoverability (page 86): https://developer.arm.com/documentation/den0022/latest
+- Linux, the device-tree binding of PSCI, `Documentation/devicetree/bindings/arm/psci.yaml`: https://github.com/torvalds/linux/blob/master/Documentation/devicetree/bindings/arm/psci.yaml
+- Linux, the KVM API, section 5, `KVM_EXIT_SYSTEM_EVENT`: https://docs.kernel.org/virt/kvm/api.html
+- QEMU, invocation, `-no-shutdown` and `-action`: https://www.qemu.org/docs/master/system/invocation.html
 - QEMU issue 1204, unaligned accesses with the MMU off: https://gitlab.com/qemu-project/qemu/-/issues/1204
 - Multiboot specification, the machine state at entry: https://www.gnu.org/software/grub/manual/multiboot/multiboot.html
