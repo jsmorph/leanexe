@@ -123,6 +123,9 @@ lean_exe «verified-cases-typedtrees» where
 lean_exe «verified-cases-arraytrees» where
   root := `Verified.Examples.ArrayTreesCasesMain
 
+lean_exe «verified-cases-buffertrees» where
+  root := `Verified.Examples.BufferTreesCasesMain
+
 lean_exe «verified-cases-regex» where
   srcDir := "tests"
   root := `TestSupport.Regex.CasesMain

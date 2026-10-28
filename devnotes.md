@@ -36984,3 +36984,21 @@ A second review of the lengths change confirmed that `BufferLengths` states the 
 - [x] The class, its instances, the derived theorem, and the audit.
 - [x] The docstrings and the manual.
 - [ ] The gate of the new commit.
+
+## 2026-10-28: Heap fields of tree records, phase 3a: buffers
+
+The compiler now compiles records with buffer fields, in the layout that the coordinator kept: a record holds its word and child slots in declaration order and then its array and buffer slots in one declaration order, a buffer as its root followed by its length.  A branch binds the header, the words, the children, the arrays, and the buffers, and a buffer variable takes two positions, so `TreeShape.bindWidth` counts the positions where `bindCount` counts the variables.
+
+| Part | Change |
+|---|---|
+| Construction | `fieldsMixed_spec` evaluates a construction's arguments in one loop over arguments of every width, each stored from the first local plus the widths of the arguments before it.  A buffer argument is then normalized: `Bytes.normalizeCode` releases the object of an empty buffer and sets its root to 0, which `Bytes.wp_normalize` and `After.releaseBytes` prove, so the record invariant of the trusted model, root 0 exactly for an empty buffer, holds when the record is assembled.  `FieldsNormal` carries that fact to `wp_assembleTree`. |
+| Blocks | The environment of a record's fields lists the arrays before the buffers, and the record lists its heap slots in declaration order.  `heapFieldBlocks_perm`, `heapSlots_blocks_perm`, and `heapSlots_regions_perm` state the two orders as permutations, and the proofs that used equalities of block lists use the permutations through membership and `List.Pairwise.perm`. |
+| Matches | `recordSlots_recordBuffer_owned` and `recordSlots_recordBuffer_borrowed` give a buffer field's root, length, and object from the record's slots, and the branch's context, moves, reads, locals, and regions extend with a buffer segment of two words per variable. |
+| Copies | The copy loop tests a buffer mask after the array mask, copies a buffer's bytes with `Bytes.copyOwnedCode`, and copies the length word as the next slot. |
+| Reflector | `RecursiveLayout` reads fields of type `LeanExe.Bytes`, the derived conversions and match lemmas write the buffer family as the list of the fields, and the order check also requires each buffer's length slot after its root. |
+
+- [x] The copy of buffer slots.
+- [x] Construction and matches of buffer fields.
+- [ ] The reflector, the example, its cases, and the order check.
+- [ ] The manual.
+- [ ] The gate of the buffers half.
