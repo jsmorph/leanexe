@@ -22,8 +22,10 @@
 # failure, the modules without a translation, and the modules that CompCert cannot compile or
 # link, with the first lines of the error.  It fails unless every case that runs passes and every
 # translated module builds.  CCOMP and CCOMP_STDLIB are as for tools/baremetal/build.sh,
-# and QEMU names qemu-system-aarch64.  Build the modules' targets first, as tests/verified/run.sh
-# requires.
+# and QEMU names qemu-system-aarch64.  Before it loads any module, it builds every module it loads
+# and native-verified in one `lake build` under tools/leanrun, with the caller's LEANRUN_THREADS and
+# LEANRUN_MEMORY_HIGH, since native-verified and `lean --run` read a module's compiled file
+# without checking it against the source.
 # Usage: tests/baremetal/verified.sh [--module NAME]
 set -euo pipefail
 only=""
@@ -45,7 +47,15 @@ export STACK_SIZE=${STACK_SIZE:-0x400000}
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out=$root/build/baremetal/verified
 cd "$root"
-tools/leanrun --timeout 30m lake --log-level error build native-verified Verified.Examples.Cases
+# The modules that `lean --run` reads for tests/TestSupport/Native/ModuleCases.lean are its imports.
+targets=(native-verified Verified.Examples.Cases
+  $(sed -n -E 's/^import ([A-Za-z0-9_.]+).*/\1/p' tests/TestSupport/Native/ModuleCases.lean))
+while IFS=: read -r module constant name; do
+  if [ -z "$only" ] || [ "$name" = "$only" ]; then
+    targets+=("$module")
+  fi
+done <"$root/tests/verified/modules.txt"
+tools/leanrun --timeout 12h lake --log-level error build "${targets[@]}"
 rm -rf "$out"
 mkdir -p "$out"
 
@@ -105,7 +115,6 @@ awk -F'|' '
     $1 = target[1]; $2 = target[2]; print
   }' "$root/tests/verified/library-cases.txt" "$cases" >"$cases.library"
 mv "$cases.library" "$cases"
-tools/leanrun --timeout 30m lake --log-level error build Demos.Euler.Cases Examples.Shape.Cases
 modcases=$out/module-cases.txt
 if ! tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Native/ModuleCases.lean \
     >"$modcases" 2>"$out/module-cases.err"; then

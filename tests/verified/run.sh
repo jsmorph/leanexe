@@ -14,9 +14,12 @@
 # references computed with Lean's integers, each within the bound its docstring states, and
 # tests/TestSupport/Numerics/FourierAccuracy.lean checks that Fourier.dft, inverse, and
 # powerSpectrum behave as their mathematical counterparts.
-# Run `tools/leanrun --timeout 60m lake build`, whose default targets include the module cases of
-# the Euler check, and `tools/leanrun --threads 2 --memory-high 10G --timeout 12h lake build Verified
-# Library` first.
+# Before it loads any module, the script builds every module that it and the scripts it calls load
+# and the case executable it runs, in one `lake build` under tools/leanrun with the caller's
+# LEANRUN_THREADS and LEANRUN_MEMORY_HIGH, since `lean` and `lean --run` read a module's compiled
+# file without checking it against the source.  Building the memory-heavy numerical proofs and
+# `Verified Library` first, with the limits of docs/leanexe-manual.md, keeps that build within
+# the caller's memory limit.
 # Usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]
 set -euo pipefail
 export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
@@ -43,93 +46,6 @@ if [ "$reference" = "$(cd "$out" && pwd -P)" ]; then
   exit 2
 fi
 cd "$root"
-emitted=0
-while IFS=: read -r module constant name; do
-  if [ -n "$case_module" ]; then
-    [ "$name" = "$case_module" ] || continue
-    tools/leanrun --timeout 15m lake --log-level error build "$module"
-  fi
-  tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$constant" \
-    "$out/$name.wasm"
-  wasm-tools validate "$out/$name.wasm"
-  if [ -n "$reference" ]; then
-    cmp "$reference/$name.wasm" "$out/$name.wasm"
-    echo "$name: bytes unchanged"
-  fi
-  emitted=$((emitted + 1))
-done <"$root/tests/verified/modules.txt"
-if [ "$emitted" -eq 0 ]; then
-  echo "fail: unknown module $case_module" >&2
-  exit 2
-fi
-if [ -n "$reference" ]; then
-  echo "verified byte comparison passed: $emitted modules"
-  exit 0
-fi
-if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
-  echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
-  exit 1
-fi
-if [ -z "$case_module" ] || [ "$case_module" = "gpt" ]; then
-  tests/gpt/run.sh "$out/gpt.wasm"
-  tests/gpt/sessions.sh "$out/gpt.wasm"
-  if [ "$case_module" = "gpt" ]; then
-    exit 0
-  fi
-fi
-if [ -z "$case_module" ] || [ "$case_module" = "euler" ]; then
-  tests/modules/run.sh --module euler "$out/euler.wasm"
-  if [ "$case_module" = "euler" ]; then
-    exit 0
-  fi
-fi
-if [ -z "$case_module" ] || [ "$case_module" = "sums" ]; then
-  tests/modules/run.sh --module shapes "$out/sums.wasm"
-fi
-# Checks the file theorem module of a written module: builds the theorem module, elaborates the file
-# module against the file, and requires both of its axiom reports to name only the three permitted
-# axioms.  The file module's second theorem depends on every byte theorem of the module, so its
-# axiom report covers them all.
-check_file() {
-  local name=$1 theorem=$2 file=$3 reports axiom_counts
-  tools/leanrun --timeout 30m lake --log-level error build "$theorem"
-  reports=$(tools/leanrun --timeout 10m lake env lean "$file") || {
-    echo "$reports"
-    echo "fail: $file does not check against $out/$name.wasm" >&2
-    exit 1
-  }
-  axiom_counts=$(awk '
-    /depends on axioms: \[/ {
-      report = $0
-      while (report !~ /\]/ && (getline) > 0) report = report " " $0
-      sub(/^.*depends on axioms: /, "", report)
-      gsub(/[[:space:]]+/, " ", report)
-      count++
-      if (report == "[propext, Classical.choice, Quot.sound]") permitted++
-    }
-    END { print count + 0, permitted + 0 }' <<<"$reports")
-  if [ "$axiom_counts" != "2 2" ]; then
-    echo "$reports"
-    echo "fail: the theorems of $file must report only the three permitted axioms" >&2
-    exit 1
-  fi
-  echo "$name: $name.wasm holds the module of $theorem, with the permitted axioms"
-}
-if [ -z "$case_module" ] || [ "$case_module" = "slew" ]; then
-  tests/slew/edges.sh "$out/slew.wasm"
-  tools/leanrun --timeout 60m lake --log-level error build Demos.Slew.Optimal Demos.Slew.Premise \
-    Demos.Slew.Bound
-  tools/leanrun --timeout 10m lake env lean tests/slew/Axioms.lean
-  if [ "$case_module" = "slew" ]; then
-    check_file slew Demos.Slew.Verified Demos/Slew/File.lean
-  fi
-fi
-# Each entry names the written module, the theorem module, and the file theorem module.
-if [ -z "$case_module" ]; then
-while IFS=: read -r name theorem file; do
-  check_file "$name" "$theorem" "$file"
-done <"$root/tests/verified/numerics.txt"
-fi
 cases_exe=verified-cases
 if [ "$case_module" = "treecopy" ]; then
   cases_exe=verified-cases-treecopy
@@ -184,6 +100,129 @@ elif [ "$case_module" = "xxhash64" ]; then
 elif [ "$case_module" = "slew" ]; then
   cases_exe=verified-cases-slew
 fi
+# The modules that `lean` and `lean --run` read for the files given are their imports, less the
+# toolchain's own.
+imports() {
+  sed -n -E 's/^import ([A-Za-z0-9_.]+).*/\1/p' "$@" |
+    { grep -v -E '^(Init|Std|Lean|Lake)(\.|$)' || true; }
+}
+# Whether the part of the check for module $1 runs: every part without --cases, and with it only
+# the part of its module.
+runs() {
+  [ -z "$case_module" ] || [ "$case_module" = "$1" ]
+}
+targets=($(imports tools/Emit.lean))
+while IFS=: read -r module constant name; do
+  if runs "$name"; then
+    targets+=("$module")
+  fi
+done <"$root/tests/verified/modules.txt"
+if [ -z "$reference" ]; then
+  if runs gpt; then targets+=($(imports tests/gpt/Cases.lean)); fi
+  if runs euler || runs sums; then targets+=($(imports tests/modules/Cases.lean)); fi
+  if runs slew; then targets+=(TestSupport.Slew.EdgesMain $(imports tests/slew/Axioms.lean)); fi
+  if [ "$case_module" = "slew" ]; then
+    targets+=(Demos.Slew.Verified $(imports Demos/Slew/File.lean))
+  fi
+  if [ -z "$case_module" ]; then
+    while IFS=: read -r name theorem file; do
+      targets+=("$theorem" $(imports "$file"))
+    done <"$root/tests/verified/numerics.txt"
+  fi
+  if runs heapsums; then targets+=($(imports tests/verified/HeapSumsAxioms.lean)); fi
+  if runs typedtrees; then targets+=($(imports tests/verified/TypedTreesAxioms.lean)); fi
+  if runs arraytrees; then targets+=($(imports tests/verified/ArrayTreesOrder.lean)); fi
+  if runs buffertrees; then targets+=($(imports tests/verified/BufferTreesOrder.lean)); fi
+  if [ "$case_module" != "gpt" ] && [ "$case_module" != "euler" ]; then targets+=("$cases_exe"); fi
+  if [ -z "$case_module" ]; then
+    targets+=($(imports tests/TestSupport/Numerics/*Accuracy.lean \
+      Library/Numerics/Arithmetic/Uscale/UscaleCheck.lean))
+  fi
+fi
+tools/leanrun --timeout 12h lake --log-level error build "${targets[@]}"
+emitted=0
+while IFS=: read -r module constant name; do
+  if [ -n "$case_module" ]; then
+    [ "$name" = "$case_module" ] || continue
+  fi
+  tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$constant" \
+    "$out/$name.wasm"
+  wasm-tools validate "$out/$name.wasm"
+  if [ -n "$reference" ]; then
+    cmp "$reference/$name.wasm" "$out/$name.wasm"
+    echo "$name: bytes unchanged"
+  fi
+  emitted=$((emitted + 1))
+done <"$root/tests/verified/modules.txt"
+if [ "$emitted" -eq 0 ]; then
+  echo "fail: unknown module $case_module" >&2
+  exit 2
+fi
+if [ -n "$reference" ]; then
+  echo "verified byte comparison passed: $emitted modules"
+  exit 0
+fi
+if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+  echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
+  exit 1
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "gpt" ]; then
+  tests/gpt/run.sh "$out/gpt.wasm"
+  tests/gpt/sessions.sh "$out/gpt.wasm"
+  if [ "$case_module" = "gpt" ]; then
+    exit 0
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "euler" ]; then
+  tests/modules/run.sh --module euler "$out/euler.wasm"
+  if [ "$case_module" = "euler" ]; then
+    exit 0
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "sums" ]; then
+  tests/modules/run.sh --module shapes "$out/sums.wasm"
+fi
+# Checks the file theorem module of a written module: elaborates the file module against the file,
+# after the build above has built the theorem module, and requires both of its axiom reports to
+# name only the three permitted axioms.  The file module's second theorem depends on every byte
+# theorem of the module, so its axiom report covers them all.
+check_file() {
+  local name=$1 theorem=$2 file=$3 reports axiom_counts
+  reports=$(tools/leanrun --timeout 10m lake env lean "$file") || {
+    echo "$reports"
+    echo "fail: $file does not check against $out/$name.wasm" >&2
+    exit 1
+  }
+  axiom_counts=$(awk '
+    /depends on axioms: \[/ {
+      report = $0
+      while (report !~ /\]/ && (getline) > 0) report = report " " $0
+      sub(/^.*depends on axioms: /, "", report)
+      gsub(/[[:space:]]+/, " ", report)
+      count++
+      if (report == "[propext, Classical.choice, Quot.sound]") permitted++
+    }
+    END { print count + 0, permitted + 0 }' <<<"$reports")
+  if [ "$axiom_counts" != "2 2" ]; then
+    echo "$reports"
+    echo "fail: the theorems of $file must report only the three permitted axioms" >&2
+    exit 1
+  fi
+  echo "$name: $name.wasm holds the module of $theorem, with the permitted axioms"
+}
+if [ -z "$case_module" ] || [ "$case_module" = "slew" ]; then
+  tests/slew/edges.sh "$out/slew.wasm"
+  tools/leanrun --timeout 10m lake env lean tests/slew/Axioms.lean
+  if [ "$case_module" = "slew" ]; then
+    check_file slew Demos.Slew.Verified Demos/Slew/File.lean
+  fi
+fi
+# Each entry names the written module, the theorem module, and the file theorem module.
+if [ -z "$case_module" ]; then
+while IFS=: read -r name theorem file; do
+  check_file "$name" "$theorem" "$file"
+done <"$root/tests/verified/numerics.txt"
+fi
 if [ -z "$case_module" ] || [ "$case_module" = "heapsums" ]; then
   tools/leanrun --timeout 10m lake env lean tests/verified/HeapSumsAxioms.lean
 fi
@@ -196,7 +235,6 @@ fi
 if [ -z "$case_module" ] || [ "$case_module" = "buffertrees" ]; then
   tools/leanrun --timeout 10m lake env lean tests/verified/BufferTreesOrder.lean
 fi
-tools/leanrun --timeout 12h lake --log-level error build "$cases_exe"
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT
