@@ -64,7 +64,7 @@ theorem body_allocs {S : List Sig} {e : Elem} {captures : List Ty}
           (List.replicate (listShape.bindCount listCell) false ++
             List.replicate (params e captures).length false)
           (bodyLive e captures)
-          (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩)
+          (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩) (noFields rfl) (noFields rfl)
             (fun _ => children ⟨0, listShape_children_pos r⟩)
             (.cons root (.cons acc captured))) := by
   cases root with
@@ -96,7 +96,7 @@ theorem body_fits {S : List Sig} {e : Elem} {captures : List Ty}
       match root with
       | .nil _ => true
       | .node r words arrays buffers children => body.fits funs fits
-          (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩)
+          (Env.treeFields listShape listCell (fun _ => words ⟨0, listShape_words_pos r⟩) (noFields rfl) (noFields rfl)
             (fun _ => children ⟨0, listShape_children_pos r⟩)
             (.cons root (.cons acc captured))) := by
   cases root with

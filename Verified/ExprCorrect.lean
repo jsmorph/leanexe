@@ -5057,17 +5057,22 @@ theorem Expr.code_specIn {S : List Sig} (m : Module) (funs : Funs S) (flags : Fl
     intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_var hm x
   | treeNil shape hn =>
     intro _ _; exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_treeNil shape hn
-  | treeNode r reuse words children wordSpec childSpec =>
+  | treeNode r reuse words arrays buffers children wordSpec arraySpec _ childSpec =>
     have wordSpec := fun i c d => specOf (pool := pool) (wordSpec i c d)
+    have arraySpec := fun i c d => specOf (pool := pool) (arraySpec i c d)
     have childSpec := fun i c d => specOf (pool := pool) (childSpec i c d)
     intro hCover hD
-    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| spec_treeNode hm reuse words children
+    exact specInOf (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <|
+      spec_treeNode hm reuse words arrays buffers children
       (fun i => wordSpec i ((Expr.covered_treeNode hCover).1 i) fun hd => hD (by
         simp only [Expr.depthCalls, Bool.or_eq_true]
-        exact Or.inl (le_argsAny _ i hd)))
-      (fun i => childSpec i ((Expr.covered_treeNode hCover).2 i) fun hd => hD (by
+        exact Or.inl (Or.inl (Or.inl (le_argsAny _ i hd)))))
+      (fun i => arraySpec i ((Expr.covered_treeNode hCover).2.1 i) fun hd => hD (by
         simp only [Expr.depthCalls, Bool.or_eq_true]
-        exact Or.inr (le_argsAny _ i hd)))
+        exact Or.inl (Or.inr (le_argsAny _ i hd))))
+      (fun i => childSpec i ((Expr.covered_treeNode hCover).2.2.2 i) fun hd => hD (by
+        simp only [Expr.depthCalls, Bool.or_eq_true]
+        exact Or.inl (Or.inl (Or.inr (le_argsAny _ i hd)))))
   | treeCase x empty nodes emptySpec nodeSpec =>
     have emptySpec := fun hn c d => specOf (pool := pool) (emptySpec hn c d)
     have nodeSpec := fun r c d => specOf (pool := pool) (nodeSpec r c d)

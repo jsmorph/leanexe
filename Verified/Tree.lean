@@ -297,6 +297,29 @@ theorem maskOf_append (s t : List Slot) :
     maskOf (s ++ t) = s.foldr (fun slot acc => 2 * acc + slot.bit) (maskOf t) := by
   simp only [maskOf, List.foldr_append]
 
+/-- The bit of a slot in a record's array mask: 1 for an array, and 0 for the other slots. -/
+def _root_.LeanExe.Pipeline.Slot.arrayBit : Slot → UInt64
+  | .array _ => 1
+  | _ => 0
+
+/-- The mask of the slots that hold arrays, bit `i` for slot `i`. -/
+def arrayMaskOf (slots : List Slot) : UInt64 :=
+  slots.foldr (fun slot acc => 2 * acc + slot.arrayBit) 0
+
+/-- The array mask of a record of constructor `r`. -/
+def TreeShape.arrayMask (shape : TreeShape) (r : Fin shape.records) : UInt64 :=
+  arrayMaskOf (shape.recordSlots r (fun _ => 0) (fun _ => #[]) (fun _ => .empty) (fun _ => .null))
+
+/-- Whether a record constructor of the type has an array field. -/
+def TreeShape.hasArrays (shape : TreeShape) : Bool :=
+  (List.finRange shape.records).any fun r => shape.arrayMask r != 0
+
+theorem TreeShape.arrayMask_zero {shape : TreeShape} (h : shape.hasArrays = false)
+    (r : Fin shape.records) : shape.arrayMask r = 0 := by
+  simp only [TreeShape.hasArrays, List.any_eq_false, List.mem_finRange, bne_iff_ne, ne_eq,
+    Decidable.not_not, true_implies] at h
+  exact h r
+
 /-- Whether no field of the type is an array or a buffer. -/
 def TreeShape.heapFree (shape : TreeShape) : Bool :=
   shape.ctors.all fun fields => fields.all fun f => (f.bit?).isSome
@@ -340,6 +363,42 @@ theorem TreeShape.mask_eq (shape : TreeShape) (r : Fin shape.records)
   simp only [maskOf] at hHeap
   simp only [TreeShape.mask, TreeShape.recordSlots, maskOf, List.foldr_append]
   rw [hHeap, treeSlots_foldr (shape.fields r) words children (fun _ => 0) (fun _ => .null)]
+  rfl
+
+theorem treeSlots_arrayMask (fields : List Bool) :
+    ∀ words children (init : UInt64),
+      (treeSlots fields words children).foldr (fun slot acc => 2 * acc + slot.arrayBit) init =
+        (treeSlots fields (fun _ => 0) (fun _ => .null)).foldr
+          (fun slot acc => 2 * acc + slot.arrayBit) init := by
+  induction fields with
+  | nil => intros; rfl
+  | cons bit rest ih =>
+    cases bit <;> intro words children init
+    · exact congrArg (fun mask : UInt64 => 2 * mask + 0) (ih _ _ init)
+    · exact congrArg (fun mask : UInt64 => 2 * mask + 0) (ih _ _ init)
+
+theorem heapSlots_arrayMask (fields : List TreeField) :
+    ∀ arrays buffers arrays' buffers',
+      arrayMaskOf (heapSlots fields arrays buffers) =
+        arrayMaskOf (heapSlots fields arrays' buffers') := by
+  induction fields with
+  | nil => intros; rfl
+  | cons field rest ih =>
+    intro arrays buffers arrays' buffers'
+    cases field with
+    | word e => exact ih _ _ _ _
+    | child => exact ih _ _ _ _
+    | array e => exact congrArg (fun mask : UInt64 => 2 * mask + 1) (ih _ _ _ _)
+    | bytes => exact congrArg (fun mask : UInt64 => 2 * (2 * mask + 0) + 0) (ih _ _ _ _)
+
+theorem TreeShape.arrayMask_eq (shape : TreeShape) (r : Fin shape.records)
+    (words arrays buffers children) :
+    arrayMaskOf (shape.recordSlots r words arrays buffers children) = shape.arrayMask r := by
+  have hHeap := heapSlots_arrayMask (shape.kinds r) arrays buffers (fun _ => #[])
+    (fun _ => .empty)
+  simp only [arrayMaskOf] at hHeap
+  simp only [TreeShape.arrayMask, TreeShape.recordSlots, arrayMaskOf, List.foldr_append]
+  rw [hHeap, treeSlots_arrayMask (shape.fields r) words children]
   rfl
 
 theorem TreeShape.recordSlots_length (shape : TreeShape) (r : Fin shape.records)

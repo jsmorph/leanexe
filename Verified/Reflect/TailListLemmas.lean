@@ -24,7 +24,7 @@ theorem tail_listCase_eq {S : List Sig} {Γ params : List Ty} {result : Ty}
     (nodeStep : UInt64 → List UInt64 → Sum α β)
     (hx : env.get x = Tree.ofList xs)
     (he : empty.denote funs env = Sum.map φ ψ emptyStep)
-    (hn : ∀ y ys, node.denote funs (Env.treeFields listShape listCell (fun _ => y)
+    (hn : ∀ y ys, node.denote funs (Env.treeFields listShape listCell (fun _ => y) (noFields rfl) (noFields rfl)
       (fun _ => Tree.ofList ys) env) = Sum.map φ ψ (nodeStep y ys)) :
     (TailBody.treeCase x (fun _ => empty) (listBranch node)).denote funs env =
       Sum.map φ ψ (xs.casesOn emptyStep nodeStep) := by

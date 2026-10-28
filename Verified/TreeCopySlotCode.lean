@@ -2,43 +2,48 @@ import Verified.TreeCopyAdvanceCode
 import Verified.TreeCopyDescendCode
 import Verified.TreeReadCode
 import Verified.TreeTestCode
+import Verified.TreeCopyArrayCode
 
 namespace Verified
 
 open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
 
-theorem wp_treeCopySlot {m : Module} (hm : Runtime m) {host : HostEnv Unit}
+/-- The copy of a slot that is not an array slot: a word or a null child goes into the copy as it
+is, and a record child starts the copy of its record. -/
+theorem wp_treeCopyOther {m : Module} (hm : Runtime m) {host : HostEnv Unit}
     {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
     {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit base : Nat}
-    {current : CopyRecord} {parents : List CopyRecord} {s0 s : Locals}
+    {current : CopyRecord} {parents : List CopyRecord} {s0 sRead : Locals}
     {rest : Program} {Q : Assertion Unit}
     (h : CopyInv shape heap0 initial root result limit heap store current parents)
-    (hLocals : CopyLocals base s0 result current.pointer s)
-    (hIndex : s.get (base + 2) = some (.i64 (UInt64.ofNat current.next)))
+    (hReadLocals : CopyLocals base s0 result current.pointer sRead)
+    (hIndex' : sRead.get (base + 2) = some (.i64 (UInt64.ofNat current.next)))
+    (hSource : sRead.get (base + 3) = some (.i64 current.source))
+    (hWord : sRead.get (base + 4) =
+      some (.i64 (store.mem.read64 (slotAddress current.source current.next))))
     (hBound : current.next < current.slots.length)
-    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hNotArray : ∀ words, current.slots[current.next] ≠ .array words)
+    (hLowRead : sRead.params.length ≤ base) (hHighRead : base + 6 ≤ sRead.positions)
     (hCap : initial.memoryCap m 0 ≤ 65535)
     (hTrap : TrapOK (!decide (limit ≤ 65536 * initial.memoryCap m 0)) Q)
     (hNext : ∀ heap' store' s' next parents',
       CopyInv shape heap0 initial root result limit heap' store' next parents' →
       CopyLocals base s0 result next.pointer s' →
       CopyWork.Step (current.work parents) (next.work parents') → wp m rest Q store' s' host) :
-    wp m (treeCopySlot shape base ++ rest) Q store s host := by
+    wp m (treeCopyTest shape base ++
+      [.iff 0 0 (treeCopyAllocate shape (base + 4) (base + 5) ++
+          treeCopyBegin shape (base + 4) (base + 5) [.localGet (base + 4)] [.localGet (base + 1)] ++
+          [.localGet (base + 5), .localSet (base + 1)])
+        (treeSlotAddress (base + 1) (base + 2) ++ [.localGet (base + 4), .store64 0] ++
+          treeCopyAdvance (base + 1) (base + 2))] ++ rest) Q store sRead host := by
   let copyWord := treeSlotAddress (base + 1) (base + 2) ++
     [.localGet (base + 4), .store64 0] ++ treeCopyAdvance (base + 1) (base + 2)
   let descend := treeCopyAllocate shape (base + 4) (base + 5) ++
     treeCopyBegin shape (base + 4) (base + 5) [.localGet (base + 4)] [.localGet (base + 1)] ++
     [.localGet (base + 5), .localSet (base + 1)]
-  change wp m (treeCopyRead base ++ treeCopyTest shape base ++
-    [.iff 0 0 descend copyWord] ++ rest) Q store s host
-  rw [List.append_assoc, List.append_assoc]
-  refine wp_treeCopyRead h.frames.current h.step.at_ hBound hLow hHigh hLocals.current hIndex ?_
-  intro sRead hFrame hResult hCurrent hIndex' hSource hWord hValues
-  have hReadLocals := hLocals.ofRead hFrame hResult hCurrent hValues
-  have hLowRead : sRead.params.length ≤ base := by rw [hFrame.params]; exact hLow
-  have hHighRead : base + 6 ≤ sRead.positions := by rw [hFrame.positions]; exact hHigh
+  rw [List.append_assoc]
   refine wp_treeCopyTest (h.frames.current.maskPushes h.step.at_ hSource) hIndex' hWord ?_
-  rw [treeCopyCondition_spec h.frames.current hBound]
+  rw [treeCopyCondition_spec h.frames.current hBound hNotArray]
   let post : Assertion Unit := fun cont => match cont with
     | .Fallthrough store' s' => wp m rest Q store' { s' with values := sRead.values } host
     | .Break 0 store' s' => wp m rest Q store' { s' with values := sRead.values } host
@@ -122,11 +127,99 @@ theorem wp_treeCopySlot {m : Module} (hm : Runtime m) {host : HostEnv Unit}
       intro heap' store' ptr s' hInv hVars
       exact hAfter heap' store' s' _ (current :: parents) hInv hVars
         (CopyRecord.work_descend (parents := parents) hBound hSlot rfl)
-  | array _ | bytes _ =>
-    obtain ⟨-, -, -, -, hLayout⟩ := id h.frames.current.layout
-    rcases SlotsLayout.word_or_child hLayout current.next hBound with ⟨_, he⟩ | ⟨_, he⟩ <;>
-      rw [hSlot] at he <;> cases he
+  | array words => exact absurd hSlot (hNotArray words)
+  | bytes data =>
+    obtain ⟨-, -, -, -, hLayout, -⟩ := id h.frames.current.layout
+    exact absurd hSlot (hLayout.not_bytes current.next hBound data)
 
+theorem wp_treeCopySlot {m : Module} (hm : Runtime m) {host : HostEnv Unit}
+    {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
+    {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit base : Nat}
+    {current : CopyRecord} {parents : List CopyRecord} {s0 s : Locals}
+    {rest : Program} {Q : Assertion Unit}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hLocals : CopyLocals base s0 result current.pointer s)
+    (hIndex : s.get (base + 2) = some (.i64 (UInt64.ofNat current.next)))
+    (hBound : current.next < current.slots.length)
+    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK (!decide (limit ≤ 65536 * initial.memoryCap m 0)) Q)
+    (hNext : ∀ heap' store' s' next parents',
+      CopyInv shape heap0 initial root result limit heap' store' next parents' →
+      CopyLocals base s0 result next.pointer s' →
+      CopyWork.Step (current.work parents) (next.work parents') → wp m rest Q store' s' host) :
+    wp m (treeCopySlot shape base ++ rest) Q store s host := by
+  simp only [treeCopySlot]
+  rw [List.append_assoc]
+  refine wp_treeCopyRead h.frames.current h.step.at_ hBound hLow hHigh hLocals.current hIndex ?_
+  intro sRead hFrame hResult hCurrent hIndex' hSource hWord hValues
+  have hReadLocals := hLocals.ofRead hFrame hResult hCurrent hValues
+  have hLowRead : sRead.params.length ≤ base := by rw [hFrame.params]; exact hLow
+  have hHighRead : base + 6 ≤ sRead.positions := by rw [hFrame.positions]; exact hHigh
+  cases hA : shape.hasArrays with
+  | false =>
+    rw [if_neg Bool.false_ne_true]
+    exact wp_treeCopyOther hm h hReadLocals hIndex' hSource hWord hBound
+      (h.frames.current.layout.not_array hA current.next hBound) hLowRead hHighRead hCap hTrap
+      hNext
+  | true =>
+    rw [if_pos rfl, List.append_assoc]
+    refine wp_treeCopyArrayTest (h.frames.current.arrayMaskPushes h.step.at_ hSource) hIndex' ?_
+    rw [treeCopyArrayCondition_spec h.frames.current hBound]
+    let post : Assertion Unit := fun cont => match cont with
+      | .Fallthrough store' s' => wp m rest Q store' { s' with values := sRead.values } host
+      | .Break 0 store' s' => wp m rest Q store' { s' with values := sRead.values } host
+      | .Break (k + 1) store' s' => Q (.Break k store' s')
+      | other => Q other
+    have hAfter (heap' : Heap) (store' : Store Unit) (s' : Locals) (next : CopyRecord)
+        (parents' : List CopyRecord)
+        (hInv : CopyInv shape heap0 initial root result limit heap' store' next parents')
+        (hVars : CopyLocals base s0 result next.pointer s')
+        (hWork : CopyWork.Step (current.work parents) (next.work parents')) :
+        wp m [] post store' s' host := by
+      rw [wp_nil]
+      change wp m rest Q store' { s' with values := sRead.values } host
+      have hStack : sRead.values = s'.values := hReadLocals.values.trans hVars.values.symm
+      rw [hStack]
+      exact hNext heap' store' s' next parents' hInv hVars hWork
+    by_cases hArray : ∃ xs, current.slots[current.next] = .array xs
+    · obtain ⟨xs, hSlot⟩ := hArray
+      rw [hSlot]
+      refine wp_iff_cons rfl ?_
+      simp (config := { decide := true }) only [arrayBranch,
+        ite_true, List.take_zero, List.drop_zero, List.append_eq, List.nil_append]
+      refine wp.conseq (Q := post) ?_ ?_
+      · intro c hc
+        cases c with
+        | Break k _ _ => cases k <;> exact hc
+        | _ => exact hc
+      change wp m (treeCopyArray base) post store sRead host
+      rw [← List.append_nil (treeCopyArray base)]
+      exact wp_treeCopyArrayInv hm (rest := []) (Q := post) h hReadLocals hWord hBound hSlot
+        hLowRead hHighRead hCap (hTrap.imp (Q' := post) (fun _ h => h))
+        (fun heap' store' s' hInv hVars => hAfter heap' store' s' _ parents hInv hVars
+          (CopyRecord.work_array (parents := parents) hBound hSlot))
+    · have hNotArray : ∀ words, current.slots[current.next] ≠ .array words :=
+        fun words he => hArray ⟨words, he⟩
+      have hBranch : arrayBranch current.slots[current.next] = 0 := by
+        cases hS : current.slots[current.next] with
+        | array words => exact absurd hS (hNotArray words)
+        | _ => rfl
+      rw [hBranch]
+      refine wp_iff_cons rfl ?_
+      simp (config := { decide := true }) only [
+        ite_false, List.take_zero, List.drop_zero, List.append_eq, List.nil_append]
+      refine wp.conseq (Q := post) ?_ ?_
+      · intro c hc
+        cases c with
+        | Break k _ _ => cases k <;> exact hc
+        | _ => exact hc
+      have hRun := wp_treeCopyOther hm (rest := []) (Q := post) h hReadLocals hIndex' hSource
+        hWord hBound hNotArray hLowRead hHighRead hCap (hTrap.imp (Q' := post) (fun _ h => h))
+        hAfter
+      simpa only [List.append_nil, List.append_assoc] using hRun
+
+#print axioms wp_treeCopyOther
 #print axioms wp_treeCopySlot
 
 end Verified

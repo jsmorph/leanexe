@@ -1,4 +1,5 @@
 import Verified.Tree
+import Verified.ArrayCopyCode
 import LeanExe.Runtime.Defs
 
 namespace Verified
@@ -56,6 +57,25 @@ def treeCopyTest (shape : TreeShape) (base : Nat) : Program :=
     [.localGet (base + 2), .shrUI64, .constI64 1, .andI64, .eqzI64,
       .eqz, .localGet (base + 4), .eqzI64, .eqz, .and]
 
+/-- The test of whether the slot whose index local `base + 2` holds is an array slot of the record
+whose source local `base + 3` holds. -/
+def treeCopyArrayTest (shape : TreeShape) (base : Nat) : Program :=
+  shape.selectCode (treeTagCode (base + 3)) shape.arrayMask ++
+    [.localGet (base + 2), .shrUI64, .constI64 1, .andI64, .eqzI64, .eqz]
+
+/-- The copy of an array slot.  The array whose address local `base + 4` holds goes to a new
+block, with locals `base + 2` to `base + 5` as scratch.  The new address goes to local `base + 4`,
+the slot index goes back to local `base + 2` from the header, and the address goes into the slot
+as a word does. -/
+def treeCopyArray (base : Nat) : Program :=
+  [.localGet (base + 4), .localSet (base + 2)] ++ copyArrayCode (base + 2) (base + 3) ++
+    [.localSet (base + 4)] ++ headerLoad (base + 1) 8 ++ [.localSet (base + 2)] ++
+    treeSlotAddress (base + 1) (base + 2) ++ [.localGet (base + 4), .store64 0] ++
+    treeCopyAdvance (base + 1) (base + 2)
+
+/-- One step of the copy loop: the copy of the slot of the record being copied that local
+`base + 2` indexes.  For a shape with array fields, an array slot goes to `treeCopyArray` first,
+and the code for a shape without them has no array test. -/
 def treeCopySlot (shape : TreeShape) (base : Nat) : Program :=
   let current := base + 1
   let index := base + 2
@@ -66,7 +86,10 @@ def treeCopySlot (shape : TreeShape) (base : Nat) : Program :=
   let descend := treeCopyAllocate shape value fresh ++
     treeCopyBegin shape value fresh [.localGet value] [.localGet current] ++
     [.localGet fresh, .localSet current]
-  treeCopyRead base ++ treeCopyTest shape base ++ [.iff 0 0 descend copyWord]
+  let other := treeCopyTest shape base ++ [.iff 0 0 descend copyWord]
+  treeCopyRead base ++
+    if shape.hasArrays then treeCopyArrayTest shape base ++ [.iff 0 0 (treeCopyArray base) other]
+    else other
 
 /-- Restores the header of the copied record at local `ptr`, whose slot 0 holds its tag when the
 shape is tagged: count 1, kind 1, and the width and mask of its record constructor. -/
