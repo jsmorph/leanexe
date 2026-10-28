@@ -2,6 +2,7 @@ import Verified.TreeFieldsRep
 import Verified.TreeAssembleCode
 import Verified.TreePackedBlocks
 import Verified.TreeHeapFields
+import Verified.TreeNodeLayout
 
 namespace Verified
 
@@ -242,7 +243,12 @@ theorem wp_assembleTree {m : Module} {host : HostEnv Unit} {heap : Heap}
         (treeFieldLocs (shape.fields r) fieldBase (fieldBase + shape.words r)).length by
       rw [treeFieldLocs_length],
     ← recordStoreCode_append _ _ _ _ _ _ [] hTypesLen, List.append_nil, ← List.append_assoc]
-  refine wp_assembleRecord hRaw hAt hPtr hLength (shape.width_le r) hCount hValues
+  have hLengths : BufferLengths (shape.tagSlots r ++ (treeSlots (shape.fields r)
+      (shape.slotWords r words) (fun i => (children i).toNode) ++
+      heapSlots (shape.kinds r) (shape.arrayWords r arrays) buffers)) := by
+    rw [hSlots]
+    exact NodeLayout.lengths (Tree.toNode_layout (Tree.node r words arrays buffers children))
+  refine wp_assembleRecord hRaw hAt hPtr hLength (shape.width_le r) hCount hValues hLengths
     hPayloadLocals hPayloadApart fun store' hAt' hNode hNewBlocks hStep => ?_
   have hResultBlocks : (Ty.tree shape).blocks store' [.i64 p]
       (.node r words arrays buffers children) =

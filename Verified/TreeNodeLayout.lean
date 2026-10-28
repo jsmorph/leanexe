@@ -134,6 +134,19 @@ theorem SlotsLayout.child {shape : TreeShape} :
     SlotsLayout.child (slots := rest) h i (by simpa using hi) value he
   | .bytes _ :: _, h, _, _, _, _ => False.elim h
 
+theorem SlotsLayout.lengths {shape : TreeShape} :
+    ∀ {slots : List Slot}, SlotsLayout shape slots → BufferLengths slots
+  | [], _ => trivial
+  | .word _ :: rest, h => SlotsLayout.lengths (slots := rest) h
+  | .child _ :: rest, h => SlotsLayout.lengths (slots := rest) h.2
+  | .array _ :: rest, h => SlotsLayout.lengths (slots := rest) h
+  | .bytes _ :: _, h => False.elim h
+
+theorem NodeLayout.lengths {shape : TreeShape} {slots : List Slot}
+    (h : NodeLayout shape (.record slots)) : BufferLengths slots := by
+  obtain ⟨_, -, -, -, hSlots, -⟩ := h
+  exact SlotsLayout.lengths hSlots
+
 /-- No slot of a record laid out by a shape is a buffer. -/
 theorem SlotsLayout.not_bytes {shape : TreeShape} :
     ∀ {slots : List Slot}, SlotsLayout shape slots → ∀ i (hi : i < slots.length) data,

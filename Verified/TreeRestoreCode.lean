@@ -77,7 +77,8 @@ theorem wp_restoreOwnedRecord {m : Module} {host : HostEnv Unit} {heap : Heap}
     wp m (restoreRecordCode shape ptr ++ rest) Q store s host := by
   obtain ⟨r, hLength, hMask, hPrefix, -⟩ := id hLayout
   obtain ⟨hWrites, hAt, hOwned, hBlocks, _⟩ :=
-    hRaw.restore hHeap (by rw [hLength]; exact shape.width_le r) hSlots hApart
+    hRaw.restore hHeap (by rw [hLength]; exact shape.width_le r) hSlots (NodeLayout.lengths hLayout)
+      hApart
   exact wp_restoreRecord r hRaw hHeap hPtr hLength.symm hMask.symm
     (fun ht => SlotsOwned.tag hSlots hPrefix ht) (hNext _ hWrites hAt hOwned hBlocks)
 

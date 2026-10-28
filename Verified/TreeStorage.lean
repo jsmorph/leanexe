@@ -154,10 +154,11 @@ theorem RecordStorage.record {width : Nat} {heap : Heap} {store : Store Unit}
     (hKind : store.mem.read64 (p - 24).toUInt32 = 1)
     (hWidth : store.mem.read64 (p - 16).toUInt32 = UInt64.ofNat width)
     (hMask : store.mem.read64 (p - 8).toUInt32 = maskOf slots)
-    (hShort : width ≤ 64) (hSlots : SlotsOwned heap store p 0 slots) :
+    (hShort : width ≤ 64) (hSlots : SlotsOwned heap store p 0 slots)
+    (hLengths : BufferLengths slots) :
     NodeOwned heap store p (.record slots) := by
-  refine ⟨⟨h.base, h.magic, hCount, hKind, ?_, hMask, ?_, ?_, h.address, h.below, h.separate⟩,
-    hSlots⟩
+  refine ⟨⟨h.base, h.magic, hCount, hKind, ?_, hMask, ?_, ?_, h.address, h.below, h.separate,
+    hLengths⟩, hSlots⟩
   · rw [hLength]; exact hWidth
   · rw [hLength]; exact hShort
   · rw [hLength]; exact h.capacity

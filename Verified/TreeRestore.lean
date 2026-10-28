@@ -14,7 +14,7 @@ def restoreRecordStore (store : Store Unit) (p : UInt64) (slots : List Slot) : S
 theorem RecordStorage.restore {heap : Heap} {store : Store Unit}
     {p : UInt64} {slots : List Slot} (h : RecordStorage slots.length heap store p)
     (hHeap : heap.At store) (hShort : slots.length ≤ 64)
-    (hSlots : SlotsOwned heap store p 0 slots)
+    (hSlots : SlotsOwned heap store p 0 slots) (hLengths : BufferLengths slots)
     (hApart : (Node.blocks store p (.record slots)).Pairwise regionsDisjoint) :
     let store' := restoreRecordStore store p slots
     Memory.WritesRange store store' (p.toNat - 40) p.toNat ∧ heap.At store' ∧
@@ -76,7 +76,8 @@ theorem RecordStorage.restore {heap : Heap} {store : Store Unit}
       simp only [regionsDisjoint, block] at this
       omega), SlotsOwned.regions p 0 slots hSlots b hb⟩)
   have hCapacity : capacityAt store4 p = capacityAt store p := hCap4.trans (hCap3.trans (hCap2.trans hCap1))
-  refine ⟨hAll, hAt4, hRaw4.record rfl hCount hKind hWidth hMask hShort hSlots4, ?_, hCapacity⟩
+  refine ⟨hAll, hAt4, hRaw4.record rfl hCount hKind hWidth hMask hShort hSlots4 hLengths, ?_,
+    hCapacity⟩
   change block store4 p :: slotsBlocks store4 p 0 slots = _
   rw [block_eq hCapacity, hBlocks]
   rfl

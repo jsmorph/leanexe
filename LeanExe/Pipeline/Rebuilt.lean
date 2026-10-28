@@ -189,7 +189,7 @@ theorem Heap.Rebuilt.node {heap heap1 heap2 : Heap} {initial store1 store2 final
     (fun a hLow hHigh => (hWrites.2.2 a (.inl hHigh)).trans ((hBytesP2 a
       (by simp only [block]; omega) (by simp only [block]; omega)).trans
       (hBytesP1 a (by simp only [block]; omega) (by simp only [block]; omega))))
-    rfl rfl hRegP2
+    rfl rfl trivial hRegP2
   have hAtF : heap2.At final := h2.at_.writesApart hWrites fun node hNode => by
     have := hRegP2.separate node hNode
     simp only [regionsDisjoint, block] at this ⊢
@@ -287,7 +287,7 @@ theorem NodeOwned.clearLeft {heap : Heap} {initial : Store Unit} {p k : UInt64} 
     hW.2.2 a (by simp only [regionsDisjoint, block] at hb; omega)
   obtain ⟨hHead', hCapacity⟩ := hHead.rewrite (heap' := heap) (store' := store1)
     (slots' := [.child .null, .word k, .child nr])
-    (fun a _ hHigh => hW.2.2 a (.inl hHigh)) rfl rfl hHead.region
+    (fun a _ hHigh => hW.2.2 a (.inl hHigh)) rfl rfl trivial hHead.region
   have hAt1 : heap.At store1 := hHeap.writesApart hW fun node hNode => by
     have := hHead.separate node hNode
     simp only [regionsDisjoint] at this ⊢
@@ -361,7 +361,7 @@ theorem NodeOwned.clearRight {heap : Heap} {initial : Store Unit} {p k : UInt64}
     hW.2.2 a (by simp only [regionsDisjoint, block] at hb; omega)
   obtain ⟨hHead', hCapacity⟩ := hHead.rewrite (heap' := heap) (store' := store1)
     (slots' := [.child nl, .word k, .child .null])
-    (fun a _ hHigh => hW.2.2 a (.inl hHigh)) rfl rfl hHead.region
+    (fun a _ hHigh => hW.2.2 a (.inl hHigh)) rfl rfl trivial hHead.region
   have hAt1 : heap.At store1 := hHeap.writesApart hW8 fun node hNode => by
     have := hHead.separate node hNode
     simp only [regionsDisjoint] at this ⊢
@@ -536,7 +536,7 @@ theorem Heap.Rebuilt.newNode {heap heap1 heap2 heap3 : Heap} {initial store1 sto
       block store3 ptr :: (ml.blocks store1 q1 ++ mr.blocks store2 q2) := by
     simp only [Node.blocks, slotsBlocks, Nat.zero_add, Nat.reduceAdd, h0, h2', hlBlocks3,
       hlBlocks2, hrBlocks3, List.append_nil]
-  refine ⟨hNew.at_, ⟨hNew.header _ rfl rfl, ?_⟩, ?_, fun r hr hpos _ => ?_,
+  refine ⟨hNew.at_, ⟨hNew.header _ rfl rfl trivial, ?_⟩, ?_, fun r hr hpos _ => ?_,
     hNew.caps.trans (h2.caps.trans h1.caps)⟩
   · show NodeOwned heap3 store3 (store3.mem.read64 (slotAddress ptr 0)) ml ∧
       store3.mem.read64 (slotAddress ptr 1) = k ∧
