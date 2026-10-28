@@ -36969,3 +36969,18 @@ Before building, I checked by reading which trusted predicates that admit a buff
 - [x] The `lengths` field and the lemmas that build records.
 - [x] The docstrings and the manual.
 - [ ] The gate of the arrays half on the new commit.
+
+## 2026-10-28: The follow-up review of the lengths field
+
+A second review of the lengths change confirmed that `BufferLengths` states the rule exactly.  A buffer root in the last slot, two adjacent buffers, and a buffer followed by a child slot all fail it, the rule reaches every record at every depth through `NodeOwned` and `NodeBorrowed`, and nothing changes meaning for a type without buffer fields.  The review added `Releasing.records` and `CopyRecord.Holds.filled` to the predicates that admit a buffer slot without the rule and appear only in lemmas, and it reported two findings.
+
+| Finding | Decision | Change |
+|---|---|---|
+| An `Encode` instance that breaks the rule, such as `.record [.bytes d.body]` or one with the length before the root, makes `Represent.borrowed` and the precondition of a moved value false for every value, so `Implements m k f` holds for every module.  No encoding that the compiler handles does this, but a reader of a theorem cannot see it.  `RecordHeader.short` poses the same risk for an encoding with more than 64 slots. | A theorem per type, in the pattern of `EncodeSlotted`, that every record of every encoded value meets both conditions.  The statement of `Implements` stays. | `Node.WellFormed`, `slotsWellFormed`, and the class `EncodeWellFormed` in `LeanExe/Pipeline/Slotted.lean`, with an instance for `List UInt64`.  `NodeLayout.wellFormed` proves the conditions from a tree's layout, `verified_recursive_type` derives `verifiedT.wellFormed` and the instance for every type, and the typed-tree audit fails for a recursive type of its example without the theorem. |
+| Docstrings still left out a `Bytes` argument's block in `Represent.reads` and `Implements`, a moved `Bytes` and a moved `TreeHeader` in `Represent.moves`, and the new premise of `Heap.NewRecord`, and they named the blocks of all buffers where only nonempty buffers have blocks. | Fix them in the same commit. | The five docstrings. |
+
+`RecordHeader` and `RecordSlots` have two conditions on the value alone, `short` and `lengths`, and the coordinator checked that the others concern the store, the address, and the heap.  The manual's trusted-base section now states that `wellFormed` shows these conditions hold for every value of a declared type, so a reader can rule out an `Implements` statement that holds vacuously.
+
+- [x] The class, its instances, the derived theorem, and the audit.
+- [x] The docstrings and the manual.
+- [ ] The gate of the new commit.

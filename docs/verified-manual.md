@@ -35,6 +35,8 @@ The trusted base is that of the LeanExe compiler: Lean's kernel with the axioms 
 
 Every statement about a value of a recursive type uses its representation in [the `Implements` definitions](../LeanExe/Pipeline/Implements.lean): the null pointer, or a record whose header holds a mask of the slots that hold pointers.  A slot holds a word, a pointer to a child record, a pointer to an array object (`Slot.array`), or the root of a byte buffer (`Slot.bytes`).  The field `lengths` of `RecordHeader` and `RecordSlots` requires that the slot after a buffer's root is a word slot that holds the buffer's length.  An array in a record is owned or borrowed as an `Array UInt64` argument is, through `Heap.Owned` and `Heap.Borrowed`, and a buffer as a `LeanExe.Bytes` argument is, through the buffer predicate `Heap.Buffer` of [the runtime model](../LeanExe/Pipeline/Runtime.lean).  A borrowed buffer, in a record or as an argument, meets the full `Heap.Buffer`, including the count of 1.  In a record, a buffer's root is 0 exactly when the buffer is empty.  A `LeanExe.Bytes` parameter may instead have a nonzero root and no bytes, which a record cannot hold.  The blocks of a value, the regions that a call reads, and the objects that a moved value consumes include its arrays and nonempty buffers, and `release` frees them with the records.
 
+An encoding that breaks a condition of the representation on the value alone would make each `Implements` statement over its type hold for every module, since the predicates of its arguments and results would then be false in every store.  `RecordHeader` and `RecordSlots` have two conditions on the value alone, at most 64 slots in a record and a word slot that holds the length after each buffer slot, and the class `EncodeWellFormed` of [the slot conditions](../LeanExe/Pipeline/Slotted.lean) states both for every record of every value of a type.  `verified_recursive_type` proves the theorem `wellFormed` and the instance for every type that it declares, from the layout of the type's tree, and the typed-tree audit fails for a recursive type of its example without the theorem.  The theorem shows that the representation's structural conditions can be met, so a reader of an `Implements` statement over the type can rule out that it holds vacuously.
+
 WGSL dispatch uses the shared [device model](leanexe-manual.md#wgsl-kernels-and-the-browser-pages)
 with strict binary32 arithmetic.  Its theorems prove successful modeled execution and race freedom
 under their buffer, count, and invocation bounds.
@@ -173,7 +175,9 @@ The command `verified_recursive_type T`, defined in `Verified.Reflect.RecursiveT
 `verified_compile_wasi` compile programs over `T`.  It places them in the namespace `verifiedT`
 beside `T`, such as `Library.Trees.WordTree.verifiedKeyTree`.  They are `toTree`, the conversion to
 `Tree` of `T`'s shape, `encoding`, the agreement of `T`'s `Encode` instance with that tree's
-records, and the lemmas of a match on `T`.  When every flattened field is a structure whose `Flat`
+records, `wellFormed`, the theorem that every record of an encoded value meets the conditions of
+the representation on the value alone, with the `EncodeWellFormed` instance that it gives, and the
+lemmas of a match on `T`.  When every flattened field is a structure whose `Flat`
 tuple holds each of its fields and whose leaves, through nested structures, are words, `Bool`s, and
 floats, the command also derives the conversion `fromTree` and the inverse laws `from_to` and
 `to_from`.  A word that encodes no constructor of an enumeration or a sum has no Lean value, so a

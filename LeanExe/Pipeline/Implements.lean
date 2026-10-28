@@ -18,12 +18,13 @@ class Represent (α : Type) where
   its start and length. -/
   blocks : Store Unit → List Value → α → List (Nat × Nat)
   /-- The regions of memory among the arguments `vs` of `x` that the call reads and leaves
-  intact: an array's words, and the slots of a borrowed value's records with the words of the
-  arrays and the blocks of the buffers that they hold. -/
+  intact: an array's words, the block of a buffer whose root is nonzero, and the slots of a
+  borrowed value's records with the words of the arrays and the blocks of the nonempty buffers
+  that they hold. -/
   reads : Store Unit → List Value → α → List (Nat × Nat)
   /-- The pointers of the objects among the arguments `vs` of `x` that the call consumes: an
-  array, or the records of a value of a recursive type with their arrays and nonempty
-  buffers. -/
+  array, a buffer whose root is nonzero, the record of a tree header, or the records of a value
+  of a recursive type with their arrays and nonempty buffers. -/
   moves : Store Unit → List Value → α → List UInt64
 
 /-- The objects that the owned values `vs` of `x` occupy lie outside the memory region
@@ -438,7 +439,7 @@ class Encode (α : Type) where
 caller lends records that hold the right words and pointers, with their arrays and buffers.  A
 result's records, arrays, and nonempty buffers are owned and occupy pairwise disjoint blocks.
 The call reads the slots of the records, the words of their arrays, and the blocks of their
-buffers, which `Separate` keeps apart from the consumed blocks. -/
+nonempty buffers, which `Separate` keeps apart from the consumed blocks. -/
 instance [Encode α] : Represent α where
   width _ := 1
   borrowed heap store vs x := ∃ p, vs = [.i64 p] ∧ NodeBorrowed heap store p (Encode.encode x)
@@ -523,10 +524,10 @@ theorem memoryCap_le_of_caps {m : Module} {store store' : Store Unit}
 /-- Entry `entry` of `m` computes `f` exactly.  From any store that satisfies the
 allocator invariant, with arguments `params` (in declaration order) representing
 `x`, whose consumed blocks are pairwise disjoint and apart from the memory the call
-reads (an array's words, and a borrowed value's record slots with the words of their arrays
-and the blocks of their buffers), in a memory whose cap is at most 65,535 pages, the call
-aborts at `unreachable` or returns values that, in declaration order, represent `f x` and that
-the caller owns.  Talos lists arguments and results with the top of the stack first, hence the
+reads (an array's words, the block of a buffer whose root is nonzero, and a borrowed value's
+record slots with the words of their arrays and the blocks of their nonempty buffers), in a
+memory whose cap is at most 65,535 pages, the call aborts at `unreachable` or returns values
+that, in declaration order, represent `f x` and that the caller owns.  Talos lists arguments and results with the top of the stack first, hence the
 reversals.  The allocator invariant holds again, and the memory's maximum size is
 unchanged.  Every region of the heap before the call, below `top` and outside every free
 block, that lies apart from the consumed blocks keeps its bytes, is still such a region, and
