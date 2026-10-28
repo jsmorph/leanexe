@@ -1,9 +1,11 @@
 (* From the big-step termination of the Clight program that clightgen prints
    (after SimplExpr and SimplLocals) to the behavior of the Asm program that ccomp produces
-   from the same C program.  CompCert 3.18 proves every step, and this file composes them.
-   rocq/check.sh checks it against a CompCert 3.18 tree whose proofs are built. *)
+   from the same C program.  CompCert 3.18 proves every step, and this file composes them into
+   clight2_bigstep_to_asm.  clight2_bigstep_asm_unique adds, from the determinacy of Asm, that
+   the termination is the Asm program's only behavior when its trace has no inputs.
+   rocq/check.sh checks the file against a CompCert 3.18 tree whose proofs are built. *)
 
-Require Import Coqlib Errors AST Linking Smallstep Behaviors.
+Require Import Coqlib Errors AST Linking Events Smallstep Behaviors.
 Require Csyntax Clight ClightBigstep Asm.
 Require Import Compiler Compopts.
 Require SimplExpr SimplLocals Cshmgen Cminorgen Selection RTLgen Tailcall Inlining Renumber.
@@ -108,4 +110,125 @@ Proof.
   red; auto.
 Qed.
 
+(* The behavior of the Asm program is unique.  Asm's semantics is determinate
+   (aarch64/Asm.v, semantics_determinate): two steps from one state have traces that
+   match_traces relates (common/Events.v, lines 505 to 517), and with equal traces they reach
+   one state.  match_traces relates a trace without inputs, a system call or a volatile load,
+   only to itself, so every run follows a terminating run whose trace has no inputs, and the
+   program has no behavior but that run's. *)
+
+Definition no_inputs (t: trace) : Prop :=
+  forall ev, In ev t ->
+  match ev with Event_syscall _ _ _ | Event_vload _ _ _ _ => False | _ => True end.
+
+Lemma no_inputs_app:
+  forall t1 t2, no_inputs (t1 ** t2) -> no_inputs t1 /\ no_inputs t2.
+Proof.
+  unfold no_inputs; intros t1 t2 H; split; intros ev IN; apply H; apply in_or_app; auto.
+Qed.
+
+Lemma match_traces_no_inputs:
+  forall ge t1 t2, match_traces ge t1 t2 -> no_inputs t1 -> t1 = t2.
+Proof.
+  intros ge t1 t2 M N. inv M; auto; exfalso; exact (N _ (or_introl eq_refl)).
+Qed.
+
+Section UNIQUE.
+
+Variable L: semantics.
+Hypothesis DET: determinate L.
+
+Lemma star_follows:
+  forall s t2 s2, Star L s t2 s2 ->
+  forall t s', Star L s t s' -> no_inputs t -> Nostep L s' ->
+  exists t3, t = t2 ** t3 /\ Star L s2 t3 s'.
+Proof.
+  induction 1; intros t' s' K N NS.
+  - exists t'; split; auto.
+  - inversion K as [s0 | s0 tc sc td s0' tcd STEP STAR EQ]; subst.
+    + elim (NS _ _ H).
+    + destruct (no_inputs_app _ _ N) as [N1 N2].
+      assert (tc = t1) by (eapply match_traces_no_inputs; eauto; eapply sd_determ_1; eauto).
+      subst tc.
+      assert (sc = s2) by (eapply sd_determ_2; eauto). subst sc.
+      destruct (IHstar _ _ STAR N2 NS) as [t4 [A B]].
+      exists t4; split; auto. subst. rewrite Eapp_assoc. auto.
+Qed.
+
+Lemma star_nostep_inv:
+  forall s t s', Star L s t s' -> Nostep L s -> t = E0 /\ s' = s.
+Proof.
+  intros s t s' S NS. inv S; auto. elim (NS _ _ H).
+Qed.
+
+Lemma no_forever_silent:
+  forall s t s', Star L s t s' -> Nostep L s' -> ~ Forever_silent L s.
+Proof.
+  induction 1 as [s | s1 t1 s2 t2 s3 t STEP STAR IH EQ]; intros NS F.
+  - inversion F as [s0 s4 STEP0 F0]; subst. elim (NS _ _ STEP0).
+  - inversion F as [s0 s4 STEP0 F0]; subst.
+    destruct (sd_determ DET _ _ _ _ _ STEP STEP0) as [M E].
+    inv M. assert (s2 = s4) by (apply E; auto). subst. apply IH; auto.
+Qed.
+
+Lemma no_forever_reactive:
+  forall n s t s', (length t <= n)%nat -> Star L s t s' -> no_inputs t -> Nostep L s' ->
+  forall T, ~ Forever_reactive L s T.
+Proof.
+  induction n; intros s t s' LEN S N NS T F;
+  inversion F as [s0 s4 t0 T0 STAR0 NE F0]; subst;
+  destruct (star_follows _ _ _ STAR0 _ _ S N NS) as [t3 [A B]]; subst;
+  assert (L3 : length (t0 ** t3) = (length t0 + length t3)%nat) by (unfold Eapp; apply app_length);
+  (destruct t0 as [|ev t0]; [elim NE; reflexivity | rewrite L3 in LEN; simpl in LEN]).
+  - lia.
+  - destruct (no_inputs_app _ _ N) as [_ N2].
+    eapply IHn with (t := t3); eauto. lia.
+Qed.
+
+Theorem determinate_unique_behavior:
+  forall t r, program_behaves L (Terminates t r) -> no_inputs t ->
+  forall beh, program_behaves L beh -> beh = Terminates t r.
+Proof.
+  intros t r B N beh B'.
+  inversion B as [s beh0 INIT SB | NOINIT]; subst.
+  inversion SB as [t0 s' r0 STAR FINAL | | |]; subst.
+  assert (NS: Nostep L s') by (eapply sd_final_nostep; eauto).
+  inversion B' as [s0 beh1 INIT' SB' | NOINIT']; subst.
+  - assert (s0 = s) by (eapply sd_initial_determ; eauto). subst s0.
+    inversion SB' as [t2 s2 r2 STAR2 FINAL2 | t2 s2 STAR2 SIL | T REACT
+                     | t2 s2 STAR2 NS2 NF2]; subst.
+    + destruct (star_follows _ _ _ STAR2 _ _ STAR N NS) as [t3 [A B3]].
+      destruct (star_nostep_inv _ _ _ B3 (sd_final_nostep DET _ _ FINAL2)) as [C D].
+      subst. rewrite E0_right.
+      f_equal. eapply sd_final_determ; eauto.
+    + destruct (star_follows _ _ _ STAR2 _ _ STAR N NS) as [t3 [A B3]].
+      elim (no_forever_silent _ _ _ B3 NS SIL).
+    + elim (no_forever_reactive (length t) _ _ _ (le_n _) STAR N NS T REACT).
+    + destruct (star_follows _ _ _ STAR2 _ _ STAR N NS) as [t3 [A B3]].
+      destruct (star_nostep_inv _ _ _ B3 NS2) as [C D]. subst.
+      elim (NF2 _ FINAL).
+  - elim (NOINIT' s INIT).
+Qed.
+
+End UNIQUE.
+
+(** The Asm program of a Clight program that terminates with a trace without inputs has that
+    termination as its only behavior. *)
+Theorem clight2_bigstep_asm_unique:
+  forall p p1 p2 tp t r,
+  SimplExpr.transl_program p = OK p1 ->
+  SimplLocals.transf_program p1 = OK p2 ->
+  transf_c_program p = OK tp ->
+  ClightBigstep.Clight2.bigstep_program_terminates p2 t r ->
+  no_inputs t ->
+  forall beh, program_behaves (Asm.semantics tp) beh <-> beh = Terminates t r.
+Proof.
+  intros p p1 p2 tp t r E1 E2 T B N beh. split.
+  - intros B'. eapply determinate_unique_behavior; eauto.
+    apply Asm.semantics_determinate.
+    eapply clight2_bigstep_to_asm; eauto.
+  - intros; subst. eapply clight2_bigstep_to_asm; eauto.
+Qed.
+
 Print Assumptions clight2_bigstep_to_asm.
+Print Assumptions clight2_bigstep_asm_unique.

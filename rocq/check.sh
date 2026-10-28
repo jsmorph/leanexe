@@ -5,7 +5,7 @@
 # parameters that its theorems depend on, by Print Assumptions, must be those of CompCert's
 # transf_c_program_correct and ClassicalEpsilon.constructive_indefinite_description, which
 # forward_simulation_same_safe_behavior of common/Behaviors.v uses.  Clight2Asm.v imports
-# Compopts, so the comparison drops that module's qualifier.
+# Compopts and Events, so the comparison drops those modules' qualifiers.
 # Usage: rocq/check.sh COMPCERT_TREE
 set -euo pipefail
 if [ "$#" -ne 1 ]; then
@@ -38,7 +38,7 @@ printf 'Require Import Compiler.\nPrint Assumptions transf_c_program_correct.\n'
 (cd "$work" && coqc "${flags[@]}" Clight2Asm.v >clight2asm.out)
 (cd "$work" && coqc "${flags[@]}" Reference.v >reference.out)
 names() {
-  grep -oE '^[A-Za-z][A-Za-z0-9_.]*( :|$)' "$1" | sed 's/ :$//; s/^Compopts\.//' | sort -u
+  grep -oE '^[A-Za-z][A-Za-z0-9_.]*( :|$)' "$1" | sed 's/ :$//; s/^Compopts\.//; s/^Events\.//' | sort -u
 }
 extra=$(comm -23 <(names "$work/clight2asm.out") <(names "$work/reference.out") | paste -sd' ')
 if [ "$extra" != "ClassicalEpsilon.constructive_indefinite_description" ]; then
