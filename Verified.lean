@@ -139,3 +139,4 @@ import Verified.AlignedEnv
 import Verified.AlignedTail
 import Verified.AlignedTailBody
 import Verified.AlignedTailLoop
+import Verified.AlignedTailTree
