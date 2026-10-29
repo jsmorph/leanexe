@@ -129,3 +129,4 @@ import Verified.AlignedLoops
 import Verified.AlignedWriters
 import Verified.AlignedBytes
 import Verified.AlignedArgs
+import Verified.AlignedCall
