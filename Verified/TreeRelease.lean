@@ -28,25 +28,5 @@ theorem wp_releaseNode {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap
       (hKept r hr hPos hKeep).2, nofun⟩⟩
   simpa using hNext heap' store' hStep hTop
 
-theorem wp_releaseHeader {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
-    {shape : TreeShape} {r : Fin shape.records} {store : Store Unit} {s : Locals} {ptr : UInt64}
-    {vs : List Value}
-    {rest : Program} {Q : Assertion Unit} (hAt : heap.At store)
-    (hOwned : TreeHeader.Owned shape r heap store ptr)
-    (hNext : ∀ heap' store', Step heap store (fun r => regionsDisjoint r (block store ptr))
-      heap' store' [] → heap'.top = heap.top →
-      wp m rest Q store' { s with values := vs } host) :
-    wp m (.call 1 :: rest) Q store { s with values := .i64 ptr :: vs } host := by
-  obtain ⟨words, _, hNode⟩ := hOwned
-  have hBlocks : Node.blocks store ptr (.record (words.map Slot.word)) = [block store ptr] := by
-    simp only [Node.blocks, wordSlots_blocks]
-  refine wp_releaseNode hm hAt hNode (by rw [hBlocks]; simp) ?_
-  intro heap' store' hStep hTop
-  exact hNext heap' store'
-    (hStep.mono (fun r hr _ hb => by rw [hBlocks, List.mem_singleton] at hb; subst hb; exact hr)
-      (fun _ h => h)) hTop
-
 #print axioms wp_releaseNode
-#print axioms wp_releaseHeader
-
 end Verified

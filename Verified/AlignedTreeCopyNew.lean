@@ -29,6 +29,17 @@ theorem CopyRecord.Holds.maskPushesX {strict : Bool} {m : Module} {host : HostEn
   exact PushesWordX.selectCode r shape.mask (PushesWordX.tag hSrc hRoom hAl)
     (fun ht => NodeBorrowed.tag h.borrowed hPrefix ht)
 
+/-- The mask code of the slot test pushes the mask of the record whose source is at local
+`src`. -/
+theorem CopyRecord.Holds.maskPushes {m : Module} {host : HostEnv Unit} {shape : TreeShape}
+    {heap : Heap} {store : Store Unit} {parent : UInt64} {record : CopyRecord} {s : Locals}
+    {src : Nat} (h : record.Holds shape heap store parent) (hHeap : heap.At store)
+    (hSrc : s.get src = some (.i64 record.source)) :
+    PushesWord m host (shape.selectCode (treeTagCode src) shape.mask) store s
+      (maskOf record.slots) :=
+  CopyRecord.Holds.maskPushesX (strict := false) h hHeap hSrc nofun
+#print axioms CopyRecord.Holds.maskPushes
+
 theorem CopyRecord.Holds.arrayMaskPushesX {strict : Bool} {m : Module} {host : HostEnv Unit} {shape : TreeShape}
     {heap : Heap} {store : Store Unit} {parent : UInt64} {record : CopyRecord} {s : Locals}
     {src : Nat} (h : record.Holds shape heap store parent) (hHeap : heap.At store)
@@ -42,6 +53,17 @@ theorem CopyRecord.Holds.arrayMaskPushesX {strict : Bool} {m : Module} {host : H
   rw [hArrays]
   exact PushesWordX.selectCode r shape.arrayMask (PushesWordX.tag hSrc hRoom hAl)
     (fun ht => NodeBorrowed.tag h.borrowed hPrefix ht)
+
+/-- The mask code of the array test pushes the array mask of the record whose source is at local
+`src`. -/
+theorem CopyRecord.Holds.arrayMaskPushes {m : Module} {host : HostEnv Unit} {shape : TreeShape}
+    {heap : Heap} {store : Store Unit} {parent : UInt64} {record : CopyRecord} {s : Locals}
+    {src : Nat} (h : record.Holds shape heap store parent) (hHeap : heap.At store)
+    (hSrc : s.get src = some (.i64 record.source)) :
+    PushesWord m host (shape.selectCode (treeTagCode src) shape.arrayMask) store s
+      (arrayMaskOf record.slots) :=
+  CopyRecord.Holds.arrayMaskPushesX (strict := false) h hHeap hSrc nofun
+#print axioms CopyRecord.Holds.arrayMaskPushes
 
 theorem wpX_treeCopyArrayTest {strict : Bool} {m : Module} {host : HostEnv Unit} {store : Store Unit}
     {s : Locals} {shape : TreeShape} {base i : Nat} {mask : UInt64}
@@ -58,6 +80,18 @@ theorem wpX_treeCopyArrayTest {strict : Bool} {m : Module} {host : HostEnv Unit}
   by_cases hBit : ((mask >>> (UInt64.ofNat i % 64)) &&& 1) = 0 <;>
     simpa [hIndex, treeCopyArrayCondition, hBit] using hNext
 
+theorem wp_treeCopyArrayTest {m : Module} {host : HostEnv Unit} {store : Store Unit}
+    {s : Locals} {shape : TreeShape} {base i : Nat} {mask : UInt64}
+    {rest : Program} {Q : Assertion Unit}
+    (hMask : PushesWord m host (shape.selectCode (treeTagCode (base + 3)) shape.arrayMask) store
+      s mask)
+    (hIndex : s.get (base + 2) = some (.i64 (UInt64.ofNat i)))
+    (hNext : wp m rest Q store
+      { s with values := .i32 (treeCopyArrayCondition mask i) :: s.values } host) :
+    wp m (treeCopyArrayTest shape base ++ rest) Q store s host :=
+  wpX_treeCopyArrayTest (strict := false) hMask hIndex hNext
+#print axioms wp_treeCopyArrayTest
+
 theorem CopyRecord.Holds.bufferMaskPushesX {strict : Bool} {m : Module} {host : HostEnv Unit} {shape : TreeShape}
     {heap : Heap} {store : Store Unit} {parent : UInt64} {record : CopyRecord} {s : Locals}
     {src : Nat} (h : record.Holds shape heap store parent) (hHeap : heap.At store)
@@ -71,6 +105,17 @@ theorem CopyRecord.Holds.bufferMaskPushesX {strict : Bool} {m : Module} {host : 
   rw [hBuffers]
   exact PushesWordX.selectCode r shape.bufferMask (PushesWordX.tag hSrc hRoom hAl)
     (fun ht => NodeBorrowed.tag h.borrowed hPrefix ht)
+
+/-- The mask code of the buffer test pushes the buffer mask of the record whose source is at local
+`src`. -/
+theorem CopyRecord.Holds.bufferMaskPushes {m : Module} {host : HostEnv Unit} {shape : TreeShape}
+    {heap : Heap} {store : Store Unit} {parent : UInt64} {record : CopyRecord} {s : Locals}
+    {src : Nat} (h : record.Holds shape heap store parent) (hHeap : heap.At store)
+    (hSrc : s.get src = some (.i64 record.source)) :
+    PushesWord m host (shape.selectCode (treeTagCode src) shape.bufferMask) store s
+      (bufferMaskOf record.slots) :=
+  CopyRecord.Holds.bufferMaskPushesX (strict := false) h hHeap hSrc nofun
+#print axioms CopyRecord.Holds.bufferMaskPushes
 
 theorem wpX_treeCopyBufferTest {strict : Bool} {m : Module} {host : HostEnv Unit} {store : Store Unit}
     {s : Locals} {shape : TreeShape} {base i : Nat} {mask : UInt64}
@@ -87,6 +132,18 @@ theorem wpX_treeCopyBufferTest {strict : Bool} {m : Module} {host : HostEnv Unit
   by_cases hBit : ((mask >>> (UInt64.ofNat i % 64)) &&& 1) = 0 <;>
     simpa [hIndex, treeCopyBufferCondition, hBit] using hNext
 
+theorem wp_treeCopyBufferTest {m : Module} {host : HostEnv Unit} {store : Store Unit}
+    {s : Locals} {shape : TreeShape} {base i : Nat} {mask : UInt64}
+    {rest : Program} {Q : Assertion Unit}
+    (hMask : PushesWord m host (shape.selectCode (treeTagCode (base + 3)) shape.bufferMask) store
+      s mask)
+    (hIndex : s.get (base + 2) = some (.i64 (UInt64.ofNat i)))
+    (hNext : wp m rest Q store
+      { s with values := .i32 (treeCopyBufferCondition mask i) :: s.values } host) :
+    wp m (treeCopyBufferTest shape base ++ rest) Q store s host :=
+  wpX_treeCopyBufferTest (strict := false) hMask hIndex hNext
+#print axioms wp_treeCopyBufferTest
+
 theorem wpX_treeCopyTest {strict : Bool} {m : Module} {host : HostEnv Unit} {store : Store Unit}
     {s : Locals} {shape : TreeShape} {base i : Nat} {word mask : UInt64}
     {rest : Program} {Q : Assertion Unit}
@@ -102,6 +159,18 @@ theorem wpX_treeCopyTest {strict : Bool} {m : Module} {host : HostEnv Unit} {sto
   by_cases hBit : ((mask >>> (UInt64.ofNat i % 64)) &&& 1) = 0 <;>
     by_cases hZero : word = 0 <;>
     simpa [hIndex, hWord, treeCopyCondition, hBit, hZero] using hNext
+
+theorem wp_treeCopyTest {m : Module} {host : HostEnv Unit} {store : Store Unit}
+    {s : Locals} {shape : TreeShape} {base i : Nat} {word mask : UInt64}
+    {rest : Program} {Q : Assertion Unit}
+    (hMask : PushesWord m host (shape.selectCode (treeTagCode (base + 3)) shape.mask) store s mask)
+    (hIndex : s.get (base + 2) = some (.i64 (UInt64.ofNat i)))
+    (hWord : s.get (base + 4) = some (.i64 word))
+    (hNext : wp m rest Q store
+      { s with values := .i32 (treeCopyCondition mask i word) :: s.values } host) :
+    wp m (treeCopyTest shape base ++ rest) Q store s host :=
+  wpX_treeCopyTest (strict := false) hMask hIndex hWord hNext
+#print axioms wp_treeCopyTest
 
 theorem wpX_treeCopyBegin {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap}
     {shape : TreeShape} (r : Fin shape.records) {width size : Nat} {store : Store Unit}
@@ -165,6 +234,25 @@ theorem wpX_treeCopyBegin {strict : Bool} {m : Module} {host : HostEnv Unit} {he
         (PushesWordX.tag hInput hSourceRoom (fun hs => (hAl hs).2)) (fun h => hTagged h)) ?_
     exact hLink _ (Mem.write64_pages ..) hNext
 
+theorem wp_treeCopyBegin {m : Module} {host : HostEnv Unit} {heap : Heap}
+    {shape : TreeShape} (r : Fin shape.records) {width size : Nat} {store : Store Unit}
+    {s : Locals} {ptr input : Nat} {parent : Option Nat} {p source parentValue : UInt64}
+    {rest : Program} {Q : Assertion Unit} (hRaw : RecordStorage width heap store p)
+    (hHeap : heap.At store) (hPtr : s.get ptr = some (.i64 p))
+    (hInput : s.get input = some (.i64 source))
+    (hSourceRoom : source.toUInt32.toNat + 8 ≤ store.mem.pages * 65536)
+    (hTagged : shape.tagged = true →
+      store.mem.read64 source.toUInt32 = UInt64.ofNat (shape.ctorIndex r))
+    (hSize : shape.width r = size)
+    (hParent : parent.elim (parentValue = 0) (fun pos => s.get pos = some (.i64 parentValue)))
+    (hNext : wp m rest Q (beginRecordStore shape.tagged store p source parentValue size) s host) :
+    wp m (treeCopyBegin shape input ptr [.localGet input]
+      (parent.elim [.constI64 0] (fun pos => [.localGet pos])) ++ rest)
+      Q store s host :=
+  wpX_treeCopyBegin (strict := false) r hRaw hHeap hPtr hInput hSourceRoom hTagged hSize hParent
+    nofun hNext
+#print axioms wp_treeCopyBegin
+
 theorem wpX_treeCopyNew {strict : Bool} {m : Module} (hm : Runtime m)
     (hRt : strict = true → AllocAligned m) {host : HostEnv Unit}
     {shape : TreeShape} {heap : Heap} {store : Store Unit} {s : Locals} {dst input : Nat}
@@ -218,5 +306,29 @@ theorem wpX_treeCopyNew {strict : Bool} {m : Module} (hm : Runtime m)
     (fun hs => ⟨(hAlloc hs).1, hSrcAl hs⟩)
     (hNext heap' _ ptr hAll hRecord hTop fun hs => ⟨(hAlloc hs).2.2, (hAlloc hs).1, by
       rw [hCapacity]; exact (hAlloc hs).2.1⟩)
+
+theorem wp_treeCopyNew {m : Module} (hm : Runtime m) {host : HostEnv Unit}
+    {shape : TreeShape} {heap : Heap} {store : Store Unit} {s : Locals} {dst input : Nat}
+    {parent : Option Nat} {source parentValue : UInt64} {slots : List LeanExe.Pipeline.Slot}
+    {rest : Program} {Q : Assertion Unit} (hAt : heap.At store)
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK (!decide (heap.Within store m (allocCost (8 * slots.length)))) Q)
+    (hLayout : NodeLayout shape (.record slots)) (hSource : NodeBorrowed heap store source (.record slots))
+    (hInput : s.get input = some (.i64 source))
+    (hParent : parent.elim (parentValue = 0) (fun pos => s.get pos = some (.i64 parentValue)))
+    (hInputNe : input ≠ dst) (hParentNe : ∀ pos, parent = some pos → pos ≠ dst)
+    (hLow : s.params.length ≤ dst) (hHigh : dst < s.params.length + s.locals.length)
+    (hNext : ∀ heap' store' ptr,
+      Step heap store (fun _ => True) heap' store' [block store' ptr] →
+      CopyRecord.Holds shape heap' store' parentValue ⟨source, ptr, slots, 0⟩ →
+      heap'.top.toNat ≤ heap.top.toNat + allocCost (8 * slots.length) →
+      wp m rest Q store' (setLocal s dst (.i64 ptr)) host) :
+    wp m (treeCopyAllocate shape input dst ++ treeCopyBegin shape input dst [.localGet input]
+      (parent.elim [.constI64 0] (fun pos => [.localGet pos])) ++ rest)
+      Q store s host :=
+  wpX_treeCopyNew (strict := false) hm nofun hAt hCap hTrap hLayout hSource hInput hParent hInputNe
+    hParentNe hLow hHigh nofun nofun
+    (fun heap' store' ptr a1 a2 a3 _ => hNext heap' store' ptr a1 a2 a3)
+#print axioms wp_treeCopyNew
 
 end Verified

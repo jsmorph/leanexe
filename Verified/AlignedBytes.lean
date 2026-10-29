@@ -49,6 +49,22 @@ theorem wpX_allocate {strict : Bool} {m : Module} (hm : Runtime m)
   · rw [hBlock.capacity_eq]
     exact Heap.allocate_shape h32 hFits
 
+theorem wp_allocate {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
+    {store : Store Unit} {s : Locals} {count : UInt64} {vs : List Value} {rest : Program}
+    {Q : Assertion Unit} {c : Nat} (hAt : heap.At store) (h32 : count.toNat ≤ 4294967296)
+    (hCap : store.memoryCap m 0 ≤ 65535) (hc : allocCost (allocSize count).toNat ≤ c)
+    (hTrap : TrapOK (!decide (heap.Within store m c)) Q)
+    (hNext : ∀ (heap' : Heap) (store' : Store Unit) (root : UInt64) (bytes : LeanExe.Bytes),
+      bytes.data.size = count.toNat →
+      Step heap store (fun _ => True) heap' store' [block store' root] →
+      Heap.Buffer heap' store' root bytes →
+      AllocShape heap heap' count (capacityAt store' root) →
+      heap'.top.toNat ≤ heap.top.toNat + c →
+      wp m rest Q store' { s with values := .i64 root :: vs } host) :
+    wp m (.call 0 :: rest) Q store { s with values := .i64 count :: vs } host :=
+  wpX_allocate (strict := false) hm nofun hAt nofun h32 hCap hc hTrap
+    (fun heap' store' root bytes a1 a2 a3 a4 a5 _ => hNext heap' store' root bytes a1 a2 a3 a4 a5)
+
 /-- `wp_copy` under the flag. -/
 theorem wpX_copy {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit}
@@ -182,6 +198,28 @@ theorem wpX_copyOwned {strict : Bool} {m : Module} (hm : Runtime m)
       (fun hs => ⟨(hAlA hs).2.2, fun _ => ⟨(hAlA hs).1, by rw [hCapacity]; exact (hAlA hs).2.1⟩⟩)
     simpa [hValues, s1, setLocal, hLength2] using hFinal
 
+theorem wp_copyOwned {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
+    {store : Store Unit} {s : Locals} {source length : UInt64} {input : LeanExe.Bytes}
+    {sourceSlot lengthSlot base : Nat} {rest : Program} {Q : Assertion Unit}
+    (hHeap : heap.At store) (hSource : At store.mem source input)
+    (hRegion : heap.Region (source.toNat, input.data.size))
+    (hLength : length.toNat = input.data.size)
+    (hSourceLocal : s.get sourceSlot = some (.i64 source))
+    (hLengthLocal : s.get lengthSlot = some (.i64 length))
+    (hSourceBelow : sourceSlot < base) (hLengthBelow : lengthSlot < base)
+    (hBase : s.params.length ≤ base) (hRoom : base + 2 ≤ s.positions)
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK (!decide (heap.Within store m (allocationCost input.data.size))) Q)
+    (hNext : ∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (root : UInt64),
+      Step heap store (fun _ => True) heap' store' (regions store' root) →
+      Rep heap' store' root length input → Frame base s s' →
+      heap'.top.toNat ≤ heap.top.toNat + allocationCost input.data.size →
+      (length = 0 → root = 0) →
+      wp m rest Q store' { s' with values := .i64 length :: .i64 root :: s.values } host) :
+    wp m (copyOwnedCode sourceSlot lengthSlot base ++ rest) Q store s host :=
+  wpX_copyOwned (strict := false) hm nofun hHeap nofun hSource hRegion hLength hSourceLocal
+    hLengthLocal hSourceBelow hLengthBelow hBase hRoom hCap hTrap
+    (fun heap' store' s' root a1 a2 a3 a4 a5 _ => hNext heap' store' s' root a1 a2 a3 a4 a5)
 
 /-- `wp_literal` under the flag. -/
 theorem wpX_literal {strict : Bool} {m : Module} (hm : Runtime m)
@@ -245,6 +283,24 @@ theorem wpX_literal {strict : Bool} {m : Module} (hm : Runtime m)
     (by simpa only [Literal.value, ByteArray.size, List.size_toArray] using hTop) hAlC
   simpa only [s2, s1, setLocal] using hNext'
 
+theorem wp_literal {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
+    {store : Store Unit} {s : Locals} {pool : LiteralPool} {bytes : Literal} {offset base : Nat}
+    {rest : Program} {Q : Assertion Unit}
+    (hHeap : heap.At store) (hPool : pool.Static heap store)
+    (hOffset : literalOffset pool.values bytes = some offset) (hNonempty : bytes ≠ [])
+    (hBase : s.params.length ≤ base) (hRoom : base + 4 ≤ s.positions)
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK (!decide (heap.Within store m (allocationCost bytes.length))) Q)
+    (hNext : ∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (root : UInt64),
+      Step heap store (fun _ => True) heap' store' (regions store' root) →
+      Rep heap' store' root (UInt64.ofNat bytes.length) bytes.value →
+      Frame base s s' → heap'.top.toNat ≤ heap.top.toNat + allocationCost bytes.length →
+      wp m rest Q store'
+        { s' with values := .i64 (UInt64.ofNat bytes.length) :: .i64 root :: s.values } host) :
+    wp m (literalCode (UInt64.ofNat (pool.base + offset)) bytes base ++ rest) Q
+      store s host :=
+  wpX_literal (strict := false) hm nofun hHeap nofun hPool hOffset hNonempty hBase hRoom hCap hTrap
+    (fun heap' store' s' root a1 a2 a3 a4 _ => hNext heap' store' s' root a1 a2 a3 a4)
 
 /-- `wp_storeWord` under the flag. -/
 theorem wpX_storeWord {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap}
@@ -386,6 +442,45 @@ theorem wpX_buildLoop {strict : Bool} {m : Module} {host : HostEnv Unit} {heap :
       · simp only [hIndexNext, hSucc64, hi64]
         omega
 
+theorem wp_buildLoop {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
+    {s : Locals} {count root : UInt64} {output initial : LeanExe.Bytes}
+    {base : Nat} {element rest : Program} {Q : Assertion Unit} {aborts : Bool}
+    (P : Nat → Heap → Store Unit → Locals → Prop)
+    (hHeap : heap.At store) (hBuffer : Heap.Buffer heap store root initial)
+    (hSize : output.data.size = initial.data.size)
+    (hLength : output.data.size = count.toNat)
+    (hCount : s.get base = some (.i64 count))
+    (hRoot : s.get (base + 1) = some (.i64 root))
+    (hLow : s.params.length ≤ base + 2) (hHigh : base + 2 < s.positions)
+    (hTrap : TrapOK aborts Q)
+    (hInitial : P 0 heap store (setLocal { s with values := s.values } (base + 2) (.i64 0)))
+    (hElement : ∀ (i : Nat) (hi : i < output.data.size)
+        (heapI : Heap) (st : Store Unit) (si : Locals),
+      heapI.At st → Heap.Buffer heapI st root (overlay output initial hSize i) →
+      Frame base s si → si.get base = some (.i64 count) →
+      si.get (base + 1) = some (.i64 root) →
+      si.get (base + 2) = some (.i64 (UInt64.ofNat i)) → si.values = s.values →
+      P i heapI st si → ∀ (tail : Program) (Post : Assertion Unit),
+      TrapOK aborts Post →
+      (∀ (heapE : Heap) (stE : Store Unit) (se : Locals) (value : UInt64),
+        heapE.At stE → Heap.Buffer heapE stE root (overlay output initial hSize i) →
+        Frame (base + 3) si se → value.toUInt8 = output.data[i] →
+        P (i + 1) heapE (writeByte stE root (UInt64.ofNat i) value.toUInt8)
+          (setLocal { se with values := si.values } (base + 2) (.i64 (UInt64.ofNat (i + 1)))) →
+        wp m tail Post stE
+          { se with values := .i64 value :: .i32 (root + UInt64.ofNat i).toUInt32 :: si.values }
+          host) →
+      wp m (element ++ tail) Post st
+        { si with values := .i32 (root + UInt64.ofNat i).toUInt32 :: si.values } host)
+    (hNext : ∀ (heap' : Heap) (store' : Store Unit) (s' : Locals), heap'.At store' →
+      Heap.Buffer heap' store' root output → Frame base s s' →
+      s'.get base = some (.i64 count) → s'.get (base + 1) = some (.i64 root) →
+      s'.get (base + 2) = some (.i64 (UInt64.ofNat output.data.size)) →
+      P output.data.size heap' store' s' → s'.values = s.values →
+      wp m rest Q store' s' host) :
+    wp m (buildLoopCode base (base + 1) (base + 2) element ++ rest) Q store s host :=
+  wpX_buildLoop (strict := false) P hHeap hBuffer hSize hLength hCount hRoot hLow hHigh hTrap
+    hInitial hElement hNext
 
 theorem wpX_build_zero {strict : Bool} {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
     {count destination index : Nat} {element rest : Program} {Q : Assertion Unit}
@@ -402,6 +497,13 @@ theorem wpX_build_zero {strict : Bool} {m : Module} {host : HostEnv Unit} {store
   simp only [Locals.get] at hCount
   simpa [hCount] using hNext
 
+theorem wp_build_zero {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
+    {count destination index : Nat} {element rest : Program} {Q : Assertion Unit}
+    (hCount : s.get count = some (.i64 0))
+    (hNext : wp m rest Q store { s with values := .i64 0 :: .i64 0 :: s.values } host) :
+    wp m (buildCode count destination index element ++ rest) Q store s host :=
+  wpX_build_zero (strict := false) hCount hNext
+
 theorem wpX_build_overflow {strict : Bool} {m : Module} {host : HostEnv Unit} {store : Store Unit}
     {s : Locals} {length : UInt64} {count destination index : Nat} {element rest : Program}
     {Q : Assertion Unit} (hCount : s.get count = some (.i64 length))
@@ -414,6 +516,12 @@ theorem wpX_build_overflow {strict : Bool} {m : Module} {host : HostEnv Unit} {s
   rw [wpX_unreachable_cons]
   exact hTrap _
 
+theorem wp_build_overflow {m : Module} {host : HostEnv Unit} {store : Store Unit}
+    {s : Locals} {length : UInt64} {count destination index : Nat} {element rest : Program}
+    {Q : Assertion Unit} (hCount : s.get count = some (.i64 length))
+    (hLarge : 4294967296 ≤ length) (hTrap : TrapOK true Q) :
+    wp m (buildCode count destination index element ++ rest) Q store s host :=
+  wpX_build_overflow (strict := false) hCount hLarge hTrap
 
 end Verified.Bytes
 
@@ -494,6 +602,15 @@ theorem specX_bytesLiteral {strict : Bool} {S : List Sig} {Γ : List Ty} {m : Mo
       fun _ => top_unpaid rfl (by simp only [Expr.allocs]; omega)
     simpa only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append] using hDone
 
+theorem spec_bytesLiteral {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
+    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit}
+    {pv : List Value} {pool : Bytes.LiteralPool} (hm : Runtime m) (bytes : List UInt8)
+    (hCover : (Expr.bytesLiteral (S := S) (Γ := Γ) bytes).Covered pool) :
+    ∀ (env : Env Γ) slots paid live, CodeSpec m funs flags bounds fits host pv
+      (Expr.bytesLiteral (S := S) (Γ := Γ) bytes) env slots paid live pool :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_bytesLiteral (strict := false) hm nofun bytes hCover env slots
+      paid live)
 
 /-- The capacity of an aligned owned buffer at a nonzero root is a multiple of 8. -/
 theorem Ty.AlignedVal.bytesCap {store : Store Unit} {root l : UInt64} {v : LeanExe.Bytes}

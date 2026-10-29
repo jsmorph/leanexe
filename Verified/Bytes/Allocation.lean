@@ -67,29 +67,4 @@ theorem allocationCost_ge {count : Nat} (hCount : count ≠ 0) :
   have : (count + 7) / 8 ≤ max 1 ((count + 7) / 8) := Nat.le_max_right _ _
   omega
 
-theorem wp_allocate {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
-    {store : Store Unit} {s : Locals} {count : UInt64} {vs : List Value} {rest : Program}
-    {Q : Assertion Unit} {c : Nat} (hAt : heap.At store) (h32 : count.toNat ≤ 4294967296)
-    (hCap : store.memoryCap m 0 ≤ 65535) (hc : allocCost (allocSize count).toNat ≤ c)
-    (hTrap : TrapOK (!decide (heap.Within store m c)) Q)
-    (hNext : ∀ (heap' : Heap) (store' : Store Unit) (root : UInt64) (bytes : LeanExe.Bytes),
-      bytes.data.size = count.toNat →
-      Step heap store (fun _ => True) heap' store' [block store' root] →
-      Heap.Buffer heap' store' root bytes →
-      AllocShape heap heap' count (capacityAt store' root) →
-      heap'.top.toNat ≤ heap.top.toNat + c →
-      wp m rest Q store' { s with values := .i64 root :: vs } host) :
-    wp m (.call 0 :: rest) Q store { s with values := .i64 count :: vs } host := by
-  refine Verified.wp_alloc hm hAt h32 hCap hc hTrap fun hFits hTop => ?_
-  have hBlock := hAt.allocate_block 1 hFits
-  have hCapacity := allocated_capacity (allocSize count) heap.free
-  refine hNext _ _ _ (snapshot _ _ count.toNat) (snapshot_size ..)
-    (Step.allocate 1 hAt hFits) (block_snapshot hBlock ?_ _ ?_) ?_ hTop
-  · have := allocSize_minimum count
-    omega
-  · have := le_allocSize h32
-    omega
-  · rw [hBlock.capacity_eq]
-    exact Heap.allocate_shape h32 hFits
-
 end Verified.Bytes

@@ -19,15 +19,6 @@ theorem PushesWord.const {m : Module} {host : HostEnv Unit} {store : Store Unit}
   intro vs rest Q h
   simpa only [List.singleton_append, wp_constI64_cons] using h
 
-theorem PushesWord.tag {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
-    {ptr : Nat} {p : UInt64} (hPtr : s.get ptr = some (.i64 p))
-    (hRoom : p.toUInt32.toNat + 8 ≤ store.mem.pages * 65536) :
-    PushesWord m host (treeTagCode ptr) store s (store.mem.read64 p.toUInt32) := by
-  intro vs rest Q h
-  simp only [Locals.get] at hPtr
-  simp only [UInt64.toNat_toUInt32, Nat.reducePow] at hRoom
-  simpa [treeTagCode, wp_simp, hPtr, wrap_toUInt32_num, Nat.not_lt.mpr hRoom] using h
-
 theorem PushesWord.selectChain {m : Module} {host : HostEnv Unit} {store : Store Unit}
     {s : Locals} {tag : Program} {t : UInt64} (hTag : PushesWord m host tag store s t) :
     ∀ pairs : List (UInt64 × UInt64),
@@ -52,22 +43,6 @@ theorem PushesWord.selectChain {m : Module} {host : HostEnv Unit} {store : Store
         ← List.append_nil (Verified.selectChain tag (p :: rest))]
       apply hRest vs []
       simpa using h
-
-theorem wp_headerStorePushes {m : Module} {host : HostEnv Unit} {store : Store Unit}
-    {s : Locals} {ptr : Nat} {p back value : UInt64} {code rest : Program} {Q : Assertion Unit}
-    (hPtr : s.get ptr = some (.i64 p))
-    (hRoom : (p - back).toUInt32.toNat + 8 ≤ store.mem.pages * 65536)
-    (hCode : PushesWord m host code store s value)
-    (hNext : wp m rest Q
-      { store with mem := store.mem.write64 (p - back).toUInt32 value } s host) :
-    wp m (headerStore ptr back code ++ rest) Q store s host := by
-  simp only [Locals.get] at hPtr
-  simp only [UInt64.toUInt32_sub] at hRoom hNext
-  simp only [headerStore, List.append_assoc, List.cons_append, List.nil_append]
-  simp only [wp_localGet_cons, Locals.get, hPtr, wp_constI64_cons, wp_subI64_cons,
-    wp_wrapI64_cons, wrap_toUInt32, UInt64.toUInt32_sub]
-  apply hCode
-  simpa [wp_simp, Nat.not_lt.mpr hRoom] using hNext
 
 /-- `selectCode` pushes the entry of record constructor `r` when the tag code pushes `t` and, for a
 tagged shape, `t` is `r`'s tag. -/
@@ -158,8 +133,6 @@ theorem RecordStorage.readSlot_write {width : Nat} {heap : Heap} {store : Store 
   rw [UInt64.toNat_toUInt32]
   omega
 
-#print axioms PushesWord.tag
-#print axioms wp_headerStorePushes
 #print axioms PushesWord.selectChain
 #print axioms PushesWord.selectCode
 #print axioms TreeShape.selectCode_untagged

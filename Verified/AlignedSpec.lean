@@ -16,8 +16,7 @@ the code and the alignment of the value it pushes.  `CodeSpecX.false_iff` states
 `specX_size` ports `spec_size`, the length of an array, whose code loads the length word at the
 array's address and then releases the array when it is owned and dies there.  The release is the
 boundary of this port: `ReadReleaseX` is the flagged statement of `read_release`, which
-`readReleaseX_false` proves at `strict = false` from `read_release`, and whose proof at
-`strict = true` would port the release of every type.
+`readReleaseX` in `Verified/AlignedReleaseChain.lean` proves for every runtime.
 -/
 
 namespace Verified
@@ -136,10 +135,6 @@ def ReadReleaseX (strict : Bool) (m : Module) (host : HostEnv Unit) : Prop :=
         releaseCode t (slots.getD x.index default).loc else []) ++ rest) Q store
       { s with values := vals } host
 
-theorem readReleaseX_false (hm : Runtime m) : ReadReleaseX false m host :=
-  fun x hVars hAt _ hNext => read_release hm x hVars hAt fun heap' store' ev hTop =>
-    hNext heap' store' ev hTop nofun
-
 end
 
 section Cases
@@ -176,13 +171,6 @@ theorem specX_size {strict : Bool} (_hm : Runtime m) (hRel : ReadReleaseX strict
     (After.ofScalar rfl ev.step rfl ev.frame ev.holds rfl)
     (fun hs => ⟨hAl' hs, fun r hr => by rw [Ty.regions_scalar _ rfl] at hr; exact nomatch hr⟩)
     fun _ => top_unpaid_le rfl (by rw [hTop]; omega)
-
-/-- At `strict = false` the port gives `spec_size`'s statement. -/
-theorem spec_size_of_flag (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e)) :
-    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv
-      (Expr.size (S := S) x) env slots paid live :=
-  fun env slots paid live => CodeSpecX.false_iff.mp
-    (specX_size (strict := false) hm (readReleaseX_false hm) x env slots paid live)
 
 end Cases
 

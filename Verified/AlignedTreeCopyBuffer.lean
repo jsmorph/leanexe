@@ -104,6 +104,30 @@ theorem CopyInv.freshStepX {strict : Bool} {shape : TreeShape} {heap0 heap heap'
     · exact (hA hs).sources current List.mem_cons_self
     · exact (hA hs).sources record (List.mem_cons_of_mem current hr)
 
+/-- The invariant after the copy of a slot whose value takes the fresh blocks `fresh`: their
+allocation, and the write of the value into the slot and of the next index into the header. -/
+theorem CopyInv.freshStep {shape : TreeShape} {heap0 heap heap' : Heap}
+    {initial store store1 store' : Store Unit} {root : List LeanExe.Pipeline.Slot}
+    {result : UInt64} {limit : Nat} {current : CopyRecord} {parents : List CopyRecord}
+    {fresh : List (Nat × Nat)}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hWork : CopyWork.Step (current.work parents)
+      ({ current with next := current.next + 1 }.work parents))
+    (hNew : Step heap store (fun _ => True) heap' store1 fresh)
+    (hFreshApart : fresh.Pairwise regionsDisjoint)
+    (hTop : heap'.top.toNat ≤ heap.top.toNat + (current.work parents).charge)
+    (hCurrent : CopyRecord.Holds shape heap' store'
+      ((parents.head?.map CopyRecord.pointer).getD 0) { current with next := current.next + 1 })
+    (hWrite : Step heap' store1 (fun r => regionsDisjoint r (block store1 current.pointer))
+      heap' store' [])
+    (hBlocks : ({ current with next := current.next + 1 } : CopyRecord).blocks store' =
+      current.blocks store1 ++ fresh) :
+    CopyInv shape heap0 initial root result limit heap' store'
+      { current with next := current.next + 1 } parents :=
+  (CopyInv.freshStepX (strict := false) ⟨h, nofun⟩ hWork hNew hFreshApart hTop hCurrent hWrite
+    hBlocks nofun).1
+#print axioms CopyInv.freshStep
+
 theorem wpX_treeCopyBufferInv {strict : Bool} {m : Module} (hm : Runtime m)
     (hRt : strict = true → AllocAligned m) {host : HostEnv Unit}
     {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
@@ -358,5 +382,32 @@ theorem wpX_treeCopyBufferInv {strict : Bool} {m : Module} (hm : Runtime m)
               simp only [block]
               omega⟩) hLocals8)
   simpa only [List.append_assoc, List.cons_append, List.nil_append] using hRun
+
+/-- The copy of a buffer's root slot: the buffer goes to a new object, or stays at root 0 when it
+is empty, and its root goes into the slot of the record being copied, whose index advances. -/
+theorem wp_treeCopyBufferInv {m : Module} (hm : Runtime m) {host : HostEnv Unit}
+    {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
+    {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit base : Nat}
+    {current : CopyRecord} {parents : List CopyRecord} {s0 s : Locals} {data : LeanExe.Bytes}
+    {rest : Program} {Q : Assertion Unit}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hLocals : CopyLocals base s0 result current.pointer s)
+    (hIndex : s.get (base + 2) = some (.i64 (UInt64.ofNat current.next)))
+    (hSource : s.get (base + 3) = some (.i64 current.source))
+    (hWord : s.get (base + 4) =
+      some (.i64 (store.mem.read64 (slotAddress current.source current.next))))
+    (hBound : current.next < current.slots.length)
+    (hSlot : current.slots[current.next] = .bytes data)
+    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK (!decide (limit ≤ 65536 * initial.memoryCap m 0)) Q)
+    (hNext : ∀ heap' store' s',
+      CopyInv shape heap0 initial root result limit heap' store'
+        { current with next := current.next + 1 } parents →
+      CopyLocals base s0 result current.pointer s' → wp m rest Q store' s' host) :
+    wp m (treeCopyBuffer base ++ rest) Q store s host :=
+  wpX_treeCopyBufferInv (strict := false) hm nofun ⟨h, nofun⟩ hLocals hIndex hSource hWord hBound
+    hSlot hLow hHigh hCap hTrap (fun heap' store' s' a1 a2 => hNext heap' store' s' a1.1 a2)
+#print axioms wp_treeCopyBufferInv
 
 end Verified

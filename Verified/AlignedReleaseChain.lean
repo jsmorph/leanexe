@@ -156,6 +156,19 @@ theorem wpX_releaseHeader {strict : Bool} {m : Module} (hm : Runtime m)
     (hStep.mono (fun r hr _ hb => by rw [hBlocks, List.mem_singleton] at hb; subst hb; exact hr)
       (fun _ h => h)) hTop hAl'
 
+theorem wp_releaseHeader {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
+    {shape : TreeShape} {r : Fin shape.records} {store : Store Unit} {s : Locals} {ptr : UInt64}
+    {vs : List Value}
+    {rest : Program} {Q : Assertion Unit} (hAt : heap.At store)
+    (hOwned : TreeHeader.Owned shape r heap store ptr)
+    (hNext : ∀ heap' store', Step heap store (fun r => regionsDisjoint r (block store ptr))
+      heap' store' [] → heap'.top = heap.top →
+      wp m rest Q store' { s with values := vs } host) :
+    wp m (.call 1 :: rest) Q store { s with values := .i64 ptr :: vs } host :=
+  wpX_releaseHeader (strict := false) hm nofun hAt nofun nofun hOwned
+    (fun heap' store' a1 a2 _ => hNext heap' store' a1 a2)
+#print axioms wp_releaseHeader
+
 /-! ## The release of a value and of the variables that die -/
 
 /-- `wp_releaseCode` under the flag. -/
@@ -251,6 +264,19 @@ theorem wpX_releaseCode {strict : Bool} {m : Module} (hm : Runtime m)
       rw [hBlocks2] at hx
       exact hr x (List.mem_append_right _ hx)
 
+/-- The release of the owned value of type `t` whose words locals `src` on hold: a step that
+consumes the value's blocks and leaves `top`. -/
+theorem wp_releaseCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
+    (t : Ty) → ∀ {heap : Heap} {store : Store Unit} {s : Locals} {src : Nat} {ws : List Value}
+      {v : t.denote} {rest : Program} {Q : Assertion Unit},
+    heap.At store → t.Rep .owned heap store ws v → LocalsHold s src t.types ws →
+    (∀ (heap' : Heap) (store' : Store Unit),
+      Step heap store (fun r => ∀ b ∈ t.blocks store ws v, regionsDisjoint r b) heap' store' [] →
+      heap'.top = heap.top → wp m rest Q store' s host) →
+    wp m (releaseCode t src ++ rest) Q store s host :=
+  fun t {_ _ _ _ _ _ _ _} hAt hRep hLoc hNext =>
+    wpX_releaseCode (strict := false) hm nofun t hAt nofun nofun hRep hLoc
+      fun heap' store' hs ht _ => hNext heap' store' hs ht
 
 /-- `wp_releaseVars` under the flag: the release of the owned variables among `is` keeps the
 invariant of the variables that stay live. -/
@@ -336,6 +362,20 @@ theorem wpX_releaseVars {strict : Bool} {m : Module} (hm : Runtime m)
         exact hRest heap store (Evolves.refl hAt hVars fun j _ h => hSub1 j h) rfl
           fun hs => (hA hs).live_mono hSub1
 
+/-- The release of the owned variables at the indices `is`, each once: the state evolves to one
+in which they are no longer live, with the same `top`. -/
+theorem wp_releaseVars {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ : List Ty}
+    {env : Env Γ} {slots : List Slot} {base : Nat} :
+    (is : List Nat) → is.Nodup → ∀ {live : Nat → Bool} {heap : Heap} {store : Store Unit}
+      {s : Locals} {rest : Program} {Q : Assertion Unit},
+    Holds env slots live base heap store s → heap.At store → (∀ i ∈ is, live i = true) →
+    (∀ heap' store', Evolves env slots live (fun i => live i && !is.contains i) base heap store
+      s heap' store' s → heap'.top = heap.top → wp m rest Q store' s host) →
+    wp m (is.flatMap (releaseVar Γ slots) ++ rest) Q store s host :=
+  fun is hnd {_ _ _ _ _ _} hVars hAt hl hNext =>
+    wpX_releaseVars (strict := false) hm nofun is hnd hVars hAt nofun hl
+      fun heap' store' he ht _ => hNext heap' store' he ht
+
 /-- `read_release` under the flag, from `ReleaseAligned`. -/
 theorem readReleaseX {strict : Bool} {m : Module} {host : HostEnv Unit} (hm : Runtime m)
     (hRA : strict = true → ReleaseAligned m) : ReadReleaseX strict m host := by
@@ -360,5 +400,93 @@ theorem readReleaseX {strict : Bool} {m : Module} {host : HostEnv Unit} (hm : Ru
   have e' := e.mono (live' := live) hLiveSub
   exact ⟨e'.step, e'.frame.values.trans Frame.ofValues,
     e'.holds.agree Frame.ofValues⟩
+
+section
+
+variable {pool : Bytes.LiteralPool}
+variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
+  {fits : Fits S} {host : HostEnv Unit}
+  {pv : List Value}
+
+/-- The release of a variable that a reader reads, when it is owned and dies there,
+which leaves `top`. -/
+theorem read_release (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List Slot}
+    {live : Nat → Bool} {base : Nat} {heap : Heap} {store : Store Unit} {s : Locals}
+    {vals : List Value} {rest : Program} {Q : Assertion Unit} {t : Ty} (x : Var Γ t)
+    (hVars : Holds env slots (fun k => live k || k == x.index) base heap store s)
+    (hAt : heap.At store)
+    (hNext : ∀ heap' store', Evolves env slots (fun k => live k || k == x.index) live base heap
+      store s heap' store' s → heap'.top = heap.top →
+      wp m rest Q store' { s with values := vals } host) :
+    wp m ((if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
+        releaseCode t (slots.getD x.index default).loc else []) ++ rest) Q store
+      { s with values := vals } host := by
+  have hCode : (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
+      releaseCode t (slots.getD x.index default).loc else []) =
+      (if live x.index = false then [x.index] else []).flatMap (releaseVar Γ slots) := by
+    cases live x.index <;> simp [releaseVar, x.getElem?_index]
+  rw [hCode]
+  refine wp_releaseVars hm _ (by split <;> simp) (hVars.agree Frame.ofValues) hAt
+    (by split <;> simp) fun heap' store' e hTop => hNext heap' store' ?_ hTop
+  have e' := e.mono (live' := live) fun k h => by
+    split
+    · next hx =>
+      have hne : k ≠ x.index := fun he => by rw [he, hx] at h; exact nomatch h
+      simp [h, hne]
+    · simp [h]
+  exact ⟨e'.step, e'.frame.values.trans Frame.ofValues,
+    e'.holds.agree Frame.ofValues⟩
+
+end
+
+section
+
+variable {pool : Bytes.LiteralPool}
+variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
+  {fits : Fits S} {host : HostEnv Unit}
+  {pv : List Value}
+
+/-- The size of an array variable: the load of its length word, then the release of the variable
+when it is owned and dies there. -/
+theorem spec_size (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e)) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.size (S := S) x) env
+        slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ _ rest Q _ hNext
+  obtain ⟨-, ws, hold, hRep⟩ := hVars.1 _ x (by simp [Expr.uses])
+  obtain ⟨ptr, rfl, hB⟩ := hRep
+  have hA := hB.borrow.values
+  have hLength := hA.lengthBound
+  have hPtr : s.get (slots.getD x.index default).loc = some (.i64 ptr) := by
+    exact LocalsHold.word hold
+  have hnk : (env.get x).size * e.width < 536870912 := by
+    have := hA.1; rw [Elem.words_size] at this; omega
+  simp only [Expr.code, Var.sizeCode, Expr.usesFast_eq, List.append_assoc, List.cons_append,
+    List.nil_append]
+  simp only [wp_localGet_cons, hPtr, wp_wrapI64_cons, wp_load64_cons, wrap_toUInt32,
+    UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+  rw [ite_eq_right (by omega), hA.lengthRead, Elem.words_size, wp_divCode e.width_pos,
+    words_div e.width_pos hnk]
+  refine read_release hm x hVars hAt fun heap' store' ev hTop => ?_
+  exact hNext heap' store' s [.i64 (env.get x).size.toUInt64]
+    (After.ofScalar rfl ev.step rfl ev.frame ev.holds rfl)
+    fun _ => top_unpaid_le rfl (by rw [hTop]; omega)
+
+end
+
+section
+
+variable {pool : Bytes.LiteralPool}
+variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
+  {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+
+/-- At `strict = false` the port gives `spec_size`'s statement. -/
+theorem spec_size_of_flag (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e)) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv
+      (Expr.size (S := S) x) env slots paid live :=
+  fun env slots paid live => CodeSpecX.false_iff.mp
+    (specX_size (strict := false) hm (readReleaseX (strict := false) hm nofun) x env slots paid
+      live)
+
+end
 
 end Verified

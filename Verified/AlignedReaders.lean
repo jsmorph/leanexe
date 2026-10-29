@@ -11,8 +11,8 @@ an array's length and words are at its pointer, which `HoldsA` makes a multiple 
 The copy of an owned variable that stays live runs `copyCode`, whose flagged form is
 `CopyCodeX`: from an aligned heap and an aligned value, the copy's accesses are aligned and it
 leaves an aligned heap and an aligned owned value.  `specX_var` takes it as a premise, as
-`specX_size` takes `ReadReleaseX`, and `copyCodeX_false` gives it at `strict = false` from
-`wp_copyCode`.  The code of the other readers is free of 64-bit accesses and calls except for the
+`specX_size` takes `ReadReleaseX`, and `copyCodeX` in `Verified/AlignedCopy.lean` proves it for
+every runtime.  The code of the other readers is free of 64-bit accesses and calls except for the
 loads, so `wpX_append_free` carries the original lemmas about `loadCode` and the buffer read.
 -/
 
@@ -106,12 +106,6 @@ def CopyCodeX (strict : Bool) (m : Module) (host : HostEnv Unit) : Prop :=
       (strict = true → heap'.Aligned ∧ Ty.AlignedVal .owned store' t ws' v) →
       wpX strict m rest Q store' { s' with values := ws'.reverse ++ s.values } host) →
     wpX strict m (copyCode h t src base ++ rest) Q store s host
-
-theorem copyCodeX_false {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
-    CopyCodeX false m host := by
-  intro t _ _ _ _ _ _ _ _ _ _ _ hAt hCap hTrap hh hRep hold hSrc hBase hRoom _ hNext
-  exact wp_copyCode hm t hAt hCap hTrap hh hRep hold hSrc hBase hRoom
-    fun heap' store' s' ws' hStep hRep' hF hTop => hNext heap' store' s' ws' hStep hRep' hF hTop nofun
 
 section Cases
 

@@ -141,6 +141,28 @@ theorem wpX_copyCode {strict : Bool} {m : Module} (hm : Runtime m)
     · rw [hBlocks1] at hx
       exact hFresh1 x hx y hy
 
+/-- The copy of a value of type `t` whose words locals `src` on hold and that its words represent
+in `heap` at `store`: each of its arrays goes to a new owned block, and the other words stay as
+they are.  The copy consumes nothing, raises `top` by at most `t.copyCost v`, and traps only when
+`top` cannot rise by that much within the cap. -/
+theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
+    (t : Ty) → ∀ {heap : Heap} {store : Store Unit} {s : Locals} {h src base : Nat} {mode : Mode}
+      {ws : List Value} {v : t.denote} {rest : Program} {Q : Assertion Unit},
+    heap.At store → store.memoryCap m 0 ≤ 65535 →
+    TrapOK (!decide (heap.Within store m (t.copyCost v))) Q → s.positions = h →
+    t.Rep mode heap store ws v → LocalsHold s src t.types ws → src + t.width ≤ base →
+    s.params.length ≤ base → base + t.copyScratch ≤ s.positions →
+    (∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (ws' : List Value),
+      Step heap store (fun _ => True) heap' store' (t.blocks store' ws' v) →
+      t.Rep .owned heap' store' ws' v → Frame base s s' →
+      heap'.top.toNat ≤ heap.top.toNat + t.copyCost v →
+      wp m rest Q store' { s' with values := ws'.reverse ++ s.values } host) →
+    wp m (copyCode h t src base ++ rest) Q store s host :=
+  fun t {_ _ _ _ _ _ _ _ _ _ _} hAt hCap hTrap hh hRep hLoc hSrc hBase hRoom
+      hNext =>
+    wpX_copyCode (strict := false) hm nofun t hAt hCap hTrap hh hRep hLoc hSrc hBase hRoom nofun
+      fun heap' store' s' ws' hs hr hf ht _ => hNext heap' store' s' ws' hs hr hf ht
+
 /-- The copy of every runtime meets `CopyCodeX`. -/
 theorem copyCodeX {strict : Bool} {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     CopyCodeX strict m host :=

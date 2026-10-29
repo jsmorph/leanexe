@@ -37,6 +37,17 @@ theorem CopyCompleted.rootX {strict : Bool} {shape : TreeShape} {heap0 heap : He
     · have := h.budget
       omega
 
+theorem CopyCompleted.root {shape : TreeShape} {heap0 heap : Heap} {initial store : Store Unit}
+    {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit : Nat} {current : CopyRecord}
+    (h : CopyCompleted shape heap0 initial root result limit heap store current []) :
+    NodeOwned heap store result (.record root) ∧
+      (Node.blocks store result (.record root)).Pairwise regionsDisjoint ∧
+      Step heap0 initial (fun _ => True) heap store (Node.blocks store result (.record root)) ∧
+      heap.top.toNat ≤ limit :=
+  have r := CopyCompleted.rootX (strict := false) ⟨h, nofun⟩
+  ⟨r.1, r.2.1, r.2.2.1, r.2.2.2.1⟩
+#print axioms CopyCompleted.root
+
 theorem wpX_treeCopyOther {strict : Bool} {m : Module} (hm : Runtime m)
     (hRt : strict = true → AllocAligned m) {host : HostEnv Unit}
     {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
@@ -160,6 +171,40 @@ theorem wpX_treeCopyOther {strict : Bool} {m : Module} (hm : Runtime m)
   | array words => exact absurd hSlot (hNotArray words)
   | bytes data => exact absurd hSlot (hNotBytes data)
 
+/-- The copy of a slot that is not an array slot: a word or a null child goes into the copy as it
+is, and a record child starts the copy of its record. -/
+theorem wp_treeCopyOther {m : Module} (hm : Runtime m) {host : HostEnv Unit}
+    {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
+    {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit base : Nat}
+    {current : CopyRecord} {parents : List CopyRecord} {s0 sRead : Locals}
+    {rest : Program} {Q : Assertion Unit}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hReadLocals : CopyLocals base s0 result current.pointer sRead)
+    (hIndex' : sRead.get (base + 2) = some (.i64 (UInt64.ofNat current.next)))
+    (hSource : sRead.get (base + 3) = some (.i64 current.source))
+    (hWord : sRead.get (base + 4) =
+      some (.i64 (store.mem.read64 (slotAddress current.source current.next))))
+    (hBound : current.next < current.slots.length)
+    (hNotArray : ∀ words, current.slots[current.next] ≠ .array words)
+    (hNotBytes : ∀ data, current.slots[current.next] ≠ .bytes data)
+    (hLowRead : sRead.params.length ≤ base) (hHighRead : base + 6 ≤ sRead.positions)
+    (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK (!decide (limit ≤ 65536 * initial.memoryCap m 0)) Q)
+    (hNext : ∀ heap' store' s' next parents',
+      CopyInv shape heap0 initial root result limit heap' store' next parents' →
+      CopyLocals base s0 result next.pointer s' →
+      CopyWork.Step (current.work parents) (next.work parents') → wp m rest Q store' s' host) :
+    wp m (treeCopyTest shape base ++
+      [.iff 0 0 (treeCopyAllocate shape (base + 4) (base + 5) ++
+          treeCopyBegin shape (base + 4) (base + 5) [.localGet (base + 4)] [.localGet (base + 1)] ++
+          [.localGet (base + 5), .localSet (base + 1)])
+        (treeSlotAddress (base + 1) (base + 2) ++ [.localGet (base + 4), .store64 0] ++
+          treeCopyAdvance (base + 1) (base + 2))] ++ rest) Q store sRead host :=
+  wpX_treeCopyOther (strict := false) hm nofun ⟨h, nofun⟩ hReadLocals hIndex' hSource hWord hBound
+    hNotArray hNotBytes hLowRead hHighRead hCap hTrap
+    (fun heap' store' s' next parents' a1 a2 a3 => hNext heap' store' s' next parents' a1.1 a2 a3)
+#print axioms wp_treeCopyOther
+
 theorem wpX_treeCopyNonArray {strict : Bool} {m : Module} (hm : Runtime m)
     (hRt : strict = true → AllocAligned m) {host : HostEnv Unit}
     {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
@@ -262,6 +307,49 @@ theorem wpX_treeCopyNonArray {strict : Bool} {m : Module} (hm : Runtime m)
         (hTrap.imp (Q' := post) (fun _ h => h)) hAfter
       simpa only [List.append_nil, List.append_assoc] using hRun
 
+/-- The copy of a slot that is not an array slot: for a shape with buffer fields, a buffer's root
+goes to the buffer step, and any other slot to `wp_treeCopyOther`. -/
+theorem wp_treeCopyNonArray {m : Module} (hm : Runtime m) {host : HostEnv Unit}
+    {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
+    {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit base : Nat}
+    {current : CopyRecord} {parents : List CopyRecord} {s0 sRead : Locals}
+    {rest : Program} {Q : Assertion Unit}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hReadLocals : CopyLocals base s0 result current.pointer sRead)
+    (hIndex' : sRead.get (base + 2) = some (.i64 (UInt64.ofNat current.next)))
+    (hSource : sRead.get (base + 3) = some (.i64 current.source))
+    (hWord : sRead.get (base + 4) =
+      some (.i64 (store.mem.read64 (slotAddress current.source current.next))))
+    (hBound : current.next < current.slots.length)
+    (hNotArray : ∀ words, current.slots[current.next] ≠ .array words)
+    (hLowRead : sRead.params.length ≤ base) (hHighRead : base + 6 ≤ sRead.positions)
+    (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK (!decide (limit ≤ 65536 * initial.memoryCap m 0)) Q)
+    (hNext : ∀ heap' store' s' next parents',
+      CopyInv shape heap0 initial root result limit heap' store' next parents' →
+      CopyLocals base s0 result next.pointer s' →
+      CopyWork.Step (current.work parents) (next.work parents') → wp m rest Q store' s' host) :
+    wp m ((if shape.hasBuffers then
+        treeCopyBufferTest shape base ++ [.iff 0 0 (treeCopyBuffer base)
+          (treeCopyTest shape base ++
+            [.iff 0 0 (treeCopyAllocate shape (base + 4) (base + 5) ++
+                treeCopyBegin shape (base + 4) (base + 5) [.localGet (base + 4)]
+                  [.localGet (base + 1)] ++
+                [.localGet (base + 5), .localSet (base + 1)])
+              (treeSlotAddress (base + 1) (base + 2) ++ [.localGet (base + 4), .store64 0] ++
+                treeCopyAdvance (base + 1) (base + 2))])]
+      else treeCopyTest shape base ++
+        [.iff 0 0 (treeCopyAllocate shape (base + 4) (base + 5) ++
+            treeCopyBegin shape (base + 4) (base + 5) [.localGet (base + 4)]
+              [.localGet (base + 1)] ++
+            [.localGet (base + 5), .localSet (base + 1)])
+          (treeSlotAddress (base + 1) (base + 2) ++ [.localGet (base + 4), .store64 0] ++
+            treeCopyAdvance (base + 1) (base + 2))]) ++ rest) Q store sRead host :=
+  wpX_treeCopyNonArray (strict := false) hm nofun ⟨h, nofun⟩ hReadLocals hIndex' hSource hWord
+    hBound hNotArray hLowRead hHighRead hCap hTrap
+    (fun heap' store' s' next parents' a1 a2 a3 => hNext heap' store' s' next parents' a1.1 a2 a3)
+#print axioms wp_treeCopyNonArray
+
 theorem wpX_treeCopySlot {strict : Bool} {m : Module} (hm : Runtime m)
     (hRt : strict = true → AllocAligned m) {host : HostEnv Unit}
     {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
@@ -352,6 +440,27 @@ theorem wpX_treeCopySlot {strict : Bool} {m : Module} (hm : Runtime m)
         hAfter
       simpa only [List.append_nil, List.append_assoc] using hRun
 
+theorem wp_treeCopySlot {m : Module} (hm : Runtime m) {host : HostEnv Unit}
+    {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
+    {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit base : Nat}
+    {current : CopyRecord} {parents : List CopyRecord} {s0 s : Locals}
+    {rest : Program} {Q : Assertion Unit}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hLocals : CopyLocals base s0 result current.pointer s)
+    (hIndex : s.get (base + 2) = some (.i64 (UInt64.ofNat current.next)))
+    (hBound : current.next < current.slots.length)
+    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK (!decide (limit ≤ 65536 * initial.memoryCap m 0)) Q)
+    (hNext : ∀ heap' store' s' next parents',
+      CopyInv shape heap0 initial root result limit heap' store' next parents' →
+      CopyLocals base s0 result next.pointer s' →
+      CopyWork.Step (current.work parents) (next.work parents') → wp m rest Q store' s' host) :
+    wp m (treeCopySlot shape base ++ rest) Q store s host :=
+  wpX_treeCopySlot (strict := false) hm nofun ⟨h, nofun⟩ hLocals hIndex hBound hLow hHigh hCap hTrap
+    (fun heap' store' s' next parents' a1 a2 a3 => hNext heap' store' s' next parents' a1.1 a2 a3)
+#print axioms wp_treeCopySlot
+
 theorem wpX_treeCopyFinish {strict : Bool} {m : Module} {host : HostEnv Unit} {heap0 heap : Heap}
     {initial store : Store Unit} {shape : TreeShape} {root : List LeanExe.Pipeline.Slot}
     {result : UInt64} {limit base : Nat} {current : CopyRecord} {parents : List CopyRecord}
@@ -403,5 +512,27 @@ theorem wpX_treeCopyFinish {strict : Bool} {m : Module} {host : HostEnv Unit} {h
     simpa only [List.append_assoc, List.cons_append, List.nil_append, wpX_localGet_cons, Locals.get_values,
       hParent, wpX_eqzI64_cons, hNonzero, ite_false, wpX_br_if_cons,
       ne_eq, not_true_eq_false] using hAdvance
+
+theorem wp_treeCopyFinish {m : Module} {host : HostEnv Unit} {heap0 heap : Heap}
+    {initial store : Store Unit} {shape : TreeShape} {root : List LeanExe.Pipeline.Slot}
+    {result : UInt64} {limit base : Nat} {current : CopyRecord} {parents : List CopyRecord}
+    {s0 s : Locals} {rest : Program} {Q : Assertion Unit}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hLocals : CopyLocals base s0 result current.pointer s)
+    (hDone : current.next = current.slots.length)
+    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hNext : ∀ store' s' next parents',
+      CopyInv shape heap0 initial root result limit heap store' next parents' →
+      CopyLocals base s0 result next.pointer s' →
+      CopyWork.Step (current.work parents) (next.work parents') → wp m rest Q store' s' host)
+    (hRoot : ∀ store' s', NodeOwned heap store' result (.record root) →
+      (Node.blocks store' result (.record root)).Pairwise regionsDisjoint →
+      Step heap0 initial (fun _ => True) heap store' (Node.blocks store' result (.record root)) →
+      heap.top.toNat ≤ limit → CopyLocals base s0 result current.pointer s' → Q (.Break 2 store' s')) :
+    wp m (treeCopyFinish shape base ++ rest) Q store s host :=
+  wpX_treeCopyFinish (strict := false) ⟨h, nofun⟩ hLocals hDone hLow hHigh
+    (fun store' s' next parents' a1 a2 a3 => hNext store' s' next parents' a1.1 a2 a3)
+    (fun store' s' a1 a2 a3 a4 a5 _ => hRoot store' s' a1 a2 a3 a4 a5)
+#print axioms wp_treeCopyFinish
 
 end Verified

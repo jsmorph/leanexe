@@ -114,23 +114,5 @@ theorem RunsTailBranch.dispatchChain {m : Module} {host : HostEnv Unit} {store :
       rw [show k + (d + 1) = k + d + 1 by omega]
       exact hb k st s' hq
 
-/-- The tag tests of a shape, as a branch nested in `d` blocks, run the branch of record
-constructor `r`, which they nest in `chainDepth` further blocks. -/
-theorem RunsTailBranch.dispatchCode {m : Module} {host : HostEnv Unit} {store : Store Unit}
-    {s : Locals} {shape : TreeShape} (r : Fin shape.records) {ptr : Nat} {p : UInt64}
-    {d : Nat} {Q : Assertion Unit} (branch : Fin shape.records → Program)
-    (hPtr : s.get ptr = some (.i64 p))
-    (hRoom : p.toUInt32.toNat + 8 ≤ store.mem.pages * 65536)
-    (hTag : shape.tagged = true →
-      store.mem.read64 p.toUInt32 = UInt64.ofNat (shape.ctorIndex r))
-    (hBranch : RunsTailBranch m host (branch r)
-      (d + if r.val + 1 < shape.records then r.val + 1 else r.val) Q store s) :
-    RunsTailBranch m host (shape.dispatchCode ptr branch) d Q store s := by
-  apply RunsTailBranch.dispatchChain (PushesWord.tag hPtr hRoom)
-  rw [shape.chainPick_tag r branch [] _ hTag, shape.chainDepth_tag r branch _ hTag]
-  exact hBranch
-
 #print axioms TreeShape.chainDepth_tag
-#print axioms RunsTailBranch.dispatchCode
-
 end Verified

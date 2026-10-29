@@ -5,37 +5,6 @@ namespace Verified
 
 open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
 
-theorem CopyInv.start {shape : TreeShape} {heap0 heap : Heap} {initial store : Store Unit}
-    {root : List LeanExe.Pipeline.Slot} {source result : UInt64} {limit : Nat}
-    (hSource : NodeBorrowed heap0 initial source (.record root))
-    (hStep : Step heap0 initial (fun _ => True) heap store [block store result])
-    (hRecord : CopyRecord.Holds shape heap store 0 ⟨source, result, root, 0⟩)
-    (hTop : heap.top.toNat ≤ heap0.top.toNat + allocCost (8 * root.length))
-    (hLimit : heap0.top.toNat + nodeCopyCost (.record root) ≤ limit) :
-    CopyInv shape heap0 initial root result limit heap store ⟨source, result, root, 0⟩ [] := by
-  have hBlocks : copyBlocks store ⟨source, result, root, 0⟩ [] = [block store result] := by
-    simp only [copyBlocks, CopyRecord.blocks, List.take_zero, slotsBlocks,
-      List.flatMap_nil, List.append_nil]
-  refine {
-    frames := hRecord
-    path := .root rfl rfl
-    sources := ?_
-    step := ?_
-    apart := ?_
-    budget := ?_
-  }
-  · intro record hr
-    simp only [List.mem_singleton] at hr
-    subst record
-    exact ⟨hRecord.layout, hSource⟩
-  · simpa only [hBlocks] using hStep
-  · rw [hBlocks]
-    exact List.pairwise_singleton ..
-  · simp only [CopyRecord.work, List.drop_zero, CopyWork.cost,
-      List.map_nil, List.sum_nil, Nat.add_zero]
-    simp only [nodeCopyCost] at hLimit
-    omega
-
 theorem CopyProgress.trap {shape : TreeShape} {heap0 heap : Heap} {initial store : Store Unit}
     {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit : Nat}
     {current : CopyRecord} {parents : List CopyRecord} {m : Module} {Q : Assertion Unit}
@@ -53,7 +22,6 @@ theorem CopyProgress.trap {shape : TreeShape} {heap0 heap : Heap} {initial store
     · simp only [hWithin, decide_true, Bool.not_true, TrapOK]
     · simpa only [hTotal, hWithin, decide_false, Bool.not_false, TrapOK] using hTrap
 
-#print axioms CopyInv.start
 #print axioms CopyProgress.trap
 
 end Verified

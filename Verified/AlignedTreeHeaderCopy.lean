@@ -91,4 +91,20 @@ theorem wpX_copyTreeHeader {strict : Bool} {m : Module} (hm : Runtime m)
     rw [hCapacity, hBlock.capacity_eq]
     exact (hHeapAl hs).capacity_alloc hNeed8, (hHeapAl hs).allocate hNeed8⟩
 
+theorem wp_copyTreeHeader {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
+    {store : Store Unit} {s : Locals} {shape : TreeShape} {r : Fin shape.records} {base : Nat}
+    {rest : Program} {Q : Assertion Unit} (hAt : heap.At store)
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK (!decide (heap.Within store m (allocCost (8 * shape.width r)))) Q)
+    (hLow : s.params.length ≤ base) (hHigh : base + 1 ≤ s.positions)
+    (hNext : ∀ heap' store' s' ptr,
+      Step heap store (fun _ => True) heap' store' [block store' ptr] →
+      TreeHeader.Owned shape r heap' store' ptr → Frame base s s' →
+      heap'.top.toNat ≤ heap.top.toNat + allocCost (8 * shape.width r) →
+      wp m rest Q store' { s' with values := .i64 ptr :: s.values } host) :
+    wp m (treeHeaderCopyCode shape r base ++ rest) Q store s host :=
+  wpX_copyTreeHeader (strict := false) hm nofun hAt hCap hTrap hLow hHigh nofun
+    (fun heap' store' s' ptr a1 a2 a3 a4 _ => hNext heap' store' s' ptr a1 a2 a3 a4)
+#print axioms wp_copyTreeHeader
+
 end Verified

@@ -119,6 +119,29 @@ theorem CopyInv.arrayStepX {strict : Bool} {shape : TreeShape} {heap0 heap heap'
     · exact (hA hs).sources current List.mem_cons_self
     · exact (hA hs).sources record (List.mem_cons_of_mem current hr)
 
+/-- The invariant after the copy of an array slot: the allocation of the array's new block, and
+the write of its address into the slot and of the next index into the header. -/
+theorem CopyInv.arrayStep {shape : TreeShape} {heap0 heap heap' : Heap}
+    {initial store store1 store' : Store Unit} {root : List LeanExe.Pipeline.Slot}
+    {result : UInt64} {limit : Nat} {current : CopyRecord} {parents : List CopyRecord}
+    {xs : Array UInt64} {ptr : UInt64}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hBound : current.next < current.slots.length)
+    (hSlot : current.slots[current.next] = .array xs)
+    (hNew : Step heap store (fun _ => True) heap' store1 [block store1 ptr])
+    (hTop : heap'.top.toNat ≤ heap.top.toNat + allocCost (8 * (xs.size + 1)))
+    (hCurrent : CopyRecord.Holds shape heap' store'
+      ((parents.head?.map CopyRecord.pointer).getD 0) { current with next := current.next + 1 })
+    (hWrite : Step heap' store1 (fun r => regionsDisjoint r (block store1 current.pointer))
+      heap' store' [])
+    (hBlocks : ({ current with next := current.next + 1 } : CopyRecord).blocks store' =
+      current.blocks store1 ++ [block store1 ptr]) :
+    CopyInv shape heap0 initial root result limit heap' store'
+      { current with next := current.next + 1 } parents :=
+  (CopyInv.arrayStepX (strict := false) ⟨h, nofun⟩ hBound hSlot hNew hTop hCurrent hWrite hBlocks
+    nofun).1
+#print axioms CopyInv.arrayStep
+
 theorem wpX_treeCopyArrayInv {strict : Bool} {m : Module} (hm : Runtime m)
     (hRt : strict = true → AllocAligned m) {host : HostEnv Unit}
     {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
@@ -249,5 +272,30 @@ theorem wpX_treeCopyArrayInv {strict : Bool} {m : Module} (hm : Runtime m)
           simp only [block]
           exact ⟨by omega, by omega, ha⟩) hLocals5)
   simpa only [List.append_assoc, List.cons_append, List.nil_append] using hRun
+
+/-- The copy of an array slot: the array goes to a new block, and its address goes into the slot
+of the record being copied, whose index advances. -/
+theorem wp_treeCopyArrayInv {m : Module} (hm : Runtime m) {host : HostEnv Unit}
+    {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
+    {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit base : Nat}
+    {current : CopyRecord} {parents : List CopyRecord} {s0 s : Locals} {xs : Array UInt64}
+    {rest : Program} {Q : Assertion Unit}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hLocals : CopyLocals base s0 result current.pointer s)
+    (hWord : s.get (base + 4) =
+      some (.i64 (store.mem.read64 (slotAddress current.source current.next))))
+    (hBound : current.next < current.slots.length)
+    (hSlot : current.slots[current.next] = .array xs)
+    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK (!decide (limit ≤ 65536 * initial.memoryCap m 0)) Q)
+    (hNext : ∀ heap' store' s',
+      CopyInv shape heap0 initial root result limit heap' store'
+        { current with next := current.next + 1 } parents →
+      CopyLocals base s0 result current.pointer s' → wp m rest Q store' s' host) :
+    wp m (treeCopyArray base ++ rest) Q store s host :=
+  wpX_treeCopyArrayInv (strict := false) hm nofun ⟨h, nofun⟩ hLocals hWord hBound hSlot hLow hHigh
+    hCap hTrap (fun heap' store' s' a1 a2 => hNext heap' store' s' a1.1 a2)
+#print axioms wp_treeCopyArrayInv
 
 end Verified

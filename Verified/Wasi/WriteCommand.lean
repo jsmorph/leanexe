@@ -2,6 +2,7 @@ import Verified.Wasi.WriteHelper
 import Verified.Wasi.AfterScratch
 import Verified.Wasi.CommandSpec
 import Verified.Wasi.PurePrefix
+import Verified.AlignedControl
 
 namespace Verified.Wasi
 

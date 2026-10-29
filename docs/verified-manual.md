@@ -95,7 +95,7 @@ The compiler deduplicates nonempty byte lists across the program in `p.literalPo
 their concatenated raw bytes in a data segment after the constant word-array tables.  The allocator
 starts at the eight-byte-aligned end of this pool.  Deduplication shares the static source bytes.
 Each evaluation still allocates and copies its result.  [The pool definitions](../Verified/Bytes/LiteralPool.lean)
-and [literal-copy correctness](../Verified/Bytes/Literal.lean) give the layout and allocation rules.
+and [literal-copy correctness](../Verified/AlignedBytes.lean) give the layout and allocation rules.
 For a program without literals, [the empty-pool equality](../Verified/LiteralCodeEq.lean) states
 the module that `compileWith` produces: the table segments are its only data, its memory size and
 heap start depend only on the tables, and its functions use the empty pool.

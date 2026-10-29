@@ -70,6 +70,19 @@ theorem wpX_releaseWhere {strict : Bool} {m : Module} (hm : Runtime m)
     · rw [hSame i hi]; exact h.2
     · simp [List.mem_filter, hi]
 
+/-- The release of the owned variables that `sel` selects among those live, which leaves
+`top`. -/
+theorem wp_releaseWhere {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ : List Ty}
+    {env : Env Γ} {slots : List Slot} {base : Nat} {sel live : Nat → Bool} {heap : Heap}
+    {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit}
+    (hVars : Holds env slots live base heap store s) (hAt : heap.At store)
+    (hSel : ∀ i, sel i = true → live i = true)
+    (hNext : ∀ heap' store', Evolves env slots live (fun i => live i && !sel i) base heap store
+      s heap' store' s → heap'.top = heap.top → wp m rest Q store' s host) :
+    wp m (releaseWhere Γ slots sel ++ rest) Q store s host :=
+  wpX_releaseWhere (strict := false) hm nofun hVars hAt nofun hSel
+    (fun heap' store' a1 a2 _ => hNext heap' store' a1 a2)
+
 section
 
 variable {m : Module} {host : HostEnv Unit}
@@ -702,6 +715,30 @@ theorem specX_letE (hm : Runtime m) (hRA : strict = true → ReleaseAligned m) {
       simp only [Expr.allocs, List.map_cons] at h3 ⊢
       omega
 
+section
+
+variable {pool : Bytes.LiteralPool}
+variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
+  {fits : Fits S} {host : HostEnv Unit}
+  {pv : List Value}
+
+/-- A `let` binding: the value's code, the store of its words from local `base` on, the release
+of the value when it is owned and the body does not use it, and the body's code. -/
+theorem spec_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr S Γ' sTy}
+    {body : Expr S (sTy :: Γ') tTy} {buy : Bool}
+    (valueSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv value env
+        slots paid live)
+    (bodySpec : ∀ env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+        body env slots paid live) :
+    ∀ env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+        (Expr.letE value body) env slots paid live :=
+  fun env slots paid live =>
+    CodeSpecInX.false_iff.mp (specX_letE (strict := false) hm nofun
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (valueSpec env slots paid live))
+      (fun env slots paid live => CodeSpecInX.false_iff.mpr (bodySpec env slots paid live)) env
+      slots paid live)
+
+end
 
 /-- A pair: the code of each component, each followed by its coercion to the pair's mode. -/
 theorem specX_pair (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr S Γ' sTy}
@@ -1111,6 +1148,30 @@ theorem specX_letPair (hm : Runtime m) (hRA : strict = true → ReleaseAligned m
           e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
       · rw [ite_eq_left hpp] at h1 hDb'; omega
       · rw [ite_eq_right hpp] at h1 hDb'; omega
+
+section
+
+variable {pool : Bytes.LiteralPool}
+variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
+  {fits : Fits S} {host : HostEnv Unit}
+  {pv : List Value}
+
+/-- A binding of a pair's components: the pair's code, the stores of its components' words, the
+release of each component that is owned and that the body does not use, and the body's code. -/
+theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
+    {e : Expr S Γ' (.pair sTy tTy)} {body : Expr S (tTy :: sTy :: Γ') uTy} {buy : Bool}
+    (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live)
+    (bodySpec : ∀ env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+        body env slots paid live) :
+    ∀ env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+        (Expr.letPair e body) env slots paid live :=
+  fun env slots paid live =>
+    CodeSpecInX.false_iff.mp (specX_letPair (strict := false) hm nofun
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (eSpec env slots paid live))
+      (fun env slots paid live => CodeSpecInX.false_iff.mpr (bodySpec env slots paid live)) env
+      slots paid live)
+
+end
 
 end Cases
 

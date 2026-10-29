@@ -82,6 +82,17 @@ theorem wpX_restoreRecord {strict : Bool} {m : Module} {host : HostEnv Unit} {he
   rw [← hWidth, ← hMask] at hNext
   exact hNext
 
+theorem wp_restoreRecord {m : Module} {host : HostEnv Unit} {heap : Heap}
+    {shape : TreeShape} (r : Fin shape.records) {store : Store Unit} {s : Locals} {ptr : Nat}
+    {p : UInt64} {slots : List LeanExe.Pipeline.Slot} {rest : Program} {Q : Assertion Unit}
+    (hRaw : RecordStorage slots.length heap store p) (hHeap : heap.At store)
+    (hPtr : s.get ptr = some (.i64 p)) (hWidth : shape.width r = slots.length)
+    (hMask : shape.mask r = maskOf slots)
+    (hTag : shape.tagged = true → store.mem.read64 p.toUInt32 = UInt64.ofNat (shape.ctorIndex r))
+    (hNext : wp m rest Q (restoreRecordStore store p slots) s host) :
+    wp m (restoreRecordCode shape ptr ++ rest) Q store s host :=
+  wpX_restoreRecord (strict := false) r hRaw hHeap hPtr hWidth hMask hTag nofun hNext
+
 theorem wpX_restoreOwnedRecord {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap}
     {shape : TreeShape} {store : Store Unit} {s : Locals} {ptr : Nat} {p : UInt64}
     {slots : List LeanExe.Pipeline.Slot} {rest : Program} {Q : Assertion Unit}
@@ -102,6 +113,22 @@ theorem wpX_restoreOwnedRecord {strict : Bool} {m : Module} {host : HostEnv Unit
       hApart
   exact wpX_restoreRecord r hRaw hHeap hPtr hLength.symm hMask.symm
     (fun ht => SlotsOwned.tag hSlots hPrefix ht) hAl (hNext _ hWrites hAt hOwned hBlocks)
+
+theorem wp_restoreOwnedRecord {m : Module} {host : HostEnv Unit} {heap : Heap}
+    {shape : TreeShape} {store : Store Unit} {s : Locals} {ptr : Nat} {p : UInt64}
+    {slots : List LeanExe.Pipeline.Slot} {rest : Program} {Q : Assertion Unit}
+    (hRaw : RecordStorage slots.length heap store p) (hHeap : heap.At store)
+    (hPtr : s.get ptr = some (.i64 p)) (hLayout : NodeLayout shape (.record slots))
+    (hSlots : SlotsOwned heap store p 0 slots)
+    (hApart : (Node.blocks store p (.record slots)).Pairwise regionsDisjoint)
+    (hNext : ∀ store',
+      Memory.WritesRange store store' (p.toNat - 40) p.toNat → heap.At store' →
+      NodeOwned heap store' p (.record slots) →
+      Node.blocks store' p (.record slots) = Node.blocks store p (.record slots) →
+      wp m rest Q store' s host) :
+    wp m (restoreRecordCode shape ptr ++ rest) Q store s host :=
+  wpX_restoreOwnedRecord (strict := false) hRaw hHeap hPtr hLayout hSlots hApart nofun hNext
+#print axioms wp_restoreOwnedRecord
 
 theorem wpX_treeCopyDescendInv {strict : Bool} {m : Module} (hm : Runtime m)
     (hRt : strict = true → AllocAligned m) {host : HostEnv Unit}
@@ -181,6 +208,32 @@ theorem wpX_treeCopyDescendInv {strict : Bool} {m : Module} (hm : Runtime m)
   simp only [List.cons_append, List.nil_append, wpX_localGet_cons, hFresh]
   exact wpX_localSet_local hLow1Fresh hHigh1Fresh (hNext heap' store' ptr _ hInv hNextLocals)
 
+theorem wp_treeCopyDescendInv {m : Module} (hm : Runtime m) {host : HostEnv Unit}
+    {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
+    {root children : List LeanExe.Pipeline.Slot} {result : UInt64} {limit base : Nat}
+    {current : CopyRecord} {parents : List CopyRecord} {s0 s : Locals}
+    {rest : Program} {Q : Assertion Unit}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hLocals : CopyLocals base s0 result current.pointer s)
+    (hWord : s.get (base + 4) =
+      some (.i64 (store.mem.read64 (slotAddress current.source current.next))))
+    (hBound : current.next < current.slots.length)
+    (hSlot : current.slots[current.next] = .child (.record children))
+    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK (!decide (limit ≤ 65536 * initial.memoryCap m 0)) Q)
+    (hNext : ∀ heap' store' ptr s',
+      CopyInv shape heap0 initial root result limit heap' store'
+        ⟨store.mem.read64 (slotAddress current.source current.next), ptr, children, 0⟩
+        (current :: parents) →
+      CopyLocals base s0 result ptr s' → wp m rest Q store' s' host) :
+    wp m (treeCopyAllocate shape (base + 4) (base + 5) ++
+      treeCopyBegin shape (base + 4) (base + 5) [.localGet (base + 4)] [.localGet (base + 1)] ++
+      [.localGet (base + 5), .localSet (base + 1)] ++ rest) Q store s host :=
+  wpX_treeCopyDescendInv (strict := false) hm nofun ⟨h, nofun⟩ hLocals hWord hBound hSlot hLow hHigh
+    hCap hTrap (fun heap' store' ptr s' a1 a2 => hNext heap' store' ptr s' a1.1 a2)
+#print axioms wp_treeCopyDescendInv
+
 theorem wpX_treeCopyComplete {strict : Bool} {m : Module} {host : HostEnv Unit} {heap0 heap : Heap}
     {initial store : Store Unit} {shape : TreeShape} {root : List LeanExe.Pipeline.Slot}
     {result : UInt64} {limit base : Nat} {current : CopyRecord} {parents : List CopyRecord}
@@ -225,6 +278,24 @@ theorem wpX_treeCopyComplete {strict : Bool} {m : Module} {host : HostEnv Unit} 
     hSlots hNodeApart h.pointerAl ?_
   intro store' hWrites hAt hOwned hBlocks
   exact hNext store' sFresh (CopyInv.completeX h hDone hWrites hAt hOwned hBlocks) hFreshLocals hFresh
+
+theorem wp_treeCopyComplete {m : Module} {host : HostEnv Unit} {heap0 heap : Heap}
+    {initial store : Store Unit} {shape : TreeShape} {root : List LeanExe.Pipeline.Slot}
+    {result : UInt64} {limit base : Nat} {current : CopyRecord} {parents : List CopyRecord}
+    {s0 s : Locals} {rest : Program} {Q : Assertion Unit}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hLocals : CopyLocals base s0 result current.pointer s)
+    (hDone : current.next = current.slots.length)
+    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hNext : ∀ store' s', CopyCompleted shape heap0 initial root result limit heap store' current parents →
+      CopyLocals base s0 result current.pointer s' →
+      s'.get (base + 5) = some (.i64 ((parents.head?.map CopyRecord.pointer).getD 0)) →
+      wp m rest Q store' s' host) :
+    wp m (headerLoad (base + 1) 40 ++ [.localSet (base + 5)] ++
+      restoreRecordCode shape (base + 1) ++ rest) Q store s host :=
+  wpX_treeCopyComplete (strict := false) ⟨h, nofun⟩ hLocals hDone hLow hHigh
+    (fun store' s' a1 a2 a3 => hNext store' s' a1.1 a2 a3)
+#print axioms wp_treeCopyComplete
 
 theorem wpX_treeCopyAscendInv {strict : Bool} {m : Module} {host : HostEnv Unit} {heap0 heap : Heap}
     {initial store : Store Unit} {shape : TreeShape} {root : List LeanExe.Pipeline.Slot}
@@ -304,5 +375,24 @@ theorem wpX_treeCopyAscendInv {strict : Bool} {m : Module} {host : HostEnv Unit}
     change wpX strict m ([.localGet (base + 5), .localSet (base + 1)] ++ rest) Q store' sIndex host
     simp only [List.cons_append, List.nil_append, wpX_localGet_cons, hParentLocal]
     exact wpX_localSet_local hLow1 hHigh1 (hNext store' _ hInv hNextLocals)
+
+theorem wp_treeCopyAscendInv {m : Module} {host : HostEnv Unit} {heap0 heap : Heap}
+    {initial store : Store Unit} {shape : TreeShape} {root : List LeanExe.Pipeline.Slot}
+    {result : UInt64} {limit base : Nat} {current parent : CopyRecord} {parents : List CopyRecord}
+    {s0 s : Locals} {rest : Program} {Q : Assertion Unit}
+    (h : CopyCompleted shape heap0 initial root result limit heap store current (parent :: parents))
+    (hLocals : CopyLocals base s0 result current.pointer s)
+    (hFresh : s.get (base + 5) = some (.i64 parent.pointer))
+    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hNext : ∀ store' s', CopyInv shape heap0 initial root result limit heap store'
+      { parent with next := parent.next + 1 } parents →
+      CopyLocals base s0 result parent.pointer s' → wp m rest Q store' s' host) :
+    wp m (headerLoad (base + 5) 8 ++ [.localSet (base + 2)] ++
+      treeSlotAddress (base + 5) (base + 2) ++ [.localGet (base + 1), .store64 0] ++
+      treeCopyAdvance (base + 5) (base + 2) ++
+      [.localGet (base + 5), .localSet (base + 1)] ++ rest) Q store s host :=
+  wpX_treeCopyAscendInv (strict := false) ⟨h, nofun⟩ hLocals hFresh hLow hHigh
+    (fun store' s' a1 a2 => hNext store' s' a1.1 a2)
+#print axioms wp_treeCopyAscendInv
 
 end Verified

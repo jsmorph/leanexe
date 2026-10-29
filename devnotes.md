@@ -38479,7 +38479,7 @@ Each proof takes the heap's alignment and the result's from `FunPost true`, the 
 - [ ] Switch the import of `LeanExe/Pipeline/ImplementsAligned.lean` from `LeanExe/ProofKit/AlignedExec.lean` to `AlignedDefs.lean` when the native side's move of `AlignedRun` merges.
 - [ ] Remove `LeanExe/Pipeline/AlignedImplements.lean.new`, an untracked intermediate copy of `AlignedImplements.lean` left beside it during this work, once the user approves its removal.
 
-## 2026-10-29: One proof of each construct: the first batch of the consolidation
+## 2026-10-29: One proof of each construct: the consolidation of the alignment proof
 
 Each original theorem whose flagged twin has its own full proof becomes the `strict = false` instance of the twin, with its name and statement unchanged, so that each construct keeps one proof.  A corollary in its original's file would close an import cycle, because the flagged modules import the original files for their definitions and for the lemmas the ports reuse.  Each corollary therefore sits directly after its twin, and the original leaves its file.  The corollaries whose twins take `CopyCodeX` or `ReadReleaseX` and lie upstream of `Verified/AlignedCopy.lean`, where `copyCodeX` proves the first, go into [the corollaries module](Verified/AlignedCorollaries.lean) after it.  The three originals of `Verified/Correct.lean` become corollaries in place.
 
@@ -38493,8 +38493,12 @@ Each original theorem whose flagged twin has its own full proof becomes the `str
 
 The first batch leaves 26 original modules with imports and no declarations, among them `Verified/TailEntry.lean` and `Verified/VarCorrect.lean`.  They stay until the user decides on their removal.  The removal would drop each such import and add the emptied module's own imports in its place, since no importing file names a moved theorem.
 
+**The second batch.**  The second batch holds the remaining 65 originals, of the tree level, the copy, and the runtime, and four unpaired theorems that move whole: `read_release` and `spec_size` to [the release chain](Verified/AlignedReleaseChain.lean), `wp_copyArray` to `Verified/AlignedArrayCopy.lean`, and `RunsTailBranch.dispatchCode` to `Verified/AlignedTreeMemory.lean`.  The proofs of `wp_copyCode`, `wp_releaseCode`, `wp_releaseVars`, `wp_treeCopyBody`, and `CopyCompleted.root` are written by hand, and the generator wrote the other 60.  Each moved declaration now has a section with the `variable` commands in scope at its original place, which rules out the binder-order failure of the first batch.  The statement of `wp_restoreRecord` says `List Slot`, which in `Verified/TreeRestoreCode.lean` meant `LeanExe.Pipeline.Slot` and after its twin resolves to `Verified.Slot`, so the moved statement names `LeanExe.Pipeline.Slot`, with the same type.  `copyCodeX_false` is gone, since `copyCodeX` proves `CopyCodeX` for every runtime.  `readReleaseX_false` is gone as well, because `read_release` now lies downstream of `Verified/AlignedSpec.lean`, and its one user, `spec_size_of_flag`, moved to the end of the release chain, where it takes `readReleaseX`.  All 184 types, of both batches and of `PushesWord.const`, agree with those recorded before the moves.
+
+The second batch leaves 26 more modules with imports and no declarations, among them `Verified/TreeCopy.lean` and `Verified/Bytes/Literal.lean`, and the links of the manuals to the byte copy and the literal rules point at `Verified/AlignedBytes.lean`.  Across both batches, 33 files import one of the 52 emptied modules.
+
 - [x] The kernel-term analysis at the levels of constants and modules, and the batches.
 - [x] The first batch: the expression and tail levels.
-- [ ] The second batch: the tree level, the copy, and the runtime.
+- [x] The second batch: the tree level, the copy, and the runtime.
 - [ ] Decide whether `read_release` and `spec_size`, which move whole, become corollaries of their flagged versions.
 - [ ] The emptied modules: remove them with their importers pointed at the modules that hold their theorems, or keep them with module docs that say where the theorems went.

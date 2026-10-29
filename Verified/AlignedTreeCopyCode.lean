@@ -74,7 +74,32 @@ theorem wpX_copyRecordAdvance {strict : Bool} {m : Module} {host : HostEnv Unit}
   change record.pointer.toNat - 8 + 8 ≤ store.mem.pages * 65536
   omega
 
-
+theorem wp_copyRecordAdvance {m : Module} {host : HostEnv Unit} {heap : Heap}
+    {shape : TreeShape} {store : Store Unit} {s : Locals} {ptr index value : Nat}
+    {parent word : UInt64} {record : CopyRecord} {rest : Program} {Q : Assertion Unit}
+    (h : record.Holds shape heap store parent) (hAt : heap.At store)
+    (hBound : record.next < record.slots.length)
+    (hValue : (record.slots[record.next]).ValueOwned heap store word)
+    (hSourceApart : ∀ r ∈ (Node.record record.slots).slotRegions store record.source,
+      regionsDisjoint r (block store record.pointer))
+    (hPrefixApart : ∀ b ∈ slotsBlocks store record.pointer 0 (record.slots.take record.next),
+      regionsDisjoint b (block store record.pointer))
+    (hValueApart : ∀ b ∈ (record.slots[record.next]).valueBlocks store word,
+      regionsDisjoint b (block store record.pointer))
+    (hPtr : s.get ptr = some (.i64 record.pointer))
+    (hIndex : s.get index = some (.i64 (UInt64.ofNat record.next)))
+    (hWord : s.get value = some (.i64 word))
+    (hNext : ∀ store',
+      CopyRecord.Holds shape heap store' parent { record with next := record.next + 1 } →
+      Step heap store (fun r => regionsDisjoint r (block store record.pointer)) heap store' [] →
+      ({ record with next := record.next + 1 } : CopyRecord).blocks store' =
+        record.blocks store ++ (record.slots[record.next]).valueBlocks store word →
+      wp m rest Q store' s host) :
+    wp m (treeSlotAddress ptr index ++ [.localGet value, .store64 0] ++
+      treeCopyAdvance ptr index ++ rest) Q store s host :=
+  wpX_copyRecordAdvance (strict := false) h hAt hBound hValue hSourceApart hPrefixApart hValueApart
+    hPtr hIndex hWord nofun hNext
+#print axioms wp_copyRecordAdvance
 
 theorem wpX_treeCopyRead {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
     {s : Locals} {shape : TreeShape} {record : CopyRecord} {parent : UInt64} {base : Nat}
@@ -141,7 +166,22 @@ theorem wpX_treeCopyRead {strict : Bool} {m : Module} {host : HostEnv Unit} {hea
   · exact Locals.get_setLocal_same hLow4Source hHigh4Source
   · rfl
 
-
+theorem wp_treeCopyRead {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
+    {s : Locals} {shape : TreeShape} {record : CopyRecord} {parent : UInt64} {base : Nat}
+    {rest : Program} {Q : Assertion Unit} (h : record.Holds shape heap store parent)
+    (hAt : heap.At store) (hBound : record.next < record.slots.length)
+    (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
+    (hPtr : s.get (base + 1) = some (.i64 record.pointer))
+    (hIndex : s.get (base + 2) = some (.i64 (UInt64.ofNat record.next)))
+    (hNext : ∀ s', Frame base s s' → s'.get base = s.get base →
+      s'.get (base + 1) = some (.i64 record.pointer) →
+      s'.get (base + 2) = some (.i64 (UInt64.ofNat record.next)) →
+      s'.get (base + 3) = some (.i64 record.source) →
+      s'.get (base + 4) = some (.i64 (store.mem.read64 (slotAddress record.source record.next))) →
+      s'.values = s.values → wp m rest Q store s' host) :
+    wp m (treeCopyRead base ++ rest) Q store s host :=
+  wpX_treeCopyRead (strict := false) h hAt hBound hLow hHigh hPtr hIndex nofun hNext
+#print axioms wp_treeCopyRead
 
 theorem wpX_treeCopyAdvanceInv {strict : Bool} {m : Module} {host : HostEnv Unit} {heap0 heap : Heap}
     {initial store : Store Unit} {shape : TreeShape} {root : List LeanExe.Pipeline.Slot}
@@ -166,5 +206,25 @@ theorem wpX_treeCopyAdvanceInv {strict : Bool} {m : Module} {host : HostEnv Unit
   rw [hNoBlocks, List.append_nil] at hBlocks
   exact hNext store' (CopyInv.advanceStepX h hCurrent hWrite hBlocks hWork hCharge)
 
+theorem wp_treeCopyAdvanceInv {m : Module} {host : HostEnv Unit} {heap0 heap : Heap}
+    {initial store : Store Unit} {shape : TreeShape} {root : List LeanExe.Pipeline.Slot}
+    {result : UInt64} {limit base : Nat} {current : CopyRecord} {parents : List CopyRecord}
+    {s0 s : Locals} {word : UInt64} {rest : Program} {Q : Assertion Unit}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hLocals : CopyLocals base s0 result current.pointer s)
+    (hIndex : s.get (base + 2) = some (.i64 (UInt64.ofNat current.next)))
+    (hWord : s.get (base + 4) = some (.i64 word)) (hBound : current.next < current.slots.length)
+    (hValue : (current.slots[current.next]).ValueOwned heap store word)
+    (hNoBlocks : (current.slots[current.next]).valueBlocks store word = [])
+    (hWork : CopyWork.Step (current.work parents)
+      ({ current with next := current.next + 1 }.work parents))
+    (hCharge : (current.work parents).charge = 0)
+    (hNext : ∀ store', CopyInv shape heap0 initial root result limit heap store'
+      { current with next := current.next + 1 } parents → wp m rest Q store' s host) :
+    wp m (treeSlotAddress (base + 1) (base + 2) ++ [.localGet (base + 4), .store64 0] ++
+      treeCopyAdvance (base + 1) (base + 2) ++ rest) Q store s host :=
+  wpX_treeCopyAdvanceInv (strict := false) ⟨h, nofun⟩ hLocals hIndex hWord hBound hValue hNoBlocks
+    hWork hCharge (fun store' a1 => hNext store' a1.1)
+#print axioms wp_treeCopyAdvanceInv
 
 end Verified

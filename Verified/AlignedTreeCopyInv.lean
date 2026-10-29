@@ -138,6 +138,17 @@ theorem CopyInv.startX {strict : Bool} {shape : TreeShape} {heap0 heap : Heap}
     rw [List.mem_singleton.mp hr]
     exact (hAl hs).2.2.2
 
+theorem CopyInv.start {shape : TreeShape} {heap0 heap : Heap} {initial store : Store Unit}
+    {root : List LeanExe.Pipeline.Slot} {source result : UInt64} {limit : Nat}
+    (hSource : NodeBorrowed heap0 initial source (.record root))
+    (hStep : Step heap0 initial (fun _ => True) heap store [block store result])
+    (hRecord : CopyRecord.Holds shape heap store 0 ⟨source, result, root, 0⟩)
+    (hTop : heap.top.toNat ≤ heap0.top.toNat + allocCost (8 * root.length))
+    (hLimit : heap0.top.toNat + nodeCopyCost (.record root) ≤ limit) :
+    CopyInv shape heap0 initial root result limit heap store ⟨source, result, root, 0⟩ [] :=
+  (CopyInv.startX (strict := false) hSource hStep hRecord hTop hLimit nofun).1
+#print axioms CopyInv.start
+
 /-- `CopyInv.advanceStep` with the alignment: the copy's blocks are those before the step. -/
 theorem CopyInv.advanceStepX {strict : Bool} {shape : TreeShape} {heap0 heap : Heap}
     {initial store store' : Store Unit} {root : List LeanExe.Pipeline.Slot} {result : UInt64}
@@ -185,6 +196,24 @@ theorem CopyInv.advanceStepX {strict : Bool} {shape : TreeShape} {heap0 heap : H
     rcases List.mem_cons.mp hr with rfl | hr
     · exact (hA hs).sources current List.mem_cons_self
     · exact (hA hs).sources record (List.mem_cons_of_mem current hr)
+
+theorem CopyInv.advanceStep {shape : TreeShape} {heap0 heap : Heap}
+    {initial store store' : Store Unit} {root : List LeanExe.Pipeline.Slot} {result : UInt64}
+    {limit : Nat} {current : CopyRecord} {parents : List CopyRecord}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hCurrent : CopyRecord.Holds shape heap store'
+      ((parents.head?.map CopyRecord.pointer).getD 0) { current with next := current.next + 1 })
+    (hWrite : Step heap store (fun r => regionsDisjoint r (block store current.pointer))
+      heap store' [])
+    (hBlocks : ({ current with next := current.next + 1 } : CopyRecord).blocks store' =
+      current.blocks store)
+    (hWork : CopyWork.Step (current.work parents)
+      ({ current with next := current.next + 1 }.work parents))
+    (hCharge : (current.work parents).charge = 0) :
+    CopyInv shape heap0 initial root result limit heap store'
+      { current with next := current.next + 1 } parents :=
+  (CopyInv.advanceStepX (strict := false) ⟨h, nofun⟩ hCurrent hWrite hBlocks hWork hCharge).1
+#print axioms CopyInv.advanceStep
 
 /-- `CopyInv.descend` with the alignment: the child's new block, the heap after its allocation,
 and the child's source regions, which are regions of its parent's source, are aligned. -/
@@ -256,6 +285,21 @@ theorem CopyInv.descendX {strict : Bool} {shape : TreeShape} {heap0 heap heap' :
       exact (hA hs).sources current List.mem_cons_self r (slotRegions_child hBound hSlot r hr')
     · exact (hA hs).sources record hr
 
+theorem CopyInv.descend {shape : TreeShape} {heap0 heap heap' : Heap}
+    {initial store store' : Store Unit} {root : List LeanExe.Pipeline.Slot} {result : UInt64}
+    {limit : Nat} {current child : CopyRecord} {parents : List CopyRecord}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hBound : current.next < current.slots.length)
+    (hSlot : current.slots[current.next] = .child (.record child.slots)) (hNext : child.next = 0)
+    (hChildSource : NodeBorrowed heap0 initial child.source (.record child.slots))
+    (hNew : Step heap store (fun _ => True) heap' store' [block store' child.pointer])
+    (hChild : child.Holds shape heap' store' current.pointer)
+    (hTop : heap'.top.toNat ≤ heap.top.toNat + allocCost (8 * child.slots.length)) :
+    CopyInv shape heap0 initial root result limit heap' store' child (current :: parents) :=
+  (CopyInv.descendX (strict := false) ⟨h, nofun⟩ hBound hSlot hNext hChildSource nofun hNew hChild
+    hTop nofun).1
+#print axioms CopyInv.descend
+
 /-- `CopyInv.complete` with the alignment: the copy's blocks are those before the step. -/
 theorem CopyInv.completeX {strict : Bool} {shape : TreeShape} {heap0 heap : Heap}
     {initial store store' : Store Unit} {root : List LeanExe.Pipeline.Slot} {result : UInt64}
@@ -306,6 +350,19 @@ theorem CopyInv.completeX {strict : Bool} {shape : TreeShape} {heap0 heap : Heap
   · simpa only [hCopyBlocks] using hAll
   · rw [hCopyBlocks]
     exact h.apart
+
+theorem CopyInv.complete {shape : TreeShape} {heap0 heap : Heap}
+    {initial store store' : Store Unit} {root : List LeanExe.Pipeline.Slot} {result : UInt64}
+    {limit : Nat} {current : CopyRecord} {parents : List CopyRecord}
+    (h : CopyInv shape heap0 initial root result limit heap store current parents)
+    (hDone : current.next = current.slots.length)
+    (hWrites : Memory.WritesRange store store' (current.pointer.toNat - 40) current.pointer.toNat)
+    (hAt : heap.At store') (hOwned : NodeOwned heap store' current.pointer (.record current.slots))
+    (hNodeBlocks : Node.blocks store' current.pointer (.record current.slots) =
+      Node.blocks store current.pointer (.record current.slots)) :
+    CopyCompleted shape heap0 initial root result limit heap store' current parents :=
+  (CopyInv.completeX (strict := false) ⟨h, nofun⟩ hDone hWrites hAt hOwned hNodeBlocks).1
+#print axioms CopyInv.complete
 
 /-- `CopyCompleted.ascend` with the alignment: the copy's blocks are those before the step, in
 another order. -/
@@ -370,5 +427,19 @@ theorem CopyCompleted.ascendX {strict : Bool} {shape : TreeShape} {heap0 heap : 
     rcases List.mem_cons.mp hr with rfl | hr
     · exact (hA hs).sources parent (List.mem_cons_of_mem _ List.mem_cons_self)
     · exact (hA hs).sources record (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hr))
+
+theorem CopyCompleted.ascend {shape : TreeShape} {heap0 heap : Heap}
+    {initial store store' : Store Unit} {root : List LeanExe.Pipeline.Slot} {result : UInt64}
+    {limit : Nat} {current parent : CopyRecord} {parents : List CopyRecord}
+    (h : CopyCompleted shape heap0 initial root result limit heap store current (parent :: parents))
+    (hParent : CopyRecord.Holds shape heap store'
+      ((parents.head?.map CopyRecord.pointer).getD 0) { parent with next := parent.next + 1 })
+    (hWrite : Step heap store (fun r => regionsDisjoint r (block store parent.pointer)) heap store' [])
+    (hParentBlocks : ({ parent with next := parent.next + 1 } : CopyRecord).blocks store' =
+      parent.blocks store ++ Node.blocks store current.pointer (.record current.slots)) :
+    CopyInv shape heap0 initial root result limit heap store'
+      { parent with next := parent.next + 1 } parents :=
+  (CopyCompleted.ascendX (strict := false) ⟨h, nofun⟩ hParent hWrite hParentBlocks).1
+#print axioms CopyCompleted.ascend
 
 end Verified
