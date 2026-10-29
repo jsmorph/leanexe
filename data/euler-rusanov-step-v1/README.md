@@ -24,7 +24,7 @@ host floating-point computation determines these words.
 | [manifest.json](manifest.json) | Artifact and generator identities, output digests, theorem reference, and exact balance residuals. |
 
 The theorem
-[`Project.EulerRusanovStep.StepData.artifact_stepV1`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRusanovStep/StepData.lean)
+[`Project.EulerRusanovStep.StepData.artifact_stepV1`](https://github.com/jsmorph/leanexe/blob/26d057979df98de1d17c8a44a07558546e3b5383/proofs/talos/lean/Project/EulerRusanovStep/StepData.lean)
 starts from the exact frozen bytes.  It establishes decoding, validation,
 `CoreValid`, fuel-independent termination, complete store preservation, the
 seven published words, and the existing decoded-real numerical certificate.

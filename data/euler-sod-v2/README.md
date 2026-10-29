@@ -36,9 +36,9 @@ positive density/pressure/speed, and rounded CFL in(0,0.5]. Every final raw word
 for all four resolutions agrees with the independent IEEE host implementation.
 Raw100-cell outputs and per-step raw time/ratio/speed words are retained.
 
-[RunnerExecution](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerGridStep/RunnerExecution.lean)
+[RunnerExecution](https://github.com/jsmorph/leanexe/blob/26d057979df98de1d17c8a44a07558546e3b5383/proofs/talos/lean/Project/EulerGridStep/RunnerExecution.lean)
 proves the generic actual-call trace and intermediate-grid safety under the
-explicit host-preparation preconditions; [ArtifactRunner](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerGridStep/ArtifactRunner.lean)
+explicit host-preparation preconditions; [ArtifactRunner](https://github.com/jsmorph/leanexe/blob/26d057979df98de1d17c8a44a07558546e3b5383/proofs/talos/lean/Project/EulerGridStep/ArtifactRunner.lean)
 attaches that statement to the frozen bytes. Host time selection, memory growth,
 copying, diagnostic accumulation, scientific reference and rendering remain
 outside the formal theorem. The C/JS runtime assertions check the host obligations; this does not

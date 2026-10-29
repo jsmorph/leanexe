@@ -40,7 +40,7 @@ The Verified compiler emits 73 instruction forms, one memory, four i64 globals, 
 - Exports: `alloc`, `release`, each function by name, the wrappers, the memory and the two counters.
 - Locals: parameters are i64, f64 or f32; each function also has an i64, an f64 and an f32 local for every position it uses.
 
-**Instruction forms**, from the code generators in `Verified/` (`Compile.lean` and the `Tree*` and `ListFold*` code files), `LeanExe/Runtime/` and the allocator programs in `LeanExe/ProofKit/`, at LeanExe `d1f8517` against Talos `87e3aa5`, with the byte loads and stores of `Verified/Bytes/`, which typed fields added later:
+**Instruction forms**, from the code generators in `Verified/` (`Compile.lean` and the `Tree*` and `ListFold*` code files), `LeanExe/Runtime/` and the allocator programs in `LeanExe/ProofKit/`, at LeanExe `b1a3d59` against Talos `87e3aa5`, with the byte loads and stores of `Verified/Bytes/`, which typed fields added later:
 
 | Group | Forms | Count |
 | --- | --- | --- |
@@ -309,6 +309,6 @@ Tooling outside Lean comes on top: the `clightgen` reader, the test harness and 
 
 ## Sources
 
-- jsmorph/leanexe at `d1f8517`: `Verified/Compile.lean`, `Verified/README.md`, `LeanExe/Pipeline/Implements.lean`, `LeanExe/Pipeline/Aborts.lean`, `LeanExe/Runtime/Defs.lean`
+- jsmorph/leanexe at `b1a3d59`: `Verified/Compile.lean`, `Verified/README.md`, `LeanExe/Pipeline/Implements.lean`, `LeanExe/Pipeline/Aborts.lean`, `LeanExe/Runtime/Defs.lean`
 - jsmorph/talos at `87e3aa5`: `interpreter/Interpreter/Wasm/Semantics.lean`, `Syntax.lean`, `Locals.lean`, `Continuation.lean`
 - AbsInt/CompCert 3.18: `cfrontend/Clight.v`, `cfrontend/ClightBigstep.v`, `common/Memdata.v`, `common/Memory.v`, `common/Builtins0.v`, `x86_64/Archi.v`, `aarch64/Archi.v`, `driver/Compiler.v`, `driver/Driver.ml`, `export/README.md` (`clightgen`)
