@@ -8,40 +8,7 @@ import LeanExe.ProofKit.AlignedAllocate
 aligned heap, the run of `alloc` makes only aligned 64-bit accesses inside memory.  The request
 `allocSize bytes` is a multiple of 8, and `Heap.Aligned` gives the alignment of `top` and of the
 roots and capacities of the free blocks that the allocation's ports take as premises.
-`RunsA.append_args` extends the arguments of a run, as `Runs.append_args` does.
 -/
-
-namespace Wasm
-
-variable {α : Type} {env : HostEnv α} {m : Module} {id : Nat} {initial : Store α}
-  {args : List Value} {P : Store α → List Value → Prop}
-
-theorem alignedRun_append_args {f : Function} {fuel : Nat} (hImp : m.imports[id]? = none)
-    (hf : m.funcs[id - m.imports.length]? = some f) (hlen : args.length = f.numParams)
-    (rest : List Value) :
-    LeanExe.ProofKit.AlignedRun fuel m id initial (args ++ rest) env ↔
-      LeanExe.ProofKit.AlignedRun fuel m id initial args env := by
-  rw [LeanExe.ProofKit.AlignedRun, LeanExe.ProofKit.AlignedRun]
-  simp only [hImp, hf]
-  have ht : (args ++ rest).take f.numParams = args.take f.numParams := by simp [← hlen]
-  rw [ht]
-
-theorem _root_.LeanExe.ProofKit.RunsA.append_args {aborts : Bool} {f : Function}
-    (h : LeanExe.ProofKit.RunsA aborts env m id initial args P)
-    (hImp : m.imports[id]? = none) (hf : m.funcs[id - m.imports.length]? = some f)
-    (hlen : args.length = f.numParams) (rest : List Value) :
-    LeanExe.ProofKit.RunsA aborts env m id initial (args ++ rest)
-      (fun st values => ∃ out, values = out ++ rest ∧ P st out) := by
-  obtain ⟨hRuns, N, hN⟩ := h
-  exact ⟨hRuns.append_args hImp hf hlen rest, N, fun fuel hf' =>
-    (alignedRun_append_args hImp hf hlen rest).mpr (hN fuel hf')⟩
-
-theorem _root_.LeanExe.ProofKit.RunsA.mono {aborts : Bool} {Q : Store α → List Value → Prop}
-    (h : LeanExe.ProofKit.RunsA aborts env m id initial args P)
-    (hPQ : ∀ st vs, P st vs → Q st vs) : LeanExe.ProofKit.RunsA aborts env m id initial args Q :=
-  ⟨h.1.mono hPQ, h.2⟩
-
-end Wasm
 
 namespace LeanExe.Pipeline
 

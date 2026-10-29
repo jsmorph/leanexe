@@ -6,7 +6,8 @@ Function-level alignment.  `RunsA` is `Runs` together with `AlignedRun` at every
 bound on.  `RunsA.of_wpA_entry_for` derives it from the body's `wpA`, as `Runs.of_wp_entry_for`
 derives `Runs` from the body's `wp`, and `wpA_call_runs` is the call rule, the counterpart of
 `wp_call_runs`: the callee's `RunsA` gives the alignment of the call, which is the alignment of
-the callee's run at one fuel less.
+the callee's run at one fuel less.  `RunsA.append_args` and `RunsA.mono` are the counterparts of
+`Runs.append_args` and `Runs.mono`.
 -/
 
 namespace LeanExe.ProofKit
@@ -97,5 +98,29 @@ theorem wpA_call_runs {aborts : Bool} {st : Store α} {s : Locals} {rest : Progr
       refine ⟨?_, trivial⟩
       simp only [AlignedOne]
       exact hNa f (by omega)
+
+/-- An aligned run extends to a longer operand stack, as `Runs.append_args` extends a run: the
+alignment of a run depends on its arguments only through the parameters it takes. -/
+theorem RunsA.append_args {aborts : Bool} {f : Function}
+    (h : RunsA aborts env m id initial args P)
+    (hImp : m.imports[id]? = none) (hf : m.funcs[id - m.imports.length]? = some f)
+    (hlen : args.length = f.numParams) (rest : List Value) :
+    RunsA aborts env m id initial (args ++ rest)
+      (fun st values => ∃ out, values = out ++ rest ∧ P st out) := by
+  refine ⟨h.1.append_args hImp hf hlen rest, ?_⟩
+  obtain ⟨N, hN⟩ := h.2
+  refine ⟨N, fun fuel hfuel => ?_⟩
+  have hA := hN fuel hfuel
+  have hTake : (args ++ rest).take f.numParams = args.take f.numParams :=
+    List.take_append_of_le_length (by omega)
+  rw [AlignedRun] at hA ⊢
+  simp only [hImp, hf] at hA ⊢
+  rw [hTake]
+  exact hA
+
+theorem RunsA.mono {aborts : Bool} {Q : Store α → List Value → Prop}
+    (h : RunsA aborts env m id initial args P) (hPQ : ∀ st vs, P st vs → Q st vs) :
+    RunsA aborts env m id initial args Q :=
+  ⟨h.1.mono hPQ, h.2⟩
 
 end LeanExe.ProofKit

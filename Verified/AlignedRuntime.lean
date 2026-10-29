@@ -8,7 +8,7 @@ discharges `AllocAligned` from `alloc_spec_runsA`, with the abort flag set, sinc
 covers the runs that trap when memory cannot grow.  `Runtime.releaseAligned` discharges the three
 fields of `ReleaseAligned` from `release_null_runA`, `release_leaf_runA` with
 `Heap.Aligned.release`, and `release_tree_run_topA`, each extended to the caller's further
-arguments by `RunsA.append_args`.
+arguments by `RunsA.append_args` of the module that defines `RunsA`.
 -/
 
 namespace Verified
