@@ -167,12 +167,12 @@ theorem sim_block {CallOk : Nat → Prop} {f : Nat} (hP : ProgSim A X E mod c Ca
     InstrSimL A X E mod c CallOk (f + 1) (.block pa ra body pts rts) := by
   intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hal hinv
   simp [trInstr, Option.bind_eq_some_iff] at htr
-  obtain ⟨hbt, r, hr, parent, hp, s0, hbody, rfl, rfl⟩ := htr
+  obtain ⟨hbt, r, hr, parent, hp, s0, n1, hbody, rfl, rfl, rfl⟩ := htr
   obtain ⟨rfl, rfl⟩ := blockTypeOk_inv hbt hr
   rw [execOne_block]
   apply ConstructOutcome.toOutcome hp
   have ho := hP ({ isLoop := false, base := σ.length, result := r } :: L) σ (r.toList ++ σ) n body
-    s0 n' hbody (Nat.le_refl _) (hL.push hbase false r)
+    s0 n1 hbody (Nat.le_refl _) (hL.push hbase false r)
     (fun k hk => hcalls k (callees_wrap _ _ hk)) st sl le m env
     (fun hc => by have h1 := hal hc; simp only [AlignedOne] at h1; exact h1) hinv
   exact construct_of_body hbase hinv.stack ho
@@ -221,7 +221,7 @@ theorem sim_iff {CallOk : Nat → Prop} {f : Nat} (hP : ProgSim A X E mod c Call
     InstrSimL A X E mod c CallOk (f + 1) (.iff pa ra thn els pts rts) := by
   intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hal hinv
   rcases σ with _ | ⟨a, σr⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at htr
-  obtain ⟨hbt, r, hr, parent, hp, hb, rfl, s1, n1, h1, s2, h2, rfl, rfl⟩ := htr
+  obtain ⟨hbt, r, hr, parent, hp, _, ⟨hb, rfl⟩, rfl, s1, n1, h1, s2, n2, h2, rfl, rfl, rfl⟩ := htr
   obtain ⟨rfl, rfl⟩ := blockTypeOk_inv hbt hr
   obtain ⟨x, vs, hvs, hx, hrest⟩ := pop1_i32 hinv.stack
   have halB : c.alignedAccess = true →
@@ -244,7 +244,7 @@ theorem sim_iff {CallOk : Nat → Prop} {f : Nat} (hP : ProgSim A X E mod c Call
       (fun hc => by have h1 := halB hc; rwa [ite_eq_left hx0] at h1) hinv'
   · rw [ite_eq_right hx0, ite_eq_right hx0]
     exact hP ({ isLoop := false, base := σr.length, result := r } :: L) σr (r.toList ++ σr) n1 els
-      s2 n' h2 (Nat.le_refl _) (hL.push hb false r)
+      s2 n2 h2 (Nat.le_refl _) (hL.push hb false r)
       (fun k hk => hcalls k (callees_wrap_ite _ _ _ _ (.inr hk))) st _ le m env
       (fun hc => by have h1 := halB hc; rwa [ite_eq_right hx0] at h1) hinv'
 
@@ -284,7 +284,7 @@ theorem sim_loop {CallOk : Nat → Prop} {F : Nat} (hP : ∀ g, g < F → ProgSi
     InstrSimL A X E mod c CallOk F (.loop pa ra body pts rts) := by
   intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hal hinv
   simp [trInstr, Option.bind_eq_some_iff] at htr
-  obtain ⟨hbt, r, hr, parent, hp, s0, hbody, rfl, rfl⟩ := htr
+  obtain ⟨hbt, r, hr, parent, hp, s0, n1, hbody, rfl, rfl, rfl⟩ := htr
   obtain ⟨rfl, rfl⟩ := blockTypeOk_inv hbt hr
   apply ConstructOutcome.toOutcome hp
   let L' : List Label := { isLoop := true, base := σ.length, result := none } :: L
@@ -306,7 +306,7 @@ theorem sim_loop {CallOk : Nat → Prop} {F : Nat} (hP : ∀ g, g < F → ProgSi
         simp only [AlignedOne] at h1
         exact h1.1
       rw [execOne_loop_succ g mod st sl env 0 r.toList.length body pts rts]
-      have ho := hP g (by omega) L' σ (r.toList ++ σ) n body s0 n' hbody (Nat.le_refl _) hL' hc'
+      have ho := hP g (by omega) L' σ (r.toList ++ σ) n body s0 n1 hbody (Nat.le_refl _) hL' hc'
         st sl le m env halb hinv
       cases hres : exec g mod st sl body env with
       | Fallthrough st' sl' =>

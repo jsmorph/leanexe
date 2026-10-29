@@ -1,6 +1,6 @@
 import LeanExe.Native.Proof.Ops
 import Interpreter.Wasm.Semantics.Lemmas
-import LeanExe.ProofKit.AlignedExec
+import LeanExe.ProofKit.AlignedDefs
 
 /-!
 The simulation of instruction lists, of `block`, `loop`, and `iff`, and of `br`, `br_if`, and

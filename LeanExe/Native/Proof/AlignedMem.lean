@@ -1,5 +1,5 @@
 import LeanExe.Native.Proof.MemOps
-import LeanExe.ProofKit.AlignedExec
+import LeanExe.ProofKit.AlignedDefs
 
 /-!
 Where the native proof consumes the alignment fact.  `load64Aligned` and `store64Aligned` are
