@@ -174,6 +174,16 @@ theorem HoldsA.pop {Γ : List Ty} {env : Env Γ} {slots : List Slot} {heap : Hea
     HoldsA env slots (fun i => live' (i + 1)) heap store s :=
   ⟨h.1, fun t' x hx => h.2 t' (.there x) hx⟩
 
+/-- A pair is aligned when its components are. -/
+theorem Ty.AlignedVal.pair {mode : Mode} {store : Store Unit} {a b : Ty} {ws1 ws2 : List Value}
+    {v1 : a.denote} {v2 : b.denote} (hl : ws1.length = a.width)
+    (h1 : Ty.AlignedVal mode store a ws1 v1) (h2 : Ty.AlignedVal mode store b ws2 v2) :
+    Ty.AlignedVal mode store (.pair a b) (ws1 ++ ws2) (v1, v2) := fun r hr => by
+  rw [Ty.regions_append hl] at hr
+  rcases List.mem_append.mp hr with hr | hr
+  · exact h1 r hr
+  · exact h2 r hr
+
 section Cases
 
 variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
@@ -679,6 +689,172 @@ theorem specX_letE (hm : Runtime m) (hRA : strict = true → ReleaseAligned m) {
       rw [hpot, hbuys, hSplitL]
       simp only [Expr.allocs, List.map_cons] at h3 ⊢
       omega
+
+
+/-- A pair: the code of each component, each followed by its coercion to the pair's mode. -/
+theorem specX_pair (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr S Γ' sTy}
+    {second : Expr S Γ' tTy}
+    (firstSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits host pv first env
+        slots paid live)
+    (secondSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits host pv second env
+        slots paid live) :
+    ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits host pv (Expr.pair first second) env
+        slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hAl hSafe hCap hBase hRoom
+      hPlace rest Q hTrap
+    hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have h1 : first.width ≤ max first.width second.width := Nat.le_max_left ..
+  have h2 : second.width ≤ max first.width second.width := Nat.le_max_right ..
+  have hc1 : copyWidth sTy ≤ max (copyWidth sTy) (copyWidth tTy) := Nat.le_max_left ..
+  have hc2 : copyWidth tTy ≤ max (copyWidth sTy) (copyWidth tTy) := Nat.le_max_right ..
+  have hw := Nat.le_max_left (max first.width second.width) (max (copyWidth sTy) (copyWidth tTy))
+  have hc := Nat.le_max_right (max first.width second.width) (max (copyWidth sTy) (copyWidth tTy))
+  simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
+  have hIn : ∀ i, ((live i || second.uses i) || first.uses i) = true →
+      (live i || (Expr.pair first second).uses i) = true := fun i h => by
+    simp only [Expr.uses]; exact live_seq _ _ _ h
+  have hVarsL := hVars.live_mono hIn
+  have hOwnedA : (Expr.pair first second).mode (slots.map Slot.mode) = .owned →
+      ((Expr.pair first second).aborts || slots.any (·.mode == .owned)) = true := fun ht => by
+    have := (Expr.pair first second).mode_owned (slots.map Slot.mode) ht
+    rw [Slot.any_map] at this
+    exact this
+  have hdF : (Expr.pair first second).fits funs fits env = true → first.fits funs fits env = true :=
+    fun hd => by simp only [Expr.fits, Bool.and_eq_true] at hd; exact hd.1
+  have hdS : (Expr.pair first second).fits funs fits env = true →
+      second.fits funs fits env = true := fun hd => by
+    simp only [Expr.fits, Bool.and_eq_true] at hd; exact hd.2
+  have hB : (Expr.pair first second).allocs funs flags bounds (slots.map Slot.mode) paid live env =
+      first.allocs funs flags bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i) env +
+        coerceCost sTy (first.mode (slots.map Slot.mode))
+          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+          (first.denote funs env) +
+        second.allocs funs flags bounds (slots.map Slot.mode) paid live env +
+        coerceCost tTy (second.mode (slots.map Slot.mode))
+          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+          (second.denote funs env) := by
+    simp only [Expr.allocs]
+  -- The variables that die in the pair die in the first component or in the second.
+  have hSplitP : dyingPot store s env slots paid
+      (fun i => live i || (Expr.pair first second).uses i)
+      live =
+        dyingPot store s env slots paid (fun i => live i || second.uses i || first.uses i)
+          (fun i => live i || second.uses i) +
+        dyingPot store s env slots paid (fun i => live i || second.uses i) live := by
+    rw [dyingPot_split _ (fun i => live i || second.uses i) _
+      (fun i h => hIn i (by simp [h])) (fun i h => by simp [h])]
+    congr 1
+    exact dyingPot_congr (fun i => by
+      simp only [Expr.uses]
+      cases live i <;> cases first.uses i <;> cases second.uses i <;> rfl) fun _ => rfl
+  refine firstSpec env slots paid _ h base heap store s hh hpv hVarsL hAt
+    (fun hs => (hAl hs).live_mono hIn) (hSafe.mono hIn) hCap hBase (by omega) hPlace.1 _ _
+    (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_left _ _ _ h)
+      fun _ hw => hw.mono (by rw [hB, hSplitP]; omega))
+    fun heap0 store0 s0 ws0 a0 hAl0 hTopF => ?_
+  refine After.coerceX hCopy a0 hAl0 (fun h => by simp [Mode.join, h]) le_rfl
+    (by rw [a0.frame.params]; exact hBase) (a0.frame.positions.trans hh) (by omega)
+    (by rw [a0.step.cap m]; exact hCap) (fun hs ht _ => hTrap.alloc (hOwnedA ht) fun hd hw => by
+      have hcc : coerceCost sTy (first.mode (slots.map Slot.mode))
+          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+          (first.denote funs env) =
+          sTy.copyCost (first.denote funs env) := by rw [coerceCost, ite_eq_left ⟨hs, ht⟩]
+      have := hTopF (hdF (fits_of_not hd))
+      exact hw.shift (c1 := dyingPot store s env slots paid
+          (fun i => live i || second.uses i || first.uses i) (fun i => live i || second.uses i) +
+        first.allocs funs flags bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i) env)
+        (by omega) (by rw [hB, hSplitP]; omega) (a0.step.cap m))
+    fun heap1 store1 s1 ws1 a1 hTopC1 hSame1 hAl1 => ?_
+  have hDs : dyingPot store1 { s1 with values := ws1.reverse ++ s.values } env slots paid
+      (fun i => live i || second.uses i) live =
+        dyingPot store s env slots paid (fun i => live i || second.uses i) live := by
+    rw [dyingPot_values]
+    exact dyingPot_after hVarsL a1 (fun i h => by simp [h]) _ _ fun _ h => h
+  refine secondSpec env slots paid live h base heap1 store1
+    { s1 with values := ws1.reverse ++ s.values } (a1.frame.positions.trans hh)
+    (a1.frame.params.trans hpv) (a1.holds.agree Frame.ofValues) a1.step.at_
+    (fun hs => (hAl1 hs).1.values _)
+    (((hSafe.mono hIn).after hVarsL a1 (fun i hi => by simp [hi])).1.values _)
+    (by rw [a1.step.cap m]; exact hCap)
+    (by show s1.params.length ≤ base; rw [a1.frame.params]; exact hBase) (by omega) hPlace.2 _ _
+    (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_right _ _ _ h)
+      fun hd hw => by
+        rw [hDs]
+        exact hw.shift (heap1 := heap1) (store1 := store1)
+          (c1 := dyingPot store s env slots paid (fun i => live i || second.uses i || first.uses i)
+            (fun i => live i || second.uses i) +
+            first.allocs funs flags bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i)
+            env + coerceCost sTy (first.mode (slots.map Slot.mode))
+            ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+              (first.denote funs env))
+          (by have := hTopF (hdF (fits_of_not hd)); have := hTopC1; omega)
+          (by rw [hB, hSplitP]; omega) (a1.step.cap m))
+    fun heap3 store3 s3 ws3 a3 hAl3 hTopS => ?_
+  refine After.coerceX hCopy a3 hAl3 (fun h => by
+      simp only [Mode.join, h]; cases first.mode (slots.map Slot.mode) <;> rfl) le_rfl
+    (by rw [a3.frame.params, a1.frame.params]; exact hBase)
+    (a3.frame.positions.trans (a1.frame.positions.trans hh)) (by omega)
+    (by rw [a3.step.cap m, a1.step.cap m]; exact hCap)
+    (fun hs ht _ => hTrap.alloc (hOwnedA ht) fun hd hw => by
+      have hcc : coerceCost tTy (second.mode (slots.map Slot.mode))
+          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+          (second.denote funs env) =
+          tTy.copyCost (second.denote funs env) := by rw [coerceCost, ite_eq_left ⟨hs, ht⟩]
+      exact hw.shift (heap1 := heap3) (store1 := store3)
+        (c1 := dyingPot store s env slots paid (fun i => live i || second.uses i || first.uses i)
+          (fun i => live i || second.uses i) +
+          first.allocs funs flags bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i)
+          env + coerceCost sTy (first.mode (slots.map Slot.mode))
+          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+            (first.denote funs env) +
+          dyingPot store s env slots paid (fun i => live i || second.uses i) live +
+          second.allocs funs flags bounds (slots.map Slot.mode) paid live env)
+        (by have := hTopF (hdF (fits_of_not hd)); have := hTopC1
+            have := hTopS (hdS (fits_of_not hd)); rw [hDs] at this; omega)
+        (by rw [hB, hSplitP]; omega)
+        (by rw [a3.step.cap m, a1.step.cap m]))
+    fun heap2 store2 s2 ws2 a2 hTopC2 hSame2 hAl2 => ?_
+  obtain ⟨hStep, hFrame, hRep1, hApart1, hDisjoint⟩ :=
+    After.seq hVarsL a1 a2 (fun i h => by simp [h]) fun i h => by simp [h]
+  have hl1 := hRep1.length
+  have hv := hNext heap2 store2 s2 (ws1 ++ ws2) ⟨by
+      rw [Mode.fresh_pair hl1]
+      exact hStep.mono (fun _ hr => hr.mono fun i h1 h2 => ⟨hIn i h1, h2⟩) fun _ hb => hb,
+    hFrame, a2.holds, ⟨ws1, ws2, rfl, hRep1, a2.rep, fun hmo x hx y hy => by
+      have hmo' : (first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)) =
+          .owned := hmo
+      rw [hmo'] at hDisjoint
+      exact hDisjoint x hx y hy⟩, fun w y hy hmo wy hwy hly b hb c hc => by
+      rw [Ty.regions_append hl1] at hb
+      rcases List.mem_append.mp hb with hb | hb
+      · exact hApart1 w y hy hmo wy hwy hly b hb c hc
+      · exact a2.apart w y hy hmo wy hwy hly b hb c hc⟩
+      (fun hs => ⟨(hAl2 hs).1, Ty.AlignedVal.pair hl1 (After.alignedSeq a1 a2 (hAl1 hs).2)
+        (hAl2 hs).2⟩)
+      (fun hd => by
+        have hF := hTopF (hdF hd)
+        have hS := hTopS (hdS hd)
+        rw [hDs] at hS
+        have hRegions1 := After.seq_regions a1 a2
+        have hValue : (Expr.pair first second).denote funs env =
+            (first.denote funs env, second.denote funs env) := rfl
+        rw [hB, hSplitP, hValue]
+        simp only [Ty.pot, List.take_left' hl1, List.drop_left' hl1]
+        refine pair_top hF hTopC1 hS hTopC2 (fun hp => ?_) (fun hp => ?_)
+        · simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq, Bool.or_eq_true] at hp
+          rcases hp.1.2 with hp1 | hc1
+          · obtain ⟨rfl, rfl⟩ := hSame1 (Expr.mode_of_paid first hp1)
+            exact Or.inl ⟨hp1, Ty.pot_of_regions hp.1.1 hRegions1⟩
+          · exact Or.inr (Ty.pot_creditFree sTy hc1 _ _)
+        · simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq, Bool.or_eq_true] at hp
+          rcases hp.2 with hp2 | hc2
+          · obtain ⟨rfl, rfl⟩ := hSame2 (Expr.mode_of_paid second hp2)
+            exact Or.inl ⟨hp2, rfl⟩
+          · exact Or.inr (Ty.pot_creditFree tTy hc2 _ _))
+  simpa [List.reverse_append, List.append_assoc] using hv
 
 
 end Cases
