@@ -36573,8 +36573,8 @@ A restricted rule would need the loop context in `Expr.paid` and `Expr.allocs`: 
 - [x] Re-check `stackFits`, the process modules' validity and encoding, and the WASI and running-sum drivers, including the Talos groups.
 - [x] Prove the `Bounded` charges of `begin`, `step`, `readStep`, and `writeStep` for the integer program, and their closed-form bounds.
 - [x] Prove the size invariant and the room lemma, and state the final integer theorem over `InputLimits L D` with its inequality against the memory cap, and a corollary with concrete `L` and `D`.
-- [ ] Repeat the charges and limits for the binary64 program.
-- [ ] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audits.  The integer program is done.
+- [x] Repeat the charges and limits for the binary64 program.  Stage 3 did it, as its entry of 2026-10-27 records.
+- [x] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audits.  The integer program is done, and stage 3 did the binary64 program.
 
 ### Risks
 
@@ -36690,7 +36690,7 @@ The bodies of `begin`, `step`, `readStep`, and `writeStep` take their charges by
 - [x] Prove the size invariant and the room lemma, and state the final integer theorem over `InputLimits L D` with its inequality against the memory cap, and a corollary with concrete `L` and `D`.
 - [x] Run both running-sum drivers.
 - [x] Update the README, the algorithm index, the WASI manual and design, the application guides, and the axiom audit of the integer program.
-- [ ] Repeat the charges and limits for the binary64 program, and update its guide.
+- [x] Repeat the charges and limits for the binary64 program, and update its guide.  Stage 3 did both, as its entry of 2026-10-27 records.
 
 ## 2026-10-27: An unbuilt module in the WASI axiom check
 
@@ -36878,7 +36878,7 @@ The review set four conditions: (a) the trusted change goes in a commit of its o
 
 - [x] Proposal and review.
 - [x] The trusted change, with the proofs that case on `Slot` extended, and its gate.
-- [ ] The compiler's heap fields of tree records.
+- [x] The compiler's heap fields of tree records: arrays and buffers, as the two entries on phase 3a record.
 
 ## 2026-10-27: Review of the stage-2 and Q5 documents
 
@@ -38020,7 +38020,7 @@ The compiler now compiles records with array fields.  A construction moves each 
 - [x] The reflector, the example, its cases, and the order check.
 - [x] The manual.
 - [x] The gate of the arrays half, after the review of the model change.
-- [ ] Buffers.
+- [x] Buffers, as the entry on the buffers of phase 3a records.
 
 ## 2026-10-28: Review of the model change for heap fields
 
@@ -38057,7 +38057,7 @@ A second review of the lengths change confirmed that `BufferLengths` states the 
 
 - [x] The class, its instances, the derived theorem, and the audit.
 - [x] The docstrings and the manual.
-- [ ] The gate of the new commit.
+- [x] The gate of the new commit, in the combined check that the entry on the buffers of phase 3a records.
 
 ## 2026-10-28: Heap fields of tree records, phase 3a: buffers
 
@@ -38353,8 +38353,8 @@ The confidence is low for the invariant row, the largest, which the prototype do
 - [x] Routes (a) and (b), with the files and line counts.
 - [x] The prototype: the aligned runs with a rule for every construct of the subset, the heap model, two ports, and the native step for `load64`.
 - [x] The estimate by area.
-- [ ] The decision on the proposed premise of `NativeA`, `NativeTablesA`, and `NativeStaticA`.
-- [ ] The user's decision on building the proof.
+- [x] The decision on the proposed premise of `NativeA`, `NativeTablesA`, and `NativeStaticA`.  The user approved the aligned statements after three reviews, as the entry on the native side of the alignment proof records.
+- [x] The user's decision on building the proof.  The user approved it.
 
 ## 2026-10-29: Measuring the third stage of the alignment proof
 
@@ -38402,8 +38402,8 @@ The first study put the third stage at 2,400 to 5,300 lines with low confidence.
 - [x] The flagged specification layer and the port of `spec_size`.
 - [x] The part of the universal proof that a port touches, counted by a script.
 - [x] The pointers of a tree argument that `moves` and `reads` reach.
-- [ ] The review of the proposed premise of `NativeA`, `NativeTablesA`, and `NativeStaticA`.
-- [ ] The user's decision on building the proof.
+- [x] The review of the proposed premise of `NativeA`, `NativeTablesA`, and `NativeStaticA`.  The third review passed, as the entry on the native side of the alignment proof records.
+- [x] The user's decision on building the proof.  The user approved it.
 
 ## 2026-10-29: Instructions that the alignment predicate does not enter
 
@@ -38419,11 +38419,11 @@ The coordinator decided that, when the port is complete, each original construct
 - [x] `call`, `loop`, and `fold`.  `listFold`, whose proof runs through the tail loops, is ported with the tail loops.
 - [x] The array writers: `build`, `set`, `push`, `append`, `insertAt`, `eraseAt`, and the room they share.
 - [x] `bytesLiteral` and `bytesBuild`.
-- [ ] `CopyCodeX`: buffers, tree headers, trees, and pairs, arrays being done.  The second stage proves it.
+- [x] `CopyCodeX`: buffers, tree headers, trees, and pairs, arrays being done.  The second stage proved it as `Verified.copyCodeX`.
 - [x] `treeNode` and `treeCase`.
 - [x] `Expr.code_specIn` under the flag and the function level in `Correct.lean`, with the list fold and the tail functions as premises.
 - [x] The list fold and the tail functions from the port of the tail loops in place of the premises.
-- [ ] Each original construct proof as the `strict = false` corollary of its port.
+- [x] Each original construct proof as the `strict = false` corollary of its port, as the entry on the consolidation records.
 
 ## 2026-10-29: Calls and the function level under the flag
 
@@ -38460,7 +38460,7 @@ The list fold and the tail loops are ported to the flag `strict` in seven new mo
 - [x] The list fold, in the form that `ListFoldSpecX` takes.
 - [x] `TailBody.code_specX` and `TailFunc.function_runsX`.
 - [x] `FunAligned` for tail functions in `Correct.lean`, by the function level.
-- [ ] Each original as the `strict = false` corollary of its port.
+- [x] Each original as the `strict = false` corollary of its port, as the entry on the consolidation records.
 
 ## 2026-10-29: The runtime half of the alignment proof
 
@@ -38485,7 +38485,7 @@ The invariant needs two facts that the proofs in [the release of trees](LeanExe/
 - [x] The heap model of release: `Heap.release` keeps `Heap.Aligned`.
 - [x] The `leaf` and `null` fields of `ReleaseAligned`.
 - [x] The `tree` field of `ReleaseAligned`.
-- [ ] After the whole proof is done, decide whether to replace each original runtime theorem by the `strict = false` instance of a flagged port, as the third stage's `_of_flag` theorems do, so that one proof of each runtime theorem remains.  The coordinator accepted the two copies for the duration of the work.
+- [x] After the whole proof is done, decide whether to replace each original runtime theorem by the `strict = false` instance of a flagged port.  The consolidation replaced them, as its entry records.
 - [ ] At the consolidation, rewrite the ports' uses of [the transfer module](LeanExe/ProofKit/AlignedTransfer.lean) to the third stage's `LeanExe/ProofKit/AlignedFree.lean`, with `wpX_append_free` and its relatives, and remove `AlignedTransfer.lean`, which duplicates it.  The coordinator decided to keep the third stage's module.
 
 ## 2026-10-29: The copy of a value under the flag
@@ -38503,7 +38503,7 @@ This entry records the proof of `CopyCodeX`, the flagged statement of `wp_copyCo
 - [x] The flagged invariant and the moves of the tree copy.
 - [x] `wpX_copyTree` and `wpX_copyTreeHeader`.
 - [x] `wpX_copyCode` and `copyCodeX`.
-- [ ] At the consolidation, derive each original tree-copy theorem, `wp_copyTreeHeader`, and `wp_copyCode` as the `strict = false` instance of its port, and remove the originals' proof text.
+- [x] At the consolidation, derive each original tree-copy theorem, `wp_copyTreeHeader`, and `wp_copyCode` as the `strict = false` instance of its port, and remove the originals' proof text.  The consolidation did it.
 - [x] Move `wpX_localSet_cons` and `wpX_localTee_cons`, which hold of any code, from `Verified/AlignedTreeCopyCode.lean` to `LeanExe/ProofKit/AlignedFlag.lean` beside `wpX_localGet_cons`.
 
 ## 2026-10-29: The alignment statement of a compiled function
@@ -38517,7 +38517,7 @@ Each proof takes the heap's alignment and the result's from `FunPost true`, the 
 - [x] `AlignedOutput`, and `ImplementsAligned` with the alignment of the final heap and of the result.
 - [x] The function, entry, and wrapper forms, and their transfers to Lean's instances.
 - [x] Switch the import of `LeanExe/Pipeline/ImplementsAligned.lean` from `LeanExe/ProofKit/AlignedExec.lean` to `AlignedDefs.lean` when the native side's move of `AlignedRun` merges.
-- [ ] Remove `LeanExe/Pipeline/AlignedImplements.lean.new`, an untracked intermediate copy of `AlignedImplements.lean` left beside it during this work, once the user approves its removal.
+- [x] Remove `LeanExe/Pipeline/AlignedImplements.lean.new`, an untracked intermediate copy of `AlignedImplements.lean`.  It was removed with the user's approval on 2026-10-29.
 
 ## 2026-10-29: The alignment theorem of each compiled function
 
@@ -38582,7 +38582,7 @@ The translator gains the option `alignedAccess`, under which `load64` and `store
 - [x] The placement benchmark with the option on and off.
 - [ ] A theorem for a host program's writes into a block that `alloc` returned, for either translation.  Only the generated bare-metal `main` with input has one, `input_program`, for the translation with the test.
 - [ ] The whole-program theorems of `Whole.lean` and the bare-metal path for the translation without the test.
-- [ ] The generator's `p.translation_eq` and `p.f.native` with the option, after the review.
+- [x] The generator's `p.translation_eq` and `p.f.native` with the option.  Under `verified_compile.alignedNative` the generator emits `p.translationAligned`, `p.translationAligned_eq`, and `p.f.nativeAligned`, as the entry on the aligned native theorems records.
 
 ## 2026-10-29: One proof of each construct: the consolidation of the alignment proof
 
@@ -38628,7 +38628,7 @@ The option adds 1 to 3 s to the small programs and 4 to 9 s, about 13 percent on
 
 - [x] The option and the emission of `p.translationAligned`, `p.translationAligned_eq`, and `p.f.nativeAligned`.
 - [x] The parts lemmas generalized over the flag.
-- [ ] Decide whether the option becomes the default after the benchmark.
+- [x] Decide whether the option becomes the default after the benchmark.  It does not, as the entry on the placement benchmark records.
 
 ## 2026-10-29: The theorems behind the aligned native build
 
@@ -38643,7 +38643,7 @@ The runtime's `alloc` and `release`, functions 0 and 1, which every compiled mod
 - [x] The check of `native-verified build --aligned`, with the fixture and its test.
 - [x] The workload modules of the benchmark compiled with `verified_compile.alignedNative`.
 - [x] `tests/native/verified.sh --aligned` on the corpus with those modules.
-- [ ] Whether every program compiles with the option, the user's decision after the benchmark.
+- [x] Whether every program compiles with the option.  Only the six benchmark programs do, and the translation with the test stays the default, as the entry on the placement benchmark records.
 
 ## 2026-10-29: The benchmark programs under the aligned check
 
