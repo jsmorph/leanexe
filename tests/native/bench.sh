@@ -12,22 +12,40 @@
 # writes the inputs, the programs, the environment, each pair's results, and a summary with the
 # median and interquartile range of the time per call into build/native/bench.
 #
+#
+# The time of the native form also depends on where its code lies, since CompCert aligns a
+# function to 4 bytes on AArch64.  `--placements` measures the native form at sixteen
+# placements: it links each program again after an object of K bytes of padding, for
+# K = 4, 8, ..., 60, which moves the program's code by K bytes, takes the program of the pairs as
+# K = 0, and runs each of the sixteen binaries BENCH_ROUNDS (2) times, between the same idle
+# checks as a pair.  The summary then adds, per workload, the mean time per call over the
+# placements and the means of the fastest and the slowest placement, next to the median of the
+# pairs.  A comparison of two builds of the translator rests on these means (the section on the
+# benchmark method in docs/native-translator.md); the default, without the sweep, compares one
+# build with Wasmtime.
+#
 # BENCH_PAIRS (11) is the number of pairs per workload, BENCH_SECONDS (1) the timed period of a
-# run, and BENCH_CORE the core, when set.  `--test` runs one short pair per workload without
-# waiting for the machine to become idle, to check the commands; its results are not
-# measurements.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as for tests/native/run.sh.
-# LEANRUN_MEMORY_HIGH is the memory limit of each step that runs under tools/leanrun, 8G unless
-# the caller sets it, since tools/Emit.lean loads a module as tools/Subset.lean does.
-# Usage: tests/native/bench.sh [--test]
+# run, and BENCH_CORE the core, when set.  `--test` runs one short pair per workload, and with
+# `--placements` one short run per placement, without waiting for the machine to become idle, to
+# check the commands; its results are not measurements.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are
+# as for tests/native/run.sh.  LEANRUN_MEMORY_HIGH is the memory limit of each step that runs
+# under tools/leanrun, 8G unless the caller sets it, since tools/Emit.lean loads a module as
+# tools/Subset.lean does.
+# Usage: tests/native/bench.sh [--test] [--placements]
 set -euo pipefail
 export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-8G}
 test_run=0
-if [ "$#" -eq 1 ] && [ "$1" = "--test" ]; then
-  test_run=1
-elif [ "$#" -ne 0 ]; then
-  echo "usage: tests/native/bench.sh [--test]" >&2
-  exit 2
-fi
+placements=0
+for arg in "$@"; do
+  case $arg in
+    --test) test_run=1 ;;
+    --placements) placements=1 ;;
+    *)
+      echo "usage: tests/native/bench.sh [--test] [--placements]" >&2
+      exit 2
+      ;;
+  esac
+done
 ccomp=${CCOMP:-ccomp}
 clightgen=${CLIGHTGEN:-clightgen}
 stdlib=()
@@ -37,9 +55,12 @@ fi
 pairs=${BENCH_PAIRS:-11}
 seconds=${BENCH_SECONDS:-1}
 wait_limit=${BENCH_WAIT:-86400}
+rounds=${BENCH_ROUNDS:-2}
+shifts="4 8 12 16 20 24 28 32 36 40 44 48 52 56 60"
 if [ "$test_run" -eq 1 ]; then
   pairs=1
   seconds=0.05
+  rounds=1
 fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out=$root/build/native/bench
@@ -72,6 +93,21 @@ for name in sha256 sha3 crc libsort euler gpt32; do
     "$out/wasm/$name.wasm"
 done
 
+# The programs moved by K bytes: the same link after an object that holds K bytes of padding in
+# its text section, which the linker places first.
+if [ "$placements" -eq 1 ]; then
+  mkdir -p "$out/native/placements"
+  for k in $shifts; do
+    printf '\t.text\n\t.balign 4\n\t.space %d\n' "$k" >"$out/native/placements/pad$k.s"
+    "$ccomp" -c "$out/native/placements/pad$k.s" -o "$out/native/placements/pad$k.o"
+    for name in sha256 sha3 crc libsort euler gpt32; do
+      "$ccomp" "${stdlib[@]}" -I "$root/tools" -o "$out/native/placements/$name-$k" \
+        "$out/native/placements/pad$k.o" "$out/native/$name.o" "$out/native/${name}_glue.c" \
+        "$root/tools/native-bench.c" "$out/native/host.o"
+    done
+  done
+fi
+
 # The core: the highest-numbered online core of the highest maximum clock rate.
 online_cores() {
   local d c
@@ -98,6 +134,7 @@ mkdir -p "$run"
   echo "ccomp: $("$ccomp" -version | head -1), from the 3.18 sources; options: -fno-common -c for the translation, -stdlib and -I to link"
   echo "wasmtime: C API $(ls build/tools/wasmtime 2>/dev/null | sed -n 's/^wasmtime-v\([0-9.]*\)-.*-c-api$/\1/p' | head -1), Cranelift, NaN canonicalization on"
   echo "pairs: $pairs, timed period: $seconds s"
+  if [ "$placements" -eq 1 ]; then echo "placements: 16, runs per placement: $rounds"; fi
 } >"$run/environment.txt"
 
 idle() {
@@ -161,6 +198,39 @@ while IFS='|' read -r name program export result max arguments; do
   done
 done <<<"$workloads"
 
+# The sweep: each placement's binary per round, the rounds in alternating order of K, each run
+# compared with the result of the first pair.
+sweep=$run/placements.tsv
+discarded_runs=0
+if [ "$placements" -eq 1 ]; then
+  printf 'workload\tround\tshift\tcalls\tnanoseconds\n' >"$sweep"
+  while IFS='|' read -r name program export result max arguments; do
+    read -ra argv <<<"$arguments"
+    for round in $(seq 1 "$rounds"); do
+      order="0 $shifts"
+      if [ $((round % 2)) -eq 0 ]; then order=$(echo "$order" | tr ' ' '\n' | tac | tr '\n' ' '); fi
+      for k in $order; do
+        if [ "$k" -eq 0 ]; then binary=$out/native/$program; else binary=$out/native/placements/$program-$k; fi
+        output=$run/$name-placement-$k-$round.out
+        while :; do
+          if [ "$test_run" -eq 0 ]; then wait_idle; fi
+          taskset -c "$core" "$binary" bench "$seconds" "$max" "$export" "$result" "${argv[@]}" \
+            >"$output"
+          if [ "$test_run" -eq 1 ] || idle; then break; fi
+          discarded_runs=$((discarded_runs + 1))
+        done
+        if ! cmp -s <(grep -v '^bench \|^init ' "$output") \
+            <(grep -v '^bench \|^init ' "$run/$name-1-native.out"); then
+          echo "fail: $name: the program moved by $k bytes gives a different result" >&2
+          exit 1
+        fi
+        read -r _ calls ns < <(grep '^bench ' "$output")
+        printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$round" "$k" "$calls" "$ns" >>"$sweep"
+      done
+    done
+  done <<<"$workloads"
+fi
+
 # The summary: per workload and form, the median and the quartiles of the time per call over
 # the pairs, and the ratio of the medians.
 awk -F'\t' 'NR > 1 { print $1 "\t" $3 "\t" $5 / $4 }' "$results" | sort -t$'\t' -k1,1 -k2,2 -k3,3g |
@@ -183,5 +253,20 @@ awk -F'\t' 'NR > 1 { print $1 "\t" $3 "\t" $5 / $4 }' "$results" | sort -t$'\t' 
     "$run/summary.part" | sort
   echo
   echo "discarded pairs: $discarded"
+  if [ "$placements" -eq 1 ]; then
+    echo
+    echo "native form at 16 placements, code moved by 0 to 60 bytes, $rounds runs each"
+    printf 'workload\tform\tmean ns per call over placements\tfastest placement\tslowest placement\tmedian of pairs\n'
+    awk -F'\t' '
+      NR == FNR { if ($2 == "native") med[$1] = $3; next }
+      FNR > 1 { key = $1 "\t" $3; s[key] += $5 / $4; c[key]++; if (!(key in seen)) { seen[key] = 1; ks[$1] = ks[$1] " " $3 }
+        if (!($1 in w)) { w[$1] = 1; ord[++n] = $1 } }
+      END { for (i = 1; i <= n; i++) { x = ord[i]; m = split(ks[x], k, " "); t = 0
+          for (j = 1; j <= m; j++) { v = s[x "\t" k[j]] / c[x "\t" k[j]]; t += v; if (j == 1 || v < lo) lo = v; if (j == 1 || v > hi) hi = v }
+          printf "%s\tnative\t%.0f\t%.0f\t%.0f\t%.0f\n", x, t / m, lo, hi, med[x] } }' \
+      "$run/summary.part" "$sweep"
+    echo
+    echo "discarded placement runs: $discarded_runs"
+  fi
 } >"$run/summary.txt"
 cat "$run/environment.txt" "$run/summary.txt"
