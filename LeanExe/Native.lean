@@ -26,3 +26,4 @@ import LeanExe.Native.Proof.Main
 import LeanExe.Native.Proof.Input
 import LeanExe.Native.Proof.Parts
 import LeanExe.Native.Proof.AlignedMem
+import LeanExe.Native.Proof.AlignedNative

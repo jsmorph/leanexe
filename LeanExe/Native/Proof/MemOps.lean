@@ -596,10 +596,10 @@ theorem addr_fits (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
   rw [UInt32.toNat_add]
   exact Nat.mod_eq_of_lt (by omega)
 
-theorem sim_load64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
+theorem sim_load64 (hE : EnvOk E) (F : Nat) (off : UInt32) (hc : c.alignedAccess = false) :
     InstrSim A X E mod c F (.load64 off) := by
   intro L σ n s σ' n' h hbase α st sl le m env hinv
-  rcases σ with _ | ⟨a0, σr⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at h
+  rcases σ with _ | ⟨a0, σr⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff, hc] at h
   obtain ⟨_, ⟨_, rfl⟩, rfl, rfl, rfl, rfl⟩ := h
   have hb : curBase L ≤ σr.length := by simp at hbase; omega
   cases F with
@@ -682,10 +682,10 @@ theorem sim_load64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
                 lim := lim_insert_slot _ _ _ (lim_insert_slot _ _ _ hinv.lim) }
 
 
-theorem sim_store64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
+theorem sim_store64 (hE : EnvOk E) (F : Nat) (off : UInt32) (hc : c.alignedAccess = false) :
     InstrSim A X E mod c F (.store64 off) := by
   intro L σ n s σ' n' h hbase α st sl le m env hinv
-  rcases σ with _ | ⟨a0, _ | ⟨b0, σr⟩⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at h
+  rcases σ with _ | ⟨a0, _ | ⟨b0, σr⟩⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff, hc] at h
   obtain ⟨hb, ⟨rfl, rfl⟩, rfl, rfl, rfl⟩ := h
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]

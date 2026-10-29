@@ -1,5 +1,6 @@
 import LeanExe.Native.Proof.Calls
 import LeanExe.Native.Proof.MemOps
+import LeanExe.Native.Proof.AlignedMem
 import LeanExe.Native.Proof.Sqrt32
 
 /-!
@@ -17,7 +18,7 @@ variable {A : Archi} {X : ExtSem} {E : Env} {mod : Module} {c : FCtx}
 
 theorem sim_zero {CallOk : Nat → Prop} (inst : Instruction) :
     InstrSimL A X E mod c CallOk 0 inst := by
-  intro L σ n s σ' n' _ _ _ _ α st sl le m env _
+  intro L σ n s σ' n' _ _ _ _ α st sl le m env _ _
   rw [execOne_zero]; trivial
 
 theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.cap = E.cap)
@@ -55,8 +56,8 @@ theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.
   case wrapI64 => exact (sim_wrapI64 F).toL
   case extendUI32 => exact (sim_extendUI32 F).toL
   case unreachable => exact (sim_unreachable hE F).toL
-  case load64 off => exact (sim_load64 hE F off).toL
-  case store64 off => exact (sim_store64 hE F off).toL
+  case load64 off => exact sim_load64L hE F off
+  case store64 off => exact sim_store64L hE F off
   case load8U off => exact (sim_load8U hE F off).toL
   case store8 off => exact (sim_store8 hE F off).toL
   case memorySize => exact (sim_memorySize hE h64 F).toL

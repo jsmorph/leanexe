@@ -159,3 +159,4 @@ import Verified.AlignedTailEntry
 import Verified.AlignedCorrect
 import Verified.AlignedEntries
 import Verified.AlignedProgram
+import Verified.AlignedNative

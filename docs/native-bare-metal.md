@@ -113,7 +113,19 @@ theorem p.f.program (A : Archi) (X : ExtSem) (pre) (hpre : PrefixOk pre) :
         (bareProgram pre p.translation (bareMain nativeCap k args kind)) E0 (UInt32.ofNat 1))
 ```
 
-`encode` is `encodeWord`, the eight bytes of a word from the lowest, or `encodeArray`, the eight bytes of the array's size followed by the eight bytes of each element, and `outTrace` maps each byte `b` to `Event_vstore Mint32 outId 0 (EVint b)`.  The proof follows `main`'s body: `init_mem` of the whole program, with the prefix and `lx_out` before and after the translation's blocks; `lx_init_correct` for the call of `lx_init`; `p.f.native` for the call of the entry, with the premises that `start_whole` proves for the state after `lx_init`, and the quietness of the translation, which makes the call's trace empty; the test of `lx_status`; a loop lemma that produces one event per byte from `UInt64Array.At` and `MemRel`; and `outcome_result_value` for the returned `int`.
+`encode` is `encodeWord`, the eight bytes of a word from the lowest, or `encodeArray`, the eight bytes of the array's size followed by the eight bytes of each element, and `outTrace` maps each byte `b` to `Event_vstore Mint32 outId 0 (EVint b)`.  The proof follows `main`'s body: `init_mem` of the whole program, with the prefix and `lx_out` before and after the translation's blocks; `lx_init_correct` for the call of `lx_init`; `p.f.native` for the call of the entry, with the premises that `start_whole` proves for the state after `lx_init`, and the quietness of the translation, which makes the call's trace empty; the test of `lx_status`; a loop lemma that produces one event per byte from `UInt64Array.At` and `MemRel`; and `outcome_result_value` for the returned `int`.  The path uses the translation with the alignment test.  Under the translation without it, the call of the entry also needs `AlignedInput`, which the heap after `lx_init` meets: its `top` is `tablesEnd tables`, or the `top` of the literal pool for a module with literals, both multiples of 8, and its free list is empty.
+
+The lemmas of the path exist only for the translation with the test.  Each theorem in the table takes `translate cap m = some T`, whose option `alignedAccess` is `false` by default, and `translate_funcs_of_parts` in [the parts](../LeanExe/Native/Proof/Parts.lean), from which `p.translation_funcs` follows, concludes `(translate cap m).map Translation.funcs = some L` for the same translation.  Every other theorem in the table except `entry_type` depends on `translate_defs`, which lists the program definitions of that translation: directly, or through `lx_init_correct`, `funcs_found`, `wholeOk_of`, `init_whole`, or `translation_fun_quiet`.  No form of `bare_of_nativeA` or `bare_of_nativeTables` takes `NativeAlignedA` or `NativeTablesAlignedA`.  For the runtime's functions, `alloc_nativeA` and `release_nativeA` in [the aligned native step](../LeanExe/Native/Proof/AlignedNative.lean) exist beside `alloc_native` and `release_native`.
+
+| Module | Theorems |
+| --- | --- |
+| [The initialization](../LeanExe/Native/Proof/Init.lean) | `translate_defs`, `init_spec`, `lx_init_correct`, `funcs_found` |
+| [The whole program](../LeanExe/Native/Proof/Whole.lean) | `translation_ids`, `wholeOk_of`, `wholeOk_bare`, `wholeOk_in`, `init_whole`, `lx_init_whole`, `start_whole` |
+| [The quiet translation](../LeanExe/Native/Proof/Quiet.lean) | `translation_fun_quiet`, `genvQuiet_whole` |
+| [The bare-metal program](../LeanExe/Native/Proof/Main.lean) | `entry_type`, `bare_program`, `bare_of_nativeA` |
+| [The input program](../LeanExe/Native/Proof/Input.lean) | `input_program` |
+| [The bare-metal wrappers](../Verified/Bare.lean) | `bare_of_nativeTables` |
+| [The native test support](../tests/TestSupport/Native/Common.lean) | `start` |
 
 ### What the Lean copy must add
 
