@@ -1,4 +1,4 @@
-import Verified.AlignedExprCorrect
+import Verified.AlignedCorrect
 import Verified.Wasi.CommandCodeSpec
 import Verified.Wasi.CompilerFacts
 import Verified.Wasi.ReturnCommand

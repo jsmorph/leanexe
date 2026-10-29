@@ -1,4 +1,4 @@
-import Verified.AlignedExprCorrect
+import Verified.AlignedCorrect
 import Verified.Wasi.LoopPrepared
 import Verified.Wasi.LoopPrepare
 import Verified.Wasi.CompilerFacts
