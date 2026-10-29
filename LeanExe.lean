@@ -69,6 +69,7 @@ import LeanExe.Pipeline.RecordSlots
 import LeanExe.Pipeline.Runtime
 import LeanExe.Pipeline.RuntimeSpec
 import LeanExe.Pipeline.AlignedHeap
+import LeanExe.Pipeline.AlignedImplements
 import LeanExe.Pipeline.AlignedRuns
 import LeanExe.Pipeline.Slotted
 import LeanExe.ProofKit.AlignedAtomic
