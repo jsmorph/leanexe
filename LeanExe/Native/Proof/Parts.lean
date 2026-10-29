@@ -6,10 +6,11 @@ function.  `verified_compile` defines a module as `compileWith` of a program, so
 compiles the module when it reduces a statement about it, and a statement about the whole
 module holds the whole module in one check.  `inSubset_of_parts` derives `InSubset m` from the
 module's shape, its memory, and each function's `functionViolation`.
-`translate_funcs_of_parts` derives the list of functions of `translate cap m` from the guards of
-`translate` on the memory and the globals and from each function's `callInfo`: the functions
-that its C function calls, or `none` when it has no C function.  `verified_compile` states the
-part of each function in its own theorem, as the encoding's theorems `func_ok_k` do.
+`translate_funcs_of_parts` derives the list of functions of `translate cap m al`, with or without
+the test of alignment, from the guards of `translate` on the memory and the globals and from each
+function's `callInfo` with the same flag: the functions that its C function calls, or `none` when
+it has no C function.  `verified_compile` states the part of each function in its own theorem, as
+the encoding's theorems `func_ok_k` do.
 -/
 
 namespace LeanExe.Native
@@ -49,39 +50,39 @@ theorem inSubset_of_parts {m : Module} {n : Nat} (hs : shapeViolation m = none)
   rw [← hf']
   exact hf k (hn ▸ hlt)
 
-theorem callsOf_eq_callInfo (cap : Nat) (m : Module) (k : Nat) :
-    callsOf cap m k = (callInfo cap m k).getD [] := by
+theorem callsOf_eq_callInfo (cap : Nat) (m : Module) (k : Nat) {al : Bool} :
+    callsOf cap m k al = (callInfo cap m k al).getD [] := by
   unfold callsOf callInfo
-  cases (fdefsOf cap m)[k]?.join <;> rfl
+  cases (fdefsOf cap m al)[k]?.join <;> rfl
 
-theorem callInfo_isSome (cap : Nat) (m : Module) (k : Nat) :
-    (callInfo cap m k).isSome = ((fdefsOf cap m)[k]?.join).isSome := by
+theorem callInfo_isSome (cap : Nat) (m : Module) (k : Nat) {al : Bool} :
+    (callInfo cap m k al).isSome = ((fdefsOf cap m al)[k]?.join).isSome := by
   unfold callInfo
-  cases (fdefsOf cap m)[k]?.join <;> rfl
+  cases (fdefsOf cap m al)[k]?.join <;> rfl
 
-theorem callInfo_of_parts {cap : Nat} {m : Module} {infos : List (Option (List Nat))}
+theorem callInfo_of_parts {cap : Nat} {m : Module} {al : Bool} {infos : List (Option (List Nat))}
     (hlen : m.funcs.length = infos.length)
-    (h : ∀ k < infos.length, callInfo cap m k = infos[k]?.join) (k : Nat) :
-    callInfo cap m k = infos[k]?.join := by
+    (h : ∀ k < infos.length, callInfo cap m k al = infos[k]?.join) (k : Nat) :
+    callInfo cap m k al = infos[k]?.join := by
   by_cases hk : k < infos.length
   · exact h k hk
-  · have h1 : (fdefsOf cap m)[k]? = none :=
+  · have h1 : (fdefsOf cap m al)[k]? = none :=
       List.getElem?_eq_none (by simp only [fdefsOf, List.length_map]; omega)
     have h2 : infos[k]? = none := List.getElem?_eq_none (by omega)
     simp [callInfo, h1, h2]
 
-theorem callsOf_of_parts {cap : Nat} {m : Module} {infos : List (Option (List Nat))}
+theorem callsOf_of_parts {cap : Nat} {m : Module} {al : Bool} {infos : List (Option (List Nat))}
     (hlen : m.funcs.length = infos.length)
-    (h : ∀ k < infos.length, callInfo cap m k = infos[k]?.join) :
-    callsOf cap m = fun k => (infos[k]?.join).getD [] := by
+    (h : ∀ k < infos.length, callInfo cap m k al = infos[k]?.join) :
+    (fun k => callsOf cap m k al) = fun k => (infos[k]?.join).getD [] := by
   funext k
   rw [callsOf_eq_callInfo, callInfo_of_parts hlen h]
 
-theorem includedOf_of_parts {cap : Nat} {m : Module} {infos : List (Option (List Nat))}
-    (hlen : m.funcs.length = infos.length)
-    (h : ∀ k < infos.length, callInfo cap m k = infos[k]?.join) :
-    includedOf cap m = includedFrom infos := by
-  have hs : (fun k : Nat => ((fdefsOf cap m)[k]?.join).isSome) =
+theorem includedOf_of_parts {cap : Nat} {m : Module} {al : Bool}
+    {infos : List (Option (List Nat))} (hlen : m.funcs.length = infos.length)
+    (h : ∀ k < infos.length, callInfo cap m k al = infos[k]?.join) :
+    includedOf cap m al = includedFrom infos := by
+  have hs : (fun k : Nat => ((fdefsOf cap m al)[k]?.join).isSome) =
       fun k : Nat => (infos[k]?.join).isSome := by
     funext k
     rw [← callInfo_isSome, callInfo_of_parts hlen h]
@@ -97,16 +98,17 @@ theorem mapM_isSome {α β : Type} {f : α → Option β} :
         (mapM_isSome (l := l) fun x hx => h x (by simp [hx]))
       simp [hb, hl]
 
-theorem translate_funcs_of_parts {cap : Nat} {m : Module} {infos : List (Option (List Nat))}
-    {L : List Nat} {n : Nat} (hv : InSubset m) (hmem : memoryOk cap m = true)
-    (hg : (m.globals.mapM globalDef).isSome = true) (hn : m.funcs.length = n)
-    (hi : infos.length = n) (hparts : ∀ k < n, callInfo cap m k = infos[k]?.join)
+theorem translate_funcs_of_parts {cap : Nat} {m : Module} {al : Bool}
+    {infos : List (Option (List Nat))} {L : List Nat} {n : Nat} (hv : InSubset m)
+    (hmem : memoryOk cap m = true) (hg : (m.globals.mapM globalDef).isSome = true)
+    (hn : m.funcs.length = n) (hi : infos.length = n)
+    (hparts : ∀ k < n, callInfo cap m k al = infos[k]?.join)
     (hL : includedFrom infos = L) (hc : closedFrom infos L = true) :
-    (translate cap m).map Translation.funcs = some L := by
+    (translate cap m al).map Translation.funcs = some L := by
   have hlen : m.funcs.length = infos.length := hn.trans hi.symm
-  have h : ∀ k < infos.length, callInfo cap m k = infos[k]?.join :=
+  have h : ∀ k < infos.length, callInfo cap m k al = infos[k]?.join :=
     fun k hk => hparts k (hi ▸ hk)
-  have hinc : includedOf cap m = L := (includedOf_of_parts hlen h).trans hL
+  have hinc : includedOf cap m al = L := (includedOf_of_parts hlen h).trans hL
   obtain ⟨decl, hdecl, hcap⟩ :
       ∃ decl, m.memory = some decl ∧ decl.pagesMin.toNat ≤ cap ∧ cap ≤ 65535 := by
     unfold memoryOk at hmem
@@ -114,21 +116,21 @@ theorem translate_funcs_of_parts {cap : Nat} {m : Module} {infos : List (Option 
     | none => rw [hd] at hmem; cases hmem
     | some decl => rw [hd] at hmem; exact ⟨decl, rfl, of_decide_eq_true hmem⟩
   obtain ⟨gdefs, hgdefs⟩ := Option.isSome_iff_exists.mp hg
-  have hclosed : ∀ k ∈ L, ∀ j ∈ callsOf cap m k, j ∈ L := by
-    have hc' : (L.all fun k => (callsOf cap m k).all (L.contains ·)) = true := by
+  have hclosed : ∀ k ∈ L, ∀ j ∈ callsOf cap m k al, j ∈ L := by
+    have hc' : (L.all fun k => (callsOf cap m k al).all (L.contains ·)) = true := by
       simp only [callsOf_eq_callInfo, callInfo_of_parts hlen h]
       exact hc
     simpa using hc'
-  have hfuns : (L.mapM (funDef cap m)).isSome = true := by
+  have hfuns : (L.mapM (funDef cap m · al)).isSome = true := by
     apply mapM_isSome
     intro k hk
     have hk' : k ∈ (List.range m.funcs.length).filter
-        fun k => ((fdefsOf cap m)[k]?.join).isSome := by
+        fun k => ((fdefsOf cap m al)[k]?.join).isSome := by
       rw [← hinc] at hk
       exact (closeUnderCalls_sublist _ _ _).subset hk
     have hsome := (List.mem_filter.mp hk').2
     unfold funDef
-    cases hj : (fdefsOf cap m)[k]?.join with
+    cases hj : (fdefsOf cap m al)[k]?.join with
     | none => rw [hj] at hsome; cases hsome
     | some f => rfl
   obtain ⟨funs, hfuns'⟩ := Option.isSome_iff_exists.mp hfuns

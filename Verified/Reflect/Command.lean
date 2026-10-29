@@ -8,10 +8,17 @@ import Verified.Reflect.RecursiveTypes
 import Verified.Reflect.ScalarProof
 import Verified.ProgramStatic
 import Verified.AlignedProgram
+import Verified.AlignedNative
 
 namespace Verified.Reflect
 
 open Lean Meta Elab Command Term
+
+register_option verified_compile.alignedNative : Bool := {
+  defValue := false
+  descr := "verified_compile also translates the module to C without the test of alignment and \
+    states p.f.nativeAligned for each function and wrapper of a program without byte literals"
+}
 
 /-- The list of the addresses and names of the tables `idxs` among the program's tables `tables`,
 named `tableNames`, which a wrapper's theorems state. -/
@@ -484,8 +491,13 @@ translation `p.translation` to C, with `lx_mem` of `nativeCap` pages, the list
 `p.translation_funcs` of the functions that the translation contains, the equation
 `p.translation_eq`, and, for each definition `f` whose function the translation contains, the
 theorem `p.f.native` that the C function computes `f` as `p.f.implements` states, for an
-`ImplementsA`, an `ImplementsTables`, or an `ImplementsStatic` theorem; and `p.bytes`, the
-module's bytes with all the functions' theorems. -/
+`ImplementsA`, an `ImplementsTables`, or an `ImplementsStatic` theorem; with the option
+`verified_compile.alignedNative`, for a program without byte literals, the translation
+`p.translationAligned` without the test of alignment, the equation `p.translationAligned_eq`, and,
+for each definition `f` whose function it contains, the theorem `p.f.nativeAligned` that the C
+function computes `f` as `p.f.implements` states from an aligned input, as `NativeAlignedImpl` or
+`NativeTablesAlignedImpl` states it; and `p.bytes`, the module's bytes with all the functions'
+theorems. -/
 @[command_elab verifiedCompile]
 def elabVerifiedCompile : CommandElab
   | `(verified_compile $target := [$sources,*]) => do
@@ -988,6 +1000,76 @@ def elabVerifiedCompile : CommandElab
                       LeanExe.Native.NativeImpl $implId A X LeanExe.Native.nativeCap
                         $translationId :=
                     LeanExe.Native.ImplementsA.nativeImpl _ $eqId $hk))
+        -- Under the option, the translation without the test of alignment, from parts with the
+        -- flag as above, and each function's theorem for it from `p.f.implements` and
+        -- `p.f.aligned`.  A program with byte literals has no aligned theorems.
+        if verified_compile.alignedNative.get (← getOptions) && !hasLiterals then
+          match LeanExe.Native.translate LeanExe.Native.nativeCap evaluated true with
+          | none =>
+              logWarning m!"verified_compile: the module does not translate to C without the \
+                test of alignment with {LeanExe.Native.nativeCap} pages"
+          | some t =>
+              let infosA := (List.range nb).map fun k =>
+                LeanExe.Native.callInfo LeanExe.Native.nativeCap evaluated k true
+              let infosAId ← if infosA == infos then pure infosId else do
+                liftCoreM <| addLiteral (base ++ `translationAligned_infos)
+                  (toTypeExpr (List (Option (List Nat)))) (toExpr infosA)
+                pure (mkIdent (base ++ `translationAligned_infos))
+              let PA ← `(fun k : Nat =>
+                LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId k true =
+                  ($infosAId)[k]?.join)
+              let mut chainA ← `(Wasm.Encoding.forall_lt_zero $PA)
+              for k in [0:nb] do
+                trace[Verified.reflect] "aligned native part of function {k}"
+                let partId :=
+                  mkIdent (target.getId ++ Name.mkSimple s!"translationAligned_part_{k}")
+                let kq := Lean.quote k
+                elabCommand (← `(set_option maxRecDepth 100000 in
+                  theorem $partId :
+                      LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId $kq true =
+                        ($infosAId)[$kq]?.join := by
+                    decide +kernel))
+                chainA ← `(Wasm.Encoding.forall_lt_succ (P := $PA) (n := $kq) $chainA $partId)
+              let partsAId := mkIdent (target.getId ++ `translationAligned_parts)
+              elabCommand (← `(theorem $partsAId : ∀ k < $(Lean.quote nb),
+                  LeanExe.Native.callInfo LeanExe.Native.nativeCap $moduleId k true =
+                    ($infosAId)[k]?.join :=
+                $chainA))
+              let funcsAId := mkIdent (target.getId ++ `translationAligned_funcs)
+              let translationAId := mkIdent (target.getId ++ `translationAligned)
+              let eqAId := mkIdent (target.getId ++ `translationAligned_eq)
+              elabCommand (← `(set_option maxRecDepth 100000 in
+                theorem $funcsAId : (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId
+                    true).map LeanExe.Native.Translation.funcs = some $(Lean.quote t.funcs) :=
+                  LeanExe.Native.translate_funcs_of_parts (infos := $infosAId) $inSubsetId
+                    (by decide +kernel) (by decide +kernel) $countId (by decide +kernel)
+                    $partsAId (by decide +kernel) (by decide +kernel)))
+              elabCommand (← `(noncomputable def $translationAId : LeanExe.Native.Translation :=
+                (LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId true).get
+                  (LeanExe.Native.translate_isSome $funcsAId)))
+              elabCommand (← `(theorem $eqAId :
+                  LeanExe.Native.translate LeanExe.Native.nativeCap $moduleId true =
+                    some $translationAId :=
+                (Option.some_get _).symm))
+              elabCommand (← `(attribute [irreducible] $translationAId:ident))
+              for (simple, index, kind) in natives do
+                unless t.funcs.contains index do continue
+                let implId := mkIdent (base ++ simple ++ `implements)
+                let alignedId := mkIdent (base ++ simple ++ `aligned)
+                let nativeId := mkIdent (target.getId ++ simple ++ `nativeAligned)
+                let hk ← `(LeanExe.Native.translate_mem_funcs $eqAId $funcsAId (by decide))
+                match kind with
+                | .tables =>
+                    elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
+                        Verified.NativeTablesAlignedImpl $implId A X LeanExe.Native.nativeCap
+                          $translationAId :=
+                      Verified.ImplementsTablesAligned.nativeImpl $implId $alignedId $eqAId $hk))
+                | .plain =>
+                    elabCommand (← `(theorem $nativeId (A : LClight.Archi) (X : LClight.ExtSem) :
+                        LeanExe.Native.NativeAlignedImpl $implId A X LeanExe.Native.nativeCap
+                          $translationAId :=
+                      LeanExe.Native.ImplementsAligned.nativeImpl $implId $alignedId $eqAId $hk))
+                | .static => pure ()
   | _ => throwUnsupportedSyntax
 
 end Verified.Reflect
