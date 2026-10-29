@@ -38381,6 +38381,8 @@ The invariant needs two facts that the proofs in [the release of trees](LeanExe/
 
 **Size.**  The new modules have 2,200 lines, and the edits of the heap model and of `ReleaseTree.lean` insert 94 lines and delete 14.  Counted as the scoping study counts, with a copied line not counted, about 650 lines of the ports differ from their originals by `diff`, and with the transfer module, the heap model, the restructured lemmas, and the interface theorems, the stage wrote or changed about 1,050 lines, inside the study's estimate of 600 to 1,400.  Counted in full, as new lines in the repository, the stage adds about 2,300, which is the cost of the design with two copies.
 
+**The build.**  The edit of `ReleaseTree.lean` rebuilds every module above it, `LeanExe/IR/Release.lean` and the Library's numerical proofs among them.  With the Lgamma root proofs built first in one build, the full build of `Verified`, `Library`, and the default targets passed in 1,981 s.  The axiom check covers 45 theorems, the 42 new ones, `Releasing.next` and `Releasing.start`, whose proofs changed, and `release_tree_run_top`, which uses them, and each uses only `propext`, `Classical.choice`, and `Quot.sound`.  The interfaces are `Verified.Runtime.allocAligned : Runtime m → AllocAligned m` and `Verified.Runtime.releaseAligned : Runtime m → ReleaseAligned m`.
+
 - [x] The transfer of `wp` to `wpA` for access-free code, and the simp set.
 - [x] `AllocAligned` for the runtime's `alloc`.
 - [x] The heap model of release: `Heap.release` keeps `Heap.Aligned`.
