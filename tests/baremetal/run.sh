@@ -14,10 +14,10 @@
 # which enter the image at EL2 and EL3, it must report the level and exit with status 254.
 # QEMU's device tree must place the PL011 at the address of lx_out in tools/baremetal/link.ld
 # and the RAM at __ram_start with the size of __ram_end - __ram_start, and must name PSCI with
-# the method hvc, which PSCI_EXIT uses.  The reports' stack high-water marks, 16,048 and 48
-# bytes, are those of CompCert 3.18's code.  CCOMP and CCOMP_STDLIB are as for
-# tools/baremetal/build.sh, and NM and DTC name nm for AArch64 objects and the device-tree
-# compiler.
+# the method hvc, which PSCI_EXIT uses.  The reports' stack high-water marks, 16,048 bytes for
+# probe.c and 32 for entry.c, are those of main and its callees as CompCert 3.18 compiles them.
+# CCOMP and CCOMP_STDLIB are as for tools/baremetal/build.sh, and NM and DTC name nm for AArch64
+# objects and the device-tree compiler.
 # Usage: tests/baremetal/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -91,7 +91,7 @@ fi
 if [ "$code" != 0 ] ||
     ! diff <(head -n "$lines" "$here/entry.expected") \
       <(grep -v '^R:' "$out/serial.txt" | head -n "$lines") ||
-    ! grep -qx 'R:exit 0 el 1 stack 48' "$out/serial.txt"; then
+    ! grep -qx 'R:exit 0 el 1 stack 32' "$out/serial.txt"; then
   fail "entry.c gave status $code and $(paste -sd' ' "$out/serial.txt")"
 fi
 if [ "$accel" = tcg ]; then

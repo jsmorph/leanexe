@@ -3,14 +3,18 @@
    the exception level and the DAIF and SCTLR_EL1 that it found at entry in lx_boot_el, installs
    the exception vectors, turns the MMU and the caches on, enables floating point, sets the stack,
    fills the stack with a pattern for the high-water mark, clears .bss, and calls main.  After
-   main returns, or after a call of lx_exit, it reports through lx_report_exit and exits with the
-   status through semihosting, or, when PSCI_EXIT is defined, turns the machine off through PSCI
-   SYSTEM_OFF, so that only the report gives the status.  At another exception level it reports
-   the level and exits with status 254, and an exception reports its registers and exits with
-   status 255.  lx_stack_mark and lx_stack_used measure the stack of one call for the test of the
-   stack bound.  Defining NO_FPEN leaves floating point disabled, defining UNALIGNED_TEST adds an
-   unaligned 8-byte load before main, and defining GUARD_TEST adds a store to the guard page below
-   the stack.  The first two reproduce results of the design's experiments.
+   main returns, or after a call of lx_exit, it moves the stack pointer to the exception stack, so
+   that the high-water mark covers main and the code it calls but not the report, reports through
+   lx_report_exit, and exits with the status through semihosting, or, when PSCI_EXIT is defined,
+   turns the machine off through PSCI SYSTEM_OFF, so that only the report gives the status.  At
+   another exception level it reports the level and exits with status 254, and an exception
+   reports its registers and exits with status 255, each on the exception stack.  Both end at
+   exit, so the exception stack holds nothing when lx_exit moves to it, and a fault in
+   lx_report_exit starts lx_report_exception from the same top.  lx_stack_mark and lx_stack_used
+   measure the stack of one call for the test of the stack bound.  Defining NO_FPEN leaves
+   floating point disabled, defining UNALIGNED_TEST adds an unaligned 8-byte load before main, and
+   defining GUARD_TEST adds a store to the guard page below the stack.  The first two reproduce
+   results of the design's experiments.
 
    The translation tables map RAM, from __ram_start to __ram_end, as Normal Inner and Outer
    Write-Back memory, Inner Shareable, and the 4 KiB page of lx_out as Device-nGnRnE memory, and
@@ -154,6 +158,8 @@ lx_exit:
         str     xzr, [x2]
 16:     ldr     x1, =lx_boot_el
         ldr     x1, [x1]
+        ldr     x2, =__exc_stack_top
+        mov     sp, x2
         bl      lx_report_exit
 exit:
 #ifdef PSCI_EXIT

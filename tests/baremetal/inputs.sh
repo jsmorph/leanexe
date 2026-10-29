@@ -4,26 +4,22 @@
 # main that reads the input, and clightgen reads each C text back; native-bare check-in compares
 # the whole program with the program of the theorem.  Each program is built with
 # tools/baremetal/build.sh, whose stack bound must hold, and runs once per input file in its own
-# QEMU process, whose stack's high-water mark must not exceed the larger of the bounds of main and
-# of the report, with QEMU's generic loader placing the file at lx_in, 0x70000000: the length in
-# eight bytes, the lowest first, then the message.  For sha256in, the UART output must be the
-# message's SHA-256 digest as sha256sum computes it, followed by the startup code's report of exit
-# status 0, which must be the program's exit status.  A length above 2^24 - 8 must give no output
-# and the status 64.  The messages have the lengths 0, 3 (abc), 55, 56, 63, 64, 65, 1,000,
-# 65,536, 1,048,576, and 2^24 - 8, the largest accepted, with random bytes beyond abc.  ACCEL
-# selects the accelerator, as tests/baremetal/qemu.sh describes.  CCOMP, CCOMP_STDLIB, and
-# CLIGHTGEN name CompCert 3.18's driver, run-time library, and clightgen for AArch64.
+# QEMU process, whose stack's high-water mark, which the startup code's report measures from the
+# exception stack, must not exceed the bound of main, with QEMU's generic loader placing the file
+# at lx_in, 0x70000000: the length in eight bytes, the lowest first, then the message.  For
+# sha256in, the UART output must be the message's SHA-256 digest as sha256sum computes it,
+# followed by the startup code's report of exit status 0, which must be the program's exit
+# status.  A length above 2^24 - 8 must give no output and the status 64.  The messages have the
+# lengths 0, 3 (abc), 55, 56, 63, 64, 65, 1,000, 65,536, 1,048,576, and 2^24 - 8, the largest
+# accepted, with random bytes beyond abc.  ACCEL selects the accelerator, as
+# tests/baremetal/qemu.sh describes.  CCOMP, CCOMP_STDLIB, and CLIGHTGEN name CompCert 3.18's
+# driver, run-time library, and clightgen for AArch64.
 # Usage: tests/baremetal/inputs.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
 out=$root/build/baremetal/inputs
 clightgen=${CLIGHTGEN:-clightgen}
-ccomp=${CCOMP:-ccomp}
-stdlib=()
-if [ -n "${CCOMP_STDLIB:-}" ]; then
-  stdlib=(-stdlib "$CCOMP_STDLIB")
-fi
 source tests/baremetal/qemu.sh
 rm -rf "$out"
 mkdir -p "$out"
@@ -34,8 +30,6 @@ for c in "$out"/*.c; do
   (cd "$out" && "$clightgen" "$(basename "$c")")
 done
 tools/leanrun --timeout 30m lake env .lake/build/bin/native-bare check-in "$out"
-"$ccomp" "${stdlib[@]}" -S tools/baremetal/report.c -o "$out/report.s"
-report=$(tools/baremetal/stack-bound.sh -r lx_report_exit /dev/null "$out/report.s" | cut -d' ' -f1)
 
 # The eight bytes of the number $1, the lowest first.
 le64() {
@@ -74,9 +68,8 @@ run() {
       ! tail -c +"$((n + 1))" "$in.serial" | grep -q "^R:exit $3 "; then
     echo "fail: $name $label: status $code, output $(od -An -tx1 "$in.serial" | head -c 200)"
     status=1
-  elif [ "${mark:-0}" -gt "$bound" ] && [ "${mark:-0}" -gt "$report" ]; then
-    echo "fail: $name $label: the stack's high-water mark $mark exceeds the bounds $bound of main\
- and $report of the report"
+  elif [ "${mark:-0}" -gt "$bound" ]; then
+    echo "fail: $name $label: the stack's high-water mark $mark exceeds the bound $bound of main"
     status=1
   else
     echo "pass: $name $label: $n bytes, $(tail -c +"$((n + 1))" "$in.serial" | tr -d '\n'),\
