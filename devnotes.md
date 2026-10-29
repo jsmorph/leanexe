@@ -38478,3 +38478,30 @@ Each proof takes the heap's alignment and the result's from `FunPost true`, the 
 - [x] The function, entry, and wrapper forms, and their transfers to Lean's instances.
 - [ ] Switch the import of `LeanExe/Pipeline/ImplementsAligned.lean` from `LeanExe/ProofKit/AlignedExec.lean` to `AlignedDefs.lean` when the native side's move of `AlignedRun` merges.
 - [ ] Remove `LeanExe/Pipeline/AlignedImplements.lean.new`, an untracked intermediate copy of `AlignedImplements.lean` left beside it during this work, once the user approves its removal.
+
+## 2026-10-29: The alignment theorem of each compiled function
+
+`verified_compile` now adds the theorem `p.f.aligned` beside `p.f.implements` for every function and wrapper of a program without byte literals.  `p.f.aligned` states `ImplementsAligned`, or `ImplementsTablesAligned` for a wrapper, with exactly the arguments of `p.f.implements`: the trap flag, the module, the index, the function, the tables of a wrapper, and the precondition and postcondition.  From an input that meets the premises of `ImplementsA` and `AlignedInput`, it states that the run of the entry at every fuel from some bound on makes only aligned 64-bit accesses inside memory, that the call satisfies `p.f.implements`'s conclusion, and that the final heap and the result's blocks are aligned.  The existing generated statements are unchanged.  `p.f.aligned` enters neither `p.bytes` nor `p.f.native`, which the native agent's proposal will change after review.
+
+**The program-level theorems.**  [The program's alignment theorems](Verified/AlignedProgram.lean) are the counterparts of `Prog.correctWith`, `Prog.correct_entryWith`, and `Prog.correct_wrapper`.  `Prog.callsAlignedWith` gives `CallsX true` for the module that `compileWith` builds, by `Prog.callsX` with `Runtime.releaseAligned`, `Runtime.allocAligned`, and `copyCodeX` for its premises.  `Prog.implementsAlignedWith`, `Prog.entry_alignedWith`, and `Prog.wrapper_alignedWith` apply the third stage's `FunSpecX.implementsAligned`, `entry_aligned`, and `wrapper_aligned` to it at a function's call index, at the exported entry of a function whose code takes the call depth, and at a wrapper's entry.  `ImplementsAligned.transferAgree` and `ImplementsTablesAligned.transferAgree` take the arguments of `ImplementsA.transferAgree` and `ImplementsTables.transferAgree` and carry the result's alignment through `Agree.blocks`.  In `Command.lean`, `implementsProof` and `wrapperProof` take the transfer lemma as a parameter, so that the proof of `p.f.aligned` reuses the meaning chain of `p.f.implements` and its claim sets the same arguments.  The kernel checks each generated proof as an application of these theorems to the program's constants.
+
+**The literal route.**  A program with byte literals states `ImplementsStatic` for every function, and the third stage's theorems cover only the empty literal pool, through `Bytes.LiteralPool.Input.empty`.  The generator gives these functions no aligned theorem.  Its branch for literals ends before the code that adds `p.f.aligned`, for functions and wrappers alike.
+
+**The history.**  The first version stated `ImplementsAligned m entry (fun _ _ _ => True)`, whose conclusion was the alignment of the runs alone.  An independent review of the statement layer asked for the parameters and the conclusion of `ImplementsA` with the alignment of the final heap and of the result, so that a host can pass the heap of one call to the next.  The third stage changed the definitions, and the generator now passes the arguments of `p.f.implements`.  A full build of the first version was stopped before it ended, since its result would not apply to the second.
+
+**The tests.**  The full build of `Verified`, `Library`, the default targets, `TestSupport`, and the 104 modules that run `verified_compile` passed in 4,761 s at eight threads, the Lgamma root proofs included.  A script that imports the 104 modules compares each `p.f.implements` with its `p.f.aligned`.  All 1,195 `ImplementsA` theorems and all 46 `ImplementsTables` theorems have an aligned theorem, and the type arguments of each aligned theorem equal those of its `implements` theorem as terms.  The 24 `ImplementsStatic` theorems, 18 in the literal example and 6 in the arithmetic of the running-sum demo, have none.  Twelve aligned theorems sampled from the demos and the Library, two wrappers among them, depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+**The compile time.**  The table gives the time of `lake env lean` on the three largest demos, through `tools/leanrun` at eight threads, before and after the change.  Other builds ran beside every round, a small one beside the first round before the change and full builds beside the other three, so the load differed between runs.
+
+| Module | Aligned theorems | Before, round 1 | Before, round 2 | After, round 1 | After, round 2 |
+|---|---|---|---|---|---|
+| gpt32 | 13 | 40 s | 47 s | 49 s | 44 s |
+| euler | 55 | 928 s | 1,028 s | 1,069 s | 1,029 s |
+| slew | 27 | 377 s | 390 s | 363 s | 376 s |
+
+The means rose by 3 s for gpt32 and by 71 s, 7 percent, for euler, and fell by 14 s for slew.  Each change is about the size of the spread between two runs of the same configuration, which reached 100 s for euler before the change.  The measurements show no extra time above that spread, and they bound it only by the spread, about 10 percent of a module's time.
+
+- [x] The program-level theorems and the transfers in `Verified/AlignedProgram.lean`.
+- [x] `p.f.aligned` for functions, entries, and wrappers, with the arguments of `p.f.implements`.
+- [x] The full build and the corpus check.
+- [ ] An aligned theorem for the literal route, once the third stage covers a nonempty literal pool.
