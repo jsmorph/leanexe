@@ -6,28 +6,9 @@ The function level under the flag.  `bodyFunction_runsX` is `bodyFunction_runs` 
 `Runs`: from an aligned heap and aligned arguments, the run of a body function makes only aligned
 64-bit accesses, and it ends with an aligned heap and an aligned owned result.  The guard on the
 call depth and the copy of the parameters make no 64-bit access, so their flagged rules come from
-the originals through `wpX_append_free`.  `RunsA.append_args` extends an aligned run to a longer
-operand stack, as `Runs.append_args` extends a run.
+the originals through `wpX_append_free`.  `bodyFunction_aligned` and `bodyFunction_depthAligned`
+derive `FunAligned` from those runs, for code without and with the call depth.
 -/
-
-theorem LeanExe.ProofKit.RunsA.append_args {α : Type} {env : Wasm.HostEnv α} {m : Wasm.Module}
-    {id : Nat} {initial : Wasm.Store α} {args : List Wasm.Value}
-    {P : Wasm.Store α → List Wasm.Value → Prop} {aborts : Bool} {f : Wasm.Function}
-    (h : RunsA aborts env m id initial args P)
-    (hImp : m.imports[id]? = none) (hf : m.funcs[id - m.imports.length]? = some f)
-    (hlen : args.length = f.numParams) (rest : List Wasm.Value) :
-    RunsA aborts env m id initial (args ++ rest)
-      (fun st values => ∃ out, values = out ++ rest ∧ P st out) := by
-  refine ⟨h.1.append_args hImp hf hlen rest, ?_⟩
-  obtain ⟨N, hN⟩ := h.2
-  refine ⟨N, fun fuel hfuel => ?_⟩
-  have hA := hN fuel hfuel
-  have hTake : (args ++ rest).take f.numParams = args.take f.numParams :=
-    List.take_append_of_le_length (by omega)
-  rw [AlignedRun] at hA ⊢
-  simp only [hImp, hf] at hA ⊢
-  rw [hTake]
-  exact hA
 
 namespace Verified
 
@@ -407,12 +388,6 @@ theorem bodyFunction_runsX {strict : Bool} {S : List Sig} {params : List Ty} {re
       exact ⟨(hAlB hs).1.1, (hAlB hs).2⟩
 
 
-theorem _root_.LeanExe.ProofKit.RunsA.mono {α : Type} {env : HostEnv α} {m : Module} {id : Nat}
-    {initial : Store α} {args : List Value} {P Q : Store α → List Value → Prop} {aborts : Bool}
-    (h : RunsA aborts env m id initial args P) (hPQ : ∀ st vs, P st vs → Q st vs) :
-    RunsA aborts env m id initial args Q :=
-  ⟨h.1.mono hPQ, h.2⟩
-
 theorem _root_.LeanExe.ProofKit.RunsA.of_imp {α : Type} {env : HostEnv α} {m : Module} {id : Nat}
     {initial : Store α} {args : List Value} {P : Store α → List Value → Prop} {a a' : Bool}
     (h : RunsA a env m id initial args P) (himp : a = true → a' = true) :
@@ -429,14 +404,16 @@ theorem bodyFunction_aligned {S : List Sig} {params : List Ty} {result : Ty}
     (m : Module) (pos : Nat) (hm : Runtime m) (hRA : ReleaseAligned m) (hRt : AllocAligned m)
     (hCopy : ∀ host, CopyCodeX true m host)
     (hListFold : ∀ host pv, ListFoldSpecX true m funs flags bounds fits host pv pool)
-    (hFunc : m.funcs[pos]? = some (bodyFunction modes body false pos pool))
+    (depth : Bool) (hd : depth = false)
+    (hFunc : m.funcs[pos]? = some (bodyFunction modes body depth pos pool))
     (hCovered : body.Covered pool) {d0 : UInt64}
     (hCalls : CallsAtX true m funs flags bounds fits d0 pool) (hDepth : body.depthCalls = false)
     (aborts : Bool)
     (hAborts : (body.aborts || !result.scalar || (paramModes params modes).any (· == .owned)) =
       true → aborts = true) (Fi : Env params → Bool) (D : UInt64 → Prop) :
-    FunAligned m ⟨params, result, aborts, modes, false⟩ pos (body.denote funs) pf rf
+    FunAligned m ⟨params, result, aborts, modes, depth⟩ pos (body.denote funs) pf rf
       (bodyBound modes pf body funs flags bounds) Fi D pool := by
+  subst hd
   intro host heap store ws args hAt hInput hRep hSep hCap hHeap hVals d _ rest
   have hRun : RunsA _ host m pos store _ _ := bodyFunction_runsX (strict := true) modes body
     placeArgs false funs flags bounds fits pf rf hrf m pos hm hFunc hCovered d0 (fun _ => hCalls)
@@ -461,14 +438,16 @@ theorem bodyFunction_depthAligned {S : List Sig} {params : List Ty} {result : Ty
     (m : Module) (pos : Nat) (hm : Runtime m) (hRA : ReleaseAligned m) (hRt : AllocAligned m)
     (hCopy : ∀ host, CopyCodeX true m host)
     (hListFold : ∀ host pv, ListFoldSpecX true m funs flags bounds fits host pv pool)
-    (hFunc : m.funcs[pos]? = some (bodyFunction modes body true pos pool))
+    (depth : Bool) (hd : depth = true)
+    (hFunc : m.funcs[pos]? = some (bodyFunction modes body depth pos pool))
     (hCovered : body.Covered pool) (d : UInt64)
     (hCalls : d < depthLimit → CallsAtX true m funs flags bounds fits d pool) (aborts : Bool)
     (Fi : Env params → Bool) (A : Env params → Nat)
     (hFi : ∀ args, Fi args = (decide (d < depthLimit) && body.fits funs fits args))
     (hA : d < depthLimit → ∀ args, A args = bodyBound modes pf body funs flags bounds args) :
-    FunAligned m ⟨params, result, aborts, modes, true⟩ pos (body.denote funs) pf rf A Fi
+    FunAligned m ⟨params, result, aborts, modes, depth⟩ pos (body.denote funs) pf rf A Fi
       (fun d' => d' = d) pool := by
+  subst hd
   intro host heap store ws args hAt hInput hRep hSep hCap hHeap hVals d' hd rest
   obtain rfl : d' = d := hd rfl
   have hRun : RunsA _ host m pos store _ _ := bodyFunction_runsX (strict := true) modes body
