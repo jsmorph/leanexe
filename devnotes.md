@@ -38539,7 +38539,7 @@ The translator gains the option `alignedAccess`, under which `load64` and `store
 - [x] `alloc_nativeA` and `release_nativeA`, and the cap and region conclusions in the aligned statements.
 - [x] The trusted statements in the manuals, after three reviews of the proposal.
 - [ ] The cap and region conclusions in `NativeA` and `NativeTablesA`, an open decision of the translator's design.
-- [ ] The placement benchmark with the option on and off.
+- [x] The placement benchmark with the option on and off.
 - [ ] A theorem for a host program's writes into a block that `alloc` returned, for either translation.  Only the generated bare-metal `main` with input has one, `input_program`, for the translation with the test.
 - [ ] The whole-program theorems of `Whole.lean` and the bare-metal path for the translation without the test.
 - [ ] The generator's `p.translation_eq` and `p.f.native` with the option, after the review.
@@ -38619,3 +38619,21 @@ The six programs that `tests/native/bench.sh` times now set `verified_compile.al
 | `Demos.Gpt32.Verified` | 54 | 56 |
 
 `native-verified build --aligned` passed the check on all six, and each `clightgen` program matches its translation.  The CRC module now has aligned theorems, so `tests/native/aligned.sh` expects the refusal on `Library.Arrays.Word.Compiled`, and it passed: the fixture built, and the word-array and literal modules were refused with status 4.  `tests/native/verified.sh --aligned` refused the other 97 modules of the corpus and passed all 1,024 cases of the six, with none failing.  It ran none of the 34,742 cases of the refused modules.  Of the module cases, the 3,096 of `euler` passed, and the 226 of `sums` did not run.  The run took 2,373 seconds, most of it the rebuild of the corpus after the generator's change.
+
+## 2026-10-29: The placement benchmark with and without the alignment test
+
+`tests/native/bench.sh --placements` ran once with the translation with the test and then once with `--aligned`, on AArch64, with `ccomp` from the 3.18 sources and the Wasmtime C API 44.0.0.  Each run timed 11 pairs per workload and the native form at 16 placements, the code moved by 0 to 60 bytes, two runs per placement.  The two runs used the native corpus tool from before its check of the theorems, on modules without the aligned option.  Its aligned C text is the printed form of `p.translationAligned` that the six workload modules state now, since the option changes neither the module nor its translation.  The table gives, per workload, the mean time per call of the native form over the 16 placements and the change, and the change of the Wasmtime median, which measures the same Wasm code in both runs.
+
+| Workload | With the test (ms) | Without the test (ms) | Change | Wasmtime median change |
+| --- | --- | --- | --- | --- |
+| `sort` | 23.732 | 18.583 | -21.7% | +0.65% |
+| `linear32` | 2.294 | 1.777 | -22.5% | +0.03% |
+| `layernorm32` | 3.567 | 2.867 | -19.6% | +0.02% |
+| `euler` | 179.073 | 176.153 | -1.6% | 0.00% |
+| `crc32` | 3.819 | 3.764 | -1.4% | 0.00% |
+| `sha256` | 12.891 | 12.791 | -0.8% | -0.26% |
+| `sha3` | 9.878 | 9.845 | -0.3% | +0.03% |
+
+`sort`, `linear32`, and `layernorm32` run 20 to 23 percent faster without the test, and the other four change by less than 2 percent.  The study estimated the cost of the test at 14 to 25 percent of the cycles of the benchmark's array loops.  The Wasmtime medians moved by at most 0.65 percent between the runs, so drift between the runs is well below the change of those three workloads, and it is of the same order as the changes of `sha256` and `sha3`.  Over the placements, `sort` ranged from 19.3 to 28.3 ms with the test and from 16.4 to 21.1 ms without it.  The ranges overlap, so a comparison of single placements could show anything from a loss of 9 percent to a gain of 42 percent.  `linear32` ranged from 2.19 to 2.58 ms with the test and from 1.70 to 1.98 ms without it, with no overlap.  Without the test, the ratio of the Wasmtime median to the native mean rose from 1.16 to 1.49 for `linear32` and from 1.45 to 1.80 for `layernorm32`.  The run with the test discarded one placement run, and the run without it one pair and one placement run, because the machine was not idle after them.  Each workload ran once in each form, and the two runs ran in sequence rather than interleaved.
+
+The translation with the test stays the default, and the translation without it stays the option `native-verified build --aligned` for modules compiled with `verified_compile.alignedNative`.  The whole-program theorems of `Whole.lean` and the bare-metal path exist only for the translation with the test, so a default without the test would leave the bare-metal programs and the whole-program statements without theorems.  The option also raises the compile time of the six workload modules by 3 percent, and the benchmark ran only on AArch64.  The default can change after `Whole.lean` and the bare-metal path cover the translation without the test, an open item of the entry on the native side of the alignment proof.
