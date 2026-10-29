@@ -4,11 +4,13 @@ import LeanExe.Native.Proof.AlignedNative
 
 /-!
 The translation without the test of alignment for a wrapper.  `NativeTablesAlignedA` is
-`NativeTablesA` with the premise `AlignedInput` after `Separate` and, after a return, the
-alignment of the final heap and of the result's blocks, as `NativeAlignedA` is for `NativeA`.
-`ImplementsTablesAligned.native` derives it from `ImplementsTablesAligned` alone, and
-`NativeTablesAlignedImpl` and `ImplementsTablesAligned.nativeImpl` are `NativeTablesImpl` and
-`ImplementsTables.nativeImpl` for it.
+`NativeTablesA` with the premise `AlignedInput` after `Separate` and, after a return, the cap and
+region conclusions of `ImplementsTablesAligned` and the alignment of the final heap and of the
+result's blocks, as `NativeAlignedA` is for `NativeA`.  `ImplementsTablesAligned.native` derives
+it from `ImplementsTablesAligned` alone.  `NativeTablesAlignedImpl h` states it for the wrapper of
+the theorem `h` of `ImplementsTables`, as `NativeTablesImpl h` states `NativeTablesA`, and
+`ImplementsTablesAligned.nativeImpl` derives it from `ImplementsTablesAligned` at the arguments of
+`h`.
 -/
 
 namespace Verified
@@ -16,7 +18,8 @@ namespace Verified
 open Wasm LClight LeanExe.Native LeanExe.Pipeline LeanExe.ProofKit
 
 /-- `NativeTablesA` with the premise that the input is aligned, `AlignedInput`, after
-`Separate`, and, after a return, the alignment of the final heap and of the result's blocks. -/
+`Separate`, and, after a return, the cap and region conclusions of `ImplementsTables` and the
+alignment of the final heap and of the result's blocks. -/
 def NativeTablesAlignedA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : ExtSem)
     (cap : Nat) (mod : Module) (T : Translation) (ps rs : List VT) (fd : function)
     (aborts : Bool) (f : α → β) (tables : List (UInt64 × Array UInt64))
@@ -40,6 +43,10 @@ def NativeTablesAlignedA {α β : Type} [Represent α] [Represent β] (A : Archi
         ((StatusRel E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
             ResultRel E rs vs (params.reverse.drop ps.length) vres m' ∧
             heap'.At final ∧ Represent.owned heap' final vs.reverse (f x) ∧
+            final.memoryCaps = store.memoryCaps ∧
+            (∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
+              (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+                heap'.Region r ∧ Represent.outside final vs.reverse (f x) r) ∧
             Post x heap store heap' final ∧ heap'.Aligned ∧ AlignedOutput final vs.reverse (f x)) ∨
           (aborts = true ∧ StatusRel E m' trapUnreachable))
 
@@ -61,16 +68,18 @@ theorem ImplementsTablesAligned.native {α β : Type} [Represent α] [Represent 
   obtain ⟨t, m', vres, st', hcall, hst', hres⟩ := RunsA.native (A := A) (X := X) hT hE hG hcap
     hnres hF hfd hsig ⟨hRuns, hAligned⟩ htyped hst hs
   refine ⟨t, m', vres, st', hcall, hst', ?_⟩
-  rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, -, -, hPost, hHeap', hOut⟩, hr⟩ | habort
-  · exact .inl ⟨hs', vs, heap', hr, hAt, hOwn, hPost, hHeap', hOut⟩
+  rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, hCaps, hRegion, hPost, hHeap', hOut⟩, hr⟩ |
+    habort
+  · exact .inl ⟨hs', vs, heap', hr, hAt, hOwn, hCaps, hRegion, hPost, hHeap', hOut⟩
   · exact .inr habort
 
-/-- `NativeTablesImpl` for the translation without the test of alignment. -/
+/-- `NativeTablesImpl` for the translation without the test of alignment: the translation of the
+wrapper of the theorem `h` computes its function as `NativeTablesAlignedA` states. -/
 def NativeTablesAlignedImpl {α β : Type} [Represent α] [Represent β] {aborts : Bool}
     {mod : Module} {k : Nat} {f : α → β} {tables : List (UInt64 × Array UInt64)}
     {Pre : α → Heap → Store Unit → Prop}
     {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
-    (_h : ImplementsTablesAligned aborts mod k f tables Pre Post) (A : Archi) (X : ExtSem)
+    (_h : ImplementsTables aborts mod k f tables Pre Post) (A : Archi) (X : ExtSem)
     (cap : Nat) (T : Translation) : Prop :=
   ∃ fd ps rs, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
     (∀ g, mod.funcs[k]? = some g → signatureOf g = some (ps, rs)) ∧
@@ -80,10 +89,11 @@ theorem ImplementsTablesAligned.nativeImpl {α β : Type} [Represent α] [Repres
     {X : ExtSem} {aborts : Bool} {mod : Module} {k : Nat} {f : α → β}
     {tables : List (UInt64 × Array UInt64)} {Pre : α → Heap → Store Unit → Prop}
     {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
-    (h : ImplementsTablesAligned aborts mod k f tables Pre Post) {cap : Nat} {T : Translation}
+    (h : ImplementsTables aborts mod k f tables Pre Post)
+    (hA : ImplementsTablesAligned aborts mod k f tables Pre Post) {cap : Nat} {T : Translation}
     (hT : translate cap mod true = some T) (hk : k ∈ T.funcs) :
     NativeTablesAlignedImpl h A X cap T := by
   obtain ⟨fd, ps, rs, hfd, hsig⟩ := translate_sig hT hk
-  exact ⟨fd, ps, rs, hfd, hsig, ImplementsTablesAligned.native h hT hfd hsig⟩
+  exact ⟨fd, ps, rs, hfd, hsig, ImplementsTablesAligned.native hA hT hfd hsig⟩
 
 end Verified
