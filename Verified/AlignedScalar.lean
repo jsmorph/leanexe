@@ -51,6 +51,14 @@ theorem specX_word {Γ : List Ty} (value : UInt64) :
       (fun hs => ⟨(hAl hs).live_mono (by intro i h; simp [h]), Ty.AlignedVal.scalar rfl⟩)
       (fun _ => Nat.le_add_right _ _)
 
+/-- A constant word. -/
+theorem spec_word {Γ : List Ty} (value : UInt64) :
+    ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.word (S := S) (Γ := Γ) value) env slots
+          paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_word (strict := false) value env slots paid live)
+
 theorem specX_treeNil {Γ : List Ty} (shape : TreeShape) (hn : shape.hasNull = true) :
     ∀ env slots paid live,
       CodeSpecX strict (pool := pool) m funs flags bounds fits host pv
@@ -66,6 +74,13 @@ theorem specX_treeNil {Γ : List Ty} (shape : TreeShape) (hn : shape.hasNull = t
     (fun hs => ⟨(hAl hs).live_mono (by intro i hi; simp [hi]), fun r hr => nomatch hr⟩)
     (fun _ => Nat.le_add_right _ _)
   simpa [Expr.code, Expr.denote, wpX_constI64_cons] using hRun
+
+theorem spec_treeNil {Γ : List Ty} (shape : TreeShape) (hn : shape.hasNull = true) :
+    ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv
+        (Expr.treeNil (S := S) (Γ := Γ) shape hn) env slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_treeNil (strict := false) shape hn env slots paid live)
 
 theorem specX_bytesEmpty {Γ : List Ty} :
     ∀ env slots paid live,
@@ -83,6 +98,13 @@ theorem specX_bytesEmpty {Γ : List Ty} :
     (fun _ => Nat.le_add_right _ _)
   simpa [Expr.code, Expr.denote, wpX_constI64_cons] using hRun
 
+theorem spec_bytesEmpty {Γ : List Ty} :
+    ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.bytesEmpty (S := S) (Γ := Γ))
+        env slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_bytesEmpty (strict := false) env slots paid live)
+
 /-- A constant `Bool`. -/
 theorem specX_bool {Γ : List Ty} (value : Bool) :
     ∀ env slots paid live,
@@ -96,6 +118,14 @@ theorem specX_bool {Γ : List Ty} (value : Bool) :
       (fun hs => ⟨(hAl hs).live_mono (by intro i h; simp [h]), Ty.AlignedVal.scalar rfl⟩)
       (fun _ => Nat.le_add_right _ _)
 
+/-- A constant `Bool`. -/
+theorem spec_bool {Γ : List Ty} (value : Bool) :
+    ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.bool (S := S) (Γ := Γ) value) env slots
+          paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_bool (strict := false) value env slots paid live)
+
 /-- A float constant, from its bit pattern. -/
 theorem specX_float {Γ : List Ty} (bits : UInt64) :
     ∀ env slots paid live,
@@ -108,6 +138,14 @@ theorem specX_float {Γ : List Ty} (bits : UInt64) :
         rw [Ty.regions_scalar .float rfl] at hb; exact nomatch hb)
       (fun hs => ⟨(hAl hs).live_mono (by intro i h; simp [h]), Ty.AlignedVal.scalar rfl⟩)
       (fun _ => Nat.le_add_right _ _)
+
+/-- A float constant, from its bit pattern. -/
+theorem spec_float {Γ : List Ty} (bits : UInt64) :
+    ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.float (S := S) (Γ := Γ) bits) env slots
+          paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_float (strict := false) bits env slots paid live)
 
 /-- A comparison of words. -/
 theorem specX_cmp {Γ : List Ty} (op : CmpOp) {left right : Expr S Γ .word}
@@ -150,6 +188,19 @@ theorem specX_cmp {Γ : List Ty} (op : CmpOp) {left right : Expr S Γ .word}
   · by_cases hab : left.denote funs env ≤ right.denote funs env <;>
       simpa [hab, Expr.denote, CmpOp.apply, boolWord] using hv
 
+/-- A comparison of words. -/
+theorem spec_cmp {Γ : List Ty} (op : CmpOp) {left right : Expr S Γ .word}
+    (leftSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv right env
+        slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.cmp op left right) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_cmp (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (leftSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (rightSpec env slots paid live)) env slots
+      paid live)
+
 /-- The negation of a `Bool`. -/
 theorem specX_not {Γ : List Ty} {e : Expr S Γ .bool}
     (eSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits
@@ -173,6 +224,16 @@ theorem specX_not {Γ : List Ty} {e : Expr S Γ .bool}
   rw [Mode.fresh_scalar rfl] at hStep
   simpa [Expr.denote] using
     hNext1 _ (After.ofScalar rfl hStep rfl a1.frame a1.holds rfl)
+
+/-- The negation of a `Bool`. -/
+theorem spec_not {Γ : List Ty} {e : Expr S Γ .bool}
+    (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.not e) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_not (strict := false)
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (eSpec env slots paid live)) env slots
+      paid live)
 
 /-- The conjunction of `Bool`s. -/
 theorem specX_and {Γ : List Ty} {left right : Expr S Γ .bool}
@@ -205,6 +266,19 @@ theorem specX_and {Γ : List Ty} {left right : Expr S Γ .bool}
     wpX_andI64_cons, boolWord_and]
   simpa [Expr.denote] using hNext2 _ (After.ofScalar rfl hStep' rfl hF hH rfl)
 
+/-- The conjunction of `Bool`s. -/
+theorem spec_and {Γ : List Ty} {left right : Expr S Γ .bool}
+    (leftSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv right env
+        slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.and left right) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_and (strict := false)
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (leftSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (rightSpec env slots paid live)) env slots
+      paid live)
+
 /-- The disjunction of `Bool`s. -/
 theorem specX_or {Γ : List Ty} {left right : Expr S Γ .bool}
     (leftSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits
@@ -235,6 +309,19 @@ theorem specX_or {Γ : List Ty} {left right : Expr S Γ .bool}
   simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append,
     wpX_orI64_cons, boolWord_or]
   simpa [Expr.denote] using hNext2 _ (After.ofScalar rfl hStep' rfl hF hH rfl)
+
+/-- The disjunction of `Bool`s. -/
+theorem spec_or {Γ : List Ty} {left right : Expr S Γ .bool}
+    (leftSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv right env
+        slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.or left right) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_or (strict := false)
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (leftSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (rightSpec env slots paid live)) env slots
+      paid live)
 
 /-- A tuple of two elements: the code of each, in order. -/
 theorem specX_mk {Γ : List Ty} {a b : Elem} {first : Expr S Γ (.elem a)}
@@ -269,6 +356,21 @@ theorem specX_mk {Γ : List Ty} {a b : Elem} {first : Expr S Γ (.elem a)}
     (a.values (first.denote funs env) ++ b.values (second.denote funs env))
     (After.ofScalar rfl hStep' rfl hF hH rfl)
   simpa [List.reverse_append, List.append_assoc] using hv
+
+/-- A tuple of two elements: the code of each, in order. -/
+theorem spec_mk {Γ : List Ty} {a b : Elem} {first : Expr S Γ (.elem a)}
+    {second : Expr S Γ (.elem b)}
+    (firstSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv first env
+        slots paid live)
+    (secondSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv second env
+        slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.mk first second) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_mk (strict := false)
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (firstSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (secondSpec env slots paid live)) env
+      slots paid live)
 
 /-- An operation on words; division and remainder save their operands to test the divisor. -/
 theorem specX_bin {Γ : List Ty} (op : BinOp) {left right : Expr S Γ .word}
@@ -359,6 +461,19 @@ theorem specX_bin {Γ : List Ty} (op : BinOp) {left right : Expr S Γ .word}
       ← UInt64.shiftRight_eq_shiftRight_mod] using
       hNext2 s2 _ (After.ofScalar rfl hStep' rfl hF hH rfl) fun hs => (hAl2 hs).1
 
+/-- An operation on words; division and remainder save their operands to test the divisor. -/
+theorem spec_bin {Γ : List Ty} (op : BinOp) {left right : Expr S Γ .word}
+    (leftSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv right env
+        slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.bin op left right) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_bin (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (leftSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (rightSpec env slots paid live)) env slots
+      paid live)
+
 /-- An operation on floats. -/
 theorem specX_fbin {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float}
     (leftSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits
@@ -393,6 +508,19 @@ theorem specX_fbin {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float}
   cases op <;>
     simpa [FBinOp.instr, Expr.denote, FBinOp.apply, f64Add, f64Sub, f64Mul, f64Div,
       F64Bits.toBits_add, F64Bits.toBits_sub, F64Bits.toBits_mul, F64Bits.toBits_div] using hv
+
+/-- An operation on floats. -/
+theorem spec_fbin {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float}
+    (leftSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv right env
+        slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.fbin op left right) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_fbin (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (leftSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (rightSpec env slots paid live)) env slots
+      paid live)
 
 /-- A comparison of floats. -/
 theorem specX_fcmp {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float}
@@ -432,6 +560,19 @@ theorem specX_fcmp {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float}
       simpa [hc, Expr.denote, FCmpOp.apply, F64Bits.decide_le, f64Le, boolWord] using hv
   · cases hc : IEEE64.eq (left.denote funs env).toBits (right.denote funs env).toBits <;>
       simpa [hc, Expr.denote, FCmpOp.apply, F64Bits.beq_eq, f64Eq, boolWord] using hv
+
+/-- A comparison of floats. -/
+theorem spec_fcmp {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float}
+    (leftSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv right env
+        slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.fcmp op left right) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_fcmp (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (leftSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (rightSpec env slots paid live)) env slots
+      paid live)
 
 /-- An operation on one float.  The negation subtracts from negative zero, pushed first. -/
 theorem specX_funary {Γ : List Ty} (op : FUnOp) {e : Expr S Γ .float}
@@ -476,6 +617,16 @@ theorem specX_funary {Γ : List Ty} (op : FUnOp) {e : Expr S Γ .float}
     simpa [Expr.denote, FUnOp.apply, f64Sqrt, f64Abs, F64Bits.toBits_sqrt, F64Bits.toBits_abs]
       using hv
 
+/-- An operation on one float.  The negation subtracts from negative zero, pushed first. -/
+theorem spec_funary {Γ : List Ty} (op : FUnOp) {e : Expr S Γ .float}
+    (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.funary op e) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_funary (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (eSpec env slots paid live)) env slots
+      paid live)
+
 /-- A conversion of a word to a float. -/
 theorem specX_toFloat {Γ : List Ty} (op : ToFloat) {e : Expr S Γ .word}
     (eSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits
@@ -500,6 +651,16 @@ theorem specX_toFloat {Γ : List Ty} (op : ToFloat) {e : Expr S Γ .word}
     simpa [ToFloat.code, Expr.denote, ToFloat.apply, f64ConvertI64U, f64Add,
       F64Convert.toBits_toFloat, F64Bits.toBits_ofBits, add_negZero] using hv
 
+/-- A conversion of a word to a float. -/
+theorem spec_toFloat {Γ : List Ty} (op : ToFloat) {e : Expr S Γ .word}
+    (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.toFloat op e) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_toFloat (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (eSpec env slots paid live)) env slots
+      paid live)
+
 /-- A conversion of a float to a word. -/
 theorem specX_toWord {Γ : List Ty} (op : ToWord) {e : Expr S Γ .float}
     (eSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits
@@ -523,6 +684,16 @@ theorem specX_toWord {Γ : List Ty} (op : ToWord) {e : Expr S Γ .float}
   cases op <;>
     simpa [ToWord.instr, Expr.denote, ToWord.apply, i64TruncSatF64U, F64Convert.toUInt64_eq]
       using hv
+
+/-- A conversion of a float to a word. -/
+theorem spec_toWord {Γ : List Ty} (op : ToWord) {e : Expr S Γ .float}
+    (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.toWord op e) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_toWord (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (eSpec env slots paid live)) env slots
+      paid live)
 
 end Cases
 

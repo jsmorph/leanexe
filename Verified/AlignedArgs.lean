@@ -88,6 +88,21 @@ theorem place_specX {strict : Bool} {Γ : List Ty} {env : Env Γ} {slots : List 
   | _, .toFloat _ _, hp, _, _, _, _, _ | _, .toWord _ _, hp, _, _, _, _, _ => by
     simp [Expr.isPlace] at hp
 
+/-- The code of a place, a variable or a pair of places, pushes the words that its variables
+hold, which represent its value as borrowed, and changes nothing else.  A region apart from the
+regions of its variables lies apart from its arrays' words. -/
+theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat → Bool}
+    {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals} (hh : s.positions = h)
+    (hVars : Holds env slots L base heap store s) :
+    {t : Ty} → (e : Expr S Γ t) → e.isPlace = true → (∀ i, e.uses i = true → L i = true) →
+    ∀ {rest : Program} {Q : Assertion Unit} {vs : List Value},
+    (∀ ws, t.Rep .borrowed heap store ws (e.denote funs env) →
+      (∀ r, Holds.ApartFrom env slots e.uses store s r →
+        ∀ c ∈ t.reads store ws (e.denote funs env), regionsDisjoint r c) →
+      wp m rest Q store { s with values := ws.reverse ++ vs } host) →
+    wp m (e.placeCode h slots ++ rest) Q store { s with values := vs } host :=
+  fun {_} e hp hu {_ _ _} hNext =>
+    place_specX (strict := false) hh hVars nofun e hp hu fun ws hr _ hd => hNext ws hr hd
 
 /-- The code of a call's arguments pushes words that represent their values in the modes
 `modes`, in order.  An argument without arrays runs its code with the variables `all` live after

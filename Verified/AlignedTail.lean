@@ -1,6 +1,7 @@
 import Verified.AlignedEnv
 import Verified.AlignedLoops
 import Verified.TailReleased
+import Verified.AlignedCopy
 
 /-!
 The tail loop's body under the flag.  `TailAligned` is the alignment of a tail body's outcome: the
@@ -101,6 +102,27 @@ def TailCodeSpecX (strict : Bool) {S : List Sig} {Γ params : List Ty} {result :
     (pool : Bytes.LiteralPool) : Prop :=
   ∀ env, TailCodeSpecAtX strict (pool := pool) m funs flags bounds fits host pv targetModes body env
 
+/-- At `strict = false`, `TailCodeSpecAtX` is `TailCodeSpecAt`. -/
+theorem TailCodeSpecAtX.false_iff {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit}
+    {pv : List Value} {targetModes : List Mode} {body : TailBody S params result Γ}
+    {env : Env Γ} {pool : Bytes.LiteralPool} :
+    TailCodeSpecAtX false m funs flags bounds fits host pv targetModes body env pool ↔
+      TailCodeSpecAt m funs flags bounds fits host pv targetModes body env pool := by
+  constructor
+  · intro hX slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel
+      heap store s hh hpv hVars hAt hSafe hCap hLow hState hResult hRoom hPlace hPaid Q hTrap
+      hNext
+    exact hX slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel
+      heap store s hh hpv hVars hAt nofun hSafe hCap hLow hState hResult hRoom hPlace hPaid Q hTrap
+      fun heap' store' s' after _ hb => hNext heap' store' s' after hb
+  · intro hC slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel
+      heap store s hh hpv hVars hAt _ hSafe hCap hLow hState hResult hRoom hPlace hPaid Q hTrap
+      hNext
+    exact hC slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel
+      heap store s hh hpv hVars hAt hSafe hCap hLow hState hResult hRoom hPlace hPaid Q hTrap
+      fun heap' store' s' after hb => hNext heap' store' s' after nofun hb
+
 /-- At `strict = false`, `TailCodeSpecX` is `TailCodeSpec`. -/
 theorem TailCodeSpecX.false_iff {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit}
@@ -181,6 +203,17 @@ theorem tail_ret_specX {strict : Bool} {S : List Sig} {Γ params : List Ty} {res
   simp only [TailBody.fits, TailBody.uses, TailBody.allocs, TailBody.denote, tailPot]
   omega
 
+theorem tail_ret_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m) (targetModes : List Mode)
+    (value : Expr S Γ result)
+    (valueSpec : ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv value env slots paid live) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (.ret (params := params) value) :=
+  TailCodeSpecX.false_iff.mp (tail_ret_specX (strict := false) hm (copyCodeX hm) targetModes value
+    (fun env slots paid live => CodeSpecX.false_iff.mpr (valueSpec env slots paid live)))
+#print axioms tail_ret_spec
+
 theorem TailCodeSpecX.released {strict : Bool} {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
     {host : HostEnv Unit} {pv : List Value} {targetModes : List Mode}
@@ -253,5 +286,43 @@ theorem TailCodeSpecX.released {strict : Bool} {S : List Sig} {Γ params : List 
   change heap2.top.toNat +
     tailPot targetModes nextPaid resultPaid store2 after.words (body.denote funs env) ≤ _
   omega
+
+theorem TailCodeSpec.released {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
+    {host : HostEnv Unit} {pv : List Value} {targetModes : List Mode}
+    {body : TailBody S params result Γ} (hm : Runtime m)
+    (spec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes body)
+    {env : Env Γ} {slots : List Slot} {paid nextPaid : List Bool} {resultPaid : Bool}
+    {L0 : Nat → Bool} {h stateBase resultBase base exitLabel nextLabel : Nat}
+    {heap : Heap} {store : Store Unit} {s : Locals}
+    (hh : s.positions = h) (hpv : s.params = pv)
+    (hVars : Holds env slots L0 base heap store s) (hAt : heap.At store)
+    (hSafe : pool.Safe env slots L0 heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535) (hLow : s.params.length ≤ stateBase)
+    (hState : stateBase + widthSum params ≤ resultBase)
+    (hResult : resultBase + result.width ≤ base)
+    (hRoom : base + body.width targetModes ≤ h)
+    (hPlace : body.placeArgs targetModes (slots.map Slot.mode) = true)
+    (hPaid : resultPaid = true → body.paidResult flags (slots.map Slot.mode) paid = true)
+    (hEntry : ∀ i, body.uses i = true → L0 i = true) {Q : Assertion Unit}
+    (hTrap : TrapOK (!(body.fits funs fits env) || !decide (heap.Within store m
+      (dyingPot store s env slots paid L0 (fun _ => false) +
+        body.allocs funs flags bounds targetModes nextPaid (slots.map Slot.mode) paid env))) Q)
+    (hNext : ∀ heap' store' s'
+      (after : TailAfter env slots L0 targetModes stateBase resultBase heap store s
+        (body.denote funs env) heap' store' s'),
+      (body.fits funs fits env = true → heap'.top.toNat +
+        tailPot targetModes nextPaid resultPaid store' after.words (body.denote funs env) ≤
+          heap.top.toNat + dyingPot store s env slots paid L0 (fun _ => false) +
+            body.allocs funs flags bounds targetModes nextPaid (slots.map Slot.mode) paid env) →
+      Q (.Break ((body.denote funs env).elim (fun _ => nextLabel) (fun _ => exitLabel))
+        store' { s' with values := s.values })) :
+    wp m (releaseWhere Γ slots (fun i => L0 i && !body.uses i) ++
+      body.code (pool := pool) targetModes h stateBase resultBase slots base exitLabel nextLabel)
+      Q store s host :=
+  TailCodeSpecX.released (strict := false) hm nofun (TailCodeSpecX.false_iff.mpr spec) hh hpv hVars
+    hAt nofun hSafe hCap hLow hState hResult hRoom hPlace hPaid hEntry hTrap
+    (fun heap' store' s' after _ a2 => hNext heap' store' s' after a2)
+#print axioms TailCodeSpec.released
 
 end Verified

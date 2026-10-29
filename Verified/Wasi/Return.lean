@@ -2,6 +2,7 @@ import Verified.Wasi.After
 import Verified.Wasi.Code
 import Verified.Wasi.PurePrefix
 import Verified.OwnedExpr
+import Verified.AlignedTreeNode
 
 namespace Verified.Wasi
 

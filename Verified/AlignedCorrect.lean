@@ -1,5 +1,5 @@
 import Verified.AlignedTailEntry
-import Verified.Correct
+import Verified.TailSpec
 
 /-!
 `Prog.calls` under the flag.  `CallsX strict` is `Calls` with `FunSpecX strict`, and
@@ -34,6 +34,13 @@ theorem CallsX.at {bounds : Nat → Bounds S} {fits : Nat → Fits S}
 theorem CallsX.false_iff {bounds : Nat → Bounds S} {fits : Nat → Fits S} :
     CallsX false m funs flags bounds fits pool ↔ Calls m funs flags bounds fits pool :=
   ⟨fun h _ f d => (h f d).1, fun h _ f d => ⟨h f d, nofun⟩⟩
+
+theorem Calls.at {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S}
+    {bounds : Nat → Bounds S} {fits : Nat → Fits S} {pool : Bytes.LiteralPool}
+    (h : Calls m funs flags bounds fits pool)
+    (d0 : UInt64) :
+    CallsAt m funs flags (bounds (framesAt (d0 + 1))) (fits (framesAt (d0 + 1))) d0 pool :=
+  CallsAtX.false_iff.mp (CallsX.at (strict := false) (CallsX.false_iff.mpr h) d0)
 
 theorem CallsAtX.toCallsAt {bounds : Bounds S} {fits : Fits S} {d0 : UInt64}
     (h : CallsAtX strict m funs flags bounds fits d0 pool) :
@@ -397,5 +404,35 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
     | there g' =>
       rw [FVar.callIndex_there]
       exact hRest g' d
+
+/-- `wp_localGets` under the flag. -/
+theorem wpX_localGets {strict : Bool} {m : Module} {host : HostEnv Unit} {Q : Assertion Unit}
+    {store : Store Unit} {rest : Program} : (vs : List Value) → (k : Nat) → (s : Locals) →
+    (∀ i (hi : i < vs.length), s.get (k + i) = some vs[i]) →
+    wpX strict m rest Q store { s with values := vs.reverse ++ s.values } host →
+    wpX strict m ((List.range' k vs.length).map Instruction.localGet ++ rest) Q store s host
+  | [], _, s, _, h => by
+    simp only [List.reverse_nil, List.nil_append, List.length_nil, List.range'_zero,
+      List.map_nil] at h ⊢
+    exact h
+  | v :: vs, k, s, hget, h => by
+    have h0 : s.get k = some v := hget 0 (by simp)
+    simp only [List.length_cons, List.range'_succ, List.map_cons, List.cons_append,
+      wpX_localGet_cons, h0]
+    refine wpX_localGets vs (k + 1) _ (fun i hi => ?_) ?_
+    · rw [Locals.get_values, show k + 1 + i = k + (i + 1) by omega]
+      exact hget (i + 1) (by simp; omega)
+    · simpa using h
+
+/-- `wp_constI64s` under the flag. -/
+theorem wpX_constI64s {strict : Bool} {m : Module} {host : HostEnv Unit} {Q : Assertion Unit}
+    {store : Store Unit} {rest : Program} : (addrs : List UInt64) → (s : Locals) →
+    wpX strict m rest Q store { s with values := (addrs.map Value.i64).reverse ++ s.values } host →
+    wpX strict m (addrs.map Instruction.constI64 ++ rest) Q store s host
+  | [], s, h => by simpa using h
+  | a :: as, s, h => by
+    simp only [List.map_cons, List.cons_append, wpX_constI64_cons]
+    refine wpX_constI64s as _ ?_
+    simpa using h
 
 end Verified

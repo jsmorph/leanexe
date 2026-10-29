@@ -15,14 +15,6 @@ theorem wp_ofWordCode {m : Module} {st : Store Unit} {env' : HostEnv Unit} {s : 
       wp m rest Q st { s with values := typedValue ty w :: vs } env' := by
   cases ty <;> simp [ofWordCode, typedValue, wrap_toUInt32_num]
 
-theorem wp_toWordCode {m : Module} {st : Store Unit} {env' : HostEnv Unit} {s : Locals}
-    {vs : List Value} {rest : Program} {Q : Assertion Unit} (ty : ValueType) (w : UInt64) :
-    wp m (toWordCode ty ++ rest) Q st { s with values := typedValue ty w :: vs } env' ↔
-      wp m rest Q st { s with values := .i64 (Value.word (typedValue ty w)) :: vs } env' := by
-  cases ty <;> simp [toWordCode, typedValue, Value.word]
-  rw [UInt64.ofNat_mod w.toNat_lt (by decide), UInt64.ofNat_toNat]
-  rfl
-
 private theorem Elem.width_ne_one_prod (a b : Elem) : (Elem.prod a b).width ≠ 1 := by
   have := a.width_pos
   have := b.width_pos

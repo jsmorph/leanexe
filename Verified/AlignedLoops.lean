@@ -163,6 +163,25 @@ theorem After.releaseX {strict : Bool} (hm : Runtime m) (hRA : strict = true →
   · exact Holds.Apart.transfer (a.holds.live_mono hLiveL1) (a.apart.live_mono hLiveL1) e'.step
       Frame.ofValues (fun u y hy wy hwy hly => a.holds.keepDying hLiveL1 hy hwy hly) hSame
 
+/-- The release of the owned variables that `sel` selects after an expression's code, those live
+in `L1` and not in `live`, gives the facts of the code and the release for `live`.  The value lies
+apart from the released blocks, so its words still represent it, and `top` is unchanged. -/
+theorem After.release (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List Slot}
+    {L0 L1 live sel : Nat → Bool} {base : Nat} {heap heap1 : Heap} {store store1 : Store Unit}
+    {s s1 : Locals} {t : Ty} {mode : Mode} {v : t.denote} {ws vals : List Value}
+    {rest : Program} {Q : Assertion Unit}
+    (h0 : Holds env slots L0 base heap store s)
+    (a : After env slots L0 L1 base heap store s t mode v heap1 store1 s1 ws)
+    (hL1 : ∀ i, L1 i = true → L0 i = true) (hSel : ∀ i, sel i = true → L1 i = true)
+    (hLive : ∀ i, live i = true → (L1 i && !sel i) = true)
+    (hNext : ∀ heap2 store2,
+      After env slots L0 live base heap store s t mode v heap2 store2 s1 ws →
+      heap2.top = heap1.top → t.regions mode store2 ws v = t.regions mode store1 ws v →
+      wp m rest Q store2 { s1 with values := vals } host) :
+    wp m (releaseWhere Γ slots sel ++ rest) Q store1 { s1 with values := vals } host :=
+  After.releaseX (strict := false) hm nofun h0 a nofun hL1 hSel hLive
+    (fun heap2 store2 a1 a2 a3 _ => hNext heap2 store2 a1 a2 a3)
+
 end
 
 /-- `CodeSpecWith` under the flag. -/
@@ -192,6 +211,22 @@ def CodeSpecWithX (strict : Bool) {S : List Sig} {Γ : List Ty} {t : Ty} (pays :
       wpX strict m rest Q store' { s' with values := ws.reverse ++ s.values } host) →
     wpX strict m (e.code (pool := pool) h slots base live ++ rest) Q store s host
 
+/-- At `strict = false`, `CodeSpecWithX` is `CodeSpecWith`. -/
+theorem CodeSpecWithX.false_iff {S : List Sig} {Γ : List Ty} {t : Ty} {pays : Bool}
+    {bound : Nat} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
+    {fits : Fits S} {host : HostEnv Unit} {pv : List Value} {e : Expr S Γ t} {env : Env Γ}
+    {slots : List Slot} {paid : List Bool} {live : Nat → Bool} {pool : Bytes.LiteralPool} :
+    CodeSpecWithX false pays bound m funs flags bounds fits host pv e env slots paid live pool ↔
+      CodeSpecWith pays bound m funs flags bounds fits host pv e env slots paid live pool := by
+  constructor
+  · intro hX h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom hPlace rest Q hTrap hNext
+    exact hX h base heap store s hh hpv hVars hAt nofun hSafe hCap hBase hRoom hPlace rest Q hTrap
+      fun heap' store' s' ws hA _ hb => hNext heap' store' s' ws hA hb
+  · intro hC h base heap store s hh hpv hVars hAt _ hSafe hCap hBase hRoom hPlace rest Q hTrap hNext
+    exact hC h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom hPlace rest Q hTrap
+      fun heap' store' s' ws hA hb => hNext heap' store' s' ws hA nofun hb
+
+
 theorem CodeSpecX.of_with {strict : Bool} {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit}
     {pv : List Value} {e : Expr S Γ t} {env : Env Γ} {slots : List Slot} {paid : List Bool}
@@ -203,6 +238,16 @@ theorem CodeSpecX.of_with {strict : Bool} {S : List Sig} {Γ : List Ty} {t : Ty}
   unfold CodeSpecX
   rw [hb]
   exact h
+
+theorem CodeSpec.of_with {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module} {funs : Funs S}
+    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+    {e : Expr S Γ t} {env : Env Γ} {slots : List Slot} {paid : List Bool} {live : Nat → Bool}
+    {pool : Bytes.LiteralPool} {bound : Nat}
+    (hb : e.allocs funs flags bounds (slots.map Slot.mode) paid live env = bound)
+    (h : CodeSpecWith (e.paid flags (slots.map Slot.mode) paid live) bound m funs flags bounds fits
+      host pv e env slots paid live pool) :
+    CodeSpec m funs flags bounds fits host pv e env slots paid live pool :=
+  CodeSpecX.false_iff.mp (CodeSpecX.of_with (strict := false) hb (CodeSpecWithX.false_iff.mpr h))
 
 section Cases
 

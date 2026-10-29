@@ -1,6 +1,7 @@
 import Verified.TailSpec
 import Verified.LiteralCodeEq
 import Verified.StaticImplements
+import Verified.AlignedCorrect
 
 /-! The compiler's correctness theorem.  Every function of a compiled program returns the value
 that the program gives it, with the heap and store changed only as `ImplementsA` allows.  The code
@@ -20,175 +21,9 @@ theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : pr
     (m : Module) (hm : Runtime m) {pool : Bytes.LiteralPool}
     (hFuncs : ∀ k < S.length, m.funcs[2 + k]? = (prog.functions (pool := pool))[k]?)
     (hCovered : prog.Covered pool) :
-    Calls m funs prog.flags (prog.boundsAt funs) (prog.fitsAt funs) pool := by
-  have h0 : framesAt (999 + 1) = 0 := rfl
-  induction hMeaning with
-  | nil => intro g fv; cases fv
-  | @cons S' f rest funs' _ ih =>
-    have hBody : f.body.Covered pool := fun _ hb =>
-      hCovered (List.mem_append_right _ hb)
-    have hRest : Calls m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') pool :=
-      ih (fun k hk => by
-        rw [hFuncs k (by simp; omega)]
-        simp [Prog.functions, List.getElem?_append_left (by
-          rw [rest.functions_length (pool := pool)]; exact hk)])
-        (fun _ hb => hCovered (List.mem_append_left _ hb))
-    have hpos : m.funcs[2 + S'.length]? =
-        some (bodyFunction f.modes f.body f.depth (2 + S'.length) pool) := by
-      rw [hFuncs _ (by simp)]
-      simp [Prog.functions, rest.functions_length (pool := pool), Func.function]
-    have hrf : f.paidResult rest.flags = true →
-        f.body.paid rest.flags (entryModes f.params f.modes) (f.paidParams rest.flags)
-          (fun _ => false) = true := fun h => by
-      simp only [Func.paidResult, Bool.and_eq_true] at h; exact h.2
-    intro g fv d
-    cases fv with
-    | here =>
-      rw [FVar.callIndex_here]
-      refine ⟨fun hdep => ?_, fun hdep d' hd' => ?_, _, hpos,
-        bodyFunction_numParams (pool := pool) f.modes f.body f.depth _⟩
-      · have hdep' : f.depth = false := hdep
-        rw [hdep'] at hpos
-        have hC : CallsAt m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) 999 pool :=
-          Calls.at (@hRest) 999
-        rw [Prog.boundsAt_cons_here]
-        simp only [hdep', Bool.false_eq_true, ↓reduceIte]
-        exact bodyFunction_implements f.modes f.body f.placeArgs funs' rest.flags
-          (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) _ _ hrf m _ hm hpos hBody hC hdep' f.aborts id
-      · have hdep' : f.depth = true := hdep
-        rw [hdep'] at hpos
-        subst hd'
-        refine bodyFunction_depth f.modes f.body f.placeArgs funs' rest.flags
-          (rest.boundsAt funs' (framesAt (d' + 1))) (rest.fitsAt funs' (framesAt (d' + 1))) _ _ hrf
-          m _ hm hpos hBody d' (fun _ => Calls.at (@hRest) d') _ _ (fun args => ?_) (fun hlt args => ?_)
-        · by_cases hlt : d' < depthLimit
-          · rw [framesAt_succ hlt, Prog.fitsAt_cons_here]
-            simp only [hdep', ↓reduceIte, hlt, decide_true, Bool.true_and]
-            rfl
-          · rw [framesAt_eq_zero hlt, Prog.fitsAt_cons_here]
-            simp only [hdep', ↓reduceIte, hlt, decide_false, Bool.false_and]
-            rfl
-        · rw [framesAt_succ hlt, Prog.boundsAt_cons_here]
-          simp only [hdep', ↓reduceIte]
-          rfl
-    | there g' =>
-      rw [FVar.callIndex_there]
-      exact hRest g' d
-  | @consTail S' f rest funs' M _ hDecreases hM ih =>
-    have hBody : f.body.Covered pool := fun _ hb =>
-      hCovered (List.mem_append_right _ hb)
-    have hRest : Calls m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') pool :=
-      ih (fun k hk => by
-        rw [hFuncs k (by simp; omega)]
-        simp [Prog.functions, List.getElem?_append_left (by
-          rw [rest.functions_length (pool := pool)]; exact hk)])
-        (fun _ hb => hCovered (List.mem_append_left _ hb))
-    have hpos : m.funcs[2 + S'.length]? = some (f.function (pool := pool) (2 + S'.length)) := by
-      rw [hFuncs _ (by simp)]
-      simp [Prog.functions, rest.functions_length (pool := pool)]
-    intro g fv d
-    cases fv with
-    | here =>
-      rw [FVar.callIndex_here]
-      refine ⟨fun hdep => ?_, fun hdep d' hd' => ?_, _, hpos, f.function_numParams (pool := pool) _⟩
-      · have hdep' : f.depth = false := hdep
-        have hC : CallsAt m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) 999 pool :=
-          Calls.at (@hRest) 999
-        rw [Prog.boundsAt_consTail_here]
-        simp only [hdep', Bool.false_eq_true, ↓reduceIte]
-        exact f.function_implements funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0)
-          hDecreases M hM m _ hm hpos hBody hC hdep'
-      · have hdep' : f.depth = true := hdep
-        subst hd'
-        refine f.function_depth funs' rest.flags (rest.boundsAt funs' (framesAt (d' + 1)))
-          (rest.fitsAt funs' (framesAt (d' + 1))) hDecreases M hM m _ hm hpos hBody hdep' d'
-          (fun _ => Calls.at (@hRest) d') _ _ (fun args => ?_) (fun hlt args => ?_)
-        · by_cases hlt : d' < depthLimit
-          · rw [framesAt_succ hlt, Prog.fitsAt_consTail_here]
-            simp only [hdep', ↓reduceIte, hlt, decide_true, Bool.true_and]
-            rfl
-          · rw [framesAt_eq_zero hlt, Prog.fitsAt_consTail_here]
-            simp only [hdep', ↓reduceIte, hlt, decide_false, Bool.false_and]
-            rfl
-        · rw [framesAt_succ hlt, Prog.boundsAt_consTail_here]
-          simp only [hdep', ↓reduceIte]
-          rfl
-    | there g' =>
-      rw [FVar.callIndex_there]
-      exact hRest g' d
-  | @consRec S' f rest funs' M _ hM ih =>
-    have hBody : f.body.Covered pool := fun _ hb =>
-      hCovered (List.mem_append_right _ hb)
-    have hRest : Calls m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') pool :=
-      ih (fun k hk => by
-        rw [hFuncs k (by simp; omega)]
-        simp [Prog.functions, List.getElem?_append_left (by
-          rw [rest.functions_length (pool := pool)]; exact hk)])
-        (fun _ hb => hCovered (List.mem_append_left _ hb))
-    have hpos : m.funcs[2 + S'.length]? =
-        some (bodyFunction f.modes f.body true (2 + S'.length) pool) := by
-      rw [hFuncs _ (by simp)]
-      simp [Prog.functions, rest.functions_length (pool := pool), RecFunc.function]
-    have hMeaning : depthMeaning M = depthMeaning (f.body.denote (.cons (g := f.sig) M funs')) := by
-      funext env
-      cases env with
-      | cons _ args => exact hM args
-    have hrf : f.paidResult rest.flags = true →
-        f.body.paid (f.flags rest.flags) (entryModes f.params f.modes) (f.paidParams rest.flags)
-          (fun _ => false) = true := fun h => by
-      have h' := h
-      simp only [RecFunc.paidResult, Bool.and_eq_true] at h'
-      simp only [RecFunc.flags, h]
-      exact h'.2
-    -- The function at each depth, by induction on the frames left.
-    have hAt : ∀ n d, framesAt d = n →
-        @ImplementsP _ _ (Env.represent (.word :: f.params) (.borrowed :: f.modes))
-          (Ty.represent f.result) (fun env => env.depthOf = d)
-          (fun env => f.fitsAt (.cons M funs') (rest.fitsAt funs') (framesAt d) env.dropDepth)
-          (fun store ws x => Env.argPot store (f.sig.depthSel (f.paidParams rest.flags)) ws x)
-          (fun store ws v => if f.paidResult rest.flags then f.result.pot store ws v else 0)
-          true m (2 + S'.length) (depthMeaning M)
-          (fun env => f.boundAt (.cons M funs') rest.flags (rest.boundsAt funs') (framesAt d)
-            env.dropDepth) pool := by
-      intro n
-      induction n using Nat.strongRecOn with
-      | _ n ih' =>
-        intro d hn
-        rw [hMeaning]
-        refine bodyFunction_depth f.modes f.body f.placeArgs _ (f.flags rest.flags)
-          (.cons (f.boundAt (.cons M funs') rest.flags (rest.boundsAt funs') (framesAt (d + 1)))
-            (rest.boundsAt funs' (framesAt (d + 1))))
-          (.cons (f.fitsAt (.cons M funs') (rest.fitsAt funs') (framesAt (d + 1)))
-            (rest.fitsAt funs' (framesAt (d + 1))))
-          _ _ hrf m _ hm hpos hBody d (fun hlt => ?_) _ _ (fun args => ?_) (fun hlt args => ?_)
-        · intro g fv
-          cases fv with
-          | here =>
-            rw [FVar.callIndex_here]
-            refine ⟨nofun, fun _ d' hd' => ?_, _, hpos,
-              bodyFunction_numParams (pool := pool) f.modes f.body true _⟩
-            subst hd'
-            exact ih' _ (by rw [← hn, framesAt_succ hlt]; omega) (d + 1) rfl
-          | there g' =>
-            rw [FVar.callIndex_there]
-            exact Calls.at (@hRest) d g'
-        · by_cases hlt : d < depthLimit
-          · rw [framesAt_succ hlt]
-            simp only [hlt, decide_true, Bool.true_and]
-            rfl
-          · rw [framesAt_eq_zero hlt]
-            simp only [hlt, decide_false, Bool.false_and]
-            rfl
-        · rw [framesAt_succ hlt]; rfl
-    intro g fv d
-    cases fv with
-    | here =>
-      rw [FVar.callIndex_here]
-      exact ⟨nofun, fun _ d' hd' => by subst hd'; exact hAt _ d' rfl, _, hpos,
-        bodyFunction_numParams (pool := pool) f.modes f.body true _⟩
-    | there g' =>
-      rw [FVar.callIndex_there]
-      exact hRest g' d
+    Calls m funs prog.flags (prog.boundsAt funs) (prog.fitsAt funs) pool :=
+  CallsX.false_iff.mp (Prog.callsX (strict := false) prog funs hMeaning m hm nofun nofun
+    (fun _ => copyCodeX hm) hFuncs hCovered)
 
 /-- `ImplementsA` under a stronger precondition and with a weaker postcondition. -/
 theorem _root_.LeanExe.Pipeline.ImplementsA.mono {α β : Type} {_ : Represent α}
@@ -299,19 +134,8 @@ theorem wp_localGets {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {st
     {rest : Program} : (vs : List Value) → (k : Nat) → (s : Locals) →
     (∀ i (hi : i < vs.length), s.get (k + i) = some vs[i]) →
     wp m rest Q store { s with values := vs.reverse ++ s.values } host →
-    wp m ((List.range' k vs.length).map Instruction.localGet ++ rest) Q store s host
-  | [], _, s, _, h => by
-    simp only [List.reverse_nil, List.nil_append, List.length_nil, List.range'_zero,
-      List.map_nil] at h ⊢
-    exact h
-  | v :: vs, k, s, hget, h => by
-    have h0 : s.get k = some v := hget 0 (by simp)
-    simp only [List.length_cons, List.range'_succ, List.map_cons, List.cons_append,
-      wp_localGet_cons, h0]
-    refine wp_localGets vs (k + 1) _ (fun i hi => ?_) ?_
-    · rw [Locals.get_values, show k + 1 + i = k + (i + 1) by omega]
-      exact hget (i + 1) (by simp; omega)
-    · simpa using h
+    wp m ((List.range' k vs.length).map Instruction.localGet ++ rest) Q store s host :=
+  wpX_localGets (strict := false)
 
 /-- The entry of a function whose code takes the call depth, at position `e`: it calls the code
 at `idx` with depth 0 and its own arguments, and so computes the function's meaning, with a trap
@@ -885,12 +709,8 @@ theorem Env.withTables_reads {store : Store Unit} {tables : List (Array UInt64)}
 theorem wp_constI64s {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {store : Store Unit}
     {rest : Program} : (addrs : List UInt64) → (s : Locals) →
     wp m rest Q store { s with values := (addrs.map Value.i64).reverse ++ s.values } host →
-    wp m (addrs.map Instruction.constI64 ++ rest) Q store s host
-  | [], s, h => by simpa using h
-  | a :: as, s, h => by
-    simp only [List.map_cons, List.cons_append, wp_constI64_cons]
-    refine wp_constI64s as _ ?_
-    simpa using h
+    wp m (addrs.map Instruction.constI64 ++ rest) Q store s host :=
+  wpX_constI64s (strict := false)
 
 /-- The signature of a wrapper's callee. -/
 def Wrapper.sig {S : List Sig} {T : Nat} (w : Wrapper S T) : Sig :=

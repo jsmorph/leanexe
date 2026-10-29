@@ -1,5 +1,6 @@
 import Verified.AlignedTreeAssemble
 import Verified.TreeNodeCorrect
+import Verified.AlignedCopy
 
 /-!
 The construction of a tree under the flag.  The parent record comes from `alloc`, whose block
@@ -125,6 +126,29 @@ theorem wpX_treeParent {strict : Bool} {Γ : List Ty} {env : Env Γ} {slots : Li
     · simpa only [treeParentCode, hReuse, ↓reduceIte] using
         hAllocate (by simp only [treeParentCost, hReuse, ↓reduceIte])
 
+theorem wp_treeParent {Γ : List Ty} {env : Env Γ} {slots : List Slot} {shape : TreeShape}
+    {r : Fin shape.records} (reuse : Option (Var Γ (.treeHeader shape r))) {live : Nat → Bool}
+    {base : Nat}
+    {heap : Heap} {store : Store Unit} {s : Locals} {m : Module} {host : HostEnv Unit}
+    {rest : Program} {Q : Assertion Unit} (hm : Runtime m)
+    (hVars : Holds env slots (fun i => live i || optionVarUses reuse i) base heap store s)
+    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hLow : s.params.length ≤ base) (hHigh : base < s.positions)
+    (hTrap : TrapOK (!decide (heap.Within store m (treeParentCost shape r reuse slots live))) Q)
+    (hNext : ∀ heap' store' s' p,
+      Step heap store (Holds.KeepDying env slots (fun i => live i || optionVarUses reuse i)
+        live store s) heap' store' [block store' p] →
+      Frame base s s' → Holds env slots live base heap' store' s' →
+      RecordStorage (shape.width r) heap' store' p → store'.mem.read64 (p - 40).toUInt32 = 1 →
+      s'.get base = some (.i64 p) → s'.values = s.values →
+      (∀ j, j ≠ base → s'.get j = s.get j) →
+      Holds.Apart env slots live store' s' (.treeHeader shape r) .owned [.i64 p] .unit →
+      heap'.top.toNat ≤ heap.top.toNat + treeParentCost shape r reuse slots live →
+      wp m rest Q store' s' host) :
+    wp m (treeParentCode shape r reuse slots base live ++ rest) Q store s host :=
+  wpX_treeParent (strict := false) reuse hm nofun hVars nofun hAt hCap hLow hHigh hTrap
+    (fun heap' store' s' p a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 _ => hNext heap' store' s' p a1 a2 a3 a4 a5 a6 a7 a8 a9 a10)
+
 /-- `wp_finishTree` under the flag: the tree's blocks are the record's and its fields', so it is
 aligned when they are. -/
 theorem wpX_finishTree {strict : Bool} {Γ : List Ty} {env : Env Γ} {slots : List Slot}
@@ -231,6 +255,49 @@ theorem wpX_finishTree {strict : Bool} {Γ : List Ty} {env : Env Γ} {slots : Li
       exact ⟨(hFieldsAl hs b hb).1, fun _ => (hFieldsAl hs b hb).2⟩
   rw [wpX_localGet_cons, hPtr]
   simpa only [hStack] using hNext store3 hAfter hAlign
+
+theorem wp_finishTree {Γ : List Ty} {env : Env Γ} {slots : List Slot}
+    {L0 L1 live : Nat → Bool} {base fieldBase ptr h : Nat} {shape : TreeShape}
+    {r : Fin shape.records}
+    {heap heap1 heap2 : Heap} {store store1 store2 : Store Unit} {s s1 s2 : Locals}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
+    {children : Fin (shape.children r) → Tree shape}
+    {ws : List Value} {p : UInt64} {m : Module} {host : HostEnv Unit}
+    {rest : Program} {Q : Assertion Unit}
+    (h0 : Holds env slots L0 base heap store s)
+    (a : FieldsAfter env slots L0 L1 base heap store s
+      (shape.fieldEnv r words arrays buffers children) heap1 store1 s1 ws)
+    (hStep : Step heap1 store1 (Holds.KeepDying env slots L1 live store1 s1)
+      heap2 store2 [block store2 p])
+    (hFrame : Frame base s1 s2) (hHolds : Holds env slots live base heap2 store2 s2)
+    (hL1 : ∀ i, L1 i = true → L0 i = true) (hLive : ∀ i, live i = true → L1 i = true)
+    (hRaw : RecordStorage (shape.width r) heap2 store2 p)
+    (hCount : store2.mem.read64 (p - 40).toUInt32 = 1)
+    (hPtr : s2.get ptr = some (.i64 p)) (hStack : s2.values = s.values)
+    (hh : s2.positions = h)
+    (hNormal : FieldsNormal (tysOfFn (shape.words r) (shape.wordTy r) ++
+      (List.replicate (shape.children r) (.tree shape) ++
+        (tysOfFn (shape.arrays r) (shape.arrayTy r) ++
+          (List.replicate (shape.buffers r) .bytes ++ [])))) ws)
+    (hLocals : LocalsHold s2 fieldBase (shape.fieldTypes r) ws)
+    (hRootApart : Holds.Apart env slots live store2 s2 (.treeHeader shape r) .owned [.i64 p] .unit)
+    (hNext : ∀ store',
+      After env slots L0 live base heap store s (.tree shape) .owned
+        (.node r words arrays buffers children)
+        heap2 store' s2 [.i64 p] →
+      wp m rest Q store' { s2 with values := .i64 p :: s.values } host) :
+    wp m (shape.tagStoreCode r ptr ++
+      treeStoreFields h ptr (shape.wordTypes r) fieldBase (fieldBase + shape.words r)
+        shape.fieldStart (shape.fields r) ++
+      treeStoreHeaps ptr (shape.kinds r) (fieldBase + shape.words r + shape.children r)
+        (fieldBase + shape.words r + shape.children r + shape.arrays r)
+        (shape.fieldStart + (shape.fields r).length) ++
+      sealRecordCode (shape.width r) ptr (shape.mask r) ++ (.localGet ptr :: rest))
+      Q store2 s2 host :=
+  wpX_finishTree (strict := false) h0 a hStep hFrame hHolds hL1 hLive hRaw hCount hPtr hStack hh
+    hNormal hLocals hRootApart nofun nofun (fun store' a1 _ => hNext store' a1)
 
 /-- `spec_treeNode` under the flag. -/
 theorem specX_treeNode {strict : Bool} {S : List Sig} {Γ : List Ty} {shape : TreeShape}
@@ -427,5 +494,34 @@ theorem specX_treeNode {strict : Bool} {S : List Sig} {Γ : List Ty} {shape : Tr
           omega)
       simpa only [List.append_assoc] using hFinish)
   simpa only [ps, args, L, kept, List.append_assoc, List.cons_append, List.nil_append] using hRun
+
+theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape}
+    {r : Fin shape.records} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
+    (reuse : Option (Var Γ (.treeHeader shape r)))
+    (words : (i : Fin (shape.words r)) → Expr S Γ (shape.wordTy r i))
+    (arrays : (i : Fin (shape.arrays r)) → Expr S Γ (shape.arrayTy r i))
+    (buffers : Fin (shape.buffers r) → Expr S Γ .bytes)
+    (children : Fin (shape.children r) → Expr S Γ (.tree shape))
+    (wordSpec : ∀ i env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (words i) env slots paid live)
+    (arraySpec : ∀ i env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (arrays i) env slots paid live)
+    (bufferSpec : ∀ i env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (buffers i) env slots paid live)
+    (childSpec : ∀ i env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (children i) env slots paid live) :
+    ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv
+        (Expr.treeNode r reuse words arrays buffers children) env slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_treeNode (strict := false) hm nofun nofun (copyCodeX hm) reuse
+      words arrays buffers children
+      (fun i env slots paid live => CodeSpecX.false_iff.mpr (wordSpec i env slots paid live))
+      (fun i env slots paid live => CodeSpecX.false_iff.mpr (arraySpec i env slots paid live))
+      (fun i env slots paid live => CodeSpecX.false_iff.mpr (bufferSpec i env slots paid live))
+      (fun i env slots paid live => CodeSpecX.false_iff.mpr (childSpec i env slots paid live)) env
+      slots paid live)
 
 end Verified

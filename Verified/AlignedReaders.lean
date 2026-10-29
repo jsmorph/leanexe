@@ -64,6 +64,12 @@ theorem wpX_scaleCode {strict : Bool} {m : Module} {st : Store Unit} {env' : Hos
   · next hk => subst hk; simp [wordCount]
   · simp
 
+theorem wp_scaleCode {st : Store Unit} {env' : HostEnv Unit} {s : Locals} {vs : List Value}
+    {rest : Program} {Q : Assertion Unit} (k : Nat) (x : UInt64) :
+    wp m (scaleCode k ++ rest) Q st { s with values := .i64 x :: vs } env' ↔
+      wp m rest Q st { s with values := .i64 (x * wordCount k) :: vs } env' :=
+  wpX_scaleCode (strict := false) k x
+
 /-- `wp_loadWordsCode` under the flag. -/
 theorem wpX_loadWordsCode {strict : Bool} {m : Module} {store : Store Unit} {env' : HostEnv Unit}
     {ptr w0 flag : Nat} {p w : UInt64} {ws : Array UInt64} {rest : Program} {Q : Assertion Unit}
@@ -465,6 +471,13 @@ theorem specX_proj {Γ' : List Ty} {e e' : Elem} (x : Var Γ' (.elem e)) (p : Pa
       (fun hs => ⟨(hAl hs).live_mono (by intro i h; simp [Expr.uses, h]),
         Ty.AlignedVal.scalar rfl⟩)
       fun _ => Nat.le_add_right _ _)
+
+/-- A component of a tuple variable: the loads of the words that hold it. -/
+theorem spec_proj {Γ' : List Ty} {e e' : Elem} (x : Var Γ' (.elem e)) (p : Path e e') :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.proj (S := S) x p) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_proj (strict := false) x p env slots paid live)
 
 end Cases
 

@@ -2,6 +2,7 @@ import Verified.ArgsCorrect
 import Verified.ArgumentMoves
 import Verified.Wasi.Code
 import Verified.Wasi.PurePrefix
+import Verified.AlignedCorollaries
 
 namespace Verified.Wasi
 

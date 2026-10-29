@@ -114,6 +114,22 @@ theorem specX_treeCase_empty {strict : Bool} {S : List Sig} {Γ : List Ty} {t : 
         simpa only [e, L0, target, Expr.paid, Bool.false_eq_true, ↓reduceIte, Nat.add_zero,
           Expr.allocs, hNil, Expr.mode, modeAt, Nat.add_assoc] using ht)
 
+theorem spec_treeCase_empty {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeShape}
+    {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
+    (x : Var Γ (.tree shape)) (empty : shape.hasNull = true → Expr S Γ t)
+    (nodes : (r : Fin shape.records) → Expr S (shape.context r Γ) t)
+    (hn : shape.hasNull = true)
+    (emptySpec : ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (empty hn) env slots paid live)
+    (env : Env Γ) (slots : List Slot) (paid : List Bool) (live : Nat → Bool)
+    (hNil : env.get x = .nil hn) :
+    CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.treeCase x empty nodes) env slots paid
+      live :=
+  CodeSpecX.false_iff.mp (specX_treeCase_empty (strict := false) hm nofun (copyCodeX hm) x empty
+    nodes hn (fun env slots paid live => CodeSpecX.false_iff.mpr (emptySpec env slots paid live))
+    env slots paid live hNil)
+
 /-- `spec_treeCase_node` under the flag. -/
 theorem specX_treeCase_node {strict : Bool} {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeShape}
     {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
@@ -476,6 +492,25 @@ theorem specX_treeCase_node {strict : Bool} {S : List Sig} {Γ : List Ty} {t : T
   · rw [dite_eq_right hn]
     exact wpX_dispatchCode r nc hGet hTagRoom hp0Al hTagRead hBranch
 
+theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeShape}
+    {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
+    (x : Var Γ (.tree shape)) (empty : shape.hasNull = true → Expr S Γ t)
+    (nodes : (r : Fin shape.records) → Expr S (shape.context r Γ) t) (r : Fin shape.records)
+    (nodeSpec : ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (nodes r) env slots paid live)
+    (env : Env Γ) (slots : List Slot) (paid : List Bool) (live : Nat → Bool)
+    (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
+    (arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote)
+    (buffers : Fin (shape.buffers r) → LeanExe.Bytes)
+    (children : Fin (shape.children r) → Tree shape)
+    (hValue : env.get x = .node r words arrays buffers children) :
+    CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.treeCase x empty nodes) env slots paid
+      live :=
+  CodeSpecX.false_iff.mp (specX_treeCase_node (strict := false) hm nofun (copyCodeX hm) x empty
+    nodes r (fun env slots paid live => CodeSpecX.false_iff.mpr (nodeSpec env slots paid live)) env
+    slots paid live words arrays buffers children hValue)
+
 /-- `spec_treeCase` under the flag. -/
 theorem specX_treeCase {strict : Bool} {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeShape}
     {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
@@ -497,5 +532,23 @@ theorem specX_treeCase {strict : Bool} {S : List Sig} {Γ : List Ty} {t : Ty} {s
   | node r words arrays buffers children =>
     exact specX_treeCase_node hm hRA hCopy x empty nodes r (nodeSpec r) env slots paid live words arrays
       buffers children hv
+
+theorem spec_treeCase {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeShape}
+    {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
+    (x : Var Γ (.tree shape)) (empty : shape.hasNull = true → Expr S Γ t)
+    (nodes : (r : Fin shape.records) → Expr S (shape.context r Γ) t)
+    (emptySpec : ∀ hn env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (empty hn) env slots paid live)
+    (nodeSpec : ∀ r env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (nodes r) env slots paid live) :
+    ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.treeCase x empty nodes) env slots paid
+        live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_treeCase (strict := false) hm nofun (copyCodeX hm) x empty nodes
+      (fun hn env slots paid live => CodeSpecX.false_iff.mpr (emptySpec hn env slots paid live))
+      (fun r env slots paid live => CodeSpecX.false_iff.mpr (nodeSpec r env slots paid live)) env
+      slots paid live)
 
 end Verified

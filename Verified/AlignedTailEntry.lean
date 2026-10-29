@@ -78,6 +78,19 @@ theorem TailBody.code_specX {strict : Bool} {S : List Sig} (m : Module) (funs : 
       (fun r => nodesSpec r (literals_args_subset.mp hParts.2 r) fun hd => hDepth (by
         simp [TailBody.depthCalls, le_argsAny (fun r => (nodes r).depthCalls) r hd]))
 
+theorem TailBody.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S)
+    (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (hm : Runtime m) {pv : List Value}
+    {d0 : UInt64} {pool : Bytes.LiteralPool}
+    (hCalls : CallsAt m funs flags bounds fits d0 pool) {Γ params : List Ty}
+    {result : Ty} (targetModes : List Mode) (body : TailBody S params result Γ) :
+    body.Covered pool →
+    (body.depthCalls = true → pv.head? = some (.i64 d0)) →
+    TailCodeSpec m funs flags bounds fits host pv targetModes body pool :=
+  fun hc hd =>
+    TailCodeSpecX.false_iff.mp (TailBody.code_specX (strict := false) m funs flags bounds fits host
+      hm nofun nofun (copyCodeX hm) (CallsAtX.false_iff.mpr hCalls) targetModes body hc hd)
+#print axioms TailBody.code_spec
+
 theorem TailFunc.function_runsX {strict : Bool} {S : List Sig} (func : TailFunc S)
     (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
     (decreases : func.Decreases funs) (meaning : Env func.params → func.result.denote)
@@ -269,5 +282,48 @@ theorem TailFunc.function_runsX {strict : Bool} {S : List Sig} (func : TailFunc 
     · intro hs
       rw [List.reverse_reverse]
       exact hAlR hs
+
+theorem TailFunc.function_runs {S : List Sig} (func : TailFunc S)
+    (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
+    (decreases : func.Decreases funs) (meaning : Env func.params → func.result.denote)
+    (fixed : ∀ state, meaning state = (func.body.denote funs state).elim meaning id)
+    (m : Module) (pos : Nat) (hm : Runtime m) {pool : Bytes.LiteralPool}
+    (hFunc : m.funcs[pos]? = some (func.function (pool := pool) pos))
+    (hCovered : func.body.Covered pool) (d : UInt64)
+    (hCalls : (func.depth = true → d < depthLimit) → CallsAt m funs flags bounds fits d pool)
+    (host : HostEnv Unit) (store : Store Unit) (heap : Heap) (ws : List Value)
+    (args : Env func.params) (hAt : heap.At store)
+    (hInput : @Bytes.LiteralPool.Input (Env func.params) (Env.represent func.params func.modes)
+      pool heap store ws args)
+    (hRep : Env.Rep (paramMode func.params func.modes) heap store ws args)
+    (hSep : Separate store (Env.moves store (paramMode func.params func.modes) ws args)
+      (Env.reads store (paramMode func.params func.modes) ws args))
+    (hCap : store.memoryCap m 0 ≤ 65535) :
+    Runs ((func.depth && !(decide (d < depthLimit) && func.fits funs fits args)) ||
+      (func.aborts && !decide (heap.Within store m
+        (Env.argPot store (fun i => paidAt (func.paidParams flags) i &&
+          paramMode func.params func.modes i == .owned) ws args +
+            func.bound funs flags bounds args))))
+      host m pos store ((if func.depth then [Value.i64 d] else []) ++ ws).reverse
+      fun final values => ∃ heap' : Heap, heap'.At final ∧
+        func.result.Rep .owned heap' final values.reverse (meaning args) ∧
+        final.memoryCaps = store.memoryCaps ∧
+        (∀ r, heap.Region r → 0 < r.2 →
+          Apart store (Env.moves store (paramMode func.params func.modes) ws args) r →
+          (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+          heap'.Region r ∧
+          ∀ b ∈ func.result.blocks final values.reverse (meaning args), regionsDisjoint r b) ∧
+        ((func.depth && !(decide (d < depthLimit) && func.fits funs fits args)) = false →
+          heap'.top.toNat + (if func.paidResult flags then
+            func.result.pot final values.reverse (meaning args) else 0) ≤
+            heap.top.toNat + Env.argPot store
+              (fun i => paidAt (func.paidParams flags) i && paramMode func.params func.modes i == .owned)
+              ws args + func.bound funs flags bounds args) :=
+  Runs.mono (TailFunc.function_runsX (strict := false) func funs flags bounds fits decreases meaning
+    fixed m pos hm hFunc hCovered d (fun h => CallsAtX.false_iff.mpr (hCalls h)) host store heap ws
+    args hAt hInput hRep hSep hCap nofun nofun (copyCodeX hm) nofun)
+    fun _ _ ⟨heap', hAt', hOwned, hCaps, hRegions, hTop, _⟩ =>
+      ⟨heap', hAt', hOwned, hCaps, hRegions, hTop⟩
+#print axioms TailFunc.function_runs
 
 end Verified

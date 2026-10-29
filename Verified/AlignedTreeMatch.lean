@@ -3,6 +3,7 @@ import Verified.AlignedAccess
 import Verified.TreeMatchFrame
 import Verified.TreeDispatch
 import Verified.ReleasedExpr
+import Verified.AlignedCopy
 
 /-!
 The opening of a tree record under the flag.  The tag test and the loads of the fields read
@@ -208,6 +209,17 @@ theorem wpX_recordLoadCode {strict : Bool} {m : Module} {host : HostEnv Unit} {s
       wpX_wrapI64_cons, wrap_toUInt32, slotAddress, wpX_load64_cons, UInt32.toNat_zero,
       Nat.add_zero, UInt32.add_zero, ite_eq_right (Nat.not_lt.mpr hRoom)] using hOf
 
+theorem wp_recordLoadCode {m : Module} {host : HostEnv Unit} {store : Store Unit}
+    {ptr : Nat} {p : UInt64} {rest : Program} {Q : Assertion Unit} :
+    ∀ (i : Nat) (dsts : List Nat) (tys : List ValueType) (s : Locals),
+      s.get ptr = some (.i64 p) → ptr < s.positions →
+      (∀ dst ∈ dsts, s.params.length ≤ dst ∧ dst < s.positions ∧ dst ≠ ptr) →
+      p.toNat + 8 * (i + dsts.length) < 4294967296 →
+      p.toNat + 8 * (i + dsts.length) ≤ store.mem.pages * 65536 →
+      wp m rest Q store (recordLoadLocals store p s.positions i dsts tys s) host →
+      wp m (recordLoadCode s.positions ptr i dsts tys ++ rest) Q store s host :=
+  wpX_recordLoadCode (strict := false) nofun
+
 /-- `code` runs, at the store `store` and the locals `s`, as the branch of a test followed by
 `rest` under `Q`: for every continuation `rest'` and assertion `Q'` that accept what `rest` and
 `Q` accept after a fall-through with the stack of `s`, and that accept the traps that `Q`
@@ -228,6 +240,15 @@ theorem RunsBranchX.mono {strict : Bool} {m : Module} {host : HostEnv Unit} {cod
     RunsBranchX strict m host code rest2 Q2 store s :=
   fun rest' Q' hf' ht' => h rest' Q' (fun st s' hv hw => hf' st s' hv (hf st s' hv hw))
     (fun st hq => ht' st (ht st hq))
+
+theorem RunsBranch.mono {m : Module} {host : HostEnv Unit} {code rest rest2 : Program}
+    {Q Q2 : Assertion Unit} {store : Store Unit} {s : Locals}
+    (h : RunsBranch m host code rest Q store s)
+    (hf : ∀ st s', s'.values = s.values → wp m rest Q st s' host → wp m rest2 Q2 st s' host)
+    (ht : ∀ st, Q (.Trap st "unreachable") → Q2 (.Trap st "unreachable")) :
+    RunsBranch m host code rest2 Q2 store s :=
+  RunsBranchX.mono (strict := false) h hf ht
+#print axioms RunsBranch.mono
 
 /-- `wp_dispatchChain` under the flag. -/
 theorem wpX_dispatchChain {strict : Bool} {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
@@ -264,6 +285,14 @@ theorem wpX_dispatchChain {strict : Bool} {m : Module} {host : HostEnv Unit} {st
       rw [← hv]
       exact hw
 
+theorem wp_dispatchChain {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
+    {tag : Program} {t : UInt64} (hTag : PushesWord m host tag store s t) :
+    ∀ (pairs : List (UInt64 × Program)) (rest : Program) (Q : Assertion Unit),
+      RunsBranch m host (chainPick t [] pairs) rest Q store s →
+      wp m (dispatchChain tag pairs ++ rest) Q store s host :=
+  wpX_dispatchChain (strict := false) hTag
+#print axioms wp_dispatchChain
+
 /-- The tag tests of a shape run the branch of record constructor `r` when the tag code pushes
 `r`'s tag. -/
 theorem wpX_dispatchCode {strict : Bool} {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
@@ -279,6 +308,20 @@ theorem wpX_dispatchCode {strict : Bool} {m : Module} {host : HostEnv Unit} {sto
   apply wpX_dispatchChain (PushesWordX.tag hPtr hRoom hAl)
   rw [shape.chainPick_tag r branch [] _ hTag]
   exact hBranch
+
+/-- The tag tests of a shape run the branch of record constructor `r` when the tag code pushes
+`r`'s tag. -/
+theorem wp_dispatchCode {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
+    {shape : TreeShape} (r : Fin shape.records) {ptr : Nat} {p : UInt64}
+    {rest : Program} {Q : Assertion Unit} (branch : Fin shape.records → Program)
+    (hPtr : s.get ptr = some (.i64 p))
+    (hRoom : p.toUInt32.toNat + 8 ≤ store.mem.pages * 65536)
+    (hTag : shape.tagged = true →
+      store.mem.read64 p.toUInt32 = UInt64.ofNat (shape.ctorIndex r))
+    (hBranch : RunsBranch m host (branch r) rest Q store s) :
+    wp m (shape.dispatchCode ptr branch ++ rest) Q store s host :=
+  wpX_dispatchCode (strict := false) r branch hPtr hRoom nofun hTag hBranch
+#print axioms wp_dispatchCode
 
 /-- `wp_loadTree` under the flag. -/
 theorem wpX_loadTree {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap}
@@ -490,6 +533,43 @@ theorem wpX_loadTree {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : 
     (hNext _ hFrame (recordLoadLocals_values store p s.positions shape.fieldStart dsts tys s)
       hPtr' hWords hChildren hArrays hBuffers)
 
+theorem wp_loadTree {m : Module} {host : HostEnv Unit} {heap : Heap}
+    {store : Store Unit} {s : Locals} {shape : TreeShape} {r : Fin shape.records} {mode : Mode}
+    {p : UInt64} {h ptr fieldBase : Nat}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
+    {children : Fin (shape.children r) → Tree shape} {rest : Program} {Q : Assertion Unit}
+    (hh : s.positions = h)
+    (hAt : heap.At store) (hPtr : s.get ptr = some (.i64 p))
+    (hNode : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
+    (hLow : s.params.length ≤ fieldBase) (hPtrLow : ptr < fieldBase)
+    (hRoom : fieldBase + shape.words r + shape.children r + shape.arrays r +
+      2 * shape.buffers r ≤ s.positions)
+    (hNext : ∀ s', Frame fieldBase s s' → s'.values = s.values →
+      s'.get ptr = some (.i64 p) →
+      (∀ i, s'.get (slotIndex s.positions (fieldBase + i.val) (shape.elem r i).slotType) =
+        some (typedValue (shape.elem r i).slotType (shape.slotWords r words i))) →
+      (∀ i, s'.get (fieldBase + shape.words r + i.val) = some (.i64
+        (store.mem.read64
+          (slotAddress p (shape.fieldStart + (fieldPosition true (shape.fields r) i).val))))) →
+      (∀ i, s'.get (fieldBase + shape.words r + shape.children r + i.val) = some (.i64
+        (store.mem.read64 (slotAddress p (shape.fieldStart + (shape.fields r).length +
+          heapArraySlot (shape.kinds r) i))))) →
+      (∀ i, s'.get (fieldBase + shape.words r + shape.children r + shape.arrays r + 2 * i.val) =
+          some (.i64 (store.mem.read64 (slotAddress p (shape.fieldStart +
+            (shape.fields r).length + heapBufferSlot (shape.kinds r) i)))) ∧
+        s'.get (fieldBase + shape.words r + shape.children r + shape.arrays r + 2 * i.val + 1) =
+          some (.i64 (store.mem.read64 (slotAddress p (shape.fieldStart +
+            (shape.fields r).length + heapBufferSlot (shape.kinds r) i + 1))))) →
+      wp m rest Q store s' host) :
+    wp m (treeLoadFields h ptr (shape.wordTypes r) fieldBase (fieldBase + shape.words r)
+      shape.fieldStart (shape.fields r) ++
+      treeLoadHeaps ptr (shape.kinds r) (fieldBase + shape.words r + shape.children r)
+        (fieldBase + shape.words r + shape.children r + shape.arrays r)
+        (shape.fieldStart + (shape.fields r).length) ++ rest) Q store s host :=
+  wpX_loadTree (strict := false) hh hAt hPtr nofun hNode hLow hPtrLow hRoom hNext
+
 /-- `wp_detachTree` under the flag. -/
 theorem wpX_detachTree {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
     {s : Locals} {shape : TreeShape} {r : Fin shape.records} {mode : Mode} {p : UInt64}
@@ -515,6 +595,20 @@ theorem wpX_detachTree {strict : Bool} {m : Module} {host : HostEnv Unit} {heap 
       have := hAt.top
       omega
     exact wpX_headerStoreWord hPtr hRoom (fun hs => ⟨hpAl hs, rfl⟩) hNext
+
+theorem wp_detachTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
+    {s : Locals} {shape : TreeShape} {r : Fin shape.records} {mode : Mode} {p : UInt64}
+    {ptr : Nat} {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
+    {children : Fin (shape.children r) → Tree shape} {rest : Program} {Q : Assertion Unit}
+    (hAt : heap.At store) (hNode : mode.node heap store p
+      (Tree.node r words arrays buffers children).toNode)
+    (hPtr : s.get ptr = some (.i64 p))
+    (hNext : wp m rest Q (treeDetachStore mode store p) s host) :
+    wp m ((if mode = .owned then headerStore ptr 8 [.constI64 0] else []) ++ rest)
+      Q store s host :=
+  wpX_detachTree (strict := false) hAt hNode hPtr nofun hNext
 
 /-- `wp_openTree` under the flag. -/
 theorem wpX_openTree {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
@@ -600,6 +694,39 @@ theorem wpX_openTree {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : 
       hLengthReads hRep hold t x ws hLocal hLength b hr)
   simpa only [List.append_assoc] using hRun
 
+theorem wp_openTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
+    {s : Locals} {shape : TreeShape} {r : Fin shape.records} {mode : Mode} {p : UInt64}
+    {h base : Nat}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
+    {children : Fin (shape.children r) → Tree shape}
+    {rest : Program} {Q : Assertion Unit} (hh : s.positions = h) (hAt : heap.At store)
+    (hNode : mode.node heap store p (Tree.node r words arrays buffers children).toNode)
+    (hPtr : s.get base = some (.i64 p)) (hLow : s.params.length ≤ base + 1)
+    (hRoom : base + shape.bindWidth r ≤ s.positions)
+    (hNext : ∀ s', Frame (base + 1) s s' → s'.values = s.values →
+      Holds (Env.treeFields shape r words arrays buffers children .nil)
+        (shape.slots r base mode [])
+        (fun _ => true) (base + shape.bindWidth r) heap (treeDetachStore mode store p) s' →
+      Step heap store (fun b => mode = .owned → regionsDisjoint b (block store p))
+        heap (treeDetachStore mode store p) [] →
+      (∀ (t : Ty) (x : Var (shape.context r []) t) (ws : List Value),
+        LocalsHold s' ((shape.slots r base mode []).getD x.index default).loc t.types ws →
+        ws.length = t.width →
+        ∀ b ∈ t.regions ((shape.slots r base mode []).getD x.index default).mode
+          (treeDetachStore mode store p) ws
+            ((Env.treeFields shape r words arrays buffers children .nil).get x),
+          b ∈ (Ty.tree shape).regions mode store [.i64 p]
+            (.node r words arrays buffers children)) →
+      wp m rest Q (treeDetachStore mode store p) s' host) :
+    wp m (treeLoadFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
+      shape.fieldStart (shape.fields r) ++
+      treeLoadHeaps base (shape.kinds r) (base + 1 + shape.words r + shape.children r)
+        (base + 1 + shape.words r + shape.children r + shape.arrays r)
+        (shape.fieldStart + (shape.fields r).length) ++
+      (if mode = .owned then headerStore base 8 [.constI64 0] else []) ++ rest) Q store s host :=
+  wpX_openTree (strict := false) hh hAt hNode hPtr nofun hLow hRoom hNext
 
 /-- `CodeSpec.releaseCoerced` under the flag. -/
 theorem CodeSpecX.releaseCoerced {strict : Bool} {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
@@ -663,6 +790,39 @@ theorem CodeSpecX.releaseCoerced {strict : Bool} {S : List Sig} {Γ : List Ty} {
   rw [hPot] at h2
   omega
 
+theorem CodeSpec.releaseCoerced {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {host : HostEnv Unit} {pv : List Value} {e : Expr S Γ t} {env : Env Γ}
+    {slots : List Slot} {paid : List Bool} {L0 live : Nat → Bool} {target : Mode}
+    (hm : Runtime m) (spec : CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live)
+    (hTarget : e.mode (slots.map Slot.mode) = .owned → target = .owned)
+    {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals}
+    (hh : s.positions = h) (hpv : s.params = pv) (hVars : Holds env slots L0 base heap store s)
+    (hAt : heap.At store) (hSafe : pool.Safe env slots L0 heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hBase : s.params.length ≤ base) (hRoom : base + max e.width (copyWidth t) ≤ h)
+    (hPlace : e.placeArgs = true)
+    (hEntry : ∀ i, (live i || e.uses i) = true → L0 i = true)
+    {rest : Program} {Q : Assertion Unit}
+    (hTrap : TrapOK (!(e.fits funs fits env) || !decide (heap.Within store m
+      (dyingPot store s env slots paid L0 live +
+        e.allocs funs flags bounds (slots.map Slot.mode) paid live env +
+        coerceCost t (e.mode (slots.map Slot.mode)) target (e.denote funs env)))) Q)
+    (hNext : ∀ heap' store' s' ws,
+      After env slots L0 live base heap store s t target (e.denote funs env)
+        heap' store' s' ws →
+      (e.fits funs fits env = true → heap'.top.toNat ≤ heap.top.toNat +
+        dyingPot store s env slots paid L0 live +
+        e.allocs funs flags bounds (slots.map Slot.mode) paid live env +
+        coerceCost t (e.mode (slots.map Slot.mode)) target (e.denote funs env)) →
+      wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
+    wp m (releaseWhere Γ slots (fun i => L0 i && !(live i || e.uses i)) ++
+      (e.code (pool := pool) h slots base live ++
+        (coerceCode h t (e.mode (slots.map Slot.mode)) target base ++ rest))) Q store s host :=
+  CodeSpecX.releaseCoerced (strict := false) hm nofun (copyCodeX hm) (CodeSpecX.false_iff.mpr spec)
+    hTarget hh hpv hVars hAt nofun hSafe hCap hBase hRoom hPlace hEntry hTrap
+    (fun heap' store' s' ws a1 _ a3 => hNext heap' store' s' ws a1 a3)
+
 /-- `CodeSpec.released` under the flag. -/
 theorem CodeSpecX.released {strict : Bool} {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
@@ -725,5 +885,34 @@ theorem CodeSpecX.released {strict : Bool} {S : List Sig} {Γ : List Ty} {t : Ty
   have h1 := congrArg UInt64.toNat hTop1
   rw [hPot] at h2
   omega
+
+theorem CodeSpec.released {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {host : HostEnv Unit} {pv : List Value} {e : Expr S Γ t} {env : Env Γ}
+    {slots : List Slot} {paid : List Bool} {L0 live : Nat → Bool}
+    (hm : Runtime m) (spec : CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live)
+    {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals}
+    (hh : s.positions = h) (hpv : s.params = pv) (hVars : Holds env slots L0 base heap store s)
+    (hAt : heap.At store) (hSafe : pool.Safe env slots L0 heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hBase : s.params.length ≤ base) (hRoom : base + e.width ≤ h)
+    (hPlace : e.placeArgs = true)
+    (hEntry : ∀ i, (live i || e.uses i) = true → L0 i = true)
+    {rest : Program} {Q : Assertion Unit}
+    (hTrap : TrapOK (!(e.fits funs fits env) || !decide (heap.Within store m
+      (dyingPot store s env slots paid L0 live +
+        e.allocs funs flags bounds (slots.map Slot.mode) paid live env))) Q)
+    (hNext : ∀ heap' store' s' ws,
+      After env slots L0 live base heap store s t (e.mode (slots.map Slot.mode))
+        (e.denote funs env) heap' store' s' ws →
+      (e.fits funs fits env = true → heap'.top.toNat ≤ heap.top.toNat +
+        dyingPot store s env slots paid L0 live +
+        e.allocs funs flags bounds (slots.map Slot.mode) paid live env) →
+      wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
+    wp m (releaseWhere Γ slots (fun i => L0 i && !(live i || e.uses i)) ++
+      (e.code (pool := pool) h slots base live ++ rest)) Q store s host :=
+  CodeSpecX.released (strict := false) hm nofun (CodeSpecX.false_iff.mpr spec) hh hpv hVars hAt
+    nofun hSafe hCap hBase hRoom hPlace hEntry hTrap
+    (fun heap' store' s' ws a1 _ a3 => hNext heap' store' s' ws a1 a3)
 
 end Verified

@@ -52,6 +52,18 @@ theorem wpX_recordStoreCode {strict : Bool} {m : Module} {host : HostEnv Unit} {
       wpX_localGet_cons, Locals.get_values, hPtr, hValue, wpX_constI64_cons, wpX_addI64_cons,
       wpX_wrapI64_cons, wrap_toUInt32] using hConvert
 
+theorem wp_recordStoreCode {m : Module} {host : HostEnv Unit} {s : Locals} {ptr : Nat}
+    {p : UInt64} {rest : Program} {Q : Assertion Unit}
+    (hPtr : s.get ptr = some (.i64 p)) :
+    ∀ (i : Nat) (srcs : List Nat) (tys : List ValueType) (words : List UInt64)
+      (store : Store Unit),
+      SourcesHold s s.positions srcs tys words →
+      p.toNat + 8 * (i + words.length) < 4294967296 →
+      p.toNat + 8 * (i + words.length) ≤ store.mem.pages * 65536 →
+      wp m rest Q (recordWriteValues p i words store) s host →
+      wp m (recordStoreCode s.positions ptr i srcs tys ++ rest) Q store s host :=
+  wpX_recordStoreCode (strict := false) hPtr nofun
+
 /-- `wp_sealRecord` under the flag. -/
 theorem wpX_sealRecord {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap}
     {width : Nat} {store : Store Unit} {s : Locals} {ptr : Nat} {p mask : UInt64}
@@ -75,6 +87,14 @@ theorem wpX_sealRecord {strict : Bool} {m : Module} {host : HostEnv Unit} {heap 
   refine wpX_headerStoreWord hPtr ?_ (fun hs => ⟨hpAl hs, rfl⟩) ?_
   · simpa only [Mem.write64_pages] using hRoom 8 (by decide) (by decide)
   exact hNext
+
+theorem wp_sealRecord {m : Module} {host : HostEnv Unit} {heap : Heap}
+    {width : Nat} {store : Store Unit} {s : Locals} {ptr : Nat} {p mask : UInt64}
+    {rest : Program} {Q : Assertion Unit} (hRaw : RecordStorage width heap store p)
+    (hAt : heap.At store) (hPtr : s.get ptr = some (.i64 p))
+    (hNext : wp m rest Q (recordSeal width store p mask) s host) :
+    wp m (sealRecordCode width ptr mask ++ rest) Q store s host :=
+  wpX_sealRecord (strict := false) hRaw hAt hPtr nofun hNext
 
 /-- `wp_tagStore` under the flag. -/
 theorem wpX_tagStore {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap} {width : Nat}
@@ -102,6 +122,15 @@ theorem wpX_tagStore {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : 
     simpa [recordWriteValues, slotAddress] using hNext
   · rw [ite_eq_right ht] at hNext ⊢
     simpa only [List.nil_append, recordWriteValues] using hNext
+
+/-- The store of the tag of record constructor `r` into slot 0 of a record of positive width. -/
+theorem wp_tagStore {m : Module} {host : HostEnv Unit} {heap : Heap} {width : Nat}
+    {shape : TreeShape} (r : Fin shape.records) {store : Store Unit} {s : Locals} {ptr : Nat}
+    {p : UInt64} {rest : Program} {Q : Assertion Unit} (hRaw : RecordStorage width heap store p)
+    (hAt : heap.At store) (hPos : 0 < width) (hPtr : s.get ptr = some (.i64 p))
+    (hNext : wp m rest Q (recordWriteValues p 0 (shape.tagWords r) store) s host) :
+    wp m (shape.tagStoreCode r ptr ++ rest) Q store s host :=
+  wpX_tagStore (strict := false) r hRaw hAt hPos hPtr nofun hNext
 
 /-- `wp_assembleRecord` under the flag. -/
 theorem wpX_assembleRecord {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap}
@@ -142,6 +171,31 @@ theorem wpX_assembleRecord {strict : Bool} {m : Module} {host : HostEnv Unit} {h
     hLocals (by omega) (by rw [hPreWrites.2.1]; omega) ?_
   rw [← hAppend]
   exact wpX_sealRecord hRaw1 hAt1 hPtr hpAl (hNext _ hAt2 hNode2 hBlocks2 hStep2)
+
+/-- The stores of the words `words` after the words `pre` already in the record, and the seal of
+its header. -/
+theorem wp_assembleRecord {m : Module} {host : HostEnv Unit} {heap : Heap}
+    {width : Nat} {store : Store Unit} {s : Locals} {ptr : Nat} {p : UInt64}
+    {pre words : List UInt64} {slots : List LeanExe.Pipeline.Slot} {srcs : List Nat}
+    {tys : List ValueType}
+    {rest : Program} {Q : Assertion Unit}
+    (hRaw : RecordStorage width heap store p) (hAt : heap.At store)
+    (hPtr : s.get ptr = some (.i64 p)) (hLength : (pre ++ words).length = width)
+    (hShort : width ≤ 64) (hCount : store.mem.read64 (p - 40).toUInt32 = 1)
+    (hValues : List.Forall₂ (fun word slot => slot.ValueOwned heap store word) (pre ++ words)
+      slots) (hLengths : BufferLengths slots)
+    (hLocals : SourcesHold s s.positions srcs tys words)
+    (hApart : (block store p :: fieldBlocks store (pre ++ words) slots).Pairwise regionsDisjoint)
+    (hNext : ∀ store', heap.At store' → NodeOwned heap store' p (.record slots) →
+      Node.blocks store' p (.record slots) =
+        block store p :: fieldBlocks store (pre ++ words) slots →
+      Step heap store (fun r => regionsDisjoint r (block store p)) heap store' [] →
+      wp m rest Q store' s host) :
+    wp m (recordStoreCode s.positions ptr pre.length srcs tys ++
+      sealRecordCode width ptr (maskOf slots) ++ rest)
+      Q (recordWriteValues p 0 pre store) s host :=
+  wpX_assembleRecord (strict := false) hRaw hAt hPtr nofun hLength hShort hCount hValues hLengths
+    hLocals hApart hNext
 
 /-- `wp_assembleTree` under the flag. -/
 theorem wpX_assembleTree {strict : Bool} {m : Module} {host : HostEnv Unit} {heap : Heap}
@@ -335,5 +389,41 @@ theorem wpX_assembleTree {strict : Bool} {m : Module} {host : HostEnv Unit} {hea
         (shape.arrayWords r arrays) buffers (fun i => (children i).toNode))) := hSlots ▸ hNode
     exact hNode'
   · exact hApart.perm hResultBlocks.symm (fun h => regionsDisjoint_symm h)
+
+theorem wp_assembleTree {m : Module} {host : HostEnv Unit} {heap : Heap}
+    {shape : TreeShape} {r : Fin shape.records} {store : Store Unit} {s : Locals}
+    {h ptr fieldBase : Nat} {p : UInt64}
+    {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
+    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
+    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
+    {children : Fin (shape.children r) → Tree shape}
+    {ws : List Value} {rest : Program} {Q : Assertion Unit}
+    (hh : s.positions = h)
+    (hRaw : RecordStorage (shape.width r) heap store p) (hAt : heap.At store)
+    (hPtr : s.get ptr = some (.i64 p)) (hCount : store.mem.read64 (p - 40).toUInt32 = 1)
+    (hRep : Env.Rep (fun _ => .owned) heap store ws
+      (shape.fieldEnv r words arrays buffers children))
+    (hNormal : FieldsNormal (tysOfFn (shape.words r) (shape.wordTy r) ++
+      (List.replicate (shape.children r) (.tree shape) ++
+        (tysOfFn (shape.arrays r) (shape.arrayTy r) ++
+          (List.replicate (shape.buffers r) .bytes ++ [])))) ws)
+    (hLocals : LocalsHold s fieldBase (shape.fieldTypes r) ws)
+    (hApart : (block store p ::
+      (shape.fieldEnv r words arrays buffers children).blocks store ws).Pairwise
+        regionsDisjoint)
+    (hNext : ∀ store', heap.At store' →
+      (Ty.tree shape).Rep .owned heap store' [.i64 p] (.node r words arrays buffers children) →
+      ((Ty.tree shape).blocks store' [.i64 p] (.node r words arrays buffers children)).Perm
+        (block store p :: (shape.fieldEnv r words arrays buffers children).blocks store ws) →
+      Step heap store (fun r => regionsDisjoint r (block store p)) heap store' [] →
+      wp m rest Q store' s host) :
+    wp m (shape.tagStoreCode r ptr ++
+      treeStoreFields h ptr (shape.wordTypes r) fieldBase (fieldBase + shape.words r)
+        shape.fieldStart (shape.fields r) ++
+      treeStoreHeaps ptr (shape.kinds r) (fieldBase + shape.words r + shape.children r)
+        (fieldBase + shape.words r + shape.children r + shape.arrays r)
+        (shape.fieldStart + (shape.fields r).length) ++
+      sealRecordCode (shape.width r) ptr (shape.mask r) ++ rest) Q store s host :=
+  wpX_assembleTree (strict := false) hh hRaw hAt hPtr nofun hCount hRep hNormal hLocals hApart hNext
 
 end Verified

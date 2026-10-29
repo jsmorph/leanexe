@@ -68,7 +68,7 @@ A successful write returns the host's count, including a short or zero count.  T
 | `Bytes.build (count : UInt64) (element : UInt64 → UInt64) : Bytes` | A byte sequence whose element at `i` is the low eight bits of `element i`.  The callback obeys the existing first-order build restrictions. |
 | `bytes![0, 65, 255]` | A constant sequence, with each literal checked to lie between 0 and 255 during elaboration. |
 
-The logical length uses Nat where Lean's byte-sequence definitions require it.  Compiled counters, comparisons, API arguments, and returned lengths use UInt64.  Reflection proves their correspondence under the memory bound.  [Byte access](../Verified/Bytes/Get.lean) and [construction](../Verified/BytesBuildCorrect.lean) have universal correctness rules.  Intermediate UInt8 conversions in those rules do not require a general UInt8 arithmetic dialect.
+The logical length uses Nat where Lean's byte-sequence definitions require it.  Compiled counters, comparisons, API arguments, and returned lengths use UInt64.  Reflection proves their correspondence under the memory bound.  [Byte access](../Verified/Bytes/Get.lean) and [construction](../Verified/AlignedBytes.lean) have universal correctness rules.  Intermediate UInt8 conversions in those rules do not require a general UInt8 arithmetic dialect.
 
 `ReadResult` flattens to an errno word and one byte value.  `WriteResult` is scalar.  The accepted field representation includes `Bytes`.  These records supply the operation results without extending sums to arbitrary heap-valued fields.
 
@@ -240,7 +240,7 @@ The pure typed source and compiler include byte operations and the literal-pool 
 | Stage | Implemented proof boundary | Source |
 |---|---|---|
 | 1 | Reviewed API, byte layout, host-error relation, exit behavior, and reuse plan. | [Review decisions](#review-decisions). |
-| 2 | Packed bytes, ownership, copying, release, access, construction, and literals. | [Byte representation](../LeanExe/Pipeline/Bytes.lean), [byte construction](../Verified/BytesBuildCorrect.lean), and [literal correctness](../Verified/Bytes/Literal.lean). |
+| 2 | Packed bytes, ownership, copying, release, access, construction, and literals. | [Byte representation](../LeanExe/Pipeline/Bytes.lean), [byte construction](../Verified/AlignedBytes.lean), and [literal correctness](../Verified/Bytes/Literal.lean). |
 | 3 | Import relocation, host-state preservation, and empty-table encoding and validity. | [Module transport](../Verified/Wasi/ModuleTransport.lean), [module grammar](../LeanExe/Encoding/Spec/Modules.lean), and [validity rules](../LeanExe/Encoding/Spec/Validity.lean). |
 | 4 | Universal one-iovec read and write wrappers with scratch framing. | [Read execution](../Verified/Wasi/ReadFunction.lean) and [write execution](../Verified/Wasi/Write.lean). |
 | 5 | Universal safety and cost-aware compilation for commands, calls, branches, and bounded loops. | [Command safety](../Verified/Wasi/CommandCorrect.lean), [command cost correctness](../Verified/Wasi/CostCommandCorrect.lean), and [program correctness](../Verified/Wasi/Correct.lean). |

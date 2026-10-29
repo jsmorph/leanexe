@@ -17,64 +17,6 @@ def RunsBranch (m : Module) (host : HostEnv Unit) (code rest : Program) (Q : Ass
     (∀ st, Q (.Trap st "unreachable") → Q' (.Trap st "unreachable")) →
     wp m (code ++ rest') Q' store s host
 
-theorem RunsBranch.mono {m : Module} {host : HostEnv Unit} {code rest rest2 : Program}
-    {Q Q2 : Assertion Unit} {store : Store Unit} {s : Locals}
-    (h : RunsBranch m host code rest Q store s)
-    (hf : ∀ st s', s'.values = s.values → wp m rest Q st s' host → wp m rest2 Q2 st s' host)
-    (ht : ∀ st, Q (.Trap st "unreachable") → Q2 (.Trap st "unreachable")) :
-    RunsBranch m host code rest2 Q2 store s :=
-  fun rest' Q' hf' ht' => h rest' Q' (fun st s' hv hw => hf' st s' hv (hf st s' hv hw))
-    (fun st hq => ht' st (ht st hq))
-
-theorem wp_dispatchChain {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
-    {tag : Program} {t : UInt64} (hTag : PushesWord m host tag store s t) :
-    ∀ (pairs : List (UInt64 × Program)) (rest : Program) (Q : Assertion Unit),
-      RunsBranch m host (chainPick t [] pairs) rest Q store s →
-      wp m (dispatchChain tag pairs ++ rest) Q store s host
-  | [], rest, Q, h => by
-    simpa only [chainPick, dispatchChain, List.nil_append] using
-      h rest Q (fun _ _ _ hw => hw) (fun _ hq => hq)
-  | [(_, code)], rest, Q, h => h rest Q (fun _ _ _ hw => hw) (fun _ hq => hq)
-  | (i, code) :: p :: more, rest, Q, h => by
-    rw [dispatchChain, List.append_assoc]
-    apply hTag
-    simp only [List.cons_append, List.nil_append, wp_constI64_cons, wp_eqI64_cons]
-    apply wp_iff_cons rfl
-    rw [chainPick] at h
-    by_cases hi : t = i
-    · rw [ite_eq_left hi] at h
-      rw [ite_eq_left hi, ite_eq_left (by decide : (1 : UInt32) ≠ 0), ← List.append_nil code]
-      refine h [] _ (fun st s' hv hw => ?_) (fun _ hq => hq)
-      rw [wp_nil]
-      simp only [List.take_zero, List.drop_zero, List.nil_append]
-      rw [← hv]
-      exact hw
-    · rw [ite_eq_right hi] at h
-      rw [ite_eq_right hi, ite_eq_right (by decide : ¬(0 : UInt32) ≠ 0),
-        ← List.append_nil (dispatchChain tag (p :: more))]
-      refine wp_dispatchChain hTag (p :: more) [] _ ?_
-      intro rest' Q' hf ht
-      refine h rest' Q' (fun st s' hv hw => hf st s' hv ?_) (fun st hq => ht st hq)
-      rw [wp_nil]
-      simp only [List.take_zero, List.drop_zero, List.nil_append]
-      rw [← hv]
-      exact hw
-
-/-- The tag tests of a shape run the branch of record constructor `r` when the tag code pushes
-`r`'s tag. -/
-theorem wp_dispatchCode {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
-    {shape : TreeShape} (r : Fin shape.records) {ptr : Nat} {p : UInt64}
-    {rest : Program} {Q : Assertion Unit} (branch : Fin shape.records → Program)
-    (hPtr : s.get ptr = some (.i64 p))
-    (hRoom : p.toUInt32.toNat + 8 ≤ store.mem.pages * 65536)
-    (hTag : shape.tagged = true →
-      store.mem.read64 p.toUInt32 = UInt64.ofNat (shape.ctorIndex r))
-    (hBranch : RunsBranch m host (branch r) rest Q store s) :
-    wp m (shape.dispatchCode ptr branch ++ rest) Q store s host := by
-  apply wp_dispatchChain (PushesWord.tag hPtr hRoom)
-  rw [shape.chainPick_tag r branch [] _ hTag]
-  exact hBranch
-
 /-- The number of tests that a chain of tests of `t` over `pairs` nests its selected entry in. -/
 def chainDepth {α : Type} (t : UInt64) : List (UInt64 × α) → Nat
   | [] => 0
@@ -188,9 +130,6 @@ theorem RunsTailBranch.dispatchCode {m : Module} {host : HostEnv Unit} {store : 
   rw [shape.chainPick_tag r branch [] _ hTag, shape.chainDepth_tag r branch _ hTag]
   exact hBranch
 
-#print axioms RunsBranch.mono
-#print axioms wp_dispatchChain
-#print axioms wp_dispatchCode
 #print axioms TreeShape.chainDepth_tag
 #print axioms RunsTailBranch.dispatchCode
 

@@ -161,28 +161,4 @@ theorem treeNode_detach {heap : Heap} {store : Store Unit} {shape : TreeShape}
         block store p :: _
       rw [block_eq hCap, hBlocks]
 
-theorem wp_detachTree {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
-    {s : Locals} {shape : TreeShape} {r : Fin shape.records} {mode : Mode} {p : UInt64}
-    {ptr : Nat} {words : (i : Fin (shape.words r)) → (shape.elem r i).denote}
-    {arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote}
-    {buffers : Fin (shape.buffers r) → LeanExe.Bytes}
-    {children : Fin (shape.children r) → Tree shape} {rest : Program} {Q : Assertion Unit}
-    (hAt : heap.At store) (hNode : mode.node heap store p
-      (Tree.node r words arrays buffers children).toNode)
-    (hPtr : s.get ptr = some (.i64 p))
-    (hNext : wp m rest Q (treeDetachStore mode store p) s host) :
-    wp m ((if mode = .owned then headerStore ptr 8 [.constI64 0] else []) ++ rest)
-      Q store s host := by
-  cases mode
-  · exact hNext
-  · have hBase := hNode.1.1.base
-    have hBelow := hNode.1.1.below
-    have hAddress := hNode.1.1.address
-    have hRoom : (p - 8).toUInt32.toNat + 8 ≤ store.mem.pages * 65536 := by
-      rw [headerAddress_toNat (by change 8 ≤ p.toNat; omega) (by omega)]
-      change p.toNat - 8 + 8 ≤ store.mem.pages * 65536
-      have := hAt.top
-      omega
-    exact wp_headerStoreWord hPtr hRoom hNext
-
 end Verified

@@ -181,6 +181,17 @@ theorem tail_next_specX {strict : Bool} {S : List Sig} {Γ params : List Ty} {re
   rw [hCharge]
   omega
 
+theorem tail_next_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m) (targetModes : List Mode)
+    (args : (i : Fin params.length) → Expr S Γ (params.get i))
+    (argsSpec : ∀ i env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (args i) env slots paid live) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (.next (result := result) args) :=
+  TailCodeSpecX.false_iff.mp (tail_next_specX (strict := false) hm nofun (copyCodeX hm) targetModes
+    args (fun i env slots paid live => CodeSpecX.false_iff.mpr (argsSpec i env slots paid live)))
+#print axioms tail_next_spec
+
 theorem tail_ite_specX {strict : Bool} {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
@@ -355,6 +366,20 @@ theorem tail_ite_specX {strict : Bool} {S : List Sig} {Γ params : List Ty} {res
       _ (fun _ ht => ht)
       (fun _ _ _ hb => hb)
 
+theorem tail_ite_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m) (targetModes : List Mode)
+    (cond : Expr S Γ .bool) (yes no : TailBody S params result Γ)
+    (condSpec : ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv cond env slots paid live)
+    (yesSpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes yes)
+    (noSpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes no) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (.ite cond yes no) :=
+  TailCodeSpecX.false_iff.mp (tail_ite_specX (strict := false) hm nofun targetModes cond yes no
+    (fun env slots paid live => CodeSpecX.false_iff.mpr (condSpec env slots paid live))
+    (TailCodeSpecX.false_iff.mpr yesSpec) (TailCodeSpecX.false_iff.mpr noSpec))
+#print axioms tail_ite_spec
+
 theorem tail_let_specX {strict : Bool} {S : List Sig} {Γ params : List Ty} {result valueTy : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
@@ -515,6 +540,19 @@ theorem tail_let_specX {strict : Bool} {S : List Sig} {Γ params : List Ty} {res
   simp only [TailBody.allocs, List.map_cons] at h3 ⊢
   dsimp only [input, mid] at h1 hDb h3 ⊢
   omega
+
+theorem tail_let_spec {S : List Sig} {Γ params : List Ty} {result valueTy : Ty} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m) (targetModes : List Mode)
+    (value : Expr S Γ valueTy) (body : TailBody S params result (valueTy :: Γ))
+    (valueSpec : ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv value env slots paid live)
+    (bodySpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes body) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (.letE value body) :=
+  TailCodeSpecX.false_iff.mp (tail_let_specX (strict := false) hm nofun targetModes value body
+    (fun env slots paid live => CodeSpecX.false_iff.mpr (valueSpec env slots paid live))
+    (TailCodeSpecX.false_iff.mpr bodySpec))
+#print axioms tail_let_spec
 
 theorem tail_letPair_specX {strict : Bool} {S : List Sig} {Γ params : List Ty} {result firstTy secondTy : Ty}
     {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
@@ -751,5 +789,19 @@ theorem tail_letPair_specX {strict : Bool} {S : List Sig} {Γ params : List Ty} 
   by_cases hpp : value.paid flags (slots.map Slot.mode) paid (fun i => body.uses (i + 2)) = true
   · rw [ite_eq_left hpp] at h1 hDb'; omega
   · rw [ite_eq_right hpp] at h1 hDb'; omega
+
+theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy secondTy : Ty}
+    {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m) (targetModes : List Mode)
+    (value : Expr S Γ (.pair firstTy secondTy))
+    (body : TailBody S params result (secondTy :: firstTy :: Γ))
+    (valueSpec : ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv value env slots paid live)
+    (bodySpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes body) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (.letPair value body) :=
+  TailCodeSpecX.false_iff.mp (tail_letPair_specX (strict := false) hm nofun targetModes value body
+    (fun env slots paid live => CodeSpecX.false_iff.mpr (valueSpec env slots paid live))
+    (TailCodeSpecX.false_iff.mpr bodySpec))
+#print axioms tail_letPair_spec
 
 end Verified

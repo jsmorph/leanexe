@@ -30,6 +30,12 @@ theorem wpX_toWordCode {strict : Bool} {st : Store Unit} {env' : HostEnv Unit} {
   rw [UInt64.ofNat_mod w.toNat_lt (by decide), UInt64.ofNat_toNat]
   rfl
 
+theorem wp_toWordCode {m : Module} {st : Store Unit} {env' : HostEnv Unit} {s : Locals}
+    {vs : List Value} {rest : Program} {Q : Assertion Unit} (ty : ValueType) (w : UInt64) :
+    wp m (toWordCode ty ++ rest) Q st { s with values := typedValue ty w :: vs } env' ↔
+      wp m rest Q st { s with values := .i64 (Value.word (typedValue ty w)) :: vs } env' :=
+  wpX_toWordCode (strict := false) ty w
+
 /-- The writes of the words of types `tys` at positions `src` on as the words `w + j` on of an
 owned array value at `p`: the array with those words replaced, in the same block.  `w` is the word
 in local `w0`. -/
@@ -85,6 +91,25 @@ theorem wpX_storeWordsCode {strict : Bool} {m : Module} {host : HostEnv Unit} {�
       simp [Array.set!_eq_setIfInBounds, Array.setIfInBounds, hn]
     rw [hSet, show w.toNat + (j + 1) = w.toNat + j + 1 by omega] at a2
     exact a2
+
+/-- The writes of the words of types `tys` at positions `src` on as the words `w + j` on of an
+owned array value at `p`: the array with those words replaced, in the same block.  `w` is the word
+in local `w0`. -/
+theorem wp_storeWordsCode {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
+    {base : Nat} {heap heap1 : Heap} {store0 : Store Unit} {s0 : Locals} {h ptr w0 : Nat}
+    {p w : UInt64} {rest : Program} {Q : Assertion Unit} :
+    (j src : Nat) → (tys : List ValueType) → (words : List UInt64) → (ws : Array UInt64) →
+    (store1 : Store Unit) → (s : Locals) →
+    After env slots L0 L base heap store0 s0 (.array .word) .owned ws heap1 store1 s [.i64 p] →
+    s.positions = h → s.get ptr = some (.i64 p) → s.get w0 = some (.i64 w) →
+    LocalsHold s src tys (List.zipWith typedValue tys words) → words.length = tys.length →
+    (List.zipWith typedValue tys words).map Value.word = words →
+    w.toNat + j + tys.length ≤ ws.size →
+    (∀ store2, After env slots L0 L base heap store0 s0 (.array .word) .owned
+        (writeWords ws (w.toNat + j) words) heap1 store2 s [.i64 p] →
+      capacityAt store2 p = capacityAt store1 p → wp m rest Q store2 s host) →
+    wp m (storeWordsCode h ptr w0 j src tys ++ rest) Q store1 s host :=
+  wpX_storeWordsCode (strict := false) nofun
 
 /-- The loop of `shiftUpCode`: in the array `ws` at `p`, whose address local `ptr` holds, the words
 from position `l`, in local `lo`, to position `h`, in local `index`, move up by `k`.  The loop
@@ -187,6 +212,26 @@ theorem wpX_shiftUp {strict : Bool} {m : Module} {host : HostEnv Unit} {store : 
         (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)]
       omega
 
+/-- The loop of `shiftUpCode`: in the array `ws` at `p`, whose address local `ptr` holds, the words
+from position `l`, in local `lo`, to position `h`, in local `index`, move up by `k`.  The loop
+writes only inside the region of `ws` and changes no local but `index`. -/
+theorem wp_shiftUp {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
+    {ptr lo index k : Nat} {p : UInt64} {ws : Array UInt64} {l h : Nat}
+    {rest : Program} {Q : Assertion Unit}
+    (hA : UInt64Array.At store p ws) (hlh : l ≤ h) (hFit : h + k ≤ ws.size)
+    (hP : s.get ptr = some (.i64 p)) (hLo : s.get lo = some (.i64 (UInt64.ofNat l)))
+    (hIdx : s.get index = some (.i64 (UInt64.ofNat h)))
+    (hPI : ptr ≠ index) (hLI : lo ≠ index)
+    (hLow : s.params.length ≤ index) (hHigh : index < s.params.length + s.locals.length)
+    (hNext : ∀ (store' : Store Unit) (s' : Locals),
+      Memory.WritesRange store store' p.toNat (p.toNat + 8 * (ws.size + 1)) →
+      UInt64Array.At store' p (shiftUp ws l h k) →
+      s'.params = s.params → s'.locals.length = s.locals.length →
+      (∀ j, j ≠ index → s'.get j = s.get j) → s'.values = s.values →
+      wp m rest Q store' s' host) :
+    wp m (shiftUpCode ptr lo index k ++ rest) Q store s host :=
+  wpX_shiftUp (strict := false) hA nofun hlh hFit hP hLo hIdx hPI hLI hLow hHigh hNext
+
 /-- The loop of `copyIntoCode` inside one array: in the array `ws` at `p`, the `n` words from
 position `l + k` on move down by `k`, with `p + 8 (l + k)` in local `src` and `p + 8 l` in local
 `dst`.  Each word is read before the loop writes it, since the writes trail the reads.  The loop
@@ -284,6 +329,28 @@ theorem wpX_copyDown {strict : Bool} {m : Module} {host : HostEnv Unit} {store :
     · simp only [Locals.get_setLocal_same hLowI' hHighI, hSucc, hSucc64, hi64]
       omega
 
+/-- The loop of `copyIntoCode` inside one array: in the array `ws` at `p`, the `n` words from
+position `l + k` on move down by `k`, with `p + 8 (l + k)` in local `src` and `p + 8 l` in local
+`dst`.  Each word is read before the loop writes it, since the writes trail the reads.  The loop
+writes only inside the region of `ws` and changes no local but `index`. -/
+theorem wp_copyDown {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
+    {src dst count index : Nat} {p : UInt64} {ws : Array UInt64} {l n k : Nat}
+    {rest : Program} {Q : Assertion Unit}
+    (hA : UInt64Array.At store p ws) (hFit : l + n + k ≤ ws.size)
+    (hSrc : s.get src = some (.i64 (p + UInt64.ofNat (8 * (l + k)))))
+    (hDst : s.get dst = some (.i64 (p + UInt64.ofNat (8 * l))))
+    (hCount : s.get count = some (.i64 (UInt64.ofNat n)))
+    (hSrcI : src ≠ index) (hDstI : dst ≠ index) (hCountI : count ≠ index)
+    (hLow : s.params.length ≤ index) (hHigh : index < s.params.length + s.locals.length)
+    (hNext : ∀ (store' : Store Unit) (s' : Locals),
+      Memory.WritesRange store store' p.toNat (p.toNat + 8 * (ws.size + 1)) →
+      UInt64Array.At store' p (shiftDown ws l n k) →
+      s'.params = s.params → s'.locals.length = s.locals.length →
+      (∀ j, j ≠ index → s'.get j = s.get j) → s'.values = s.values →
+      wp m rest Q store' s' host) :
+    wp m (copyIntoCode src dst count index ++ rest) Q store s host :=
+  wpX_copyDown (strict := false) hA nofun hFit hSrc hDst hCount hSrcI hDstI hCountI hLow hHigh hNext
+
 /-- `wp_allocArray` under the flag. -/
 theorem wpX_allocArray {strict : Bool} (hm : Runtime m) (hRt : strict = true → AllocAligned m)
     {host : HostEnv Unit} {heap : Heap}
@@ -309,6 +376,25 @@ theorem wpX_allocArray {strict : Bool} (hm : Runtime m) (hRt : strict = true →
     (by rw [hBytes]) (by rw [hBytes]; omega) hN hLow hHigh hne
     fun heap' store' root words hSize hStep hOwned _ hTop hAl =>
       hNext heap' store' root words hSize hStep hOwned hTop hAl
+
+/-- The allocation of an array of `n` words, with `n` in local `count`: a new owned block whose
+length word is `n` and whose elements are what memory held, with its address in local `ptr`.
+It traps at `unreachable` only when `top` cannot rise by the charge `c` within the
+cap, and it raises `top` by at most `c`. -/
+theorem wp_allocArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
+    {store : Store Unit} {s : Locals} {count ptr : Nat} {n : UInt64} {rest : Program}
+    {Q : Assertion Unit} {c : Nat} (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hc : allocCost (8 * (n.toNat + 1)) ≤ c) (hTrap : TrapOK (!decide (heap.Within store m c)) Q)
+    (hn : n.toNat < 536870912) (hN : s.get count = some (.i64 n))
+    (hLow : s.params.length ≤ ptr) (hHigh : ptr < s.params.length + s.locals.length)
+    (hne : count ≠ ptr)
+    (hNext : ∀ (heap' : Heap) (store' : Store Unit) (root : UInt64) (words : Array UInt64),
+      words.size = n.toNat → Step heap store (fun _ => True) heap' store' [block store' root] →
+      heap'.Owned store' root words → heap'.top.toNat ≤ heap.top.toNat + c →
+      wp m rest Q store' (setLocal { s with values := s.values } ptr (.i64 root)) host) :
+    wp m (allocArrayCode count ptr ++ rest) Q store s host :=
+  wpX_allocArray (strict := false) hm nofun hAt nofun hCap hc hTrap hn hN hLow hHigh hne
+    (fun heap' store' root words a1 a2 a3 a4 _ => hNext heap' store' root words a1 a2 a3 a4)
 
 theorem requestCode_free (total cap : Nat) : freeCode (requestCode total cap) = true := rfl
 
@@ -880,6 +966,26 @@ theorem specX_build (hm : Runtime m) (hRA : strict = true → ReleaseAligned m)
     simp only [hSucc, hSucc64]
     omega
 
+/-- `LeanExe.build`: the count in local `base`, a trap at `unreachable` when it is `2 ^ 29` or
+more, a new owned array at the address in local `base + 1`, and the index in local `base + 2`.
+The invariant at the top of the WebAssembly `loop` holds an owned array of the count's length
+whose elements below the index are the built ones, with the facts of `After` for the outer
+variables live in the loop.  Each iteration runs the element's code in the context with the
+index, which keeps every region, and stores the element. -/
+theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S Γ' .word}
+    {elem : Expr S (.word :: Γ') (.elem e)}
+    (countSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv count env
+        slots paid live)
+    (elemSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv elem env
+        slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.build count elem) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_build (strict := false) hm nofun nofun
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (countSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (elemSpec env slots paid live)) env slots
+      paid live)
+
 /-- `HoldsA.after` for an evolution. -/
 theorem HoldsA.evolves {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
     {base : Nat} {heap heap' : Heap} {store store' : Store Unit} {s s' : Locals}
@@ -915,6 +1021,20 @@ theorem After.storeWordX {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L
     Frame.setValues hLow1 hLoc hHigh1
   exact hNext ⟨e.step, e.frame.trans f, e.holds.agree f⟩
     (Locals.get_setLocal_same hLow1 (Locals.lt_total hHigh1))
+
+/-- The store of a word value into local `loc`, at or above `base`: the facts of `After` as an
+evolution to the locals with the word. -/
+theorem After.storeWord {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
+    {base : Nat} {heap heap1 : Heap} {store store1 : Store Unit} {s s1 : Locals} {mode : Mode}
+    {v : UInt64} {vs : List Value} {loc : Nat} {rest : Program} {Q : Assertion Unit}
+    (a : After env slots L0 L base heap store s .word mode v heap1 store1 s1 [.i64 v])
+    (hLoc : base ≤ loc) (hLow : s.params.length ≤ loc) (hHigh : loc < s.positions)
+    (hNext : Evolves env slots L0 L base heap store s heap1 store1
+        (setLocal { s1 with values := vs } loc (.i64 v)) →
+      (setLocal { s1 with values := vs } loc (.i64 v)).get loc = some (.i64 v) →
+      wp m rest Q store1 (setLocal { s1 with values := vs } loc (.i64 v)) host) :
+    wp m (.localSet loc :: rest) Q store1 { s1 with values := [.i64 v].reverse ++ vs } host :=
+  After.storeWordX (strict := false) a hLoc hLow hHigh hNext
 
 /-- `x.set! i.toNat v`: the position in local `base`, the value's words from local `base + 1` on,
 the array as owned in local `base + 1 + k`, which is `x`'s own block when `x` is owned and dies,
@@ -1642,6 +1762,41 @@ theorem specX_room (hm : Runtime m) (hRA : strict = true → ReleaseAligned m)
             hRound.1 hRound.2.1 hRound.2.2 hCapacityP hRoomX hr' hShape
           simp only [↓reduceIte, allocCost]; simp only [arrayPot] at h1; omega)
 
+/-- `Var.roomCode`: an owned array, at the address in local `b + 4`, whose first elements are
+those of `x`, whose length is `x`'s length plus the word `e` in local `ext`, and whose block has
+room for that length.  An owned `x` that dies is consumed, and any other `x` is read.  The code
+traps only when `top` cannot rise by the potential of the paid owned variables that die plus
+`Var.roomCost` within the cap.  `top` after the code, plus the potential of the array when `x` is
+owned and dies, is at most `top` before it plus that sum. -/
+theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.array el))
+    {env : Env Γ'}
+    {slots : List Slot} {paid : List Bool} {live : Nat → Bool} {b ext : Nat} {e : UInt64}
+    {heap : Heap}
+    {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit}
+    (hVars : Holds env slots (fun i => live i || i == x.index) b heap store s)
+    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ b)
+    (hRoom : b + 6 ≤ s.positions) (hExt : s.get ext = some (.i64 e))
+    (hExtB : ext < b) (he : e.toNat ≤ 536870912)
+    (hTrap : TrapOK (!decide (heap.Within store m
+      (dyingPot store s env slots paid (fun i => live i || i == x.index) live +
+        x.roomCost (slots.map Slot.mode) paid live (env.get x) e.toNat))) Q)
+    (hNext : ∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (q : UInt64)
+      (words : Array UInt64), words.size = (el.words (env.get x)).size + e.toNat →
+      (∀ j (hj : j < (el.words (env.get x)).size), words[j]! = (el.words (env.get x))[j]) →
+      After env slots (fun i => live i || i == x.index) live b heap store s (.array .word) .owned
+        words heap' store' s' [.i64 q] →
+      s'.get (b + 1) = some (.i64 (UInt64.ofNat (el.words (env.get x)).size)) →
+      s'.get (b + 4) = some (.i64 q) → s'.values = s.values →
+      heap'.top.toNat +
+          (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
+            arrayPot store' q words.size else 0) ≤
+        heap.top.toNat + dyingPot store s env slots paid (fun i => live i || i == x.index) live +
+          x.roomCost (slots.map Slot.mode) paid live (env.get x) e.toNat →
+      wp m rest Q store' s' host) :
+    wp m (x.roomCode slots b live ext ++ rest) Q store s host :=
+  specX_room (strict := false) hm nofun nofun x hVars hAt nofun hCap hBase hRoom hExt hExtB he hTrap
+    (fun heap' store' s' q words a1 a2 a3 a4 a5 a6 _ a8 => hNext heap' store' s' q words a1 a2 a3 a4 a5 a6 a8)
+
 /-- `x.push v`: the value's words from local `base` on, the array taken with room for one more
 element by `Var.roomCode` from local `base + k + 1` on, and the writes of the element's words
 after the array's words. -/
@@ -1805,6 +1960,19 @@ theorem specX_push (hm : Runtime m) (hRA : strict = true → ReleaseAligned m)
     (fun hs => ⟨HoldsA.after hVars (hAl hs) (aFin.liveIn hIn) (fun k h => by simp [h]) (hAlR hs).1,
       Ty.AlignedVal.ownedArray (hQAl hs) (by rw [hCap4]; exact Ty.AlignedVal.arrayCap (hAlR hs).2)⟩)
     hBound
+
+/-- `x.push v`: the value's words from local `base` on, the array taken with room for one more
+element by `Var.roomCode` from local `base + k + 1` on, and the writes of the element's words
+after the array's words. -/
+theorem spec_push (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e))
+    {v : Expr S Γ' (.elem e)}
+    (vSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv v env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.push x v) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_push (strict := false) hm nofun nofun x
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (vSpec env slots paid live)) env slots
+      paid live)
 
 /-- `x ++ y`: the length of `y` in local `base`, the array `x` taken with room for `y`'s elements
 by `Var.roomCode` from local `base + 1` on, with `y` live, the copy of `y`'s elements after `x`'s,
@@ -2015,6 +2183,15 @@ theorem specX_append (hm : Runtime m) (hRA : strict = true → ReleaseAligned m)
         exact hc)]
       omega
   simpa [hv4, hv3] using hNext heap2 store3 s4 [.i64 p] aFin hAl' hBound
+
+/-- `x ++ y`: the length of `y` in local `base`, the array `x` taken with room for `y`'s elements
+by `Var.roomCode` from local `base + 1` on, with `y` live, the copy of `y`'s elements after `x`'s,
+and the release of `y` when it is owned and dies there. -/
+theorem spec_append (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x y : Var Γ' (.array e)) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.append (S := S) x y) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_append (strict := false) hm nofun nofun x y env slots paid live)
 
 /-- `LeanExe.eraseAt x i`: the position in local `base`, the array as owned in local `base + 1`,
 its length in local `base + 2`, and, when the position is below the size, the element's first
@@ -2662,6 +2839,23 @@ theorem specX_insertAt (hm : Runtime m) (hRA : strict = true → ReleaseAligned 
       (hCapW _ _ hWL hAL (by simp only [Array.size_extract]; omega))
       (by simp only [Array.size_extract]; omega)
       (aR.rewriteRange hWL hAL (by simp only [Array.size_extract]; omega))
+
+/-- `LeanExe.insertAt x i v`: the position in local `base`, the value's words from local `base + 1`
+on, their count after them, the array taken with room for one more element by `Var.roomCode` from
+local `base + k + 2` on, and then, when the position is at most the size, the element's first word
+in local `base + k + 4`, the move of the words from there up by the element's word count, and the
+writes of the value's words, or otherwise the old length written back. -/
+theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e))
+    {i : Expr S Γ' .word} {v : Expr S Γ' (.elem e)}
+    (iSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv i env slots paid live)
+    (vSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv v env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.insertAt x i v) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_insertAt (strict := false) hm nofun nofun x
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (iSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (vSpec env slots paid live)) env slots
+      paid live)
 
 end Cases
 

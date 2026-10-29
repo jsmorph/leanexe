@@ -2,6 +2,7 @@ import Verified.Wasi.CommandConditionalSpec
 import Verified.Wasi.CommandResultStore
 import Verified.Wasi.ConditionalCost
 import Verified.Wasi.CostCodeSpec
+import Verified.AlignedCorrect
 
 namespace Verified.Wasi
 

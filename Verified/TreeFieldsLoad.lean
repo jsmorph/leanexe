@@ -28,56 +28,6 @@ theorem recordLoadLocals_positions (store : Store Unit) (p : UInt64) (h : Nat) :
     rw [recordLoadLocals, recordLoadLocals_positions store p h (i + 1) dsts tys.tail,
       Locals.positions_setLocal]
 
-theorem wp_recordLoadCode {m : Module} {host : HostEnv Unit} {store : Store Unit}
-    {ptr : Nat} {p : UInt64} {rest : Program} {Q : Assertion Unit} :
-    ∀ (i : Nat) (dsts : List Nat) (tys : List ValueType) (s : Locals),
-      s.get ptr = some (.i64 p) → ptr < s.positions →
-      (∀ dst ∈ dsts, s.params.length ≤ dst ∧ dst < s.positions ∧ dst ≠ ptr) →
-      p.toNat + 8 * (i + dsts.length) < 4294967296 →
-      p.toNat + 8 * (i + dsts.length) ≤ store.mem.pages * 65536 →
-      wp m rest Q store (recordLoadLocals store p s.positions i dsts tys s) host →
-      wp m (recordLoadCode s.positions ptr i dsts tys ++ rest) Q store s host
-  | _, [], _, _, _, _, _, _, _, hNext => hNext
-  | i, dst :: dsts, tys, s, hPtr, hPtrLow, hDsts, hAddress, hMemory, hNext => by
-    obtain ⟨hLow, hHigh, hNe⟩ := hDsts dst List.mem_cons_self
-    let ty := tys.headD .i64
-    let s1 := setLocal s (slotIndex s.positions dst ty)
-      (typedValue ty (store.mem.read64 (slotAddress p i)))
-    obtain ⟨hSlotLow, hSlotHigh⟩ := slotIndex_bounds (s := s) ty hLow hHigh
-    have hFrame : Frame dst s s1 := Frame.setSlot ty hSlotLow (Nat.le_refl _) hHigh
-    have hSlotNe : slotIndex s.positions dst ty ≠ ptr := by
-      cases hty : ty <;> simp only [slotIndex] <;> omega
-    have hPtr1 : s1.get ptr = some (.i64 p) := by
-      rw [Locals.get_setLocal_ne hSlotLow hSlotNe.symm]
-      exact hPtr
-    have hPositions : s1.positions = s.positions := Locals.positions_setLocal _ _ _
-    have hRoom : (slotAddress p i).toNat + 8 ≤ store.mem.pages * 65536 := by
-      rw [slotAddress_toNat (by simp only [List.length_cons] at hAddress; omega)]
-      simp only [List.length_cons] at hMemory
-      omega
-    change (p + UInt64.ofNat (8 * i)).toUInt32.toNat + 8 ≤ store.mem.pages * 65536 at hRoom
-    have hRest := wp_recordLoadCode (m := m) (host := host) (store := store) (ptr := ptr) (p := p)
-      (rest := rest) (Q := Q) (i + 1) dsts tys.tail s1 hPtr1 (by rw [hPositions]; exact hPtrLow)
-      (fun next hn => by
-        rw [hFrame.params, hFrame.positions]
-        exact hDsts next (List.mem_cons_of_mem _ hn))
-      (by simp only [List.length_cons] at hAddress; omega)
-      (by simp only [List.length_cons] at hMemory; omega)
-      (by rw [hPositions]; exact hNext)
-    rw [hPositions] at hRest
-    have hSet := wp_localSet_local (m := m) (env := host)
-      (rest := recordLoadCode s.positions ptr (i + 1) dsts tys.tail ++ rest)
-      hSlotLow hSlotHigh hRest
-    have hOf := (wp_ofWordCode (m := m) (st := store) (env' := host) (s := s) (vs := s.values)
-      (rest := [.localSet (slotIndex s.positions dst ty)] ++
-        (recordLoadCode s.positions ptr (i + 1) dsts tys.tail ++ rest)) (Q := Q) ty
-      (store.mem.read64 (slotAddress p i))).mpr (by simpa only [List.cons_append,
-        List.nil_append] using hSet)
-    simpa only [recordLoadCode, List.append_assoc, List.cons_append, List.nil_append,
-      wp_localGet_cons, Locals.get_values, hPtr, wp_constI64_cons, wp_addI64_cons,
-      wp_wrapI64_cons, wrap_toUInt32, slotAddress, wp_load64_cons, UInt32.toNat_zero,
-      Nat.add_zero, UInt32.add_zero, ite_eq_right (Nat.not_lt.mpr hRoom)] using hOf
-
 theorem recordLoadLocals_frame (store : Store Unit) (p : UInt64) (base : Nat) :
     ∀ (i : Nat) (dsts : List Nat) (tys : List ValueType) (s : Locals), s.params.length ≤ base →
       (∀ dst ∈ dsts, base ≤ dst ∧ dst < s.positions) →

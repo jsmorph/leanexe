@@ -1,6 +1,7 @@
 import Verified.Wasi.LoopPreparedCost
 import Verified.Wasi.LoopPrepareGuarded
 import Verified.Wasi.CompilerFacts
+import Verified.AlignedCorrect
 
 namespace Verified.Wasi
 

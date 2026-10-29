@@ -2,6 +2,7 @@ import Verified.Wasi.CostCodeSpec
 import Verified.Wasi.CompilerFacts
 import Verified.Wasi.ResourceCompilerCost
 import Verified.Wasi.ReadCommand
+import Verified.AlignedCorrect
 
 namespace Verified.Wasi
 

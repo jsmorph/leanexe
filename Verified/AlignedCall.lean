@@ -135,6 +135,16 @@ theorem wpX_depthCode {strict : Bool} {m : Module} {host : HostEnv Unit} {Q : As
       wpX_constI64_cons, wpX_addI64_cons] at h ⊢
     exact h
 
+/-- The code before a call's arguments: the call depth after the frame's, from local 0, when the
+callee's code takes it. -/
+theorem wp_depthCode {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {store : Store Unit}
+    {s : Locals} {rest : Program} (depth : Bool) {d0 : UInt64}
+    (hd : depth = true → s.params.head? = some (.i64 d0))
+    (h : wp m rest Q store { s with values := (if depth then [.i64 (d0 + 1)] else []) ++ s.values }
+      host) :
+    wp m ((if depth then [.localGet 0, .constI64 1, .addI64] else []) ++ rest) Q store s host :=
+  wpX_depthCode (strict := false) depth hd h
+
 section Cases
 
 variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}

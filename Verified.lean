@@ -150,6 +150,7 @@ import Verified.AlignedTreeCopySlot
 import Verified.AlignedTreeCopy
 import Verified.AlignedTreeHeaderCopy
 import Verified.AlignedCopy
+import Verified.AlignedCorollaries
 import Verified.AlignedTail
 import Verified.AlignedTailBody
 import Verified.AlignedTailLoop

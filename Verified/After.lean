@@ -87,29 +87,6 @@ theorem Env.reads_depth {store : Store Unit} {ts : List Ty} {ms : List Mode} {ws
       funext fun i => paramMode_succ _ _ _ _ i]
   rfl
 
-/-- The code before a call's arguments: the call depth after the frame's, from local 0, when the
-callee's code takes it. -/
-theorem wp_depthCode {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {store : Store Unit}
-    {s : Locals} {rest : Program} (depth : Bool) {d0 : UInt64}
-    (hd : depth = true → s.params.head? = some (.i64 d0))
-    (h : wp m rest Q store { s with values := (if depth then [.i64 (d0 + 1)] else []) ++ s.values }
-      host) :
-    wp m ((if depth then [.localGet 0, .constI64 1, .addI64] else []) ++ rest) Q store s host := by
-  cases depth
-  · simp only [Bool.false_eq_true, ↓reduceIte, List.nil_append] at h ⊢
-    exact h
-  · have h0 : s.get 0 = some (.i64 d0) := by
-      have := hd rfl
-      cases hp : s.params with
-      | nil => rw [hp] at this; exact nomatch this
-      | cons v vs =>
-        rw [hp] at this
-        simp only [List.head?_cons, Option.some.injEq] at this
-        simp [Locals.get, hp, this]
-    simp only [↓reduceIte, List.cons_append, List.nil_append, wp_localGet_cons, h0,
-      wp_constI64_cons, wp_addI64_cons] at h ⊢
-    exact h
-
 theorem le_argsMax : {n : Nat} → (w : Fin n → Nat) →
     (i : Fin n) → w i ≤ argsMax w
   | _ + 1, w, ⟨0, _⟩ => Nat.le_max_left _ _
@@ -765,29 +742,6 @@ theorem After.replace {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : 
   rw [hSame] at hc
   exact regionsDisjoint_symm (hFresh c hc b hb)
 
-/-- The store of a word value into local `loc`, at or above `base`: the facts of `After` as an
-evolution to the locals with the word. -/
-theorem After.storeWord {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
-    {base : Nat} {heap heap1 : Heap} {store store1 : Store Unit} {s s1 : Locals} {mode : Mode}
-    {v : UInt64} {vs : List Value} {loc : Nat} {rest : Program} {Q : Assertion Unit}
-    (a : After env slots L0 L base heap store s .word mode v heap1 store1 s1 [.i64 v])
-    (hLoc : base ≤ loc) (hLow : s.params.length ≤ loc) (hHigh : loc < s.positions)
-    (hNext : Evolves env slots L0 L base heap store s heap1 store1
-        (setLocal { s1 with values := vs } loc (.i64 v)) →
-      (setLocal { s1 with values := vs } loc (.i64 v)).get loc = some (.i64 v) →
-      wp m rest Q store1 (setLocal { s1 with values := vs } loc (.i64 v)) host) :
-    wp m (.localSet loc :: rest) Q store1 { s1 with values := [.i64 v].reverse ++ vs } host := by
-  have hLow1 : ({ s1 with values := vs } : Locals).params.length ≤ loc := by
-    show s1.params.length ≤ loc; rw [a.frame.params]; exact hLow
-  have hHigh1 : loc < ({ s1 with values := vs } : Locals).positions := by
-    rw [Locals.positions_values, a.frame.positions]; exact hHigh
-  refine wp_localSet_local hLow1 (Locals.lt_total hHigh1) ?_
-  have e := a.toEvolves rfl
-  have f : Frame base s1 (setLocal { s1 with values := vs } loc (.i64 v)) :=
-    Frame.setValues hLow1 hLoc hHigh1
-  exact hNext ⟨e.step, e.frame.trans f, e.holds.agree f⟩
-    (Locals.get_setLocal_same hLow1 (Locals.lt_total hHigh1))
-
 theorem wordCount_toNat (k : Nat) : (wordCount k).toNat = min k 536870912 :=
   UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
 
@@ -800,15 +754,6 @@ theorem wordCount_ne_zero {k : Nat} (hk : 0 < k) : wordCount k ≠ 0 := by
 
 theorem wordCount_eq {k : Nat} (hk : k < 536870912) : wordCount k = UInt64.ofNat k := by
   simp only [wordCount, Nat.min_eq_left (Nat.le_of_lt hk)]
-
-theorem wp_scaleCode {st : Store Unit} {env' : HostEnv Unit} {s : Locals} {vs : List Value}
-    {rest : Program} {Q : Assertion Unit} (k : Nat) (x : UInt64) :
-    wp m (scaleCode k ++ rest) Q st { s with values := .i64 x :: vs } env' ↔
-      wp m rest Q st { s with values := .i64 (x * wordCount k) :: vs } env' := by
-  unfold scaleCode
-  split
-  · next hk => subst hk; simp [wordCount]
-  · simp [wp_constI64_cons, wp_mulI64_cons]
 
 theorem wp_divCode {st : Store Unit} {env' : HostEnv Unit} {s : Locals} {vs : List Value}
     {rest : Program} {Q : Assertion Unit} {k : Nat} (hk : 0 < k) (x : UInt64) :
@@ -924,60 +869,6 @@ theorem wp_loadWordsCode {store : Store Unit} {env' : HostEnv Unit} {ptr w0 flag
         UInt32.add_zero, hOffset]
       rw [ite_eq_right (by omega), hAt.elementRead _ hn, ← getElem!_pos ws _ hn, hv]
       simpa [wp_nil] using hNext
-
-/-- The writes of the words of types `tys` at positions `src` on as the words `w + j` on of an
-owned array value at `p`: the array with those words replaced, in the same block.  `w` is the word
-in local `w0`. -/
-theorem wp_storeWordsCode {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
-    {base : Nat} {heap heap1 : Heap} {store0 : Store Unit} {s0 : Locals} {h ptr w0 : Nat}
-    {p w : UInt64} {rest : Program} {Q : Assertion Unit} :
-    (j src : Nat) → (tys : List ValueType) → (words : List UInt64) → (ws : Array UInt64) →
-    (store1 : Store Unit) → (s : Locals) →
-    After env slots L0 L base heap store0 s0 (.array .word) .owned ws heap1 store1 s [.i64 p] →
-    s.positions = h → s.get ptr = some (.i64 p) → s.get w0 = some (.i64 w) →
-    LocalsHold s src tys (List.zipWith typedValue tys words) → words.length = tys.length →
-    (List.zipWith typedValue tys words).map Value.word = words →
-    w.toNat + j + tys.length ≤ ws.size →
-    (∀ store2, After env slots L0 L base heap store0 s0 (.array .word) .owned
-        (writeWords ws (w.toNat + j) words) heap1 store2 s [.i64 p] →
-      capacityAt store2 p = capacityAt store1 p → wp m rest Q store2 s host) →
-    wp m (storeWordsCode h ptr w0 j src tys ++ rest) Q store1 s host
-  | _, _, [], words, ws, store1, s, a, _, _, _, _, hl, _, _, hk => by
-    obtain rfl : words = [] := List.eq_nil_of_length_eq_zero (by simpa using hl)
-    simpa [storeWordsCode, writeWords] using hk store1 a rfl
-  | j, src, ty :: tys, v :: words, ws, store1, s, a, hh, hP, hW, hold, hl, normal, hFit, hk => by
-    have normal' : Value.word (typedValue ty v) = v ∧
-        (List.zipWith typedValue tys words).map Value.word = words := by
-      simpa only [List.zipWith_cons_cons, List.map_cons, List.cons.injEq] using normal
-    simp only [List.length_cons, Nat.add_right_cancel_iff] at hl
-    simp only [List.length_cons] at hFit
-    have hn : w.toNat + j < ws.size := by omega
-    obtain ⟨q, hq, hOwned⟩ := a.rep
-    replace hOwned : heap1.Owned store1 q ws := hOwned
-    obtain rfl : q = p := by simp only [List.cons.injEq, Value.i64.injEq] at hq; exact hq.1.symm
-    have hA := hOwned.values
-    have hOffset := word_offset hn (by have := hA.1; omega)
-    have hElement := hA.elementBound _ hn
-    have hv : s.get (slotIndex h src ty) = some (typedValue ty v) := by
-      have := hold 0 (by simp)
-      simpa [hh, List.zipWith_cons_cons] using this
-    have holdRest : LocalsHold s (src + 1) tys (List.zipWith typedValue tys words) := by
-      intro k hk'
-      have := hold (k + 1) (by simp only [List.zipWith_cons_cons, List.length_cons]; omega)
-      simpa [List.zipWith_cons_cons, Nat.add_assoc, Nat.add_comm 1 k] using this
-    simp only [storeWordsCode, wordAddrCode, List.append_assoc, List.cons_append,
-      List.nil_append, wp_localGet_cons, Locals.get_values, hP, hW, wp_constI64_cons,
-      wp_addI64_cons, wp_mulI64_cons, wp_wrapI64_cons, wrap_toUInt32, hOffset, hv]
-    rw [wp_toWordCode, normal'.1]
-    simp only [wp_store64_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
-    rw [ite_eq_right (by omega)]
-    refine wp_storeWordsCode (j + 1) (src + 1) tys words _ _ s (a.writeElement hn v) hh hP hW
-      holdRest hl normal'.2 (by rw [Array.size_set]; omega) fun store2 a2 hc =>
-        hk store2 ?_ (hc.trans (capacityAt_writeElement hOwned hn v))
-    have hSet : ws.set (w.toNat + j) v hn = ws.set! (w.toNat + j) v := by
-      simp [Array.set!_eq_setIfInBounds, Array.setIfInBounds, hn]
-    rw [hSet, show w.toNat + (j + 1) = w.toNat + j + 1 by omega] at a2
-    exact a2
 
 /-- The facts of `After` for other locals that agree below `base`. -/
 theorem After.reframe {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
@@ -1162,63 +1053,6 @@ theorem Apart.append {store : Store Unit} {l1 l2 : List UInt64} {r : Nat × Nat}
   rcases List.mem_append.mp hq with hq | hq
   · exact h1 q hq
   · exact h2 q hq
-
-/-- The code of a place, a variable or a pair of places, pushes the words that its variables
-hold, which represent its value as borrowed, and changes nothing else.  A region apart from the
-regions of its variables lies apart from its arrays' words. -/
-theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat → Bool}
-    {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals} (hh : s.positions = h)
-    (hVars : Holds env slots L base heap store s) :
-    {t : Ty} → (e : Expr S Γ t) → e.isPlace = true → (∀ i, e.uses i = true → L i = true) →
-    ∀ {rest : Program} {Q : Assertion Unit} {vs : List Value},
-    (∀ ws, t.Rep .borrowed heap store ws (e.denote funs env) →
-      (∀ r, Holds.ApartFrom env slots e.uses store s r →
-        ∀ c ∈ t.reads store ws (e.denote funs env), regionsDisjoint r c) →
-      wp m rest Q store { s with values := ws.reverse ++ vs } host) →
-    wp m (e.placeCode h slots ++ rest) Q store { s with values := vs } host
-  | _, .var x, _, hL, _, _, _, hNext => by
-    obtain ⟨-, ws, hold, hRep⟩ := hVars.1 _ x (hL _ (by simp [Expr.uses]))
-    simp only [Expr.placeCode]
-    exact wp_loadCode ws hRep.typed hh hold (hNext ws hRep.borrow fun r hr =>
-      hRep.reads_apart r (hr _ x (by simp [Expr.uses]) ws hold hRep.length))
-  | _, .pair a b, hp, hL, _, _, _, hNext => by
-    simp only [Expr.isPlace, Bool.and_eq_true] at hp
-    simp only [Expr.placeCode, List.append_assoc]
-    refine place_spec hh hVars a hp.1 (fun i h => hL i (by simp [Expr.uses, h]))
-      fun wa ha hra => ?_
-    refine place_spec hh hVars b hp.2 (fun i h => hL i (by simp [Expr.uses, h]))
-      fun wb hb hrb => ?_
-    have := hNext (wa ++ wb) ⟨wa, wb, rfl, ha, hb, fun h => nomatch h⟩ fun r hr c hc => by
-      rw [Ty.reads_append ha.length] at hc
-      rcases List.mem_append.mp hc with hc | hc
-      · exact hra r (hr.mono fun i h => by simp [Expr.uses, h]) c hc
-      · exact hrb r (hr.mono fun i h => by simp [Expr.uses, h]) c hc
-    simpa [List.reverse_append, List.append_assoc] using this
-  | _, .word _, hp, _, _, _, _, _ | _, .bool _, hp, _, _, _, _, _
-  | _, .bin _ _ _, hp, _, _, _, _, _ | _, .cmp _ _ _, hp, _, _, _, _, _
-  | _, .not _, hp, _, _, _, _, _ | _, .and _ _, hp, _, _, _, _, _
-  | _, .or _ _, hp, _, _, _, _, _ | _, .ite _ _ _, hp, _, _, _, _, _
-  | _, .letE _ _, hp, _, _, _, _, _ | _, .call _ _, hp, _, _, _, _, _
-  | _, .letPair _ _, hp, _, _, _, _, _ | _, .loop _ _ _ _, hp, _, _, _, _, _
-  | _, .size _, hp, _, _, _, _, _ | _, .get _ _, hp, _, _, _, _, _
-  | _, .bytesEmpty, hp, _, _, _, _, _ | _, .bytesLiteral _, hp, _, _, _, _, _
-  | _, .bytesSize _, hp, _, _, _, _, _
-  | _, .bytesGet _ _, hp, _, _, _, _, _
-  | _, .bytesBuild _ _, hp, _, _, _, _, _
-  | _, .leSize _ _, hp, _, _, _, _, _
-  | _, .build _ _, hp, _, _, _, _, _ | _, .set _ _ _, hp, _, _, _, _, _
-  | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _
-  | _, .insertAt _ _ _, hp, _, _, _, _, _ | _, .eraseAt _ _, hp, _, _, _, _, _
-  | _, .fbin32 _ _ _, hp, _, _, _, _, _ | _, .fcmp32 _ _ _, hp, _, _, _, _, _
-  | _, .funary32 _ _, hp, _, _, _, _, _ | _, .toFloat32 _ _, hp, _, _, _, _, _
-  | _, .toWord32 _ _, hp, _, _, _, _, _
-  | _, .float32 _, hp, _, _, _, _, _
-  | _, .treeNil _ _, hp, _, _, _, _, _ | _, .treeNode _ _ _ _ _ _, hp, _, _, _, _, _
-  | _, .treeCase _ _ _, hp, _, _, _, _, _
-  | _, .float _, hp, _, _, _, _, _ | _, .fbin _ _ _, hp, _, _, _, _, _
-  | _, .funary _ _, hp, _, _, _, _, _ | _, .fcmp _ _ _, hp, _, _, _, _, _
-  | _, .toFloat _ _, hp, _, _, _, _, _ | _, .toWord _ _, hp, _, _, _, _, _ => by
-    simp [Expr.isPlace] at hp
 
 /-- The words of an owned variable in an owned position, where it dies: its own words. -/
 theorem Var.ownedCode_move {Γ : List Ty} {t : Ty} (x : Var Γ t) {slots : List Slot}

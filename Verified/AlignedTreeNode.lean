@@ -1,5 +1,6 @@
 import Verified.AlignedTreeMemory
 import Verified.FieldsMixed
+import Verified.AlignedCopy
 
 /-!
 The construction of a tree under the flag.  A tree's fields are evaluated in order and each is
@@ -113,6 +114,38 @@ theorem CodeSpecX.coerced {strict : Bool} {S : List Sig} {Γ : List Ty} {t : Ty}
     exact hw.shift (by simpa only [Nat.add_assoc] using hTop hf)
       (by rw [hc]) (a1.step.cap m)
   · exact hNext heap2 store2 s2 ws2 a2 hAl2 fun hf => by have := hTop hf; omega
+
+theorem CodeSpec.coerced {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {host : HostEnv Unit} {pv : List Value} {e : Expr S Γ t} {env : Env Γ}
+    {target : Mode} {slots : List Slot} {paid : List Bool} {live : Nat → Bool}
+    (hm : Runtime m) (spec : CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live)
+    (hTarget : e.mode (slots.map Slot.mode) = .owned → target = .owned)
+    {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals}
+    (hh : s.positions = h) (hpv : s.params = pv)
+    (hVars : Holds env slots (fun i => live i || e.uses i) base heap store s)
+    (hAt : heap.At store)
+    (hSafe : pool.Safe env slots (fun i => live i || e.uses i) heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hBase : s.params.length ≤ base) (hRoom : base + max e.width (copyWidth t) ≤ h)
+    (hPlace : e.placeArgs = true) {rest : Program} {Q : Assertion Unit}
+    (hTrap : TrapOK (!(e.fits funs fits env) || !decide (heap.Within store m
+      (dyingPot store s env slots paid (fun i => live i || e.uses i) live +
+        e.allocs funs flags bounds (slots.map Slot.mode) paid live env +
+        coerceCost t (e.mode (slots.map Slot.mode)) target (e.denote funs env)))) Q)
+    (hNext : ∀ heap' store' s' ws,
+      After env slots (fun i => live i || e.uses i) live base heap store s t target
+        (e.denote funs env) heap' store' s' ws →
+      (e.fits funs fits env = true → heap'.top.toNat ≤ heap.top.toNat +
+        dyingPot store s env slots paid (fun i => live i || e.uses i) live +
+        e.allocs funs flags bounds (slots.map Slot.mode) paid live env +
+        coerceCost t (e.mode (slots.map Slot.mode)) target (e.denote funs env)) →
+      wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
+    wp m (e.code (pool := pool) h slots base live ++
+      (coerceCode h t (e.mode (slots.map Slot.mode)) target base ++ rest)) Q store s host :=
+  CodeSpecX.coerced (strict := false) (copyCodeX hm) (CodeSpecX.false_iff.mpr spec) hTarget hh hpv
+    hVars hAt nofun hSafe hCap hBase hRoom hPlace hTrap
+    (fun heap' store' s' ws a1 _ a3 => hNext heap' store' s' ws a1 a3)
 
 theorem CodeSpecX.owned {strict : Bool} {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
@@ -297,6 +330,47 @@ theorem fieldsWidth_specX {strict : Bool} {S : List Sig} {Γ : List Ty} {m : Mod
     simp only [hIndex] at hTail
     simpa only [Fin.val_succ, List.get_cons_succ', List.append_assoc] using hTail
 
+theorem fieldsWidth_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
+    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit}
+    {pv : List Value} (hm : Runtime m) {env : Env Γ} {slots : List Slot} {paid : List Bool}
+    {h base fieldBase scratch w : Nat} {d : Bool} :
+    (ps : List Ty) → (args : (i : Fin ps.length) → Expr S Γ (ps.get i)) →
+    (L : Nat → Nat → Bool) →
+    (∀ i, (ps.get i).width = w) →
+    (∀ i k, (L (i.val + 1) k || (args i).uses k) = L i.val k) →
+    (∀ i, CodeSpec (pool := pool) m funs flags bounds fits host pv (args i) env slots paid
+      (L (i.val + 1))) →
+    (∀ i, (args i).placeArgs = true) →
+    (∀ i, (!(args i).fits funs fits env) = true → d = true) →
+    base ≤ fieldBase → fieldBase + w * ps.length ≤ scratch →
+    (∀ i, scratch + max (args i).width (copyWidth (ps.get i)) ≤ h) →
+    ∀ (heap : Heap) (store : Store Unit) (s : Locals),
+    s.positions = h → s.params = pv → s.params.length ≤ base →
+    Holds env slots (L 0) base heap store s → heap.At store →
+    pool.Safe env slots (L 0) heap store s → store.memoryCap m 0 ≤ 65535 →
+    ∀ (rest : Program) (Q : Assertion Unit),
+    TrapOK (d || !decide (heap.Within store m
+      (dyingPot store s env slots paid (L 0) (L ps.length) +
+        argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args env)))) Q →
+    (∀ heap' store' s' ws,
+      FieldsAfter env slots (L 0) (L ps.length) base heap store s
+        (Env.ofFn fun i => (args i).denote funs env) heap' store' s' ws →
+      Frame fieldBase s s' → LocalsHold s' fieldBase (ps.flatMap Ty.types) ws →
+      (d = false → heap'.top.toNat ≤ heap.top.toNat +
+        dyingPot store s env slots paid (L 0) (L ps.length) +
+        argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args env)) →
+      wp m rest Q store' { s' with values := s.values } host) →
+    wp m (argsCode (fun i => (args i).code (pool := pool) h slots scratch (L (i.val + 1)) ++
+      coerceCode h (ps.get i) ((args i).mode (slots.map Slot.mode)) .owned scratch ++
+      storeCode h (fieldBase + w * i.val) (ps.get i).types) ++ rest) Q store s host :=
+  fun ps args L hw hLink hSpec hPlace hd hBF hSc hRoom heap store s hh hpv hBase hVars hAt hSafe
+      hCap rest Q hTrap hNext =>
+    fieldsWidth_specX (strict := false) (copyCodeX hm) ps args L hw hLink
+      (fun i => CodeSpecX.false_iff.mpr (hSpec i)) hPlace hd hBF hSc hRoom heap store s hh hpv
+      hBase hVars hAt nofun hSafe hCap rest Q hTrap
+      fun heap' store' s' ws ha _ hf hl hb => hNext heap' store' s' ws ha hf hl hb
+#print axioms fieldsWidth_spec
+
 theorem fields_specX {strict : Bool} {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
     {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit}
     {pv : List Value} (hCopy : CopyCodeX strict m host) {env : Env Γ} {slots : List Slot} {paid : List Bool}
@@ -337,6 +411,45 @@ theorem fields_specX {strict : Bool} {S : List Sig} {Γ : List Ty} {m : Module} 
     (by rw [Nat.one_mul]; exact hScratch) hRoom heap store s hh hpv hBase hVars hAt hAl hSafe hCap
     rest Q hTrap hNext
   simpa only [Nat.one_mul] using hRun
+
+theorem fields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
+    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit}
+    {pv : List Value} (hm : Runtime m) {env : Env Γ} {slots : List Slot} {paid : List Bool}
+    {h base fieldBase scratch : Nat} {d : Bool}
+    (ps : List Ty) (args : (i : Fin ps.length) → Expr S Γ (ps.get i))
+    (L : Nat → Nat → Bool)
+    (hWidth : ∀ i, (ps.get i).width = 1)
+    (hLink : ∀ i k, (L (i.val + 1) k || (args i).uses k) = L i.val k)
+    (hSpec : ∀ i, CodeSpec (pool := pool) m funs flags bounds fits host pv (args i) env slots paid
+      (L (i.val + 1)))
+    (hPlace : ∀ i, (args i).placeArgs = true)
+    (hd : ∀ i, (!(args i).fits funs fits env) = true → d = true)
+    (hBaseField : base ≤ fieldBase) (hScratch : fieldBase + ps.length ≤ scratch)
+    (hRoom : ∀ i, scratch + max (args i).width (copyWidth (ps.get i)) ≤ h)
+    (heap : Heap) (store : Store Unit) (s : Locals)
+    (hh : s.positions = h) (hpv : s.params = pv) (hBase : s.params.length ≤ base)
+    (hVars : Holds env slots (L 0) base heap store s) (hAt : heap.At store)
+    (hSafe : pool.Safe env slots (L 0) heap store s) (hCap : store.memoryCap m 0 ≤ 65535)
+    (rest : Program) (Q : Assertion Unit)
+    (hTrap : TrapOK (d || !decide (heap.Within store m
+      (dyingPot store s env slots paid (L 0) (L ps.length) +
+        argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args env)))) Q)
+    (hNext : ∀ heap' store' s' ws,
+      FieldsAfter env slots (L 0) (L ps.length) base heap store s
+        (Env.ofFn fun i => (args i).denote funs env) heap' store' s' ws →
+      Frame fieldBase s s' → LocalsHold s' fieldBase (ps.flatMap Ty.types) ws →
+      (d = false → heap'.top.toNat ≤ heap.top.toNat +
+        dyingPot store s env slots paid (L 0) (L ps.length) +
+        argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args env)) →
+      wp m rest Q store' { s' with values := s.values } host) :
+    wp m (argsCode (fun i => (args i).code (pool := pool) h slots scratch (L (i.val + 1)) ++
+      coerceCode h (ps.get i) ((args i).mode (slots.map Slot.mode)) .owned scratch ++
+      storeCode h (fieldBase + i.val) (ps.get i).types) ++ rest) Q store s host :=
+  fields_specX (strict := false) (copyCodeX hm) ps args L hWidth hLink
+    (fun i => CodeSpecX.false_iff.mpr (hSpec i)) hPlace hd hBaseField hScratch hRoom heap store s hh
+    hpv hBase hVars hAt nofun hSafe hCap rest Q hTrap
+    (fun heap' store' s' ws a1 _ a3 a4 a5 => hNext heap' store' s' ws a1 a3 a4 a5)
+#print axioms fields_spec
 
 /-- `Bytes.wp_normalize` under the flag. -/
 theorem Bytes.wpX_normalize {strict : Bool} {m : Module} (hm : Runtime m)
@@ -610,6 +723,52 @@ theorem bytesFields_specX {strict : Bool} {S : List Sig} {Γ : List Ty} {m : Mod
       simpa only [Fin.val_succ, List.get_cons_succ', List.append_assoc, Nat.mul_zero,
         Nat.add_zero] using hRun
 
+/-- Buffer arguments evaluated in order, each coerced to owned, stored in two locals from
+`fieldBase + 2 * i` on, and normalized, so that the root of an empty buffer is 0. -/
+theorem bytesFields_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
+    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit}
+    {pv : List Value} (hm : Runtime m) {env : Env Γ} {slots : List Slot} {paid : List Bool}
+    {h base fieldBase scratch : Nat} {d : Bool} :
+    (ps : List Ty) → (args : (i : Fin ps.length) → Expr S Γ (ps.get i)) →
+    (L : Nat → Nat → Bool) →
+    (∀ i, ps.get i = .bytes) →
+    (∀ i k, (L (i.val + 1) k || (args i).uses k) = L i.val k) →
+    (∀ i, CodeSpec (pool := pool) m funs flags bounds fits host pv (args i) env slots paid
+      (L (i.val + 1))) →
+    (∀ i, (args i).placeArgs = true) →
+    (∀ i, (!(args i).fits funs fits env) = true → d = true) →
+    base ≤ fieldBase → fieldBase + 2 * ps.length ≤ scratch →
+    (∀ i, scratch + max (args i).width (copyWidth (ps.get i)) ≤ h) →
+    ∀ (heap : Heap) (store : Store Unit) (s : Locals),
+    s.positions = h → s.params = pv → s.params.length ≤ base →
+    Holds env slots (L 0) base heap store s → heap.At store →
+    pool.Safe env slots (L 0) heap store s → store.memoryCap m 0 ≤ 65535 →
+    ∀ (rest : Program) (Q : Assertion Unit),
+    TrapOK (d || !decide (heap.Within store m
+      (dyingPot store s env slots paid (L 0) (L ps.length) +
+        argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args env)))) Q →
+    (∀ heap' store' s' ws,
+      FieldsAfter env slots (L 0) (L ps.length) base heap store s
+        (Env.ofFn fun i => (args i).denote funs env) heap' store' s' ws →
+      Frame fieldBase s s' → LocalsHold s' fieldBase (ps.flatMap Ty.types) ws →
+      Bytes.Normal ws →
+      (d = false → heap'.top.toNat ≤ heap.top.toNat +
+        dyingPot store s env slots paid (L 0) (L ps.length) +
+        argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args env)) →
+      wp m rest Q store' { s' with values := s.values } host) →
+    wp m (argsCode (fun i => (args i).code (pool := pool) h slots scratch (L (i.val + 1)) ++
+      coerceCode h (ps.get i) ((args i).mode (slots.map Slot.mode)) .owned scratch ++
+      storeCode h (fieldBase + 2 * i.val) (ps.get i).types ++
+      Bytes.normalizeCode (fieldBase + 2 * i.val) (fieldBase + 2 * i.val + 1)) ++ rest)
+      Q store s host :=
+  fun ps args L hBytes hLink hSpec hPlace hd hBF hSc hRoom heap store s hh hpv hBase hVars hAt
+      hSafe hCap rest Q hTrap hNext =>
+    bytesFields_specX (strict := false) hm nofun (copyCodeX hm) ps args L hBytes hLink
+      (fun i => CodeSpecX.false_iff.mpr (hSpec i)) hPlace hd hBF hSc hRoom heap store s hh hpv
+      hBase hVars hAt nofun hSafe hCap rest Q hTrap
+      fun heap' store' s' ws ha _ hf hl hn hb => hNext heap' store' s' ws ha hf hl hn hb
+#print axioms bytesFields_spec
+
 theorem fieldsMixed_specX {strict : Bool} {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
     {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit}
     {pv : List Value} (hm : Runtime m) (hRA : strict = true → ReleaseAligned m)
@@ -842,7 +1001,82 @@ theorem fieldsMixed_specX {strict : Bool} {S : List Sig} {Γ : List Ty} {m : Mod
       rw [List.nil_append]
       simpa only [Fin.val_succ, List.get_cons_succ', List.append_assoc, fieldOffset_succ] using hRun
 
+/-- Arguments evaluated in order, each coerced to owned and stored in the locals from
+`fieldBase` plus the widths of the arguments before it, a buffer then normalized so that the
+root of an empty buffer is 0. -/
+theorem fieldsMixed_spec {S : List Sig} {Γ : List Ty} {m : Module} {funs : Funs S}
+    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit}
+    {pv : List Value} (hm : Runtime m) {env : Env Γ} {slots : List Slot} {paid : List Bool}
+    {h base fieldBase scratch : Nat} {d : Bool} :
+    (ps : List Ty) → (args : (i : Fin ps.length) → Expr S Γ (ps.get i)) →
+    (L : Nat → Nat → Bool) →
+    (∀ i k, (L (i.val + 1) k || (args i).uses k) = L i.val k) →
+    (∀ i, CodeSpec (pool := pool) m funs flags bounds fits host pv (args i) env slots paid
+      (L (i.val + 1))) →
+    (∀ i, (args i).placeArgs = true) →
+    (∀ i, (!(args i).fits funs fits env) = true → d = true) →
+    base ≤ fieldBase → fieldBase + (ps.map Ty.width).sum ≤ scratch →
+    (∀ i, scratch + max (args i).width (copyWidth (ps.get i)) ≤ h) →
+    ∀ (heap : Heap) (store : Store Unit) (s : Locals),
+    s.positions = h → s.params = pv → s.params.length ≤ base →
+    Holds env slots (L 0) base heap store s → heap.At store →
+    pool.Safe env slots (L 0) heap store s → store.memoryCap m 0 ≤ 65535 →
+    ∀ (rest : Program) (Q : Assertion Unit),
+    TrapOK (d || !decide (heap.Within store m
+      (dyingPot store s env slots paid (L 0) (L ps.length) +
+        argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args env)))) Q →
+    (∀ heap' store' s' ws,
+      FieldsAfter env slots (L 0) (L ps.length) base heap store s
+        (Env.ofFn fun i => (args i).denote funs env) heap' store' s' ws →
+      Frame fieldBase s s' → LocalsHold s' fieldBase (ps.flatMap Ty.types) ws →
+      FieldsNormal ps ws →
+      (d = false → heap'.top.toNat ≤ heap.top.toNat +
+        dyingPot store s env slots paid (L 0) (L ps.length) +
+        argsSum (fieldCost funs flags bounds (slots.map Slot.mode) paid L args env)) →
+      wp m rest Q store' { s' with values := s.values } host) →
+    wp m (argsCode (fun i => (args i).code (pool := pool) h slots scratch (L (i.val + 1)) ++
+      coerceCode h (ps.get i) ((args i).mode (slots.map Slot.mode)) .owned scratch ++
+      storeCode h (fieldBase + fieldOffset ps i.val) (ps.get i).types ++
+      (ps.get i).normalizeCode (fieldBase + fieldOffset ps i.val)) ++ rest)
+      Q store s host :=
+  fun ps args L hLink hSpec hPlace hd hBF hSc hRoom heap store s hh hpv hBase hVars hAt hSafe
+      hCap rest Q hTrap hNext =>
+    fieldsMixed_specX (strict := false) hm nofun (copyCodeX hm) ps args L hLink
+      (fun i => CodeSpecX.false_iff.mpr (hSpec i)) hPlace hd hBF hSc hRoom heap store s hh hpv
+      hBase hVars hAt nofun hSafe hCap rest Q hTrap
+      fun heap' store' s' ws ha _ hf hl hn hb => hNext heap' store' s' ws ha hf hl hn hb
+#print axioms fieldsMixed_spec
 
 end
+
+theorem CodeSpec.owned {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {host : HostEnv Unit} {pv : List Value} {e : Expr S Γ t} {env : Env Γ}
+    {slots : List Slot} {paid : List Bool} {live : Nat → Bool}
+    (hm : Runtime m) (spec : CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live)
+    {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals}
+    (hh : s.positions = h) (hpv : s.params = pv)
+    (hVars : Holds env slots (fun i => live i || e.uses i) base heap store s)
+    (hAt : heap.At store)
+    (hSafe : pool.Safe env slots (fun i => live i || e.uses i) heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hBase : s.params.length ≤ base) (hRoom : base + max e.width (copyWidth t) ≤ h)
+    (hPlace : e.placeArgs = true) {rest : Program} {Q : Assertion Unit}
+    (hTrap : TrapOK (!(e.fits funs fits env) || !decide (heap.Within store m
+      (dyingPot store s env slots paid (fun i => live i || e.uses i) live +
+        e.allocs funs flags bounds (slots.map Slot.mode) paid live env +
+        coerceCost t (e.mode (slots.map Slot.mode)) .owned (e.denote funs env)))) Q)
+    (hNext : ∀ heap' store' s' ws,
+      After env slots (fun i => live i || e.uses i) live base heap store s t .owned
+        (e.denote funs env) heap' store' s' ws →
+      (e.fits funs fits env = true → heap'.top.toNat ≤ heap.top.toNat +
+        dyingPot store s env slots paid (fun i => live i || e.uses i) live +
+        e.allocs funs flags bounds (slots.map Slot.mode) paid live env +
+        coerceCost t (e.mode (slots.map Slot.mode)) .owned (e.denote funs env)) →
+      wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
+    wp m (e.code (pool := pool) h slots base live ++
+      (coerceCode h t (e.mode (slots.map Slot.mode)) .owned base ++ rest)) Q store s host :=
+  CodeSpec.coerced (target := .owned) hm spec (fun _ => rfl) hh hpv hVars hAt hSafe hCap
+    hBase hRoom hPlace hTrap hNext
 
 end Verified

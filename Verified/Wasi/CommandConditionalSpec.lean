@@ -1,6 +1,7 @@
 import Verified.Wasi.CommandConditional
 import Verified.Wasi.CommandCodeSpec
 import Verified.Wasi.CompilerFacts
+import Verified.AlignedCorrect
 
 namespace Verified.Wasi
 

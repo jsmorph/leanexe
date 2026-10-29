@@ -154,6 +154,20 @@ theorem tail_treeCase_emptyX {strict : Bool} {S : List Sig} {Γ params : List Ty
   rw [labelEq]
   exact done
 
+theorem tail_treeCase_empty {S : List Sig} {Γ params : List Ty} {result : Ty}
+    {shape : TreeShape} {m : Module} {funs : Funs S} {flags : Flags S}
+    {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool} {host : HostEnv Unit} {pv : List Value}
+    (hm : Runtime m) (targetModes : List Mode) (x : Var Γ (.tree shape))
+    (empty : shape.hasNull = true → TailBody S params result Γ)
+    (nodes : (r : Fin shape.records) → TailBody S params result (shape.context r Γ))
+    (hn : shape.hasNull = true)
+    (emptySpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (empty hn))
+    (env : Env Γ) (hNil : env.get x = .nil hn) :
+    TailCodeSpecAt (pool := pool) m funs flags bounds fits host pv targetModes (.treeCase x empty nodes) env :=
+  TailCodeSpecAtX.false_iff.mp (tail_treeCase_emptyX (strict := false) hm nofun targetModes x empty
+    nodes hn (TailCodeSpecX.false_iff.mpr emptySpec) env hNil)
+#print axioms tail_treeCase_empty
+
 theorem tail_treeCase_nodeX {strict : Bool} {S : List Sig} {Γ params : List Ty} {result : Ty}
     {shape : TreeShape} {m : Module} {funs : Funs S} {flags : Flags S}
     {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool} {host : HostEnv Unit} {pv : List Value}
@@ -481,6 +495,25 @@ theorem tail_treeCase_nodeX {strict : Bool} {S : List Sig} {Γ params : List Ty}
     rw [show k + labels = k by simp [labels, hn]]
     exact hq
 
+theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
+    {shape : TreeShape} {m : Module} {funs : Funs S} {flags : Flags S}
+    {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool} {host : HostEnv Unit} {pv : List Value}
+    (hm : Runtime m) (targetModes : List Mode) (x : Var Γ (.tree shape))
+    (empty : shape.hasNull = true → TailBody S params result Γ)
+    (nodes : (r : Fin shape.records) → TailBody S params result (shape.context r Γ))
+    (r : Fin shape.records)
+    (nodeSpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (nodes r))
+    (env : Env Γ) (words : (i : Fin (shape.words r)) → (shape.elem r i).denote)
+    (arrays : (i : Fin (shape.arrays r)) → Array (shape.arrayElem r i).denote)
+    (buffers : Fin (shape.buffers r) → LeanExe.Bytes)
+    (children : Fin (shape.children r) → Tree shape)
+    (hValue : env.get x = .node r words arrays buffers children) :
+    TailCodeSpecAt (pool := pool) m funs flags bounds fits host pv targetModes (.treeCase x empty nodes) env :=
+  TailCodeSpecAtX.false_iff.mp (tail_treeCase_nodeX (strict := false) hm nofun (copyCodeX hm)
+    targetModes x empty nodes r (TailCodeSpecX.false_iff.mpr nodeSpec) env words arrays buffers
+    children hValue)
+#print axioms tail_treeCase_node
+
 theorem tail_treeCase_specX {strict : Bool} {S : List Sig} {Γ params : List Ty} {result : Ty}
     {shape : TreeShape} {m : Module} {funs : Funs S} {flags : Flags S}
     {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool} {host : HostEnv Unit} {pv : List Value}
@@ -497,5 +530,19 @@ theorem tail_treeCase_specX {strict : Bool} {S : List Sig} {Γ params : List Ty}
   | node r words arrays buffers children =>
     exact tail_treeCase_nodeX hm hRA hCopy targetModes x empty nodes r (nodeSpec r) env words arrays buffers
       children hv
+
+theorem tail_treeCase_spec {S : List Sig} {Γ params : List Ty} {result : Ty}
+    {shape : TreeShape} {m : Module} {funs : Funs S} {flags : Flags S}
+    {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool} {host : HostEnv Unit} {pv : List Value}
+    (hm : Runtime m) (targetModes : List Mode) (x : Var Γ (.tree shape))
+    (empty : shape.hasNull = true → TailBody S params result Γ)
+    (nodes : (r : Fin shape.records) → TailBody S params result (shape.context r Γ))
+    (emptySpec : ∀ hn, TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (empty hn))
+    (nodeSpec : ∀ r, TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (nodes r)) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (.treeCase x empty nodes) :=
+  TailCodeSpecX.false_iff.mp (tail_treeCase_specX (strict := false) hm nofun (copyCodeX hm)
+    targetModes x empty nodes (fun hn => TailCodeSpecX.false_iff.mpr (emptySpec hn))
+    (fun r => TailCodeSpecX.false_iff.mpr (nodeSpec r)))
+#print axioms tail_treeCase_spec
 
 end Verified

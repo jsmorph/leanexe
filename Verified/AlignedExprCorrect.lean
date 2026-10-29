@@ -246,6 +246,19 @@ theorem Expr.code_specInX {strict : Bool} {S : List Sig} (m : Module) (funs : Fu
   | proj x p =>
     intro _ _; exact specInOfX (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| specX_proj x p
 
+/-- The code of every expression meets its specification, also in the result of a loop's body. -/
+theorem Expr.code_specIn {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S)
+    (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (hm : Runtime m) {pv : List Value}
+    {d0 : UInt64} (hCalls : CallsAt m funs flags bounds fits d0 pool) {Γ : List Ty} {t : Ty}
+    (expr : Expr S Γ t) :
+    expr.Covered pool →
+    (expr.depthCalls = true → pv.head? = some (.i64 d0)) →
+    ∀ buy env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv expr env
+      slots paid live :=
+  fun hc hd buy env slots paid live =>
+    CodeSpecInX.false_iff.mp (Expr.code_specInX (strict := false) m funs flags bounds fits host hm
+      nofun nofun (copyCodeX hm) (CallsAtX.false_iff.mpr hCalls) expr hc hd buy env slots paid live)
+
 /-- `Expr.code_spec` under the flag. -/
 theorem Expr.code_specX {strict : Bool} {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S)
     (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (hm : Runtime m)
@@ -259,5 +272,17 @@ theorem Expr.code_specX {strict : Bool} {S : List Sig} (m : Module) (funs : Funs
   fun hCover hD env slots paid live =>
     (Expr.code_specInX m funs flags bounds fits host hm hRA hRt hCopy hCalls expr hCover hD
       false env slots paid live).spec
+
+/-- The code of every expression meets its specification. -/
+theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S)
+    (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (hm : Runtime m) {pv : List Value}
+    {d0 : UInt64} (hCalls : CallsAt m funs flags bounds fits d0 pool) {Γ : List Ty} {t : Ty}
+    (expr : Expr S Γ t) :
+    expr.Covered pool →
+    (expr.depthCalls = true → pv.head? = some (.i64 d0)) →
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv expr env slots paid live :=
+  fun hc hd env slots paid live =>
+    CodeSpecX.false_iff.mp (Expr.code_specX (strict := false) m funs flags bounds fits host hm
+      nofun nofun (copyCodeX hm) (CallsAtX.false_iff.mpr hCalls) expr hc hd env slots paid live)
 
 end Verified

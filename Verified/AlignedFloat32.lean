@@ -31,6 +31,15 @@ theorem specX_float32 {Γ : List Ty} (bits : UInt32) :
       (fun hs => ⟨(hAl hs).live_mono (by intro i h; simp [h]), Ty.AlignedVal.scalar rfl⟩)
       (fun _ => Nat.le_add_right _ _)
 
+/-- A float constant, from its bit pattern. -/
+theorem spec_float32 {Γ : List Ty} (bits : UInt32) :
+    ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.float32 (S := S) (Γ := Γ) bits) env slots
+          paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_float32 (strict := false) bits env slots paid live)
+#print axioms spec_float32
+
 /-- An operation on floats. -/
 theorem specX_fbin32 {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float32}
     (leftSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits
@@ -65,6 +74,20 @@ theorem specX_fbin32 {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float
   cases op <;>
     simpa [FBinOp.instr32, Expr.denote, FBinOp.apply32, f32Add, f32Sub, f32Mul, f32Div,
       F32Bits.toBits_add, F32Bits.toBits_sub, F32Bits.toBits_mul, F32Bits.toBits_div] using hv
+
+/-- An operation on floats. -/
+theorem spec_fbin32 {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float32}
+    (leftSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv right env
+        slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.fbin32 op left right) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_fbin32 (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (leftSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (rightSpec env slots paid live)) env slots
+      paid live)
+#print axioms spec_fbin32
 
 /-- A comparison of floats. -/
 theorem specX_fcmp32 {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float32}
@@ -104,6 +127,20 @@ theorem specX_fcmp32 {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float
       simpa [hc, Expr.denote, FCmpOp.apply32, F32Bits.decide_le, f32Le, boolWord] using hv
   · cases hc : IEEE32.eq (left.denote funs env).toBits (right.denote funs env).toBits <;>
       simpa [hc, Expr.denote, FCmpOp.apply32, F32Bits.beq_eq, f32Eq, boolWord] using hv
+
+/-- A comparison of floats. -/
+theorem spec_fcmp32 {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float32}
+    (leftSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv right env
+        slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.fcmp32 op left right) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_fcmp32 (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (leftSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (rightSpec env slots paid live)) env slots
+      paid live)
+#print axioms spec_fcmp32
 
 /-- An operation on one float.  The negation subtracts from negative zero, pushed first. -/
 theorem specX_funary32 {Γ : List Ty} (op : F32UnOp) {e : Expr S Γ .float32}
@@ -148,6 +185,17 @@ theorem specX_funary32 {Γ : List Ty} (op : F32UnOp) {e : Expr S Γ .float32}
     simpa [Expr.denote, F32UnOp.apply, f32Sqrt, f32Abs, F32Bits.toBits_sqrt, F32Bits.toBits_abs,
       f32Nearest, F32Nearest.toBits_nearest] using hv
 
+/-- An operation on one float.  The negation subtracts from negative zero, pushed first. -/
+theorem spec_funary32 {Γ : List Ty} (op : F32UnOp) {e : Expr S Γ .float32}
+    (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.funary32 op e) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_funary32 (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (eSpec env slots paid live)) env slots
+      paid live)
+#print axioms spec_funary32
+
 /-- A conversion of a word to a float. -/
 theorem specX_toFloat32 {Γ : List Ty} (op : ToFloat32) {e : Expr S Γ .word}
     (eSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits
@@ -173,6 +221,17 @@ theorem specX_toFloat32 {Γ : List Ty} (op : ToFloat32) {e : Expr S Γ .word}
       Float32Facts.toBits_toFloat32, F32Bits.toBits_ofBits, Float32Facts.add_negZero,
       wrap_toUInt32_num, f32ConvertI32S, Float32Facts.signed32_toFloat] using hv
 
+/-- A conversion of a word to a float. -/
+theorem spec_toFloat32 {Γ : List Ty} (op : ToFloat32) {e : Expr S Γ .word}
+    (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.toFloat32 op e) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_toFloat32 (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (eSpec env slots paid live)) env slots
+      paid live)
+#print axioms spec_toFloat32
+
 /-- A conversion of a float to a word. -/
 theorem specX_toWord32 {Γ : List Ty} (op : ToWord32) {e : Expr S Γ .float32}
     (eSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits
@@ -196,6 +255,17 @@ theorem specX_toWord32 {Γ : List Ty} (op : ToWord32) {e : Expr S Γ .float32}
   cases op <;>
     simpa [ToWord32.code, Expr.denote, ToWord32.apply, i64TruncSatF32U, Float32Facts.toUInt64_eq,
       Float32Facts.to_signed32, i32TruncSatF32S] using hv
+
+/-- A conversion of a float to a word. -/
+theorem spec_toWord32 {Γ : List Ty} (op : ToWord32) {e : Expr S Γ .float32}
+    (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.toWord32 op e) env
+        slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_toWord32 (strict := false) op
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (eSpec env slots paid live)) env slots
+      paid live)
+#print axioms spec_toWord32
 
 end Cases
 

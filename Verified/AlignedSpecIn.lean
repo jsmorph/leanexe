@@ -73,6 +73,14 @@ theorem CodeSpecInX.spec {strict : Bool}
       simpa only [Expr.paidIn, Expr.buysIn, Bool.false_eq_true, ↓reduceIte, Nat.add_zero] using
         hle hf
 
+theorem CodeSpecIn.spec {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module} {funs : Funs S}
+    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+    {e : Expr S Γ t} {env : Env Γ} {slots : List Slot} {paid : List Bool} {live : Nat → Bool}
+    {pool : Bytes.LiteralPool}
+    (h : CodeSpecIn false m funs flags bounds fits host pv e env slots paid live pool) :
+    CodeSpec m funs flags bounds fits host pv e env slots paid live pool :=
+  CodeSpecX.false_iff.mp (CodeSpecInX.spec (strict := false) (CodeSpecInX.false_iff.mpr h))
+
 theorem CodeSpecX.specIn {strict : Bool} (buy : Bool)
     (hp : e.bodyPaid flags (slots.map Slot.mode) paid live =
       e.paid flags (slots.map Slot.mode) paid live)
@@ -90,6 +98,20 @@ theorem CodeSpecX.specIn {strict : Bool} (buy : Bool)
         simpa only [Expr.paidIn, Expr.buysIn, hp, hb, Bool.false_eq_true, ↓reduceIte,
           Nat.add_zero] using this
 
+/-- `CodeSpec` of an expression whose value is paid as `Expr.paid` states also in the result of a
+loop's body, and which charges no credit there, gives `CodeSpecIn` for either flag. -/
+theorem CodeSpec.specIn {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module} {funs : Funs S}
+    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+    {e : Expr S Γ t} {env : Env Γ} {slots : List Slot} {paid : List Bool} {live : Nat → Bool}
+    {pool : Bytes.LiteralPool} (buy : Bool)
+    (hp : e.bodyPaid flags (slots.map Slot.mode) paid live =
+      e.paid flags (slots.map Slot.mode) paid live)
+    (hb : e.buys funs flags (slots.map Slot.mode) paid live env = 0)
+    (h : CodeSpec m funs flags bounds fits host pv e env slots paid live pool) :
+    CodeSpecIn buy m funs flags bounds fits host pv e env slots paid live pool :=
+  CodeSpecInX.false_iff.mp (CodeSpecX.specIn (strict := false) buy hp hb
+    (CodeSpecX.false_iff.mpr h))
+
 end
 
 /-- `specOf` under the flag. -/
@@ -102,6 +124,26 @@ theorem specOfX {strict : Bool} {S : List Sig} {m : Module} {funs : Funs S} {fla
       paid live pool :=
   fun env slots paid live => (h false env slots paid live).spec
 
+section
+
+variable {pool : Bytes.LiteralPool}
+
+variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
+  {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+
+/-- `CodeSpec` from `CodeSpecIn` of every flag. -/
+theorem specOf {Γ : List Ty} {t : Ty} {e : Expr S Γ t}
+    (h : ∀ buy env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv
+      e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots
+      paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specOfX (strict := false)
+      (fun buy env slots paid live => CodeSpecInX.false_iff.mpr (h buy env slots paid live)) env
+      slots paid live)
+
+end
+
 /-- `specInOf` under the flag. -/
 theorem specInOfX {strict : Bool} {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S}
     {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
@@ -113,6 +155,29 @@ theorem specInOfX {strict : Bool} {S : List Sig} {m : Module} {funs : Funs S} {f
     ∀ buy env slots paid live, CodeSpecInX strict buy m funs flags bounds fits host pv e env
       slots paid live pool :=
   fun buy env slots paid live => CodeSpecX.specIn buy (hp _ _ _) (hb _ _ _ _) (h env slots paid live)
+
+section
+
+variable {pool : Bytes.LiteralPool}
+
+variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
+  {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+
+/-- `CodeSpecIn` of every flag for an expression that `Expr.bodyPaid` and `Expr.buys` treat as
+`Expr.paid` does. -/
+theorem specInOf {Γ : List Ty} {t : Ty} {e : Expr S Γ t}
+    (hp : ∀ modes paid live, e.bodyPaid flags modes paid live = e.paid flags modes paid live)
+    (hb : ∀ modes paid live env, e.buys funs flags modes paid live env = 0)
+    (h : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots
+      paid live) :
+    ∀ buy env slots paid live, CodeSpecIn (pool := pool) buy m funs flags bounds fits host pv e env
+      slots paid live :=
+  fun buy env slots paid live =>
+    CodeSpecInX.false_iff.mp (specInOfX (strict := false) hp hb
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (h env slots paid live)) buy env slots
+      paid live)
+
+end
 
 /-- The first of two values in a row keeps its alignment across the second's step. -/
 theorem After.alignedSeq {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L1 live : Nat → Bool}

@@ -2,6 +2,7 @@ import Verified.Wasi.CommandCallSpec
 import Verified.Wasi.CallBudget
 import Verified.Wasi.CostCallHelper
 import Verified.Wasi.CostCodeSpec
+import Verified.AlignedCorrect
 
 namespace Verified.Wasi
 

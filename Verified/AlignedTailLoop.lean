@@ -99,6 +99,51 @@ theorem tail_step_specX {strict : Bool} {S : List Sig} {params : List Ty} {resul
   rw [top1] at ht
   exact ht.trans (by omega)
 
+theorem tail_step_spec {S : List Sig} {params : List Ty} {result : Ty} {m : Module}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m) (modes : List Mode)
+    (body : TailBody S params result params)
+    (bodySpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv modes body)
+    (place : body.placeArgs modes (entryModes params modes) = true)
+    (pf : List Bool) (rf : Bool)
+    (hPaid : rf = true → body.paidResult flags (entryModes params modes) pf = true)
+    (h stateBase resultBase base exitLabel nextLabel : Nat) (env : Env params)
+    (heap : Heap) (store : Store Unit) (s : Locals) (ws : List Value)
+    (hh : s.positions = h) (hpv : s.params = pv)
+    (hRep : Env.Rep (paramMode params modes) heap store ws env)
+    (hSep : Separate store (Env.moves store (paramMode params modes) ws env)
+      (Env.reads store (paramMode params modes) ws env))
+    (hold : LocalsHold s stateBase (params.flatMap Ty.types) ws)
+    (hAt : heap.At store)
+    (hSafe : pool.Safe env (paramSlots params modes stateBase) (fun _ => true) heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hLow : s.params.length ≤ stateBase) (hState : stateBase + widthSum params ≤ resultBase)
+    (hResult : resultBase + result.width ≤ base) (hRoom : base + body.width modes ≤ h)
+    (Q : Assertion Unit)
+    (hTrap : TrapOK (!body.fits funs fits env ||
+      ((body.aborts || !result.scalar || (paramModes params modes).any (· == .owned)) &&
+        !decide (heap.Within store m (Env.argPot store
+          (fun i => paidAt pf i && paramMode params modes i == .owned) ws env +
+            body.allocs funs flags bounds modes pf (entryModes params modes) pf env)))) Q)
+    (hNext : ∀ heap' store' s'
+      (after : TailAfter env (paramSlots params modes stateBase) (fun _ => true) modes
+        stateBase resultBase heap store s (body.denote funs env) heap' store' s'),
+      (body.fits funs fits env = true →
+        heap'.top.toNat + tailPot modes pf rf store' after.words (body.denote funs env) ≤
+          heap.top.toNat + Env.argPot store
+            (fun i => paidAt pf i && paramMode params modes i == .owned) ws env +
+              body.allocs funs flags bounds modes pf (entryModes params modes) pf env) →
+      Q (.Break ((body.denote funs env).elim (fun _ => nextLabel) (fun _ => exitLabel)) store'
+        { s' with values := s.values })) :
+    wp m (releaseWhere params (paramSlots params modes stateBase) (fun i => !body.usesFast i) ++
+      body.code (pool := pool) modes h stateBase resultBase (paramSlots params modes stateBase) base
+        exitLabel nextLabel) Q store s host :=
+  tail_step_specX (strict := false) hm nofun modes body (TailCodeSpecX.false_iff.mpr bodySpec) place
+    pf rf hPaid h stateBase resultBase base exitLabel nextLabel env heap store s ws hh hpv hRep hSep
+    hold hAt nofun hSafe hCap hLow hState hResult hRoom Q hTrap
+    (fun heap' store' s' after _ a2 => hNext heap' store' s' after a2)
+#print axioms tail_step_spec
+
 theorem tail_loop_specX {strict : Bool} {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S}
     {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool} {host : HostEnv Unit} {pv : List Value}
     (hm : Runtime m) (hRA : strict = true → ReleaseAligned m)
@@ -286,4 +331,78 @@ theorem tail_loop_specX {strict : Bool} {S : List Sig} {m : Module} {funs : Funs
     dsimp only [budget, sel, pf, a, after, TailAfter.congr] at ht hr boundEq ⊢
     omega
 
+theorem tail_loop_spec {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S}
+    {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool} {host : HostEnv Unit} {pv : List Value}
+    (hm : Runtime m) (func : TailFunc S) (decreases : func.Decreases funs)
+    (meaning : Env func.params → func.result.denote)
+    (fixed : ∀ state, meaning state = (func.body.denote funs state).elim meaning id)
+    (bodySpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv func.modes func.body)
+    (h stateBase resultBase base : Nat) (env : Env func.params)
+    (heap : Heap) (store : Store Unit) (s : Locals) (ws : List Value)
+    (hh : s.positions = h) (hpv : s.params = pv)
+    (hRep : Env.Rep (paramMode func.params func.modes) heap store ws env)
+    (hSep : Separate store (Env.moves store (paramMode func.params func.modes) ws env)
+      (Env.reads store (paramMode func.params func.modes) ws env))
+    (hold : LocalsHold s stateBase (func.params.flatMap Ty.types) ws)
+    (hAt : heap.At store)
+    (hInput : @Bytes.LiteralPool.Input (Env func.params) (Env.represent func.params func.modes)
+      pool heap store ws env)
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hLow : s.params.length ≤ stateBase)
+    (hState : stateBase + widthSum func.params ≤ resultBase)
+    (hResult : resultBase + func.result.width ≤ base)
+    (hRoom : base + func.body.width func.modes ≤ h) (Q : Assertion Unit)
+    (hTrap : TrapOK (!func.fits funs fits env || (func.aborts &&
+      !decide (heap.Within store m (Env.argPot store
+        (fun i => paidAt (func.paidParams flags) i && paramMode func.params func.modes i == .owned)
+        ws env + func.bound funs flags bounds env)))) Q)
+    (hNext : ∀ heap' store' s' words,
+      Step heap store (Apart store (Env.moves store (paramMode func.params func.modes) ws env))
+        heap' store' (func.result.blocks store' words (meaning env)) →
+      Frame stateBase s s' → func.result.Rep .owned heap' store' words (meaning env) →
+      LocalsHold s' resultBase func.result.types words →
+      (func.fits funs fits env = true →
+        heap'.top.toNat + (if func.paidResult flags then
+          func.result.pot store' words (meaning env) else 0) ≤
+          heap.top.toNat + Env.argPot store
+            (fun i => paidAt (func.paidParams flags) i && paramMode func.params func.modes i == .owned)
+            ws env + func.bound funs flags bounds env) →
+      Q (.Break 0 store' { s' with values := s.values })) :
+    wp m [.loop 0 0
+      (releaseWhere func.params (paramSlots func.params func.modes stateBase)
+        (fun i => !func.body.usesFast i) ++
+        func.body.code (pool := pool) func.modes h stateBase resultBase
+          (paramSlots func.params func.modes stateBase) base 1 0) [] []] Q store s host :=
+  tail_loop_specX (strict := false) hm nofun func decreases meaning fixed
+    (TailCodeSpecX.false_iff.mpr bodySpec) h stateBase resultBase base env heap store s ws hh hpv
+    hRep hSep hold hAt nofun hInput hCap hLow hState hResult hRoom Q hTrap
+    (fun heap' store' s' words a1 a2 a3 a4 _ a6 => hNext heap' store' s' words a1 a2 a3 a4 a6)
+#print axioms tail_loop_spec
+
 end Verified
+
+namespace Verified.Tail
+
+open Wasm
+
+variable {ι α : Type}
+
+theorem wp_loop_indexed {Inv : ι → AssertionF α} {rank : ι → Nat}
+    {m : Module} {body rest : Program} {Q : Assertion α} {host : HostEnv α}
+    {store : Store α} {s : Locals} {ps rs : Nat} {initial : ι}
+    (hInit : Inv initial store s)
+    (hStep : ∀ state store s, Inv state store s →
+      wp m body (fun cont => match cont with
+        | .Fallthrough store' s' =>
+          wp m rest Q store' { s' with values := s'.values.take rs ++ s.values.drop ps } host
+        | .Break 0 store' s' =>
+          ∃ next, Inv next store' { s' with values := s'.values.take ps ++ s.values.drop ps } ∧
+            rank next < rank state
+        | .Break (k + 1) store' s' => Q (.Break k store' s')
+        | other => Q other) store s host) :
+    wp m (.loop ps rs body :: rest) Q store s host :=
+  wpX_loop_indexed (strict := false) hInit hStep
+#print axioms wp_loop_indexed
+
+
+end Verified.Tail

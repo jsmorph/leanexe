@@ -14,75 +14,6 @@ section
 
 variable {m : Module} {host : HostEnv Unit}
 
-/-- A value turned from mode `source` into mode `target` after an expression's code: a borrowed
-value that must be owned is copied into new blocks, which raises `top` by at most
-`coerceCost t source target v`, a value already owned keeps its store and words, and the facts of
-`After` carry over. -/
-theorem After.coerce (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List Slot}
-    {liveIn live : Nat → Bool} {h base base' : Nat} {heap : Heap} {store : Store Unit}
-    {s : Locals} {t : Ty} {source target : Mode} {v : t.denote} {heap1 : Heap}
-    {store1 : Store Unit} {s1 : Locals} {ws vs : List Value} {rest : Program}
-    {Q : Assertion Unit}
-    (a : After env slots liveIn live base heap store s t source v heap1 store1 s1 ws)
-    (hTarget : source = .owned → target = .owned) (hBase' : base ≤ base')
-    (hLow : s1.params.length ≤ base') (hh : s1.positions = h) (hRoom : base' + copyWidth t ≤ h)
-    (hCap : store1.memoryCap m 0 ≤ 65535)
-    (hTrap : source = .borrowed → target = .owned → t.scalar = false →
-      TrapOK (!decide (heap1.Within store1 m (t.copyCost v))) Q)
-    (hNext : ∀ heap2 store2 s2 ws2,
-      After env slots liveIn live base heap store s t target v heap2 store2 s2 ws2 →
-      heap2.top.toNat ≤ heap1.top.toNat + coerceCost t source target v →
-      (source = .owned → store2 = store1 ∧ ws2 = ws) →
-      wp m rest Q store2 { s2 with values := ws2.reverse ++ vs } host) :
-    wp m (coerceCode h t source target base' ++ rest) Q store1
-      { s1 with values := ws.reverse ++ vs } host := by
-  by_cases hCopy : source = .borrowed ∧ target = .owned ∧ t.scalar = false
-  · obtain ⟨hs, ht, hScalar⟩ := hCopy
-    subst hs ht
-    have hW : copyWidth t = t.width + t.copyScratch := by
-      simp [copyWidth, Ty.copyScratch, hScalar]
-    simp only [coerceCode, and_self, hScalar, ↓reduceIte, List.append_assoc]
-    refine wp_storeCode ws h base' t.types s1 vs a.rep.typed hh hLow
-      (by rw [Ty.types_length, hh]; omega) fun s2 hF2 hold2 _ => ?_
-    refine wp_copyCode hm t a.step.at_ hCap (hTrap rfl rfl hScalar)
-      (hF2.positions.trans hh) a.rep
-      hold2 (le_refl _) (by rw [hF2.params]; omega)
-      (by simp only [Locals.positions_values, hF2.positions, hh]; omega)
-      fun heap3 store3 s3 ws3 hStep3 hRep3 hF3 hTop3 => ?_
-    have hF13 : Frame base s1 s3 :=
-      (hF2.mono hBase').trans (Frame.ofValues.trans (hF3.mono (by omega)))
-    have hF : Frame base s s3 := a.frame.trans hF13
-    have hStep0 := a.step
-    simp only [Mode.fresh] at hStep0
-    refine hNext heap3 store3 s3 ws3 ⟨?_, hF, ?_, hRep3, ?_⟩ (by simpa [coerceCost] using hTop3)
-      nofun
-    · exact hStep0.trans hStep3 fun _ hr => ⟨hr, fun _ => trivial⟩
-    · exact (a.holds.step hStep3 fun _ _ _ _ _ _ _ _ => trivial).agree hF13
-    · intro u y hy _ wy hwy hly b hb c hc
-      have hwy' := (a.holds.hold_agree hF13 hy hly).mp hwy
-      obtain ⟨hSame, hFresh⟩ := a.holds.regions_after hStep3 hy hwy' hly fun _ _ => trivial
-      rw [hSame] at hc
-      exact regionsDisjoint_symm (hFresh c hc b hb)
-  · have hEmpty : coerceCode h t source target base' = [] := by
-      simp only [coerceCode]; rw [ite_eq_right hCopy]
-    rw [hEmpty, List.nil_append]
-    -- No copy: the modes agree, or the type holds no arrays.
-    have hSame : source = target ∨ t.scalar = true := by
-      cases source <;> cases target <;> simp_all
-    rcases hSame with rfl | hScalar
-    · exact hNext heap1 store1 s1 ws a (Nat.le_add_right _ _) fun _ => ⟨rfl, rfl⟩
-    · refine hNext heap1 store1 s1 ws ⟨?_, a.frame, a.holds, ?_, ?_⟩ (Nat.le_add_right _ _)
-        fun _ => ⟨rfl, rfl⟩
-      · have hStep := a.step
-        rw [Mode.fresh_scalar hScalar] at hStep ⊢
-        exact hStep
-      · cases target
-        · exact a.rep.borrow
-        · exact a.rep.owned hScalar
-      · intro u y hy hm wy hwy hly b hb
-        rw [Ty.regions_scalar t hScalar] at hb
-        exact nomatch hb
-
 end
 
 /-- The traps that the code of `e` may have from `heap` at `store`: any, when a call that it makes
@@ -155,18 +86,6 @@ def CodeSpecWith {S : List Sig} {Γ : List Ty} {t : Ty} (pays : Bool) (bound : N
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) →
     wp m (e.code (pool := pool) h slots base live ++ rest) Q store s host
 
-theorem CodeSpec.of_with {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module} {funs : Funs S}
-    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
-    {e : Expr S Γ t} {env : Env Γ} {slots : List Slot} {paid : List Bool} {live : Nat → Bool}
-    {pool : Bytes.LiteralPool} {bound : Nat}
-    (hb : e.allocs funs flags bounds (slots.map Slot.mode) paid live env = bound)
-    (h : CodeSpecWith (e.paid flags (slots.map Slot.mode) paid live) bound m funs flags bounds fits
-      host pv e env slots paid live pool) :
-    CodeSpec m funs flags bounds fits host pv e env slots paid live pool := by
-  unfold CodeSpec
-  rw [hb]
-  exact h
-
 /-- Whether an expression's value is paid: as `Expr.bodyPaid` states in the result of the body
 of a loop whose state grows, when `buy` holds, and as `Expr.paid` states otherwise. -/
 def Expr.paidIn {S : List Sig} {Γ : List Ty} {t : Ty} (buy : Bool) (flags : Flags S)
@@ -215,41 +134,6 @@ def CodeSpecIn {S : List Sig} {Γ : List Ty} {t : Ty} (buy : Bool) (m : Module) 
             e.buysIn buy funs flags (slots.map Slot.mode) paid live env) →
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) →
     wp m (e.code (pool := pool) h slots base live ++ rest) Q store s host
-
-theorem CodeSpecIn.spec {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module} {funs : Funs S}
-    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
-    {e : Expr S Γ t} {env : Env Γ} {slots : List Slot} {paid : List Bool} {live : Nat → Bool}
-    {pool : Bytes.LiteralPool}
-    (h : CodeSpecIn false m funs flags bounds fits host pv e env slots paid live pool) :
-    CodeSpec m funs flags bounds fits host pv e env slots paid live pool := by
-  intro hh base heap store s hs hp hH hA hSafe hCap hBase hRoom hPlace rest Q hTrap hNext
-  exact h hh base heap store s hs hp hH hA hSafe hCap hBase hRoom hPlace rest Q
-    (by simpa only [Expr.buysIn, Bool.false_eq_true, ↓reduceIte, Nat.add_zero] using hTrap)
-    fun heap' store' s' ws a hle => hNext heap' store' s' ws a fun hf => by
-      simpa only [Expr.paidIn, Expr.buysIn, Bool.false_eq_true, ↓reduceIte, Nat.add_zero] using
-        hle hf
-
-/-- `CodeSpec` of an expression whose value is paid as `Expr.paid` states also in the result of a
-loop's body, and which charges no credit there, gives `CodeSpecIn` for either flag. -/
-theorem CodeSpec.specIn {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module} {funs : Funs S}
-    {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
-    {e : Expr S Γ t} {env : Env Γ} {slots : List Slot} {paid : List Bool} {live : Nat → Bool}
-    {pool : Bytes.LiteralPool} (buy : Bool)
-    (hp : e.bodyPaid flags (slots.map Slot.mode) paid live =
-      e.paid flags (slots.map Slot.mode) paid live)
-    (hb : e.buys funs flags (slots.map Slot.mode) paid live env = 0)
-    (h : CodeSpec m funs flags bounds fits host pv e env slots paid live pool) :
-    CodeSpecIn buy m funs flags bounds fits host pv e env slots paid live pool := by
-  intro hh base heap store s hs hpv hH hA hSafe hCap hBase hRoom hPlace rest Q hTrap hNext
-  have hZero : e.buysIn buy funs flags (slots.map Slot.mode) paid live env = 0 := by
-    cases buy <;> simp only [Expr.buysIn, hb, Bool.false_eq_true, ↓reduceIte]
-  exact h hh base heap store s hs hpv hH hA hSafe hCap hBase hRoom hPlace rest Q
-    (by simpa only [hZero, Nat.add_zero] using hTrap)
-    fun heap' store' s' ws a hle => hNext heap' store' s' ws a fun hf => by
-      have := hle hf
-      cases buy <;>
-        simpa only [Expr.paidIn, Expr.buysIn, hp, hb, Bool.false_eq_true, ↓reduceIte,
-          Nat.add_zero] using this
 
 /-- The allowance of a part of an expression from that of the whole: the part calls a function
 whose code takes the call depth only when the whole does, may allocate only when the whole may,
@@ -382,13 +266,6 @@ def CallsAt {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S) (bound
     (fits : Fits S) (d0 : UInt64) (pool : Bytes.LiteralPool) : Prop :=
   ∀ {g : Sig} (f : FVar S g), FunSpec m g f.callIndex (funs.get f) (flags.params f)
     (flags.result f) (bounds.get f) (fits.get f) (fun d => d = d0 + 1) pool
-
-theorem Calls.at {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S}
-    {bounds : Nat → Bounds S} {fits : Nat → Fits S} {pool : Bytes.LiteralPool}
-    (h : Calls m funs flags bounds fits pool)
-    (d0 : UInt64) :
-    CallsAt m funs flags (bounds (framesAt (d0 + 1))) (fits (framesAt (d0 + 1))) d0 pool :=
-  fun f => h f (d0 + 1)
 
 /-- The potential of a call's arguments after the call depth is that of the arguments. -/
 theorem Env.argPot_depthOf {store : Store Unit} {ps : List Ty} {sel : Nat → Bool}

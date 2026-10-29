@@ -826,5 +826,20 @@ theorem specX_bytesBuild {strict : Bool} {S : List Sig} {m : Module} {funs : Fun
     have hDone := hFinish heapF storeF sf root aF hAlF (by simpa only [hOutputSize] using hTopF)
     simpa only [hs3, hs2, setLocal, hValuesF] using hDone
 
+theorem spec_bytesBuild {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S}
+    {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
+    (hm : Runtime m) {Γ : List Ty} {count : Expr S Γ .word}
+    {elem : Expr S (.word :: Γ) .word}
+    (countSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv count env
+      slots paid live)
+    (elemSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv elem env
+      slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.bytesBuild count elem)
+      env slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_bytesBuild (strict := false) hm nofun nofun
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (countSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (elemSpec env slots paid live)) env slots
+      paid live)
 
 end Verified

@@ -2,6 +2,7 @@ import Verified.Wasi.CommandCodeSpec
 import Verified.Wasi.CompilerFacts
 import Verified.Wasi.CallOwnership
 import Verified.Wasi.CallCommand
+import Verified.AlignedCorrect
 
 namespace Verified.Wasi
 

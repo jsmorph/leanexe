@@ -1,4 +1,5 @@
 import Verified.AlignedCorrect
+import Verified.Correct
 import LeanExe.Pipeline.ImplementsAligned
 
 /-!
@@ -76,25 +77,6 @@ theorem FunSpecX.implementsAligned {m : Module} {g : Sig} {idx : Nat}
     subst hv
     exact ⟨heap', hAt', hOwned, hCaps, hRegions, trivial, hHeapAl,
       fun b hb => ⟨(hV b hb).1, (hV b hb).2 rfl⟩⟩
-
-/-- `wp_localGets` under the flag. -/
-theorem wpX_localGets {strict : Bool} {m : Module} {host : HostEnv Unit} {Q : Assertion Unit}
-    {store : Store Unit} {rest : Program} : (vs : List Value) → (k : Nat) → (s : Locals) →
-    (∀ i (hi : i < vs.length), s.get (k + i) = some vs[i]) →
-    wpX strict m rest Q store { s with values := vs.reverse ++ s.values } host →
-    wpX strict m ((List.range' k vs.length).map Instruction.localGet ++ rest) Q store s host
-  | [], _, s, _, h => by
-    simp only [List.reverse_nil, List.nil_append, List.length_nil, List.range'_zero,
-      List.map_nil] at h ⊢
-    exact h
-  | v :: vs, k, s, hget, h => by
-    have h0 : s.get k = some v := hget 0 (by simp)
-    simp only [List.length_cons, List.range'_succ, List.map_cons, List.cons_append,
-      wpX_localGet_cons, h0]
-    refine wpX_localGets vs (k + 1) _ (fun i hi => ?_) ?_
-    · rw [Locals.get_values, show k + 1 + i = k + (i + 1) by omega]
-      exact hget (i + 1) (by simp; omega)
-    · simpa using h
 
 /-- `ImplementsAligned` of the exported entry of a function whose code takes the call depth:
 the entry pushes depth 0 and the arguments and calls the function, whose run `FunAligned`
@@ -197,17 +179,6 @@ theorem tableAddr_mod8 (tables : List (Array UInt64)) (k : Nat) :
   rw [UInt64.toNat_ofNat']
   simp only [Nat.reducePow]
   omega
-
-/-- `wp_constI64s` under the flag. -/
-theorem wpX_constI64s {strict : Bool} {m : Module} {host : HostEnv Unit} {Q : Assertion Unit}
-    {store : Store Unit} {rest : Program} : (addrs : List UInt64) → (s : Locals) →
-    wpX strict m rest Q store { s with values := (addrs.map Value.i64).reverse ++ s.values } host →
-    wpX strict m (addrs.map Instruction.constI64 ++ rest) Q store s host
-  | [], s, h => by simpa using h
-  | a :: as, s, h => by
-    simp only [List.map_cons, List.cons_append, wpX_constI64_cons]
-    refine wpX_constI64s as _ ?_
-    simpa using h
 
 /-- `ImplementsTablesAligned` of a wrapper, from the aligned runs of its callee: the wrapper
 pushes the tables' addresses and its arguments and calls the callee, whose context, the tables

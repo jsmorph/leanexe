@@ -1,6 +1,7 @@
 import Verified.TailLoop
 import Verified.LocalFrame
 import LeanExe.ProofKit.Sequencing
+import Verified.AlignedTailLoop
 
 namespace Verified.Wasi
 

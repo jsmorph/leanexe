@@ -37,6 +37,17 @@ theorem step_specX {strict : Bool} {S : List Sig} {e : Elem} {captures : List Ty
     rw [hx]
     exact specX_var hCopy x
 
+theorem step_spec {S : List Sig} {e : Elem} {captures : List Ty}
+    {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
+    (body : Expr S (context e captures) (.elem e))
+    (bodySpec : ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv body env slots paid live) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv [] (tailBody body) :=
+  TailCodeSpecX.false_iff.mp (step_specX (strict := false) hm nofun (copyCodeX hm) body
+    (fun env slots paid live => CodeSpecX.false_iff.mpr (bodySpec env slots paid live)))
+#print axioms step_spec
+
 theorem loop_specX {strict : Bool} {S : List Sig} {e : Elem} {captures : List Ty}
     {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
@@ -95,6 +106,44 @@ theorem loop_specX {strict : Bool} {S : List Sig} {e : Elem} {captures : List Ty
     apply next heap' store' s' words step frame result held al
     simpa only [func_paidResult, Bool.false_eq_true, ↓reduceIte, argPot_eq_zero,
       Nat.add_zero] using top
+
+theorem loop_spec {S : List Sig} {e : Elem} {captures : List Ty}
+    {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
+    (body : Expr S (context e captures) (.elem e)) (place : body.placeArgs = true)
+    (bodySpec : ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv body env slots paid live)
+    (h stateBase : Nat) (env : Env (params e captures))
+    (heap : Heap) (store : Store Unit) (s : Locals) (ws : List Value)
+    (hh : s.positions = h) (hpv : s.params = pv)
+    (rep : Env.Rep (paramMode (params e captures) []) heap store ws env)
+    (sep : Separate store (Env.moves store (paramMode (params e captures) []) ws env)
+      (Env.reads store (paramMode (params e captures) []) ws env))
+    (hold : LocalsHold s stateBase ((params e captures).flatMap Ty.types) ws)
+    (at_ : heap.At store)
+    (input : @Bytes.LiteralPool.Input (Env (params e captures))
+      (Env.represent (params e captures) []) pool heap store ws env)
+    (cap : store.memoryCap m 0 ≤ 65535)
+    (low : s.params.length ≤ stateBase)
+    (room : stateBase + widthSum (params e captures) + e.width + (tailBody body).width [] ≤ h)
+    (rest : Program) (Q : Assertion Unit)
+    (trap : TrapOK (!(func body place).fits funs fits env ||
+      !decide (heap.Within store m ((func body place).bound funs flags bounds env))) Q)
+    (next : ∀ heap' store' s' words,
+      Step heap store (Apart store (Env.moves store (paramMode (params e captures) []) ws env))
+        heap' store' [] →
+      Frame stateBase s s' → (.elem e : Ty).Rep .owned heap' store' words (meaning body funs env) →
+      LocalsHold s' (stateBase + widthSum (params e captures)) e.types words →
+      ((func body place).fits funs fits env = true →
+        heap'.top.toNat ≤ heap.top.toNat + (func body place).bound funs flags bounds env) →
+      wp m rest Q store' { s' with values := s.values } host) :
+    wp m (loopCode body h stateBase (fun slots base live => body.code (pool := pool) h slots base live) ++ rest)
+      Q store s host :=
+  loop_specX (strict := false) hm nofun (copyCodeX hm) body place
+    (fun env slots paid live => CodeSpecX.false_iff.mpr (bodySpec env slots paid live)) h stateBase
+    env heap store s ws hh hpv rep sep hold at_ nofun input cap low room rest Q trap
+    (fun heap' store' s' words a1 a2 a3 a4 _ a6 => next heap' store' s' words a1 a2 a3 a4 a6)
+#print axioms loop_spec
 
 end Verified.ListFold
 
@@ -245,5 +294,24 @@ theorem specX_listFold {strict : Bool} {S : List Sig} {Γ : List Ty} {e : Elem} 
   rw [allocEq]
   dsimp only [f, charge]
   omega
+
+theorem spec_listFold {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List Ty}
+    {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
+    (args : (i : Fin (ListFold.params e captures).length) →
+      Expr S Γ ((ListFold.params e captures).get i))
+    (body : Expr S (ListFold.context e captures) (.elem e))
+    (argsSpec : ∀ i env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (args i) env slots paid live)
+    (bodySpec : ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv body env slots paid live) :
+    ∀ env slots paid live,
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (.listFold args body) env slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_listFold (strict := false) hm nofun (copyCodeX hm) args body
+      (fun i env slots paid live => CodeSpecX.false_iff.mpr (argsSpec i env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (bodySpec env slots paid live)) env slots
+      paid live)
+#print axioms spec_listFold
 
 end Verified
