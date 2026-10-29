@@ -38376,10 +38376,19 @@ The third stage ports each construct of `Expr.code_specIn` to `wpX strict`.  A c
 The coordinator decided that, when the port is complete, each original construct proof becomes the `strict = false` corollary of its flagged proof, `CodeSpecX.false_iff.mp` of `specX_c` with `readReleaseX_false` and `copyCodeX_false` for the stage-3 premises, and its proof text is removed.  The names, statements, and one-to-one correspondence of the ports keep that replacement mechanical.  The originals of lemmas that `wpX_append_free` carries stay, since the flagged forms rest on them.
 
 - [x] The scalar constructs, the readers, `ite`, `letE`, `pair`, and `letPair`.
-- [ ] `call`, `loop`, `fold`, and `listFold`.
-- [ ] The array writers: `build`, `set`, `push`, `append`, `insertAt`, `eraseAt`, and the room they share.
-- [ ] `bytesLiteral` and `bytesBuild`.
-- [ ] `CopyCodeX`: buffers, tree headers, trees, and pairs, arrays being done.
-- [ ] `treeNode` and `treeCase`.
-- [ ] `Expr.code_specIn` under the flag and the function level in `Correct.lean`.
+- [x] `call`, `loop`, and `fold`.  `listFold`, whose proof runs through the tail loops, is ported with the tail loops.
+- [x] The array writers: `build`, `set`, `push`, `append`, `insertAt`, `eraseAt`, and the room they share.
+- [x] `bytesLiteral` and `bytesBuild`.
+- [ ] `CopyCodeX`: buffers, tree headers, trees, and pairs, arrays being done.  The second stage proves it.
+- [x] `treeNode` and `treeCase`.
+- [x] `Expr.code_specIn` under the flag and the function level in `Correct.lean`, with the list fold and the tail functions as premises.
+- [ ] The list fold and the tail functions from the port of the tail loops in place of the premises.
 - [ ] Each original construct proof as the `strict = false` corollary of its port.
+
+## 2026-10-29: Calls and the function level under the flag
+
+A call's alignment rests on the callee's.  `FunAligned` in [the flagged call](Verified/AlignedCall.lean) states that a run of a function from an aligned heap and arguments whose values `Env.AlignedVals` aligns is a `RunsA`, whose postcondition `FunPost true` is that of `FunSpec.runs` together with the alignment of the final heap and of the owned result.  `FunSpecX strict` is `FunSpec` together with `FunAligned` under `strict = true`, and `CallsAtX` is `CallsAt` with `FunSpecX`.  I chose a separate `FunAligned` over a flagged `ImplementsP` because `ImplementsP` belongs to the statement layer, which this stage does not change, and because a call site needs the alignment of the same final heap that `FunSpec.runs` describes, which only a joint postcondition gives.
+
+`Prog.callsX` in [the flagged program induction](Verified/AlignedCorrect.lean) proves `CallsX strict`, `Calls` with `FunSpecX`, by the induction of `Prog.calls`.  Each case gives the function's `FunSpec` as before and, under `strict = true`, its `FunAligned` from `bodyFunction_runsX` of [the flagged function level](Verified/AlignedFunction.lean) and `RunsA.append_args`.  A recursive function needs a second induction on the frames left, whose step takes the function's own `FunSpec` at the next depth from the first induction and its `FunAligned` from the second.  `RunsA.append_args` and `RunsA.mono` sit in [the aligned runs](LeanExe/Pipeline/AlignedRuns.lean) with `RunsA`, and `RunsA.of_imp` stays in the function level because it uses `Runs.of_imp` of `Verified/ExprCorrect.lean`.
+
+Two parts of the function level come from the port of the tail loops, and enter as premises until it is merged: `ListFoldSpecX`, the conclusion of `specX_listFold` without its runtime premises, and `TailRunsX`, the statement of the flagged `TailFunc.function_runs` without them.  At `strict = false`, `listFoldSpecX_false` and `tailRunsX_false` prove them from the originals, so no statement on the branch lacks a proof.  The opening of a tree record needed no new premise in `wpX_openTree`: a field's regions lie in the tree's regions by the original continuation, so `HoldsA.openTree` derives the branch context's invariant from the tree's alignment and the outer invariant across the detach.
