@@ -138,3 +138,4 @@ import Verified.AlignedTreeMatch
 import Verified.AlignedTreeCase
 import Verified.AlignedExprCorrect
 import Verified.AlignedEnv
+import Verified.AlignedFunction
