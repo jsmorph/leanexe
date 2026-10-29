@@ -38172,3 +38172,11 @@ The pairs ran from 19:41 to 19:45 UTC on 2026-10-28.  A short job that ran `lake
 `ccomp -version` prints "The CompCert C verified compiler, version 3.17", and the benchmark records that string with "from the 3.18 sources" appended.  The tag archive of 3.18, whose SHA-256 the journal of phase A records, holds `version=3.17` in its `VERSION` file, which the driver prints, while its `Changelog.md` begins with "Release 3.18".  Whether the release meant to keep 3.17 in `VERSION` is open.
 
 - [x] The benchmark of the build with `-fno-common`.
+
+## 2026-10-29: The Wasm-to-C translator: its last commits on the combined history
+
+Four commits of the translator branch had not reached the combined history: the benchmark's input generator run through `uv`, the reconciliation of the plan items, the binary32 square root in the differential test, and the record of the decisions on the open items.  They now follow the bound in a temporary.  Their conflicts lay in this journal only, where each kept the newer state of an item that both sides changed and put its own entries after the entry on `-fno-common`, and the design and the scripts merged without a conflict.  The two theorem items stay ticked, as the entry on the bound in a temporary records.
+
+With the square root through `double`, the differential test agrees with `ccomp -interp` on all 921 programs with both CompCert trees: 300 random programs, 21 NaN programs, 300 programs with traces, and 300 with inputs.  Of the NaN programs, 10 print different bits under the two targets' parameters, against 8 of 18 before.  As in the earlier runs of seed 7, one random program's output depends on the target: `t192` stores a NaN that it computes in `g_f64`, the default NaN of each target, `0x7FF8000000000000` under AArch64's parameters and `0xFFF8000000000000` under x86-64's.  `uv run tests/native/bench_inputs.py` writes six files equal to those that the benchmark of the build with `-fno-common` used.
+
+- [x] The four commits on the combined history, with the differential test on both trees.
