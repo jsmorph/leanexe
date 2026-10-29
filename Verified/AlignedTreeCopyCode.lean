@@ -9,48 +9,12 @@ The reads and the word steps of the tree copy under the flag: the ports of
 into the slot of the record being copied at its pointer plus 8 times the slot's index and the next
 index into its header at its pointer minus 8, and it reads the record's source from its header at
 its pointer minus 24 and the slot of the source.  Each access is aligned when the record's pointer
-and source are, which `CopyAligned` gives.  `wpX_localSet_cons` and `wpX_localTee_cons` are
-Talos's rules under the flag, for the proofs that run `simp` over code that sets locals.
+and source are, which `CopyAligned` gives.
 -/
 
 namespace Verified
 
 open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
-
-section
-
-variable {α : Type} {strict : Bool} {m : Module} {rest : Program} {Q : Assertion α}
-  {st : Store α} {s : Locals} {env : HostEnv α} {i : Nat}
-
-@[simp] theorem wpX_localSet_cons :
-    wpX strict m (.localSet i :: rest) Q st s env ↔
-    (match s.values with
-     | v :: vs =>
-        (match s.set? i v with
-         | some s' => wpX strict m rest Q st { s' with values := vs } env
-         | none    => Q (.Invalid "localSet index out of bounds"))
-     | _ => Q (.Invalid "localSet with empty stack")) := by
-  cases strict
-  · exact wp_localSet_cons
-  · simp only [wpX_true, wpA_localSet_free, wp_localSet_cons, wp_nil, thenA]
-    rcases hv : s.values with _ | ⟨v, vs⟩ <;> simp only
-    rcases hs : s.set? i v with _ | s' <;> simp only
-
-@[simp] theorem wpX_localTee_cons :
-    wpX strict m (.localTee i :: rest) Q st s env ↔
-    (match s.values with
-     | v :: _ =>
-        (match s.set? i v with
-         | some s' => wpX strict m rest Q st s' env
-         | none    => Q (.Invalid "localTee index out of bounds"))
-     | _ => Q (.Invalid "localTee with empty stack")) := by
-  cases strict
-  · exact wp_localTee_cons
-  · simp only [wpX_true, wpA_localTee_free, wp_localTee_cons, wp_nil, thenA]
-    rcases hv : s.values with _ | ⟨v, vs⟩ <;> simp only
-    rcases hs : s.set? i v with _ | s' <;> simp only
-
-end
 
 /-- The pointer of the record being copied. -/
 theorem CopyInvX.pointerAl {strict : Bool} {shape : TreeShape} {heap0 heap : Heap}
