@@ -77,6 +77,11 @@ decreasing_by
 
 end
 
+theorem freeCode_append (a b : Program) : freeCode (a ++ b) = (freeCode a && freeCode b) := by
+  induction a with
+  | nil => simp [freeCode]
+  | cons i a ih => simp [freeCode, ih, Bool.and_assoc]
+
 theorem AlignedExec.append (f : Nat) (st : Store α) (s : Locals) (P rest : Program) :
     AlignedExec f m st s (P ++ rest) env ↔
       AlignedExec f m st s P env ∧ match exec f m st s P env with

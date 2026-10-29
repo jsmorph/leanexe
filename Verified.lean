@@ -124,3 +124,4 @@ import Verified.AlignedSpecIn
 import Verified.AlignedScalar
 import Verified.AlignedFloat32
 import Verified.AlignedReaders
+import Verified.AlignedControl
