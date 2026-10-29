@@ -21,6 +21,9 @@ import Verified.Wasi.Scratch
 import LeanExe.Wasi.Prefix
 import Verified.Examples.Bytes
 import Verified.Examples.Literals
+import Verified.AlignedExprCorrect
+import Verified.AlignedCorollaries
+import Verified.AlignedTailEntry
 
 open Lean Elab Command in
 elab "check_wasi_axioms" : command => do
