@@ -38315,3 +38315,52 @@ The confidence is low for the invariant row, the largest, which the prototype do
 - [x] The estimate by area.
 - [ ] The decision on the proposed premise of `NativeA`, `NativeTablesA`, and `NativeStaticA`.
 - [ ] The user's decision on building the proof.
+
+## 2026-10-29: Measuring the third stage of the alignment proof
+
+The coordinator decided to measure the third stage, the port of the universal proof, before building the other two, since only the third carries the risk and only all three together drop the test.  The measurement ports one representative piece at each of the two levels of the proof under the flag `strict`, counts the part of the universal proof that a port touches, and settles which pointers of a tree argument the proposed premise reaches.  The proposed change to `NativeA`, `NativeTablesA`, and `NativeStaticA` stays a proposal, which an independent reviewer would read before the third stage.  Every theorem added here uses only `propext`, `Classical.choice`, and `Quot.sound`, and each new module builds in under 3 seconds on top of the existing build.
+
+**The flag.**  `wpX strict` in [the flagged rules](LeanExe/ProofKit/AlignedFlag.lean) is `wp` at `strict = false` and `wpA` at `strict = true`, both by definition, and each of its rules joins Talos's rule with the `wpA` rule.  A proof written once against the `wpX` rules therefore proves today's statement at `false` and the aligned one at `true`, and the alignment of an access is a conjunct under `strict = true`, vacuous at `false`.  The module has 281 lines and covers the rules that the two ports below use.
+
+**The code-level port.**  [The flagged array copy](Verified/AlignedArrayCopy.lean) ports `ArrayCopy.lean`: `wp_allocBlock`, `wp_copyInto`, `wp_allocCopy`, and `wp_copyArray`, which allocate an array and run a loop of indexed 64-bit loads and stores into the block that `alloc` returns.  It is the smallest compiled construct with allocation, a loop, and indexed accesses at an allocation's result, and `Var.roomCode`, through which `sortInsert` moves its state into a larger block, runs the same allocation and copy loop.  Under `strict = true` the premises add `Heap.Aligned`, the alignment of the source array, and `AllocAligned`, the statement about `alloc`'s run that the second stage would prove, and each continuation receives the alignment of the new block and of the heap after it.  `wp_copyArray_of_flag` derives the original statement of `wp_copyArray` from the port at `strict = false`.  Of the 287 code lines of the four original theorems, 71 were written or changed, 25 percent, and 46 differ once the renames from `wp` to `wpX` are undone: 16 lines of new premises, 6 of alignment obligations, about 10 that pass alignment on to the continuation, and about 14 reflowed for the longer names.
+
+**The construct-level port.**  [The flagged specification](Verified/AlignedSpec.lean) adds the layer that the constructs use.  `Ty.AlignedVal` states that every region of a value starts at a multiple of 8 and, for an owned value, whose regions are its blocks, has a length that is a multiple of 8.  A borrowed array's or record's region starts at its pointer and a block at its pointer minus 48, so the statement covers every pointer and the capacity of every owned block.  `HoldsA` is `Heap.Aligned` and `Ty.AlignedVal` of every live variable, and `CodeSpecX strict` is `CodeSpec` with `wpX strict`, `HoldsA` as a premise under `strict = true`, and `HoldsA` with the value's alignment as a premise of the continuation.  `CodeSpecX.false_iff` proves that `CodeSpecX false` is `CodeSpec`.  The invariant persists across a step by `Ty.AlignedVal.step`, five lines over the equality of regions that `Ty.Rep.step` already proves, which is why the invariant names regions and not `Ty.pointers`: a tree's pointers are read from memory, and a statement over them would have needed a frame lemma of its own.
+
+`specX_size` ports `spec_size`, the length of an array, whose code loads the length word at the array's address and releases the array when it is owned and dies there.  Its 22 lines became 27, with 13 written or changed: 5 for the statement and the introduction, 2 that take the address's alignment from `HoldsA`, 3 renames, and one line each for the load's obligation, the release, and the continuation's invariant.  The release is the boundary of this port: `ReadReleaseX` states `read_release` under the flag, `readReleaseX_false` proves it at `false` from `read_release`, and its proof at `true` would port the release of every type, with the release's aligned run from the second stage.  `spec_size_of_flag` derives `spec_size` from the port at `false`.
+
+**The part of the universal proof that a port touches.**  A Lean script collected the transitive closure of the constants that `Prog.correctStaticWith`, the universal theorem, uses, among the declarations of `Verified` and `LeanExe`, and classified the theorems by their statements.
+
+| Theorems in the closure | Count | Lines |
+| --- | --- | --- |
+| Statement names `wp` | 431 | 8,581 |
+| Statement names `CodeSpec`, `CodeSpecWith`, or `CodeSpecIn`, and not `wp` | 63 | 6,515 |
+| Statement names only `After` or `Evolves` | 52 | 804 |
+| Statement names none of these | 5,069 | 21,301 |
+
+About 1,700 of the 8,581 lines belong to the runtime's proofs of `alloc` and `release`, which the second stage ports.  Because the invariant sits beside `Holds`, `After`, and `Ty.Rep` and not inside them, the 5,069 theorems of the last row keep their statements and proofs.  The WASI proofs lie outside the closure and keep `CodeSpec`, whose theorems follow from the ported ones by `CodeSpecX.false_iff`.  The closure contains the runtime's release proofs even for `spec_size`, so every construct that reads an owned variable reaches the second stage's interface for `release`.
+
+**Which pointers of a tree argument the premise reaches.**  The `Represent` instance of a borrowed value of a recursive type (`LeanExe/Pipeline/Implements.lean`, lines 473 to 484) has `moves = []` and `reads = Node.slotRegions store p (Encode.encode x)`, and `Node.slotRegions` (lines 409 to 431) gives each record at every depth the region `(p.toNat, 8 * slots.length)`, each array in a slot `(ptr.toNat, 8 * (size + 1))`, and each nonempty buffer in a slot its block `(root.toNat - 48, 48 + capacityAt store root)`, following every child slot.  The instance for `Moved` (lines 489 to 497) has `reads = []` and `moves = Node.pointers store p (Encode.encode x.val)`, which (lines 388 to 407) lists every record pointer at every depth, every array pointer, and every nonempty buffer root.  Null children and empty buffers in slots appear in neither list, and the predicates make their pointers 0.  The proposed `AlignedInput` therefore covers every pointer that a tree argument holds, and the capacity of every block that a moved one hands over.  The one pointer outside both lists is that of a borrowed `TreeHeader` (`Verified/TreeHeader.lean`, lines 69 to 77), whose `borrowed` states nothing about the heap, so no proof reads through it, and its copy (`treeHeaderCopyCode`, `Verified/TreeHeaderCode.lean`) allocates a new header without reading the old one.  `AlignedInput` could be stated over the same regions as `Ty.AlignedVal`, region starts of `reads` and blocks of `moves`, which keeps the native premise and the internal invariant in one form.
+
+**The revised estimate of the third stage.**  The table counts lines written or changed, with a changed line counted once.
+
+| Part | Lines | Basis |
+| --- | --- | --- |
+| Code-level theorems that name `wp`, outside the runtime | 1,000 to 1,700 | 6,900 lines at 15 to 25 percent: 25 percent measured on three ports with 64-bit accesses, less on theorems that only pass premises on |
+| Construct theorems that name `CodeSpec` | 800 to 1,100 | 63 theorems at about 7 lines of fixed cost each, measured on `spec_size`, and 5 to 10 percent of their 6,515 lines |
+| `HoldsA` counterparts of the `After`, `Evolves`, and `Holds` combinators | 300 to 600 | 804 lines in 52 theorems, and 13 uses of `Holds.step` |
+| The flagged layer, its bridges, and the decomposition of tree regions for child accesses | 300 to 600 | 189 lines written for the layer and one construct |
+| WASI | 100 to 300 | only the names it cites change |
+| Statement layer and generation | 300 to 600 | unchanged from the first study and not measured |
+| Total | 2,800 to 4,900 | |
+
+The first study put the third stage at 2,400 to 5,300 lines with low confidence.  The measured surface and change rates narrow the range to 2,800 to 4,900, with medium confidence.  What remains unmeasured is the decomposition of a tree's regions where code descends into a child, and the release of trees under the second stage's interface.  With the parts already written, the first stage needs about 300 to 900 more lines and the second about 600 to 1,400, so the whole needs about 3,700 to 7,200 more.
+
+**Recommendation.**  The measurement supports building all three stages by route (a), and whether the gain of 14 to 25 percent on loops over arrays justifies about 3,700 to 7,200 more lines is the user's decision.  The flag lets the third stage proceed one construct at a time: at `strict = false` every ported theorem gives its original statement, so the existing theorems stay proved throughout, and the aligned theorem appears when the last construct is ported.  The third stage can take the second stage's statements about `alloc` and `release` as hypotheses, as `AllocAligned` and `ReadReleaseX` do here, so the two can run in parallel, and the native side, the smallest part, can come last together with the review of the trusted proposal.
+
+- [x] The flag, with rules for the ports.
+- [x] The port of `ArrayCopy.lean` under the flag, with the original at `strict = false`.
+- [x] The flagged specification layer and the port of `spec_size`.
+- [x] The part of the universal proof that a port touches, counted by a script.
+- [x] The pointers of a tree argument that `moves` and `reads` reach.
+- [ ] The review of the proposed premise of `NativeA`, `NativeTablesA`, and `NativeStaticA`.
+- [ ] The user's decision on building the proof.

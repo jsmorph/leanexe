@@ -115,3 +115,5 @@ import Verified.Examples.WasiDepth
 import Verified.Examples.WasiRetainTotal
 import Verified.Examples.WasiStdio
 import Verified.AlignedAccess
+import Verified.AlignedArrayCopy
+import Verified.AlignedSpec
