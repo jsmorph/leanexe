@@ -38215,4 +38215,4 @@ The native median of `sha256` rose by 625,500 ns, 4.9 percent, from the build wi
 The code moved.  `alloc` and `release`, which precede the hot functions in the text, shrank by 83 and 124 instructions, and CompCert aligns a function to 4 bytes only, so the hot code's offsets modulo 64 changed: from 24 to 44 for `roundStep` and `advance`, and from 12 to 44 for the head of the round loop.  Fewer instructions on the paths that run and a slower median point to the placement of the code, not to its content, but static counts cannot settle that.  A measurement of cycles and retired instructions per call for both programs, or a run with the hot functions placed as before, would, and it waits for an idle window.
 
 - [x] Static counts of `sha256`'s loops before and after the bound in a temporary.
-- [ ] Cycles and instructions per call of both `sha256` programs.
+- [ ] Cycles and instructions per call of both `sha256` programs.  Open: `perf stat -e cycles,instructions` is installed where the benchmark runs, and the hardware counters are closed to an unprivileged user there.
