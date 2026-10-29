@@ -38477,3 +38477,4 @@ Each proof takes the heap's alignment and the result's from `FunPost true`, the 
 - [x] `AlignedOutput`, and `ImplementsAligned` with the alignment of the final heap and of the result.
 - [x] The function, entry, and wrapper forms, and their transfers to Lean's instances.
 - [ ] Switch the import of `LeanExe/Pipeline/ImplementsAligned.lean` from `LeanExe/ProofKit/AlignedExec.lean` to `AlignedDefs.lean` when the native side's move of `AlignedRun` merges.
+- [ ] Remove `LeanExe/Pipeline/AlignedImplements.lean.new`, an untracked intermediate copy of `AlignedImplements.lean` left beside it during this work, once the user approves its removal.
