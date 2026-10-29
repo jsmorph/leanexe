@@ -38151,7 +38151,7 @@ The bare-metal work covers the two theorem items that the plans of M2 and M4 lef
 
 - [x] `lim` in the translator, the check, and the proof.
 - [x] The full build and the checks on AArch64.
-- [ ] The benchmark again, on an idle machine.
+- [x] The benchmark again, on an idle machine, as the entry on its rerun records.
 
 ## 2026-10-29: The Wasm-to-C translator: the benchmark against Wasmtime
 
@@ -38180,3 +38180,22 @@ Four commits of the translator branch had not reached the combined history: the 
 With the square root through `double`, the differential test agrees with `ccomp -interp` on all 921 programs with both CompCert trees: 300 random programs, 21 NaN programs, 300 programs with traces, and 300 with inputs.  Of the NaN programs, 10 print different bits under the two targets' parameters, against 8 of 18 before.  As in the earlier runs of seed 7, one random program's output depends on the target: `t192` stores a NaN that it computes in `g_f64`, the default NaN of each target, `0x7FF8000000000000` under AArch64's parameters and `0xFFF8000000000000` under x86-64's.  `uv run tests/native/bench_inputs.py` writes six files equal to those that the benchmark of the build with `-fno-common` used.
 
 - [x] The four commits on the combined history, with the differential test on both trees.
+
+## 2026-10-29: The Wasm-to-C translator: the benchmark of the bound in a temporary
+
+The benchmark ran again on AArch64 with the programs of the bound in a temporary and the final `bench.sh`, under the same settings as the earlier run: 11 pairs per workload, a timed period of one second, both forms pinned to one core, and Wasmtime's C API 44.0.0 with Cranelift and NaN canonicalization on.  The pairs ran from 02:51:01 to 02:53:57 UTC on 2026-10-29, while no job ran `lean` or `lake`, and 1 pair failed the idle check after it ran and was run again.  The table compares the native medians with those of the build with `-fno-common`, and gives the new ratio of Wasmtime's median to the native one.
+
+| Workload | Native before (ns) | Native now (ns) | Change | Wasmtime now (ns) | Wasmtime / native |
+| --- | --- | --- | --- | --- | --- |
+| `crc32` | 3,968,000 | 3,838,740 | −3.3 % | 2,724,280 | 0.71 |
+| `euler` | 181,680,000 | 178,117,000 | −2.0 % | 138,363,000 | 0.78 |
+| `layernorm32` | 3,916,550 | 3,746,620 | −4.3 % | 5,157,180 | 1.38 |
+| `linear32` | 2,433,300 | 2,255,700 | −7.3 % | 2,653,160 | 1.18 |
+| `sha256` | 12,666,600 | 13,292,100 | +4.9 % | 11,494,300 | 0.86 |
+| `sha3` | 9,871,790 | 9,854,310 | −0.2 % | 10,895,200 | 1.11 |
+| `sort` | 26,760,200 | 21,875,500 | −18.3 % | 6,154,130 | 0.28 |
+
+Wasmtime's medians moved by at most 0.53 percent between the two runs, so the two runs' conditions compare.  The native median fell for six workloads, most for `sort`, the workload whose analysis proposed the change, and rose by 4.9 percent for `sha256`, whose cause is not yet examined.  The interquartile range of `sort`'s native times spans 5.8 percent of its median, against 0.22 percent in the earlier run, so its change is the least certain of the seven.
+
+- [x] The benchmark of the bound in a temporary.
+- [ ] The cause of the slower `sha256`.
