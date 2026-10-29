@@ -5,6 +5,7 @@ namespace Demos.Euler.Verified
 
 open _root_.Demos.Euler
 
+set_option verified_compile.alignedNative true in
 set_option maxHeartbeats 1000000 in
 verified_compile compiled := [normalized, energyGuard, side, component, flux, update,
   advanceCell, initialCell, initialCells, sweep, accepted, finishStep, step, scan, tryStep,
