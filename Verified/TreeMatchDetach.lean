@@ -2,6 +2,8 @@ import Verified.TreeMatchBlocks
 import Verified.TreeMatchMemory
 import Verified.TreeHeapFields
 import Verified.LocalFrame
+import Verified.TreeCopyCode
+import Verified.TreeStorage
 
 namespace Verified
 

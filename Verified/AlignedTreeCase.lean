@@ -1,5 +1,8 @@
 import Verified.AlignedTreeMatch
 import Verified.TreeMatchBody
+import Verified.OwnedExpr
+import Verified.Bytes.StaticPrefix
+import Verified.TreeDispatch
 
 /-!
 The match on a tree under the flag.  The empty case releases and evaluates its branch as

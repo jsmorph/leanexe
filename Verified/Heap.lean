@@ -10,6 +10,24 @@ import LeanExe.ProofKit.ArrayPrefix
 import Verified.TreeSlotCode
 import Verified.TreeHeaderCopy
 import Verified.Bytes.Copy
+import Verified.TreeCopyInvariant
+import Verified.TreeAdvance
+import Verified.TreeCopyLocals
+import Verified.TreeAllocate
+import Verified.LocalFrame
+import Verified.TreeCopyCode
+import Verified.TreeStorage
+import Verified.TreeInitialize
+import Verified.TreeSelect
+import Verified.TreeBeginState
+import Verified.TreeCopyStartInv
+import Verified.TreeTestCode
+import Verified.TreeCopyBufferCode
+import Verified.TreeRestore
+import Verified.TreeNodeLayout
+import Verified.TreeCopyCompleteInv
+import Verified.TreeHeaderCode
+import LeanExe.TalosCompat
 
 /-! The code that allocates, copies, and releases arrays, and its specifications: a release of an
 owned array consumes its block, and a copy of a value puts each of its arrays in a new block. -/

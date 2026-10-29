@@ -2,6 +2,20 @@ import Verified.AlignedTailTree
 import Verified.AlignedTailBody
 import Verified.AlignedTailLoop
 import Verified.ListFoldCode
+import Verified.ListFoldSource
+import Verified.TailCorrect
+import Verified.TreeMatchFacts
+import Verified.TailBindPrefix
+import Verified.TailAllocExpand
+import Verified.TreeMatchPotential
+import Verified.OwnedExpr
+import Verified.Bytes.StaticPrefix
+import Verified.TreeDispatch
+import Verified.TailBind
+import Verified.TailArgs
+import Verified.ListFoldResource
+import Verified.ListFoldBorrowed
+import Verified.TailHeap
 
 /-!
 The fold over a list under the flag.  `ListFold.step_specX` assembles the flagged tail constructs

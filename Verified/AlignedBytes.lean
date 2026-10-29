@@ -2,6 +2,15 @@ import Verified.AlignedWriters
 import Verified.Bytes.Copy
 import Verified.Bytes.LiteralCode
 import Verified.ExprSpec
+import LeanExe.TalosCompat
+import Verified.Bytes.LiteralFrame
+import Verified.ArgsCorrect
+import Verified.Bytes.AfterWrite
+import Verified.Bytes.BuildCode
+import Verified.LocalFrame
+import LeanExe.Pipeline.Aborts
+import Verified.Bytes.StoreWord
+import Verified.Bytes.Overlay
 
 /-!
 Buffers under the flag.  A buffer's bytes are read and written one at a time, so only the

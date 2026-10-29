@@ -22,6 +22,13 @@ import Verified.AlignedCorollaries
 import Verified.AlignedTailEntry
 import Verified.Bytes.LiteralCode
 import Verified.ExprSpec
+import LeanExe.TalosCompat
+import Verified.ArgsCorrect
+import Verified.Bytes.AfterWrite
+import Verified.Bytes.BuildCode
+import Verified.LocalFrame
+import LeanExe.Pipeline.Aborts
+import Verified.Bytes.StoreWord
 
 open Lean Elab Command in
 elab "check_wasi_axioms" : command => do

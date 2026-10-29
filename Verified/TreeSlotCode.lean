@@ -1,5 +1,7 @@
 import Verified.TreeAdvance
 import Verified.LocalFrame
+import Verified.TreeCopyCode
+import Verified.TreeStorage
 
 namespace Verified
 

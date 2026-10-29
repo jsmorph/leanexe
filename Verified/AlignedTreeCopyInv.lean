@@ -2,6 +2,7 @@ import Verified.TreeCopyStartInv
 import Verified.AlignedTreeMemory
 import Verified.TreeCopyInvariant
 import Verified.TreeCopyCompleteInv
+import Verified.TreeAdvance
 
 /-!
 The alignment of a tree copy in progress, and the copy's invariants under the flag.  `CopyAligned`

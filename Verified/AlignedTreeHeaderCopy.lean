@@ -1,5 +1,9 @@
 import Verified.AlignedTreeCopy
 import Verified.TreeHeaderCopy
+import Verified.TreeHeaderCode
+import Verified.LocalFrame
+import Verified.TreeCopyCode
+import Verified.TreeStorage
 
 /-!
 The copy of a detached tree header under the flag: the port of `wp_copyTreeHeader`.  The copy

@@ -1,5 +1,11 @@
 import Verified.TreeSlotCode
 import Verified.Bytes.Copy
+import Verified.TreeCopyInvariant
+import Verified.TreeAdvance
+import Verified.TreeCopyLocals
+import Verified.TreeCopyStartInv
+import Verified.ArrayCopy
+import LeanExe.TalosCompat
 
 /-! The copy loop's step for a buffer's root slot: a copy of the buffer into a new object, or
 root 0 for an empty buffer, whose root goes into the slot.  The next step copies the buffer's
