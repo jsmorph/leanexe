@@ -135,7 +135,10 @@ import Verified.AlignedTreeNode
 import Verified.AlignedTreeAssemble
 import Verified.AlignedTreeBuild
 import Verified.AlignedTreeMatch
+import Verified.AlignedTreeCase
+import Verified.AlignedExprCorrect
 import Verified.AlignedEnv
+import Verified.AlignedFunction
 import Verified.AlignedTail
 import Verified.AlignedTailBody
 import Verified.AlignedTailLoop
