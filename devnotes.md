@@ -38120,3 +38120,23 @@ The bare-metal work covers the two theorem items that the plans of M2 and M4 lef
 - [x] `lim` in the translator, the check, and the proof.
 - [x] The full build and the checks on AArch64.
 - [ ] The benchmark again, on an idle machine.
+
+## 2026-10-29: The Wasm-to-C translator: the benchmark against Wasmtime
+
+The benchmark of the plan ran on AArch64 with the programs of the commit that added `-fno-common`, before the bound moved into a temporary.  `tests/native/bench.sh` pinned both forms to one core and ran 11 pairs per workload, each pair a timed period of one second for the translation compiled by `ccomp` and one for the module under Wasmtime's C API 44.0.0 with Cranelift and NaN canonicalization on, alternating which form ran first.  A pair counted only when no `lean` or `lake` process ran and the load average was below 1 before and after it, and the 2 pairs that failed the check after they ran were run again.  The table gives the median time per call and the ratio of Wasmtime's median to the native one, so that a ratio above 1 means the native code was faster.
+
+| Workload | Native median (ns) | Wasmtime median (ns) | Wasmtime / native |
+| --- | --- | --- | --- |
+| `crc32` | 3,968,000 | 2,738,900 | 0.69 |
+| `euler` | 181,680,000 | 138,375,767 | 0.76 |
+| `layernorm32` | 3,916,550 | 5,155,950 | 1.32 |
+| `linear32` | 2,433,300 | 2,653,030 | 1.09 |
+| `sha256` | 12,666,600 | 11,479,700 | 0.91 |
+| `sha3` | 9,871,790 | 10,895,300 | 1.10 |
+| `sort` | 26,760,200 | 6,183,570 | 0.23 |
+
+The pairs ran from 19:41 to 19:45 UTC on 2026-10-28.  A short job that ran `lake build --no-build` overlapped the pairs of `euler`, from 19:43:27 to 19:44:01 UTC, and a second such job began at 19:45:20 UTC, after the last pair.  The check runs only at the ends of a pair, so a `lake` process that starts and ends inside one goes unnoticed; the interquartile ranges of `euler` stay below 0.02 percent of its medians.
+
+`ccomp -version` prints "The CompCert C verified compiler, version 3.17", and the benchmark records that string with "from the 3.18 sources" appended.  The tag archive of 3.18, whose SHA-256 the journal of phase A records, holds `version=3.17` in its `VERSION` file, which the driver prints, while its `Changelog.md` begins with "Release 3.18".  Whether the release meant to keep 3.17 in `VERSION` is open.
+
+- [x] The benchmark of the build with `-fno-common`.
