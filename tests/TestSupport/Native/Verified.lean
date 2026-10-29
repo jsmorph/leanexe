@@ -26,6 +26,10 @@ Lean module that defines it, as `tools/Emit.lean` does.
   A mismatch, or a failure of either tool, stops it with a nonzero status before `ccomp` runs or
   after it fails.  The environment variables `CLIGHTGEN` and `CCOMP` name the tools, `clightgen`
   and `ccomp` by default, which must come from one CompCert 3.18 tree.
+
+The option `--aligned`, before MODULE, makes `emit`, `check`, and `build` use the translation with
+`alignedAccess`, whose `load64` and `store64` omit the test of alignment.  It is correct only for
+functions whose theorems state that their 64-bit accesses are aligned.
 -/
 
 open Lean LeanExe.Native
@@ -57,10 +61,10 @@ def reason (cap : Nat) (m : Wasm.Module) (k : Nat) : String :=
               else "an instruction form"
           | some _ => "a call of an omitted function"
 
-def translation (m : Wasm.Module) (name : String) : IO Translation := do
+def translation (m : Wasm.Module) (name : String) (aligned : Bool) : IO Translation := do
   if let some v := violation m then
     throw <| IO.userError s!"{name}: outside the subset: {v}"
-  match translate nativeCap m with
+  match translate nativeCap m aligned with
   | none => throw <| IO.userError s!"{name}: does not translate"
   | some t => pure t
 
@@ -168,11 +172,12 @@ def glue (t : Translation) (m : Wasm.Module) : Except String String := do
 
 /-- Writes the files of `emit` for the module `m`, and returns its translation, or `none` for a
 module outside the subset or one that does not translate. -/
-def emitModule (m : Wasm.Module) (name dir : String) : IO (Option Translation) := do
+def emitModule (m : Wasm.Module) (name dir : String) (aligned : Bool) :
+    IO (Option Translation) := do
   if let some v := violation m then
     IO.println s!"{name}: outside the subset: {v}"
     return none
-  let some t := translate nativeCap m
+  let some t := translate nativeCap m aligned
     | IO.println s!"{name}: does not translate"
       return none
   let text ← IO.ofExcept <| t.text.mapError fun e => IO.userError s!"{name}: {e}"
@@ -187,9 +192,10 @@ def emitModule (m : Wasm.Module) (name dir : String) : IO (Option Translation) :
     {exports.length} of {m.exports.length} exports"
   return some t
 
-unsafe def emit (moduleName constName : Name) (name dir : String) : IO UInt32 := do
+unsafe def emit (moduleName constName : Name) (name dir : String) (aligned : Bool) :
+    IO UInt32 := do
   let m ← loadModule moduleName constName
-  match ← emitModule m name dir with
+  match ← emitModule m name dir aligned with
   | none => return 3
   | some _ => return 0
 
@@ -207,9 +213,10 @@ def checkTranslation (t : Translation) (name dir : String) : IO UInt32 := do
       for e in errors do IO.eprintln s!"{name}: {e}"
       return 1
 
-unsafe def check (moduleName constName : Name) (name dir : String) : IO UInt32 := do
+unsafe def check (moduleName constName : Name) (name dir : String) (aligned : Bool) :
+    IO UInt32 := do
   let m ← loadModule moduleName constName
-  checkTranslation (← translation m name) name dir
+  checkTranslation (← translation m name aligned) name dir
 
 /-- Runs `cmd` with `args` in `cwd`, and fails with its standard error unless it exits with 0. -/
 def runTool (cmd : String) (args : Array String) (cwd : Option System.FilePath := none) :
@@ -218,9 +225,10 @@ def runTool (cmd : String) (args : Array String) (cwd : Option System.FilePath :
   if out.exitCode != 0 then
     throw <| IO.userError s!"{cmd} exited with status {out.exitCode}:\n{out.stdout}{out.stderr}"
 
-unsafe def build (moduleName constName : Name) (name dir : String) : IO UInt32 := do
+unsafe def build (moduleName constName : Name) (name dir : String) (aligned : Bool) :
+    IO UInt32 := do
   let m ← loadModule moduleName constName
-  let some t ← emitModule m name dir | return 3
+  let some t ← emitModule m name dir aligned | return 3
   runTool ((← IO.getEnv "CLIGHTGEN").getD "clightgen") #[s!"{name}.c"] (some dir)
   let status ← checkTranslation t name dir
   if status != 0 then return status
@@ -232,10 +240,16 @@ unsafe def main (args : List String) : IO UInt32 := do
   match args with
   | ["survey", moduleText, constText, name] => survey moduleText.toName constText.toName name
   | ["emit", moduleText, constText, name, dir] =>
-      emit moduleText.toName constText.toName name dir
+      emit moduleText.toName constText.toName name dir false
+  | ["emit", "--aligned", moduleText, constText, name, dir] =>
+      emit moduleText.toName constText.toName name dir true
   | ["check", moduleText, constText, name, dir] =>
-      check moduleText.toName constText.toName name dir
+      check moduleText.toName constText.toName name dir false
+  | ["check", "--aligned", moduleText, constText, name, dir] =>
+      check moduleText.toName constText.toName name dir true
   | ["build", moduleText, constText, name, dir] =>
-      build moduleText.toName constText.toName name dir
+      build moduleText.toName constText.toName name dir false
+  | ["build", "--aligned", moduleText, constText, name, dir] =>
+      build moduleText.toName constText.toName name dir true
   | _ => throw (IO.userError
-      "usage: native-verified survey|emit|check|build MODULE CONSTANT NAME [DIR]")
+      "usage: native-verified survey|emit|check|build [--aligned] MODULE CONSTANT NAME [DIR]")

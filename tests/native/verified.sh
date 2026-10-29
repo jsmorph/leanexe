@@ -22,17 +22,34 @@
 # LEANRUN_MEMORY_HIGH is the memory limit of each step that runs under tools/leanrun, 6G unless
 # the caller sets it.  The largest step measured, native-verified build of the largest corpus
 # module, keeps 3.7 GB resident.
-# Usage: tests/native/verified.sh [--module NAME]
+# With --aligned, native-verified builds each module with the translation option alignedAccess,
+# whose load64 and store64 omit the test of alignment.
+# Usage: tests/native/verified.sh [--aligned] [--module NAME]
 set -euo pipefail
 export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-6G}
+usage="usage: tests/native/verified.sh [--aligned] [--module NAME]"
 only=""
-if [ "$#" -ne 0 ]; then
-  if [ "$#" -ne 2 ] || [ "$1" != "--module" ] || [ -z "$2" ]; then
-    echo "usage: tests/native/verified.sh [--module NAME]" >&2
-    exit 2
-  fi
-  only=$2
-fi
+aligned=()
+while [ "$#" -ne 0 ]; do
+  case "$1" in
+    --aligned)
+      aligned=(--aligned)
+      shift
+      ;;
+    --module)
+      if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+        echo "$usage" >&2
+        exit 2
+      fi
+      only=$2
+      shift 2
+      ;;
+    *)
+      echo "$usage" >&2
+      exit 2
+      ;;
+  esac
+done
 ccomp=${CCOMP:-ccomp}
 clightgen=${CLIGHTGEN:-clightgen}
 stdlib=()
@@ -60,7 +77,7 @@ while IFS=: read -r module constant name; do
   modules=$((modules + 1))
   status=0
   CLIGHTGEN=$clightgen CCOMP=$ccomp tools/leanrun --timeout 10m lake env \
-    .lake/build/bin/native-verified build "$module" "$constant" "$name" "$out" || status=$?
+    .lake/build/bin/native-verified build "${aligned[@]}" "$module" "$constant" "$name" "$out" || status=$?
   if [ "$status" -eq 3 ]; then
     untranslated="$untranslated $name"
     continue
