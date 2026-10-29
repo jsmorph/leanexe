@@ -139,4 +139,10 @@ import Verified.AlignedTreeCase
 import Verified.AlignedExprCorrect
 import Verified.AlignedEnv
 import Verified.AlignedFunction
+import Verified.AlignedTail
+import Verified.AlignedTailBody
+import Verified.AlignedTailLoop
+import Verified.AlignedTailTree
+import Verified.AlignedListFold
+import Verified.AlignedTailEntry
 import Verified.AlignedCorrect
