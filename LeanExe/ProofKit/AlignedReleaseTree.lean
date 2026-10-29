@@ -1,4 +1,4 @@
-import LeanExe.Pipeline.AlignedFree
+import LeanExe.Pipeline.AlignedFreeList
 import LeanExe.ProofKit.ReleaseTree
 
 /-!
