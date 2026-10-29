@@ -73,11 +73,12 @@ theorem guard_some {p : Prop} [Decidable p] {x : Unit} (h : (guard p : Option Un
   · simp [guard, hp] at h
 
 /-- What the proof uses of a translation. -/
-theorem translate_spec {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T) :
+theorem translate_spec {m : Module} {cap : Nat} {al : Bool} {T : Translation}
+    (h : translate cap m al = some T) :
     m.imports = [] ∧ m.memIs64 = false ∧
     ∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
       ∃ f, m.funcs[k]? = some f ∧ k ∈ T.funcs ∧
-        trFunction cap (m.funcs.map signatureOf) m.globals.length f = some fd ∧
+        trFunction cap (m.funcs.map signatureOf) m.globals.length f al = some fd ∧
         ∀ k', funId k' ∈ callees fd.fn_body →
           ∃ fd', (funId k', globdef.Gfun (fundef.Internal fd')) ∈ T.cprogram.prog_defs := by
   simp [translate, Option.bind_eq_some_iff] at h
@@ -94,7 +95,7 @@ theorem translate_spec {m : Module} {cap : Nat} {T : Translation} (h : translate
   · simp [sqrtDef, sqrtFun] at hk
   · simp [resDefs] at hk
   · obtain ⟨k0, hk0, hdef⟩ := mapM_mem' hfuns _ hk
-    cases hfd0 : (fdefsOf cap m)[k0]?.join with
+    cases hfd0 : (fdefsOf cap m al)[k0]?.join with
     | none => simp [funDef, hfd0] at hdef
     | some fd0 =>
     simp [funDef, hfd0] at hdef
@@ -104,17 +105,17 @@ theorem translate_spec {m : Module} {cap : Nat} {T : Translation} (h : translate
     cases hf : m.funcs[k0]? with
     | none => simp [fdefsOf, hf] at hfd0
     | some f =>
-    have htr : trFunction cap (m.funcs.map signatureOf) m.globals.length f = some fd0 := by
+    have htr : trFunction cap (m.funcs.map signatureOf) m.globals.length f al = some fd0 := by
       simpa [fdefsOf, hf] using hfd0
     refine ⟨f, rfl, hk0, htr, fun k' hk' => ?_⟩
-    have hcall : k' ∈ callsOf cap m k0 := by
+    have hcall : k' ∈ callsOf cap m k0 al := by
       unfold callsOf
       rw [hfd0]
       have hm : funId k' % 4 = 3 := by show (4 * k' + 3 : Nat) % 4 = 3; omega
       exact List.mem_filterMap.mpr ⟨funId k', hk', by rw [ite_eq_left hm, funId_div]⟩
     have hin := hclosed k0 hk0 k' hcall
     obtain ⟨d, hd, hfd⟩ := mapM_mem hfuns k' hin
-    cases hfd' : (fdefsOf cap m)[k']?.join with
+    cases hfd' : (fdefsOf cap m al)[k']?.join with
     | none => simp [funDef, hfd'] at hfd
     | some fd' =>
     simp [funDef, hfd'] at hfd
@@ -125,20 +126,22 @@ theorem translate_spec {m : Module} {cap : Nat} {T : Translation} (h : translate
     omega
   · simp at hk
 
-theorem translate_nres {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T) :
+theorem translate_nres {m : Module} {cap : Nat} {al : Bool} {T : Translation}
+    (h : translate cap m al = some T) :
     T.nres = maxResults m T.funcs := by
   simp [translate, Option.bind_eq_some_iff] at h
   obtain ⟨-, decl, -, -, gdefs, -, -, funs, -, rfl⟩ := h
   rfl
 
 /-- Each function index of a translation has its definition in the program. -/
-theorem translate_funcs {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
+theorem translate_funcs {m : Module} {cap : Nat} {al : Bool} {T : Translation}
+    (h : translate cap m al = some T)
     {k : Nat} (hk : k ∈ T.funcs) :
     ∃ fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs := by
   simp [translate, Option.bind_eq_some_iff] at h
   obtain ⟨-, decl, -, -, gdefs, -, -, funs, hfuns, rfl⟩ := h
   obtain ⟨d, hd, hfd⟩ := mapM_mem hfuns k hk
-  cases hfd' : (fdefsOf cap m)[k]?.join with
+  cases hfd' : (fdefsOf cap m al)[k]?.join with
   | none => simp [funDef, hfd'] at hfd
   | some fd =>
   simp [funDef, hfd'] at hfd
@@ -154,7 +157,7 @@ theorem type_of_params_zipIdx (ps : List VT) (start : Nat) :
       rw [ih]
 
 theorem trFunction_sig {cap : Nat} {sigs : List (Option (List VT × List VT))} {G : Nat}
-    {f : Function} {fd : function} (h : trFunction cap sigs G f = some fd) :
+    {f : Function} {fd : function} {al : Bool} (h : trFunction cap sigs G f al = some fd) :
     ∃ ps rs, signatureOf f = some (ps, rs) ∧ type_of_function fd = funType ps rs ∧
       resultsOk rs = true ∧ f.results.length = rs.length := by
   obtain ⟨ps, ls, rs, body, nc, hps, -, hrs, hok, -, rfl⟩ := trFunction_spec h
@@ -210,7 +213,8 @@ section
 variable {A : Archi} {X : ExtSem} {E : Env}
 
 /-- Every function of a translated program simulates its Talos function at every fuel. -/
-theorem translate_correct {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
+theorem translate_correct {m : Module} {cap : Nat} {al : Bool} {T : Translation}
+    (h : translate cap m al = some T)
     (hE : EnvOk E) (hG : E.globals.length = m.globals.length) (hcap : E.cap = cap)
     (hnres : T.nres ≤ E.nres)
     (hF : ∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
@@ -218,7 +222,7 @@ theorem translate_correct {m : Module} {cap : Nat} {T : Translation} (h : transl
         Genv.find_funct_ptr E.ge b = some (.Internal fd)) :
     ∀ F k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
       ∃ f ps rs, m.funcs[k]? = some f ∧ signatureOf f = some (ps, rs) ∧
-        RunSimFun A X E m F k ps rs fd := by
+        RunSimFun A X E m al F k ps rs fd := by
   obtain ⟨himp, h64, hfuns⟩ := translate_spec h
   rw [translate_nres h] at hnres
   intro F
@@ -231,7 +235,7 @@ theorem translate_correct {m : Module} {cap : Nat} {T : Translation} (h : transl
       refine run_sim_fun (CallOk := fun k' => ∃ fd',
           (funId k', globdef.Gfun (fundef.Internal fd')) ∈ T.cprogram.prog_defs)
         hE himp hf hG.symm hcap.symm h64 htr hsig (resOk_of hf hkf hnres hok hlen) ?_ hclosed
-      intro k' ⟨fd', hk'⟩ g hg c hc
+      intro k' ⟨fd', hk'⟩ g hg c hc hca
       obtain ⟨f', ps', rs', hf', hsig', hrun⟩ := ih g hg k' fd' hk'
       obtain ⟨f'', hf'', hkf', htr', -⟩ := hfuns k' fd' hk'
       rw [hf'] at hf''
@@ -240,7 +244,8 @@ theorem translate_correct {m : Module} {cap : Nat} {T : Translation} (h : transl
       rw [hsig'] at hsig''
       obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hsig'')
       obtain ⟨b, hsym, hptr⟩ := hF k' fd' hk'
-      refine ⟨ps', rs', b, fd', ?_, hsym, hptr, hty, resOk_of hf' hkf' hnres hok' hlen', hrun⟩
+      refine ⟨ps', rs', b, fd', ?_, hsym, hptr, hty, resOk_of hf' hkf' hnres hok' hlen',
+        by rw [hca]; exact hrun⟩
       rw [hc]
       simp [List.getElem?_map, hf', hsig']
 

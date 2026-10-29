@@ -22,7 +22,9 @@ function of the module and after each `memory.grow` that succeeds, the only stat
 change `lx_pages`.  A `load64` or `store64` computes its address in 64-bit arithmetic in the
 `i64` slot at the height of its address, traps when the eight bytes do not lie below `lim`, and
 then reads or writes one word of `lx_mem`
-when the address is a multiple of 8, and eight bytes in little-endian order otherwise.  A
+when the address is a multiple of 8, and eight bytes in little-endian order otherwise.  With the
+option `alignedAccess` of `translate`, the access omits the test and reads or writes one word,
+which is the access of the Talos run only when its address is a multiple of 8.  A
 `load8U` or `store8` computes its address and traps in the same way for its one byte, which it
 reads or writes as an `unsigned char` of `lx_mem`: `load8U` converts the byte to
 `unsigned int`, and `store8` stores `(unsigned char) v`, the low byte of its `i32` value.
@@ -155,13 +157,15 @@ def retOf : List VT → Option VT
 
 /-- What the translation of a function body needs: the types of the parameters and declared
 locals, the function's results, the number of globals, the parameter and result types of each
-function, `none` for one the translator does not call, and the number of pages of `lx_mem`. -/
+function, `none` for one the translator does not call, the number of pages of `lx_mem`, and
+whether a `load64` or `store64` omits the test of its address's alignment. -/
 structure FCtx where
   locals : List VT
   results : List VT
   nglobals : Nat
   sigs : List (Option (List VT × List VT))
   cap : Nat
+  alignedAccess : Bool := false
 
 /-- The C result of the function. -/
 def FCtx.result (c : FCtx) : Option VT := retOf c.results
@@ -694,7 +698,8 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
         let t := slotId (h - 1) .i64
         pure (.Ssequence (addrStmt t (tmp (h - 1) .i32) off)
             (.Ssequence (boundsCheck 8 c.result t)
-              (.Sifthenelse (aligned t) (.Sset t (wordAt c.cap t)) (.Sset t (loadBytes c.cap t 7)))),
+              (if c.alignedAccess then .Sset t (wordAt c.cap t) else
+                .Sifthenelse (aligned t) (.Sset t (wordAt c.cap t)) (.Sset t (loadBytes c.cap t 7)))),
           some (.i64 :: σ'), n)
       else none
   | .store64 off => do
@@ -704,7 +709,8 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
         let v := tmp (h - 1) .i64
         pure (.Ssequence (addrStmt t (tmp (h - 2) .i32) off)
             (.Ssequence (boundsCheck 8 c.result t)
-              (.Sifthenelse (aligned t) (.Sassign (wordAt c.cap t) v) (storeBytes c.cap t v 0 7))),
+              (if c.alignedAccess then .Sassign (wordAt c.cap t) v else
+                .Sifthenelse (aligned t) (.Sassign (wordAt c.cap t) v) (storeBytes c.cap t v 0 7))),
           some σ', n)
       else none
   | .load8U off => do
@@ -985,14 +991,16 @@ def retStmt : List VT → statement
 globals. -/
 def resultsOk (rs : List VT) : Bool := rs.length ≤ 1 || rs.all VT.isRes
 
-/-- The C function of a Talos function, with `lx_mem` of `cap` pages. -/
+/-- The C function of a Talos function, with `lx_mem` of `cap` pages, whose 64-bit accesses omit
+the test of alignment when `alignedAccess` holds. -/
 def trFunction (cap : Nat) (sigs : List (Option (List VT × List VT))) (nglobals : Nat)
-    (f : Function) : Option function := do
+    (f : Function) (alignedAccess : Bool := false) : Option function := do
   let ps ← f.params.mapM VT.ofValueType
   let ls ← f.locals.mapM VT.ofValueType
   let rs ← f.results.mapM VT.ofValueType
   guard (resultsOk rs)
-  let c : FCtx := { locals := ps ++ ls, results := rs, nglobals := nglobals, sigs := sigs, cap := cap }
+  let c : FCtx := { locals := ps ++ ls, results := rs, nglobals := nglobals, sigs := sigs, cap := cap,
+                    alignedAccess := alignedAccess }
   let funLabel : Label := { isLoop := false, base := 0, result := retOf rs, final := 2 ≤ rs.length }
   let (body, _) ← trProg c [funLabel] [] rs.reverse 0 f.body
   let inits := ls.zipIdx.map fun (t, j) => statement.Sset (localId (ps.length + j)) t.zero
@@ -1049,24 +1057,25 @@ def globalDef (g : GlobalDecl) : Option (globvar type) :=
   | _ => none
 
 /-- The C function of each function of `m`, `none` for one the translator does not handle. -/
-def fdefsOf (cap : Nat) (m : Module) : List (Option function) :=
-  m.funcs.map (trFunction cap (m.funcs.map signatureOf) m.globals.length)
+def fdefsOf (cap : Nat) (m : Module) (alignedAccess : Bool := false) : List (Option function) :=
+  m.funcs.map (trFunction cap (m.funcs.map signatureOf) m.globals.length · alignedAccess)
 
 /-- The functions that the C function of `k` calls. -/
-def callsOf (cap : Nat) (m : Module) (k : Nat) : List Nat :=
-  match (fdefsOf cap m)[k]?.join with
+def callsOf (cap : Nat) (m : Module) (k : Nat) (alignedAccess : Bool := false) : List Nat :=
+  match (fdefsOf cap m alignedAccess)[k]?.join with
   | some f => (callees f.fn_body).filterMap fun id => if id % 4 = 3 then some (id / 4) else none
   | none => []
 
 /-- The functions that the program contains: those that translate and call only such
 functions. -/
-def includedOf (cap : Nat) (m : Module) : List Nat :=
-  closeUnderCalls (callsOf cap m) (m.funcs.length + 1)
-    ((List.range m.funcs.length).filter fun k => ((fdefsOf cap m)[k]?.join).isSome)
+def includedOf (cap : Nat) (m : Module) (alignedAccess : Bool := false) : List Nat :=
+  closeUnderCalls (callsOf cap m · alignedAccess) (m.funcs.length + 1)
+    ((List.range m.funcs.length).filter fun k => ((fdefsOf cap m alignedAccess)[k]?.join).isSome)
 
 /-- The definition of function `k` in the program. -/
-def funDef (cap : Nat) (m : Module) (k : Nat) : Option (ident × globdef (fundef function) type) := do
-  let f ← (fdefsOf cap m)[k]?.join
+def funDef (cap : Nat) (m : Module) (k : Nat) (alignedAccess : Bool := false) :
+    Option (ident × globdef (fundef function) type) := do
+  let f ← (fdefsOf cap m alignedAccess)[k]?.join
   pure (funId k, .Gfun (.Internal f))
 
 /-- `lx_status`, initially 0. -/
@@ -1154,15 +1163,16 @@ def nativeCap : Nat := 4096
 
 /-- The translation of `m` with `lx_mem` of `cap` pages.  The module's initial pages must not
 exceed `cap`, and `cap` must not exceed 65,535, the most pages that the compiled modules
-declare. -/
-def translate (cap : Nat) (m : Module) : Option Translation := do
+declare.  With `alignedAccess`, every `load64` and `store64` omits the test of alignment, which
+is correct only for runs whose 64-bit accesses inside memory are aligned. -/
+def translate (cap : Nat) (m : Module) (alignedAccess : Bool := false) : Option Translation := do
   guard (violation m = none)
   let decl ← m.memory
   guard (decl.pagesMin.toNat ≤ cap ∧ cap ≤ 65535)
   let gdefs ← m.globals.mapM globalDef
-  let included := includedOf cap m
-  guard (included.all fun k => (callsOf cap m k).all (included.contains ·))
-  let funs ← included.mapM (funDef cap m)
+  let included := includedOf cap m alignedAccess
+  guard (included.all fun k => (callsOf cap m k alignedAccess).all (included.contains ·))
+  let funs ← included.mapM (funDef cap m · alignedAccess)
   let nres := maxResults m included
   let defs := (statusId, globdef.Gvar statusVar) ::
     (gdefs.zipIdx.map fun (g, i) => (globalId i, globdef.Gvar g)) ++

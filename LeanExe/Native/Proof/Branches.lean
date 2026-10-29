@@ -122,7 +122,7 @@ theorem br_outcome {L : List Label} {σ : List VT} {k : Nat} {s : statement}
       rw [hother _ (slotId_ne_brkId _ _)]
 
 theorem sim_br (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c CallOk F (.br k) := by
-  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hinv
+  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env _ hinv
   cases hs0 : brStmt L σ k with
   | none => simp [trInstr, hs0] at htr
   | some s0 =>
@@ -136,7 +136,7 @@ theorem sim_br (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c CallO
       exact ⟨t, le', m, out, hx, hrel, hf⟩
 
 theorem sim_br_if (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c CallOk F (.br_if k) := by
-  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hinv
+  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env _ hinv
   rcases σ with _ | ⟨a, σr⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at htr
   obtain ⟨hb, rfl, s0, hs0, rfl, rfl, rfl⟩ := htr
   cases F with
@@ -166,7 +166,7 @@ theorem sim_br_if (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c Ca
 
 theorem sim_ret (hE : EnvOk E) (hres : ResOk E c.results) (F : Nat) {CallOk : Nat → Prop} :
     InstrSimL A X E mod c CallOk F .ret := by
-  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hinv
+  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env _ hinv
   cases F with
   | zero => rw [execOne_zero]; trivial
   | succ f =>
