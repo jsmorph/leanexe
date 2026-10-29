@@ -5,7 +5,9 @@ import LeanExe.ProofKit.AlignedExec
 Alignment of the allocator's state.  `Heap.Aligned heap` states that `top` and the root and
 capacity of every free block are multiples of 8.  `alloc` requests `allocSize bytes`, a multiple
 of 8, so the block it returns has an aligned payload pointer, and the heap after the allocation is
-aligned again.  The arithmetic is in `UInt64`, whose modulus `2 ^ 64` is a multiple of 8, so the
+aligned again.  Releasing a block whose root and capacity are multiples of 8 keeps the heap
+aligned, since the merges of `insertFree` add capacities and the 48 bytes of a header.  The
+arithmetic is in `UInt64`, whose modulus `2 ^ 64` is a multiple of 8, so the
 residues modulo 8 hold whether or not a sum wraps.
 -/
 
@@ -88,5 +90,52 @@ theorem elementAddress_mod8 {p : UInt64} (hp : p.toNat % 8 = 0) (i : Nat) :
   rw [UInt64.toNat_toUInt32, UInt64.toNat_add, UInt64.toNat_ofNat']
   simp only [Nat.reducePow]
   omega
+
+/-- The blocks of `joinNodes block rest` have roots and capacities that are multiples of 8 when
+`block` and the blocks of `rest` do: a merge adds the capacities and the 48 bytes of a header. -/
+theorem joinNodes_aligned {block : FreeNode} (hRoot : block.root.toNat % 8 = 0)
+    (hCap : block.capacity.toNat % 8 = 0) :
+    ∀ {rest : List FreeNode}, (∀ n ∈ rest, n.root.toNat % 8 = 0 ∧ n.capacity.toNat % 8 = 0) →
+      ∀ n ∈ joinNodes block rest, n.root.toNat % 8 = 0 ∧ n.capacity.toNat % 8 = 0
+  | [], _, n, hn => by
+    simp only [joinNodes, List.mem_singleton] at hn
+    subst hn
+    exact ⟨hRoot, hCap⟩
+  | next :: rest, hr, n, hn => by
+    simp only [joinNodes] at hn
+    split at hn
+    · rcases List.mem_cons.mp hn with rfl | hn
+      · exact ⟨hRoot, UInt64.add_mod8 (UInt64.add_mod8 hCap rfl) (hr next List.mem_cons_self).2⟩
+      · exact hr n (List.mem_cons_of_mem _ hn)
+    · rcases List.mem_cons.mp hn with rfl | hn
+      · exact ⟨hRoot, hCap⟩
+      · exact hr n hn
+
+theorem insertFree_aligned {root capacity : UInt64} {nodes : List FreeNode}
+    (hRoot : root.toNat % 8 = 0) (hCap : capacity.toNat % 8 = 0)
+    (h : ∀ n ∈ nodes, n.root.toNat % 8 = 0 ∧ n.capacity.toNat % 8 = 0) :
+    ∀ n ∈ insertFree root capacity nodes, n.root.toNat % 8 = 0 ∧ n.capacity.toNat % 8 = 0 := by
+  have hSplit := nodes_split root nodes
+  have hBelow : ∀ n ∈ belowNodes root nodes, n.root.toNat % 8 = 0 ∧ n.capacity.toNat % 8 = 0 :=
+    fun n hn => h n (by rw [hSplit]; exact List.mem_append_left _ hn)
+  have hAbove : ∀ n ∈ aboveNodes root nodes, n.root.toNat % 8 = 0 ∧ n.capacity.toNat % 8 = 0 :=
+    fun n hn => h n (by rw [hSplit]; exact List.mem_append_right _ hn)
+  unfold insertFree
+  split
+  · exact joinNodes_aligned (block := { root, capacity }) hRoot hCap hAbove
+  · rename_i p hp
+    have hpAl := hBelow p (List.mem_of_getLast? hp)
+    intro n hn
+    rcases List.mem_append.mp hn with hn | hn
+    · exact hBelow n ((List.dropLast_sublist _).subset hn)
+    · exact joinNodes_aligned hpAl.1 hpAl.2
+        (joinNodes_aligned (block := { root, capacity }) hRoot hCap hAbove) n hn
+
+/-- Releasing a block whose root and capacity are multiples of 8 keeps the heap aligned. -/
+theorem Heap.Aligned.release {heap : Heap} {ptr capacity : UInt64} (ha : heap.Aligned)
+    (hp : ptr.toNat % 8 = 0) (hc : capacity.toNat % 8 = 0) :
+    (heap.release ptr capacity).Aligned := by
+  have h := insertFree_aligned hp hc fun n hn => ⟨ha.roots n hn, ha.capacities n hn⟩
+  exact ⟨ha.top, fun n hn => (h n hn).1, fun n hn => (h n hn).2⟩
 
 end LeanExe.Pipeline

@@ -1064,17 +1064,22 @@ theorem forestRecords_reverse (a : List (UInt64 × List Slot)) :
     forestRecords a.reverse = forestRecords a := by
   simp [forestRecords, List.sum_reverse]
 
-theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
+/-- `Releasing.next` with two more facts of the step: linking the children leaves the freed
+record's capacity, and every block of the new pending records is a block of the old ones. -/
+theorem Releasing.nextBlocks {heap0 heap : Heap} {initial store : Store Unit}
     {tree : List (Nat × Nat)} {pending q : UInt64} {slots : List Slot}
     {rest : List (UInt64 × List Slot)}
     (h : Releasing heap0 initial tree heap store pending ((q, slots) :: rest)) :
     let next := store.mem.read64 (UInt32.ofNat (q.toNat - 40))
     let kids := childRecords store.mem q 0 slots
     let store1 : Store Unit := { store with mem := (linkChildren store.mem next kids).1 }
-    heap.At store1 ∧ heap.Object store1 q ∧
+    (heap.At store1 ∧ heap.Object store1 q ∧
       Releasing heap0 initial tree (heap.release q (store1.mem.read64 (q - 32).toUInt32))
         (heap.releaseStore store1 q) (linkChildren store.mem next kids).2 (kids.reverse ++ rest) ∧
-      forestRecords (kids.reverse ++ rest) < forestRecords ((q, slots) :: rest) := by
+      forestRecords (kids.reverse ++ rest) < forestRecords ((q, slots) :: rest)) ∧
+    capacityAt store1 q = capacityAt store q ∧
+    ∀ b ∈ forestBlocks (heap.releaseStore store1 q) (kids.reverse ++ rest),
+      b ∈ forestBlocks store ((q, slots) :: rest) := by
   intro next kids store1
   have hTop := h.disjoint
   rw [forestBlocks_cons, List.pairwise_cons, ← forestBlocks_append] at hTop
@@ -1143,9 +1148,8 @@ theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
     ⟨hBaseQ, by rw [hCap1]; exact hFitQ, by rw [hCap1]; exact hBody.below,
       by rw [hCap1]; exact hBody.separate⟩
   have hBlockQ1 : block store1 q = block store q := block_eq hCap1
-  refine ⟨hAt1, hObj1, ?_, ?_⟩
-  swap
-  · rw [forestRecords_append, forestRecords_reverse]
+  have hMeasure : forestRecords (kids.reverse ++ rest) < forestRecords ((q, slots) :: rest) := by
+    rw [forestRecords_append, forestRecords_reverse]
     change forestRecords (childRecords store.mem q 0 slots) + forestRecords rest < _
     have hHead : forestRecords ((q, slots) :: rest) = 1 + slotsRecords slots + forestRecords rest := by
       simp [forestRecords, Node.records]
@@ -1222,7 +1226,8 @@ theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
       (forestBlocks store (kids ++ rest)) := by
     rw [forestBlocks_append, forestBlocks_append]
     exact ((List.reverse_perm kids).flatMap_right _).append_right _
-  refine ⟨Heap.At.release hAt1 hObj1, ?_, fun k hk => (hFrame k (hMem k hk)).1, ?_, ?_, ?_, h.top⟩
+  refine ⟨⟨hAt1, hObj1, ⟨Heap.At.release hAt1 hObj1, ?_, fun k hk => (hFrame k (hMem k hk)).1, ?_,
+    ?_, ?_, h.top⟩, hMeasure⟩, hCap1, fun b hb => ?_⟩
   · have hChain1 := linkChildren_chain store.mem next kids rest h.chain.2
       (fun k hk => by
         have := (hItem k hk).1.base
@@ -1257,14 +1262,31 @@ theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
     rw [hBlocks2] at hb
     exact hApartT b (hPerm.mem_iff.mp hb)
   · exact h.caps
+  · rw [hBlocks2] at hb
+    rw [forestBlocks_cons, ← forestBlocks_append]
+    exact List.mem_cons_of_mem _ (hPerm.mem_iff.mp hb)
 
-/-- After `release` drops the reference to the root of a tree of owned records, the root is
-the one pending record. -/
-theorem Releasing.start {heap : Heap} {store : Store Unit} {p : UInt64} {slots : List Slot}
+theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
+    {tree : List (Nat × Nat)} {pending q : UInt64} {slots : List Slot}
+    {rest : List (UInt64 × List Slot)}
+    (h : Releasing heap0 initial tree heap store pending ((q, slots) :: rest)) :
+    let next := store.mem.read64 (UInt32.ofNat (q.toNat - 40))
+    let kids := childRecords store.mem q 0 slots
+    let store1 : Store Unit := { store with mem := (linkChildren store.mem next kids).1 }
+    heap.At store1 ∧ heap.Object store1 q ∧
+      Releasing heap0 initial tree (heap.release q (store1.mem.read64 (q - 32).toUInt32))
+        (heap.releaseStore store1 q) (linkChildren store.mem next kids).2 (kids.reverse ++ rest) ∧
+      forestRecords (kids.reverse ++ rest) < forestRecords ((q, slots) :: rest) :=
+  h.nextBlocks.1
+
+/-- `Releasing.start` with the blocks of the pending record, which clearing its count word
+leaves. -/
+theorem Releasing.startBlocks {heap : Heap} {store : Store Unit} {p : UInt64} {slots : List Slot}
     (hHeap : heap.At store) (hOwned : NodeOwned heap store p (.record slots))
     (hDisjoint : (Node.blocks store p (.record slots)).Pairwise regionsDisjoint) :
     Releasing heap store (Node.blocks store p (.record slots)) heap (releaseEntry store p) p
-      [(p, slots)] := by
+      [(p, slots)] ∧
+    forestBlocks (releaseEntry store p) [(p, slots)] = Node.blocks store p (.record slots) := by
   obtain ⟨hHeader, hSlots⟩ := hOwned
   have hBase := hHeader.base
   have hFit := hHeader.address
@@ -1295,8 +1317,8 @@ theorem Releasing.start {heap : Heap} {store : Store Unit} {p : UInt64} {slots :
   have hTree : forestBlocks (releaseEntry store p) [(p, slots)] = Node.blocks store p (.record slots) := by
     simp only [forestBlocks, List.flatMap_cons, List.flatMap_nil, List.append_nil, Node.blocks,
       block_eq hCapEq, hBlocksEq]
-  refine ⟨hAt1, ⟨rfl, ?_⟩, fun k hk => ?_, by rw [hTree]; exact hDisjoint, fun r hr hSize hr' => ?_,
-    rfl, rfl⟩
+  refine ⟨⟨hAt1, ⟨rfl, ?_⟩, fun k hk => ?_, by rw [hTree]; exact hDisjoint,
+    fun r hr hSize hr' => ?_, rfl, rfl⟩, hTree⟩
   · simp only [releaseEntry, PendingAt]
     exact Memory.read64_write64 _ _ _
   · simp only [List.mem_singleton] at hk
@@ -1305,6 +1327,15 @@ theorem Releasing.start {heap : Heap} {store : Store Unit} {p : UInt64} {slots :
   · refine ⟨hApart r (hr' _ (by simp [Node.blocks])), hr, ?_⟩
     rw [hTree]
     exact hr'
+
+/-- After `release` drops the reference to the root of a tree of owned records, the root is
+the one pending record. -/
+theorem Releasing.start {heap : Heap} {store : Store Unit} {p : UInt64} {slots : List Slot}
+    (hHeap : heap.At store) (hOwned : NodeOwned heap store p (.record slots))
+    (hDisjoint : (Node.blocks store p (.record slots)).Pairwise regionsDisjoint) :
+    Releasing heap store (Node.blocks store p (.record slots)) heap (releaseEntry store p) p
+      [(p, slots)] :=
+  (Releasing.startBlocks hHeap hOwned hDisjoint).1
 
 /-- When the pending list is empty, `release` has freed the tree. -/
 theorem Releasing.done {heap0 heap : Heap} {initial store : Store Unit}
