@@ -166,7 +166,7 @@ theorem wpX_treeCopyDescendInv {strict : Bool} {m : Module} (hm : Runtime m)
   intro heap' store' ptr hNew hChild hTop hAlloc
   have hInv := CopyInv.descendX h
     (child := ⟨store.mem.read64 (slotAddress current.source current.next), ptr, children, 0⟩)
-    hBound hSlot rfl hInitialChild hRead hNew hChild hTop hAlloc
+    hBound hSlot rfl hInitialChild (fun _ => hRead) hNew hChild hTop hAlloc
   let sFresh := setLocal s (base + 5) (.i64 ptr)
   have hFreshLocals : CopyLocals base s0 result current.pointer sFresh :=
     hLocals.scratch hLow5 (by omega) (by omega)

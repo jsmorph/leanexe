@@ -140,3 +140,13 @@ import Verified.AlignedExprCorrect
 import Verified.AlignedEnv
 import Verified.AlignedFunction
 import Verified.AlignedRuntime
+import Verified.AlignedTreeCopyInv
+import Verified.AlignedTreeCopyCode
+import Verified.AlignedTreeCopyNew
+import Verified.AlignedTreeCopySteps
+import Verified.AlignedTreeCopyArray
+import Verified.AlignedTreeCopyBuffer
+import Verified.AlignedTreeCopySlot
+import Verified.AlignedTreeCopy
+import Verified.AlignedTreeHeaderCopy
+import Verified.AlignedCopy

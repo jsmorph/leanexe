@@ -195,7 +195,8 @@ theorem CopyInv.descendX {strict : Bool} {shape : TreeShape} {heap0 heap heap' :
     (hBound : current.next < current.slots.length)
     (hSlot : current.slots[current.next] = .child (.record child.slots)) (hNext : child.next = 0)
     (hChildSource : NodeBorrowed heap0 initial child.source (.record child.slots))
-    (hChildRead : child.source = initial.mem.read64 (slotAddress current.source current.next))
+    (hChildRead : strict = true →
+      child.source = initial.mem.read64 (slotAddress current.source current.next))
     (hNew : Step heap store (fun _ => True) heap' store' [block store' child.pointer])
     (hChild : child.Holds shape heap' store' current.pointer)
     (hTop : heap'.top.toNat ≤ heap.top.toNat + allocCost (8 * child.slots.length))
@@ -251,7 +252,7 @@ theorem CopyInv.descendX {strict : Bool} {shape : TreeShape} {heap0 heap heap' :
   · intro record hr
     rcases List.mem_cons.mp hr with rfl | hr
     · intro r hr'
-      rw [hChildRead] at hr'
+      rw [hChildRead hs] at hr'
       exact (hA hs).sources current List.mem_cons_self r (slotRegions_child hBound hSlot r hr')
     · exact (hA hs).sources record hr
 
