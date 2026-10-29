@@ -38601,5 +38601,21 @@ The runtime's `alloc` and `release`, functions 0 and 1, which every compiled mod
 **The benchmark and the theorems.**  `tests/native/bench.sh --aligned` builds each workload through `native-verified build --aligned`, which evaluates `translate nativeCap m true` on the module that `tests/verified/modules.txt` names and has `clightgen` read the C text back for a comparison with that translation.  `p.translationAligned_eq` states the same expression for `p.module`, and the option of `verified_compile` adds declarations without changing the module or its translation.  The aligned numbers of the benchmark therefore describe the C text of `p.translationAligned` that each workload module would have with the option.  No workload module sets the option, so under the check the benchmark's aligned build needs them compiled with it.
 
 - [x] The check of `native-verified build --aligned`, with the fixture and its test.
-- [ ] The workload modules of the benchmark, or the whole corpus, compiled with `verified_compile.alignedNative`.
-- [ ] `tests/native/verified.sh --aligned` on a corpus with the option.
+- [x] The workload modules of the benchmark compiled with `verified_compile.alignedNative`.
+- [x] `tests/native/verified.sh --aligned` on the corpus with those modules.
+- [ ] Whether every program compiles with the option, the user's decision after the benchmark.
+
+## 2026-10-29: The benchmark programs under the aligned check
+
+The six programs that `tests/native/bench.sh` times now set `verified_compile.alignedNative`, so that `native-verified build --aligned` compiles them under its check.  The table gives Lake's elaboration time of each module, built one at a time at four threads while other builds ran, without the option and then with it.  The six modules take 1,446 seconds without the option and 1,490 with it, 3 percent more, and the Euler program takes about three quarters of the total either way.
+
+| Module | Without the option (s) | With the option (s) |
+| --- | --- | --- |
+| `Library.Hashing.Crc.Compiled` | 10 | 12 |
+| `Library.Sorting.Insertion.Compiled` | 5.7 | 7.4 |
+| `Library.Hashing.Sha256.Compiled` | 61 | 66 |
+| `Library.Hashing.Sha3.Compiled` | 208 | 227 |
+| `Demos.Euler.Verified` | 1,107 | 1,122 |
+| `Demos.Gpt32.Verified` | 54 | 56 |
+
+`native-verified build --aligned` passed the check on all six, and each `clightgen` program matches its translation.  The CRC module now has aligned theorems, so `tests/native/aligned.sh` expects the refusal on `Library.Arrays.Word.Compiled`, and it passed: the fixture built, and the word-array and literal modules were refused with status 4.  `tests/native/verified.sh --aligned` refused the other 97 modules of the corpus and passed all 1,024 cases of the six, with none failing.  It ran none of the 34,742 cases of the refused modules.  Of the module cases, the 3,096 of `euler` passed, and the 226 of `sums` did not run.  The run took 2,373 seconds, most of it the rebuild of the corpus after the generator's change.
