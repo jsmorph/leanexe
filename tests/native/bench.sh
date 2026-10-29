@@ -31,17 +31,25 @@
 # as for tests/native/run.sh.  LEANRUN_MEMORY_HIGH is the memory limit of each step that runs
 # under tools/leanrun, 8G unless the caller sets it, since tools/Emit.lean loads a module as
 # tools/Subset.lean does.
-# Usage: tests/native/bench.sh [--test] [--placements]
+# `--aligned` builds the native form with the translation option alignedAccess, whose load64 and
+# store64 omit the test of alignment.
+# Usage: tests/native/bench.sh [--test] [--placements] [--aligned]
 set -euo pipefail
 export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-8G}
 test_run=0
 placements=0
+aligned=()
+translation="with the alignment test"
 for arg in "$@"; do
   case $arg in
     --test) test_run=1 ;;
     --placements) placements=1 ;;
+    --aligned)
+      aligned=(--aligned)
+      translation="without the alignment test (alignedAccess)"
+      ;;
     *)
-      echo "usage: tests/native/bench.sh [--test] [--placements]" >&2
+      echo "usage: tests/native/bench.sh [--test] [--placements] [--aligned]" >&2
       exit 2
       ;;
   esac
@@ -86,7 +94,7 @@ for name in sha256 sha3 crc libsort euler gpt32; do
   rest=${line#*:}
   constant=${rest%%:*}
   CLIGHTGEN=$clightgen CCOMP=$ccomp tools/leanrun --timeout 10m lake env \
-    .lake/build/bin/native-verified build "$module" "$constant" "$name" "$out/native"
+    .lake/build/bin/native-verified build "${aligned[@]}" "$module" "$constant" "$name" "$out/native"
   "$ccomp" "${stdlib[@]}" -I "$root/tools" -o "$out/native/$name" "$out/native/$name.o" \
     "$out/native/${name}_glue.c" "$root/tools/native-bench.c" "$out/native/host.o"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$constant" \
@@ -133,6 +141,7 @@ mkdir -p "$run"
   echo "frequency governor: $(cat /sys/devices/system/cpu/cpu$core/cpufreq/scaling_governor)"
   echo "ccomp: $("$ccomp" -version | head -1), from the 3.18 sources; options: -fno-common -c for the translation, -stdlib and -I to link"
   echo "wasmtime: C API $(ls build/tools/wasmtime 2>/dev/null | sed -n 's/^wasmtime-v\([0-9.]*\)-.*-c-api$/\1/p' | head -1), Cranelift, NaN canonicalization on"
+  echo "translation: $translation"
   echo "pairs: $pairs, timed period: $seconds s"
   if [ "$placements" -eq 1 ]; then echo "placements: 16, runs per placement: $rounds"; fi
 } >"$run/environment.txt"
