@@ -30,7 +30,7 @@ a logistic identity and the proved exponential.  The generated-WAT theorem
 proves termination, exact status and result words, and complete store
 preservation for every raw input.  The guard recognizes exactly the stated
 finite interval.  Rejected input returns status one and a zero payload.
-The [GELU analysis](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/gelu-analysis.md) records the derivation.
+The [GELU analysis](https://github.com/jsmorph/leanexe/blob/26d057979df98de1d17c8a44a07558546e3b5383/plans/gelu-analysis.md) records the derivation.
 
 ## LayerNorm
 
@@ -69,7 +69,7 @@ terminating generated-WAT execution with complete store preservation.
 errors.  For coordinatewise input error δ, scale error η, bias error θ,
 scale magnitude G, and a positive lower bound L on both endpoint standard
 deviations, its bound is 1/1000000 + 2Gδ/L + 2η + θ.  The
-[LayerNorm analysis](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/layernorm-analysis.md) derives the endpoint
+[LayerNorm analysis](https://github.com/jsmorph/leanexe/blob/26d057979df98de1d17c8a44a07558546e3b5383/plans/layernorm-analysis.md) derives the endpoint
 bound and records the remaining checkpoint-range investigation.
 
 ## Softmax
@@ -185,7 +185,7 @@ perturbing a nonpositive reference input.
 | `Project.ExpSmall.Spec.expSmall_exact` | Every raw input terminates with the specified status and result, preserving the complete WASM store. |
 | `Project.ExpSmall.Spec.expSmall_real_error` | Generated-WAT execution on the domain returns a positive finite result within 1/4000 of real exponential. |
 
-The proof sources are in the [small exponential project](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ExpSmall/Spec.lean).
+The proof sources are in the [small exponential project](https://github.com/jsmorph/leanexe/blob/26d057979df98de1d17c8a44a07558546e3b5383/proofs/talos/lean/Project/ExpSmall/Spec.lean).
 The runtime tests compare WASM with native execution of Talos's bit model
 and cover endpoints, signed zeros, subnormals, infinities, NaNs, and rejection.
 The host exponential comparison is empirical test evidence.  The test suite

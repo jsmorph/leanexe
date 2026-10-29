@@ -4,7 +4,7 @@ This report describes the earlier compiler at its recorded source revision.  Its
 
 The [twenty-page report](main.pdf) describes LeanExe's grouped INT8 GPT-2 implementation, exact WebAssembly/session proofs, checkpoint correspondence, retained accuracy and timing experiments, conditional numerical bounds, and observed-logit certificates.  It fixes [a source revision](https://github.com/jsmorph/leanexe/commit/c655d35b5011c1703dfd22bcceaec4e5bee17088) and the 28,315-byte binary with SHA-256 `9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075`.
 
-At its cited source revision, the manuscript distinguishes the completed quantized component from unfinished repository-wide checks.  The [development status](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/status.md) records subsequent verification.  The report records zero forward-bound token certificates and 232 common-offset certificates derived from observed logit pairs.  Jamie Stephens, Morphism, is the author.  marXiv accepted [version two](main.pdf) on 24 September 2026 with no remarks.
+At its cited source revision, the manuscript distinguishes the completed quantized component from unfinished repository-wide checks.  The [development status](https://github.com/jsmorph/leanexe/blob/26d057979df98de1d17c8a44a07558546e3b5383/docs/status.md) records subsequent verification.  The report records zero forward-bound token certificates and 232 common-offset certificates derived from observed logit pairs.  Jamie Stephens, Morphism, is the author.  marXiv accepted [version two](main.pdf) on 24 September 2026 with no remarks.
 
 ## Manuscript and evidence
 
