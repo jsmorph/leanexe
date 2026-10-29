@@ -85,7 +85,7 @@ theorem wpX_allocBlock {strict : Bool} {m : Module} (hm : Runtime m)
       words.size = n.toNat → Step heap store (fun _ => True) heap' store' [block store' root] →
       heap'.Owned store' root words → AllocShape heap heap' bytes (capacityAt store' root) →
       heap'.top.toNat ≤ heap.top.toNat + c →
-      (strict = true → root.toNat % 8 = 0 ∧ heap'.Aligned) →
+      (strict = true → root.toNat % 8 = 0 ∧ capacityAt store' root % 8 = 0 ∧ heap'.Aligned) →
       wpX strict m rest Q store' (setLocal { s with values := vs } ptr (.i64 root)) host) :
     wpX strict m (allocBlockCode len ptr ++ rest) Q store { s with values := .i64 bytes :: vs }
       host := by
@@ -99,7 +99,8 @@ theorem wpX_allocBlock {strict : Bool} {m : Module} (hm : Runtime m)
     fun hs => (hHeapAl hs).allocate (allocSize_mod8 bytes)
   have hRound := le_allocSize hBytes32
   have hShape := Heap.allocate_shape hBytes32 hFits
-  generalize hNeed : allocSize bytes = need at hFits hRound hTop hShape hRootAl hNextAl ⊢
+  have hNeed8 := allocSize_mod8 bytes
+  generalize hNeed : allocSize bytes = need at hFits hRound hTop hShape hRootAl hNextAl hNeed8 ⊢
   have hBlock := hAt.allocate_block 1 hFits
   have hCapacity := allocated_capacity need heap.free
   generalize hRoot : FixedArrayAllocate.root heap.top need heap.free = root at hBlock hRootAl ⊢
@@ -139,11 +140,14 @@ theorem wpX_allocBlock {strict : Bool} {m : Module} (hm : Runtime m)
     ⟨by rw [hWrites.1], hWrites.2.1, fun a ha => hWrites.2.2 a (by omega)⟩
   subst hRoot hCapDef
   have hCapEq := ((hAt.allocate_block 1 hFits).writesWithin hWithin).capacity_eq
+  have hCapAl : strict = true →
+      capacityAt store2 (FixedArrayAllocate.root heap.top need heap.free) % 8 = 0 :=
+    fun hs => by rw [hCapEq]; exact (hHeapAl hs).capacity_alloc hNeed8
   have hNew := Heap.newArray_of_writes hAt hFits hWithin hValues (by rw [hSize]; omega)
     (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps store need 1)
   exact hNext _ store2 _ words hSize
     ⟨hNew.at_, hNew.caps, fun r hr hpos _ => hNew.keeps r hr hpos nofun⟩ hNew.owned
-    (by rw [hCapEq]; exact hShape) hTop (fun hs => ⟨hRootAl hs, hNextAl hs⟩)
+    (by rw [hCapEq]; exact hShape) hTop (fun hs => ⟨hRootAl hs, hCapAl hs, hNextAl hs⟩)
 
 /-- `wp_copyInto` under the flag: under `strict = true` both arrays' addresses are multiples of
 8, so every load and store of the loop is aligned. -/
@@ -266,7 +270,7 @@ theorem wpX_allocCopy {strict : Bool} {m : Module} (hm : Runtime m)
       AllocShape heap heap' bytes (capacityAt store' q) → s'.params = s.params →
       s'.locals.length = s.locals.length → (∀ j, j ≠ dst → j ≠ index → s'.get j = s.get j) →
       s'.get dst = some (.i64 q) → s'.values = vs → heap'.top.toNat ≤ heap.top.toNat + c →
-      (strict = true → q.toNat % 8 = 0 ∧ heap'.Aligned) →
+      (strict = true → q.toNat % 8 = 0 ∧ capacityAt store' q % 8 = 0 ∧ heap'.Aligned) →
       wpX strict m rest Q store' s' host) :
     wpX strict m (allocBlockCode len dst ++ (copyIntoCode src dst count index ++ rest)) Q store
       { s with values := .i64 bytes :: vs } host := by
@@ -307,7 +311,8 @@ theorem wpX_allocCopy {strict : Bool} {m : Module} (hm : Runtime m)
     (fun j hj => ?_) (hStep.mono (fun _ h => h) fun b hb => ?_) hOwned2
     (by rw [hCapSame]; exact hCapQ) hp2 (by rw [hl2]; simp [setLocal])
     (fun j hj hji => by rw [hOther2 j hji, hGet1 j hj])
-    (by rw [hOther2 dst hDstIndex]; exact hQ1) hv2 hTop hAlq
+    (by rw [hOther2 dst hDstIndex]; exact hQ1) hv2 hTop
+    (fun hs => ⟨(hAlq hs).1, by rw [hCapSame]; exact (hAlq hs).2.1, (hAlq hs).2.2⟩)
   · rw [getElem!_pos _ j (by rw [overlay_size]; omega)]
     simp only [overlay, Array.getElem_ofFn]
     rw [ite_eq_left (by omega), Nat.sub_zero, getElem!_pos xs j hj]
@@ -328,7 +333,7 @@ theorem wpX_copyArray {strict : Bool} {m : Module} (hm : Runtime m)
     (hNext : ∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (ptr' : UInt64),
       Step heap store (fun _ => True) heap' store' [block store' ptr'] →
       heap'.Owned store' ptr' xs → Frame base s s' → heap'.top.toNat ≤ heap.top.toNat + c →
-      (strict = true → ptr'.toNat % 8 = 0 ∧ heap'.Aligned) →
+      (strict = true → ptr'.toNat % 8 = 0 ∧ capacityAt store' ptr' % 8 = 0 ∧ heap'.Aligned) →
       wpX strict m rest Q store' { s' with values := .i64 ptr' :: s.values } host) :
     wpX strict m (copyArrayCode src base ++ rest) Q store s host := by
   have hTot : 2 * s.positions ≤ s.params.length + s.locals.length := by

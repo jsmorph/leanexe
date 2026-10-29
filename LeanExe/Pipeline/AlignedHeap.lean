@@ -42,6 +42,18 @@ theorem Heap.Aligned.root {heap : Heap} {need : UInt64} (ha : heap.Aligned)
     · exact hr
   · exact UInt64.add_mod8 ha.top rfl
 
+/-- The capacity of the block that allocation of a multiple of 8 bytes returns is a multiple of
+8. -/
+theorem Heap.Aligned.capacity_alloc {heap : Heap} {need : UInt64} (ha : heap.Aligned)
+    (hn : need.toNat % 8 = 0) : (allocatedCapacity need heap.free).toNat % 8 = 0 := by
+  unfold allocatedCapacity
+  split
+  · rename_i choice hTake
+    split
+    · exact hn
+    · exact ha.capacities _ (takeFirstFitFrom_some_mem hTake)
+  · exact hn
+
 /-- Allocation of a multiple of 8 bytes keeps the heap aligned. -/
 theorem Heap.Aligned.allocate {heap : Heap} {need : UInt64} (ha : heap.Aligned)
     (hn : need.toNat % 8 = 0) : (heap.allocate need).Aligned := by
