@@ -38364,3 +38364,22 @@ The first study put the third stage at 2,400 to 5,300 lines with low confidence.
 - [x] The pointers of a tree argument that `moves` and `reads` reach.
 - [ ] The review of the proposed premise of `NativeA`, `NativeTablesA`, and `NativeStaticA`.
 - [ ] The user's decision on building the proof.
+
+## 2026-10-29: Instructions that the alignment predicate does not enter
+
+`AlignedOne` (`LeanExe/ProofKit/AlignedExec.lean`) checks the address of each `load64` and `store64`, enters the bodies of `block`, `loop`, and `iff`, and enters the callee of `call`.  For every other instruction it is `True`, and among those, `callIndirect`, `callRef`, and `tryTable` run code that the predicate does not check.  The native theorem assumes alignment only of modules that the translator accepts, and the translator's subset check rejects all three.  `instrOk` in `LeanExe/Native/Subset.lean` (lines 30 to 48) accepts the forms listed in lines 32 to 47 and returns `false` for every other form at line 48, and none of the three is listed.  `functionViolation` applies `programOk` to every function body (line 60), `violation` applies `functionViolation` to every function (line 111), and `InSubset m` is `violation m = none` (line 113).  The shape check also rejects tables (line 91) and exception tags (line 93), so an accepted module has no table for an indirect call and no tag to catch.  The return-call forms are absent from the list too, and `AlignedRun` covers a body that ends in `ReturnCall` through `AlignedRunTail` in any case.  The predicate is therefore sound for the native theorem, whose modules satisfy `InSubset`, and a statement about arbitrary modules would need the three cases.
+
+## 2026-10-29: Porting the universal proof under the flag
+
+The third stage ports each construct of `Expr.code_specIn` to `wpX strict`.  A construct `spec_c` of `ExprCorrect.lean` or of its own file becomes `specX_c`, with `CodeSpecX strict` or `CodeSpecInX strict` for `CodeSpec` or `CodeSpecIn`, `HoldsA` as a premise and as a conjunct of each continuation, and the same arguments otherwise.  A lemma about code, `wp_l`, becomes `wpX_l` with the same statement under `wpX`; a lemma about code without `load64`, `store64`, or `call` is carried by `wpX_append_free` (`LeanExe/ProofKit/AlignedFree.lean`) from its original instead of copied.  Two stage-3 definitions stand for parts proved later: `ReadReleaseX`, which `readReleaseX` proves from `ReleaseAligned`, and `CopyCodeX`, the flagged copy of a value, which `copyCodeX_false` gives at `strict = false`.  Most construct ports are the original proof with 15 to 25 percent of its lines changed, produced by substitution over the original text and checked by a diff.
+
+The coordinator decided that, when the port is complete, each original construct proof becomes the `strict = false` corollary of its flagged proof, `CodeSpecX.false_iff.mp` of `specX_c` with `readReleaseX_false` and `copyCodeX_false` for the stage-3 premises, and its proof text is removed.  The names, statements, and one-to-one correspondence of the ports keep that replacement mechanical.  The originals of lemmas that `wpX_append_free` carries stay, since the flagged forms rest on them.
+
+- [x] The scalar constructs, the readers, `ite`, `letE`, `pair`, and `letPair`.
+- [ ] `call`, `loop`, `fold`, and `listFold`.
+- [ ] The array writers: `build`, `set`, `push`, `append`, `insertAt`, `eraseAt`, and the room they share.
+- [ ] `bytesLiteral` and `bytesBuild`.
+- [ ] `CopyCodeX`: buffers, tree headers, trees, and pairs, arrays being done.
+- [ ] `treeNode` and `treeCase`.
+- [ ] `Expr.code_specIn` under the flag and the function level in `Correct.lean`.
+- [ ] Each original construct proof as the `strict = false` corollary of its port.
