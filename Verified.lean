@@ -118,3 +118,4 @@ import Verified.AlignedAccess
 import Verified.AlignedArrayCopy
 import Verified.AlignedSpec
 import Verified.AlignedRelease
+import Verified.AlignedReleaseChain
