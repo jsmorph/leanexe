@@ -72,6 +72,7 @@ import LeanExe.Pipeline.AlignedAlloc
 import LeanExe.Pipeline.AlignedFreeList
 import LeanExe.Pipeline.AlignedHeap
 import LeanExe.Pipeline.AlignedImplements
+import LeanExe.Pipeline.ImplementsAligned
 import LeanExe.Pipeline.AlignedRuns
 import LeanExe.Pipeline.Slotted
 import LeanExe.ProofKit.AlignedAllocate
