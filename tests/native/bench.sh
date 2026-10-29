@@ -255,7 +255,7 @@ awk -F'\t' 'NR > 1 { print $1 "\t" $3 "\t" $5 / $4 }' "$results" | sort -t$'\t' 
   echo "discarded pairs: $discarded"
   if [ "$placements" -eq 1 ]; then
     echo
-    echo "native form at 16 placements, code moved by 0 to 60 bytes, $rounds runs each"
+    echo "native form at 16 placements, code moved by 0 to 60 bytes, runs per placement: $rounds"
     printf 'workload\tform\tmean ns per call over placements\tfastest placement\tslowest placement\tmedian of pairs\n'
     awk -F'\t' '
       NR == FNR { if ($2 == "native") med[$1] = $3; next }
