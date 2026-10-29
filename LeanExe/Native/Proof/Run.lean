@@ -7,7 +7,7 @@ The simulation of a call of a translated function: Talos's `run` against CompCer
 
 namespace LeanExe.Native
 
-open Wasm LClight
+open Wasm LClight LeanExe.ProofKit
 
 theorem mapM_length {α β : Type} {f : α → Option β} :
     ∀ {l : List α} {l' : List β}, l.mapM f = some l' → l'.length = l.length
@@ -105,13 +105,14 @@ theorem outcome_zero (t : VT) (m : mem) :
 theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Function}
     (hf : mod.funcs[k]? = some f) {sigs : List (Option (List VT × List VT))} {G cap : Nat}
     (hG : G = E.globals.length) (hcap : cap = E.cap) (h64 : mod.memIs64 = false) {fd : function}
-    (htr : trFunction cap sigs G f = some fd)
+    {al : Bool} (htr : trFunction cap sigs G f al = some fd)
     {ps rs : List VT} (hsig : signatureOf f = some (ps, rs)) (hres : ResOk E rs)
     {CallOk : Nat → Prop} {F : Nat}
-    (hC : ∀ k', CallOk k' → ∀ g, g < F → ∀ c : FCtx, c.sigs = sigs → CallSim A X E mod c g k')
+    (hC : ∀ k', CallOk k' → ∀ g, g < F → ∀ c : FCtx, c.sigs = sigs → c.alignedAccess = al →
+      CallSim A X E mod c g k')
     (hcalls : ∀ k', funId k' ∈ callees fd.fn_body → CallOk k') :
-    RunSimFun A X E mod F k ps rs fd := by
-  intro α st args m env htyped hg hs
+    RunSimFun A X E mod al F k ps rs fd := by
+  intro α st args m env htyped hg hs hal
   obtain ⟨ps0, ls, rs0, body, nc, hps, hls, hrs, hok, hbody, hfd⟩ := trFunction_spec htr
   have hpr : ps0 = ps ∧ rs0 = rs := by
     unfold signatureOf at hsig
@@ -119,9 +120,10 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
     simp [hok] at hsig
     exact ⟨hsig.1, hsig.2⟩
   obtain ⟨rfl, rfl⟩ := hpr
-  let c : FCtx := { locals := ps0 ++ ls, results := rs0, nglobals := G, sigs := sigs, cap := cap }
+  let c : FCtx := { locals := ps0 ++ ls, results := rs0, nglobals := G, sigs := sigs, cap := cap,
+                    alignedAccess := al }
   have hP := body_sim (c := c) (A := A) (X := X) (mod := mod) hE (by simp [c, hG]) hcap h64
-    hres (fun k' hk' g hg => hC k' hk' g hg c rfl) F (Nat.le_refl _)
+    hres (fun k' hk' g hg => hC k' hk' g hg c rfl rfl) F (Nat.le_refl _)
   have hnp : f.params.length = ps0.length := (mapM_length hps).symm
   have hnr : f.results.length = rs0.length := (mapM_length hrs).symm
   have hnl : f.locals.length = ls.length := (mapM_length hls).symm
@@ -202,6 +204,12 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
         exact hl
   have hinv : Inv E c [] st (f.toLocals ((args.take ps0.length).reverse)) le4 m :=
     Inv.of_lim trivial hloc3 hg hs (te_insert_same _ _ _)
+  have halb : c.alignedAccess = true →
+      AlignedExec F mod st (f.toLocals ((args.take ps0.length).reverse)) f.body env := fun hc => by
+    have h1 := hal hc
+    simp only [AlignedRun, himp, List.getElem?_nil, List.length_nil, Nat.sub_zero, hf,
+      Function.numParams, hnp] at h1
+    exact h1.1
   -- The body.
   have hcalls' : ∀ k', funId k' ∈ callees body → CallOk k' := fun k' hk => hcalls k' (by
     rw [hfd, callees_seqList]
@@ -212,7 +220,7 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
   have ho := hP [{ isLoop := false, base := 0, result := retOf rs0, final := 2 ≤ rs0.length }] []
     rs0.reverse 0 f.body body nc hbody
     (Nat.le_refl _) (fun k l hl => by cases k <;> simp at hl; subst hl; exact Nat.le_refl _)
-    hcalls' st _ le4 m env hinv
+    hcalls' st _ le4 m env halb hinv
   -- The function's tail after the declared locals.
   let ret : statement := retStmt rs0
   have hbodyEq : fd.fn_body = seqList ((ls.zipIdx).map (fun x => statement.Sset

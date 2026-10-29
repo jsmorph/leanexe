@@ -17,8 +17,9 @@ namespace LeanExe.Native
 open Wasm LClight
 
 /-- The functions that the C function of `k` calls, or `none` when `k` has no C function. -/
-def callInfo (cap : Nat) (m : Module) (k : Nat) : Option (List Nat) :=
-  ((fdefsOf cap m)[k]?.join).map fun f =>
+def callInfo (cap : Nat) (m : Module) (k : Nat) (alignedAccess : Bool := false) :
+    Option (List Nat) :=
+  ((fdefsOf cap m alignedAccess)[k]?.join).map fun f =>
     (callees f.fn_body).filterMap fun id => if id % 4 = 3 then some (id / 4) else none
 
 /-- `includedOf` from the `callInfo` of each function. -/
@@ -115,7 +116,7 @@ theorem translate_funcs_of_parts {cap : Nat} {m : Module} {infos : List (Option 
   obtain ⟨gdefs, hgdefs⟩ := Option.isSome_iff_exists.mp hg
   have hclosed : ∀ k ∈ L, ∀ j ∈ callsOf cap m k, j ∈ L := by
     have hc' : (L.all fun k => (callsOf cap m k).all (L.contains ·)) = true := by
-      rw [callsOf_of_parts hlen h]
+      simp only [callsOf_eq_callInfo, callInfo_of_parts hlen h]
       exact hc
     simpa using hc'
   have hfuns : (L.mapM (funDef cap m)).isSome = true := by

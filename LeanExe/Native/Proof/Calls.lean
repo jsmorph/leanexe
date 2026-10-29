@@ -8,7 +8,7 @@ Talos's `run` and CompCert's `eval_funcall` for it, `RunOutcome`.
 
 namespace LeanExe.Native
 
-open Wasm LClight
+open Wasm LClight LeanExe.ProofKit
 
 /-- The C arguments of a call with parameters `ps` from the Talos stack `args`, top first: the
 top `ps.length` values, deepest first. -/
@@ -47,17 +47,20 @@ def RunOutcome (ps : List VT) (rs : List VT) (fd : function) {α : Type} (res : 
   | .OutOfFuel => True
   | .Thrown _ _ _ => False
 
-/-- The simulation of a call of function `k`, whose C translation is `fd`, at fuel `g`. -/
-def RunSimFun (g k : Nat) (ps : List VT) (rs : List VT) (fd : function) : Prop :=
+/-- The simulation of a call of function `k`, whose C translation is `fd`, at fuel `g`.  When
+`al` holds, the translation omits the test of alignment, and the run's 64-bit accesses inside
+memory must be aligned. -/
+def RunSimFun (al : Bool) (g k : Nat) (ps : List VT) (rs : List VT) (fd : function) : Prop :=
   ∀ {α : Type} (st : Store α) (args : List Value) (m : mem) (env : HostEnv α),
     ArgsTyped ps args → StoreRel E st m → StatusRel E m 0 →
+    (al = true → AlignedRun g mod k st args env) →
     RunOutcome A X E ps rs fd (run g mod k st args env) args m
 
 /-- What a call of function `k` needs at fuel `g`, for a caller whose context is `c`. -/
 def CallSim (c : FCtx) (g k : Nat) : Prop :=
   ∃ ps rs b fd, (c.sigs[k]?).join = some (ps, rs) ∧ Genv.find_symbol E.ge (funId k) = some b ∧
     Genv.find_funct_ptr E.ge b = some (.Internal fd) ∧ type_of_function fd = funType ps rs ∧
-    ResOk E rs ∧ RunSimFun A X E mod g k ps rs fd
+    ResOk E rs ∧ RunSimFun A X E mod c.alignedAccess g k ps rs fd
 
 end
 
@@ -172,7 +175,7 @@ theorem exec_callCheck_trap {le : temp_env} {m : mem} {code : Nat} (hE : EnvOk E
 theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
     (hok : CallOk k → CallSim A X E mod c f k) :
     InstrSimL A X E mod c CallOk (f + 1) (.call k) := by
-  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hinv
+  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hal hinv
   obtain ⟨ps, rs, σr, hsig, rfl, hb, hcase⟩ := tr_call htr
   have hk : CallOk k := hcalls k (by
     rcases hcase with ⟨-, -, -, rfl⟩ | ⟨t, -, -, -, rfl⟩ | ⟨-, -, -, rfl⟩ <;> simp [callees])
@@ -195,7 +198,10 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
   have hevl : eval_exprlist A E.ge empty_env le m (callArgs σr.length ps) (ps.map VT.ty)
       (argVals ps sl.values) := by
     rw [hargv]; exact hargs.eval
-  have hrun' := hrun st sl.values m env htyped hinv.store hinv.status
+  have hrun' := hrun st sl.values m env htyped hinv.store hinv.status fun hc => by
+    have h1 := hal hc
+    simp only [AlignedOne] at h1
+    exact h1
   simp only [execOne.eq_def]
   cases hres : run f mod k st sl.values env with
   | Success vs st' =>

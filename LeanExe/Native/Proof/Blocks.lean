@@ -6,7 +6,7 @@ The simulation of `block`, `iff`, and `loop`.
 
 namespace LeanExe.Native
 
-open Wasm LClight
+open Wasm LClight LeanExe.ProofKit
 
 theorem execOne_zero {α : Type} (m : Module) (st : Store α) (sl : Locals) (env : HostEnv α)
     (inst : Instruction) : execOne 0 m st sl inst env = .OutOfFuel := by
@@ -165,15 +165,16 @@ theorem construct_of_body {L : List Label} {σb : List VT} {r : Option VT} {α :
 theorem sim_block {CallOk : Nat → Prop} {f : Nat} (hP : ProgSim A X E mod c CallOk f)
     (pa ra : Nat) (body : Program) (pts rts : List ValueType) :
     InstrSimL A X E mod c CallOk (f + 1) (.block pa ra body pts rts) := by
-  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hinv
+  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hal hinv
   simp [trInstr, Option.bind_eq_some_iff] at htr
-  obtain ⟨hbt, r, hr, parent, hp, s0, n1, hbody, rfl, rfl, rfl⟩ := htr
+  obtain ⟨hbt, r, hr, parent, hp, s0, hbody, rfl, rfl⟩ := htr
   obtain ⟨rfl, rfl⟩ := blockTypeOk_inv hbt hr
   rw [execOne_block]
   apply ConstructOutcome.toOutcome hp
   have ho := hP ({ isLoop := false, base := σ.length, result := r } :: L) σ (r.toList ++ σ) n body
-    s0 n1 hbody (Nat.le_refl _) (hL.push hbase false r)
-    (fun k hk => hcalls k (callees_wrap _ _ hk)) st sl le m env hinv
+    s0 n' hbody (Nat.le_refl _) (hL.push hbase false r)
+    (fun k hk => hcalls k (callees_wrap _ _ hk)) st sl le m env
+    (fun hc => by have h1 := hal hc; simp only [AlignedOne] at h1; exact h1) hinv
   exact construct_of_body hbase hinv.stack ho
 
 /-- The C conditional picks the branch that Talos picks. -/
@@ -218,11 +219,16 @@ theorem callees_wrap_ite (cond : expr) (s1 s2 d : statement) {k : ident}
 theorem sim_iff {CallOk : Nat → Prop} {f : Nat} (hP : ProgSim A X E mod c CallOk f)
     (pa ra : Nat) (thn els : Program) (pts rts : List ValueType) :
     InstrSimL A X E mod c CallOk (f + 1) (.iff pa ra thn els pts rts) := by
-  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hinv
+  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hal hinv
   rcases σ with _ | ⟨a, σr⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at htr
-  obtain ⟨hbt, r, hr, parent, hp, _, ⟨hb, rfl⟩, rfl, s1, n1, h1, s2, n2, h2, rfl, rfl, rfl⟩ := htr
+  obtain ⟨hbt, r, hr, parent, hp, hb, rfl, s1, n1, h1, s2, h2, rfl, rfl⟩ := htr
   obtain ⟨rfl, rfl⟩ := blockTypeOk_inv hbt hr
   obtain ⟨x, vs, hvs, hx, hrest⟩ := pop1_i32 hinv.stack
+  have halB : c.alignedAccess = true →
+      AlignedExec f mod st { sl with values := vs } (if x ≠ 0 then thn else els) env := fun hc => by
+    have h1 := hal hc
+    simp only [AlignedOne, hvs] at h1
+    exact h1
   rw [execOne_iff _ _ _ _ _ _ _ _ _ _ _ x vs hvs]
   apply ConstructOutcome.toOutcome hp
   have hinv' : Inv E c σr st { params := sl.params, locals := sl.locals, values := vs } le m :=
@@ -234,11 +240,13 @@ theorem sim_iff {CallOk : Nat → Prop} {f : Nat} (hP : ProgSim A X E mod c Call
   · rw [ite_eq_left hx0, ite_eq_left hx0]
     exact hP ({ isLoop := false, base := σr.length, result := r } :: L) σr (r.toList ++ σr) n thn
       s1 n1 h1 (Nat.le_refl _) (hL.push hb false r)
-      (fun k hk => hcalls k (callees_wrap_ite _ _ _ _ (.inl hk))) st _ le m env hinv'
+      (fun k hk => hcalls k (callees_wrap_ite _ _ _ _ (.inl hk))) st _ le m env
+      (fun hc => by have h1 := halB hc; rwa [ite_eq_left hx0] at h1) hinv'
   · rw [ite_eq_right hx0, ite_eq_right hx0]
     exact hP ({ isLoop := false, base := σr.length, result := r } :: L) σr (r.toList ++ σr) n1 els
-      s2 n2 h2 (Nat.le_refl _) (hL.push hb false r)
-      (fun k hk => hcalls k (callees_wrap_ite _ _ _ _ (.inr hk))) st _ le m env hinv'
+      s2 n' h2 (Nat.le_refl _) (hL.push hb false r)
+      (fun k hk => hcalls k (callees_wrap_ite _ _ _ _ (.inr hk))) st _ le m env
+      (fun hc => by have h1 := halB hc; rwa [ite_eq_right hx0] at h1) hinv'
 
 /-- A loop that runs its body once more after the body continued. -/
 theorem ConstructOutcome.again {L : List Label} {σ : List VT} {σ' : List VT} (hL : LabelsOk L)
@@ -274,27 +282,32 @@ theorem ConstructOutcome.again {L : List Label} {σ : List VT} {σ' : List VT} (
 theorem sim_loop {CallOk : Nat → Prop} {F : Nat} (hP : ∀ g, g < F → ProgSim A X E mod c CallOk g)
     (pa ra : Nat) (body : Program) (pts rts : List ValueType) :
     InstrSimL A X E mod c CallOk F (.loop pa ra body pts rts) := by
-  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hinv
+  intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env hal hinv
   simp [trInstr, Option.bind_eq_some_iff] at htr
-  obtain ⟨hbt, r, hr, parent, hp, s0, n1, hbody, rfl, rfl, rfl⟩ := htr
+  obtain ⟨hbt, r, hr, parent, hp, s0, hbody, rfl, rfl⟩ := htr
   obtain ⟨rfl, rfl⟩ := blockTypeOk_inv hbt hr
   apply ConstructOutcome.toOutcome hp
   let L' : List Label := { isLoop := true, base := σ.length, result := none } :: L
   have hL' : LabelsOk L' := hL.push hbase true none
   have hc' : ∀ k, funId k ∈ callees s0 → CallOk k := fun k hk => hcalls k (callees_wrap _ _ hk)
   suffices key : ∀ g, g ≤ F → ∀ (st : Store α) (sl : Locals) (le : temp_env) (m : mem),
+      (c.alignedAccess = true → AlignedOne g mod st sl (.loop 0 r.toList.length body pts rts) env) →
       Inv E c σ st sl le m →
       ConstructOutcome A X E c L (r.toList ++ σ)
         (execOne g mod st sl (.loop 0 r.toList.length body pts rts) env) (wrapLoop s0) le m from
-    key F (Nat.le_refl _) st sl le m hinv
+    key F (Nat.le_refl _) st sl le m hal hinv
   intro g
   induction g with
-  | zero => intro _ st sl le m _; rw [execOne_zero]; trivial
+  | zero => intro _ st sl le m _ _; rw [execOne_zero]; trivial
   | succ g ih =>
-      intro hg st sl le m hinv
+      intro hg st sl le m hal hinv
+      have halb : c.alignedAccess = true → AlignedExec g mod st sl body env := fun hc => by
+        have h1 := hal hc
+        simp only [AlignedOne] at h1
+        exact h1.1
       rw [execOne_loop_succ g mod st sl env 0 r.toList.length body pts rts]
-      have ho := hP g (by omega) L' σ (r.toList ++ σ) n body s0 n1 hbody (Nat.le_refl _) hL' hc'
-        st sl le m env hinv
+      have ho := hP g (by omega) L' σ (r.toList ++ σ) n body s0 n' hbody (Nat.le_refl _) hL' hc'
+        st sl le m env halb hinv
       cases hres : exec g mod st sl body env with
       | Fallthrough st' sl' =>
           rw [hres] at ho
@@ -326,7 +339,10 @@ theorem sim_loop {CallOk : Nat → Prop} {F : Nat} (hP : ∀ g, g < F → ProgSi
                 { stack := by simpa using hinv.stack.frame hf0, locals := hrel.locals,
                   store := hrel.store, status := hrel.status, brk := hrel.brk, lim := hrel.lim }
               exact ConstructOutcome.again hL hbase hx hf0
-                (ih (by omega) st' _ le' m' hinv'')
+                (ih (by omega) st' _ le' m' (fun hc => by
+                  have h1 := hal hc
+                  simp only [AlignedOne, hres] at h1
+                  exact h1.2) hinv'')
           | succ k =>
               have hout := hrel.outer (by omega)
               subst hout

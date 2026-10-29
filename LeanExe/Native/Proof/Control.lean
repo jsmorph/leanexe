@@ -1,5 +1,6 @@
 import LeanExe.Native.Proof.Ops
 import Interpreter.Wasm.Semantics.Lemmas
+import LeanExe.ProofKit.AlignedExec
 
 /-!
 The simulation of instruction lists, of `block`, `loop`, and `iff`, and of `br`, `br_if`, and
@@ -10,7 +11,7 @@ branch `k` levels out recorded as `brk = k + 1`, and `dispatch_outcome` adds the
 
 namespace LeanExe.Native
 
-open Wasm LClight
+open Wasm LClight LeanExe.ProofKit
 
 /-- The enclosing constructs' bases lie at or below the current one. -/
 def LabelsOk (L : List Label) : Prop :=
@@ -21,27 +22,31 @@ section
 variable (A : Archi) (X : ExtSem) (E : Env) (mod : Module) (c : FCtx)
 
 /-- The simulation of `inst` at fuel `F`, for code whose calls go to functions that `CallOk`
-accepts. -/
+accepts.  When the translation omits the test of alignment, the Talos step's 64-bit accesses
+inside memory must be aligned. -/
 def InstrSimL (CallOk : Nat → Prop) (F : Nat) (inst : Instruction) : Prop :=
   ∀ (L : List Label) (σ : List VT) (n : Nat) (s : statement) (σ' : Option (List VT)) (n' : Nat),
     trInstr c L σ n inst = some (s, σ', n') → curBase L ≤ σ.length → LabelsOk L →
     (∀ k, funId k ∈ callees s → CallOk k) →
     ∀ {α : Type} (st : Store α) (sl : Locals) (le : temp_env) (m : mem) (env : HostEnv α),
+      (c.alignedAccess = true → AlignedOne F mod st sl inst env) →
       Inv E c σ st sl le m → Outcome A X E c L σ' (execOne F mod st sl inst env) s le m
 
-/-- The simulation of an instruction list at fuel `F`. -/
+/-- The simulation of an instruction list at fuel `F`, with the alignment of the list's 64-bit
+accesses inside memory when the translation omits the test. -/
 def ProgSim (CallOk : Nat → Prop) (F : Nat) : Prop :=
   ∀ (L : List Label) (σ σend : List VT) (n : Nat) (p : Program) (s : statement) (n' : Nat),
     trProg c L σ σend n p = some (s, n') → curBase L ≤ σ.length → LabelsOk L →
     (∀ k, funId k ∈ callees s → CallOk k) →
     ∀ {α : Type} (st : Store α) (sl : Locals) (le : temp_env) (m : mem) (env : HostEnv α),
+      (c.alignedAccess = true → AlignedExec F mod st sl p env) →
       Inv E c σ st sl le m → Outcome A X E c L (some σend) (exec F mod st sl p env) s le m
 
 variable {A X E mod c}
 
 theorem InstrSim.toL {CallOk : Nat → Prop} {F : Nat} {inst : Instruction}
     (h : InstrSim A X E mod c F inst) : InstrSimL A X E mod c CallOk F inst :=
-  fun L σ n s σ' n' htr hb _ _ _ st sl le m env hinv => h L σ n s σ' n' htr hb st sl le m env hinv
+  fun L σ n s σ' n' htr hb _ _ _ st sl le m env _ hinv => h L σ n s σ' n' htr hb st sl le m env hinv
 
 /-! ## Outcomes of sequences -/
 
@@ -134,19 +139,36 @@ theorem exec_nil {α : Type} (F : Nat) (st : Store α) (sl : Locals) (env : Host
 theorem callees_seq (s1 s2 : statement) :
     callees (.Ssequence s1 s2) = callees s1 ++ callees s2 := rfl
 
+/-- The alignment of a list's first instruction. -/
+theorem alignedExec_head {α : Type} {F : Nat} {st : Store α} {sl : Locals} {i : Instruction}
+    {rest : Program} {env : HostEnv α} (h : AlignedExec F mod st sl (i :: rest) env) :
+    AlignedOne F mod st sl i env := by
+  simp only [AlignedExec] at h
+  exact h.1
+
+/-- The alignment of the rest of a list after its first instruction falls through. -/
+theorem alignedExec_tail {α : Type} {F : Nat} {st st' : Store α} {sl sl' : Locals}
+    {i : Instruction} {rest : Program} {env : HostEnv α}
+    (h : AlignedExec F mod st sl (i :: rest) env)
+    (hr : execOne F mod st sl i env = .Fallthrough st' sl') : AlignedExec F mod st' sl' rest env := by
+  simp only [AlignedExec, hr] at h
+  exact h.2
+
 /-- A list's simulation from its instructions'. -/
 theorem prog_sim {CallOk : Nat → Prop} {F : Nat}
     (hI : ∀ inst, InstrSimL A X E mod c CallOk F inst) : ProgSim A X E mod c CallOk F := by
   intro L σ σend n p
   induction p generalizing σ n with
   | nil =>
-      intro s n' h hbase hL hcalls α st sl le m env hinv
+      intro s n' h hbase hL hcalls α st sl le m env _ hinv
       simp [trProg] at h
       obtain ⟨rfl, rfl, rfl⟩ := h
       rw [exec_nil]
       exact ⟨σ, rfl, hbase, E0, le, m, .exec_Sskip _ _ _, hinv, Frame.refl _ _⟩
   | cons i rest ih =>
-      intro s n' h hbase hL hcalls α st sl le m env hinv
+      intro s n' h hbase hL hcalls α st sl le m env hal hinv
+      have hal1 : c.alignedAccess = true → AlignedOne F mod st sl i env :=
+        fun hc => alignedExec_head (hal hc)
       simp [trProg, Option.bind_eq_some_iff] at h
       obtain ⟨si, σi, ni, hi, h⟩ := h
       cases rest with
@@ -156,7 +178,7 @@ theorem prog_sim {CallOk : Nat → Prop} {F : Nat}
               simp at h
               obtain ⟨hs, hn⟩ := h
               subst hs hn
-              have ho := hI i L σ n si none ni hi hbase hL hcalls st sl le m env hinv
+              have ho := hI i L σ n si none ni hi hbase hL hcalls st sl le m env hal1 hinv
               rw [exec_cons]
               cases hr : execOne F mod st sl i env with
               | Fallthrough st' sl' =>
@@ -168,7 +190,7 @@ theorem prog_sim {CallOk : Nat → Prop} {F : Nat}
               simp at h
               obtain ⟨hσ, hs, hn⟩ := h
               subst hσ hs hn
-              have ho := hI i L σ n si (some σ'') ni hi hbase hL hcalls st sl le m env hinv
+              have ho := hI i L σ n si (some σ'') ni hi hbase hL hcalls st sl le m env hal1 hinv
               rw [exec_cons]
               cases hr : execOne F mod st sl i env with
               | Fallthrough st' sl' =>
@@ -186,7 +208,7 @@ theorem prog_sim {CallOk : Nat → Prop} {F : Nat}
                 hcalls k (by rw [callees_seq]; exact List.mem_append_left _ hk)
               have hcalls2 : ∀ k, funId k ∈ callees s2 → CallOk k := fun k hk =>
                 hcalls k (by rw [callees_seq]; exact List.mem_append_right _ hk)
-              have ho := hI i L σ n si (some σ'') ni hi hbase hL hcalls1 st sl le m env hinv
+              have ho := hI i L σ n si (some σ'') ni hi hbase hL hcalls1 st sl le m env hal1 hinv
               rw [exec_cons]
               cases hr : execOne F mod st sl i env with
               | Fallthrough st' sl' =>
@@ -194,7 +216,7 @@ theorem prog_sim {CallOk : Nat → Prop} {F : Nat}
                   obtain ⟨σ3, h3, hb3, t1, le', m', hx, hinv', hf⟩ := ho
                   cases h3
                   exact Outcome.seq_normal hL hx hf
-                    (ih σ'' ni s2 n' h2 hb3 hL hcalls2 st' sl' le' m' env hinv')
+                    (ih σ'' ni s2 n' h2 hb3 hL hcalls2 st' sl' le' m' env (fun hc => alignedExec_tail (hal hc) hr) hinv')
               | _ =>
                   rw [hr] at ho
                   exact Outcome.seq_abrupt σend (fun _ _ h => by cases h) ho

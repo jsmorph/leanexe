@@ -95,11 +95,12 @@ theorem exec_setLocals {A : Archi} {X : ExtSem} {ge : genv} (np : Nat) (ls : Lis
 
 /-- The inversion of `trFunction`. -/
 theorem trFunction_spec {cap : Nat} {sigs : List (Option (List VT × List VT))} {G : Nat}
-    {f : Function} {fd : function} (h : trFunction cap sigs G f = some fd) :
+    {f : Function} {fd : function} {al : Bool} (h : trFunction cap sigs G f al = some fd) :
     ∃ ps ls rs body nc, f.params.mapM VT.ofValueType = some ps ∧
       f.locals.mapM VT.ofValueType = some ls ∧ f.results.mapM VT.ofValueType = some rs ∧
       resultsOk rs = true ∧
-      trProg { locals := ps ++ ls, results := rs, nglobals := G, sigs := sigs, cap := cap }
+      trProg { locals := ps ++ ls, results := rs, nglobals := G, sigs := sigs, cap := cap,
+               alignedAccess := al }
         [{ isLoop := false, base := 0, result := retOf rs, final := 2 ≤ rs.length }] []
         rs.reverse 0 f.body = some (body, nc) ∧
       fd = { fn_return := ((retOf rs).map VT.ty).getD .Tvoid, fn_callconv := cc_default,

@@ -61,7 +61,7 @@ theorem Runs.native {mod : Module} {cap : Nat} {T : Translation} (hT : translate
     translate_correct (A := A) (X := X) hT hE hG hcap hnres hF N k fd hfd
   rw [hsig f hf] at hsig'
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hsig')
-  have ho := hsim st args m env htyped hst hs
+  have ho := hsim st args m env htyped hst hs nofun
   rcases hN N (Nat.le_refl _) with ⟨vs, st', hr, hP⟩ | htr
   · rw [hr] at ho
     obtain ⟨t, m', vres, hcall, hst', hs', hres⟩ := ho
@@ -133,7 +133,8 @@ def NativeImpl {α β : Type} [Represent α] [Represent β] {aborts : Bool} {mod
     NativeA A X cap mod T ps rs fd aborts f Pre Post
 
 /-- The signature of a function of a translation. -/
-theorem translate_sig {mod : Module} {cap : Nat} {T : Translation} (hT : translate cap mod = some T)
+theorem translate_sig {mod : Module} {cap : Nat} {al : Bool} {T : Translation}
+    (hT : translate cap mod al = some T)
     {k : Nat} (hk : k ∈ T.funcs) :
     ∃ fd ps rs, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
       ∀ g, mod.funcs[k]? = some g → signatureOf g = some (ps, rs) := by
