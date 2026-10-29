@@ -81,7 +81,6 @@ theorem body_code_specX {strict : Bool} {S : List Sig} {params : List Ty} {resul
     (m : Module) (host : HostEnv Unit)
     (hm : Runtime m) (hRA : strict = true → ReleaseAligned m) (hRt : strict = true → AllocAligned m)
     (hCopy : CopyCodeX strict m host)
-    (hListFold : ∀ pv, ListFoldSpecX strict m funs flags bounds fits host pv pool)
     {d0 : UInt64} (hCalls : CallsAtX strict m funs flags bounds fits d0 pool)
     (args : Env params)
     (heap : Heap)
@@ -133,7 +132,7 @@ theorem body_code_specX {strict : Bool} {S : List Sig} {params : List Ty} {resul
     exact Env.pot_mono args _ _ _ fun i h => by
       simp only [Bool.and_eq_true, beq_iff_eq] at h ⊢
       exact ⟨h.1.2, by rw [← paramSlots_getD_mode params modes p0]; exact h.2⟩
-  refine Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls (hListFold _) body
+  refine Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls body
     hCovered hDepth args
     (paramSlots params modes p0) pf (fun _ => false) h (p0 + widthSum params)
     heap1 store1 s hh rfl e'.holds e'.step.at_
@@ -199,7 +198,6 @@ theorem bodyFunction_runsX {strict : Bool} {S : List Sig} {params : List Ty} {re
       (Env.reads store (paramMode params modes) ws args))
     (hCap : store.memoryCap m 0 ≤ 65535) (hRA : strict = true → ReleaseAligned m) (hRt : strict = true → AllocAligned m)
     (hCopy : CopyCodeX strict m host)
-    (hListFold : ∀ pv, ListFoldSpecX strict m funs flags bounds fits host pv pool)
     (hAl : strict = true → heap.Aligned ∧ Env.AlignedVals store (paramMode params modes) ws args) :
     RunsX strict ((depth && !(decide (d < depthLimit) && body.fits funs fits args)) ||
         (aborts && !decide (heap.Within store m
@@ -323,7 +321,7 @@ theorem bodyFunction_runsX {strict : Bool} {S : List Sig} {params : List Ty} {re
       Env.argPot store (fun i => paidAt pf i && paramMode params modes i == .owned) ws args :=
     Env.pot_paramSlots modes p0 _ ws args hLength fun x => hHold x
   refine body_code_specX modes body hCovered placeArgs p0 h funs flags bounds fits pf rf hrf m host hm
-    hRA hRt hCopy hListFold hCalls'
+    hRA hRt hCopy hCalls'
     args heap store s1
     hh1 (by omega) (fun hb => ?_)
     ⟨fun t x _ => ?_, fun t u x y _ _ hxy hmo wx wy hwx hlx hwy hly => ?_⟩ hAt
@@ -403,7 +401,6 @@ theorem bodyFunction_aligned {S : List Sig} {params : List Ty} {result : Ty}
       body.paid flags (entryModes params modes) pf (fun _ => false) = true)
     (m : Module) (pos : Nat) (hm : Runtime m) (hRA : ReleaseAligned m) (hRt : AllocAligned m)
     (hCopy : ∀ host, CopyCodeX true m host)
-    (hListFold : ∀ host pv, ListFoldSpecX true m funs flags bounds fits host pv pool)
     (depth : Bool) (hd : depth = false)
     (hFunc : m.funcs[pos]? = some (bodyFunction modes body depth pos pool))
     (hCovered : body.Covered pool) {d0 : UInt64}
@@ -418,7 +415,7 @@ theorem bodyFunction_aligned {S : List Sig} {params : List Ty} {result : Ty}
   have hRun : RunsA _ host m pos store _ _ := bodyFunction_runsX (strict := true) modes body
     placeArgs false funs flags bounds fits pf rf hrf m pos hm hFunc hCovered d0 (fun _ => hCalls)
     (fun _ => hDepth) aborts (fun h => hAborts (by simpa using h)) host store heap ws args hAt
-    hInput hRep hSep hCap (fun _ => hRA) (fun _ => hRt) (hCopy host) (hListFold host)
+    hInput hRep hSep hCap (fun _ => hRA) (fun _ => hRt) (hCopy host)
     (fun _ => ⟨hHeap, hVals⟩)
   have hApp := hRun.append_args (f := bodyFunction modes body false pos pool)
     (by simp [hm.imports]) (by simpa [hm.imports] using hFunc)
@@ -437,7 +434,6 @@ theorem bodyFunction_depthAligned {S : List Sig} {params : List Ty} {result : Ty
       body.paid flags (entryModes params modes) pf (fun _ => false) = true)
     (m : Module) (pos : Nat) (hm : Runtime m) (hRA : ReleaseAligned m) (hRt : AllocAligned m)
     (hCopy : ∀ host, CopyCodeX true m host)
-    (hListFold : ∀ host pv, ListFoldSpecX true m funs flags bounds fits host pv pool)
     (depth : Bool) (hd : depth = true)
     (hFunc : m.funcs[pos]? = some (bodyFunction modes body depth pos pool))
     (hCovered : body.Covered pool) (d : UInt64)
@@ -453,7 +449,7 @@ theorem bodyFunction_depthAligned {S : List Sig} {params : List Ty} {result : Ty
   have hRun : RunsA _ host m pos store _ _ := bodyFunction_runsX (strict := true) modes body
     placeArgs true funs flags bounds fits pf rf hrf m pos hm hFunc hCovered d'
     (fun h => hCalls (h rfl)) nofun true (fun _ => rfl) host store heap ws args hAt hInput hRep
-    hSep hCap (fun _ => hRA) (fun _ => hRt) (hCopy host) (hListFold host)
+    hSep hCap (fun _ => hRA) (fun _ => hRt) (hCopy host)
     (fun _ => ⟨hHeap, hVals⟩)
   have hApp := hRun.append_args (f := bodyFunction modes body true pos pool)
     (by simp [hm.imports]) (by simpa [hm.imports] using hFunc)

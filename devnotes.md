@@ -38382,7 +38382,7 @@ The coordinator decided that, when the port is complete, each original construct
 - [ ] `CopyCodeX`: buffers, tree headers, trees, and pairs, arrays being done.  The second stage proves it.
 - [x] `treeNode` and `treeCase`.
 - [x] `Expr.code_specIn` under the flag and the function level in `Correct.lean`, with the list fold and the tail functions as premises.
-- [ ] The list fold and the tail functions from the port of the tail loops in place of the premises.
+- [x] The list fold and the tail functions from the port of the tail loops in place of the premises.
 - [ ] Each original construct proof as the `strict = false` corollary of its port.
 
 ## 2026-10-29: Calls and the function level under the flag
@@ -38391,7 +38391,7 @@ A call's alignment rests on the callee's.  `FunAligned` in [the flagged call](Ve
 
 `Prog.callsX` in [the flagged program induction](Verified/AlignedCorrect.lean) proves `CallsX strict`, `Calls` with `FunSpecX`, by the induction of `Prog.calls`.  Each case gives the function's `FunSpec` as before and, under `strict = true`, its `FunAligned` from `bodyFunction_runsX` of [the flagged function level](Verified/AlignedFunction.lean) and `RunsA.append_args`.  A recursive function needs a second induction on the frames left, whose step takes the function's own `FunSpec` at the next depth from the first induction and its `FunAligned` from the second.  `RunsA.append_args` and `RunsA.mono` sit in [the aligned runs](LeanExe/Pipeline/AlignedRuns.lean) with `RunsA`, and `RunsA.of_imp` stays in the function level because it uses `Runs.of_imp` of `Verified/ExprCorrect.lean`.
 
-Two parts of the function level come from the port of the tail loops, and enter as premises until it is merged: `ListFoldSpecX`, the conclusion of `specX_listFold` without its runtime premises, and `TailRunsX`, the statement of the flagged `TailFunc.function_runs` without them.  At `strict = false`, `listFoldSpecX_false` and `tailRunsX_false` prove them from the originals, so no statement on the branch lacks a proof.  The opening of a tree record needed no new premise in `wpX_openTree`: a field's regions lie in the tree's regions by the original continuation, so `HoldsA.openTree` derives the branch context's invariant from the tree's alignment and the outer invariant across the detach.
+Two parts of the function level come from the port of the tail loops: `specX_listFold`, which `Expr.code_specInX` calls for the list fold as `Expr.code_specIn` calls `spec_listFold`, and `TailFunc.function_runsX`, from which `TailFunc.function_aligned` and `TailFunc.function_depthAligned` derive the `FunAligned` of tail functions.  While that port was under way, the two entered as premises, `ListFoldSpecX` and `TailRunsX`, each proved at `strict = false` from its original, and the merge of the port replaced both, so neither premise remains.  The opening of a tree record needed no new premise in `wpX_openTree`: a field's regions lie in the tree's regions by the original continuation, so `HoldsA.openTree` derives the branch context's invariant from the tree's alignment and the outer invariant across the detach.
 
 ## 2026-10-29: The list fold and tail loops of the alignment proof
 
@@ -38419,5 +38419,5 @@ The list fold and the tail loops are ported to the flag `strict` in seven new mo
 - [x] The match on a tree in a tail body.
 - [x] The list fold, in the form that `ListFoldSpecX` takes.
 - [x] `TailBody.code_specX` and `TailFunc.function_runsX`.
-- [ ] `FunAligned` for tail functions in `Correct.lean`, by the function level.
+- [x] `FunAligned` for tail functions in `Correct.lean`, by the function level.
 - [ ] Each original as the `strict = false` corollary of its port.

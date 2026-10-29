@@ -4,10 +4,10 @@ import Verified.TailEntry
 
 /-!
 The code and the run of a tail function under the flag.  `TailBody.code_specX` proves
-`TailCodeSpecX` of every tail body from `Expr.code_specX`, with the list fold's premise
-`ListFoldSpecX` given by `specX_listFold`.  `TailFunc.function_runsX` is `TailFunc.function_runs`
-with `RunsX` for `Runs`: from an aligned heap and aligned arguments, the run of a tail function
-makes only aligned 64-bit accesses, and it ends with an aligned heap and an aligned owned result.
+`TailCodeSpecX` of every tail body from `Expr.code_specX`.  `TailFunc.function_runsX` is
+`TailFunc.function_runs` with `RunsX` for `Runs`: from an aligned heap and aligned arguments, the
+run of a tail function makes only aligned 64-bit accesses, and it ends with an aligned heap and
+an aligned owned result.
 Each theorem is its original with the flagged constructs and rules and the alignment premises.
 -/
 
@@ -25,19 +25,17 @@ theorem TailBody.code_specX {strict : Bool} {S : List Sig} (m : Module) (funs : 
     body.Covered pool →
     (body.depthCalls = true → pv.head? = some (.i64 d0)) →
     TailCodeSpecX strict m funs flags bounds fits host pv targetModes body pool := by
-  have hListFold : ListFoldSpecX strict m funs flags bounds fits host pv pool :=
-    fun args body argsSpec bodySpec => specX_listFold hm hRA hCopy args body argsSpec bodySpec
   induction body with
   | ret value =>
     intro hCovered hDepth
     exact tail_ret_specX hm hCopy targetModes value
-      (Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls hListFold value hCovered hDepth)
+      (Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls value hCovered hDepth)
   | next args =>
     intro hCovered hDepth
     have hArgs : ∀ i, (args i).Covered pool :=
       (literals_args_subset.mp hCovered)
     exact tail_next_specX hm hRA hCopy targetModes args fun i =>
-      Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls hListFold (args i) (hArgs i) fun hd =>
+      Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls (args i) (hArgs i) fun hd =>
         hDepth (le_argsAny _ i hd)
   | ite cond yes no yesSpec noSpec =>
     intro hCovered hDepth
@@ -46,7 +44,7 @@ theorem TailBody.code_specX {strict : Bool} {S : List Sig} (m : Module) (funs : 
         TailBody.literals_letPair, Expr.Covered, List.append_subset,
         and_assoc] using hCovered
     exact tail_ite_specX hm hRA targetModes cond yes no
-      (Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls hListFold cond hParts.1.1 fun hd =>
+      (Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls cond hParts.1.1 fun hd =>
         hDepth (by simp [TailBody.depthCalls, hd]))
       (yesSpec hParts.1.2 fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
       (noSpec hParts.2 fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
@@ -56,7 +54,7 @@ theorem TailBody.code_specX {strict : Bool} {S : List Sig} (m : Module) (funs : 
       simpa only [TailBody.Covered, TailBody.literals_ite, TailBody.literals_letE,
         TailBody.literals_letPair, Expr.Covered, List.append_subset] using hCovered
     exact tail_let_specX hm hRA targetModes value body
-      (Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls hListFold value hParts.1 fun hd =>
+      (Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls value hParts.1 fun hd =>
         hDepth (by simp [TailBody.depthCalls, hd]))
       (bodySpec hParts.2 fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
   | letPair value body bodySpec =>
@@ -65,7 +63,7 @@ theorem TailBody.code_specX {strict : Bool} {S : List Sig} (m : Module) (funs : 
       simpa only [TailBody.Covered, TailBody.literals_ite, TailBody.literals_letE,
         TailBody.literals_letPair, Expr.Covered, List.append_subset] using hCovered
     exact tail_letPair_specX hm hRA targetModes value body
-      (Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls hListFold value hParts.1 fun hd =>
+      (Expr.code_specX m funs flags bounds fits host hm hRA hRt hCopy hCalls value hParts.1 fun hd =>
         hDepth (by simp [TailBody.depthCalls, hd]))
       (bodySpec hParts.2 fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
   | treeCase x empty nodes emptySpec nodesSpec =>

@@ -1,4 +1,4 @@
-import Verified.AlignedFunction
+import Verified.AlignedTailEntry
 import Verified.Correct
 
 /-!
@@ -6,10 +6,8 @@ import Verified.Correct
 `Prog.callsX` proves it by the induction that proves `Prog.calls`: each function's `FunSpec` as
 before, and under `strict = true` its `FunAligned`, from the `FunAligned` of the functions it
 calls.  A recursive function needs a second induction on the frames left, whose step takes the
-function's own `FunSpec` at the next depth from the first.  Tail functions enter through the
-premise `TailRunsX`, the statement of the flagged `TailFunc.function_runs` without its runtime
-premises, which `tailRunsX_false` proves at `strict = false`; the list fold enters as in
-`Expr.code_specInX`.
+function's own `FunSpec` at the next depth from the first.  Tail functions take their
+`FunAligned` from `TailFunc.function_runsX`.
 -/
 
 namespace Verified
@@ -51,58 +49,10 @@ theorem FunAligned.congr {m : Module} {g : Sig} {idx : Nat} {F F' : Env g.params
   obtain rfl : F = F' := funext hF
   exact h
 
-/-- The statement of the flagged `TailFunc.function_runs` without its runtime premises. -/
-def TailRunsX (strict : Bool) (m : Module) (pool : Bytes.LiteralPool) : Prop :=
-  ∀ {S : List Sig} (func : TailFunc S) (funs : Funs S) (flags : Flags S) (bounds : Bounds S)
-    (fits : Fits S), func.Decreases funs → ∀ (meaning : Env func.params → func.result.denote),
-    (∀ state, meaning state = (func.body.denote funs state).elim meaning id) →
-    ∀ (pos : Nat), m.funcs[pos]? = some (func.function (pool := pool) pos) →
-    func.body.Covered pool → ∀ (d : UInt64),
-    ((func.depth = true → d < depthLimit) → CallsAtX strict m funs flags bounds fits d pool) →
-    ∀ (host : HostEnv Unit) (store : Store Unit) (heap : Heap) (ws : List Value)
-      (args : Env func.params), heap.At store →
-    @Bytes.LiteralPool.Input (Env func.params) (Env.represent func.params func.modes) pool heap
-      store ws args →
-    Env.Rep (paramMode func.params func.modes) heap store ws args →
-    Separate store (Env.moves store (paramMode func.params func.modes) ws args)
-      (Env.reads store (paramMode func.params func.modes) ws args) →
-    store.memoryCap m 0 ≤ 65535 →
-    (strict = true →
-      heap.Aligned ∧ Env.AlignedVals store (paramMode func.params func.modes) ws args) →
-    RunsX strict ((func.depth && !(decide (d < depthLimit) && func.fits funs fits args)) ||
-      (func.aborts && !decide (heap.Within store m
-        (Env.argPot store (fun i => paidAt (func.paidParams flags) i &&
-          paramMode func.params func.modes i == .owned) ws args +
-            func.bound funs flags bounds args))))
-      host m pos store ((if func.depth then [Value.i64 d] else []) ++ ws).reverse
-      fun final values => ∃ heap' : Heap, heap'.At final ∧
-        func.result.Rep .owned heap' final values.reverse (meaning args) ∧
-        final.memoryCaps = store.memoryCaps ∧
-        (∀ r, heap.Region r → 0 < r.2 →
-          Apart store (Env.moves store (paramMode func.params func.modes) ws args) r →
-          (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-          heap'.Region r ∧
-          ∀ b ∈ func.result.blocks final values.reverse (meaning args), regionsDisjoint r b) ∧
-        ((func.depth && !(decide (d < depthLimit) && func.fits funs fits args)) = false →
-          heap'.top.toNat + (if func.paidResult flags then
-            func.result.pot final values.reverse (meaning args) else 0) ≤
-            heap.top.toNat + Env.argPot store
-              (fun i => paidAt (func.paidParams flags) i && paramMode func.params func.modes i == .owned)
-              ws args + func.bound funs flags bounds args) ∧
-        (strict = true → heap'.Aligned ∧
-          Ty.AlignedVal .owned final func.result values.reverse (meaning args))
-
-theorem tailRunsX_false {m : Module} {pool : Bytes.LiteralPool} (hm : Runtime m) :
-    TailRunsX false m pool :=
-  fun func funs flags bounds fits decreases meaning fixed pos hFunc hCovered d hCalls host store
-      heap ws args hAt hInput hRep hSep hCap _ =>
-    (func.function_runs funs flags bounds fits decreases meaning fixed m pos hm hFunc hCovered d
-      (fun h _ f => (hCalls h f).1) host store heap ws args hAt hInput hRep hSep hCap).mono
-      fun _ _ ⟨heap', h1, h2, h3, h4, h5⟩ => ⟨heap', h1, h2, h3, h4, h5, nofun⟩
-
 /-- `FunAligned` of a tail function whose code takes no call depth. -/
 theorem TailFunc.function_aligned {S : List Sig} (func : TailFunc S) {m : Module}
-    {pool : Bytes.LiteralPool} (hTail : TailRunsX true m pool)
+    {pool : Bytes.LiteralPool} (hRA : ReleaseAligned m) (hRt : AllocAligned m)
+    (hCopy : ∀ host, CopyCodeX true m host)
     (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
     (decreases : func.Decreases funs) (meaning : Env func.params → func.result.denote)
     (fixed : ∀ state, meaning state = (func.body.denote funs state).elim meaning id)
@@ -114,9 +64,10 @@ theorem TailFunc.function_aligned {S : List Sig} (func : TailFunc S) {m : Module
     FunAligned m func.sig pos meaning (func.paidParams flags) (func.paidResult flags)
       (func.bound funs flags bounds) Fi D pool := by
   intro host heap store ws args hAt hInput hRep hSep hCap hHeap hVals d _ rest
-  have hRun : RunsA _ host m pos store _ _ := hTail func funs flags bounds fits decreases meaning
-    fixed pos hFunc hCovered d0 (fun _ => hCalls) host store heap ws args hAt hInput hRep hSep
-    hCap (fun _ => ⟨hHeap, hVals⟩)
+  have hRun : RunsA _ host m pos store _ _ := func.function_runsX (strict := true) funs flags
+    bounds fits decreases meaning fixed m pos hm hFunc hCovered d0 (fun _ => hCalls) host store heap ws args hAt hInput hRep hSep
+    hCap (fun _ => hRA)
+    (fun _ => hRt) (hCopy host) (fun _ => ⟨hHeap, hVals⟩)
   have hApp := hRun.append_args (f := func.function (pool := pool) pos)
     (by simp [hm.imports]) (by simpa [hm.imports] using hFunc)
     (by simp [hRep.length, TailFunc.function_numParams, TailFunc.sig, hDepth]) rest
@@ -136,7 +87,8 @@ theorem TailFunc.function_aligned {S : List Sig} (func : TailFunc S) {m : Module
 
 /-- `FunAligned` of a tail function whose code takes the call depth, at the depth `d`. -/
 theorem TailFunc.function_depthAligned {S : List Sig} (func : TailFunc S) {m : Module}
-    {pool : Bytes.LiteralPool} (hTail : TailRunsX true m pool)
+    {pool : Bytes.LiteralPool} (hRA : ReleaseAligned m) (hRt : AllocAligned m)
+    (hCopy : ∀ host, CopyCodeX true m host)
     (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
     (decreases : func.Decreases funs) (meaning : Env func.params → func.result.denote)
     (fixed : ∀ state, meaning state = (func.body.denote funs state).elim meaning id)
@@ -151,9 +103,10 @@ theorem TailFunc.function_depthAligned {S : List Sig} (func : TailFunc S) {m : M
       (fun d' => d' = d) pool := by
   intro host heap store ws args hAt hInput hRep hSep hCap hHeap hVals d' hd rest
   obtain rfl : d' = d := hd (by simp [TailFunc.sig, hDepth])
-  have hRun : RunsA _ host m pos store _ _ := hTail func funs flags bounds fits decreases meaning
-    fixed pos hFunc hCovered d' (fun h => hCalls (h hDepth)) host store heap ws args hAt hInput
-    hRep hSep hCap (fun _ => ⟨hHeap, hVals⟩)
+  have hRun : RunsA _ host m pos store _ _ := func.function_runsX (strict := true) funs flags
+    bounds fits decreases meaning fixed m pos hm hFunc hCovered d' (fun h => hCalls (h hDepth)) host store heap ws args hAt hInput
+    hRep hSep hCap (fun _ => hRA)
+    (fun _ => hRt) (hCopy host) (fun _ => ⟨hHeap, hVals⟩)
   have hApp := hRun.append_args (f := func.function (pool := pool) pos)
     (by simp [hm.imports]) (by simpa [hm.imports] using hFunc)
     (by simp [hRep.length, TailFunc.function_numParams, TailFunc.sig, hDepth]; omega) rest
@@ -189,10 +142,6 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
     (m : Module) (hm : Runtime m) {pool : Bytes.LiteralPool}
     (hRA : strict = true → ReleaseAligned m) (hRt : strict = true → AllocAligned m)
     (hCopy : ∀ host, CopyCodeX strict m host)
-    (hListFold : ∀ {S' : List Sig} (funs' : Funs S') (flags' : Flags S') (bounds' : Bounds S')
-      (fits' : Fits S') (host : HostEnv Unit) (pv : List Value),
-      ListFoldSpecX strict m funs' flags' bounds' fits' host pv pool)
-    (hTail : TailRunsX strict m pool)
     (hFuncs : ∀ k < S.length, m.funcs[2 + k]? = (prog.functions (pool := pool))[k]?)
     (hCovered : prog.Covered pool) :
     CallsX strict m funs prog.flags (prog.boundsAt funs) (prog.fitsAt funs) pool := by
@@ -254,10 +203,10 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
           simp only [hdep, Bool.false_eq_true, ↓reduceIte]
           exact bodyFunction_aligned f.modes f.body f.placeArgs funs' rest.flags
             (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) _ _ hrf m _ hm (hRA rfl) (hRt rfl) hCopy
-            (fun host pv => hListFold _ _ _ _ host pv) f.depth hdep hpos hBody hCX hdep f.aborts id _ _
+            f.depth hdep hpos hBody hCX hdep f.aborts id _ _
         · refine bodyFunction_depthAligned f.modes f.body f.placeArgs funs' rest.flags
             (rest.boundsAt funs' (framesAt (d + 1))) (rest.fitsAt funs' (framesAt (d + 1))) _ _ hrf
-            m _ hm (hRA rfl) (hRt rfl) hCopy (fun host pv => hListFold _ _ _ _ host pv) f.depth hdep hpos hBody d
+            m _ hm (hRA rfl) (hRt rfl) hCopy f.depth hdep hpos hBody d
             (fun _ => CallsX.at (@hRest) d) f.aborts _ _ (fun args => ?_) (fun hlt args => ?_)
           · by_cases hlt : d < depthLimit
             · rw [framesAt_succ hlt, Prog.fitsAt_cons_here]
@@ -318,9 +267,9 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
               999 pool := CallsX.at (@hRest) 999
           rw [Prog.boundsAt_consTail_here]
           simp only [hdep, Bool.false_eq_true, ↓reduceIte]
-          exact f.function_aligned hTail funs' rest.flags (rest.boundsAt funs' 0)
+          exact f.function_aligned (hRA rfl) (hRt rfl) hCopy funs' rest.flags (rest.boundsAt funs' 0)
             (rest.fitsAt funs' 0) hDecreases M hM _ hm hpos hBody hCX hdep _ _
-        · refine f.function_depthAligned hTail funs' rest.flags
+        · refine f.function_depthAligned (hRA rfl) (hRt rfl) hCopy funs' rest.flags
             (rest.boundsAt funs' (framesAt (d + 1))) (rest.fitsAt funs' (framesAt (d + 1)))
             hDecreases M hM _ hm hpos hBody hdep d (fun _ => CallsX.at (@hRest) d) _ _
             (fun args => ?_) (fun hlt args => ?_)
@@ -417,7 +366,7 @@ theorem Prog.callsX {strict : Bool} {S : List Sig} (prog : Prog S) (funs : Funs 
             (rest.boundsAt funs' (framesAt (d + 1))))
           (.cons (f.fitsAt (.cons M funs') (rest.fitsAt funs') (framesAt (d + 1)))
             (rest.fitsAt funs' (framesAt (d + 1))))
-          _ _ hrf m _ hm (hRA rfl) (hRt rfl) hCopy (fun host pv => hListFold _ _ _ _ host pv) true rfl hpos hBody d
+          _ _ hrf m _ hm (hRA rfl) (hRt rfl) hCopy true rfl hpos hBody d
           (fun hlt => ?_) true _ _ (fun args => ?_) (fun hlt args => ?_))
         · intro g fv
           cases fv with

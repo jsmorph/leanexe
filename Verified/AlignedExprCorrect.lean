@@ -1,12 +1,10 @@
 import Verified.AlignedTreeCase
 import Verified.AlignedFloat32
+import Verified.AlignedListFold
 
 /-!
 The assembly of the construct proofs under the flag.  `Expr.code_specInX` is `Expr.code_specIn`
-with each construct's flagged theorem in place of the original.  The list fold, whose proof runs
-through the tail loops, enters as the premise `ListFoldSpecX`, the statement of `specX_listFold`
-without its runtime premises, until that port is merged; `listFoldSpecX_false` proves it at
-`strict = false` from `spec_listFold`.
+with each construct's flagged theorem in place of the original.
 -/
 
 namespace Verified
@@ -15,39 +13,12 @@ variable {pool : Bytes.LiteralPool}
 
 open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
-/-- The statement of `specX_listFold` without its runtime premises. -/
-def ListFoldSpecX (strict : Bool) {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S)
-    (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (pv : List Value)
-    (pool : Bytes.LiteralPool) : Prop :=
-  ∀ {Γ : List Ty} {e : Elem} {captures : List Ty}
-    (args : (i : Fin (ListFold.params e captures).length) →
-      Expr S Γ ((ListFold.params e captures).get i))
-    (body : Expr S (ListFold.context e captures) (.elem e)),
-    (∀ i env slots paid live,
-      CodeSpecX strict m funs flags bounds fits host pv (args i) env slots paid live pool) →
-    (∀ env slots paid live,
-      CodeSpecX strict m funs flags bounds fits host pv body env slots paid live pool) →
-    ∀ env slots paid live,
-      CodeSpecX strict m funs flags bounds fits host pv (.listFold args body) env slots paid live
-        pool
-
-theorem listFoldSpecX_false {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S}
-    {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
-    {pool : Bytes.LiteralPool} (hm : Runtime m) :
-    ListFoldSpecX false m funs flags bounds fits host pv pool :=
-  fun args body argsSpec bodySpec env slots paid live =>
-    CodeSpecX.false_iff.mpr (spec_listFold (pool := pool) hm args body
-      (fun i env slots paid live => CodeSpecX.false_iff.mp (argsSpec i env slots paid live))
-      (fun env slots paid live => CodeSpecX.false_iff.mp (bodySpec env slots paid live))
-      env slots paid live)
-
 /-- `Expr.code_specIn` under the flag. -/
 theorem Expr.code_specInX {strict : Bool} {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S)
     (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (hm : Runtime m)
     (hRA : strict = true → ReleaseAligned m) (hRt : strict = true → AllocAligned m)
     (hCopy : CopyCodeX strict m host) {pv : List Value}
-    {d0 : UInt64} (hCalls : CallsAtX strict m funs flags bounds fits d0 pool)
-    (hListFold : ListFoldSpecX strict m funs flags bounds fits host pv pool) {Γ : List Ty} {t : Ty}
+    {d0 : UInt64} (hCalls : CallsAtX strict m funs flags bounds fits d0 pool) {Γ : List Ty} {t : Ty}
     (expr : Expr S Γ t) :
     expr.Covered pool →
     (expr.depthCalls = true → pv.head? = some (.i64 d0)) →
@@ -165,7 +136,7 @@ theorem Expr.code_specInX {strict : Bool} {S : List Sig} (m : Module) (funs : Fu
     have argsSpec := fun i c d => specOfX (pool := pool) (argsSpec i c d)
     have bodySpec := fun c d => specOfX (pool := pool) (bodySpec c d)
     intro hCover hD
-    exact specInOfX (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| hListFold args body
+    exact specInOfX (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| specX_listFold hm hRA hCopy args body
       (fun i => argsSpec i ((Expr.covered_listFold hCover).1 i) fun hd => hD (by
         simp only [Expr.depthCalls, Bool.or_eq_true]
         exact Or.inl (le_argsAny _ i hd)))
@@ -280,14 +251,13 @@ theorem Expr.code_specX {strict : Bool} {S : List Sig} (m : Module) (funs : Funs
     (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (hm : Runtime m)
     (hRA : strict = true → ReleaseAligned m) (hRt : strict = true → AllocAligned m)
     (hCopy : CopyCodeX strict m host) {pv : List Value}
-    {d0 : UInt64} (hCalls : CallsAtX strict m funs flags bounds fits d0 pool)
-    (hListFold : ListFoldSpecX strict m funs flags bounds fits host pv pool) {Γ : List Ty} {t : Ty}
+    {d0 : UInt64} (hCalls : CallsAtX strict m funs flags bounds fits d0 pool) {Γ : List Ty} {t : Ty}
     (expr : Expr S Γ t) :
     expr.Covered pool →
     (expr.depthCalls = true → pv.head? = some (.i64 d0)) →
     ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits host pv expr env slots paid live :=
   fun hCover hD env slots paid live =>
-    (Expr.code_specInX m funs flags bounds fits host hm hRA hRt hCopy hCalls hListFold expr hCover hD
+    (Expr.code_specInX m funs flags bounds fits host hm hRA hRt hCopy hCalls expr hCover hD
       false env slots paid live).spec
 
 end Verified
