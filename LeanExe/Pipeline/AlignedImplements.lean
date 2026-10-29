@@ -3,12 +3,12 @@ import LeanExe.Pipeline.AlignedHeap
 
 /-!
 The alignment predicates between the compiler and the translator to C.  `AlignedInput` is the
-premise on a call's input: the heap is aligned, every object that the call consumes starts at a
-multiple of 8 and has a capacity that is a multiple of 8, and every region that it reads starts at
-a multiple of 8.  `AlignedOutput` is the matching fact about a call's result: every block that
-the result owns starts and ends at a multiple of 8, so a host can meet the next call's
-`AlignedInput` with it.  `ImplementsAligned`, in `LeanExe/Pipeline/ImplementsAligned.lean`,
-states both of a compiled function.
+premise on a call's input: the heap is aligned, every object that the call consumes has a pointer
+and a capacity that are multiples of 8, and every region that it reads starts at a multiple of 8.
+`AlignedOutput` is the matching fact about a call's result: every block that the result owns
+starts and ends at a multiple of 8, so a host can meet the next call's `AlignedInput` with it.
+`ImplementsAligned`, in `LeanExe/Pipeline/ImplementsAligned.lean`, states both of a compiled
+function.
 -/
 
 namespace LeanExe.Pipeline
@@ -17,8 +17,8 @@ open Wasm LeanExe.ProofKit
 
 variable {α : Type}
 
-/-- The heap is aligned, the objects that the call consumes start at multiples of 8 and have
-capacities that are multiples of 8, and the regions that it reads start at multiples of 8. -/
+/-- The heap is aligned, the objects that the call consumes have pointers and capacities that are
+multiples of 8, and the regions that it reads start at multiples of 8. -/
 def AlignedInput [Represent α] (heap : Heap) (store : Store Unit) (params : List Value)
     (x : α) : Prop :=
   heap.Aligned ∧

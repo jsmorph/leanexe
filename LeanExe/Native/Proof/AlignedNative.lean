@@ -1,6 +1,6 @@
 import LeanExe.Native.Proof.Native
 import LeanExe.Pipeline.AlignedRuns
-import LeanExe.Pipeline.AlignedImplements
+import LeanExe.Pipeline.ImplementsAligned
 
 /-!
 The step from Talos's theorems to the translation without the test of alignment, the translation
@@ -8,10 +8,11 @@ with `alignedAccess`.  `RunsA.native` is `Runs.native` for that translation: it 
 which adds to `Runs` that every run from some fuel on makes only aligned 64-bit accesses inside
 memory, and it runs `translate_correct` at a fuel at which both hold.
 
-`NativeAlignedA` is `NativeA` with the premise `AlignedInput` after `Separate`, the form that the
-proposal for the trusted statement gives `NativeA`.  `ImplementsA.nativeAligned` derives it from
-`ImplementsA` and `ImplementsAligned` of the same entry, and `NativeAlignedImpl` and
-`ImplementsA.nativeAlignedImpl` are `NativeImpl` and `ImplementsA.nativeImpl` for it.
+`NativeAlignedA` is `NativeA` with the premise `AlignedInput` after `Separate` and, in the
+conclusion for a return, the alignment of the final heap and of the result's blocks
+(`AlignedOutput`), which a host needs to meet `AlignedInput` at its next call.
+`ImplementsAligned.native` derives it from `ImplementsAligned` alone, and `NativeAlignedImpl` and
+`ImplementsAligned.nativeImpl` are `NativeImpl` and `ImplementsA.nativeImpl` for it.
 -/
 
 namespace LeanExe.Native
@@ -62,7 +63,8 @@ theorem RunsA.native {mod : Module} {cap : Nat} {T : Translation}
 end
 
 open LeanExe.Pipeline in
-/-- `NativeA` with the premise that the input is aligned, `AlignedInput`, after `Separate`. -/
+/-- `NativeA` with the premise that the input is aligned, `AlignedInput`, after `Separate`, and,
+after a return, the alignment of the final heap and of the result's blocks. -/
 def NativeAlignedA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : ExtSem) (cap : Nat)
     (mod : Module) (T : Translation) (ps rs : List VT) (fd : function)
     (aborts : Bool) (f : α → β) (Pre : α → Heap → Store Unit → Prop)
@@ -82,30 +84,29 @@ def NativeAlignedA {α β : Type} [Represent α] [Represent β] (A : Archi) (X :
         ((StatusRel E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
             ResultRel E rs vs (params.reverse.drop ps.length) vres m' ∧
             heap'.At final ∧ Represent.owned heap' final vs.reverse (f x) ∧
-            Post x heap store heap' final) ∨
+            Post x heap store heap' final ∧ heap'.Aligned ∧ AlignedOutput final vs.reverse (f x)) ∨
           (aborts = true ∧ StatusRel E m' trapUnreachable))
 
 open LeanExe.Pipeline in
-/-- The translation without the test of alignment computes `f` as `ImplementsA` states, for an
-aligned input, when `ImplementsAligned` holds of the same entry. -/
-theorem ImplementsA.nativeAligned {α β : Type} [Represent α] [Represent β] {A : Archi}
+/-- The translation without the test of alignment computes `f` as `ImplementsAligned` states, for
+an aligned input. -/
+theorem ImplementsAligned.native {α β : Type} [Represent α] [Represent β] {A : Archi}
     {X : ExtSem} {aborts : Bool} {mod : Module} {k : Nat} {f : α → β}
     {Pre : α → Heap → Store Unit → Prop}
     {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
-    (h : ImplementsA aborts mod k f Pre Post) (hA : ImplementsAligned mod k Pre) {cap : Nat}
+    (h : ImplementsAligned aborts mod k f Pre Post) {cap : Nat}
     {T : Translation} (hT : translate cap mod true = some T) {fd : function}
     (hfd : (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs)
     {ps rs : List VT}
     (hsig : ∀ f, mod.funcs[k]? = some f → signatureOf f = some (ps, rs)) :
     NativeAlignedA A X cap mod T ps rs fd aborts f Pre Post := by
   intro E hE hG hcap hnres hF store heap params x hHeap hPre hArgs hSep hAl hCapS htyped m hst hs
+  obtain ⟨hAligned, hRuns⟩ := h {} store heap params x hHeap hPre hArgs hSep hCapS hAl
   obtain ⟨t, m', vres, st', hcall, hst', hres⟩ := RunsA.native (A := A) (X := X) hT hE hG hcap
-    hnres hF hfd hsig
-    ⟨h {} store heap params x hHeap hPre hArgs hSep hCapS,
-      hA {} store heap params x hHeap hPre hArgs hSep hCapS hAl⟩ htyped hst hs
+    hnres hF hfd hsig ⟨hRuns, hAligned⟩ htyped hst hs
   refine ⟨t, m', vres, st', hcall, hst', ?_⟩
-  rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, -, -, hPost⟩, hr⟩ | habort
-  · exact .inl ⟨hs', vs, heap', hr, hAt, hOwn, hPost⟩
+  rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, -, -, hPost, hHeap', hOut⟩, hr⟩ | habort
+  · exact .inl ⟨hs', vs, heap', hr, hAt, hOwn, hPost, hHeap', hOut⟩
   · exact .inr habort
 
 open LeanExe.Pipeline in
@@ -113,21 +114,21 @@ open LeanExe.Pipeline in
 def NativeAlignedImpl {α β : Type} [Represent α] [Represent β] {aborts : Bool} {mod : Module}
     {k : Nat} {f : α → β} {Pre : α → Heap → Store Unit → Prop}
     {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
-    (_h : ImplementsA aborts mod k f Pre Post) (A : Archi) (X : ExtSem) (cap : Nat)
+    (_h : ImplementsAligned aborts mod k f Pre Post) (A : Archi) (X : ExtSem) (cap : Nat)
     (T : Translation) : Prop :=
   ∃ fd ps rs, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
     (∀ g, mod.funcs[k]? = some g → signatureOf g = some (ps, rs)) ∧
     NativeAlignedA A X cap mod T ps rs fd aborts f Pre Post
 
 open LeanExe.Pipeline in
-theorem ImplementsA.nativeAlignedImpl {α β : Type} [Represent α] [Represent β] {A : Archi}
+theorem ImplementsAligned.nativeImpl {α β : Type} [Represent α] [Represent β] {A : Archi}
     {X : ExtSem} {aborts : Bool} {mod : Module} {k : Nat} {f : α → β}
     {Pre : α → Heap → Store Unit → Prop}
     {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
-    (h : ImplementsA aborts mod k f Pre Post) (hA : ImplementsAligned mod k Pre) {cap : Nat}
+    (h : ImplementsAligned aborts mod k f Pre Post) {cap : Nat}
     {T : Translation} (hT : translate cap mod true = some T) (hk : k ∈ T.funcs) :
     NativeAlignedImpl h A X cap T := by
   obtain ⟨fd, ps, rs, hfd, hsig⟩ := translate_sig hT hk
-  exact ⟨fd, ps, rs, hfd, hsig, ImplementsA.nativeAligned h hA hT hfd hsig⟩
+  exact ⟨fd, ps, rs, hfd, hsig, ImplementsAligned.native h hT hfd hsig⟩
 
 end LeanExe.Native
