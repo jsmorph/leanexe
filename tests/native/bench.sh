@@ -32,7 +32,9 @@
 # under tools/leanrun, 8G unless the caller sets it, since tools/Emit.lean loads a module as
 # tools/Subset.lean does.
 # `--aligned` builds the native form with the translation option alignedAccess, whose load64 and
-# store64 omit the test of alignment.
+# store64 omit the test of alignment.  native-verified refuses a module whose theorems do not
+# cover that translation, so the option needs every workload's module compiled with
+# verified_compile.alignedNative.
 # Usage: tests/native/bench.sh [--test] [--placements] [--aligned]
 set -euo pipefail
 export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-8G}

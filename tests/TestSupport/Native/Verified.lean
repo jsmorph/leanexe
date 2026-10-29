@@ -29,16 +29,27 @@ Lean module that defines it, as `tools/Emit.lean` does.
 
 The option `--aligned`, before MODULE, makes `emit`, `check`, and `build` use the translation with
 `alignedAccess`, whose `load64` and `store64` omit the test of alignment.  It is correct only for
-functions whose theorems state that their 64-bit accesses are aligned.
+functions whose theorems state that their 64-bit accesses are aligned, so `build --aligned`
+compiles a module only when its theorems cover that translation (`alignedGaps`).  The constant
+must be `p.module` of a `verified_compile` program `p` compiled with
+`verified_compile.alignedNative`: `p.translationAligned_eq` states the translation, and a theorem
+`p.f.nativeAligned`, of `NativeAlignedImpl` or `NativeTablesAlignedImpl`, covers each exported
+function of the translation apart from the runtime's `alloc` and `release`, which
+`alloc_nativeA` and `release_nativeA` cover.  For any other module, and for a program with byte
+literals, it prints each missing theorem and exits with status 4 before it writes a file.  `emit
+--aligned` and `check --aligned` write and compare the text without this check.
 -/
 
 open Lean LeanExe.Native
 
-unsafe def loadModule (moduleName constName : Name) : IO Wasm.Module := do
+unsafe def loadEnv (moduleName constName : Name) : IO (Environment × Wasm.Module) := do
   initSearchPath (← findSysroot)
   let env ← importModules
     #[{ module := moduleName, importAll := false, isExported := true, isMeta := false }] {}
-  IO.ofExcept <| env.evalConst Wasm.Module {} constName
+  return (env, ← IO.ofExcept <| env.evalConst Wasm.Module {} constName)
+
+unsafe def loadModule (moduleName constName : Name) : IO Wasm.Module :=
+  return (← loadEnv moduleName constName).2
 
 def exportName (m : Wasm.Module) (k : Nat) : String :=
   match m.exports.find? (·.funcIdx == k) with
@@ -225,9 +236,105 @@ def runTool (cmd : String) (args : Array String) (cwd : Option System.FilePath :
   if out.exitCode != 0 then
     throw <| IO.userError s!"{cmd} exited with status {out.exitCode}:\n{out.stdout}{out.stderr}"
 
+/-- The number that `e` denotes, a raw literal or an `OfNat.ofNat` of one. -/
+partial def natValue? (e : Expr) : Option Nat :=
+  match e.consumeMData with
+  | .lit (.natVal n) => some n
+  | e => if e.isAppOfArity ``OfNat.ofNat 3 then natValue? (e.getArg! 1) else none
+
+/-- The body of `e` under its leading `∀` binders. -/
+def forallBody : Expr → Expr
+  | .forallE _ _ b _ => forallBody b
+  | .mdata _ b => forallBody b
+  | e => e
+
+/-- Whether `type` is `translate nativeCap module true = some translation`. -/
+def isAlignedEq (module translation : Name) (type : Expr) : Bool :=
+  match type.consumeMData.eq? with
+  | some (_, lhs, rhs) =>
+      lhs.isAppOfArity ``translate 3 && (lhs.getArg! 0).isConstOf ``nativeCap &&
+        (lhs.getArg! 1).isConstOf module && (lhs.getArg! 2).isConstOf ``Bool.true &&
+        rhs.isAppOfArity ``Option.some 2 && (rhs.getArg! 1).isConstOf translation
+  | none => false
+
+/-- The index of the function whose theorem has the type `type`, when `type` is
+`∀ A X, NativeAlignedImpl h A X nativeCap translation` or the table form, for a theorem `h` about
+`module`. -/
+def alignedIndex? (module translation : Name) (type : Expr) : Option Nat := do
+  let e := forallBody type
+  let args := e.getAppArgs
+  let (k, mod, cap, tr) ←
+    if e.isAppOfArity `LeanExe.Native.NativeAlignedImpl 15 then
+      some (args[6]!, args[5]!, args[13]!, args[14]!)
+    else if e.isAppOfArity `Verified.NativeTablesAlignedImpl 16 then
+      some (args[6]!, args[5]!, args[14]!, args[15]!)
+    else none
+  guard (mod.isConstOf module && cap.isConstOf ``nativeCap && tr.isConstOf translation)
+  natValue? k
+
+/-- What the theorems of `env` lack to cover the translation `t` of the module `m`, the constant
+`constName`, without the test of alignment: empty when `constName` is `p.module` of a
+`verified_compile` program `p` without byte literals, `p.translationAligned_eq` states
+`translate nativeCap p.module true = some p.translationAligned`, and every exported function of
+`t` has a theorem `p.f.nativeAligned` about `p.translationAligned`.  The exports `alloc` and
+`release`, functions 0 and 1, need none when `p.module` is a `compileWith`, since
+`compileWith_runtime` gives the premises of `alloc_nativeA` and `release_nativeA`.
+`release_nativeA`, as `release_native`, covers the release of an array.  A program with byte
+literals states `ImplementsStatic` theorems and has no aligned ones. -/
+def alignedGaps (env : Environment) (constName : Name) (m : Wasm.Module) (t : Translation) :
+    List String := Id.run do
+  let p := constName.getPrefix
+  unless constName == p ++ `module do
+    return [s!"{constName} is not the module p.module of a verified_compile program p"]
+  let translation := p ++ `translationAligned
+  let (statics, covered) := env.constants.fold (init := (#[], ({} : Std.HashMap Nat Name)))
+    fun (statics, covered) n ci =>
+      match n with
+      | .str (.str q _) "implements" =>
+          if q == p && (forallBody ci.type).isAppOf `Verified.ImplementsStatic then
+            (statics.push n, covered)
+          else (statics, covered)
+      | .str (.str q _) "nativeAligned" =>
+          if q == p then
+            match alignedIndex? constName translation ci.type with
+            | some k => (statics, covered.insert k n)
+            | none => (statics, covered)
+          else (statics, covered)
+      | _ => (statics, covered)
+  if let some n := statics[0]? then
+    return [s!"the program has byte literals ({n} is an ImplementsStatic theorem), and no \
+      aligned theorem covers a program with byte literals"]
+  let eqName := p ++ `translationAligned_eq
+  match env.find? eqName with
+  | none =>
+      return [s!"{eqName} is missing: the program was not compiled with \
+        verified_compile.alignedNative"]
+  | some ci =>
+      unless isAlignedEq constName translation ci.type do
+        return [s!"{eqName} does not state translate nativeCap {constName} true = \
+          some {translation}"]
+  let runtime := match env.find? constName with
+    | some (.defnInfo d) => d.value.getAppFn.isConstOf `Verified.compileWith
+    | _ => false
+  let mut gaps : List String := []
+  for e in m.exports do
+    let isRuntime := runtime &&
+      ((e.funcIdx == 0 && e.name == "alloc") || (e.funcIdx == 1 && e.name == "release"))
+    unless !t.funcs.contains e.funcIdx || covered.contains e.funcIdx || isRuntime do
+      gaps := gaps ++ [s!"no theorem {p ++ Name.mkSimple e.name ++ `nativeAligned} covers the \
+        export {e.name}, function {e.funcIdx}"]
+  return gaps
+
 unsafe def build (moduleName constName : Name) (name dir : String) (aligned : Bool) :
     IO UInt32 := do
-  let m ← loadModule moduleName constName
+  let (env, m) ← loadEnv moduleName constName
+  if aligned && (violation m).isNone then
+    if let some t := translate nativeCap m true then
+      let gaps := alignedGaps env constName m t
+      unless gaps.isEmpty do
+        for g in gaps do
+          IO.eprintln s!"{name}: refusing the translation without the alignment test: {g}"
+        return 4
   let some t ← emitModule m name dir aligned | return 3
   runTool ((← IO.getEnv "CLIGHTGEN").getD "clightgen") #[s!"{name}.c"] (some dir)
   let status ← checkTranslation t name dir

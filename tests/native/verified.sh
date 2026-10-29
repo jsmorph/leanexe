@@ -23,7 +23,9 @@
 # the caller sets it.  The largest step measured, native-verified build of the largest corpus
 # module, keeps 3.7 GB resident.
 # With --aligned, native-verified builds each module with the translation option alignedAccess,
-# whose load64 and store64 omit the test of alignment.
+# whose load64 and store64 omit the test of alignment.  native-verified refuses, with status 4, a
+# module whose theorems do not cover that translation.  The script lists such a module beside the
+# modules without a translation and runs none of its cases.
 # Usage: tests/native/verified.sh [--aligned] [--module NAME]
 set -euo pipefail
 export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-6G}
@@ -70,6 +72,7 @@ rm -rf "$out"
 mkdir -p "$out"
 modules=0
 untranslated=""
+refused=""
 while IFS=: read -r module constant name; do
   if [ -n "$only" ] && [ "$name" != "$only" ]; then
     continue
@@ -80,6 +83,9 @@ while IFS=: read -r module constant name; do
     .lake/build/bin/native-verified build "${aligned[@]}" "$module" "$constant" "$name" "$out" || status=$?
   if [ "$status" -eq 3 ]; then
     untranslated="$untranslated $name"
+    continue
+  elif [ "$status" -eq 4 ]; then
+    refused="$refused $name"
     continue
   elif [ "$status" -ne 0 ]; then
     exit "$status"
@@ -169,8 +175,15 @@ while IFS='|' read -r name export result args expected live allocsMax; do
   fi
 done <"$cases"
 echo "native verified: passed $passed failed $failed"
-echo "native verified: not run: $omitted outside the translation, $others of modules without a translation"
+if [ ${#aligned[@]} -eq 0 ]; then
+  echo "native verified: not run: $omitted outside the translation, $others of modules without a translation"
+else
+  echo "native verified: not run: $omitted outside the translation, $others of modules without a translation or aligned theorems"
+fi
 echo "native verified: modules without a translation:${untranslated:- none}"
+if [ ${#aligned[@]} -ne 0 ]; then
+  echo "native verified: modules without aligned theorems:${refused:- none}"
+fi
 modcases=$out/module-cases.txt
 if ! tools/leanrun --timeout 10m .lake/build/bin/native-module-cases \
     >"$modcases" 2>"$out/module-cases.err"; then
