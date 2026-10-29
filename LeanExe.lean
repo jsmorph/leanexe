@@ -68,7 +68,10 @@ import LeanExe.Pipeline.Records
 import LeanExe.Pipeline.RecordSlots
 import LeanExe.Pipeline.Runtime
 import LeanExe.Pipeline.RuntimeSpec
+import LeanExe.Pipeline.AlignedHeap
 import LeanExe.Pipeline.Slotted
+import LeanExe.ProofKit.AlignedExec
+import LeanExe.ProofKit.AlignedHeaderExec
 import LeanExe.ProofKit.Allocation
 import LeanExe.ProofKit.Array
 import LeanExe.ProofKit.ArrayPrefix

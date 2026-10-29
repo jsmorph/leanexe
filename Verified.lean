@@ -114,3 +114,4 @@ import Verified.ProgramLiterals
 import Verified.Examples.WasiDepth
 import Verified.Examples.WasiRetainTotal
 import Verified.Examples.WasiStdio
+import Verified.AlignedAccess

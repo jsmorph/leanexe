@@ -38235,3 +38235,81 @@ The check ran in a clean tree of the merge, with the module count corrected, aft
 
 - [x] The two merges, with the conflicts in this journal resolved.
 - [x] The bare-metal tests on the merge, under TCG and under KVM, and the corpus test.
+
+## 2026-10-29: Scoping the alignment proof
+
+Each 64-bit `load` and `store` of a translation tests `(t & 7) == 0` and takes eight byte accesses when it fails, because CompCert leaves an unaligned `Mint64` access undefined.  Averaged over code placements, removing the test saves 24.6, 13.9, 15.5, and 21.0 percent of the cycles of `sort`, `crc32`, `linear32`, and `layerNorm32`, as the entry on CompCert's alignment options records.  This study fixes the statement that would let the translator drop the test, compares the two routes to it, measures a prototype of the cheaper route, and replaces the earlier estimate of 3,000 to 8,000 lines.  The prototype lives in five new modules, which build together in 8 seconds on top of the existing build, and every theorem in them uses only `propext`, `Classical.choice`, and `Quot.sound`.
+
+**Why a new premise is unavoidable.**  `ImplementsA` quantifies over every store with `heap.At store` and every argument list that `Represent.borrowed` accepts.  Neither `Heap.At` nor `Heap.Owned`, `Heap.Borrowed`, `Heap.Buffer`, or the tree predicates states that `top`, a free block, or a pointer is a multiple of 8, so a caller may pass an array at an odd address, and the compiled code then reads at odd addresses.  No theorem can therefore derive alignment from today's premises, and the native statement must gain one: the heap and the argument pointers are aligned.  The hosts satisfy it, since they allocate arguments through the module's `alloc` from the initial heap, whose `top` is `tablesEnd tables`, a multiple of 8, and whose free list is empty.
+
+**The statement.**  The interface between the compiler and the translator is an untrusted predicate on Talos runs.  `AlignedOne`, `AlignedExec`, `AlignedRun`, and `AlignedRunTail` in [the aligned runs](LeanExe/ProofKit/AlignedExec.lean) follow the mutual recursion of Talos's `execOne`, `exec`, `run`, and `runTail` and take every intermediate state from those functions, so no instruction's semantics is restated.  An access must be aligned only when it lies inside memory, because the C code traps on the bound before it reads.  The compiler would prove, for each function, a theorem of this form, where `AlignedInput` is the proposed premise:
+
+```lean
+def AlignedInput [Represent α] (heap : Heap) (store : Store Unit) (params : List Value)
+    (x : α) : Prop :=
+  heap.Aligned ∧
+    (∀ p ∈ Represent.moves store params x, p.toNat % 8 = 0 ∧ capacityAt store p % 8 = 0) ∧
+    ∀ r ∈ Represent.reads store params x, r.1 % 8 = 0
+
+def ImplementsAligned [Represent α] (m : Module) (entry : Nat)
+    (Pre : α → Heap → Store Unit → Prop) : Prop :=
+  ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
+    heap.At store → Pre x heap store → Represent.borrowed heap store params x →
+    Separate store (Represent.moves store params x) (Represent.reads store params x) →
+    store.memoryCap m 0 ≤ 65535 → AlignedInput heap store params x →
+    ∃ N, ∀ fuel ≥ N, AlignedRun fuel m entry store params.reverse env
+```
+
+The native side consumes it in `sim_load64` and `sim_store64` of [the memory instructions](LeanExe/Native/Proof/MemOps.lean).  `InstrSimL` and `ProgSim` in [the control proofs](LeanExe/Native/Proof/Control.lean) and `RunSimFun` in [the call proofs](LeanExe/Native/Proof/Calls.lean) gain the premises `AlignedOne F mod st sl inst env`, `AlignedExec F mod st sl p env`, and `AlignedRun g mod k st args env`, and `translate_correct` would then hold for the translation without the test.  `ImplementsA.native` would take both `ImplementsA` and `ImplementsAligned`, and `NativeA`, `NativeTablesA`, and `NativeStaticA` would gain the premise `AlignedInput heap store params x` after `Separate`.  `NativeA` is the statement of `p.f.native`, so this is a change to a trusted statement, and this entry proposes it without making it.  The exact form of `AlignedInput`, in particular whether `moves` and `reads` reach every nested node of a tree argument, remains to be confirmed against the `Represent` instances in the first stage of the work.  `sim_load64_aligned` in [the aligned load](LeanExe/Native/Proof/AlignedMem.lean) is the consuming step in full: `sim_load64` for the statement without the test, with `AlignedOne` as its premise, in which the eight-byte branch disappears and one line applies the premise.
+
+**Route (a): the compiler's correctness theorem.**  The proofs of the verified compiler are written in continuation style over Talos's `wp`: `CodeSpec` in [the expression specification](Verified/ExprSpec.lean) ends in `wp m (e.code ++ rest) Q store s host`.  Route (a) replaces `wp` by `wpA`, which is `wp` with `AlignedExec` at every fuel from some bound on, and carries the alignment of every pointer through the proof's internal representation.  The universal proof must keep proving today's `ImplementsA`, which covers unaligned inputs, so the invariant cannot be unconditional.  The recommended design gives `CodeSpec`, `After`, `Holds`, and `Ty.Rep` a flag `strict`: under `strict = true` the pointers of arrays, buffers, tree nodes, and detached headers are multiples of 8, owned blocks have capacities that are multiples of 8, the heap is `Heap.Aligned`, and the code runs under `wpA`.  Under `strict = false` the proof is today's.  The alternative, adding alignment to `Heap.At`, `Heap.Owned`, and the `Represent` instances, would narrow every Wasm theorem and change trusted definitions under `LeanExe/Pipeline`, so this entry does not recommend it.  With the flag, no existing definition in `LeanExe/Pipeline` and no entry of the manual's list of trusted definitions changes, and only the three native statements gain the premise.  `Heap.Aligned` and `AlignedInput` would become trusted definitions of the native path, since `NativeA` would reach them.
+
+| Area | Files | Lines now |
+| --- | --- | --- |
+| Internal representation and invariants | `Verified/State.lean` (`Ty.Rep`, `Holds`), `Verified/After.lean`, `Verified/ExprSpec.lean` (`CodeSpec`) | 1,729, 1,537, 831 |
+| Constructs | `Verified/ExprCorrect.lean`, 95 tree files, the array, fold, and tail files, the field files, the byte files | 5,726, 12,503, 4,690, 1,352, 1,790 |
+| Function and module level | `Verified/Correct.lean`, `Instantiate.lean`, `ArgsCorrect.lean`, `StaticImplements.lean`, `Native.lean`, `Reflect/Command.lean` | 1,220, 374, 636, 39, 128, 946 |
+| Runtime | the `FixedArray*` proofs of `alloc`, `LeanExe/ProofKit/ReleaseTree.lean`, `LeanExe/Pipeline/RuntimeSpec.lean`, `Allocation.lean` | 2,282, 1,439, 761, 1,082 |
+| WASI | the proofs under `Verified/Wasi` that use `CodeSpec`, `After`, or `Holds` (339 lines), instantiated at `strict = false` | 22,996 in the directory |
+| Native | `Translate.lean`, and `Control`, `Blocks`, `Branches`, `Calls`, `Dispatch`, `Run`, `Correct`, `Native`, `MemOps`, and `Straight` under `LeanExe/Native/Proof` | 1,182, and 3,547 together |
+
+Outside the WASI directory, 1,141 lines of the verified compiler's proofs name `wp` or a `wp_` rule, 813 name `CodeSpec`, `After`, or `Holds`, and 106 name a rule for a 64-bit access.  In the runtime's proofs, 339 lines name `wp` or a `wp_` rule, and 11 name a rule for a 64-bit access.  New pointers arise in about ten places, the uses of `alloc` and `allocArrayCode`, and representations are rebuilt for existing pointers at about 130 uses of `.rep` in 30 files.
+
+**Route (b): a checker in the translator.**  The checker would run an abstract interpretation over each function body, with a residue modulo 8 or "unknown" for every local and stack slot, propagated through `add`, `sub`, `mul`, and constants, with a fixpoint for loops and summaries across calls, and it would drop the test at every access whose address it proves aligned.  WebAssembly does not distinguish pointers from integers, so the checker cannot see which parameters are pointers, what a callee returns, what `alloc` returns after other code has run, or what a `load64` reads.  The bases of the hot accesses come from exactly those sources: parameters, the results of `alloc`, and child pointers and array fields loaded from the heap.  Its soundness would need two facts that only the compiler can supply: that the parameters it uses as bases are aligned, which is `AlignedInput`, and that every word the code loads and then uses as a base is a multiple of 8, a property of the heap's contents that is route (a)'s representation invariant.  With neither fact the checker proves alignment only for constant addresses, such as the literal tables at `tableAddr`, which is `4096 + 8 * Σ (size + 1)`.  With the first alone it also covers bases taken from parameters, but neither the results of `alloc`, whose alignment depends on the heap that all earlier code leaves, nor bases loaded from memory, and `sort` writes into a block that `alloc` returns.  Covering every access by route (b) therefore costs route (a)'s invariant plus the checker and its soundness proof inside the native simulation, so it is the more expensive route.
+
+**The prototype.**  The table lists the five modules, their lines, and the time `lake build` reported for each when it built all five together on top of the existing build.  The modules import the libraries but no library module imports them, apart from the roots `LeanExe.lean`, `LeanExe/Native.lean`, and `Verified.lean`, so no other module was rebuilt.  The whole command, with Lake's start and its check of 3,572 jobs, took 8 seconds.
+
+| Module | Lines | Seconds | Content |
+| --- | --- | --- | --- |
+| `LeanExe/ProofKit/AlignedExec.lean` | 550 | 2.6 | the predicates, `wpA`, `wpA.wp`, the residue lemmas, the rules for `localGet`, `constI64`, `addI64`, `subI64`, `mulI64`, `wrapI64`, `load64`, and `store64`, the transfer rule `wpA_cons_wp`, and the rules for `block` and `iff` |
+| `LeanExe/Pipeline/AlignedHeap.lean` | 92 | 1.8 | `Heap.Aligned`, `allocSize` a multiple of 8, the allocator's root aligned, and allocation keeping the heap aligned |
+| `LeanExe/ProofKit/AlignedHeaderExec.lean` | 97 | 2.0 | the port of `FixedArrayHeaderExec.lean`, the six header stores that `alloc` writes |
+| `Verified/AlignedAccess.lean` | 134 | 1.0 | the aligned load and store of an array word, and the port of `wp_loadWordsCode` |
+| `LeanExe/Native/Proof/AlignedMem.lean` | 104 | 2.0 | `sim_load64_aligned` |
+
+Three results change the estimate.  First, the rules for `block` and `iff` need no fuel monotonicity of `AlignedExec`, which I had expected to mirror Talos's `fuel_mono_aux` in about 300 lines: `wpA` gives alignment at every fuel from its bound on, the construct runs its body at one fuel less, and Talos's `exec_fuel_mono` supplies the rest.  Second, `wpA_cons_wp` reduces `wpA` of every instruction without a 64-bit access or a body to Talos's `wp` of the instruction alone, so the 100 or so atomic `wp_*_cons` rules apply unchanged and only `load64`, `store64`, `block`, `loop`, `iff`, and `call` need rules of their own.  Third, the two ports changed about a quarter of the lines of lemmas that make 64-bit accesses: `wpA_loadWordsCode` differs from its 62-line original in one premise, about ten renamed rules, one deleted step, and two lines for the load, and the port of the header stores, whose proofs run `simp only` over straight-line code, needed only match-form rules for `store64` and `subI64` and one closing line per lemma.  Each port and the native step built on its first attempt.  The prototype writes about a third of the foundation and ports one of the 16 files of the allocator's proof, and it predicts that the rest of the foundation and the mechanical part of the port are routine, while it measures nothing of the invariant's threading through the constructs.
+
+**The estimate.**  The table counts lines written or changed, with a changed line counted once.  Counted as git counts insertions and deletions, the totals are about 1.5 times larger, since most of the port changes lines in place.  The bounds are estimates built from the measurements and counts in the third column, and none of the rows except the written parts is measured.
+
+| Area | Lines | Basis |
+| --- | --- | --- |
+| Foundation: the flag, `loop` and `call` rules, a function-level `Runs` with alignment, named rules for the atomic forms the proofs name, append and prefix rules, a `simp` set | 1,200 to 1,800 | 550 written.  Talos's `Wp` library is 2,577 lines, and the transfer rule replaces its atomic part |
+| Heap model: release, insertion, merging, and the capacity residue of owned blocks | 300 to 600 | 92 written for allocation |
+| Runtime code proofs of `alloc` and `release` | 500 to 1,000 | the header port, which changed 25 of 90 lines, and about 50 accesses |
+| Universal proof, mechanical part | 1,000 to 1,800 | 1,141 and 813 lines counted above, mostly renames |
+| Universal proof, the invariant | 1,000 to 2,500 | about 10 allocation sites, 130 rebuilt representations, tree pointers, and 106 access rules.  The addition of array and buffer slots to tree records, a model change threaded through the same proofs, changed 47 files with 932 insertions and 356 deletions |
+| WASI proofs at `strict = false` | 100 to 400 | 339 lines that use the specification |
+| Statement layer and generation | 300 to 600 | `AlignedInput`, `ImplementsAligned` and its table and static forms, entry and exit in `Correct.lean`, `ArgsCorrect.lean`, and `Instantiate.lean`, and `Reflect/Command.lean` |
+| Native side | 300 to 600 | 104 written for `load64`.  The threading resembles the bound in a temporary, which changed 18 files |
+| Total | 4,700 to 9,300 | |
+
+The confidence is low for the invariant row, the largest, which the prototype does not measure, and for the runtime row, whose proofs lean on `simp` with Talos's rule set more than the ported lemmas do.  It is medium for the foundation and the native side, which the prototype measures directly.  A full gate costs about 90 minutes of builds, by the figures of the combined check of the heap fields work, before the test drivers.
+
+**Recommendation.**  Route (a) is the route to build, because route (b) needs route (a)'s invariant to drop the test where the hot accesses take their bases and then adds a checker and its soundness proof.  The work splits into three stages with a decision after each: (1) the foundation and the native side with `ImplementsAligned` as a hypothesis, about 1,500 to 2,400 lines at low risk; (2) the aligned specifications of `alloc` and `release`, about 800 to 1,600; and (3) the universal proof with the flag, about 2,400 to 5,300, which carries the risk.  The second stage ends with a measured port of one construct, the array read and write of `ExprCorrect.lean`, which would bound the third.  The gain is 14 to 25 percent of the cycles of the four loops over arrays, averaged over placements, and 0.3 to 3.4 percent for the other three workloads in a single benchmark, and on `sort` the native code would still take 2.9 times Wasmtime's time, so the test is not the main cost there.  The whole would be one to two times the array half of the heap fields work, which inserted 5,039 lines of Lean and deleted 1,596.  I recommend building the first two stages and deciding on the third from the measured port, and whether the gain justifies the whole is the user's decision.
+
+- [x] The statement, with the premise that `NativeA` would gain.
+- [x] Routes (a) and (b), with the files and line counts.
+- [x] The prototype: the aligned runs, the heap model, two ports, and the native step.
+- [x] The estimate by area.
+- [ ] The decision on the proposed premise of `NativeA`, `NativeTablesA`, and `NativeStaticA`.
+- [ ] The user's decision on building the proof.
