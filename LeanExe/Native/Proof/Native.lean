@@ -145,15 +145,17 @@ theorem translate_sig {mod : Module} {cap : Nat} {al : Bool} {T : Translation}
   exact ⟨fd, ps, rs, hfd, fun g' hg' => by rw [hg] at hg'; cases hg'; exact hsig⟩
 
 /-- A translation exists when its list of functions does. -/
-theorem translate_isSome {mod : Module} {cap : Nat} {L : List Nat}
-    (h : (translate cap mod).map Translation.funcs = some L) : (translate cap mod).isSome = true := by
-  cases hT : translate cap mod with
+theorem translate_isSome {mod : Module} {cap : Nat} {al : Bool} {L : List Nat}
+    (h : (translate cap mod al).map Translation.funcs = some L) :
+    (translate cap mod al).isSome = true := by
+  cases hT : translate cap mod al with
   | none => rw [hT] at h; cases h
   | some _ => rfl
 
-/-- The functions of a translation, from the list that `(translate cap mod).map funcs` gives. -/
-theorem translate_mem_funcs {mod : Module} {cap : Nat} {T : Translation} {L : List Nat}
-    (hT : translate cap mod = some T) (h : (translate cap mod).map Translation.funcs = some L)
+/-- The functions of a translation, from the list that `(translate cap mod al).map funcs` gives. -/
+theorem translate_mem_funcs {mod : Module} {cap : Nat} {al : Bool} {T : Translation}
+    {L : List Nat} (hT : translate cap mod al = some T)
+    (h : (translate cap mod al).map Translation.funcs = some L)
     {k : Nat} (hk : k ∈ L) : k ∈ T.funcs := by
   rw [hT] at h
   cases h
