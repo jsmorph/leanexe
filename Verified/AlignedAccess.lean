@@ -120,7 +120,7 @@ theorem wpA_loadWordsCode {flag : Nat} (b : Bool)
       have hv : ws[w.toNat + j]! = v := by simpa using hRead 0 (by simp)
       have hOffset := word_offset hn (by have := hAt.1; omega)
       have hElement := hAt.elementBound _ hn
-      simp (config := { decide := true }) only [Bool.cond_true, ↓reduceIte]
+      simp (config := { decide := true }) only [↓reduceIte]
       simp only [wordAddrCode, List.cons_append, List.nil_append, wpA_localGet_cons,
         Locals.get_values, hP, hW, wpA_constI64_cons, wpA_addI64_cons, wpA_mulI64_cons,
         wpA_wrapI64_cons, wrap_toUInt32, hOffset]
