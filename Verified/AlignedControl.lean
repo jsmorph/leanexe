@@ -184,6 +184,18 @@ theorem Ty.AlignedVal.pair {mode : Mode} {store : Store Unit} {a b : Ty} {ws1 ws
   · exact h1 r hr
   · exact h2 r hr
 
+/-- The first component of an aligned pair is aligned. -/
+theorem Ty.AlignedVal.fst {mode : Mode} {store : Store Unit} {a b : Ty} {ws1 ws2 : List Value}
+    {v : a.denote × b.denote} (h : Ty.AlignedVal mode store (.pair a b) (ws1 ++ ws2) v)
+    (hl : ws1.length = a.width) : Ty.AlignedVal mode store a ws1 v.1 := fun r hr =>
+  h r (by rw [Ty.regions_append hl]; exact List.mem_append_left _ hr)
+
+/-- The second component of an aligned pair is aligned. -/
+theorem Ty.AlignedVal.snd {mode : Mode} {store : Store Unit} {a b : Ty} {ws1 ws2 : List Value}
+    {v : a.denote × b.denote} (h : Ty.AlignedVal mode store (.pair a b) (ws1 ++ ws2) v)
+    (hl : ws1.length = a.width) : Ty.AlignedVal mode store b ws2 v.2 := fun r hr =>
+  h r (by rw [Ty.regions_append hl]; exact List.mem_append_right _ hr)
+
 section Cases
 
 variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
@@ -856,6 +868,249 @@ theorem specX_pair (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {sTy tTy : 
           · exact Or.inr (Ty.pot_creditFree tTy hc2 _ _))
   simpa [List.reverse_append, List.append_assoc] using hv
 
+
+/-- A binding of a pair's components: the pair's code, the stores of its components' words, the
+release of each component that is owned and that the body does not use, and the body's code. -/
+theorem specX_letPair (hm : Runtime m) (hRA : strict = true → ReleaseAligned m) {Γ' : List Ty} {sTy tTy uTy : Ty}
+    {e : Expr S Γ' (.pair sTy tTy)} {body : Expr S (tTy :: sTy :: Γ') uTy} {buy : Bool}
+    (eSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits host pv e env slots paid live)
+    (bodySpec : ∀ env slots paid live, CodeSpecInX strict (pool := pool) buy m funs flags bounds fits host pv
+        body env slots paid live) :
+    ∀ env slots paid live, CodeSpecInX strict (pool := pool) buy m funs flags bounds fits host pv
+        (Expr.letPair e body) env slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hAl hSafe hCap hBase hRoom
+      hPlace rest Q hTrap
+    hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hER : e.width ≤ max e.width body.width := Nat.le_max_left ..
+  have hBR : body.width ≤ max e.width body.width := Nat.le_max_right ..
+  simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
+  have hV : ∀ i, ((live i || body.uses (i + 2)) || e.uses i) = true →
+      (live i || (Expr.letPair e body).uses i) = true := fun i h => by
+    simp only [Expr.uses]; exact live_seq _ _ _ h
+  -- The variables that die in the binding die in the pair or in the body.
+  have hSplitL : dyingPot store s env slots paid
+      (fun i => live i || (Expr.letPair e body).uses i) live =
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 2) || e.uses i)
+          (fun i => live i || body.uses (i + 2)) +
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 2)) live := by
+    rw [dyingPot_split _ (fun i => live i || body.uses (i + 2)) _
+      (fun i h => hV i (by simp [h])) (fun i h => by simp [h])]
+    congr 1
+    exact dyingPot_congr (fun i => by
+      simp only [Expr.uses]
+      cases live i <;> cases e.uses i <;> cases body.uses (i + 2) <;> rfl) fun _ => rfl
+  refine eSpec env slots paid _ h
+    (base + sTy.width + tTy.width) heap store s hh hpv ((hVars.mono (by omega)).live_mono hV) hAt
+    (fun hs => (hAl hs).live_mono hV) (hSafe.mono hV)
+        hCap
+    (by omega) (by omega) hPlace.1
+    _ _ (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_left _ _ _ h)
+      fun _ hw => hw.mono (by rw [hSplitL]; simp only [Expr.allocs]; omega))
+    fun heap1 store1 s1 ws a1 hAl1 hTop1 => ?_
+  have hp1 : s1.params = s.params := a1.frame.params
+  have hh1 : s1.positions = h := a1.frame.positions.trans hh
+  have a1' := a1.lower (hVars.live_mono hV) (by omega) fun i h => by simp [h]
+  obtain ⟨wf, wsec, rfl, hRf, hRs, hDisj⟩ := a1.rep
+  have hlf := hRf.length
+  have hls := hRs.length
+  rw [List.reverse_append, List.append_assoc]
+  refine wpX_storeCode wsec h (base + sTy.width) tTy.types s1 (wf.reverse ++ s.values) hRs.typed
+    hh1 (by rw [hp1]; omega) (by rw [Ty.types_length, hh1]; omega) fun s2 hF2 hold2 _ => ?_
+  have hh2 : s2.positions = h := hF2.positions.trans hh1
+  refine wpX_storeCode wf h base sTy.types s2 s.values hRf.typed hh2 (by rw [hF2.params, hp1]; omega)
+    (by rw [Ty.types_length, hh2]; omega) fun s3 hF3 hold1 habove3 => ?_
+  have hold1' : LocalsHold { s3 with values := s.values } base sTy.types wf := hold1
+  have hold2' : LocalsHold { s3 with values := s.values } (base + sTy.width) tTy.types wsec :=
+    hold2.keep hF3.positions habove3 (by rw [Ty.types_length]) (by rw [hls, hh2]; omega)
+  have f3 : Frame base s1 { s3 with values := s.values } :=
+    (hF2.mono (by omega)).trans (hF3.trans Frame.ofValues)
+  have hp3 : s3.params = s.params := hF3.params.trans (hF2.params.trans hp1)
+  -- The body's context: the second component as variable 0 and the first as variable 1.
+  have hVars1 := (a1'.holds.agree f3)
+  have hApart := a1'.apart.agree a1'.holds f3
+  have hVarsB : Holds (Env.cons (e.denote funs env).2 (Env.cons (e.denote funs env).1 env))
+      (⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+        ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots)
+      (fun i => decide (i < 2) || shift 2 live i || body.uses i)
+      (base + sTy.width + tTy.width) heap1 store1 { s3 with values := s.values } := by
+    refine Holds.push (Holds.push (hVars1.live_mono fun i h => by simpa using h) hold1' hRf
+      ((hApart.fst hlf).live_mono fun i h => by simpa using h)) hold2' hRs ?_
+    refine Holds.Apart.push ((hApart.snd hlf).live_mono fun i h => by simpa using h) hold1' hlf
+      fun hmo b hb c hc => ?_
+    have hmo' : e.mode (slots.map Slot.mode) = .owned := by simpa using hmo
+    rw [hmo'] at hb hc hDisj
+    exact regionsDisjoint_symm (hDisj rfl c hc b hb)
+  have hAlB : strict = true → HoldsA
+      (Env.cons (e.denote funs env).2 (Env.cons (e.denote funs env).1 env))
+      (⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+        ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots)
+      (fun i => decide (i < 2) || shift 2 live i || body.uses i) heap1 store1
+      { s3 with values := s.values } := fun hs =>
+    HoldsA.push (HoldsA.push ((HoldsA.agree a1'.holds (hAl1 hs).1 f3).live_mono
+        fun i h => by simpa using h) hold1' hlf ((hAl1 hs).2.fst hlf))
+      hold2' hls ((hAl1 hs).2.snd hlf)
+  have hSafeB : pool.Safe
+      (Env.cons (e.denote funs env).2 (Env.cons (e.denote funs env).1 env))
+      (⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+        ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots)
+      (fun i => decide (i < 2) || shift 2 live i || body.uses i)
+      heap1 store1 { s3 with values := s.values } :=
+    (hSafe.mono hV).bind2 (hVars.live_mono hV) a1'
+      (fun i hi => by simp [hi]) (fun i hi => by simpa [shift] using hi)
+      f3 hRf hRs hold1' hold2'
+  have hRelease : ∀ rest' : Program,
+      (if e.mode (slots.map Slot.mode) = .owned ∧ body.uses 1 = false then
+        releaseCode sTy base else []) ++
+      ((if e.mode (slots.map Slot.mode) = .owned ∧ body.uses 0 = false then
+        releaseCode tTy (base + sTy.width) else []) ++ rest') =
+      ((if body.uses 1 = false then [1] else []) ++
+        (if body.uses 0 = false then [0] else [])).flatMap
+        (releaseVar (tTy :: sTy :: Γ') (⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+          ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots)) ++ rest' := by
+    intro rest'
+    cases body.uses 1 <;> cases body.uses 0 <;> cases e.mode (slots.map Slot.mode) <;>
+      simp [releaseVar]
+  rw [hRelease]
+  have hd1 : (Expr.letPair e body).fits funs fits env = true → e.fits funs fits env = true :=
+    fun hd => by simp only [Expr.fits, Bool.and_eq_true] at hd; exact hd.1
+  have hd3 : (Expr.letPair e body).fits funs fits env = true →
+      body.fits funs fits (.cons (e.denote funs env).2 (.cons (e.denote funs env).1 env)) = true :=
+    fun hd => by simp only [Expr.fits, Bool.and_eq_true] at hd; exact hd.2
+  refine wpX_releaseVars hm hRA _ (by split <;> split <;> simp) hVarsB a1.step.at_ hAlB
+    (by split <;> split <;> simp) fun heap2 store2 e2 hTop2 hA2 => ?_
+  have e2' := e2.mono (live' := fun i => shift 2 live i || body.uses i) fun i h => by
+    match i with
+    | 0 =>
+      have h0 : body.uses 0 = true := by simpa [shift] using h
+      simp [h0]
+    | 1 =>
+      have h1 : body.uses 1 = true := by simpa [shift] using h
+      simp [h1]
+    | k + 2 => split <;> split <;> simpa using h
+  have hA2' : strict = true → HoldsA
+      (Env.cons (e.denote funs env).2 (Env.cons (e.denote funs env).1 env))
+      (⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+        ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots)
+      (fun i => shift 2 live i || body.uses i) heap2 store2 { s3 with values := s.values } :=
+    fun hs => (hA2 hs).live_mono fun i h => by
+      match i with
+      | 0 =>
+        have h0 : body.uses 0 = true := by simpa [shift] using h
+        simp [h0]
+      | 1 =>
+        have h1 : body.uses 1 = true := by simpa [shift] using h
+        simp [h1]
+      | k + 2 => split <;> split <;> simpa using h
+  -- The body's dying variables: the components, paid when the pair is, whose potential is the
+  -- pair's, and the others, whose potential the pair's code and the releases keep.
+  have hPotE : (Ty.pair sTy tTy).pot store1 (wf ++ wsec) (e.denote funs env) =
+      sTy.pot store1 wf (e.denote funs env).1 + tTy.pot store1 wsec (e.denote funs env).2 := by
+    simp only [Ty.pot, List.take_left' hlf, List.drop_left' hlf]
+  have hDb : dyingPot store2 { s3 with values := s.values }
+      (Env.cons (e.denote funs env).2 (Env.cons (e.denote funs env).1 env))
+      (⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+        ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots)
+      (e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+        e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) :: paid)
+      (fun i => shift 2 live i || body.uses i) (shift 2 live) ≤
+        (if e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+          then (Ty.pair sTy tTy).pot store1 (wf ++ wsec) (e.denote funs env) else 0) +
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 2)) live := by
+    rw [dyingPot_evolves hVarsB e2' (fun i h => by
+      simp only [Bool.or_eq_true] at h ⊢; rcases h with h | h <;> simp [h]) _ _ fun _ h => h,
+      dyingPot_cons, dyingPot_cons]
+    rw [dyingPot_congr (L0' := fun i => live i || body.uses (i + 2)) (L1' := live)
+      (fun i => by simp [shift]) (fun i => by simp [shift])]
+    rw [dyingPot_step (hVars.live_mono hV) a1'.step (a1'.frame.trans f3)
+      (fun i h => by simp [h]) _ _ fun _ h => h]
+    dsimp only
+    rw [hold2'.read_eq (by rw [hls, Ty.types_length]), hold1'.read_eq (by rw [hlf, Ty.types_length]),
+      hPotE]
+    by_cases hpp : e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+    · rw [ite_eq_left hpp]
+      split <;> split <;> omega
+    · simp only [hpp, Bool.and_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
+      omega
+  have hbuys : (Expr.letPair e body).buysIn buy funs flags (slots.map Slot.mode) paid live env =
+      body.buysIn buy funs flags ((⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+          ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots).map Slot.mode)
+        (e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+          e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+            paid) (shift 2 live)
+        (.cons (e.denote funs env).2 (.cons (e.denote funs env).1 env)) :=
+    rfl
+  refine bodySpec _ _
+    (e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+      e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) :: paid)
+    (shift 2 live) h (base + sTy.width + tTy.width)
+    heap2 store2
+    { s3 with values := s.values } (f3.positions.trans hh1) (hp3.trans hpv) e2'.holds e2'.step.at_ hA2'
+    (hSafeB.evolves hVarsB e2' (fun i hi => live_right _ _ _ hi))
+    (by rw [e2'.step.cap m, a1.step.cap m]; exact hCap)
+    (by show s3.params.length ≤ base + sTy.width + tTy.width; rw [hp3]; omega)
+    (by omega) hPlace.2 _ _
+    (hTrap.part (by flag_tac) (fun h => by
+      have hmo := e.mode_owned (slots.map Slot.mode)
+      rw [Slot.any_map] at hmo
+      simp only [List.any_cons, Expr.aborts] at h ⊢
+      exact let_trap_body2 _ _ _ _ (fun hv => hmo (by simpa using hv)) h) fun hd hw => by
+        have h1 := hTop1 (hd1 (fits_of_not hd)); have := congrArg UInt64.toNat hTop2
+        have hDb' := hDb
+        refine hw.of_le ?_ (by rw [e2'.step.cap m, a1.step.cap m])
+        rw [hSplitL, hbuys]
+        simp only [Expr.allocs, List.map_cons]
+        by_cases hpp :
+            e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+        · rw [ite_eq_left hpp] at h1 hDb'; omega
+        · rw [ite_eq_right hpp] at h1 hDb'; omega)
+    fun heap3 store3 s4 ws4 aB hAlB3 hTop3 => ?_
+  have aB' := After.prepend hVarsB e2' aB (fun i h => live_right _ _ _ h) fun i h => by simp [h]
+  have hNew : ∀ r, (∀ b ∈ (e.mode (slots.map Slot.mode)).fresh store1 (.pair sTy tTy) (wf ++ wsec)
+      (e.denote funs env), regionsDisjoint r b) →
+      ((e.mode (slots.map Slot.mode)) = .owned → ∀ w,
+        LocalsHold { s3 with values := s.values } (base + sTy.width) tTy.types w →
+        w.length = tTy.width →
+        ∀ b ∈ tTy.blocks store1 w (e.denote funs env).2, regionsDisjoint r b) ∧
+      ((e.mode (slots.map Slot.mode)) = .owned → ∀ w,
+        LocalsHold { s3 with values := s.values } base sTy.types w → w.length = sTy.width →
+        ∀ b ∈ sTy.blocks store1 w (e.denote funs env).1, regionsDisjoint r b) := by
+    intro r hFresh
+    rw [Mode.fresh_pair hlf] at hFresh
+    refine ⟨fun hmo w hw hlw b hb => ?_, fun hmo w hw hlw b hb => ?_⟩
+    · obtain rfl := LocalsHold.unique hw hold2' (hlw.trans hls.symm)
+      rw [hmo] at hFresh
+      exact hFresh b (List.mem_append_right _ hb)
+    · obtain rfl := LocalsHold.unique hw hold1' (hlw.trans hlf.symm)
+      rw [hmo] at hFresh
+      exact hFresh b (List.mem_append_left _ hb)
+  exact hNext heap3 store3 s4 ws4
+    ((After.bind2 (hVars.live_mono hV) a1' f3 aB' (by omega) hNew
+      (fun i h => by simpa using h) (fun i h => by simp [h]) fun i h => by simp [h]).liveIn hV)
+    (fun hs => ⟨(hAlB3 hs).1.pop.pop.live_mono fun i h => by simpa [shift] using h,
+      (hAlB3 hs).2⟩)
+    fun hd => by
+      have h1 := hTop1 (hd1 hd); have h3 := hTop3 (hd3 hd); have := congrArg UInt64.toNat hTop2
+      have hDb' := hDb
+      have hpot : (if (Expr.letPair e body).paidIn buy flags (slots.map Slot.mode) paid live = true
+            then uTy.pot store3 ws4 ((Expr.letPair e body).denote funs env) else 0) =
+          (if body.paidIn buy flags ((⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+              ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots).map Slot.mode)
+              (e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+                e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) ::
+                  paid) (shift 2 live) = true then
+            uTy.pot store3 ws4 (body.denote funs
+              (.cons (e.denote funs env).2 (.cons (e.denote funs env).1 env))) else 0) :=
+        rfl
+      rw [hpot, hbuys, hSplitL]
+      simp only [List.map_cons] at h3 ⊢
+      simp only [Expr.allocs]
+      by_cases hpp :
+          e.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 2)) = true
+      · rw [ite_eq_left hpp] at h1 hDb'; omega
+      · rw [ite_eq_right hpp] at h1 hDb'; omega
 
 end Cases
 
