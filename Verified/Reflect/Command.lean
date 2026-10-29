@@ -7,6 +7,7 @@ import Verified.Reflect.TailOptions
 import Verified.Reflect.RecursiveTypes
 import Verified.Reflect.ScalarProof
 import Verified.ProgramStatic
+import Verified.AlignedProgram
 
 namespace Verified.Reflect
 
@@ -64,6 +65,22 @@ def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
   return mkAppN (mkConst ``ImplementsA.transferAgree)
     #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, pre, post, h,
       r.flatArgs, r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
+
+/-- The proof of `p.f.aligned` from the compiler's alignment theorem `h` for the source function, in
+the form of Lean's instances, carried to the type of the definition's arguments along their
+flattening by `ImplementsAligned.transferAgree`, or, for a wrapper, by
+`ImplementsTablesAligned.transferAgree`. -/
+def alignedProof (h : Lean.Expr) (r : Reflected) (argsAgree : Name) : MetaM Lean.Expr := do
+  let hTy ← inferType h
+  let inst ← userInst r.argsType
+  match hTy.getAppFn.constName?, hTy.getAppArgs with
+  | some ``LeanExe.Pipeline.ImplementsAligned, #[α, ia, m, entry, pre] =>
+    return mkAppN (mkConst ``ImplementsAligned.transferAgree)
+      #[α, r.argsType, ia, inst, m, entry, pre, h, r.flatArgs, mkConst argsAgree]
+  | some ``ImplementsTablesAligned, #[α, ia, m, entry, tables, pre] =>
+    return mkAppN (mkConst ``ImplementsTablesAligned.transferAgree)
+      #[α, r.argsType, ia, inst, m, entry, tables, pre, h, r.flatArgs, mkConst argsAgree]
+  | _, _ => throwError "verified_compile: the alignment theorem {hTy}"
 
 /-- `implementsProof` for a wrapper, whose theorem `h` is `ImplementsTables`. -/
 def wrapperProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
@@ -467,12 +484,15 @@ order, each of which may call those before it and, when recursive, itself; the m
 `p.module`; the tables `p.tables` and the wrappers `p.wrappers`; for each definition `f`, the
 theorem `p.f.implements` that the module computes `f`, at the function's index, at its exported
 entry when its code takes the call depth, or, for a wrapper, at the wrapper's entry from a store
-that holds the tables; `p.initial`, that the store in which the module starts meets the
-allocator invariant and holds the tables; `p.inSubset`, that the module is in the subset that
-the translator to C accepts, when it is, from the theorems `p.native_part_k`, one per function,
-which also give the callees of each function's C function as `p.translation_infos` lists them;
-when the module translates, its translation
-`p.translation` to C, with `lx_mem` of `nativeCap` pages, the list `p.translation_funcs` of the
+that holds the tables; for each definition `f` of a program without byte literals, the theorem
+`p.f.aligned` that, at the same index and store as `p.f.implements` states and from an input
+whose heap, consumed objects, and read regions are aligned, the run of the entry at every fuel
+from some bound on makes only aligned 64-bit accesses inside memory; `p.initial`, that the store
+in which the module starts meets the allocator invariant and holds the tables; `p.inSubset`, that
+the module is in the subset that the translator to C accepts, when it is, from the theorems
+`p.native_part_k`, one per function, which also give the callees of each function's C function
+as `p.translation_infos` lists them; when the module translates, its translation `p.translation`
+to C, with `lx_mem` of `nativeCap` pages, the list `p.translation_funcs` of the
 functions that the translation contains, the equation `p.translation_eq`, and, for each
 definition `f` whose function the translation contains, the theorem `p.f.native` that the C
 function computes `f` as `p.f.implements` states, for an `ImplementsA`, an `ImplementsTables`, or
@@ -608,6 +628,24 @@ def elabVerifiedCompile : CommandElab
           |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit index)
           |>.set! 8 (← Core.betaReduce args[8]!) |>.set! 9 (← Core.betaReduce args[9]!))
         addTheorem implName claim proof
+      -- The alignment theorem at the same index: from an aligned input, the run at every fuel from
+      -- some bound on makes only aligned 64-bit accesses inside memory.
+      let alignedStx ← if r.depth then
+          `(Verified.Prog.entry_alignedWith $progId $funsId $meaningId $tablesId $wrappersId
+            $fvar rfl (j := $(Lean.quote (index - 2 - n))) (by decide +kernel) $noLiterals
+            (Pre := fun _ _ _ => True))
+        else
+          `(Verified.Prog.implementsAlignedWith $progId $funsId $meaningId $tablesId
+            $wrappersId $noLiterals $fvar rfl (Pre := fun _ _ _ => True))
+      liftTermElabM do
+        let h ← Term.elabTerm (← `(Verified.ImplementsAligned.lean $alignedStx)) none
+        Term.synthesizeSyntheticMVarsNoPostponing
+        let proof ← alignedProof (← instantiateMVars h) r (base ++ simple ++ `argsAgree)
+        let ty ← inferType proof
+        let args := ty.getAppArgs
+        let claim := mkAppN ty.getAppFn (args.set! 2 (mkConst (base ++ `module))
+          |>.set! 3 (mkNatLit index) |>.set! 4 (← Core.betaReduce args[4]!))
+        addTheorem (base ++ simple ++ `aligned) claim proof
       let uniform? ← liftTermElabM <| addScalarProof base r index fun i =>
         (scalarCallees.find? (fun pair => pair.1 == i)).map Prod.snd
       if let some uniform := uniform? then scalarCallees := (index, uniform) :: scalarCallees
@@ -738,6 +776,21 @@ def elabVerifiedCompile : CommandElab
           |>.set! 8 (← tableEntries (base ++ `tables) tableNames idxs)
           |>.set! 9 (← Core.betaReduce args[9]!) |>.set! 10 (← Core.betaReduce args[10]!))
         addTheorem implName claim proof
+      -- The alignment theorem at the wrapper's entry, from a store that holds the same tables.
+      liftTermElabM do
+        let h ← Term.elabTerm (← `(Verified.ImplementsTablesAligned.lean
+          (Verified.Prog.wrapper_alignedWith $progId $funsId $meaningId $tablesId $wrappersId
+            (j := $(Lean.quote j)) rfl (hNoLiterals := $noLiterals)
+            (Pre := fun _ _ _ => True)))) none
+        Term.synthesizeSyntheticMVarsNoPostponing
+        let proof ← alignedProof (← instantiateMVars h) r (base ++ simple ++ `argsAgree)
+        let ty ← inferType proof
+        let args := ty.getAppArgs
+        let claim := mkAppN ty.getAppFn (args.set! 2 (mkConst (base ++ `module))
+          |>.set! 3 (mkNatLit (2 + n + entries + j))
+          |>.set! 4 (← tableEntries (base ++ `tables) tableNames idxs)
+          |>.set! 5 (← Core.betaReduce args[5]!))
+        addTheorem (base ++ simple ++ `aligned) claim proof
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)
       natives := natives.push (simple, 2 + n + entries + j, .tables)
