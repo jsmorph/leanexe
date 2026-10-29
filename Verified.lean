@@ -134,3 +134,4 @@ import Verified.AlignedTreeMemory
 import Verified.AlignedTreeNode
 import Verified.AlignedTreeAssemble
 import Verified.AlignedTreeBuild
+import Verified.AlignedTreeMatch
