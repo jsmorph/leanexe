@@ -126,3 +126,4 @@ import Verified.AlignedFloat32
 import Verified.AlignedReaders
 import Verified.AlignedControl
 import Verified.AlignedLoops
+import Verified.AlignedWriters
