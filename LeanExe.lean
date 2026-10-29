@@ -73,6 +73,7 @@ import LeanExe.Pipeline.AlignedRuns
 import LeanExe.Pipeline.Slotted
 import LeanExe.ProofKit.AlignedExec
 import LeanExe.ProofKit.AlignedFlag
+import LeanExe.ProofKit.AlignedFlagRules
 import LeanExe.ProofKit.AlignedHeaderExec
 import LeanExe.ProofKit.AlignedLoop
 import LeanExe.ProofKit.Allocation
