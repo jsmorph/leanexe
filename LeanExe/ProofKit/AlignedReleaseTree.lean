@@ -2,16 +2,17 @@ import LeanExe.Pipeline.AlignedFree
 import LeanExe.ProofKit.ReleaseTree
 
 /-!
-`release` on a tree of records under `wpA`: the ports of `wpA_loop_ghost`, `dropReference_specA`,
-`dropSlot_specA`, `slotLoop_specA`, `dropChildren_specA`, and `release_tree_run_top`.  The pending
+`release` on a tree of records under `wpA`: the ports of `wp_loop_ghost`, `dropReference_spec`,
+`dropSlot_spec`, `slotLoop_spec`, `dropChildren_spec`, and `release_tree_run_top`.  The pending
 loop reads each record's header words at its pointer minus 48, 40, 24, 16, and 8, and its slots
 at its pointer plus 8 times the slot's index, and links each child through the child's count
 word, at the child's pointer minus 40.  Every access is aligned when the blocks of the tree start
-at multiples of 8, so that every record and child pointer is one.  The loop's invariant adds to
-`Releasing` that the heap is aligned and that the blocks of the pending records start and end at
-multiples of 8.  `Releasing.nextBlocks` keeps the second fact across a step, since the blocks of
-the new pending records are blocks of the old, and the capacity of the freed record, a multiple
-of 8, keeps the heap aligned through `Heap.Aligned.release`.
+at multiples of 8, so that every record pointer and child pointer is a multiple of 8.  The loop's
+invariant adds to `Releasing` that the heap is aligned and that the blocks of the pending records
+start and end at multiples of 8.  `Releasing.startBlocks` gives the second fact at the loop's
+entry.  `Releasing.nextBlocks` keeps it across a step, since the blocks of the new pending records
+are blocks of the old, and the capacity of the freed record, a multiple of 8, keeps the heap
+aligned through `Heap.Aligned.release`.
 -/
 
 namespace LeanExe.Pipeline

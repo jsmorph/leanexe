@@ -7,9 +7,10 @@ The return of a block to the free list by `release`, under `wpA`: the ports of
 `joinProgram_spec`, `findPlace_spec`, `freeObject_spec`, and `release_leaf_run`.  The program reads
 and writes the size and link words of the freed block, at its payload pointer minus 32 and minus
 8, and of the free blocks around its place, and clears the freed object's count word at its
-pointer minus 40.  Every access is aligned when the pointer and the roots of the free blocks are
-multiples of 8.  `release_null_runA` is the call on the null pointer, which returns before any
-access.
+pointer minus 40.  `release_leaf_runA` also reads the object's magic number, count, and child
+mask, at its pointer minus 48, 40, and 8.  Every access is aligned when the pointer and the roots
+of the free blocks are multiples of 8.  `release_null_runA` is the call on the null pointer,
+which returns before any access.
 -/
 
 namespace LeanExe.Pipeline
