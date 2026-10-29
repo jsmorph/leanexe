@@ -539,26 +539,24 @@ theorem exec_addr {le : temp_env} {m : mem} {h : Nat} {a : UInt32}
 
 theorem eval_bounds (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat} {m : mem}
     (h : MemRel E wm caps m) {le : temp_env} {t : ident} {q : UInt64} (w : Nat) (hw : w ≤ 8)
-    (ht : le[t]? = some (.Vlong q)) (hq : q.toNat < 2 ^ 33) :
+    (ht : le[t]? = some (.Vlong q)) (hq : q.toNat < 2 ^ 33)
+    (hl : le[limId]? = some (limVal wm.pages)) :
     ∃ v, eval_expr A E.ge empty_env le m
       (.Ebinop .Ogt (.Ebinop .Oadd (.Etempvar t tulong) (clong w) tulong)
-        (.Ebinop .Omul (.Ecast pagesVar tulong) (clong 65536) tulong) tint) v ∧
+        (.Etempvar limId tulong) tint) v ∧
       bool_val v tint m = some (decide (wm.pages * 65536 < q.toNat + w)) := by
   have hcap := hE.cap
   have hp := h.le_cap
+  have hl' : le[limId]? = some (.Vlong (UInt64.ofNat (wm.pages * 65536))) := hl
   refine ⟨_, .eval_Ebinop _ _ _ _ _ _ _
     (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ ht) (.eval_Econst_long _ _)
       (sem_add_ll A m _ _))
-    (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Ecast _ _ _ _ (eval_global_int hE.pages h.pages)
-      (cast_uint_long m _)) (.eval_Econst_long _ _) (sem_mul_ll A m _ _))
+    (.eval_Etempvar _ _ _ hl')
     (sem_gt_ll A m _ _), ?_⟩
-  have e : (UInt64.ofNat (UInt32.ofNat wm.pages).toNat * UInt64.ofNat 65536 < q + UInt64.ofNat w) ↔
+  have e : (UInt64.ofNat (wm.pages * 65536) < q + UInt64.ofNat w) ↔
       wm.pages * 65536 < q.toNat + w := by
-    have hP : (UInt32.ofNat wm.pages).toNat = wm.pages := by
-      rw [UInt32.toNat_ofNat']; omega
-    rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_mul, UInt64.toNat_add, hP,
-      toNat_ofNat64 (by omega), toNat_ofNat64 (by omega), toNat_ofNat64 (by omega),
-      Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
+    rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_add, toNat_ofNat64 (by omega),
+      toNat_ofNat64 (by omega), Nat.mod_eq_of_lt (by omega)]
   by_cases hc : wm.pages * 65536 < q.toNat + w
   · rw [ite_eq_left (e.mpr hc), decide_eq_true hc]; exact bool_int m 1
   · rw [ite_eq_right (fun x => hc (e.mp x)), decide_eq_false hc]; exact bool_int m 0
@@ -621,6 +619,7 @@ theorem sim_load64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
           slotId σr.length .i64]? = some (.Vlong (UInt64.ofNat (a.toNat + off.toNat))) :=
         te_insert_same _ _ _
       obtain ⟨vb, hvb, hbb⟩ := eval_bounds (A := A) hE hmr 8 (by omega) ht1 (by rw [hq]; omega)
+        (lim_insert_slot _ _ _ hinv.lim)
       by_cases hob : a.toNat + off.toNat + 8 > st.mem.pages * 65536
       · rw [ite_eq_left hob]
         obtain ⟨m', hxt, hg, hs⟩ := trap_exec (A := A) (X := X)
@@ -679,7 +678,8 @@ theorem sim_load64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
                   (fun i => slotId_ne_localId _ _ i)
                 store := hinv.store
                 status := hinv.status
-                brk := brk_insert_slot _ _ _ (brk_insert_slot _ _ _ hinv.brk) }
+                brk := brk_insert_slot _ _ _ (brk_insert_slot _ _ _ hinv.brk)
+                lim := lim_insert_slot _ _ _ (lim_insert_slot _ _ _ hinv.lim) }
 
 
 theorem sim_store64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
@@ -707,6 +707,7 @@ theorem sim_store64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
           slotId (σr.length + 1) .i64]? = some (.Vlong x) := by
         rw [te_insert_ne _ (slotId_ne_of_height _ _ (by omega))]; exact hx
       obtain ⟨vb, hvb, hbb⟩ := eval_bounds (A := A) hE hmr 8 (by omega) ht1 (by rw [hq]; omega)
+        (lim_insert_slot _ _ _ hinv.lim)
       have hfr : Frame σr.length le
           (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) :=
         Frame.insert_slot _ _ _ _ (Nat.le_refl _)
@@ -768,7 +769,8 @@ theorem sim_store64 (hE : EnvOk E) (F : Nat) (off : UInt32) :
                 locals := hinv.locals.insert_other _ (fun i => slotId_ne_localId _ _ i)
                 store := ⟨GlobalsRel.sameExcept hinv.store.1 hs' hE.mem_not, hmr'⟩
                 status := hinv.status.sameExcept hs' (Ne.symm hE.mem_status)
-                brk := brk_insert_slot _ _ _ hinv.brk }
+                brk := brk_insert_slot _ _ _ hinv.brk
+                lim := lim_insert_slot _ _ _ hinv.lim }
 
 theorem sim_load8U (hE : EnvOk E) (F : Nat) (off : UInt32) :
     InstrSim A X E mod c F (.load8U off) := by
@@ -793,6 +795,7 @@ theorem sim_load8U (hE : EnvOk E) (F : Nat) (off : UInt32) :
           slotId σr.length .i64]? = some (.Vlong (UInt64.ofNat (a.toNat + off.toNat))) :=
         te_insert_same _ _ _
       obtain ⟨vb, hvb, hbb⟩ := eval_bounds (A := A) hE hmr 1 (by omega) ht1 (by rw [hq]; omega)
+        (lim_insert_slot _ _ _ hinv.lim)
       by_cases hob : a.toNat + off.toNat + 1 > st.mem.pages * 65536
       · rw [ite_eq_left hob]
         obtain ⟨m', hxt, hg, hs⟩ := trap_exec (A := A) (X := X)
@@ -847,7 +850,8 @@ theorem sim_load8U (hE : EnvOk E) (F : Nat) (off : UInt32) :
                   (fun i => slotId_ne_localId _ _ i)
                 store := hinv.store
                 status := hinv.status
-                brk := brk_insert_slot _ _ _ (brk_insert_slot _ _ _ hinv.brk) }
+                brk := brk_insert_slot _ _ _ (brk_insert_slot _ _ _ hinv.brk)
+                lim := lim_insert_slot _ _ _ (lim_insert_slot _ _ _ hinv.lim) }
 
 theorem sim_store8 (hE : EnvOk E) (F : Nat) (off : UInt32) :
     InstrSim A X E mod c F (.store8 off) := by
@@ -874,6 +878,7 @@ theorem sim_store8 (hE : EnvOk E) (F : Nat) (off : UInt32) :
           slotId (σr.length + 1) .i32]? = some (.Vint x) := by
         rw [te_insert_ne _ (slotId_ne_of_height _ _ (by omega))]; exact hx
       obtain ⟨vb, hvb, hbb⟩ := eval_bounds (A := A) hE hmr 1 (by omega) ht1 (by rw [hq]; omega)
+        (lim_insert_slot _ _ _ hinv.lim)
       have hfr : Frame σr.length le
           (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) :=
         Frame.insert_slot _ _ _ _ (Nat.le_refl _)
@@ -915,7 +920,8 @@ theorem sim_store8 (hE : EnvOk E) (F : Nat) (off : UInt32) :
                 locals := hinv.locals.insert_other _ (fun i => slotId_ne_localId _ _ i)
                 store := ⟨GlobalsRel.sameExcept hinv.store.1 hs' hE.mem_not, hmr'⟩
                 status := hinv.status.sameExcept hs' (Ne.symm hE.mem_status)
-                brk := brk_insert_slot _ _ _ hinv.brk }
+                brk := brk_insert_slot _ _ _ hinv.brk
+                lim := lim_insert_slot _ _ _ hinv.lim }
 
 theorem sim_memorySize (hE : EnvOk E) (h64 : mod.memIs64 = false) (F : Nat) :
     InstrSim A X E mod c F .memorySize := by
@@ -926,7 +932,7 @@ theorem sim_memorySize (hE : EnvOk E) (h64 : mod.memIs64 = false) (F : Nat) :
   | zero => simp only [execOne.eq_def, Outcome]
   | succ f' =>
       simp only [execOne.eq_def, h64, sizeValue_false]
-      exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (eval_global_int hE.pages hinv.store.2.pages) rfl hbase
 
 theorem memoryCap_eq {E : Env} {α : Type} {st : Store α} {m : mem}
@@ -975,40 +981,50 @@ theorem sim_memoryGrow (hE : EnvOk E) (hcap : c.cap = E.cap) (F : Nat) :
         rw [UInt64.le_iff_toNat_le, hT, hcap, toNat_ofNat64 (by omega)]
       have hfr : ∀ v, Frame σr.length le ((le.insert t (.Vlong T)).insert r v) := fun v =>
         (Frame.insert_slot _ _ _ _ (Nat.le_refl _)).trans (Frame.insert_slot _ _ _ _ (Nat.le_refl _))
-      have hinv' : ∀ (st' : Store α) (m' : mem) (w : UInt32), StoreRel E st' m' → StatusRel E m' 0 →
-          Inv E c (.i32 :: σr) st' { params := sl.params, locals := sl.locals, values := .i32 w :: vr }
-            ((le.insert t (.Vlong T)).insert r (.Vint w)) m' := fun st' m' w hst hs =>
-        { stack := ⟨rfl, te_insert_same _ _ _, hrest.frame (hfr _)⟩
-          locals := (hinv.locals.insert_other _ (fun i => slotId_ne_localId _ _ i)).insert_other _
-            (fun i => slotId_ne_localId _ _ i)
-          store := hst
-          status := hs
-          brk := brk_insert_slot _ _ _ (brk_insert_slot _ _ _ hinv.brk) }
+      have hcore : ∀ w : UInt32,
+          StackRel ((le.insert t (.Vlong T)).insert r (.Vint w)) (.i32 :: σr) (.i32 w :: vr) ∧
+          LocalsRel ((le.insert t (.Vlong T)).insert r (.Vint w)) c.locals
+            (sl.params ++ sl.locals) ∧
+          ((le.insert t (.Vlong T)).insert r (.Vint w))[brkId]? = some (.Vint 0) := fun w =>
+        ⟨⟨rfl, te_insert_same _ _ _, hrest.frame (hfr _)⟩,
+          (hinv.locals.insert_other _ (fun i => slotId_ne_localId _ _ i)).insert_other _
+            (fun i => slotId_ne_localId _ _ i),
+          brk_insert_slot _ _ _ (brk_insert_slot _ _ _ hinv.brk)⟩
       by_cases hg : st.mem.pages + d.toNat ≤ E.cap
       · have hgrow : st.mem.grow d E.cap = some ({ st.mem with pages := st.mem.pages + d.toNat },
             st.mem.pages) := by
           simp [Wasm.Mem.grow, hg]
         rw [hgrow]
+        have hmr2 := hmr.grow hE _ hg
         have hval : exec_stmt A X E.ge empty_env (le.insert t (.Vlong T)) m
-            (.Ssequence (.Sset r pagesVar) (.Sassign pagesVar (.Ecast (.Etempvar t tulong) tuint)))
-            (E0 ++ E0) ((le.insert t (.Vlong T)).insert r (.Vint (UInt32.ofNat st.mem.pages)))
-            (Mem.stored .Mint32 m E.pages 0 (.Vint (UInt32.ofNat (st.mem.pages + d.toNat)))) .Out_normal := by
+            (.Ssequence (.Sset r pagesVar)
+              (.Ssequence (.Sassign pagesVar (.Ecast (.Etempvar t tulong) tuint)) limSet))
+            (E0 ++ (E0 ++ E0))
+            (((le.insert t (.Vlong T)).insert r (.Vint (UInt32.ofNat st.mem.pages))).insert limId
+              (limVal (st.mem.pages + d.toNat)))
+            (Mem.stored .Mint32 m E.pages 0 (.Vint (UInt32.ofNat (st.mem.pages + d.toNat))))
+            .Out_normal := by
           refine .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
             (.exec_Sset _ _ _ _ _ _ (eval_global_int hE.pages hmr.pages)) ?_
           have hc := cast_long_uint m T
           rw [hT] at hc
           rw [show (st.mem.pages + d.toNat) % 2 ^ 32 = st.mem.pages + d.toNat from
             Nat.mod_eq_of_lt (by omega)] at hc
-          exact exec_assign_int hE.pages (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _
-            (by rw [te_insert_ne _ (slotId_ne_of_type _ (by decide))]; exact ht1)) hc) rfl hmr.pagesW
-        refine ⟨.i32 :: σr, rfl, by simp; omega, E0 ++ (E0 ++ E0), _, _,
+          exact .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
+            (exec_assign_int hE.pages (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _
+              (by rw [te_insert_ne _ (slotId_ne_of_type _ (by decide))]; exact ht1)) hc) rfl
+              hmr.pagesW)
+            (exec_limSet hE hmr2 _)
+        refine ⟨.i32 :: σr, rfl, by simp; omega, E0 ++ (E0 ++ (E0 ++ E0)), _, _,
           .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hx1
             (.exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hcond
               (by rw [ite_eq_left (hle.mpr hg)]; exact bool_int m 1) hval),
-          hinv' _ _ _ ⟨GlobalsRel.sameExcept hinv.store.1 (Mem.SameExcept.of_stored _ _ _ _ _)
-              hE.pages_not, hmr.grow hE _ hg⟩
-            (hinv.status.sameExcept (Mem.SameExcept.of_stored _ _ _ _ _) (Ne.symm hE.pages_status)),
-          (hfr _).mono hb⟩
+          Inv.of_lim (hcore _).1 (hcore _).2.1
+            ⟨GlobalsRel.sameExcept hinv.store.1 (Mem.SameExcept.of_stored _ _ _ _ _)
+              hE.pages_not, hmr2⟩
+            (hinv.status.sameExcept (Mem.SameExcept.of_stored _ _ _ _ _) (Ne.symm hE.pages_status))
+            (hcore _).2.2,
+          ((hfr _).trans (Frame.insert_other _ _ _ (fun x t => (slotId_ne_limId x t).symm))).mono hb⟩
       · have hgrow : st.mem.grow d E.cap = none := by
           simp [Wasm.Mem.grow, hg]
         rw [hgrow]
@@ -1017,7 +1033,10 @@ theorem sim_memoryGrow (hE : EnvOk E) (hcap : c.cap = E.cap) (F : Nat) :
             (.exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hcond
               (by rw [ite_eq_right (fun x => hg (hle.mp x))]; exact bool_int m 0)
               (.exec_Sset _ _ _ _ _ _ (.eval_Econst_int _ _))),
-          hinv' _ _ _ hinv.store hinv.status, (hfr _).mono hb⟩
+          { stack := (hcore _).1, locals := (hcore _).2.1, store := hinv.store,
+            status := hinv.status, brk := (hcore _).2.2,
+            lim := lim_insert_slot _ _ _ (lim_insert_slot _ _ _ hinv.lim) },
+          (hfr _).mono hb⟩
 
 end
 

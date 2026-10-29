@@ -16,9 +16,12 @@ after each construct decrements `brk` and continues the branch.  A trap stores i
 The Wasm globals are the C globals `lx_g<i>`.
 
 The linear memory is the array `lx_mem` of `cap` pages, where `cap` is a parameter of
-`translate`, and `lx_pages` holds the current number of pages.  A `load64` or `store64` computes
-its address in 64-bit arithmetic in the `i64` slot at the height of its address, traps when the
-eight bytes do not lie below `lx_pages × 65536`, and then reads or writes one word of `lx_mem`
+`translate`, and `lx_pages` holds the current number of pages.  Each function keeps
+`lx_pages × 65536` in the temporary `lim`, which it sets at entry and again after each call of a
+function of the module and after each `memory.grow` that succeeds, the only statements that
+change `lx_pages`.  A `load64` or `store64` computes its address in 64-bit arithmetic in the
+`i64` slot at the height of its address, traps when the eight bytes do not lie below `lim`, and
+then reads or writes one word of `lx_mem`
 when the address is a multiple of 8, and eight bytes in little-endian order otherwise.  A
 `load8U` or `store8` computes its address and traps in the same way for its one byte, which it
 reads or writes as an `unsigned char` of `lx_mem`: `load8U` converts the byte to
@@ -93,17 +96,18 @@ def tuchar : type := .Tint .I8 .Unsigned noattr
 /-! ## Identifiers
 
 A temporary is `8 n + r`: local `n - 1` for `r = 0` and `n ≥ 1`, the stack slot at height `n` of
-the type with code `r` for `r` from 1 to 4, `brk` for `n = 0` and `r = 5`, and the result of call
-site `n` for `r = 6`.  A global is `lx_status`, 1, the Wasm global `i`, `4 i + 2`, or the function
-`k`, `4 k + 3`, `lx_pages`, 8, `lx_mem`, 12, `lx_init`, 16, `lx_pun`, 20, the built-in `__builtin_fsqrt`, 24, or
-the result global of position `i` and type code `r`, `32 (i + 1) + 4 r`, and the program's `main`
-is 4.
+the type with code `r` for `r` from 1 to 4, `brk` for `n = 0` and `r = 5`, the result of call
+site `n` for `r = 6`, and `lim` for `n = 0` and `r = 7`.  A global is `lx_status`, 1, the Wasm
+global `i`, `4 i + 2`, or the function `k`, `4 k + 3`, `lx_pages`, 8, `lx_mem`, 12, `lx_init`,
+16, `lx_pun`, 20, the built-in `__builtin_fsqrt`, 24, or the result global of position `i` and
+type code `r`, `32 (i + 1) + 4 r`, and the program's `main` is 4.
 Every identifier is at least 1, as CompCert's identifiers, which are positive, are. -/
 
 def localId (i : Nat) : ident := 8 * i + 8
 def slotId (h : Nat) (t : VT) : ident := 8 * h + t.code
 def brkId : ident := 5
 def callId (k : Nat) : ident := 8 * k + 6
+def limId : ident := 7
 
 def statusId : ident := 1
 def globalId (i : Nat) : ident := 4 * i + 2
@@ -126,6 +130,7 @@ def tempName (id : ident) : String :=
   | 4 => s!"s{n}_d"
   | 5 => "brk"
   | 6 => s!"c{n}"
+  | 7 => if n = 0 then "lim" else s!"t{id}"
   | _ => s!"t{id}"
 
 /-! ## Statements -/
@@ -250,6 +255,16 @@ def memVar (cap : Nat) : expr := .Evar memId (memType cap)
 
 def pagesVar : expr := .Evar pagesId tuint
 
+/-- `(unsigned long long) lx_pages * 65536`, the number of bytes of memory. -/
+def limExpr : expr := .Ebinop .Omul (.Ecast pagesVar tulong) (clong 65536) tulong
+
+/-- `lim = (unsigned long long) lx_pages * 65536`. -/
+def limSet : statement := .Sset limId limExpr
+
+/-- After a call of a function of the module: return at once when the callee trapped, and
+otherwise set `lim` again, since the callee may have grown the memory. -/
+def callCheck (r : Option VT) : statement := .Ssequence (statusCheck r) limSet
+
 /-- The address in the temporary `t` plus `k`: `t + k`, or `t` for `k = 0`. -/
 def addrPlus (t : ident) (k : Nat) : expr :=
   if k = 0 then .Etempvar t tulong else .Ebinop .Oadd (.Etempvar t tulong) (clong k) tulong
@@ -286,10 +301,10 @@ def storeBytes (cap : Nat) (t : ident) (v : expr) : Nat → Nat → statement
 def addrStmt (t : ident) (a : expr) (off : UInt32) : statement :=
   .Sset t (.Ebinop .Oadd (.Ecast a tulong) (.Econst_long off.toUInt64 tulong) tulong)
 
-/-- The trap of an access whose `w` bytes from the address in `t` do not lie in memory. -/
+/-- The trap of an access whose `w` bytes from the address in `t` do not lie below `lim`. -/
 def boundsCheck (w : Nat) (r : Option VT) (t : ident) : statement :=
   .Sifthenelse (.Ebinop .Ogt (.Ebinop .Oadd (.Etempvar t tulong) (clong w) tulong)
-      (.Ebinop .Omul (.Ecast pagesVar tulong) (clong 65536) tulong) tint)
+      (.Etempvar limId tulong) tint)
     (trapStmt trapOutOfBounds r) .Sskip
 
 /-- The address in `t` is a multiple of 8. -/
@@ -720,7 +735,8 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
             (.Sset t (.Ebinop .Oadd (.Ecast pagesVar tulong) (.Ecast (tmp (h - 1) .i32) tulong)
               tulong))
             (.Sifthenelse (.Ebinop .Ole (.Etempvar t tulong) (clong c.cap) tint)
-              (.Ssequence (.Sset r pagesVar) (.Sassign pagesVar (.Ecast (.Etempvar t tulong) tuint)))
+              (.Ssequence (.Sset r pagesVar)
+                (.Ssequence (.Sassign pagesVar (.Ecast (.Etempvar t tulong) tuint)) limSet))
               (.Sset r (.Econst_int 0xFFFFFFFF tuint))),
           some (.i32 :: σ'), n)
       else none
@@ -864,17 +880,17 @@ def trInstr (c : FCtx) (L : List Label) (σ : List VT) (n : Nat) (inst : Instruc
         let callee : expr := .Evar (funId k) (funType ps rs)
         let args := callArgs (h - ps.length) ps
         match rs with
-        | [] => pure (.Ssequence (.Scall none callee args) (statusCheck c.result), some σ', n)
+        | [] => pure (.Ssequence (.Scall none callee args) (callCheck c.result), some σ', n)
         | [t] =>
             pure (.Ssequence
                 (.Ssequence (.Scall (some (callId n)) callee args)
                   (.Sset (slotId (h - ps.length) t) (.Etempvar (callId n) t.ty)))
-                (statusCheck c.result),
+                (callCheck c.result),
               some (t :: σ'), n + 1)
         | rs =>
             pure (.Ssequence
                 (.Ssequence (.Scall none callee args) (seqList (resLoads rs 0 (h - ps.length))))
-                (statusCheck c.result),
+                (callCheck c.result),
               some (rs.reverse ++ σ'), n)
       else none
   | .block pa ra body pts rts => do
@@ -949,14 +965,14 @@ def insertSorted (x : ident × type) : List (ident × type) → List (ident × t
   | [] => [x]
   | y :: ys => if x.1 < y.1 then x :: y :: ys else if x.1 = y.1 then y :: ys else y :: insertSorted x ys
 
-/-- The declared temporaries of a body: the stack slots in increasing order, then `brk`, then
-the call results in decreasing order of call site, the order in which `clightgen` lists the
-temporaries that it creates. -/
+/-- The declared temporaries of a body: the stack slots in increasing order, then `brk` and
+`lim`, then the call results in decreasing order of call site, the order in which `clightgen`
+lists the temporaries that it creates. -/
 def bodyTemps (s : statement) : List (ident × type) :=
   let all := (assigned s).foldl (fun acc x => insertSorted x acc) []
   let slots := all.filter fun (id, _) => 1 ≤ id % 8 ∧ id % 8 ≤ 4
   let calls := all.filter fun (id, _) => id % 8 = 6
-  slots ++ [(brkId, tuint)] ++ calls.reverse
+  slots ++ [(brkId, tuint), (limId, tulong)] ++ calls.reverse
 
 /-- The `return` at the end of a function with results `rs`: of the result's slot for one
 result, and after the stores of the slots to the result globals for several. -/
@@ -980,7 +996,7 @@ def trFunction (cap : Nat) (sigs : List (Option (List VT × List VT))) (nglobals
   let funLabel : Label := { isLoop := false, base := 0, result := retOf rs, final := 2 ≤ rs.length }
   let (body, _) ← trProg c [funLabel] [] rs.reverse 0 f.body
   let inits := ls.zipIdx.map fun (t, j) => statement.Sset (localId (ps.length + j)) t.zero
-  let fbody := seqList (inits ++ [.Sset brkId (cint 0), wrapLoop body, retStmt rs])
+  let fbody := seqList (inits ++ [.Sset brkId (cint 0), limSet, wrapLoop body, retStmt rs])
   pure { fn_return := ((retOf rs).map VT.ty).getD .Tvoid
          fn_callconv := cc_default
          fn_params := ps.zipIdx.map fun (t, i) => (localId i, t.ty)

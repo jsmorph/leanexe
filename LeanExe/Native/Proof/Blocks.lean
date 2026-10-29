@@ -110,7 +110,7 @@ theorem construct_of_body {L : List Label} {σb : List VT} {r : Option VT} {α :
       obtain ⟨t', hW⟩ := exec_wrap_exit hx (.inl rfl)
       refine ⟨by simp; omega, t', le', m', hW, ?_, hf.mono hbase⟩
       refine { stack := stack_after ?_ hbelow hf, locals := hinv.locals, store := hinv.store,
-               status := hinv.status, brk := hinv.brk }
+               status := hinv.status, brk := hinv.brk, lim := hinv.lim }
       intro hr
       cases r with
       | none => simp at hr
@@ -129,7 +129,7 @@ theorem construct_of_body {L : List Label} {σb : List VT} {r : Option VT} {α :
           have hf0 := hf _ rfl
           refine ⟨by simp; omega, t', le', m', hW, ?_, hf0.mono hbase⟩
           refine { stack := stack_after ?_ hbelow hf0, locals := hrel.locals, store := hrel.store,
-                   status := hrel.status, brk := hrel.brk }
+                   status := hrel.status, brk := hrel.brk, lim := hrel.lim }
           intro hr
           cases r with
           | none => simp at hr
@@ -144,7 +144,7 @@ theorem construct_of_body {L : List Label} {σb : List VT} {r : Option VT} {α :
           simp at hl
           refine ⟨t', le', m', hW, ?_, fun l' hl' => hf l' (by simpa using hl')⟩
           exact { target := ⟨l, hl, hfin, hkept⟩, brk := hrel.brk, small := hrel.small,
-                  locals := hrel.locals, store := hrel.store, status := hrel.status }
+                  locals := hrel.locals, store := hrel.store, status := hrel.status, lim := hrel.lim }
   | Return st' vs =>
       obtain ⟨t, le', m', out, hx, hrel, hg, hs⟩ := h
       obtain ⟨rv, rfl⟩ := ReturnRel.isReturn hrel
@@ -227,7 +227,7 @@ theorem sim_iff {CallOk : Nat → Prop} {f : Nat} (hP : ProgSim A X E mod c Call
   apply ConstructOutcome.toOutcome hp
   have hinv' : Inv E c σr st { params := sl.params, locals := sl.locals, values := vs } le m :=
     { stack := hrest, locals := hinv.locals, store := hinv.store, status := hinv.status,
-      brk := hinv.brk }
+      brk := hinv.brk, lim := hinv.lim }
   apply construct_of_body hb hrest
   refine Outcome.ite (.eval_Etempvar _ _ _ hx) rfl ?_
   by_cases hx0 : x ≠ 0
@@ -303,7 +303,7 @@ theorem sim_loop {CallOk : Nat → Prop} {F : Nat} (hP : ∀ g, g < F → ProgSi
           obtain ⟨t', hW⟩ := exec_wrap_exit hx (.inl rfl)
           refine ⟨by simp; omega, t', le', m', hW, ?_, hf.mono hbase⟩
           refine { stack := stack_after ?_ hinv.stack hf, locals := hinv'.locals,
-                   store := hinv'.store, status := hinv'.status, brk := hinv'.brk }
+                   store := hinv'.store, status := hinv'.status, brk := hinv'.brk, lim := hinv'.lim }
           intro hr'
           cases r with
           | none => simp at hr'
@@ -324,7 +324,7 @@ theorem sim_loop {CallOk : Nat → Prop} {F : Nat} (hP : ∀ g, g < F → ProgSi
                   { params := sl'.params, locals := sl'.locals,
                     values := sl'.values.take 0 ++ sl.values.drop 0 } le' m' :=
                 { stack := by simpa using hinv.stack.frame hf0, locals := hrel.locals,
-                  store := hrel.store, status := hrel.status, brk := hrel.brk }
+                  store := hrel.store, status := hrel.status, brk := hrel.brk, lim := hrel.lim }
               exact ConstructOutcome.again hL hbase hx hf0
                 (ih (by omega) st' _ le' m' hinv'')
           | succ k =>
@@ -335,7 +335,7 @@ theorem sim_loop {CallOk : Nat → Prop} {F : Nat} (hP : ∀ g, g < F → ProgSi
               simp [L'] at hl
               refine ⟨t', le', m', hW, ?_, fun l' hl' => hf l' (by simpa [L'] using hl')⟩
               exact { target := ⟨l, hl, hfin, hkept⟩, brk := hrel.brk, small := hrel.small,
-                      locals := hrel.locals, store := hrel.store, status := hrel.status }
+                      locals := hrel.locals, store := hrel.store, status := hrel.status, lim := hrel.lim }
       | Return st' vs =>
           rw [hres] at ho
           obtain ⟨t, le', m', out, hx, hrel, hg', hs⟩ := ho

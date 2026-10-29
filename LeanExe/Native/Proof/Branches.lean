@@ -86,7 +86,10 @@ theorem br_outcome {L : List Label} {σ : List VT} {k : Nat} {s : statement}
       .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (.exec_Sset _ _ _ _ _ _ (.eval_Etempvar _ _ _ hslot)) hgo,
       ?_, ?_⟩
     · refine { target := ⟨l, hl, ?_, hfin, ?_⟩, outer := ?_, brk := hb', small := hk,
-               locals := ?_, store := hinv.store, status := hinv.status }
+               locals := ?_, store := hinv.store, status := hinv.status,
+               lim := by
+                 rw [hother _ brkId_ne_limId.symm, te_insert_ne _ (slotId_ne_limId _ _)]
+                 exact hinv.lim }
       · intro hk0; exact (h0 hk0).1
       · intro _ t' ht'
         rw [hres] at ht'; cases ht'
@@ -106,7 +109,8 @@ theorem br_outcome {L : List Label} {σ : List VT} {k : Nat} {s : statement}
     obtain ⟨hb', hother⟩ := hbrk le hinv.brk le' out h0 h1
     refine ⟨E0, le', out, hgo, ?_, ?_⟩
     · refine { target := ⟨l, hl, ?_, hfin, ?_⟩, outer := ?_, brk := hb', small := hk,
-               locals := ?_, store := hinv.store, status := hinv.status }
+               locals := ?_, store := hinv.store, status := hinv.status,
+               lim := by rw [hother _ brkId_ne_limId.symm]; exact hinv.lim }
       · intro hk0; exact (h0 hk0).1
       · intro hloop t' ht'
         rw [hnone hloop] at ht'; cases ht'
@@ -141,7 +145,7 @@ theorem sim_br_if (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c Ca
       obtain ⟨x, vs, hvs, hx, hrest⟩ := pop1_i32 hinv.stack
       have hinv' : Inv E c σr st { params := sl.params, locals := sl.locals, values := vs } le m :=
         { stack := hrest, locals := hinv.locals, store := hinv.store, status := hinv.status,
-          brk := hinv.brk }
+          brk := hinv.brk, lim := hinv.lim }
       have hc : eval_expr A E.ge empty_env le m (tmp σr.length .i32) (.Vint x) :=
         .eval_Etempvar _ _ _ hx
       by_cases hx0 : x = 0

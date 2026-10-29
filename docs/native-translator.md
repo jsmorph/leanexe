@@ -134,11 +134,11 @@ A branch first copies the target's kept values (at most one) into the target's r
 
 After every construct the translator emits a dispatch, which does nothing unless a branch left the construct by more than one level: `if (brk != 0) { brk = brk - 1; if (brk == 0) <break or continue, for the parent> else break; }`. `br_if` wraps the same code in `if (cond != 0)`. `ret` copies the results and returns. This needs no `goto`, so it stays inside the big-step semantics.
 
-**Memory.** `lx_mem` holds `LX_CAP` pages and `lx_pages` is the current page count.  `LX_CAP` is the argument `cap` of `translate`, which refuses a module whose initial pages exceed it and a cap above 65,535 pages, the most that the compiled modules declare.  `verified_compile` uses `nativeCap`, 4,096 pages or 256 MiB, for every module: a larger static `lx_mem` approaches the 2 GiB limit on static data under the small code model, and every translated case of the corpus fits, as does the slew planner's bound of 68,020,488 bytes.  A module that needs more memory needs a cap of its own, which is future work.  A `load64` with offset `off` computes its address in the `i64` slot at the height of its address, here `s4`:
+**Memory.** `lx_mem` holds `LX_CAP` pages and `lx_pages` is the current page count.  `LX_CAP` is the argument `cap` of `translate`, which refuses a module whose initial pages exceed it and a cap above 65,535 pages, the most that the compiled modules declare.  `verified_compile` uses `nativeCap`, 4,096 pages or 256 MiB, for every module: a larger static `lx_mem` approaches the 2 GiB limit on static data under the small code model, and every translated case of the corpus fits, as does the slew planner's bound of 68,020,488 bytes.  A module that needs more memory needs a cap of its own, which is future work.  Each function keeps the memory's size in bytes in the temporary `lim`, `lim = (unsigned long long) lx_pages * 65536ULL;`, which it sets at entry, after each call of a function of the module that returns without a trap, and after each `memory.grow` that succeeds, the only statements after which `lx_pages` can differ.  A `load64` with offset `off` computes its address in the `i64` slot at the height of its address, here `s4`, and compares it with `lim`:
 
 ```c
 s4_l = (unsigned long long) s4_i + 16ULL;           /* off = 16; 64-bit sum, no wrap */
-if (s4_l + 8ULL > (unsigned long long) lx_pages * 65536ULL) { lx_status = 2U; return 0ULL; }
+if (s4_l + 8ULL > lim) { lx_status = 2U; return 0ULL; }
 if ((s4_l & 7ULL) == 0ULL) s4_l = lx_mem[s4_l >> 3ULL];   /* aligned: one 8-byte load */
 else s4_l = (unsigned long long) ((unsigned char *) lx_mem)[s4_l]
           | (unsigned long long) ((unsigned char *) lx_mem)[s4_l + 1ULL] << 8ULL
@@ -179,7 +179,7 @@ One simulation theorem, `translate_correct`, carries every Talos `run` that ends
 - Stack: `s.values` has length `|σ|`, and slot `k` holds the value at depth `|σ| − 1 − k`.
 - Globals: the blocks of `lx_g0` to `lx_g3` hold the encoding of `st.globals`.
 - Memory: every byte of `lx_mem` below `LX_CAP × 65536` equals `st.mem.bytes` at that address and can be written; `lx_pages = st.mem.pages ≤ LX_CAP`; and the store's first memory cap, `st.memoryCaps[0]`, is `LX_CAP`.
-- `brk` and `lx_status` are 0. The result globals can be written. `lx_pun`, the values of the result globals, and slots above the stack are unconstrained.
+- `brk` and `lx_status` are 0, and `lim` holds `st.mem.pages × 65536`. The result globals can be written. `lx_pun`, the values of the result globals, and slots above the stack are unconstrained.
 
 **Outcomes.** Each Talos continuation corresponds to one C outcome:
 

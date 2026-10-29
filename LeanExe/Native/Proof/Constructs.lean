@@ -92,6 +92,7 @@ structure PendingBreak (L : List Label) (k : Nat) {α : Type} (st : Store α) (s
   locals : LocalsRel le c.locals (sl.params ++ sl.locals)
   store : StoreRel E st m
   status : StatusRel E m 0
+  lim : le[limId]? = some (limVal st.mem.pages)
 
 /-- What the construct's loop `W` does when Talos's result for the construct is `r`. -/
 def ConstructOutcome (L : List Label) (σ' : List VT) {α : Type} (r : Continuation α)
@@ -212,7 +213,7 @@ theorem ConstructOutcome.toOutcome {L : List Label} {σ' : List VT} {α : Type}
       refine { target := ⟨l, hl, ?_, hfin, ?_⟩, outer := ?_, brk := hb2,
                small := by have := hpb.small; omega,
                locals := hpb.locals.insert_other _ (fun i => (localId_ne_brkId i).symm)
-               store := hpb.store, status := hpb.status }
+               store := hpb.store, status := hpb.status, lim := lim_insert_brk _ hpb.lim }
       · intro hk0
         subst hk0
         have : l = parent := by
