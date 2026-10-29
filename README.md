@@ -110,7 +110,7 @@ The translation option `alignedAccess` makes every 64-bit load and store read or
 | `sha256` | SHA-256 | 12.891 | 12.791 | -0.8% |
 | `sha3` | SHA-3 | 9.878 | 9.845 | -0.3% |
 
-`sort`, `linear32`, and `layernorm32` run 20 to 23 percent faster without the test, and the other four workloads change by less than 2 percent.  The translation with the test stays the default, because the whole-program theorems and the bare-metal path exist only for it.  [An earlier run](devnotes.md#2026-10-29-the-wasm-to-c-translator-the-benchmark-of-the-bound-in-a-temporary) of the translation with the test measured Wasmtime's median time per call as 0.28 times the native median for `sort`, 0.71 for `crc32`, 0.78 for `euler`, 0.86 for `sha256`, 1.11 for `sha3`, 1.18 for `linear32`, and 1.38 for `layernorm32`.
+`sort`, `linear32`, and `layernorm32` run 19.6 to 22.5 percent faster without the test, and the other four workloads change by less than 2 percent.  The translation with the test stays the default, because the whole-program theorems and the bare-metal path exist only for it.  [An earlier run](devnotes.md#2026-10-29-the-wasm-to-c-translator-the-benchmark-of-the-bound-in-a-temporary) of the translation with the test measured Wasmtime's median time per call as 0.28 times the native median for `sort`, 0.71 for `crc32`, 0.78 for `euler`, 0.86 for `sha256`, 1.11 for `sha3`, 1.18 for `linear32`, and 1.38 for `layernorm32`.
 
 ### Bare-metal programs
 
