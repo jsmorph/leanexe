@@ -122,3 +122,4 @@ import Verified.AlignedReleaseChain
 import Verified.AlignedTreeFields
 import Verified.AlignedSpecIn
 import Verified.AlignedScalar
+import Verified.AlignedFloat32
