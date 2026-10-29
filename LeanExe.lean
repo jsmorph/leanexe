@@ -75,6 +75,7 @@ import LeanExe.ProofKit.AlignedAtomic
 import LeanExe.ProofKit.AlignedExec
 import LeanExe.ProofKit.AlignedFlag
 import LeanExe.ProofKit.AlignedFlagRules
+import LeanExe.ProofKit.AlignedFree
 import LeanExe.ProofKit.AlignedHeaderExec
 import LeanExe.ProofKit.AlignedLoop
 import LeanExe.ProofKit.Allocation
