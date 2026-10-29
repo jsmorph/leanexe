@@ -38198,4 +38198,21 @@ The benchmark ran again on AArch64 with the programs of the bound in a temporary
 Wasmtime's medians moved by at most 0.53 percent between the two runs, so the two runs' conditions compare.  The native median fell for six workloads, most for `sort`, the workload whose analysis proposed the change, and rose by 4.9 percent for `sha256`, whose cause is not yet examined.  The interquartile range of `sort`'s native times spans 5.8 percent of its median, against 0.22 percent in the earlier run, so its change is the least certain of the seven.
 
 - [x] The benchmark of the bound in a temporary.
-- [ ] The cause of the slower `sha256`.
+- [x] The cause of the slower `sha256`, as far as static counts can tell, as the next entry records.
+
+## 2026-10-29: The Wasm-to-C translator: the slower `sha256`
+
+The native median of `sha256` rose by 625,500 ns, 4.9 percent, from the build with `-fno-common` to the build with the bound in a temporary.  Its interquartile range was 24,100 ns, 0.19 percent of the median, in the earlier run and 31,614 ns, 0.24 percent, in the later one, so the change is 26 and 20 times the spread within each run, and Wasmtime's median for the same workload moved by 0.13 percent between the runs.  The change is a property of the two programs, not of the runs.
+
+`ccomp -S` of both C texts on the aarch64 tree, with `-fno-common`, shows that the counts of the code that runs fell slightly.  `roundStep`, `advance`, and `bswap` are the same instruction for instruction, since a function that makes no access sets `lim` and never reads it, and CompCert removes the assignment.  The loop over the 64 rounds in `compress` has two back edges, and the table gives the code from its head to each.
+
+| Path | Before: instructions, loads, stores, branches | After |
+| --- | --- | --- |
+| `compress`, round without the calls | 125, 20, 2, 14 | 117, 18, 2, 14 |
+| `compress`, round with `roundStep` and `advance` | 283, 70, 36, 20 | 278, 69, 36, 20 |
+| `hashFrom`, one block, with its 2 calls | 108, 30, 26, 5 | 109, 30, 27, 5 |
+
+The code moved.  `alloc` and `release`, which precede the hot functions in the text, shrank by 83 and 124 instructions, and CompCert aligns a function to 4 bytes only, so the hot code's offsets modulo 64 changed: from 24 to 44 for `roundStep` and `advance`, and from 12 to 44 for the head of the round loop.  Fewer instructions on the paths that run and a slower median point to the placement of the code, not to its content, but static counts cannot settle that.  A measurement of cycles and retired instructions per call for both programs, or a run with the hot functions placed as before, would, and it waits for an idle window.
+
+- [x] Static counts of `sha256`'s loops before and after the bound in a temporary.
+- [ ] Cycles and instructions per call of both `sha256` programs.
