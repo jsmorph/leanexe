@@ -406,4 +406,98 @@ theorem bodyFunction_runsX {strict : Bool} {S : List Sig} {params : List Ty} {re
     · rw [List.reverse_reverse]
       exact ⟨(hAlB hs).1.1, (hAlB hs).2⟩
 
+
+theorem _root_.LeanExe.ProofKit.RunsA.mono {α : Type} {env : HostEnv α} {m : Module} {id : Nat}
+    {initial : Store α} {args : List Value} {P Q : Store α → List Value → Prop} {aborts : Bool}
+    (h : RunsA aborts env m id initial args P) (hPQ : ∀ st vs, P st vs → Q st vs) :
+    RunsA aborts env m id initial args Q :=
+  ⟨h.1.mono hPQ, h.2⟩
+
+theorem _root_.LeanExe.ProofKit.RunsA.of_imp {α : Type} {env : HostEnv α} {m : Module} {id : Nat}
+    {initial : Store α} {args : List Value} {P : Store α → List Value → Prop} {a a' : Bool}
+    (h : RunsA a env m id initial args P) (himp : a = true → a' = true) :
+    RunsA a' env m id initial args P :=
+  ⟨h.1.of_imp himp, h.2⟩
+
+/-- `FunAligned` of a body function whose code takes no call depth, as `bodyFunction_implements`
+gives its `ImplementsP`. -/
+theorem bodyFunction_aligned {S : List Sig} {params : List Ty} {result : Ty}
+    (modes : List Mode) (body : Expr S params result) (placeArgs : body.placeArgs = true)
+    (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S) (pf : List Bool)
+    (rf : Bool) (hrf : rf = true →
+      body.paid flags (entryModes params modes) pf (fun _ => false) = true)
+    (m : Module) (pos : Nat) (hm : Runtime m) (hRA : ReleaseAligned m) (hRt : AllocAligned m)
+    (hCopy : ∀ host, CopyCodeX true m host)
+    (hListFold : ∀ host pv, ListFoldSpecX true m funs flags bounds fits host pv pool)
+    (hFunc : m.funcs[pos]? = some (bodyFunction modes body false pos pool))
+    (hCovered : body.Covered pool) {d0 : UInt64}
+    (hCalls : CallsAtX true m funs flags bounds fits d0 pool) (hDepth : body.depthCalls = false)
+    (aborts : Bool)
+    (hAborts : (body.aborts || !result.scalar || (paramModes params modes).any (· == .owned)) =
+      true → aborts = true) (Fi : Env params → Bool) (D : UInt64 → Prop) :
+    FunAligned m ⟨params, result, aborts, modes, false⟩ pos (body.denote funs) pf rf
+      (bodyBound modes pf body funs flags bounds) Fi D pool := by
+  intro host heap store ws args hAt hInput hRep hSep hCap hHeap hVals d _ rest
+  have hRun : RunsA _ host m pos store _ _ := bodyFunction_runsX (strict := true) modes body
+    placeArgs false funs flags bounds fits pf rf hrf m pos hm hFunc hCovered d0 (fun _ => hCalls)
+    (fun _ => hDepth) aborts (fun h => hAborts (by simpa using h)) host store heap ws args hAt
+    hInput hRep hSep hCap (fun _ => hRA) (fun _ => hRt) (hCopy host) (hListFold host)
+    (fun _ => ⟨hHeap, hVals⟩)
+  have hApp := hRun.append_args (f := bodyFunction modes body false pos pool)
+    (by simp [hm.imports]) (by simpa [hm.imports] using hFunc)
+    (by simp [hRep.length, bodyFunction_numParams]) rest
+  simp only [Bool.false_eq_true, ↓reduceIte, List.nil_append, Bool.false_and,
+    Bool.false_or, Bool.or_false] at hApp ⊢
+  exact hApp.mono fun final values ⟨out, hv, heap', hAt', hOwned, hCaps, hRegions, hTop, hAl⟩ =>
+    ⟨out, hv, heap', hAt', hOwned, hCaps, hRegions, fun _ => hTop trivial, fun _ => hAl trivial⟩
+
+/-- `FunAligned` of a body function whose code takes the call depth, at the depth `d`, as
+`bodyFunction_depth` gives its `ImplementsP`. -/
+theorem bodyFunction_depthAligned {S : List Sig} {params : List Ty} {result : Ty}
+    (modes : List Mode) (body : Expr S params result) (placeArgs : body.placeArgs = true)
+    (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S) (pf : List Bool)
+    (rf : Bool) (hrf : rf = true →
+      body.paid flags (entryModes params modes) pf (fun _ => false) = true)
+    (m : Module) (pos : Nat) (hm : Runtime m) (hRA : ReleaseAligned m) (hRt : AllocAligned m)
+    (hCopy : ∀ host, CopyCodeX true m host)
+    (hListFold : ∀ host pv, ListFoldSpecX true m funs flags bounds fits host pv pool)
+    (hFunc : m.funcs[pos]? = some (bodyFunction modes body true pos pool))
+    (hCovered : body.Covered pool) (d : UInt64)
+    (hCalls : d < depthLimit → CallsAtX true m funs flags bounds fits d pool) (aborts : Bool)
+    (Fi : Env params → Bool) (A : Env params → Nat)
+    (hFi : ∀ args, Fi args = (decide (d < depthLimit) && body.fits funs fits args))
+    (hA : d < depthLimit → ∀ args, A args = bodyBound modes pf body funs flags bounds args) :
+    FunAligned m ⟨params, result, aborts, modes, true⟩ pos (body.denote funs) pf rf A Fi
+      (fun d' => d' = d) pool := by
+  intro host heap store ws args hAt hInput hRep hSep hCap hHeap hVals d' hd rest
+  obtain rfl : d' = d := hd rfl
+  have hRun : RunsA _ host m pos store _ _ := bodyFunction_runsX (strict := true) modes body
+    placeArgs true funs flags bounds fits pf rf hrf m pos hm hFunc hCovered d'
+    (fun h => hCalls (h rfl)) nofun true (fun _ => rfl) host store heap ws args hAt hInput hRep
+    hSep hCap (fun _ => hRA) (fun _ => hRt) (hCopy host) (hListFold host)
+    (fun _ => ⟨hHeap, hVals⟩)
+  have hApp := hRun.append_args (f := bodyFunction modes body true pos pool)
+    (by simp [hm.imports]) (by simpa [hm.imports] using hFunc)
+    (by simp [hRep.length, bodyFunction_numParams]; omega) rest
+  simp only [↓reduceIte, List.singleton_append, Bool.true_and] at hApp
+  simp only [↓reduceIte, Bool.true_and, Bool.or_true]
+  rw [show ws.reverse ++ ([Value.i64 d'] ++ rest) = (Value.i64 d' :: ws).reverse ++ rest by simp]
+  refine (hApp.of_imp fun h => ?_).mono
+    fun final values ⟨out, hv, heap', hAt', hOwned, hCaps, hRegions, hTop, hAl⟩ =>
+      ⟨out, hv, heap', hAt', hOwned, hCaps, hRegions, fun hf => ?_, fun _ => hAl trivial⟩
+  · rw [hFi]
+    simp only [Bool.or_eq_true, Bool.not_eq_true',
+      decide_eq_false_iff_not, Bool.and_eq_false_iff] at h ⊢
+    by_cases hlt : d' < depthLimit
+    · rcases h with h | h
+      · exact Or.inl (Or.inr (h.resolve_left (by simpa using hlt)))
+      · refine Or.inr ?_
+        rw [hA hlt]; exact h
+    · exact Or.inl (Or.inl (by simpa using hlt))
+  · have hFi' : Fi args = true := by simpa using hf
+    rw [hFi] at hFi'
+    simp only [Bool.and_eq_true, decide_eq_true_eq] at hFi'
+    rw [hA hFi'.1]
+    exact hTop (by simp [hFi'.1, hFi'.2])
+
 end Verified
