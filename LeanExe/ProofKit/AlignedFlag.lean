@@ -41,12 +41,12 @@ theorem wpX.conseq (hq : Q ⇛ Q') (h : wpX strict m c Q st s env) : wpX strict 
   · exact Wasm.wp.conseq hq h
   · exact wpA.conseq hq h
 
-theorem wpX_nil : wpX strict m [] Q st s env ↔ Q (.Fallthrough st s) := by
+@[simp] theorem wpX_nil : wpX strict m [] Q st s env ↔ Q (.Fallthrough st s) := by
   cases strict
   · exact wp_nil
   · exact wpA_nil
 
-theorem wpX_localGet_cons {i : Nat} :
+@[simp] theorem wpX_localGet_cons {i : Nat} :
     wpX strict m (.localGet i :: rest) Q st s env ↔
     (match s.get i with
      | some v => wpX strict m rest Q st { s with values := v :: s.values } env
@@ -55,14 +55,14 @@ theorem wpX_localGet_cons {i : Nat} :
   · exact wp_localGet_cons
   · exact wpA_localGet_cons
 
-theorem wpX_constI64_cons {v : UInt64} :
+@[simp] theorem wpX_constI64_cons {v : UInt64} :
     wpX strict m (.constI64 v :: rest) Q st s env ↔
     wpX strict m rest Q st { s with values := .i64 v :: s.values } env := by
   cases strict
   · exact wp_constI64_cons
   · exact wpA_constI64_cons
 
-theorem wpX_addI64_cons :
+@[simp] theorem wpX_addI64_cons :
     wpX strict m (.addI64 :: rest) Q st s env ↔
     (match s.values with
      | .i64 b :: .i64 a :: vs => wpX strict m rest Q st { s with values := .i64 (a + b) :: vs } env
@@ -71,7 +71,7 @@ theorem wpX_addI64_cons :
   · exact wp_addI64_cons
   · exact wpA_addI64_cons
 
-theorem wpX_mulI64_cons :
+@[simp] theorem wpX_mulI64_cons :
     wpX strict m (.mulI64 :: rest) Q st s env ↔
     (match s.values with
      | .i64 b :: .i64 a :: vs => wpX strict m rest Q st { s with values := .i64 (a * b) :: vs } env
@@ -80,7 +80,7 @@ theorem wpX_mulI64_cons :
   · exact wp_mulI64_cons
   · exact wpA_mulI64_cons
 
-theorem wpX_wrapI64_cons :
+@[simp] theorem wpX_wrapI64_cons :
     wpX strict m (.wrapI64 :: rest) Q st s env ↔
     (match s.values with
      | .i64 a :: vs =>
@@ -104,7 +104,7 @@ theorem wpA_geUI64_cons :
     refine wpA_cons_stop (fun f => ?_) (by simp) hal
     simp only [execOne.eq_def]
 
-theorem wpX_geUI64_cons :
+@[simp] theorem wpX_geUI64_cons :
     wpX strict m (.geUI64 :: rest) Q st s env ↔
     (match s.values with
      | .i64 b :: .i64 a :: vs =>
@@ -117,7 +117,7 @@ theorem wpX_geUI64_cons :
 theorem wpA_br_cons {n : Nat} : wpA m (.br n :: rest) Q st s env ↔ Q (.Break n st s) :=
   wpA_cons_stop (fun f => by simp [execOne.eq_def]) (by simp) (fun f => by simp [AlignedOne])
 
-theorem wpX_br_cons {n : Nat} : wpX strict m (.br n :: rest) Q st s env ↔ Q (.Break n st s) := by
+@[simp] theorem wpX_br_cons {n : Nat} : wpX strict m (.br n :: rest) Q st s env ↔ Q (.Break n st s) := by
   cases strict
   · exact wp_br_cons
   · exact wpA_br_cons
@@ -138,7 +138,7 @@ theorem wpA_br_if_cons {n : Nat} :
     refine wpA_cons_stop (fun f => ?_) (by simp) hal
     simp only [execOne.eq_def]
 
-theorem wpX_br_if_cons {n : Nat} :
+@[simp] theorem wpX_br_if_cons {n : Nat} :
     wpX strict m (.br_if n :: rest) Q st s env ↔
     (match s.values with
      | .i32 0 :: vs => wpX strict m rest Q st { s with values := vs } env
