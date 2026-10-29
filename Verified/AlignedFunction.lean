@@ -1,33 +1,16 @@
 import Verified.AlignedExprCorrect
 import Verified.AlignedEnv
+import LeanExe.Pipeline.AlignedAlloc
 
 /-!
 The function level under the flag.  `bodyFunction_runsX` is `bodyFunction_runs` with `RunsX` for
 `Runs`: from an aligned heap and aligned arguments, the run of a body function makes only aligned
 64-bit accesses, and it ends with an aligned heap and an aligned owned result.  The guard on the
 call depth and the copy of the parameters make no 64-bit access, so their flagged rules come from
-the originals through `wpX_append_free`.  `RunsA.append_args` extends an aligned run to a longer
-operand stack, as `Runs.append_args` extends a run.
+the originals through `wpX_append_free`.  `RunsA.append_args` and `RunsA.mono`, in
+`LeanExe/Pipeline/AlignedAlloc.lean`, extend an aligned run to a longer operand stack and weaken
+its postcondition, as `Runs.append_args` and `Runs.mono` do for a run.
 -/
-
-theorem LeanExe.ProofKit.RunsA.append_args {α : Type} {env : Wasm.HostEnv α} {m : Wasm.Module}
-    {id : Nat} {initial : Wasm.Store α} {args : List Wasm.Value}
-    {P : Wasm.Store α → List Wasm.Value → Prop} {aborts : Bool} {f : Wasm.Function}
-    (h : RunsA aborts env m id initial args P)
-    (hImp : m.imports[id]? = none) (hf : m.funcs[id - m.imports.length]? = some f)
-    (hlen : args.length = f.numParams) (rest : List Wasm.Value) :
-    RunsA aborts env m id initial (args ++ rest)
-      (fun st values => ∃ out, values = out ++ rest ∧ P st out) := by
-  refine ⟨h.1.append_args hImp hf hlen rest, ?_⟩
-  obtain ⟨N, hN⟩ := h.2
-  refine ⟨N, fun fuel hfuel => ?_⟩
-  have hA := hN fuel hfuel
-  have hTake : (args ++ rest).take f.numParams = args.take f.numParams :=
-    List.take_append_of_le_length (by omega)
-  rw [AlignedRun] at hA ⊢
-  simp only [hImp, hf] at hA ⊢
-  rw [hTake]
-  exact hA
 
 namespace Verified
 
@@ -406,12 +389,6 @@ theorem bodyFunction_runsX {strict : Bool} {S : List Sig} {params : List Ty} {re
     · rw [List.reverse_reverse]
       exact ⟨(hAlB hs).1.1, (hAlB hs).2⟩
 
-
-theorem _root_.LeanExe.ProofKit.RunsA.mono {α : Type} {env : HostEnv α} {m : Module} {id : Nat}
-    {initial : Store α} {args : List Value} {P Q : Store α → List Value → Prop} {aborts : Bool}
-    (h : RunsA aborts env m id initial args P) (hPQ : ∀ st vs, P st vs → Q st vs) :
-    RunsA aborts env m id initial args Q :=
-  ⟨h.1.mono hPQ, h.2⟩
 
 theorem _root_.LeanExe.ProofKit.RunsA.of_imp {α : Type} {env : HostEnv α} {m : Module} {id : Nat}
     {initial : Store α} {args : List Value} {P : Store α → List Value → Prop} {a a' : Bool}
