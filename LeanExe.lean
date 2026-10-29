@@ -69,7 +69,7 @@ import LeanExe.Pipeline.RecordSlots
 import LeanExe.Pipeline.Runtime
 import LeanExe.Pipeline.RuntimeSpec
 import LeanExe.Pipeline.AlignedAlloc
-import LeanExe.Pipeline.AlignedFree
+import LeanExe.Pipeline.AlignedFreeList
 import LeanExe.Pipeline.AlignedHeap
 import LeanExe.Pipeline.AlignedRuns
 import LeanExe.Pipeline.Slotted
