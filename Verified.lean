@@ -139,14 +139,6 @@ import Verified.AlignedTreeCase
 import Verified.AlignedExprCorrect
 import Verified.AlignedEnv
 import Verified.AlignedFunction
-import Verified.AlignedTail
-import Verified.AlignedTailBody
-import Verified.AlignedTailLoop
-import Verified.AlignedTailTree
-import Verified.AlignedListFold
-import Verified.AlignedTailEntry
-import Verified.AlignedCorrect
-import Verified.AlignedEntries
 import Verified.AlignedRuntime
 import Verified.AlignedTreeCopyInv
 import Verified.AlignedTreeCopyCode
@@ -158,3 +150,11 @@ import Verified.AlignedTreeCopySlot
 import Verified.AlignedTreeCopy
 import Verified.AlignedTreeHeaderCopy
 import Verified.AlignedCopy
+import Verified.AlignedTail
+import Verified.AlignedTailBody
+import Verified.AlignedTailLoop
+import Verified.AlignedTailTree
+import Verified.AlignedListFold
+import Verified.AlignedTailEntry
+import Verified.AlignedCorrect
+import Verified.AlignedEntries
