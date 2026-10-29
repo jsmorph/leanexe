@@ -95,6 +95,23 @@ theorem callId_ne_brkId (k : Nat) : callId k ≠ brkId := by
   show ¬ ((8 * k + 6 : Nat) = 5)
   omega
 
+theorem slotId_ne_limId (h : Nat) (t : VT) : slotId h t ≠ limId := by
+  have := VT.code_pos t
+  show ¬ ((8 * h + t.code : Nat) = 7)
+  omega
+
+theorem localId_ne_limId (i : Nat) : localId i ≠ limId := by
+  show ¬ ((8 * i + 8 : Nat) = 7)
+  omega
+
+theorem callId_ne_limId (k : Nat) : callId k ≠ limId := by
+  show ¬ ((8 * k + 6 : Nat) = 7)
+  omega
+
+theorem brkId_ne_limId : brkId ≠ limId := by
+  show ¬ ((5 : Nat) = 7)
+  omega
+
 theorem slotId_ne_of_height {h h' : Nat} (t t' : VT) (hne : h ≠ h') : slotId h t ≠ slotId h' t' := by
   have := VT.code_pos t
   have := VT.code_pos t'
@@ -179,6 +196,9 @@ def StatusRel (E : Env) (m : mem) (code : Nat) : Prop :=
   Mem.load .Mint32 m E.status 0 = some (.Vint (UInt32.ofNat code)) ∧
     Mem.valid_access m .Mint32 E.status 0 .Writable
 
+/-- The value of `lim` for a memory of `p` pages, `p × 65536`. -/
+def limVal (p : Nat) : val := .Vlong (UInt64.ofNat (p * 65536))
+
 /-- The relation at a point whose static stack is `σ`. -/
 structure Inv (E : Env) (c : FCtx) (σ : List VT) {α : Type} (st : Store α) (sl : Locals)
     (le : temp_env) (m : mem) : Prop where
@@ -187,6 +207,7 @@ structure Inv (E : Env) (c : FCtx) (σ : List VT) {α : Type} (st : Store α) (s
   store : StoreRel E st m
   status : StatusRel E m 0
   brk : le[brkId]? = some (.Vint 0)
+  lim : le[limId]? = some (limVal st.mem.pages)
 
 /-- The slots below height `h` keep their values. -/
 def Frame (h : Nat) (le le' : temp_env) : Prop :=
@@ -207,6 +228,7 @@ structure BreakRel (E : Env) (c : FCtx) (L : List Label) (k : Nat) {α : Type} (
   locals : LocalsRel le c.locals (sl.params ++ sl.locals)
   store : StoreRel E st m
   status : StatusRel E m 0
+  lim : le[limId]? = some (limVal st.mem.pages)
 
 /-- The results of the types `rs` of a return with the values `vs`, top first, are in the result
 globals: `lx_r<i>_<t>` holds result `i`, the value at depth `rs.length - 1 - i`. -/
@@ -313,5 +335,39 @@ theorem brk_insert_local {le : temp_env} {k : Nat} (i : Nat) (v : val)
     (h : le[brkId]? = some (.Vint (UInt32.ofNat k))) :
     (le.insert (localId i) v)[brkId]? = some (.Vint (UInt32.ofNat k)) := by
   rw [te_insert_ne _ (localId_ne_brkId i)]; exact h
+
+theorem lim_insert_slot {le : temp_env} {p : Nat} (h' : Nat) (t : VT) (v : val)
+    (h : le[limId]? = some (limVal p)) :
+    (le.insert (slotId h' t) v)[limId]? = some (limVal p) := by
+  rw [te_insert_ne _ (slotId_ne_limId h' t)]; exact h
+
+theorem lim_insert_local {le : temp_env} {p : Nat} (i : Nat) (v : val)
+    (h : le[limId]? = some (limVal p)) :
+    (le.insert (localId i) v)[limId]? = some (limVal p) := by
+  rw [te_insert_ne _ (localId_ne_limId i)]; exact h
+
+theorem lim_insert_brk {le : temp_env} {p : Nat} (v : val)
+    (h : le[limId]? = some (limVal p)) :
+    (le.insert brkId v)[limId]? = some (limVal p) := by
+  rw [te_insert_ne _ brkId_ne_limId]; exact h
+
+theorem lim_insert_call {le : temp_env} {p : Nat} (k : Nat) (v : val)
+    (h : le[limId]? = some (limVal p)) :
+    (le.insert (callId k) v)[limId]? = some (limVal p) := by
+  rw [te_insert_ne _ (callId_ne_limId k)]; exact h
+
+/-- Setting `lim` to the store's number of bytes completes the relation, after a statement that
+may have changed the store's pages. -/
+theorem Inv.of_lim {E : Env} {c : FCtx} {σ : List VT} {α : Type} {st : Store α} {sl : Locals}
+    {le : temp_env} {m : mem} (hstack : StackRel le σ sl.values)
+    (hloc : LocalsRel le c.locals (sl.params ++ sl.locals)) (hg : StoreRel E st m)
+    (hs : StatusRel E m 0) (hb : le[brkId]? = some (.Vint 0)) :
+    Inv E c σ st sl (le.insert limId (limVal st.mem.pages)) m where
+  stack := hstack.insert_other _ (fun x t => (slotId_ne_limId x t).symm)
+  locals := hloc.insert_other _ (fun i => (localId_ne_limId i).symm)
+  store := hg
+  status := hs
+  brk := by rw [te_insert_ne _ brkId_ne_limId.symm]; exact hb
+  lim := te_insert_same _ _ _
 
 end LeanExe.Native

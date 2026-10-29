@@ -217,6 +217,7 @@ structure Names where
 /-- Our identifier of a temporary, the inverse of `tempName`. -/
 def tempOfName (s : String) : Option ident :=
   if s == "brk" then some brkId
+  else if s == "lim" then some limId
   else
     match s.toList with
     | 'l' :: ds => (String.ofList ds).toNat?.map localId

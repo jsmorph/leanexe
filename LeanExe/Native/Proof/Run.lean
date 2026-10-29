@@ -66,12 +66,14 @@ theorem mem_bodyTemps {body : statement} {x : ident × type} (h : x ∈ bodyTemp
     x.1 % 8 ≠ 0 := by
   obtain ⟨id, ty⟩ := x
   show ¬ ((id : Nat) % 8 = 0)
-  simp only [bodyTemps, List.mem_append, List.mem_filter, List.mem_reverse, List.mem_singleton]
-    at h
-  rcases h with (⟨-, h⟩ | h) | ⟨-, h⟩
+  simp only [bodyTemps, List.mem_append, List.mem_filter, List.mem_reverse, List.mem_cons,
+    List.not_mem_nil, or_false] at h
+  rcases h with (⟨-, h⟩ | h | h) | ⟨-, h⟩
   · simp only [decide_eq_true_eq] at h
     have key : ∀ n : Nat, 1 ≤ n % 8 ∧ n % 8 ≤ 4 → ¬ (n % 8 = 0) := by omega
     exact key id h
+  · simp only [Prod.mk.injEq] at h
+    rw [h.1]; decide
   · simp only [Prod.mk.injEq] at h
     rw [h.1]; decide
   · simp only [decide_eq_true_eq] at h
@@ -153,10 +155,10 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
         exact this (by show (8 * i + 8 : Nat) % 8 = 0; omega)
   let le2 := setLocals le1 ps0.length (ls.zipIdx 0)
   let le3 := le2.insert brkId (.Vint (UInt32.ofNat 0))
+  let le4 := le3.insert limId (limVal st.mem.pages)
   obtain ⟨hset2, hother2⟩ := setLocals_get le1 ps0.length ls 0
-  have hinv : Inv E c [] st (f.toLocals ((args.take ps0.length).reverse)) le3 m := by
-    refine { stack := trivial, locals := ?_, store := hg, status := hs,
-             brk := te_insert_same _ _ _ }
+  have hloc3 : LocalsRel le3 c.locals ((f.toLocals ((args.take ps0.length).reverse)).params ++
+      (f.toLocals ((args.take ps0.length).reverse)).locals) := by
     refine ⟨by simp [Function.toLocals, c, hnl]; omega, ?_⟩
     intro i hi
     simp only [c, List.length_append] at hi
@@ -198,6 +200,8 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
       · rw [te_insert_ne _ (localId_ne_brkId i).symm, hcval]
         rw [show i = ps0.length + 0 + (i - ps0.length) by omega]
         exact hl
+  have hinv : Inv E c [] st (f.toLocals ((args.take ps0.length).reverse)) le4 m :=
+    Inv.of_lim trivial hloc3 hg hs (te_insert_same _ _ _)
   -- The body.
   have hcalls' : ∀ k', funId k' ∈ callees body → CallOk k' := fun k' hk => hcalls k' (by
     rw [hfd, callees_seqList]
@@ -208,21 +212,24 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
   have ho := hP [{ isLoop := false, base := 0, result := retOf rs0, final := 2 ≤ rs0.length }] []
     rs0.reverse 0 f.body body nc hbody
     (Nat.le_refl _) (fun k l hl => by cases k <;> simp at hl; subst hl; exact Nat.le_refl _)
-    hcalls' st _ le3 m env hinv
+    hcalls' st _ le4 m env hinv
   -- The function's tail after the declared locals.
   let ret : statement := retStmt rs0
   have hbodyEq : fd.fn_body = seqList ((ls.zipIdx).map (fun x => statement.Sset
-      (localId (ps0.length + x.2)) x.1.zero) ++ [.Sset brkId (cint 0), wrapLoop body, ret]) := by
+      (localId (ps0.length + x.2)) x.1.zero) ++
+      [.Sset brkId (cint 0), limSet, wrapLoop body, ret]) := by
     rw [hfd]
   have hretEq : fd.fn_return = ((retOf rs0).map VT.ty).getD .Tvoid := by rw [hfd]
   have hfun : ∀ {t le' m' out} vres,
-      exec_stmt A X E.ge empty_env le3 m (.Ssequence (wrapLoop body) ret) t le' m' out →
+      exec_stmt A X E.ge empty_env le4 m (.Ssequence (wrapLoop body) ret) t le' m' out →
       outcome_result_value out (((retOf rs0).map VT.ty).getD .Tvoid) vres m' →
       ∃ t', eval_funcall A X E.ge m (.Internal fd) (argVals ps0 args) t' m' vres := by
     intro t le' m' out vres hx hov
     have hx2 : exec_stmt A X E.ge empty_env le2 m
-        (seqList [.Sset brkId (cint 0), wrapLoop body, ret]) (E0 ++ t) le' m' out :=
-      .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (.exec_Sset _ _ _ _ _ _ (.eval_Econst_int _ _)) hx
+        (seqList [.Sset brkId (cint 0), limSet, wrapLoop body, ret]) (E0 ++ (E0 ++ t)) le' m'
+        out :=
+      .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (.exec_Sset _ _ _ _ _ _ (.eval_Econst_int _ _))
+        (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (exec_limSet hE hg.2 le3) hx)
     obtain ⟨t', hx3⟩ := exec_setLocals (A := A) (X := X) (ge := E.ge) ps0.length (ls.zipIdx 0) _
       (by simp) hx2
     rw [← hbodyEq] at hx3

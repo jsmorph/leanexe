@@ -533,7 +533,7 @@ theorem sim_ff32 (hE : EnvOk E) (F : Nat) (inst : Instruction) (op : binary_oper
           (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx) (.eval_Etempvar _ _ _ hy) hq)
       obtain ⟨le2, m2, h2, hslot, hk, hst2, hs2⟩ := exec_canon32 (A := A) (X := X) hE
         (te_insert_same le _ _) hinv.store hinv.status
-      exact push_exec hrest hinv.locals hinv.brk hb (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ h1 h2)
+      exact push_exec hrest hinv.locals hinv.brk hinv.lim hb (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ h1 h2)
         (by rw [hslot, hqf]; rfl) rfl
         (fun id hid _ => by rw [hk id hid, te_insert_ne _ (Ne.symm hid)]) hst2 hs2
 
@@ -611,7 +611,7 @@ theorem sim_fcmp32 (F : Nat) (inst : Instruction) (op : binary_operation)
   | succ f' =>
       obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_f32 hinv.stack
       rw [htalos f' st sl env x y vr hvs]
-      refine push_step hrest hinv.locals hinv.store hinv.status hinv.brk ?_ rfl hb
+      refine push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim ?_ rfl hb
       refine .eval_Ecast _ _ _ _ (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx)
         (.eval_Etempvar _ _ _ hy) (hsem m x y)) ?_
       rw [of_bool_eq]
@@ -678,7 +678,7 @@ theorem sim_f32ConvertI64U (F : Nat) : InstrSim A X E mod c F .f32ConvertI64U :=
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_i64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      refine push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      refine push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hx) ?_) rfl hb
       show some (val.Vsingle (LClight.Float32.of_longu x)) = some (val.Vsingle (f32ConvertI64U x))
       simp only [LClight.Float32.of_longu, int64_unsigned_eq, f32ConvertI64U, IEEE32.convertI64U]
@@ -693,7 +693,7 @@ theorem sim_f32ConvertI32S (F : Nat) : InstrSim A X E mod c F .f32ConvertI32S :=
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_i32 hinv.stack
       simp only [execOne.eq_def, hvs]
       have hc : sem_cast (.Vint x) tuint tint m = some (.Vint x) := rfl
-      refine push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      refine push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ (.Vint x) _ (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hx) hc) ?_) rfl hb
       show some (val.Vsingle (LClight.Float32.of_int x)) = some (val.Vsingle (f32ConvertI32S x))
       simp only [LClight.Float32.of_int, int_signed_eq, f32ConvertI32S, IEEE32.convertI32S]
@@ -708,7 +708,7 @@ theorem sim_f32ReinterpretI32 (hE : EnvOk E) (F : Nat) :
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_i32 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_exec hrest hinv.locals hinv.brk hb
+      exact push_exec hrest hinv.locals hinv.brk hinv.lim hb
         (exec_punStore32 hE (.eval_Etempvar _ _ _ hx) rfl hinv.store) (te_insert_same _ _ _) rfl
         (fun id hid _ => te_insert_ne _ (Ne.symm hid)) (hinv.store.store_pun hE _ _)
         (hinv.status.store_pun hE _ _)
@@ -723,7 +723,7 @@ theorem sim_i32ReinterpretF32 (hE : EnvOk E) (F : Nat) :
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_f32 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_exec hrest hinv.locals hinv.brk hb (exec_punBits32 hE hx hinv.store)
+      exact push_exec hrest hinv.locals hinv.brk hinv.lim hb (exec_punBits32 hE hx hinv.store)
         (te_insert_same _ _ _) rfl
         (fun id hid _ => te_insert_ne _ (Ne.symm hid)) (hinv.store.store_pun hE _ _)
         (hinv.status.store_pun hE _ _)
@@ -740,13 +740,13 @@ theorem sim_f32Const (hE : EnvOk E) (F : Nat) (v : UInt32) :
       unfold f32ConstStmt
       split
       · split
-        · refine push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk ?_ rfl hbase
+        · refine push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk hinv.lim ?_ rfl hbase
           refine .eval_Eunop _ _ _ _ _ (.eval_Econst_single _ _) ?_
           show some (val.Vsingle (IEEE32.negate (IEEE32.negate v))) = _
           rw [negate32_negate]; rfl
-        · exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk
+        · exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk hinv.lim
             (.eval_Econst_single _ _) rfl hbase
-      · exact push_exec hinv.stack hinv.locals hinv.brk hbase
+      · exact push_exec hinv.stack hinv.locals hinv.brk hinv.lim hbase
           (exec_punStore32 hE (.eval_Econst_int _ _) rfl hinv.store) (te_insert_same _ _ _) rfl
           (fun id hid _ => te_insert_ne _ (Ne.symm hid)) (hinv.store.store_pun hE _ _)
           (hinv.status.store_pun hE _ _)
@@ -763,17 +763,19 @@ theorem abs_mask (x : UInt32) : x &&& UInt32.ofNat 0x7FFFFFFF = IEEE32.abs x := 
   omega
 
 /-- A statement that sets the slot at height `σr.length` to `v` of type `t`, may change other
-slots at that height and above, and keeps the locals and `brk`, in a memory related to the store
-with `lx_status` 0. -/
+slots at that height and above, and keeps the locals, `brk`, and `lim`, in a memory related to
+the store with `lx_status` 0. -/
 theorem push_exec_scratch {L : List Label} {σr : List VT} {α : Type} {st : Store α}
     {sl : Locals} {le le' : temp_env} {m m' : mem} {s : statement} {v : Value} {t : VT}
     {vr : List Value}
     (hrest : StackRel le σr vr) (hloc : LocalsRel le c.locals (sl.params ++ sl.locals))
-    (hb : le[brkId]? = some (.Vint 0)) (hbase : curBase L ≤ σr.length)
+    (hb : le[brkId]? = some (.Vint 0)) (hlm : le[limId]? = some (limVal st.mem.pages))
+    (hbase : curBase L ≤ σr.length)
     (hx : exec_stmt A X E.ge empty_env le m s E0 le' m' .Out_normal)
     (hslot : le'[slotId σr.length t]? = some (cval v)) (ht : t.has v = true)
     (hfr : Frame σr.length le le') (hl : ∀ i, le'[localId i]? = le[localId i]?)
-    (hk : le'[brkId]? = le[brkId]?) (hg : StoreRel E st m') (hs : StatusRel E m' 0) :
+    (hk : le'[brkId]? = le[brkId]? ∧ le'[limId]? = le[limId]?) (hg : StoreRel E st m')
+    (hs : StatusRel E m' 0) :
     Outcome A X E c L (some (t :: σr))
       (.Fallthrough st { params := sl.params, locals := sl.locals, values := v :: vr }) s le m := by
   refine ⟨t :: σr, rfl, by simp; omega, E0, le', m', hx, ?_, hfr.mono hbase⟩
@@ -783,7 +785,8 @@ theorem push_exec_scratch {L : List Label} {σr : List VT} {α : Type} {st : Sto
             exact ⟨w, hw, htw, by rw [hl i]; exact hl'⟩⟩
           store := hg
           status := hs
-          brk := by rw [hk]; exact hb }
+          brk := by rw [hk.1]; exact hb
+          lim := by rw [hk.2]; exact hlm }
 
 theorem sim_f32Abs (hE : EnvOk E) (F : Nat) : InstrSim A X E mod c F .f32Abs := by
   intro L σ n s σ' n' h hbase α st sl le m env hinv
@@ -807,13 +810,14 @@ theorem sim_f32Abs (hE : EnvOk E) (F : Nat) : InstrSim A X E mod c F .f32Abs := 
           (Mem.stored .Mfloat32 m E.pun 0 (.Vsingle x)) = _
         rw [sem_and_ii, abs_mask]
       have h2 := exec_punStore32 (A := A) (X := X) (h := σr.length) hE he rfl hst1
-      exact push_exec_scratch hrest hinv.locals hinv.brk hb
+      exact push_exec_scratch hrest hinv.locals hinv.brk hinv.lim hb
         (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ h1 h2) (te_insert_same _ _ _) rfl
         ((Frame.insert_slot _ _ _ _ (Nat.le_refl _)).trans
           (Frame.insert_slot _ _ _ _ (Nat.le_refl _)))
         (fun i => by
           rw [te_insert_ne _ (slotId_ne_localId _ _ i), te_insert_ne _ (slotId_ne_localId _ _ i)])
-        (by rw [te_insert_ne _ (slotId_ne_brkId _ _), te_insert_ne _ (slotId_ne_brkId _ _)])
+        ⟨by rw [te_insert_ne _ (slotId_ne_brkId _ _), te_insert_ne _ (slotId_ne_brkId _ _)],
+          by rw [te_insert_ne _ (slotId_ne_limId _ _), te_insert_ne _ (slotId_ne_limId _ _)]⟩
         (hst1.store_pun hE _ _) (hs1.store_pun hE _ _)
 
 theorem eval_minusOne32 {le : temp_env} {m : mem} :
@@ -942,7 +946,7 @@ theorem sim_i64TruncSatF32U (F : Nat) : InstrSim A X E mod c F .i64TruncSatF32U 
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_f32 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_exec hrest hinv.locals hinv.brk hb (exec_truncSat32U hx) (te_insert_same _ _ _)
+      exact push_exec hrest hinv.locals hinv.brk hinv.lim hb (exec_truncSat32U hx) (te_insert_same _ _ _)
         rfl (fun id hid _ => te_insert_ne _ (Ne.symm hid)) hinv.store hinv.status
 
 theorem sim_i32TruncSatF32S (F : Nat) : InstrSim A X E mod c F .i32TruncSatF32S := by
@@ -954,7 +958,7 @@ theorem sim_i32TruncSatF32S (F : Nat) : InstrSim A X E mod c F .i32TruncSatF32S 
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_f32 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_exec hrest hinv.locals hinv.brk hb (exec_truncSat32S hx) (te_insert_same _ _ _)
+      exact push_exec hrest hinv.locals hinv.brk hinv.lim hb (exec_truncSat32S hx) (te_insert_same _ _ _)
         rfl (fun id hid _ => te_insert_ne _ (Ne.symm hid)) hinv.store hinv.status
 
 end

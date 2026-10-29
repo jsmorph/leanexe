@@ -107,7 +107,7 @@ theorem trFunction_spec {cap : Nat} {sigs : List (Option (List VT × List VT))} 
              fn_temps := (ls.zipIdx).map (fun x => (localId (ps.length + x.2), x.1.ty)) ++
                bodyTemps body,
              fn_body := seqList ((ls.zipIdx).map (fun x => statement.Sset (localId (ps.length + x.2))
-               x.1.zero) ++ [.Sset brkId (cint 0), wrapLoop body, retStmt rs]) } := by
+               x.1.zero) ++ [.Sset brkId (cint 0), limSet, wrapLoop body, retStmt rs]) } := by
   simp [trFunction, Option.bind_eq_some_iff] at h
   obtain ⟨ps, hps, ls, hls, rs, hrs, hok, body, ⟨nc, hb⟩, rfl⟩ := h
   exact ⟨ps, ls, rs, body, nc, hps, hls, hrs, hok, hb, rfl⟩

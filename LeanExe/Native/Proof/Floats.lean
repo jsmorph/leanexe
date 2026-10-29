@@ -343,7 +343,8 @@ temporary but the results of calls, in a memory related to the store with `lx_st
 theorem push_exec {L : List Label} {σr : List VT} {α : Type} {st : Store α} {sl : Locals}
     {le le' : temp_env} {m m' : mem} {s : statement} {v : Value} {t : VT} {vr : List Value}
     (hrest : StackRel le σr vr) (hloc : LocalsRel le c.locals (sl.params ++ sl.locals))
-    (hb : le[brkId]? = some (.Vint 0)) (hbase : curBase L ≤ σr.length)
+    (hb : le[brkId]? = some (.Vint 0)) (hlm : le[limId]? = some (limVal st.mem.pages))
+    (hbase : curBase L ≤ σr.length)
     (hx : exec_stmt A X E.ge empty_env le m s E0 le' m' .Out_normal)
     (hslot : le'[slotId σr.length t]? = some (cval v)) (ht : t.has v = true)
     (hkeep : ∀ id, id ≠ slotId σr.length t → (∀ k, id ≠ callId k) → le'[id]? = le[id]?)
@@ -363,7 +364,10 @@ theorem push_exec {L : List Label} {σr : List VT} {α : Type} {st : Store α} {
           status := hs
           brk := by
             rw [hkeep _ (slotId_ne_brkId _ _).symm (fun k => (callId_ne_brkId k).symm)]
-            exact hb }
+            exact hb
+          lim := by
+            rw [hkeep _ (slotId_ne_limId _ _).symm (fun k => (callId_ne_limId k).symm)]
+            exact hlm }
 
 /-! ## `lx_pun` -/
 
@@ -493,7 +497,7 @@ theorem sim_ff (hE : EnvOk E) (F : Nat) (inst : Instruction) (op : binary_operat
           (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx) (.eval_Etempvar _ _ _ hy) hq)
       obtain ⟨le2, m2, h2, hslot, hk, hst2, hs2⟩ := exec_canon (A := A) (X := X) hE
         (te_insert_same le _ _) hinv.store hinv.status
-      exact push_exec hrest hinv.locals hinv.brk hb (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ h1 h2)
+      exact push_exec hrest hinv.locals hinv.brk hinv.lim hb (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ h1 h2)
         (by rw [hslot, hqf]; rfl) rfl
         (fun id hid _ => by rw [hk id hid, te_insert_ne _ (Ne.symm hid)]) hst2 hs2
 
@@ -570,7 +574,7 @@ theorem sim_fcmp (F : Nat) (inst : Instruction) (op : binary_operation) (f : UIn
   | succ f' =>
       obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_f64 hinv.stack
       rw [htalos f' st sl env x y vr hvs]
-      refine push_step hrest hinv.locals hinv.store hinv.status hinv.brk ?_ rfl hb
+      refine push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim ?_ rfl hb
       refine .eval_Ecast _ _ _ _ (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx)
         (.eval_Etempvar _ _ _ hy) (hsem m x y)) ?_
       rw [of_bool_eq]
@@ -625,7 +629,7 @@ theorem sim_f64Abs (F : Nat) : InstrSim A X E mod c F .f64Abs := by
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_f64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Eunop _ _ _ _ _ (.eval_Etempvar _ _ _ hx) rfl) rfl hb
 
 theorem sim_f64ConvertI64U (F : Nat) : InstrSim A X E mod c F .f64ConvertI64U := by
@@ -637,7 +641,7 @@ theorem sim_f64ConvertI64U (F : Nat) : InstrSim A X E mod c F .f64ConvertI64U :=
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_i64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hx) rfl) rfl hb
 
 theorem sim_f64ReinterpretI64 (hE : EnvOk E) (F : Nat) : InstrSim A X E mod c F .f64ReinterpretI64 := by
@@ -649,7 +653,7 @@ theorem sim_f64ReinterpretI64 (hE : EnvOk E) (F : Nat) : InstrSim A X E mod c F 
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_i64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_exec hrest hinv.locals hinv.brk hb
+      exact push_exec hrest hinv.locals hinv.brk hinv.lim hb
         (exec_punStore hE (.eval_Etempvar _ _ _ hx) rfl hinv.store) (te_insert_same _ _ _) rfl
         (fun id hid _ => te_insert_ne _ (Ne.symm hid)) (hinv.store.store_pun hE _ _)
         (hinv.status.store_pun hE _ _)
@@ -664,7 +668,7 @@ theorem sim_i64ReinterpretF64 (hE : EnvOk E) (F : Nat) : InstrSim A X E mod c F 
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_f64 hinv.stack
       simp only [execOne.eq_def, hvs]
       have hva : Mem.valid_access m .Mfloat64 E.pun 0 .Writable := hinv.store.2.punW
-      exact push_exec hrest hinv.locals hinv.brk hb
+      exact push_exec hrest hinv.locals hinv.brk hinv.lim hb
         (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
           (exec_punAssign_double hE (.eval_Etempvar _ _ _ hx) rfl hva)
           (.exec_Sset _ _ _ _ _ _
@@ -685,13 +689,13 @@ theorem sim_f64Const (hE : EnvOk E) (F : Nat) (v : UInt64) : InstrSim A X E mod 
       split
       · split
         · rename_i hs
-          refine push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk ?_ rfl hbase
+          refine push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk hinv.lim ?_ rfl hbase
           refine .eval_Eunop _ _ _ _ _ (.eval_Econst_float _ _) ?_
           show some (val.Vfloat (IEEE64.negate (IEEE64.negate v))) = _
           rw [negate_negate]; rfl
-        · exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk
+        · exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk hinv.lim
             (.eval_Econst_float _ _) rfl hbase
-      · exact push_exec hinv.stack hinv.locals hinv.brk hbase
+      · exact push_exec hinv.stack hinv.locals hinv.brk hinv.lim hbase
           (exec_punStore hE (.eval_Econst_long _ _) rfl hinv.store) (te_insert_same _ _ _) rfl
           (fun id hid _ => te_insert_ne _ (Ne.symm hid)) (hinv.store.store_pun hE _ _)
           (hinv.status.store_pun hE _ _)
@@ -742,7 +746,7 @@ theorem sim_f64Sqrt (hE : EnvOk E) (F : Nat) : InstrSim A X E mod c F .f64Sqrt :
         .exec_Sset _ _ _ _ _ _ (.eval_Etempvar _ _ _ (te_insert_same _ _ _))
       obtain ⟨le3, m3, h3, hslot, hk, hst3, hs3⟩ := exec_canon (A := A) (X := X) hE
         (te_insert_same le1 _ _) hinv.store hinv.status
-      exact push_exec hrest hinv.locals hinv.brk hb
+      exact push_exec hrest hinv.locals hinv.brk hinv.lim hb
         (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ h1 h2) h3)
         (by rw [hslot, canonOf_sqrt]; rfl) rfl
         (fun id hid hc => by
@@ -809,7 +813,7 @@ theorem sim_i64TruncSatF64U (F : Nat) : InstrSim A X E mod c F .i64TruncSatF64U 
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_f64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_exec hrest hinv.locals hinv.brk hb (exec_truncSat hx) (te_insert_same _ _ _) rfl
+      exact push_exec hrest hinv.locals hinv.brk hinv.lim hb (exec_truncSat hx) (te_insert_same _ _ _) rfl
         (fun id hid _ => te_insert_ne _ (Ne.symm hid)) hinv.store hinv.status
 
 end

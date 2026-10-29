@@ -229,6 +229,13 @@ theorem quietS_statusCheck (Q : ident → Bool) (r : Option VT) :
     quietS Q (statusCheck r) = true := by
   simp [statusCheck, quietS, quietS_retZero]
 
+theorem quietS_limSet (Q : ident → Bool) : quietS Q limSet = true := by
+  simp [limSet, quietS]
+
+theorem quietS_callCheck (Q : ident → Bool) (r : Option VT) :
+    quietS Q (callCheck r) = true := by
+  simp [callCheck, quietS, quietS_statusCheck, quietS_limSet]
+
 theorem quietS_dispatch (Q : ident → Bool) (l : Label) : quietS Q (dispatch l) = true := by
   simp [dispatch, quietS, quietS_jump]
 
@@ -315,7 +322,8 @@ def ProgQuiet (p : Wasm.Program) : Prop :=
 theorem trCallable_sqrtId : trCallable sqrtId = true := rfl
 
 macro "oq_close" : tactic => `(tactic| simp [quietS, quietS_seq, quietS_seqList,
-  quietS_storeBytes, quietS_trapStmt, quietS_statusCheck, quietS_dispatch, quietS_wrapLoop,
+  quietS_storeBytes, quietS_trapStmt, quietS_statusCheck, quietS_callCheck, quietS_limSet,
+  quietS_dispatch, quietS_wrapLoop,
   quietS_f64ConstStmt, quietS_canonStmt, quietS_truncSatStmt, quietS_punStore, quietS_retZero,
   quietS_f32ConstStmt, quietS_punStore32, quietS_punBits32, quietS_canonStmt32, quietS_abs32Stmt,
   quietS_nearest32Stmt, quietS_truncSat32SStmt, quietS_truncSat32UStmt, quietS_sqrt32Stmt,
@@ -418,7 +426,7 @@ theorem trFunction_quiet {cap : Nat} {sigs : List (Option (List VT × List VT))}
   obtain ⟨ps, -, ls, -, rs, -, -, body, ⟨n', hb⟩, rfl⟩ := h
   have hq := prog_quiet _ _ _ _ _ _ _ hb
   simp only at hq
-  simp [quietS_seqList, quietS, quietS_wrapLoop, hq, quietS_retStmt]
+  simp [quietS_seqList, quietS, quietS_wrapLoop, hq, quietS_retStmt, quietS_limSet]
 
 
 /-! ## The whole program's functions are quiet -/

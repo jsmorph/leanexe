@@ -77,7 +77,7 @@ theorem sim_ll (F : Nat) (inst : Instruction) (op : binary_operation)
   | succ f' =>
       obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_i64 hinv.stack
       rw [htalos f' st sl env x y vr hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (eval_ll hx hy (hsem m x y)) rfl hb
 
 theorem sim_addI64 (F : Nat) : InstrSim A X E mod c F .addI64 :=
@@ -197,7 +197,7 @@ theorem sim_shift (F : Nat) (inst : Instruction) (op : binary_operation)
   | succ f' =>
       obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_i64 hinv.stack
       rw [htalos f' st sl env x y vr hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx)
           (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hy) (.eval_Econst_long _ _)
             (sem_and_ll A m y 63))
@@ -266,7 +266,7 @@ theorem sim_divrem (hE : EnvOk E) (F : Nat) (inst : Instruction) (op : binary_op
         refine .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hcond ?_ hx'
         rw [hy0]; exact bool_int m 1
       · rw [ite_eq_right hy0]
-        refine Outcome.prefix ?_ (push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+        refine Outcome.prefix ?_ (push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
           (eval_ll hx hy (hsem m x y hy0)) rfl hb)
         refine .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hcond ?_ (.exec_Sskip _ _ _)
         rw [ite_eq_right hy0]; exact bool_int m 0
@@ -313,7 +313,7 @@ theorem sim_eqI64 (F : Nat) : InstrSim A X E mod c F .eqI64 := by
   | succ f' =>
       obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_i64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (eval_ll hx hy (sem_eq_ll A m x y)) (cast_int_uint m _)) rfl hb
 
 theorem sim_neI64 (F : Nat) : InstrSim A X E mod c F .neI64 := by
@@ -325,7 +325,7 @@ theorem sim_neI64 (F : Nat) : InstrSim A X E mod c F .neI64 := by
   | succ f' =>
       obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_i64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (eval_ll hx hy (sem_ne_ll A m x y)) (cast_int_uint m _)) rfl hb
 
 theorem sim_ltUI64 (F : Nat) : InstrSim A X E mod c F .ltUI64 := by
@@ -337,7 +337,7 @@ theorem sim_ltUI64 (F : Nat) : InstrSim A X E mod c F .ltUI64 := by
   | succ f' =>
       obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_i64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (eval_ll hx hy (sem_lt_ll A m x y)) (cast_int_uint m _)) rfl hb
 
 theorem sim_leUI64 (F : Nat) : InstrSim A X E mod c F .leUI64 := by
@@ -349,7 +349,7 @@ theorem sim_leUI64 (F : Nat) : InstrSim A X E mod c F .leUI64 := by
   | succ f' =>
       obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_i64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (eval_ll hx hy (sem_le_ll A m x y)) (cast_int_uint m _)) rfl hb
 
 theorem sim_geUI64 (F : Nat) : InstrSim A X E mod c F .geUI64 := by
@@ -361,7 +361,7 @@ theorem sim_geUI64 (F : Nat) : InstrSim A X E mod c F .geUI64 := by
   | succ f' =>
       obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_i64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (eval_ll hx hy (sem_ge_ll A m x y)) (cast_int_uint m _)) rfl hb
 
 theorem sim_eqzI64 (F : Nat) : InstrSim A X E mod c F .eqzI64 := by
@@ -373,7 +373,7 @@ theorem sim_eqzI64 (F : Nat) : InstrSim A X E mod c F .eqzI64 := by
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_i64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx)
           (.eval_Econst_long _ _) (sem_eq_ll A m x 0)) (cast_int_uint m _)) rfl hb
 
@@ -386,7 +386,7 @@ theorem sim_eq (F : Nat) : InstrSim A X E mod c F .eq := by
   | succ f' =>
       obtain ⟨y, x, vr, hvs, hy, hx, hrest⟩ := pop2_i32 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx)
           (.eval_Etempvar _ _ _ hy) (sem_eq_ii A m x y)) (cast_int_uint m _)) rfl hb
 
@@ -399,7 +399,7 @@ theorem sim_eqz (F : Nat) : InstrSim A X E mod c F .eqz := by
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_i32 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx)
           (.eval_Econst_int _ _) (sem_eq_ii A m x _)) (cast_int_uint m _)) rfl hb
 
@@ -414,7 +414,7 @@ theorem sim_and (F : Nat) : InstrSim A X E mod c F .and := by
       simp only [execOne.eq_def, hvs]
       have hsem := sem_and_ii A m x y
       rw [UInt32.and_comm] at hsem
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx) (.eval_Etempvar _ _ _ hy) hsem) rfl hb
 
 theorem sim_wrapI64 (F : Nat) : InstrSim A X E mod c F .wrapI64 := by
@@ -426,7 +426,7 @@ theorem sim_wrapI64 (F : Nat) : InstrSim A X E mod c F .wrapI64 := by
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_i64 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hx) (cast_long_uint m x)) rfl hb
 
 theorem sim_extendUI32 (F : Nat) : InstrSim A X E mod c F .extendUI32 := by
@@ -438,7 +438,7 @@ theorem sim_extendUI32 (F : Nat) : InstrSim A X E mod c F .extendUI32 := by
   | succ f' =>
       obtain ⟨x, vr, hvs, hx, hrest⟩ := pop1_i32 hinv.stack
       simp only [execOne.eq_def, hvs]
-      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hrest hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hx) (cast_uint_long m x)) rfl hb
 
 theorem sim_const (F : Nat) (k : UInt32) : InstrSim A X E mod c F (.const k) := by
@@ -449,7 +449,7 @@ theorem sim_const (F : Nat) (k : UInt32) : InstrSim A X E mod c F (.const k) := 
   | zero => simp only [execOne.eq_def, Outcome]
   | succ f' =>
       simp only [execOne.eq_def]
-      exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Econst_int _ _) rfl hbase
 
 theorem sim_constI64 (F : Nat) (k : UInt64) : InstrSim A X E mod c F (.constI64 k) := by
@@ -460,7 +460,7 @@ theorem sim_constI64 (F : Nat) (k : UInt64) : InstrSim A X E mod c F (.constI64 
   | zero => simp only [execOne.eq_def, Outcome]
   | succ f' =>
       simp only [execOne.eq_def]
-      exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Econst_long _ _) rfl hbase
 
 theorem sim_globalGet (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (F i : Nat) :
@@ -474,7 +474,7 @@ theorem sim_globalGet (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (F i :
   | succ f' =>
       obtain ⟨v, hv, hl, -⟩ := hinv.store.1.2 i hi
       simp only [execOne.eq_def, hv]
-      exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (eval_global_long (hE.globals i hi) hl) rfl hbase
 
 theorem sim_globalSet (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (F i : Nat) :
@@ -495,7 +495,8 @@ theorem sim_globalSet (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (F i :
               locals := hinv.locals
               store := ⟨GlobalsRel.store_global hE hinv.store.1 hi x, hinv.store.2.store_global hE hi _⟩
               status := hinv.status.store_global hE hi _
-              brk := hinv.brk }
+              brk := hinv.brk
+              lim := hinv.lim }
 
 end
 

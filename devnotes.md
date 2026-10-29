@@ -37031,8 +37031,8 @@ The relation at a point of static stack `σ` (`Relation.lean`) gives the slot te
 
 Three limits remain.  The relation holds no memory, so the functions that M3 adds cannot yet be covered.  The theorems conclude `eval_funcall` of one function in the Lean copy; the step to `bigstep_program_terminates` through a generated `main` is not written.  The `*_init` theorems are about the translated program itself, while the program that `ccomp` compiles also declares CompCert's built-in functions first, which moves every block; `translate_correct` applies to that program once its environment and initial memory are shown to meet the hypotheses, for example by having the `clightgen` check build that program in Lean and checking them by `decide`.
 
-- [ ] The step from `eval_funcall` to a whole program through a generated `main`.
-- [ ] The hypotheses of `translate_correct` for the program that `clightgen` reads, built by the check.
+- [x] The step from `eval_funcall` to a whole program through a generated `main`.  Done by the bare-metal work for its programs, as the entry of 2026-10-29 on the bound in a temporary records.
+- [x] The hypotheses of `translate_correct` for the program that `clightgen` reads, built by the check.  Done by the bare-metal work for its programs, as the same entry records.
 - [ ] Merge `main`, which now carries the corrected `Library.Native` layout, before the full gate.
 
 ### The reviewer's answer on findings 2 and 3
@@ -37107,8 +37107,8 @@ Five choices of M4 depart from or refine the design, and [the design](docs/nativ
 - [x] Functions with several results in the translator and the proof.
 - [x] `p.translation`, `p.translation_eq`, and `p.f.native` from `verified_compile`.
 - [x] The native host and `tests/native/verified.sh`, with every translated case passing.
-- [ ] The step from `eval_funcall` to a whole program through a generated `main`.
-- [ ] The hypotheses of `translate_correct` for the program that `clightgen` reads.
+- [x] The step from `eval_funcall` to a whole program through a generated `main`.  Done, as in M2's list.
+- [x] The hypotheses of `translate_correct` for the program that `clightgen` reads.  Done, as in M2's list.
 - [ ] Merge `main` before the full gate.
 
 ### The decisions on the five choices of M4
@@ -38106,3 +38106,17 @@ Each driver ran on `treecore` and `heapsums` on AArch64, in a new clone whose `.
 - [x] The audit of three clones, before any change.
 - [x] One build of everything each driver loads, before it loads anything.
 - [x] Each driver tested on two modules.
+
+## 2026-10-29: The Wasm-to-C translator: the bound in a temporary
+
+The analysis of the insertion-sort hint found that every access reloaded `lx_pages` and multiplied it by 65536, and the coordinator decided to implement the candidate recorded with it.  Each translated function now keeps `(unsigned long long) lx_pages * 65536ULL` in the temporary `lim`, identifier 7.  It sets `lim` after `brk = 0` at entry, after each call of a function of the module that returns without a trap, and after each `memory.grow` that succeeds, the only statements after which `lx_pages` can differ.  A call is followed by `callCheck`, the test of `lx_status` and then the assignment.  `boundsCheck` compares the end of the access with `lim`.  `bodyTemps` declares `lim` after `brk`, in the order in which `clightgen` lists the temporaries, and `ClightCheck` reads its name back.
+
+`Inv`, `BreakRel`, and `PendingBreak` gain the field `lim`, which states that the temporary holds `limVal` of the store's pages, `p × 65536`.  `push_step`, `push_exec`, and `push_exec_scratch` take the field and keep it, since they write slots, call results, and locals only, and `Keeps` in the proof of `nearest` carries it beside `brk`.  `eval_bounds` reads the temporary in place of evaluating `lx_pages`.  `sim_memoryGrow` and `sim_call` run the assignment and close with `Inv.of_lim`, which restores the relation after it when the store's pages may have changed, and `run_sim_fun` runs it at entry.  `Quiet.lean` counts the two new statements among the quiet ones.  The change touches 18 files, the statements of `translate_correct` and of the native theorems are unchanged, and nothing new is assumed.
+
+On AArch64, every target built in full with the change: the sixteen heavy proofs one at a time, `Verified Library`, the default targets, and the test executables, at ten threads.  The 103 corpus modules are byte-identical to those of the combined check, so the change reaches only the C text and the theorems about it.  `tests/native/run.sh` agrees with Talos on all twenty modules, the differential test agrees on all 918 programs with both CompCert trees, `tests/native/verified.sh` passes all 35,766 corpus cases and all 3,322 module cases with every C text read back by `clightgen` as its translation, and `tests/native/bytes.sh` agrees with Wasmtime on all 84 cases and both trap cases.  `tests/baremetal/verified.sh` passes all 1,950 cases of `treecore`, 370 of `heapsums`, and 270 of `crc`, and the stack bounds of `treecore` and `heapsums` equal those of the run before the change.
+
+The bare-metal work covers the two theorem items that the plans of M2 and M4 left open, for the programs it builds: `bareProgram` puts CompCert's declarations before the translation and adds `main`, `bare_program` carries a function's run to `bigstep_program_terminates` of that program through the generated `main`, the renaming lemma `bigstep_program_terminates_rename` moves the theorem across the renaming between `clightgen`'s and `ccomp`'s numbering, and the per-build check compares the whole program (`docs/native-bare-metal.md`, B3 and B4).  The hosted path, whose host is a separate C file, has no such theorem.
+
+- [x] `lim` in the translator, the check, and the proof.
+- [x] The full build and the checks on AArch64.
+- [ ] The benchmark again, on an idle machine.
