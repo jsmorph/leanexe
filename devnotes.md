@@ -38543,3 +38543,27 @@ The translator gains the option `alignedAccess`, under which `load64` and `store
 - [ ] A theorem for a host program's writes into a block that `alloc` returned, for either translation.  Only the generated bare-metal `main` with input has one, `input_program`, for the translation with the test.
 - [ ] The whole-program theorems of `Whole.lean` and the bare-metal path for the translation without the test.
 - [ ] The generator's `p.translation_eq` and `p.f.native` with the option, after the review.
+
+## 2026-10-29: The aligned native theorems behind an option
+
+With the option `verified_compile.alignedNative`, off by default, `verified_compile` translates a program without byte literals a second time, with `alignedAccess`, and states the theorem `p.f.nativeAligned` for each function and wrapper that the translation contains.  The option is registered with `register_option` in `Verified/Reflect/Command.lean` and set for one command as `set_option verified_compile.alignedNative true in verified_compile p := [f, …]`.  With it off, the output of `verified_compile` is unchanged.  It is off by default because it computes a second translation per program, and the benchmark has not yet measured the gain of the translation without the test.
+
+**What it emits.**  The second translation follows the first: `p.translationAligned_part_k` decides `callInfo nativeCap p.module k true` for each function, `p.translationAligned_parts` collects the parts, and `p.translationAligned_funcs` gives the translation's list of functions by `translate_funcs_of_parts`.  `p.translationAligned` is the translation, irreducible as `p.translation` is, and `p.translationAligned_eq` states `translate nativeCap p.module true = some p.translationAligned`.  `p.f.nativeAligned A X` states `NativeAlignedImpl p.f.implements A X nativeCap p.translationAligned`, or `NativeTablesAlignedImpl` for a wrapper, and `ImplementsAligned.nativeImpl` or `ImplementsTablesAligned.nativeImpl` proves it from `p.f.implements` and `p.f.aligned`.  When the evaluated call infos of the second translation equal `p.translation_infos`, the parts refer to that constant, and otherwise the generator adds `p.translationAligned_infos`.  In every program tested the infos were equal.
+
+**The parts lemmas.**  `callInfo`, `callsOf`, `includedOf`, and `fdefsOf` take the flag `alignedAccess`, but the lemmas of [the parts](LeanExe/Native/Proof/Parts.lean) and `translate_isSome` and `translate_mem_funcs` in [the native theorems](LeanExe/Native/Proof/Native.lean) were stated at the default `false`.  The coordinator chose to generalize them in place with an implicit `{al : Bool}`, which keeps one proof of each, over copies.  The existing uses write `translate cap m`, which elaborates to `translate cap m false`, so they unify `al` with `false` and needed no edit.  `callsOf_of_parts` now states `(fun k => callsOf cap m k al) = …`, the eta-expanded term that Lean already elaborated for `callsOf cap m`.
+
+**The tests.**  Scratch modules rerun the `verified_compile` commands of nine programs under new target names with the option on, so that no program file of the repository changes.  Each of the six examples, `gcd` in its loop and recursive forms, `crc`, whose functions are wrappers, and `gpt32` has one `p.f.nativeAligned` for each `p.f.native`: 77 in all.  The literal example has none, since it has byte literals.  Each of the 77 theorems depends only on `propext`, `Classical.choice`, and `Quot.sound`.  With the option off, the nine programs' modules rebuilt against the new generator.
+
+**The compile time.**  The table gives the elapsed time of `lake env lean` on the scratch modules with the option off and on, in two interleaved rounds at eight threads while two other agents' builds ran.  The last column is the time of the per-function kernel decisions of the second translation alone, measured inside Lean in a module that runs them after the commands with the option off.
+
+| Program | Off, round 1 | On, round 1 | Off, round 2 | On, round 2 | Aligned parts |
+|---|---|---|---|---|---|
+| gcd, two commands | 8 s | 9 s | 8 s | 10 s | 1.4 s |
+| crc | 11 s | 12 s | 10 s | 13 s | 1.1 s |
+| gpt32 | 50 s | 59 s | 52 s | 56 s | 6.5 s |
+
+The option adds 1 to 3 s to the small programs and 4 to 9 s, about 13 percent on average, to gpt32, of which the per-function decisions take 6.5 s.  The remainder includes the decision of the second translation's function list and the theorems that follow from it, which these runs did not time separately.
+
+- [x] The option and the emission of `p.translationAligned`, `p.translationAligned_eq`, and `p.f.nativeAligned`.
+- [x] The parts lemmas generalized over the flag.
+- [ ] Decide whether the option becomes the default after the benchmark.
