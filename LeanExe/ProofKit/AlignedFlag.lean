@@ -55,6 +55,36 @@ theorem wpX.conseq (hq : Q ⇛ Q') (h : wpX strict m c Q st s env) : wpX strict 
   · exact wp_localGet_cons
   · exact wpA_localGet_cons
 
+@[simp] theorem wpX_localSet_cons {i : Nat} :
+    wpX strict m (.localSet i :: rest) Q st s env ↔
+    (match s.values with
+     | v :: vs =>
+        (match s.set? i v with
+         | some s' => wpX strict m rest Q st { s' with values := vs } env
+         | none    => Q (.Invalid "localSet index out of bounds"))
+     | _ => Q (.Invalid "localSet with empty stack")) := by
+  cases strict
+  · exact wp_localSet_cons
+  · rw [wpX_true, wpA_cons_wp (fun f => by simp [AlignedOne])]
+    simp only [wp_localSet_cons, wp_nil]
+    rcases hv : s.values with _ | ⟨v, vs⟩ <;> simp only
+    rcases hs : s.set? i v with _ | s' <;> simp only [wpX_true]
+
+@[simp] theorem wpX_localTee_cons {i : Nat} :
+    wpX strict m (.localTee i :: rest) Q st s env ↔
+    (match s.values with
+     | v :: _ =>
+        (match s.set? i v with
+         | some s' => wpX strict m rest Q st s' env
+         | none    => Q (.Invalid "localTee index out of bounds"))
+     | _ => Q (.Invalid "localTee with empty stack")) := by
+  cases strict
+  · exact wp_localTee_cons
+  · rw [wpX_true, wpA_cons_wp (fun f => by simp [AlignedOne])]
+    simp only [wp_localTee_cons, wp_nil]
+    rcases hv : s.values with _ | ⟨v, vs⟩ <;> simp only
+    rcases hs : s.set? i v with _ | s' <;> simp only [wpX_true]
+
 @[simp] theorem wpX_constI64_cons {v : UInt64} :
     wpX strict m (.constI64 v :: rest) Q st s env ↔
     wpX strict m rest Q st { s with values := .i64 v :: s.values } env := by
