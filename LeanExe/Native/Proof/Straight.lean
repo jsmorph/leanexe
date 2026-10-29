@@ -140,6 +140,39 @@ theorem eval_global_int {A : Archi} {ge : genv} {le : temp_env} {m : mem} {id : 
   .eval_Elvalue _ _ _ _ _ (eval_lvalue_global h)
     (.deref_loc_value .Mint32 _ rfl (by rw [loadv_zero _ _ _ (by decide)]; exact hl))
 
+theorem limVal_eq {p : Nat} (hp : p ≤ 65535) :
+    UInt64.ofNat (UInt32.ofNat p).toNat * UInt64.ofNat 65536 = UInt64.ofNat (p * 65536) := by
+  have hP : (UInt32.ofNat p).toNat = p := by rw [UInt32.toNat_ofNat']; omega
+  have h1 : (UInt64.ofNat p).toNat = p :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 2 ^ 64 from rfl]; omega)
+  have h2 : (UInt64.ofNat 65536).toNat = 65536 :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 2 ^ 64 from rfl]; omega)
+  have h3 : (UInt64.ofNat (p * 65536)).toNat = p * 65536 :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 2 ^ 64 from rfl]; omega)
+  rw [hP]
+  apply UInt64.toNat_inj.mp
+  rw [UInt64.toNat_mul, h1, h2, h3]
+  exact Nat.mod_eq_of_lt (by omega)
+
+/-- `limExpr` evaluates to the number of bytes of the memory. -/
+theorem eval_limExpr {A : Archi} {E : Env} (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat}
+    {m : mem} (h : MemRel E wm caps m) (le : temp_env) :
+    eval_expr A E.ge empty_env le m limExpr (limVal wm.pages) := by
+  have hp : wm.pages ≤ 65535 := Nat.le_trans h.le_cap hE.cap
+  unfold limExpr
+  refine .eval_Ebinop _ _ _ _ _ _ _ (.eval_Ecast _ _ _ _ (eval_global_int hE.pages h.pages)
+    (cast_uint_long m _)) (.eval_Econst_long _ _) ?_
+  show sem_binary_operation A .Omul (.Vlong _) tulong (.Vlong _) tulong m = _
+  rw [sem_mul_ll A m, limVal_eq hp]
+  rfl
+
+theorem exec_limSet {A : Archi} {X : ExtSem} {E : Env} (hE : EnvOk E) {wm : Wasm.Mem}
+    {caps : List Nat} {m : mem} (h : MemRel E wm caps m) (le : temp_env) :
+    exec_stmt A X E.ge empty_env le m limSet E0 (le.insert limId (limVal wm.pages)) m
+      .Out_normal := by
+  unfold limSet
+  exact .exec_Sset _ _ _ _ _ _ (eval_limExpr hE h le)
+
 theorem exec_assign_long {A : Archi} {X : ExtSem} {ge : genv} {le : temp_env} {m : mem}
     {id : ident} {b : block} {e : expr} {n : UInt64} (h : Genv.find_symbol ge id = some b)
     (he : eval_expr A ge empty_env le m e (.Vlong n)) (ht : typeof e = tulong)
@@ -299,7 +332,7 @@ theorem push_step {L : List Label} {σr : List VT} {α : Type} {st : Store α} {
     {le : temp_env} {m : mem} {e : expr} {v : Value} {t : VT} {vr : List Value}
     (hrest : StackRel le σr vr) (hloc : LocalsRel le c.locals (sl.params ++ sl.locals))
     (hg : StoreRel E st m) (hs : StatusRel E m 0)
-    (hb : le[brkId]? = some (.Vint 0))
+    (hb : le[brkId]? = some (.Vint 0)) (hlm : le[limId]? = some (limVal st.mem.pages))
     (he : eval_expr A E.ge empty_env le m e (cval v)) (ht : t.has v = true)
     (hbase : curBase L ≤ σr.length) :
     Outcome A X E c L (some (t :: σr))
@@ -311,7 +344,8 @@ theorem push_step {L : List Label} {σr : List VT} {α : Type} {st : Store α} {
           locals := hloc.insert_other _ (fun i => slotId_ne_localId _ _ i)
           store := hg
           status := hs
-          brk := by rw [te_insert_ne _ (slotId_ne_brkId _ _)]; exact hb }
+          brk := by rw [te_insert_ne _ (slotId_ne_brkId _ _)]; exact hb
+          lim := lim_insert_slot _ _ _ hlm }
 
 theorem sim_zero_fuel {L : List Label} {σ' : Option (List VT)} {s : statement} {le : temp_env}
     {m : mem} {α : Type} {st : Store α} {sl : Locals} {env : HostEnv α} {inst : Instruction}
@@ -328,7 +362,7 @@ theorem sim_localGet (F i : Nat) : InstrSim A X E mod c F (.localGet i) := by
   | succ f =>
       obtain ⟨v, hv, htv, hl⟩ := hinv.locals.get ht
       simp only [execOne.eq_def, locals_get, hv]
-      exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk
+      exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Etempvar _ _ _ hl) htv hbase
 
 theorem sim_localSet (F i : Nat) : InstrSim A X E mod c F (.localSet i) := by
@@ -352,7 +386,8 @@ theorem sim_localSet (F i : Nat) : InstrSim A X E mod c F (.localSet i) := by
                 rw [hpl]; exact hinv.locals.set ht htv
               store := hinv.store
               status := hinv.status
-              brk := brk_insert_local i _ hinv.brk }
+              brk := brk_insert_local i _ hinv.brk
+              lim := lim_insert_local i _ hinv.lim }
 
 theorem sim_localTee (F i : Nat) : InstrSim A X E mod c F (.localTee i) := by
   intro L σ n s σ' n' htr hbase α st sl le m env hinv
@@ -376,7 +411,8 @@ theorem sim_localTee (F i : Nat) : InstrSim A X E mod c F (.localTee i) := by
               locals := by rw [hpl]; exact hinv.locals.set ht htv
               store := hinv.store
               status := hinv.status
-              brk := brk_insert_local i _ hinv.brk }
+              brk := brk_insert_local i _ hinv.brk
+              lim := lim_insert_local i _ hinv.lim }
 
 end
 

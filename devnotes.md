@@ -36944,12 +36944,12 @@ The design calls `lx_trap(code)` at a trap and lists "`lx_trap` never returns" a
 - [x] `Print.lean`, the C printer; `ClightGen.lean`, `ClightDiff.lean`, the executable `clight-diff`, and `tests/native/clight.sh`.
 - [x] Build `LeanExe.Native` and fix what the compiler rejects.  The unchecked proofs are `perm_order_b_iff` and `Mem.range_perm_b_iff` in `Memory.lean`, `type_beq_eq` and `type_beq_refl` in `Ctypes.lean`, and every theorem of `RunSound.lean`; none uses `sorry`.
 - [x] `#print axioms LClight.run_sound` shows at most `propext`, `Classical.choice`, and `Quot.sound`.
-- [ ] Build `Verified Library` with the change to `verified_compile`; every `verified_compile` emits `p.inSubset` without a warning, and the kernel's time for it on the largest modules (GPT-2, binary32 GPT-2, the Euler solvers) is recorded.
+- [x] Build `Verified Library` with the change to `verified_compile`; every `verified_compile` emits `p.inSubset` without a warning, and the kernel's time for it on the largest modules (GPT-2, binary32 GPT-2, the Euler solvers) is recorded.  Done: the next entry records both builds and the kernel's times, in the commits "Record the CompCert build and the M1 results" and "Record the Library build with the subset theorems".
 - [x] `tests/native/subset.sh`: all 98 modules of the corpus inside the subset (M0's exit criterion).
 - [x] Build CompCert 3.18 with `clightgen` from the verified archive, for x86-64 and, for `ccomp -interp` alone, for AArch64.
 - [x] `tests/native/clight.sh` on many seeds for both targets, with every difference explained and the counts recorded (M1's exit criterion).
 - [x] An independent review of the copy against the CompCert sources, file by file.
-- [ ] Import `LeanExe.Native` from `LeanExe.lean` once it builds without `sorry`.
+- [x] Import `LeanExe.Native` from `LeanExe.lean` once it builds without `sorry`.  Decided on 2026-10-28: `LeanExe.lean` does not import it.  Every module that `LeanExe/Native.lean` imports builds without `sorry` in the `Verified` build, which reaches them through `Verified.Reflect.Command` and `Verified.Native`.  The coordinator decided against the import, because `Verified` already builds the translator and every user of `import LeanExe` would otherwise pay for the translator and its proofs.
 - [x] The user's decision on the trap mechanism (below).
 - [x] The user's decision on the license of the Lean copy (below).
 
@@ -37031,9 +37031,9 @@ The relation at a point of static stack `σ` (`Relation.lean`) gives the slot te
 
 Three limits remain.  The relation holds no memory, so the functions that M3 adds cannot yet be covered.  The theorems conclude `eval_funcall` of one function in the Lean copy; the step to `bigstep_program_terminates` through a generated `main` is not written.  The `*_init` theorems are about the translated program itself, while the program that `ccomp` compiles also declares CompCert's built-in functions first, which moves every block; `translate_correct` applies to that program once its environment and initial memory are shown to meet the hypotheses, for example by having the `clightgen` check build that program in Lean and checking them by `decide`.
 
-- [ ] The step from `eval_funcall` to a whole program through a generated `main`.
-- [ ] The hypotheses of `translate_correct` for the program that `clightgen` reads, built by the check.
-- [ ] Merge `main`, which now carries the corrected `Library.Native` layout, before the full gate.
+- [x] The step from `eval_funcall` to a whole program through a generated `main`.  Done by the bare-metal work for its programs, as the entry of 2026-10-29 on the bound in a temporary records.
+- [x] The hypotheses of `translate_correct` for the program that `clightgen` reads, built by the check.  Done by the bare-metal work for its programs, as the same entry records.
+- [x] Merge `main`, which now carries the corrected `Library.Native` layout, before the full gate.  Done: the branch has merged main five times since, the last time in the commit "Merge main with typed fields stage 2", and `Library/Native.lean` now imports the CRC, SHA-3, SipHash, XXH64, and regex programs.
 
 ### The reviewer's answer on findings 2 and 3
 
@@ -37070,7 +37070,7 @@ Three limits remain.  The theorems speak of the translated program's own global 
 - [x] `MemRel`, the four memory instructions, and `translate_correct` with memory.
 - [x] `lx_init_correct` and the general initial memory.
 - [x] `NativeImpl` for the array, list, sorting, and CRC examples, and the runtime's theorems.
-- [ ] Functions with several results, which SHA-2, SipHash, XXH64, and SHA-3 need.
+- [x] Functions with several results, which SHA-2, SipHash, XXH64, and SHA-3 need.  Done in M4, in the commit "Add several results and the generated native theorems".
 
 ## 2026-10-26: The Wasm-to-C translator: M4
 
@@ -37107,9 +37107,9 @@ Five choices of M4 depart from or refine the design, and [the design](docs/nativ
 - [x] Functions with several results in the translator and the proof.
 - [x] `p.translation`, `p.translation_eq`, and `p.f.native` from `verified_compile`.
 - [x] The native host and `tests/native/verified.sh`, with every translated case passing.
-- [ ] The step from `eval_funcall` to a whole program through a generated `main`.
-- [ ] The hypotheses of `translate_correct` for the program that `clightgen` reads.
-- [ ] Merge `main` before the full gate.
+- [x] The step from `eval_funcall` to a whole program through a generated `main`.  Done, as in M2's list.
+- [x] The hypotheses of `translate_correct` for the program that `clightgen` reads.  Done, as in M2's list.
+- [x] Merge `main` before the full gate.  Done, as in M2's list.
 
 ### The decisions on the five choices of M4
 
@@ -37118,11 +37118,11 @@ The user asked the coordinator to decide open questions while the user is away, 
 1. The typed result globals are accepted, because each load and store keeps its own type and the C text needs no cast.
 2. The restriction on a branch to the outermost label of a function with several results is accepted as a documented restriction, because the survey found no function left out for that reason alone.  [The design](docs/native-translator.md) now states it with the other kinds of function that the translation leaves out.  When M5 and M6 admit functions with several results that include floats, the survey runs again, and a function left out for that reason alone is reported before the restriction is lifted.
 3. `nativeCap` of 4,096 pages is accepted as a fixed constant.  A larger static `lx_mem` approaches the 2 GiB limit on static data under the small code model, every translated case of the corpus fits, and so does the slew planner's bound of 68,020,488 bytes.  The design now says that a module needing more memory needs a cap of its own, which is future work.
-4. The translation and the native theorems in every module that `verified_compile` builds, without `p.c`, are accepted, because the plan of M4 already had `verified_compile` emit `p.f.native`.  Two conditions apply.  The merge gate of this branch builds the heavy proofs and `Library.Numerics.Float64.Lgamma.Compiled` and `Tgamma.Compiled` one at a time and records each one's time and peak memory before and after the change, by `/usr/bin/time -v` or the scope's `memory.peak`; if any rises past what the 11.6 GiB hosts build at `--threads 1 --memory-high 10G`, the gate stops and the result goes to the user.  The design's M7 now includes a file theorem that the `.c` file `native-verified` writes equals the printer's output for `p.translation`, in the form of the Wasm file theorems, which removes the run of `native-verified` from the trusted base.
+4. The translation and the native theorems in every module that `verified_compile` builds, without `p.c`, are accepted, because the plan of M4 already had `verified_compile` emit `p.f.native`.  Two conditions apply.  The merge gate of this branch builds the heavy proofs and `Library.Numerics.Float64.Lgamma.Compiled` and `Tgamma.Compiled` one at a time and records each one's time and peak memory before and after the change, by `/usr/bin/time -v` or the scope's `memory.peak`; if any rises past what a build at `--threads 1 --memory-high 10G` allows, the gate stops and the result goes to the user.  The design's M7 now includes a file theorem that the `.c` file `native-verified` writes equals the printer's output for `p.translation`, in the form of the Wasm file theorems, which removes the run of `native-verified` from the trusted base.
 5. The tests' use of the generated translations with 4,096 pages, with `native-emit` keeping 256 pages for its memory-growth test, is accepted.
 
-- [ ] At the merge gate, build the heavy proofs and the `Lgamma` and `Tgamma` modules one at a time, with time and peak memory before and after.
-- [ ] M7: the file theorem for the written C text.
+- [x] At the merge gate, build the heavy proofs and the `Lgamma` and `Tgamma` modules one at a time, with time and peak memory before and after.  Closed on 2026-10-28 with the timings at hand, as that day's entry on the decisions records, without a measurement of the other heavy proofs' peak memory.  The entries on the merge after typed-fields stage 1 and on the native theorems by parts give the time, resident set, and scope peak of `Lgamma.Compiled` and `Tgamma.Compiled` with main's command and with this branch's, in the commits "Record the merge with main and the gamma measurements", "Prove the native theorems one function at a time", and "Revert the module-level native theorem".  The fifteen other heavy proofs, `TgammaAccRangeA`, `B`, and `C` and the twelve `LgammaRoot` modules, call no `verified_compile`, so the change reaches them only through the larger `.olean` files they import.
+- [x] M7: the file theorem for the written C text.  Dropped: on 2026-10-28 the coordinator dropped it from M7, as that day's entry records, because `native-verified build` has `clightgen` read the file that `ccomp` then compiles, which covers the printer and the write (commit "Check the C text in the native build").
 
 ## 2026-10-26: The Wasm-to-C translator: plan for M5 (binary64)
 
@@ -37187,13 +37187,13 @@ The differential test gains random float expressions over edge values (NaNs with
 
 The statement change above is the one point where M5 alters existing theorems, and it is of the kind accepted in M4.  For M6, Talos computes `f64PromoteF32` and `f32DemoteF64` with Lean's native floats, whose operations Lean's logic leaves opaque; the subset does not contain them and the survey finds no use, so they block nothing now, but a module that uses them would need Talos to define them by its exact helpers, as the Lean copy defines `of_single` and `to_single`, which would change a dependency.
 
-- [ ] Probe `clightgen` for `lx_pun[1]`, `((double *) lx_pun)[0]`, `__builtin_fabs`, `t != t`, negative literals, and the guard of `trunc_sat`.
-- [ ] Add `__builtin_fabs` to the Lean copy, with its citation and differential cases.
-- [ ] `lx_pun` in the translator, `Env`, `EnvOk`, `MemRel`, and `Init.lean`; both reinterpretations.
-- [ ] Constants, arithmetic and `sqrt` with canonicalization.
-- [ ] Several results with `f64`, after the survey that decision 2 of M4 requires.
-- [ ] `f64ConvertI64U`, the comparisons, `abs`, and `i64TruncSatF64U`.
-- [ ] Float cases in `tests/native/run.sh` and the differential test; the corpus driver; the Euler solvers native with theorems.
+- [x] Probe `clightgen` for `lx_pun[1]`, `((double *) lx_pun)[0]`, `__builtin_fabs`, `t != t`, negative literals, and the guard of `trunc_sat`.  Done in the commit "Record the M5 decisions and the probe of clightgen".
+- [x] Add `__builtin_fabs` to the Lean copy, with its citation and differential cases.  Done in a changed form: the probe found that CompCert's front end turns the call into `Oabsfloat`, which the copy already transcribes, so the copy gained no built-in, as the next section records.  The differential cases came in the commit "Add fabs to the differential test of the Clight copy".
+- [x] `lx_pun` in the translator, `Env`, `EnvOk`, `MemRel`, and `Init.lean`; both reinterpretations.  Done in the commits "Add lx_pun, the sqrt built-in, and double result globals" and "Translate and prove the binary64 forms".
+- [x] Constants, arithmetic and `sqrt` with canonicalization.  Done in the commit "Translate and prove the binary64 forms".
+- [x] Several results with `f64`, after the survey that decision 2 of M4 requires.  Done in the commit "Translate and prove the binary64 forms".  The M5 entry, from the commit "Run the Euler cases natively and record M5", gives the survey's second run.
+- [x] `f64ConvertI64U`, the comparisons, `abs`, and `i64TruncSatF64U`.  Done in the commit "Translate and prove the binary64 forms".
+- [x] Float cases in `tests/native/run.sh` and the differential test; the corpus driver; the Euler solvers native with theorems.  Done in the commits "Test the binary64 forms against Talos end to end", "Add fabs to the differential test of the Clight copy", and "Run the Euler cases natively and record M5".
 
 ### The decisions on the two questions of M5, and the probe of `clightgen`
 
@@ -37375,13 +37375,13 @@ The widening of choice 10 is a premise of `NativeA` of the kind accepted in M4 a
 
 `tests/native/run.sh` gains a module `f32ops`, the binary32 counterpart of `fops`: each form on words read as `float`s, with NaNs with payloads, a signaling NaN, both zeros, the smallest subnormal, the largest `float`, both infinities, the ties of `nearest` (0.5, 1.5, 2.5, -0.5, -2.5, `2^23 - 0.5`), squares and non-squares under `sqrt`, a negative operand of `sqrt`, and the bounds of both truncations.  The differential test gains binary32 NaN programs for `+`, the conversions between `float` and `double`, and the square root through `double`, under both targets' parameters.  The corpus driver needs no change.
 
-- [ ] Probe `clightgen` for the binary32 shapes of the choices.
-- [ ] `lx_pun` at binary32 and both reinterpretations; constants.
-- [ ] The arithmetic with the canonicalization; the comparisons; several results; the conversions.
-- [ ] `nearest`.
-- [ ] `sqrt` with the double-rounding lemma.
-- [ ] `abs` and the saturating truncations.
-- [ ] `f32ops` in `tests/native/run.sh`, the differential test, the corpus driver, and binary32 GPT-2 native with theorems.
+- [x] Probe `clightgen` for the binary32 shapes of the choices.  Done in the commit "Translate the binary32 forms other than sqrt and nearest", whose entry follows.
+- [x] `lx_pun` at binary32 and both reinterpretations; constants.  Done in the same commit.
+- [x] The arithmetic with the canonicalization; the comparisons; several results; the conversions.  Done in the same commit, except several results, which came in the commit "Translate f32.nearest and binary32 results".
+- [x] `nearest`.  Done in the commit "Translate f32.nearest and binary32 results".
+- [x] `sqrt` with the double-rounding lemma.  Done in the commit "Translate f32.sqrt through double".
+- [x] `abs` and the saturating truncations.  Done in the commit "Translate the binary32 forms other than sqrt and nearest".
+- [x] `f32ops` in `tests/native/run.sh`, the differential test, the corpus driver, and binary32 GPT-2 native with theorems.  Done: `f32ops` came in the commit "Translate the binary32 forms other than sqrt and nearest" and grew in the next two, binary32 GPT-2 in "Translate f32.sqrt through double", and the gate in "Print a cast call result as one assignment".  The differential test gained no programs in M6.  Its NaN programs since M1 include binary32 `+` of NaNs and both conversions between `float` and `double`, and the square root through `double` appears only as its two parts, the square root of a negative `double` and the conversion of a `double` NaN to `float`.  On 2026-10-28 the test gained the combined program, as that day's entry on the decisions records.
 
 ## 2026-10-27: The Wasm-to-C translator: M6, the binary32 forms without `sqrt` and `nearest`
 
@@ -37555,6 +37555,38 @@ In CompCert 3.18, `option_fcommon` is read only by `C2C.atom_is_external` and by
 A second change waits for the user's decision on native speed: keeping `lx_pages * 65536` in a temporary `lim` of each function, set after `brk = 0` at entry and refreshed after the copy of each call's results and after `memory.grow`.  In the translator, about 25 lines would change: `boundsCheck` would compare against the temporary, which `tempName` names and `bodyTemps` declares.  In the proof, `Inv` and `BreakRel` would each gain a field stating that the temporary holds the store's pages times 65536; `BreakRel` needs it because the code after a construct continues with the same temporaries.  `MemRel`, `StoreRel`, `ResultRel`, `NativeA`, and the generated theorems would not change.  `push_exec`, `push_step`, and `push_exec_scratch` in `Straight.lean` would carry the field, with a short argument that the store's pages are unchanged after stores and writes to globals.  In `MemOps.lean`, `eval_bounds` would become a lookup, and `memory.grow` would add the refresh.  The call simulation in `Calls.lean` would add the refresh after the results, and the entry would add the initialization.  The roughly 15 places in `Blocks`, `Branches`, `Calls`, `Constructs`, `Control`, and `Run` that build `Inv`, and the 5 that build `BreakRel`, would gain the field mechanically.  The estimate is about ten files and 200 to 300 lines, then a full rebuild and a gate.  It would save the load of `lx_pages` and the multiplication, about three instructions and one load per access, and leave the comparison, the alignment test, and the address of `lx_mem`.
 
 With the option, the native corpus driver on the AArch64 tree passed all 35,766 cases and the 3,322 module cases, and none of the 101 objects it compiled has a global-offset-table relocation of `lx_mem`, where the sort module's object compiled without the option had 288.  The job's watcher recorded no memory pressure.  The benchmark job built before the change was stopped while it waited, without measuring, and started again on the new build.
+
+`tests/native/bench.sh` had written its inputs with `python3` directly, against the rule that Python runs only through `uv run`.  The generator is now `tests/native/bench_inputs.py`, with the inline script metadata of the repository's other Python scripts, and the driver runs it with `uv run`; it writes the same six files, byte for byte.
+
+## 2026-10-28: The Wasm-to-C translator: the plan items and the open decisions
+
+The translator's entries left 25 plan items unchecked, and each is now marked in place with the commits that did it, the decision that dropped it, or what remains.  Eighteen are done, and the file theorem of M7 is dropped.  The other six are four open items, since M2 and M4 both list the first two: the generated `main`, the hypotheses of `translate_correct` for the program that `ccomp` compiles, the import of `LeanExe.Native` in `LeanExe.lean`, and the time and peak memory of the fifteen heavy proofs other than `Lgamma.Compiled` before and after the change to `verified_compile`.  The differential test gained no binary32 programs in M6, although the plan of M6 said it would.  Its NaN programs since M1 contain binary32 `+` of NaNs and both conversions between the formats, and the square root through `double` appears only as its two parts.
+
+[The design](docs/native-translator.md) no longer lists the IEEE 754 model among its open decisions.  M0 and M1 chose Talos's `Wasm.IEEE64` and `Wasm.IEEE32` for every result that is a number or an infinity and the `Archi` choice functions for NaNs, M5 and M6 proved the float forms on that model, and the design's section on the Lean copy now states it.  The risks to the schedules of M2 and M6 are gone from the table, since both proofs are complete, and the question about the per-program LeanExe compiler now asks whether it emits the native theorems, as `verified_compile` has since M4.  The entry on M4's decisions now states its memory condition by the build's limit alone.
+
+## 2026-10-28: The Wasm-to-C translator: decisions on the open items
+
+The coordinator decided the three questions of the previous entry and the row of the design's risk table on 2026-10-28.  `LeanExe.lean` does not import `LeanExe.Native`, because `Verified` already builds the translator and every user of `import LeanExe` would otherwise pay for the translator and its proofs.  The two theorem items stay open, and each now names the milestone in which the bare-metal variant of the translator proves the corresponding step for its own program form: the whole program with the declaration prefix and the renaming lemma in B3, and the generated `main` in B4.
+
+The heavy-proof item is closed with the timings at hand.  The serial heavy steps of a gate of the typed-fields work, whose code has no translator, and of this branch's full check at the `-fno-common` commit took about the same time.  Both checks ran while other builds shared the host, so the times are rough, and neither measured peak memory.
+
+| Module | Without the translator | With the translator |
+| --- | --- | --- |
+| `TgammaAccRangeA` | 217 s | 214 s |
+| `TgammaAccRangeB` | 234 s | 235 s |
+| `LgammaRootE` | 418 s | 412 s |
+| `LgammaRootD2` | 126 s | 122 s |
+| `LgammaRootD1` | 148 s | 149 s |
+
+The other heavy steps of the two checks do not compare: the first step of each built the shared dependencies, from different states of the build cache, and one check found `Lgamma.Compiled` already built.
+
+### The binary32 square root in the differential test
+
+The differential test gains three programs that compute `g_f32 = (float) __builtin_fsqrt((double) x)`, the square root that the translation of `f32.sqrt` computes, of the default NaN `0.0f / 0.0f`, of a NaN with a payload converted from the signaling `double` NaN `0x7FF4000000000000`, and of `-1.0f`.  They call the built-in by `Sbuiltin`, as the test's square root of a `double` does, while the translation calls the declared external function, and in the copy both reach `Float.sqrt` through `external_call`.  Under seed 7 with 300 random programs, the copy agrees with `ccomp -interp` on all 321 programs with the aarch64 tree and with the x86_64 tree.  With the x86_64 parameters the three programs give `0xFFC00000`, `0x7FE00000`, and `0xFFC00000`, and the count of NaN programs that print different bits under the two targets' parameters rises from 8 of 18 to 10 of 21, so the two programs whose result is the default NaN differ between the targets and the one with a payload does not.
+
+### `ccomp -dclight` and `clightgen -dclight`
+
+The design's risk table proposed to compare `ccomp -dclight` with `clightgen -dclight` on every build, a check that never existed.  Both tools accept `-dclight` and write `FILE.light.c` with `PrintClight`, but at different points of the front end.  `ccomp` prints Clight between `SimplExpr` and `SimplLocals`: `driver/Compiler.v`, line 158, puts `print print_Clight` before the pass at line 159, and `extraction/extraction.v`, line 109, makes it `PrintClight.print_if`, which `cfrontend/PrintClight.ml`, lines 322 to 324, prints as Clight1, with parameters as variables.  `clightgen` prints after `SimplLocals`, through `PrintClight.print_if_2` at line 59 of `export/ExportDriver.ml`, which prints Clight2, with parameters as temporaries.  On a function of two parameters and two locals, the x86_64 tree's `ccomp` printed the locals as variables `s0` and `s1` and the parameters as `a` and `b`, and `clightgen` printed them as `register` temporaries `$s0` and `$s1` and the parameters as `$a` and `$b`, so the two dumps differ in every translated function, whose locals are all temporaries.  A comparison would have to undo `SimplLocals`, so the row now states what the build compares: `clightgen`'s Clight of the C file against the translation, before `ccomp` compiles the same file.
 
 ## 2026-10-27: Bare-metal native code: design and plan
 
@@ -38106,6 +38138,48 @@ Each driver ran on `treecore` and `heapsums` on AArch64, in a new clone whose `.
 - [x] The audit of three clones, before any change.
 - [x] One build of everything each driver loads, before it loads anything.
 - [x] Each driver tested on two modules.
+
+## 2026-10-29: The Wasm-to-C translator: the bound in a temporary
+
+The analysis of the insertion-sort hint found that every access reloaded `lx_pages` and multiplied it by 65536, and the coordinator decided to implement the candidate recorded with it.  Each translated function now keeps `(unsigned long long) lx_pages * 65536ULL` in the temporary `lim`, identifier 7.  It sets `lim` after `brk = 0` at entry, after each call of a function of the module that returns without a trap, and after each `memory.grow` that succeeds, the only statements after which `lx_pages` can differ.  A call is followed by `callCheck`, the test of `lx_status` and then the assignment.  `boundsCheck` compares the end of the access with `lim`.  `bodyTemps` declares `lim` after `brk`, in the order in which `clightgen` lists the temporaries, and `ClightCheck` reads its name back.
+
+`Inv`, `BreakRel`, and `PendingBreak` gain the field `lim`, which states that the temporary holds `limVal` of the store's pages, `p × 65536`.  `push_step`, `push_exec`, and `push_exec_scratch` take the field and keep it, since they write slots, call results, and locals only, and `Keeps` in the proof of `nearest` carries it beside `brk`.  `eval_bounds` reads the temporary in place of evaluating `lx_pages`.  `sim_memoryGrow` and `sim_call` run the assignment and close with `Inv.of_lim`, which restores the relation after it when the store's pages may have changed, and `run_sim_fun` runs it at entry.  `Quiet.lean` counts the two new statements among the quiet ones.  The change touches 18 files, the statements of `translate_correct` and of the native theorems are unchanged, and nothing new is assumed.
+
+On AArch64, every target built in full with the change: the sixteen heavy proofs one at a time, `Verified Library`, the default targets, and the test executables, at ten threads.  The 103 corpus modules are byte-identical to those of the combined check, so the change reaches only the C text and the theorems about it.  `tests/native/run.sh` agrees with Talos on all twenty modules, the differential test agrees on all 918 programs with both CompCert trees, `tests/native/verified.sh` passes all 35,766 corpus cases and all 3,322 module cases with every C text read back by `clightgen` as its translation, and `tests/native/bytes.sh` agrees with Wasmtime on all 84 cases and both trap cases.  `tests/baremetal/verified.sh` passes all 1,950 cases of `treecore`, 370 of `heapsums`, and 270 of `crc`, and the stack bounds of `treecore` and `heapsums` equal those of the run before the change.
+
+The bare-metal work covers the two theorem items that the plans of M2 and M4 left open, for the programs it builds: `bareProgram` puts CompCert's declarations before the translation and adds `main`, `bare_program` carries a function's run to `bigstep_program_terminates` of that program through the generated `main`, the renaming lemma `bigstep_program_terminates_rename` moves the theorem across the renaming between `clightgen`'s and `ccomp`'s numbering, and the per-build check compares the whole program (`docs/native-bare-metal.md`, B3 and B4).  The hosted path, whose host is a separate C file, has no such theorem.
+
+- [x] `lim` in the translator, the check, and the proof.
+- [x] The full build and the checks on AArch64.
+- [ ] The benchmark again, on an idle machine.
+
+## 2026-10-29: The Wasm-to-C translator: the benchmark against Wasmtime
+
+The benchmark of the plan ran on AArch64 with the programs of the commit that added `-fno-common`, before the bound moved into a temporary.  `tests/native/bench.sh` pinned both forms to one core and ran 11 pairs per workload, each pair a timed period of one second for the translation compiled by `ccomp` and one for the module under Wasmtime's C API 44.0.0 with Cranelift and NaN canonicalization on, alternating which form ran first.  A pair counted only when no `lean` or `lake` process ran and the load average was below 1 before and after it, and the 2 pairs that failed the check after they ran were run again.  The table gives the median time per call and the ratio of Wasmtime's median to the native one, so that a ratio above 1 means the native code was faster.
+
+| Workload | Native median (ns) | Wasmtime median (ns) | Wasmtime / native |
+| --- | --- | --- | --- |
+| `crc32` | 3,968,000 | 2,738,900 | 0.69 |
+| `euler` | 181,680,000 | 138,375,767 | 0.76 |
+| `layernorm32` | 3,916,550 | 5,155,950 | 1.32 |
+| `linear32` | 2,433,300 | 2,653,030 | 1.09 |
+| `sha256` | 12,666,600 | 11,479,700 | 0.91 |
+| `sha3` | 9,871,790 | 10,895,300 | 1.10 |
+| `sort` | 26,760,200 | 6,183,570 | 0.23 |
+
+The pairs ran from 19:41 to 19:45 UTC on 2026-10-28.  A short job that ran `lake build --no-build` overlapped the pairs of `euler`, from 19:43:27 to 19:44:01 UTC, and a second such job began at 19:45:20 UTC, after the last pair.  The check runs only at the ends of a pair, so a `lake` process that starts and ends inside one goes unnoticed; the interquartile ranges of `euler` stay below 0.02 percent of its medians.
+
+`ccomp -version` prints "The CompCert C verified compiler, version 3.17", and the benchmark records that string with "from the 3.18 sources" appended.  The tag archive of 3.18, whose SHA-256 the journal of phase A records, holds `version=3.17` in its `VERSION` file, which the driver prints, while its `Changelog.md` begins with "Release 3.18".  Whether the release meant to keep 3.17 in `VERSION` is open.
+
+- [x] The benchmark of the build with `-fno-common`.
+
+## 2026-10-29: The Wasm-to-C translator: its last commits on the combined history
+
+Four commits of the translator branch had not reached the combined history: the benchmark's input generator run through `uv`, the reconciliation of the plan items, the binary32 square root in the differential test, and the record of the decisions on the open items.  They now follow the bound in a temporary.  Their conflicts lay in this journal only, where each kept the newer state of an item that both sides changed and put its own entries after the entry on `-fno-common`, and the design and the scripts merged without a conflict.  The two theorem items stay ticked, as the entry on the bound in a temporary records.
+
+With the square root through `double`, the differential test agrees with `ccomp -interp` on all 921 programs with both CompCert trees: 300 random programs, 21 NaN programs, 300 programs with traces, and 300 with inputs.  Of the NaN programs, 10 print different bits under the two targets' parameters, against 8 of 18 before.  As in the earlier runs of seed 7, one random program's output depends on the target: `t192` stores a NaN that it computes in `g_f64`, the default NaN of each target, `0x7FF8000000000000` under AArch64's parameters and `0xFFF8000000000000` under x86-64's.  `uv run tests/native/bench_inputs.py` writes six files equal to those that the benchmark of the build with `-fno-common` used.
+
+- [x] The four commits on the combined history, with the differential test on both trees.
 
 ## 2026-10-29: The stack mark of `main` alone
 

@@ -686,7 +686,7 @@ theorem sim_f32Sqrt (hE : EnvOk E) (F : Nat) : InstrSim A X E mod c F .f32Sqrt :
           (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ (te_insert_same _ _ _)) rfl)
       obtain ⟨le3, m3, h3, hslot, hk, hst3, hs3⟩ := exec_canon32 (A := A) (X := X) hE
         (te_insert_same le1 _ _) hinv.store hinv.status
-      exact push_exec hrest hinv.locals hinv.brk hb
+      exact push_exec hrest hinv.locals hinv.brk hinv.lim hb
         (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ h1 h2) h3)
         (by rw [hslot, single_sqrt]; rfl) rfl
         (fun id hid hc => by

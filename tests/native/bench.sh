@@ -52,29 +52,8 @@ fi
 tools/leanrun --timeout 12h lake --log-level error build native-verified
 mkdir -p "$out/inputs" "$out/native" "$out/wasm"
 
-# The inputs: 1 MiB of words for the hashes, 4,096 words to sort, and the vectors and the matrix
-# of GPT-2's width 768 as the bits of floats in words, all from a fixed linear congruential
-# sequence.
-python3 - "$out/inputs" <<'EOF'
-import struct, sys
-d = sys.argv[1]
-state = 1
-def word():
-    global state
-    state = (state * 6364136223846793005 + 1442695040888963407) % 2**64
-    return state
-def floats(n):
-    return [struct.unpack('<I', struct.pack('<f', (word() >> 40) / 2**23 - 1.0))[0] for _ in range(n)]
-def write(name, words):
-    with open(f"{d}/{name}", "wb") as f:
-        f.write(b"".join(struct.pack('<Q', w) for w in words))
-write("words-1m.bin", [word() for _ in range(131072)])
-write("words-4k.bin", [word() for _ in range(4096)])
-write("x-768.bin", floats(768))
-write("g-768.bin", floats(768))
-write("b-768.bin", floats(768))
-write("w-768x768.bin", floats(768 * 768))
-EOF
+# The inputs (tests/native/bench_inputs.py).
+uv run tests/native/bench_inputs.py "$out/inputs"
 
 # The programs.  The native host is tools/native-host.c, compiled with -Dmain=host_main, and
 # tools/native-bench.c, which adds `bench`.

@@ -68,18 +68,18 @@ theorem tr_call {c : FCtx} {L : List Label} {σ : List VT} {n k : Nat} {s : stat
       curBase L ≤ σr.length ∧
       ((rs = [] ∧ σ' = some σr ∧ n' = n ∧
           s = .Ssequence (.Scall none (.Evar (funId k) (funType ps rs)) (callArgs σr.length ps))
-            (statusCheck c.result)) ∨
+            (callCheck c.result)) ∨
         (∃ t, rs = [t] ∧ σ' = some (t :: σr) ∧ n' = n + 1 ∧
           s = .Ssequence
             (.Ssequence (.Scall (some (callId n)) (.Evar (funId k) (funType ps rs))
                 (callArgs σr.length ps))
               (.Sset (slotId σr.length t) (.Etempvar (callId n) t.ty)))
-            (statusCheck c.result)) ∨
+            (callCheck c.result)) ∨
         (2 ≤ rs.length ∧ σ' = some (rs.reverse ++ σr) ∧ n' = n ∧
           s = .Ssequence
             (.Ssequence (.Scall none (.Evar (funId k) (funType ps rs)) (callArgs σr.length ps))
               (seqList (resLoads rs 0 σr.length)))
-            (statusCheck c.result))) := by
+            (callCheck c.result))) := by
   simp [trInstr, pops, Option.bind_eq_some_iff] at h
   obtain ⟨ps, rs, hsig, hb, htake, hm⟩ := h
   have hσ : σ = ps.reverse ++ σ.drop ps.length := by
@@ -150,6 +150,25 @@ theorem exec_statusCheck {le : temp_env} {m : mem} {code : Nat} (hE : EnvOk E)
       simpa [h0] using bool_int m 1
     · simpa [h0] using exec_retZero A X E.ge le m r
 
+/-- The code after a call that returned with `lx_status` 0 sets `lim` again. -/
+theorem exec_callCheck_ok {le : temp_env} {m : mem} (hE : EnvOk E) {wm : Wasm.Mem}
+    {caps : List Nat} (h : StatusRel E m 0) (hmr : MemRel E wm caps m) (r : Option VT) :
+    exec_stmt A X E.ge empty_env le m (callCheck r) (E0 ++ E0)
+      (le.insert limId (limVal wm.pages)) m .Out_normal := by
+  have hchk := exec_statusCheck (A := A) (X := X) (le := le) (E := E) hE h (by decide) r
+  have hchk' : exec_stmt A X E.ge empty_env le m (statusCheck r) E0 le m .Out_normal := by
+    simpa using hchk
+  exact .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hchk' (exec_limSet hE hmr le)
+
+/-- The code after a call that trapped returns. -/
+theorem exec_callCheck_trap {le : temp_env} {m : mem} {code : Nat} (hE : EnvOk E)
+    (h : StatusRel E m code) (hcode : code ≤ 3) (h0 : code ≠ 0) (r : Option VT) :
+    exec_stmt A X E.ge empty_env le m (callCheck r) E0 le m (trapOut r) := by
+  have hchk := exec_statusCheck (A := A) (X := X) (le := le) (E := E) hE h hcode r
+  have hchk' : exec_stmt A X E.ge empty_env le m (statusCheck r) E0 le m (trapOut r) := by
+    simpa [h0] using hchk
+  exact .exec_Sseq_2 _ _ _ _ _ _ _ _ _ hchk' (trapOut_ne_normal _)
+
 theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
     (hok : CallOk k → CallSim A X E mod c f k) :
     InstrSimL A X E mod c CallOk (f + 1) (.call k) := by
@@ -186,14 +205,15 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
           (.Scall optid (.Evar (funId k) (funType ps rs)) (callArgs σr.length ps)) t
           (set_opttemp optid vres le) m' .Out_normal := fun optid =>
         .exec_Scall _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ rfl hcallee hevl hfind hty hcall
-      have hchk := exec_statusCheck (A := A) (X := X) (le := le) (E := E) hE hs (by decide) c.result
+      have hlimfr : ∀ (h : Nat) (le' : temp_env) (v : val), Frame h le' (le'.insert limId v) :=
+        fun h le' v => Frame.insert_other _ _ _ (fun x t => (slotId_ne_limId x t).symm)
       rcases hcase with ⟨rfl, rfl, rfl, rfl⟩ | ⟨t0, rfl, rfl, rfl, rfl⟩ | ⟨h2, rfl, rfl, rfl⟩
       · obtain ⟨rfl, -⟩ := hrel
         rw [hdrop]
-        refine ⟨σr, rfl, hb, t ++ E0, le, m', .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none)
-          (by simpa [set_opttemp] using hchk), ?_, Frame.refl _ _⟩
-        exact { stack := hrest, locals := hinv.locals, store := hg, status := hs,
-                brk := hinv.brk }
+        have hchk := exec_callCheck_ok (A := A) (X := X) (le := le) (E := E) hE hs hg.2 c.result
+        refine ⟨σr, rfl, hb, t ++ (E0 ++ E0), le.insert limId (limVal st'.mem.pages), m',
+          .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none) hchk, ?_, hlimfr _ _ _⟩
+        exact Inv.of_lim hrest hinv.locals hg hs hinv.brk
       · obtain ⟨v, rfl, ht, rfl⟩ := hrel
         rw [hdrop]
         let le1 := le.insert (callId n) (cval v)
@@ -201,21 +221,23 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
         have hset : exec_stmt A X E.ge empty_env le1 m' (.Sset (slotId σr.length t0)
             (.Etempvar (callId n) t0.ty)) E0 le2 m' .Out_normal :=
           .exec_Sset _ _ _ _ _ _ (.eval_Etempvar _ _ _ (te_insert_same _ _ _))
-        have hchk2 := exec_statusCheck (A := A) (X := X) (le := le2) (E := E) hE hs (by decide)
-          c.result
+        have hchk2 := exec_callCheck_ok (A := A) (X := X) (le := le2) (E := E) hE hs hg.2 c.result
         have hframe : Frame σr.length le le2 := fun x hx t' => by
           rw [te_insert_ne _ (slotId_ne_of_height _ _ (by omega)),
             te_insert_ne _ (callId_ne_slotId _ _ _)]
-        refine ⟨t0 :: σr, rfl, by simp; omega, (t ++ E0) ++ E0, le2, m',
+        refine ⟨t0 :: σr, rfl, by simp; omega, (t ++ E0) ++ (E0 ++ E0),
+          le2.insert limId (limVal st'.mem.pages), m',
           .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
-            (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall (some (callId n))) hset)
-            (by simpa using hchk2), ?_, hframe.mono hb⟩
-        refine { stack := ⟨ht, te_insert_same _ _ _, hrest.frame hframe⟩, locals := ?_,
-                 store := hg, status := hs, brk := ?_ }
-        · exact (hinv.locals.insert_other _ (fun i => callId_ne_localId _ i)).insert_other _
+            (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall (some (callId n))) hset) hchk2, ?_,
+          (hframe.trans (hlimfr _ _ _)).mono hb⟩
+        have hst2 : StackRel le2 (t0 :: σr) (v :: vr) := ⟨ht, te_insert_same _ _ _, hrest.frame hframe⟩
+        have hloc2 : LocalsRel le2 c.locals (sl.params ++ sl.locals) :=
+          (hinv.locals.insert_other _ (fun i => callId_ne_localId _ i)).insert_other _
             (fun i => slotId_ne_localId _ _ i)
-        · rw [te_insert_ne _ (slotId_ne_brkId _ _), te_insert_ne _ (callId_ne_brkId _)]
+        have hbrk2 : le2[brkId]? = some (.Vint 0) := by
+          rw [te_insert_ne _ (slotId_ne_brkId _ _), te_insert_ne _ (callId_ne_brkId _)]
           exact hinv.brk
+        exact Inv.of_lim hst2 hloc2 hg hs hbrk2
       · have hmany : ∃ ws, vs = ws ++ vr ∧ ws.length = rs.length ∧ vres = .Vundef ∧
             ResultsIn E rs ws m' := by
           rw [← hdrop]
@@ -236,21 +258,23 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
           (by simp [hwlen]) hload
         have hframe : Frame σr.length le le' := fun x hx t' =>
           hother _ (fun j _ t'' => slotId_ne_of_height _ _ (by omega))
-        have hchk2 := exec_statusCheck (A := A) (X := X) (le := le') (E := E) hE hs (by decide)
-          c.result
-        refine ⟨rs.reverse ++ σr, rfl, by simp; omega, (t ++ E0) ++ E0, le', m',
+        have hchk2 := exec_callCheck_ok (A := A) (X := X) (le := le') (E := E) hE hs hg.2 c.result
+        refine ⟨rs.reverse ++ σr, rfl, by simp; omega, (t ++ E0) ++ (E0 ++ E0),
+          le'.insert limId (limVal st'.mem.pages), m',
           .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
-            (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none) hx)
-            (by simpa using hchk2), ?_, hframe.mono hb⟩
+            (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none) hx) hchk2, ?_,
+          (hframe.trans (hlimfr _ _ _)).mono hb⟩
         have hstack := stack_of_args rs hargs' (hrest.frame hframe)
         rw [List.reverse_reverse] at hstack
-        refine { stack := hstack, locals := ?_, store := hg, status := hs, brk := ?_ }
-        · refine ⟨hinv.locals.1, fun i hi => ?_⟩
+        have hloc' : LocalsRel le' c.locals (sl.params ++ sl.locals) := by
+          refine ⟨hinv.locals.1, fun i hi => ?_⟩
           obtain ⟨w, hw, htw, hlw⟩ := hinv.locals.2 i hi
           exact ⟨w, hw, htw, by
             rw [hother _ (fun j _ t'' => (slotId_ne_localId _ _ i).symm)]; exact hlw⟩
-        · rw [hother _ (fun j _ t'' => (slotId_ne_brkId _ _).symm)]
+        have hbrk' : le'[brkId]? = some (.Vint 0) := by
+          rw [hother _ (fun j _ t'' => (slotId_ne_brkId _ _).symm)]
           exact hinv.brk
+        exact Inv.of_lim hstack hloc' hg hs hbrk'
   | Trap st' msg =>
       rw [hres] at hrun'
       obtain ⟨t, m', vres, hcall, hg, hs, hc⟩ := hrun'
@@ -260,25 +284,27 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
         .exec_Scall _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ rfl hcallee hevl hfind hty hcall
       have hcode := trapCode_le msg
       rcases hcase with ⟨rfl, rfl, rfl, rfl⟩ | ⟨t0, rfl, rfl, rfl, rfl⟩ | ⟨h2, rfl, rfl, rfl⟩
-      · have hchk := exec_statusCheck (A := A) (X := X) (le := le) (E := E) hE hs hcode c.result
-        refine ⟨t ++ E0, le, m', .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none)
-          (by simpa [hc, set_opttemp] using hchk), hg, hs, hc⟩
+      · have hchk := exec_callCheck_trap (A := A) (X := X) (le := le) (E := E) hE hs hcode hc
+          c.result
+        refine ⟨t ++ E0, le, m', .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none) hchk, hg, hs,
+          hc⟩
       · let le1 := le.insert (callId n) vres
         let le2 := le1.insert (slotId σr.length t0) vres
         have hset : exec_stmt A X E.ge empty_env le1 m' (.Sset (slotId σr.length t0)
             (.Etempvar (callId n) t0.ty)) E0 le2 m' .Out_normal :=
           .exec_Sset _ _ _ _ _ _ (.eval_Etempvar _ _ _ (te_insert_same _ _ _))
-        have hchk := exec_statusCheck (A := A) (X := X) (le := le2) (E := E) hE hs hcode c.result
+        have hchk := exec_callCheck_trap (A := A) (X := X) (le := le2) (E := E) hE hs hcode hc
+          c.result
         exact ⟨(t ++ E0) ++ E0, le2, m', .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
-          (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall (some (callId n))) hset)
-          (by simpa [hc] using hchk), hg, hs, hc⟩
+          (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall (some (callId n))) hset) hchk, hg, hs,
+          hc⟩
       · obtain ⟨hnres, hint⟩ := hresok h2
         obtain ⟨le', hx⟩ := exec_resLoads_any (A := A) (X := X) hE hg.2.resW rs 0 σr.length
           le (by intro e; rw [e] at h2; simp at h2) (by omega) hint
-        have hchk := exec_statusCheck (A := A) (X := X) (le := le') (E := E) hE hs hcode c.result
+        have hchk := exec_callCheck_trap (A := A) (X := X) (le := le') (E := E) hE hs hcode hc
+          c.result
         exact ⟨(t ++ E0) ++ E0, le', m', .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
-          (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none) hx)
-          (by simpa [hc] using hchk), hg, hs, hc⟩
+          (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (hscall none) hx) hchk, hg, hs, hc⟩
   | Invalid _ => trivial
   | OutOfFuel => trivial
   | Thrown _ _ _ => rw [hres] at hrun'; exact hrun'.elim

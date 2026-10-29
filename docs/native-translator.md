@@ -104,7 +104,7 @@ The proofs target CompCert's Clight in the form `clightgen` produces: after `Sim
 Three rules keep the copy honest:
 
 - **Undefined stays undefined.** Where CompCert returns `None` or `Vundef`, so does the copy: a shift by the type's width or more, division or remainder by zero, a float-to-integer conversion out of range, a misaligned or out-of-bounds access, and a read of `Undef`. A stuck program has no outcome, so the theorem can never lean on it.
-- **NaN is a parameter.** CompCert chooses NaN results per architecture: the default NaN is negative on x86-64 and positive on AArch64, and operand payloads may propagate. The copy leaves the choice abstract, so every theorem holds on both targets. Non-NaN results use the IEEE 754 model the LeanExe proofs already relate to Lean's `Float` and `Float32`.
+- **NaN is a parameter.** CompCert chooses NaN results per architecture: the default NaN is negative on x86-64 and positive on AArch64, and operand payloads may propagate. The copy leaves the choice abstract, so every theorem holds on both targets.  A result that is a number or an infinity is the result of Talos's `Wasm.IEEE64` or `Wasm.IEEE32`, the functions that the translation simulates, which LeanExe's `F64*` and `F32*` lemmas relate to Lean's `Float` and `Float32`.  Talos computes the conversions between the two formats with Lean's native floats, so the copy defines `of_single` and `to_single` from Talos's exact rounding helpers.
 - **No rule, no outcome.** The AST type covers all of Clight, so the `clightgen` output always parses. Constructs outside the subset have no evaluation rule.
 
 An executable evaluator, `LClight.run` with fuel, is proved sound against the relation. It is what the conformance tests in section 6 run. Estimated size: 2,500–4,000 lines of Lean.
@@ -134,11 +134,11 @@ A branch first copies the target's kept values (at most one) into the target's r
 
 After every construct the translator emits a dispatch, which does nothing unless a branch left the construct by more than one level: `if (brk != 0) { brk = brk - 1; if (brk == 0) <break or continue, for the parent> else break; }`. `br_if` wraps the same code in `if (cond != 0)`. `ret` copies the results and returns. This needs no `goto`, so it stays inside the big-step semantics.
 
-**Memory.** `lx_mem` holds `LX_CAP` pages and `lx_pages` is the current page count.  `LX_CAP` is the argument `cap` of `translate`, which refuses a module whose initial pages exceed it and a cap above 65,535 pages, the most that the compiled modules declare.  `verified_compile` uses `nativeCap`, 4,096 pages or 256 MiB, for every module: a larger static `lx_mem` approaches the 2 GiB limit on static data under the small code model, and every translated case of the corpus fits, as does the slew planner's bound of 68,020,488 bytes.  A module that needs more memory needs a cap of its own, which is future work.  A `load64` with offset `off` computes its address in the `i64` slot at the height of its address, here `s4`:
+**Memory.** `lx_mem` holds `LX_CAP` pages and `lx_pages` is the current page count.  `LX_CAP` is the argument `cap` of `translate`, which refuses a module whose initial pages exceed it and a cap above 65,535 pages, the most that the compiled modules declare.  `verified_compile` uses `nativeCap`, 4,096 pages or 256 MiB, for every module: a larger static `lx_mem` approaches the 2 GiB limit on static data under the small code model, and every translated case of the corpus fits, as does the slew planner's bound of 68,020,488 bytes.  A module that needs more memory needs a cap of its own, which is future work.  Each function keeps the memory's size in bytes in the temporary `lim`, `lim = (unsigned long long) lx_pages * 65536ULL;`, which it sets at entry, after each call of a function of the module that returns without a trap, and after each `memory.grow` that succeeds, the only statements after which `lx_pages` can differ.  A `load64` with offset `off` computes its address in the `i64` slot at the height of its address, here `s4`, and compares it with `lim`:
 
 ```c
 s4_l = (unsigned long long) s4_i + 16ULL;           /* off = 16; 64-bit sum, no wrap */
-if (s4_l + 8ULL > (unsigned long long) lx_pages * 65536ULL) { lx_status = 2U; return 0ULL; }
+if (s4_l + 8ULL > lim) { lx_status = 2U; return 0ULL; }
 if ((s4_l & 7ULL) == 0ULL) s4_l = lx_mem[s4_l >> 3ULL];   /* aligned: one 8-byte load */
 else s4_l = (unsigned long long) ((unsigned char *) lx_mem)[s4_l]
           | (unsigned long long) ((unsigned char *) lx_mem)[s4_l + 1ULL] << 8ULL
@@ -179,7 +179,7 @@ One simulation theorem, `translate_correct`, carries every Talos `run` that ends
 - Stack: `s.values` has length `|σ|`, and slot `k` holds the value at depth `|σ| − 1 − k`.
 - Globals: the blocks of `lx_g0` to `lx_g3` hold the encoding of `st.globals`.
 - Memory: every byte of `lx_mem` below `LX_CAP × 65536` equals `st.mem.bytes` at that address and can be written; `lx_pages = st.mem.pages ≤ LX_CAP`; and the store's first memory cap, `st.memoryCaps[0]`, is `LX_CAP`.
-- `brk` and `lx_status` are 0. The result globals can be written. `lx_pun`, the values of the result globals, and slots above the stack are unconstrained.
+- `brk` and `lx_status` are 0, and `lim` holds `st.mem.pages × 65536`. The result globals can be written. `lx_pun`, the values of the result globals, and slots above the stack are unconstrained.
 
 **Outcomes.** Each Talos continuation corresponds to one C outcome:
 
@@ -246,7 +246,7 @@ Three links connect the Lean theorem to the binary:
 | Component | What is trusted | How it is checked |
 | --- | --- | --- |
 | Lean | The kernel, with `propext`, `Classical.choice`, and `Quot.sound`; the toolchain pinned in `lean-toolchain` | `#print axioms` of the native theorems; no `sorry`, `native_decide`, or `bv_decide` |
-| The Lean copy of Clight | `LeanExe/Native/Clight/` means what CompCert 3.18's Clight means for the programs the translator produces: `Clight.v`, `ClightBigstep.v`, `Cop.v`, `Memory.v`, `Values.v`, `Floats.v`, and the parts of `Globalenvs.v` and `Events.v` that they use, with the NaN choices of `Archi` left as parameters | Side-by-side review against the cited definitions; the differential test `tests/native/clight.sh` against `ccomp -interp` on 318 programs, under both targets' NaN parameters; and the corpus run natively |
+| The Lean copy of Clight | `LeanExe/Native/Clight/` means what CompCert 3.18's Clight means for the programs the translator produces: `Clight.v`, `ClightBigstep.v`, `Cop.v`, `Memory.v`, `Values.v`, `Floats.v`, and the parts of `Globalenvs.v` and `Events.v` that they use, with the NaN choices of `Archi` left as parameters | Side-by-side review against the cited definitions; the differential test `tests/native/clight.sh` against `ccomp -interp` on 921 programs, under both targets' NaN parameters; and the corpus run natively |
 | CompCert's proof | The theorems `bigstep_semantics_sound` (`ClightBigstep.v`), which turns a terminating big-step execution into a behaviour of Clight's small-step semantics, and `transf_c_program_correct`, or `separate_transf_c_program_correct` when the host is a separate file (both in `Compiler.v`), which carry the behaviour to assembly; `SimplExpr` and `SimplLocals` are inside the compiler theorem.  These rest on Coq's kernel; on the axioms of CompCert's `lib/Axioms.v`, functional extensionality and proof irrelevance, and the classical logic that `Behaviors.v` imports; and on its hypotheses about the target: the `Archi.v` parameters, which the Lean copy's two `Archi` instances copy, the assembly semantics, and the semantics of the run-time helper functions | CompCert's development, checked by Coq when it is built from the release archive whose SHA-256 and SHA-512 the journal records |
 | CompCert's unverified parts | The parser and elaborator that turn the C text into CompCert C; the extraction of the compiler to OCaml; the printer of assembly; and the assembler and linker it calls.  The translation is compiled with `-fno-common`, which makes the printer emit `lx_mem` and `lx_pun`, globals without initializers, as `.bss` definitions rather than `.comm` symbols, and makes the AArch64 and x86-64 back ends address them directly rather than through the global offset table.  The option changes no Clight program, and the compiler's proof holds for either addressing | The front end by the `clightgen` comparison below; the rest is shared by every CompCert user |
 | The printer | `LeanExe/Native/Print.lean` and `CText.lean` write C text whose parse is `p.translation` | Not trusted: `native-verified build` has `clightgen` read the text back, and `ClightCheck.lean` compares the result with the translation before `ccomp` runs |
@@ -276,25 +276,22 @@ M2 carries the most design risk, because it proves the `brk` control-flow encodi
 
 ## Risks, open decisions, and effort
 
-The largest risk is a gap between the Lean copy and CompCert's Clight in some case the translator reaches; the largest unknown is how long the binary32 float lemmas take.
+The largest risk is a gap between the Lean copy and CompCert's Clight in some case the translator reaches.  The `brk` encoding of M2 and the binary32 lemmas of M6, which earlier versions of this table listed as risks to the schedule, are proved.  The cost of the emitted checks is the subject of M7's benchmark against Wasmtime.
 
 | Risk | Effect | Mitigation |
 | --- | --- | --- |
 | The Lean copy differs from CompCert in a reachable case | The theorem is about a different program | Keep the subset small; cite every definition; run differential tests; review again on each CompCert upgrade |
-| `clightgen` and `ccomp` front ends diverge | The per-build check proves nothing | Build both from one tree with the same options; also diff `ccomp -dclight` against `clightgen -dclight` on every build |
-| binary32 `nearest`, `sqrt` and `trunc_sat` lemmas run long | M6 slips | Schedule them last; meanwhile keep the few programs that need them on the Wasm path, or have the compiler emit helper functions instead |
+| `clightgen` and `ccomp` front ends diverge | The per-build check proves nothing | Build both from one 3.18 tree.  `native-verified build` compares `clightgen`'s Clight for the C file with the translation and then has `ccomp` compile the same file.  No check compares the Clight of `ccomp` itself: `ccomp -dclight` prints Clight between `SimplExpr` and `SimplLocals`, and `clightgen -dclight` prints it after `SimplLocals`, so the two dumps differ in every function's locals |
 | `lx_mem` outgrows the static-array limit | Large demos cannot be built | CompCert's x86-64 code reaches globals through 32-bit PC-relative offsets, and a static array past 2 GiB risks relocation overflow, so `LX_CAP` should stay below about 32,767 pages unless tests show more works; beyond that, switch to an allocated region zeroed on growth, which adds `malloc` to the Lean copy |
 | The emitted checks cost too much time | Native code is slower than expected | Measure against Wasmtime from M2; later prove 8-byte alignment to drop the byte-wise path, and canonicalize NaN only where bits become observable |
 | Stack use under `ccomp` is unknown | The 1,000-call guard may not fit the default stack | Measure the deepest frame chain and set the thread stack size from it |
-| The `brk` encoding proof is harder than estimated | M2 slips | M2 exists to prove the encoding first, on integer programs |
 | CompCert licensing | Commercial use needs a license | Free for research; buy an AbsInt license before commercial use |
 
 **Open decisions:**
 
 - A cap per module, or a region allocated at run time, for a module that needs more than `nativeCap` pages.
 - Whether to prove 8-byte alignment of every address in the Verified compiler's invariants, which removes the byte-wise path.
-- Which IEEE 754 model backs the Lean copy's floats: Talos's `IEEE754`, which shortens layer 4, or Lean's `Float.Model`.
-- Whether the per-program LeanExe compiler is in scope from M4. It shares the runtime, and the subset check decides module by module.
+- Whether the per-program LeanExe compiler emits the translation and the native theorems, as `verified_compile` has since M4.  It shares the runtime, and the subset check decides module by module.
 
 **Effort**, in lines of Lean:
 

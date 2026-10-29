@@ -235,21 +235,23 @@ section
 variable {A : Archi} {X : ExtSem} {E : Env} {mod : Module} {c : FCtx}
 
 /-- The temporaries that code with scratch slots from height `h` up keeps: the slots below `h`,
-the locals, and `brk`. -/
+the locals, `brk`, and `lim`. -/
 def Keeps (h : Nat) (le le' : temp_env) : Prop :=
-  Frame h le le' ∧ (∀ i, le'[localId i]? = le[localId i]?) ∧ le'[brkId]? = le[brkId]?
+  Frame h le le' ∧ (∀ i, le'[localId i]? = le[localId i]?) ∧
+    (le'[brkId]? = le[brkId]? ∧ le'[limId]? = le[limId]?)
 
 theorem Keeps.refl (h : Nat) (le : temp_env) : Keeps h le le :=
-  ⟨fun _ _ _ => rfl, fun _ => rfl, rfl⟩
+  ⟨fun _ _ _ => rfl, fun _ => rfl, rfl, rfl⟩
 
 theorem Keeps.insert {h k : Nat} (le : temp_env) (hk : h ≤ k) (t : VT) (v : val) :
     Keeps h le (le.insert (slotId k t) v) :=
   ⟨Frame.insert_slot _ _ _ _ hk, fun i => te_insert_ne _ (slotId_ne_localId _ _ i),
-    te_insert_ne _ (slotId_ne_brkId _ _)⟩
+    te_insert_ne _ (slotId_ne_brkId _ _), te_insert_ne _ (slotId_ne_limId _ _)⟩
 
 theorem Keeps.trans {h : Nat} {a b d : temp_env} (x : Keeps h a b) (y : Keeps h b d) :
     Keeps h a d :=
-  ⟨x.1.trans y.1, fun i => (y.2.1 i).trans (x.2.1 i), y.2.2.trans x.2.2⟩
+  ⟨x.1.trans y.1, fun i => (y.2.1 i).trans (x.2.1 i), y.2.2.1.trans x.2.2.1,
+    y.2.2.2.trans x.2.2.2⟩
 
 /-- A lookup past an insertion of another temporary. -/
 theorem lk {le : temp_env} {a b : ident} {v w : val} (h : le[a]? = some v) (hne : b ≠ a) :
@@ -655,7 +657,8 @@ theorem exec_nearest32 (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env
           rw [← hle9]; exact te_insert_same _ _ _
         have hk78 : Keeps h le7 le8 :=
           ⟨fun h' hh t => hk8 _ (slotId_ne_of_height _ _ (by omega)),
-            fun i => hk8 _ (slotId_ne_localId _ _ i).symm, hk8 _ (slotId_ne_brkId _ _).symm⟩
+            fun i => hk8 _ (slotId_ne_localId _ _ i).symm, hk8 _ (slotId_ne_brkId _ _).symm,
+            hk8 _ (slotId_ne_limId _ _).symm⟩
         have k7 : Keeps h le2 le7 := by
           rw [← hle7, ← hle6, ← hle5, ← hle4]
           exact (((Keeps.insert le2 (by omega) .i32 _).trans (Keeps.insert _ (by omega) .i32 _)).trans
@@ -764,7 +767,8 @@ theorem exec_nearest32 (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env
   · exact .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ x1 (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ x2
       (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ x3 x4))
   · refine (k2.trans k3).trans ⟨fun h' hh t => hk4 _ (slotId_ne_of_height _ _ (by omega)),
-      fun i => hk4 _ (slotId_ne_localId _ _ i).symm, hk4 _ (slotId_ne_brkId _ _).symm⟩
+      fun i => hk4 _ (slotId_ne_localId _ _ i).symm, hk4 _ (slotId_ne_brkId _ _).symm,
+        hk4 _ (slotId_ne_limId _ _).symm⟩
 
 end
 
@@ -783,7 +787,7 @@ theorem sim_f32Nearest (hE : EnvOk E) (F : Nat) : InstrSim A X E mod c F .f32Nea
       simp only [execOne.eq_def, hvs]
       obtain ⟨le', m', hx', hslot, hk, hst, hs⟩ :=
         exec_nearest32 (A := A) (X := X) hE hx hinv.store hinv.status
-      exact push_exec_scratch hrest hinv.locals hinv.brk hb hx' hslot rfl hk.1 hk.2.1 hk.2.2 hst hs
+      exact push_exec_scratch hrest hinv.locals hinv.brk hinv.lim hb hx' hslot rfl hk.1 hk.2.1 hk.2.2 hst hs
 
 end
 
