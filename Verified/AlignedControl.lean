@@ -152,6 +152,28 @@ theorem After.coerceX {strict : Bool} (hCopy : CopyCodeX strict m host) {Γ : Li
 
 end
 
+/-- The invariant of a context with a first variable that holds `ws`, from that of the rest. -/
+theorem HoldsA.push {Γ : List Ty} {env : Env Γ} {slots : List Slot} {heap : Heap}
+    {store : Store Unit} {s : Locals} {t : Ty} {v : t.denote} {mode : Mode} {base : Nat}
+    {live' : Nat → Bool} (h : HoldsA env slots (fun i => live' (i + 1)) heap store s)
+    {ws : List Value} (hold : LocalsHold s base t.types ws) (hl : ws.length = t.width)
+    (hv : Ty.AlignedVal mode store t ws v) :
+    HoldsA (Env.cons v env) (⟨base, mode⟩ :: slots) live' heap store s := by
+  refine ⟨h.1, fun t' x hx wx hwx hlx => ?_⟩
+  cases x with
+  | here =>
+    change LocalsHold s base t.types wx at hwx
+    obtain rfl := LocalsHold.unique hwx hold (hlx.trans hl.symm)
+    exact hv
+  | there y => exact h.2 t' y hx wx hwx hlx
+
+/-- The invariant of a context without its first variable. -/
+theorem HoldsA.pop {Γ : List Ty} {env : Env Γ} {slots : List Slot} {heap : Heap}
+    {store : Store Unit} {s : Locals} {t : Ty} {v : t.denote} {sl : Slot} {live' : Nat → Bool}
+    (h : HoldsA (Env.cons v env) (sl :: slots) live' heap store s) :
+    HoldsA env slots (fun i => live' (i + 1)) heap store s :=
+  ⟨h.1, fun t' x hx => h.2 t' (.there x) hx⟩
+
 section Cases
 
 variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
@@ -488,6 +510,176 @@ theorem specX_ite (hm : Runtime m) (hRA : strict = true → ReleaseAligned m)
             hP.resolve_left (by simp [hb])
           simp [Ty.buyCost, hE, hb]) _ (fun _ h => h)
       fun _ _ h => by simpa using h
+
+/-- A `let` binding: the value's code, the store of its words from local `base` on, the release
+of the value when it is owned and the body does not use it, and the body's code. -/
+theorem specX_letE (hm : Runtime m) (hRA : strict = true → ReleaseAligned m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr S Γ' sTy}
+    {body : Expr S (sTy :: Γ') tTy} {buy : Bool}
+    (valueSpec : ∀ env slots paid live, CodeSpecX strict (pool := pool) m funs flags bounds fits host pv value env
+        slots paid live)
+    (bodySpec : ∀ env slots paid live, CodeSpecInX strict (pool := pool) buy m funs flags bounds fits host pv
+        body env slots paid live) :
+    ∀ env slots paid live, CodeSpecInX strict (pool := pool) buy m funs flags bounds fits host pv
+        (Expr.letE value body) env slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hAl hSafe hCap hBase hRoom
+      hPlace rest Q hTrap
+    hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hValueRoom : value.width ≤ max value.width body.width := Nat.le_max_left ..
+  have hBodyRoom : body.width ≤ max value.width body.width := Nat.le_max_right ..
+  simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
+  have hV : ∀ i, ((live i || body.uses (i + 1)) || value.uses i) = true →
+      (live i || (Expr.letE value body).uses i) = true := fun i h => by
+    simp only [Expr.uses]; exact live_seq _ _ _ h
+  -- The variables that die in the `let` die in the value or in the body.
+  have hSplitL : dyingPot store s env slots paid
+      (fun i => live i || (Expr.letE value body).uses i) live =
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 1) || value.uses i)
+          (fun i => live i || body.uses (i + 1)) +
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 1)) live := by
+    rw [dyingPot_split _ (fun i => live i || body.uses (i + 1)) _
+      (fun i h => hV i (by simp [h])) (fun i h => by simp [h])]
+    congr 1
+    exact dyingPot_congr (fun i => by
+      simp only [Expr.uses]
+      cases live i <;> cases value.uses i <;> cases body.uses (i + 1) <;> rfl) fun _ => rfl
+  refine valueSpec env slots paid (fun i => live i || body.uses (i + 1)) h (base + sTy.width) heap
+    store s hh hpv ((hVars.mono (by omega)).live_mono hV) hAt
+    (fun hs => (hAl hs).live_mono hV) (hSafe.mono hV) hCap (by omega) (by omega) hPlace.1 _
+        _
+    (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_left _ _ _ h)
+      fun _ hw => hw.mono (by rw [hSplitL]; simp only [Expr.allocs]; omega))
+    fun heap1 store1 s1 ws1 a1 hAl1 hTop1 => ?_
+  have hp1 : s1.params = s.params := a1.frame.params
+  have hh1 : s1.positions = h := a1.frame.positions.trans hh
+  have a1' := a1.lower (hVars.live_mono hV) (Nat.le_add_right _ _) fun i h => by simp [h]
+  refine wpX_storeCode ws1 h base sTy.types s1 s.values a1.rep.typed hh1 (by rw [hp1]; omega)
+    (by rw [Ty.types_length, hh1]; omega) fun s2 hF2 hold _ => ?_
+  have f2 : Frame base s1 { s2 with values := s.values } := hF2.trans Frame.ofValues
+  have hp2 : s2.params = s.params := hF2.params.trans hp1
+  have hh2 : ({ s2 with values := s.values } : Locals).positions = h := f2.positions.trans hh1
+  have hold' : LocalsHold { s2 with values := s.values } base sTy.types ws1 := hold
+  -- The body's context: the value as variable 0, in the locals from `base` on.
+  have hVarsB : Holds (Env.cons (value.denote funs env) env)
+      (⟨base, value.mode (slots.map Slot.mode)⟩ :: slots)
+      (fun i => i == 0 || shift 1 live i || body.uses i) (base + sTy.width) heap1 store1
+      { s2 with values := s.values } :=
+    Holds.push ((a1'.holds.agree f2).live_mono fun i h => by
+        simpa using h)
+      hold' a1.rep ((a1'.apart.agree a1'.holds f2).live_mono
+        fun i h => by simpa using h)
+  have hAlB : strict = true → HoldsA (Env.cons (value.denote funs env) env)
+      (⟨base, value.mode (slots.map Slot.mode)⟩ :: slots)
+      (fun i => i == 0 || shift 1 live i || body.uses i) heap1 store1
+      { s2 with values := s.values } := fun hs =>
+    HoldsA.push ((HoldsA.agree a1'.holds (hAl1 hs).1 f2).live_mono fun i h => by simpa using h)
+      hold' a1.rep.length (hAl1 hs).2
+  have hSafeB : pool.Safe (Env.cons (value.denote funs env) env)
+      (⟨base, value.mode (slots.map Slot.mode)⟩ :: slots)
+      (fun i => i == 0 || shift 1 live i || body.uses i) heap1 store1
+      { s2 with values := s.values } :=
+    (hSafe.mono hV).bind (hVars.live_mono hV) a1'
+      (fun i hi => by simp [hi]) (fun i hi => by simpa using hi) f2 hold'
+  have hRelease : (if value.mode (slots.map Slot.mode) = .owned ∧ body.uses 0 = false then
+      releaseCode sTy base else []) =
+      (if body.uses 0 = false then [0] else []).flatMap
+        (releaseVar (sTy :: Γ') (⟨base, value.mode (slots.map Slot.mode)⟩ :: slots)) := by
+    cases body.uses 0 <;> cases value.mode (slots.map Slot.mode) <;> simp [releaseVar]
+  rw [hRelease]
+  have hd1 : (Expr.letE value body).fits funs fits env = true → value.fits funs fits env = true :=
+    fun hd => by simp only [Expr.fits, Bool.and_eq_true] at hd; exact hd.1
+  have hd3 : (Expr.letE value body).fits funs fits env = true →
+      body.fits funs fits (.cons (value.denote funs env) env) = true := fun hd => by
+    simp only [Expr.fits, Bool.and_eq_true] at hd; exact hd.2
+  refine wpX_releaseVars hm hRA _ (by split <;> simp) hVarsB a1.step.at_ hAlB (by split <;> simp)
+    fun heap2 store2 e2 hTop2 hA2 => ?_
+  have e2' := e2.mono (live' := fun i => shift 1 live i || body.uses i) fun i h => by
+    cases i with
+    | zero =>
+      have h0 : body.uses 0 = true := by simpa [shift] using h
+      simp [h0]
+    | succ k => split <;> simpa using h
+  have hA2' : strict = true → HoldsA (Env.cons (value.denote funs env) env)
+      (⟨base, value.mode (slots.map Slot.mode)⟩ :: slots)
+      (fun i => shift 1 live i || body.uses i) heap2 store2 { s2 with values := s.values } :=
+    fun hs => (hA2 hs).live_mono fun i h => by
+      cases i with
+      | zero =>
+        have h0 : body.uses 0 = true := by simpa [shift] using h
+        simp [h0]
+      | succ k => split <;> simpa using h
+  -- The body's dying variables: the value's variable, whose potential is the value's when paid,
+  -- and the others, whose potential the value's code and the release keep.
+  have hDb : dyingPot store2 { s2 with values := s.values } (Env.cons (value.denote funs env) env)
+      (⟨base, value.mode (slots.map Slot.mode)⟩ :: slots)
+      (value.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) :: paid)
+      (fun i => shift 1 live i || body.uses i) (shift 1 live) ≤
+        (if value.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) = true then
+          sTy.pot store1 ws1 (value.denote funs env) else 0) +
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 1)) live := by
+    rw [dyingPot_evolves hVarsB e2' (fun i h => by
+      simp only [Bool.or_eq_true] at h ⊢; rcases h with h | h <;> simp [h]) _ _ fun _ h => h,
+      dyingPot_cons]
+    have hTail : dyingPot store1 { s2 with values := s.values } env slots paid
+        (fun i => shift 1 live (i + 1) || body.uses (i + 1)) (fun i => shift 1 live (i + 1)) =
+          dyingPot store s env slots paid (fun i => live i || body.uses (i + 1)) live := by
+      rw [dyingPot_congr (L0' := fun i => live i || body.uses (i + 1)) (L1' := live)
+        (fun i => by simp [shift]) (fun i => by simp [shift])]
+      exact dyingPot_step (hVars.live_mono hV) a1'.step (a1'.frame.trans f2)
+        (fun i h => by simp [h]) _ _ fun _ h => h
+    rw [hTail, hold'.read_eq (by rw [a1.rep.length, Ty.types_length])]
+    refine Nat.add_le_add_right ?_ _
+    split
+    · next hc =>
+      simp only [Bool.and_eq_true] at hc
+      simp only [hc.1.2, ↓reduceIte, le_refl]
+    · exact Nat.zero_le _
+  have hbuys : (Expr.letE value body).buysIn buy funs flags (slots.map Slot.mode) paid live env =
+      body.buysIn buy funs flags ((⟨base, value.mode (slots.map Slot.mode)⟩ :: slots).map Slot.mode)
+        (value.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) ::
+          paid) (shift 1 live) (.cons (value.denote funs env) env) :=
+    rfl
+  refine bodySpec _ _
+    (value.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) :: paid)
+    (shift 1 live) h (base + sTy.width) heap2 store2
+    { s2 with values := s.values } hh2 (hp2.trans hpv) e2'.holds e2'.step.at_ hA2'
+    (hSafeB.evolves hVarsB e2' (fun i hi => live_right _ _ _ hi))
+    (by rw [e2'.step.cap m, a1.step.cap m]; exact hCap)
+    (by show s2.params.length ≤ base + sTy.width; rw [hp2]; omega)
+    (by omega) hPlace.2 _ _
+    (hTrap.part (by flag_tac) (fun h => by
+      have hmo := value.mode_owned (slots.map Slot.mode)
+      rw [Slot.any_map] at hmo
+      simp only [List.any_cons, Expr.aborts] at h ⊢
+      exact let_trap_body _ _ _ _ (fun hv => hmo (by simpa using hv)) h) fun hd hw => by
+        have h1 := hTop1 (hd1 (fits_of_not hd)); have := congrArg UInt64.toNat hTop2
+        dsimp only at h1
+        refine hw.of_le ?_ (by rw [e2'.step.cap m, a1.step.cap m])
+        rw [hSplitL, hbuys]
+        simp only [Expr.allocs, List.map_cons]
+        omega)
+    fun heap3 store3 s3 ws3 aB hAlB3 hTop3 => ?_
+  have aB' := After.prepend hVarsB e2' aB (fun i h => live_right _ _ _ h) fun i h => by simp [h]
+  exact hNext heap3 store3 s3 ws3
+    ((After.bind (hVars.live_mono hV) a1' f2 hold' aB' (fun i h => by simpa using h)
+      (fun i h => by simp [h]) fun i h => by simp [h]).liveIn hV)
+    (fun hs => ⟨(hAlB3 hs).1.pop.live_mono fun i h => by simpa [shift] using h, (hAlB3 hs).2⟩)
+    fun hd => by
+      have h1 := hTop1 (hd1 hd); have h3 := hTop3 (hd3 hd); have := congrArg UInt64.toNat hTop2
+      dsimp only at h1
+      have hpot : (if (Expr.letE value body).paidIn buy flags (slots.map Slot.mode) paid live = true
+            then tTy.pot store3 ws3 ((Expr.letE value body).denote funs env) else 0) =
+          (if body.paidIn buy flags ((⟨base, value.mode (slots.map Slot.mode)⟩ :: slots).map Slot.mode)
+              (value.paid flags (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) ::
+                paid) (shift 1 live) = true then
+            tTy.pot store3 ws3 (body.denote funs (.cons (value.denote funs env) env)) else 0) :=
+        rfl
+      rw [hpot, hbuys, hSplitL]
+      simp only [Expr.allocs, List.map_cons] at h3 ⊢
+      omega
+
 
 end Cases
 
