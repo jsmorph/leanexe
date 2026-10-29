@@ -130,3 +130,4 @@ import Verified.AlignedWriters
 import Verified.AlignedBytes
 import Verified.AlignedArgs
 import Verified.AlignedCall
+import Verified.AlignedTreeMemory
