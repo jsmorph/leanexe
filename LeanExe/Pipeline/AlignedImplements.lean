@@ -2,13 +2,13 @@ import LeanExe.Pipeline.Implements
 import LeanExe.Pipeline.AlignedHeap
 
 /-!
-The alignment statement between the compiler and the translator to C.  `AlignedInput` is the
+The alignment predicates between the compiler and the translator to C.  `AlignedInput` is the
 premise on a call's input: the heap is aligned, every object that the call consumes starts at a
 multiple of 8 and has a capacity that is a multiple of 8, and every region that it reads starts at
-a multiple of 8.  `ImplementsAligned` states that, from every input that meets the premises of
-`ImplementsA` and `AlignedInput`, the run of the entry makes only aligned 64-bit accesses inside
-memory at every fuel from some bound on.  The native statement for the translation without the
-alignment test takes both.
+a multiple of 8.  `AlignedOutput` is the matching fact about a call's result: every block that
+the result owns starts and ends at a multiple of 8, so a host can meet the next call's
+`AlignedInput` with it.  `ImplementsAligned`, in `LeanExe/Pipeline/ImplementsAligned.lean`,
+states both of a compiled function.
 -/
 
 namespace LeanExe.Pipeline
@@ -25,14 +25,8 @@ def AlignedInput [Represent α] (heap : Heap) (store : Store Unit) (params : Lis
     (∀ p ∈ Represent.moves store params x, p.toNat % 8 = 0 ∧ capacityAt store p % 8 = 0) ∧
     ∀ r ∈ Represent.reads store params x, r.1 % 8 = 0
 
-/-- From every input that meets the premises of `ImplementsA` and `AlignedInput`, every run of
-`entry` from some fuel on makes only aligned 64-bit accesses inside memory. -/
-def ImplementsAligned [Represent α] (m : Module) (entry : Nat)
-    (Pre : α → Heap → Store Unit → Prop) : Prop :=
-  ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
-    heap.At store → Pre x heap store → Represent.borrowed heap store params x →
-    Separate store (Represent.moves store params x) (Represent.reads store params x) →
-    store.memoryCap m 0 ≤ 65535 → AlignedInput heap store params x →
-    ∃ N, ∀ fuel ≥ N, AlignedRun fuel m entry store params.reverse env
+/-- The blocks that a result owns start and end at multiples of 8. -/
+def AlignedOutput [Represent α] (store : Store Unit) (values : List Value) (y : α) : Prop :=
+  ∀ b ∈ Represent.blocks store values y, b.1 % 8 = 0 ∧ b.2 % 8 = 0
 
 end LeanExe.Pipeline
