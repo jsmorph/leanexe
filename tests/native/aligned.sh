@@ -2,7 +2,7 @@
 # The check of `native-verified build --aligned` (tests/TestSupport/Native/Verified.lean) against
 # the theorems of a module.  It must compile tests/TestSupport/Native/AlignedCrc.lean, the CRC
 # programs compiled with verified_compile.alignedNative, and it must refuse
-# Library.Hashing.Crc.Compiled, the same programs compiled without the option, and
+# Library.Arrays.Word.Compiled, a program compiled without the option, and
 # Verified.Examples.Literals, a program with byte literals.  A refusal must exit with status 4,
 # name the missing theorem or the literals, and write no file.  The script prints one line per
 # module and fails unless each gives the expected result.  CCOMP and CLIGHTGEN are as for
@@ -17,7 +17,7 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 out=$root/build/native/aligned
 cd "$root"
 tools/leanrun --timeout 60m lake build native-verified TestSupport.Native.AlignedCrc \
-  Library.Hashing.Crc.Compiled Verified.Examples.Literals
+  Library.Arrays.Word.Compiled Verified.Examples.Literals
 rm -rf "$out"
 mkdir -p "$out"
 status=0
@@ -45,8 +45,8 @@ refused() {
     status=1
   fi
 }
-refused Library.Hashing.Crc.Compiled Library.Hashing.Crc.compiled.module crc \
-  "Library.Hashing.Crc.compiled.translationAligned_eq is missing"
+refused Library.Arrays.Word.Compiled Library.Arrays.Word.compiled.module libwordarray \
+  "Library.Arrays.Word.compiled.translationAligned_eq is missing"
 refused Verified.Examples.Literals Verified.Examples.Literals.compiled.module literals \
   "the program has byte literals"
 exit "$status"

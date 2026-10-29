@@ -5,8 +5,8 @@ import Verified.Reflect.Command
 The CRC programs of `Library/Hashing/Crc/Compiled.lean` compiled with
 `verified_compile.alignedNative`, so that `compiled.f.nativeAligned` covers each function and
 wrapper of the translation without the test of alignment.  `tests/native/aligned.sh` builds this
-module with `native-verified build --aligned`, which refuses `Library.Hashing.Crc.Compiled`
-itself.
+module with `native-verified build --aligned` as a module whose theorems cover that translation,
+independent of the options of the corpus modules.
 -/
 
 namespace TestSupport.Native.AlignedCrc
