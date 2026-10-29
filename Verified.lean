@@ -131,3 +131,6 @@ import Verified.AlignedBytes
 import Verified.AlignedArgs
 import Verified.AlignedCall
 import Verified.AlignedTreeMemory
+import Verified.AlignedTreeNode
+import Verified.AlignedTreeAssemble
+import Verified.AlignedTreeBuild
