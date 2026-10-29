@@ -1,5 +1,5 @@
-import Verified.VarCorrect
 import Verified.TreeAllocate
+import Verified.ExprSpec
 
 namespace Verified
 

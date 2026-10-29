@@ -26,8 +26,8 @@ if ! "$foundations_only"; then
 fi
 
 tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
-  Verified.Bytes.CopyOwned Verified.Bytes.Release Verified.Bytes.Get \
-  Verified.Bytes.Literal Verified.Bytes.StaticEnv Verified.BytesBuildCorrect \
+  Verified.AlignedBytes Verified.Bytes.Release Verified.Bytes.Get \
+  Verified.Bytes.StaticEnv \
   Verified.Wasi.Source Verified.Wasi.HostSpec Verified.Wasi.Scratch \
   Verified.Wasi.WrapperCode Verified.Wasi.Write Verified.Wasi.ReadCall \
   Verified.Wasi.ReadFrame Verified.Wasi.Runtime Verified.Wasi.RuntimeFrame \

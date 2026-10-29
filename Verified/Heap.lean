@@ -2,14 +2,14 @@ import Verified.State
 import Verified.Bound
 import Verified.RuntimeFacts
 import Verified.TreeRelease
-import Verified.TreeCopy
 import Verified.ArrayCopy
-import Verified.TreeHeaderCopyCode
-import Verified.Bytes.CopyOwned
 import Verified.Bytes.Release
 import LeanExe.Pipeline.RuntimeSpec
 import LeanExe.ProofKit.ReleaseTree
 import LeanExe.ProofKit.ArrayPrefix
+import Verified.TreeSlotCode
+import Verified.TreeHeaderCopy
+import Verified.Bytes.Copy
 
 /-! The code that allocates, copies, and releases arrays, and its specifications: a release of an
 owned array consumes its block, and a copy of a value puts each of its arrays in a new block. -/

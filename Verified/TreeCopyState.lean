@@ -1,6 +1,6 @@
-import Verified.TreeMemory
 import Verified.TreeNodeLayout
 import LeanExe.Pipeline.RecordSlots
+import Verified.LocalFrame
 
 namespace Verified
 

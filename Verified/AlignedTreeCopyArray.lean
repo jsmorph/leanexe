@@ -1,5 +1,5 @@
 import Verified.AlignedTreeCopySteps
-import Verified.TreeCopyArrayCode
+import Verified.TreeSlotCode
 
 /-!
 The copy of an array slot under the flag: the ports of `CopyInv.arrayStep` and

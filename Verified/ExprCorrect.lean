@@ -1,15 +1,11 @@
 import Verified.ExprSpec
 import Verified.ArgsCorrect
-import Verified.VarCorrect
-import Verified.Float32Correct
-import Verified.TreeNodeCorrect
-import Verified.TreeCaseCorrect
-import Verified.ListFoldCorrect
 import Verified.Bytes.Get
-import Verified.BytesBuildCorrect
-import Verified.BytesLiteralCorrect
 import Verified.LiteralCoverage
 import Verified.LiteralCoverageFacts
+import Verified.TreeNodeCode
+import Verified.TreeMatchBody
+import Verified.ListFoldCode
 
 /-! Correctness of expression code and ordinary function templates. -/
 

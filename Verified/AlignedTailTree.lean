@@ -1,6 +1,6 @@
 import Verified.AlignedTail
 import Verified.AlignedTreeMatch
-import Verified.TailTreeCase
+import Verified.TailCorrect
 
 /-!
 The match on a tree in a tail body under the flag.  `RunsTailBranchX` is `RunsTailBranch` with

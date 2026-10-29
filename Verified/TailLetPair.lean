@@ -1,4 +1,4 @@
-import Verified.TailLet
+import Verified.TailBind
 
 namespace Verified
 

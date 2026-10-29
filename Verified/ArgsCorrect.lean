@@ -1,5 +1,4 @@
 import Verified.ExprSpec
-import Verified.VarCorrect
 
 namespace Verified
 

@@ -1,5 +1,5 @@
 import Verified.AlignedTail
-import Verified.TailWhile
+import Verified.TailHeap
 
 /-!
 The tail loop under the flag.  `tail_step_specX` runs one pass: it releases the owned parameters

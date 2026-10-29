@@ -1,5 +1,5 @@
 import Verified.AlignedTreeCopy
-import Verified.TreeHeaderCopyCode
+import Verified.TreeHeaderCopy
 
 /-!
 The copy of a detached tree header under the flag: the port of `wp_copyTreeHeader`.  The copy

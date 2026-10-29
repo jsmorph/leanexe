@@ -1,6 +1,6 @@
 import Verified.TreeMatchPotential
-import Verified.VarCorrect
 import Verified.OwnedExpr
+import Verified.ExprSpec
 
 namespace Verified
 

@@ -1,6 +1,6 @@
 import Verified.AlignedTail
-import Verified.TailBranch
 import Verified.TailLetPair
+import Verified.TailCorrect
 
 /-!
 The tail body's constructs that pass the next state, choose, and bind, under the flag.  Each is its

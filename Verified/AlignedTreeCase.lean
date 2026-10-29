@@ -1,5 +1,5 @@
 import Verified.AlignedTreeMatch
-import Verified.TreeCaseCorrect
+import Verified.TreeMatchBody
 
 /-!
 The match on a tree under the flag.  The empty case releases and evaluates its branch as

@@ -1,7 +1,7 @@
 import Verified.AlignedTailTree
 import Verified.AlignedTailBody
 import Verified.AlignedTailLoop
-import Verified.ListFoldCorrect
+import Verified.ListFoldCode
 
 /-!
 The fold over a list under the flag.  `ListFold.step_specX` assembles the flagged tail constructs

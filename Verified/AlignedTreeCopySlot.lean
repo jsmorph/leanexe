@@ -1,6 +1,6 @@
 import Verified.AlignedTreeCopyBuffer
-import Verified.TreeCopySlotCode
-import Verified.TreeCopyFinishCode
+import Verified.TreeSlotCode
+import Verified.LocalFrame
 
 /-!
 The copy of one slot and the end of a record's copy under the flag: the ports of

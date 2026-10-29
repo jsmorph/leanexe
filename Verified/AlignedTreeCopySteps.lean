@@ -1,8 +1,7 @@
 import Verified.AlignedTreeCopyNew
-import Verified.TreeRestoreCode
-import Verified.TreeCopyDescendCode
-import Verified.TreeCopyCompleteCode
-import Verified.TreeCopyAscendCode
+import Verified.LocalFrame
+import Verified.TreeAllocate
+import Verified.TreeSlotCode
 
 /-!
 The moves of the tree copy between records under the flag: the ports of `wp_restoreRecord`,

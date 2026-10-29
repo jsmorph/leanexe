@@ -4,15 +4,11 @@ import Verified.Bytes.Get
 import Verified.Bytes.CopyByte
 import Verified.Bytes.Overlay
 import Verified.Bytes.Copy
-import Verified.Bytes.CopyOwned
 import Verified.Bytes.Release
 import Verified.Bytes.LiteralFrame
-import Verified.Bytes.Literal
 import Verified.Bytes.StaticEnv
 import Verified.Bytes.StaticPrefix
 import Verified.Bytes.StaticInput
-import Verified.BytesBuildCorrect
-import Verified.BytesLiteralCorrect
 import Verified.ProgramStatic
 import Verified.ProgramLiterals
 import Verified.Instantiate
@@ -24,6 +20,8 @@ import Verified.Examples.Literals
 import Verified.AlignedExprCorrect
 import Verified.AlignedCorollaries
 import Verified.AlignedTailEntry
+import Verified.Bytes.LiteralCode
+import Verified.ExprSpec
 
 open Lean Elab Command in
 elab "check_wasi_axioms" : command => do

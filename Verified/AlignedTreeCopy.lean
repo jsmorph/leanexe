@@ -1,6 +1,6 @@
 import Verified.AlignedTreeCopySlot
-import Verified.TreeCopy
 import LeanExe.ProofKit.AlignedReleaseTree
+import Verified.TreeSlotCode
 
 /-!
 The copy of a tree under the flag: the ports of `CopyRecord.Holds.widthPushes`,

@@ -1,5 +1,5 @@
-import Verified.TailEntry
 import Verified.AlignedTailEntry
+import Verified.TailHeap
 
 namespace Verified
 

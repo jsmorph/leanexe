@@ -2,8 +2,8 @@ import Verified.AlignedTreeBuild
 import Verified.AlignedAccess
 import Verified.TreeMatchFrame
 import Verified.TreeDispatch
-import Verified.ReleasedExpr
 import Verified.AlignedCopy
+import Verified.OwnedExpr
 
 /-!
 The opening of a tree record under the flag.  The tag test and the loads of the fields read

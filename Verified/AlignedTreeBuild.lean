@@ -1,6 +1,6 @@
 import Verified.AlignedTreeAssemble
-import Verified.TreeNodeCorrect
 import Verified.AlignedCopy
+import Verified.TreeNodeCode
 
 /-!
 The construction of a tree under the flag.  The parent record comes from `alloc`, whose block

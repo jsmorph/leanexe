@@ -1,6 +1,6 @@
 import Verified.AlignedListFold
 import Verified.AlignedFunction
-import Verified.TailEntry
+import Verified.TailHeap
 
 /-!
 The code and the run of a tail function under the flag.  `TailBody.code_specX` proves

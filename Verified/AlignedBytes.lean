@@ -1,8 +1,7 @@
 import Verified.AlignedWriters
-import Verified.Bytes.CopyOwned
-import Verified.Bytes.Literal
-import Verified.BytesLiteralCorrect
-import Verified.BytesBuildCorrect
+import Verified.Bytes.Copy
+import Verified.Bytes.LiteralCode
+import Verified.ExprSpec
 
 /-!
 Buffers under the flag.  A buffer's bytes are read and written one at a time, so only the

@@ -1,7 +1,6 @@
 import Verified.AlignedTreeCopyInv
-import Verified.TreeCopyAdvanceCode
-import Verified.TreeReadCode
 import LeanExe.ProofKit.AlignedTransfer
+import Verified.TreeSlotCode
 
 /-!
 The reads and the word steps of the tree copy under the flag: the ports of

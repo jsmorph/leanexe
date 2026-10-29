@@ -1,5 +1,5 @@
-import Verified.TreeMatchOpen
 import Verified.TreeContextAppend
+import Verified.TreeMatchLocals
 
 namespace Verified
 

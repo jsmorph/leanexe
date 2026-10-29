@@ -1,6 +1,6 @@
 import Verified.AlignedTreeCopyCode
 import Verified.TreeTestCode
-import Verified.TreeNewCode
+import Verified.TreeAllocate
 
 /-!
 The slot tests and the start of a record's copy under the flag: the ports of the mask lemmas and

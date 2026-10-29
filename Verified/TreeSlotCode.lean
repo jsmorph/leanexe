@@ -1,5 +1,5 @@
-import Verified.TreeMemory
 import Verified.TreeAdvance
+import Verified.LocalFrame
 
 namespace Verified
 
