@@ -7,6 +7,7 @@ import Verified.Reflect.TailOptions
 import Verified.Reflect.RecursiveTypes
 import Verified.Reflect.ScalarProof
 import Verified.ProgramStatic
+import Verified.AlignedProgram
 
 namespace Verified.Reflect
 
@@ -33,14 +34,16 @@ def leanFun (r : Reflected) : MetaM Lean.Expr :=
     mkLambdaFVars #[x] (mkAppN (mkConst r.name) projs.toArray)
 
 /-- The proof of the theorem `claim` that the module computes the definition of `r`: the
-compiler's theorem `h` for its source function, carried to Lean's instances by
-`ImplementsA.transferAgree`.  The constant `funs` of the functions' meanings has the value
-`funsVal`, a chain of `Funs.cons`.  The definition's equation `r.meaningEq` enters through
-`Funs.get_there` and `Funs.get_here`, which take `funs.get` to the meaning of the definition's
-function, and through plain lambdas for the flattenings, so that the kernel checks each step by
-matching terms and by beta reduction and never unfolds the definition or its loops. -/
+compiler's theorem `h` for its source function, carried to Lean's instances by `transfer`, which
+is `ImplementsA.transferAgree`, or `ImplementsAligned.transferAgree` for `p.f.aligned`.  The
+constant `funs` of the functions' meanings has the value `funsVal`, a chain of `Funs.cons`.  The
+definition's equation `r.meaningEq` enters through `Funs.get_there` and `Funs.get_here`, which take
+`funs.get` to the meaning of the definition's function, and through plain lambdas for the
+flattenings, so that the kernel checks each step by matching terms and by beta reduction and never
+unfolds the definition or its loops. -/
 def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
-    (argsAgree resultAgree : Name) : MetaM Lean.Expr := do
+    (argsAgree resultAgree : Name) (transfer : Name := ``ImplementsA.transferAgree) :
+    MetaM Lean.Expr := do
   let hTy ← inferType h
   let #[α, γ, ia, ic, aborts, m, entry, f, pre, post] := hTy.getAppArgs
     | throwError "verified_compile: the compiler's theorem {hTy}"
@@ -61,13 +64,15 @@ def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     let projs ← argProjsE y modes r.params.length
     let eq ← mkExpectedTypeHint (mkAppN (mkConst r.meaningEq) projs.toArray) (← mkEq b c)
     mkLambdaFVars #[y] (← transHint (← transHint step chain) eq)
-  return mkAppN (mkConst ``ImplementsA.transferAgree)
+  return mkAppN (mkConst transfer)
     #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, pre, post, h,
       r.flatArgs, r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
 
-/-- `implementsProof` for a wrapper, whose theorem `h` is `ImplementsTables`. -/
+/-- `implementsProof` for a wrapper, whose theorem `h` is `ImplementsTables`, or, with
+`ImplementsTablesAligned.transferAgree` for `transfer`, `ImplementsTablesAligned`. -/
 def wrapperProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
-    (argsAgree resultAgree : Name) : MetaM Lean.Expr := do
+    (argsAgree resultAgree : Name) (transfer : Name := ``ImplementsTables.transferAgree) :
+    MetaM Lean.Expr := do
   let hTy ← inferType h
   let #[α, γ, ia, ic, aborts, m, entry, f, tables, pre, post] := hTy.getAppArgs
     | throwError "verified_compile: the wrapper's theorem {hTy}"
@@ -89,7 +94,7 @@ def wrapperProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     let projs ← argProjsE y modes r.params.length
     let eq ← mkExpectedTypeHint (mkAppN (mkConst r.meaningEq) projs.toArray) (← mkEq b c)
     mkLambdaFVars #[y] (← transHint (← transHint step chain) eq)
-  return mkAppN (mkConst ``ImplementsTables.transferAgree)
+  return mkAppN (mkConst transfer)
     #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, tables, pre, post,
       h, r.flatArgs, r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
 
@@ -467,17 +472,20 @@ order, each of which may call those before it and, when recursive, itself; the m
 `p.module`; the tables `p.tables` and the wrappers `p.wrappers`; for each definition `f`, the
 theorem `p.f.implements` that the module computes `f`, at the function's index, at its exported
 entry when its code takes the call depth, or, for a wrapper, at the wrapper's entry from a store
-that holds the tables; `p.initial`, that the store in which the module starts meets the
-allocator invariant and holds the tables; `p.inSubset`, that the module is in the subset that
-the translator to C accepts, when it is, from the theorems `p.native_part_k`, one per function,
-which also give the callees of each function's C function as `p.translation_infos` lists them;
-when the module translates, its translation
-`p.translation` to C, with `lx_mem` of `nativeCap` pages, the list `p.translation_funcs` of the
-functions that the translation contains, the equation `p.translation_eq`, and, for each
-definition `f` whose function the translation contains, the theorem `p.f.native` that the C
-function computes `f` as `p.f.implements` states, for an `ImplementsA`, an `ImplementsTables`, or
-an `ImplementsStatic` theorem; and `p.bytes`, the module's bytes with all the
-functions' theorems. -/
+that holds the tables; for each definition `f` of a program without byte literals, the theorem
+`p.f.aligned`, with the arguments of `p.f.implements`, that from an input whose heap, consumed
+objects, and read regions are aligned, the run of the entry at every fuel from some bound on makes
+only aligned 64-bit accesses inside memory, and the final heap and the result's blocks are
+aligned; `p.initial`, that the store in which the module starts meets the allocator invariant and
+holds the tables; `p.inSubset`, that the module is in the subset that the translator to C accepts,
+when it is, from the theorems `p.native_part_k`, one per function, which also give the callees of
+each function's C function as `p.translation_infos` lists them; when the module translates, its
+translation `p.translation` to C, with `lx_mem` of `nativeCap` pages, the list
+`p.translation_funcs` of the functions that the translation contains, the equation
+`p.translation_eq`, and, for each definition `f` whose function the translation contains, the
+theorem `p.f.native` that the C function computes `f` as `p.f.implements` states, for an
+`ImplementsA`, an `ImplementsTables`, or an `ImplementsStatic` theorem; and `p.bytes`, the
+module's bytes with all the functions' theorems. -/
 @[command_elab verifiedCompile]
 def elabVerifiedCompile : CommandElab
   | `(verified_compile $target := [$sources,*]) => do
@@ -608,6 +616,28 @@ def elabVerifiedCompile : CommandElab
           |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit index)
           |>.set! 8 (← Core.betaReduce args[8]!) |>.set! 9 (← Core.betaReduce args[9]!))
         addTheorem implName claim proof
+      -- The alignment theorem with the arguments of `p.f.implements`: from an aligned input, the
+      -- run at every fuel from some bound on makes only aligned 64-bit accesses inside memory,
+      -- and the final heap and the result's blocks are aligned.
+      let alignedStx ← if r.depth then
+          `(Verified.Prog.entry_alignedWith $progId $funsId $meaningId $tablesId $wrappersId
+            $fvar rfl (j := $(Lean.quote (index - 2 - n))) (by decide +kernel) $noLiterals)
+        else
+          `(Verified.Prog.implementsAlignedWith $progId $funsId $meaningId $tablesId
+            $wrappersId $noLiterals $fvar rfl)
+      liftTermElabM do
+        let h ← Term.elabTerm (← `(Verified.ImplementsAligned.lean $alignedStx)) none
+        Term.synthesizeSyntheticMVarsNoPostponing
+        let h ← instantiateMVars h
+        let proof ← implementsProof (base ++ `funs) funsVal h (← leanFun r) r
+          (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree)
+          ``ImplementsAligned.transferAgree
+        let ty ← inferType proof
+        let args := ty.getAppArgs
+        let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr r.aborts)
+          |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit index)
+          |>.set! 8 (← Core.betaReduce args[8]!) |>.set! 9 (← Core.betaReduce args[9]!))
+        addTheorem (base ++ simple ++ `aligned) claim proof
       let uniform? ← liftTermElabM <| addScalarProof base r index fun i =>
         (scalarCallees.find? (fun pair => pair.1 == i)).map Prod.snd
       if let some uniform := uniform? then scalarCallees := (index, uniform) :: scalarCallees
@@ -738,6 +768,23 @@ def elabVerifiedCompile : CommandElab
           |>.set! 8 (← tableEntries (base ++ `tables) tableNames idxs)
           |>.set! 9 (← Core.betaReduce args[9]!) |>.set! 10 (← Core.betaReduce args[10]!))
         addTheorem implName claim proof
+      -- The alignment theorem with the arguments of `p.f.implements`.
+      liftTermElabM do
+        let h ← Term.elabTerm (← `(Verified.ImplementsTablesAligned.lean
+          (Verified.Prog.wrapper_alignedWith $progId $funsId $meaningId $tablesId $wrappersId
+            (j := $(Lean.quote j)) rfl (hNoLiterals := $noLiterals)))) none
+        Term.synthesizeSyntheticMVarsNoPostponing
+        let h ← instantiateMVars h
+        let proof ← wrapperProof (base ++ `funs) funsVal h (← leanFun r) r
+          (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree)
+          ``ImplementsTablesAligned.transferAgree
+        let ty ← inferType proof
+        let args := ty.getAppArgs
+        let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr (r.aborts || r.depth))
+          |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit (2 + n + entries + j))
+          |>.set! 8 (← tableEntries (base ++ `tables) tableNames idxs)
+          |>.set! 9 (← Core.betaReduce args[9]!) |>.set! 10 (← Core.betaReduce args[10]!))
+        addTheorem (base ++ simple ++ `aligned) claim proof
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)
       natives := natives.push (simple, 2 + n + entries + j, .tables)
