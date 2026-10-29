@@ -117,3 +117,4 @@ import Verified.Examples.WasiStdio
 import Verified.AlignedAccess
 import Verified.AlignedArrayCopy
 import Verified.AlignedSpec
+import Verified.AlignedRelease
