@@ -144,3 +144,4 @@ import Verified.AlignedTailBody
 import Verified.AlignedTailLoop
 import Verified.AlignedTailTree
 import Verified.AlignedListFold
+import Verified.AlignedTailEntry
