@@ -38215,4 +38215,27 @@ The native median of `sha256` rose by 625,500 ns, 4.9 percent, from the build wi
 The code moved.  `alloc` and `release`, which precede the hot functions in the text, shrank by 83 and 124 instructions, and CompCert aligns a function to 4 bytes only, so the hot code's offsets modulo 64 changed: from 24 to 44 for `roundStep` and `advance`, and from 12 to 44 for the head of the round loop.  Fewer instructions on the paths that run and a slower median point to the placement of the code, not to its content, but static counts cannot settle that.  A measurement of cycles and retired instructions per call for both programs, or a run with the hot functions placed as before, would, and it waits for an idle window.
 
 - [x] Static counts of `sha256`'s loops before and after the bound in a temporary.
-- [ ] Cycles and instructions per call of both `sha256` programs.  Open: `perf stat -e cycles,instructions` is installed where the benchmark runs, and the hardware counters are closed to an unprivileged user there.
+- [x] Cycles and instructions per call of both `sha256` programs, as the entry on the alignment experiment records.
+
+## 2026-10-29: The Wasm-to-C translator: what the alignment test costs
+
+The open decision on proving 8-byte alignment depends on what the test costs, so an experiment measured it before any proof.  A build on a branch that never goes to `main` replaces each `if ((t & 7ULL) == 0ULL) <word access> else <byte accesses>` of `load64` and `store64` by a word access at the byte address, `*(unsigned long long *) ((unsigned char *) lx_mem + t)`.  `native-verified` makes the change on the translation before printing it when the environment variable `LX_NOALIGN` is set, so `clightgen`'s comparison still checks the C text, and no proof covers the result.  On the aligned path an access then runs `adrp`, `add`, and `ldr` in place of `ubfiz`, a taken `cbz`, `adrp`, `add`, a shift, and `ldr`.
+
+The benchmark of the experiment ran on AArch64 from 03:44:54 to 03:47:47 UTC on 2026-10-29, with no pair discarded, against the build with the bound in a temporary.  Wasmtime's medians moved by at most 0.10 percent between the two runs, and the interquartile ranges stay below 1 percent of every median.  `sudo perf stat -e cycles,instructions` then ran each program's `bench` command twice on the benchmark's core, for 0.02 s and 2.2 s after the same idle check, and the counts per call are the differences of the two runs divided by the difference in calls.
+
+| Workload | Native median now (ns) | Without the test (ns) | Change | Instructions per call, now → without | Cycles per call, now → without |
+| --- | --- | --- | --- | --- | --- |
+| `crc32` | 3,838,740 | 3,239,360 | −15.6 % | 79.35 M → 62.64 M | 14.34 M → 12.27 M |
+| `euler` | 178,117,000 | 176,352,000 | −1.0 % | 2,617.4 M → 2,578.6 M | 620.3 M → 613.8 M |
+| `layernorm32` | 3,746,620 | 2,896,620 | −22.7 % | 78.14 M → 63.96 M | 13.09 M → 10.14 M |
+| `linear32` | 2,255,700 | 1,698,170 | −24.7 % | 57.28 M → 47.39 M | 12.85 M → 10.39 M |
+| `sha256` | 13,292,100 | 12,838,600 | −3.4 % | 355.62 M → 351.29 M | 47.23 M → 45.74 M |
+| `sha3` | 9,854,310 | 9,825,490 | −0.3 % | 219.60 M → 218.47 M | 35.33 M → 35.22 M |
+| `sort` | 21,875,500 | 17,564,100 | −19.7 % | 498.45 M → 389.63 M | 70.84 M → 61.11 M |
+
+Four workloads gain more than 5 percent, the loops over memory of `crc32`, `sort`, `linear32`, and `layerNorm32`, while `euler` spends its time on floating-point work and `sha3`'s permutation makes no access in a loop.  By the coordinator's rule, the numbers go to the user with a recommendation, and the decision on the proof stays open until the user decides.
+
+The same counts settle the slower `sha256` of the bound in a temporary.  The build with `-fno-common` ran 360.85 M instructions in 45.17 M cycles per call, 7.99 per cycle, and the build with the bound in a temporary 355.62 M instructions in 47.23 M cycles, 7.53 per cycle.  It executes 1.4 percent fewer instructions and takes 4.6 percent more cycles, so the loss comes from fewer instructions per cycle and not from more work, as the entry on the slower `sha256` expected from the moved hot functions.  Which property of the placement costs the cycles is not measured.
+
+- [x] The experiment without the alignment test, with its static counts, benchmark, and counter measurements.
+- [ ] The user's decision on the alignment proof.
