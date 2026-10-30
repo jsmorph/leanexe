@@ -26,7 +26,7 @@ What stays trusted afterwards:
 
 What stops being trusted: Talos's fidelity to the Wasm specification, the Wasm encoder and decoder, and Wasmtime. Talos becomes an intermediate language whose meaning only the proofs consume.
 
-Not in scope: Wasm features outside the subset, WGSL kernels, verified I/O, and performance work beyond what CompCert does. The per-program LeanExe compiler is covered automatically for any module that passes the subset check.
+Not in scope: Wasm features outside the subset, WGSL kernels, verified I/O, and performance work beyond what CompCert does.  The per-program LeanExe compiler shares the runtime, and whether it emits the translation and the native theorems for a module that passes the subset check is an open decision of [the last section](#risks-open-decisions-and-effort).
 
 ## Input: the Wasm subset and the semantics to simulate
 
@@ -262,6 +262,12 @@ Three links connect the Lean theorem to the binary:
 | The run-time library | CompCert's `libcompcert.a`, hand-written assembly that implements the helper functions whose semantics CompCert assumes.  On x86-64 the translations of the corpus call `__compcert_i64_utod`, `__compcert_i64_utof`, and `__compcert_i64_dtou` for conversions between unsigned 64-bit integers and floats.  The translated code calls no other library function; `alloc` and `release` are functions of the module, so their translations are proved | The conversions are exercised at their boundaries by `fops`, `f32ops`, and the corpus |
 | Call depth and the stack | CompCert's theorem assumes that the stack does not overflow.  A function that takes the call depth traps at `unreachable` when the depth reaches `depthLimit`, 1,000, so a call nests at most 1,000 frames of the module's functions, and the thread's stack must hold the deepest of them as `ccomp` lays them out | M2's test of the recursive GCD called it at depths 997 to 1,000 and saw the trap; the stack that 1,000 frames need is not yet measured |
 | The toolchain and platform | `ccomp` and `clightgen` 3.18, built with Coq 8.18.0, OCaml 4.14.1, and Menhir 20231231 from Ubuntu's packages, configured for `aarch64-linux` and for `x86_64-linux`; the GNU assembler and linker of the target, the cross toolchain `gcc-x86-64-linux-gnu` 13.3.0 for x86-64; glibc and its start-up code; the operating system; and the CPU.  The x86-64 tests run under `qemu-x86_64`, which only the tests need | Shared by every program that the toolchain builds |
+
+## Benchmark method
+
+`tests/native/bench.sh` times seven workloads of the corpus in two forms, native code from `ccomp` and WebAssembly under Wasmtime, in pairs on one pinned core of an idle machine, and reports the median and interquartile range of the time per call.  The placement of the code adds an error that these statistics do not show.  CompCert aligns an AArch64 function to 4 bytes by default, so the offsets of a function's loops depend on the size of every function before it in the object, and a change of a few instructions anywhere earlier moves them.  On AArch64, moving the code of `sort` by 4 to 60 bytes changes its cycles per call between about 66 M and 99 M with the alignment test, more than most changes under study.
+
+A comparison of two builds therefore averages over placements or fixes placement by an option.  Averaging links each build's object after a padding object of K bytes, for K = 4, 8, ..., 60, which moves the program's code by K bytes, takes the unpadded program as K = 0, and compares the means over the sixteen binaries.  Fixing compiles both builds with `-falign-functions 64`, which starts every function at a multiple of 64 bytes and removes the variation across the sweep, although the placement it fixes is one of those the sweep covers and can be a slow one.  The option acts in the assembly printer (`backend/PrintAsm.ml`), which the trusted base already contains, and it changes no Clight or Asm program.  CompCert 3.18's `-falign-branch-targets` and `-falign-cond-branches` act only in its PowerPC printer and change nothing on AArch64.  `bench.sh --placements` averages in this way, runs each of the sixteen binaries `BENCH_ROUNDS` times, 2 by default, and reports the mean, the fastest placement, and the slowest placement beside the median of the pairs, and the script has no option that fixes placement.
 
 ## Milestones and exit criteria
 
