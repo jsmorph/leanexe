@@ -38896,7 +38896,41 @@ The ports of the examples and library programs stopped at four definitions that 
 - [ ] `leanchecker` over every module.
 - [ ] `STATUS.md` from the full check.
 - [ ] The `NativeA` cap and region conclusions.
-- [ ] Determinism of the Lean copy of Clight.
+- [x] Determinism of the Lean copy of Clight.
 - [ ] A Talos conformance record.
 - [ ] A released toolchain.
 - [ ] The retirement prerequisites: the English-request skill and the quick start on the verified compiler, and the four deferred LeanExe items.
+
+## 2026-10-30: Determinism of the Lean copy of Clight
+
+`LeanExe/Native/Clight/Determinism.lean` proves that the big-step semantics of the Lean copy of Clight is deterministic relative to the event trace, and no definition of the copy changed.  `eval_expr_determ`, `eval_lvalue_determ`, and `eval_exprlist_determ` state that expression evaluation is a function of the global environment, the local and temporary environments, and the memory.  `exec_stmt_determ` and `eval_funcall_determ` state that two executions of a statement or a call from one state with one trace end with the same environments, memory, and outcome or result, and `bigstep_program_terminates_determ` states that a program terminates with at most one result for a trace.  `NativeA.unique` in `LeanExe/Native/Proof/Unique.lean` derives from `NativeA` that every execution of the C call whose trace agrees with the trace of the asserted execution has that trace and meets the conclusions of `NativeA`.
+
+The copy states no hypothesis on the semantics `X` of external functions, which may relate one call to two results with one trace, so every theorem assumes `X.Determ`.  `ExtSem.Determ` says that two calls of one external function on the same symbols, arguments, and memory, whose traces agree up to the length of the shorter, have the same trace, result, and memory.  CompCert's `ec_determ` (`common/Events.v`, lines 701 to 704) implies it, because `match_traces` relates only traces of equal length.  Determinism for equal traces alone does not suffice.  If an external function may return 0 with the trace `[e]` or 1 with `[e, e']`, a call to it followed by a statement that emits `e'` when the result is 0 has two executions with the trace `[e, e']` and different results.  The built-in functions, volatile loads, and volatile stores of the copy have the property without a hypothesis (`external_call_determ`).
+
+The two executions of a sequence may divide one trace differently between its parts, so the induction proves the forms `exec_stmt_determ_prefix`, `eval_funcall_determ_prefix`, and `bigstep_program_terminates_determ_prefix`, for traces that agree up to the length of the shorter.  The forms for equal traces follow with empty extensions, and `bigstep_program_terminates_E0` follows for a program that terminates with the empty trace: it has no other termination.  The proofs of expressions go by induction on the expression, as `eval_fn_sound` in `RunSound.lean` does, and the proofs of statements and calls by mutual structural recursion on the first derivation.  With `cases` on the first derivation, Lean rejected the recursion with "failed to eliminate recursive application", and with `match` on the first derivation and `cases` on the second it accepted it.
+
+The proof found no rule that admits two outcomes.  Each pair of rules that can apply to one construct differs in a premise that the first derivation fixes: `out ≠ Out_normal` in `exec_Sseq_2`, the outcome of the first statement in the three loop rules, the access mode in `deref_loc`, the binding of the identifier in `eval_Evar_local` and `eval_Evar_global`, and the volatility of the block in `volatile_load` and `volatile_store`, as in CompCert's rules.  `eval_Elvalue` applies only to `Evar` and `Ederef`, the expressions that `eval_lvalue` covers, and no other rule of `eval_expr` concludes about them.
+
+CompCert 3.18 proves no determinism theorem for Clight, in the big-step or the small-step semantics.  For the small-step semantics, `cfrontend/Clight.v` proves receptiveness (`semantics_receptive`, line 738).  CompCert's determinacy theorems are `semantics_determinate` of Cminor (`backend/Cminor.v`, line 635) and of each target's Asm, whose field `sd_determ` states that two steps from one state have traces that `match_traces` relates and, with equal traces, reach one state.  The theorems here state the corresponding property of whole terminating executions, with the agreement of traces up to the shorter length in place of `match_traces`.
+
+The result of `LClight.run`, which `tests/native/clight.sh` compares with `ccomp -interp`, is now the result of every derivation from the same state with the same trace, since `run_sound` makes it a derivation.  A transcribed rule that gives an outcome to a state that CompCert leaves stuck, and from which `run` finds none, remains outside both the tests and these theorems.  `NativeA` holds for every `X`, while `NativeA.unique` assumes `X.Determ`.  The translation calls only the built-in `__builtin_fsqrt`, so a form without the hypothesis is possible, but it needs an invariant that no execution of the translated statements calls an `EF_external` function.
+
+The translator's design and the trusted base now cite these theorems, the trusted base's row on the existence of an execution covers uniqueness as well, and its list of definitions that statements reach includes `ExtSem.Determ`.  The README's sentence on the native trusted base names the copy and the checks of its agreement with CompCert, which determinism does not change, so the sentence stays as it was.  Every new theorem depends on at most `propext`, `Classical.choice`, and `Quot.sound`, and `eventval_match_determ`, `out_break_or_return_determ`, and `out_break_or_return_normal_or_continue` depend on none.
+
+The gate built `LeanExe.Native`, the only module that imports the new files, and with it every module of `LeanExe/Native/Proof/` and of the Clight copy.  No module of `Verified` imports the new files, so the gate did not build `Verified`.  The differential test ran with seed 7 and 300 programs of each generated kind against each target's CompCert 3.18 tree, as the earlier runs did.
+
+| Job | Purpose | Duration | Result |
+| --- | --- | --- | --- |
+| `lake exe cache get` | Mathlib's compiled modules for a fresh clone | 67 s, from 04:15 UTC | 8,747 files |
+| `lake build` of `Bigstep` and `RunSound` | Base for the new file | 8 s, from 04:17 UTC | Built |
+| `lake env lean` of `Determinism.lean` | First check | 1 s, from 04:27 UTC | Binder counts, one conjunct order, and the recursion through `cases` failed |
+| `lake env lean` of `Determinism.lean` | Second check | 3 s, from 04:29 UTC | No errors |
+| `lake build LeanExe.Native` | New modules, the umbrella that imports them, and every native proof module | 400 s, from 04:31 UTC | 3,517 jobs built |
+| `lake build LeanExe.Native`, twice | Revisions of the comments of `Determinism.lean` and of one helper's visibility | 6 s from 04:39 UTC, and 5 s from 04:44 UTC | Built |
+| `#print axioms` of the 22 theorems, after each rebuild | Axiom report | 2 s from 04:39 UTC, and 2 s from 04:44 UTC | Standard axioms only, the same both times |
+| `tests/native/clight.sh 7 300 x86_64` | Copy against `ccomp -interp` | 19 s, from 04:39 UTC | 921 agree, 371 of them undefined, none differ or run out of fuel |
+| `tests/native/clight.sh 7 300 aarch64` | Copy against `ccomp -interp` | 19 s, from 04:39 UTC | 921 agree, 371 of them undefined, none differ or run out of fuel |
+
+- [x] Determinism of expression evaluation, statements, calls, and programs relative to the trace.
+- [x] `NativeA.unique`.
+- [x] The translator's design and the trusted base.
