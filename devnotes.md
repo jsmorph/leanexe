@@ -39278,7 +39278,7 @@ An audit of the day's open checkboxes ticked six: five whose work is done, and t
 - [x] The removal map and the ten decisions.
 - [x] The verified `gpt.wasm` file theorems, the second deferred item.
 - [x] The thirteen example ports.
-- [ ] The verified total theorems of the Euler solvers and the drone planner.
+- [x] The verified total theorems of the Euler solvers and the drone planner.
 - [ ] `Generation.lean`, `module_side`, and `increment_total`.
 - [ ] The browser pages, the GPU drivers, and the test defaults on the verified modules.
 - [ ] `tools/demo-check` on the verified compiler.
@@ -39459,7 +39459,7 @@ The VKB proposals extend [the entry on closed-form allocation bounds](VKB/entrie
 - [x] The decision on the final page count: dropped, for the reason above.
 - [x] The Euler and drone guides, the README's properties table, and the index.
 - [x] The VKB proposals.
-- [ ] Decide whether the retirement gives up the LeanExe Euler theorem's coverage of large grids, or waits for allocation bounds that count reused blocks.
+- [x] Decide whether the retirement gives up the LeanExe Euler theorem's coverage of large grids, or waits for allocation bounds that count reused blocks.
 
 ## 2026-10-30: The full check as a script
 
@@ -39569,3 +39569,64 @@ The build, the emissions, and the drivers ran on AArch64 on the tree of the port
 ## 2026-10-30: The version that CompCert 3.18 reports
 
 The CompCert release archive whose SHA-256 digest the translator's notes record, `564b312b3ed3162f02605f0108feb555bd28fe7a80b97ea269c546bcc60c1cf0`, holds a `VERSION` file that reads `version=3.17`, while the first entry of its `Changelog.md` is "Release 3.18".  The drivers built from it therefore report version 3.17, as the port of `Calc` observed when it ran `tests/native/verified.sh`.  The sources are those of release 3.18, the version that the documents name, and the archive's own `VERSION` file is out of date.
+
+## 2026-10-30: The buffered Euler solvers and a call theorem for every grid
+
+`euler_solve_call` held only when `solvePages n` was at most 65,535, because the generated bound of each solver charged two grids for every try of a timestep, and on the 800 grid 65,535 pages held the blocks of at most 69 tries.  The LeanExe theorem `euler_solve_total` holds under 1,407 pages for every grid, so [the entry on the verified total theorems](#2026-10-30-the-verified-total-theorems-of-the-euler-solvers-and-the-drone-planner) left open whether the retirement gives up that coverage or waits for bounds that count reused blocks.  A design study compared the options, and the decision is its option (d2), a change of the program that removes the allocation of each pass: solvers that keep three grids in the states of their loops, write each sweep into one of them with `set!`, and rotate the three when a try is accepted.  The compiler, the runtime, and the original Lean functions are unchanged.  The verified module now compiles the buffered solvers under the names `solve` and `reconstructedSolve`, a proof equates them with the solvers of the programs, and `euler_solve_call` holds for every grid under 1,563 pages.
+
+The study found that the runtime's allocator is first fit, with splitting and merging of free blocks, so a run of the earlier module reused the blocks of the grids that each try freed.  The generated bounds ignore that reuse because the specifications that they serve measure `top`.  `Verified.Expr.allocs` charges nothing for a `set` on an owned array that dies, through `Verified.Var.ownedCost` (`Verified/Bound.lean:680`), and nothing for a move, so a loop whose state holds the arrays that it writes has a bound that does not depend on its passes.  The study compiled both buffered solvers with the current compiler and `alignedNative` on: the bounds of the sweeps, tries, attempts, loops of tries, and timesteps were 0, the loop of timesteps cost `initialCells.bound n` three times, and the solve function added `pack`.  The compiler's bounds still ignore reused blocks, and that limit remains open work: a loop that builds a new array at each pass has a bound that grows with its passes, whatever blocks the allocator reuses.  The study named a compacting form of such loops as the generic follow-up, and the buffered solvers settle only the Euler case.
+
+[The buffered solvers](Demos/Euler/Buffered.lean) start from the study's sources.  `sweepInto` and `reconstructedSweepInto` write the cells of a sweep into a grid of the state with `set!`, `tryInto` and `reconstructedTryInto` write the x sweep into the second grid and the y sweep into the third and rotate the three on acceptance, and the attempts, loops of tries, timesteps, and runs follow the programs on states of three grids.  `stepInto` drops the status parameter that `advanceStep` takes and does not read.  [The equality proofs](Demos/Euler/BufferedSpec.lean) state `Demos.Euler.Buffered.solve_eq` and `reconstructedSolve_eq` for every argument.  `loop_set` proves that a loop of `set!` over every index of an array of the right size equals `LeanExe.build`, by induction on `Nat.fold` with the invariant that the size is kept and the first `j` entries equal `f`.  `repeatWhile_map` carries a `LeanExe.repeatWhile` onto a second one under a projection, here `first`, which keeps the status, the time or timestep, and the first grid, under the invariant `Sized` that the three grids have one size.  The proofs import only the programs and use no lemma of `Spec.lean` or `ReconstructedSpec.lean`.
+
+[The verified module](Demos/Euler/Verified.lean) lists the buffered functions in place of `runFrom`, `run`, `solve`, and their reconstructed counterparts.  It keeps the sweeps, tries, attempts, loops of tries, and timesteps of both programs, because the module cases call `sweep`, `step`, `advanceWith`, `advanceStep`, and their reconstructed counterparts by name.  The exports `solve` and `reconstructedSolve` are entries 28 and 66, where they were 23 and 56.  [The call theorems](Demos/Euler/VerifiedCall.lean) prove `solve_bound` and `reconstructedSolve_bound` with one closed form, `solveBytes n = 3 (48 c + 56) + 16 c + 88` for `c = cells n`, which is 102,400,256 bytes on the 800 grid, and `solvePages_le` states that `solvePages n` is at most 1,563 for every `n`.  `solve_callSpec` and `reconstructedSolve_callSpec` state the calls of `Demos.Euler.solve` and `Demos.Euler.reconstructedSolve` by rewriting the generated function with the equalities, and `euler_solve_call` therefore states that the module returns `solve n` and `reconstructedSolve n trials`.  Its premise is `solvePages n ≤ cap ≤ 65535`, and it states `∀ n, solvePages n ≤ 1563` as a conjunct.  `tries`, `reconstructedTries`, `reconstructedSolveBytes`, and `reconstructedSolvePages` described the earlier solvers' runs and are removed.  `stepTries`, `attempt_bound`, `advanceStep_bound`, `loopCost_le_mul`, and their reconstructed counterparts stay, because `attempt` and `advanceStep` remain functions of the module.  Since `euler_solve_call` now holds for every grid, the box of [the retirement plan](#2026-10-30-the-plan-for-retiring-the-leanexe-compiler) for the verified total theorems and the box on the Euler coverage of the entry on those theorems are ticked.
+
+| Question | Decision |
+|---|---|
+| Task's name `solveInto` for the buffered solver, with the export kept as `solve` | Name the top functions `Demos.Euler.Buffered.solve` and `Demos.Euler.Buffered.reconstructedSolve`, since `verified_compile` takes each export's name from the last component of the definition's name, and keep the suffix `Into` for the functions below them, whose names must differ from the programs' functions that the module keeps |
+| Functions of the programs that the buffered solvers do not call | Keep those that the module cases call, so that the cases and the drivers stay unchanged, and drop `runFrom`, `run`, and their reconstructed counterparts |
+| Cap premise of `euler_solve_call` | `solvePages n ≤ cap`, the exact closed form, with `solvePages n ≤ 1563` for every `n` as a conjunct of the theorem |
+| VKB entry `verified-bound-closed-form`, which names the removed `tries` | Drop the name with the change that removes the declaration, so that the check passes on each commit, and revise the entry's text with the VKB proposals |
+| Bare-metal program of `solve 16`, whose case names entry 23, whose theorem states `Demos.Euler.solve 16`, and whose Talos run with the buffered module passed the emitter's 30-minute limit | Name entry 28 and run `solve 4`, a grid of 16 cells, as the docstring of the theorem module states, with the theorem stating `Demos.Euler.Buffered.solve 4`, which `bare_program` needs to be the generated function applied to the argument and which equals `Demos.Euler.solve 4` by `solve_eq`.  `tests/baremetal/verified.sh` keeps the whole solves of the module cases under QEMU. |
+
+`tools/euler-run.py` ran each solver once per grid in the Wasmtime host, the reconstructed solver with 8 trials, alternating the earlier and the buffered module.  The earlier module came from the list of the earlier `Demos/Euler/Verified.lean`, compiled and emitted by a script outside the tree without `alignedNative`, which adds only the aligned translation and its theorems.  Both modules returned the same words on every grid, by the SHA-256 that the tool records, and took the same time within 0.1 second.  The host's peak resident size was larger for the buffered module by 500 to 1,516 KB, and the measurements do not show the cause.
+
+| Grid | Solver | Earlier module | Buffered module | Earlier peak | Buffered peak |
+|---|---|---|---|---|---|
+| 32 × 32 | First-order | 0.2 s | 0.2 s | 18,740 KB | 19,240 KB |
+| 32 × 32 | Reconstructed | 0.5 s | 0.5 s | 18,508 KB | 19,380 KB |
+| 64 × 64 | First-order | 1.1 s | 1.1 s | 19,072 KB | 20,324 KB |
+| 64 × 64 | Reconstructed | 4.2 s | 4.2 s | 19,080 KB | 19,848 KB |
+| 128 × 128 | First-order | 8.9 s | 8.9 s | 20,456 KB | 21,608 KB |
+| 128 × 128 | Reconstructed | 34.2 s | 34.3 s | 21,176 KB | 22,692 KB |
+| 192 × 192 | First-order | 29.7 s | 29.8 s | 24,092 KB | 24,748 KB |
+| 192 × 192 | Reconstructed | 119.3 s | 119.4 s | 23,500 KB | 24,716 KB |
+
+`tests/baremetal/programs.sh` with the bare-metal program of `solve 16` reached the emitter's limit of 30 minutes inside `native-bare emit`, which runs the entry in Talos before it writes the expected bytes, where an earlier entry records 172 seconds for the whole test with the earlier module.  Talos's memory, in `Interpreter/Wasm/Mem.lean` of the CodeLib package, holds the bytes as a function `Nat → UInt8`, and each write wraps the previous function in one more test, so a read costs a step for every write made after the last write to its address.  The compiled `sweepInto` loads the size word of the source grid and of the grid that it writes at every cell, and those words were written when the run allocated the three grids, so each load walks back through every write of the run.  The earlier sweeps read the size words of grids that the previous sweep built.  The program now runs `solve 4`, a grid of 16 cells, as the docstring of the theorem module states, and `tests/baremetal/verified.sh` still runs the whole solves of the module cases, on grids up to 16 × 16, under QEMU.  The buffered module's stack bounds under QEMU replace those of the earlier module in [the stack table](docs/native-bare-metal.md#the-stack): 1,808 bytes for the largest bound and the largest stack of a call, and a high-water mark of 7,456 bytes.
+
+The checks ran on AArch64, with Wasmtime 44.0.0 and CompCert 3.18.  The gate built the working tree that the commits record, and only the journal changed after it.
+
+| Job | Purpose | Duration | Result |
+|---|---|---|---|
+| `lake env lean` of the equality proofs, three times | First checks | 1 to 4 s each, from 19:02 UTC | Errors in `loop_set` and in the lemmas of tries and loops, then one in `loop_set`, then passed at 19:34 UTC |
+| `lake build Demos.Euler.Verified` | Compilation of the module | 1,632 s, from 19:06 UTC | 3,799 jobs, no warning in the new modules |
+| `lake env lean` of a probe of the bound equations and exports | Shapes of the bounds and the entries | 3 s, at 19:34 UTC | Bounds of 0 for the sweeps, tries, and loops of tries, `initialCells.bound n` three times for each loop of timesteps, `solve` at 28, and `reconstructedSolve` at 66 |
+| `lake build Demos.Euler.VerifiedCall` | Call theorems | 14 s, at 19:35 UTC | 3,847 jobs, no warning in the new modules |
+| `#print axioms` of every new theorem and of generated theorems of the buffered functions | Axiom report | 3 s, at 19:35 UTC | `propext`, `Classical.choice`, and `Quot.sound` at most |
+| `lake env lean --run` of the earlier module's list | Earlier module for the timing | 17 min, from 19:35 UTC | 29,987 bytes, which `wasm-tools validate` accepts |
+| `tests/verified/run.sh --cases euler` | Module cases in Wasmtime against native Lean | 187 s, from 19:53 UTC | 3,096 passed |
+| `lake env lean Demos/Euler/File.lean` | File theorems of the written module | 8 s, at 19:56 UTC | Both reports name only the three permitted axioms |
+| `tests/native/verified.sh --module euler` | Module cases on the translation compiled with CompCert | 25 s, from 19:56 UTC | 3,096 passed, with exit status 1, because the script requires a passed case of the registry and no case of the registry names `euler` |
+| `tests/native/verified.sh --aligned --module euler` | The same without the alignment test | 24 s, from 19:56 UTC | 3,096 passed, with exit status 1 for the same reason |
+| `tests/baremetal/verified.sh --module euler` | Module cases under QEMU, with the stack check | 679 s, from 19:57 UTC | 3,096 passed |
+| `tests/baremetal/programs.sh`, with `solve 16` | Bare-metal programs | 1,820 s, from 20:08 UTC | Reached the emitter's 30-minute limit in the Talos run of `euler` |
+| `tools/euler-run.py` on both modules | Timing | 7 min, from 20:21 UTC, beside the emitter's Talos run | The table above |
+| `tests/baremetal/programs.sh`, with `solve 4` | Bare-metal programs | 36 s, from 20:40 UTC | Five programs passed, `euler` with 296 bytes and a mark of 1,152 bytes, the bound of `main` |
+| `lake build LeanExe Examples Demos Verified Library TestSupport native-verified native-bare verified-cases native-module-cases` | Gate | 9 s, from 20:43 UTC | 15,359 jobs, no error, since the earlier jobs had built every changed module |
+| `VKB/Check.lean` on `VKB/entries`, before and with the proposals | Names of the entries | 3 s each, at 20:41 and 20:43 UTC | No problem reported |
+| `node tools/check-doc-links.mjs` on a copy of the working tree | Links and reachability | Under 1 s, at 20:44 UTC | No problem reported, and every document is reachable from the README |
+
+- [x] The buffered solvers and their equality with `solve` and `reconstructedSolve`.
+- [x] The verified module on the buffered solvers, with `solve_bound`, `reconstructedSolve_bound`, and `euler_solve_call` for every grid under 1,563 pages.
+- [x] The module cases in Wasmtime, on both translations to C, and under QEMU, the bare-metal programs, and the timing.
+- [x] The Euler guide, the README, the index, the design document, the verified manual, and the bare-metal document.
+- [x] The VKB proposals.

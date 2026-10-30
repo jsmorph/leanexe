@@ -65,9 +65,9 @@ def cases : List BareCase := [
     bytes := encodeArray (TestSupport.Bare.shaCheck 0x636261),
     thm := thm_of TestSupport.Bare.shaCompiled.translation_eq
       TestSupport.Bare.shaCompiled.shaCheck.program },
-  { name := "euler", module := Demos.Euler.Verified.compiled.module, k := 23,
-    args := [16], kind := .array, aborts := true,
-    bytes := encodeArray (Demos.Euler.solve 16),
+  { name := "euler", module := Demos.Euler.Verified.compiled.module, k := 28,
+    args := [4], kind := .array, aborts := true,
+    bytes := encodeArray (Demos.Euler.Buffered.solve 4),
     thm := thm_of Demos.Euler.Verified.compiled.translation_eq
       Demos.Euler.Verified.compiled.solve.program },
   { name := "depth", module := Verified.Examples.Fold.compiled.module, k := 13,

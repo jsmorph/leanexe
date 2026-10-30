@@ -202,9 +202,12 @@ binary64 GPT functions, including cached inference and sampling.  `verified_comp
 their execution theorems from `Prog.correctWith`, their allocation bounds, their trap-free
 theorems under those bounds, and the module's bytes theorem.
 
-[The verified compiler's Euler module](../Demos/Euler/Verified.lean) compiles the 55 unchanged
-functions of both solvers with the same generated theorems.  Its trap-free results use the
-generated allocation bounds.  `euler_solve_total` and its 1,407-page bound apply to the LeanExe
+[The verified compiler's Euler module](../Demos/Euler/Verified.lean) compiles the functions of
+both solvers with the same generated theorems, with buffered solvers that keep three grids in
+their loops in place of the runs that build a new grid for each sweep.  `solve_eq` and
+`reconstructedSolve_eq` equate the buffered solvers with `solve` and `reconstructedSolve`, and
+`euler_solve_call` states that both exports return without a trap under a cap of at most 1,563
+pages for every grid.  `euler_solve_total` and its 1,407-page bound apply to the LeanExe
 compiler's module.
 
 ## Tested

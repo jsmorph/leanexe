@@ -32,7 +32,7 @@ through the boundary in place of the computed one.
 | `euler_bytes` | `encode` succeeds on `euler.module`, and the decoded module implements its 22 functions from `normalized` to `solve`. |
 | `euler_solve`, `euler_reconstructed_solve` | The two solve exports implement `solve` and `reconstructedSolve` for any grid size. |
 | `euler_solve_total` | From a fresh instance under a cap of at least 1,407 pages, both solve exports return the Lean functions' words without a trap and end within 1,407 pages. |
-| `euler_solve_call` | From the store in which the verified compiler's module starts, under a cap that holds the closed form of each solver's allocation bound, both solve exports return the Lean functions' words without a trap, as [the calls of the verified module](#calls-of-the-verified-module) describe. |
+| `euler_solve_call` | From the store in which the verified compiler's module starts, under a cap that holds the closed form of the solvers' allocation bound, at most 1,563 pages for every grid, both solve exports return the Lean functions' words without a trap, as [the calls of the verified module](#calls-of-the-verified-module) describe. |
 | `solve_hyperbolic`, `reconstructedSolve_hyperbolic` | Words with status 0 pack a final grid of admissible states, at which the flux in every direction has real eigenvalues and a basis of eigenvectors. |
 | `run_balance`, `reconstructedRun_balance` | Along the accepted steps, each conserved total equals its initial value minus the boundary fluxes, plus a rounding residual with a computed bound. |
 | `reconstructedRun_steps` | Each accepted step of the reconstructed solver starts from admissible states and has a Courant number of at most 1/2 in exact arithmetic. |
@@ -75,52 +75,62 @@ on small grids.
 
 ## Calls of the verified module
 
-[The verified compiler's Euler module](Verified.lean) has trap-free theorems that require room for
-the generated allocation bounds, and [the call theorems](VerifiedCall.lean) bound those
-allocations in closed form and state the calls from the store in which the module starts.  The bound of `solve`
-charges a block for the initial grid, a block for each sweep of each try of a timestep, and a block
-for the packed result, and it ignores the reuse of freed blocks.  `solve_bound` bounds it by
-`solveBytes n`, which is `(48 c + 56) (1 + 2 t) + 16 c + 88` bytes, where `c` is the cell count
-`cells n` and `t` the try count `tries n`.  `cells n` is `n * n` for `n` from 2 to 800 and 0
-otherwise, and `tries n` sums, over the timesteps of the run, the passes of the loop that halves a
-rejected timestep.  `reconstructedSolve_bound` gives the same form for the reconstructed solver, with
-`reconstructedTries n trials`.
+[The verified compiler's Euler module](Verified.lean) compiles [the buffered solvers](Buffered.lean)
+under the names `solve` and `reconstructedSolve`.  Each keeps three grids in the states of its
+loops.  A sweep writes its cells into one of them with `set!` instead of building a new grid, and
+an accepted try rotates the three grids so that the new grid comes first.  [The equality
+proofs](BufferedSpec.lean) show that `Demos.Euler.Buffered.solve` and `reconstructedSolve` equal
+`Demos.Euler.solve` and `Demos.Euler.reconstructedSolve` for every argument.  `loop_set` equates a
+loop of `set!` over a grid of the right size with the build of a new grid, and `repeatWhile_map`
+maps each loop of the buffered solvers onto the loop of the program, under the invariant that the
+three grids have one size.  The module also compiles the sweeps, tries, and timesteps of the
+programs, which build a new grid for each sweep, because the module cases call them.
+
+The bound that `verified_compile` generates for a buffered solver charges nothing for a `set!` on
+a grid that the loop owns and nothing for the moves of the rotation.  It charges the three initial
+grids and the packed result, for any number of tries.  `solve_bound` and
+`reconstructedSolve_bound` in [the call theorems](VerifiedCall.lean) bound both by
+`solveBytes n`, which is `3 (48 c + 56) + 16 c + 88` bytes, where `c` is the cell count
+`cells n`: `n * n` for `n` from 2 to 800, and 0 otherwise.  `48 c + 56` bytes hold a grid of
+`6 c + 1` words with its 48-byte header, and `16 c + 88` bytes hold the packed result.  On the 800
+grid, `solveBytes n` is 102,400,256 bytes.  `solvePages n` is the number of pages that hold the
+heap base, 4096 bytes, and `solveBytes n` bytes above it, and `solvePages_le` states that it is at
+most 1,563 for every grid.
+
+| Grid | Cells | `solveBytes n` | `solvePages n` |
+|---|---|---|---|
+| 16 × 16 | 256 | 41,216 | 1 |
+| 32 × 32 | 1,024 | 164,096 | 3 |
+| 192 × 192 | 36,864 | 5,898,496 | 91 |
+| 800 × 800 | 640,000 | 102,400,256 | 1,563 |
 
 `euler_solve_call` states that the module's bytes decode to the module, whose exports `solve` and
-`reconstructedSolve` are entries 23 and 56.  From the store in which the module starts, with a
-memory cap of `cap` pages, at most 65,535 and at least `solvePages n`, the export `solve` returns
-without a trap the address of a new array that holds `solve n`.
-`solvePages n` is the number of pages that hold the heap base, 4096 bytes, and `solveBytes n`
-bytes above it.  The call leaves a ready store, as `Verified.Ready` states it, whose `top` lies at
-most `solveBytes n` bytes above the heap base, and the theorem states the same of
-`reconstructedSolve` with `reconstructedSolvePages n trials`.  `solve_callSpec` and
-`reconstructedSolve_callSpec` state the calls from every ready store with room for the closed
-form within its cap.  The table gives the closed forms on small grids, with 8 trials for the
-reconstructed solver.
+`reconstructedSolve` are entries 28 and 66, and that `solvePages n` is at most 1,563.  From
+the store in which the module starts, with a memory cap of `cap` pages, at most 65,535 and at
+least `solvePages n`, the export `solve` returns without a trap the address of a new array that
+holds `Demos.Euler.solve n`.  The call leaves a ready store, as `Verified.Ready` states it, whose
+`top` lies at most `solveBytes n` bytes above the heap base.  The theorem states the same of
+`reconstructedSolve` and `Demos.Euler.reconstructedSolve n trials` under the same cap.
+`solve_callSpec` and `reconstructedSolve_callSpec` state the calls from every ready store with
+room for `solveBytes n` within its cap.
 
-| Grid | Cells | Tries | `solveBytes n` | `solvePages n` | Reconstructed tries | `reconstructedSolvePages n 8` |
-|---|---|---|---|---|---|---|
-| 2 × 2 | 4 | 7 | 3,872 | 1 | 7 | 1 |
-| 3 × 3 | 9 | 11 | 11,456 | 1 | 12 | 1 |
-| 4 × 4 | 16 | 16 | 27,536 | 1 | 16 | 1 |
-| 7 × 7 | 49 | 28 | 138,128 | 3 | 30 | 3 |
-| 16 × 16 | 256 | 68 | 1,695,312 | 26 | 68 | 26 |
-| 32 × 32 | 1,024 | 136 | 13,450,256 | 206 | 135 | 204 |
-
-`euler_solve_total` holds under 1,407 pages for every grid, because the LeanExe module's budget
-counts three grids, which the run reuses.  The cap of `euler_solve_call` grows with the number of
-tries instead, and where `solvePages n` exceeds 65,535 pages the premise cannot hold.  On the 800
-grid, 65,535 pages hold the blocks of at most 69 tries.  The theorem states no final page count,
-because no theorem of the verified compiler bounds the pages to which memory grows, as [the journal
+`euler_solve_total`, the LeanExe module's theorem, holds under 1,407 pages for every grid and
+states that memory ends within them.  `euler_solve_call` states no final page count, because no
+theorem of the verified compiler bounds the pages to which memory grows, as [the journal
 entry](../../devnotes.md#2026-10-30-the-verified-total-theorems-of-the-euler-solvers-and-the-drone-planner)
-explains.  `tools/leanrun --timeout 60m lake build Demos.Euler.VerifiedCall` builds the call
+explains.  `advanceStep_bound` and `reconstructedAdvanceStep_bound` bound the timesteps that build
+new grids by two grids for each try, through `loopCost_le_mul`.  On Wasmtime, the buffered solvers
+return the words of the earlier module's solvers in the same time, from 0.2 seconds on the 32 grid
+to 119 seconds for the reconstructed solver on the 192 grid, as [the journal
+entry](../../devnotes.md#2026-10-30-the-buffered-euler-solvers-and-a-call-theorem-for-every-grid)
+records.  `tools/leanrun --timeout 60m lake build Demos.Euler.VerifiedCall` builds the call
 theorems.
 
 ## Related examples
 
-[The verified compiler's Euler module](Verified.lean) compiles the same 55
-functions with `verified_compile`.  Its generated execution and byte theorems compute both
-solvers, and [the calls of the verified module](#calls-of-the-verified-module) carry its
+[The verified compiler's Euler module](Verified.lean) compiles the functions of both solvers with
+`verified_compile`, with the buffered solvers in place of the runs.  Its generated execution and
+byte theorems compute both solvers, and [the calls of the verified module](#calls-of-the-verified-module) carry its
 trap-free theorems to the store in which it starts.  `tests/verified/run.sh --cases euler` builds
 and emits the verified compiler's module and runs the existing corpus against it.
 

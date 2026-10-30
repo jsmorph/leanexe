@@ -1,15 +1,19 @@
 import Demos.Euler.Verified
 import Demos.Euler.ReconstructedSpec
+import Demos.Euler.BufferedSpec
 import Verified.Call
 
-/-! The calls of the verified Euler solvers from the store in which the module starts.  The bound
-that `verified_compile` generates for `solve` charges the initial grid, the grids that each try of
-a timestep builds, and the packed result, and it ignores the reuse of freed blocks.  `solve_bound`
-bounds it by `solveBytes n`, a closed form in the cells of the grid and the tries of the run, and
-`reconstructedSolve_bound` does the same for the reconstructed solver.  `euler_solve_call` states
-that both exports, called from the store in which the module starts with a memory cap that holds
-the heap base and the closed form, return the words of `solve n` and of
-`reconstructedSolve n trials` without a trap. -/
+/-! The calls of the verified Euler solvers from the store in which the module starts.  The module
+exports the buffered solvers of `Demos.Euler.Buffered` as `solve` and `reconstructedSolve`, and
+the bound that `verified_compile` generates for each charges the three grids of its loops and the
+packed result.  `solve_bound` and `reconstructedSolve_bound` bound them by `solveBytes n`, a
+closed form in the cells of the grid alone, and `solvePages_le` shows that the heap base and that
+closed form fit in 1,563 pages for every grid.  `euler_solve_call` composes the generated
+theorems with `Demos.Euler.Buffered.solve_eq` and `reconstructedSolve_eq`: both exports, called
+from the store in which the module starts with a memory cap of at least `solvePages n` pages,
+return the words of `Demos.Euler.solve n` and of `Demos.Euler.reconstructedSolve n trials` without
+a trap.  `advanceStep_bound` and `reconstructedAdvanceStep_bound` bound the timestep functions that
+the module keeps for its cases, in the tries of a timestep. -/
 
 namespace Demos.Euler.Verified
 
@@ -86,25 +90,6 @@ def stepTries (n : UInt64) (time : Float) (grid : Array Cell) : Nat :=
       (9, proposal n time (scan grid).2, grid)
   else 0
 
-/-- The tries of a run of `n`: those of each timestep, summed over the passes of the loop of
-`runFrom`. -/
-def tries (n : UInt64) : Nat :=
-  if (2 ≤ n && n ≤ 800) = true then
-    _root_.Verified.loopCost (fun _ => 0)
-      (fun s : UInt64 × Float × Array Cell => s.1 == 0 && s.2.1.toBits != endTime.toBits)
-      (fun _ s => stepTries n s.2.1 s.2.2) (fun _ s => advanceStep n s.1 s.2.1 s.2.2)
-      4294967296 0 (0, 0, initialCells n)
-  else 0
-
-private theorem mul_one_add_two (a t : Nat) : a * (1 + 2 * t) = a + 2 * a * t := by
-  rw [Nat.mul_add, Nat.mul_one, ← Nat.mul_assoc, Nat.mul_comm a 2]
-
-/-- The bytes by which a call of `solve n` can raise `top`, where `c` is `cells n`: a block of
-`6 c + 1` words and its 48-byte header for the initial grid and for each of at most two sweeps per
-try, and a block of `2 c + 5` words and its header for the result. -/
-def solveBytes (n : UInt64) : Nat :=
-  (48 * cells n + 56) * (1 + 2 * tries n) + 16 * cells n + 88
-
 theorem attempt_bound (n : UInt64) (time dt : Float) (grid : Array Cell)
     (h : grid.size ≤ 640000) :
     compiled.attempt.bound (n, time, dt, { val := grid }) ≤ 2 * (48 * grid.size + 56) * 1 := by
@@ -143,38 +128,34 @@ theorem advanceStep_bound (n status : UInt64) (time : Float) (grid : Array Cell)
   · rw [ite_eq_right hs, ite_eq_right hs]
     exact Nat.zero_le _
 
+
+/-- The bytes by which a call of either solver can raise `top`, where `c` is `cells n`: a block of
+`6 c + 1` words and its 48-byte header for each of the three grids, and a block of `2 c + 5` words
+and its header for the result. -/
+def solveBytes (n : UInt64) : Nat := 3 * (48 * cells n + 56) + 16 * cells n + 88
+
+theorem runInto_grid (n : UInt64) : (Buffered.runInto n).2.2.size = cells n := by
+  rw [Buffered.runInto_eq]
+  exact run_grid n
+
+theorem reconstructedRunInto_grid (n trials : UInt64) :
+    (Buffered.reconstructedRunInto n trials).2.2.size = cells n := by
+  rw [Buffered.reconstructedRunInto_eq]
+  exact reconstructedRun_grid n trials
+
 /-- The bound of `solve` is at most `solveBytes n`. -/
 theorem solve_bound (n : UInt64) : compiled.solve.bound n ≤ solveBytes n := by
-  have hc := cells_le n
-  have hpack := pack_bound n (Demos.Euler.run n) (by rw [run_grid]; exact hc)
-  rw [run_grid] at hpack
-  rw [compiled.solve.bound_eq, hpack, compiled.run.bound_eq]
-  unfold solveBytes tries
+  have hpack := pack_bound n (Buffered.runInto n) (by rw [runInto_grid]; exact cells_le n)
+  rw [runInto_grid] at hpack
+  rw [compiled.solve.bound_eq, hpack, compiled.runInto.bound_eq]
+  unfold solveBytes
   by_cases hn : (2 ≤ n && n ≤ 800) = true
   · have hcn : (n * n).toNat = cells n := by rw [cells, ite_eq_left hn]
-    rw [ite_eq_left hn, ite_eq_left hn, compiled.runFrom.bound_eq, compiled.initialCells.bound_eq,
-      _root_.Verified.blockCost_eq, hcn, mul_one_add_two]
-    simp only [UInt64.reduceToNat]
-    refine Nat.le_trans (Nat.add_le_add_right (Nat.add_le_add_left (loopCost_le_mul
-      (fun s : UInt64 × Float × Array Cell => s.2.2.size = cells n) (2 * (48 * cells n + 56))
-      (C' := fun s : UInt64 × Float × Array Cell => s.1 == 0 && s.2.1.toBits != endTime.toBits)
-      (BB := fun _ s => stepTries n s.2.1 s.2.2)
-      (F' := fun _ s => advanceStep n s.1 s.2.1 s.2.2) ?hC ?hF ?hcost ?hstep _ _ _ ?hI) _) _) ?_
-    case hC => rintro ⟨_, _, _⟩; rfl
-    case hF => rintro _ ⟨_, _, _⟩; rfl
-    case hcost =>
-      rintro _ ⟨status, time, g⟩ hs -
-      dsimp only at hs ⊢
-      rw [← hs]
-      exact advanceStep_bound n status time g (by omega)
-    case hstep =>
-      rintro _ ⟨status, time, g⟩ hs -
-      dsimp only at hs ⊢
-      rw [advanceStep_size (by omega), hs]
-    case hI => exact (initialCells_size n).trans hcn
+    rw [ite_eq_left hn, compiled.runFromInto.bound_eq, compiled.initialCells.bound_eq,
+      _root_.Verified.blockCost_eq, hcn]
     omega
   · have hc0 : cells n = 0 := by rw [cells, ite_eq_right hn]
-    rw [ite_eq_right hn, ite_eq_right hn, hc0, _root_.Verified.blockCost_eq]
+    rw [ite_eq_right hn, hc0, _root_.Verified.blockCost_eq]
     simp
 
 /-- The tries of the timestep that `reconstructedAdvanceStep` takes from `time` on `grid`: the
@@ -186,21 +167,6 @@ def reconstructedStepTries (n trials : UInt64) (time : Float) (grid : Array Cell
       (fun _ s => reconstructedAttempt n trials time (gridUpper grid).value s.2.1 s.2.2) 2048 0
       (9, proposal n time (gridUpper grid).value, grid)
   else 0
-
-/-- The tries of a reconstructed run of `n`: those of each timestep, summed over the passes of the
-loop of `reconstructedRunFrom`. -/
-def reconstructedTries (n trials : UInt64) : Nat :=
-  if (2 ≤ n && n ≤ 800) = true then
-    _root_.Verified.loopCost (fun _ => 0)
-      (fun s : UInt64 × Float × Array Cell => s.1 == 0 && s.2.1.toBits != endTime.toBits)
-      (fun _ s => reconstructedStepTries n trials s.2.1 s.2.2)
-      (fun _ s => reconstructedAdvanceStep n trials s.2.1 s.2.2) 4294967296 0
-      (0, 0, initialCells n)
-  else 0
-
-/-- `solveBytes` for the reconstructed solver. -/
-def reconstructedSolveBytes (n trials : UInt64) : Nat :=
-  (48 * cells n + 56) * (1 + 2 * reconstructedTries n trials) + 16 * cells n + 88
 
 theorem reconstructedAttempt_bound (n trials : UInt64) (time alpha dt : Float)
     (grid : Array Cell) (h : grid.size ≤ 640000) :
@@ -244,68 +210,53 @@ theorem reconstructedAdvanceStep_bound (n trials : UInt64) (time : Float) (grid 
   · rw [ite_eq_right hs, ite_eq_right hs]
     exact Nat.zero_le _
 
-/-- The bound of `reconstructedSolve` is at most `reconstructedSolveBytes n trials`. -/
+
+/-- The bound of `reconstructedSolve` is at most `solveBytes n`, whatever the trials. -/
 theorem reconstructedSolve_bound (n trials : UInt64) :
-    compiled.reconstructedSolve.bound (n, trials) ≤ reconstructedSolveBytes n trials := by
-  have hc := cells_le n
-  have hpack := pack_bound n (reconstructedRun n trials)
-    (by rw [reconstructedRun_grid]; exact hc)
-  rw [reconstructedRun_grid] at hpack
-  rw [compiled.reconstructedSolve.bound_eq, hpack, compiled.reconstructedRun.bound_eq]
-  unfold reconstructedSolveBytes reconstructedTries
+    compiled.reconstructedSolve.bound (n, trials) ≤ solveBytes n := by
+  have hpack := pack_bound n (Buffered.reconstructedRunInto n trials)
+    (by rw [reconstructedRunInto_grid]; exact cells_le n)
+  rw [reconstructedRunInto_grid] at hpack
+  rw [compiled.reconstructedSolve.bound_eq, hpack, compiled.reconstructedRunInto.bound_eq]
+  unfold solveBytes
   by_cases hn : (2 ≤ n && n ≤ 800) = true
   · have hcn : (n * n).toNat = cells n := by rw [cells, ite_eq_left hn]
-    rw [ite_eq_left hn, ite_eq_left hn, compiled.reconstructedRunFrom.bound_eq,
-      compiled.initialCells.bound_eq, _root_.Verified.blockCost_eq, hcn, mul_one_add_two]
-    simp only [UInt64.reduceToNat]
-    refine Nat.le_trans (Nat.add_le_add_right (Nat.add_le_add_left (loopCost_le_mul
-      (fun s : UInt64 × Float × Array Cell => s.2.2.size = cells n) (2 * (48 * cells n + 56))
-      (C' := fun s : UInt64 × Float × Array Cell => s.1 == 0 && s.2.1.toBits != endTime.toBits)
-      (BB := fun _ s => reconstructedStepTries n trials s.2.1 s.2.2)
-      (F' := fun _ s => reconstructedAdvanceStep n trials s.2.1 s.2.2) ?hC ?hF ?hcost ?hstep
-      _ _ _ ?hI) _) _) ?_
-    case hC => rintro ⟨_, _, _⟩; rfl
-    case hF => rintro _ ⟨_, _, _⟩; rfl
-    case hcost =>
-      rintro _ ⟨_, time, g⟩ hs -
-      dsimp only at hs ⊢
-      rw [← hs]
-      exact reconstructedAdvanceStep_bound n trials time g (by omega)
-    case hstep =>
-      rintro _ ⟨_, time, g⟩ hs -
-      dsimp only at hs ⊢
-      rw [reconstructedAdvanceStep_size (by omega), hs]
-    case hI => exact (initialCells_size n).trans hcn
+    rw [ite_eq_left hn, compiled.reconstructedRunFromInto.bound_eq,
+      compiled.initialCells.bound_eq, _root_.Verified.blockCost_eq, hcn]
     omega
   · have hc0 : cells n = 0 := by rw [cells, ite_eq_right hn]
-    rw [ite_eq_right hn, ite_eq_right hn, hc0, _root_.Verified.blockCost_eq]
+    rw [ite_eq_right hn, hc0, _root_.Verified.blockCost_eq]
     simp
 
 /-- The pages that hold the heap base, 4096 bytes, and `solveBytes n` bytes above it. -/
 def solvePages (n : UInt64) : Nat := (4096 + solveBytes n + 65535) / 65536
 
-/-- The pages that hold the heap base and `reconstructedSolveBytes n trials` bytes above it. -/
-def reconstructedSolvePages (n trials : UInt64) : Nat :=
-  (4096 + reconstructedSolveBytes n trials + 65535) / 65536
+/-- 1,563 pages hold the heap base and `solveBytes n` for every grid: on the 800 grid,
+`solveBytes n` is 102,400,256 bytes. -/
+theorem solvePages_le (n : UInt64) : solvePages n ≤ 1563 := by
+  have := cells_le n
+  unfold solvePages solveBytes
+  omega
 
-/-- Entry 23 computes `solve` from every ready store in which `top` can rise by `solveBytes n`
-bytes within the memory cap, and `top` rises by at most that much. -/
+/-- Entry 28 computes `Demos.Euler.solve` from every ready store in which `top` can rise by
+`solveBytes n` bytes within the memory cap, and `top` rises by at most that much. -/
 theorem solve_callSpec :
-    _root_.Verified.CallSpec compiled.module compiled.tables 23 solve solveBytes :=
-  (_root_.Verified.ImplementsTables.call
+    _root_.Verified.CallSpec compiled.module compiled.tables 28 solve solveBytes := by
+  rw [← show Buffered.solve = solve from funext Buffered.solve_eq]
+  exact (_root_.Verified.ImplementsTables.call
     (_root_.Verified.ImplementsTables.ofA compiled.solve.trapFree) compiled.tables nofun).spec
     (fun x _ _ h => h.mono (solve_bound x))
     (fun x _ _ _ _ h => h.trans (Nat.add_le_add_left (solve_bound x) _))
     fun _ _ _ _ _ => rfl
 
-/-- Entry 56 computes `reconstructedSolve` from every ready store in which `top` can rise by
-`reconstructedSolveBytes n trials` bytes within the memory cap, and `top` rises by at most that
-much. -/
+/-- Entry 66 computes `Demos.Euler.reconstructedSolve` from every ready store in which `top` can
+rise by `solveBytes n` bytes within the memory cap, and `top` rises by at most that much. -/
 theorem reconstructedSolve_callSpec :
-    _root_.Verified.CallSpec compiled.module compiled.tables 56
-      (fun x : UInt64 × UInt64 => reconstructedSolve x.1 x.2)
-      (fun x => reconstructedSolveBytes x.1 x.2) :=
-  (_root_.Verified.ImplementsTables.call
+    _root_.Verified.CallSpec compiled.module compiled.tables 66
+      (fun x : UInt64 × UInt64 => reconstructedSolve x.1 x.2) (fun x => solveBytes x.1) := by
+  rw [← show Buffered.reconstructedSolve = reconstructedSolve from
+    funext fun n => funext (Buffered.reconstructedSolve_eq n)]
+  exact (_root_.Verified.ImplementsTables.call
     (_root_.Verified.ImplementsTables.ofA compiled.reconstructedSolve.trapFree) compiled.tables
     nofun).spec
     (fun x _ _ h => h.mono (reconstructedSolve_bound x.1 x.2))
@@ -313,11 +264,12 @@ theorem reconstructedSolve_callSpec :
     fun _ _ _ _ _ => rfl
 
 theorem solve_export :
-    ({ name := "solve", funcIdx := 23 } : Wasm.Export) ∈ compiled.module.exports := by
+    ({ name := "solve", funcIdx := 28 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
 theorem reconstructedSolve_export :
-    ({ name := "reconstructedSolve", funcIdx := 56 } : Wasm.Export) ∈ compiled.module.exports := by
+    ({ name := "reconstructedSolve", funcIdx := 66 } : Wasm.Export) ∈
+      compiled.module.exports := by
   decide +kernel
 
 /-- The store in which the module starts, with the memory cap set to `cap` pages, is ready.  The
@@ -331,36 +283,36 @@ theorem ready_initial (cap : Nat) (hcap : cap ≤ 65535) :
     hcap, fun k hk => absurd hk (Nat.not_lt_zero k)⟩
 
 /-- The bytes of `compiled.module` decode to the module, whose exports `solve` and
-`reconstructedSolve` are entries 23 and 56.  Called from the store in which the module starts,
-with a memory cap of `cap` pages, at least `solvePages n` and at most 65,535, entry 23 returns
-without a trap the address of a new array that holds `solve n`.  It leaves a
-ready store in which `top` lies at most `solveBytes n` bytes above the heap base.  Entry 56 does
-the same for `reconstructedSolve n trials`, with `reconstructedSolvePages n trials` and
-`reconstructedSolveBytes n trials`. -/
+`reconstructedSolve` are entries 28 and 66.  Called from the store in which the module starts,
+with a memory cap of `cap` pages, at least `solvePages n` and at most 65,535, entry 28 returns
+without a trap the address of a new array that holds `Demos.Euler.solve n`.  It leaves a ready
+store in which `top` lies at most `solveBytes n` bytes above the heap base.  Entry 66 does the
+same for `Demos.Euler.reconstructedSolve n trials`.  `solvePages n` is at most 1,563 for every
+grid. -/
 theorem euler_solve_call :
     (∃ bytes, Wasm.Encoding.encode compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok compiled.module) ∧
-    ({ name := "solve", funcIdx := 23 } : Wasm.Export) ∈ compiled.module.exports ∧
-    ({ name := "reconstructedSolve", funcIdx := 56 } : Wasm.Export) ∈ compiled.module.exports ∧
+    ({ name := "solve", funcIdx := 28 } : Wasm.Export) ∈ compiled.module.exports ∧
+    ({ name := "reconstructedSolve", funcIdx := 66 } : Wasm.Export) ∈ compiled.module.exports ∧
+    (∀ n, solvePages n ≤ 1563) ∧
     (∀ (env : HostEnv Unit) (n : UInt64) (cap : Nat), solvePages n ≤ cap → cap ≤ 65535 →
-      Runs false env compiled.module 23
+      Runs false env compiled.module 28
         { (compiled.module.initialStore : Store Unit) with memoryCaps := [cap] } [.i64 n]
         fun final values => ∃ optr : UInt64, values = [.i64 optr] ∧ ∃ heap' : Heap,
           heap'.Owned final optr (solve n) ∧
           _root_.Verified.Ready compiled.module compiled.tables heap' final ∧
           heap'.top.toNat ≤ 4096 + solveBytes n) ∧
-    (∀ (env : HostEnv Unit) (n trials : UInt64) (cap : Nat),
-      reconstructedSolvePages n trials ≤ cap → cap ≤ 65535 →
-      Runs false env compiled.module 56
+    (∀ (env : HostEnv Unit) (n trials : UInt64) (cap : Nat), solvePages n ≤ cap → cap ≤ 65535 →
+      Runs false env compiled.module 66
         { (compiled.module.initialStore : Store Unit) with memoryCaps := [cap] }
         [.i64 trials, .i64 n]
         fun final values => ∃ optr : UInt64, values = [.i64 optr] ∧ ∃ heap' : Heap,
           heap'.Owned final optr (reconstructedSolve n trials) ∧
           _root_.Verified.Ready compiled.module compiled.tables heap' final ∧
-          heap'.top.toNat ≤ 4096 + reconstructedSolveBytes n trials) := by
+          heap'.top.toNat ≤ 4096 + solveBytes n) := by
   obtain ⟨bytes, henc, hdec, _⟩ := compiled.bytes
   have htop : (_root_.Verified.initialHeap compiled.tables).top.toNat = 4096 := rfl
-  refine ⟨⟨bytes, henc, hdec⟩, solve_export, reconstructedSolve_export,
+  refine ⟨⟨bytes, henc, hdec⟩, solve_export, reconstructedSolve_export, solvePages_le,
     fun env n cap hpages hcap => ?_, fun env n trials cap hpages hcap => ?_⟩
   · refine (_root_.Verified.Call.array solve_callSpec env _ _ [.i64 n] n (ready_initial cap hcap)
       rfl rfl ?_).mono fun _ _ ⟨optr, hv, heap', hown, hR, _, _, hrise⟩ =>
@@ -372,14 +324,16 @@ theorem euler_solve_call :
       (n, trials) (ready_initial cap hcap) rfl rfl ?_).mono
         fun _ _ ⟨optr, hv, heap', hown, hR, _, _, hrise⟩ =>
           ⟨optr, hv, heap', hown, hR, htop ▸ hrise⟩
-    show (_root_.Verified.initialHeap compiled.tables).top.toNat +
-      reconstructedSolveBytes n trials ≤ 65536 * cap
-    unfold reconstructedSolvePages at hpages
+    show (_root_.Verified.initialHeap compiled.tables).top.toNat + solveBytes n ≤ 65536 * cap
+    unfold solvePages at hpages
     omega
 
 #print axioms loopCost_le_mul
+#print axioms advanceStep_bound
+#print axioms reconstructedAdvanceStep_bound
 #print axioms solve_bound
 #print axioms reconstructedSolve_bound
+#print axioms solvePages_le
 #print axioms solve_callSpec
 #print axioms reconstructedSolve_callSpec
 #print axioms solve_export

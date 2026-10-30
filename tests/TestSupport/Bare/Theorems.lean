@@ -16,7 +16,7 @@ bare_program crcCompiled.crcCheck (0x3837363534333231, 0x39) [0x3837363534333231
 
 bare_program shaCompiled.shaCheck 0x636261 [0x636261] (shaCheck 0x636261)
 
-bare_program Demos.Euler.Verified.compiled.solve 16 [16] (Demos.Euler.solve 16)
+bare_program Demos.Euler.Verified.compiled.solve 4 [4] (Demos.Euler.Buffered.solve 4)
 
 bare_program Verified.Examples.Fold.compiled.recursive 1000 [1000]
   (Verified.Examples.Fold.recursive 1000)

@@ -52,7 +52,6 @@
     "Examples.RunningMax.foldCost_const",
     "Examples.RunningMax.fold_charge_const",
     "Demos.Euler.Verified.loopCost_le_mul",
-    "Demos.Euler.Verified.tries",
     "Demos.Euler.Verified.stepTries"
   ],
   "examples": [
