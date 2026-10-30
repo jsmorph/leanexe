@@ -16,8 +16,11 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Array folds by list induction](entries/array-fold-list-induction/README.md) | Proves that `xs.foldl step init` meets a specification stated by positions or lists, by induction on the array's list. |
 | [Word identities](entries/word-bit-identities/README.md) | Relates shifts, masks, and packed words to bit-level specifications. |
 | [Packed bytes](entries/packed-bytes/README.md) | Recovers a byte from an array that packs eight bytes into each word. |
+| [Array layout across writes](entries/array-memory-framing/README.md) | Keeps `UInt64Array.At` and byte buffers across stores and memory growth, and proves loops that fill an array word by word. |
+| [Write ranges](entries/memory-write-range/README.md) | Confines a sequence of stores to one interval of memory and keeps every other byte and field of the store. |
 | [Binary64 error bounds](entries/float-error-tracking/README.md) | Propagates input and rounding errors through a chain of operations. |
 | [Specification call theorems](entries/spec-call-theorem/README.md) | Combines a specification equality with generated execution and allocation theorems. |
+| [Region frame of a call or a step](entries/region-frame/README.md) | Keeps the caller's arrays and trees across a call through the region clause, and composes the frames of steps. |
 | [Explicit arguments before dependent proofs](entries/explicit-before-dependent-proof/README.md) | Avoids the unification failure of a proof argument about a value that a later argument fixes. |
 | [File theorems](entries/file-theorems/README.md) | States that an emitted `.wasm` file holds the encoding of a module, through a file module outside the import graph. |
 | [Closed-form allocation bounds](entries/verified-bound-closed-form/README.md) | Bounds the generated allocation term in input sizes or in counts of loop passes. |
@@ -27,6 +30,8 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Tail-termination cases](entries/tail-termination-cases/README.md) | Diagnoses remaining functional-induction cases in a tail-loop proof. |
 | [Mutual execution induction](entries/mutual-relation-induction/README.md) | Proves statements over mutually inductive WASI or Clight executions. |
 | [Partial loop correctness](entries/partial-wasm-loop/README.md) | States the result of a completed Wasm loop while its termination proof remains separate. |
+| [Calls with operands below the arguments](entries/direct-call-stack-tail/README.md) | Extends a callee's theorem on its arguments to a call with more operands on the stack. |
+| [Raw Wasm locals](entries/local-frame-projection/README.md) | Proves equalities of `Wasm.Locals` and reads parameters and locals in proofs of hand-written code. |
 | [WASI host premises](entries/wasi-host-premise/README.md) | Identifies the satisfying-host premise needed to apply an execution theorem. |
 | [WASI effect charges](entries/wasi-effect-charges/README.md) | Bounds allocation over complete command runs and their prefixes. |
 | [WASI process totality](entries/wasi-process-total/README.md) | Combines progress, resource bounds, and accepted exit for an unbounded process. |
@@ -53,4 +58,4 @@ The check catches renamed and removed declarations, but not guidance that a chan
 
 ## Relation to LTG
 
-[LTG](../ltg/README.md) serves the per-program proofs of the LeanExe compiler, whose hints name its rule lemmas.  The VKB serves programs of the verified compiler, which needs no per-program correctness proof.  LTG's general lemma entries will move here once the LeanExe compiler's future is decided.
+[LTG](../ltg/README.md) serves the per-program proofs of the LeanExe compiler, whose hints name its rule lemmas.  The VKB serves programs of the verified compiler, which needs no per-program correctness proof.  The entries on array layout, write ranges, raw locals, calls with operands below the arguments, and region frames restate LTG's general entries of the same names without the LeanExe compiler's rules, and they name no declaration of `LeanExe/Compiler/` or `LeanExe/IR/`.

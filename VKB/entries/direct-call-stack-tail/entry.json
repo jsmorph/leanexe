@@ -1,0 +1,39 @@
+{
+  "id": "direct-call-stack-tail",
+  "goals": [
+    "Wasm.Runs aborts env m id store (args ++ rest) fun st values => ∃ out, values = out ++ rest ∧ P st out",
+    "wp m (.call id :: rest) Q store { s with values := args ++ vs } host",
+    "Wasm.run fuel m id store (args ++ rest) env = .Success (values ++ rest) final"
+  ],
+  "modules": [
+    "LeanExe.ProofKit.CallRemainder",
+    "LeanExe.Pipeline.Aborts",
+    "LeanExe.Pipeline.AlignedRuns",
+    "Verified.AlignedCall",
+    "Verified.Heap",
+    "Verified.RuntimeFacts",
+    "Verified.ExprSpec",
+    "Verified.Wasi.CallHelper"
+  ],
+  "declarations": [
+    "Wasm.Runs.append_args",
+    "LeanExe.ProofKit.RunsA.append_args",
+    "Wasm.TerminatesWith.append_args",
+    "Wasm.TerminatesWith.runs",
+    "Wasm.run_append_of_success",
+    "Wasm.wp_call_runs",
+    "Wasm.wp_call_tw",
+    "Verified.wpX_call_runs",
+    "Verified.Runtime"
+  ],
+  "examples": [
+    "Verified.wp_release",
+    "Verified.wp_alloc",
+    "Verified.FunSpec.runs",
+    "Verified.Wasi.wp_effect_helper"
+  ],
+  "sources": [
+    "2026-09-14: LTG direct-call stack support",
+    "2026-10-29: Calls and the function level under the flag"
+  ]
+}

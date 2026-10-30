@@ -1,0 +1,61 @@
+{
+  "id": "array-memory-framing",
+  "goals": [
+    "LeanExe.ProofKit.UInt64Array.At final ptr xs from UInt64Array.At initial ptr xs",
+    "UInt64Array.At (UInt64Array.writeElement store ptr k v) ptr (xs.set k v hk)",
+    "UInt64Array.At store' pdst (Verified.overlay words xs k i) as a copy loop's invariant",
+    "(mem.write64 a v).read64 b = mem.read64 b",
+    "Verified.Bytes.At store'.mem root bytes after a write elsewhere"
+  ],
+  "modules": [
+    "LeanExe.ProofKit.ArrayPrefix",
+    "Verified.ArrayCopy",
+    "Verified.Heap",
+    "Verified.AlignedArrayCopy",
+    "Verified.AlignedWriters",
+    "Verified.Bytes.Memory"
+  ],
+  "declarations": [
+    "LeanExe.ProofKit.UInt64Array.At",
+    "LeanExe.ProofKit.UInt64Array.wordAddress",
+    "LeanExe.ProofKit.UInt64Array.wordAddress_toNat",
+    "LeanExe.ProofKit.UInt64Array.At.frame",
+    "LeanExe.ProofKit.UInt64Array.At.frameBefore",
+    "LeanExe.ProofKit.UInt64Array.At.write64After",
+    "LeanExe.ProofKit.UInt64Array.At.writesRange",
+    "LeanExe.ProofKit.UInt64Array.At.elementRead",
+    "LeanExe.ProofKit.UInt64Array.At.elementBound",
+    "LeanExe.ProofKit.UInt64Array.writeElement",
+    "LeanExe.ProofKit.UInt64Array.writeElement_frame",
+    "LeanExe.ProofKit.UInt64Array.At.writeElement",
+    "LeanExe.ProofKit.UInt64Array.At.writeLength",
+    "LeanExe.ProofKit.UInt64Array.PrefixAt",
+    "LeanExe.ProofKit.UInt64Array.PrefixAt.empty",
+    "LeanExe.ProofKit.UInt64Array.PrefixAt.elementBound",
+    "LeanExe.ProofKit.UInt64Array.PrefixAt.write_next",
+    "LeanExe.ProofKit.UInt64Array.PrefixAt.complete",
+    "LeanExe.ProofKit.Memory.read64_write64",
+    "LeanExe.ProofKit.Memory.read64_write64_disjoint",
+    "LeanExe.Pipeline.Heap.Borrowed",
+    "LeanExe.Pipeline.Heap.Owned",
+    "Verified.overlay",
+    "Verified.overlay_zero",
+    "Verified.overlay_succ",
+    "Verified.element_address",
+    "Verified.Bytes.At",
+    "Verified.Bytes.At.frame",
+    "Verified.Bytes.At.writesRange"
+  ],
+  "examples": [
+    "Verified.wpX_copyInto",
+    "Verified.wpX_copyDown",
+    "Verified.wpX_shiftUp",
+    "Verified.wp_copyInto",
+    "Verified.wp_copyDown",
+    "Verified.wp_shiftUp"
+  ],
+  "sources": [
+    "2026-09-12: Framed copy support for initialization",
+    "2026-10-19: Extending the verified compiler"
+  ]
+}

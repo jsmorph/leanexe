@@ -1,0 +1,38 @@
+{
+  "id": "memory-write-range",
+  "goals": [
+    "LeanExe.ProofKit.Memory.WritesRange store store' start stop",
+    "final.mem.read64 a = initial.mem.read64 a for a word outside the written interval",
+    "a loop invariant stating that every write of the loop lies inside one object"
+  ],
+  "modules": [
+    "LeanExe.ProofKit.MemoryFrame",
+    "LeanExe.ProofKit.ArrayPrefix",
+    "Verified.Bytes.Memory",
+    "Verified.Heap",
+    "Verified.TreeStorage",
+    "Verified.AlignedArrayCopy",
+    "Verified.Wasi.CompactMove"
+  ],
+  "declarations": [
+    "LeanExe.ProofKit.Memory.WritesRange",
+    "LeanExe.ProofKit.Memory.WritesRange.refl",
+    "LeanExe.ProofKit.Memory.WritesRange.write64",
+    "LeanExe.ProofKit.Memory.WritesRange.write8",
+    "LeanExe.ProofKit.Memory.WritesRange.trans",
+    "LeanExe.ProofKit.Memory.WritesRange.mono",
+    "LeanExe.ProofKit.Memory.WritesRange.read64",
+    "LeanExe.ProofKit.UInt64Array.At.writesRange",
+    "Verified.Bytes.At.writesRange",
+    "Verified.writeLength_frame",
+    "Verified.RecordStorage.writeHeader_range"
+  ],
+  "examples": [
+    "Verified.wpX_copyInto",
+    "Verified.Wasi.wp_moveCode"
+  ],
+  "sources": [
+    "2026-09-12: Framed copy support for initialization",
+    "2026-10-23: Implementing the WASI agenda"
+  ]
+}

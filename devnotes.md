@@ -39282,7 +39282,7 @@ An audit of the day's open checkboxes ticked six: five whose work is done, and t
 - [ ] `Generation.lean`, `module_side`, and `increment_total`.
 - [ ] The browser pages, the GPU drivers, and the test defaults on the verified modules.
 - [ ] `tools/demo-check` on the verified compiler.
-- [ ] The five LTG entries in the VKB.
+- [x] The five LTG entries in the VKB.
 - [ ] The general sections of the LeanExe manual in the verified manual.
 - [ ] The eleven removal commits.
 
@@ -39510,3 +39510,13 @@ Two bounds are large for other reasons.  The order book's `runCommands` and `run
 
 - [x] The survey of bounds that grow with a loop's passes, and the decision against a compiler change.
 - [ ] Determine why the order book's command loops buy their credits on every pass, if the order book gets a call theorem.
+
+## 2026-10-30: LTG's general entries in the VKB
+
+The plan for retiring the LeanExe compiler converts LTG's general entries into VKB entries before the removal deletes `ltg/`.  The VKB now holds [array layout across writes](VKB/entries/array-memory-framing/README.md), [write ranges](VKB/entries/memory-write-range/README.md), [raw Wasm locals](VKB/entries/local-frame-projection/README.md), [calls with operands below the arguments](VKB/entries/direct-call-stack-tail/README.md), and [the region frame](VKB/entries/region-frame/README.md), under the ids of the LTG entries.  Each names only declarations of Talos, Lean's core library, `LeanExe/ProofKit/`, `LeanExe/Pipeline/`, and `Verified/`, and the types `Words` and `KeyTree` with their encodings, from modules that, by a search of the import graph, import nothing of `LeanExe/Compiler/` or `LeanExe/IR/` and run no `leanexe_compile`.
+
+The LTG entries' worked examples were proofs of the LeanExe compiler's rules and programs, so each VKB entry takes its examples from the runtime's proofs and the verified compiler's code proofs.  The array entry describes the verified compiler's copy loops, which keep `UInt64Array.At` of `Verified.overlay`, beside `PrefixAt`, which the verified compiler's proofs do not use.  The local-frame entry adds the verified compiler's `Verified.setLocal` lemmas, the call entry rests on `Runs.append_args` and `wp_call_runs`, and the region-frame entry adds `Verified.Step`, the verified compiler's form of `Heap.Keeps`.
+
+The conversion dropped what holds only for the LeanExe compiler.  The region-frame entry lost `LeanExe.IR.Live` and its rules, `Func.implements_moves`, `Func.implements_heap`, `Heap.NewArray`, whose users are the IR's build rules and the LeanExe proof of `Examples/Updates`, `arrayAt_frameIn`, which the keep lemmas cover, and the worked examples in `Examples/Trees`, `Demos/Clob`, and `Demos/Gpt`.  The array entry lost `At.generatedElement`, which no proof uses, and the reference to `Stmt.fold_spec`, and the call entry lost the remark that `Triple` quantifies over the operand stack under an IR statement.  The local-frame entry lost the IR's `State.get` and `State.set?` and an anecdote about a heartbeat limit whose proof no journal entry names.
+
+`VKB/Check.lean` passes with the new entries, after a build of the modules that they name.  The VKB guide's table links each new entry, and its paragraph on LTG states which entries came from LTG.  `ltg/` stays in place until the removal commit that deletes it.

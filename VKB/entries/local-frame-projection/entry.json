@@ -1,0 +1,44 @@
+{
+  "id": "local-frame-projection",
+  "goals": [
+    "({ frame with values := [] } : Wasm.Locals) = frame",
+    "({ frame with values := vs } : Wasm.Locals).get index = frame.get index",
+    "frame.locals[localIndex]? = some value from frame.get (parameterCount + localIndex) = some value",
+    "(Verified.setLocal s i v).get j = s.get j"
+  ],
+  "modules": [
+    "LeanExe.ProofKit.Frame",
+    "LeanExe.ProofKit.MemoryEnsure",
+    "LeanExe.ProofKit.FixedArraySearchNone",
+    "LeanExe.ProofKit.AlignedHeaderExec",
+    "LeanExe.Pipeline.RuntimeSpec",
+    "Verified.LocalFrame"
+  ],
+  "declarations": [
+    "LeanExe.ProofKit.Frame.ext",
+    "LeanExe.ProofKit.Frame.of_withValues",
+    "LeanExe.ProofKit.Frame.withValues_get",
+    "LeanExe.ProofKit.Frame.withValues_params",
+    "LeanExe.ProofKit.Frame.withValues_locals",
+    "LeanExe.ProofKit.Frame.withValues_values",
+    "LeanExe.ProofKit.Frame.parameter_getElem_of_get",
+    "LeanExe.ProofKit.Frame.internal_getElem?_of_get",
+    "LeanExe.ProofKit.Frame.internal_getElem_of_get",
+    "List.getElem?_set_ne",
+    "Verified.Frame",
+    "Verified.setLocal",
+    "Verified.Locals.get_values",
+    "Verified.Locals.set?_local",
+    "Verified.Locals.get_setLocal_same",
+    "Verified.Locals.get_setLocal_ne"
+  ],
+  "examples": [
+    "LeanExe.ProofKit.MemoryGrowth.ensureProgram_spec_available",
+    "LeanExe.ProofKit.FixedArraySearch.guardProgram_spec",
+    "LeanExe.ProofKit.FixedArrayHeader.writeLocal_specA",
+    "LeanExe.Pipeline.joinProgram_spec"
+  ],
+  "sources": [
+    "2026-08-11: Fold-composition work begins"
+  ]
+}
