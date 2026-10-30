@@ -1,0 +1,23 @@
+{
+  "id": "file-theorems",
+  "goals": [
+    "Wasm.Encoding.encode p.module = .ok (binary_file% \"path\")",
+    "Wasm.Encoding.decode (binary_file% \"path\") = .ok p.module",
+    "a theorem that an emitted .wasm file holds the encoding of a module"
+  ],
+  "modules": [
+    "LeanExe.Pipeline.FileBytes"
+  ],
+  "declarations": [
+    "LeanExe.Pipeline.elabFileTheorems",
+    "LeanExe.Pipeline.encode_eq_of_encoding",
+    "LeanExe.Pipeline.encode_eq_of_toList",
+    "LeanExe.Pipeline.decode_eq_of_file",
+    "Wasm.Encoding.decode_encode"
+  ],
+  "examples": [],
+  "sources": [
+    "2026-10-30: One command for the theorems of the file modules",
+    "2026-10-30: File theorems for the module registry"
+  ]
+}
