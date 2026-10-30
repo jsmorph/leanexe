@@ -201,7 +201,7 @@ Floating-point theorems use WebAssembly's deterministic profile, and the Wasmtim
 | [Reusable algorithms](Library/README.md) | Implementations, mathematical specifications, accuracy and period proofs, and compiler proofs, grouped by algorithm family. |
 | [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, the order book, the slew planner, and integer and binary64 running sums, with application proofs and host programs. |
 | [Compiler examples](Examples) | Small programs, specifications, proofs, and cases that demonstrate compiler features. |
-| [Manuals and design](docs) | Compiler manuals, WASI, translator, and bare-metal designs, and design document. |
+| [Manuals and design](docs) | Compiler manuals, design document, and WASI, translator, and bare-metal designs. |
 | [Proof guidance](ltg) | LTG knowledge base and its declaration checker. |
 | [Rocq proofs](rocq) | Composition of CompCert's proofs from Clight to Asm and uniqueness lemmas, checked against a CompCert 3.18 tree. |
 | [Tools](tools) | Lean runner, module and shader emitters, execution hosts, native host, bare-metal startup code and checks, build scripts, and application tools. |
