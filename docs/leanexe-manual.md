@@ -22,10 +22,10 @@ The compiler is untrusted.  It emits the IR as a Lean definition and the module 
 |---|---|
 | Lean's kernel, with `propext`, `Classical.choice`, and `Quot.sound` | Checks every proof.  Proofs may not use `bv_decide` or `native_decide`, which add an axiom that trusts compiled code. |
 | Talos's semantics (`CodeLib`, revision `87e3aa5e` of `github.com/jsmorph/talos`) | Defines what a module does.  `Triple` and `Implements` are statements about Talos runs, and the IR has no semantics of its own. |
-| The binary decoder, `Wasm.Encoding.decode` | Defines what the bytes mean.  [`tests/decoder/DecodeTest.lean`](../tests/decoder/DecodeTest.lean) runs it over the official WebAssembly testsuite. |
-| The step from a constant to a file | [`tools/Emit.lean`](../tools/Emit.lean) evaluates `encode` with compiled Lean code and writes the file.  `gpt_file` and the file modules of the transcendental functions, such as `exp_file` and `log_file`, prove the contents of `gpt.wasm` and of each module that [the Verified test driver](../tests/verified/run.sh) checks, and they trust the elaborator `binary_file%`, which reads the file. |
-| The definitions that statements reach | `Implements`, `ImplementsA`, and `Satisfies`, with `Separate`, `Apart`, and `Moved`, the class `Represent` and its instances under `LeanExe/Pipeline/`, among them those of [the byte representation](../LeanExe/Pipeline/Bytes.lean) and [the flat records](../LeanExe/Pipeline/FlatRecords.lean), `Encode`, `EncodeWellFormed`, and `Node` with its predicates in [the `Implements` definitions](../LeanExe/Pipeline/Implements.lean), the `Heap` predicates of [the runtime model](../LeanExe/Pipeline/Runtime.lean), and `units`, `Heap.Budget`, and `Heap.Bounded` of [the allocator budget](../LeanExe/Pipeline/Budget.lean).  Through these, statements depend on `UInt64Array.At` in [the array lemmas](../LeanExe/ProofKit/Array.lean), `FreeNode`, `freeHead`, `FreeNode.region`, and `FreeListAt` in [the free list](../LeanExe/Runtime/FreeList.lean), `regionsDisjoint` in [the model of release trees](../LeanExe/Runtime/Tree.lean), and `LeanExe.Bytes` in [the byte dialect](../LeanExe/Dialect/Bytes.lean).  A statement over a type with an `Encode` or `Flat` instance also uses that instance, and [the verified compiler manual](verified-manual.md#trusted-base) lists the definitions that its statements add.  The namespace `LeanExe.Pipeline` does not mark trust, and a lemma in any directory can only make a proof fail, never change a statement. |
-| The native and bare-metal statements | The LeanExe compiler generates no native theorem.  [The verified compiler manual's trusted base](verified-manual.md#trusted-base) lists the statements of `p.f.native`, `p.f.nativeAligned`, `p.f.program`, and `sha256_input` and the definitions that they reach. |
+| Binary decoder, `Wasm.Encoding.decode` | Defines what the bytes mean.  [`tests/decoder/DecodeTest.lean`](../tests/decoder/DecodeTest.lean) runs it over the official WebAssembly testsuite. |
+| Step from a constant to a file | [`tools/Emit.lean`](../tools/Emit.lean) evaluates `encode` with compiled Lean code and writes the file.  `gpt_file` and the file modules of the transcendental functions, such as `exp_file` and `log_file`, prove the contents of `gpt.wasm` and of each module that [the Verified test driver](../tests/verified/run.sh) checks, and they trust the elaborator `binary_file%`, which reads the file. |
+| Definitions that statements reach | `Implements`, `ImplementsA`, and `Satisfies`, with `Separate`, `Apart`, and `Moved`, the class `Represent` and its instances under `LeanExe/Pipeline/`, among them those of [the byte representation](../LeanExe/Pipeline/Bytes.lean) and [the flat records](../LeanExe/Pipeline/FlatRecords.lean), `Encode`, `EncodeWellFormed`, and `Node` with its predicates in [the `Implements` definitions](../LeanExe/Pipeline/Implements.lean), the `Heap` predicates of [the runtime model](../LeanExe/Pipeline/Runtime.lean), and `units`, `Heap.Budget`, and `Heap.Bounded` of [the allocator budget](../LeanExe/Pipeline/Budget.lean).  Through these, statements depend on `UInt64Array.At` in [the array lemmas](../LeanExe/ProofKit/Array.lean), `FreeNode`, `freeHead`, `FreeNode.region`, and `FreeListAt` in [the free list](../LeanExe/Runtime/FreeList.lean), `regionsDisjoint` in [the model of release trees](../LeanExe/Runtime/Tree.lean), and `LeanExe.Bytes` in [the byte dialect](../LeanExe/Dialect/Bytes.lean).  A statement over a type with an `Encode` or `Flat` instance also uses that instance, and [the verified compiler manual](verified-manual.md#trusted-base) lists the definitions that its statements add.  The namespace `LeanExe.Pipeline` does not mark trust, and a lemma in any directory can only make a proof fail, never change a statement. |
+| Native and bare-metal statements | The LeanExe compiler generates no native theorem.  [The verified compiler manual's trusted base](verified-manual.md#trusted-base) lists the statements of `p.f.native`, `p.f.nativeAligned`, `p.f.program`, and `sha256_input` and the definitions that they reach. |
 
 ### Outside the proofs
 
@@ -53,15 +53,15 @@ The compiler unfolds a function marked `@[inline]`, which includes every `abbrev
 | `Float` | One `f64` holding the bit pattern | IEEE binary64, round to nearest even. |
 | `Float32` | One `f32` holding the bit pattern | IEEE binary32. |
 | `Bool` | One word: 0 for `false`, 1 for `true` | `Bool` is an enumeration. |
-| Enumeration | One word, the constructor index | An inductive type without parameters or indices whose constructors have no fields. |
+| Enumeration | One word, the constructor index | Inductive type without parameters or indices whose constructors have no fields. |
 | Structure | Its fields' components in order, one WebAssembly value each | Fields are words, floats, enumerations, or structures and sums of these.  A structure parameter becomes several parameters and a structure result several results. |
-| Sum | A tag word, then the components of every constructor's fields in order | Fields of an inactive constructor hold zeros.  A field of a sum is a word, a float, or an enumeration. |
-| `α × β` | The components of `α`, then those of `β` | A pair result may contain arrays, lists, and trees, as several results.  A pair parameter has scalar components only. |
-| `Array UInt64` | A pointer to an object: a 48-byte header, a length word, and the elements | The header holds the magic number, the count, the capacity, the kind, the element width, and the child mask. |
-| `Array Float`, `Array Float32` | An `Array UInt64` of the elements' bit patterns | A binary32 pattern sits in the low 32 bits of its word. |
-| `Array α` for a flat `α` | A word array of `n · k` words for `k` components | `α` is a structure, sum, enumeration, or `Bool` whose components are words and floats.  Element `i` occupies words `i · k` to `i · k + k - 1`. |
-| `List UInt64` | The null pointer, or a record of two slots: the element and the pointer to the rest | A list parameter is borrowed. |
-| A recursive type | The null pointer, or a record of one slot per field | Exactly two constructors, one without fields.  The compiler builds records whose fields are words or values of a recursive type. |
+| Sum | Tag word, then the components of every constructor's fields in order | Fields of an inactive constructor hold zeros.  A field of a sum is a word, a float, or an enumeration. |
+| `α × β` | Components of `α`, then those of `β` | A pair result may contain arrays, lists, and trees, as several results.  A pair parameter has scalar components only. |
+| `Array UInt64` | Pointer to an object: a 48-byte header, a length word, and the elements | The header holds the magic number, the count, the capacity, the kind, the element width, and the child mask. |
+| `Array Float`, `Array Float32` | `Array UInt64` of the elements' bit patterns | A binary32 pattern sits in the low 32 bits of its word. |
+| `Array α` for a flat `α` | Word array of `n · k` words for `k` components | `α` is a structure, sum, enumeration, or `Bool` whose components are words and floats.  Element `i` occupies words `i · k` to `i · k + k - 1`. |
+| `List UInt64` | Null pointer, or a record of two slots: the element and the pointer to the rest | A list parameter is borrowed. |
+| Recursive type | Null pointer, or a record of one slot per field | Exactly two constructors, one without fields.  The compiler builds records whose fields are words or values of a recursive type. |
 
 The compiler classifies a type by its structure, so a user type needs no declaration beyond its `inductive` or `structure` to compile.  Inductive types with parameters or indices, nested and mutual inductive types, `Int`, `String`, `Char`, `Option`, and type variables are outside the dialect.  A parameter whose type the compiler cannot classify, such as `Option UInt64`, gives `parameter … of … is not UInt64, Float, Float32, an array, a list of words, or a user type`, and a structure or sum with a field of an unsupported type gives `unsupported type …`.  A `Nat` parameter gives `parameter … of … is a Nat; integers in this dialect are UInt64`, and a `Nat` result gives `the result of … is a Nat; …`.
 
@@ -80,12 +80,12 @@ Arrays of arrays, arrays of trees, and structures with array or tree fields are 
 | `decide p` | 1 when the condition `p` holds, and 0 otherwise. |
 | `a == b`, `a != b` | Equality of words, or IEEE equality of floats, as a `Bool`. |
 | `a && b`, `a \|\| b` on `Bool`, `!a` | Bitwise and, or, and exclusive or with 1 on the 0-or-1 words.  Both operands are evaluated. |
-| An enumeration constructor | Its index. |
-| A structure projection, `c.value` | The field's component. |
-| `xs[i.toNat]!` | A bounds-checked read (see [Arrays](#arrays)). |
-| `xs.size.toUInt64` | The length word, divided by `k` for an array of records of `k` components. |
+| Enumeration constructor | Its index. |
+| Structure projection, `c.value` | Field's component. |
+| `xs[i.toNat]!` | Bounds-checked read (see [Arrays](#arrays)). |
+| `xs.size.toUInt64` | Length word, divided by `k` for an array of records of `k` components. |
 | `x.toUInt64` for a `Float` `x` | `i64.trunc_sat_f64_u`: NaN and negative values give 0, and values beyond the range give 2^64 - 1, as Lean's `Float.toUInt64`. |
-| `x.toBits` for a `Float` `x`, `x.toBits.toUInt64` for a `Float32` `x` | The bit pattern as a word. |
+| `x.toBits` for a `Float` `x`, `x.toBits.toUInt64` for a `Float32` `x` | Bit pattern as a word. |
 
 Unary minus on `UInt64` is not covered and gives `unsupported term`, so a program writes `0 - x`.  Ordering comparisons apply to `UInt64` and floats only, so an enumeration or a `Bool` is compared with `=`, `≠`, `==`, or `!=`.  Literals may be decimal or hexadecimal, as the constants of `Prng` are.
 
@@ -95,20 +95,20 @@ A condition is the proposition of an `if` or of `decide`.  The compiler translat
 
 | Operation | `Float` | `Float32` | Compiled form |
 |---|---|---|---|
-| `+`, `-`, `*`, `/`, `.sqrt` | Yes | Yes | The IEEE operation. |
+| `+`, `-`, `*`, `/`, `.sqrt` | Yes | Yes | IEEE operation. |
 | `-x` | Yes | Yes | `-0.0 - x`, which is exact and yields the canonical NaN for a NaN, as Lean's negation does. |
 | `.abs` | Yes | Yes | `f64.abs` or `f32.abs`. |
-| `min`, `max` | Yes | Yes | A comparison by `≤` and a selection, as Lean defines them, with each operand translated twice. |
+| `min`, `max` | Yes | Yes | Comparison by `≤` and a selection, as Lean defines them, with each operand translated twice. |
 | `<`, `≤`, `>`, `≥`, `==`, `!=` | Yes | Yes | IEEE comparisons. |
-| `if` with a float value | Yes | Yes | A conditional expression. |
+| `if` with a float value | Yes | Yes | Conditional expression. |
 | Literals such as `0.5` and `(3 : Float)` | Yes | Yes | The compiler computes the bits, and proofs check them with `decide`. |
 | `LeanExe.Float32.nearest` | No | Yes | `f32.nearest`, rounding to the nearest integer, ties to even. |
 | `UInt64.toFloat` | Yes | No | `f64.convert_i64_u`. |
 | `Float.ofBits w` | Yes | No | `f64.reinterpret_i64`. |
 | `Float32.ofBits w.toUInt32` | No | Yes | `f32.reinterpret_i32` of the low word. |
-| A match with a float value | Yes | No | A chain of conditional expressions. |
-| A fold accumulator | Yes | No | See [Folds](#folds). |
-| A loop state, array element, or argument | Yes | Yes | |
+| Match with a float value | Yes | No | Chain of conditional expressions. |
+| Fold accumulator | Yes | No | See [Folds](#folds). |
+| Loop state, array element, or argument | Yes | Yes | |
 
 Lean 4.34 defines `Float` and `Float32` through `Float.Model` and `Float32.Model`, in which every NaN is the positive quiet NaN `0x7FF8000000000000` or `0x7FC00000`, and Talos's `IEEE64` and `IEEE32` return the same constants.  The compiled forms of negation, absolute value, `min`, and `max` remove the three places where Lean and WebAssembly instructions differ, which [the design document lists](design.md#floating-point).  `Float.ofBits` and `Float32.ofBits` keep a NaN payload in WebAssembly while Lean's model replaces it, so a proof that uses them shows that the argument is not a NaN pattern, as `F64Bits.shiftLeft_52_not_nan` does for `exp`.  Conversions between `Float` and `Float32`, Lean's opaque `Float.exp` and its relatives, and `Float.floor` have no rule.
 
@@ -181,7 +181,7 @@ where
 |---|---|---|
 | Words, floats, `Bool`, enumerations, and pairs, structures, and sums of these, a `List UInt64`, or a value of a recursive type | `Stmt.loop` | A tuple state starts from a constructor application of components (`a loop state must be a tuple of components`).  The body returns the next state: a scalar value, a constructor application of the next components, which may include a list cell or a constructor of the recursive type, or one call of a compiled function that returns the tuple. |
 | `Array Float` or `Array Float32` | `Stmt.arrayLoop` | The initial state is an array variable, which the loop copies.  The body is one call of a compiled function that returns the next array, and each iteration releases the previous state. |
-| A nest of at least two word arrays, `Array UInt64 × Array UInt64 × …` | `Stmt.tupleLoop` | The initial arrays are distinct owned arrays, which move into the loop.  The body is one call of a compiled function that consumes every array of the state. |
+| Nest of at least two word arrays, `Array UInt64 × Array UInt64 × …` | `Stmt.tupleLoop` | The initial arrays are distinct owned arrays, which move into the loop.  The body is one call of a compiled function that consumes every array of the state. |
 
 A loop body may read arrays, bind `let`s of scalars and records, call functions of scalars, and lend trees to borrowed positions.  It may not contain folds, nested loops, array sizes, or array constructions, so a program binds a size with `let` before the loop and places an inner loop over an array in the element of a `LeanExe.build`, as `matVec` and the drone's `advance` do.  A loop may not appear in a branch of a value-level conditional, a fold or loop body, or a recursive definition.  A build element may contain a loop.
 
@@ -207,17 +207,17 @@ A match on a value of a recursive type tests the pointer against 0, and the reco
 
 | Operation | Element types | Compiled form |
 |---|---|---|
-| `xs[i.toNat]!` | All arrays | A read that compares the position with the length word and gives 0 past the end, which is Lean's default.  The position must be `i.toNat` for a `UInt64` `i`. |
+| `xs[i.toNat]!` | All arrays | Read that compares the position with the length word and gives 0 past the end, which is Lean's default.  The position must be `i.toNat` for a `UInt64` `i`. |
 | `xs[i.toNat]!.field` | Arrays of records | Each component the term needs is read as word `i · k + j`, guarded by `i < 2^29`. |
-| `xs.size.toUInt64` | Array variables | A load of the length word, divided by `k` for records.  It may not appear in a branch of a value-level conditional, a fold or loop body, or a recursive definition. |
-| `#[a, b, …]` | Word elements, and `#[]` of any element type | An allocation of `48 + 8 (k + 1)` bytes and stores. |
+| `xs.size.toUInt64` | Array variables | Load of the length word, divided by `k` for records.  It may not appear in a branch of a value-level conditional, a fold or loop body, or a recursive definition. |
+| `#[a, b, …]` | Word elements, and `#[]` of any element type | Allocation of `48 + 8 (k + 1)` bytes and stores. |
 | `LeanExe.build n f` | `UInt64`, `Float`, `Float32`, flat records | See [`LeanExe.build`](#leanexebuild). |
 | `xs.set! i.toNat v`, `xs.setIfInBounds i.toNat v` | `UInt64` | In place for an owned array at its last use, and otherwise a copy. |
 | `xs.insertIdx! i.toNat v`, `xs.push v` | `UInt64` | In place for an owned array at its last use, moved first to a block of twice the capacity when the block is full, and otherwise a copy. |
 | `xs.eraseIdxIfInBounds i.toNat` | `UInt64` | In place for an owned array at its last use, and otherwise a copy. |
 | `xs ++ ys` | `UInt64`, `Float`, `Float32` | `xs` must be an owned array parameter at its last use, and `ys` an array variable.  In place when the block has room, and otherwise into a new block. |
-| An array variable as a result | All | A move for an owned array, and a copy otherwise. |
-| A call that returns an array | All | The caller owns the new array. |
+| Array variable as a result | All | Move for an owned array, and a copy otherwise. |
+| Call that returns an array | All | The caller owns the new array. |
 
 An update may apply to the result of another update, as in `(xs.push a).push b`, and then writes the intermediate array in place.  An update of a borrowed array, or of an array that the code uses again, copies through the copying template, and the lemmas `set!_eq_build`, `insertIdx!_eq_build`, `eraseIdxIfInBounds_eq_build`, and `push_eq_build` equate each operation with that template's result.  `insertIdx!` past the end returns `#[]` in Lean and in the compiled code.
 
@@ -247,32 +247,32 @@ The theorems state the modes through types.  A consumed argument has type `Moved
 
 | Compiler message | Cause | Rewrite |
 |---|---|---|
-| `a call may not appear in a branch, a fold body, or a recursive definition: …` | A call inside a value-level branch, a fold body, or a tail-recursive body | Bind the call with `let` before the conditional (`let t := twice x; if c = 0 then t else x`), or write the fold as `LeanExe.loop`, whose body may call functions of scalars. |
-| `a loop may not appear in a branch, a fold or loop body, or a recursive definition: …` | A loop inside a value-level branch or another loop | Select the count instead of the loop, `LeanExe.loop (if c = 0 then n else 0) …`, or place an inner loop in the element of a `LeanExe.build`. |
-| `a fold may not appear in a branch, a fold body, or a recursive definition: …` | A fold inside a value-level branch or a loop body | Bind the fold with `let` at the top of the body. |
+| `a call may not appear in a branch, a fold body, or a recursive definition: …` | Call inside a value-level branch, a fold body, or a tail-recursive body | Bind the call with `let` before the conditional (`let t := twice x; if c = 0 then t else x`), or write the fold as `LeanExe.loop`, whose body may call functions of scalars. |
+| `a loop may not appear in a branch, a fold or loop body, or a recursive definition: …` | Loop inside a value-level branch or another loop | Select the count instead of the loop, `LeanExe.loop (if c = 0 then n else 0) …`, or place an inner loop in the element of a `LeanExe.build`. |
+| `a fold may not appear in a branch, a fold body, or a recursive definition: …` | Fold inside a value-level branch or a loop body | Bind the fold with `let` at the top of the body. |
 | `an array size may not appear in a branch, a fold body, or a recursive definition: …` | `xs.size.toUInt64` inside a loop body or a branch | Bind `let size := xs.size.toUInt64` before the loop. |
-| `an array may not be built in a branch, a fold or loop body, or a recursive definition: …` | An array construction inside a value-level context | Build the array in a result-level branch or a top-level `let`. |
+| `an array may not be built in a branch, a fold or loop body, or a recursive definition: …` | Array construction inside a value-level context | Build the array in a result-level branch or a top-level `let`. |
 | ``an array may not be built in an element of `LeanExe.build`: …`` | Allocation inside a build element | Build the inner array outside and read it. |
-| `a call in a loop body or an array element may not take an array: …` | A call that passes an array from a loop body or build element | Place the loop that reads the array in a build element, and give it a helper marked `@[inline]`, as the drone's `best` is. |
-| `a call in a loop body or an array element may not return an array: …`, `… must return words and floats: …` | A call there that allocates | Call the function at the top of the body and bind its result. |
+| `a call in a loop body or an array element may not take an array: …` | Call that passes an array from a loop body or build element | Place the loop that reads the array in a build element, and give it a helper marked `@[inline]`, as the drone's `best` is. |
+| `a call in a loop body or an array element may not return an array: …`, `… must return words and floats: …` | Call there that allocates | Call the function at the top of the body and bind its result. |
 | `unsupported equality type in …` | `=` or `≠` on floats or records | Use `==` or `!=` on floats, and compare record fields one at a time. |
 | `unsupported term: dite …` | `if h : …` or a `match` on a word with literal patterns | Use `if` with a decidable condition. |
 | `unsupported operation Bind.bind in do …` | `for`, `while`, or `do` notation | Use `LeanExe.loop`, `LeanExe.build`, or `LeanExe.repeatWhile`. |
-| `unsupported type …` | A structure field or tuple component of an unsupported type, such as an array | Pass arrays as separate parameters and return them in a pair. |
-| `parameter … of … is a Nat; integers in this dialect are UInt64`, `the result of … is a Nat; …` | A `Nat` parameter or result | Use `UInt64`. |
+| `unsupported type …` | Structure field or tuple component of an unsupported type, such as an array | Pass arrays as separate parameters and return them in a pair. |
+| `parameter … of … is a Nat; integers in this dialect are UInt64`, `the result of … is a Nat; …` | `Nat` parameter or result | Use `UInt64`. |
 | `the definitions … call each other; a module list may not contain mutual recursion` | Listed definitions that call each other in a cycle | Combine them into one recursive definition. |
-| `unsupported term: …` | A term no rule covers, such as unary minus on `UInt64`, `Nat` arithmetic, or an `Array Float` literal | Rewrite in covered terms: `0 - x`, `UInt64` arithmetic, or `LeanExe.build`. |
-| `a loop state must be a tuple of components: …` | A tuple state that starts from a variable | Write the initial state as a constructor application, such as `(a, b)`. |
+| `unsupported term: …` | Term no rule covers, such as unary minus on `UInt64`, `Nat` arithmetic, or an `Array Float` literal | Rewrite in covered terms: `0 - x`, `UInt64` arithmetic, or `LeanExe.build`. |
+| `a loop state must be a tuple of components: …` | Tuple state that starts from a variable | Write the initial state as a constructor application, such as `(a, b)`. |
 | ``a loop over an array must have an `Array Float` state: …`` | `LeanExe.loop` with an `Array UInt64` state | Use a nest of two or more word arrays, or `LeanExe.repeatWhile` with a counter in its state. |
-| `the call in a repeatWhile step must consume every array of the state: …` | A step that drops its array argument | Return the array on every path of the step, as the drone's `extend` does. |
-| `the condition of a repeatWhile must need no statements: …` | A call or a size in the condition | Compute the needed value in the step and keep it in the state. |
+| `the call in a repeatWhile step must consume every array of the state: …` | Step that drops its array argument | Return the array on every path of the step, as the drone's `extend` does. |
+| `the condition of a repeatWhile must need no statements: …` | Call or a size in the condition | Compute the needed value in the step and keep it in the state. |
 | ``the left operand of `++` must be an array parameter at its last use: …`` | `xs ++ ys` with a borrowed or reused `xs` | Make `xs` an owned parameter that the code does not use afterward. |
 | `… calls itself other than in tail position; compile it in a module list, which adds its internal function` | Non-tail recursion in the single form | Compile with `leanexe_compile p := [f]`. |
-| `a recursive definition may take only UInt64 and values of recursive types, and return only UInt64 …` | An array, float, or tuple parameter or result in a recursive definition | Use a loop over the array, or a tree. |
+| `a recursive definition may take only UInt64 and values of recursive types, and return only UInt64 …` | Array, float, or tuple parameter or result in a recursive definition | Use a loop over the array, or a tree. |
 | `the internal function of … holds more than 24 values in its frame` | Too many locals live in a recursive body | Move work into a leaf function or reduce the `let`s alive across the recursive calls. |
-| `an owned parameter of … must move on every path; releasing it is not supported yet` | A recursive path that drops an owned tree | Return or rebuild the tree on every path. |
-| `a read of an array of records needs an element type whose default has every component 0: …` | A record type whose `default` holds a nonzero field | Order the constructors or field defaults so that `default` is all zeros. |
-| ``an array may be bound by `let` only at the top of a function body: …`` | A `let` of an array inside a branch | Move the `let` to the top of the body. |
+| `an owned parameter of … must move on every path; releasing it is not supported yet` | Recursive path that drops an owned tree | Return or rebuild the tree on every path. |
+| `a read of an array of records needs an element type whose default has every component 0: …` | Record type whose `default` holds a nonzero field | Order the constructors or field defaults so that `default` is all zeros. |
+| ``an array may be bound by `let` only at the top of a function body: …`` | `let` of an array inside a branch | Move the `let` to the top of the body. |
 | `the value … moves before an earlier part of the same value reads it` | A later part of a value moves what an earlier part reads | Bind the earlier read with `let`. |
 | ``both branches of an `if` must move the same owned values and rewrite the same records: …`` | Branches that consume different trees in a way the compiler cannot equalize | Move or rebuild the same values in both branches. |
 
@@ -365,21 +365,21 @@ The form is `call MODULE.wasm FUNCTION RESULT-KIND ARG …`.  The first command 
 
 | Argument | Meaning |
 |---|---|
-| `i64:N` | A word. |
-| `f64:BITS`, `f32:BITS` | A float given by its bit pattern as a decimal word. |
-| `array-u64:N,N,…` | An `Array UInt64` that the host allocates through `alloc`.  `array-u64:` is the empty array, and a float array passes the elements' bit patterns. |
-| `file-u64:PATH` | An `Array UInt64` read from a file of little-endian words. |
-| `chain-u64:N,N,…` | A `List UInt64` as a chain of records. |
-| `tree-u64:K,L,R` | A tree of the `KeyTree` layout in preorder, with `.` for a leaf, such as `tree-u64:5,3,.,.,.`. |
-| `records-u64:W,M,S,…` | A tree of records in preorder: `.` for null, and otherwise the width, the child mask, and the slots, where a slot whose mask bit is set is a tree, such as `records-u64:3,6,3,2,0,1,7,.` for `Term.add (.lit 7) .zero` of [the tagged example](../Verified/Examples/TaggedTypes.lean). |
-| `bytes:HEX`, `bytes-file:PATH` | A byte object, passed as a pointer and a length. |
+| `i64:N` | Word. |
+| `f64:BITS`, `f32:BITS` | Float given by its bit pattern as a decimal word. |
+| `array-u64:N,N,…` | `Array UInt64` that the host allocates through `alloc`.  `array-u64:` is the empty array, and a float array passes the elements' bit patterns. |
+| `file-u64:PATH` | `Array UInt64` read from a file of little-endian words. |
+| `chain-u64:N,N,…` | `List UInt64` as a chain of records. |
+| `tree-u64:K,L,R` | Tree of the `KeyTree` layout in preorder, with `.` for a leaf, such as `tree-u64:5,3,.,.,.`. |
+| `records-u64:W,M,S,…` | Tree of records in preorder: `.` for null, and otherwise the width, the child mask, and the slots, where a slot whose mask bit is set is a tree, such as `records-u64:3,6,3,2,0,1,7,.` for `Term.add (.lit 7) .zero` of [the tagged example](../Verified/Examples/TaggedTypes.lean). |
+| `bytes:HEX`, `bytes-file:PATH` | Byte object, passed as a pointer and a length. |
 
 | Result kind | Output |
 |---|---|
 | `i64`, `f64`, `f32` | One decimal word, the bit pattern for floats. |
-| `array-u64` | The elements, as `[a, b, …]`. |
-| `chain-u64`, `tree-u64`, `records-u64` | The list as `[a, b, …]`, or the tree in the preorder form of its argument, after the host checks each record's header.  `records-u64` prints the width and mask that each header holds. |
-| `file-u64:PATH` | The array, written to a file. |
+| `array-u64` | Elements, as `[a, b, …]`. |
+| `chain-u64`, `tree-u64`, `records-u64` | List as `[a, b, …]`, or the tree in the preorder form of its argument, after the host checks each record's header.  `records-u64` prints the width and mask that each header holds. |
+| `file-u64:PATH` | Array, written to a file. |
 | `list:K1,K2,…` | Several results, one line each.  Each kind is `i64`, `f64`, `f32`, `array-u64`, `chain-u64`, `tree-u64`, or `records-u64`. |
 | `slots:N` | `N` words on one line. |
 | `bytes` | Two results, a pointer and a length, printed as the bytes in hexadecimal. |
@@ -403,8 +403,8 @@ Options before the mode configure WASI.  `--wasi` links WASI preview 1, and `run
 
 | Record | Meaning | Host status |
 |---|---|---|
-| A result line, `results r0 r1 …`, `u64 V X`, `memory P L HEX`, `memory-size N`, `saved N` | The output of a call or a script command. | 0 |
-| `stats A F` | The allocation and free counters after `call-stats` or the `stats` command. | 0 |
+| Result line, `results r0 r1 …`, `u64 V X`, `memory P L HEX`, `memory-size N`, `saved N` | Output of a call or a script command. | 0 |
+| `stats A F` | Allocation and free counters after `call-stats` or the `stats` command. | 0 |
 | `return` | `_start` returned in `run` mode. | 0 |
 | `wasi-exit N` | The guest called `proc_exit` with a status `N` that Wasmtime accepts. | `N` modulo 256 |
 | `trap` | The export that the mode or a script `call` command calls trapped. | 2 |
@@ -428,7 +428,7 @@ A Lean file with a `main` runs natively with `tools/leanrun --timeout 10m lake e
 |---|---|
 | `Runs aborts env m k store args P` | Every run of entry `k` with enough fuel returns values satisfying `P` or, when `aborts`, traps at `unreachable`.  `ReturnsOrAborts` is `Runs true`. |
 | `TripleA aborts m s scratch P R` | From any store and IR state satisfying `P`, the compiled code of statement `s` ends in a store and state satisfying `R` or, when `aborts`, traps.  `Triple` is `TripleA true`. |
-| `Implements m k f` | The statement [above](#the-statement-of-implements), with a trap allowed. |
+| `Implements m k f` | Statement [above](#the-statement-of-implements), with a trap allowed. |
 | `ImplementsPureA aborts m k f` | For scalar arguments and results: from any store, the call returns the values of `f x` and leaves the store unchanged, or traps when `aborts`.  `ImplementsPure` is the `true` case, and `ImplementsPure.implements` derives `Implements`. |
 | `ImplementsA aborts m k f Pre Post` | `Implements` with the abort flag, a precondition `Pre x heap store`, and a postcondition `Post x heap store heap' final`.  `ImplementsA.implements_of` derives `Implements` from `ImplementsA true` when `Pre` always holds. |
 | `Satisfies m k P Q` | For inputs satisfying `P`, the call traps or returns an owned `y` with `Q x y`.  `Implements.transfer` derives it from `Implements` and `∀ x, P x → Q x (f x)`. |
@@ -451,7 +451,7 @@ A proof starts from the rule that matches the function's body.  The rules for bo
 | `Func.implementsPure` | Keeps the store, with scalar arguments and results, giving `ImplementsPure`. |
 | `Func.implements_heap` | May allocate and release, and consumes nothing. |
 | `Func.implements_moves` | Consumes `Moved` arguments. |
-| `Func.tail_implements`, `Func.tailIn_implements` | A tail-recursive loop.  The obligation `TailStep` (or `TailStepIn` for tree parameters) covers one iteration with a decreasing measure. |
+| `Func.tail_implements`, `Func.tailIn_implements` | Tail-recursive loop.  The obligation `TailStep` (or `TailStepIn` for tree parameters) covers one iteration with a decreasing measure. |
 | `Func.recursion`, `Func.entry_implements` | Non-tail recursion through the internal function, by strong induction on a measure, with `Stmt.selfCall_spec` for the calls. |
 | `Func.rebuildRecursion`, `Func.implements_rebuilt`, `Func.entry_rebuilds` | Non-tail recursion that consumes a tree, with `Stmt.selfCall_rebuilds`. |
 
@@ -619,8 +619,8 @@ Compiler fixtures use `Examples/<Name>/`, reusable algorithms use the families i
 | [`Scale`](../Examples/Scale/README.md) | `scale` | Word arithmetic and Lean's division by zero, proved with `Func.implements` and one `simp` call. |
 | [`Gcd`](../Library/Numerics/Arithmetic/Gcd/README.md) | `gcd` | Tail recursion as a loop, proved with `Func.tail_implements` and a one-iteration obligation, and `gcd_eq`, equality with Lean's `Nat.gcd`. |
 | [`SumArray`](../Examples/SumArray/README.md) | `sumArray`, `folds` | Folds over a borrowed array: sum, product, and exclusive or, proved with `Func.foldl_implements`. |
-| [`PairSum`](../Examples/PairSum/README.md) | `pairSum` | An array literal as a temporary released after its fold, proved with `Func.implements_heap`. |
-| [`SumCount`](../Examples/SumCount/README.md) | `sumCount` | An array result that the caller owns, and the array size. |
+| [`PairSum`](../Examples/PairSum/README.md) | `pairSum` | Array literal as a temporary released after its fold, proved with `Func.implements_heap`. |
+| [`SumCount`](../Examples/SumCount/README.md) | `sumCount` | Array result that the caller owns, and the array size. |
 | [`Axpy`](../Examples/Axpy/README.md), [`ScaledHypot`](../Examples/ScaledHypot/README.md), [`Piecewise`](../Examples/Piecewise/README.md) | `axpy`, `scaledHypot`, `piecewise` | Binary64 arithmetic, square root, comparisons, `==`, negation, `abs`, `min`, `max`, and nested `if`. |
 | [`SumSquares`](../Library/Numerics/Statistics/SumSquares/README.md), [`Mean`](../Library/Numerics/Statistics/Mean/README.md), [`Bucket`](../Examples/Bucket/README.md) | `sumSquares`, `mean`, `bucket` | Folds over `Array Float` and the conversions between `UInt64` and `Float`. |
 | [`Prng`](../Library/Random/SplitMix64/README.md) | `prng` | SplitMix64 with a pair result, and `ImplementsPure` theorems that hold in any module containing the functions. |
@@ -634,7 +634,7 @@ Compiler fixtures use `Examples/<Name>/`, reusable algorithms use the families i
 | [`Binary32`](../Examples/Binary32/README.md) | `binary32` | `Float32` scalars, arrays, comparisons, and conditionals, and kernels translated to WGSL. |
 | [`Gpt`](../Demos/Gpt/README.md) | `gpt` | GPT-2 in binary64: calls of `ImplementsPure` functions in loops, temporaries under `Live`, a loop over layers with an array state, `++` in place, the cached step, top-k sampling, and the causal and exactness theorems. |
 | [`Gpt32`](../Demos/Gpt32/README.md) | `gpt32` | GPT-2 in binary32 on WGSL, with the theorem of the host program. |
-| [`Euler`](../Demos/Euler/README.md) | `euler` | The first-order and reconstructed solvers: arrays of records, `repeatWhile` with moved grids, `ImplementsA` budgets, total execution within 1,407 pages, and the admissibility, CFL, balance, and hyperbolicity theorems. |
+| [`Euler`](../Demos/Euler/README.md) | `euler` | First-order and reconstructed solvers: arrays of records, `repeatWhile` with moved grids, `ImplementsA` budgets, total execution within 1,407 pages, and the admissibility, CFL, balance, and hyperbolicity theorems. |
 | [`Drone`](../Demos/Drone/README.md) | `drone` | `UInt64` throughout, loops inside build elements, `@[inline]` helpers, `repeatWhile` with a status, optimality and flight safety, and total execution within 70 pages. |
 | [`PrimeFactors`](../Library/Numerics/Arithmetic/PrimeFactors/README.md), [`Lookup`](../Examples/Lookup/README.md), [`TreeLookup`](../Examples/TreeLookup/README.md), [`Below100`](../Examples/Below100/README.md), [`Increment`](../Examples/Increment/README.md), [`RemoveZero`](../Examples/RemoveZero/README.md) | `primeFactors`, `lookup`, `treeLookup`, `below100`, `increment`, `removeZero` | Small programs, each with its request and README, and with specifications written apart from the programs: a tail-recursive count with a measure, loops with tuple states, `repeatWhile` over a function that pushes, and builds, each with `compute_eq` and a bytes theorem for `expected`.  `TreeLookup` is the first run of the verified-executable skill, and `Gcd` and `SumArray` also have requests. |
 

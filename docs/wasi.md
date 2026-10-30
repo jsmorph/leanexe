@@ -57,7 +57,7 @@ end StdioExample
 | `bytes.size` | Length as `UInt64`. |
 | `bytes.get index` | Byte as `UInt64`, or zero outside the buffer. |
 | `Bytes.build count element` | `count` bytes, with the low eight bits of `element index` at each index. |
-| `bytes![0, 65, 255]` | A packed literal.  Each numeral must lie between 0 and 255. |
+| `bytes![0, 65, 255]` | Packed literal.  Each numeral must lie between 0 and 255. |
 
 [The byte dialect](../LeanExe/Dialect/Bytes.lean) wraps a native `ByteArray`.  Compiled byte values occupy two `i64` words: the payload address and logical length.  The representation requires a length below `2^32`.  A compiled builder requesting at least `2^32` bytes takes a guest resource trap.  `Bytes.build` evaluates its pure callback in index order, with a `UInt64` index.
 

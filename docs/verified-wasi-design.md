@@ -31,10 +31,10 @@ The public namespace is `LeanExe.Wasi`.  [The native import](../LeanExe/Wasi.lea
 | `readSome (capacity : UInt64) : Action ReadResult` | One stdin read after capacity validation and any required allocation. |
 | `writeStdoutSome (bytes : Bytes) : Action WriteResult` | One stdout write, borrowing `bytes`. |
 | `writeStderrSome (bytes : Bytes) : Action WriteResult` | One stderr write, borrowing `bytes`. |
-| `exit (code : UInt64) : Action α` | A terminal exit request with the low 32 bits of `code`, producing an accepted exit or a host trap. |
+| `exit (code : UInt64) : Action α` | Terminal exit request with the low 32 bits of `code`, producing an accepted exit or a host trap. |
 | `loop (count : UInt64) (init : σ) (test : UInt64 → σ → Bool) (step : UInt64 → σ → Action σ) : Action σ` | At most `count` iterations, carrying a state of an accepted runtime value type. |
-| `ReadResult` | A record with `errno : UInt64` and `bytes : Bytes`. |
-| `WriteResult` | A record with `errno : UInt64` and `count : UInt64`. |
+| `ReadResult` | Record with `errno : UInt64` and `bytes : Bytes`. |
+| `WriteResult` | Record with `errno : UInt64` and `count : UInt64`. |
 
 Zero errno denotes success.  Error results remain ordinary values: the source decides whether to return, exit, continue, or report an error.  Sequencing an action executes it once even if its result is discarded.  A pure binding such as `let action := readSome n` names a description.  A monadic binding such as `let result ← action` executes it.  Sequencing the same named action twice performs two calls.
 
@@ -62,11 +62,11 @@ A successful write returns the host's count, including a short or zero count.  T
 
 | Declaration | Meaning |
 |---|---|
-| `Bytes.empty : Bytes` | The empty sequence. |
+| `Bytes.empty : Bytes` | Empty sequence. |
 | `Bytes.size (bytes : Bytes) : UInt64` | Its length, exact under the representation's address-space bound. |
-| `Bytes.get (bytes : Bytes) (index : UInt64) : UInt64` | The selected byte, zero-extended, or zero past the end. |
-| `Bytes.build (count : UInt64) (element : UInt64 → UInt64) : Bytes` | A byte sequence whose element at `i` is the low eight bits of `element i`.  The callback obeys the existing first-order build restrictions. |
-| `bytes![0, 65, 255]` | A constant sequence, with each literal checked to lie between 0 and 255 during elaboration. |
+| `Bytes.get (bytes : Bytes) (index : UInt64) : UInt64` | Selected byte, zero-extended, or zero past the end. |
+| `Bytes.build (count : UInt64) (element : UInt64 → UInt64) : Bytes` | Byte sequence whose element at `i` is the low eight bits of `element i`.  The callback obeys the existing first-order build restrictions. |
+| `bytes![0, 65, 255]` | Constant sequence, with each literal checked to lie between 0 and 255 during elaboration. |
 
 The logical length uses Nat where Lean's byte-sequence definitions require it.  Compiled counters, comparisons, API arguments, and returned lengths use UInt64.  Reflection proves their correspondence under the memory bound.  [Byte access](../Verified/Bytes/Get.lean) and [construction](../Verified/AlignedBytes.lean) have universal correctness rules.  Intermediate UInt8 conversions in those rules do not require a general UInt8 arithmetic dialect.
 
@@ -231,7 +231,7 @@ The implementation separates native APIs from compiler developments:
 | Location | Responsibility |
 |---|---|
 | [Native bytes](../LeanExe/Dialect/Bytes.lean) | Native byte values, UInt64 operations, and literals. |
-| [Native actions](../LeanExe/Wasi) | The three stream APIs, exit, bounded loops, processes, observable semantics, and native interpreter. |
+| [Native actions](../LeanExe/Wasi) | Three stream APIs, exit, bounded loops, processes, observable semantics, and native interpreter. |
 | [Byte compilation](../Verified/Bytes) | Byte representation, ownership, lowering, and proofs. |
 | [WASI compilation](../Verified/Wasi) | Host assumptions, typed command IR, module layout, compiler, wrapper proofs, and reflector. |
 
@@ -271,12 +271,12 @@ Scripted host models supply deterministic partial-transfer and failure cases.  N
 | Zero-capacity read | One `fd_read` import call with a zero-length iovec.  EOF inference requires positive capacity. | Return `INVAL` before I/O, adding a source validation rule. |
 | Exit UInt64 to WASI u32 | Explicit low-32-bit conversion for direct exit and command return. | A checked exit-code type adds source representation work.  Trapping on overflow adds a guest failure path. |
 | Exit acceptance | Standard host linking with accepted-exit and terminal host-failure outcomes.  A guarantee of return or designated exit requires host acceptance of every reached exit request. | A custom callback accepting every UInt32 changes embedding policy and exit classification. |
-| Bytes | A single allocation root plus logical UInt64 length. | A length-prefixed, one-pointer object changes the existing byte host ABI and access proofs. |
-| Read result | An errno-and-bytes record, empty on error. | A heap-valued sum requires a broader accepted sum representation. |
+| Bytes | Single allocation root plus logical UInt64 length. | A length-prefixed, one-pointer object changes the existing byte host ABI and access proofs. |
+| Read result | Errno-and-bytes record, empty on error. | A heap-valued sum requires a broader accepted sum representation. |
 | Host errors | Permit the declared current-operation prefix and preserve prior effects.  Count is valid on success. | An unchanged-world error rule needs a stronger host guarantee. |
 | Pure proof reuse | Prove import relocation and host-state execution transport, then compose. | Generalize shared compiler rules where the transport proof demonstrates a need. |
-| Source monad | A semantic `Action` with checked reflection equations. | Opaque BaseIO primitives require an additional primitive/state correspondence. |
-| Frontend | A separate `verified_compile_wasi` command, with an optional command entry. | Inferring an effect profile in `verified_compile` changes that command's accepted types and output selection. |
+| Source monad | Semantic `Action` with checked reflection equations. | Opaque BaseIO primitives require an additional primitive/state correspondence. |
+| Frontend | Separate `verified_compile_wasi` command, with an optional command entry. | Inferring an effect profile in `verified_compile` changes that command's accepted types and output selection. |
 | Native API placement | Compiler-independent `LeanExe.Bytes` and `LeanExe.Wasi` modules. | Compiler-specific source APIs couple consumers to one compiler's namespace and module organization. |
 | Effectful control flow | Bounded loops and an acyclic helper graph for the initial implementation. | Unbounded structured loops require a general trace-prefix theorem and separate termination premises. |
 | Depth accounting | Share the existing guarded-call depth through effectful and pure internal calls. | Independent counters require a combined frame bound to justify their interaction. |

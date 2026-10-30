@@ -21,7 +21,7 @@ The program is the translation of a module, a volatile global `lx_out` that the 
 
 The target is AArch64, on QEMU's `virt` machine with 1 GiB of RAM, compiled with CompCert's `aarch64-linux` configuration.  QEMU runs the image on an emulated Cortex-A57 under TCG and, in B8, on the processor of AArch64 hardware under KVM.  CompCert 3.18 has no bare-metal configuration for any 64-bit target: its `configure` lists `-eabi` variants only for PowerPC and 32-bit ARM (lines 43 to 62).  The Lean copy fixes `ptr64 = true`, so x86-64, RISC-V, and AArch64 remain, and AArch64 needs the least outside the proofs:
 
-| Target | CompCert run-time functions that the translations need | The Lean copy | Startup |
+| Target | CompCert run-time functions that the translations need | Lean copy | Startup |
 | --- | --- | --- | --- |
 | AArch64 | none: `runtime/Makefile` builds only `vararg.o` for it (line 26), and a translated module links with no library | `Archi.aarch64`, with the corpus passing natively on AArch64 | QEMU enters the image at EL1 |
 | x86-64 | `__compcert_i64_dtou` and `__compcert_i64_utod`, which `backend/SplitLong.vp` calls for unsigned conversions (lines 136 and 140), since `x86/SelectLong.vp` selects none of its own.  The library is compiled outside CompCert's proofs | `Archi.x86_64` | a Multiboot loader enters in 32-bit protected mode with paging off, so page tables must exist before any CompCert code runs in 64-bit mode |
@@ -66,9 +66,9 @@ The program can report results in four ways, and CompCert's semantics observes t
 
 | Channel | In CompCert's behaviour | Use |
 | --- | --- | --- |
-| The `int` that `main` returns | yes: `Terminates t r` carries `r` | 0, the trap code of `lx_status`, or 64 when a program with input reads a length above `inMax`.  The startup code passes `w0` to QEMU's exit status through semihosting |
+| `int` that `main` returns | yes: `Terminates t r` carries `r` | 0, the trap code of `lx_status`, or 64 when a program with input reads a length above `inMax`.  The startup code passes `w0` to QEMU's exit status through semihosting |
 | Volatile stores to a volatile global | yes: each is an event `Event_vstore chunk id ofs v` of the trace, which every pass preserves | the result's bytes, through `lx_out` at the UART's data register |
-| A memory region read after the program halts, by a debugger or QEMU's monitor | no: `program_behaves` records only the trace and the result, so CompCert's theorem says nothing about final memory | none |
+| Memory region read after the program halts, by a debugger or QEMU's monitor | no: `program_behaves` records only the trace and the result, so CompCert's theorem says nothing about final memory | none |
 | Semihosting calls from C, such as `SYS_WRITEC` | only as an external call, whose event and result come from `external_functions_sem`, a parameter of CompCert.  The Lean theorems hold for every such semantics and so conclude nothing about a call to one | the startup code's exit call, outside the proofs |
 
 A volatile store reaches the trace as follows.  C2C gives an `extern volatile` declaration an empty initializer and `gvar_volatile = true` (`cfrontend/C2C.ml`, lines 1278, 1279, and 1305 to 1307).  SimplExpr turns an assignment to a volatile lvalue into `Sbuiltin None (EF_vstore chunk)` with the lvalue's address and the value (`cfrontend/SimplExpr.v`, lines 184 to 226), and the experiment's `clightgen` output shows this form for a store to `lx_out`.  `volatile_store` of a block that `Senv.block_is_volatile` marks emits `Event_vstore` and leaves memory unchanged, with no permission check (`common/Events.v`, lines 571 to 583).  The assembler and linker resolve `lx_out` by name to the address in the linker script, so the event means a 32-bit store to that address.
@@ -119,13 +119,13 @@ The lemmas of the path exist only for the translation with the test.  Each theor
 
 | Module | Theorems |
 | --- | --- |
-| [The initialization](../LeanExe/Native/Proof/Init.lean) | `translate_defs`, `init_spec`, `lx_init_correct`, `funcs_found` |
-| [The whole program](../LeanExe/Native/Proof/Whole.lean) | `translation_ids`, `wholeOk_of`, `wholeOk_bare`, `wholeOk_in`, `init_whole`, `lx_init_whole`, `start_whole` |
-| [The quiet translation](../LeanExe/Native/Proof/Quiet.lean) | `translation_fun_quiet`, `genvQuiet_whole` |
-| [The bare-metal program](../LeanExe/Native/Proof/Main.lean) | `entry_type`, `bare_program`, `bare_of_nativeA` |
-| [The input program](../LeanExe/Native/Proof/Input.lean) | `input_program` |
-| [The bare-metal wrappers](../Verified/Bare.lean) | `bare_of_nativeTables` |
-| [The native test support](../tests/TestSupport/Native/Common.lean) | `start` |
+| [Initialization](../LeanExe/Native/Proof/Init.lean) | `translate_defs`, `init_spec`, `lx_init_correct`, `funcs_found` |
+| [Whole program](../LeanExe/Native/Proof/Whole.lean) | `translation_ids`, `wholeOk_of`, `wholeOk_bare`, `wholeOk_in`, `init_whole`, `lx_init_whole`, `start_whole` |
+| [Quiet translation](../LeanExe/Native/Proof/Quiet.lean) | `translation_fun_quiet`, `genvQuiet_whole` |
+| [Bare-metal program](../LeanExe/Native/Proof/Main.lean) | `entry_type`, `bare_program`, `bare_of_nativeA` |
+| [Input program](../LeanExe/Native/Proof/Input.lean) | `input_program` |
+| [Bare-metal wrappers](../Verified/Bare.lean) | `bare_of_nativeTables` |
+| [Native test support](../tests/TestSupport/Native/Common.lean) | `start` |
 
 ### What the Lean copy must add
 
@@ -288,13 +288,13 @@ These figures are estimates.
 | Question | Recommendation |
 | --- | --- |
 | Do the Rocq files of B5 belong in the repository?  They add a build that needs a CompCert 3.18 tree with its proofs compiled. | Yes, in a directory of their own, checked by a script that takes the tree's path, outside the default build. |
-| A renaming lemma in Lean (B3), or a per-build check that treats the renaming as trusted? | The lemma, since the numbering differs between `clightgen` and `ccomp` in any case and the lemma covers every injective renaming. |
+| Renaming lemma in Lean (B3), or a per-build check that treats the renaming as trusted? | Lemma, since the numbering differs between `clightgen` and `ccomp` in any case and the lemma covers every injective renaming. |
 | How does output reach a device on a board, where `main` cannot wait for the UART? | Decide with a board in hand.  B8 runs under KVM, where QEMU's UART takes every store. |
 | Are inputs not fixed in advance (B7) in scope? | Yes, as B7 implements them: a packed array for the hashing library's exports, and `LeanExe.Bytes` when an entry needs it. |
-| The MMU on QEMU: off, or on, which would give QEMU's runs a board's memory types? | On in every build, decided at B8.  Under KVM an unaligned load faulted with the MMU off, and one startup path lets the runs under TCG test the code that runs on hardware. |
-| A proof that the translated code makes only aligned accesses, the translator's optional M7 alignment proof? | None for bare metal, decided at B8.  With RAM as Normal memory and `SCTLR_EL1.A` clear, unaligned loads and stores of single or multiple registers are performed (B2.8.2.1.1), and `tools/baremetal/access-check.sh` excludes the instructions that keep alignment rules. |
-| The entry's form: scalar constants in `main`, heap constants inside a Lean definition without parameters, and a result of type `UInt64` or `Array UInt64` | As designed, with other result types encoded in Lean. |
-| The UART's address: fixed in the linker script and checked against QEMU's device tree by the test harness, or read from the device tree at startup? | The linker script and the harness's check. |
+| MMU on QEMU: off, or on, which would give QEMU's runs a board's memory types? | On in every build, decided at B8.  Under KVM an unaligned load faulted with the MMU off, and one startup path lets the runs under TCG test the code that runs on hardware. |
+| Proof that the translated code makes only aligned accesses, the translator's optional M7 alignment proof? | None for bare metal, decided at B8.  With RAM as Normal memory and `SCTLR_EL1.A` clear, unaligned loads and stores of single or multiple registers are performed (B2.8.2.1.1), and `tools/baremetal/access-check.sh` excludes the instructions that keep alignment rules. |
+| Entry's form: scalar constants in `main`, heap constants inside a Lean definition without parameters, and a result of type `UInt64` or `Array UInt64` | As designed, with other result types encoded in Lean. |
+| UART's address: fixed in the linker script and checked against QEMU's device tree by the test harness, or read from the device tree at startup? | Linker script and the harness's check. |
 | Programs with byte literals, whose theorem is `ImplementsStatic`, in the command `bare_program`? | Add the case when a program needs it, decided on 2026-10-28.  No program of test 2 or of the input test needs it, and code that no program uses has no test behind it. |
 
 ## Sources
