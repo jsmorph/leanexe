@@ -50,8 +50,8 @@ host reads by walking the records and checking each header, and the second print
 ## The verified compiler's module
 
 `verified_compile compiled := [listSum, listRange, sumRange]` in [the verified
-compilation](Compiled.lean) compiles the three definitions, in the order of the LeanExe module, into
-the 1,975-byte `exampleLists.wasm` of [the module registry](../../tests/verified/modules.txt).  The
+compilation](Compiled.lean) compiles the definitions, in the order of the LeanExe module, into the
+1,975-byte `exampleLists.wasm` of [the module registry](../../tests/verified/modules.txt).  The
 registry names it `exampleLists`, since `lists` names [the list
 fixture](../../Verified/Examples/Lists.lean) of the verified compiler.  The host passes and reads
 the same chains of records for both modules, and the reflector inlines the library's `range` into
@@ -63,7 +63,7 @@ bound, which `compiled.listRange.bound_eq` states as a loop cost of 64 bytes at 
 |---------|-----------|
 | `compiled.listSum.implements`, `compiled.listRange.implements`, `compiled.sumRange.implements` | Functions 2 to 4 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, return their Lean functions' values or stop at `unreachable`. |
 | `compiled.listSum.trapFree`, `compiled.listRange.trapFree`, `compiled.sumRange.trapFree` | The same calls return without a trap when `top` can rise by the function's bound within the memory cap. |
-| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements all three functions. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements every function. |
 | `exampleLists_file`, `exampleLists_file_decode` | `build/verified/exampleLists.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
 ```sh

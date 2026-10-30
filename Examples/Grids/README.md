@@ -51,9 +51,9 @@ The commands build the proofs, write the module, and call it in the Wasmtime hos
 ## The verified compiler's module
 
 `verified_compile compiled := [density, …, totalDensity]` in [the verified
-compilation](Compiled.lean) compiles the fourteen definitions, in the order of the LeanExe module,
-into the 5,237-byte `exampleGrids.wasm` of [the module registry](../../tests/verified/modules.txt).
-The registry names it `exampleGrids`, since `grids` names [the grid
+compilation](Compiled.lean) compiles the definitions, in the order of the LeanExe module, into the
+5,237-byte `exampleGrids.wasm` of [the module registry](../../tests/verified/modules.txt).  The
+registry names it `exampleGrids`, since `grids` names [the grid
 fixture](../../Verified/Examples/Grids.lean) of the verified compiler.  The reflector needs the
 `Flat` instances of `Phase`, `Conserved`, `Cell`, and `Mass`, which [`Flat.lean`](Flat.lean) states
 for the theorems of both compilers, and the host passes the same words for an array of records to
@@ -64,9 +64,9 @@ that each builds.
 
 | Theorem | Statement |
 |---------|-----------|
-| `compiled.density.implements` … `compiled.totalDensity.implements` | Functions 2 to 15 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, return their Lean functions' values, without a trap for the eleven that allocate nothing. |
-| `compiled.scaled.trapFree`, `compiled.ramp.trapFree`, `compiled.flags.trapFree` | The three builds return their arrays without a trap when `top` can rise by `Verified.blockCost` of the result's words within the memory cap. |
-| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements all fourteen functions. |
+| `compiled.density.implements` … `compiled.totalDensity.implements` | Functions 2 to 15 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, return their Lean functions' values, without a trap for those that allocate nothing. |
+| `compiled.scaled.trapFree`, `compiled.ramp.trapFree`, `compiled.flags.trapFree` | The builds return their arrays without a trap when `top` can rise by `Verified.blockCost` of the result's words within the memory cap. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements every function. |
 | `exampleGrids_file`, `exampleGrids_file_decode` | `build/verified/exampleGrids.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
 ```sh

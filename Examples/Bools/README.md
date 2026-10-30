@@ -48,9 +48,9 @@ and `mark 0` prints 1 and 0 on two lines, the flag and the value.
 ## The verified compiler's module
 
 `verified_compile compiled := [isPositive, …, flagOf]` in [the verified
-compilation](Compiled.lean) compiles the thirteen definitions, in the order of the LeanExe module,
-into the 1,892-byte `bools.wasm` of [the module registry](../../tests/verified/modules.txt), so that
-each function has the same index in both modules.  `Flagged` takes the representation of
+compilation](Compiled.lean) compiles the definitions, in the order of the LeanExe module, into the
+1,892-byte `bools.wasm` of [the module registry](../../tests/verified/modules.txt), so that each
+function has the same index in both modules.  `Flagged` takes the representation of
 [`Flat.lean`](Flat.lean), which the theorems of both compilers import.  No function allocates, so
 each generated `compiled.f.implements` states that its function returns the Lean function's value
 without a trap, and `compiled.f.native` states the same of its C function.
@@ -58,7 +58,7 @@ without a trap, and `compiled.f.native` states the same of its C function.
 | Theorem | Statement |
 |---------|-----------|
 | `compiled.isPositive.implements` … `compiled.flagOf.implements` | Each of functions 2 to 14 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, returns its Lean function's value without a trap. |
-| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements all thirteen functions. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements every function. |
 | `bools_file`, `bools_file_decode` | `build/verified/bools.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
 ```sh

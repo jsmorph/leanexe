@@ -51,21 +51,21 @@ second inserts 9 at position 1 and then removes position 0, and prints `[9, 2, 3
 ## The verified compiler's module
 
 `verified_compile compiled := [pushTwo, setTwice, insertErase, pushCopy]` in [the verified
-compilation](Compiled.lean) compiles the four definitions, in the order of the LeanExe module, into
-the 3,185-byte `exampleUpdates.wasm` of [the module registry](../../tests/verified/modules.txt).
-The registry names it `exampleUpdates`, since `updates` names [the update
+compilation](Compiled.lean) compiles the definitions, in the order of the LeanExe module, into the
+3,185-byte `exampleUpdates.wasm` of [the module registry](../../tests/verified/modules.txt).  The
+registry names it `exampleUpdates`, since `updates` names [the update
 fixture](../../Verified/Examples/Updates.lean) of the verified compiler.  The compiler takes the
 array of `pushTwo`, `insertErase`, and `pushCopy` as an owned argument, `Moved`, and it borrows the
 array of `setTwice`, which reads the array after the first update and therefore copies it.  The
-generated `implements` theorems cover all four functions, where `updates_bytes` covers `pushCopy`
-alone, and `compiled.f.trapFree` excludes the stop at `unreachable` when `top` can rise by the
-function's bound.
+generated `implements` theorems cover every function, where `updates_bytes` covers `pushCopy` alone,
+and `compiled.f.trapFree` excludes the stop at `unreachable` when `top` can rise by the function's
+bound.
 
 | Theorem | Statement |
 |---------|-----------|
 | `compiled.pushTwo.implements` … `compiled.pushCopy.implements` | Functions 2 to 5 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, return their Lean functions' arrays, owned by the caller, or stop at `unreachable`. |
 | `compiled.pushTwo.trapFree` … `compiled.pushCopy.trapFree` | The same calls return without a trap when `top` can rise by the function's bound within the memory cap. |
-| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements all four functions. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements every function. |
 | `exampleUpdates_file`, `exampleUpdates_file_decode` | `build/verified/exampleUpdates.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
 ```sh

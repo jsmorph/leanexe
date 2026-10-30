@@ -44,13 +44,13 @@ Wasmtime against native Lean for each export, including the empty array and word
 
 ## The verified compiler's modules
 
-[The verified compilation](Compiled.lean) divides the three folds as the LeanExe modules do:
+[The verified compilation](Compiled.lean) divides the folds as the LeanExe modules do:
 `verified_compile compiledSum := [sumArray]` writes the 1,503-byte `sumArray.wasm`, and
 `verified_compile compiledFolds := [productArray, xorArray]` the 1,666-byte `folds.wasm`, both of
 [the module registry](../../tests/verified/modules.txt).  The folds read their borrowed array and
 allocate nothing, so each generated `implements` theorem states that its function returns the fold
 without a trap, and the generated `native` theorem states the same of its C function.  [The
-library's module](../../Library/Numerics/Reductions/Word/Compiled.lean) compiles the same three
+library's module](../../Library/Numerics/Reductions/Word/Compiled.lean) compiles the same
 definitions in one module, `libwordreductions`.
 
 | Theorem | Statement |
