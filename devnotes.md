@@ -39005,3 +39005,42 @@ The reflector change, rebased onto main with the determinism proofs and the cap 
 
 - [x] `leanchecker` over every module.
 - [x] The byte comparison across the reflector change.
+
+## 2026-10-30: One call theorem for the verified compilations
+
+Each hashing and regex library proved its call theorems from four local pieces: a `Ready` predicate on the store, `ready_initial`, a copy of `borrowed_kept`, and an `entry_call` lemma of about 30 lines that instantiated the generated `implements` theorem.  The exponential's byte theorem had the same four pieces, and `Examples.arrayCall` was a fifth copy of the instantiation for a function from a borrowed array to an owned array.  [The call module](Verified/Call.lean) replaces them with one named statement and one theorem, so that a call theorem keeps only its composition with the specification.
+
+`Verified.Ready m tables heap store` states the allocator invariant, a memory cap of at most 65,535 pages, and table `k` borrowed at `tableAddr tables k`, which is the conclusion of the generated `p.initial` with `p.tables` as the data.  `Verified.Call m tables k f Pre Post` is a definition whose unfolding is the statement of a call: from a ready store, with arguments that `Represent` describes and that move no object, and with `Pre`, function `k` returns `f x` without a trap and leaves a ready store.  The same statement keeps every array borrowed before the call borrowed, keeps the bytes and regions of the heap, places the result's objects outside every earlier region, and gives `Post`.  `Verified.CallSpec m tables k f B` fixes `Pre` to room for `B x` bytes and `Post` to a rise of `top` by at most `B x`, with `B` a function of the input, so that a tool that writes a call statement can instantiate it with the generated `p.f.bound`.  `Verified.ImplementsTables.call` proves `Call` from an `ImplementsTables false` theorem whose tables are among the program's, `Verified.ImplementsTables.ofA` admits an `ImplementsA` theorem, `Verified.Call.spec` proves `CallSpec` for a specification, and `Verified.Call.array` restates `Call` for an owned array result.
+
+The conclusion keeps every borrowed array borrowed, rather than the arguments of one shape, so one statement covers each shape that `Represent` describes: words, word arrays, and tuples of them as arguments, and a word, a tuple of words, or a word array as the result.  A scratch file checked `CallSpec` with the generated bound, from `trapFree`, for an array to an array, two words to a word, a word to a word, an array and a word to four words, an array and two words to an array, and two words and an array to a word through a table.  `Examples.Increment.compute_callSpec` and `Library.Numerics.Arithmetic.Gcd.gcd_callSpec` keep two of them as worked examples.  A scalar `pure` theorem holds from every store and keeps the store, which `CallSpec` does not state, so `gcd_call` and `primeFactors_call` keep their statements and proofs.  `LeanExe.Pipeline.ImplementsPureA.implementsA` turns such a theorem into `Call` with a `Post` that keeps the heap and the store.
+
+The program's tables follow from the kept borrowed arrays, which re-establishes readiness without a lemma per table.  A table that an entry reads must be one of the program's at its address, and `ImplementsTables.call` takes the program's tables explicitly before that proof, because Lean elaborates the proof's table index only once the tables are known.  `compiled.initial` given directly as `Ready` reached the recursion limit for the modules of CRC and of the exponential, so `Ready.initial` takes the equation of the literal pool, and `Ready.initial rfl compiled.initial` checks for every library.  The address of the second CRC table still depends on the size of the first, so `Library.Hashing.Crc.crc32c_table` keeps the raised `maxRecDepth` of the former `ready_initial`.
+
+Every call theorem keeps its name.  Its statement differs from its former text only where the former local `Ready` stood, which a script checked by substitution.  A scratch file, checked against the build before the change, proved each former `Ready` equivalent to `Verified.Ready` over the program's tables, so each statement is equivalent to its former one.  The array examples' call theorems and `Examples.arrayCall` keep their statements, and `arrayCall` follows from a `CallSpec` instance through `Call.array`.  `tests/TestSupport/Bare/Input.lean` used SHA-256's `ready_initial` and now uses `Ready.initial`.
+
+| Library | Theorems moved | Removed |
+| --- | --- | --- |
+| SHA-256 | `sha256_call`, `sha224_call`, `sha256_module` | `Ready`, `ready_initial`, `borrowed_kept`, `entry_call` |
+| SHA-512 | `sha512_call`, `sha384_call`, `sha512_256_call`, `sha512_224_call`, `sha512_module` | `Ready`, `ready_initial`, `borrowed_kept`, `entry_call` |
+| SHA-3 | four hash calls, `shake128_call`, and `shake256_call` | `Ready`, `ready_initial`, `borrowed_kept`, `hash_call`, `shake_call` |
+| HMAC | `hmacSha256_call`, `hmacSha512_call`, and their module theorems | `Ready`, `ready_initial256`, `ready_initial512`, `borrowed_kept`, `entry_call` |
+| CRC | four calls | `Ready`, `ready_initial`, `borrowed_kept`, `table_of_ready`, `ready_after`, `entry_call`, `update_call` |
+| SipHash, XXH64, regex | `siphash24_call`, `siphash13_call`, `xxh64_call`, `matchWith_call` | `Ready`, `ready_initial`, `borrowed_kept`, and SipHash's `entry_call` |
+| Exponential | `exp_entry_call`, `exp_bytes_accuracy` | `Ready`, `ready_initial`, `borrowed_kept` |
+| Examples | `arrayCall`, and through it the five array calls | nothing |
+
+The ten changed files fell from 1,771 to 1,369 lines, the new module has 167, and the code commit adds 531 lines and removes 736.  Each file was elaborated three times before and after the change, alternately, against the same build, and the sum of the medians fell from 41.5 to 28.1 seconds, with 2.3 more for the new module and about 2.2 seconds per file to load the imports.  The largest drops were SHA-3, from 6.8 to 2.7 seconds, and HMAC, from 6.5 to 3.4.  The docstring of the shared frame lemma's module now names the call theorem instead of the exponential's removed copy, which rebuilt the modules that import it.
+
+| Check | Cases | Result |
+| --- | --- | --- |
+| `lake build LeanExe Examples Demos Verified Library TestSupport` with `native-verified`, `native-bare`, `verified-cases`, and `native-module-cases` | 15,263 jobs | Passed, and no changed file has a warning |
+| `lake build` of the file theorem modules after the changed modules | 12 file modules and 6 modules of `Exp2` outside the roots | Passed, each file theorem with the three permitted axioms |
+| `tests/verified/run.sh --cases` for `sha256`, `sha512`, `hmac_sha256`, `hmac_sha512`, `sha3`, `crc`, `siphash`, `xxhash64`, `regex`, `exp`, `increment`, `below100`, `removeZero`, `lookup`, `treeLookup`, and `gcd` | 2,732 | All passed |
+| `VKB/Check.lean` on `VKB/entries` | 20 entries | No problem reported |
+| `#print axioms` of the call module and every call theorem | 49 declarations | `propext`, `Classical.choice`, and `Quot.sound` at most |
+
+- [x] `Verified.Ready`, `Call`, `CallSpec`, and the theorems of the call module.
+- [x] The hashing, regex, and exponential call theorems on the generic theorem, with their local lemmas removed.
+- [x] `Examples.arrayCall` as a corollary of `CallSpec`, and two worked examples of `CallSpec` with the generated bound.
+- [ ] Move the call lemmas of the other numerical libraries, 21 modules from `PrintFloatBytes` to `BesselBytes`, onto `Verified.Call`.
+- [ ] Decide whether the array examples' call theorems should be stated as `CallSpec` instances.

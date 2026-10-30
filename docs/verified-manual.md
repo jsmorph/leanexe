@@ -359,6 +359,8 @@ These declarations belong to the pure `verified_compile` command.  [The WASI dec
 
 Functions 0 and 1 of the module are the runtime's `alloc` and `release`, and function `2 + k` is the `k`-th listed definition that is not a wrapper, counted from 0.  In a program of `n` such definitions, the entry of the `j`-th definition whose code takes the call depth is function `2 + n + j`, and the wrappers follow the entries.  The module exports each definition under its name, at its entry when its code takes the call depth.
 
+A call theorem for one export starts from `p.f.implements` or `p.f.trapFree`.  [The call module](../Verified/Call.lean) states the call as `Verified.Call p.module p.tables k f Pre Post`: from a store that `Verified.Ready p.module p.tables` states ready, with borrowed or scalar arguments and `Pre`, function `k` returns `f x` without a trap and leaves a ready store.  The call also keeps every borrowed array borrowed and every region of the heap intact, and it meets `Post`.  `Verified.CallSpec p.module p.tables k f B` is that statement with room for `B x` bytes before the call and a rise of `top` by at most `B x`.  `Verified.ImplementsTables.call` proves `Call` from the entry's theorem, `Verified.Call.spec` proves `CallSpec p.module p.tables k g p.f.bound` from `p.f.trapFree` for a specification `g` that equals `f` on represented arguments, for words, word arrays, and tuples of them, as `Examples.Increment.compute_callSpec` does.  `Verified.Ready.initial rfl p.initial` proves that the store in which the module starts is ready.
+
 ### Module composition
 
 The typed API combines separately reflected programs with `Prog.append`:

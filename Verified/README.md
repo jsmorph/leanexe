@@ -485,7 +485,9 @@ the module starts, as Talos's `Module.initialStore` builds it, meets the allocat
 the bump pointer after the tables and an empty free list, caps the memory at 65,535 pages, and holds
 each table at its address, so the theorems apply to the first call.  The reflector states it for
 each such program as `p.initial`.  A wrapper is no function of the program, so other functions pass
-tables as parameters.
+tables as parameters.  [The call module](Call.lean) names that condition on a store `Ready` and
+states with `Call` that an entry, called from a ready store, leaves a ready store, so that a call
+theorem covers every call of a sequence that starts in the initial store.
 
 [Literal collection](Literals.lean) traverses every function body, including guarded and tail
 bodies and expression callbacks.  `Prog.literalPool` removes duplicate nonempty byte lists and

@@ -68,9 +68,8 @@ The theorems are in [the exponential theorem module](ExpTheorem.lean) and [the f
 | `exp_pos_infinity`, `exp_neg_infinity` | `exp (+∞) = +∞` and `exp (-∞) = +0`, as bits. |
 | `exp_nan` | For a NaN `x`, the result has the bits `Wasm.IEEE64.canonicalNaN`. |
 | `saturated_bits` | From exponent field 1033 on (`\|a\| ≥ 1024`), the result is `+0` for negative and `+∞` for positive finite inputs. |
-| `ready_initial` | The module's initial store satisfies `Ready`: the allocator invariant, the table borrowed at 4096, and a memory cap of at most 65,535 pages. |
-| `exp_entry_call` | A call of function 5 from a store satisfying `Ready` returns, without a trap, the bits of `Exp.exp x`, and leaves a store satisfying `Ready` in which every heap region keeps its bytes. |
-| `exp_bytes_accuracy` | `Exp.compiled.module` encodes to bytes that decode to it, exports function 5 as `exp`, starts in a `Ready` store, and every call from a `Ready` store returns the bits of `Exp.exp x`, within one step for finite `x`, and leaves a `Ready` store.  The statement therefore covers every call in a sequence of calls to `exp`. |
+| `exp_entry_call` | Function 5, called from a store satisfying `Verified.Ready`, returns without a trap the bits of `Exp.exp x` and leaves a store satisfying `Verified.Ready` in which every heap region keeps its bytes.  `Verified.Ready` states the allocator invariant, the table borrowed at 4096, and a memory cap of at most 65,535 pages. |
+| `exp_bytes_accuracy` | `Exp.compiled.module` encodes to bytes that decode to it, exports function 5 as `exp`, starts in a `Verified.Ready` store, and every call from a `Verified.Ready` store returns the bits of `Exp.exp x`, within one step for finite `x`, and leaves a `Verified.Ready` store.  The statement therefore covers every call in a sequence of calls to `exp`. |
 | `exp_file` | `build/verified/exp.wasm` holds `encode Exp.compiled.module`. |
 | `exp_file_decode` | `build/verified/exp.wasm` decodes to the module of `exp_bytes_accuracy`. |
 

@@ -17,6 +17,7 @@
     "Library.Numerics.Decimal.PrintFloat.PrintFloatSteps",
     "Library.Numerics.Float64.Exp.ExpTheorem",
     "Verified.Literals",
+    "Verified.Call",
     "Verified.Examples.CompositionPure",
     "Examples.Increment.Compiled",
     "Library.Numerics.Arithmetic.Gcd.Compiled",
@@ -26,15 +27,16 @@
   ],
   "declarations": [
     "Verified.Prog.literals",
-    "Verified.Prog.Covered"
+    "Verified.Prog.Covered",
+    "Verified.Ready.initial"
   ],
   "examples": [
-    "Library.Hashing.Crc.ready_initial",
+    "Library.Hashing.Crc.crc32c_table",
     "Library.Hashing.Crc.Proof.crc32Table_of",
     "Library.Hashing.XxHash64.xxh64_export",
     "Library.Hashing.Sha3.RoundProof.round_0",
     "Library.Numerics.Decimal.PrintFloat.PrintFloatSteps.wide_binary64",
-    "Library.Numerics.Float64.Exp.ExpTheorem.ready_initial",
+    "Library.Numerics.Float64.Exp.ExpTheorem.exp_bytes_accuracy",
     "Verified.Examples.CompositionBase.add_pure",
     "Examples.Increment.compute_export",
     "Library.Numerics.Arithmetic.Gcd.gcd_export",
@@ -49,6 +51,7 @@
     "2026-10-25: CRC-32 and CRC-32C: results",
     "2026-10-27: Stage 3, the charges of the binary64 printer and parser",
     "2026-10-30: Verified compilations of LeanExe examples and library programs",
-    "2026-10-30: Array literals and conditions on propositions in the reflector"
+    "2026-10-30: Array literals and conditions on propositions in the reflector",
+    "2026-10-30: One call theorem for the verified compilations"
   ]
 }

@@ -1,35 +1,61 @@
 {
   "id": "spec-call-theorem",
   "goals": [
+    "Verified.Call compiled.module compiled.tables k f Pre Post",
+    "Verified.CallSpec compiled.module compiled.tables k f B",
+    "Verified.CallSpec compiled.module compiled.tables k expected compiled.f.bound",
+    "Verified.Ready compiled.module compiled.tables (Verified.initialHeap compiled.tables) compiled.module.initialStore",
     "Runs false env compiled.module k store [.i64 ptr] fun final values => ∃ optr, values = [.i64 optr] ∧ ∃ heap', heap'.Owned final optr (expected xs)",
+    "Runs false env compiled.module k store [.i64 n, .i64 ptr] fun final values => ∃ d, values.reverse = [...] ∧ spec ∧ ∃ heap', Verified.Ready compiled.module compiled.tables heap' final ∧ heap'.Borrowed final ptr msg",
     "Runs false env compiled.module k store [.i64 b, .i64 a] fun final values => final = store ∧ values = [.i64 (expected (a, b))]",
     "compute xs = expected xs from xs.size < 2 ^ 64"
   ],
   "modules": [
+    "Verified.Call",
     "Examples.ArrayCall",
     "Examples.Increment.Compiled",
     "Examples.Below100.Compiled",
     "Examples.RemoveZero.Compiled",
     "Library.Numerics.Arithmetic.Gcd.Compiled",
+    "Library.Hashing.Sha256.Bytes",
+    "Library.Hashing.Crc.Bytes",
     "Library.Hashing.Sha3.Bytes",
+    "Library.Regex.Bytes",
+    "Library.Numerics.Float64.Exp.ExpTheorem",
     "Examples.Lookup.Compiled",
     "Examples.TreeLookup.Compiled",
     "Library.Numerics.Arithmetic.PrimeFactors.Compiled"
   ],
   "declarations": [
+    "Verified.Ready",
+    "Verified.Ready.initial",
+    "Verified.Call",
+    "Verified.CallSpec",
+    "Verified.ImplementsTables.ofA",
+    "Verified.ImplementsTables.call",
+    "Verified.Call.spec",
+    "Verified.Call.array",
     "Examples.arrayCall",
     "LeanExe.ProofKit.UInt64Array.At.size_lt",
     "LeanExe.ProofKit.BorrowedKept.borrowed_kept",
     "LeanExe.Pipeline.memoryCap_le_of_caps",
+    "LeanExe.Pipeline.ImplementsPureA.implementsA",
     "Wasm.Runs.mono",
     "LeanExe.Pipeline.Heap.Within.mono"
   ],
   "examples": [
+    "Library.Hashing.Sha256.sha256_call",
+    "Library.Hashing.Crc.crc32c_table",
+    "Library.Hashing.Crc.crc32cUpdate_call",
+    "Library.Hashing.Sha3.shake128_call",
+    "Library.Regex.matchWith_call",
+    "Library.Numerics.Float64.Exp.ExpTheorem.exp_entry_call",
     "Examples.Increment.increment_call",
+    "Examples.Increment.compute_callSpec",
+    "Library.Numerics.Arithmetic.Gcd.gcd_callSpec",
     "Examples.Below100.below100_call",
     "Examples.RemoveZero.removeZero_call",
     "Library.Numerics.Arithmetic.Gcd.gcd_call",
-    "Library.Hashing.Sha3.shake128_call",
     "Examples.Increment.compute_export",
     "Examples.Lookup.lookup_call",
     "Examples.TreeLookup.treeLookup_call",
@@ -37,6 +63,7 @@
   ],
   "sources": [
     "2026-10-30: Verified compilations of LeanExe examples and library programs",
-    "2026-10-30: Array literals and conditions on propositions in the reflector"
+    "2026-10-30: Array literals and conditions on propositions in the reflector",
+    "2026-10-30: One call theorem for the verified compilations"
   ]
 }
