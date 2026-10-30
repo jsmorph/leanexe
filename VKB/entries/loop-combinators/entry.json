@@ -6,7 +6,8 @@
     "(LeanExe.build n f)[m]!",
     "(LeanExe.build n f).size",
     "LeanExe.loop n true (fun k ok => if !ok then false else P k) = true",
-    "Fin.foldl n (fun x i => g i.val x) init = Nat.fold n (fun i _ x => g i x) init"
+    "Fin.foldl n (fun x i => g i.val x) init = Nat.fold n (fun i _ x => g i x) init",
+    "(LeanExe.repeatWhile.go cond step k s).2"
   ],
   "modules": [
     "LeanExe.IR.Combinators",
@@ -16,7 +17,10 @@
     "Verified.ChargeFacts",
     "Demos.Slew.Check",
     "Library.Regex.RunProof",
-    "Library.Hashing.Sha3.SpongeProof"
+    "Library.Hashing.Sha3.SpongeProof",
+    "Examples.Increment.Proof",
+    "Examples.Below100.Proof",
+    "Examples.RemoveZero.Proof"
   ],
   "declarations": [
     "LeanExe.IR.loop_induction",
@@ -33,12 +37,16 @@
     "Library.Arrays.Search.firstZero_cases",
     "Demos.Slew.Check.loop_all",
     "Library.Regex.RunProof.runInput_bit",
-    "Library.Hashing.Sha3.SpongeProof.absorb_spec"
+    "Library.Hashing.Sha3.SpongeProof.absorb_spec",
+    "Examples.Increment.compute_eq",
+    "Examples.RemoveZero.compute_eq",
+    "Examples.Below100.keep_go"
   ],
   "sources": [
     "2026-10-24: Glushkov's theorem",
     "2026-10-24: The matcher computes the specification",
     "2026-10-25: The SHA-3 proofs",
-    "2026-10-26: The slew edge check proved sound"
+    "2026-10-26: The slew edge check proved sound",
+    "2026-10-30: Verified compilations of LeanExe examples and library programs"
   ]
 }

@@ -38863,3 +38863,40 @@ The four items below are LeanExe artifacts and theorems that wait for a later de
 - [ ] The file theorem of the LeanExe `gpt.wasm`, `gpt_file` of `Demos/Gpt/File.lean`.
 - [ ] `gpt32.wasm`, the LeanExe binary32 GPT-2 module that the browser page runs.
 - [ ] The binary32 GPT-2 host theorem over the LeanExe compiler's kernels, `Demos.Gpt32.generate_host` of `Demos/Gpt32/Compose.lean`.
+
+## 2026-10-30: The verification knowledge base, the kernel reproduction, and follow-up decisions
+
+The verified compiler gives every accepted program its execution theorem from one universal proof, so the LTG knowledge base, whose entries serve the LeanExe compiler's per-program proofs, does not fit the work that remains.  That work comes after the execution theorem: equality with an independent specification, call and file theorems, allocation bounds for `p.f.trapFree`, numerical error bounds, WASI totality, and native results.  A survey of the week's journal found where it went and where agents repeated themselves.  `borrowed_kept` has nine copies beside the shared one, the byte-index goal three proofs, and the rotation helpers five, and the most frequent recorded failure was a large term unfolded past the recursion limit.  [The verification knowledge base](VKB/README.md) now collects that knowledge for verified-compiler programs, outside the toolchain.
+
+Each VKB entry names the declarations and goal shapes it applies to, and an entry is found by those names rather than by a category.  Compiler-emitted hint kinds were considered and set aside, because the goals that downstream proofs face are already stated in named Lean declarations, so a layer of kinds would restate them and could drift.  `VKB/Check.lean` imports the modules that the entries list and reports every missing declaration or example and every entry whose `id` differs from its directory.  It passed on the three seed entries at 03:44 UTC, and on a copy with one wrong name and one wrong directory it reported both and exited with status 1.  `AGENTS.md` now asks every proof task to propose entries, and a reviewer admits a proposal when it applies beyond the task, its names exist, and no entry already covers it.  The survey added eleven entries and extended the seeds, and the ports added `spec-call-theorem` and `verified-wgsl-kernel`.  Their `trapfree-bounds` was merged into `verified-bound-closed-form`, which it duplicated, and their `reflector-rejections` is held until the reflector accepts the forms it describes.  The check passed on all sixteen entries.
+
+The call theorems of the hash and regex libraries repeat one argument with different tables and argument shapes, so a generic call theorem in the library will replace the per-library `Ready`, `entry_call`, and `borrowed_kept`.  Generating a call theorem for each program in `verified_compile` was considered and rejected, because it would add elaboration time to all 105 compiled modules and fix one statement form in the compiler.  The compiler will emit only facts that need evaluation of the compiled program, and file theorems get a one-line command in their own modules, since they must be checked after the file is written.
+
+The kernel reproduction of 2026-07-20 ran under the project's toolchain, 4.34.0-rc2, at 04:04 UTC.  Its own guards confirmed that the two parity summaries still agree on `Expr.hash` and `Expr.approxDepth`, and the kernel rejected the hand-built projection with "invalid projection", so `derived_false` depends on an axiom and the construction no longer derives `False`.  This settles the recorded reproduction only, not the kernel's soundness in general.  The toolchain ships `leanchecker`, which replays a module's declarations through the kernel and took 5 seconds for `Library.Hashing.Sha256.Bytes`.  It shares Lean's kernel, so it guards against declarations that bypass the kernel rather than against kernel bugs.  Lean 4.34.1 and 4.35.0 are released, and `lean4checker`'s own repository targets 4.29.0-rc8.
+
+The ports of the examples and library programs stopped at four definitions that the reflector rejects: nonempty array literals in `Lookup` and `TreeLookup`, and conjunctions and disjunctions of propositions in conditions in the prime-factor count and `condMix32`.  Both forms will become reflector rules with kernel-checked equations, and the four definitions will port unchanged, because rewriting them would change definitions that existing proofs and specifications use.  The verified `Binary32` kernels join `tests/wgsl/run.sh --verified`, to run when a host has the GPU drivers, and SplitMix64's module keeps the library's name `Compiled.lean`.
+
+| Follow-up of the review | Decision |
+|---|---|
+| Journal split | Keep one `devnotes.md`, as the instructions require, and close stale checkboxes in an audit |
+| Status of a commit | A script that runs the full check and writes `STATUS.md` with the commit, date, job count, axiom summary, and test counts |
+| `NativeA` cap and region conclusions | Add them and prove them, as the aligned statement already does |
+| Determinism of the Lean copy of Clight | Prove it relative to the event trace |
+| Kernel | The reproduction no longer derives `False` under 4.34.0-rc2.  Run `leanchecker` over every module and record the result, then move to a released toolchain as its own gated change |
+| Translation without the alignment test | Keep it, and revisit after the `NativeA` change |
+| Talos conformance | Record a testsuite run for the pinned Talos |
+| README purpose and audience | Rewrite the opening after the retirement work |
+
+- [x] The VKB with its template, check, growth rule, and sixteen entries.
+- [x] The kernel reproduction under 4.34.0-rc2.
+- [ ] Reflector rules for nonempty array literals and for `∧` and `∨` in conditions, and the four remaining ports.
+- [ ] The generic call theorem, replacing the per-library call lemmas.
+- [ ] The file-theorem command.
+- [ ] A count of the functions whose bound does not depend on the input, and a decision on emitting constant bounds.
+- [ ] `leanchecker` over every module.
+- [ ] `STATUS.md` from the full check.
+- [ ] The `NativeA` cap and region conclusions.
+- [ ] Determinism of the Lean copy of Clight.
+- [ ] A Talos conformance record.
+- [ ] A released toolchain.
+- [ ] The retirement prerequisites: the English-request skill and the quick start on the verified compiler, and the four deferred LeanExe items.

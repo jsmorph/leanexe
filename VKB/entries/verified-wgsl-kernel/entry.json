@@ -1,0 +1,30 @@
+{
+  "id": "verified-wgsl-kernel",
+  "goals": [
+    "k.dispatch [(Arg.float a.toBits).buffer, (Arg.array (floatWords x)).buffer] output count = some (arrayWords (floatWords (f a x))) ∧ k.RaceFree",
+    "gpu.spec.Fits (gpu.args env) n"
+  ],
+  "modules": [
+    "Verified.WGSL.Compile",
+    "Examples.Binary32.Compiled",
+    "Demos.Gpt32.VerifiedDispatch",
+    "Verified.Examples.WgslProof"
+  ],
+  "declarations": [
+    "Verified.WGSL.compile",
+    "Verified.WGSL.lower",
+    "Verified.WGSL.Compiled.dispatch_value",
+    "Verified.WGSL.Compiled.dispatch_eq",
+    "LeanExe.WGSL.Spec.Fits"
+  ],
+  "examples": [
+    "Examples.Binary32.scale32_dispatch",
+    "Examples.Binary32.axpyArray32_dispatch",
+    "Examples.Binary32.matVec32_dispatch",
+    "Demos.Gpt32.Verified.expKernel_dispatch",
+    "Verified.Examples.Wgsl.scale_dispatch"
+  ],
+  "sources": [
+    "2026-10-30: Verified compilations of LeanExe examples and library programs"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "spec-call-theorem",
+  "goals": [
+    "Runs false env compiled.module k store [.i64 ptr] fun final values => ∃ optr, values = [.i64 optr] ∧ ∃ heap', heap'.Owned final optr (expected xs)",
+    "Runs false env compiled.module k store [.i64 b, .i64 a] fun final values => final = store ∧ values = [.i64 (expected (a, b))]",
+    "compute xs = expected xs from xs.size < 2 ^ 64"
+  ],
+  "modules": [
+    "Examples.ArrayCall",
+    "Examples.Increment.Compiled",
+    "Examples.Below100.Compiled",
+    "Examples.RemoveZero.Compiled",
+    "Library.Numerics.Arithmetic.Gcd.Compiled",
+    "Library.Hashing.Sha3.Bytes"
+  ],
+  "declarations": [
+    "Examples.arrayCall",
+    "LeanExe.ProofKit.UInt64Array.At.size_lt",
+    "LeanExe.ProofKit.BorrowedKept.borrowed_kept",
+    "LeanExe.Pipeline.memoryCap_le_of_caps",
+    "Wasm.Runs.mono",
+    "LeanExe.Pipeline.Heap.Within.mono"
+  ],
+  "examples": [
+    "Examples.Increment.increment_call",
+    "Examples.Below100.below100_call",
+    "Examples.RemoveZero.removeZero_call",
+    "Library.Numerics.Arithmetic.Gcd.gcd_call",
+    "Library.Hashing.Sha3.shake128_call",
+    "Examples.Increment.compute_export"
+  ],
+  "sources": [
+    "2026-10-30: Verified compilations of LeanExe examples and library programs"
+  ]
+}

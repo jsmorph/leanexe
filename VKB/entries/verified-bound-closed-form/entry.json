@@ -16,7 +16,11 @@
     "Library.Regex.Bytes",
     "Demos.RunningSum.Charges",
     "Demos.RunningSumFp.PrintCharges",
-    "Demos.RunningSumFp.ParseCharges"
+    "Demos.RunningSumFp.ParseCharges",
+    "Examples.Increment.Compiled",
+    "Examples.Below100.Compiled",
+    "Examples.RemoveZero.Compiled",
+    "Library.Random.Xorshift.Verified"
   ],
   "declarations": [
     "Verified.loopCost",
@@ -32,7 +36,9 @@
     "Verified.loopCost_repeatWhile_le",
     "Verified.repeatWhile_count_le",
     "Verified.loop_push_size",
-    "Verified.allocationCost_le"
+    "Verified.allocationCost_le",
+    "Verified.sumBelow_const",
+    "LeanExe.Pipeline.Heap.Within.mono"
   ],
   "examples": [
     "Demos.Slew.Bound.plan_bound",
@@ -43,13 +49,19 @@
     "Demos.RunningSumFp.mulSmall_size",
     "Demos.RunningSumFp.mulSmall_bound_le",
     "Demos.RunningSumFp.print64_bound_le",
-    "Demos.RunningSumFp.parse_bound_le"
+    "Demos.RunningSumFp.parse_bound_le",
+    "Examples.Increment.compute_bound",
+    "Examples.Below100.compute_bound",
+    "Examples.RemoveZero.compute_bound",
+    "Library.Random.Xorshift.jump_bound",
+    "Demos.Drone.Verified.drone_trapFree"
   ],
   "sources": [
     "2026-10-24: The compiled matcher",
     "2026-10-26: The slew planner's allocation bound",
     "2026-10-26: Building the process compaction",
     "2026-10-27: The charges of the integer running sum",
-    "2026-10-27: Stage 3, the charges of the binary64 printer and parser"
+    "2026-10-27: Stage 3, the charges of the binary64 printer and parser",
+    "2026-10-30: Verified compilations of LeanExe examples and library programs"
   ]
 }
