@@ -19,7 +19,7 @@ program can compile them into its own module and use them without a new proof.  
 | Theorem | Statement |
 |---------|-----------|
 | `splitMix_pure` | In any module whose function `2 + i` is the compiled `splitMix`, that function keeps the store and returns the new state and the output word. |
-| `unitFloat_pure` | The same for `unitFloat`, which returns the bits of `(x >>> 11).toFloat / 2^53`. |
+| `unitFloat_pure` | Same for `unitFloat`, which returns the bits of `(x >>> 11).toFloat / 2^53`. |
 | `splitMix_implements`, `unitFloat_implements` | Functions 2 and 3 of `prng.module` implement `splitMix` and `unitFloat`. |
 | `prng_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements both functions. |
 

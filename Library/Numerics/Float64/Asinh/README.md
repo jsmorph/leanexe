@@ -57,7 +57,7 @@ The port is written in the Verified dialect, which [the Verified compiler](../..
 | signed `int32_t hx` | the word `x.toBits >>> 32`, with `hx >>> 31 == 1` for a negative sign | The dialect has unsigned words only.  `acosh` tests `hx >>> 31 == 1 \|\| hx < 0x3ff00000` for C's signed `hx < 0x3ff00000`. |
 | `if (hx > 0) return w; else return -w;` in `asinh` | `if hx >>> 31 == 0 then w else -w` | The two differ only for a positive `x` whose high word is 0, which returns earlier as tiny. |
 | `(lx \| (-lx)) >> 31` on `u_int32_t` in `atanh` | `(lx \|\|\| ((0 - lx) &&& 0xFFFFFFFF)) >>> 31` | The negation is taken modulo `2^32`, as in C. |
-| `SET_HIGH_WORD (x, ix)` in `atanh` | `Float.ofBits ((ix <<< 32) \|\|\| lx)` | The word of `\|x\|`. |
+| `SET_HIGH_WORD (x, ix)` in `atanh` | `Float.ofBits ((ix <<< 32) \|\|\| lx)` | Word of `\|x\|`. |
 | `fabs` | `Float.abs`, compiled to `f64.abs` | |
 | floating-point flags, `errno` | none | WebAssembly has no floating-point status flags. |
 
@@ -78,7 +78,7 @@ A script that compares the port with the C sources at the pinned commit finds th
 | `AcoshTheorem.acosh_within_two` | For finite `x` with `a ≥ 1`, `WithinSteps 2 (Real.arcosh a) (Asinh.acosh x).toBits`. |
 | `AcoshTheorem.acosh_nan`, `acosh_inf`, `acosh_one` | A NaN or a word below that of 1 or with the sign bit set, which includes `±0`, `-∞`, and every finite `x < 1`, gives the canonical NaN, `+∞` gives `+∞`, and 1 gives `+0`. |
 | `AsinhBytes.atanh_bytes_accuracy`, `asinh_bytes_accuracy`, `acosh_bytes_accuracy` | The bytes of `Asinh.compiled.module` decode to the module, functions 9, 10, and 11 are exported as `atanh`, `asinh`, and `acosh`, and the initial store is ready.  A call of each entry from a ready store returns without a trap the bits of the Lean function, within two steps of the reference on the domain of the accuracy theorem, and leaves a ready store in which every region of the heap before the call keeps its bytes. |
-| `AsinhBytes.asinh_module_accuracy` | The three byte theorems. |
+| `AsinhBytes.asinh_module_accuracy` | Three byte theorems. |
 | `AsinhFile.asinh_file`, `asinh_file_decode` | `build/verified/asinh.wasm` holds `encode Asinh.compiled.module` and decodes to the module of `asinh_module_accuracy`. |
 
 A ready store satisfies the allocator invariant, holds `Log.logTable` at address 4096 and `Log.logTable2` at address 6152 as borrowed arrays, and has a memory cap of at most 65,535 pages (`AsinhBytes.Ready`).  Each call leaves a ready store, so the byte theorems cover every sequence of calls to the three entries from the initial store.  `asinh_file_decode` depends on `asinh_module_accuracy`, so its axiom report covers the three byte theorems.  `tests/verified/run.sh` checks the file theorems against the `asinh.wasm` that `tools/Emit.lean` writes from `Asinh.compiled.module` in the same run.
@@ -99,7 +99,7 @@ On the `log1p` branches one step of `log1p` at the computed argument is too weak
 |---|---|
 | `asinh` and `atanh` below `2^-28` | The result is `x`, and `arsinh x` and `artanh x` lie within `\|x\|³` and `2 \|x\|³` of `x` (`AsinhTheoremTiny.arsinh_tiny`, `artanh_tiny`). |
 | `asinh` and `acosh` from `2^28` | `Log.log \|x\| + ln2`: the error of `log` from `error_of_within`, then the nearest rounding of the sum (`AsinhTheoremLarge.log_ln2`). |
-| `asinh` on `[2, 2^29)`, `acosh` on `[2, 2^28]` | The argument within `1.32 · 2^-53` and `1.77 · 2^-53` relative, then `within_two_of_close` in `[1, 2)` (`AsinhTheoremMid`, `AcoshTheoremMid`). |
+| `asinh` on `[2, 2^29)`, `acosh` on `[2, 2^28]` | Argument within `1.32 · 2^-53` and `1.77 · 2^-53` relative, then `within_two_of_close` in `[1, 2)` (`AsinhTheoremMid`, `AcoshTheoremMid`). |
 | `atanh` on `[2^-28, 1/2)` | `log1p_near` at the computed argument, moved to `2 artanh a` and halved (`F64Near.Near.half`): four ranges with a relative bound below `a = 0.1244`, the largest `1.892 · 2^-53`, and four with constant bounds above, the largest 0.973 of two spacings (`AtanhTheoremSmallCases`). |
 | `atanh` on `[1/2, 1)` | `2a` and `1 - a` exact, one division with relative error `2^-53`, and `2 artanh a ≥ log 3`: 0.42 of two spacings (`AtanhTheoremLarge`). |
 | `asinh` on `[2^-28, 2 (1 + 2^-20)]` | `log1p_near` at the computed argument: five ranges with a relative bound below `\|x\| = 0.2526`, the largest `1.966 · 2^-53`, and twenty with constant bounds above, the largest 0.981 of two spacings at `\|x\|` in `[1.155, 1.1753]` (`AsinhTheoremSmallCases.piece0` to `piece24`). |

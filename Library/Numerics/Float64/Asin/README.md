@@ -73,7 +73,7 @@ The theorems are in [the `asin` theorem](AsinTheorem.lean), [the `acos` theorem]
 | `AsinBytes.ready_initial` | The initial store satisfies `Ready`: the allocator invariant and a memory cap of at most 65,535 pages. |
 | `AsinBytes.asin_entry_call`, `acos_entry_call` | A call of function 3 or 4 from a `Ready` store returns, without a trap, the bits of the Lean function, and leaves a `Ready` store in which every heap region keeps its bytes. |
 | `AsinBytes.asin_bytes_accuracy`, `acos_bytes_accuracy` | `Asin.compiled.module` encodes to bytes that decode to it, exports the function, starts in a `Ready` store, and every call from a `Ready` store returns the bits of the Lean function, within one step for finite `x` with `\|a\| ≤ 1`, and leaves a `Ready` store. |
-| `AsinBytes.asin_module_accuracy` | The conjunction of the two byte theorems. |
+| `AsinBytes.asin_module_accuracy` | Conjunction of the two byte theorems. |
 | `AsinFile.asin_file`, `asin_file_decode` | `build/verified/asin.wasm` holds `encode Asin.compiled.module`, and the file decodes to the module of `asin_module_accuracy`. |
 
 `asin_file_decode` takes its bytes from `asin_module_accuracy`, so its axiom report covers both byte theorems, which `tests/verified/run.sh` requires because it reads only the two axiom reports of the file module.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Asin.AsinBytes`, checks `AsinFile.lean` against the `asin.wasm` that it writes earlier in the same run, and fails unless both file theorems report exactly the three permitted axioms.  The recorded run of 2026-10-11 passed that check and printed `[propext, Classical.choice, Quot.sound]` for both accuracy theorems, every exceptional value, and the three byte theorems.  Another build printed the same report, and [the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc) records the builds that first accepted `asin_within_one`, `acos_within_one`, the exceptional values, the byte theorems, and the file theorems.
@@ -86,15 +86,15 @@ The chain reuses word and exactness lemmas of [the `log1p` proof](../Log1p/READM
 
 | Module | Content |
 |---|---|
-| `AsinKernelPoly` | The kernel bound `asin_kernel_error`. |
+| `AsinKernelPoly` | Kernel bound `asin_kernel_error`. |
 | `AsinTheoremSupport` | Clearing the low word of `s`: the same exponent, `s - w < 2^-20 s`, and at most 21 significant bits, so `w · w` is exact. |
 | `AsinTheoremRatio` | Error chains of `asinRatio t` for seven ranges of `t` (`ratio_S1`, `ratio_S2`, `ratio_A1` to `ratio_A4`, `ratio_W`), with partial sums of both Horner schemes bounded by `PolyBound.check`. |
-| `AsinTheoremBranches` | The branches of `asin` and `acos` as equations on the high word. |
+| `AsinTheoremBranches` | Branches of `asin` and `acos` as equations on the high word. |
 | `AsinTheoremSmall` | `asin` below `1/2`. |
-| `AsinTheoremHalf` | The half-angle identities and the exact `z`. |
+| `AsinTheoremHalf` | Half-angle identities and the exact `z`. |
 | `AsinTheoremBig`, `AsinTheoremMid` | `asin` from `0.975` to 1, and from `1/2` to `0.975` in three ranges (`mid_A`, `mid_B`, `mid_C`). |
 | `AsinTheorem` | `asin_within_one`. |
-| `AcosTheoremBranches`, `AcosTheoremSmall`, `AcosTheoremNeg`, `AcosTheoremPos`, `AcosTheorem` | The same for `acos`: the exact `z = (1 ± x)/2`, the paths below `1/2`, below `-1/2`, and above `1/2`, and `acos_within_one`. |
+| `AcosTheoremBranches`, `AcosTheoremSmall`, `AcosTheoremNeg`, `AcosTheoremPos`, `AcosTheorem` | Same for `acos`: the exact `z = (1 ± x)/2`, the paths below `1/2`, below `-1/2`, and above `1/2`, and `acos_within_one`. |
 | `AsinTheoremSpecial`, `AsinBytes`, `AsinFile` | Exceptional values, byte theorems, and the file theorem. |
 
 ### Kernel bound
@@ -132,11 +132,11 @@ The analysis uses [error tracking for straight-line code](../../../../LeanExe/Pr
 
 | Fact | Declaration |
 |---|---|
-| The weighted bound of `T q - p` by `(43/64) · 2^-56 q` on eight one-sided pieces of `[0, 1/4]` | `AsinKernelPoly.asin_up_1` to `asin_up_4`, `asin_lo_1` to `asin_lo_4` |
+| Weighted bound of `T q - p` by `(43/64) · 2^-56 q` on eight one-sided pieces of `[0, 1/4]` | `AsinKernelPoly.asin_up_1` to `asin_up_4`, `asin_lo_1` to `asin_lo_4` |
 | `q` in `[1/2, 1]` on `[0, 1/4]` | `asin_q_range` |
 | The first 36 coefficients of `1 - (1 - u) S(u)²` vanish, and the rest is bounded by `1/2` on `[0, 1/4]` | `defect_low`, `defect_high` |
-| The bounds of the partial Horner sums in seven ranges of `t` | `AsinTheoremRatio.ratio_S1`, `ratio_S2`, `ratio_A1` to `ratio_A4`, `ratio_W` |
-| The thresholds of the high-word tests as rationals | `AsinTheorem.ix_one`, `ix_26`, `ix_half`, `ix_big`, `AcosTheorem.ix_tiny` |
+| Bounds of the partial Horner sums in seven ranges of `t` | `AsinTheoremRatio.ratio_S1`, `ratio_S2`, `ratio_A1` to `ratio_A4`, `ratio_W` |
+| Thresholds of the high-word tests as rationals | `AsinTheorem.ix_one`, `ix_26`, `ix_half`, `ix_big`, `AcosTheorem.ix_tiny` |
 | Functions 3 and 4 are exported as `asin` and `acos` | `AsinBytes.asin_export`, `acos_export` |
 | The file's bytes equal the encoder's | `AsinFile.asin_file` |
 

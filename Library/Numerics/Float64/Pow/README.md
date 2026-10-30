@@ -10,9 +10,9 @@
 |---|---|---|
 | `y = ±0` | 1, or `x + y` for a signaling NaN `x` | `pow (x, ±0)` is 1 if `x` is not a signaling NaN.  C99 gives 1 even for a NaN. |
 | `x = +1` | 1, or `x + y` for a signaling NaN `y` | `pow (+1, y)` is 1 for any `y`, even a quiet NaN. |
-| `x` or `y` NaN otherwise | `x + y`, the canonical NaN | A quiet NaN for a NaN operand (clause 9.2). |
+| `x` or `y` NaN otherwise | `x + y`, the canonical NaN | Quiet NaN for a NaN operand (clause 9.2). |
 | `x = -1`, `y = ±∞` | 1 | 1. |
-| `y = ±∞`, `\|x\| ≠ 1` | `+0` for `\|x\| < 1` and `y = +∞` or `\|x\| > 1` and `y = -∞`, else `+∞` | The same.  IEEE 754-2019, C11, and C23 list `pow (±0, -∞) = +∞` as a case of its own, and C99 covers it by its rule for `\|x\| < 1`. |
+| `y = ±∞`, `\|x\| ≠ 1` | `+0` for `\|x\| < 1` and `y = +∞` or `\|x\| > 1` and `y = -∞`, else `+∞` | Same.  IEEE 754-2019, C11, and C23 list `pow (±0, -∞) = +∞` as a case of its own, and C99 covers it by its rule for `\|x\| < 1`. |
 | `x = ±0` or `±∞`, `y` finite and nonzero | `x²` or `1/x²` for negative `y`, negated for negative `x` and odd integer `y` | `±∞` (with divideByZero) or `±0` for zero `x`, and `±0` or `±∞` for infinite `x`, signed for odd integer `y`. |
 | `x < 0` finite, `y` finite and not an integer | NaN, as `(x - x)/(x - x)` | NaN with the invalid operation exception. |
 | `x < 0` finite, `y` an odd integer | the result for `\|x\|`, negated through the sign bias `0x800 << 7` | `pow (x, y) = -\|x\|^y`. |
@@ -76,7 +76,7 @@ Each theorem in the next table reports only `propext`, `Classical.choice`, and `
 | `PowExpTheorem.powExp_within` | For finite `x` and `xtail` with `\|xtail\| ≤ 17 · 2^-28 \|x\|` and a real `L` with `\|x + xtail - L\| ≤ \|L\|/2^65`, `Pow.powExp Exp.expTable x xtail 0` lies within one step of the nearest-even rounding of `exp L` |
 | `PowExpSpecial.positive_within`, `negative_within`, `PowExpFar.far_positive`, `far_negative` | One step against `exp L` on `powExpCore`'s special path, for `512 ≤ \|x\| ≤ 768` and for `768 < \|x\| < 1024`, with a small tail and a target near `x + xtail` |
 | `ArmTight.presum_tight`, `reconstruction_tight`, `ordinary_tight`, `positive1009_tight`, `negative_tight` | For a polynomial word `w` with `\|w\| ≤ 1/256` within `(37/100) u` of its target, bounds on the reconstruction `s + s · w`, and one step on the ordinary path, on the path scaled by `2^1009` with overflow to infinity, and on the compensated path below 1 |
-| `PowExpEval.polynomial_error`, `evaluation_tight` | The exponential's polynomial within `2^-63` of `exp r - 1` on `\|r\| ≤ 1/360`, from `PolyBound.check`, and its evaluation within `2^-59` |
+| `PowExpEval.polynomial_error`, `evaluation_tight` | Exponential's polynomial within `2^-63` of `exp r - 1` on `\|r\| ≤ 1/360`, from `PolyBound.check`, and its evaluation within `2^-59` |
 | `PowLogTable.checked_entries`, `checked_logs`, `log_table` | For each of the 128 entries: `invc` on the grid of `2^-7` for `i ≤ 75` and of `2^-8` for `i ≥ 75`, `logc` on the grid of `2^-43` with `\|logc\| ≤ 0.3466`, `\|logctail\| ≤ 2^-43`, `\|z invc - 1\| ≤ 23/4000` on the subinterval, and `\|log invc + logc + logctail\| ≤ 2^-97` |
 | `PowLogTable.kernel_error` | `\|log (1 + r) - r · p (r)\| ≤ 6 · 2^-70 \|r\|` for the logarithm's polynomial `p` and `\|r\| ≤ 23/4000` |
 | `PowLogReduce.reduce_state` | `zlo`, `zhi · invc`, `rhi`, `rlo`, and `r` are exact, with `rhi` on the grid of `2^-29` and `r` on that of `2^-60` |
@@ -117,10 +117,10 @@ The sharper reduction bound `|x - k log 2/128| ≤ 677/250000` (`PowExpCore.idea
 |---|---|---|
 | Table of `2^(j/128)` and the exponential's constants | `ExpTableBounds`, `ExpReductionBounds`, `ExpApproximation` | Nothing for the words. |
 | Exponential with tail | `powExp_within` and the special and far paths for the bias 0, the symmetry of rounding under negation (`PowNegate`, `PowSignRel`), and `PowExpSign.powExp_neg_within` for the bias `0x800 << 7` | Nothing. |
-| Logarithm `hi + lo` | The table checks, the polynomial bound, the exact reduction, the terms of the sum, `powLog` on words, the error after `r` (`PowLogError.after_error`), the relative bound for each entry (`PowLogMain.core_bound`, `PowLogCases.core_relative`), and `PowLogFinal.log_within` for every positive normal or subnormal `x` other than 1 | Nothing. |
+| Logarithm `hi + lo` | Table checks, the polynomial bound, the exact reduction, the terms of the sum, `powLog` on words, the error after `r` (`PowLogError.after_error`), the relative bound for each entry (`PowLogMain.core_bound`, `PowLogCases.core_relative`), and `PowLogFinal.log_within` for every positive normal or subnormal `x` other than 1 | Nothing. |
 | Product `ehi + elo` | `PowProduct.product_error` | Nothing. |
 | Branches and special cases | `PowTheorem.pow_within`, which combines `PowTheoremPos.pow_pos_within`, `PowNegBase.pow_neg_within`, and the zero base with `y ≥ 0`, together with `PowCheckint.checkint_spec` and the special values of `PowSpecial` | Nothing. |
-| WebAssembly | The generated compiler theorems, `PowBytes.pow_bytes_accuracy` with `Ready` for the two borrowed tables (`pow` is function 11, `powLogTable` at 4096, `Exp.expTable` at 8200), and `PowFile` | Nothing. |
+| WebAssembly | Generated compiler theorems, `PowBytes.pow_bytes_accuracy` with `Ready` for the two borrowed tables (`pow` is function 11, `powLogTable` at 4096, `Exp.expTable` at 8200), and `PowFile` | Nothing. |
 
 The proof uses the shared ProofKit module `PolyBound` for its polynomial checks and the exponential's `ExpTableBounds`, `ExpReductionBounds`, and `ExpApproximation`.  The kernel-checked facts are `PowLogTable.checked_entries` and `checked_logs` (`decide +kernel` over the 128 entries, with a Taylor bracket of degree 24 for the logarithms), `PowLogTable.kernel_check` (`PolyBound.check` at depth 5), and `PowExpEval.kernel_check` (`PolyBound.check` at depth 4).
 

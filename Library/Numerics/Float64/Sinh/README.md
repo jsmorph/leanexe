@@ -86,7 +86,7 @@ The theorems are in [the cosh theorem module](CoshTheorem.lean), [the sinh theor
 | `SinhBytes.ready_initial` | The module's initial store satisfies `Ready`: the allocator invariant, `Exp.expTable` borrowed at address 4096, and a memory cap of at most 65,535 pages. |
 | `SinhBytes.sinh_entry_call`, `cosh_entry_call` | A call of function 11 or 12 from a `Ready` store returns, without a trap, the bits of `Sinh.sinh x` or `Sinh.cosh x`, and leaves a `Ready` store in which every heap region keeps its bytes. |
 | `SinhBytes.sinh_bytes_accuracy`, `cosh_bytes_accuracy` | In the form of `ExpTheorem.exp_bytes_accuracy`: the module's bytes decode to it, functions 11 and 12 are exported as `sinh` and `cosh`, and every call from a `Ready` store returns the bits of the Lean function, within the bound above for finite `x`, and leaves a `Ready` store. |
-| `SinhBytes.sinh_module_accuracy` | The conjunction of the two byte theorems. |
+| `SinhBytes.sinh_module_accuracy` | Conjunction of the two byte theorems. |
 | `SinhFile.sinh_file`, `sinh_file_decode` | `build/verified/sinh.wasm` holds `encode Sinh.compiled.module` and decodes to the module of `sinh_module_accuracy`. |
 
 Each theorem of the table has a `#print axioms` line.  The library build and a run of `tests/verified/run.sh` report `[propext, Classical.choice, Quot.sound]` for every theorem of the table except the two file theorems.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Sinh.SinhBytes`, checks `SinhFile.lean` against the `sinh.wasm` it has written, and fails unless both file theorems report exactly the three permitted axioms.  That run passed this check for its entry `sinh:SinhBytes:SinhFile`, and since `sinh_file_decode` takes its bytes from `sinh_module_accuracy`, the axiom report of `sinh_file_decode` covers both byte theorems.
@@ -100,14 +100,14 @@ The proof has 23 modules of its own in `Library/Numerics/Float64/Sinh/`, and it 
 | Stage | Modules | Content |
 |---|---|---|
 | Tight exponential | `ExpTightPoly`, `ExpTight`, `ExpTightFloat` | Arm's `exp` as the nearest word of a real within `u/32` of `e^a`, and within `1.033 u e^a` relative. |
-| Words | `SinhWords` | The word of 0.5, exact halving, the absolute value of a `Float`, and `e^a ≥ 1.4142` above `0.3466`. |
+| Words | `SinhWords` | Word of 0.5, exact halving, the absolute value of a `Float`, and `e^a ≥ 1.4142` above `0.3466`. |
 | `cosh` ranges | `CoshSmall`, `CoshMid`, `CoshLarge` | One step below `0.3466`, on `[0.3466, 22)`, and on `[22, 709.78]`. |
-| Near overflow | `SinhLdexpBits`, `SinhLdexp` | The words of `frexpExp` and `ldexpExp`, and one step for any target within `e^-a/2` of `e^a/2`. |
+| Near overflow | `SinhLdexpBits`, `SinhLdexp` | Words of `frexpExp` and `ldexpExp`, and one step for any target within `e^-a/2` of `e^a/2`. |
 | `cosh` theorem | `CoshTheorem` | `cosh_within_one` and the exceptional values. |
-| `expm1` for `sinh` | `Expm1NearPos`, `SinhExpm1`, `SinhCore` | The paths `k = 1` and `k = 2` of `expm1` for positive arguments, and the real identities of `sinh` below 22. |
-| `sinh` ranges | `SinhSign`, `SinhSmall`, `SinhSmallCases`, `SinhMid`, `SinhMidCases`, `SinhOverflow`, `SinhRanges` | The sign `h = ±1/2`, three steps below 1 and from 1 to 22, and the ranges outside `[2^-28, 22)`. |
+| `expm1` for `sinh` | `Expm1NearPos`, `SinhExpm1`, `SinhCore` | Paths `k = 1` and `k = 2` of `expm1` for positive arguments, and the real identities of `sinh` below 22. |
+| `sinh` ranges | `SinhSign`, `SinhSmall`, `SinhSmallCases`, `SinhMid`, `SinhMidCases`, `SinhOverflow`, `SinhRanges` | Sign `h = ±1/2`, three steps below 1 and from 1 to 22, and the ranges outside `[2^-28, 22)`. |
 | `sinh` theorem | `SinhTheorem` | `sinh_within_three` and the exceptional values. |
-| Bytes | `SinhBytes`, `SinhFile` | The byte and file theorems. |
+| Bytes | `SinhBytes`, `SinhFile` | Byte and file theorems. |
 
 ### Error budget
 

@@ -31,9 +31,9 @@ The module's functions are `alloc` (0), `release` (1), the listed definitions fr
 | C code | Port | Reason |
 |---|---|---|
 | `__ieee754_rem_pio2 (x, y)` on signed `x` | `Trig.remPio2 inv half x.abs`, with the result negated for a negative `x` | `tan` is odd.  Every operation of fdlibm's reduction and kernel is odd under rounding to nearest, so the negation gives fdlibm's result for the same reduction, as the module docstring and [the ports section](../../../../devnotes.md#2026-10-10-ports-of-log1p-atan-atan2-asin-acos-and-tan) of the journal state. |
-| `__kernel_rem_pio2` from `2^20 · π/2` on | the Payne–Hanek reduction of `Trig.remLarge` | The shared reduction.  There the reduced argument may differ from fdlibm's in its last bits. |
+| `__kernel_rem_pio2` from `2^20 · π/2` on | the Payne–Hanek reduction of `Trig.remLarge` | Shared reduction.  There the reduced argument may differ from fdlibm's in its last bits. |
 | `__kernel_tan (x, y, iy)` with `iy = ±1` | `kernelTan x y odd`, with the Boolean `odd` | `odd` is `iy = -1`, read from `n &&& 1` of the count. |
-| `(double) (1 - ((hx >> 30) & 2))` | `if hx >>> 31 == 1 then -1.0 else 1.0` | The sign of `x` as `±1`, from the high word as a word. |
+| `(double) (1 - ((hx >> 30) & 2))` | `if hx >>> 31 == 1 then -1.0 else 1.0` | Sign of `x` as `±1`, from the high word as a word. |
 | `if ((int) x == 0) return x;` below `2^-27` | `ix < 0x3e400000 && x.toUInt64 == 0` | Both truncations give 0 for every `x` below `2^-27` in magnitude, where the test runs. |
 | `SET_LOW_WORD (z, 0)` | `Float.ofBits (w.toBits &&& 0xFFFFFFFF00000000)` | The dialect reads and writes words through `toBits` and `ofBits`. |
 | `ix >= 0x3FE59428` as an `int` comparison | `let big : Bool := ix ≥ 0x3FE59428` | Without the annotation `big` binds a proposition, which the reflector rejects. |
@@ -73,11 +73,11 @@ The proof adds 16 modules in `Library/Numerics/Float64/Tan/` to the chain of [th
 | Stage | Modules | Content |
 |---|---|---|
 | Kernel on words | `TanWords` | `kernelTan` as `smallW` below `0x3FE59428` and `bigW` from it on. |
-| Polynomial | `TanKernelPoly`, `TanPoly`, `TanMath` | The polynomial against `tan`, the rounding error of the correction `c`, and the real facts: `cos ≥ 0.76` on `\|x\| ≤ 0.6745`, and the kernel's first-order tail. |
+| Polynomial | `TanKernelPoly`, `TanPoly`, `TanMath` | Polynomial against `tan`, the rounding error of the correction `c`, and the real facts: `cos ≥ 0.76` on `\|x\| ≤ 0.6745`, and the kernel's first-order tail. |
 | Final steps | `TanStep` | `near_bin` and `near_rel`, for a word nearest to a real `t` close to `T`. |
-| Even path | `TanTrunc`, `TanEven` | The truncation to 32 high bits, Sterbenz's lemma, and `even_within`. |
-| Odd path | `TanComp`, `TanOdd`, `TanOddStep` | The compensated reciprocal in real numbers, `odd_spec`, and `odd_within`. |
-| Path from `0.67434` | `TanBigReal`, `TanBigWords`, `TanBigClose`, `TanBigStep` | The real error of the final expression (`big_real`), the argument `π/4 - \|y0 + y1\|` and the chain of operations (`arg_spec`, `chain_spec`), the identities of `T_v (y) = v - 2 y v/(y + v)`, and `big_within`. |
+| Even path | `TanTrunc`, `TanEven` | Truncation to 32 high bits, Sterbenz's lemma, and `even_within`. |
+| Odd path | `TanComp`, `TanOdd`, `TanOddStep` | Compensated reciprocal in real numbers, `odd_spec`, and `odd_within`. |
+| Path from `0.67434` | `TanBigReal`, `TanBigWords`, `TanBigClose`, `TanBigStep` | Real error of the final expression (`big_real`), the argument `π/4 - \|y0 + y1\|` and the chain of operations (`arg_spec`, `chain_spec`), the identities of `T_v (y) = v - 2 y v/(y + v)`, and `big_within`. |
 | Assembly | `TanWith`, `TanTheorem` | `tan_quadrant`, `reduced_tan`, `tan_within`, and the byte theorem. |
 
 ### Error budget
@@ -110,10 +110,10 @@ The proof reuses [the sine and cosine proof](../Trig/README.md#shared-modules) a
 
 | Fact | Declaration |
 |---|---|
-| The weighted polynomial bound, in eight upper and eight lower pieces over `x²` in `[0, 59603/131072]`, with bisection to depth 18 | `TanKernelPoly.tan_up_1` to `tan_up_8`, `tan_lo_1` to `tan_lo_8`, `tan_up_covers`, `tan_lo_covers` |
-| The kernel polynomial in `x²` within 1/4 of 1 on the same range | `TanKernelPoly.tan_range` |
+| Weighted polynomial bound, in eight upper and eight lower pieces over `x²` in `[0, 59603/131072]`, with bisection to depth 18 | `TanKernelPoly.tan_up_1` to `tan_up_8`, `tan_lo_1` to `tan_lo_8`, `tan_up_covers`, `tan_lo_covers` |
+| Kernel polynomial in `x²` within 1/4 of 1 on the same range | `TanKernelPoly.tan_range` |
 | Bounds on the rational values of `T0` to `T12` | `TanPoly.coeffs_checked` |
-| The words `pio4` and `pio4lo` and the thresholds `0x3E400000` and `0x3FE59428` as rationals | `TanBigWords.value_pio4`, `value_pio4lo`, `TanWith.thresholds` |
+| Words `pio4` and `pio4lo` and the thresholds `0x3E400000` and `0x3FE59428` as rationals | `TanBigWords.value_pio4`, `value_pio4lo`, `TanWith.thresholds` |
 | Function 13 is exported as `tan` | `TanTheorem.tan_export` |
 | The file's bytes equal the encoder's | `TanFile.tan_file` |
 

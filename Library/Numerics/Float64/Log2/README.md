@@ -50,11 +50,11 @@ The theorems are in [the base-2 logarithm theorem module](Log2Theorem.lean), [th
 | Theorem | Statement |
 |---|---|
 | `Log2Main.log2_normal_within` | For a positive normal `x` outside `[1 - 0x1.5b51p-5, 1 + 0x1.6ab2p-5)`, `WithinSteps 1 (Real.log (value x.toBits) / Real.log 2) (Log2.log2 x).toBits`. |
-| `Log2Main.log2_subnormal_within` | The same bound for a positive subnormal `x`. |
-| `Log2Theorem.near2_within` | The same bound on the path near 1, other than 1. |
+| `Log2Main.log2_subnormal_within` | Same bound for a positive subnormal `x`. |
+| `Log2Theorem.near2_within` | Same bound on the path near 1, other than 1. |
 | `log2_within_one` | `WithinSteps 1 (Real.logb 2 (value x.toBits)) (Log2.log2 x).toBits` for every finite `x` with positive value. |
 | `Log2Power.log2_power` | For `-1074 ≤ k ≤ 1023`, `k ≠ 0`, and `value x.toBits = 2^k`, the result is finite with value `k`. |
-| `log2_one`, `log2_zero`, `log2_pos_infinity` | The bits `0`, `0xFFF0000000000000`, and `0x7FF0000000000000` for `1`, `±0`, and `+∞`. |
+| `log2_one`, `log2_zero`, `log2_pos_infinity` | Bits `0`, `0xFFF0000000000000`, and `0x7FF0000000000000` for `1`, `±0`, and `+∞`. |
 | `log2_negative`, `log2_nan` | A negative argument other than `-0`, `-∞` included, and a NaN give `Wasm.IEEE64.canonicalNaN`. |
 | `ready_initial` | The module's initial store satisfies `Ready`: the allocator invariant, `log2Table` borrowed at 4096, `log2Table2` at 5128, and a memory cap of at most 65,535 pages. |
 | `log2_entry_call` | A call of function 5 from a store satisfying `Ready` returns, without a trap, the bits of `Log2.log2 x` and leaves a store satisfying `Ready` in which every heap region keeps its bytes. |
@@ -73,9 +73,9 @@ The proof has ten modules in `Library/Numerics/Float64/Log2/` above the implemen
 |---|---|---|
 | Words | `Log2CoreBits`, `Log2Branches` | `log2Core_eq` restates `log2Core` through `LogCoreBits.reduced` and `final2`, with the subinterval among 64 from bits 46 to 51 of `tmp`, and the guards of `log2With`. |
 | Arithmetic after `r` | `Log2CoreFinal` | `final2_error`: `rhi · invln2hi`, `k + logc`, and `t3 - hi` are exact, and the other operations add at most `2^-64` before the final rounding. |
-| Tables and polynomials | `Log2Tables`, `Log2KernelPoly` | The 64 entries checked in the kernel, and both polynomials against `log (1 + r)/log 2`. |
+| Tables and polynomials | `Log2Tables`, `Log2KernelPoly` | 64 entries checked in the kernel, and both polynomials against `log (1 + r)/log 2`. |
 | Main path | `Log2CoreStep`, `Log2Main` | `core2_within`, one step for every argument word that reaches `log2Core`, and its use for normal and subnormal arguments. |
-| Path near 1, powers of two, and assembly | `Log2Near1`, `Log2Power`, `Log2Theorem` | The errors of `log2Near1` proportional to `\|x - 1\|`, `log2 (2^k) = k`, the exceptional values, `Ready`, and the byte theorem. |
+| Path near 1, powers of two, and assembly | `Log2Near1`, `Log2Power`, `Log2Theorem` | Errors of `log2Near1` proportional to `\|x - 1\|`, `log2 (2^k) = k`, the exceptional values, `Ready`, and the byte theorem. |
 
 ### Error budget of the main path
 
@@ -108,7 +108,7 @@ The proof uses ProofKit modules, including the arithmetic chains that prove Lean
 | For each entry, the Taylor polynomials of degree 19 of `exp` at `logc · S ∓ 2^-66`, with `S` the split of `ln 2`, bracket `c`, so `\|logc - log2 c\| ≤ 2^-65` | `Log2Tables.checked_logs`, `log2_center` |
 | Both polynomials, times `S`, against the Taylor polynomial of `log (1 + r)` on their intervals | `Log2KernelPoly.main2_check`, `near2_check` |
 | `log2Core` on `2^k` returns the word of `k`, for each `k` from -1074 to 1025, in 42 chunks of 50 | `Log2Power.chunk0` to `chunk41`, `pow_check` |
-| The values and bounds of the constants | `Log2CoreFinal.constants2`, `constant2_bounds`, `Log2Near1.near2_constants`, `near2_bounds` |
+| Values and bounds of the constants | `Log2CoreFinal.constants2`, `constant2_bounds`, `Log2Near1.near2_constants`, `near2_bounds` |
 | Function 5 is exported as `log2`, and the file's bytes equal the encoder's | `Log2Theorem.log2_export`, `Log2File.log2_file` |
 
 ### History

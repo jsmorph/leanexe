@@ -70,17 +70,17 @@ A hexadecimal significand needs no division.  Its first 15 significant hexadecim
 
 | Function | Role |
 |---|---|
-| `span s hex i` | The first position from `i` whose byte is no digit of the class, as `takeWhile` splits a list |
+| `span s hex i` | First position from `i` whose byte is no digit of the class, as `takeWhile` splits a list |
 | `matchLower s i len w` | Whether the bytes from `i` to the end are, in lower case, the `len` bytes packed in `w` (`inf`, `infinity`, `nan`) |
-| `expPart s i` | An exponent's sign and digits from `i` to the end: well formed, negative, and the value saturated at `10 ^ 11` |
-| `digitPos`, `leadingZeros` | The position of significand digit `k` past the point, and the number of leading zeros |
-| `digitsVal`, `chunkVal` | The value of the kept digits as limbs, nine digits at a time through `Uscale.mulSmall` |
+| `expPart s i` | Exponent's sign and digits from `i` to the end: well formed, negative, and the value saturated at `10 ^ 11` |
+| `digitPos`, `leadingZeros` | Position of significand digit `k` past the point, and the number of leading zeros |
+| `digitsVal`, `chunkVal` | Value of the kept digits as limbs, nine digits at a time through `Uscale.mulSmall` |
 | `anyNonzero` | Whether a dropped digit is nonzero, the sticky flag |
-| `decParse`, `hexParse` | The significand and exponent of a decimal or hexadecimal string, with the flag of the grammar's checks |
-| `decRound` | The saturations, the products by powers of ten, the shifts, and `Uscale.scaledQuot` |
-| `roundUnits` | The binade and the nearest-even significand from the unrounded quotient, and the encoding |
+| `decParse`, `hexParse` | Significand and exponent of a decimal or hexadecimal string, with the flag of the grammar's checks |
+| `decRound` | Saturations, the products by powers of ten, the shifts, and `Uscale.scaledQuot` |
+| `roundUnits` | Binade and the nearest-even significand from the unrounded quotient, and the encoding |
 | `pow10Float`, `fastPath` | Clinger's fast path with `10 ^ k` built by `k` exact multiplications by 10 |
-| `parse64`, `parse32` | The sign, the special words, the hexadecimal prefix, and the dispatch |
+| `parse64`, `parse32` | Sign, the special words, the hexadecimal prefix, and the dispatch |
 
 Signed exponents are words with the bias `2 ^ 62`, which keeps every sum of exponents, digit counts, and shifts inside 64 bits, and an exponent's digits saturate at `10 ^ 11`.  The digits of a string of fewer than `2 ^ 32` bytes move the value by fewer than `2 ^ 32 + 1` decimal places or `2 ^ 34 + 4` binary places, so an exponent beyond `10 ^ 11` in magnitude puts the value beyond the overflow threshold or below half the least subnormal both before and after saturation.  The first version saturated at `10 ^ 10`, which a hexadecimal fraction of more than `2.5 · 10 ^ 9` digits can defeat; the compiled module never receives such a string, but the theorems' length hypothesis allows it.  `parse32` returns the binary32 pattern in the low 32 bits of a word and has no fast path, since the dialect has binary64 floats only.
 
@@ -104,12 +104,12 @@ Every theorem in the table reports only the axioms `propext`, `Classical.choice`
 | `roundUnits_spec` | `ParseFloatRound` | `roundUnits p F u sticky T` is `refPos f ((u + φ) · 2 ^ (T - 2 ^ 62))` for `φ` in `[0, 1)`, positive exactly when `sticky`, if `sticky` implies that `u` has at least `p + 2` bits. |
 | `decRound_spec` | `ParseFloatDec` | `decRound` is `refPos f (D' · 10 ^ (qb - 2 ^ 62) · 2 ^ ν)` with `D' = D`, or `D + 1/2` when `sticky`, for `D` of `kept` digits and the format's saturation bounds. |
 | `span_spec`, `matchLower_spec`, `expPart_spec` | `ParseFloatScan` | `span` stops where `takeWhile` of the class stops, `matchLower` tests the lower-case bytes, and `expPart` is `decodeExpDigits` with the value saturated at `10 ^ 11`. |
-| `leadingZeros_spec`, `anyNonzero_spec`, `digitsVal_spec`, `hexVal_spec` | `ParseFloatDigits` | The number of leading zeros, whether a digit in a range is nonzero, and the value of a run of digits as limbs or as a word. |
+| `leadingZeros_spec`, `anyNonzero_spec`, `digitsVal_spec`, `hexVal_spec` | `ParseFloatDigits` | Number of leading zeros, whether a digit in a range is nonzero, and the value of a run of digits as limbs or as a word. |
 | `decParse_spec`, `hexParse_spec` | `ParseFloatDecParse`, `ParseFloatHexParse` | The flag is the success of the decoder's decimal or hexadecimal branch, and the limbs or word, the count, the biased exponent, and the sticky flag are those of the significand's digits. |
 | `pow10_exact`, `fastPath_spec` | `ParseFloatFast` | `pow10Float k` is the exact double `10 ^ k` for `k ≤ 22`, and `fastPath D qb` is the reference word of `D · 10 ^ q` for `D < 2 ^ 53` and `\|q\| ≤ 22`. |
 | `dec_value`, `hex_value` | `ParseFloatValue` | `decRound` and `roundUnits` on the scanners' outputs are the references of `decValue L · 10 ^ (e - nf)` and `hexValue L · 2 ^ (e - 4 nf)` for the significand's digits `L`. |
 | `parse64_spec`, `parse32_spec` | `ParseFloatTheorem` | `parse64 general (words s) = res64 (decode general s)` and the binary32 counterpart, for `s.length < 2 ^ 32`. |
-| `parse64_accept`, `parse64_reject`, `parse32_accept`, `parse32_reject` | `ParseFloatTheorem` | The statements of the specification above. |
+| `parse64_accept`, `parse64_reject`, `parse32_accept`, `parse32_reject` | `ParseFloatTheorem` | Statements of the specification above. |
 | `parse64_bytes_accuracy`, `parse32_bytes_accuracy` | `ParseFloatBytes` | The compiled entries 35 and 36 return the words of the parsers' results, or trap when memory runs out, and keep the caller's heap. |
 | `parse_file`, `parse_file_decode` | `ParseFloatFile` | `build/verified/parsefloat.wasm` holds the encoding of the module and decodes to it. |
 

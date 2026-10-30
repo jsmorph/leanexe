@@ -14,7 +14,7 @@ The bound is `F64SignedRounding.WithinSteps 1`, defined in [the signed rounding 
 | `+∞` | `+∞` | `+∞` | the same clauses | `exp2_pos_infinity`, `exp10_pos_infinity` |
 | `-∞` | `+0` | `+0` | the same clauses | `exp2_neg_infinity`, `exp10_neg_infinity` |
 | NaN | the canonical NaN | the canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [13] | `exp2_nan`, `exp10_nan` |
-| finite, exact result at least `2^1024 - 2^970` | `+∞` or the largest finite double | the same | The one-step bounds, with the reference `+∞` from IEEE 754-2019 4.3.1 | `exp2_within`, `exp10_within` |
+| finite, exact result at least `2^1024 - 2^970` | `+∞` or the largest finite double | the same | One-step bounds, with the reference `+∞` from IEEE 754-2019 4.3.1 | `exp2_within`, `exp10_within` |
 | finite, result at most `2^-1075` | `+0`, or the smallest subnormal within the bound | the same | IEEE 754-2019 4.3.1 | `exp2_within`, `exp10_within` |
 
 C99 has `exp2` but no `exp10`.  C23 adds `exp10` in clause 7.12.6.2, with its special values in F.10.3.2, as the WG14 working draft N3220 gives them [12].  IEEE 754-2019 lists both among the recommended operations of clause 9.2, which a conforming implementation rounds correctly [10], and Arm states worst errors of 0.511 units for `exp2` and about 0.513 units for `exp10`, so neither port is correctly rounded [3, 2].
@@ -74,7 +74,7 @@ The theorems are in [the base-2 theorem module](Exp2Theorem.lean), [the base-10 
 | `Exp2Bytes.ready_initial` | The module's initial store satisfies `Ready`: the allocator invariant, `Exp.expTable` borrowed at 4096, and a memory cap of at most 65,535 pages. |
 | `exp2_entry_call`, `exp10_entry_call` | A call of function 7 or 8 from a store satisfying `Ready` returns, without a trap, the bits of `Exp2.exp2 x` or `Exp2.exp10 x`, and leaves a store satisfying `Ready` in which every heap region keeps its bytes. |
 | `exp2_bytes_accuracy`, `exp10_bytes_accuracy` | `Exp2.compiled.module` encodes to bytes that decode to it, exports function 7 as `exp2` (8 as `exp10`), starts in a `Ready` store, and every call from a `Ready` store returns the bits of the Lean function, within one step for finite `x`, and leaves a `Ready` store.  Each statement therefore covers every call in a sequence of calls to its entry. |
-| `exp2_module_accuracy` | The conjunction of the two byte theorems. |
+| `exp2_module_accuracy` | Conjunction of the two byte theorems. |
 | `Exp2File.exp2_file` | `build/verified/exp2.wasm` holds `encode Exp2.compiled.module`. |
 | `Exp2File.exp2_file_decode` | `build/verified/exp2.wasm` decodes to the module of `exp2_module_accuracy`. |
 
@@ -88,11 +88,11 @@ The proof adds 18 modules in `Library/Numerics/Float64/Exp2/` to the chain of `E
 
 | Stage | Modules | Content |
 |---|---|---|
-| Polynomials | `Exp2Approximation`, `Exp10Constants`, `Exp2Evaluation`, `Exp10Evaluation` | The coefficients against `(log 2)^n/n!` and `(log 10)^n/n!`, the polynomials within `2^-58` of `2^r - 1` on `\|r\| ≤ 1/256` and within `2^-57` of `10^r - 1` on `\|r\| ≤ 1/850`, and their rounded evaluations. |
+| Polynomials | `Exp2Approximation`, `Exp10Constants`, `Exp2Evaluation`, `Exp10Evaluation` | Coefficients against `(log 2)^n/n!` and `(log 10)^n/n!`, the polynomials within `2^-58` of `2^r - 1` on `\|r\| ≤ 1/256` and within `2^-57` of `10^r - 1` on `\|r\| ≤ 1/850`, and their rounded evaluations. |
 | Reductions | `Exp2Selection`, `Exp10Reduction` | `exp2`'s exact `k/128` and residual, and `exp10`'s `k` within `1/2 + 2^-31` of `x · 128/log10 2` and its residual within `2^-61` of the ideal one. |
 | Shared reconstruction | `ArmReconstruction`, `ArmSpecial`, `ArmScale` | `s + s · w` and the two special paths for any polynomial word `w` within `2^-56` of `T_j + ρ - 1`. |
-| Paths | `Exp2Core`, `Exp2Paths`, `Exp10Core`, `Exp10Paths` | The state of each core and one step on its three paths. |
-| Assembly | `Exp2Branches`, `Exp2Theorem`, `Exp10Theorem` | The branches of `exp2With` and `exp10With`, the tiny, overflow, and underflow cases, and the exceptional values. |
+| Paths | `Exp2Core`, `Exp2Paths`, `Exp10Core`, `Exp10Paths` | State of each core and one step on its three paths. |
+| Assembly | `Exp2Branches`, `Exp2Theorem`, `Exp10Theorem` | Branches of `exp2With` and `exp10With`, the tiny, overflow, and underflow cases, and the exceptional values. |
 | Bytes | `Exp2Bytes`, `Exp2File` | `Ready`, the entry calls, the byte theorems, and the file theorems. |
 
 `exp`'s reconstruction lemmas concern `exp`'s residual and evaluation words.  `ArmReconstruction` generalizes them over a polynomial word `w` and a real factor `ρ`, which is `2^r` for `exp2` and `10^r` for `exp10`, and the proof reuses `ExpOneStep.one_step_of_error`, `ExpScaleBits`, `ExpSpecialScale`, and `ExpSpecialNegative.compensated_one_step` of `ExpNegativeFinal.lean` unchanged ([the journal section](../../../../devnotes.md#2026-10-11-the-exp2-theorem-track-exp2)).  `exp2`'s key `0x42C8000000000000 + k`, raised by `7 · 2^52`, has the form `0x4338000000000000 + k` of `exp`'s key with the same low 19 bits (`Exp2Core.key_scale`), and `exp10`'s key has that form, so the scale and tail words are `exp`'s for `k = 128 q + j`.
@@ -140,9 +140,9 @@ Beyond the ProofKit modules of the exponential's proof, it uses [the signed roun
 | `exp2`'s coefficients within `2^-55`, `2^-46`, `2^-37`, `2^-28`, and `2^-22` of `(log 2)^n/n!` on the rational enclosure of `log 2` | `Exp2Approximation.checked_coefficients` |
 | `log 10 = 3 log 2 + log (5/4)` enclosed within `2^-88` by `exp`'s enclosure of `log 2` and 45 terms of the series of `log (5/4)` | `Exp10Constants.checked_log_ten` |
 | `exp10`'s coefficients within `2^-51` to `2^-12` of `(log 10)^n/n!` | `Exp10Constants.checked_coefficients` |
-| The two-part constant within `2^-85` of `log10 2/128`, `invlog10_2N` within `2^-40` of `128/log10 2`, the overflow and underflow bounds, and `1075 log 2 ≤ 350 log 10` | `Exp10Constants.checked_reduction` |
-| The residual bounds `1/850` and `1/512` | `Exp10Reduction.checked_margins` |
-| The high part's scaled magnitude `2585827973 · 2^1034`, a 32-bit significand | `Exp10Reduction.high_magnitude` |
+| Two-part constant within `2^-85` of `log10 2/128`, `invlog10_2N` within `2^-40` of `128/log10 2`, the overflow and underflow bounds, and `1075 log 2 ≤ 350 log 10` | `Exp10Constants.checked_reduction` |
+| Residual bounds `1/850` and `1/512` | `Exp10Reduction.checked_margins` |
+| High part's scaled magnitude `2585827973 · 2^1034`, a 32-bit significand | `Exp10Reduction.high_magnitude` |
 | Functions 7 and 8 are exported as `exp2` and `exp10` | `Exp2Bytes.exp2_export`, `exp10_export` |
 | The file's bytes equal the encoder's | `Exp2File.exp2_file` |
 

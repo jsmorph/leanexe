@@ -8,10 +8,10 @@ The specification is [`Library/Hashing/Sha2/Spec`](../Sha2/Spec.lean), a literat
 
 | Definition | Meaning |
 |---|---|
-| `bytes msg n` | The first `n` bytes of `msg`.  Byte `i` is bits `8 (i % 8)` to `8 (i % 8) + 7` of word `i / 8`, and a word past the end of the array reads as zero, as a read past the end does in the compiled code. |
-| `Words8.bytes`, `Words6.bytes`, `Words4.bytes k` | The digest's 64, 48, or first `k` bytes in the same packing. |
-| `bytesToBitMessage` | A byte array as the bit list of FIPS 180-4, each byte's most significant bit first. |
-| `digestBitVec512`, `digestBitVec384`, `digestBitVec512_256`, `digestBitVec512_224` | A digest's bytes as one bit vector, the first byte most significant, the type of the transcription's digests. |
+| `bytes msg n` | First `n` bytes of `msg`.  Byte `i` is bits `8 (i % 8)` to `8 (i % 8) + 7` of word `i / 8`, and a word past the end of the array reads as zero, as a read past the end does in the compiled code. |
+| `Words8.bytes`, `Words6.bytes`, `Words4.bytes k` | Digest's 64, 48, or first `k` bytes in the same packing. |
+| `bytesToBitMessage` | Byte array as the bit list of FIPS 180-4, each byte's most significant bit first. |
+| `digestBitVec512`, `digestBitVec384`, `digestBitVec512_256`, `digestBitVec512_224` | Digest's bytes as one bit vector, the first byte most significant, the type of the transcription's digests. |
 
 | Export | Function | Result | Call theorem |
 |---|---|---|---|
@@ -36,7 +36,7 @@ Each export takes the message array and then the byte count `n`.  The theorems r
 | [`PaddingProof.lean`](PaddingProof.lean) | `paddedWord_eq`: word `i` of the padded message is the big-endian word of bytes `8 i` to `8 i + 7` of `implPaddedBytes`, the padding of the copied implementation. |
 | [`CompressProof.lean`](CompressProof.lean) | `window`: after `t` rounds the window holds schedule words `t` to `t + 15`.  `compress_toVec`: `compress` is `Impl.compress`. |
 | [`Proof.lean`](Proof.lean) | `hashFrom_toVec`: after a prefix of whole blocks, the state after every block of the rest of the message is the implementation's.  `foldl_append` splits the implementation's fold at the prefix, and `hashFrom_iv` covers the message without a prefix.  `sha512_bytes` and its companions: the digest bytes are those of `Impl.sha512`.  `sha512_spec` and its companions: the digest is the transcription's. |
-| [`Bytes.lean`](Bytes.lean) | The four call theorems and `sha512_module`, from the generated `implements` theorems and the equalities of `Proof.lean`. |
+| [`Bytes.lean`](Bytes.lean) | Four call theorems and `sha512_module`, from the generated `implements` theorems and the equalities of `Proof.lean`. |
 | [`File.lean`](File.lean) | `sha512_file` and `sha512_file_decode`: the emitted file holds the module's encoding and decodes to the module. |
 
 `sha512_spec` composes the program's equality with the copied implementation and `SHS.Equiv.SHA512.sha512_correct`, which equates that implementation with the transcription.  Every theorem listed above depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.  `sha512_bytes_collision` in [the Merkle–Damgård module](../MerkleDamgard.lean) shows that two distinct messages with equal digests give a collision of `SHS.SHA512.compress`.  The copied proofs, ported to Lean 4.34, are under [`Library/Hashing/Sha2/Equiv`](../Sha2/Equiv/SHA512/Main.lean).

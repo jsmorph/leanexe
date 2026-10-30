@@ -39,8 +39,8 @@ The port uses the Verified dialect, the subset of Lean that [the Verified compil
 | 32-bit `top - 0x0010` against `0x7ff0 - 0x0010` | 64-bit comparison | The difference wraps for `top < 0x0010` in both widths and exceeds `0x7ff0 - 0x0010` either way, so the results agree.  The docstring of `logWith` records this. |
 | `k = (int64_t) tmp >> 52`, an arithmetic shift | `tmp >>> 52` with the top 12 bits set when `tmp` is negative | The dialect's shift is logical. |
 | `kd = (double) k` | `-(0 - k).toFloat` for a negative two's complement `k`, else `k.toFloat` | The dialect converts unsigned words. |
-| `__math_divzero (1)` | `-1.0 / 0.0` | The expression that computes it in `math_err.c` [3]. |
-| `__math_invalid (x)` | `(x - x) / (x - x)` | The expression that computes it, without `errno`. |
+| `__math_divzero (1)` | `-1.0 / 0.0` | Expression that computes it in `math_err.c` [3]. |
+| `__math_invalid (x)` | `(x - x) / (x - x)` | Expression that computes it, without `errno`. |
 | `eval_as_double`, `WANT_ROUNDING` | identity, assumed 1 | WebAssembly arithmetic rounds to nearest, ties to even, and `log 1` returns `0.0`. |
 | `__log_data` globals | the parameters `tab` and `tab2`, read with `tab[i]!` | The tables are borrowed arrays of the module. |
 
@@ -62,9 +62,9 @@ The theorems are in [the logarithm theorem module](LogTheorem.lean), [the main p
 | Theorem | Statement |
 |---|---|
 | `LogMain.log_normal_within` | For a positive normal `x` outside `[15/16, 1 + 265/4096)`, `WithinSteps 1 (Real.log (value x.toBits)) (Log.log x).toBits`. |
-| `LogMain.log_subnormal_within` | The same bound for a positive subnormal `x`. |
-| `near1_within` | The same bound for `x` from `15/16` to below `1 + 265/4096`, other than 1. |
-| `log_within_one` | The same bound for every finite `x` with positive value. |
+| `LogMain.log_subnormal_within` | Same bound for a positive subnormal `x`. |
+| `near1_within` | Same bound for `x` from `15/16` to below `1 + 265/4096`, other than 1. |
+| `log_within_one` | Same bound for every finite `x` with positive value. |
 | `log_one` | `log 1` has the bits `0`. |
 | `log_zero` | `log (±0)` has the bits `0xFFF0000000000000`. |
 | `log_pos_infinity` | `log (+∞)` has the bits `0x7FF0000000000000`. |
@@ -88,9 +88,9 @@ The proof has nine modules in `Library/Numerics/Float64/Log/` above the implemen
 |---|---|---|
 | Words | `LogCoreBits`, `LogBranches` | `logCore_eq` restates `logCore` through the reduced argument and the arithmetic after it.  The words of `i`, `k`, and `z` for an argument `E · 2^52 + f` modulo `2^64`, the exact value of `kd`, and the paths of `logWith` by argument bits. |
 | Arithmetic after `r` | `LogCoreFinal` | `final_error`: `kd · ln2hi` and `kd · ln2hi + logc` are exact, and the other operations add at most `(5/4) 2^-61` before the final rounding. |
-| Tables and polynomials | `LogTables`, `LogKernelPoly` | The 128 entries checked in the kernel, and both polynomials against `log (1 + r)`. |
+| Tables and polynomials | `LogTables`, `LogKernelPoly` | 128 entries checked in the kernel, and both polynomials against `log (1 + r)`. |
 | Main path | `LogCoreStep`, `LogMain` | `core_within`, one step for every argument word that reaches `logCore`, and its use for normal and subnormal arguments. |
-| Path near 1 and assembly | `LogNear1`, `LogTheorem` | The errors of `logNear1` proportional to `\|x - 1\|`, the exceptional values, `Ready`, and the byte theorem. |
+| Path near 1 and assembly | `LogNear1`, `LogTheorem` | Errors of `logNear1` proportional to `\|x - 1\|`, the exceptional values, `Ready`, and the byte theorem. |
 
 ### Error budget of the main path
 
@@ -124,7 +124,7 @@ The proof uses ProofKit modules, including the arithmetic chains that prove Lean
 | For each entry, the Taylor polynomials of degree 19 of `exp` at `logc ∓ 2^-64`, with their remainders, bracket `c`, so `\|logc - log c\| ≤ 2^-64` | `LogTables.checked_logs` |
 | Both polynomials against the Taylor polynomial of `log (1 + r)/r` on their intervals, by `PolyBound.check` | `LogKernelPoly.core_check`, `near1_check` |
 | `ln2hi + ln2lo` within `2^-92` of the split of `ln 2` from `ExpReductionBounds` | `LogCoreStep.split_close` |
-| The values and bounds of the constants | `LogCoreFinal.constants`, `constant_bounds`, `LogNear1.near1_constants`, `near1_bounds` |
+| Values and bounds of the constants | `LogCoreFinal.constants`, `constant_bounds`, `LogNear1.near1_constants`, `near1_bounds` |
 | Function 5 is exported as `log`, and the file's bytes equal the encoder's | `LogTheorem.log_export`, `LogFile.log_file` |
 
 ### History

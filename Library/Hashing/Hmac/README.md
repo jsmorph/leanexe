@@ -23,9 +23,9 @@ Each module holds the compression and block loop of its own hash function.  Both
 
 | Module | Content |
 |---|---|
-| [`Bits.lean`](Bits.lean) | The bits of byte strings: `bits_append`, `bits_appendZeros`, `bits_xorBytes`, and `bitsOf_fromBits`.  The bytes of a digest and of a short key block, and `xorBlock_get`. |
+| [`Bits.lean`](Bits.lean) | Bits of byte strings: `bits_append`, `bits_appendZeros`, `bits_xorBytes`, and `bitsOf_fromBits`.  The bytes of a digest and of a short key block, and `xorBlock_get`. |
 | [`Proof256.lean`](Proof256.lean) | `implHmac256_spec`: HMAC built on the copied implementation `SHS.SHA256.Impl.sha256` is the transcription on bits.  `keyBlock256_get`: the program's key block is `K_0`.  `inner_toVec32` and `outer_toVec32`: the program's inner and outer hash values are the implementation's states.  `hmacSha256_bytes` and `hmacSha256_spec`: the MAC bytes are those of `implHmac256` and the transcription's. |
-| [`Proof512.lean`](Proof512.lean) | The same for SHA-512, with blocks of 128 bytes and words of eight bytes. |
+| [`Proof512.lean`](Proof512.lean) | Same for SHA-512, with blocks of 128 bytes and words of eight bytes. |
 | [`Bytes.lean`](Bytes.lean) | `hmacSha256_call`, `hmacSha512_call`, `hmacSha256_module`, and `hmacSha512_module`, from the generated `implements` theorems and `hmacSha256_spec` and `hmacSha512_spec`. |
 | [`File256.lean`](File256.lean), [`File512.lean`](File512.lean) | The emitted files hold the modules' encodings and decode to the modules. |
 

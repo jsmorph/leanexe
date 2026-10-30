@@ -29,7 +29,7 @@ A limb of 32 bits keeps every intermediate value of the routines inside one word
 
 | Theorem | Module | Statement |
 |---|---|---|
-| `loop_inv` | `UscaleBase` | The induction principle of `LeanExe.loop`: an invariant at 0 kept by each step holds after the count. |
+| `loop_inv` | `UscaleBase` | Induction principle of `LeanExe.loop`: an invariant at 0 kept by each step holds after the count. |
 | `getElem!_digit` | `UscaleBase` | `(a[i]!).toNat = val a / 2 ^ (32 i) % 2 ^ 32` for `Limbs a` |
 | `mulSmall_spec` | `UscaleBase` | `Limbs`, `val (mulSmall a m c) = val a · m + c`, size `a.size + 1` |
 | `shl_spec` | `UscaleArith` | `Limbs`, `val (shl a k) = val a · 2 ^ k`, size `a.size + 1 + k / 32` |

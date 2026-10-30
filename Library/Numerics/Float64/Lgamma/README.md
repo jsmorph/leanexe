@@ -45,7 +45,7 @@ The source is `src/binary64/lgamma/lgamma.c` of CORE-MATH [1], `Copyright (c) 20
 |---|---|---|
 | the global `signgam` | the second result of `lgammaWith` | The dialect has no global state, and the API returns the sign. |
 | `unsigned` arithmetic of the piece index | words | It does not overflow for these arguments. |
-| the final test of `as_lgamma_accurate`, which keeps the low 32 bits of a 52-bit mask | a mask with `0xFFFFFFFF` | The same result. |
+| the final test of `as_lgamma_accurate`, which keeps the low 32 bits of a 52-bit mask | a mask with `0xFFFFFFFF` | Same result. |
 | `__builtin_fma` | `Fma.fma`, at 12 calls, and through `Tgamma.mulDD` and `Tgamma.mulDDD` for the other 2 of `lgamma.c`'s 14 | WebAssembly has no deterministic fused multiply-add. |
 | `__builtin_clzll` | `63 - Fma.msb64` | The dialect has no count of leading zeros. |
 | `errno` and the floating-point exceptions | omitted | WebAssembly has no floating-point status flags. |

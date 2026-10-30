@@ -8,7 +8,7 @@ The module `xxhash64` computes XXH64 of the xxHash specification [1].  Its expor
 
 | Export | Function | Arguments | Result | Call theorem |
 |---|---|---|---|---|
-| `xxh64` | 5 | The message array, `n`, and the seed. | XXH64 of the `n` bytes with the seed. | `xxh64_call` |
+| `xxh64` | 5 | Message array, `n`, and the seed. | XXH64 of the `n` bytes with the seed. | `xxh64_call` |
 
 A count beyond an array's bytes is accepted, and the missing bytes read as zero in both the program and the theorems.
 
@@ -21,7 +21,7 @@ A count beyond an array's bytes is accepted, and the missing bytes read as zero 
 | Module | Content |
 |---|---|
 | [`Proof.lean`](Proof.lean) | `rotl_1` to `rotl_31`, the program's rotations at the amounts that XXH64 uses; `round_eq`, `converge_eq`, and `avalanche_eq`; `lane_le`, `half_le`, and `byte_eq`, which read the message's lanes, half lanes, and bytes from the array; `stripes_from` and `lanes8_from` for the two loops; `start_eq`, `lanes8_eq`, `lane4_eq`, and `bytes_eq` for the phases; and `xxh64_eq`. |
-| [`Compiled.lean`](Compiled.lean) | The verified compilation of the program's four functions. |
+| [`Compiled.lean`](Compiled.lean) | Verified compilation of the program's four functions. |
 | [`Bytes.lean`](Bytes.lean) | `Ready`, `ready_initial`, the export fact, and the call theorem, from the generated `implements` theorem and `xxh64_eq`. |
 | [`File.lean`](File.lean) | The emitted file holds the module's encoding and decodes to the module. |
 

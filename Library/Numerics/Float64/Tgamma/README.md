@@ -45,7 +45,7 @@ The source is `src/binary64/tgamma/tgamma.c` of CORE-MATH [1], `Copyright (c) 20
 | a second result through a pointer | a pair result | The dialect has no pointers. |
 | global `static const` tables | eight `Array UInt64` tables passed by `tgamma` to `tgammaWith` | The tables become borrowed arrays of the module. |
 | integers `i`, `jm`, `ip`, `k` that count or select | integer-valued doubles | The dialect's words are unsigned 64-bit integers. |
-| `int` exponents `e`, `eoff` and the index of `as_expd` | two's complement words, with `sar` for the arithmetic shift | The same reason. |
+| `int` exponents `e`, `eoff` and the index of `as_expd` | two's complement words, with `sar` for the arithmetic shift | Same reason. |
 | `__builtin_fma` | `Fma.fma`, at all 15 calls | WebAssembly has no scalar fused multiply-add, and in the deterministic profile its relaxed SIMD multiply-add returns the unfused result [9]. |
 | `roundeven_finite`, `floor` | adding and subtracting `2^52`, and `floorF` from it | The dialect has no operation that rounds to an integer. |
 | the binary search of `as_tgamma_database` | a scan of all 57 rows | The scan finds the same row. |

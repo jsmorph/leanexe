@@ -48,11 +48,11 @@ The source is `lib/msun/src/s_erf.c` of FreeBSD [1].  Its notice reads "Copyrigh
 
 | C code | Port | Reason |
 |---|---|---|
-| The rational functions written out in both `erf` and `erfc` | `erfSmall`, `erfMiddle`, `erfTail`, and `erfExp`, with the same operations in the same order | One definition for both entries, and one set of proofs. |
+| Rational functions written out in both `erf` and `erfc` | `erfSmall`, `erfMiddle`, `erfTail`, and `erfExp`, with the same operations in the same order | One definition for both entries, and one set of proofs. |
 | `static const volatile double tiny` and the expressions `one-tiny`, `tiny-one`, `two-tiny`, and `tiny*tiny`, which fdlibm evaluates to raise the inexact and underflow flags | ordinary rounded sums and products with the same values | The dialect has no floating-point flags and no `volatile`. |
 | `GET_HIGH_WORD (hx, x)` into a signed `int32_t` | `hx := x.toBits >>> 32`, a word, and `neg := hx >>> 31 == 1` | A signed comparison of `hx` with a positive bound also tests the sign, so `hx < 0x3fd00000` becomes `neg \|\| hx < 0x3fd00000`, and `hx >= 0` becomes `!neg`.  `erfc`'s `hx > 0` equals `!neg` on the ranges where it occurs. |
-| `SET_LOW_WORD (z, 0)` | `Float.ofBits (x.toBits &&& 0xFFFFFFFF00000000)` | The same word. |
-| `(double)(1-i)+one/x` | `(if neg then -1.0 else 1.0) + 1.0/x` | The same values for infinities and NaN. |
+| `SET_LOW_WORD (z, 0)` | `Float.ofBits (x.toBits &&& 0xFFFFFFFF00000000)` | Same word. |
+| `(double)(1-i)+one/x` | `(if neg then -1.0 else 1.0) + 1.0/x` | Same values for infinities and NaN. |
 | `exp` | `Exp.expWith tab` | As above. |
 
 A script that compares the port with the pinned `s_erf.c` finds that the decimal literal of each of the 56 constants annotated with hexadecimal words converts to those bits and equals the port's `Float.ofBits` word, and that `tiny` is the word `0x01A56E1FC2F8F359` of `1.0e-300`.  The journal records the same check of the 56 constants against their decimals ([the port's journal section](../../../../devnotes.md#2026-10-10-ports-of-sinpi-cospi-tanpi-erf-and-erfc)).  The thresholds `0x7ff00000`, `0x3feb0000`, `0x3e300000`, `0x00800000`, `0x3ff40000`, `0x40180000`, `0x4006DB6E` (`erf`), `0x3c700000`, `0x3fd00000`, `0x4006DB6D` (`erfc`), and `0x403c0000` are those of the C code, and `ErfBits` computes the value of the double with each threshold of `erf` as its high word.  `erf` switches tail kernels at the high word `0x4006DB6E` and `erfc` at `0x4006DB6D`, as fdlibm does, so `ErfTailKernel` proves `R_a/S_a` up to the first and `R_b/S_b` from the second, which covers every argument at which either function calls each kernel.
@@ -64,11 +64,11 @@ A script that compares the port with the pinned `s_erf.c` finds that the decimal
 | C code | Port | Reason |
 |---|---|---|
 | Results through pointers | Tuples | The dialect has no pointers. |
-| The tables `C`, `C2`, `T1` and `T2`, `T`, `Tacc`, `E2`, and the three tables of exceptions | The arrays of words `fastTable`, `accTable`, `expTable`, `asymTable`, `asymAccTable`, `expAccTable`, and `excTable`, which `erfc` passes to `erfcWith`, with the rows of `Tacc` padded with zeros to 30 entries as in C | The arrays have docstrings with the offsets of the C arrays. |
-| The short arrays `c0`, `p`, `Q_1`, and `threshold` | Constants in `erfFastTiny`, `tinyCoeff`, `q1`, `asymptIndex`, and `asymptAccIndex` | Fewer table arguments. |
-| `roundeven_finite` and `__builtin_floor` | `roundEven`, which adds and subtracts `2^52`, and `floorF` | The same results for the arguments that occur, below `2^52` in magnitude. |
-| `int64_t K` with `K >> 12`, `(K >> 6) & 0x3f`, and `K & 0x3f` in `exp_1` | A two's complement word with `sar` | C's arithmetic shift. |
-| `int k` in `exp_accurate` | An integer-valued double | The value is between -1069 and -4. |
+| Tables `C`, `C2`, `T1` and `T2`, `T`, `Tacc`, `E2`, and the three tables of exceptions | Arrays of words `fastTable`, `accTable`, `expTable`, `asymTable`, `asymAccTable`, `expAccTable`, and `excTable`, which `erfc` passes to `erfcWith`, with the rows of `Tacc` padded with zeros to 30 entries as in C | The arrays have docstrings with the offsets of the C arrays. |
+| Short arrays `c0`, `p`, `Q_1`, and `threshold` | Constants in `erfFastTiny`, `tinyCoeff`, `q1`, `asymptIndex`, and `asymptAccIndex` | Fewer table arguments. |
+| `roundeven_finite` and `__builtin_floor` | `roundEven`, which adds and subtracts `2^52`, and `floorF` | Same results for the arguments that occur, below `2^52` in magnitude. |
+| `int64_t K` with `K >> 12`, `(K >> 6) & 0x3f`, and `K & 0x3f` in `exp_1` | Two's complement word with `sar` | C's arithmetic shift. |
+| `int k` in `exp_accurate` | Integer-valued double | The value is between -1069 and -4. |
 | `__builtin_ldexp` | `ldexp`, a product with powers of two that are doubles, through `2^1023` for exponents above 1023 | One rounding, as C's `ldexp`, for the exponents from -1069 to 1069 that occur. |
 | `for (i = 0; yh > threshold[i]; i++);` | Chains of comparisons that end at the last interval without comparing with the last threshold | `yh` is at most `0x1.62fffffffffffp-2` and `0x1.2b81f34bfce35p-1` in the two domains, below the last thresholds. |
 | Loops over the exceptions with an early return | `hardCase`, which scans every row | The inputs of the rows are distinct, so the result is the same. |
@@ -90,7 +90,7 @@ The theorems are in [the error function's theorem module](ErfTheorem.lean) and [
 | `erf_entry_call` | A call of function 11 from a store satisfying `Ready` returns, without a trap, the bits of `Erf.erf x`, and leaves a store satisfying `Ready` in which every heap region keeps its bytes. |
 | `erf_export` | Function 11 is exported as `erf`. |
 | `erf_bytes_accuracy` | `Erf.compiled.module` encodes to bytes that decode to it, exports function 11 as `erf`, starts in a `Ready` store, and every call from a `Ready` store returns the bits of `Erf.erf x`, within one step for finite `x`, and leaves a `Ready` store, so the statement covers every call in a sequence of calls to `erf`. |
-| `erf_module_accuracy` | The encoding and decoding of the module, from `erf_bytes_accuracy`, for the file module. |
+| `erf_module_accuracy` | Encoding and decoding of the module, from `erf_bytes_accuracy`, for the file module. |
 | `erf_file` | `build/verified/erf.wasm` holds `encode Erf.compiled.module`. |
 | `erf_file_decode` | `build/verified/erf.wasm` decodes to the module of `erf_module_accuracy`. |
 
@@ -106,13 +106,13 @@ The chain of `erf`'s proof has 33 modules of its own in `Library/Numerics/Float6
 
 | Stage | Modules | Content |
 |---|---|---|
-| Kernels | `ErfKernelSmall`, `ErfKernelMiddle`, `ErfTailBase`, `ErfTailCoeffs`, `ErfTailPieces0` to `ErfTailPieces7`, `ErfTailKernel` | The approximation error of each rational function against `erf` or `log (x erfcx x)`. |
+| Kernels | `ErfKernelSmall`, `ErfKernelMiddle`, `ErfTailBase`, `ErfTailCoeffs`, `ErfTailPieces0` to `ErfTailPieces7`, `ErfTailKernel` | Approximation error of each rational function against `erf` or `log (x erfcx x)`. |
 | Small range | `ErfSmallBase`, `ErfSmallPieces0`, `ErfSmallPieces1`, `ErfSmall` | `[2^-28, 0.84375)`, in 74 intervals. |
 | Middle range | `ErfMiddleBase`, `ErfMiddle` | `[0.84375, 1.25)`, in 13 intervals. |
 | Ends | `ErfEnds`, `ErfSub` | Below `2^-28`, the subnormal inputs, and from 6 on. |
 | Tail | `ErfTailSplit`, `ErfTailEval`, `ErfTailCompose`, `ErfTailErfBase`, `ErfTailErf` | `[1.25, 6)`, in 30 intervals: the exact split of `x²`, the argument of the second exponential, and the composition. |
-| Paths and sign | `ErfBranches`, `ErfBits`, `ErfPositive`, `ErfNegative`, `ErfOdd` | The code's path for each range, positive arguments, and negative arguments by oddness. |
-| Assembly | `ErfTheorem`, `ErfFile` | The exceptional values and the byte and file theorems. |
+| Paths and sign | `ErfBranches`, `ErfBits`, `ErfPositive`, `ErfNegative`, `ErfOdd` | Code's path for each range, positive arguments, and negative arguments by oddness. |
+| Assembly | `ErfTheorem`, `ErfFile` | Exceptional values and the byte and file theorems. |
 
 ### Real analysis
 
@@ -167,12 +167,12 @@ Beyond the arithmetic chain and the modules of the exponential's proof, the anal
 
 | Fact | Declarations |
 |---|---|
-| The small kernel's two one-sided weighted bounds on two intervals, the positivity of `qq`, and the series partial sum | `ErfKernelSmall.small_up_1`, `small_up_2`, `small_lo_1`, `small_lo_2`, `qq_check`, `series_check` |
-| The middle kernel's bounds on eight intervals of `s` per side | `ErfKernelMiddle.middle_up_1` to `middle_up_8`, `middle_lo_1` to `middle_lo_8` |
-| The positivity of `S_a` and `S_b` | `ErfTailCoeffs.sa_check`, `sb_check` |
+| Small kernel's two one-sided weighted bounds on two intervals, the positivity of `qq`, and the series partial sum | `ErfKernelSmall.small_up_1`, `small_up_2`, `small_lo_1`, `small_lo_2`, `qq_check`, `series_check` |
+| Middle kernel's bounds on eight intervals of `s` per side | `ErfKernelMiddle.middle_up_1` to `middle_up_8`, `middle_lo_1` to `middle_lo_8` |
+| Positivity of `S_a` and `S_b` | `ErfTailCoeffs.sa_check`, `sb_check` |
 | For each of the 32 tail pieces, the defect of the model, its range, the derivative checks, and the anchors | `ErfTailPieces0` to `ErfTailPieces7`, four pieces each |
-| The rounding conditions of the 74 small, 13 middle, and 30 tail intervals | `ErfSmallPieces0`, `ErfSmallPieces1`, `ErfMiddle.ok0` to `ok12`, `ErfTailErf.tok0` to `tok29` and `tcrit0` to `tcrit29` |
-| The exceptional words and the export | `ErfTheorem.erf_pos_zero` to `erf_neg_infinity`, `erf_export` |
+| Rounding conditions of the 74 small, 13 middle, and 30 tail intervals | `ErfSmallPieces0`, `ErfSmallPieces1`, `ErfMiddle.ok0` to `ok12`, `ErfTailErf.tok0` to `tok29` and `tcrit0` to `tcrit29` |
+| Exceptional words and the export | `ErfTheorem.erf_pos_zero` to `erf_neg_infinity`, `erf_export` |
 | The file's bytes equal the encoder's | `ErfFile.erf_file` |
 
 ### The proof of CORE-MATH's `erfc`

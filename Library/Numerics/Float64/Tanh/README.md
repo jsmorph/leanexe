@@ -87,7 +87,7 @@ The theorems are in [the expm1 theorem](Expm1Theorem.lean), [its exceptional val
 | `TanhBytes.ready_initial` | The module's initial store satisfies `Ready`: the allocator invariant and a memory cap of at most 65,535 pages. |
 | `TanhBytes.expm1_entry_call`, `tanh_entry_call` | A call of function 3 or 4 from a `Ready` store returns, without a trap, the bits of `Tanh.expm1 x` or `Tanh.tanh x`, and leaves a `Ready` store in which every heap region keeps its bytes. |
 | `TanhBytes.expm1_bytes_accuracy`, `tanh_bytes_accuracy` | `Tanh.compiled.module` encodes to bytes that decode to it, exports function 3 as `expm1` or function 4 as `tanh`, starts in a `Ready` store, and every call from a `Ready` store returns the function's bits, within one step of `exp a - 1` or three steps of `tanh a` for finite `x`, and leaves a `Ready` store. |
-| `TanhBytes.tanh_module_accuracy` | The conjunction of the two byte theorems. |
+| `TanhBytes.tanh_module_accuracy` | Conjunction of the two byte theorems. |
 | `TanhFile.tanh_file` | `build/verified/tanh.wasm` holds `encode Tanh.compiled.module`. |
 | `TanhFile.tanh_file_decode` | `build/verified/tanh.wasm` decodes to the module of `tanh_module_accuracy`. |
 
@@ -101,12 +101,12 @@ The proof has 31 modules in `Library/Numerics/Float64/Tanh/` above the implement
 
 | Stage | Modules | Content |
 |---|---|---|
-| Kernel | `Expm1Words`, `Expm1KernelPoly`, `Expm1KernelInner`, `Expm1KernelE0`, `Expm1KernelOuter` | The kernel on bit patterns, its approximation in exact arithmetic, and the rounding of each of its operations. |
-| Scaling forms | `Expm1FormWords`, `Expm1SubOne`, `Expm1FormBase`, `Expm1FormsOne`, `Expm1FormsTwo`, `Expm1FormsMid` | The words `2^k`, `2^-k`, and `1 - 2^-k`, and one step for each form. |
+| Kernel | `Expm1Words`, `Expm1KernelPoly`, `Expm1KernelInner`, `Expm1KernelE0`, `Expm1KernelOuter` | Kernel on bit patterns, its approximation in exact arithmetic, and the rounding of each of its operations. |
+| Scaling forms | `Expm1FormWords`, `Expm1SubOne`, `Expm1FormBase`, `Expm1FormsOne`, `Expm1FormsTwo`, `Expm1FormsMid` | Words `2^k`, `2^-k`, and `1 - 2^-k`, and one step for each form. |
 | Reduction | `Expm1ReduceConst`, `Expm1ReduceWords`, `Expm1ReduceOne`, `Expm1ReduceK` | `ln2_hi + ln2_lo` within `2^-86` of `ln 2`, `invln2 · ln 2` within `2^-55` of 1, exact products and differences, and `y + c` within `2^-70` of `x - k ln 2`. |
-| `expm1` | `Expm1PathsReduced`, `Expm1PathsEdge`, `Expm1Branches`, `Expm1Theorem`, `Expm1Special` | The paths, the branches of the code, the theorem, and the exceptional values. |
-| `tanh` | `TanhBranches`, `Expm1NearForms`, `Expm1Near`, `TanhWords`, `TanhSmall`, `TanhLarge`, `TanhTheorem`, `TanhMain`, `TanhSpecial` | The errors of the `expm1` paths before their last rounding, the four ranges of `tanh`, the theorem, and the exceptional values. |
-| Bytes | `TanhBytes`, `TanhFile` | The byte and file theorems. |
+| `expm1` | `Expm1PathsReduced`, `Expm1PathsEdge`, `Expm1Branches`, `Expm1Theorem`, `Expm1Special` | Paths, the branches of the code, the theorem, and the exceptional values. |
+| `tanh` | `TanhBranches`, `Expm1NearForms`, `Expm1Near`, `TanhWords`, `TanhSmall`, `TanhLarge`, `TanhTheorem`, `TanhMain`, `TanhSpecial` | Errors of the `expm1` paths before their last rounding, the four ranges of `tanh`, the theorem, and the exceptional values. |
+| Bytes | `TanhBytes`, `TanhFile` | Byte and file theorems. |
 
 ### Error budget of expm1
 
@@ -159,9 +159,9 @@ The proof imports the arithmetic chain of `F64Add`, `F64Mul`, `F64Div`, and `F64
 |---|---|
 | The numerator of the kernel's error has no terms below `r³`, and the rest is at most `2^-60` on `[-0.3466, 0.3466]` | `Expm1KernelPoly.error_low`, `error_check` |
 | The denominator `6 - r t` differs from 6 by at most `6/5` on the same interval | `Expm1KernelPoly.denominator_check` |
-| The values of the constants 1, 1/2, 2, 3, 6, -2, and -1/4 as scaled words, and rational bounds on the magnitudes of `Q1` to `Q5` | `Expm1KernelInner.const_values`, `coefficient_rat` |
+| Values of the constants 1, 1/2, 2, 3, 6, -2, and -1/4 as scaled words, and rational bounds on the magnitudes of `Q1` to `Q5` | `Expm1KernelInner.const_values`, `coefficient_rat` |
 | `ln2_hi + ln2_lo` and `invln2 · ln 2` against the rational enclosure of `ln 2` | `Expm1ReduceConst.split_check` |
-| The words `1 - 2^-k` for `2 ≤ k < 20` | `Expm1FormWords.oneMinus_scaled` |
+| Words `1 - 2^-k` for `2 ≤ k < 20` | `Expm1FormWords.oneMinus_scaled` |
 | `x - 1024 ln 2 ≤ -2 · 10^-14` at the overflow threshold | `Expm1PathsReduced.overflow_gap` |
 | Functions 3 and 4 are exported as `expm1` and `tanh` | `TanhBytes.expm1_export`, `tanh_export` |
 | The file's bytes equal the encoder's | `TanhFile.tanh_file` |

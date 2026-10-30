@@ -41,7 +41,7 @@ The sources are FreeBSD msun's `k_sin.c`, `k_cos.c`, `s_sin.c`, `s_cos.c`, and `
 | `__kernel_rem_pio2`, floating-point arithmetic on 24-bit pieces of `x` and `2/π` with recomputation | `remLarge`, Payne–Hanek in 64-bit words with a fixed 192-bit window, `mul64`, `mulTop`, `clz64`, and `shiftTop` | The word method has a fixed number of steps, reads two constant tables, and needs no loop over pieces.  Ng's analysis bounds its window. |
 | `if ((int) x == 0) return x;` in `sin`, and `return 1.0` under the same test in `cos` | `x` and `1.0` without the test | The truncation of `x` is 0 for every `x` the tests guard, and the test exists only to raise the inexact flag, which WebAssembly lacks. |
 | `rnint ((double_t) x * invpio2)` and `irint (fn)` | `x * invpio2 + 1.5 · 2^52 - 1.5 · 2^52` and `fn.toUInt64` | `rnint` is that sum in `math_private.h` [14], and `fn` is a nonnegative integer at most `2^20`. |
-| `i = j - ((high >> 20) & 0x7ff); if (i > 16)` | `((y0.toBits >>> 52) &&& 0x7ff) + 16 < j` | The same comparison on unsigned exponent fields. |
+| `i = j - ((high >> 20) & 0x7ff); if (i > 16)` | `((y0.toBits >>> 52) &&& 0x7ff) + 16 < j` | Same comparison on unsigned exponent fields. |
 | `switch (n & 3)` | comparisons of `n &&& 3` | The dialect has no `switch`. |
 
 | Constant | Bits | Value |
@@ -88,11 +88,11 @@ The table groups the proof modules in `Library/Numerics/Float64/Trig/` by stage.
 | Stage | Modules | Content |
 |---|---|---|
 | `π` and its tables | `TrigPi`, `TrigWindows` | `π` within `2^-1270` from Machin's formula, the two tables, and the windows of `invPi` for every exponent field from 1043 to 2046. |
-| Kernel polynomials | `TrigKernelPoly`, `TrigKernelWide` | The polynomials against `sin` and `cos` on `\|x\| ≤ 0.7854` and on `\|x\| ≤ 0.78541`. |
+| Kernel polynomials | `TrigKernelPoly`, `TrigKernelWide` | Polynomials against `sin` and `cos` on `\|x\| ≤ 0.7854` and on `\|x\| ≤ 0.78541`. |
 | Kernel rounding | `TrigApprox`, `TrigKernelWords`, `TrigSinTail`, `TrigSinDirect`, `TrigKernelSpec`, `TrigCosKernel` | Error tracking with magnitude bounds, the kernels on words, and the evaluated kernels against `sin (x + y)` and `cos (x + y)`. |
 | Distance | `TrigDistance` | `quadrant_distance`. |
-| Large reduction | `TrigWords`, `TrigLargeInt`, `TrigLargeFloat`, `TrigLarge`, `TrigLargeSpec` | The word routines, the integer stages, the exact two-sum, and `remLarge_spec`. |
-| Small and medium reductions | `TrigSmall`, `TrigMediumConst`, `TrigMediumFn`, `TrigMediumCases`, `TrigMediumA`, `TrigMediumB`, `TrigMediumC`, `TrigMedium` | The one-step reduction for `k` from 1 to 4, the six pieces of `π/2`, the count, and the three outcomes of the medium reduction. |
+| Large reduction | `TrigWords`, `TrigLargeInt`, `TrigLargeFloat`, `TrigLarge`, `TrigLargeSpec` | Word routines, the integer stages, the exact two-sum, and `remLarge_spec`. |
+| Small and medium reductions | `TrigSmall`, `TrigMediumConst`, `TrigMediumFn`, `TrigMediumCases`, `TrigMediumA`, `TrigMediumB`, `TrigMediumC`, `TrigMedium` | One-step reduction for `k` from 1 to 4, the six pieces of `π/2`, the count, and the three outcomes of the medium reduction. |
 | Assembly | `TrigReduce`, `TrigStep`, `TrigQuadrant`, `TrigSinCos`, `TrigTheorem` | `remPio2_spec`, the final steps, the quadrants, `sin_within`, `cos_within`, and the byte theorems. |
 
 ### Reduction
@@ -138,11 +138,11 @@ The proof uses ProofKit, including the arithmetic chain of `F64Add`, `F64Mul`, `
 | Fact | Declaration |
 |---|---|
 | Machin's partial sums with 275 and 82 terms bound `π` within `2^-1270`, and the two tables against those bounds | `TrigPi.checked`, `tableNum_eq`, `halfNum_eq` |
-| The 1,025 rational approximations and their count | `TrigDistance.certs_checked`, `certs_length` |
-| The windows of `invPi` for exponent fields 1043 to 2046 | `TrigWindows.windows_eq` |
+| 1,025 rational approximations and their count | `TrigDistance.certs_checked`, `certs_length` |
+| Windows of `invPi` for exponent fields 1043 to 2046 | `TrigWindows.windows_eq` |
 | `pio2_1 + pio2_1t` within `2^-86` of `π/2`, and the sums of the six pieces within `2^-121` and `2^-157` | `TrigSmall.pio2_checked`, `TrigMediumConst.pio2_sums_checked` |
-| The fields of the six pieces of `π/2` | `TrigMediumConst.consts_checked` |
-| The sine and cosine polynomials against their Taylor polynomials, by bisection to depth 14 | `TrigKernelPoly.sin_check`, `cos_check`, `TrigKernelWide.sin_check_wide`, `cos_check_wide` |
+| Fields of the six pieces of `π/2` | `TrigMediumConst.consts_checked` |
+| Sine and cosine polynomials against their Taylor polynomials, by bisection to depth 14 | `TrigKernelPoly.sin_check`, `cos_check`, `TrigKernelWide.sin_check_wide`, `cos_check_wide` |
 | Functions 15 and 16 are exported as `sin` and `cos` | `TrigTheorem.sin_export`, `cos_export` |
 | The file's bytes equal the encoder's | `TrigFile.trig_file` |
 

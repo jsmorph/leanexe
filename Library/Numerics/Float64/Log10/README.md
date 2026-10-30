@@ -36,7 +36,7 @@ The port uses the Verified dialect, the subset of Lean that [the Verified compil
 | C code | Port | Reason |
 |---|---|---|
 | signed `int32_t hx`, tested with `hx < 0x00100000` and `hx < 0` | the word `x.toBits >>> 32`, with the sign bit tested first | The dialect's words are unsigned, and a comparison with a positive bound must also test the sign. |
-| zero test inside `hx < 0x00100000`, then `hx < 0`, then the subnormal scaling | the zero test for a negative or small `hx`, then the sign, then the scaling | The same results in the same cases, as nested tests on words. |
+| zero test inside `hx < 0x00100000`, then `hx < 0`, then the subnormal scaling | the zero test for a negative or small `hx`, then the sign, then the scaling | Same results in the same cases, as nested tests on words. |
 | signed `int32_t k`, `y = (double) k` | a two's complement word, converted as `Log.logCore` converts its `k` | The dialect converts unsigned words. |
 | `-two54/vzero`, `(x - x)/zero` | `-two54 / 0.0`, `(x - x) / 0.0` | The dialect has no floating-point flags, and these expressions keep their values. |
 | `SET_HIGH_WORD`, `SET_LOW_WORD`, `EXTRACT_WORDS` | shifts, masks, and `Float.ofBits` | The dialect reads and writes the words of a double through `toBits` and `ofBits`. |
@@ -57,10 +57,10 @@ The theorems are in [the base-10 logarithm theorem module](Log10Theorem.lean) an
 | Theorem | Statement |
 |---|---|
 | `log10_normal_within` | For a positive normal `x` other than 1, `WithinSteps 1 (Real.logb 10 (value x.toBits)) (Log10.log10 x).toBits`. |
-| `log10_subnormal_within` | The same bound for a positive subnormal `x`. |
-| `log10_within_one` | The same bound for every finite `x` with positive value. |
+| `log10_subnormal_within` | Same bound for a positive subnormal `x`. |
+| `log10_within_one` | Same bound for every finite `x` with positive value. |
 | `log10_pow10` | For `n ≤ 22` and `value x.toBits = 10^n`, `value (Log10.log10 x).toBits = n`. |
-| `log10_one_bits`, `log10_zero`, `log10_pos_infinity` | The bits `0`, `0xFFF0000000000000`, and `0x7FF0000000000000` for `1`, `±0`, and `+∞`. |
+| `log10_one_bits`, `log10_zero`, `log10_pos_infinity` | Bits `0`, `0xFFF0000000000000`, and `0x7FF0000000000000` for `1`, `±0`, and `+∞`. |
 | `log10_negative`, `log10_nan` | A negative argument other than `-0`, `-∞` included, and a NaN give `Wasm.IEEE64.canonicalNaN`. |
 | `ready_initial` | The module's initial store satisfies `Ready`: the allocator invariant and a memory cap of at most 65,535 pages. |
 | `log10_entry_call` | A call of function 3 from a store satisfying `Ready` returns, without a trap, the bits of `Log10.log10 x` and leaves a store satisfying `Ready` in which every heap region keeps its bytes. |
@@ -82,7 +82,7 @@ The proof has six modules in `Library/Numerics/Float64/Log10/` above the impleme
 | `Log10Kernel` | `kernel10`: the errors of `s`, `hfsq`, and `k_log1p` as multiples of `u σ` for `σ = \|s\|`. |
 | `Log10Final` | `tail10`: one step for the arithmetic after `f` and the double of `k`. |
 | `Log10Main` | `reduce10` and `main10`: the reduction for an argument word and its composition with `tail10`. |
-| `Log10Theorem` | The guards, the normal and subnormal arguments, the exceptional values, the powers of ten, `Ready`, and the byte theorem. |
+| `Log10Theorem` | Guards, the normal and subnormal arguments, the exceptional values, the powers of ten, `Ready`, and the byte theorem. |
 
 ### Error budget
 
@@ -111,8 +111,8 @@ The proof uses ProofKit modules, including the arithmetic chains that prove Lean
 | Fact | Declaration |
 |---|---|
 | `ivln10hi + ivln10lo` and `log10_2hi + log10_2lo` against `1/lnTenQ` and `S/lnTenQ`, with `lnTenQ = 3 S + log (5/4)` from 20 terms of the series of `atanh (1/9)` and `S` the split of `ln 2` from `ExpReductionBounds` | `Log10Consts.const_checks` |
-| The polynomial `2 + Lp1 z + … + Lp7 z^7` against the series on `\|s\| ≤ 0.1716` | `Log1pKernelPoly.log1p_kernel_error`, through `PolyBound.check` |
-| The values and bounds of the constants | `Log10Kernel.consts10`, `bounds10`, `Log10Final.consts_tail`, `bounds_tail` |
+| Polynomial `2 + Lp1 z + … + Lp7 z^7` against the series on `\|s\| ≤ 0.1716` | `Log1pKernelPoly.log1p_kernel_error`, through `PolyBound.check` |
+| Values and bounds of the constants | `Log10Kernel.consts10`, `bounds10`, `Log10Final.consts_tail`, `bounds_tail` |
 | `tailWord` at the 22 words of `10^n`, `1 ≤ n ≤ 22`, gives the word of `n` | `Log10Theorem.pow10_checks` |
 | Function 3 is exported as `log10`, and the file's bytes equal the encoder's | `Log10Theorem.log10_export`, `Log10File.log10_file` |
 

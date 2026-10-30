@@ -38,11 +38,11 @@ The sources are `s_sinpi.c`, `s_cospi.c`, `s_tanpi.c`, `k_sinpi.h`, and `k_cospi
 | C code | Port | Reason |
 |---|---|---|
 | `hi = (float) x` | `toSingle x`, which rounds the 52-bit fraction to 23 bits, ties to even, with any carry into the exponent field | The dialect has no single precision.  `toSingle` is `(float) x` for zero and for every double whose single-precision value is normal, which covers every kernel argument, 0 or from `2^-54` to `1/2`. |
-| `FFLOOR (x, j0, ix, lx)` | `ffloor ix lx` on 64-bit words with 32-bit masks | The macro of `math_private.h` [8] on words. |
+| `FFLOOR (x, j0, ix, lx)` | `ffloor ix lx` on 64-bit words with 32-bit masks | Macro of `math_private.h` [8] on words. |
 | `if (j0 > 30) x -= 0x1p30; j0 = (uint32_t) x; if (j0 & 1)` in `sinpi` and `cospi`, where `j0 > 30` holds for integer parts from `2^31` on | `oddPart`: the same test and subtraction, then the parity from `toUInt64` | From `2^32 + 2^30` on, `x - 2^30` exceeds the range of `uint32_t`, and C leaves that conversion undefined (C23 6.3.1.4 [6]).  `s_tanpi.c` takes the parity from `(uint64_t) x & 1`, and `SinpiFloor.oddPart_spec` proves that `oddPart` gives the parity of the integer part. |
 | `__kernel_sinpi`, `__kernel_cospi`, `__kernel_tanpi` | `kernelSinpi`, `kernelCospi`, `kernelTanpi`, sharing `piProduct` | The three kernels start with the same computation of `π x` as `hi + lo`. |
-| `_2sumF (hi, lo)` | `w = hi + lo` and `(hi - w) + lo` | The macro's definition without `DEBUG` [8]. |
-| `π x` below `2^-29` | `piTiny x hx` | The shared computation of `s_sinpi.c` and `s_tanpi.c`. |
+| `_2sumF (hi, lo)` | `w = hi + lo` and `(hi - w) + lo` | Macro's definition without `DEBUG` [8]. |
+| `π x` below `2^-29` | `piTiny x hx` | Shared computation of `s_sinpi.c` and `s_tanpi.c`. |
 | `vzero / vzero`, `1 / vzero`, `odd / vzero` | `0.0 / 0.0`, `1.0 / 0.0`, `odd / 0.0` | `vzero` is a volatile zero that prevents constant folding, and the dialect has no such qualifier. |
 | `(int) ax == 0` in `cospi` | `ax.toUInt64 == 0` | Both truncations give 0 wherever the test runs. |
 | `copysign (0, x)` | `if neg then -0.0 else 0.0` | `neg` is the sign bit of `x`. |
@@ -86,9 +86,9 @@ The proof adds 22 modules in `Library/Numerics/Float64/Sinpi/`, above the chains
 | Stage | Modules | Content |
 |---|---|---|
 | Product and kernels | `SinpiSingle`, `SinpiProduct`, `SinpiKernels`, `SinpiTanKernel` | `toSingle` within `2^-24` of its argument, relative, with at most 24 significant bits (`single_spec`), `piProduct r` within `r/2^62` of `π r` (`product_spec`), and the kernels within one step of `sin (π x)` and `cos (π x)` from `2^-54` to `1/4` and of `tan (π x)` from `2^-54` below `1/2` (`kernel_pair`, `kernel_tanpi`). |
-| Reflections and words | `SinpiReflect`, `SinpiBits`, `SinpiFloor`, `SinpiPieces`, `SinpiCommon` | The exact reflections (`half_sub`, `sub_half`, `one_sub`), `ax` as `\|x\|` and `neg` as the sign bit (`ax_abs`, `neg_flag`), `ffloor` as the integer part and `oddPart` as its parity (`ffloor_bits`, `floor_spec`, `oddPart_spec`), the reflected chains below 1 (`sin_chain`, `cos_pieces`, `tan_pieces`), the thresholds of the high word, and the integer value of every input from `2^52` on (`abs_thresholds`, `big_integer`). |
+| Reflections and words | `SinpiReflect`, `SinpiBits`, `SinpiFloor`, `SinpiPieces`, `SinpiCommon` | Exact reflections (`half_sub`, `sub_half`, `one_sub`), `ax` as `\|x\|` and `neg` as the sign bit (`ax_abs`, `neg_flag`), `ffloor` as the integer part and `oddPart` as its parity (`ffloor_bits`, `floor_spec`, `oddPart_spec`), the reflected chains below 1 (`sin_chain`, `cos_pieces`, `tan_pieces`), the thresholds of the high word, and the integer value of every input from `2^52` on (`abs_thresholds`, `big_integer`). |
 | Branches | `SinpiSin`, `SinpiCos`, `SinpiCosFloor`, `SinpiTanpi` | `sinpi_mid`, `sinpi_floor`, `sinpi_big`, `cospi_small`, `floor_frac`, `cospi_floor`, `tanpi_mid`, and `tanpi_floor`. |
-| Tiny path | `SinpiTinyWords`, `SinpiTinySplit`, `SinpiTinyReal`, `SinpiTiny` | The exact head and tail of `x 2^53` (`tiny_bits`, `split_spec`), the error of `piTiny` (`sum_error`, `final_error`, `tiny_spec`), `sinpi_tiny`, and `tanpi_tiny`. |
+| Tiny path | `SinpiTinyWords`, `SinpiTinySplit`, `SinpiTinyReal`, `SinpiTiny` | Exact head and tail of `x 2^53` (`tiny_bits`, `split_spec`), the error of `piTiny` (`sum_error`, `final_error`, `tiny_spec`), `sinpi_tiny`, and `tanpi_tiny`. |
 | Assembly | `SinpiWithin`, `SinpiExact`, `SinpiExactTan`, `SinpiTheorem`, `SinpiFile` | `cospi_big`, `tanpi_big`, the three accuracy theorems, the exact rules, the byte theorems, and the file theorems. |
 
 ### Error budget
@@ -117,8 +117,8 @@ The analysis of the `π x` functions uses [the wide relative step](../../../../L
 
 | Fact | Declaration |
 |---|---|
-| The values of `pi_hi` and `pi_lo`, and their rounded sum `0x400921FB54442D18` | `SinpiProduct.const_facts` |
-| The scale factors `2^53` and `2^-53` | `SinpiTinyWords.consts53` |
+| Values of `pi_hi` and `pi_lo`, and their rounded sum `0x400921FB54442D18` | `SinpiProduct.const_facts` |
+| Scale factors `2^53` and `2^-53` | `SinpiTinyWords.consts53` |
 | `piProduct 0` is `(0, 0)` and the cosine kernel gives 1 there, so `kernelCospi 0 = 1` | `SinpiPieces.cospi_zero` |
 | Functions 13, 14, and 15 are exported as `sinpi`, `cospi`, and `tanpi` | `SinpiTheorem.exports` |
 | The file's bytes equal the encoder's | `SinpiFile.sinpi_file` |

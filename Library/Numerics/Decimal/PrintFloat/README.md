@@ -47,15 +47,15 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 
 | Function | Role |
 |---|---|
-| `limbsOf`, `quotAt` | A word as limbs, and the quotient of `N · 2 ^ sn` by `2 ^ sd · 10 ^ j` with its remainder flag, for a decimal exponent `j` of either sign |
-| `range`, `found` | The least multiplier and the greatest plus one at exponent `j`, and whether there is one |
-| `nearest`, `clamp` | The integer nearest to `v` from `⌊2 v⌋` and its remainder flag, and its clamp into a run |
-| `startExp`, `shortest` | The start of the search, the search for `J`, and the choice of the decimal |
-| `numDigits`, `digitAt` | The number of digits of a word and its digit `i` as an ASCII byte |
-| `digitsFrom`, `byte1`, `noBytes`, `zeros` | A run of the digits of a word, one byte, no bytes, and a run of zeros, as arrays |
-| `sciLayoutW`, `ecmaLayoutW` | The two layouts as concatenations of those arrays |
-| `fixed`, `special` | The strings of the non-finite words and the zeros |
-| `print64With`, `print32With` | The fields of the word and the dispatch |
+| `limbsOf`, `quotAt` | Word as limbs, and the quotient of `N · 2 ^ sn` by `2 ^ sd · 10 ^ j` with its remainder flag, for a decimal exponent `j` of either sign |
+| `range`, `found` | Least multiplier and the greatest plus one at exponent `j`, and whether there is one |
+| `nearest`, `clamp` | Integer nearest to `v` from `⌊2 v⌋` and its remainder flag, and its clamp into a run |
+| `startExp`, `shortest` | Start of the search, the search for `J`, and the choice of the decimal |
+| `numDigits`, `digitAt` | Number of digits of a word and its digit `i` as an ASCII byte |
+| `digitsFrom`, `byte1`, `noBytes`, `zeros` | Run of the digits of a word, one byte, no bytes, and a run of zeros, as arrays |
+| `sciLayoutW`, `ecmaLayoutW` | Two layouts as concatenations of those arrays |
+| `fixed`, `special` | Strings of the non-finite words and the zeros |
+| `print64With`, `print32With` | Fields of the word and the dispatch |
 
 ## Theorems
 
@@ -63,7 +63,7 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 
 | Theorem | Module | Statement |
 |---|---|---|
-| `same_digits`, `more_digits`, `shortest_of_choice` | `PrintFloatShort` | The analysis above. |
+| `same_digits`, `more_digits`, `shortest_of_choice` | `PrintFloatShort` | Analysis above. |
 | `quotAt_spec`, `range_spec`, `inside_iff` | `PrintFloatQuot` | `quotAt` returns the floor of the real value `(N · 2 ^ sn / 2 ^ sd) · 10 ^ (-j)` and whether that value has a nonzero fractional part.  `range` gives the least multiplier of `10 ^ j` in the interval and the greatest plus one. |
 | `nearest_spec`, `clamp_spec` | `PrintFloatQuot` | `nearest` rounds `y` to the nearest integer, the even one at a tie, from `⌊2 y⌋` and its remainder flag, and `clamp` of that integer into a run is the nearest member of the run. |
 | `top_top`, `width_le`, `quot_bound` | `PrintFloatSearch` | The top exponent `J` has no multiple of a power of ten above it in the interval, the interval is at most `10 ^ (J + 1)` wide, and the quotients from `J - 1` on stay below `2 ^ 62`. |
@@ -74,9 +74,9 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 | `numDigits_spec`, `digitAt_spec`, `decValue_digitsOf` | `PrintFloatDigits` | `numDigits` counts the decimal digits of a word below `10 ^ 19`, `digitAt` returns its digit `i` as an ASCII byte, and `decValue` reads `digitsOf t` back as `t`. |
 | `sci_spec`, `ecma_spec` | `PrintFloatLayout` | `sciLayoutW` and `ecmaLayoutW` of `t < 10 ^ 19` and a biased exponent within `2 ^ 20` of `2 ^ 62` are the words of `sciLayout` and `ecmaLayout`. |
 | `round64_iff`, `shortest64`, `print64_code`, `layout64` | `PrintFloatWord` | A decimal rounds to a finite nonzero binary64 word exactly when it has the word's sign and its magnitude lies in the interval of `PrintFloatSearch`, the code's choice is `Shortest64`, `print64With` lays out the result of `shortest` for the word's fields, and `print64` and `print64Ecma` lay out a decimal with no trailing zero that is `Shortest64`. |
-| `round32_iff`, `shortest32`, `print32_code`, `layout32`, `print32_low` | `PrintFloatWord32` | The same for binary32 patterns, which the printers read from the low 32 bits of their argument. |
+| `round32_iff`, `shortest32`, `print32_code`, `layout32`, `print32_low` | `PrintFloatWord32` | Same for binary32 patterns, which the printers read from the low 32 bits of their argument. |
 | `sci_derives`, `ecma_derives` | `PrintFloatDerive` | For `t ≥ 1` both layouts are numbers of RFC 8259's grammar of the value `t · 10 ^ k`, the plain ECMAScript layout with trailing zeros as `(t · 10 ^ k) · 10 ^ 0`. |
-| `print64_derives`, `print64_roundtrip`, `print64_json`, `print64_shortest`, `print64_layout`, and the forms for `print64Ecma`, `print32`, and `print32Ecma` | `PrintFloatTheorem` | The theorems of the specification.  The zeros, infinities, and NaNs print as fixed strings that the grammars derive, a decimal with trailing zeros is `Shortest64` when the decimal without them is (`shortest64_shift`), and every string is shorter than `2 ^ 32` bytes, the bound of `ParseFloatTheorem.parse64_accept`. |
+| `print64_derives`, `print64_roundtrip`, `print64_json`, `print64_shortest`, `print64_layout`, and the forms for `print64Ecma`, `print32`, and `print32Ecma` | `PrintFloatTheorem` | Theorems of the specification.  The zeros, infinities, and NaNs print as fixed strings that the grammars derive, a decimal with trailing zeros is `Shortest64` when the decimal without them is (`shortest64_shift`), and every string is shorter than `2 ^ 32` bytes, the bound of `ParseFloatTheorem.parse64_accept`. |
 | `print64_bytes_accuracy`, `print64Ecma_bytes_accuracy`, `print32_bytes_accuracy`, `print32Ecma_bytes_accuracy` | `PrintFloatBytes` | Functions 35 to 38 of the compiled module are the four exports.  From a ready store a call traps at `unreachable` when memory runs out or returns a pointer to an owned array holding the words of a string with the properties of `derives64` or `derives32`, and leaves a ready store in which the heap's earlier regions keep their bytes and lie apart from the array. |
 | `print_file`, `print_file_decode` | `PrintFloatFile` | `build/verified/printfloat.wasm`, 14,178 bytes, holds the encoding of the module and decodes to it; `tests/verified/run.sh` writes the file, validates it with `wasm-tools validate`, and checks these theorems. |
 

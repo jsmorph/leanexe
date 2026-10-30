@@ -31,7 +31,7 @@ The source is `lib/msun/src/s_log1p.c` of FreeBSD [1].  Its notice reads "Copyri
 
 | C code | Port | Reason |
 |---|---|---|
-| The end of the function after the reduction | `log1pTail f c k hu` | One function serves both the `k = 0` path and the normalized paths. |
+| End of the function after the reduction | `log1pTail f c k hu` | One function serves both the `k = 0` path and the normalized paths. |
 | Signed `int32_t` high words `hx`, `hu` | `UInt64` words, with the sign bit tested apart | A signed comparison with a positive bound becomes a sign test and an unsigned comparison: `hx < 0x3FDA827A` is `neg ∨ hx < 0x3FDA827A`. |
 | Signed `k`, converted with `(double) k` | a two's complement word, converted as `Log.logCore` converts its `k` | The dialect has no signed integers. |
 | `-two54/vzero` | `-two54 / 0.0` | The volatile zero serves only to raise divideByZero, and the value is `-∞` either way. |
@@ -77,15 +77,15 @@ The chain has 12 modules of its own, listed in dependency order below.  It reuse
 
 | Module | Content |
 |---|---|
-| `Log1pTheoremBranches` | The branches of `log1p` and `log1pTail` as equations on the high words. |
-| `Log1pKernelPoly` | The kernel bound `log1p_kernel_error`. |
+| `Log1pTheoremBranches` | Branches of `log1p` and `log1pTail` as equations on the high words. |
+| `Log1pKernelPoly` | Kernel bound `log1p_kernel_error`. |
 | `Log1pTheoremCore` | Error chains for `f²/2` and `P = s (f²/2 + R)` at the scale `σ = \|f\|`, for four ranges of `f`, and `log_kernel`, which compares the exact `2s + sR(s)` with `log (1 + f)`. |
 | `Log1pTheoremConst` | `log (1 + q)` between rationals for rational `q`, and `ln2_hi + ln2_lo` within `2^-81` of `log 2`. |
-| `Log1pTheoremK0` | The path `k = 0`: `k0_neg`, `k0_pos_low`, and `k0_pos_high`. |
+| `Log1pTheoremK0` | Path `k = 0`: `k0_neg`, `k0_pos_low`, and `k0_pos_high`. |
 | `Log1pTheoremTail` | `log1pTail` for `k ≠ 0` against `K log 2 + log (1 + f) + log (1 + t)`: `tail_main` and `tail_big`. |
-| `Log1pTheoremReduce` | The normalization: `1 + f` is `u/2^K` exactly, `f` is exact by Sterbenz's lemma, and `kd · ln2_hi` is exact (`main_reduce`). |
-| `Log1pTheoremCorr` | The correction `c/u` within `2^-60` of `t = (1 + x - u)/u`, with `\|t\| ≤ 2^-52`, in each range of `x` (`corr_low`, `corr_mid`, `corr_hi`, `corr_big`). |
-| `Log1pTheorem` | The case split on the high word and `log1p_within_one`. |
+| `Log1pTheoremReduce` | Normalization: `1 + f` is `u/2^K` exactly, `f` is exact by Sterbenz's lemma, and `kd · ln2_hi` is exact (`main_reduce`). |
+| `Log1pTheoremCorr` | Correction `c/u` within `2^-60` of `t = (1 + x - u)/u`, with `\|t\| ≤ 2^-52`, in each range of `x` (`corr_low`, `corr_mid`, `corr_hi`, `corr_big`). |
+| `Log1pTheorem` | Case split on the high word and `log1p_within_one`. |
 | `Log1pTheoremSpecial`, `Log1pBytes`, `Log1pFile` | Exceptional values, the byte theorem, and the file theorem. |
 
 ### Kernel bound
@@ -122,11 +122,11 @@ The analysis uses these ProofKit modules beyond the arithmetic chain: [error tra
 
 | Fact | Declaration |
 |---|---|
-| The polynomial difference within `(185/256) · 2^-58` on eight pieces of `[0, 15439/2^19]` | `Log1pKernelPoly.log1p_part_1` to `log1p_part_8` |
+| Polynomial difference within `(185/256) · 2^-58` on eight pieces of `[0, 15439/2^19]` | `Log1pKernelPoly.log1p_part_1` to `log1p_part_8` |
 | `log (1 + q)` between rational sums of the series at `s = q/(2 + q)`, at the case boundaries `0.285`, `-0.175`, `0.2125`, `-0.2929`, and `0.41422` | `Log1pTheoremConst.log_ge`, `log_le`, applied with `decide +kernel` |
 | `ln2_hi + ln2_lo` within `2^-81` of `log 2`, from 30 terms of the series at `1/3` | `Log1pTheoremConst.ln2_close` |
-| The thresholds of the high-word tests as rationals | `Log1pTheorem.ax_lt`, applied with `decide +kernel` |
-| The words of the exceptional results | `Log1pTheoremSpecial` |
+| Thresholds of the high-word tests as rationals | `Log1pTheorem.ax_lt`, applied with `decide +kernel` |
+| Words of the exceptional results | `Log1pTheoremSpecial` |
 | Function 3 is exported as `log1p` | `Log1pBytes.log1p_export` |
 | The file's bytes equal the encoder's | `Log1pFile.log1p_file` |
 

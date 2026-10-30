@@ -10,12 +10,12 @@ Compiled code computes KECCAK-p as `keccakPRun`, which holds the state between r
 
 | Export | Function | Arguments | Result | Call theorem |
 |---|---|---|---|---|
-| `sha3_224` | 12 | The message array and `n`. | `Words4`: the 28-byte digest, with the last four bytes zero. | `sha3_224_call` |
-| `sha3_256` | 13 | The message array and `n`. | `Words4`: the 32-byte digest. | `sha3_256_call` |
-| `sha3_384` | 14 | The message array and `n`. | `Words6`: the 48-byte digest. | `sha3_384_call` |
-| `sha3_512` | 15 | The message array and `n`. | `Words8`: the 64-byte digest. | `sha3_512_call` |
-| `shake128` | 19 | The message array, `n`, and `d`. | An owned array of `⌈d/8⌉` words. | `shake128_call` |
-| `shake256` | 20 | The message array, `n`, and `d`. | An owned array of `⌈d/8⌉` words. | `shake256_call` |
+| `sha3_224` | 12 | Message array and `n`. | `Words4`: the 28-byte digest, with the last four bytes zero. | `sha3_224_call` |
+| `sha3_256` | 13 | Message array and `n`. | `Words4`: the 32-byte digest. | `sha3_256_call` |
+| `sha3_384` | 14 | Message array and `n`. | `Words6`: the 48-byte digest. | `sha3_384_call` |
+| `sha3_512` | 15 | Message array and `n`. | `Words8`: the 64-byte digest. | `sha3_512_call` |
+| `shake128` | 19 | Message array, `n`, and `d`. | Owned array of `⌈d/8⌉` words. | `shake128_call` |
+| `shake256` | 20 | Message array, `n`, and `d`. | Owned array of `⌈d/8⌉` words. | `shake256_call` |
 
 A count beyond an array's bytes is accepted, and the missing bytes read as zero in both the program and the theorems.  FIPS 202 §7 allows a conforming implementation to restrict the message and output lengths it supports, and the module takes whole bytes of each.
 
@@ -33,7 +33,7 @@ A count beyond an array's bytes is accepted, and the missing bytes read as zero 
 | [`SpongeProof.lean`](SpongeProof.lean) | `toStateArray_toBits`, which shows that §3.1.2 inverts §3.1.3; `keccakP_lanes`; `xorBlock_spec` for step 6 of Algorithm 8; `padded_eq`, which equates the message, its suffix, and pad10*1 with the bits of `paddedWord`; and `absorb_spec`. |
 | [`Proof.lean`](Proof.lean) | `sponge_absorb`, `squeeze_one`, and `sha3_224_spec` to `sha3_512_spec`: the bits of the digest's bytes are the transcription's digest. |
 | [`ShakeProof.lean`](ShakeProof.lean) | `squeeze_stream`, which reads the squeeze as the first `d` bits of the rate prefixes of the iterated states; the invariant of the squeezing loop; and `shake128_spec`, `shake256_spec`, `shakeWith_size`, and `shakeWith_tail`. |
-| [`Compiled.lean`](Compiled.lean) | The verified compilation of the program's nineteen functions. |
+| [`Compiled.lean`](Compiled.lean) | Verified compilation of the program's nineteen functions. |
 | [`Bytes.lean`](Bytes.lean) | `Ready`, `ready_initial`, the six export facts, and the six call theorems, from the generated `implements` and `trapFree` theorems and the theorems above. |
 | [`File.lean`](File.lean) | The emitted file holds the module's encoding and decodes to the module. |
 

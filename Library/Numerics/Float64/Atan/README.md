@@ -45,7 +45,7 @@ The sources are `lib/msun/src/s_atan.c` and `lib/msun/src/e_atan2.c` of FreeBSD 
 | C code | Port | Reason |
 |---|---|---|
 | `id = -1` for the direct polynomial, and the arrays `atanhi[id]`, `atanlo[id]` | `id = 4`, with the entries selected by comparisons | The comparisons select the same entries, and the module needs no table. |
-| The volatile read of `atanlo[3]` in `s_atan.c`, and the volatile `tiny` and `pi_lo` of `e_atan2.c` | their values | The qualifier prevents constant folding, and the dialect has no such qualifier. |
+| Volatile read of `atanlo[3]` in `s_atan.c`, and the volatile `tiny` and `pi_lo` of `e_atan2.c` | their values | The qualifier prevents constant folding, and the dialect has no such qualifier. |
 | `huge + x > one`, `pi + tiny`, `pi_o_2 + tiny`, and the other sums with `tiny` | kept as computed | They serve only to raise inexact.  The test holds for every `\|x\| < 1` (`AtanTheorem.huge_gt`), and the sums equal the rounded constants (`AtanTwoBits.half_bits`, `half_neg_bits`, and the words of `AtanTwoSpecial`). |
 | Signed `int32_t` high words | `UInt64` words with the sign bit tested apart | The dialect has no signed integers. |
 | `k = (iy - ix) >> 20`, an arithmetic shift | the shift of the 64-bit two's complement difference, with the top 20 bits filled when it is negative | The same value as a two's complement word, and `k > 60` and `k < -60` test the sign bit first. |
@@ -75,12 +75,12 @@ The theorems are in [the `atan` theorem](AtanTheorem.lean), [its exceptional val
 | `atan_pos_inf`, `atan_neg_inf` | `+∞` gives `0x3FF921FB54442D18` and `-∞` gives `0xBFF921FB54442D18`, each `WithinSteps 0` of `±π/2`. |
 | `atan_nan` | A NaN gives `Wasm.IEEE64.canonicalNaN`. |
 | `AtanTwoTheorem.atan2_within_two` | For finite `y` and `x` with `b ≠ 0`, `WithinSteps 2 (Complex.arg (a + b i)) (Atan.atan2 y x).toBits`. |
-| `AtanTwoSpecial.atan2_zero`, `atan2_inf_y`, `atan2_inf_x`, `atan2_inf_both` | The words of the zero and infinite cases of the table above. |
+| `AtanTwoSpecial.atan2_zero`, `atan2_inf_y`, `atan2_inf_x`, `atan2_inf_both` | Words of the zero and infinite cases of the table above. |
 | `AtanTwoNaN.atan2_nan` | When `y` or `x` is a NaN, `(Atan.atan2 y x).toBits` is `Wasm.IEEE64.canonicalNaN`. |
 | `AtanBytes.ready_initial` | The initial store satisfies `Ready`: the allocator invariant and a memory cap of at most 65,535 pages. |
 | `AtanBytes.atan_entry_call`, `atan2_entry_call` | A call of function 2 or 3 from a `Ready` store returns, without a trap, the bits of the Lean function, and leaves a `Ready` store in which every heap region keeps its bytes. |
 | `AtanBytes.atan_bytes_accuracy`, `atan2_bytes_accuracy` | `Atan.compiled.module` encodes to bytes that decode to it, exports the function, starts in a `Ready` store, and every call from a `Ready` store returns the bits of the Lean function, within the decided bound on the domain of the accuracy theorem, and leaves a `Ready` store. |
-| `AtanBytes.atan_module_accuracy` | The conjunction of the two byte theorems. |
+| `AtanBytes.atan_module_accuracy` | Conjunction of the two byte theorems. |
 | `AtanFile.atan_file`, `atan_file_decode` | `build/verified/atan.wasm` holds `encode Atan.compiled.module`, and the file decodes to the module of `atan_module_accuracy`. |
 
 `atan_file_decode` takes its bytes from `atan_module_accuracy`, so its axiom report covers both byte theorems, which `tests/verified/run.sh` requires because it reads only the two reports of the file module.  [The track's journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc) records the first builds that reported the permitted axioms for `atan_within_one`, `atan2_within_two`, the byte theorems, the `atan2` exceptional values, and the file theorems.  A later build printed the three axioms for the accuracy, exceptional-value, and byte theorems, and a run of `tests/verified/run.sh` then passed the file check for the first time ([the journal](../../../../devnotes.md#2026-10-12-integration-of-expm1-tanh-erf-log1p-atan-atan2-asin-and-acos-first-push)).
@@ -95,16 +95,16 @@ The table lists the proof modules in dependency order.  The `atan` chain ends in
 
 | Module | Content |
 |---|---|
-| `AtanKernelPoly` | The kernel bound `atan_kernel_error`. |
-| `AtanTheoremPoly` | The error chain of `t (s1 + s2)`: within `2.0 · 2^-53 s³` of `t · polyS t` for `\|t\| ≤ s ≤ 7/16`. |
-| `AtanTheoremBranches` | The branches of `atan` as equations on the high word. |
-| `AtanTheoremTail` | The errors of `x - x (s1 + s2)` and of `hi - ((t (s1 + s2) - lo) - t)` as functions of the case bounds. |
-| `AtanTheoremReduce` | The reduced arguments: the exact doubling and subtractions and the rounded operations. |
+| `AtanKernelPoly` | Kernel bound `atan_kernel_error`. |
+| `AtanTheoremPoly` | Error chain of `t (s1 + s2)`: within `2.0 · 2^-53 s³` of `t · polyS t` for `\|t\| ≤ s ≤ 7/16`. |
+| `AtanTheoremBranches` | Branches of `atan` as equations on the high word. |
+| `AtanTheoremTail` | Errors of `x - x (s1 + s2)` and of `hi - ((t (s1 + s2) - lo) - t)` as functions of the case bounds. |
+| `AtanTheoremReduce` | Reduced arguments: the exact doubling and subtractions and the rounded operations. |
 | `AtanTheoremConst` | `atanhi + atanlo` within `2^-64` of `arctan (1/2)`, `π/4`, `arctan (3/2)`, and `π/2`, and `arctan` 1-Lipschitz. |
-| `AtanTheoremCases` | The eight reduced cases within one step. |
+| `AtanTheoremCases` | Eight reduced cases within one step. |
 | `AtanTheoremSmall` | `\|x\| < 7/16`: below `2^-27`, from `2^-27` to `1/4`, and two pieces up to `7/16`. |
 | `AtanTheorem`, `AtanTheoremSpecial` | `atan_within_one` and the exceptional values. |
-| `AtanTwoBranches`, `AtanTwoQuot`, `AtanTwoErr`, `AtanTwoAtan` | The branches of `atan2`, the rounded quotient `q` within `2^-53 Q + 2^-1075` of `Q = \|y/x\|`, the change of `arctan` between them, and `atan_good` for every branch of `atan` at `q`. |
+| `AtanTwoBranches`, `AtanTwoQuot`, `AtanTwoErr`, `AtanTwoAtan` | Branches of `atan2`, the rounded quotient `q` within `2^-53 Q + 2^-1075` of `Q = \|y/x\|`, the change of `arctan` between them, and `atan_good` for every branch of `atan` at `q`. |
 | `AtanTwoArg`, `AtanTwoBits`, `AtanTwoTheorem` | `Complex.arg` through `arctan (y/x)`, the word tests of `atan2`, and `atan2_within_two`. |
 | `AtanTwoSpecial`, `AtanTwoNaN`, `AtanBytes`, `AtanFile` | Exceptional values, the NaN results of `atan2`, byte theorems, and the file theorem. |
 
@@ -159,10 +159,10 @@ The analysis uses [error tracking for straight-line code](../../../../LeanExe/Pr
 
 | Fact | Declaration |
 |---|---|
-| The polynomial difference within `(159/256) · 2^-57` on 16 pieces of `[0, 49/256]`, and their union | `AtanKernelPoly.atan_part_1` to `atan_part_16`, `atan_part_covers` |
+| Polynomial difference within `(159/256) · 2^-57` on 16 pieces of `[0, 49/256]`, and their union | `AtanKernelPoly.atan_part_1` to `atan_part_16`, `atan_part_covers` |
 | `arctan (1/2)` and `arctan (2/3)` from 36 and 64 terms of their series, evaluated in `ℚ`, and `π` from Mathlib's twenty-digit bounds `Real.pi_gt_d20` and `Real.pi_lt_d20` [8] | `AtanTheoremConst.atan_half`, `atan_two_thirds`, `atan_one`, `atan_inf`, `atan_three_halves` |
-| The thresholds of the high-word tests as rationals | `AtanTheorem.ix_66`, `ix_27`, `ix_a` to `ix_d` |
-| The words of the rounded constants and of `pi_o_2 + 0.5 pi_lo` | `AtanTwoBits.half_bits`, `half_neg_bits`, `big_bits2`, `AtanTheorem.big_bits` |
+| Thresholds of the high-word tests as rationals | `AtanTheorem.ix_66`, `ix_27`, `ix_a` to `ix_d` |
+| Words of the rounded constants and of `pi_o_2 + 0.5 pi_lo` | `AtanTwoBits.half_bits`, `half_neg_bits`, `big_bits2`, `AtanTheorem.big_bits` |
 | Functions 2 and 3 are exported as `atan` and `atan2` | `AtanBytes.atan_export`, `atan2_export` |
 | The file's bytes equal the encoder's | `AtanFile.atan_file` |
 
