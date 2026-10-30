@@ -35474,8 +35474,8 @@ The 20 compiler conflicts divide as follows.  Names in each row are relative to 
 | [Representations and ownership](Verified/State.lean) | `State.lean`, `After.lean`, `EnvStep.lean`, `Potential.lean` | Combine indexed tree-header representation and potential with the byte representation, byte ownership, and literal preservation rules. |
 | [Expression correctness](Verified/ExprCorrect.lean) | `ExprCorrect.lean` | Supply literal coverage for each indexed constructor branch, retain the additional static-pool premises, and apply the generalized tree proofs. |
 | [Reflection and mode inference](Verified/Reflect/Definitions.lean) | `Reflect/Definitions.lean`, `Reflect/Modes.lean`, `Reflect/TailModes.lean` | Retain tagged recursive-type reflection and branch ownership while keeping byte reflection and byte parameter modes. |
-| [Tail compilation](Verified/TailCode.lean) | `TailCode.lean`, `TailTreeCase.lean`, `TailTreeEmpty.lean`, `TailTreeNode.lean` | Combine indexed branches and their adjusted labels with literal-pool compilation and proof premises. |
-| [Tree construction and matching](Verified/TreeCaseCorrect.lean) | `TreeCaseCorrect.lean`, `TreeCaseEmpty.lean`, `TreeCaseNode.lean`, `TreeNodeCode.lean`, `TreeNodeCorrect.lean` | Preserve main's tag dispatch and field layouts while transporting the branch's literal coverage and static-pool arguments. |
+| Tail compilation | `TailCode.lean`, `TailTreeCase.lean`, `TailTreeEmpty.lean`, `TailTreeNode.lean` | Combine indexed branches and their adjusted labels with literal-pool compilation and proof premises. |
+| Tree construction and matching | `TreeCaseCorrect.lean`, `TreeCaseEmpty.lean`, `TreeCaseNode.lean`, `TreeNodeCode.lean`, `TreeNodeCorrect.lean` | Preserve main's tag dispatch and field layouts while transporting the branch's literal coverage and static-pool arguments. |
 
 Conflict markers do not identify every required edit.  The branch-only [literal collection](Verified/Literals.lean), [coverage proofs](Verified/LiteralCoverage.lean), and [coverage decomposition](Verified/LiteralCoverageFacts.lean) still use the earlier tree constructor arities and a single record branch.  Their definitions and proofs must cover the conditional null branch and every indexed record branch.  [Scratch separation](Verified/Wasi/OwnedScratch.lean), [WASI mode inference](Verified/Wasi/ReflectModes.lean), and [process representation](Verified/Wasi/ProcessState.lean) also contain the earlier one-argument `treeHeader` patterns.
 
@@ -38265,6 +38265,120 @@ The same counts settle the slower `sha256` of the bound in a temporary.  The bui
 - [x] The experiment without the alignment test, with its static counts, benchmark, and counter measurements.
 - [x] The user's decision on the alignment proof: the user approved it, and the entries on the alignment proof that follow record it.
 
+## 2026-10-29: The Wasm-to-C translator: two cheaper forms of the alignment test
+
+Two more options of the experiment branch measure cheaper forms of the alignment test before the decision on the proof.  `LX_BYTEWORD` keeps the test and gives its word branch the access at the byte address, `*(unsigned long long *) ((unsigned char *) lx_mem + t)`, in place of `lx_mem[t >> 3]`.  `LX_INVERT` tests `(t & 7ULL) != 0ULL` with the branches exchanged, so that the word access would fall through, and the two options combine.  Every form of the six benchmark programs passed `native-verified build`, so `clightgen`'s program matches the translation in each case, and the current form and the form without the test printed the same C text as in the earlier experiment.
+
+CompCert's semantics defines the access of `LX_BYTEWORD` on its branch.  `lx_mem` evaluates to the pointer to its start (`eval_Evar_global`, `eval_Elvalue`, and `deref_loc_reference` in `cfrontend/Clight.v`, lines 414, 400, and 213), since Clight accesses an array by reference (`cfrontend/Ctypes.v`, line 916), and a cast from an array or pointer type to a pointer type returns the pointer unchanged (`cfrontend/Cop.v`, lines 151 and 227 to 231).  Adding the `unsigned long long` `t` to the `unsigned char *` adds `t` times the size of `unsigned char`, which is one (`Cop.v`, lines 641, 666 to 670, and 679 to 684), and the cast to `unsigned long long *` again leaves the pointer unchanged.  A load or store through the dereference uses the chunk `Mint64` of `unsigned long long` (`Ctypes.v`, line 911, and `eval_Ederef`, `deref_loc_value`, and `assign_loc_value` in `Clight.v`, lines 418, 209, and 232), and it requires the permission on its eight bytes and an offset divisible by 8 (`common/Memory.v`, lines 220 to 222, 428 to 431, 436 to 442, 534 to 535, and 555 to 561, with `align_chunk` in `common/Memdata.v`, line 96, and `align_int64 := 8` in `aarch64/Archi.v` and `x86_64/Archi.v`).  The bounds check before the access gives the permission, and the branch's guard `(t & 7) == 0` gives the divisibility.  On that branch `lx_mem[t >> 3]` adds 8 times `t >> 3`, which equals `t`, so the two expressions denote the same block and offset and access the same eight bytes.
+
+The inverted test produces the same machine code as the current form, and the combined options the same as `LX_BYTEWORD`, apart from the command line in the header comment of the assembly.  CompCert orders the two branches by size and not by the test's sense.  RTLgen translates last the branch that `more_likely` judges larger (`backend/RTLgen.v`, lines 602 to 610, and `backend/RTLgenaux.ml`, lines 110 and 111), so that branch's nodes receive the higher numbers.  Renumbering in postorder visits successors sorted by number (`lib/Postorder.v`, lines 61 and 89), and Linearize lays out blocks in decreasing order of their smallest node and negates the condition when the first successor follows (`backend/Linearizeaux.ml`, lines 103 to 114, and `backend/Linearize.v`, lines 182 to 186).  The byte path is the larger branch, so it follows the test in either sense, and the dumps of RTL and LTL for `crc32` differ only in the conditions.
+
+The static counts come from the assembly that `ccomp -S` writes for each form.  They take the instructions of the loop bodies that an aligned access runs, summed over the loops of the functions the export reaches.  `LX_BYTEWORD` saves the shift of each test, about one instruction per test, and keeps the test and its taken branch, while the form without the test saves 2.5 to 4.6 instructions per test.
+
+| Function | Tests | Now | Byte address | Without the test |
+| --- | --- | --- | --- | --- |
+| `sha256` | 4 | 368 | 365 | 358 |
+| `sha3_256` | 0 | 212 | 212 | 212 |
+| `crc32` | 10 | 261 | 251 | 221 |
+| `sortInsert` | 94 | 2,531 | 2,432 | 2,097 |
+| `solve` | 525 | 17,367 | 16,836 | 15,801 |
+| `linear32` | 30 | 857 | 827 | 739 |
+| `layerNorm32` | 83 | 2,750 | 2,667 | 2,421 |
+
+The benchmark ran on AArch64 on 2026-10-29 once for each option: `LX_BYTEWORD` from 04:04:23 to 04:06:58 UTC, `LX_INVERT` from 04:06:58 to 04:10:35 UTC with one pair discarded, both options from 04:10:35 to 04:13:09 UTC, and the form without the test from 04:13:09 to 04:16:39 UTC.  The inverted run measures the current machine code a second time, and the combined run the code of `LX_BYTEWORD`.  Wasmtime's medians moved by at most 0.5 percent across the four runs, and the interquartile ranges of the native medians stay below 1.4 percent except for the current `sort`, whose ranges span 5.8 and 15.2 percent of its medians in the two runs.
+
+| Workload | Now (ns) | Now again | Byte address | Byte address again | Without the test | Byte address against now | Byte address against no test |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `crc32` | 3,838,740 | 3,839,140 | 3,280,410 | 3,280,850 | 3,239,170 | −14.5 % | +1.3 % |
+| `euler` | 178,117,000 | 178,115,448 | 180,278,000 | 180,332,000 | 176,320,000 | +1.2 % | +2.2 % |
+| `layernorm32` | 3,746,620 | 3,747,080 | 3,577,210 | 3,576,400 | 2,896,770 | −4.5 % | +23.5 % |
+| `linear32` | 2,255,700 | 2,257,240 | 2,200,970 | 2,199,220 | 1,697,220 | −2.4 % | +29.7 % |
+| `sha256` | 13,292,100 | 13,289,800 | 12,625,900 | 12,622,000 | 12,839,300 | −5.0 % | −1.7 % |
+| `sha3` | 9,854,310 | 9,854,250 | 9,862,300 | 9,862,850 | 9,825,120 | +0.1 % | +0.4 % |
+| `sort` | 21,875,500 | 20,067,800 | 25,364,900 | 25,377,800 | 17,564,200 | +16.0 % | +44.4 % |
+
+The first column comes from the benchmark of the bound in a temporary, and the percentages compare medians with it.  `sudo perf stat -e cycles,instructions` then counted the programs of `LX_BYTEWORD`, and the current and no-test `sort` again, from 04:19:11 to 04:19:24 UTC.  As in the earlier experiment, the counts per call are the differences of a short and a long run divided by the difference in calls.
+
+| Workload | Instructions per call: now, byte address, no test | Cycles per call: now, byte address, no test |
+| --- | --- | --- |
+| `crc32` | 79.35 M, 75.14 M, 62.64 M | 14.34 M, 12.36 M, 12.27 M |
+| `euler` | 2,617.4 M, 2,604.9 M, 2,578.6 M | 620.3 M, 628.3 M, 613.8 M |
+| `layernorm32` | 78.14 M, 74.59 M, 63.96 M | 13.09 M, 12.50 M, 10.14 M |
+| `linear32` | 57.28 M, 54.79 M, 47.39 M | 12.85 M, 12.55 M, 10.39 M |
+| `sha256` | 355.62 M, 354.00 M, 351.29 M | 47.23 M, 44.86 M, 45.74 M |
+| `sha3` | 219.60 M, 219.17 M, 218.47 M | 35.33 M, 35.31 M, 35.22 M |
+| `sort` | 498.45 M, 473.43 M, 389.63 M | 70.84 M, 88.38 M, 61.11 M |
+
+The second count of `sort` gave 498.32 M instructions in 72.06 M cycles for the current form and 389.63 M in 61.14 M for the form without the test.  `LX_BYTEWORD` runs fewer instructions on every workload, but its `sort` takes about a quarter more cycles than the current form, at 5.36 instructions per cycle against about 7.  Which property of the code costs those cycles is not measured.  On `crc32` the byte address recovers most of the gain of removing the test, on `sha256` more than that gain, and on `linear32` and `layerNorm32` a small part of it, while `sort` and `euler` become slower.
+
+- [x] The options `LX_BYTEWORD` and `LX_INVERT`, with their static counts, benchmark, and counter measurements.
+- [x] The decision between the cheaper forms, the proof, or both: the coordinator rejected the byte address, as the entry on CompCert's alignment options records, and the user approved the proof.
+
+## 2026-10-29: The Wasm-to-C translator: why the byte address slows `sort`
+
+The counts of `LX_BYTEWORD` left open why its `sort` takes about a quarter more cycles than the current form while it runs 5 percent fewer instructions.  `sudo perf stat` counted more events for the `sort` program of the three forms on AArch64 from 04:24:41 to 04:29:19 UTC on 2026-10-29, with the same binaries as the counts of cycles and instructions.  Four event sets, each with cycles and instructions, ran three times with the order of the forms rotated, and the counts per call come from a short and a long run as before.  The table gives means over the runs, with the range where runs differ by more than a few percent.
+
+| Event per call | Now | Byte address | Without the test |
+| --- | --- | --- | --- |
+| Cycles | 72.8 M (67.3 to 83.6 M) | 88.8 M | 61.4 M |
+| Instructions | 498.4 M | 473.3 M | 389.6 M |
+| Speculated operations (`op_spec`) | 463.8 M | 436.3 M | 354.7 M |
+| Retired branches | 121.5 M | 121.5 M | 96.4 M |
+| Mispredicted branches, retired | 12,449 | 12,507 | 12,398 |
+| L1 data-cache accesses | 33.59 M | 33.60 M | 25.19 M |
+| L1 data-cache refills | 3,785 | 3,985 | 3,712 |
+| L1 instruction-cache refills | 5,237 | 5,363 | 4,452 |
+| Instruction TLB walks | 2 | 2 | 3 |
+| Accesses with alignment latency (`ldst_align_lat`) | 255 | 237 | 207 |
+| Cycles with a backend stall | 127,317 | 124,756 | 110,568 |
+| Cycles with a backend stall on memory | 26,995 | 36,097 | 24,526 |
+| Cycles with a frontend stall | 83 k to 4.0 M | 81,177 | 77,622 |
+| Issue slots lost to the frontend (`stall_slot_frontend`) | 255.2 M (207.0 to 344.3 M) | 448.8 M | 256.2 M |
+| Issue slots lost to the backend (`stall_slot_backend`) | 2.0 M | 1.7 M | 1.5 M |
+
+The cycles that the byte address adds are lost in the frontend.  Its issue slots lost to the frontend rise to 449 M per call from 207 M and 214 M in the current form's two faster rounds, while the slots lost to the backend fall slightly and stay under 1 percent of the frontend's losses in every form.  Mispredictions, cache refills, TLB walks, and accesses with alignment latency are equal across the forms or too few to cost more than a fraction of a percent, so neither the register-offset load `ldr x, [base, t]` nor the memory system accounts for the rise.  The current form's own spread, 67.3 to 83.6 M cycles between runs of one binary, lies in the same counter, the slots lost to the frontend.
+
+A placement sweep tested the remaining explanation.  It linked each form's `libsort.o` as `tests/native/bench.sh` links it, after an object of K bytes of padding for K = 0, 4, ..., 60, which moves all of `sortInsert` by K bytes and leaves the address of `lx_mem` unchanged.  The binary for K = 0 has the same code as the benchmark's, and `perf stat` counted cycles per call for each binary in two rounds from 04:29:22 to 04:32:52 UTC.  Moving the code by 32 bytes changes the cycles by no more than the variation between rounds, except for the current form at K = 0 and 32, so the table merges K and K + 32 and gives the mean of four runs in millions of cycles.
+
+| Shift modulo 32 (bytes) | Now | Byte address | Without the test |
+| --- | --- | --- | --- |
+| 0 | 71.74 | 89.82 | 61.23 |
+| 4 | 68.49 | 77.98 | 65.29 |
+| 8 | 86.56 | 78.38 | 65.43 |
+| 12 | 98.73 | 69.23 | 57.27 |
+| 16 | 87.78 | 78.06 | 65.33 |
+| 20 | 82.14 | 86.92 | 69.40 |
+| 24 | 84.55 | 83.26 | 54.94 |
+| 28 | 78.43 | 78.32 | 59.12 |
+| Mean | 82.30 | 80.25 | 62.25 |
+
+Placement causes the rise.  Moving the current form's code changes its cycles between 66.2 M and 98.8 M per call, and at the benchmark's placement the byte address sits near its worst while the current form sits near its best.  Over the eight placements the byte address takes 2.5 percent fewer cycles than the current form on average, and its best placement comes within 2.6 percent of the current form's best.  The form without the test takes 24.4 percent fewer cycles than the current form on average, close to the benchmark's 19.7 percent.  Its worst placement, 69.5 M, is slower than the current form's best, so a single build can hide or exaggerate a difference of this size as well.
+
+In the benchmark's binaries, `lxf_sortInsert` starts at 56, 36, and 28 modulo 64 in the current form, the byte address, and the form without the test.  The heads of the counting loop lie at 36 and 16, at 8 and 40, and at 28 and 8.  The loop that copies the array into its new block starts at 32, 32, and 16, and the loop that moves elements up by one at 0, 52, and 12.  The forms with the test retire 121.5 M branches per call against 96.4 M without it, one more for each of the 25.1 M accesses, which the instruction counts of the byte address also show.  The sweep moves all of these loops together, so it does not tell which loop's placement costs the cycles.  Averaged over placements, the byte address saves 2.5 percent of the current form's cycles and the form without the test 24 percent, while two builds benchmarked at one placement each can differ by tens of percent from placement alone.
+
+- [x] The cause of the slower `sort` under `LX_BYTEWORD`: the placement of the code, measured by the counters and a placement sweep.
+
+## 2026-10-29: The Wasm-to-C translator: CompCert's alignment options and what the proof buys
+
+After the placement analysis the coordinator decided that the byte address will not be adopted, since its 2.5 percent average gain lies within the variation from placement.  A comparison of two builds must now average over placements with the padding sweep or fix placement by an option, and the section on the benchmark method in [the translator's design](docs/native-translator.md#benchmark-method) records the rule.  Before any decision on the alignment proof, CompCert's own alignment options had to be checked, because they would cost no proof.
+
+CompCert 3.18 offers three such options.  The driver reads `-falign-functions`, `-falign-branch-targets`, and `-falign-cond-branches` on every target and requires a power of two (`driver/Driver.ml`, lines 267 to 269 and 314 to 316, and `driver/Clflags.ml`, lines 34 to 36).  `-falign-functions` acts in the assembly printer, where `print_function` emits the alignment before each function (`backend/PrintAsm.ml`, lines 74 to 76), as `.balign n` on AArch64 (`aarch64/TargetPrinter.ml`, lines 632 and 633) with a default of 4 (line 676).  The other two act only in the PowerPC printer (`powerpc/TargetPrinter.ml`, lines 427 to 438 and 807 to 808), and the manual lists them under the code generation options for PowerPC (`doc/ccomp.1`, lines 221 to 233).  On AArch64 the assembly of `crc` with `-falign-branch-targets 32` or `-falign-cond-branches 32` equals the default apart from the command line in its header, and with `-falign-functions 64` it differs only in its nine `.balign 4` lines, which become `.balign 64`.  The printer, assembler, and linker are already in the trusted base as CompCert's unverified parts, and CompCert's proof concerns an assembly semantics without code addresses, so the option changes neither the trusted base nor any proof.
+
+The sweep ran on AArch64 from 04:38:20 to 04:46:35 UTC on 2026-10-29 for four workloads in the current form and the form without the test, each compiled as `native-verified build` compiles it and again with `-falign-functions 64`, and each linked after the sixteen paddings.  `sudo perf stat` counted cycles per call twice for every binary.  The table gives the means of the 32 counts in millions of cycles per call, with the range over placements for the default compilation.
+
+| Workload | Now | Without the test | Change | Now with the option | Without the test, with the option | Change |
+| --- | --- | --- | --- | --- | --- | --- |
+| `sort` | 82.69 (65.91 to 98.74) | 62.35 (54.81 to 69.42) | −24.6 % | 86.97 | 65.46 | −24.7 % |
+| `crc32` | 14.24 (14.14 to 14.41) | 12.26 (12.18 to 12.34) | −13.9 % | 14.13 | 12.34 | −12.7 % |
+| `linear32` | 12.64 (12.20 to 13.69) | 10.68 (10.40 to 11.30) | −15.5 % | 12.35 | 10.52 | −14.8 % |
+| `layernorm32` | 12.47 (11.32 to 13.68) | 9.85 (9.25 to 10.15) | −21.0 % | 11.33 | 9.26 | −18.3 % |
+
+The option fixes placement but does not recover the loss from it.  With it the counts vary across the paddings by at most 2 percent, and by 7 percent for `sort` from a few slower runs, since every function then starts at a multiple of 64 bytes whatever precedes it.  The placement it fixes is arbitrary: `sort` lands at 87.0 M cycles, slower than its mean of 82.7 M and far from its best of 65.9 M, while `layerNorm32` lands at its best.  Removing the test saves 24.6, 13.9, 15.5, and 21.0 percent of the cycles of `sort`, `crc32`, `linear32`, and `layerNorm32` averaged over placements, and 24.7, 12.7, 14.8, and 18.3 percent with the option, so the proof buys about 13 to 25 percent on these four workloads whichever way placement is handled.  The single benchmark of 03:44 UTC had shown 19.7, 15.6, 24.7, and 22.7 percent, which overstates the gain on `linear32` and understates it on `sort`.
+
+- [x] The benchmark rule in the translator's design.
+- [x] CompCert's alignment options, located and measured.
+- [x] The user's decision on the alignment proof, with the gain averaged over placements: the user approved the proof, and the entries on the alignment proof record it.
+
 ## 2026-10-29: The merge of the bound in a temporary with the stack mark
 
 The translator's line, through its record of the benchmark of the bound in a temporary, merged into the branch of the stack mark in two merges, since its tip advanced by one journal commit after the first.  Each merge conflicted only in this journal, where both sides had added entries of 2026-10-29 at its end.  The resolution keeps every entry of both: the translator's three, the stack mark's, and the translator's entry on the benchmark's rerun, the last written.  The translator's other 21 files merged without conflict.
@@ -38689,3 +38803,17 @@ The full builds of the consolidation built only what the roots of the libraries 
 | `tests/native/verified.sh --aligned` and `tests/native/aligned.sh`, x86-64 | before the second import | 1,024 cases and 3,096 module cases passed, the fixture built, and the two modules without the option were refused |
 
 The AArch64 suite ran on a tree that differs from this branch only in the documentation and in the imports of the two WASI modules, which the module build and the WASI driver cover.  Without the option, `native-verified emit` writes the same 206 files as before the option, as the entry on the native side records, so the x86-64 check runs only the translation without the test.  The x86-64 Wasm drivers and the GPT32 test on Vulkan cover code that this branch does not change, and they did not run.
+
+## 2026-10-30: The artifact documents and a run of the README's worked example
+
+The README now describes each of the eight artifacts that LeanExe writes, with the command that writes it, the theorem that covers it, the semantics of that theorem, and where it runs, and the codes of its table are those of the index's Forms column.  The index uses one term for each kind of theorem and one notation for the forms that other programs contribute, its sections 1 to 12 list only library code, and its section 15 has one row for each compiler example.  The verified compiler manual lists the definitions that the native and bare-metal statements reach, and the LeanExe manual links that list, since the LeanExe compiler generates no native theorem.
+
+The commands of the README's worked example ran on AArch64 from 01:19:58 to 01:21:26 UTC on 2026-10-30, at a commit whose files other than the Markdown documents equal those of `main`.  The build, the emission, the file theorem, the Wasmtime call, and both native builds passed, and the Wasmtime and native calls printed the four words of the FIPS 180-4 digest of `abc`.  The link of the native program and `tests/baremetal/inputs.sh` first failed with `cannot find -lcompcert`, since that CompCert is built in its source tree and not installed, and they passed with `-stdlib` and `CCOMP_STDLIB`, which the README now gives.  All 13 runs of the input test passed, each of the eleven accepted lengths with a stack of 848 bytes against the bound of 848.
+
+A Lean check tested one combination that the README's property table states and that no generated theorem states.  `ImplementsA.nativeImpl` applied to `compiled.sortInsert.trapFree` of the insertion-sort module elaborated to `NativeImpl` with the premise `heap.Within store compiled.module (compiled.sortInsert.bound x)` and the conclusion `heap'.top.toNat ≤ heap.top.toNat + compiled.sortInsert.bound x`, and the proof depends only on `propext`, `Classical.choice`, and `Quot.sound`.  The check is a separate file, so the tree still holds no theorem of that statement.
+
+- [x] The README's artifact section, its property table, and the worked example.
+- [x] The index's terms, notation, organization, and completeness.
+- [x] The corrections of the manuals and the designs, the benchmark method, and the native trusted base.
+- [x] The three lost journal entries on the cheaper forms of the alignment test, the placement of `sort`, and CompCert's alignment options.
+- [x] The worked example's commands, run on AArch64.
