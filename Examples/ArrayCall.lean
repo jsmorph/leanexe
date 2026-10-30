@@ -1,10 +1,10 @@
-import LeanExe.Pipeline.Implements
-import LeanExe.ProofKit.BorrowedKept
-import Verified.RuntimeFacts
+import Verified.Call
 
 /-! The call of an entry that maps a borrowed array of words to an owned array of words without a
 trap, stated for a function `g` that the entry's function equals on every array that memory can
-hold.  The compiled examples state their call theorems with it. -/
+hold.  It is `Verified.CallSpec` for a module without tables and with a constant bound, through
+`Verified.Call.array`, with the readiness of the store split into the allocator invariant and the
+memory cap.  The compiled examples state their call theorems with it. -/
 
 namespace Examples
 
@@ -31,27 +31,14 @@ theorem arrayCall {m : Module} {k : Nat} {f g : Array UInt64 → Array UInt64}
         (∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
             heap'.Region r ∧ regionsDisjoint r (block final optr)) ∧
-        heap'.top.toNat ≤ heap.top.toNat + B := by
-  have hargs : Represent.borrowed heap store [.i64 ptr] xs := ⟨ptr, rfl, hb⟩
-  refine (hI env store heap [.i64 ptr] xs hAt (hroom.mono (hB xs)) hargs Separate.nil
-    hCap).mono ?_
-  intro final values ⟨heap', hAt', howned, hcaps, hframe, htop⟩
-  obtain ⟨optr, hv, hown⟩ : ∃ optr, values.reverse = [.i64 optr] ∧
-      heap'.Owned final optr (f xs) := howned
-  have hvs : values = [.i64 optr] := by simpa using congrArg List.reverse hv
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  refine ⟨optr, hvs, heap', hAt', memoryCap_le_of_caps hcaps hCap, ?_,
-    LeanExe.ProofKit.BorrowedKept.borrowed_kept hb hAt' hkeep, fun r hr hpos => ?_,
-    htop.trans (Nat.add_le_add_left (hB xs) _)⟩
-  · rw [← hg xs hb.values.size_lt]
-    exact hown
-  · obtain ⟨h1, h2, h3⟩ := hframe r hr hpos Apart.nil
-    refine ⟨h1, h2, h3 _ ?_⟩
-    rw [hv]
-    exact List.mem_singleton_self _
+        heap'.top.toNat ≤ heap.top.toNat + B :=
+  have hC : Verified.CallSpec m [] k g (fun _ => B) :=
+    (Verified.ImplementsTables.call (.ofA hI) [] nofun).spec (fun xs _ _ h => h.mono (hB xs))
+      (fun xs _ _ _ _ h => h.trans (Nat.add_le_add_left (hB xs) _))
+      fun _ _ _ ys ⟨_, _, hys⟩ => hg ys hys.values.size_lt
+  (Verified.Call.array hC env heap store [.i64 ptr] xs ⟨hAt, hCap, nofun⟩ ⟨ptr, rfl, hb⟩ rfl
+    hroom).mono fun _ _ ⟨optr, hv, heap', hown, ⟨hAt', hCap', _⟩, hkept, hreg, htop⟩ =>
+      ⟨optr, hv, heap', hAt', hCap', hown, hkept _ _ hb, hreg, htop⟩
 
 #print axioms arrayCall
 

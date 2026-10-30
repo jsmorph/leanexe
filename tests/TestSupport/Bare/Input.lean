@@ -58,7 +58,9 @@ theorem sha256_runs (A : Archi) (X : ExtSem) {fd : function}
   set st := inputStore (heap0.allocateStore (nativeStore compiled.module nativeCap) (needOf n) 1) p
     (UInt64.ofNat (wordsOf n)) n b with hstdef
   set msg := inputWords st p (wordsOf n) with hmsg
-  obtain ⟨hAt0, hK0, -⟩ := ready_initial
+  obtain ⟨hAt0, -, hT0⟩ : Verified.Ready compiled.module compiled.tables heap0
+      compiled.module.initialStore := Verified.Ready.initial rfl compiled.initial
+  have hK0 : heap0.Borrowed compiled.module.initialStore 4096 roundConstants := hT0 0 (by decide)
   have hheap := heapAt_nativeStore hAt0 nativeCap
   obtain ⟨hAt', hOwned, hWithin, hbytes⟩ := input_owned hheap hn b hFits
   have hK := Heap.Borrowed.allocate_within (Verified.borrowed_nativeStore hK0 nativeCap) hheap
@@ -120,7 +122,9 @@ theorem sha256_input (A : Archi) (X : ExtSem) (pre : List (ident × globdef (fun
     rw [translate_nres compiled.translation_eq,
       translate_funcs_eq compiled.translation_eq compiled.translation_funcs]
     decide +kernel
-  obtain ⟨hAt0, -, -⟩ := ready_initial
+  obtain ⟨hAt0, -, -⟩ : Verified.Ready compiled.module compiled.tables
+      (Verified.initialHeap compiled.tables) compiled.module.initialStore :=
+    Verified.Ready.initial rfl compiled.initial
   obtain ⟨t, r, hb, hres⟩ := input_program compiled.translation_eq hpre
     (Verified.compileWith_runtime compiled.program compiled.tables compiled.wrappers
       compiled.literalPool).alloc h0 hfd (.words 4) hty A X (heapAt_nativeStore hAt0 nativeCap)
