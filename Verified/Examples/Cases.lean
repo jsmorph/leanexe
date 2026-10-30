@@ -69,6 +69,10 @@ import Examples.Below100.Cases
 import Examples.Below100.Program
 import Examples.RemoveZero.Cases
 import Examples.Binary32.Cases
+import Examples.Lookup.Cases
+import Examples.TreeLookup.Samples
+import Examples.TreeLookup.Spec
+import Examples.Lookup.Spec
 import Verified.Examples.Forms
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
@@ -523,6 +527,12 @@ def portCases : IO Unit := do
     let r := _root_.Library.Numerics.LinearAlgebra.Binary32.matVec32 m.toArray v.toArray rows cols
     IO.println s!"binary32|matVec32|array-u64|{arrayArg (float32Words m.toArray)} \
       {arrayArg (float32Words v.toArray)} i64:{rows} i64:{cols}|{arrayOut (float32Words r)}|3|3"
+  for xs in _root_.Examples.Lookup.samples do
+    IO.println s!"lookup|compute|array-u64|{arrayArg xs.toArray}|\
+      {arrayOut (_root_.Examples.Lookup.expected xs.toArray)}|2|4"
+  for xs in _root_.Examples.TreeLookup.samples do
+    IO.println s!"treeLookup|compute|array-u64|{arrayArg xs}|\
+      {arrayOut (_root_.Examples.TreeLookup.expected xs)}|2|4"
 
 end Verified.Examples
 
