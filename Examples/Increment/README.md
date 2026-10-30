@@ -18,7 +18,7 @@ verified compilation](Compiled.lean) compiles the same definition with the verif
 |---------|-----------|
 | `compute_eq` | The program equals the specification on every array of fewer than 2^64 words. |
 | `increment_bytes` | The module's bytes decode to a module whose `compute` export implements `expected`: from any store that satisfies the runtime invariant, a call with an array in memory returns the words of `expected` or stops at `unreachable`. |
-| `increment_total` | From an allocator whose `top` leaves 120 bytes within the first 16 pages, with 16 pages and a cap that allows them, the call returns the words of `expected` without stopping at `unreachable` and leaves memory at 16 pages. |
+| `increment_total` | From an allocator whose `top` leaves 120 bytes within the first 16 pages, in a memory of at most 16 pages with a cap of at least 16, the call returns the words of `expected` without stopping at `unreachable` and leaves at most 16 pages of memory.  `increment_call` of the verified module, below, is its counterpart. |
 
 `compute_eq` is in [the proof of the specification](Proof.lean), which the theorems of both
 compilers use, and the other theorems are in [the proofs](Verify.lean).  They use only `propext`,
@@ -57,9 +57,10 @@ same computation for the C function of the module's translation.
 | `increment_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 120 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and lies apart from the result, and `top` rises by at most 120 bytes. |
 
 `increment_call` and `increment_total` both exclude the trap, under different memory premises.
-`increment_total` requires 16 pages of memory with `top` at least 120 bytes below their end and
-concludes that the memory stays at 16 pages.  `increment_call` requires room for 120 bytes within
-the memory cap and allows the memory to grow within it.
+`increment_total` requires at most 16 pages of memory, a cap of at least 16 pages, and `top` at
+least 120 bytes below the end of the first 16 pages, and it concludes that the memory has at most
+16 pages after the call.  `increment_call` requires room for 120 bytes within the memory cap and
+allows the memory to grow within it.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Increment.Compiled
@@ -83,7 +84,9 @@ header describes.
 
 [`RemoveZero`](../RemoveZero/README.md) also builds its result with `LeanExe.build`.
 [`Euler`](../../Demos/Euler/README.md) and [`Drone`](../../Demos/Drone/README.md) have complete-execution theorems
-with memory bounds of the same form as `increment_total`.  The LTG entry
+with memory bounds of the same form as `increment_total`, and verified call theorems,
+`euler_solve_call` and `drone_compute_call`, which state the room that `increment_call` takes as a
+memory cap in pages.  The LTG entry
 [`array-build`](../../ltg/entries/array-build/README.md) describes the build template.
 
 ## References

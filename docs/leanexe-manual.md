@@ -464,7 +464,7 @@ theorem sweep_implementsA {a : Bool} {cells : Nat} {g : UInt64} (hg : GridBytes 
 
 `drone_compute_total` in [`Demos/Drone/Total.lean`](../Demos/Drone/Total.lean) counts blocks of `tableBytes`, 69,128 bytes, which bounds every allocation of the planner.  The forward loop uses a different number of spares at each step, so `extend`'s theorem quantifies its budget, and the loop invariant holds `spare + (count - i)` spares at station `i`.  From an allocator with no free block and `top` at most 8192, below which the host has placed the terrain, and a cap of at least 70 pages, `compute` returns its words without a trap and ends with at most 70 pages (4.375 MiB).
 
-`increment_total` in [`Examples/Increment/Verify.lean`](../Examples/Increment/Verify.lean) is the smallest example.  From an allocator whose `top` leaves 120 bytes within the first 16 pages, a call of `compute` returns the words of `expected` without a trap and leaves memory at 16 pages.  Its proof uses one spare block of 72 bytes, the size of the largest result.
+`increment_total` in [`Examples/Increment/Verify.lean`](../Examples/Increment/Verify.lean) is the smallest example.  From an allocator whose `top` leaves 120 bytes within the first 16 pages, a call of `compute` returns the words of `expected` without a trap and leaves at most 16 pages of memory.  Its proof uses one spare block of 72 bytes, the size of the largest result.  The verified counterpart of `increment_total`, `increment_call` in [the example's verified compilation](../Examples/Increment/Compiled.lean), states the call of the verified module from room for `top` to rise by 120 bytes within the memory cap, and it bounds the rise of `top` instead of the pages.
 
 ### LTG entries
 
