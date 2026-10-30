@@ -1,0 +1,26 @@
+{
+  "id": "native-conclusion-patterns",
+  "goals": [
+    "LeanExe.Native.NativeA A X cap mod T ps rs fd aborts f Pre Post",
+    "Verified.NativeTablesA A X cap mod T ps rs fd aborts f tables Pre Post",
+    "Verified.NativeStaticA A X cap mod T ps rs fd pool aborts f tables Pre Post"
+  ],
+  "modules": [
+    "LeanExe.Native.Proof.Unique",
+    "Verified.Bare"
+  ],
+  "declarations": [
+    "LeanExe.Native.NativeA",
+    "Verified.NativeTablesA",
+    "Verified.NativeStaticA",
+    "LeanExe.Native.ImplementsA.native",
+    "LeanExe.Native.NativeA.unique"
+  ],
+  "examples": [
+    "LeanExe.Native.bare_of_nativeA",
+    "Verified.bare_of_nativeTables"
+  ],
+  "sources": [
+    "2026-10-30: The cap and region conclusions of the native statements"
+  ]
+}
