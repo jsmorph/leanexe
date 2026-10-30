@@ -38853,9 +38853,9 @@ The verified kernels of `Binary32` ran on no GPU driver, since the test host had
 - [x] The verified compilations of `Increment`, `Below100`, `RemoveZero`, and `Binary32`, with the call and dispatch theorems.
 - [x] The verified compilations of GCD, mean, sum of squares, and SplitMix64, with `gcd_call` and `prng_module`.
 - [x] Registry entries and cases for the eight modules, and the verified and native drivers on them.
-- [ ] Decide whether the reflector accepts nonempty array literals, for `Lookup` and `TreeLookup`.
-- [ ] Decide whether the reflector accepts conjunctions and disjunctions of propositions in conditions, for the prime-factor count and `condMix32`.
-- [ ] Add the verified kernels of `Binary32` to `tests/wgsl/run.sh --verified`, on a host with the SwiftShader and llvmpipe drivers.
+- [x] Decide whether the reflector accepts nonempty array literals, for `Lookup` and `TreeLookup`.
+- [x] Decide whether the reflector accepts conjunctions and disjunctions of propositions in conditions, for the prime-factor count and `condMix32`.
+- [x] Add the verified kernels of `Binary32` to `tests/wgsl/run.sh --verified`.
 
 The four items below are LeanExe artifacts and theorems that wait for a later decision.  The verified modules of the Euler solvers and the drone planner have trap-free theorems under room within the memory cap, `drone_trapFree` with the constant 2,251,064 bytes, instead of page budgets.  The verified binary32 GPT-2 kernels have their own host theorem, `Demos.Gpt32.Verified.generate_host`, and the verified `gpt.wasm` has no file theorem.
 
@@ -38960,3 +38960,39 @@ The translation to C did not change, so the corpus runs of earlier entries still
 - [x] The cap and region conclusions in `NativeA`, `NativeTablesA`, and `NativeStaticA`, with their proofs.
 - [x] `NativeA.unique` and the other consumers.
 - [x] The manuals, the README, the trusted base, and the translator's design.
+
+## 2026-10-30: Array literals and conditions on propositions in the reflector
+
+The reflector now reads two forms that stopped four definitions of the earlier ports.  The reflector reads an array literal with elements, `#[a₁, …, aₙ]`, which Lean elaborates as `Array.mk` of a list, as `((#[].push a₁).push …).push aₙ`, and the kernel checks the reading by unfolding `Array.push`.  `if p ∧ q` and `if p ∨ q` on propositions become tests of `decide (p ∧ q)` and `decide (p ∨ q)` by `ite_decide_eq`, and the rule of `decide` reads these as `decide p && decide q` and `decide p || decide q` by the new lemmas `decide_and_eq` and `decide_or_eq` of [the reflector's lemmas](Verified/Reflect/Lemmas.lean), at the instance of the term.  A tail loop reflects its conditions through `decide`, so the same rule covers tail loops, and the WGSL translation already lowered the Boolean connectives.  The code evaluates both parts of a connective, as it does for `&&` and `||`, and [the verified manual](docs/verified-manual.md#array-literals-and-conditions-on-propositions) states this.  The coordinator decided both rules after the earlier ports stopped, and negation, implication, and equivalence of propositions stay outside the dialect because no port needs them.
+
+The prime-factor count then exposed two defects of the tail-loop reflector that the connectives do not cause.  Lean's functional induction states the conditions of its cases in simplified form, `1 < remaining ∧ 1 < divisor` for `¬(remaining ≤ 1 ∨ divisor ≤ 1)` and `divisor ≤ remaining / divisor` for `¬(divisor > remaining / divisor)`, and the termination tactic's `simp_all` could not decide the step's conditions from them.  [The termination reflection](Verified/Reflect/TailTermination.lean) now splits the step equation of each remaining case on its conditions, which closes the branches that return or continue elsewhere, and closes the branches whose conditions contradict the case with `omega` on the words' natural numbers.  The second defect concerns the measure of `countFactors`, `remaining.toNat * 2 ^ 64 + (remaining.toNat - divisor.toNat)`.  The kernel checked `countFactors.meaning_eq`, `countFactors.fixed`, and the program's `meaning` by unfolding `countFactors` before the reflector's definitions, whose height was 1, and the unfolding of the well-founded recursion reported `(kernel) deep recursion detected`.  Lean kept the three theorems as axioms after the asynchronous kernel check failed, and a listing of the generated constants that are axioms named them.  `set_option maxRecDepth 100000` and `set_option Elab.async false` left the errors in place.
+
+Three changes remove the unfolding.  The meaning definition of a recursive function now has a height above its value's, through `addBoundDefinition`, as the bound definitions already had, so the kernel unfolds it before the function.  The fixed-point equation of a tail step goes through `Sum.elim_inl` for a continuing call and through `id_eq` and `Sum.elim_inr` for a return, where it had been `rfl` against `Sum.elim`.  The reflector states the tail function's `fixed` theorem for the meaning constant through the new `Tail.fixed_restate` of [the tail transport](Verified/TailTransport.lean), with `id_eq` for the `id` that the result flattening's type hint adds, so `Prog.Meaning.consTail` takes it without a definitional check against the function.  After the changes the module of the prime-factor count builds in 9 to 15 seconds with no kernel error, where the failing builds had taken from 98 seconds to five and a half minutes.
+
+| Port | Modules | Theorems |
+| --- | --- | --- |
+| `Lookup`, `TreeLookup` | `Proof.lean`, which `compute_eq` moved to, and `Compiled.lean` | `compute_bound`, 232 bytes, `compute_export`, `lookup_call` and `treeLookup_call` |
+| Prime-factor count | `Compiled.lean` | `compute_export`, `primeFactors_call`, from `compiled.compute.pure` and `compute_eq` |
+| `condMix32` of `Binary32` | `Compiled.lean`, `VerifiedGpuCases.lean` | `compiled.bytes` for all eight functions, `condMix32_dispatch` |
+| [The forms example](Verified/Examples/Forms.lean) | `Verified/Examples/Forms.lean` | `single_bound`, 152 bytes, `pair_bound`, 232 bytes, `compiled.bytes` |
+
+A two-word literal's bound is the empty block's 56 bytes, the first growth's `growCost 1 1`, 96 bytes, and a paid push's 80 bytes.  Wasmtime's counters show that a literal of two or three elements allocates three blocks and keeps one, and a literal of one element allocates two.  The first cases of the forms example assumed one allocation for a literal of one element, and the six cases of `single` failed until they stated the measured two.  `tests/wgsl/run.sh --verified` now writes the four verified kernels of `Binary32` and the GPU cases of `VerifiedGpuCases.lean`, which use the inputs of the WebAssembly cases.
+
+The checks ran on AArch64, with Wasmtime 44.0.0 and CompCert 3.18, at the final state of the change.  Every axiom report of the build lists no axiom beyond `propext`, `Classical.choice`, and `Quot.sound`, except that of `CodeLib.IEEE64.arithmetic_examples`, whose `native_decide` predates the change, and no changed line has a warning.  The GPU drivers did not run, and no run compared the bytes of the existing modules with those of the compiler before the change.
+
+| Check | Cases | Result |
+| --- | --- | --- |
+| `lake build LeanExe Examples Demos Verified Library TestSupport` and the 39 test executables | 15,409 jobs | Passed in 74 minutes |
+| `tests/verified/run.sh`, Wasmtime against native Lean | 37,659, among them `forms` 933, `lookup` 9, `treeLookup` 22, `primeFactors` 13, and `binary32` 444 | All passed, with the axiom and accuracy checks |
+| `tests/native/verified.sh`, the translations compiled with CompCert | The same 37,659 and 3,322 module cases | All passed, and all 115 modules translate |
+| `tests/modules/run.sh --module` on the LeanExe `lookup`, `primeFactors`, and `binary32` modules, after their cases' change | 9, 13, and 388 | All passed |
+| `tests/wgsl/run.sh --verified --emit-only` | 4 kernels of `Binary32` and 114 GPU cases | Written |
+| `VKB/Check.lean` on `VKB/entries` | 14 entries | No problem reported |
+
+- [x] The two reflector rules, with `decide_and_eq` and `decide_or_eq`, and the forms example.
+- [x] The termination proof's split of a case on the step's conditions.
+- [x] The kernel checks of a tail function's equations without unfolding the function.
+- [x] The verified compilations of `Lookup`, `TreeLookup`, the prime-factor count, and `condMix32`, with their registry entries and cases.
+- [ ] Run `tests/wgsl/run.sh --verified` on a host with the SwiftShader and llvmpipe drivers.
+- [ ] Decide whether `if ¬p`, implication, and equivalence of propositions get a rule, which no port needs now.
+- [ ] Compare the bytes of the modules of `tests/verified/modules.txt` with those of the compiler before this change, with `tests/verified/run.sh --check-bytes`.
