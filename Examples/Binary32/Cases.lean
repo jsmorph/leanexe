@@ -33,6 +33,32 @@ def float32Triples : List (Float32 × Float32 × Float32) :=
     (small32 (3 * i), small32 (3 * i + 1), small32 (3 * i + 2))
   special ++ random ++ moderate
 
+/-- The arguments `(x, lo, hi)` of `piecewise32`, which the verified compiler's cases also use. -/
+def piecewiseArgs : List (Float32 × Float32 × Float32) :=
+  [(1.0, 1.0, 2.0), (0.5, 1.0, 2.0), (3.0, 1.0, 2.0), (1.5, 1.0, 2.0), (2.0, 1.0, 2.0),
+    (nan32, 1.0, 2.0), (1.5, nan32, 2.0), (1.5, 1.0, nan32), (-0.0, 0.0, 1.0), (1.5, 2.0, 1.0)] ++
+    float32Triples
+
+/-- The arguments `(a, x, y)` of `scale32` and `axpyArray32`, with some second arrays shorter than
+the first. -/
+def vectorArgs : List (Float32 × List Float32 × List Float32) :=
+  [0, 1, 5, 17].flatMap fun n =>
+    ((specialFloat32s.take 6).zip (List.range 6)).map fun (a, k) =>
+      (a, (List.range n).map (fun i => if i % 2 = 0 then rf32 (i + 7 * k) else small32 (i + k)),
+        (List.range (if k % 3 = 1 then n / 2 else n)).map fun i => small32 (3 * i + k))
+
+/-- The arguments `(m, v, rows, cols)` of `matVec32`: matrices stored by rows with the vectors they
+multiply, including short matrices and vectors, whose missing elements count as 0. -/
+def matVecArgs : List (List Float32 × List Float32 × UInt64 × UInt64) :=
+  let vals (n start : Nat) : List Float32 :=
+    (List.range n).map fun i => if i % 7 = 3 then rf32 (start + i) else small32 (start + i)
+  let shapes : List (Nat × Nat × Nat × Nat) :=
+    [(0, 0, 0, 0), (1, 1, 1, 1), (2, 3, 6, 3), (3, 2, 6, 2), (4, 4, 16, 4), (3, 3, 7, 2),
+      (5, 1, 5, 1), (1, 5, 5, 5), (2, 2, 4, 0), (6, 4, 24, 4)]
+  shapes.map fun (rows, cols, mLen, vLen) =>
+    (vals mLen (rows * 31 + cols), vals vLen (rows * 17 + cols * 5 + 1000), rows.toUInt64,
+      cols.toUInt64)
+
 def binary32Cases : IO Unit := do
   for (a, x, y) in float32Triples do
     line "binary32" "axpy32" "f32" [fl32 a, fl32 x, fl32 y]
@@ -41,36 +67,19 @@ def binary32Cases : IO Unit := do
       (toString (Examples.Binary32.hypot32 a x).toBits)
     line "binary32" "ratio32" "f32" [fl32 a, fl32 x, fl32 y]
       (toString (Examples.Binary32.ratio32 a x y).toBits)
-  let bounds : List (Float32 × Float32 × Float32) :=
-    [(1.0, 1.0, 2.0), (0.5, 1.0, 2.0), (3.0, 1.0, 2.0), (1.5, 1.0, 2.0), (2.0, 1.0, 2.0),
-      (nan32, 1.0, 2.0), (1.5, nan32, 2.0), (1.5, 1.0, nan32), (-0.0, 0.0, 1.0), (1.5, 2.0, 1.0)]
-  for (x, lo, hi) in bounds ++ float32Triples do
+  for (x, lo, hi) in piecewiseArgs do
     line "binary32" "piecewise32" "f32" [fl32 x, fl32 lo, fl32 hi]
       (toString (Examples.Binary32.piecewise32 x lo hi).toBits)
-  -- Arrays for scale32 and axpyArray32, with some second arrays shorter than the first.
-  for n in [0, 1, 5, 17] do
-    for (a, k) in (specialFloat32s.take 6).zip (List.range 6) do
-      let x := (List.range n).map fun i => if i % 2 = 0 then rf32 (i + 7 * k) else small32 (i + k)
-      let y := (List.range (if k % 3 = 1 then n / 2 else n)).map fun i => small32 (3 * i + k)
-      let words32 (xs : List Float32) : List UInt64 := xs.map fun x => x.toBits.toUInt64
-      line "binary32" "scale32" "array-u64" [fl32 a, arrU (words32 x)]
-        (words (words32 (Library.Numerics.LinearAlgebra.Binary32.scale32 a x.toArray).toList))
-      line "binary32" "axpyArray32" "array-u64" [fl32 a, arrU (words32 x), arrU (words32 y)]
-        (words (words32 (Library.Numerics.LinearAlgebra.Binary32.axpyArray32 a x.toArray y.toArray).toList))
-  -- Matrices stored by rows with the vectors they multiply, including short matrices and vectors,
-  -- whose missing elements count as 0.
   let words32 (xs : List Float32) : List UInt64 := xs.map fun x => x.toBits.toUInt64
-  let vals (n start : Nat) : List Float32 :=
-    (List.range n).map fun i => if i % 7 = 3 then rf32 (start + i) else small32 (start + i)
-  let shapes : List (Nat × Nat × Nat × Nat) :=
-    [(0, 0, 0, 0), (1, 1, 1, 1), (2, 3, 6, 3), (3, 2, 6, 2), (4, 4, 16, 4), (3, 3, 7, 2),
-      (5, 1, 5, 1), (1, 5, 5, 5), (2, 2, 4, 0), (6, 4, 24, 4)]
-  for (rows, cols, mLen, vLen) in shapes do
-    let m := vals mLen (rows * 31 + cols)
-    let v := vals vLen (rows * 17 + cols * 5 + 1000)
-    let r := Library.Numerics.LinearAlgebra.Binary32.matVec32 m.toArray v.toArray rows.toUInt64 cols.toUInt64
+  for (a, x, y) in vectorArgs do
+    line "binary32" "scale32" "array-u64" [fl32 a, arrU (words32 x)]
+      (words (words32 (Library.Numerics.LinearAlgebra.Binary32.scale32 a x.toArray).toList))
+    line "binary32" "axpyArray32" "array-u64" [fl32 a, arrU (words32 x), arrU (words32 y)]
+      (words (words32 (Library.Numerics.LinearAlgebra.Binary32.axpyArray32 a x.toArray y.toArray).toList))
+  for (m, v, rows, cols) in matVecArgs do
+    let r := Library.Numerics.LinearAlgebra.Binary32.matVec32 m.toArray v.toArray rows cols
     line "binary32" "matVec32" "array-u64"
-      [arrU (words32 m), arrU (words32 v), u rows.toUInt64, u cols.toUInt64]
+      [arrU (words32 m), arrU (words32 v), u rows, u cols]
       (words (words32 r.toList))
 
 def cases : IO Unit := do

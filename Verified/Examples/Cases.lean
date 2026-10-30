@@ -68,6 +68,7 @@ import Examples.Increment.Cases
 import Examples.Below100.Cases
 import Examples.Below100.Program
 import Examples.RemoveZero.Cases
+import Examples.Binary32.Cases
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -463,6 +464,26 @@ def portCases : IO Unit := do
     for count in [0, xs.length.toUInt64, xs.length.toUInt64 + 1] do
       IO.println s!"removeZero|firstZero|i64|{a} i64:{count}|\
         {_root_.Library.Arrays.Search.firstZero xs.toArray count}|1|1"
+  for (a, x, y) in _root_.Examples.Binary32.float32Triples do
+    let args := s!"{float32Arg a} {float32Arg x} {float32Arg y}"
+    IO.println s!"binary32|axpy32|f32|{args}|{(_root_.Examples.Binary32.axpy32 a x y).toBits}|0|0"
+    IO.println s!"binary32|hypot32|f32|{float32Arg a} {float32Arg x}|\
+      {(_root_.Examples.Binary32.hypot32 a x).toBits}|0|0"
+    IO.println s!"binary32|ratio32|f32|{args}|{(_root_.Examples.Binary32.ratio32 a x y).toBits}|0|0"
+  for (x, lo, hi) in _root_.Examples.Binary32.piecewiseArgs do
+    IO.println s!"binary32|piecewise32|f32|{float32Arg x} {float32Arg lo} {float32Arg hi}|\
+      {(_root_.Examples.Binary32.piecewise32 x lo hi).toBits}|0|0"
+  for (a, x, y) in _root_.Examples.Binary32.vectorArgs do
+    let xa := arrayArg (float32Words x.toArray)
+    let r := _root_.Library.Numerics.LinearAlgebra.Binary32.scale32 a x.toArray
+    IO.println s!"binary32|scale32|array-u64|{float32Arg a} {xa}|{arrayOut (float32Words r)}|2|2"
+    let r := _root_.Library.Numerics.LinearAlgebra.Binary32.axpyArray32 a x.toArray y.toArray
+    IO.println s!"binary32|axpyArray32|array-u64|{float32Arg a} {xa} \
+      {arrayArg (float32Words y.toArray)}|{arrayOut (float32Words r)}|3|3"
+  for (m, v, rows, cols) in _root_.Examples.Binary32.matVecArgs do
+    let r := _root_.Library.Numerics.LinearAlgebra.Binary32.matVec32 m.toArray v.toArray rows cols
+    IO.println s!"binary32|matVec32|array-u64|{arrayArg (float32Words m.toArray)} \
+      {arrayArg (float32Words v.toArray)} i64:{rows} i64:{cols}|{arrayOut (float32Words r)}|3|3"
 
 end Verified.Examples
 

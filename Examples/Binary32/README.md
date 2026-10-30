@@ -6,8 +6,10 @@
 `axpy32`, `hypot32`, `ratio32`, and `piecewise32`; the array functions `scale32`, `axpyArray32`, and
 `matVec32`, each a `LeanExe.build`; and `condMix32`, a build with nested conditionals and an index
 computed from the element's position.  [The module definition](Module.lean) compiles all eight into
-the 2,738-byte `binary32.wasm`.  [`Wgsl.lean`](Wgsl.lean) translates the compiled IR of `scale32`,
-`axpyArray32`, `matVec32`, and `condMix32` into WGSL compute kernels for a GPU.
+the 2,738-byte `binary32.wasm`, and [the verified compilation](Compiled.lean) compiles seven of them
+with the verified compiler into a 2,588-byte module.  [`Wgsl.lean`](Wgsl.lean) translates the
+compiled IR of `scale32`, `axpyArray32`, `matVec32`, and `condMix32` into WGSL compute kernels for a
+GPU.
 
 The reusable scaling, AXPY, and matrix-vector definitions come from [the linear-algebra library](../../Library/Numerics/LinearAlgebra/README.md).  This example retains the scalar and conditional kernels and their Wasm and WGSL proofs.
 
@@ -60,6 +62,56 @@ computes `2 * 3 + 1` from the binary32 bits of 2, 3, and 1 and prints 1088421888
 the kernel cases on the SwiftShader and llvmpipe Vulkan drivers through `leanexe-webgpu-host`, which
 [`tools/build-webgpu-host.sh`](../../tools/build-webgpu-host.sh) builds, and `uv run
 tests/web/serve.py` serves a page that runs them on a browser's WebGPU.
+
+## The verified compiler's module
+
+`verified_compile compiled := [axpy32, hypot32, ratio32, matVec32, piecewise32, scale32,
+axpyArray32]` in [the verified compilation](Compiled.lean) compiles seven functions in the order of
+the LeanExe module, so functions 2 to 8 are the same functions in both modules.  `compiled.bytes`
+states that the module's bytes decode to the module, whose functions compute the seven Lean
+definitions, and the generated `trapFree` theorems exclude a trap when `top` can rise by each
+function's allocation bound.  `Verified.WGSL.compile` translates the reflected bodies of `scale32`,
+`axpyArray32`, and `matVec32` into the kernels `verifiedScale32Kernel`,
+`verifiedAxpyArray32Kernel`, and `verifiedMatVec32Kernel`.
+
+| Theorem | Statement |
+|---------|-----------|
+| `compiled.bytes` | The module's bytes decode to the module, whose functions 2 to 8 compute `axpy32`, `hypot32`, `ratio32`, `matVec32`, `piecewise32`, `scale32`, and `axpyArray32`. |
+| `scale32_dispatch`, `axpyArray32_dispatch`, `matVec32_dispatch` | A dispatch of the verified kernel computes the Lean function into the output buffer and is race-free, under the premises of the LeanExe compiler's theorem for the same kernel. |
+
+Each dispatch theorem comes from `Verified.WGSL.Compiled.dispatch_value` and the generated
+`denote_eq` equation of its function, and each takes the premises of `scaleKernel_dispatch`,
+`axpyArrayKernel_dispatch`, or `matVecKernel_dispatch`.  The LeanExe compiler's kernels come from
+its IR with a specification of the build and an element lemma for each kernel, and the verified
+kernels come from one translation with one generic proof.  `binary32_bytes` allows a trap at
+`unreachable`, and the scalar functions' generated theorems exclude it from every store with the
+allocator invariant.
+
+`condMix32` has no verified module and no verified kernel.  Its condition
+`i % 4 ≤ 3 ∧ i / 4 * 4 + (3 - i % 4) < n` is a conjunction of propositions, and the reflector
+accepts an `if` only on a `Bool` or on one comparison, so `verified_compile` stops with
+`unsupported condition i % 4 ≤ 3 ∧ i / 4 * 4 + (3 - i % 4) < n`.  The WGSL translation lowers
+Boolean conjunction, so a reflector that read the condition as `decide (i % 4 ≤ 3) && decide (…)`
+would let the kernel compile.
+
+```sh
+tools/leanrun --timeout 60m lake build Examples.Binary32.Compiled
+mkdir -p build/verified build/wgsl
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+  Examples.Binary32.Compiled Examples.Binary32.compiled.module build/verified/binary32.wasm
+build/tools/leanexe-wasmtime-host call build/verified/binary32.wasm axpy32 f32 \
+  f32:1073741824 f32:1077936128 f32:1065353216
+tools/leanrun --timeout 10m lake env lean --run tools/EmitWgsl.lean \
+  Examples.Binary32.Compiled Examples.Binary32.verifiedScale32Kernel build/wgsl/verifiedScale32.wgsl
+tests/verified/run.sh --cases binary32
+tests/native/verified.sh --module binary32
+```
+
+The call prints 1088421888, as the LeanExe module's call does.  [The verified
+driver](../../tests/verified/run.sh) runs the 388 inputs of [`Cases.lean`](Cases.lean) in Wasmtime
+with the allocation counters, and [the native driver](../../tests/native/verified.sh) runs them on
+the module's translation to C, compiled with CompCert.  [`tests/wgsl/run.sh`](../../tests/wgsl/run.sh)
+does not run the verified kernels of this example.
 
 ## Related examples
 

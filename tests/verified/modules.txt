@@ -104,3 +104,4 @@ Library.Hashing.XxHash64.Compiled:Library.Hashing.XxHash64.compiled.module:xxhas
 Examples.Increment.Compiled:Examples.Increment.compiled.module:increment
 Examples.Below100.Compiled:Examples.Below100.compiled.module:below100
 Examples.RemoveZero.Compiled:Examples.RemoveZero.compiled.module:removeZero
+Examples.Binary32.Compiled:Examples.Binary32.compiled.module:binary32
