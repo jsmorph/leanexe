@@ -127,3 +127,4 @@ bools:Examples.Bools.Compiled:Examples/Bools/File.lean
 exampleLists:Examples.Lists.Compiled:Examples/Lists/File.lean
 exampleUpdates:Examples.Updates.Compiled:Examples/Updates/File.lean
 exampleGrids:Examples.Grids.Compiled:Examples/Grids/File.lean
+calculator:Examples.Calc.Compiled:Examples/Calc/File.lean

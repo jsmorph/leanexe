@@ -17,3 +17,4 @@ import Examples.Bools.Compiled
 import Examples.Lists.Compiled
 import Examples.Updates.Compiled
 import Examples.Grids.Compiled
+import Examples.Calc.Compiled

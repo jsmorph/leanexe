@@ -78,6 +78,7 @@ import Examples.RunningMax.Samples
 import Examples.Axpy.Cases
 import Examples.Bools.Cases
 import Examples.Bucket.Cases
+import Examples.Calc.Cases
 import Examples.Grids.Cases
 import Examples.Lists.Cases
 import Examples.PairSum.Cases
@@ -697,6 +698,24 @@ def portCases : IO Unit := do
       {arrayOut (_root_.Examples.Updates.setTwice xs.toArray i j a)}|2|2"
     IO.println s!"exampleUpdates|insertErase|array-u64|{args}|\
       {arrayOut (_root_.Examples.Updates.insertErase xs.toArray i j a)}|1|2"
+  let state (c : _root_.Examples.Calc.Calc) : String :=
+    " ".intercalate (_root_.Examples.Calc.calcArgs c)
+  let words (c : _root_.Examples.Calc.Calc) : String := s!"{c.value} {c.steps} {c.last.ctorIdx}"
+  for op in _root_.Examples.Calc.ops do
+    IO.println s!"calculator|inverse|i64|i64:{op.ctorIdx}|{op.inverse.ctorIdx}|0|0"
+    for (a, b) in _root_.Examples.Calc.operands do
+      IO.println s!"calculator|apply|i64|i64:{op.ctorIdx} i64:{a} i64:{b}|{op.apply a b}|0|0"
+  for w in _root_.Examples.Calc.wordArgs do
+    IO.println s!"calculator|ofWord|i64|i64:{w}|{(_root_.Examples.Calc.Op.ofWord w).ctorIdx}|0|0"
+  for c in _root_.Examples.Calc.states do
+    for x in _root_.Examples.Calc.operandArgs do
+      IO.println s!"calculator|undo|list:i64,i64,i64|{state c} i64:{x}|{words (c.undo x)}|0|0"
+      for op in _root_.Examples.Calc.ops do
+        IO.println s!"calculator|step|list:i64,i64,i64|{state c} i64:{op.ctorIdx} i64:{x}|\
+          {words (c.step op x)}|0|0"
+  for ws in _root_.Examples.Calc.runArgs do
+    IO.println s!"calculator|calcRun|list:i64,i64,i64|{arrayArg ws.toArray}|\
+      {words (_root_.Examples.Calc.calcRun ws.toArray)}|1|1"
 
 end Verified.Examples
 
