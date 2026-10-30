@@ -38817,3 +38817,49 @@ A Lean check tested one combination that the README's property table states and 
 - [x] The corrections of the manuals and the designs, the benchmark method, and the native trusted base.
 - [x] The three lost journal entries on the cheaper forms of the alignment test, the placement of `sort`, and CompCert's alignment options.
 - [x] The worked example's commands, run on AArch64.
+
+## 2026-10-30: Verified compilations of LeanExe examples and library programs
+
+The verified compiler now compiles, unchanged, the definitions of eight programs that the LeanExe compiler compiled alone: the examples `Increment`, `Below100`, `RemoveZero`, and `Binary32`, and the library's GCD, mean, sum of squares, and SplitMix64.  Each program has a `Compiled.lean` beside its `Program.lean`, and every LeanExe module, theorem, and case stays, since whether to retire that compiler is a separate decision.  [`Examples/Verified.lean`](Examples/Verified.lean) imports the four example modules and `Verified.lean` imports it, as it imports [`Demos/Verified.lean`](Demos/Verified.lean), and `Library.lean` imports the four library modules.  Each module joins [the module registry](tests/verified/modules.txt) under the name that it has in the LeanExe registry, so that `increment`, `below100`, `removeZero`, `binary32`, `gcd`, `mean`, `sumSquares`, and `prng` name one module in each.
+
+The specification theorem `compute_eq` of `Increment`, `Below100`, and `RemoveZero` moved from `Verify.lean` into a new `Proof.lean` that imports only the program, the specification, and the combinator lemmas, as the GCD and prime-factor programs already had it.  The verified modules import `Proof.lean` and nothing of the LeanExe compiler, so a retirement of that compiler would remove `Module.lean` and `Verify.lean` without touching the verified modules.  The cases of the three examples, of `Binary32`, and of GCD now name their inputs, such as `Examples.Increment.samples`, so that the verified cases run the inputs of the LeanExe cases.
+
+| Program | Module and theorems | Beyond the LeanExe theorems |
+| --- | --- | --- |
+| `Increment` | `Examples.Increment.compiled`, `compute_bound`, `increment_call` | The call returns `expected xs` without a trap when `top` can rise by 120 bytes within the cap, and the input stays borrowed.  `increment_total` also excludes the trap, under 16 pages of memory that the call does not grow. |
+| `Below100` | `Examples.Below100.compiled`, `compute_bound`, `below100_call` | No trap when `top` can rise by 712 bytes, where `below100_bytes` allows one. |
+| `RemoveZero` | `Examples.RemoveZero.compiled`, `compute_bound`, `removeZero_call` | No trap when `top` can rise by 120 bytes, where `removeZero_bytes` allows one. |
+| `Binary32` | `Examples.Binary32.compiled`, `scale32_dispatch`, `axpyArray32_dispatch`, `matVec32_dispatch` | The scalar functions return without a trap from every store, and the three kernels come from the generic WGSL translation with one proof instead of a specification and an element lemma each. |
+| GCD | `Library.Numerics.Arithmetic.Gcd.compiled`, `gcd_call` | `Nat.gcd` from every store, without a trap, with the store unchanged, where `gcd_bytes` allows a trap and requires the runtime invariant. |
+| Mean, sum of squares | `compiled.mean.implements`, `compiled.sumSquares.implements` | Execution without a trap, where `mean_bytes` and `sumSquares_bytes` allow one. |
+| SplitMix64 | `Library.Random.SplitMix64.compiled`, `prng_module` | Both functions from every store, without a trap, with the store unchanged, in this module.  `splitMix_pure` and `unitFloat_pure` allow a trap and hold in any module that contains the compiled functions. |
+
+All eight modules lie in the subset that the translator to C accepts, so each function also has `p.f.native`.  The three call theorems of the examples apply `Examples.arrayCall` of [the shared call theorem](Examples/ArrayCall.lean), which turns a `trapFree` theorem of a function from a borrowed array to an owned array, a constant at least its bound, and an equality with the specification on arrays of fewer than `2 ^ 64` words into the call from a store with the allocator invariant.  The bounds of `Increment` and `RemoveZero` are one block of at most eight words, `blockCost` of at most 8, and `compute_bound` closes each with `Verified.blockCost_eq` and the result's count.  The bound of `Below100` is the smaller of two loop costs, and the second, with each push charged `paidGrowCost 1`, gives 712 bytes through `Verified.loopCost_le` and `Verified.sumBelow_const`.  Its first proof applied `split` to the loop's charge, which split the test of the input's size inside the loop's condition rather than the condition, and a lemma over `if c = true then a else 0` replaced it.
+
+Four items did not port, each because the reflector rejects a form of the unchanged definition.  `Lookup` and `TreeLookup` return two-word array literals, `#[value, found]`, and the dialect has `#[]` alone, so `verified_compile` stops with `unsupported term { toList := [...] }`.  The prime-factor count tests `remaining ≤ 1 ∨ divisor ≤ 1`, and the tail-loop reflector stops with `unsupported decision remaining ≤ 1 ∨ divisor ≤ 1` after 99 seconds, with a second error, `(kernel) deep recursion detected`.  `condMix32` of `Binary32` tests `i % 4 ≤ 3 ∧ i / 4 * 4 + (3 - i % 4) < n`, and the reflector stops with `unsupported condition`, so it has neither a verified function nor a verified kernel, although the WGSL translation lowers Boolean conjunction.  A scratch module outside the tree compiled `if decide p && decide q then …`, a tail recursion on `decide p || decide q`, and a two-word array built by `push` onto `#[]`, so a program written in those forms ports today.  Each port needs a change to the reflector in `Verified/Reflect/Definitions.lean`, which this work did not make: a rule that reads a nonempty array literal as pushes onto `#[]`, and a rule that reads `p ∧ q` and `p ∨ q` in a condition as the Boolean connective of the two decisions.  The verified compiler manual's restrictions table now lists both messages.
+
+The checks ran on AArch64, with Wasmtime 44.0.0 and CompCert 3.18 built in its source tree.  Each verified case states the result and, as the existing cases do, the blocks that stay allocated and for most functions a bound on the allocations, and the inputs are those of the LeanExe cases, against `expected` where the program has a specification.  The first compilation of the eleven programs, the eight that port and the three that do not, took two minutes, 99 seconds of it the rejected prime-factor count, and each later build of the new modules took less than half a minute.
+
+| Check | Cases | Result |
+| --- | --- | --- |
+| `tests/verified/run.sh --cases NAME`, Wasmtime against native Lean | `increment` 6, `below100` 81, `removeZero` 40, `binary32` 388, `gcd` 49, `mean` 52, `sumSquares` 52, `prng` 192 | All 860 passed |
+| `tests/native/verified.sh --module NAME`, the translation to C compiled with CompCert | The same 860 | All passed, and every module translates |
+| `tests/modules/run.sh --module NAME` on the LeanExe modules, after the cases' change | `increment` 6, `below100` 9, `removeZero` 10, `binary32` 388, `gcd` 49 | All passed |
+| `uv run tests/prng/compare.py build/verified/prng.wasm` | 106 seeds, 2,000 successive steps, and 40 words | All matched the reference |
+| `tools/EmitWgsl.lean` on the three verified kernels | 3 kernels | Each printed and parsed back |
+
+The verified kernels of `Binary32` ran on no GPU driver, since the test host had neither the SwiftShader driver nor `leanexe-webgpu-host`, and `tests/wgsl/run.sh --verified` names only the kernels of the verified WGSL example.  The README commands of the eight programs printed the results that their READMEs give.  The `#print axioms` reports of `Examples.arrayCall`, the call theorems, `prng_module`, `compiled.bytes` of `Binary32`, and the three dispatch theorems name only `propext`, `Classical.choice`, and `Quot.sound`.  A build of every module that the change can affect, the libraries `Examples`, `Verified`, `Library`, and `TestSupport` and the executables `verified-cases`, `native-module-cases`, and `native-verified`, finished with 15,076 jobs, no error, and no warning in the new modules.
+
+- [x] The verified compilations of `Increment`, `Below100`, `RemoveZero`, and `Binary32`, with the call and dispatch theorems.
+- [x] The verified compilations of GCD, mean, sum of squares, and SplitMix64, with `gcd_call` and `prng_module`.
+- [x] Registry entries and cases for the eight modules, and the verified and native drivers on them.
+- [ ] Decide whether the reflector accepts nonempty array literals, for `Lookup` and `TreeLookup`.
+- [ ] Decide whether the reflector accepts conjunctions and disjunctions of propositions in conditions, for the prime-factor count and `condMix32`.
+- [ ] Add the verified kernels of `Binary32` to `tests/wgsl/run.sh --verified`, on a host with the SwiftShader and llvmpipe drivers.
+
+The four items below are LeanExe artifacts and theorems that wait for a later decision.  The verified modules of the Euler solvers and the drone planner have trap-free theorems under room within the memory cap, `drone_trapFree` with the constant 2,251,064 bytes, instead of page budgets.  The verified binary32 GPT-2 kernels have their own host theorem, `Demos.Gpt32.Verified.generate_host`, and the verified `gpt.wasm` has no file theorem.
+
+- [ ] The total-execution theorems with page budgets of the LeanExe Euler and drone modules, `euler_solve_total` and `drone_compute_total`.
+- [ ] The file theorem of the LeanExe `gpt.wasm`, `gpt_file` of `Demos/Gpt/File.lean`.
+- [ ] `gpt32.wasm`, the LeanExe binary32 GPT-2 module that the browser page runs.
+- [ ] The binary32 GPT-2 host theorem over the LeanExe compiler's kernels, `Demos.Gpt32.generate_host` of `Demos/Gpt32/Compose.lean`.

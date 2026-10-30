@@ -19,7 +19,7 @@ the properties of the resulting WebAssembly.
 | [Fourier transforms](Numerics/Fourier) | V C | DFT, inverse transform, and power spectrum. |
 | [Reductions](Numerics/Reductions/README.md) | V C | Word and binary64 folds, including pairwise summation. |
 | [Linear algebra](Numerics/LinearAlgebra/README.md) | V C | Vector and matrix operations in binary64 and binary32. |
-| [Statistics](Numerics/Statistics) | L | Mean and sum of squares. |
+| [Statistics](Numerics/Statistics) | L V C | Mean and sum of squares. |
 | [Arithmetic bounds](Numerics/Bounds/README.md) | V S C | Checked outward-rounded operations and their real bounds. |
 | [Limiters](Numerics/Limiters/README.md) | V S C | Minmod and its real slope and face properties. |
 | [Packed bytes](Bytes/Packed.lean) | – | Byte strings held eight bytes to a word, as the libraries that take byte strings state their arguments. |
