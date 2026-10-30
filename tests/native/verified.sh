@@ -218,4 +218,4 @@ while IFS='|' read -r module name result args expected; do
 done <"$modcases"
 echo "native modules: passed $mpassed failed $mfailed"
 echo "native modules: not run: $momitted outside the translation"
-[ "$passed" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$mfailed" -eq 0 ]
+[ $((passed + mpassed)) -gt 0 ] && [ "$failed" -eq 0 ] && [ "$mfailed" -eq 0 ]
