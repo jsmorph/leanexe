@@ -7,6 +7,7 @@ import Library.Random.SplitMix64.Program
 import Library.Arrays.Search.Program
 import TestSupport.Host
 import TestSupport.Modules.Gcd
+import TestSupport.Modules.PrimeFactors
 
 namespace TestSupport.LibraryCases
 
@@ -52,6 +53,9 @@ def cases : IO Unit := do
   -- of `gcd` and the Lean definitions of the others, with the allocation counters.
   for (a, b) in Library.Numerics.Arithmetic.Gcd.gcdPairs do
     IO.println s!"gcd|gcd|i64|{u a} {u b}|{Library.Numerics.Arithmetic.Gcd.expected (a, b)}|0|0"
+  for n in Library.Numerics.Arithmetic.PrimeFactors.primeFactorInputs do
+    IO.println s!"primeFactors|compute|i64|{u n}|\
+      {Library.Numerics.Arithmetic.PrimeFactors.expected n}|0|0"
   for xs in floatArrays do
     let values := xs.toArray
     IO.println s!"mean|mean|f64|{arrF xs}|\
