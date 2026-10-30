@@ -181,6 +181,7 @@ A bare-metal program is the translation of a module, a volatile global `lx_out` 
 | [Design document](docs/design.md) | Architecture, decisions, proof scope, tests, and open work. |
 | [Trusted base](docs/trusted-base.md) | What each kind of artifact's theorem trusts, how each item is checked, and the definitions that statements reach. |
 | [Development journal](devnotes.md) | Record of the work. |
+| [Status](STATUS.md) | Commit, dates, toolchain, and steps of the last full check, with each step's status, duration, and counts, and what did not run. |
 | [Algorithm library](Library/README.md) | Native algorithms, compilation modules, mathematical proofs, and imports. |
 | [Application demos](Demos/README.md) | Application definitions, proofs, host programs, and tests. |
 | [Algorithm index](index.md) | Algorithms, applications, compiler examples, their proved results, and their compiled forms. |

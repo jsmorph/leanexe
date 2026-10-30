@@ -1,0 +1,691 @@
+#!/usr/bin/env bash
+# The full check of the verified compiler and of the translations, hosts, and proofs of its
+# modules, which writes STATUS.md at the root of the repository.  The steps run in order, each with
+# its output in build/full-check/NAME.log:
+#   1. `lake build` of LeanExe, Examples, Demos, Verified, Library, and TestSupport with the test
+#      executables native-verified, native-bare, verified-cases, and native-module-cases, at log
+#      level info, so that the log holds the axiom report of every `#print axioms`;
+#   2. tests/verified/run.sh;
+#   3. tests/native/verified.sh without and with --aligned, tests/native/aligned.sh,
+#      tests/native/run.sh, tests/native/bytes.sh, and tests/native/clight.sh 7 300 for the
+#      platform's target;
+#   4. tests/wasi/run.sh;
+#   5. tests/baremetal/run.sh, programs.sh, inputs.sh, and verified.sh under TCG;
+#   6. VKB/Check.lean;
+#   7. rocq/check.sh;
+#   8. tests/wgsl/run.sh --verified and --verified-gpt32, each with --emit-only and then
+#      --drivers-only, and tests/gpt32/native.sh --verified.
+# A failed build leaves every later step but rocq/check.sh unrun, since they load the built
+# modules.  The failure of any other step is recorded, and the next step runs.  A step whose tools
+# are absent is recorded as not run, and so is the driver half of a GPU step whose emission
+# failed.  The build fails on a `sorry` warning and on an axiom report of a file of this repository
+# that names an axiom other than propext, Classical.choice, and Quot.sound.  STATUS.md lists the
+# reports of the dependencies' files that do.
+# STATUS.md holds the commit, the paths that differ from it, the dates of the commit and of the
+# run, the toolchain, the platform, and a table of the steps with each step's status, duration,
+# and the counts that its driver prints, and it ends with what did not run and why.  Before it
+# writes the file, the script requires that the text name neither this machine nor an absolute or
+# home path nor a host fault; otherwise it prints the offending lines, leaves the text in
+# build/full-check/STATUS.md, and fails.
+# LEANRUN_THREADS and LEANRUN_MEMORY_HIGH pass to every step, the latter 10G unless set, the limit
+# that AGENTS.md sets for the verified and WASI drivers.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as
+# for the native and bare-metal drivers, NM and DTC as for tests/baremetal/run.sh, and QEMU and
+# JOBS as for tests/baremetal/verified.sh.  COMPCERT_TREE names the CompCert tree with built
+# proofs for rocq/check.sh, by default the directory of CCOMP when CCOMP is a path.  The script
+# exits with status 1 when a step fails.
+# Usage: tools/full-check
+set -euo pipefail
+
+# The replacement REPLACEMENT of the last line of FILE that matches the extended regular
+# expression REGEX.
+last() {
+  sed -n -E "s/$1/$2/p" "$3" | tail -n 1
+}
+
+# The number $1 with a comma between groups of three digits.
+c() {
+  sed -E ':a; s/([0-9])([0-9]{3})($|,)/\1,\2\3/; ta' <<<"$1"
+}
+
+# "P NOUN passed, F failed" for the arguments "P F" and NOUN, or nothing for an empty first
+# argument.
+pf() {
+  [ -n "$1" ] || return 0
+  local noun=$2
+  set -- $1
+  echo "$(c "$1") $noun passed, $(c "$2") failed"
+}
+
+# The count $1 of the noun whose singular is $2 and whose plural is $3.
+nouns() {
+  if [ "$1" = 1 ]; then
+    echo "1 $2"
+  else
+    echo "$(c "$1") $3"
+  fi
+}
+
+# The arguments as an English list, with the Oxford comma.
+join() {
+  local out=""
+  case $# in
+    0) ;;
+    1) echo "$1" ;;
+    2) echo "$1 and $2" ;;
+    *)
+      while [ "$#" -gt 1 ]; do
+        out+="$1, "
+        shift
+      done
+      echo "${out}and $1"
+      ;;
+  esac
+}
+
+duration() {
+  if [ "$1" -lt 120 ]; then
+    echo "$1 s"
+  else
+    echo "$((($1 + 30) / 60)) min"
+  fi
+}
+
+have() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+# The number of the lines of FILE that match the extended regular expression REGEX.
+matches() {
+  grep -c -E "$1" "$2" || true
+}
+
+# record STEP STATUS SECONDS COUNTS: adds a row to the table of STATUS.md.
+record() {
+  steps+=("$1")
+  statuses+=("$2")
+  if [ -n "$3" ]; then
+    durations+=("$(duration "$3")")
+  else
+    durations+=("")
+  fi
+  counts+=("$4")
+  case $2 in
+    "not run: "*)
+      unrun+=("$1")
+      reasons+=("${2#not run: }")
+      ;;
+    failed*) failures=$((failures + 1)) ;;
+  esac
+}
+
+# run LOG COMMAND...: runs COMMAND with its output in build/full-check/LOG.log, and sets log to
+# that file, code to the exit status, and seconds to the duration.
+run() {
+  local start
+  log=$logs/$1.log
+  shift
+  echo "full-check: $*: started at $(date -u '+%H:%M:%S UTC')"
+  start=$(date +%s)
+  code=0
+  "$@" >"$log" 2>&1 </dev/null || code=$?
+  seconds=$(($(date +%s) - start))
+  echo "full-check: $*: exit $code after $seconds s"
+}
+
+outcome() {
+  if [ "$code" -eq 0 ]; then
+    echo passed
+  else
+    echo "failed, exit $code"
+  fi
+}
+
+# unbuilt STEP: records STEP as not run, and succeeds, when the build failed.
+unbuilt() {
+  if [ "$built" = yes ]; then
+    return 1
+  fi
+  record "$1" "not run: the build failed" "" ""
+}
+
+# ready STEP TOOL...: succeeds when the build passed and each TOOL is present, and otherwise
+# records STEP as not run.  A TOOL is a label and a command separated by a colon.
+ready() {
+  local step=$1 tool absent=()
+  shift
+  if unbuilt "$step"; then
+    return 1
+  fi
+  for tool in "$@"; do
+    if ! have "${tool#*:}"; then
+      absent+=("${tool%%:*}")
+    fi
+  done
+  if [ "${#absent[@]}" -ne 0 ]; then
+    record "$step" "not run: $(join "${absent[@]}") absent" "" ""
+    return 1
+  fi
+}
+
+# wasm_ready STEP: as ready, for a step that needs wasm-tools and a current Wasmtime host.
+wasm_ready() {
+  ready "$1" wasm-tools:wasm-tools || return 1
+  if [ ! -x "$root/build/tools/leanexe-wasmtime-host" ] ||
+      [ "$root/tools/wasmtime-host.c" -nt "$root/build/tools/leanexe-wasmtime-host" ]; then
+    record "$1" "not run: Wasmtime host absent" "" ""
+    return 1
+  fi
+}
+
+# "T theorems in A axiom audits" for the lines "... axiom check passed for T theorems" of the log
+# $1, or nothing when it has none.
+audits() {
+  local found
+  found=$(sed -n -E 's/^.* axiom check passed for ([0-9]+) theorems.*$/\1/p' "$1" |
+    awk '{ t += $1 } END { if (NR) print t, NR }')
+  [ -n "$found" ] || return 0
+  set -- $found
+  echo "$(nouns "$1" theorem theorems) in $(nouns "$2" "axiom audit" "axiom audits")"
+}
+
+# The number of names in the list $1 of a driver, which is "none" when it is empty.
+names() {
+  if [ "$1" = none ]; then
+    echo 0
+  else
+    wc -w <<<"$1"
+  fi
+}
+
+# Prints, for the build log $1, the number of axiom reports and the number that name no axiom
+# beyond propext, Classical.choice, and Quot.sound, and then one line for every other report: its
+# file, its declaration, and its other axioms, separated by tabs.  A report may continue over
+# several lines up to the bracket that closes its list.
+axioms() {
+  awk -v q="'" '
+    function report(r,   file, name, list, n, a, i, other) {
+      file = r
+      sub(/^info: /, "", file)
+      sub(/:[0-9]+:[0-9]+: .*$/, "", file)
+      name = r
+      sub("^[^" q "]*" q, "", name)
+      sub(q " (depends on axioms|does not depend on any axioms).*$", "", name)
+      other = ""
+      if (r ~ /depends on axioms: \[/) {
+        list = r
+        sub(/^.*depends on axioms: \[/, "", list)
+        sub(/\].*$/, "", list)
+        n = split(list, a, ",")
+        for (i = 1; i <= n; i++) {
+          gsub(/^ +| +$/, "", a[i])
+          if (a[i] != "propext" && a[i] != "Classical.choice" && a[i] != "Quot.sound")
+            other = other (other == "" ? "" : " ") a[i]
+        }
+      }
+      total++
+      if (other == "") permitted++
+      else others = others file "\t" name "\t" other "\n"
+    }
+    /^info: [^ ]+:[0-9]+:[0-9]+: .* depends on axioms: \[/ {
+      r = $0
+      while (r !~ /\]/ && (getline line) > 0) r = r " " line
+      gsub(/[[:space:]]+/, " ", r)
+      report(r)
+      next
+    }
+    /^info: [^ ]+:[0-9]+:[0-9]+: .* does not depend on any axioms$/ { report($0) }
+    END { print total + 0, permitted + 0; printf "%s", others }' "$1"
+}
+
+step_build() {
+  local step='`lake build` of the six libraries and the four test executables'
+  local jobs sorries errors report total permitted file name other repo=0 cell status
+  run 1-build tools/leanrun --timeout 12h lake --log-level info build LeanExe Examples Demos \
+    Verified Library TestSupport native-verified native-bare verified-cases native-module-cases
+  if [ "$code" -eq 0 ]; then
+    built=yes
+  fi
+  jobs=$(last '^Build completed successfully \(([0-9]+) jobs\)\.$' '\1' "$log")
+  sorries=$(matches '^warning: [^ ]+:[0-9]+:[0-9]+: declaration uses `' "$log")
+  errors=$(matches '^error: ' "$log")
+  report=$(axioms "$log")
+  read -r total permitted <<<"$(head -n 1 <<<"$report")"
+  while IFS=$'\t' read -r file name other; do
+    [ -n "$file" ] || continue
+    other="\`${other// /\`, \`}\`"
+    if [ -f "$root/$file" ]; then
+      repo=$((repo + 1))
+      repo_axioms+=("\`$name\` in \`$file\`: $other")
+    else
+      dependency_axioms+=("\`$name\` in \`$file\` of a dependency: $other")
+    fi
+  done < <(tail -n +2 <<<"$report")
+  cell=""
+  if [ -n "$jobs" ]; then
+    cell="$(c "$jobs") jobs; "
+  fi
+  if [ "$errors" -ne 0 ]; then
+    cell+="$(nouns "$errors" error errors); "
+  fi
+  cell+="$(c "$total") axiom reports, $(c "$permitted") of them with no axiom beyond"
+  cell+=" \`propext\`, \`Classical.choice\`, and \`Quot.sound\`; "
+  if [ "$sorries" -eq 0 ]; then
+    cell+="no \`sorry\` warning"
+  else
+    cell+="$(nouns "$sorries" "\`sorry\` warning" "\`sorry\` warnings")"
+  fi
+  status=$(outcome)
+  if [ "$code" -eq 0 ] && { [ "$sorries" -ne 0 ] || [ "$repo" -ne 0 ]; }; then
+    status="failed, with \`sorry\` or another axiom"
+  fi
+  record "$step" "$status" "$seconds" "$cell"
+}
+
+step_verified() {
+  local step='`tests/verified/run.sh`' cell groups group p f edges files audited
+  wasm_ready "$step" || return 0
+  run 2-verified tests/verified/run.sh
+  cell=$(pf "$(last '^verified: passed ([0-9]+) failed ([0-9]+)$' '\1 \2' "$log")" cases)
+  groups=$(awk '
+    BEGIN { group = "GPT" }
+    /^(fail: )?euler[. ]/ { group = "Euler" }
+    /^(fail: )?shapes[. ]/ { group = "sums" }
+    /^passed [0-9]+ failed [0-9]+$/ { print group, $2, $4 }' "$log")
+  while read -r group p f; do
+    [ -n "$group" ] || continue
+    cell+="; $(pf "$p $f" "$group cases")"
+  done <<<"$groups"
+  edges=$(last '^slew edges: ([0-9]+) edges agree with native Lean.*$' '\1' "$log")
+  if [ -n "$edges" ]; then
+    cell+="; $(c "$edges") slew edges agree"
+  fi
+  files=$(matches ': [^ ]+\.wasm holds the module of [^ ]+, with the permitted axioms$' "$log")
+  if [ "$files" -ne 0 ]; then
+    cell+="; $(nouns "$files" "file theorem" "file theorems") with the permitted axioms"
+  fi
+  audited=$(audits "$log")
+  [ -z "$audited" ] || cell+="; $audited"
+  if [ "$code" -eq 0 ]; then
+    cell+="; $(matches '^[^#[:space:]]' tests/verified/modules.txt) modules written and validated"
+  fi
+  record "$step" "$(outcome)" "$seconds" "${cell#; }"
+}
+
+step_native() {
+  local step mode flags cell notrun made list refused programs calls
+  for mode in plain aligned; do
+    if [ "$mode" = plain ]; then
+      step='`tests/native/verified.sh`'
+      flags=()
+    else
+      step='`tests/native/verified.sh --aligned`'
+      flags=(--aligned)
+    fi
+    ready "$step" ccomp:"$ccomp" clightgen:"$clightgen" || continue
+    run "3-native-verified-$mode" tests/native/verified.sh "${flags[@]}"
+    cell=$(pf "$(last '^native verified: passed ([0-9]+) failed ([0-9]+)$' '\1 \2' "$log")" cases)
+    notrun=$(last '^native verified: not run: ([0-9]+) outside the translation, ([0-9]+) of .*$' \
+      '\1 \2' "$log")
+    if [ -n "$notrun" ]; then
+      set -- $notrun
+      cell+=", $(c "$(($1 + $2))") not run"
+    fi
+    made=$(pf "$(last '^native modules: passed ([0-9]+) failed ([0-9]+)$' '\1 \2' "$log")" \
+      "module cases")
+    if [ -n "$made" ]; then
+      notrun=$(last '^native modules: not run: ([0-9]+) outside the translation$' '\1' "$log")
+      cell+="; $made${notrun:+, $(c "$notrun") not run}"
+    fi
+    list=$(last '^native verified: modules without a translation: ?(.*)$' '\1' "$log")
+    [ -z "$list" ] || cell+="; $(nouns "$(names "$list")" module modules) without a translation"
+    list=$(last '^native verified: modules without aligned theorems: ?(.*)$' '\1' "$log")
+    [ -z "$list" ] || cell+="; $(nouns "$(names "$list")" module modules) without aligned theorems"
+    record "$step" "$(outcome)" "$seconds" "${cell#; }"
+  done
+  step='`tests/native/aligned.sh`'
+  if ready "$step" ccomp:"$ccomp" clightgen:"$clightgen"; then
+    run 3-native-aligned tests/native/aligned.sh
+    cell=$(sed -n -E 's/^aligned: ([^ ]+) built: ([0-9]+) exports$/`\1` built with \2 exports/p' \
+      "$log")
+    mapfile -t refused < <(sed -n -E 's/^aligned: ([^ ]+) refused: .*$/`\1`/p' "$log")
+    if [ "${#refused[@]}" -ne 0 ]; then
+      cell+="; $(join "${refused[@]}") refused"
+    fi
+    record "$step" "$(outcome)" "$seconds" "${cell#; }"
+  fi
+  step='`tests/native/run.sh`'
+  if ready "$step" ccomp:"$ccomp" clightgen:"$clightgen"; then
+    run 3-native-run tests/native/run.sh
+    programs=$(matches '^native: [^ ]+: [0-9]+ calls agree with Talos$' "$log")
+    calls=$(sed -n -E 's/^native: [^ ]+: ([0-9]+) calls agree with Talos$/\1/p' "$log" |
+      awk '{ n += $1 } END { print n + 0 }')
+    record "$step" "$(outcome)" "$seconds" \
+      "$(nouns "$programs" program programs), whose $(nouns "$calls" call calls) agree with Talos"
+  fi
+  step='`tests/native/bytes.sh`'
+  if ready "$step" ccomp:"$ccomp" clightgen:"$clightgen"; then
+    run 3-native-bytes tests/native/bytes.sh
+    cell=$(sed -n -E 's/^native bytes: [^:]+: ([0-9]+) of ([0-9]+) cases agree with Wasmtime$/\1 \2/p' \
+      "$log" | awk '{ a += $1; n += $2 } END { if (NR) print a, n }')
+    if [ -n "$cell" ]; then
+      set -- $cell
+      cell="$(c "$1") of $(c "$2") cases agree with Wasmtime"
+    fi
+    made=$(last '^native bytes: ([0-9]+) trap cases run$' '\1' "$log")
+    [ -z "$made" ] || cell+="; $(nouns "$made" "trap case" "trap cases") run"
+    record "$step" "$(outcome)" "$seconds" "${cell#; }"
+  fi
+  step="\`tests/native/clight.sh 7 300 $archi\`"
+  if [ -z "$archi" ]; then
+    record "$step" "not run: no CompCert target for this platform" "" ""
+  elif ready "$step" ccomp:"$ccomp"; then
+    run 3-native-clight tests/native/clight.sh 7 300 "$archi"
+    cell=$(last '^clight: ([0-9]+) agree \(([0-9]+) undefined, ([0-9]+) trace programs, ([0-9]+) input programs\), ([0-9]+) differ, ([0-9]+) out of fuel$' \
+      '\1 \2 \3 \4 \5 \6' "$log")
+    if [ -n "$cell" ]; then
+      set -- $cell
+      cell="$(c "$1") programs agree with \`ccomp -interp\`, $(c "$2") of them undefined,"
+      cell+=" $(c "$3") of them trace programs, and $(c "$4") input programs; $(c "$5") differ;"
+      cell+=" $(c "$6") out of fuel"
+    fi
+    record "$step" "$(outcome)" "$seconds" "$cell"
+  fi
+}
+
+step_wasi() {
+  local step='`tests/wasi/run.sh`' cell audited
+  wasm_ready "$step" || return 0
+  run 4-wasi tests/wasi/run.sh
+  # The WASI and running-sum drivers print a group of cases as "... passed: N cases", with a word
+  # such as "native" or "byte" before "cases", or as "...: N cases passed".
+  cell=$(awk '
+    / passed: [0-9]+ ([a-z]+ )?cases$/ {
+      for (i = 1; i < NF; i++) if ($i == "passed:") n += $(i + 1)
+      g++
+    }
+    /: [0-9]+ cases passed$/ { n += $(NF - 2); g++ }
+    END { if (g) print n, g }' "$log")
+  if [ -n "$cell" ]; then
+    set -- $cell
+    cell="$(c "$1") cases passed in $(nouns "$2" group groups)"
+  fi
+  audited=$(audits "$log")
+  [ -z "$audited" ] || cell+="; $audited"
+  record "$step" "$(outcome)" "$seconds" "${cell#; }"
+}
+
+step_baremetal() {
+  local step name cell total modules list unbuilt_count
+  step='`tests/baremetal/run.sh`'
+  if ready "$step" ccomp:"$ccomp" QEMU:"$qemu" nm:"${NM:-nm}" dtc:"${DTC:-dtc}"; then
+    run 5-baremetal-run env ACCEL=tcg tests/baremetal/run.sh
+    cell=""
+    if [ "$code" -eq 0 ]; then
+      cell=$(last '^baremetal: (.*) pass under TCG$' '\1 pass' "$log")
+    fi
+    record "$step" "$(outcome)" "$seconds" "$cell"
+  fi
+  for name in programs inputs; do
+    step="\`tests/baremetal/$name.sh\`"
+    ready "$step" ccomp:"$ccomp" clightgen:"$clightgen" QEMU:"$qemu" || continue
+    run "5-baremetal-$name" env ACCEL=tcg "tests/baremetal/$name.sh"
+    record "$step" "$(outcome)" "$seconds" \
+      "$(matches '^pass: ' "$log") $name passed, $(matches '^fail: ' "$log") failed"
+  done
+  step='`tests/baremetal/verified.sh`'
+  ready "$step" ccomp:"$ccomp" QEMU:"$qemu" || return 0
+  run 5-baremetal-verified tests/baremetal/verified.sh
+  cell=""
+  total=$(last '^baremetal verified: total passed ([0-9]+) failed ([0-9]+) not run ([0-9]+)$' \
+    '\1 \2 \3' "$log")
+  if [ -n "$total" ]; then
+    set -- $total
+    modules=$(matches '^baremetal verified: [^ ]+ passed [0-9]+ failed [0-9]+ not run [0-9]+ stack ' \
+      "$log")
+    cell="$(c "$1") cases passed, $(c "$2") failed, $(c "$3") not run, in $(nouns "$modules" module modules)"
+  fi
+  list=$(last '^baremetal verified: modules without a translation: ?(.*)$' '\1' "$log")
+  [ -z "$list" ] || cell+="; $(nouns "$(names "$list")" module modules) without a translation"
+  unbuilt_count=$(matches '^baremetal verified: module that does not build: ' "$log")
+  if grep -q '^baremetal verified: modules that do not build: none$' "$log" ||
+      [ "$unbuilt_count" -ne 0 ]; then
+    cell+="; $(nouns "$unbuilt_count" "module that does" "modules that do") not build"
+  fi
+  record "$step" "$(outcome)" "$seconds" "${cell#; }"
+}
+
+step_vkb() {
+  local step='`VKB/Check.lean`' cell
+  ready "$step" || return 0
+  run 6-vkb tools/leanrun --timeout 10m lake env lean --run VKB/Check.lean VKB/entries
+  cell="$(find VKB/entries -mindepth 1 -maxdepth 1 -type d | wc -l) entries"
+  if [ "$code" -eq 0 ]; then
+    cell+=", no problem reported"
+  fi
+  record "$step" "$(outcome)" "$seconds" "$cell"
+}
+
+step_rocq() {
+  local step='`rocq/check.sh`' cell=""
+  if ! have coqc; then
+    record "$step" "not run: coqc absent" "" ""
+  elif [ -z "$tree" ] || [ ! -f "$tree/_CoqProject" ] || [ ! -f "$tree/driver/Compiler.vo" ]; then
+    record "$step" "not run: no CompCert tree with built proofs" "" ""
+  else
+    run 7-rocq rocq/check.sh "$tree"
+    cell=$(last '^rocq: Clight2Asm\.v checks, with the assumptions of transf_c_program_correct and (.*)$' \
+      '\1' "$log")
+    if [ "$code" -eq 0 ] && [ -n "$cell" ]; then
+      cell="\`Clight2Asm.v\` checks, with the assumptions of \`transf_c_program_correct\` and \`$cell\`"
+    else
+      cell=""
+    fi
+    record "$step" "$(outcome)" "$seconds" "$cell"
+  fi
+}
+
+step_gpu() {
+  local mode dir step cell drivers=present driver
+  # The Vulkan drivers and the host of tests/wgsl/run.sh and tests/gpt32/native.sh.
+  for driver in /usr/lib/chromium/vk_swiftshader_icd.json /usr/share/vulkan/icd.d/lvp_icd.json \
+      "$root/build/tools/leanexe-webgpu-host"; do
+    [ -e "$driver" ] || drivers=absent
+  done
+  for mode in verified verified-gpt32; do
+    dir=$logs/wgsl-$mode
+    step="\`tests/wgsl/run.sh --$mode --emit-only\`"
+    if unbuilt "$step"; then
+      record "\`tests/wgsl/run.sh --$mode --drivers-only\`" "not run: the build failed" "" ""
+      continue
+    fi
+    rm -rf "$dir"
+    run "8-wgsl-$mode-emit" tests/wgsl/run.sh "--$mode" --emit-only "$dir"
+    cell=""
+    if [ "$code" -eq 0 ]; then
+      cell="$(nouns "$(find "$dir/wgsl" -name '*.wgsl' | wc -l)" kernel kernels) and"
+      cell+=" $(nouns "$(wc -l <"$dir/wgsl/cases.txt")" case cases) written"
+    fi
+    record "$step" "$(outcome)" "$seconds" "$cell"
+    step="\`tests/wgsl/run.sh --$mode --drivers-only\`"
+    if [ "$code" -ne 0 ]; then
+      record "$step" "not run: the emission failed" "" ""
+    elif [ "$drivers" = absent ]; then
+      record "$step" "not run: drivers absent" "" ""
+    else
+      run "8-wgsl-$mode-drivers" tests/wgsl/run.sh "--$mode" --drivers-only "$dir"
+      cell="SwiftShader: $(pf "$(last '^vk_swiftshader_icd: passed ([0-9]+) failed ([0-9]+)$' \
+        '\1 \2' "$log")" cases); llvmpipe: $(pf "$(last '^lvp_icd: passed ([0-9]+) failed ([0-9]+)$' \
+        '\1 \2' "$log")" cases)"
+      record "$step" "$(outcome)" "$seconds" "$cell"
+    fi
+  done
+  step='`tests/gpt32/native.sh --verified`'
+  if unbuilt "$step"; then
+    return 0
+  elif [ "$drivers" = absent ]; then
+    record "$step" "not run: drivers absent" "" ""
+  elif ready "$step" wasm-tools:wasm-tools Node.js:node; then
+    run 8-gpt32-native tests/gpt32/native.sh --verified "$logs/gpt32"
+    record "$step" "$(outcome)" "$seconds" ""
+  fi
+}
+
+# The steps that did not run, a group for each reason in the order of first appearance, each
+# group the list of its steps followed by its reason in parentheses, with semicolons between the
+# groups.
+unrun_groups() {
+  local reason i group out=""
+  local -A seen=()
+  for reason in "${reasons[@]}"; do
+    [ -z "${seen[$reason]-}" ] || continue
+    seen[$reason]=1
+    group=()
+    for i in "${!unrun[@]}"; do
+      if [ "${reasons[$i]}" = "$reason" ]; then
+        group+=("${unrun[$i]}")
+      fi
+    done
+    out+="$(join "${group[@]}") ($reason); "
+  done
+  echo "${out%; }"
+}
+
+# Prints the lines of the file $1 that name this machine, give an absolute or home path, or name
+# a host fault.
+forbidden() {
+  local host short
+  host=$(uname -n)
+  short=${host%%.*}
+  grep -n -i -P "\\b(\\Q$host\\E|\\Q$short\\E)\\b" "$1" || true
+  grep -n -P '(^|[\s(`"'\''])(/[A-Za-z]|~/)' "$1" || true
+  grep -n -i -P '\b(oom|killed|swap|swapping|pressure|crash|crashed|crashes|segfault|sigsegv|sigbus|core dumps?|core dumped|thrash|thrashing|out of memory|cpus?)\b' \
+    "$1" || true
+}
+
+write_status() {
+  local i path quoted=() changes notes found
+  for path in "${changed[@]}"; do
+    quoted+=("\`$path\`")
+  done
+  changes=$(join "${quoted[@]}")
+  {
+    echo "# Status"
+    echo
+    echo "[\`tools/full-check\`](tools/full-check) wrote this record of the full check of the commit below.  The record covers the tree of that commit with the paths listed as differing from it, and no later commit.  The check builds every module of the six libraries and the test executables, runs the drivers of the verified compiler's modules, of their translations to C and to bare-metal AArch64, of the WASI modules, and of the GPU kernels, and checks the VKB and the Rocq proof.  Each count comes from the output of the step's driver, which the checkout that ran the check keeps in \`build/full-check/\`."
+    echo
+    echo "| Item | Value |"
+    echo "|---|---|"
+    echo "| Commit | [$subject]($web/commit/$commit), committed $committed |"
+    echo "| Paths that differed from the commit | ${changes:-None} |"
+    echo "| Run | $started to $finished |"
+    echo "| Lean toolchain | \`$toolchain\` |"
+    echo "| Platform | $platform |"
+    echo
+    echo "| Step | Status | Duration | Counts |"
+    echo "|---|---|---|---|"
+    for i in "${!steps[@]}"; do
+      echo "| ${steps[$i]} | ${statuses[$i]} | ${durations[$i]} | ${counts[$i]} |"
+    done
+    if [ "${#repo_axioms[@]}" -ne 0 ]; then
+      echo
+      echo "These axiom reports of the repository's files name an axiom beyond \`propext\`, \`Classical.choice\`, and \`Quot.sound\`, and they fail the build:"
+      echo
+      printf -- '- %s\n' "${repo_axioms[@]}"
+    fi
+    if [ "${#dependency_axioms[@]}" -ne 0 ]; then
+      echo
+      echo "These axiom reports of the dependencies' files name an axiom beyond \`propext\`, \`Classical.choice\`, and \`Quot.sound\`:"
+      echo
+      printf -- '- %s\n' "${dependency_axioms[@]}"
+    fi
+    echo
+    if [ "${#unrun[@]}" -eq 0 ]; then
+      notes="Every step ran."
+    else
+      notes="These steps did not run: $(unrun_groups)."
+    fi
+    notes+="  The check leaves out the suites of the LeanExe compiler, which is being retired:"
+    notes+=" \`tests/modules/run.sh\` beyond the Euler and sums cases that \`tests/verified/run.sh\`"
+    notes+=" runs, \`tests/modules/chunks.py\`, \`tests/drone/run.sh\`, the LTG check, and"
+    notes+=" \`tests/wgsl/run.sh\` and \`tests/gpt32/native.sh\` without \`--verified\`.  It also"
+    notes+=" leaves out \`tests/native/subset.sh\`, whose result is the count of modules without a"
+    notes+=" translation that \`tests/native/verified.sh\` reports, \`tests/native/bench.sh\`, which"
+    notes+=" measures time, the decoder test, which needs the WebAssembly test suite converted by"
+    notes+=" \`wasm-tools\`, and the bare-metal tests under KVM, which need an AArch64 machine with"
+    notes+=" KVM, while TCG emulates the processor on any machine."
+    echo "$notes"
+  } >"$logs/STATUS.md"
+  found=$(forbidden "$logs/STATUS.md")
+  if [ -n "$found" ]; then
+    echo "full-check: build/full-check/STATUS.md names a machine, an absolute or home path, or a host fault:" >&2
+    echo "$found" >&2
+    exit 1
+  fi
+  cp "$logs/STATUS.md" "$root/STATUS.md"
+  echo "full-check: wrote STATUS.md"
+}
+
+main() {
+  local origin
+  root=$(cd "$(dirname "$0")/.." && pwd)
+  cd "$root"
+  export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
+  export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-10G}
+  ccomp=${CCOMP:-ccomp}
+  clightgen=${CLIGHTGEN:-clightgen}
+  qemu=${QEMU:-qemu-system-aarch64}
+  tree=${COMPCERT_TREE:-}
+  if [ -z "$tree" ] && [[ $ccomp == */* ]]; then
+    tree=$(dirname "$ccomp")
+  fi
+  logs=$root/build/full-check
+  mkdir -p "$logs"
+
+  origin=$(git remote get-url origin)
+  case $origin in
+    https://github.com/*) web=${origin%.git} ;;
+    git@github.com:*)
+      web=https://github.com/${origin#git@github.com:}
+      web=${web%.git}
+      ;;
+    *)
+      echo "full-check: origin $origin is not on GitHub, where STATUS.md links the commit" >&2
+      exit 2
+      ;;
+  esac
+  commit=$(git rev-parse HEAD)
+  subject=$(git show -s --format=%s HEAD)
+  subject=${subject//[/\\[}
+  subject=${subject//]/\\]}
+  committed=$(TZ=UTC git show -s --date=format-local:'%Y-%m-%d %H:%M UTC' --format=%cd HEAD)
+  mapfile -t changed < <(git status --porcelain=v1 | cut -c4- | grep -v -x -F STATUS.md || true)
+  toolchain=$(head -n 1 lean-toolchain)
+  case $(uname -m) in
+    aarch64 | arm64) platform="$(uname -s) on AArch64"; archi=aarch64 ;;
+    x86_64 | amd64) platform="$(uname -s) on x86-64"; archi=x86_64 ;;
+    *) platform="$(uname -s) on $(uname -m)"; archi="" ;;
+  esac
+  started=$(date -u '+%Y-%m-%d %H:%M UTC')
+
+  steps=() statuses=() durations=() counts=() unrun=() reasons=() repo_axioms=()
+  dependency_axioms=()
+  failures=0
+  built=no
+  step_build
+  step_verified
+  step_native
+  step_wasi
+  step_baremetal
+  step_vkb
+  step_rocq
+  step_gpu
+  finished=$(date -u '+%Y-%m-%d %H:%M UTC')
+  write_status
+  if [ "$failures" -ne 0 ]; then
+    echo "full-check: $(nouns "$failures" "step" "steps") failed"
+    exit 1
+  fi
+}
+
+main "$@"
+exit

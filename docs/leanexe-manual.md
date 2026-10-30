@@ -594,6 +594,8 @@ uv run tests/modules/chunks.py
 
 ### The full check
 
+[`tools/full-check`](../tools/full-check) runs the full check of the verified compiler and writes [`STATUS.md`](../STATUS.md), as [the verified compiler manual](verified-manual.md#the-full-check) describes.  Its build covers step 1 and the build of step 6, and it runs the WASI driver, the VKB check of step 5, `tests/verified/run.sh`, and the verified runs of step 7.  It leaves out steps 2 to 4, the LTG check of step 5, and `tests/wgsl/run.sh` without `--verified`, which test the LeanExe compiler, so a change to that compiler still needs those steps from the list below.
+
 [The journal](../devnotes.md) records a full check after each change to the compiler or the pipeline, with the counts of the cases that passed.  The build comes first, and the byte comparison and the tests follow it, so that they use the modules of the built source.  Each step must pass before the next one runs.
 
 1. `tools/leanrun --timeout 60m lake build`, with no `sorry` warning.

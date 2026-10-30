@@ -70,3 +70,10 @@ demos, or test support.  It also checks that `Library.Native` imports each libra
 that no program reaches the compilers through its imports, and that each module registry
 entry names an existing module.  [The documentation tests](../tests/README.md#documentation-tests)
 give the checker's commands.
+
+[The full check](full-check) builds every module of the six libraries and the test executables,
+runs the drivers of the verified compiler's modules and of their C, bare-metal, WASI, and WGSL
+forms, and checks the VKB and the Rocq composition.  It writes [the status record](../STATUS.md),
+which names the checked commit and gives each step's status, duration, and counts.
+[The verified compiler manual](../docs/verified-manual.md#the-full-check) describes its steps,
+its variables, and the steps that run only where their tools are present.
