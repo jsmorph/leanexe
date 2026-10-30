@@ -6,7 +6,8 @@
     "decide (p ∧ q), decide (p ∨ q)",
     "verified_compile: unsupported condition ¬p",
     "verified_compile: unsupported decision p → q",
-    "compiled.f.bound x for a function that returns an array literal"
+    "compiled.f.bound x for a function that returns an array literal",
+    "verified_compile: unsupported term match c with | { value := value, steps := steps, last := Op.add } => …"
   ],
   "modules": [
     "Verified.Reflect.Lemmas",
@@ -14,14 +15,16 @@
     "Verified.Examples.Forms",
     "Examples.Lookup.Compiled",
     "Examples.Binary32.Compiled",
-    "Library.Numerics.Arithmetic.PrimeFactors.Compiled"
+    "Library.Numerics.Arithmetic.PrimeFactors.Compiled",
+    "Examples.Calc.Program"
   ],
   "declarations": [
     "Verified.Reflect.decide_and_eq",
     "Verified.Reflect.decide_or_eq",
     "Verified.Reflect.ite_decide_eq",
     "Verified.growCost_eq",
-    "Verified.paidGrowCost_eq"
+    "Verified.paidGrowCost_eq",
+    "Examples.Calc.Calc.undo"
   ],
   "examples": [
     "Verified.Examples.Forms.pair_bound",
@@ -33,6 +36,7 @@
     "Library.Numerics.Arithmetic.PrimeFactors.primeFactors_call"
   ],
   "sources": [
-    "2026-10-30: Array literals and conditions on propositions in the reflector"
+    "2026-10-30: Array literals and conditions on propositions in the reflector",
+    "2026-10-30: The example ports to the verified compiler"
   ]
 }

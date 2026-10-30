@@ -22,7 +22,8 @@ An entry names existing declarations instead of restating them.  When several pr
 | [File theorems](entries/file-theorems/README.md) | States that an emitted `.wasm` file holds the encoding of a module, through a file module outside the import graph. |
 | [Closed-form allocation bounds](entries/verified-bound-closed-form/README.md) | Bounds the generated allocation term in input sizes. |
 | [Source forms and costs](entries/verified-source-costs/README.md) | Relates source choices to allocation, generated bounds, and compilation cost. |
-| [Array literals and proposition tests](entries/reflector-forms/README.md) | Explains the reflected code and allocation charges of these forms. |
+| [Array literals, proposition tests, and structure patterns](entries/reflector-forms/README.md) | Explains the reflected code and allocation charges of these forms, and the structure patterns that the reflector rejects. |
+| [Representations of structures and enumerations](entries/flat-instances/README.md) | Describes the `Flat` instances that the reflector needs for user types, and where a port of a LeanExe program puts them. |
 | [Tail-termination cases](entries/tail-termination-cases/README.md) | Diagnoses remaining functional-induction cases in a tail-loop proof. |
 | [Mutual execution induction](entries/mutual-relation-induction/README.md) | Proves statements over mutually inductive WASI or Clight executions. |
 | [Partial loop correctness](entries/partial-wasm-loop/README.md) | States the result of a completed Wasm loop while its termination proof remains separate. |
