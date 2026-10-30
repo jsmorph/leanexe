@@ -10,15 +10,15 @@ The Forms column lists a row's codes in the order of the key below.  Codes that 
 
 | Code | Artifact or property |
 |---|---|
-| L | A WebAssembly module from the LeanExe compiler, with a bytes theorem. |
-| V | A WebAssembly module from the verified compiler, with an execution theorem and, for a `verified_compile` program, allocation-bound, trap-free, and bytes theorems. |
-| S | A specification theorem. |
-| F | An emitted `.wasm` file with a file theorem. |
-| C | A C file and its native executable, with `p.f.native`, which the native drivers build and run. |
-| A | A C file without the alignment test, with `p.f.nativeAligned`. |
-| B | A bare-metal AArch64 image with a whole-program theorem. |
-| I | A WASI Preview 1 module with WASI theorems. |
-| G | A WGSL kernel with a dispatch theorem. |
+| L | WebAssembly module from the LeanExe compiler, with a bytes theorem. |
+| V | WebAssembly module from the verified compiler, with an execution theorem and, for a `verified_compile` program, allocation-bound, trap-free, and bytes theorems. |
+| S | Specification theorem. |
+| F | Emitted `.wasm` file with a file theorem. |
+| C | C file and its native executable, with `p.f.native`, which the native drivers build and run. |
+| A | C file without the alignment test, with `p.f.nativeAligned`. |
+| B | Bare-metal AArch64 image with a whole-program theorem. |
+| I | WASI Preview 1 module with WASI theorems. |
+| G | WGSL kernel with a dispatch theorem. |
 
 ## Contents
 
