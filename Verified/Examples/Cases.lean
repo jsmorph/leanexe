@@ -527,6 +527,10 @@ def portCases : IO Unit := do
     let r := _root_.Library.Numerics.LinearAlgebra.Binary32.matVec32 m.toArray v.toArray rows cols
     IO.println s!"binary32|matVec32|array-u64|{arrayArg (float32Words m.toArray)} \
       {arrayArg (float32Words v.toArray)} i64:{rows} i64:{cols}|{arrayOut (float32Words r)}|3|3"
+  for (x, lo, hi, n) in _root_.Examples.Binary32.condMixArgs do
+    let r := _root_.Examples.Binary32.condMix32 x.toArray lo hi n
+    IO.println s!"binary32|condMix32|array-u64|{arrayArg (float32Words x.toArray)} \
+      {float32Arg lo} {float32Arg hi} i64:{n}|{arrayOut (float32Words r)}|2|2"
   for xs in _root_.Examples.Lookup.samples do
     IO.println s!"lookup|compute|array-u64|{arrayArg xs.toArray}|\
       {arrayOut (_root_.Examples.Lookup.expected xs.toArray)}|2|4"

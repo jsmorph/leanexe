@@ -59,6 +59,17 @@ def matVecArgs : List (List Float32 × List Float32 × UInt64 × UInt64) :=
     (vals mLen (rows * 31 + cols), vals vLen (rows * 17 + cols * 5 + 1000), rows.toUInt64,
       cols.toUInt64)
 
+/-- The arguments `(x, lo, hi, n)` of `condMix32`, whose mirror reads stop at `n`: all elements, half,
+or a bound beyond every index. -/
+def condMixArgs : List (List Float32 × Float32 × Float32 × UInt64) :=
+  let sp := specialFloat32s.toArray
+  [0, 1, 3, 4, 7, 64, 65].flatMap fun n =>
+    (List.range 8).map fun k =>
+      ((List.range n).map (fun i =>
+          if i % 3 = 0 then rf32 (i + 11 * k) else sp[(i + 5 * k) % sp.size]!),
+        sp[k % sp.size]!, sp[(k * 7 + 3) % sp.size]!,
+        if k % 3 = 0 then n.toUInt64 else if k % 3 = 1 then (n / 2).toUInt64 else 0xffffffff00000000)
+
 def binary32Cases : IO Unit := do
   for (a, x, y) in float32Triples do
     line "binary32" "axpy32" "f32" [fl32 a, fl32 x, fl32 y]

@@ -3,6 +3,9 @@
 # tools/EmitWgsl.lean prints, and compares the output words with native Lean's.  The kernels
 # and the cases stay in the build directory's wgsl/, where tests/web/serve.py serves them to the
 # browser page of tests/wgsl/browser.
+# With `--verified`, the kernels are the verified compiler's, those of Verified/Examples/Wgsl.lean
+# and the four of Examples/Binary32/Compiled.lean, with the cases of
+# Verified/Examples/WgslCasesMain.lean.
 # `--emit-only` writes the kernels and the cases and stops, and `--drivers-only` runs existing ones
 # on the drivers, so that the drivers can run on a host without Lean.
 # Usage: tests/wgsl/run.sh [--verified|--verified-gpt32] [--emit-only|--drivers-only] [build directory]
@@ -29,7 +32,8 @@ if [ "$stage" != drivers ]; then
   case_source=tests/wgsl/Cases.lean
   if [ "$verified" -eq 1 ]; then
     case_source=Verified/Examples/WgslCasesMain.lean
-    (cd "$root" && tools/leanrun --timeout 10m lake --log-level error build Verified.Examples.WgslCasesMain)
+    (cd "$root" && tools/leanrun --timeout 10m lake --log-level error build Verified.Examples.WgslCasesMain \
+      Examples.Binary32.Compiled)
   elif [ "$gpt32" -eq 1 ]; then
     (cd "$root" && tools/leanrun --timeout 20m lake --log-level error build \
       Demos.Gpt32.Verified Demos.Gpt32.VerifiedGpuCasesMain)
@@ -47,7 +51,11 @@ if [ "$stage" != drivers ]; then
       Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedBranch \
       Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedFlags \
       Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedWords \
-      Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedRoots; do
+      Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedRoots \
+      Examples.Binary32.Compiled:Examples.Binary32:verifiedScale32 \
+      Examples.Binary32.Compiled:Examples.Binary32:verifiedAxpyArray32 \
+      Examples.Binary32.Compiled:Examples.Binary32:verifiedMatVec32 \
+      Examples.Binary32.Compiled:Examples.Binary32:verifiedCondMix32; do
     IFS=: read -r module namespace kernel <<<"$entry"
     if [ "$gpt32" -eq 1 ]; then
       case "$module" in
@@ -59,9 +67,14 @@ if [ "$stage" != drivers ]; then
         *) continue ;;
       esac
     elif [ "$verified" -eq 1 ]; then
-      [ "$module" = "Verified.Examples.Wgsl" ] || continue
-    elif [ "$module" = "Verified.Examples.Wgsl" ]; then
-      continue
+      case "$module" in
+        Verified.Examples.Wgsl|Examples.Binary32.Compiled) true ;;
+        *) continue ;;
+      esac
+    else
+      case "$module" in
+        Verified.Examples.Wgsl|Examples.Binary32.Compiled) continue ;;
+      esac
     fi
     (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tools/EmitWgsl.lean \
       "$module" "$namespace.${kernel}Kernel" "$build/wgsl/$kernel.wgsl")

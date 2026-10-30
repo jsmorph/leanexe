@@ -2,19 +2,19 @@ import Examples.Binary32.Program
 import Verified.Reflect.Command
 import Verified.WGSL.Compile
 
-/-! The verified compiler's module of seven of the example's eight functions, and the WGSL kernels
-that `Verified.WGSL.compile` translates from the reflected bodies of `scale32`, `axpyArray32`, and
-`matVec32`.  `condMix32` is absent: its condition `i % 4 ≤ 3 ∧ …` is a conjunction of
-propositions, which the reflector rejects.  Each dispatch theorem has the premises of the LeanExe
-compiler's theorem for the same kernel in `Examples/Binary32/Wgsl.lean` and comes from
-`Compiled.dispatch_value` with the generated `denote_eq`. -/
+/-! The verified compiler's module of the example's eight functions, in the order of the LeanExe
+compiler's module, and the WGSL kernels that `Verified.WGSL.compile` translates from the reflected
+bodies of `scale32`, `axpyArray32`, `matVec32`, and `condMix32`.  The reflector reads the condition
+`i % 4 ≤ 3 ∧ …` of `condMix32` as the conjunction of its two decisions.  Each dispatch theorem has
+the premises of the LeanExe compiler's theorem for the same kernel in `Examples/Binary32/Wgsl.lean`
+and comes from `Compiled.dispatch_value` with the generated `denote_eq`. -/
 
 namespace Examples.Binary32
 
 open LeanExe.WGSL
 
 verified_compile compiled := [axpy32, hypot32, ratio32, matVec32, piecewise32, scale32,
-  axpyArray32]
+  axpyArray32, condMix32]
 
 def scale32Gpu :=
   (Verified.WGSL.compile (e := .float32) compiled.scale32.func.body).get (by decide +kernel)
@@ -22,10 +22,13 @@ def axpyArray32Gpu :=
   (Verified.WGSL.compile (e := .float32) compiled.axpyArray32.func.body).get (by decide +kernel)
 def matVec32Gpu :=
   (Verified.WGSL.compile (e := .float32) compiled.matVec32.func.body).get (by decide +kernel)
+def condMix32Gpu :=
+  (Verified.WGSL.compile (e := .float32) compiled.condMix32.func.body).get (by decide +kernel)
 
 def verifiedScale32Kernel : LeanExe.WGSL.Module := scale32Gpu.module
 def verifiedAxpyArray32Kernel : LeanExe.WGSL.Module := axpyArray32Gpu.module
 def verifiedMatVec32Kernel : LeanExe.WGSL.Module := matVec32Gpu.module
+def verifiedCondMix32Kernel : LeanExe.WGSL.Module := condMix32Gpu.module
 
 private abbrev floatWords (x : Array Float32) : Array UInt64 :=
   x.map fun v : Float32 => v.toBits.toUInt64
@@ -102,9 +105,33 @@ theorem matVec32_dispatch (m v : Array Float32) (rows cols : UInt64) (hm : m.siz
     (compiled.matVec32.denote_eq m v rows cols) rows.toNat fits output hOut hL0 hL1 count hCover
     h32
 
+/-- The kernel computes `condMix32 x lo hi n`, under the conditions of `scale32_dispatch`. -/
+theorem condMix32_dispatch (x : Array Float32) (lo hi : Float32) (n : UInt64)
+    (hx : x.size < 2 ^ 29) (output : Array UInt32) (hOut : output.size = 2 + 2 * x.size)
+    (hL0 : output[0]? = some (UInt32.ofNat x.size)) (hL1 : output[1]? = some 0)
+    (count : Nat) (hCover : x.size ≤ count) (h32 : count ≤ 2 ^ 32) :
+    verifiedCondMix32Kernel.dispatch [(Arg.array (floatWords x)).buffer,
+        (Arg.float lo.toBits).buffer, (Arg.float hi.toBits).buffer, (Arg.word n).buffer] output
+        count = some (arrayWords (floatWords (condMix32 x lo hi n))) ∧
+      verifiedCondMix32Kernel.RaceFree [(Arg.array (floatWords x)).buffer,
+        (Arg.float lo.toBits).buffer, (Arg.float hi.toBits).buffer, (Arg.word n).buffer]
+        output.size count := by
+  have fits : condMix32Gpu.spec.Fits
+      (condMix32Gpu.args (.cons x (.cons lo (.cons hi (.cons n .nil))))) x.size := by
+    refine ⟨rfl, ?_, ?_, hx⟩
+    · change ∀ ys, Arg.array ys ∈ [Arg.array (floatWords x), Arg.float lo.toBits,
+        Arg.float hi.toBits, Arg.word n] → ys.size < 2 ^ 29
+      simp [floatWords]
+      exact hx
+    · change ∃ ys, some (Arg.array (floatWords x)) = some (.array ys) ∧ ys.size = x.size
+      exact ⟨floatWords x, rfl, by simp [floatWords]⟩
+  exact condMix32Gpu.dispatch_value _ (.cons x (.cons lo (.cons hi (.cons n .nil)))) _
+    (compiled.condMix32.denote_eq x lo hi n) x.size fits output hOut hL0 hL1 count hCover h32
+
 #print axioms compiled.bytes
 #print axioms scale32_dispatch
 #print axioms axpyArray32_dispatch
 #print axioms matVec32_dispatch
+#print axioms condMix32_dispatch
 
 end Examples.Binary32
