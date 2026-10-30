@@ -12,12 +12,12 @@ The bounds are stated with [the signed reference](../../../../LeanExe/ProofKit/F
 |---|---|---|---|
 | `sinpi (±0)`, `tanpi (±0)` | `±0` | IEEE 754-2019 9.2.1; C23 F.10.1.13 and F.10.1.14 | `sinpi_int`, `tanpi_int` with `n = 0` |
 | `sinpi (±n)`, positive integer `n` | `±0` | IEEE 754-2019 9.2.1; C23 F.10.1.13 | `sinpi_int` |
-| `cospi (±0)` | `1` | IEEE 754-2019 9.2.1; C23 F.10.1.12 | the one-step bound (`cospi_within`) |
+| `cospi (±0)` | `1` | IEEE 754-2019 9.2.1; C23 F.10.1.12 | one-step bound (`cospi_within`) |
 | `cospi (n + 1/2)`, integer `n` | `+0` | IEEE 754-2019 9.2.1; C23 F.10.1.12 | `cospi_half` |
 | `tanpi n`, integer `n ≠ 0` | `+0` for positive even and negative odd `n`, `-0` for positive odd and negative even `n` | IEEE 754-2019 9.2.1; C23 F.10.1.14 | `tanpi_int` |
 | `tanpi (n + 1/2)`, integer `n` | `+∞` for even `n`, `-∞` for odd `n` | IEEE 754-2019 9.2.1 (with the divideByZero exception); C23 F.10.1.14 | `tanpi_half` |
 | `±∞` | NaN, the canonical NaN in the deterministic profile [7] | IEEE 754-2019 Table 9.1 (outside the domain); C23 F.10.1.12 to F.10.1.14 | `nonfinite` |
-| NaN | the canonical NaN | IEEE 754-2019 9.2; C23 F.10 paragraph 14 | `nonfinite` |
+| NaN | canonical NaN | IEEE 754-2019 9.2; C23 F.10 paragraph 14 | `nonfinite` |
 
 The sources state the same rules in their comments [1, 2, 3].  `s_tanpi.c` also lists "tanpi(+-n+1/4) = +-1, for positive integers n", which IEEE 754-2019 and C23 do not list: the kernel returns 1 at a reduced argument of `1/4`, so `tanpi` returns `±1` with the sign of `x` at `±(n + 1/4)` for every integer `n ≥ 0`, and the theorems bound that result within one step.  From `2^52` on every double is an integer, so `sinpi` and `tanpi` return signed zeros there and `cospi` returns `±1` by parity, and from `2^53` on every double is even, so `cospi` returns 1.  IEEE 754-2019 asks for correct rounding of these operations in clause 9.2, Kargl states no error bound, and the one-step bound is weaker than correct rounding.  The theorems say nothing about floating-point exceptions, which the port does not compute.
 
@@ -41,7 +41,7 @@ The sources are `s_sinpi.c`, `s_cospi.c`, `s_tanpi.c`, `k_sinpi.h`, and `k_cospi
 | `FFLOOR (x, j0, ix, lx)` | `ffloor ix lx` on 64-bit words with 32-bit masks | Macro of `math_private.h` [8] on words. |
 | `if (j0 > 30) x -= 0x1p30; j0 = (uint32_t) x; if (j0 & 1)` in `sinpi` and `cospi`, where `j0 > 30` holds for integer parts from `2^31` on | `oddPart`: the same test and subtraction, then the parity from `toUInt64` | From `2^32 + 2^30` on, `x - 2^30` exceeds the range of `uint32_t`, and C leaves that conversion undefined (C23 6.3.1.4 [6]).  `s_tanpi.c` takes the parity from `(uint64_t) x & 1`, and `SinpiFloor.oddPart_spec` proves that `oddPart` gives the parity of the integer part. |
 | `__kernel_sinpi`, `__kernel_cospi`, `__kernel_tanpi` | `kernelSinpi`, `kernelCospi`, `kernelTanpi`, sharing `piProduct` | The three kernels start with the same computation of `π x` as `hi + lo`. |
-| `_2sumF (hi, lo)` | `w = hi + lo` and `(hi - w) + lo` | Macro's definition without `DEBUG` [8]. |
+| `_2sumF (hi, lo)` | `w = hi + lo` and `(hi - w) + lo` | Definition of the macro without `DEBUG` [8]. |
 | `π x` below `2^-29` | `piTiny x hx` | Shared computation of `s_sinpi.c` and `s_tanpi.c`. |
 | `vzero / vzero`, `1 / vzero`, `odd / vzero` | `0.0 / 0.0`, `1.0 / 0.0`, `odd / 0.0` | `vzero` is a volatile zero that prevents constant folding, and the dialect has no such qualifier. |
 | `(int) ax == 0` in `cospi` | `ax.toUInt64 == 0` | Both truncations give 0 wherever the test runs. |
@@ -51,7 +51,7 @@ The sources are `s_sinpi.c`, `s_cospi.c`, `s_tanpi.c`, `k_sinpi.h`, and `k_cospi
 |---|---|---|
 | `pi_hi` | `0x400921FB58000000` | `3.1415926814079285`, 26 significant bits |
 | `pi_lo` | `0xBE5DDE973DCB3B3A` | `-2.7818135228334233e-08` |
-| `0x1p53`, `0x1p-53` | `0x4340000000000000`, `0x3CA0000000000000` | the scale factors of the tiny path |
+| `0x1p53`, `0x1p-53` | `0x4340000000000000`, `0x3CA0000000000000` | scale factors of the tiny path |
 
 `s_sinpi.c`, `s_cospi.c`, and `s_tanpi.c` print the two words of `π` beside their decimal values, the port writes those words, and each decimal value rounds to its word, as the journal records for the 62 annotated constants of [the stage 6 ports](../../../../devnotes.md#2026-10-10-ports-of-sinpi-cospi-tanpi-erf-and-erfc).  `SinpiProduct.const_facts` evaluates in the kernel the values `52707179 · 2^-24` and `-8407515482766138 · 2^-78` of the two words and their rounded sum `pi_lo + pi_hi`, `0x400921FB54442D18`, the double nearest `π`.  A Python comparison of `toSingle` with C's conversion, through the `struct` module, found no difference at 200,000 random doubles from `2^-60` to 1 and at 500,000 doubles at and next to the rounding ties, as the same journal section records.
 
@@ -86,9 +86,9 @@ The proof adds 22 modules in `Library/Numerics/Float64/Sinpi/`, above the chains
 | Stage | Modules | Content |
 |---|---|---|
 | Product and kernels | `SinpiSingle`, `SinpiProduct`, `SinpiKernels`, `SinpiTanKernel` | `toSingle` within `2^-24` of its argument, relative, with at most 24 significant bits (`single_spec`), `piProduct r` within `r/2^62` of `π r` (`product_spec`), and the kernels within one step of `sin (π x)` and `cos (π x)` from `2^-54` to `1/4` and of `tan (π x)` from `2^-54` below `1/2` (`kernel_pair`, `kernel_tanpi`). |
-| Reflections and words | `SinpiReflect`, `SinpiBits`, `SinpiFloor`, `SinpiPieces`, `SinpiCommon` | Exact reflections (`half_sub`, `sub_half`, `one_sub`), `ax` as `\|x\|` and `neg` as the sign bit (`ax_abs`, `neg_flag`), `ffloor` as the integer part and `oddPart` as its parity (`ffloor_bits`, `floor_spec`, `oddPart_spec`), the reflected chains below 1 (`sin_chain`, `cos_pieces`, `tan_pieces`), the thresholds of the high word, and the integer value of every input from `2^52` on (`abs_thresholds`, `big_integer`). |
+| Reflections and words | `SinpiReflect`, `SinpiBits`, `SinpiFloor`, `SinpiPieces`, `SinpiCommon` | Exact reflections (`half_sub`, `sub_half`, `one_sub`), `ax` as `\|x\|` and `neg` as the sign bit (`ax_abs`, `neg_flag`), `ffloor` as the integer part and `oddPart` as its parity (`ffloor_bits`, `floor_spec`, `oddPart_spec`), reflected chains below 1 (`sin_chain`, `cos_pieces`, `tan_pieces`), thresholds of the high word, and integer value of every input from `2^52` on (`abs_thresholds`, `big_integer`). |
 | Branches | `SinpiSin`, `SinpiCos`, `SinpiCosFloor`, `SinpiTanpi` | `sinpi_mid`, `sinpi_floor`, `sinpi_big`, `cospi_small`, `floor_frac`, `cospi_floor`, `tanpi_mid`, and `tanpi_floor`. |
-| Tiny path | `SinpiTinyWords`, `SinpiTinySplit`, `SinpiTinyReal`, `SinpiTiny` | Exact head and tail of `x 2^53` (`tiny_bits`, `split_spec`), the error of `piTiny` (`sum_error`, `final_error`, `tiny_spec`), `sinpi_tiny`, and `tanpi_tiny`. |
+| Tiny path | `SinpiTinyWords`, `SinpiTinySplit`, `SinpiTinyReal`, `SinpiTiny` | Exact head and tail of `x 2^53` (`tiny_bits`, `split_spec`), error of `piTiny` (`sum_error`, `final_error`, `tiny_spec`), `sinpi_tiny`, and `tanpi_tiny`. |
 | Assembly | `SinpiWithin`, `SinpiExact`, `SinpiExactTan`, `SinpiTheorem`, `SinpiFile` | `cospi_big`, `tanpi_big`, the three accuracy theorems, the exact rules, the byte theorems, and the file theorems. |
 
 ### Error budget
@@ -104,7 +104,7 @@ Below `2^-29`, `SinpiTiny.tiny_spec` places `piTiny x` within `(1 + 2^-10) u · 
 | `sinpi`, `tanpi`, `0 < \|x\| < 2^-29` | `piTiny` | `(1 + 2^-10 + 5/16) u`, about `1.31 u`, relative to `max (\|π x\|, 2^-1021)`, plus `2^-1085` | `(47/32) u`, about `1.47 u` | `SinpiTiny.sinpi_tiny`, `tanpi_tiny` through `within_low` |
 | `cospi`, `\|x\| < 2^-29` | the result is 1 | `\|1 - cos (π x)\| ≤ 2^-55` (`cos_tiny`) | `0.74 u` of `TanStep.near_rel` | `SinpiCos.cospi_small` through `one_near` |
 | all three, `2^-29 ≤ \|x\| < 1` | reflection, `piProduct`, and kernel | `\|π r\|/2^63.6` for the product | `\|π r\|/2^59` in the kernel lemmas | `SinpiSin.sinpi_mid`, `SinpiCos.cospi_small`, `SinpiTanpi.tanpi_mid` |
-| all three, `1 ≤ \|x\| < 2^52` | the fraction, then as above | the same | the same | `SinpiSin.sinpi_floor`, `SinpiCosFloor.cospi_floor`, `SinpiTanpi.tanpi_floor` |
+| all three, `1 ≤ \|x\| < 2^52` | fraction, then as above | same | same | `SinpiSin.sinpi_floor`, `SinpiCosFloor.cospi_floor`, `SinpiTanpi.tanpi_floor` |
 | all three, `\|x\| ≥ 2^52` | `±0`, `±1`, or `±0` | exact | | `SinpiSin.sinpi_big`, `SinpiWithin.cospi_big`, `tanpi_big` |
 
 The margin of the tiny path is about 10 percent of its allowance.  The paths through the kernels keep at least the stated margins of the sine, cosine, and tangent proofs, 4 to 17 percent, since the product's error is less than a twentieth of the kernels' allowance for the argument.  `SinpiWithin.sinpi_within`, `cospi_within`, and `tanpi_within` combine the ranges, and the sign of `x` negates the results of `sinpi` and `tanpi`.

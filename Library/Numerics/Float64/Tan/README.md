@@ -9,10 +9,10 @@
 | Input | Result | Source of the rule | Theorem |
 |---|---|---|---|
 | `+0` | `+0` | IEEE 754-2019 9.2.1 [3]; C99 F.9.1.7 [4] | `tan_pos_zero` |
-| `-0` | `-0` | the same | `tan_neg_zero` |
-| `±∞` | the canonical NaN | IEEE 754-2019 9.2, Table 9.1 (outside the domain, a quiet NaN); C99 F.9.1.7 | `tan_nonfinite` |
-| NaN | the canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [5] | `tan_nonfinite` |
-| finite nonzero `x` with `\|x\| < 2^-27` | `x` | the one-step bound | `tan_within` |
+| `-0` | `-0` | same | `tan_neg_zero` |
+| `±∞` | canonical NaN | IEEE 754-2019 9.2, Table 9.1 (outside the domain, a quiet NaN); C99 F.9.1.7 | `tan_nonfinite` |
+| NaN | canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [5] | `tan_nonfinite` |
+| finite nonzero `x` with `\|x\| < 2^-27` | `x` | one-step bound | `tan_within` |
 
 IEEE 754-2019 lists `tan` among the recommended operations of clause 9.2, which a conforming implementation rounds correctly [3].  The one-step bound is weaker than correct rounding, and the port is not correctly rounded: the accuracy check finds 4,383 results one step from the nearest double.  The pinned `s_tan.c` states that "TRIG(x) returns trig(x) nearly rounded" [1].  The theorems say nothing about floating-point exceptions, which the port does not compute.
 
@@ -31,7 +31,7 @@ The module's functions are `alloc` (0), `release` (1), the listed definitions fr
 | C code | Port | Reason |
 |---|---|---|
 | `__ieee754_rem_pio2 (x, y)` on signed `x` | `Trig.remPio2 inv half x.abs`, with the result negated for a negative `x` | `tan` is odd.  Every operation of fdlibm's reduction and kernel is odd under rounding to nearest, so the negation gives fdlibm's result for the same reduction, as the module docstring and [the ports section](../../../../devnotes.md#2026-10-10-ports-of-log1p-atan-atan2-asin-acos-and-tan) of the journal state. |
-| `__kernel_rem_pio2` from `2^20 · π/2` on | the Payne–Hanek reduction of `Trig.remLarge` | Shared reduction.  There the reduced argument may differ from fdlibm's in its last bits. |
+| `__kernel_rem_pio2` from `2^20 · π/2` on | Payne–Hanek reduction of `Trig.remLarge` | Shared reduction.  There the reduced argument may differ from fdlibm's in its last bits. |
 | `__kernel_tan (x, y, iy)` with `iy = ±1` | `kernelTan x y odd`, with the Boolean `odd` | `odd` is `iy = -1`, read from `n &&& 1` of the count. |
 | `(double) (1 - ((hx >> 30) & 2))` | `if hx >>> 31 == 1 then -1.0 else 1.0` | Sign of `x` as `±1`, from the high word as a word. |
 | `if ((int) x == 0) return x;` below `2^-27` | `ix < 0x3e400000 && x.toUInt64 == 0` | Both truncations give 0 for every `x` below `2^-27` in magnitude, where the test runs. |
@@ -40,8 +40,8 @@ The module's functions are `alloc` (0), `release` (1), the listed definitions fr
 
 | Constant | Bits | Value |
 |---|---|---|
-| `T0` to `T6` | `0x3FD5555555555563`, `0x3FC111111110FE7A`, `0x3FABA1BA1BB341FE`, `0x3F9664F48406D637`, `0x3F8226E3E96E8493`, `0x3F6D6D22C9560328`, `0x3F57DBC8FEE08315` | the kernel's coefficients |
-| `T7` to `T12` | `0x3F4344D8F2F26501`, `0x3F3026F71A8D1068`, `0x3F147E88A03792A6`, `0x3F12B80F32F0A7E9`, `0xBEF375CBDB605373`, `0x3EFB2A7074BF7AD4` | the kernel's coefficients |
+| `T0` to `T6` | `0x3FD5555555555563`, `0x3FC111111110FE7A`, `0x3FABA1BA1BB341FE`, `0x3F9664F48406D637`, `0x3F8226E3E96E8493`, `0x3F6D6D22C9560328`, `0x3F57DBC8FEE08315` | coefficients of the kernel |
+| `T7` to `T12` | `0x3F4344D8F2F26501`, `0x3F3026F71A8D1068`, `0x3F147E88A03792A6`, `0x3F12B80F32F0A7E9`, `0xBEF375CBDB605373`, `0x3EFB2A7074BF7AD4` | coefficients of the kernel |
 | `pio4`, `pio4lo` | `0x3FE921FB54442D18`, `0x3C81A62633145C07` | `π/4` rounded, and the rounded remainder |
 
 Each of the 16 decimal values in `k_tan.c` rounds to the word printed beside it, and the 15 words written as `Float.ofBits` in `Tan.lean` are among those words.  The journal records the same check for all 77 annotated constants of the `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan` sources ([the ports section](../../../../devnotes.md#2026-10-10-ports-of-log1p-atan-atan2-asin-acos-and-tan)).  Against `π` from Machin's formula at 1,600 bits, `pio4` is `π/4` rounded to nearest and `pio4lo` is the remainder rounded to nearest, so the pair lies within `2^-110` of `π/4`, and the proof uses the weaker `2^-68` that `TanBigWords.pi_close` derives from Mathlib's bounds on `π`.  `TanKernelPoly` restates `T0` to `T12` as `PolyBound.ratOfWord` of the same words, and `k_tan.c` at the pinned commit has a SHA-256 beginning `0021bc1b`, the hash that [the polynomial section](../../../../devnotes.md#2026-10-10-kernel-polynomials-of-stage-3-track-poly) of the journal records for its copy.
@@ -73,11 +73,11 @@ The proof adds 16 modules in `Library/Numerics/Float64/Tan/` to the chain of [th
 | Stage | Modules | Content |
 |---|---|---|
 | Kernel on words | `TanWords` | `kernelTan` as `smallW` below `0x3FE59428` and `bigW` from it on. |
-| Polynomial | `TanKernelPoly`, `TanPoly`, `TanMath` | Polynomial against `tan`, the rounding error of the correction `c`, and the real facts: `cos ≥ 0.76` on `\|x\| ≤ 0.6745`, and the kernel's first-order tail. |
+| Polynomial | `TanKernelPoly`, `TanPoly`, `TanMath` | Polynomial against `tan`, rounding error of the correction `c`, and real facts: `cos ≥ 0.76` on `\|x\| ≤ 0.6745`, and first-order tail of the kernel. |
 | Final steps | `TanStep` | `near_bin` and `near_rel`, for a word nearest to a real `t` close to `T`. |
 | Even path | `TanTrunc`, `TanEven` | Truncation to 32 high bits, Sterbenz's lemma, and `even_within`. |
 | Odd path | `TanComp`, `TanOdd`, `TanOddStep` | Compensated reciprocal in real numbers, `odd_spec`, and `odd_within`. |
-| Path from `0.67434` | `TanBigReal`, `TanBigWords`, `TanBigClose`, `TanBigStep` | Real error of the final expression (`big_real`), the argument `π/4 - \|y0 + y1\|` and the chain of operations (`arg_spec`, `chain_spec`), the identities of `T_v (y) = v - 2 y v/(y + v)`, and `big_within`. |
+| Path from `0.67434` | `TanBigReal`, `TanBigWords`, `TanBigClose`, `TanBigStep` | Real error of the final expression (`big_real`), argument `π/4 - \|y0 + y1\|` and chain of operations (`arg_spec`, `chain_spec`), identities of `T_v (y) = v - 2 y v/(y + v)`, and `big_within`. |
 | Assembly | `TanWith`, `TanTheorem` | `tan_quadrant`, `reduced_tan`, `tan_within`, and the byte theorem. |
 
 ### Error budget
@@ -91,10 +91,10 @@ The final steps use the error of a real `t` to which the result is a nearest wor
 | `0 < \|x\| < 2^-27` | the result is `x` | `\|tan x - x\| ≤ \|x\|³` | `2^-54` relative to the word | `TanWith.tiny_tan` through `F64SelfStep.self_step` |
 | even `N` or no reduction, `X < 0.4643` | `y0 + c` | `0.6 u X` (`TanOddStep.even_err_odd`) | `0.74 u \|tan r\|` | `TanEven.even_within` through `near_rel` |
 | even `N` or no reduction, `0.4643 ≤ X < 0.67434` | `y0 + c` | at most `0.9397 u` (`TanOddStep.err_b4`), below one spacing of `[1/2, 1)` | one spacing, `u` | `TanEven.even_within` through `near_bin` |
-| odd `N`, `X < 0.4643` | the compensated reciprocal | within the allowance, from `even_err ≤ 0.6 u X` and `odd_spec` | `0.74 u \|tan r\|^-1` | `TanOddStep.odd_within` through `near_rel` |
-| odd `N`, `0.4643 ≤ X < 0.67434` | the compensated reciprocal | at most 0.90 of a spacing of `[1, 2)`, on four intervals with lower bounds on `tan` from `Real.sin_bound` and `Real.cos_bound` | one spacing, `2u` | `TanOddStep.odd_within` through `near_bin` |
+| odd `N`, `X < 0.4643` | compensated reciprocal | within the allowance, from `even_err ≤ 0.6 u X` and `odd_spec` | `0.74 u \|tan r\|^-1` | `TanOddStep.odd_within` through `near_rel` |
+| odd `N`, `0.4643 ≤ X < 0.67434` | compensated reciprocal | at most 0.90 of a spacing of `[1, 2)`, on four intervals with lower bounds on `tan` from `Real.sin_bound` and `Real.cos_bound` | one spacing, `2u` | `TanOddStep.odd_within` through `near_bin` |
 | `0.6743 ≤ X ≤ 0.78541`, `\|y\| ≥ 0.05` | `±(v - 2 (y - (w²/(w + v) - c)))` | below `0.95 u`, with `T` in `[0.79, 0.91]` or `[-1.27, -1.09]` | one spacing, `u` for even `N` and `2u` for odd `N` | `TanBigStep.big_within` through `near_bin` |
-| `0.6743 ≤ X ≤ 0.78541`, `\|y\| < 0.05` | the same | below `0.45 u` with `\|T\| ≥ 0.9` | `0.74 u \|T\|` | `TanBigStep.big_within` through `near_rel` |
+| `0.6743 ≤ X ≤ 0.78541`, `\|y\| < 0.05` | same | below `0.45 u` with `\|T\| ≥ 0.9` | `0.74 u \|T\|` | `TanBigStep.big_within` through `near_rel` |
 
 `TanOdd.odd_spec` shows that the compensated reciprocal is a nearest word to a real `τ` within `u/(2^11 |W|)` of `-1/W` for `W = y0 + c`: the truncated heads have 21 significant bits, so `t z` is exact, and the other roundings act on quantities of size `2^-17`.  On the path from `0.67434`, `TanBigWords.arg_spec` places the argument `y` within `u |P - |y0 + y1|| + 2^-100` of `P - |y0 + y1|`, where the two words `P` lie within `2^-68` of `π/4` by Mathlib's `Real.pi_gt_d20` and `Real.pi_lt_d20` [6], and the first difference is exact by Sterbenz's lemma.  `TanBigReal.big_real` bounds the computed value within `2.4 u |y| + 4 η` of `W v/(W + v)`, and `TanBigClose.tan_quarter` proves `T_1 (tan b) = tan (π/4 - b)` and `T_{-1} (tan b) = -1/tan (π/4 - b)`, against which `big_close_hi` and `big_close_lo` bound the result.  `TanWith.tan_quadrant` turns `tan r` or `-1/tan r` into `tan |x|` by the parity of `N`, and the result is negated for a negative `x`.
 
@@ -113,7 +113,7 @@ The proof reuses [the sine and cosine proof](../Trig/README.md#shared-modules) a
 | Weighted polynomial bound, in eight upper and eight lower pieces over `x²` in `[0, 59603/131072]`, with bisection to depth 18 | `TanKernelPoly.tan_up_1` to `tan_up_8`, `tan_lo_1` to `tan_lo_8`, `tan_up_covers`, `tan_lo_covers` |
 | Kernel polynomial in `x²` within 1/4 of 1 on the same range | `TanKernelPoly.tan_range` |
 | Bounds on the rational values of `T0` to `T12` | `TanPoly.coeffs_checked` |
-| Words `pio4` and `pio4lo` and the thresholds `0x3E400000` and `0x3FE59428` as rationals | `TanBigWords.value_pio4`, `value_pio4lo`, `TanWith.thresholds` |
+| Words `pio4` and `pio4lo` and thresholds `0x3E400000` and `0x3FE59428` as rationals | `TanBigWords.value_pio4`, `value_pio4lo`, `TanWith.thresholds` |
 | Function 13 is exported as `tan` | `TanTheorem.tan_export` |
 | The file's bytes equal the encoder's | `TanFile.tan_file` |
 

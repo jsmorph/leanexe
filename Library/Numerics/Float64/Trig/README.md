@@ -11,10 +11,10 @@ The bound is stated with [the signed reference](../../../../LeanExe/ProofKit/F64
 | Input | `sin` | `cos` | Source of the rule | Theorems |
 |---|---|---|---|---|
 | `+0` | `+0` | `1` | IEEE 754-2019 9.2.1 [10]; C99 F.9.1.5 and F.9.1.6 [11] | `sin_pos_zero`, `cos_pos_zero` |
-| `-0` | `-0` | `1` | the same | `sin_neg_zero`, `cos_neg_zero` |
-| `±∞` | the canonical NaN | the canonical NaN | IEEE 754-2019 9.2, Table 9.1 (outside the domain, a quiet NaN); C99 F.9.1.5 and F.9.1.6 | `sin_nonfinite`, `cos_nonfinite` |
-| NaN | the canonical NaN | the canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [12] | `sin_nonfinite`, `cos_nonfinite` |
-| finite nonzero `x` with `\|x\| < 2^-26` | `x` | | the one-step bound | `sin_within` |
+| `-0` | `-0` | `1` | same | `sin_neg_zero`, `cos_neg_zero` |
+| `±∞` | canonical NaN | canonical NaN | IEEE 754-2019 9.2, Table 9.1 (outside the domain, a quiet NaN); C99 F.9.1.5 and F.9.1.6 | `sin_nonfinite`, `cos_nonfinite` |
+| NaN | canonical NaN | canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [12] | `sin_nonfinite`, `cos_nonfinite` |
+| finite nonzero `x` with `\|x\| < 2^-26` | `x` | | one-step bound | `sin_within` |
 
 IEEE 754-2019 lists `sin` and `cos` among the recommended operations of clause 9.2, which a conforming implementation rounds correctly [10].  The one-step bound is weaker than correct rounding, and the port is not correctly rounded: the accuracy check finds 7,400 results that differ from the nearest double.  The pinned `s_sin.c` and `s_cos.c` state only that "TRIG(x) returns trig(x) nearly rounded" [3].  The theorems say nothing about floating-point exceptions, which the port does not compute.
 
@@ -46,12 +46,12 @@ The sources are FreeBSD msun's `k_sin.c`, `k_cos.c`, `s_sin.c`, `s_cos.c`, and `
 
 | Constant | Bits | Value |
 |---|---|---|
-| `S1` to `S6` | `0xBFC5555555555549`, `0x3F8111111110F8A6`, `0xBF2A01A019C161D5`, `0x3EC71DE357B1FE7D`, `0xBE5AE5E68A2B9CEB`, `0x3DE5D93A5ACFD57C` | the sine kernel's coefficients |
-| `C1` to `C6` | `0x3FA555555555554C`, `0xBF56C16C16C15177`, `0x3EFA01A019CB1590`, `0xBE927E4F809C52AD`, `0x3E21EE9EBDB4B1C4`, `0xBDA8FAE9BE8838D4` | the cosine kernel's coefficients |
+| `S1` to `S6` | `0xBFC5555555555549`, `0x3F8111111110F8A6`, `0xBF2A01A019C161D5`, `0x3EC71DE357B1FE7D`, `0xBE5AE5E68A2B9CEB`, `0x3DE5D93A5ACFD57C` | coefficients of the sine kernel |
+| `C1` to `C6` | `0x3FA555555555554C`, `0xBF56C16C16C15177`, `0x3EFA01A019CB1590`, `0xBE927E4F809C52AD`, `0x3E21EE9EBDB4B1C4`, `0xBDA8FAE9BE8838D4` | coefficients of the cosine kernel |
 | `invpio2` | `0x3FE45F306DC9C883` | 53 bits of `2/π` |
-| `pio2_1`, `pio2_1t` | `0x3FF921FB54400000`, `0x3DD0B4611A626331` | the first 33 bits of `π/2` and the rounded remainder |
-| `pio2_2`, `pio2_2t` | `0x3DD0B4611A600000`, `0x3BA3198A2E037073` | the second 33 bits and the remainder |
-| `pio2_3`, `pio2_3t` | `0x3BA3198A2E000000`, `0x397B839A252049C1` | the third 33 bits and the remainder |
+| `pio2_1`, `pio2_1t` | `0x3FF921FB54400000`, `0x3DD0B4611A626331` | first 33 bits of `π/2` and rounded remainder |
+| `pio2_2`, `pio2_2t` | `0x3DD0B4611A600000`, `0x3BA3198A2E037073` | second 33 bits and remainder |
+| `pio2_3`, `pio2_3t` | `0x3BA3198A2E000000`, `0x397B839A252049C1` | third 33 bits and remainder |
 | `halfPi` | `0xC90FDAA22168C234`, `0xC4C6628B80DC1CD1` | `π · 2^126`, truncated |
 | `invPi` | word 0 is 0, and words 1 to 19 hold 1,216 bits | `2/π`, truncated after 1,216 bits |
 
@@ -91,8 +91,8 @@ The table groups the proof modules in `Library/Numerics/Float64/Trig/` by stage.
 | Kernel polynomials | `TrigKernelPoly`, `TrigKernelWide` | Polynomials against `sin` and `cos` on `\|x\| ≤ 0.7854` and on `\|x\| ≤ 0.78541`. |
 | Kernel rounding | `TrigApprox`, `TrigKernelWords`, `TrigSinTail`, `TrigSinDirect`, `TrigKernelSpec`, `TrigCosKernel` | Error tracking with magnitude bounds, the kernels on words, and the evaluated kernels against `sin (x + y)` and `cos (x + y)`. |
 | Distance | `TrigDistance` | `quadrant_distance`. |
-| Large reduction | `TrigWords`, `TrigLargeInt`, `TrigLargeFloat`, `TrigLarge`, `TrigLargeSpec` | Word routines, the integer stages, the exact two-sum, and `remLarge_spec`. |
-| Small and medium reductions | `TrigSmall`, `TrigMediumConst`, `TrigMediumFn`, `TrigMediumCases`, `TrigMediumA`, `TrigMediumB`, `TrigMediumC`, `TrigMedium` | One-step reduction for `k` from 1 to 4, the six pieces of `π/2`, the count, and the three outcomes of the medium reduction. |
+| Large reduction | `TrigWords`, `TrigLargeInt`, `TrigLargeFloat`, `TrigLarge`, `TrigLargeSpec` | Word routines, integer stages, exact two-sum, and `remLarge_spec`. |
+| Small and medium reductions | `TrigSmall`, `TrigMediumConst`, `TrigMediumFn`, `TrigMediumCases`, `TrigMediumA`, `TrigMediumB`, `TrigMediumC`, `TrigMedium` | One-step reduction for `k` from 1 to 4, six pieces of `π/2`, count, and three outcomes of the medium reduction. |
 | Assembly | `TrigReduce`, `TrigStep`, `TrigQuadrant`, `TrigSinCos`, `TrigTheorem` | `remPio2_spec`, the final steps, the quadrants, `sin_within`, `cos_within`, and the byte theorems. |
 
 ### Reduction

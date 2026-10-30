@@ -10,8 +10,8 @@ A finite nonzero word `w` with sign `neg`, significand `Q`, and binade `E` round
 |---|---|---|
 | finite nonzero, shortest `t · 10^k` with `t` not divisible by 10 | `sciLayout neg t k`: the digits of `t` with a point after the first when there are several, `e`, and the exponent of the first digit, with `-` when negative: `1.5e3`, `5e-324`, `-1.25e-1` | `ecmaLayout neg t k`: plain notation when the point position `n = k + digits` lies from -5 to 21, otherwise an exponent with `+` or `-`: `1500`, `0.000001`, `1e-7`, `1.5e+21` |
 | `+0`, `-0` | `0e0`, `-0e0` | `0`, `-0` |
-| infinities | `Infinity`, `-Infinity` | the same |
-| NaNs | `NaN` | the same |
+| infinities | `Infinity`, `-Infinity` | same |
+| NaNs | `NaN` | same |
 
 ECMA-262 prints negative zero as `0`; the printers print `-0`, so that the round trip through the parsers recovers every word (decision 7 of the research report).  The strings of finite words are numbers of RFC 8259's grammar, and every string is a number of the general grammar of [the parser document](../ParseFloat/README.md).  The theorems of `PrintFloatTheorem`, for every word `w`:
 
@@ -47,12 +47,12 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 
 | Function | Role |
 |---|---|
-| `limbsOf`, `quotAt` | Word as limbs, and the quotient of `N · 2 ^ sn` by `2 ^ sd · 10 ^ j` with its remainder flag, for a decimal exponent `j` of either sign |
-| `range`, `found` | Least multiplier and the greatest plus one at exponent `j`, and whether there is one |
+| `limbsOf`, `quotAt` | Word as limbs, and quotient of `N · 2 ^ sn` by `2 ^ sd · 10 ^ j` with its remainder flag, for a decimal exponent `j` of either sign |
+| `range`, `found` | Least multiplier and greatest plus one at exponent `j`, and whether there is one |
 | `nearest`, `clamp` | Integer nearest to `v` from `⌊2 v⌋` and its remainder flag, and its clamp into a run |
-| `startExp`, `shortest` | Start of the search, the search for `J`, and the choice of the decimal |
+| `startExp`, `shortest` | Start of the search, search for `J`, and choice of the decimal |
 | `numDigits`, `digitAt` | Number of digits of a word and its digit `i` as an ASCII byte |
-| `digitsFrom`, `byte1`, `noBytes`, `zeros` | Run of the digits of a word, one byte, no bytes, and a run of zeros, as arrays |
+| `digitsFrom`, `byte1`, `noBytes`, `zeros` | Run of the digits of a word, one byte, no bytes, and run of zeros, as arrays |
 | `sciLayoutW`, `ecmaLayoutW` | Two layouts as concatenations of those arrays |
 | `fixed`, `special` | Strings of the non-finite words and the zeros |
 | `print64With`, `print32With` | Fields of the word and the dispatch |

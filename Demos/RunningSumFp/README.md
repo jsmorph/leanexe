@@ -45,7 +45,7 @@ signed zero, infinities, and canonical NaNs.
 | [Numeric operations](Program.lean) | CR removal, the existing general binary64 parser, and scientific rendering with LF. |
 | [Arithmetic correspondence](ArithmeticProof.lean) | Parser acceptance and bits, binary64 addition, and renderer properties. |
 | [Stream process](Stream.lean) | Buffered input, partial lines, pending output, EOF, and error handling. |
-| [Stream view](StreamView.lean), [kernel](Kernel.lean), and [termination](Termination.lean) | Relation between the process and [the shared stream process](../StreamFold/README.md), the line kernel's specification, and the progress of each step. |
+| [Stream view](StreamView.lean), [kernel](Kernel.lean), and [termination](Termination.lean) | Relation between the process and [the shared stream process](../StreamFold/README.md), specification of the line kernel, and progress of each step. |
 | [Line model](Model.lean) | `ShortLines`, the line rooms that it implies, and the outputs and status of the kernel's fold over the input lines. |
 | [Line limit](Limits.lean) | `InputLimits L`, the kernel specification `limitSpec L`, the invariant `LimitInv L` of the reached states, and the sizes of every state that a step returns. |
 | [Action compilation](Wasi.lean) | Pure helper compilation and reflected effectful begin/step functions. |
@@ -54,7 +54,7 @@ signed zero, infinities, and canonical NaNs.
 | [Printer charges](PrintCharges.lean) and [parser charges](ParseCharges.lean) | Bounds on the generated allocation bounds of the multiprecision arithmetic, the printer, and the parser, with the sizes of their arrays. |
 | [Step charges](Charges.lean) | Charges of `begin` and of each step, and their bound for states within the limit. |
 | [Stream correctness](StreamCorrect.lean) | `InputValues`, sequential binary64 output of the lines before the first rejected line, and source process termination. |
-| [Compiled correctness](Correct.lean) | Charges derived from the limit, and eventual accepted exit with status 0 or 28 and the sequential binary64 output from the modeled initial store. |
+| [Compiled correctness](Correct.lean) | Charges derived from the limit, and eventual accepted exit with status 0 or 28 and sequential binary64 output from the modeled initial store. |
 | [Native executable](Native.lean) | Same process with the shared [POSIX fd 0 reader](../RunningSum/read.c) and flushed output streams. |
 
 `InputValues input numbers status` holds when `numbers` are the numbers that the input lines

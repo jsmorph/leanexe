@@ -8,7 +8,7 @@ The module `xxhash64` computes XXH64 of the xxHash specification [1].  Its expor
 
 | Export | Function | Arguments | Result | Call theorem |
 |---|---|---|---|---|
-| `xxh64` | 5 | Message array, `n`, and the seed. | XXH64 of the `n` bytes with the seed. | `xxh64_call` |
+| `xxh64` | 5 | Message array, `n`, and seed. | XXH64 of the `n` bytes with the seed. | `xxh64_call` |
 
 A count beyond an array's bytes is accepted, and the missing bytes read as zero in both the program and the theorems.
 

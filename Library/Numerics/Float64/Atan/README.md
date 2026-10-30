@@ -10,12 +10,12 @@
 |---|---|---|---|
 | `atan (±0)` | `±0` | IEEE 754-2019 9.2.1 [5]; C99 F.9.1.3 [6] | `atan_zero`, `atan_neg_zero` |
 | `atan (±∞)` | `±π/2` rounded: `0x3FF921FB54442D18` and `0xBFF921FB54442D18` | IEEE 754-2019 9.2.1; C99 F.9.1.3 | `atan_pos_inf`, `atan_neg_inf` |
-| `atan` of NaN | the canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [7] | `atan_nan` |
+| `atan` of NaN | canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [7] | `atan_nan` |
 | `atan2 (±0, x)`, `x` not NaN | `±0` when the sign bit of `x` is clear, `±π` rounded when it is set, `x = -0` included | IEEE 754-2019 9.2.1; C99 F.9.1.4 | `atan2_zero` |
 | `atan2 (±∞, x)`, finite `x` | `±π/2` rounded | IEEE 754-2019 9.2.1; C99 F.9.1.4 | `atan2_inf_y` |
 | `atan2 (y, ±∞)`, finite nonzero `y` | `±0` for `+∞`, `±π` rounded for `-∞`, with the sign of `y` | IEEE 754-2019 9.2.1; C99 F.9.1.4 | `atan2_inf_x` |
 | `atan2 (±∞, ±∞)` | `±π/4` and `±3π/4` rounded | IEEE 754-2019 9.2.1; C99 F.9.1.4 | `atan2_inf_both` |
-| `atan2` with a NaN argument | the canonical NaN in Talos, from `x + y` | IEEE 754-2019 9.2; C99 F.9 paragraph 11 | `atan2_nan` |
+| `atan2` with a NaN argument | canonical NaN in Talos, from `x + y` | IEEE 754-2019 9.2; C99 F.9 paragraph 11 | `atan2_nan` |
 | `atan2 (y, ±0)`, finite nonzero `y` | `±π/2` rounded | IEEE 754-2019 9.2.1; C99 F.9.1.4 | within two steps, `AtanTwoTheorem.xzero_case` |
 
 The rounded constants are the words `0x400921FB54442D18` (`π`), `0x3FF921FB54442D18` (`π/2`), `0x3FE921FB54442D18` (`π/4`), and `0x4002D97C7F3321D2` (`3π/4`), with the sign bit set for the negative results, and each is the nearest double to its value.  IEEE 754-2019 recommends both operations in clause 9.2, where a conforming implementation rounds correctly [5].  fdlibm states no error bound for either function, and the theorems say nothing about floating-point exceptions, which the port does not compute.
@@ -45,10 +45,10 @@ The sources are `lib/msun/src/s_atan.c` and `lib/msun/src/e_atan2.c` of FreeBSD 
 | C code | Port | Reason |
 |---|---|---|
 | `id = -1` for the direct polynomial, and the arrays `atanhi[id]`, `atanlo[id]` | `id = 4`, with the entries selected by comparisons | The comparisons select the same entries, and the module needs no table. |
-| Volatile read of `atanlo[3]` in `s_atan.c`, and the volatile `tiny` and `pi_lo` of `e_atan2.c` | their values | The qualifier prevents constant folding, and the dialect has no such qualifier. |
+| Volatile read of `atanlo[3]` in `s_atan.c`, and volatile `tiny` and `pi_lo` of `e_atan2.c` | their values | The qualifier prevents constant folding, and the dialect has no such qualifier. |
 | `huge + x > one`, `pi + tiny`, `pi_o_2 + tiny`, and the other sums with `tiny` | kept as computed | They serve only to raise inexact.  The test holds for every `\|x\| < 1` (`AtanTheorem.huge_gt`), and the sums equal the rounded constants (`AtanTwoBits.half_bits`, `half_neg_bits`, and the words of `AtanTwoSpecial`). |
 | Signed `int32_t` high words | `UInt64` words with the sign bit tested apart | The dialect has no signed integers. |
-| `k = (iy - ix) >> 20`, an arithmetic shift | the shift of the 64-bit two's complement difference, with the top 20 bits filled when it is negative | The same value as a two's complement word, and `k > 60` and `k < -60` test the sign bit first. |
+| `k = (iy - ix) >> 20`, an arithmetic shift | shift of the 64-bit two's complement difference, with the top 20 bits filled when it is negative | The same value as a two's complement word, and `k > 60` and `k < -60` test the sign bit first. |
 | `nan_mix (x, y)`, a `long double` sum in `math_private.h` [2] | `x + y` | Both give a NaN, which is the canonical NaN in the deterministic profile. |
 | `switch (m)` | comparisons on `m` | The dialect has no `switch`. |
 
@@ -104,7 +104,7 @@ The table lists the proof modules in dependency order.  The `atan` chain ends in
 | `AtanTheoremCases` | Eight reduced cases within one step. |
 | `AtanTheoremSmall` | `\|x\| < 7/16`: below `2^-27`, from `2^-27` to `1/4`, and two pieces up to `7/16`. |
 | `AtanTheorem`, `AtanTheoremSpecial` | `atan_within_one` and the exceptional values. |
-| `AtanTwoBranches`, `AtanTwoQuot`, `AtanTwoErr`, `AtanTwoAtan` | Branches of `atan2`, the rounded quotient `q` within `2^-53 Q + 2^-1075` of `Q = \|y/x\|`, the change of `arctan` between them, and `atan_good` for every branch of `atan` at `q`. |
+| `AtanTwoBranches`, `AtanTwoQuot`, `AtanTwoErr`, `AtanTwoAtan` | Branches of `atan2`, rounded quotient `q` within `2^-53 Q + 2^-1075` of `Q = \|y/x\|`, change of `arctan` between them, and `atan_good` for every branch of `atan` at `q`. |
 | `AtanTwoArg`, `AtanTwoBits`, `AtanTwoTheorem` | `Complex.arg` through `arctan (y/x)`, the word tests of `atan2`, and `atan2_within_two`. |
 | `AtanTwoSpecial`, `AtanTwoNaN`, `AtanBytes`, `AtanFile` | Exceptional values, the NaN results of `atan2`, byte theorems, and the file theorem. |
 

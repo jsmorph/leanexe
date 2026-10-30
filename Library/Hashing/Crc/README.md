@@ -29,7 +29,7 @@ A count beyond an array's bytes is accepted, and the missing bytes read as zero 
 |---|---|
 | [`Division.lean`](Division.lean) | `lfsr_spec`, `crc32_eq`, and `crc32c_eq` for the computable division; `rfcProcess_eq`; `g32_eq`, `g32c_eq`, and `g32c_explicit` for the generators. |
 | [`Proof.lean`](Proof.lean) | `Holds`, which reads a register as 32 bits; `TableOf`, which `decide` checks for both tables against the division; `byteStep_holds`, the eight steps of a byte; `loop_holds`; and `crc32_spec`, `crc32c_spec`, `crc32Update_spec`, and `crc32cUpdate_spec`. |
-| [`Compiled.lean`](Compiled.lean) | Verified compilation of `updateWith`, `crcWith`, and the four wrappers. |
+| [`Compiled.lean`](Compiled.lean) | Verified compilation of `updateWith`, `crcWith`, and four wrappers. |
 | [`Bytes.lean`](Bytes.lean) | `Ready`, `ready_initial`, the four export facts, and the four call theorems, from the generated `implements` theorems and the theorems above. |
 | [`File.lean`](File.lean) | The emitted file holds the module's encoding and decodes to the module. |
 

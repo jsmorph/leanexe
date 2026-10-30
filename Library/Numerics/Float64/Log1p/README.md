@@ -11,9 +11,9 @@
 | `+0`, `-0` | `+0`, `-0` | IEEE 754-2019 9.2.1 (`logp1 (±0) = ±0`) [5]; C99 F.9.3.9 [6] | `log1p_zero`, `log1p_neg_zero` |
 | `-1` | `-∞` | IEEE 754-2019 9.2.1 (divideByZero); C99 F.9.3.9 | `log1p_neg_one` |
 | `+∞` | `+∞` | IEEE 754-2019 9.2.1; C99 F.9.3.9 | `log1p_pos_inf` |
-| finite `x < -1` | the canonical NaN | IEEE 754-2019 Table 9.1 (domain `[-1, +∞]`, invalid below); C99 F.9.3.9 | `log1p_below` |
-| `-∞` | the canonical NaN | C99 F.9.3.9 (`x < -1`) | `log1p_neg_inf` |
-| NaN | the canonical NaN `0x7FF8000000000000` | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [7] | `log1p_nan` |
+| finite `x < -1` | canonical NaN | IEEE 754-2019 Table 9.1 (domain `[-1, +∞]`, invalid below); C99 F.9.3.9 | `log1p_below` |
+| `-∞` | canonical NaN | C99 F.9.3.9 (`x < -1`) | `log1p_neg_inf` |
+| NaN | canonical NaN `0x7FF8000000000000` | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [7] | `log1p_nan` |
 
 IEEE 754-2019 names this operation `logp1` and recommends it in clause 9.2, where a conforming implementation rounds correctly [5].  fdlibm states that "the error is always less than 1 ulp" [1].  An error below one unit implies the one-step bound, but one step allows errors up to one and a half units, so the theorem proves a weaker statement than fdlibm's.  The theorems say nothing about floating-point exceptions, which the port does not compute.
 
@@ -33,7 +33,7 @@ The source is `lib/msun/src/s_log1p.c` of FreeBSD [1].  Its notice reads "Copyri
 |---|---|---|
 | End of the function after the reduction | `log1pTail f c k hu` | One function serves both the `k = 0` path and the normalized paths. |
 | Signed `int32_t` high words `hx`, `hu` | `UInt64` words, with the sign bit tested apart | A signed comparison with a positive bound becomes a sign test and an unsigned comparison: `hx < 0x3FDA827A` is `neg ∨ hx < 0x3FDA827A`. |
-| Signed `k`, converted with `(double) k` | a two's complement word, converted as `Log.logCore` converts its `k` | The dialect has no signed integers. |
+| Signed `k`, converted with `(double) k` | two's complement word, converted as `Log.logCore` converts its `k` | The dialect has no signed integers. |
 | `-two54/vzero` | `-two54 / 0.0` | The volatile zero serves only to raise divideByZero, and the value is `-∞` either way. |
 | `two54 + x > zero` | kept as a test | It serves only to raise inexact, and it holds for every `\|x\| < 2^-29`, so it changes no result. |
 | `c` unset on the `k = 0` path | `c = 0.0` | C never reads `c` there. |

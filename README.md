@@ -184,8 +184,8 @@ Floating-point theorems use WebAssembly's deterministic profile, and the Wasmtim
 | [Verified compiler internals](Verified/README.md) | Code scheme, proof structure, and reflector. |
 | [WASI manual](docs/wasi.md) | Native action and byte APIs, `verified_compile_wasi`, callable and command exports, execution proofs, host policies, and tests. |
 | [WASI design](docs/verified-wasi-design.md) | Reviewed architecture, pinned sources, host assumptions, proof boundaries, acceptance work, and design decisions. |
-| [Wasm-to-C translator design](docs/native-translator.md) | C subset and its Lean semantics, the translation, `p.f.native`, the translation without the alignment test, the trusted base of the native path, and milestones. |
-| [Bare-metal design](docs/native-bare-metal.md) | Generated `main`, the whole-program theorem, the Rocq step to Asm, the startup code, inputs, the stack bound, the trusted base, and tests. |
+| [Wasm-to-C translator design](docs/native-translator.md) | C subset and its Lean semantics, translation, `p.f.native`, translation without the alignment test, trusted base of the native path, and milestones. |
+| [Bare-metal design](docs/native-bare-metal.md) | Generated `main`, whole-program theorem, Rocq step to Asm, startup code, inputs, stack bound, trusted base, and tests. |
 | [Design document](docs/design.md) | Architecture, decisions, proof scope, tests, and open work. |
 | [Development journal](devnotes.md) | Record of the work. |
 | [Algorithm library](Library/README.md) | Native algorithms, compilation modules, mathematical proofs, and imports. |
@@ -196,15 +196,15 @@ Floating-point theorems use WebAssembly's deterministic profile, and the Wasmtim
 
 | Directory | Contents |
 |---|---|
-| [Shared libraries and LeanExe compiler](LeanExe) | Dialect, original compiler and IR, runtime, correctness statements, encoding, proof lemmas, shared WGSL translation, the WASI action API, and the translator to C with its Lean copy of Clight and its proofs. |
+| [Shared libraries and LeanExe compiler](LeanExe) | Dialect, original compiler and IR, runtime, correctness statements, encoding, proof lemmas, shared WGSL translation, WASI action API, and translator to C with its Lean copy of Clight and its proofs. |
 | [Verified compiler](Verified) | Typed source language, compiler, universal proof, reflector, alignment proof, WGSL lowering, WASI compiler, native and bare-metal theorem generation, and compiled examples. |
 | [Reusable algorithms](Library/README.md) | Implementations, mathematical specifications, accuracy and period proofs, and compiler proofs, grouped by algorithm family. |
 | [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, the order book, the slew planner, and integer and binary64 running sums, with application proofs and host programs. |
 | [Compiler examples](Examples) | Small programs, specifications, proofs, and cases that demonstrate compiler features. |
-| [Manuals and design](docs) | Compiler manuals, the WASI, translator, and bare-metal designs, and the design document. |
+| [Manuals and design](docs) | Compiler manuals, WASI, translator, and bare-metal designs, and design document. |
 | [Proof guidance](ltg) | LTG knowledge base and its declaration checker. |
-| [Rocq proofs](rocq) | Composition of CompCert's proofs from Clight to Asm and the uniqueness lemmas, checked against a CompCert 3.18 tree. |
-| [Tools](tools) | Lean runner, module and shader emitters, execution hosts, the native host, the bare-metal startup code and checks, build scripts, and application tools. |
+| [Rocq proofs](rocq) | Composition of CompCert's proofs from Clight to Asm and uniqueness lemmas, checked against a CompCert 3.18 tree. |
+| [Tools](tools) | Lean runner, module and shader emitters, execution hosts, native host, bare-metal startup code and checks, build scripts, and application tools. |
 | [Tests](tests) | Module, decoder, numerical, allocation, WASI, native, bare-metal, GPU, and complete-generation tests, plus the browser pages. |
 | [Run records](data), [reports](paper) | Measurements, reproduction records, papers, and their review history. |
 

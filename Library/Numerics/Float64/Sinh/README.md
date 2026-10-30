@@ -8,9 +8,9 @@
 
 | Input | `sinh` | `cosh` | Source of the rule | Port |
 |---|---|---|---|---|
-| `+0`, `-0` | the same zero | `1` | IEEE 754-2019 9.2.1 [4]; C99 F.9.2.5 and F.9.2.4 [5] | `x` below `2^-28`, and `1 + expm1 0` |
-| `+∞`, `-∞` | the same infinity | `+∞` | IEEE 754-2019 9.2.1; C99 F.9.2.5 and F.9.2.4 | `x + x` and `x · x` |
-| NaN | the canonical NaN | the canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [6] | `x + x` and `x · x` |
+| `+0`, `-0` | same zero | `1` | IEEE 754-2019 9.2.1 [4]; C99 F.9.2.5 and F.9.2.4 [5] | `x` below `2^-28`, and `1 + expm1 0` |
+| `+∞`, `-∞` | same infinity | `+∞` | IEEE 754-2019 9.2.1; C99 F.9.2.5 and F.9.2.4 | `x + x` and `x · x` |
+| NaN | canonical NaN | canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [6] | `x + x` and `x · x` |
 | finite, beyond the overflow threshold | `±∞` | `+∞` | IEEE 754-2019 4.3.1 | `x · 10^307` and `10^300 · 10^300` |
 
 `SinhTheorem` proves the rows of `sinh` as equalities of bits (`sinh_zero`, `sinh_pos_infinity`, `sinh_neg_infinity`, `sinh_nan`), and `CoshTheorem` proves the infinite and NaN rows of `cosh` (`cosh_pos_infinity`, `cosh_neg_infinity`, `cosh_nan`).  For `cosh (±0)` no theorem states the word: `cosh_within_one` places the result within one step of 1.  IEEE 754-2019 lists `sinh` and `cosh` among the recommended operations of clause 9.2, which a conforming implementation rounds correctly [4], and fdlibm states no error bound for either function [1, 2].
@@ -46,11 +46,11 @@ The port is written in the Verified dialect, which [the Verified compiler](../..
 
 | C code | Port | Reason |
 |---|---|---|
-| `if (shuge + x > one) return x` | the test kept | The expression raises the inexact flag in C, and the test holds for every `\|x\| < 2^-28`. |
+| `if (shuge + x > one) return x` | test kept | The expression raises the inexact flag in C, and the test holds for every `\|x\| < 2^-28`. |
 | `h = 0.5; if (jx < 0) h = -h;` | `if jx >>> 31 == 1 then -0.5 else 0.5` | One `let`. |
 | `int` exponents `expt` and `ex_expt` | two's complement words, the caller's `-1` as `0 - 1` | The dialect has unsigned words only. |
-| `INSERT_WORDS (scale, (0x3ff + expt) << 20, 0)` | the low 32 bits of `(0x3ff + expt) <<< 20`, shifted into the high half | The C expression is a 32-bit `int`. |
-| `GET_HIGH_WORD`, `SET_HIGH_WORD` | the top half of the 64-bit word | |
+| `INSERT_WORDS (scale, (0x3ff + expt) << 20, 0)` | low 32 bits of `(0x3ff + expt) <<< 20`, shifted into the high half | The C expression is a 32-bit `int`. |
+| `GET_HIGH_WORD`, `SET_HIGH_WORD` | top half of the 64-bit word | |
 | `fabs` | `Float.abs`, compiled to `f64.abs` | |
 | floating-point flags, `errno` | none | WebAssembly has no floating-point status flags. |
 
@@ -61,7 +61,7 @@ The C sources annotate none of these constants with bit patterns, and each decim
 | `shuge` | `0x7FAC7B1F3CAC7433` | `1.0e+307` |
 | `huge` | `0x7E37E43C8800759C` | `1.0e+300` |
 | `kln2` | `0x40937BE319BA0DA4` | `1246.97177782734161156` |
-| `0x3ff + 1023` | 2046 | the exponent field that `__frexp_exp` sets |
+| `0x3ff + 1023` | 2046 | exponent field that `__frexp_exp` sets |
 
 | High word | Value | Test |
 |---|---|---|
@@ -100,12 +100,12 @@ The proof has 23 modules of its own in `Library/Numerics/Float64/Sinh/`, and it 
 | Stage | Modules | Content |
 |---|---|---|
 | Tight exponential | `ExpTightPoly`, `ExpTight`, `ExpTightFloat` | Arm's `exp` as the nearest word of a real within `u/32` of `e^a`, and within `1.033 u e^a` relative. |
-| Words | `SinhWords` | Word of 0.5, exact halving, the absolute value of a `Float`, and `e^a ≥ 1.4142` above `0.3466`. |
+| Words | `SinhWords` | Word of 0.5, exact halving, absolute value of a `Float`, and `e^a ≥ 1.4142` above `0.3466`. |
 | `cosh` ranges | `CoshSmall`, `CoshMid`, `CoshLarge` | One step below `0.3466`, on `[0.3466, 22)`, and on `[22, 709.78]`. |
 | Near overflow | `SinhLdexpBits`, `SinhLdexp` | Words of `frexpExp` and `ldexpExp`, and one step for any target within `e^-a/2` of `e^a/2`. |
 | `cosh` theorem | `CoshTheorem` | `cosh_within_one` and the exceptional values. |
-| `expm1` for `sinh` | `Expm1NearPos`, `SinhExpm1`, `SinhCore` | Paths `k = 1` and `k = 2` of `expm1` for positive arguments, and the real identities of `sinh` below 22. |
-| `sinh` ranges | `SinhSign`, `SinhSmall`, `SinhSmallCases`, `SinhMid`, `SinhMidCases`, `SinhOverflow`, `SinhRanges` | Sign `h = ±1/2`, three steps below 1 and from 1 to 22, and the ranges outside `[2^-28, 22)`. |
+| `expm1` for `sinh` | `Expm1NearPos`, `SinhExpm1`, `SinhCore` | Paths `k = 1` and `k = 2` of `expm1` for positive arguments, and real identities of `sinh` below 22. |
+| `sinh` ranges | `SinhSign`, `SinhSmall`, `SinhSmallCases`, `SinhMid`, `SinhMidCases`, `SinhOverflow`, `SinhRanges` | Sign `h = ±1/2`, three steps below 1 and from 1 to 22, and ranges outside `[2^-28, 22)`. |
 | `sinh` theorem | `SinhTheorem` | `sinh_within_three` and the exceptional values. |
 | Bytes | `SinhBytes`, `SinhFile` | Byte and file theorems. |
 

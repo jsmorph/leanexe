@@ -31,13 +31,13 @@ states.  The StreamFold theorems cover successful transfers only.  A returned I/
 
 | Module | Contents |
 |---|---|
-| [Interface](Interface.lean) | Kernel, the buffered state, the process, and the byte model. |
+| [Interface](Interface.lean) | Kernel, buffered state, process, and byte model. |
 | [Control](Control.lean), [ranks](Rank.lean), and [host progress](Host.lean) | Buffer safety, the termination rank, and `process_terminates`. |
 | [Bytes](Bytes.lean) | Byte words of buffers and the accounting of partial writes. |
 | [Model proofs](Model.lean) | `outcome` over appended input, the line split, `foldOutcome`, `LineValues`, and the safety of the model from `LineRooms`. |
 | [Buffer](Buffer.lean) | Input loop as a prefix of the model, through acceptance or rejection. |
-| [Stream host](StreamHost.lean) and [observed output](Observed.lean) | Host assumptions and the stdout journal of an observed host. |
+| [Stream host](StreamHost.lean) and [observed output](Observed.lean) | Host assumptions and stdout journal of an observed host. |
 | [Invariant](Invariant.lean), [future base](FutureBase.lean), and [future](Future.lean) | `StreamFuture`, `StreamDone`, and their preservation by each step. |
 | [Correctness](Correct.lean) | `process_exec_correct`, `process_terminates_future`, and `initial_terminates_output`. |
-| [Sizes](Sizes.lean) | Pending line's bound from any line-length bound that `Room` implies, the bounds of the buffers after each step, and the line and total of a state at which a step stops. |
+| [Sizes](Sizes.lean) | Bound of the pending line from any line-length bound that `Room` implies, bounds of the buffers after each step, and line and total of a state at which a step stops. |
 | [Map](Map.lean) | Transport of `repeatWhile` along a state view. |

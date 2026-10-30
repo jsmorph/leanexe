@@ -8,10 +8,10 @@
 
 | Input | `expm1` | `tanh` | Source of the rule | Theorems |
 |---|---|---|---|---|
-| `+0`, `-0` | the same zero | the same zero | IEEE 754-2019 9.2.1 [5]; C99 F.9.3.3 and F.9.2.6 [6] | `Expm1Special.expm1_zero`, `TanhSpecial.tanh_zero` |
+| `+0`, `-0` | same zero | same zero | IEEE 754-2019 9.2.1 [5]; C99 F.9.3.3 and F.9.2.6 [6] | `Expm1Special.expm1_zero`, `TanhSpecial.tanh_zero` |
 | `+∞` | `+∞` | `1` | IEEE 754-2019 9.2.1; C99 F.9.3.3 and F.9.2.6 | `expm1_pos_infinity`, `tanh_pos_infinity` |
 | `-∞` | `-1` (`0xBFF0000000000000`) | `-1` | IEEE 754-2019 9.2.1; C99 F.9.3.3 and F.9.2.6 | `expm1_neg_infinity`, `tanh_neg_infinity` |
-| NaN | the canonical NaN | the canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [7] | `expm1_nan`, `tanh_nan` |
+| NaN | canonical NaN | canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [7] | `expm1_nan`, `tanh_nan` |
 | finite, `exp a - 1 ≥ 2^1024 - 2^970` | `+∞` or the largest finite double within the one-step bound | | IEEE 754-2019 4.3.1 gives the reference `+∞` | `Expm1Theorem.expm1_within_one` |
 
 IEEE 754-2019 lists `expm1` and `tanh` among the recommended operations of clause 9.2, which a conforming implementation rounds correctly [5].  fdlibm states an error below one unit in the last place for `expm1` and no bound for `tanh` [1, 2].  The theorems say nothing about floating-point exceptions or `errno`, which the port does not compute.
@@ -43,8 +43,8 @@ The port is written in the Verified dialect, which [the Verified compiler](../..
 
 | C code | Port | Reason |
 |---|---|---|
-| `int32_t k` from `(int32_t)(invln2*x ± 0.5)` | a sign `neg` and a magnitude `m : UInt64`, with `m` the truncation of `invln2 · x + 0.5` or of `-(invln2 · x - 0.5)` | The dialect converts only between floats and unsigned words.  The negation is exact, so the magnitude equals the C truncation's. |
-| the kernel and the scaling inline in `expm1` | `expm1Kernel x c neg m` | One function per path shape. |
+| `int32_t k` from `(int32_t)(invln2*x ± 0.5)` | sign `neg` and magnitude `m : UInt64`, with `m` the truncation of `invln2 · x + 0.5` or of `-(invln2 · x - 0.5)` | The dialect converts only between floats and unsigned words.  The negation is exact, so the magnitude equals the C truncation's. |
+| kernel and scaling inline in `expm1` | `expm1Kernel x c neg m` | One function per path shape. |
 | `t = huge + x; return x - (t - (huge + x))` | `x - ((huge + x) - (huge + x))` | The expression raises the inexact flag in C, and its value is `x`. |
 | `x + tiny < 0` and `tiny - one` | kept | The test holds for every `x ≤ -56 ln 2`, and the value is `-1`. |
 | `volatile` `huge` and `tiny`, `STRICT_ASSIGN` | constants and `let` | The dialect evaluates each binary64 operation once, in order. |
@@ -63,7 +63,7 @@ Each constant is written as `Float.ofBits` of its bit pattern with fdlibm's deci
 | `invln2` | `0x3FF71547652B82FE` | `1.44269504088896338700e+00` |
 | `Q1` to `Q5` (scaled) | `0xBFA11111111110F4`, `0x3F5A01A019FE5585`, `0xBF14CE199EAADBB7`, `0x3ED0CFCA86E65239`, `0xBE8AFDB76E09C32D` | `-3.33333333333331316428e-02` to `-2.01099218183624371326e-07` |
 | `huge`, `tiny` | `0x7E37E43C8800759C`, `0x01A56E1FC2F8F359` | `1.0e+300`, `1.0e-300` |
-| `2^1023` | `0x7FE0000000000000` | the factor for `k = 1024` |
+| `2^1023` | `0x7FE0000000000000` | factor for `k = 1024` |
 
 | High word | Value | Test |
 |---|---|---|
@@ -72,7 +72,7 @@ Each constant is written as `Float.ofBits` of its bit pattern with fdlibm's deci
 | `0x4043687A` | `56 ln 2` | `-1` from it on for negative `x` |
 | `0x40862E42` | 709.78 | overflow test |
 | `0x3c900000` | `2^-54` | `expm1` returns `x` below it |
-| `0x3e300000`, `0x3ff00000`, `0x40360000` | `2^-28`, 1, 22 | the ranges of `tanh` |
+| `0x3e300000`, `0x3ff00000`, `0x40360000` | `2^-28`, 1, 22 | ranges of `tanh` |
 
 ## Theorems
 
@@ -101,11 +101,11 @@ The proof has 31 modules in `Library/Numerics/Float64/Tanh/` above the implement
 
 | Stage | Modules | Content |
 |---|---|---|
-| Kernel | `Expm1Words`, `Expm1KernelPoly`, `Expm1KernelInner`, `Expm1KernelE0`, `Expm1KernelOuter` | Kernel on bit patterns, its approximation in exact arithmetic, and the rounding of each of its operations. |
+| Kernel | `Expm1Words`, `Expm1KernelPoly`, `Expm1KernelInner`, `Expm1KernelE0`, `Expm1KernelOuter` | Kernel on bit patterns, its approximation in exact arithmetic, and rounding of each of its operations. |
 | Scaling forms | `Expm1FormWords`, `Expm1SubOne`, `Expm1FormBase`, `Expm1FormsOne`, `Expm1FormsTwo`, `Expm1FormsMid` | Words `2^k`, `2^-k`, and `1 - 2^-k`, and one step for each form. |
 | Reduction | `Expm1ReduceConst`, `Expm1ReduceWords`, `Expm1ReduceOne`, `Expm1ReduceK` | `ln2_hi + ln2_lo` within `2^-86` of `ln 2`, `invln2 · ln 2` within `2^-55` of 1, exact products and differences, and `y + c` within `2^-70` of `x - k ln 2`. |
-| `expm1` | `Expm1PathsReduced`, `Expm1PathsEdge`, `Expm1Branches`, `Expm1Theorem`, `Expm1Special` | Paths, the branches of the code, the theorem, and the exceptional values. |
-| `tanh` | `TanhBranches`, `Expm1NearForms`, `Expm1Near`, `TanhWords`, `TanhSmall`, `TanhLarge`, `TanhTheorem`, `TanhMain`, `TanhSpecial` | Errors of the `expm1` paths before their last rounding, the four ranges of `tanh`, the theorem, and the exceptional values. |
+| `expm1` | `Expm1PathsReduced`, `Expm1PathsEdge`, `Expm1Branches`, `Expm1Theorem`, `Expm1Special` | Paths, branches of the code, theorem, and exceptional values. |
+| `tanh` | `TanhBranches`, `Expm1NearForms`, `Expm1Near`, `TanhWords`, `TanhSmall`, `TanhLarge`, `TanhTheorem`, `TanhMain`, `TanhSpecial` | Errors of the `expm1` paths before their last rounding, four ranges of `tanh`, theorem, and exceptional values. |
 | Bytes | `TanhBytes`, `TanhFile` | Byte and file theorems. |
 
 ### Error budget of expm1
@@ -141,7 +141,7 @@ For `k = 1024` the form needs `exp r ≤ 1 - 2^-46` (`Expm1FormsTwo.form_top`), 
 | Range of `\|a\|` | Code | Bound used | Steps | Theorem |
 |---|---|---|---|---|
 | below `2^-28` | `x` | `\|x - tanh x\| ≤ (4/3) \|x\|³` | 1 | `TanhTheorem.tiny_within` |
-| `2^-28` to 1 | `-t/(t + 2)`, `t = expm1 (-2\|x\|)` | the error `E` of `-t` against `P = 1 - exp (-2\|x\|)`: `0.56 u · 2\|x\| + 16η` for `2\|x\| ≤ 0.3466`, `0.2451 u` for `k = -1`, and `0.3726 u` from `2\|x\| ≥ 1.0397`, each plus the last rounding of `t` | 3 | `TanhSmall.small_a`, `small_b`, `small_c` |
+| `2^-28` to 1 | `-t/(t + 2)`, `t = expm1 (-2\|x\|)` | error `E` of `-t` against `P = 1 - exp (-2\|x\|)`: `0.56 u · 2\|x\| + 16η` for `2\|x\| ≤ 0.3466`, `0.2451 u` for `k = -1`, and `0.3726 u` from `2\|x\| ≥ 1.0397`, each plus the last rounding of `t` | 3 | `TanhSmall.small_a`, `small_b`, `small_c` |
 | 1 to 22 | `1 - 2/(t + 2)`, `t = expm1 (2\|x\|)` | `t` within `0.85 u T` of `T = exp (2\|x\|) - 1` before its rounding, and the result within `7.704 u/D + η`, with `D ≥ 8.36` the value of `t + 2` | 1 | `TanhLarge.large_core` |
 | 22 on | `1 - 10^-300`, which rounds to 1 | `exp (2a) ≥ 2^54`, so `1 - tanh a < 2^-53` | 1 | `TanhTheorem.huge_within` |
 

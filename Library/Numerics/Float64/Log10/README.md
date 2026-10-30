@@ -11,11 +11,11 @@
 | Input | Result | Source of the rule | Theorem |
 |---|---|---|---|
 | `1` | `+0` (bits `0`) | IEEE 754-2019 9.2.1 [4], C99 F.9.3.8 [5] | `log10_one_bits` |
-| `10^n`, `0 ≤ n ≤ 22` | the double `n` | correct rounding, IEEE 754-2019 9.2, since `n` is a double | `log10_pow10` |
+| `10^n`, `0 ≤ n ≤ 22` | double `n` | correct rounding, IEEE 754-2019 9.2, since `n` is a double | `log10_pow10` |
 | `+0`, `-0` | `-∞` (`0xFFF0000000000000`) | IEEE 754-2019 9.2.1 (with the divideByZero exception), C99 F.9.3.8 | `log10_zero` |
 | `+∞` | `+∞` | IEEE 754-2019 9.2.1, C99 F.9.3.8 | `log10_pos_infinity` |
-| negative, `-∞` included, other than `-0` | the canonical NaN `0x7FF8000000000000` | IEEE 754-2019 9.2 (a quiet NaN outside the domain `[0, +∞]`, with the invalid exception), C99 F.9.3.8 | `log10_negative` |
-| NaN | the canonical NaN | IEEE 754-2019 9.2 (a quiet NaN for a NaN operand), C99 F.9 paragraph 11, the deterministic profile of WebAssembly [6] | `log10_nan` |
+| negative, `-∞` included, other than `-0` | canonical NaN `0x7FF8000000000000` | IEEE 754-2019 9.2 (a quiet NaN outside the domain `[0, +∞]`, with the invalid exception), C99 F.9.3.8 | `log10_negative` |
+| NaN | canonical NaN | IEEE 754-2019 9.2 (a quiet NaN for a NaN operand), C99 F.9 paragraph 11, the deterministic profile of WebAssembly [6] | `log10_nan` |
 
 IEEE 754-2019 lists `log10` among the recommended operations of clause 9.2, which a conforming implementation rounds correctly [4].  The one-step bound is weaker than correct rounding.  fdlibm states no error for `log10`, and `k_log.h` states an error below one unit in the last place for the natural logarithm that the same kernel computes [2].  The theorem says nothing about the divideByZero and invalid exceptions, which the port does not compute.
 
@@ -35,9 +35,9 @@ The port uses the Verified dialect, the subset of Lean that [the Verified compil
 
 | C code | Port | Reason |
 |---|---|---|
-| signed `int32_t hx`, tested with `hx < 0x00100000` and `hx < 0` | the word `x.toBits >>> 32`, with the sign bit tested first | The dialect's words are unsigned, and a comparison with a positive bound must also test the sign. |
-| zero test inside `hx < 0x00100000`, then `hx < 0`, then the subnormal scaling | the zero test for a negative or small `hx`, then the sign, then the scaling | Same results in the same cases, as nested tests on words. |
-| signed `int32_t k`, `y = (double) k` | a two's complement word, converted as `Log.logCore` converts its `k` | The dialect converts unsigned words. |
+| signed `int32_t hx`, tested with `hx < 0x00100000` and `hx < 0` | word `x.toBits >>> 32`, with the sign bit tested first | The dialect's words are unsigned, and a comparison with a positive bound must also test the sign. |
+| zero test inside `hx < 0x00100000`, then `hx < 0`, then the subnormal scaling | zero test for a negative or small `hx`, then sign, then scaling | Same results in the same cases, as nested tests on words. |
+| signed `int32_t k`, `y = (double) k` | two's complement word, converted as `Log.logCore` converts its `k` | The dialect converts unsigned words. |
 | `-two54/vzero`, `(x - x)/zero` | `-two54 / 0.0`, `(x - x) / 0.0` | The dialect has no floating-point flags, and these expressions keep their values. |
 | `SET_HIGH_WORD`, `SET_LOW_WORD`, `EXTRACT_WORDS` | shifts, masks, and `Float.ofBits` | The dialect reads and writes the words of a double through `toBits` and `ofBits`. |
 
@@ -82,7 +82,7 @@ The proof has six modules in `Library/Numerics/Float64/Log10/` above the impleme
 | `Log10Kernel` | `kernel10`: the errors of `s`, `hfsq`, and `k_log1p` as multiples of `u σ` for `σ = \|s\|`. |
 | `Log10Final` | `tail10`: one step for the arithmetic after `f` and the double of `k`. |
 | `Log10Main` | `reduce10` and `main10`: the reduction for an argument word and its composition with `tail10`. |
-| `Log10Theorem` | Guards, the normal and subnormal arguments, the exceptional values, the powers of ten, `Ready`, and the byte theorem. |
+| `Log10Theorem` | Guards, normal and subnormal arguments, exceptional values, powers of ten, `Ready`, and byte theorem. |
 
 ### Error budget
 

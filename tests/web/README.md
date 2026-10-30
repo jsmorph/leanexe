@@ -47,7 +47,7 @@ NaNs, and arrays of up to 4,096 elements.
 | Control or section | Contents |
 |---|---|
 | Adapter | `high-performance`, `low-power`, or `fallback`, the browser's software adapter |
-| Device | Browser, the adapter's vendor and architecture, its limits, and its features |
+| Device | Browser, vendor and architecture of the adapter, its limits, and its features |
 | Results | Cases, passes, and failures for each kernel, with the shader compiler's messages, which are Tint's in Chrome |
 | Failures | Each failing case's line in `cases.txt` and its first differing word, as bits and as a binary32 value |
 | Report | Plain text of the run, with up to five failures for each kernel |
@@ -76,7 +76,7 @@ buffers.
 | Load | Loads the weights into each kind of kernel and compiles the WGSL kernels |
 | Tokens | Number of tokens to generate.  The prompt and the tokens may take up to 1,024 positions |
 | Seed | Empty: each token is the first largest score's, as `greedy32` chooses.  A whole number: each token is drawn by top-k sampling, starting from the seed as the generator's state |
-| Top-k, Temperature | Sampling's `k`, 50 by default, and its temperature, 1.0 by default |
+| Top-k, Temperature | `k` of the sampling, 50 by default, and its temperature, 1.0 by default |
 
 Sampling calls `sampleTopK` of `gpt.wasm`, the binary64 model's module, with the scores widened
 to binary64.  It keeps the tokens whose scores are at least the k-th largest and draws one with
@@ -112,7 +112,7 @@ These browser measurements used the shared translation before arithmetic-NaN nor
 
 | Path | Contents |
 |---|---|
-| [`tests/web/serve.py`](serve.py) | Server: page files, kernel texts, Wasm modules, weights, and the requests below |
+| [`tests/web/serve.py`](serve.py) | Server: page files, kernel texts, Wasm modules, weights, and requests below |
 | [`tests/web/index.html`](index.html) | Page that links to both pages |
 | [`tests/wgsl/browser/`](../wgsl/browser) | Kernel test page |
 | [`tests/gpt32/browser/`](../gpt32/browser) | GPT-2 page: `app.js` for the controls and the generation loop, `hosts.js` for the WebGPU and Wasm hosts and the sampler |
@@ -122,5 +122,5 @@ These browser measurements used the shared translation before arithmetic-NaN nor
 |---|---|
 | `/gpt2/api/tokenize?text=TEXT` | Token ids of `TEXT`, as JSON |
 | `/gpt2/api/decode?ids=I,J,...` | Text of the token ids, as JSON |
-| `/gpt2/api/setup` | Shader commands and the setup commands, as a JSON list of lines |
+| `/gpt2/api/setup` | Shader commands and setup commands, as a JSON list of lines |
 | `/gpt2/api/step?token=T&p=P` | Commands of the step of token `T` at position `P`, as a JSON list of lines |

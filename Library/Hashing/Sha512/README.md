@@ -9,9 +9,9 @@ The specification is [`Library/Hashing/Sha2/Spec`](../Sha2/Spec.lean), a literat
 | Definition | Meaning |
 |---|---|
 | `bytes msg n` | First `n` bytes of `msg`.  Byte `i` is bits `8 (i % 8)` to `8 (i % 8) + 7` of word `i / 8`, and a word past the end of the array reads as zero, as a read past the end does in the compiled code. |
-| `Words8.bytes`, `Words6.bytes`, `Words4.bytes k` | Digest's 64, 48, or first `k` bytes in the same packing. |
+| `Words8.bytes`, `Words6.bytes`, `Words4.bytes k` | 64, 48, or first `k` bytes of the digest in the same packing. |
 | `bytesToBitMessage` | Byte array as the bit list of FIPS 180-4, each byte's most significant bit first. |
-| `digestBitVec512`, `digestBitVec384`, `digestBitVec512_256`, `digestBitVec512_224` | Digest's bytes as one bit vector, the first byte most significant, the type of the transcription's digests. |
+| `digestBitVec512`, `digestBitVec384`, `digestBitVec512_256`, `digestBitVec512_224` | Bytes of a digest as one bit vector, the first byte most significant, the type of the transcription's digests. |
 
 | Export | Function | Result | Call theorem |
 |---|---|---|---|

@@ -399,21 +399,21 @@ its input.
 | [Program](Program.lean) | Planner in the dialect |
 | [Representations](Flat.lean) | `Flat` instances for `V3`, `Q4`, `Dims`, and `Search` |
 | [Compilation](Verified.lean) | `verified_compile compiled := [atan, atan2, …, plan]` |
-| [Specification](Spec.lean) | Real vectors and quaternions, Rodrigues' rotation, the rotation angle, and the cone predicate |
-| [Arc lemmas](Arc.lean) | Sinusoid form of the cosine along a rotation, the endpoint lemma, and vector inequalities |
-| [Binary64 facts](Rounding.lean) | Real values of floats, comparisons, the program's constants, and the bounded approximation `Bnd` |
+| [Specification](Spec.lean) | Real vectors and quaternions, Rodrigues' rotation, rotation angle, and cone predicate |
+| [Arc lemmas](Arc.lean) | Sinusoid form of the cosine along a rotation, endpoint lemma, and vector inequalities |
+| [Binary64 facts](Rounding.lean) | Real values of floats, comparisons, constants of the program, and bounded approximation `Bnd` |
 | [Vector errors](Error.lean) | Rounding errors of dot and cross products and of the rotation formula |
-| [Axis and angle](Axis.lean) | Rounding errors of `s`, the axis `v/s`, `w² - s²`, and `2ws` |
+| [Axis and angle](Axis.lean) | Rounding errors of `s`, axis `v/s`, `w² - s²`, and `2ws` |
 | [Normalization](Normalize.lean) | Difference between the cosines of the normalized and the given inputs |
 | [Cone values](Cone.lean) | Rounding errors of `f₀`, `A`, `B`, `C`, `f₁`, and `f′(θ)` |
 | [Amplitude](Hypot.lean) | Rounding error of `√(A² + B²)` |
-| [Decisions](Decide.lean) | Comparisons, NaN propagation, and the bounds that a decision gives over the rotation |
+| [Decisions](Decide.lean) | Comparisons, NaN propagation, and bounds that a decision gives over the rotation |
 | [Soundness proof](Check.lean) | `edgeOk_sound` and `attitudeOk_sound` |
 | [Rotations](Rotation.lean) | Quaternion products and actions, their composition and distances, and Rodrigues' rotation as an action |
-| [Relative quaternion](Relative.lean) | `GoodRel` for `relative` and the distance of its rotation from the exact one |
+| [Relative quaternion](Relative.lean) | `GoodRel` for `relative` and distance of its rotation from the exact one |
 | [Input](Valid.lean) | `GoodQ` for every node and `ConeGood` for every cone of a validated input |
-| [Search](Search.lean) | Invariant of `search`, the segments of a plan as accepted edges, and the bound on `pathLength` |
-| [Output proofs](Angle.lean) | Output's axis and angle against those of the relative quaternion |
+| [Search](Search.lean) | Invariant of `search`, segments of a plan as accepted edges, and bound on `pathLength` |
+| [Output proofs](Angle.lean) | Axis and angle of the output against those of the relative quaternion |
 | [Safety theorem](Safety.lean) | `plan_safe` |
 | [NaN-freedom](NanFree.lean) | `plan_finite` |
 | [Premise theorem](Premise.lean) | `plan_premise` |

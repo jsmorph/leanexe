@@ -145,7 +145,7 @@ The generated compiler theorems establish that the compiled module computes each
 | `512 ≤ a ≤ 768` | `specialCase`, product with `2^1009` | `ExpSpecialPositive.positive_one_step` |
 | `-768 ≤ a ≤ -512` | `specialCase`, product with `2^-1022`, compensated below 1 | `ExpSpecialNegative.negative_one_step` |
 | `768 < abs(a) < 1024` | `specialCase` with a coarse residual bound | `ExpFarRange.far_positive`, `ExpFarRange.far_negative` |
-| `abs(a) ≥ 1024`, finite | the products `2^769 · 2^769` and `2^-767 · 2^-767` | `ExpTheorem.saturated_bits` |
+| `abs(a) ≥ 1024`, finite | products `2^769 · 2^769` and `2^-767 · 2^-767` | `ExpTheorem.saturated_bits` |
 | zeros, infinities, NaN | `1 + x` and the `-∞` test | `ExpTheorem.exp_pos_zero` through `exp_nan` |
 
 The root `Verified` import now reaches the exponential theorem through other numerical proofs, and `LeanExe.lean` imports the shared ProofKit modules.  `tools/leanrun --timeout 30m lake build Library.Numerics.Float64.Exp.ExpTheorem` builds the final theorem and every module it depends on.  After `tests/verified/run.sh` writes `build/verified/exp.wasm`, `tools/leanrun --timeout 10m lake env lean Library/Numerics/Float64/Exp/ExpFile.lean` checks the file theorem.  `tests/verified/run.sh` runs both checks after it writes the modules, and it fails unless `exp_file` and `exp_file_decode` report only the three permitted axioms.  The journal records the accepted builds, an independent rebuild from source, and the failures along the way.

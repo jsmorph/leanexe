@@ -13,7 +13,7 @@
 | `+0`, `-0` | `1` (`0x3FF0000000000000`) | IEEE 754-2019 9.2.1 [9]; C99 F.9.3.1 [10] | `exp_pos_zero`, `exp_neg_zero` |
 | `+∞` | `+∞` | IEEE 754-2019 9.2.1; C99 F.9.3.1 | `exp_pos_infinity` |
 | `-∞` | `+0` | IEEE 754-2019 9.2.1; C99 F.9.3.1 | `exp_neg_infinity` |
-| NaN | the canonical NaN `0x7FF8000000000000` | IEEE 754-2019 9.2 (a quiet NaN for a NaN operand); C99 F.9 paragraph 11; the deterministic profile of WebAssembly [11] | `exp_nan` |
+| NaN | canonical NaN `0x7FF8000000000000` | IEEE 754-2019 9.2 (a quiet NaN for a NaN operand); C99 F.9 paragraph 11; the deterministic profile of WebAssembly [11] | `exp_nan` |
 | finite, `exp a ≥ 2^1024 - 2^970` | `+∞` or the largest finite double, within the one-step bound | IEEE 754-2019 4.3.1 gives the reference `+∞` | `exp_one_step` |
 | finite, `exp a ≤ 2^-1075` | `+0`, or the smallest subnormal within the one-step bound | IEEE 754-2019 4.3.1 | `exp_one_step` |
 
@@ -38,12 +38,12 @@ The port uses the Verified dialect, the subset of Lean that [the Verified compil
 | C code | Port | Reason |
 |---|---|---|
 | `exp_inline (x, xtail)`, which adds `xtail` to `r` unless `xtail` is the constant 0 | `expCore tab x special`, without `xtail` | `exp` passes the constant `xtail = 0`, so the addition does not occur. |
-| `abstop = 0` marks the special path | the Boolean `special` | The dialect has no mutable locals. |
+| `abstop = 0` marks the special path | Boolean `special` | The dialect has no mutable locals. |
 | 32-bit comparisons of `abstop - top12 (0x1p-54)` | 64-bit comparisons | The unsigned difference wraps for `abstop < 0x3c9` in both widths, and the wrapped value is at least `2^32 - 0x3c9` either way, so every comparison gives the same result.  The docstring of `expWith` records this. |
 | `WANT_ROUNDING` | assumed 1: `1.0 + x` for tiny `x`, and the test `y == 0.0` kept | WebAssembly arithmetic rounds to nearest, ties to even. |
 | `force_eval_double`, `check_oflow`, `check_uflow`, `errno` | omitted | WebAssembly has no floating-point status flags, and the dialect has no `errno`. |
-| `__math_uflow (0)`, `__math_oflow (0)` | the products `0x1p-767 · 0x1p-767` and `0x1p769 · 0x1p769` | These are the calls' results with sign 0 [3]. |
-| `__exp_data` global | the parameter `tab`, read with `tab[i]!` | The table is a borrowed array of the module. |
+| `__math_uflow (0)`, `__math_oflow (0)` | products `0x1p-767 · 0x1p-767` and `0x1p769 · 0x1p769` | These are the calls' results with sign 0 [3]. |
+| `__exp_data` global | parameter `tab`, read with `tab[i]!` | The table is a borrowed array of the module. |
 
 | Constant | Bits | Value |
 |---|---|---|
@@ -84,10 +84,10 @@ The table lists the proof modules by stage, in dependency order within each stag
 
 | Stage | Modules | Content |
 |---|---|---|
-| Table and constants | `ExpTableBounds`, `ExpReductionBounds`, `ExpApproximation` | Table enclosure, `C1 + C2` within `2^-99` of `ln 2/128`, and the polynomial within `2^-56` of `exp r - 1` for `\|r\| ≤ 1/256`. |
+| Table and constants | `ExpTableBounds`, `ExpReductionBounds`, `ExpApproximation` | Table enclosure, `C1 + C2` within `2^-99` of `ln 2/128`, and polynomial within `2^-56` of `exp r - 1` for `\|r\| ≤ 1/256`. |
 | Reduction | `ExpReductionExact`, `ExpIntegerSelection`, `ExpReductionSelection`, `ExpShiftedBits`, `ExpScaleFacts`, `ExpScaleEncoding`, `ExpScaleBits`, `ExpCoreState`, `ExpHighSubtraction`, `ExpHighPartBounds`, `ExpHighResidual`, `ExpResidualBounds`, `ExpResidualFloat` | The shift selects the nearest integer `k` for `\|z\| ≤ 2^18`, `k · C1` and `x - k · C1` are exact, the scale word is `2^q H_j`, and the computed residual is within `2^-60` of the ideal one. |
 | Evaluation and reconstruction | `ExpEvaluationBounds`, `ExpEvaluationFloat`, `ExpReconstructionBounds`, `ExpReducedReconstruction`, `ExpTableReconstruction`, `ExpCoreBounds` | Error budget below, ending in `ExpCoreBounds.core_error`. |
-| Main path | `ExpCoreRange`, `ExpCoreInterval`, `ExpCoreOneStep`, `ExpBranches` | Position of `exp a` in its binade, one step for `2^-54 ≤ \|a\| ≤ 512`, and the tiny path. |
+| Main path | `ExpCoreRange`, `ExpCoreInterval`, `ExpCoreOneStep`, `ExpBranches` | Position of `exp a` in its binade, one step for `2^-54 ≤ \|a\| ≤ 512`, and tiny path. |
 | Special paths | `ExpSpecialScale`, `ExpSpecialReconstruction`, `ExpSpecialPositiveCore`, `ExpOneStep`, `ExpSpecialPositive`, `ExpSpecialNegative`, `ExpNegativeFinal` | `512 ≤ \|a\| ≤ 768`, with the compensated subnormal path. |
 | Far range and assembly | `ExpFarRange`, `ExpTheorem` | `768 < \|a\| < 1024`, saturation, exceptional values, and the byte theorem. |
 
@@ -119,7 +119,7 @@ A word within one and a half spacings of `E` lies within one step of the nearest
 | `-768 ≤ a ≤ -512`, `y ≥ 1` | product with `2^-1022` | `(7/5) u s`, with the product exact | `ExpSpecialNegative.negative_one_step` |
 | `-768 ≤ a ≤ -512`, `y < 1` | compensated sum, then `2^-1022 (z - 1)` | `((47/16) u + 3u²) · 2^-1022`, against `3u · 2^-1022` | `ExpSpecialNegative.compensated_one_step` |
 | `768 < \|a\| < 1024` | `specialcase` with coarse bounds | A scale above `2^98` gives `+∞`.  A scale below `2^-85` gives `+0` or the smallest subnormal, and `exp a ≤ 2^-1100`. | `ExpFarRange.far_positive`, `far_negative` |
-| `\|a\| ≥ 1024` | the saturating products | exact words `0` and `0x7FF0000000000000` | `ExpTheorem.saturated_bits` |
+| `\|a\| ≥ 1024` | saturating products | exact words `0` and `0x7FF0000000000000` | `ExpTheorem.saturated_bits` |
 
 On the compensated path, `ExpSpecialNegative.comp_sum_bounds` shows that `hi + lo` rounds onto the grid of `2^-52` in `[1, 2]` within `2u + 3u² + u s/8` of `1 + s + p`, with `s < 2`, and `ExpSpecialNegative.comp_final` in `ExpNegativeFinal.lean` shows that `z - 1` and its product with `2^-1022` are exact.  The hypothesis of `compensated_one_step` allows `(11/16) u` for `s + p` against `2^1022 E`, and with `u s/8 ≤ u/4` the error of `z - 1` against `2^1022 E` is at most `(47/16) u + 3u²`.  The subnormal spacing is `2u · 2^-1022`, so the total stays below one and a half spacings by about 2 percent of the allowance.  The proof of this path uses only relative rounding bounds and two exact subtractions, which fits Arm's comment that the compensation helps only for a goal better than one unit.
 
@@ -131,9 +131,9 @@ The proof uses ProofKit modules, including the arithmetic chain of `F64Add`, `F6
 
 | Fact | Declaration |
 |---|---|
-| Table's 128 rational enclosures of `2^(j/128)` within `2^-100` | `ExpTableBounds.checked_table_bounds` |
+| 128 rational enclosures of `2^(j/128)` within `2^-100` for the table | `ExpTableBounds.checked_table_bounds` |
 | `1 ≤ H_j ≤ 2`, `\|T_j\| ≤ 2^-53`, and `H_j ≤ 255/128`, with `H_j ≥ 257/256` for `j ≠ 0` | `ExpTableBounds.checked_entry_magnitudes`, `ExpCoreRange.checked_head_bounds` |
-| Sign and exponent fields of the heads, and the head word plus `j · 2^45` | `ExpScaleFacts.checked_head_fields` |
+| Sign and exponent fields of the heads, and head word plus `j · 2^45` | `ExpScaleFacts.checked_head_fields` |
 | The Taylor sums of `exp` with 40 terms and their remainder at `128 (C1 + C2) ∓ 2^-92` bracket 2, so `ln 2` lies within `2^-92` of `128 (C1 + C2)`, and `InvLn2N · ln 2/128` lies within `2^-53` of 1 | `ExpReductionBounds.checked_log_brackets`, `checked_inverse_bounds` |
 | The saturating products give `0` and `0x7FF0000000000000` | `ExpTheorem.underflow_product`, `overflow_product` |
 | Function 5 is exported as `exp` | `ExpTheorem.exp_export` |

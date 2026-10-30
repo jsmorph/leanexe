@@ -13,12 +13,12 @@ The bound, the API, and CORE-MATH as the source are the decisions of 2026-10-10 
 | `1`, `2` | `+0` | `+1` | C99 F.9.5.3 [7]; POSIX [8] |
 | `+0` | `+∞` | `+1` | C99 F.9.5.3; POSIX (a pole error) |
 | `-0` | `+∞` | `-1` | C99 F.9.5.3; POSIX |
-| a negative integer below `0x1.754d9278b51a6p+1014` in magnitude | `+∞` | `-1` | C99 F.9.5.3; POSIX leaves `signgam` unspecified |
-| a negative integer from `0x1.754d9278b51a6p+1014` in magnitude | `+∞` | `+1` | the same |
+| negative integer below `0x1.754d9278b51a6p+1014` in magnitude | `+∞` | `-1` | C99 F.9.5.3; POSIX leaves `signgam` unspecified |
+| negative integer from `0x1.754d9278b51a6p+1014` in magnitude | `+∞` | `+1` | same |
 | `+∞` | `+∞` | `+1` | C99 F.9.5.3; POSIX |
 | `-∞` | `+∞` | `+1` | C99 F.9.5.3; POSIX leaves `signgam` unspecified |
-| NaN | the canonical NaN | `+1` | C99 F.9 paragraph 11; the deterministic profile of WebAssembly [9]; POSIX leaves `signgam` unspecified |
-| `0x1.754d9278b51a6p+1014`, `0x1.754d9278b51a7p+1014` | `0x1.ffffffffffffep+1023`, `0x1.fffffffffffffp+1023` | `+1` | the two largest finite results, special cases of the code |
+| NaN | canonical NaN | `+1` | C99 F.9 paragraph 11; the deterministic profile of WebAssembly [9]; POSIX leaves `signgam` unspecified |
+| `0x1.754d9278b51a6p+1014`, `0x1.754d9278b51a7p+1014` | `0x1.ffffffffffffep+1023`, `0x1.fffffffffffffp+1023` | `+1` | two largest finite results, special cases of the code |
 | positive `x` from `0x1.754d9278b51a8p+1014` | `+∞`, as `0x1.fp1023 · 0x1.fp1023` | `+1` | overflow |
 
 The signs at `±0` follow the sign of `Γ` near zero.  POSIX leaves `signgam` unspecified at NaN, `-∞`, and the negative integers, so the table records CORE-MATH's choices there, which the port keeps.  CORE-MATH sets `errno` when built with `CORE_MATH_SUPPORT_ERRNO` and raises the divide-by-zero, overflow, and invalid exceptions on these paths, and the port does neither.
@@ -32,7 +32,7 @@ CORE-MATH's method evaluates `ln |Γ x|` in double-double arithmetic, a pair `h 
 | below `2^-75` | `-ln \|x\|`, from `as_logd` in double-double |
 | `2^-75` to `2^-5` | `-ln \|x\|` plus `x` times a polynomial in `x` whose constant term is `-γ` |
 | `2^-5` to 0.5 | `-ln \|x\|` plus the piecewise polynomial of the next line at `1 + x`, which gives `ln Γ (1 + x) = ln \|Γ x\| + ln \|x\|` |
-| 0.5 to 8.29541 | a piecewise polynomial on 19 pieces, each of degree 12 in `z = \|x\| - c_j`, whose borders `ubrd` the code finds from a quadratic estimate and one comparison.  The pieces that contain the zeros 1 and 2 of `ln Γ` are multiplied by `1 - \|x\|` and `\|x\| - 2`, which keeps the result's relative accuracy next to the zeros |
+| 0.5 to 8.29541 | piecewise polynomial on 19 pieces, each of degree 12 in `z = \|x\| - c_j`, whose borders `ubrd` the code finds from a quadratic estimate and one comparison.  The pieces that contain the zeros 1 and 2 of `ln Γ` are multiplied by `1 - \|x\|` and `\|x\| - 2`, which keeps the result's relative accuracy next to the zeros |
 | from 8.29541 | Stirling's series, `(\|x\| - 1/2)(ln \|x\| - 1)` plus the constant `ln (2π)/2 - 1/2` plus a sum of odd powers of `1/\|x\|` (DLMF 5.11.1) [4], with the sum dropped from `2^100` on |
 
 For a negative `x` the code evaluates the function at `|x|` and applies the reflection (DLMF 5.5.3), in the form `ln |Γ x| = -ln Γ (|x|) - ln (|x| |sin (π x)|/π)`, with `sin (π x)/π` from `as_sinpipid` and its logarithm from `as_logd`.  The sign of `Γ x` for a negative non-integer `x` is `(-1)^m` with `m = -⌊x⌋`, -1 on `(-1, 0)` and +1 on `(-2, -1)`.  Next to the negative zeros of `ln |Γ|`, the subtraction of the two logarithms cancels, and `as_lgamma_accurate` handles it with 17 polynomials about the zeros from -10.5 to -2 (`rootRange`), where the fast path's test fails.  fdlibm's `lgamma` has no such polynomials and errs by up to 4.45e15 units next to these zeros, the reason the review gives for choosing CORE-MATH.
@@ -43,9 +43,9 @@ The source is `src/binary64/lgamma/lgamma.c` of CORE-MATH [1], `Copyright (c) 20
 
 | C code | Port | Reason |
 |---|---|---|
-| the global `signgam` | the second result of `lgammaWith` | The dialect has no global state, and the API returns the sign. |
+| global `signgam` | second result of `lgammaWith` | The dialect has no global state, and the API returns the sign. |
 | `unsigned` arithmetic of the piece index | words | It does not overflow for these arguments. |
-| the final test of `as_lgamma_accurate`, which keeps the low 32 bits of a 52-bit mask | a mask with `0xFFFFFFFF` | Same result. |
+| final test of `as_lgamma_accurate`, which keeps the low 32 bits of a 52-bit mask | mask with `0xFFFFFFFF` | Same result. |
 | `__builtin_fma` | `Fma.fma`, at 12 calls, and through `Tgamma.mulDD` and `Tgamma.mulDDD` for the other 2 of `lgamma.c`'s 14 | WebAssembly has no deterministic fused multiply-add. |
 | `__builtin_clzll` | `63 - Fma.msb64` | The dialect has no count of leading zeros. |
 | `errno` and the floating-point exceptions | omitted | WebAssembly has no floating-point status flags. |
@@ -84,8 +84,8 @@ Every double of magnitude at least `2^52` is an integer, so `lgamma_huge_neg` co
 | Theorem | Hypotheses | Result |
 |---|---|---|
 | `lgammaR_sign` | `w` finite, and `0 < n` for every integer `n` with `v = n` | `(lgammaR x).2 = if Real.Gamma v < 0 then -1.0 else 1.0` |
-| `lgamma_sign` | `tab[0]! = 0x1FF0000`, `w` finite, `w % 2^63 < 0x7F5754D9278B51A6`, and the same condition on `v` | the same for `lgammaWith` with arbitrary tables |
-| `sign_code` | the branch conditions of the fast path | the code's sign: that of `x` below `1/2` in magnitude, `1.0` for a positive `x` from `1/2` on, and the parity of `(-floorF x).toUInt64` for a negative one |
+| `lgamma_sign` | `tab[0]! = 0x1FF0000`, `w` finite, `w % 2^63 < 0x7F5754D9278B51A6`, and the same condition on `v` | same for `lgammaWith` with arbitrary tables |
+| `sign_code` | branch conditions of the fast path | sign of the code: that of `x` below `1/2` in magnitude, `1.0` for a positive `x` from `1/2` on, and parity of `(-floorF x).toUInt64` for a negative one |
 
 ## Proof
 
@@ -117,12 +117,12 @@ The fast path has a theorem for each of its branches below `2^800` in magnitude.
 | `tiny_spec` | `LgammaFastTiny` | below `2^-75`, `-log \|x\|` from `asLogd` satisfies `FastSpec` |
 | `polyFst_damped_core`, `polyFst_spec` | `LgammaPolyFst` | `polyDDDFst` within `X^(N-1) (el + (tB + Cl)/2^53) + (N - 1) polyEps` of the exact Horner value when each coefficient that `fastSum` adds dominates `x` times the Horner value of that step plus a margin |
 | `small_spec` | `LgammaFastSmall` | from `2^-75` to `2^-5`, `-log \|x\| + x P(x)` with `SmallFact`'s polynomial satisfies `FastSpec` |
-| `piece_poly` | `LgammaPiecePoly` | the double-double polynomial of piece `k` at a double `\|z\| ≤ pX k` within `pE k`, which the kernel checks to be at most `2^-66` of the polynomial's smallest value on the piece |
+| `piece_poly` | `LgammaPiecePoly` | double-double polynomial of piece `k` at a double `\|z\| ≤ pX k` within `pE k`, which the kernel checks to be at most `2^-66` of the polynomial's smallest value on the piece |
 | `piece_spec` | `LgammaPieceIdx` | `Lgamma.piece` returns the piece `k` with `tab[k] ≤ au < tab[k + 1]`: the code's quadratic estimate increases on the range and lies in `{k, k + 1}` at both ends of each piece |
 | `piece_leaf` | `LgammaFastPiece` | at a double `a` of piece `k`, the result within `2 eps - \|fh\|/2^65` of `ln Γ a`, with `eps = 8.7 · 10^-20 \|fh\| + 10^-24` and `PieceFact` |
 | `mid_bounds`, `mid_spec` | `LgammaFastMid` | from `2^-5` to `1/2`, the piece of `1 + x` at `z = (t - offs k) + xl`, exact by the spacing of `x`, plus `-log \|x\|`, lies within `2^-59` of `ln \|Γ x\|` with `eps ≤ 2^-62` and a low part below `2^-19` (`mid_bounds`), and satisfies `FastSpec` |
 | `recip_wide`, `recip_big` | `LgammaRecip` | from 1 to `2^170`, the corrected reciprocal `zh + (fma zh (-x) 1) zh` within `2^-100` of `1/x`, and the fast path's range from 4 to `2^100` |
-| `series_spec` | `LgammaStirSeries` | the term `S (1/x²)/x` of Stirling's series within `2^-65`, with the code's `w = zh zh` and the bound `\|a - b\|/256` on the change of the tail |
+| `series_spec` | `LgammaStirSeries` | term `S (1/x²)/x` of Stirling's series within `2^-65`, with the code's `w = zh zh` and the bound `\|a - b\|/256` on the change of the tail |
 | `stir_a`, `stir_b` | `LgammaStir` | from 8.29541 to `2^52` and from `2^52` to `2^800`, the series within `2 eps - \|fh\|/2^67` of `ln Γ x`, with `eps = 4.5 · 10^-20 \|fh\|` and `StirlingFact` |
 | `pos_piece_spec`, `pos_stir_spec` | `LgammaFastPos` | the pieces and Stirling's series satisfy the absolute form of `FastSpec` at a positive `x` |
 | `asSinpipid_abs` | `LgammaSinpiAbs` | `asSinpipid` within `2^-72` relative within `3/256` of an integer and within `1.14 · 2^-71` elsewhere |
@@ -130,52 +130,52 @@ The fast path has a theorem for each of its branches below `2^800` in magnitude.
 | `refl_tail` | `LgammaReflTail` | below -6, `FastSpec` from a leaf with `\|fh\| ≥ 4` and the margin `\|fh\|/2^67` |
 | `refl_abs`, `refl_rel`, `refl_six`, `refl_two` | `LgammaReflMid` | from -6 to -1/2, the absolute form of `FastSpec` when `ln Γ a ≥ λ` and the sine's error fits in the piece's margin, the relative form when `\|ln \|Γ x\|\| ≥ M/128 + 1/256` for `\|fh\| ≤ M`, and the ranges from -6 to -4 and from -2 to -1/2 |
 | `refl_four` | `LgammaReflWin` | from -4 to -2, the relative form outside windows about the four zeros and the absolute form in them |
-| `LeafSpec`, `leaf_piece`, `leaf_stir_a`, `leaf_stir_b`, `pos_leaf`, `neg_leaf` | `LgammaLeaf` | the bounds on the result `(fh, fl, eps)` of a piece or of Stirling's series at `a = \|x\|`, which each of those leaves satisfies, and `FastSpec` from them at a positive `x` and, through the reflection, at every negative non-integer double from -1/2 to `-2^52` |
+| `LeafSpec`, `leaf_piece`, `leaf_stir_a`, `leaf_stir_b`, `pos_leaf`, `neg_leaf` | `LgammaLeaf` | bounds on the result `(fh, fl, eps)` of a piece or of Stirling's series at `a = \|x\|`, which each of those leaves satisfies, and `FastSpec` from them at a positive `x` and, through the reflection, at every negative non-integer double from -1/2 to `-2^52` |
 | `fast_within` | `LgammaFastWalk` | one step for the code's choice between the fast result and the accurate path, at every finite `x` other than the poles, 1, and 2, up to `2^800` in magnitude, when the accurate path is within one step: the block read to its leaves with `walk_step` and, for the triple `(fh, fl, eps)` at `\|x\|`, with `walk_bridge` and `LeafSpec` |
-| `exponent_lt_of_half`, `fastTwoSum_spec_small`, `twoSum_spec_top`, `sumDD_spec_top`, `fts_half` | `TgammaDDTop` | the double-double operations with high parts up to the overflow threshold, from `F64TopPack`, `F64TopMul`, and `F64TopTwoSum`: `fastTwoSum` exact when the addend is at most half the other operand and the sum lies below the threshold, and its low part at most `2^-44` for a sum from 0 to 1024 |
+| `exponent_lt_of_half`, `fastTwoSum_spec_small`, `twoSum_spec_top`, `sumDD_spec_top`, `fts_half` | `TgammaDDTop` | double-double operations with high parts up to the overflow threshold, from `F64TopPack`, `F64TopMul`, and `F64TopTwoSum`: `fastTwoSum` exact when the addend is at most half the other operand and the sum lies below the threshold, and its low part at most `2^-44` for a sum from 0 to 1024 |
 | `stir_top_core`, `leaf_stir_top` | `LgammaStirTop` | from `2^800` to `2^1015`, Stirling's series of the fast path within `2 eps - \|fh\|/2^67` of `ln Γ x` when `p1 x ≤ 2^1024 - 13 · 2^968` |
 | `products_ok`, `top_within`, `lgamma_le_top`, `fast_top` | `LgammaFastTop` | from `2^800` to `x1`, the bound on `p1 x` by a kernel check at `0x1.754cp+1014` and at `x1`, one step when the rounding test passes, and one step for the code's choice when the accurate path is within one step |
-| `polyDD_damped_core` | `LgammaPolyDD` | the double-double Horner scheme `polyDD` at a double-double point, against the exact Horner value, from the bounds of `mulDD` and `fastSum` per step |
-| `kern_spec` | `LgammaLogAccKern` | the kernel of `asLogdAccurate`: `X · logAccPoly X` within `\|X\|/2^93` plus terms in the low part of `X`, for `\|X\| ≤ 1/2400` |
-| `reduce_spec` | `LgammaLogAccRed` | the reduction `logReduce`: `y = 2^E t` with `t` in `[1, 2)`, `r = r1 i1 · r2 i2` exact, and `\|r t - 1\| ≤ 1/2400`, normal and subnormal |
+| `polyDD_damped_core` | `LgammaPolyDD` | double-double Horner scheme `polyDD` at a double-double point, against the exact Horner value, from the bounds of `mulDD` and `fastSum` per step |
+| `kern_spec` | `LgammaLogAccKern` | kernel of `asLogdAccurate`: `X · logAccPoly X` within `\|X\|/2^93` plus terms in the low part of `X`, for `\|X\| ≤ 1/2400` |
+| `reduce_spec` | `LgammaLogAccRed` | reduction `logReduce`: `y = 2^E t` with `t` in `[1, 2)`, `r = r1 i1 · r2 i2` exact, and `\|r t - 1\| ≤ 1/2400`, normal and subnormal |
 | `acc_core`, `acc_abs`, `acc_half` | `LgammaLogAccTail`, `LgammaLogdAcc` | `asLogdAccurate` within `2^-88` of `log y` for every positive finite `y`: the products of the exponent by the parts of `ln 2` and the sums of the table's high and middle parts are exact on the grids `2^-42`, `2^-84`, and `2^-94`, and the sum of the high parts is 0 or at least `6.79 · 10^-4` in magnitude, which makes the first renormalization exact; for `log y` from 1 to 1000, the middle part at most `2^-44 + 2^-52` (`acc_half`) |
 | `acc_one` | `LgammaLogdOne` | `asLogdAccurate` within `\|log y\|/2^78` of `log y` for `y ≠ 1` with `\|log y\| ≤ 2^-12`, for the branch about 2: the reduction has `r = 1` with `E = 0` or `r = 1/2` with `E = -1` (`one_ok`), `r t` is exact, `X = y - 1` is a nonzero multiple of `2^-53`, and the table's triple at `r1 = 1/2` differs from `ln 2` by `2^-140` (`tab_one`) |
-| `red54` | `LgammaSinAccRed` | the reduction of `asSinpipidAccurate` at `x = n/2^54`: `ky = roundEven (128 \|x - 1/2\|)` at most 64 and `d = ky - 128 \|x - 1/2\|` exact with `\|d\| ≤ 1/2` |
+| `red54` | `LgammaSinAccRed` | reduction of `asSinpipidAccurate` at `x = n/2^54`: `ky = roundEven (128 \|x - 1/2\|)` at most 64 and `d = ky - 128 \|x - 1/2\|` exact with `\|d\| ≤ 1/2` |
 | `polyDD_steps` | `LgammaPolyDDSteps` | `polyDD` with a bound per step on the error, the low part, and the high part of the state, for coefficients that fall from `2.5 · 10^-2` to `5 · 10^-26` |
-| `kern_gen`, `sq_spec` | `LgammaSinAccKern` | the two kernels of the accurate sine at `w = d2h + d2l` within `2^-115` and `2^-109` of their polynomials, from bounds per step that the kernel checks (`cos_ok`, `sin_ok`), and `w` within `d²/2^106 + 2^-1074` of `d²` |
-| `tail_spec` | `LgammaSinAccTail` | the operations after the kernels within `\|d\|/2^101 + sh/2^101 + 2^-1059` of `sh + sl + d ((ch + cl) Q + d P (sh + sl))`, with the low part at most `2^-47` of the high part |
+| `kern_gen`, `sq_spec` | `LgammaSinAccKern` | two kernels of the accurate sine at `w = d2h + d2l` within `2^-115` and `2^-109` of their polynomials, from bounds per step that the kernel checks (`cos_ok`, `sin_ok`), and `w` within `d²/2^106 + 2^-1074` of `d²` |
+| `tail_spec` | `LgammaSinAccTail` | operations after the kernels within `\|d\|/2^101 + sh/2^101 + 2^-1059` of `sh + sl + d ((ch + cl) Q + d P (sh + sl))`, with the low part at most `2^-47` of the high part |
 | `kernels`, `sinAcc_spec` | `LgammaSinAcc` | `asSinpipidAccurate` within `2^-85` of `sin (π x)/π`, relative, at every `x = n/2^54` with `0 < n < 2^54`, with the low part at most `2^-47` of the high part |
 | `kern_iv`, `horner_iv` | `LgammaPolyIv` | `polyDD` at a nonnegative double-double point in `[0, X]` from a kernel check on uniform subintervals: interval enclosures of the Horner values, and the product of each enclosure with `\|xh\| ≤ b + Xl` below the coefficient that `fastSum` adds |
 | `recip_dd` | `LgammaAsymRecip` | `zh = 1/xh` and `zl = (fma (zh, -xh, 1) - xl zh) zh` within `2^-98/xh` of `1/(xh + xl)` for `1 ≤ xh ≤ 2^120` and `\|xl\| ≤ xh/2^51` |
-| `series_gen` | `LgammaAsymSeries` | the series term `z P (z²)` of the code within `R/2^99` of `Z P (Z²)` for `Z = 1/x` and `R = 1/xh`, from `kern_iv`, the value range `valOk`, and `TgammaPolyLip.lipQ` |
+| `series_gen` | `LgammaAsymSeries` | series term `z P (z²)` of the code within `R/2^99` of `Z P (Z²)` for `Z = 1/x` and `R = 1/xh`, from `kern_iv`, the value range `valOk`, and `TgammaPolyLip.lipQ` |
 | `log_dd` | `LgammaAsymLog` | `log (xh + xl)` within `2^-88 + 2^-140` from `asLogdAccurate xh` and the code's correction `d - d²/2` for `d ≈ xl/xh` |
 | `prod_spec` | `LgammaAsymProd` | `(l - 1)(x - 1/2)` within `wh/2^92` for a logarithm `l0` from 1 to 710 and `wh` up to `2^1015` with `(l0 - 1) wh ≤ 2^1024 - 13 · 2^968`, with `xh - 1/2` below `2^52` and `l0 - 1` exact by `TgammaAsym1.sub_exact_binade` |
-| `asym1_ok` to `asym3_lip`, `asym_ends` | `LgammaAsymKern` | the kernel checks of the three Stirling polynomials: the steps of `polyDD` (eight subintervals for the 27 coefficients below 14.5), values in `[0.0831, 0.0834]`, and Lipschitz constants below `2^-8` |
+| `asym1_ok` to `asym3_lip`, `asym_ends` | `LgammaAsymKern` | kernel checks of the three Stirling polynomials: the steps of `polyDD` (eight subintervals for the 27 coefficients below 14.5), values in `[0.0831, 0.0834]`, and Lipschitz constants below `2^-8` |
 | `asym_gen`, `w_spec`, `asym_ranges`, `prod_below`, `asym_big`, `asym_spec` | `LgammaAsymAcc` | `asLgammaAsymAccurate` from 15/4 to `2^801`, and from `2^120` to `2^1015` where `x (log x - 1 + 2^-44 + 2^-50) ≤ 2^1024 - 13 · 2^968` (`asym_big`), within `2^-87` of `log Γ x` relative below 48 and `2^-63` from 48 on, plus `x (2^-88 + 2^-91)` below `2^120` and `x/2^86` above, from `AsymFact` |
 | `acc_gen`, `small_ok`, `mid_ok`, `fastSum_any`, `mid_spec` | `LgammaAccPoly` | `polyDDDFst` at a double `\|x\| ≤ 1/4`: the 34 pairs at offset 0 within `2^-89` of their polynomial with the low part below `2^-43`, and the 30 pairs at offset 68 within `9 · 2^-61` with the low part below `2^-40` and the high part below 1/4 |
 | `tiny_spec`, `low_spec`, `adjust_spec` | `LgammaAccLow` | the branches below `2^-100` and from `2^-100` to `1/4` within `2^-70` of `log \|Γ sx\|`, relative, with a high part of magnitude at least 1; the adjustment by `1 ± 2^-52` moves the low part by at most `\|fl\|/2^51` |
-| `addLog_gen`, `addLog_spec`, `addLog_fast`, `addLog_wide` | `LgammaAccAdd` | the addition of a logarithm triple to a triple by `sumDD`, an exact sum of the high parts, and `sumDD`: an error near `2^-53` of the low parts and `2^-153` of the high part |
+| `addLog_gen`, `addLog_spec`, `addLog_fast`, `addLog_wide` | `LgammaAccAdd` | addition of a logarithm triple to a triple by `sumDD`, exact sum of the high parts, and `sumDD`: an error near `2^-53` of the low parts and `2^-153` of the high part |
 | `val_neg`, `mid_range`, `small_range` | `LgammaAccRange` | kernel checks of the ranges of the two polynomials on `[-1/4, 1/4]`: the polynomial about 3/2 in `[-1/8, -0.08]` and the polynomial about 1 in `[-0.82, -0.38]` |
-| `mid_val`, `log_val`, `log_sum`, `win_add`, `w05_pos` to `w35_neg` | `LgammaAccWin` | the windows about 0.5, 1.5, 2.5, and 3.5 within `9/2^61 + 2^-69` of `log Γ x` at a positive argument and of `log Γ (x + 1)` at a negative one (`WinSpec`) |
-| `small_val`, `two_lower`, `w1_pos` to `w3_neg` | `LgammaAccWinSmall` | the windows about 1, 2, and 3: at a positive argument about 1 and 2 within `2^-64` of `log Γ x`, relative (`RelSpec`), with `\|log Γ (2 + t)\| ≥ 0.32 \|t\|` from the convexity of `log Γ`; elsewhere within `2^-67` |
-| `refl_id`, `phi_spec`, `slog_spec`, `refl_spec` | `LgammaAccRefl` | the reflection from `-2^52` to `-1/4`: `log \|Γ sx\| = -(log Γ (1 + \|sx\|) + log (sin (π φ)/π))` with `sin (π φ) = \|sin (π sx)\|`, the logarithm of the accurate sine within `2^-84`, and the result within the triple's error plus `2^-84` |
-| `factor26`, `adjust26`, `norm_spec` | `LgammaAccNorm` | the four `fastTwoSum` and the adjustment at the end of the main branch, without an order between the operands: within `(B + C)/2^52 + (\|a\| + B + C)/2^99` of the triple for low parts at most `B` and `C` |
-| `rootIvOk`, `root_iv_at`, `root_dd`, `rangeOk`, `root_range` | `LgammaRootEval` | the kernel checks of a polynomial about a negative zero: the double-double part by interval enclosures on each side of 0, the double tail by `TgammaExpr`, and the range of the polynomial |
-| `z_spec`, `scale_exact`, `tail_spec`, `poly_part` | `LgammaRootPath` | the shifted argument `zh + zl` within `\|z\|/2^62` of `z = sx + x0`, its exact scaling by `2^E`, the double tail, and the double-double polynomial at the scaled point |
+| `mid_val`, `log_val`, `log_sum`, `win_add`, `w05_pos` to `w35_neg` | `LgammaAccWin` | windows about 0.5, 1.5, 2.5, and 3.5 within `9/2^61 + 2^-69` of `log Γ x` at a positive argument and of `log Γ (x + 1)` at a negative one (`WinSpec`) |
+| `small_val`, `two_lower`, `w1_pos` to `w3_neg` | `LgammaAccWinSmall` | windows about 1, 2, and 3: at a positive argument about 1 and 2 within `2^-64` of `log Γ x`, relative (`RelSpec`), with `\|log Γ (2 + t)\| ≥ 0.32 \|t\|` from the convexity of `log Γ`; elsewhere within `2^-67` |
+| `refl_id`, `phi_spec`, `slog_spec`, `refl_spec` | `LgammaAccRefl` | reflection from `-2^52` to `-1/4`: `log \|Γ sx\| = -(log Γ (1 + \|sx\|) + log (sin (π φ)/π))` with `sin (π φ) = \|sin (π sx)\|`, logarithm of the accurate sine within `2^-84`, and result within the triple's error plus `2^-84` |
+| `factor26`, `adjust26`, `norm_spec` | `LgammaAccNorm` | four `fastTwoSum` and adjustment at the end of the main branch, without an order between the operands: within `(B + C)/2^52 + (\|a\| + B + C)/2^99` of the triple for low parts at most `B` and `C` |
+| `rootIvOk`, `root_iv_at`, `root_dd`, `rangeOk`, `root_range` | `LgammaRootEval` | kernel checks of a polynomial about a negative zero: the double-double part by interval enclosures on each side of 0, the double tail by `TgammaExpr`, and the range of the polynomial |
+| `z_spec`, `scale_exact`, `tail_spec`, `poly_part` | `LgammaRootPath` | shifted argument `zh + zl` within `\|z\|/2^62` of `z = sx + x0`, its exact scaling by `2^E`, double tail, and double-double polynomial at the scaled point |
 | `root_spec` | `LgammaRootSpec` | one range: the code's `mulDD zh zl fh fl` within `\|log \|Γ sx\|\|/2^55`, from `RootFact`, `RootMinFact`, and the range's kernel checks |
-| `rok0` to `num16` | `LgammaRootKern` | the kernel checks of the 17 polynomials that `root_spec` takes, which a script computed and checked in exact arithmetic first |
-| `dom0` to `dom16` | `LgammaRootDom` | the interval about each zero to which `\|log \|Γ x\|\| ≤ (1 + 2^-40) b` confines `x` in each range, from the checked bounds of `LgammaRootA0` to `LgammaRootF` |
+| `rok0` to `num16` | `LgammaRootKern` | kernel checks of the 17 polynomials that `root_spec` takes, which a script computed and checked in exact arithmetic first |
+| `dom0` to `dom16` | `LgammaRootDom` | interval about each zero to which `\|log \|Γ x\|\| ≤ (1 + 2^-40) b` confines `x` in each range, from the checked bounds of `LgammaRootA0` to `LgammaRootF` |
 | `range0` to `range16` | `LgammaRootRanges` | `root_spec` on each of the 17 ranges of `Lgamma.rootRange` |
-| `rootRange_spec` | `LgammaRootSel` | the selection of `rootRange`: the first range whose conditions hold, or none with all 17 conditions false |
-| `sum_within`, `db_entry`, `final_of_sum`, `final_step` | `LgammaAccFinal` | the rounded `fh + fl` within one step when its error is at most `ρ \|L\|` with `ρ ≤ 1/(2^53 + 1)`, and each row `(x, f, δ)` of the table of hard cases within one step from `DbFact` and `\|δ\| ≤ \|f\|/2^54` |
+| `rootRange_spec` | `LgammaRootSel` | selection of `rootRange`: the first range whose conditions hold, or none with all 17 conditions false |
+| `sum_within`, `db_entry`, `final_of_sum`, `final_step` | `LgammaAccFinal` | rounded `fh + fl` within one step when its error is at most `ρ \|L\|` with `ρ ≤ 1/(2^53 + 1)`, and each row `(x, f, δ)` of the table of hard cases within one step from `DbFact` and `\|δ\| ≤ \|f\|/2^54` |
 | `root_leaf` | `LgammaAccRoot` | a selected range gives a result within `\|log \|Γ sx\|\|/2^55` when `\|log \|Γ sx\|\| ≤ \|fh\| + 2^-46` |
-| `m4_walk`, `m1_spec`, `m3_spec` | `LgammaAccWalk` | the tactics `acc_step`, which also enters the matcher of `rootRange`'s 4-tuple, and `spec_step`, which splits a pair or triple match into a specification of the matched value and the rest of the block |
+| `m4_walk`, `m1_spec`, `m3_spec` | `LgammaAccWalk` | tactics `acc_step`, which also enters the matcher of `rootRange`'s 4-tuple, and `spec_step`, which splits a pair or triple match into a specification of the matched value and the rest of the block |
 | `rootRange_zero`, `tail_within` | `LgammaAccTail` | from a pair with `AccPair`, the last two steps of `accurate` within one step of `log \|Γ sx\|`; the statement repeats the code's block with the code's matchers |
 | `norm_pair` | `LgammaAccPair` | the renormalization of a triple within `E` gives `AccPair` when the error after it is at most `\|L\|/(2^53 + 1)` wherever no polynomial about a zero applies |
 | `lower_neg`, `lower_half`, `lower_sxb`, `pos_quarter`, `pos_mid`, `pos_large` | `LgammaAccLower` | `\|log \|Γ x\|\|` at least `1/4` on `(-2, -1/4]`, `1/16` at the half-integers from -19/2 to -7/2 and at `sxBound`, and `1/20` on the positive windows about 0.5, 1.5, 2.5, and 3.5, from the convexity of `Γ` and `log Γ` |
 | `growth_small`, `growth_large`, `lgamma_upper` | `LgammaAccGrowth` | `log Γ y ≥ y/8` from 15/4, `log Γ y ≥ 13 y/10` from 23/2, and `log Γ y ≤ 2^812` up to `2^802` |
 | `cancel32`, `cancel_double` | `LgammaAccCancel` | at a non-integer double `x ≤ -32`, `log Γ (1 - x) ≤ 2 \|log \|Γ x\|\|`, since `x` is a multiple of `2^-47` |
-| `win_test`, `lt_test` | `LgammaAccTests` | the code's window test `(x - c).abs < 0.25` at `x ≥ 1/4` as `\|x - c\| < 1/4`, and comparisons with literals |
+| `win_test`, `lt_test` | `LgammaAccTests` | window test `(x - c).abs < 0.25` of the code at `x ≥ 1/4` as `\|x - c\| < 1/4`, and comparisons with literals |
 | `neg_mid_lower` | `LgammaAccRegion` | from -21/2 to -1/4, `\|log \|Γ x\|\| ≥ 1/20` when no polynomial about a zero applies to a high part close to `log \|Γ x\|` |
 | `pos_pair`, `win_pos`, `rel_pos`, `asym_pos` | `LgammaAccPos` | at a positive argument, the triples of the windows and of Stirling's series renormalize to `AccPair` |
 | `ready_pair`, `small_ready` | `LgammaAccNeg` | from -21/2 to -1/4, the reflected triple of a window or of Stirling's series renormalizes to `AccPair` |
@@ -205,22 +205,22 @@ Two parts of the analysis are specific to `lgamma`.  The result has relative acc
 | Theorem | Module | Statement |
 |---|---|---|
 | `db_fact` | `LgammaDb` | `ln \|Γ\|` at each of the 19 hard cases within `2 ^ -60` relative of the stored double, from the reflection at the point: `DbFact` |
-| `cover` | `LgammaStirFast` | the fast path's Stirling fit within `7 · 10 ^ -20 lgamma x` on `[border 19 - 2 ^ -40, 16]`, on 16 pieces made relative by the value of `lgamma` at each piece's left end |
-| `fast_large`, `asym0_large` | `LgammaStirLarge` | the fast path's fit within `7 · 10 ^ -20 lgamma x` from 16 on, which with `cover` gives `StirlingFact`, and the accurate path's first fit within `2 ^ -63 lgamma x` from `48 - 2 ^ -40` on, the first clause of `AsymFact` |
+| `cover` | `LgammaStirFast` | Stirling fit of the fast path within `7 · 10 ^ -20 lgamma x` on `[border 19 - 2 ^ -40, 16]`, on 16 pieces made relative by the value of `lgamma` at each piece's left end |
+| `fast_large`, `asym0_large` | `LgammaStirLarge` | fit of the fast path within `7 · 10 ^ -20 lgamma x` from 16 on, which with `cover` gives `StirlingFact`, and first fit of the accurate path within `2 ^ -63 lgamma x` from `48 - 2 ^ -40` on, the first clause of `AsymFact` |
 | `fit_range` | `GammaFitsX` | a kernel check of `(m - C0) + t (S - P) (t²)` on `t ∈ [lo, 1/X]` bounds a Stirling fit `F` against `lgamma` on `[X, 1/lo]`, where `m` is the center of an enclosure of `(ln (2π) - 1)/2` and `S` Stirling's twelve coefficients |
 | `acc_mid` | `LgammaAccMid` | `\|ln Γ (3/2 + d) - P (d)\| ≤ 2 ^ -70` for `\|d\| ≤ 1/4`, with `P` the accurate path's 30 double-double coefficients: the second clause of `AccPolyFact` |
-| `sub_bound`, `piece_of_subs` | `LgammaPieceBase` | the relative bound on a piece of the fast path from those on its four sub-pieces |
+| `sub_bound`, `piece_of_subs` | `LgammaPieceBase` | relative bound on a piece of the fast path from those on its four sub-pieces |
 | `rootOk_sound`, `root_piece`, `root_domain_dec`, `root_domain_inc` | `GammaRoot` | a kernel check of a polynomial against a Taylor model of `lgamma (-n - δ - t)` through the reflection bounds it by `ε \|lgamma x\| + S`, and the convexity of `lgamma` between two poles confines `\|lgamma x\| ≤ c` to an interval about a zero |
 | `small_fact` | `LgammaSmallFact`, with `LgammaSmallFactBase` and `LgammaSmallFactA` to `D` | `\|ln Γ (1 + x) - x P (x)\| ≤ 2^-70 \|x\|` for `\|x\| ≤ 1/32`, with `P` the fast path's polynomial: `SmallFact` |
-| `acc_small` | `LgammaAccSmall`, with `LgammaAccSmallBase` and `LgammaAccSmallA` to `N` | the same bound for the accurate path's polynomial on `\|x\| ≤ 1/4`: the first clause of `AccPolyFact` |
+| `acc_small` | `LgammaAccSmall`, with `LgammaAccSmallBase` and `LgammaAccSmallA` to `N` | same bound for the accurate path's polynomial on `\|x\| ≤ 1/4`: the first clause of `AccPolyFact` |
 | `piece4` | `LgammaPiece4`, with `LgammaPiece4Base` and `LgammaPiece4A` to `E` | piece 4 of the fast path, which contains the zero 1 and carries the factor `1 - x`, within `1.2 · 10^-19 \|ln Γ x\|` on the piece widened by `2^-50` |
-| `piece0` to `piece18`, except `piece4` and `piece10` | `LgammaPiecesA` to `E` | the fast path's pieces of `[0.5, 8.29541]` other than 4 and 10 within `εout \|ln Γ x\|` on each piece widened by `2^-50` |
-| `acc_sin_fact`, `acc_cos_fact` | `LgammaSinpiAcc` | the kernels of `as_sinpipid_accurate` for `\|d\| ≤ 1/2`: `sin (π d/128)` within `2^-95 \|d\|` and `cos (π d/128)` within `2^-95 d²` of their polynomials |
-| `cover` | `LgammaAsymMidA` to `C`, `LgammaAsymLowA` to `H` | the accurate path's Stirling fit within `2^-87 ln Γ x` on `[15/4 - 2^-40, 48 + 2^-40]`, in pieces |
+| `piece0` to `piece18`, except `piece4` and `piece10` | `LgammaPiecesA` to `E` | pieces of the fast path on `[0.5, 8.29541]` other than 4 and 10 within `εout \|ln Γ x\|` on each piece widened by `2^-50` |
+| `acc_sin_fact`, `acc_cos_fact` | `LgammaSinpiAcc` | kernels of `as_sinpipid_accurate` for `\|d\| ≤ 1/2`: `sin (π d/128)` within `2^-95 \|d\|` and `cos (π d/128)` within `2^-95 d²` of their polynomials |
+| `cover` | `LgammaAsymMidA` to `C`, `LgammaAsymLowA` to `H` | Stirling fit of the accurate path within `2^-87 ln Γ x` on `[15/4 - 2^-40, 48 + 2^-40]`, in pieces |
 | `range0` to `range16` | `LgammaRootA0` to `LgammaRootA2`, `LgammaRootB0` to `LgammaRootB2`, `LgammaRootC`, `LgammaRootD0` to `LgammaRootD2`, `LgammaRootE`, `LgammaRootF`, with `LgammaZeroBase` | `RootFact` on the 17 ranges: the polynomial about each negative zero within `2^-63 \|ln \|Γ x\|\| + 2^-120` |
-| `bound2` to `bound16`, `bound10cut` | `LgammaZerosA`, `LgammaZerosB` | a lower bound on `\|ln \|Γ x\|\|` at every double of `(-n - 1, -n)` for `n` from 2 to 16, from the values at the two doubles next to each zero and the convexity of `ln \|Γ\|` between two poles |
+| `bound2` to `bound16`, `bound10cut` | `LgammaZerosA`, `LgammaZerosB` | lower bound on `\|ln \|Γ x\|\|` at every double of `(-n - 1, -n)` for `n` from 2 to 16, from the values at the two doubles next to each zero and the convexity of `ln \|Γ\|` between two poles |
 | `cancel_tail`, `cancel_fact` | `LgammaCancelTail`, `LgammaCancel` | `ln \|Γ (1 - x)\| ≤ 2^32 \|ln \|Γ x\|\|` at every non-integer double `x ≤ -21/2`: below -17 from the distance `2^-48` to the integers, and on `(-17, -21/2]` from the lower bounds of `LgammaZerosB` against `ln 17! < 49` and `ln 11! < 26`: `CancelFact` |
-| `allFacts` | `LgammaFacts` | the thirteen statements of `LgammaApprox.AllFacts` |
+| `allFacts` | `LgammaFacts` | thirteen statements of `LgammaApprox.AllFacts` |
 
 The rows from `small_fact` on record 59 modules that the track's build queue accepted, each with the axioms `propext`, `Classical.choice`, and `Quot.sound` only.  Ten modules of the queue did not build, and Opus repaired them on 2026-10-13 ([the journal](../../../../devnotes.md#2026-10-13-the-ten-failed-lgamma-fact-modules-and-lgammafacts-coordinator)): imports in `LgammaZerosA` and `LgammaZerosB` and the form `(m + 1) / 2 ^ k` of their arguments, a `simp` for a failing `rewrite` in `LgammaSinpiTables` and `LgammaLogAcc`, the argument of a `rewrite` in `LgammaCancelTail`, and the missing `LgammaCancel`.  `LgammaPiece10` built without a change.  `LgammaRootA`, `LgammaRootB`, and `LgammaRootD` failed for memory: their checks need up to 9.1 GB, and each range now has its own module, which builds in 4 to 6 minutes with `--memory-high 12G`.  `LgammaFacts.allFacts` depends on `propext`, `Classical.choice`, and `Quot.sound` only.
 

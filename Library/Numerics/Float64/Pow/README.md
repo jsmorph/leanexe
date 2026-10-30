@@ -15,7 +15,7 @@
 | `y = ±∞`, `\|x\| ≠ 1` | `+0` for `\|x\| < 1` and `y = +∞` or `\|x\| > 1` and `y = -∞`, else `+∞` | Same.  IEEE 754-2019, C11, and C23 list `pow (±0, -∞) = +∞` as a case of its own, and C99 covers it by its rule for `\|x\| < 1`. |
 | `x = ±0` or `±∞`, `y` finite and nonzero | `x²` or `1/x²` for negative `y`, negated for negative `x` and odd integer `y` | `±∞` (with divideByZero) or `±0` for zero `x`, and `±0` or `±∞` for infinite `x`, signed for odd integer `y`. |
 | `x < 0` finite, `y` finite and not an integer | NaN, as `(x - x)/(x - x)` | NaN with the invalid operation exception. |
-| `x < 0` finite, `y` an odd integer | the result for `\|x\|`, negated through the sign bias `0x800 << 7` | `pow (x, y) = -\|x\|^y`. |
+| `x < 0` finite, `y` an odd integer | result for `\|x\|`, negated through the sign bias `0x800 << 7` | `pow (x, y) = -\|x\|^y`. |
 | `\|y\| < 2^-65` | 1 for `\|x\| = 1`, else `1 + y` for `\|x\| > 1` and `1 - y` for `\|x\| < 1` | No special rule.  `x^y` rounds to 1 or a neighbor. |
 | `\|y\| ≥ 2^63` | 1 for `\|x\| = 1`, else the overflow product when `\|x\| > 1` and `y > 0` or `\|x\| < 1` and `y < 0`, and the underflow product otherwise | No special rule.  `\|y log x\|` exceeds the finite range. |
 | `x` subnormal | normalized by `2^52` before the logarithm | No special rule. |
@@ -40,12 +40,12 @@ The sources are Arm's `math/pow.c` (`Copyright (c) 2018-2026, Arm Limited`), `ma
 |---|---|---|
 | `(a) == (b)` on two comparisons, in the `y = ±∞` case and the `\|y\| ≥ 2^63` case | nested tests with the same results | The dialect compares no Booleans. |
 | `checkint (iy)` evaluated once for a negative `x` | evaluated in each of the two tests that use it | `checkint` is a pure function, so the results are the same. |
-| `k = (int64_t) tmp >> 52`, an arithmetic shift | the logical shift with the sign bits set for a negative `tmp`, and `kd` converted through its magnitude | Words are unsigned. |
-| `abstop = 0` marks the special path | the Boolean `special` of `powExpCore` | The exponential implementation passes the path choice as an explicit Boolean. |
+| `k = (int64_t) tmp >> 52`, an arithmetic shift | logical shift with the sign bits set for a negative `tmp`, and `kd` converted through its magnitude | Words are unsigned. |
+| `abstop = 0` marks the special path | Boolean `special` of `powExpCore` | The exponential implementation passes the path choice as an explicit Boolean. |
 | `opt_barrier_double`, `force_eval_double`, `check_oflow`, `check_uflow` | identities or omitted | WebAssembly has no floating-point status flags. |
 | `1.0 + 0x1p-60 != 1.0` in `specialcase` | kept | It is false in rounding to nearest, so the `DBL_MAX` branch is never taken. |
-| `__math_oflow (s)`, `__math_uflow (s)`, `__math_invalid (x)` | the signed products `±0x1p769 · 0x1p769` and `±0x1p-767 · 0x1p-767`, and `(x - x)/(x - x)` | These are the calls' results [5]. |
-| `__pow_log_data`, `__exp_data` | the tables `powLogTable` and `Exp.expTable`, and constants written as bit patterns | The dialect has no global data other than borrowed tables. |
+| `__math_oflow (s)`, `__math_uflow (s)`, `__math_invalid (x)` | signed products `±0x1p769 · 0x1p769` and `±0x1p-767 · 0x1p-767`, and `(x - x)/(x - x)` | These are the calls' results [5]. |
+| `__pow_log_data`, `__exp_data` | tables `powLogTable` and `Exp.expTable`, and constants written as bit patterns | The dialect has no global data other than borrowed tables. |
 
 `powLogTable` holds Arm's `__pow_log_data.tab` for `N = 128`: 512 words, `invc`, the unused `pad`, `logc`, and `logctail` for each subinterval.  Its 512 words equal the 128 entries of `pow_log_data.c` at the pinned commit, and 27 constants of the port equal Arm's expressions evaluated in binary64: `ln2hi`, `ln2lo`, the seven polynomial coefficients written as Arm's scaled products such as `0x1.555555555556p-2 · -2`, the reduction and polynomial constants that `powExpCore` shares with `Exp.expCore`, and the factors of `specialcase`, `__math_oflow`, and `__math_uflow`.  A check of the table against Arm's comment in 80-digit decimal arithmetic finds every `invc` a multiple of `1/256`, every `logc` a multiple of `2^-43`, and `|log c - logc - logctail|` at most `3.05 · 10^-30`, below the `2^-97 ≈ 6.31 · 10^-30` that Arm states.  These comparisons ran outside the repository.  `PowLogTable.checked_entries` and `checked_logs` check every entry of `powLogTable` in the kernel, as the next section describes, and `ExpTableBounds.checked_table_bounds` covers `Exp.expTable`.
 
@@ -76,7 +76,7 @@ Each theorem in the next table reports only `propext`, `Classical.choice`, and `
 | `PowExpTheorem.powExp_within` | For finite `x` and `xtail` with `\|xtail\| ≤ 17 · 2^-28 \|x\|` and a real `L` with `\|x + xtail - L\| ≤ \|L\|/2^65`, `Pow.powExp Exp.expTable x xtail 0` lies within one step of the nearest-even rounding of `exp L` |
 | `PowExpSpecial.positive_within`, `negative_within`, `PowExpFar.far_positive`, `far_negative` | One step against `exp L` on `powExpCore`'s special path, for `512 ≤ \|x\| ≤ 768` and for `768 < \|x\| < 1024`, with a small tail and a target near `x + xtail` |
 | `ArmTight.presum_tight`, `reconstruction_tight`, `ordinary_tight`, `positive1009_tight`, `negative_tight` | For a polynomial word `w` with `\|w\| ≤ 1/256` within `(37/100) u` of its target, bounds on the reconstruction `s + s · w`, and one step on the ordinary path, on the path scaled by `2^1009` with overflow to infinity, and on the compensated path below 1 |
-| `PowExpEval.polynomial_error`, `evaluation_tight` | Exponential's polynomial within `2^-63` of `exp r - 1` on `\|r\| ≤ 1/360`, from `PolyBound.check`, and its evaluation within `2^-59` |
+| `PowExpEval.polynomial_error`, `evaluation_tight` | Polynomial of the exponential within `2^-63` of `exp r - 1` on `\|r\| ≤ 1/360`, from `PolyBound.check`, and its evaluation within `2^-59` |
 | `PowLogTable.checked_entries`, `checked_logs`, `log_table` | For each of the 128 entries: `invc` on the grid of `2^-7` for `i ≤ 75` and of `2^-8` for `i ≥ 75`, `logc` on the grid of `2^-43` with `\|logc\| ≤ 0.3466`, `\|logctail\| ≤ 2^-43`, `\|z invc - 1\| ≤ 23/4000` on the subinterval, and `\|log invc + logc + logctail\| ≤ 2^-97` |
 | `PowLogTable.kernel_error` | `\|log (1 + r) - r · p (r)\| ≤ 6 · 2^-70 \|r\|` for the logarithm's polynomial `p` and `\|r\| ≤ 23/4000` |
 | `PowLogReduce.reduce_state` | `zlo`, `zhi · invc`, `rhi`, `rlo`, and `r` are exact, with `rhi` on the grid of `2^-29` and `r` on that of `2^-60` |
@@ -117,7 +117,7 @@ The sharper reduction bound `|x - k log 2/128| ≤ 677/250000` (`PowExpCore.idea
 |---|---|---|
 | Table of `2^(j/128)` and the exponential's constants | `ExpTableBounds`, `ExpReductionBounds`, `ExpApproximation` | Nothing for the words. |
 | Exponential with tail | `powExp_within` and the special and far paths for the bias 0, the symmetry of rounding under negation (`PowNegate`, `PowSignRel`), and `PowExpSign.powExp_neg_within` for the bias `0x800 << 7` | Nothing. |
-| Logarithm `hi + lo` | Table checks, the polynomial bound, the exact reduction, the terms of the sum, `powLog` on words, the error after `r` (`PowLogError.after_error`), the relative bound for each entry (`PowLogMain.core_bound`, `PowLogCases.core_relative`), and `PowLogFinal.log_within` for every positive normal or subnormal `x` other than 1 | Nothing. |
+| Logarithm `hi + lo` | Table checks, polynomial bound, exact reduction, terms of the sum, `powLog` on words, error after `r` (`PowLogError.after_error`), relative bound for each entry (`PowLogMain.core_bound`, `PowLogCases.core_relative`), and `PowLogFinal.log_within` for every positive normal or subnormal `x` other than 1 | Nothing. |
 | Product `ehi + elo` | `PowProduct.product_error` | Nothing. |
 | Branches and special cases | `PowTheorem.pow_within`, which combines `PowTheoremPos.pow_pos_within`, `PowNegBase.pow_neg_within`, and the zero base with `y ≥ 0`, together with `PowCheckint.checkint_spec` and the special values of `PowSpecial` | Nothing. |
 | WebAssembly | Generated compiler theorems, `PowBytes.pow_bytes_accuracy` with `Ready` for the two borrowed tables (`pow` is function 11, `powLogTable` at 4096, `Exp.expTable` at 8200), and `PowFile` | Nothing. |

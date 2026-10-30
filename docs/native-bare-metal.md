@@ -10,12 +10,12 @@ The program is the translation of a module, a volatile global `lx_out` that the 
 
 | Step | From | To | Covered by |
 | --- | --- | --- | --- |
-| 1 | Lean definition | `p.run.native` | the existing proofs |
-| 2 | `p.run.native` | `bigstep_program_terminates` of the whole program in the Lean copy | a new Lean proof, described below |
-| 3 | the Lean copy | CompCert's `Clight2.bigstep_program_terminates` of the program that `clightgen` reads | review, differential tests, the per-build check, and a renaming lemma |
-| 4 | the program that `clightgen` reads | the program that `ccomp` compiles | trusted: one front end, with identifiers numbered differently |
-| 5 | Clight big-step termination | the behaviour of the Asm program | a composition of CompCert's proofs in Rocq, proved in the experiments |
-| 6 | the Asm program | the machine | trusted: printer, assembler, linker, startup code, CPU, and UART |
+| 1 | Lean definition | `p.run.native` | existing proofs |
+| 2 | `p.run.native` | `bigstep_program_terminates` of the whole program in the Lean copy | new Lean proof, described below |
+| 3 | Lean copy | CompCert's `Clight2.bigstep_program_terminates` of the program that `clightgen` reads | review, differential tests, the per-build check, and a renaming lemma |
+| 4 | program that `clightgen` reads | program that `ccomp` compiles | trusted: one front end, with identifiers numbered differently |
+| 5 | Clight big-step termination | behaviour of the Asm program | composition of CompCert's proofs in Rocq, proved in the experiments |
+| 6 | Asm program | machine | trusted: printer, assembler, linker, startup code, CPU, and UART |
 
 ## Target machine
 
@@ -67,9 +67,9 @@ The program can report results in four ways, and CompCert's semantics observes t
 | Channel | In CompCert's behaviour | Use |
 | --- | --- | --- |
 | `int` that `main` returns | yes: `Terminates t r` carries `r` | 0, the trap code of `lx_status`, or 64 when a program with input reads a length above `inMax`.  The startup code passes `w0` to QEMU's exit status through semihosting |
-| Volatile stores to a volatile global | yes: each is an event `Event_vstore chunk id ofs v` of the trace, which every pass preserves | the result's bytes, through `lx_out` at the UART's data register |
+| Volatile stores to a volatile global | yes: each is an event `Event_vstore chunk id ofs v` of the trace, which every pass preserves | bytes of the result, through `lx_out` at the UART's data register |
 | Memory region read after the program halts, by a debugger or QEMU's monitor | no: `program_behaves` records only the trace and the result, so CompCert's theorem says nothing about final memory | none |
-| Semihosting calls from C, such as `SYS_WRITEC` | only as an external call, whose event and result come from `external_functions_sem`, a parameter of CompCert.  The Lean theorems hold for every such semantics and so conclude nothing about a call to one | the startup code's exit call, outside the proofs |
+| Semihosting calls from C, such as `SYS_WRITEC` | only as an external call, whose event and result come from `external_functions_sem`, a parameter of CompCert.  The Lean theorems hold for every such semantics and so conclude nothing about a call to one | exit call of the startup code, outside the proofs |
 
 A volatile store reaches the trace as follows.  C2C gives an `extern volatile` declaration an empty initializer and `gvar_volatile = true` (`cfrontend/C2C.ml`, lines 1278, 1279, and 1305 to 1307).  SimplExpr turns an assignment to a volatile lvalue into `Sbuiltin None (EF_vstore chunk)` with the lvalue's address and the value (`cfrontend/SimplExpr.v`, lines 184 to 226), and the experiment's `clightgen` output shows this form for a store to `lx_out`.  `volatile_store` of a block that `Senv.block_is_volatile` marks emits `Event_vstore` and leaves memory unchanged, with no permission check (`common/Events.v`, lines 571 to 583).  The assembler and linker resolve `lx_out` by name to the address in the linker script, so the event means a 32-bit store to that address.
 
@@ -81,7 +81,7 @@ The exit status of a program is therefore one of these codes:
 | 1, 2, 3 | `lx_status` after a trap at `unreachable`, an access outside memory, or a division by zero, which `main` returns |
 | 64 | a program with input read a length above `inMax` |
 | 254 | the startup code found an exception level other than 1 |
-| 255 | an exception, which the vectors report |
+| 255 | exception, which the vectors report |
 
 On QEMU, the PL011 model passed every byte to its output in the experiments.  On hardware the transmitter can be busy when `main` writes, and `main` cannot wait for it: a volatile read of the UART's flag register is an input event whose value the theorem would have to quantify over, and a loop that waits on it has no termination proof.  Under KVM each store to the UART reaches QEMU's PL011 model, as under TCG, so B8 leaves the question to a board, which has to settle how output reaches a device that may not accept every write.
 
@@ -137,7 +137,7 @@ The lemmas of the path exist only for the translation with the test.  Each theor
 | `Val.load_result` | `common/Values.v`, line 1069 |
 | `volatile_store`, `volatile_store_sem`, and the case `EF_vstore` of `external_call` | `common/Events.v`, lines 571 to 583, 820 to 824, and 1530 |
 | for inputs: `volatile_load`, `volatile_load_sem`, and the case `EF_vload`, added in B7 | `common/Events.v`, lines 557 to 569, 709 to 713, and 1529 |
-| a renaming lemma, `bigstep_program_terminates_rename`: `bigstep_program_terminates A X p t r` implies `bigstep_program_terminates A X' p' (renTrace g t) r` when `p'` renames the globals of `p` by an injective `g` and the temporaries of each function by an injective `τ`, and `X'` does on renamed symbols what `X` does | none |
+| renaming lemma, `bigstep_program_terminates_rename`: `bigstep_program_terminates A X p t r` implies `bigstep_program_terminates A X' p' (renTrace g t) r` when `p'` renames the globals of `p` by an injective `g` and the temporaries of each function by an injective `τ`, and `X'` does on renamed symbols what `X` does | none |
 
 `external_call` passes `ExtSem` the symbol table alone, and the volatile cases also need the volatility of blocks, so it takes the global environment while `ExtSem` keeps its type.  The differential test of the copy compares volatile stores and loads with `ccomp -interp`, which prints each volatile event at its default level of tracing (`driver/Interp.ml`, lines 56 to 75 and 421 to 424).  The interpreter answers a volatile load from its world, a memory in which the volatile globals hold their initial values and which its volatile stores update (lines 403 to 419 and 566 to 580).  The evaluator `run` takes the value of each load from `world_vload`, the initial memory of that world, so the two agree on programs that load only from globals they never store to, and the test's input programs load from `const volatile` arrays with random initial values.
 
@@ -175,14 +175,14 @@ The startup code is GNU assembly, about 125 instructions and a table of exceptio
 | --- | --- | --- |
 | Mask interrupts | `msr daifset, #0xf`, after recording DAIF | DAIF was `0x3c0`, all masked, at entry under QEMU.  A board's firmware may differ |
 | Check the exception level | `mrs CurrentEL` | QEMU enters the image at EL1, as the experiment found.  At another level the code reports the level and exits with status 254, which QEMU's machines with the virtualization and security extensions, entering at EL2 and EL3, confirm |
-| Record `SCTLR_EL1` | `mrs SCTLR_EL1` | the value at entry, which `tests/baremetal/entry.c` reports: `0x00c50838` under TCG, with `M`, `C`, and `I` clear, and `0x30c509d8` under KVM |
+| Record `SCTLR_EL1` | `mrs SCTLR_EL1` | value at entry, which `tests/baremetal/entry.c` reports: `0x00c50838` under TCG, with `M`, `C`, and `I` clear, and `0x30c509d8` under KVM |
 | Install the vectors | `msr VBAR_EL1` | 16 entries of 128 bytes at a 2 KiB boundary.  Each reports `ESR_EL1`, `ELR_EL1`, and `FAR_EL1` and exits with status 255 |
 | Build the translation tables | about 50 instructions, with the MMU off | five tables of 4 KiB at `__tables`, as described below |
 | Turn on the MMU and the caches | `MAIR_EL1`, `TCR_EL1`, `TTBR0_EL1`, `dsb sy`, `isb`, `tlbi vmalle1`, `dsb nsh`, `isb`, then `SCTLR_EL1` with `M`, `C`, and `I` set and `A` and `WXN` clear, and `isb` | the TLBs' contents at reset are IMPLEMENTATION DEFINED and might be UNKNOWN (section D8.16.1, page D8-7852) |
 | Enable floating point | `CPACR_EL1.FPEN = 0b11`, then `isb` | FPEN's reset value is unknown.  Without this step `main` trapped at its third instruction with exception class `0x07` |
 | Set the stack | `mov sp, __stack_top` | `SCTLR_EL1.SA` was 1 at entry, so the stack pointer must stay 16-byte aligned |
-| Fill the stack with a pattern | a loop of `str` | the high-water mark that the report gives and that the section on the stack uses |
-| Clear `.bss` | a loop of `stp xzr, xzr` | `lx_mem` and the uninitialized globals lie in `.bss`, and `init_mem` gives them zeros |
+| Fill the stack with a pattern | loop of `str` | high-water mark that the report gives and that the section on the stack uses |
+| Clear `.bss` | loop of `stp xzr, xzr` | `lx_mem` and the uninitialized globals lie in `.bss`, and `init_mem` gives them zeros |
 | Call `main` | `bl main` | |
 | Report on the exception stack | `mov sp, __exc_stack_top`, then `bl lx_report_exit`, after `main` returns or a call of `lx_exit` | the report's frames lie outside the stack that the pattern fills, so the high-water mark that the report computes is that of `main` and its callees.  The vectors and the check of the level, the exception stack's other users, end at the exit, so that stack holds nothing then |
 | Exit | semihosting `SYS_EXIT` with `ADP_Stopped_ApplicationExit` and `w0`, or, built with `PSCI_EXIT`, PSCI `SYSTEM_OFF` through `hvc #0` | under TCG, QEMU exits with `main`'s result.  Under KVM, QEMU exits with status 0 and the report gives the result |
@@ -261,14 +261,14 @@ Compared with the translator's design, libc, the operating system, and the C hos
 | Milestone | Work | Exit criterion |
 | --- | --- | --- |
 | B0 · Toolchain | `tools/baremetal/`: startup code, linker script, build script, the device-tree check | the experiment's programs build from the repository and run under QEMU |
-| B1 · Corpus under QEMU | the freestanding test host and a driver beside `tests/native/verified.sh` | every translated case of the corpus and every module case passes under QEMU |
-| B2 · Lean copy | the program-level judgment, volatile stores, their differential tests | no difference from `ccomp -interp` in either CompCert configuration |
+| B1 · Corpus under QEMU | freestanding test host and driver beside `tests/native/verified.sh` | every translated case of the corpus and every module case passes under QEMU |
+| B2 · Lean copy | program-level judgment, volatile stores, their differential tests | no difference from `ccomp -interp` in either CompCert configuration |
 | B3 · Whole program | `bareProgram`, the prefix of external declarations, `init_mem` and `start` for it, the renaming lemma, the check on the whole program | `start` holds for `bareProgram` of every corpus module, and the check passes for all of them |
-| B4 · Generated `main` | the `main` writer, its proof, and `p.f.program` from the command `bare_program` | the programs of test 2 run under QEMU with their theorems |
+| B4 · Generated `main` | `main` writer, its proof, and `p.f.program` from the command `bare_program` | the programs of test 2 run under QEMU with their theorems |
 | B5 · Rocq | `clight2_bigstep_to_asm` and the uniqueness lemma, built against CompCert 3.18's proofs | both check with the assumptions recorded |
-| B6 · Stack bound | the bound tool, its cross-check with the translator, and the build's test | test 3 passes for every corpus module |
+| B6 · Stack bound | bound tool, its cross-check with the translator, and test of the build | test 3 passes for every corpus module |
 | B7 · Inputs (optional) | volatile loads, the theorem about `alloc` and stores, the quantified theorem, and the uniqueness lemma for traces with inputs | SHA-256 of a loaded message, with its theorem |
-| B8 · KVM | the MMU with an identity map and a guard page, the PSCI exit, the tests' KVM mode, and the check for instructions that require alignment | under KVM with the MMU on, the programs of test 2 and the program with input pass, the unaligned probe runs without a fault, and the guard probe takes a translation fault |
+| B8 · KVM | MMU with an identity map and a guard page, PSCI exit, KVM mode of the tests, and check for instructions that require alignment | under KVM with the MMU on, the programs of test 2 and the program with input pass, the unaligned probe runs without a fault, and the guard probe takes a translation fault |
 
 B0 and B1 need no new Lean code and can start at once.  B2 and B5 are independent of each other.  B3 carries the most risk, because it generalizes the proofs of `Init.lean` from the translation's own program to one with a prefix and two more definitions.  B4 depends on B2 and B3.
 
@@ -288,13 +288,13 @@ These figures are estimates.
 | Question | Recommendation |
 | --- | --- |
 | Do the Rocq files of B5 belong in the repository?  They add a build that needs a CompCert 3.18 tree with its proofs compiled. | Yes, in a directory of their own, checked by a script that takes the tree's path, outside the default build. |
-| Renaming lemma in Lean (B3), or a per-build check that treats the renaming as trusted? | Lemma, since the numbering differs between `clightgen` and `ccomp` in any case and the lemma covers every injective renaming. |
+| Renaming lemma in Lean (B3), or per-build check that treats the renaming as trusted? | Lemma, since the numbering differs between `clightgen` and `ccomp` in any case and the lemma covers every injective renaming. |
 | How does output reach a device on a board, where `main` cannot wait for the UART? | Decide with a board in hand.  B8 runs under KVM, where QEMU's UART takes every store. |
 | Are inputs not fixed in advance (B7) in scope? | Yes, as B7 implements them: a packed array for the hashing library's exports, and `LeanExe.Bytes` when an entry needs it. |
 | MMU on QEMU: off, or on, which would give QEMU's runs a board's memory types? | On in every build, decided at B8.  Under KVM an unaligned load faulted with the MMU off, and one startup path lets the runs under TCG test the code that runs on hardware. |
 | Proof that the translated code makes only aligned accesses, the translator's optional M7 alignment proof? | None for bare metal, decided at B8.  With RAM as Normal memory and `SCTLR_EL1.A` clear, unaligned loads and stores of single or multiple registers are performed (B2.8.2.1.1), and `tools/baremetal/access-check.sh` excludes the instructions that keep alignment rules. |
-| Entry's form: scalar constants in `main`, heap constants inside a Lean definition without parameters, and a result of type `UInt64` or `Array UInt64` | As designed, with other result types encoded in Lean. |
-| UART's address: fixed in the linker script and checked against QEMU's device tree by the test harness, or read from the device tree at startup? | Linker script and the harness's check. |
+| Form of the entry: scalar constants in `main`, heap constants inside a Lean definition without parameters, and result of type `UInt64` or `Array UInt64` | As designed, with other result types encoded in Lean. |
+| Address of the UART: fixed in the linker script and checked against QEMU's device tree by the test harness, or read from the device tree at startup? | Linker script and the harness's check. |
 | Programs with byte literals, whose theorem is `ImplementsStatic`, in the command `bare_program`? | Add the case when a program needs it, decided on 2026-10-28.  No program of test 2 or of the input test needs it, and code that no program uses has no test behind it. |
 
 ## Sources

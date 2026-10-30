@@ -35,7 +35,7 @@ Each completed line produces output before the next blocking read.
 | [Line model and size bounds](Model.lean) | `InputBounds`, the line rooms that it implies, and the outputs and status of the kernel's fold over the input lines. |
 | [Arithmetic compilation](Compiled.lean) | Verified compilation of the six pure arithmetic functions. |
 | [Stream process](Stream.lean) | Buffered input, pending output, error handling, and the EOF process. |
-| [Stream view](StreamView.lean) and [termination](Termination.lean) | Relation between the process and the shared stream process, and the progress of each step. |
+| [Stream view](StreamView.lean) and [termination](Termination.lean) | Relation between the process and the shared stream process, and progress of each step. |
 | [Action compilation](Wasi.lean) | Reflection and source-correspondence proofs for the bounded effectful steps. |
 | [Command module](Module.lean) | Unbounded Wasm loop, stack admission check, binary encoding, and validity proofs. |
 | [Process refinement](Proof.lean) | Initial-store invariants, native-process correspondence, `_start` partial refinement, and the byte theorem. |

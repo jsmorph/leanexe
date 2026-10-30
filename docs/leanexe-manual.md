@@ -60,8 +60,8 @@ The compiler unfolds a function marked `@[inline]`, which includes every `abbrev
 | `Array UInt64` | Pointer to an object: a 48-byte header, a length word, and the elements | The header holds the magic number, the count, the capacity, the kind, the element width, and the child mask. |
 | `Array Float`, `Array Float32` | `Array UInt64` of the elements' bit patterns | A binary32 pattern sits in the low 32 bits of its word. |
 | `Array α` for a flat `α` | Word array of `n · k` words for `k` components | `α` is a structure, sum, enumeration, or `Bool` whose components are words and floats.  Element `i` occupies words `i · k` to `i · k + k - 1`. |
-| `List UInt64` | Null pointer, or a record of two slots: the element and the pointer to the rest | A list parameter is borrowed. |
-| Recursive type | Null pointer, or a record of one slot per field | Exactly two constructors, one without fields.  The compiler builds records whose fields are words or values of a recursive type. |
+| `List UInt64` | Null pointer, or record of two slots: the element and the pointer to the rest | A list parameter is borrowed. |
+| Recursive type | Null pointer, or record of one slot per field | Exactly two constructors, one without fields.  The compiler builds records whose fields are words or values of a recursive type. |
 
 The compiler classifies a type by its structure, so a user type needs no declaration beyond its `inductive` or `structure` to compile.  Inductive types with parameters or indices, nested and mutual inductive types, `Int`, `String`, `Char`, `Option`, and type variables are outside the dialect.  A parameter whose type the compiler cannot classify, such as `Option UInt64`, gives `parameter … of … is not UInt64, Float, Float32, an array, a list of words, or a user type`, and a structure or sum with a field of an unsupported type gives `unsupported type …`.  A `Nat` parameter gives `parameter … of … is a Nat; integers in this dialect are UInt64`, and a `Nat` result gives `the result of … is a Nat; …`.
 
@@ -81,7 +81,7 @@ Arrays of arrays, arrays of trees, and structures with array or tree fields are 
 | `a == b`, `a != b` | Equality of words, or IEEE equality of floats, as a `Bool`. |
 | `a && b`, `a \|\| b` on `Bool`, `!a` | Bitwise and, or, and exclusive or with 1 on the 0-or-1 words.  Both operands are evaluated. |
 | Enumeration constructor | Its index. |
-| Structure projection, `c.value` | Field's component. |
+| Structure projection, `c.value` | Component of the field. |
 | `xs[i.toNat]!` | Bounds-checked read (see [Arrays](#arrays)). |
 | `xs.size.toUInt64` | Length word, divided by `k` for an array of records of `k` components. |
 | `x.toUInt64` for a `Float` `x` | `i64.trunc_sat_f64_u`: NaN and negative values give 0, and values beyond the range give 2^64 - 1, as Lean's `Float.toUInt64`. |
@@ -98,7 +98,7 @@ A condition is the proposition of an `if` or of `decide`.  The compiler translat
 | `+`, `-`, `*`, `/`, `.sqrt` | Yes | Yes | IEEE operation. |
 | `-x` | Yes | Yes | `-0.0 - x`, which is exact and yields the canonical NaN for a NaN, as Lean's negation does. |
 | `.abs` | Yes | Yes | `f64.abs` or `f32.abs`. |
-| `min`, `max` | Yes | Yes | Comparison by `≤` and a selection, as Lean defines them, with each operand translated twice. |
+| `min`, `max` | Yes | Yes | Comparison by `≤` and selection, as Lean defines them, with each operand translated twice. |
 | `<`, `≤`, `>`, `≥`, `==`, `!=` | Yes | Yes | IEEE comparisons. |
 | `if` with a float value | Yes | Yes | Conditional expression. |
 | Literals such as `0.5` and `(3 : Float)` | Yes | Yes | The compiler computes the bits, and proofs check them with `decide`. |
@@ -216,7 +216,7 @@ A match on a value of a recursive type tests the pointer against 0, and the reco
 | `xs.insertIdx! i.toNat v`, `xs.push v` | `UInt64` | In place for an owned array at its last use, moved first to a block of twice the capacity when the block is full, and otherwise a copy. |
 | `xs.eraseIdxIfInBounds i.toNat` | `UInt64` | In place for an owned array at its last use, and otherwise a copy. |
 | `xs ++ ys` | `UInt64`, `Float`, `Float32` | `xs` must be an owned array parameter at its last use, and `ys` an array variable.  In place when the block has room, and otherwise into a new block. |
-| Array variable as a result | All | Move for an owned array, and a copy otherwise. |
+| Array variable as a result | All | Move for an owned array, and copy otherwise. |
 | Call that returns an array | All | The caller owns the new array. |
 
 An update may apply to the result of another update, as in `(xs.push a).push b`, and then writes the intermediate array in place.  An update of a borrowed array, or of an array that the code uses again, copies through the copying template, and the lemmas `set!_eq_build`, `insertIdx!_eq_build`, `eraseIdxIfInBounds_eq_build`, and `push_eq_build` equate each operation with that template's result.  `insertIdx!` past the end returns `#[]` in Lean and in the compiled code.
@@ -265,7 +265,7 @@ The theorems state the modes through types.  A consumed argument has type `Moved
 | `a loop state must be a tuple of components: …` | Tuple state that starts from a variable | Write the initial state as a constructor application, such as `(a, b)`. |
 | ``a loop over an array must have an `Array Float` state: …`` | `LeanExe.loop` with an `Array UInt64` state | Use a nest of two or more word arrays, or `LeanExe.repeatWhile` with a counter in its state. |
 | `the call in a repeatWhile step must consume every array of the state: …` | Step that drops its array argument | Return the array on every path of the step, as the drone's `extend` does. |
-| `the condition of a repeatWhile must need no statements: …` | Call or a size in the condition | Compute the needed value in the step and keep it in the state. |
+| `the condition of a repeatWhile must need no statements: …` | Call or size in the condition | Compute the needed value in the step and keep it in the state. |
 | ``the left operand of `++` must be an array parameter at its last use: …`` | `xs ++ ys` with a borrowed or reused `xs` | Make `xs` an owned parameter that the code does not use afterward. |
 | `… calls itself other than in tail position; compile it in a module list, which adds its internal function` | Non-tail recursion in the single form | Compile with `leanexe_compile p := [f]`. |
 | `a recursive definition may take only UInt64 and values of recursive types, and return only UInt64 …` | Array, float, or tuple parameter or result in a recursive definition | Use a loop over the array, or a tree. |
@@ -378,7 +378,7 @@ The form is `call MODULE.wasm FUNCTION RESULT-KIND ARG …`.  The first command 
 |---|---|
 | `i64`, `f64`, `f32` | One decimal word, the bit pattern for floats. |
 | `array-u64` | Elements, as `[a, b, …]`. |
-| `chain-u64`, `tree-u64`, `records-u64` | List as `[a, b, …]`, or the tree in the preorder form of its argument, after the host checks each record's header.  `records-u64` prints the width and mask that each header holds. |
+| `chain-u64`, `tree-u64`, `records-u64` | List as `[a, b, …]`, or tree in the preorder form of its argument, after the host checks each record's header.  `records-u64` prints the width and mask that each header holds. |
 | `file-u64:PATH` | Array, written to a file. |
 | `list:K1,K2,…` | Several results, one line each.  Each kind is `i64`, `f64`, `f32`, `array-u64`, `chain-u64`, `tree-u64`, or `records-u64`. |
 | `slots:N` | `N` words on one line. |
@@ -620,7 +620,7 @@ Compiler fixtures use `Examples/<Name>/`, reusable algorithms use the families i
 | [`Gcd`](../Library/Numerics/Arithmetic/Gcd/README.md) | `gcd` | Tail recursion as a loop, proved with `Func.tail_implements` and a one-iteration obligation, and `gcd_eq`, equality with Lean's `Nat.gcd`. |
 | [`SumArray`](../Examples/SumArray/README.md) | `sumArray`, `folds` | Folds over a borrowed array: sum, product, and exclusive or, proved with `Func.foldl_implements`. |
 | [`PairSum`](../Examples/PairSum/README.md) | `pairSum` | Array literal as a temporary released after its fold, proved with `Func.implements_heap`. |
-| [`SumCount`](../Examples/SumCount/README.md) | `sumCount` | Array result that the caller owns, and the array size. |
+| [`SumCount`](../Examples/SumCount/README.md) | `sumCount` | Array result that the caller owns, and array size. |
 | [`Axpy`](../Examples/Axpy/README.md), [`ScaledHypot`](../Examples/ScaledHypot/README.md), [`Piecewise`](../Examples/Piecewise/README.md) | `axpy`, `scaledHypot`, `piecewise` | Binary64 arithmetic, square root, comparisons, `==`, negation, `abs`, `min`, `max`, and nested `if`. |
 | [`SumSquares`](../Library/Numerics/Statistics/SumSquares/README.md), [`Mean`](../Library/Numerics/Statistics/Mean/README.md), [`Bucket`](../Examples/Bucket/README.md) | `sumSquares`, `mean`, `bucket` | Folds over `Array Float` and the conversions between `UInt64` and `Float`. |
 | [`Prng`](../Library/Random/SplitMix64/README.md) | `prng` | SplitMix64 with a pair result, and `ImplementsPure` theorems that hold in any module containing the functions. |
@@ -634,7 +634,7 @@ Compiler fixtures use `Examples/<Name>/`, reusable algorithms use the families i
 | [`Binary32`](../Examples/Binary32/README.md) | `binary32` | `Float32` scalars, arrays, comparisons, and conditionals, and kernels translated to WGSL. |
 | [`Gpt`](../Demos/Gpt/README.md) | `gpt` | GPT-2 in binary64: calls of `ImplementsPure` functions in loops, temporaries under `Live`, a loop over layers with an array state, `++` in place, the cached step, top-k sampling, and the causal and exactness theorems. |
 | [`Gpt32`](../Demos/Gpt32/README.md) | `gpt32` | GPT-2 in binary32 on WGSL, with the theorem of the host program. |
-| [`Euler`](../Demos/Euler/README.md) | `euler` | First-order and reconstructed solvers: arrays of records, `repeatWhile` with moved grids, `ImplementsA` budgets, total execution within 1,407 pages, and the admissibility, CFL, balance, and hyperbolicity theorems. |
+| [`Euler`](../Demos/Euler/README.md) | `euler` | First-order and reconstructed solvers: arrays of records, `repeatWhile` with moved grids, `ImplementsA` budgets, total execution within 1,407 pages, and admissibility, CFL, balance, and hyperbolicity theorems. |
 | [`Drone`](../Demos/Drone/README.md) | `drone` | `UInt64` throughout, loops inside build elements, `@[inline]` helpers, `repeatWhile` with a status, optimality and flight safety, and total execution within 70 pages. |
 | [`PrimeFactors`](../Library/Numerics/Arithmetic/PrimeFactors/README.md), [`Lookup`](../Examples/Lookup/README.md), [`TreeLookup`](../Examples/TreeLookup/README.md), [`Below100`](../Examples/Below100/README.md), [`Increment`](../Examples/Increment/README.md), [`RemoveZero`](../Examples/RemoveZero/README.md) | `primeFactors`, `lookup`, `treeLookup`, `below100`, `increment`, `removeZero` | Small programs, each with its request and README, and with specifications written apart from the programs: a tail-recursive count with a measure, loops with tuple states, `repeatWhile` over a function that pushes, and builds, each with `compute_eq` and a bytes theorem for `expected`.  `TreeLookup` is the first run of the verified-executable skill, and `Gcd` and `SumArray` also have requests. |
 

@@ -9,11 +9,11 @@
 | Function and input | Result | Source of the rule | Theorem |
 |---|---|---|---|
 | `asin (±0)` | `±0` | IEEE 754-2019 9.2.1 [4]; C99 F.9.1.2 [5] | `asin_zero`, `asin_neg_zero` |
-| `asin (±1)` | `±π/2` rounded | the bound | `asin_within_one` |
+| `asin (±1)` | `±π/2` rounded | bound | `asin_within_one` |
 | `acos 1` | `+0` | IEEE 754-2019 9.2.1 (`acos (1)` is `+0`); C99 F.9.1.1 | `acos_one` |
-| `acos (-1)` | `π` rounded | the bound | `acos_within_one` |
-| `\|x\| > 1`, `±∞` | the canonical NaN | IEEE 754-2019 Table 9.1 (domain `[-1, +1]`, invalid outside); C99 F.9.1.1 and F.9.1.2; the deterministic profile of WebAssembly [6] | `asin_nan`, `acos_nan` |
-| NaN | the canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly | `asin_nan`, `acos_nan` |
+| `acos (-1)` | `π` rounded | bound | `acos_within_one` |
+| `\|x\| > 1`, `±∞` | canonical NaN | IEEE 754-2019 Table 9.1 (domain `[-1, +1]`, invalid outside); C99 F.9.1.1 and F.9.1.2; the deterministic profile of WebAssembly [6] | `asin_nan`, `acos_nan` |
+| NaN | canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly | `asin_nan`, `acos_nan` |
 
 IEEE 754-2019 recommends both operations in clause 9.2, where a conforming implementation rounds correctly [4].  fdlibm states no error bound for either function.  It bounds the Remez error of its rational approximation by `2^-58.75`, a bound that the stored coefficients exceed, as the section on the kernel bound explains.  The theorems say nothing about floating-point exceptions, which the port does not compute.
 
@@ -43,7 +43,7 @@ The port follows the dialect of the Verified compiler as [the exponential docume
 | `p`, `q`, and `p/q` written out in each branch | `asinRatio t`, with the same operations in the same order | One function serves every branch. |
 | `SET_LOW_WORD (w, 0)` | `Float.ofBits (s.toBits &&& 0xFFFFFFFF00000000)` | The dialect has word operations and no word macros. |
 | `huge + x > one` | kept as a test | It serves only to raise inexact, and it holds for every finite `x` with `\|x\| < 1` (`AtanTheorem.huge_gt`), so it changes no result. |
-| Signed `int32_t` high word `hx`, tested with `hx > 0` | a `UInt64` word, its sign the top bit | The dialect has no signed integers, and `hx = 0` cannot occur on the paths that test it. |
+| Signed `int32_t` high word `hx`, tested with `hx > 0` | `UInt64` word, its sign the top bit | The dialect has no signed integers, and `hx = 0` cannot occur on the paths that test it. |
 | `pio2_lo` volatile in `e_acos.c` | its value | The volatile access serves only to prevent constant folding. |
 
 | Constant | Bits | Constant | Bits |
@@ -91,7 +91,7 @@ The chain reuses word and exactness lemmas of [the `log1p` proof](../Log1p/READM
 | `AsinTheoremRatio` | Error chains of `asinRatio t` for seven ranges of `t` (`ratio_S1`, `ratio_S2`, `ratio_A1` to `ratio_A4`, `ratio_W`), with partial sums of both Horner schemes bounded by `PolyBound.check`. |
 | `AsinTheoremBranches` | Branches of `asin` and `acos` as equations on the high word. |
 | `AsinTheoremSmall` | `asin` below `1/2`. |
-| `AsinTheoremHalf` | Half-angle identities and the exact `z`. |
+| `AsinTheoremHalf` | Half-angle identities and exact `z`. |
 | `AsinTheoremBig`, `AsinTheoremMid` | `asin` from `0.975` to 1, and from `1/2` to `0.975` in three ranges (`mid_A`, `mid_B`, `mid_C`). |
 | `AsinTheorem` | `asin_within_one`. |
 | `AcosTheoremBranches`, `AcosTheoremSmall`, `AcosTheoremNeg`, `AcosTheoremPos`, `AcosTheorem` | Same for `acos`: the exact `z = (1 ± x)/2`, the paths below `1/2`, below `-1/2`, and above `1/2`, and `acos_within_one`. |
@@ -120,7 +120,7 @@ Each path ends with one of the criteria that [the `log1p` document](../Log1p/REA
 | `acos`, `2^-58 ≤ \|x\| < 1/2` | `AcosTheoremSmall.small_within` | `0.75 · 2^-52`, result in `[1, 2.1)` | one spacing, `2^-52` |
 | `acos`, `-1 < x ≤ -1/2` | `AcosTheoremNeg.neg_within` | `0.875 · 2^-51`, result in `[2π/3, π]` | one spacing, `2^-51` |
 | `acos`, `1/2 ≤ x < 1` | `AcosTheoremPos.pos_within` | relative `0.7 · 2^-53` | relative `1/(2^53 + 1)` |
-| both, `\|x\| = 1` | `AsinTheorem.asin_unit`, `AcosTheorem.acos_unit` | the constants | one step |
+| both, `\|x\| = 1` | `AsinTheorem.asin_unit`, `AcosTheorem.acos_unit` | constants | one step |
 
 The code takes the tiny path of `acos` below `(1 + 2^-20) · 2^-57`, inside the range of `tiny_within`, and `small_within` covers the rest from `2^-58` on.  The smallest margin is that of `mid_A` and `mid_B`, 2 percent of a spacing of `[1/2, 1)`, which serves as the allowance for results from `π/6` to `arcsin 0.9 ≈ 1.12`.  On the positive range of `acos` the result reaches down to about `2^-26`, so its bounds are relative to `s₀ = √z`, and the doubling `2 (w + ...)` keeps a nearest word nearest (`F64RoundDouble`).  A negative `x` in `asin` gives the negated word, and `AsinTheorem.signed_asin` carries the bound through the negation.
 

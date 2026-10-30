@@ -11,11 +11,11 @@
 | Input | Result | Source of the rule | Theorem |
 |---|---|---|---|
 | `1` | `+0` (bits `0`) | IEEE 754-2019 9.2.1 [6], C99 F.9.3.10 [7] | `log2_one` |
-| `2^k`, `-1074 ≤ k ≤ 1023`, `k ≠ 0` | the double `k` | correct rounding, IEEE 754-2019 9.2, since `k` is a double | `Log2Power.log2_power` |
+| `2^k`, `-1074 ≤ k ≤ 1023`, `k ≠ 0` | double `k` | correct rounding, IEEE 754-2019 9.2, since `k` is a double | `Log2Power.log2_power` |
 | `+0`, `-0` | `-∞` (`0xFFF0000000000000`) | IEEE 754-2019 9.2.1 (with the divideByZero exception), C99 F.9.3.10 | `log2_zero` |
 | `+∞` | `+∞` | IEEE 754-2019 9.2.1, C99 F.9.3.10 | `log2_pos_infinity` |
-| negative, `-∞` included, other than `-0` | the canonical NaN `0x7FF8000000000000` | IEEE 754-2019 9.2 (a quiet NaN outside the domain `[0, +∞]`, with the invalid exception), C99 F.9.3.10 | `log2_negative` |
-| NaN | the canonical NaN | IEEE 754-2019 9.2 (a quiet NaN for a NaN operand), C99 F.9 paragraph 11, the deterministic profile of WebAssembly [8] | `log2_nan` |
+| negative, `-∞` included, other than `-0` | canonical NaN `0x7FF8000000000000` | IEEE 754-2019 9.2 (a quiet NaN outside the domain `[0, +∞]`, with the invalid exception), C99 F.9.3.10 | `log2_negative` |
+| NaN | canonical NaN | IEEE 754-2019 9.2 (a quiet NaN for a NaN operand), C99 F.9 paragraph 11, the deterministic profile of WebAssembly [8] | `log2_nan` |
 
 IEEE 754-2019 lists `log2` among the recommended operations of clause 9.2, which a conforming implementation rounds correctly [6].  The one-step bound is weaker than correct rounding, and the port is not correctly rounded: Arm states 0.550 units in the last place on the main path and 0.55 near 1 without fused multiply-add [1].  The theorem says nothing about the divideByZero and invalid exceptions or about `errno`, which the port does not compute.
 
@@ -36,8 +36,8 @@ The port uses the Verified dialect, the subset of Lean that [the Verified compil
 | Constant | Bits | Value |
 |---|---|---|
 | `InvLn2hi`, `InvLn2lo` | `0x3FF7154765200000`, `0x3DE705FC2EEFA200` | `0x1.7154765200000p+0`, `0x1.705fc2eefa200p-33` |
-| `A0` to `A5` | `0xBFE71547652B8339` to `0x3FCA6225E117F92E` | the `N == 64 && LOG2_POLY_ORDER == 7` polynomial |
-| `B0` to `B9` | `0xBFE71547652B82FE` to `0x3FC0B32F285AEE66` | the `LOG2_POLY1_ORDER == 11` polynomial |
+| `A0` to `A5` | `0xBFE71547652B8339` to `0x3FCA6225E117F92E` | `N == 64 && LOG2_POLY_ORDER == 7` polynomial |
+| `B0` to `B9` | `0xBFE71547652B82FE` to `0x3FC0B32F285AEE66` | `LOG2_POLY1_ORDER == 11` polynomial |
 | `OFF`, subnormal scale | `0x3FE6000000000000`, `0x4330000000000000` | `0x1.6p-1`, `2^52` |
 | bounds of the path near 1 | `0x3FEEA4AF00000000`, `0x3FF0B55900000000` | `1 - 0x1.5b51p-5`, `1 + 0x1.6ab2p-5` |
 
@@ -75,7 +75,7 @@ The proof has ten modules in `Library/Numerics/Float64/Log2/` above the implemen
 | Arithmetic after `r` | `Log2CoreFinal` | `final2_error`: `rhi · invln2hi`, `k + logc`, and `t3 - hi` are exact, and the other operations add at most `2^-64` before the final rounding. |
 | Tables and polynomials | `Log2Tables`, `Log2KernelPoly` | 64 entries checked in the kernel, and both polynomials against `log (1 + r)/log 2`. |
 | Main path | `Log2CoreStep`, `Log2Main` | `core2_within`, one step for every argument word that reaches `log2Core`, and its use for normal and subnormal arguments. |
-| Path near 1, powers of two, and assembly | `Log2Near1`, `Log2Power`, `Log2Theorem` | Errors of `log2Near1` proportional to `\|x - 1\|`, `log2 (2^k) = k`, the exceptional values, `Ready`, and the byte theorem. |
+| Path near 1, powers of two, and assembly | `Log2Near1`, `Log2Power`, `Log2Theorem` | Errors of `log2Near1` proportional to `\|x - 1\|`, `log2 (2^k) = k`, exceptional values, `Ready`, and byte theorem. |
 
 ### Error budget of the main path
 

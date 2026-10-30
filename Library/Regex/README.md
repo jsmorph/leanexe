@@ -21,7 +21,7 @@ For example, `ab*` is the twelve words `2, 0, 2^33, 0, 0, 2, 0, 2^34, 0, 0, 5, 3
 
 | Module | Export | Function | Arguments | Result | Call theorem |
 |---|---|---|---|---|---|
-| `regex` | `matchWith` | 8 | Pattern array, `pn`, the input array, and `n`. | Code as one word. | `matchWith_call` |
+| `regex` | `matchWith` | 8 | Pattern array, `pn`, input array, and `n`. | Code as one word. | `matchWith_call` |
 
 A count beyond an array's words or bytes is accepted, and the missing words and bytes read as zero in both the program and the theorem.  A zero word past the end of the pattern pushes `empty`.
 
@@ -39,7 +39,7 @@ A call allocates at most five blocks and releases them before it returns: the sc
 |---|---|
 | [`Glushkov.lean`](Glushkov.lean) | `nullable`, `First`, `Last`, `Follow`, and `Class` of an expression whose positions follow an offset `k`, the reading `Accepts` along `Follow` and `Class`, and `glushkov : w ∈ r.lang ↔ Matches r k w`. |
 | [`Automaton.lean`](Automaton.lean) | Transitions `Next` and final states `Final` of the automaton, its runs `step` and `steps`, and `lang_iff_steps`: a word is in the language exactly when the states reached from state 0 hold a final state. |
-| [`Bits.lean`](Bits.lean) | Bits of `\|\|\|`, `&&&`, `1 <<< p`, and the test `(s >>> q) &&& 1 == 1` on bits 0 to 63. |
+| [`Bits.lean`](Bits.lean) | Bits of `\|\|\|`, `&&&`, `1 <<< p`, and test `(s >>> q) &&& 1 == 1` on bits 0 to 63. |
 | [`RunProof.lean`](RunProof.lean) | `masks_bit`, `steps_bit`, `advance_bit`, and `runInput_bit`: the word that `runInput` returns holds the automaton's states after the input, when bit `q` of follow entry `p` holds `Next r p q` and bit `q` of mask entry `c` holds `Class r 0 q c`. |
 | [`ScanProof.lean`](ScanProof.lean) | `Corr`, which relates the scan's state to the stack of expressions that `Spec.run` builds, its preservation by each kind of word, and `scan_run`, which follows the recursion of `Spec.run`. |
 | [`Proof.lean`](Proof.lean) | `matchWith_eq`: when `3 pn < 2^64`, `matchWith pat pn msg n` is `answer` of the words `pat[j]!` for `j < pn` and the bytes `byteAt msg i` for `i < n`. |

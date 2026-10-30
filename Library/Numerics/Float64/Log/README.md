@@ -13,8 +13,8 @@
 | `1` | `+0` (bits `0`) | IEEE 754-2019 9.2.1 [7], C99 F.9.3.7 [8] | `log_one` |
 | `+0`, `-0` | `-∞` (`0xFFF0000000000000`) | IEEE 754-2019 9.2.1 (with the divideByZero exception), C99 F.9.3.7 | `log_zero` |
 | `+∞` | `+∞` | IEEE 754-2019 9.2.1, C99 F.9.3.7 | `log_pos_infinity` |
-| negative, `-∞` included, other than `-0` | the canonical NaN `0x7FF8000000000000` | IEEE 754-2019 9.2 (a quiet NaN outside the domain `[0, +∞]`, with the invalid exception), C99 F.9.3.7 | `log_negative` |
-| NaN | the canonical NaN | IEEE 754-2019 9.2 (a quiet NaN for a NaN operand), C99 F.9 paragraph 11, the deterministic profile of WebAssembly [9] | `log_nan` |
+| negative, `-∞` included, other than `-0` | canonical NaN `0x7FF8000000000000` | IEEE 754-2019 9.2 (a quiet NaN outside the domain `[0, +∞]`, with the invalid exception), C99 F.9.3.7 | `log_negative` |
+| NaN | canonical NaN | IEEE 754-2019 9.2 (a quiet NaN for a NaN operand), C99 F.9 paragraph 11, the deterministic profile of WebAssembly [9] | `log_nan` |
 
 IEEE 754-2019 lists the logarithm among the recommended operations of clause 9.2, which a conforming implementation rounds correctly [7].  The one-step bound is weaker than correct rounding, and the port is not correctly rounded.  The theorem says nothing about the divideByZero and invalid exceptions or about `errno`, which the port does not compute.
 
@@ -42,13 +42,13 @@ The port uses the Verified dialect, the subset of Lean that [the Verified compil
 | `__math_divzero (1)` | `-1.0 / 0.0` | Expression that computes it in `math_err.c` [3]. |
 | `__math_invalid (x)` | `(x - x) / (x - x)` | Expression that computes it, without `errno`. |
 | `eval_as_double`, `WANT_ROUNDING` | identity, assumed 1 | WebAssembly arithmetic rounds to nearest, ties to even, and `log 1` returns `0.0`. |
-| `__log_data` globals | the parameters `tab` and `tab2`, read with `tab[i]!` | The tables are borrowed arrays of the module. |
+| `__log_data` globals | parameters `tab` and `tab2`, read with `tab[i]!` | The tables are borrowed arrays of the module. |
 
 | Constant | Bits | Value |
 |---|---|---|
 | `Ln2hi`, `Ln2lo` | `0x3FE62E42FEFA3800`, `0x3D2EF35793C76730` | `0x1.62e42fefa3800p-1`, `0x1.ef35793c76730p-45` |
-| `A0` to `A4` | `0xBFE0000000000001`, `0x3FD555555551305B`, `0xBFCFFFFFFFEB4590`, `0x3FC999B324F10111`, `0xBFC55575E506C89F` | the `N == 128 && LOG_POLY_ORDER == 6` polynomial |
-| `B0` to `B10` | `0xBFE0000000000000` to `0xBFB5521375D145CD` | the `LOG_POLY1_ORDER == 12` polynomial, `B0 = -1/2` |
+| `A0` to `A4` | `0xBFE0000000000001`, `0x3FD555555551305B`, `0xBFCFFFFFFFEB4590`, `0x3FC999B324F10111`, `0xBFC55575E506C89F` | `N == 128 && LOG_POLY_ORDER == 6` polynomial |
+| `B0` to `B10` | `0xBFE0000000000000` to `0xBFB5521375D145CD` | `LOG_POLY1_ORDER == 12` polynomial, `B0 = -1/2` |
 | `OFF` | `0x3FE6000000000000` | `0x1.6p-1` |
 | bounds of the path near 1 | `0x3FEE000000000000`, `0x3FF1090000000000` | `1 - 2^-4`, `1 + 0x1.09p-4` |
 | split factor, subnormal scale | `0x41A0000000000000`, `0x4330000000000000` | `2^27`, `2^52` |
@@ -90,7 +90,7 @@ The proof has nine modules in `Library/Numerics/Float64/Log/` above the implemen
 | Arithmetic after `r` | `LogCoreFinal` | `final_error`: `kd · ln2hi` and `kd · ln2hi + logc` are exact, and the other operations add at most `(5/4) 2^-61` before the final rounding. |
 | Tables and polynomials | `LogTables`, `LogKernelPoly` | 128 entries checked in the kernel, and both polynomials against `log (1 + r)`. |
 | Main path | `LogCoreStep`, `LogMain` | `core_within`, one step for every argument word that reaches `logCore`, and its use for normal and subnormal arguments. |
-| Path near 1 and assembly | `LogNear1`, `LogTheorem` | Errors of `logNear1` proportional to `\|x - 1\|`, the exceptional values, `Ready`, and the byte theorem. |
+| Path near 1 and assembly | `LogNear1`, `LogTheorem` | Errors of `logNear1` proportional to `\|x - 1\|`, exceptional values, `Ready`, and byte theorem. |
 
 ### Error budget of the main path
 

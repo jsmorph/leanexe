@@ -10,15 +10,15 @@ For finite `a`, `b`, and `c`, `fma a b c` is the nearest-even rounding of the re
 
 | Inputs | Result | Rule of IEEE 754-2019 [1] |
 |---|---|---|
-| a NaN among `a`, `b`, `c` | the first NaN of `a`, `b`, and `c`, with the quiet bit set | 6.2.3: a propagated NaN should keep an input's payload, without fixing which input's; 7.2 (a): a signaling NaN gives a quiet NaN |
-| `0 · ∞` or `∞ · 0`, no NaN operand | the default NaN `0x7FF8000000000000` | 7.2 (c) |
-| an infinite product and an infinite `c` of the opposite sign | the default NaN | 7.2 (d) |
-| an infinite product otherwise | the infinity with the product's sign | 6.1 |
-| a finite product and an infinite `c` | `c` | 6.1 |
-| a zero product and a zero `c` | `-0` if both are negative zeros, else `+0` | 6.3: the sign rules of a sum |
-| a nonzero product and a nonzero `c` whose exact sum is zero | `+0` | 6.3, rounding to nearest |
-| a nonzero exact result that rounds to zero | the zero with the exact result's sign | 6.3 |
-| an exact result at or beyond the overflow threshold | the infinity with its sign | 4.3.1 |
+| NaN among `a`, `b`, `c` | first NaN of `a`, `b`, and `c`, with the quiet bit set | 6.2.3: a propagated NaN should keep an input's payload, without fixing which input's; 7.2 (a): a signaling NaN gives a quiet NaN |
+| `0 · ∞` or `∞ · 0`, no NaN operand | default NaN `0x7FF8000000000000` | 7.2 (c) |
+| infinite product and infinite `c` of the opposite sign | default NaN | 7.2 (d) |
+| infinite product otherwise | infinity with the product's sign | 6.1 |
+| finite product and infinite `c` | `c` | 6.1 |
+| zero product and zero `c` | `-0` if both are negative zeros, else `+0` | 6.3: the sign rules of a sum |
+| nonzero product and nonzero `c` whose exact sum is zero | `+0` | 6.3, rounding to nearest |
+| nonzero exact result that rounds to zero | zero with the exact result's sign | 6.3 |
+| exact result at or beyond the overflow threshold | infinity with its sign | 4.3.1 |
 
 IEEE 754 leaves the NaN of an invalid operation and the choice of a propagated payload to the implementation, and the port's choices are those of the table.  This table describes `fmaBits` on raw words.  The `fma` wrapper takes Lean `Float` arguments and canonicalizes NaN results through `Float.ofBits`.  The function raises no flags, since the dialect has none.  For `0 · ∞ + c` with a quiet NaN `c`, clause 7.2 (c) leaves the invalid flag to the implementation, and the port returns `c`, quieted, as it does for every NaN operand.
 
@@ -44,12 +44,12 @@ The sticky bit makes the shifted operand the rounding to odd of its exact value 
 
 | Constant | Meaning |
 |---|---|
-| `0xFFFFFFFFFFFFF` | the fraction field |
-| `0x10000000000000` | the hidden bit, `2^52` |
-| `0x8000000000000` | the quiet bit of a NaN |
+| `0xFFFFFFFFFFFFF` | fraction field |
+| `0x10000000000000` | hidden bit, `2^52` |
+| `0x8000000000000` | quiet bit of a NaN |
 | `0x7FF0000000000000`, `0x7FF8000000000000` | positive infinity and the default NaN |
-| 125 | the position of the highest bit after normalization |
-| 2400, 250, 1325 | the offset of `w`, and its values for the product, `ea + eb + 250 - shift`, and for `c`, `ec + 1325 - shift` |
+| 125 | position of the highest bit after normalization |
+| 2400, 250, 1325 | offset of `w`, and its values for the product, `ea + eb + 250 - shift`, and for `c`, `ec + 1325 - shift` |
 | 1378, 1326 | `w + m ≥ 1378` for a normal result, and bit `1326 - w` of weight `2^-1074` |
 
 The [gamma implementation](../../Float64/Tgamma/Program.lean) and [log-gamma implementation](../../Float64/Lgamma/Program.lean) call `Fma.fma` for each `__builtin_fma` of CORE-MATH's sources [5, 6].  Gamma has 15 such calls.  Log-gamma has 12 direct calls and uses the two calls in the shared `mulDD` and `mulDDD` helpers for the remaining two.  Log-gamma also implements `__builtin_clzll` as `63 - Fma.msb64`.
@@ -78,13 +78,13 @@ The theorem is an equality of words, so the proof has no error budget.  It count
 | [`FmaWords`](FmaWords.lean) | natural-number specifications of the word routines `msb64`, `msb128`, `mul128`, `shl128`, `shr128`, `lowBits128`, `sticky128`, `bit128`, `lt128`, `add128`, and `sub128` |
 | [`FmaGrid`](FmaGrid.lean) | `spacing`, `RoundsTo`, `packWord`, the grid of doubles in units of `2^-2400`, and `roundsTo_transfer` |
 | [`FmaNearestEven`](FmaNearestEven.lean) | `positive_reference`, `pack_negative`, and `signed_reference`, the nearest-even reference of a signed number in units |
-| [`FmaRound`](FmaRound.lean), [`FmaRoundPack`](FmaRoundPack.lean) | the plan, significand, and packing of `roundPack`, the rounding of a right shift (`round_right`), and `roundPack_spec` |
-| [`FmaDecode`](FmaDecode.lean) | the fields, sign bits, and zero and NaN tests of an operand, and its value in units |
-| [`FmaAlign`](FmaAlign.lean) | the sticky shift and the sum and difference of the aligned addends |
+| [`FmaRound`](FmaRound.lean), [`FmaRoundPack`](FmaRoundPack.lean) | plan, significand, and packing of `roundPack`, rounding of a right shift (`round_right`), and `roundPack_spec` |
+| [`FmaDecode`](FmaDecode.lean) | fields, sign bits, and zero and NaN tests of an operand, and its value in units |
+| [`FmaAlign`](FmaAlign.lean) | sticky shift and sum and difference of the aligned addends |
 | [`FmaParts`](FmaParts.lean) | `fmaBits_eq`, which names the parts of `fmaBits`, and the normalized product and addend |
 | [`FmaCombine`](FmaCombine.lean) | `tail_spec` and `combine_spec`: the rounded sum is the signed reference of the exact sum, or `+0` for an exact zero |
 | [`FmaGeneral`](FmaGeneral.lean) | `general_product` and `general_sum`, `fmaBits` on finite operands with nonzero factors |
-| [`FmaSpecial`](FmaSpecial.lean) | the NaN, infinity, and zero-product branches, `reference_self`, and `reference_not_nan` |
+| [`FmaSpecial`](FmaSpecial.lean) | NaN, infinity, and zero-product branches, `reference_self`, and `reference_not_nan` |
 | [`FmaTheorem`](FmaTheorem.lean), [`FmaSpecTheorem`](FmaSpecTheorem.lean) | `fmaReference`, `fmaBits_spec`, `fma_toBits`, and `fma_nearest` |
 
 The proof uses the ProofKit modules `F64SignedRounding`, `F64PositiveRounding`, `F64NearestEven`, and `F64NearestNonnegative` for the reference, `F64RoundNearest` for the grid of a word's magnitude (`magnitude_dvd`, `magnitude_below`), `F64PositiveOrder`, `F64Exact`, and `F64Magnitude` for the order and values of words, and `F64Bits.toBits_ofBits` for the canonical NaN of `Float.toBits`.  Its word facts are proved by natural-number arithmetic, and `decide +kernel` checks only closed facts about literal words, such as the 64 sign and zero combinations of the infinite products.  The failed approaches, a single rounding module that timed out and a proof of `fmaBits_eq` by `rfl` that exceeded 4,000,000 heartbeats, are in the journal section.

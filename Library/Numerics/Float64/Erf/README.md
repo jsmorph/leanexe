@@ -13,7 +13,7 @@ The bound of `erf` is `ErfTheorem.erf_within_one`: for finite `x`, `F64SignedRou
 | `+0`, `-0` | `+0`, `-0` | `1` | C99 F.9.5.1 [6] for `erf`; `erfc (0) = 1` from the definition | `erf_pos_zero`, `erf_neg_zero`; `erfc_within_one` within one step |
 | `+∞` | `1` | `+0` | C99 F.9.5.1 and F.9.5.2 | `erf_pos_infinity`, `ErfcNonfinite.erfc_pos_inf` |
 | `-∞` | `-1` | `2` | C99 F.9.5.1 and F.9.5.2 | `erf_neg_infinity`, `ErfcNonfinite.erfc_neg_inf` |
-| NaN | the canonical NaN `0x7FF8000000000000` | the canonical NaN | C99 F.9 paragraph 11; the deterministic profile of WebAssembly [7] | `erf_nan`, `ErfcNonfinite.erfc_nan` |
+| NaN | canonical NaN `0x7FF8000000000000` | canonical NaN | C99 F.9 paragraph 11; the deterministic profile of WebAssembly [7] | `erf_nan`, `ErfcNonfinite.erfc_nan` |
 | finite | within one step of `erf a` | within one step of `erfc a` | | `erf_within_one`, `ErfcTheorem.erfc_within_one` |
 
 The recommended operations of IEEE 754-2019 clause 9.2 omit the error functions [5], so C99's Annex F fixes their special values.  The `erfc` column states what the port of CORE-MATH's `erfc` returns, the values that fdlibm's `erfc` also gave, by these expressions: `1` at both zeros as `fma (-x, 2^-54, 1)`, `+0` at `+∞`, `2` at `-∞`, and the canonical NaN for a NaN as `x + x`.  It also returns `2` from `-0x1.7744f8f74e94bp+2`, about -5.86, down, as `2 - 2^-54` rounded, and `+0` from `0x1.b39dc41e48bfdp+4`, about 27.23, up, as `2^-1074 · 0.25` rounded, where `erfc x` lies below `2^-1075`.  The theorems say nothing about floating-point exceptions, which the port does not compute.
@@ -28,7 +28,7 @@ fdlibm splits the range of `|x|` into five parts, and the comment of `s_erf.c` g
 | `[2^-28, 0.84375)`, and for `erfc` `[2^-56, 0.84375)` | `x + x R (x²)` | `1 - (x + x R)` below `1/4` and for negative `x`, `0.5 - (x R + (x - 0.5))` from `1/4` on | `R = pp/qq` of degrees 4 and 5 approximates `(erf x - x)/x`. |
 | `[0.84375, 1.25)` | `±(erx + P (s)/Q (s))`, `s = \|x\| - 1` | `(1 - erx) - P/Q`, or `1 + (erx + P/Q)` for negative `x` | `erx` is the decimal `0.84506291151` rounded to single precision, and `P/Q` of degrees 6 and 6 approximates `erf (1 + s) - erx`. |
 | `[1.25, 6)` and, for `erfc`, `[1.25, 28)` | `1 - r/x` | `r/x`, or `2 - r/x` for negative `x` | `r = exp (-z² - 0.5625) · exp ((z - x)(z + x) + R (s)/S (s))` with `s = 1/x²`, where `R/S` approximates `log (x erfc x) + x² + 0.5625`: `R_a/S_a` of degrees 7 and 8 below `1/0.35`, `R_b/S_b` of degrees 6 and 7 above. |
-| `6` and above | `±(1 - tiny)` | the tail formula for `6 ≤ x < 28`, `tiny · tiny` from 28 on, and `2 - tiny` for `x ≤ -6` | `tiny = 1.0e-300`, and the results round to `±1`, `+0`, and `2`. |
+| `6` and above | `±(1 - tiny)` | tail formula for `6 ≤ x < 28`, `tiny · tiny` from 28 on, and `2 - tiny` for `x ≤ -6` | `tiny = 1.0e-300`, and the results round to `±1`, `+0`, and `2`. |
 
 The first range starts from the power series `erf x = (2/√π) Σ (-1)^n x^(2n+1)/(n! (2n+1))` (DLMF 7.6.1 [4]), and fdlibm chose 0.84375 so that the error of `erf` stays below one unit in the last place there.  Above 1/4, `erfc` regroups `1 - x - x R` as `0.5 - (x R + (x - 0.5))`, where `x - 0.5` is exact.  On the middle range `erx` has 24 significant bits, so `1 - erx` is exact, and the rational function carries only the small difference `erf (1 + s) - erx`, below 0.078 in magnitude by fdlibm's comment.
 
@@ -64,7 +64,7 @@ A script that compares the port with the pinned `s_erf.c` finds that the decimal
 | C code | Port | Reason |
 |---|---|---|
 | Results through pointers | Tuples | The dialect has no pointers. |
-| Tables `C`, `C2`, `T1` and `T2`, `T`, `Tacc`, `E2`, and the three tables of exceptions | Arrays of words `fastTable`, `accTable`, `expTable`, `asymTable`, `asymAccTable`, `expAccTable`, and `excTable`, which `erfc` passes to `erfcWith`, with the rows of `Tacc` padded with zeros to 30 entries as in C | The arrays have docstrings with the offsets of the C arrays. |
+| Tables `C`, `C2`, `T1` and `T2`, `T`, `Tacc`, `E2`, and three tables of exceptions | Arrays of words `fastTable`, `accTable`, `expTable`, `asymTable`, `asymAccTable`, `expAccTable`, and `excTable`, which `erfc` passes to `erfcWith`, with the rows of `Tacc` padded with zeros to 30 entries as in C | The arrays have docstrings with the offsets of the C arrays. |
 | Short arrays `c0`, `p`, `Q_1`, and `threshold` | Constants in `erfFastTiny`, `tinyCoeff`, `q1`, `asymptIndex`, and `asymptAccIndex` | Fewer table arguments. |
 | `roundeven_finite` and `__builtin_floor` | `roundEven`, which adds and subtracts `2^52`, and `floorF` | Same results for the arguments that occur, below `2^52` in magnitude. |
 | `int64_t K` with `K >> 12`, `(K >> 6) & 0x3f`, and `K & 0x3f` in `exp_1` | Two's complement word with `sar` | C's arithmetic shift. |
@@ -111,8 +111,8 @@ The chain of `erf`'s proof has 33 modules of its own in `Library/Numerics/Float6
 | Middle range | `ErfMiddleBase`, `ErfMiddle` | `[0.84375, 1.25)`, in 13 intervals. |
 | Ends | `ErfEnds`, `ErfSub` | Below `2^-28`, the subnormal inputs, and from 6 on. |
 | Tail | `ErfTailSplit`, `ErfTailEval`, `ErfTailCompose`, `ErfTailErfBase`, `ErfTailErf` | `[1.25, 6)`, in 30 intervals: the exact split of `x²`, the argument of the second exponential, and the composition. |
-| Paths and sign | `ErfBranches`, `ErfBits`, `ErfPositive`, `ErfNegative`, `ErfOdd` | Code's path for each range, positive arguments, and negative arguments by oddness. |
-| Assembly | `ErfTheorem`, `ErfFile` | Exceptional values and the byte and file theorems. |
+| Paths and sign | `ErfBranches`, `ErfBits`, `ErfPositive`, `ErfNegative`, `ErfOdd` | Path of the code for each range, positive arguments, and negative arguments by oddness. |
+| Assembly | `ErfTheorem`, `ErfFile` | Exceptional values and byte and file theorems. |
 
 ### Real analysis
 
@@ -146,9 +146,9 @@ Let `u = 2^-53`.  On most ranges the proof bounds the error before the final rou
 
 | Range of `\|x\|` | Code | Bound and allowance | Margin | Theorem |
 |---|---|---|---|---|
-| `0` | `(8 x + efx8 · x)/8` | the word, computed | exact | `erf_pos_zero`, `erf_neg_zero` |
+| `0` | `(8 x + efx8 · x)/8` | word, computed | exact | `erf_pos_zero`, `erf_neg_zero` |
 | `(0, 2^-1022)` | `(8 x + efx8 · x)/8` | absolute error below `1.26 · 2^-1074`, against `1.5 · 2^-1074` | 16 percent | `ErfSub.erf_subnormal` |
-| `[2^-1022, 2^-1015)` | the same | `8 x` and the division by 8 exact, `1.21 u` relative, against `1.375 u` | 12 percent | `ErfSub.erf_sub_normal` |
+| `[2^-1022, 2^-1015)` | same | `8 x` and the division by 8 exact, `1.21 u` relative, against `1.375 u` | 12 percent | `ErfSub.erf_sub_normal` |
 | `[2^-1015, 2^-28)` | `x + efx · x` | `1.25 u` relative, against `1.375 u` | 9 percent | `ErfEnds.erf_tiny` |
 | `[2^-28, 0.84375)` | `x + x · pp/qq (x · x)` | 74 intervals, final sum rounded to nearest; relative criterion below 0.48 and the spacing `2^-53` above; pre-rounding error `0.983` spacings near 0.84 | 1.7 percent near `x = 0.84` | `ErfSmall.small_erf` |
 | `[0.84375, 1.25)` | `erx + pa/qa (x - 1)` | 13 intervals of `s`, at most `0.51` of the spacing `2^-53` | 49 percent | `ErfMiddle.middle_erf_all` |
@@ -167,12 +167,12 @@ Beyond the arithmetic chain and the modules of the exponential's proof, the anal
 
 | Fact | Declarations |
 |---|---|
-| Small kernel's two one-sided weighted bounds on two intervals, the positivity of `qq`, and the series partial sum | `ErfKernelSmall.small_up_1`, `small_up_2`, `small_lo_1`, `small_lo_2`, `qq_check`, `series_check` |
-| Middle kernel's bounds on eight intervals of `s` per side | `ErfKernelMiddle.middle_up_1` to `middle_up_8`, `middle_lo_1` to `middle_lo_8` |
+| Two one-sided weighted bounds of the small kernel on two intervals, positivity of `qq`, and series partial sum | `ErfKernelSmall.small_up_1`, `small_up_2`, `small_lo_1`, `small_lo_2`, `qq_check`, `series_check` |
+| Bounds of the middle kernel on eight intervals of `s` per side | `ErfKernelMiddle.middle_up_1` to `middle_up_8`, `middle_lo_1` to `middle_lo_8` |
 | Positivity of `S_a` and `S_b` | `ErfTailCoeffs.sa_check`, `sb_check` |
 | For each of the 32 tail pieces, the defect of the model, its range, the derivative checks, and the anchors | `ErfTailPieces0` to `ErfTailPieces7`, four pieces each |
 | Rounding conditions of the 74 small, 13 middle, and 30 tail intervals | `ErfSmallPieces0`, `ErfSmallPieces1`, `ErfMiddle.ok0` to `ok12`, `ErfTailErf.tok0` to `tok29` and `tcrit0` to `tcrit29` |
-| Exceptional words and the export | `ErfTheorem.erf_pos_zero` to `erf_neg_infinity`, `erf_export` |
+| Exceptional words and export | `ErfTheorem.erf_pos_zero` to `erf_neg_infinity`, `erf_export` |
 | The file's bytes equal the encoder's | `ErfFile.erf_file` |
 
 ### The proof of CORE-MATH's `erfc`
@@ -185,12 +185,12 @@ The rounding analysis follows each float with an ideal real value and bounds on 
 |---|---|
 | `FmaSpec` | `FmaNearest` |
 | `ErfcEft`, `ErfcEft2` | `fast_two_sum` and `two_sum`: Dekker's and Knuth's sums are exact |
-| `ErfcOps` | the errors of sums, differences, products, `Fma.fma`, `Erfc.fastTwoSum`, `Erfc.twoSum`, and `Erfc.aMul` on Floats |
-| `ErfcTrack`, `ErfcTrack2`, `ErfcTrack3` | the stages of `cr_erf_fast`, of its case below `1/16`, and of `cr_erf_accurate` |
+| `ErfcOps` | errors of sums, differences, products, `Fma.fma`, `Erfc.fastTwoSum`, `Erfc.twoSum`, and `Erfc.aMul` on Floats |
+| `ErfcTrack`, `ErfcTrack2`, `ErfcTrack3` | stages of `cr_erf_fast`, of its case below `1/16`, and of `cr_erf_accurate` |
 | `ErfcRound` | `roundEven_spec`, `floorF_spec`: `Erfc.roundEven` and `Erfc.floorF` give the nearest integer and the integer part; exact products by powers of two |
 | `ErfcSeries`, `ErfcSeriesI` | `row_sound`, `row_soundI`: a polynomial within a checked bound of `erf` near a rational center; `erfc_ge` |
 | `ErfcFastMain`, `ErfcFastRow` | `core_pr`, `row_err`: `Erfc.erfFastMain` on row `i` of `C` within the row's target of `erf x` |
-| `ErfcFastPlan`, `ErfcFastRows0` to `ErfcFastRows11` | the targets of the 94 rows of `C` and their kernel checks: `(7/8) u erfcLo` at the row's top for the rows that positive arguments reach, `(7/8) u` for the others |
+| `ErfcFastPlan`, `ErfcFastRows0` to `ErfcFastRows11` | targets of the 94 rows of `C` and their kernel checks: `(7/8) u erfcLo` at the row's top for the rows that positive arguments reach, `(7/8) u` for the others |
 | `ErfcFastTiny` | `tiny_err`: `Erfc.erfFastTiny` within `(7/8) u erfcLo (1/16)` of `erf z` for `\|z\| ≤ 1/16` |
 | `ErfcTest` | `test_near`, `near_within`: the rounding test gives a nearest float of `h + l`, and a nearest float of `s` with `\|s - y\| ≤ (15/16) u y` lies within one step of `y` |
 | `ErfcCast` | `qc`, a tactic that transfers a rational inequality to the reals |

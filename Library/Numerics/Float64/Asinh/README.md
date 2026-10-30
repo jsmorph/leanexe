@@ -8,14 +8,14 @@
 
 | Input | Port's result | Source of the rule | Theorem |
 |---|---|---|---|
-| `asinh (±0)`, `asinh (±∞)` | the argument, by `x` below `2^-28` and `x + x` | IEEE 754-2019 9.2.1 [4]; C99 F.9.2.2 [5] | `AsinhTheorem.asinh_zero`, `asinh_neg_zero`, `asinh_inf`, `asinh_neg_inf` |
+| `asinh (±0)`, `asinh (±∞)` | argument, by `x` below `2^-28` and `x + x` | IEEE 754-2019 9.2.1 [4]; C99 F.9.2.2 [5] | `AsinhTheorem.asinh_zero`, `asinh_neg_zero`, `asinh_inf`, `asinh_neg_inf` |
 | `acosh 1` | `+0` | IEEE 754-2019 9.2.1; C99 F.9.2.1 | `AcoshTheorem.acosh_one` |
 | `acosh x` for `x < 1`, `±0` and `-∞` included | NaN, by `(x - x)/(x - x)` | IEEE 754-2019 Table 9.1 (domain `[+1, +∞]`, invalid operation below 1); C99 F.9.2.1 | `AcoshTheorem.acosh_nan` |
 | `acosh (+∞)` | `+∞`, by `x + x` | IEEE 754-2019 9.2.1; C99 F.9.2.1 | `AcoshTheorem.acosh_inf` |
-| `atanh (±0)` | the argument | IEEE 754-2019 9.2.1; C99 F.9.2.3 | `AtanhTheorem.atanh_zero`, `atanh_neg_zero` |
+| `atanh (±0)` | argument | IEEE 754-2019 9.2.1; C99 F.9.2.3 | `AtanhTheorem.atanh_zero`, `atanh_neg_zero` |
 | `atanh (±1)` | `±∞`, by `x/0` | IEEE 754-2019 9.2.1 (with the divideByZero exception); C99 F.9.2.3 | `atanh_one`, `atanh_neg_one` |
 | `atanh x` for `\|x\| > 1` and `±∞` | NaN, by `(x - x)/(x - x)` | IEEE 754-2019 Table 9.1; C99 F.9.2.3 | `atanh_nan` |
-| NaN | the canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [6] | `asinh_nan`, `acosh_nan`, `atanh_nan` |
+| NaN | canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [6] | `asinh_nan`, `acosh_nan`, `atanh_nan` |
 
 The theorems of the last column state these results.  IEEE 754-2019 lists the three functions among the recommended operations of clause 9.2, which a conforming implementation rounds correctly [4].  fdlibm states no error bound for any of them [1, 2, 3].
 
@@ -52,9 +52,9 @@ The port is written in the Verified dialect, which [the Verified compiler](../..
 
 | C code | Port | Reason |
 |---|---|---|
-| `if (huge + x > one) return x` and `(huge + x) > zero` | the tests kept | The expressions raise the inexact flag in C, and the tests hold for every `\|x\| < 2^-28`. |
+| `if (huge + x > one) return x` and `(huge + x) > zero` | tests kept | The expressions raise the inexact flag in C, and the tests hold for every `\|x\| < 2^-28`. |
 | `x/zero` with `zero = 0.0` | `x / 0.0` | Same value. |
-| signed `int32_t hx` | the word `x.toBits >>> 32`, with `hx >>> 31 == 1` for a negative sign | The dialect has unsigned words only.  `acosh` tests `hx >>> 31 == 1 \|\| hx < 0x3ff00000` for C's signed `hx < 0x3ff00000`. |
+| signed `int32_t hx` | word `x.toBits >>> 32`, with `hx >>> 31 == 1` for a negative sign | The dialect has unsigned words only.  `acosh` tests `hx >>> 31 == 1 \|\| hx < 0x3ff00000` for C's signed `hx < 0x3ff00000`. |
 | `if (hx > 0) return w; else return -w;` in `asinh` | `if hx >>> 31 == 0 then w else -w` | The two differ only for a positive `x` whose high word is 0, which returns earlier as tiny. |
 | `(lx \| (-lx)) >> 31` on `u_int32_t` in `atanh` | `(lx \|\|\| ((0 - lx) &&& 0xFFFFFFFF)) >>> 31` | The negation is taken modulo `2^32`, as in C. |
 | `SET_HIGH_WORD (x, ix)` in `atanh` | `Float.ofBits ((ix <<< 32) \|\|\| lx)` | Word of `\|x\|`. |
