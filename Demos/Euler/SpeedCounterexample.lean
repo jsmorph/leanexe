@@ -1,4 +1,5 @@
 import Demos.Euler.Verify
+import Demos.Euler.Verified
 import Demos.Euler.RealState
 import Demos.Euler.Equations.CharacteristicSpeed
 
@@ -6,7 +7,8 @@ import Demos.Euler.Equations.CharacteristicSpeed
 admissible state of density 1, zero momenta, and total energy 1, `side` accepts and returns a speed
 whose value is below the exact sound speed `√(14/25)`, so the exact speed `|u| + c` exceeds it.
 The reconstructed solver computes its speeds with outward rounding instead, which `speedUpper_ge`
-proves to bound the exact speed.  The compiled `side` export returns these words on every run. -/
+proves to bound the exact speed.  The `side` exports of the LeanExe module and of the verified
+module return these words on every run, by `module_side` and `verified_side`. -/
 
 namespace Demos.Euler.SpeedCounterexample
 
@@ -67,5 +69,22 @@ theorem module_side : ∃ bytes, Wasm.Encoding.encode euler.module = .ok bytes �
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ ImplementsPureA false m 4 sideTuple := by
   obtain ⟨bytes, success, decoded⟩ := euler_round_trip
   exact ⟨bytes, success, euler.module, decoded, side_implements⟩
+
+/-- The bytes of the verified module `Demos.Euler.Verified.compiled.module` decode to the module,
+whose `side` export is entry 4.  Entry 4 returns the words of `side` of its arguments on every run,
+without a trap and with the store unchanged, so it returns the words of `result` for the words of
+the state `(1, 0, 0, 1)`. -/
+theorem verified_side :
+    (∃ bytes, Wasm.Encoding.encode Demos.Euler.Verified.compiled.module = .ok bytes ∧
+      Wasm.Encoding.decode bytes = .ok Demos.Euler.Verified.compiled.module) ∧
+    ({ name := "side", funcIdx := 4 } : Wasm.Export) ∈
+      Demos.Euler.Verified.compiled.module.exports ∧
+    ImplementsPureA false Demos.Euler.Verified.compiled.module 4
+      (fun x : Float × Float × Float × Float => side x.1 x.2.1 x.2.2.1 x.2.2.2) := by
+  obtain ⟨bytes, success, decoded, _⟩ := Demos.Euler.Verified.compiled.bytes
+  refine ⟨⟨bytes, success, decoded⟩, ?_, Demos.Euler.Verified.compiled.side.pure⟩
+  decide +kernel
+
+#print axioms verified_side
 
 end Demos.Euler.SpeedCounterexample

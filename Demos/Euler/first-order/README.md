@@ -56,11 +56,12 @@ complete-execution theorem takes the allocator state of a fresh instance as a hy
 theorem connects that state to the module's instantiation.  For density 1, zero momenta, and energy
 1, an admissible state, `side` accepts the state and returns a signal speed with the bits
 `0x3FE7F254DAB9CC3A`, which is below the exact sound speed √(14/25): `speed_below_sound` in [the
-counterexample](../SpeedCounterexample.lean) proves this, and `module_side` states that the module's
-`side` export returns these words.  The theorems therefore state no CFL bound in exact arithmetic
-for this solver, and whether a run from the four quadrants reaches such a state is unproved.  [The
-reconstructed solver](../reconstructed/README.md) uses outward speed bounds and has one.
-Convergence to a weak solution of the continuous Euler equations remains unproved.
+counterexample](../SpeedCounterexample.lean) proves this.  `module_side` states that the module's
+`side` export returns these words, and `verified_side` states the same of the `side` export, entry
+4, of [the verified compiler's module](../Verified.lean).  The theorems therefore state no CFL
+bound in exact arithmetic for this solver, and whether a run from the four quadrants reaches such a
+state is unproved.  [The reconstructed solver](../reconstructed/README.md) uses outward speed bounds
+and has one.  Convergence to a weak solution of the continuous Euler equations remains unproved.
 
 ## Runs and reproduction
 

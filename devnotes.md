@@ -39279,7 +39279,7 @@ An audit of the day's open checkboxes ticked six: five whose work is done, and t
 - [x] The verified `gpt.wasm` file theorems, the second deferred item.
 - [x] The thirteen example ports.
 - [x] The verified total theorems of the Euler solvers and the drone planner.
-- [ ] `Generation.lean`, `module_side`, and `increment_total`.
+- [x] `Generation.lean`, `module_side`, and `increment_total`.
 - [x] The browser pages, the GPU drivers, and the test defaults on the verified modules.
 - [ ] `tools/demo-check` on the verified compiler.
 - [x] The five LTG entries in the VKB.
@@ -39644,7 +39644,20 @@ The agent that wrote the port stopped before its journal entry, its VKB review, 
 - [x] The GPT generation theorems on the verified module, with the trap-free forms.
 - [x] `increment_call` beside `increment_total` in the documents.
 - [x] The native driver's result for a selection of module cases.
-- [ ] `module_side` over the verified Euler module.
+- [x] `module_side` over the verified Euler module.
+
+## 2026-10-30: The speed counterexample on the verified Euler module
+
+`module_side` in [the speed counterexample](Demos/Euler/SpeedCounterexample.lean) states that the bytes of the LeanExe module `euler.module` decode to a module whose `side` export, function 4, implements `side` on every run without a trap, in the form `ImplementsPureA false`.  [The verified Euler module](Demos/Euler/Verified.lean) compiles the same definition `Demos.Euler.side`, and its export `side` is entry 4, after the runtime's `alloc` and `release`.  For that entry `verified_compile` generates `compiled.side.pure`, which states `ImplementsPureA false compiled.module 4` of `side` on the argument tuple, the form of the LeanExe statement.  The plan's decision restates `module_side` over the verified module, so `verified_side` beside it states that the bytes of `compiled.module` decode to the module, that the export `side` is entry 4, and `compiled.side.pure`.  `module_side` and the import of `Demos.Euler.Verify` stay until the removal commit that separates the Euler mathematics from its WebAssembly proofs.
+
+[The first-order guide](Demos/Euler/first-order/README.md) cites `verified_side` beside `module_side`.  `index.md` cites neither theorem, and it is unchanged.  With the GPT generation port and `increment_call`, which [the GPT entry](#2026-10-30-the-gpt-generation-theorems-on-the-verified-module) records, the plan's box for `Generation.lean`, `module_side`, and `increment_total` is ticked, and so is that entry's box for `module_side`.
+
+| Check | Duration | Result |
+|---|---|---|
+| `lake build Demos.Euler.SpeedCounterexample` | 5 s, at 23:26 UTC | Built, with no warning |
+| `#print axioms verified_side` | In the build | `propext`, `Classical.choice`, and `Quot.sound` |
+| `VKB/Check.lean` on `VKB/entries` | 6 s, at 23:27 UTC | No problem reported |
+| `node tools/check-doc-links.mjs` on a copy of the tree | Under 1 s, at 23:28 UTC | No problem reported, and every document is reachable from the README |
 
 ## 2026-10-30: The browser pages, the GPU drivers, and the test defaults on the verified modules
 
