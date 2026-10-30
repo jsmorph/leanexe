@@ -750,6 +750,21 @@ projections, and conditionals, and arrays use the existing element representatio
 rules.  [The sum example](Examples/Sums.lean) checks these forms with binary64 shapes and a sum
 with binary32 and enumeration fields.
 
+A `match` with several alternatives on a structure, whose patterns fix fields to constructors of
+enumerations and bind the others, as `{ value, steps, last := .add }` does, becomes a chain of
+`if`s from `structMatchChain`.  `structAlts` reads each alternative's pattern from the matcher's
+type with its motive abstract, and it accepts a variable for the value and the structure's
+constructor with each field a variable or a constructor of an enumeration with a `Flat` instance to
+words.  Any other field pattern, such as a literal, a `Bool`, or a nested structure, stops the
+reflector with a message that names the field.  The chain tests, in the order of the alternatives,
+the words of the fields that each pattern fixes, joined with `&&`, and the last alternative, or one
+that fixes no field, takes no test.  The equation of the chain and the match is proved by `casesOn`
+on a variable for the value and then on each fixed field, with variables for the alternatives, so
+the kernel reduces both sides at each combination of constructors without evaluating the value or
+an alternative's body.  A discriminant that is not a place is bound with `let` first.  [The pattern
+example](Examples/Patterns.lean) checks these forms on parameters, calls, loop states, and a record
+that holds an array.
+
 A sum whose `Flat` tuple holds `Bytes`, arrays, or recursive types has the source type of that
 tuple, a `Ty.pair`, and `instRepresentOfFlat` represents it as the tuple, so the compiler and its
 proofs treat it as a pair.  The reflector does not split its variables, since no function rebuilds
