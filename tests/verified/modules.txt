@@ -106,3 +106,6 @@ Examples.Below100.Compiled:Examples.Below100.compiled.module:below100
 Examples.RemoveZero.Compiled:Examples.RemoveZero.compiled.module:removeZero
 Examples.Binary32.Compiled:Examples.Binary32.compiled.module:binary32
 Library.Numerics.Arithmetic.Gcd.Compiled:Library.Numerics.Arithmetic.Gcd.compiled.module:gcd
+Library.Numerics.Statistics.Mean.Compiled:Library.Numerics.Statistics.Mean.compiled.module:mean
+Library.Numerics.Statistics.SumSquares.Compiled:Library.Numerics.Statistics.SumSquares.compiled.module:sumSquares
+Library.Random.SplitMix64.Compiled:Library.Random.SplitMix64.compiled.module:prng

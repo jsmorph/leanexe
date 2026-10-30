@@ -5,7 +5,8 @@
 [The program](Program.lean) returns the arithmetic mean of an array of `Float` values: the sum,
 accumulated from the left, divided by the length converted to `Float`.  The mean of the empty array
 is `0.0 / 0.0`, which is NaN.  [The module definition](Module.lean) compiles `mean` into the
-1,455-byte `mean.wasm`.
+1,455-byte `mean.wasm`, and [the verified compilation](Compiled.lean) compiles it with the verified
+compiler into a 1,515-byte module.
 
 ## Bits of the mean for every array
 
@@ -44,6 +45,34 @@ The commands build the proofs, write the module, and call it in the Wasmtime hos
 the call prints 4612811918334230528, the bits of 2.5.  The second call prints 9221120237041090560,
 `0x7FF8000000000000`, the canonical NaN.  [`tests/modules/run.sh`](../../../../tests/modules/run.sh)
 compares 52 cases of [`Cases.lean`](../../../../tests/TestSupport/Modules/Mean.lean) with native Lean.
+
+## The verified compiler's module
+
+`verified_compile compiled := [mean]` in [the verified compilation](Compiled.lean) compiles the same
+definition.  The fold, the length, and the conversion allocate nothing, so `compiled.mean.bound_eq`
+states the bound 0, and the generated `compiled.mean.implements` states that function 2 computes
+`mean` without a trap from every store with the allocator invariant and a memory cap of at most
+65,535 pages.  `mean_implements` of the LeanExe module allows a trap at `unreachable`, and
+`compiled.mean.native` states the computation for the C function of the module's translation.
+
+```sh
+tools/leanrun --timeout 60m lake build Library.Numerics.Statistics.Mean.Compiled
+mkdir -p build/verified
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+  Library.Numerics.Statistics.Mean.Compiled Library.Numerics.Statistics.Mean.compiled.module \
+  build/verified/mean.wasm
+build/tools/leanexe-wasmtime-host call build/verified/mean.wasm mean f64 \
+  array-u64:4607182418800017408,4611686018427387904,4613937818241073152,4616189618054758400
+tests/verified/run.sh --cases mean
+tests/native/verified.sh --module mean
+```
+
+The call prints 4612811918334230528, as the LeanExe module's call does.  [The verified
+driver](../../../../tests/verified/run.sh) runs the 52 arrays of
+[`Cases.lean`](../../../../tests/TestSupport/Modules/Mean.lean) in Wasmtime against native Lean and
+checks that no call allocates beyond the host's array.  [The native
+driver](../../../../tests/native/verified.sh) runs them on the module's translation to C, compiled
+with CompCert.
 
 ## Related examples
 

@@ -7,7 +7,8 @@ Sebastiano Vigna's reference C code.  `splitMix state` adds the constant `0x9e37
 state and mixes the new state into an output word with two multiply-and-xor rounds and a final xor,
 returning the new state and the word.  `unitFloat x` maps a word to the float `(x >>> 11) / 2^53` in
 `[0, 1)`, which is exact because the numerator has at most 53 bits.  [The module
-definition](Module.lean) compiles both into the 1,478-byte `prng.wasm`.
+definition](Module.lean) compiles both into the 1,478-byte `prng.wasm`, and [the verified
+compilation](Compiled.lean) compiles both with the verified compiler into a 1,498-byte module.
 
 ## Theorems that hold in any module
 
@@ -50,6 +51,44 @@ prints 4606131375998723001, the bits of 0.8833108082136426.
 [`tests/prng/compare.py`](../../../tests/prng/compare.py) checks one step from 106 seeds, 1,000
 successive steps from seeds 0 and 42, and `unitFloat` on 40 words against a Python transcription of
 the reference code.
+
+## The verified compiler's module
+
+`verified_compile compiled := [splitMix, unitFloat]` in [the verified compilation](Compiled.lean)
+compiles the same definitions.  Both functions take and return scalars and allocate nothing, so the
+generated `compiled.splitMix.pure` and `compiled.unitFloat.pure` state that functions 2 and 3
+return their Lean results from every store without a trap and leave the store unchanged.
+`prng_module` combines them with the module's bytes and the two exports.
+
+| Theorem | Statement |
+|---------|-----------|
+| `prng_module` | The module's bytes decode to the module, whose exports `splitMix` and `unitFloat` are functions 2 and 3, and each function returns its Lean result from every store without a trap and keeps the store. |
+
+`splitMix_pure` and `unitFloat_pure` of the LeanExe module allow a trap and hold in any module that
+contains the compiled functions at any index, so another LeanExe program calls them without a new
+proof.  The verified theorems hold for this module, and another verified program reuses the
+functions by listing them in its own `verified_compile`, as [the verified GPT-2
+module](../../../Demos/Gpt/Verified.lean) does, or by appending this program with `Prog.append`.
+The generated `compiled.splitMix.native` and `compiled.unitFloat.native` state the computations for
+the C functions of the module's translation.
+
+```sh
+tools/leanrun --timeout 60m lake build Library.Random.SplitMix64.Compiled
+mkdir -p build/verified
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+  Library.Random.SplitMix64.Compiled Library.Random.SplitMix64.compiled.module \
+  build/verified/prng.wasm
+uv run tests/prng/compare.py build/verified/prng.wasm
+tests/verified/run.sh --cases prng
+tests/native/verified.sh --module prng
+```
+
+`compare.py` runs its checks of the reference code on the verified module.  [The verified
+driver](../../../tests/verified/run.sh) compares 96 calls of each function with native Lean in
+Wasmtime, from 0, 1, and four seeds whose advance wraps or reaches zero, 40 arbitrary words, and 50
+successive states from 0, and checks that no call allocates.  [The native
+driver](../../../tests/native/verified.sh) runs the same calls on the module's translation to C,
+compiled with CompCert.
 
 ## Related examples
 

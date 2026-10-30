@@ -5,7 +5,9 @@
 [The program](Program.lean) returns the sum of the squares of an array of `Float` values,
 accumulated from the left: `xs.foldl (fun acc x => acc + x * x) 0.0`.  Each step rounds twice, once
 after the square and once after the sum, so the result depends on the order of the elements.  [The
-module definition](Module.lean) compiles `sumSquares` into the 1,450-byte `sumSquares.wasm`.
+module definition](Module.lean) compiles `sumSquares` into the 1,450-byte `sumSquares.wasm`, and [the
+verified compilation](Compiled.lean) compiles it with the verified compiler into a 1,516-byte
+module.
 
 ## Lean's bits in the program's order of summation
 
@@ -43,6 +45,34 @@ The commands build the proofs, write the module, and call it in the Wasmtime hos
 prints 4624070917402656768, the bits of 14.0.  [`tests/modules/run.sh`](../../../../tests/modules/run.sh)
 compares 52 cases of [`Cases.lean`](../../../../tests/TestSupport/Modules/SumSquares.lean) with native Lean, including the empty array,
 infinities, NaN, subnormal values, and small terms before and after a large one.
+
+## The verified compiler's module
+
+`verified_compile compiled := [sumSquares]` in [the verified compilation](Compiled.lean) compiles
+the same definition.  The fold allocates nothing, so the generated `compiled.sumSquares.implements`
+states that function 2 computes `sumSquares` without a trap from every store with the allocator
+invariant and a memory cap of at most 65,535 pages.  `sumSquares_implements` of the LeanExe module
+allows a trap at `unreachable`, and `compiled.sumSquares.native` states the computation for the C
+function of the module's translation.
+
+```sh
+tools/leanrun --timeout 60m lake build Library.Numerics.Statistics.SumSquares.Compiled
+mkdir -p build/verified
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+  Library.Numerics.Statistics.SumSquares.Compiled \
+  Library.Numerics.Statistics.SumSquares.compiled.module build/verified/sumSquares.wasm
+build/tools/leanexe-wasmtime-host call build/verified/sumSquares.wasm sumSquares f64 \
+  array-u64:4607182418800017408,4611686018427387904,4613937818241073152
+tests/verified/run.sh --cases sumSquares
+tests/native/verified.sh --module sumSquares
+```
+
+The call prints 4624070917402656768, as the LeanExe module's call does.  [The verified
+driver](../../../../tests/verified/run.sh) runs the 52 arrays of
+[`Cases.lean`](../../../../tests/TestSupport/Modules/SumSquares.lean) in Wasmtime against native
+Lean and checks that no call allocates beyond the host's array.  [The native
+driver](../../../../tests/native/verified.sh) runs them on the module's translation to C, compiled
+with CompCert.
 
 ## Related examples
 

@@ -268,6 +268,9 @@ import Library.Numerics.Bounds.Compiled
 import Library.Numerics.Limiters.Minmod.Compiled
 import Library.Trees.WordTree.Compiled
 import Library.Numerics.Arithmetic.Gcd.Compiled
+import Library.Numerics.Statistics.Mean.Compiled
+import Library.Numerics.Statistics.SumSquares.Compiled
+import Library.Random.SplitMix64.Compiled
 import Library.Numerics.Arithmetic.CeilSqrt.Proof
 import Library.Numerics.Bounds.Proof
 import Library.Numerics.Limiters.Minmod.Proof
