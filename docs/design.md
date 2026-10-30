@@ -366,7 +366,7 @@ their native dispatch theorems to the shared item, layer, and generation proofs.
 - [ ] Verified compiler: owned record and pair parameters.
 - [x] Verified compiler: `Bytes` and array fields of tree records, which need array and buffer slots in the trusted `Slot` and `Node` model.
 
-The interpreter testsuite run recorded on 2026-10-10 passed 64,751 commands, with 346 skips and 27 decode errors on unsupported text forms.  [The exponential guide](../Library/Numerics/Float64/Exp/README.md#limits) and the journal record its scope.  The interpreter remains trusted.  Talos bounds no call depth.  Guarded recursive calls in both compilers trap at depth 1,000.  Tail continuations use loop branches.
+[The Talos conformance driver](../tests/talos/run.sh) runs the interpreter over the WebAssembly testsuite.  Its run of 2026-10-30, like the run of 2026-10-10, passed 64,751 commands, with 346 skips and 27 decode errors on unsupported text forms, and its report equals the one that Talos commits.  [The exponential guide](../Library/Numerics/Float64/Exp/README.md#limits) and the journal record its scope.  The interpreter remains trusted.  Talos bounds no call depth.  Guarded recursive calls in both compilers trap at depth 1,000.  Tail continuations use loop branches.
 
 ## Commands
 
