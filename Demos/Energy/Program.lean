@@ -33,9 +33,9 @@ The window's power interval `B` is the smallest interval that contains the inter
 in force, the setpoint's interval, and the fallback interval.  On a side where `B` extends beyond
 the fallback interval, the authorizer tests that side's grid cap and energy limit: the lower side
 tests the export cap and the energy floor, and the upper side the import cap and the energy
-ceiling.  The lower energy bound charges at the efficiency bound, discharges at the efficiency
-bound, and loses the largest loss rate, rounding gains down and drains up.  The upper energy bound
-takes efficiency 1 and no loss. -/
+ceiling.  The fallback interval contains 0, so the lower end of `B` is at most 0 and its upper end
+at least 0.  The lower energy bound discharges at the efficiency bound and loses the largest loss
+rate, rounding up, and the upper energy bound charges at efficiency 1 with no loss. -/
 
 namespace Demos.Energy
 
@@ -58,7 +58,7 @@ structure Decision where
   status : Status
   setpoint : UInt64
   expiry : UInt64
-  deriving Inhabited, Repr
+  deriving Inhabited, DecidableEq, Repr
 
 /-- The word of signed power 0. -/
 def offset : UInt64 := 4294967296
@@ -110,25 +110,16 @@ def lowB (site xs : Array UInt64) : UInt64 :=
 def highB (site xs : Array UInt64) : UInt64 :=
   max (max (inForceHigh site xs) (word xs 10 + word site 9)) (word site 11)
 
-/-- Energy that the lower bound gains over the window at the lower end `b` of the power
-interval: charging at the efficiency bound, rounded down. -/
-def lowGain (site : Array UInt64) (b : UInt64) : UInt64 :=
-  if offset ≤ b then (b - offset) * word site 13 * word site 7 / million else 0
-
 /-- Energy that the lower bound drains over the window at the lower end `b` of the power
-interval: discharging at the efficiency bound, rounded up, and the largest loss. -/
+interval, which is at most `offset` because the fallback interval contains 0: discharging at the
+efficiency bound, rounded up, and the largest loss. -/
 def lowDrain (site : Array UInt64) (b : UInt64) : UInt64 :=
-  if offset ≤ b then word site 8 * word site 13
-  else ((offset - b) * word site 13 * million + word site 7 - 1) / word site 7 +
+  ((offset - b) * word site 13 * million + word site 7 - 1) / word site 7 +
     word site 8 * word site 13
 
-/-- Energy that the upper bound gains over the window at the upper end `b`, at efficiency 1. -/
-def highGain (site : Array UInt64) (b : UInt64) : UInt64 :=
-  if offset ≤ b then (b - offset) * word site 13 else 0
-
-/-- Energy that the upper bound drains over the window at the upper end `b`, at efficiency 1. -/
-def highDrain (site : Array UInt64) (b : UInt64) : UInt64 :=
-  if offset ≤ b then 0 else (offset - b) * word site 13
+/-- Energy that the upper bound gains over the window at the upper end `b` of the power interval,
+which is at least `offset`, at efficiency 1 and with no loss. -/
+def highGain (site : Array UInt64) (b : UInt64) : UInt64 := (b - offset) * word site 13
 
 /-- Grid export stays within the cap at the lower end `b`: `L⁻ + b + X ≥ S⁺`. -/
 def exportOk (site xs : Array UInt64) (b : UInt64) : Bool :=
@@ -136,7 +127,7 @@ def exportOk (site xs : Array UInt64) (b : UInt64) : Bool :=
 
 /-- Stored energy stays at or above the floor at both ends of the window. -/
 def floorOk (site xs : Array UInt64) (b : UInt64) : Bool :=
-  word site 1 ≤ word xs 2 && word site 1 + lowDrain site b ≤ word xs 2 + lowGain site b
+  word site 1 ≤ word xs 2 && word site 1 + lowDrain site b ≤ word xs 2
 
 /-- Grid import stays within the cap at the upper end `b`: `L⁺ + b ≤ I + S⁻`. -/
 def importOk (site xs : Array UInt64) (b : UInt64) : Bool :=
@@ -144,7 +135,7 @@ def importOk (site xs : Array UInt64) (b : UInt64) : Bool :=
 
 /-- Stored energy stays at or below the ceiling at both ends of the window. -/
 def ceilingOk (site xs : Array UInt64) (b : UInt64) : Bool :=
-  word xs 3 ≤ word site 2 && word xs 3 + highGain site b ≤ word site 2 + highDrain site b
+  word xs 3 ≤ word site 2 && word xs 3 + highGain site b ≤ word site 2
 
 def reject (s : Status) : Decision := { status := s, setpoint := 0, expiry := 0 }
 

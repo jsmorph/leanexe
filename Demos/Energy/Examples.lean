@@ -1,0 +1,42 @@
+import Demos.Energy.Site
+
+/-! The worked example of the plan, evaluated by the kernel under the test site's profile table.
+Every input has snapshot time 0 and the mode word 0.  Except where a name states otherwise, it has
+stored energy in `[14,400,000, 15,120,000]` J, a setpoint of 0 W in force, load in
+`[3,000, 4,000]` W, and PV in `[0, 3,000]` W.  A signed power `p` is the word `p + 2 ^ 32`. -/
+
+namespace Demos.Energy.Examples
+
+/-- A discharge of 1,000 W passes the export and floor tests and expires at `t_m + 870`. -/
+theorem example_accept :
+    authorize #[1, 0, 14400000, 15120000, 0, 4294967296, 3000, 4000, 0, 3000, 4294966296] =
+      ⟨.accepted, 4294966296, 870⟩ := by
+  decide +kernel
+
+/-- A discharge of 3,000 W fails the export test. -/
+theorem example_export :
+    (authorize #[1, 0, 14400000, 15120000, 0, 4294967296, 3000, 4000, 0, 3000,
+      4294964296]).status = .exportCap := by
+  decide +kernel
+
+/-- A discharge of 1,000 W from stored energy of at least 11,520,000 J fails the floor test. -/
+theorem example_floor :
+    (authorize #[1, 0, 11520000, 15120000, 0, 4294967296, 3000, 4000, 0, 3000,
+      4294966296]).status = .floor := by
+  decide +kernel
+
+/-- A charge of 3,000 W with load in `[500, 1,000]` W and PV in `[3,000, 5,000]` W passes the
+import and ceiling tests, with export relative to idle fallback. -/
+theorem example_relative :
+    (authorize #[1, 0, 14400000, 15120000, 0, 4294967296, 500, 1000, 3000, 5000,
+      4294970296]).status = .accepted := by
+  decide +kernel
+
+/-- A renewal of a 1,000 W discharge in force, from stored energy of at least 11,288,000 J, fails
+the floor test. -/
+theorem example_renewal :
+    (authorize #[1, 0, 11288000, 12008000, 0, 4294966296, 3000, 4000, 0, 3000,
+      4294966296]).status = .floor := by
+  decide +kernel
+
+end Demos.Energy.Examples

@@ -11,7 +11,7 @@ namespace Demos.Energy.Verified
 open _root_.Demos.Energy
 
 verified_compile compiled := [rangeOk, orderOk, limitOk, inForceLow, inForceHigh, lowB, highB,
-  lowGain, lowDrain, highGain, highDrain, exportOk, floorOk, importOk, ceilingOk, reject,
+  lowDrain, highGain, exportOk, floorOk, importOk, ceilingOk, reject,
   authorizeWith, authorize]
 
 end Demos.Energy.Verified

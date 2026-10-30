@@ -3,9 +3,10 @@ import Demos.Energy.Spec
 /-! The integer conditions of the acceptance rule and the theorem that they bound every admitted
 trajectory.  `Conditions p q s` states, in integers, the tests of each side on which the window's
 power interval extends beyond the fallback interval: on the lower side the export cap and the
-energy floor, and on the upper side the import cap and the energy ceiling.  The energy terms are
-those of the plan: the lower bound rounds gains down and drains up, and the upper bound takes
-efficiency 1 and no loss.  `window_sound` states that the conditions give `WithinOrFallback` at
+energy floor, and on the upper side the import cap and the energy ceiling.  The fallback interval
+contains 0, so the lower end of the power interval is at most 0 and the upper end at least 0.  The
+lower energy bound drains at the efficiency bound and the largest loss rate, rounded up, and the
+upper bound gains at efficiency 1 with no loss.  `window_sound` states that the conditions give `WithinOrFallback` at
 each time of the window for every trajectory admitted until that time. -/
 
 namespace Demos.Energy.Spec
@@ -18,30 +19,20 @@ def lowerTested (p : Profile) (q : Snapshot) (s : ℤ) : Prop := powerLow p q s 
 /-- The window's power interval extends above the fallback interval. -/
 def upperTested (p : Profile) (q : Snapshot) (s : ℤ) : Prop := p.fallbackHigh < powerHigh p q s
 
-/-- Energy that the lower bound gains over the window at power `b`, J, rounded down. -/
-def gainLow (p : Profile) (b : ℤ) : ℤ :=
-  if 0 ≤ b then b * p.window * p.eta / 1000000 else 0
-
-/-- Energy that the lower bound drains over the window at power `b`, J, rounded up. -/
+/-- Energy that the lower bound drains over the window at power `b ≤ 0`, J, rounded up. -/
 def drainLow (p : Profile) (b : ℤ) : ℤ :=
-  (if 0 ≤ b then 0 else (-b * p.window * 1000000 + p.eta - 1) / p.eta) + p.lossMax * p.window
-
-/-- Energy that the upper bound gains over the window at power `b`, J. -/
-def gainHigh (p : Profile) (b : ℤ) : ℤ := if 0 ≤ b then b * p.window else 0
-
-/-- Energy that the upper bound drains over the window at power `b`, J. -/
-def drainHigh (p : Profile) (b : ℤ) : ℤ := if 0 ≤ b then 0 else -b * p.window
+  (-b * p.window * 1000000 + p.eta - 1) / p.eta + p.lossMax * p.window
 
 /-- The tests of the acceptance rule, in integers. -/
 structure Conditions (p : Profile) (q : Snapshot) (s : ℤ) : Prop where
   exportCap : lowerTested p q s →
     (q.pvHigh : ℤ) ≤ q.loadLow + powerLow p q s + p.exportCap
   floor : lowerTested p q s → (p.floor : ℤ) ≤ q.energyLow ∧
-    (p.floor : ℤ) + drainLow p (powerLow p q s) ≤ q.energyLow + gainLow p (powerLow p q s)
+    (p.floor : ℤ) + drainLow p (powerLow p q s) ≤ q.energyLow
   importCap : upperTested p q s →
     (q.loadHigh : ℤ) + powerHigh p q s ≤ p.importCap + q.pvLow
   ceiling : upperTested p q s → (q.energyHigh : ℤ) ≤ p.ceiling ∧
-    (q.energyHigh : ℤ) + gainHigh p (powerHigh p q s) ≤ p.ceiling + drainHigh p (powerHigh p q s)
+    (q.energyHigh : ℤ) + powerHigh p q s * p.window ≤ p.ceiling
 
 theorem eff_pos {p : Profile} (h : 0 < p.eta) : 0 < p.eff := by
   unfold Profile.eff
@@ -126,43 +117,27 @@ theorem ceil_div_ge {n d : ℤ} (hd : 0 < d) : (n : ℝ) / d ≤ (((n + d - 1) /
   have : (n : ℝ) ≤ (d : ℝ) * (((n + d - 1) / d : ℤ) : ℝ) := by exact_mod_cast h3
   linarith
 
-/-- Rounding down by `n / d` gives at most `n / d`. -/
-theorem floor_div_le {n d : ℤ} (hd : 0 < d) : (((n / d : ℤ)) : ℝ) ≤ (n : ℝ) / d := by
-  have hdR : (0 : ℝ) < d := by exact_mod_cast hd
-  have h := Int.ediv_mul_le n hd.ne'
-  rw [le_div_iff₀ hdR]
-  exact_mod_cast h
-
-/-- The integer gain and drain of the lower bound over the window are at most the real change at
-the lower rate. -/
-theorem lowTerms_le {p : Profile} (heta : 0 < p.eta) (b : ℤ) :
-    ((gainLow p b - drainLow p b : ℤ) : ℝ) ≤ rateLow p b * p.window := by
+/-- The integer drain of the lower bound over the window at power `b ≤ 0` is at least the real
+drain at the lower rate. -/
+theorem drainLow_ge {p : Profile} (heta : 0 < p.eta) {b : ℤ} (hb : b ≤ 0) :
+    rateLow p b * p.window ≥ -((drainLow p b : ℤ) : ℝ) := by
   have he := eff_pos heta
-  have hetaR : (0 : ℝ) < p.eta := by exact_mod_cast heta
-  unfold gainLow drainLow rateLow
-  by_cases hb : 0 ≤ b
-  · have hbR : (0 : ℝ) ≤ b := by exact_mod_cast hb
-    simp only [hb, hbR, ↓reduceIte]
-    have h := floor_div_le (n := b * p.window * p.eta) (d := 1000000) (by norm_num)
-    push_cast at h ⊢
-    have : (b : ℝ) * p.window * p.eta / 1000000 = p.eff * b * p.window := by
-      unfold Profile.eff; ring
-    rw [this] at h
-    nlinarith
-  · have hbR : ¬ (0 : ℝ) ≤ b := by exact_mod_cast hb
-    simp only [hb, hbR, ↓reduceIte]
-    have h := ceil_div_ge (n := -b * p.window * 1000000) (d := p.eta) (by exact_mod_cast heta)
-    push_cast at h ⊢
-    have : (-(b : ℝ)) * p.window * 1000000 / p.eta = -((b : ℝ) / p.eff) * p.window := by
-      unfold Profile.eff; field_simp
-    rw [this] at h
-    nlinarith
-
-/-- The integer gain and drain of the upper bound over the window are the change at rate `b`. -/
-theorem highTerms_eq (p : Profile) (b : ℤ) :
-    ((gainHigh p b - drainHigh p b : ℤ) : ℝ) = (b : ℝ) * p.window := by
-  unfold gainHigh drainHigh
-  split_ifs <;> push_cast <;> ring
+  have hbR : (b : ℝ) ≤ 0 := by exact_mod_cast hb
+  have hrate : rateLow p b = (b : ℝ) / p.eff - p.lossMax := by
+    unfold rateLow
+    by_cases h0 : (0 : ℝ) ≤ b
+    · have : (b : ℝ) = 0 := le_antisymm hbR h0
+      simp [this]
+    · simp [h0]
+  have h := ceil_div_ge (n := -b * p.window * 1000000) (d := p.eta) (by exact_mod_cast heta)
+  have hw : (0 : ℝ) ≤ p.window := by positivity
+  unfold drainLow
+  push_cast at h ⊢
+  have : (-(b : ℝ)) * p.window * 1000000 / p.eta = -((b : ℝ) / p.eff) * p.window := by
+    unfold Profile.eff; field_simp
+  rw [this] at h
+  rw [hrate]
+  nlinarith
 
 /-- A trajectory admitted until `t` has an interval-integrable rate on `[t_m, t]`. -/
 theorem rate_integrable {x : Trajectory} {p : Profile} {q : Snapshot} {s : ℤ} {t : ℝ}
@@ -228,6 +203,7 @@ theorem le_powerHigh (p : Profile) (q : Snapshot) (s : ℤ) : p.fallbackHigh ≤
 /-- The conditions of the acceptance rule give the bounds of the acceptance rule at each time of
 the window, for every trajectory admitted until that time. -/
 theorem window_sound {p : Profile} {q : Snapshot} {s : ℤ} (heta : 0 < p.eta)
+    (hF : p.fallbackLow ≤ 0 ∧ 0 ≤ p.fallbackHigh)
     (hc : Conditions p q s) {x : Trajectory} {t : ℝ} (ht : t ∈ window p q)
     (hx : x.AdmittedUntil p q s t) : x.WithinOrFallback p q t := by
   obtain ⟨ht0, ht1⟩ := ht
@@ -238,12 +214,12 @@ theorem window_sound {p : Profile} {q : Snapshot} {s : ℤ} (heta : 0 < p.eta)
   refine ⟨?_, ?_, ?_, ?_⟩
   · by_cases hlt : lowerTested p q s
     · obtain ⟨hf0, hf1⟩ := hc.floor hlt
-      have hterm := lowTerms_le heta (powerLow p q s)
+      have hterm := drainLow_ge heta ((powerLow_le p q s).trans hF.1)
       have h0 : (p.floor : ℝ) ≤ q.energyLow := by exact_mod_cast hf0
       have h1 : (p.floor : ℝ) ≤ q.energyLow + rateLow p (powerLow p q s) * p.window := by
         have : ((p.floor : ℤ) : ℝ) + (drainLow p (powerLow p q s) : ℝ) ≤
-            ((q.energyLow : ℤ) : ℝ) + (gainLow p (powerLow p q s) : ℝ) := by exact_mod_cast hf1
-        push_cast at this hterm
+            ((q.energyLow : ℤ) : ℝ) := by exact_mod_cast hf1
+        push_cast at this
         linarith
       exact (min_le_left _ _).trans ((affine_ge h0 h1 hd0 hdw).trans hElo)
     · have heq : powerLow p q s = p.fallbackLow :=
@@ -252,13 +228,9 @@ theorem window_sound {p : Profile} {q : Snapshot} {s : ℤ} (heta : 0 < p.eta)
       exact (min_le_right _ _).trans hElo
   · by_cases hut : upperTested p q s
     · obtain ⟨hc0, hc1⟩ := hc.ceiling hut
-      have hterm := highTerms_eq p (powerHigh p q s)
       have h0 : (q.energyHigh : ℝ) ≤ p.ceiling := by exact_mod_cast hc0
       have h1 : (q.energyHigh : ℝ) + (powerHigh p q s : ℝ) * p.window ≤ p.ceiling := by
-        have : ((q.energyHigh : ℤ) : ℝ) + (gainHigh p (powerHigh p q s) : ℝ) ≤
-            ((p.ceiling : ℤ) : ℝ) + (drainHigh p (powerHigh p q s) : ℝ) := by exact_mod_cast hc1
-        push_cast at this hterm
-        linarith
+        exact_mod_cast hc1
       exact hEhi.trans ((affine_le h0 h1 hd0 hdw).trans (le_max_left _ _))
     · have heq : powerHigh p q s = p.fallbackHigh :=
         le_antisymm (not_lt.mp hut) (le_powerHigh p q s)
