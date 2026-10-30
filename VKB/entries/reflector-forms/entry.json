@@ -7,21 +7,27 @@
     "verified_compile: unsupported condition ¬p",
     "verified_compile: unsupported decision p → q",
     "compiled.f.bound x for a function that returns an array literal",
-    "verified_compile: unsupported term match c with | { value := value, steps := steps, last := Op.add } => …"
+    "match c with | { value, steps, last := .add } => … | _ => … in a verified_compile definition",
+    "verified_compile: a pattern fixes the field … to …, which is not a constructor of an enumeration with a `Flat` instance to words",
+    "verified_compile: the pattern 0 neither binds the value nor applies UInt64.ofBitVec"
   ],
   "modules": [
     "Verified.Reflect.Lemmas",
+    "Verified.Reflect.Definitions",
     "Verified.BoundFacts",
     "Verified.Examples.Forms",
+    "Verified.Examples.Patterns",
     "Examples.Lookup.Compiled",
     "Examples.Binary32.Compiled",
-    "Library.Numerics.Arithmetic.PrimeFactors.Compiled",
-    "Examples.Calc.Program"
+    "Examples.Calc.Compiled",
+    "Library.Numerics.Arithmetic.PrimeFactors.Compiled"
   ],
   "declarations": [
     "Verified.Reflect.decide_and_eq",
     "Verified.Reflect.decide_or_eq",
     "Verified.Reflect.ite_decide_eq",
+    "Verified.Reflect.structMatchChain",
+    "Verified.Reflect.structAlts",
     "Verified.growCost_eq",
     "Verified.paidGrowCost_eq",
     "Examples.Calc.Calc.undo"
@@ -30,6 +36,8 @@
     "Verified.Examples.Forms.pair_bound",
     "Verified.Examples.Forms.single_bound",
     "Verified.Examples.Forms.compiled.climb.implements",
+    "Verified.Examples.Patterns.compiled.bytes",
+    "Examples.Calc.compiled.undo.implements",
     "Examples.Lookup.compute_bound",
     "Examples.Lookup.lookup_call",
     "Examples.Binary32.condMix32_dispatch",
@@ -37,6 +45,7 @@
   ],
   "sources": [
     "2026-10-30: Array literals and conditions on propositions in the reflector",
-    "2026-10-30: The example ports to the verified compiler"
+    "2026-10-30: The example ports to the verified compiler",
+    "2026-10-30: A reflector rule for structure patterns, and the port of Calc"
   ]
 }
