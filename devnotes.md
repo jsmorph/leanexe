@@ -39278,7 +39278,7 @@ An audit of the day's open checkboxes ticked six: five whose work is done, and t
 - [x] The removal map and the ten decisions.
 - [x] The verified `gpt.wasm` file theorems, the second deferred item.
 - [ ] The thirteen example ports.
-- [x] The verified total theorems of the Euler solvers and the drone planner.
+- [ ] The verified total theorems of the Euler solvers and the drone planner.
 - [ ] `Generation.lean`, `module_side`, and `increment_total`.
 - [ ] The browser pages, the GPU drivers, and the test defaults on the verified modules.
 - [ ] `tools/demo-check` on the verified compiler.
@@ -39459,3 +39459,4 @@ The VKB proposals extend [the entry on closed-form allocation bounds](VKB/entrie
 - [x] The decision on the final page count: dropped, for the reason above.
 - [x] The Euler and drone guides, the README's properties table, and the index.
 - [x] The VKB proposals.
+- [ ] Decide whether the retirement gives up the LeanExe Euler theorem's coverage of large grids, or waits for allocation bounds that count reused blocks.
