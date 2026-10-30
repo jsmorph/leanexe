@@ -1,5 +1,5 @@
 import Library.Numerics.Float64.Pow.PowTheorem
-import LeanExe.ProofKit.BorrowedKept
+import Verified.Call
 
 /-!
 The byte theorems for the module of `Pow.lean`, whose export `pow` (function 11) reads
@@ -11,55 +11,33 @@ the initial store.
 -/
 
 namespace Library.Numerics.Float64.Pow.PowBytes
+open Verified (Ready)
 open CodeLib.IEEE64
 open LeanExe.ProofKit
 
-open Wasm LeanExe.Pipeline in
-/-- A store from which the module's entry runs, with `heap` the allocator's state. -/
-def Ready (heap : Heap) (store : Store Unit) : Prop :=
-  heap.At store ∧ heap.Borrowed store 4096 Pow.powLogTable ∧
-    heap.Borrowed store 8200 Exp.expTable ∧ store.memoryCap Pow.compiled.module 0 ≤ 65535
+/-- The store in which the module starts is ready, with the heap that holds its tables. -/
+theorem ready_initial :
+    Ready Pow.compiled.module Pow.compiled.tables (Verified.initialHeap Pow.compiled.tables)
+      Pow.compiled.module.initialStore :=
+  Verified.Ready.initial rfl Pow.compiled.initial
 
 set_option maxRecDepth 100000 in
 open Wasm LeanExe.Pipeline in
-/-- The store in which the module starts is ready, with the heap that holds its tables. -/
-theorem ready_initial :
-    Ready (Verified.initialHeap Pow.compiled.tables) Pow.compiled.module.initialStore := by
-  obtain ⟨hAt, hCap, hBor⟩ := Pow.compiled.initial
-  exact ⟨hAt, hBor 0 (by decide), hBor 1 (by decide), hCap⟩
-
-open Wasm LeanExe.Pipeline in
 /-- A call of the module's `pow` entry from a ready store, with `y` on top of `x`. -/
 theorem pow_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x y : Float)
-    (h : Ready heap store) :
+    (h : Ready Pow.compiled.module Pow.compiled.tables heap store) :
     Runs false env Pow.compiled.module 11 store [.f64 y.toBits, .f64 x.toBits]
       fun final values =>
-        values = [.f64 (Pow.pow x y).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+        values = [.f64 (Pow.pow x y).toBits] ∧ ∃ heap' : Heap,
+          Ready Pow.compiled.module Pow.compiled.tables heap' final ∧
           ∀ r, heap.Region r → 0 < r.2 →
             (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-              heap'.Region r := by
-  obtain ⟨hAt, hLog, hExp, hCap⟩ := h
-  have htab : ∀ t ∈ [((4096 : UInt64), Pow.powLogTable), ((8200 : UInt64), Exp.expTable)],
-      heap.Borrowed store t.1 t.2 ∧ Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
-    intro t ht
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
-    rcases ht with rfl | rfl
-    · exact ⟨hLog, Apart.nil⟩
-    · exact ⟨hExp, Apart.nil⟩
-  refine (Pow.compiled.pow.implements env store heap [.f64 x.toBits, .f64 y.toBits] (x, y) hAt
-    trivial htab rfl Separate.nil hCap).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Pow.pow x y).toBits] := howned
-  have hvs : values = [.f64 (Pow.pow x y).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ⟨hAt', BorrowedKept.borrowed_kept hLog hAt' hkeep,
-    BorrowedKept.borrowed_kept hExp hAt' hkeep, memoryCap_le_of_caps hcaps hCap⟩, hkeep⟩
+              heap'.Region r :=
+  (Verified.ImplementsTables.call Pow.compiled.pow.implements Pow.compiled.tables
+    (Verified.tables_at [0, 1] (by decide) rfl)
+    env heap store [.f64 x.toBits, .f64 y.toBits] (x, y) h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 11 of the module is its export `pow`. -/
 theorem pow_export :
@@ -76,9 +54,10 @@ theorem pow_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Pow.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Pow.compiled.module ∧
       ({ name := "pow", funcIdx := 11 } : Wasm.Export) ∈ Pow.compiled.module.exports ∧
-      Ready (Verified.initialHeap Pow.compiled.tables) Pow.compiled.module.initialStore ∧
+      Ready Pow.compiled.module Pow.compiled.tables
+        (Verified.initialHeap Pow.compiled.tables) Pow.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x y : Float), Ready heap store →
+        (x y : Float), Ready Pow.compiled.module Pow.compiled.tables heap store →
         Wasm.Runs false env Pow.compiled.module 11 store [.f64 y.toBits, .f64 x.toBits]
           (fun final values =>
             ∃ w : UInt64, values = [.f64 w] ∧ w = (Pow.pow x y).toBits ∧
@@ -86,7 +65,8 @@ theorem pow_bytes_accuracy :
                 (0 < value x.toBits ∨ (value x.toBits < 0 ∧ ∃ n : Int, value y.toBits = n) ∨
                   (value x.toBits = 0 ∧ 0 ≤ value y.toBits)) →
                 F64SignedRounding.WithinSteps 1 (value x.toBits ^ value y.toBits) w) ∧
-              ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+              ∃ heap' : LeanExe.Pipeline.Heap,
+                Ready Pow.compiled.module Pow.compiled.tables heap' final ∧
                 ∀ r, heap.Region r → 0 < r.2 →
                   (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                     heap'.Region r) := by

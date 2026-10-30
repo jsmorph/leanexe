@@ -1,5 +1,6 @@
 import Library.Numerics.Float64.Atan.AtanTheoremSpecial
 import Library.Numerics.Float64.Atan.AtanTwoTheorem
+import Verified.Call
 
 /-!
 The byte theorems for the module of `Atan.lean`, whose exports `atan` (function 2) and `atan2`
@@ -11,70 +12,46 @@ theorem's axiom report.
 -/
 
 namespace Library.Numerics.Float64.Atan.AtanBytes
+open Verified (Ready)
 open CodeLib.IEEE64
 open LeanExe.ProofKit
 
-open Wasm LeanExe.Pipeline in
-/-- A store from which the module's entry runs, with `heap` the allocator's state. -/
-def Ready (heap : Heap) (store : Store Unit) : Prop :=
-  heap.At store ∧ store.memoryCap Atan.compiled.module 0 ≤ 65535
-
-set_option maxRecDepth 100000 in
-open Wasm LeanExe.Pipeline in
 /-- The store in which the module starts is ready. -/
 theorem ready_initial :
-    Ready (Verified.initialHeap Atan.compiled.tables) Atan.compiled.module.initialStore := by
-  obtain ⟨hAt, hCap, -⟩ := Atan.compiled.initial
-  exact ⟨hAt, hCap⟩
+    Ready Atan.compiled.module Atan.compiled.tables (Verified.initialHeap Atan.compiled.tables)
+      Atan.compiled.module.initialStore :=
+  Verified.Ready.initial rfl Atan.compiled.initial
 
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `atan` entry from a ready store. -/
 theorem atan_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Atan.compiled.module Atan.compiled.tables heap store) :
     Runs false env Atan.compiled.module 2 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Atan.atan x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Atan.atan x).toBits] ∧ ∃ heap' : Heap,
+        Ready Atan.compiled.module Atan.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  obtain ⟨hAt, hCap⟩ := h
-  refine (Atan.compiled.atan.implements env store heap [.f64 x.toBits] x hAt trivial
-    rfl Separate.nil hCap).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Atan.atan x).toBits] := howned
-  have hvs : values = [.f64 (Atan.atan x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ⟨hAt', memoryCap_le_of_caps hcaps hCap⟩, hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call (.ofA Atan.compiled.atan.implements) Atan.compiled.tables
+    nofun env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `atan2` entry from a ready store.  The entry takes `y` and then `x`;
 the list of arguments is in reverse order. -/
 theorem atan2_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (y x : Float)
-    (h : Ready heap store) :
+    (h : Ready Atan.compiled.module Atan.compiled.tables heap store) :
     Runs false env Atan.compiled.module 3 store [.f64 x.toBits, .f64 y.toBits] fun final values =>
-      values = [.f64 (Atan.atan2 y x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Atan.atan2 y x).toBits] ∧ ∃ heap' : Heap,
+        Ready Atan.compiled.module Atan.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  obtain ⟨hAt, hCap⟩ := h
-  refine (Atan.compiled.atan2.implements env store heap [.f64 y.toBits, .f64 x.toBits] (y, x) hAt
-    trivial rfl Separate.nil hCap).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Atan.atan2 y x).toBits] := howned
-  have hvs : values = [.f64 (Atan.atan2 y x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ⟨hAt', memoryCap_le_of_caps hcaps hCap⟩, hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call (.ofA Atan.compiled.atan2.implements) Atan.compiled.tables
+    nofun env heap store [.f64 y.toBits, .f64 x.toBits] (y, x) h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 2 of the module is its export `atan`. -/
 theorem atan_export :
@@ -90,15 +67,17 @@ theorem atan_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Atan.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Atan.compiled.module ∧
       ({ name := "atan", funcIdx := 2 } : Wasm.Export) ∈ Atan.compiled.module.exports ∧
-      Ready (Verified.initialHeap Atan.compiled.tables) Atan.compiled.module.initialStore ∧
+      Ready Atan.compiled.module Atan.compiled.tables
+        (Verified.initialHeap Atan.compiled.tables) Atan.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Atan.compiled.module Atan.compiled.tables heap store →
         Wasm.Runs false env Atan.compiled.module 2 store [.f64 x.toBits]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Atan.atan x).toBits ∧
             (Finite x.toBits →
               F64SignedRounding.WithinSteps 1 (Real.arctan (value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Atan.compiled.module Atan.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -120,16 +99,18 @@ theorem atan2_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Atan.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Atan.compiled.module ∧
       ({ name := "atan2", funcIdx := 3 } : Wasm.Export) ∈ Atan.compiled.module.exports ∧
-      Ready (Verified.initialHeap Atan.compiled.tables) Atan.compiled.module.initialStore ∧
+      Ready Atan.compiled.module Atan.compiled.tables
+        (Verified.initialHeap Atan.compiled.tables) Atan.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (y x : Float), Ready heap store →
+        (y x : Float), Ready Atan.compiled.module Atan.compiled.tables heap store →
         Wasm.Runs false env Atan.compiled.module 3 store [.f64 x.toBits, .f64 y.toBits]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Atan.atan2 y x).toBits ∧
             (Finite y.toBits → Finite x.toBits → value y.toBits ≠ 0 →
               F64SignedRounding.WithinSteps 2
                 (Complex.arg ((value x.toBits : ℂ) + (value y.toBits : ℂ) * Complex.I)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Atan.compiled.module Atan.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -144,31 +125,35 @@ theorem atan_module_accuracy :
     (∃ bytes, Wasm.Encoding.encode Atan.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Atan.compiled.module ∧
       ({ name := "atan", funcIdx := 2 } : Wasm.Export) ∈ Atan.compiled.module.exports ∧
-      Ready (Verified.initialHeap Atan.compiled.tables) Atan.compiled.module.initialStore ∧
+      Ready Atan.compiled.module Atan.compiled.tables
+        (Verified.initialHeap Atan.compiled.tables) Atan.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Atan.compiled.module Atan.compiled.tables heap store →
         Wasm.Runs false env Atan.compiled.module 2 store [.f64 x.toBits]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Atan.atan x).toBits ∧
             (Finite x.toBits →
               F64SignedRounding.WithinSteps 1 (Real.arctan (value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Atan.compiled.module Atan.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r)) ∧
     (∃ bytes, Wasm.Encoding.encode Atan.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Atan.compiled.module ∧
       ({ name := "atan2", funcIdx := 3 } : Wasm.Export) ∈ Atan.compiled.module.exports ∧
-      Ready (Verified.initialHeap Atan.compiled.tables) Atan.compiled.module.initialStore ∧
+      Ready Atan.compiled.module Atan.compiled.tables
+        (Verified.initialHeap Atan.compiled.tables) Atan.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (y x : Float), Ready heap store →
+        (y x : Float), Ready Atan.compiled.module Atan.compiled.tables heap store →
         Wasm.Runs false env Atan.compiled.module 3 store [.f64 x.toBits, .f64 y.toBits]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Atan.atan2 y x).toBits ∧
             (Finite y.toBits → Finite x.toBits → value y.toBits ≠ 0 →
               F64SignedRounding.WithinSteps 2
                 (Complex.arg ((value x.toBits : ℂ) + (value y.toBits : ℂ) * Complex.I)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Atan.compiled.module Atan.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r)) :=

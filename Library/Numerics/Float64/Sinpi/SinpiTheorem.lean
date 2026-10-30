@@ -1,4 +1,5 @@
 import Library.Numerics.Float64.Sinpi.SinpiExactTan
+import Verified.Call
 
 /-!
 The accuracy theorems for `Sinpi.sinpi`, `Sinpi.cospi`, and `Sinpi.tanpi`.  For every finite
@@ -15,85 +16,60 @@ the decoded bytes of the compiled module and to every call in a sequence of call
 -/
 
 namespace Library.Numerics.Float64.Sinpi.SinpiTheorem
+open Verified (Ready)
 open CodeLib.IEEE64 LeanExe.ProofKit
 
-open Wasm LeanExe.Pipeline in
-/-- A store from which the module's entries run, with `heap` the allocator's state: the
-allocator invariant holds and the memory cap is at most 65,535 pages. -/
-def Ready (heap : Heap) (store : Store Unit) : Prop :=
-  heap.At store ∧ store.memoryCap Sinpi.compiled.module 0 ≤ 65535
-
-set_option maxRecDepth 100000 in
-open Wasm LeanExe.Pipeline in
 /-- The store in which the module starts is ready. -/
 theorem ready_initial :
-    Ready (Verified.initialHeap Sinpi.compiled.tables) Sinpi.compiled.module.initialStore := by
-  obtain ⟨hAt, hCap, -⟩ := Sinpi.compiled.initial
-  exact ⟨hAt, hCap⟩
+    Ready Sinpi.compiled.module Sinpi.compiled.tables (Verified.initialHeap Sinpi.compiled.tables)
+      Sinpi.compiled.module.initialStore :=
+  Verified.Ready.initial rfl Sinpi.compiled.initial
 
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `sinpi` entry from a ready store returns the bits of
 `Sinpi.sinpi x` and leaves a ready store, and every region of the heap keeps its bytes. -/
 theorem sinpi_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Sinpi.compiled.module Sinpi.compiled.tables heap store) :
     Runs false env Sinpi.compiled.module 13 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Sinpi.sinpi x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Sinpi.sinpi x).toBits] ∧ ∃ heap' : Heap,
+        Ready Sinpi.compiled.module Sinpi.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  obtain ⟨hAt, hCap⟩ := h
-  refine (Sinpi.compiled.sinpi.implements env store heap [.f64 x.toBits] x hAt trivial
-    rfl Separate.nil hCap).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Sinpi.sinpi x).toBits] := howned
-  have hvs : values = [.f64 (Sinpi.sinpi x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  exact ⟨hvs, heap', ⟨hAt', memoryCap_le_of_caps hcaps hCap⟩,
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call (.ofA Sinpi.compiled.sinpi.implements) Sinpi.compiled.tables
+    nofun env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `cospi` entry, as `sinpi_entry_call`. -/
 theorem cospi_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Sinpi.compiled.module Sinpi.compiled.tables heap store) :
     Runs false env Sinpi.compiled.module 14 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Sinpi.cospi x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Sinpi.cospi x).toBits] ∧ ∃ heap' : Heap,
+        Ready Sinpi.compiled.module Sinpi.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  obtain ⟨hAt, hCap⟩ := h
-  refine (Sinpi.compiled.cospi.implements env store heap [.f64 x.toBits] x hAt trivial
-    rfl Separate.nil hCap).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Sinpi.cospi x).toBits] := howned
-  have hvs : values = [.f64 (Sinpi.cospi x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  exact ⟨hvs, heap', ⟨hAt', memoryCap_le_of_caps hcaps hCap⟩,
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call (.ofA Sinpi.compiled.cospi.implements) Sinpi.compiled.tables
+    nofun env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `tanpi` entry, as `sinpi_entry_call`. -/
 theorem tanpi_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Sinpi.compiled.module Sinpi.compiled.tables heap store) :
     Runs false env Sinpi.compiled.module 15 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Sinpi.tanpi x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Sinpi.tanpi x).toBits] ∧ ∃ heap' : Heap,
+        Ready Sinpi.compiled.module Sinpi.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  obtain ⟨hAt, hCap⟩ := h
-  refine (Sinpi.compiled.tanpi.implements env store heap [.f64 x.toBits] x hAt trivial
-    rfl Separate.nil hCap).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Sinpi.tanpi x).toBits] := howned
-  have hvs : values = [.f64 (Sinpi.tanpi x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  exact ⟨hvs, heap', ⟨hAt', memoryCap_le_of_caps hcaps hCap⟩,
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call (.ofA Sinpi.compiled.tanpi.implements) Sinpi.compiled.tables
+    nofun env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Functions 13, 14, and 15 of the module are its exports `sinpi`, `cospi`, and `tanpi`. -/
 theorem exports :
@@ -113,14 +89,16 @@ theorem sinpi_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Sinpi.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Sinpi.compiled.module ∧
       ({ name := "sinpi", funcIdx := 13 } : Wasm.Export) ∈ Sinpi.compiled.module.exports ∧
-      Ready (Verified.initialHeap Sinpi.compiled.tables) Sinpi.compiled.module.initialStore ∧
+      Ready Sinpi.compiled.module Sinpi.compiled.tables
+        (Verified.initialHeap Sinpi.compiled.tables) Sinpi.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Sinpi.compiled.module Sinpi.compiled.tables heap store →
         Wasm.Runs false env Sinpi.compiled.module 13 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Sinpi.sinpi x).toBits ∧
             (Finite x.toBits →
               F64SignedRounding.WithinSteps 1 (Real.sin (Real.pi * value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Sinpi.compiled.module Sinpi.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -136,14 +114,16 @@ theorem cospi_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Sinpi.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Sinpi.compiled.module ∧
       ({ name := "cospi", funcIdx := 14 } : Wasm.Export) ∈ Sinpi.compiled.module.exports ∧
-      Ready (Verified.initialHeap Sinpi.compiled.tables) Sinpi.compiled.module.initialStore ∧
+      Ready Sinpi.compiled.module Sinpi.compiled.tables
+        (Verified.initialHeap Sinpi.compiled.tables) Sinpi.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Sinpi.compiled.module Sinpi.compiled.tables heap store →
         Wasm.Runs false env Sinpi.compiled.module 14 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Sinpi.cospi x).toBits ∧
             (Finite x.toBits →
               F64SignedRounding.WithinSteps 1 (Real.cos (Real.pi * value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Sinpi.compiled.module Sinpi.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -159,14 +139,16 @@ theorem tanpi_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Sinpi.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Sinpi.compiled.module ∧
       ({ name := "tanpi", funcIdx := 15 } : Wasm.Export) ∈ Sinpi.compiled.module.exports ∧
-      Ready (Verified.initialHeap Sinpi.compiled.tables) Sinpi.compiled.module.initialStore ∧
+      Ready Sinpi.compiled.module Sinpi.compiled.tables
+        (Verified.initialHeap Sinpi.compiled.tables) Sinpi.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Sinpi.compiled.module Sinpi.compiled.tables heap store →
         Wasm.Runs false env Sinpi.compiled.module 15 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Sinpi.tanpi x).toBits ∧
             (Finite x.toBits → (∀ n : Int, value x.toBits ≠ n + 1 / 2) →
               F64SignedRounding.WithinSteps 1 (Real.tan (Real.pi * value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Sinpi.compiled.module Sinpi.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by

@@ -1,5 +1,5 @@
 import Library.Numerics.Float64.Tan.TanWith
-import LeanExe.ProofKit.BorrowedKept
+import Verified.Call
 
 /-!
 The accuracy theorem for `Tan.tan`.  For every finite binary64 input, the result lies within one
@@ -11,6 +11,7 @@ addresses 4096 and 4264.
 -/
 
 namespace Library.Numerics.Float64.Tan.TanTheorem
+open Verified (Ready)
 open CodeLib.IEEE64 LeanExe.ProofKit Library.Numerics.Float64.Trig.TrigSinCos TanWith
 
 /-- `tan` of an infinity or a NaN is the canonical NaN. -/
@@ -46,58 +47,30 @@ theorem tan_neg_zero :
   simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, hix, UInt64.reduceToNat, hb, hu]
   rw [if_pos (by decide), if_pos (by decide), hb]
 
-open Wasm LeanExe.Pipeline in
-/-- A store from which the module's `tan` entry runs, with `heap` the allocator's state: the
-allocator invariant holds, the tables of `2/π` and `π/2` are borrowed arrays at addresses 4096
-and 4264, and the memory cap is at most 65,535 pages. -/
-def Ready (heap : Heap) (store : Store Unit) : Prop :=
-  heap.At store ∧ heap.Borrowed store 4096 Trig.invPi ∧ heap.Borrowed store 4264 Trig.halfPi ∧
-    store.memoryCap Tan.compiled.module 0 ≤ 65535
-
-set_option maxRecDepth 100000 in
-open Wasm LeanExe.Pipeline in
 /-- The store in which the module starts is ready, with the heap that holds its tables. -/
 theorem ready_initial :
-    Ready (Verified.initialHeap Tan.compiled.tables) Tan.compiled.module.initialStore := by
-  obtain ⟨hAt, hCap, hBor⟩ := Tan.compiled.initial
-  exact ⟨hAt, hBor 0 (by decide), hBor 1 (by decide), hCap⟩
+    Ready Tan.compiled.module Tan.compiled.tables (Verified.initialHeap Tan.compiled.tables)
+      Tan.compiled.module.initialStore :=
+  Verified.Ready.initial rfl Tan.compiled.initial
 
-open Wasm LeanExe.Pipeline in
-theorem tables_ready {heap : Heap} {store : Store Unit} (h : Ready heap store) :
-    ∀ t ∈ [((4096 : UInt64), Trig.invPi), ((4264 : UInt64), Trig.halfPi)],
-      heap.Borrowed store t.1 t.2 ∧ Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
-  intro t ht
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
-  rcases ht with ht | ht <;> subst ht
-  · exact ⟨h.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.1, Apart.nil⟩
-
+set_option maxRecDepth 100000 in
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `tan` entry from a ready store, with the bits of a float `x`: it
 returns without a trap the bits of `Tan.tan x` and leaves a ready store, and every region of the
 heap before the call keeps its bytes and stays a region. -/
 theorem tan_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Tan.compiled.module Tan.compiled.tables heap store) :
     Runs false env Tan.compiled.module 13 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Tan.tan x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Tan.tan x).toBits] ∧ ∃ heap' : Heap,
+        Ready Tan.compiled.module Tan.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  obtain ⟨hAt, hTab1, hTab2, hCap⟩ := h
-  refine (Tan.compiled.tan.implements env store heap [.f64 x.toBits] x hAt trivial
-    (tables_ready ⟨hAt, hTab1, hTab2, hCap⟩) rfl Separate.nil hCap).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Tan.tan x).toBits] := howned
-  have hvs : values = [.f64 (Tan.tan x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ⟨hAt', BorrowedKept.borrowed_kept hTab1 hAt' hkeep,
-    BorrowedKept.borrowed_kept hTab2 hAt' hkeep, memoryCap_le_of_caps hcaps hCap⟩, hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call Tan.compiled.tan.implements Tan.compiled.tables
+    (Verified.tables_at [0, 1] (by decide) rfl)
+    env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 13 of the module is its export `tan`. -/
 theorem tan_export :
@@ -115,14 +88,16 @@ theorem tan_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Tan.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Tan.compiled.module ∧
       ({ name := "tan", funcIdx := 13 } : Wasm.Export) ∈ Tan.compiled.module.exports ∧
-      Ready (Verified.initialHeap Tan.compiled.tables) Tan.compiled.module.initialStore ∧
+      Ready Tan.compiled.module Tan.compiled.tables
+        (Verified.initialHeap Tan.compiled.tables) Tan.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Tan.compiled.module Tan.compiled.tables heap store →
         Wasm.Runs false env Tan.compiled.module 13 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Tan.tan x).toBits ∧
             (Finite x.toBits →
               F64SignedRounding.WithinSteps 1 (Real.tan (value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Tan.compiled.module Tan.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by

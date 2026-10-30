@@ -1,4 +1,5 @@
 import Library.Numerics.Float64.Asin.AsinTheoremSpecial
+import Verified.Call
 
 /-!
 The byte theorems for the module of `Asin.lean`, whose exports `asin` (function 3) and `acos`
@@ -10,69 +11,45 @@ theorem's axiom report.
 -/
 
 namespace Library.Numerics.Float64.Asin.AsinBytes
+open Verified (Ready)
 open CodeLib.IEEE64
 open LeanExe.ProofKit
 
-open Wasm LeanExe.Pipeline in
-/-- A store from which the module's entries run, with `heap` the allocator's state. -/
-def Ready (heap : Heap) (store : Store Unit) : Prop :=
-  heap.At store ∧ store.memoryCap Asin.compiled.module 0 ≤ 65535
-
-set_option maxRecDepth 100000 in
-open Wasm LeanExe.Pipeline in
 /-- The store in which the module starts is ready. -/
 theorem ready_initial :
-    Ready (Verified.initialHeap Asin.compiled.tables) Asin.compiled.module.initialStore := by
-  obtain ⟨hAt, hCap, -⟩ := Asin.compiled.initial
-  exact ⟨hAt, hCap⟩
+    Ready Asin.compiled.module Asin.compiled.tables (Verified.initialHeap Asin.compiled.tables)
+      Asin.compiled.module.initialStore :=
+  Verified.Ready.initial rfl Asin.compiled.initial
 
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `asin` entry from a ready store. -/
 theorem asin_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Asin.compiled.module Asin.compiled.tables heap store) :
     Runs false env Asin.compiled.module 3 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Asin.asin x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Asin.asin x).toBits] ∧ ∃ heap' : Heap,
+        Ready Asin.compiled.module Asin.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  obtain ⟨hAt, hCap⟩ := h
-  refine (Asin.compiled.asin.implements env store heap [.f64 x.toBits] x hAt trivial
-    rfl Separate.nil hCap).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Asin.asin x).toBits] := howned
-  have hvs : values = [.f64 (Asin.asin x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ⟨hAt', memoryCap_le_of_caps hcaps hCap⟩, hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call (.ofA Asin.compiled.asin.implements) Asin.compiled.tables
+    nofun env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `acos` entry from a ready store. -/
 theorem acos_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Asin.compiled.module Asin.compiled.tables heap store) :
     Runs false env Asin.compiled.module 4 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Asin.acos x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Asin.acos x).toBits] ∧ ∃ heap' : Heap,
+        Ready Asin.compiled.module Asin.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  obtain ⟨hAt, hCap⟩ := h
-  refine (Asin.compiled.acos.implements env store heap [.f64 x.toBits] x hAt trivial
-    rfl Separate.nil hCap).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Asin.acos x).toBits] := howned
-  have hvs : values = [.f64 (Asin.acos x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ⟨hAt', memoryCap_le_of_caps hcaps hCap⟩, hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call (.ofA Asin.compiled.acos.implements) Asin.compiled.tables
+    nofun env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 3 of the module is its export `asin`. -/
 theorem asin_export :
@@ -88,15 +65,17 @@ theorem asin_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Asin.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Asin.compiled.module ∧
       ({ name := "asin", funcIdx := 3 } : Wasm.Export) ∈ Asin.compiled.module.exports ∧
-      Ready (Verified.initialHeap Asin.compiled.tables) Asin.compiled.module.initialStore ∧
+      Ready Asin.compiled.module Asin.compiled.tables
+        (Verified.initialHeap Asin.compiled.tables) Asin.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Asin.compiled.module Asin.compiled.tables heap store →
         Wasm.Runs false env Asin.compiled.module 3 store [.f64 x.toBits]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Asin.asin x).toBits ∧
             (Finite x.toBits → |value x.toBits| ≤ 1 →
               F64SignedRounding.WithinSteps 1 (Real.arcsin (value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Asin.compiled.module Asin.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -120,15 +99,17 @@ theorem acos_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Asin.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Asin.compiled.module ∧
       ({ name := "acos", funcIdx := 4 } : Wasm.Export) ∈ Asin.compiled.module.exports ∧
-      Ready (Verified.initialHeap Asin.compiled.tables) Asin.compiled.module.initialStore ∧
+      Ready Asin.compiled.module Asin.compiled.tables
+        (Verified.initialHeap Asin.compiled.tables) Asin.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Asin.compiled.module Asin.compiled.tables heap store →
         Wasm.Runs false env Asin.compiled.module 4 store [.f64 x.toBits]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Asin.acos x).toBits ∧
             (Finite x.toBits → |value x.toBits| ≤ 1 →
               F64SignedRounding.WithinSteps 1 (Real.arccos (value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Asin.compiled.module Asin.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -143,30 +124,34 @@ theorem asin_module_accuracy :
     (∃ bytes, Wasm.Encoding.encode Asin.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Asin.compiled.module ∧
       ({ name := "asin", funcIdx := 3 } : Wasm.Export) ∈ Asin.compiled.module.exports ∧
-      Ready (Verified.initialHeap Asin.compiled.tables) Asin.compiled.module.initialStore ∧
+      Ready Asin.compiled.module Asin.compiled.tables
+        (Verified.initialHeap Asin.compiled.tables) Asin.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Asin.compiled.module Asin.compiled.tables heap store →
         Wasm.Runs false env Asin.compiled.module 3 store [.f64 x.toBits]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Asin.asin x).toBits ∧
             (Finite x.toBits → |value x.toBits| ≤ 1 →
               F64SignedRounding.WithinSteps 1 (Real.arcsin (value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Asin.compiled.module Asin.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r)) ∧
     (∃ bytes, Wasm.Encoding.encode Asin.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Asin.compiled.module ∧
       ({ name := "acos", funcIdx := 4 } : Wasm.Export) ∈ Asin.compiled.module.exports ∧
-      Ready (Verified.initialHeap Asin.compiled.tables) Asin.compiled.module.initialStore ∧
+      Ready Asin.compiled.module Asin.compiled.tables
+        (Verified.initialHeap Asin.compiled.tables) Asin.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Asin.compiled.module Asin.compiled.tables heap store →
         Wasm.Runs false env Asin.compiled.module 4 store [.f64 x.toBits]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Asin.acos x).toBits ∧
             (Finite x.toBits → |value x.toBits| ≤ 1 →
               F64SignedRounding.WithinSteps 1 (Real.arccos (value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Asin.compiled.module Asin.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r)) :=

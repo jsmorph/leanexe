@@ -1,6 +1,6 @@
 import Library.Numerics.Float64.Log2.Log2Near1
 import Library.Numerics.Float64.Log2.Log2Power
-import LeanExe.ProofKit.BorrowedKept
+import Verified.Call
 import Mathlib.Analysis.SpecialFunctions.Log.Base
 
 /-!
@@ -15,6 +15,7 @@ call in a sequence of calls to its export `log2`.
 -/
 
 namespace Library.Numerics.Float64.Log2.Log2Theorem
+open Verified (Ready)
 open CodeLib.IEEE64 LeanExe.ProofKit
 
 set_option exponentiation.threshold 4096
@@ -259,55 +260,30 @@ theorem log2_nan (x : Float) (h : Wasm.IEEE64.isNaN x.toBits = true) :
   · rw [Log2.log2, Log2Branches.invalid_selected _ _ x (Or.inr ⟨by omega, by omega⟩)]
     exact Library.Numerics.Float64.Log.LogBranches.invalid_bits x (Or.inl h)
 
-open Wasm LeanExe.Pipeline in
-/-- A store from which the module's `log2` entry runs, with `heap` the allocator's state: the
-allocator invariant holds, the two tables are borrowed arrays at addresses 4096 and 5128, and the
-memory cap is at most 65,535 pages. -/
-def Ready (heap : Heap) (store : Store Unit) : Prop :=
-  heap.At store ∧ heap.Borrowed store 4096 Log2.log2Table ∧
-    heap.Borrowed store 5128 Log2.log2Table2 ∧ store.memoryCap Log2.compiled.module 0 ≤ 65535
-
-set_option maxRecDepth 100000 in
-open Wasm LeanExe.Pipeline in
 /-- The store in which the module starts is ready, with the heap that holds its tables. -/
 theorem ready_initial :
-    Ready (Verified.initialHeap Log2.compiled.tables) Log2.compiled.module.initialStore := by
-  obtain ⟨hAt, hCap, hBor⟩ := Log2.compiled.initial
-  exact ⟨hAt, hBor 0 (by decide), hBor 1 (by decide), hCap⟩
+    Ready Log2.compiled.module Log2.compiled.tables (Verified.initialHeap Log2.compiled.tables)
+      Log2.compiled.module.initialStore :=
+  Verified.Ready.initial rfl Log2.compiled.initial
 
+set_option maxRecDepth 100000 in
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `log2` entry from a ready store, with the bits of a float `x`: it
 returns without a trap the bits of `Log2.log2 x` and leaves a ready store, and every region of the
 heap before the call keeps its bytes and stays a region. -/
 theorem log2_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Log2.compiled.module Log2.compiled.tables heap store) :
     Runs false env Log2.compiled.module 5 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Log2.log2 x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Log2.log2 x).toBits] ∧ ∃ heap' : Heap,
+        Ready Log2.compiled.module Log2.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  obtain ⟨hAt, hTab1, hTab2, hCap⟩ := h
-  have htab : ∀ t ∈ [((4096 : UInt64), Log2.log2Table), ((5128 : UInt64), Log2.log2Table2)],
-      heap.Borrowed store t.1 t.2 ∧ Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
-    intro t ht
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
-    rcases ht with ht | ht <;> subst ht
-    · exact ⟨hTab1, Apart.nil⟩
-    · exact ⟨hTab2, Apart.nil⟩
-  refine (Log2.compiled.log2.implements env store heap [.f64 x.toBits] x hAt trivial htab rfl
-    Separate.nil hCap).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Log2.log2 x).toBits] := howned
-  have hvs : values = [.f64 (Log2.log2 x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ⟨hAt', BorrowedKept.borrowed_kept hTab1 hAt' hkeep,
-    BorrowedKept.borrowed_kept hTab2 hAt' hkeep, memoryCap_le_of_caps hcaps hCap⟩, hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call Log2.compiled.log2.implements Log2.compiled.tables
+    (Verified.tables_at [0, 1] (by decide) rfl)
+    env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 5 of the module is its export `log2`. -/
 theorem log2_export :
@@ -325,14 +301,16 @@ theorem log2_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Log2.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Log2.compiled.module ∧
       ({ name := "log2", funcIdx := 5 } : Wasm.Export) ∈ Log2.compiled.module.exports ∧
-      Ready (Verified.initialHeap Log2.compiled.tables) Log2.compiled.module.initialStore ∧
+      Ready Log2.compiled.module Log2.compiled.tables
+        (Verified.initialHeap Log2.compiled.tables) Log2.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Log2.compiled.module Log2.compiled.tables heap store →
         Wasm.Runs false env Log2.compiled.module 5 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Log2.log2 x).toBits ∧
             (Finite x.toBits → 0 < value x.toBits →
               F64SignedRounding.WithinSteps 1 (Real.logb 2 (value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Log2.compiled.module Log2.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by

@@ -3,7 +3,7 @@ import Library.Numerics.Float64.Bessel.BesselJ1Theorem
 import Library.Numerics.Float64.Bessel.BesselY0Theorem
 import Library.Numerics.Float64.Bessel.BesselY1Theorem
 import Library.Numerics.Float64.Bessel.BesselYnTheorem
-import LeanExe.ProofKit.BorrowedKept
+import Verified.Call
 
 /-!
 The byte theorems for `j0`, `j1`, `y0`, `y1`, `jn`, and `yn` in the module of `Bessel.lean`, whose
@@ -22,6 +22,7 @@ The entries `jn` and `yn` take the order and then the argument.
 -/
 
 namespace Library.Numerics.Float64.Bessel.BesselBytes
+open Verified (Ready)
 open CodeLib.IEEE64
 open LeanExe.ProofKit
 open LeanExe.ProofKit.Bessel (J0 Y0 J1 Y1)
@@ -30,282 +31,141 @@ open BesselRecur (modn)
 open BesselJnTheorem (orderZ)
 open BesselYnOrderOne (YBound)
 
-open Wasm LeanExe.Pipeline in
-/-- A store from which the module's entries run, with `heap` the allocator's state. -/
-def Ready (heap : Heap) (store : Store Unit) : Prop :=
-  heap.At store ∧ heap.Borrowed store 4096 Trig.invPi ∧ heap.Borrowed store 4264 Trig.halfPi ∧
-    heap.Borrowed store 4288 Bessel.j0Table ∧ heap.Borrowed store 5032 Bessel.j1Table ∧
-    heap.Borrowed store 5856 Log.logTable ∧ heap.Borrowed store 7912 Log.logTable2 ∧
-    store.memoryCap Bessel.compiled.module 0 ≤ 65535
+/-- The store in which the module starts is ready, with the heap that holds its tables. -/
+theorem ready_initial :
+    Ready Bessel.compiled.module Bessel.compiled.tables
+      (Verified.initialHeap Bessel.compiled.tables)
+      Bessel.compiled.module.initialStore :=
+  Verified.Ready.initial rfl Bessel.compiled.initial
 
 set_option maxRecDepth 100000 in
 open Wasm LeanExe.Pipeline in
-/-- The store in which the module starts is ready, with the heap that holds its tables. -/
-theorem ready_initial :
-    Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore := by
-  obtain ⟨hAt, hCap, hBor⟩ := Bessel.compiled.initial
-  exact ⟨hAt, hBor 0 (by decide), hBor 1 (by decide), hBor 2 (by decide), hBor 3 (by decide),
-    hBor 4 (by decide), hBor 5 (by decide), hCap⟩
-
-open Wasm LeanExe.Pipeline in
-/-- After a call that keeps every region of the heap, a ready store stays ready. -/
-theorem ready_kept (heap heap' : Heap) (store final : Store Unit) (h : Ready heap store)
-    (hAt' : heap'.At final)
-    (hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r)
-    (hcap : final.memoryCap Bessel.compiled.module 0 ≤ 65535) : Ready heap' final :=
-  ⟨hAt', BorrowedKept.borrowed_kept h.2.1 hAt' hkeep,
-    BorrowedKept.borrowed_kept h.2.2.1 hAt' hkeep, BorrowedKept.borrowed_kept h.2.2.2.1 hAt' hkeep,
-    BorrowedKept.borrowed_kept h.2.2.2.2.1 hAt' hkeep,
-    BorrowedKept.borrowed_kept h.2.2.2.2.2.1 hAt' hkeep,
-    BorrowedKept.borrowed_kept h.2.2.2.2.2.2.1 hAt' hkeep, hcap⟩
-
-open Wasm LeanExe.Pipeline in
-/-- The tables of a ready store that `j0` reads, as its entry takes them. -/
-theorem j0_tables (heap : Heap) (store : Store Unit) (h : Ready heap store) :
-    ∀ t ∈ [((4096 : UInt64), Trig.invPi), ((4264 : UInt64), Trig.halfPi),
-        ((4288 : UInt64), Bessel.j0Table)],
-      heap.Borrowed store t.1 t.2 ∧ Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
-  intro t ht
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
-  rcases ht with ht | ht | ht <;> subst ht
-  · exact ⟨h.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.1, Apart.nil⟩
-
-open Wasm LeanExe.Pipeline in
 /-- A call of the module's `j0` entry from a ready store. -/
 theorem j0_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Bessel.compiled.module Bessel.compiled.tables heap store) :
     Runs false env Bessel.compiled.module 36 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Bessel.j0 x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Bessel.j0 x).toBits] ∧ ∃ heap' : Heap,
+        Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  refine (Bessel.compiled.j0.implements env store heap [.f64 x.toBits] x h.1 trivial
-    (j0_tables heap store h) rfl Separate.nil h.2.2.2.2.2.2.2).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Bessel.j0 x).toBits] := howned
-  have hvs : values = [.f64 (Bessel.j0 x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ready_kept heap heap' store final h hAt' hkeep
-    (memoryCap_le_of_caps hcaps h.2.2.2.2.2.2.2), hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call Bessel.compiled.j0.implements Bessel.compiled.tables
+    (Verified.tables_at [0, 1, 2] (by decide) rfl)
+    env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 36 of the module is its export `j0`. -/
 theorem j0_export :
     ({ name := "j0", funcIdx := 36 } : Wasm.Export) ∈ Bessel.compiled.module.exports := by
   decide +kernel
 
-open Wasm LeanExe.Pipeline in
-/-- The tables of a ready store that `j1` reads, as its entry takes them. -/
-theorem j1_tables (heap : Heap) (store : Store Unit) (h : Ready heap store) :
-    ∀ t ∈ [((4096 : UInt64), Trig.invPi), ((4264 : UInt64), Trig.halfPi),
-        ((5032 : UInt64), Bessel.j1Table)],
-      heap.Borrowed store t.1 t.2 ∧ Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
-  intro t ht
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
-  rcases ht with ht | ht | ht <;> subst ht
-  · exact ⟨h.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.1, Apart.nil⟩
-
+set_option maxRecDepth 100000 in
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `j1` entry from a ready store. -/
 theorem j1_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Bessel.compiled.module Bessel.compiled.tables heap store) :
     Runs false env Bessel.compiled.module 37 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Bessel.j1 x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Bessel.j1 x).toBits] ∧ ∃ heap' : Heap,
+        Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  refine (Bessel.compiled.j1.implements env store heap [.f64 x.toBits] x h.1 trivial
-    (j1_tables heap store h) rfl Separate.nil h.2.2.2.2.2.2.2).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Bessel.j1 x).toBits] := howned
-  have hvs : values = [.f64 (Bessel.j1 x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ready_kept heap heap' store final h hAt' hkeep
-    (memoryCap_le_of_caps hcaps h.2.2.2.2.2.2.2), hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call Bessel.compiled.j1.implements Bessel.compiled.tables
+    (Verified.tables_at [0, 1, 3] (by decide) rfl)
+    env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 37 of the module is its export `j1`. -/
 theorem j1_export :
     ({ name := "j1", funcIdx := 37 } : Wasm.Export) ∈ Bessel.compiled.module.exports := by
   decide +kernel
 
-open Wasm LeanExe.Pipeline in
-/-- The tables of a ready store that `y0` reads, as its entry takes them. -/
-theorem y0_tables (heap : Heap) (store : Store Unit) (h : Ready heap store) :
-    ∀ t ∈ [((4096 : UInt64), Trig.invPi), ((4264 : UInt64), Trig.halfPi),
-        ((5856 : UInt64), Log.logTable), ((7912 : UInt64), Log.logTable2),
-        ((4288 : UInt64), Bessel.j0Table)],
-      heap.Borrowed store t.1 t.2 ∧ Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
-  intro t ht
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
-  rcases ht with ht | ht | ht | ht | ht <;> subst ht
-  · exact ⟨h.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.1, Apart.nil⟩
-
+set_option maxRecDepth 100000 in
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `y0` entry from a ready store. -/
 theorem y0_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Bessel.compiled.module Bessel.compiled.tables heap store) :
     Runs false env Bessel.compiled.module 38 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Bessel.y0 x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Bessel.y0 x).toBits] ∧ ∃ heap' : Heap,
+        Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  refine (Bessel.compiled.y0.implements env store heap [.f64 x.toBits] x h.1 trivial
-    (y0_tables heap store h) rfl Separate.nil h.2.2.2.2.2.2.2).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Bessel.y0 x).toBits] := howned
-  have hvs : values = [.f64 (Bessel.y0 x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ready_kept heap heap' store final h hAt' hkeep
-    (memoryCap_le_of_caps hcaps h.2.2.2.2.2.2.2), hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call Bessel.compiled.y0.implements Bessel.compiled.tables
+    (Verified.tables_at [0, 1, 4, 5, 2] (by decide) rfl)
+    env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 38 of the module is its export `y0`. -/
 theorem y0_export :
     ({ name := "y0", funcIdx := 38 } : Wasm.Export) ∈ Bessel.compiled.module.exports := by
   decide +kernel
 
-open Wasm LeanExe.Pipeline in
-/-- The tables of a ready store that `y1` reads, as its entry takes them. -/
-theorem y1_tables (heap : Heap) (store : Store Unit) (h : Ready heap store) :
-    ∀ t ∈ [((4096 : UInt64), Trig.invPi), ((4264 : UInt64), Trig.halfPi),
-        ((5856 : UInt64), Log.logTable), ((7912 : UInt64), Log.logTable2),
-        ((5032 : UInt64), Bessel.j1Table)],
-      heap.Borrowed store t.1 t.2 ∧ Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
-  intro t ht
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
-  rcases ht with ht | ht | ht | ht | ht <;> subst ht
-  · exact ⟨h.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.1, Apart.nil⟩
-
+set_option maxRecDepth 100000 in
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `y1` entry from a ready store. -/
 theorem y1_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Bessel.compiled.module Bessel.compiled.tables heap store) :
     Runs false env Bessel.compiled.module 39 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Bessel.y1 x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Bessel.y1 x).toBits] ∧ ∃ heap' : Heap,
+        Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  refine (Bessel.compiled.y1.implements env store heap [.f64 x.toBits] x h.1 trivial
-    (y1_tables heap store h) rfl Separate.nil h.2.2.2.2.2.2.2).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Bessel.y1 x).toBits] := howned
-  have hvs : values = [.f64 (Bessel.y1 x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ready_kept heap heap' store final h hAt' hkeep
-    (memoryCap_le_of_caps hcaps h.2.2.2.2.2.2.2), hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call Bessel.compiled.y1.implements Bessel.compiled.tables
+    (Verified.tables_at [0, 1, 4, 5, 3] (by decide) rfl)
+    env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 39 of the module is its export `y1`. -/
 theorem y1_export :
     ({ name := "y1", funcIdx := 39 } : Wasm.Export) ∈ Bessel.compiled.module.exports := by
   decide +kernel
 
-open Wasm LeanExe.Pipeline in
-/-- The tables of a ready store that `jn` and `yn` read, as their entries take them. -/
-theorem jn_tables (heap : Heap) (store : Store Unit) (h : Ready heap store) :
-    ∀ t ∈ [((4096 : UInt64), Trig.invPi), ((4264 : UInt64), Trig.halfPi),
-        ((5856 : UInt64), Log.logTable), ((7912 : UInt64), Log.logTable2),
-        ((4288 : UInt64), Bessel.j0Table), ((5032 : UInt64), Bessel.j1Table)],
-      heap.Borrowed store t.1 t.2 ∧ Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
-  intro t ht
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
-  rcases ht with ht | ht | ht | ht | ht | ht <;> subst ht
-  · exact ⟨h.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.1, Apart.nil⟩
-
+set_option maxRecDepth 100000 in
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `jn` entry from a ready store.  The entry takes `n` and then `x`; the
 list of arguments is in reverse order. -/
 theorem jn_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (n : UInt64)
-    (x : Float) (h : Ready heap store) :
+    (x : Float) (h : Ready Bessel.compiled.module Bessel.compiled.tables heap store) :
     Runs false env Bessel.compiled.module 40 store [.f64 x.toBits, .i64 n] fun final values =>
-      values = [.f64 (Bessel.jn n x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Bessel.jn n x).toBits] ∧ ∃ heap' : Heap,
+        Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  refine (Bessel.compiled.jn.implements env store heap [.i64 n, .f64 x.toBits] (n, x) h.1 trivial
-    (jn_tables heap store h) rfl Separate.nil h.2.2.2.2.2.2.2).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Bessel.jn n x).toBits] := howned
-  have hvs : values = [.f64 (Bessel.jn n x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ready_kept heap heap' store final h hAt' hkeep
-    (memoryCap_le_of_caps hcaps h.2.2.2.2.2.2.2), hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call Bessel.compiled.jn.implements Bessel.compiled.tables
+    (Verified.tables_at [0, 1, 4, 5, 2, 3] (by decide) rfl)
+    env heap store [.i64 n, .f64 x.toBits] (n, x) h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 40 of the module is its export `jn`. -/
 theorem jn_export :
     ({ name := "jn", funcIdx := 40 } : Wasm.Export) ∈ Bessel.compiled.module.exports := by
   decide +kernel
 
+set_option maxRecDepth 100000 in
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `yn` entry from a ready store.  The entry takes `n` and then `x`; the
 list of arguments is in reverse order. -/
 theorem yn_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (n : UInt64)
-    (x : Float) (h : Ready heap store) :
+    (x : Float) (h : Ready Bessel.compiled.module Bessel.compiled.tables heap store) :
     Runs false env Bessel.compiled.module 41 store [.f64 x.toBits, .i64 n] fun final values =>
-      values = [.f64 (Bessel.yn n x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Bessel.yn n x).toBits] ∧ ∃ heap' : Heap,
+        Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  refine (Bessel.compiled.yn.implements env store heap [.i64 n, .f64 x.toBits] (n, x) h.1 trivial
-    (jn_tables heap store h) rfl Separate.nil h.2.2.2.2.2.2.2).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Bessel.yn n x).toBits] := howned
-  have hvs : values = [.f64 (Bessel.yn n x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ready_kept heap heap' store final h hAt' hkeep
-    (memoryCap_le_of_caps hcaps h.2.2.2.2.2.2.2), hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call Bessel.compiled.yn.implements Bessel.compiled.tables
+    (Verified.tables_at [0, 1, 4, 5, 2, 3] (by decide) rfl)
+    env heap store [.i64 n, .f64 x.toBits] (n, x) h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 41 of the module is its export `yn`. -/
 theorem yn_export :
@@ -321,15 +181,17 @@ theorem j0_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "j0", funcIdx := 36 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 36 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.j0 x).toBits ∧
             (Finite x.toBits →
               |value w - J0 (value x.toBits)| ≤
                 10 / 2 ^ 53 * √(J0 |value x.toBits| ^ 2 + Y0 |value x.toBits| ^ 2)) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -348,15 +210,17 @@ theorem j1_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "j1", funcIdx := 37 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 37 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.j1 x).toBits ∧
             (Finite x.toBits →
               |value w - J1 (value x.toBits)| ≤
                 12 / 2 ^ 53 * √(J1 |value x.toBits| ^ 2 + Y1 |value x.toBits| ^ 2)) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -375,15 +239,17 @@ theorem y0_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "y0", funcIdx := 38 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 38 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.y0 x).toBits ∧
             (Finite x.toBits → x.toBits.toNat < 2 ^ 63 → x.toBits.toNat ≠ 0 →
               |value w - Y0 (value x.toBits)| ≤
                 11 / 2 ^ 53 * √(J0 (value x.toBits) ^ 2 + Y0 (value x.toBits) ^ 2)) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -403,9 +269,10 @@ theorem y1_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "y1", funcIdx := 39 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 39 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.y1 x).toBits ∧
             (Finite x.toBits → x.toBits.toNat < 2 ^ 63 → x.toBits.toNat ≠ 0 →
@@ -414,7 +281,8 @@ theorem y1_bytes_accuracy :
                   12 / 2 ^ 53 * √(J1 (value x.toBits) ^ 2 + Y1 (value x.toBits) ^ 2)) ∧
               (x.toBits.toNat < 0x3C90000100000000 →
                 F64SignedRounding.WithinSteps 1 (Y1 (value x.toBits)) w)) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -434,9 +302,10 @@ theorem jn_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "jn", funcIdx := 40 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (n : UInt64) (x : Float), Ready heap store →
+        (n : UInt64) (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 40 store [.f64 x.toBits, .i64 n]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.jn n x).toBits ∧
@@ -446,7 +315,8 @@ theorem jn_bytes_accuracy :
               |value w - JZ (orderZ n) (value x.toBits)| ≤
                 (23 + 12 * ((orderZ n).natAbs : ℝ)) * unitRoundoff64 *
                   modn |value x.toBits| (orderZ n).natAbs) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -467,9 +337,10 @@ theorem yn_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "yn", funcIdx := 41 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (n : UInt64) (x : Float), Ready heap store →
+        (n : UInt64) (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 41 store [.f64 x.toBits, .i64 n]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.yn n x).toBits ∧
@@ -481,7 +352,8 @@ theorem yn_bytes_accuracy :
                     modn (value x.toBits) (orderZ n).natAbs) ∧
                 (2 ^ 1025 ≤ |YZ (orderZ n) (value x.toBits)| →
                   w = Wasm.IEEE64.infinity (decide (YZ (orderZ n) (value x.toBits) < 0)))) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
@@ -498,54 +370,61 @@ theorem bessel_module_accuracy :
     (∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "j0", funcIdx := 36 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 36 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.j0 x).toBits ∧
             (Finite x.toBits →
               |value w - J0 (value x.toBits)| ≤
                 10 / 2 ^ 53 * √(J0 |value x.toBits| ^ 2 + Y0 |value x.toBits| ^ 2)) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r)) ∧
     (∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "j1", funcIdx := 37 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 37 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.j1 x).toBits ∧
             (Finite x.toBits →
               |value w - J1 (value x.toBits)| ≤
                 12 / 2 ^ 53 * √(J1 |value x.toBits| ^ 2 + Y1 |value x.toBits| ^ 2)) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r)) ∧
     (∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "y0", funcIdx := 38 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 38 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.y0 x).toBits ∧
             (Finite x.toBits → x.toBits.toNat < 2 ^ 63 → x.toBits.toNat ≠ 0 →
               |value w - Y0 (value x.toBits)| ≤
                 11 / 2 ^ 53 * √(J0 (value x.toBits) ^ 2 + Y0 (value x.toBits) ^ 2)) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r)) ∧
     (∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "y1", funcIdx := 39 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 39 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.y1 x).toBits ∧
             (Finite x.toBits → x.toBits.toNat < 2 ^ 63 → x.toBits.toNat ≠ 0 →
@@ -554,16 +433,18 @@ theorem bessel_module_accuracy :
                   12 / 2 ^ 53 * √(J1 (value x.toBits) ^ 2 + Y1 (value x.toBits) ^ 2)) ∧
               (x.toBits.toNat < 0x3C90000100000000 →
                 F64SignedRounding.WithinSteps 1 (Y1 (value x.toBits)) w)) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r)) ∧
     (∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "jn", funcIdx := 40 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (n : UInt64) (x : Float), Ready heap store →
+        (n : UInt64) (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 40 store [.f64 x.toBits, .i64 n]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.jn n x).toBits ∧
@@ -573,16 +454,18 @@ theorem bessel_module_accuracy :
               |value w - JZ (orderZ n) (value x.toBits)| ≤
                 (23 + 12 * ((orderZ n).natAbs : ℝ)) * unitRoundoff64 *
                   modn |value x.toBits| (orderZ n).natAbs) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r)) ∧
     (∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧
       ({ name := "yn", funcIdx := 41 } : Wasm.Export) ∈ Bessel.compiled.module.exports ∧
-      Ready (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
+      Ready Bessel.compiled.module Bessel.compiled.tables
+        (Verified.initialHeap Bessel.compiled.tables) Bessel.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (n : UInt64) (x : Float), Ready heap store →
+        (n : UInt64) (x : Float), Ready Bessel.compiled.module Bessel.compiled.tables heap store →
         Wasm.Runs false env Bessel.compiled.module 41 store [.f64 x.toBits, .i64 n]
           (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Bessel.yn n x).toBits ∧
@@ -594,7 +477,8 @@ theorem bessel_module_accuracy :
                     modn (value x.toBits) (orderZ n).natAbs) ∧
                 (2 ^ 1025 ≤ |YZ (orderZ n) (value x.toBits)| →
                   w = Wasm.IEEE64.infinity (decide (YZ (orderZ n) (value x.toBits) < 0)))) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Bessel.compiled.module Bessel.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r)) :=

@@ -285,3 +285,6 @@ import Library.Hashing.SipHash.Bytes
 import Library.Hashing.XxHash64.Bytes
 import Library.Regex.Bytes
 import Library.Hashing.MerkleDamgard
+import Library.Numerics.Float64.Exp2.Exp2Bytes
+import Library.Hashing.Sha2.Equiv.AxiomCheck
+import Library.Native

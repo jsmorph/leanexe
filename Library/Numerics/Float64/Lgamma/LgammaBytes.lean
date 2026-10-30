@@ -1,6 +1,6 @@
 import Library.Numerics.Float64.Lgamma.Compiled
 import Library.Numerics.Float64.Lgamma.LgammaWithin
-import LeanExe.ProofKit.BorrowedKept
+import Verified.Call
 
 /-!
 The byte theorem for `lgamma` in the module of `Lgamma.lean`, whose export `lgamma` is function 44.
@@ -16,85 +16,33 @@ covers every sequence of calls from the initial store.  The bound is that of
 -/
 
 namespace Library.Numerics.Float64.Lgamma.LgammaBytes
+open Verified (Ready)
 open CodeLib.IEEE64
 open LeanExe.ProofKit
 
-open Wasm LeanExe.Pipeline in
-/-- A store from which the module's entry runs, with `heap` the allocator's state. -/
-def Ready (heap : Heap) (store : Store Unit) : Prop :=
-  heap.At store ∧ heap.Borrowed store 4096 Tgamma.logdTable ∧
-    heap.Borrowed store 6216 Lgamma.logAccurateTable ∧
-    heap.Borrowed store 7952 Lgamma.sinpiTable ∧ heap.Borrowed store 9280 Lgamma.asymTable ∧
-    heap.Borrowed store 10056 Lgamma.accurateTable ∧ heap.Borrowed store 18152 Lgamma.dbTable ∧
-    heap.Borrowed store 18616 Lgamma.mainTable ∧
-    store.memoryCap Lgamma.compiled.module 0 ≤ 65535
+/-- The store in which the module starts is ready, with the heap that holds its tables. -/
+theorem ready_initial :
+    Ready Lgamma.compiled.module Lgamma.compiled.tables
+      (Verified.initialHeap Lgamma.compiled.tables)
+      Lgamma.compiled.module.initialStore :=
+  Verified.Ready.initial rfl Lgamma.compiled.initial
 
 set_option maxRecDepth 100000 in
 open Wasm LeanExe.Pipeline in
-/-- The store in which the module starts is ready, with the heap that holds its tables. -/
-theorem ready_initial :
-    Ready (Verified.initialHeap Lgamma.compiled.tables) Lgamma.compiled.module.initialStore := by
-  obtain ⟨hAt, hCap, hBor⟩ := Lgamma.compiled.initial
-  exact ⟨hAt, hBor 0 (by decide), hBor 1 (by decide), hBor 2 (by decide), hBor 3 (by decide),
-    hBor 4 (by decide), hBor 5 (by decide), hBor 6 (by decide), hCap⟩
-
-open Wasm LeanExe.Pipeline in
-/-- After a call that keeps every region of the heap, a ready store stays ready. -/
-theorem ready_kept (heap heap' : Heap) (store final : Store Unit) (h : Ready heap store)
-    (hAt' : heap'.At final)
-    (hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r)
-    (hcap : final.memoryCap Lgamma.compiled.module 0 ≤ 65535) : Ready heap' final :=
-  ⟨hAt', BorrowedKept.borrowed_kept h.2.1 hAt' hkeep,
-    BorrowedKept.borrowed_kept h.2.2.1 hAt' hkeep, BorrowedKept.borrowed_kept h.2.2.2.1 hAt' hkeep,
-    BorrowedKept.borrowed_kept h.2.2.2.2.1 hAt' hkeep,
-    BorrowedKept.borrowed_kept h.2.2.2.2.2.1 hAt' hkeep,
-    BorrowedKept.borrowed_kept h.2.2.2.2.2.2.1 hAt' hkeep,
-    BorrowedKept.borrowed_kept h.2.2.2.2.2.2.2.1 hAt' hkeep, hcap⟩
-
-open Wasm LeanExe.Pipeline in
-/-- The tables of a ready store, as the entry takes them. -/
-theorem lgamma_tables (heap : Heap) (store : Store Unit) (h : Ready heap store) :
-    ∀ t ∈ [((4096 : UInt64), Tgamma.logdTable), ((6216 : UInt64), Lgamma.logAccurateTable),
-        ((7952 : UInt64), Lgamma.sinpiTable), ((9280 : UInt64), Lgamma.asymTable),
-        ((10056 : UInt64), Lgamma.accurateTable), ((18152 : UInt64), Lgamma.dbTable),
-        ((18616 : UInt64), Lgamma.mainTable)],
-      heap.Borrowed store t.1 t.2 ∧ Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
-  intro t ht
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
-  rcases ht with ht | ht | ht | ht | ht | ht | ht <;> subst ht
-  · exact ⟨h.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.2.2.1, Apart.nil⟩
-  · exact ⟨h.2.2.2.2.2.2.2.1, Apart.nil⟩
-
-open Wasm LeanExe.Pipeline in
 /-- A call of the module's `lgamma` entry from a ready store. -/
 theorem lgamma_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Lgamma.compiled.module Lgamma.compiled.tables heap store) :
     Runs false env Lgamma.compiled.module 44 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Lgamma.lgamma x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Lgamma.lgamma x).toBits] ∧ ∃ heap' : Heap,
+        Ready Lgamma.compiled.module Lgamma.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  refine (Lgamma.compiled.lgamma.implements env store heap [.f64 x.toBits] x h.1 trivial
-    (lgamma_tables heap store h) rfl Separate.nil h.2.2.2.2.2.2.2.2).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Lgamma.lgamma x).toBits] := howned
-  have hvs : values = [.f64 (Lgamma.lgamma x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ready_kept heap heap' store final h hAt' hkeep
-    (memoryCap_le_of_caps hcaps h.2.2.2.2.2.2.2.2), hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call Lgamma.compiled.lgamma.implements Lgamma.compiled.tables
+    (Verified.tables_at [0, 1, 2, 3, 4, 5, 6] (by decide) rfl)
+    env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 44 of the module is its export `lgamma`. -/
 theorem lgamma_export :
@@ -111,14 +59,16 @@ theorem lgamma_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Lgamma.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Lgamma.compiled.module ∧
       ({ name := "lgamma", funcIdx := 44 } : Wasm.Export) ∈ Lgamma.compiled.module.exports ∧
-      Ready (Verified.initialHeap Lgamma.compiled.tables) Lgamma.compiled.module.initialStore ∧
+      Ready Lgamma.compiled.module Lgamma.compiled.tables
+        (Verified.initialHeap Lgamma.compiled.tables) Lgamma.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Lgamma.compiled.module Lgamma.compiled.tables heap store →
         Wasm.Runs false env Lgamma.compiled.module 44 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Lgamma.lgamma x).toBits ∧
             (Finite x.toBits → (∀ n : ℤ, value x.toBits = n → 0 < n) →
               F64SignedRounding.WithinSteps 1 (Real.log |Real.Gamma (value x.toBits)|) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Lgamma.compiled.module Lgamma.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by

@@ -12,8 +12,9 @@ move no object and with `Pre`, returns `f x` without a trap and leaves a ready s
 also keeps every borrowed array borrowed and every region of the heap intact, and it meets `Post`.
 `CallSpec m tables k f B` is `Call` from a store with room for `B x` bytes, in which `top` rises by
 at most `B x`.  `ImplementsTables.call` proves `Call` from the theorem of an entry whose tables are
-among the program's, `Call.spec` proves `CallSpec` for a specification from a `trapFree` theorem,
-and `Call.array` restates `Call` for an entry whose result is an owned array.
+among the program's, which `tables_at` checks for literal addresses, `Call.spec` proves `CallSpec`
+for a specification from a `trapFree` theorem, and `Call.array` restates `Call` for an entry whose
+result is an owned array.
 -/
 
 namespace Verified
@@ -78,6 +79,18 @@ theorem ImplementsTables.ofA {α β : Type} [Represent α] [Represent β] {abort
     (h : ImplementsA aborts m entry f Pre Post) : ImplementsTables aborts m entry f [] Pre Post :=
   fun env store heap params x hAt hPre _ hArgs hSep hCap =>
     h env store heap params x hAt hPre hArgs hSep hCap
+
+/-- The tables `ts` that an entry reads are tables of the program at their addresses when they are
+the program's tables of indices `ks`.  For the literal addresses of a generated theorem, `hts`
+holds by `rfl`, which evaluates the sizes of the tables before the last. -/
+theorem tables_at {tables : List (Array UInt64)} {ts : List (UInt64 × Array UInt64)}
+    (ks : List Nat) (hks : ∀ k ∈ ks, k < tables.length)
+    (hts : ts = ks.map fun k => (tableAddr tables k, tables[k]!)) :
+    ∀ t ∈ ts, ∃ i, ∃ hi : i < tables.length, t = (tableAddr tables i, tables[i]) := by
+  subst hts
+  intro t ht
+  obtain ⟨k, hk, rfl⟩ := List.mem_map.mp ht
+  exact ⟨k, hks k hk, by rw [getElem!_pos tables k (hks k hk)]⟩
 
 /-- An entry that cannot trap and reads the tables `ts`, each of which is a table of the program
 at its address, meets `Call`. -/
@@ -160,6 +173,7 @@ theorem Call.array {α : Type} [Represent α] {m : Module} {tables : List (Array
 
 #print axioms Ready.initial
 #print axioms ImplementsTables.ofA
+#print axioms tables_at
 #print axioms ImplementsTables.call
 #print axioms Call.spec
 #print axioms Call.array

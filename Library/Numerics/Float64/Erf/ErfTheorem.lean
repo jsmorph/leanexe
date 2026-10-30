@@ -1,5 +1,5 @@
 import Library.Numerics.Float64.Erf.ErfOdd
-import LeanExe.ProofKit.BorrowedKept
+import Verified.Call
 
 /-!
 The accuracy theorem for `Erf.erf`.  For every finite binary64 input the result lies within one
@@ -12,6 +12,7 @@ the module for the file theorem module `ErfFile`.
 -/
 
 namespace Library.Numerics.Float64.Erf.ErfTheorem
+open Verified (Ready)
 open CodeLib.IEEE64 LeanExe.ProofKit
 
 set_option exponentiation.threshold 4096
@@ -76,54 +77,29 @@ theorem erf_nan (x : Float) (h : Wasm.IEEE64.isNaN x.toBits = true) :
   split <;> simp [Wasm.IEEE64.add, Wasm.IEEE64.isNaN, Wasm.IEEE64.canonicalNaN,
     Wasm.IEEE64.exponent, Wasm.IEEE64.fraction]
 
-open Wasm LeanExe.Pipeline in
-/-- A store from which the module's entries run, with `heap` the allocator's state: the allocator
-invariant holds, `Exp.expTable` is a borrowed array at address 4096, and the memory cap is at most
-65,535 pages. -/
-def Ready (heap : Heap) (store : Store Unit) : Prop :=
-  heap.At store ∧ heap.Borrowed store 4096 Exp.expTable ∧
-    store.memoryCap Erf.compiled.module 0 ≤ 65535
-
-set_option maxRecDepth 100000 in
-open Wasm LeanExe.Pipeline in
 /-- The store in which the module starts is ready, with the heap that holds its table. -/
 theorem ready_initial :
-    Ready (Verified.initialHeap Erf.compiled.tables) Erf.compiled.module.initialStore := by
-  obtain ⟨hAt, hCap, hBor⟩ := Erf.compiled.initial
-  exact ⟨hAt, hBor 0 (by decide), hCap⟩
+    Ready Erf.compiled.module Erf.compiled.tables (Verified.initialHeap Erf.compiled.tables)
+      Erf.compiled.module.initialStore :=
+  Verified.Ready.initial rfl Erf.compiled.initial
 
 open Wasm LeanExe.Pipeline in
 /-- A call of the module's `erf` entry from a ready store, with the bits of a float `x`: it
 returns without a trap the bits of `Erf.erf x` and leaves a ready store, and every region of the
 heap before the call keeps its bytes and stays a region. -/
 theorem erf_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
-    (h : Ready heap store) :
+    (h : Ready Erf.compiled.module Erf.compiled.tables heap store) :
     Runs false env Erf.compiled.module 10 store [.f64 x.toBits] fun final values =>
-      values = [.f64 (Erf.erf x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+      values = [.f64 (Erf.erf x).toBits] ∧ ∃ heap' : Heap,
+        Ready Erf.compiled.module Erf.compiled.tables heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r := by
-  obtain ⟨hAt, hTab, hCap⟩ := h
-  have htab : ∀ t ∈ [((4096 : UInt64), Exp.expTable)],
-      heap.Borrowed store t.1 t.2 ∧ Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
-    intro t ht
-    simp only [List.mem_singleton] at ht
-    subst ht
-    exact ⟨hTab, Apart.nil⟩
-  refine (Erf.compiled.erf.implements env store heap [.f64 x.toBits] x hAt trivial htab rfl
-    Separate.nil hCap).mono ?_
-  intro final values hpost
-  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
-  have hv : values.reverse = [.f64 (Erf.erf x).toBits] := howned
-  have hvs : values = [.f64 (Erf.erf x).toBits] := by
-    have := congrArg List.reverse hv
-    simpa using this
-  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-        heap'.Region r :=
-    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
-  exact ⟨hvs, heap', ⟨hAt', BorrowedKept.borrowed_kept hTab hAt' hkeep,
-    memoryCap_le_of_caps hcaps hCap⟩, hkeep⟩
+            heap'.Region r :=
+  (Verified.ImplementsTables.call Erf.compiled.erf.implements Erf.compiled.tables
+    (Verified.tables_at [0] (by decide) rfl)
+    env heap store [.f64 x.toBits] x h rfl rfl trivial).mono
+    fun _ values ⟨heap', hv, hR, _, hkeep, _⟩ =>
+      ⟨by simpa [Scalar.values] using congrArg List.reverse hv, heap', hR, hkeep⟩
 
 /-- Function 11 of the module is its export `erf`. -/
 theorem erf_export : ({ name := "erf", funcIdx := 10 } : Wasm.Export) ∈ Erf.compiled.module.exports := by
@@ -140,14 +116,16 @@ theorem erf_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Erf.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Erf.compiled.module ∧
       ({ name := "erf", funcIdx := 10 } : Wasm.Export) ∈ Erf.compiled.module.exports ∧
-      Ready (Verified.initialHeap Erf.compiled.tables) Erf.compiled.module.initialStore ∧
+      Ready Erf.compiled.module Erf.compiled.tables
+        (Verified.initialHeap Erf.compiled.tables) Erf.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
-        (x : Float), Ready heap store →
+        (x : Float), Ready Erf.compiled.module Erf.compiled.tables heap store →
         Wasm.Runs false env Erf.compiled.module 10 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Erf.erf x).toBits ∧
             (Finite x.toBits →
               F64SignedRounding.WithinSteps 1 (RealErf.erf (value x.toBits)) w) ∧
-            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+            ∃ heap' : LeanExe.Pipeline.Heap,
+              Ready Erf.compiled.module Erf.compiled.tables heap' final ∧
               ∀ r, heap.Region r → 0 < r.2 →
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r) := by
