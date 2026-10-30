@@ -97,7 +97,7 @@ uses these buffers for stdin, stdout, and stderr.
 
 `bytes![65, 0, 255]` reflects to `Expr.bytesLiteral`.  The macro accepts numerals from 0 through
 255.  Each evaluation of a nonempty literal copies its static source bytes into a fresh owned
-allocation.  An empty literal returns `(0, 0)` without allocating.  [Literal expression correctness](BytesLiteralCorrect.lean)
+allocation.  An empty literal returns `(0, 0)` without allocating.  [Literal expression correctness](AlignedBytes.lean)
 uses the shared byte allocator and copier, preserving the packed-buffer representation and its
 48-byte header.  The allocation bound charges `Bytes.allocationCost bytes.length` at each
 evaluation, including each loop iteration or callback invocation.  [The literal examples](Examples/Literals.lean)
@@ -168,7 +168,7 @@ representation of values in the heap and the facts about variables, [`Heap.lean`
 specifications of the allocation, copy, and release code, [`Bound.lean`](Bound.lean) the allocation
 bound, [`Potential.lean`](Potential.lean) the potential of owned arrays, and [`After.lean`](After.lean)
 the facts that the proof shares.  [The expression specification](ExprSpec.lean) defines `CodeSpec`
-and proves the shared call, budget, and operand-sequencing rules.  [The binary32 rules](Float32Correct.lean)
+and proves the shared call, budget, and operand-sequencing rules.  [The binary32 rules](AlignedFloat32.lean)
 prove arithmetic, comparisons, unary operations, and word conversions.  [The expression rules](ExprCorrect.lean) prove expression and
 ordinary-function compilation, and [the program theorem](Correct.lean) combines the function
 rules.  The compiled module has the layout of `LeanExe`'s modules, with the runtime's `alloc`
@@ -211,7 +211,7 @@ and a store converts with `toWordCode`.  Both are empty for a `UInt64` and a `Bo
 either type needs no conversion instructions.  The model proves the conversion laws for `List
 UInt64` and uses the shared runtime's record encoding.
 
-The [copy theorem](TreeCopy.lean), `wp_copyTree`, covers every borrowed value with that layout.
+The [copy theorem](AlignedTreeCopy.lean), `wp_copyTree`, covers every borrowed value with that layout.
 It proves termination, ownership and pairwise separation of the copied records, preservation of
 every initial heap region and the memory caps, and an allocation bound of `N * (48 + 8 * w)`
 bytes for `N` records of `w` fields.  It permits a trap at `unreachable` only when that bound
@@ -222,7 +222,7 @@ returning to its parent.  Its decreasing traversal measure and allocation count 
 [Header detachment](TreeDetach.lean) and [attachment](TreeAttach.lean) preserve child ownership
 across the mask changes needed for record reuse.  The [release rules](TreeRelease.lean) apply the shared release
 runtime to a whole owned tree or a detached header and prove that `top` stays unchanged.
-[Detached-header copying](TreeHeaderCopyCode.lean) allocates one record, sets its kind and width,
+[Detached-header copying](AlignedTreeHeaderCopy.lean) allocates one record, sets its kind and width,
 and retains the allocator's zero child mask.  Its arbitrary payload words represent no children.
 The bound charges `48 + 8 * w` bytes for a header of `w` fields.
 [Field stores](TreeFieldsStore.lean) write local values to consecutive payload slots, and
@@ -236,7 +236,7 @@ including owned coercions, pairwise block separation, preservation of live varia
 combined allocation bound.  [Owned value lists](OwnedValues.lean) and
 [field ownership composition](FieldsAfter.lean) preserve completed fields as later fields execute.
 [Field advancement](FieldsAdvance.lean) preserves those results through a further heap step.
-[Variable correctness](VarCorrect.lean) proves reading, moving, and copying a variable.
+[Variable correctness](AlignedCorollaries.lean) proves reading, moving, and copying a variable.
 [Context composition](ContextAppend.lean) combines represented variable contexts and removes a
 prefix of bound variables.  [Binding composition](BindPrefix.lean) composes a value's execution
 with a body that binds any number of fields.  [Field positions](TreeFieldPositions.lean) relate
@@ -246,10 +246,10 @@ into fields.  The field-load rule preserves the operand stack.
 [Tail binding composition](TailBindPrefix.lean) removes a field prefix after a return or
 continuation, preserving the remaining parameter or result ownership and the state frame.
 `TailCodeSpecAt` fixes the input environment, and `TailCodeSpec` quantifies over that environment.
-[Release before tail execution](TailReleased.lean) drops unused variables and composes the
+[Release before tail execution](AlignedTail.lean) drops unused variables and composes the
 remaining body's allocation bound.
 [Expression coercion](OwnedExpr.lean) preserves an expression's execution facts as its result
-mode changes.  [Release and coercion](CoercedRelease.lean) adds release of unused variables and
+mode changes.  [Release and coercion](AlignedTreeMatch.lean) adds release of unused variables and
 accounts for the allocation allowance of the remaining expression.
 [Context equalities](ContextHEq.lean) preserve the environment and execution facts when
 equivalent context expressions have different associations.  [Child-region enumeration](TreeMatchBlocks.lean)
@@ -262,8 +262,8 @@ header writes, preserving child ownership and proving the completed record's exa
 give these proofs interfaces independent of the source language.
 
 The source types `Ty.tree` and `Ty.treeHeader` record the layout.  The [constructor
-rule](TreeNodeCorrect.lean) composes field evaluation, parent allocation or reuse, and record
-assembly.  The [matching rule](TreeCaseCorrect.lean) handles null and nonempty values, loads the
+rule](AlignedTreeBuild.lean) composes field evaluation, parent allocation or reuse, and record
+assembly.  The [matching rule](AlignedTreeCase.lean) handles null and nonempty values, loads the
 fields, detaches an owned header, releases unused bindings, and composes the branch's ownership and
 allocation bound.  Both rules enter `Expr.code_spec` and the whole-program correctness theorems.
 Borrowed aliases retain their regions, and moving or copying a recursive value uses its exact record
@@ -274,7 +274,7 @@ execution theorems for ordinary Lean definitions.  The [match equations](Reflect
 preserve both branch meanings and their allocation and frames conditions.  [Matcher
 normalization](Reflect/NativeList.lean) derives the equation from Lean's elaborated match to its two
 list cases, which the kernel checks with the generated theorem.  The [tail-match
-rule](TailTreeCase.lean) enters `TailBody.code_spec` and the whole-loop theorem.  Its branches
+rule](AlignedTailTree.lean) enters `TailBody.code_spec` and the whole-loop theorem.  Its branches
 preserve the enclosing loop's return and continue labels.  The [recursive-tail
 reflector](Reflect/TailBody.lean) shares the expression reflector's field context, and [its
 equations](Reflect/TailListLemmas.lean) connect the native step to the typed match.  For a
@@ -298,8 +298,8 @@ Its state contains the list pointer, accumulator, and captures.  Null returns th
 and a record supplies the head and next pointer for a step.  A structural tree measure proves
 termination.  The [tail-code generator](Compile.lean) accepts the step's expression code, so
 folds and tail functions share their control instructions.  The
-[expression rule](ListFoldCorrect.lean) composes argument evaluation, the
-[loop rule](ListFoldLoop.lean), and release of owned outer values after the fold.
+[expression rule](AlignedListFold.lean) composes argument evaluation, the
+[loop rule](AlignedListFold.lean), and release of owned outer values after the fold.
 [Resource equations](ListFoldResource.lean) sum the step's allocation charges and frames
 conditions along the traversal.  [Fold agreement](TreeFold.lean) proves the full Lean
 `List.foldl` meaning under the accumulator encoding.  The reflector selects the step's free
@@ -354,10 +354,10 @@ invariant to prove that each continuing iteration decreases the rank.
 [Their code template](Compile.lean) copies the initial parameters into mutable locals
 and stores each continuation there.  [The bounds](Bound.lean) sum per-step charges
 over the finite run.  Parameter modes stay fixed, with owned continuation arguments
-propagated by [mode inference](Reflect/TailModes.lean).  [The body theorem](TailCode.lean)
+propagated by [mode inference](Reflect/TailModes.lean).  [The body theorem](AlignedTailEntry.lean)
 covers return, continuation, conditional, and binding code, including paid result potential.
-[The whole-loop theorem](TailWhile.lean) composes the represented states, kept regions,
-and remaining bounds.  [The function-entry theorem](TailEntry.lean) proves the Wasm
+[The whole-loop theorem](AlignedTailLoop.lean) composes the represented states, kept regions,
+and remaining bounds.  [The function-entry theorem](AlignedTailEntry.lean) proves the Wasm
 function's behavior from its initial arguments.  `Prog.consTail` includes the tail function,
 and its `Prog.Meaning` proof supplies the fixed-point equation and decreasing rank.
 `Prog.calls` uses the tail-function specification in the same induction as ordinary and
@@ -398,7 +398,7 @@ uses the existing field-normalization pass, so the termination proof sees native
 
 [`ArgsCorrect.lean`](ArgsCorrect.lean) proves argument evaluation, release after a call, and
 parameter-potential accounting independently of universal expression correctness.  The generic
-tail-loop rules use these shared lemmas.  [`TailCode.lean`](TailCode.lean) combines those rules
+tail-loop rules use these shared lemmas.  [`AlignedTailEntry.lean`](AlignedTailEntry.lean) combines those rules
 with the expression theorem when it proves correctness for every typed tail body.
 
 For a program with an empty byte-literal pool, the theorem for each function is `ImplementsA aborts`, the heap form of `Implements` in
@@ -878,7 +878,7 @@ for an `allBelow` or a `loopFits` whose parts are `true`.
 | `Prog.calls` | By induction on the program.  Ordinary and tail functions use the specifications of the functions before them.  A guarded recursive function meets its specification at depth `d` by strong induction on `depthLimit - d`, since its self-calls happen at `d + 1` and the guard traps at the limit.  The tail-function rule uses its decreasing rank and whole-loop theorem. |
 | `bodyFunction_runs` | A function's code, with or without the depth parameter, in a module whose functions at the call indices compute the functions it calls at the next depth, computes the body's meaning.  `Env.Rep.apart` turns the callee's `Separate` into the facts of `Holds` for the parameters at entry. |
 | `Expr.code_spec` | With literal coverage and static environment safety, expression code computes its source value, consumes dying owned values, preserves live values and the local frame, and meets its allocation and call-depth bounds.  The proof is described below. |
-| [spec_bytesLiteral](BytesLiteralCorrect.lean) | Each nonempty literal evaluation allocates a fresh owned byte buffer with the literal contents.  Empty literals allocate nothing.  The theorem requires coverage and static environment safety. |
+| [spec_bytesLiteral](AlignedBytes.lean) | Each nonempty literal evaluation allocates a fresh owned byte buffer with the literal contents.  Empty literals allocate nothing.  The theorem requires coverage and static environment safety. |
 | `ImplementsA.lean` | This theorem of [`Correct.lean`](Correct.lean), with `ImplementsA.transferAgree` there and `Ty.leanInst` and `argsInst` of [`State.lean`](State.lean): a function's theorem for the verified compiler's representation gives the theorem with the instances that Lean synthesizes for its argument tuple and result, in which an owned array parameter has type `Moved (Array α)`.  The instances for arrays and their `Moved` forms are those of [`Implements.lean`](../LeanExe/Pipeline/Implements.lean) for `Array UInt64`, `Array Float`, `Array Float32`, and arrays of `Flat` types, which include `Bool`.  `Ty.leanInst`, `Ty.argInst`, and `argsInst` rebuild those instances by recursion over the types and modes, so no signature needs a proof of its own. |
 
 ### Expression proof
