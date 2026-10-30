@@ -75,5 +75,5 @@ The static checks cover import boundaries, registry paths, and local documentati
 gives the complete library build and its resource settings.  Its [cold-cache procedure](../docs/leanexe-manual.md#memory-heavy-numerical-proofs)
 stages the memory-heavy proofs before the parallel aggregate.  The verified test
 driver reads the checked module registries, emits and validates the modules, compares their
-cases with native Lean, and checks numerical file theorems and accuracy tests.  The full check
+cases with native Lean, and checks file theorems and accuracy tests.  The full check
 also covers the LeanExe compiler and GPU tests.
