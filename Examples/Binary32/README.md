@@ -48,20 +48,20 @@ tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Binary32.Module Examples.Binary32.binary32.module build/binary32/binary32.wasm
 build/tools/leanexe-wasmtime-host call build/binary32/binary32.wasm axpy32 f32 \
   f32:1073741824 f32:1077936128 f32:1065353216
-mkdir -p build/wgsl
+mkdir -p build/wgsl-leanexe
 tools/leanrun --timeout 10m lake env lean --run tools/EmitWgsl.lean \
-  Examples.Binary32.Wgsl Examples.Binary32.scaleKernel build/wgsl/scale.wgsl
-tests/wgsl/run.sh
+  Examples.Binary32.Wgsl Examples.Binary32.scaleKernel build/wgsl-leanexe/scale.wgsl
+tests/wgsl/run.sh --leanexe
 ```
 
 The commands build the proofs, write the module, call it in the Wasmtime host, print one kernel, and
 run the kernel tests, with the setup of [the repository README](../../README.md#commands).  The call
 computes `2 * 3 + 1` from the binary32 bits of 2, 3, and 1 and prints 1088421888, the bits of 7.0.
 [`tests/modules/run.sh`](../../tests/modules/run.sh) compares 388 cases of
-[`Cases.lean`](Cases.lean) with native Lean.  [`tests/wgsl/run.sh`](../../tests/wgsl/run.sh) runs
-the kernel cases on the SwiftShader and llvmpipe Vulkan drivers through `leanexe-webgpu-host`, which
-[`tools/build-webgpu-host.sh`](../../tools/build-webgpu-host.sh) builds, and `uv run
-tests/web/serve.py` serves a page that runs them on a browser's WebGPU.
+[`Cases.lean`](Cases.lean) with native Lean.  [`tests/wgsl/run.sh --leanexe`](../../tests/wgsl/run.sh)
+runs the kernel cases on the SwiftShader and llvmpipe Vulkan drivers through `leanexe-webgpu-host`,
+which [`tools/build-webgpu-host.sh`](../../tools/build-webgpu-host.sh) builds, and `uv run
+tests/web/serve.py --leanexe` serves a page that runs them on a browser's WebGPU.
 
 ## The verified compiler's module
 
@@ -116,7 +116,10 @@ driver](../../tests/verified/run.sh) runs the 388 inputs of the LeanExe cases an
 driver](../../tests/native/verified.sh) runs them on the module's translation to C, compiled with
 CompCert.  `tests/wgsl/run.sh --verified` writes the four verified kernels and the cases of
 [`VerifiedGpuCases.lean`](VerifiedGpuCases.lean), which use the same inputs, and runs them on the
-SwiftShader and llvmpipe drivers.
+SwiftShader and llvmpipe drivers.  Without an option, `tests/wgsl/run.sh` writes the verified
+kernels under the names `scale`, `axpyArray`, `matVec`, and `condMix` and runs them on the cases of
+[`tests/wgsl/Cases.lean`](../../tests/wgsl/Cases.lean), and the kernel page of `uv run
+tests/web/serve.py` loads them.
 
 ## Related examples
 

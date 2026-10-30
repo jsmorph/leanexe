@@ -393,19 +393,21 @@ mkdir -p build/gpt
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Demos.Gpt.Module Demos.Gpt.gpt.module build/gpt/gpt.wasm
 tools/leanrun --timeout 20m lake env lean Demos/Gpt/File.lean   # the file holds the proved bytes
-tests/gpt/run.sh                          # every export against native Lean
+tests/gpt/run.sh build/gpt/gpt.wasm       # every export against native Lean
 tests/modules/run.sh                      # the other modules against native Lean
 uv run tests/modules/chunks.py            # CLOB commands in chunks and one by one
-tests/gpt/sessions.sh                     # every allocation freed
-uv run tests/gpt/hf_compare.py            # forward against Hugging Face in float64
-uv run tests/gpt/gpt2_compare.py          # forward and cached generation on GPT-2 124M
-uv run tools/gpt2.py --output-tokens 32 --prompt "It was a dark and stormy night"
-uv run tools/gpt2.py --output-tokens 32 --top-k 40 --seed 7 --prompt "It was a dark and stormy night"
-uv run tests/gpt/sample_frequencies.py     # top-k sampling probabilities
+tests/gpt/sessions.sh build/gpt/gpt.wasm  # every allocation freed
+uv run tests/gpt/hf_compare.py build/gpt/gpt.wasm    # forward against Hugging Face in float64
+uv run tests/gpt/gpt2_compare.py build/gpt/gpt.wasm  # forward and cached generation on GPT-2 124M
+uv run tools/gpt2.py --wasm build/gpt/gpt.wasm --output-tokens 32 \
+  --prompt "It was a dark and stormy night"
+uv run tools/gpt2.py --wasm build/gpt/gpt.wasm --output-tokens 32 --top-k 40 --seed 7 \
+  --prompt "It was a dark and stormy night"
+uv run tests/gpt/sample_frequencies.py build/gpt/gpt.wasm  # top-k sampling probabilities
 mkdir -p build/prng
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Library.Random.SplitMix64.Module Library.Random.SplitMix64.prng.module build/prng/prng.wasm
-uv run tests/prng/compare.py              # SplitMix64 against the reference
+uv run tests/prng/compare.py build/prng/prng.wasm  # SplitMix64 against the reference
 tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library
 tests/verified/run.sh                     # the verified compiler's examples against native Lean
 ```

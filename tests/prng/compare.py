@@ -6,7 +6,9 @@
 (https://prng.di.unimi.it/splitmix64.c), written here with Python integers reduced
 modulo 2 ** 64.
 
-Run with `uv run tests/prng/compare.py [path/to/prng.wasm]`.  The script checks the
+Run with `uv run tests/prng/compare.py [path/to/prng.wasm]`.  Without a path the module is
+the verified compiler's build/verified/prng.wasm, which tests/verified/run.sh writes, and
+build/prng/prng.wasm is the LeanExe compiler's.  The script checks the
 first output for seed 0 against the published value 0xe220a8397b1dcdaf, one step from
 106 seeds, including 0, 2 ** 64 - 1, and seeds whose advance wraps, and 1,000
 successive steps from seeds 0 and 42 in one host session.  It checks the bits of
@@ -20,7 +22,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HOST = ROOT / 'build/tools/leanexe-wasmtime-host'
-WASM = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build/prng/prng.wasm'
+WASM = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build/verified/prng.wasm'
 MASK = 2 ** 64 - 1
 GAMMA = 0x9e3779b97f4a7c15
 

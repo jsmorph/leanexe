@@ -40,7 +40,7 @@ tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
 build/tools/leanexe-wasmtime-host call build/prng/prng.wasm splitMix list:i64,i64 i64:0
 build/tools/leanexe-wasmtime-host call build/prng/prng.wasm unitFloat f64 \
   i64:16294208416658607535
-uv run tests/prng/compare.py
+uv run tests/prng/compare.py build/prng/prng.wasm
 ```
 
 The commands build the proofs, write the module, call it in the Wasmtime host, and compare it with
@@ -78,12 +78,13 @@ mkdir -p build/verified
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Library.Random.SplitMix64.Compiled Library.Random.SplitMix64.compiled.module \
   build/verified/prng.wasm
-uv run tests/prng/compare.py build/verified/prng.wasm
+uv run tests/prng/compare.py
 tests/verified/run.sh --cases prng
 tests/native/verified.sh --module prng
 ```
 
-`compare.py` runs its checks of the reference code on the verified module.  [The verified
+`compare.py` runs its checks of the reference code on the verified module, which it reads from
+`build/verified/prng.wasm` when given no path.  [The verified
 driver](../../../tests/verified/run.sh) compares 96 calls of each function with native Lean in
 Wasmtime, from 0, 1, and four seeds whose advance wraps or reaches zero, 40 arbitrary words, and 50
 successive states from 0, and checks that no call allocates.  [The native

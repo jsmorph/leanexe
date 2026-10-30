@@ -507,25 +507,27 @@ uv run tests/modules/chunks.py
 | [`tests/drone/run.sh`](../tests/drone/run.sh) | `drone.wasm` against the results of a reference implementation of the planner, run natively by [`tests/drone/oracle.sh`](../tests/drone/oracle.sh), on 1,975 calls and 116 terrains. |
 | `uv run tools/euler-run.py …` | One Euler solve, with its runtime and peak resident size. |
 
+Given no path, the GPT, SplitMix64, and drone drivers run the verified compiler's modules from `build/verified/`, so a test of the LeanExe compiler's module passes its path, such as `build/gpt/gpt.wasm`, `build/prng/prng.wasm`, or `build/drone/drone.wasm`.
+
 [The record of the four-state run](../Demos/Euler/first-order/README.md) and [the record of the reconstructed run](../Demos/Euler/reconstructed/README.md) describe the Euler module, its theorems, and its runs on the 192 and 800 grids.  Each record gives the problem, the method, the theorems with their statements, and the data of each run.  [The drone record](../Demos/Drone/README.md) describes the drone planner's program, theorems, and tests in the same way.
 
 ### WGSL tests
 
-[The verified compiler manual](verified-manual.md#wgsl-tests) describes the WGSL tests, whose drivers run the LeanExe compiler's kernels without `--verified`, and `uv run tests/gpt32/generate.py` generates text with GPT-2 124M on those kernels and compares each step with Hugging Face's float32 model.
+[The verified compiler manual](verified-manual.md#wgsl-tests) describes the WGSL tests, whose drivers run the LeanExe compiler's kernels with `--leanexe`, and `uv run tests/gpt32/generate.py` generates text with GPT-2 124M on those kernels and compares each step with Hugging Face's float32 model.
 
 ### The full check
 
-[`tools/full-check`](../tools/full-check) runs the full check of the verified compiler and writes [`STATUS.md`](../STATUS.md), as [the verified compiler manual](verified-manual.md#the-full-check) describes.  Its build covers step 1 and the build of step 6, and it runs the WASI driver, the VKB check of step 5, `tests/verified/run.sh`, and the verified runs of step 7.  It leaves out steps 2 to 4, the LTG check of step 5, and `tests/wgsl/run.sh` without `--verified`, which test the LeanExe compiler, so a change to that compiler still needs those steps from the list below.
+[`tools/full-check`](../tools/full-check) runs the full check of the verified compiler and writes [`STATUS.md`](../STATUS.md), as [the verified compiler manual](verified-manual.md#the-full-check) describes.  Its build covers step 1 and the build of step 6, and it runs the WASI driver, the VKB check of step 5, `tests/verified/run.sh`, and the verified runs of step 7.  It leaves out steps 2 to 4, the LTG check of step 5, and `tests/wgsl/run.sh --leanexe`, which test the LeanExe compiler, so a change to that compiler still needs those steps from the list below.
 
 [The journal](../devnotes.md) records a full check after each change to the compiler or the pipeline, with the counts of the cases that passed.  The build comes first, and the byte comparison and the tests follow it, so that they use the modules of the built source.  Each step must pass before the next one runs.
 
 1. `tools/leanrun --timeout 60m lake build`, with no `sorry` warning.
 2. Emit every module with `Emit.lean` into a scratch directory and compare its bytes with `build/NAME/NAME.wasm`.  `tests/modules/run.sh --check-bytes build/byte-check` emits and compares every module in [the checked module list](../tests/modules/modules.txt).  A module whose source did not change must have the same bytes, and a changed module's new file replaces the old one before the tests.
 3. [`tests/modules/run.sh`](../tests/modules/run.sh), with the module cases, the release counts, and the depth guard, and `uv run tests/modules/chunks.py`.
-4. [`tests/drone/run.sh`](../tests/drone/run.sh), and [`tests/gpt/run.sh`](../tests/gpt/run.sh) and [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh) when the GPT module changed.
+4. [`tests/drone/run.sh build/drone/drone.wasm`](../tests/drone/run.sh), and [`tests/gpt/run.sh build/gpt/gpt.wasm`](../tests/gpt/run.sh) and [`tests/gpt/sessions.sh build/gpt/gpt.wasm`](../tests/gpt/sessions.sh) when the GPT module changed.
 5. The LTG check and [the VKB check](../VKB/README.md#check).
 6. A cold numerical proof cache first needs the [separate one-worker builds](verified-manual.md#memory-heavy-numerical-proofs).  Then `tools/leanrun --threads 2 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh) must pass, since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
-7. [`tests/wgsl/run.sh`](../tests/wgsl/run.sh), `tests/wgsl/run.sh --verified`, and `tests/wgsl/run.sh --verified-gpt32` on both Vulkan drivers.  `tests/gpt32/native.sh --verified` also compares complete binary32 generation with native Lean on Wasm and both drivers.
+7. [`tests/wgsl/run.sh --leanexe`](../tests/wgsl/run.sh), `tests/wgsl/run.sh`, and `tests/wgsl/run.sh --verified` on both Vulkan drivers.  `tests/gpt32/native.sh --verified` also compares complete binary32 generation with native Lean on Wasm and both drivers.
 
 Changes to packed bytes or WASI also require [the maintained WASI driver](../tests/wasi/run.sh) after the build and before the GPU checks.  It checks the byte representations, universal and generated proofs, native actions, emitted modules, and execution hosts, as [the WASI manual](wasi.md#tests) describes.
 

@@ -58,7 +58,7 @@ tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Demos.Drone.Module Demos.Drone.drone.module build/drone/drone.wasm
 build/tools/leanexe-wasmtime-host call build/drone/drone.wasm compute array-u64 \
   array-u64:0,100,50,0
-tests/drone/run.sh
+tests/drone/run.sh build/drone/drone.wasm
 ```
 
 The commands build the proofs, write the module, call it in the Wasmtime host, and run the
@@ -67,6 +67,8 @@ README](../../README.md#commands).  The terrain has four stations of heights 0, 
 the call prints `[0, 0, 200, 10, 175, 10, 0, 0]`: the altitude and speed at each station.
 `tests/drone/oracle.sh` reads the reference implementation from the repository's history with `git
 show`, and it has already written the corpus, so it runs only when the corpus must be regenerated.
+Without a path, `tests/drone/run.sh` runs the verified compiler's module from
+`build/verified/drone.wasm`, which `tests/verified/run.sh` writes.
 
 ## Related examples
 

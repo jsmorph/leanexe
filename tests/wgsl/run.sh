@@ -1,22 +1,27 @@
 #!/usr/bin/env bash
-# Runs every case of tests/wgsl/Cases.lean on SwiftShader and llvmpipe with the kernel text that
-# tools/EmitWgsl.lean prints, and compares the output words with native Lean's.  The kernels
-# and the cases stay in the build directory's wgsl/, where tests/web/serve.py serves them to the
-# browser page of tests/wgsl/browser.
-# With `--verified`, the kernels are the verified compiler's, those of Verified/Examples/Wgsl.lean
-# and the four of Examples/Binary32/Compiled.lean, with the cases of
-# Verified/Examples/WgslCasesMain.lean.
+# Runs WGSL kernels on SwiftShader and llvmpipe with the kernel text that tools/EmitWgsl.lean
+# prints, on cases whose expected output words native Lean computes, and compares the words.
+# By default the kernels are the verified compiler's: those of Examples/Binary32/Compiled.lean under
+# the names scale, axpyArray, matVec, and condMix, and those of Demos/Gpt32/Verified.lean under the
+# names that the GPT-2 host commands use, with the cases of tests/wgsl/Cases.lean and of
+# Demos/Gpt32/VerifiedGpuCasesMain.lean.  The kernels and the cases stay in the build directory's
+# wgsl/, where tests/web/serve.py serves them to the browser pages.
+# With `--verified`, the kernels are those of Verified/Examples/Wgsl.lean and those of
+# Examples/Binary32/Compiled.lean under their own names, with the cases of
+# Verified/Examples/WgslCasesMain.lean, in the same directory.
+# With `--leanexe`, the kernels are the LeanExe compiler's of Examples/Binary32/Wgsl.lean,
+# Demos/Gpt32/Kernels.lean, and Demos/Gpt32/Specs.lean under the default names, with the cases of
+# tests/wgsl/Cases.lean, in the build directory's wgsl-leanexe/.
 # `--emit-only` writes the kernels and the cases and stops, and `--drivers-only` runs existing ones
 # on the drivers, so that the drivers can run on a host without Lean.
-# Usage: tests/wgsl/run.sh [--verified|--verified-gpt32] [--emit-only|--drivers-only] [build directory]
+# Usage: tests/wgsl/run.sh [--verified|--leanexe] [--emit-only|--drivers-only] [build directory]
 set -euo pipefail
-verified=0
-gpt32=0
+set_name=default
 stage=all
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --verified) verified=1 ;;
-    --verified-gpt32) gpt32=1 ;;
+    --verified) set_name=verified ;;
+    --leanexe) set_name=leanexe ;;
     --emit-only) stage=emit ;;
     --drivers-only) stage=drivers ;;
     *) break ;;
@@ -26,80 +31,69 @@ done
 root=$(cd "$(dirname "$0")/../.." && pwd)
 build=${1:-$root/build}
 host=$root/build/tools/leanexe-webgpu-host
-mkdir -p "$build/wgsl"
-cases=$build/wgsl/cases.txt
+gpt32_kernels="exp embed layerNorm linear append scores headMax headSum probs mix add gelu logits"
+# Each kernel as MODULE:CONSTANT:NAME, where NAME.wgsl receives the text of CONSTANT.
+kernels=()
+case "$set_name" in
+  default)
+    out=$build/wgsl
+    modules=(Examples.Binary32.Compiled Demos.Gpt32.Verified Demos.Gpt32.VerifiedGpuCasesMain)
+    case_sources=(tests/wgsl/Cases.lean Demos/Gpt32/VerifiedGpuCasesMain.lean)
+    for k in Scale:scale AxpyArray:axpyArray MatVec:matVec CondMix:condMix; do
+      kernels+=("Examples.Binary32.Compiled:Examples.Binary32.verified${k%%:*}32Kernel:${k#*:}")
+    done
+    for k in $gpt32_kernels; do
+      kernels+=("Demos.Gpt32.Verified:Demos.Gpt32.Verified.${k}Kernel:$k")
+    done
+    ;;
+  verified)
+    out=$build/wgsl
+    modules=(Verified.Examples.WgslCasesMain Examples.Binary32.Compiled)
+    case_sources=(Verified/Examples/WgslCasesMain.lean)
+    for k in verifiedScale verifiedBranch verifiedFlags verifiedWords verifiedRoots; do
+      kernels+=("Verified.Examples.Wgsl:Verified.Examples.Wgsl.${k}Kernel:$k")
+    done
+    for k in verifiedScale32 verifiedAxpyArray32 verifiedMatVec32 verifiedCondMix32; do
+      kernels+=("Examples.Binary32.Compiled:Examples.Binary32.${k}Kernel:$k")
+    done
+    ;;
+  leanexe)
+    out=$build/wgsl-leanexe
+    modules=(Examples.Binary32.Wgsl Demos.Gpt32.Kernels Demos.Gpt32.Specs)
+    case_sources=(tests/wgsl/Cases.lean)
+    for k in scale axpyArray matVec condMix; do
+      kernels+=("Examples.Binary32.Wgsl:Examples.Binary32.${k}Kernel:$k")
+    done
+    kernels+=("Demos.Gpt32.Kernels:Demos.Gpt32.expKernel:exp")
+    for k in ${gpt32_kernels#exp }; do
+      kernels+=("Demos.Gpt32.Specs:Demos.Gpt32.${k}Kernel:$k")
+    done
+    ;;
+esac
+mkdir -p "$out"
+cases=$out/cases.txt
 if [ "$stage" != drivers ]; then
-  case_source=tests/wgsl/Cases.lean
-  if [ "$verified" -eq 1 ]; then
-    case_source=Verified/Examples/WgslCasesMain.lean
-    (cd "$root" && tools/leanrun --timeout 10m lake --log-level error build Verified.Examples.WgslCasesMain \
-      Examples.Binary32.Compiled)
-  elif [ "$gpt32" -eq 1 ]; then
-    (cd "$root" && tools/leanrun --timeout 20m lake --log-level error build \
-      Demos.Gpt32.Verified Demos.Gpt32.VerifiedGpuCasesMain)
-  fi
-  for entry in Examples.Binary32.Wgsl:Examples.Binary32:scale Examples.Binary32.Wgsl:Examples.Binary32:axpyArray \
-      Examples.Binary32.Wgsl:Examples.Binary32:matVec Examples.Binary32.Wgsl:Examples.Binary32:condMix \
-      Demos.Gpt32.Kernels:Demos.Gpt32:exp Demos.Gpt32.Specs:Demos.Gpt32:embed \
-      Demos.Gpt32.Specs:Demos.Gpt32:layerNorm Demos.Gpt32.Specs:Demos.Gpt32:linear \
-      Demos.Gpt32.Specs:Demos.Gpt32:append Demos.Gpt32.Specs:Demos.Gpt32:scores \
-      Demos.Gpt32.Specs:Demos.Gpt32:headMax Demos.Gpt32.Specs:Demos.Gpt32:headSum \
-      Demos.Gpt32.Specs:Demos.Gpt32:probs Demos.Gpt32.Specs:Demos.Gpt32:mix \
-      Demos.Gpt32.Specs:Demos.Gpt32:add Demos.Gpt32.Specs:Demos.Gpt32:gelu \
-      Demos.Gpt32.Specs:Demos.Gpt32:logits \
-      Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedScale \
-      Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedBranch \
-      Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedFlags \
-      Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedWords \
-      Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedRoots \
-      Examples.Binary32.Compiled:Examples.Binary32:verifiedScale32 \
-      Examples.Binary32.Compiled:Examples.Binary32:verifiedAxpyArray32 \
-      Examples.Binary32.Compiled:Examples.Binary32:verifiedMatVec32 \
-      Examples.Binary32.Compiled:Examples.Binary32:verifiedCondMix32; do
-    IFS=: read -r module namespace kernel <<<"$entry"
-    if [ "$gpt32" -eq 1 ]; then
-      case "$module" in
-        Demos.Gpt32.Kernels|Demos.Gpt32.Specs)
-          module=Demos.Gpt32.Verified
-          namespace=Demos.Gpt32.Verified
-          ;;
-        Examples.Binary32.Wgsl) true ;;
-        *) continue ;;
-      esac
-    elif [ "$verified" -eq 1 ]; then
-      case "$module" in
-        Verified.Examples.Wgsl|Examples.Binary32.Compiled) true ;;
-        *) continue ;;
-      esac
-    else
-      case "$module" in
-        Verified.Examples.Wgsl|Examples.Binary32.Compiled) continue ;;
-      esac
-    fi
+  (cd "$root" && tools/leanrun --timeout 20m lake --log-level error build LeanExe.WGSL.Parse \
+    "${modules[@]}")
+  for entry in "${kernels[@]}"; do
+    IFS=: read -r module constant kernel <<<"$entry"
     (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tools/EmitWgsl.lean \
-      "$module" "$namespace.${kernel}Kernel" "$build/wgsl/$kernel.wgsl")
+      "$module" "$constant" "$out/$kernel.wgsl")
   done
   # Reads past the end of a shorter array with `!` print panic messages from native Lean, which then
   # returns the default 0; they are expected.
-  if (cd "$root" && tools/leanrun --timeout 10m lake env lean --run "$case_source") >"$cases" \
-      2>"$build/wgsl/cases.stderr.log"; then
-    true
-  else
-    result=$?
-    cat "$build/wgsl/cases.stderr.log" >&2
-    exit "$result"
-  fi
-  if [ "$gpt32" -eq 1 ]; then
-    if (cd "$root" && tools/leanrun --timeout 10m lake env lean --run \
-        Demos/Gpt32/VerifiedGpuCasesMain.lean) >>"$cases" \
-        2>"$build/wgsl/gpt32-cases.stderr.log"; then
+  : >"$cases"
+  for source in "${case_sources[@]}"; do
+    log=$out/$(basename "$source" .lean).stderr.log
+    if (cd "$root" && tools/leanrun --timeout 10m lake env lean --run "$source") >>"$cases" \
+        2>"$log"; then
       true
     else
       result=$?
-      cat "$build/wgsl/gpt32-cases.stderr.log" >&2
+      cat "$log" >&2
       exit "$result"
     fi
-  fi
+  done
 fi
 if [ "$stage" = emit ]; then
   exit 0
@@ -109,29 +103,29 @@ for driver in /usr/lib/chromium/vk_swiftshader_icd.json /usr/share/vulkan/icd.d/
   passed=0
   failed=0
   case_number=0
-  failures=$build/wgsl/$(basename "$driver" .json).failures.txt
+  failures=$out/$(basename "$driver" .json).failures.txt
   : >"$failures"
   while IFS='|' read -r kernel groups output inputs expected; do
     case_number=$((case_number + 1))
     read -ra argv <<<"$inputs"
     printf '%s|%s|%s|%s|%s|%s\n' "$case_number" "$kernel" "$groups" "$output" "$inputs" \
-      "$expected" >"$build/wgsl/current-case.txt"
-    if out=$(VK_ICD_FILENAMES=$driver "$host" run "$build/wgsl/$kernel.wgsl" main "$groups" \
-        "$output" "${argv[@]}" 2>"$build/wgsl/host.stderr.log"); then
+      "$expected" >"$out/current-case.txt"
+    if result_words=$(VK_ICD_FILENAMES=$driver "$host" run "$out/$kernel.wgsl" main "$groups" \
+        "$output" "${argv[@]}" 2>"$out/host.stderr.log"); then
       true
     else
       result=$?
-      cat "$build/wgsl/host.stderr.log" >&2
-      echo "host failed: $kernel on $(basename "$driver") case $case_number, status $result; input in $build/wgsl/current-case.txt" >&2
+      cat "$out/host.stderr.log" >&2
+      echo "host failed: $kernel on $(basename "$driver") case $case_number, status $result; input in $out/current-case.txt" >&2
       exit "$result"
     fi
-    if [ "$out" = "$expected" ]; then
+    if [ "$result_words" = "$expected" ]; then
       passed=$((passed + 1))
     else
       failed=$((failed + 1))
       printf '%s|%s|%s|%s|%s|%s\n' "$case_number" "$kernel" "$groups" "$output" "$inputs" \
         "$expected" >>"$failures"
-      printf 'actual|%s\n' "$out" >>"$failures"
+      printf 'actual|%s\n' "$result_words" >>"$failures"
       echo "fail: $kernel on $(basename "$driver") case $case_number; values in $failures"
     fi
   done <"$cases"

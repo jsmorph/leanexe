@@ -13,7 +13,7 @@
 #   5. tests/baremetal/run.sh, programs.sh, inputs.sh, and verified.sh under TCG;
 #   6. VKB/Check.lean;
 #   7. rocq/check.sh;
-#   8. tests/wgsl/run.sh --verified and --verified-gpt32, each with --emit-only and then
+#   8. tests/wgsl/run.sh with --verified and without an option, each with --emit-only and then
 #      --drivers-only, and tests/gpt32/native.sh --verified.
 # A failed build leaves every later step but rocq/check.sh unrun, since they load the built
 # modules.  The failure of any other step is recorded, and the next step runs.  A step whose tools
@@ -507,34 +507,36 @@ step_talos() {
 }
 
 step_gpu() {
-  local mode dir step cell drivers=present driver
+  local flag mode dir step cell drivers=present driver
   # The Vulkan drivers and the host of tests/wgsl/run.sh and tests/gpt32/native.sh.
   for driver in /usr/lib/chromium/vk_swiftshader_icd.json /usr/share/vulkan/icd.d/lvp_icd.json \
       "$root/build/tools/leanexe-webgpu-host"; do
     [ -e "$driver" ] || drivers=absent
   done
-  for mode in verified verified-gpt32; do
+  for flag in --verified ""; do
+    mode=${flag#--}
+    mode=${mode:-default}
     dir=$logs/wgsl-$mode
-    step="\`tests/wgsl/run.sh --$mode --emit-only\`"
+    step="\`tests/wgsl/run.sh ${flag:+$flag }--emit-only\`"
     if unbuilt "$step"; then
-      record "\`tests/wgsl/run.sh --$mode --drivers-only\`" "not run: the build failed" "" ""
+      record "\`tests/wgsl/run.sh ${flag:+$flag }--drivers-only\`" "not run: the build failed" "" ""
       continue
     fi
     rm -rf "$dir"
-    run "8-wgsl-$mode-emit" tests/wgsl/run.sh "--$mode" --emit-only "$dir"
+    run "8-wgsl-$mode-emit" tests/wgsl/run.sh ${flag:+"$flag"} --emit-only "$dir"
     cell=""
     if [ "$code" -eq 0 ]; then
       cell="$(nouns "$(find "$dir/wgsl" -name '*.wgsl' | wc -l)" kernel kernels) and"
       cell+=" $(nouns "$(wc -l <"$dir/wgsl/cases.txt")" case cases) written"
     fi
     record "$step" "$(outcome)" "$seconds" "$cell"
-    step="\`tests/wgsl/run.sh --$mode --drivers-only\`"
+    step="\`tests/wgsl/run.sh ${flag:+$flag }--drivers-only\`"
     if [ "$code" -ne 0 ]; then
       record "$step" "not run: the emission failed" "" ""
     elif [ "$drivers" = absent ]; then
       record "$step" "not run: drivers absent" "" ""
     else
-      run "8-wgsl-$mode-drivers" tests/wgsl/run.sh "--$mode" --drivers-only "$dir"
+      run "8-wgsl-$mode-drivers" tests/wgsl/run.sh ${flag:+"$flag"} --drivers-only "$dir"
       cell="SwiftShader: $(pf "$(last '^vk_swiftshader_icd: passed ([0-9]+) failed ([0-9]+)$' \
         '\1 \2' "$log")" cases); llvmpipe: $(pf "$(last '^lvp_icd: passed ([0-9]+) failed ([0-9]+)$' \
         '\1 \2' "$log")" cases)"
@@ -628,9 +630,10 @@ write_status() {
     fi
     notes+="  The check leaves out the suites of the LeanExe compiler, which is being retired:"
     notes+=" \`tests/modules/run.sh\` beyond the Euler and sums cases that \`tests/verified/run.sh\`"
-    notes+=" runs, \`tests/modules/chunks.py\`, \`tests/drone/run.sh\`, the LTG check, and"
-    notes+=" \`tests/wgsl/run.sh\` and \`tests/gpt32/native.sh\` without \`--verified\`.  It also"
-    notes+=" leaves out \`tests/native/subset.sh\`, whose result is the count of modules without a"
+    notes+=" runs, \`tests/modules/chunks.py\`, the LTG check, \`tests/wgsl/run.sh --leanexe\`, and"
+    notes+=" \`tests/gpt32/native.sh\` without \`--verified\`.  It also leaves out"
+    notes+=" \`tests/drone/run.sh\`, whose corpus \`tests/verified/run.sh\` also runs,"
+    notes+=" \`tests/native/subset.sh\`, whose result is the count of modules without a"
     notes+=" translation that \`tests/native/verified.sh\` reports, \`tests/native/bench.sh\`, which"
     notes+=" measures time, the decoder test, which needs the WebAssembly test suite converted by"
     notes+=" \`wasm-tools\`, and the bare-metal tests under KVM, which need an AArch64 machine with"

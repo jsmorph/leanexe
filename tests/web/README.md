@@ -1,11 +1,12 @@
 # WebGPU Pages
 
 [`tests/web/serve.py`](serve.py) serves two pages that run this project's WGSL kernels on a
-browser's WebGPU.  The kernel test page runs the cases of
-[`tests/wgsl/Cases.lean`](../wgsl/Cases.lean) and compares every output word with native Lean's.
-The GPT-2 page runs GPT-2 124M in binary32, with each kernel on WebGPU, in `gpt32.wasm` on the CPU,
-or on both with their scores compared.  The pages use only standard WebGPU and WebAssembly and have
-been run in Chromium 145 and Chrome 152.  The server needs `uv` and this repository's Lean
+browser's WebGPU.  The kernel test page runs the cases that [`tests/wgsl/run.sh`](../wgsl/run.sh)
+writes and compares every output word with native Lean's.  The GPT-2 page runs GPT-2 124M in
+binary32, with each kernel on WebGPU, in `gpt32.wasm` on the CPU, or on both with their scores
+compared.  By default the pages run the verified compiler's kernels and modules, and with
+`--leanexe` the LeanExe compiler's.  They use only standard WebGPU and WebAssembly and have been run
+in Chromium 145 and Chrome 152.  The server needs `uv` and this repository's Lean
 toolchain, and its first start downloads `transformers` and the GPT-2 tokenizer.
 
 ## Running
@@ -21,11 +22,20 @@ uv run tests/web/serve.py
 ```
 
 The address http://127.0.0.1:8000/ links to both pages.  At start, the server writes what is missing
-from `build/`: the seventeen kernel texts and `cases.txt` in `build/wgsl`, `gpt32.wasm`, the
-sampler's module `gpt.wasm`, and the program printer `gpt32-lines`.  From nothing this took about
-four minutes on the development machine.  The server writes only missing files, so after a change to
-a kernel, to the cases, or to the GPT-2 programs, run [`tests/wgsl/run.sh`](../wgsl/run.sh) (which
-rewrites `build/wgsl`) or delete the affected files before starting it.
+from `build/`.  When `build/wgsl` lacks a kernel text that the pages load or `cases.txt`, it runs
+`tests/wgsl/run.sh --emit-only`, which writes the verified compiler's kernels and the cases of
+[`tests/wgsl/Cases.lean`](../wgsl/Cases.lean) and of [the verified GPT-2
+corpus](../../Demos/Gpt32/VerifiedCases.lean).  It also writes the verified modules
+`build/verified/gpt32.wasm` and `build/verified/gpt.wasm`, the sampler's module, and builds the
+program printer `gpt32-lines`.  With `--leanexe`, the server uses `tests/wgsl/run.sh --leanexe`,
+which writes the LeanExe compiler's kernels under the same names to `build/wgsl-leanexe`, and the
+LeanExe modules `build/gpt32/gpt32.wasm` and `build/gpt/gpt.wasm`.  The server writes only missing
+files, so after a change to a kernel, to the cases, or to the GPT-2 programs, run
+[`tests/wgsl/run.sh`](../wgsl/run.sh), which rewrites the kernel directory, or delete the affected
+files before starting it.  The pages serve what the kernel directory holds: after
+`tests/wgsl/run.sh --verified`, the kernel page runs that option's cases, and
+[`tests/gpt32/generate.py`](../gpt32/generate.py) writes the LeanExe compiler's GPT-2 kernels to
+`build/wgsl` under the names of the verified ones.
 
 Browsers expose WebGPU only to secure contexts, which include http://127.0.0.1 and
 http://localhost but not a plain-HTTP address of another machine.  To use a browser on another
@@ -36,10 +46,15 @@ as `http://10.211.55.3:8000`, to `chrome://flags/#unsafely-treat-insecure-origin
 
 ## Kernel tests: `/kernels/`
 
-The page runs 474 cases of seventeen kernels: `scale`, `axpyArray`, `matVec`, and `condMix` of
-[`Examples/Binary32/Wgsl.lean`](../../Examples/Binary32/Wgsl.lean), `exp` of
-[`Demos/Gpt32/Kernels.lean`](../../Demos/Gpt32/Kernels.lean), and the twelve GPT-2 kernels of
-[`Demos/Gpt32/Specs.lean`](../../Demos/Gpt32/Specs.lean).  It binds and dispatches each case
+The page runs the cases of `cases.txt` on the kernels that the cases name.  By default these are
+the 694 cases of [`tests/wgsl/Cases.lean`](../wgsl/Cases.lean) and of [the verified GPT-2
+corpus](../../Demos/Gpt32/VerifiedCases.lean), on the verified compiler's kernels of [the binary32
+example](../../Examples/Binary32/Compiled.lean) under the names `scale`, `axpyArray`, `matVec`, and
+`condMix`, and of [the binary32 GPT-2 compilation](../../Demos/Gpt32/Verified.lean).  With
+`--leanexe` they are the 474 cases of `tests/wgsl/Cases.lean`, on the LeanExe compiler's kernels of
+[`Examples/Binary32/Wgsl.lean`](../../Examples/Binary32/Wgsl.lean),
+[`Demos/Gpt32/Kernels.lean`](../../Demos/Gpt32/Kernels.lean), and
+[`Demos/Gpt32/Specs.lean`](../../Demos/Gpt32/Specs.lean).  The page binds and dispatches each case
 as `leanexe-webgpu-host run` does for [`tests/wgsl/run.sh`](../wgsl/run.sh), reads the output
 buffer, and compares each word with native Lean's.  The cases include subnormal values, infinities,
 NaNs, and arrays of up to 4,096 elements.
@@ -90,16 +105,17 @@ without clicks.
 
 ## Theorems and device results
 
-Under its shape, token, loaded-weight, and device assumptions, `generate_host` proves that the
-setup and step commands leave the bits of native `step32` in the score buffers and that every
-dispatch is race-free.  [The program](../../Demos/Gpt32/Program.lean) defines that binary32
-GPT-2 step.  `sampleTopK_implements` proves that `sampleTopK` in `gpt.wasm` computes the Lean
-function of the same name.  The page uses the original compiler's `build/gpt32/gpt32.wasm`.
-That module, the JavaScript hosts, the generation loop, the server, the tokenizer, and the
-browser's WebGPU implementation remain outside those proofs.  The
-[Verified version](../../Demos/Gpt32/README.md#verified-compiler) has Wasm
-execution theorems for its own module and a host-command theorem for its kernels.  The compared
-mode measures differences between the page's GPU and Wasm results.
+Under its shape, token, loaded-weight, and device assumptions, `Demos.Gpt32.Verified.generate_host`
+proves that the setup and step commands, run with the verified kernels, leave the bits of native
+`step32` in the score buffers and that every dispatch is race-free, and `Demos.Gpt32.generate_host`
+proves the same for the LeanExe compiler's kernels.  [The program](../../Demos/Gpt32/Program.lean)
+defines that binary32 GPT-2 step.  `compiled.sampleTopK.implements` of `Demos.Gpt.Verified` proves
+that `sampleTopK` in the verified `gpt.wasm` computes the Lean function of the same name, and
+`sampleTopK_implements` proves it for the LeanExe module.  The verified `gpt32.wasm` has the Wasm
+execution theorems of [the verified compilation](../../Demos/Gpt32/README.md#verified-compiler),
+and the LeanExe compiler's `gpt32.wasm` has none.  The JavaScript hosts, the generation loop, the
+server, the tokenizer, and the browser's WebGPU implementation remain outside those proofs.  The
+compared mode measures differences between the page's GPU and Wasm results.
 
 These browser measurements used the shared translation before arithmetic-NaN normalization:
 
@@ -107,6 +123,13 @@ These browser measurements used the shared translation before arithmetic-NaN nor
 |---|---|---|
 | Headless Chromium 145, SwiftShader (development machine) | 474 passed, 0.8 s | Scores equal at every step.  About 0.17 s a step on each side |
 | Chrome 152, Apple GPU through Metal | 342 passed, 132 failed | 32 tokens from "The meaning of life is": no step with equal scores, the largest difference 5.2e-5 of the largest score, the same token at all 32 steps.  0.081 s a step with WGSL and 0.157 with Wasm |
+
+After the pages moved to the verified compiler's kernels and modules, headless Chromium 145 with SwiftShader on an AArch64 machine gave these results:
+
+| Server | Kernel tests | GPT-2, compared mode |
+|---|---|---|
+| Default, verified compiler's kernels and modules | 694 passed, 0.9 s | 16 greedy tokens from "The meaning of life is": scores equal at every step, 0.313 s a step with WGSL and 0.177 with Wasm.  8 tokens sampled from seed 42: scores equal at every step |
+| `--leanexe`, LeanExe compiler's kernels and modules | 474 passed, 0.8 s | 8 tokens sampled from seed 42: scores equal at every step, and the same tokens as with the verified modules |
 
 ## Files
 

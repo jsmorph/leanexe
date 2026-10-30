@@ -9,7 +9,7 @@ functions, from `expArray32` to `logits32`, are translated from their compiled I
 kernels.  [The host program](HostProgram.lean) is the list of commands that runs a step on
 `leanexe-webgpu-host`: buffer loads, word and float constants, and kernel dispatches.  [The module
 definition](Module.lean) also compiles the thirteen functions into the 6,384-byte `gpt32.wasm`,
-which the browser page runs on the CPU for comparison.
+which the browser page served with `--leanexe` runs on the CPU for comparison.
 
 Vector addition and the biased linear transform come from [the binary32 linear-algebra library](../../Library/Numerics/LinearAlgebra/README.md).  The demo retains the model-specific kernels and host program.
 
@@ -47,16 +47,16 @@ browser page.
 ```sh
 tools/leanrun --timeout 60m lake build Demos.Gpt32.Compose
 tools/build-webgpu-host.sh
-tests/wgsl/run.sh
+tests/wgsl/run.sh --leanexe
 tests/gpt32/native.sh
 uv run tests/gpt32/generate.py --tokens 8 "The meaning of life is"
-uv run tests/web/serve.py
+uv run tests/web/serve.py --leanexe
 ```
 
 The commands build the proofs and the WebGPU host, run the kernel tests and the step comparison,
 generate text, and serve the browser pages, with the setup of [the repository
-README](../../README.md#commands).  [`tests/wgsl/run.sh`](../../tests/wgsl/run.sh) runs the kernel
-cases on the SwiftShader and llvmpipe Vulkan drivers, and
+README](../../README.md#commands).  [`tests/wgsl/run.sh --leanexe`](../../tests/wgsl/run.sh) runs the
+kernel cases on the SwiftShader and llvmpipe Vulkan drivers, and
 [`tests/gpt32/native.sh`](../../tests/gpt32/native.sh) runs small random models through
 [`Generate.lean`](Generate.lean) on both drivers and compares each step's scores with native Lean's
 `step32`.  [`tests/gpt32/generate.py`](../../tests/gpt32/generate.py) writes the pinned checkpoint's
@@ -64,8 +64,10 @@ weights to `build/gpt2-32/`, 949 MiB, generates with the kernels, and compares e
 Hugging Face's float32 model.  The command above printed "The meaning of life is not the same as the
 meaning of death" in 10.6 seconds on llvmpipe, with a largest relative score difference of 1.47e-6
 and the same token as Hugging Face's model at every step.
-[`tests/web/serve.py`](../../tests/web/serve.py) serves the kernel test page and the GPT-2 page on
-http://127.0.0.1:8000/.
+[`tests/web/serve.py --leanexe`](../../tests/web/serve.py) serves the kernel test page and the GPT-2
+page on http://127.0.0.1:8000/ with these kernels and this `gpt32.wasm`.  `tests/gpt32/generate.py`
+writes the LeanExe compiler's GPT-2 kernels to `build/wgsl`, where they replace the verified
+kernels of the same names.
 
 ## Verified compiler
 
@@ -89,8 +91,9 @@ file I/O, and browser remain outside those proofs.
 ```sh
 tools/leanrun --timeout 20m lake build Demos.Gpt32.VerifiedHost
 tests/verified/run.sh --cases gpt32
-tests/wgsl/run.sh --verified-gpt32
+tests/wgsl/run.sh
 tests/gpt32/native.sh --verified
+uv run tests/web/serve.py
 ```
 
 [The checked kernel corpus](VerifiedCases.lean) compares Wasm and GPU
@@ -98,7 +101,11 @@ results with native Lean, including empty and short arrays, signed zeros, subnor
 infinities, and NaNs.  The Wasm cases also check allocations and retained blocks.  The
 generation driver runs the existing three random models through Wasm and both GPU drivers,
 comparing every score bit and each greedy token with native `step32`.  Its Wasm session adapter
-uses [the browser's existing Wasm host](../../tests/gpt32/browser/hosts.js).
+uses [the browser's existing Wasm host](../../tests/gpt32/browser/hosts.js).  `tests/wgsl/run.sh`
+runs these kernels, with the binary32 example's verified kernels, on the cases of
+[`tests/wgsl/Cases.lean`](../../tests/wgsl/Cases.lean) and of this corpus, and
+`tests/web/serve.py` serves them, `build/verified/gpt32.wasm`, and the verified sampler module
+`build/verified/gpt.wasm` to the browser pages.
 
 ## Related examples
 

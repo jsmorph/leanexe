@@ -5,7 +5,9 @@
 """Checks that gpt.wasm's `sampleTopK` draws tokens with the probabilities of top-k
 sampling.
 
-Run with `uv run tests/gpt/sample_frequencies.py [path/to/gpt.wasm]`.  For several score
+Run with `uv run tests/gpt/sample_frequencies.py [path/to/gpt.wasm]`.  Without a path the
+module is the verified compiler's build/verified/gpt.wasm, which tests/verified/run.sh writes,
+and build/gpt/gpt.wasm is the LeanExe compiler's.  For several score
 arrays, values of k, and temperatures, the script calls `sampleTopK` 20,000 times in one
 host session, passing the generator state from each call to the next, and compares the
 count of each token with the expected count: zero for tokens below the k-th largest score,
@@ -20,7 +22,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HOST = ROOT / 'build/tools/leanexe-wasmtime-host'
-WASM = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build/gpt/gpt.wasm'
+WASM = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build/verified/gpt.wasm'
 DRAWS = 20000
 
 

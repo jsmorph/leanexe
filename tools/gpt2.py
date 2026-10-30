@@ -6,7 +6,9 @@
 """Generates text with GPT-2 124M on gpt.wasm.
 
 Usage: `uv run tools/gpt2.py --output-tokens 32 --prompt "It was a dark and stormy night"`,
-with `--top-k 40` to sample, and `--temperature` and `--seed` to control the sampling.
+with `--top-k 40` to sample, and `--temperature` and `--seed` to control the sampling.  The
+module is the verified compiler's build/verified/gpt.wasm, which tests/verified/run.sh writes,
+unless `--wasm` names another, such as the LeanExe compiler's build/gpt/gpt.wasm.
 
 The program tokenizes the prompt with the pinned `openai-community/gpt2` tokenizer, runs
 the compiled `step` on each prompt token in one host session that keeps the weights
@@ -34,7 +36,7 @@ from transformers import GPT2Config, GPT2TokenizerFast  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 HOST = ROOT / 'build/tools/leanexe-wasmtime-host'
-WASM = ROOT / 'build/gpt/gpt.wasm'
+WASM = ROOT / 'build/verified/gpt.wasm'
 WEIGHTS = ROOT / 'build/gpt2-124m'
 REPO = 'openai-community/gpt2'
 REVISION = '607a30d783dfa663caf39e06633721c8d4cfcd7e'
@@ -46,11 +48,11 @@ class Session:
     """A host session on gpt.wasm with the weights in allocations 1 to 20 and the empty
     cache in allocation 30."""
 
-    def __init__(self, config, scores_path):
+    def __init__(self, config, scores_path, wasm):
         self.config = config
         self.scores_path = scores_path
         self.eps = struct.unpack('<Q', struct.pack('<d', config.layer_norm_epsilon))[0]
-        self.proc = subprocess.Popen([str(HOST), 'session', str(WASM)], stdin=subprocess.PIPE,
+        self.proc = subprocess.Popen([str(HOST), 'session', str(wasm)], stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, text=True)
         for i, name in enumerate(NAMES):
             self.send(f'file-u64 {i + 1} {WEIGHTS / (name + ".u64")}')
@@ -140,6 +142,9 @@ def main():
     parser.add_argument('--seed', type=int,
                         help='the starting SplitMix64 state, 0 to 2^64 - 1 '
                         '(default: random, printed to stderr)')
+    parser.add_argument('--wasm', type=pathlib.Path, default=WASM,
+                        help='the module to run (default build/verified/gpt.wasm, the verified '
+                        "compiler's; build/gpt/gpt.wasm is the LeanExe compiler's)")
     args = parser.parse_args()
     if args.top_k is not None and not 1 <= args.top_k <= 1024:
         raise SystemExit('gpt2: --top-k must be from 1 to 1024')
@@ -152,10 +157,12 @@ def main():
         state = int.from_bytes(os.urandom(8), 'little')
         print(f'seed {state}', file=sys.stderr)
     for path, how in [(HOST, 'tools/build-wasmtime-host.sh'),
-                      (WASM, 'the Emit.lean command for Demos.Gpt.Module in docs/design.md'),
                       (WEIGHTS / 'revision', 'uv run tests/gpt/gpt2_compare.py')]:
         if not path.exists():
             raise SystemExit(f'gpt2: missing {path.relative_to(ROOT)}; create it with {how}')
+    if not args.wasm.exists():
+        raise SystemExit(f'gpt2: missing {args.wasm}; tests/verified/run.sh --cases gpt writes '
+                         'build/verified/gpt.wasm')
     if (WEIGHTS / 'revision').read_text() != REVISION:
         raise SystemExit('gpt2: build/gpt2-124m holds another revision; '
                          'rerun uv run tests/gpt/gpt2_compare.py')
@@ -167,7 +174,7 @@ def main():
     if args.output_tokens < 0 or len(ids) + args.output_tokens > config.n_positions:
         raise SystemExit(f'gpt2: the prompt and the output must fit in {config.n_positions} tokens')
     with tempfile.TemporaryDirectory() as tmp:
-        session = Session(config, pathlib.Path(tmp) / 'scores.u64')
+        session = Session(config, pathlib.Path(tmp) / 'scores.u64', args.wasm)
         cache = None
         for token in ids:
             cache = session.step(cache, token)

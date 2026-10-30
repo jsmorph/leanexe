@@ -12,7 +12,9 @@
 # ///
 """Compares gpt.wasm's `forward` with Hugging Face's GPT2LMHeadModel in float64.
 
-Run with `uv run tests/gpt/hf_compare.py [path/to/gpt.wasm]`.  The model uses the
+Run with `uv run tests/gpt/hf_compare.py [path/to/gpt.wasm]`.  Without a path the module is
+the verified compiler's build/verified/gpt.wasm, which tests/verified/run.sh writes, and
+build/gpt/gpt.wasm is the LeanExe compiler's.  The model uses the
 explicit ("eager") attention, no dropout, and every parameter drawn from a normal
 distribution with standard deviation 0.5, with 1 added to the layer-norm gains.  The
 same arrays and token ids go to `forward`, with `c_attn` split into its `q`, `k`, and
@@ -30,7 +32,7 @@ from transformers import GPT2Config, GPT2LMHeadModel
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HOST = ROOT / 'build/tools/leanexe-wasmtime-host'
-WASM = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build/gpt/gpt.wasm'
+WASM = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build/verified/gpt.wasm'
 EPS = 1e-5
 LIMIT = 1e-12
 

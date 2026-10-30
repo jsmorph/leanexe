@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Runs host sessions that call each gpt.wasm function that takes or holds arrays,
-# release the result and the inputs, and check that every allocation was freed.
+# release the result and the inputs, and check that every allocation was freed.  The module is
+# build/verified/gpt.wasm, which tests/verified/run.sh writes, unless a path is given, such as
+# build/gpt/gpt.wasm for the LeanExe compiler's module.
 # Usage: tests/gpt/sessions.sh [path/to/gpt.wasm]
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
-wasm=${1:-$root/build/gpt/gpt.wasm}
+wasm=${1:-$root/build/verified/gpt.wasm}
 host=$root/build/tools/leanexe-wasmtime-host
 if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
   echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2

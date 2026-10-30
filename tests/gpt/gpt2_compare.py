@@ -13,8 +13,9 @@
 """Runs gpt.wasm's `forward` on the GPT-2 124M weights and compares it with Hugging Face's
 GPT2LMHeadModel in float64.
 
-Run with `uv run tests/gpt/gpt2_compare.py [path/to/gpt.wasm]`.  The script downloads the
-pinned openai-community/gpt2 checkpoint, widens its float32 parameters to float64, and
+Run with `uv run tests/gpt/gpt2_compare.py [path/to/gpt.wasm]`.  Without a path the module
+is the verified compiler's build/verified/gpt.wasm, which tests/verified/run.sh writes, and
+build/gpt/gpt.wasm is the LeanExe compiler's.  The script downloads the pinned openai-community/gpt2 checkpoint, widens its float32 parameters to float64, and
 writes the arrays `forward` takes to build/gpt2-124m/, one file of little-endian words per
 array, with `c_attn` split into its `q`, `k`, and `v` columns and each of the sixteen
 layer arrays stacked layer after layer.  For each prompt it compares every score of
@@ -38,7 +39,7 @@ from transformers import GPT2LMHeadModel, GPT2TokenizerFast
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HOST = ROOT / 'build/tools/leanexe-wasmtime-host'
-WASM = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build/gpt/gpt.wasm'
+WASM = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build/verified/gpt.wasm'
 OUT = ROOT / 'build/gpt2-124m'
 REPO = 'openai-community/gpt2'
 REVISION = '607a30d783dfa663caf39e06633721c8d4cfcd7e'

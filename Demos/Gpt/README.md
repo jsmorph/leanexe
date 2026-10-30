@@ -50,9 +50,10 @@ mkdir -p build/gpt
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Demos.Gpt.Module Demos.Gpt.gpt.module build/gpt/gpt.wasm
 tools/leanrun --timeout 20m lake env lean Demos/Gpt/File.lean
-tests/gpt/run.sh
-uv run tests/gpt/gpt2_compare.py
-uv run tools/gpt2.py --output-tokens 8 --prompt "It was a dark and stormy night"
+tests/gpt/run.sh build/gpt/gpt.wasm
+uv run tests/gpt/gpt2_compare.py build/gpt/gpt.wasm
+uv run tools/gpt2.py --wasm build/gpt/gpt.wasm --output-tokens 8 \
+  --prompt "It was a dark and stormy night"
 ```
 
 The commands build the proofs, write the module, check that the file holds the proved bytes, and run
@@ -65,7 +66,9 @@ checkpoint, writes its weights to `build/gpt2-124m/`, about 1.0 GB, and compares
 cached generation with Hugging Face's `GPT2LMHeadModel` in float64, where the scores agree within
 about 1e-13 of the largest score.  [`tools/gpt2.py`](../../tools/gpt2.py) then generates text: the
 command above printed "It was a dark and stormy night. The wind was blowing, and the" in about 11
-seconds, and `--top-k`, `--temperature`, and `--seed` select top-k sampling.
+seconds, and `--top-k`, `--temperature`, and `--seed` select top-k sampling.  The commands pass
+the path of this module, because without one the drivers and `tools/gpt2.py` run the verified
+compiler's module, which the next section describes.
 
 ## The verified compiler's module
 
@@ -73,6 +76,9 @@ seconds, and `--top-k`, `--temperature`, and `--seed` select top-k sampling.
 `verified_compile`.  Its generated theorems establish execution, allocation bounds, trap-free
 execution under those bounds, and the module's encoded bytes.  `tests/verified/run.sh --cases gpt`
 builds and emits that module and runs the existing GPT corpus and session checks against it.
+Without a module path, `tests/gpt/run.sh`, `tests/gpt/sessions.sh`, the Python comparisons of
+`tests/gpt/`, `tools/gpt2.py`, and the sampler of [the GPT-2 browser page](../../tests/web/README.md)
+run this module from `build/verified/gpt.wasm`.
 
 [The generation theorems of the verified module](VerifiedGeneration.lean) state the host's calls
 of `step` and `scores` on `compiled.module` with [the host's definitions](Host.lean), which the

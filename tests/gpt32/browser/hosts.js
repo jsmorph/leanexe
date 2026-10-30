@@ -238,10 +238,11 @@ export class WasmHost {
   close() {}
 }
 
-/** Top-k sampling with `sampleTopK` of gpt.wasm, the binary64 model's module, which
-`sampleTopK_implements` proves computes `Demos.Gpt.sampleTopK`: the scores, widened
-to binary64, `k`, the temperature, and a SplitMix64 state give the token and the next state.  It
-borrows the scores, so the caller releases them. */
+/** Top-k sampling with `sampleTopK` of gpt.wasm, the binary64 model's module.
+`compiled.sampleTopK.implements` of `Demos.Gpt.Verified` proves for the verified compiler's module,
+and `sampleTopK_implements` for the LeanExe compiler's, that it computes `Demos.Gpt.sampleTopK`: the
+scores, widened to binary64, `k`, the temperature, and a SplitMix64 state give the token and the
+next state.  It borrows the scores, so the caller releases them. */
 export class Sampler {
   static async open(path) {
     const { instance } = await WebAssembly.instantiateStreaming(fetch(path, { cache: "no-store" }));
