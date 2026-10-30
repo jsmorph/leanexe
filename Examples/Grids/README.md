@@ -21,7 +21,7 @@ components.
 | Theorem | Statement |
 |---------|-----------|
 | `density_implements` … `totalDensity_implements` | Each of functions 2 to 15 of `grids.module` implements its Lean function, with the arrays in memory in the flat layout. |
-| `rampElement_words`, `scaledElement_words` | The words of the element records that `ramp` and `scaled` build, with the float fields as bit patterns. |
+| `rampElement_words`, `scaledElement_words` | Words of the element records that `ramp` and `scaled` build, with the float fields as bit patterns. |
 | `grids_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements all fourteen functions. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,

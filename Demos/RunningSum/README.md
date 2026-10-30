@@ -31,20 +31,20 @@ Each completed line produces output before the next blocking read.
 | [Parser correctness](Parsing.lean) | Optional sign and CR syntax, acceptance, integer value, and normalization. |
 | [Addition correctness](Addition.lean) | Signed integer addition, including cancellation and negative zero. |
 | [Renderer correctness](Rendering.lean) | Canonical signed decimal encoding from `Nat.digits`, followed by LF. |
-| [Line kernel](Kernel.lean) | The line kernel and its specification for [the shared stream proofs](../StreamFold/README.md): normal totals, size room, and nonempty output. |
+| [Line kernel](Kernel.lean) | Line kernel and its specification for [the shared stream proofs](../StreamFold/README.md): normal totals, size room, and nonempty output. |
 | [Line model and size bounds](Model.lean) | `InputBounds`, the line rooms that it implies, and the outputs and status of the kernel's fold over the input lines. |
 | [Arithmetic compilation](Compiled.lean) | Verified compilation of the six pure arithmetic functions. |
 | [Stream process](Stream.lean) | Buffered input, pending output, error handling, and the EOF process. |
-| [Stream view](StreamView.lean) and [termination](Termination.lean) | The relation between the process and the shared stream process, and the progress of each step. |
+| [Stream view](StreamView.lean) and [termination](Termination.lean) | Relation between the process and the shared stream process, and the progress of each step. |
 | [Action compilation](Wasi.lean) | Reflection and source-correspondence proofs for the bounded effectful steps. |
-| [Command module](Module.lean) | The unbounded Wasm loop, stack admission check, binary encoding, and validity proofs. |
+| [Command module](Module.lean) | Unbounded Wasm loop, stack admission check, binary encoding, and validity proofs. |
 | [Process refinement](Proof.lean) | Initial-store invariants, native-process correspondence, `_start` partial refinement, and the byte theorem. |
 | [Integer process correctness](StreamCorrect.lean) | `InputValues`, native process termination, and the canonical cumulative output of the lines before the first rejected line. |
 | [Compiled termination](TerminationTarget.lean) | Well-founded process progress, an invariant of the reached states, typed allocation charges, and accepted exit. |
 | [Limits and invariant](Limits.lean) | `InputLimits L D`, the kernel specification `limitSpec L D`, the invariant `LimitInv L D` of the reached states, and the sizes of every state that a step returns. |
-| [Charges](Charges.lean) | The allocation charges of `begin` and of each step, from the generated bounds of the pure functions, the bound of 4,320 bytes on the charge of `begin`, and the bound `stepCharge L D` on the charge of a step from a state within the limits. |
+| [Charges](Charges.lean) | Allocation charges of `begin` and of each step, from the generated bounds of the pure functions, the bound of 4,320 bytes on the charge of `begin`, and the bound `stepCharge L D` on the charge of a step from a state within the limits. |
 | [Compiled integer correctness](Correct.lean) | Cumulative stdout and eventual accepted exit with status 0 or 28 from the modeled initial store, with an encoded-byte theorem. |
-| [Native executable](Native.lean) | The same process with a [POSIX fd 0 reader](read.c) and flushed Lean output streams. |
+| [Native executable](Native.lean) | Same process with a [POSIX fd 0 reader](read.c) and flushed Lean output streams. |
 
 `parse_correct`, `add_correct`, and `render_correct` relate the decimal arithmetic to `Int`.
 `InputValues input values status` holds when `values` are the integers of the input lines before

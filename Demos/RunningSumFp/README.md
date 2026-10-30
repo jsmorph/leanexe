@@ -45,17 +45,17 @@ signed zero, infinities, and canonical NaNs.
 | [Numeric operations](Program.lean) | CR removal, the existing general binary64 parser, and scientific rendering with LF. |
 | [Arithmetic correspondence](ArithmeticProof.lean) | Parser acceptance and bits, binary64 addition, and renderer properties. |
 | [Stream process](Stream.lean) | Buffered input, partial lines, pending output, EOF, and error handling. |
-| [Stream view](StreamView.lean), [kernel](Kernel.lean), and [termination](Termination.lean) | The relation between the process and [the shared stream process](../StreamFold/README.md), the line kernel's specification, and the progress of each step. |
+| [Stream view](StreamView.lean), [kernel](Kernel.lean), and [termination](Termination.lean) | Relation between the process and [the shared stream process](../StreamFold/README.md), the line kernel's specification, and the progress of each step. |
 | [Line model](Model.lean) | `ShortLines`, the line rooms that it implies, and the outputs and status of the kernel's fold over the input lines. |
 | [Line limit](Limits.lean) | `InputLimits L`, the kernel specification `limitSpec L`, the invariant `LimitInv L` of the reached states, and the sizes of every state that a step returns. |
 | [Action compilation](Wasi.lean) | Pure helper compilation and reflected effectful begin/step functions. |
-| [Command module](Module.lean) | The unbounded Wasm loop, stack admission check, encoding, and validity proofs. |
+| [Command module](Module.lean) | Unbounded Wasm loop, stack admission check, encoding, and validity proofs. |
 | [Process refinement](Proof.lean) | Native-process correspondence, modeled initial store, `_start` partial refinement, and byte theorem. |
 | [Printer charges](PrintCharges.lean) and [parser charges](ParseCharges.lean) | Bounds on the generated allocation bounds of the multiprecision arithmetic, the printer, and the parser, with the sizes of their arrays. |
-| [Step charges](Charges.lean) | The charges of `begin` and of each step, and their bound for states within the limit. |
+| [Step charges](Charges.lean) | Charges of `begin` and of each step, and their bound for states within the limit. |
 | [Stream correctness](StreamCorrect.lean) | `InputValues`, sequential binary64 output of the lines before the first rejected line, and source process termination. |
-| [Compiled correctness](Correct.lean) | The charges derived from the limit, and eventual accepted exit with status 0 or 28 and the sequential binary64 output from the modeled initial store. |
-| [Native executable](Native.lean) | The same process with the shared [POSIX fd 0 reader](../RunningSum/read.c) and flushed output streams. |
+| [Compiled correctness](Correct.lean) | Charges derived from the limit, and eventual accepted exit with status 0 or 28 and the sequential binary64 output from the modeled initial store. |
+| [Native executable](Native.lean) | Same process with the shared [POSIX fd 0 reader](../RunningSum/read.c) and flushed output streams. |
 
 `InputValues input numbers status` holds when `numbers` are the numbers that the input lines
 denote before the first line that denotes none, with `status` 0 when every line denotes a number
@@ -127,7 +127,7 @@ overflow, signed zero, NaNs, and infinities.
 | Native process and Wasmtime | The 29-case corpus covers finite rounding, cancellation, subnormals, arithmetic overflow, signed zero, nonfinite values, input framing, and rejection.  Scripted native streams add transfer partitions and errors. |
 | Talos | Eight cases in the same Float module cover split reads, short and zero-byte writes, committed error and trap prefixes, invalid lines, and exit rejection.  Numeric paths use signed zero, underflow to zero, infinities, and NaN propagation. |
 | Interactive native and Wasmtime | Output before the next read and before EOF. |
-| I/O errors in native and Wasmtime | A directory as stdin and, where it exists, `/dev/full` as stdout.  Wasmtime exits with WASI errno 31 or 51, and the native executable exits with status 1. |
+| I/O errors in native and Wasmtime | Directory as stdin and, where it exists, `/dev/full` as stdout.  Wasmtime exits with WASI errno 31 or 51, and the native executable exits with status 1. |
 
 [Talos's memory model](https://github.com/jsmorph/talos/blob/87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47/interpreter/Interpreter/Wasm/Mem.lean)
 represents bytes with a lookup function.  Each write wraps the previous function, so reads can

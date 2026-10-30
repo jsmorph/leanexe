@@ -26,7 +26,7 @@ proves.
 | Theorem | Statement |
 |---------|-----------|
 | `trees_bytes` | `encode` succeeds on `trees.module`, and the decoded module implements its seventeen functions, from `KeyTree.size` to `KeyTree.keyPair`. |
-| `treeMoves_bytes` | The same for the eighteen functions of `treeMoves.module`, each with its consumed tree of type `Moved KeyTree`. |
+| `treeMoves_bytes` | Same for the eighteen functions of `treeMoves.module`, each with its consumed tree of type `Moved KeyTree`. |
 | `copy_rec` in [`Copy.lean`](Copy.lean) | At any index of any module, the generated copy function, called on a borrowed tree at any depth, stops at `unreachable` or returns a pointer to an equal tree in new records, and keeps every region of the heap. |
 
 The proofs are in [`Verify.lean`](Verify.lean), [`MovesVerify.lean`](MovesVerify.lean),

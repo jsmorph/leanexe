@@ -15,7 +15,7 @@ LeanExe writes eight kinds of artifact, and a Lean theorem covers each kind in o
 | C | C file and its native executable | `native-verified build MODULE CONSTANT NAME DIR` writes `NAME.c` and its glue, has `clightgen` read the C back, compares that Clight with the translation, and compiles `NAME.o` with `ccomp` only when they agree, and `ccomp` links the object with [the C host](tools/native-host.c) | `p.f.native`, stated as `NativeImpl`, `NativeTablesImpl`, or `NativeStaticImpl`: the C function terminates with the words of the Lean result or, when the function may abort, with a trap code, in the Lean copy of Clight | Linux on AArch64 and on x86-64, where the tests run the x86-64 executables under `qemu-x86_64` | `verified_compile` modules of the registry, [packed byte values](Verified/Examples/Bytes.lean), and [byte literals](Verified/Examples/Literals.lean) |
 | A | C file without the alignment test | `native-verified build --aligned`, which refuses with status 4 a module whose theorems do not cover that translation | `p.f.nativeAligned`, stated as `NativeAlignedImpl` or `NativeTablesAlignedImpl`, from an aligned input, in the Lean copy of Clight | Linux on AArch64 and on x86-64 | [SHA-256](Library/Hashing/Sha256/Compiled.lean), [SHA-3](Library/Hashing/Sha3/Compiled.lean), [CRC](Library/Hashing/Crc/Compiled.lean), [insertion sort](Library/Sorting/Insertion/Compiled.lean), [Euler solvers](Demos/Euler/Verified.lean), and [binary32 GPT-2](Demos/Gpt32/Verified.lean) |
 | B | Bare-metal AArch64 image | `native-bare emit` or `emit-in` writes the translation with a generated `main`, `native-bare check` or `check-in` compares the Clight of `clightgen` with the whole program, and [the bare-metal build](tools/baremetal/build.sh) links it with the startup code | `p.f.program`, which `bare_program` proves, and `sha256_input`: the whole program terminates with the stores of the result's bytes to the UART, in the Lean copy of Clight, and [the Rocq composition](rocq/Clight2Asm.v) carries such a termination to Asm | QEMU's `virt` machine under TCG and under KVM | [GCD](tests/TestSupport/Bare/Gcd.lean), [CRC-32, SHA-256, Euler, and a deep recursion](tests/TestSupport/Bare/Theorems.lean), and [SHA-256 of a loaded message](tests/TestSupport/Bare/Input.lean) |
-| G | WGSL kernel | [`tools/EmitWgsl.lean`](tools/EmitWgsl.lean) prints the kernel after checking that the parser reads the text back | Dispatch theorem, such as `scaleKernel_dispatch` or `gpu.dispatch_eq`: the dispatch writes the Lean function's result and is race-free, in the WGSL device model with strict binary32 arithmetic | wgpu-native through `build/tools/leanexe-webgpu-host` on SwiftShader and llvmpipe, and WebGPU in a browser | [The binary32 example](Examples/Binary32/README.md), [binary32 GPT-2](Demos/Gpt32/README.md), and [the verified kernel examples](Verified/Examples/Wgsl.lean) |
+| G | WGSL kernel | [`tools/EmitWgsl.lean`](tools/EmitWgsl.lean) prints the kernel after checking that the parser reads the text back | Dispatch theorem, such as `scaleKernel_dispatch` or `gpu.dispatch_eq`: the dispatch writes the Lean function's result and is race-free, in the WGSL device model with strict binary32 arithmetic | wgpu-native through `build/tools/leanexe-webgpu-host` on SwiftShader and llvmpipe, and WebGPU in a browser | [Binary32 example](Examples/Binary32/README.md), [binary32 GPT-2](Demos/Gpt32/README.md), and [the verified kernel examples](Verified/Examples/Wgsl.lean) |
 
 ### Properties carried to the artifacts
 
@@ -156,12 +156,12 @@ A bare-metal program is the translation of a module, a volatile global `lx_out` 
 
 | Program | Entry and arguments | Theorem |
 |---|---|---|
-| GCD | `gcd 1071 462` of test support, whose tail recursion compiles as a loop | [The GCD program](tests/TestSupport/Bare/Gcd.lean) |
-| CRC-32 | `crcCheck` of the ASCII digits 1 to 9, from the library's `crcWith` and table | [The program theorems](tests/TestSupport/Bare/Theorems.lean) |
-| SHA-256 of a constant | `shaCheck` of `abc`, from the library's `sha256With` and round constants | [The program theorems](tests/TestSupport/Bare/Theorems.lean) |
-| Euler solver | `solve 16` of the verified Euler module | [The program theorems](tests/TestSupport/Bare/Theorems.lean) |
-| Deep recursion | `recursive 1000` of [the fold example](Verified/Examples/Fold.lean), which reaches the depth limit | [The program theorems](tests/TestSupport/Bare/Theorems.lean) |
-| SHA-256 with input | The library export `sha256` on a message of at most `2^24 - 8` bytes that QEMU's loader places at `lx_in` | `sha256_input` in [the input program](tests/TestSupport/Bare/Input.lean) |
+| GCD | `gcd 1071 462` of test support, whose tail recursion compiles as a loop | [GCD program](tests/TestSupport/Bare/Gcd.lean) |
+| CRC-32 | `crcCheck` of the ASCII digits 1 to 9, from the library's `crcWith` and table | [Program theorems](tests/TestSupport/Bare/Theorems.lean) |
+| SHA-256 of a constant | `shaCheck` of `abc`, from the library's `sha256With` and round constants | [Program theorems](tests/TestSupport/Bare/Theorems.lean) |
+| Euler solver | `solve 16` of the verified Euler module | [Program theorems](tests/TestSupport/Bare/Theorems.lean) |
+| Deep recursion | `recursive 1000` of [the fold example](Verified/Examples/Fold.lean), which reaches the depth limit | [Program theorems](tests/TestSupport/Bare/Theorems.lean) |
+| SHA-256 with input | Library export `sha256` on a message of at most `2^24 - 8` bytes that QEMU's loader places at `lx_in` | `sha256_input` in [the input program](tests/TestSupport/Bare/Input.lean) |
 
 `tests/baremetal/programs.sh` and `tests/baremetal/inputs.sh` run these programs on QEMU's `virt` machine, under TCG on an emulated Cortex-A57 by default and, with `ACCEL=kvm`, under KVM on AArch64 hardware.  Each run must write the bytes of the Lean result and exit with the expected status, and its stack's high-water mark must stay within the bound of `main`.  `tests/baremetal/verified.sh` runs the cases of every module of the registry on the emulated Cortex-A57 without libc or an operating system, and it fails a call whose stack exceeds its function's static bound.
 
@@ -184,8 +184,8 @@ Floating-point theorems use WebAssembly's deterministic profile, and the Wasmtim
 | [Verified compiler internals](Verified/README.md) | Code scheme, proof structure, and reflector. |
 | [WASI manual](docs/wasi.md) | Native action and byte APIs, `verified_compile_wasi`, callable and command exports, execution proofs, host policies, and tests. |
 | [WASI design](docs/verified-wasi-design.md) | Reviewed architecture, pinned sources, host assumptions, proof boundaries, acceptance work, and design decisions. |
-| [Wasm-to-C translator design](docs/native-translator.md) | The C subset and its Lean semantics, the translation, `p.f.native`, the translation without the alignment test, the trusted base of the native path, and milestones. |
-| [Bare-metal design](docs/native-bare-metal.md) | The generated `main`, the whole-program theorem, the Rocq step to Asm, the startup code, inputs, the stack bound, the trusted base, and tests. |
+| [Wasm-to-C translator design](docs/native-translator.md) | C subset and its Lean semantics, the translation, `p.f.native`, the translation without the alignment test, the trusted base of the native path, and milestones. |
+| [Bare-metal design](docs/native-bare-metal.md) | Generated `main`, the whole-program theorem, the Rocq step to Asm, the startup code, inputs, the stack bound, the trusted base, and tests. |
 | [Design document](docs/design.md) | Architecture, decisions, proof scope, tests, and open work. |
 | [Development journal](devnotes.md) | Record of the work. |
 | [Algorithm library](Library/README.md) | Native algorithms, compilation modules, mathematical proofs, and imports. |
@@ -196,15 +196,15 @@ Floating-point theorems use WebAssembly's deterministic profile, and the Wasmtim
 
 | Directory | Contents |
 |---|---|
-| [Shared libraries and LeanExe compiler](LeanExe) | The dialect, original compiler and IR, runtime, correctness statements, encoding, proof lemmas, shared WGSL translation, the WASI action API, and the translator to C with its Lean copy of Clight and its proofs. |
-| [Verified compiler](Verified) | The typed source language, compiler, universal proof, reflector, alignment proof, WGSL lowering, WASI compiler, native and bare-metal theorem generation, and compiled examples. |
+| [Shared libraries and LeanExe compiler](LeanExe) | Dialect, original compiler and IR, runtime, correctness statements, encoding, proof lemmas, shared WGSL translation, the WASI action API, and the translator to C with its Lean copy of Clight and its proofs. |
+| [Verified compiler](Verified) | Typed source language, compiler, universal proof, reflector, alignment proof, WGSL lowering, WASI compiler, native and bare-metal theorem generation, and compiled examples. |
 | [Reusable algorithms](Library/README.md) | Implementations, mathematical specifications, accuracy and period proofs, and compiler proofs, grouped by algorithm family. |
 | [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, the order book, the slew planner, and integer and binary64 running sums, with application proofs and host programs. |
 | [Compiler examples](Examples) | Small programs, specifications, proofs, and cases that demonstrate compiler features. |
-| [Manuals and design](docs) | The compiler manuals, the WASI, translator, and bare-metal designs, and the design document. |
-| [Proof guidance](ltg) | The LTG knowledge base and its declaration checker. |
-| [Rocq proofs](rocq) | The composition of CompCert's proofs from Clight to Asm and the uniqueness lemmas, checked against a CompCert 3.18 tree. |
-| [Tools](tools) | The Lean runner, module and shader emitters, execution hosts, the native host, the bare-metal startup code and checks, build scripts, and application tools. |
+| [Manuals and design](docs) | Compiler manuals, the WASI, translator, and bare-metal designs, and the design document. |
+| [Proof guidance](ltg) | LTG knowledge base and its declaration checker. |
+| [Rocq proofs](rocq) | Composition of CompCert's proofs from Clight to Asm and the uniqueness lemmas, checked against a CompCert 3.18 tree. |
+| [Tools](tools) | Lean runner, module and shader emitters, execution hosts, the native host, the bare-metal startup code and checks, build scripts, and application tools. |
 | [Tests](tests) | Module, decoder, numerical, allocation, WASI, native, bare-metal, GPU, and complete-generation tests, plus the browser pages. |
 | [Run records](data), [reports](paper) | Measurements, reproduction records, papers, and their review history. |
 

@@ -29,17 +29,17 @@ capitalized, and every file of the run is in `Examples/Name/`.
 
 | File | Contents |
 |------|----------|
-| `request.txt` | The request, as the user wrote it. |
+| `request.txt` | Request, as the user wrote it. |
 | `Spec.lean` | `Examples.Name.expected` in ordinary Lean.  Mathlib is allowed. |
 | `Samples.lean` | `Examples.Name.samples : List α`, core Lean only. |
-| `Program.lean` | The program in `Examples.Name`, with entry `compute`.  It imports the dialect and any native library programs it uses. |
+| `Program.lean` | Program in `Examples.Name`, with entry `compute`.  It imports the dialect and any native library programs it uses. |
 | `Module.lean` | `leanexe_compile NAME := [f, …, compute]` or `leanexe_compile NAME := compute`. |
 | `Verify.lean` | `compute_eq`, the `Implements` theorems, and `NAME_bytes`. |
-| `Cases.lean` | The module cases, printed from the samples. |
-| `review.md` | The independent review of the specification. |
+| `Cases.lean` | Module cases, printed from the samples. |
+| `review.md` | Independent review of the specification. |
 | `spec.sha256` | Written by `tools/demo-check --freeze`. |
-| `journal.md` | The journal of the run. |
-| `README.md` | The description of the result. |
+| `journal.md` | Journal of the run. |
+| `README.md` | Description of the result. |
 
 `expected` has type `α → β`, where `α` is `UInt64`, `Array UInt64`, or a tuple of these, one
 component per parameter of `compute` in order, and `β` is `UInt64` or `Array UInt64`.  Other types

@@ -166,7 +166,7 @@ The user reviewed the statement on 2026-10-10, and the review found four limits.
 | File | Content |
 |---|---|
 | [One step against the full reference](LeanExe/ProofKit/F64FullStep.lean) | One step between a word and the nearest-even reference, with the range allowed to end at positive infinity. |
-| [Multiplication by a power of two](LeanExe/ProofKit/F64PowerScale.lean) | The exact product or infinity, and `dyadic_shifted_exact`, moved from `ExpReductionExact`. |
+| [Multiplication by a power of two](LeanExe/ProofKit/F64PowerScale.lean) | Exact product or infinity, and `dyadic_shifted_exact`, moved from `ExpReductionExact`. |
 | [Grid exactness](LeanExe/ProofKit/F64GridExact.lean) | Exact sums and differences on a grid, moved from `ExpReductionExact`, and rounding of a positive sum within one binade with the half-ulp bound. |
 | [Reconstruction one step](Library/Numerics/Float64/Exp/ExpOneStep.lean) | One step from the `(7/5) u 2^q H j` reconstruction bound, including the top binade next to infinity. |
 | [Exponent, magnitude, and sign](LeanExe/ProofKit/F64Magnitude.lean) | Bounds between a word's exponent field and the magnitude of its value, the sign bit and the sign of the value, the value of a positive normal word, the words of zero, and sums of scaled values. |
@@ -212,7 +212,7 @@ The user delegated these decisions on 2026-10-10: Opus follows the precedent of 
 
 | Decision | Choice |
 |---|---|
-| Inventory and order | The stages in the agenda, with stage 2 first.  Independent tracks run at once. |
+| Inventory and order | Stages in the agenda, with stage 2 first.  Independent tracks run at once. |
 | Numerical guarantees | `F64SignedRounding.WithinSteps n` with the `n` of the table of functions: one step where the implementation allows it, two for `atan2`, `asinh`, `acosh`, and `atanh`, and three for `tanh` and `sinh`, whose proofs compose worst-case bounds and reach three where sampling finds two.  `erfc` moves to CORE-MATH with one step.  The two-step allowance is about 0.74 times the composed error bound for `tanh` near `atanh(1/2)` and 0.83 times that bound for `sinh` near `\|x\| = 0.443`.  The Bessel functions get a bound in units of the modulus `√(J² + Y²)`, since no permissively licensed implementation reaches a step bound next to their zeros and the distance of every zero from its nearest doubles has not been computed. |
 | Library placement | `Verified.Examples`, as for `exp`. |
 | Gamma API | `Tgamma.tgamma : Float → Float`, `Lgamma.lgammaR : Float → Float × Float` returning `log \|Γ x\|` and the sign of `Γ x` as ±1, with CORE-MATH's choice of -1 at the negative integers, where `lgamma` is `+∞`, and `Lgamma.lgamma x := (lgammaR x).1`, from CORE-MATH (MIT) with a software fused multiply-add, since WebAssembly has no deterministic one.  fdlibm's `lgamma` errs by up to 4.45e15 units next to its negative zeros. |
