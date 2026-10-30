@@ -39179,4 +39179,42 @@ The full driver passed in 48 minutes after the conversion.  It wrote all 115 reg
 
 - [x] The command `file_theorems` and the lemma `decode_eq_of_file`.
 - [x] The 32 registry file modules and the GPT file module, with `gpt_file_decode`.
-- [ ] Decide whether file theorems cover all 115 registry modules, from the measurements above.
+- [x] Decide whether file theorems cover all 115 registry modules, from the measurements above.
+
+## 2026-10-30: File theorems for the module registry
+
+Every module of [the module registry](tests/verified/modules.txt) that has `p.bytes` now has a file module.  The 77 new file modules join the 32 of the previous entry, so [the file-theorem registry](tests/verified/numerics.txt) lists 109 of the 116 registry modules.  A script wrote each new module beside its module, as `File.lean` in a directory of its own, as `BASEFile.lean` in `Verified/Examples`, and as `VerifiedFile.lean` for the verified GPT-2 module, since `Demos/Gpt/File.lean` holds the file theorems of the LeanExe compiler's `gpt.wasm`.  Each holds one command, `file_theorems NAME p "…/build/verified/NAME.wasm" from p.bytes`, with `p` written relative to the namespace of the module.
+
+Seven registry modules have no file module.  The six that are built in the source language or in WebAssembly without the reflector, `Composition`, `Relocation`, `TailCore`, `TreeCore`, `Tuples`, and `TreeCopy`, have no `p.bytes`, and `byHand` of `Modes` is the constant `byHandModule`, which the command cannot name as `p.module`.  The registry name `repeat` is a keyword of Lean, so its file module writes the name as `«repeat»`, and its theorems are `repeat_file` and `repeat_file_decode`.  The script refuses any other constant that does not end in `.module` and any path that exists.
+
+The new entries went into `numerics.txt` rather than a second registry.  The driver reads that file for its build targets and for its loop of file checks, and the documents already call it the file-theorem registry, so a second file would have needed a second loop in the driver.  The name of the file predates the hash functions, the matcher, and the slew planner that it already held.
+
+The branch was rebased onto the generic call theorem of [the call module](Verified/Call.lean), through which the byte theorems of the hash functions, the matcher, and the exponential now pass.  The rebuild took 21 minutes, and the 33 file modules of the previous entry then checked again unchanged, each with two reports of the three permitted axioms.  Their elapsed times were 2.9 to 7.3 seconds, with a median of 3.5.
+
+Each file module was checked alone with `lake env lean -Dprofiler=true` at eight threads, after the registry's modules were written.  Every one of the 109 passed, and each of the 218 theorems reports only `propext`, `Classical.choice`, and `Quot.sound`.  The previous entry's fit predicted about 41 seconds of kernel time for the other modules, and the 77 new ones took 42 seconds.  Over all 109 modules, the type-checking time fits 0.10 seconds plus 112 milliseconds per KiB of the file.
+
+| Measure | 32 modules of the previous entry | 77 new modules | All 109 |
+|---|---|---|---|
+| File size | 2.4 to 39.6 KiB, total 320 KiB | 1.4 to 29.3 KiB, total 299 KiB | Total 619 KiB |
+| Elapsed seconds | 2.92 to 7.72, median 3.45, total 129 | 2.65 to 7.03, median 2.95, total 241 | 2.65 to 7.72, median 3.03, total 370 |
+| Type-checking seconds | 0.34 to 3.60, median 0.80, total 37 | 0.17 to 4.23, median 0.36, total 42 | 0.17 to 4.23, median 0.48, total 80 |
+| Peak resident memory | 4.35 to 8.68 GiB, median 4.55 GiB | 4.29 to 5.46 GiB, median 4.34 GiB | 4.29 to 8.68 GiB, median 4.39 GiB |
+
+The full driver passed in 54 minutes, against 48 minutes for the run of the previous entry, which checked 32 file modules before the rebase.  It wrote all 116 registry modules, checked the 109 file modules, each with two reports of the three permitted axioms, and passed all 37,680 corpus cases, 21 more than before, from the running-maximum example.  It also passed the GPT cases and sessions, the Euler and shape modules, the slew planner's edges and its axiom audit, the heap-sum and typed-tree audits, and every accuracy check.  The 77 added file checks took 241 seconds when run alone, about four of the six added minutes.
+
+The documents now count the new file theorems.  The README's artifact table gives 109 of the 116 registry modules, [the trusted-base document](docs/trusted-base.md#f-emitted-files-with-file-theorems) gives the same count and names the seven without a file module, the README's table of properties carries the allocation bounds and the return without a trap to F through `NAME_file_decode`, and the verified manual and scope item 4 of [the design document](docs/design.md#scope-of-the-theorem) describe the same registry.  A script gave F to the 118 rows of [the index](index.md) that link a module of the file-theorem registry and lacked it, and it checked that every such row has F among its own codes and that every row with its own F links such a module.  The rows of `dot`, `matVec`, `matMul`, `matMulT`, `add`, `splitMix`, and `unitFloat`, in which the GPT-2 application had contributed F, now have F of their own, so their parenthesized groups drop it.  Two references of the trusted-base document to scope item 4 now give its line, 332.
+
+[The VKB](VKB/README.md) admits the entry `file-theorems`, which tells a prover how to write a file module for a new registry module and what fails.  It names the command and the lemmas of [the file-bytes module](LeanExe/Pipeline/FileBytes.lean) and lists no example, since a file module reads its file at elaboration and the check imports no such module.  The README names four file modules as worked examples.
+
+| Check | Result |
+|---|---|
+| Rebuild after the rebase: the six libraries, the 40 test executables, and the 31 theorem modules of the file-theorem registry | Passed, 15,428 jobs |
+| Re-check of the 33 file modules of the previous entry after the rebase | Passed, with two reports of the three axioms each |
+| Each of the 109 registry file modules and the GPT file module, alone | Passed, with two reports of the three axioms each |
+| `tests/verified/run.sh` | Passed in 54 minutes, with the 109 file modules, 37,680 corpus cases, and every axiom and accuracy check |
+| `VKB/Check.lean` on `VKB/entries` | 22 entries, no problem reported |
+
+- [x] File modules for the 77 registry modules with `p.bytes`, registered in `numerics.txt`.
+- [x] The F codes of the index and the counts of the documents.
+- [x] The VKB entry `file-theorems`.
+- [ ] Decide whether the six modules built without the reflector get file modules without `from`, which the command proves through `decode_encode`.
