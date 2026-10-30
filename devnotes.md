@@ -39565,3 +39565,7 @@ The build, the emissions, and the drivers ran on AArch64 on the tree of the port
 - [x] The verified manual, the index, the guides, and the counts of the documents.
 - [ ] Decide whether `match` on a `Bool`, and patterns that fix a `Bool` field, get a rule, which no example needs now.
 - [ ] Decide whether the rule applies only to structures with a `Flat` instance, so that a match on word literals stops with `unsupported term` as before, a change to the compiler with its own byte comparison.
+
+## 2026-10-30: The version that CompCert 3.18 reports
+
+The CompCert release archive whose SHA-256 digest the translator's notes record, `564b312b3ed3162f02605f0108feb555bd28fe7a80b97ea269c546bcc60c1cf0`, holds a `VERSION` file that reads `version=3.17`, while the first entry of its `Changelog.md` is "Release 3.18".  The drivers built from it therefore report version 3.17, as the port of `Calc` observed when it ran `tests/native/verified.sh`.  The sources are those of release 3.18, the version that the documents name, and the archive's own `VERSION` file is out of date.
