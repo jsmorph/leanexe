@@ -39344,7 +39344,7 @@ The driver's comments were revised after that run, and its commands were not.  A
 
 - [x] `tests/talos/run.sh`, its run, and the comparison with the counts of 2026-10-10.
 - [x] The trusted base, the verified manual, and the test guide.
-- [ ] A step for the driver in `tools/full-check`.
+- [x] A step for the driver in `tools/full-check`.
 
 ## 2026-10-30: The example ports to the verified compiler
 
@@ -39493,3 +39493,9 @@ The second run, from 17:05 to 19:28 UTC with `LEANRUN_THREADS=8`, `LEANRUN_MEMOR
 - [x] `tools/full-check` and the first `STATUS.md`.
 - [ ] Run the driver halves of the GPU steps where the Vulkan drivers are present.
 - [ ] Run the full check on a commit that includes the file theorems of the registry modules.
+
+## 2026-10-30: The Talos driver in the full check
+
+`tools/full-check` now runs [Talos's conformance driver](tests/talos/run.sh) after the GPU steps and records its command counts and whether its report equals the one that CodeLib commits.  The step builds its own target, `testsuite`, so it runs after a failed build as `rocq/check.sh` does.  Where `wasm-tools` is missing or CodeLib's `vendor/testsuite` submodule is not initialized at the revision CodeLib records, the record lists the step as not run with that reason.  The step's parsing was tested against the output of the driver's second run, whose lines give 64,751 passes, 0 failures, and 346 skips, and the next full check will run the step itself.
+
+- [x] The Talos step of `tools/full-check`.

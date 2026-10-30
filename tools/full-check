@@ -484,6 +484,28 @@ step_rocq() {
   fi
 }
 
+step_talos() {
+  local step='`tests/talos/run.sh`' cell="" pass fail skip
+  if ! have wasm-tools; then
+    record "$step" "not run: wasm-tools absent" "" ""
+  elif [ "$(git -C .lake/packages/CodeLib submodule status vendor/testsuite 2>/dev/null |
+      cut -c1)" != " " ]; then
+    record "$step" "not run: the WebAssembly testsuite absent" "" ""
+  else
+    run 9-talos tests/talos/run.sh
+    pass=$(last '^talos: pass ([0-9]+)$' '\1' "$log")
+    fail=$(last '^talos: fail ([0-9]+)$' '\1' "$log")
+    skip=$(last '^talos: skip ([0-9]+)$' '\1' "$log")
+    if [ -n "$pass" ]; then
+      cell="$(c "$pass") commands passed, $(c "$fail") failed, $(c "$skip") skipped"
+      if grep -q -E "^talos: the report of [0-9]+ commands equals" "$log"; then
+        cell+="; report equal to CodeLib's"
+      fi
+    fi
+    record "$step" "$(outcome)" "$seconds" "$cell"
+  fi
+}
+
 step_gpu() {
   local mode dir step cell drivers=present driver
   # The Vulkan drivers and the host of tests/wgsl/run.sh and tests/gpt32/native.sh.
@@ -679,6 +701,7 @@ main() {
   step_vkb
   step_rocq
   step_gpu
+  step_talos
   finished=$(date -u '+%Y-%m-%d %H:%M UTC')
   write_status
   if [ "$failures" -ne 0 ]; then
