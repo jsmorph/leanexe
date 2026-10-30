@@ -1,0 +1,32 @@
+{
+  "id": "clight-determinism",
+  "goals": [
+    "exec_stmt A X ge e le m s t le₁ m₁ out₁ → exec_stmt A X ge e le m s t le₂ m₂ out₂ → le₁ = le₂ ∧ m₁ = m₂ ∧ out₁ = out₂",
+    "eval_funcall A X ge m f vargs t m₁ v₁ → eval_funcall A X ge m f vargs t m₂ v₂ → m₁ = m₂ ∧ v₁ = v₂",
+    "eval_expr A ge e le m a v₁ → eval_expr A ge e le m a v₂ → v₁ = v₂",
+    "bigstep_program_terminates A X p t r₁ → bigstep_program_terminates A X p t r₂ → r₁ = r₂"
+  ],
+  "modules": [
+    "LeanExe.Native.Clight.Determinism",
+    "LeanExe.Native.Proof.Unique"
+  ],
+  "declarations": [
+    "LClight.ExtSem.Determ",
+    "LClight.eval_expr_determ",
+    "LClight.eval_lvalue_determ",
+    "LClight.eval_exprlist_determ",
+    "LClight.external_call_determ",
+    "LClight.exec_stmt_determ_prefix",
+    "LClight.eval_funcall_determ_prefix",
+    "LClight.exec_stmt_determ",
+    "LClight.eval_funcall_determ",
+    "LClight.bigstep_program_terminates_determ"
+  ],
+  "examples": [
+    "LeanExe.Native.NativeA.unique",
+    "LClight.bigstep_program_terminates_E0"
+  ],
+  "sources": [
+    "2026-10-30: Determinism of the Lean copy of Clight"
+  ]
+}

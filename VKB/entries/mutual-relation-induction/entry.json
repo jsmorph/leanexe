@@ -4,13 +4,15 @@
     "LeanExe.Wasi.Exec host action world trace outcome final → P",
     "LeanExe.Wasi.LoopExec host remaining index state test step next world trace outcome final → P",
     "LClight.exec_stmt A X ge e le m s t le' m' out → P",
-    "structural recursion over a mutual inductive predicate fails"
+    "structural recursion over a mutual inductive predicate fails",
+    "theorem by structural recursion on a derivation of exec_stmt and eval_funcall"
   ],
   "modules": [
     "LeanExe.Wasi.Semantics",
     "LeanExe.Wasi.NoTrap",
     "LeanExe.Wasi.Prefix",
-    "Verified.Wasi.ResourceExec"
+    "Verified.Wasi.ResourceExec",
+    "LeanExe.Native.Clight.Determinism"
   ],
   "declarations": [
     "LeanExe.Wasi.Exec",
@@ -20,10 +22,14 @@
     "LeanExe.Wasi.Exec.not_trapped",
     "LeanExe.Wasi.Exec.bind",
     "LeanExe.Wasi.LoopExec.resume",
-    "Verified.Wasi.Resource.ResourceExec.erase"
+    "Verified.Wasi.Resource.ResourceExec.erase",
+    "LClight.exec_stmt_determ_prefix",
+    "LClight.eval_funcall_determ_prefix",
+    "LClight.volatile_load_determ"
   ],
   "sources": [
     "2026-10-23: Implementing the WASI agenda",
-    "2026-10-27: Bare-metal native code: design and plan"
+    "2026-10-27: Bare-metal native code: design and plan",
+    "2026-10-30: Determinism of the Lean copy of Clight"
   ]
 }
