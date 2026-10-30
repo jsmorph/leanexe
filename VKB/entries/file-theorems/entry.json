@@ -18,6 +18,7 @@
   "examples": [],
   "sources": [
     "2026-10-30: One command for the theorems of the file modules",
-    "2026-10-30: File theorems for the module registry"
+    "2026-10-30: File theorems for the module registry",
+    "2026-10-30: File modules for the modules built without the reflector"
   ]
 }
