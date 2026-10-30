@@ -1,0 +1,1 @@
+Given a list of numbers, return a new list where each entry is the largest value seen so far, up to and including that position.

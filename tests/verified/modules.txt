@@ -113,3 +113,4 @@ Verified.Examples.Forms:Verified.Examples.Forms.compiled.module:forms
 Examples.Lookup.Compiled:Examples.Lookup.compiled.module:lookup
 Examples.TreeLookup.Compiled:Examples.TreeLookup.compiled.module:treeLookup
 Library.Numerics.Arithmetic.PrimeFactors.Compiled:Library.Numerics.Arithmetic.PrimeFactors.compiled.module:primeFactors
+Examples.RunningMax.Compiled:Examples.RunningMax.compiled.module:runningMax

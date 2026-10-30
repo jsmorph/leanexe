@@ -73,6 +73,8 @@ import Examples.Lookup.Cases
 import Examples.TreeLookup.Samples
 import Examples.TreeLookup.Spec
 import Examples.Lookup.Spec
+import Examples.RunningMax.Spec
+import Examples.RunningMax.Samples
 import Verified.Examples.Forms
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
@@ -483,9 +485,9 @@ def formCases : IO Unit := do
       IO.println s!"forms|countDown|i64|i64:{n} i64:{acc}|{Forms.countDown n acc}|0|0"
       IO.println s!"forms|climb|i64|i64:{n} i64:{acc}|{Forms.climb n acc}|0|0"
 
-/-- The cases of the verified modules of the LeanExe compiler's examples: the inputs of their
-LeanExe cases, against the specification `expected` where the example has one, with the
-allocation counters. -/
+/-- The cases of the verified modules of the LeanExe compiler's examples and of the examples of the
+verified-request skill: the inputs of their LeanExe cases or their samples, against the
+specification `expected` where the example has one, with the allocation counters. -/
 def portCases : IO Unit := do
   for xs in _root_.Examples.Increment.samples do
     let a := arrayArg xs.toArray
@@ -537,6 +539,9 @@ def portCases : IO Unit := do
   for xs in _root_.Examples.TreeLookup.samples do
     IO.println s!"treeLookup|compute|array-u64|{arrayArg xs}|\
       {arrayOut (_root_.Examples.TreeLookup.expected xs)}|2|4"
+  for xs in _root_.Examples.RunningMax.samples do
+    IO.println s!"runningMax|compute|array-u64|{arrayArg xs}|\
+      {arrayOut (_root_.Examples.RunningMax.expected xs)}|2"
 
 end Verified.Examples
 
