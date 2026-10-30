@@ -13,11 +13,13 @@ import LeanExe.Native.Clight.Clight
 import LeanExe.Native.Clight.Bigstep
 import LeanExe.Native.Clight.Run
 import LeanExe.Native.Clight.RunSound
+import LeanExe.Native.Clight.Determinism
 import LeanExe.Native.Print
 import LeanExe.Native.Translate
 import LeanExe.Native.CText
 import LeanExe.Native.ClightCheck
 import LeanExe.Native.Proof.Native
+import LeanExe.Native.Proof.Unique
 import LeanExe.Native.Proof.Rename
 import LeanExe.Native.Proof.Export
 import LeanExe.Native.Proof.Whole
