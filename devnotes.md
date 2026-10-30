@@ -39277,7 +39277,7 @@ An audit of the day's open checkboxes ticked six: five whose work is done, and t
 
 - [x] The removal map and the ten decisions.
 - [x] The verified `gpt.wasm` file theorems, the second deferred item.
-- [ ] The thirteen example ports.
+- [x] The thirteen example ports.
 - [ ] The verified total theorems of the Euler solvers and the drone planner.
 - [ ] `Generation.lean`, `module_side`, and `increment_total`.
 - [ ] The browser pages, the GPU drivers, and the test defaults on the verified modules.
@@ -39381,7 +39381,7 @@ The checks ran on AArch64, with Wasmtime 44.0.0 and CompCert 3.18.  The first bu
 - [x] The verified compilations of the ported examples, with their file modules, registry entries, and cases.
 - [x] The `Flat` instances of `Bools` and `Grids` in a module that both compilers' theorems import.
 - [x] The README sections, the index rows, and the counts of the documents.
-- [ ] Decide whether `Calc` gets a reflector rule for structure patterns that fix a field, or whether the example is deleted.
+- [x] Decide whether `Calc` gets a reflector rule for structure patterns that fix a field, or whether the example is deleted.
 
 ## 2026-10-30: The verified total theorems of the Euler solvers and the drone planner
 
@@ -39532,3 +39532,36 @@ Every Markdown link to a moved section now names the verified manual's anchor, w
 The LeanExe manual's sections on repository rules and on documentation links moved in a second commit, after review of the first, to the end of the verified manual's section on development practice.  The rules now name the parts of the repository instructions that apply to the verified compiler, among them the proposal of VKB entries in place of the handling of LTG entries, which the LeanExe manual's pointer sentence keeps, and the decision on iterative development is the design document's decision for both compilers.  The sentence on reviews now states the review of the style guide, two passes over openings, filler, passive constructions, jargon, redundancy, and grammar, since no rule states the technical-accuracy and link-description reviews that it named.  The journal's link to the conventions of documentation links and the tools guide's link to the development procedure now name the verified manual.
 
 - [ ] Retarget the comment of `tests/verified/run.sh` that names the LeanExe manual, in the commit that deletes the manual.
+
+## 2026-10-30: A reflector rule for structure patterns, and the port of Calc
+
+The coordinator chose a reflector rule over the deletion of `Calc`, so the verified reflector now reads a `match` with several alternatives on a structure whose patterns fix fields to constructors of enumerations and bind the other fields.  `structAlts` of [the reflector](Verified/Reflect/Definitions.lean) reads each alternative's pattern from the matcher's type with its motive abstract.  It accepts a variable for the value, and the structure's constructor with each field a variable or a constructor of an enumeration with a `Flat` instance to words.  `structMatchChain` builds the chain of `if`s that tests, in the order of the alternatives, the words of the fields that each pattern fixes, joined with `&&`, and the last alternative, or one that fixes no field, takes no test.  An alternative receives the projections of the value for its variables and the value for a pattern that binds it, and a value that is not a place is bound with `let` first.  The rule applies only where the reflector stopped before, at a match on a structure with more than one alternative, so it cannot change the code of a program that compiled before.
+
+The equation of the chain and the match depends on the structure and the patterns, so the reflector builds it for each match, where the rule of `decide` uses the lemma `decide_and_eq`.  `structMatchChain` builds it as a term, as `reflectDataMatch` builds the chain of a match on an enumeration: `casesOn` of the structure on a variable for the value, then `casesOn` of each fixed field's enumeration, with `Eq.refl` at each combination of constructors and variables for the alternatives' bodies, applied to the value and the bodies at the end.  The reflector asks the kernel whether both sides agree at each combination before it builds the term, so a mismatch stops the command with the combination, and the kernel checks the term again inside `compiled.f.denote_eq` of the function.  A scan of the constants of a scratch compilation found the structure's `casesOn` in `denote_eq` alone.  The term has one case for each combination of the fixed fields' constructors, four for `Calc.undo`.
+
+Scratch modules outside the tree mapped the limits of the rule.  A pattern that fixes a field to a word literal, to `true`, or to a nested structure pattern stops with ``verified_compile: a pattern fixes the field … to …, which is not a constructor of an enumeration with a `Flat` instance to words``, followed by the match.  The rule accepts no literal pattern.  A `match` on a `Bool` still stops with `unsupported term`, and a `match` on a `UInt64` with literal patterns now reaches the rule, since Lean's `UInt64` is a structure, and stops with ``the pattern 0 neither binds the value nor applies UInt64.ofBitVec`` where it stopped with `unsupported term` before.  A recursive definition cannot take such a structure as a parameter, since an enumeration in a parameter type of a recursive definition stops the reflector, but a recursion whose continuing call stands in an alternative of a match on a local structure compiled with tail loops and with `set_option verified.tailLoops false`.  The code also rejects a structure with type or universe parameters, a form that no scratch module tried.
+
+[The pattern example](Verified/Examples/Patterns.lean) compiles each accepted shape: one fixed field with the others bound and a final wildcard, two fixed fields in one pattern, different fixed fields in different alternatives, every field fixed, so that an alternative binds nothing, a final pattern that binds the value, and a complete set of patterns without a wildcard.  Its matches stand on parameters, on a structure built in place, on a call, in a loop's body, and on a record that holds an array, and `#guard_msgs` checks the message of a pattern that fixes a `Bool` field.  The cases of the registry module `patterns` run every combination of the fixed fields' constructors.  The first cases of `record` stated one allocation and one live block, and Wasmtime's counters showed two of each: the function borrows the host's array and allocates the array of its result, also when it returns the value unchanged.  The cases now state two.
+
+`Examples/Calc/Compiled.lean` compiles the unchanged definitions of `Program.lean`, in the order of the LeanExe module, with the instances of `Flat.lean`, and every generated `implements` theorem has `aborts` false.  [The calculator's cases](Examples/Calc/Cases.lean) now name their inputs, `ops`, `operands`, `wordArgs`, `states`, `operandArgs`, and `runArgs`, with the loops of the LeanExe cases kept, and the verified cases of `calculator` use the same lists.  The registry entries, the file module `Examples/Calc/File.lean`, and the import in [the examples' aggregate](Examples/Verified.lean) follow the earlier ports, and the registry counts of the README, the trusted-base document, the design document, and the verified manual include the new modules.
+
+`tools/Emit.lean` wrote every module of [the module registry](tests/verified/modules.txt) from the build of main before the change, between 17:26 UTC and 17:35 UTC, and from the build with the rule and the port, between 19:22 UTC and 19:30 UTC.  Every module that both registries hold has the same SHA-256 sum in both emissions, and `patterns` and `calculator` are new.  The rule leaves the code of every existing program unchanged, as its restriction to the matches that stopped the reflector before predicts.
+
+The build, the emissions, and the drivers ran on AArch64 on the tree of the port, with Wasmtime 44.0.0 and CompCert from its 3.18 release, whose `VERSION` file and driver report 3.17, and the VKB check ran at the commit before this entry.  The axiom reports of the new modules name only `propext`, `Classical.choice`, and `Quot.sound`, and no changed line has a warning.  The first full build stopped at the new cases of [the case generator](Verified/Examples/Cases.lean), whose namespace already declares a `Mode`, and the cases now name the example's types with the prefix `Patterns.`.
+
+| Check | Cases | Result |
+|---|---|---|
+| `lake build LeanExe Examples Demos Verified Library TestSupport native-verified native-bare verified-cases native-module-cases` | 15,359 jobs | Passed in 98 minutes, after a fix of the case generator's names |
+| `tests/verified/emit-modules.sh` before and after the change, and the comparison of SHA-256 sums | Every registry module | Identical sums for every module that both registries hold |
+| `tests/verified/run.sh --cases patterns` and `--cases calculator` | 228 and 490 | All passed, after the correction of the cases of `record` |
+| `tests/verified/run.sh`, Wasmtime against native Lean, with the file theorems, the axiom checks, and the accuracy checks | 41,462 cases, among them `patterns` 228 and `calculator` 490 | All passed, and every file module reported only the permitted axioms, in 57 minutes |
+| `tests/native/verified.sh --module patterns` and `--module calculator`, the translations compiled with CompCert | 228 and 490 | All passed, and both modules translate |
+| `VKB/Check.lean` on `VKB/entries`, with the proposed changes to `reflector-forms` | Every entry | No problem reported |
+| `node tools/check-doc-links.mjs` on a copy of the tree with the changed documents | Every document | No problem reported, and every document is reachable from the README |
+
+- [x] The reflector rule for structure patterns, with its equation and the pattern example.
+- [x] The verified compilation of `Calc`, with its file module, registry entries, and cases.
+- [x] The byte comparison of the registry modules across the change.
+- [x] The verified manual, the index, the guides, and the counts of the documents.
+- [ ] Decide whether `match` on a `Bool`, and patterns that fix a `Bool` field, get a rule, which no example needs now.
+- [ ] Decide whether the rule applies only to structures with a `Flat` instance, so that a match on word literals stops with `unsupported term` as before, a change to the compiler with its own byte comparison.
