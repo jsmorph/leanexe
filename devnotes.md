@@ -39086,3 +39086,37 @@ The run exposed two gaps in the skill and one in the checker.  `Verified.Reflect
 The review of the run settled the skill's open points.  Step 7 of the first stage now adds samples once, for the input classes that the first review without a disagreement names, and a second fresh review confirms them, after which further classes go into `review.md` and step 8 ends the stage.  Step 5 lets the reviewer receive the output of `--spec` as a file and says that it reasons from the files and the output alone and runs nothing.  The size premise of `compute_eq` applies only when the program converts a size to a word, the README's model is the running-maximum example, and stage 4 names the gate of a new example: the acceptance check, the two drivers, a build of the affected modules, and the VKB check, with the manual's full check kept for changes to the compiler and the runtime.  The three proposals are admitted: [`verified-bound-closed-form`](VKB/entries/verified-bound-closed-form/README.md) describes the charge of a fold and `foldCost_const`, the new [`array-fold-list-induction`](VKB/entries/array-fold-list-induction/README.md) describes the proof of an array fold through its list, with the SHA-256 fold proof as a second example, and [`spec-call-theorem`](VKB/entries/spec-call-theorem/README.md) records the import of `Verified.Call` and the running maximum's call theorem.  `foldCost_const` stays in the example, and moving it beside `Verified.foldCost_zero` is a separate change.
 
 - [ ] Move `foldCost_const` and `fold_charge_const` into `Verified/Reflect/FoldLemmas.lean`.
+
+## 2026-10-30: The numerical call lemmas on the generic call theorem
+
+The numerical byte modules kept their own `Ready`, `ready_initial`, and `*_entry_call` lemmas after the hashing libraries moved onto [the call module](Verified/Call.lean).  Nineteen of them now state readiness as `Verified.Ready` over the program's tables and prove each entry lemma with `Verified.ImplementsTables.call`, in a proof of four lines in place of one of 14 to 22.  `PrintFloatBytes` and `ParseFloatBytes` keep their lemmas, because every entry of the printer and of the parser may trap when an allocation finds no memory, and `Call` states a call without a trap.  Each module opens `Verified (Ready)`, so the statements name `Ready` with the program's module and tables.
+
+An entry that reads tables proves that they are among the program's with `Verified.tables_at ks (by decide) rfl`, a new lemma of the call module, where `ks` lists the indices in the order of the entry's theorem.  The `rfl` evaluates the sizes of the tables before each address, which the former `ready_initial` lemmas did once for each module, so each entry that reads a table beyond the first raises `maxRecDepth` to 100,000.  The `y0` and `y1` entries of the Bessel module read the tables at indices 0, 1, 4, 5, and 2 or 3, out of the program's order, and the `jn` and `yn` entries read all six.  `ready_initial` keeps its name and now follows from `Verified.Ready.initial rfl compiled.initial`.
+
+Every entry lemma, byte theorem, module theorem, and `ready_initial` keeps its name, and a script checked that each statement differs from its former text only where the local `Ready` stood.  A scratch file, checked against the build before the change, proved each former `Ready` equivalent to `Verified.Ready` over the program's tables, for the eight programs without tables and the thirteen with one to eight tables.  The 16 lemmas that only served the former proofs are gone: `ready_kept` in five modules, `ready_tables` of the inverse hyperbolic functions, `tables_ready` of the tangent and the trigonometric functions, and the table lemmas `j0_tables`, `j1_tables`, `y0_tables`, `y1_tables`, `jn_tables`, `erfc_tables`, `lgamma_tables`, and `tgamma_tables`.  No other file named them.  The comparison script of the hashing move ended a statement at its first `:=`, which the export clause `{ name := … }` contains, so it compared only a prefix of each module theorem.  With a statement ending at a `:=` before `by` or a line break, the 29 statements of the hashing move and the 176 kept statements of this one all match.
+
+The gate's roots did not reach every module of the libraries.  An import-graph check from the roots of the six libraries and of the four test executables lists 157 modules that none of them reaches, 33 of which read a file at elaboration.  Of the others, 69 define `main` and are executables or the drivers' scripts.  The remaining 55 define no `main` and lie in all six libraries.  `Library.lean` now imports `Exp2Bytes`, which reaches the six `Exp10` modules, together with `Library.Hashing.Sha2.Equiv.AxiomCheck` and `Library.Native`, so the gate builds every module of `Library` except its file modules and `UscaleCheck`, which defines `main`.
+
+| Library | Unreached modules without `main` | Change |
+| --- | --- | --- |
+| `Library` | 9: `Exp2Bytes`, six `Exp10` modules, `Hashing.Sha2.Equiv.AxiomCheck`, and `Native` | imported by `Library.lean` |
+| `Verified` | 20, among them 16 `Verified.Wasi` modules | none |
+| `TestSupport` | 19 modules of the numerical, native, and slew checks | none |
+| `LeanExe` | 5 modules of `LeanExe.Native` | none |
+| `Demos` and `Examples` | `Demos.Gpt32.NativeCases` and `Examples.Binary32.VerifiedGpuCases` | none |
+
+The 19 modules lose 1,268 lines and gain 674, and `tables_at` adds 14 lines to the call module.  Most of the added lines are statements, which now name the program's module and tables beside `Ready`, while each entry lemma's proof shrinks to four lines.  The build of the changed modules and of the modules that import them took about 20 minutes, because the theorem modules of the logarithms, the error function, and the trigonometric functions precede proofs of other functions that import them.
+
+| Check | Cases | Result |
+| --- | --- | --- |
+| `lake build LeanExe Examples Demos Verified Library TestSupport` with `native-verified`, `native-bare`, `verified-cases`, and `native-module-cases` | 15,279 jobs | Passed, and no changed line has a warning |
+| `tests/verified/run.sh --cases` for the 19 modules | 488 of `tanh`, 230 of `log`, and 1,540 of `trig` | Passed, and the other 16 modules have no cases in this mode |
+| `tests/verified/run.sh` in full | 37,680 verified cases, 2,733 GPT cases, 3,096 module cases, 226 library cases, 32 file theorems, and the accuracy checks | All passed in 3,090 seconds, each file theorem with the three permitted axioms |
+| `VKB/Check.lean` on `VKB/entries` | 22 entries | No problem reported |
+| `#print axioms` of the moved theorems | 94 declarations | `propext`, `Classical.choice`, and `Quot.sound` for the 93 moved theorems, and `propext` and `Quot.sound` for `tables_at` |
+
+- [x] The entry lemmas of 19 numerical modules on `Verified.ImplementsTables.call`.
+- [x] `Verified.tables_at`, and the VKB entry `explicit-before-dependent-proof`.
+- [x] The unreached modules of `Library` imported by its root.
+- [ ] Decide whether the 46 unreached modules without `main` outside `Library` join their libraries' roots.
+- [ ] Decide whether `Call` gains a form for entries that may trap, for the printer and the parser.

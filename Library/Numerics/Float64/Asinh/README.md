@@ -81,7 +81,7 @@ A script that compares the port with the C sources at the pinned commit finds th
 | `AsinhBytes.asinh_module_accuracy` | Three byte theorems. |
 | `AsinhFile.asinh_file`, `asinh_file_decode` | `build/verified/asinh.wasm` holds `encode Asinh.compiled.module` and decodes to the module of `asinh_module_accuracy`. |
 
-A ready store satisfies the allocator invariant, holds `Log.logTable` at address 4096 and `Log.logTable2` at address 6152 as borrowed arrays, and has a memory cap of at most 65,535 pages (`AsinhBytes.Ready`).  Each call leaves a ready store, so the byte theorems cover every sequence of calls to the three entries from the initial store.  `asinh_file_decode` depends on `asinh_module_accuracy`, so its axiom report covers the three byte theorems.  `tests/verified/run.sh` checks the file theorems against the `asinh.wasm` that `tools/Emit.lean` writes from `Asinh.compiled.module` in the same run.
+A ready store satisfies the allocator invariant, holds `Log.logTable` at address 4096 and `Log.logTable2` at address 6152 as borrowed arrays, and has a memory cap of at most 65,535 pages (`Verified.Ready Asinh.compiled.module Asinh.compiled.tables`).  Each call leaves a ready store, so the byte theorems cover every sequence of calls to the three entries from the initial store.  `asinh_file_decode` depends on `asinh_module_accuracy`, so its axiom report covers the three byte theorems.  `tests/verified/run.sh` checks the file theorems against the `asinh.wasm` that `tools/Emit.lean` writes from `Asinh.compiled.module` in the same run.
 
 ## Proof
 

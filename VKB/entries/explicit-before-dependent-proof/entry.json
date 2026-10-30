@@ -1,0 +1,26 @@
+{
+  "id": "explicit-before-dependent-proof",
+  "goals": [
+    "Application type mismatch … expected to have type x ∈ [(tableAddr ?m 0, ?m[0])]",
+    "∀ t ∈ ts, ∃ i, ∃ hi : i < tables.length, t = (tableAddr tables i, tables[i])"
+  ],
+  "modules": [
+    "Verified.Call",
+    "Library.Hashing.Sha256.Bytes",
+    "Library.Hashing.Crc.Bytes",
+    "Library.Numerics.Float64.Bessel.BesselBytes"
+  ],
+  "declarations": [
+    "Verified.ImplementsTables.call",
+    "Verified.tables_at"
+  ],
+  "examples": [
+    "Library.Hashing.Sha256.sha256_call",
+    "Library.Hashing.Crc.crc32c_table",
+    "Library.Numerics.Float64.Bessel.BesselBytes.y0_entry_call"
+  ],
+  "sources": [
+    "2026-10-30: One call theorem for the verified compilations",
+    "2026-10-30: The numerical call lemmas on the generic call theorem"
+  ]
+}

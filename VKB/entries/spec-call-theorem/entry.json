@@ -12,6 +12,7 @@
     "Verified.Call.spec: unknown identifier, from a module that imports only Verified.Reflect.Command"
   ],
   "modules": [
+    "Library.Numerics.Float64.Bessel.BesselBytes",
     "Verified.Call",
     "Examples.ArrayCall",
     "Examples.Increment.Compiled",
@@ -29,6 +30,7 @@
     "Examples.RunningMax.Compiled"
   ],
   "declarations": [
+    "Verified.tables_at",
     "Verified.Ready",
     "Verified.Ready.initial",
     "Verified.Call",
@@ -46,6 +48,7 @@
     "LeanExe.Pipeline.Heap.Within.mono"
   ],
   "examples": [
+    "Library.Numerics.Float64.Bessel.BesselBytes.y0_entry_call",
     "Library.Hashing.Sha256.sha256_call",
     "Library.Hashing.Crc.crc32c_table",
     "Library.Hashing.Crc.crc32cUpdate_call",
@@ -68,6 +71,7 @@
     "2026-10-30: Verified compilations of LeanExe examples and library programs",
     "2026-10-30: Array literals and conditions on propositions in the reflector",
     "2026-10-30: One call theorem for the verified compilations",
-    "2026-10-30: The verified-request skill and its acceptance tool"
+    "2026-10-30: The verified-request skill and its acceptance tool",
+    "2026-10-30: The numerical call lemmas on the generic call theorem"
   ]
 }
