@@ -27,6 +27,21 @@ def TailContext.sumType (t : TailContext) : MetaM Lean.Expr :=
 def TailContext.outcome (t : TailContext) (step : Lean.Expr) : MetaM Lean.Expr := do
   mkAppM ``Sum.elim #[t.meaning, ← mkAppOptM ``id #[some t.resultType], step]
 
+/-- `e = t.outcome step` for a step `Sum.inl state` or `Sum.inr e`, through `Sum.elim_inl`, or
+through `id_eq` and `Sum.elim_inr`.  The kernel then compares `e` at most with the meaning at
+`state`, a lambda whose body applies the recursive function to the state's components, and never
+with `Sum.elim`.  It therefore does not unfold the recursive function, an unfolding that does not
+finish for a well-founded definition whose measure multiplies by `2 ^ 64`. -/
+def TailContext.fixedAt (t : TailContext) (e step : Lean.Expr) (inl : Bool) : MetaM Lean.Expr := do
+  let idFn ← mkAppOptM ``id #[some t.resultType]
+  let eq ← if inl then
+      let some state := step.getAppArgs.back? | throwError "verified_compile: the step {step}"
+      mkEqSymm (← mkAppM ``Sum.elim_inl #[t.meaning, idFn, state])
+    else
+      mkEqTrans (← mkEqSymm (← mkAppM ``id_eq #[e]))
+        (← mkEqSymm (← mkAppM ``Sum.elim_inr #[t.meaning, idFn, e]))
+  mkExpectedTypeHint eq (← mkEq e (← t.outcome step))
+
 def TailReflection.restate (r : TailReflection) (eq : Lean.Expr) : MetaM TailReflection := do
   return { r with fixed := ← transHint (← mkEqSymm eq) r.fixed }
 
@@ -84,7 +99,7 @@ partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
     let proof ← tailLemma ``tail_next_eq t c
       [(`φ, t.flattenState), (`args, ← mkAppM ``Args.get #[argList]),
         (`state, state)] [(`ha, hargs)]
-    return ⟨src, step, ← rflEq e (← t.outcome step), proof⟩
+    return ⟨src, step, ← t.fixedAt e step true, proof⟩
   if let .letE n type value body _ := e then
     if ← isPlace value then return ← reflectTailBody t c (body.instantiate1 value)
     let ty ← tyOf type
@@ -172,7 +187,7 @@ partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
     let step ← mkAppOptM ``Sum.inr #[some t.stateType, some t.resultType, some e]
     let proof ← tailLemma ``tail_ret_eq t c
       [(`ψ, t.flattenResult), (`value, r.src), (`V, e)] [(`hv, r.proof)]
-    return ⟨src, step, ← rflEq e (← t.outcome step), proof⟩
+    return ⟨src, step, ← t.fixedAt e step false, proof⟩
 
 partial def reflectTailTreeMatch (t : TailContext) (c : Ctx) (app : MatcherApp)
     (layout : Option RecursiveLayout) :

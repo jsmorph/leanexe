@@ -120,6 +120,22 @@ def reflectTailSource (base name eqName : Name) (sigs funs rest : Lean.Expr)
       mkLambdaFVars #[x] (← mkExpectedTypeHint h (← mkEq (mkApp state.meaning x) out))
     let fixed ← mkAppM ``Tail.fixed_transport
       #[state.flatten, state.unflatten, ψ, state.left, state.right, commute, state.meaning, fixed]
+    -- The equation for the meaning constant `M`, which `Prog.Meaning.consTail` takes.  `M env` is
+    -- `ψ (state.meaning (state.unflatten env))` by unfolding `M`, whose height exceeds the
+    -- function's, and by `id_eq` for the type hint `ψ`, so the kernel never unfolds the function.
+    let (``id, #[ψType, ψFn]) := ψ.getAppFnArgs
+      | throwError "verified_compile: the result flattening {ψ}"
+    let envType := mkApp (mkConst ``Env) ctx
+    let atEnv (env : Lean.Expr) : Lean.Expr :=
+      mkApp state.meaning (mkApp state.unflatten env)
+    let N ← withLocalDeclD `next envType fun next => do
+      mkLambdaFVars #[next] (mkApp ψ (atEnv next))
+    let hMN ← withLocalDeclD `env envType fun env => do
+      let hm ← mkExpectedTypeHint (← mkEqRefl (mkApp M env))
+        (← mkEq (mkApp M env) (mkApp ψFn (atEnv env)))
+      let hψ ← mkCongrFun (← mkAppOptM ``id_eq #[some ψType, some ψFn]) (atEnv env)
+      mkLambdaFVars #[env] (← mkEqTrans hm (← mkEqSymm hψ))
+    let fixed ← mkAppM ``Tail.fixed_restate #[M, N, hMN, fixed]
     addTheorem (base ++ `fixed) (← inferType fixed) fixed
     let decrease ← withLocalDeclD `state state.type fun x =>
         withLocalDeclD `next state.type fun next => do

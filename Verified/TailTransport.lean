@@ -73,6 +73,16 @@ theorem fixed_transport {step : α → Sum α β} {target : γ → Sum γ δ}
   rw [hc, fixed (θ state)]
   cases step (θ state) <;> simp [left]
 
+/-- The fixed-point equation of a meaning `N` restated for a meaning `M` that equals it at every
+state.  The reflector states a tail function's equation for the meaning constant, so that the
+kernel matches it with `Prog.Meaning.consTail` without unfolding the recursive function. -/
+theorem fixed_restate {target : γ → Sum γ δ} (M N : γ → δ) (hMN : ∀ state, M state = N state)
+    (fixed : ∀ state, N state = (target state).elim N id) (state : γ) :
+    M state = (target state).elim M id := by
+  have h : M = N := funext hMN
+  subst h
+  exact fixed state
+
 theorem costAt_transport {step : α → Sum α β} {target : γ → Sum γ δ}
     (φ : α → γ) (ψ : β → δ)
     (commute : ∀ state, target (φ state) = Sum.map φ ψ (step state))

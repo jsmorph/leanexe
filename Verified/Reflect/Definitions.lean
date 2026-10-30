@@ -937,6 +937,13 @@ which the kernel reduces without evaluating either term's parts. -/
 def bareEq (T e : Lean.Expr) : MetaM Lean.Expr := do
   mkExpectedTypeHint (← mkEqRefl e) (← mkEq T e)
 
+/-- The elements of a list built from `List.nil` and `List.cons`. -/
+partial def listElems? (xs : Lean.Expr) : MetaM (Option (List Lean.Expr)) := do
+  match xs.consumeMData.getAppFnArgs with
+  | (``List.nil, #[_]) => return some []
+  | (``List.cons, #[_, x, rest]) => return (← listElems? rest).map (x :: ·)
+  | _ => return none
+
 /-- The enumeration and its `Flat` instance, for a type other than `Bool` whose values are
 enumeration constants with a `Flat` instance to words. -/
 def enumFlat? (type : Lean.Expr) : MetaM (Option (Name × Lean.Expr)) := do
@@ -2212,6 +2219,14 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         binBound c ``bin_bound [(`op, op)] rl rr, binFits c ``bin_fits [(`op, op)] rl rr, none⟩
   match fn, args with
   | ``Decidable.decide, #[p, inst] =>
+    -- `decide (p ∧ q)` and `decide (p ∨ q)` are `decide p && decide q` and `decide p || decide q`,
+    -- by `decide_and_eq` and `decide_or_eq` at the instance of the term.
+    if let (``And, #[l, r]) := p.consumeMData.getAppFnArgs then
+      return ← reflectVia (← mkAppM ``and #[← mkDecide l, ← mkDecide r])
+        (← mkAppOptM ``decide_and_eq #[some l, some r, none, none, some inst])
+    if let (``Or, #[l, r]) := p.consumeMData.getAppFnArgs then
+      return ← reflectVia (← mkAppM ``or #[← mkDecide l, ← mkDecide r])
+        (← mkAppOptM ``decide_or_eq #[some l, some r, none, none, some inst])
     if let (``Ne, #[_, a, b]) := p.consumeMData.getAppFnArgs then
       -- `decide (a ≠ b)` is `!decide (a = b)`.
       let notEq ← mkAppOptM ``decide_not #[some (← mkEq a b), none, some inst]
@@ -2391,6 +2406,13 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       throwError "verified_compile: the branches of {e} use the hypothesis of the `if`"
     reflectAs (← mkAppOptM ``ite #[some α, some p, some inst, some ta, some tb]) e
   | ``ite, #[α, p, inst, a, b] =>
+    -- `if p ∧ q` and `if p ∨ q` on propositions test the decision of the proposition, which the
+    -- rule of `decide` reads as the Boolean connective of the two decisions.
+    if p.consumeMData.isAppOfArity ``And 2 || p.consumeMData.isAppOfArity ``Or 2 then
+      let eq ← mkAppOptM ``ite_decide_eq #[some α, some p, some inst, some a, some b]
+      let some (_, T, _) := (← inferType eq).eq?
+        | throwError "verified_compile: the equation {eq}"
+      return ← reflectVia T eq
     if let some r ← enumIte? α p inst a b then return r
     let r ← reflectIte p inst a b
     let some φ := (← shapeOf α).flat | return r.as' e
@@ -2558,7 +2580,12 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       ri.ty, e, bound, loopFits rn ri u rc.src α init cnd hc F (some uc.fits), none⟩
   | ``Array.mk, #[α, xs] =>
     unless xs.consumeMData.isAppOfArity ``List.nil 1 do
-      throwError "verified_compile: unsupported term {e}"
+      -- A literal `#[a₁, …, aₙ]` is `((#[].push a₁).push …).push aₙ`, which the kernel checks by
+      -- unfolding `Array.push`.
+      let some elems ← listElems? xs | throwError "verified_compile: unsupported term {e}"
+      let empty ← mkAppOptM ``Array.mk #[some α, some (← mkAppOptM ``List.nil #[some α])]
+      let T ← elems.foldlM (fun acc a => mkAppOptM ``Array.push #[some α, some acc, some a]) empty
+      return ← reflectAs T e
     let .elem el := (← shapeOf α).ty | throwError "verified_compile: unsupported array {e}"
     let value ← elemZero el
     let f ← withLocalDeclD `i (mkConst ``UInt64) fun i => mkLambdaFVars #[i] value
@@ -4355,9 +4382,11 @@ def finishReflected (base name : Name) (params : Array Lean.Expr) (types : List 
   return ⟨name, types, result, aborts, modes, depth, meaningEq, argsType, resultType, flatArgs,
     flatResult, none, false⟩
 
-/-- Adds the definition `name` of a bound or frames condition on Lean's argument tuple, with a
-height above its value's, so that the kernel unfolds it, and not the compiler's function, when it
-matches a statement with a proof. -/
+/-- Adds the definition `name` of a bound or frames condition on Lean's argument tuple, or of a
+recursive definition's meaning, with a height above its value's, so that the kernel unfolds it, and
+not the compiler's function, when it matches a statement with a proof.  Unfolding a function
+defined by well-founded recursion first can exhaust the kernel's recursion, as a measure with a
+factor `2 ^ 64` does. -/
 def addBoundDefinition (name : Name) (type value : Lean.Expr) : MetaM Unit := do
   addAndCompile <| .defnDecl <| mkDefinitionValEx name [] type value
     (.regular (getMaxHeight (← getEnv) value + 1)) .safe [name]
@@ -4986,7 +5015,7 @@ def withRecursiveInput {α : Type} (base name eqName : Name)
       return resultShape.apply (mkAppN (mkConst name) (← argsAt e).toArray)
     let envType := mkApp (mkConst ``Env) ctx
     let mValue ← withLocalDeclD `env envType fun e => do mkLambdaFVars #[e] (← meaningAt e)
-    addDefinition (base ++ `meaning) (← mkArrow envType (mkApp (mkConst ``Ty.denote)
+    addBoundDefinition (base ++ `meaning) (← mkArrow envType (mkApp (mkConst ``Ty.denote)
       (tyExpr result))) mValue
     let M := Lean.mkConst (base ++ `meaning)
     -- `M` at the flattenings of `params`: by unfolding `M`, then by the left inverse law at each

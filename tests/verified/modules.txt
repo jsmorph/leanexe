@@ -109,3 +109,4 @@ Library.Numerics.Arithmetic.Gcd.Compiled:Library.Numerics.Arithmetic.Gcd.compile
 Library.Numerics.Statistics.Mean.Compiled:Library.Numerics.Statistics.Mean.compiled.module:mean
 Library.Numerics.Statistics.SumSquares.Compiled:Library.Numerics.Statistics.SumSquares.compiled.module:sumSquares
 Library.Random.SplitMix64.Compiled:Library.Random.SplitMix64.compiled.module:prng
+Verified.Examples.Forms:Verified.Examples.Forms.compiled.module:forms

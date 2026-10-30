@@ -117,14 +117,14 @@ modules, such as those of an earlier compiler.  [The WASI manual](wasi.md) descr
 | Float comparisons | `==`, `!=`, `<`, `≤`, `>`, `≥` |
 | Conversions | `UInt64.toFloat`, `Float.toUInt64`, `Float.toBits`, `Float.ofBits` |
 | Binary32 conversions | `w.toFloat32`, `Float32.ofBits w.toUInt32`, `x.toUInt64`, `x.toBits.toUInt64`, `(Int32.ofUInt32 w.toUInt32).toFloat32`, `x.toInt32.toUInt32.toUInt64`, with `w : UInt64` and `x : Float32` |
-| `Bool` operations | `!`, `&&`, `\|\|`, `==`, `!=`, `decide` |
+| `Bool` operations | `!`, `&&`, `\|\|`, `==`, `!=`, `decide` of a comparison, an equation, a conjunction, or a disjunction |
 | Bindings | `let`, and `match` on a pair, a tuple, or a structure |
-| Conditionals | `if` on a `Bool` or a comparison, `if h : c` whose branches do not use `h`, and `match` on an enumeration or sum |
+| Conditionals | `if` on a `Bool`, a comparison, or a conjunction or disjunction of these, `if h : c` whose branches do not use `h`, and `match` on an enumeration or sum |
 | Calls | Listed definition applied to all its arguments, or unfolded `@[inline]` helper |
 | Combinators | `LeanExe.loop`, `LeanExe.repeatWhile`, `LeanExe.build` |
 | Array folds | `xs.foldl step init`, with the default bounds `start = 0` and `stop = xs.size` |
 | List folds | `xs.foldl step init` over `List UInt64`, with scalar state |
-| Arrays | `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.setIfInBounds i.toNat v`, `xs.push v`, `xs ++ ys`, `xs.insertIdx! i.toNat v`, `xs.insertIdxIfInBounds i.toNat v`, `xs.eraseIdxIfInBounds i.toNat`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i` |
+| Arrays | `#[]`, literals `#[a, b, …]`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.setIfInBounds i.toNat v`, `xs.push v`, `xs ++ ys`, `xs.insertIdx! i.toNat v`, `xs.insertIdxIfInBounds i.toNat v`, `xs.eraseIdxIfInBounds i.toNat`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i` |
 | Packed bytes | `bytes![0, 255]`, `LeanExe.Bytes.empty`, `bytes.size`, `bytes.get index`, `LeanExe.Bytes.build count f`, with UInt64 counts, indices, and callback results |
 | Tuples and structures | `(a, b)`, `.1`, `.2`, constructors, `{ s with … }`, field reads |
 | Lists of words | `[]`, `x :: xs`, and `match xs with \| [] => empty \| x :: ys => node` |
@@ -132,6 +132,14 @@ modules, such as those of an earlier compiler.  [The WASI manual](wasi.md) descr
 Every construct has Lean's meaning.  Word division by zero gives 0, the remainder by zero is the dividend, and a shift uses its amount modulo 64.  Each insertion accepts indices from 0 through the array's length.  Beyond the length, `insertIdx!` returns `#[]`, and `insertIdxIfInBounds` and `LeanExe.insertAt` return the input array.  Updates and removals leave the array unchanged at indices greater than or equal to its length.  Boolean equality supports `==`, `!=`, decisions of `=` and `≠`, and `if` on either proposition.  `==` and `!=` on `Bool` require `LawfulBEq Bool`.
 
 `min` and `max` use Lean's comparison and conditional at both float widths, preserving its NaN and signed-zero results.  Float comparisons `==` and `!=` use IEEE value equality.  The reflector rejects the bit-pattern propositions `=` and `≠` on floats.  Both `Float.ofBits` and `Float32.ofBits` canonicalize NaNs as Lean does.  Binary32 signed conversion interprets the low 32 bits of a `UInt64` as an `Int32`, and signed truncation returns the resulting `Int32` bit pattern zero-extended to `UInt64`.  Only the listed conversion forms accept the intermediate `UInt32` and `Int32` terms.  Conversions between `Float` and `Float32` remain outside the dialect.  Lean's opaque float functions, such as `Float.exp` and `Float.sin`, require definitions of their own, as the numerical examples provide.
+
+### Array literals and conditions on propositions
+
+The reflector reads an array literal with elements, `#[a₁, …, aₙ]`, as `((#[].push a₁).push …).push aₙ`, and the kernel checks the reading by unfolding `Array.push`.  The literal therefore allocates as those pushes do: an empty block, then the growth of an owned array at each push.  The allocation bound charges the first push with `growCost` and each later push with `paidGrowCost`, so a literal of two words costs 232 bytes.  The elements may be any expressions of the dialect, of any element type that an array holds, and a literal may stand wherever an array may, such as a loop's state or a result.
+
+`if p ∧ q` and `if p ∨ q` on propositions test the decision of the proposition, by `ite_decide_eq`, and the reflector reads `decide (p ∧ q)` and `decide (p ∨ q)` as `decide p && decide q` and `decide p || decide q`, by `decide_and_eq` and `decide_or_eq` at the instance of the term.  Each part is a comparison, an equation of `Bool`s or enumerations, or another conjunction or disjunction, as in `(a < b ∧ b < c) ∨ (c < b ∧ b < a)`.  The code evaluates both parts of each connective, as it does for `&&` and `||`, so a part that calls a function or reads an array runs even when the other part decides the result, and a nested `if` keeps the second test lazy.  The rule holds in ordinary code, in the elements of builds, in loops, and in the conditions of tail loops, and the WGSL translation lowers the Boolean connectives.  [The forms example](../Verified/Examples/Forms.lean) compiles literals and both connectives in each of these places, among them two tail recursions on a conjunction and a disjunction.
+
+The termination proof of a tail loop applies Lean's functional induction to the definition, whose cases state the conditions in Lean's simplified form, such as `¬(r ≤ 1 ∨ d ≤ 1)` as `1 < r ∧ 1 < d`.  The step equation keeps the source form, so the proof splits each remaining case on the step's conditions and closes the branches that contradict the case with `omega` on the words' natural numbers.  Negation `¬ p`, implication, and equivalence of propositions remain outside the dialect, as the restrictions table states.
 
 ### Loops and builds
 
@@ -263,8 +271,7 @@ A table is a Lean constant of type `Array UInt64`, which the module writes in a 
 | Message | Cause | Rewrite |
 |---|---|---|
 | `unsupported term …` | Term that no rule covers: an unlisted helper without `@[inline]`, `for`, or an opaque float function | List the callee before its callers, mark a helper `@[inline]`, use the combinators, or define the float function. |
-| `unsupported term { toList := … }` | Array literal with elements, such as `#[a, b]` | Build the array with `LeanExe.build` or by `push` onto `#[]`. |
-| `unsupported condition …`, `unsupported decision …` | `if` on a conjunction or a disjunction of propositions | Test `decide p && decide q` or `decide p \|\| decide q`, or nest the tests. |
+| `unsupported condition …`, `unsupported decision …` | `if` or `decide` on a proposition other than a comparison, an equation, and conjunctions and disjunctions of these, such as `¬ p` or `p → q` | Test `!decide p`, or state the comparison that `¬ p` negates. |
 | `Array.foldl requires start = 0`, `Array.foldl requires stop = xs.size` | Fold over part of an array | Use a word-counted `LeanExe.loop` for that range. |
 | ``the type … is not UInt64, Bool, Float, Float32, Bytes, a structure with a `Flat` instance, an array, or a pair`` | Parameter, result, or binding of a type outside the dialect, such as `Nat` | Use the dialect's types, and give a structure a `Flat` instance. |
 | `= and ≠ on … compare bit patterns; use == and !=` | `=` or `≠` on `Float` or `Float32` | Use `==` or `!=`. |
@@ -583,6 +590,7 @@ Reusable implementations and their compilations live in [the library](../Library
 | [`Pairs`](../Verified/Examples/Pairs.lean) | Pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, calls that pass and return pairs, and patterns that take nested pairs apart on the left and on the right, skip a component, keep a pair whole, take apart a pair built in place, and take apart a triple that holds arrays. |
 | [Packed byte values](../Verified/Examples/Bytes.lean) | Identity, duplication, selection, cleanup, swapped results, empty buffers, UInt64 lengths, byte indexing, and construction with captured buffers and nested builders.  [The WASI driver](../tests/wasi/run.sh) checks empty inputs, out-of-bounds reads, allocation/free counts, and oversized construction. |
 | [Byte literals](../Verified/Examples/Literals.lean) | Static-pool deduplication, fresh owned copies, empty and conditional literals, ordinary and recursive helpers, and literals inside loop, build, fold, and tree-match bodies. |
+| [Array literals and conditions](../Verified/Examples/Forms.lean) | Literals of words, floats, and `Bool`s, a literal as a loop's state, and conjunctions and disjunctions of comparisons in conditions, decisions, the elements of a build, and the conditions of two tail recursions, which [the section on these forms](#array-literals-and-conditions-on-propositions) describes. |
 | [WASI stdin and stdout](../Verified/Examples/WasiStdio.lean) | `copySome` and closed main of the WASI manual, compiled in callable and command forms.  One read and one write expose errno handling and short-transfer limits. |
 | [WASI reflection](../Verified/Wasi/ReflectCommandCases.lean) | Public source-to-export declarations with hidden tables, literals, owned and borrowed bytes, records, computed call arguments, and command main. |
 | [`Calls`](../Verified/Examples/Calls.lean) | Four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`. |

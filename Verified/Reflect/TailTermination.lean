@@ -19,9 +19,16 @@ def deriveTailAcc (name stepName : Name) (params : Array Lean.Expr)
   let goal ← mkFreshExprSyntheticOpaqueMVar (← mkAppM ``Acc #[relation, state])
   let app ← exprToSyntax (mkAppN (mkConst name) params)
   let stepId := mkIdent stepName
+  -- A case whose step equation keeps an `if` that the case's hypotheses decide only in another
+  -- form, such as `r ≤ 1 ∨ d ≤ 1` against `1 < r ∧ 1 < d`, splits the equation on its `if`s.  A
+  -- branch whose condition contradicts the case's hypotheses closes by `omega` on the words'
+  -- natural numbers.
   let remaining ← Tactic.run goal.mvarId! <| Tactic.evalTactic (← `(tactic|
     fun_induction $app <;>
-      (refine Acc.intro _ ?_; intro next hs; simp_all [$stepId:ident])))
+      (refine Acc.intro _ ?_; intro next hs; simp_all [$stepId:ident]) <;>
+      try ((repeat' split at hs) <;> try simp_all) <;>
+      try ((simp only [UInt64.lt_iff_toNat_lt, UInt64.le_iff_toNat_le, UInt64.reduceToNat] at *)
+        <;> omega)))
   unless remaining.isEmpty do
     let goals := MessageData.joinSep (remaining.map MessageData.ofGoal) "\n"
     throwError "verified_compile: the tail transition of {name} has unproved induction cases:\n{goals}"

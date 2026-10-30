@@ -69,6 +69,7 @@ import Examples.Below100.Cases
 import Examples.Below100.Program
 import Examples.RemoveZero.Cases
 import Examples.Binary32.Cases
+import Verified.Examples.Forms
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -439,6 +440,44 @@ def droneCases : IO Unit := do
           IO.println s!"drone|predecessor|list:i64,i64,i64|i64:{r0} i64:{r1} {choiceArg old} \
             i64:{target} i64:{source}|{choiceOut (predecessor r0 r1 old target source)}"
 
+
+/-- The cases of the array literals and of the conjunctions and disjunctions of `Forms`, with the
+allocation counters: a literal of one element allocates two blocks, the empty array and its first
+growth, and a literal of two or three elements three. -/
+def formCases : IO Unit := do
+  let ws := [(0 : UInt64), 1, 7, 100, 4294967296, 18446744073709551615]
+  let bits (bs : Array Bool) : Array UInt64 := bs.map fun b => if b then 1 else 0
+  for a in ws do
+    IO.println s!"forms|single|array-u64|i64:{a}|{arrayOut (Forms.single a)}|1|2"
+    for b in ws do
+      IO.println s!"forms|pair|array-u64|i64:{a} i64:{b}|{arrayOut (Forms.pair a b)}|1|3"
+      IO.println s!"forms|flags|array-u64|i64:{a} i64:{b}|\
+        {arrayOut (bits (Forms.flags a b))}|1|3"
+      IO.println s!"forms|decided|i64|i64:{a} i64:{b}|{bit (Forms.decided a b)}|0|0"
+      for c in ws do
+        let args := s!"i64:{a} i64:{b} i64:{c}"
+        IO.println s!"forms|inside|i64|{args}|{Forms.inside a b c}|0|0"
+        IO.println s!"forms|outside|i64|{args}|{Forms.outside a b c}|0|0"
+        IO.println s!"forms|ordered|i64|{args}|{Forms.ordered a b c}|0|0"
+  for x in floats do
+    IO.println s!"forms|floats|array-u64|{floatArg x}|{floatArrayOut (Forms.floats x)}|1|3"
+    for (lo, hi) in [((0.0 : Float), (1.0 : Float)), (-1.0, 1.0), (1.0, -1.0), (0.0 / 0.0, 1.0)] do
+      let args := s!"{floatArg x} {floatArg lo} {floatArg hi}"
+      IO.println s!"forms|within|f64|{args}|{(Forms.within x lo hi).toBits}|0|0"
+  for xs in arrays.take 5 do
+    for i in [(0 : UInt64), 1, 5, 18446744073709551615] do
+      IO.println s!"forms|window|array-u64|{arrayArg xs} i64:{i}|\
+        {arrayOut (Forms.window xs i)}|2|4"
+    for (lo, hi) in [((0 : UInt64), (10 : UInt64)), (5, 5), (10, 0), (0, 18446744073709551615)] do
+      IO.println s!"forms|marks|array-u64|{arrayArg xs} i64:{lo} i64:{hi}|\
+        {arrayOut (Forms.marks xs lo hi)}|2|2"
+  for n in [(0 : UInt64), 1, 2, 7, 100] do
+    IO.println s!"forms|lastTwo|array-u64|i64:{n}|\
+      {arrayOut (Forms.lastTwo n)}|1|{3 * (n + 1)}"
+  for n in [(0 : UInt64), 1, 2, 999, 1000, 4096, 18446744073709551615] do
+    for acc in [(0 : UInt64), 5, 999, 1000] do
+      IO.println s!"forms|countDown|i64|i64:{n} i64:{acc}|{Forms.countDown n acc}|0|0"
+      IO.println s!"forms|climb|i64|i64:{n} i64:{acc}|{Forms.climb n acc}|0|0"
 
 /-- The cases of the verified modules of the LeanExe compiler's examples: the inputs of their
 LeanExe cases, against the specification `expected` where the example has one, with the
@@ -1411,3 +1450,4 @@ def main : IO Unit := do
   IO.println s!"xorshift|square|array-u64|{arrayArg cols}|\
     {arrayOut (_root_.Library.Random.Xorshift.square cols)}|2|2"
   portCases
+  formCases

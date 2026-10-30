@@ -59,6 +59,20 @@ theorem ite_decide_eq {α : Type} (p : Prop) [Decidable p] (a b : α) :
     (if decide p then a else b) = (if p then a else b) := by
   by_cases h : p <;> simp [h]
 
+/-- The decision of a conjunction of propositions is the conjunction of their decisions, for every
+instance of the conjunction. -/
+theorem decide_and_eq (p q : Prop) [Decidable p] [Decidable q] (h : Decidable (p ∧ q)) :
+    (decide p && decide q) = @decide (p ∧ q) h := by
+  rw [Subsingleton.elim h instDecidableAnd]
+  by_cases hp : p <;> by_cases hq : q <;> simp [hp, hq]
+
+/-- The decision of a disjunction of propositions is the disjunction of their decisions, for every
+instance of the disjunction. -/
+theorem decide_or_eq (p q : Prop) [Decidable p] [Decidable q] (h : Decidable (p ∨ q)) :
+    (decide p || decide q) = @decide (p ∨ q) h := by
+  rw [Subsingleton.elim h instDecidableOr]
+  by_cases hp : p <;> by_cases hq : q <;> simp [hp, hq]
+
 theorem ite_eq {t : Ty} {c : Expr S Γ .bool} {a b : Expr S Γ t} {C : Bool} {A B : t.denote}
     (hc : c.denote funs env = C) (ha : a.denote funs env = A) (hb : b.denote funs env = B) :
     (Expr.ite c a b).denote funs env = if C then A else B := by

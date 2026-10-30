@@ -372,7 +372,13 @@ continuing transition from Lean's generated induction theorem.  [State flattenin
 proves both inverse laws for the tuple of native parameters and its source environment.
 [The reflection examples](Examples/TailReflection.lean) check these proofs for word accumulation,
 array growth with fixed weights, scalar pairs, and arrays of records.  [Definition assembly](Reflect/TailDefinition.lean)
-adds the typed function, decreasing rank, and fixed meaning.  The command selects this path
+adds the typed function, decreasing rank, and fixed meaning.  The fixed-point equations go
+through `Sum.elim_inl`, `Sum.elim_inr`, and `Tail.fixed_restate`, and each meaning definition
+has a height above its function's, so the kernel checks them without unfolding the recursive
+definition.  For the prime-factor count, whose measure has a factor `2 ^ 64`, that unfolding does
+not finish.  When Lean's induction theorem states a case's condition in another form than the step,
+the termination proof splits the step on its conditions and closes contradictory branches with
+`omega`.  The command selects this path
 for recognized tail recursion by default.  `set_option verified.tailLoops false` retains
 guarded recursion.  A tail function takes a depth parameter only when its body calls guarded
 code.  Continuing iterations preserve that depth.
