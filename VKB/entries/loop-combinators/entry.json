@@ -1,0 +1,28 @@
+{
+  "id": "loop-combinators",
+  "goals": [
+    "P n.toNat (LeanExe.loop n init f)",
+    "LeanExe.loop n init f = LeanExe.loop n init g",
+    "(LeanExe.build n f)[m]!",
+    "(LeanExe.build n f).size"
+  ],
+  "modules": [
+    "LeanExe.IR.Combinators",
+    "Library.Arrays.Search.Proof"
+  ],
+  "declarations": [
+    "LeanExe.IR.loop_induction",
+    "LeanExe.IR.loop_congr",
+    "LeanExe.IR.build_size",
+    "LeanExe.IR.build_get",
+    "LeanExe.IR.build_get_out",
+    "LeanExe.IR.build_congr"
+  ],
+  "examples": [
+    "Library.Arrays.Search.firstZero_cases"
+  ],
+  "sources": [
+    "2026-10-24: Glushkov's theorem",
+    "2026-10-24: The matcher computes the specification"
+  ]
+}

@@ -39,3 +39,7 @@ Treat accepted theorems and [the LeanExe compiler manual's full check](docs/lean
 Keep journals as frequent, natural prose.  They should identify supplied help that worked or failed, explain changes of approach, and note missing general abstractions.  Test changes on fixed modules, preserve failures, and use diverse or held-out demos to avoid problem-specific optimization.
 
 Preserve checked narrow or program-specific LTG material as worked examples by default.  Generality and recurring evidence determine importability, automatic selection, and promotion, while specificity alone does not justify deletion.  Remove an example only when it is invalid, stale, unsafe to disclose to a measured proof task, or duplicated without a distinct lesson.
+
+## Verification Knowledge Base
+
+[The verification knowledge base](VKB/README.md) holds lemmas, proof recipes, worked examples, and recorded failures for proofs about programs of the verified compiler.  Before a proof task, search its entries for the declarations and goal shapes at hand.  After the task, propose new entries or changes in the form of [the template](VKB/TEMPLATE.md), in the task's report or as files under `VKB/entries/`.  A reviewer admits a proposal when its guidance applies beyond the task, its declarations exist, and no entry already covers it, and `VKB/Check.lean` must pass after every admitted change.

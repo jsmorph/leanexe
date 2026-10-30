@@ -191,6 +191,7 @@ Floating-point theorems use WebAssembly's deterministic profile, and the Wasmtim
 | [Algorithm library](Library/README.md) | Native algorithms, compilation modules, mathematical proofs, and imports. |
 | [Application demos](Demos/README.md) | Application definitions, proofs, host programs, and tests. |
 | [Algorithm index](index.md) | Algorithms, applications, compiler examples, their proved results, and their compiled forms. |
+| [Verification knowledge base](VKB/README.md) | What proofs about verified-compiler programs have needed: lemmas, recipes, worked examples, and failures, and how entries are admitted. |
 
 ## Layout
 
@@ -203,6 +204,7 @@ Floating-point theorems use WebAssembly's deterministic profile, and the Wasmtim
 | [Compiler examples](Examples) | Small programs, specifications, proofs, and cases that demonstrate compiler features. |
 | [Manuals and design](docs) | Compiler manuals, design document, and WASI, translator, and bare-metal designs. |
 | [Proof guidance](ltg) | LTG knowledge base and its declaration checker. |
+| [Verification knowledge base](VKB/README.md) | Entries of lemmas, proof recipes, worked examples, and recorded failures for verified-compiler programs, their template, and the declaration check. |
 | [Rocq proofs](rocq) | Composition of CompCert's proofs from Clight to Asm and uniqueness lemmas, checked against a CompCert 3.18 tree. |
 | [Tools](tools) | Lean runner, module and shader emitters, execution hosts, native host, bare-metal startup code and checks, build scripts, and application tools. |
 | [Tests](tests) | Module, decoder, numerical, allocation, WASI, native, bare-metal, GPU, and complete-generation tests, plus the browser pages. |

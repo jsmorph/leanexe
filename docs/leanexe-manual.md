@@ -598,7 +598,7 @@ uv run tests/modules/chunks.py
 2. Emit every module with `Emit.lean` into a scratch directory and compare its bytes with `build/NAME/NAME.wasm`.  `tests/modules/run.sh --check-bytes build/byte-check` emits and compares every module in [the checked module list](../tests/modules/modules.txt).  A module whose source did not change must have the same bytes, and a changed module's new file replaces the old one before the tests.
 3. [`tests/modules/run.sh`](../tests/modules/run.sh), with the module cases, the release counts, and the depth guard, and `uv run tests/modules/chunks.py`.
 4. [`tests/drone/run.sh`](../tests/drone/run.sh), and [`tests/gpt/run.sh`](../tests/gpt/run.sh) and [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh) when the GPT module changed.
-5. The LTG check.
+5. The LTG check and [the VKB check](../VKB/README.md#check).
 6. A cold numerical proof cache first needs the [separate one-worker builds](#memory-heavy-numerical-proofs).  Then `tools/leanrun --threads 2 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh) must pass, since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
 7. [`tests/wgsl/run.sh`](../tests/wgsl/run.sh), `tests/wgsl/run.sh --verified`, and `tests/wgsl/run.sh --verified-gpt32` on both Vulkan drivers.  `tests/gpt32/native.sh --verified` also compares complete binary32 generation with native Lean on Wasm and both drivers.
 

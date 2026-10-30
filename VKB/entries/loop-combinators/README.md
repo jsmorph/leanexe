@@ -1,0 +1,7 @@
+# Loops and builds of the dialect
+
+A dialect program iterates with `LeanExe.loop n init f`, which applies `f` to the indices `0` through `n - 1` in order, and constructs arrays with `LeanExe.build n f`.  A proof that such a program meets its specification needs an invariant for each loop and the elements of each built array.  These lemmas concern the Lean definitions, so they serve programs of either compiler.
+
+`LeanExe.IR.loop_induction` carries a predicate `P k s` from `P 0 init` through every step `k < n.toNat` to `P n.toNat (LeanExe.loop n init f)`.  State `P` over the natural-number index `k`, and inside the step convert `(UInt64.ofNat k).toNat` back to `k` with `UInt64.toNat_ofNat_of_lt'` and the bound `k < n.toNat < 2 ^ 64`.  `LeanExe.IR.loop_congr` replaces a loop's step by one that agrees at every index below `n`.  For builds, `LeanExe.IR.build_size` gives the size, `build_get` gives the element at `m < n.toNat`, `build_get_out` gives `default` beyond it, and `build_congr` replaces the function.
+
+Write the invariant to describe the state after `k` steps exactly, including what earlier indices established, as `Library.Arrays.Search.firstZero_cases` does with its two cases: no zero among the first `k` words, or the first zero found at some `j < k`.  An invariant that holds only at the end fails at the step case.  The SHA-3 sponge and SHAKE proofs and the regex matcher's proofs use the same lemma for longer loops.

@@ -1,0 +1,31 @@
+{
+  "id": "packed-bytes",
+  "goals": [
+    "msg[(UInt64.ofNat i >>> 3).toNat]! >>> ((UInt64.ofNat i &&& 7) <<< 3)",
+    "Library.Bytes.bytes msg n",
+    "Library.Bytes.byteAt msg i"
+  ],
+  "modules": [
+    "Library.Bytes.Packed",
+    "Library.Hashing.Crc.Proof",
+    "Library.Regex.RunProof",
+    "Library.Hashing.XxHash64.Proof"
+  ],
+  "declarations": [
+    "Library.Bytes.byteOf",
+    "Library.Bytes.byteAt",
+    "Library.Bytes.bytes",
+    "Library.Bytes.bytes_size",
+    "Library.Bytes.bytes_get!",
+    "Library.Bytes.byteAt_eq"
+  ],
+  "examples": [
+    "Library.Hashing.Crc.Proof.natBits_word",
+    "Library.Regex.RunProof.input_byte",
+    "Library.Hashing.XxHash64.Proof.byte_eq"
+  ],
+  "sources": [
+    "2026-10-23: Packed bytes",
+    "2026-10-25: SipHash and XXH64"
+  ]
+}
