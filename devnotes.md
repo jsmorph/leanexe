@@ -38993,7 +38993,7 @@ The checks ran on AArch64, with Wasmtime 44.0.0 and CompCert 3.18, at the final 
 - [x] The termination proof's split of a case on the step's conditions.
 - [x] The kernel checks of a tail function's equations without unfolding the function.
 - [x] The verified compilations of `Lookup`, `TreeLookup`, the prime-factor count, and `condMix32`, with their registry entries and cases.
-- [ ] Run `tests/wgsl/run.sh --verified` on a host with the SwiftShader and llvmpipe drivers.
+- [x] Run `tests/wgsl/run.sh --verified` on a host with the SwiftShader and llvmpipe drivers.
 - [ ] Decide whether `if ¬p`, implication, and equivalence of propositions get a rule, which no port needs now.
 - [x] Compare the bytes of the modules of `tests/verified/modules.txt` with those of the compiler before this change, with `tests/verified/run.sh --check-bytes`.
 
@@ -39299,3 +39299,13 @@ The documentation checker follows relative links from the root README and report
 `FixedArrayAllocator.region_spec` assumes an empty free list.  The ProofKit guide now points to [the general allocation proof](LeanExe/ProofKit/FixedArrayAllocate.lean) and states its memory and request limits.  The floating-point descriptions name the finishing lemmas and their numerical conditions.  The Fourier guide distinguishes exact-equality checks from tolerance comparisons.  The test guide gives each byte-comparison command's reference and output paths.  The Rocq guide states the compilation and termination premises and the trusted correspondence between Lean's Clight copy and CompCert.
 
 The commit was rebased onto the remote commits of the same day.  The artifact table keeps their count of registry file theorems, the VKB table gained their entries for array folds by list induction, explicit arguments before dependent proofs, and file theorems, and the references of the running-maximum example follow the rule above.  The link checker, parser tests, and whitespace checks pass.  The changed documentation is reachable from the root README.  The existing stash and untracked paper and run artifacts remain in place.
+
+## 2026-10-30: The verified WGSL kernels on SwiftShader and llvmpipe
+
+The kernels and cases of `tests/wgsl/run.sh --verified`, which are those of [the verified kernel examples](Verified/Examples/Wgsl.lean) and the four kernels of [the binary32 example's verified module](Examples/Binary32/Compiled.lean), ran on GPU drivers for the first time.  So did those of `--verified-gpt32`, the verified binary32 GPT-2 kernels.  A Lean host emitted both sets from `c3a9a5088` with `--emit-only`, in 110 and 477 seconds, and an AArch64 machine without Lean ran them with `--drivers-only`, in 17 and 36 seconds.  Its SwiftShader comes from Chromium 145, which the [entry of 2026-10-26](#2026-10-26-complete-review-of-the-wasi-work) found to use the LLVM 16 backend on AArch64, and its llvmpipe from Mesa 25.0.7.  Every case passed on both drivers: 347 of 347 for the first set and 694 of 694 for the second.
+
+The same files, copied by checksum to an x86-64 machine, passed every case on llvmpipe and failed 70 of 347 and 108 of 694 on SwiftShader from Chromium 156.  That entry traced the same pattern to SwiftShader's Subzero backend on x86-64, which flushes subnormal operands to zero, as WGSL 15.7.2 permits.  Every failing case has a subnormal among its expected words or a subnormal binary32 input word of at least `2^16`, and smaller input words can be lengths or indices.  Of the 1,639 mismatched output words, 924 are subnormal results returned as zero, 368 are normal results returned as zero, and 222 are infinities returned as NaN, the product of an infinity and a flushed operand.  The other 125 words, in `axpyArray`, `condMix`, `verifiedCondMix32`, and `matVec`, were not traced one by one.
+
+The strict-profile tests therefore need SwiftShader's LLVM backend, which only the AArch64 build provides, and an x86-64 SwiftShader shows only that a driver flushes subnormals.  The next step of the retirement plan makes the verified kernels the defaults of `tests/wgsl/run.sh`, and these results are its baseline.  The open box of the reflector entry for the `--verified` kernels is ticked.
+
+- [x] The verified and binary32 GPT-2 kernels on SwiftShader and llvmpipe.
