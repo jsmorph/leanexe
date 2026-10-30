@@ -152,3 +152,4 @@ import Verified.AlignedCorrect
 import Verified.AlignedEntries
 import Verified.AlignedNative
 import Verified.AlignedProgram
+import LeanExe.Native.Proof.Unique
