@@ -569,6 +569,10 @@ Before the module cases, the driver builds the byte-theorem modules of [the file
 
 The checks of `Trig`, `Exp`, and `Log` also compare the stored tables with integer references.  `FourierAccuracy.lean` checks impulse and single-frequency transforms, the round trip, Parseval's identity, the power spectrum, and agreement with an exact transform within its stated tolerance.  Each function's document gives its argument sets, measured distances, and proved accuracy bound.
 
+### Talos conformance
+
+[The Talos conformance driver](../tests/talos/run.sh) tests Talos, the semantics in which every theorem holds, against the official WebAssembly testsuite at the revision that CodeLib's submodule `vendor/testsuite` records.  It builds the testsuite runner of the pinned CodeLib revision and runs it over the suite, and it fails if the runner records a failed command, an interpreter error, or exhausted fuel.  It then requires the runner's report, one line per command with its outcome, to equal `testsuite_report.txt` at CodeLib's root, the report that Talos's continuous integration checks.  The runner converts each script with `wasm-tools json-from-wast`, so the driver requires the pinned `wasm-tools` 1.251.0.  Lake's checkout of CodeLib leaves the submodule uninitialized, so a first run needs `git -C .lake/packages/CodeLib submodule update --init vendor/testsuite`.
+
 ### The full check
 
 The full library includes the numerical proofs and can take several hours.  The lgamma root-range proofs need `--memory-high 10G`, which sets a 12 GiB memory maximum.  The [compilation example](#compiling-and-running) builds only its selected module and imports at the default limits.

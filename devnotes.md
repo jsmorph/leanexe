@@ -38897,7 +38897,7 @@ The ports of the examples and library programs stopped at four definitions that 
 - [ ] `STATUS.md` from the full check.
 - [x] The `NativeA` cap and region conclusions.
 - [x] Determinism of the Lean copy of Clight.
-- [ ] A Talos conformance record.
+- [x] A Talos conformance record.
 - [ ] A released toolchain.
 - [ ] The retirement prerequisites: the English-request skill and the quick start on the verified compiler, and the four deferred LeanExe items.
 
@@ -39309,3 +39309,39 @@ The same files, copied by checksum to an x86-64 machine, passed every case on ll
 The strict-profile tests therefore need SwiftShader's LLVM backend, which only the AArch64 build provides, and an x86-64 SwiftShader shows only that a driver flushes subnormals.  The next step of the retirement plan makes the verified kernels the defaults of `tests/wgsl/run.sh`, and these results are its baseline.  The open box of the reflector entry for the `--verified` kernels is ticked.
 
 - [x] The verified and binary32 GPT-2 kernels on SwiftShader and llvmpipe.
+
+## 2026-10-30: The conformance driver of the pinned Talos
+
+[Talos's conformance driver](tests/talos/run.sh) repeats the testsuite run of 2026-10-10 at the CodeLib revision that `lake-manifest.json` pins, `87e3aa5e`.  It checks that CodeLib's submodule `vendor/testsuite` holds the revision that CodeLib records, `9233a0a8`, and otherwise exits with status 2 and names the `git submodule update --init` command.  It builds the runner with `tools/leanrun --timeout 3h lake build testsuite`, runs it over the suite from the CodeLib checkout, and fails unless the runner exits with status 0.  It then runs the runner with `--report`, compares the output with the report that CodeLib commits, and fails on a difference, which it prints.  It prints the runner's totals with one outcome kind to a line.
+
+The recommendation named `interpreter/testsuite_report.txt` as the committed report, but that file is empty at the pin, as the entry of 2026-10-10 found: Talos's pull request #184 added it without content.  The report that Talos's gate compares is `testsuite_report.txt` at CodeLib's root.  `just testsuite-report` regenerates it with `scripts/testsuite-report.sh`, which runs `lake -d interpreter exe testsuite --report` from the CodeLib root, and the workflow `.github/workflows/testsuite-report.yml` fails a pull request when `git diff --exit-code testsuite_report.txt` finds a change.  The driver therefore compares with the root file, whose counts of outcome tags equal the counts of the run of 2026-10-10.
+
+The runner's code in `interpreter/Interpreter/Testsuite.lean` and `Testsuite/Exec.lean` determines the remaining choices.  It reads the suite at the relative path `vendor/testsuite`, so the driver runs it from the CodeLib checkout, as CodeLib's recipe does.  A report line holds the script's base name, the command's line and kind, and an outcome tag, so the report depends on neither the working directory nor the temporary directory.  The report depends on `wasm-tools`, because the runner splits each script with `wasm-tools json-from-wast`: CodeLib's justfile and `scripts/testsuite-report.sh` pin release 1.251.0 and state that other releases can split scripts differently, and the repository's `.wasm-tools-version` names the same release.  The driver extends `PATH` as the other drivers do, puts the directory of `WASM_TOOLS` first when that variable is set, as `tools/macos-env.sh` sets it, and runs `tools/check-wasm-tools-version.sh` without `WASM_TOOLS`, so that the check reads the binary that the runner finds on `PATH`.
+
+The runner creates its temporary directory with `mktemp -d -t`, which places it in `TMPDIR`, and removes it at the end.  The driver sets `TMPDIR` to `build/talos` inside the command that `tools/leanrun` runs, because `tools/leanrun` takes its default lock directory from `TMPDIR`.  CodeLib's `scripts/testsuite.sh` discards the runner's status with `|| true`, so the driver runs the built program, `interpreter/.lake/build/bin/testsuite` in the CodeLib checkout, directly.  Under `--report` the runner exits with status 0 whatever the outcomes, so the driver runs it twice, once for its status and totals and once for the report.  The first character of `git submodule status` is a space only when the submodule is initialized and its checked-out commit is the one that CodeLib records, as [the command's documentation](https://git-scm.com/docs/git-submodule#Documentation/git-submodule.txt-status--cached--recursive--path) states, and the driver's first check tests it.
+
+Before the submodule was initialized, the driver exited with status 2 at its first check without starting Lean.  `git -C .lake/packages/CodeLib submodule update --init vendor/testsuite` then cloned the suite and checked out `9233a0a8`.  `LEANRUN_THREADS=4 LEANRUN_MEMORY_HIGH=24G tests/talos/run.sh`, under GNU `time`, passed in 14 min 58 s from 16:44 UTC.  The table gives each step's time and its scope's `memory.peak`, sampled once a second.
+
+| Step | Duration | Scope peak | Result |
+|---|---|---|---|
+| `lake build testsuite` | 7 min 44 s, from 16:44 UTC | 2.77 GiB | 6,660 jobs, of which 3,321 compiled native code and 3 elaborated `Interpreter.Wasm.Validate` and the runner's modules.  Compiling `Interpreter.Wasm.Semantics` took 460 s. |
+| Runner | 3 min 52 s, from 16:52 UTC | 1.03 GiB | Status 0 |
+| Runner with `--report` | 3 min 18 s, from 16:56 UTC | 1.03 GiB | 65,142 lines, equal to CodeLib's report |
+
+| Outcome | 2026-10-10 | 2026-10-30 |
+|---|---|---|
+| Pass | 64,751 | 64,751 |
+| Fail | 0 | 0 |
+| Skip | 346 | 346 |
+| Cascade | 18 | 18 |
+| Decode error | 27 | 27 |
+| Interpreter error | 0 | 0 |
+| Out of fuel | 0 | 0 |
+
+The counts equal those of 2026-10-10, and the equal reports show that every command has the outcome that Talos's committed report gives it.  The runner took two minutes on 2026-10-10 and 3 min 52 s here, while other builds ran at the same time.  GNU `time` reported a maximum resident set of 3.67 GiB for the largest process, a figure that includes the file pages the process maps.  The peaks lie below the 4 GiB default limit of `tools/leanrun`, so the driver sets no limit of its own.  The build limit of three hours covers a build with one thread and a checkout whose interpreter modules are not yet elaborated, and this run measured neither.
+
+The driver's comments were revised after that run, and its commands were not.  A second run of the final file, with the same settings and the build up to date, passed in 6 min 15 s from 17:00 UTC.  It gave the same totals and a report equal to CodeLib's, and its largest process had a maximum resident set of 1.04 GiB.
+
+- [x] `tests/talos/run.sh`, its run, and the comparison with the counts of 2026-10-10.
+- [x] The trusted base, the verified manual, and the test guide.
+- [ ] A step for the driver in `tools/full-check`.
