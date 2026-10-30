@@ -101,7 +101,7 @@ with the modeled floating-point and host semantics require external execution te
 
 ## Build and run
 
-Commands run from the repository root.  [The host setup](../../docs/leanexe-manual.md#the-wasmtime-host)
+Commands run from the repository root.  [The host setup](../../docs/verified-manual.md#the-wasmtime-host)
 provides the pinned Wasmtime host and its deterministic floating-point profile.
 
 On an 8-CPU host with about 12 GiB of memory, the tested profile uses `LEANRUN_THREADS=3` and

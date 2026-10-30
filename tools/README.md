@@ -28,7 +28,7 @@ when that record is made and how the subsequent check uses it.
 [The Wasmtime download](download-wasmtime.sh) obtains the pinned C API, and
 [the host build](build-wasmtime-host.sh) builds the host from [its C source](wasmtime-host.c).
 The host calls exports, handles persistent sessions and allocation counters, and runs WASI
-commands.  [The host manual](../docs/leanexe-manual.md#the-wasmtime-host) defines its argument
+commands.  [The host manual](../docs/verified-manual.md#the-wasmtime-host) defines its argument
 and result formats.  [The WASI manual](../docs/wasi.md#wasmtime-host) defines stream and exit
 behavior.
 

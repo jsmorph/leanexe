@@ -211,7 +211,7 @@ A bare-metal program is the translation of a module, a volatile global `lx_out` 
 
 ## Commands
 
-Commands run from the repository root.  They require Lean through Elan at the version in [the toolchain file](lean-toolchain), the dependencies in [the Lake manifest](lake-manifest.json), `wasm-tools` at [the pinned version](.wasm-tools-version), and a C compiler for the Wasmtime host.  Python tools use `uv`.  On Linux, the Lean runner requires a systemd user session with cgroup controls.  [The host setup](docs/leanexe-manual.md#the-wasmtime-host) also covers macOS.
+Commands run from the repository root.  They require Lean through Elan at the version in [the toolchain file](lean-toolchain), the dependencies in [the Lake manifest](lake-manifest.json), `wasm-tools` at [the pinned version](.wasm-tools-version), and a C compiler for the Wasmtime host.  Python tools use `uv`.  On Linux, the Lean runner requires a systemd user session with cgroup controls.  [The host setup](docs/verified-manual.md#the-wasmtime-host) also covers macOS.
 
 The GCD example builds its program and proof, writes the module, validates it, and runs a call, which prints `6`.  Every Lean or Lake command uses [the resource-limited runner](tools/leanrun), as [the repository instructions](AGENTS.md) require.  A focused verified-compiler build, such as `tools/leanrun --timeout 60m lake build Library.Random.Lcg.Verified`, builds that example and its imports.
 
@@ -234,7 +234,7 @@ tools/leanrun --timeout 60m lake build
 tools/leanrun --timeout 60m lake build Verified
 ```
 
-[The full-check procedure](docs/leanexe-manual.md#the-full-check) gives its resource settings and the execution, decoder, allocation, numerical, and GPU tests.  On an 8-CPU host with about 12 GiB of memory, the procedure stages [memory-heavy numerical proofs](docs/leanexe-manual.md#memory-heavy-numerical-proofs) individually before a two-worker aggregate, with a 10 GiB memory high limit and 12 GiB maximum.  Test drivers invoke the runner themselves.
+[The full-check procedure](docs/leanexe-manual.md#the-full-check) gives its resource settings and the execution, decoder, allocation, numerical, and GPU tests.  On an 8-CPU host with about 12 GiB of memory, the procedure stages [memory-heavy numerical proofs](docs/verified-manual.md#memory-heavy-numerical-proofs) individually before a two-worker aggregate, with a 10 GiB memory high limit and 12 GiB maximum.  Test drivers invoke the runner themselves.
 
 `tests/wasi/run.sh` checks the WASI proofs, reflected modules, byte ownership, and native and WebAssembly I/O.  Its `--foundations-only` form runs the proof and semantic foundations without the external-engine tests.  [The WASI development journal](devnotes.md#2026-10-23-implementing-the-wasi-agenda) records proof, execution, and integration runs.
 

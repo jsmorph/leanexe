@@ -25,9 +25,9 @@ program can compile them into its own module and use them without a new proof.  
 | `prng_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements both functions. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  `ImplementsPure`, defined in [the
-manual](../../../docs/leanexe-manual.md#the-implements-family), is the form of `Implements` for functions on
-scalars that leave the store unchanged.  The proofs step through straight-line statements with
+`Classical.choice`, and `Quot.sound`.  `ImplementsPure`, defined in [the verified compiler
+manual](../../../docs/verified-manual.md#the-implements-family), is the form of `Implements` for
+functions on scalars that leave the store unchanged.  The proofs step through straight-line statements with
 `Stmt.run_spec`.
 
 ## Building, running, and testing

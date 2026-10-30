@@ -34,8 +34,8 @@ their buffer and invocation bounds.
 
 The proofs are in [`Verify.lean`](Verify.lean) and [`Wgsl.lean`](Wgsl.lean), and they use only the
 axioms `propext`, `Classical.choice`, and `Quot.sound`.  `condMix32` has a WGSL theorem and no
-WebAssembly theorem.  [The LeanExe compiler
-manual](../../docs/leanexe-manual.md#wgsl-kernels-and-the-browser-pages) describes the WGSL path,
+WebAssembly theorem.  [The verified compiler
+manual](../../docs/verified-manual.md#the-wgsl-library-and-the-browser-pages) describes the WGSL path,
 and [the design document](../../docs/design.md#gpu) states what the device model adds to the trusted
 base.
 

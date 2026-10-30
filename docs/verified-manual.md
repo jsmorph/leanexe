@@ -1,6 +1,6 @@
 # Verified Compiler Manual
 
-This manual describes the verified compiler's pure dialect, the `verified_compile` command and its generated theorems, allocation and depth bounds, tests, and examples.  [The WASI manual](wasi.md) describes the separate `verified_compile_wasi` command for native Lean actions with stdin, stdout, stderr, and exit.  [The LeanExe compiler manual](leanexe-manual.md) describes the other compiler, and [the README](../README.md) compares the two.  [The verified compiler's internals](../Verified/README.md) describe its code scheme and the structure of its proof, and [the design document](design.md) gives the decisions and the open work.
+This manual describes the verified compiler's pure dialect, the `verified_compile` command and its generated theorems, allocation and depth bounds, the Wasmtime and WebGPU hosts, tests, examples, and the runner `tools/leanrun`.  [The WASI manual](wasi.md) describes the separate `verified_compile_wasi` command for native Lean actions with stdin, stdout, stderr, and exit.  [The LeanExe compiler manual](leanexe-manual.md) describes the other compiler, and [the README](../README.md) compares the two.  [The verified compiler's internals](../Verified/README.md) describe its code scheme and the structure of its proof, and [the design document](design.md) gives the decisions and the open work.
 
 ## Compiler, theorems, and trusted base
 
@@ -43,7 +43,7 @@ Every statement about a value of a recursive type uses its representation in [th
 
 `RecordHeader` has two conditions on the value alone, at most 64 slots in a record and a word slot that holds a buffer's length after each buffer slot, and `RecordSlots` has the second.  An encoding that breaks the length condition makes `Represent.borrowed` and `Represent.owned` false for its values in every store, and one that breaks the slot bound makes `Represent.owned` and the precondition of a moved value false, while a borrowed value can still be represented.  An `Implements` statement over the type then holds for every module whenever the type is an argument, for a broken length condition, or a moved argument, for a broken slot bound.  A type that appears only as a result constrains nothing in either case, because only modules that always trap satisfy the statement, and those satisfy every `Implements` statement.  The `Represent` instances of a type with `Encode`, in [the `Implements` definitions](../LeanExe/Pipeline/Implements.lean), require the class `EncodeWellFormed`, which states both conditions for every record of every value.  `verified_recursive_type` proves the theorem `wellFormed` and, unless the type has one, the instance for every type that it declares, from the layout of the type's tree, the encodings of `List UInt64`, `Words`, and `KeyTree` prove it by hand, and the typed-tree audit fails for a recursive type of its example without the theorem.  With the instance, a reader of an `Implements` statement over the type can rule out that it holds vacuously because of these two layout conditions.  Values too large for 32-bit memory have no representation, such as a buffer of 2^32 bytes or an array of about 2^29 words, which limits single values and never every value of a type.
 
-WGSL dispatch uses the shared [device model](leanexe-manual.md#wgsl-kernels-and-the-browser-pages)
+WGSL dispatch uses the shared [device model](#the-wgsl-library-and-the-browser-pages)
 with strict binary32 arithmetic.  Its theorems prove successful modeled execution and race freedom
 under their buffer, count, and invocation bounds.
 
@@ -430,15 +430,14 @@ of the existing application.  [Its dispatch proofs](../Demos/Gpt32/VerifiedDispa
 reuse `Compiled.dispatch_value`, which transports source correctness through a native
 denotation equation.  [Its host theorem](../Demos/Gpt32/VerifiedHost.lean) instantiates the
 existing typed generation proof with the new kernel map.  It states the native step's scores
-and race freedom under the same device model and shape, token, and weight bounds.
+and race freedom under the same device model and shape, token, and weight bounds.  [The WGSL
+tests](#wgsl-tests) compare these kernels and those of the examples with native Lean.
 
-`tools/EmitWgsl.lean` emits the resulting module through the existing printer/parser check.
-`tests/wgsl/run.sh --verified` compares the checked cases on SwiftShader and Lavapipe.
-`tests/verified/run.sh --cases wgsl` compares the same cases in Wasmtime and checks allocations.
-`tests/wgsl/run.sh --verified-gpt32` checks the GPT kernels on both drivers.
-`tests/verified/run.sh --cases gpt32` checks their Wasm results and allocations.
-`tests/gpt32/native.sh --verified` compares complete generation steps with native Lean on Wasm
-and both GPU drivers, using the existing three random-model configurations.
+### The WGSL library and the browser pages
+
+[`LeanExe/WGSL/`](../LeanExe/WGSL) defines the WGSL subset of the kernels, a printer, a parser that `Module.parse_print` proves to invert the printer, and the device model, a semantics in which binary32 operations compute Talos's `IEEE32` results and a dispatch runs its invocations in order.  `Verified.WGSL.compile`, which [WGSL kernels](#wgsl-kernels) describes, translates into this subset.  [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean) prints a kernel after checking that the parser reads the text back as the kernel, and [`tools/build-webgpu-host.sh`](../tools/build-webgpu-host.sh), after [`tools/download-wgpu-native.sh`](../tools/download-wgpu-native.sh), builds `build/tools/leanexe-webgpu-host`.
+
+`uv run tests/web/serve.py` serves two pages on http://127.0.0.1:8000/.  The kernel page runs the WGSL kernel cases on the browser's WebGPU and compares every word with native Lean's, and the GPT-2 page runs GPT-2 124M in binary32 with its kernels on WebGPU, in `gpt32.wasm`, or on both with their scores compared.  The pages load the kernels that `tests/wgsl/run.sh` emits without `--verified` and the modules `build/gpt32/gpt32.wasm` and `build/gpt/gpt.wasm`, which are the LeanExe compiler's.  The GPT-2 page needs the weights that `uv run tests/gpt32/generate.py --export` writes, and [the description of the pages](../tests/web/README.md) covers the setup, the controls, and what is proved about the pages.
 
 ### Emitting and running
 
@@ -452,9 +451,92 @@ wasm-tools validate build/verified/lcg.wasm
 build/tools/leanexe-wasmtime-host call build/verified/lcg.wasm advance i64 i64:3 i64:1
 ```
 
-`Verified` is not a default target, so `lake build` alone does not build it.  Every Lean command runs through `tools/leanrun`, which [the LeanExe compiler manual](leanexe-manual.md#toolsleanrun-and-the-shared-lock) describes.  `Emit.lean` evaluates the module, encodes it, checks that the decoder returns it, and writes the file.  The Wasmtime host is the LeanExe compiler's, whose argument and result kinds [the LeanExe compiler manual](leanexe-manual.md#the-wasmtime-host) lists: the host allocates an array argument through `alloc`, prints a float as its bit pattern, and reads a pair result with the kind `list:`.  `call-stats` also prints the runtime's allocation and release counts.  Besides the definitions, the module exports `alloc`, `release`, its memory as `memory`, and the counters `allocCount` and `freeCount`.
+`Verified` is not a default target, so `lake build` alone does not build it.  Every Lean command runs through [`tools/leanrun`](#toolsleanrun-and-the-shared-lock).  `Emit.lean` evaluates the module, encodes it, checks that the decoder returns it, and writes the file.  [The Wasmtime host](#the-wasmtime-host) runs the module: it allocates an array argument through `alloc`, prints a float as its bit pattern, and reads a pair result with the kind `list:`.  `call-stats` also prints the runtime's allocation and release counts.  Besides the definitions, the module exports `alloc`, `release`, its memory as `memory`, and the counters `allocCount` and `freeCount`.
+
+### The Wasmtime host
+
+[`tools/download-wasmtime.sh`](../tools/download-wasmtime.sh) fetches the C API of Wasmtime 44.0.0, and [`tools/build-wasmtime-host.sh`](../tools/build-wasmtime-host.sh) builds `build/tools/leanexe-wasmtime-host` from [`tools/wasmtime-host.c`](../tools/wasmtime-host.c).  On an ARM Mac, [`tools/bootstrap-macos.sh`](../tools/bootstrap-macos.sh) installs the pinned tools in repository-local paths.  The host enables Cranelift's NaN canonicalization so that float results follow the deterministic profile.
+
+```sh
+build/tools/leanexe-wasmtime-host call build/verified/gcd.wasm gcd i64 i64:48 i64:18
+build/tools/leanexe-wasmtime-host call-stats build/verified/sumCount.wasm sumCount array-u64 \
+  array-u64:1,2,3
+build/tools/leanexe-wasmtime-host call build/verified/clob.wasm insertLevel \
+  list:array-u64,array-u64 array-u64:105,101 array-u64:4,6 i64:1 i64:103 i64:5
+```
+
+The form is `call MODULE.wasm FUNCTION RESULT-KIND ARG …`.  The first command prints `6`, the second prints `[6, 3]` and `stats 4 2`, the allocation and free counters after the call, and the third prints `[105, 103, 101]` and `[4, 5, 6]` on separate lines.  A structure, sum, or pair argument is passed as one argument per component.
+
+| Argument | Meaning |
+|---|---|
+| `i64:N` | Word. |
+| `f64:BITS`, `f32:BITS` | Float given by its bit pattern as a decimal word. |
+| `array-u64:N,N,…` | `Array UInt64` that the host allocates through `alloc`.  `array-u64:` is the empty array, and a float array passes the elements' bit patterns. |
+| `file-u64:PATH` | `Array UInt64` read from a file of little-endian words. |
+| `chain-u64:N,N,…` | `List UInt64` as a chain of records. |
+| `tree-u64:K,L,R` | Tree of the `KeyTree` layout in preorder, with `.` for a leaf, such as `tree-u64:5,3,.,.,.`. |
+| `records-u64:W,M,S,…` | Tree of records in preorder: `.` for null, and otherwise the width, the child mask, and the slots, where a slot whose mask bit is set is a tree, such as `records-u64:3,6,3,2,0,1,7,.` for `Term.add (.lit 7) .zero` of [the tagged example](../Verified/Examples/TaggedTypes.lean). |
+| `bytes:HEX`, `bytes-file:PATH` | Byte object, passed as a pointer and a length. |
+
+| Result kind | Output |
+|---|---|
+| `i64`, `f64`, `f32` | One decimal word, the bit pattern for floats. |
+| `array-u64` | Elements, as `[a, b, …]`. |
+| `chain-u64`, `tree-u64`, `records-u64` | List as `[a, b, …]`, or tree in the preorder form of its argument, after the host checks each record's header.  `records-u64` prints the width and mask that each header holds. |
+| `file-u64:PATH` | Array, written to a file. |
+| `list:K1,K2,…` | Several results, one line each.  Each kind is `i64`, `f64`, `f32`, `array-u64`, `chain-u64`, `tree-u64`, or `records-u64`. |
+| `slots:N` | `N` words on one line. |
+| `bytes` | Two results, a pointer and a length, printed as the bytes in hexadecimal. |
+
+`session MODULE.wasm` reads commands from standard input, one per line, and keeps the instance between calls, which [`tools/gpt2.py`](../tools/gpt2.py) and [the GPT session checks](../tests/gpt/sessions.sh) use.  `script` mode reads the same commands and allows one call.  A value in a command is a decimal word, `result:K` for result `K` of the last call, or `u64:V` for a variable that `read-u64` set.
+
+| Command | Effect |
+|---|---|
+| `alloc ID SIZE`, `bytes ID HEX`, `bytes-file ID PATH`, `file-u64 ID PATH` | Allocate an object and name its pointer `ID`. |
+| `write-u64 ID OFFSET VALUE`, `write-ptr ID OFFSET ID2`, `write-bytes ID OFFSET HEX` | Write into an object. |
+| `arg-u64 VALUE`, `arg-ptr ID`, `arg-f64 BITS` | Push an argument for the next call. |
+| `call FUNCTION NRESULTS` | Call an export and print `results r0 r1 …`. |
+| `keep ID VALUE` | Name a value, such as a returned pointer, `ID`. |
+| `save-u64 VALUE PATH` | Write the array at a pointer to a file. |
+| `read-u64 V PTR OFFSET`, `read-memory PTR LEN` | Read memory after a call. |
+| `stats`, `memory-size`, `done` | Print the counters, print the memory size, or stop. |
+
+A host releases an object it owns by calling the export `release` with the pointer.  `release` traps when the header lacks the magic number or the count is not 1, so a second release of one pointer traps.  The host also has test commands for the allocator (`release-reuse`, `free-alias`, `temp-byte-call`, `temp-array-call`, `noarg-temp-reuse`, and `allocator-grows`), which [`tools/wasmtime-host.c`](../tools/wasmtime-host.c) documents.
+
+Options before the mode configure WASI.  `--wasi` links WASI preview 1, and `run MODULE.wasm` enables WASI and calls `_start`.  `--stdin-file`, `--stdout-file`, and `--stderr-file` give the guest's streams, which the guest otherwise inherits from the host.  `--control-file` receives the host's own output, the control records, which otherwise go to the host's stdout.  [The WASI manual](wasi.md#wasmtime-host) states which combinations each mode requires.  In WASI mode, the control output of a failed run ends with `wasi-exit N`, `trap`, or `error`, and in `run` mode the host writes records only to a control file.  Without `--wasi`, the host writes no outcome records, and its status and stderr report a failure.
+
+| Record | Meaning | Host status |
+|---|---|---|
+| Result line, `results r0 r1 …`, `u64 V X`, `memory P L HEX`, `memory-size N`, `saved N` | Output of a call or a script command. | 0 |
+| `stats A F` | Allocation and free counters after `call-stats` or the `stats` command. | 0 |
+| `return` | `_start` returned in `run` mode. | 0 |
+| `wasi-exit N` | Call of `proc_exit` by the guest with a status `N` that Wasmtime accepts. | `N` modulo 256 |
+| `trap` | Trap in the export that the mode or a script `call` command calls. | 2 |
+| `error` | Any other failure after the control output opens: a Wasmtime error, a rejected exit status, a trap in `alloc`, `reset`, or module initialization, a malformed result, or a host failure. | 1 |
 
 ## Proving
+
+### Representations
+
+`Represent α` says how a value appears to a compiled function: its WebAssembly values, the heap data they point to when borrowed and when owned, the blocks its owned objects occupy, the regions a call reads, and the pointers a call consumes.  `Scalar` covers values without heap data: `UInt64`, `Float`, `Float32`, `Unit` for a function without parameters, pairs, and any type with a `Flat α β` instance, which represents `α` as the scalar `β`.  `Bool` has the instance `cond b 1 0` built in, and a user enumeration, structure, or sum needs its own `Flat` instance, such as `Flat Calc (UInt64 × UInt64 × Op)` in [the enumeration example](../Verified/Examples/Enums.lean).  The instances are part of what the theorem states.
+
+Arrays have instances for `Array UInt64`, `Array Float`, `Array Float32`, and `Array α` for a flat `α`, which is stored as `flatWords xs`.  `LeanExe.Bytes` has the instance of [the byte representation](../LeanExe/Pipeline/Bytes.lean), a pair of represented types is represented by its components, and a structure whose `Flat` tuple holds arrays is represented as that tuple through [the flat records](../LeanExe/Pipeline/FlatRecords.lean).  `Moved α` represents a consumed argument for these arrays, for `LeanExe.Bytes`, and for types with `Encode`, and a function's argument tuple gives an owned parameter the type `Moved`.
+
+A type with `Encode` and `EncodeWellFormed` instances is represented by the records that `encode` gives, a `Node` tree of words, children, arrays, and buffers, and `List UInt64` has both instances built in.  A user recursive type needs an `Encode` instance, from which `verified_recursive_type` derives `EncodeWellFormed` and the declarations that compile programs over the type, as [Ownership](#ownership) describes.  `EncodeSlotted` states that every record of an encoded value has a slot, which gives the slot regions of a borrowed value positive length, as the keep lemmas of [the VKB entry on region frames](../VKB/entries/region-frame/README.md) require, and `List UInt64`, `Words`, `KeyTree`, and `Verified.Tree shape` have instances.
+
+### The `Implements` family
+
+| Predicate | Statement |
+|---|---|
+| `Runs aborts env m k store args P` | Every run of entry `k` with enough fuel returns values satisfying `P` or, when `aborts`, traps at `unreachable`.  `ReturnsOrAborts` is `Runs true`. |
+| `Implements m k f` | `ImplementsA true m k f` without a precondition or a postcondition, as `Implements.toA` states.  A run may trap. |
+| `ImplementsPureA aborts m k f` | For scalar arguments and results: from any store, the call returns the values of `f x` and leaves the store unchanged, or traps when `aborts`.  `ImplementsPure` is the `true` case, `ImplementsPure.implements` derives `Implements`, and `ImplementsPureA.implementsA` derives `ImplementsA` with a postcondition that keeps the heap and the store.  `p.f.pure` states it. |
+| `ImplementsA aborts m k f Pre Post` | Statement of [the `implements` theorem](#the-implements-and-trapfree-theorems), with the abort flag, a precondition `Pre x heap store`, and a postcondition `Post x heap store heap' final`.  `ImplementsA.implements_of` derives `Implements` from `ImplementsA true` when `Pre` always holds. |
+| `ImplementsTables aborts m k f tables Pre Post` | `ImplementsA` with the further premise that each table of `tables`, an address and its words, is borrowed and lies apart from the moved blocks.  A wrapper's `p.f.implements` and `p.f.trapFree` state it. |
+| `ImplementsStatic pool aborts m k f tables Pre Post` | `ImplementsTables` with the further premise `pool.Input heap store params x` on the byte-literal pool.  The functions of a program with nonempty byte literals state it. |
+| `Satisfies m k P Q` | For inputs satisfying `P`, the call traps or returns an owned `y` with `Q x y`.  `Implements.transfer` derives it from `Implements` and `∀ x, P x → Q x (f x)`. |
+
+A theorem about a function of several parameters takes them as one tuple in declaration order, as `lcg_advance` states `ImplementsA false compiled.module 4 (fun x : UInt64 × UInt64 => advance x.1 x.2)`, and the entry index is the function's index in the module, which [the generated declarations](#generated-declarations) give.  The arguments are reversed in `Runs` because Talos lists them with the top of the stack first.  A call of `gcd a b` therefore takes `[.i64 b, .i64 a]` in `Library.Numerics.Arithmetic.Gcd.gcd_call`.
 
 ### Using the generated theorems
 
@@ -494,6 +576,19 @@ The bound ignores the reuse of freed blocks and charges every extension of a dyi
 For a tail loop, the bound equation sums native per-step charges with `Verified.Tail.costAt` over the proof-derived rank plus one.  The charges come from the ordinary expression-bound builder with a continuing call charged at zero.  A loop whose steps allocate nothing has bound 0 without evaluating its rank.  A loop that calls guarded code also has a frames equation expressed by `Verified.Tail.fitsAt`: each iteration checks its callees at the same available depth.  [The tail example](../Verified/Examples/Tail.lean) proves a zero allocation bound and includes a guarded callee.
 
 For guarded recursion, `p.f.bound k x` and `p.f.fits k x` take the number of frames `k` first, and `p.f.trapFree` holds under `p.f.fits 1000 x = true ∧ heap.Within store p.module (p.f.bound 1000 x)`.  `p.f.fits_eq` and `p.f.bound_eq` state `p.f.fits (k + 1) x` and `p.f.bound (k + 1) x` for every `k`, with `p.g.fits k` and `p.g.bound k` at each depth-taking call, self-calls included.  For a function with a paid parameter, `p.f.cost_eq` states `p.f.cost (k + 1) x` in this way, with `p.g.cost k` and `creditCost` at a call of such a `g` with a paid parameter, and `p.f.bound_eq` states `p.f.bound k x` as the credits plus `p.f.cost k x`.  `p.f.fits 0 x = false` holds by `rfl`, so a property of `p.f.fits 1000 x` follows by induction on `k`.  In [`Recursion.lean`](../Verified/Examples/Recursion.lean), `chain_fits` shows in this way that `compiled.chain.fits k n` holds exactly when `n < k`, and `chain_trapFree` that the module computes `chain n` without a trap for every `n` below 1,000.  `fill_fits`, `fill_cost`, and `fill_trapFree` do the same for a recursion that extends a paid array parameter and moves it into the next call.
+
+### Axiom checks
+
+A theorem may depend only on `propext`, `Classical.choice`, and `Quot.sound`.  Modules such as [the GCD compilation](../Library/Numerics/Arithmetic/Gcd/Compiled.lean) end with `#print axioms` for their theorems, and [`tools/full-check`](../tools/full-check) builds at log level info and fails on a report from a file of this repository that names any other axiom.  A check of other theorems is a Lean file outside the repository that imports their module and prints their axioms, run through [`tools/leanrun`](#toolsleanrun-and-the-shared-lock).  Any further axiom, such as `sorryAx` from an incomplete proof or the axiom that `native_decide` adds, is a failure.
+
+```lean
+import Library.Numerics.Arithmetic.Gcd.Compiled
+#print axioms Library.Numerics.Arithmetic.Gcd.gcd_call
+```
+
+```text
+'Library.Numerics.Arithmetic.Gcd.gcd_call' depends on axioms: [propext, Classical.choice, Quot.sound]
+```
 
 ## Testing
 
@@ -570,6 +665,12 @@ Before the module cases, the driver builds the byte-theorem modules of [the file
 
 The checks of `Trig`, `Exp`, and `Log` also compare the stored tables with integer references.  `FourierAccuracy.lean` checks impulse and single-frequency transforms, the round trip, Parseval's identity, the power spectrum, and agreement with an exact transform within its stated tolerance.  Each function's document gives its argument sets, measured distances, and proved accuracy bound.
 
+### WGSL tests
+
+`tests/wgsl/run.sh --verified` emits the verified compiler's kernels of [the kernel examples](../Verified/Examples/Wgsl.lean) and [the binary32 example](../Examples/Binary32/Compiled.lean) with `tools/EmitWgsl.lean`, which checks each text with the parser, computes the cases of [`WgslCasesMain.lean`](../Verified/Examples/WgslCasesMain.lean) with native Lean, and runs every case on the SwiftShader and llvmpipe Vulkan drivers with `leanexe-webgpu-host`, comparing each output word.  `tests/verified/run.sh --cases wgsl` compares the same functions in Wasmtime and checks allocations.  `tests/wgsl/run.sh --verified-gpt32` adds the kernels of [the binary32 GPT-2 compilation](../Demos/Gpt32/Verified.lean) and the cases of `Demos/Gpt32/VerifiedGpuCasesMain.lean` on both drivers, and `tests/verified/run.sh --cases gpt32` checks the Wasm results and allocations of the same functions.
+
+`tests/gpt32/native.sh --verified` emits the verified `gpt32.wasm` and runs small random GPT-2 models through the Lean driver of [`tests/gpt32/VerifiedNative.lean`](../tests/gpt32/VerifiedNative.lean), with the verified kernels, on that module and on both drivers.  It compares every step's scores with native Lean's `step32` bit for bit.  The driver uses the three random-model configurations of [the native cases](../Demos/Gpt32/NativeCases.lean).
+
 ### Talos conformance
 
 [The Talos conformance driver](../tests/talos/run.sh) tests Talos, the semantics of the WebAssembly theorems, against the official WebAssembly testsuite at the revision that CodeLib's submodule `vendor/testsuite` records.  It builds the testsuite runner of the pinned CodeLib revision and runs it over the suite, and it fails if the runner records a failed command, an interpreter error, or exhausted fuel.  It then requires the runner's report, one line per command with its outcome, to equal `testsuite_report.txt` at CodeLib's root, the report that Talos's continuous integration checks.  The runner converts each script with `wasm-tools json-from-wast`, so the driver requires the pinned `wasm-tools` 1.251.0.  Lake's checkout of CodeLib leaves the submodule uninitialized, so a first run needs `git -C .lake/packages/CodeLib submodule update --init vendor/testsuite`.
@@ -578,7 +679,7 @@ The checks of `Trig`, `Exp`, and `Log` also compare the stored tables with integ
 
 The full library includes the numerical proofs and can take several hours.  The lgamma root-range proofs need `--memory-high 10G`, which sets a 12 GiB memory maximum.  The [compilation example](#compiling-and-running) builds only its selected module and imports at the default limits.
 
-[`tools/full-check`](../tools/full-check) runs the full check and writes [`STATUS.md`](../STATUS.md), the record of what holds at the checked commit.  It builds every module of `LeanExe`, `Examples`, `Demos`, `Verified`, `Library`, and `TestSupport` with the test executables, at log level info so that it can count the build's axiom reports, and then runs `tests/verified/run.sh`, the native drivers, `tests/wasi/run.sh`, the bare-metal drivers under TCG, the VKB check, `rocq/check.sh`, the verified modes of `tests/wgsl/run.sh` and `tests/gpt32/native.sh`, and [the Talos conformance driver](../tests/talos/run.sh).  A failed build leaves every later step but `rocq/check.sh` and the Talos driver unrun, and the failure of any other step is recorded before the next step runs.  The GPU steps emit their kernels and cases on every machine and run them only where the SwiftShader and llvmpipe Vulkan drivers and `leanexe-webgpu-host` are present, `rocq/check.sh` runs only with `coqc` and a CompCert tree whose proofs are built, and the Talos driver only with `wasm-tools` and CodeLib's `vendor/testsuite` submodule initialized.  The script passes `LEANRUN_THREADS`, `LEANRUN_MEMORY_HIGH`, 10G unless set, `CCOMP`, `CLIGHTGEN`, and `CCOMP_STDLIB` to the drivers, and `COMPCERT_TREE` names the tree for the Rocq step, by default the directory of `CCOMP`.  On a host with about 12 GiB of memory, a cold numerical proof cache first needs the [separate one-worker builds](leanexe-manual.md#memory-heavy-numerical-proofs).  With `LEANRUN_THREADS=8`, `LEANRUN_MEMORY_HIGH=40G`, and `JOBS=8` on AArch64, after a build whose modules were current, the run that `STATUS.md` records took 2 hours and 23 minutes, 51 of them in `tests/verified/run.sh` and 62 in `tests/baremetal/verified.sh`.
+[`tools/full-check`](../tools/full-check) runs the full check and writes [`STATUS.md`](../STATUS.md), the record of what holds at the checked commit.  It builds every module of `LeanExe`, `Examples`, `Demos`, `Verified`, `Library`, and `TestSupport` with the test executables, at log level info so that it can count the build's axiom reports, and then runs `tests/verified/run.sh`, the native drivers, `tests/wasi/run.sh`, the bare-metal drivers under TCG, the VKB check, `rocq/check.sh`, the verified modes of `tests/wgsl/run.sh` and `tests/gpt32/native.sh`, and [the Talos conformance driver](../tests/talos/run.sh).  A failed build leaves every later step but `rocq/check.sh` and the Talos driver unrun, and the failure of any other step is recorded before the next step runs.  The GPU steps emit their kernels and cases on every machine and run them only where the SwiftShader and llvmpipe Vulkan drivers and `leanexe-webgpu-host` are present, `rocq/check.sh` runs only with `coqc` and a CompCert tree whose proofs are built, and the Talos driver only with `wasm-tools` and CodeLib's `vendor/testsuite` submodule initialized.  The script passes `LEANRUN_THREADS`, `LEANRUN_MEMORY_HIGH`, 10G unless set, `CCOMP`, `CLIGHTGEN`, and `CCOMP_STDLIB` to the drivers, and `COMPCERT_TREE` names the tree for the Rocq step, by default the directory of `CCOMP`.  On a host with about 12 GiB of memory, a cold numerical proof cache first needs the [separate one-worker builds](#memory-heavy-numerical-proofs).  With `LEANRUN_THREADS=8`, `LEANRUN_MEMORY_HIGH=40G`, and `JOBS=8` on AArch64, after a build whose modules were current, the run that `STATUS.md` records took 2 hours and 23 minutes, 51 of them in `tests/verified/run.sh` and 62 in `tests/baremetal/verified.sh`.
 
 After a change to the verified compiler or its examples, `tools/leanrun --threads 2 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and `tests/verified/run.sh`, run with `LEANRUN_THREADS=3` and `LEANRUN_MEMORY_HIGH=10G`, must pass with no failed case.  A new pure compiler fixture needs an import in [`Verified.lean`](../Verified.lean), an entry in [the module registry](../tests/verified/modules.txt), and checked cases.  Reusable algorithm compilations belong in [`Library.lean`](../Library.lean), verified application compilations belong in [`Demos/Verified.lean`](../Demos/Verified.lean), and verified compilations of the LeanExe compiler's examples belong in [`Examples/Verified.lean`](../Examples/Verified.lean), both of which `Verified` imports.  An application port reuses its existing corpus.  Other pure examples add cases to `Verified/Examples/Cases.lean`.  WASI changes also use [the maintained WASI driver](../tests/wasi/run.sh), with its proof and axiom targets, frontend examples, stream fixtures, and host tests.  [The LeanExe compiler manual's full check](leanexe-manual.md#the-full-check) covers the rest of the repository, and [the journal](../devnotes.md) records the counts of each run.
 
@@ -657,3 +758,48 @@ Reusable implementations and their compilations live in [the library](../Library
 [The verified-request skill](../.claude/skills/verified-request/SKILL.md) directs an agent from a request in English to a program of this compiler and a call theorem that the module's export returns, without a trap, the value of a specification reviewed against the request.  Its first stage is that of [the verified-executable skill](../.claude/skills/verified-executable/SKILL.md): the specification `expected`, its samples, and a review by a fresh agent that sees only the request, the specification, and the samples.  The agent then writes the program, `compute_eq` in a module that imports only the program, the specification, and lemmas about the dialect, and the call theorem `compute_callSpec`, which composes `compute_eq` with the generated `trapFree` theorem through `Verified.ImplementsTables.call` and `Verified.Call.spec` of [the call theorem](../Verified/Call.lean).  The skill covers parameters of `UInt64`, `Array UInt64`, or tuples of these, and results of `UInt64` or `Array UInt64`, which `Verified.CallSpec` covers through `Represent`.
 
 [`tools/verified-request-check`](../tools/verified-request-check) accepts or rejects the result.  `--spec NAME` and `--freeze NAME` run the modes of the same names of `tools/demo-check`, and `--run NAME` emits `compiled.module` with [the module emitter](../tools/Emit.lean) and runs the samples in Wasmtime without proofs.  Both `--run` and the check first refuse a run whose Lean files declare a global or scoped instance, notation, macro, syntax, or elaborator, or code that runs at import, since the check elaborates its statement with the run's modules imported, and each refusal names the file and line.  Without a flag, it checks the hashes of the reviewed specification and samples, writes the statement `Verified.CallSpec compiled.module compiled.tables K expected compiled.compute.bound` for the export's index `K`, and requires `compute_callSpec` to prove it with no axioms beyond `propext`, `Classical.choice`, and `Quot.sound`.  It proves in the kernel that the export is function `K`, emits `build/verified-request/NAME/NAME.wasm`, and runs the samples in Wasmtime against `expected`.  When `ccomp` and `clightgen` are found, it also builds the module's translation to C with `native-verified build`, as [the native driver](../tests/native/verified.sh) does, and runs the samples in the native program.
+
+## Development practice
+
+### `tools/leanrun` and the shared lock
+
+Every `lean` and `lake` command runs through [`tools/leanrun`](../tools/leanrun), as [the repository instructions](../AGENTS.md) require.  The runner limits memory and CPU time through a systemd user scope, sets `LEAN_NUM_THREADS`, and holds a lock in the directory that `LEANRUN_LOCKDIR` names, by default one for each user of the machine, so that one runner command runs at a time and other sessions wait for the lock.  `--timeout` sets the command's limit and `--lock-timeout` the seconds to wait for the lock, 900 by default.
+
+`--threads N`, 1 by default, sets `LEAN_NUM_THREADS=N`.  Lake takes its number of parallel build jobs from `LEAN_NUM_THREADS`, and each Lean process it starts uses the same value for its own tasks, so parallel jobs share the scope's memory limit.  `--cpus N` sets a CPU quota of `N` CPUs, and `--cpus auto` uses every online CPU.  Without `--cpus` the quota equals the thread count, and without `--threads` the thread count equals the `--cpus` count.  `LEANRUN_THREADS` and `LEANRUN_CPUS` supply these settings to repository drivers without wrapping them in another runner.
+
+`--log FILE` writes standard output and standard error to a file and preserves the command's exit status.  Passing the path as an argument keeps `tools/leanrun` as the first command token, so saved runner permissions cover later targets and logs.  The default memory limits are 4 GiB high and 6 GiB maximum, and `--memory-high SIZE`, in whole gibibytes such as `10G`, selects the high limit and a maximum 2 GiB above it.
+
+```sh
+export PATH="$HOME/.elan/bin:$PATH"
+tools/leanrun --timeout 30m --lock-timeout 1200 lake env lean FILE
+```
+
+After a target reaches its timeout without a diagnostic, [the repository instructions](../AGENTS.md) require dividing it, or adding a reusable lemma that reduces its elaboration, before running it again.  `LEANRUN_LOCAL=1` runs without the cgroup limits and only with the user's explicit authorization.  [`tools/leanrun-dev`](../tools/leanrun-dev) runs Lean on the remote machine that `LEANRUN_DEV_HOST` names, with the modes `sync`, `check`, or a command.
+
+`lake env lean FILE` loads the existing build of each import without rebuilding it, so a check of a file whose imports changed must follow `lake build` of those imports.  `lake build` of a target rebuilds the imports whose sources changed.  [The journal](../devnotes.md#2026-10-05-organization-of-the-branch) records a check that passed against the stale builds of modules whose sources had been renamed, until it imported the old and the new module together.
+
+### Memory-heavy numerical proofs
+
+Some gamma and lgamma range checks need several gibibytes each.  On a host with about 12 GiB of memory, a cold numerical proof cache uses the following one-worker builds before the two-worker aggregate of [the full check](#the-full-check).  Each target has a separate invocation, which bounds the working set to one heavy proof and its imports, and the aggregate reuses the accepted results.
+
+```sh
+tools/leanrun --cpus auto --threads 1 --memory-high 10G --timeout 12h lake build MODULE
+```
+
+`MODULE` takes each of these values, in order:
+
+1. `Library.Numerics.Float64.Tgamma.TgammaAccRangeC`
+2. `Library.Numerics.Float64.Lgamma.LgammaRootF`
+3. `Library.Numerics.Float64.Lgamma.LgammaRootE`
+4. `Library.Numerics.Float64.Lgamma.LgammaRootD2`
+5. `Library.Numerics.Float64.Lgamma.LgammaRootD1`
+6. `Library.Numerics.Float64.Lgamma.LgammaRootD0`
+7. `Library.Numerics.Float64.Lgamma.LgammaRootC`
+8. `Library.Numerics.Float64.Lgamma.LgammaRootB2`
+9. `Library.Numerics.Float64.Lgamma.LgammaRootB1`
+10. `Library.Numerics.Float64.Lgamma.LgammaRootB0`
+11. `Library.Numerics.Float64.Lgamma.LgammaRootA2`
+12. `Library.Numerics.Float64.Lgamma.LgammaRootA1`
+13. `Library.Numerics.Float64.Lgamma.LgammaRootA0`
+
+The 12-hour limit accommodates cold imports.  The measured leaf checks used 30-minute limits after their common imports had been built.  [The journal](../devnotes.md#2026-10-24-integration-checks) records their results.

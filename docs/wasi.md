@@ -201,7 +201,7 @@ The [running-sum native executable](../Demos/RunningSum/Native.lean) uses a [POS
 
 ### Wasmtime host
 
-The [Wasmtime host setup](leanexe-manual.md#the-wasmtime-host) builds `build/tools/leanexe-wasmtime-host` against pinned Wasmtime 44.0.0.  It uses Wasmtime's standard Preview 1 implementation.  From the repository root, the stdio example builds and emits both module forms:
+The [Wasmtime host setup](verified-manual.md#the-wasmtime-host) builds `build/tools/leanexe-wasmtime-host` against pinned Wasmtime 44.0.0.  It uses Wasmtime's standard Preview 1 implementation.  From the repository root, the stdio example builds and emits both module forms:
 
 ```sh
 mkdir -p build/wasi
@@ -229,7 +229,7 @@ build/tools/leanexe-wasmtime-host --wasi --stdin-file input.bin \
   call build/wasi/stdio-callable.wasm copySome i64 i64:4096
 ```
 
-Control output contains return values, allocation counts in `call-stats` mode, and the outcome records that [the LeanExe manual](leanexe-manual.md#the-wasmtime-host) lists.  Guest stream files contain guest bytes.  Callable WASI modes require `--control-file` or a separate `--stdout-file`.  Script and session modes also require `--stdin-file` so guest input does not consume host instructions.  Host diagnostics use host stderr.
+Control output contains return values, allocation counts in `call-stats` mode, and the outcome records that [the verified compiler manual](verified-manual.md#the-wasmtime-host) lists.  Guest stream files contain guest bytes.  Callable WASI modes require `--control-file` or a separate `--stdout-file`.  Script and session modes also require `--stdin-file` so guest input does not consume host instructions.  Host diagnostics use host stderr.
 
 Exit always passes the low 32 bits of the source status.  [Wasmtime 44 accepts statuses below 126](https://github.com/bytecodealliance/wasmtime/blob/v44.0.0/crates/wasi/src/p1.rs#L2614-L2625) and rejects larger narrowed statuses as engine errors.  For example, `2^32 + 7` requests accepted status 7, and `2^32 + 126` requests rejected status 126.  An accepted exit produces a `wasi-exit STATUS` record when control records are enabled, and the host process uses the low eight bits as its status.  Rejection produces an error diagnostic and process status 1.  Both outcomes preserve previously written guest output.  This differs from the native stream adapter's policy of accepting every narrowed status.
 

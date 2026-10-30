@@ -23,10 +23,10 @@ show that it is: one allocation and one free per call.
 | `pairSum_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements `pairSum`. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  [The LeanExe compiler
-manual](../../docs/leanexe-manual.md#the-implements-family) defines `Implements`.  [Its section on
-proofs](../../docs/leanexe-manual.md#structure-of-a-proof) describes the structure of a proof that
-follows the statements of a body.
+`Classical.choice`, and `Quot.sound`.  [The verified compiler
+manual](../../docs/verified-manual.md#the-implements-family) defines `Implements`.  [The LeanExe
+compiler manual's section on proofs](../../docs/leanexe-manual.md#structure-of-a-proof) describes
+the structure of a proof that follows the statements of a body.
 
 ## Building, running, and testing
 

@@ -95,4 +95,4 @@ entries [`list-cell`](../../ltg/entries/list-cell/README.md),
 
 ## References
 
-- [LeanExe Compiler Manual: The Wasmtime host](../../docs/leanexe-manual.md#the-wasmtime-host).
+- [Verified Compiler Manual: The Wasmtime host](../../docs/verified-manual.md#the-wasmtime-host).

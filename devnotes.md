@@ -39283,7 +39283,7 @@ An audit of the day's open checkboxes ticked six: five whose work is done, and t
 - [ ] The browser pages, the GPU drivers, and the test defaults on the verified modules.
 - [ ] `tools/demo-check` on the verified compiler.
 - [x] The five LTG entries in the VKB.
-- [ ] The general sections of the LeanExe manual in the verified manual.
+- [x] The general sections of the LeanExe manual in the verified manual.
 - [ ] The eleven removal commits.
 
 ## 2026-10-30: Documentation links and directory guides
@@ -39511,7 +39511,7 @@ Two bounds are large for other reasons.  The order book's `runCommands` and `run
 - [x] The survey of bounds that grow with a loop's passes, and the decision against a compiler change.
 - [ ] Determine why the order book's command loops buy their credits on every pass, if the order book gets a call theorem.
 
-## 2026-10-30: LTG's general entries in the VKB
+## 2026-10-30: LTG's general entries in the VKB and the manual's general sections
 
 The plan for retiring the LeanExe compiler converts LTG's general entries into VKB entries before the removal deletes `ltg/`.  The VKB now holds [array layout across writes](VKB/entries/array-memory-framing/README.md), [write ranges](VKB/entries/memory-write-range/README.md), [raw Wasm locals](VKB/entries/local-frame-projection/README.md), [calls with operands below the arguments](VKB/entries/direct-call-stack-tail/README.md), and [the region frame](VKB/entries/region-frame/README.md), under the ids of the LTG entries.  Each names only declarations of Talos, Lean's core library, `LeanExe/ProofKit/`, `LeanExe/Pipeline/`, and `Verified/`, and the types `Words` and `KeyTree` with their encodings, from modules that, by a search of the import graph, import nothing of `LeanExe/Compiler/` or `LeanExe/IR/` and run no `leanexe_compile`.
 
@@ -39520,3 +39520,13 @@ The LTG entries' worked examples were proofs of the LeanExe compiler's rules and
 The conversion dropped what holds only for the LeanExe compiler.  The region-frame entry lost `LeanExe.IR.Live` and its rules, `Func.implements_moves`, `Func.implements_heap`, `Heap.NewArray`, whose users are the IR's build rules and the LeanExe proof of `Examples/Updates`, `arrayAt_frameIn`, which the keep lemmas cover, and the worked examples in `Examples/Trees`, `Demos/Clob`, and `Demos/Gpt`.  The array entry lost `At.generatedElement`, which no proof uses, and the reference to `Stmt.fold_spec`, and the call entry lost the remark that `Triple` quantifies over the operand stack under an IR statement.  The local-frame entry lost the IR's `State.get` and `State.set?` and an anecdote about a heartbeat limit whose proof no journal entry names.
 
 `VKB/Check.lean` passes with the new entries, after a build of the modules that they name.  The VKB guide's table links each new entry, and its paragraph on LTG states which entries came from LTG.  `ltg/` stays in place until the removal commit that deletes it.
+
+The general sections of the LeanExe manual moved to [the verified compiler manual](docs/verified-manual.md), so that the removal deletes the LeanExe manual alone.  The verified manual's section on compiling and running gained [the Wasmtime host](docs/verified-manual.md#the-wasmtime-host) and [the WGSL library and the browser pages](docs/verified-manual.md#the-wgsl-library-and-the-browser-pages), its section on proving gained representations and the `Implements` family at its start and axiom checks at its end, and its section on testing gained the WGSL tests.  A new section on development practice holds `tools/leanrun` and the memory-heavy numerical proofs, and each moved section of the LeanExe manual keeps its heading and one sentence that links the new place, so that its other sections and its inbound links still resolve.
+
+The rewrite replaced the LeanExe compiler's examples with the verified compiler's.  The host commands call `build/verified/gcd.wasm`, `sumCount.wasm`, and `clob.wasm`, whose outputs a run of the host on freshly emitted modules confirmed, and the verified `sumCount` prints `stats 4 2` where the LeanExe module printed `stats 2 0`.  The `Implements` family lost `TripleA`, which the LeanExe manual's pointer sentence keeps, and gained `ImplementsTables` and `ImplementsStatic`, and its tuple examples `gcdTuple` and `fillTuple` gave way to `lcg_advance` and `gcd_call`.  The section on representations takes its `Flat` example from the verified enumeration example and adds the byte, pair, and flat-record instances and `EncodeSlotted`, and the axiom check prints the axioms of `gcd_call` instead of `gcd_bytes`.
+
+The WGSL library section keeps the subset, the device model, and the tools, and it states that the browser pages still load the LeanExe compiler's kernels and modules, which the prerequisite on the browser pages changes.  The WGSL tests describe the verified modes of the drivers and take over the test list of the WGSL kernels section, while the LeanExe manual keeps `tests/gpt32/generate.py`, which runs only the LeanExe compiler's kernels.  The runner section drops the claim that Lean may grow its worker pool, which nothing in the repository supports, and one sentence on a further limit of the scope, and the numerical build section drops two sentences of resource measurements.  The journal reference D1 of the runner section named a decision on WGSL, and the section now links the entry on the organization of the branch, which records the stale-build case.
+
+Every Markdown link to a moved section now names the verified manual's anchor, with its link text changed where it named the LeanExe manual.  The documentation checker reaches every document and reports no problem.  A comment in `tests/verified/run.sh` still names the limits of `docs/leanexe-manual.md`, and the removal commit that deletes the manual has to retarget it.
+
+- [ ] Retarget the comment of `tests/verified/run.sh` that names the LeanExe manual, in the commit that deletes the manual.

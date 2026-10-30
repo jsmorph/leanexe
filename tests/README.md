@@ -23,7 +23,7 @@
 
 Run commands from the repository root.  Lean and Lake commands use `tools/leanrun`, and the
 repository test drivers call that runner themselves.  [The resource instructions](../AGENTS.md#lean-process-limits)
-and [cold numerical build procedure](../docs/leanexe-manual.md#memory-heavy-numerical-proofs)
+and [cold numerical build procedure](../docs/verified-manual.md#memory-heavy-numerical-proofs)
 give the required memory settings and build order.  The full numerical suite can take hours.
 
 The [verified module registry](verified/modules.txt) identifies the source module, module

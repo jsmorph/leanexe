@@ -223,7 +223,7 @@ On the GPT-2 124M weights, `forward` matches Hugging Face's model in float64.  `
 
 `lists.wasm` holds `listSum`, `listRange`, and `sumRange`, and `words.wasm` holds `Words.first`, `Words.sumAcc`, and `Words.range` over a user list type whose `Encode` instance gives the layout of `List UInt64`.  They match native Lean on lists whose sums wrap, long lists, and counts up to 1,000, and a `sumRange` call shows as many frees as allocations.  The host's `chain-u64:` argument kind allocates the records and writes their headers, and its result kind of the same name reads the records in order and checks each header.
 
-The decoder test runs the official testsuite: every valid module in the decoder's subset decodes to the reference and round-trips, and every malformed module in the subset is rejected.  [`tests/verified/run.sh`](../tests/verified/run.sh) compares each module of the verified compiler with native Lean, checks the blocks that each call leaves allocated, and checks the accuracy of the numerical examples.  [The drone README](../Demos/Drone/README.md) describes [`tests/drone/run.sh`](../tests/drone/run.sh), [the verified compiler manual](verified-manual.md#testing) describes the verified compiler's tests, and [the LeanExe compiler manual](leanexe-manual.md#wgsl-tests) describes the WGSL tests.
+The decoder test runs the official testsuite: every valid module in the decoder's subset decodes to the reference and round-trips, and every malformed module in the subset is rejected.  [`tests/verified/run.sh`](../tests/verified/run.sh) compares each module of the verified compiler with native Lean, checks the blocks that each call leaves allocated, and checks the accuracy of the numerical examples.  [The drone README](../Demos/Drone/README.md) describes [`tests/drone/run.sh`](../tests/drone/run.sh), [the verified compiler manual](verified-manual.md#testing) describes the verified compiler's tests, among them [the WGSL tests](verified-manual.md#wgsl-tests).
 
 ## Decisions
 
@@ -336,8 +336,8 @@ kernel results and race freedom under buffer and invocation bounds.  The model u
 arithmetic.  Applying the results to hardware assumes that the driver and device implement that
 model.  [The binary32 GPT application](../Demos/Gpt32) adds `generate_host`, which proves the
 scores of a generation step and race freedom under its shape, weight, and token bounds.
-[The LeanExe compiler manual](leanexe-manual.md#wgsl-kernels-and-the-browser-pages) describes the
-translation and its tests.
+[The verified compiler manual](verified-manual.md#the-wgsl-library-and-the-browser-pages) describes
+the subset, its tools, and the browser pages.
 
 [The verified compiler's source lowering](../Verified/WGSL/Compile.lean) constructs an IR
 kernel with a proof of its source meaning, then uses the shared WGSL translation and dispatch

@@ -26,7 +26,7 @@ components.
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
 `Classical.choice`, and `Quot.sound`.  The theorems represent an `Array α` of a flat `α` as
-`flatWords xs`, which [the LeanExe compiler manual](../../docs/leanexe-manual.md#representations)
+`flatWords xs`, which [the verified compiler manual](../../docs/verified-manual.md#representations)
 defines.  The Euler solvers store their grids in this layout.
 
 ## Building, running, and testing

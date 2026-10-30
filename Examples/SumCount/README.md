@@ -21,9 +21,9 @@ the result, and no free.
 | `sumCount_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements `sumCount`. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  [The LeanExe compiler
-manual](../../docs/leanexe-manual.md#representations) describes how an argument and a result
-represent a Lean value, borrowed or owned.  [The section on
+`Classical.choice`, and `Quot.sound`.  [The verified compiler
+manual](../../docs/verified-manual.md#representations) describes how an argument and a result
+represent a Lean value, borrowed or owned.  [The LeanExe compiler manual's section on
 ownership](../../docs/leanexe-manual.md#ownership) gives the rules for who releases an array.
 
 ## Building, running, and testing
@@ -90,4 +90,4 @@ updating their inputs.  The LTG entries
 ## References
 
 - [LeanExe Compiler Manual: Arrays](../../docs/leanexe-manual.md#arrays).
-- [LeanExe Compiler Manual: The Wasmtime host](../../docs/leanexe-manual.md#the-wasmtime-host).
+- [Verified Compiler Manual: The Wasmtime host](../../docs/verified-manual.md#the-wasmtime-host).

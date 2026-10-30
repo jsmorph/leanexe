@@ -109,7 +109,7 @@ execution tests.
 
 ## Build and run
 
-Commands run from the repository root.  The [host setup](../../docs/leanexe-manual.md#the-wasmtime-host)
+Commands run from the repository root.  The [host setup](../../docs/verified-manual.md#the-wasmtime-host)
 provides the pinned Wasmtime host.
 
 ```sh

@@ -29,8 +29,9 @@ type share one set of conversions and lemmas.
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
 `Classical.choice`, and `Quot.sound`.  [The LeanExe compiler
 manual](../../docs/leanexe-manual.md#records-and-user-types) gives the rules for recursive types.
-Its [section on representations](../../docs/leanexe-manual.md#representations) describes `Encode`
-and `EncodeSlotted`.
+[The verified compiler manual's section on
+representations](../../docs/verified-manual.md#representations) describes `Encode` and
+`EncodeSlotted`.
 
 ## Building, running, and testing
 

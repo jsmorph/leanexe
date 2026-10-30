@@ -21,8 +21,8 @@ divisor.  `scale_bytes` carries the theorem to the bytes through the encoder's r
 | `scale_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements `scale`. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  [The LeanExe compiler
-manual](../../docs/leanexe-manual.md#the-implements-family) defines `Implements`.  Functions 0 and 1
+`Classical.choice`, and `Quot.sound`.  [The verified compiler
+manual](../../docs/verified-manual.md#the-implements-family) defines `Implements`.  Functions 0 and 1
 of every module are the runtime's `alloc` and `release`, so the first compiled function is function
 2.
 
