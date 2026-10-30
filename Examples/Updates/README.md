@@ -48,6 +48,47 @@ second inserts 9 at position 1 and then removes position 0, and prints `[9, 2, 3
 [`tests/modules/run.sh`](../../tests/modules/run.sh) compares 1,400 cases of
 [`Cases.lean`](Cases.lean) with native Lean, including positions past the end.
 
+## The verified compiler's module
+
+`verified_compile compiled := [pushTwo, setTwice, insertErase, pushCopy]` in [the verified
+compilation](Compiled.lean) compiles the four definitions, in the order of the LeanExe module, into
+the 3,185-byte `exampleUpdates.wasm` of [the module registry](../../tests/verified/modules.txt).
+The registry names it `exampleUpdates`, since `updates` names [the update
+fixture](../../Verified/Examples/Updates.lean) of the verified compiler.  The compiler takes the
+array of `pushTwo`, `insertErase`, and `pushCopy` as an owned argument, `Moved`, and it borrows the
+array of `setTwice`, which reads the array after the first update and therefore copies it.  The
+generated `implements` theorems cover all four functions, where `updates_bytes` covers `pushCopy`
+alone, and `compiled.f.trapFree` excludes the stop at `unreachable` when `top` can rise by the
+function's bound.
+
+| Theorem | Statement |
+|---------|-----------|
+| `compiled.pushTwo.implements` … `compiled.pushCopy.implements` | Functions 2 to 5 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, return their Lean functions' arrays, owned by the caller, or stop at `unreachable`. |
+| `compiled.pushTwo.trapFree` … `compiled.pushCopy.trapFree` | The same calls return without a trap when `top` can rise by the function's bound within the memory cap. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements all four functions. |
+| `exampleUpdates_file`, `exampleUpdates_file_decode` | `build/verified/exampleUpdates.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
+
+```sh
+tools/leanrun --timeout 60m lake build Examples.Updates.Compiled
+mkdir -p build/verified
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+  Examples.Updates.Compiled Examples.Updates.compiled.module build/verified/exampleUpdates.wasm
+build/tools/leanexe-wasmtime-host call build/verified/exampleUpdates.wasm pushTwo array-u64 \
+  array-u64:1,2 i64:3 i64:4
+build/tools/leanexe-wasmtime-host call build/verified/exampleUpdates.wasm insertErase array-u64 \
+  array-u64:1,2,3 i64:1 i64:0 i64:9
+tests/verified/run.sh --cases exampleUpdates
+tests/native/verified.sh --module exampleUpdates
+```
+
+The calls print `[1, 2, 3, 4]` and `[9, 2, 3]`, as the LeanExe module's calls do.  [The verified
+driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lean) in Wasmtime
+against native Lean, and [the native driver](../../tests/native/verified.sh) runs them on the
+module's translation to C, compiled with CompCert.  The cases state one block left allocated by
+`pushTwo` and `insertErase`, which consume the host's array, and two by `setTwice` and `pushCopy`,
+with at most three allocations for `pushTwo`, whose pushes onto an empty array grow it twice, and at
+most two for the others.
+
 ## Related examples
 
 [`Clob`](../../Demos/Clob/README.md) proves functions that update their arrays in place, with `set!`,

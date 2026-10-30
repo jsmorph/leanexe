@@ -45,6 +45,38 @@ in decimal: the arguments are 2.0, 3.0, and 1.0, and the call prints 46195673177
 of 7.0.  [`tests/modules/run.sh`](../../tests/modules/run.sh) compares 80 cases of
 [`Cases.lean`](Cases.lean) with native Lean, with special values among the arguments.
 
+## The verified compiler's module
+
+`verified_compile compiled := [axpy]` in [the verified compilation](Compiled.lean) compiles the same
+definition into the 1,394-byte `axpy.wasm` of [the module
+registry](../../tests/verified/modules.txt).  The function allocates nothing, so the generated
+`compiled.axpy.implements` states that function 2 returns the bits of `axpy a x y` without a trap,
+where `axpy_implements` allows a stop at `unreachable`.  The generated `compiled.axpy.native` states
+the same of the C function of the module's translation, and the theorems use only `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+| Theorem | Statement |
+|---------|-----------|
+| `compiled.axpy.implements` | Function 2 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, returns the bits of `axpy a x y` without a trap. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `axpy`. |
+| `axpy_file`, `axpy_file_decode` | `build/verified/axpy.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
+
+```sh
+tools/leanrun --timeout 60m lake build Examples.Axpy.Compiled
+mkdir -p build/verified
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+  Examples.Axpy.Compiled Examples.Axpy.compiled.module build/verified/axpy.wasm
+build/tools/leanexe-wasmtime-host call build/verified/axpy.wasm axpy f64 \
+  f64:4611686018427387904 f64:4613937818241073152 f64:4607182418800017408
+tests/verified/run.sh --cases axpy
+tests/native/verified.sh --module axpy
+```
+
+The call prints 4619567317775286272, as the LeanExe module's call does.  [The verified
+driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lean) in Wasmtime
+against native Lean, and [the native driver](../../tests/native/verified.sh) runs them on the
+module's translation to C, compiled with CompCert.  The cases state that a call allocates no block.
+
 ## Related examples
 
 [`ScaledHypot`](../ScaledHypot/README.md) adds square root and division, and

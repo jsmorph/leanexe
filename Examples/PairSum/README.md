@@ -43,6 +43,40 @@ The commands build the proofs, write the module, and call it in the Wasmtime hos
 allocation and free counters.  [`tests/modules/run.sh`](../../tests/modules/run.sh) compares 34
 cases of [`Cases.lean`](Cases.lean) with native Lean, including sums that wrap.
 
+## The verified compiler's module
+
+`verified_compile compiled := [pairSum]` in [the verified compilation](Compiled.lean) compiles the
+same definition into the 2,088-byte `pairSum.wasm` of [the module
+registry](../../tests/verified/modules.txt).  The reflector reads `#[a, b]` as two pushes onto
+`#[]`, so the module allocates an empty block and grows it at each push, and it releases the array
+after the fold.  The generated `compiled.pairSum.bound_eq` charges the empty block, the first
+growth, and the paid second push.  When `top` can rise by that bound, `compiled.pairSum.trapFree`
+excludes the stop at `unreachable` that `compiled.pairSum.implements` and `pairSum_bytes` allow.
+
+| Theorem | Statement |
+|---------|-----------|
+| `compiled.pairSum.implements` | Function 2 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, returns `a + b` or stops at `unreachable`. |
+| `compiled.pairSum.trapFree` | The same call returns `a + b` without a trap when `top` can rise by `compiled.pairSum.bound (a, b)` bytes within the memory cap. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `pairSum`. |
+| `pairSum_file`, `pairSum_file_decode` | `build/verified/pairSum.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
+
+```sh
+tools/leanrun --timeout 60m lake build Examples.PairSum.Compiled
+mkdir -p build/verified
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+  Examples.PairSum.Compiled Examples.PairSum.compiled.module build/verified/pairSum.wasm
+build/tools/leanexe-wasmtime-host call-stats build/verified/pairSum.wasm pairSum i64 i64:2 i64:40
+tests/verified/run.sh --cases pairSum
+tests/native/verified.sh --module pairSum
+```
+
+The call prints 42 and `stats 3 3`: the literal's empty block and the block of each growth, all
+three freed, where the LeanExe module allocates the literal once and frees it.  [The verified
+driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lean) in Wasmtime
+against native Lean, and [the native driver](../../tests/native/verified.sh) runs them on the
+module's translation to C, compiled with CompCert.  The cases state that no block stays allocated
+and that a call allocates at most three.
+
 ## Related examples
 
 [`SumCount`](../SumCount/README.md) returns its array literal to the caller instead of releasing it.

@@ -42,6 +42,38 @@ call prints 2.  [`tests/modules/run.sh`](../../tests/modules/run.sh) compares 89
 [`Cases.lean`](Cases.lean) with native Lean, including negative values, NaN, a zero width, and
 quotients near and beyond 2^64.
 
+## The verified compiler's module
+
+`verified_compile compiled := [bucket]` in [the verified compilation](Compiled.lean) compiles the
+same definition into the 1,398-byte `bucket.wasm` of [the module
+registry](../../tests/verified/modules.txt).  The function allocates nothing, so the generated
+`compiled.bucket.implements` states that function 2 returns `bucket x lo width` without a trap,
+where `bucket_implements` allows a stop at `unreachable`.  The generated `compiled.bucket.native`
+states the same of the C function of the module's translation, and the theorems use only `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+| Theorem | Statement |
+|---------|-----------|
+| `compiled.bucket.implements` | Function 2 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, returns `bucket x lo width` without a trap. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `bucket`. |
+| `bucket_file`, `bucket_file_decode` | `build/verified/bucket.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
+
+```sh
+tools/leanrun --timeout 60m lake build Examples.Bucket.Compiled
+mkdir -p build/verified
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+  Examples.Bucket.Compiled Examples.Bucket.compiled.module build/verified/bucket.wasm
+build/tools/leanexe-wasmtime-host call build/verified/bucket.wasm bucket i64 \
+  f64:4612811918334230528 f64:0 f64:4607182418800017408
+tests/verified/run.sh --cases bucket
+tests/native/verified.sh --module bucket
+```
+
+The call prints 2, as the LeanExe module's call does.  [The verified
+driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lean) in Wasmtime
+against native Lean, and [the native driver](../../tests/native/verified.sh) runs them on the
+module's translation to C, compiled with CompCert.  The cases state that a call allocates no block.
+
 ## Related examples
 
 [`Mean`](../../Library/Numerics/Statistics/Mean/README.md) converts a word to a float with `UInt64.toFloat`.

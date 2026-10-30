@@ -48,6 +48,46 @@ The commands build the proofs, write the module, and call it in the Wasmtime hos
 [`tests/modules/run.sh`](../../tests/modules/run.sh) compares 346 cases of
 [`Cases.lean`](Cases.lean) with native Lean, including reads past the end.
 
+## The verified compiler's module
+
+`verified_compile compiled := [density, …, totalDensity]` in [the verified
+compilation](Compiled.lean) compiles the fourteen definitions, in the order of the LeanExe module,
+into the 5,237-byte `exampleGrids.wasm` of [the module registry](../../tests/verified/modules.txt).
+The registry names it `exampleGrids`, since `grids` names [the grid
+fixture](../../Verified/Examples/Grids.lean) of the verified compiler.  The reflector needs the
+`Flat` instances of `Phase`, `Conserved`, `Cell`, and `Mass`, which [`Flat.lean`](Flat.lean) states
+for the theorems of both compilers, and the host passes the same words for an array of records to
+both modules.  The reads, the counts, and `totalDensity` allocate nothing, so their generated
+`implements` theorems state a return without a trap, and `compiled.f.trapFree` excludes the stop at
+`unreachable` of `scaled`, `ramp`, and `flags` when `top` can rise by the bound of the one block
+that each builds.
+
+| Theorem | Statement |
+|---------|-----------|
+| `compiled.density.implements` … `compiled.totalDensity.implements` | Functions 2 to 15 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, return their Lean functions' values, without a trap for the eleven that allocate nothing. |
+| `compiled.scaled.trapFree`, `compiled.ramp.trapFree`, `compiled.flags.trapFree` | The three builds return their arrays without a trap when `top` can rise by `Verified.blockCost` of the result's words within the memory cap. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements all fourteen functions. |
+| `exampleGrids_file`, `exampleGrids_file_decode` | `build/verified/exampleGrids.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
+
+```sh
+tools/leanrun --timeout 60m lake build Examples.Grids.Compiled
+mkdir -p build/verified
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+  Examples.Grids.Compiled Examples.Grids.compiled.module build/verified/exampleGrids.wasm
+build/tools/leanexe-wasmtime-host call build/verified/exampleGrids.wasm flags array-u64 i64:6
+build/tools/leanexe-wasmtime-host call build/verified/exampleGrids.wasm totalDensity f64 \
+  array-u64:4607182418800017408,0,0,4607182418800017408,4611686018427387904,0,0,4607182418800017408
+tests/verified/run.sh --cases exampleGrids
+tests/native/verified.sh --module exampleGrids
+```
+
+The calls print `[0, 1, 0, 0, 1, 0]` and 4613937818241073152, as the LeanExe module's calls do.
+[The verified driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lean),
+reads past the end included, in Wasmtime against native Lean, and [the native
+driver](../../tests/native/verified.sh) runs them on the module's translation to C, compiled with
+CompCert.  The cases state one block left allocated by each function, the host's array or the
+result, and two by `scaled`, which reads one array and builds another.
+
 ## Related examples
 
 [`Euler`](../../Demos/Euler/README.md) stores its grids of cells in this layout and updates them in loops.

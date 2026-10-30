@@ -44,6 +44,38 @@ call prints 13826050856027422720, the bits of -0.5.
 [`tests/modules/run.sh`](../../tests/modules/run.sh) compares 90 cases of [`Cases.lean`](Cases.lean)
 with native Lean, including `x == lo` with signed zeros and NaN in each argument.
 
+## The verified compiler's module
+
+`verified_compile compiled := [piecewise]` in [the verified compilation](Compiled.lean) compiles the
+same definition into the 1,567-byte `piecewise.wasm` of [the module
+registry](../../tests/verified/modules.txt).  The function allocates nothing, so the generated
+`compiled.piecewise.implements` states that function 2 returns the bits of `piecewise x lo hi`
+without a trap, where `piecewise_implements` allows a stop at `unreachable`.  The generated
+`compiled.piecewise.native` states the same of the C function of the module's translation, and the
+theorems use only `propext`, `Classical.choice`, and `Quot.sound`.
+
+| Theorem | Statement |
+|---------|-----------|
+| `compiled.piecewise.implements` | Function 2 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, returns the bits of `piecewise x lo hi` without a trap. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `piecewise`. |
+| `piecewise_file`, `piecewise_file_decode` | `build/verified/piecewise.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
+
+```sh
+tools/leanrun --timeout 60m lake build Examples.Piecewise.Compiled
+mkdir -p build/verified
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+  Examples.Piecewise.Compiled Examples.Piecewise.compiled.module build/verified/piecewise.wasm
+build/tools/leanexe-wasmtime-host call build/verified/piecewise.wasm piecewise f64 \
+  f64:13830554455654793216 f64:0 f64:4607182418800017408
+tests/verified/run.sh --cases piecewise
+tests/native/verified.sh --module piecewise
+```
+
+The call prints 13826050856027422720, as the LeanExe module's call does.  [The verified
+driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lean) in Wasmtime
+against native Lean, and [the native driver](../../tests/native/verified.sh) runs them on the
+module's translation to C, compiled with CompCert.  The cases state that a call allocates no block.
+
 ## Related examples
 
 [`Binary32`](../Binary32/README.md) has `piecewise32`, the same function on `Float32`, with the
