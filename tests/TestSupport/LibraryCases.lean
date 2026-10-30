@@ -3,6 +3,7 @@ import Library.Numerics.Limiters.Minmod.Program
 import Library.Numerics.Reductions.Word.Program
 import Library.Arrays.Search.Program
 import TestSupport.Host
+import TestSupport.Modules.Gcd
 
 namespace TestSupport.LibraryCases
 
@@ -35,5 +36,9 @@ def cases : IO Unit := do
     for b in specialFloats do
       line "libminmod" "minmod" "f64" [fl a, fl b]
         (toString (Library.Numerics.Limiters.Minmod.minmod a b).toBits)
+  -- The verified module of the LeanExe compiler's GCD program against its specification, with
+  -- the allocation counters.
+  for (a, b) in Library.Numerics.Arithmetic.Gcd.gcdPairs do
+    IO.println s!"gcd|gcd|i64|{u a} {u b}|{Library.Numerics.Arithmetic.Gcd.expected (a, b)}|0|0"
 
 end TestSupport.LibraryCases
