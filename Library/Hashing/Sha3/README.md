@@ -56,5 +56,5 @@ tools/leanrun --timeout 10m lake env lean Library/Hashing/Sha3/File.lean
 ## References
 
 1. National Institute of Standards and Technology, [*SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions*](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf), FIPS PUB 202, 2015.
-2. National Institute of Standards and Technology, [*Cryptographic Algorithm Validation Program: Secure Hashing*](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing), SHA-3 and SHAKE test vectors.
+2. National Institute of Standards and Technology, [*Cryptographic Algorithm Validation Program: Secure Hashing*](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing), section "Test Vectors", FIPS 202.
 3. National Institute of Standards and Technology, [*The Secure Hash Algorithm 3 Validation System (SHA3VS)*](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha3vs.pdf), 2016.

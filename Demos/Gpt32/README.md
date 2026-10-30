@@ -112,8 +112,8 @@ bytes.  [`Binary32`](../../Examples/Binary32/README.md) has the first WGSL kerne
 
 - A. Radford, J. Wu, R. Child, D. Luan, D. Amodei, and I. Sutskever, "Language Models are
   Unsupervised Multitask Learners," OpenAI, 2019.
-- W3C, [WebGPU Shading Language](https://www.w3.org/TR/WGSL/), in particular
-  [§15.7.2](https://www.w3.org/TR/WGSL/#differences-from-ieee754) on flushing and
-  [§15.7.5](https://www.w3.org/TR/WGSL/#reassociation-and-fusion) on fusion.
+- W3C, [WebGPU Shading Language](https://www.w3.org/TR/WGSL/),
+  [§15.7.2](https://www.w3.org/TR/WGSL/#differences-from-ieee754) and
+  [§15.7.5](https://www.w3.org/TR/WGSL/#reassociation-and-fusion).
 - W3C, [WebGPU](https://www.w3.org/TR/webgpu/).
-- [wgpu-native](https://github.com/gfx-rs/wgpu-native), which the host uses.
+- gfx-rs, [wgpu-native](https://github.com/gfx-rs/wgpu-native).

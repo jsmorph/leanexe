@@ -103,4 +103,8 @@ proof method.
 - G. L. Steele Jr., D. Lea, and C. H. Flood, "Fast Splittable Pseudorandom Number Generators,"
   *Proceedings of OOPSLA 2014*, ACM, pp. 453–472,
   [doi:10.1145/2660193.2660195](https://doi.org/10.1145/2660193.2660195).
-- S. Vigna, [`splitmix64.c`](https://prng.di.unimi.it/splitmix64.c), the reference C code.
+- S. Vigna, [`splitmix64.c`](https://prng.di.unimi.it/splitmix64.c), 2015.
+
+Vigna's `splitmix64.c` dedicates its copyright to the public domain to the extent possible under
+law and grants permission to use, copy, modify, and distribute it for any purpose, with or without
+fee.

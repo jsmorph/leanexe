@@ -98,3 +98,7 @@ tools/leanrun --timeout 10m --lock-timeout 1200 lake env lean --run tools/Emit.l
 uv run tools/euler-run.py euler.wasm reconstructed 192 new-192-directory
 uv run tools/euler-run.py euler.wasm reconstructed 800 new-800-directory
 ```
+
+## Internal References
+
+- [Limiters](../../../Library/Numerics/Limiters/README.md)

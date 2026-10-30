@@ -19,3 +19,7 @@ applications names the theorem behind each code.
 Each guide states its proof premises and run commands.  Euler's recorded outputs are under
 [the Euler run data](https://github.com/jsmorph/leanexe-papers/tree/main/data/euler).  The [compiler examples](../Examples) demonstrate individual
 language forms, ownership behavior, and proof procedures.
+
+## Internal References
+
+- [Stream fold](StreamFold/README.md)

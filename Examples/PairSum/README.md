@@ -54,8 +54,6 @@ fold rule `Func.foldl_implements`.  The LTG entries
 
 ## References
 
-- [The LeanExe compiler manual's section on arrays](../../docs/leanexe-manual.md#arrays), which
-  gives the heap layout of an array: a header, a length word, and the elements.
-- WebAssembly Core Specification, [memory
-  instructions](https://webassembly.github.io/spec/core/syntax/instructions.html#memory-instructions),
-  which the allocator and the array code use.
+- [LeanExe Compiler Manual: Arrays](../../docs/leanexe-manual.md#arrays).
+- WebAssembly Core Specification, [Memory
+  Instructions](https://webassembly.github.io/spec/core/syntax/instructions.html#memory-instructions).

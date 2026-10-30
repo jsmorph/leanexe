@@ -75,6 +75,4 @@ an array.  [`Clob`](../../Demos/Clob/README.md) has the same ownership rules for
 ## References
 
 - D. E. Knuth, *The Art of Computer Programming*, Vol. 3, *Sorting and Searching*, 2nd ed.,
-  Addison-Wesley, 1998, section 6.2.2, on binary search trees and insertion.
-- [The LeanExe compiler manual's section on recursion](../../docs/leanexe-manual.md#recursion), on
-  the depth limit and the frame size.
+  Addison-Wesley, 1998, section 6.2.2.

@@ -9,3 +9,7 @@ modulo `2^64`.
 Summation and reversal use tail loops.  Increment uses guarded structural recursion.  The
 [list-tail tests](../../Verified/Examples/ListTailCases.lean) cover lists beyond the guarded
 recursion limit and check the allocation counts.
+
+## Internal References
+
+- [Verified Compiler Manual: Calls and recursion](../../docs/verified-manual.md#calls-and-recursion)

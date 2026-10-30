@@ -90,8 +90,10 @@ The byte theorems trust Talos's semantics of WebAssembly and its decoder, as eve
 
 ## References
 
-1. R. Cox, "Floating-Point Printing and Parsing Can Be Simple And Fast (Floating Point Formatting, Part 3)", 19 January 2026, [research.swtch.com/fp](https://research.swtch.com/fp).  Not peer reviewed.
-2. R. Giulietti, "The Schubfach way to render doubles", revision of 20 March 2022, self-published, [PDF on Google Drive](https://drive.google.com/file/d/1gp5xv4CAa78SVgCeWfGqqI4FfYYYuNFb), CC BY-SA 4.0.  Not peer reviewed.
-3. Ecma International, ECMA-262, *ECMAScript 2027 Language Specification*, draft of 9 October 2026, [tc39.es/ecma262](https://tc39.es/ecma262/): 6.1.6.1.20 (Number::toString) with Notes 1 to 3.
+1. R. Cox, "Floating-Point Printing and Parsing Can Be Simple And Fast (Floating Point Formatting, Part 3)", 19 January 2026, [research.swtch.com/fp](https://research.swtch.com/fp).
+2. R. Giulietti, ["The Schubfach way to render doubles"](https://drive.google.com/file/d/1gp5xv4CAa78SVgCeWfGqqI4FfYYYuNFb), revision of 20 March 2022.
+3. Ecma International, ECMA-262, *ECMAScript 2027 Language Specification*, draft of 9 October 2026, [tc39.es/ecma262](https://tc39.es/ecma262/), 6.1.6.1.20, Notes 1 to 3.
 4. Python Software Foundation, Python documentation, [`sys.float_repr_style`](https://docs.python.org/3/library/sys.html#sys.float_repr_style) and [What's New in Python 3.1](https://docs.python.org/3/whatsnew/3.1.html).
 5. Oracle, Java SE 21 API, [`Double.toString(double)`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Double.html#toString(double)).
+
+Cox's article [1] and Giulietti's self-published paper [2] are not peer reviewed.

@@ -8,6 +8,32 @@ Each entry is a directory under [`entries/`](entries) with a `README.md` and an 
 
 An entry names existing declarations instead of restating them.  When several proofs repeat a lemma, the entry points to the copies, and replacing them with one shared lemma is a separate code change.  An entry may record a failure without a fix, because a recorded failure saves the next prover the same hours.
 
+| Entry | Use |
+|---|---|
+| [Closed computations](entries/closed-computations/README.md) | Proves constants, table entries, exports, and other closed facts by kernel evaluation. |
+| [Large folds and compiled terms](entries/large-term-unfolding/README.md) | Controls reductions that cause recursion-depth errors, timeouts, or excessive memory use. |
+| [Loops and builds](entries/loop-combinators/README.md) | Proves invariants for `LeanExe.loop` and element equations for `LeanExe.build`. |
+| [Array folds by list induction](entries/array-fold-list-induction/README.md) | Proves that `xs.foldl step init` meets a specification stated by positions or lists, by induction on the array's list. |
+| [Word identities](entries/word-bit-identities/README.md) | Relates shifts, masks, and packed words to bit-level specifications. |
+| [Packed bytes](entries/packed-bytes/README.md) | Recovers a byte from an array that packs eight bytes into each word. |
+| [Binary64 error bounds](entries/float-error-tracking/README.md) | Propagates input and rounding errors through a chain of operations. |
+| [Specification call theorems](entries/spec-call-theorem/README.md) | Combines a specification equality with generated execution and allocation theorems. |
+| [Explicit arguments before dependent proofs](entries/explicit-before-dependent-proof/README.md) | Avoids the unification failure of a proof argument about a value that a later argument fixes. |
+| [File theorems](entries/file-theorems/README.md) | States that an emitted `.wasm` file holds the encoding of a module, through a file module outside the import graph. |
+| [Closed-form allocation bounds](entries/verified-bound-closed-form/README.md) | Bounds the generated allocation term in input sizes. |
+| [Source forms and costs](entries/verified-source-costs/README.md) | Relates source choices to allocation, generated bounds, and compilation cost. |
+| [Array literals and proposition tests](entries/reflector-forms/README.md) | Explains the reflected code and allocation charges of these forms. |
+| [Tail-termination cases](entries/tail-termination-cases/README.md) | Diagnoses remaining functional-induction cases in a tail-loop proof. |
+| [Mutual execution induction](entries/mutual-relation-induction/README.md) | Proves statements over mutually inductive WASI or Clight executions. |
+| [Partial loop correctness](entries/partial-wasm-loop/README.md) | States the result of a completed Wasm loop while its termination proof remains separate. |
+| [WASI host premises](entries/wasi-host-premise/README.md) | Identifies the satisfying-host premise needed to apply an execution theorem. |
+| [WASI effect charges](entries/wasi-effect-charges/README.md) | Bounds allocation over complete command runs and their prefixes. |
+| [WASI process totality](entries/wasi-process-total/README.md) | Combines progress, resource bounds, and accepted exit for an unbounded process. |
+| [Line-oriented processes](entries/stream-fold/README.md) | Instantiates the shared line reader and output proof with an application kernel. |
+| [Verified WGSL kernels](entries/verified-wgsl-kernel/README.md) | Proves dispatch of an accepted outer array build. |
+| [Native theorem conclusions](entries/native-conclusion-patterns/README.md) | Extracts result, heap, region, and postcondition facts from a native call theorem. |
+| [Clight determinism](entries/clight-determinism/README.md) | Compares two execution derivations and carries a proved result to every matching execution. |
+
 ## Admission and growth
 
 Every proof task ends with proposals for new entries or changes to existing ones, in the form of the template, as [the repository instructions](../AGENTS.md#verification-knowledge-base) require.  A reviewer admits a proposal when its guidance applies beyond the task, its declarations exist, and no entry already covers it.  Otherwise the reviewer merges it into an existing entry or declines it with a reason.

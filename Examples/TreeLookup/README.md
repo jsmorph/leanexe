@@ -97,5 +97,4 @@ example.
 ## References
 
 - D. E. Knuth, *The Art of Computer Programming*, Vol. 3, *Sorting and Searching*, 2nd ed.,
-  Addison-Wesley, 1998, section 6.2.2, on binary search trees.
-- [The review](review.md) and [the journal](journal.md) of this run.
+  Addison-Wesley, 1998, section 6.2.2.

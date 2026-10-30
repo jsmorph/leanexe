@@ -87,8 +87,6 @@ allocated, the input and the result.
 
 ## References
 
-- [The LeanExe compiler manual's section on loops and
-  builds](../../docs/leanexe-manual.md#loops-and-builds), which describes `LeanExe.loop`.
-- [The Lean 4 reference on
-  arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/), for `xs[i]!` and its
-  default.
+- [LeanExe Compiler Manual: Loops and builds](../../docs/leanexe-manual.md#loops-and-builds).
+- *The Lean Language Reference*, version 4.34.0-rc2,
+  [Arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/).

@@ -52,6 +52,5 @@ expressions.
 ## References
 
 - WebAssembly Core Specification,
-  [numerics](https://webassembly.github.io/spec/core/exec/numerics.html), for `trunc_u` and
-  `trunc_sat_u`.
-- IEEE Standard for Floating-Point Arithmetic, IEEE Std 754-2019, on conversions to integer formats.
+  [Numerics](https://webassembly.github.io/spec/core/exec/numerics.html).
+- IEEE Standard for Floating-Point Arithmetic, IEEE Std 754-2019.

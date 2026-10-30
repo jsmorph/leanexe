@@ -54,8 +54,7 @@ comparisons inside conditionals instead of returning them.
 
 ## References
 
-- [The LeanExe compiler manual's section on records and user
-  types](../../docs/leanexe-manual.md#records-and-user-types), which gives the representation of
-  enumerations and structures.
-- [The Lean 4 reference on
-  `Bool`](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Booleans/).
+- [LeanExe Compiler Manual: Records and user
+  types](../../docs/leanexe-manual.md#records-and-user-types).
+- *The Lean Language Reference*, version 4.34.0-rc2,
+  [Booleans](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Booleans/).

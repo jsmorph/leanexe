@@ -59,6 +59,8 @@ The vector test takes `--no-monte` to skip the Monte Carlo checkpoints and `--no
 ## References
 
 1. National Institute of Standards and Technology, [*Secure Hash Standard (SHS)*](https://csrc.nist.gov/pubs/fips/180-4/final), FIPS PUB 180-4, 2015.
-2. remix7531, [fips-180-4-lean](https://github.com/remix7531/fips-180-4-lean/tree/0018b08f3458553ad511e92a96336979c1e0c45a), a literate Lean transcription of FIPS 180-4 with an implementation and equivalence proofs.
-3. NIST Cryptographic Algorithm Validation Program, [Secure Hashing](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing) test vectors.
+2. remix7531, [fips-180-4-lean](https://github.com/remix7531/fips-180-4-lean/tree/0018b08f3458553ad511e92a96336979c1e0c45a).
+3. NIST Cryptographic Algorithm Validation Program, [Secure Hashing](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing), section "Test Vectors".
 4. L. E. Bassham III and T. A. Hall, [*The Secure Hash Algorithm Validation System (SHAVS)*](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/SHAVS.pdf), NIST, updated May 21, 2014.
+
+The repository fips-180-4-lean [2] by remix7531, the source of the copied transcription, implementation, and proofs, carries the GNU General Public License, version 3 or later.

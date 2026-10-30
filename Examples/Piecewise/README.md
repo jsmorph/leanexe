@@ -53,8 +53,6 @@ and [`binary32-arithmetic`](../../ltg/entries/binary32-arithmetic/README.md) des
 
 ## References
 
-- IEEE Standard for Floating-Point Arithmetic, IEEE Std 754-2019, for the comparison predicates and
-  the sign-bit operations.
+- IEEE Standard for Floating-Point Arithmetic, IEEE Std 754-2019.
 - WebAssembly Core Specification,
-  [numerics](https://webassembly.github.io/spec/core/exec/numerics.html), for `fneg`, `fabs`,
-  `fmin`, and `fmax`.
+  [Numerics](https://webassembly.github.io/spec/core/exec/numerics.html).

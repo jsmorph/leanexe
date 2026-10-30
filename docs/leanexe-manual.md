@@ -472,7 +472,7 @@ The body's triple follows the IR.  [`LeanExe/IR/Stmt.lean`](../LeanExe/IR/Stmt.l
 
 A body that calls allocating functions and releases temporaries is proved under `Live` ([`LeanExe/IR/Live.lean`](../LeanExe/IR/Live.lean)), an invariant that records the allocator invariant, the unchanged caps, the frame of the caller's heap, and the live temporaries, each owned and apart from the others.  `Live.start` begins a body, `Live.call`, `Live.call_seq`, `Live.callMove`, and `Live.callScalar_seq` run calls, `Live.callOne` and `Live.callOne_seq` run a call whose result is scalars followed by one array (`OneArray`), and `Live.releaseFirst`, `Live.releaseSecond`, and `Live.releaseAt` release temporaries.  `Live.arrayLoop`, `Live.tupleLoop`, and `Live.repeatWhileOne` cover the loops over arrays, and `Live.finish`, `Live.finish_moved`, and `Live.finish_results_one` give the rule's postcondition.  [`tools/gpt_composites.py`](../tools/gpt_composites.py) generates the GPT composites' proofs in [`Demos/Gpt/Composites.lean`](../Demos/Gpt/Composites.lean) from a description of each function's calls.
 
-Two files hold lemmas that recur across programs.  [`LeanExe/IR/Combinators.lean`](../LeanExe/IR/Combinators.lean) states facts about the combinators' Lean definitions: `loop_induction` shows that an invariant that each pass keeps holds of the result of `LeanExe.loop`, `loop_congr` equates loops whose steps agree, and `build_size`, `build_get`, and `build_get_out` give the size and the elements of `LeanExe.build`.  [`LeanExe/IR/Words.lean`](../LeanExe/IR/Words.lean) holds lemmas about the words that the compiler computes from tests, such as `word_and` and `word_or` for `&&` and `||` on 0-or-1 words and `divU_eq` and `remU_eq` for the IR's tested division, and the tactics `eval_body` and `eval_state`, which evaluate a compiled body or a run of statements with one `simp` call.
+[`LeanExe/IR/Combinators.lean`](../LeanExe/IR/Combinators.lean) states facts about the combinators' Lean definitions: `loop_induction` shows that an invariant that each pass keeps holds of the result of `LeanExe.loop`, `loop_congr` equates loops whose steps agree, and `build_size`, `build_get`, and `build_get_out` give the size and the elements of `LeanExe.build`.  [`LeanExe/IR/Words.lean`](../LeanExe/IR/Words.lean) holds lemmas about the words that the compiler computes from tests, such as `word_and` and `word_or` for `&&` and `||` on 0-or-1 words and `divU_eq` and `remU_eq` for the IR's tested division, and the tactics `eval_body` and `eval_state`, which evaluate a compiled body or a run of statements with one `simp` call.
 
 Proofs about floats use equality theorems: ProofKit proves that Lean's binary64 and binary32 operations equal Talos's `IEEE64` and `IEEE32` functions on bit patterns for all inputs, and `F64Bits.toBits_add` and its siblings state them as `simp` lemmas.  Large proofs close float literals with bit lemmas proved by `decide +kernel`, as in [`Demos/Euler/Words.lean`](../Demos/Euler/Words.lean).  [The journal](../devnotes.md) (E6) records the proof patterns that keep symbolic evaluation of large bodies tractable, such as computing every value in straight-line code and selecting the result once at the end.
 
@@ -538,7 +538,7 @@ theorem sweep_implementsA {a : Bool} {cells : Nat} {g : UInt64} (hg : GridBytes 
 
 ### LTG entries
 
-[`ltg/entries/`](../ltg/entries) holds 37 entries, each a directory with an `entry.json` and a `README.md`.  `entry.json` names the modules, declarations, premises, and result of a rule or method, and its `annotationKinds` list the hint rules that select it, such as `repeat while` or `tail-recursion-loop`.  A prover finds an entry by searching for a hint's rule name or for a declaration, and the README explains how to apply the entry, with the consumers that serve as worked examples.
+[The LTG knowledge base](../ltg/README.md) stores each entry in a directory with an `entry.json` and a `README.md`.  `entry.json` names the modules, declarations, premises, and result of a rule or method, and its `annotationKinds` list the hint rules that select it, such as `repeat while` or `tail-recursion-loop`.  A prover finds an entry by searching for a hint's rule name or for a declaration, and the README explains how to apply the entry, with the consumers that serve as worked examples.
 
 [`ltg/Check.lean`](../ltg/Check.lean) imports every module the entries list and reports each listed declaration that does not exist, so a renamed declaration fails the check until its entry changes.  A new rule lemma gets an entry when it is proved.  An entry that is narrow or specific to one program stays as a worked example unless it is invalid, stale, unsafe to disclose to a measured proof task, or a duplicate without a distinct lesson, as [the repository instructions](../AGENTS.md) require.
 
@@ -698,3 +698,28 @@ The 12-hour limit accommodates cold imports.  The measured leaf checks used 30-m
 [The repository instructions](../AGENTS.md) set the procedures that bind agents in this repository: the runner and its limits, the approval boundaries for repository drivers, and the handling of LTG entries.  [The style guide](../CLAUDE.md) sets the style of prose, comments, and commit messages.  Python tools declare their dependencies as PEP 723 metadata and run with `uv run`.
 
 [The design document](design.md) gives the design, the decisions with their reasons, what is proved and tested, and the open work.  One of its decisions makes development iterative: each iteration takes one program from source to bytes, a theorem, a comparison with native Lean, an axiom check, and a commit, adding only what that program needs.  [The journal](../devnotes.md) records each step in dated prose: the analysis, the options, the decision, what was built, and the measurements.
+
+### Documentation links
+
+Every Markdown document and prose README has a path of links from [LeanExe](../README.md).
+Link text names the destination's subject, and the surrounding sentence explains the reason
+for the reference.  Current repository references use relative paths.  Historical references
+retain the source revision to which their claims apply.  Links to documentation lead to a file
+or a directory with a README.  Links to source directories support code browsing.
+
+A `References` or `Internal References` section lists the sources whose content a document
+uses, and an internal document appears there only when the text does not link it at the point of
+use.  Each item is a citation or a link titled with the destination's title and, for a section,
+its heading, and items contain no sentences.  One paragraph after the list may discuss the
+references when the body does not state that information: what was read or checked, peer-review
+status, the license of ported code, or a difference between a source and the implementation.
+A directory README
+explains how its files work together, the assumptions they share, or how to build, test, or
+use them.
+
+[The documentation checker](../tools/check-doc-links.mjs) checks local targets, heading anchors,
+and reachability from the root README.  It includes new unignored files so that drafts can be
+checked before staging.
+The [documentation tests](../tests/README.md#documentation-tests) exercise its parsing and
+traversal on temporary files.  Prose receives at least two reviews for technical accuracy,
+specific link descriptions, repetition, vague references, filler, and grammar.

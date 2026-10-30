@@ -85,7 +85,7 @@ of one.  [`Words`](../../../../Examples/Words/README.md) has tail recursion over
 ## References
 
 - D. E. Knuth, *The Art of Computer Programming*, Vol. 2, *Seminumerical Algorithms*, 3rd ed.,
-  Addison-Wesley, 1997, section 4.5.2, on Euclid's algorithm.
-- Lean core's
-  [`Nat.gcd`](https://leanprover-community.github.io/mathlib4_docs/Init/Data/Nat/Gcd.html), which
-  the specification uses, and Mathlib's lemmas about it, which the proof of `gcd_eq` uses.
+  Addison-Wesley, 1997, section 4.5.2.
+- Lean core,
+  [`Init.Data.Nat.Gcd`](https://leanprover-community.github.io/mathlib4_docs/Init/Data/Nat/Gcd.html),
+  `Nat.gcd` and `Nat.gcd_rec`.

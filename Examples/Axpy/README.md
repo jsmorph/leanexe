@@ -59,5 +59,5 @@ expressions.
 - C. L. Lawson, R. J. Hanson, D. R. Kincaid, and F. T. Krogh, "Basic Linear Algebra Subprograms for
   Fortran Usage," *ACM Transactions on Mathematical Software* 5(3):308–323, 1979.
 - WebAssembly Core Specification,
-  [numerics](https://webassembly.github.io/spec/core/exec/numerics.html) and [the deterministic
-  profile](https://webassembly.github.io/spec/core/appendix/profiles.html).
+  [Numerics](https://webassembly.github.io/spec/core/exec/numerics.html) and
+  [Profiles](https://webassembly.github.io/spec/core/appendix/profiles.html).

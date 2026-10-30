@@ -94,7 +94,7 @@ return a value computed by a loop.  The LTG entry
 ## References
 
 - D. E. Knuth, *The Art of Computer Programming*, Vol. 2, *Seminumerical Algorithms*, 3rd ed.,
-  Addison-Wesley, 1997, section 4.5.4, on factoring by trial division.
-- Mathlib's
-  [`Nat.primeFactorsList`](https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Factors.html),
-  which the specification uses.
+  Addison-Wesley, 1997, section 4.5.4.
+- Mathlib,
+  [`Mathlib.Data.Nat.Factors`](https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Factors.html),
+  `Nat.primeFactorsList`.

@@ -60,6 +60,6 @@ recursion.  [`Gcd`](../../Library/Numerics/Arithmetic/Gcd/README.md) has tail re
 
 ## References
 
-- [The Lean 4 reference on inductive
-  types](https://lean-lang.org/doc/reference/4.34.0-rc2/The-Type-System/Inductive-Types/).
-- [The LeanExe compiler manual's section on recursion](../../docs/leanexe-manual.md#recursion).
+- *The Lean Language Reference*, version 4.34.0-rc2, [Inductive
+  Types](https://lean-lang.org/doc/reference/4.34.0-rc2/The-Type-System/Inductive-Types/).
+- [LeanExe Compiler Manual: Recursion](../../docs/leanexe-manual.md#recursion).

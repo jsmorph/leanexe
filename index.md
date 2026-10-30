@@ -221,6 +221,9 @@ Both integer-order theorems exclude `2 ≤ |x| < 2^302` with `|n| > |x|/2`.  Tha
 
 ## 8. Discrete Fourier transform
 
+[The Fourier guide](Library/Numerics/Fourier/README.md) explains the signal layout, transform
+signs, inverse normalization, compilation, and accuracy comparisons.
+
 A complex signal is a flat binary64 array with real and imaginary parts interleaved.  The direct transform takes quadratic time and ignores an odd final float.  Transform and spectrum error bounds remain open.  Its trigonometric factors use the sine and cosine implementations in [Section 6](#6-elementary-and-special-functions), compiled in the same module with their tables, which the wrappers pass.
 
 | Entry | Forms | Implementation | Behavior | Theorems, claims, and limits |

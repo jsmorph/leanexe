@@ -72,8 +72,5 @@ example](../../Verified/Examples/Fold.lean).
 
 ## References
 
-- [The verified compiler manual](../../docs/verified-manual.md), on the dialect, the generated
-  theorems, and the bounds.
-- [The call theorem](../../Verified/Call.lean), which defines `Verified.Ready`, `Verified.Call`,
-  and `Verified.CallSpec`.
-- [The review](review.md) and [the journal](journal.md) of this run.
+- [Verified Compiler Manual](../../docs/verified-manual.md)
+- [`Verified.Call`](../../Verified/Call.lean)

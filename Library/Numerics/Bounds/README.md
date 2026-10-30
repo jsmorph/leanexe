@@ -13,3 +13,7 @@ execution proofs, with [a flat encoding](Encoding.lean) of status and value.
 The exported bit helpers preserve their word-level definitions.  `nextUpBits` and `nextDownBits`
 require suitable finite input words when interpreted as adjacent real values.  The checked
 operations enforce those conditions before accepting a result.
+
+## Internal References
+
+- [Shared proof lemmas: Floating-point values and error bounds](../../../LeanExe/ProofKit/README.md#floating-point-values-and-error-bounds)

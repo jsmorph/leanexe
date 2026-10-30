@@ -56,8 +56,7 @@ compiler stores on the heap as records instead of in locals.
 
 ## References
 
-- [The Lean 4 reference on inductive
-  types](https://lean-lang.org/doc/reference/4.34.0-rc2/The-Type-System/Inductive-Types/).
-- [The LeanExe compiler manual's section on conditionals and case
-  splits](../../docs/leanexe-manual.md#conditionals-and-case-splits), which gives the compiled form
-  of a match.
+- *The Lean Language Reference*, version 4.34.0-rc2, [Inductive
+  Types](https://lean-lang.org/doc/reference/4.34.0-rc2/The-Type-System/Inductive-Types/).
+- [LeanExe Compiler Manual: Conditionals and case
+  splits](../../docs/leanexe-manual.md#conditionals-and-case-splits).

@@ -136,6 +136,22 @@ The implementation uses a proof-side exit marker and exact trap identity in [the
 
 ## Module construction and compiler proofs
 
+[The native action semantics](../LeanExe/Wasi/Action.lean) gives the source executions, and
+[the typed effect language](../Verified/Wasi/Source.lean) gives the compiler's commands.
+The wrapper and transport results below supply the premises of
+[command correctness](../Verified/Wasi/CommandCorrect.lean) and
+[cost-aware command correctness](../Verified/Wasi/CostCommandCorrect.lean).
+[Program correctness](../Verified/Wasi/Correct.lean) combines those rules for a complete
+effectful program.  [Callable entry](../Verified/Wasi/NativeEntry.lean) and
+[command entry](../Verified/Wasi/NativeCommand.lean) connect it to reflected Lean actions.
+
+For an unbounded process, [process refinement](../Verified/Wasi/ProcessCorrect.lean) supplies
+the execution relation.  [Total process execution](../Verified/Wasi/ProcessTotalCorrect.lean)
+also needs the application's progress, resource, and exit premises.  The
+[integer](../Demos/RunningSum/README.md) and [binary64](../Demos/RunningSumFp/README.md) running
+sums give applications of those results.  [The WASI manual](wasi.md#execution-proofs-and-their-premises)
+states the premises at the public API.
+
 ### Pure code in an importing module
 
 Let the existing pure module contain `N` defined functions, including its allocator, release routine, depth entries, and wrappers.  The WASI module prefixes three imports and relocates those `N` definitions before appending the I/O wrappers and effectful functions.  [The layout maps](../Verified/Wasi/Wrappers.lean) give these positions:

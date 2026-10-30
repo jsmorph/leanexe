@@ -8,18 +8,18 @@ the properties of the resulting WebAssembly.
 
 | Area | Forms | Contents |
 |---|---|---|
-| [Random generators](Random) | L V S C | LCG, Park–Miller, xorshift64, SplitMix64, word-to-float conversion, and shared orbit lemmas. |
+| [Random generators](../index.md#3-pseudorandom-number-generators) | L V S C | LCG, Park–Miller, xorshift64, SplitMix64, word-to-float conversion, and shared orbit lemmas. |
 | [Sorting](Sorting/README.md) | V C A | Insertion sort on arrays of `UInt64`. |
 | [Arrays](Arrays/README.md) | V S C | Counting, first-match search, ordered removal, bounded filtering, prefix clearing, repetition, and word scaling. |
 | [Lists](Lists/README.md) | V C | Word-list range, sum, reversal, and increment. |
 | [Trees](Trees/README.md) | V C | Binary tree of words, structural operations, and search-tree insertion. |
-| [Arithmetic](Numerics/Arithmetic) | L V S C | Software FMA, limb arithmetic, unrounded scaling, GCD, factor counting, and bounded integer square root. |
-| [Binary64 functions](Numerics/Float64) | V S F C | Elementary and special functions with their accuracy proofs. |
-| [Decimal conversion](Numerics/Decimal) | V S F C | Parsing and shortest-decimal printing. |
-| [Fourier transforms](Numerics/Fourier) | V C | DFT, inverse transform, and power spectrum. |
+| [Arithmetic](../index.md#1-arithmetic) | L V S C | Software FMA, limb arithmetic, unrounded scaling, GCD, factor counting, and bounded integer square root. |
+| [Binary64 functions](../index.md#6-elementary-and-special-functions) | V S F C | Elementary and special functions with their accuracy proofs. |
+| [Decimal conversion](../index.md#9-conversion-between-decimal-strings-and-binary-floating-point) | V S F C | Parsing and shortest-decimal printing. |
+| [Fourier transforms](Numerics/Fourier/README.md) | V C | DFT, inverse transform, and power spectrum. |
 | [Reductions](Numerics/Reductions/README.md) | V C | Word and binary64 folds, including pairwise summation. |
 | [Linear algebra](Numerics/LinearAlgebra/README.md) | V C | Vector and matrix operations in binary64 and binary32. |
-| [Statistics](Numerics/Statistics) | L V C | Mean and sum of squares. |
+| [Statistics](../index.md#5-statistics) | L V C | Mean and sum of squares. |
 | [Arithmetic bounds](Numerics/Bounds/README.md) | V S C | Checked outward-rounded operations and their real bounds. |
 | [Limiters](Numerics/Limiters/README.md) | V S C | Minmod and its real slope and face properties. |
 | [Packed bytes](Bytes/Packed.lean) | – | Byte strings held eight bytes to a word, as the libraries that take byte strings state their arguments. |

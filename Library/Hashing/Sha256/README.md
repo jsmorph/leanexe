@@ -48,5 +48,5 @@ tools/leanrun --timeout 10m lake env lean Library/Hashing/Sha256/File.lean
 ## References
 
 1. National Institute of Standards and Technology, [*Secure Hash Standard (SHS)*](https://csrc.nist.gov/pubs/fips/180-4/final), FIPS PUB 180-4, 2015.
-2. NIST Cryptographic Algorithm Validation Program, [Secure Hashing](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing) test vectors.
+2. NIST Cryptographic Algorithm Validation Program, [Secure Hashing](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing), section "Test Vectors".
 3. L. E. Bassham III and T. A. Hall, [*The Secure Hash Algorithm Validation System (SHAVS)*](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/SHAVS.pdf), NIST, updated May 21, 2014.

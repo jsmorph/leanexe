@@ -86,4 +86,4 @@ with CompCert.
 
 - N. J. Higham, *Accuracy and Stability of Numerical Algorithms*, 2nd ed., SIAM, 2002, chapter 4.
 - WebAssembly Core Specification,
-  [numerics](https://webassembly.github.io/spec/core/exec/numerics.html), for `convert_u`.
+  [Numerics](https://webassembly.github.io/spec/core/exec/numerics.html).

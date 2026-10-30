@@ -56,8 +56,5 @@ use structures such as the solver's `Cell` and the planner's `Choice`.
 
 ## References
 
-- [The Lean 4 reference on structures and
-  constructors](https://lean-lang.org/doc/reference/4.34.0-rc2/Terms/Structures-and-Constructors/),
-  for the structure instance and update syntax, such as `{ c with value := v }`.
-- [The LeanExe compiler manual's section on records and user
-  types](../../docs/leanexe-manual.md#records-and-user-types).
+- *The Lean Language Reference*, version 4.34.0-rc2, [Structures and
+  Constructors](https://lean-lang.org/doc/reference/4.34.0-rc2/Terms/Structures-and-Constructors/).

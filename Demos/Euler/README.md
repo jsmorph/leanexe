@@ -100,5 +100,4 @@ examples.
 - B. van Leer, "Towards the Ultimate Conservative Difference Scheme. V. A Second-Order Sequel to
   Godunov's Method," *Journal of Computational Physics* 32(1):101–136, 1979.
 - E. F. Toro, *Riemann Solvers and Numerical Methods for Fluid Dynamics*, 3rd ed., Springer, 2009.
-- [The Lanyon Euler article](https://lanyon.ai/research/euler-equations/), whose figures the run
-  records compare.
+- Lanyon.AI, [The Euler Equations of Gas Dynamics](https://lanyon.ai/research/euler-equations/).

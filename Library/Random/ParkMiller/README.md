@@ -73,5 +73,6 @@ trial division.
   [doi:10.1145/63039.63042](https://doi.org/10.1145/63039.63042).
 - L. Schrage, "A More Portable Fortran Random Number Generator," *ACM Transactions on Mathematical
   Software* 5(2):132–138, 1979, [doi:10.1145/355826.355828](https://doi.org/10.1145/355826.355828).
-- ISO/IEC 14882, the C++ standard, [rand.eng.lcong](https://eel.is/c++draft/rand.eng.lcong) and
+- ISO/IEC 14882, *Programming languages — C++*, working draft,
+  [rand.eng.lcong](https://eel.is/c++draft/rand.eng.lcong) and
   [rand.predef](https://eel.is/c++draft/rand.predef).

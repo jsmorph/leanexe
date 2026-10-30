@@ -47,6 +47,29 @@ records the architecture and reviewed decisions.
 
 The translator to C, in `LeanExe/Native/`, carries the verified compiler's modules past WebAssembly.  For a module in its subset, `verified_compile` evaluates `translate nativeCap p.module`, a program of the Lean copy of CompCert 3.18's Clight, and proves `p.f.native` for each function from `p.f.implements` and the simulation theorem `translate_correct`.  `native-verified build` prints the C text, has `clightgen` read it back, compares that Clight with the translation, and compiles the file with `ccomp` for AArch64 or x86-64 only when they agree.  The command `bare_program` adds a generated `main` and proves that the whole program terminates in the Clight copy with a UART store for each byte of the result, and a Rocq proof composes CompCert's simulations from Clight to Asm.  [The translator's design](native-translator.md) and [the bare-metal design](native-bare-metal.md) describe both paths.
 
+## Source changes and proofs
+
+The [verified reflector](../Verified/Reflect/Definitions.lean) can translate an additional Lean
+form into an existing typed source expression.  Its proof equates the source expression's
+denotation with the represented Lean value.  A new typed source construct also requires
+[syntax and denotation](../Verified/Source.lean), [code generation](../Verified/Compile.lean),
+and [expression correctness](../Verified/AlignedExprCorrect.lean), including allocation costs
+and ownership preservation.  The [Verified Compiler Manual's examples](verified-manual.md#examples)
+show accepted forms and their generated theorems.
+
+The LeanExe compiler's [translation rules](../LeanExe/Compiler/Scalar.lean) choose intermediate
+code and emit hints.  The program's execution proof applies the rule lemmas associated with
+those hints, as the [LeanExe Compiler Manual's examples](leanexe-manual.md#worked-examples)
+illustrate.  Both compilers use the [shared proof lemmas](../LeanExe/ProofKit/README.md) for
+memory layout, allocation, frame preservation, and alignment.  The
+[test suite descriptions](../tests/README.md) identify checks for the corresponding changes.
+
+Algorithm definitions and mathematical specifications belong to [the library](../Library/README.md).
+The [Verified Compiler Manual](verified-manual.md#proving) explains how to combine a specification
+with a generated execution theorem.  The [verification knowledge base](../VKB/README.md) links
+worked proofs.  [Application demos](../Demos/README.md) links the application proofs, host
+programs, and recorded runs.
+
 ## Files
 
 | File | Role |

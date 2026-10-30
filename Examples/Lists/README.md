@@ -58,8 +58,4 @@ entries [`list-cell`](../../ltg/entries/list-cell/README.md),
 
 ## References
 
-- [The LeanExe compiler manual's section on records and user
-  types](../../docs/leanexe-manual.md#records-and-user-types).
-- [The LeanExe compiler manual's section on the Wasmtime
-  host](../../docs/leanexe-manual.md#the-wasmtime-host), for the `chain-u64` argument and result
-  kinds.
+- [LeanExe Compiler Manual: The Wasmtime host](../../docs/leanexe-manual.md#the-wasmtime-host).

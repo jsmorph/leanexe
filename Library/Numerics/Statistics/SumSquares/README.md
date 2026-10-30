@@ -84,6 +84,5 @@ the products of two arrays with a loop over indices.  The LTG entries
 
 ## References
 
-- N. J. Higham, *Accuracy and Stability of Numerical Algorithms*, 2nd ed., SIAM, 2002, chapter 4, on
-  the rounding error of summation and its dependence on order.
+- N. J. Higham, *Accuracy and Stability of Numerical Algorithms*, 2nd ed., SIAM, 2002, chapter 4.
 - IEEE Standard for Floating-Point Arithmetic, IEEE Std 754-2019.

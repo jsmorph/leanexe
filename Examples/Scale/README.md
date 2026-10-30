@@ -51,9 +51,7 @@ values.
 
 ## References
 
-- WebAssembly Core Specification, [numeric
-  instructions](https://webassembly.github.io/spec/core/exec/numerics.html): `idiv_u` is undefined
-  for a zero divisor, and the instruction traps.
-- Lean 4 core, `UInt64.div` in
-  [`Init/Data/UInt/Basic.lean`](https://github.com/leanprover/lean4/blob/v4.34.0-rc2/src/Init/Data/UInt/Basic.lean)
-  at the toolchain's tag: "Division by zero is defined to be zero."
+- WebAssembly Core Specification,
+  [Numerics](https://webassembly.github.io/spec/core/exec/numerics.html).
+- Lean 4 core, v4.34.0-rc2, `UInt64.div` in
+  [`Init/Data/UInt/Basic.lean`](https://github.com/leanprover/lean4/blob/v4.34.0-rc2/src/Init/Data/UInt/Basic.lean).

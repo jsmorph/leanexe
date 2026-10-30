@@ -88,8 +88,7 @@ with memory bounds of the same form as `increment_total`.  The LTG entry
 
 ## References
 
-- [The LeanExe compiler manual's section on total execution and memory
-  bounds](../../docs/leanexe-manual.md#total-execution-and-memory-bounds), which describes
-  `ImplementsA` and the budget.
-- [The Lean 4 reference on
-  arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/), for `Array.map`.
+- [LeanExe Compiler Manual: Total execution and memory
+  bounds](../../docs/leanexe-manual.md#total-execution-and-memory-bounds).
+- *The Lean Language Reference*, version 4.34.0-rc2,
+  [Arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/).

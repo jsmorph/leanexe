@@ -51,7 +51,6 @@ bounds in the reconstructed solver.
 
 ## References
 
-- IEEE Standard for Floating-Point Arithmetic, IEEE Std 754-2019, which requires a correctly rounded
-  square root.
+- IEEE Standard for Floating-Point Arithmetic, IEEE Std 754-2019.
 - J. L. Blue, "A Portable Fortran Program to Find the Euclidean Norm of a Vector," *ACM Transactions
-  on Mathematical Software* 4(1):15–23, 1978, on computing the length without overflow.
+  on Mathematical Software* 4(1):15–23, 1978.

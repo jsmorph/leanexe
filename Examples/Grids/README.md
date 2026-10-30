@@ -58,7 +58,5 @@ arrays.  [`Bools`](../Bools/README.md) has `Bool` values outside arrays.  The LT
 
 ## References
 
-- [The LeanExe compiler manual's section on arrays](../../docs/leanexe-manual.md#arrays), which
-  gives the compiled form of a read of an array of records.
-- [The LeanExe compiler manual's section on
-  `LeanExe.build`](../../docs/leanexe-manual.md#leanexebuild).
+- [LeanExe Compiler Manual: Arrays](../../docs/leanexe-manual.md#arrays).
+- [LeanExe Compiler Manual: `LeanExe.build`](../../docs/leanexe-manual.md#leanexebuild).

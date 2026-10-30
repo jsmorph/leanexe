@@ -59,8 +59,6 @@ templates.
 
 ## References
 
-- [The LeanExe compiler manual's section on ownership](../../docs/leanexe-manual.md#ownership),
-  which gives the rules that decide whether an update is in place.
-- [The Lean 4 reference on
-  arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/), for `push`, `set!`,
-  `insertIdx!`, and `eraseIdxIfInBounds`.
+- [LeanExe Compiler Manual: Ownership](../../docs/leanexe-manual.md#ownership).
+- *The Lean Language Reference*, version 4.34.0-rc2,
+  [Arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/).

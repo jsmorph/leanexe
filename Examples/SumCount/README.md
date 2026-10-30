@@ -54,8 +54,5 @@ updating their inputs.  The LTG entries
 
 ## References
 
-- [The LeanExe compiler manual's section on arrays](../../docs/leanexe-manual.md#arrays), which
-  lists the array operations and their compiled forms.
-- [The LeanExe compiler manual's section on the Wasmtime
-  host](../../docs/leanexe-manual.md#the-wasmtime-host), which describes the `array-u64` argument
-  and result kinds and the counters.
+- [LeanExe Compiler Manual: Arrays](../../docs/leanexe-manual.md#arrays).
+- [LeanExe Compiler Manual: The Wasmtime host](../../docs/leanexe-manual.md#the-wasmtime-host).

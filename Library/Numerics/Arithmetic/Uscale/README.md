@@ -54,4 +54,6 @@ The theorems concern the Lean functions; the compiled module's correctness comes
 
 ## References
 
-1. R. Cox, "Floating-Point Printing and Parsing Can Be Simple And Fast (Floating Point Formatting, Part 3)", 19 January 2026, [research.swtch.com/fp](https://research.swtch.com/fp), sections "Unrounded Numbers" and "Unrounded Scaling".  Not peer reviewed.
+1. R. Cox, "Floating-Point Printing and Parsing Can Be Simple And Fast (Floating Point Formatting, Part 3)", 19 January 2026, [research.swtch.com/fp](https://research.swtch.com/fp), sections "Unrounded Numbers" and "Unrounded Scaling".
+
+Cox's article [1] is not peer reviewed.

@@ -942,4 +942,4 @@ closest programs of the LeanExe compiler.
 - E. Mullen, S. Pernsteiner, J. R. Wilcox, Z. Tatlock, and D. Grossman, "Œuf: Minimizing the Coq
   Extraction TCB," *Proceedings of CPP 2018*.
 - WebAssembly Core Specification,
-  [numerics](https://webassembly.github.io/spec/core/exec/numerics.html).
+  [Numerics](https://webassembly.github.io/spec/core/exec/numerics.html).

@@ -1,15 +1,15 @@
 # LeanExe
 
-LeanExe compiles functions written in a restricted dialect of Lean to WebAssembly, C, and WGSL, and proves in Lean that the compiled code computes those functions.  The WebAssembly theorems hold in Talos's semantics, and an execution theorem may allow a trap at `unreachable`, which the verified compiler's theorem `p.f.trapFree` excludes under its allocation and call-depth premises.  Two compilers produce WebAssembly: the LeanExe compiler builds a proof for each program from proved rules, and the verified compiler has one correctness theorem for every typed source program that it accepts.  The verified compiler's modules also translate to a subset of CompCert's C, with a theorem about each C function in the Lean copy of CompCert's Clight, and CompCert compiles the C for x86-64 and AArch64, under an operating system or on bare-metal AArch64.  Only the bare-metal programs have a theorem about the whole program, which a Rocq proof carries to CompCert's Asm, and an executable under an operating system also depends on a C host that no theorem covers.  Array builds compile to WGSL compute kernels with theorems about a modeled GPU dispatch, and Lean actions with stdin, stdout, stderr, and exit compile to WASI Preview 1 modules.
+LeanExe compiles functions written in a restricted dialect of Lean to WebAssembly, C, and WGSL, and proves in Lean that the compiled code computes those functions.  The WebAssembly theorems hold in Talos's semantics, and an execution theorem may allow a trap at `unreachable`, which the verified compiler's theorem `p.f.trapFree` excludes under its allocation and call-depth premises.  The LeanExe compiler builds a proof for each program from proved rules, and the verified compiler has one correctness theorem for every typed source program that it accepts.  The verified compiler's modules also translate to a subset of CompCert's C, with a theorem about each C function in the Lean copy of CompCert's Clight, and CompCert compiles the C for x86-64 and AArch64, under an operating system or on bare-metal AArch64.  Only the bare-metal programs have a theorem about the whole program, which a Rocq proof carries to CompCert's Asm, and an executable under an operating system also depends on a C host that no theorem covers.  Array builds compile to WGSL compute kernels with theorems about a modeled GPU dispatch, and Lean actions with stdin, stdout, stderr, and exit compile to WASI Preview 1 modules.
 
 ## Artifacts
 
-LeanExe writes eight kinds of artifact, and a Lean theorem covers each kind in one of four semantics: Talos's semantics of WebAssembly, the Lean copy of CompCert 3.18's Clight, CompCert's Asm through a Rocq proof, or the WGSL device model.  The codes of the first column are those of [the algorithm index](index.md), which gives the forms and checks of every library algorithm, application, and compiler example.  A Lean step runs through [the resource-limited runner](tools/leanrun), and [the worked example](#a-worked-example-sha-256) gives each command in full.
+The artifact codes follow [the algorithm index](index.md), which names the compiled forms and specification theorems for library algorithms, applications, and compiler examples.  [The SHA-256 example](#a-worked-example-sha-256) gives the build and execution commands.
 
 | Code | Artifact | Written by | Theorem and its semantics | Runs on | Examples |
 |---|---|---|---|---|---|
 | L | WebAssembly module from the LeanExe compiler | `leanexe_compile` defines the module, and [`tools/Emit.lean`](tools/Emit.lean) encodes it, checks that `decode` reads it back, and writes the `.wasm` file | Per-program `Implements` theorem for each function and a bytes theorem, such as `gcd_bytes`, in Talos's semantics and the binary decoder | Wasmtime 44.0.0 through `build/tools/leanexe-wasmtime-host`, and a browser, which runs `gpt32.wasm`, the binary32 GPT-2 module, for which no WebAssembly theorem exists | [Euler solvers](Demos/Euler/README.md), [binary64 GPT-2](Demos/Gpt/README.md), [drone planner](Demos/Drone/README.md), [order book](Demos/Clob/README.md), [GCD](Library/Numerics/Arithmetic/Gcd/README.md), and [the compiler examples](Examples) |
-| V | WebAssembly module from the verified compiler | `verified_compile` defines the module and its theorems, and `tools/Emit.lean` writes the file | `p.f.implements`, from the universal theorem `Prog.correctStaticWith`, with `p.f.bound`, `p.f.trapFree`, and `p.bytes`, in Talos's semantics and the binary decoder | Wasmtime | `Compiled` and `Verified` modules of [the library](Library/README.md), [the demos](Demos/README.md), and [six compiler examples](Examples), and [the compiler fixtures](Verified/Examples), most of which [the module registry](tests/verified/modules.txt) lists |
+| V | WebAssembly module from the verified compiler | `verified_compile` defines the module and its theorems, and `tools/Emit.lean` writes the file | `p.f.implements`, from the universal theorem `Prog.correctStaticWith`, with `p.f.bound`, `p.f.trapFree`, and `p.bytes`, in Talos's semantics and the binary decoder | Wasmtime | `Compiled` and `Verified` modules of [the library](Library/README.md), [the demos](Demos/README.md), and [compiler examples](Examples), and [the compiler fixtures](Verified/Examples), most of which [the module registry](tests/verified/modules.txt) lists |
 | F | Emitted `.wasm` file with a file theorem | [The verified driver](tests/verified/run.sh) writes `build/verified/NAME.wasm` with `tools/Emit.lean` and then checks the file module | `NAME_file` and `NAME_file_decode`: the bytes that the trusted elaborator `binary_file%` reads from the file equal `encode p.module` and decode to the module | Wasmtime | 115 of the 116 modules of [the module registry](tests/verified/modules.txt), which [the file-theorem registry](tests/verified/numerics.txt) lists, and [binary64 GPT-2's `gpt.wasm`](Demos/Gpt/File.lean) |
 | I | WASI Preview 1 module, callable or command | `verified_compile_wasi`, and `tools/Emit.lean` writes the file | Callable `p.f.implements`, command `p.start`, and the conditional `p.f.total` and `p.total`: the exports perform the actions' ordered effects with the same results and terminal outcomes, in Talos's semantics with the modeled WASI host | Wasmtime's Preview 1, through `leanexe-wasmtime-host run` for a command and `--wasi call` for a callable export | [Running sum](Demos/RunningSum/README.md), [floating-point running sum](Demos/RunningSumFp/README.md), and [the stdio example](Verified/Examples/WasiStdio.lean) |
 | C | C file and its native executable | `native-verified build MODULE CONSTANT NAME DIR` writes `NAME.c` and its glue, has `clightgen` read the C back, compares that Clight with the translation, and compiles `NAME.o` with `ccomp` only when they agree, and `ccomp` links the object with [the C host](tools/native-host.c) | `p.f.native`, stated as `NativeImpl`, `NativeTablesImpl`, or `NativeStaticImpl`: the C function terminates with the words of the Lean result or, when the function may abort, with a trap code, in the Lean copy of Clight | Linux on AArch64 and on x86-64, where the tests run the x86-64 executables under `qemu-x86_64` | `verified_compile` modules of the registry, [packed byte values](Verified/Examples/Bytes.lean), and [byte literals](Verified/Examples/Literals.lean) |
@@ -19,8 +19,6 @@ LeanExe writes eight kinds of artifact, and a Lean theorem covers each kind in o
 
 ### Properties carried to the artifacts
 
-Three kinds of property reach some of the artifacts beyond the statement that they compute their Lean definitions.  The table says that a theorem composes only where a theorem in the tree states the composition, and it names the two theorems whose combination gives the property elsewhere.  [The algorithm index](index.md) names the theorems of each entry.
-
 | Property | Theorems | Artifacts reached |
 |---|---|---|
 | Specification theorems: accuracy bounds, equality with transcriptions of FIPS 180-4, FIPS 198-1, FIPS 202, ITU-T V.42, RFC 3720, the SipHash paper, and the xxHash specification, generator periods, and the safety and optimality of the drone and slew planners | Such as `exp_bytes_accuracy`, `sha256_call`, `lcg_advance`, `drone_safe`, and `plan_safe` | L and V: the theorem composes, as `sha256_call` composes `compiled.sha256.implements` with `sha256_spec` and `gcd_bytes` composes `gcd_implements` with `gcd_eq`.  `drone_safe` states the safety of the Lean function's result for valid nonempty terrain beside the module's execution theorem, which allows a trap, so the safety holds of every result that the module returns, and `plan_safe` states the slew planner's safety for the Lean function.  F: the combination of `sha256_file_decode` with `sha256_call`.  C and A: the combination of `compiled.sha256.native` or `compiled.sha256.nativeAligned` with `sha256_spec`.  B: `sha256_input` composes `compiled.sha256.native` with `sha256_bytes` into the bytes of `SHS.SHA256.Impl.sha256`, or the code of `unreachable` with no output when `alloc` traps, and its combination with `SHS.Equiv.SHA256.sha256_correct` gives the digest of the transcription of FIPS 180-4.  G: `generate_host` composes the kernels' dispatch theorems into the scores of `step32`. |
@@ -29,7 +27,7 @@ Three kinds of property reach some of the artifacts beyond the statement that th
 
 ### A worked example: SHA-256
 
-SHA-256 has six of the nine codes of the index, V S F C A B, as many as the Euler solvers, L V S C A B, and its specification theorem rests on a transcription of FIPS 180-4.  The table follows the export `sha256` of [`Library.Hashing.Sha256.Compiled`](Library/Hashing/Sha256/Compiled.lean) from its compilation to the bare-metal image, with the files that each step writes and the theorem that covers them.  The commands below the table run the steps in order, after the Wasmtime host is built as [Commands](#commands) describes, and the native steps need CompCert 3.18's `ccomp` and `clightgen` on the search path.  A CompCert built in a source tree `DIR` and not installed needs `-stdlib DIR/runtime` on the `ccomp` link command and `CCOMP_STDLIB=DIR/runtime` for `tests/baremetal/inputs.sh`.
+[The SHA-256 proof](Library/Hashing/Sha256/Proof.lean) relates the Lean implementation to a transcription of FIPS 180-4.  The commands require the [Wasmtime host](#commands) and CompCert 3.18's `ccomp` and `clightgen` on the search path.  A CompCert built in a source tree `DIR` and not installed needs `-stdlib DIR/runtime` on the `ccomp` link command and `CCOMP_STDLIB=DIR/runtime` for `tests/baremetal/inputs.sh`.
 
 | Step | Code | Files written | Theorem |
 |---|---|---|---|
@@ -61,7 +59,7 @@ tests/baremetal/inputs.sh
 
 `tests/baremetal/inputs.sh` builds `native-bare`, writes and checks the program, links it with the startup code, and runs it under QEMU on eleven messages of 0 to `2^24 - 8` bytes, whose outputs must equal those of `sha256sum`, and on two longer lengths, which must give no output and the status 64.  With `ACCEL=kvm` the same script runs the image under KVM.  [The SHA-256 guide](Library/Hashing/Sha256/README.md) describes the program, and [the bare-metal design](docs/native-bare-metal.md#arguments-not-fixed-in-advance) describes the input path.
 
-## The two compilers
+## Compilers
 
 ### The LeanExe compiler
 
@@ -136,7 +134,7 @@ Every module of [the module registry](tests/verified/modules.txt) lies inside th
 
 The translation option `alignedAccess` makes every 64-bit load and store read or write one word of `lx_mem` after the bounds check, without the test of the address's low three bits and the eight byte accesses of an unaligned address.  With `set_option verified_compile.alignedNative true`, `verified_compile` also emits that translation, `p.translationAligned`, and the theorem `p.f.nativeAligned`, whose statement `NativeAlignedImpl` or `NativeTablesAlignedImpl` adds the premise `AlignedInput` and concludes, beside the conclusions of `p.f.native`, an aligned final heap and a result whose blocks meet `AlignedOutput`.  `tests/native/aligned.sh` tests the refusal of `native-verified build --aligned` for a module without those theorems, and a program with byte literals has none.
 
-`tests/native/bench.sh` times seven workloads of the corpus in their native form and in Wasmtime.  CompCert aligns a function to 4 bytes on AArch64, so `--placements` also links each native program at sixteen code offsets and reports the mean over them, as [the benchmark method](docs/native-translator.md#benchmark-method) describes.  [The placement benchmark](devnotes.md#2026-10-29-the-placement-benchmark-with-and-without-the-alignment-test) of 2026-10-29 ran on AArch64 only, with CompCert built from the 3.18 sources and Wasmtime's C API 44.0.0, and gave these mean times per call:
+`tests/native/bench.sh` times corpus workloads in their native form and in Wasmtime.  CompCert aligns a function to 4 bytes on AArch64, so `--placements` also links each native program at sixteen code offsets and reports the mean over them, as [the benchmark method](docs/native-translator.md#benchmark-method) describes.  [The placement benchmark](devnotes.md#2026-10-29-the-placement-benchmark-with-and-without-the-alignment-test) of 2026-10-29 ran on AArch64 only, with CompCert built from the 3.18 sources and Wasmtime's C API 44.0.0, and gave these mean times per call:
 
 | Workload | Module | With the test (ms) | Without the test (ms) | Change |
 |---|---|---:|---:|---:|
@@ -148,7 +146,7 @@ The translation option `alignedAccess` makes every 64-bit load and store read or
 | `sha256` | SHA-256 | 12.891 | 12.791 | -0.8% |
 | `sha3` | SHA-3 | 9.878 | 9.845 | -0.3% |
 
-`sort`, `linear32`, and `layernorm32` run 19.6 to 22.5 percent faster without the test, and the other four workloads change by less than 2 percent.  The translation with the test stays the default, because the whole-program theorems and the bare-metal path exist only for it.  [An earlier run](devnotes.md#2026-10-29-the-wasm-to-c-translator-the-benchmark-of-the-bound-in-a-temporary) of the translation with the test measured Wasmtime's median time per call as 0.28 times the native median for `sort`, 0.71 for `crc32`, 0.78 for `euler`, 0.86 for `sha256`, 1.11 for `sha3`, 1.18 for `linear32`, and 1.38 for `layernorm32`.
+`sort`, `linear32`, and `layernorm32` run 19.6 to 22.5 percent faster without the test, and the remaining workloads change by less than 2 percent.  The translation with the test stays the default, because the whole-program theorems and the bare-metal path exist only for it.  [An earlier run](devnotes.md#2026-10-29-the-wasm-to-c-translator-the-benchmark-of-the-bound-in-a-temporary) of the translation with the test measured Wasmtime's median time per call as 0.28 times the native median for `sort`, 0.71 for `crc32`, 0.78 for `euler`, 0.86 for `sha256`, 1.11 for `sha3`, 1.18 for `linear32`, and 1.38 for `layernorm32`.
 
 ### Bare-metal programs
 
@@ -187,6 +185,11 @@ A bare-metal program is the translation of a module, a volatile global `lx_out` 
 | [Application demos](Demos/README.md) | Application definitions, proofs, host programs, and tests. |
 | [Algorithm index](index.md) | Algorithms, applications, compiler examples, their proved results, and their compiled forms. |
 | [Verification knowledge base](VKB/README.md) | What proofs about verified-compiler programs have needed: lemmas, recipes, worked examples, and failures, and how entries are admitted. |
+| [Shared proof lemmas](LeanExe/ProofKit/README.md) | Memory and array representations, allocator invariants, alignment, floating-point error bounds, and polynomial checks. |
+| [Test suites](tests/README.md) | Which checks cover a change, their prerequisites, test inputs, generated files, and execution comparisons. |
+| [Repository tools](tools/README.md) | How runners, emitters, hosts, and numerical generators combine in builds and tests. |
+| [Test inputs](data/README.md) | Hash-vector provenance, byte conventions, and decimal cases calculated with exact rational arithmetic. |
+| [CompCert proof composition](rocq/README.md) | Clight-to-Asm theorem premises, CompCert setup, and the assumption check. |
 
 ## Layout
 
@@ -198,12 +201,12 @@ A bare-metal program is the translation of a module, a volatile global `lx_out` 
 | [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, the order book, the slew planner, and integer and binary64 running sums, with application proofs and host programs. |
 | [Compiler examples](Examples) | Small programs, specifications, proofs, and cases that demonstrate compiler features. |
 | [Manuals and design](docs) | Compiler manuals, design document, and WASI, translator, and bare-metal designs. |
-| [Proof guidance](ltg) | LTG knowledge base and its declaration checker. |
+| [Proof guidance](ltg/README.md) | LTG knowledge base and its declaration checker. |
 | [Verification knowledge base](VKB/README.md) | Entries of lemmas, proof recipes, worked examples, and recorded failures for verified-compiler programs, their template, and the declaration check. |
-| [Rocq proofs](rocq) | Composition of CompCert's proofs from Clight to Asm and uniqueness lemmas, checked against a CompCert 3.18 tree. |
-| [Tools](tools) | Lean runner, module and shader emitters, execution hosts, native host, bare-metal startup code and checks, build scripts, and application tools. |
-| [Tests](tests) | Module, decoder, numerical, allocation, WASI, native, bare-metal, GPU, and complete-generation tests, plus the browser pages. |
-| [Test inputs](data) | Hash vectors and decimal conversion cases that the tests read.  Papers, reports, and run records are in the private repository [leanexe-papers](https://github.com/jsmorph/leanexe-papers). |
+| [Rocq proofs](rocq/README.md) | Composition of CompCert's proofs from Clight to Asm and uniqueness lemmas, checked against a CompCert 3.18 tree. |
+| [Tools](tools/README.md) | Lean runner, module and shader emitters, execution hosts, native host, bare-metal startup code and checks, build scripts, and application tools. |
+| [Tests](tests/README.md) | Module, decoder, numerical, allocation, WASI, native, bare-metal, GPU, and complete-generation tests, plus the browser pages. |
+| [Test inputs](data/README.md) | Hash vectors and decimal conversion cases that the tests read.  Papers, reports, and run records are in the private repository [leanexe-papers](https://github.com/jsmorph/leanexe-papers). |
 
 ## Commands
 
@@ -240,7 +243,7 @@ The native drivers need CompCert 3.18's `ccomp` and `clightgen`, built from one 
 
 ```sh
 tests/native/verified.sh              # the registry's modules in C, against Wasmtime
-tests/native/verified.sh --aligned    # the six modules without the alignment test
+tests/native/verified.sh --aligned    # modules without the alignment test
 tests/native/aligned.sh               # the refusal of modules without aligned theorems
 tests/native/bench.sh --placements    # native and Wasmtime times at sixteen placements
 tests/baremetal/programs.sh           # the programs with a generated main

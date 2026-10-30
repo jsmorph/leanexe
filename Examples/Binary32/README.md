@@ -129,6 +129,6 @@ LTG entries [`binary32-arithmetic`](../../ltg/entries/binary32-arithmetic/README
 ## References
 
 - IEEE Standard for Floating-Point Arithmetic, IEEE Std 754-2019.
-- W3C, [WebGPU Shading Language](https://www.w3.org/TR/WGSL/), the language of the kernels.
-- W3C, [WebGPU](https://www.w3.org/TR/webgpu/), the API that dispatches them.
-- [The description of the browser pages](../../tests/web/README.md).
+- W3C, [WebGPU Shading Language](https://www.w3.org/TR/WGSL/).
+- W3C, [WebGPU](https://www.w3.org/TR/webgpu/).
+- [WebGPU Pages](../../tests/web/README.md).

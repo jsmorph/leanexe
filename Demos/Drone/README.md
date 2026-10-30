@@ -70,7 +70,7 @@ arrays with tuple states at a small scale.  [`Below100`](../../Examples/Below100
 
 ## References
 
-- R. Bellman, *Dynamic Programming*, Princeton University Press, 1957, for the principle of the
-  planner's forward pass.
-- [The drone verification report](https://github.com/jsmorph/leanexe-papers/blob/main/paper/drone-verification-report/README.md), which defines
-  the problem, the point-mass model, and the safety corridor.
+- R. Bellman, *Dynamic Programming*, Princeton University Press, 1957.
+- J. Stephens, [*Verified Terrain-Following Flight Planning in
+  LeanExe*](https://github.com/jsmorph/leanexe-papers/blob/main/paper/drone-verification-report/README.md),
+  Morphism, September 26, 2026.

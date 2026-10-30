@@ -87,8 +87,8 @@ examples.
 ## References
 
 - A. Radford, J. Wu, R. Child, D. Luan, D. Amodei, and I. Sutskever, "Language Models are
-  Unsupervised Multitask Learners," OpenAI, 2019, and the code at
-  [github.com/openai/gpt-2](https://github.com/openai/gpt-2).
+  Unsupervised Multitask Learners," OpenAI, 2019, and the repository
+  [openai/gpt-2](https://github.com/openai/gpt-2).
 - A. Vaswani et al., "Attention Is All You Need," *Advances in Neural Information Processing
   Systems* 30, 2017.
 - J. L. Ba, J. R. Kiros, and G. E. Hinton, "Layer Normalization,"
@@ -96,7 +96,7 @@ examples.
 - D. Hendrycks and K. Gimpel, "Gaussian Error Linear Units (GELUs),"
   [arXiv:1606.08415](https://arxiv.org/abs/1606.08415), 2016.
 - A. Fan, M. Lewis, and Y. Dauphin, "Hierarchical Neural Story Generation," *Proceedings of ACL
-  2018*, which introduced top-k sampling for text generation.
-- Hugging Face Transformers,
-  [`GPT2LMHeadModel`](https://huggingface.co/docs/transformers/model_doc/gpt2), and the checkpoint
-  [`openai-community/gpt2`](https://huggingface.co/openai-community/gpt2).
+  2018*.
+- Hugging Face Transformers, [GPT-2](https://huggingface.co/docs/transformers/model_doc/gpt2),
+  `GPT2LMHeadModel`.
+- Hugging Face, [openai-community/gpt2](https://huggingface.co/openai-community/gpt2).

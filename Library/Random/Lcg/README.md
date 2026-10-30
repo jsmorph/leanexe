@@ -120,8 +120,8 @@ the state into its output.
   [doi:10.1137/1004061](https://doi.org/10.1137/1004061).
 - D. E. Knuth, *The Art of Computer Programming*, Volume 2, *Seminumerical Algorithms*, 3rd ed.,
   Addison-Wesley, 1997, Sections 3.2.1.2 and 3.3.4.
-- M. Ruckert, [`rsixfour.c`](https://mmix.cs.hm.edu/tools/rsixfour.c), from the [MMIX
-  Supplement](https://mmix.cs.hm.edu/supplement/index.html).
+- M. Ruckert, [`rsixfour.c`](https://mmix.cs.hm.edu/tools/rsixfour.c), from [*The MMIX Supplement
+  to The Art of Computer Programming*](https://mmix.cs.hm.edu/supplement/index.html).
 - M. E. O'Neill, "PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for
   Random Number Generation," Harvey Mudd College, HMC-CS-2014-0905, 2014, and
   [`pcg_variants.h`](https://github.com/imneme/pcg-c/blob/master/include/pcg_variants.h).

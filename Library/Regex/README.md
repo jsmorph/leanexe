@@ -66,4 +66,4 @@ tools/leanrun --timeout 10m lake env lean Library/Regex/File.lean
 
 1. R. McNaughton and H. Yamada, [*Regular expressions and state graphs for automata*](https://doi.org/10.1109/TEC.1960.5221603), IRE Transactions on Electronic Computers EC-9(1), 39–47, 1960.
 2. V. M. Glushkov, [*The abstract theory of automata*](https://doi.org/10.1070/RM1961v016n05ABEH004112), Russian Mathematical Surveys 16(5), 1–53, 1961.
-3. Python Software Foundation, [`re.fullmatch`](https://docs.python.org/3/library/re.html#re.fullmatch), *The Python Standard Library*.
+3. Python Software Foundation, [re — Regular expression operations](https://docs.python.org/3/library/re.html#re.fullmatch), *The Python Standard Library*, `re.fullmatch`.
