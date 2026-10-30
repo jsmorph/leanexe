@@ -1,0 +1,170 @@
+/-! The energy authorizer, in the verified compiler's dialect.
+
+`authorizeWith site xs` decides whether a gateway may send the proposed battery setpoint of the
+snapshot `xs` for one window, under the profile table `site`.  Energies are in joules, powers in
+watts, times in seconds, and the efficiency bound in parts per million.  A signed power `p` is the
+word `p + offset`.
+
+| Profile word | Field |
+|---|---|
+| 0 | Layout version |
+| 1, 2 | Energy floor and ceiling |
+| 3, 4 | Largest charge and discharge setpoints |
+| 5, 6 | Import and export caps |
+| 7 | Efficiency bound |
+| 8 | Largest auxiliary loss rate |
+| 9 | Tracking tolerance |
+| 10, 11 | Fallback interval, offset |
+| 12 | Transition time |
+| 13 | Window length |
+| 14 | Send deadline, which only the gateway uses |
+
+| Input word | Field |
+|---|---|
+| 0 | Layout version, 1 |
+| 1 | Snapshot time |
+| 2, 3 | Energy interval |
+| 4, 5 | State in force: mode (0 command, 1 fallback) and setpoint, offset |
+| 6, 7 | Load interval |
+| 8, 9 | PV interval |
+| 10 | Proposed setpoint, offset |
+
+The window's power interval `B` is the smallest interval that contains the interval of the state
+in force, the setpoint's interval, and the fallback interval.  On a side where `B` extends beyond
+the fallback interval, the authorizer tests that side's grid cap and energy limit: the lower side
+tests the export cap and the energy floor, and the upper side the import cap and the energy
+ceiling.  The lower energy bound charges at the efficiency bound, discharges at the efficiency
+bound, and loses the largest loss rate, rounding gains down and drains up.  The upper energy bound
+takes efficiency 1 and no loss. -/
+
+namespace Demos.Energy
+
+/-- The decision's status: acceptance, or the first condition that fails. -/
+inductive Status where
+  | accepted
+  | length
+  | version
+  | range
+  | order
+  | power
+  | exportCap
+  | floor
+  | importCap
+  | ceiling
+  deriving Inhabited, DecidableEq, Repr
+
+/-- The authorizer's result.  A rejection has setpoint and expiry 0. -/
+structure Decision where
+  status : Status
+  setpoint : UInt64
+  expiry : UInt64
+  deriving Inhabited, Repr
+
+/-- The word of signed power 0. -/
+def offset : UInt64 := 4294967296
+
+/-- Largest magnitude of a power, `2 ^ 20` W. -/
+def powerBound : UInt64 := 1048576
+
+/-- Largest energy, `2 ^ 42` J. -/
+def energyBound : UInt64 := 4398046511104
+
+/-- Bound of times, `2 ^ 40` s. -/
+def timeBound : UInt64 := 1099511627776
+
+def million : UInt64 := 1000000
+
+@[inline] def word (xs : Array UInt64) (i : UInt64) : UInt64 := xs[i.toNat]!
+
+/-- A signed power word within `powerBound` of zero. -/
+@[inline] def powerOk (w : UInt64) : Bool := offset - powerBound ≤ w && w ≤ offset + powerBound
+
+/-- Every input word lies in its range. -/
+def rangeOk (xs : Array UInt64) : Bool :=
+  word xs 1 < timeBound && word xs 2 ≤ energyBound && word xs 3 ≤ energyBound &&
+    word xs 4 ≤ 1 && powerOk (word xs 5) && word xs 6 ≤ powerBound &&
+    word xs 7 ≤ powerBound && word xs 8 ≤ powerBound && word xs 9 ≤ powerBound &&
+    powerOk (word xs 10)
+
+/-- Every interval of the input has its lower end at most its upper end. -/
+def orderOk (xs : Array UInt64) : Bool :=
+  word xs 2 ≤ word xs 3 && word xs 6 ≤ word xs 7 && word xs 8 ≤ word xs 9
+
+/-- The proposed setpoint lies between the discharge and charge limits. -/
+def limitOk (site xs : Array UInt64) : Bool :=
+  offset - word site 4 ≤ word xs 10 && word xs 10 ≤ offset + word site 3
+
+/-- Lower end of the interval of the state in force. -/
+def inForceLow (site xs : Array UInt64) : UInt64 :=
+  if word xs 4 == 1 then word site 10 else word xs 5 - word site 9
+
+/-- Upper end of the interval of the state in force. -/
+def inForceHigh (site xs : Array UInt64) : UInt64 :=
+  if word xs 4 == 1 then word site 11 else word xs 5 + word site 9
+
+/-- Lower end of the window's power interval. -/
+def lowB (site xs : Array UInt64) : UInt64 :=
+  min (min (inForceLow site xs) (word xs 10 - word site 9)) (word site 10)
+
+/-- Upper end of the window's power interval. -/
+def highB (site xs : Array UInt64) : UInt64 :=
+  max (max (inForceHigh site xs) (word xs 10 + word site 9)) (word site 11)
+
+/-- Energy that the lower bound gains over the window at the lower end `b` of the power
+interval: charging at the efficiency bound, rounded down. -/
+def lowGain (site : Array UInt64) (b : UInt64) : UInt64 :=
+  if offset ≤ b then (b - offset) * word site 13 * word site 7 / million else 0
+
+/-- Energy that the lower bound drains over the window at the lower end `b` of the power
+interval: discharging at the efficiency bound, rounded up, and the largest loss. -/
+def lowDrain (site : Array UInt64) (b : UInt64) : UInt64 :=
+  if offset ≤ b then word site 8 * word site 13
+  else ((offset - b) * word site 13 * million + word site 7 - 1) / word site 7 +
+    word site 8 * word site 13
+
+/-- Energy that the upper bound gains over the window at the upper end `b`, at efficiency 1. -/
+def highGain (site : Array UInt64) (b : UInt64) : UInt64 :=
+  if offset ≤ b then (b - offset) * word site 13 else 0
+
+/-- Energy that the upper bound drains over the window at the upper end `b`, at efficiency 1. -/
+def highDrain (site : Array UInt64) (b : UInt64) : UInt64 :=
+  if offset ≤ b then 0 else (offset - b) * word site 13
+
+/-- Grid export stays within the cap at the lower end `b`: `L⁻ + b + X ≥ S⁺`. -/
+def exportOk (site xs : Array UInt64) (b : UInt64) : Bool :=
+  word xs 9 + offset ≤ word xs 6 + b + word site 6
+
+/-- Stored energy stays at or above the floor at both ends of the window. -/
+def floorOk (site xs : Array UInt64) (b : UInt64) : Bool :=
+  word site 1 ≤ word xs 2 && word site 1 + lowDrain site b ≤ word xs 2 + lowGain site b
+
+/-- Grid import stays within the cap at the upper end `b`: `L⁺ + b ≤ I + S⁻`. -/
+def importOk (site xs : Array UInt64) (b : UInt64) : Bool :=
+  word xs 7 + b ≤ word site 5 + word xs 8 + offset
+
+/-- Stored energy stays at or below the ceiling at both ends of the window. -/
+def ceilingOk (site xs : Array UInt64) (b : UInt64) : Bool :=
+  word xs 3 ≤ word site 2 && word xs 3 + highGain site b ≤ word site 2 + highDrain site b
+
+def reject (s : Status) : Decision := { status := s, setpoint := 0, expiry := 0 }
+
+/-- The decision for the snapshot `xs` under the profile table `site`. -/
+def authorizeWith (site xs : Array UInt64) : Decision :=
+  if xs.size.toUInt64 != 11 then reject .length
+  else if word xs 0 != 1 then reject .version
+  else if !rangeOk xs then reject .range
+  else if !orderOk xs then reject .order
+  else if !limitOk site xs then reject .power
+  else
+    let lo := lowB site xs
+    let hi := highB site xs
+    let lower : Bool := lo < word site 10
+    let upper : Bool := word site 11 < hi
+    if lower && !exportOk site xs lo then reject .exportCap
+    else if lower && !floorOk site xs lo then reject .floor
+    else if upper && !importOk site xs hi then reject .importCap
+    else if upper && !ceilingOk site xs hi then reject .ceiling
+    else { status := .accepted, setpoint := word xs 10,
+           expiry := word xs 1 + word site 13 - word site 12 }
+
+end Demos.Energy
