@@ -10,12 +10,12 @@ which adds to `Runs` that every run from some fuel on makes only aligned 64-bit 
 memory, and it runs `translate_correct` at a fuel at which both hold.
 
 `NativeAlignedA` is `NativeA` with the premise `AlignedInput` after `Separate` and, in the
-conclusion for a return, the cap and region conclusions of `ImplementsAligned`, which `NativeA`
-omits, and the alignment of the final heap and of the result's blocks (`AlignedOutput`), which a
-host needs to meet `AlignedInput` at its next call.  `ImplementsAligned.native` derives it from
-`ImplementsAligned` alone.  `NativeAlignedImpl h` states it for the function of the theorem `h`
-of `ImplementsA`, as `NativeImpl h` states `NativeA`, and `ImplementsAligned.nativeImpl` derives
-it from `ImplementsAligned` at the arguments of `h`.
+conclusion for a return, the alignment of the final heap (`Heap.Aligned`) and of the result's
+blocks (`AlignedOutput`), which a host needs to meet `AlignedInput` at its next call.
+`ImplementsAligned.native` derives it from `ImplementsAligned` alone.  `NativeAlignedImpl h`
+states it for the function of the theorem `h` of `ImplementsA`, as `NativeImpl h` states
+`NativeA`, and `ImplementsAligned.nativeImpl` derives it from `ImplementsAligned` at the
+arguments of `h`.
 
 `alloc_nativeA` and `release_nativeA` are `alloc_native` and `release_native` for the translation
 without the test, from an aligned heap and, for `release`, an aligned pointer.  `Heap.Aligned.alloc`
@@ -72,8 +72,7 @@ end
 
 open LeanExe.Pipeline in
 /-- `NativeA` with the premise that the input is aligned, `AlignedInput`, after `Separate`, and,
-after a return, the cap and region conclusions of `ImplementsA` and the alignment of the final
-heap and of the result's blocks. -/
+after a return, the alignment of the final heap and of the result's blocks. -/
 def NativeAlignedA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : ExtSem) (cap : Nat)
     (mod : Module) (T : Translation) (ps rs : List VT) (fd : function)
     (aborts : Bool) (f : α → β) (Pre : α → Heap → Store Unit → Prop)

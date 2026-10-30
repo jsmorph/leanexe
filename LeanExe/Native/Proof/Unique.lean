@@ -42,6 +42,11 @@ theorem NativeA.unique {α β : Type} [Represent α] [Represent β] {A : Archi} 
           ((StatusRel E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
               ResultRel E rs vs (params.reverse.drop ps.length) vres m' ∧
               heap'.At final ∧ Represent.owned heap' final vs.reverse (f x) ∧
+              final.memoryCaps = store.memoryCaps ∧
+              (∀ r, heap.Region r → 0 < r.2 →
+                Apart store (Represent.moves store params x) r →
+                (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+                  heap'.Region r ∧ Represent.outside final vs.reverse (f x) r) ∧
               Post x heap store heap' final) ∨
             (aborts = true ∧ StatusRel E m' trapUnreachable)) := by
   obtain ⟨t, m₁, v₁, final, hcall, hrest⟩ :=

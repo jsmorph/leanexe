@@ -14,12 +14,15 @@ function may abort and `lx_status` holds the code of `unreachable`.
 the terms of that theorem: for every global environment that holds the translation's globals,
 memory, and functions, every store and heap that meet the premises of `ImplementsA`, and every
 C memory related to the store with `lx_status` 0, the C call of the translation of entry `k`
-terminates, and either returns with `lx_status` 0 and a result related to Talos's results,
-which represent `f x` in a heap that meets the allocator invariant and the postcondition, or,
-when `aborts`, ends with `lx_status` holding the code of `unreachable`.  `ImplementsA.native`
-derives it from `ImplementsA`.  `NativeImpl h` states it for the translation of the function of
-the theorem `h`, under the function's parameters and result, and `ImplementsA.nativeImpl`
-derives it from `h` and the presence of the function in the translation.
+terminates.  Either it returns with `lx_status` 0 and a result related to Talos's results, or,
+when `aborts`, it ends with `lx_status` holding the code of `unreachable`.  After a return,
+Talos's results represent `f x` in a heap that meets the allocator invariant and the
+postcondition, the memory caps are unchanged, and every nonempty region of the heap apart from
+the moved blocks keeps its bytes, remains a region of the final heap, and lies outside the
+result, as `ImplementsA` states.  `ImplementsA.native` derives `NativeA` from `ImplementsA`.
+`NativeImpl h` states it for the translation of the function of the theorem `h`, under the
+function's parameters and result, and `ImplementsA.nativeImpl` derives it from `h` and the
+presence of the function in the translation.
 
 `alloc_native` and `release_native` carry the runtime's theorems `alloc_spec_runs` and
 `release_run` to the C functions `lxf_alloc` and `lxf_release` of a translated module.
@@ -98,6 +101,10 @@ def NativeA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : ExtSem
         ((StatusRel E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
             ResultRel E rs vs (params.reverse.drop ps.length) vres m' ∧
             heap'.At final ∧ Represent.owned heap' final vs.reverse (f x) ∧
+            final.memoryCaps = store.memoryCaps ∧
+            (∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
+              (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+                heap'.Region r ∧ Represent.outside final vs.reverse (f x) r) ∧
             Post x heap store heap' final) ∨
           (aborts = true ∧ StatusRel E m' trapUnreachable))
 
@@ -116,8 +123,8 @@ theorem ImplementsA.native {α β : Type} [Represent α] [Represent β] {A : Arc
     hnres hF
     hfd hsig (h {} store heap params x hHeap hPre hArgs hSep hCapS) htyped hst hs
   refine ⟨t, m', vres, st', hcall, hst', ?_⟩
-  rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, -, -, hPost⟩, hr⟩ | habort
-  · exact .inl ⟨hs', vs, heap', hr, hAt, hOwn, hPost⟩
+  rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, hCaps, hRegion, hPost⟩, hr⟩ | habort
+  · exact .inl ⟨hs', vs, heap', hr, hAt, hOwn, hCaps, hRegion, hPost⟩
   · exact .inr habort
 
 open LeanExe.Pipeline in

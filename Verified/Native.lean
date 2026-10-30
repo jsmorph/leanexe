@@ -38,6 +38,10 @@ def NativeTablesA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : 
         ((StatusRel E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
             ResultRel E rs vs (params.reverse.drop ps.length) vres m' ∧
             heap'.At final ∧ Represent.owned heap' final vs.reverse (f x) ∧
+            final.memoryCaps = store.memoryCaps ∧
+            (∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
+              (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+                heap'.Region r ∧ Represent.outside final vs.reverse (f x) r) ∧
             Post x heap store heap' final) ∨
           (aborts = true ∧ StatusRel E m' trapUnreachable))
 
@@ -65,8 +69,8 @@ theorem ImplementsTables.nativeImpl {α β : Type} [Represent α] [Represent β]
   obtain ⟨t, m', vres, st', hcall, hst', hres⟩ := Runs.native (A := A) (X := X) hT hE hG hcap
     hnres hF hfd hsig (h {} store heap params x hHeap hPre hTables hArgs hSep hCapS) htyped hst hs
   refine ⟨t, m', vres, st', hcall, hst', ?_⟩
-  rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, -, -, hPost⟩, hr⟩ | habort
-  · exact .inl ⟨hs', vs, heap', hr, hAt, hOwn, hPost⟩
+  rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, hCaps, hRegion, hPost⟩, hr⟩ | habort
+  · exact .inl ⟨hs', vs, heap', hr, hAt, hOwn, hCaps, hRegion, hPost⟩
   · exact .inr habort
 
 /-- `NativeTablesA` for a function of a module with literals, whose premises add that the
@@ -93,6 +97,10 @@ def NativeStaticA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : 
         ((StatusRel E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
             ResultRel E rs vs (params.reverse.drop ps.length) vres m' ∧
             heap'.At final ∧ Represent.owned heap' final vs.reverse (f x) ∧
+            final.memoryCaps = store.memoryCaps ∧
+            (∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
+              (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+                heap'.Region r ∧ Represent.outside final vs.reverse (f x) r) ∧
             Post x heap store heap' final) ∨
           (aborts = true ∧ StatusRel E m' trapUnreachable))
 
@@ -121,8 +129,8 @@ theorem ImplementsStatic.nativeImpl {α β : Type} [Represent α] [Represent β]
     hnres hF hfd hsig (h {} store heap params x hHeap hPre hPool hTables hArgs hSep hCapS)
     htyped hst hs
   refine ⟨t, m', vres, st', hcall, hst', ?_⟩
-  rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, -, -, hPost⟩, hr⟩ | habort
-  · exact .inl ⟨hs', vs, heap', hr, hAt, hOwn, hPost⟩
+  rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, hCaps, hRegion, hPost⟩, hr⟩ | habort
+  · exact .inl ⟨hs', vs, heap', hr, hAt, hOwn, hCaps, hRegion, hPost⟩
   · exact .inr habort
 
 end Verified

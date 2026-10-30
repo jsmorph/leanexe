@@ -4,13 +4,12 @@ import LeanExe.Native.Proof.AlignedNative
 
 /-!
 The translation without the test of alignment for a wrapper.  `NativeTablesAlignedA` is
-`NativeTablesA` with the premise `AlignedInput` after `Separate` and, after a return, the cap and
-region conclusions of `ImplementsTablesAligned` and the alignment of the final heap and of the
-result's blocks, as `NativeAlignedA` is for `NativeA`.  `ImplementsTablesAligned.native` derives
-it from `ImplementsTablesAligned` alone.  `NativeTablesAlignedImpl h` states it for the wrapper of
-the theorem `h` of `ImplementsTables`, as `NativeTablesImpl h` states `NativeTablesA`, and
-`ImplementsTablesAligned.nativeImpl` derives it from `ImplementsTablesAligned` at the arguments of
-`h`.
+`NativeTablesA` with the premise `AlignedInput` after `Separate` and, after a return, the
+alignment of the final heap and of the result's blocks, as `NativeAlignedA` is for `NativeA`.
+`ImplementsTablesAligned.native` derives it from `ImplementsTablesAligned` alone.
+`NativeTablesAlignedImpl h` states it for the wrapper of the theorem `h` of `ImplementsTables`,
+as `NativeTablesImpl h` states `NativeTablesA`, and `ImplementsTablesAligned.nativeImpl` derives
+it from `ImplementsTablesAligned` at the arguments of `h`.
 -/
 
 namespace Verified
@@ -18,8 +17,7 @@ namespace Verified
 open Wasm LClight LeanExe.Native LeanExe.Pipeline LeanExe.ProofKit
 
 /-- `NativeTablesA` with the premise that the input is aligned, `AlignedInput`, after
-`Separate`, and, after a return, the cap and region conclusions of `ImplementsTables` and the
-alignment of the final heap and of the result's blocks. -/
+`Separate`, and, after a return, the alignment of the final heap and of the result's blocks. -/
 def NativeTablesAlignedA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : ExtSem)
     (cap : Nat) (mod : Module) (T : Translation) (ps rs : List VT) (fd : function)
     (aborts : Bool) (f : α → β) (tables : List (UInt64 × Array UInt64))

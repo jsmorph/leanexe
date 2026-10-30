@@ -38692,7 +38692,7 @@ The translator gains the option `alignedAccess`, under which `load64` and `store
 - [x] `ImplementsAligned.native` and `ImplementsTablesAligned.native` from the function level's aligned statements.
 - [x] `alloc_nativeA` and `release_nativeA`, and the cap and region conclusions in the aligned statements.
 - [x] The trusted statements in the manuals, after three reviews of the proposal.
-- [ ] The cap and region conclusions in `NativeA` and `NativeTablesA`, an open decision of the translator's design.
+- [x] The cap and region conclusions in `NativeA` and `NativeTablesA`, an open decision of the translator's design, as the entry on the cap and region conclusions of the native statements records.
 - [x] The placement benchmark with the option on and off.
 - [ ] A theorem for a host program's writes into a block that `alloc` returned, for either translation.  Only the generated bare-metal `main` with input has one, `input_program`, for the translation with the test.
 - [ ] The whole-program theorems of `Whole.lean` and the bare-metal path for the translation without the test.
@@ -38895,7 +38895,7 @@ The ports of the examples and library programs stopped at four definitions that 
 - [ ] A count of the functions whose bound does not depend on the input, and a decision on emitting constant bounds.
 - [ ] `leanchecker` over every module.
 - [ ] `STATUS.md` from the full check.
-- [ ] The `NativeA` cap and region conclusions.
+- [x] The `NativeA` cap and region conclusions.
 - [x] Determinism of the Lean copy of Clight.
 - [ ] A Talos conformance record.
 - [ ] A released toolchain.
@@ -38934,3 +38934,29 @@ The gate built `LeanExe.Native`, the only module that imports the new files, and
 - [x] Determinism of expression evaluation, statements, calls, and programs relative to the trace.
 - [x] `NativeA.unique`.
 - [x] The translator's design and the trusted base.
+
+## 2026-10-30: The cap and region conclusions of the native statements
+
+`NativeA` in `LeanExe/Native/Proof/Native.lean`, and `NativeTablesA` and `NativeStaticA` in `Verified/Native.lean`, now conclude after a return `final.memoryCaps = store.memoryCaps` and the region clause of `ImplementsA`, in the form that `NativeAlignedA` and `NativeTablesAlignedA` already had: every nonempty region of the heap apart from the moved blocks keeps its bytes, remains a region of the final heap, and lies outside the result.  The follow-up decisions recorded with the verification knowledge base chose to add both conclusions, and the translator's design listed the question as open until this change.  Without them, a host that called a second function could rely on its theorem only for an input built from the first call's result, from later allocations, and from scalars.  The aligned statements now differ from the base statements only by the premise `AlignedInput` and the conclusions `heap'.Aligned` and `AlignedOutput`.
+
+`ImplementsA`, `ImplementsTables`, and `ImplementsStatic` each conclude both clauses inside `Runs`, and the proofs of `ImplementsA.native`, `ImplementsTables.nativeImpl`, and `ImplementsStatic.nativeImpl` had discarded them.  They now pass them on, with no new argument, so no function, wrapper, or static program fails the stronger statement.  `ImplementsStatic` writes the region clause with the bound names `region` and `address`, and `NativeStaticA` uses `r` and `a`, as the other statements do, which Lean accepts as the same proposition.
+
+`NativeA.unique` restates the conclusion of `NativeA`, so its statement gained the two conjuncts, and its proof did not change.  `bare_of_nativeA`, `bare_of_nativeTables`, `sha256_runs`, `loop_native_init`, `rec_native_init`, and `firstAbove_native_init` take the conclusion apart with a pattern whose last component, `-`, absorbs every conjunct after the result's ownership, so none of them changed.  A pattern that named the last component, as `hPost`, would now bind the conjunction of the caps, the region clause, and the postcondition, and fail where it is used as the postcondition alone.  `verified_compile` states `p.f.native` through `NativeImpl`, `NativeTablesImpl`, and `NativeStaticImpl`, so `Verified/Reflect/Command.lean` did not change either.
+
+The verified manual's sentence on the differences of the aligned statements, the README's paragraph on the translation without the alignment test, and three passages of the translator's design no longer list the cap and region conclusions among those differences, and the design's list of open decisions drops the question.  The verified manual's row of `p.f.native` now states both conclusions.  The trusted base names no difference of this kind, and its line references to the changed definitions and to the sources of the translator's design moved with the new lines.  The LeanExe manual names the native statements only through the verified manual and did not change.
+
+The translation to C did not change, so the corpus runs of earlier entries still apply.  The gate built every module of the six libraries and the theorem modules of `tests/TestSupport/Native` that no library root imports, then the four test executables, whose build elaborates the bare-metal theorem modules of `tests/TestSupport/Bare`.  `tests/native/aligned.sh` built the aligned CRC module with its 8 exports and refused the word-array library and the literal example, each for one reason.  `tests/baremetal/programs.sh` found the `clightgen` program equal to the whole program for `gcd`, `crc32`, `sha256`, `euler`, and `depth`, and each passed under QEMU with the expected bytes and exit status, with stack high-water marks of 32, 160, 944, 1,120, and 16,048 bytes, each at its bound.  Every theorem of the axiom report depends only on `propext`, `Classical.choice`, and `Quot.sound`: the changed native theorems, `NativeA.unique`, the two bare-metal lemmas, generated `p.f.native` theorems of the three statement forms, the native and program theorems of `tests/TestSupport`, and `sha256_input`.
+
+| Job | Purpose | Duration | Result |
+| --- | --- | --- | --- |
+| `lake build` of the five edited modules, `Main`, and `Verified.Bare` | Elaborate the changed statements and their direct consumers | 10 s, from 06:35:28 UTC | 3,735 jobs built, no errors |
+| `lake build` of the six libraries and the `tests/TestSupport/Native` theorem modules | Gate | 7 minutes, from 06:36:21 UTC | Stopped at 06:43:29 UTC: rewrapping the comments of `Native.lean` changed the file and would have forced a second rebuild of every module after it |
+| Same build, after the rewrap | Gate | 4,951 s, from 06:44:00 UTC | 11,182 jobs built, no errors |
+| `lake build` of `native-verified`, `native-bare`, `verified-cases`, and `native-module-cases` | Test executables and the bare-metal theorem modules | 419 s, from 08:07:03 UTC | 8,071 jobs built, no errors |
+| `tests/native/aligned.sh` | Check that the aligned build finds its theorems | 9 s, from 08:14:15 UTC | `crcaligned` built with 8 exports, `libwordarray` and `literals` refused |
+| `tests/baremetal/programs.sh` | Bare-metal theorems, the `clightgen` comparison, and runs under QEMU with TCG | 172 s, from 08:14:42 UTC | Five programs passed |
+| `#print axioms` of 20 theorems | Axiom report | 2 s, from 08:17:47 UTC | Standard axioms only |
+
+- [x] The cap and region conclusions in `NativeA`, `NativeTablesA`, and `NativeStaticA`, with their proofs.
+- [x] `NativeA.unique` and the other consumers.
+- [x] The manuals, the README, the trusted base, and the translator's design.
