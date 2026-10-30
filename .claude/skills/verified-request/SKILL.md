@@ -1,0 +1,239 @@
+---
+name: verified-request
+description: Turn an English request into a program that the repository's verified compiler compiles, with a call theorem that the module's export returns, without a trap, the value of a specification that an independent agent reviewed against the request.  Use when the user asks for a program from a description in English built with the verified compiler, or invokes this skill with a request.
+---
+
+# From an English request to a verified compilation
+
+The result of a run is a specification `expected`, a program in the verified compiler's dialect,
+the module `compiled.module` that `verified_compile` writes for it, and the call theorem
+`NAME_call`.  For a program from an array of words to an array of words, with `K` the index of the
+export `compute` and `B` the constant `callBound`, `NAME_call` states:
+
+```lean
+∀ (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (xs : Array UInt64) (ptr : UInt64),
+  heap.At store → store.memoryCap compiled.module 0 ≤ 65535 → heap.Borrowed store ptr xs →
+  heap.Within store compiled.module B →
+  Runs false env compiled.module K store [.i64 ptr] fun final values =>
+    ∃ optr : UInt64, values = [.i64 optr] ∧ ∃ heap' : Heap, heap'.At final ∧
+      final.memoryCap compiled.module 0 ≤ 65535 ∧ heap'.Owned final optr (expected xs) ∧
+      heap'.Borrowed final ptr xs ∧
+      (∀ r, heap.Region r → 0 < r.2 →
+        (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+          heap'.Region r ∧ regionsDisjoint r (block final optr)) ∧
+      heap'.top.toNat ≤ heap.top.toNat + B
+```
+
+A call with the array `xs` borrowed at `ptr`, from a store with the allocator invariant, a memory
+cap of at most 65,535 pages, and room for `top` to rise by `B` bytes, returns without a trap the
+address of an owned array that holds `expected xs`.  The input stays borrowed, every region of the
+heap before the call keeps its bytes and lies apart from the result, and `top` rises by at most
+`B`.  For a program from words to a word, `NAME_call` states, here for two words:
+
+```lean
+∀ (env : HostEnv Unit) (store : Store Unit) (x1 x2 : UInt64),
+  Runs false env compiled.module K store [.i64 x2, .i64 x1] fun final values =>
+    final = store ∧ values = [.i64 (expected (x1, x2))]
+```
+
+A call from any store returns the word of `expected` without a trap and leaves the store
+unchanged.  `Runs` lists the arguments with the top of the stack first, so the last argument comes
+first.
+
+[`tools/verified-request-check`](../../../tools/verified-request-check) writes the statement
+itself, for the shape of `expected` that it reads from the samples.  It accepts the run only if
+`NAME_call` proves the statement with no axioms beyond `propext`, `Classical.choice`, and
+`Quot.sound`, the specification is the one the review accepted, and the module returns `expected`
+on every sample in Wasmtime and, where CompCert is installed, in the module's translation to C.
+The compiler's generated theorems state that the module computes the program, so the run proves
+that the program equals the specification and, for an array result, that its allocation stays
+within `B`.  The theorem says nothing about the request beyond what `expected` says, so the
+independent review of `expected` against the request is the only check that the theorem states
+what the request asks.  The run does not ask the user to approve the specification.
+
+## Names, files, and types
+
+Choose a module name `NAME` in lower camel case, such as `treeLookup`, that no line of [the
+verified module registry](../../../tests/verified/modules.txt) uses.  `Name` is `NAME`
+capitalized, and every file of the run is in `Examples/Name/`, a new directory.
+
+| File | Contents |
+|------|----------|
+| `request.txt` | Request, as the user wrote it. |
+| `Spec.lean` | `Examples.Name.expected` in ordinary Lean.  Mathlib is allowed. |
+| `Samples.lean` | `Examples.Name.samples : List α`, core Lean only. |
+| `Program.lean` | Program in `Examples.Name` in the verified compiler's dialect, with entry `compute`.  It imports the dialect modules and any library programs it uses. |
+| `Proof.lean` | `compute_eq`.  It imports the program, the specification, and lemmas about the dialect. |
+| `Compiled.lean` | `verified_compile compiled := [f, …, compute]`, and after stage 3 the bound lemma, `callBound`, and `NAME_call`. |
+| `review.md` | Independent review of the specification. |
+| `spec.sha256` | Written by `tools/verified-request-check --freeze`. |
+| `journal.md` | Journal of the run. |
+| `README.md` | Description of the result. |
+
+`expected` has type `α → β`, where `α` is `UInt64`, `Array UInt64`, or a tuple of these, one
+component per parameter of `compute` in order, and `β` is `UInt64` or `Array UInt64`.  Other types
+are outside this version of the skill.  Of these shapes, the check states the call theorem for
+`Array UInt64 → Array UInt64` and for a word or a tuple of words to a word, the shapes that the
+call lemmas of the repository prove today.  Every other shape, such as an array to a word, words to
+an array, or a tuple that holds an array, waits for the generic call theorem.  An array result
+also needs a constant `B` that bounds the allocation of every call, so the request must bound the
+size of the result, as the examples' requests do by limiting their inputs to eight words.  If the
+request needs a type or a shape outside these limits, say so and stop before stage 1.
+
+## Stage 1: the specification
+
+1. Write `request.txt` with the user's words.
+2. Write `Spec.lean`: a direct statement of the request, in the request's terms, with no reference
+   to the program and no attempt at efficiency.  Use Mathlib definitions where they state the
+   request most directly, as `Nat.primeFactorsList` and `Nat.gcd` do in the prime-factor and gcd
+   examples.  Decide every case the request leaves open, such as inputs of other lengths, and
+   record each decision in a comment.
+3. Write `Samples.lean` with inputs that cover the request's cases and edges: 0, 1, `2^64 − 1`, the
+   empty array, and each length boundary.  Avoid inputs that make a slow specification
+   impractical to evaluate.
+4. Run `tools/verified-request-check --spec NAME`, which prints each sample with the output of
+   `expected`.
+5. Have a fresh agent review the specification: start it with the Agent tool and give it only the
+   paths of `request.txt`, `Spec.lean`, and `Samples.lean` and the output of step 4.  Give it none
+   of your reasoning or plans.  Ask it to read the request, to decide for each case of the input
+   whether `expected` gives what the request asks, to name every case the request leaves open and
+   whether the specification's comment records the choice, and to check each sample's output by
+   hand from the request.  It reports each disagreement with the input that shows it.
+6. Summarize the reviewer's report in `review.md`.  For each disagreement, correct the
+   specification or samples, or record in `review.md` why the request supports the specification.
+   Add a sample for each uncovered input class the reviewer names that a program could get wrong.
+   After any change, run steps 4 and 5 again with a new agent.
+7. A review that finds no disagreement with the request ends the stage, and its remaining notes go
+   into `review.md`.  Run `tools/verified-request-check --freeze NAME`, which records the hashes
+   of `Spec.lean` and `Samples.lean`, and proceed without asking the user.  Never edit either file
+   afterward.  If one must change, repeat steps 4 to 7.
+
+## Stage 2: the program
+
+Write the program in the dialect that [the verified compiler
+manual](../../../docs/verified-manual.md#the-dialect) describes, in the sections from "The
+dialect" through "Restrictions".  Integers are `UInt64`, an array is read with `xs[i.toNat]!`,
+iteration uses `LeanExe.loop`, `LeanExe.build`, `LeanExe.repeatWhile`, a fold over the whole array,
+or tail recursion, which compiles as a loop, and a definition calls only the definitions listed
+before it.  Use no recursion other than tail recursion: other recursion takes the call depth, and
+the trap at depth 1,000 lies outside the statements of this version.  The program must not import
+the specification.  For a word result, write the program
+on words alone, without arrays, so that `verified_compile` generates `compiled.compute.pure`, which
+the call theorem needs.  For an array result, make the allocation of every call fit a constant, by
+treating inputs beyond the request's limit as a separate case, as the examples treat inputs of more
+than eight words.
+
+`Compiled.lean` starts with the compilation alone, listing the program's definitions and the
+library definitions it calls, each callee before its callers:
+
+```lean
+import Examples.Name.Program
+import Verified.Reflect.Command
+
+namespace Examples.Name
+
+verified_compile compiled := [f, …, compute]
+
+end Examples.Name
+```
+
+Build it with `tools/leanrun --timeout 60m lake build Examples.Name.Compiled`.  A rejected form
+names its term in the message, and the manual's restrictions table gives the rewrite.  Then run
+`tools/verified-request-check --run NAME`, which emits the module and runs the samples in Wasmtime
+without proofs, and fix the program until every sample passes.  Before the proofs, check with
+`#check @Examples.Name.compiled.compute.pure` for a word result that the theorem exists and states
+`ImplementsPureA false`, or with `#check @Examples.Name.compiled.compute.trapFree` for an array
+result.
+
+## Stage 3: the proofs
+
+`Proof.lean` holds `compute_eq`, the equality of the program with the specification.  It imports
+the program, the specification, and lemmas about the dialect, such as `LeanExe.IR.Combinators`
+and the proof modules of the library programs that the program calls, and nothing of either
+compiler.  For an array parameter the equality has the premise `xs.size < 2 ^ 64`, which every
+array in memory meets:
+
+```lean
+theorem compute_eq (xs : Array UInt64) (h : xs.size < 2 ^ 64) : compute xs = expected xs
+theorem compute_eq (a b : UInt64) : compute a b = expected (a, b)
+```
+
+`Compiled.lean` then imports `Examples.Name.Proof` in place of the program, and
+`Examples.ArrayCall` for an array result, and adds the declarations of the table after
+`verified_compile`.  `K` is 2 plus the position of `compute` in the list of `verified_compile`,
+counted from 0, since functions 0 and 1 are the runtime's `alloc` and `release`, and the check
+proves in the kernel that the export `compute` is function `K`.
+
+| Declaration | Content |
+|-------------|---------|
+| `compute_bound` | `compiled.compute.bound xs ≤ B` for every `xs`, from `compiled.compute.bound_eq`.  Array result only. |
+| `callBound` | `def callBound : Nat := B`, with `B` the literal of the statement, which the check reads.  Array result only. |
+| `NAME_call` | The statement above, with `compiled.module`, `K`, and `B` written out and the binders in the statement's order, as in the worked examples.  `Examples.arrayCall` applied to `compiled.compute.trapFree`, `compute_bound`, `fun xs h => compute_eq xs h`, and the theorem's arguments proves it for an array result, as in `increment_call`.  `compiled.compute.pure` with `Wasm.Runs.mono` and `compute_eq` proves it for a word result, as in `gcd_call`. |
+
+Follow the worked example whose program has the same shape.
+
+| Program shape | `compute_eq` | Bound and call theorem |
+|---------------|--------------|------------------------|
+| Tail recursion on words, word result | [GCD proof](../../../Library/Numerics/Arithmetic/Gcd/Proof.lean) (an equation per branch, recursion on the measure), [prime-factor proof](../../../Library/Numerics/Arithmetic/PrimeFactors/Proof.lean) (strong induction on the measure) | [GCD compilation](../../../Library/Numerics/Arithmetic/Gcd/Compiled.lean), [prime-factor compilation](../../../Library/Numerics/Arithmetic/PrimeFactors/Compiled.lean) (`compiled.f.pure`, no bound) |
+| `LeanExe.build` of at most eight elements | [Increment proof](../../../Examples/Increment/Proof.lean) (`Array.ext`, `LeanExe.IR.build_size`, `LeanExe.IR.build_get`) | [Increment compilation](../../../Examples/Increment/Compiled.lean) (`Verified.blockCost_eq`) |
+| Library call, then a build | [Zero-removal proof](../../../Examples/RemoveZero/Proof.lean) (`Library.Arrays.Search.firstZero_cases`) | [Zero-removal compilation](../../../Examples/RemoveZero/Compiled.lean) (a bound on the count before `generalize`) |
+| `LeanExe.repeatWhile` over a listed function that pushes | [Bounded-build proof](../../../Examples/Below100/Proof.lean) (induction on the fuel, `keep_go`) | [Bounded-build compilation](../../../Examples/Below100/Compiled.lean) (`Verified.loopCost_le`, `Verified.sumBelow_const`) |
+| `LeanExe.loop` over a literal count with a tuple state, then an array literal | [Lookup proof](../../../Examples/Lookup/Proof.lean), [tree-lookup proof](../../../Examples/TreeLookup/Proof.lean) (`simp only [LeanExe.loop]`, `by_cases` on each pass) | [Lookup compilation](../../../Examples/Lookup/Compiled.lean), [tree-lookup compilation](../../../Examples/TreeLookup/Compiled.lean) (`rw [compiled.compute.bound_eq]; decide`) |
+
+Before each proof, search [the verification knowledge base](../../../VKB/README.md) for the
+declarations and goal shapes at hand.  Search the `entry.json` files under `VKB/entries/` for the
+constants of the goal, such as `LeanExe.repeatWhile` or `Verified.loopCost`, and read the README of
+every entry that names them.  The entries `spec-call-theorem`, `verified-bound-closed-form`,
+`loop-combinators`, and `reflector-forms` cover the shapes of the table.  [The manual's section on
+proving](../../../docs/verified-manual.md#proving) describes the generated theorems and the bounds.
+Rewrite a bound with `compiled.compute.bound_eq` and read the goal before choosing lemmas, and
+never evaluate a bound with `#eval`, which runs the interpreter of the reflected program and can
+take minutes.  A `simp` call that unfolds a large term may need `set_option maxHeartbeats 1000000
+in`.  Build with `tools/leanrun --timeout 60m lake build Examples.Name.Proof` and then
+`Examples.Name.Compiled`.
+
+End the stage with proposals for new VKB entries or changes to existing ones, in the form of [the
+template](../../../VKB/TEMPLATE.md), for each lesson of the proofs that applies beyond this program:
+a missing lemma, a tactic that misled, or a goal shape that no entry names.  Put them in
+`journal.md` and in the report to the user.
+
+## Stage 4: acceptance and records
+
+1. Run `tools/verified-request-check NAME`.  It must print the theorem line, the module,
+   `samples: N passed, 0 failed`, and either `native samples: N passed, 0 failed` or the line that
+   says CompCert's tools were not found.
+2. Write `README.md` with five sections: "Request, specification, review, and program" (the
+   request, the specification and its decisions, the review, and the program), a section whose
+   heading states the main theorem, such as "The module searches the tree" (a table of
+   `compute_eq`, `compute_bound`, and `NAME_call`, and the axioms), "Building, running, and
+   testing" (the commands, their output, and the tests), "Related examples", and "References".
+   [The tree-lookup README](../../../Examples/TreeLookup/README.md) gives the form, and its section
+   on the verified compiler's module gives the commands.
+3. Add the module to the verified tests.  Add the line
+   `Examples.Name.Compiled:Examples.Name.compiled.module:NAME` to [the verified module
+   registry](../../../tests/verified/modules.txt) and `import
+   Examples.Name.Compiled` to [`Examples/Verified.lean`](../../../Examples/Verified.lean).  Add
+   `import Examples.Name.Spec` and `import Examples.Name.Samples` to [the verified
+   cases](../../../Verified/Examples/Cases.lean), and at the end of `portCases` a loop that prints
+   each sample in the verified driver's format, as the tree-lookup loop does:
+
+   ```lean
+     for xs in _root_.Examples.Name.samples do
+       IO.println s!"NAME|compute|array-u64|{arrayArg xs}|\
+         {arrayOut (_root_.Examples.Name.expected xs)}|2"
+   ```
+
+   The sixth field is the number of blocks that stay allocated after the call: 2 for an array
+   program, the host's input and the result, and 0 for a word program, whose line has the form
+   `s!"NAME|compute|i64|i64:{a} i64:{b}|{_root_.Examples.Name.expected (a, b)}|0"`.  Run
+   `tests/verified/run.sh --cases NAME`, and `tests/native/verified.sh --module NAME` where
+   CompCert is installed.  The registry entry gives the module its native coverage: the native
+   driver translates every module of the registry to C, compiles it with CompCert, and runs its
+   cases.
+4. Report the result to the user with the theorem line, the sample counts, and the VKB proposals.
+   Commit only when the user's instructions call for it, after [the verified compiler manual's
+   full check](../../../docs/verified-manual.md#the-full-check).
+
+Keep `journal.md` during the run in natural prose: the decisions in the specification, the
+program's form and why, each proof approach and what changed it, the VKB entries and worked
+examples that helped or failed, and any missing general rule.  Record failures as they happen.

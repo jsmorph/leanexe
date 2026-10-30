@@ -1,0 +1,383 @@
+#!/usr/bin/env bash
+# Checks a program made from an English request by the verified-request skill, whose module the
+# verified compiler writes.
+#
+#   tools/verified-request-check --spec NAME           print each sample with the specification's
+#                                                      output
+#   tools/verified-request-check --freeze NAME         record the hashes of the reviewed Spec.lean
+#                                                      and Samples.lean
+#   tools/verified-request-check --run NAME [EXPORT]   emit the module and run the samples in
+#                                                      Wasmtime, without proofs
+#   tools/verified-request-check NAME [EXPORT]         check the hashes, the call theorem, and the
+#                                                      samples
+#
+# NAME is the module name in lower camel case, such as treeLookup.  Its files are in
+# Examples/<Name>/, with <Name> the capitalized NAME: Spec.lean, Samples.lean, Program.lean,
+# Proof.lean, Compiled.lean, and the request, review, journal, README, and hash record.  The
+# specification stage is that of the verified-executable skill, so --spec and --freeze run the
+# modes of the same names of tools/demo-check.  EXPORT, compute by default, is the export whose
+# function index K the theorem names.
+#
+# The check reads the shape of expected : α → β from the host kinds of the samples and writes the
+# call theorem of that shape, which the function statement below gives, for
+# Examples.<Name>.compiled.module and K.  It requires <NAME>_call to prove that theorem with no
+# axioms beyond propext, Classical.choice, and Quot.sound.  For an array result, the bound in the
+# statement is the value of Examples.<Name>.callBound, which must be at most 4,294,901,760 bytes,
+# the 65,535 pages of the largest memory cap, since no store has room for more.  The check also
+# proves in the kernel that EXPORT is function K, emits build/verified-request/<NAME>/<NAME>.wasm,
+# and runs the samples in Wasmtime against expected.
+#
+# When ccomp and clightgen are found, the check then builds the module's translation to C with
+# native-verified build, links it with tools/native-host.c, as tests/native/verified.sh does, and
+# runs the samples in the native program.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as for
+# tests/native/verified.sh.  A tool that CCOMP or CLIGHTGEN names and that is not found fails the
+# check.  When neither variable is set and either tool is not on the search path, the check says
+# so and runs no native sample.
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$root"
+export PATH="$HOME/.elan/bin:$PATH"
+
+fail() { echo "verified-request-check: $*" >&2; exit 1; }
+usage="usage: tools/verified-request-check [--spec|--freeze|--run] NAME [EXPORT]"
+
+mode=check
+case ${1:-} in
+  --spec) mode=spec; shift ;;
+  --freeze) mode=freeze; shift ;;
+  --run) mode=run; shift ;;
+  -*) fail "$usage" ;;
+esac
+{ [ "$#" -ge 1 ] && [ "$#" -le 2 ]; } || fail "$usage"
+name=$1
+export_name=${2:-compute}
+[[ $name =~ ^[a-z][A-Za-z0-9]*$ ]] ||
+  fail "NAME must be lower camel case, such as treeLookup: $name"
+[[ $export_name =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] ||
+  fail "EXPORT must be a Lean identifier: $export_name"
+Name=${name^}
+ns=Examples.$Name
+demo=Examples/$Name
+[ -d "$demo" ] || fail "$demo does not exist"
+case $mode in
+  spec | freeze) exec tools/demo-check "--$mode" "$@" ;;
+esac
+
+work=tmp/verified-request-check/$name
+out=build/verified-request/$name
+host=build/tools/leanexe-wasmtime-host
+mkdir -p "$work" "$out"
+
+lean() { tools/leanrun --timeout 60m --lock-timeout 3600 lake "$@"; }
+
+# The modules that tools/Emit.lean imports, less the toolchain's own.
+emit_imports() {
+  sed -n -E 's/^import ([A-Za-z0-9_.]+).*/\1/p' tools/Emit.lean |
+    { grep -v -E '^(Init|Std|Lean|Lake)(\.|$)' || true; }
+}
+
+build() {
+  lean build "$@" >"$work/build.log" 2>&1 ||
+    fail "build: $(grep -m5 error "$work/build.log" || tail -n 5 "$work/build.log")"
+  ! grep -q "declaration uses 'sorry'" "$work/build.log" || fail "build: a proof uses sorry"
+}
+
+# The samples with the specification's outputs, one line each in the format of
+# tests/modules/run.sh: module|export|result kind|arguments|result.
+lines() {
+  cat >"$work/Lines.lean" <<EOF
+import TestSupport.Host
+import $ns.Spec
+import $ns.Samples
+
+def main : IO Unit := do
+  for line in TestSupport.Host.lines "$name" "$export_name" $ns.expected $ns.samples do
+    IO.println line
+EOF
+  lean env lean --run "$work/Lines.lean" >"$work/lines.txt" 2>"$work/lines.err" ||
+    fail "samples: $(cat "$work/lines.err")"
+  [ -s "$work/lines.txt" ] || fail "samples: $ns.samples is empty"
+}
+
+# The shape of expected, from the host kinds of the first sample: params holds word or array for
+# each parameter, and result the same for the result.  A misread shape cannot pass the check,
+# because the statement must elaborate against expected.
+read_shape() {
+  local kind args arg argv
+  IFS='|' read -r _ _ kind args _ <"$work/lines.txt"
+  read -ra argv <<<"$args"
+  params=()
+  for arg in "${argv[@]}"; do
+    case ${arg%%:*} in
+      i64) params+=(word) ;;
+      array-u64) params+=(array) ;;
+      *) fail "samples: argument kind ${arg%%:*}" ;;
+    esac
+  done
+  case $kind in
+    i64) result=word ;;
+    array-u64) result=array ;;
+    *) fail "samples: result kind $kind" ;;
+  esac
+  [ "${#params[@]}" -gt 0 ] || fail "samples: no argument"
+}
+
+# The Lean type of a word or an array.
+type_of() {
+  case $1 in
+    word) echo UInt64 ;;
+    array) echo "Array UInt64" ;;
+  esac
+}
+
+# The type of expected in Lean's notation.
+shape_text() {
+  local p text=""
+  for p in "${params[@]}"; do
+    text+="${text:+ × }$(type_of "$p")"
+  done
+  echo "$text → $(type_of "$result")"
+}
+
+# The statement template for the shape: array for an array of words to an array of words, words
+# for words to a word.  Other shapes have no template in this version.
+choose_template() {
+  local p
+  template=""
+  if [ "${params[*]}" = array ] && [ "$result" = array ]; then
+    template=array
+  elif [ "$result" = word ]; then
+    template=words
+    for p in "${params[@]}"; do
+      [ "$p" = word ] || template=""
+    done
+  fi
+  [ -n "$template" ] || fail "no call statement for $(shape_text) in this version, which states" \
+    "the call theorem for Array UInt64 → Array UInt64 and for words to a word"
+}
+
+# The statement of the call theorem for module $module, function $k, and, for an array result,
+# the bound $bound.  Each template restates the conclusion of the lemma that proves calls of its
+# shape today: Examples.arrayCall for an array of words to an array of words, and the generated
+# p.f.pure, composed as in Library.Numerics.Arithmetic.Gcd.gcd_call, for words to a word.
+#
+# Switch to the named predicate here.  When the repository has the generic call theorem with a
+# named conclusion, such as Verified.CallSpec module k f B, each template becomes that predicate
+# applied to $module, $k, $ns.expected, and the bound, and choose_template accepts the further
+# shapes that the predicate covers.
+statement() {
+  local module=$ns.compiled.module i n vars="" args="" tuple=""
+  case $template in
+    array)
+      cat <<EOF
+    ∀ (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (xs : Array UInt64) (ptr : UInt64),
+      heap.At store → store.memoryCap $module 0 ≤ 65535 → heap.Borrowed store ptr xs →
+      heap.Within store $module $bound →
+      Runs false env $module $k store [.i64 ptr] fun final values =>
+        ∃ optr : UInt64, values = [.i64 optr] ∧ ∃ heap' : Heap, heap'.At final ∧
+          final.memoryCap $module 0 ≤ 65535 ∧ heap'.Owned final optr ($ns.expected xs) ∧
+          heap'.Borrowed final ptr xs ∧
+          (∀ r, heap.Region r → 0 < r.2 →
+            (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+              heap'.Region r ∧ regionsDisjoint r (block final optr)) ∧
+          heap'.top.toNat ≤ heap.top.toNat + $bound
+EOF
+      ;;
+    words)
+      n=${#params[@]}
+      for ((i = 1; i <= n; i++)); do
+        vars+=" x$i"
+        tuple+="${tuple:+, }x$i"
+      done
+      for ((i = n; i >= 1; i--)); do
+        args+="${args:+, }.i64 x$i"
+      done
+      [ "$n" -eq 1 ] || tuple="($tuple)"
+      cat <<EOF
+    ∀ (env : HostEnv Unit) (store : Store Unit) (${vars# } : UInt64),
+      Runs false env $module $k store [$args] fun final values =>
+        final = store ∧ values = [.i64 ($ns.expected $tuple)]
+EOF
+      ;;
+  esac
+}
+
+# The function index k of the export, and for an array result the value of callBound as bound.
+read_info() {
+  local info index
+  {
+    echo "import $ns.Compiled"
+    echo "#eval ($ns.compiled.module.exports.find? (·.name == \"$export_name\")).map (·.funcIdx)"
+    if [ "$template" = array ]; then
+      echo "#eval $ns.callBound"
+    fi
+  } >"$work/Info.lean"
+  info=$(lean env lean "$work/Info.lean" 2>&1) || fail "entry: $info"
+  index=$(sed -n 1p <<<"$info")
+  [[ $index =~ ^some\ ([0-9]+)$ ]] || fail "entry: no export $export_name: $info"
+  k=${BASH_REMATCH[1]}
+  bound=""
+  if [ "$template" = array ]; then
+    bound=$(sed -n 2p <<<"$info")
+    [[ $bound =~ ^[0-9]+$ ]] || fail "callBound: $info"
+    { [ "${#bound}" -le 10 ] && [ "$bound" -le 4294901760 ]; } ||
+      fail "callBound: $bound bytes exceed 65,535 pages, so no store has room for the call"
+  fi
+}
+
+# The axioms that the report of #print axioms in the text $1 lists, separated by commas, or nothing
+# when the theorem depends on none.  Fails when the text holds no report.
+axioms_of() {
+  local report
+  report=$(awk '
+    /depends on axioms: \[/ {
+      r = $0
+      while (r !~ /\]/ && (getline line) > 0) r = r " " line
+      sub(/^.*depends on axioms: \[/, "", r)
+      sub(/\].*$/, "", r)
+      gsub(/ +/, " ", r)
+      print r
+      exit
+    }' <<<"$1")
+  if [ -n "$report" ]; then
+    echo "$report"
+  elif ! grep -q "does not depend on any axioms" <<<"$1"; then
+    fail "theorem: no axiom report: $1"
+  fi
+}
+
+check_theorem() {
+  local check_out a axioms
+  cat >"$work/Check.lean" <<EOF
+import $ns.Compiled
+import $ns.Spec
+
+open Wasm LeanExe.Pipeline LeanExe.Runtime in
+theorem requestCall :
+$(statement) :=
+  $ns.${name}_call
+
+example : ({ name := "$export_name", funcIdx := $k } : Wasm.Export) ∈ $ns.compiled.module.exports := by
+  decide +kernel
+
+#print axioms requestCall
+EOF
+  check_out=$(lean env lean "$work/Check.lean" 2>&1) || fail "theorem: $work/Check.lean: $check_out"
+  axioms=$(axioms_of "$check_out")
+  for a in ${axioms//,/ }; do
+    case $a in
+      propext | Classical.choice | Quot.sound) ;;
+      *) fail "theorem: axiom $a" ;;
+    esac
+  done
+  echo "theorem: ${name}_call proves the call of $export_name, function $k, for $(shape_text)" \
+    "${bound:+with room for $bound bytes }without a trap; axioms: ${axioms:-none}"
+}
+
+emit() {
+  lean env lean --run tools/Emit.lean "$ns.Compiled" "$ns.compiled.module" "$out/$name.wasm" \
+    >/dev/null 2>"$work/emit.err" || fail "emit: $(cat "$work/emit.err")"
+  echo "module: $out/$name.wasm, $(wc -c <"$out/$name.wasm" | tr -d ' ') bytes"
+}
+
+# Runs every sample with the command "$@" followed by the export, the result kind, and the
+# arguments, and compares each result with the specification's.  $1 names the run in the report.
+run_samples() {
+  local label=$1 passed=0 failed=0 fn kind args expected got argv
+  shift
+  while IFS='|' read -r _ fn kind args expected; do
+    read -ra argv <<<"$args"
+    if got=$("$@" "$fn" "$kind" "${argv[@]}" </dev/null 2>"$work/call.err" | tr -d '[] ' |
+        paste -sd, -); then
+      if [ "$got" = "$expected" ]; then
+        passed=$((passed + 1))
+        continue
+      fi
+      echo "fail: $args: $got, expected $expected"
+    else
+      echo "fail: $args: $(cat "$work/call.err"), expected $expected"
+    fi
+    failed=$((failed + 1))
+  done <"$work/lines.txt"
+  echo "$label: $passed passed, $failed failed"
+  [ "$failed" -eq 0 ] || exit 1
+}
+
+require_host() {
+  [ -x "$host" ] || fail "$host does not exist; build it with tools/build-wasmtime-host.sh"
+  [ ! tools/wasmtime-host.c -nt "$host" ] ||
+    fail "$host is older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh"
+}
+
+# Whether the native samples run: both CompCert tools found.  A missing tool that the environment
+# names fails the check.
+ccomp=${CCOMP:-ccomp}
+clightgen=${CLIGHTGEN:-clightgen}
+stdlib=()
+if [ -n "${CCOMP_STDLIB:-}" ]; then
+  stdlib=(-stdlib "$CCOMP_STDLIB")
+fi
+native_missing() {
+  local tool missing=""
+  for tool in "$ccomp" "$clightgen"; do
+    command -v "$tool" >/dev/null || missing+=" $tool"
+  done
+  echo "$missing"
+}
+
+native_samples() {
+  local dir=$out/native status=0
+  mkdir -p "$dir"
+  CLIGHTGEN=$clightgen CCOMP=$ccomp tools/leanrun --timeout 60m --lock-timeout 3600 lake env \
+    .lake/build/bin/native-verified build "$ns.Compiled" "$ns.compiled.module" "$name" "$dir" \
+    >"$work/native.log" 2>&1 || status=$?
+  case $status in
+    0) ;;
+    3) fail "native: the module has no translation to C: $(cat "$work/native.log")" ;;
+    *) fail "native: $(cat "$work/native.log")" ;;
+  esac
+  grep -qxF "$export_name" "$dir/$name.exports" ||
+    fail "native: the translation does not contain $export_name"
+  "$ccomp" "${stdlib[@]}" -I tools -o "$dir/$name" "$dir/$name.o" "$dir/${name}_glue.c" \
+    tools/native-host.c >"$work/link.log" 2>&1 || fail "native: link: $(cat "$work/link.log")"
+  run_samples "native samples" "$dir/$name" call
+}
+
+case $mode in
+  run)
+    require_host
+    build "$ns.Compiled" "$ns.Spec" "$ns.Samples" TestSupport.Host $(emit_imports)
+    lines
+    read_shape
+    choose_template
+    emit
+    run_samples samples "$host" call "$out/$name.wasm"
+    ;;
+  check)
+    [ -f "$demo/spec.sha256" ] || fail "no review: $demo/spec.sha256 does not exist"
+    sha256sum --quiet -c "$demo/spec.sha256" ||
+      fail "Spec.lean or Samples.lean changed after the review"
+    require_host
+    missing=$(native_missing)
+    if [ -n "$missing" ] && [ -n "${CCOMP:-}${CLIGHTGEN:-}" ]; then
+      fail "native: not found:$missing"
+    fi
+    targets=("$ns.Compiled" "$ns.Spec" "$ns.Samples" TestSupport.Host $(emit_imports))
+    if [ -z "$missing" ]; then
+      targets+=(native-verified)
+    fi
+    build "${targets[@]}"
+    lines
+    read_shape
+    choose_template
+    read_info
+    check_theorem
+    emit
+    run_samples samples "$host" call "$out/$name.wasm"
+    if [ -z "$missing" ]; then
+      native_samples
+    else
+      echo "native samples: not run: not found:$missing"
+    fi
+    ;;
+esac
