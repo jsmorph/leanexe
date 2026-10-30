@@ -6,9 +6,9 @@ article](https://lanyon.ai/research/euler-equations/).  Initialization, reconstr
 selection, both directional sweeps, retries, allocation, and final output execute inside one call of
 the program.
 
-![Density and pressure at time 0.8 on the 192-grid](../../../data/euler/reconstructed/192-run/density-pressure.png)
+![Density and pressure at time 0.8 on the 192-grid](density-pressure-192.png)
 
-![Density and pressure at time 0.8 on the 800-grid](../../../data/euler/reconstructed/800-run/density-pressure.png)
+![Density and pressure at time 0.8 on the 800-grid](density-pressure-800.png)
 
 Both calculations reached time 0.8 with status zero.  The figures, CSV files, and ranges below come
 from the program's output words.  The 192 × 192 run took 60.2 seconds and the 800 × 800 run 83.7
@@ -42,7 +42,7 @@ accepted stages.
 The finer grid resolves thinner fronts and more internal structure.  The large-scale front positions
 and the high-density region near (0.6, 0.6) resemble the [Lanyon density
 figure](https://lanyon.ai/figs/euler-equations/2d-riem-density-final.png).  The 800-grid image shows
-finer curved layers than [the first-order calculation](../../../data/euler/first-order/800-run/density-pressure.png).
+finer curved layers than [the first-order calculation](../first-order/density-pressure-800.png).
 On that grid the density maximum is 1.7392 against 1.6711 for the first-order solver, and the
 pressure maximum 1.6635 against 1.6321.  The two solvers differ in reconstruction and in speed
 arithmetic.  These are visual and numerical comparisons of the discrete fields.  Each panel uses its
@@ -78,8 +78,8 @@ continuous Euler equations remains unproved.
 
 | Grid | Runtime | Density range | Pressure range | Data | Export figures |
 |------|--------:|--------------:|---------------:|------|----------------|
-| 192 × 192 | 60.2 s | 0.138–1.725103297 | 0.029–1.670588688 | [Words](../../../data/euler/reconstructed/192-run/words.u64le), [CSV](../../../data/euler/reconstructed/192-run/cells.csv.gz) | [SVG](../../../data/euler/reconstructed/192-run/density-pressure.svg), [PDF](../../../data/euler/reconstructed/192-run/density-pressure.pdf) |
-| 800 × 800 | 83.7 min | 0.138–1.739211022 | 0.029–1.663523952 | [Words](../../../data/euler/reconstructed/800-run/words.u64le), [CSV](../../../data/euler/reconstructed/800-run/cells.csv.gz) | [SVG](../../../data/euler/reconstructed/800-run/density-pressure.svg), [PDF](../../../data/euler/reconstructed/800-run/density-pressure.pdf) |
+| 192 × 192 | 60.2 s | 0.138–1.725103297 | 0.029–1.670588688 | [Words](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/reconstructed/192-run/words.u64le), [CSV](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/reconstructed/192-run/cells.csv.gz) | [SVG](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/reconstructed/192-run/density-pressure.svg), [PDF](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/reconstructed/192-run/density-pressure.pdf) |
+| 800 × 800 | 83.7 min | 0.138–1.739211022 | 0.029–1.663523952 | [Words](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/reconstructed/800-run/words.u64le), [CSV](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/reconstructed/800-run/cells.csv.gz) | [SVG](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/reconstructed/800-run/density-pressure.svg), [PDF](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/reconstructed/800-run/density-pressure.pdf) |
 
 The runtimes are wall-clock times of one Wasmtime process on a four-core ARM64 Linux machine, with
 peak resident sizes of 19 MB and 104 MB.  The 800-grid run shared the machine with Lean proof

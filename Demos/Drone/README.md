@@ -29,7 +29,7 @@ the other Lean files of this directory, and they use only `propext`, `Classical.
 
 Every theorem concerns the bytes, through the round trip of the encoder.  The safety theorem
 concerns the ideal point-mass model of [the drone verification
-report](../../paper/drone-verification-report/README.md).  The allocator state of the total theorem
+report](https://github.com/jsmorph/leanexe-papers/blob/main/paper/drone-verification-report/README.md).  The allocator state of the total theorem
 is a hypothesis, which no theorem connects to the module's instantiation.
 
 ## Building, running, and testing
@@ -40,8 +40,8 @@ planner natively and saved 116 terrains with its output in
 including 138 rows of its forward passes, in [`tests/drone/cases.txt`](../../tests/drone/cases.txt).
 [`tests/drone/run.sh`](../../tests/drone/run.sh) runs `drone.wasm` in the Wasmtime host on all of
 them, and every output matches the reference word for word.  The five terrains of the figures in
-[the drone verification report](../../paper/drone-verification-report/README.md), whose outputs
-[`evidence/runs.json`](../../paper/drone-verification-report/evidence/runs.json) records, return the
+[the drone verification report](https://github.com/jsmorph/leanexe-papers/blob/main/paper/drone-verification-report/README.md), whose outputs
+[`evidence/runs.json`](https://github.com/jsmorph/leanexe-papers/blob/main/paper/drone-verification-report/evidence/runs.json) records, return the
 same words from `drone.wasm`.
 
 ```sh
@@ -72,5 +72,5 @@ arrays with tuple states at a small scale.  [`Below100`](../../Examples/Below100
 
 - R. Bellman, *Dynamic Programming*, Princeton University Press, 1957, for the principle of the
   planner's forward pass.
-- [The drone verification report](../../paper/drone-verification-report/README.md), which defines
+- [The drone verification report](https://github.com/jsmorph/leanexe-papers/blob/main/paper/drone-verification-report/README.md), which defines
   the problem, the point-mass model, and the safety corridor.

@@ -1,1 +1,0 @@
-Verified Terrain-Following Flight Planning in LeanExe

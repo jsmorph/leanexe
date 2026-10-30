@@ -1,3 +1,0 @@
-Body compiler corpus: CHECKOUT/build/wgsl/body-check-tyz6A6
-Unexpected result: CHECKOUT/tools/leanrun --timeout 90s lake env lean CHECKOUT/build/wgsl/body-check-tyz6A6/add.lean (124, null)
-Failure evidence retained at CHECKOUT/build/wgsl/body-check-tyz6A6

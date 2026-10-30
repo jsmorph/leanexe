@@ -5,9 +5,9 @@ evolves the four-quadrant problem from the [Lanyon Euler
 article](https://lanyon.ai/research/euler-equations/).  Initialization, timestep selection, both
 directional sweeps, retries, allocation, and final output execute inside one call of the program.
 
-![Density and pressure at time 0.8 on the 192-grid](../../../data/euler/first-order/192-run/density-pressure.png)
+![Density and pressure at time 0.8 on the 192-grid](density-pressure-192.png)
 
-![Density and pressure at time 0.8 on the 800-grid](../../../data/euler/first-order/800-run/density-pressure.png)
+![Density and pressure at time 0.8 on the 800-grid](density-pressure-800.png)
 
 The finer grid resolves thinner fronts and a higher central density maximum.  Front positions and
 the curved interaction region resemble the [Lanyon density
@@ -66,8 +66,8 @@ Convergence to a weak solution of the continuous Euler equations remains unprove
 
 | Grid | Runtime | Density range | Pressure range | Data | Export figures |
 |------|--------:|--------------:|---------------:|------|----------------|
-| 192 × 192 | 16.6 s | 0.138–1.490131234 | 0.029–1.476780108 | [Words](../../../data/euler/first-order/192-run/words.u64le), [CSV](../../../data/euler/first-order/192-run/cells.csv.gz) | [SVG](../../../data/euler/first-order/192-run/density-pressure.svg), [PDF](../../../data/euler/first-order/192-run/density-pressure.pdf) |
-| 800 × 800 | 20.1 min | 0.138–1.671084032 | 0.029–1.632146140 | [Words](../../../data/euler/first-order/800-run/words.u64le), [CSV](../../../data/euler/first-order/800-run/cells.csv.gz) | [SVG](../../../data/euler/first-order/800-run/density-pressure.svg), [PDF](../../../data/euler/first-order/800-run/density-pressure.pdf) |
+| 192 × 192 | 16.6 s | 0.138–1.490131234 | 0.029–1.476780108 | [Words](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/words.u64le), [CSV](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/cells.csv.gz) | [SVG](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/density-pressure.svg), [PDF](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/density-pressure.pdf) |
+| 800 × 800 | 20.1 min | 0.138–1.671084032 | 0.029–1.632146140 | [Words](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/words.u64le), [CSV](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/cells.csv.gz) | [SVG](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/density-pressure.svg), [PDF](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/density-pressure.pdf) |
 
 The runtimes are wall-clock times of one Wasmtime process on a four-core ARM64 Linux machine, with
 peak resident sizes of 19 MB and 104 MB.  The 800-grid run shared the machine with Lean proof

@@ -206,7 +206,7 @@ Floating-point theorems use WebAssembly's deterministic profile, and the Wasmtim
 | [Rocq proofs](rocq) | Composition of CompCert's proofs from Clight to Asm and uniqueness lemmas, checked against a CompCert 3.18 tree. |
 | [Tools](tools) | Lean runner, module and shader emitters, execution hosts, native host, bare-metal startup code and checks, build scripts, and application tools. |
 | [Tests](tests) | Module, decoder, numerical, allocation, WASI, native, bare-metal, GPU, and complete-generation tests, plus the browser pages. |
-| [Run records](data), [reports](paper) | Measurements, reproduction records, papers, and their review history. |
+| [Test inputs](data) | Hash vectors and decimal conversion cases that the tests read.  Papers, reports, and run records are in the private repository [leanexe-papers](https://github.com/jsmorph/leanexe-papers). |
 
 ## Commands
 

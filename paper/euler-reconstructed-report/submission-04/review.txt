@@ -1,7 +1,0 @@
-Decision: accept
-
-Accepted.
-
-## Remarks
-
-No remarks.
