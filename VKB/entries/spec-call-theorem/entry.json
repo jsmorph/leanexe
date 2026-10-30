@@ -9,7 +9,9 @@
     "Runs false env compiled.module k store [.i64 n, .i64 ptr] fun final values => ∃ d, values.reverse = [...] ∧ spec ∧ ∃ heap', Verified.Ready compiled.module compiled.tables heap' final ∧ heap'.Borrowed final ptr msg",
     "Runs false env compiled.module k store [.i64 b, .i64 a] fun final values => final = store ∧ values = [.i64 (expected (a, b))]",
     "compute xs = expected xs from xs.size < 2 ^ 64",
-    "Verified.Call.spec: unknown identifier, from a module that imports only Verified.Reflect.Command"
+    "Verified.Call.spec: unknown identifier, from a module that imports only Verified.Reflect.Command",
+    "Verified.Ready compiled.module compiled.tables (Verified.initialHeap compiled.tables) { compiled.module.initialStore with memoryCaps := [cap] }",
+    "final.mem.pages ≤ P after a call of a verified module"
   ],
   "modules": [
     "Library.Numerics.Float64.Bessel.BesselBytes",
@@ -27,7 +29,9 @@
     "Examples.Lookup.Compiled",
     "Examples.TreeLookup.Compiled",
     "Library.Numerics.Arithmetic.PrimeFactors.Compiled",
-    "Examples.RunningMax.Compiled"
+    "Examples.RunningMax.Compiled",
+    "Demos.Euler.VerifiedCall",
+    "Demos.Drone.VerifiedCall"
   ],
   "declarations": [
     "Verified.tables_at",
@@ -65,13 +69,20 @@
     "Examples.Lookup.lookup_call",
     "Examples.TreeLookup.treeLookup_call",
     "Library.Numerics.Arithmetic.PrimeFactors.primeFactors_call",
-    "Examples.RunningMax.compute_callSpec"
+    "Examples.RunningMax.compute_callSpec",
+    "Demos.Euler.Verified.ready_initial",
+    "Demos.Drone.Verified.ready_initial",
+    "Demos.Euler.Verified.solve_callSpec",
+    "Demos.Euler.Verified.euler_solve_call",
+    "Demos.Drone.Verified.compute_callSpec",
+    "Demos.Drone.Verified.drone_compute_call"
   ],
   "sources": [
     "2026-10-30: Verified compilations of LeanExe examples and library programs",
     "2026-10-30: Array literals and conditions on propositions in the reflector",
     "2026-10-30: One call theorem for the verified compilations",
     "2026-10-30: The verified-request skill and its acceptance tool",
-    "2026-10-30: The numerical call lemmas on the generic call theorem"
+    "2026-10-30: The numerical call lemmas on the generic call theorem",
+    "2026-10-30: The verified total theorems of the Euler solvers and the drone planner"
   ]
 }

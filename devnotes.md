@@ -39449,9 +39449,13 @@ The gate built the working tree that the commits record, and only the journal ch
 | `#eval` of `tries` and `reconstructedTries` | Closed forms of the table | 12 min, from 17:44 UTC, for the grids of the table | Values of the table |
 | `#print axioms` of every new theorem | Axiom report | 3 s, from 17:58 UTC | `propext`, `Classical.choice`, and `Quot.sound` at most |
 | `lake build LeanExe Examples Demos Verified Library TestSupport native-verified native-bare verified-cases native-module-cases` | Gate | 134 s, from 17:58 UTC | 15,356 jobs, no error, no warning in the new modules |
+| `VKB/Check.lean` on `VKB/entries`, with the proposals | Names of the entries | 4 s, from 18:00 UTC | No problem reported |
 | `node tools/check-doc-links.mjs` on a copy of the changed documents | Links and reachability | Under 1 s, at 18:00 UTC | No problem reported, and every document is reachable from the README |
+
+The VKB proposals extend [the entry on closed-form allocation bounds](VKB/entries/verified-bound-closed-form/README.md) with closed forms in counts of loop passes, through `loopCost_le_mul`, with the solvers' bounds as worked examples.  They extend [the entry on specification call theorems](VKB/entries/spec-call-theorem/README.md) with the call from the store in which a module starts under a host's cap, the recursion-depth failure of the table conjunct, and the absence of a theorem that bounds the final pages.  The VKB table describes the first entry as covering counts of loop passes.  Both apply to any verified program whose loops run a number of passes that its values decide, or whose host sets a memory cap, and no entry covered them.
 
 - [x] Closed forms of the Euler bounds, `solve_bound` and `reconstructedSolve_bound`, in the cell and try counts.
 - [x] `euler_solve_call` and `drone_compute_call`, with the comparison of their conjuncts with the LeanExe theorems.
 - [x] The decision on the final page count: dropped, for the reason above.
 - [x] The Euler and drone guides, the README's properties table, and the index.
+- [x] The VKB proposals.
