@@ -18,15 +18,16 @@
 # modes of the same names of tools/demo-check.  EXPORT, compute by default, is the export whose
 # function index K the theorem names.
 #
-# The check reads the shape of expected : α → β from the host kinds of the samples and writes the
-# call theorem of that shape, which the function statement below gives, for
-# Examples.<Name>.compiled.module and K.  It requires <NAME>_call to prove that theorem with no
-# axioms beyond propext, Classical.choice, and Quot.sound.  For an array result, the bound in the
-# statement is the value of Examples.<Name>.callBound, which must be at most 4,294,901,760 bytes,
-# the 65,535 pages of the largest memory cap, since no store has room for more.  This constant
-# bound is temporary, as the comment above the function statement says.  The check also proves in
-# the kernel that EXPORT is function K, emits build/verified-request/<NAME>/<NAME>.wasm, and runs
-# the samples in Wasmtime against expected.
+# The check writes the call theorem
+#
+#   Verified.CallSpec Examples.<Name>.compiled.module Examples.<Name>.compiled.tables K
+#     Examples.<Name>.expected Examples.<Name>.compiled.<EXPORT>.bound
+#
+# itself and requires Examples.<Name>.<EXPORT>_callSpec to prove it with no axioms beyond
+# propext, Classical.choice, and Quot.sound.  From a ready store with room for the generated
+# bound, the call returns expected of its arguments without a trap and leaves a ready store.  The
+# check also proves in the kernel that EXPORT is function K, emits
+# build/verified-request/<NAME>/<NAME>.wasm, and runs the samples in Wasmtime against expected.
 #
 # The statement is elaborated in a file that imports the run's modules, so before any build, the
 # check and --run refuse a run whose Lean files in Examples/<Name>/ declare a global or scoped
@@ -157,9 +158,8 @@ EOF
   [ -s "$work/lines.txt" ] || fail "samples: $ns.samples is empty"
 }
 
-# The shape of expected, from the host kinds of the first sample: params holds word or array for
-# each parameter, and result the same for the result.  A misread shape cannot pass the check,
-# because the statement must elaborate against expected.
+# The shape of expected, from the host kinds of the first sample, for the report: params holds
+# word or array for each parameter, and result the same for the result.
 read_shape() {
   local kind args arg argv
   IFS='|' read -r _ _ kind args _ <"$work/lines.txt"
@@ -197,94 +197,24 @@ shape_text() {
   echo "$text → $(type_of "$result")"
 }
 
-# The statement template for the shape: array for an array of words to an array of words, words
-# for words to a word.  Other shapes have no template in this version.
-choose_template() {
-  local p
-  template=""
-  if [ "${params[*]}" = array ] && [ "$result" = array ]; then
-    template=array
-  elif [ "$result" = word ]; then
-    template=words
-    for p in "${params[@]}"; do
-      [ "$p" = word ] || template=""
-    done
-  fi
-  [ -n "$template" ] || fail "no call statement for $(shape_text) in this version, which states" \
-    "the call theorem for Array UInt64 → Array UInt64 and for words to a word"
-}
-
-# The statement of the call theorem for module $module, function $k, and, for an array result,
-# the bound $bound.  Each template restates the conclusion of the lemma that proves calls of its
-# shape today: Examples.arrayCall for an array of words to an array of words, and the generated
-# p.f.pure, composed as in Library.Numerics.Arithmetic.Gcd.gcd_call, for words to a word.
-#
-# Switch to the named predicate here.  When the repository has the generic call theorem with a
-# named conclusion, such as Verified.CallSpec module k f B with a bound function B : α → Nat, one
-# template replaces both: that predicate applied to $module, $k, $ns.expected, and
-# $ns.compiled.$export_name.bound, the generated bound that is the premise of trapFree.
-# choose_template then accepts every shape of words, word arrays, and tuples of these to a word or
-# a word array.  The constant bound of the array template, callBound, its #eval in read_info, and
-# its limit are temporary and go with that change.
+# The statement of the call theorem: Verified.CallSpec of Verified/Call.lean for the module and
+# its tables, function $k, expected, and the generated bound of the export's definition.  One
+# predicate covers every shape that Represent describes, so the shape serves only the report.
 statement() {
-  local module=$ns.compiled.module i n vars="" args="" tuple=""
-  case $template in
-    array)
-      cat <<EOF
-    ∀ (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (xs : Array UInt64) (ptr : UInt64),
-      heap.At store → store.memoryCap $module 0 ≤ 65535 → heap.Borrowed store ptr xs →
-      heap.Within store $module $bound →
-      Runs false env $module $k store [.i64 ptr] fun final values =>
-        ∃ optr : UInt64, values = [.i64 optr] ∧ ∃ heap' : Heap, heap'.At final ∧
-          final.memoryCap $module 0 ≤ 65535 ∧ heap'.Owned final optr ($ns.expected xs) ∧
-          heap'.Borrowed final ptr xs ∧
-          (∀ r, heap.Region r → 0 < r.2 →
-            (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-              heap'.Region r ∧ regionsDisjoint r (block final optr)) ∧
-          heap'.top.toNat ≤ heap.top.toNat + $bound
-EOF
-      ;;
-    words)
-      n=${#params[@]}
-      for ((i = 1; i <= n; i++)); do
-        vars+=" x$i"
-        tuple+="${tuple:+, }x$i"
-      done
-      for ((i = n; i >= 1; i--)); do
-        args+="${args:+, }.i64 x$i"
-      done
-      [ "$n" -eq 1 ] || tuple="($tuple)"
-      cat <<EOF
-    ∀ (env : HostEnv Unit) (store : Store Unit) (${vars# } : UInt64),
-      Runs false env $module $k store [$args] fun final values =>
-        final = store ∧ values = [.i64 ($ns.expected $tuple)]
-EOF
-      ;;
-  esac
+  echo "    Verified.CallSpec $ns.compiled.module $ns.compiled.tables $k $ns.expected"
+  echo "      $ns.compiled.$export_name.bound"
 }
 
-# The function index k of the export, and for an array result the value of callBound as bound,
-# which the named predicate will make unnecessary.
-read_info() {
-  local info index
-  {
-    echo "import $ns.Compiled"
-    echo "#eval ($ns.compiled.module.exports.find? (·.name == \"$export_name\")).map (·.funcIdx)"
-    if [ "$template" = array ]; then
-      echo "#eval $ns.callBound"
-    fi
-  } >"$work/Info.lean"
-  info=$(lean env lean "$work/Info.lean" 2>&1) || fail "entry: $info"
-  index=$(sed -n 1p <<<"$info")
-  [[ $index =~ ^some\ ([0-9]+)$ ]] || fail "entry: no export $export_name: $info"
+# The function index k of the export.
+read_index() {
+  local info
+  cat >"$work/Index.lean" <<EOF
+import $ns.Compiled
+#eval ($ns.compiled.module.exports.find? (·.name == "$export_name")).map (·.funcIdx)
+EOF
+  info=$(lean env lean "$work/Index.lean" 2>&1) || fail "entry: $info"
+  [[ $info =~ ^some\ ([0-9]+)$ ]] || fail "entry: no export $export_name: $info"
   k=${BASH_REMATCH[1]}
-  bound=""
-  if [ "$template" = array ]; then
-    bound=$(sed -n 2p <<<"$info")
-    [[ $bound =~ ^[0-9]+$ ]] || fail "callBound: $info"
-    { [ "${#bound}" -le 10 ] && [ "$bound" -le 4294901760 ]; } ||
-      fail "callBound: $bound bytes exceed 65,535 pages, so no store has room for the call"
-  fi
 }
 
 # The axioms that the report of #print axioms in the text $1 lists, separated by commas, or nothing
@@ -314,12 +244,12 @@ check_theorem() {
 import $ns.Compiled
 import $ns.Spec
 
-open Wasm LeanExe.Pipeline LeanExe.Runtime in
 theorem requestCall :
 $(statement) :=
-  $ns.${name}_call
+  $ns.${export_name}_callSpec
 
-example : ({ name := "$export_name", funcIdx := $k } : Wasm.Export) ∈ $ns.compiled.module.exports := by
+example : ({ name := "$export_name", funcIdx := $k } : Wasm.Export) ∈
+    $ns.compiled.module.exports := by
   decide +kernel
 
 #print axioms requestCall
@@ -332,8 +262,8 @@ EOF
       *) fail "theorem: axiom $a" ;;
     esac
   done
-  echo "theorem: ${name}_call proves the call of $export_name, function $k, for $(shape_text)" \
-    "${bound:+with room for $bound bytes }without a trap; axioms: ${axioms:-none}"
+  echo "theorem: ${export_name}_callSpec proves Verified.CallSpec for $export_name, function $k," \
+    "$(shape_text), with the generated bound; axioms: ${axioms:-none}"
 }
 
 emit() {
@@ -411,8 +341,6 @@ case $mode in
     require_host
     build "$ns.Compiled" "$ns.Spec" "$ns.Samples" TestSupport.Host $(emit_imports)
     lines
-    read_shape
-    choose_template
     emit
     run_samples samples "$host" call "$out/$name.wasm"
     ;;
@@ -433,8 +361,7 @@ case $mode in
     build "${targets[@]}"
     lines
     read_shape
-    choose_template
-    read_info
+    read_index
     check_theorem
     emit
     run_samples samples "$host" call "$out/$name.wasm"

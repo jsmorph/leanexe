@@ -7,49 +7,31 @@ description: Turn an English request into a program that the repository's verifi
 
 The result of a run is a specification `expected`, a program in the verified compiler's dialect,
 the module `compiled.module` that `verified_compile` writes for it, and the call theorem
-`NAME_call`.  For a program from an array of words to an array of words, with `K` the index of the
-export `compute` and `B` the constant `callBound`, `NAME_call` states:
+`compute_callSpec`.  With `K` the index of the export `compute`, it states:
 
 ```lean
-∀ (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (xs : Array UInt64) (ptr : UInt64),
-  heap.At store → store.memoryCap compiled.module 0 ≤ 65535 → heap.Borrowed store ptr xs →
-  heap.Within store compiled.module B →
-  Runs false env compiled.module K store [.i64 ptr] fun final values =>
-    ∃ optr : UInt64, values = [.i64 optr] ∧ ∃ heap' : Heap, heap'.At final ∧
-      final.memoryCap compiled.module 0 ≤ 65535 ∧ heap'.Owned final optr (expected xs) ∧
-      heap'.Borrowed final ptr xs ∧
-      (∀ r, heap.Region r → 0 < r.2 →
-        (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-          heap'.Region r ∧ regionsDisjoint r (block final optr)) ∧
-      heap'.top.toNat ≤ heap.top.toNat + B
+Verified.CallSpec compiled.module compiled.tables K expected compiled.compute.bound
 ```
 
-A call with the array `xs` borrowed at `ptr`, from a store with the allocator invariant, a memory
-cap of at most 65,535 pages, and room for `top` to rise by `B` bytes, returns without a trap the
-address of an owned array that holds `expected xs`.  The input stays borrowed, every region of the
-heap before the call keeps its bytes and lies apart from the result, and `top` rises by at most
-`B`.  For a program from words to a word, `NAME_call` states, here for two words:
-
-```lean
-∀ (env : HostEnv Unit) (store : Store Unit) (x1 x2 : UInt64),
-  Runs false env compiled.module K store [.i64 x2, .i64 x1] fun final values =>
-    final = store ∧ values = [.i64 (expected (x1, x2))]
-```
-
-A call from any store returns the word of `expected` without a trap and leaves the store
-unchanged.  `Runs` lists the arguments with the top of the stack first, so the last argument comes
-first.
+`Verified.CallSpec` and `Verified.Call` of [the call theorem](../../../Verified/Call.lean) give
+the meaning.  Function `K`, called from a store that `Verified.Ready` states ready, with arguments
+that represent `x` and move no object, and with room for `top` to rise by `compiled.compute.bound
+x` bytes, returns without a trap the representation of `expected x`.  A store is ready when the
+allocator invariant holds, the memory cap is at most 65,535 pages, and each table of the program is
+a borrowed array at its address, and `Verified.Ready.initial` proves that the store in which the
+module starts is ready.  After the call the store is ready again, every array borrowed before the
+call stays borrowed, every region of the heap before the call keeps its bytes and lies apart from
+the result, and `top` has risen by at most the bound.
 
 [`tools/verified-request-check`](../../../tools/verified-request-check) writes the statement
-itself, for the shape of `expected` that it reads from the samples.  It accepts the run only if
-`NAME_call` proves the statement with no axioms beyond `propext`, `Classical.choice`, and
-`Quot.sound`, the specification is the one the review accepted, and the module returns `expected`
-on every sample in Wasmtime and, where CompCert is installed, in the module's translation to C.
-The compiler's generated theorems state that the module computes the program, so the run proves
-that the program equals the specification and, for an array result, that its allocation stays
-within `B`.  The theorem says nothing about the request beyond what `expected` says, so the
-independent review of `expected` against the request is the only check that the theorem states
-what the request asks.  The run does not ask the user to approve the specification.
+itself.  It accepts the run only if `compute_callSpec` proves the statement with no axioms beyond
+`propext`, `Classical.choice`, and `Quot.sound`, the specification is the one the review accepted,
+and the module returns `expected` on every sample in Wasmtime and, where CompCert is installed, in
+the module's translation to C.  The compiler's generated theorems state that the module computes
+the program, so the run proves that the program equals the specification.  The theorem says nothing
+about the request beyond what `expected` says, so the independent review of `expected` against the
+request is the only check that the theorem states what the request asks.  The run does not ask the
+user to approve the specification.
 
 ## Names, files, and types
 
@@ -64,7 +46,7 @@ capitalized, and every file of the run is in `Examples/Name/`, a new directory.
 | `Samples.lean` | `Examples.Name.samples : List α`, core Lean only. |
 | `Program.lean` | Program in `Examples.Name` in the verified compiler's dialect, with entry `compute`.  It imports the dialect modules and any library programs it uses. |
 | `Proof.lean` | `compute_eq`.  It imports the program, the specification, and lemmas about the dialect. |
-| `Compiled.lean` | `verified_compile compiled := [f, …, compute]`, and after stage 3 the bound lemma, `callBound`, and `NAME_call`. |
+| `Compiled.lean` | `verified_compile compiled := [f, …, compute]`, and after stage 3 `compute_callSpec` and a closed form of the bound. |
 | `review.md` | Independent review of the specification. |
 | `spec.sha256` | Written by `tools/verified-request-check --freeze`. |
 | `journal.md` | Journal of the run. |
@@ -72,13 +54,7 @@ capitalized, and every file of the run is in `Examples/Name/`, a new directory.
 
 `expected` has type `α → β`, where `α` is `UInt64`, `Array UInt64`, or a tuple of these, one
 component per parameter of `compute` in order, and `β` is `UInt64` or `Array UInt64`.  Other types
-are outside this version of the skill.  Of these shapes, the check states the call theorem for
-`Array UInt64 → Array UInt64` and for a word or a tuple of words to a word, the shapes that the
-call lemmas of the repository prove today.  Every other shape, such as an array to a word, words to
-an array, or a tuple that holds an array, waits for the generic call theorem.  An array result
-also needs a constant `B` that bounds the allocation of every call, so the request must bound the
-size of the result, as the examples' requests do by limiting their inputs to eight words.  If the
-request needs a type or a shape outside these limits, say so and stop before stage 1.
+are outside this version of the skill.  If the request needs one, say so and stop before stage 1.
 
 ## Stage 1: the specification
 
@@ -115,12 +91,9 @@ manual](../../../docs/verified-manual.md#the-dialect) describes, in the sections
 dialect" through "Restrictions".  Integers are `UInt64`, an array is read with `xs[i.toNat]!`,
 iteration uses `LeanExe.loop`, `LeanExe.build`, `LeanExe.repeatWhile`, a fold over the whole array,
 or tail recursion, which compiles as a loop, and a definition calls only the definitions listed
-before it.  Use no recursion other than tail recursion: other recursion takes the call depth, and
-the trap at depth 1,000 lies outside the statements of this version.  The program must not import
-the specification.  For a word result, write the program on words alone, without arrays, so that
-`verified_compile` generates `compiled.compute.pure`, which the call theorem needs.  For an array
-result, make the allocation of every call fit a constant, by treating inputs beyond the request's
-limit as a separate case, as the examples treat inputs of more than eight words.
+before it.  Use no recursion other than tail recursion and no byte literal: other recursion adds a
+condition on the call depth to `trapFree`, and a byte literal gives `trapFree` another form, and the
+call theorem of this version covers neither.  The program must not import the specification.
 
 No Lean file of the run may declare a global or scoped instance, notation, macro, syntax, or
 elaborator, or code that runs at import, such as `instance`, `attribute [instance]`, `notation`,
@@ -146,10 +119,9 @@ end Examples.Name
 Build it with `tools/leanrun --timeout 60m lake build Examples.Name.Compiled`.  A rejected form
 names its term in the message, and the manual's restrictions table gives the rewrite.  Then run
 `tools/verified-request-check --run NAME`, which emits the module and runs the samples in Wasmtime
-without proofs, and fix the program until every sample passes.  Before the proofs, check with
-`#check @Examples.Name.compiled.compute.pure` for a word result that the theorem exists and states
-`ImplementsPureA false`, or with `#check @Examples.Name.compiled.compute.trapFree` for an array
-result.
+without proofs, and fix the program until every sample passes.  Before the proofs, read the
+premise of the generated theorem with `#check @Examples.Name.compiled.compute.trapFree`: room for
+`compiled.compute.bound x` bytes when the function can abort, and `True` when it cannot.
 
 ## Stage 3: the proofs
 
@@ -164,23 +136,23 @@ theorem compute_eq (xs : Array UInt64) (h : xs.size < 2 ^ 64) : compute xs = exp
 theorem compute_eq (a b : UInt64) : compute a b = expected (a, b)
 ```
 
-`Compiled.lean` then imports `Examples.Name.Proof` in place of the program, and
-`Examples.ArrayCall` for an array result, and adds the declarations of the table after
-`verified_compile`.  `K` is 2 plus the position of `compute` in the list of `verified_compile`,
-counted from 0, since functions 0 and 1 are the runtime's `alloc` and `release`, and the check
-proves in the kernel that the export `compute` is function `K`.
+`Compiled.lean` then imports `Examples.Name.Proof` in place of the program and adds two
+declarations after `verified_compile`.  `K` is 2 plus the position of `compute` in the list of
+`verified_compile`, counted from 0, since functions 0 and 1 are the runtime's `alloc` and
+`release`, and the check proves in the kernel that the export `compute` is function `K`.
 
 | Declaration | Content |
 |-------------|---------|
-| `compute_bound` | `compiled.compute.bound xs ≤ B` for every `xs`, from `compiled.compute.bound_eq`.  Array result only. |
-| `callBound` | `def callBound : Nat := B`, with `B` the literal of the statement, which the check reads.  Array result only. |
-| `NAME_call` | The statement above, with `compiled.module`, `K`, and `B` written out and the binders in the statement's order, as in the worked examples.  `Examples.arrayCall` applied to `compiled.compute.trapFree`, `compute_bound`, `fun xs h => compute_eq xs h`, and the theorem's arguments proves it for an array result, as in `increment_call`.  `compiled.compute.pure` with `Wasm.Runs.mono` and `compute_eq` proves it for a word result, as in `gcd_call`. |
+| `compute_callSpec` | The statement above, proved as `Examples.Increment.compute_callSpec` and `Library.Numerics.Arithmetic.Gcd.gcd_callSpec` prove theirs.  `Verified.ImplementsTables.call (.ofA compiled.compute.trapFree) compiled.tables nofun` gives `Verified.Call`, and `Verified.Call.spec` turns it into `CallSpec` for `expected`, from `fun _ _ _ h => h` for the premise, or `fun _ _ _ _ => trivial` when `trapFree`'s premise is `True`, from `fun _ _ _ _ _ h => h` for the conclusion, and from `compute_eq` on represented arguments. |
+| `compute_bound` | A closed form of `compiled.compute.bound x`, from `compiled.compute.bound_eq`, which the README states so that a reader knows how much room a call needs.  A function that cannot abort needs none. |
 
-Follow the worked example whose program has the same shape.
+Follow the worked example whose program has the same shape.  The call theorem of every shape
+follows `compute_callSpec` and `gcd_callSpec`, which differ only in the premise and in how the
+argument's representation gives the premise of `compute_eq`.
 
-| Program shape | `compute_eq` | Bound and call theorem |
-|---------------|--------------|------------------------|
-| Tail recursion on words, word result | [GCD proof](../../../Library/Numerics/Arithmetic/Gcd/Proof.lean) (an equation per branch, recursion on the measure), [prime-factor proof](../../../Library/Numerics/Arithmetic/PrimeFactors/Proof.lean) (strong induction on the measure) | [GCD compilation](../../../Library/Numerics/Arithmetic/Gcd/Compiled.lean), [prime-factor compilation](../../../Library/Numerics/Arithmetic/PrimeFactors/Compiled.lean) (`compiled.f.pure`, no bound) |
+| Program shape | `compute_eq` | Bound |
+|---------------|--------------|-------|
+| Tail recursion on words, word result | [GCD proof](../../../Library/Numerics/Arithmetic/Gcd/Proof.lean) (an equation per branch, recursion on the measure), [prime-factor proof](../../../Library/Numerics/Arithmetic/PrimeFactors/Proof.lean) (strong induction on the measure) | None: [GCD compilation](../../../Library/Numerics/Arithmetic/Gcd/Compiled.lean) |
 | `LeanExe.build` of at most eight elements | [Increment proof](../../../Examples/Increment/Proof.lean) (`Array.ext`, `LeanExe.IR.build_size`, `LeanExe.IR.build_get`) | [Increment compilation](../../../Examples/Increment/Compiled.lean) (`Verified.blockCost_eq`) |
 | Library call, then a build | [Zero-removal proof](../../../Examples/RemoveZero/Proof.lean) (`Library.Arrays.Search.firstZero_cases`) | [Zero-removal compilation](../../../Examples/RemoveZero/Compiled.lean) (a bound on the count before `generalize`) |
 | `LeanExe.repeatWhile` over a listed function that pushes | [Bounded-build proof](../../../Examples/Below100/Proof.lean) (induction on the fuel, `keep_go`) | [Bounded-build compilation](../../../Examples/Below100/Compiled.lean) (`Verified.loopCost_le`, `Verified.sumBelow_const`) |
@@ -211,7 +183,7 @@ a missing lemma, a tactic that misled, or a goal shape that no entry names.  Put
 2. Write `README.md` with five sections: "Request, specification, review, and program" (the
    request, the specification and its decisions, the review, and the program), a section whose
    heading states the main theorem, such as "The module searches the tree" (a table of
-   `compute_eq`, `compute_bound`, and `NAME_call`, and the axioms), "Building, running, and
+   `compute_eq`, `compute_bound`, and `compute_callSpec`, and the axioms), "Building, running, and
    testing" (the commands, their output, and the tests), "Related examples", and "References".
    [The tree-lookup README](../../../Examples/TreeLookup/README.md) gives the form, and its section
    on the verified compiler's module gives the commands.
@@ -229,13 +201,13 @@ a missing lemma, a tactic that misled, or a goal shape that no entry names.  Put
          {arrayOut (_root_.Examples.Name.expected xs)}|2"
    ```
 
-   The sixth field is the number of blocks that stay allocated after the call: 2 for an array
-   program, the host's input and the result, and 0 for a word program, whose line has the form
-   `s!"NAME|compute|i64|i64:{a} i64:{b}|{_root_.Examples.Name.expected (a, b)}|0"`.  Run
-   `tests/verified/run.sh --cases NAME`, and `tests/native/verified.sh --module NAME` where
-   CompCert is installed.  The registry entry gives the module its native coverage: the native
-   driver translates every module of the registry to C, compiles it with CompCert, and runs its
-   cases.
+   The sixth field is the number of blocks that stay allocated after the call: one for each array
+   argument, which the host allocates, and one for an array result.  A program from two words to a
+   word has the line `s!"NAME|compute|i64|i64:{a} i64:{b}|{_root_.Examples.Name.expected (a,
+   b)}|0"`.  Run `tests/verified/run.sh --cases NAME`, and `tests/native/verified.sh --module NAME`
+   where CompCert is installed.  The registry entry gives the module its native coverage: the
+   native driver translates every module of the registry to C, compiles it with CompCert, and runs
+   its cases.
 4. Report the result to the user with the theorem line, the sample counts, and the VKB proposals.
    Commit only when the user's instructions call for it, after [the verified compiler manual's
    full check](../../../docs/verified-manual.md#the-full-check).
