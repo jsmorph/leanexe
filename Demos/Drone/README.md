@@ -26,11 +26,18 @@ the other Lean files of this directory, and they use only `propext`, `Classical.
 | Optimality | The module's bytes decode to a module whose `compute` export returns the words of the Lean function `compute`, or stops at `unreachable`.  For terrain within the bounds, those words have two per station and encode an admitted flight, and no admitted flight from rest at the first station to rest at the last has a smaller (duration, excess) cost.  Empty or invalid terrain gives `#[]`. | `drone_compute` in [the bytes theorems](Verify.lean), from `compute_correct` in [the output proofs](Correct.lean) |
 | Flight safety | For terrain within the bounds, the point-mass trajectory that the words define departs and arrives on the ground at rest, keeps above the clearance corridor at every time, and keeps the speed and acceleration limits, with one-sided bounds at the joins of segments. | `drone_safe` in [the bytes theorems](Verify.lean), from `compute_safe` in [the whole-flight proofs](WholeFlight.lean) |
 | Complete execution and memory | Called with any terrain that an allocator with no free block has placed below address 8192, under a memory cap of at least 70 pages, the export returns the words of `compute` without stopping at `unreachable` and ends with at most 70 pages (4.375 MiB) of linear memory. | `drone_compute_total` in [the total-execution theorems](Total.lean) |
+| Complete execution of the verified module | Called from a ready store of the verified compiler's module with a terrain borrowed below address 8192, under a memory cap of at least 35 pages, the export `compute`, entry 18, returns without a trap a new array that holds the words of `compute`.  The terrain stays borrowed, and `top` rises by at most 2,251,064 bytes.  The module's bytes decode to the module, and the store in which it starts is ready under every memory cap of at most 65,535 pages. | `drone_compute_call` in [the verified call theorem](VerifiedCall.lean), from `drone_trapFree` and `compute_bound` in [the verified module](Verified.lean) |
 
 Every theorem concerns the bytes, through the round trip of the encoder.  The safety theorem
 concerns the ideal point-mass model of [the drone verification
 report](https://github.com/jsmorph/leanexe-papers/blob/main/paper/drone-verification-report/README.md).  The allocator state of the total theorem
-is a hypothesis, which no theorem connects to the module's instantiation.
+is a hypothesis, which no theorem connects to the module's instantiation.  `drone_compute_call`
+states that the store in which the verified module starts is ready, and the host's placement of
+the terrain below address 8192 remains a premise.  Its 35 pages hold the 8192 bytes below that
+address and the 2,251,064 bytes of `compute_bound`.  It states no final page count, because no theorem of the
+verified compiler bounds the pages to which memory grows, as [the journal
+entry](../../devnotes.md#2026-10-30-the-verified-total-theorems-of-the-euler-solvers-and-the-drone-planner)
+explains.
 
 ## Building, running, and testing
 

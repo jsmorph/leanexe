@@ -1,8 +1,10 @@
 import Demos.Gpt.Verified
 import Demos.Gpt32.VerifiedHost
 import Demos.Euler.Verified
+import Demos.Euler.VerifiedCall
 import Demos.Clob.Verified
 import Demos.Drone.Verified
+import Demos.Drone.VerifiedCall
 import Demos.RunningSum.Correct
 import Demos.RunningSumFp.Correct
 import Demos.Slew.Bound

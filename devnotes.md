@@ -39278,7 +39278,7 @@ An audit of the day's open checkboxes ticked six: five whose work is done, and t
 - [x] The removal map and the ten decisions.
 - [x] The verified `gpt.wasm` file theorems, the second deferred item.
 - [ ] The thirteen example ports.
-- [ ] The verified total theorems of the Euler solvers and the drone planner.
+- [x] The verified total theorems of the Euler solvers and the drone planner.
 - [ ] `Generation.lean`, `module_side`, and `increment_total`.
 - [ ] The browser pages, the GPU drivers, and the test defaults on the verified modules.
 - [ ] `tools/demo-check` on the verified compiler.
@@ -39382,3 +39382,76 @@ The checks ran on AArch64, with Wasmtime 44.0.0 and CompCert 3.18.  The first bu
 - [x] The `Flat` instances of `Bools` and `Grids` in a module that both compilers' theorems import.
 - [x] The README sections, the index rows, and the counts of the documents.
 - [ ] Decide whether `Calc` gets a reflector rule for structure patterns that fix a field, or whether the example is deleted.
+
+## 2026-10-30: The verified total theorems of the Euler solvers and the drone planner
+
+The retirement of the LeanExe compiler would delete `euler_solve_total` and `drone_compute_total`, so the verified modules of both programs now have call theorems in their place: `euler_solve_call` in [the Euler call theorems](Demos/Euler/VerifiedCall.lean) and `drone_compute_call` in [the drone call theorem](Demos/Drone/VerifiedCall.lean).  They follow the decision of [the retirement plan](#2026-10-30-the-plan-for-retiring-the-leanexe-compiler): each holds of the store in which its module starts, as the generated `p.initial` states it, with the memory cap as a premise in pages, the Euler bounds have closed forms, and the final page count stays only if a short lemma relates memory growth to `top`.  No lemma of that length exists, so neither theorem states a final page count.  The compiler, the runtime, the Lean functions, and the LeanExe theorems are unchanged.  The new theorems close the first deferred item of [the entry on the verified compilations of LeanExe programs](#2026-10-30-verified-compilations-of-leanexe-examples-and-library-programs).
+
+The generated bound of `solve` follows the run.  `compiled.runFrom.bound_eq` charges the block of the initial grid and a `loopCost` over the timesteps, whose pass charges `compiled.advanceStep.bound`, itself a `loopCost` over the tries of `advanceWith`.  Each try with a valid timestep charges the block of the x sweep and, when that sweep is accepted, the block of the y sweep, and `compiled.pack.bound_eq` charges the block of the result.  The number of tries depends on the floating-point values of the run, and only the fuels of the two loops, `2 ^ 32` and 2048, bound it without running the solver.  A closed form that depends on the input only through the quantities that determine the allocation therefore takes the try count as one of them.
+
+`tries n` and `stepTries` count the tries with the same `loopCost`, condition, and step as the generated bound and a charge of one for each pass.  `loopCost_le_mul` compares a loop with zero condition charges against `m` times a second loop with the same condition and step, under an invariant of the step, by induction on the fuel.  The invariant is the size of the grid in the loop's state, which `sweep_size`, `attempt_size`, `advanceStep_size`, and `runFrom_size` of [the solver's specification lemmas](Demos/Euler/Spec.lean) keep, with their counterparts for the reconstructed solver in [its specification lemmas](Demos/Euler/ReconstructedSpec.lean).  `solve_bound` states `compiled.solve.bound n ≤ solveBytes n`, with `solveBytes n = (48 c + 56) (1 + 2 t) + 16 c + 88` for `c = cells n` and `t = tries n`.  `48 c + 56` is `Verified.blockCost (6 c)`, the block of a grid with its header, and `16 c + 88` that of the packed result.  `reconstructedSolve_bound` has the same form with `reconstructedTries n trials`, whose inner loop is that of `reconstructedAdvanceWith`.  The closed form charges two sweeps for every try, so it exceeds the bound by the y sweeps that rejected x sweeps skip and by the sweeps of tries whose timestep or ratio fails its check.
+
+`if_pos` and `if_neg` are deprecated in this toolchain in favor of `ite_eq_left` and `ite_eq_right`, and the module uses the new names.  The comparison of the two loops goes through `refine` with named holes, as `Demos.Drone.Verified.compute_bound` does, so that Lean takes the generated condition and step from the goal before it elaborates the proofs about them.  The two definitions of each loop's condition differ, since the generated one matches on the tuple and the count projects from it, and `rintro ⟨_, _, _⟩; rfl` proves them equal.
+
+`euler_solve_call` states that the module's bytes decode to the module, whose exports `solve` and `reconstructedSolve` are entries 23 and 56.  From `{ compiled.module.initialStore with memoryCaps := [cap] }`, with `solvePages n ≤ cap ≤ 65535`, entry 23 returns without a trap the address of a new array that holds `solve n` and leaves a ready store whose `top` is at most `4096 + solveBytes n`.  Entry 56 does the same for `reconstructedSolve n trials` with `reconstructedSolvePages n trials`.  `solvePages n` is `(4096 + solveBytes n + 65535) / 65536`, the pages that hold the heap base and the closed form.  `solve_callSpec` and `reconstructedSolve_callSpec` are the `Verified.CallSpec` instances with the closed forms, from every ready store with room, and `ready_initial` states that the store in which the module starts, with any cap of at most 65,535 pages, is ready.
+
+`drone_compute_call` states that the module's bytes decode to the module, that its export `compute` is entry 18, and that the store in which it starts is ready under every cap of at most 65,535 pages.  From a ready store with the terrain borrowed at `ptr`, `top` at most 8192, and a cap of at least 35 pages, entry 18 returns without a trap the address of a new array that holds `compute terrain`, keeps the terrain borrowed, and raises `top` by at most 2,251,064 bytes.  The 35 pages hold 8192 bytes and the constant of `compute_bound`, where 34 do not.  The terrain is an argument that the store in which the module starts does not hold, so the call theorem starts from a ready store, as `sha256_module` does, and states the readiness of the initial store beside it.
+
+| `euler_solve_total` | `euler_solve_call` | Disposition |
+|---|---|---|
+| `encode euler.module = .ok bytes` and `decode bytes = .ok m` for some `m` | `encode compiled.module = .ok bytes` and `decode bytes = .ok compiled.module` | Carries over, with the decoded module named |
+| Store with `heap.At`, no free block, `top` at 4096, and 16 pages | Store in which the module starts | Changes form: the initial store of `p.initial` replaces the premises of a fresh allocator |
+| `1407 ≤ store.memoryCap m 0 ≤ 65535` | `solvePages n ≤ cap ≤ 65535`, with the cap set to `cap` | Changes form: the cap depends on the cells and the tries |
+| `Runs false env m 23 store [.i64 n]` and entry 56 with `[.i64 trials, .i64 n]` | Same entries and arguments | Carries over |
+| `heap'.At final` | `Verified.Ready compiled.module compiled.tables heap' final` | Carries over, inside readiness |
+| `Represent.owned heap' final values.reverse (solve n)` | `values = [.i64 optr]` and `heap'.Owned final optr (solve n)` | Carries over, unfolded |
+| `final.mem.pages ≤ 1407` | None | Dropped |
+| None | Exports `solve` and `reconstructedSolve` at entries 23 and 56 | Added |
+| None | `heap'.top.toNat ≤ 4096 + solveBytes n` | Added |
+
+| `drone_compute_total` | `drone_compute_call` | Disposition |
+|---|---|---|
+| `encode drone.module = .ok bytes` and `decode bytes = .ok m` for some `m` | `encode compiled.module = .ok bytes` and `decode bytes = .ok compiled.module` | Carries over, with the decoded module named |
+| None | Export `compute` at entry 18, and readiness of the store in which the module starts | Added |
+| `heap.At store`, `heap.free = []`, and `store.mem.pages ≤ 70` | `Verified.Ready compiled.module compiled.tables heap store` | Changes form: readiness replaces the invariant, and the premises on the free list and the pages are dropped |
+| `heap.Borrowed store ptr terrain` and `heap.top.toNat ≤ 8192` | Same premises | Carries over |
+| `70 ≤ store.memoryCap m 0 ≤ 65535` | `35 ≤ store.memoryCap compiled.module 0`, with the upper limit inside readiness | Changes form |
+| `Runs false env m 16 store [.i64 ptr]` | `Runs false env compiled.module 18 store [.i64 ptr]` | Changes form: the verified module's entry |
+| `heap'.At final` and `Represent.owned heap' final values.reverse (compute terrain)` | Readiness, `values = [.i64 optr]`, and `heap'.Owned final optr (compute terrain)` | Carries over |
+| `final.mem.pages ≤ 70` | None | Dropped |
+| None | `heap'.Borrowed final ptr terrain` and `heap'.top.toNat ≤ heap.top.toNat + 2251064` | Added |
+
+The LeanExe theorems hold under 1,407 and 70 pages for every input, because the per-program proofs of that compiler track `Heap.Bounded`, a budget of blocks that the run reuses.  The generated bound charges every block that a run allocates, so the cap of `euler_solve_call` grows with the tries, and where `solvePages n` exceeds 65,535 pages its premise cannot hold.  The table gives the closed forms on small grids, evaluated with `#eval` of `tries` and `reconstructedTries` with 8 trials, which run the Lean functions rather than the reflected program.  On the 800 grid, `solveBytes n` fits in 65,535 pages only for runs of at most 69 tries.  The new theorems use neither `Heap.Budget` nor `Heap.Bounded`, so by the plan's decision `LeanExe/Pipeline/Budget.lean` goes with the IR.
+
+| Grid | Cells | Tries | `solveBytes n` | `solvePages n` | Reconstructed tries | `reconstructedSolvePages n 8` |
+|---|---|---|---|---|---|---|
+| 2 × 2 | 4 | 7 | 3,872 | 1 | 7 | 1 |
+| 3 × 3 | 9 | 11 | 11,456 | 1 | 12 | 1 |
+| 4 × 4 | 16 | 16 | 27,536 | 1 | 16 | 1 |
+| 7 × 7 | 49 | 28 | 138,128 | 3 | 30 | 3 |
+| 16 × 16 | 256 | 68 | 1,695,312 | 26 | 68 | 26 |
+| 32 × 32 | 1,024 | 136 | 13,450,256 | 206 | 135 | 204 |
+
+The runtime's `alloc` grows memory before it moves `top`.  `LeanExe.ProofKit.FixedArrayBump.prefixProgram` computes the required pages `(top + 48 + need - 1) / 65536 + 1`, `LeanExe.ProofKit.MemoryGrowth.ensureProgram` grows memory to the larger of the current pages and that count, as `MemoryGrowth.ensured_pages` states, and `FixedArrayBump.installProgram` then writes the new `top` to global 0.  A search of `Verified/Compile.lean` and `LeanExe/Runtime/` finds `memory.grow` only in the growth program of `alloc`, so a call of these modules ends with at most the larger of its initial pages and the pages that hold the final `top`.  Neither `Heap.At` nor a conclusion of `ImplementsA` states that relation: `Heap.At` gives `top ≤ 65536 * pages` and `pages ≤ 65535`, a lower bound on the pages.  Between the growth and the write of `top` the relation fails, so no lemma about single instructions carries it.  A proof needs a conjunct in the invariant that the compiler's universal theorem carries through every construct, which changes the compiler's proofs, or an induction over Talos's `run` for the compiled module, and neither is a short lemma.  The theorems therefore drop the final page count and state the bound on `top` that `Verified.CallSpec` gives.
+
+`ready_initial` of the Euler module first rebuilt the table conjunct of readiness from that of `Verified.Ready.initial rfl compiled.initial` and failed with "maximum recursion depth has been reached", with and without the type of the readiness stated.  The module has no tables, and `absurd hk (Nat.not_lt_zero k)` closes the conjunct.  The drone module accepted the rebuild, and its `ready_initial` uses the same proof as the Euler module's.
+
+The gate built the working tree that the commits record, and only the journal changed after it.
+
+| Job | Purpose | Duration | Result |
+|---|---|---|---|
+| `lake build` of `Verified.Call`, the verified Euler and drone modules, both LeanExe total modules, and the cost lemmas | Imports of the new modules | 3 s, from 17:22 UTC | 3,972 jobs, every one built before the change |
+| `lake env lean` of the generated bound equations, `compiled.initial`, and `compiled.tables` | Shapes of the goals | 2 s, from 17:23 UTC | Printed |
+| `lake env lean` of the Euler call module, five times | First checks | 3 to 12 s each, from 17:33 UTC | Errors at `cells_le`, then at the table conjunct of `ready_initial` twice, then passed |
+| `lake env lean` of the drone call module, three times | First checks | 4 to 16 s each, from 17:36 UTC | Passed |
+| `#eval` of the exports and the initial store's pages and caps | Export indices and the start store | 6 s, from 17:35 UTC | `solve` at 23, `reconstructedSolve` at 56, `compute` at 18, 16 pages, cap 65,535 |
+| `lake build Demos.Verified`, three times | New modules in the aggregate | 17 s each, from 17:39, 17:56, and 17:57 UTC | 4,422 jobs, no warning in the new modules |
+| `#eval` of `tries` and `reconstructedTries` | Closed forms of the table | 12 min, from 17:44 UTC, for the grids of the table | Values of the table |
+| `#print axioms` of every new theorem | Axiom report | 3 s, from 17:58 UTC | `propext`, `Classical.choice`, and `Quot.sound` at most |
+| `lake build LeanExe Examples Demos Verified Library TestSupport native-verified native-bare verified-cases native-module-cases` | Gate | 134 s, from 17:58 UTC | 15,356 jobs, no error, no warning in the new modules |
+| `node tools/check-doc-links.mjs` on a copy of the changed documents | Links and reachability | Under 1 s, at 18:00 UTC | No problem reported, and every document is reachable from the README |
+
+- [x] Closed forms of the Euler bounds, `solve_bound` and `reconstructedSolve_bound`, in the cell and try counts.
+- [x] `euler_solve_call` and `drone_compute_call`, with the comparison of their conjuncts with the LeanExe theorems.
+- [x] The decision on the final page count: dropped, for the reason above.
+- [x] The Euler and drone guides, the README's properties table, and the index.
