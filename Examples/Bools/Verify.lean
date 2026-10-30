@@ -1,4 +1,5 @@
 import Examples.Bools.Module
+import Examples.Bools.Flat
 import LeanExe.IR.Correct
 import LeanExe.IR.Run
 import LeanExe.IR.Loop
@@ -22,8 +23,6 @@ def floatSameTuple : Float × Float → Bool := fun (x, y) => floatSame x y
 def inRangeTuple : Float × Float × Float → Bool := fun (lo, hi, x) => inRange lo hi x
 def pickTuple : Bool × UInt64 × UInt64 → UInt64 := fun (a, x, y) => pick a x y
 def anyEqualTuple : UInt64 × UInt64 → Bool := fun (n, k) => anyEqual n k
-
-instance : Flat Flagged (Bool × UInt64) := ⟨fun f => (f.flag, f.value)⟩
 
 /-- The goal of a compiled function whose body is `skip`, reduced to its results. -/
 macro "skip_body" : tactic =>

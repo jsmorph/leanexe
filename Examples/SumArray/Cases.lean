@@ -8,8 +8,11 @@ namespace Examples.SumArray
 
 open TestSupport.Host
 
+/-- The inputs of the cases, which the verified compiler's cases also use. -/
+def samples : List (List UInt64) := wordArrays
+
 def sumArrayCases : IO Unit := do
-  for xs in wordArrays do
+  for xs in samples do
     line "sumArray" "sumArray" "i64" [arrU xs] (toString (Library.Numerics.Reductions.Word.sumArray xs.toArray))
     line "folds" "productArray" "i64" [arrU xs]
       (toString (Library.Numerics.Reductions.Word.productArray xs.toArray))

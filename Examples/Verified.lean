@@ -5,3 +5,15 @@ import Examples.Binary32.Compiled
 import Examples.Lookup.Compiled
 import Examples.TreeLookup.Compiled
 import Examples.RunningMax.Compiled
+import Examples.Scale.Compiled
+import Examples.SumArray.Compiled
+import Examples.SumCount.Compiled
+import Examples.PairSum.Compiled
+import Examples.ScaledHypot.Compiled
+import Examples.Piecewise.Compiled
+import Examples.Axpy.Compiled
+import Examples.Bucket.Compiled
+import Examples.Bools.Compiled
+import Examples.Lists.Compiled
+import Examples.Updates.Compiled
+import Examples.Grids.Compiled

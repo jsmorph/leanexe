@@ -8,15 +8,35 @@ namespace Examples.Bools
 
 open TestSupport.Host
 
+/-- The words of the cases of `isPositive` and `mark`, and of both arguments of `same` and
+`differ`, which the verified compiler's cases also use. -/
+def wordArgs : List UInt64 := [0, 1, 2, 3, 7, maxU - 1, maxU]
+
+/-- The words of the cases of `flagOf` and the first word of those of `pick`. -/
+def flagArgs : List UInt64 := [0, 5, maxU]
+
+/-- The second word of the cases of `pick`. -/
+def pickArgs : List UInt64 := [0, 9, maxU]
+
+/-- The floats of the cases of `floatSame` and `inRange`. -/
+def floatArgs : List Float := specialFloats ++ [1.5, -2.25, 3.0]
+
+/-- The bounds `(lo, hi)` of the cases of `inRange`. -/
+def rangeArgs : List (Float × Float) :=
+  [-1.0, 0.0, nan].flatMap fun lo => [1.0, -0.0, inf].map fun hi => (lo, hi)
+
+/-- The arguments `(n, k)` of the cases of `anyEqual`. -/
+def anyEqualArgs : List (UInt64 × UInt64) :=
+  [0, 1, 3, 10].flatMap fun n => [0, 2, 9, maxU].map fun k => (n, k)
+
 def boolsCases : IO Unit := do
   let b (x : Bool) : String := s!"i64:{if x then 1 else 0}"
   let r (x : Bool) : String := toString (if x then 1 else 0)
-  let ws : List UInt64 := [0, 1, 2, 3, 7, maxU - 1, maxU]
   let bs := [false, true]
-  for x in ws do
+  for x in wordArgs do
     line "bools" "isPositive" "i64" [u x] (r (isPositive x))
     line "bools" "mark" "list:i64,i64" [u x] s!"{r (mark x).flag},{(mark x).value}"
-    for y in ws do
+    for y in wordArgs do
       line "bools" "same" "i64" [u x, u y] (r (same x y))
       line "bools" "differ" "i64" [u x, u y] (r (differ x y))
   for a in bs do
@@ -25,21 +45,18 @@ def boolsCases : IO Unit := do
       line "bools" "both" "i64" [b a, b c] (r (both a c))
       line "bools" "either" "i64" [b a, b c] (r (either a c))
       line "bools" "agree" "i64" [b a, b c] (r (agree a c))
-    for x in [0, 5, maxU] do
+    for x in flagArgs do
       line "bools" "flagOf" "i64" [b a, u x] (r (flagOf ⟨a, x⟩))
-      for y in [0, 9, maxU] do
+      for y in pickArgs do
         line "bools" "pick" "i64" [b a, u x, u y] (toString (pick a x y))
-  let fs := specialFloats ++ [1.5, -2.25, 3.0]
-  for x in fs do
-    for y in fs do
+  for x in floatArgs do
+    for y in floatArgs do
       line "bools" "floatSame" "i64" [fl x, fl y] (r (floatSame x y))
-  for lo in [-1.0, 0.0, nan] do
-    for hi in [1.0, -0.0, inf] do
-      for x in fs do
-        line "bools" "inRange" "i64" [fl lo, fl hi, fl x] (r (inRange lo hi x))
-  for n in [0, 1, 3, 10] do
-    for k in [0, 2, 9, maxU] do
-      line "bools" "anyEqual" "i64" [u n, u k] (r (anyEqual n k))
+  for (lo, hi) in rangeArgs do
+    for x in floatArgs do
+      line "bools" "inRange" "i64" [fl lo, fl hi, fl x] (r (inRange lo hi x))
+  for (n, k) in anyEqualArgs do
+    line "bools" "anyEqual" "i64" [u n, u k] (r (anyEqual n k))
 
 def cases : IO Unit := do
   boolsCases

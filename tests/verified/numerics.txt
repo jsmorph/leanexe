@@ -113,3 +113,16 @@ treecore:Verified.Examples.TreeCore:Verified/Examples/TreeCoreFile.lean
 composition:Verified.Examples.Composition:Verified/Examples/CompositionFile.lean
 relocation:Verified.Examples.Relocation:Verified/Examples/RelocationFile.lean
 tuples:Verified.Examples.Tuples:Verified/Examples/TuplesFile.lean
+scale:Examples.Scale.Compiled:Examples/Scale/File.lean
+sumArray:Examples.SumArray.Compiled:Examples/SumArray/FileSum.lean
+folds:Examples.SumArray.Compiled:Examples/SumArray/FileFolds.lean
+sumCount:Examples.SumCount.Compiled:Examples/SumCount/File.lean
+pairSum:Examples.PairSum.Compiled:Examples/PairSum/File.lean
+scaledHypot:Examples.ScaledHypot.Compiled:Examples/ScaledHypot/File.lean
+piecewise:Examples.Piecewise.Compiled:Examples/Piecewise/File.lean
+axpy:Examples.Axpy.Compiled:Examples/Axpy/File.lean
+bucket:Examples.Bucket.Compiled:Examples/Bucket/File.lean
+bools:Examples.Bools.Compiled:Examples/Bools/File.lean
+exampleLists:Examples.Lists.Compiled:Examples/Lists/File.lean
+exampleUpdates:Examples.Updates.Compiled:Examples/Updates/File.lean
+exampleGrids:Examples.Grids.Compiled:Examples/Grids/File.lean

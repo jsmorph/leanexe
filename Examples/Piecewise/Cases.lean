@@ -8,11 +8,14 @@ namespace Examples.Piecewise
 
 open TestSupport.Host
 
+/-- The inputs of the cases, which the verified compiler's cases also use. -/
+def samples : List (Float × Float × Float) :=
+  [(1.0, 1.0, 2.0), (0.0, -0.0, 1.0), (0.5, 1.0, 2.0), (3.0, 1.0, 2.0), (2.0, 1.0, 2.0),
+    (1.5, 1.0, 2.0), (1.5, 2.0, 1.0), (nan, 1.0, 2.0), (1.0, nan, 2.0), (1.5, 1.0, nan)] ++
+    floatTriples
+
 def piecewiseCases : IO Unit := do
-  let chosen : List (Float × Float × Float) :=
-    [(1.0, 1.0, 2.0), (0.0, -0.0, 1.0), (0.5, 1.0, 2.0), (3.0, 1.0, 2.0), (2.0, 1.0, 2.0),
-     (1.5, 1.0, 2.0), (1.5, 2.0, 1.0), (nan, 1.0, 2.0), (1.0, nan, 2.0), (1.5, 1.0, nan)]
-  for (x, lo, hi) in chosen ++ floatTriples do
+  for (x, lo, hi) in samples do
     line "piecewise" "piecewise" "f64" [fl x, fl lo, fl hi]
       (toString (Examples.Piecewise.piecewise x lo hi).toBits)
 

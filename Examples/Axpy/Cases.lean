@@ -8,8 +8,11 @@ namespace Examples.Axpy
 
 open TestSupport.Host
 
+/-- The inputs of the cases, which the verified compiler's cases also use. -/
+def samples : List (Float × Float × Float) := floatTriples
+
 def axpyCases : IO Unit := do
-  for (a, x, y) in floatTriples do
+  for (a, x, y) in samples do
     line "axpy" "axpy" "f64" [fl a, fl x, fl y] (toString (Examples.Axpy.axpy a x y).toBits)
 
 def cases : IO Unit := do

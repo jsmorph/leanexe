@@ -1,4 +1,5 @@
 import Examples.Grids.Module
+import Examples.Grids.Flat
 import LeanExe.IR.Correct
 import LeanExe.IR.Run
 import LeanExe.IR.RecordRead
@@ -13,13 +14,6 @@ the compiled code reads, and `Stmt.buildRecords_spec` gives the array a record b
 namespace Examples.Grids
 
 open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Grids
-
-instance : Flat Phase UInt64 := ⟨fun | .solid => 0 | .liquid => 1 | .gas => 2⟩
-instance : Flat Conserved (Float × Float × Float × Float) :=
-  ⟨fun s => (s.density, s.mx, s.my, s.energy)⟩
-instance : Flat Cell (UInt64 × Conserved × Float × UInt64 × Bool × Phase) :=
-  ⟨fun c => (c.index, c.state, c.pressure, c.status, c.ok, c.phase)⟩
-instance : Flat Mass Float := ⟨Mass.value⟩
 
 def densityTuple : Array Cell × UInt64 → Float := fun (g, i) => density g i
 def pressureTuple : Array Cell × UInt64 → Float := fun (g, i) => pressure g i

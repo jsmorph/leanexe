@@ -75,6 +75,18 @@ import Examples.TreeLookup.Spec
 import Examples.Lookup.Spec
 import Examples.RunningMax.Spec
 import Examples.RunningMax.Samples
+import Examples.Axpy.Cases
+import Examples.Bools.Cases
+import Examples.Bucket.Cases
+import Examples.Grids.Cases
+import Examples.Lists.Cases
+import Examples.PairSum.Cases
+import Examples.Piecewise.Cases
+import Examples.Scale.Cases
+import Examples.ScaledHypot.Cases
+import Examples.SumArray.Cases
+import Examples.SumCount.Cases
+import Examples.Updates.Cases
 import Verified.Examples.Forms
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
@@ -542,6 +554,119 @@ def portCases : IO Unit := do
   for xs in _root_.Examples.RunningMax.samples do
     IO.println s!"runningMax|compute|array-u64|{arrayArg xs}|\
       {arrayOut (_root_.Examples.RunningMax.expected xs)}|2"
+  for (a, x, y) in _root_.Examples.Axpy.samples do
+    IO.println s!"axpy|axpy|f64|{floatArg a} {floatArg x} {floatArg y}|\
+      {(_root_.Examples.Axpy.axpy a x y).toBits}|0|0"
+  for (x, lo, width) in _root_.Examples.Bucket.samples do
+    IO.println s!"bucket|bucket|i64|{floatArg x} {floatArg lo} {floatArg width}|\
+      {_root_.Examples.Bucket.bucket x lo width}|0|0"
+  for (a, b, c) in _root_.Examples.Scale.samples do
+    IO.println s!"scale|scale|i64|i64:{a} i64:{b} i64:{c}|{_root_.Examples.Scale.scale a b c}|0|0"
+  for (x, y, s) in _root_.Examples.ScaledHypot.samples do
+    IO.println s!"scaledHypot|scaledHypot|f64|{floatArg x} {floatArg y} {floatArg s}|\
+      {(_root_.Examples.ScaledHypot.scaledHypot x y s).toBits}|0|0"
+  for (x, lo, hi) in _root_.Examples.Piecewise.samples do
+    IO.println s!"piecewise|piecewise|f64|{floatArg x} {floatArg lo} {floatArg hi}|\
+      {(_root_.Examples.Piecewise.piecewise x lo hi).toBits}|0|0"
+  for (a, b) in _root_.Examples.PairSum.samples do
+    IO.println s!"pairSum|pairSum|i64|i64:{a} i64:{b}|{_root_.Examples.PairSum.pairSum a b}|0|3"
+  for xs in _root_.Examples.SumArray.samples do
+    let a := arrayArg xs.toArray
+    IO.println s!"sumArray|sumArray|i64|{a}|\
+      {_root_.Library.Numerics.Reductions.Word.sumArray xs.toArray}|1|1"
+    IO.println s!"folds|productArray|i64|{a}|\
+      {_root_.Library.Numerics.Reductions.Word.productArray xs.toArray}|1|1"
+    IO.println s!"folds|xorArray|i64|{a}|\
+      {_root_.Library.Numerics.Reductions.Word.xorArray xs.toArray}|1|1"
+  for xs in _root_.Examples.SumCount.samples do
+    IO.println s!"sumCount|sumCount|array-u64|{arrayArg xs.toArray}|\
+      {arrayOut (_root_.Examples.SumCount.sumCount xs.toArray)}|2|4"
+  for x in _root_.Examples.Bools.wordArgs do
+    let m := _root_.Examples.Bools.mark x
+    IO.println s!"bools|isPositive|i64|i64:{x}|{bit (_root_.Examples.Bools.isPositive x)}|0|0"
+    IO.println s!"bools|mark|list:i64,i64|i64:{x}|{bit m.flag} {m.value}|0|0"
+    for y in _root_.Examples.Bools.wordArgs do
+      IO.println s!"bools|same|i64|i64:{x} i64:{y}|{bit (_root_.Examples.Bools.same x y)}|0|0"
+      IO.println s!"bools|differ|i64|i64:{x} i64:{y}|{bit (_root_.Examples.Bools.differ x y)}|0|0"
+  for a in [false, true] do
+    IO.println s!"bools|negate|i64|{boolArg a}|{bit (_root_.Examples.Bools.negate a)}|0|0"
+    for c in [false, true] do
+      let args := s!"{boolArg a} {boolArg c}"
+      IO.println s!"bools|both|i64|{args}|{bit (_root_.Examples.Bools.both a c)}|0|0"
+      IO.println s!"bools|either|i64|{args}|{bit (_root_.Examples.Bools.either a c)}|0|0"
+      IO.println s!"bools|agree|i64|{args}|{bit (_root_.Examples.Bools.agree a c)}|0|0"
+    for x in _root_.Examples.Bools.flagArgs do
+      IO.println s!"bools|flagOf|i64|{boolArg a} i64:{x}|\
+        {bit (_root_.Examples.Bools.flagOf ⟨a, x⟩)}|0|0"
+      for y in _root_.Examples.Bools.pickArgs do
+        IO.println s!"bools|pick|i64|{boolArg a} i64:{x} i64:{y}|\
+          {_root_.Examples.Bools.pick a x y}|0|0"
+  for x in _root_.Examples.Bools.floatArgs do
+    for y in _root_.Examples.Bools.floatArgs do
+      IO.println s!"bools|floatSame|i64|{floatArg x} {floatArg y}|\
+        {bit (_root_.Examples.Bools.floatSame x y)}|0|0"
+  for (lo, hi) in _root_.Examples.Bools.rangeArgs do
+    for x in _root_.Examples.Bools.floatArgs do
+      IO.println s!"bools|inRange|i64|{floatArg lo} {floatArg hi} {floatArg x}|\
+        {bit (_root_.Examples.Bools.inRange lo hi x)}|0|0"
+  for (n, k) in _root_.Examples.Bools.anyEqualArgs do
+    IO.println s!"bools|anyEqual|i64|i64:{n} i64:{k}|{bit (_root_.Examples.Bools.anyEqual n k)}|0|0"
+  for size in _root_.Examples.Grids.gridSizes do
+    let (grid, flags, masses) := _root_.Examples.Grids.gridArgs size
+    let g := arrayArg (grid.toList.flatMap _root_.Examples.Grids.cellWords).toArray
+    let f := arrayArg (flags.map fun x => if x then 1 else 0)
+    let ms := arrayArg (masses.map (·.value.toBits))
+    IO.println s!"exampleGrids|count|i64|{g}|{_root_.Examples.Grids.count grid}|1|1"
+    IO.println s!"exampleGrids|flagCount|i64|{f}|{_root_.Examples.Grids.flagCount flags}|1|1"
+    for i in _root_.Examples.Grids.indexArgs size do
+      IO.println s!"exampleGrids|density|f64|{g} i64:{i}|\
+        {(_root_.Examples.Grids.density grid i).toBits}|1|1"
+      IO.println s!"exampleGrids|pressure|f64|{g} i64:{i}|\
+        {(_root_.Examples.Grids.pressure grid i).toBits}|1|1"
+      IO.println s!"exampleGrids|indexAt|i64|{g} i64:{i}|{_root_.Examples.Grids.indexAt grid i}|1|1"
+      IO.println s!"exampleGrids|okAt|i64|{g} i64:{i}|{bit (_root_.Examples.Grids.okAt grid i)}|1|1"
+      IO.println s!"exampleGrids|isGas|i64|{g} i64:{i}|{bit (_root_.Examples.Grids.isGas grid i)}|1|1"
+      IO.println s!"exampleGrids|flagAt|i64|{f} i64:{i}|{bit (_root_.Examples.Grids.flagAt flags i)}|1|1"
+      IO.println s!"exampleGrids|massAt|f64|{ms} i64:{i}|\
+        {(_root_.Examples.Grids.massAt masses i).toBits}|1|1"
+      for j in _root_.Examples.Grids.secondIndexArgs do
+        IO.println s!"exampleGrids|energySum|f64|{g} i64:{i} i64:{j}|\
+          {(_root_.Examples.Grids.energySum grid i j).toBits}|1|1"
+    let states := grid.map (·.state)
+    let stateArray (xs : Array _root_.Examples.Grids.Conserved) : Array UInt64 :=
+      (xs.toList.flatMap _root_.Examples.Grids.stateWords).toArray
+    let s := arrayArg (stateArray states)
+    for a in _root_.Examples.Grids.scaleArgs do
+      IO.println s!"exampleGrids|scaled|array-u64|{s} {floatArg a}|\
+        {arrayOut (stateArray (_root_.Examples.Grids.scaled states a))}|2|2"
+    IO.println s!"exampleGrids|totalDensity|f64|{s}|\
+      {(_root_.Examples.Grids.totalDensity states).toBits}|1|1"
+    IO.println s!"exampleGrids|ramp|array-u64|i64:{size}|\
+      {arrayOut (stateArray (_root_.Examples.Grids.ramp size.toUInt64))}|1|1"
+    let built := _root_.Examples.Grids.flags size.toUInt64
+    IO.println s!"exampleGrids|flags|array-u64|i64:{size}|\
+      {arrayOut (built.map fun x => if x then 1 else 0)}|1|1"
+  for xs in _root_.Examples.Lists.listArgs do
+    let n := xs.length
+    IO.println s!"exampleLists|listSum|i64|{TestSupport.Host.chain xs}|\
+      {_root_.Library.Lists.Word.listSum xs}|{n}|{n}"
+  for n in _root_.Examples.Lists.rangeArgs do
+    let r := _root_.Examples.Lists.listRange n
+    IO.println s!"exampleLists|listRange|chain-u64|i64:{n}|{arrayOut r.toArray}|{n}|{n}"
+    IO.println s!"exampleLists|sumRange|i64|i64:{n}|{_root_.Examples.Lists.sumRange n}|0|{n}"
+  for (xs, a) in _root_.Examples.Updates.pushArgs do
+    let x := arrayArg xs.toArray
+    IO.println s!"exampleUpdates|pushTwo|array-u64|{x} i64:{a} i64:{a + 1}|\
+      {arrayOut (_root_.Examples.Updates.pushTwo xs.toArray a (a + 1))}|1|3"
+    let (ys, zs) := _root_.Examples.Updates.pushCopy xs.toArray a
+    IO.println s!"exampleUpdates|pushCopy|list:array-u64,array-u64|{x} i64:{a}|\
+      {arrayOut ys} {arrayOut zs}|2|2"
+  for (xs, i, j, a) in _root_.Examples.Updates.updateArgs do
+    let args := s!"{arrayArg xs.toArray} i64:{i} i64:{j} i64:{a}"
+    IO.println s!"exampleUpdates|setTwice|array-u64|{args}|\
+      {arrayOut (_root_.Examples.Updates.setTwice xs.toArray i j a)}|2|2"
+    IO.println s!"exampleUpdates|insertErase|array-u64|{args}|\
+      {arrayOut (_root_.Examples.Updates.insertErase xs.toArray i j a)}|1|2"
 
 end Verified.Examples
 

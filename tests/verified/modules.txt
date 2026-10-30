@@ -114,3 +114,16 @@ Examples.Lookup.Compiled:Examples.Lookup.compiled.module:lookup
 Examples.TreeLookup.Compiled:Examples.TreeLookup.compiled.module:treeLookup
 Library.Numerics.Arithmetic.PrimeFactors.Compiled:Library.Numerics.Arithmetic.PrimeFactors.compiled.module:primeFactors
 Examples.RunningMax.Compiled:Examples.RunningMax.compiled.module:runningMax
+Examples.Scale.Compiled:Examples.Scale.compiled.module:scale
+Examples.SumArray.Compiled:Examples.SumArray.compiledSum.module:sumArray
+Examples.SumArray.Compiled:Examples.SumArray.compiledFolds.module:folds
+Examples.SumCount.Compiled:Examples.SumCount.compiled.module:sumCount
+Examples.PairSum.Compiled:Examples.PairSum.compiled.module:pairSum
+Examples.ScaledHypot.Compiled:Examples.ScaledHypot.compiled.module:scaledHypot
+Examples.Piecewise.Compiled:Examples.Piecewise.compiled.module:piecewise
+Examples.Axpy.Compiled:Examples.Axpy.compiled.module:axpy
+Examples.Bucket.Compiled:Examples.Bucket.compiled.module:bucket
+Examples.Bools.Compiled:Examples.Bools.compiled.module:bools
+Examples.Lists.Compiled:Examples.Lists.compiled.module:exampleLists
+Examples.Updates.Compiled:Examples.Updates.compiled.module:exampleUpdates
+Examples.Grids.Compiled:Examples.Grids.compiled.module:exampleGrids
