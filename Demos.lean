@@ -87,3 +87,4 @@ import Demos.Slew.Optimal
 import Demos.Slew.Premise
 import Demos.Slew.Program
 import Demos.Slew.Safety
+import Demos.Gpt32.NativeCases

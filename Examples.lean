@@ -83,3 +83,4 @@ import Examples.Words.Cases
 import Examples.Words.Encode
 import Examples.Words.Module
 import Examples.Words.Verify
+import Examples.Binary32.VerifiedGpuCases

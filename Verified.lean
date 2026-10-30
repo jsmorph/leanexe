@@ -155,3 +155,8 @@ import Verified.AlignedEntries
 import Verified.AlignedNative
 import Verified.AlignedProgram
 import LeanExe.Native.Proof.Unique
+import Verified.Examples.ArrayTreesCases
+import Verified.Examples.BufferTreesCases
+import Verified.Examples.WasiCodegen
+import Verified.Examples.WasiProcess
+import Verified.Wasi.ReflectBinderCases

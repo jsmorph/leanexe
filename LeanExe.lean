@@ -359,3 +359,4 @@ import LeanExe.WGSL.Syntax
 import LeanExe.WGSL.Translate
 import LeanExe.WGSL.TranslateStmt
 import LeanExe.Wasi
+import LeanExe.Native

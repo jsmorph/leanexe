@@ -11,3 +11,12 @@ import TestSupport.Numerics.ErfReference
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.GammaReference
 import TestSupport.Numerics.BesselReference
+import TestSupport.Hashing.Packing
+import TestSupport.Native.AlignedCrc
+import TestSupport.Native.ClightGen
+import TestSupport.Native.EulerNative
+import TestSupport.Native.ExamplesNative
+import TestSupport.Native.GcdNative
+import TestSupport.Native.Gpt32Native
+import TestSupport.Native.LiteralsNative
+import TestSupport.Slew.Edges

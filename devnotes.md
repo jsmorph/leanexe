@@ -39120,3 +39120,29 @@ The 19 modules lose 1,268 lines and gain 674, and `tables_at` adds 14 lines to t
 - [x] The unreached modules of `Library` imported by its root.
 - [ ] Decide whether the 46 unreached modules without `main` outside `Library` join their libraries' roots.
 - [ ] Decide whether `Call` gains a form for entries that may trap, for the printer and the parser.
+
+## 2026-10-30: The unreached modules in their roots
+
+The import-graph script of the previous entry matched `tests/` files only below `tests/TestSupport/`, so it skipped `tests/TestSupport.lean` and followed no import of that root.  Ten of the 46 modules it listed outside `Library`, `TestSupport.Modules.Mean` and `SumSquares` and eight modules of `TestSupport.Numerics`, were reached through that root all along.  With the root included, the tree of that entry had 147 unreached modules, 45 of them without `main` and 36 of those outside `Library`.
+
+All 46 modules built by name in one job, 4,165 jobs in 35 seconds, and none failed, so no fix was needed.  None of them prints at elaboration: their commands are `example` and `#guard` checks, and the two modules that write files do so only in functions that executables call.  `Verified.Examples.BufferTreesCases` logs a deprecation warning for `String.mk`, and it now does so in every gate build.  The slowest of them, `Verified.Wasi.ReflectCommandCases`, built in 20 seconds.
+
+Each of the 36 unreached modules now has an import in its library's aggregate.  `Verified.Wasi.ReflectBinderCases` imports the aggregate `Verified.Wasi` itself, so the first gate build reported a cycle, and that module joins `Verified.lean` instead.  `Verified.Wasi.ReflectProgramCases`, which defines a WASI program named `main` and no executable, became reachable through `ReflectCommandCases`.  Six modules of `TestSupport.Native` import verified compilations, so the `TestSupport` root now depends on the `Verified` library, which the gate builds anyway.
+
+| Aggregate | Modules added |
+| --- | --- |
+| `Verified/Wasi.lean` | 15 modules of `Verified.Wasi`, from `CommandBindSpec` to `ReturnCommand` |
+| `Verified.lean` | `Verified.Wasi.ReflectBinderCases` and `Verified.Examples.ArrayTreesCases`, `BufferTreesCases`, `WasiCodegen`, and `WasiProcess` |
+| `tests/TestSupport.lean` | `TestSupport.Hashing.Packing`, `TestSupport.Slew.Edges`, and seven modules of `TestSupport.Native` |
+| `LeanExe.lean` | `LeanExe.Native`, which imports `Clight.Run`, `Clight.RunSound`, `Proof.Export`, and `Proof.Rename` |
+| `Demos.lean` and `Examples.lean` | `Demos.Gpt32.NativeCases` and `Examples.Binary32.VerifiedGpuCases` |
+
+After the change the script lists 101 unreached modules.  Of these, 33 read a file at elaboration, and 68 define `main`, as 36 roots of executables and 32 scripts that the drivers run.  No module was left out on purpose.
+
+| Check | Cases | Result |
+| --- | --- | --- |
+| `lake build LeanExe Examples Demos Verified Library TestSupport` with `native-verified`, `native-bare`, `verified-cases`, and `native-module-cases` | 15,316 jobs | Passed |
+| `VKB/Check.lean` on `VKB/entries` | 22 entries | No problem reported |
+
+- [x] Every non-file module without `main` reached by a root of the gate.
+- [ ] Replace `String.mk` in `Verified/Examples/BufferTreesCases.lean`.
