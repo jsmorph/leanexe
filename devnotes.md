@@ -39281,7 +39281,7 @@ An audit of the day's open checkboxes ticked six: five whose work is done, and t
 - [x] The verified total theorems of the Euler solvers and the drone planner.
 - [x] `Generation.lean`, `module_side`, and `increment_total`.
 - [x] The browser pages, the GPU drivers, and the test defaults on the verified modules.
-- [ ] `tools/demo-check` on the verified compiler.
+- [x] `tools/demo-check` on the verified compiler.
 - [x] The five LTG entries in the VKB.
 - [x] The general sections of the LeanExe manual in the verified manual.
 - [ ] The eleven removal commits.
@@ -39658,6 +39658,26 @@ The agent that wrote the port stopped before its journal entry, its VKB review, 
 | `#print axioms verified_side` | In the build | `propext`, `Classical.choice`, and `Quot.sound` |
 | `VKB/Check.lean` on `VKB/entries` | 6 s, at 23:27 UTC | No problem reported |
 | `node tools/check-doc-links.mjs` on a copy of the tree | Under 1 s, at 23:28 UTC | No problem reported, and every document is reachable from the README |
+
+## 2026-10-30: `tools/demo-check` and the removal
+
+The removal map planned to rewrite `tools/demo-check` for the verified compiler, so that it checks the reviewed hashes, builds `Compiled.lean`, states and checks a call theorem in place of `NAME_bytes`, emits `compiled.module`, and runs the samples.  [`tools/verified-request-check`](tools/verified-request-check) already does each of these for a run of [the verified-request skill](.claude/skills/verified-request/SKILL.md).  It checks `spec.sha256`, builds `Compiled.lean` with the specification and the samples, writes the statement `Verified.CallSpec compiled.module compiled.tables K expected compiled.compute.bound`, and requires `compute_callSpec` to prove it with no axioms beyond `propext`, `Classical.choice`, and `Quot.sound`.  It then proves in the kernel that the export is function `K`, emits `compiled.module`, and runs the samples in Wasmtime and, when CompCert is found, in the translation to C.  `tools/demo-check` is therefore not rewritten, and the removal deletes it with the skill `verified-executable`, which [the plan](#2026-10-30-the-plan-for-retiring-the-leanexe-compiler) already assigns to the removal.
+
+`tools/verified-request-check --spec` and `--freeze` run the modes of the same names of `tools/demo-check`, which print the samples with the specification's outputs and record the hashes of `Spec.lean` and `Samples.lean`.  Neither mode reads a module or depends on the LeanExe compiler, so the commit that deletes `tools/demo-check` first moves both into `tools/verified-request-check`, which keeps one implementation of the first stage.  [The tree-lookup example](Examples/TreeLookup/README.md) is the run of the old skill whose guide gives `tools/demo-check treeLookup` as its check.  Its verified compilation states `treeLookup_call` but no `compute_callSpec`, so `tools/verified-request-check treeLookup` fails at the theorem until the example states `compute_callSpec`, as the increment example does.
+
+| File | Use of `tools/demo-check` | At the removal |
+|---|---|---|
+| `tools/verified-request-check` | `--spec` and `--freeze` run its modes | Takes over both modes |
+| `.claude/skills/verified-executable/SKILL.md` | Every stage of the old skill | Deleted with the skill |
+| `Examples/TreeLookup/README.md` | Command and description of its section on building, running, and testing | Names `tools/verified-request-check treeLookup`, once the example states `compute_callSpec` |
+| `Examples/TreeLookup/review.md` | Record that `--freeze` wrote the hashes | Unchanged, as the record of the run |
+| `tools/README.md` | Description of the specification checker | Paragraph removed |
+| `docs/verified-manual.md` | `--spec` and `--freeze` of the acceptance tool, described as its modes | Describes both modes directly |
+| `docs/design.md` | `Files` row of the path from a request to an executable | Row removed, since the row of the verified-request skill covers the path |
+| `AGENTS.md` | Driver list of `Approval Boundaries` | Entry removed |
+| `docs/leanexe-manual.md` | Description of the tool | Deleted with the manual |
+
+`tools/verified-request-check runningMax` ran on the tree of the commit before this entry, at 23:29 UTC, with CompCert 3.18.  In 20 seconds it printed the theorem line with the three permitted axioms, the module of 1,956 bytes, and 21 of 21 samples passed in Wasmtime and in the translation to C.  `tools/verified-request-check treeLookup` failed at the theorem with ``Unknown identifier `Examples.TreeLookup.compute_callSpec` `` after 11 seconds.  The plan's box for `tools/demo-check` is ticked, since this entry records the decision to delete it.
 
 ## 2026-10-30: The browser pages, the GPU drivers, and the test defaults on the verified modules
 
