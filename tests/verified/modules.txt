@@ -101,3 +101,6 @@ Library.Hashing.Sha3.Compiled:Library.Hashing.Sha3.compiled.module:sha3
 Library.Hashing.Crc.Compiled:Library.Hashing.Crc.compiled.module:crc
 Library.Hashing.SipHash.Compiled:Library.Hashing.SipHash.compiled.module:siphash
 Library.Hashing.XxHash64.Compiled:Library.Hashing.XxHash64.compiled.module:xxhash64
+Examples.Increment.Compiled:Examples.Increment.compiled.module:increment
+Examples.Below100.Compiled:Examples.Below100.compiled.module:below100
+Examples.RemoveZero.Compiled:Examples.RemoveZero.compiled.module:removeZero

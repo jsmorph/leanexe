@@ -1,5 +1,5 @@
 import Examples.Increment.Module
-import Examples.Increment.Spec
+import Examples.Increment.Proof
 import LeanExe.IR.Build
 import LeanExe.IR.Correct
 import LeanExe.IR.Combinators
@@ -13,25 +13,6 @@ whose `top` leaves room for one block of 72 bytes, the call returns without a tr
 namespace Examples.Increment
 
 open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.Increment
-
-/-- The program computes the specification on every input that memory can hold. -/
-theorem compute_eq (xs : Array UInt64) (h : xs.size < 2 ^ 64) : compute xs = expected xs := by
-  have hn : xs.size.toUInt64.toNat = xs.size := by
-    simp only [Nat.toUInt64, UInt64.toNat_ofNat']; omega
-  unfold compute expected
-  by_cases hs : xs.size ≤ 8
-  · have hle : xs.size.toUInt64 ≤ 8 := by rw [UInt64.le_iff_toNat_le, hn]; simpa using hs
-    simp only [hle, ite_true, hs]
-    apply Array.ext
-    · rw [build_size, hn, Array.size_map]
-    · intro i hi _
-      rw [build_size, hn] at hi
-      rw [Array.getElem_map, ← getElem!_pos (LeanExe.build _ _) i (by rw [build_size, hn]; exact hi),
-        build_get (by rw [hn]; exact hi), UInt64.toNat_ofNat_of_lt' (Nat.lt_trans hi h),
-        getElem!_pos xs i hi]
-  · have hle : ¬ xs.size.toUInt64 ≤ 8 := by rw [UInt64.le_iff_toNat_le, hn]; simpa using hs
-    simp only [hle, ite_false, hs]
-    rfl
 
 /-- Under `a = false`, the heap has room for one block of 72 bytes, enough for nine words. -/
 theorem compute_implementsA {a : Bool} (pages : Nat) :

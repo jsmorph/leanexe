@@ -8,10 +8,14 @@ namespace Examples.Increment
 
 open TestSupport.Host
 
-def cases : IO Unit := do
+/-- The inputs of the cases, which the verified compiler's cases also use. -/
+def samples : List (List UInt64) :=
   let max : UInt64 := 18446744073709551615
-  for xs in [[], [5], [0, 41, max], [1, 2, 3, 4, 5, 6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9],
-      [max, max, max, max, max, max, max, max]] do
+  [[], [5], [0, 41, max], [1, 2, 3, 4, 5, 6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [max, max, max, max, max, max, max, max]]
+
+def cases : IO Unit := do
+  for xs in samples do
     line "increment" "compute" "array-u64" [arrU xs]
       (words (Examples.Increment.expected xs.toArray).toList)
 

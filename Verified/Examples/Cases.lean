@@ -64,6 +64,10 @@ import Demos.Drone.Program
 import Library.Random.Lcg.Program
 import Library.Random.ParkMiller.Program
 import Library.Random.Xorshift.Program
+import Examples.Increment.Cases
+import Examples.Below100.Cases
+import Examples.Below100.Program
+import Examples.RemoveZero.Cases
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -433,6 +437,32 @@ def droneCases : IO Unit := do
           let old := table[(base + source).toNat]!
           IO.println s!"drone|predecessor|list:i64,i64,i64|i64:{r0} i64:{r1} {choiceArg old} \
             i64:{target} i64:{source}|{choiceOut (predecessor r0 r1 old target source)}"
+
+
+/-- The cases of the verified modules of the LeanExe compiler's examples: the inputs of their
+LeanExe cases, against the specification `expected` where the example has one, with the
+allocation counters. -/
+def portCases : IO Unit := do
+  for xs in _root_.Examples.Increment.samples do
+    let a := arrayArg xs.toArray
+    IO.println s!"increment|compute|array-u64|{a}|\
+      {arrayOut (_root_.Examples.Increment.expected xs.toArray)}|2|2"
+  for xs in _root_.Examples.Below100.samples do
+    let a := arrayArg xs.toArray
+    IO.println s!"below100|compute|array-u64|{a}|\
+      {arrayOut (_root_.Examples.Below100.expected xs.toArray)}|2"
+    for i in [0, 1, xs.length.toUInt64, 18446744073709551615] do
+      for out in [(#[] : Array UInt64), #[7, 8]] do
+        let (j, out') := _root_.Examples.Below100.keep xs.toArray i out
+        IO.println s!"below100|keep|list:i64,array-u64|{a} i64:{i} {arrayArg out}|\
+          {j} {arrayOut out'}|2"
+  for xs in _root_.Examples.RemoveZero.samples do
+    let a := arrayArg xs.toArray
+    IO.println s!"removeZero|compute|array-u64|{a}|\
+      {arrayOut (_root_.Examples.RemoveZero.expected xs.toArray)}|2|2"
+    for count in [0, xs.length.toUInt64, xs.length.toUInt64 + 1] do
+      IO.println s!"removeZero|firstZero|i64|{a} i64:{count}|\
+        {_root_.Library.Arrays.Search.firstZero xs.toArray count}|1|1"
 
 end Verified.Examples
 
@@ -1359,3 +1389,4 @@ def main : IO Unit := do
         {p.1} {arrayOut p.2}|2|2"
   IO.println s!"xorshift|square|array-u64|{arrayArg cols}|\
     {arrayOut (_root_.Library.Random.Xorshift.square cols)}|2|2"
+  portCases
