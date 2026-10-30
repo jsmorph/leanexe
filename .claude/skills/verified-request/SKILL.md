@@ -117,11 +117,17 @@ iteration uses `LeanExe.loop`, `LeanExe.build`, `LeanExe.repeatWhile`, a fold ov
 or tail recursion, which compiles as a loop, and a definition calls only the definitions listed
 before it.  Use no recursion other than tail recursion: other recursion takes the call depth, and
 the trap at depth 1,000 lies outside the statements of this version.  The program must not import
-the specification.  For a word result, write the program
-on words alone, without arrays, so that `verified_compile` generates `compiled.compute.pure`, which
-the call theorem needs.  For an array result, make the allocation of every call fit a constant, by
-treating inputs beyond the request's limit as a separate case, as the examples treat inputs of more
-than eight words.
+the specification.  For a word result, write the program on words alone, without arrays, so that
+`verified_compile` generates `compiled.compute.pure`, which the call theorem needs.  For an array
+result, make the allocation of every call fit a constant, by treating inputs beyond the request's
+limit as a separate case, as the examples treat inputs of more than eight words.
+
+No Lean file of the run may declare a global or scoped instance, notation, macro, syntax, or
+elaborator, or code that runs at import, such as `instance`, `attribute [instance]`, `notation`,
+`infixl`, `macro_rules`, or `initialize`.  The check elaborates its statement in a file that
+imports the run's modules, where such a declaration could change what the statement means.  The
+check and `--run` refuse each one with its file and line, and they accept the same form after
+`local`, which keeps it in its file.
 
 `Compiled.lean` starts with the compilation alone, listing the program's definitions and the
 library definitions it calls, each callee before its callers:

@@ -23,9 +23,15 @@
 # Examples.<Name>.compiled.module and K.  It requires <NAME>_call to prove that theorem with no
 # axioms beyond propext, Classical.choice, and Quot.sound.  For an array result, the bound in the
 # statement is the value of Examples.<Name>.callBound, which must be at most 4,294,901,760 bytes,
-# the 65,535 pages of the largest memory cap, since no store has room for more.  The check also
-# proves in the kernel that EXPORT is function K, emits build/verified-request/<NAME>/<NAME>.wasm,
-# and runs the samples in Wasmtime against expected.
+# the 65,535 pages of the largest memory cap, since no store has room for more.  This constant
+# bound is temporary, as the comment above the function statement says.  The check also proves in
+# the kernel that EXPORT is function K, emits build/verified-request/<NAME>/<NAME>.wasm, and runs
+# the samples in Wasmtime against expected.
+#
+# The statement is elaborated in a file that imports the run's modules, so before any build, the
+# check and --run refuse a run whose Lean files in Examples/<Name>/ declare a global or scoped
+# instance, notation, macro, syntax, or elaborator, or code that runs at import, as the function
+# refuse_extensions below lists.  A form after local stays in its file and passes.
 #
 # When ccomp and clightgen are found, the check then builds the module's translation to C with
 # native-verified build, links it with tools/native-host.c, as tests/native/verified.sh does, and
@@ -74,6 +80,58 @@ lean() { tools/leanrun --timeout 60m --lock-timeout 3600 lake "$@"; }
 emit_imports() {
   sed -n -E 's/^import ([A-Za-z0-9_.]+).*/\1/p' tools/Emit.lean |
     { grep -v -E '^(Init|Std|Lean|Lake)(\.|$)' || true; }
+}
+
+# Refuses declarations in the run's Lean files that could change how the check's statement
+# elaborates: an instance, a notation, a macro, syntax, an elaborator, an attribute that adds one
+# of these, or code that runs at import.  The words count outside comments and strings, as whole
+# names that no dot joins to another.  A word after local passes, since a local form stays in its
+# file.  A word after scoped fails, since the check opens namespaces in which a scoped form takes
+# effect.  The message names each file and line.
+refuse_extensions() {
+  local files found
+  files=("$demo"/*.lean)
+  [ -e "${files[0]}" ] || return 0
+  found=$(awk -v q="'" -v dq='"' -v ident="[A-Za-z_][A-Za-z0-9_'!?.]*" '
+    BEGIN {
+      n = split("instance default_instance notation notation3 infix infixl infixr prefix " \
+        "postfix macro macro_rules syntax declare_syntax_cat elab elab_rules " \
+        "term_elab command_elab unif_hint initialize builtin_initialize", list, " ")
+      for (j = 1; j <= n; j++) forbidden[list[j]] = 1
+    }
+    FNR == 1 { depth = 0; instr = 0; prev = "" }
+    {
+      line = $0; code = ""; i = 1; len = length(line)
+      while (i <= len) {
+        c = substr(line, i, 1); c2 = substr(line, i, 2)
+        if (depth > 0) {
+          if (c2 == "/-") { depth++; i += 2; code = code "  " }
+          else if (c2 == "-/") { depth--; i += 2; code = code "  " }
+          else { i++; code = code " " }
+        } else if (instr) {
+          if (c == "\\") { i += 2; code = code "  " }
+          else { if (c == dq) instr = 0; i++; code = code " " }
+        } else if (c2 == "/-") { depth = 1; i += 2; code = code "  " }
+        else if (c2 == "--") { break }
+        else if (c == dq) { instr = 1; i++; code = code " " }
+        else if (substr(line, i, 3) == q dq q) { i += 3; code = code "   " }
+        else { i++; code = code c }
+      }
+      rest = code
+      while (match(rest, ident)) {
+        tok = substr(rest, RSTART, RLENGTH)
+        rest = substr(rest, RSTART + RLENGTH)
+        if (tok in forbidden && prev != "local")
+          printf "%s:%d: %s %s\n", FILENAME, FNR, (prev == "scoped" ? "scoped" : "global"), tok
+        prev = tok
+      }
+    }' "${files[@]}")
+  if [ -n "$found" ]; then
+    sed 's/^/verified-request-check: /' <<<"$found" >&2
+    fail "the run's files may declare no global or scoped instance, notation, macro, syntax," \
+      "or elaborator, and no code that runs at import, since such a declaration can change" \
+      "the meaning of the statement that the check elaborates"
+  fi
 }
 
 build() {
@@ -162,9 +220,12 @@ choose_template() {
 # p.f.pure, composed as in Library.Numerics.Arithmetic.Gcd.gcd_call, for words to a word.
 #
 # Switch to the named predicate here.  When the repository has the generic call theorem with a
-# named conclusion, such as Verified.CallSpec module k f B, each template becomes that predicate
-# applied to $module, $k, $ns.expected, and the bound, and choose_template accepts the further
-# shapes that the predicate covers.
+# named conclusion, such as Verified.CallSpec module k f B with a bound function B : α → Nat, one
+# template replaces both: that predicate applied to $module, $k, $ns.expected, and
+# $ns.compiled.$export_name.bound, the generated bound that is the premise of trapFree.
+# choose_template then accepts every shape of words, word arrays, and tuples of these to a word or
+# a word array.  The constant bound of the array template, callBound, its #eval in read_info, and
+# its limit are temporary and go with that change.
 statement() {
   local module=$ns.compiled.module i n vars="" args="" tuple=""
   case $template in
@@ -202,7 +263,8 @@ EOF
   esac
 }
 
-# The function index k of the export, and for an array result the value of callBound as bound.
+# The function index k of the export, and for an array result the value of callBound as bound,
+# which the named predicate will make unnecessary.
 read_info() {
   local info index
   {
@@ -345,6 +407,7 @@ native_samples() {
 
 case $mode in
   run)
+    refuse_extensions
     require_host
     build "$ns.Compiled" "$ns.Spec" "$ns.Samples" TestSupport.Host $(emit_imports)
     lines
@@ -357,6 +420,7 @@ case $mode in
     [ -f "$demo/spec.sha256" ] || fail "no review: $demo/spec.sha256 does not exist"
     sha256sum --quiet -c "$demo/spec.sha256" ||
       fail "Spec.lean or Samples.lean changed after the review"
+    refuse_extensions
     require_host
     missing=$(native_missing)
     if [ -n "$missing" ] && [ -n "${CCOMP:-}${CLIGHTGEN:-}" ]; then

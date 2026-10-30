@@ -39055,8 +39055,21 @@ The statement comes from one template per shape, and each template restates the 
 
 No Lean ran for this change.  The checker's shell logic ran in a scratch layout in which stubs replaced `tools/leanrun`, the Wasmtime host, and CompCert's tools.  The runs covered argument errors, the delegated `--spec` and `--freeze`, a missing and a changed hash record, the statements of one array, one word, two words, and three words, the refusal of two other shapes and of an empty sample list, bounds at and above the limit, axiom reports on one line and across lines with an extra axiom, `sorryAx`, and no axioms, a wrong result and a trap in Wasmtime, a missing and a stale host, the native build with the tools on the search path and named by path, `CCOMP_STDLIB`, a module without a translation, a translation without the export, and a missing tool named by `CCOMP`.  Each gave the expected output and status.
 
+The review of the first version settled five questions.
+
+| Question | Decision |
+|----------|----------|
+| Shapes without a template | Refused until the named predicate, which covers word, word-array, and tuple arguments with word or array results through `Represent`, replaces the two templates with one |
+| Constant bound of the array template | The predicate takes a bound function `B : α → Nat`, so requests whose results grow with the input get a statement |
+| `callBound` | Temporary: with the predicate, the check states the call with `compiled.compute.bound`, the generated bound that is the premise of `trapFree`, and drops `callBound` and its evaluation |
+| Statement elaborated with the run's modules imported | The check refuses global and scoped extensions in the run's files, and `tools/demo-check` stays as it is |
+| Native step when CompCert is found | A module without a translation fails the check |
+
+An instance or notation that a run declares could change what the check's statement means, for instance a high-priority `LE Nat` instance, and `#print axioms` would not show it.  The check and `--run` now scan every Lean file in `Examples/<Name>/` before any build, outside comments and strings, for the words `instance`, `notation`, `infix`, `infixl`, `infixr`, `prefix`, `postfix`, `macro`, `macro_rules`, `syntax`, and `elab`, which cover `attribute [instance]`, `@[instance]`, and `deriving instance` as well.  The scan adds `notation3`, `elab_rules`, `declare_syntax_cat`, `default_instance`, `term_elab`, `command_elab`, and `unif_hint`, which change elaboration in the same ways, and `initialize` and `builtin_initialize`, which run code at import.  A word after `local` passes, since the form stays in its file.  A word after `scoped` fails, because the check opens `Wasm`, `LeanExe.Pipeline`, and `LeanExe.Runtime`, where a scoped form declared in those namespaces would take effect.  The scan does not reach modules outside the run's directory that the run imports, or an `export` at the root namespace.
+
+The scan's tests used the same stubs.  A file with 30 forbidden declarations reported each with its line, among them `@[simp, instance 100]`, `attribute [-instance]`, `deriving instance`, `scoped instance`, and an instance on the line after a string `"--"` and after the character `'"'`, and it passed `attribute [simp, local instance]`.  Files with doc comments and comments whose lines begin with `instance`, nested block comments, strings with `--` and `/-`, a `deriving Repr, BEq` clause, `local instance`, `local notation`, `local infixl`, `local` and `instance` on separate lines, and the name `Lean.Parser.Command.instance` passed.  A frozen specification with an instance failed with its line, and `--run` refused before any build.  The Lean files of the seven ports gave no report, and three verified examples with `Flat` instances gave one report for each of their ten instance declarations and none for a comment line that begins with "instance".
+
 - [x] The skill, the checker, and the tests of the checker's shell logic.
+- [x] The refusal of global and scoped extensions in a run's files.
 - [ ] An end-to-end run of the skill on a fresh request.
-- [ ] The switch to the named call predicate when the repository has it.
-- [ ] Statements for the other shapes of the type range.
-- [ ] A bound that depends on the input, for requests whose results grow with the input.
+- [ ] The switch to the named call predicate: one template for every shape of the type range, with the generated bound in place of `callBound`.
