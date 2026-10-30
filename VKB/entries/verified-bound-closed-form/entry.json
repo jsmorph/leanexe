@@ -5,7 +5,9 @@
     "heap.Within store compiled.module (compiled.f.bound x)",
     "Verified.loopCost CA C BA F n i s ≤ _",
     "min unpaid paid ≤ _ in a generated bound",
-    "Verified.blockCost n"
+    "Verified.blockCost n",
+    "Verified.foldCost xs init step (fun _ _ _ => c)",
+    "min unpaid paid for a fold whose state pushes onto an array"
   ],
   "modules": [
     "Verified.BoundFacts",
@@ -22,7 +24,8 @@
     "Examples.RemoveZero.Compiled",
     "Library.Random.Xorshift.Verified",
     "Examples.Lookup.Compiled",
-    "Verified.Examples.Forms"
+    "Verified.Examples.Forms",
+    "Examples.RunningMax.Compiled"
   ],
   "declarations": [
     "Verified.loopCost",
@@ -40,7 +43,11 @@
     "Verified.loop_push_size",
     "Verified.allocationCost_le",
     "Verified.sumBelow_const",
-    "LeanExe.Pipeline.Heap.Within.mono"
+    "LeanExe.Pipeline.Heap.Within.mono",
+    "Verified.foldCost",
+    "Verified.foldCost_zero",
+    "Examples.RunningMax.foldCost_const",
+    "Examples.RunningMax.fold_charge_const"
   ],
   "examples": [
     "Demos.Slew.Bound.plan_bound",
@@ -58,7 +65,8 @@
     "Library.Random.Xorshift.jump_bound",
     "Demos.Drone.Verified.drone_trapFree",
     "Examples.Lookup.compute_bound",
-    "Verified.Examples.Forms.pair_bound"
+    "Verified.Examples.Forms.pair_bound",
+    "Examples.RunningMax.compute_bound"
   ],
   "sources": [
     "2026-10-24: The compiled matcher",
@@ -67,6 +75,7 @@
     "2026-10-27: The charges of the integer running sum",
     "2026-10-27: Stage 3, the charges of the binary64 printer and parser",
     "2026-10-30: Verified compilations of LeanExe examples and library programs",
-    "2026-10-30: Array literals and conditions on propositions in the reflector"
+    "2026-10-30: Array literals and conditions on propositions in the reflector",
+    "2026-10-30: The verified-request skill and its acceptance tool"
   ]
 }

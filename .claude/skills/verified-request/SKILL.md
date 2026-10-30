@@ -70,19 +70,26 @@ are outside this version of the skill.  If the request needs one, say so and sto
 4. Run `tools/verified-request-check --spec NAME`, which prints each sample with the output of
    `expected`.
 5. Have a fresh agent review the specification: start it with the Agent tool and give it only the
-   paths of `request.txt`, `Spec.lean`, and `Samples.lean` and the output of step 4.  Give it none
-   of your reasoning or plans.  Ask it to read the request, to decide for each case of the input
-   whether `expected` gives what the request asks, to name every case the request leaves open and
-   whether the specification's comment records the choice, and to check each sample's output by
-   hand from the request.  It reports each disagreement with the input that shows it.
+   paths of `request.txt`, `Spec.lean`, and `Samples.lean` and the output of step 4, in the prompt
+   or, when it is long, as the path of a file that holds it.  Give it none of your reasoning or
+   plans.  Ask it to read the request, to decide for each case of the input whether `expected`
+   gives what the request asks, to name every case the request leaves open and whether the
+   specification's comment records the choice, and to check each sample's output by hand from the
+   request.  It reasons from the files and the output alone, runs no build, test, or Lean command,
+   and edits no file.  It reports each disagreement with the input that shows it, and the input
+   classes that no sample covers.
 6. Summarize the reviewer's report in `review.md`.  For each disagreement, correct the
    specification or samples, or record in `review.md` why the request supports the specification.
-   Add a sample for each uncovered input class the reviewer names that a program could get wrong.
    After any change, run steps 4 and 5 again with a new agent.
-7. A review that finds no disagreement with the request ends the stage, and its remaining notes go
-   into `review.md`.  Run `tools/verified-request-check --freeze NAME`, which records the hashes
-   of `Spec.lean` and `Samples.lean`, and proceed without asking the user.  Never edit either file
-   afterward.  If one must change, repeat steps 4 to 7.
+7. The first review that finds no disagreement may name input classes that no sample covers.  Add
+   a sample for each class that a program could get wrong, run step 4, and have a second fresh agent
+   review the specification and samples as step 5 describes.  The classes that the second review
+   names go into `review.md` without new samples.
+8. A review that finds no disagreement ends the stage when it names no uncovered class or when it
+   is the second review of step 7, and its remaining notes go into `review.md`.  Run
+   `tools/verified-request-check --freeze NAME`, which records the hashes of `Spec.lean` and
+   `Samples.lean`, and proceed without asking the user.  Never edit either file afterward.  If one
+   must change, repeat steps 4 to 8.
 
 ## Stage 2: the program
 
@@ -128,11 +135,15 @@ premise of the generated theorem with `#check @Examples.Name.compiled.compute.tr
 `Proof.lean` holds `compute_eq`, the equality of the program with the specification.  It imports
 the program, the specification, and lemmas about the dialect, such as `LeanExe.IR.Combinators`
 and the proof modules of the library programs that the program calls, and nothing of either
-compiler.  For an array parameter the equality has the premise `xs.size < 2 ^ 64`, which every
-array in memory meets:
+compiler.  When the program converts an array's size to a word, as `xs.size.toUInt64` does, the
+equality has the premise `xs.size < 2 ^ 64`, which every array in memory meets, and the call
+theorem takes it from the argument's representation, as `Examples.Increment.compute_callSpec` does.
+Otherwise the equality has no premise, as in the running-maximum example, and passes to the call
+theorem as `fun _ _ _ xs _ => compute_eq xs`:
 
 ```lean
 theorem compute_eq (xs : Array UInt64) (h : xs.size < 2 ^ 64) : compute xs = expected xs
+theorem compute_eq (xs : Array UInt64) : compute xs = expected xs
 theorem compute_eq (a b : UInt64) : compute a b = expected (a, b)
 ```
 
@@ -158,12 +169,14 @@ argument's representation gives the premise of `compute_eq`.
 | Library call, then a build | [Zero-removal proof](../../../Examples/RemoveZero/Proof.lean) (`Library.Arrays.Search.firstZero_cases`) | [Zero-removal compilation](../../../Examples/RemoveZero/Compiled.lean) (a bound on the count before `generalize`) |
 | `LeanExe.repeatWhile` over a listed function that pushes | [Bounded-build proof](../../../Examples/Below100/Proof.lean) (induction on the fuel, `keep_go`) | [Bounded-build compilation](../../../Examples/Below100/Compiled.lean) (`Verified.loopCost_le`, `Verified.sumBelow_const`) |
 | `LeanExe.loop` over a literal count with a tuple state, then an array literal | [Lookup proof](../../../Examples/Lookup/Proof.lean), [tree-lookup proof](../../../Examples/TreeLookup/Proof.lean) (`simp only [LeanExe.loop]`, `by_cases` on each pass) | [Lookup compilation](../../../Examples/Lookup/Compiled.lean), [tree-lookup compilation](../../../Examples/TreeLookup/Compiled.lean) (`rw [compiled.compute.bound_eq]; decide`) |
+| Fold over an array of any length whose state pushes onto the result | [Running-maximum proof](../../../Examples/RunningMax/Proof.lean) (`Array.foldl_toList`, induction on the list) | [Running-maximum compilation](../../../Examples/RunningMax/Compiled.lean) (`foldCost_const`, `min_le_right`) |
 
 Before each proof, search [the verification knowledge base](../../../VKB/README.md) for the
 declarations and goal shapes at hand.  Search the `entry.json` files under `VKB/entries/` for the
 constants of the goal, such as `LeanExe.repeatWhile` or `Verified.loopCost`, and read the README of
 every entry that names them.  The entries `spec-call-theorem`, `verified-bound-closed-form`,
-`loop-combinators`, and `reflector-forms` cover the shapes of the table.  [The manual's section on
+`loop-combinators`, `array-fold-list-induction`, and `reflector-forms` cover the shapes of the
+table.  [The manual's section on
 proving](../../../docs/verified-manual.md#proving) describes the generated theorems and the bounds.
 Rewrite a bound with `compiled.compute.bound_eq` and read the goal before choosing lemmas, and
 never evaluate a bound with `#eval`, which runs the interpreter of the reflected program and can
@@ -186,8 +199,8 @@ a missing lemma, a tactic that misled, or a goal shape that no entry names.  Put
    heading states the main theorem, such as "The module searches the tree" (a table of
    `compute_eq`, `compute_bound`, and `compute_callSpec`, and the axioms), "Building, running, and
    testing" (the commands, their output, and the tests), "Related examples", and "References".
-   [The tree-lookup README](../../../Examples/TreeLookup/README.md) gives the form, and its section
-   on the verified compiler's module gives the commands.
+   [The running-maximum README](../../../Examples/RunningMax/README.md) gives the form and the
+   commands.
 3. Add the module to the verified tests.  Add the line
    `Examples.Name.Compiled:Examples.Name.compiled.module:NAME` to [the verified module
    registry](../../../tests/verified/modules.txt) and `import
@@ -209,9 +222,16 @@ a missing lemma, a tactic that misled, or a goal shape that no entry names.  Put
    where CompCert is installed.  The registry entry gives the module its native coverage: the
    native driver translates every module of the registry to C, compiles it with CompCert, and runs
    its cases.
-4. Report the result to the user with the theorem line, the sample counts, and the VKB proposals.
-   Commit only when the user's instructions call for it, after [the verified compiler manual's
-   full check](../../../docs/verified-manual.md#the-full-check).
+4. Run the gate of a new example: the acceptance check of step 1, `tests/verified/run.sh --cases
+   NAME`, `tests/native/verified.sh --module NAME`, a build of every module that the run adds or
+   changes and of those that import them, and the VKB check.  The build is `tools/leanrun
+   --timeout 3h lake build Examples.Name.Compiled Examples.Verified Verified
+   Verified.Examples.Cases verified-cases native-verified native-module-cases`, and the VKB check is
+   `tools/leanrun --timeout 10m lake env lean --run VKB/Check.lean VKB/entries`.  [The verified
+   compiler manual's full check](../../../docs/verified-manual.md#the-full-check) remains the gate
+   for a change to the compiler or the runtime.
+5. Report the result to the user with the theorem line, the sample counts, the gate's results, and
+   the VKB proposals.  Commit only when the user's instructions call for it, after the gate.
 
 Keep `journal.md` during the run in natural prose: the decisions in the specification, the
 program's form and why, each proof approach and what changed it, the VKB entries and worked
