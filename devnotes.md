@@ -39217,4 +39217,23 @@ The documents now count the new file theorems.  The README's artifact table give
 - [x] File modules for the 77 registry modules with `p.bytes`, registered in `numerics.txt`.
 - [x] The F codes of the index and the counts of the documents.
 - [x] The VKB entry `file-theorems`.
-- [ ] Decide whether the six modules built without the reflector get file modules without `from`, which the command proves through `decode_encode`.
+- [x] Decide whether the six modules built without the reflector get file modules without `from`, which the command proves through `decode_encode`.
+
+## 2026-10-30: File modules for the modules built without the reflector
+
+The six registry modules built in the source language or in WebAssembly without the reflector, `Composition`, `Relocation`, `TailCore`, `TreeCore`, `Tuples`, and `TreeCopy`, now have file modules, so [the file-theorem registry](tests/verified/numerics.txt) lists 115 of the 116 modules of [the module registry](tests/verified/modules.txt).  None of the six has `p.bytes` or `p.encoded`, so each file module holds `file_theorems NAME p "…/build/verified/NAME.wasm"` without `from`.  The command then proves `NAME_file` by evaluating the encoder in the kernel and `NAME_file_decode` with `Wasm.Encoding.decode_encode` and the kernel's check of the decoder's limit on locals, as for the LeanExe compiler's `gpt.wasm`.  `byHand` of `Modes` stays out, since its constant `byHandModule` is not `p.module`.
+
+The branch was rebased onto the move of the numerical call lemmas onto `Verified.Call` and the imports of the unreached modules in the roots of the libraries.  No root imports a file module, and no Lean file of the tree imports one.  The rebuild of the six libraries, the 40 test executables, and the theorem modules of the registry passed with 15,462 jobs in 21 minutes.
+
+Each of the 115 file modules was checked alone with `lake env lean -Dprofiler=true` at eight threads, after the registry's modules were written, and each passed with two reports of only `propext`, `Classical.choice`, and `Quot.sound`.  The checks took 2.43 to 8.54 seconds, with a median of 2.93 and a total of 377, and their type-checking times were 0.15 to 6.13 seconds, with a median of 0.45 and a total of 90.  The six new modules took 3.44 to 8.54 seconds, and their kernel times of 1.07 to 6.13 seconds for files of 1.5 to 7.8 KiB are four to six times the previous entry's fit for a literal comparison of the same size, since the kernel evaluates the encoder.  The GPT file module of the LeanExe compiler took 12.04 seconds.
+
+The documents count 115 of the 116 registry modules, with `byHand` as the one exclusion: the README's artifact table, the Coverage row of [the trusted-base document](docs/trusted-base.md#f-emitted-files-with-file-theorems), the verified manual, and scope item 4 of [the design document](docs/design.md#scope-of-the-theorem).  The README's table of properties now carries the allocation bounds and the return without a trap to F only for the `verified_compile` modules of the registry, since the six modules have no `p.f.trapFree`.  The script of the previous entry gave F to the rows of the six in [the index](index.md), and the row of `TreeCopy`, which had no code, now names its file theorems.  The VKB entry `file-theorems` now says that a module built without the reflector leaves `from` out, and it gives `byHandModule` as the one module that the command cannot state.
+
+| Check | Result |
+|---|---|
+| Rebuild after the rebase: the six libraries, the 40 test executables, and the 114 theorem modules of the registry | Passed, 15,462 jobs |
+| Each of the 115 registry file modules and the GPT file module, alone | Passed, with two reports of the three axioms each |
+| `VKB/Check.lean` on `VKB/entries` | 23 entries, no problem reported |
+
+- [x] File modules without `from` for the six modules built without the reflector.
+- [x] The counts of the documents, 115 of the 116 registry modules.
