@@ -1,7 +1,7 @@
 # LTG knowledge base
 
 This directory holds lemmas, tactics, and proof guidance for the LeanExe compiler and the shared
-pipeline.  The verified compiler's general correctness theorem covers its source constructs.
+pipeline, and its name LTG abbreviates lemmas, tactics, and guidance.  The verified compiler's general correctness theorem covers its source constructs.
 Each entry is a directory under [`entries/`](entries) with two files.  `entry.json` names the entry's
 modules, declarations, premises, result, and the hint rules (`annotationKinds`)
 that select it, and `README.md` explains when and how to apply it.
