@@ -136,8 +136,9 @@ theorem compute_eq (xs : Array UInt64) (h : xs.size < 2 ^ 64) : compute xs = exp
 theorem compute_eq (a b : UInt64) : compute a b = expected (a, b)
 ```
 
-`Compiled.lean` then imports `Examples.Name.Proof` in place of the program and adds two
-declarations after `verified_compile`.  `K` is 2 plus the position of `compute` in the list of
+`Compiled.lean` then imports `Examples.Name.Proof` in place of the program, and `Verified.Call`,
+which `Verified.Reflect.Command` does not import, and adds two declarations after
+`verified_compile`.  `K` is 2 plus the position of `compute` in the list of
 `verified_compile`, counted from 0, since functions 0 and 1 are the runtime's `alloc` and
 `release`, and the check proves in the kernel that the export `compute` is function `K`.
 

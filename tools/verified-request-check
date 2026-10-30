@@ -241,6 +241,7 @@ axioms_of() {
 check_theorem() {
   local check_out a axioms
   cat >"$work/Check.lean" <<EOF
+import Verified.Call
 import $ns.Compiled
 import $ns.Spec
 
