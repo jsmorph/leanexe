@@ -39630,3 +39630,18 @@ The checks ran on AArch64, with Wasmtime 44.0.0 and CompCert 3.18.  The gate bui
 - [x] The module cases in Wasmtime, on both translations to C, and under QEMU, the bare-metal programs, and the timing.
 - [x] The Euler guide, the README, the index, the design document, the verified manual, and the bare-metal document.
 - [x] The VKB proposals.
+
+## 2026-10-30: The GPT generation theorems on the verified module
+
+`Demos/Gpt/VerifiedGeneration.lean` states the cached generation of `Demos/Gpt/Generation.lean` for the verified compiler's GPT-2 module.  The host calls `step` once per token, handing over the cache that the previous call returned, and then calls `scores` on the last cache.  `Generating heap store` describes a store between those calls, with `heap` the allocator's state: `generating_start` gives it for the empty cache, `generating_step` carries it to one more token, and `generating_scores` shows that `scores` returns row `p` of `forward` and leaves a store of the generation.  These three rest on the generated `compiled.step.implements` and `compiled.scores.implements`, so like the LeanExe theorems they allow a stop at `unreachable`.
+
+`generating_step_trapFree` and `generating_scores_trapFree` rest on the generated `trapFree` theorems instead.  From a store in which `top` can rise by the call's generated bound within the memory cap, each call returns without a trap, keeps the memory caps, and raises `top` by at most that bound, so that `Heap.Within.after` gives the room for the next call.  The LeanExe theorems have no such form.  The definitions that both modules' theorems use, `Weights`, `Pointers`, `stepArgs`, `scoresArgs`, `Weights.cache`, and `step_reads`, moved from `Generation.lean` into `Demos/Gpt/Host.lean`, which reaches the LeanExe compiler only through `LeanExe.IR.Combinators`, the combinator lemmas that the removal moves to `LeanExe.Dialect.Lemmas`, and the LeanExe theorems keep their names and statements.
+
+The agent that wrote the port stopped before its journal entry, its VKB review, and its final checks, and the user asked for the two commits to be reviewed and pushed.  The review rebased them onto main, merged the rows of `index.md` and of the README's properties table that main had changed since, and ran the gate described below.  The second commit cites `increment_call` beside `increment_total` in the README's properties table and in the increment guide, as the plan's decision on `increment_total` says.  `module_side` remains, so the plan's box stays open.
+
+`tests/native/verified.sh` required at least one passed registry case, so `--module euler`, which selects only module cases, exited 1 after all 3,096 of its cases passed.  The driver now requires at least one passed case of either kind and no failure.  The bare-metal Euler program of `tests/baremetal/programs.sh` computes `solve 4`, as the buffered-solver entry records, and the user accepted that change.
+
+- [x] The GPT generation theorems on the verified module, with the trap-free forms.
+- [x] `increment_call` beside `increment_total` in the documents.
+- [x] The native driver's result for a selection of module cases.
+- [ ] `module_side` over the verified Euler module.
