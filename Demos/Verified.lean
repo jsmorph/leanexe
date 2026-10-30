@@ -1,4 +1,5 @@
 import Demos.Gpt.Verified
+import Demos.Gpt.VerifiedGeneration
 import Demos.Gpt32.VerifiedHost
 import Demos.Euler.Verified
 import Demos.Euler.VerifiedCall

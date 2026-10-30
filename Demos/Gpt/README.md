@@ -35,11 +35,11 @@ slightly from a library implementation.
 
 The proofs are in [`Verify.lean`](Verify.lean), [`Composites.lean`](Composites.lean),
 [`StepVerify.lean`](StepVerify.lean), [`SampleVerify.lean`](SampleVerify.lean),
-[`Causal.lean`](Causal.lean), [`Exact.lean`](Exact.lean), [`Generation.lean`](Generation.lean), and
-[`Bytes.lean`](Bytes.lean), and they use only the axioms `propext`, `Classical.choice`, and
-`Quot.sound`.  `Implements` allows a stop at `unreachable`, and no theorem bounds the memory of a
-generation.  [The design document](../../docs/design.md#proved) gives the construction of each
-function.
+[`Causal.lean`](Causal.lean), [`Exact.lean`](Exact.lean), [`Generation.lean`](Generation.lean)
+with the host's definitions in [`Host.lean`](Host.lean), and [`Bytes.lean`](Bytes.lean), and they
+use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  `Implements` allows a stop at
+`unreachable`, and no theorem of the LeanExe module bounds the memory of a generation.  [The design
+document](../../docs/design.md#proved) gives the construction of each function.
 
 ## Building, running, and testing
 
@@ -67,13 +67,42 @@ about 1e-13 of the largest score.  [`tools/gpt2.py`](../../tools/gpt2.py) then g
 command above printed "It was a dark and stormy night. The wind was blowing, and the" in about 11
 seconds, and `--top-k`, `--temperature`, and `--seed` select top-k sampling.
 
-## Related examples
+## The verified compiler's module
 
-[The verified compiler's GPT module](Verified.lean) compiles the same 48
-functions with `verified_compile`.  Its generated theorems establish execution, allocation
-bounds, trap-free execution under those bounds, and the module's encoded bytes.
-`tests/verified/run.sh --cases gpt` builds and emits that module and runs the existing GPT corpus
-and session checks against it.
+[The verified compiler's GPT module](Verified.lean) compiles the same functions with
+`verified_compile`.  Its generated theorems establish execution, allocation bounds, trap-free
+execution under those bounds, and the module's encoded bytes.  `tests/verified/run.sh --cases gpt`
+builds and emits that module and runs the existing GPT corpus and session checks against it.
+
+[The generation theorems of the verified module](VerifiedGeneration.lean) state the host's calls
+of `step` and `scores` on `compiled.module` with [the host's definitions](Host.lean), which the
+LeanExe theorems also use.  `Generating heap store` describes a store between the calls,
+with `heap` the allocator's state, so that a premise can state room for `top` to rise from it.
+The theorems rest on `compiled.step.implements` and `compiled.scores.implements`, which allow a
+stop at `unreachable`, and on `compiled.step.trapFree` and `compiled.scores.trapFree`, which
+exclude it under room for the generated bounds `compiled.step.bound` and `compiled.scores.bound`.
+
+| Theorem | Statement |
+|---------|-----------|
+| `generating_start`, `generating_step`, `generating_scores` | In the host's sequence of calls, `step` per token with the cache handed over and then `scores` return row `p` of `forward`, unless a call stops at `unreachable`.  `scores` leaves a store of the generation, with the cache and the weights in place. |
+| `generating_step_trapFree` | From a store of the generation after `p` tokens in which `top` can rise by the bound of `step` on its arguments within the memory cap, `step` returns without a trap the cache of `p + 1` tokens in a store of the generation.  It keeps the memory caps and raises `top` by at most the bound. |
+| `generating_scores_trapFree` | From a store of the generation after `p + 1` tokens in which `top` can rise by the bound of `scores` on its arguments within the memory cap, `scores` returns without a trap row `p` of `forward`, under the bounds of `steps_exact`.  It leaves a store of the generation, keeps the memory caps, and raises `top` by at most the bound. |
+
+`generating_start` and `generating_step` state what their LeanExe counterparts state, with the heap
+named in `Generating`.  `generating_scores` adds that `scores` leaves a store of the generation:
+the generated theorem keeps every region of the heap that the call does not consume, and `scores`
+consumes nothing, so the cache keeps its block and the weights stay borrowed.  The trap-free forms
+keep the memory caps, so room for the sum of the bounds before the first call gives room for each
+later call by `Heap.Within.after`.  The theorems cover a host that calls `step` again after
+`scores` and keeps the scores array.  [`tools/gpt2.py`](../../tools/gpt2.py) releases that array
+between the calls, after reading it or passing it to `sampleTopK`, and no theorem here covers the
+release or `sampleTopK`.  No theorem gives the bounds in closed form.
+
+```sh
+tools/leanrun --timeout 60m lake build Demos.Gpt.VerifiedGeneration
+```
+
+## Related examples
 
 [`Gpt32`](../Gpt32/README.md) is GPT-2 in binary32 on WGSL kernels.  [`Prng`](../../Library/Random/SplitMix64/README.md)
 supplies the sampler's generator, and [`SumSquares`](../../Library/Numerics/Statistics/SumSquares/README.md) and
