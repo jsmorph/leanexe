@@ -756,12 +756,14 @@ enumerations and bind the others, as `{ value, steps, last := .add }` does, beco
 type with its motive abstract, and it accepts a variable for the value and the structure's
 constructor with each field a variable or a constructor of an enumeration with a `Flat` instance to
 words.  Any other field pattern, such as a literal, a `Bool`, or a nested structure, stops the
-reflector with a message that names the field.  The chain tests, in the order of the alternatives,
-the words of the fields that each pattern fixes, joined with `&&`, and the last alternative, or one
-that fixes no field, takes no test.  The equation of the chain and the match is proved by `casesOn`
-on a variable for the value and then on each fixed field, with variables for the alternatives, so
-the kernel reduces both sides at each combination of constructors without evaluating the value or
-an alternative's body.  A discriminant that is not a place is bound with `let` first.  [The pattern
+reflector with a message that names the field.  A match on a `UInt64` with literal patterns reaches
+the rule too, because Lean's `UInt64` is a structure, and stops at its first literal pattern.  The
+chain tests, in the order of the alternatives, the words of the fields that each pattern fixes,
+joined with `&&`, and the last alternative, or one that fixes no field, takes no test.  The
+equation of the chain and the match is proved by `casesOn` on a variable for the value and then on
+each fixed field, with variables for the alternatives, so the kernel reduces both sides at each
+combination of constructors without evaluating the value or an alternative's body.  A
+discriminant that is not a place is bound with `let` first.  [The pattern
 example](Examples/Patterns.lean) checks these forms on parameters, calls, loop states, and a record
 that holds an array.
 
