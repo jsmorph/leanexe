@@ -38889,11 +38889,11 @@ The ports of the examples and library programs stopped at four definitions that 
 
 - [x] The VKB with its template, check, growth rule, and sixteen entries.
 - [x] The kernel reproduction under 4.34.0-rc2.
-- [ ] Reflector rules for nonempty array literals and for `∧` and `∨` in conditions, and the four remaining ports.
+- [x] Reflector rules for nonempty array literals and for `∧` and `∨` in conditions, and the four remaining ports.
 - [ ] The generic call theorem, replacing the per-library call lemmas.
 - [ ] The file-theorem command.
 - [ ] A count of the functions whose bound does not depend on the input, and a decision on emitting constant bounds.
-- [ ] `leanchecker` over every module.
+- [x] `leanchecker` over every module.
 - [ ] `STATUS.md` from the full check.
 - [x] The `NativeA` cap and region conclusions.
 - [x] Determinism of the Lean copy of Clight.
@@ -38996,3 +38996,12 @@ The checks ran on AArch64, with Wasmtime 44.0.0 and CompCert 3.18, at the final 
 - [ ] Run `tests/wgsl/run.sh --verified` on a host with the SwiftShader and llvmpipe drivers.
 - [ ] Decide whether `if ¬p`, implication, and equivalence of propositions get a rule, which no port needs now.
 - [ ] Compare the bytes of the modules of `tests/verified/modules.txt` with those of the compiler before this change, with `tests/verified/run.sh --check-bytes`.
+
+## 2026-10-30: A replay of every module, and the bytes across the reflector change
+
+`leanchecker`, which ships with the toolchain, replays the declarations of a module from its `.olean` through the kernel, so it catches a declaration that reached the environment without passing the kernel.  It shares Lean's kernel, so it does not guard against a kernel defect.  It ran over a full build of main with the cap and region conclusions, the tree just before the reflector change.  Of the 2,405 modules, 2,390 passed and none failed, and the other 15 hold only imports, declare nothing, and were not replayed.  The run took 6,210 seconds, four modules at a time, and ended at 10:32 UTC.
+
+The reflector change, rebased onto main with the determinism proofs and the cap and region conclusions, built in full, 15,260 jobs in 5,696 seconds at six threads.  Every module of `tests/verified/modules.txt` was emitted with `tools/Emit.lean` from the build before the change and from the merged build.  Of the 111 modules that both registries hold, 110 have identical bytes.  `binary32.wasm` differs only by additions: the module gains `condMix32` and three functions, and its text before the change appears unchanged in the new text.  The four other modules, `forms`, `lookup`, `treeLookup`, and `primeFactors`, are new, so the change leaves the code of every existing program unchanged.
+
+- [x] `leanchecker` over every module.
+- [x] The byte comparison across the reflector change.
