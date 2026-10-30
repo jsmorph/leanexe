@@ -5,14 +5,17 @@
     "verified_compile runs out of heartbeats in isDefEq",
     "the type Prop is not UInt64, Bool, Float, Float32, Bytes, a structure with a Flat instance, an array, or a pair",
     "a && f x evaluates f x when a is false",
-    "a match alternative that names the matched value"
+    "a match alternative that names the matched value",
+    "a generated bound that grows with the passes of a loop that builds a new array at each pass"
   ],
   "modules": [
     "Verified.Reflect.Modes",
     "Library.Regex.Bytes",
     "Library.Hashing.Sha3.Program",
     "Demos.Slew.Bound",
-    "Verified.Examples.HeapSums"
+    "Verified.Examples.HeapSums",
+    "Demos.Euler.BufferedSpec",
+    "Demos.Euler.VerifiedCall"
   ],
   "declarations": [
     "Verified.Expr.paramChoice",
@@ -21,7 +24,11 @@
     "Library.Regex.push",
     "Library.Regex.combine",
     "Library.Hashing.Sha3.Lanes",
-    "Library.Hashing.Sha3.thetaL"
+    "Library.Hashing.Sha3.thetaL",
+    "Verified.Expr.allocs",
+    "Verified.Var.ownedCost",
+    "Demos.Euler.Buffered.sweepInto",
+    "Demos.Euler.Buffered.tryInto"
   ],
   "examples": [
     "Library.Regex.matchWith_bound",
@@ -29,7 +36,9 @@
     "Demos.Slew.round",
     "Demos.Slew.Bound.plan_bound",
     "Verified.Examples.HeapSums.grow",
-    "Verified.Examples.HeapSums.regrow"
+    "Verified.Examples.HeapSums.regrow",
+    "Demos.Euler.Verified.solve_bound",
+    "Demos.Euler.Buffered.solve_eq"
   ],
   "sources": [
     "2026-10-23: HMAC-SHA-256 and HMAC-SHA-512",
@@ -39,6 +48,7 @@
     "2026-10-26: Sums with heap fields: results",
     "2026-10-26: The slew planner: program, theorems, and tests",
     "2026-10-26: The slew planner compiled and tested in Wasmtime",
-    "2026-10-27: Deriving a recursive type's declarations once"
+    "2026-10-27: Deriving a recursive type's declarations once",
+    "2026-10-30: The buffered Euler solvers and a call theorem for every grid"
   ]
 }

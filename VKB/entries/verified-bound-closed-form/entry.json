@@ -72,6 +72,7 @@
     "Examples.Lookup.compute_bound",
     "Verified.Examples.Forms.pair_bound",
     "Examples.RunningMax.compute_bound",
+    "Demos.Euler.Verified.advanceStep_bound",
     "Demos.Euler.Verified.solve_bound",
     "Demos.Euler.Verified.reconstructedSolve_bound"
   ],
@@ -84,6 +85,7 @@
     "2026-10-30: Verified compilations of LeanExe examples and library programs",
     "2026-10-30: Array literals and conditions on propositions in the reflector",
     "2026-10-30: The verified-request skill and its acceptance tool",
-    "2026-10-30: The verified total theorems of the Euler solvers and the drone planner"
+    "2026-10-30: The verified total theorems of the Euler solvers and the drone planner",
+    "2026-10-30: The buffered Euler solvers and a call theorem for every grid"
   ]
 }

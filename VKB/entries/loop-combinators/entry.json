@@ -7,7 +7,9 @@
     "(LeanExe.build n f).size",
     "LeanExe.loop n true (fun k ok => if !ok then false else P k) = true",
     "Fin.foldl n (fun x i => g i.val x) init = Nat.fold n (fun i _ x => g i x) init",
-    "(LeanExe.repeatWhile.go cond step k s).2"
+    "(LeanExe.repeatWhile.go cond step k s).2",
+    "LeanExe.loop n out (fun i acc => acc.set! i.toNat (f i)) = LeanExe.build n f",
+    "π (LeanExe.repeatWhile fuel init cond step) = LeanExe.repeatWhile fuel (π init) cond' step'"
   ],
   "modules": [
     "LeanExe.IR.Combinators",
@@ -22,7 +24,8 @@
     "Examples.Below100.Proof",
     "Examples.RemoveZero.Proof",
     "Examples.Lookup.Proof",
-    "Examples.TreeLookup.Proof"
+    "Examples.TreeLookup.Proof",
+    "Demos.Euler.BufferedSpec"
   ],
   "declarations": [
     "LeanExe.IR.loop_induction",
@@ -33,7 +36,9 @@
     "LeanExe.IR.build_congr",
     "Library.Hashing.Words.finFoldl_eq_fold",
     "Library.Hashing.XxHash64.Proof.fold_eq",
-    "Verified.loop_push_size"
+    "Verified.loop_push_size",
+    "Demos.Euler.Buffered.loop_set",
+    "Demos.Euler.Buffered.repeatWhile_map"
   ],
   "examples": [
     "Library.Arrays.Search.firstZero_cases",
@@ -44,7 +49,10 @@
     "Examples.RemoveZero.compute_eq",
     "Examples.Below100.keep_go",
     "Examples.Lookup.compute_eq",
-    "Examples.TreeLookup.compute_eq"
+    "Examples.TreeLookup.compute_eq",
+    "Demos.Euler.Buffered.sweepInto_eq",
+    "Demos.Euler.Buffered.advanceInto_eq",
+    "Demos.Euler.Buffered.runFromInto_eq"
   ],
   "sources": [
     "2026-10-24: Glushkov's theorem",
@@ -52,6 +60,7 @@
     "2026-10-25: The SHA-3 proofs",
     "2026-10-26: The slew edge check proved sound",
     "2026-10-30: Verified compilations of LeanExe examples and library programs",
-    "2026-10-30: Array literals and conditions on propositions in the reflector"
+    "2026-10-30: Array literals and conditions on propositions in the reflector",
+    "2026-10-30: The buffered Euler solvers and a call theorem for every grid"
   ]
 }
