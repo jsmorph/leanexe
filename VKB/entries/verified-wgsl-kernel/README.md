@@ -7,3 +7,5 @@ Define the kernel as `(Verified.WGSL.compile (e := .float32) compiled.f.func.bod
 `Verified.WGSL.lower` covers literals, variables, word, Boolean, and binary32 operations, reads, sizes, `let`, `if`, and counted loops.  It returns `none` for calls, binary64 values, and composite elements, and the proof of `get`'s premise then fails.  A function that the reflector rejects never reaches the translation.
 
 The worked examples are `Examples.Binary32.scale32_dispatch`, `Examples.Binary32.axpyArray32_dispatch`, and `Examples.Binary32.matVec32_dispatch`, which keep the premises of the LeanExe compiler's dispatch theorems.  `Demos.Gpt32.Verified.expKernel_dispatch` and `Verified.Examples.Wgsl.scale_dispatch` keep the abstract `Fits` premise instead.
+
+`Examples.Binary32.condMix32_dispatch` takes mixed arguments in their order, `[Arg.array …, Arg.float lo.toBits, Arg.float hi.toBits, Arg.word n]`, with the count from the array at position 0, and its conjunction of propositions lowers to `Expr.and`.

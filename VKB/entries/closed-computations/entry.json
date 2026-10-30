@@ -20,7 +20,9 @@
     "Verified.Examples.CompositionPure",
     "Examples.Increment.Compiled",
     "Library.Numerics.Arithmetic.Gcd.Compiled",
-    "Library.Random.SplitMix64.Compiled"
+    "Library.Random.SplitMix64.Compiled",
+    "Library.Numerics.Arithmetic.PrimeFactors.Compiled",
+    "Examples.Lookup.Compiled"
   ],
   "declarations": [
     "Verified.Prog.literals",
@@ -36,7 +38,9 @@
     "Verified.Examples.CompositionBase.add_pure",
     "Examples.Increment.compute_export",
     "Library.Numerics.Arithmetic.Gcd.gcd_export",
-    "Library.Random.SplitMix64.prng_module"
+    "Library.Random.SplitMix64.prng_module",
+    "Library.Numerics.Arithmetic.PrimeFactors.compute_export",
+    "Examples.Lookup.compute_export"
   ],
   "sources": [
     "2026-10-23: Implementing the WASI agenda",
@@ -44,6 +48,7 @@
     "2026-10-25: The SHA-3 proofs",
     "2026-10-25: CRC-32 and CRC-32C: results",
     "2026-10-27: Stage 3, the charges of the binary64 printer and parser",
-    "2026-10-30: Verified compilations of LeanExe examples and library programs"
+    "2026-10-30: Verified compilations of LeanExe examples and library programs",
+    "2026-10-30: Array literals and conditions on propositions in the reflector"
   ]
 }

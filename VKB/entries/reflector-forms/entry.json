@@ -1,0 +1,38 @@
+{
+  "id": "reflector-forms",
+  "goals": [
+    "#[a, b, …] in a verified_compile definition",
+    "if p ∧ q then a else b, if p ∨ q then a else b",
+    "decide (p ∧ q), decide (p ∨ q)",
+    "verified_compile: unsupported condition ¬p",
+    "verified_compile: unsupported decision p → q",
+    "compiled.f.bound x for a function that returns an array literal"
+  ],
+  "modules": [
+    "Verified.Reflect.Lemmas",
+    "Verified.BoundFacts",
+    "Verified.Examples.Forms",
+    "Examples.Lookup.Compiled",
+    "Examples.Binary32.Compiled",
+    "Library.Numerics.Arithmetic.PrimeFactors.Compiled"
+  ],
+  "declarations": [
+    "Verified.Reflect.decide_and_eq",
+    "Verified.Reflect.decide_or_eq",
+    "Verified.Reflect.ite_decide_eq",
+    "Verified.growCost_eq",
+    "Verified.paidGrowCost_eq"
+  ],
+  "examples": [
+    "Verified.Examples.Forms.pair_bound",
+    "Verified.Examples.Forms.single_bound",
+    "Verified.Examples.Forms.compiled.climb.implements",
+    "Examples.Lookup.compute_bound",
+    "Examples.Lookup.lookup_call",
+    "Examples.Binary32.condMix32_dispatch",
+    "Library.Numerics.Arithmetic.PrimeFactors.primeFactors_call"
+  ],
+  "sources": [
+    "2026-10-30: Array literals and conditions on propositions in the reflector"
+  ]
+}

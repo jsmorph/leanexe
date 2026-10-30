@@ -22,9 +22,11 @@
     "Examples.Binary32.axpyArray32_dispatch",
     "Examples.Binary32.matVec32_dispatch",
     "Demos.Gpt32.Verified.expKernel_dispatch",
-    "Verified.Examples.Wgsl.scale_dispatch"
+    "Verified.Examples.Wgsl.scale_dispatch",
+    "Examples.Binary32.condMix32_dispatch"
   ],
   "sources": [
-    "2026-10-30: Verified compilations of LeanExe examples and library programs"
+    "2026-10-30: Verified compilations of LeanExe examples and library programs",
+    "2026-10-30: Array literals and conditions on propositions in the reflector"
   ]
 }

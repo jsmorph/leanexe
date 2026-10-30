@@ -20,7 +20,9 @@
     "Examples.Increment.Compiled",
     "Examples.Below100.Compiled",
     "Examples.RemoveZero.Compiled",
-    "Library.Random.Xorshift.Verified"
+    "Library.Random.Xorshift.Verified",
+    "Examples.Lookup.Compiled",
+    "Verified.Examples.Forms"
   ],
   "declarations": [
     "Verified.loopCost",
@@ -54,7 +56,9 @@
     "Examples.Below100.compute_bound",
     "Examples.RemoveZero.compute_bound",
     "Library.Random.Xorshift.jump_bound",
-    "Demos.Drone.Verified.drone_trapFree"
+    "Demos.Drone.Verified.drone_trapFree",
+    "Examples.Lookup.compute_bound",
+    "Verified.Examples.Forms.pair_bound"
   ],
   "sources": [
     "2026-10-24: The compiled matcher",
@@ -62,6 +66,7 @@
     "2026-10-26: Building the process compaction",
     "2026-10-27: The charges of the integer running sum",
     "2026-10-27: Stage 3, the charges of the binary64 printer and parser",
-    "2026-10-30: Verified compilations of LeanExe examples and library programs"
+    "2026-10-30: Verified compilations of LeanExe examples and library programs",
+    "2026-10-30: Array literals and conditions on propositions in the reflector"
   ]
 }

@@ -11,7 +11,10 @@
     "Examples.Below100.Compiled",
     "Examples.RemoveZero.Compiled",
     "Library.Numerics.Arithmetic.Gcd.Compiled",
-    "Library.Hashing.Sha3.Bytes"
+    "Library.Hashing.Sha3.Bytes",
+    "Examples.Lookup.Compiled",
+    "Examples.TreeLookup.Compiled",
+    "Library.Numerics.Arithmetic.PrimeFactors.Compiled"
   ],
   "declarations": [
     "Examples.arrayCall",
@@ -27,9 +30,13 @@
     "Examples.RemoveZero.removeZero_call",
     "Library.Numerics.Arithmetic.Gcd.gcd_call",
     "Library.Hashing.Sha3.shake128_call",
-    "Examples.Increment.compute_export"
+    "Examples.Increment.compute_export",
+    "Examples.Lookup.lookup_call",
+    "Examples.TreeLookup.treeLookup_call",
+    "Library.Numerics.Arithmetic.PrimeFactors.primeFactors_call"
   ],
   "sources": [
-    "2026-10-30: Verified compilations of LeanExe examples and library programs"
+    "2026-10-30: Verified compilations of LeanExe examples and library programs",
+    "2026-10-30: Array literals and conditions on propositions in the reflector"
   ]
 }

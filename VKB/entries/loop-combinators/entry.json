@@ -20,7 +20,9 @@
     "Library.Hashing.Sha3.SpongeProof",
     "Examples.Increment.Proof",
     "Examples.Below100.Proof",
-    "Examples.RemoveZero.Proof"
+    "Examples.RemoveZero.Proof",
+    "Examples.Lookup.Proof",
+    "Examples.TreeLookup.Proof"
   ],
   "declarations": [
     "LeanExe.IR.loop_induction",
@@ -40,13 +42,16 @@
     "Library.Hashing.Sha3.SpongeProof.absorb_spec",
     "Examples.Increment.compute_eq",
     "Examples.RemoveZero.compute_eq",
-    "Examples.Below100.keep_go"
+    "Examples.Below100.keep_go",
+    "Examples.Lookup.compute_eq",
+    "Examples.TreeLookup.compute_eq"
   ],
   "sources": [
     "2026-10-24: Glushkov's theorem",
     "2026-10-24: The matcher computes the specification",
     "2026-10-25: The SHA-3 proofs",
     "2026-10-26: The slew edge check proved sound",
-    "2026-10-30: Verified compilations of LeanExe examples and library programs"
+    "2026-10-30: Verified compilations of LeanExe examples and library programs",
+    "2026-10-30: Array literals and conditions on propositions in the reflector"
   ]
 }

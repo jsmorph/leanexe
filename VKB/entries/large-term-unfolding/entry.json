@@ -5,7 +5,9 @@
     "(deterministic) timeout at whnf or isDefEq",
     "a goal that holds Nat.fold, Fin.foldl, or LeanExe.loop over many rounds",
     "compiled.module or compiled.f.bound inside a goal",
-    "p.f.bound (x, f y) for a call f y passed as a tuple component"
+    "p.f.bound (x, f y) for a call f y passed as a tuple component",
+    "(kernel) deep recursion detected at a verified_compile command",
+    "#print axioms lists p.f.meaning_eq or p.f.fixed"
   ],
   "modules": [
     "Library.Hashing.Sha512.CompressProof",
@@ -16,7 +18,10 @@
     "Demos.RunningSumFp.ParseCharges",
     "Demos.RunningSumFp.Correct",
     "Verified.Wasi.PureTransport",
-    "LeanExe.ProofKit.BorrowedKept"
+    "LeanExe.ProofKit.BorrowedKept",
+    "Verified.TailTransport",
+    "Verified.Reflect.Definitions",
+    "Library.Numerics.Arithmetic.PrimeFactors.Compiled"
   ],
   "declarations": [
     "Library.Hashing.Sha256.foldl_append",
@@ -24,7 +29,9 @@
     "Library.Hashing.Sha3.SpongeProof.padded_of_regions",
     "Library.Hashing.Sha3.SpongeProof.bit_padded",
     "Verified.Wasi.PureTransport.erase_restore",
-    "LeanExe.ProofKit.BorrowedKept.borrowed_kept"
+    "LeanExe.ProofKit.BorrowedKept.borrowed_kept",
+    "Verified.Tail.fixed_restate",
+    "Verified.Reflect.addBoundDefinition"
   ],
   "examples": [
     "Library.Hashing.Sha512.compress_toVec",
@@ -32,7 +39,8 @@
     "Library.Hashing.Sha256.hashFrom_iv",
     "Demos.RunningSumFp.sciLayoutW_bound_le",
     "Demos.RunningSumFp.decRound_bound_le",
-    "Demos.RunningSumFp.initial_memoryCap"
+    "Demos.RunningSumFp.initial_memoryCap",
+    "Library.Numerics.Arithmetic.PrimeFactors.compiled.countFactors.implements"
   ],
   "sources": [
     "2026-10-23: The SHA-512 family",
@@ -41,6 +49,7 @@
     "2026-10-23: HMAC-SHA-256 and HMAC-SHA-512",
     "2026-10-24: The matcher computes the specification",
     "2026-10-25: The SHA-3 proofs",
-    "2026-10-27: Stage 3, the charges of the binary64 printer and parser"
+    "2026-10-27: Stage 3, the charges of the binary64 printer and parser",
+    "2026-10-30: Array literals and conditions on propositions in the reflector"
   ]
 }

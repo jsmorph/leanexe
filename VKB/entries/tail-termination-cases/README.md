@@ -1,0 +1,7 @@
+# Unproved cases of a tail loop's termination
+
+`verified_compile` proves that the continuing transition of a tail loop is well founded by Lean's functional induction on the definition, in `Verified.Reflect.deriveTailAcc`.  It reports the cases it cannot close as `the tail transition of f has unproved induction cases`.  Lean states each case's conditions in simplified form, such as `1 < remaining ∧ 1 < divisor` for `¬(remaining ≤ 1 ∨ divisor ≤ 1)` or `50 ≤ acc` for a failed `acc < 50`, while the step function keeps the source's form, so `simp_all` alone left open cases of `climb` in the forms example and of `Library.Numerics.Arithmetic.PrimeFactors.countFactors`.
+
+The tactic now splits the step equation of each remaining case on its conditions, which closes the branches that return or continue to a state that the induction hypothesis covers.  It closes the branches whose conditions contradict the case with `omega`, after rewriting the word comparisons to natural numbers.  A case that still fails prints its goal in the error, and its hypotheses show the form that Lean chose, so writing the source condition in that form, such as `1 < r` for `¬r ≤ 1`, makes the step match the case when the definition may change.
+
+The worked examples are `climb` and `countDown` of the forms example, `Verified.Examples.Forms.compiled.climb.implements` and `countDown.implements`, and `Library.Numerics.Arithmetic.PrimeFactors.compiled.countFactors.implements`.

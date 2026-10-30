@@ -1,0 +1,23 @@
+{
+  "id": "tail-termination-cases",
+  "goals": [
+    "verified_compile: the tail transition of f has unproved induction cases",
+    "Acc (fun next state => step state = Sum.inl next) state"
+  ],
+  "modules": [
+    "Verified.Reflect.TailTermination",
+    "Verified.Examples.Forms",
+    "Library.Numerics.Arithmetic.PrimeFactors.Compiled"
+  ],
+  "declarations": [
+    "Verified.Reflect.deriveTailAcc"
+  ],
+  "examples": [
+    "Verified.Examples.Forms.compiled.climb.implements",
+    "Verified.Examples.Forms.compiled.countDown.implements",
+    "Library.Numerics.Arithmetic.PrimeFactors.compiled.countFactors.implements"
+  ],
+  "sources": [
+    "2026-10-30: Array literals and conditions on propositions in the reflector"
+  ]
+}
