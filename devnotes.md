@@ -38891,8 +38891,8 @@ The ports of the examples and library programs stopped at four definitions that 
 - [x] The kernel reproduction under 4.34.0-rc2.
 - [x] Reflector rules for nonempty array literals and for `∧` and `∨` in conditions, and the four remaining ports.
 - [ ] The generic call theorem, replacing the per-library call lemmas.
-- [ ] The file-theorem command.
-- [ ] A count of the functions whose bound does not depend on the input, and a decision on emitting constant bounds.
+- [x] The file-theorem command.
+- [x] A count of the functions whose bound does not depend on the input, and a decision on emitting constant bounds.
 - [x] `leanchecker` over every module.
 - [ ] `STATUS.md` from the full check.
 - [x] The `NativeA` cap and region conclusions.
@@ -38995,7 +38995,7 @@ The checks ran on AArch64, with Wasmtime 44.0.0 and CompCert 3.18, at the final 
 - [x] The verified compilations of `Lookup`, `TreeLookup`, the prime-factor count, and `condMix32`, with their registry entries and cases.
 - [ ] Run `tests/wgsl/run.sh --verified` on a host with the SwiftShader and llvmpipe drivers.
 - [ ] Decide whether `if ¬p`, implication, and equivalence of propositions get a rule, which no port needs now.
-- [ ] Compare the bytes of the modules of `tests/verified/modules.txt` with those of the compiler before this change, with `tests/verified/run.sh --check-bytes`.
+- [x] Compare the bytes of the modules of `tests/verified/modules.txt` with those of the compiler before this change, with `tests/verified/run.sh --check-bytes`.
 
 ## 2026-10-30: A replay of every module, and the bytes across the reflector change
 
@@ -39042,7 +39042,7 @@ The ten changed files fell from 1,771 to 1,369 lines, the new module has 167, an
 - [x] `Verified.Ready`, `Call`, `CallSpec`, and the theorems of the call module.
 - [x] The hashing, regex, and exponential call theorems on the generic theorem, with their local lemmas removed.
 - [x] `Examples.arrayCall` as a corollary of `CallSpec`, and two worked examples of `CallSpec` with the generated bound.
-- [ ] Move the call lemmas of the other numerical libraries, 21 modules from `PrintFloatBytes` to `BesselBytes`, onto `Verified.Call`.
+- [x] Move the call lemmas of the other numerical libraries, 21 modules from `PrintFloatBytes` to `BesselBytes`, onto `Verified.Call`.
 - [ ] Decide whether the array examples' call theorems should be stated as `CallSpec` instances.
 
 ## 2026-10-30: The verified-request skill and its acceptance tool
@@ -39118,7 +39118,7 @@ The 19 modules lose 1,268 lines and gain 674, and `tables_at` adds 14 lines to t
 - [x] The entry lemmas of 19 numerical modules on `Verified.ImplementsTables.call`.
 - [x] `Verified.tables_at`, and the VKB entry `explicit-before-dependent-proof`.
 - [x] The unreached modules of `Library` imported by its root.
-- [ ] Decide whether the 46 unreached modules without `main` outside `Library` join their libraries' roots.
+- [x] Decide whether the 46 unreached modules without `main` outside `Library` join their libraries' roots.
 - [ ] Decide whether `Call` gains a form for entries that may trap, for the printer and the parser.
 
 ## 2026-10-30: The unreached modules in their roots
@@ -39145,7 +39145,7 @@ After the change the script lists 101 unreached modules.  Of these, 33 read a fi
 | `VKB/Check.lean` on `VKB/entries` | 22 entries | No problem reported |
 
 - [x] Every non-file module without `main` reached by a root of the gate.
-- [ ] Replace `String.mk` in `Verified/Examples/BufferTreesCases.lean`.
+- [x] Replace `String.mk` in `Verified/Examples/BufferTreesCases.lean`.
 
 ## 2026-10-30: One command for the theorems of the file modules
 
@@ -39237,3 +39237,51 @@ The documents count 115 of the 116 registry modules, with `byHand` as the one ex
 
 - [x] File modules without `from` for the six modules built without the reflector.
 - [x] The counts of the documents, 115 of the 116 registry modules.
+
+## 2026-10-30: The plan for retiring the LeanExe compiler
+
+A survey of the import graph gives the extent of the removal.  It found 101 files that import a module of `LeanExe/Compiler/` or `LeanExe/IR/`, or a module that runs `leanexe_compile`, and 138 more that reach one only through others.  The removal deletes 134 Lean files with 37,847 lines and 78 other files with 2,780 lines, among them the 75 files of `ltg/` and the LeanExe manual.  It moves about 600 lines into three modules: the dialect's combinator lemmas into `LeanExe.Dialect.Lemmas`, and the WGSL source language and its denotation, which the verified WGSL translation reads, out of the old IR into `LeanExe.WGSL.Source` and `LeanExe.WGSL.SourceDenote`.  The move retargets 261 lines and 22 imports in 54 Lean files and 4 other files, and the verified compiler otherwise imports nothing that the removal deletes.
+
+Six prerequisite changes come first, because the removal would otherwise drop working tests or claims: the skill and `tools/demo-check` on the verified compiler, the verified total theorems of the Euler solvers and the drone planner, the statements of question 6, the browser pages, GPU drivers, and test defaults on the verified modules, the thirteen example ports, and the conversion of LTG's general entries and of the manual's general sections.  The removal then runs in eleven commits, each of which builds the six libraries, and the gate builds every module once, on the last commit.  Commits 1 and 2 precede commit 4, commits 3 and 4 precede commit 7, and commit 7 lands alone, so that a failure of the move shows in one commit.
+
+1. Decouple the binary32 GPT-2 host from the LeanExe kernels.
+2. Separate the drone and Euler mathematics from their WebAssembly proofs.
+3. Remove the LeanExe modules and proofs of the examples, with the LeanExe module registry.
+4. Remove the LeanExe demo modules and proofs, with `tools/gpt_composites.py`.
+5. Remove the LeanExe library modules and proofs, with their case printers.
+6. Remove `leanexe_compile` and `LeanExe/Compiler/`.
+7. Move the WGSL source language and the dialect lemmas, with the old and new declarations side by side under different names.
+8. Remove `LeanExe/IR/`.
+9. Trim the module driver of `tests/modules` to the `--module` path that the verified driver uses.
+10. Remove LTG and update `AGENTS.md`.
+11. Delete the LeanExe manual and update the documents.
+
+The survey left ten questions, and each was decided by a recommendation and its review.
+
+| Question | Decision |
+|---|---|
+| Thirteen examples with only a LeanExe module, `Axpy` to `Updates` | Port each unchanged with `verified_compile`.  An example whose definition the reflector rejects is reported with the rejected form, and whether it gets a reflector rule or is deleted is decided then. |
+| CLOB's `Program.lean` and `Cases.lean`, which serve only the LeanExe module | Delete both, and state in the CLOB guide how the verified copy differs |
+| Names of the moved namespaces | `LeanExe.Dialect` and `LeanExe.WGSL.Source`, renamed in the move commit |
+| `load`, `store`, `call`, and `abort` constructors of the moved `Stmt` | Keep them, since they denote `none` and nothing produces them, which keeps the move mechanical |
+| Verified total theorems of the Euler solvers and the drone planner | State them from `p.initial` with a cap in pages, give the Euler bounds closed forms, and keep the final page count only if a short lemma relates memory growth to `top` |
+| `Generation.lean`, `module_side`, and `increment_total` | Port `Generation.lean` onto `compiled.step.implements` and `compiled.scores.implements`, restate `module_side` over the verified module, and let `increment_call` replace `increment_total` |
+| LTG | Convert `array-memory-framing`, `memory-write-range`, `local-frame-projection`, `direct-call-stack-tail`, and `region-frame` into VKB entries, then delete LTG |
+| LeanExe manual | Move its general sections to the verified manual, with the inbound links, in a commit before the removal |
+| `LeanExe/Pipeline/Budget.lean` | Keep it until the total theorems are done, and delete it with the IR if they use neither `Heap.Budget` nor `Heap.Bounded` |
+| `tests/modules` | Keep the trimmed driver in place, with `TestSupport.Native.ModuleCases` in place of its `Cases.lean` |
+
+The skill `verified-request` replaces `verified-executable`, which builds LeanExe modules and proves `NAME_bytes`, so the removal deletes the old skill.  The file modules of the module registry closed the second deferred item: `Demos/Gpt/VerifiedFile.lean` states `gpt_file` and `gpt_file_decode` for the verified `gpt.wasm`.  The count of functions whose bound does not depend on the input, and a decision on emitting constant bounds, are dropped.  `Verified.CallSpec` takes `p.f.bound` as its room, so a call theorem needs no constant, and a program that needs a closed form proves it from `bound_eq`, as the VKB entry `verified-bound-closed-form` describes.
+
+An audit of the day's open checkboxes ticked six: five whose work is done, and the constant-bound count, which is dropped.  The file-theorem command and the move of the numerical call lemmas are done, the latter for 19 modules, while the printer and the parser wait on the open question of a `Call` form for entries that may trap.  The unreached modules are in their roots, and `String.mk` is replaced.  The byte comparison across the reflector change emitted every registry module from the builds before and after the change with `tools/Emit.lean` rather than with `--check-bytes`, and the replay entry records its result.
+
+- [x] The removal map and the ten decisions.
+- [x] The verified `gpt.wasm` file theorems, the second deferred item.
+- [ ] The thirteen example ports.
+- [ ] The verified total theorems of the Euler solvers and the drone planner.
+- [ ] `Generation.lean`, `module_side`, and `increment_total`.
+- [ ] The browser pages, the GPU drivers, and the test defaults on the verified modules.
+- [ ] `tools/demo-check` on the verified compiler.
+- [ ] The five LTG entries in the VKB.
+- [ ] The general sections of the LeanExe manual in the verified manual.
+- [ ] The eleven removal commits.
