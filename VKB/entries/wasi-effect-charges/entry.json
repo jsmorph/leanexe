@@ -1,0 +1,42 @@
+{
+  "id": "wasi-effect-charges",
+  "goals": [
+    "Verified.Wasi.Resource.Bounded host pure program depth modes live body env budget",
+    "Verified.Wasi.Resource.CallBounded host pure program callee depth env budget",
+    "Verified.Wasi.Resource.CallPrefixBound for begin or a step of a WASI process",
+    "PureContext.ownedCost depth modes live value env ≤ budget"
+  ],
+  "modules": [
+    "Verified.Wasi.ResourceRules",
+    "Verified.TailExpand",
+    "Verified.Bound",
+    "Demos.RunningSum.Charges",
+    "Demos.RunningSumFp.Charges"
+  ],
+  "declarations": [
+    "Verified.Wasi.Resource.Bounded",
+    "Verified.Wasi.Resource.CallBounded",
+    "Verified.Wasi.Resource.Rule",
+    "Verified.Wasi.Resource.Returns",
+    "Verified.Wasi.Resource.Returns.read_size",
+    "Verified.Wasi.Resource.bounded_of_rule",
+    "Verified.Wasi.Resource.CallBoundRule",
+    "Verified.Wasi.Resource.callBounded_here",
+    "Verified.Wasi.Resource.callBounded_there",
+    "Verified.Ty.copyCost_of_scalar",
+    "Verified.Expr.fits_of_depthCalls"
+  ],
+  "examples": [
+    "Demos.RunningSum.writeStep_bounded",
+    "Demos.RunningSum.readStep_bounded",
+    "Demos.RunningSum.step_body_bounded",
+    "Demos.RunningSumFp.writeStep_bounded",
+    "Demos.RunningSumFp.readStep_bounded"
+  ],
+  "sources": [
+    "2026-10-23: Implementing the WASI agenda",
+    "2026-10-26: Memory accounting for the process loop",
+    "2026-10-27: The charges of the integer running sum",
+    "2026-10-27: Stage 3, the charges of the binary64 printer and parser"
+  ]
+}

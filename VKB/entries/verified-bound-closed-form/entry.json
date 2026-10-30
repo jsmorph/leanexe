@@ -1,0 +1,55 @@
+{
+  "id": "verified-bound-closed-form",
+  "goals": [
+    "compiled.f.bound x ≤ c",
+    "heap.Within store compiled.module (compiled.f.bound x)",
+    "Verified.loopCost CA C BA F n i s ≤ _",
+    "min unpaid paid ≤ _ in a generated bound",
+    "Verified.blockCost n"
+  ],
+  "modules": [
+    "Verified.BoundFacts",
+    "Verified.ChargeFacts",
+    "Verified.LoopCostLast",
+    "Demos.Slew.Bound",
+    "Demos.Drone.Verified",
+    "Library.Regex.Bytes",
+    "Demos.RunningSum.Charges",
+    "Demos.RunningSumFp.PrintCharges",
+    "Demos.RunningSumFp.ParseCharges"
+  ],
+  "declarations": [
+    "Verified.loopCost",
+    "Verified.blockCost",
+    "Verified.blockCost_eq",
+    "Verified.growCost_eq",
+    "Verified.paidGrowCost_eq",
+    "Verified.creditCost",
+    "Verified.loopCost_const",
+    "Verified.loopCost_le",
+    "Verified.loopCost_le_upto",
+    "Verified.loopCost_le_last",
+    "Verified.loopCost_repeatWhile_le",
+    "Verified.repeatWhile_count_le",
+    "Verified.loop_push_size",
+    "Verified.allocationCost_le"
+  ],
+  "examples": [
+    "Demos.Slew.Bound.plan_bound",
+    "Demos.Slew.Bound.slew_trapFree",
+    "Demos.Drone.Verified.compute_bound",
+    "Library.Regex.matchWith_bound",
+    "Demos.RunningSum.consumeInput_bound_le",
+    "Demos.RunningSumFp.mulSmall_size",
+    "Demos.RunningSumFp.mulSmall_bound_le",
+    "Demos.RunningSumFp.print64_bound_le",
+    "Demos.RunningSumFp.parse_bound_le"
+  ],
+  "sources": [
+    "2026-10-24: The compiled matcher",
+    "2026-10-26: The slew planner's allocation bound",
+    "2026-10-26: Building the process compaction",
+    "2026-10-27: The charges of the integer running sum",
+    "2026-10-27: Stage 3, the charges of the binary64 printer and parser"
+  ]
+}

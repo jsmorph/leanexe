@@ -3,18 +3,39 @@
   "goals": [
     "a closed proposition about constants, tables, or an initial store",
     "compiled.initial",
-    "x ^ n with a literal exponent above 256"
+    "x ^ n with a literal exponent above 256",
+    "{ name := \"f\", funcIdx := k } ∈ compiled.module.exports",
+    "∀ E, E < N → P E = true over a bounded range",
+    "Verified.Prog.Covered prog pool for a program without byte literals"
   ],
   "modules": [
-    "Library.Hashing.Crc.Bytes"
+    "Library.Hashing.Crc.Bytes",
+    "Library.Hashing.Crc.Proof",
+    "Library.Hashing.XxHash64.Bytes",
+    "Library.Hashing.Sha3.RoundProof",
+    "Library.Numerics.Decimal.PrintFloat.PrintFloatSteps",
+    "Library.Numerics.Float64.Exp.ExpTheorem",
+    "Verified.Literals",
+    "Verified.Examples.CompositionPure"
   ],
-  "declarations": [],
+  "declarations": [
+    "Verified.Prog.literals",
+    "Verified.Prog.Covered"
+  ],
   "examples": [
-    "Library.Hashing.Crc.ready_initial"
+    "Library.Hashing.Crc.ready_initial",
+    "Library.Hashing.Crc.Proof.crc32Table_of",
+    "Library.Hashing.XxHash64.xxh64_export",
+    "Library.Hashing.Sha3.RoundProof.round_0",
+    "Library.Numerics.Decimal.PrintFloat.PrintFloatSteps.wide_binary64",
+    "Library.Numerics.Float64.Exp.ExpTheorem.ready_initial",
+    "Verified.Examples.CompositionBase.add_pure"
   ],
   "sources": [
+    "2026-10-23: Implementing the WASI agenda",
     "2026-10-23: The SHA-512 family",
     "2026-10-25: The SHA-3 proofs",
-    "2026-10-25: CRC-32 and CRC-32C: results"
+    "2026-10-25: CRC-32 and CRC-32C: results",
+    "2026-10-27: Stage 3, the charges of the binary64 printer and parser"
   ]
 }

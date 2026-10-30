@@ -1,0 +1,29 @@
+{
+  "id": "mutual-relation-induction",
+  "goals": [
+    "LeanExe.Wasi.Exec host action world trace outcome final → P",
+    "LeanExe.Wasi.LoopExec host remaining index state test step next world trace outcome final → P",
+    "LClight.exec_stmt A X ge e le m s t le' m' out → P",
+    "structural recursion over a mutual inductive predicate fails"
+  ],
+  "modules": [
+    "LeanExe.Wasi.Semantics",
+    "LeanExe.Wasi.NoTrap",
+    "LeanExe.Wasi.Prefix",
+    "Verified.Wasi.ResourceExec"
+  ],
+  "declarations": [
+    "LeanExe.Wasi.Exec",
+    "LeanExe.Wasi.LoopExec"
+  ],
+  "examples": [
+    "LeanExe.Wasi.Exec.not_trapped",
+    "LeanExe.Wasi.Exec.bind",
+    "LeanExe.Wasi.LoopExec.resume",
+    "Verified.Wasi.Resource.ResourceExec.erase"
+  ],
+  "sources": [
+    "2026-10-23: Implementing the WASI agenda",
+    "2026-10-27: Bare-metal native code: design and plan"
+  ]
+}

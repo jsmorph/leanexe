@@ -1,0 +1,27 @@
+{
+  "id": "wasi-host-premise",
+  "goals": [
+    "targetHost.Satisfies module (Verified.Wasi.hostSpec host)",
+    "∃ targetHost, targetHost.Satisfies target (Verified.Wasi.hostSpec host)",
+    "a WASI theorem that may be vacuous for some host"
+  ],
+  "modules": [
+    "Verified.Wasi.HostTotal",
+    "Verified.Wasi.HostSpec",
+    "Verified.Wasi.OracleHost"
+  ],
+  "declarations": [
+    "Verified.Wasi.hostSpec",
+    "LeanExe.Wasi.Host.Total",
+    "LeanExe.Wasi.Host.Answers",
+    "LeanExe.Wasi.Host.Total.satisfiable",
+    "LeanExe.Wasi.Host.Total.answers",
+    "LeanExe.Wasi.Host.Answers.of_satisfies",
+    "Verified.Wasi.OracleHost.env_satisfies"
+  ],
+  "examples": [],
+  "sources": [
+    "2026-10-25: Address the WASI review findings",
+    "2026-10-26: Complete review of the WASI work"
+  ]
+}

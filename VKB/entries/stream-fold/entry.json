@@ -1,0 +1,48 @@
+{
+  "id": "stream-fold",
+  "goals": [
+    "a WASI process that reads lines and writes one output per accepted line",
+    "Demos.StreamFold.Model.foldOutcome kernel seed (Demos.StreamFold.Model.lines input)",
+    "Demos.StreamFold.Model.LineValues Denotes lines values status",
+    "Demos.StreamFold.StreamHost host rep"
+  ],
+  "modules": [
+    "Demos.StreamFold.Interface",
+    "Demos.StreamFold.Model",
+    "Demos.StreamFold.StreamHost",
+    "Demos.StreamFold.Host",
+    "Demos.StreamFold.Correct",
+    "Demos.StreamFold.Sizes",
+    "Demos.StreamFold.Map",
+    "Demos.RunningSum.Correct",
+    "Demos.RunningSumFp.Correct"
+  ],
+  "declarations": [
+    "Demos.StreamFold.Kernel",
+    "Demos.StreamFold.KernelSpec",
+    "Demos.StreamFold.process",
+    "Demos.StreamFold.Model.lines",
+    "Demos.StreamFold.Model.foldOutcome",
+    "Demos.StreamFold.Model.LineValues",
+    "Demos.StreamFold.Model.LineValues.unique",
+    "Demos.StreamFold.Model.LineRooms",
+    "Demos.StreamFold.StreamHost",
+    "Demos.StreamFold.initial_terminates_output",
+    "Demos.StreamFold.process_exec_correct",
+    "Demos.StreamFold.process_terminates",
+    "Demos.StreamFold.Model.pending_le",
+    "Demos.StreamFold.StreamFuture.line_le",
+    "Demos.StreamFold.step_within",
+    "Demos.StreamFold.repeatWhile_map"
+  ],
+  "examples": [
+    "Demos.RunningSum.initial_terminates_integer",
+    "Demos.RunningSumFp.initial_terminates_fp"
+  ],
+  "sources": [
+    "2026-10-24: Port running sum to Verified WASI",
+    "2026-10-25: Floating-point running sum",
+    "2026-10-25: Address the WASI review findings",
+    "2026-10-27: The charges of the integer running sum"
+  ]
+}

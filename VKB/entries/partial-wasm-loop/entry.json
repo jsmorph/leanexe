@@ -1,0 +1,29 @@
+{
+  "id": "partial-wasm-loop",
+  "goals": [
+    "Wasm.pwp module [.loop 0 0 body [] []] post store locals host",
+    "a Wasm loop that runs until its input ends, with no fuel bound known in advance",
+    "wp module [.loop 0 0 body [] []] Q store locals host from a decreasing rank"
+  ],
+  "modules": [
+    "LeanExe.ProofKit.PartialLoop",
+    "Verified.Wasi.ProcessLoop",
+    "Verified.Wasi.ProcessTermination"
+  ],
+  "declarations": [
+    "Wasm.pwp",
+    "Wasm.wp.pwp",
+    "Wasm.pwp.conseq",
+    "Wasm.PartialThen",
+    "Wasm.pwp_append",
+    "Wasm.PartialLoopPost",
+    "Wasm.pwp_loop"
+  ],
+  "examples": [
+    "Verified.Wasi.pwp_process_loop",
+    "Verified.Wasi.wp_process_loop_ranked"
+  ],
+  "sources": [
+    "2026-10-24: Port running sum to Verified WASI"
+  ]
+}

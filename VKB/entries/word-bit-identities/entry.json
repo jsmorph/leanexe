@@ -1,0 +1,58 @@
+{
+  "id": "word-bit-identities",
+  "goals": [
+    "UInt64.toBitVec x = UInt64.toBitVec y for words built from shifts, masks, ors, and xors",
+    "(x <<< k) ||| (x >>> (64 - k)) = UInt64.ofBitVec (x.toBitVec.rotateLeft k)",
+    "(Library.Hashing.Sha256.rot (Library.Hashing.Sha256.low32 x) r).toUInt32",
+    "Library.Bytes.byteOf (Library.Hashing.Words.bswap x) k",
+    "((s >>> q) &&& 1 == 1) = bit s q.toNat"
+  ],
+  "modules": [
+    "Library.Hashing.Words.Proof",
+    "Library.Hashing.Sha256.WordProof",
+    "Library.Hashing.Sha3.RoundProof",
+    "Library.Hashing.SipHash.Proof",
+    "Library.Hashing.XxHash64.Proof",
+    "Library.Hashing.Sha2.Equiv.SHA512.Bridge",
+    "Library.Regex.Bits"
+  ],
+  "declarations": [
+    "Library.Hashing.Words.rotr",
+    "Library.Hashing.Words.bswap_eq",
+    "Library.Hashing.Words.byteOf_bswap",
+    "Library.Hashing.Words.byteOf_masked",
+    "Library.Hashing.Words.byteOf_marked",
+    "Library.Hashing.Words.byteOf_low",
+    "Library.Hashing.Sha256.low32",
+    "Library.Hashing.Sha256.rot",
+    "Library.Hashing.Sha256.low32_toUInt32",
+    "Library.Hashing.Sha256.shr_toUInt32",
+    "Library.Hashing.Sha256.rot_toUInt32",
+    "Library.Hashing.Sha256.xor_ones_toUInt32",
+    "SHS.Equiv.SHA512.Bridge.toBitVec_rotr",
+    "Library.Hashing.Sha3.RoundProof.bit",
+    "Library.Hashing.Sha3.RoundProof.bit_xor",
+    "Library.Hashing.Sha3.RoundProof.bit_complement",
+    "Library.Hashing.Sha3.RoundProof.bit_rotl",
+    "Library.Regex.Bits.bit",
+    "Library.Regex.Bits.bit_or",
+    "Library.Regex.Bits.bit_and",
+    "Library.Regex.Bits.bit_one_shiftLeft",
+    "Library.Regex.Bits.shiftRight_and_one",
+    "Library.Regex.Bits.ext"
+  ],
+  "examples": [
+    "Library.Hashing.SipHash.Proof.rotl_13",
+    "Library.Hashing.SipHash.Proof.sipRound_eq",
+    "Library.Hashing.XxHash64.Proof.rotl_1",
+    "Library.Hashing.XxHash64.Proof.round_eq",
+    "Library.Hashing.Sha256.bigSigma0_toUInt32"
+  ],
+  "sources": [
+    "2026-10-23: Hashing library plan",
+    "2026-10-23: SHA-256 and SHA-224",
+    "2026-10-24: Glushkov's theorem",
+    "2026-10-25: The SHA-3 proofs",
+    "2026-10-25: SipHash and XXH64"
+  ]
+}

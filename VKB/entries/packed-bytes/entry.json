@@ -3,13 +3,17 @@
   "goals": [
     "msg[(UInt64.ofNat i >>> 3).toNat]! >>> ((UInt64.ofNat i &&& 7) <<< 3)",
     "Library.Bytes.bytes msg n",
-    "Library.Bytes.byteAt msg i"
+    "Library.Bytes.byteAt msg i",
+    "List.foldr (fun b acc => b.toNat + 256 * acc) 0 bytes",
+    "(p.drop i).take k for a list of bytes"
   ],
   "modules": [
     "Library.Bytes.Packed",
+    "Library.Bytes.LittleEndian",
     "Library.Hashing.Crc.Proof",
     "Library.Regex.RunProof",
-    "Library.Hashing.XxHash64.Proof"
+    "Library.Hashing.XxHash64.Proof",
+    "Library.Hashing.SipHash.Proof"
   ],
   "declarations": [
     "Library.Bytes.byteOf",
@@ -17,12 +21,21 @@
     "Library.Bytes.bytes",
     "Library.Bytes.bytes_size",
     "Library.Bytes.bytes_get!",
-    "Library.Bytes.byteAt_eq"
+    "Library.Bytes.byteAt_eq",
+    "Library.Bytes.foldr_le",
+    "Library.Bytes.foldr_range",
+    "Library.Bytes.sum_digits",
+    "Library.Bytes.byteOf_toNat",
+    "Library.Bytes.foldr_byteOf",
+    "Library.Bytes.chunk_eq"
   ],
   "examples": [
     "Library.Hashing.Crc.Proof.natBits_word",
     "Library.Regex.RunProof.input_byte",
-    "Library.Hashing.XxHash64.Proof.byte_eq"
+    "Library.Hashing.XxHash64.Proof.byte_eq",
+    "Library.Hashing.SipHash.Proof.le64_bytes",
+    "Library.Hashing.SipHash.Proof.messageWords_eq",
+    "Library.Hashing.XxHash64.Proof.lane_le"
   ],
   "sources": [
     "2026-10-23: Packed bytes",

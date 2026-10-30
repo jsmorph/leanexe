@@ -1,0 +1,53 @@
+{
+  "id": "float-error-tracking",
+  "goals": [
+    "LeanExe.ProofKit.F64Approx.FApprox x v e",
+    "|value x.toBits - v| ≤ e for a Float computed by a chain of operations",
+    "CodeLib.IEEE64.Finite (Wasm.IEEE64.add a b) → Finite a ∧ Finite b",
+    "max a b with a NaN operand"
+  ],
+  "modules": [
+    "LeanExe.ProofKit.F64Approx",
+    "Demos.Slew.Rounding",
+    "Demos.Slew.Valid",
+    "Demos.Slew.Check",
+    "Demos.Slew.NanFree",
+    "Demos.Slew.Safety"
+  ],
+  "declarations": [
+    "LeanExe.ProofKit.F64Approx.Approx",
+    "LeanExe.ProofKit.F64Approx.Approx.mono",
+    "LeanExe.ProofKit.F64Approx.FApprox",
+    "LeanExe.ProofKit.F64Approx.fapprox_add",
+    "LeanExe.ProofKit.F64Approx.fapprox_sub",
+    "LeanExe.ProofKit.F64Approx.fapprox_mul",
+    "LeanExe.ProofKit.F64Approx.fapprox_div",
+    "LeanExe.ProofKit.F64Approx.fapprox_sqrt",
+    "LeanExe.ProofKit.F64Approx.fapprox_neg",
+    "LeanExe.ProofKit.F64Approx.fapprox_ofBits",
+    "LeanExe.ProofKit.F64Approx.within_one_of_error",
+    "LeanExe.ProofKit.F64Approx.SApprox",
+    "Demos.Slew.Rounding.Bnd",
+    "Demos.Slew.Rounding.Bnd.add",
+    "Demos.Slew.Rounding.Bnd.mul",
+    "Demos.Slew.Rounding.max_val",
+    "Demos.Slew.Rounding.min_val",
+    "Demos.Slew.Rounding.le_iff_val",
+    "Demos.Slew.Valid.finite_of_add",
+    "Demos.Slew.Valid.finite_of_sub",
+    "Demos.Slew.Valid.finite_of_mul",
+    "Demos.Slew.Valid.fin_add",
+    "Demos.Slew.Valid.lower_of_enclosure"
+  ],
+  "examples": [
+    "Demos.Slew.Check.edgeOk_sound",
+    "Demos.Slew.NanFree.plan_finite",
+    "Demos.Slew.Safety.plan_safe"
+  ],
+  "sources": [
+    "2026-10-26: The slew planner: program, theorems, and tests",
+    "2026-10-26: The slew edge check proved sound",
+    "2026-10-26: The slew safety theorem proved",
+    "2026-10-26: NaN-freedom of the slew planner"
+  ]
+}

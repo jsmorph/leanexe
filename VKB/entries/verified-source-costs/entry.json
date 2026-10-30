@@ -1,0 +1,44 @@
+{
+  "id": "verified-source-costs",
+  "goals": [
+    "a generated bound that charges a copy of an array at every call or pass",
+    "verified_compile runs out of heartbeats in isDefEq",
+    "the type Prop is not UInt64, Bool, Float, Float32, Bytes, a structure with a Flat instance, an array, or a pair",
+    "a && f x evaluates f x when a is false",
+    "a match alternative that names the matched value"
+  ],
+  "modules": [
+    "Verified.Reflect.Modes",
+    "Library.Regex.Bytes",
+    "Library.Hashing.Sha3.Program",
+    "Demos.Slew.Bound",
+    "Verified.Examples.HeapSums"
+  ],
+  "declarations": [
+    "Verified.Expr.paramChoice",
+    "Library.Regex.Scan",
+    "Library.Regex.scanStep",
+    "Library.Regex.push",
+    "Library.Regex.combine",
+    "Library.Hashing.Sha3.Lanes",
+    "Library.Hashing.Sha3.thetaL"
+  ],
+  "examples": [
+    "Library.Regex.matchWith_bound",
+    "Demos.Slew.relax",
+    "Demos.Slew.round",
+    "Demos.Slew.Bound.plan_bound",
+    "Verified.Examples.HeapSums.grow",
+    "Verified.Examples.HeapSums.regrow"
+  ],
+  "sources": [
+    "2026-10-23: HMAC-SHA-256 and HMAC-SHA-512",
+    "2026-10-24: The compiled matcher",
+    "2026-10-24: The cost of a variable pattern that names the matched value",
+    "2026-10-25: The SHA-3 program",
+    "2026-10-26: Sums with heap fields: results",
+    "2026-10-26: The slew planner: program, theorems, and tests",
+    "2026-10-26: The slew planner compiled and tested in Wasmtime",
+    "2026-10-27: Deriving a recursive type's declarations once"
+  ]
+}

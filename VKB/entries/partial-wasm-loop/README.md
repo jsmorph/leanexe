@@ -1,0 +1,7 @@
+# Partial correctness of unbounded Wasm loops
+
+Talos's `wp` states total correctness: some fuel suffices for the program to finish with the postcondition.  A process loop that runs until its input ends has no fuel bound that a proof can name in advance, so a statement of partial correctness serves while termination is open.  `LeanExe/ProofKit/PartialLoop.lean` supplies one, and the WASI process proofs use it.
+
+`Wasm.pwp module program post store locals host` states that every run that finishes within its fuel satisfies `post`.  `Wasm.wp.pwp` weakens a `wp` fact to it, `pwp.conseq` weakens the postcondition, and `pwp_append` sequences two programs through `PartialThen`, which asks for `pwp` of the rest at a fall-through.  `pwp_loop` proves a loop from an invariant: when the invariant holds initially and each pass from a state where it holds ends in `PartialLoopPost invariant post`, which asks for the invariant again at a branch to the loop's start, the loop satisfies `post`.  `Verified.Wasi.pwp_process_loop` applies it to the process loop with the represented process state as the invariant.
+
+For total correctness, add a rank.  `Verified.Wasi.wp_process_loop_ranked` asks that each iteration satisfy the process's iteration result and decrease a natural-number rank at the branch back to the loop's start, and it then gives `wp` of the loop through Talos's `wp_loop_cons`.  A proof can therefore state the iteration once, obtain the partial result with `pwp`, and add the rank when termination is proved.
