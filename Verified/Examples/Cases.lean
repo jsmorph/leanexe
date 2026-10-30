@@ -88,6 +88,7 @@ import Examples.SumArray.Cases
 import Examples.SumCount.Cases
 import Examples.Updates.Cases
 import Verified.Examples.Forms
+import Verified.Examples.Patterns
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -496,6 +497,35 @@ def formCases : IO Unit := do
     for acc in [(0 : UInt64), 5, 999, 1000] do
       IO.println s!"forms|countDown|i64|i64:{n} i64:{acc}|{Forms.countDown n acc}|0|0"
       IO.println s!"forms|climb|i64|i64:{n} i64:{acc}|{Forms.climb n acc}|0|0"
+
+/-- The cases of the matches on structure patterns of `Patterns`, at every combination of the
+fixed fields' constructors.  Only `record` allocates: it borrows the host's array and allocates one
+array for its result, so two blocks stay allocated. -/
+def patternCases : IO Unit := do
+  let mode (m : Patterns.Mode) : UInt64 := LeanExe.Pipeline.Flat.flat m
+  let dir (d : Patterns.Dir) : UInt64 := LeanExe.Pipeline.Flat.flat d
+  let arg (m : Patterns.Machine) : String := s!"i64:{m.count} i64:{mode m.mode} i64:{dir m.dir}"
+  let out (m : Patterns.Machine) : String := s!"{m.count} {mode m.mode} {dir m.dir}"
+  for md in [Patterns.Mode.idle, .run, .halt] do
+    for d in [Patterns.Dir.up, .down] do
+      IO.println s!"patterns|rank|i64|i64:{dir d} i64:{mode md}|{Patterns.rank ⟨md, d⟩}|0|0"
+      for k in [(0 : UInt64), 7] do
+        IO.println s!"patterns|parts|i64|i64:{mode md} i64:{dir d} i64:{k}|\
+          {Patterns.parts md d k}|0|0"
+      for k in [(0 : UInt64), 1, 7, 18446744073709551615] do
+        let m : Patterns.Machine := ⟨md, d, k⟩
+        IO.println s!"patterns|tick|list:i64,i64,i64|{arg m}|{out (Patterns.tick m)}|0|0"
+        IO.println s!"patterns|code|i64|{arg m}|{Patterns.code m}|0|0"
+        IO.println s!"patterns|steer|i64|{arg m}|{Patterns.steer m}|0|0"
+        IO.println s!"patterns|after|i64|{arg m}|{Patterns.after m}|0|0"
+        for n in [(0 : UInt64), 1, 2, 5] do
+          IO.println s!"patterns|ticks|list:i64,i64,i64|i64:{n} {arg m}|\
+            {out (Patterns.ticks n m)}|0|0"
+    for xs in arrays.take 3 do
+      for x in [(0 : UInt64), 9] do
+        let r := Patterns.record ⟨md, xs⟩ x
+        IO.println s!"patterns|record|list:i64,array-u64|i64:{mode md} {arrayArg xs} i64:{x}|\
+          {mode r.mode} {arrayOut r.items}|2|2"
 
 /-- The cases of the verified modules of the LeanExe compiler's examples and of the examples of the
 verified-request skill: the inputs of their LeanExe cases or their samples, against the
@@ -1595,3 +1625,4 @@ def main : IO Unit := do
     {arrayOut (_root_.Library.Random.Xorshift.square cols)}|2|2"
   portCases
   formCases
+  patternCases

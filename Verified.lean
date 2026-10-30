@@ -101,6 +101,7 @@ import Verified.Examples.Tables
 import Demos.Verified
 import Examples.Verified
 import Verified.Examples.Forms
+import Verified.Examples.Patterns
 import Verified.Wasi
 import Verified.Examples.Literals
 import Verified.ProgramLiterals

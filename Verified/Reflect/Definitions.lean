@@ -40,8 +40,9 @@ source instances along `φ`.  Its body may use literals, its parameters, `let`, 
 `≤`, `>`, `≥`, `=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a
 comparison, also as `if h : c` with branches that do not use `h`, pairs built with `(a, b)` and
 taken apart with `.1`, `.2`, or `match`, structures built with their constructor or `{ s with … }`
-and taken apart with their fields or `match`, enumeration constructors, `Flat.flat` of enumerations,
-`match` and comparisons on enumerations, Boolean equality and inequality, `LeanExe.loop`,
+and taken apart with their fields or `match`, whose patterns may fix fields to enumeration
+constructors, enumeration constructors, `Flat.flat` of enumerations, `match` and comparisons on
+enumerations, Boolean equality and inequality, `LeanExe.loop`,
 `LeanExe.repeatWhile`, whole-array `Array.foldl`, `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`,
 `xs.set! i.toNat v`, `xs.push v`,
 `xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
@@ -1048,6 +1049,142 @@ def casesEq (app : MatcherApp) (fields : Lean.Expr → MetaM (Array Lean.Expr)) 
     goal.mvarId!.refl
     mkLambdaFVars #[h, s] (← mkExpectedTypeHint (← instantiateMVars goal) eq)
   return mkApp2 gen alt d
+
+/-- How an alternative of a match on a structure receives an argument: as the matched value, as
+the field with index `i`, or as `()` when its pattern binds nothing. -/
+inductive PatternArg where
+  | value
+  | field (i : Nat)
+  | unit
+
+/-- An alternative of a match on a structure: the fields that its pattern fixes, each as the
+field's index and an enumeration constructor, and the arguments that the alternative receives. -/
+structure StructAlt where
+  fixed : Array (Nat × Name)
+  args : Array PatternArg
+
+/-- The alternatives of the match `app` on a value of the structure with constructor `ctor` and
+fields `fields`, read from the patterns of the matcher's type with its motive abstract.  A pattern
+is a variable for the value, or the constructor with each field a variable or a constructor of an
+enumeration with a `Flat` instance to words. -/
+def structAlts (app : MatcherApp) (ctor : ConstructorVal) (fields : Array Name) :
+    MetaM (Array StructAlt) := do
+  let matcher := mkAppN (mkConst app.matcherName app.matcherLevels.toList) app.params
+  let count := 1 + app.discrs.size + app.alts.size
+  forallBoundedTelescope (← inferType matcher) (some count) fun xs _ => do
+    unless xs.size == count do
+      throwError "verified_compile: the matcher of {app.toExpr} has an unexpected type"
+    let motive := xs[0]!
+    (xs.extract (1 + app.discrs.size) count).mapM fun h => do
+      forallTelescope (← inferType h) fun ys body => do
+        let body := body.consumeMData
+        unless body.isApp && body.appFn! == motive do
+          throwError "verified_compile: the match {app.toExpr} has an alternative of type {body}"
+        let pat := body.appArg!.consumeMData
+        if ys.size == 1 && pat == ys[0]! then
+          return ({ fixed := #[], args := #[.value] } : StructAlt)
+        unless pat.isAppOfArity ctor.name ctor.numFields do
+          throwError "verified_compile: the pattern {pat} neither binds the value nor applies \
+            {ctor.name}, in{indentExpr app.toExpr}"
+        let vals := pat.getAppArgs.map (·.consumeMData)
+        let mut fixed := #[]
+        for i in [:vals.size] do
+          let v := vals[i]!
+          if ys.contains v then continue
+          let notEnum := m!"verified_compile: a pattern fixes the field `{fields[i]!}` to {v}, \
+            which is not a constructor of an enumeration with a `Flat` instance to words, in\
+            {indentExpr app.toExpr}"
+          let .const k _ := v | throwError notEnum
+          let some (.ctorInfo info) := (← getEnv).find? k | throwError notEnum
+          unless (← enumFlat? (mkConst info.induct)).isSome do throwError notEnum
+          fixed := fixed.push (i, k)
+        let args ← ys.mapM fun y => do
+          if let some i := vals.findIdx? (· == y) then return PatternArg.field i
+          let ty ← inferType y
+          if ty.isConstOf ``Unit || (← whnfR ty).isConstOf ``PUnit then return .unit
+          throwError "verified_compile: an alternative takes {y}, which its pattern {pat} does not \
+            bind, in{indentExpr app.toExpr}"
+        return ({ fixed, args } : StructAlt)
+
+/-- For a match `app` with several alternatives on a value `d` of the structure with constructor
+`ctor` and fields `fields`, the chain of `if`s that tests, in the order of the alternatives, the
+words of the fields that each pattern fixes, joined with `&&`.  The last alternative, and an
+alternative whose pattern fixes no field, take no test and end the chain.  An alternative receives
+the projection of `d` for each variable of its pattern, and `d` for a pattern that binds the value.
+The second component proves that the chain equals the match.  At a variable for the value and one
+for each alternative, the proof takes cases on the structure and on each fixed field, and the
+kernel reduces both sides at each combination of constructors.  The proof is then applied to `d`
+and the alternatives, so that the kernel evaluates neither. -/
+def structMatchChain (app : MatcherApp) (ctor : ConstructorVal) (fields : Array Name) :
+    MetaM (Lean.Expr × Lean.Expr) := do
+  unless app.remaining.isEmpty do
+    throwError "verified_compile: the match {app.toExpr} is applied to further arguments"
+  let .lam _ _ resultTy _ := app.motive
+    | throwError "verified_compile: the match {app.toExpr} has an unexpected motive"
+  if resultTy.hasLooseBVars then
+    throwError "verified_compile: the type of the match {app.toExpr} depends on its value"
+  unless ctor.numParams == 0 && ctor.levelParams.isEmpty do
+    throwError "verified_compile: the structure {ctor.induct} of the match {app.toExpr} has \
+      parameters"
+  let alts := (← structAlts app ctor fields).toList.zipIdx
+  let d := app.discrs[0]!
+  let type ← inferType d
+  let altTys ← app.alts.mapM inferType
+  let hyps := (List.range app.alts.size).toArray.map fun i => (Name.mkSimple s!"h{i}", altTys[i]!)
+  withLocalDeclsDND hyps fun hs => withLocalDeclD `x type fun x => do
+    let branch (fns : Array Lean.Expr) (beta : Bool) (a : StructAlt) (j : Nat) :
+        MetaM Lean.Expr := do
+      let args ← a.args.mapM fun
+        | .value => pure x
+        | .field i => mkProjection x fields[i]!
+        | .unit => pure (mkConst ``Unit.unit)
+      return if beta then fns[j]!.beta args else mkAppN fns[j]! args
+    let test (a : StructAlt) : MetaM Lean.Expr := do
+      let words ← a.fixed.toList.mapM fun (i, k) => do
+        let field ← mkProjection x fields[i]!
+        let some (n, inst) ← enumFlat? (← inferType field)
+          | throwError "verified_compile: the field `{fields[i]!}` is not an enumeration"
+        let some w ← enumWord? (mkConst k)
+          | throwError "verified_compile: the constructor {k} has no word"
+        mkAppM ``BEq.beq #[mkApp (enumFlat n inst) field, w]
+      let w :: ws := words | throwError "verified_compile: an alternative fixes no field"
+      ws.foldlM (fun acc t => mkAppM ``and #[acc, t]) w
+    let rec chain (fns : Array Lean.Expr) (beta : Bool) :
+        List (StructAlt × Nat) → MetaM Lean.Expr
+      | [] => throwError "verified_compile: the match {app.toExpr} has no alternatives"
+      | [(a, j)] => branch fns beta a j
+      | (a, j) :: rest => do
+        if a.fixed.isEmpty then return ← branch fns beta a j
+        mkAppM ``ite #[← mkEq (← test a) (mkConst ``Bool.true), ← branch fns beta a j,
+          ← chain fns beta rest]
+    let chainAbs ← chain hs false alts
+    let matchAbs := { app with discrs := #[x], alts := hs }.toExpr
+    let eqAt (v : Lean.Expr) : MetaM Lean.Expr :=
+      mkEq (chainAbs.replaceFVar x v) (matchAbs.replaceFVar x v)
+    let rec split (vals : Array Lean.Expr) : List Nat → MetaM Lean.Expr
+      | [] => do
+        let v := mkAppN (mkConst ctor.name) vals
+        let lhs := chainAbs.replaceFVar x v
+        let rhs := matchAbs.replaceFVar x v
+        unless ← kernelDefEq lhs rhs do
+          throwError "verified_compile: the tests of the fixed fields do not reproduce the match \
+            at {v}, in{indentExpr app.toExpr}"
+        mkExpectedTypeHint (← mkEqRefl lhs) (← mkEq lhs rhs)
+      | i :: rest => do
+        let .const n _ ← whnfR (← inferType vals[i]!)
+          | throwError "verified_compile: the field `{fields[i]!}` is not an enumeration"
+        let motive ← withLocalDeclD `y (mkConst n) fun y => do
+          mkLambdaFVars #[y] (← eqAt (mkAppN (mkConst ctor.name) (vals.set! i y)))
+        let minors ← (← getConstInfoInduct n).ctors.toArray.mapM fun k =>
+          split (vals.set! i (mkConst k)) rest
+        return mkAppN (mkConst (n ++ `casesOn) [Level.zero]) (#[motive, vals[i]!] ++ minors)
+    let fixedFields := (alts.flatMap fun (a, _) => a.fixed.toList.map (·.1)).eraseDups
+    let minor ← forallTelescope ctor.type fun ys _ => do
+      mkLambdaFVars ys (← split ys fixedFields)
+    let motive ← mkLambdaFVars #[x] (← mkEq chainAbs matchAbs)
+    let cases := mkAppN (mkConst (ctor.induct ++ `casesOn) [Level.zero]) #[motive, x, minor]
+    let gen ← mkLambdaFVars (hs.push x) cases
+    return ((← chain app.alts true alts).replaceFVar x d, mkAppN gen (app.alts.push d))
 
 /-- From `proof : X = flatValue a` and `eq : a = e`, the proof of `X = flatValue e`. -/
 def restate (proof eq : Lean.Expr) : MetaM Lean.Expr := do
@@ -2168,6 +2305,17 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       return ← reflectDataMatch app n
     if let some name ← sumName? (← inferType app.discrs[0]!) then
       return ← reflectDataMatch app name
+    if app.alts.size > 1 then
+      if let some (ctor, fields) ← structOf? (← inferType app.discrs[0]!) then
+        -- Several alternatives on a structure, whose patterns fix fields to constructors of
+        -- enumerations: the chain of tests of `structMatchChain`, on a place or on a variable
+        -- bound to the value first.
+        let d := app.discrs[0]!
+        unless ← isPlace d do
+          return ← reflectAs (← withLetDecl `t (← inferType d) d fun y => do
+            mkLetFVars #[y] { app with discrs := #[y] }.toExpr) app.toExpr
+        let (chain, eq) ← structMatchChain app ctor fields
+        return ← reflectVia chain eq
     if app.alts.size == 1 then
       let alt := app.alts[0]!
       let d := app.discrs[0]!

@@ -110,6 +110,7 @@ Library.Numerics.Statistics.Mean.Compiled:Library.Numerics.Statistics.Mean.compi
 Library.Numerics.Statistics.SumSquares.Compiled:Library.Numerics.Statistics.SumSquares.compiled.module:sumSquares
 Library.Random.SplitMix64.Compiled:Library.Random.SplitMix64.compiled.module:prng
 Verified.Examples.Forms:Verified.Examples.Forms.compiled.module:forms
+Verified.Examples.Patterns:Verified.Examples.Patterns.compiled.module:patterns
 Examples.Lookup.Compiled:Examples.Lookup.compiled.module:lookup
 Examples.TreeLookup.Compiled:Examples.TreeLookup.compiled.module:treeLookup
 Library.Numerics.Arithmetic.PrimeFactors.Compiled:Library.Numerics.Arithmetic.PrimeFactors.compiled.module:primeFactors

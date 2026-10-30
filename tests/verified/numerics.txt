@@ -103,6 +103,7 @@ mean:Library.Numerics.Statistics.Mean.Compiled:Library/Numerics/Statistics/Mean/
 sumSquares:Library.Numerics.Statistics.SumSquares.Compiled:Library/Numerics/Statistics/SumSquares/File.lean
 prng:Library.Random.SplitMix64.Compiled:Library/Random/SplitMix64/File.lean
 forms:Verified.Examples.Forms:Verified/Examples/FormsFile.lean
+patterns:Verified.Examples.Patterns:Verified/Examples/PatternsFile.lean
 lookup:Examples.Lookup.Compiled:Examples/Lookup/File.lean
 treeLookup:Examples.TreeLookup.Compiled:Examples/TreeLookup/File.lean
 primeFactors:Library.Numerics.Arithmetic.PrimeFactors.Compiled:Library/Numerics/Arithmetic/PrimeFactors/File.lean
