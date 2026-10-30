@@ -27,7 +27,7 @@ the properties of the resulting WebAssembly.
 | [Hashing](Hashing/README.md) | V S F C A B | SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, and SHA-512/256, with the FIPS 180-4 transcription and equivalence proofs they use, HMAC-SHA-256 and HMAC-SHA-512 with a transcription of FIPS 198-1, SHA3-224, SHA3-256, SHA3-384, SHA3-512, SHAKE128, and SHAKE256 with a transcription of FIPS 202, CRC-32 and CRC-32C with a transcription of ITU-T V.42 and RFC 3720, SipHash-2-4 and SipHash-1-3 with a transcription of the SipHash paper, and XXH64 with a transcription of the xxHash specification. |
 | [Regular expressions](Regex/README.md) | V S F C | A matcher for regular expressions over bytes given at run time, by the position automaton, with Glushkov's theorem and a specification on Mathlib's languages. |
 
-The Forms column gives the union of the codes of an area's entries in [the algorithm index](../index.md), whose key defines the codes and whose rows give each entry's codes, including those that other modules contribute.  The index also states the mathematical results and domains of the families.  A dash marks an area of definitions that the libraries use and that no module compiles on its own.
+The Forms column gives the union of the codes that [the algorithm index](../index.md) gives an area's entries outside parentheses, which are the forms of the library's own modules.  The index's key defines the codes, and its rows also name the forms that other programs contribute.  The index also states the mathematical results and domains of the families.  A dash marks an area of definitions that the libraries use and that no module compiles on its own.
 
 ## Modules and imports
 
