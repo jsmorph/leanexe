@@ -28,7 +28,7 @@ slightly from a library implementation.
 | Theorem | Statement |
 |---------|-----------|
 | `gpt_bytes` | `encode` succeeds on `gpt.module`, and the module that `decode` reads from the bytes implements all 48 functions, functions 2 to 49. |
-| `gpt_file` | The file `build/gpt/gpt.wasm` that `Emit.lean` writes holds the bytes of `gpt_bytes`.  [`File.lean`](File.lean) checks it after the file is written. |
+| `gpt_file`, `gpt_file_decode` | `build/gpt/gpt.wasm`, which `Emit.lean` writes, holds the bytes of `gpt_bytes` and decodes to `gpt.module`.  [`File.lean`](File.lean) checks both after the file is written. |
 | `forward_causal` | Under bounds on the dimensions, two token sequences that agree up to position `i` give scores that agree up to row `i`. |
 | `steps_exact` | `step` run on tokens `0` to `p` from an empty cache, then `scores`, equals row `p` of `forward` on any number of tokens above `p`, bit for bit. |
 | `generating_start`, `generating_step`, `generating_scores` | The host's sequence of calls, `step` per token with the cache handed over and then `scores`, returns row `p` of `forward`, unless a call stops at `unreachable`. |

@@ -9,25 +9,6 @@ as deep as the file is long, which the kernel checks under a raised `maxRecDepth
 
 namespace Library.Hashing.Crc.File
 
-set_option maxRecDepth 100000 in
-/-- `build/verified/crc.wasm` holds `encode compiled.module`. -/
-theorem crc_file :
-    Wasm.Encoding.encode compiled.module =
-      .ok (binary_file% "../../../build/verified/crc.wasm") :=
-  LeanExe.Pipeline.encode_eq_of_encoding compiled.encoded.1 (by decide +kernel)
-
-set_option maxRecDepth 100000 in
-/-- `build/verified/crc.wasm` decodes to the module of the call theorems. -/
-theorem crc_file_decode :
-    Wasm.Encoding.decode (binary_file% "../../../build/verified/crc.wasm") =
-      .ok compiled.module := by
-  obtain ⟨bytes, henc, hdec, _⟩ := compiled.bytes
-  have h : binary_file% "../../../build/verified/crc.wasm" = bytes :=
-    Except.ok.inj (crc_file.symm.trans henc)
-  rw [h]
-  exact hdec
-
-#print axioms crc_file
-#print axioms crc_file_decode
+file_theorems crc compiled "../../../build/verified/crc.wasm" from compiled.bytes
 
 end Library.Hashing.Crc.File

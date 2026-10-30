@@ -7,24 +7,7 @@ import LeanExe.Pipeline.FileBytes
 
 namespace Library.Numerics.Float64.Log10.Log10File
 
-set_option maxRecDepth 100000 in
-/-- `build/verified/log10.wasm` holds `encode Log10.compiled.module`. -/
-theorem log10_file :
-    Wasm.Encoding.encode Log10.compiled.module =
-      .ok (binary_file% "../../../../build/verified/log10.wasm") :=
-  LeanExe.Pipeline.encode_eq_of_toList (by decide +kernel)
-
-/-- `build/verified/log10.wasm` decodes to the module of `Log10Theorem.log10_bytes_accuracy`. -/
-theorem log10_file_decode :
-    Wasm.Encoding.decode (binary_file% "../../../../build/verified/log10.wasm") =
-      .ok Log10.compiled.module := by
-  obtain ⟨bytes, henc, hdec, _⟩ := Log10Theorem.log10_bytes_accuracy
-  have h : binary_file% "../../../../build/verified/log10.wasm" = bytes :=
-    Except.ok.inj (log10_file.symm.trans henc)
-  rw [h]
-  exact hdec
-
-#print axioms log10_file
-#print axioms log10_file_decode
+file_theorems log10 Log10.compiled "../../../../build/verified/log10.wasm"
+  from Log10Theorem.log10_bytes_accuracy
 
 end Library.Numerics.Float64.Log10.Log10File

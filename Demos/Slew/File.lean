@@ -11,24 +11,6 @@ namespace Demos.Slew.File
 
 open Demos.Slew.Verified
 
-set_option maxRecDepth 100000 in
-/-- `build/verified/slew.wasm` holds `encode compiled.module`. -/
-theorem slew_file :
-    Wasm.Encoding.encode compiled.module = .ok (binary_file% "../../build/verified/slew.wasm") :=
-  LeanExe.Pipeline.encode_eq_of_encoding compiled.encoded.1 (by decide +kernel)
-
-set_option maxRecDepth 100000 in
-/-- `build/verified/slew.wasm` decodes to the module of `compiled.plan.implements`. -/
-theorem slew_file_decode :
-    Wasm.Encoding.decode (binary_file% "../../build/verified/slew.wasm") =
-      .ok compiled.module := by
-  obtain ⟨bytes, henc, hdec, _⟩ := compiled.bytes
-  have h : binary_file% "../../build/verified/slew.wasm" = bytes :=
-    Except.ok.inj (slew_file.symm.trans henc)
-  rw [h]
-  exact hdec
-
-#print axioms slew_file
-#print axioms slew_file_decode
+file_theorems slew compiled "../../build/verified/slew.wasm" from compiled.bytes
 
 end Demos.Slew.File

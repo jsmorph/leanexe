@@ -9,25 +9,7 @@ exceeds the default limit, so both theorems raise it. -/
 
 namespace Library.Numerics.Float64.Pow.PowFile
 
-set_option maxRecDepth 100000 in
-/-- `build/verified/pow.wasm` holds `encode Pow.compiled.module`. -/
-theorem pow_file :
-    Wasm.Encoding.encode Pow.compiled.module =
-      .ok (binary_file% "../../../../build/verified/pow.wasm") :=
-  LeanExe.Pipeline.encode_eq_of_toList (by decide +kernel)
-
-set_option maxRecDepth 100000 in
-/-- `build/verified/pow.wasm` decodes to the module of `PowBytes.pow_bytes_accuracy`. -/
-theorem pow_file_decode :
-    Wasm.Encoding.decode (binary_file% "../../../../build/verified/pow.wasm") =
-      .ok Pow.compiled.module := by
-  obtain ⟨bytes, henc, hdec, _⟩ := PowBytes.pow_bytes_accuracy
-  have h : binary_file% "../../../../build/verified/pow.wasm" = bytes :=
-    Except.ok.inj (pow_file.symm.trans henc)
-  rw [h]
-  exact hdec
-
-#print axioms pow_file
-#print axioms pow_file_decode
+file_theorems pow Pow.compiled "../../../../build/verified/pow.wasm"
+  from PowBytes.pow_bytes_accuracy
 
 end Library.Numerics.Float64.Pow.PowFile

@@ -10,25 +10,6 @@ bytes are a term nested as deep as the file is long, which the kernel checks und
 
 namespace Library.Hashing.Sha512.File
 
-set_option maxRecDepth 100000 in
-/-- `build/verified/sha512.wasm` holds `encode compiled.module`. -/
-theorem sha512_file :
-    Wasm.Encoding.encode compiled.module =
-      .ok (binary_file% "../../../build/verified/sha512.wasm") :=
-  LeanExe.Pipeline.encode_eq_of_encoding compiled.encoded.1 (by decide +kernel)
-
-set_option maxRecDepth 100000 in
-/-- `build/verified/sha512.wasm` decodes to the module of `sha512_module`. -/
-theorem sha512_file_decode :
-    Wasm.Encoding.decode (binary_file% "../../../build/verified/sha512.wasm") =
-      .ok compiled.module := by
-  obtain ⟨⟨bytes, henc, hdec⟩, _⟩ := sha512_module
-  have h : binary_file% "../../../build/verified/sha512.wasm" = bytes :=
-    Except.ok.inj (sha512_file.symm.trans henc)
-  rw [h]
-  exact hdec
-
-#print axioms sha512_file
-#print axioms sha512_file_decode
+file_theorems sha512 compiled "../../../build/verified/sha512.wasm" from sha512_module
 
 end Library.Hashing.Sha512.File

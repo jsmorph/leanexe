@@ -11,25 +11,7 @@ namespace Library.Hashing.Hmac.File256
 
 open Library.Hashing.Hmac
 
-set_option maxRecDepth 100000 in
-/-- `build/verified/hmac_sha256.wasm` holds `encode compiled256.module`. -/
-theorem hmacSha256_file :
-    Wasm.Encoding.encode compiled256.module =
-      .ok (binary_file% "../../../build/verified/hmac_sha256.wasm") :=
-  LeanExe.Pipeline.encode_eq_of_encoding compiled256.encoded.1 (by decide +kernel)
-
-set_option maxRecDepth 100000 in
-/-- `build/verified/hmac_sha256.wasm` decodes to the module of `hmacSha256_module`. -/
-theorem hmacSha256_file_decode :
-    Wasm.Encoding.decode (binary_file% "../../../build/verified/hmac_sha256.wasm") =
-      .ok compiled256.module := by
-  obtain ⟨⟨bytes, henc, hdec⟩, _⟩ := hmacSha256_module
-  have h : binary_file% "../../../build/verified/hmac_sha256.wasm" = bytes :=
-    Except.ok.inj (hmacSha256_file.symm.trans henc)
-  rw [h]
-  exact hdec
-
-#print axioms hmacSha256_file
-#print axioms hmacSha256_file_decode
+file_theorems hmacSha256 compiled256 "../../../build/verified/hmac_sha256.wasm"
+  from hmacSha256_module
 
 end Library.Hashing.Hmac.File256

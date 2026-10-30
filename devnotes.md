@@ -39146,3 +39146,37 @@ After the change the script lists 101 unreached modules.  Of these, 33 read a fi
 
 - [x] Every non-file module without `main` reached by a root of the gate.
 - [ ] Replace `String.mk` in `Verified/Examples/BufferTreesCases.lean`.
+
+## 2026-10-30: One command for the theorems of the file modules
+
+`file_theorems NAME p "PATH" from B₁, …, Bₙ`, in [the file-bytes module](LeanExe/Pipeline/FileBytes.lean), states the two theorems that each file module had written out: `NAME_file`, that `encode p.module` is `.ok` of the bytes that `binary_file%` reads from `PATH`, and `NAME_file_decode`, that those bytes decode to `p.module`.  It then prints the axioms of both, the two reports that [the Verified test driver](tests/verified/run.sh) requires.  The 32 file modules of [the file-theorem registry](tests/verified/numerics.txt) and [the GPT file module](Demos/Gpt/File.lean) now hold their imports, their module docstring, their namespace, and one command.  The conversion removed 644 lines of the 33 files and added 61, and it kept every theorem name.
+
+The command writes the proofs that the files had, with one change of method.  When `verified_compile` has stated the literal bytes of the module as `p.encoded`, as for every registry module, the kernel compares them with the file through `encode_eq_of_encoding`.  Eighteen numerical modules, from `exp` to `printfloat`, had instead evaluated the encoder in the kernel through `encode_eq_of_toList`, and they now compare literal bytes as the fourteen others did.  For `gpt.module` of the LeanExe compiler, which has no literal encoding, the kernel evaluates the encoder as before.
+
+The decoding takes the bytes and their decoding from `B₁`, whose statement is `∃ bytes, encode p.module = .ok bytes ∧ decode bytes = .ok p.module ∧ …` or a conjunction whose first part leads to such a statement.  The command reads that shape from the type of `B₁`, as `rcases` would, projects the existential with `And.left`, and closes the goal with the new lemma `decode_eq_of_file`.  The proof contains `And.intro` of every listed theorem, so the axiom report of `NAME_file_decode` still covers every byte theorem of the module, as the driver's comment states.  The trigonometric and pi-scaled modules had joined their byte theorems with `And.intro`, and the parser and printer modules had added them with unused `have`s, which a scratch test showed to keep each theorem in the proof term, so the coverage of each module is unchanged.
+
+`gpt_bytes` states that the bytes decode to some module that implements the 48 functions, without naming `gpt.module`, so it cannot give the decoding.  Without `from`, the command proves the decoding with `Wasm.Encoding.decode_encode` and the kernel's check of the decoder's limit on locals.  `Demos/Gpt/File.lean` therefore gains `gpt_file_decode`, which [the README's artifact table](README.md#artifacts) and [the trusted-base document](docs/trusted-base.md#f-emitted-files-with-file-theorems) already named for `gpt.wasm`.  The new theorem adds about 0.4 seconds to the check of the GPT file module.
+
+The generated statements are the old ones.  A scratch check elaborated the statement text of each old theorem, the 64 of the registry and `gpt_file`, and compared it as an expression with the type of the generated theorem, and all 65 were equal.  Every generated theorem reports only `propext`, `Classical.choice`, and `Quot.sound`, as each old theorem did.  `binary_file%` remains the only step that brings the file into a statement, and the command adds no axiom and no term elaborator to the statements.
+
+Each file module was checked alone with `lake env lean -Dprofiler=true` at eight threads, once before the conversion and once after, against the same emitted files.  The profiler's type-checking time is the kernel's work, and the import of the theorem module takes 1.2 to 2.3 seconds of each run and most of its memory.  After the conversion, the type-checking time of the 32 registry modules fits 0.13 seconds plus 94 milliseconds per KiB of the file, within 1.0 second, for files of 2.4 to 39.6 KiB.  The other 83 modules of [the module registry](tests/verified/modules.txt) hold 319 KiB, at most 29.3 KiB each, so by that fit their file theorems would add about 41 seconds of kernel time.  Each of their checks would also import its theorem module, which took 1.2 to 2.3 seconds and 4.3 to 8.7 GiB for the 32 measured here.  `Library.Numerics.Float64.Exp2.Exp2Bytes` lies outside the six library roots, so a check of `Exp2File.lean` needs a build of that module first, as the driver does.
+
+| Measure | Before the conversion | After the conversion |
+|---|---|---|
+| Elapsed seconds, 32 registry modules | 2.60 to 17.08, median 6.16, total 216 | 2.55 to 6.92, median 3.07, total 116 |
+| Type-checking seconds, 32 registry modules | 0.31 to 14.70, median 3.28, total 134 | 0.28 to 3.58, median 0.74, total 34 |
+| Peak resident memory, 32 registry modules | 4.34 to 9.62 GiB, median 5.51 GiB | 4.34 to 8.68 GiB, median 4.56 GiB |
+| `gpt` elapsed and type-checking seconds | 11.45 and 9.16, with `gpt_file` only | 11.82 and 9.53, with both theorems |
+
+The full driver passed in 48 minutes after the conversion.  It wrote all 115 registry modules, checked the 32 converted file modules, each with two reports of the three permitted axioms, and passed all 37,659 corpus cases.  It also passed the GPT cases and sessions, the Euler and shape modules, the slew planner's 100,000 edges and its axiom audit, the heap-sum and typed-tree audits, and every accuracy check.  The driver has no narrower mode for these checks, since `--cases` skips the file modules of the registry except the slew planner's, so the full run was the check.
+
+| Check | Result |
+|---|---|
+| `lake build LeanExe Examples Demos Verified Library TestSupport` and the 40 test executables | Passed, 15,411 jobs |
+| Each converted file module with `lake env lean`, the 32 of the registry and `gpt` | Passed, with two reports of the three axioms each |
+| Generated statements against the old statement text | 65 of 65 equal |
+| `tests/verified/run.sh` | Passed in 48 minutes, with the 32 file modules, 37,659 corpus cases, and every axiom and accuracy check |
+
+- [x] The command `file_theorems` and the lemma `decode_eq_of_file`.
+- [x] The 32 registry file modules and the GPT file module, with `gpt_file_decode`.
+- [ ] Decide whether file theorems cover all 115 registry modules, from the measurements above.

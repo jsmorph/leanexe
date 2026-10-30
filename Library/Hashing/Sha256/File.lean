@@ -10,25 +10,6 @@ bytes are a term nested as deep as the file is long, which the kernel checks und
 
 namespace Library.Hashing.Sha256.File
 
-set_option maxRecDepth 100000 in
-/-- `build/verified/sha256.wasm` holds `encode compiled.module`. -/
-theorem sha256_file :
-    Wasm.Encoding.encode compiled.module =
-      .ok (binary_file% "../../../build/verified/sha256.wasm") :=
-  LeanExe.Pipeline.encode_eq_of_encoding compiled.encoded.1 (by decide +kernel)
-
-set_option maxRecDepth 100000 in
-/-- `build/verified/sha256.wasm` decodes to the module of `sha256_module`. -/
-theorem sha256_file_decode :
-    Wasm.Encoding.decode (binary_file% "../../../build/verified/sha256.wasm") =
-      .ok compiled.module := by
-  obtain ⟨⟨bytes, henc, hdec⟩, _⟩ := sha256_module
-  have h : binary_file% "../../../build/verified/sha256.wasm" = bytes :=
-    Except.ok.inj (sha256_file.symm.trans henc)
-  rw [h]
-  exact hdec
-
-#print axioms sha256_file
-#print axioms sha256_file_decode
+file_theorems sha256 compiled "../../../build/verified/sha256.wasm" from sha256_module
 
 end Library.Hashing.Sha256.File

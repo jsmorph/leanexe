@@ -9,25 +9,6 @@ nested as deep as the file is long, which the kernel checks under a raised `maxR
 
 namespace Library.Hashing.XxHash64.File
 
-set_option maxRecDepth 100000 in
-/-- `build/verified/xxhash64.wasm` holds `encode compiled.module`. -/
-theorem xxhash64_file :
-    Wasm.Encoding.encode compiled.module =
-      .ok (binary_file% "../../../build/verified/xxhash64.wasm") :=
-  LeanExe.Pipeline.encode_eq_of_encoding compiled.encoded.1 (by decide +kernel)
-
-set_option maxRecDepth 100000 in
-/-- `build/verified/xxhash64.wasm` decodes to the module of the call theorems. -/
-theorem xxhash64_file_decode :
-    Wasm.Encoding.decode (binary_file% "../../../build/verified/xxhash64.wasm") =
-      .ok compiled.module := by
-  obtain ⟨bytes, henc, hdec, _⟩ := compiled.bytes
-  have h : binary_file% "../../../build/verified/xxhash64.wasm" = bytes :=
-    Except.ok.inj (xxhash64_file.symm.trans henc)
-  rw [h]
-  exact hdec
-
-#print axioms xxhash64_file
-#print axioms xxhash64_file_decode
+file_theorems xxhash64 compiled "../../../build/verified/xxhash64.wasm" from compiled.bytes
 
 end Library.Hashing.XxHash64.File

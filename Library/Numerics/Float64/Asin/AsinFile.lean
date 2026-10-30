@@ -8,24 +8,7 @@ import LeanExe.Pipeline.FileBytes
 
 namespace Library.Numerics.Float64.Asin.AsinFile
 
-set_option maxRecDepth 100000 in
-/-- `build/verified/asin.wasm` holds `encode Asin.compiled.module`. -/
-theorem asin_file :
-    Wasm.Encoding.encode Asin.compiled.module =
-      .ok (binary_file% "../../../../build/verified/asin.wasm") :=
-  LeanExe.Pipeline.encode_eq_of_toList (by decide +kernel)
-
-/-- `build/verified/asin.wasm` decodes to the module of `AsinBytes.asin_module_accuracy`. -/
-theorem asin_file_decode :
-    Wasm.Encoding.decode (binary_file% "../../../../build/verified/asin.wasm") =
-      .ok Asin.compiled.module := by
-  obtain ⟨⟨bytes, henc, hdec, _⟩, _⟩ := AsinBytes.asin_module_accuracy
-  have h : binary_file% "../../../../build/verified/asin.wasm" = bytes :=
-    Except.ok.inj (asin_file.symm.trans henc)
-  rw [h]
-  exact hdec
-
-#print axioms asin_file
-#print axioms asin_file_decode
+file_theorems asin Asin.compiled "../../../../build/verified/asin.wasm"
+  from AsinBytes.asin_module_accuracy
 
 end Library.Numerics.Float64.Asin.AsinFile

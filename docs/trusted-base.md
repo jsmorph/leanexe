@@ -12,7 +12,7 @@ Every theorem rests on Lean's kernel and on the core definitions that give a Lea
 | Recorded kernel defect | Reproduction that derives `False` through a hand-built inductive declaration and an expression-hash collision, accepted by Lean 4.27.0, 4.29.1, 4.31.0, and 4.32.0 | Under 4.34.0-rc2 the kernel rejects the reproduction's projection while its hash collision still holds, so it no longer derives `False`.  No independent kernel has checked the project's proofs. | `devnotes.md:7183-7222`, [journal of 2026-07-20](../devnotes.md#2026-07-20-a-kernel-unsoundness-in-our-own-toolchain), [journal of 2026-10-30](../devnotes.md#2026-10-30-the-verification-knowledge-base-the-kernel-reproduction-and-follow-up-decisions) |
 | Proof policy | Proofs use no `sorry`, `native_decide`, `bv_decide`, or `Lean.ofReduceBool`, and generated proofs evaluate in the kernel with `decide +kernel` | Axiom audits.  `verified_compile` rejects a definition that uses `sorry`. | `docs/design.md:223`, `Verified/Reflect/Definitions.lean:4960` |
 | Lean core definitions | `UInt64`, `Bool`, `Array`, and the `Float.Model` and `Float32.Model` of Lean 4.34, which give source programs their meaning | Tests compare compiled code with native Lean on concrete inputs.  The `F64*` and `F32*` lemmas relate Lean's floats to Talos's IEEE functions. | `docs/design.md:294`, [floating point](design.md#floating-point) |
-| Generators | Not trusted: the LeanExe compiler and its hints, the reflector, `compileWith` and its mode choice, the native evaluation that proposes encodings and translations, and the LTG and VKB knowledge bases | Kernel check of every generated definition, equation, and theorem | `docs/leanexe-manual.md:11`, `docs/verified-manual.md:9` |
+| Generators | Not trusted: the LeanExe compiler and its hints, the reflector, `compileWith` and its mode choice, the native evaluation that proposes encodings and translations, the command `file_theorems` that writes the theorems of a file module, and the LTG and VKB knowledge bases | Kernel check of every generated definition, equation, and theorem | `docs/leanexe-manual.md:11`, `docs/verified-manual.md:9` |
 
 ## L: WebAssembly modules of the LeanExe compiler
 
@@ -50,7 +50,7 @@ Code F's theorems `NAME_file` and `NAME_file_decode` state that a file's bytes e
 | Item | What is trusted | How it is checked | Source |
 |---|---|---|---|
 | Items of the module's code | Every row of [code V](#v-webassembly-modules-of-the-verified-compiler) or [code L](#l-webassembly-modules-of-the-leanexe-compiler) except emission | As there | Sections above |
-| `binary_file%` | Term elaborator that reads the bytes of a file, relative to the source file, at elaboration time | Six-line elaborator.  The kernel compares the bytes with the encoding. | `LeanExe/Pipeline/FileBytes.lean:13-20` |
+| `binary_file%` | Term elaborator that reads the bytes of a file, relative to the source file, at elaboration time | Six-line elaborator.  The kernel compares the bytes with the encoding. | `LeanExe/Pipeline/FileBytes.lean:15-22` |
 | File identity | Theorem describes the file at the time of its check | `tests/verified/run.sh` writes each file and then checks its file module and the module's axioms | `tests/verified/run.sh:7-10`, `docs/design.md:331` |
 | Coverage | 32 modules of the file-theorem registry and `gpt.wasm` | Other emitted files rest on the emission step of code L | [the file-theorem registry](../tests/verified/numerics.txt), [the file theorem of `gpt.wasm`](../Demos/Gpt/File.lean) |
 

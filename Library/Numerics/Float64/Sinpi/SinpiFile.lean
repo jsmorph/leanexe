@@ -9,27 +9,8 @@ import LeanExe.Pipeline.FileBytes
 
 namespace Library.Numerics.Float64.Sinpi.SinpiFile
 
-set_option maxRecDepth 100000 in
-/-- `build/verified/sinpi.wasm` holds `encode Sinpi.compiled.module`. -/
-theorem sinpi_file :
-    Wasm.Encoding.encode Sinpi.compiled.module =
-      .ok (binary_file% "../../../../build/verified/sinpi.wasm") :=
-  LeanExe.Pipeline.encode_eq_of_toList (by decide +kernel)
-
-/-- `build/verified/sinpi.wasm` decodes to the module of the three byte theorems.  The proof
-takes the bytes from the three theorems together, so its axiom report covers all three. -/
-theorem sinpi_file_decode :
-    Wasm.Encoding.decode (binary_file% "../../../../build/verified/sinpi.wasm") =
-      .ok Sinpi.compiled.module := by
-  obtain ⟨⟨bytes, henc, hdec, _⟩, _, _⟩ :=
-    And.intro SinpiTheorem.sinpi_bytes_accuracy
-      (And.intro SinpiTheorem.cospi_bytes_accuracy SinpiTheorem.tanpi_bytes_accuracy)
-  have h : binary_file% "../../../../build/verified/sinpi.wasm" = bytes :=
-    Except.ok.inj (sinpi_file.symm.trans henc)
-  rw [h]
-  exact hdec
-
-#print axioms sinpi_file
-#print axioms sinpi_file_decode
+file_theorems sinpi Sinpi.compiled "../../../../build/verified/sinpi.wasm"
+  from SinpiTheorem.sinpi_bytes_accuracy, SinpiTheorem.cospi_bytes_accuracy,
+    SinpiTheorem.tanpi_bytes_accuracy
 
 end Library.Numerics.Float64.Sinpi.SinpiFile
