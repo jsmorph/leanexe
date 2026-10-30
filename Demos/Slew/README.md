@@ -396,31 +396,31 @@ its input.
 
 | File | Contents |
 |---|---|
-| [The program](Program.lean) | The planner in the dialect |
-| [The representations](Flat.lean) | `Flat` instances for `V3`, `Q4`, `Dims`, and `Search` |
-| [The compilation](Verified.lean) | `verified_compile compiled := [atan, atan2, …, plan]` |
-| [The specification](Spec.lean) | Real vectors and quaternions, Rodrigues' rotation, the rotation angle, and the cone predicate |
-| [The arc lemmas](Arc.lean) | The sinusoid form of the cosine along a rotation, the endpoint lemma, and vector inequalities |
-| [The binary64 facts](Rounding.lean) | Real values of floats, comparisons, the program's constants, and the bounded approximation `Bnd` |
-| [The vector errors](Error.lean) | Rounding errors of dot and cross products and of the rotation formula |
-| [The axis and angle](Axis.lean) | Rounding errors of `s`, the axis `v/s`, `w² - s²`, and `2ws` |
-| [The normalization](Normalize.lean) | The difference between the cosines of the normalized and the given inputs |
-| [The cone values](Cone.lean) | Rounding errors of `f₀`, `A`, `B`, `C`, `f₁`, and `f′(θ)` |
-| [The amplitude](Hypot.lean) | The rounding error of `√(A² + B²)` |
-| [The decisions](Decide.lean) | Comparisons, NaN propagation, and the bounds that a decision gives over the rotation |
-| [The soundness proof](Check.lean) | `edgeOk_sound` and `attitudeOk_sound` |
-| [The rotations](Rotation.lean) | Quaternion products and actions, their composition and distances, and Rodrigues' rotation as an action |
-| [The relative quaternion](Relative.lean) | `GoodRel` for `relative` and the distance of its rotation from the exact one |
-| [The input](Valid.lean) | `GoodQ` for every node and `ConeGood` for every cone of a validated input |
-| [The search](Search.lean) | The invariant of `search`, the segments of a plan as accepted edges, and the bound on `pathLength` |
-| [The output proofs](Angle.lean) | The output's axis and angle against those of the relative quaternion |
-| [The safety theorem](Safety.lean) | `plan_safe` |
+| [Program](Program.lean) | Planner in the dialect |
+| [Representations](Flat.lean) | `Flat` instances for `V3`, `Q4`, `Dims`, and `Search` |
+| [Compilation](Verified.lean) | `verified_compile compiled := [atan, atan2, …, plan]` |
+| [Specification](Spec.lean) | Real vectors and quaternions, Rodrigues' rotation, the rotation angle, and the cone predicate |
+| [Arc lemmas](Arc.lean) | Sinusoid form of the cosine along a rotation, the endpoint lemma, and vector inequalities |
+| [Binary64 facts](Rounding.lean) | Real values of floats, comparisons, the program's constants, and the bounded approximation `Bnd` |
+| [Vector errors](Error.lean) | Rounding errors of dot and cross products and of the rotation formula |
+| [Axis and angle](Axis.lean) | Rounding errors of `s`, the axis `v/s`, `w² - s²`, and `2ws` |
+| [Normalization](Normalize.lean) | Difference between the cosines of the normalized and the given inputs |
+| [Cone values](Cone.lean) | Rounding errors of `f₀`, `A`, `B`, `C`, `f₁`, and `f′(θ)` |
+| [Amplitude](Hypot.lean) | Rounding error of `√(A² + B²)` |
+| [Decisions](Decide.lean) | Comparisons, NaN propagation, and the bounds that a decision gives over the rotation |
+| [Soundness proof](Check.lean) | `edgeOk_sound` and `attitudeOk_sound` |
+| [Rotations](Rotation.lean) | Quaternion products and actions, their composition and distances, and Rodrigues' rotation as an action |
+| [Relative quaternion](Relative.lean) | `GoodRel` for `relative` and the distance of its rotation from the exact one |
+| [Input](Valid.lean) | `GoodQ` for every node and `ConeGood` for every cone of a validated input |
+| [Search](Search.lean) | Invariant of `search`, the segments of a plan as accepted edges, and the bound on `pathLength` |
+| [Output proofs](Angle.lean) | Output's axis and angle against those of the relative quaternion |
+| [Safety theorem](Safety.lean) | `plan_safe` |
 | [NaN-freedom](NanFree.lean) | `plan_finite` |
-| [The premise theorem](Premise.lean) | `plan_premise` |
-| [The edge cost](Cost.lean) | `edge_cost_le` |
+| [Premise theorem](Premise.lean) | `plan_premise` |
+| [Edge cost](Cost.lean) | `edge_cost_le` |
 | [Optimality](Optimal.lean) | `plan_optimal` |
-| [The allocation bound](Bound.lean) | `plan_bound` and `slew_trapFree` |
-| [The file theorems](File.lean) | `slew_file` and `slew_file_decode` |
+| [Allocation bound](Bound.lean) | `plan_bound` and `slew_trapFree` |
+| [File theorems](File.lean) | `slew_file` and `slew_file_decode` |
 
 The program imports only the dialect modules and `Library.Numerics.Float64.Atan.Program`, which
 build from Lean's core library.  The representations need `LeanExe.Pipeline`, which depends on
