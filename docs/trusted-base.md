@@ -52,7 +52,7 @@ Code F's theorems `NAME_file` and `NAME_file_decode` state that a file's bytes e
 | Items of the module's code | Every row of [code V](#v-webassembly-modules-of-the-verified-compiler) or [code L](#l-webassembly-modules-of-the-leanexe-compiler) except emission | As there | Sections above |
 | `binary_file%` | Term elaborator that reads the bytes of a file, relative to the source file, at elaboration time | Six-line elaborator.  The kernel compares the bytes with the encoding. | `LeanExe/Pipeline/FileBytes.lean:15-22` |
 | File identity | Theorem describes the file at the time of its check | `tests/verified/run.sh` writes each file and then checks its file module and the module's axioms | `tests/verified/run.sh:7-10`, `docs/design.md:332` |
-| Coverage | 115 of the 116 modules of the module registry, which the file-theorem registry lists, and `gpt.wasm` | Other emitted files rest on the emission step of code L, among them `byHand` of `Modes`, which has no `p.module` | [the file-theorem registry](../tests/verified/numerics.txt), [the file theorem of `gpt.wasm`](../Demos/Gpt/File.lean) |
+| Coverage | 116 of the 117 modules of the module registry, which the file-theorem registry lists, and `gpt.wasm` | Other emitted files rest on the emission step of code L, among them `byHand` of `Modes`, which has no `p.module` | [the file-theorem registry](../tests/verified/numerics.txt), [the file theorem of `gpt.wasm`](../Demos/Gpt/File.lean) |
 
 ## I: WASI Preview 1 modules
 

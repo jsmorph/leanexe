@@ -39316,3 +39316,14 @@ A fresh review of the revised plan found that the authorizer accepted a renewal 
 
 - [ ] Window length, from the replay study.
 - [ ] Gateway runtime, in Stage 6.
+
+## 2026-10-30: The energy authorizer, Stage 1
+
+Stage 1 of [the energy controller plan](energy-controller-plan.md) is in [the energy application](Demos/Energy/README.md).  The authorizer compiles with `verified_compile` into a module of 5,922 bytes whose export `authorize` is a wrapper over the test site's profile table, and its generated theorem is `ImplementsTables false`: no trap and no premise on memory.  `authorizeWith_iff` states that the authorizer accepts exactly when the input is valid and the integer conditions hold, `window_sound` that the conditions give `WithinOrFallback` for every trajectory admitted until a time of the window, and `energy_authorize` combines them with the bytes, the export, and the ready start store.  `tests/verified/run.sh --cases energy` passed 2,038 cases in Wasmtime against native Lean, checked the file theorems of `energy.wasm`, and ran the axiom audit, with only `propext`, `Classical.choice`, and `Quot.sound` in every theorem and only `propext` in the kernel-evaluated examples.
+
+A fresh review of `Spec.lean` against the plan found that `fallback_keeps` required all four fallback bounds at once and that the measurability premise covered all of ℝ.  The specification now has one `fallback_keeps` lemma per limit and states measurability as `AEMeasurable` on `[t_m, t]`.  Because the profile's fallback interval contains 0, the lower end of the window's power interval is at most 0 and the upper end at least 0, so the program and the specification drop the lower bound's gain and the upper bound's drain.  The arithmetic proofs then cover one drain term and one gain term.
+
+The Lean work ran on `minideb2`, an x86_64 machine with 8 cores and 11 GB, in the clone `~/src/leanexe-energy` of branch `energy`, whose `.lake` came from `~/src/leanexe-final` with the same manifest and toolchain.  `rsync` was installed there as root through `tailscale ssh`, and the Wasmtime host was rebuilt with `tools/build-wasmtime-host.sh` because the clone's host source is newer than the copied binary.  Builds ran under `tools/leanrun` with four threads and `--memory-high 8G`.  The registry now holds 117 modules, 116 of them with file theorems.
+
+- [x] Stage 1 of the plan.
+- [ ] Stage 2: the replay tool, its dataset, and the choice of the window length.

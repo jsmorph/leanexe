@@ -70,6 +70,7 @@ Library.Numerics.Decimal.ParseFloat.Compiled:Library.Numerics.Decimal.ParseFloat
 Library.Numerics.Decimal.PrintFloat.Compiled:Library.Numerics.Decimal.PrintFloat.compiled.module:printfloat
 Demos.Drone.Verified:Demos.Drone.Verified.compiled.module:drone
 Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew
+Demos.Energy.Verified:Demos.Energy.Verified.compiled.module:energy
 Library.Random.Lcg.Verified:Library.Random.Lcg.compiled.module:lcg
 Library.Random.ParkMiller.Verified:Library.Random.ParkMiller.compiled.module:parkmiller
 Library.Random.Xorshift.Verified:Library.Random.Xorshift.compiled.module:xorshift

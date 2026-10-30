@@ -15,6 +15,7 @@ applications names the theorem behind each code.
 | [Running sum](RunningSum/README.md) | V S I | Decimal cumulative totals over stdin, with a verified WASI process loop and runs in native Lean. |
 | [Floating-point running sum](RunningSumFp/README.md) | S I | Binary64 cumulative totals over stdin, with parsing, addition, printing, and WASI process proofs. |
 | [Slew](Slew/README.md) | V S F C | Attitude slew planning under cone constraints, with safety, premise, NaN-freedom, optimality, allocation-bound, and compilation proofs. |
+| [Energy](Energy/README.md) | V S F | Authorization of battery setpoints for a solar-and-battery site, with proofs that an accepted setpoint keeps the modeled energy and grid limits, or stays no further outside a limit than a return to fallback. |
 
 Each guide states its proof premises and run commands.  Euler's recorded outputs are under
 [the Euler run data](https://github.com/jsmorph/leanexe-papers/tree/main/data/euler).  The [compiler examples](../Examples) demonstrate individual

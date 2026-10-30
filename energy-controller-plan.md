@@ -102,16 +102,14 @@ Integrating the rate bounds with Mathlib's `intervalIntegral.integral_mono_on` g
 
 The model bounds rates instead of totals over an interval because a bound on the total gain or loss says nothing about the energy inside the interval.  Starting at 9.95 kWh under a 10 kWh ceiling, a constant charge that adds 0.20 kWh over 15 minutes and losses of 0.20 kWh confined to the second half reach 10.05 kWh at the midpoint and return to 9.95 kWh at the end, so a check of totals at the ends accepts the interval.  The rate bounds reject it, because the upper bound rises at the full charging rate.
 
-The upper bound takes efficiency 1 and no loss, which overstates the gain by the losses and makes its terms exact.  The lower bound rounds gains down and drains up, so the integer bound lies below the real one.  Each term in the table is a natural number of joules, with `W` in seconds, powers in watts, and `η` in ppm.
+The fallback interval contains 0, so `B⁻ ≤ 0 ≤ B⁺`: the lower bound only drains and the upper bound only gains.  The upper bound takes efficiency 1 and no loss, which overstates the gain by the losses and makes its term exact.  The lower bound rounds its drain up, so the integer bound lies below the real one, with `W` in seconds, powers in watts, and `η` in ppm:
 
-| Term | Endpoint at least 0 | Endpoint below 0 |
-|---|---|---|
-| `gain⁻`, from `B⁻` | `⌊B⁻ · W · η / 10^6⌋` | 0 |
-| `drain⁺`, from `B⁻` | `ℓ⁺ · W` | `⌈\|B⁻\| · W · 10^6 / η⌉ + ℓ⁺ · W` |
-| `gain⁺`, from `B⁺` | `B⁺ · W` | 0 |
-| `drain⁻`, from `B⁺` | 0 | `\|B⁺\| · W` |
+```text
+drain⁻ = ⌈|B⁻| · W · 10^6 / η⌉ + ℓ⁺ · W
+gain⁺  = B⁺ · W
+```
 
-The floor conditions become `E⁻ ≥ E_floor` and `E⁻ + gain⁻ ≥ E_floor + drain⁺`, and the ceiling conditions `E⁺ ≤ E_max` and `E⁺ + gain⁺ ≤ E_max + drain⁻`, all comparisons of sums of nonnegative words.  The authorizer evaluates only the terms of a side on which `B` extends beyond `F`, as the acceptance rule below states.  The largest product, `|B| · W · 10^6`, is below `2^21 · 2^12 · 2^20 = 2^53`, since each endpoint of `B` has magnitude at most `2^20 + e` with `e ≤ 2^20`.
+The floor conditions become `E⁻ ≥ E_floor` and `E_floor + drain⁻ ≤ E⁻`, and the ceiling conditions `E⁺ ≤ E_max` and `E⁺ + gain⁺ ≤ E_max`, all comparisons of sums of nonnegative words.  The authorizer evaluates only the term of a side on which `B` extends beyond `F`, as the acceptance rule below states.  The largest product, `|B| · W · 10^6`, is below `2^21 · 2^12 · 2^20 = 2^53`, since each endpoint of `B` has magnitude at most `2^20 + e` with `e ≤ 2^20`.
 
 ### Grid power
 
@@ -208,38 +206,35 @@ The export takes one borrowed `Array UInt64` and returns a structure of words wi
 | 8, 9 | PV interval `S⁻`, `S⁺` | W |
 | 10 | Proposed setpoint `s`, offset | W |
 
-The result holds a status, the setpoint, and the expiry `t_x`.  The status is an enumeration with a `Flat` instance: `accepted`, or the first failing condition in a fixed order, among `version`, `length`, `range`, `order`, `power`, `export`, `floor`, `import`, and `ceiling`.  `range` covers an input word outside its validity range, `order` a reversed interval, and `power` a setpoint beyond the charge or discharge limit.  A rejection returns zero words for the setpoint and the expiry.
+The result holds a status, the setpoint, and the expiry `t_x`.  The status is an enumeration with a `Flat` instance: `accepted`, or the first failing condition in a fixed order, among `length`, `version`, `range`, `order`, `power`, `exportCap`, `floor`, `importCap`, and `ceiling`.  `range` covers an input word outside its validity range, `order` a reversed interval, and `power` a setpoint beyond the charge or discharge limit.  A rejection returns zero words for the setpoint and the expiry.
 
 ## Theorems
 
 `Spec.lean` defines the profile and snapshot as records of integers, the trajectory as functions from reals to reals, `AdmittedUntil`, which states assumptions A1 to A5 from `t_m` to a time `t`, `Within`, the limits, and `WithinOrFallback`, the bounds of the acceptance rule.  It imports neither the program nor the word layout.  `Words.lean` defines the decoding of words into those records, which both the proofs about the program and the readers of the specification use.  A reviewer who sees only this document's model section and `Spec.lean` checks the specification before the proofs start.
 
 ```lean
--- Schematic.
-theorem authorize_sound (xs : Array UInt64) (h : (authorize xs).status = .accepted)
-    (x : Trajectory) (t : ℝ)
-    (ht : t ∈ Set.Icc (Snapshot.ofWords xs).time
-      ((Snapshot.ofWords xs).time + (Profile.ofWords site).window))
-    (hx : x.AdmittedUntil (Profile.ofWords site) (Snapshot.ofWords xs) (authorize xs).setpoint t) :
-    x.WithinOrFallback (Profile.ofWords site) (Snapshot.ofWords xs) t
+theorem authorize_sound {xs : Array UInt64} (h : (authorize xs).status = .accepted)
+    {x : Trajectory} {t : ℝ} (ht : t ∈ window (profileOf site) (snapshotOf xs))
+    (hx : x.AdmittedUntil (profileOf site) (snapshotOf xs) (setpointOf xs) t) :
+    x.WithinOrFallback (profileOf site) (snapshotOf xs) t
 ```
 
 | Theorem | Statement | File |
 |---|---|---|
-| `fallback_keeps` | When fallback's bounds lie within a limit throughout the window, `WithinOrFallback` gives that limit | `Spec.lean` |
-| `site_valid` | The profile table meets the profile's validity condition, by kernel evaluation | `Site.lean` |
-| `words_exact` | Under the validity bounds, each `UInt64` operation of the authorizer equals the natural-number operation | `Arith.lean` |
-| `envelope` | Rate bounds on a measurable trajectory give the affine energy bounds up to each time of the window | `Window.lean` |
+| `fallback_keeps_floor`, `_ceiling`, `_export`, `_import` | When fallback's worst case lies within one limit at `t`, `WithinOrFallback` gives that limit at `t` | `Spec.lean` |
+| `site_valid` | The test site's table meets the profile's validity condition, by kernel evaluation | `Theorems.lean` |
+| `toNat_add`, `toNat_mul`, `lowDrain_toNat`, `lowB_signed`, and the other word lemmas | Under the validity bounds, each `UInt64` operation of the authorizer equals the natural-number operation | `Arith.lean`, `Authorize.lean` |
+| `energy_bounds`, `drainLow_ge` | Rate bounds on a measurable trajectory give the affine energy bounds up to each time of the window, and the integer drain covers the real one | `Window.lean` |
 | `window_sound` | The conditions of the acceptance rule imply `WithinOrFallback` at each time `t` of the window for every trajectory admitted until `t` | `Window.lean` |
-| `authorize_valid` | An accepted input decodes to a snapshot that meets the validity condition | `Authorize.lean` |
-| `authorize_iff` | The authorizer accepts exactly when the decoded snapshot is valid and the conditions of the acceptance rule hold | `Authorize.lean` |
-| `authorize_sound` | For an accepted setpoint, every trajectory admitted until a time `t` of the window meets the bounds of the acceptance rule at `t` | `Authorize.lean` |
+| `authorizeWith_iff` | Under a valid profile table, the authorizer accepts exactly when the input meets `InputValid` and the conditions of the acceptance rule hold | `Authorize.lean` |
+| `authorizeWith_sound`, `authorize_sound` | For an accepted setpoint, every trajectory admitted until a time `t` of the window meets the bounds of the acceptance rule at `t` | `Authorize.lean`, `Theorems.lean` |
+| `authorizeWith_accepted`, `authorize_accepted` | An accepted result holds the proposed setpoint and the expiry `t_m + W - τ` | `Authorize.lean`, `Theorems.lean` |
 | `example_accept`, `example_export`, `example_floor`, `example_relative`, `example_renewal` | The worked example's decisions, by kernel evaluation | `Examples.lean` |
 | `compiled.authorize.implements`, `compiled.bytes`, `compiled.initial` | Generated by `verified_compile` | `Verified.lean` |
 | `energy_export`, `energy_authorize` | The module exports `authorize` at its function index, and the module's bytes decode to a module whose export, called from a ready store, returns the authorizer's result without a trap, and every accepted result meets `authorize_sound` | `Theorems.lean` |
 | `energy_file`, `energy_file_decode` | The released file holds the module's encoding and decodes to the module | `File.lean` |
 
-`authorize_iff` states the acceptance condition exactly, so an authorizer that rejected every input would contradict it, and `example_accept` and `example_relative` prove acceptance of a nonzero discharge and a nonzero charge, and `example_renewal` proves the rejection of a renewal that would cross the floor.  How often realistic inputs meet the condition is an empirical question, which the replay study answers.  `energy_authorize` follows the pattern of `sha256_call` and `sha256_module` in the SHA-256 compilation, whose entries also read tables: it combines `compiled.bytes`, the wrapper's `implements` theorem through `Verified.ImplementsTables.call`, and `authorize_sound`, and `Verified.Ready.initial` shows that the module's initial store is ready.  `file_theorems energy compiled "../../build/verified/energy.wasm" from compiled.bytes` states the file theorems after the test driver writes the file.  Every theorem must report only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
+`authorizeWith_iff` states the acceptance condition exactly, so an authorizer that rejected every input would contradict it, and `example_accept` and `example_relative` prove acceptance of a nonzero discharge and a nonzero charge, and `example_renewal` proves the rejection of a renewal that would cross the floor.  How often realistic inputs meet the condition is an empirical question, which the replay study answers.  `energy_authorize` follows the pattern of `sha256_call` and `sha256_module` in the SHA-256 compilation, whose entries also read tables: it combines `compiled.bytes`, the wrapper's `implements` theorem through `Verified.ImplementsTables.call`, and `authorize_sound`, and `Verified.Ready.initial` shows that the module's initial store is ready.  `file_theorems energy compiled "../../build/verified/energy.wasm" from compiled.bytes` states the file theorems after the test driver writes the file.  Every theorem must report only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 
 The module-level statements keep the assumptions that [the trusted base](docs/trusted-base.md) lists for modules of the verified compiler and for files with file theorems.  The statements describe execution in Talos's semantics, the gateway runs the module in Wasmtime, and the agreement of the two is an assumption, as is the decoder's reading of the bytes.  No theorem connects Wasmtime's instantiation or the gateway's placement of the argument array to the store that the statements assume, and the tests that compare Wasmtime with native Lean on every case are evidence for these assumptions, without proving them.
 
@@ -250,15 +245,15 @@ The Lean code, proofs, and replay tool are in this repository and follow the sle
 | Path | Contents |
 |---|---|
 | `Demos/Energy/README.md` | The model, interface, theorem, and limits, as present facts |
-| `Demos/Energy/Spec.lean` | Profile, snapshot, trajectory, `AdmittedUntil`, `Within`, `WithinOrFallback`, and `fallback_keeps` |
-| `Demos/Energy/Words.lean` | Word layouts and decoding into the specification's records |
-| `Demos/Energy/Program.lean` | `authorizeWith` and its helpers, in the verified compiler's dialect |
+| `Demos/Energy/Spec.lean` | Profile, snapshot, trajectory, `AdmittedUntil`, `Within`, `WithinOrFallback`, and the `fallback_keeps` lemmas |
+| `Demos/Energy/Words.lean` | Decoding of words into the specification's records, `ProfileValid`, and `InputValid` |
+| `Demos/Energy/Program.lean`, `Flat.lean` | `authorizeWith` and its helpers, in the verified compiler's dialect, and the representations of its result |
 | `Demos/Energy/Arith.lean`, `Window.lean`, `Authorize.lean` | Exactness of word operations, the energy bound and `window_sound`, and the theorems about the authorizer |
-| `Demos/Energy/Site.lean` | The profile table of the test site with `site_valid`, and later one per qualified site |
-| `Demos/Energy/Verified.lean`, `Theorems.lean`, `File.lean`, `Examples.lean` | Compilation, module-level theorems, file theorems, and kernel-evaluated examples |
+| `Demos/Energy/Site.lean` | The profile table of the test site and the wrapper `authorize`, and later one table per qualified site |
+| `Demos/Energy/Verified.lean`, `Theorems.lean`, `File.lean`, `Examples.lean` | Compilation, `site_valid` and the module-level theorems, file theorems, and kernel-evaluated examples |
 | `tests/TestSupport/Energy/Cases.lean`, `CasesMain.lean` | Case printer, which the executable `verified-cases-energy` of `lakefile.lean` runs from a branch of `tests/verified/run.sh` |
-| `Demos/Verified.lean` | Import of the compilation |
-| `tests/energy/` | The replay tool and its driver |
+| `Demos/Verified.lean`, `Verified/Examples/Cases.lean` | Imports of the theorems, the examples, and the cases |
+| `tests/energy/` | The axiom audit, and the replay tool and its driver |
 | `tests/verified/modules.txt`, `tests/verified/numerics.txt` | Registry entries for the module and its file theorems |
 
 ## Testing and evaluation
@@ -279,7 +274,7 @@ The evaluation compares the controller, on withheld data, with a simulation of t
 
 | Stage | Work | Exit evidence |
 |---|---|---|
-| 1. Authorizer | Specification and its review, program, proofs, compilation, file theorems, examples, cases | Theorems with only the permitted axioms, cases that pass in Wasmtime against native Lean and the replay tool, and a file theorem checked after emission |
+| 1. Authorizer | Specification and its review, program, proofs, compilation, file theorems, examples, cases | Theorems with only the permitted axioms, cases that pass in Wasmtime against native Lean, and a file theorem checked after emission |
 | 2. Replay study, alongside Stage 1 | Dataset, replay tool, sweep | Report of acceptance margins; window length chosen |
 | 3. Optimizer and economic replay | Rule-based optimizer, baselines | Report with savings and acceptance rates |
 | 4. Site selection and qualification | Equipment with command expiry and fallback; measurement of `e`, `τ`, `F`, `η`, `ℓ⁺`, and the energy estimate's error | Qualification report; signed profile; site module with its file theorem |
@@ -292,16 +287,16 @@ A site stays in read-only operation when its equipment lacks command expiry or a
 
 ### Stage 1 tasks
 
-- [ ] `Spec.lean` with `AdmittedUntil`, `Within`, `WithinOrFallback`, and `fallback_keeps`, and its independent review.
-- [ ] `Words.lean`, with the provisional layouts fixed.
-- [ ] `Program.lean`: validation, the intervals `P` and `B`, the conditions of the acceptance rule, and the result.
-- [ ] `words_exact` and the floor and ceiling lemmas.
-- [ ] `envelope` and `window_sound`.
-- [ ] `authorize_valid`, `authorize_iff`, and `authorize_sound`.
-- [ ] `Site.lean` with the worked example's profile and `site_valid`, `Verified.lean`, and `Examples.lean`.
-- [ ] `energy_export`, `energy_authorize`, registry entries, `File.lean`, and the axiom audit.
-- [ ] The case printer, its executable, and its branch of `tests/verified/run.sh`.
-- [ ] `Demos/Energy/README.md`.
+- [x] `Spec.lean` with `AdmittedUntil`, `Within`, `WithinOrFallback`, and `fallback_keeps`, and its independent review.
+- [x] `Words.lean`, with the provisional layouts fixed.
+- [x] `Program.lean`: validation, the intervals `P` and `B`, the conditions of the acceptance rule, and the result.
+- [x] The word lemmas and the floor and ceiling lemmas.
+- [x] `energy_bounds`, `drainLow_ge`, and `window_sound`.
+- [x] `authorizeWith_iff`, `authorizeWith_sound`, and `authorizeWith_accepted`.
+- [x] `Site.lean` with the worked example's profile, `site_valid`, `Verified.lean`, and `Examples.lean`.
+- [x] `energy_export`, `energy_authorize`, registry entries, `File.lean`, and the axiom audit.
+- [x] The case printer, its executable, and its branch of `tests/verified/run.sh`.
+- [x] `Demos/Energy/README.md`.
 
 ### Stage 2 tasks
 

@@ -9,7 +9,9 @@
 # holds the module of the function's byte theorem, and it fails unless both file theorems report
 # only the axioms propext, Classical.choice, and Quot.sound.  For the slew planner, it also compares
 # the edgeOk export with native Lean and runs the axiom audit of tests/slew/Axioms.lean, and with
-# --cases slew it checks the planner's file theorem module as well.  Last, the
+# --cases slew it checks the planner's file theorem module as well.  For the energy authorizer, it
+# runs the axiom audit of tests/energy/Axioms.lean, and with --cases energy it checks the
+# authorizer's file theorem module as well.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
 # references computed with Lean's integers, each within the bound its docstring states, and
 # tests/TestSupport/Numerics/FourierAccuracy.lean checks that Fourier.dft, inverse, and
@@ -99,6 +101,8 @@ elif [ "$case_module" = "xxhash64" ]; then
   cases_exe=verified-cases-xxhash64
 elif [ "$case_module" = "slew" ]; then
   cases_exe=verified-cases-slew
+elif [ "$case_module" = "energy" ]; then
+  cases_exe=verified-cases-energy
 fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
@@ -123,6 +127,10 @@ if [ -z "$reference" ]; then
   if runs slew; then targets+=(TestSupport.Slew.EdgesMain $(imports tests/slew/Axioms.lean)); fi
   if [ "$case_module" = "slew" ]; then
     targets+=(Demos.Slew.Verified $(imports Demos/Slew/File.lean))
+  fi
+  if runs energy; then targets+=($(imports tests/energy/Axioms.lean)); fi
+  if [ "$case_module" = "energy" ]; then
+    targets+=(Demos.Energy.Verified $(imports Demos/Energy/File.lean))
   fi
   if [ -z "$case_module" ]; then
     while IFS=: read -r name theorem file; do
@@ -215,6 +223,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "slew" ]; then
   tools/leanrun --timeout 10m lake env lean tests/slew/Axioms.lean
   if [ "$case_module" = "slew" ]; then
     check_file slew Demos.Slew.Verified Demos/Slew/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "energy" ]; then
+  tools/leanrun --timeout 10m lake env lean tests/energy/Axioms.lean
+  if [ "$case_module" = "energy" ]; then
+    check_file energy Demos.Energy.Verified Demos/Energy/File.lean
   fi
 fi
 # Each entry names the written module, the theorem module, and the file theorem module.
