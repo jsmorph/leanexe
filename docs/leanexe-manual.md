@@ -581,31 +581,8 @@ Compiler fixtures use `Examples/<Name>/`, reusable algorithms use the families i
 
 ### Repository rules and iterative development
 
-[The repository instructions](../AGENTS.md) set the procedures that bind agents in this repository: the runner and its limits, the approval boundaries for repository drivers, and the handling of LTG entries.  [The style guide](../CLAUDE.md) sets the style of prose, comments, and commit messages.  Python tools declare their dependencies as PEP 723 metadata and run with `uv run`.
-
-[The design document](design.md) gives the design, the decisions with their reasons, what is proved and tested, and the open work.  One of its decisions makes development iterative: each iteration takes one program from source to bytes, a theorem, a comparison with native Lean, an axiom check, and a commit, adding only what that program needs.  [The journal](../devnotes.md) records each step in dated prose: the analysis, the options, the decision, what was built, and the measurements.
+[The verified compiler manual](verified-manual.md#repository-rules-and-iterative-development) describes the repository instructions, the style guide, the design document, and the journal, and [the repository instructions](../AGENTS.md#proof-iteration) also set the handling of LTG entries.
 
 ### Documentation links
 
-Every Markdown document and prose README has a path of links from [LeanExe](../README.md).
-Link text names the destination's subject, and the surrounding sentence explains the reason
-for the reference.  Current repository references use relative paths.  Historical references
-retain the source revision to which their claims apply.  Links to documentation lead to a file
-or a directory with a README.  Links to source directories support code browsing.
-
-A `References` or `Internal References` section lists the sources whose content a document
-uses, and an internal document appears there only when the text does not link it at the point of
-use.  Each item is a citation or a link titled with the destination's title and, for a section,
-its heading, and items contain no sentences.  One paragraph after the list may discuss the
-references when the body does not state that information: what was read or checked, peer-review
-status, the license of ported code, or a difference between a source and the implementation.
-A directory README
-explains how its files work together, the assumptions they share, or how to build, test, or
-use them.
-
-[The documentation checker](../tools/check-doc-links.mjs) checks local targets, heading anchors,
-and reachability from the root README.  It includes new unignored files so that drafts can be
-checked before staging.
-The [documentation tests](../tests/README.md#documentation-tests) exercise its parsing and
-traversal on temporary files.  Prose receives at least two reviews for technical accuracy,
-specific link descriptions, repetition, vague references, filler, and grammar.
+[The verified compiler manual](verified-manual.md#documentation-links) describes the conventions of the repository's documentation links and the checker of their targets, anchors, and reachability.

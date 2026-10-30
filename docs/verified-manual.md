@@ -803,3 +803,17 @@ tools/leanrun --cpus auto --threads 1 --memory-high 10G --timeout 12h lake build
 13. `Library.Numerics.Float64.Lgamma.LgammaRootA0`
 
 The 12-hour limit accommodates cold imports.  The measured leaf checks used 30-minute limits after their common imports had been built.  [The journal](../devnotes.md#2026-10-24-integration-checks) records their results.
+
+### Repository rules and iterative development
+
+[The repository instructions](../AGENTS.md) set the procedures that bind agents in this repository: the runner and its limits, the approval boundaries for repository drivers, the gates and the review of a proof iteration, and the proposal of VKB entries after a proof task.  [The style guide](../CLAUDE.md) sets the style of prose, comments, and commit messages.  Python tools declare their dependencies as PEP 723 metadata and run with `uv run`.
+
+[The design document](design.md) gives the design, the decisions with their reasons, what is proved and tested, and the open work.  One of its decisions for both compilers makes development iterative: each iteration takes one program from Lean source to bytes, a proved `Implements`, a Wasmtime comparison with native Lean, an axiom audit, and a commit, adding only what that program needs.  [The journal](../devnotes.md) records each step in dated prose: the analysis, the options, the decision, what was built, and the measurements.
+
+### Documentation links
+
+Every Markdown document and prose README has a path of links from [LeanExe](../README.md).  Link text names the destination's subject, and the surrounding sentence explains the reason for the reference.  Current repository references use relative paths, and historical references retain the source revision to which their claims apply.  Links to documentation lead to a file or a directory with a README, and links to source directories support code browsing.
+
+A `References` or `Internal References` section lists the sources whose content a document uses, and an internal document appears there only when the text does not link it at the point of use.  Each item is a citation or a link titled with the destination's title and, for a section, its heading, and items contain no sentences.  One paragraph after the list may discuss the references when the body does not state that information: what was read or checked, peer-review status, the license of ported code, or a difference between a source and the implementation.  A directory README explains how its files work together, the assumptions they share, or how to build, test, or use them.
+
+[The documentation checker](../tools/check-doc-links.mjs) checks local targets, heading anchors, and reachability from the root README.  It reads Git's tracked and unignored untracked files, so that drafts can be checked before staging, and [the documentation tests](../tests/README.md#documentation-tests) exercise its parsing and traversal on temporary files.  [The style guide](../CLAUDE.md#review-process) requires at least two passes of its review over a document: openings and puffery, filler words, passive constructions and weak verbs, jargon, redundancy and vague references, and grammar.

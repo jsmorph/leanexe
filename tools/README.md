@@ -4,7 +4,7 @@
 
 [The Lean runner](leanrun) selects the pinned toolchain, takes the machine-wide lock, and
 applies the resource and timeout settings described in
-[the development procedure](../docs/leanexe-manual.md#development-practice).  Repository drivers
+[the development procedure](../docs/verified-manual.md#development-practice).  Repository drivers
 invoke it themselves.  [The remote runner](leanrun-dev) supports source synchronization and
 checks on the development host.  The runner's resource controls and the rules for local mode
 are stated in [the repository instructions](../AGENTS.md#lean-process-limits).
