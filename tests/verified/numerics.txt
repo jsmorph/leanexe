@@ -107,3 +107,9 @@ lookup:Examples.Lookup.Compiled:Examples/Lookup/File.lean
 treeLookup:Examples.TreeLookup.Compiled:Examples/TreeLookup/File.lean
 primeFactors:Library.Numerics.Arithmetic.PrimeFactors.Compiled:Library/Numerics/Arithmetic/PrimeFactors/File.lean
 runningMax:Examples.RunningMax.Compiled:Examples/RunningMax/File.lean
+tailcore:Verified.Examples.TailCore:Verified/Examples/TailCoreFile.lean
+treecopy:Verified.Examples.TreeCopy:Verified/Examples/TreeCopyFile.lean
+treecore:Verified.Examples.TreeCore:Verified/Examples/TreeCoreFile.lean
+composition:Verified.Examples.Composition:Verified/Examples/CompositionFile.lean
+relocation:Verified.Examples.Relocation:Verified/Examples/RelocationFile.lean
+tuples:Verified.Examples.Tuples:Verified/Examples/TuplesFile.lean
