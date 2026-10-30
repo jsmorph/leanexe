@@ -228,7 +228,7 @@ The bounds and the stacks of calls are those of the tool and of test 3.  In the 
 
 ## Trusted base
 
-After the change, the trusted base is:
+[The trusted-base document](trusted-base.md#b-bare-metal-images) gathers these items with the check and the source of each, beside the items of the other artifacts.  It also states the step from the Lean termination to the Coq judgment that the Rocq theorems take as their hypothesis.  After the change, the trusted base is:
 
 1. Lean's kernel, with `propext`, `Classical.choice`, and `Quot.sound`.
 2. The Lean copy of the Clight subset, with the program-level judgment and volatile accesses, checked by review and by differential tests against `ccomp -interp`.

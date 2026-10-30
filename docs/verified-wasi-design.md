@@ -110,6 +110,8 @@ The memory frame excludes scratch and, for a read, the newly allocated writable 
 
 ## Observable semantics and host assumptions
 
+[The trusted-base document](trusted-base.md#i-wasi-preview-1-modules) gathers the host assumptions of the WASI theorems, with the check and the source of each.  It names the definitions of the Preview 1 model that a statement reaches and the theorems that state when a satisfying host exists.  The command meaning and the rules for errors and traps that the subsections state are part of what those theorems trust.
+
 ### Command meaning
 
 The command semantics relates a source environment and host world to a result, final world, and ordered event trace.  A normal return carries a value.  An accepted exit carries the narrowed status.  A host trap, including rejection of an exit request, carries its committed world and trap identity.  Bounded-loop execution repeats the body in source order and preserves every earlier event.  A separate prefix relation records completed events, the current world, and a residual command when a guest resource failure interrupts execution.

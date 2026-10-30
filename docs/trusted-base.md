@@ -1,0 +1,161 @@
+# Trusted base
+
+This document lists, for each kind of artifact, what its theorem trusts, how the project checks each item, and where each item is stated.  The codes of the sections are those of [the README's artifact table](../README.md#artifacts) and [the algorithm index](../index.md).  A theorem's conclusion holds of a running artifact only if every item of the artifact's section, and every item of [the shared components](#shared-components), does what its table says.  A row marked "Not trusted" names a part that a check of each build or a kernel-checked step removes from the trusted base.  [The definitions that statements reach](#definitions-that-statements-reach) lists the definitions whose meaning a reader of a theorem must accept, and the manuals that each row cites give the detail.
+
+## Shared components
+
+Every theorem rests on Lean's kernel and on the core definitions that give a Lean program its meaning.  The generators that produce programs, proofs, encodings, and translations run as meta code that the kernel does not trust, and the kernel checks what they produce.  The recorded kernel defect is the open question of this layer, because the journal records no run of its reproduction under the pinned toolchain.
+
+| Item | What is trusted | How it is checked | Source |
+|---|---|---|---|
+| Lean kernel | Lean's kernel at the release candidate 4.34.0-rc2 checks every proof, with the axioms `propext`, `Classical.choice`, and `Quot.sound` | `#print axioms` in the theorem files and the test drivers.  No independent checker rechecks the proofs. | `lean-toolchain:1`, [axiom checks](leanexe-manual.md#axiom-checks) |
+| Recorded kernel defect | Reproduction that derives `False` through a hand-built inductive declaration and an expression-hash collision, accepted by Lean 4.27.0, 4.29.1, 4.31.0, and 4.32.0 | No run under 4.34.0-rc2 is recorded.  The journal leaves open whether an independent checker rejects the reproduction. | `devnotes.md:7183-7222`, [journal of 2026-07-20](../devnotes.md#2026-07-20-a-kernel-unsoundness-in-our-own-toolchain) |
+| Proof policy | Proofs use no `sorry`, `native_decide`, `bv_decide`, or `Lean.ofReduceBool`, and generated proofs evaluate in the kernel with `decide +kernel` | Axiom audits.  `verified_compile` rejects a definition that uses `sorry`. | `docs/design.md:223`, `Verified/Reflect/Definitions.lean:4960` |
+| Lean core definitions | `UInt64`, `Bool`, `Array`, and the `Float.Model` and `Float32.Model` of Lean 4.34, which give source programs their meaning | Tests compare compiled code with native Lean on concrete inputs.  The `F64*` and `F32*` lemmas relate Lean's floats to Talos's IEEE functions. | `docs/design.md:294`, [floating point](design.md#floating-point) |
+| Generators | Not trusted: the LeanExe compiler and its hints, the reflector, `compileWith` and its mode choice, the native evaluation that proposes encodings and translations, and the LTG and VKB knowledge bases | Kernel check of every generated definition, equation, and theorem | `docs/leanexe-manual.md:11`, `docs/verified-manual.md:9` |
+
+## L: WebAssembly modules of the LeanExe compiler
+
+Code L's theorems are per-program `Implements` theorems and bytes theorems, such as `gcd_implements` and `gcd_bytes`, in Talos's semantics.  Talos is a hand-written WebAssembly interpreter in Lean, maintained outside this repository at a pinned revision, and tests are the only link between it and the WebAssembly specification.  The binary decoder gives the bytes their meaning, and the step from a module constant to a file rests on Lean's compiled code unless a file theorem of [code F](#f-emitted-files-with-file-theorems) covers the file.
+
+| Item | What is trusted | How it is checked | Source |
+|---|---|---|---|
+| Talos's execution semantics | `run` and `exec` of Talos at revision `87e3aa5e` of `jsmorph/talos` define what a module does | Testsuite run of 2026-10-10: 64,751 passes, no failures, 346 skips, and 27 decode errors on unsupported text forms.  Corpus comparisons of Wasmtime with native Lean.  No proof relates Talos to the WebAssembly specification. | `lake-manifest.json:10`, `docs/native-translator.md:326`, `devnotes.md:29375`, `docs/design.md:328` |
+| Talos's store and value definitions | `Store`, `Mem` with its byte reads and writes, `memoryCap`, `Value`, `HostEnv`, and `IEEE64` and `IEEE32`, which the statements name | Same as the semantics | `LeanExe/Pipeline/Implements.lean:574-584`, `LeanExe/Pipeline/Aborts.lean:40-49` |
+| Differences from an engine | Talos bounds no call depth, grows memory whenever the new page count is within the cap, and returns the positive canonical NaN for every NaN result | `alloc` traps when an engine refuses growth.  Guarded code traps at depth 1,000.  The Wasmtime host enables NaN canonicalization, which browsers lack. | `docs/design.md:303`, `docs/design.md:329`, `docs/verified-manual.md:52` |
+| Imported memory | Six failures in `memory_grow.wast` on imported memories, recorded at an earlier Talos pin | Compiled modules import no memory.  The testsuite run of 2026-10-10 records no failures. | `devnotes.md:1072`, `devnotes.md:29375` |
+| Binary decoder | `Wasm.Encoding.decode`, which the bytes theorems use to give the bytes their meaning | `decode_encode` reads back every successful encoding.  `encode_correct` proves the encoder against the grammar of `LeanExe/Encoding/Spec/`, which a manual review compares with WebAssembly 3.0.  The decoder test of 2026-10-16 decoded the 712 valid testsuite modules in its subset and left 1,502 outside it. | `LeanExe/Encoding/Decode.lean:525`, `LeanExe/Encoding/RoundTrip.lean:10`, [encoding notes](../LeanExe/Encoding/README.md), [binary review](../LeanExe/Encoding/BinaryReview.md), `devnotes.md:34103` |
+| Emission | `tools/Emit.lean` evaluates the module constant and `encode` with Lean's compiled code, checks with compiled `decode` that the bytes read back, and writes the file | `wasm-tools validate` and the corpus runs.  No theorem covers a file without a file theorem. | [the module emitter](../tools/Emit.lean), `docs/design.md:331` |
+| Instantiation and host | Statements assume `Heap.At`, represented arguments, and a cap of at most 65,535 pages, and no theorem connects an engine's instance of an L module to that state.  The hosts place the arguments and read the results. | Module tests compare every export with native Lean and count allocations and releases | `docs/leanexe-manual.md:34`, [the Wasmtime host](../tools/wasmtime-host.c) |
+
+`Implements` permits a trap at `unreachable`, so a module that always traps satisfies it (`LeanExe/Pipeline/Implements.lean:459-462`).  Total-execution theorems with memory budgets exclude the trap for the Euler solvers, the drone planner, and the increment example (`docs/leanexe-manual.md:17`).  The LeanExe compiler's binary32 GPT-2 module, `gpt32.wasm`, has no WebAssembly theorem (`README.md:125`).
+
+## V: WebAssembly modules of the verified compiler
+
+Code V trusts every item of [code L](#l-webassembly-modules-of-the-leanexe-compiler), because its theorems use the same statements, Talos, the decoder, and the emitter.  The universal theorem `Prog.correctStaticWith` and the reflector's meaning equations are kernel-checked, so neither the compiler nor the reflector is trusted.  The rows below are the items that the verified compiler adds.
+
+| Item | What is trusted | How it is checked | Source |
+|---|---|---|---|
+| Statement definitions of the verified compiler | `Heap.Within`, the allocation bound `Expr.allocs`, `ImplementsTables`, `ImplementsStatic`, the literal pool's `Input`, `initialHeap`, and `tableAddr` | Reading: they are part of the statements of `p.f.implements`, `p.f.trapFree`, and `p.initial` | `Verified/RuntimeFacts.lean:17`, `Verified/Bound.lean:555`, `Verified/Correct.lean:585`, `Verified/StaticImplements.lean:7`, `Verified/Bytes/StaticInput.lean:7`, `Verified/Instantiate.lean:267`, `Verified/Compile.lean:1008` |
+| `Flat` and `Encode` instances | Statement over a structure, enumeration, sum, or recursive type uses the type's instance | Reflector's `flat_eta` equations by `rfl`.  `verified_recursive_type` proves `encoding` and `wellFormed`. | `docs/verified-manual.md:36`, `docs/verified-manual.md:44` |
+| Initial store | `p.initial` proves the allocator invariant, the cap, the tables, and the literal pool of Talos's `Module.initialStore` | Engine instantiation is outside the proofs, and the tests start from the engine's instance | `docs/verified-manual.md:54` |
+| Call depth and stack | Guarded code traps at depth 1,000 with at most 32 positions per frame, which must fit the engine's stack | Frames of 32 positions run at depth 999 on Wasmtime 44 for aarch64 | `docs/design.md:285`, `docs/verified-manual.md:52` |
+
+`p.f.trapFree` excludes the trap of `p.f.implements` under its premises: room for the allocation bound within the memory cap and, for code that takes the call depth, a frames condition (`docs/verified-manual.md:17-19`).  The bound and the frames condition are Lean terms in the function's parameters, so a user proves them for a concrete input.  [The verified compiler manual](verified-manual.md#trusted-base) gives the statements in full.
+
+## F: Emitted files with file theorems
+
+Code F's theorems `NAME_file` and `NAME_file_decode` state that a file's bytes equal `encode p.module` and decode to the module, so they remove the emission step of code L for the files that they cover.  They add the elaborator `binary_file%`, which reads the file into a term when the theorem's module is checked.  A file theorem describes the file as it was at that check, and the verified driver runs the check after it writes the file.
+
+| Item | What is trusted | How it is checked | Source |
+|---|---|---|---|
+| Items of the module's code | Every row of [code V](#v-webassembly-modules-of-the-verified-compiler) or [code L](#l-webassembly-modules-of-the-leanexe-compiler) except emission | As there | Sections above |
+| `binary_file%` | Term elaborator that reads the bytes of a file, relative to the source file, at elaboration time | Six-line elaborator.  The kernel compares the bytes with the encoding. | `LeanExe/Pipeline/FileBytes.lean:13-20` |
+| File identity | Theorem describes the file at the time of its check | `tests/verified/run.sh` writes each file and then checks its file module and the module's axioms | `tests/verified/run.sh:7-10`, `docs/design.md:331` |
+| Coverage | 32 modules of the file-theorem registry and `gpt.wasm` | Other emitted files rest on the emission step of code L | [the file-theorem registry](../tests/verified/numerics.txt), [the file theorem of `gpt.wasm`](../Demos/Gpt/File.lean) |
+
+## I: WASI Preview 1 modules
+
+Code I trusts every item of [code V](#v-webassembly-modules-of-the-verified-compiler), and its theorems add a model of the WASI host.  The exported-entry theorems quantify over every Talos host environment that satisfies the import specifications, so the model's fidelity to Preview 1 and to the engine is trusted.  A theorem that assumes a satisfying host says nothing about a host relation that leaves a request unanswered, and the totality module states when a satisfying host exists.
+
+| Item | What is trusted | How it is checked | Source |
+|---|---|---|---|
+| Host specification | `hostSpec host` for `fd_read`, `fd_write`, and `proc_exit`: reply bounds, trace updates, terminal exit, and the frame of guest memory | `Host.Total.satisfiable` builds a satisfying host from a total oracle.  `Host.Answers.of_satisfies` shows that a satisfying host answers every request that the ABI expresses. | `Verified/Wasi/HostSpec.lean:88`, `Verified/Wasi/HostTotal.lean:76`, `docs/wasi.md:184` |
+| Preview 1 model | `Host`, `Exec`, `exitStatus`, `Transfer.validErrno`, `observedHost`, `ReadRequest`, `WriteRequest`, `GuestFrame`, and `TerminalMessage` model Preview 1 | Review against the pinned witx declarations and application ABI, and the host tests | `LeanExe/Wasi/Semantics.lean:12-59`, `LeanExe/Wasi/Action.lean:108`, `Verified/Wasi/Observed.lean:11`, `Verified/Wasi/HostSpec.lean:13-37`, `Verified/Wasi/CommandSpec.lean:10`, `docs/wasi.md:190` |
+| Reached host operations | `.total` theorems require `host.NoTrapsAlong`, and process theorems require application premises on host progress and exit acceptance | Premises of each theorem | `LeanExe/Wasi/NoTrapPrefix.lean:16`, [resources and host assumptions](wasi.md#resources-host-assumptions-and-total-execution) |
+| Engine, operating system, and adapter | Wasmtime's Preview 1 and its exit policy, host installation, operating-system streams, and the native stream adapter agree with the model | Execution tests.  Wasmtime 44 accepts exit statuses below 126 and rejects larger ones. | `docs/wasi.md:190`, `docs/wasi.md:234`, [observable semantics](verified-wasi-design.md#observable-semantics-and-host-assumptions) |
+| Native interpreter | `action.run` and its stream adapter, which run actions natively | No theorem relates the interpreter to `Exec`.  Native tests. | `docs/wasi.md:200` |
+
+## C: C files and native executables
+
+Code C's theorem `p.f.native` is about the translation in the Lean copy of CompCert 3.18's Clight, and Talos serves only as an intermediate language whose execution semantics the proofs use.  Talos's execution semantics, the decoder, the emitter, and Wasmtime therefore leave the trusted base, while Talos's store and memory definitions stay in the statement.  No theorem covers a hosted executable as a whole, because its host is a separate C file, and [the translator's trusted base](native-translator.md#trusted-base-of-the-native-path) describes each component at length.
+
+| Item | What is trusted | How it is checked | Source |
+|---|---|---|---|
+| Talos's store and memory definitions | `NativeA` relates the C memory to a Talos store through `StoreRel`, `Heap.At`, and `Represent` | Same as code L | `LeanExe/Native/Proof/Native.lean:91-101` |
+| Lean copy of Clight | `LeanExe/Native/Clight/`, about 3,900 lines, means what CompCert 3.18's Clight means for the translator's programs, with the NaN choices of `Archi` as parameters.  The translated C canonicalizes each NaN result, so the theorems hold under the NaN choices of both targets. | Side-by-side review.  `tests/native/clight.sh` compares `LClight.run` with `ccomp -interp` on 921 programs under both targets' NaN parameters.  `LClight.run` is proved sound for the relation, so the tests check only derivations that it builds. | `docs/native-translator.md:107`, `docs/native-translator.md:225-231`, `docs/native-translator.md:255` |
+| Existence of an execution | `NativeA` states that a terminating execution of the copy exists, and no Lean theorem states that the copy's big-step relation is deterministic | Not checked | `LeanExe/Native/Proof/Native.lean:96-102`, `docs/native-translator.md:195`, `docs/native-translator.md:207` |
+| Printer and written file | Not trusted: `native-verified build` compiles the file that `clightgen` read only after the comparison passes | Comparison of each build | `docs/native-translator.md:258-259` |
+| `clightgen` comparison and `ClightCheck.lean` | `ccomp` and `clightgen`, built from one 3.18 tree, run the same front end on the same text.  `ClightCheck.lean`, 685 lines of unverified Lean, reads `clightgen`'s Coq file and compares it with the translation up to a renaming of call temporaries. | File that the reader cannot read fails the check.  `bigstep_program_terminates_export` covers the statements that `clightgen`'s exporter rewrites. | `LeanExe/Native/ClightCheck.lean:3-20`, `LeanExe/Native/Proof/Export.lean:498`, `docs/native-translator.md:233-235`, `docs/native-translator.md:260` |
+| CompCert's proofs | `transf_c_program_correct` or `separate_transf_c_program_correct`, and `bigstep_semantics_sound`, with Coq's kernel, CompCert's axioms, and its parameters of the target | CompCert built from the release archive whose digests the journal records | `docs/native-translator.md:256` |
+| CompCert's unverified parts | Extraction to OCaml, the assembly printer, and the assembler and linker that it calls.  The comparison covers the parser and the elaborator. | Shared by every CompCert user | `docs/native-translator.md:257` |
+| Run-time library | Helpers of `libcompcert.a` for conversions between unsigned 64-bit integers and floats on x86-64 | `fops`, `f32ops`, and the corpus exercise them at their boundaries | `docs/native-translator.md:262` |
+| Host glue | `tools/native-host.c` and the generated glue call `lx_init` once, place arguments that meet `StoreRel`, `Represent`, and `ArgsTyped`, and read `lx_status` and the results | Corpus runs compare every result with Wasmtime and Talos | `docs/native-translator.md:261` |
+| Stack | CompCert's theorem assumes that the stack does not overflow, and the depth guard bounds nesting at 1,000 frames of the module's functions | Not measured for the hosted path | `docs/native-translator.md:263` |
+| Toolchain and platform | `ccomp` and `clightgen` 3.18, the GNU assembler and linker, glibc and its start-up code, the operating system, and the processor | Shared by every program of the toolchain | `docs/native-translator.md:264` |
+
+## A: C files without the alignment test
+
+Code A trusts every item of [code C](#c-c-files-and-native-executables), and its theorem `p.f.nativeAligned` adds the premise `AlignedInput`.  The translation reads and writes one word of `lx_mem` for each 64-bit access, so a host that violates the premise reads or writes a wrong word without a trap.  No bare-metal theorem covers this translation.
+
+| Item | What is trusted | How it is checked | Source |
+|---|---|---|---|
+| Alignment premise | Host meets `AlignedInput`: an aligned heap, and consumed objects and read regions at multiples of 8 | Unverified host glue.  `alloc_nativeA` and `release_nativeA` keep the heap aligned between calls. | `LeanExe/Pipeline/AlignedImplements.lean:22`, `docs/native-translator.md:213`, `docs/native-translator.md:261` |
+| Build gate | `native-verified build --aligned` compiles a module only when every export has `p.f.nativeAligned` | `tests/native/aligned.sh` tests the refusal | `docs/native-translator.md:213` |
+| Statement definitions | `ImplementsAligned`, `NativeAlignedA`, `NativeTablesAlignedA`, `AlignedOutput`, and `Heap.Aligned` | Reading | `LeanExe/Pipeline/ImplementsAligned.lean:20`, `LeanExe/Native/Proof/AlignedNative.lean:77`, `Verified/AlignedNative.lean:23`, `LeanExe/Pipeline/AlignedImplements.lean:29`, `LeanExe/Pipeline/AlignedHeap.lean:19` |
+
+## B: Bare-metal images
+
+Code B's theorems, `p.f.program` and `sha256_input`, cover a whole program with a generated `main`, so libc, the operating system, and the C host leave the trusted base and `main` enters the proofs.  The Rocq composition carries the termination to CompCert's Asm, but it takes the termination as a judgment of CompCert's Clight in Coq, and the step from the Lean theorem to that judgment rests on the Lean copy and on the comparison of each build.  The items of code C stay trusted apart from the host glue and the hosted platform, and the startup code, the stack-bound tool, and the machine enter.
+
+| Item | What is trusted | How it is checked | Source |
+|---|---|---|---|
+| Rocq step | `clight2_bigstep_to_asm` composes CompCert's forward simulations from Clight to Asm, `clight2_bigstep_asm_unique` adds from Asm's determinacy that a termination without inputs is the only behavior, and `clight2_bigstep_asm_reads` covers traces that read inputs | `rocq/check.sh` compiles the file against a CompCert 3.18 tree and requires its assumptions to be those of `transf_c_program_correct` and `constructive_indefinite_description` | `rocq/Clight2Asm.v:99`, `rocq/Clight2Asm.v:326`, `rocq/Clight2Asm.v:503`, `rocq/check.sh:2-8` |
+| Step from Lean to Coq | Termination in the Lean copy is a termination of the Clight program that `clightgen` prints, under the transcription `exportStmt` of the exporter and an injective renaming of identifiers between `clightgen` and `ccomp` | Lean copy and comparison as in code C | `docs/native-bare-metal.md:234-235` |
+| Whole-program comparison | `native-bare check` compares the whole program, CompCert's declarations and `main` included, with `bareProgram` under `PrefixOk` | Comparison of each build | `LeanExe/Native/Proof/Main.lean:635`, `docs/native-bare-metal.md:254` |
+| CompCert's Asm model | `aarch64/Asm.v` describes the processor | Shared by every CompCert user | `docs/native-bare-metal.md:241` |
+| Startup code and linker script | `tools/baremetal/start.S` with its translation tables, exception vectors, and reports, and `tools/baremetal/link.ld` with the addresses of `lx_out` and `lx_in` | Builds without the FP enable, stores to the guard page, a short stack, and a wrong UART address must each fail visibly | `docs/native-bare-metal.md:238-239`, `docs/native-bare-metal.md:255`, [startup code](native-bare-metal.md#startup-code) |
+| Stack-bound tool | `tools/baremetal/stack-bound.sh` computes the static stack bound of `main`, and the build fails when the bound exceeds the reserved stack | `tests/baremetal/verified.sh` fails a call whose stack exceeds its function's bound | `docs/native-bare-metal.md:240`, `docs/native-bare-metal.md:252`, [the stack](native-bare-metal.md#the-stack) |
+| Aligned instructions | Compiled code has no instruction that requires aligned accesses in Normal memory | `tools/baremetal/access-check.sh` | `docs/native-bare-metal.md:244` |
+| Machine | QEMU's `virt` machine with its ELF and generic loaders and its UART, semihosting under TCG, PSCI under KVM, and the AArch64 processor under KVM | Runs under TCG and KVM | `docs/native-bare-metal.md:242-243`, `docs/native-bare-metal.md:257` |
+| Input values | Each volatile read of the input region returns the byte that the loader placed there | Runs on eleven message lengths compared with `sha256sum` | `docs/native-bare-metal.md:210`, `docs/native-bare-metal.md:256` |
+
+`p.f.program` also allows the code of `unreachable` with no output when the entry may abort, and `sha256_input` allows it when `alloc` traps (`LeanExe/Native/Proof/Main.lean:661-673`, `LeanExe/Native/Proof/Input.lean:704-712`).  The test programs and the input test check that the runs produce the Lean result.  [The bare-metal design](native-bare-metal.md#trusted-base) gives the list of trusted items as the design introduced them.
+
+## G: WGSL kernels
+
+Code G's dispatch theorems state that a dispatch writes the Lean function's result and is race-free in the shared device model.  The model is a small sequential semantics in Lean, and its relation to WGSL's concurrent execution and to a GPU's arithmetic is trusted.  The printer is not trusted, because a proved parser inverts it and the emitter checks the printed text.
+
+| Item | What is trusted | How it is checked | Source |
+|---|---|---|---|
+| Device model | `Module.dispatch` runs invocations 0 to `count - 1` in order on the initial buffers, kernels read only the read-only buffers and store to the output, and `Module.RaceFree` states that distinct invocations store to distinct words | Model's documentation argues that a race-free dispatch gives the result of WGSL's concurrent execution.  No proof relates the model to WGSL's memory model. | `LeanExe/WGSL/Semantics.lean:4-15`, `LeanExe/WGSL/Semantics.lean:199-210` |
+| Binary32 arithmetic | Device computes strict binary32 with Talos's `IEEE32` results, while a GPU may flush subnormal values and fuse multiply-adds | Tests on SwiftShader and llvmpipe compare each output word with native Lean | [GPU](design.md#gpu), [WGSL tests](leanexe-manual.md#wgsl-tests) |
+| Printed text | Not trusted: the parser is proved to invert the printer, and `tools/EmitWgsl.lean` checks that the parser reads the printed text back | Kernel and the emitter's check | [the WGSL round trip](../LeanExe/WGSL/RoundTrip.lean), [the WGSL emitter](../tools/EmitWgsl.lean) |
+| Driver, device, and host program | wgpu-native, the Vulkan drivers, the browser's WebGPU, and `tools/webgpu-host.c` run kernels as the model describes.  `generate_host` proves the scores of a modeled host program. | Same tests, and the browser pages compare WebGPU with WebAssembly | `Demos/Gpt32/VerifiedHost.lean:62`, [WGSL kernels](leanexe-manual.md#wgsl-kernels-and-the-browser-pages) |
+
+## Specifications
+
+A specification theorem states a property of a Lean function or of a module, and its meaning rests on the definitions of its specification.  The hashing theorems equate a program with a transcription of a standard, the numerical theorems bound a result against a real function through a rounding reference, and the application theorems state properties that the project defines.  Each of these definitions is trusted to say what its name says, and the vector checks compare the transcriptions with published vectors and reference outputs.
+
+| Item | What is trusted | How it is checked | Source |
+|---|---|---|---|
+| Transcription of FIPS 180-4 | `Library/Hashing/Sha2/Spec/`, a literate transcription copied from fips-180-4-lean | NIST CAVP vectors run on the transcription | [the SHA-2 notice](../Library/Hashing/Sha2/NOTICE), [the SHA-2 vector check](../tests/TestSupport/Hashing/Sha2Vectors.lean) |
+| Transcription of FIPS 198-1 | `Library/Hashing/Hmac/Spec.lean` | Cases of RFC 4231 | [the HMAC vector check](../tests/TestSupport/Hashing/HmacVectors.lean) |
+| Transcription of FIPS 202 | `Library/Hashing/Sha3/Spec.lean` | NIST CAVP vectors, bit-oriented messages included | [the SHA-3 vector check](../tests/TestSupport/Hashing/Sha3Vectors.lean) |
+| Transcription of ITU-T V.42 and RFC 3720 | `Library/Hashing/Crc/Spec.lean` | Outputs of zlib and of the Linux kernel, and the examples of RFC 3720 | [the CRC vector check](../tests/TestSupport/Hashing/CrcVectors.lean) |
+| Transcription of the SipHash paper | `Library/Hashing/SipHash/Spec.lean` | Example of the paper's appendix, the reference vectors, and OpenSSL's tags | [the SipHash vector check](../tests/TestSupport/Hashing/SipHashVectors.lean) |
+| Transcription of the xxHash specification | `Library/Hashing/XxHash64/Spec.lean` | 8,322 vectors of the xxHash sanity test | [the XXH64 vector check](../tests/TestSupport/Hashing/XxHash64Vectors.lean) |
+| Mathlib definitions | `Real.Gamma`, `Real.exp`, `Real.log`, and the other real functions of the accuracy theorems, at Mathlib's pinned revision | Mathlib's review | `lake-manifest.json:52` |
+| Project-defined real functions | `RealErf.erf` and `RealErf.erfc`, defined by the Gaussian integral because Mathlib lacks them | Their properties are proved in the same file | `LeanExe/ProofKit/RealErf.lean:25-28` |
+| Rounding reference | `WithinSteps`, `roundNearestEven`, and `position`, with Talos's `CodeLib.IEEE64.value` and `Finite` | Accuracy tests compare results with references computed in integers | `LeanExe/ProofKit/F64SignedRounding.lean:18-29`, `tests/verified/run.sh:12-16` |
+| Application properties | `WholeFlight.Safe` of the drone planner, the cone conditions of the slew planner's `plan_safe`, and the Euler solvers' admissibility and conservation | Reading against each application's document | `Demos/Drone/Verified.lean:58-62`, `Demos/Slew/Safety.lean:312`, [Euler solvers](../Demos/Euler/README.md) |
+
+## Definitions that statements reach
+
+A statement means what the definitions that it unfolds to mean, so these definitions belong to the trusted base even though they are ordinary Lean code.  The namespace `LeanExe.Pipeline` does not mark them, and the files that hold them also hold lemmas.  A lemma in any directory can only make a proof fail and never changes what a statement says, and [the LeanExe compiler manual](leanexe-manual.md#trusted-base) and [the verified compiler manual](verified-manual.md#trusted-base) explain the representations in detail.
+
+| Statements | Definitions | Source |
+|---|---|---|
+| Every WebAssembly statement | Talos's `run`, `Module`, `Store`, `Mem`, `Value`, `HostEnv`, `IEEE64`, and `IEEE32`, and `Runs`, `ReturnsOrAborts`, and `Trapped` | `docs/native-translator.md:326`, `LeanExe/Pipeline/Aborts.lean:16-49` |
+| `Implements` family | `Implements`, `ImplementsA`, `Satisfies`, `ImplementsPureA`, `Separate`, `Apart`, `Moved`, `block`, `Represent` with its instances, `Scalar`, `Flat`, `Encode`, `EncodeWellFormed`, `Node`, `Slot`, `NodeOwned`, `NodeBorrowed`, `RecordHeader`, `RecordSlots`, and `BufferLengths` | `LeanExe/Pipeline/Implements.lean:13-662`, [the byte representation](../LeanExe/Pipeline/Bytes.lean), [the flat records](../LeanExe/Pipeline/FlatRecords.lean) |
+| Heap model | `Heap.At`, `Heap.Borrowed`, `Heap.Owned`, `Heap.Buffer`, `Heap.Region`, and `Heap.Keeps`, with `UInt64Array.At`, `FreeNode`, `freeHead`, `FreeNode.region`, `FreeListAt`, `regionsDisjoint`, and `LeanExe.Bytes` | `LeanExe/Pipeline/Runtime.lean:25-102`, `LeanExe/ProofKit/Array.lean:31`, `LeanExe/Runtime/FreeList.lean:8-258`, `LeanExe/Runtime/Tree.lean:102`, `LeanExe/Dialect/Bytes.lean:5` |
+| Total execution of the LeanExe compiler | `units`, `Heap.Budget`, and `Heap.Bounded` | `LeanExe/Pipeline/Budget.lean:20`, `LeanExe/Pipeline/Budget.lean:185`, `LeanExe/Pipeline/Budget.lean:304` |
+| Verified compiler | `Heap.Within`, `Expr.allocs`, `ImplementsTables`, `ImplementsStatic`, the literal pool's `Input`, `initialHeap`, and `tableAddr` | Rows of [code V](#v-webassembly-modules-of-the-verified-compiler) |
+| Bytes theorems | `Wasm.Encoding.encode` and `Wasm.Encoding.decode`, and `ValidBinary` for WASI modules | `LeanExe/Encoding/Modules.lean:134`, `LeanExe/Encoding/Decode.lean:525`, [encoding notes](../LeanExe/Encoding/README.md) |
+| WASI | `hostSpec`, `Host`, `Exec`, `exitStatus`, `Transfer.validErrno`, `observedHost`, `ReadRequest`, `WriteRequest`, `GuestFrame`, `TerminalMessage`, and `Host.NoTrapsAlong` | Rows of [code I](#i-wasi-preview-1-modules), [WASI premises](wasi.md#execution-proofs-and-their-premises) |
+| Native code | `NativeA`, `NativeImpl`, `NativeTablesA`, `NativeStaticA`, `Env`, `StoreRel`, `StatusRel`, `EnvOk`, `ArgsTyped`, `argVals`, `ResultRel`, `translate`, `Translation`, `funId`, `signatureOf`, `trapUnreachable`, and `nativeCap`, with `eval_funcall`, `bigstep_program_terminates`, and the rest of the Lean copy of Clight | `LeanExe/Native/Proof/Native.lean:83-133`, `Verified/Native.lean:19-108`, `LeanExe/Native/Proof/Relation.lean:148-195`, `LeanExe/Native/Proof/Straight.lean:78`, `LeanExe/Native/Proof/Calls.lean:19-25`, `LeanExe/Native/Translate.lean:116-1168`, `LeanExe/Native/Clight/Bigstep.lean:137-155` |
+| Native code without the alignment test | `ImplementsAligned`, `NativeAlignedA`, `NativeAlignedImpl`, `NativeTablesAlignedA`, `AlignedInput`, `AlignedOutput`, and `Heap.Aligned` | Rows of [code A](#a-c-files-without-the-alignment-test) |
+| Bare-metal programs | `bareProgram`, `bareMain`, `OutKind`, `encodeWord`, `encodeArray`, `outTrace`, `PrefixOk`, and `E0`, and for `sha256_input` also `inProgram`, `inMain`, `inMax`, `inTooLong`, `Reads`, `InResult`, `inTrace`, `inLen`, `inMsgByte`, `shaOut`, and `message` | `LeanExe/Native/Proof/Whole.lean:244`, `LeanExe/Native/Bare.lean:54-320`, `LeanExe/Native/Proof/Main.lean:635`, `LeanExe/Native/Clight/Events.lean:57`, `LeanExe/Native/Proof/Input.lean:704`, [the input theorem](../tests/TestSupport/Bare/Input.lean) |
+| WGSL dispatch | `Module.dispatch` and `Module.RaceFree`, with the WGSL syntax | `LeanExe/WGSL/Semantics.lean:199-210` |
+| Specifications | Transcriptions, Mathlib and project-defined real functions, the rounding reference, and the application properties | Rows of [the specifications](#specifications) |
+| Types of a statement | `Flat` and `Encode` instances beside each type that a statement names, apart from `Encode (List UInt64)` and `Flat Bool UInt64`, which the `Implements` definitions give | `docs/verified-manual.md:36` |

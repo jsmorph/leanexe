@@ -18,6 +18,8 @@ The compiler is untrusted.  It emits the IR as a Lean definition and the module 
 
 ### Trusted base
 
+[The trusted-base document](trusted-base.md#l-webassembly-modules-of-the-leanexe-compiler) gathers these components with the check and the source of each, beside the components of the other artifacts.  It also records the kernel's version with its recorded defect, the testsuite run of Talos, and the test of the decoder.  [The verified compiler manual](verified-manual.md#trusted-base) lists the definitions that the verified compiler's statements add.
+
 | Component | Role |
 |---|---|
 | Lean's kernel, with `propext`, `Classical.choice`, and `Quot.sound` | Checks every proof.  Proofs may not use `bv_decide` or `native_decide`, which add an axiom that trusts compiled code. |

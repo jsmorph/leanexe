@@ -247,7 +247,7 @@ Three links connect the Lean theorem to the binary:
 
 ## Trusted base of the native path
 
-`p.f.native` is a Lean theorem about the Clight program `p.translation`.  A machine-code function computes `f` only if every component below does what the table says, and none of them is proved in Lean.  The table lists each component, what it must do, and how the project checks it.  The printer and the written file appear in it although they are not trusted, because the per-build comparison is what removes them.
+[The trusted-base document](trusted-base.md#c-c-files-and-native-executables) gathers this table with the components of the other artifacts and the source of each item.  `p.f.native` is a Lean theorem about the Clight program `p.translation`.  A machine-code function computes `f` only if every component below does what the table says, and none of them is proved in Lean.  The table lists each component, what it must do, and how the project checks it.  The printer and the written file appear in it although they are not trusted, because the per-build comparison is what removes them.
 
 | Component | What is trusted | How it is checked |
 | --- | --- | --- |
