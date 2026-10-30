@@ -13,7 +13,7 @@ open TestSupport.Host
 def hex (b : LeanExe.Bytes) : String :=
   String.join (b.data.toList.map fun byte =>
     let digits := Nat.toDigits 16 byte.toNat
-    String.mk (if digits.length < 2 then '0' :: digits else digits))
+    String.ofList (if digits.length < 2 then '0' :: digits else digits))
 
 def cases : IO Unit := do
   let names : List LeanExe.Bytes := [.empty, bytes![0], bytes![7, 255], bytes![1, 2, 3, 4, 5],
