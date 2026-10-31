@@ -2,8 +2,8 @@
 
 ## Scope and conclusion
 
-Reviewed on 2026-09-27: [the validity predicate](Spec/Validity.lean), together
-with the binary premises in `ValidBinary`.  For an encoding derivation and
+The review of 2026-09-27 covered [the validity predicate](Spec/Validity.lean),
+together with the binary premises in `ValidBinary`.  For an encoding derivation and
 contexts supplied by a module satisfying `Spec.Validity.Module`, each Lean
 typing constructor has a derivation under the official scalar WASM rules.
 The module conditions supply the required context, declaration, and export
@@ -13,11 +13,10 @@ The 2026-10-17 review includes the added binary64 operations and active data
 segments.  The [rendered numeric instruction rules][current-instructions]
 give the unary, comparison, and conversion types recorded below.  The
 [data-segment validation rules][current-data] require an existing memory and
-a constant offset expression of its address type.
-
-The 2026-10-19 review adds `f32.convert_i64_u : i64 -> f32` and
-`i64.trunc_sat_f32_u : f32 -> i64` under the same
-[numeric conversion typing rule][current-instructions].
+a constant offset expression of its address type.  The 2026-10-19 review adds
+`f32.convert_i64_u : i64 -> f32` and `i64.trunc_sat_f32_u : f32 -> i64` under
+the same [numeric conversion typing rule][current-instructions].  The 2026-10-23
+review adds the table profile of the `shape` condition and `tableProfile_valid`.
 
 The comparison uses the official [instruction rules][instructions], [type
 rules][types], and [module rules][modules] at revision
@@ -133,7 +132,7 @@ rule and its declaration rules.
 | Function exports | Each index refers to an imported or defined function. |
 | Global exports | Each index refers to a declared global. |
 | Memory exports | Index zero exists and refers to the sole memory. |
-| Tables and table exports | The shape admits an empty 32-bit nullable `funcref` table with minimum zero and no maximum, exported as `__indirect_function_table` at index zero, or no table and no table exports.  `tableProfile_valid` proves the declaration shape and export-index bound. |
+| Tables and table exports | `shape` admits an empty 32-bit nullable `funcref` table with minimum zero and no maximum, exported as `__indirect_function_table` at index zero, or no table and no table exports.  `tableProfile_valid` proves the declaration shape and export-index bound. |
 | `distinctExports` | Names are distinct across all four export kinds together. |
 
 Function bodies see all function signatures, allowing mutual recursion.
@@ -168,12 +167,13 @@ and typing rules justify interpreting that conclusion as a valid encoding of
 the represented scalar module.
 
 For behavioral composition, the proof witnesses the represented module with
-the original `m`.  Instantiating `P` with a Talos execution theorem retains
+the original `m`.  Instantiating `property` with a Talos execution theorem retains
 that theorem's quantified inputs and assumptions.  The correspondence of
 Talos execution semantics with WASM execution remains an existing assumption
 of those application proofs.  Applying the combined theorem to an application
-requires its `Ready`, validity, and behavioral proofs.  The current concrete
-premise proofs cover the constant example.
+requires its `Ready`, validity, and behavioral proofs.  `verified_compile_wasi`
+proves `Spec.Validity.Module` for each module that it accepts, through
+[the validity proof generator](ValidityProof.lean).
 
 The proof target and six public axiom reports were checked on 2026-09-27
 through [`tools/leanrun`](../../tools/leanrun).  Those six reports contain only
@@ -184,6 +184,12 @@ The validity source reviewed on 2026-10-19 has SHA-256:
 
 ```text
 03c4135fdda9139c2953b46704b7dbc30cd3793b982709b7c3db3f6c713b867c  Spec/Validity.lean
+```
+
+The 2026-10-23 review of the table profile covers this revision:
+
+```text
+5eded76fae8fb1b7cfaea8f245e142f19705d7ecdb6ada567f9da7fa23812bd3  Spec/Validity.lean
 ```
 
 [instructions]:

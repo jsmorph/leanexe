@@ -2,9 +2,9 @@
 
 ## Scope and conclusion
 
-First reviewed on 2026-09-27: the four binary specification modules, their use by
-`encode_correct` and `encode_complete`, and their correspondence with the pinned
-Talos syntax.  The reviewed grammar selects permitted encodings for its scalar
+The first review, on 2026-09-27, covered the binary specification modules, their
+use by `encode_correct` and `encode_complete`, and their correspondence with the
+pinned Talos syntax.  The reviewed grammar selects permitted encodings for its scalar
 WASM domain.  The integer, opcode, control, section, and field checks below
 support that conclusion.  The reference snapshot contains the discrepancies
 recorded under [Reference discrepancies](#reference-discrepancies).
@@ -13,11 +13,11 @@ The 2026-10-17 review covers 83 instruction forms and active data
 segments.  It compares the added binary64 comparisons, absolute value,
 unsigned conversion, and saturating truncation with the [rendered instruction
 grammar][current-instructions], and data segments with the [data section
-grammar][current-data].  The source digests below identify this revision.
-
-The 2026-10-19 review adds `f32.convert_i64_u` at `b5` and
+grammar][current-data].  The 2026-10-19 review adds `f32.convert_i64_u` at `b5` and
 `i64.trunc_sat_f32_u` at `fc 05`, bringing the inventory to 85 forms.  Both
-match the [rendered numeric instruction grammar][current-instructions].
+match the [rendered numeric instruction grammar][current-instructions].  The
+2026-10-23 review adds the WASI table profile of `Spec/Modules.lean`: section 4,
+the table export, and the profile check of `Shape`.
 
 The comparison uses WebAssembly 3.0, dated 2026-09-21, and its [specification
 source at revision 608711107b7f1edb13efd57b7d79b49477462d36][spec].  The [dated
@@ -78,7 +78,7 @@ The [type rules](Spec/Types.lean) were compared with [binary types][types].
 | `BlockType` | `40` denotes no parameters or results.  A numeric type byte denotes no parameters and one result. |
 | `FuncType` | `60`, parameter vector, result vector.  Result order and multiple function results are preserved. |
 | `Limits` | Flags `00` and `01` select 32-bit memory with a minimum and an optional maximum. |
-| `Memory` | The memory-section record fixes `is64 = false` and empty data.  The data section encodes the segments separately. |
+| `Memory` | Fixes `is64 = false` and empty data in the memory-section record.  The data section encodes the segments separately. |
 | `Mutability` | `00` is immutable and `01` is mutable. |
 | `Global` | Declared type, mutability, matching integer constant, and terminating `0b`. |
 
@@ -190,7 +190,7 @@ The [pinned Core 3 value source][values] contains three inconsistencies:
 | --- | --- | --- |
 | UTF-8 continuation helper | `0x80 < b < 0xC0` | Unicode includes continuation byte `80`.  For example, U+0080 encodes as `c2 80`. |
 | Four-byte UTF-8 range | Upper bound `U+11000` | Unicode's upper bound is `U+110000`.  For example, U+1F600 encodes as `f0 9f 98 80`. |
-| `Bi32` and `Bi64` source aliases | Aliases of `BuN` | The same source defines general `BiN` through signed LEB.  The official decoder reads constants with `s32` and `s64`. |
+| `Bi32` and `Bi64` source aliases | Aliases of `BuN` | Signed LEB, through which the same source defines general `BiN`.  The official decoder reads constants with `s32` and `s64`. |
 
 The UTF-8 discrepancies also occur in the rendered Core 3 value formulas.  The
 [dated Core 2 value rules][core2] give the intended signed-constant
@@ -209,6 +209,12 @@ The SHA-256 digests of the files reviewed on 2026-10-19 are:
 0116708ee6aff512eacc69065ccb81bdad88b27e557579c843458b54b638e2bd  Spec/Types.lean
 b3441af27be77f91c8a932a033dba750194f611b9b7d64d0965b3b8f603b1b23  Spec/Instructions.lean
 e7ac862d6eb41655d094b8f5cd762a312b24cf23983c38e33307688c497a76b1  Spec/Modules.lean
+```
+
+The 2026-10-23 review of the table profile covers this revision of the module rules:
+
+```text
+ccafcee39f369b058d0b4da263bae4ac6d13e65d7911bac7ff239eec22c9ec09  Spec/Modules.lean
 ```
 
 [spec]:
