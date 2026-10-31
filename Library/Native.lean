@@ -17,6 +17,7 @@ import Library.Numerics.Arithmetic.BinaryGcd.Program
 import Library.Numerics.Arithmetic.CeilSqrt.Program
 import Library.Numerics.Arithmetic.Fma.Program
 import Library.Numerics.Arithmetic.Gcd.Program
+import Library.Numerics.Arithmetic.ModInverse.Program
 import Library.Numerics.Arithmetic.PrimeFactors.Program
 import Library.Numerics.Arithmetic.Uscale.Program
 import Library.Numerics.Bounds.Program

@@ -102,6 +102,7 @@ removeZero:Examples.RemoveZero.Compiled:Examples/RemoveZero/File.lean
 binary32:Examples.Binary32.Compiled:Examples/Binary32/File.lean
 binaryGcd:Library.Numerics.Arithmetic.BinaryGcd.Compiled:Library/Numerics/Arithmetic/BinaryGcd/File.lean
 gcd:Library.Numerics.Arithmetic.Gcd.Compiled:Library/Numerics/Arithmetic/Gcd/File.lean
+modInverse:Library.Numerics.Arithmetic.ModInverse.Compiled:Library/Numerics/Arithmetic/ModInverse/File.lean
 mean:Library.Numerics.Statistics.Mean.Compiled:Library/Numerics/Statistics/Mean/File.lean
 sumSquares:Library.Numerics.Statistics.SumSquares.Compiled:Library/Numerics/Statistics/SumSquares/File.lean
 prng:Library.Random.SplitMix64.Compiled:Library/Random/SplitMix64/File.lean

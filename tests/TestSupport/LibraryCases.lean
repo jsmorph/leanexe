@@ -9,6 +9,7 @@ import TestSupport.Host
 import TestSupport.Modules.BinaryGcd
 import TestSupport.Modules.BinarySearch
 import TestSupport.Modules.Gcd
+import TestSupport.Modules.ModInverse
 import TestSupport.Modules.PrimeFactors
 
 namespace TestSupport.LibraryCases
@@ -59,6 +60,9 @@ def cases : IO Unit := do
   for (a, b) in Library.Numerics.Arithmetic.BinaryGcd.gcdInputs do
     IO.println s!"binaryGcd|binaryGcd|i64|{u a} {u b}|\
       {Library.Numerics.Arithmetic.BinaryGcd.expected (a, b)}|0|0"
+  for (a, m) in Library.Numerics.Arithmetic.ModInverse.inverseInputs do
+    IO.println s!"modInverse|modInverse|i64|{u a} {u m}|\
+      {Library.Numerics.Arithmetic.ModInverse.expected (a, m)}|0|0"
   for (xs, key) in Library.Arrays.BinarySearch.searchInputs do
     IO.println s!"binarySearch|lowerBound|i64|{arrU xs} {u key}|\
       {Library.Arrays.BinarySearch.expected (xs.toArray, key)}|1|1"

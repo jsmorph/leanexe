@@ -262,6 +262,7 @@ import Library.Numerics.Limiters.Minmod.Compiled
 import Library.Trees.WordTree.Compiled
 import Library.Numerics.Arithmetic.BinaryGcd.Compiled
 import Library.Numerics.Arithmetic.Gcd.Compiled
+import Library.Numerics.Arithmetic.ModInverse.Compiled
 import Library.Numerics.Arithmetic.PrimeFactors.Compiled
 import Library.Numerics.Statistics.Mean.Compiled
 import Library.Numerics.Statistics.SumSquares.Compiled

@@ -40121,7 +40121,7 @@ Most of these algorithms have total specifications, which `Verified.CallSpec` st
 |---|---|---|---|
 | 1 | Binary search | 6.2.1 B | `Library/Arrays/BinarySearch` |
 | 2 | Binary GCD | 4.5.2 B | `Library/Numerics/Arithmetic/BinaryGcd` |
-| 3 | Modular inverse by the extended Euclidean algorithm | 1.2.1 E, 4.5.2 X |
+| 3 | Modular inverse by the extended Euclidean algorithm | 1.2.1 E, 4.5.2 X | `Library/Numerics/Arithmetic/ModInverse` |
 | 4 | Heapsort | 5.2.3 H | |
 | 5 | Merge sort | 5.2.4 | |
 | 6 | Topological sort | 2.2.3 T | |
@@ -40135,3 +40135,4 @@ The compiler's termination proof of a tail loop failed for the first version of 
 
 - [x] Binary search: program, proof, call theorem, 1,004 cases in Wasmtime and native C, two reviews, README, index.
 - [x] Binary GCD: program, proof, call theorem, 166 cases in Wasmtime and native C, two reviews, README, index.
+- [x] Modular inverse: program, proof, call theorem, 334 cases in Wasmtime and native C, two reviews, README, index.

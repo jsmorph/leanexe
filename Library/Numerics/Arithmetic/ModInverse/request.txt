@@ -1,0 +1,3 @@
+Return the inverse of a UInt64 value a modulo a UInt64 value m: the value x with 0 <= x < m and
+a * x congruent to 1 modulo m, computed with the extended Euclidean algorithm, Algorithm X of TAOCP
+section 4.5.2.  When no such x exists, because m is 0 or a and m have a common factor, return 0.
