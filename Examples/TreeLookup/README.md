@@ -2,15 +2,13 @@
 
 ## Request, specification, review, and program
 
-This example is the first run of the verified-executable skill, which [the verified-request
-skill](../../.claude/skills/verified-request/SKILL.md) replaced.  [The request](request.txt) gives a
-complete binary search tree of seven nodes in breadth-first order after a query, in 15 words, and
-asks for `[value, 1]` from the node whose key the search finds, `[0, 0]` after a miss at a leaf, and
-`[0, 0]` for any other length.  [The specification](Spec.lean) states the request's traversal as a
-recursive `search` over node numbers, with node `j`'s key at `2j + 1`, its value at `2j + 2`, and
-its children at `2j + 1` and `2j + 2`.  Two fresh agents reviewed it against the request, as [the
-review](review.md) records, and the second found no disagreement and checked all 22
-[samples](Samples.lean) by hand.
+[The request](request.txt) gives a complete binary search tree of seven nodes in breadth-first order
+after a query, in 15 words, and asks for `[value, 1]` from the node whose key the search finds,
+`[0, 0]` after a miss at a leaf, and `[0, 0]` for any other length.  [The specification](Spec.lean)
+states the request's traversal as a recursive `search` over node numbers, with node `j`'s key at
+`2j + 1`, its value at `2j + 2`, and its children at `2j + 1` and `2j + 2`.  Two fresh agents
+reviewed it against the request, as [the review](review.md) records.  Neither found a
+disagreement, and the second checked all 22 [samples](Samples.lean) by hand.
 
 [The program](Program.lean) runs a loop of three steps, one per level of the tree, whose state is
 the node number, a found flag, and the value found.  The node number advances at every step, and the
@@ -30,8 +28,9 @@ into a 2,362-byte module that exports `compute` as function 2.
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `compute`. |
 | `treeLookup_file`, `treeLookup_file_decode` | `build/verified/treeLookup.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
-`compute_eq` and its two lemmas are in [the proof of the specification](Proof.lean), and the other
-theorems are in [the verified compilation](Compiled.lean).  They use only `propext`,
+`compute_eq` and its lemmas `search_inner` and `search_leaf` are in [the proof of the
+specification](Proof.lean), and the other theorems are in [the verified
+compilation](Compiled.lean).  They use only `propext`,
 `Classical.choice`, and `Quot.sound`.  `compute_eq` unfolds the three steps and splits on the
 comparisons along each of the eleven paths through the tree.
 
@@ -42,7 +41,7 @@ The reflector reads the result's literal `#[…, …]` as two pushes onto `#[]`,
 theorem](../ArrayCall.lean).  `compute_callSpec` states the call in the form that
 `tools/verified-request-check` requires, and the generated `compiled.compute.native` states the
 computation of the C function of the module's translation.  [The journal](journal.md) records the
-run.
+run that wrote the specification, the samples, and the program.
 
 ## Building, running, and testing
 
@@ -81,6 +80,8 @@ that stay allocated, the input and the result.
 
 [`Lookup`](../Lookup/README.md) has the same loop structure over ten pairs.
 [`Trees`](../Trees/README.md) holds trees on the heap as records.
+[`RunningMax`](../RunningMax/README.md) states its `compute_callSpec` in the same form, which
+`tools/verified-request-check runningMax` checks.
 
 ## References
 

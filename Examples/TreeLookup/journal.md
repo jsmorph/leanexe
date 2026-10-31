@@ -14,8 +14,8 @@ The user then replaced approval by an independent review.  A fresh agent, given 
 the specification, and the samples with their outputs, found no disagreement and named five
 uncovered input classes, and the run added one sample for each.  A second fresh agent found no
 disagreement in the 22 samples and named further classes, recorded in [`review.md`](review.md), and
-the specification was frozen.  The skill now ends the review at the first review that finds no
-disagreement, after the samples for the named classes are added once.
+the specification was frozen.  The skill was then changed to end the review at the first review
+that found no disagreement, after the samples for the named classes were added once.
 
 The program follows the lookup example: a loop of one step per level whose state carries the node
 number, a found flag, and the value, so the search needs no early exit, and a two-word literal for

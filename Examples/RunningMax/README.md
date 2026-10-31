@@ -26,11 +26,11 @@ doubles.  [The verified compilation](Compiled.lean) writes a module of 1,956 byt
 
 | Theorem | Statement |
 |---------|-----------|
-| `compute_eq` | The program equals the specification on every array. |
-| `compute_bound` | The generated allocation bound of `compute` is at most `80 * xs.size + 72` bytes. |
+| `compute_eq` | Program equals the specification on every array. |
+| `compute_bound` | Generated allocation bound of `compute` is at most `80 * xs.size + 72` bytes. |
 | `compute_callSpec` | `Verified.CallSpec compiled.module compiled.tables 2 expected compiled.compute.bound`: function 2, the export `compute`, called with the borrowed array `xs` from a ready store with room for `top` to rise by `compiled.compute.bound xs` bytes, returns without a trap an owned array that holds `expected xs` and leaves a ready store.  Every array borrowed before the call stays borrowed, every region of the heap before the call keeps its bytes and lies apart from the result, and `top` rises by at most the bound. |
 
-The three theorems use only `propext`, `Classical.choice`, and `Quot.sound`.  `compute_eq`, in
+The theorems of the table use only `propext`, `Classical.choice`, and `Quot.sound`.  `compute_eq`, in
 [the proof of the specification](Proof.lean), rewrites the array fold as a fold over the input's
 list and proves by induction on the list, `foldl_largest`, that the fold appends the largest entry
 of each nonempty prefix.  A ready store is one with the allocator invariant, a memory cap of at most
@@ -68,7 +68,8 @@ describes.
 [`Increment`](../Increment/README.md) and [`Gcd`](../../Library/Numerics/Arithmetic/Gcd/README.md)
 hold the worked examples of `Verified.CallSpec`, `compute_callSpec` and `gcd_callSpec`.  The fold
 over a pair whose second part grows by pushes follows `pair` of [the fold
-example](../../Verified/Examples/Fold.lean).
+example](../../Verified/Examples/Fold.lean).  [`TreeLookup`](../TreeLookup/README.md) states its
+`compute_callSpec` in the same form, which `tools/verified-request-check treeLookup` checks.
 
 ## References
 

@@ -29,8 +29,8 @@ file, since the 5,000-entry sample made it 41 kilobytes.  Neither found a disagr
 named lengths with remainders 6 and 7 after division by 8 and lengths of 4,096 or more, and four
 samples were added for them.  The second named three further classes: long inputs with large
 words, a long input whose later entries can change the output, and arrays of more than a page.
-Step 6 of the skill asks for a sample for each uncovered class and a new review after any change,
-while step 7 ends the stage at a review that finds no disagreement.  The run followed step 7 after
+Step 6 of the skill then asked for a sample for each uncovered class and a new review after any
+change, while step 7 ended the stage at a review that found no disagreement.  The run followed step 7 after
 the second review, as the tree-lookup run of the other skill did, and recorded the classes in the
 review.
 
@@ -48,8 +48,8 @@ of an unpaid and a paid sum of `Verified.foldCost` charges.
 the array fold as a list fold with `← Array.foldl_toList` and proves `foldl_largest` by induction
 on the list, generalizing the state.  `List.range_succ_eq_map`, `List.take_succ_cons`, and
 `List.map_map` close the step with `simp`, and `Array.toList_inj` turns the list equation into the
-array equation.  No VKB entry names `Array.foldl_toList` or this induction, and the
-`loop-combinators` entry covers `LeanExe.loop`, `LeanExe.build`, and `LeanExe.repeatWhile`.
+array equation.  No VKB entry then named `Array.foldl_toList` or this induction, and the
+`loop-combinators` entry covered `LeanExe.loop`, `LeanExe.build`, and `LeanExe.repeatWhile`.
 
 `compute_callSpec` follows `Examples.Increment.compute_callSpec`, with `fun _ _ _ xs _ => compute_eq
 xs` for the equality on represented arguments.  The first build failed to find `Verified.Call.spec`
@@ -58,8 +58,8 @@ import `Verified.Call`.  The increment example imports it through `Examples.Arra
 `Compiled.lean` now imports `Verified.Call`, the skill says so, and the checker's statement file
 imports it itself rather than relying on the run's imports.
 
-The `verified-bound-closed-form` entry gives the block charges and the loop lemmas but no lemma for
-`Verified.foldCost`.  `fold_charge_const` proves by induction on `Nat.fold_succ` that a constant
+The `verified-bound-closed-form` entry then gave the block charges and the loop lemmas but no lemma
+for `Verified.foldCost`.  `fold_charge_const` proves by induction on `Nat.fold_succ` that a constant
 charge of `c` per step adds `c n`, and `foldCost_const` applies it to a fold.  `compute_bound`
 takes the paid side of the bound with `min_le_right` and closes it with `Verified.blockCost_eq`,
 `Verified.paidGrowCost_eq`, `Verified.creditCost`, and `omega`, for `80 n + 72` bytes.  Every proof
@@ -76,7 +76,9 @@ passed its first build.
 
 ## Proposals for the VKB
 
-The proposals below follow the template.  They are not admitted entries.
+The proposals below follow the template.  The VKB has since admitted all three: the extension of
+`verified-bound-closed-form`, the entry `array-fold-list-induction`, and the change to
+`spec-call-theorem`.
 
 An extension of `verified-bound-closed-form`, with `goals` `["Verified.foldCost xs init step (fun _ _ _ => c)", "min unpaid paid of a fold whose state pushes onto an array"]`, `declarations` `["Examples.RunningMax.foldCost_const", "Examples.RunningMax.fold_charge_const"]`, and `examples` `["Examples.RunningMax.compute_bound"]`.  The README would say that a fold's bound is `Verified.foldCost` of each step's charge, that a fold whose state is a pair with a pushed array has the bound `min unpaid paid` with the paid side `blockCost 0 + creditCost 0 + foldCost … (paidGrowCost 1)`, and that `foldCost_const` sums a constant charge.  Moving `foldCost_const` to `Verified/Reflect/FoldLemmas.lean` beside `foldCost_zero` is a separate code change.
 
