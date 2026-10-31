@@ -316,7 +316,7 @@ A program's file imports `Verified.Reflect.Command` and the definitions, and run
 import Verified.Reflect.Command
 import Library.Random.Lcg.Jump
 
-namespace Library.Random.Lcg.Verified
+namespace Library.Random.Lcg
 
 open _root_.Library.Random.Lcg
 
