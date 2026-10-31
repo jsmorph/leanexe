@@ -562,7 +562,8 @@ def replay(p: Profile, s: Series, iv: Intervals, propose, margins: bool, gate: b
     command limits, `(s, s)` for a setpoint `s`, or `None`.  The device follows a command from the
     start of its snapshot's minute until its expiry and runs in the idle fallback otherwise.  A
     setpoint holds its power, and with `follow` the device's own self-consumption mode follows
-    each minute's net load within the limits, the floor, and the ceiling.  Each accepted window's
+    each minute's net load within the limits, the floor, and the ceiling, and idles within the
+    limits when the minute's data are missing.  Each accepted window's
     conclusion is checked at the end of every minute up to which its premises held.  Run-on is the
     energy that a command delivers after a later snapshot's proposal is rejected or absent.
     Without `gate` the gateway sends every proposal, as if the authorizer accepted it."""
@@ -609,11 +610,11 @@ def replay(p: Profile, s: Series, iv: Intervals, propose, margins: bool, gate: b
         if command and 60 * k >= command.expiry:
             command = None
         target = 0
-        if command and follow and s.load[k] is not None:
-            target = max(command.low, min(command.high, s.pv[k] - s.load[k],
-                                          ((p.ceiling - energy) / 60 + LOSS) / ETA_CHARGE),
-                         ((p.floor - energy) / 60 + LOSS) * ETA_DISCHARGE)
-            target = min(command.high, max(command.low, target))
+        if command and follow:
+            net = s.pv[k] - s.load[k] if s.load[k] is not None else 0
+            net = min(net, max(0.0, ((p.ceiling - energy) / 60 + LOSS) / ETA_CHARGE))
+            net = max(net, min(0.0, ((p.floor - energy) / 60 + LOSS) * ETA_DISCHARGE))
+            target = min(command.high, max(command.low, net))
         elif command:
             target = command.low
         target += plant.offset
