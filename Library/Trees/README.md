@@ -13,6 +13,7 @@ from the encoding, so that the verified compiler's programs over the type share 
 conversions and lemmas.  Ordering and membership proofs for search-tree insertion remain future
 work.
 
-[The tree example](../../Examples/Trees/README.md) adds the operations that demonstrate ownership,
-composition, and guarded recursion.  Its test support constructs and renders arbitrary
-trees, including trees that exceed the guarded recursion limit.
+[The tree example](../../Examples/Trees/README.md) adds operations of its own over `KeyTree`, which
+no verified module compiles.  Its test support constructs and renders arbitrary trees, including
+trees that exceed the guarded recursion limit.  [The recursive-type
+cases](../../Verified/Examples/RecursiveTypesCases.lean) use that support to test the library's

@@ -5,7 +5,7 @@
 This example computes three folds of an array of words: the wrapping sum, the wrapping product, and
 the bitwise exclusive or.  [The request](request.txt) asks for the three folds over an array of any
 length, with scalar results.  The request defines each result as a left fold, so each program is its
-own specification and the example has no `Spec.lean`.
+own specification.
 
 The implementations live in [the word-reduction
 library](../../Library/Numerics/Reductions/Word/Program.lean), and [the programs](Program.lean) of
@@ -44,16 +44,19 @@ tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
 build/tools/leanexe-wasmtime-host call build/verified/folds.wasm productArray i64 array-u64:2,3,7
 tests/verified/run.sh --cases sumArray
 tests/verified/run.sh --cases folds
+tests/native/verified.sh --module sumArray
 tests/native/verified.sh --module folds
 ```
 
-The first commands build the verified compilations and their proofs, write the module of
+The first commands build the verified compilations and their theorems, write the module of
 `productArray` and `xorArray`, and call it in the Wasmtime host, with the setup of [the repository
 README](../../README.md#commands).  The call prints 42, the product of 2, 3, and 7.  [The verified
 driver](../../tests/verified/run.sh) runs the arrays of [`Cases.lean`](Cases.lean), including the
 empty array and words near 2^64, in Wasmtime against native Lean for each export, and [the native
 driver](../../tests/native/verified.sh) runs them on the modules' translations to C, compiled with
-CompCert.  The cases state one block that stays allocated, the input array.
+CompCert.  The cases state one block that stays allocated, the input array.  Without `--cases`, the
+verified driver also checks the file module against the written file and requires the axiom reports
+of both file theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 

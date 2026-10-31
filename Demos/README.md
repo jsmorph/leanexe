@@ -21,6 +21,6 @@ Euler run data](https://github.com/jsmorph/leanexe-papers/tree/main/data/euler).
 examples](../Examples) demonstrate individual language forms, ownership behavior, and proof
 procedures.
 
-## Internal References
+## Internal references
 
 - [Stream fold](StreamFold/README.md)

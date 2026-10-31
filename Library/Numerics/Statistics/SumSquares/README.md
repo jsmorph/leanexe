@@ -13,7 +13,7 @@ verified compilation](Compiled.lean) compiles `sumSquares` with the verified com
 `verified_compile compiled := [sumSquares]` translates `Array.foldl` to a loop over the array's
 words.  The fold allocates nothing, so the generated `compiled.sumSquares.implements` excludes the
 trap, and it holds bit for bit in the program's order of summation, including overflow to infinity
-and NaN.  An `Array Float` is stored as the elements' bit patterns, so the host passes the array as
+and NaN.  An `Array Float` holds the elements' bit patterns, so the host passes the array as
 words.  [The verified compiler manual](../../../../docs/verified-manual.md#loops-and-builds) states
 the folds that the compiler accepts.
 
@@ -38,11 +38,12 @@ tests/verified/run.sh --cases sumSquares
 tests/native/verified.sh --module sumSquares
 ```
 
-The commands build the theorems, write the module, call it in the Wasmtime host, and run the tests,
-with the setup of [the repository README](../../../../README.md#commands).  The array is
-`[1.0, 2.0, 3.0]`, and the call prints 4624070917402656768, the bits of 14.0.  [The verified
-driver](../../../../tests/verified/run.sh) runs 52 arrays in Wasmtime against native Lean and checks
-that no call allocates beyond the host's array.  The arrays are `floatArrays` of [the host's test
+The commands build the verified compilation and its theorems, write the module, call it in the
+Wasmtime host, and run the tests, with the setup of [the repository
+README](../../../../README.md#commands).  The array is `[1.0, 2.0, 3.0]`, and the call prints
+4624070917402656768, the bits of 14.0.  [The verified driver](../../../../tests/verified/run.sh)
+runs 52 arrays in Wasmtime against native Lean and checks that no call allocates beyond the host's
+array.  The arrays are `floatArrays` of [the host's test
 support](../../../../tests/TestSupport/Host.lean), and they include the empty array, infinities,
 NaN, subnormal values, and small terms before and after a large one.  [The verified library
 cases](../../../../tests/TestSupport/LibraryCases.lean) print them with the results of native Lean,

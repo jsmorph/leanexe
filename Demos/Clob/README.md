@@ -24,44 +24,41 @@ ownership](../../docs/verified-manual.md#ownership) states how the reflector cho
 array parameter is owned or borrowed, and an owned parameter has type `Moved (Array UInt64)` in the
 theorems.
 
+The program keeps the definitions of the order book that the LeanExe compiler compiled, which [the
+journal](../../devnotes.md#2026-10-06-the-verified-compiler) records, except in `marketBuy`,
+`addBid`, `cancelBid`, `insertLevel`, and `removeLevel`.  `marketBuy` returns the filled quantity
+and its cost as a pair, where the earlier program returned the array `#[filled, cost]`.  The
+conditions of `addBid` and `cancelBid` compare words with `&&` and `==`, where the earlier program
+tested propositions with `∧` and `=`.  `insertLevel` inserts with `LeanExe.insertAt` in place of
+`insertIdx!`, so an insertion past the end of a side leaves the side unchanged where `insertIdx!`
+panics, and `removeLevel` erases with `LeanExe.eraseAt`, which is the earlier program's
+`eraseIdxIfInBounds`.  `findLevel` returns at most the number of prices, so `addBid`, `cancelBid`,
+and the command runs give the same books in both programs, except where `addBid` inserts past the
+end of a sizes array shorter than its prices array.
+
 | Theorem | Statement |
 |---------|-----------|
 | `compiled.marketBuy.implements` … `compiled.depth.implements` | Each of functions 2 to 16 of `compiled.module`, called with words that represent the arguments of its Lean function, returns words that represent that function's result, or traps at `unreachable` where the function's `aborts` flag allows it. |
 | `compiled.marketBuy.trapFree` … `compiled.depth.trapFree` | Each of those functions returns its result without a trap and raises `top` by at most `compiled.f.bound`.  When the function's `aborts` flag is set, the theorem requires room for that rise within the memory cap. |
 | `compiled.bytes` | `encode` succeeds on `compiled.module` with bytes that decode to it, and every `implements` theorem holds. |
 | `runCommands_append` | Running a command stream of fewer than 2^62 words in two chunks, the first of whole commands, gives the book of running it at once. |
-| `runOut_book` | `runOut` leaves the book of `runCommands`. |
+| `runOut_book` | For a command stream of fewer than 2^64 words, `runOut` leaves the book of `runCommands`. |
 | `clob_file`, `clob_file_decode` | `build/verified/clob.wasm`, as written, holds `encode compiled.module` and decodes to `compiled.module`. |
 
 [The compilation](Verified.lean) holds the generated theorems and proves `runCommands_append` and
 `runOut_book` from the folds of [the command lemmas](Commands.lean).  Those two concern the Lean
 definitions, and since the `implements` theorems state that the module computes `runCommands` and
 `runOut`, they hold for the module's results.  [The file theorems](File.lean) read the module that
-`tests/verified/run.sh` writes, and the full run of that driver requires both of their axiom
-reports to name only `propext`, `Classical.choice`, and `Quot.sound`.  The second file theorem
-depends on every `implements` theorem through `compiled.bytes`, so its report covers them all.
-
-## The earlier program
-
-The LeanExe compiler compiled an earlier copy of the order book, `Demos/Clob/Program.lean`, which
-the repository no longer holds.  [The verified copy](Verified.lean), in the namespace
-`Demos.Clob.Verified`, keeps that program's definitions except in `marketBuy`, `addBid`,
-`cancelBid`, `insertLevel`, and `removeLevel`, and it adds the compilation and the proofs of
-`runCommands_append` and `runOut_book`.  `marketBuy` returns the filled quantity and its cost as a
-pair, where the earlier program returned the array `#[filled, cost]`.  The conditions of `addBid`
-and `cancelBid` compare words with `&&` and `==`, where the earlier program tested propositions
-with `∧` and `=`.  `insertLevel` inserts with `LeanExe.insertAt` in place of `insertIdx!`, so an
-insertion past the end of a side leaves the side unchanged where `insertIdx!` panics, and
-`removeLevel` erases with `LeanExe.eraseAt`, which is the earlier program's `eraseIdxIfInBounds`.
-`findLevel` returns at most the number of prices, so `addBid`, `cancelBid`, and the command runs
-give the same books in both programs, except where `addBid` inserts past the end of a sizes array
-shorter than its prices array.
+`tests/verified/run.sh` writes, and without `--cases` that driver requires the axiom reports of both
+to name only `propext`, `Classical.choice`, and `Quot.sound`.  The second file theorem depends on
+every `implements` theorem through `compiled.bytes`, so its report covers them all.
 
 ## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Demos.Clob.Verified LeanExe.Pipeline.FileBytes
 tests/verified/run.sh --cases clob
+tests/native/verified.sh --module clob
 tools/leanrun --timeout 10m lake env lean Demos/Clob/File.lean
 build/tools/leanexe-wasmtime-host call build/verified/clob.wasm addBid list:array-u64,array-u64 \
   array-u64:105,101 array-u64:4,6 i64:103 i64:5
@@ -83,7 +80,8 @@ length, and on a level of the largest size, and they pass positions inside, at, 
 a side.  Their command streams hold additions, cancellations, and commands of an unknown kind at
 prices near the book's, and the last stream of each book ends in a partial command, which the runs
 ignore.  The command `lake env lean Demos/Clob/File.lean` checks the file theorems against the
-written file and prints their axiom reports.
+written file and prints their axiom reports.  [The native driver](../../tests/native/verified.sh)
+runs the same cases on the module's translation to C, compiled with CompCert.
 
 ## Related examples
 

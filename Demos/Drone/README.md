@@ -31,9 +31,9 @@ its three words.  The other Lean files of this directory hold the mathematics of
 | Execution without a trap | Called from a ready store of the module with a terrain borrowed below address 8192, under a memory cap of at least 35 pages, the export `compute` returns without a trap a new array that holds the words of `compute`.  The terrain stays borrowed, and `top` rises by at most 2,251,064 bytes.  The module's bytes decode to the module, and the store in which it starts is ready under every memory cap of at most 65,535 pages. | `drone_compute_call` in [the call theorem](VerifiedCall.lean), from `drone_trapFree` and `compute_bound` in [the compilation](Verified.lean) |
 | Written file | `build/verified/drone.wasm`, as written, holds `encode compiled.module` and decodes to `compiled.module`. | `drone_file` and `drone_file_decode` in [the file theorems](File.lean) |
 
-The first three theorems concern the module's bytes, through the round trip of the encoder, and
-the file theorems concern the written file.  The safety theorem concerns the ideal point-mass model
-of [the drone verification
+The first three theorems concern the module's bytes, through the round trip of the encoder, and the
+file theorems concern the written file.  The safety theorem concerns the ideal point-mass model of
+[the drone verification
 report](https://github.com/jsmorph/leanexe-papers/blob/main/paper/drone-verification-report/README.md).
 `drone_trapFree` states that entry 18 computes `compute` without a trap whenever `top` can rise by
 2,251,064 bytes within the memory cap, the constant that `compute_bound` derives from
@@ -44,14 +44,14 @@ placement of the terrain below address 8192 remains a premise.  Its 35 pages hol
 below that address and the 2,251,064 bytes of `compute_bound`.  It states no final page count,
 because no theorem of the verified compiler bounds the pages to which memory grows, as [the journal
 entry](../../devnotes.md#2026-10-30-the-verified-total-theorems-of-the-euler-solvers-and-the-drone-planner)
-explains.  [The call theorem](VerifiedCall.lean) prints the axioms of `drone_compute_call` and its
-lemmas, and [the full check](../../docs/verified-manual.md#the-full-check) fails when such a report
-names an axiom other than `propext`, `Classical.choice`, and `Quot.sound`.
+explains.  The axiom reports of `drone_compute_call` and its lemmas in [the call
+theorem](VerifiedCall.lean) name only `propext`, `Classical.choice`, and `Quot.sound`, and [the full
+check](../../docs/verified-manual.md#the-full-check) fails on a report that names another axiom.
 
 ## Building, running, and testing
 
-[`tests/drone/oracle.sh`](../../tests/drone/oracle.sh) ran a reference implementation of the
-planner natively and saved 116 terrains with its output in
+[`tests/drone/oracle.sh`](../../tests/drone/oracle.sh) ran a reference implementation of the planner
+natively and saved 116 terrains with its output in
 [`tests/drone/corpus.txt`](../../tests/drone/corpus.txt) and 1,975 calls of its other functions,
 including 138 rows of its forward passes, in [`tests/drone/cases.txt`](../../tests/drone/cases.txt).
 [`tests/drone/run.sh`](../../tests/drone/run.sh) runs `build/verified/drone.wasm`, which
@@ -63,11 +63,13 @@ report](https://github.com/jsmorph/leanexe-papers/blob/main/paper/drone-verifica
 with native Lean on the `drone` cases of [the verified cases](../../Verified/Examples/Cases.lean).
 The cases call `compute` on the terrains of the corpus, each of which must leave only the host's
 terrain and the result allocated, and each other export on terrains, rows, and tables from native
-runs of the planner.
+runs of the planner.  [The native driver](../../tests/native/verified.sh) runs the same cases on the
+module's translation to C, compiled with CompCert.
 
 ```sh
 tools/leanrun --timeout 60m lake build Demos.Drone.VerifiedCall LeanExe.Pipeline.FileBytes
 tests/verified/run.sh --cases drone
+tests/native/verified.sh --module drone
 tools/leanrun --timeout 10m lake env lean Demos/Drone/File.lean
 build/tools/leanexe-wasmtime-host call build/verified/drone.wasm compute array-u64 \
   array-u64:0,100,50,0
@@ -80,7 +82,7 @@ the comparison with the reference results, with the setup of [the repository
 README](../../README.md#commands).  The terrain has four stations of heights 0, 100, 50, and 0, and
 the call prints `[0, 0, 200, 10, 175, 10, 0, 0]`: the altitude and speed at each station.
 `tests/drone/oracle.sh` reads the reference implementation from the repository's history with `git
-show`, and it has already written the corpus, so it runs only when the corpus must be regenerated.
+show`, and it has already written the corpus, so it runs only to regenerate the corpus.
 
 ## Related examples
 

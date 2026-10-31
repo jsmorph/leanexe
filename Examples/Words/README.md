@@ -1,9 +1,9 @@
 # Words: a list type declared by the program
 
-## Three functions on `Words`
+## Functions on `Words`
 
 [The program](Program.lean) declares `Words`, a list of words with the constructors `nil` and
-`cons`, and three functions on it.  `Words.first` returns the first word or 0, `Words.sumAcc` adds
+`cons`, and functions on it.  `Words.first` returns the first word or 0, `Words.sumAcc` adds
 the words to an accumulator by tail recursion, and `Words.range n` builds the words below `n` with a
 loop.  The verified compiler compiles them in [the recursive-type
 example](../../Verified/Examples/RecursiveTypes.lean).
@@ -57,17 +57,17 @@ tests/verified/run.sh --cases recursivetypes
 tests/native/verified.sh --module recursivetypes
 ```
 
-The commands build the module and its theorems, write the module, call it in the Wasmtime host, and
-run the drivers, with the setup of [the repository README](../../README.md#commands).  The first
-call prints `[0, 1, 2, 3]`, and the second prints 16, the accumulator 10 plus 1, 2, and 3.  [The
-verified driver](../../tests/verified/run.sh) compares the cases of [the recursive-type
-cases](../../Verified/Examples/RecursiveTypesCases.lean), among them a list of 4,096 words and
-`range` at 1,000 and 4,096, between the Wasmtime host and native Lean, and it checks the blocks left
-allocated and the number of allocations.  [The native driver](../../tests/native/verified.sh) runs
-the same cases on the module's translation to C, compiled with CompCert, for the exports that the
-translation contains.  The full run of the verified driver also checks the file module against the
-written file and requires both file theorems to report only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.
+The commands build the verified compilation and its theorems, write the module, call it in the
+Wasmtime host, and run the drivers, with the setup of [the repository
+README](../../README.md#commands).  The first call prints `[0, 1, 2, 3]`, and the second prints 16,
+the accumulator 10 plus 1, 2, and 3.  [The verified driver](../../tests/verified/run.sh) compares
+the cases of [the recursive-type cases](../../Verified/Examples/RecursiveTypesCases.lean), among
+them a list of 4,096 words and `range` at 1,000 and 4,096, between the Wasmtime host and native
+Lean, and it checks the blocks left allocated and the number of allocations.  [The native
+driver](../../tests/native/verified.sh) runs the same cases on the module's translation to C,
+compiled with CompCert, for the exports that the translation contains.  Without `--cases`, the
+verified driver also checks the file module against the written file and requires the axiom reports
+of both file theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 

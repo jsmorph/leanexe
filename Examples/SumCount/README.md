@@ -45,15 +45,17 @@ tests/verified/run.sh --cases sumCount
 tests/native/verified.sh --module sumCount
 ```
 
-The first commands build the verified compilation and its proofs, write the module, and call it in
+The first commands build the verified compilation and its theorems, write the module, and call it in
 the Wasmtime host, with the setup of [the repository README](../../README.md#commands).  The call
 prints `[6, 3]` and `stats 4 2`: the host's input, the literal's empty block, and the block of each
 growth, with the two blocks that the growths replace freed.  [The verified
 driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lean), including the
 empty array and sums that wrap, in Wasmtime against native Lean, and [the native
 driver](../../tests/native/verified.sh) runs them on the module's translation to C, compiled with
-CompCert.  The cases state the two blocks that stay allocated, the input and the result, and at
-most four allocations.
+CompCert.  The cases state the two blocks that stay allocated, the input and the result, and at most
+four allocations.  Without `--cases`, the verified driver also checks the file module against the
+written file and requires the axiom reports of both file theorems to name only `propext`,
+`Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 

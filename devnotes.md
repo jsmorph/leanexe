@@ -39771,7 +39771,7 @@ A parameter, a result, or a binding whose type is a structure needs a `Flat` ins
 
 ## 2026-10-31: The removal of the LeanExe compiler
 
-The removal follows [the plan](#2026-10-30-the-plan-for-retiring-the-leanexe-compiler): a first commit moves the specification modes out of `tools/demo-check`, the next eleven carry out the plan's steps, and a last commit corrects the program guides that the earlier commits rewrote.  Each commit builds the modules that it changes, with the six libraries whenever a Lean file changes, and runs the checks tied to its change.  The repository then holds one compiler, `Verified`, with the dialect, the runtime, `Implements`, the encoding, ProofKit, and the WGSL and C translators in `LeanExe`.
+The removal follows [the plan](#2026-10-30-the-plan-for-retiring-the-leanexe-compiler): a first commit moves the specification modes out of `tools/demo-check`, the next eleven carry out the plan's steps, a commit restores a conversion that the trim of the module driver deleted, and a last commit corrects the program guides that the earlier commits rewrote.  Each commit builds the modules that it changes, with the six libraries whenever a Lean file changes, and runs the checks tied to its change.  The repository then holds one compiler, `Verified`, with the dialect, the runtime, `Implements`, the encoding, ProofKit, and the WGSL and C translators in `LeanExe`.
 
 | Commit | What it removes or moves |
 |---|---|
@@ -39787,6 +39787,7 @@ The removal follows [the plan](#2026-10-30-the-plan-for-retiring-the-leanexe-com
 | Trim the module driver to the verified module cases | `tests/modules/Cases.lean` and the case printers of the examples go, `tests/modules/run.sh` keeps `--module NAME WASM` over `TestSupport.Native.ModuleCases`, and `tests/modules/chunks.py` runs on the verified `clob.wasm` as a step of the full check. |
 | Remove LTG, the old skill, and tools/demo-check | `ltg/`, `.claude/skills/verified-executable`, and `tools/demo-check`, with the links of the guides to them. |
 | Delete the LeanExe manual and update the documents | `docs/leanexe-manual.md`, with the README, the index, the design document, the trusted-base document, and the manuals rewritten for one compiler. |
+| Keep Words.toList for the verified recursive-type cases | `Words.toList`, which the trim of the module driver deleted with the module case printer, returns to `Examples/Words/Cases.lean`, since the verified recursive-type cases use it. |
 | Correct the program guides | Corrections of the guides that the review of the removal found. |
 
 Some files departed from the removal map.  `Examples/Calc/Flat.lean` stays, although the map lists it, because the verified calculator imports it, and `Examples/Trees/Cases.lean` stays without its printers, because the verified cases of heap sums, recursive types, and tree copies build their trees with it.  Beyond the map, the removal deletes `Examples/TreeLookup/Cases.lean`, whose samples the verified cases read from `Samples.lean`, and `tests/TestSupport/Modules/Mean.lean` and `SumSquares.lean`, which only the module case printer imported.  The `--leanexe` options of the WGSL driver and the browser server go with the example modules, because their kernel set named `Examples.Binary32.Wgsl`.
@@ -39803,5 +39804,11 @@ The first seven commits each built the six libraries and ran their own checks, a
 | Trim the module driver to the verified module cases | Build of the six libraries, the source layout, `tests/modules/run.sh --module` on `sums.wasm` with the shapes cases and on `euler.wasm`, and `tests/modules/chunks.py` | 06:12 UTC | 10 s, under 1 s, 40 s, 109 s, and 8 s | No error and no `sorry`, the layout check passed, 226 and 3,096 cases passed, and 360 order-book cases passed |
 | Remove LTG, the old skill, and tools/demo-check | Search of the tree for the deleted files, `bash -n tools/full-check`, and the VKB check | 06:15 UTC | Under 1 s, under 1 s, and 4 s | No mention outside the README and the LeanExe manual, which the next commit rewrites and deletes, and the journal, `STATUS.md`, and the tree-lookup review, which record past runs; no syntax error; and no problem reported |
 | Delete the LeanExe manual and update the documents | `node tools/check-doc-links.mjs` | 06:16 UTC | Under 1 s | No problem reported, and every document reachable from the README |
+| Keep Words.toList for the verified recursive-type cases | Build of the six libraries and of `native-verified`, `native-bare`, `verified-cases`, and `native-module-cases` | 06:18 UTC | 80 s | `Verified.Examples.RecursiveTypesCases` failed on the missing `Words.toList`, which the build of the six libraries alone had not reached |
+| Keep Words.toList for the verified recursive-type cases | The same build | 06:21 UTC | 25 s | 15,226 jobs, no error and no `sorry` |
+| Correct the program guides | `tools/euler-run.py` on the first-order and reconstructed solvers, on the 192-grid and the 800-grid | 04:11 UTC | 30 s, 120 s, 2,193 s, and 9,706 s | Status 0, and the SHA-256 of each run's words equals the one that its record states |
+| Correct the program guides | `node tools/check-doc-links.mjs` | 06:54 UTC | Under 1 s | No problem reported |
+
+The four Euler runs used a copy of `build/verified/euler.wasm` whose SHA-256 equals that of a fresh emission of `Demos.Euler.Verified.compiled.module`.  Each run wrote its words and its `summary.json` to a fresh directory, as the records' commands do.  The records now state that the verified module's exports computed their words, and their figures and ranges are unchanged.
 
 - [ ] Port the operations that `Examples/Trees/Program.lean` adds to the library with `verified_compile`, or delete them.

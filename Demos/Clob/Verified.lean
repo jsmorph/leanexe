@@ -1,17 +1,16 @@
 import Verified.Reflect.Command
 import Demos.Clob.Commands
 
-/-! The twenty-sixth program of the verified compiler: the bid side of a central limit order book,
-held as two arrays of words, the prices in descending order and the size at each price.  The
-definitions are those of the order book that the LeanExe compiler compiled, with three changes.
-`marketBuy` returns the filled quantity and its cost as a pair.  The conditions of `addBid` and
-`cancelBid` compare words with `&&` and `==`.  `insertLevel` and `removeLevel` use
-`LeanExe.insertAt` and `LeanExe.eraseAt`, which update an owned side in place, so an insertion past
-the end leaves a side unchanged where `insertIdx!` panics.  `findLevel` gives a position at most the
-size, so `addBid` and `cancelBid` insert and remove only in range.  `runCommands` over two chunks of
-commands, the first of whole commands, gives the book of one run, and `runOut` leaves the book of
-`runCommands`.  Since the compiler's theorem states that the module computes these definitions, both
-facts hold for the module's results. -/
+/-! The bid side of a central limit order book, held as two arrays of words, the prices in
+descending order and the size at each price, compiled by the verified compiler.  `marketBuy`
+returns the filled quantity and its cost as a pair, and the conditions of `addBid` and `cancelBid`
+compare words with `&&` and `==`.  `insertLevel` and `removeLevel` use `LeanExe.insertAt` and
+`LeanExe.eraseAt`, which update an owned side in place, so an insertion past the end leaves a side
+unchanged.  `findLevel` gives a position at most the size, so `addBid` and `cancelBid` insert and
+remove only in range.  `runCommands` over two chunks of commands, the first of whole commands,
+gives the book of one run, and `runOut` leaves the book of `runCommands`.  Since the compiler's
+theorem states that the module computes these definitions, both facts hold for the module's
+results. -/
 
 namespace Demos.Clob.Verified
 

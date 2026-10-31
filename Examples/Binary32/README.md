@@ -1,19 +1,19 @@
 # Binary32: `Float32` in WebAssembly and WGSL
 
-## Eight `Float32` functions and four GPU kernels
+## `Float32` functions and GPU kernels
 
-[The program](Program.lean) has eight functions on Lean's `Float32`, IEEE 754 binary32: scalar
-`axpy32`, `hypot32`, `ratio32`, and `piecewise32`; the array functions `scale32`, `axpyArray32`, and
+[The program](Program.lean) has functions on Lean's `Float32`, IEEE 754 binary32: scalar `axpy32`,
+`hypot32`, `ratio32`, and `piecewise32`; the array functions `scale32`, `axpyArray32`, and
 `matVec32`, each a `LeanExe.build`; and `condMix32`, a build with nested conditionals and an index
-computed from the element's position.  The program defines the scalar functions and `condMix32`
-and exports `scale32`, `axpyArray32`, and `matVec32` from [the linear-algebra
+computed from the element's position.  The program defines the scalar functions and `condMix32` and
+exports `scale32`, `axpyArray32`, and `matVec32` from [the linear-algebra
 library](../../Library/Numerics/LinearAlgebra/README.md), which holds the reusable scaling, AXPY,
 and matrix-vector definitions.  `verified_compile compiled := [axpy32, hypot32, ratio32, matVec32,
-piecewise32, scale32, axpyArray32, condMix32]` in [the verified compilation](Compiled.lean)
-compiles all eight into a 3,258-byte module, whose functions 2 to 9 are the eight functions in that
-order.  `Verified.WGSL.compile` translates the reflected bodies of `scale32`, `axpyArray32`,
-`matVec32`, and `condMix32` into the WGSL compute kernels `verifiedScale32Kernel`,
-`verifiedAxpyArray32Kernel`, `verifiedMatVec32Kernel`, and `verifiedCondMix32Kernel` for a GPU.
+piecewise32, scale32, axpyArray32, condMix32]` in [the verified compilation](Compiled.lean) compiles
+them into a 3,258-byte module, whose functions 2 to 9 are the program's functions in that order.
+`Verified.WGSL.compile` translates the reflected bodies of `scale32`, `axpyArray32`, `matVec32`, and
+`condMix32` into the WGSL compute kernels `verifiedScale32Kernel`, `verifiedAxpyArray32Kernel`,
+`verifiedMatVec32Kernel`, and `verifiedCondMix32Kernel` for a GPU.
 
 ## Module and kernel theorems
 
@@ -33,10 +33,10 @@ their buffer and invocation bounds.
 The reflector reads the condition `i % 4 ≤ 3 ∧ i / 4 * 4 + (3 - i % 4) < n` of `condMix32` as
 `decide (i % 4 ≤ 3) && decide (i / 4 * 4 + (3 - i % 4) < n)`, by the rule that [the verified
 compiler manual](../../docs/verified-manual.md#array-literals-and-conditions-on-propositions)
-describes, and the WGSL translation lowers the conjunction.  The theorems use only the axioms
-`propext`, `Classical.choice`, and `Quot.sound`.  [The manual's section on WGSL
-kernels](../../docs/verified-manual.md#wgsl-kernels) describes the translation and its dispatch
-theorem, [its section on the WGSL
+describes, and the WGSL translation lowers the conjunction.  The axiom reports of `compiled.bytes`
+and of the dispatch theorems name only `propext`, `Classical.choice`, and `Quot.sound`.  [The
+manual's section on WGSL kernels](../../docs/verified-manual.md#wgsl-kernels) describes the
+translation and its dispatch theorem, [its section on the WGSL
 library](../../docs/verified-manual.md#the-wgsl-library-and-the-browser-pages) describes the device
 model and the browser pages, and [the design document](../../docs/design.md#gpu) states what the
 device model adds to the trusted base.
@@ -59,14 +59,14 @@ tests/wgsl/run.sh --verified
 tests/wgsl/run.sh
 ```
 
-The first commands build the verified compilation and its proofs, write the module, call it in the
+The first commands build the verified compilation and its theorems, write the module, call it in the
 Wasmtime host, and print one kernel, with the setup of [the repository
 README](../../README.md#commands).  The call computes `2 * 3 + 1` from the binary32 bits of 2, 3,
 and 1 and prints 1088421888, the bits of 7.0.  [The verified driver](../../tests/verified/run.sh)
 runs, in Wasmtime with the allocation counters, 388 cases of `axpy32`, `hypot32`, `ratio32`,
-`piecewise32`, `scale32`, `axpyArray32`, and `matVec32` and 56 cases of `condMix32`, with the
-inputs of [`Cases.lean`](Cases.lean).  [The native driver](../../tests/native/verified.sh) runs
-them on the module's translation to C, compiled with CompCert.
+`piecewise32`, `scale32`, `axpyArray32`, and `matVec32` and 56 cases of `condMix32`, with the inputs
+of [`Cases.lean`](Cases.lean).  [The native driver](../../tests/native/verified.sh) runs them on the
+module's translation to C, compiled with CompCert.
 
 `tests/wgsl/run.sh --verified` writes the verified kernels and the cases of
 [`VerifiedGpuCases.lean`](VerifiedGpuCases.lean), which use the same inputs, and runs them on the

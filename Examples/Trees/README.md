@@ -9,13 +9,13 @@ insert into a search tree, drop and pick subtrees, return pairs, and lend a tree
 inside a loop.  [The encoding](Encode.lean) exports the library's `encode`, which defines that
 layout, and `encode_slotted`, which proves that every record of an encoded tree has a slot.
 
-The type and shared operations come from [the word-tree library](../../Library/Trees/README.md),
-and the program exports the library's `size`, `sum`, `height`, `incr`, `setKey`, `insert`,
-`leftChild`, and `splitRoot` under `Examples.Trees.KeyTree`.  This example adds the operations used
-to demonstrate ownership, composition, and guarded recursion.  [The test support](Cases.lean)
-writes a tree in the host's preorder form with `KeyTree.describe` and builds trees with
-`KeyTree.arbitrary`, whose shape and keys follow arbitrary words, and `KeyTree.chain`, a chain of
-nodes with a leaf on the left of each.
+The type and shared operations come from [the word-tree library](../../Library/Trees/README.md), and
+the program exports the library's `size`, `sum`, `height`, `incr`, `setKey`, `insert`, `leftChild`,
+and `splitRoot` under `Examples.Trees.KeyTree`.  This example adds operations of its own over
+`KeyTree`, which no verified module compiles.  [The test support](Cases.lean) writes a tree in the
+host's preorder form with `KeyTree.describe` and builds trees with `KeyTree.arbitrary`, whose shape
+and keys follow arbitrary words, and `KeyTree.chain`, a chain of nodes with a leaf on the left of
+each.
 
 ## The verified compiler's module
 
@@ -62,11 +62,11 @@ tests/verified/run.sh --cases recursivetypes
 tests/native/verified.sh --module recursivetypes
 ```
 
-The commands build the module and its theorems, write the module, call it in the Wasmtime host, and
-run the drivers, with the setup of [the repository README](../../README.md#commands).  The host
-writes a tree in preorder, key, left, right, with `.` for a leaf.  The first call prints 3, and the
-second prints `6,2,.,.,10,.,.` and `stats 3 0`: the host's three records, rewritten in place, with
-no new record and no free.
+The commands build the verified compilation and its theorems, write the module, call it in the
+Wasmtime host, and run the drivers, with the setup of [the repository
+README](../../README.md#commands).  The host writes a tree in preorder, key, left, right, with `.`
+for a leaf.  The first call prints 3, and the second prints `6,2,.,.,10,.,.` and `stats 3 0`: the
+host's three records, rewritten in place, with no new record and no free.
 
 [The verified driver](../../tests/verified/run.sh) compares the cases of [the recursive-type
 cases](../../Verified/Examples/RecursiveTypesCases.lean), which build their trees with the helpers
@@ -75,9 +75,9 @@ left allocated and the number of allocations.  Through [the library case
 map](../../tests/verified/library-cases.txt), the driver runs the cases of `size`, `incr`, `setKey`,
 `leftChild`, and `splitRoot` again on `libtrees`, the library's own compilation.  [The native
 driver](../../tests/native/verified.sh) runs the same cases on the module's translation to C,
-compiled with CompCert, for the exports that the translation contains.  The full run of the
-verified driver also checks the file module against the written file and requires both file
-theorems to report only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  [The copy
+compiled with CompCert, for the exports that the translation contains.  Without `--cases`, the
+verified driver also checks the file module against the written file and requires the axiom reports
+of both file theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.  [The copy
 cases](../../Verified/Examples/TreeCopyCases.lean) and [the heap sum
 cases](../../Verified/Examples/HeapSumsCases.lean) build and describe their trees with the same
 helpers.

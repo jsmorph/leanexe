@@ -24,11 +24,10 @@ states that the module computes `f` bit for bit, unless the call stops at `unrea
 `compiled.f.bound` within the memory cap.  [The verified compiler
 manual](../../docs/verified-manual.md#the-implements-and-trapfree-theorems) states both forms and
 the conditions under which a call stops.  `forward_causal` and `steps_exact` concern the Lean model
-alone: the first states that row `i` of the scores depends only on tokens `0` to `i`, and the
-second that the cached steps give `forward`'s rows bit for bit.  The `#print axioms`
-commands of `Verified.lean` and [`VerifiedGeneration.lean`](VerifiedGeneration.lean), whose
-theorems use `steps_exact`, report no axiom beyond `propext`, `Classical.choice`, and
-`Quot.sound`.
+alone: the first states that row `i` of the scores depends only on tokens `0` to `i`, and the second
+that the cached steps give `forward`'s rows bit for bit.  The axiom reports of `Verified.lean` and
+of [`VerifiedGeneration.lean`](VerifiedGeneration.lean), whose theorems use `steps_exact`, name only
+`propext`, `Classical.choice`, and `Quot.sound`.
 
 | Theorem | Statement |
 |---------|-----------|
@@ -46,7 +45,7 @@ theorems use `steps_exact`, report no axiom beyond `propext`, `Classical.choice`
 after `p` tokens, and the arguments of the calls.  `Generating heap store` describes a store between
 the calls: the weights are borrowed at their pointers, and the cache of the first `p` tokens is
 owned at `pc`, apart from them.  It names `heap`, the allocator's state, so that a premise can state
-room for `top` to rise from it.  The theorems rest on `compiled.step.implements` and
+room for `top` to rise from it.  The theorems follow from `compiled.step.implements` and
 `compiled.scores.implements`, which allow a stop at `unreachable`, and on `compiled.step.trapFree`
 and `compiled.scores.trapFree`, which exclude it under room for the generated bounds
 `compiled.step.bound` and `compiled.scores.bound`.
@@ -82,8 +81,8 @@ generate text, with the setup of [the repository README](../../README.md#command
 [`tests/gpt/run.sh`](../../tests/gpt/run.sh), which compares the module with native Lean on the
 2,733 cases of [`tests/gpt/Cases.lean`](../../tests/gpt/Cases.lean), and
 [`tests/gpt/sessions.sh`](../../tests/gpt/sessions.sh), which checks that sessions free every
-allocation.  Without `--cases`, the driver also checks `VerifiedFile.lean` against the file it
-wrote and requires both file theorems to report no axiom beyond `propext`, `Classical.choice`, and
+allocation.  Without `--cases`, the driver also checks `VerifiedFile.lean` against the file it wrote
+and requires the axiom reports of both file theorems to name only `propext`, `Classical.choice`, and
 `Quot.sound`.
 
 [`tests/gpt/gpt2_compare.py`](../../tests/gpt/gpt2_compare.py) downloads the pinned GPT-2 124M

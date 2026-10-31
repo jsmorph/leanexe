@@ -24,11 +24,12 @@ the Wasmtime host enables through Cranelift's NaN canonicalization.
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `axpy`. |
 | `axpy_file`, `axpy_file_decode` | `build/verified/axpy.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
-The theorems use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  [The design
+The axiom reports of the file theorems, which depend on every `implements` theorem through
+`compiled.bytes`, name only `propext`, `Classical.choice`, and `Quot.sound`.  [The design
 document](../../docs/design.md#floating-point) describes ProofKit's proofs that Lean's binary64
-addition, subtraction, multiplication, division, and square root equal Talos's `IEEE64` functions
-on bit patterns for all inputs, and the three places where Lean's and WebAssembly's float
-operations differ.  None of the three occurs in this program.
+addition, subtraction, multiplication, division, and square root equal Talos's `IEEE64` functions on
+bit patterns for all inputs, and the three places where Lean's and WebAssembly's float operations
+differ.  None of the three occurs in this program.
 
 ## Building, running, and testing
 
@@ -43,7 +44,7 @@ tests/verified/run.sh --cases axpy
 tests/native/verified.sh --module axpy
 ```
 
-The first commands build the verified compilation and its proofs, write the module, and call it in
+The first commands build the verified compilation and its theorems, write the module, and call it in
 the Wasmtime host, with the setup of [the repository README](../../README.md#commands).  The host
 takes and prints floats as bit patterns in decimal: the arguments are 2.0, 3.0, and 1.0, and the
 call prints 4619567317775286272, the bits of 7.0.  [The verified

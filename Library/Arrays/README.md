@@ -1,7 +1,7 @@
 # Word arrays
 
 The functions take `Array UInt64`.  Counts and indices use `UInt64`, and word arithmetic wraps
-modulo `2^64`.  Each linked family has native definitions in `Program` and generated execution
+modulo `2^64`.  Each linked family has Lean definitions in `Program` and generated execution
 proofs in `Compiled`.
 
 | Family | Functions and behavior |
@@ -12,7 +12,7 @@ proofs in `Compiled`.
 | [Range](Range/Program.lean) | `evens n` constructs the `n` words `2 * i`. |
 | [Word operations](Word/Program.lean) | `scaled` multiplies every word by a scalar. |
 
-`removeAll` searches and shifts repeatedly, taking quadratic time.  The compiler examples retain
-their ownership and allocation tests.  [The search proof](Search/Proof.lean)
-proves the first-zero prefix property used by [the removal example's
-proof](../../Examples/RemoveZero/Proof.lean).
+`removeAll` searches and shifts repeatedly, taking quadratic time.
+`tests/verified/library-cases.txt` runs cases of the verified examples on these modules.  [The
+search proof](Search/Proof.lean) proves the first-zero prefix property used by [the removal
+example's

@@ -1,8 +1,8 @@
 # Lists: `List UInt64` on the heap
 
-## Three functions on `List UInt64`
+## Functions on `List UInt64`
 
-[The program](Program.lean) has three functions on Lean's `List UInt64`.  `listSum` folds addition
+[The program](Program.lean) has functions on Lean's `List UInt64`.  `listSum` folds addition
 over a list, `listRange n` builds the words below `n` in increasing order with a loop that puts one
 cell in front at each step, and `sumRange n` builds `listRange n`, sums it, and releases it.
 `verified_compile compiled := [listSum, listRange, sumRange]` in [the verified
@@ -47,14 +47,17 @@ tests/native/verified.sh --module exampleLists
 ```
 
 The commands build the verified compilation and its theorems, write the module, call it in the
-Wasmtime host, and run the tests, with the setup of [the repository README](../../README.md#commands).
-The first call prints `[0, 1, 2, 3]`, which the host reads by walking the records and checking each
-header, and the second prints 4950 and `stats 100 100`, the allocation and free counters.  [The
-verified driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lean) in
-Wasmtime against native Lean, and [the native driver](../../tests/native/verified.sh) runs them on
-the module's translation to C, compiled with CompCert.  The cases state that the host's cells stay
-allocated after `listSum`, that `listRange n` leaves its `n` cells allocated, and that `sumRange n`
-allocates `n` cells and frees them all.
+Wasmtime host, and run the tests, with the setup of [the repository
+README](../../README.md#commands).  The first call prints `[0, 1, 2, 3]`, which the host reads by
+walking the records and checking each header, and the second prints 4950 and `stats 100 100`, the
+allocation and free counters.  [The verified driver](../../tests/verified/run.sh) runs the inputs of
+[`Cases.lean`](Cases.lean) in Wasmtime against native Lean, and [the native
+driver](../../tests/native/verified.sh) runs them on the module's translation to C, compiled with
+CompCert.  The cases state that the host's cells stay allocated after `listSum`, that `listRange n`
+leaves its `n` cells allocated, and that `sumRange n` allocates `n` cells and frees them all.
+Without `--cases`, the verified driver also checks the file module against the written file and
+requires the axiom reports of both file theorems to name only `propext`, `Classical.choice`, and
+`Quot.sound`.
 
 ## Related examples
 

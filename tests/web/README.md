@@ -1,22 +1,20 @@
-# WebGPU Pages
+# WebGPU pages
 
-[`tests/web/serve.py`](serve.py) serves two pages that run this project's WGSL kernels on a
-browser's WebGPU.  The kernel test page runs the cases that [`tests/wgsl/run.sh`](../wgsl/run.sh)
-writes and compares every output word with native Lean's.  The GPT-2 page runs GPT-2 124M in
-binary32, with each kernel on WebGPU, in `gpt32.wasm` on the CPU, or on both with their scores
-compared.  The pages run the verified compiler's kernels and modules.  They use only standard
-WebGPU and WebAssembly and have been run in Chromium 145 and Chrome 152.  The server needs `uv` and
-this repository's Lean toolchain, and its first start downloads `transformers` and the GPT-2
-tokenizer.
+[`tests/web/serve.py`](serve.py) serves pages that run this project's WGSL kernels on a browser's
+WebGPU.  The kernel test page runs the cases that [`tests/wgsl/run.sh`](../wgsl/run.sh) writes and
+compares every output word with native Lean's.  The GPT-2 page runs GPT-2 124M in binary32, with
+each kernel on WebGPU, in `gpt32.wasm` on the CPU, or on both with their scores compared.  The pages
+run the verified compiler's kernels and modules.  They use only standard WebGPU and WebAssembly.
+Headless Chromium 145 has run them with SwiftShader.  The server needs `uv` and this repository's
+Lean toolchain, and its first start downloads `transformers` and the GPT-2 tokenizer.
 
 ## Running
 
-The GPT-2 page needs the weights of the pinned `openai-community/gpt2` checkpoint as binary32
-files, 949 MiB in `build/gpt2-32`, which `generate.py --export` writes.  The server then starts on
-127.0.0.1, port 8000:
+The GPT-2 page needs the weights of the pinned `openai-community/gpt2` checkpoint as binary32 files,
+949 MiB in `build/gpt2-32`.  `uv run tests/gpt32/generate.py --export` writes them.  The server
+starts on 127.0.0.1, port 8000, with `elan`'s toolchain on the search path:
 
 ```sh
-export PATH="$HOME/.elan/bin:$PATH"
 uv run tests/gpt32/generate.py --export
 uv run tests/web/serve.py
 ```
@@ -27,20 +25,19 @@ from `build/`.  When `build/wgsl` lacks a kernel text that the pages load or `ca
 [`tests/wgsl/Cases.lean`](../wgsl/Cases.lean) and of [the verified GPT-2
 corpus](../../Demos/Gpt32/VerifiedCases.lean).  It also writes the verified modules
 `build/verified/gpt32.wasm` and `build/verified/gpt.wasm`, the sampler's module, and builds the
-program printer `gpt32-lines`.  The server writes only missing
-files, so after a change to a kernel, to the cases, or to the GPT-2 programs, run
-[`tests/wgsl/run.sh`](../wgsl/run.sh), which rewrites the kernel directory, or delete the affected
-files before starting it.  The pages serve what the kernel directory holds: after
-`tests/wgsl/run.sh --verified`, the kernel page runs that option's cases.
-[`tests/gpt32/generate.py`](../gpt32/generate.py) writes the texts of the verified GPT-2 kernels to
-`build/wgsl` under the names that `tests/wgsl/run.sh` gives them.
+program printer `gpt32-lines`.  The server writes only missing files.  After a change to a kernel,
+to the cases, or to the GPT-2 programs, [`tests/wgsl/run.sh`](../wgsl/run.sh) rewrites the kernel
+directory, and the server writes again any file that has been deleted.  The pages serve what the
+kernel directory holds: after `tests/wgsl/run.sh --verified`, the kernel page runs that option's
+cases.  [`tests/gpt32/generate.py`](../gpt32/generate.py) writes the texts of the verified GPT-2
+kernels to `build/wgsl` under the names that `tests/wgsl/run.sh` gives them.
 
-Browsers expose WebGPU only to secure contexts, which include http://127.0.0.1 and
-http://localhost but not a plain-HTTP address of another machine.  To use a browser on another
-machine, forward the port with `ssh -L 8000:127.0.0.1:8000 HOST` and open http://127.0.0.1:8000/
-there.  Alternatively, start the server with `--host 0.0.0.0` and, in Chrome, add the address, such
-as `http://10.211.55.3:8000`, to `chrome://flags/#unsafely-treat-insecure-origin-as-secure`.
-`--port` chooses another port.
+Browsers expose WebGPU only to secure contexts, which include http://127.0.0.1 and http://localhost
+but not a plain-HTTP address of another machine.  A browser on another machine reaches the pages at
+http://127.0.0.1:8000/ through a forwarded port, such as that of `ssh -L 8000:127.0.0.1:8000 HOST`.
+With `--host 0.0.0.0` the server listens on every interface, and Chrome treats its address, such as
+`http://ADDRESS:8000`, as secure when `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
+lists it.  `--port` chooses another port.
 
 ## Kernel tests: `/kernels/`
 
@@ -62,11 +59,11 @@ Lean's.  The cases include subnormal values, infinities, NaNs, and arrays of up 
 | Report | Plain text of the run, with up to five failures for each kernel |
 
 A device passes every case when its arithmetic meets the strict binary32 profile on these inputs:
-each operation rounded to nearest even, subnormal values kept, and no fused or reordered
-operations.  WGSL does not require this profile.  Chrome 152 on an Apple GPU, for example, failed
-132 cases, because it flushes subnormal values to zero and fuses multiplications with additions,
-both of which WGSL permits (sections 15.7.2 and 15.7.5).  `?run=high-performance`,
-`?run=low-power`, or `?run=fallback` starts the run when the page loads.
+each operation rounded to nearest even, subnormal values kept, and no fused or reordered operations.
+WGSL does not require this profile.  WGSL permits a device to flush subnormal values and to fuse
+multiplications with additions (sections 15.7.2 and 15.7.5), and a device that does either fails
+cases.  `?run=high-performance`, `?run=low-power`, or `?run=fallback` starts the run when the page
+loads.
 
 ## GPT-2: `/gpt2/`
 
@@ -111,19 +108,14 @@ The JavaScript hosts, the generation loop, the
 server, the tokenizer, and the browser's WebGPU implementation remain outside those proofs.  The
 compared mode measures differences between the page's GPU and Wasm results.
 
-These browser measurements used the shared translation before arithmetic-NaN normalization:
-
-| Device | Kernel tests | GPT-2, compared mode |
-|---|---|---|
-| Headless Chromium 145, SwiftShader (development machine) | 474 passed, 0.8 s | Scores equal at every step.  About 0.17 s a step on each side |
-| Chrome 152, Apple GPU through Metal | 342 passed, 132 failed | 32 tokens from "The meaning of life is": no step with equal scores, the largest difference 5.2e-5 of the largest score, the same token at all 32 steps.  0.081 s a step with WGSL and 0.157 with Wasm |
-
-After the pages moved to the verified compiler's kernels and modules, headless Chromium 145 with SwiftShader on an AArch64 machine gave these results:
+Headless Chromium 145, with its SwiftShader adapter on an AArch64 machine, ran the pages with the
+verified compiler's kernels and modules.  The kernel page passed all 694 cases.  In compared mode,
+16 greedy tokens from "The meaning of life is" and 8 tokens sampled from seed 42 gave equal scores
+at every step.
 
 | Server | Kernel tests | GPT-2, compared mode |
 |---|---|---|
 | Default, verified compiler's kernels and modules | 694 passed, 0.9 s | 16 greedy tokens from "The meaning of life is": scores equal at every step, 0.313 s a step with WGSL and 0.177 with Wasm.  8 tokens sampled from seed 42: scores equal at every step |
-| Former `--leanexe`, LeanExe compiler's kernels and modules | 474 passed, 0.8 s | 8 tokens sampled from seed 42: scores equal at every step, and the same tokens as with the verified modules |
 
 ## Files
 

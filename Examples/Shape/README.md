@@ -51,19 +51,19 @@ tests/verified/run.sh --cases sums
 tests/native/verified.sh --module sums
 ```
 
-The commands build the module and its theorems, write the module, call it in the Wasmtime host, and
-run the drivers, with the setup of [the repository README](../../README.md#commands).  The array
-encodes a circle of radius 2, a 3-by-4 rectangle, and a point, and the call prints
-4627448617123184640, the bits of 24.0.  [The verified driver](../../tests/verified/run.sh) runs
-`tests/modules/run.sh --module shapes build/verified/sums.wasm`, which computes the 226 cases of
-[`Cases.lean`](Cases.lean), written for the module name `shapes`, with native Lean and compares each
-with the Wasmtime host's result.
+The commands build the verified compilation and its theorems, write the module, call it in the
+Wasmtime host, and run the drivers, with the setup of [the repository
+README](../../README.md#commands).  The array encodes a circle of radius 2, a 3-by-4 rectangle, and
+a point, and the call prints 4627448617123184640, the bits of 24.0.  [The verified
+driver](../../tests/verified/run.sh) runs `tests/modules/run.sh --module shapes
+build/verified/sums.wasm`, which computes the 226 cases of [`Cases.lean`](Cases.lean), written for
+the module name `shapes`, with native Lean and compares each with the Wasmtime host's result.
 
 The verified driver then compares the cases of `sums` in [the verified compiler's
-cases](../../Verified/Examples/Cases.lean), which cover the array, loop, and `Packet` functions
-with shapes written by `shapeArgs` and `shapeWords` of `Cases.lean`, and it checks the blocks left
-allocated and the number of allocations.  Its full run also checks the file module against the
-written file and requires both file theorems to report only the axioms `propext`,
+cases](../../Verified/Examples/Cases.lean), which cover the array, loop, and `Packet` functions with
+shapes written by `shapeArgs` and `shapeWords` of `Cases.lean`, and it checks the blocks left
+allocated and the number of allocations.  Without `--cases`, it also checks the file module against
+the written file and requires the axiom reports of both file theorems to name only `propext`,
 `Classical.choice`, and `Quot.sound`.  [The native driver](../../tests/native/verified.sh) runs both
 sets of cases on the module's translation to C, compiled with CompCert, for the exports that the
 translation contains, and it takes the cases of `Cases.lean` from [the native case

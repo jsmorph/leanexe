@@ -5,7 +5,7 @@
 [The request](request.txt) asks for an array of at most eight words without its first zero, with the
 other words in order, for the input itself when it has no zero, and for the empty array when the
 input is longer.  [The specification](Spec.lean) states that behavior with `Array.findIdx?` and
-`Array.eraseIdx!`.  The dialect compiles neither `Array.findIdx?`, which returns an `Option`, nor
+`Array.eraseIdx!`.  The verified compiler reads neither `Array.findIdx?`, which returns an `Option`, nor
 `Array.eraseIdx!`, so [the program](Program.lean) computes the same array another way.  `firstZero`
 is a loop over the first `count` words that keeps the index of the first zero, or `count` when there
 is none, and `compute` builds the result by copying the words before that index and shifting the
@@ -20,6 +20,8 @@ compilation](Compiled.lean) compiles both functions into a 1,882-byte module.
 | `compute_eq` | `compute` equals `expected` on every array of fewer than 2^64 words. |
 | `compute_bound` | `compiled.compute.bound xs` is at most 120 bytes. |
 | `removeZero_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 120 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and lies apart from the result, and `top` rises by at most 120 bytes. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements every function. |
+| `removeZero_file`, `removeZero_file_decode` | `build/verified/removeZero.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
 The general prefix search `firstZero` belongs to [the array-search
 library](../../Library/Arrays/README.md), and its first-match theorem `firstZero_cases` is in [the
@@ -50,7 +52,7 @@ tests/verified/run.sh --cases removeZero
 tests/native/verified.sh --module removeZero
 ```
 
-The first commands build the verified compilation and its proofs, write the module, and call it in
+The first commands build the verified compilation and its theorems, write the module, and call it in
 the Wasmtime host, with the setup of [the repository README](../../README.md#commands).  The call
 prints `[7, 9, 0]`.  [The verified driver](../../tests/verified/run.sh) runs `compute` on the inputs
 of [`Cases.lean`](Cases.lean) against `expected`, and `firstZero` on each input with three counts,

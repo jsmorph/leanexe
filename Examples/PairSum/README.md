@@ -37,13 +37,15 @@ tests/native/verified.sh --module pairSum
 ```
 
 The commands build the verified compilation and its theorems, write the module, call it in the
-Wasmtime host, and run the tests, with the setup of [the repository README](../../README.md#commands).
-The call prints 42 and `stats 3 3`, the allocation and free counters: the literal's empty block and
-the block of each growth, all three freed.  [The verified driver](../../tests/verified/run.sh) runs
-the inputs of [`Cases.lean`](Cases.lean), among them sums that wrap, in Wasmtime against native Lean,
-and [the native driver](../../tests/native/verified.sh) runs them on the module's translation to C,
-compiled with CompCert.  The cases state that no block stays allocated and that a call allocates at
-most three.
+Wasmtime host, and run the tests, with the setup of [the repository
+README](../../README.md#commands).  The call prints 42 and `stats 3 3`, the allocation and free
+counters: the literal's empty block and the block of each growth, all three freed.  [The verified
+driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lean), among them sums
+that wrap, in Wasmtime against native Lean, and [the native driver](../../tests/native/verified.sh)
+runs them on the module's translation to C, compiled with CompCert.  The cases state that no block
+stays allocated and that a call allocates at most three.  Without `--cases`, the verified driver
+also checks the file module against the written file and requires the axiom reports of both file
+theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 

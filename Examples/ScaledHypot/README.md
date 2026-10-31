@@ -25,7 +25,8 @@ semantics of those instructions on the bits of all inputs.
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `scaledHypot`. |
 | `scaledHypot_file`, `scaledHypot_file_decode` | `build/verified/scaledHypot.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
-The theorems use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  [The design
+The axiom reports of the file theorems, which depend on every `implements` theorem through
+`compiled.bytes`, name only `propext`, `Classical.choice`, and `Quot.sound`.  [The design
 document](../../docs/design.md#floating-point) describes the binary64 equality proofs.
 `compiled.scaledHypot.implements` concerns the rounded computation, with no statement about its
 error relative to the exact length.
@@ -43,7 +44,7 @@ tests/verified/run.sh --cases scaledHypot
 tests/native/verified.sh --module scaledHypot
 ```
 
-The first commands build the verified compilation and its proofs, write the module, and call it in
+The first commands build the verified compilation and its theorems, write the module, and call it in
 the Wasmtime host, with the setup of [the repository README](../../README.md#commands).  The
 arguments are 3.0, 4.0, and 5.0, and the call prints 4607182418800017408, the bits of 1.0.  [The
 verified driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lean), with

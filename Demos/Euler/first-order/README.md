@@ -19,8 +19,8 @@ own color range.  The figures come from the output words of [the runs](#runs-and
 
 ## Problem and method
 
-The domain is the unit square, the initial interfaces are x = y = 0.8, the final time is 0.8, and
-the ideal-gas ratio of specific heats is γ = 1.4.
+The domain is the unit square, and the initial interfaces lie at x = y = 0.8.  The run ends at time
+0.8.  The gas is ideal, with ratio of specific heats γ = 7/5.
 
 | Quadrant | Pressure | Density | x velocity | y velocity |
 |----------|---------:|--------:|-----------:|-----------:|
@@ -32,7 +32,8 @@ the ideal-gas ratio of specific heats is γ = 1.4.
 Each cell stores density, both momenta, and total energy.  Cells cut by an initial interface receive
 conservative area averages.  The first-order finite-volume method uses Rusanov fluxes, an x sweep
 followed by a y sweep, and transmissive boundaries implemented by clamping neighbor indices.
-Timestep selection targets CFL 0.4.  Each accepted cell update checks a rounded ceiling of 0.5.
+Timestep selection targets CFL 0.4.  Each accepted cell update checks that its rounded Courant
+number is at most 0.5.
 
 ## Program and proofs
 
@@ -51,13 +52,13 @@ the result of `run`.
 | Conservation with exact boundary fluxes | Along the same chain, each total equals its initial total minus the exact Rusanov flux through the boundary, evaluated at the values of the boundary states with the computed speeds, plus a residual.  The residual is at most the sum of the per-update bounds and of bounds on the computed boundary fluxes, all computed from the words of the run. | `run_reference_balance` in [the boundary theorems](../Reference/Boundary.lean) |
 | Flux and update accuracy | Let `ε = 2⁻⁵²` and `1 ≤ M ≤ 2¹⁰⁰`.  For two states that pass the state guard, with density in `[1/M, M]`, momenta and energy at most `M` in magnitude, and internal energy at least `24 ε M³`, `flux` accepts with a positive speed at most `32 M²`, and each component is within `304 ε M⁵` of the exact Rusanov flux of the two states' values with that speed.  When `advanceCell` accepts three such states with a ratio `r ≤ 1`, each conserved output is within `ε M + 1004 ε r M⁵ + 2⁻¹⁰⁷⁴` of the exact Rusanov update. | `interface_reference_error` in [the interface theorems](../Reference/Interface.lean), `advanceCell_reference_error` in [the update theorems](../Reference/Update.lean) |
 
-The proofs use only `propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on Wasmtime
-and the hardware implementing the WebAssembly semantics that the proofs model.  `solveBytes n`
-covers three grids of `cells n` cells and the packed result, each with its block header, and
-`solvePages n` adds the heap base of 4096 bytes.  `euler_solve_call` starts from the modeled store
-in which the module starts and states no final page count.  Instantiation by a WebAssembly engine
-lies outside the proofs, as [the verified compiler
-manual](../../../docs/verified-manual.md#outside-the-proofs) states.
+The axiom reports of [the call theorems](../VerifiedCall.lean) and of the file theorems name only
+`propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on Wasmtime and the hardware
+implementing the WebAssembly semantics that the proofs model.  `solveBytes n` covers three grids of
+`cells n` cells and the packed result, each with its block header, and `solvePages n` adds the heap
+base of 4096 bytes.  `euler_solve_call` starts from the modeled store in which the module starts and
+states no final page count.  Instantiation by a WebAssembly engine lies outside the proofs, as [the
+verified compiler manual](../../../docs/verified-manual.md#outside-the-proofs) states.
 
 For density 1, zero momenta, and energy 1, an admissible state, `side` accepts the state and
 returns a signal speed with the bits `0x3FE7F254DAB9CC3A`, which is below the exact sound speed
@@ -76,11 +77,12 @@ Euler equations remains unproved.
 | 192 × 192 | 0.138–1.490131234 | 0.029–1.476780108 | [Words](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/words.u64le), [CSV](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/cells.csv.gz) | [SVG](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/density-pressure.svg), [PDF](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/density-pressure.pdf) |
 | 800 × 800 | 0.138–1.671084032 | 0.029–1.632146140 | [Words](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/words.u64le), [CSV](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/cells.csv.gz) | [SVG](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/density-pressure.svg), [PDF](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/density-pressure.pdf) |
 
-A module of the LeanExe compiler, which the repository no longer contains, computed the output
-words of both runs, and the CSV files and the ranges also come from those words.  The words follow
-the layout of `pack`: the status, the bits of the time, `n` twice, the `n²` densities, and the `n²`
-pressures.  Each run directory holds the output words, a CSV file of the cells, and the figures
-drawn from it.
+The `solve` export of the verified module computed the output words of both runs on 2026-10-31, in
+30 s on the 192-grid and 2,193 s on the 800-grid, and the SHA-256 of each run's words equals the one
+that the record's `summary.json` states.  The CSV files and the ranges come from those words, which
+follow the layout of `pack`: the status, the bits of the time, `n` twice, the `n²` densities, and
+the `n²` pressures.  Each run directory holds the output words, a CSV file of the cells, and the
+figures drawn from it.
 
 The commands build the Wasmtime host and the call theorems, write the verified module, and run each
 grid into a fresh directory.  [The run script](../../../tools/euler-run.py) requires status 0, the
@@ -91,8 +93,8 @@ peak resident size, and the SHA-256 of the words to `summary.json`.
 tools/build-wasmtime-host.sh
 tools/leanrun --timeout 60m lake build Demos.Euler.VerifiedCall
 mkdir -p build/verified
-tools/leanrun --timeout 10m --lock-timeout 1200 lake env lean --run tools/Emit.lean \
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Demos.Euler.Verified Demos.Euler.Verified.compiled.module build/verified/euler.wasm
-uv run tools/euler-run.py build/verified/euler.wasm first 192 new-192-directory
-uv run tools/euler-run.py build/verified/euler.wasm first 800 new-800-directory
+uv run tools/euler-run.py build/verified/euler.wasm first 192 build/euler/first-192
+uv run tools/euler-run.py build/verified/euler.wasm first 800 build/euler/first-800
 ```

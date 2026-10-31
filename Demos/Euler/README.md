@@ -1,8 +1,8 @@
 # Euler: two finite-volume solvers for the 2D Euler equations
 
-## Two solvers on a four-quadrant Riemann problem
+## Solvers on a four-quadrant Riemann problem
 
-This example holds two solvers for the compressible Euler equations of an ideal gas on the unit
+This example holds solvers for the compressible Euler equations of an ideal gas on the unit
 square, run on the four-quadrant Riemann problem with interfaces at x = y = 0.8 to time 0.8, the
 configuration that Lax and Liu number 3.  [The first-order solver](Program.lean) uses Rusanov fluxes
 and an x sweep followed by a y sweep, with time steps chosen for CFL 0.4.  [The reconstructed
@@ -111,7 +111,7 @@ tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Demos.Euler.Verified Demos.Euler.Verified.compiled.module build/verified/euler.wasm
 tools/leanrun --timeout 10m lake env lean Demos/Euler/File.lean
 build/tools/leanexe-wasmtime-host call build/verified/euler.wasm solve array-u64 i64:2
-uv run tools/euler-run.py build/verified/euler.wasm first 192 build/euler-192
+uv run tools/euler-run.py build/verified/euler.wasm first 192 build/euler/first-192
 tools/leanrun --timeout 60m lake build euler-native
 tests/verified/run.sh --cases euler
 ```

@@ -30,8 +30,8 @@ computation for the C function of the module's translation.
 arguments as `Runs` takes them, `b` before `a`, since Talos lists them with the top of the stack
 first.  `gcd_callSpec` follows from `compiled.gcd.trapFree` and `gcd_eq` through
 `Verified.ImplementsTables.call` and `Verified.Call.spec` of [the call
-module](../../../../Verified/Call.lean).  The verified compilation prints the axioms of `gcd_call`
-and `gcd_callSpec`, which are `propext`, `Classical.choice`, and `Quot.sound`.  The GCD of [the
+module](../../../../Verified/Call.lean).  The axiom reports of `gcd_call` and `gcd_callSpec` in the
+verified compilation name only `propext`, `Classical.choice`, and `Quot.sound`.  The GCD of [the
 native tests](../../../../tests/TestSupport/Native/Gcd.lean), which the bare-metal program runs, is
 a separate definition with its own theorems.
 
@@ -48,16 +48,17 @@ tests/verified/run.sh --cases gcd
 tests/native/verified.sh --module gcd
 ```
 
-The commands build the theorems, write the module, call it in the Wasmtime host, and run the tests,
-with the setup of [the repository README](../../../../README.md#commands).  The call prints 6.
-[The verified driver](../../../../tests/verified/run.sh) runs 49 pairs in Wasmtime against
-`expected` and checks that no call allocates.  The pairs, `gcdPairs` of [the GCD case
-inputs](../../../../tests/TestSupport/Modules/Gcd.lean), include `(0, 0)`, `(5, 0)`, and
-`(1, 2^64 − 1)`, and [the verified library cases](../../../../tests/TestSupport/LibraryCases.lean)
-print each with its expected result.  [The native driver](../../../../tests/native/verified.sh)
-runs them on the module's translation to C, compiled with CompCert.  Without `--cases`, the
-verified driver also checks the file module against the file it wrote, and it fails unless
-`gcd_file` and `gcd_file_decode` report only `propext`, `Classical.choice`, and `Quot.sound`.
+The commands build the verified compilation and its theorems, write the module, call it in the
+Wasmtime host, and run the tests, with the setup of [the repository
+README](../../../../README.md#commands).  The call prints 6.  [The verified
+driver](../../../../tests/verified/run.sh) runs 49 pairs in Wasmtime against `expected` and checks
+that no call allocates.  The pairs, `gcdPairs` of [the GCD case
+inputs](../../../../tests/TestSupport/Modules/Gcd.lean), include `(0, 0)`, `(5, 0)`, and `(1, 2^64 −
+1)`, and [the verified library cases](../../../../tests/TestSupport/LibraryCases.lean) print each
+with its expected result.  [The native driver](../../../../tests/native/verified.sh) runs them on
+the module's translation to C, compiled with CompCert.  Without `--cases`, the verified driver also
+checks the file module against the file it wrote, and it fails unless `gcd_file` and
+`gcd_file_decode` report only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 

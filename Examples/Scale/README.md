@@ -24,9 +24,9 @@ function is function 2.
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `scale`. |
 | `scale_file`, `scale_file_decode` | `build/verified/scale.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
-The theorems use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  [The verified
-driver](../../tests/verified/run.sh) checks the file module after it writes
-`build/verified/scale.wasm`.  [The verified compiler
+Without `--cases`, [the verified driver](../../tests/verified/run.sh) checks the file module after
+it writes `build/verified/scale.wasm`, and it requires the axiom reports of both file theorems to
+name only `propext`, `Classical.choice`, and `Quot.sound`.  [The verified compiler
 manual](../../docs/verified-manual.md#the-implements-family) defines `ImplementsA`, which
 `compiled.scale.implements` states, and [its section on generated
 declarations](../../docs/verified-manual.md#generated-declarations) gives the numbering of the
@@ -45,7 +45,7 @@ tests/verified/run.sh --cases scale
 tests/native/verified.sh --module scale
 ```
 
-The first commands build the verified compilation and its proofs, write the module, and call it in
+The first commands build the verified compilation and its theorems, write the module, and call it in
 the Wasmtime host, with the setup of [the repository README](../../README.md#commands).  The first
 call prints 11 and the second prints 1.  [The verified driver](../../tests/verified/run.sh) runs the
 inputs of [`Cases.lean`](Cases.lean), including products that wrap and a zero divisor, in Wasmtime

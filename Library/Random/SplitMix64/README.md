@@ -48,8 +48,8 @@ tests/verified/run.sh --cases prng
 tests/native/verified.sh --module prng
 ```
 
-The commands build the theorems, write the module, call it in the Wasmtime host, compare it with
-the reference, and run the tests, with the setup of [the repository
+The commands build the verified compilation and its theorems, write the module, call it in the
+Wasmtime host, compare it with the reference, and run the tests, with the setup of [the repository
 README](../../../README.md#commands).  From state 0, `splitMix` prints the new state
 11400714819323198485 and the word 16294208416658607535, which is `0xe220a8397b1dcdaf`, the first
 output that Vigna's code gives for seed 0.  `unitFloat` of that word prints 4606131375998723001, the
@@ -80,8 +80,6 @@ module.
 - G. L. Steele Jr., D. Lea, and C. H. Flood, "Fast Splittable Pseudorandom Number Generators,"
   *Proceedings of OOPSLA 2014*, ACM, pp. 453–472,
   [doi:10.1145/2660193.2660195](https://doi.org/10.1145/2660193.2660195).
-- S. Vigna, [`splitmix64.c`](https://prng.di.unimi.it/splitmix64.c), 2015.
-
-Vigna's `splitmix64.c` dedicates its copyright to the public domain to the extent possible under
-law and grants permission to use, copy, modify, and distribute it for any purpose, with or without
-fee.
+- S. Vigna, [`splitmix64.c`](https://prng.di.unimi.it/splitmix64.c), 2015, dedicated to the
+  public domain to the extent possible under law, with permission to use, copy, modify, and
+  distribute it for any purpose.

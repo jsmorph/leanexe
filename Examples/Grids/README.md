@@ -1,8 +1,8 @@
 # Grids: arrays of records
 
-## Fourteen functions on arrays of records
+## Functions on arrays of records
 
-[The program](Program.lean) has fourteen functions on arrays whose elements are records: `Cell`, a
+[The program](Program.lean) has functions on arrays whose elements are records: `Cell`, a
 structure with a nested `Conserved` structure, floats, words, a `Bool`, and a `Phase` enumeration;
 `Conserved` alone; a one-field `Mass`; and `Bool`.  They read fields of an element, count elements,
 build arrays of records with `LeanExe.build`, update fields with `{ c with … }`, and sum a field in
@@ -51,14 +51,17 @@ tests/native/verified.sh --module exampleGrids
 ```
 
 The commands build the verified compilation and its theorems, write the module, call it in the
-Wasmtime host, and run the tests, with the setup of [the repository README](../../README.md#commands).
-`flags 6` prints `[0, 1, 0, 0, 1, 0]`, the `Bool` array of `i % 3 == 1`.  The second call passes
-two `Conserved` records, densities 1.0 and 2.0, as eight words, and prints 4613937818241073152, the
-bits of 3.0.  [The verified driver](../../tests/verified/run.sh) runs the inputs of
-[`Cases.lean`](Cases.lean), reads past the end included, in Wasmtime against native Lean, and [the
-native driver](../../tests/native/verified.sh) runs them on the module's translation to C, compiled
-with CompCert.  The cases state one block left allocated by each function, the host's array or the
-result, and two by `scaled`, which reads one array and builds another.
+Wasmtime host, and run the tests, with the setup of [the repository
+README](../../README.md#commands).  `flags 6` prints `[0, 1, 0, 0, 1, 0]`, the `Bool` array of `i %
+3 == 1`.  The second call passes two `Conserved` records, densities 1.0 and 2.0, as eight words, and
+prints 4613937818241073152, the bits of 3.0.  [The verified driver](../../tests/verified/run.sh)
+runs the inputs of [`Cases.lean`](Cases.lean), reads past the end included, in Wasmtime against
+native Lean, and [the native driver](../../tests/native/verified.sh) runs them on the module's
+translation to C, compiled with CompCert.  The cases state one block left allocated by each
+function, the host's array or the result, and two by `scaled`, which reads one array and builds
+another.  Without `--cases`, the verified driver also checks the file module against the written
+file and requires the axiom reports of both file theorems to name only `propext`,
+`Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 

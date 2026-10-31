@@ -15,10 +15,9 @@ value and the distance from the divisor to it, so it needs no fuel parameter.
 compiles the definitions into a 1,619-byte module and the tail recursion into a loop.  The reflector
 reads the condition `remaining ≤ 1 ∨ divisor ≤ 1` as the disjunction of its two decisions, and the
 termination proof of the loop splits each case of Lean's functional induction on the step's
-conditions, since Lean states the negated condition as `1 < remaining ∧ 1 < divisor`.  The measure
-of `countFactors`, `remaining.toNat * 2 ^ 64 + …`, made the kernel exhaust its recursion when it
-unfolded the definition to check the reflector's equations, and the reflector now states those
-equations so that the kernel does not unfold the function, as [the
+conditions, since Lean states the negated condition as `1 < remaining ∧ 1 < divisor`.  The reflector
+states the equations of `countFactors` without unfolding its measure, `remaining.toNat * 2 ^ 64 +
+…`, which would exhaust the kernel's recursion, as [the
 journal](../../../../devnotes.md#2026-10-30-array-literals-and-conditions-on-propositions-in-the-reflector)
 records.  Both functions take and return words and allocate nothing, so the generated
 `compiled.compute.pure` states that function 3 computes `compute` from every store without a trap
@@ -31,13 +30,14 @@ and leaves the store unchanged.  The generated `compiled.countFactors.native` an
 | `compute_eq` | `compute n = expected n` for every word `n`. |
 | `compute_export` | Export `compute` of `compiled.module` is function 3. |
 | `primeFactors_call` | Called with the word `n` from any store, function 3 returns `expected n`, the number of prime factors of `n` counted with multiplicity, without a trap and leaves the store unchanged. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `countFactors` and `compute`. |
 | `primeFactors_file`, `primeFactors_file_decode` | `build/verified/primeFactors.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`, as [the file module](File.lean) states. |
 
 `countFactors_eq` and `compute_eq` are in [the proof of the specification](Proof.lean), and the
 number theory stays in `countFactors_eq`, which concerns the Lean program alone.  `compute_eq`
 applies `countFactors_eq` with the divisor 2 and the count 0, since every prime is at least 2.
 `primeFactors_call` composes `compiled.compute.pure` with `compute_eq` and requires nothing of the
-store.  The verified compilation prints the axioms of `primeFactors_call`, which are `propext`,
+store.  The axiom report of `primeFactors_call` in the verified compilation names only `propext`,
 `Classical.choice`, and `Quot.sound`.
 
 ## Building, running, and testing
@@ -53,17 +53,17 @@ tests/verified/run.sh --cases primeFactors
 tests/native/verified.sh --module primeFactors
 ```
 
-The commands build the theorems, write the module, call it in the Wasmtime host, and run the tests,
-with the setup of [the repository README](../../../../README.md#commands).  The call prints 4, since
-60 = 2 · 2 · 3 · 5.  [The verified driver](../../../../tests/verified/run.sh) runs 13 inputs in
-Wasmtime against `expected` and checks that no call allocates.  The inputs, `primeFactorInputs` of
-[the prime-factor case inputs](../../../../tests/TestSupport/Modules/PrimeFactors.lean), include 0,
-1, 2^63, and 2^64 − 1, and [the verified library
-cases](../../../../tests/TestSupport/LibraryCases.lean) print each with its expected result.  [The
-native driver](../../../../tests/native/verified.sh) runs them on the module's translation to C,
-compiled with CompCert.  Without `--cases`, the verified driver also checks the file module against
-the file it wrote, and it fails unless `primeFactors_file` and `primeFactors_file_decode` report
-only `propext`, `Classical.choice`, and `Quot.sound`.
+The commands build the verified compilation and its theorems, write the module, call it in the
+Wasmtime host, and run the tests, with the setup of [the repository
+README](../../../../README.md#commands).  The call prints 4, since 60 = 2 · 2 · 3 · 5.  [The
+verified driver](../../../../tests/verified/run.sh) runs 13 inputs in Wasmtime against `expected`
+and checks that no call allocates.  The inputs, `primeFactorInputs` of [the prime-factor case
+inputs](../../../../tests/TestSupport/Modules/PrimeFactors.lean), include 0, 1, 2^63, and 2^64 − 1,
+and [the verified library cases](../../../../tests/TestSupport/LibraryCases.lean) print each with
+its expected result.  [The native driver](../../../../tests/native/verified.sh) runs them on the
+module's translation to C, compiled with CompCert.  Without `--cases`, the verified driver also
+checks the file module against the file it wrote, and it fails unless `primeFactors_file` and
+`primeFactors_file_decode` report only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 

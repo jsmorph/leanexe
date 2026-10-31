@@ -19,6 +19,7 @@ generated `compiled.mean.implements` excludes the trap.
 | Theorem | Statement |
 |---------|-----------|
 | `compiled.mean.implements` | Function 2 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, with an argument that represents `xs`, returns the bits of `mean xs` without a trap. |
+| `compiled.mean.native` | C function of the module's translation computes `mean` as `compiled.mean.implements` states. |
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `mean`. |
 | `mean_file`, `mean_file_decode` | `build/verified/mean.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`, as [the file module](File.lean) states. |
 
@@ -41,17 +42,18 @@ tests/verified/run.sh --cases mean
 tests/native/verified.sh --module mean
 ```
 
-The commands build the theorems, write the module, call it in the Wasmtime host, and run the tests,
-with the setup of [the repository README](../../../../README.md#commands).  The array is
-`[1.0, 2.0, 3.0, 4.0]`, and the call prints 4612811918334230528, the bits of 2.5.  [The verified
-driver](../../../../tests/verified/run.sh) runs 52 arrays in Wasmtime against native Lean and checks
-that no call allocates beyond the host's array.  The arrays are `floatArrays` of [the host's test
-support](../../../../tests/TestSupport/Host.lean), the empty array among them, and [the verified
-library cases](../../../../tests/TestSupport/LibraryCases.lean) print them with the results of
-native Lean.  [The native driver](../../../../tests/native/verified.sh) runs them on the module's
-translation to C, compiled with CompCert.  Without `--cases`, the verified driver also checks the
-file module against the file it wrote, and it fails unless `mean_file` and `mean_file_decode`
-report only `propext`, `Classical.choice`, and `Quot.sound`.
+The commands build the verified compilation and its theorems, write the module, call it in the
+Wasmtime host, and run the tests, with the setup of [the repository
+README](../../../../README.md#commands).  The array is `[1.0, 2.0, 3.0, 4.0]`, and the call prints
+4612811918334230528, the bits of 2.5.  [The verified driver](../../../../tests/verified/run.sh) runs
+52 arrays in Wasmtime against native Lean and checks that no call allocates beyond the host's array.
+The arrays are `floatArrays` of [the host's test support](../../../../tests/TestSupport/Host.lean),
+the empty array among them, and [the verified library
+cases](../../../../tests/TestSupport/LibraryCases.lean) print them with the results of native Lean.
+[The native driver](../../../../tests/native/verified.sh) runs them on the module's translation to
+C, compiled with CompCert.  Without `--cases`, the verified driver also checks the file module
+against the file it wrote, and it fails unless `mean_file` and `mean_file_decode` report only
+`propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 

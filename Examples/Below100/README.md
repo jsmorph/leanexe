@@ -8,7 +8,7 @@ specification](Spec.lean) states it with `Array.filter`.  [The program](Program.
 with `LeanExe.repeatWhile` over the first `count` elements, where `count` is the input's size when
 it is at most eight and 0 otherwise.  `keep` takes the input, an index, and the output array, which
 it consumes: it pushes the element onto the output in place when the element is less than 100.  The
-dialect has no `Array.filter`, so the program builds the output with `push`, which moves the output
+verified compiler does not read `Array.filter`, so the program builds the output with `push`, which moves the output
 to a larger block when the block is full.  `verified_compile compiled := [keep, compute]` in [the
 verified compilation](Compiled.lean) compiles both definitions into a 2,118-byte module.
 
@@ -52,7 +52,7 @@ tests/verified/run.sh --cases below100
 tests/native/verified.sh --module below100
 ```
 
-The first commands build the verified compilation and its proofs, write the module, and call it in
+The first commands build the verified compilation and its theorems, write the module, and call it in
 the Wasmtime host, with the setup of [the repository README](../../README.md#commands).  The call
 prints `[5, 99, 0, 7]`.  [The verified driver](../../tests/verified/run.sh) compares `compute` with
 `expected` on the inputs of [`Cases.lean`](Cases.lean), which include the empty array, eight words,

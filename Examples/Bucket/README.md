@@ -26,10 +26,10 @@ translation.
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `bucket`. |
 | `bucket_file`, `bucket_file_decode` | `build/verified/bucket.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
-The theorems use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  [The verified
-compiler manual's table of expressions](../../docs/verified-manual.md#expressions) lists the
-conversion.  A width of 0 gives an infinite or NaN quotient, which the conversion maps to
-2^64 − 1 or 0.
+The axiom reports of the file theorems, which depend on every `implements` theorem through
+`compiled.bytes`, name only `propext`, `Classical.choice`, and `Quot.sound`.  [The verified compiler
+manual's table of expressions](../../docs/verified-manual.md#expressions) lists the conversion.  A
+width of 0 gives an infinite or NaN quotient, which the conversion maps to 2^64 − 1 or 0.
 
 ## Building, running, and testing
 
@@ -44,7 +44,7 @@ tests/verified/run.sh --cases bucket
 tests/native/verified.sh --module bucket
 ```
 
-The first commands build the verified compilation and its proofs, write the module, and call it in
+The first commands build the verified compilation and its theorems, write the module, and call it in
 the Wasmtime host, with the setup of [the repository README](../../README.md#commands).  The
 arguments are 2.5, 0.0, and 1.0, and the call prints 2.  [The verified
 driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lean), including

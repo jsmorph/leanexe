@@ -1,18 +1,18 @@
 # Bools: truth values as data
 
-## Thirteen functions on `Bool`
+## Functions on `Bool`
 
-[The program](Program.lean) is thirteen small functions that take, return, or store `Bool` values:
+[The program](Program.lean) holds small functions that take, return, or store `Bool` values:
 tests built with `decide`, `==`, and `!=`, the connectives `&&`, `||`, and `!`, a float equality and
 a range test, a selection by `if`, a loop whose state is a `Bool`, and a structure with a `Bool`
 field.  A `Bool` is the word of its constructor index, 0 for `false` and 1 for `true`.
 `verified_compile compiled := [isPositive, …, flagOf]` in [the verified compilation](Compiled.lean)
-compiles all thirteen into the 1,892-byte `bools.wasm` of [the module
+compiles them into the 1,892-byte `bools.wasm` of [the module
 registry](../../tests/verified/modules.txt).
 
 ## Bitwise connectives and per-function theorems
 
-Each function has its own generated theorem, and `compiled.bytes` states all thirteen for the
+Each function has its own generated theorem, and `compiled.bytes` states them all for the
 decoded module.  No function allocates, so each `compiled.f.implements` states that its function
 returns the Lean function's value without a trap, and `compiled.f.native` states the same of its C
 function.  `&&` and `||` compile to `i64.and` and `i64.or` on the 0-or-1 words, with both operands
@@ -27,9 +27,10 @@ the structure `Flagged` as two words, its flag and its value.
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements every function. |
 | `bools_file`, `bools_file_decode` | `build/verified/bools.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
-The theorems use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  `Bool` has a
-built-in `Flat` instance, `cond b 1 0`, which states how a `Bool` argument or result appears to the
-module, as [the verified compiler manual](../../docs/verified-manual.md#representations) describes.
+The axiom reports of the file theorems, which depend on every `implements` theorem through
+`compiled.bytes`, name only `propext`, `Classical.choice`, and `Quot.sound`.  `Bool` has a built-in
+`Flat` instance, `cond b 1 0`, which states how a `Bool` argument or result appears to the module,
+as [the verified compiler manual](../../docs/verified-manual.md#representations) describes.
 `Flagged` takes the representation of [`Flat.lean`](Flat.lean), its flag and its value in
 declaration order, and that instance is part of what the theorems state.
 
@@ -46,10 +47,10 @@ tests/verified/run.sh --cases bools
 tests/native/verified.sh --module bools
 ```
 
-The first commands build the verified compilation and its proofs, write the module, and call it in
-the Wasmtime host, with the setup of [the repository README](../../README.md#commands).
-`anyEqual 10 3` prints 1, since 3 is below 10, and `mark 0` prints 1 and 0 on two lines, the flag
-and the value.  [The verified driver](../../tests/verified/run.sh) runs the inputs of
+The first commands build the verified compilation and its theorems, write the module, and call it in
+the Wasmtime host, with the setup of [the repository README](../../README.md#commands).  `anyEqual
+10 3` prints 1, since 3 is below 10, and `mark 0` prints 1 and 0 on two lines, the flag and the
+value.  [The verified driver](../../tests/verified/run.sh) runs the inputs of
 [`Cases.lean`](Cases.lean) in Wasmtime against native Lean, and [the native
 driver](../../tests/native/verified.sh) runs them on the module's translation to C, compiled with
 CompCert.  The cases state that no call allocates a block.

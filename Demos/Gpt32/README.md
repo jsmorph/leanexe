@@ -3,15 +3,14 @@
 ## One GPT-2 step as WGSL kernels
 
 [The program](Program.lean) is one generation step of GPT-2 124M in Lean `Float32`, binary32,
-written for GPU kernels: every array is built element by element, and the helpers that kernels
-share are marked `@[inline]`, so that `verified_compile` unfolds them into each kernel.  Its kernel
-functions run from `expArray32` to `logits32`, and `step32` composes all of them but `expArray32`
-into the embedding, the layers of attention and MLP, the final layer norm, and the token scores.
-Vector addition and the biased linear transform come from [the binary32 linear-algebra
+written for GPU kernels: it builds every array element by element and marks the helpers that kernels
+share `@[inline]`, so that `verified_compile` unfolds them into each kernel.  Its kernel functions
+run from `expArray32` to `logits32`, and `step32` composes all of them but `expArray32` into the
+embedding, the layers of attention and MLP, the final layer norm, and the token scores.  Vector
+addition and the biased linear transform come from [the binary32 linear-algebra
 library](../../Library/Numerics/LinearAlgebra/README.md), and the model-specific kernels and the
 host program remain in the demo.  [The host program](HostProgram.lean) is the list of commands that
-runs a step on `leanexe-webgpu-host`: buffer loads, word and float constants, and kernel
-dispatches.
+runs a step on `leanexe-webgpu-host`: buffer loads, word and float constants, and kernel dispatches.
 
 ## Verified compiler
 
@@ -22,7 +21,7 @@ and `tests/verified/run.sh` writes the module to `build/verified/gpt32.wasm`.  F
 bound, and `compiled.bytes` states that the module's bytes decode to the module.  The compilation
 also passes each function's typed body to `Verified.WGSL.compile`, which returns a WGSL compute
 kernel with proofs of its translation and uses the shared WGSL translation, which normalizes
-arithmetic NaNs to `0x7fc00000`.  [The native dispatch theorems](VerifiedDispatch.lean)
+arithmetic NaNs to `0x7fc00000`.  [The dispatch theorems](VerifiedDispatch.lean)
 combine `Compiled.dispatch_value` with each generated denotation equation `compiled.f.denote_eq`,
 so that a dispatch of each kernel computes its Lean function.  [The kernel
 map](VerifiedKernels.lean) names the kernel of each host call, and [the host
@@ -52,13 +51,12 @@ dispatch is race-free.
 
 The theorems prove successful execution and race freedom in a device model with strict binary32
 arithmetic, under their shape, buffer, and token bounds.  A GPU may flush subnormal values and fuse
-multiply-adds, as the WGSL specification permits.  On an Apple GPU, the LeanExe compiler's kernels
-of the same functions, before the shared translation normalized arithmetic NaNs, gave scores that
-differed from those of their Wasm module by up to 5.2e-5 of the largest score, while greedy
-generation chose the same token at all 32 steps.  [The design document](../../docs/design.md#gpu)
-states what the device model adds to the trusted base, and [the description of the
-pages](../../tests/web/README.md) states what is proved about the browser page.  The host
-processes, file I/O, and browser remain outside the proofs.
+multiply-adds, as the WGSL specification permits.  Under SwiftShader in headless Chromium 145, the
+verified kernels and `gpt32.wasm` gave equal scores at every step of 16 greedy tokens, as [the
+description of the pages](../../tests/web/README.md) records.  [The design
+document](../../docs/design.md#gpu) states what the device model adds to the trusted base, and [the
+description of the pages](../../tests/web/README.md) states what is proved about the browser page.
+The host processes, file I/O, and browser remain outside the proofs.
 
 ## Building, running, and testing
 
@@ -74,13 +72,15 @@ uv run tests/web/serve.py
 
 The commands build the proofs and the WebGPU host, test the module and the kernels, generate text,
 and serve the browser pages, with the setup of [the repository README](../../README.md#commands).
-`tests/verified/run.sh --cases gpt32` writes the module and compares it with native Lean on the
-Wasm cases of [the checked kernel corpus](VerifiedCases.lean), and without `--cases` the driver also
+`tests/verified/run.sh --cases gpt32` writes the module and compares it with native Lean on the Wasm
+cases of [the checked kernel corpus](VerifiedCases.lean), and without `--cases` the driver also
 checks `File.lean` against the file it wrote.  The corpus covers empty and short arrays, signed
 zeros, subnormals, infinities, and NaNs, and its Wasm cases also check allocations and retained
 blocks.  `tests/wgsl/run.sh` runs the kernels, with the binary32 example's verified kernels, on the
-cases of [`tests/wgsl/Cases.lean`](../../tests/wgsl/Cases.lean) and of the corpus on the
-SwiftShader and llvmpipe Vulkan drivers, and compares each output word with native Lean's.
+cases of [`tests/wgsl/Cases.lean`](../../tests/wgsl/Cases.lean) and of the corpus on the SwiftShader
+and llvmpipe Vulkan drivers, and compares each output word with native Lean's.  Without `--cases`,
+the verified driver also checks the file module against the written file and requires the axiom
+reports of both file theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.
 
 [`tests/gpt32/native.sh`](../../tests/gpt32/native.sh) runs small random models through `generate`
 of [`Driver.lean`](Driver.lean), the driver that [`Generate.lean`](Generate.lean) runs, on the

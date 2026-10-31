@@ -27,6 +27,8 @@ into a 2,362-byte module that exports `compute` as function 2.
 | `compute_bound` | `compiled.compute.bound xs` is 232 bytes for every input. |
 | `compute_callSpec` | `Verified.CallSpec` of function 2 and `expected`, with the generated bound as the room: from a ready store in which `top` can rise by that bound, the call returns an owned array that holds `expected xs`, leaves a ready store, and raises `top` by at most the bound. |
 | `treeLookup_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 232 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and lies apart from the result, and `top` rises by at most 232 bytes. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `compute`. |
+| `treeLookup_file`, `treeLookup_file_decode` | `build/verified/treeLookup.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
 `compute_eq` and its two lemmas are in [the proof of the specification](Proof.lean), and the other
 theorems are in [the verified compilation](Compiled.lean).  They use only `propext`,
@@ -50,11 +52,12 @@ build/tools/leanexe-wasmtime-host call build/verified-request/treeLookup/treeLoo
   array-u64 array-u64:40,50,500,30,300,70,700,20,200,40,400,60,600,80,800
 ```
 
-The commands build the proofs, write the module, and call it in the Wasmtime host, with the setup
-of [the repository README](../../README.md#commands).  `tools/verified-request-check treeLookup`
-checks the hashes of the reviewed specification, the statement and axioms of `compute_callSpec`,
-and the 22 samples in Wasmtime and, when CompCert is found, in the module's translation to C.  The
-search finds the query 40 at the root's left child's right child, and the call prints `[400, 1]`.
+The commands build the verified compilation and its theorems, write the module, and call it in the
+Wasmtime host, with the setup of [the repository README](../../README.md#commands).
+`tools/verified-request-check treeLookup` checks the hashes of the reviewed specification, the
+statement and axioms of `compute_callSpec`, and the 22 samples in Wasmtime and, when CompCert is
+found, in the module's translation to C.  The search finds the query 40 at the root's left child's
+right child, and the call prints `[400, 1]`.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.TreeLookup.Compiled

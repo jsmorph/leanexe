@@ -1,8 +1,8 @@
 # Updates: chains of array updates
 
-## Four functions that update arrays
+## Functions that update arrays
 
-[The program](Program.lean) has four functions that update arrays of words.  `pushTwo` pushes two
+[The program](Program.lean) has functions that update arrays of words.  `pushTwo` pushes two
 words, `setTwice` sets one element and then another from the old value of the first, and
 `insertErase` inserts a word and then removes one.  `pushCopy` returns `xs` with a word pushed
 together with `xs` itself, so the push must copy.
@@ -47,10 +47,10 @@ tests/verified/run.sh --cases exampleUpdates
 tests/native/verified.sh --module exampleUpdates
 ```
 
-The commands build the module and its theorems, write the module, call it in the Wasmtime host, and
-run the drivers, with the setup of [the repository README](../../README.md#commands).  The first
-call prints `[1, 2, 3, 4]`.  The second inserts 9 at position 1 and then removes position 0, and
-prints `[9, 2, 3]`.
+The commands build the verified compilation and its theorems, write the module, call it in the
+Wasmtime host, and run the drivers, with the setup of [the repository
+README](../../README.md#commands).  The first call prints `[1, 2, 3, 4]`.  The second inserts 9 at
+position 1 and then removes position 0, and prints `[9, 2, 3]`.
 
 [The verified compiler's cases](../../Verified/Examples/Cases.lean) take the arguments `pushArgs`
 and `updateArgs` of [`Cases.lean`](Cases.lean), with positions inside and past the end of each
@@ -59,16 +59,16 @@ native Lean.  [The native driver](../../tests/native/verified.sh) runs the same 
 module's translation to C, compiled with CompCert.  The cases state one block left allocated by
 `pushTwo` and `insertErase`, which consume the host's array, and two by `setTwice` and `pushCopy`,
 with at most three allocations for `pushTwo`, whose pushes onto an empty array grow it twice, and at
-most two for the others.  The full run of the verified driver also checks the file module against
-the written file and requires both file theorems to report only the axioms `propext`,
+most two for the others.  Without `--cases`, the verified driver also checks the file module against
+the written file and requires the axiom reports of both file theorems to name only `propext`,
 `Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 
 [`Clob`](../../Demos/Clob/README.md) proves functions that update their arrays in place, with
-`set!`, `insertIdx!`, `eraseIdxIfInBounds`, and `push`.  [`SumCount`](../SumCount/README.md) returns
-a new array without updating one.  The GPT-2 cache in [`Gpt`](../../Demos/Gpt/README.md) grows by
-`++` in place.
+`set!`, `LeanExe.insertAt`, `LeanExe.eraseAt`, and `push`.  [`SumCount`](../SumCount/README.md)
+returns a new array without updating one.  The GPT-2 cache in [`Gpt`](../../Demos/Gpt/README.md)
+grows by `++` in place.
 
 ## References
 

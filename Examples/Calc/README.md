@@ -7,7 +7,7 @@ four word operations and the structure `Calc` of a value, a step count, and the 
 `calcRun` reads instructions from an array, two words each, and applies them with `Calc.step` in a
 `LeanExe.loop` whose state is a `Calc`.  `Calc.undo` matches on the structure's fields to reverse a
 last addition or subtraction.  `verified_compile compiled := [Op.apply, …, calcRun]` in [the
-verified compilation](Compiled.lean) compiles the six functions into the 2,139-byte
+verified compilation](Compiled.lean) compiles the functions into the 2,139-byte
 `calculator.wasm` of [the module registry](../../tests/verified/modules.txt).
 
 ## Structures and enumerations as words
@@ -26,16 +26,16 @@ the theorems state.
 | `calculator_file`, `calculator_file_decode` | `build/verified/calculator.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
 No function allocates, so each generated `compiled.f.implements` states that its function returns
-the Lean function's value without a trap, and `compiled.f.native` states the same of its C
-function.  The reflector reads the structure patterns of `Calc.undo`, which fix `last` to `.add`
-and `.sub` and bind `value` and `steps`, as two tests of the word of `last` followed by the
-wildcard's `c`.  The kernel checks that the tests equal the match by cases on the state and on
-`last`, as [the verified compiler manual](../../docs/verified-manual.md#structure-patterns)
-describes.  The theorems use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
-[The manual's section on records, tuples, and
+the Lean function's value without a trap, and `compiled.f.native` states the same of its C function.
+The reflector reads the structure patterns of `Calc.undo`, which fix `last` to `.add` and `.sub` and
+bind `value` and `steps`, as two tests of the word of `last` followed by the wildcard's `c`.  The
+kernel checks that the tests equal the match by cases on the state and on `last`, as [the verified
+compiler manual](../../docs/verified-manual.md#structure-patterns) describes.  The axiom reports of
+the file theorems, which depend on every `implements` theorem through `compiled.bytes`, name only
+`propext`, `Classical.choice`, and `Quot.sound`.  [The manual's section on records, tuples, and
 sums](../../docs/verified-manual.md#records-tuples-and-sums) describes how the reflector reads user
-types, and [its section on representations](../../docs/verified-manual.md#representations)
-describes the `Flat` class.
+types, and [its section on representations](../../docs/verified-manual.md#representations) describes
+the `Flat` class.
 
 ## Building, running, and testing
 
@@ -52,15 +52,15 @@ tests/verified/run.sh --cases calculator
 tests/native/verified.sh --module calculator
 ```
 
-The first commands build the verified compilation and its proofs, write the module, and call it in
+The first commands build the verified compilation and its theorems, write the module, and call it in
 the Wasmtime host, with the setup of [the repository README](../../README.md#commands).  The
 instructions of the first call add 5, multiply by 4, and subtract 6, and the call prints 14, 3, and
 1 on three lines: the value, the step count, and the index of `sub`.  The second call undoes the
 last subtraction of 6 and prints 20, 3, and 1.  [The verified driver](../../tests/verified/run.sh)
 runs the inputs of [`Cases.lean`](Cases.lean) in Wasmtime against native Lean, and [the native
 driver](../../tests/native/verified.sh) runs them on the module's translation to C, compiled with
-CompCert.  The cases state that no call allocates a block other than the host's instruction array
-of `calcRun`, which stays allocated.
+CompCert.  The cases state that no call allocates a block other than the host's instruction array of
+`calcRun`, which stays allocated.
 
 ## Related examples
 

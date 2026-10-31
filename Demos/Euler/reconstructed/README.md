@@ -12,13 +12,15 @@ the export.  The module compiles [the buffered form](../Buffered.lean) of the so
 ![Density and pressure at time 0.8 on the 800-grid](density-pressure-800.png)
 
 Both calculations ran with a trial count of 8, the limit on reconstruction attempts, and reached
-time 0.8 with status 0.  A module of the LeanExe compiler, which the repository no longer contains,
-computed their output words.  The figures, CSV files, and ranges below come from those words.
+time 0.8 with status 0.  The `reconstructedSolve` export of the verified module computed their
+output words on 2026-10-31, in 120 s on the 192-grid and 9,706 s on the 800-grid, and the SHA-256 of
+each run's words equals the one that the record's `summary.json` states.  The figures, CSV files,
+and ranges below come from those words.
 
 ## Problem and method
 
-The domain is the unit square, the initial interfaces are x = y = 0.8, the target time is 0.8, and
-the physical ideal-gas parameter is γ = 7/5.
+The domain is the unit square, and the initial interfaces lie at x = y = 0.8.  The run ends at time
+0.8.  The gas is ideal, with ratio of specific heats γ = 7/5.
 
 | Quadrant | Pressure | Density | x velocity | y velocity |
 |----------|---------:|--------:|-----------:|-----------:|
@@ -68,12 +70,13 @@ export and the Lean function `reconstructedSolve`, which packs the result of `re
 | Conservation with exact boundary fluxes | Along the same chain, each total equals its initial total minus the exact Rusanov flux through the boundary, evaluated at the values of the reconstructed boundary face states with the computed speeds, plus a residual.  The residual is at most the sum of the per-update bounds and of bounds on the computed boundary fluxes, all computed from the words of the run. | `reconstructedRun_reference_balance` in [the boundary theorems](../Reference/Boundary.lean) |
 | Reconstruction accuracy | Each accepted reconstruction returns the cell average or the faces of the factor after some number of halvings of 1/2.  Each face differs from `center ∓ factor · slope`, with the exact minmod slope of the three input states, by at most the rounding radii of the offset and of the face plus the factor times the slope's error, and the faces average to the center up to half the sum of their rounding radii.  When the stencil is linear, its subtractions are exact, the limiter accepts 1/2, and the face arithmetic is exact, the faces are exactly `center ∓ delta / 2`. | `reconstruct_accuracy` and `reconstruct_linear` in [the reconstruction theorems](../ReconstructionAccuracy.lean) |
 
-The proofs use only `propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on Wasmtime
-and the hardware implementing the WebAssembly semantics that the proofs model.  `solveBytes n`
-covers three grids of `cells n` cells and the packed result, each with its block header, for any
-trial count, and `solvePages n` adds the heap base of 4096 bytes.  `euler_solve_call` starts from
-the modeled store in which the module starts and states no final page count.  Instantiation by a
-WebAssembly engine lies outside the proofs, as [the verified compiler
+The axiom reports of [the call theorems](../VerifiedCall.lean) and of the file theorems name only
+`propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on Wasmtime and the hardware
+implementing the WebAssembly semantics that the proofs model.  `solveBytes n` covers three grids of
+`cells n` cells and the packed result, each with its block header, for any trial count, and
+`solvePages n` adds the heap base of 4096 bytes.  `euler_solve_call` starts from the modeled store
+in which the module starts and states no final page count.  Instantiation by a WebAssembly engine
+lies outside the proofs, as [the verified compiler
 manual](../../../docs/verified-manual.md#outside-the-proofs) states.  Convergence to a solution of
 the continuous Euler equations remains unproved.
 
@@ -98,12 +101,12 @@ the wall time, the peak resident size, and the SHA-256 of the words to `summary.
 tools/build-wasmtime-host.sh
 tools/leanrun --timeout 60m lake build Demos.Euler.VerifiedCall
 mkdir -p build/verified
-tools/leanrun --timeout 10m --lock-timeout 1200 lake env lean --run tools/Emit.lean \
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Demos.Euler.Verified Demos.Euler.Verified.compiled.module build/verified/euler.wasm
-uv run tools/euler-run.py build/verified/euler.wasm reconstructed 192 new-192-directory
-uv run tools/euler-run.py build/verified/euler.wasm reconstructed 800 new-800-directory
+uv run tools/euler-run.py build/verified/euler.wasm reconstructed 192 build/euler/reconstructed-192
+uv run tools/euler-run.py build/verified/euler.wasm reconstructed 800 build/euler/reconstructed-800
 ```
 
-## Internal References
+## Internal references
 
 - [Limiters](../../../Library/Numerics/Limiters/README.md)
