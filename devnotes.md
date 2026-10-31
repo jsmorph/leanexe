@@ -39280,7 +39280,7 @@ An audit of the day's open checkboxes ticked six: five whose work is done, and t
 - [x] The thirteen example ports.
 - [x] The verified total theorems of the Euler solvers and the drone planner.
 - [ ] `Generation.lean`, `module_side`, and `increment_total`.
-- [ ] The browser pages, the GPU drivers, and the test defaults on the verified modules.
+- [x] The browser pages, the GPU drivers, and the test defaults on the verified modules.
 - [ ] `tools/demo-check` on the verified compiler.
 - [x] The five LTG entries in the VKB.
 - [x] The general sections of the LeanExe manual in the verified manual.
@@ -39645,6 +39645,56 @@ The agent that wrote the port stopped before its journal entry, its VKB review, 
 - [x] `increment_call` beside `increment_total` in the documents.
 - [x] The native driver's result for a selection of module cases.
 - [ ] `module_side` over the verified Euler module.
+
+## 2026-10-30: The browser pages, the GPU drivers, and the test defaults on the verified modules
+
+The browser pages, the GPU drivers, and the test defaults now use the verified compiler's modules and kernels, a prerequisite of [the retirement plan](#2026-10-30-the-plan-for-retiring-the-leanexe-compiler).  Each driver and page keeps the LeanExe path behind an explicit option or a module path, so that no working test is lost before the removal commits delete those paths.  The `Exec`, `Compose`, `Driver`, `NativeCases`, and `Generate` edits, `tests/gpt32/Native.lean`, and `tests/gpt32/native.sh` belong to the first removal commit and are unchanged.
+
+[`tests/wgsl/run.sh`](tests/wgsl/run.sh) without an option now emits the verified binary32 kernels of [the binary32 example](Examples/Binary32/Compiled.lean), `verifiedScale32Kernel` to `verifiedCondMix32Kernel`, under the names `scale`, `axpyArray`, `matVec`, and `condMix`, and the GPT-2 kernels of [the verified GPT-2 compilation](Demos/Gpt32/Verified.lean) under the names of the host commands.  It runs them on the cases of `tests/wgsl/Cases.lean` and `Demos/Gpt32/VerifiedGpuCasesMain.lean`.  That set is the former `--verified-gpt32` with the binary32 kernels replaced, so the option is gone, and [`tools/full-check`](tools/full-check) runs the driver with `--verified` and without an option.  `--verified` keeps the kernels of `Verified/Examples/Wgsl.lean` and the binary32 kernels under their own names.  `--leanexe` selects the former default, the LeanExe kernels of `Examples/Binary32/Wgsl.lean`, `Demos/Gpt32/Kernels.lean`, and `Demos/Gpt32/Specs.lean` on the cases of `tests/wgsl/Cases.lean`.  The driver lists each set as entries of module, constant, and file name, and it builds the selected set's modules before it emits, which the former default did not do.
+
+The LeanExe kernels go to `wgsl-leanexe/` in the build directory rather than to `wgsl/`.  They have the file names of the default kernels, and the server writes only missing files, so in one directory the pages would serve whichever set ran last, with nothing to show which.  The `--verified` kernels have names of their own and still share `wgsl/`, whose `cases.txt` the kernel page runs, as before.  [`tests/gpt32/generate.py`](tests/gpt32/generate.py) still writes the LeanExe GPT-2 kernels into `build/wgsl` under the default names, and [the guide of the pages](tests/web/README.md) states it.
+
+The map listed the buffer layout of the verified binary32 kernels under the old names as uncertain.  Their dispatch theorems take the buffers in the order of the LeanExe theorems, and `Arg.buffer` gives a binary32 scalar as its bits and 0 and a word as its two halves, the `u32:BITS,0` and `u64:` forms of `tests/wgsl/Cases.lean`.  The run settles it: every case passed on both drivers, as the table below shows.
+
+[`tests/web/serve.py`](tests/web/serve.py) no longer keeps a table of kernels and modules of its own.  When the kernel directory lacks a kernel text that the pages load or `cases.txt`, it runs `tests/wgsl/run.sh --emit-only`, with `--leanexe` when the server has that option, so the pages and the driver use one list.  It builds and emits `build/verified/gpt32.wasm` from `Demos.Gpt32.Verified.compiled.module` and the sampler `build/verified/gpt.wasm` from `Demos.Gpt.Verified.compiled.module` when they are missing.  `--leanexe` selects `build/wgsl-leanexe`, `build/gpt32/gpt32.wasm`, and `build/gpt/gpt.wasm`.  In the verified `gpt.wasm`, `alloc` has type `(i64) → i64`, `release` `(i64) → ()`, and `sampleTopK` `(i64 i64 f64 i64) → (i64 i64)`, and `memory` is exported, which are the forms that the `Sampler` of `tests/gpt32/browser/hosts.js` uses: a `BigInt` size, a pointer, `k`, and state, a `Number` temperature, and two results.  A Wasmtime session that allocated five scores, called `sampleTopK`, and released the scores ended with 7 allocations and 7 frees, so the verified `sampleTopK` borrows its scores, as the page assumes.  The verified `gpt32.wasm` already ran under the page's `WasmHost` in `tests/gpt32/native.sh --verified`.
+
+The scripts of `tests/gpt/`, [`tests/prng/compare.py`](tests/prng/compare.py), and [`tools/gpt2.py`](tools/gpt2.py) default to `build/verified/gpt.wasm` and `build/verified/prng.wasm`, which `tests/verified/run.sh` writes.  The scripts that took a module path keep it, and `tools/gpt2.py` gains `--wasm` and names `tests/verified/run.sh --cases gpt` when the module is missing.  [`tests/drone/run.sh`](tests/drone/run.sh) built each module's path from the first column of `tests/drone/cases.txt`, and it now takes the module's path as its argument, by default `build/verified/drone.wasm`.  The column stays, because `Demos/Drone/Cases.lean` reads it.  The guides of GPT, the drone, SplitMix64, and binary32, the design document, and the LeanExe manual pass the LeanExe module's path or `--leanexe` in their commands for the LeanExe modules, so each command still tests the module that its text describes.  The verified manual's sections on the browser pages and the WGSL tests, the test guide, and the root README describe the new defaults.
+
+`tests/gpt32/generate.py` stays as it was.  It runs `Demos/Gpt32/Generate.lean`, which calls `Demos.Gpt32.generate` with its default `KernelName.module`, the LeanExe kernels, through `Demos/Gpt32/Driver.lean`, which imports `Demos.Gpt32.Specs`.  Running the verified kernels needs `Generate.lean` to pass `Demos.Gpt32.Verified.kernelMap`, which is an edit of the first removal commit, and a second Lean program beside `Generate.lean` would duplicate it.  The script moves to the verified kernels with that commit.
+
+The full check's closing note listed `tests/drone/run.sh` among the LeanExe compiler's suites.  The driver now runs the verified module, so the note lists it separately: the check leaves it out, and `tests/verified/run.sh` runs the same terrains.  `tests/verified/run.sh` compares every export of the drone module with native Lean, while `tests/drone/run.sh` compares the calls of `tests/drone/cases.txt` and the terrains with the results of the separate reference implementation, so whether the full check should run it is a question for the user.
+
+A Lean host emitted the kernels and the cases with `--emit-only`, and an AArch64 machine without Lean ran them with `--drivers-only` after a copy compared by SHA-256, as [the entry on the verified kernels](#2026-10-30-the-verified-wgsl-kernels-on-swiftshader-and-llvmpipe) describes.  The same machine served the pages and ran them in headless Chromium 145 with its SwiftShader adapter.  The Lean host ran the other drivers.
+
+| Check | Result | Duration |
+|---|---|---|
+| `tests/wgsl/run.sh --emit-only`, then `--drivers-only` | 694 of 694 cases on SwiftShader and on llvmpipe | 462 s and 37 s |
+| `tests/wgsl/run.sh --verified --emit-only`, then `--drivers-only` | 347 of 347 cases on SwiftShader and on llvmpipe | 97 s and 18 s |
+| `tests/wgsl/run.sh --leanexe --emit-only`, then `--drivers-only` | 474 of 474 cases on SwiftShader and on llvmpipe | 219 s and 24 s |
+| Kernel page, default server | 694 passed | 0.9 s |
+| GPT-2 page, default server, compared mode | 16 greedy tokens from "The meaning of life is", with scores equal at every step; 8 tokens sampled from seed 42, with scores equal at every step | 14 s and 6 s |
+| Kernel page, `serve.py --leanexe` | 474 passed | 0.8 s |
+| GPT-2 page, `serve.py --leanexe`, compared mode | 8 tokens sampled from seed 42, the same tokens as with the verified modules | 6 s |
+| `serve.py --leanexe` on the Lean host without `build/wgsl-leanexe` | Server ran `tests/wgsl/run.sh --leanexe --emit-only` and then served the 474 cases, the kernel texts, and the LeanExe modules with the sums of the emitted files | 222 s to start |
+| `tests/drone/run.sh` | 1,975 calls and 116 terrains, none failed | 42 s |
+| `uv run tests/prng/compare.py` | 106 seeds, 2,000 successive steps, and 40 words of `unitFloat` matched | 1 s |
+| `tests/gpt/run.sh` | 2,733 passed | 164 s |
+| `tests/gpt/sessions.sh` | Every session freed every allocation | under 1 s |
+| `uv run tests/gpt/sample_frequencies.py` | Every count within 1.45 standard deviations | 2 s |
+| `uv run tests/gpt/hf_compare.py` | Largest relative difference 2.72e-15 | 19 s |
+| `uv run tests/gpt/gpt2_compare.py` | Prompts of 5, 30, and 224 tokens within 1.42e-12 of the largest score, with the cached steps equal to `forward` bit for bit; 256 greedy tokens, each Hugging Face's choice, with a largest relative difference of 1.16e-13, 137,532 allocations and 137,512 frees, and 1,075,838,976 bytes of memory | 2,989 s |
+| `uv run tools/gpt2.py --output-tokens 8`, greedy and with `--top-k 40 --seed 7` | Greedy: "It was a dark and stormy night. The wind was blowing, and the", the text that the GPT guide records for the LeanExe module.  Sampled: eight tokens, ending "In the dark, in" | 10 s each |
+| `VKB/Check.lean VKB/entries` | No problem reported | 4 s |
+| `lake build LeanExe Examples Demos Verified Library TestSupport native-verified native-bare verified-cases native-module-cases` with 4 threads | 15,366 jobs, no `sorry` warning | 2 h 27 min |
+| `node tools/check-doc-links.mjs` | No problem | 1 s |
+
+The default set has the cases of the former `--verified-gpt32`, whose run in [the entry on the verified kernels](#2026-10-30-the-verified-wgsl-kernels-on-swiftshader-and-llvmpipe) passed the same 694 cases with the LeanExe binary32 kernels.  Seed 42 gave the tokens 644, 340, 318, 13, 198, 198, 40, and 1254 with both servers, which compares the verified sampler with the LeanExe sampler on the same scores.  The last run of `gpt2_compare.py` on the LeanExe module that the journal records, in [the entry on in-place append](#2026-10-01-in-place-append-the-first-consumed-argument-4c4e-first-increment), ended with 138,046 allocations, 138,026 frees, and 1,079,705,600 bytes of memory, and the verified module leaves the same 20 arrays live.  That run took 323 seconds, and this one 2,989.  The cached steps of the 224-token prompt took 99.3 seconds here, so most of the 2,673 seconds of the generation went outside the module's steps, while two builds ran on the same machine.  The run did not time the Hugging Face reference and the host separately.
+
+- [x] The verified kernels as the default of `tests/wgsl/run.sh`, with the LeanExe kernels behind `--leanexe`.
+- [x] The browser pages on the verified kernels and modules, with the LeanExe ones behind `--leanexe`.
+- [x] The GPT, drone, and SplitMix64 drivers and `tools/gpt2.py` on `build/verified/`.
+- [ ] `tests/gpt32/generate.py` on the verified kernels, with the first removal commit.
+- [ ] A decision on `tests/drone/run.sh` in the full check.
 
 ## 2026-10-31: The full check with the registry's file theorems and the Talos driver
 
