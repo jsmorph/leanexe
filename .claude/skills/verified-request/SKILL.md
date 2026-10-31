@@ -27,11 +27,11 @@ the result, and `top` has risen by at most the bound.
 itself.  It accepts the run only if `compute_callSpec` proves the statement with no axioms beyond
 `propext`, `Classical.choice`, and `Quot.sound`, the specification is the one the review accepted,
 and the module returns `expected` on every sample in Wasmtime and, where CompCert is installed, in
-the module's translation to C.  The compiler's generated theorems state that the module computes
-the program, so the run proves that the program equals the specification.  The theorem says nothing
-about the request beyond what `expected` says, so the independent review of `expected` against the
-request is the only check that the theorem states what the request asks.  The run does not ask the
-user to approve the specification.
+the module's translation to C.  The verified compiler's generated theorems state that the module
+computes the program, so the run proves that the program equals the specification.  The theorem
+says nothing about the request beyond what `expected` says, so the independent review of
+`expected` against the request is the only check that the theorem states what the request asks.
+The run does not ask the user to approve the specification.
 
 ## Names, files, and types
 
@@ -61,8 +61,8 @@ are outside this version of the skill.  If the request needs one, say so and sto
 1. Write `request.txt` with the user's words.
 2. Write `Spec.lean`: a direct statement of the request, in the request's terms, with no reference
    to the program and no attempt at efficiency.  Use Mathlib definitions where they state the
-   request most directly, as `Nat.primeFactorsList` and `Nat.gcd` do in the prime-factor and gcd
-   examples.  Decide every case the request leaves open, such as inputs of other lengths, and
+   request most directly, as `Nat.primeFactorsList` and `Nat.gcd` do in the specifications of the
+   library's prime-factor count and GCD.  Decide every case the request leaves open, such as inputs of other lengths, and
    record each decision in a comment.
 3. Write `Samples.lean` with inputs that cover the request's cases and edges: 0, 1, `2^64 − 1`, the
    empty array, and each length boundary.  Avoid inputs that make a slow specification
@@ -134,8 +134,8 @@ premise of the generated theorem with `#check @Examples.Name.compiled.compute.tr
 
 `Proof.lean` holds `compute_eq`, the equality of the program with the specification.  It imports
 the program, the specification, and lemmas about the dialect, such as `LeanExe.Dialect.Lemmas`
-and the proof modules of the library programs that the program calls, and nothing of either
-compiler.  When the program converts an array's size to a word, as `xs.size.toUInt64` does, the
+and the proof modules of the library programs that the program calls, and no module of
+`Verified`.  When the program converts an array's size to a word, as `xs.size.toUInt64` does, the
 equality has the premise `xs.size < 2 ^ 64`, which every array in memory meets, and the call
 theorem takes it from the argument's representation, as `Examples.Increment.compute_callSpec` does.
 Otherwise the equality has no premise, as in the running-maximum example, and passes to the call
@@ -148,15 +148,15 @@ theorem compute_eq (a b : UInt64) : compute a b = expected (a, b)
 ```
 
 `Compiled.lean` then imports `Examples.Name.Proof` in place of the program, and `Verified.Call`,
-which `Verified.Reflect.Command` does not import, and adds two declarations after
-`verified_compile`.  `K` is 2 plus the position of `compute` in the list of
+which `Verified.Reflect.Command` does not import, and adds `compute_callSpec` and `compute_bound`
+after `verified_compile`.  `K` is 2 plus the position of `compute` in the list of
 `verified_compile`, counted from 0, since functions 0 and 1 are the runtime's `alloc` and
 `release`, and the check proves in the kernel that the export `compute` is function `K`.
 
 | Declaration | Content |
 |-------------|---------|
-| `compute_callSpec` | The statement above, proved as `Examples.Increment.compute_callSpec` and `Library.Numerics.Arithmetic.Gcd.gcd_callSpec` prove theirs.  `Verified.ImplementsTables.call (.ofA compiled.compute.trapFree) compiled.tables nofun` gives `Verified.Call`, and `Verified.Call.spec` turns it into `CallSpec` for `expected`, from `fun _ _ _ h => h` for the premise, or `fun _ _ _ _ => trivial` when `trapFree`'s premise is `True`, from `fun _ _ _ _ _ h => h` for the conclusion, and from `compute_eq` on represented arguments. |
-| `compute_bound` | A closed form of `compiled.compute.bound x`, from `compiled.compute.bound_eq`, which the README states so that a reader knows how much room a call needs.  A function that cannot abort needs none. |
+| `compute_callSpec` | Statement of the first section, proved as `Examples.Increment.compute_callSpec` and `Library.Numerics.Arithmetic.Gcd.gcd_callSpec` prove theirs.  `Verified.ImplementsTables.call (.ofA compiled.compute.trapFree) compiled.tables nofun` gives `Verified.Call`, and `Verified.Call.spec` turns it into `CallSpec` for `expected`, from `fun _ _ _ h => h` for the premise, or `fun _ _ _ _ => trivial` when `trapFree`'s premise is `True`, from `fun _ _ _ _ _ h => h` for the conclusion, and from `compute_eq` on represented arguments. |
+| `compute_bound` | Closed form of `compiled.compute.bound x`, from `compiled.compute.bound_eq`, which the README states so that a reader knows how much room a call needs.  A function that cannot abort needs none. |
 
 Follow the worked example whose program has the same shape.  The call theorem of every shape
 follows `compute_callSpec` and `gcd_callSpec`, which differ only in the premise and in how the
@@ -194,7 +194,7 @@ a missing lemma, a tactic that misled, or a goal shape that no entry names.  Put
 1. Run `tools/verified-request-check NAME`.  It must print the theorem line, the module,
    `samples: N passed, 0 failed`, and either `native samples: N passed, 0 failed` or the line that
    says CompCert's tools were not found.
-2. Write `README.md` with five sections: "Request, specification, review, and program" (the
+2. Write `README.md` with these sections: "Request, specification, review, and program" (the
    request, the specification and its decisions, the review, and the program), a section whose
    heading states the main theorem, such as "The module searches the tree" (a table of
    `compute_eq`, `compute_bound`, and `compute_callSpec`, and the axioms), "Building, running, and
@@ -207,7 +207,7 @@ a missing lemma, a tactic that misled, or a goal shape that no entry names.  Put
    Examples.Name.Compiled` to [`Examples/Verified.lean`](../../../Examples/Verified.lean).  Add
    `import Examples.Name.Spec` and `import Examples.Name.Samples` to [the verified
    cases](../../../Verified/Examples/Cases.lean), and at the end of `portCases` a loop that prints
-   each sample in the verified driver's format, as the tree-lookup loop does:
+   each sample in the verified driver's format, as the running-maximum loop does:
 
    ```lean
      for xs in _root_.Examples.Name.samples do
@@ -229,7 +229,7 @@ a missing lemma, a tactic that misled, or a goal shape that no entry names.  Put
    Verified.Examples.Cases verified-cases native-verified native-module-cases`, and the VKB check is
    `tools/leanrun --timeout 10m lake env lean --run VKB/Check.lean VKB/entries`.  [The verified
    compiler manual's full check](../../../docs/verified-manual.md#the-full-check) remains the gate
-   for a change to the compiler or the runtime.
+   for a change to the verified compiler or the runtime.
 5. Report the result to the user with the theorem line, the sample counts, the gate's results, and
    the VKB proposals.  Commit only when the user's instructions call for it, after the gate.
 
