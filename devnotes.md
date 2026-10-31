@@ -39817,3 +39817,30 @@ The restoration of `Words.toList` stays a commit of its own, because `STATUS.md`
 
 - [ ] Port the operations that `Examples/Trees/Program.lean` adds to the library with `verified_compile`, or delete them.
 - [x] Correct the citations of `docs/native-translator.md` in `docs/trusted-base.md`, which point at lines that have moved, among them blank lines and table headers.
+
+## 2026-10-31: The design of a two-sided order book
+
+`Demos/Clob` holds the bid side of a book as sorted arrays of level totals, which serves the compiler's tests but cannot match orders.  The new program, in `Demos/OrderBook`, is a deterministic step function over one instrument's two-sided book, with price-time priority, engine-assigned order ids, and an event stream, under limits small enough for closed-form bounds.  The host sequences and authenticates commands, keeps the command log, and maps engine ids to client tags from the events.  Recovery replays the log, which a stream theorem over the specification justifies.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Order types | GTC limit, IOC limit, market as IOC at the edge of the band, post-only, cancel, and reduce-quantity that keeps priority | Each type changes only how the remainder is handled or adds one simple request.  Fill-or-kill, stops, icebergs, and price amendments wait for a later version. |
+| Self-trade prevention | Matching stops at the first resting order of the taker's account, and the taker's remainder is cancelled | Resting orders stay untouched, and the fills remain a prefix of the opposite side's priority list. |
+| Limits | One instrument, prices of 1 to 1,023 ticks, at most 4,096 resting orders, and quantities from 1 to 2^32 − 1 | Each step scans at most every level and fills at most every order, so its work and its event array have constant bounds.  Notional sums stay below 2^54. |
+| Representation | Pool of 4,096 slots with `next` and `prev` links, a head and a tail for each price and side, and order ids `generation · 4096 + slot` | Cancel and reduce find the slot in one step, a stale id fails its generation check, and any price holds any number of orders. |
+| Placement | New `Demos/OrderBook`, with `Demos/Clob` kept until the new program's stream theorems cover `runCommands_append` and `runOut_book` | The current theorems and tests stay until replacements exist. |
+| First deliverable | `verified_compile` of `init`, `step`, and read-only queries, a call theorem against the specification, and the C translation | The WASI process that reads command records from stdin and writes event records to stdout follows once the core proof holds. |
+
+Commands and events are records of seven words.  The commands are `limit` (side, price, quantity, account, client tag, time in force), `market` (side, quantity, account, client tag), `cancel` (order id, account), and `reduce` (order id, account, new quantity).  The events are `accepted`, `rejected` with a reason, `trade` (maker id, taker id, price, quantity, maker account, taker account), `cancelled` with the remaining quantity and a reason, and `reduced`.  A command is rejected for an unknown kind, a price outside the band, a quantity of zero or above the limit, an unknown or dead order id, an account that differs from the order's, a post-only order that would cross, or a reduction that does not lower the quantity.  A GTC remainder that finds no free slot is cancelled with the reason that the book is full.
+
+The specification models each side as a list of resting orders sorted by price and arrival, and `Spec.step` matches by consuming the opposite list from its head.  Its theorems state that the best bid stays below the best ask, that every trade takes place at the maker's price within the taker's limit, that the makers an order fills form a prefix of the opposite side's priority list, that each order's quantity equals its filled, resting, and cancelled parts, that rejections happen exactly for the stated reasons, and that a stream run in two parts gives the book of one run.  An abstraction function follows each level's links from its head into the specification's lists.  The refinement theorem states that the implementation's step gives the specification's book and events under an invariant that the step preserves: acyclic and disjoint lists, `prev` links that agree with `next`, a free list apart from the levels, and level totals and best prices that agree with the lists.
+
+The refinement proof dominates the work.  The design also assumes that the verified compiler updates the array fields of an owned record in place inside a loop state, which the manual lists as supported but which no fixture of this size exercises, so a small probe comes before the implementation grows.  The probe compiles a record of word arrays that a loop updates with `set!` and checks with the allocation counters that no update copies an array.
+
+- [ ] English description, list specification, and a fresh agent's review of the specification against the description.
+- [ ] The specification's theorems.
+- [ ] Probe of in-place updates to the array fields of an owned record in a `repeatWhile` state.
+- [ ] Array implementation, its native comparison with the specification on random command streams, and an independent Python reference.
+- [ ] Refinement proof.
+- [ ] `verified_compile`, the allocation bound, the call theorem, the registry entry, cases, and the C translation.
+- [ ] WASI process with stdin command records and stdout event records.
