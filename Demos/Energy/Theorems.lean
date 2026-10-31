@@ -7,9 +7,10 @@ proves that the table meets the profile's validity condition.  `authorize_sound`
 accepted limits give the bounds of the acceptance rule at each time of the window for every
 trajectory admitted until that time, `authorize_admits` that some trajectory is admitted,
 `authorize_operation` that consecutive accepted windows cover the gateway's operation, and
-`authorize_accepted` the limits and the expiry of an accepted result.  `energy_authorize` states that the module's bytes decode to the module, whose
-export `authorize` is function 17, whose start store is ready, and whose entry returns, without a
-trap and from every ready store, the authorizer's decision, which has those properties. -/
+`authorize_accepted` the limits and the expiry of an accepted result.  `energy_authorize` states
+that the module's bytes decode to the module, whose export `authorize` is function 17, whose
+start store is ready, and whose entry returns, without a trap and from every ready store, the
+authorizer's decision, which has those properties. -/
 
 namespace Demos.Energy.Theorems
 
