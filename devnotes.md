@@ -40110,3 +40110,27 @@ The documents now state the tests as formulas, define every table column, presen
 A review of the branch noted that the indexes list energy's forms as V S F, although its module translates to C.  `#check` shows `Demos.Energy.Verified.compiled.authorize.native`, which states `NativeTablesImpl` for the translation.  CompCert 3.18 was built from the archive whose SHA-256 the M0 entry records, configured with `./configure -clightgen x86_64-linux`, with Debian 13's packages `coq` 8.20.1, `ocaml-nox` 5.3.0, `menhir` and `libmenhir-ocaml-dev` 20240715.  `make -j6 all` built `ccomp`, `clightgen`, and the run-time library, with the proofs.  `ccomp -version` reports 3.17, as the archive's `VERSION` file says.  `tests/native/verified.sh --module energy`, with `CCOMP`, `CLIGHTGEN`, and `CCOMP_STDLIB` naming that tree, passed 2,056 cases and failed none.
 
 Energy's rows in the demo index and the algorithm index now list C, the README lists `compiled.authorize.native` and the native driver, and the plan's open decision on the gateway runtime no longer defers the question of whether the translation contains `authorize`.
+
+## 2026-10-31: TAOCP algorithms in the library
+
+The user asked for the algorithms of the earlier proposal, in order from easiest to hardest, each as a library module with documentation, committed one at a time, with Lean on the remote hosts.  Each module follows the layout of [the GCD module](Library/Numerics/Arithmetic/Gcd/README.md): a request, a specification in `Spec.lean`, a program in the verified compiler's dialect, a proof that the program equals the specification, the compilation with a call theorem, file theorems, cases in Wasmtime and in the module's C translation, a README, and a row in [the algorithm index](index.md).  A fresh agent reviews each specification against its request before the module is final.
+
+Most of these algorithms have total specifications, which `Verified.CallSpec` states.  Binary search assumes a sorted array, and checking the order would cost the linear time that the search avoids, so its call theorem is a `Verified.Call` whose precondition includes `Sorted`, composed by a local lemma `call_on` from the generated theorem and the conditional equality.
+
+| Order | Algorithm | TAOCP | Module |
+|---|---|---|---|
+| 1 | Binary search | 6.2.1 B | `Library/Arrays/BinarySearch` |
+| 2 | Binary GCD | 4.5.2 B | |
+| 3 | Modular inverse by the extended Euclidean algorithm | 1.2.1 E, 4.5.2 X | |
+| 4 | Heapsort | 5.2.3 H | |
+| 5 | Merge sort | 5.2.4 | |
+| 6 | Topological sort | 2.2.3 T | |
+| 7 | Binary heap priority queue | 5.2.3 | |
+| 8 | Hashing with linear probing and deletion | 6.4 L, R | |
+| 9 | Multiple-precision arithmetic | 4.3.1 A, S, M, D | |
+| 10 | Modular exponentiation and Miller–Rabin | 4.6.3, 4.5.4 P | |
+| 11 | Dancing links | 7.2.2.1 X | |
+
+The compiler's termination proof of a tail loop failed for the first version of `search`, whose body bound the midpoint with `let mid := lo + (hi - lo) / 2` and then tested `xs[mid.toNat]!`.  The induction cases held the condition on the bound name `mid`, while the loop's step held it on the expanded expression, so the proof could neither match the recursive call's state nor see that the two branch conditions contradict.  The program now writes the midpoint out in each place.  The limitation belongs to the reflector's tail-loop proof and is recorded here for a later change to the compiler.
+
+- [x] Binary search: program, proof, call theorem, 1,004 cases in Wasmtime and native C, two reviews, README, index.

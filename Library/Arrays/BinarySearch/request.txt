@@ -1,0 +1,3 @@
+Binary search, Algorithm B of TAOCP section 6.2.1, in the form that returns the least index of a
+sorted array of UInt64 words whose element is at least a given key, or the array's length when no
+element is.  The array is sorted in nondecreasing order.

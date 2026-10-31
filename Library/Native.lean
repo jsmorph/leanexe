@@ -1,3 +1,4 @@
+import Library.Arrays.BinarySearch.Program
 import Library.Arrays.Filter.Program
 import Library.Arrays.Range.Program
 import Library.Arrays.Repeat.Program
