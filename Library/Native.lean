@@ -52,6 +52,7 @@ import Library.Numerics.Reductions.Float64.Program
 import Library.Numerics.Reductions.Word.Program
 import Library.Numerics.Statistics.Mean.Program
 import Library.Numerics.Statistics.SumSquares.Program
+import Library.Queues.BinaryHeap.Program
 import Library.Random.Lcg.Program
 import Library.Random.ParkMiller.Program
 import Library.Random.SplitMix64.Program

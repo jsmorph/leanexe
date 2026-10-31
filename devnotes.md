@@ -40125,7 +40125,7 @@ Most of these algorithms have total specifications, which `Verified.CallSpec` st
 | 4 | Heapsort | 5.2.3 H | `Library/Sorting/Heapsort` |
 | 5 | Merge sort | 5.2.4 | `Library/Sorting/MergeSort` |
 | 6 | Topological sort | 2.2.3 T | `Library/Graphs/TopologicalSort` |
-| 7 | Binary heap priority queue | 5.2.3 | |
+| 7 | Binary heap priority queue | 5.2.3 | `Library/Queues/BinaryHeap` |
 | 8 | Hashing with linear probing and deletion | 6.4 L, R | |
 | 9 | Multiple-precision arithmetic | 4.3.1 A, S, M, D | |
 | 10 | Modular exponentiation and Miller–Rabin | 4.6.3, 4.5.4 P | |
@@ -40147,3 +40147,11 @@ The first version of the program copied the array once and then on every exchang
 Topological sort has many correct results for one input, so its specification is a property, `IsTopologicalOrder`, and its call theorem is the generated `Verified.Call` for the Lean function `topoSort`, which `topoSort_spec` relates to the property.  The program scans all relations for each vertex in place of Knuth's successor lists, which keeps the state to two arrays.  The first version of `process` ended its loop body in `if f < queue.size then scan else state`, and the compiler rejected it with "the result of a loop's body charges a credit at a form that the reflector does not support".  The reflector proves a loop body's credits zero only through `Expr.buyFree` in `Verified/Bound.lean`, which requires the two branches of every `if` at the body's result to agree in `Expr.bodyPaid`, and the scan's branch returns arrays that the scan changed while the other returns the state's arrays.  The program now puts the condition into the inner loop's count, which is 0 when `f` lies past the queue, so the body has no `if` at its result.  The restriction belongs to the reflector and is recorded here for a later change to the compiler.
 
 - [x] Topological sort: program, proof of the property, call theorem, 27 cases in Wasmtime and native C, two reviews, README, index section 13.
+
+The binary heap's loop state holds the outputs, the heap's size, and the array.  Its first `step` chose among three whole states with nested `if`s, which the reflector rejected at the loop body's result for the reason recorded for topological sort.  `step` now builds one tuple whose components choose their own values, and it is marked `@[inline]` and left out of the compiled list, so the compiler unfolds it into the loop, whose state owns both arrays.  A separate compiled function would borrow its record parameter and copy each array it changed.  The generated bound has only the two empty initial blocks and one word of growth for each push, and `siftUp`'s bound is 0.
+
+The topological sort and the binary heap both need reads after `set!` and `push` and reads of prefixes, so `get_set`, `get_toList`, `push_get_lt`, `push_get_size`, and `take_get_mem` moved from the topological sort's proof into [the dialect's array lemmas](LeanExe/Dialect/ArrayLemmas.lean), generic in the element type.  Toolchain `v4.34.0-rc2` deprecates `if_pos` and `if_neg` in favor of `ite_eq_left` and `ite_eq_right`, which have the same statements.  The binary heap's proof uses the new names.  The earlier TAOCP modules use the old names 93 times and build with deprecation warnings.  Heapsort and merge sort each define the same `implementsA_congr`, a copy that a shared lemma should replace, and binary search defines `call_on` for its precondition.
+
+- [x] Binary heap: program, proof, call theorem, 16 cases in Wasmtime and native C, two reviews, README, index.
+- [ ] Rename `if_pos` and `if_neg` in the earlier TAOCP modules.
+- [ ] Move `implementsA_congr` and `call_on` to one shared module and remove the copies.

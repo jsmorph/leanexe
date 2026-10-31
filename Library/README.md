@@ -9,10 +9,12 @@ definitions and state the properties of the resulting WebAssembly.
 | Area | Forms | Contents |
 |---|---|---|
 | [Random generators](../index.md#3-pseudorandom-number-generators) | V S F C | LCG, Park–Miller, xorshift64, SplitMix64, word-to-float conversion, and shared orbit lemmas. |
-| [Sorting](Sorting/README.md) | V F C A | Insertion sort on arrays of `UInt64`. |
-| [Arrays](Arrays/README.md) | V S F C | Counting, first-match search, ordered removal, bounded filtering, prefix clearing, repetition, and word scaling. |
+| [Sorting](Sorting/README.md) | V S F C A | Insertion sort, heapsort, and merge sort on arrays of `UInt64`. |
+| [Arrays](Arrays/README.md) | V S F C | Counting, first-match search, binary search, ordered removal, bounded filtering, prefix clearing, repetition, and word scaling. |
 | [Lists](Lists/README.md) | V F C | Word-list range, sum, reversal, and increment. |
 | [Trees](Trees/README.md) | V F C | Binary tree of words, structural operations, and search-tree insertion. |
+| [Queues](Queues/BinaryHeap/README.md) | V S F C | Priority queue of words as a binary heap. |
+| [Graphs](../index.md#13-graphs-and-combinatorial-search) | V S F C | Topological sorting. |
 | [Arithmetic](../index.md#1-arithmetic) | V S F C | Software FMA, limb arithmetic, unrounded scaling, Euclidean and binary GCD, modular inverse, factor counting, and bounded integer square root. |
 | [Binary64 functions](../index.md#6-elementary-and-special-functions) | V S F C | Elementary and special functions with their accuracy proofs. |
 | [Decimal conversion](../index.md#9-conversion-between-decimal-strings-and-binary-floating-point) | V S F C | Parsing and shortest-decimal printing. |

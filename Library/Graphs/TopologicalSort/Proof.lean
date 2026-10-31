@@ -1,6 +1,7 @@
 import Library.Graphs.TopologicalSort.Program
 import Library.Graphs.TopologicalSort.Spec
 import LeanExe.Dialect.Lemmas
+import LeanExe.Dialect.ArrayLemmas
 import Mathlib.Data.Finset.Card
 
 /-! The proof that topological sorting returns a topological order, or the empty array when none
@@ -18,16 +19,6 @@ namespace Library.Graphs.TopologicalSort
 open LeanExe.Dialect
 
 /-! ### Arrays and counts -/
-
-theorem get_set (c : Array UInt64) (i : Nat) (v : UInt64) (k : Nat) (hi : i < c.size) :
-    (c.set! i v)[k]! = if k = i then v else c[k]! := by
-  simp only [Array.set!_eq_setIfInBounds]
-  by_cases hk : k < c.size
-  · rw [getElem!_pos _ k (by simpa using hk), Array.getElem_setIfInBounds hk, getElem!_pos c k hk]
-    by_cases h : k = i <;> simp_all [eq_comm]
-  · rw [getElem!_neg _ k (by simpa using hk), getElem!_neg c k hk]
-    have : k ≠ i := by omega
-    simp [this]
 
 /-- The number of indices below `r` that satisfy `P`. -/
 def count (r : Nat) (P : Nat → Bool) : Nat := ((List.range r).filter P).length
@@ -266,10 +257,6 @@ theorem initialQueue_spec (c : Array UInt64) (n : UInt64) :
 /-- Vertex `k` is in the queue `q`. -/
 def InQueue (q : Array UInt64) (k : Nat) : Prop := ∃ x ∈ q.toList, x.toNat = k
 
-theorem get_toList (q : Array UInt64) {p : Nat} (hp : p < q.size) :
-    q[p]! = q.toList[p]'(by simpa using hp) := by
-  rw [getElem!_pos q p hp]; simp
-
 theorem get_prefix {q Q0 : Array UInt64} {R : List UInt64} (h : q.toList = Q0.toList ++ R)
     {p : Nat} (hp : p < Q0.size) : q[p]! = Q0[p]! := by
   have hq : p < q.size := by
@@ -277,21 +264,6 @@ theorem get_prefix {q Q0 : Array UInt64} {R : List UInt64} (h : q.toList = Q0.to
   rw [get_toList q hq, get_toList Q0 hp]
   simp only [h]
   rw [List.getElem_append_left]
-
-theorem push_get_lt (q : Array UInt64) (x : UInt64) {p : Nat} (hp : p < q.size) :
-    (q.push x)[p]! = q[p]! := by
-  rw [getElem!_pos _ p (by simp; omega), getElem!_pos q p hp, Array.getElem_push_lt]
-
-theorem push_get_size (q : Array UInt64) (x : UInt64) : (q.push x)[q.size]! = x := by
-  rw [getElem!_pos _ q.size (by simp), Array.getElem_push_eq]
-
-theorem take_get_mem {Q0 : Array UInt64} {f : Nat} {x : UInt64}
-    (h : x ∈ Q0.toList.take f) : ∃ p, p < f ∧ p < Q0.size ∧ Q0[p]! = x := by
-  obtain ⟨p, hp, rfl⟩ := List.getElem_of_mem h
-  simp only [List.length_take, Array.length_toList] at hp
-  refine ⟨p, by omega, by omega, ?_⟩
-  rw [get_toList Q0 (by omega)]
-  simp
 
 theorem not_mem_take {Q0 : Array UInt64} (hnd : Q0.toList.Nodup) {f : Nat} (hf : f < Q0.size) :
     Q0[f]! ∉ Q0.toList.take f := by

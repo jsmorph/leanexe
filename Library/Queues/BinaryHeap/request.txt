@@ -1,0 +1,4 @@
+A priority queue of UInt64 words kept as a binary heap, TAOCP section 5.2.3.  The input is a
+sequence of operations, each a pair of words: an operation code and a value.  Code 0 inserts the
+value; any other code removes the largest word in the queue and outputs it, and does nothing when
+the queue is empty.  Return the words that the removals output, in order.
