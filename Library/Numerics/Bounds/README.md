@@ -14,6 +14,6 @@ The exported bit helpers preserve their word-level definitions.  `nextUpBits` an
 require suitable finite input words when interpreted as adjacent real values.  The checked
 operations enforce those conditions before accepting a result.
 
-## Internal References
+## Internal references
 
 - [Shared proof lemmas: Floating-point values and error bounds](../../../LeanExe/ProofKit/README.md#floating-point-values-and-error-bounds)

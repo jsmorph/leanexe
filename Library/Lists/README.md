@@ -10,6 +10,6 @@ Summation and reversal use tail loops.  Increment uses guarded structural recurs
 [list-tail tests](../../Verified/Examples/ListTailCases.lean) cover lists beyond the guarded
 recursion limit and check the allocation counts.
 
-## Internal References
+## Internal references
 
 - [Verified Compiler Manual: Calls and recursion](../../docs/verified-manual.md#calls-and-recursion)

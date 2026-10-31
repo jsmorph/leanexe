@@ -12,7 +12,8 @@ proofs in `Compiled`.
 | [Range](Range/Program.lean) | `evens n` constructs the `n` words `2 * i`. |
 | [Word operations](Word/Program.lean) | `scaled` multiplies every word by a scalar. |
 
-`removeAll` searches and shifts repeatedly, taking quadratic time.
-`tests/verified/library-cases.txt` runs cases of the verified examples on these modules.  [The
-search proof](Search/Proof.lean) proves the first-zero prefix property used by [the removal
-example's
+`removeAll` searches and shifts repeatedly, taking quadratic time.  `tests/verified/run.sh` also
+runs cases of the verified compiler's examples on these modules, as
+`tests/verified/library-cases.txt` maps them.  [The search proof](Search/Proof.lean),
+`firstZero_cases`, gives the first-zero prefix property that [the removal example's
+proof](../../Examples/RemoveZero/Proof.lean) uses.
