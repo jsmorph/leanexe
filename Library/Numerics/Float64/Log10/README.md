@@ -31,7 +31,7 @@ The guards on the high word handle the rest.  Both zeros give `-two54/0`, which 
 
 The source is `lib/msun/src/e_log10.c` and `lib/msun/src/k_log.h` of FreeBSD [1, 2].  Both files carry Sun Microsystems' notice: "Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.  Developed at SunSoft, a Sun Microsystems, Inc. business.  Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved."  The module docstring of [the implementation](Program.lean) quotes the notice verbatim, as the notice requires.  The functions use only double arithmetic and word operations, so no configuration choice arises.
 
-The port uses the Verified dialect, the subset of Lean that [the Verified compiler](../../../../Verified/README.md) translates to WebAssembly with a correctness theorem.  `verified_compile compiled := [kLog1p, log10]` generates the module, whose functions are `alloc` (0), `release` (1), `kLog1p` (2), and `log10` (3).  The module has no tables, so its `Ready` invariant holds only the allocator invariant and the memory cap.  The port writes each constant as `Float.ofBits` of the bit pattern that fdlibm gives beside its decimal value.
+The port uses the verified compiler's dialect, the subset of Lean that [the verified compiler](../../../../Verified/README.md) translates to WebAssembly with a correctness theorem.  `verified_compile compiled := [kLog1p, log10]` generates the module, whose functions are `alloc` (0), `release` (1), `kLog1p` (2), and `log10` (3).  The module has no tables, so its `Ready` invariant holds only the allocator invariant and the memory cap.  The port writes each constant as `Float.ofBits` of the bit pattern that fdlibm gives beside its decimal value.
 
 | C code | Port | Reason |
 |---|---|---|
@@ -73,7 +73,7 @@ Every theorem in the table has a `#print axioms` line, and `log10_bytes_accuracy
 
 ### Modules
 
-The proof has six modules in `Library/Numerics/Float64/Log10/` above the implementation, besides the file module.  It reuses the guards of `LogBranches`, the subnormal and power lemmas of the `log2` proof, and `Log1pKernelPoly` for the polynomial.  The table lists them in dependency order, and [the library aggregate](../../../../Library.lean) includes `Log10Theorem`.
+The proof's own modules, in `Library/Numerics/Float64/Log10/`, build on the implementation, and `Log10File` holds the file theorems.  It reuses the guards of `LogBranches`, the subnormal and power lemmas of the `log2` proof, and `Log1pKernelPoly` for the polynomial.  The table lists them in dependency order, and [the library aggregate](../../../../Library.lean) includes `Log10Theorem`.
 
 | Module | Content |
 |---|---|

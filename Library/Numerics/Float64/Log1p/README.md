@@ -27,7 +27,7 @@ Three paths shorten the work.  Below `2^-54` in magnitude the result is `x`, and
 
 ## Implementation
 
-The source is `lib/msun/src/s_log1p.c` of FreeBSD [1].  Its notice reads "Copyright (C) 1993 by Sun Microsystems, Inc.  All rights reserved.  Developed at SunPro, a Sun Microsystems, Inc. business.  Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved."  The module docstring of [the implementation](Program.lean) quotes the notice verbatim, as the notice requires.  fdlibm is Sun's "Freely Distributable LIBM" [3].  The port follows the dialect of the Verified compiler as [the exponential document](../Exp/README.md#implementation) describes.  `verified_compile compiled := [log1pTail, log1p]` generates a module whose functions are `alloc` (0), `release` (1), `log1pTail` (2), and `log1p` (3), every constant is `Float.ofBits` of its bit pattern, and the module reads no table.
+The source is `lib/msun/src/s_log1p.c` of FreeBSD [1].  Its notice reads "Copyright (C) 1993 by Sun Microsystems, Inc.  All rights reserved.  Developed at SunPro, a Sun Microsystems, Inc. business.  Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved."  The module docstring of [the implementation](Program.lean) quotes the notice verbatim, as the notice requires.  fdlibm is Sun's "Freely Distributable LIBM" [3].  The port follows the dialect of the verified compiler as [the exponential document](../Exp/README.md#implementation) describes.  `verified_compile compiled := [log1pTail, log1p]` generates a module whose functions are `alloc` (0), `release` (1), `log1pTail` (2), and `log1p` (3), every constant is `Float.ofBits` of its bit pattern, and the module reads no table.
 
 | C code | Port | Reason |
 |---|---|---|
@@ -67,13 +67,13 @@ The theorems are in [the accuracy theorem](Log1pTheorem.lean), [the exceptional 
 | `Log1pFile.log1p_file`, `log1p_file_decode` | `build/verified/log1p.wasm` holds `encode Log1p.compiled.module` and decodes to the module of `log1p_bytes_accuracy`. |
 | `Log1pTheoremNear.log1p_near` | For finite `x` with `a ≥ 2^-29`, `Log1p.log1p x` is a nearest rounding of a real within `errBound a` of `log (1 + a)` (`F64Near.Near`), with `errBound` defined in the same module. |
 
-`log1p_within_one`, every exceptional value, and `log1p_bytes_accuracy` report only the axioms `propext`, `Classical.choice`, and `Quot.sound`, and [the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc) records the builds that first accepted them, the file theorem, and `log1p_near`.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Log1p.Log1pBytes`, checks `Log1pFile.lean` against the `log1p.wasm` that it writes earlier in the same run, and fails unless both file theorems report exactly the three permitted axioms.  A run of the script passed this check for its entry `log1p:Log1pBytes:Log1pFile`.
+`log1p_within_one`, every exceptional value, and `log1p_bytes_accuracy` report only the axioms `propext`, `Classical.choice`, and `Quot.sound`, and [the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc) records the builds that first accepted them, the file theorem, and `log1p_near`.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Log1p.Log1pBytes`, checks `Log1pFile.lean` against the `log1p.wasm` that it writes earlier in the same run, and fails unless both file theorems report exactly the three permitted axioms.  A run of the script passed this check for the `log1p` entry of `tests/verified/numerics.txt`.
 
 ## Proof
 
 ### Modules
 
-The chain has 12 modules of its own, listed in dependency order below.  It reuses `LogCoreBits.kd_value` of [the logarithm's proof](../Log/LogCoreBits.lean) for the conversion of `k`, and `AtanTheoremConst` and `AtanTheoremReduce` of [the arctangent's proof](../Atan/README.md), with the modules below them, for rational evaluation and word facts.  `tests/verified/run.sh` builds the chain through `Library.Numerics.Float64.Log1p.Log1pBytes`, which [the library aggregate](../../../../Library.lean) also includes.
+The table below lists the chain's own modules in dependency order.  It reuses `LogCoreBits.kd_value` of [the logarithm's proof](../Log/LogCoreBits.lean) for the conversion of `k`, and `AtanTheoremConst` and `AtanTheoremReduce` of [the arctangent's proof](../Atan/README.md), with the modules below them, for rational evaluation and word facts.  `tests/verified/run.sh` builds the chain through `Library.Numerics.Float64.Log1p.Log1pBytes`, which [the library aggregate](../../../../Library.lean) also includes.
 
 | Module | Content |
 |---|---|
@@ -148,7 +148,7 @@ In the test run, all 350,144 results lie within one step of the reference, and 1
 
 The limits of [the exponential theorem](../Exp/README.md#limits) apply in the same way: the theorem is about Talos's semantics, the interpreter and the decoder are trusted, the file theorem trusts `binary_file%`, Talos implements the deterministic profile in which every NaN result is canonical [7], and the argument is the bits of a Lean `Float`, so the theorem covers only the canonical NaN among the NaN words a WebAssembly caller can pass.  `log1p_bytes_accuracy` covers sequences of calls to `log1p`, and a host that calls `alloc`, `release`, or `log1pTail` or writes the memory between calls needs a theorem that the action preserves `Ready`.  The module reads no table, so the store invariant has only the allocator invariant and the memory cap.
 
-fdlibm's comment says that the cubic path serves `|f| < 2^-20`.  The code's test `hu = 0` also selects it in the halved branch for `-3 · 2^-21 ≤ f < 0`, as the docstring of `Log1p.lean` states, and the proof uses the bound `|f| ≤ 2^-19` (`Log1pTheoremReduce.main_reduce`), so the theorem covers the whole path.
+fdlibm's comment says that the cubic path serves `|f| < 2^-20`.  The code's test `hu = 0` also selects it in the halved branch for `-3 · 2^-21 ≤ f < 0`, as the docstring of [the implementation](Program.lean) states, and the proof uses the bound `|f| ≤ 2^-19` (`Log1pTheoremReduce.main_reduce`), so the theorem covers the whole path.
 
 ## References
 

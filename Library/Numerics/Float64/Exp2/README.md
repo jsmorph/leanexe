@@ -33,7 +33,7 @@ The special paths follow `exp`'s, with one change.  Below `2^-54` (`exp2`) or `2
 
 The sources are Arm's `math/exp2.c` (`Copyright (c) 2018-2025, Arm Limited`), `math/exp10.c` (`2023-2025`), and the data of `math/exp_data.c` (`2018-2023`), under `SPDX-License-Identifier: MIT OR Apache-2.0 WITH LLVM-exception` [1, 2, 3, 5].  The module docstring of [the implementation](Program.lean) repeats the notice.  The configuration matches [the exponential implementation](../Exp/Program.lean): `EXP_TABLE_BITS` 7, `EXP2_POLY_ORDER` 5, `EXP2_POLY_WIDE` 0, `EXP10_POLY_WIDE` 0, and no rounding intrinsics or fused multiply-add [4].  For it `exp_data.c` states an absolute polynomial error of `1.2195 · 2^-65` for `exp2` on `|r| < 1/256` and 0.511 units without fused multiply-add, and `exp10.c` states a largest observed error of about 0.513 units [3, 2].
 
-`verified_compile compiled := [exp2SpecialCase, exp2Core, exp2With, exp10Core, exp10With, exp2, exp10]` generates the module, whose functions are `alloc` (0), `release` (1), and the seven functions of the list (2 to 8), so that `exp2` is function 7 and `exp10` function 8.  `wasm-tools print` of `exp2.wasm` shows every function exported, with the memory and the globals `allocCount` and `freeCount`.  `exp2` and `exp10` pass `Exp.expTable` to `exp2With` and `exp10With`, and the module holds that table in a data segment borrowed at address 4096.  `exp_data.c`'s `__exp_data.tab` for `N = 128` equals `Exp.expTable` word for word, as [the journal section on the ports](../../../../devnotes.md#2026-10-10-ports-of-exp2-exp10-log2-log10-and-pow) records.  The port calls no function of `Exp`.
+`verified_compile compiled := [exp2SpecialCase, exp2Core, exp2With, exp10Core, exp10With, exp2, exp10]` generates the module, whose functions are `alloc` (0), `release` (1), and the functions of the list as 2 to 8, so that `exp2` is function 7 and `exp10` function 8.  `wasm-tools print` of `exp2.wasm` shows every function exported, with the memory and the globals `allocCount` and `freeCount`.  `exp2` and `exp10` pass `Exp.expTable` to `exp2With` and `exp10With`, and the module holds that table in a data segment borrowed at address 4096.  `exp_data.c`'s `__exp_data.tab` for `N = 128` equals `Exp.expTable` word for word, as [the journal section on the ports](../../../../devnotes.md#2026-10-10-ports-of-exp2-exp10-log2-log10-and-pow) records.  The port calls no function of `Exp`.
 
 | C code | Port | Reason |
 |---|---|---|
@@ -84,7 +84,7 @@ Every theorem in the table has a `#print axioms` line.  The journal records only
 
 ### Modules
 
-The proof adds 18 modules in `Library/Numerics/Float64/Exp2/` to the chain of `ExpTheorem`, whose table, scale, one-step, and compensated-subnormal lemmas it reuses.  The table lists them by stage, in dependency order within each stage.  [The library aggregate](../../../../Library.lean) does not reach them, so `tests/verified/run.sh` builds `Library.Numerics.Float64.Exp2.Exp2Bytes` as a separate target.
+The proof adds the modules of `Library/Numerics/Float64/Exp2/` to the chain of `ExpTheorem`, whose table, scale, one-step, and compensated-subnormal lemmas it reuses.  The table lists them by stage, in dependency order within each stage.  [The library aggregate](../../../../Library.lean) includes `Exp2Bytes`, and `tests/verified/run.sh` also builds `Library.Numerics.Float64.Exp2.Exp2Bytes` before it checks the emitted file.
 
 | Stage | Modules | Content |
 |---|---|---|
