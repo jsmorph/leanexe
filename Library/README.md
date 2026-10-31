@@ -13,7 +13,7 @@ definitions and state the properties of the resulting WebAssembly.
 | [Arrays](Arrays/README.md) | V S F C | Counting, first-match search, ordered removal, bounded filtering, prefix clearing, repetition, and word scaling. |
 | [Lists](Lists/README.md) | V F C | Word-list range, sum, reversal, and increment. |
 | [Trees](Trees/README.md) | V F C | Binary tree of words, structural operations, and search-tree insertion. |
-| [Arithmetic](../index.md#1-arithmetic) | V S F C | Software FMA, limb arithmetic, unrounded scaling, GCD, factor counting, and bounded integer square root. |
+| [Arithmetic](../index.md#1-arithmetic) | V S F C | Software FMA, limb arithmetic, unrounded scaling, Euclidean and binary GCD, factor counting, and bounded integer square root. |
 | [Binary64 functions](../index.md#6-elementary-and-special-functions) | V S F C | Elementary and special functions with their accuracy proofs. |
 | [Decimal conversion](../index.md#9-conversion-between-decimal-strings-and-binary-floating-point) | V S F C | Parsing and shortest-decimal printing. |
 | [Fourier transforms](Numerics/Fourier/README.md) | V F C | DFT, inverse transform, and power spectrum. |

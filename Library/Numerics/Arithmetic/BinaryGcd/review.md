@@ -1,0 +1,7 @@
+# Review of the specification
+
+Two fresh agents reviewed [the specification](Spec.lean) and [the case inputs](../../../../tests/TestSupport/Modules/BinaryGcd.lean) against [the request](request.txt), from the files alone.
+
+The first review found no input on which `expected` differs from the request.  It found that the comment did not state `gcd 0 v = v` or that the specification fixes the result and not the method, and the comment now states both.  It found that the samples paired 0 only with odd words, which would miss a program that removes common factors of 2 before it tests for 0, and the samples now pair 0 with 6, `2^63`, and `12 * 2^40`.  It also found that the fold meant to produce consecutive Fibonacci numbers ran once too often and wrapped, and the fold now runs 91 times, so its head is `F₉₃`, the largest Fibonacci number below `2^64`.
+
+The second review found no disagreement.  It found that the samples' docstring misdescribed the generated pairs and omitted some chosen pairs, and that the comment's list of operations left out comparisons and zero tests.  Both now describe the code.  It named two classes without samples, which this review records: a pair of odd words whose difference is a large power of 2, such as `(2^63 + 1, 1)`, and a pair of distinct odd words, both at least `2^63`, with a common divisor above 1.  Both reviews noted that the theorem certifies the result and not the method, so that a Euclidean program with remainders would satisfy the same theorem, and only the program text shows that the module performs Algorithm B.

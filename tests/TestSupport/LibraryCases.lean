@@ -6,6 +6,7 @@ import Library.Numerics.Statistics.SumSquares.Program
 import Library.Random.SplitMix64.Program
 import Library.Arrays.Search.Program
 import TestSupport.Host
+import TestSupport.Modules.BinaryGcd
 import TestSupport.Modules.BinarySearch
 import TestSupport.Modules.Gcd
 import TestSupport.Modules.PrimeFactors
@@ -55,6 +56,9 @@ def cases : IO Unit := do
   -- allocation counters.
   for (a, b) in Library.Numerics.Arithmetic.Gcd.gcdPairs do
     IO.println s!"gcd|gcd|i64|{u a} {u b}|{Library.Numerics.Arithmetic.Gcd.expected (a, b)}|0|0"
+  for (a, b) in Library.Numerics.Arithmetic.BinaryGcd.gcdInputs do
+    IO.println s!"binaryGcd|binaryGcd|i64|{u a} {u b}|\
+      {Library.Numerics.Arithmetic.BinaryGcd.expected (a, b)}|0|0"
   for (xs, key) in Library.Arrays.BinarySearch.searchInputs do
     IO.println s!"binarySearch|lowerBound|i64|{arrU xs} {u key}|\
       {Library.Arrays.BinarySearch.expected (xs.toArray, key)}|1|1"

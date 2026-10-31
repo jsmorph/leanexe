@@ -260,6 +260,7 @@ import Library.Numerics.Arithmetic.CeilSqrt.Compiled
 import Library.Numerics.Bounds.Compiled
 import Library.Numerics.Limiters.Minmod.Compiled
 import Library.Trees.WordTree.Compiled
+import Library.Numerics.Arithmetic.BinaryGcd.Compiled
 import Library.Numerics.Arithmetic.Gcd.Compiled
 import Library.Numerics.Arithmetic.PrimeFactors.Compiled
 import Library.Numerics.Statistics.Mean.Compiled

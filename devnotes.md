@@ -40120,8 +40120,8 @@ Most of these algorithms have total specifications, which `Verified.CallSpec` st
 | Order | Algorithm | TAOCP | Module |
 |---|---|---|---|
 | 1 | Binary search | 6.2.1 B | `Library/Arrays/BinarySearch` |
-| 2 | Binary GCD | 4.5.2 B | |
-| 3 | Modular inverse by the extended Euclidean algorithm | 1.2.1 E, 4.5.2 X | |
+| 2 | Binary GCD | 4.5.2 B | `Library/Numerics/Arithmetic/BinaryGcd` |
+| 3 | Modular inverse by the extended Euclidean algorithm | 1.2.1 E, 4.5.2 X |
 | 4 | Heapsort | 5.2.3 H | |
 | 5 | Merge sort | 5.2.4 | |
 | 6 | Topological sort | 2.2.3 T | |
@@ -40134,3 +40134,4 @@ Most of these algorithms have total specifications, which `Verified.CallSpec` st
 The compiler's termination proof of a tail loop failed for the first version of `search`, whose body bound the midpoint with `let mid := lo + (hi - lo) / 2` and then tested `xs[mid.toNat]!`.  The induction cases held the condition on the bound name `mid`, while the loop's step held it on the expanded expression, so the proof could neither match the recursive call's state nor see that the two branch conditions contradict.  The program now writes the midpoint out in each place.  The limitation belongs to the reflector's tail-loop proof and is recorded here for a later change to the compiler.
 
 - [x] Binary search: program, proof, call theorem, 1,004 cases in Wasmtime and native C, two reviews, README, index.
+- [x] Binary GCD: program, proof, call theorem, 166 cases in Wasmtime and native C, two reviews, README, index.

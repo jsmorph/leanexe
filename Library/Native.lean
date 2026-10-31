@@ -13,6 +13,7 @@ import Library.Hashing.SipHash.Program
 import Library.Hashing.Words.Program
 import Library.Hashing.XxHash64.Program
 import Library.Lists.Word.Program
+import Library.Numerics.Arithmetic.BinaryGcd.Program
 import Library.Numerics.Arithmetic.CeilSqrt.Program
 import Library.Numerics.Arithmetic.Fma.Program
 import Library.Numerics.Arithmetic.Gcd.Program

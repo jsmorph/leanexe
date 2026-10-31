@@ -1,0 +1,3 @@
+Return the greatest common divisor of two UInt64 values u and v, computed with the binary GCD
+algorithm, Algorithm B of TAOCP section 4.5.2, which uses only subtraction, parity tests, and
+shifts.  The greatest common divisor of u and 0 is u.
