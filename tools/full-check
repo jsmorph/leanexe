@@ -5,7 +5,8 @@
 #   1. `lake build` of LeanExe, Examples, Demos, Verified, Library, and TestSupport with the test
 #      executables native-verified, native-bare, verified-cases, and native-module-cases, at log
 #      level info, so that the log holds the axiom report of every `#print axioms`;
-#   2. tests/verified/run.sh;
+#   2. tests/verified/run.sh and, when it passes, tests/drone/run.sh on the drone module that it
+#      writes;
 #   3. tests/native/verified.sh without and with --aligned, tests/native/aligned.sh,
 #      tests/native/run.sh, tests/native/bytes.sh, and tests/native/clight.sh 7 300 for the
 #      platform's target;
@@ -14,13 +15,14 @@
 #   6. VKB/Check.lean;
 #   7. rocq/check.sh;
 #   8. tests/wgsl/run.sh with --verified and without an option, each with --emit-only and then
-#      --drivers-only, and tests/gpt32/native.sh --verified.
-# A failed build leaves every later step but rocq/check.sh unrun, since they load the built
-# modules.  The failure of any other step is recorded, and the next step runs.  A step whose tools
-# are absent is recorded as not run, and so is the driver half of a GPU step whose emission
-# failed.  The build fails on a `sorry` warning and on an axiom report of a file of this repository
-# that names an axiom other than propext, Classical.choice, and Quot.sound.  STATUS.md lists the
-# reports of the dependencies' files that do.
+#      --drivers-only, and tests/gpt32/native.sh --verified;
+#   9. tests/talos/run.sh.
+# A failed build leaves every later step but rocq/check.sh and tests/talos/run.sh unrun, since they
+# load the built modules.  The failure of any other step is recorded, and the next step runs.  A
+# step whose tools are absent is recorded as not run, and so is the driver half of a GPU step whose
+# emission failed.  The build fails on a `sorry` warning and on an axiom report of a file of this
+# repository that names an axiom other than propext, Classical.choice, and Quot.sound.  STATUS.md
+# lists the reports of the dependencies' files that do.
 # STATUS.md holds the commit, the paths that differ from it, the dates of the commit and of the
 # run, the toolchain, the platform, and a table of the steps with each step's status, duration,
 # and the counts that its driver prints, and it ends with what did not run and why.  Before it
@@ -307,8 +309,31 @@ step_verified() {
   [ -z "$audited" ] || cell+="; $audited"
   if [ "$code" -eq 0 ]; then
     cell+="; $(matches '^[^#[:space:]]' tests/verified/modules.txt) modules written and validated"
+    verified=passed
   fi
   record "$step" "$(outcome)" "$seconds" "${cell#; }"
+}
+
+# tests/verified/run.sh does not clear build/verified, so the drone driver runs only after a pass
+# of that step has written build/verified/drone.wasm.
+step_drone() {
+  local step='`tests/drone/run.sh`' calls terrains cell=""
+  if unbuilt "$step"; then
+    return 0
+  fi
+  if [ "$verified" != passed ]; then
+    record "$step" "not run: \`tests/verified/run.sh\` did not pass" "" ""
+    return 0
+  fi
+  run 2-drone tests/drone/run.sh
+  calls=$(last '^drone calls in WebAssembly: ([0-9]+) cases, ([0-9]+) failed$' '\1 \2' "$log")
+  terrains=$(last '^drone corpus in WebAssembly: ([0-9]+) cases, ([0-9]+) failed$' '\1 \2' "$log")
+  if [ -n "$calls" ] && [ -n "$terrains" ]; then
+    set -- $calls $terrains
+    cell="$(pf "$1 $2" calls); $(pf "$3 $4" terrains); expected results from the reference"
+    cell+=" implementation"
+  fi
+  record "$step" "$(outcome)" "$seconds" "$cell"
 }
 
 step_native() {
@@ -632,7 +657,6 @@ write_status() {
     notes+=" \`tests/modules/run.sh\` beyond the Euler and sums cases that \`tests/verified/run.sh\`"
     notes+=" runs, \`tests/modules/chunks.py\`, the LTG check, \`tests/wgsl/run.sh --leanexe\`, and"
     notes+=" \`tests/gpt32/native.sh\` without \`--verified\`.  It also leaves out"
-    notes+=" \`tests/drone/run.sh\`, whose corpus \`tests/verified/run.sh\` also runs,"
     notes+=" \`tests/native/subset.sh\`, whose result is the count of modules without a"
     notes+=" translation that \`tests/native/verified.sh\` reports, \`tests/native/bench.sh\`, which"
     notes+=" measures time, the decoder test, which needs the WebAssembly test suite converted by"
@@ -696,8 +720,10 @@ main() {
   dependency_axioms=()
   failures=0
   built=no
+  verified=no
   step_build
   step_verified
+  step_drone
   step_native
   step_wasi
   step_baremetal

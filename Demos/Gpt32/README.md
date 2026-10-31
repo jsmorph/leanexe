@@ -66,8 +66,8 @@ meaning of death" in 10.6 seconds on llvmpipe, with a largest relative score dif
 and the same token as Hugging Face's model at every step.
 [`tests/web/serve.py --leanexe`](../../tests/web/serve.py) serves the kernel test page and the GPT-2
 page on http://127.0.0.1:8000/ with these kernels and this `gpt32.wasm`.  `tests/gpt32/generate.py`
-writes the LeanExe compiler's GPT-2 kernels to `build/wgsl`, where they replace the verified
-kernels of the same names.
+writes the LeanExe compiler's GPT-2 kernels to `build/wgsl-leanexe`, the directory of
+`tests/wgsl/run.sh --leanexe`, apart from the verified kernels of the same names.
 
 ## Verified compiler
 

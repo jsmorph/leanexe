@@ -33,9 +33,9 @@ LeanExe modules `build/gpt32/gpt32.wasm` and `build/gpt/gpt.wasm`.  The server w
 files, so after a change to a kernel, to the cases, or to the GPT-2 programs, run
 [`tests/wgsl/run.sh`](../wgsl/run.sh), which rewrites the kernel directory, or delete the affected
 files before starting it.  The pages serve what the kernel directory holds: after
-`tests/wgsl/run.sh --verified`, the kernel page runs that option's cases, and
-[`tests/gpt32/generate.py`](../gpt32/generate.py) writes the LeanExe compiler's GPT-2 kernels to
-`build/wgsl` under the names of the verified ones.
+`tests/wgsl/run.sh --verified`, the kernel page runs that option's cases, and after
+[`tests/gpt32/generate.py`](../gpt32/generate.py), which writes its kernels to
+`build/wgsl-leanexe`, the GPT-2 page with `--leanexe` loads that script's texts.
 
 Browsers expose WebGPU only to secure contexts, which include http://127.0.0.1 and
 http://localhost but not a plain-HTTP address of another machine.  To use a browser on another
