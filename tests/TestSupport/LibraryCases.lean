@@ -49,8 +49,9 @@ def cases : IO Unit := do
     for b in specialFloats do
       line "libminmod" "minmod" "f64" [fl a, fl b]
         (toString (Library.Numerics.Limiters.Minmod.minmod a b).toBits)
-  -- The verified modules of the LeanExe compiler's library programs, against the specification
-  -- of `gcd` and the Lean definitions of the others, with the allocation counters.
+  -- The verified modules of the GCD, prime-factor, mean, sum-of-squares, and SplitMix64
+  -- programs, against the specification of `gcd` and the Lean definitions of the others, with the
+  -- allocation counters.
   for (a, b) in Library.Numerics.Arithmetic.Gcd.gcdPairs do
     IO.println s!"gcd|gcd|i64|{u a} {u b}|{Library.Numerics.Arithmetic.Gcd.expected (a, b)}|0|0"
   for n in Library.Numerics.Arithmetic.PrimeFactors.primeFactorInputs do

@@ -5,55 +5,26 @@
 [The program](Program.lean) returns the sum of the squares of an array of `Float` values,
 accumulated from the left: `xs.foldl (fun acc x => acc + x * x) 0.0`.  Each step rounds twice, once
 after the square and once after the sum, so the result depends on the order of the elements.  [The
-module definition](Module.lean) compiles `sumSquares` into the 1,450-byte `sumSquares.wasm`, and [the
-verified compilation](Compiled.lean) compiles it with the verified compiler into a 1,516-byte
-module.
+verified compilation](Compiled.lean) compiles `sumSquares` with the verified compiler into a
+1,516-byte module.
 
 ## Lean's bits in the program's order of summation
 
-The compiler translates `Array.foldl` to a loop over the array's words, and the fold rule
-`Stmt.fold_spec` proves the loop for any step function on words.  The step here is `IEEE64.add a
-(IEEE64.mul e e)` on bit patterns, and `sumSquares_bits` proves that folding it over the elements'
-bits gives the bits of Lean's fold.  The theorem holds bit for bit in the program's order of
-summation, including overflow to infinity and NaN.
+`verified_compile compiled := [sumSquares]` translates `Array.foldl` to a loop over the array's
+words.  The fold allocates nothing, so the generated `compiled.sumSquares.implements` excludes the
+trap, and it holds bit for bit in the program's order of summation, including overflow to infinity
+and NaN.  An `Array Float` is stored as the elements' bit patterns, so the host passes the array as
+words.  [The verified compiler manual](../../../../docs/verified-manual.md#loops-and-builds) states
+the folds that the compiler accepts.
 
 | Theorem | Statement |
 |---------|-----------|
-| `sumSquares_bits` | Folding the step over the bit patterns of `xs` gives the bits of `sumSquares xs`. |
-| `sumSquares_implements` | Function 2 of `sumSquares.module` implements `sumSquares`: from any store that satisfies the runtime invariant, with the array in memory, a call returns the bits of `sumSquares xs` or stops at `unreachable`. |
-| `sumSquares_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements `sumSquares`. |
-
-The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  An `Array Float` is stored as the elements' bit patterns, so
-the host passes the array as words.  [The LeanExe compiler
-manual](../../../../docs/leanexe-manual.md#folds) lists the folds the compiler accepts.
+| `compiled.sumSquares.implements` | Function 2 of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, with an argument that represents `xs`, returns the bits of `sumSquares xs` without a trap. |
+| `compiled.sumSquares.native` | C function of the module's translation computes `sumSquares` as `compiled.sumSquares.implements` states. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `sumSquares`. |
+| `sumSquares_file`, `sumSquares_file_decode` | `build/verified/sumSquares.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`, as [the file module](File.lean) states. |
 
 ## Building, running, and testing
-
-```sh
-tools/leanrun --timeout 60m lake build Library.Numerics.Statistics.SumSquares.Verify
-mkdir -p build/sumSquares
-tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
-  Library.Numerics.Statistics.SumSquares.Module Library.Numerics.Statistics.SumSquares.sumSquares.module \
-  build/sumSquares/sumSquares.wasm
-build/tools/leanexe-wasmtime-host call build/sumSquares/sumSquares.wasm sumSquares f64 \
-  array-u64:4607182418800017408,4611686018427387904,4613937818241073152
-```
-
-The commands build the proofs, write the module, and call it in the Wasmtime host, with the setup of
-[the repository README](../../../../README.md#commands).  The array is `[1.0, 2.0, 3.0]`, and the call
-prints 4624070917402656768, the bits of 14.0.  [`tests/modules/run.sh`](../../../../tests/modules/run.sh)
-compares 52 cases of [`Cases.lean`](../../../../tests/TestSupport/Modules/SumSquares.lean) with native Lean, including the empty array,
-infinities, NaN, subnormal values, and small terms before and after a large one.
-
-## The verified compiler's module
-
-`verified_compile compiled := [sumSquares]` in [the verified compilation](Compiled.lean) compiles
-the same definition.  The fold allocates nothing, so the generated `compiled.sumSquares.implements`
-states that function 2 computes `sumSquares` without a trap from every store with the allocator
-invariant and a memory cap of at most 65,535 pages.  `sumSquares_implements` of the LeanExe module
-allows a trap at `unreachable`, and `compiled.sumSquares.native` states the computation for the C
-function of the module's translation.
 
 ```sh
 tools/leanrun --timeout 60m lake build Library.Numerics.Statistics.SumSquares.Compiled
@@ -67,20 +38,25 @@ tests/verified/run.sh --cases sumSquares
 tests/native/verified.sh --module sumSquares
 ```
 
-The call prints 4624070917402656768, as the LeanExe module's call does.  [The verified
-driver](../../../../tests/verified/run.sh) runs the 52 arrays of
-[`Cases.lean`](../../../../tests/TestSupport/Modules/SumSquares.lean) in Wasmtime against native
-Lean and checks that no call allocates beyond the host's array.  [The native
-driver](../../../../tests/native/verified.sh) runs them on the module's translation to C, compiled
-with CompCert.
+The commands build the theorems, write the module, call it in the Wasmtime host, and run the tests,
+with the setup of [the repository README](../../../../README.md#commands).  The array is
+`[1.0, 2.0, 3.0]`, and the call prints 4624070917402656768, the bits of 14.0.  [The verified
+driver](../../../../tests/verified/run.sh) runs 52 arrays in Wasmtime against native Lean and checks
+that no call allocates beyond the host's array.  The arrays are `floatArrays` of [the host's test
+support](../../../../tests/TestSupport/Host.lean), and they include the empty array, infinities,
+NaN, subnormal values, and small terms before and after a large one.  [The verified library
+cases](../../../../tests/TestSupport/LibraryCases.lean) print them with the results of native Lean,
+and [the native driver](../../../../tests/native/verified.sh) runs them on the module's translation
+to C, compiled with CompCert.  Without `--cases`, the verified driver also checks the file module
+against the file it wrote, and it fails unless `sumSquares_file` and `sumSquares_file_decode` report
+only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 
 [`Mean`](../Mean/README.md) folds addition over the same kind of array and divides by the length.
-[`SumArray`](../../../../Examples/SumArray/README.md) has folds over words.  `dot` in [`Gpt`](../../../../Demos/Gpt/README.md) sums
-the products of two arrays with a loop over indices.  The LTG entries
-[`float-array-fold`](../../../../ltg/entries/float-array-fold/README.md) and
-[`array-fold-loop`](../../../../ltg/entries/array-fold-loop/README.md) describe the rules.
+[`SumArray`](../../../../Examples/SumArray/README.md) has folds over words.  `dot` in [the binary64
+linear-algebra library](../../LinearAlgebra/README.md) sums the products of two arrays with a loop
+over indices.
 
 ## References
 

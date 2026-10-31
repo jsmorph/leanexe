@@ -7,9 +7,8 @@
 modulo 2 ** 64.
 
 Run with `uv run tests/prng/compare.py [path/to/prng.wasm]`.  Without a path the module is
-the verified compiler's build/verified/prng.wasm, which tests/verified/run.sh writes, and
-build/prng/prng.wasm is the LeanExe compiler's.  The script checks the
-first output for seed 0 against the published value 0xe220a8397b1dcdaf, one step from
+the verified compiler's build/verified/prng.wasm, which tests/verified/run.sh writes.  The script
+checks the first output for seed 0 against the published value 0xe220a8397b1dcdaf, one step from
 106 seeds, including 0, 2 ** 64 - 1, and seeds whose advance wraps, and 1,000
 successive steps from seeds 0 and 42 in one host session.  It checks the bits of
 `unitFloat` against `(x >> 11) / 2 ** 53` for 40 words.  It fails on the first
