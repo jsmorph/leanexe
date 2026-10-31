@@ -277,15 +277,15 @@ Scripted host models supply deterministic partial-transfer and failure cases.  N
 | Decision | Approved choice | Alternative and consequence |
 |---|---|---|
 | Zero-capacity read | One `fd_read` import call with a zero-length iovec.  EOF inference requires positive capacity. | Return `INVAL` before I/O, adding a source validation rule. |
-| Exit UInt64 to WASI u32 | Explicit low-32-bit conversion for direct exit and command return. | A checked exit-code type adds source representation work.  Trapping on overflow adds a guest failure path. |
-| Exit acceptance | Standard host linking with accepted-exit and terminal host-failure outcomes.  A guarantee of return or designated exit requires host acceptance of every reached exit request. | A custom callback accepting every UInt32 changes embedding policy and exit classification. |
-| Bytes | Single allocation root plus logical UInt64 length. | A length-prefixed, one-pointer object changes the existing byte host ABI and access proofs. |
-| Read result | Errno-and-bytes record, empty on error. | A heap-valued sum requires a broader accepted sum representation. |
-| Host errors | Permit the declared current-operation prefix and preserve prior effects.  Count is valid on success. | An unchanged-world error rule needs a stronger host guarantee. |
+| Exit UInt64 to WASI u32 | Explicit low-32-bit conversion for direct exit and command return. | Checked exit-code type adds source representation work.  Trapping on overflow adds a guest failure path. |
+| Exit acceptance | Standard host linking with accepted-exit and terminal host-failure outcomes.  A guarantee of return or designated exit requires host acceptance of every reached exit request. | Custom callback accepting every UInt32 changes embedding policy and exit classification. |
+| Bytes | Single allocation root plus logical UInt64 length. | Length-prefixed, one-pointer object changes the existing byte host ABI and access proofs. |
+| Read result | Errno-and-bytes record, empty on error. | Heap-valued sum requires a broader accepted sum representation. |
+| Host errors | Permit the declared current-operation prefix and preserve prior effects.  Count is valid on success. | Unchanged-world error rule needs a stronger host guarantee. |
 | Pure proof reuse | Prove import relocation and host-state execution transport, then compose. | Generalize shared compiler rules where the transport proof demonstrates a need. |
 | Source monad | Semantic `Action` with checked reflection equations. | Opaque BaseIO primitives require an additional primitive/state correspondence. |
 | Frontend | Separate `verified_compile_wasi` command, with an optional command entry. | Inferring an effect profile in `verified_compile` changes that command's accepted types and output selection. |
 | Native API placement | Compiler-independent `LeanExe.Bytes` and `LeanExe.Wasi` modules. | Compiler-specific source APIs couple consumers to one compiler's namespace and module organization. |
 | Effectful control flow | Bounded loops and an acyclic helper graph for the initial implementation. | Unbounded structured loops require a general trace-prefix theorem and separate termination premises. |
 | Depth accounting | Share the existing guarded-call depth through effectful and pure internal calls. | Independent counters require a combined frame bound to justify their interaction. |
-| Application-ABI table | Add the narrow empty-table encoding profile and export required by the pinned convention. | A three-import profile without that export reduces proof work but departs from the pinned application-ABI convention. |
+| Application-ABI table | Add the narrow empty-table encoding profile and export required by the pinned convention. | Three-import profile without that export reduces proof work but departs from the pinned application-ABI convention. |

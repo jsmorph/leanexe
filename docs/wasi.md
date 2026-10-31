@@ -121,20 +121,20 @@ A callable host configures stdio before invoking an export and may invoke anothe
 | `p.program`, `p.funs` | Typed effect program and its action meanings. |
 | `p.pure.program`, `p.pure.module` | Typed pure helpers and their import-free module. |
 | `p.f.func`, `p.f.callee` | Typed effect function and its reference in the complete program. |
-| `p.f.related` | The original Lean action corresponds to the typed function's meaning, including its result representation. |
+| `p.f.related` | Original Lean action corresponds to the typed function's meaning, including its result representation. |
 | `p.literalPool` | Shared raw byte-literal pool. |
 | `p.module` | Complete importing module. |
 | `p.calls` | Universal cost-aware correctness for the compiled effectful callees. |
-| `p.stackFits` | The estimated call-chain stack use fits the compiler's 512 KiB budget. |
+| `p.stackFits` | Estimated call-chain stack use fits the compiler's 512 KiB budget. |
 | `p.initial` | Allocator invariant, memory cap, borrowed constant tables, and static bytes in the modeled initial store. |
 | `p.f.implements` | Callable form: execution of the exported wrapper refines the original Lean function applied to its native parameters. |
 | `p.f.exported` | Callable form: the function's name and wrapper index occur in the module's exports. |
 | `p.f.total` | Callable form: under resource and reached-host premises, execution returns or exits with an accepted status. |
 | `p.start`, `p.exported` | Command form: execution of the exported `_start` refines native main followed by exit, and `_start` has the stated export index. |
 | `p.total` | Command form: under resource and reached-host premises, `_start` exits with an accepted status. |
-| `p.validity` | The module satisfies the repository's WebAssembly validity predicate. |
+| `p.validity` | Module satisfies the repository's WebAssembly validity predicate. |
 | `p.encoding`, `p.encoded`, `p.decoded` | Encoded byte list, its encoding equation, and decoding to exactly `p.module`. |
-| `p.validBinary` | The encoded bytes satisfy the repository's binary-validity predicate. |
+| `p.validBinary` | Encoded bytes satisfy the repository's binary-validity predicate. |
 | `p.bytes` | One byte sequence encodes and decodes the module, satisfies binary validity, and has the generated native execution and total-execution refinements. |
 
 The frontend proves instruction-profile, syntax, argument-placement, literal-coverage, and pool-separation obligations for the generated program.  Lean's kernel checks the reflection relations, finite checks, validity proofs, and applications of the universal compiler theorem.  [The public frontend](../Verified/Wasi/ReflectCommand.lean), [module validity rules](../LeanExe/Encoding/Spec/Validity.lean), and [binary correctness statement](../LeanExe/Encoding/Correctness.lean) define these claims.  File emission remains a separate operation through [the module emitter](../tools/Emit.lean).
@@ -147,9 +147,9 @@ The exported-entry theorems quantify an initial store, host implementation, and 
 
 | Outcome | Proved relation |
 |---|---|
-| Normal return | A source execution returns the corresponding native value.  The machine words represent that value with owned result memory.  The allocator invariant and the caller's retained heap regions outside scratch survive. |
-| Accepted exit or host trap | A source execution has the same terminal outcome, committed final world, and ordered I/O trace.  Accepted exit also has the designated exit marker and exact narrowed status. |
-| Guest resource trap, when permitted | A source prefix has the same committed world and trace, with a residual action describing the remaining work. |
+| Normal return | Source execution returns the corresponding native value.  The machine words represent that value with owned result memory.  The allocator invariant and the caller's retained heap regions outside scratch survive. |
+| Accepted exit or host trap | Source execution has the same terminal outcome, committed final world, and ordered I/O trace.  Accepted exit also has the designated exit marker and exact narrowed status. |
+| Guest resource trap, when permitted | Source prefix has the same committed world and trace, with a residual action describing the remaining work. |
 
 [The native result statement](../Verified/Wasi/NativeResult.lean) relates wrapper execution to native Lean actions.  [The command entry theorem](../Verified/Wasi/NativeCommand.lean) includes main's final exit.  Host relations may permit several replies.  Each sufficiently fueled target execution has a matching source execution or permitted source prefix with the same committed effects.
 
@@ -159,9 +159,9 @@ The target host state contains the abstract world and an append-only joint event
 
 | Premise | Requirement |
 |---|---|
-| Host implementation | The Talos host satisfies `hostSpec host` for the three imports, including reply bounds, trace updates, terminal exit behavior, and guest-memory preservation.  Such a host exists when `host` answers every request, and only when it answers every request that the ABI expresses, as [the totality module](../Verified/Wasi/HostTotal.lean) proves. |
+| Host implementation | Talos host satisfies `hostSpec host` for the three imports, including reply bounds, trace updates, terminal exit behavior, and guest-memory preservation.  Such a host exists when `host` answers every request, and only when it answers every request that the ABI expresses, as [the totality module](../Verified/Wasi/HostTotal.lean) proves. |
 | Heap and arguments | `Heap.At`, correctly represented argument words, and separation of consumed blocks from retained and borrowed memory. |
-| Static input | The literal pool's bytes and region exist and lie apart from consumed blocks.  Hidden table arguments represent their declared constants. |
+| Static input | Literal pool's bytes and region exist and lie apart from consumed blocks.  Hidden table arguments represent their declared constants. |
 | Scratch separation | Every live region read through an argument lies apart from `[0,16)`, including the full allocation of an allocated-empty byte buffer. |
 | Memory cap | At most 65,535 pages. |
 | No guest resource failure | With `aborts = false`, `Heap.Within` supplies room for a budget and `Resource.CallPrefixBound` bounds every typed source resource prefix by that budget with its size and depth checks satisfied. |

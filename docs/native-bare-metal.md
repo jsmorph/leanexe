@@ -24,7 +24,7 @@ The target is AArch64, on QEMU's `virt` machine with 1 GiB of RAM, compiled with
 | Target | CompCert run-time functions that the translations need | Lean copy | Startup |
 | --- | --- | --- | --- |
 | AArch64 | none: `runtime/Makefile` builds only `vararg.o` for it (line 26), and a translated module links with no library | `Archi.aarch64`, with the corpus passing natively on AArch64 | QEMU enters the image at EL1 |
-| x86-64 | `__compcert_i64_dtou` and `__compcert_i64_utod`, which `backend/SplitLong.vp` calls for unsigned conversions (lines 136 and 140), since `x86/SelectLong.vp` selects none of its own.  The library is compiled outside CompCert's proofs | `Archi.x86_64` | a Multiboot loader enters in 32-bit protected mode with paging off, so page tables must exist before any CompCert code runs in 64-bit mode |
+| x86-64 | `__compcert_i64_dtou` and `__compcert_i64_utod`, which `backend/SplitLong.vp` calls for unsigned conversions (lines 136 and 140), since `x86/SelectLong.vp` selects none of its own.  The library is compiled outside CompCert's proofs | `Archi.x86_64` | Multiboot loader enters in 32-bit protected mode with paging off, so page tables must exist before any CompCert code runs in 64-bit mode |
 | RISC-V 64 | not checked.  `runtime/Makefile` builds the whole set of 64-bit helpers for RISC-V (line 28) | no `Archi` instance, so a new one and new differential tests | not tested |
 
 `ccomp` passes the link to gcc and accepts `-nostdlib`, `-static`, `-T` with a linker script, and `-Wl,` (`driver/Linker.ml`, lines 66 to 95).  It always appends `-L<stdlib> -lcompcert` (lines 21 to 30), but on AArch64 that library holds only the variadic-argument helpers, which no translation calls.  In the experiments, the object file of the translation of each of eight corpus modules had no undefined symbol, and only the test host's replacement for `printf` drew on CompCert's library, for the variadic-argument helpers.  The generated code runs from RAM: QEMU's ELF loader writes `.text`, `.rodata`, and `.data` at their link addresses, so the startup code copies nothing.
@@ -79,8 +79,8 @@ The exit status of a program is therefore one of these codes:
 | --- | --- |
 | 0 | `main` wrote its output and returned |
 | 1, 2, 3 | `lx_status` after a trap at `unreachable`, an access outside memory, or a division by zero, which `main` returns |
-| 64 | a program with input read a length above `inMax` |
-| 254 | the startup code found an exception level other than 1 |
+| 64 | program with input read a length above `inMax` |
+| 254 | startup code found an exception level other than 1 |
 | 255 | exception, which the vectors report |
 
 On QEMU, the PL011 model passed every byte to its output in the experiments.  On hardware the transmitter can be busy when `main` writes, and `main` cannot wait for it: a volatile read of the UART's flag register is an input event whose value the theorem would have to quantify over, and a loop that waits on it has no termination proof.  Under KVM each store to the UART reaches QEMU's PL011 model, as under TCG, so B8 leaves the question to a board, which has to settle how output reaches a device that may not accept every write.
@@ -178,13 +178,13 @@ The startup code is GNU assembly, about 125 instructions and a table of exceptio
 | Record `SCTLR_EL1` | `mrs SCTLR_EL1` | value at entry, which `tests/baremetal/entry.c` reports: `0x00c50838` under TCG, with `M`, `C`, and `I` clear, and `0x30c509d8` under KVM |
 | Install the vectors | `msr VBAR_EL1` | 16 entries of 128 bytes at a 2 KiB boundary.  Each reports `ESR_EL1`, `ELR_EL1`, and `FAR_EL1` and exits with status 255 |
 | Build the translation tables | about 50 instructions, with the MMU off | five tables of 4 KiB at `__tables`, as described below |
-| Turn on the MMU and the caches | `MAIR_EL1`, `TCR_EL1`, `TTBR0_EL1`, `dsb sy`, `isb`, `tlbi vmalle1`, `dsb nsh`, `isb`, then `SCTLR_EL1` with `M`, `C`, and `I` set and `A` and `WXN` clear, and `isb` | the TLBs' contents at reset are IMPLEMENTATION DEFINED and might be UNKNOWN (section D8.16.1, page D8-7852) |
+| Turn on the MMU and the caches | `MAIR_EL1`, `TCR_EL1`, `TTBR0_EL1`, `dsb sy`, `isb`, `tlbi vmalle1`, `dsb nsh`, `isb`, then `SCTLR_EL1` with `M`, `C`, and `I` set and `A` and `WXN` clear, and `isb` | TLBs' contents at reset are IMPLEMENTATION DEFINED and might be UNKNOWN (section D8.16.1, page D8-7852) |
 | Enable floating point | `CPACR_EL1.FPEN = 0b11`, then `isb` | FPEN's reset value is unknown.  Without this step `main` trapped at its third instruction with exception class `0x07` |
 | Set the stack | `mov sp, __stack_top` | `SCTLR_EL1.SA` was 1 at entry, so the stack pointer must stay 16-byte aligned |
 | Fill the stack with a pattern | loop of `str` | high-water mark that the report gives and that the section on the stack uses |
 | Clear `.bss` | loop of `stp xzr, xzr` | `lx_mem` and the uninitialized globals lie in `.bss`, and `init_mem` gives them zeros |
 | Call `main` | `bl main` | |
-| Report on the exception stack | `mov sp, __exc_stack_top`, then `bl lx_report_exit`, after `main` returns or a call of `lx_exit` | the report's frames lie outside the stack that the pattern fills, so the high-water mark that the report computes is that of `main` and its callees.  The vectors and the check of the level, the exception stack's other users, end at the exit, so that stack holds nothing then |
+| Report on the exception stack | `mov sp, __exc_stack_top`, then `bl lx_report_exit`, after `main` returns or a call of `lx_exit` | report's frames lie outside the stack that the pattern fills, so the high-water mark that the report computes is that of `main` and its callees.  The vectors and the check of the level, the exception stack's other users, end at the exit, so that stack holds nothing then |
 | Exit | semihosting `SYS_EXIT` with `ADP_Stopped_ApplicationExit` and `w0`, or, built with `PSCI_EXIT`, PSCI `SYSTEM_OFF` through `hvc #0` | under TCG, QEMU exits with `main`'s result.  Under KVM, QEMU exits with status 0 and the report gives the result |
 
 The startup code turns the MMU and the caches on in every build, under TCG and under KVM, so the runs under TCG execute the code that runs on hardware.  With stage 1 translation off, the architecture gives every data access the memory type Device-nGnRnE (Arm Architecture Reference Manual, DDI 0487 issue M.d, section D8.2.12.1, page D8-7730).  An unaligned access to Device memory generates an Alignment fault where the location cannot support unaligned accesses, and otherwise whether it faults is IMPLEMENTATION DEFINED (section B2.8.2, page B2-312).  QEMU 8.2.2 under TCG runs such an access without a fault (QEMU issue 1204).  Under KVM on AArch64 hardware, before the MMU was on, the probe's unaligned 8-byte load took a data abort with `ESR_EL1` `0x96000021`, exception class `0x25` and fault status `0x21`, an alignment fault, at `ELR_EL1` `0x40100074` with `FAR_EL1` `0x40102053`.
@@ -260,11 +260,11 @@ Compared with the translator's design, libc, the operating system, and the C hos
 
 | Milestone | Work | Exit criterion |
 | --- | --- | --- |
-| B0 · Toolchain | `tools/baremetal/`: startup code, linker script, build script, the device-tree check | the experiment's programs build from the repository and run under QEMU |
+| B0 · Toolchain | `tools/baremetal/`: startup code, linker script, build script, the device-tree check | experiment's programs build from the repository and run under QEMU |
 | B1 · Corpus under QEMU | freestanding test host and driver beside `tests/native/verified.sh` | every translated case of the corpus and every module case passes under QEMU |
 | B2 · Lean copy | program-level judgment, volatile stores, their differential tests | no difference from `ccomp -interp` in either CompCert configuration |
 | B3 · Whole program | `bareProgram`, the prefix of external declarations, `init_mem` and `start` for it, the renaming lemma, the check on the whole program | `start` holds for `bareProgram` of every corpus module, and the check passes for all of them |
-| B4 · Generated `main` | `main` writer, its proof, and `p.f.program` from the command `bare_program` | the programs of test 2 run under QEMU with their theorems |
+| B4 · Generated `main` | `main` writer, its proof, and `p.f.program` from the command `bare_program` | programs of test 2 run under QEMU with their theorems |
 | B5 · Rocq | `clight2_bigstep_to_asm` and the uniqueness lemma, built against CompCert 3.18's proofs | both check with the assumptions recorded |
 | B6 · Stack bound | bound tool, its cross-check with the translator, and test of the build | test 3 passes for every corpus module |
 | B7 · Inputs (optional) | volatile loads, the theorem about `alloc` and stores, the quantified theorem, and the uniqueness lemma for traces with inputs | SHA-256 of a loaded message, with its theorem |
