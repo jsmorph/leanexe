@@ -4,34 +4,35 @@
 
 | Item | Value |
 |---|---|
-| Commit | [Replace the deprecated String.mk in the buffer-tree cases](https://github.com/jsmorph/leanexe/commit/dccc56e94ab140df3f7d019daa418f2f559870f7), committed 2026-10-30 14:19 UTC |
-| Paths that differed from the commit | `tools/full-check` |
-| Run | 2026-10-30 17:05 UTC to 2026-10-30 19:28 UTC |
+| Commit | [Record the GPT generation port and the driver fix](https://github.com/jsmorph/leanexe/commit/63d51e38e915e825c2161aee83ddcdf213d57b34), committed 2026-10-30 21:18 UTC |
+| Paths that differed from the commit | None |
+| Run | 2026-10-30 21:21 UTC to 2026-10-31 00:16 UTC |
 | Lean toolchain | `leanprover/lean4:v4.34.0-rc2` |
 | Platform | Linux on AArch64 |
 
 | Step | Status | Duration | Counts |
 |---|---|---|---|
-| `lake build` of the six libraries and the four test executables | passed | 6 s | 15,316 jobs; 4,692 axiom reports, 4,691 of them with no axiom beyond `propext`, `Classical.choice`, and `Quot.sound`; no `sorry` warning |
-| `tests/verified/run.sh` | passed | 51 min | 37,680 cases passed, 0 failed; 2,733 GPT cases passed, 0 failed; 3,096 Euler cases passed, 0 failed; 226 sums cases passed, 0 failed; 100,000 slew edges agree; 32 file theorems with the permitted axioms; 808 theorems in 3 axiom audits; 116 modules written and validated |
-| `tests/native/verified.sh` | passed | 10 min | 37,680 cases passed, 0 failed, 0 not run; 3,322 module cases passed, 0 failed, 0 not run; 0 modules without a translation |
-| `tests/native/verified.sh --aligned` | passed | 4 min | 1,024 cases passed, 0 failed, 36,656 not run; 3,096 module cases passed, 0 failed, 226 not run; 0 modules without a translation; 110 modules without aligned theorems |
-| `tests/native/aligned.sh` | passed | 8 s | `crcaligned` built with 8 exports; `libwordarray` and `literals` refused |
-| `tests/native/run.sh` | passed | 54 s | 20 programs, whose 1,701 calls agree with Talos |
-| `tests/native/bytes.sh` | passed | 8 s | 84 of 84 cases agree with Wasmtime; 2 trap cases run |
-| `tests/native/clight.sh 7 300 aarch64` | passed | 20 s | 921 programs agree with `ccomp -interp`, 371 of them undefined, 300 of them trace programs, and 300 input programs; 0 differ; 0 out of fuel |
-| `tests/wasi/run.sh` | passed | 3 min | 4,372 cases passed in 19 groups; 906 theorems in 21 axiom audits |
+| `lake build` of the six libraries and the four test executables | passed | 9 s | 15,366 jobs; 4,720 axiom reports, 4,719 of them with no axiom beyond `propext`, `Classical.choice`, and `Quot.sound`; no `sorry` warning |
+| `tests/verified/run.sh` | passed | 58 min | 41,462 cases passed, 0 failed; 2,733 GPT cases passed, 0 failed; 3,096 Euler cases passed, 0 failed; 226 sums cases passed, 0 failed; 100,000 slew edges agree; 130 file theorems with the permitted axioms; 808 theorems in 3 axiom audits; 131 modules written and validated |
+| `tests/native/verified.sh` | passed | 16 min | 41,462 cases passed, 0 failed, 0 not run; 3,322 module cases passed, 0 failed, 0 not run; 0 modules without a translation |
+| `tests/native/verified.sh --aligned` | passed | 7 min | 1,024 cases passed, 0 failed, 40,438 not run; 3,096 module cases passed, 0 failed, 226 not run; 0 modules without a translation; 125 modules without aligned theorems |
+| `tests/native/aligned.sh` | passed | 12 s | `crcaligned` built with 8 exports; `libwordarray` and `literals` refused |
+| `tests/native/run.sh` | passed | 61 s | 20 programs, whose 1,701 calls agree with Talos |
+| `tests/native/bytes.sh` | passed | 10 s | 84 of 84 cases agree with Wasmtime; 2 trap cases run |
+| `tests/native/clight.sh 7 300 aarch64` | passed | 27 s | 921 programs agree with `ccomp -interp`, 371 of them undefined, 300 of them trace programs, and 300 input programs; 0 differ; 0 out of fuel |
+| `tests/wasi/run.sh` | passed | 4 min | 4,372 cases passed in 19 groups; 906 theorems in 21 axiom audits |
 | `tests/baremetal/run.sh` | passed | 1 s | probe, unaligned, guard, nofp, entry at EL1, EL2, and EL3, and the device tree pass |
-| `tests/baremetal/programs.sh` | passed | 3 min | 5 programs passed, 0 failed |
-| `tests/baremetal/inputs.sh` | passed | 11 s | 13 inputs passed, 0 failed |
-| `tests/baremetal/verified.sh` | passed | 62 min | 41,002 cases passed, 0 failed, 0 not run, in 95 modules; 0 modules without a translation; 0 modules that do not build |
-| `VKB/Check.lean` | passed | 3 s | 22 entries, no problem reported |
-| `rocq/check.sh` | passed | 20 s | `Clight2Asm.v` checks, with the assumptions of `transf_c_program_correct` and `ClassicalEpsilon.constructive_indefinite_description` |
-| `tests/wgsl/run.sh --verified --emit-only` | passed | 95 s | 9 kernels and 347 cases written |
+| `tests/baremetal/programs.sh` | passed | 24 s | 5 programs passed, 0 failed |
+| `tests/baremetal/inputs.sh` | passed | 13 s | 13 inputs passed, 0 failed |
+| `tests/baremetal/verified.sh` | passed | 69 min | 44,784 cases passed, 0 failed, 0 not run, in 110 modules; 0 modules without a translation; 0 modules that do not build |
+| `VKB/Check.lean` | passed | 5 s | 29 entries, no problem reported |
+| `rocq/check.sh` | passed | 22 s | `Clight2Asm.v` checks, with the assumptions of `transf_c_program_correct` and `ClassicalEpsilon.constructive_indefinite_description` |
+| `tests/wgsl/run.sh --verified --emit-only` | passed | 105 s | 9 kernels and 347 cases written |
 | `tests/wgsl/run.sh --verified --drivers-only` | not run: drivers absent |  |  |
 | `tests/wgsl/run.sh --verified-gpt32 --emit-only` | passed | 8 min | 17 kernels and 694 cases written |
 | `tests/wgsl/run.sh --verified-gpt32 --drivers-only` | not run: drivers absent |  |  |
 | `tests/gpt32/native.sh --verified` | not run: drivers absent |  |  |
+| `tests/talos/run.sh` | passed | 10 min | 64,751 commands passed, 0 failed, 346 skipped; report equal to CodeLib's |
 
 These axiom reports of the dependencies' files name an axiom beyond `propext`, `Classical.choice`, and `Quot.sound`:
 

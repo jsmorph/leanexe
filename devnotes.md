@@ -39645,3 +39645,21 @@ The agent that wrote the port stopped before its journal entry, its VKB review, 
 - [x] `increment_call` beside `increment_total` in the documents.
 - [x] The native driver's result for a selection of module cases.
 - [ ] `module_side` over the verified Euler module.
+
+## 2026-10-31: The full check with the registry's file theorems and the Talos driver
+
+[`tools/full-check`](tools/full-check) ran from 21:21 UTC on 2026-10-30 to 00:16 UTC on 2026-10-31 on the commit that records the GPT generation port and the driver fix, with no path differing from it, and [`STATUS.md`](STATUS.md) holds its record.  It used `LEANRUN_THREADS=8`, `LEANRUN_MEMORY_HIGH=40G`, and `JOBS=8` on AArch64, and every step that ran passed.  The build's modules were current, so the build replayed its 15,366 jobs in 9 seconds, and the corpus drivers took most of the 2 hours and 55 minutes.
+
+Since [the first record](#2026-10-30-the-full-check-as-a-script), the ported examples and demos have joined the registry, and most of its modules have gained file theorems, so the verified driver ran 41,462 cases in 58 minutes and the bare-metal driver 44,784 cases in 69 minutes.  The Talos step, new to the script, ran 64,751 commands of the WebAssembly test suite with none failing and 346 skipped, and its report equals CodeLib's.  The driver halves of the GPU steps did not run, since the Vulkan drivers were absent where the check ran.
+
+| Step | Duration | Result |
+| --- | --- | --- |
+| Gate build | 9 s | 15,366 jobs; 4,720 axiom reports, all with no axiom beyond the three permitted ones except CodeLib's `arithmetic_examples`; no `sorry` warning |
+| `tests/verified/run.sh` | 58 min | 41,462 cases, 2,733 GPT cases, 3,096 Euler cases, 226 sums cases, and 100,000 slew edges; 130 file theorems; 808 theorems in 3 axiom audits; 131 modules |
+| `tests/native/verified.sh` without and with `--aligned` | 16 and 7 min | 41,462 cases and 3,322 module cases; 1,024 aligned cases and 3,096 module cases, with 125 modules lacking aligned theorems |
+| `tests/native/aligned.sh`, `run.sh`, `bytes.sh`, and `clight.sh 7 300 aarch64` | 12 s, 61 s, 10 s, and 27 s | Aligned CRC built and two modules refused; 1,701 calls of 20 programs; 84 cases and 2 traps; 921 programs agree and none differ |
+| `tests/wasi/run.sh` | 4 min | 4,372 cases in 19 groups; 906 theorems in 21 axiom audits |
+| `tests/baremetal/run.sh`, `programs.sh`, `inputs.sh`, and `verified.sh` | 1 s, 24 s, 13 s, and 69 min | Startup checks; 5 programs; 13 inputs; 44,784 cases of 110 modules |
+| `VKB/Check.lean` and `rocq/check.sh` | 5 s and 22 s | 29 entries; `Clight2Asm.v` with the assumptions of CompCert's theorem |
+| `tests/wgsl/run.sh --verified` and `--verified-gpt32`, emission | 105 s and 8 min | 9 kernels and 347 cases; 17 kernels and 694 cases |
+| `tests/talos/run.sh` | 10 min | 64,751 commands passed and 346 skipped; report equal to CodeLib's |
