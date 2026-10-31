@@ -58,6 +58,7 @@ import Demos.Gpt32.Compose
 import Demos.Gpt32.Driver
 import Demos.Gpt32.Exec
 import Demos.Gpt32.HostProgram
+import Demos.OrderBook.Samples
 import Demos.Slew.Cost
 import Demos.Slew.Flat
 import Demos.Slew.NanFree

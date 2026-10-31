@@ -40065,7 +40065,7 @@ The specification models each side as a list of resting orders sorted by price a
 
 The refinement proof dominates the work.  The design also assumes that the verified compiler updates the array fields of an owned record in place inside a loop state, which the manual lists as supported but which no fixture of this size exercises, so a small probe comes before the implementation grows.  The probe compiles a record of word arrays that a loop updates with `set!` and checks with the allocation counters that no update copies an array.
 
-- [ ] English description, list specification, and a fresh agent's review of the specification against the description.
+- [x] English description, list specification, and a fresh agent's review of the specification against the description.
 - [ ] The specification's theorems.
 - [ ] Probe of in-place updates to the array fields of an owned record in a `repeatWhile` state.
 - [ ] Array implementation, its native comparison with the specification on random command streams, and an independent Python reference.
@@ -40110,3 +40110,13 @@ The documents now state the tests as formulas, define every table column, presen
 A review of the branch noted that the indexes list energy's forms as V S F, although its module translates to C.  `#check` shows `Demos.Energy.Verified.compiled.authorize.native`, which states `NativeTablesImpl` for the translation.  CompCert 3.18 was built from the archive whose SHA-256 the M0 entry records, configured with `./configure -clightgen x86_64-linux`, with Debian 13's packages `coq` 8.20.1, `ocaml-nox` 5.3.0, `menhir` and `libmenhir-ocaml-dev` 20240715.  `make -j6 all` built `ccomp`, `clightgen`, and the run-time library, with the proofs.  `ccomp -version` reports 3.17, as the archive's `VERSION` file says.  `tests/native/verified.sh --module energy`, with `CCOMP`, `CLIGHTGEN`, and `CCOMP_STDLIB` naming that tree, passed 2,056 cases and failed none.
 
 Energy's rows in the demo index and the algorithm index now list C, the README lists `compiled.authorize.native` and the native driver, and the plan's open decision on the gateway runtime no longer defers the question of whether the translation contains `authorize`.
+
+## 2026-10-31: The order book's requirements and specification
+
+The first milestone of [the order-book design](#2026-10-31-the-design-of-a-two-sided-order-book) is done.  [The requirements](Demos/OrderBook/requirements.md) state the book in English, `Demos/OrderBook/Spec.lean` states them in Lean over lists, and `Demos/OrderBook/Samples.lean` holds command streams whose events and books `Demos/OrderBook/SpecRun.lean` prints.  `Demos.lean` imports the samples, so the default build checks the specification.
+
+Two decisions changed the design during the milestone.  Order ids are sequence numbers, the first accepted order having id 1, so the specification never mentions the implementation's slots, and cancel and reduce find an order by a scan of at most 4,096 slots.  The trade event's sixth field is the maker's remaining quantity instead of the taker's account, which the host knows from its own command, so the events alone give the state of every resting order.
+
+The reviews, which [the review record](Demos/OrderBook/review.md) gives, settled the remaining details.  The remainder rules apply in the order of their table, so self-trade prevention takes precedence over IOC and over a full book, and the capacity count is taken after matching.  The requirements cover fewer than 2^64 − 1 accepted orders, so the next id never wraps and the ids of resting orders are distinct.  `Spec.Valid` defines the books that the requirements describe, including the uncrossed book, which the matching and post-only rules imply, and it is the invariant that the specification's theorems are to establish.
+
+Five fresh agents reviewed the specification in turn, each from the requirements, the specification, the samples, and the printed output alone.  The third and the fourth found one defect each, both in `Valid`'s treatment of the next id, and the first, second, and fifth found none.  The input classes that the last review listed as uncovered go into the implementation's tests.
