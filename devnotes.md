@@ -39559,3 +39559,9 @@ The documents now state the tests as formulas, define every table column, presen
 - [x] Lean, case, `run.sh`, and replay-tool fixes, with the build and 2,056 cases passing on minideb2.
 - [x] Data prepared again and every replay rerun.
 - [x] README, report, and plan rewritten.
+
+## 2026-10-31: The energy module's C translation
+
+A review of the branch noted that the indexes list energy's forms as V S F, although its module translates to C.  `#check` on minideb2 shows `Demos.Energy.Verified.compiled.authorize.native`, which states `NativeTablesImpl` for the translation.  minideb2 had no CompCert, so CompCert 3.18 was built there from the archive whose SHA-256 the M0 entry records, configured with `./configure -clightgen x86_64-linux`, with Debian 13's packages `coq` 8.20.1, `ocaml-nox` 5.3.0, `menhir` and `libmenhir-ocaml-dev` 20240715.  `make -j6 all` built `ccomp`, `clightgen`, and the run-time library in `~/compcert/CompCert-3.18`, with the proofs.  `ccomp -version` reports 3.17, as the archive's `VERSION` file says.  `tests/native/verified.sh --module energy`, with `CCOMP`, `CLIGHTGEN`, and `CCOMP_STDLIB` naming that tree, passed 2,056 cases and failed none.
+
+Energy's rows in the demo index and the algorithm index now list C, the README lists `compiled.authorize.native` and the native driver, and the plan's open decision on the gateway runtime no longer defers the question of whether the translation contains `authorize`.

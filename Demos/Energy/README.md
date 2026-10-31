@@ -57,6 +57,7 @@ The test site's table, in [the site module](Site.lean), has an energy floor of 1
 | Theorem | File | Hypotheses | Conclusion |
 |---|---|---|---|
 | `compiled.authorize.implements` | [The compilation](Verified.lean) | A heap with the allocator invariant, a memory cap of at most 65,535 pages, the profile table at its address, and argument words that represent the borrowed input | Function 17, the `authorize` export, returns the words of `authorize xs` without a trap. |
+| `compiled.authorize.native` | [The compilation](Verified.lean) | A C global environment that holds the translation's globals, memory, and functions, and the premises of `compiled.authorize.implements` | The C translation's `authorize` computes `authorize xs` as `compiled.authorize.implements` states. |
 | `window_sound` | [The window lemma](Window.lean) | A positive efficiency bound, a fallback interval that contains 0, the integer conditions of the tests, `t` in the window, and a trajectory admitted until `t` | `WithinOrFallback` at `t`. |
 | `authorizeWith_iff` | [The authorizer's theorems](Authorize.lean) | A valid profile table | The authorizer accepts exactly when the input is valid and the integer conditions of the tests hold. |
 | `site_valid` | [The site's theorems](Theorems.lean) | None | The test site's table meets the profile's validity condition. |
@@ -88,7 +89,7 @@ The test site's table, in [the site module](Site.lean), has an energy floor of 1
 
 The theorems concern the model.  Stored energy changes only by battery power through the efficiencies and by the auxiliary loss, the grid limits are limits on instantaneous power, and load and PV output are nonnegative, so a PV inverter's standby draw counts as load.  No theorem proves the device's response or the gateway's rules, which equipment qualification and tests support, and none states anything about a time after a premise fails, or after the last window, when the fallback mode's own protections apply.  A different site needs its own profile table, its own `site_valid`, and its own module and file theorems, because the table is part of the module's bytes.
 
-The module statements describe execution in Talos's semantics, and the agreement of Wasmtime with Talos, the decoder's reading of the bytes, Wasmtime's instantiation, and the host's placement of the input are assumptions of [the trusted base](../../docs/trusted-base.md).  The tests compare Wasmtime with native Lean on every case, which is evidence for these assumptions without proving them.  The replay tool implements the acceptance rule a second time and agrees with the module on every case, which is evidence that the program states the plan's rule.
+The module statements describe execution in Talos's semantics, and the agreement of Wasmtime with Talos, the decoder's reading of the bytes, Wasmtime's instantiation, and the host's placement of the input are assumptions of [the trusted base](../../docs/trusted-base.md).  The tests compare Wasmtime with native Lean on every case, which is evidence for these assumptions without proving them.  For the C translation, `compiled.authorize.native` replaces these assumptions with those that the trusted base lists for C files, among them CompCert and the Lean copy of Clight.  The replay tool implements the acceptance rule a second time and agrees with the module on every case, which is evidence that the program states the plan's rule.
 
 ## Building, running, and testing
 
@@ -100,9 +101,10 @@ build/tools/leanexe-wasmtime-host call build/verified/energy.wasm authorize list
   array-u64:1,0,14400000,15120000,0,4294967296,4294967296,3000,4000,0,3000,4294966296,4294967796
 lake exe verified-cases-energy > cases.txt
 uv run tests/energy/replay.py check cases.txt
+CCOMP=ccomp CLIGHTGEN=clightgen tests/native/verified.sh --module energy
 ```
 
-The run writes `build/verified/energy.wasm`, checks its file theorems, runs the axiom audit, and compares 2,056 cases between Wasmtime and native Lean from [the case generator](../../tests/TestSupport/Energy/Cases.lean).  The cases are the worked example, invalid inputs with each word one past its range, inputs on both sides of each test's boundary and at the ends of each range, and 2,000 inputs that SplitMix64 draws from a fixed seed.  The call passes the worked example's limits `[-1,000, 500]` W and prints `0`, `4294966296`, `4294967796`, and `870` on four lines: acceptance, the two limits, and the expiry.  `lake exe verified-cases-energy --summary` prints the count of each status in each class of cases, and `replay.py check` compares every case with the replay tool's rule.
+The run writes `build/verified/energy.wasm`, checks its file theorems, runs the axiom audit, and compares 2,056 cases between Wasmtime and native Lean from [the case generator](../../tests/TestSupport/Energy/Cases.lean).  The cases are the worked example, invalid inputs with each word one past its range, inputs on both sides of each test's boundary and at the ends of each range, and 2,000 inputs that SplitMix64 draws from a fixed seed.  The call passes the worked example's limits `[-1,000, 500]` W and prints `0`, `4294966296`, `4294967796`, and `870` on four lines: acceptance, the two limits, and the expiry.  `lake exe verified-cases-energy --summary` prints the count of each status in each class of cases, and `replay.py check` compares every case with the replay tool's rule.  The native driver translates the module to C, compares the Clight that `clightgen` reads back from the printed C with the translation, compiles the C with CompCert 3.18's `ccomp`, and runs the same 2,056 cases.
 
 ## References
 
