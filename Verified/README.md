@@ -1,11 +1,11 @@
-# Verified Compiler Internals
+# Verified compiler internals
 
 The verified compiler consists of a typed source language, a Lean function that compiles it, and
 a universal correctness proof.  `verified_compile` reflects ordinary Lean definitions into that
 language and derives their execution theorems.
 [The verified compiler manual](../docs/verified-manual.md) describes the dialect, the declarations
 that the command adds, the bounds, the tests, and the examples for a program's author.  The library
-shares the trusted base and the statement of correctness with `LeanExe`: Talos's semantics, the
+takes the trusted base and the statement of correctness from Talos and the `LeanExe` library: Talos's semantics, the
 encoder and decoder with `decode_encode`, `Implements` and its relatives in
 [`LeanExe/Pipeline/`](../LeanExe/Pipeline), and the runtime.  The statements add definitions of
 their own: `Heap.Within` in [the runtime rules](RuntimeFacts.lean), the allocation bound of
@@ -14,7 +14,8 @@ the initial store.  Native algorithm definitions live in
 [the library](../Library/README.md), compiler fixtures in `Verified/Examples`, and application
 compilations in [the demos](../Demos/README.md).  Separate compilation and mathematical proof
 modules import the compiler or proof rules they use.  The proofs use only the axioms `propext`, `Classical.choice`, and
-`Quot.sound`.
+`Quot.sound`.  [The journal](../devnotes.md#2026-10-06-the-verified-compiler) records the analysis
+that led to the library and its plan.
 
 ## Source language and code
 
@@ -112,8 +113,8 @@ binary32 or binary64 from the operand type.  Negation subtracts the operand from
 its format, matching Lean's result on every input, including canonical NaN.
 `Float.ofBits` compiles to `f64.reinterpret_i64` followed by the addition of −0, which gives the
 canonical NaN for a NaN pattern and leaves every other float unchanged.  A float constant's code
-holds its canonical bit pattern, which the compiler computes with integer operations, so the bytes
-that `tools/Emit.lean` writes by evaluating the compiler natively do not depend on Lean's native
+holds its canonical bit pattern, which the verified compiler computes with integer operations, so the bytes
+that `tools/Emit.lean` writes by evaluating the verified compiler natively do not depend on Lean's native
 float code.  Each binding's value is stored in positions of its own, and a call pushes its
 arguments' words in order and calls the function, which the module places before its callers.  An
 argument at an owned parameter moves its variable into the call when the variable is owned, dies at
@@ -153,9 +154,9 @@ checks the length first and selects an empty build past the end, preserving `Arr
 A read keeps the position in a local, compares it with the array's size, the length word divided
 by the element's word count, and keeps the result as a flag.
 It then loads each of the element's words under the flag, 0 past the end.  A binary64 read uses
-`f64.reinterpret_i64`; a binary32 read wraps the word to i32 and uses `f32.reinterpret_i32`.
+`f64.reinterpret_i64`.  A binary32 read wraps the word to i32 and uses `f32.reinterpret_i32`.
 An update, a push, and a build store the element's words in locals and write each.  Binary64 stores
-use `i64.reinterpret_f64`; binary32 stores use `i32.reinterpret_f32` and zero-extension to i64.
+use `i64.reinterpret_f64`.  Binary32 stores use `i32.reinterpret_f32` and zero-extension to i64.
 The code uses `min k 2^29` as the word count `k` of an element: an element of `2^29` words or more is in no array that
 memory holds, and the bound keeps the count positive and below `2^64`.  WebAssembly traps on a zero
 divisor, so the compiled division and remainder save their operands in scratch locals, test the
@@ -170,9 +171,7 @@ the facts that the proof shares.  [The expression specification](ExprSpec.lean) 
 and proves the shared call, budget, and operand-sequencing rules.  [The binary32 rules](AlignedFloat32.lean)
 prove arithmetic, comparisons, unary operations, and word conversions.  [The expression rules](ExprCorrect.lean) prove expression and
 ordinary-function compilation, and [the program theorem](Correct.lean) combines the function
-rules.  The compiled module has the layout of `LeanExe`'s modules, with the runtime's `alloc`
-and `release` at functions
-0 and 1.
+rules.  The compiled module holds the runtime's `alloc` and `release` at functions 0 and 1.
 
 ### Folds and checked insertion
 
@@ -525,8 +524,8 @@ allocator invariant for `initialStaticHeap pool`, the memory cap, the borrowed t
 `pool.Static`.  For a nonempty pool the reflector exposes these four conjuncts as `p.initial`.
 Separation from the arguments moved by a later call remains a call premise.  For a program with
 no nonempty literals, `Prog.correctWith` and `compileWith_initialStore` take an explicit
-`prog.literals = []` proof and preserve the previous generated `ImplementsA`, `ImplementsTables`,
-and three-part `p.initial` APIs.
+`prog.literals = []` proof, and the reflector states `ImplementsA`, `ImplementsTables`, and a
+three-part `p.initial` for such a program.
 
 ## Module composition
 
@@ -586,9 +585,9 @@ pure callees.  [The WASI manual](../docs/wasi.md) states the API and generated d
 | [Pure transport](Wasi/PureTransportSpecs.lean) | `Calls` | Relocated pure code computes the same values and preserves the host world in a module with the three WASI imports. |
 | [Universal command proof](Wasi/CostCommandCorrect.lean) | `Command.cost_code_spec` | Every command constructor preserves ownership and caller regions outside scratch, with source execution or a permitted resource prefix.  Normal results retain their allocation charge, fit predicate, and heap-top bound. |
 | [Universal program proof](Wasi/Correct.lean) | `EffectProg.correctWith` | Pure correctness, effect calls, function entries, and command rules compose for the compiled effect program. |
-| [Native callable entry](Wasi/NativeEntry.lean) | `compiled_native_entry_run` | The actual exported wrapper executes the original Lean action after injecting depth zero and hidden table addresses. |
+| [Native callable entry](Wasi/NativeEntry.lean) | `compiled_native_entry_run` | Each exported wrapper executes the original Lean action after injecting depth zero and hidden table addresses. |
 | [Native command entry](Wasi/NativeCommand.lean) | `compiled_native_start_run` | `_start` executes the selected closed action, then requests its returned status as an exit. |
-| [Modeled initialization](Wasi/ProgramInitial.lean) | `compileWith_initialStore` | The assembled module establishes the allocator invariant, memory cap, borrowed tables, and static literal pool. |
+| [Modeled initialization](Wasi/ProgramInitial.lean) | `compileWith_initialStore` | Initialization of the assembled module establishes the allocator invariant, memory cap, borrowed tables, and static literal pool. |
 
 The [resource model](Wasi/ResourcePrefix.lean) charges allocation and checks pure-call fits along
 source execution prefixes, including a read's full requested capacity before its reply.  A
@@ -616,8 +615,8 @@ The [development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda
 ## WGSL kernels
 
 [The WGSL compiler](WGSL/Compile.lean) translates an outer typed array build to a program of
-[the kernel source language](../LeanExe/WGSL/Source.lean), which the shared translation turns
-into the WGSL subset.  [Typed representations](WGSL/Context.lean) relate source values to scalar
+[the kernel source language](../LeanExe/WGSL/Source.lean), which the translation of `LeanExe.WGSL`
+turns into the WGSL subset.  [Typed representations](WGSL/Context.lean) relate source values to scalar
 expressions and borrowed input buffers.  [Lowering](WGSL/Lower.lean) recursively constructs
 [code with a denotation proof](WGSL/Code.lean), using shared rules for bindings, branches, and
 counted loops.  Parameters, loop state, and output elements use words, Booleans, or binary32
@@ -625,22 +624,22 @@ values.  Unsupported expressions return `none`.
 
 [Kernel construction](WGSL/Kernel.lean) checks the local layout and WGSL translation and retains
 their proofs.  [Dispatch correctness](WGSL/Dispatch.lean) combines the lowered element theorem
-with the existing generic dispatch theorem.  Every accepted source build computes its source
-array and has a race-free dispatch under that theorem's buffer, count, coverage, and device
-conditions.  [The manual's WGSL section](../docs/verified-manual.md#wgsl-kernels) states the
-accepted subset and API.  [The examples](Examples/Wgsl.lean) and
+with the generic dispatch theorem `LeanExe.WGSL.Spec.dispatch_eq`.  Every accepted source build
+computes its source array and has a race-free dispatch under that theorem's buffer, count,
+coverage, and device conditions.  [The manual's WGSL section](../docs/verified-manual.md#wgsl-kernels)
+states the accepted subset and API.  [The examples](Examples/Wgsl.lean) and
 [native-value proofs](Examples/WgslProof.lean) specialize the result to reflected Lean functions.
+The translation normalizes binary arithmetic, square root, and nearest-even results
+with [integer tests of their bit patterns](../LeanExe/WGSL/F32Canonical.lean), and
+[result lemmas](../LeanExe/WGSL/F32Result.lean) prove that normalization preserves each operation's
+strict-model result.
 
-The shared WGSL translation normalizes binary arithmetic, square root, and nearest-even results
-with [integer tests of their bit patterns](../LeanExe/WGSL/F32Canonical.lean).
-[Result lemmas](../LeanExe/WGSL/F32Result.lean) prove that normalization preserves each operation's
-strict-model result.  The original and verified compilers use this translation.
-
-[Binary32 GPT](../Demos/Gpt32/Verified.lean) compiles the existing program's thirteen kernel functions
-without changing them.  [The native dispatch proofs](../Demos/Gpt32/VerifiedDispatch.lean) combine
+[Binary32 GPT](../Demos/Gpt32/Verified.lean) compiles the program's kernel functions without
+changing them.  [The native dispatch proofs](../Demos/Gpt32/VerifiedDispatch.lean) combine
 `Compiled.dispatch_value` with each generated denotation equation and the buffer bounds.
-[The host instance](../Demos/Gpt32/VerifiedHost.lean) supplies those theorems to the existing typed item,
-layer, and generation proofs.  Its kernel map also runs through the existing generation driver.
+[The host instance](../Demos/Gpt32/VerifiedHost.lean) supplies those theorems to the typed item,
+layer, and generation proofs, and [the generation driver](../Demos/Gpt32/Driver.lean) runs the
+kernels of [the kernel map](../Demos/Gpt32/VerifiedKernels.lean).
 [The application guide](../Demos/Gpt32/README.md#verified-compiler) describes the tests and the
 separate Wasm and device-model claims.
 
@@ -895,8 +894,8 @@ for an `allBelow` or a `loopFits` whose parts are `true`.
 | [compileWith_initialStaticStore](Instantiate.lean) | With the pool immediately after the tables and its aligned end within the page cap, initialization establishes `initialStaticHeap pool`, the cap, borrowed tables, and static pool contents. |
 | `Prog.correct_wrapper` | For a program with no nonempty byte literals, a wrapper computes its callee's meaning at the tables and its own arguments in the sense of `ImplementsTables`, from `wrapper_correct`: the entry's words are the tables' addresses and its arguments, the tables are borrowed arguments of the callee, `Env.withTables_moves` shows that they move no block, and `Env.withTables_reads` that the arguments' reads include their regions.  The theorem `ImplementsTables.lean` states it with Lean's instances. |
 | `Prog.calls` | By induction on the program.  Ordinary and tail functions use the specifications of the functions before them.  A guarded recursive function meets its specification at depth `d` by strong induction on `depthLimit - d`, since its self-calls happen at `d + 1` and the guard traps at the limit.  The tail-function rule uses its decreasing rank and whole-loop theorem. |
-| `bodyFunction_runs` | A function's code, with or without the depth parameter, in a module whose functions at the call indices compute the functions it calls at the next depth, computes the body's meaning.  `Env.Rep.apart` turns the callee's `Separate` into the facts of `Holds` for the parameters at entry. |
-| `Expr.code_spec` | With literal coverage and static environment safety, expression code computes its source value, consumes dying owned values, preserves live values and the local frame, and meets its allocation and call-depth bounds.  The proof is described below. |
+| `bodyFunction_runs` | Function code computes the body's meaning, with or without the depth parameter, in a module whose functions at the call indices compute the functions that the code calls at the next depth.  `Env.Rep.apart` turns the callee's `Separate` into the facts of `Holds` for the parameters at entry. |
+| `Expr.code_spec` | With literal coverage and static environment safety, expression code computes its source value, consumes dying owned values, preserves live values and the local frame, and meets its allocation and call-depth bounds. |
 | [spec_bytesLiteral](AlignedBytes.lean) | Each nonempty literal evaluation allocates a fresh owned byte buffer with the literal contents.  Empty literals allocate nothing.  The theorem requires coverage and static environment safety. |
 | `ImplementsA.lean` | This theorem of [`Correct.lean`](Correct.lean), with `ImplementsA.transferAgree` there and `Ty.leanInst` and `argsInst` of [`State.lean`](State.lean): a function's theorem for the verified compiler's representation gives the theorem with the instances that Lean synthesizes for its argument tuple and result, in which an owned array parameter has type `Moved (Array α)`.  The instances for arrays and their `Moved` forms are those of [`Implements.lean`](../LeanExe/Pipeline/Implements.lean) for `Array UInt64`, `Array Float`, `Array Float32`, and arrays of `Flat` types, which include `Bool`.  `Ty.leanInst`, `Ty.argInst`, and `argsInst` rebuild those instances by recursion over the types and modes, so no signature needs a proof of its own. |
 
@@ -943,14 +942,6 @@ caller's live values.  A depth-taking callee receives the next depth, and `FunSp
 its execution theorem.  `Expr.paramPot` accounts for paid arguments: a moved paid variable brings
 its potential, and another argument receives the credit charged by `Expr.allocs`.  A paid result
 retains the potential stated by the callee's `ImplementsP` theorem.
-
-## Related work
-
-[The journal](../devnotes.md) records the analysis that led to this library and its plan.  The
-LeanExe compiler, which the repository no longer holds, proved the same kind of fact for one IR
-program at a time with its expression rule `Expr.program_spec`.
-[`Scale`](../Examples/Scale/README.md) and [`Axpy`](../Examples/Axpy/README.md) were its closest
-programs.
 
 ## References
 
