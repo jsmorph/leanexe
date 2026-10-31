@@ -49,6 +49,7 @@ import Library.Numerics.Fourier.Program
 import Library.Numerics.Limiters.Minmod.Program
 import Library.Numerics.LinearAlgebra.Binary32.Program
 import Library.Numerics.LinearAlgebra.Float64.Program
+import Library.Numerics.MultiPrecision.Program
 import Library.Numerics.Reductions.Float64.Program
 import Library.Numerics.Reductions.Word.Program
 import Library.Numerics.Statistics.Mean.Program

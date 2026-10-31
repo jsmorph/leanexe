@@ -14,6 +14,7 @@ import TestSupport.Modules.Heapsort
 import TestSupport.Modules.LinearProbing
 import TestSupport.Modules.MergeSort
 import TestSupport.Modules.ModInverse
+import TestSupport.Modules.MultiPrecision
 import TestSupport.Modules.PrimeFactors
 import TestSupport.Modules.TopologicalSort
 
@@ -80,6 +81,14 @@ def cases : IO Unit := do
   for xs in Library.Queues.BinaryHeap.heapInputs do
     IO.println s!"heapQueue|heapQueue|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Queues.BinaryHeap.expected xs.toArray).toList.map toString)}]"
+  for (u, v) in Library.Numerics.MultiPrecision.mpInputs do
+    let fmt := fun (r : Array UInt64) => s!"[{", ".intercalate (r.toList.map toString)}]"
+    IO.println s!"multiPrecision|add|array-u64|{arrU u} {arrU v}|\
+      {fmt (Library.Numerics.MultiPrecision.addSpec (u.toArray, v.toArray))}"
+    IO.println s!"multiPrecision|sub|array-u64|{arrU u} {arrU v}|\
+      {fmt (Library.Numerics.MultiPrecision.subSpec (u.toArray, v.toArray))}"
+    IO.println s!"multiPrecision|mul|array-u64|{arrU u} {arrU v}|\
+      {fmt (Library.Numerics.MultiPrecision.mulSpec (u.toArray, v.toArray))}"
   for xs in Library.HashTables.LinearProbing.probeInputs do
     IO.println s!"hashTable|hashTable|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.HashTables.LinearProbing.expected xs.toArray).toList.map toString)}]"

@@ -84,6 +84,7 @@ Library.Sorting.Insertion.Compiled:Library.Sorting.Insertion.compiled.module:lib
 Library.Graphs.TopologicalSort.Compiled:Library.Graphs.TopologicalSort.compiled.module:topoSort
 Library.Queues.BinaryHeap.Compiled:Library.Queues.BinaryHeap.compiled.module:heapQueue
 Library.HashTables.LinearProbing.Compiled:Library.HashTables.LinearProbing.compiled.module:hashTable
+Library.Numerics.MultiPrecision.Compiled:Library.Numerics.MultiPrecision.compiled.module:multiPrecision
 Library.Arrays.BinarySearch.Compiled:Library.Arrays.BinarySearch.compiled.module:binarySearch
 Library.Arrays.Search.Compiled:Library.Arrays.Search.compiled.module:libsearch
 Library.Arrays.Filter.Compiled:Library.Arrays.Filter.compiled.module:libfilter

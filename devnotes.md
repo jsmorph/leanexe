@@ -40127,7 +40127,7 @@ Most of these algorithms have total specifications, which `Verified.CallSpec` st
 | 6 | Topological sort | 2.2.3 T | `Library/Graphs/TopologicalSort` |
 | 7 | Binary heap priority queue | 5.2.3 | `Library/Queues/BinaryHeap` |
 | 8 | Hashing with linear probing and deletion | 6.4 L, R | `Library/HashTables/LinearProbing` |
-| 9 | Multiple-precision arithmetic | 4.3.1 A, S, M, D | |
+| 9 | Multiple-precision arithmetic | 4.3.1 A, S, M, D | `Library/Numerics/MultiPrecision` |
 | 10 | Modular exponentiation and Miller–Rabin | 4.6.3, 4.5.4 P | |
 | 11 | Dancing links | 7.2.2.1 X | |
 
@@ -40163,3 +40163,8 @@ The hash table stores slot `s` in words `2s` and `2s + 1` of one array, an occup
 The first `close` wrote the condition of Algorithm R as `(i + m - t[2i + 1] % m) % m < (i + m - j) % m`.  The reflector's `simp` exceeded the default limit of 200,000 heartbeats on it, though each side alone compiled, and the whole condition compiled in 22 seconds with a limit of 2,000,000 in a scratch file.  The program now names the cyclic distance `gap m a b := (b + m - a) % m`, a compiled function, and the condition `gap m r i < gap m j i` compiles within the default limit.  The cost of the reflector's simplification of a tail loop's condition grows faster than the condition, which is recorded here for a later change to the compiler.  The proof states slot arithmetic with `adv` and `dist`, which avoid `%`, so that `split_ifs` and `omega` decide each fact.
 
 - [x] Hash table: program, proof of Algorithms L and R, call theorem with the precondition on `M`, 19 cases in Wasmtime and native C, two reviews, README, index.
+
+Multiple-precision arithmetic is one module with an export for each algorithm, as the array search module has several exports.  Its specification states values as the sum of `u[i] * b^i`, `prefixValue`, which the loop invariants of Algorithms A, S, and M use directly.  The Uscale module states the same representation as `val` and `Limbs` with a fold, in a file that imports its compiled module.  Algorithm D needs the product of a number by a digit and the bit length of a digit, which Uscale's `mulSmall` and `wordBits` compute with proofs, so the division will call them and relate `value` to `val`, in place of copies of those routines.  Each step's equation follows from the identity of its digit by `zify` and `linear_combination`, which normalizes the products of digits and powers of the base that `omega` cannot see.
+
+- [x] Multiple-precision A, S, M: programs, proofs, call theorems with digit arrays as the precondition, 279 cases in Wasmtime and native C, two reviews, README, index.
+- [ ] Multiple-precision D: program with `mulSmall` and `wordBits`, the trial-digit theorem, the main loop, short division, call theorem.
