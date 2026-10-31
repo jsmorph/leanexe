@@ -1,7 +1,8 @@
 import Library.Numerics.Bounds.Proof
 import LeanExe.ProofKit.F64Bits
 
-/-! The bits of the Euler solvers' float constants, and words that are not NaN patterns. -/
+/-! The bits of the Euler solvers' float constants and of a float's magnitude, and words that are
+not NaN patterns. -/
 
 namespace Demos.Euler
 
@@ -23,5 +24,28 @@ theorem p1206_toBits : (1.206 : Float).toBits = 4608110160323255730 := by decide
 theorem p3_toBits : (0.3 : Float).toBits = 4599075939470750515 := by decide +kernel
 theorem p5323_toBits : (0.5323 : Float).toBits = 4602969751708575046 := by decide +kernel
 theorem p15_toBits : (1.5 : Float).toBits = 4609434218613702656 := by decide +kernel
+
+theorem gammaUp_toBits : (1.4000000000000001 : Float).toBits = 0x3FF6666666666667 := by
+  decide +kernel
+
+/-- The magnitude bits of a Lean float are the bits of a Lean float: a NaN's are the canonical
+NaN's. -/
+theorem toBits_ofBits_abs (x : Float) :
+    (Float.ofBits (x.toBits &&& 0x7FFFFFFFFFFFFFFF)).toBits = x.toBits &&& 0x7FFFFFFFFFFFFFFF := by
+  rw [F64Bits.toBits_ofBits]
+  split
+  · rename_i hN
+    have hA : (x.toBits &&& 0x7FFFFFFFFFFFFFFF).toNat = x.toBits.toNat % 2 ^ 63 := by
+      rw [UInt64.toNat_and]
+      exact Nat.and_two_pow_sub_one_eq_mod _ 63
+    have hw : Wasm.IEEE64.isNaN x.toBits = true := by
+      simp only [Wasm.IEEE64.isNaN, Wasm.IEEE64.exponent, Wasm.IEEE64.fraction, hA, Bool.and_eq_true,
+        beq_iff_eq, bne_iff_ne, ne_eq] at hN ⊢
+      omega
+    have h := F64Bits.toBits_canonical x
+    rw [hw, ite_eq_left rfl] at h
+    rw [← h]
+    decide
+  · rfl
 
 end Demos.Euler

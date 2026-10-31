@@ -1,6 +1,6 @@
 import Library.Numerics.Bounds.Proof
 import Demos.Euler.ReconstructedSpec
-import Demos.Euler.Outward
+import Demos.Euler.Words
 import Demos.Euler.RealState
 import LeanExe.ProofKit.F64OutwardAccepted
 import LeanExe.ProofKit.F64AdjacentSigned

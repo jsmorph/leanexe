@@ -7,26 +7,6 @@ namespace Demos.Euler
 
 open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Demos.Euler
 
-/-- The magnitude bits of a Lean float are the bits of a Lean float: a NaN's are the canonical
-NaN's. -/
-theorem toBits_ofBits_abs (x : Float) :
-    (Float.ofBits (x.toBits &&& 0x7FFFFFFFFFFFFFFF)).toBits = x.toBits &&& 0x7FFFFFFFFFFFFFFF := by
-  rw [F64Bits.toBits_ofBits]
-  split
-  · rename_i hN
-    have hA : (x.toBits &&& 0x7FFFFFFFFFFFFFFF).toNat = x.toBits.toNat % 2 ^ 63 := by
-      rw [UInt64.toNat_and]
-      exact Nat.and_two_pow_sub_one_eq_mod _ 63
-    have hw : Wasm.IEEE64.isNaN x.toBits = true := by
-      simp only [Wasm.IEEE64.isNaN, Wasm.IEEE64.exponent, Wasm.IEEE64.fraction, hA, Bool.and_eq_true,
-        beq_iff_eq, bne_iff_ne, ne_eq] at hN ⊢
-      omega
-    have h := F64Bits.toBits_canonical x
-    rw [hw, ite_eq_left rfl] at h
-    rw [← h]
-    decide
-  · rfl
-
 def endpointTuple : Bool × Float → Library.Numerics.Bounds.Checked := fun (up, rounded) => Library.Numerics.Bounds.endpoint up rounded
 
 set_option maxHeartbeats 2000000 in
@@ -109,9 +89,6 @@ theorem outSqrt_implements {a : Bool} : ImplementsPureA a euler.module 29 outSqr
       refine exists_ite_some (fun h => ?_) (fun h => ?_)
       · eval_ir [h]
       · eval_ir [h, zero_toBits, and_assoc]
-
-theorem gammaUp_toBits : (1.4000000000000001 : Float).toBits = 0x3FF6666666666667 := by
-  decide +kernel
 
 def kineticLowerTuple : Float × Float × Float → Library.Numerics.Bounds.Checked :=
   fun (rho, mx, my) => kineticLower rho mx my

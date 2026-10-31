@@ -1,4 +1,3 @@
-import Demos.Euler.Verify
 import Demos.Euler.Verified
 import Demos.Euler.RealState
 import Demos.Euler.Equations.CharacteristicSpeed
@@ -7,8 +6,8 @@ import Demos.Euler.Equations.CharacteristicSpeed
 admissible state of density 1, zero momenta, and total energy 1, `side` accepts and returns a speed
 whose value is below the exact sound speed `√(14/25)`, so the exact speed `|u| + c` exceeds it.
 The reconstructed solver computes its speeds with outward rounding instead, which `speedUpper_ge`
-proves to bound the exact speed.  The `side` exports of the LeanExe module and of the verified
-module return these words on every run, by `module_side` and `verified_side`. -/
+proves to bound the exact speed.  The `side` export of the verified module returns these words on
+every run, by `verified_side`. -/
 
 namespace Demos.Euler.SpeedCounterexample
 
@@ -62,13 +61,6 @@ theorem speed_below_sound : real result.speed < Equations.soundSpeed state := by
 theorem speed_below_characteristic :
     real result.speed < Equations.characteristicSpeed ![1, 0] state :=
   speed_below_sound.trans_le (le_add_of_nonneg_left (abs_nonneg _))
-
-/-- The bytes of `euler.module` decode to a module whose `side` export, function 4, returns the
-words of `result` on every run, without a trap. -/
-theorem module_side : ∃ bytes, Wasm.Encoding.encode euler.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ ImplementsPureA false m 4 sideTuple := by
-  obtain ⟨bytes, success, decoded⟩ := euler_round_trip
-  exact ⟨bytes, success, euler.module, decoded, side_implements⟩
 
 /-- The bytes of the verified module `Demos.Euler.Verified.compiled.module` decode to the module,
 whose `side` export is entry 4.  Entry 4 returns the words of `side` of its arguments on every run,
