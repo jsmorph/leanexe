@@ -29,7 +29,7 @@ Neither document defines an integer for the sequence.  `value` gives the integer
 | [`Proof.lean`](Proof.lean) | `Holds`, which reads a register as 32 bits; `TableOf`, which `decide` checks for both tables against the division; `byteStep_holds`, the eight steps of a byte; `loop_holds`; and `crc32_spec`, `crc32c_spec`, `crc32Update_spec`, and `crc32cUpdate_spec`. |
 | [`Compiled.lean`](Compiled.lean) | Verified compilation of `updateWith`, `crcWith`, and four wrappers. |
 | [`Bytes.lean`](Bytes.lean) | `crc32c_table`, four export facts, and four call theorems, from the generated `implements` theorems through `Verified.ImplementsTables.call` and the theorems above. |
-| [`File.lean`](File.lean) | The emitted file holds the module's encoding and decodes to the module. |
+| [`File.lean`](File.lean) | File theorems: the emitted file holds the module's encoding and decodes to the module. |
 
 `byteStep_holds` compares polynomials: the register shifted by eight bits has degree below 32 and is its own remainder, and the table entry of the low byte XORed with the message byte is the remainder of that byte times `x^32`.  `poly_inj`, which states that strings of one length with one polynomial are equal, turns that equality of polynomials into the equality of bit strings that the loop's invariant uses.  The update theorems assume that the argument's value is the CRC of some bytes `A`, and `lfsr_append` gives the CRC of `A` followed by the message.  Every theorem listed above depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 

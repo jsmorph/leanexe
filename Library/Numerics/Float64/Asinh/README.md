@@ -95,7 +95,7 @@ On the `log1p` branches one step of `log1p` at the computed argument is too weak
 
 | Function and range | Method |
 |---|---|
-| `asinh` and `atanh` below `2^-28` | The result is `x`, and `arsinh x` and `artanh x` lie within `\|x\|³` and `2 \|x\|³` of `x` (`AsinhTheoremTiny.arsinh_tiny`, `artanh_tiny`). |
+| `asinh` and `atanh` below `2^-28` | Result `x`, with `arsinh x` and `artanh x` within `\|x\|³` and `2 \|x\|³` of `x` (`AsinhTheoremTiny.arsinh_tiny`, `artanh_tiny`). |
 | `asinh` and `acosh` from `2^28` | `Log.log \|x\| + ln2`: the error of `log` from `error_of_within`, then the nearest rounding of the sum (`AsinhTheoremLarge.log_ln2`). |
 | `asinh` on `[2, 2^29)`, `acosh` on `[2, 2^28]` | Argument within `1.32 · 2^-53` and `1.77 · 2^-53` relative, then `within_two_of_close` in `[1, 2)` (`AsinhTheoremMid`, `AcoshTheoremMid`). |
 | `atanh` on `[2^-28, 1/2)` | `log1p_near` at the computed argument, moved to `2 artanh a` and halved (`F64Near.Near.half`): four ranges with a relative bound below `a = 0.1244`, the largest `1.892 · 2^-53`, and four with constant bounds above, the largest 0.973 of two spacings (`AtanhTheoremSmallCases`). |

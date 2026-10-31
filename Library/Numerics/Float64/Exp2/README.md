@@ -144,7 +144,7 @@ Beyond the ProofKit modules of the exponential's proof, it uses [the signed roun
 | Residual bounds `1/850` and `1/512` | `Exp10Reduction.checked_margins` |
 | Scaled magnitude `2585827973 · 2^1034` of the high part, a 32-bit significand | `Exp10Reduction.high_magnitude` |
 | Functions 7 and 8 are exported as `exp2` and `exp10` | `Exp2Bytes.exp2_export`, `exp10_export` |
-| The file's bytes equal the encoder's | `Exp2File.exp2_file` |
+| Bytes of the file equal the encoder's | `Exp2File.exp2_file` |
 
 ### History
 

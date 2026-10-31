@@ -144,7 +144,7 @@ The proof uses ProofKit, including the arithmetic chain of `F64Add`, `F64Mul`, `
 | Fields of the six pieces of `π/2` | `TrigMediumConst.consts_checked` |
 | Sine and cosine polynomials against their Taylor polynomials, by bisection to depth 14 | `TrigKernelPoly.sin_check`, `cos_check`, `TrigKernelWide.sin_check_wide`, `cos_check_wide` |
 | Functions 15 and 16 are exported as `sin` and `cos` | `TrigTheorem.sin_export`, `cos_export` |
-| The file's bytes equal the encoder's | `TrigFile.trig_file` |
+| Bytes of the file equal the encoder's | `TrigFile.trig_file` |
 
 ### History
 

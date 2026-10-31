@@ -121,7 +121,7 @@ The analysis of the `π x` functions uses [the wide relative step](../../../../L
 | Scale factors `2^53` and `2^-53` | `SinpiTinyWords.consts53` |
 | `piProduct 0` is `(0, 0)` and the cosine kernel gives 1 there, so `kernelCospi 0 = 1` | `SinpiPieces.cospi_zero` |
 | Functions 13, 14, and 15 are exported as `sinpi`, `cospi`, and `tanpi` | `SinpiTheorem.exports` |
-| The file's bytes equal the encoder's | `SinpiFile.sinpi_file` |
+| Bytes of the file equal the encoder's | `SinpiFile.sinpi_file` |
 
 The kernel polynomial bounds are those of [the sine and cosine proof](../Trig/README.md#kernel-checked-facts) and [the tangent proof](../Tan/README.md#kernel-checked-facts), whose kernel lemmas this proof applies.  The module has no tables to check.  `pi_parts`, the only comparison with `π`, follows by `linarith` from Mathlib's decimal bounds.
 

@@ -173,7 +173,7 @@ Beyond the arithmetic chain and the modules of the exponential's proof, the anal
 | For each of the 32 tail pieces, the defect of the model, its range, the derivative checks, and the anchors | `ErfTailPieces0` to `ErfTailPieces7`, four pieces each |
 | Rounding conditions of the 74 small, 13 middle, and 30 tail intervals | `ErfSmallPieces0`, `ErfSmallPieces1`, `ErfMiddle.ok0` to `ok12`, `ErfTailErf.tok0` to `tok29` and `tcrit0` to `tcrit29` |
 | Exceptional words and export | `ErfTheorem.erf_pos_zero` to `erf_neg_infinity`, `erf_export` |
-| The file's bytes equal the encoder's | `ErfFile.erf_file` |
+| Bytes of the file equal the encoder's | `ErfFile.erf_file` |
 
 ### The proof of CORE-MATH's `erfc`
 

@@ -134,11 +134,11 @@ The analysis uses [error tracking for straight-line code](../../../../LeanExe/Pr
 |---|---|
 | Weighted bound of `T q - p` by `(43/64) · 2^-56 q` on eight one-sided pieces of `[0, 1/4]` | `AsinKernelPoly.asin_up_1` to `asin_up_4`, `asin_lo_1` to `asin_lo_4` |
 | `q` in `[1/2, 1]` on `[0, 1/4]` | `asin_q_range` |
-| The first 36 coefficients of `1 - (1 - u) S(u)²` vanish, and the rest is bounded by `1/2` on `[0, 1/4]` | `defect_low`, `defect_high` |
+| Coefficients 0 to 35 of `1 - (1 - u) S(u)²` vanish, and the rest is bounded by `1/2` on `[0, 1/4]` | `defect_low`, `defect_high` |
 | Bounds of the partial Horner sums in seven ranges of `t` | `AsinTheoremRatio.ratio_S1`, `ratio_S2`, `ratio_A1` to `ratio_A4`, `ratio_W` |
 | Thresholds of the high-word tests as rationals | `AsinTheorem.ix_one`, `ix_26`, `ix_half`, `ix_big`, `AcosTheorem.ix_tiny` |
 | Functions 3 and 4 are exported as `asin` and `acos` | `AsinBytes.asin_export`, `acos_export` |
-| The file's bytes equal the encoder's | `AsinFile.asin_file` |
+| Bytes of the file equal the encoder's | `AsinFile.asin_file` |
 
 ### History
 

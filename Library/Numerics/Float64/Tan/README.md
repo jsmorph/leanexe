@@ -113,7 +113,7 @@ The proof reuses [the sine and cosine proof](../Trig/README.md#shared-modules) a
 | Bounds on the rational values of `T0` to `T12` | `TanPoly.coeffs_checked` |
 | Words `pio4` and `pio4lo` and thresholds `0x3E400000` and `0x3FE59428` as rationals | `TanBigWords.value_pio4`, `value_pio4lo`, `TanWith.thresholds` |
 | Function 13 is exported as `tan` | `TanTheorem.tan_export` |
-| The file's bytes equal the encoder's | `TanFile.tan_file` |
+| Bytes of the file equal the encoder's | `TanFile.tan_file` |
 
 The reduction's kernel-checked facts are those of [the sine and cosine proof](../Trig/README.md#kernel-checked-facts): the 1,025 rational approximations, the windows of `2/π`, and the pieces of `π/2`.  The tangent proof adds no table.  The only constant it compares with `π` is `π/4`, whose two words it bounds with Mathlib's decimal bounds on `π` [6].
 

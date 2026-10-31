@@ -43,7 +43,7 @@ A call allocates at most five blocks and releases them before it returns: the sc
 | [`Proof.lean`](Proof.lean) | `matchWith_eq`: when `3 pn < 2^64`, `matchWith pat pn msg n` is `answer` of the words `pat[j]!` for `j < pn` and the bytes `byteAt msg i` for `i < n`. |
 | [`Compiled.lean`](Compiled.lean) | Verified compilation of `addFollow`, `scan`, `masks`, `steps`, `advance`, `runInput`, and `matchWith`. |
 | [`Bytes.lean`](Bytes.lean) | `matchWith_export`, `matchWith_bound`, and `matchWith_call`, from `compiled.matchWith.trapFree` through `Verified.ImplementsTables.call`, the bound equations, and `matchWith_eq`. |
-| [`File.lean`](File.lean) | The emitted file holds the module's encoding and decodes to the module. |
+| [`File.lean`](File.lean) | File theorems: the emitted file holds the module's encoding and decodes to the module. |
 
 `scan_run` discharges the two hypotheses of `runInput_bit` from `Corr` for a stack of one expression, and `matchWith_eq` joins `runInput_bit` with `lang_iff_steps` and `glushkov`.  The hypothesis `3 pn < 2^64` keeps the size of the scan's stack from wrapping.  Every theorem listed above depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 

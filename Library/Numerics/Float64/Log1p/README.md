@@ -128,7 +128,7 @@ The analysis uses these ProofKit modules beyond the arithmetic chain: [error tra
 | Thresholds of the high-word tests as rationals | `Log1pTheorem.ax_lt`, applied with `decide +kernel` |
 | Words of the exceptional results | `Log1pTheoremSpecial` |
 | Function 3 is exported as `log1p` | `Log1pBytes.log1p_export` |
-| The file's bytes equal the encoder's | `Log1pFile.log1p_file` |
+| Bytes of the file equal the encoder's | `Log1pFile.log1p_file` |
 
 ### The near form for the inverse hyperbolic functions
 

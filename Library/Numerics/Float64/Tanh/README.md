@@ -157,14 +157,14 @@ The proof imports the arithmetic chain of `F64Add`, `F64Mul`, `F64Div`, and `F64
 
 | Fact | Declaration |
 |---|---|
-| The numerator of the kernel's error has no terms below `r³`, and the rest is at most `2^-60` on `[-0.3466, 0.3466]` | `Expm1KernelPoly.error_low`, `error_check` |
-| The denominator `6 - r t` differs from 6 by at most `6/5` on the same interval | `Expm1KernelPoly.denominator_check` |
+| Numerator of the kernel's error without terms below `r³`, and the rest at most `2^-60` on `[-0.3466, 0.3466]` | `Expm1KernelPoly.error_low`, `error_check` |
+| Denominator `6 - r t` within `6/5` of 6 on the same interval | `Expm1KernelPoly.denominator_check` |
 | Values of the constants 1, 1/2, 2, 3, 6, -2, and -1/4 as scaled words, and rational bounds on the magnitudes of `Q1` to `Q5` | `Expm1KernelInner.const_values`, `coefficient_rat` |
 | `ln2_hi + ln2_lo` and `invln2 · ln 2` against the rational enclosure of `ln 2` | `Expm1ReduceConst.split_check` |
 | Words `1 - 2^-k` for `2 ≤ k < 20` | `Expm1FormWords.oneMinus_scaled` |
 | `x - 1024 ln 2 ≤ -2 · 10^-14` at the overflow threshold | `Expm1PathsReduced.overflow_gap` |
 | Functions 3 and 4 are exported as `expm1` and `tanh` | `TanhBytes.expm1_export`, `tanh_export` |
-| The file's bytes equal the encoder's | `TanhFile.tanh_file` |
+| Bytes of the file equal the encoder's | `TanhFile.tanh_file` |
 
 ### History
 

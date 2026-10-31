@@ -33,7 +33,7 @@ Compiled code computes KECCAK-p as `keccakPRun`, which holds the state between r
 | [`ShakeProof.lean`](ShakeProof.lean) | `squeeze_stream`, which reads the squeeze as the first `d` bits of the rate prefixes of the iterated states; the invariant of the squeezing loop; and `shake128_spec`, `shake256_spec`, `shakeWith_size`, and `shakeWith_tail`. |
 | [`Compiled.lean`](Compiled.lean) | Verified compilation of the program's functions, from `thetaL` to `shake256`. |
 | [`Bytes.lean`](Bytes.lean) | Six export facts and six call theorems, from the generated `implements` and `trapFree` theorems through `Verified.ImplementsTables.call` and the theorems above. |
-| [`File.lean`](File.lean) | The emitted file holds the module's encoding and decodes to the module. |
+| [`File.lean`](File.lean) | File theorems: the emitted file holds the module's encoding and decodes to the module. |
 
 `padded_eq` splits the padded string into the message, the byte that holds the suffix, and the padding after it, and `pad101_zeros` gives the zeros of pad10*1 in closed form.  The squeeze of a hash function takes one pass, since every digest is shorter than its rate.  Every theorem listed above depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 

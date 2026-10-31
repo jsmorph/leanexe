@@ -131,7 +131,7 @@ The proof added the ProofKit modules of the table below.  It also uses the modul
 
 | Module | Content |
 |---|---|
-| `F64NearestHalf`, [the half-spacing bound](../../../../LeanExe/ProofKit/F64NearestHalf.lean) | A nearest rounding of `s` in `[2^-1022, 2^1022)` lies within `u s`. |
+| `F64NearestHalf`, [the half-spacing bound](../../../../LeanExe/ProofKit/F64NearestHalf.lean) | Nearest rounding of `s` in `[2^-1022, 2^1022)` within `u s`. |
 | `F64NearestBand`, [the band criterion](../../../../LeanExe/ProofKit/F64NearestBand.lean) | One step when the rounded real lies less than a spacing above the target and less than three quarters of a spacing below it. |
 | `F64NearestHalve`, [the nearest halving](../../../../LeanExe/ProofKit/F64NearestHalve.lean) | Halving keeps a word nearest, for targets from `2^-1020` to `2^1022`. |
 
@@ -140,9 +140,9 @@ The proof added the ProofKit modules of the table below.  It also uses the modul
 | Fact | Declaration |
 |---|---|
 | Arm's polynomial differs from the Taylor polynomial of degree 9 by at most `2^-65` on `\|r\| ≤ 0.002708` | `ExpTightPoly.poly_check` |
-| The exponent field of `kln2` is 1033 | `SinhLdexp.kln2_exponent` |
+| Exponent field 1033 of `kln2` | `SinhLdexp.kln2_exponent` |
 | Functions 11 and 12 are exported as `sinh` and `cosh` | `SinhBytes.sinh_export`, `cosh_export` |
-| The file's bytes equal the encoder's | `SinhFile.sinh_file` |
+| Bytes of the file equal the encoder's | `SinhFile.sinh_file` |
 
 ### History
 

@@ -25,7 +25,7 @@ Each export takes the key array, the key's byte count `kn`, the message array, a
 | [`Proof256.lean`](Proof256.lean) | `implHmac256_spec`: HMAC built on the copied implementation `SHS.SHA256.Impl.sha256` is the transcription on bits.  `keyBlock256_get`: the program's key block is `K_0`.  `inner_toVec32` and `outer_toVec32`: the program's inner and outer hash values are the implementation's states.  `hmacSha256_bytes` and `hmacSha256_spec`: the MAC bytes are those of `implHmac256` and the transcription's. |
 | [`Proof512.lean`](Proof512.lean) | Same for SHA-512, with blocks of 128 bytes and words of eight bytes. |
 | [`Bytes.lean`](Bytes.lean) | `hmacSha256_call`, `hmacSha512_call`, `hmacSha256_module`, and `hmacSha512_module`, from the generated `implements` theorems, `Verified.ImplementsTables.call`, `hmacSha256_spec`, and `hmacSha512_spec`. |
-| [`File256.lean`](File256.lean), [`File512.lean`](File512.lean) | The emitted files hold the modules' encodings and decode to the modules. |
+| [`File256.lean`](File256.lean), [`File512.lean`](File512.lean) | File theorems: the emitted files hold the modules' encodings and decode to the modules. |
 
 The proofs reuse the prefix theorems of the two families: `hashFrom_toVec32` and `hashFrom_toVec` state the hash value after a prefix of whole blocks, and `foldl_append` splits the copied implementation's fold at the prefix.  The inner message's prefix is the one block `K_0 ⊕ ipad`, and the outer message is the block `K_0 ⊕ opad` followed by the 32 or 64 digest bytes, whose padding fills one more block.  Every theorem listed above depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 

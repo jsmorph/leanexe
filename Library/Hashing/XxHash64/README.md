@@ -21,7 +21,7 @@ The module `xxhash64` computes XXH64 of the xxHash specification [1].  Its expor
 | [`Proof.lean`](Proof.lean) | `rotl_1` to `rotl_31`, the program's rotations at the amounts that XXH64 uses; `round_eq`, `converge_eq`, and `avalanche_eq`; `lane_le`, `half_le`, and `byte_eq`, which read the message's lanes, half lanes, and bytes from the array; `stripes_from` and `lanes8_from` for the two loops; `start_eq`, `lanes8_eq`, `lane4_eq`, and `bytes_eq` for the phases; and `xxh64_eq`. |
 | [`Compiled.lean`](Compiled.lean) | Verified compilation of `stripeAt`, `converge`, `avalanche`, and `xxh64`. |
 | [`Bytes.lean`](Bytes.lean) | `xxh64_export` and `xxh64_call`, from the generated `implements` theorem through `Verified.ImplementsTables.call` and `xxh64_eq`. |
-| [`File.lean`](File.lean) | The emitted file holds the module's encoding and decodes to the module. |
+| [`File.lean`](File.lean) | File theorems: the emitted file holds the module's encoding and decodes to the module. |
 
 `stripes_from` and `lanes8_from` proceed by induction on the number of stripes or lanes that remain, and `lane_le` reads the eight bytes of a lane as a word by the little-endian lemmas of [`LittleEndian.lean`](../../Bytes/LittleEndian.lean).  After the loops the remaining input is the message from position `8 ⌊n/8⌋`, and after the lane of 4 bytes it is the message from position `n - n mod 4`, which `bytes` reads.  Every theorem listed above depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 

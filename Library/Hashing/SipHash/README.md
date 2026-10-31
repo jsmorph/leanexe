@@ -24,7 +24,7 @@ SipHash-2-4 is the paper's proposal, and CPython 3.11 and later hash `str` and `
 | [`Proof.lean`](Proof.lean) | `rotl_13` to `rotl_32`, the program's rotations at SipRound's amounts; `sipRound_eq`, `rounds_eq`, and `compress_eq`; `le64_bytes`, which reads a word's eight bytes as the word; `lastWord_toNat` and `messageWords_eq` for the message words; and `sipHashWith_eq`, `siphash24_spec`, and `siphash13_spec`. |
 | [`Compiled.lean`](Compiled.lean) | Verified compilation of the program's functions, from `sipRound` to `siphash13`. |
 | [`Bytes.lean`](Bytes.lean) | Two export facts and two call theorems, from the generated `implements` theorems through `Verified.ImplementsTables.call` and the theorems above. |
-| [`File.lean`](File.lean) | The emitted file holds the module's encoding and decodes to the module. |
+| [`File.lean`](File.lean) | File theorems: the emitted file holds the module's encoding and decodes to the module. |
 
 `messageWords_eq` describes the padded string of §2 byte by byte: a message byte below `n`, the length byte at the last position, and zero elsewhere.  The full words then read as the array's words by `le64_bytes`, and the last word reads as `lastWord` by sums of base-256 digits.  The key's bytes are the bytes of the array `#[k0, k1]`, packed as a message is.  Every theorem listed above depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 

@@ -164,7 +164,7 @@ The analysis uses [error tracking for straight-line code](../../../../LeanExe/Pr
 | Thresholds of the high-word tests as rationals | `AtanTheorem.ix_66`, `ix_27`, `ix_a` to `ix_d` |
 | Words of the rounded constants and of `pi_o_2 + 0.5 pi_lo` | `AtanTwoBits.half_bits`, `half_neg_bits`, `big_bits2`, `AtanTheorem.big_bits` |
 | Functions 2 and 3 are exported as `atan` and `atan2` | `AtanBytes.atan_export`, `atan2_export` |
-| The file's bytes equal the encoder's | `AtanFile.atan_file` |
+| Bytes of the file equal the encoder's | `AtanFile.atan_file` |
 
 ## Tests
 

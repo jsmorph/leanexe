@@ -84,7 +84,7 @@ The table lists the proof modules by stage, in dependency order within each stag
 | Stage | Modules | Content |
 |---|---|---|
 | Table and constants | `ExpTableBounds`, `ExpReductionBounds`, `ExpApproximation` | Table enclosure, `C1 + C2` within `2^-99` of `ln 2/128`, and polynomial within `2^-56` of `exp r - 1` for `\|r\| ≤ 1/256`. |
-| Reduction | `ExpReductionExact`, `ExpIntegerSelection`, `ExpReductionSelection`, `ExpShiftedBits`, `ExpScaleFacts`, `ExpScaleEncoding`, `ExpScaleBits`, `ExpCoreState`, `ExpHighSubtraction`, `ExpHighPartBounds`, `ExpHighResidual`, `ExpResidualBounds`, `ExpResidualFloat` | The shift selects the nearest integer `k` for `\|z\| ≤ 2^18`, `k · C1` and `x - k · C1` are exact, the scale word is `2^q H_j`, and the computed residual is within `2^-60` of the ideal one. |
+| Reduction | `ExpReductionExact`, `ExpIntegerSelection`, `ExpReductionSelection`, `ExpShiftedBits`, `ExpScaleFacts`, `ExpScaleEncoding`, `ExpScaleBits`, `ExpCoreState`, `ExpHighSubtraction`, `ExpHighPartBounds`, `ExpHighResidual`, `ExpResidualBounds`, `ExpResidualFloat` | Selection of the nearest integer `k` by the shift for `\|z\| ≤ 2^18`, exact `k · C1` and `x - k · C1`, the scale word `2^q H_j`, and the computed residual within `2^-60` of the ideal one. |
 | Evaluation and reconstruction | `ExpEvaluationBounds`, `ExpEvaluationFloat`, `ExpReconstructionBounds`, `ExpReducedReconstruction`, `ExpTableReconstruction`, `ExpCoreBounds` | Error budget below, ending in `ExpCoreBounds.core_error`. |
 | Main path | `ExpCoreRange`, `ExpCoreInterval`, `ExpCoreOneStep`, `ExpBranches` | Position of `exp a` in its binade, one step for `2^-54 ≤ \|a\| ≤ 512`, and tiny path. |
 | Special paths | `ExpSpecialScale`, `ExpSpecialReconstruction`, `ExpSpecialPositiveCore`, `ExpOneStep`, `ExpSpecialPositive`, `ExpSpecialNegative`, `ExpNegativeFinal` | `512 ≤ \|a\| ≤ 768`, with the compensated subnormal path. |
@@ -131,10 +131,10 @@ The proof uses ProofKit modules, including the arithmetic chain of `F64Add`, `F6
 | 128 rational enclosures of `2^(j/128)` within `2^-100` for the table | `ExpTableBounds.checked_table_bounds` |
 | `1 ≤ H_j ≤ 2`, `\|T_j\| ≤ 2^-53`, and `H_j ≤ 255/128`, with `H_j ≥ 257/256` for `j ≠ 0` | `ExpTableBounds.checked_entry_magnitudes`, `ExpCoreRange.checked_head_bounds` |
 | Sign and exponent fields of the heads, and head word plus `j · 2^45` | `ExpScaleFacts.checked_head_fields` |
-| The Taylor sums of `exp` with 40 terms and their remainder at `128 (C1 + C2) ∓ 2^-92` bracket 2, so `ln 2` lies within `2^-92` of `128 (C1 + C2)`, and `InvLn2N · ln 2/128` lies within `2^-53` of 1 | `ExpReductionBounds.checked_log_brackets`, `checked_inverse_bounds` |
-| The saturating products give `0` and `0x7FF0000000000000` | `ExpTheorem.underflow_product`, `overflow_product` |
+| Taylor sums of `exp` with 40 terms and their remainder at `128 (C1 + C2) ∓ 2^-92` bracket 2, so `ln 2` lies within `2^-92` of `128 (C1 + C2)`, and `InvLn2N · ln 2/128` lies within `2^-53` of 1 | `ExpReductionBounds.checked_log_brackets`, `checked_inverse_bounds` |
+| Saturating products give `0` and `0x7FF0000000000000` | `ExpTheorem.underflow_product`, `overflow_product` |
 | Function 5 is exported as `exp` | `ExpTheorem.exp_export` |
-| The file's bytes equal the encoder's | `ExpFile.exp_file` |
+| Bytes of the file equal the encoder's | `ExpFile.exp_file` |
 
 ### History
 
