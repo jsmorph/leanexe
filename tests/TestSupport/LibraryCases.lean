@@ -13,6 +13,7 @@ import TestSupport.Modules.Gcd
 import TestSupport.Modules.Heapsort
 import TestSupport.Modules.LinearProbing
 import TestSupport.Modules.MergeSort
+import TestSupport.Modules.MillerRabin
 import TestSupport.Modules.ModInverse
 import TestSupport.Modules.MultiPrecision
 import TestSupport.Modules.PrimeFactors
@@ -81,6 +82,12 @@ def cases : IO Unit := do
   for xs in Library.Queues.BinaryHeap.heapInputs do
     IO.println s!"heapQueue|heapQueue|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Queues.BinaryHeap.expected xs.toArray).toList.map toString)}]"
+  for (x, n, m) in Library.Numerics.Arithmetic.MillerRabin.powInputs do
+    IO.println s!"millerRabin|powMod|i64|{u x} {u n} {u m}|\
+      {Library.Numerics.Arithmetic.MillerRabin.powModRef (x, n, m)}|0|0"
+  for (n, x) in Library.Numerics.Arithmetic.MillerRabin.testInputs do
+    IO.println s!"millerRabin|test|i64|{u n} {u x}|\
+      {Library.Numerics.Arithmetic.MillerRabin.testRef (n, x)}|0|0"
   for (u, v) in Library.Numerics.MultiPrecision.mpInputs do
     let fmt := fun (r : Array UInt64) => s!"[{", ".intercalate (r.toList.map toString)}]"
     IO.println s!"multiPrecision|add|array-u64|{arrU u} {arrU v}|\

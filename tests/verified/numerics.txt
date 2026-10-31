@@ -89,6 +89,7 @@ topoSort:Library.Graphs.TopologicalSort.Compiled:Library/Graphs/TopologicalSort/
 heapQueue:Library.Queues.BinaryHeap.Compiled:Library/Queues/BinaryHeap/File.lean
 hashTable:Library.HashTables.LinearProbing.Compiled:Library/HashTables/LinearProbing/File.lean
 multiPrecision:Library.Numerics.MultiPrecision.Compiled:Library/Numerics/MultiPrecision/File.lean
+millerRabin:Library.Numerics.Arithmetic.MillerRabin.Compiled:Library/Numerics/Arithmetic/MillerRabin/File.lean
 libfilter:Library.Arrays.Filter.Compiled:Library/Arrays/Filter/File.lean
 librepeat:Library.Arrays.Repeat.Compiled:Library/Arrays/Repeat/File.lean
 librange:Library.Arrays.Range.Compiled:Library/Arrays/Range/File.lean

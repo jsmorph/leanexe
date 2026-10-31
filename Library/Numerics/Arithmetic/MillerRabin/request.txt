@@ -1,0 +1,6 @@
+Modular exponentiation and the strong probable-prime test of Miller and Rabin, Algorithm A of TAOCP
+section 4.6.3 and Algorithm P of section 4.5.4, on UInt64 words.  powMod(x, n, m) returns x^n
+modulo m for m >= 1, and 0 for m = 0.  The test takes n and a base x.  For odd n >= 3, write
+n - 1 = 2^k q with q odd; the test returns 1 when x^q is 1 modulo n or when x^(2^j q) is n - 1
+modulo n for some j < k, and 0 otherwise.  For even n or n < 3 it returns 0.  No product may
+overflow 64 bits, so the moduli may be any word.
