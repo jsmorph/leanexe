@@ -46,7 +46,7 @@ Every loop invariant states a fact about the value of the first `k` limbs, `val 
 
 ## Tests
 
-[`UscaleCheck.lean`](UscaleCheck.lean) runs the compiled native code of every routine on 400 pseudo-random operands of up to 120 limbs, and `pow10` for every `k` below 400, and compares each result with Lean's `Nat`.  All 4,026 results agree, in 10 seconds.
+[`UscaleCheck.lean`](UscaleCheck.lean) runs the compiled native code of every routine on 400 pseudo-random operands of up to 120 limbs, and `pow10` for every `k` below 400, and compares each result with Lean's `Nat`.  All 4,026 results agree, in 10 seconds.  `tests/verified/run.sh` runs the check with the other accuracy checks.
 
 ## Limits
 

@@ -17,13 +17,11 @@ The module `regex` decides whether a byte string belongs to the language of a re
 
 `decode` runs the words from an empty stack.  A pattern decodes when every opcode is one of these six, every operator finds its operands, every opcode 2 has its four words, and one expression remains.  `answer` tests decoding first, so a pattern that does not decode gives 2 whatever its number of sets.  The limit of 63 sets comes from the program, which holds a state of its automaton in one word with bit 0 for the start, and `positions` counts the sets.  Membership is decidable through Mathlib's derivative matcher `rmatch`, so `answer` is computable and serves as the tests' oracle.
 
-For example, `ab*` is the twelve words `2, 0, 2^33, 0, 0, 2, 0, 2^34, 0, 0, 5, 3`: the sets of the bytes 97 and 98, the star of the second, and their concatenation.
+The pattern `ab*` is the twelve words `2, 0, 2^33, 0, 0, 2, 0, 2^34, 0, 0, 5, 3`: the sets of the bytes 97 and 98, the star of the second, and their concatenation.  A count beyond an array's words or bytes is accepted, and the missing words and bytes read as zero in both the program and the theorem.  A zero word past the end of the pattern pushes `empty`.
 
 | Module | Export | Function | Arguments | Result | Call theorem |
 |---|---|---|---|---|---|
 | `regex` | `matchWith` | 8 | Pattern array, `pn`, input array, and `n`. | Code as one word. | `matchWith_call` |
-
-A count beyond an array's words or bytes is accepted, and the missing words and bytes read as zero in both the program and the theorem.  A zero word past the end of the pattern pushes `empty`.
 
 ## Implementation
 

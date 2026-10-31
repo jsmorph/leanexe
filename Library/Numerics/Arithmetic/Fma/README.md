@@ -1,8 +1,6 @@
 # The software fused multiply-add
 
-[The implementation](Program.lean) computes IEEE 754-2019 fused multiply-add [1]: the exact `a · b + c` rounded once to binary64, ties to even, using 64-bit word arithmetic.  [`FmaTheorem.fma_toBits`](FmaTheorem.lean) proves the result for every triple of operands, including signed zeros, infinities, and canonical NaN results.  [`FmaSpecTheorem.fma_nearest`](FmaSpecTheorem.lean) supplies the form used by the accuracy proofs of `erfc`, `tgamma`, and `lgamma`.
-
-The repository's CORE-MATH ports call this function [4, 5, 6, 7] because WebAssembly has no scalar fused multiply-add instruction and relaxed SIMD multiply-add returns the unfused result in the deterministic profile [2].  The verified compiler compiles it, and a native test compares it with an exact reference at 763,816 operand triples.
+[The implementation](Program.lean) computes IEEE 754-2019 fused multiply-add [1]: the exact `a · b + c` rounded once to binary64, ties to even, using 64-bit word arithmetic.  [`FmaTheorem.fma_toBits`](FmaTheorem.lean) proves the result for every triple of operands, including signed zeros, infinities, and canonical NaN results.  [`FmaSpecTheorem.fma_nearest`](FmaSpecTheorem.lean) supplies the form used by the accuracy proofs of `erfc`, `tgamma`, and `lgamma`.  The repository's CORE-MATH ports call this function [4, 5, 6, 7] because WebAssembly has no scalar fused multiply-add instruction and relaxed SIMD multiply-add returns the unfused result in the deterministic profile [2].  The verified compiler compiles it, and a native test compares it with an exact reference at 763,816 operand triples.
 
 ## Specification
 

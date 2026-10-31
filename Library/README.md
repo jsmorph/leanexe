@@ -44,10 +44,8 @@ and holds the module with its generated execution, allocation, and trap-free the
 native theorems when the module translates to C.  `File`, or a module whose name contains `File`,
 states the file theorems of the module that `tests/verified/run.sh` writes to `build/verified/`.
 `Proof` and the larger families' named theorem modules state mathematical properties.  `Library`
-imports the implementations and the main proof targets.
-
-[The examples](../Examples) and [the application demos](../Demos/README.md) import library
-functions and compile them among their own functions, with their own cases.  Execution tests and
+imports the implementations and the main proof targets.  [The examples](../Examples) and [the
+application demos](../Demos/README.md) import library functions and compile them among their own functions, with their own cases.  Execution tests and
 reference calculators use [test support](../tests/TestSupport).
 
 ## Proof scope

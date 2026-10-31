@@ -4,13 +4,11 @@ The module `xxhash64` computes XXH64 of the xxHash specification [1].  Its expor
 
 ## Specification
 
-[`Spec.lean`](Spec.lean) transcribes the "XXH64 Algorithm Description" of version 0.2.0 of the specification on 64-bit words of type `UInt64`, with addition, subtraction, and multiplication modulo `2^64`, shifts, XOR, and rotation to the left from `BitVec.rotateLeft`.  Input is read little-endian.  `xxh64 m seed` follows the seven steps: the four accumulators, the stripes of 32 bytes with their four lanes, the convergence with `mergeAccumulator`, the length, the remaining input in lanes of 8 bytes, at most one lane of 4 bytes, and single bytes, and the avalanche.  An input of fewer than 32 bytes starts from the single accumulator `seed + PRIME64_5` instead of steps 1 to 3.  The loops of step 2 and of the lanes of 8 bytes take 32 or 8 bytes from the input while that many remain, as the specification's pseudocode does.  An independent review compared the transcription with the specification and found no discrepancy in its definitions.
+[`Spec.lean`](Spec.lean) transcribes the "XXH64 Algorithm Description" of version 0.2.0 of the specification on 64-bit words of type `UInt64`, with addition, subtraction, and multiplication modulo `2^64`, shifts, XOR, and rotation to the left from `BitVec.rotateLeft`.  Input is read little-endian.  `xxh64 m seed` follows the seven steps: the four accumulators, the stripes of 32 bytes with their four lanes, the convergence with `mergeAccumulator`, the length, the remaining input in lanes of 8 bytes, at most one lane of 4 bytes, and single bytes, and the avalanche.  An input of fewer than 32 bytes starts from the single accumulator `seed + PRIME64_5` instead of steps 1 to 3.  The loops of step 2 and of the lanes of 8 bytes take 32 or 8 bytes from the input while that many remain, as the specification's pseudocode does.  An independent review compared the transcription with the specification and found no discrepancy in its definitions.  A count beyond an array's bytes is accepted, and the missing bytes read as zero in both the program and the theorems.
 
 | Export | Function | Arguments | Result | Call theorem |
 |---|---|---|---|---|
 | `xxh64` | 5 | Message array, `n`, and seed. | XXH64 of the `n` bytes with the seed. | `xxh64_call` |
-
-A count beyond an array's bytes is accepted, and the missing bytes read as zero in both the program and the theorems.
 
 ## Implementation
 

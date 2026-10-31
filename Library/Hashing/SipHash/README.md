@@ -6,14 +6,12 @@ The module `siphash` computes SipHash-2-4 and SipHash-1-3 of the SipHash paper b
 
 [`Spec.lean`](Spec.lean) transcribes §2 of the paper, the definition of SipHash-c-d for every `c` and `d`, on 64-bit words of type `UInt64` with addition modulo `2^64`, XOR, and rotation to the left from `BitVec.rotateLeft`.  `sipRound` performs the operations of SipRound row by row, the left column before the right, as Fig. 2.2 draws them.  `messageWords` reads the message, null bytes, and a last byte of `b mod 256` as `⌈(b + 1)/8⌉` little-endian words, and `sipHash c d k m` follows the three steps of §2.  §2 calls `b mod 256` a positive integer, which it is not when `b` is a multiple of 256.  The byte is then zero, as in the reference implementation.  An independent review compared the transcription with §2 and the reference code and found no discrepancy in its definitions.
 
-SipHash-2-4 is the paper's proposal, and CPython 3.11 and later hash `str` and `bytes` with SipHash-1-3 [4].  §2 defines both as members of the family.  The reference implementation's README also describes a 128-bit output, which the paper does not define, and the module computes the 64-bit output alone.
+SipHash-2-4 is the paper's proposal, and CPython 3.11 and later hash `str` and `bytes` with SipHash-1-3 [4].  §2 defines both as members of the family.  The reference implementation's README also describes a 128-bit output, which the paper does not define, and the module computes the 64-bit output alone.  A count beyond an array's bytes is accepted, and the missing bytes read as zero in both the program and the theorems.
 
 | Export | Function | Arguments | Result | Call theorem |
 |---|---|---|---|---|
 | `siphash24` | 7 | `k0`, `k1`, the message array, and `n`. | SipHash-2-4 of the key and the `n` bytes. | `siphash24_call` |
 | `siphash13` | 8 | `k0`, `k1`, the message array, and `n`. | SipHash-1-3 of the key and the `n` bytes. | `siphash13_call` |
-
-A count beyond an array's bytes is accepted, and the missing bytes read as zero in both the program and the theorems.
 
 ## Implementation
 

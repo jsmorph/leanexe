@@ -43,9 +43,9 @@ Each export takes the message array and then the byte count `n`.  The theorems r
 
 ## Tests
 
-[The vector test](../../../tests/TestSupport/Hashing/Sha2Vectors.lean) hashes the NIST CAVP byte-oriented vectors [3] in [`data/hashing/sha2`](../../../data/hashing/sha2/NOTICE) with the native program and with the transcription.  For each of the four functions, both agree with all 129 short and 128 long messages, and the program reproduces the 100 checkpoints of the Monte Carlo test of SHAVS §6.4 [4].  The whole test takes about six minutes.  The packed messages are followed by a word of nonzero bytes, which the digest must ignore.
+[The vector test](../../../tests/TestSupport/Hashing/Sha2Vectors.lean) hashes the NIST CAVP byte-oriented vectors [3] in [`data/hashing/sha2`](../../../data/hashing/sha2/NOTICE) with the native program and with the transcription.  For each of the four functions, both agree with all 129 short and 128 long messages, and the program reproduces the 100 checkpoints of the Monte Carlo test of SHAVS §6.4 [4].  The whole test takes about six minutes, and its options `--no-monte` and `--no-spec` skip the Monte Carlo checkpoints and the transcription.  The packed messages are followed by a word of nonzero bytes, which the digest must ignore.
 
-[The module cases](../../../tests/TestSupport/Hashing/Sha512Cases.lean) compare 405 calls in Wasmtime with native Lean.  They cover message lengths of 0 to 17, 100 to 140, and 230 to 260 bytes, which cross the boundaries at 112 and 128 bytes, and longer messages up to 4,096 bytes.  They also cover byte counts beyond the array and nonzero bytes after a message.  Every case requires that the call keep one block, the host's message, and make no allocation of its own.
+[The module cases](../../../tests/TestSupport/Hashing/Sha512Cases.lean) compare 405 calls in Wasmtime with native Lean.  They cover message lengths of 0 to 17, 100 to 140, and 230 to 260 bytes, which cross the boundaries at 112 and 128 bytes, and longer messages up to 4,096 bytes.  They also cover byte counts beyond the array and nonzero bytes after a message.  Every case requires that the call keep one block, the host's message, and make no allocation of its own.  The case run writes `build/verified/sha512.wasm`, which the file theorems then read.
 
 ```sh
 tools/leanrun --timeout 2h lake build Library.Hashing.Sha512.Bytes
@@ -53,8 +53,6 @@ tools/leanrun --timeout 6h lake env lean --run tests/TestSupport/Hashing/Sha2Vec
 tests/verified/run.sh --cases sha512
 tools/leanrun --timeout 10m lake env lean Library/Hashing/Sha512/File.lean
 ```
-
-The vector test takes `--no-monte` to skip the Monte Carlo checkpoints and `--no-spec` to skip the transcription.  The case run writes `build/verified/sha512.wasm`, which the file theorems then read.
 
 ## References
 

@@ -44,8 +44,6 @@ to be at most 1.  The forward/inverse round trip compares absolute component dif
 `2 * τ`.
 The empty-input, ignored trailing-float, and impulse checks use exact equality.  Other checks
 cover single-frequency signals, Parseval's identity, and the power spectrum, with the bounds
-stated in the test.
-
-The [verified compiler driver](../../../tests/verified/run.sh) builds the module and runs its
-registered execution cases.  [Test suites](../../../tests/README.md) distinguishes module
+stated in the test.  The [verified compiler driver](../../../tests/verified/run.sh) builds the
+module and runs its registered execution cases.  [Test suites](../../../tests/README.md) distinguishes module
 execution comparisons from the native accuracy tests.
