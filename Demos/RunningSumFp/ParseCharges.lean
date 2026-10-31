@@ -21,7 +21,7 @@ theorem bitLen_le (a : Array UInt64) (bound : a.size < 2 ^ 50) :
     (bitLen a).toNat ≤ 32 * a.size + 32 := by
   have usize : UInt64.size = 18446744073709551616 := rfl
   unfold bitLen
-  apply LeanExe.IR.loop_induction (fun _ (s : UInt64) => s.toNat ≤ 32 * a.size + 32)
+  apply LeanExe.Dialect.loop_induction (fun _ (s : UInt64) => s.toNat ≤ 32 * a.size + 32)
   · simp
   · intro k s index le
     have kSize : k < a.size := lt_of_lt_of_le index (toUInt64_toNat_le a.size)
@@ -36,7 +36,7 @@ theorem bitLen_le (a : Array UInt64) (bound : a.size < 2 ^ 50) :
 theorem loop_mulSmall_size' (count : UInt64) (init : Array UInt64) (m c : UInt64 → UInt64)
     (bound : init.size + count.toNat < UInt64.size) :
     (LeanExe.loop count init fun i a => mulSmall a (m i) (c i)).size = init.size + count.toNat := by
-  apply LeanExe.IR.loop_induction (fun k (b : Array UInt64) => b.size = init.size + k)
+  apply LeanExe.Dialect.loop_induction (fun k (b : Array UInt64) => b.size = init.size + k)
   · rfl
   · intro k b index same
     rw [mulSmall_size b _ _ (by omega)]
@@ -52,8 +52,8 @@ theorem digitsVal_size (s : Array UInt64) (i0 ni z kept : UInt64) (hk : kept.toN
   have usize : UInt64.size = 18446744073709551616 := rfl
   have count := chunks_le kept hk
   unfold digitsVal
-  rw [loop_mulSmall_size', LeanExe.IR.build_size, UInt64.toNat_zero, Nat.zero_add]
-  rw [LeanExe.IR.build_size, UInt64.toNat_zero]
+  rw [loop_mulSmall_size', LeanExe.Dialect.build_size, UInt64.toNat_zero, Nat.zero_add]
+  rw [LeanExe.Dialect.build_size, UInt64.toNat_zero]
   omega
 
 /-- The charge of the digits of a decimal significand: at most 86 products of nine digits each. -/
@@ -71,7 +71,7 @@ theorem digitsVal_bound_le (s : Array UInt64) (i0 ni z kept : UInt64) (hk : kept
     · intro j b index same _
       rw [mulSmall_size b _ _ (by omega)]
       omega
-    · rw [LeanExe.IR.build_size]
+    · rw [LeanExe.Dialect.build_size]
       rfl
   · simp only [blockCost_eq, UInt64.reduceToNat]
     omega
@@ -166,7 +166,7 @@ theorem decRound_bound_le (D : Array UInt64) (rest : UInt64 × UInt64 × Bool) (
       omega
     · omega
   have oneSize : (LeanExe.build 1 fun _ => if sticky = true then (2 : UInt64) else 1).size = 1 := by
-    rw [LeanExe.IR.build_size]
+    rw [LeanExe.Dialect.build_size]
     rfl
   generalize (if sticky = true then io.pureSources.mulSmall.bound (D, 2, 1) else 0) = c0
     at startCost ⊢

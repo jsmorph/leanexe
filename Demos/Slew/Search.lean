@@ -1,5 +1,5 @@
 import Demos.Slew.Program
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 import LeanExe.ProofKit.F64Bits
 
 /-! The path structure of the search.  `Inv` holds of every state of `search`: a node other than
@@ -77,24 +77,24 @@ theorem inv_congr {xs : Array Float} {d : Dims} {n : UInt64} {s s' : Search}
 /-! ### The initial state -/
 
 theorem initial_inv (xs : Array Float) (d : Dims) (n : UInt64) : Inv xs d n (initial xs d n) where
-  costSize := LeanExe.IR.build_size _ _
-  parentSize := LeanExe.IR.build_size _ _
-  doneSize := LeanExe.IR.build_size _ _
+  costSize := LeanExe.Dialect.build_size _ _
+  parentSize := LeanExe.Dialect.build_size _ _
+  doneSize := LeanExe.Dialect.build_size _ _
   linkOpen := by
     intro v hv h0 _ hc
     exfalso; apply hc
     simp only [cst, initial]
-    rw [LeanExe.IR.build_get hv, UInt64.ofNat_toNat]
+    rw [LeanExe.Dialect.build_get hv, UInt64.ofNat_toNat]
     simp [h0]
   linkDone := by
     intro v hv _ hd
     simp only [dn, initial] at hd
-    rw [LeanExe.IR.build_get hv] at hd
+    rw [LeanExe.Dialect.build_get hv] at hd
     exact absurd hd (by simp)
   reach := by
     intro v hv hd
     simp only [dn, initial] at hd
-    rw [LeanExe.IR.build_get hv] at hd
+    rw [LeanExe.Dialect.build_get hv] at hd
     exact absurd hd (by simp)
 
 /-! ### Selection -/
@@ -104,7 +104,7 @@ theorem selectNext_spec (s : Search) (n : UInt64) :
       ((selectNext s n).1.toNat < n.toNat ∧ dn s (selectNext s n).1 = false ∧
         cst s (selectNext s n).1 < infinity) := by
   unfold selectNext
-  have key := LeanExe.IR.loop_induction (n := n) (init := (n, infinity))
+  have key := LeanExe.Dialect.loop_induction (n := n) (init := (n, infinity))
     (f := fun i acc =>
       let c := s.cost[i.toNat]!
       if !s.done[i.toNat]! && s.ok[i.toNat]! && c < acc.2 then (i, c) else acc)
@@ -255,7 +255,7 @@ theorem relax_inv {xs : Array Float} {d : Dims} {n : UInt64} {s : Search} (h : I
     Inv xs d n (relax xs d n u settleTicks s) := by
   unfold relax
   dsimp only
-  refine (LeanExe.IR.loop_induction (P := fun _ st => Inv xs d n st ∧ st.done = s.done)
+  refine (LeanExe.Dialect.loop_induction (P := fun _ st => Inv xs d n st ∧ st.done = s.done)
     ⟨h, rfl⟩ ?_).1
   intro k st hk ⟨hi, hd⟩
   have hdn : dn st = dn s := by funext w; simp only [dn, hd]
@@ -400,7 +400,7 @@ theorem segmentField_eq (xs : Array Float) (d : Dims) (s : Search) (k settleTick
 
 theorem statusOnly_zero (status : Float) (e : UInt64) : (statusOnly status e)[0]! = status := by
   unfold statusOnly
-  rw [LeanExe.IR.build_get (by decide)]
+  rw [LeanExe.Dialect.build_get (by decide)]
   rfl
 
 theorem float_ne {a b : Float} (h : a.toBits ≠ b.toBits) : a ≠ b := fun e => h (by rw [e])
@@ -491,10 +491,10 @@ theorem output_get {xs : Array Float} {d : Dims} {s : Search} {n st : UInt64}
     rw [UInt64.toNat_add, UInt64.toNat_mul, hK]; simp only [UInt64.reduceToNat]; omega
   have h4k : (4 + 11 * k).toNat = 4 + 11 * K := by
     rw [UInt64.toNat_add, UInt64.toNat_mul, hK]; simp only [UInt64.reduceToNat]; omega
-  refine ⟨by rw [LeanExe.IR.build_size, hsz], ?_, ?_⟩
+  refine ⟨by rw [LeanExe.Dialect.build_size, hsz], ?_, ?_⟩
   · intro g hg f hf
     have hm : 4 + 11 * g + f < 2 ^ 64 := by omega
-    rw [LeanExe.IR.build_get (by rw [hsz]; omega)]
+    rw [LeanExe.Dialect.build_get (by rw [hsz]; omega)]
     have e0 : (UInt64.ofNat (4 + 11 * g + f) == 0) = false := by
       rw [beq_ofNat _ _ hm]; simp only [UInt64.reduceToNat, decide_eq_false_iff_not]; omega
     have e1 : (UInt64.ofNat (4 + 11 * g + f) == 1) = false := by
@@ -525,7 +525,7 @@ theorem output_get {xs : Array Float} {d : Dims} {s : Search} {n st : UInt64}
     rw [ite_eq_left e4, eg, ef, segmentField_eq, eg1]
   · intro i hi
     have hm : 4 + 11 * K + i < 2 ^ 64 := by omega
-    rw [LeanExe.IR.build_get (by rw [hsz]; omega)]
+    rw [LeanExe.Dialect.build_get (by rw [hsz]; omega)]
     have e0 : (UInt64.ofNat (4 + 11 * K + i) == 0) = false := by
       rw [beq_ofNat _ _ hm]; simp only [UInt64.reduceToNat, decide_eq_false_iff_not]; omega
     have e1 : (UInt64.ofNat (4 + 11 * K + i) == 1) = false := by

@@ -1,9 +1,9 @@
 import Library.Arrays.Search.Program
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 
 namespace Library.Arrays.Search
 
-open LeanExe.IR
+open LeanExe.Dialect
 
 /-- One step of `firstZero`'s loop. -/
 def firstZeroStep (xs : Array UInt64) (count i k : UInt64) : UInt64 :=

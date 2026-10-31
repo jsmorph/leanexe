@@ -1,6 +1,6 @@
 import Library.Regex.Program
 import Library.Regex.Bits
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 import Library.Regex.Automaton
 import Library.Bytes.Packed
 
@@ -19,7 +19,7 @@ theorem bit_loop {n : UInt64} {init : UInt64} {f : UInt64 → UInt64 → UInt64}
     (hf : ∀ i acc, i < n.toNat →
       (bit (f (UInt64.ofNat i) acc) q = true ↔ bit acc q = true ∨ P i)) :
     bit (LeanExe.loop n init f) q = true ↔ bit init q = true ∨ ∃ i, i < n.toNat ∧ P i := by
-  refine LeanExe.IR.loop_induction
+  refine LeanExe.Dialect.loop_induction
     (P := fun k s => bit s q = true ↔ bit init q = true ∨ ∃ i, i < k ∧ P i) ?_ ?_
   · simp
   · intro k s hk ih
@@ -54,7 +54,7 @@ theorem bit_byte {s : UInt64} {k j : Nat} (hk : k < 8) :
 theorem steps_bit (follow : Array UInt64) {k v : Nat} (hk : k < 8) (hv : v < 256) (q : Nat) :
     bit (steps follow)[256 * k + v]! q = true ↔
       ∃ j, j < 8 ∧ v.testBit j = true ∧ bit follow[8 * k + j]! q = true := by
-  rw [steps, LeanExe.IR.build_get (by show 256 * k + v < (2048 : UInt64).toNat; simp; omega)]
+  rw [steps, LeanExe.Dialect.build_get (by show 256 * k + v < (2048 : UInt64).toNat; simp; omega)]
   dsimp only
   have hidx : (UInt64.ofNat (256 * k + v)).toNat = 256 * k + v :=
     toNat_ofNat_lt (by omega : 256 * k + v < 2048) (by decide)
@@ -141,7 +141,7 @@ theorem masks_bit (sets : Array UInt64) {count : UInt64} (hc : count.toNat ≤ 6
     (hb : b < 256) (q : Nat) :
     bit (masks sets count)[b]! q = true ↔
       ∃ i, i < count.toNat ∧ q = i + 1 ∧ inSet sets (i + 1) b = true := by
-  rw [masks, LeanExe.IR.build_get (by show b < (256 : UInt64).toNat; simpa using hb)]
+  rw [masks, LeanExe.Dialect.build_get (by show b < (256 : UInt64).toNat; simpa using hb)]
   have hbt : (UInt64.ofNat b).toNat = b := toNat_ofNat_lt hb (by decide)
   rw [bit_loop (P := fun i => q = i + 1 ∧ inSet sets (i + 1) b = true)]
   · simp [bit_zero]
@@ -223,7 +223,7 @@ theorem runInput_bit (r : Re) (F M msg : Array UInt64) (n : UInt64)
     bit (runInput (steps F) M msg n) q = true ↔
       Automaton.steps r (· = 0) ((List.range n.toNat).map (Library.Bytes.byteAt msg)) q := by
   revert q
-  refine LeanExe.IR.loop_induction (P := fun k s => ∀ q, bit s q = true ↔
+  refine LeanExe.Dialect.loop_induction (P := fun k s => ∀ q, bit s q = true ↔
     Automaton.steps r (· = 0) ((List.range k).map (Library.Bytes.byteAt msg)) q) ?_ ?_
   · intro q
     have := bit_one_shiftLeft (p := 0) (by decide) q

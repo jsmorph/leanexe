@@ -996,8 +996,7 @@ def entryFunction (params : List Ty) (result : Ty) (idx typeIdx : Nat) : Wasm.Fu
     typeIdx := some typeIdx }
 
 /-- Globals 0 through 3 hold the allocator state: the bump pointer, which starts at `top`, the
-free-list head, and the allocation and free counters.  Copied from `LeanExe.IR`, where `top` is
-the heap base 4096. -/
+free-list head, and the allocation and free counters. -/
 def runtimeGlobals (top : UInt64) : List GlobalDecl :=
   (top :: List.replicate 3 0).map fun value =>
     { init := .i64 value, declaredType := some .i64, isMut := true,
@@ -1055,7 +1054,7 @@ def wrapperFunction (addrs : List UInt64) (params : List Ty) (result : Ty) (dept
     results := result.types
     typeIdx := some typeIdx }
 
-/-- Parameter and result types of the runtime functions.  Copied from `LeanExe.IR`. -/
+/-- Parameter and result types of the runtime functions. -/
 def wordToWord : FuncType := { params := [.i64], results := [.i64] }
 def wordToNone : FuncType := { params := [.i64], results := [] }
 

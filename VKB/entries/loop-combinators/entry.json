@@ -12,7 +12,7 @@
     "π (LeanExe.repeatWhile fuel init cond step) = LeanExe.repeatWhile fuel (π init) cond' step'"
   ],
   "modules": [
-    "LeanExe.IR.Combinators",
+    "LeanExe.Dialect.Lemmas",
     "Library.Arrays.Search.Proof",
     "Library.Hashing.Words.Proof",
     "Library.Hashing.XxHash64.Proof",
@@ -28,12 +28,12 @@
     "Demos.Euler.BufferedSpec"
   ],
   "declarations": [
-    "LeanExe.IR.loop_induction",
-    "LeanExe.IR.loop_congr",
-    "LeanExe.IR.build_size",
-    "LeanExe.IR.build_get",
-    "LeanExe.IR.build_get_out",
-    "LeanExe.IR.build_congr",
+    "LeanExe.Dialect.loop_induction",
+    "LeanExe.Dialect.loop_congr",
+    "LeanExe.Dialect.build_size",
+    "LeanExe.Dialect.build_get",
+    "LeanExe.Dialect.build_get_out",
+    "LeanExe.Dialect.build_congr",
     "Library.Hashing.Words.finFoldl_eq_fold",
     "Library.Hashing.XxHash64.Proof.fold_eq",
     "Verified.loop_push_size",

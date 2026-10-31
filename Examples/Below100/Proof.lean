@@ -1,6 +1,6 @@
 import Examples.Below100.Program
 import Examples.Below100.Spec
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 
 /-! The program equals the specification, a fact about the Lean definitions that the theorems of
 the verified compilation use. -/

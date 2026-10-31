@@ -1,5 +1,5 @@
 import LeanExe.WGSL.F32Canonical
-import LeanExe.IR.Expr
+import LeanExe.WGSL.Source
 import LeanExe.ProofKit.F32Bits
 import LeanExe.ProofKit.F32Nearest
 
@@ -14,16 +14,16 @@ theorem canonical32_of_toBits (x : Float32) (bits : UInt32) (h : x.toBits = bits
     canonical32 bits = bits :=
   (congrArg canonical32 h).symm.trans ((F32Bits.toBits_canonical x).trans h)
 
-theorem canonical_f32_bin (op : LeanExe.IR.F32Op) (a b : UInt32) :
+theorem canonical_f32_bin (op : Source.F32Op) (a b : UInt32) :
     canonical32 (op.apply a b) = op.apply a b := by
   by_cases ha : Wasm.IEEE32.isNaN a = true
   · have h : op.apply a b = Wasm.IEEE32.canonicalNaN := by
-      cases op <;> simp [LeanExe.IR.F32Op.apply, Wasm.IEEE32.sub, Wasm.IEEE32.add,
+      cases op <;> simp [Source.F32Op.apply, Wasm.IEEE32.sub, Wasm.IEEE32.add,
         Wasm.IEEE32.mul, Wasm.IEEE32.div, ha]
     rw [h, canonical32_nan]
   by_cases hb : Wasm.IEEE32.isNaN b = true
   · have h : op.apply a b = Wasm.IEEE32.canonicalNaN := by
-      cases op <;> simp [LeanExe.IR.F32Op.apply, Wasm.IEEE32.sub, Wasm.IEEE32.add,
+      cases op <;> simp [Source.F32Op.apply, Wasm.IEEE32.sub, Wasm.IEEE32.add,
         Wasm.IEEE32.mul, Wasm.IEEE32.div, hb, F32Sign.isNaN_negate]
     rw [h, canonical32_nan]
   have hA : (Float32.ofBits a).toBits = a := by simp [F32Bits.toBits_ofBits, ha]

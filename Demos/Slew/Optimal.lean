@@ -91,17 +91,17 @@ theorem ok_get {s : Search} (h : s.ok = (initial xs d n).ok) {v : UInt64}
     (hv : v.toNat < n.toNat) : s.ok[v.toNat]! = okNode xs d v := by
   rw [h]
   simp only [initial]
-  rw [LeanExe.IR.build_get hv, UInt64.ofNat_toNat]
+  rw [LeanExe.Dialect.build_get hv, UInt64.ofNat_toNat]
   rfl
 
 theorem initial_cost {v : UInt64} (hv : v.toNat < n.toNat) :
     cst (initial xs d n) v = if v == 0 then 0 else infinity := by
   simp only [cst, initial]
-  rw [LeanExe.IR.build_get hv, UInt64.ofNat_toNat]
+  rw [LeanExe.Dialect.build_get hv, UInt64.ofNat_toNat]
 
 theorem initial_done {v : UInt64} (hv : v.toNat < n.toNat) : dn (initial xs d n) v = false := by
   simp only [dn, initial]
-  rw [LeanExe.IR.build_get hv]
+  rw [LeanExe.Dialect.build_get hv]
 
 theorem initial_opt (W : Nat) (pend : UInt64 → UInt64 → Prop) (hn2 : 2 ≤ n.toNat) :
     Opt xs d n st W pend (initial xs d n) where
@@ -174,7 +174,7 @@ theorem select_spec (s : Search) (n : UInt64) :
         ∀ i : UInt64, i.toNat < n.toNat → dn s i = false → s.ok[i.toNat]! = true →
           (cst s (selectNext s n).1).toNat ≤ (cst s i).toNat) := by
   unfold selectNext
-  have key := LeanExe.IR.loop_induction (n := n) (init := (n, infinity))
+  have key := LeanExe.Dialect.loop_induction (n := n) (init := (n, infinity))
     (f := fun i acc =>
       let c := s.cost[i.toNat]!
       if !s.done[i.toNat]! && s.ok[i.toNat]! && c < acc.2 then (i, c) else acc)
@@ -440,7 +440,7 @@ theorem relax_opt {W : Nat} {s1 : Search} {u : UInt64}
     · have := he.2.1; omega
   unfold relax
   dsimp only
-  refine LeanExe.IR.loop_induction
+  refine LeanExe.Dialect.loop_induction
     (P := fun k t => Opt xs d n st W (fun w x => w = 1 ∨ (w = u ∧ k ≤ x.toNat)) t ∧
       t.done = s1.done ∧ cst t u = cst s1 u ∧ t.finished = s1.finished)
     ⟨opt_mono (fun w x _ hp => by
@@ -710,7 +710,8 @@ theorem output_head {xs : Array Float} {d : Dims} {s : Search} {n st : UInt64}
   simp only [output, hne, Bool.false_eq_true, ite_false]
   have hsz : (8 + 11 * pathLength s n).toNat = 8 + 11 * (pathLength s n).toNat := by
     rw [UInt64.toNat_add, UInt64.toNat_mul]; simp only [UInt64.reduceToNat]; omega
-  rw [LeanExe.IR.build_get (by rw [hsz]; omega), LeanExe.IR.build_get (by rw [hsz]; omega)]
+  rw [LeanExe.Dialect.build_get (by rw [hsz]; omega),
+    LeanExe.Dialect.build_get (by rw [hsz]; omega)]
   exact ⟨rfl, rfl⟩
 
 /-- **Optimality of the slew planner.**  Let the input pass `validInput`, and let its start and

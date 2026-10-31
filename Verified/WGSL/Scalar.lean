@@ -5,16 +5,16 @@ namespace Verified.WGSL
 
 open LeanExe.ProofKit
 
-def Rep.wordExpr : Rep .word → LeanExe.IR.Expr .u64
+def Rep.wordExpr : Rep .word → LeanExe.WGSL.Source.Expr .u64
   | .word e => e
 
-def Rep.boolExpr : Rep .bool → LeanExe.IR.Expr .bool
+def Rep.boolExpr : Rep .bool → LeanExe.WGSL.Source.Expr .bool
   | .bool e => e
 
-def Rep.float32Expr : Rep .float32 → LeanExe.IR.Expr .f32
+def Rep.float32Expr : Rep .float32 → LeanExe.WGSL.Source.Expr .f32
   | .float32 e => e
 
-def binOp : BinOp → LeanExe.IR.U64Op
+def binOp : BinOp → LeanExe.WGSL.Source.U64Op
   | .add => .add
   | .sub => .sub
   | .mul => .mul
@@ -27,7 +27,7 @@ def binOp : BinOp → LeanExe.IR.U64Op
   | .shr => .shiftRight
 
 theorem binOp_apply (op : BinOp) (a b : UInt64) : (binOp op).apply a b = op.apply a b := by
-  cases op <;> simp [binOp, LeanExe.IR.U64Op.apply, BinOp.apply,
+  cases op <;> simp [binOp, LeanExe.WGSL.Source.U64Op.apply, BinOp.apply,
     ← UInt64.shiftLeft_eq_shiftLeft_mod, ← UInt64.shiftRight_eq_shiftRight_mod]
   all_goals
     intro hb
@@ -35,20 +35,20 @@ theorem binOp_apply (op : BinOp) (a b : UInt64) : (binOp op).apply a b = op.appl
     apply UInt64.toNat_inj.mp
     simp [UInt64.toNat_div, UInt64.toNat_mod]
 
-def cmpExpr (op : CmpOp) (a b : LeanExe.IR.Expr .u64) : LeanExe.IR.Expr .bool :=
+def cmpExpr (op : CmpOp) (a b : LeanExe.WGSL.Source.Expr .u64) : LeanExe.WGSL.Source.Expr .bool :=
   match op with
   | .eq => .eq a b
   | .ne => .ne a b
   | .lt => .ltU a b
   | .le => .leU a b
 
-def fbinOp : FBinOp → LeanExe.IR.F32Op
+def fbinOp : FBinOp → LeanExe.WGSL.Source.F32Op
   | .add => .add
   | .sub => .sub
   | .mul => .mul
   | .div => .div
 
-def fcmpExpr (op : FCmpOp) (a b : LeanExe.IR.Expr .f32) : LeanExe.IR.Expr .bool :=
+def fcmpExpr (op : FCmpOp) (a b : LeanExe.WGSL.Source.Expr .f32) : LeanExe.WGSL.Source.Expr .bool :=
   match op with
   | .eq => .eqF32 a b
   | .lt => .ltF32 a b
@@ -80,7 +80,7 @@ def Code.bin (op : BinOp) {left right : Funs S → Verified.Env Γ → UInt64}
       intro l r locals arrays x y hl hr
       cases l; cases r
       simp only [Rep.Holds] at hl hr
-      simpa [Rep.Holds, Rep.wordExpr, LeanExe.IR.Expr.denote, hl, hr, binOp_apply])
+      simpa [Rep.Holds, Rep.wordExpr, LeanExe.WGSL.Source.Expr.denote, hl, hr, binOp_apply])
 
 def Code.cmp (op : CmpOp) {left right : Funs S → Verified.Env Γ → UInt64}
     (a : Code ctx base (t := .word) left) (b : Code ctx a.next (t := .word) right) :
@@ -92,14 +92,15 @@ def Code.cmp (op : CmpOp) {left right : Funs S → Verified.Env Γ → UInt64}
       cases l; cases r
       simp only [Rep.Holds] at hl hr
       cases op <;>
-        simpa [Rep.Holds, Rep.wordExpr, cmpExpr, LeanExe.IR.Expr.denote, hl, hr, CmpOp.apply])
+        simpa [Rep.Holds, Rep.wordExpr, cmpExpr, LeanExe.WGSL.Source.Expr.denote, hl, hr,
+          CmpOp.apply])
 
 def Code.not {value : Funs S → Verified.Env Γ → Bool} (a : Code ctx base (t := .bool) value) :
     Code ctx base (t := .bool) (fun funs env => !value funs env) :=
   a.map (!·) (fun r => .bool (.not r.boolExpr))
     (by intro r; cases r; exact Nat.le_refl _)
     (by intro r locals arrays x h; cases r; simpa [Rep.Holds, Rep.boolExpr,
-      LeanExe.IR.Expr.denote, h])
+      LeanExe.WGSL.Source.Expr.denote, h])
 
 def Code.and {left right : Funs S → Verified.Env Γ → Bool}
     (a : Code ctx base (t := .bool) left) (b : Code ctx a.next (t := .bool) right) :
@@ -111,7 +112,7 @@ def Code.and {left right : Funs S → Verified.Env Γ → Bool}
       cases l; cases r
       simp only [Rep.Holds] at hl hr
       cases x <;>
-        simp [Rep.Holds, Rep.boolExpr, LeanExe.IR.Expr.denote, hl, hr])
+        simp [Rep.Holds, Rep.boolExpr, LeanExe.WGSL.Source.Expr.denote, hl, hr])
 
 def Code.or {left right : Funs S → Verified.Env Γ → Bool}
     (a : Code ctx base (t := .bool) left) (b : Code ctx a.next (t := .bool) right) :
@@ -123,7 +124,7 @@ def Code.or {left right : Funs S → Verified.Env Γ → Bool}
       cases l; cases r
       simp only [Rep.Holds] at hl hr
       cases x <;>
-        simp [Rep.Holds, Rep.boolExpr, LeanExe.IR.Expr.denote, hl, hr])
+        simp [Rep.Holds, Rep.boolExpr, LeanExe.WGSL.Source.Expr.denote, hl, hr])
 
 def Code.fbin32 (op : FBinOp) {left right : Funs S → Verified.Env Γ → Float32}
     (a : Code ctx base (t := .float32) left) (b : Code ctx a.next (t := .float32) right) :
@@ -135,8 +136,8 @@ def Code.fbin32 (op : FBinOp) {left right : Funs S → Verified.Env Γ → Float
       cases l; cases r
       simp only [Rep.Holds] at hl hr
       cases op <;>
-        simpa [Rep.Holds, Rep.float32Expr, LeanExe.IR.Expr.denote, hl, hr, fbinOp,
-          LeanExe.IR.F32Op.apply, FBinOp.apply32, F32Bits.toBits_add, F32Bits.toBits_sub,
+        simpa [Rep.Holds, Rep.float32Expr, LeanExe.WGSL.Source.Expr.denote, hl, hr, fbinOp,
+          LeanExe.WGSL.Source.F32Op.apply, FBinOp.apply32, F32Bits.toBits_add, F32Bits.toBits_sub,
           F32Bits.toBits_mul, F32Bits.toBits_div])
 
 def Code.fcmp32 (op : FCmpOp) {left right : Funs S → Verified.Env Γ → Float32}
@@ -149,7 +150,7 @@ def Code.fcmp32 (op : FCmpOp) {left right : Funs S → Verified.Env Γ → Float
       cases l; cases r
       simp only [Rep.Holds] at hl hr
       cases op <;>
-        simpa [Rep.Holds, Rep.float32Expr, fcmpExpr, LeanExe.IR.Expr.denote, hl, hr,
+        simpa [Rep.Holds, Rep.float32Expr, fcmpExpr, LeanExe.WGSL.Source.Expr.denote, hl, hr,
           FCmpOp.apply32, F32Bits.decide_lt, F32Bits.decide_le, F32Bits.beq_eq])
 
 end Verified.WGSL

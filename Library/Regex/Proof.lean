@@ -15,7 +15,7 @@ open Library.Regex Library.Regex.Bits Library.Regex.Spec Library.Regex.Glushkov
 theorem loop_foldl {α : Type} (n : UInt64) (init : α) (f : α → UInt64 → α) (g : Nat → UInt64) :
     LeanExe.loop n init (fun j s => f s (g j.toNat)) =
       ((List.range n.toNat).map g).foldl f init := by
-  refine LeanExe.IR.loop_induction
+  refine LeanExe.Dialect.loop_induction
     (P := fun k s => s = ((List.range k).map g).foldl f init) rfl ?_
   intro k s hk ih
   rw [ih, toNat_ofNat_lt hk (UInt64.toNat_lt n).le, List.range_succ, List.map_append,

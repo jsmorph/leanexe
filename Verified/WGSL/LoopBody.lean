@@ -2,7 +2,7 @@ import Verified.WGSL.Branch
 
 namespace Verified.WGSL
 
-open LeanExe.IR
+open LeanExe.WGSL.Source
 
 variable {t : Verified.Ty} {ctx : Verified.WGSL.Context Γ}
 
@@ -25,7 +25,7 @@ theorem loopBody_run (cell : Cell t) (slot base : Nat) (lower : base ≤ slot)
     (code : Code (.cons (cell.read slot) (.cons (.word (.get (slot + 2))) ctx)) (slot + 3) value)
     (funs : Funs S) (env : Verified.Env Γ) (locals : Locals) (arrays : Arrays)
     (agree : ctx.Agrees env locals arrays) (unused : ∀ j, slot ≤ j → arrays j = none)
-    (count : LeanExe.IR.Expr .u64) (n : UInt64) (init : t.denote)
+    (count : LeanExe.WGSL.Source.Expr .u64) (n : UInt64) (init : t.denote)
     (hCount : count.denote locals arrays = some n)
     (hInit : locals slot = some (cell.type.value (cell.encode init))) :
     ∃ last, (Stmt.loop (slot + 1) (slot + 2) count (branchBody cell slot code)).denote arrays
@@ -60,7 +60,7 @@ theorem loopBody_run (cell : Cell t) (slot base : Nat) (lower : base ≤ slot)
         have := outside j hw
         omega
       have hWord : (Rep.word (.get (slot + 2))).Holds current arrays (UInt64.ofNat k) := by
-        simp [Rep.Holds, LeanExe.IR.Expr.denote, hIndex]
+        simp [Rep.Holds, LeanExe.WGSL.Source.Expr.denote, hIndex]
       have hState' : current slot = some (cell.type.value (cell.encode s)) := by
         cases hState with
         | cons h _ => exact h

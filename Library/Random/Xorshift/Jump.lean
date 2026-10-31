@@ -1,5 +1,5 @@
 import Library.Random.Xorshift.Period
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 
 /-! `jump` of `Library/Random/Xorshift/Program.lean` computes `advance`.  A map on words that distributes
 over xor is the xor of its columns, the images of `2^i`, at the set bits of its argument, which the
@@ -32,7 +32,7 @@ theorem applyPasses_succ (c : Array UInt64) (x : UInt64) (k : Nat) :
 theorem columns_get (g : UInt64 → UInt64) {k : Nat} (hk : k < 64) :
     (columns g)[(UInt64.ofNat k).toNat]! = g ((1 : UInt64) <<< UInt64.ofNat k) := by
   have hk' : (UInt64.ofNat k).toNat = k := by rw [UInt64.toNat_ofNat', Nat.mod_eq_of_lt (by omega)]
-  rw [hk', columns, LeanExe.IR.build_get (by simpa using hk)]
+  rw [hk', columns, LeanExe.Dialect.build_get (by simpa using hk)]
 
 /-- The unit columns give the bits of `x` below `k`. -/
 theorem testBit_applyPasses_unit (x : UInt64) (j : Nat) : ∀ k ≤ 64,
@@ -87,11 +87,11 @@ theorem applyCols_columns {g : UInt64 → UInt64} (hg : Linear g) (x : UInt64) :
 theorem square_columns {g : UInt64 → UInt64} (hg : Linear g) :
     square (columns g) = columns (g ∘ g) := by
   unfold square columns
-  apply LeanExe.IR.build_congr
+  apply LeanExe.Dialect.build_congr
   intro i hi
   rw [show (LeanExe.build 64 fun i => g ((1 : UInt64) <<< i)) = columns g from rfl,
     show (columns g)[i.toNat]! = g ((1 : UInt64) <<< i) by
-      rw [columns, LeanExe.IR.build_get hi, UInt64.ofNat_toNat], applyCols_columns hg]
+      rw [columns, LeanExe.Dialect.build_get hi, UInt64.ofNat_toNat], applyCols_columns hg]
   rfl
 
 theorem step_linear : Linear step := step_xor

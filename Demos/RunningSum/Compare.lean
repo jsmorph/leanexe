@@ -146,7 +146,7 @@ theorem compare_loop_correct (a b : Array UInt64) (ha : DecimalDigits a) (hb : D
     (size : a.size = b.size) (bound : a.size < UInt64.size) :
     (LeanExe.loop a.size.toUInt64 0 (compareStep a b) == 1) = decide (magnitude a < magnitude b) := by
   have sizeNat : a.size.toUInt64.toNat = a.size := UInt64.toNat_ofNat_of_lt' bound
-  have invariant := LeanExe.IR.loop_induction (n := a.size.toUInt64) (init := (0 : UInt64))
+  have invariant := LeanExe.Dialect.loop_induction (n := a.size.toUInt64) (init := (0 : UInt64))
     (f := compareStep a b) (ComparePrefix a b) (Or.inl ⟨rfl, by omega⟩)
     (fun n order index before => compareStep_invariant a b ha hb size n (by omega) bound order before)
   rw [sizeNat] at invariant

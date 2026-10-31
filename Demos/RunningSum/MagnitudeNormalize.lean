@@ -99,14 +99,14 @@ def finishDigits (digits : Array UInt64) : Array UInt64 :=
 
 theorem reverseAscii_size (digits : Array UInt64) (size : Nat) (bound : size < UInt64.size) :
     (reverseAscii digits size).size = size := by
-  rw [reverseAscii, LeanExe.IR.build_size]
+  rw [reverseAscii, LeanExe.Dialect.build_size]
   exact UInt64.toNat_ofNat_of_lt' bound
 
 theorem reverseAscii_byte (digits : Array UInt64) (size i : Nat)
     (bound : size < UInt64.size) (hi : i < size) :
     (reverseAscii digits size)[i]! = digits[size - 1 - i]! + 48 := by
   unfold reverseAscii
-  rw [LeanExe.IR.build_get (by simpa only [UInt64.toNat_ofNat_of_lt' bound] using hi)]
+  rw [LeanExe.Dialect.build_get (by simpa only [UInt64.toNat_ofNat_of_lt' bound] using hi)]
   rw [word_index size i bound hi]
 
 theorem ascii_add (byte : UInt64) (bound : byte.toNat < 10) :

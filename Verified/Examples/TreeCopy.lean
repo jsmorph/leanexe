@@ -1,6 +1,6 @@
+import Verified.Compile
 import Verified.TreeCopyCode
 import Verified.TreeHeaderCode
-import LeanExe.IR.Function
 
 namespace Verified.Examples.TreeCopy
 
@@ -40,14 +40,14 @@ def headerEntries : List (String × Wasm.Function) :=
         [.call 1, .constI64 0] })]
 
 def module : Module :=
-  let types := [LeanExe.IR.wordToWord, LeanExe.IR.wordToNone]
+  let types := [Verified.wordToWord, Verified.wordToNone]
   { funcs := [allocFunction 0, releaseFunction 1] ++
       (entries.map fun (_, shape, action) => function shape action) ++ headerEntries.map (·.2)
     exports := [{ name := "alloc", funcIdx := 0 }, { name := "release", funcIdx := 1 }] ++
       (entries.mapIdx fun i entry => { name := entry.1, funcIdx := 2 + i }) ++
       headerEntries.mapIdx fun i entry => { name := entry.1, funcIdx := 2 + entries.length + i }
     memory := some { pagesMin := 16, pagesMax := some 65535 }
-    globals := LeanExe.IR.runtimeGlobals
+    globals := Verified.runtimeGlobals 4096
     types
     gcTypes := types.map fun type => { comp := .func type }
     globalExports := [("allocCount", 2), ("freeCount", 3)]

@@ -30,7 +30,7 @@ theorem size_set (a : Array UInt64) (i : Nat) (v : UInt64) : (a.set! i v).size =
 theorem addFollow_get {follow : Array UInt64} (hf : follow.size = 64) (last next : UInt64) :
     (addFollow follow last next).size = 64 ∧ ∀ p, p < 64 →
       (addFollow follow last next)[p]! = follow[p]! ||| (if bit last p then next else 0) := by
-  have h := LeanExe.IR.loop_induction (n := 64) (init := follow)
+  have h := LeanExe.Dialect.loop_induction (n := 64) (init := follow)
     (f := fun q f => if (last >>> q) &&& 1 == 1 then f.set! q.toNat (f[q.toNat]! ||| next) else f)
     (P := fun k f => f.size = 64 ∧ ∀ p, p < 64 →
       f[p]! = follow[p]! ||| (if p < k ∧ bit last p = true then next else 0))
@@ -185,14 +185,14 @@ theorem init_corr {pn : Nat} (hpn : 3 * pn < 2 ^ 64) :
   depth := rfl
   count := rfl
   stackSize := by
-    rw [LeanExe.IR.build_size, UInt64.toNat_mul, show (3 : UInt64).toNat = 3 from rfl,
+    rw [LeanExe.Dialect.build_size, UInt64.toNat_mul, show (3 : UInt64).toNat = 3 from rfl,
       toNat_ofNat_lt (by omega : pn < 2 ^ 64) (le_refl _)]
     omega
-  followSize := by rw [LeanExe.IR.build_size]; rfl
-  setsSize := by rw [LeanExe.IR.build_size]; rfl
+  followSize := by rw [LeanExe.Dialect.build_size]; rfl
+  setsSize := by rw [LeanExe.Dialect.build_size]; rfl
   entries := fun e h => absurd h (by simp)
   follow := fun p hp q => by
-    rw [LeanExe.IR.build_get (by simpa using hp), bit_zero]
+    rw [LeanExe.Dialect.build_get (by simpa using hp), bit_zero]
     simp
   sets := fun p hp1 hp _ => by simp [total] at hp; omega
 

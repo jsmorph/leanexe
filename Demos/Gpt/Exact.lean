@@ -11,7 +11,7 @@ rows of each layer's keys and values.  The theorems concern the Lean definitions
 namespace Demos.Gpt.Exact
 
 open Demos.Gpt Demos.Gpt.Causal
-open LeanExe.IR (loop_congr build_get build_get_out)
+open LeanExe.Dialect (loop_congr build_get build_get_out)
 
 /-- `x` holds row `p` of `X`, in rows of `w` elements. -/
 def RowIs (w p : Nat) (x X : Array Float) : Prop :=

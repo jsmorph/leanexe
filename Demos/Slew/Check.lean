@@ -1,6 +1,6 @@
 import Demos.Slew.Decide
 import Demos.Slew.Cone
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 
 /-! Soundness of the edge check and the static check.  `coneEdge` and `coneStatic` are the checks
 of one cone that `edgeOk` and `attitudeOk` evaluate in their loops, which `edgeOk_eq` and
@@ -695,7 +695,7 @@ theorem coneStatic_point {q : Q4} {b u : V3} {c kind : Float} (hq : GoodQ q) (hb
 theorem loop_all {n : UInt64} {P : UInt64 → Bool}
     (h : LeanExe.loop n true (fun k ok => if !ok then false else P k) = true) :
     ∀ k : Nat, k < n.toNat → P (UInt64.ofNat k) = true := by
-  have key := LeanExe.IR.loop_induction (n := n) (init := true)
+  have key := LeanExe.Dialect.loop_induction (n := n) (init := true)
     (f := fun k ok => if !ok then false else P k)
     (fun m s => s = true → ∀ k, k < m → P (UInt64.ofNat k) = true)
     (fun _ k hk => absurd hk (Nat.not_lt_zero k))

@@ -26,7 +26,7 @@ theorem Kernel.element_denote (kernel : Kernel countExpr element)
   have hIndex : (Rep.word (.get Γ.length)).Holds
       (kernel.toKernelPlan.spec.locals (kernel.params.args env) k n)
       (LeanExe.WGSL.Spec.arrays (kernel.params.args env)) (UInt64.ofNat k) := by
-    simp [Rep.Holds, LeanExe.IR.Expr.denote, LeanExe.WGSL.Spec.locals, KernelPlan.spec]
+    simp [Rep.Holds, LeanExe.WGSL.Source.Expr.denote, LeanExe.WGSL.Spec.locals, KernelPlan.spec]
   obtain ⟨last, hBody, hValue⟩ := kernel.code.correct
     (kernelContext_bound kernel.params kernel.counter.count kernel.counter.sizeBound)
     funs (.cons (UInt64.ofNat k) env) _ _ (hParams.cons hIndex)

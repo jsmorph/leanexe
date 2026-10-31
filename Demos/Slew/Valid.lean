@@ -441,7 +441,7 @@ accepts every index. -/
 theorem loop_all_of {n : UInt64} {f : UInt64 → Bool → Bool} {Q : UInt64 → Prop}
     (h : LeanExe.loop n true f = true) (hf : ∀ k ok, f k ok = true → ok = true ∧ Q k) :
     ∀ k : Nat, k < n.toNat → Q (UInt64.ofNat k) := by
-  have key := LeanExe.IR.loop_induction (n := n) (init := true) (f := f)
+  have key := LeanExe.Dialect.loop_induction (n := n) (init := true) (f := f)
     (fun m s => s = true → ∀ k, k < m → Q (UInt64.ofNat k))
     (fun _ k hk => absurd hk (Nat.not_lt_zero k))
     (fun m s _ ih hs k hk => by

@@ -7,7 +7,7 @@ ground, and no admitted flight costs less. -/
 namespace Demos.Drone.Output
 
 open Demos.Drone Arithmetic Optimality Selection Costs Planner Forward
-open LeanExe.IR (loop_induction build_size build_get)
+open LeanExe.Dialect (loop_induction build_size build_get)
 
 /-- The inner loop of `output` follows the parents back from the stopped state of the last
 station to station `k`. -/

@@ -8,7 +8,7 @@ the step theorem the words, the embedding, the layers, and the scores.
 namespace Demos.Gpt32
 
 open LeanExe.WGSL Demos.Gpt32
-open LeanExe.IR (build_size)
+open LeanExe.Dialect (build_size)
 
 theorem embed32_size (wte wpe : Array Float32) (row p d : UInt64) :
     (embed32 wte wpe row p d).size = d.toNat := build_size _ _

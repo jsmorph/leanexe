@@ -358,3 +358,6 @@ import LeanExe.WGSL.Translate
 import LeanExe.WGSL.TranslateStmt
 import LeanExe.Wasi
 import LeanExe.Native
+import LeanExe.Dialect.Lemmas
+import LeanExe.WGSL.Source
+import LeanExe.WGSL.SourceDenote

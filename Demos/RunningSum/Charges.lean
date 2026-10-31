@@ -71,7 +71,7 @@ theorem parse_bound_le (line : Array UInt64) (bound : line.size < UInt64.size) :
     io.pureSources.parse.bound line ≤ blockCost line.size := by
   have digits := parse_digits_size_le line bound
   unfold parse at digits
-  simp only [LeanExe.IR.build_size] at digits
+  simp only [LeanExe.Dialect.build_size] at digits
   rw [io.pureSources.parse.bound_eq]
   exact blockCost_le_of_le digits
 

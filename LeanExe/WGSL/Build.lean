@@ -3,15 +3,15 @@ import LeanExe.WGSL.TranslateStmt
 import LeanExe.Dialect.Build
 
 /-!
-The kernel of a build: the IR `buildWith dst limit index (get c) body element`, whose count local
-`c` is a `u64` parameter or the local of an `arraySize` statement before the build.  Each IR
-parameter has its own buffer, numbered by its parameter index: an array parameter's holds its
-Wasm array, and a scalar parameter's holds its two words, a `u64`'s halves or a binary32 value's
-bits and 0.  The output buffer comes after them.  Invocation `g` binds the index pair
-`vec2(gid.x, 0)` to variable 0, parameter `j`'s value or an array parameter's length pair to
-variable `1 + j`, and declares a `var` `1 + j` for each local `j` that the body assigns.  It
-returns when the index is not below the count, runs the translations of the body and the
-element, and stores the element's halves.
+The kernel of a build: for each index below the count, the value of the expression `element` after
+the statements `body`, with the index in local `index` and the count a `u64` parameter or the length
+of an array parameter.  Each parameter has its own buffer, numbered by its parameter index: an array
+parameter's holds its Wasm array, and a scalar parameter's holds its two words, a `u64`'s halves or
+a binary32 value's bits and 0.  The output buffer comes after them.  Invocation `g` binds the index
+pair `vec2(gid.x, 0)` to variable 0, parameter `j`'s value or an array parameter's length pair to
+variable `1 + j`, and declares a `var` `1 + j` for each local `j` that the body assigns.  It returns
+when the index is not below the count, runs the translations of the body and the element, and stores
+the element's halves.
 -/
 
 namespace LeanExe.WGSL
@@ -46,8 +46,8 @@ def Arg.value : Arg → Value
   | .float bits => .f32 bits
   | .array xs => .vec2 (UInt32.ofNat xs.size) 0
 
-/-- Where a build kernel's count comes from: the length of array parameter `src`, which an
-`arraySize` statement puts in local `sizeLocal` before the build, or `u64` parameter `j`. -/
+/-- Where a build kernel's count comes from: the length of array parameter `src`, which local
+`sizeLocal` holds, or `u64` parameter `j`. -/
 inductive Count where
   | size (sizeLocal src : Nat)
   | param (j : Nat)
@@ -62,16 +62,16 @@ def Count.sizeLocal? : Count → Option Nat
   | .param _ => none
 
 /-- A build kernel: the parameters' kinds, the build's index local, the count, the locals that
-the per-element statements assign with their types, a bound on the IR locals, the per-element
+the per-element statements assign with their types, a bound on the source locals, the per-element
 statements, and the element. -/
 structure Spec where
   kinds : List Kind
   index : Nat
   count : Count
-  vars : List (Nat × LeanExe.IR.ScalarType)
+  vars : List (Nat × Source.ScalarType)
   width : Nat
-  body : LeanExe.IR.Stmt
-  element : LeanExe.IR.Expr .u64
+  body : Source.Stmt
+  element : Source.Expr .u64
 
 /-- The statement that binds parameter `j`'s variable from its buffer. -/
 def paramStmt (j : Nat) : Kind → Stmt
@@ -95,13 +95,13 @@ def Spec.layout (K : Spec) : Layout where
 def Spec.prologue (K : Spec) : List Stmt :=
   .let_ 0 .vec2u (.vec2 .gidX (.lit 0)) :: (K.kinds.zipIdx.map fun (k, j) => paramStmt j k)
 
-/-- The zero of an IR scalar type, as a WGSL expression and value. -/
-def zeroExpr : LeanExe.IR.ScalarType → Expr
+/-- The zero of a source scalar type, as a WGSL expression and value. -/
+def zeroExpr : Source.ScalarType → Expr
   | .f32 => .toF32 (.lit 0)
   | .bool => .bool false
   | _ => .vec2 (.lit 0) (.lit 0)
 
-def zeroValue : LeanExe.IR.ScalarType → Value
+def zeroValue : Source.ScalarType → Value
   | .f32 => .f32 0
   | .bool => .bool false
   | _ => .vec2 0 0
@@ -121,7 +121,7 @@ def Spec.module (K : Spec) : Option Module := do
            [.store p (.bin .add (.lit 2) (.bin .mul (.lit 2) (.fst 0))) (.fst res),
             .store p (.bin .add (.lit 3) (.bin .mul (.lit 2) (.fst 0))) (.snd res)] }
 
-/-- The IR locals that the statements' denotation reads at index `k` with count `n`. -/
+/-- The source locals that the statements' denotation reads at index `k` with count `n`. -/
 def Spec.locals (K : Spec) (args : List Arg) (k n : Nat) (j : Nat) : Option Wasm.Value :=
   if j = K.index then some (.i64 (UInt64.ofNat k))
   else if K.count.sizeLocal? = some j then some (.i64 (UInt64.ofNat n))
@@ -284,8 +284,8 @@ theorem Spec.wf_of_wfb (K : Spec) (h : K.wfb = true) : K.WF := by
     simp only [Bool.and_eq_true, decide_eq_true_eq] at h'
     exact ⟨h'.1.1.1, h'.1.1.2, h'.1.2, h'.2⟩
 
-theorem lookup_mem {vars : List (Nat × LeanExe.IR.ScalarType)} {j : Nat}
-    {type : LeanExe.IR.ScalarType} (h : vars.lookup j = some type) : (j, type) ∈ vars := by
+theorem lookup_mem {vars : List (Nat × Source.ScalarType)} {j : Nat}
+    {type : Source.ScalarType} (h : vars.lookup j = some type) : (j, type) ∈ vars := by
   induction vars with
   | nil => simp at h
   | cons x vars ih =>
@@ -298,8 +298,8 @@ theorem lookup_mem {vars : List (Nat × LeanExe.IR.ScalarType)} {j : Nat}
       · simp only [List.lookup_cons, show (j == a) = false by simpa using ha] at h
         exact List.mem_cons_of_mem _ (ih h)
 
-theorem lookup_of_mem {vars : List (Nat × LeanExe.IR.ScalarType)} (hnd : (vars.map (·.1)).Nodup)
-    {j : Nat} {type : LeanExe.IR.ScalarType} (h : (j, type) ∈ vars) : vars.lookup j = some type := by
+theorem lookup_of_mem {vars : List (Nat × Source.ScalarType)} (hnd : (vars.map (·.1)).Nodup)
+    {j : Nat} {type : Source.ScalarType} (h : (j, type) ∈ vars) : vars.lookup j = some type := by
   induction vars with
   | nil => cases h
   | cons x vars ih =>
@@ -313,7 +313,7 @@ theorem lookup_of_mem {vars : List (Nat × LeanExe.IR.ScalarType)} (hnd : (vars.
         simp only [List.lookup_cons, show (j == a) = false by simpa using hne]
         exact ih hnd.2 h
 
-theorem Spec.layout_var (K : Spec) (hK : K.WF) {j : Nat} {type : LeanExe.IR.ScalarType}
+theorem Spec.layout_var (K : Spec) (hK : K.WF) {j : Nat} {type : Source.ScalarType}
     (h : (j, type) ∈ K.vars) : K.layout.scalar j = some (1 + j) := by
   obtain ⟨h1, h2, h3, h4⟩ := hK.vars j type h
   have hl : (K.vars.lookup j).isSome := by simp [lookup_of_mem hK.nodup h]
@@ -511,14 +511,14 @@ theorem Env.find_append_left {a b : Env} {w : Nat} {x : Value × Bool} (h : a.fi
   exact ⟨y, by simp [hy], rfl⟩
 
 /-- The bindings of the assigned locals' declarations. -/
-def declBindings (vars : List (Nat × LeanExe.IR.ScalarType)) : Env :=
+def declBindings (vars : List (Nat × Source.ScalarType)) : Env :=
   (vars.map fun (j, type) => (1 + j, zeroValue type, true)).reverse
 
-theorem zero_holds (type : LeanExe.IR.ScalarType) : (wgslTy type).holds (zeroValue type) = true := by
+theorem zero_holds (type : Source.ScalarType) : (wgslTy type).holds (zeroValue type) = true := by
   cases type <;> rfl
 
 theorem decls_run (ctx : Context) (writes : List (Nat × UInt32)) :
-    ∀ (vars : List (Nat × LeanExe.IR.ScalarType)) (env : Env), (vars.map (·.1)).Nodup →
+    ∀ (vars : List (Nat × Source.ScalarType)) (env : Env), (vars.map (·.1)).Nodup →
       (∀ x ∈ vars, Env.find env (1 + x.1) = none) →
       Stmt.execList ctx ⟨env, writes, false⟩
           (vars.map fun (j, type) => .var (1 + j) (wgslTy type) (zeroExpr type)) =
@@ -541,14 +541,14 @@ theorem decls_run (ctx : Context) (writes : List (Nat × UInt32)) :
         exact hfree y (by simp [hy]))]
       simp [declBindings]
 
-theorem declBindings_nodup (vars : List (Nat × LeanExe.IR.ScalarType))
+theorem declBindings_nodup (vars : List (Nat × Source.ScalarType))
     (h : (vars.map (·.1)).Nodup) : ((declBindings vars).map (·.1)).Nodup := by
   have : (declBindings vars).map (·.1) = ((vars.map (·.1)).map (1 + ·)).reverse := by
     simp [declBindings, List.map_reverse, List.map_map, Function.comp_def]
   rw [this, List.nodup_reverse]
   exact List.Nodup.map (fun a b (hab : 1 + a = 1 + b) => by omega) h
 
-theorem declBindings_names (vars : List (Nat × LeanExe.IR.ScalarType)) :
+theorem declBindings_names (vars : List (Nat × Source.ScalarType)) :
     ∀ b ∈ declBindings vars, ∃ x ∈ vars, b = (1 + x.1, zeroValue x.2, true) := by
   intro b hb
   simp only [declBindings, List.mem_reverse, List.mem_map] at hb
@@ -693,7 +693,7 @@ theorem Spec.invoke_eq (K : Spec) (hK : K.WF) (m : Module) (hm : K.module = some
         obtain ⟨type, ht⟩ := Option.isSome_iff_exists.mp this
         exact (hK.vars K.index type (lookup_mem ht)).2.2.1 rfl
       have hL'idx : L' K.index = some (.i64 (UInt64.ofNat g)) := by
-        rw [LeanExe.IR.Stmt.denote_frame _ K.body _ L' hden K.index hidxW]
+        rw [Source.Stmt.denote_frame _ K.body _ L' hden K.index hidxW]
         simp [Spec.locals]
       obtain ⟨w0, m0, hw0, hf0⟩ := hA1.word K.index _ hL'idx
       have hw00 : w0 = 0 := by

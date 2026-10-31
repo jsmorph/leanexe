@@ -129,7 +129,7 @@ theorem compute_bound (terrain : Array UInt64) : compiled.compute.bound terrain 
   case hI =>
     left
     refine ⟨rfl, rfl, ?_, by omega⟩
-    rw [initial_build, LeanExe.IR.build_size]
+    rw [initial_build, LeanExe.Dialect.build_size]
     rfl
   -- The sum, at most its value for 64 stations, and the first and last rows.
   have hsum : _root_.Verified.sumBelow (fun k => if k + 1 < c.toNat then 1080 * (k + 2) + 56 else 0)

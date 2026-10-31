@@ -5,13 +5,13 @@ namespace Verified.WGSL
 variable {t : Ty} {ctx : Context Γ} {base : Nat}
 
 def branchBody (cell : Cell t) (slot : Nat) {value : Funs S → Verified.Env Γ → t.denote}
-    (code : Code ctx base value) : LeanExe.IR.Stmt :=
+    (code : Code ctx base value) : LeanExe.WGSL.Source.Stmt :=
   .seq code.body (.assign slot (cell.input code.result))
 
 theorem branchBody_writes (cell : Cell t) (slot : Nat)
     {value : Funs S → Verified.Env Γ → t.denote} (code : Code ctx base value) (j : Nat) :
     j ∈ (branchBody cell slot code).writes ↔ j ∈ code.body.writes ∨ j = slot := by
-  simp [branchBody, LeanExe.IR.Stmt.writes]
+  simp [branchBody, LeanExe.WGSL.Source.Stmt.writes]
 
 def Code.branch (cell : Cell t) {condition : Funs S → Verified.Env Γ → Bool}
     {yes no : Funs S → Verified.Env Γ → t.denote}
@@ -25,7 +25,7 @@ def Code.branch (cell : Cell t) {condition : Funs S → Verified.Env Γ → Bool
   grows := by have := c.grows; have := a.grows; have := b.grows; omega
   writes := by
     intro j hj
-    simp only [LeanExe.IR.Stmt.writes, List.mem_append] at hj
+    simp only [LeanExe.WGSL.Source.Stmt.writes, List.mem_append] at hj
     have hc := c.grows
     have ha := a.grows
     have hb := b.grows
@@ -60,14 +60,16 @@ def Code.branch (cell : Cell t) {condition : Funs S → Verified.Env Γ → Bool
         hAgree (fun j hj => unused j (Nat.le_trans hBase hj))
       refine ⟨put before c.next (cell.type.value (cell.encode (value funs env))), ?_,
         cell.readHolds _ arrays c.next _ (by simp [put])⟩
-      simp only [branchBody, LeanExe.IR.Stmt.denote, hBody, Option.bind_some,
+      simp only [branchBody, LeanExe.WGSL.Source.Stmt.denote, hBody, Option.bind_some,
         unused c.next c.grows, ↓reduceIte, cell.inputHolds code.result before arrays _ hValue,
         Option.map_some]
       rfl
     cases hChoice : condition funs env
     · obtain ⟨last, hb, hv⟩ := run b (by have := c.grows; have := a.grows; omega)
-      exact ⟨last, by simp [LeanExe.IR.Stmt.denote, hc, hCond, hChoice, hb], by simpa [hChoice]⟩
+      exact ⟨last, by simp [LeanExe.WGSL.Source.Stmt.denote, hc, hCond, hChoice, hb],
+        by simpa [hChoice]⟩
     · obtain ⟨last, ha, hv⟩ := run a (by have := c.grows; omega)
-      exact ⟨last, by simp [LeanExe.IR.Stmt.denote, hc, hCond, hChoice, ha], by simpa [hChoice]⟩
+      exact ⟨last, by simp [LeanExe.WGSL.Source.Stmt.denote, hc, hCond, hChoice, ha],
+        by simpa [hChoice]⟩
 
 end Verified.WGSL

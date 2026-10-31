@@ -12,7 +12,7 @@ theorem kernelContext_bound (params : Params Γ) (count : LeanExe.WGSL.Count)
     (sizeBound : ∀ j, count.sizeLocal? = some j → j < Γ.length + 2) :
     (kernelContext params count).Bounded (Γ.length + 2) := by
   apply (params.context_bound count 0 (Γ.length + 2) (by omega) sizeBound).cons
-  simp [Rep.locals, LeanExe.IR.Expr.denoteLocals]
+  simp [Rep.locals, LeanExe.WGSL.Source.Expr.denoteLocals]
 
 structure KernelPlan (count : Verified.Expr S Γ .word)
     (element : Verified.Expr S (.word :: Γ) (.elem e)) where

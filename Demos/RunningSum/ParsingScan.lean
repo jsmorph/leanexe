@@ -97,7 +97,7 @@ theorem scanInvariant_step (line : Array UInt64) (start stop : UInt64)
 
 theorem parseScan_invariant (line : Array UInt64) (start stop : UInt64) :
     ScanInvariant line start.toNat stop.toNat (parseScan line start stop) := by
-  apply LeanExe.IR.loop_induction
+  apply LeanExe.Dialect.loop_induction
     (P := fun k state => ScanInvariant line start.toNat k state)
   · refine ⟨le_rfl, by simp, ?_, by simp, ?_⟩
     · intro i hi hj

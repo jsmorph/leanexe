@@ -3,10 +3,10 @@ import Verified.WGSL.Scalar
 namespace Verified.WGSL
 
 structure Cell (t : Ty) where
-  type : LeanExe.IR.ScalarType
+  type : LeanExe.WGSL.Source.ScalarType
   encode : t.denote → type.denote
   read : Nat → Rep t
-  input : Rep t → LeanExe.IR.Expr type
+  input : Rep t → LeanExe.WGSL.Source.Expr type
   readBound : ∀ j, (read j).locals ≤ j + 1
   inputHolds : ∀ rep locals arrays x, rep.Holds locals arrays x →
     (input rep).denote locals arrays = some (encode x)
@@ -20,7 +20,7 @@ def Cell.word : Cell .word where
   input := Rep.wordExpr
   readBound := fun _ => Nat.le_refl _
   inputHolds := by intro rep locals arrays x h; cases rep; exact h
-  readHolds := by intro locals arrays j x h; simp [Rep.Holds, LeanExe.IR.Expr.denote, h]
+  readHolds := by intro locals arrays j x h; simp [Rep.Holds, LeanExe.WGSL.Source.Expr.denote, h]
 
 def Cell.bool : Cell .bool where
   type := .u64
@@ -32,10 +32,10 @@ def Cell.bool : Cell .bool where
     intro rep locals arrays x h
     cases rep
     simp only [Rep.Holds] at h
-    cases x <;> simp [LeanExe.IR.Expr.denote, Rep.boolExpr, h, boolWord]
+    cases x <;> simp [LeanExe.WGSL.Source.Expr.denote, Rep.boolExpr, h, boolWord]
   readHolds := by
     intro locals arrays j x h
-    cases x <;> simp [Rep.Holds, LeanExe.IR.Expr.denote, h, boolWord]
+    cases x <;> simp [Rep.Holds, LeanExe.WGSL.Source.Expr.denote, h, boolWord]
 
 def Cell.float32 : Cell .float32 where
   type := .f32
@@ -44,7 +44,7 @@ def Cell.float32 : Cell .float32 where
   input := Rep.float32Expr
   readBound := fun _ => Nat.le_refl _
   inputHolds := by intro rep locals arrays x h; cases rep; exact h
-  readHolds := by intro locals arrays j x h; simp [Rep.Holds, LeanExe.IR.Expr.denote, h]
+  readHolds := by intro locals arrays j x h; simp [Rep.Holds, LeanExe.WGSL.Source.Expr.denote, h]
 
 def Cell.ofTy : (t : Ty) → Option (Cell t)
   | .word => some .word

@@ -1,5 +1,5 @@
 import Demos.RunningSum.Program
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 
 namespace Demos.RunningSum
 

@@ -5,7 +5,7 @@ import Demos.Gpt32.Compose
 namespace Demos.Gpt32.Verified
 
 open _root_.Demos.Gpt32 LeanExe.WGSL
-open LeanExe.IR (build_size)
+open LeanExe.Dialect (build_size)
 
 theorem apply_dispatch {k : KernelName} {vs : List Val} {ys : Array Float32}
     (h : k.apply vs = some ys) :

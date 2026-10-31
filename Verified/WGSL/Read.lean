@@ -17,7 +17,7 @@ theorem Rep.readWord_locals (array : Rep (.array .word)) (position : Rep .word) 
 theorem Rep.readBool_locals (array : Rep (.array .bool)) (position : Rep .word) :
     (array.readBool position).locals = position.locals := by
   cases array; cases position
-  simp [Rep.readBool, Rep.locals, LeanExe.IR.Expr.denoteLocals]
+  simp [Rep.readBool, Rep.locals, LeanExe.WGSL.Source.Expr.denoteLocals]
 
 theorem Rep.readFloat32_locals (array : Rep (.array .float32)) (position : Rep .word) :
     (array.readFloat32 position).locals = position.locals := by cases array; cases position; rfl
@@ -47,7 +47,7 @@ def Code.readWord (x : Var Γ (.array .word)) {position : Funs S → Verified.En
           cases hi : a.result with
           | word e =>
               simp only [hi, Rep.Holds] at hIndex
-              simp [Rep.readWord, Rep.Holds, LeanExe.IR.Expr.denote, hArray.1, hIndex])
+              simp [Rep.readWord, Rep.Holds, LeanExe.WGSL.Source.Expr.denote, hArray.1, hIndex])
 
 def Code.readBool (x : Var Γ (.array .bool)) {position : Funs S → Verified.Env Γ → UInt64}
     (a : Code ctx base (t := .word) position) :
@@ -63,7 +63,7 @@ def Code.readBool (x : Var Γ (.array .bool)) {position : Funs S → Verified.En
           cases hi : a.result with
           | word e =>
               simp only [hi, Rep.Holds] at hIndex
-              simp [Rep.readBool, Rep.Holds, LeanExe.IR.Expr.denote, hArray.1, hIndex,
+              simp [Rep.readBool, Rep.Holds, LeanExe.WGSL.Source.Expr.denote, hArray.1, hIndex,
                 boolArray_read])
 
 def Code.readFloat32 (x : Var Γ (.array .float32))
@@ -80,7 +80,7 @@ def Code.readFloat32 (x : Var Γ (.array .float32))
           cases hi : a.result with
           | word e =>
               simp only [hi, Rep.Holds] at hIndex
-              simp [Rep.readFloat32, Rep.Holds, LeanExe.IR.Expr.denote, hArray.1, hIndex,
-                LeanExe.IR.getElem!_map_toBits32])
+              simp [Rep.readFloat32, Rep.Holds, LeanExe.WGSL.Source.Expr.denote, hArray.1, hIndex,
+                LeanExe.WGSL.Source.getElem!_map_toBits32])
 
 end Verified.WGSL

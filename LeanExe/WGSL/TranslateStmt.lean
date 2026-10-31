@@ -1,39 +1,40 @@
 import LeanExe.WGSL.Translate
-import LeanExe.IR.DenoteStmt
+import LeanExe.WGSL.SourceDenote
 
 /-!
-The translation of IR statements built from assignments, sequences, conditionals, and the compiler's loops into
-WGSL, and its simulation lemma.  An assignment becomes the expression's `let` statements and an
-assignment to the local's `var`.  A conditional runs its selected branch and drops that branch's
-declarations while retaining assignments to outer variables.  A loop on `ltU (get index) (get limit)` becomes a `while` on
-`lt64`, which runs in lockstep with the denotation's loop under the same bound.
+The translation of source statements built from assignments, sequences, conditionals, and the loops
+of `Source.Stmt.loop` into WGSL, and its simulation lemma.  An assignment becomes the expression's
+`let` statements and an assignment to the local's `var`.  A conditional runs its selected branch and
+drops that branch's declarations while retaining assignments to outer variables.  A loop on `ltU
+(get index) (get limit)` becomes a `while` on `lt64`, which runs in lockstep with the denotation's
+loop under the same bound.
 -/
 
 namespace LeanExe.WGSL
 
-/-- The WGSL type of an IR scalar type. -/
-def wgslTy : LeanExe.IR.ScalarType → Ty
+/-- The WGSL type of a source scalar type. -/
+def wgslTy : Source.ScalarType → Ty
   | .u64 => .vec2u
   | .f32 => .f32
   | .bool => .bool
   | .f64 => .vec2u
 
-theorem wgslTy_holds (type : LeanExe.IR.ScalarType) (v : type.denote) :
+theorem wgslTy_holds (type : Source.ScalarType) (v : type.denote) :
     (wgslTy type).holds (wgslValue type v) = true := by
   cases type <;> rfl
 
-theorem sameType_of_holds {type : LeanExe.IR.ScalarType} {old : Value} (v : type.denote)
+theorem sameType_of_holds {type : Source.ScalarType} {old : Value} (v : type.denote)
     (h : (wgslTy type).holds old = true) : old.sameType (wgslValue type v) = true := by
   cases type <;> cases old <;> simp_all [wgslTy, Ty.holds, wgslValue, pairOf, Value.sameType]
 
 /-- The condition of a compiled loop, `ltU (get index) (get limit)`, as one expression. -/
-def trCond (F : Layout) : LeanExe.IR.Expr .bool → Option Expr
+def trCond (F : Layout) : Source.Expr .bool → Option Expr
   | .ltU (.get i) (.get l) => do pure (lt64 (← F.scalar i) (← F.scalar l))
   | _ => none
 
-/-- The statements of an IR statement from variable `next` on, and the next free variable;
+/-- The statements of a source statement from variable `next` on, and the next free variable;
 `none` outside the translated subset. -/
-def trStmt (F : Layout) : LeanExe.IR.Stmt → Nat → Option (List Stmt × Nat)
+def trStmt (F : Layout) : Source.Stmt → Nat → Option (List Stmt × Nat)
   | .skip, next => some ([], next)
   | .assign (type := type) j e, next => do
       let w ← F.scalar j
@@ -56,7 +57,7 @@ def trStmt (F : Layout) : LeanExe.IR.Stmt → Nat → Option (List Stmt × Nat)
       pure ([.while_ ce sb], n1)
   | _, _ => none
 
-theorem trStmt_ite_inv {F : Layout} {c : LeanExe.IR.Expr .bool} {a b : LeanExe.IR.Stmt}
+theorem trStmt_ite_inv {F : Layout} {c : Source.Expr .bool} {a b : Source.Stmt}
     {next next' : Nat} {stmts : List Stmt}
     (h : trStmt F (.ite c a b) next = some (stmts, next')) :
     ∃ sc res n1 sa n2 sb n3, trExpr F c next = some (sc, res, n1) ∧
@@ -223,7 +224,7 @@ def StmtSim (F : Layout) (L' : Nat → Option Wasm.Value) (arrays : Nat → Opti
     F.Agrees L' arrays ctx E ∧ F.Writable E
 
 theorem trStmt_mono (F : Layout) :
-    ∀ (s : LeanExe.IR.Stmt) (next : Nat) (stmts : List Stmt) (next' : Nat),
+    ∀ (s : Source.Stmt) (next : Nat) (stmts : List Stmt) (next' : Nat),
       trStmt F s next = some (stmts, next') → next ≤ next' := by
   intro s
   induction s with
@@ -286,7 +287,7 @@ theorem trStmt_mono (F : Layout) :
       intro next stmts next' h
       simp [trStmt] at h
 
-theorem trCond_inv {F : Layout} {c : LeanExe.IR.Expr .bool} {ce : Expr} (h : trCond F c = some ce) :
+theorem trCond_inv {F : Layout} {c : Source.Expr .bool} {ce : Expr} (h : trCond F c = some ce) :
     ∃ i l wi wl, c = .ltU (.get i) (.get l) ∧ F.scalar i = some wi ∧ F.scalar l = some wl ∧
       ce = lt64 wi wl := by
   unfold trCond at h
@@ -319,7 +320,7 @@ theorem exec_while (ctx : Context) (run : Run) (c : Expr) (body : List Stmt) :
 agrees with the denoted locals. -/
 theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Array UInt64))
     (ctx : Context) (writes : List (Nat × UInt32)) :
-    ∀ (s : LeanExe.IR.Stmt) (next : Nat) (stmts : List Stmt) (next' : Nat),
+    ∀ (s : Source.Stmt) (next : Nat) (stmts : List Stmt) (next' : Nat),
       trStmt F s next = some (stmts, next') → F.Below next →
       ∀ L L', s.denote arrays L = some L' →
       ∀ env, F.Agrees L arrays ctx env → F.Writable env → (∀ n, next ≤ n → env.find n = none) →
@@ -330,7 +331,7 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
       intro next stmts next' htr _ L L' hden env hA hW _
       simp only [trStmt, Option.some.injEq, Prod.mk.injEq] at htr
       obtain ⟨rfl, rfl⟩ := htr
-      simp only [LeanExe.IR.Stmt.denote, Option.some.injEq] at hden
+      simp only [Source.Stmt.denote, Option.some.injEq] at hden
       subst hden
       exact ⟨[], env, by simp [Stmt.execList], Env.Shape.refl _, by simp, hA, hW⟩
   | assign j e =>
@@ -350,7 +351,7 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
             simp only [ht, Option.bind_some, Option.pure_def, Option.some.injEq,
               Prod.mk.injEq] at htr
             obtain ⟨rfl, rfl⟩ := htr
-            simp only [LeanExe.IR.Stmt.denote] at hden
+            simp only [Source.Stmt.denote] at hden
             split at hden
             · obtain ⟨v, hv, rfl⟩ := Option.map_eq_some_iff.mp hden
               obtain ⟨added, hrun, hb, -, -, m, hf⟩ :=
@@ -374,7 +375,7 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
                 · by_cases hij : i = j
                   · subst hij
                     simp only [↓reduceIte, Option.some.injEq] at hi
-                    cases type <;> simp only [LeanExe.IR.ScalarType.value, reduceCtorEq,
+                    cases type <;> simp only [Source.ScalarType.value, reduceCtorEq,
                       Wasm.Value.i64.injEq] at hi
                     subst hi
                     exact ⟨w, true, hw, Env.find_set_same hold⟩
@@ -385,7 +386,7 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
                 · by_cases hij : i = j
                   · subst hij
                     simp only [↓reduceIte, Option.some.injEq] at hi
-                    cases type <;> simp only [LeanExe.IR.ScalarType.value, reduceCtorEq,
+                    cases type <;> simp only [Source.ScalarType.value, reduceCtorEq,
                       Wasm.Value.f32.injEq] at hi
                     subst hi
                     exact ⟨w, true, hw, Env.find_set_same hold⟩
@@ -421,7 +422,7 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
           simp only [hta, htb, Option.bind_some, Option.pure_def, Option.some.injEq,
             Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl⟩ := htr
-          simp only [LeanExe.IR.Stmt.denote, Option.bind_eq_some_iff] at hden
+          simp only [Source.Stmt.denote, Option.bind_eq_some_iff] at hden
           obtain ⟨L1, hda, hdb⟩ := hden
           have hle1 := trStmt_mono F a _ _ _ hta
           obtain ⟨added1, E1, hrun1, hS1, hb1, hA1, hW1⟩ :=
@@ -468,10 +469,10 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
             Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl⟩ := htr
           obtain ⟨i, l, wi, wl, rfl, hwi, hwl, rfl⟩ := trCond_inv hc
-          simp only [LeanExe.IR.Stmt.denote] at hden
+          simp only [Source.Stmt.denote] at hden
           have key : ∀ fuel Lc E, Env.Shape E env → F.Agrees Lc arrays ctx E → F.Writable E →
-              LeanExe.IR.loopIter (fun l' => (LeanExe.IR.Expr.ltU (.get i) (.get l)).denote l' arrays)
-                (LeanExe.IR.Stmt.denote arrays body) fuel Lc = some L' →
+              Source.loopIter (fun l' => (Source.Expr.ltU (.get i) (.get l)).denote l' arrays)
+                (Source.Stmt.denote arrays body) fuel Lc = some L' →
               ∃ E', loopRuns (fun r => match (lt64 wi wl).eval ctx r.env with
                   | some (.bool b) => some b
                   | _ => none)
@@ -484,13 +485,13 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
             | zero => intro Lc E _ _ _ h; cases h
             | succ fuel ihf =>
                 intro Lc E hS hAc hWc hI
-                rw [LeanExe.IR.loopIter_succ] at hI
-                cases hcd : (LeanExe.IR.Expr.ltU (.get i) (.get l)).denote Lc arrays with
+                rw [Source.loopIter_succ] at hI
+                cases hcd : (Source.Expr.ltU (.get i) (.get l)).denote Lc arrays with
                 | none => simp [hcd] at hI
                 | some b =>
                   obtain ⟨x, y, hx, hy, rfl⟩ : ∃ x y, Lc i = some (.i64 x) ∧ Lc l = some (.i64 y) ∧
                       b = decide (x < y) := by
-                    simp only [LeanExe.IR.Expr.denote, Option.bind_eq_bind, Option.pure_def] at hcd
+                    simp only [Source.Expr.denote, Option.bind_eq_bind, Option.pure_def] at hcd
                     split at hcd
                     · rename_i x hx
                       split at hcd
@@ -512,7 +513,7 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
                     subst hI
                     exact ⟨E, by simp [loopRuns, htest, hxy], hS, hAc, hWc⟩
                   · simp only [hxy, ↓reduceIte] at hI
-                    cases hbd : LeanExe.IR.Stmt.denote arrays body Lc with
+                    cases hbd : Source.Stmt.denote arrays body Lc with
                     | none => simp [hbd] at hI
                     | some Lc1 =>
                       simp only [hbd, Option.bind_some] at hI
@@ -531,7 +532,7 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
   | ite c a b iha ihb =>
       intro next stmts next' htr hB L L' hden env hA hW hFresh
       obtain ⟨sc, res, n1, sa, n2, sb, n3, hc, ha, hb, rfl, rfl⟩ := trStmt_ite_inv htr
-      simp only [LeanExe.IR.Stmt.denote, Option.bind_eq_bind, Option.bind_eq_some_iff] at hden
+      simp only [Source.Stmt.denote, Option.bind_eq_bind, Option.bind_eq_some_iff] at hden
       obtain ⟨cv, hcd, hden⟩ := hden
       obtain ⟨added, hrun, hNames, _, _, mutable, hfind⟩ :=
         trExpr_sim F L arrays ctx writes c next sc res n1 hc cv hcd env hA hFresh
@@ -579,13 +580,13 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
       simp [trStmt] at htr
 
 theorem trStmt_writes (F : Layout) :
-    ∀ (s : LeanExe.IR.Stmt) (next : Nat) (stmts : List Stmt) (next' : Nat),
+    ∀ (s : Source.Stmt) (next : Nat) (stmts : List Stmt) (next' : Nat),
       trStmt F s next = some (stmts, next') → ∀ j ∈ s.writes, (F.assigned j).isSome := by
   intro s
   induction s with
   | assign i e =>
       intro next stmts next' h j hj
-      simp only [LeanExe.IR.Stmt.writes, List.mem_singleton] at hj
+      simp only [Source.Stmt.writes, List.mem_singleton] at hj
       subst hj
       simp only [trStmt, Option.bind_eq_bind] at h
       cases hw : F.scalar j with
@@ -604,7 +605,7 @@ theorem trStmt_writes (F : Layout) :
         cases hb : trStmt F b ra.2 with
         | none => simp [ha, hb] at h
         | some rb =>
-          simp only [LeanExe.IR.Stmt.writes, List.mem_append] at hj
+          simp only [Source.Stmt.writes, List.mem_append] at hj
           rcases hj with hj | hj
           · exact iha _ _ _ ha j hj
           · exact ihb _ _ _ hb j hj
@@ -617,11 +618,11 @@ theorem trStmt_writes (F : Layout) :
         cases hb : trStmt F body next with
         | none => simp [hc, hb] at h
         | some rb => exact ih _ _ _ hb j hj
-  | skip => intro next stmts next' _ j hj; simp [LeanExe.IR.Stmt.writes] at hj
+  | skip => intro next stmts next' _ j hj; simp [Source.Stmt.writes] at hj
   | ite c a b iha ihb =>
       intro next stmts next' h j hj
       obtain ⟨sc, res, n1, sa, n2, sb, n3, _, ha, hb, _, _⟩ := trStmt_ite_inv h
-      simp only [LeanExe.IR.Stmt.writes, List.mem_append] at hj
+      simp only [Source.Stmt.writes, List.mem_append] at hj
       rcases hj with hj | hj
       · exact iha _ _ _ ha j hj
       · exact ihb _ _ _ hb j hj

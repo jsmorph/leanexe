@@ -36,7 +36,7 @@ def Param.arg : {t : Ty} → Param t → t.denote → LeanExe.WGSL.Arg
 theorem Param.arg_kind {t : Ty} (p : Param t) (x : t.denote) : (p.arg x).kind = p.kind := by
   cases p <;> rfl
 
-def countSize (count : LeanExe.WGSL.Count) (index : Nat) : Option (LeanExe.IR.Expr .u64) :=
+def countSize (count : LeanExe.WGSL.Count) (index : Nat) : Option (LeanExe.WGSL.Source.Expr .u64) :=
   match count with
   | .size sizeSlot src => if index = src then some (.get sizeSlot) else none
   | .param _ => none
@@ -56,14 +56,14 @@ theorem countSize_bound (count : LeanExe.WGSL.Count) (index base : Nat)
   | size sizeSlot src =>
       have := h sizeSlot rfl
       by_cases hi : index = src
-      · simp only [countSize, hi, ↓reduceIte, sizeLocals, LeanExe.IR.Expr.denoteLocals]
+      · simp only [countSize, hi, ↓reduceIte, sizeLocals, LeanExe.WGSL.Source.Expr.denoteLocals]
         omega
       · simp [countSize, hi, sizeLocals]
 
 theorem Param.rep_bound {t : Ty} (p : Param t) (index base : Nat) (count : LeanExe.WGSL.Count)
     (hi : index < base) (hs : ∀ j, count.sizeLocal? = some j → j < base) :
     (p.rep index count).locals ≤ base := by
-  cases p <;> simp only [Param.rep, Rep.locals, LeanExe.IR.Expr.denoteLocals]
+  cases p <;> simp only [Param.rep, Rep.locals, LeanExe.WGSL.Source.Expr.denoteLocals]
   all_goals first | exact countSize_bound count index base hs | omega
 
 def argHolds (arg : LeanExe.WGSL.Arg) (index : Nat) (count : LeanExe.WGSL.Count)
@@ -79,10 +79,11 @@ theorem Param.rep_holds {t : Ty} (p : Param t) (x : t.denote) (index : Nat)
     (h : argHolds (p.arg x) index count locals arrays) :
     (p.rep index count).Holds locals arrays x := by
   cases p with
-  | word | float32 => simp_all [argHolds, Param.arg, Param.rep, Rep.Holds, LeanExe.IR.Expr.denote]
+  | word | float32 =>
+    simp_all [argHolds, Param.arg, Param.rep, Rep.Holds, LeanExe.WGSL.Source.Expr.denote]
   | bool =>
       cases x <;> simp_all [argHolds, Param.arg, Param.rep, Rep.Holds,
-        LeanExe.IR.Expr.denote, boolWord]
+        LeanExe.WGSL.Source.Expr.denote, boolWord]
   | words | bools | floats32 =>
       simp only [Param.arg, argHolds] at h
       refine ⟨h.1, ?_⟩
@@ -93,7 +94,7 @@ theorem Param.rep_holds {t : Ty} (p : Param t) (x : t.denote) (index : Nat)
           · subst src
             have hs : locals sizeSlot = some (.i64 x.size.toUInt64) := by
               simpa only [Array.size_map] using h.2 sizeSlot rfl
-            simp [countSize, sizeHolds, LeanExe.IR.Expr.denote, hs]
+            simp [countSize, sizeHolds, LeanExe.WGSL.Source.Expr.denote, hs]
           · simp [countSize, hi, sizeHolds]
 
 inductive Params : List Ty → Type where

@@ -616,8 +616,8 @@ The [development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda
 
 ## WGSL kernels
 
-[The WGSL compiler](WGSL/Compile.lean) translates an outer typed array build to the existing
-IR and WGSL subset.  [Typed representations](WGSL/Context.lean) relate source values to scalar
+[The WGSL compiler](WGSL/Compile.lean) translates an outer typed array build to the source
+language of [`LeanExe/WGSL/Source.lean`](../LeanExe/WGSL/Source.lean) and its WGSL subset.  [Typed representations](WGSL/Context.lean) relate source values to scalar
 expressions and borrowed input buffers.  [Lowering](WGSL/Lower.lean) recursively constructs
 [code with a denotation proof](WGSL/Code.lean), using shared rules for bindings, branches, and
 counted loops.  Parameters, loop state, and output elements use words, Booleans, or binary32

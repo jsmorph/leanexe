@@ -1,12 +1,12 @@
 import Demos.Drone.Program
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 
 /-! The table that `extend` builds and its size: below `count`, `extend` builds the table
 extended by the next row, entry by entry, and otherwise it returns the table that it consumed. -/
 
 namespace Demos.Drone
 
-open LeanExe.IR (build_size)
+open LeanExe.Dialect (build_size)
 
 /-- Entry `j` of the table that `extend` builds. -/
 def extendChoice (terrain : Array UInt64) (count i : UInt64) (table : Array Choice) (j : UInt64) :

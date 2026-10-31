@@ -1,6 +1,6 @@
 import Library.Hashing.Sha3.RoundProof
 import Library.Bytes.Packed
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 
 /-! The lane program's sponge computes Algorithm 8 of the transcription.  The string of a state of
 lanes is `toBits (toState s)`, whose bit `t` is bit `t % 64` of lane `t / 64`.  KECCAK-p[1600, 24]
@@ -242,7 +242,7 @@ theorem absorb_spec (msg : Array UInt64) (n rw sfx : UInt64) (hrw : rw.toNat ≤
           (64 * rw.toNat) ++ zeros (1600 - 64 * rw.toNat)))) (zeros 1600) := by
   unfold absorb
   simp only
-  refine LeanExe.IR.loop_induction
+  refine LeanExe.Dialect.loop_induction
     (P := fun k s => toBits (toState s) = (List.range k).foldl
       (fun S i => keccakP 6 24 (Spec.xor S ((P.drop (i * (64 * rw.toNat))).take
         (64 * rw.toNat) ++ zeros (1600 - 64 * rw.toNat)))) (zeros 1600)) zero_lanes ?_

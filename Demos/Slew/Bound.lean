@@ -25,7 +25,7 @@ theorem relax_ok (xs : Array Float) (d : Dims) (n u settleTicks : UInt64) (s : S
     (relax xs d n u settleTicks s).ok = s.ok := by
   unfold relax
   dsimp only
-  refine LeanExe.IR.loop_induction (P := fun _ (st : Search) => st.ok = s.ok) rfl ?_
+  refine LeanExe.Dialect.loop_induction (P := fun _ (st : Search) => st.ok = s.ok) rfl ?_
   intro k st _ hst
   split
   · exact hst
@@ -83,7 +83,7 @@ theorem search_bound (xs : Array Float) (d : Dims) (n settleTicks : UInt64)
     intro k s hs _
     exact ⟨round_inv hs.1 settleTicks,
       (congrArg Array.size (round_ok xs d n settleTicks s)).trans hs.2⟩
-  case hI => exact ⟨initial_inv xs d n, LeanExe.IR.build_size _ _⟩
+  case hI => exact ⟨initial_inv xs d n, LeanExe.Dialect.build_size _ _⟩
   exact Nat.le_of_eq (by rw [_root_.Verified.sumBelow_const, hn1])
 
 theorem statusOnly_bound (status : Float) (examined : UInt64) :

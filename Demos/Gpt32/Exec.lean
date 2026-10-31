@@ -1,5 +1,5 @@
 import Demos.Gpt32.HostProgram
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 import LeanExe.WGSL.Workgroup
 
 /-!

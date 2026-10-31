@@ -69,7 +69,7 @@ theorem squeezeBlock_spec (out : Array UInt64) (s : Lanes) (rw words base : UInt
       if base.toNat ≤ w ∧ w < base.toNat + rw.toNat ∧ w < words.toNat ∧ w < out.size then
         (laneList s).getD (w - base.toNat) 0 else out[w]! := by
   unfold squeezeBlock
-  refine LeanExe.IR.loop_induction
+  refine LeanExe.Dialect.loop_induction
     (P := fun k (o : Array UInt64) => o.size = out.size ∧ ∀ w, o[w]! =
       if base.toNat ≤ w ∧ w < base.toNat + k ∧ w < words.toNat ∧ w < out.size then
         (laneList s).getD (w - base.toNat) 0 else out[w]!)
@@ -127,9 +127,9 @@ theorem shakeWith_eq (msg : Array UInt64) (n d rw : UInt64) :
 theorem build_get! (words : UInt64) (w : Nat) :
     (LeanExe.build words fun _ => (0 : UInt64))[w]! = 0 := by
   by_cases h : w < words.toNat
-  · rw [LeanExe.IR.build_get h]
+  · rw [LeanExe.Dialect.build_get h]
   · rw [Array.getElem!_eq_getD, Array.getD_eq_getD_getElem?, Array.getElem?_eq_none
-      (by rw [LeanExe.IR.build_size]; omega)]
+      (by rw [LeanExe.Dialect.build_size]; omega)]
     rfl
 
 /-- After the squeezing loop, word `w` below `words` of the output is lane `w % rw` of
@@ -142,14 +142,14 @@ theorem squeeze_loop (s : Lanes) (rw words blocks : UInt64) (hrw0 : 0 < rw.toNat
           (squeezeStep rw words blocks)).2[w]! =
         if w < min (blocks.toNat * rw.toNat) words.toNat then
           (laneList (keccakF^[w / rw.toNat] s)).getD (w % rw.toNat) 0 else 0 := by
-  have key := LeanExe.IR.loop_induction
+  have key := LeanExe.Dialect.loop_induction
     (n := blocks) (init := (s, LeanExe.build words fun _ => (0 : UInt64)))
     (f := squeezeStep rw words blocks)
     (P := fun k (st : Lanes × Array UInt64) => st.2.size = words.toNat ∧
       (∀ w, st.2[w]! = if w < min (k * rw.toNat) words.toNat then
         (laneList (keccakF^[w / rw.toNat] s)).getD (w % rw.toNat) 0 else 0) ∧
       (k < blocks.toNat → st.1 = keccakF^[k] s))
-    ⟨LeanExe.IR.build_size _ _, fun w => by rw [build_get!, ite_eq_right (by omega)],
+    ⟨LeanExe.Dialect.build_size _ _, fun w => by rw [build_get!, ite_eq_right (by omega)],
       fun _ => rfl⟩
     (by
       intro k st hk ⟨hsize, hget, hstate⟩

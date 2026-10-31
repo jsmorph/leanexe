@@ -113,7 +113,7 @@ theorem digitPrefix_loop (a b : Array UInt64) (subtract : Bool) (count : UInt64)
       let value := if subtract then 10 + x - y - state.2 else x + y + state.2
       (state.1.push (value % 10), if subtract then (if value < 10 then 1 else 0) else value / 10)) =
       digitPrefix a b subtract count.toNat := by
-  refine LeanExe.IR.loop_induction (n := count)
+  refine LeanExe.Dialect.loop_induction (n := count)
     (fun n state => state = digitPrefix a b subtract n) rfl ?_
   intro n state hn same
   subst state

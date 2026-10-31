@@ -1,6 +1,6 @@
 import Demos.RunningSumFp.Wasi
 import Verified.ChargeFacts
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 import Library.Numerics.Decimal.PrintFloat.PrintFloatSteps
 
 /-! Bounds on the generated allocation bounds of the big-integer arithmetic and the printer that
@@ -23,7 +23,7 @@ theorem mulSmall_size (a : Array UInt64) (m c : UInt64) (bound : a.size < UInt64
   dsimp only
   rw [Array.size_push, loop_push_size]
   case pushes => intro i state; simp
-  simp only [LeanExe.IR.build_size, UInt64.toNat_zero, Nat.zero_add]
+  simp only [LeanExe.Dialect.build_size, UInt64.toNat_zero, Nat.zero_add]
   omega
 
 theorem mulSmall_bound_le (a : Array UInt64) (m c : UInt64) (bound : a.size < UInt64.size) :
@@ -33,7 +33,7 @@ theorem mulSmall_bound_le (a : Array UInt64) (m c : UInt64) (bound : a.size < UI
   refine le_trans (Nat.add_le_add_right (Nat.min_le_right _ _) _) ?_
   rw [loopCost_const, loop_push_size]
   case pushes => intro i state; simp
-  simp only [LeanExe.IR.build_size, UInt64.toNat_zero, Nat.zero_add, blockCost_eq, creditCost,
+  simp only [LeanExe.Dialect.build_size, UInt64.toNat_zero, Nat.zero_add, blockCost_eq, creditCost,
     paidGrowCost, growCost, allocCost]
   omega
 
@@ -43,7 +43,7 @@ theorem sub_size (a b : Array UInt64) (bound : a.size < UInt64.size) :
   unfold sub
   rw [loop_push_size]
   case pushes => intro i state; simp
-  simp only [LeanExe.IR.build_size, UInt64.toNat_zero, Nat.zero_add]
+  simp only [LeanExe.Dialect.build_size, UInt64.toNat_zero, Nat.zero_add]
   omega
 
 theorem sub_bound_le (a b : Array UInt64) (bound : a.size < UInt64.size) :
@@ -52,7 +52,7 @@ theorem sub_bound_le (a b : Array UInt64) (bound : a.size < UInt64.size) :
   rw [io.pureSources.sub.bound_eq]
   refine le_trans (Nat.min_le_right _ _) ?_
   rw [loopCost_const]
-  simp only [LeanExe.IR.build_size, UInt64.toNat_zero, Nat.zero_add, blockCost_eq, creditCost,
+  simp only [LeanExe.Dialect.build_size, UInt64.toNat_zero, Nat.zero_add, blockCost_eq, creditCost,
     paidGrowCost, allocCost]
   omega
 
@@ -67,7 +67,7 @@ theorem shl_size_le (a : Array UInt64) (k : UInt64) (bound : a.size < UInt64.siz
     (shl a k).size ≤ a.size + 1 + (k >>> 5).toNat := by
   unfold shl
   dsimp only
-  rw [LeanExe.IR.build_size, mulSmall_size a _ _ bound]
+  rw [LeanExe.Dialect.build_size, mulSmall_size a _ _ bound]
   exact shift_toNat_le _ _
 
 theorem shl_bound_le (a : Array UInt64) (k : UInt64) (bound : a.size < UInt64.size) :
@@ -153,7 +153,7 @@ theorem scaledQuot_bound_le (n d : Array UInt64) (sn sd bits : UInt64) (small : 
 theorem loop_mulSmall_size (a : Array UInt64) (count : UInt64)
     (bound : a.size + count.toNat < UInt64.size) :
     (LeanExe.loop count a fun _ a => mulSmall a 1000000000 0).size = a.size + count.toNat := by
-  apply LeanExe.IR.loop_induction (fun k (b : Array UInt64) => b.size = a.size + k)
+  apply LeanExe.Dialect.loop_induction (fun k (b : Array UInt64) => b.size = a.size + k)
   · rfl
   · intro k b index same
     rw [mulSmall_size b _ _ (by omega)]
@@ -197,11 +197,11 @@ def quotAtCost : Nat := 953376
 open Library.Numerics.Decimal.PrintFloat in
 theorem limbsOf_size (x : UInt64) : (limbsOf x).size = 2 := by
   unfold limbsOf
-  rw [LeanExe.IR.build_size]
+  rw [LeanExe.Dialect.build_size]
   rfl
 
 theorem one_size : (LeanExe.build 1 fun _ => (1 : UInt64)).size = 1 := by
-  rw [LeanExe.IR.build_size]
+  rw [LeanExe.Dialect.build_size]
   rfl
 
 /-- The charge of `quotAt` for a shift `sn` below 2048, `sd` at most 1076, and a biased decimal
@@ -364,16 +364,16 @@ theorem numDigits_range (t : UInt64) : 1 ≤ (numDigits t).toNat ∧ (numDigits 
 
 theorem digitsFrom_size (t nd s cnt : UInt64) : (digitsFrom t nd s cnt).size = cnt.toNat := by
   unfold digitsFrom
-  rw [LeanExe.IR.build_size]
+  rw [LeanExe.Dialect.build_size]
 
 theorem byte1_size (b : UInt64) : (byte1 b).size = 1 := by
   unfold byte1
-  rw [LeanExe.IR.build_size]
+  rw [LeanExe.Dialect.build_size]
   rfl
 
 theorem noBytes_size : noBytes.size = 0 := by
   unfold noBytes
-  rw [LeanExe.IR.build_size]
+  rw [LeanExe.Dialect.build_size]
   rfl
 
 theorem numDigits_pred (t : UInt64) : (numDigits t - 1).toNat = (numDigits t).toNat - 1 := by
@@ -419,7 +419,7 @@ theorem special_bound_le (neg inf nan ecma : Bool) :
 
 theorem special_size_le (neg inf nan ecma : Bool) : (special neg inf nan ecma).size ≤ 9 := by
   unfold special fixed
-  split_ifs <;> simp only [LeanExe.IR.build_size, UInt64.reduceToNat] <;> omega
+  split_ifs <;> simp only [LeanExe.Dialect.build_size, UInt64.reduceToNat] <;> omega
 
 theorem word_fields (w : UInt64) :
     (w >>> 52 &&& 2047).toNat ≤ 2047 ∧ (w &&& 4503599627370495).toNat ≤ 4503599627370495 := by

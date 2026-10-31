@@ -1,50 +1,50 @@
 import LeanExe.WGSL.Pair
-import LeanExe.IR.Denote
+import LeanExe.WGSL.SourceDenote
 import LeanExe.WGSL.F32Result
 
 /-!
-The translation of IR expressions of the kernel subset into WGSL `let` statements, one per node,
-and its simulation lemma: from an environment that holds the IR locals and arrays the way a
-`Layout` says, the statements run without error and leave the expression's denotation in the
-result variable, a `u64` as the pair of its halves and a binary32 value as an `f32`.
+The translation of source expressions of the kernel subset into WGSL `let` statements, one per node,
+and its simulation lemma: from an environment that holds the source locals and arrays the way a
+`Layout` says, the statements run without error and leave the expression's denotation in the result
+variable, a `u64` as the pair of its halves and a binary32 value as an `f32`.
 -/
 
 namespace LeanExe.WGSL
 
-/-- Where the translation finds each IR local: a scalar local's WGSL variable, and an array
+/-- Where the translation finds each source local: a scalar local's WGSL variable, and an array
 pointer's buffer and the variable that holds the array's length as a pair.  The locals that
 statements assign have types, and their variables are `var`s. -/
 structure Layout where
   scalar : Nat → Option Nat
   array : Nat → Option (Nat × Nat)
-  assigned : Nat → Option LeanExe.IR.ScalarType := fun _ => none
+  assigned : Nat → Option Source.ScalarType := fun _ => none
 
-def F32Op.wgsl : LeanExe.IR.F32Op → BinOp
+def F32Op.wgsl : Source.F32Op → BinOp
   | .add => .add
   | .sub => .sub
   | .mul => .mul
   | .div => .div
 
-def F32UnOp.wgsl : LeanExe.IR.F32UnOp → Expr → Expr
+def F32UnOp.wgsl : Source.F32UnOp → Expr → Expr
   | .sqrt, e => .sqrt e
   | .nearest, e => .round e
   | .abs, e => .abs e
 
-def F32UnOp.finish : LeanExe.IR.F32UnOp → Expr → Expr
+def F32UnOp.finish : Source.F32UnOp → Expr → Expr
   | .abs, e => e
   | _, e => canonicalF32 e
 
-theorem F32UnOp.finish_eval (op : LeanExe.IR.F32UnOp) (ctx : Context) (env : Env)
+theorem F32UnOp.finish_eval (op : Source.F32UnOp) (ctx : Context) (env : Env)
     (e : Expr) (bits : UInt32) (h : e.eval ctx env = some (.f32 (op.apply bits))) :
     (F32UnOp.finish op e).eval ctx env = some (.f32 (op.apply bits)) := by
   cases op with
   | abs => exact h
   | sqrt =>
       have hc := eval_canonicalF32 ctx env e _ h
-      simpa only [F32UnOp.finish, LeanExe.IR.F32UnOp.apply, canonical_f32_sqrt] using hc
+      simpa only [F32UnOp.finish, Source.F32UnOp.apply, canonical_f32_sqrt] using hc
   | nearest =>
       have hc := eval_canonicalF32 ctx env e _ h
-      simpa only [F32UnOp.finish, LeanExe.IR.F32UnOp.apply, canonical_f32_nearest] using hc
+      simpa only [F32UnOp.finish, Source.F32UnOp.apply, canonical_f32_nearest] using hc
 
 /-- The exponent `s` of a constant `2^s` with `1 ≤ s ≤ 31`. -/
 def pow2Exp? (c : UInt64) : Option Nat :=
@@ -64,7 +64,7 @@ theorem pow2Exp?_spec {c : UInt64} {s : Nat} (h : pow2Exp? c = some s) :
 /-- The pair operation of a `u64` operation with right operand `right`, for those the
 translation covers: addition, subtraction, multiplication, and division and remainder by a
 constant power of two from 2 to 2^31. -/
-def U64Op.wgsl? : LeanExe.IR.U64Op → LeanExe.IR.Expr .u64 → Option (Nat → Nat → Expr)
+def U64Op.wgsl? : Source.U64Op → Source.Expr .u64 → Option (Nat → Nat → Expr)
   | .add, _ => some add64
   | .sub, _ => some sub64
   | .mul, _ => some mul64
@@ -72,9 +72,9 @@ def U64Op.wgsl? : LeanExe.IR.U64Op → LeanExe.IR.Expr .u64 → Option (Nat → 
   | .remU, .const c => (pow2Exp? c).map fun s a _ => remPow2 a s
   | _, _ => none
 
-/-- The statements that compute an IR expression from variable `next` on, the variable that holds
+/-- The statements that compute a source expression from variable `next` on, the variable that holds
 its value, and the next free variable; `none` outside the kernel subset. -/
-def trExpr (F : Layout) : {type : LeanExe.IR.ScalarType} → LeanExe.IR.Expr type → Nat →
+def trExpr (F : Layout) : {type : Source.ScalarType} → Source.Expr type → Nat →
     Option (List Stmt × Nat × Nat)
   | .u64, .get j, next => (F.scalar j).map fun v => ([], v, next)
   | .u64, .const c, next =>
@@ -163,14 +163,14 @@ def trExpr (F : Layout) : {type : LeanExe.IR.ScalarType} → LeanExe.IR.Expr typ
       pure (sp ++ [.let_ n1 .vec2u (.vec2 (readAt b vp len 2) (readAt b vp len 3))], n1, n1 + 1)
   | _, _, _ => none
 
-/-- The WGSL value of an IR value of type `type`. -/
-def wgslValue : (type : LeanExe.IR.ScalarType) → type.denote → Value
+/-- The WGSL value of a source value of type `type`. -/
+def wgslValue : (type : Source.ScalarType) → type.denote → Value
   | .u64, v => pairOf v
   | .f32, bits => .f32 bits
   | .bool, b => .bool b
   | .f64, bits => pairOf bits
 
-/-- The environment and buffers hold the IR locals and arrays as the layout says. -/
+/-- The environment and buffers hold the source locals and arrays as the layout says. -/
 structure Layout.Agrees (F : Layout) (locals : Nat → Option Wasm.Value)
     (arrays : Nat → Option (Array UInt64)) (ctx : Context) (env : Env) : Prop where
   word : ∀ j v, locals j = some (.i64 v) →
@@ -328,7 +328,7 @@ theorem find_none_of_names {env : Env} {n : Nat} (h : ∀ b ∈ env, b.1 < n) :
   simp only [decide_eq_true_eq]
   omega
 
-theorem trExpr_mono (F : Layout) : ∀ {type : LeanExe.IR.ScalarType} (e : LeanExe.IR.Expr type)
+theorem trExpr_mono (F : Layout) : ∀ {type : Source.ScalarType} (e : Source.Expr type)
     (next : Nat) (stmts : List Stmt) (res next' : Nat),
     trExpr F e next = some (stmts, res, next') → next ≤ next' := by
   intro type e
@@ -463,7 +463,7 @@ theorem Env.set_append (a b : Env) (w : Nat) (v : Value) :
   simp [Env.set]
 
 
-theorem U64Op.wgsl?_eval {op : LeanExe.IR.U64Op} {right : LeanExe.IR.Expr .u64}
+theorem U64Op.wgsl?_eval {op : Source.U64Op} {right : Source.Expr .u64}
     {f : Nat → Nat → Expr} (h : U64Op.wgsl? op right = some f)
     {locals : Nat → Option Wasm.Value} {arrays : Nat → Option (Array UInt64)} {rv : UInt64}
     (hr : right.denote locals arrays = some rv) (ctx : Context) (env : Env) {ma mb : Bool}
@@ -480,14 +480,14 @@ theorem U64Op.wgsl?_eval {op : LeanExe.IR.U64Op} {right : LeanExe.IR.Expr .u64}
           simp only [U64Op.wgsl?, Option.map_eq_some_iff] at h
           obtain ⟨s, hs, rfl⟩ := h
           obtain ⟨hs1, rfl⟩ := pow2Exp?_spec hs
-          simp only [LeanExe.IR.Expr.denote, Option.some.injEq] at hr
+          simp only [Source.Expr.denote, Option.some.injEq] at hr
           subst hr
           have hne : UInt64.ofNat (2 ^ s) ≠ 0 := fun h0 => by
             have := congrArg UInt64.toNat h0
             rw [UInt64.toNat_ofNat', Nat.mod_eq_of_lt (Nat.pow_lt_pow_right (by omega)
               (by omega))] at this
             simp at this
-          simp only [LeanExe.IR.U64Op.apply, hne, ↓reduceIte]
+          simp only [Source.U64Op.apply, hne, ↓reduceIte]
           exact divPow2_word ctx env a s lv hs1 ha
       | _ => simp [U64Op.wgsl?] at h
   | remU =>
@@ -496,14 +496,14 @@ theorem U64Op.wgsl?_eval {op : LeanExe.IR.U64Op} {right : LeanExe.IR.Expr .u64}
           simp only [U64Op.wgsl?, Option.map_eq_some_iff] at h
           obtain ⟨s, hs, rfl⟩ := h
           obtain ⟨hs1, rfl⟩ := pow2Exp?_spec hs
-          simp only [LeanExe.IR.Expr.denote, Option.some.injEq] at hr
+          simp only [Source.Expr.denote, Option.some.injEq] at hr
           subst hr
           have hne : UInt64.ofNat (2 ^ s) ≠ 0 := fun h0 => by
             have := congrArg UInt64.toNat h0
             rw [UInt64.toNat_ofNat', Nat.mod_eq_of_lt (Nat.pow_lt_pow_right (by omega)
               (by omega))] at this
             simp at this
-          simp only [LeanExe.IR.U64Op.apply, hne, ↓reduceIte]
+          simp only [Source.U64Op.apply, hne, ↓reduceIte]
           exact remPow2_word ctx env a s lv hs1 ha
       | _ => simp [U64Op.wgsl?] at h
   | _ => simp [U64Op.wgsl?] at h
@@ -566,7 +566,7 @@ theorem simulates_cond {ctx : Context} {env : Env} {writes : List (Nat × UInt32
 /-- Running the translation of an expression leaves its denotation in the result variable. -/
 theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
     (arrays : Nat → Option (Array UInt64)) (ctx : Context) (writes : List (Nat × UInt32)) :
-    ∀ {type : LeanExe.IR.ScalarType} (e : LeanExe.IR.Expr type) (next : Nat) (stmts : List Stmt)
+    ∀ {type : Source.ScalarType} (e : Source.Expr type) (next : Nat) (stmts : List Stmt)
       (res next' : Nat), trExpr F e next = some (stmts, res, next') →
     ∀ v, e.denote locals arrays = some v →
     ∀ env, F.Agrees locals arrays ctx env → (∀ n, next ≤ n → Env.find env n = none) →
@@ -579,7 +579,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
       obtain ⟨w, hw, heq⟩ := htr
       cases heq
       have hx : locals j = some (.i64 v) := by
-        simp only [LeanExe.IR.Expr.denote] at hden
+        simp only [Source.Expr.denote] at hden
         split at hden <;> simp_all
       obtain ⟨w', m, hw', hf⟩ := hAgree.word j v hx
       rw [hw] at hw'
@@ -590,7 +590,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
       intro next stmts res next' htr v hden env hAgree hFresh
       simp only [trExpr, Option.some.injEq, Prod.mk.injEq] at htr
       obtain ⟨rfl, rfl, rfl⟩ := htr
-      simp only [LeanExe.IR.Expr.denote, Option.some.injEq] at hden
+      simp only [Source.Expr.denote, Option.some.injEq] at hden
       subst hden
       have hfree := hFresh next (le_refl _)
       refine ⟨[(next, pairOf c, false)], ?_, by simp, by omega, by omega, false,
@@ -614,8 +614,8 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
             obtain ⟨sr, vr, n2⟩ := rr
             simp only [hop, hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
             obtain ⟨rfl, rfl, rfl⟩ := htr
-            simp only [LeanExe.IR.Expr.denote] at hden
-            obtain ⟨lv, rv, hdl, hdr, rfl⟩ := LeanExe.IR.denote_two hden
+            simp only [Source.Expr.denote] at hden
+            obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Source.denote_two hden
             exact simulates_bin .vec2u (f vl vr) (wgslValue .u64 (op.apply lv rv))
               (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
               (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
@@ -628,7 +628,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
       intro next stmts res next' htr v hden env hAgree hFresh
       simp only [trExpr, Option.some.injEq, Prod.mk.injEq] at htr
       obtain ⟨rfl, rfl, rfl⟩ := htr
-      simp only [LeanExe.IR.Expr.denote, Option.some.injEq] at hden
+      simp only [Source.Expr.denote, Option.some.injEq] at hden
       subst hden
       have hfree := hFresh next (le_refl _)
       refine ⟨[(next, .bool c, false)], ?_, by simp, by omega, by omega, false,
@@ -648,8 +648,8 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
           obtain ⟨sr, vr, n2⟩ := rr
           simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl, rfl⟩ := htr
-          simp only [LeanExe.IR.Expr.denote] at hden
-          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := LeanExe.IR.denote_two hden
+          simp only [Source.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Source.denote_two hden
           exact simulates_bin .bool (le64 vl vr) (wgslValue .bool (decide (lv ≤ rv)))
             (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
             (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
@@ -669,8 +669,8 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
           obtain ⟨sr, vr, n2⟩ := rr
           simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl, rfl⟩ := htr
-          simp only [LeanExe.IR.Expr.denote] at hden
-          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := LeanExe.IR.denote_two hden
+          simp only [Source.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Source.denote_two hden
           exact simulates_bin .bool (eq64 vl vr) (wgslValue .bool (lv == rv))
             (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
             (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
@@ -690,8 +690,8 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
           obtain ⟨sr, vr, n2⟩ := rr
           simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl, rfl⟩ := htr
-          simp only [LeanExe.IR.Expr.denote] at hden
-          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := LeanExe.IR.denote_two hden
+          simp only [Source.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Source.denote_two hden
           exact simulates_bin .bool (.not (eq64 vl vr)) (wgslValue .bool (lv != rv))
             (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
             (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
@@ -711,8 +711,8 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
           obtain ⟨sr, vr, n2⟩ := rr
           simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl, rfl⟩ := htr
-          simp only [LeanExe.IR.Expr.denote] at hden
-          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := LeanExe.IR.denote_two hden
+          simp only [Source.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Source.denote_two hden
           exact simulates_bin .bool (.bin .eq (.var vl) (.var vr)) (wgslValue .bool (Wasm.IEEE32.eq lv rv))
             (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
             (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
@@ -732,8 +732,8 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
           obtain ⟨sr, vr, n2⟩ := rr
           simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl, rfl⟩ := htr
-          simp only [LeanExe.IR.Expr.denote] at hden
-          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := LeanExe.IR.denote_two hden
+          simp only [Source.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Source.denote_two hden
           exact simulates_bin .bool (.bin .lt (.var vl) (.var vr)) (wgslValue .bool (Wasm.IEEE32.lt lv rv))
             (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
             (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
@@ -753,8 +753,8 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
           obtain ⟨sr, vr, n2⟩ := rr
           simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl, rfl⟩ := htr
-          simp only [LeanExe.IR.Expr.denote] at hden
-          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := LeanExe.IR.denote_two hden
+          simp only [Source.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Source.denote_two hden
           exact simulates_bin .bool (.bin .le (.var vl) (.var vr)) (wgslValue .bool (Wasm.IEEE32.le lv rv))
             (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
             (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
@@ -770,7 +770,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
         obtain ⟨so, vo, n1⟩ := ro
         simp only [ho, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
         obtain ⟨rfl, rfl, rfl⟩ := htr
-        simp only [LeanExe.IR.Expr.denote] at hden
+        simp only [Source.Expr.denote] at hden
         obtain ⟨w, hd, rfl⟩ := Option.map_eq_some_iff.mp hden
         exact simulates_step .bool (.not (.var vo)) (wgslValue .bool (!w))
           (ih next so vo n1 ho w hd env hAgree hFresh) hFresh
@@ -791,7 +791,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
           obtain ⟨sr, vr, n2⟩ := rr
           simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl, rfl⟩ := htr
-          simp only [LeanExe.IR.Expr.denote, Option.bind_eq_bind] at hden
+          simp only [Source.Expr.denote, Option.bind_eq_bind] at hden
           cases hdl : left.denote locals arrays with
           | none => simp [hdl] at hden
           | some b =>
@@ -839,7 +839,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
             obtain ⟨se, ve, n3⟩ := re
             simp only [hc, ht, he, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
             obtain ⟨rfl, rfl, rfl⟩ := htr
-            simp only [LeanExe.IR.Expr.denote, Option.bind_eq_bind] at hden
+            simp only [Source.Expr.denote, Option.bind_eq_bind] at hden
             cases hdc : c.denote locals arrays with
             | none => simp [hdc] at hden
             | some b =>
@@ -892,7 +892,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
             obtain ⟨se, ve, n3⟩ := re
             simp only [hc, ht, he, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
             obtain ⟨rfl, rfl, rfl⟩ := htr
-            simp only [LeanExe.IR.Expr.denote, Option.bind_eq_bind] at hden
+            simp only [Source.Expr.denote, Option.bind_eq_bind] at hden
             cases hdc : c.denote locals arrays with
             | none => simp [hdc] at hden
             | some b =>
@@ -941,7 +941,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
           obtain ⟨sr, vr, n2⟩ := rr
           simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl, rfl⟩ := htr
-          simp only [LeanExe.IR.Expr.denote, Option.bind_eq_bind, Option.pure_def] at hden
+          simp only [Source.Expr.denote, Option.bind_eq_bind, Option.pure_def] at hden
           cases hdl : left.denote locals arrays with
           | none => simp [hdl] at hden
           | some lv =>
@@ -962,7 +962,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
       obtain ⟨w, hw, heq⟩ := htr
       cases heq
       have hx : locals j = some (.f32 v) := by
-        simp only [LeanExe.IR.Expr.denote] at hden
+        simp only [Source.Expr.denote] at hden
         split at hden <;> simp_all
       obtain ⟨w', m, hw', hf⟩ := hAgree.float j v hx
       rw [hw] at hw'
@@ -976,7 +976,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
       · cases htr
       · simp only [Option.some.injEq, Prod.mk.injEq] at htr
         obtain ⟨rfl, rfl, rfl⟩ := htr
-        simp only [LeanExe.IR.Expr.denote, Option.some.injEq] at hden
+        simp only [Source.Expr.denote, Option.some.injEq] at hden
         subst hden
         have hfree := hFresh next (le_refl _)
         refine ⟨[(next, .f32 bits, false)], ?_, by simp, by omega, by omega, false,
@@ -996,7 +996,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
           obtain ⟨sr, vr, n2⟩ := rr
           simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl, rfl⟩ := htr
-          simp only [LeanExe.IR.Expr.denote, Option.bind_eq_bind, Option.pure_def] at hden
+          simp only [Source.Expr.denote, Option.bind_eq_bind, Option.pure_def] at hden
           cases hdl : left.denote locals arrays with
           | none => simp [hdl] at hden
           | some lv =>
@@ -1015,7 +1015,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
                 (fun env' ml mr h1 h2 => by
                   simp only [wgslValue] at h1 h2
                   cases op <;> simp [Expr.eval, h1, h2, F32Op.wgsl, BinOp.apply,
-                    LeanExe.IR.F32Op.apply, wgslValue])
+                    Source.F32Op.apply, wgslValue])
                 rfl
               have hFinal := simulates_step .f32 (canonicalF32 (.var n2))
                 (wgslValue .f32 (op.apply lv rv)) hRaw hFresh
@@ -1034,7 +1034,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
         obtain ⟨so, vo, n1⟩ := ro
         simp only [ho, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
         obtain ⟨rfl, rfl, rfl⟩ := htr
-        simp only [LeanExe.IR.Expr.denote] at hden
+        simp only [Source.Expr.denote] at hden
         cases hd : operand.denote locals arrays with
         | none => simp [hd] at hden
         | some w =>
@@ -1044,7 +1044,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
             (ih next so vo n1 ho w hd env hAgree hFresh) hFresh
             (fun added _ _ hfr => by
               simp only [wgslValue] at hfr
-              cases op <;> simp [Expr.eval, hfr, F32UnOp.wgsl, LeanExe.IR.F32UnOp.apply,
+              cases op <;> simp [Expr.eval, hfr, F32UnOp.wgsl, Source.F32UnOp.apply,
                 wgslValue])
             rfl
           have hFinal := simulates_step .f32 (F32UnOp.finish op (.var n1))
@@ -1061,7 +1061,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
         obtain ⟨so, vo, n1⟩ := ro
         simp only [ho, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
         obtain ⟨rfl, rfl, rfl⟩ := htr
-        simp only [LeanExe.IR.Expr.denote] at hden
+        simp only [Source.Expr.denote] at hden
         cases hd : operand.denote locals arrays with
         | none => simp [hd] at hden
         | some w =>
@@ -1082,7 +1082,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
         obtain ⟨so, vo, n1⟩ := ro
         simp only [ho, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
         obtain ⟨rfl, rfl, rfl⟩ := htr
-        simp only [LeanExe.IR.Expr.denote] at hden
+        simp only [Source.Expr.denote] at hden
         cases hd : operand.denote locals arrays with
         | none => simp [hd] at hden
         | some w =>
@@ -1113,7 +1113,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
           obtain ⟨sp, vp, n1⟩ := rp
           simp only [hF, hp, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
           obtain ⟨rfl, rfl, rfl⟩ := htr
-          simp only [LeanExe.IR.Expr.denote, Option.bind_eq_bind, Option.pure_def] at hden
+          simp only [Source.Expr.denote, Option.bind_eq_bind, Option.pure_def] at hden
           cases ha : arrays array with
           | none => simp [ha] at hden
           | some xs =>

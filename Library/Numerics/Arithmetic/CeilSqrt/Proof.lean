@@ -1,13 +1,13 @@
 import Library.Numerics.Arithmetic.CeilSqrt.Program
 import Mathlib.Tactic.Linarith
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 
 /-! `ceilSqrt` is the exact ceiling square root for inputs up to `2^32`. -/
 
 namespace Library.Numerics.Arithmetic.CeilSqrt
 
 open Library.Numerics.Arithmetic.CeilSqrt
-open LeanExe.IR (loop_induction)
+open LeanExe.Dialect (loop_induction)
 
 /-- One halving of `ceilSqrt`'s bracket. -/
 def sqrtStep (n : UInt64) (_ : UInt64) (bracket : UInt64 × UInt64) : UInt64 × UInt64 :=

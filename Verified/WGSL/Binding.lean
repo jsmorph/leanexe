@@ -8,8 +8,8 @@ variable {t : Ty} {ctx : Context Γ} {base : Nat}
 def put (locals : Locals) (j : Nat) (value : Wasm.Value) : Locals :=
   fun i => if i = j then some value else locals i
 
-def Code.save (a : Code ctx base value) {type : LeanExe.IR.ScalarType}
-    (input : Rep t → LeanExe.IR.Expr type) (output : Nat → Rep t)
+def Code.save (a : Code ctx base value) {type : LeanExe.WGSL.Source.ScalarType}
+    (input : Rep t → LeanExe.WGSL.Source.Expr type) (output : Nat → Rep t)
     (encode : t.denote → type.denote)
     (outputBound : ∀ j, (output j).locals ≤ j + 1)
     (inputHolds : ∀ rep locals arrays x, rep.Holds locals arrays x →
@@ -24,7 +24,7 @@ def Code.save (a : Code ctx base value) {type : LeanExe.IR.ScalarType}
   grows := Nat.le_trans a.grows (Nat.le_succ _)
   writes := by
     intro j hj
-    simp only [LeanExe.IR.Stmt.writes, List.mem_append, List.mem_singleton] at hj
+    simp only [LeanExe.WGSL.Source.Stmt.writes, List.mem_append, List.mem_singleton] at hj
     rcases hj with hj | rfl
     · have := a.writes j hj
       exact ⟨this.1, Nat.lt_succ_of_lt this.2⟩
@@ -35,7 +35,7 @@ def Code.save (a : Code ctx base value) {type : LeanExe.IR.ScalarType}
     obtain ⟨middle, ha, hva⟩ := a.correct ctxBound funs env locals arrays agree unused
     refine ⟨put middle a.next (type.value (encode (value funs env))), ?_,
       outputHolds middle arrays a.next (value funs env)⟩
-    simp only [LeanExe.IR.Stmt.denote, ha, Option.bind_some, unused a.next a.grows,
+    simp only [LeanExe.WGSL.Source.Stmt.denote, ha, Option.bind_some, unused a.next a.grows,
       ↓reduceIte, inputHolds a.result middle arrays _ hva, Option.map_some]
     rfl
 

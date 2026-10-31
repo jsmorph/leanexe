@@ -200,10 +200,10 @@ theorem build_slice (input : Array UInt64) (start stop : UInt64)
   have subNat : (stop - start).toNat = stop.toNat - start.toNat :=
     UInt64.toNat_sub_of_le _ _ ordered
   apply Array.ext
-  · simp [LeanExe.IR.build_size, subNat, Array.size_extract, Nat.min_eq_left bounded]
+  · simp [LeanExe.Dialect.build_size, subNat, Array.size_extract, Nat.min_eq_left bounded]
   · intro i hi hj
     have inside : i < (stop - start).toNat := by
-      simpa only [LeanExe.IR.build_size] using hi
+      simpa only [LeanExe.Dialect.build_size] using hi
     have iNat : (UInt64.ofNat i).toNat = i :=
       UInt64.toNat_ofNat_of_lt' (lt_trans inside (UInt64.toNat_lt _))
     have sumNat : (start + UInt64.ofNat i).toNat = start.toNat + i := by
@@ -213,7 +213,7 @@ theorem build_slice (input : Array UInt64) (start stop : UInt64)
       omega
     rw [← getElem!_pos
       (LeanExe.build (stop - start) fun j => input[(start + j).toNat]!) i hi,
-      LeanExe.IR.build_get inside, sumNat,
+      LeanExe.Dialect.build_get inside, sumNat,
       getElem!_pos input (start.toNat + i) (by
         rw [subNat] at inside
         omega), Array.getElem_extract]

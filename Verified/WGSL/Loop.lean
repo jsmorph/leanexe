@@ -2,7 +2,7 @@ import Verified.WGSL.LoopBody
 
 namespace Verified.WGSL
 
-open LeanExe.IR
+open LeanExe.WGSL.Source
 
 variable {t : Verified.Ty} {ctx : Verified.WGSL.Context Γ} {base : Nat}
 
@@ -57,7 +57,7 @@ def Code.loop (cell : Cell t) {count : Funs S → Verified.Env Γ → UInt64}
       have hBound : a.result.wordExpr.denoteLocals ≤ a.next := by
         cases hr : a.result
         simpa only [hr, Rep.locals, Rep.wordExpr] using a.resultBound
-      rw [LeanExe.IR.Expr.denote_congr a.result.wordExpr middle start arrays
+      rw [LeanExe.WGSL.Source.Expr.denote_congr a.result.wordExpr middle start arrays
         (fun j hj => hFrame j (by omega))]
       cases hr : a.result
       simpa only [hr, Rep.Holds, Rep.wordExpr] using hva

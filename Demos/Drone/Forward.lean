@@ -7,7 +7,7 @@ terrain. -/
 namespace Demos.Drone
 
 open Demos.Drone Optimality Selection Costs Planner
-open LeanExe.IR (loop_induction loop_congr build_size build_get)
+open LeanExe.Dialect (loop_induction loop_congr build_size build_get)
 
 namespace Forward
 

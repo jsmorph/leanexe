@@ -1,14 +1,14 @@
 import Library.Arrays.Search.Proof
 import Examples.RemoveZero.Program
 import Examples.RemoveZero.Spec
-import LeanExe.IR.Combinators
+import LeanExe.Dialect.Lemmas
 
 /-! The program equals the specification, a fact about the Lean definitions that the theorems of
 the verified compilation use. -/
 
 namespace Examples.RemoveZero
 
-open LeanExe.IR Library.Arrays.Search
+open LeanExe.Dialect Library.Arrays.Search
 
 /-- The program computes the specification on every input that memory can hold. -/
 theorem compute_eq (xs : Array UInt64) (h : xs.size < 2 ^ 64) : compute xs = expected xs := by
