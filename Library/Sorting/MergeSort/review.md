@@ -1,0 +1,7 @@
+# Review of the specification
+
+Two fresh agents reviewed [the specification](Spec.lean) and [the case inputs](../../../tests/TestSupport/Modules/MergeSort.lean) against [the request](request.txt), from the files alone.
+
+The first review found no input on which `expected` differs from the request.  It found that the comment did not state that the specification cannot express "each pass writing into a new array" or the bound of `2^64` elements, and the comment now states both.  It recalled that Knuth's Algorithm S takes its runs from the two ends of the area, where the request describes adjacent runs, and the README and the comment now state the difference, which leaves the result unchanged.  It named one class without inputs that a bottom-up merge sort could get wrong: a strictly decreasing array whose length is not a power of 2, in which every pass puts a short last run ahead of its partner.  The inputs now include decreasing arrays of 300 and 1,025 words.  It also found two imprecisions in the inputs' docstring, now corrected.
+
+The second review found no disagreement and found the docstring accurate.  It recorded two classes without inputs: lengths above 1,025, which need 12 or more passes and repeat cases that shorter lengths cover, and overflow of the index arithmetic, which only arrays of more than `2^62` elements could reach and which the main theorem covers.  Both reviews noted that the theorem certifies the result and not the method, so any sort would satisfy the same theorem, and only the program text shows the bottom-up merges.

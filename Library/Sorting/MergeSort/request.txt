@@ -1,0 +1,3 @@
+Sort an array of UInt64 words into nondecreasing order with straight two-way merge sort, TAOCP
+section 5.2.4: passes that merge adjacent sorted runs of length 1, 2, 4, and so on, each pass
+writing into a new array of the same length.

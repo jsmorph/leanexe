@@ -84,6 +84,7 @@ libsort:Library.Sorting.Insertion.Compiled:Library/Sorting/Insertion/File.lean
 binarySearch:Library.Arrays.BinarySearch.Compiled:Library/Arrays/BinarySearch/File.lean
 libsearch:Library.Arrays.Search.Compiled:Library/Arrays/Search/File.lean
 heapsort:Library.Sorting.Heapsort.Compiled:Library/Sorting/Heapsort/File.lean
+mergeSort:Library.Sorting.MergeSort.Compiled:Library/Sorting/MergeSort/File.lean
 libfilter:Library.Arrays.Filter.Compiled:Library/Arrays/Filter/File.lean
 librepeat:Library.Arrays.Repeat.Compiled:Library/Arrays/Repeat/File.lean
 librange:Library.Arrays.Range.Compiled:Library/Arrays/Range/File.lean

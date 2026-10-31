@@ -10,6 +10,7 @@ import TestSupport.Modules.BinaryGcd
 import TestSupport.Modules.BinarySearch
 import TestSupport.Modules.Gcd
 import TestSupport.Modules.Heapsort
+import TestSupport.Modules.MergeSort
 import TestSupport.Modules.ModInverse
 import TestSupport.Modules.PrimeFactors
 
@@ -67,6 +68,9 @@ def cases : IO Unit := do
   for xs in Library.Sorting.Heapsort.sortInputs do
     IO.println s!"heapsort|heapsort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.Heapsort.expected xs.toArray).toList.map toString)}]|1|1"
+  for xs in Library.Sorting.MergeSort.mergeInputs do
+    IO.println s!"mergeSort|mergeSort|array-u64|{arrU xs}|\
+      [{", ".intercalate ((Library.Sorting.MergeSort.expected xs.toArray).toList.map toString)}]"
   for (xs, key) in Library.Arrays.BinarySearch.searchInputs do
     IO.println s!"binarySearch|lowerBound|i64|{arrU xs} {u key}|\
       {Library.Arrays.BinarySearch.expected (xs.toArray, key)}|1|1"

@@ -58,4 +58,5 @@ import Library.Random.Xorshift.Program
 import Library.Regex.Program
 import Library.Sorting.Heapsort.Program
 import Library.Sorting.Insertion.Program
+import Library.Sorting.MergeSort.Program
 import Library.Trees.WordTree.Program
