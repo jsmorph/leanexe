@@ -60,7 +60,7 @@ theorem seg_length (a : Array UInt64) {lo hi : Nat} (h : lo ≤ hi) (h2 : hi ≤
 theorem set_take_drop (L : List UInt64) (K m : Nat) (v : UInt64) (h : K < L.length) :
     (L.set K v).take (K + 1) = L.take K ++ [v] ∧
       (L.set K v).drop (K + 1 + m) = L.drop (K + 1 + m) := by
-  rw [List.set_eq_take_append_cons_drop, if_pos h]
+  rw [List.set_eq_take_append_cons_drop, ite_eq_left h]
   have hlen : (L.take K).length = K := by simp; omega
   constructor
   · rw [List.take_append, hlen, show K + 1 - K = 1 by omega,
@@ -81,7 +81,7 @@ theorem merge_toList (src : Array UInt64) (k i iEnd j jEnd : UInt64) (out : Arra
         out.toList.drop (k.toNat + (iEnd.toNat - i.toNat) + (jEnd.toNat - j.toNat)) := by
   rw [merge]
   by_cases c1 : i < iEnd ∧ (jEnd ≤ j ∨ src[i.toNat]! ≤ src[j.toNat]!)
-  · rw [if_pos c1]
+  · rw [ite_eq_left c1]
     have hI := UInt64.lt_iff_toNat_lt.mp c1.1
     have hi1 : (i + 1).toNat = i.toNat + 1 := by
       have := UInt64.toNat_lt iEnd
@@ -105,15 +105,15 @@ theorem merge_toList (src : Array UInt64) (k i iEnd j jEnd : UInt64) (out : Arra
       rcases c1.2 with hje | hle
       · rw [seg_nil src (UInt64.le_iff_toNat_le.mp hje), List.merge_right, List.merge_right]
       · by_cases hjj : j.toNat < jEnd.toNat
-        · rw [seg_cons src hjj hjE, List.cons_merge_cons, if_pos (by simpa using hle)]
+        · rw [seg_cons src hjj hjE, List.cons_merge_cons, ite_eq_left (by simpa using hle)]
         · rw [seg_nil src (lo := j.toNat) (hi := jEnd.toNat) (by omega), List.merge_right,
             List.merge_right]
     rw [hm, show k.toNat + (iEnd.toNat - i.toNat) + (jEnd.toNat - j.toNat) =
       k.toNat + 1 + ((iEnd.toNat - (i.toNat + 1)) + (jEnd.toNat - j.toNat)) by omega]
     simp
-  · rw [if_neg c1]
+  · rw [ite_eq_right c1]
     by_cases c2 : j < jEnd
-    · rw [if_pos c2]
+    · rw [ite_eq_left c2]
       have hJ := UInt64.lt_iff_toNat_lt.mp c2
       have hj1 : (j + 1).toNat = j.toNat + 1 := by
         have := UInt64.toNat_lt jEnd
@@ -137,13 +137,13 @@ theorem merge_toList (src : Array UInt64) (k i iEnd j jEnd : UInt64) (out : Arra
         by_cases hii : i.toNat < iEnd.toNat
         · have hnle : ¬ src[i.toNat]! ≤ src[j.toNat]! := fun h =>
             c1 ⟨UInt64.lt_iff_toNat_lt.mpr hii, Or.inr h⟩
-          rw [seg_cons src hii hiE, List.cons_merge_cons, if_neg (by simpa using hnle)]
+          rw [seg_cons src hii hiE, List.cons_merge_cons, ite_eq_right (by simpa using hnle)]
         · rw [seg_nil src (lo := i.toNat) (hi := iEnd.toNat) (by omega), List.nil_merge,
             List.nil_merge]
       rw [hm, show k.toNat + (iEnd.toNat - i.toNat) + (jEnd.toNat - j.toNat) =
         k.toNat + 1 + ((iEnd.toNat - i.toNat) + (jEnd.toNat - (j.toNat + 1))) by omega]
       simp
-    · rw [if_neg c2]
+    · rw [ite_eq_right c2]
       have hjj : jEnd.toNat ≤ j.toNat := by
         by_contra h
         exact c2 (UInt64.lt_iff_toNat_lt.mpr (by omega))
@@ -181,7 +181,7 @@ decreasing_by
 theorem passList_step {w : Nat} {l : List UInt64} (hw : w ≠ 0) (hl : l ≠ []) :
     passList w l =
       (l.take w).merge ((l.drop w).take w) (fun a b => a ≤ b) ++ passList w (l.drop (w + w)) := by
-  rw [passList, dif_neg (not_or.mpr ⟨hw, hl⟩)]
+  rw [passList, dite_eq_right (not_or.mpr ⟨hw, hl⟩)]
 
 theorem passList_nil (w : Nat) : passList w [] = [] := by
   rw [passList]; simp
@@ -196,7 +196,7 @@ theorem pass_toList (src : Array UInt64) (w n lo : UInt64) (out : Array UInt64)
   have hn := UInt64.toNat_lt n
   rw [pass]
   by_cases c : 0 < w ∧ lo < n
-  · rw [if_pos c]
+  · rw [ite_eq_left c]
     have hl := UInt64.lt_iff_toNat_lt.mp c.2
     have hm := runEnd_toNat (lo := lo) (w := w) (UInt64.le_iff_toNat_le.mpr hlo)
     have hmn : (runEnd lo w n).toNat ≤ n.toNat := by omega
@@ -252,7 +252,7 @@ theorem pass_toList (src : Array UInt64) (w n lo : UInt64) (out : Array UInt64)
         simp
     rw [e1, e2, e3, List.take_left' (by rw [List.length_append, hlen1, hlen2]; omega),
       List.append_assoc]
-  · rw [if_neg c]
+  · rw [ite_eq_right c]
     have hge : n.toNat ≤ lo.toNat := by
       by_contra h
       exact c ⟨UInt64.lt_iff_toNat_lt.mpr (by simpa using hw), UInt64.lt_iff_toNat_lt.mpr (by omega)⟩
@@ -274,7 +274,7 @@ decreasing_by
 
 theorem passList_perm (w : Nat) (l : List UInt64) : (passList w l).Perm l := by
   by_cases h : w = 0 ∨ l = []
-  · rw [passList, dif_pos h]
+  · rw [passList, dite_eq_left h]
   · rw [passList_step (not_or.mp h).1 (not_or.mp h).2]
     have ih := passList_perm w (l.drop (w + w))
     have e : l.take w ++ (l.drop w).take w ++ l.drop (w + w) = l := by
@@ -368,7 +368,7 @@ theorem sortLoop_toList (w n : UInt64) (xs : Array UInt64) (hxs : xs.size = n.to
   · have hw := UInt64.lt_iff_toNat_lt.mp c.1
     have hl := UInt64.lt_iff_toNat_lt.mp c.2
     simp only [UInt64.reduceToNat] at hw
-    rw [if_pos c, if_pos (show 0 < w.toNat ∧ w.toNat < n.toNat from ⟨hw, hl⟩)]
+    rw [ite_eq_left c, ite_eq_left (show 0 < w.toNat ∧ w.toNat < n.toNat from ⟨hw, hl⟩)]
     have hb : (LeanExe.build n fun _ => (0 : UInt64)).size = n.toNat := by
       rw [build_size]
     have hpass := pass_toList xs w n 0 (LeanExe.build n fun _ => 0) (by omega) hxs hb (by simp)
@@ -383,15 +383,15 @@ theorem sortLoop_toList (w n : UInt64) (xs : Array UInt64) (hxs : xs.size = n.to
     by_cases h2 : w < n - w
     · have h2' : w.toNat < n.toNat - w.toNat := by
         have := UInt64.lt_iff_toNat_lt.mp h2; rwa [hs] at this
-      rw [if_pos h2, if_pos h2', sortLoop_toList (w + w) n _ hps, hpass]
+      rw [ite_eq_left h2, ite_eq_left h2', sortLoop_toList (w + w) n _ hps, hpass]
       simp only [UInt64.toNat_zero, List.take_zero, List.nil_append, hseg]
       congr 1
       simp only [UInt64.toNat_add]; omega
     · have h2' : ¬ w.toNat < n.toNat - w.toNat := fun h' =>
         h2 (UInt64.lt_iff_toNat_lt.mpr (by rw [hs]; exact h'))
-      rw [if_neg h2, if_neg h2', sortLoop_toList n n _ hps, hpass]
+      rw [ite_eq_right h2, ite_eq_right h2', sortLoop_toList n n _ hps, hpass]
       simp only [UInt64.toNat_zero, List.take_zero, List.nil_append, hseg]
-  · rw [if_neg c, if_neg]
+  · rw [ite_eq_right c, ite_eq_right]
     intro ⟨hw, hl⟩
     exact c ⟨UInt64.lt_iff_toNat_lt.mpr (by simpa using hw), UInt64.lt_iff_toNat_lt.mpr hl⟩
 termination_by (n - w).toNat
@@ -411,7 +411,7 @@ theorem sortList_spec (w n : Nat) (l : List UInt64) (hw : 0 < w) (hl : l.length 
     (hr : RunsSorted w l) : (sortList w n l).Pairwise (· ≤ ·) ∧ (sortList w n l).Perm l := by
   rw [sortList]
   by_cases c : 0 < w ∧ w < n
-  · rw [if_pos c]
+  · rw [ite_eq_left c]
     have hp := passList_perm w l
     have hr2 := passList_runs w (by omega) l hr
     split
@@ -423,7 +423,7 @@ theorem sortList_spec (w n : Nat) (l : List UInt64) (hw : 0 < w) (hl : l.length 
       obtain ⟨h1, h2⟩ := sortList_spec n n (passList w l) (by omega)
         (by rw [hp.length_eq, hl]) (runsSorted_of_sorted n hs)
       exact ⟨h1, h2.trans hp⟩
-  · rw [if_neg c]
+  · rw [ite_eq_right c]
     exact ⟨sorted_of_runsSorted hr (by omega), List.Perm.refl _⟩
 termination_by n - w
 decreasing_by all_goals omega

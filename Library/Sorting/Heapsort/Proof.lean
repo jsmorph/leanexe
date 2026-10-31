@@ -129,12 +129,12 @@ theorem siftDown_eq (i n : UInt64) (a : Array UInt64) :
       else a := by
   rw [siftDown]
   by_cases h1 : i < n / 2
-  · simp only [if_pos h1]
+  · simp only [ite_eq_left h1]
     unfold maxChild
     by_cases h2 : i + i + 2 < n ∧ a[(i + i + 1).toNat]! < a[(i + i + 2).toNat]!
-    · simp only [if_pos h2]
-    · simp only [if_neg h2]
-  · simp only [if_neg h1]
+    · simp only [ite_eq_left h2]
+    · simp only [ite_eq_right h2]
+  · simp only [ite_eq_right h1]
 
 theorem div_two_toNat {i n : UInt64} : i < n / 2 ↔ i.toNat < n.toNat / 2 := by
   rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_div]; rfl
@@ -147,13 +147,13 @@ theorem siftDown_frame (n x : UInt64) (i : UInt64) (a : Array UInt64) (hn : n.to
       ((∀ k, k < n.toNat → a[k]! ≤ x) → ∀ k, k < n.toNat → (siftDown i n a)[k]! ≤ x) := by
   rw [siftDown_eq]
   by_cases h1 : i < n / 2
-  · rw [if_pos h1]
+  · rw [ite_eq_left h1]
     have hI := div_two_toNat.mp h1
     obtain ⟨hM, hMn, -, -⟩ := maxChild_spec a hI
     have hIa : i.toNat < a.size := by omega
     have hMa : (maxChild a i n).toNat < a.size := by omega
     by_cases h2 : a[i.toNat]! < a[(maxChild a i n).toNat]!
-    · rw [if_pos h2]
+    · rw [ite_eq_left h2]
       obtain ⟨hs, hp, ho, hb⟩ := siftDown_frame n x (maxChild a i n)
         (swap i (maxChild a i n) a) (by rw [swap_size]; exact hn)
       refine ⟨by rw [hs, swap_size], hp.trans (swap_perm a _ _ hIa hMa), fun k hk => ?_,
@@ -168,9 +168,9 @@ theorem siftDown_frame (n x : UInt64) (i : UInt64) (a : Array UInt64) (hn : n.to
         · split
           · exact hx _ hMn
           · exact hx _ hk
-    · rw [if_neg h2]
+    · rw [ite_eq_right h2]
       exact ⟨rfl, List.Perm.refl _, fun _ _ => rfl, fun hx => hx⟩
-  · rw [if_neg h1]
+  · rw [ite_eq_right h1]
     exact ⟨rfl, List.Perm.refl _, fun _ _ => rfl, fun hx => hx⟩
 termination_by (n - i).toNat
 decreasing_by
@@ -193,34 +193,34 @@ theorem siftDown_spec (n : UInt64) (L : Nat) (i : UInt64) (a : Array UInt64)
     HeapFrom (siftDown i n a) n.toNat L := by
   rw [siftDown_eq]
   by_cases h1 : i < n / 2
-  · rw [if_pos h1]
+  · rw [ite_eq_left h1]
     have hI := div_two_toNat.mp h1
     obtain ⟨hM, hMn, hc1, hc2⟩ := maxChild_spec a hI
     have hIa : i.toNat < a.size := by omega
     have hMa : (maxChild a i n).toNat < a.size := by omega
     have hMp : ((maxChild a i n).toNat - 1) / 2 = i.toNat := by omega
     by_cases h2 : a[i.toNat]! < a[(maxChild a i n).toNat]!
-    · rw [if_pos h2]
+    · rw [ite_eq_left h2]
       apply siftDown_spec n L (maxChild a i n) (swap i (maxChild a i n) a)
         (by rw [swap_size]; exact hn) (by omega)
       · intro j hj0 hjn hjL hjm
         rw [swap_get a _ _ hIa hMa, swap_get a _ _ hIa hMa]
         by_cases hjM : j = (maxChild a i n).toNat
         · subst hjM
-          rw [if_pos rfl, hMp]
-          simp only [show i.toNat ≠ (maxChild a i n).toNat by omega, if_false, if_true]
+          rw [ite_eq_left rfl, hMp]
+          simp only [show i.toNat ≠ (maxChild a i n).toNat by omega, ite_false, ite_true]
           exact wle_of_lt h2
-        · rw [if_neg hjM, if_neg hjm]
+        · rw [ite_eq_right hjM, ite_eq_right hjm]
           by_cases hjI : j = i.toNat
-          · rw [if_pos hjI]
+          · rw [ite_eq_left hjI]
             have hP : (j - 1) / 2 ≠ i.toNat := by omega
-            rw [if_neg hP]
+            rw [ite_eq_right hP]
             have := hbr (by omega) _ (by omega) hMn hMp
             rw [hjI] at hP ⊢
             exact this
-          · rw [if_neg hjI]
+          · rw [ite_eq_right hjI]
             by_cases hP : (j - 1) / 2 = i.toNat
-            · rw [if_pos hP]
+            · rw [ite_eq_left hP]
               rcases hM with hM | hM
               · have : j = 2 * i.toNat + 2 := by omega
                 subst this
@@ -228,17 +228,17 @@ theorem siftDown_spec (n : UInt64) (L : Nat) (i : UInt64) (a : Array UInt64)
               · have : j = 2 * i.toNat + 1 := by omega
                 subst this
                 exact hc1
-            · rw [if_neg hP]
+            · rw [ite_eq_right hP]
               exact hok j hj0 hjn hjL hP
       · intro _ j hj0 hjn hjp
         rw [swap_get a _ _ hIa hMa, swap_get a _ _ hIa hMa, hMp]
         have h3 : j ≠ (maxChild a i n).toNat := by omega
         have h4 : j ≠ i.toNat := by omega
         have h5 : i.toNat ≠ (maxChild a i n).toNat := by omega
-        simp only [h3, h4, h5, if_false, if_true]
+        simp only [h3, h4, h5, ite_false, ite_true]
         have := hok j hj0 hjn (by omega) (by omega)
         rwa [hjp] at this
-    · rw [if_neg h2]
+    · rw [ite_eq_right h2]
       intro j hj0 hjn hjL
       by_cases hP : (j - 1) / 2 = i.toNat
       · rw [hP]
@@ -247,7 +247,7 @@ theorem siftDown_spec (n : UInt64) (L : Nat) (i : UInt64) (a : Array UInt64)
         · exact wle_trans hc1 hle
         · exact wle_trans (hc2 hjn) hle
       · exact hok j hj0 hjn hjL hP
-  · rw [if_neg h1]
+  · rw [ite_eq_right h1]
     intro j hj0 hjn hjL
     by_cases hP : (j - 1) / 2 = i.toNat
     · exfalso
@@ -311,12 +311,12 @@ theorem heapsort_sorted_perm (xs : Array UInt64) (hsize : xs.size < 2 ^ 64) :
     simp only [Nat.toUInt64, UInt64.toNat_ofNat']; omega
   simp only [heapsort]
   by_cases h1 : xs.size.toUInt64 ≤ 1
-  · rw [if_pos h1]
+  · rw [ite_eq_left h1]
     have : xs.size ≤ 1 := by have := UInt64.le_iff_toNat_le.mp h1; simpa [hN] using this
     exact ⟨fun p q hpq hq => by
       have : p = q := by omega
       subst this; exact wle_refl _, rfl, List.Perm.refl _⟩
-  · rw [if_neg h1]
+  · rw [ite_eq_right h1]
     have hN2 : 2 ≤ xs.size := by
       have : ¬ xs.size.toUInt64.toNat ≤ 1 := fun h =>
         h1 (UInt64.le_iff_toNat_le.mpr (by simpa using h))
@@ -364,7 +364,7 @@ theorem heapsort_sorted_perm (xs : Array UInt64) (hsize : xs.size < 2 ^ 64) :
             have h1 : j ≠ t.toNat := by omega
             have h2 : (j - 1) / 2 ≠ t.toNat := by omega
             have h3 : j ≠ 0 := by omega
-            rw [hbget, hbget, if_neg h1, if_neg h3, if_neg h2, if_neg hjp]
+            rw [hbget, hbget, ite_eq_right h1, ite_eq_right h3, ite_eq_right h2, ite_eq_right hjp]
             exact hh j hj0 (by omega) (Nat.zero_le _))
           (fun h => by simp at h)
         refine ⟨hcs.trans hbs, hcp.trans ((swap_perm acc 0 t h0a hta).trans hp), ?_, ?_, ?_⟩
@@ -375,20 +375,20 @@ theorem heapsort_sorted_perm (xs : Array UInt64) (hsize : xs.size < 2 ^ 64) :
         · intro p q hp hpq hq
           rw [hco p (by omega), hco q (by omega), hbget, hbget]
           by_cases hpt : p = t.toNat
-          · rw [if_pos hpt]
+          · rw [ite_eq_left hpt]
             by_cases hqt : q = t.toNat
-            · rw [if_pos hqt]; exact wle_refl _
-            · rw [if_neg hqt, if_neg (show q ≠ 0 by omega)]
+            · rw [ite_eq_left hqt]; exact wle_refl _
+            · rw [ite_eq_right hqt, ite_eq_right (show q ≠ 0 by omega)]
               exact hsep 0 q (by omega) (by omega) hq
-          · rw [if_neg hpt, if_neg (show p ≠ 0 by omega), if_neg (show q ≠ t.toNat by omega),
-              if_neg (show q ≠ 0 by omega)]
+          · rw [ite_eq_right hpt, ite_eq_right (show p ≠ 0 by omega), ite_eq_right (show q ≠ t.toNat by omega),
+              ite_eq_right (show q ≠ 0 by omega)]
             exact hsuf p q (by omega) hpq hq
         · intro p q hp hq hq'
           have hc := hcb' p (by omega)
           rw [hco q (by omega), hbget]
           by_cases hqt : q = t.toNat
-          · rw [if_pos hqt]; exact hc
-          · rw [if_neg hqt, if_neg (show q ≠ 0 by omega)]
+          · rw [ite_eq_left hqt]; exact hc
+          · rw [ite_eq_right hqt, ite_eq_right (show q ≠ 0 by omega)]
             exact wle_trans hc (hsep 0 q (by omega) (by omega) hq'))
     rw [hcount] at h
     obtain ⟨hs, hp, -, hsuf, hsep⟩ := h

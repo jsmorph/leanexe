@@ -39,8 +39,8 @@ theorem count_le_count (r : Nat) {P Q : Nat → Bool} (h : ∀ e, e < r → P e 
     rw [count_succ, count_succ]
     have := ih fun e he => h e (by omega)
     by_cases hp : P r = true
-    · rw [if_pos hp, if_pos (h r (by omega) hp)]; omega
-    · rw [if_neg hp]; split <;> omega
+    · rw [ite_eq_left hp, ite_eq_left (h r (by omega) hp)]; omega
+    · rw [ite_eq_right hp]; split <;> omega
 
 theorem count_le_succ (r : Nat) (P : Nat → Bool) : count r P ≤ count (r + 1) P := by
   rw [count_succ]; omega
@@ -60,7 +60,7 @@ theorem count_pos {r : Nat} {P : Nat → Bool} (h : 0 < count r P) : ∃ e, e < 
     rw [count_succ] at h
     by_cases hp : P r = true
     · exact ⟨r, by omega, hp⟩
-    · rw [if_neg hp] at h
+    · rw [ite_eq_right hp] at h
       obtain ⟨e, he, hpe⟩ := ih (by omega)
       exact ⟨e, by omega, hpe⟩
 
@@ -77,12 +77,12 @@ theorem count_eq_imp {r : Nat} {P Q : Nat → Bool} (h : ∀ e, e < r → P e = 
     by_cases hr : e = r
     · subst hr
       by_contra hp
-      rw [if_pos hq, if_neg hp] at heq
+      rw [ite_eq_left hq, ite_eq_right hp] at heq
       omega
     · have hPQ : (if P r = true then 1 else 0) ≤ (if Q r = true then 1 else 0) := by
         by_cases hp : P r = true
-        · rw [if_pos hp, if_pos (h r (by omega) hp)]
-        · rw [if_neg hp]; omega
+        · rw [ite_eq_left hp, ite_eq_left (h r (by omega) hp)]
+        · rw [ite_eq_right hp]; omega
       exact ih (fun e' he' => h e' (by omega)) (by omega) e (by omega) hq
 
 /-! ### Relations and the input -/
@@ -220,14 +220,14 @@ theorem countPredecessors_spec (xs : Array UInt64) (hv : Valid xs) (hsize : xs.s
       have htw : (xs[2 * e + 2]!).toNat = target xs e := rfl
       rw [htw, get_set _ _ _ _ (by rw [hs]; exact ht), count_succ]
       by_cases hke : k = target xs e
-      · rw [if_pos hke, ← hke, UInt64.toNat_add, hk k hkN,
-          if_pos (show decide (k = k) = true by simp)]
+      · rw [ite_eq_left hke, ← hke, UInt64.toNat_add, hk k hkN,
+          ite_eq_left (show decide (k = k) = true by simp)]
         have := count_le e (fun e' => decide (target xs e' = k))
         simp only [UInt64.reduceToNat]
         omega
-      · rw [if_neg hke, hk k hkN]
+      · rw [ite_eq_right hke, hk k hkN]
         have : ¬ (decide (target xs e = k) = true) := by simp; omega
-        rw [if_neg this]; omega)
+        rw [ite_eq_right this]; omega)
   rw [hm] at h
   refine ⟨h.1, fun k hk => ?_⟩
   rw [h.2 k hk]
@@ -249,8 +249,8 @@ theorem initialQueue_spec (c : Array UInt64) (n : UInt64) :
       show (if c[(UInt64.ofNat v).toNat]! == 0 then q.push (UInt64.ofNat v) else q).toList = _
       rw [hvv, List.range_succ, List.filter_append, List.map_append]
       by_cases h0 : (c[v]! == 0) = true
-      · rw [if_pos h0, Array.toList_push, hq]; simp [h0]
-      · rw [if_neg h0, hq]; simp [h0])
+      · rw [ite_eq_left h0, Array.toList_push, hq]; simp [h0]
+      · rw [ite_eq_right h0, hq]; simp [h0])
 
 /-! ### Queues -/
 
@@ -310,8 +310,8 @@ theorem fromV_succ (xs : Array UInt64) (v : UInt64) (e k : Nat) :
   unfold fromV
   rw [count_succ]
   by_cases h : target xs e = k ∧ xs[2 * e + 1]! = v
-  · rw [if_pos (by simp [h.1, h.2]), if_pos h]
-  · rw [if_neg (by simp; intro h1 h2; exact h ⟨h1, h2⟩), if_neg h]
+  · rw [ite_eq_left (by simp [h.1, h.2]), ite_eq_left h]
+  · rw [ite_eq_right (by simp; intro h1 h2; exact h ⟨h1, h2⟩), ite_eq_right h]
 
 theorem fromV_le_pend (xs : Array UInt64) (hv : Valid xs) (v : UInt64) (L : List UInt64)
     (hvL : v ∉ L) (k : Nat) : fromV xs v (relationCount xs) k ≤ pend xs L k := by
@@ -346,17 +346,17 @@ theorem inner_step (xs : Array UInt64) (hv : Valid xs) (f : Nat) (Q0 : Array UIn
   have hkw : (xs[2 * e + 2]!).toNat = target xs e := rfl
   rw [hkw]
   by_cases hsrc : xs[2 * e + 1]! = Q0[f]!
-  · rw [if_pos (by simp [hsrc, hv'])]
+  · rw [ite_eq_left (by simp [hsrc, hv'])]
     have hbound := fromV_le_pend xs hv Q0[f]! _ hvL (target xs e)
     have hmono := count_mono (show e + 1 ≤ relationCount xs by omega)
       (fun e' => decide (target xs e' = target xs e) && xs[2 * e' + 1]! == Q0[f]!)
     have hsucc := fromV_succ xs Q0[f]! e (target xs e)
-    rw [if_pos ⟨rfl, hsrc⟩] at hsucc
+    rw [ite_eq_left ⟨rfl, hsrc⟩] at hsucc
     have hck := hcnt _ hkN
     unfold fromV at hbound hsucc
     have hc1 : 1 ≤ (c[target xs e]!).toNat := by unfold fromV at hck; omega
     by_cases h1 : c[target xs e]! = 1
-    · rw [if_pos (by simp [h1])]
+    · rw [ite_eq_left (by simp [h1])]
       have hc0 : pend xs (Q0.toList.take f) (target xs e) =
           fromV xs Q0[f]! (e + 1) (target xs e) := by
         have : (c[target xs e]!).toNat = 1 := by rw [h1]; rfl
@@ -418,20 +418,20 @@ theorem inner_step (xs : Array UInt64) (hv : Valid xs) (f : Nat) (Q0 : Array UIn
         rw [get_set _ _ _ _ (by rw [hcs]; exact hkN), fromV_succ]
         by_cases hke : k = target xs e
         · subst hke
-          rw [if_pos rfl, if_pos ⟨rfl, hsrc⟩]
+          rw [ite_eq_left rfl, ite_eq_left ⟨rfl, hsrc⟩]
           have := hcnt _ hk
           unfold fromV at this ⊢
           simp only [UInt64.toNat_zero]
           have : (c[target xs e]!).toNat = 1 := by rw [h1]; rfl
           omega
-        · rw [if_neg hke, if_neg (fun h' => hke h'.1.symm)]
+        · rw [ite_eq_right hke, ite_eq_right (fun h' => hke h'.1.symm)]
           exact hcnt k hk
       · intro k hk
         rw [get_set _ _ _ _ (by rw [hcs]; exact hkN)]
         by_cases hke : k = target xs e
-        · rw [if_pos hke]
+        · rw [ite_eq_left hke]
           refine ⟨fun _ => rfl, fun _ => ⟨xs[2 * e + 2]!, by simp, hke.symm⟩⟩
-        · rw [if_neg hke, ← hzero k hk]
+        · rw [ite_eq_right hke, ← hzero k hk]
           constructor
           · rintro ⟨x, hx, hxk⟩
             rw [Array.toList_push, List.mem_append] at hx
@@ -440,7 +440,7 @@ theorem inner_step (xs : Array UInt64) (hv : Valid xs) (f : Nat) (Q0 : Array UIn
             · simp at hx; subst hx; exact absurd hxk.symm hke
           · rintro ⟨x, hx, hxk⟩
             exact ⟨x, by rw [Array.toList_push]; exact List.mem_append_left _ hx, hxk⟩
-    · rw [if_neg (by simp [h1])]
+    · rw [ite_eq_right (by simp [h1])]
       have hc2 : 2 ≤ (c[target xs e]!).toNat := by
         have : (c[target xs e]!).toNat ≠ 1 := fun h' => h1 (UInt64.toNat_inj.mp (by rw [h']; rfl))
         omega
@@ -451,16 +451,16 @@ theorem inner_step (xs : Array UInt64) (hv : Valid xs) (f : Nat) (Q0 : Array UIn
         rw [get_set _ _ _ _ (by rw [hcs]; exact hkN), fromV_succ]
         by_cases hke : k = target xs e
         · subst hke
-          rw [if_pos rfl, if_pos ⟨rfl, hsrc⟩, hsub]
+          rw [ite_eq_left rfl, ite_eq_left ⟨rfl, hsrc⟩, hsub]
           have := hcnt _ hk
           omega
-        · rw [if_neg hke, if_neg (fun h' => hke h'.1.symm)]
+        · rw [ite_eq_right hke, ite_eq_right (fun h' => hke h'.1.symm)]
           exact hcnt k hk
       · intro k hk
         rw [get_set _ _ _ _ (by rw [hcs]; exact hkN)]
         by_cases hke : k = target xs e
         · subst hke
-          rw [if_pos rfl]
+          rw [ite_eq_left rfl]
           constructor
           · intro hin
             exact absurd ((hzero _ hk).mp hin)
@@ -469,10 +469,10 @@ theorem inner_step (xs : Array UInt64) (hv : Valid xs) (f : Nat) (Q0 : Array UIn
             have := congrArg UInt64.toNat h0
             rw [hsub] at this
             simp at this; omega
-        · rw [if_neg hke]; exact hzero k hk
-  · rw [if_neg (by simp [hv']; exact hsrc)]
+        · rw [ite_eq_right hke]; exact hzero k hk
+  · rw [ite_eq_right (by simp [hv']; exact hsrc)]
     refine ⟨hcs, hq, ⟨R, hR⟩, fun k hk => ?_, hzero⟩
-    rw [fromV_succ, if_neg (fun h' => hsrc h'.2)]
+    rw [fromV_succ, ite_eq_right (fun h' => hsrc h'.2)]
     exact hcnt k hk
 
 theorem vertexCount_lt (xs : Array UInt64) : vertexCount xs < 2 ^ 64 := UInt64.toNat_lt _
@@ -550,7 +550,7 @@ theorem outer_step (xs : Array UInt64) (hv : Valid xs) (hsize : xs.size < 2 ^ 64
     show OuterInv xs (f + 1) (LeanExe.loop (if UInt64.ofNat f < q.size.toUInt64 then
       (xs.size.toUInt64 - 1) / 2 else 0) (c, q) _).1 (LeanExe.loop (if UInt64.ofNat f <
       q.size.toUInt64 then (xs.size.toUInt64 - 1) / 2 else 0) (c, q) _).2
-    rw [if_pos hc]
+    rw [ite_eq_left hc]
     obtain ⟨hcs', hq', ⟨R, hR⟩, hcnt', hzero'⟩ := hinner
     refine ⟨hcs', hq', fun k hk => ?_, hzero'⟩
     have hpa := pend_append xs (q.toList.take f) q[f]! (not_mem_take hq.nodup hfq) k
@@ -563,7 +563,7 @@ theorem outer_step (xs : Array UInt64) (hv : Valid xs) (hsize : xs.size < 2 ^ 64
     show OuterInv xs (f + 1) (LeanExe.loop (if UInt64.ofNat f < q.size.toUInt64 then
       (xs.size.toUInt64 - 1) / 2 else 0) (c, q) _).1 (LeanExe.loop (if UInt64.ofNat f <
       q.size.toUInt64 then (xs.size.toUInt64 - 1) / 2 else 0) (c, q) _).2
-    rw [if_neg hc, loop_zero]
+    rw [ite_eq_right hc, loop_zero]
     refine ⟨hcs, hq, fun k hk => ?_, hzero⟩
     rw [hcnt k hk, List.take_of_length_le (by simp; omega),
       List.take_of_length_le (by simp; omega)]
@@ -645,7 +645,7 @@ theorem topoSort_spec (xs : Array UInt64) (hv : Valid xs) (hsize : xs.size < 2 ^
     have := hv.1; omega
   have hspec := process_spec xs hv hsize
   unfold topoSort
-  rw [if_neg hpos]
+  rw [ite_eq_right hpos]
   simp only []
   generalize process xs xs[(0 : UInt64).toNat]! ((xs.size.toUInt64 - 1) / 2)
     (countPredecessors xs xs[(0 : UInt64).toNat]! ((xs.size.toUInt64 - 1) / 2))
@@ -660,7 +660,7 @@ theorem topoSort_spec (xs : Array UInt64) (hv : Valid xs) (hsize : xs.size < 2 ^
   have htake : st.2.toList.take (vertexCount xs) = st.2.toList :=
     List.take_of_length_le (by simp; omega)
   by_cases hfull : st.2.size.toUInt64 = xs[(0 : UInt64).toNat]!
-  · rw [if_pos hfull]
+  · rw [ite_eq_left hfull]
     left
     have hsz : st.2.size = vertexCount xs := by
       rw [← hqs, ← hnN, hfull]
@@ -674,7 +674,7 @@ theorem topoSort_spec (xs : Array UInt64) (hv : Valid xs) (hsize : xs.size < 2 ^
       rw [← hw, get_toList _ (by omega), get_toList _ hp] at hget
       have := (List.Nodup.getElem_inj_iff hq.nodup).mp hget
       omega
-  · rw [if_neg hfull]
+  · rw [ite_eq_right hfull]
     right
     refine ⟨rfl, fun O ⟨hOs, hOlt, hOd, hOrel⟩ => ?_⟩
     have hsz : st.2.size ≠ vertexCount xs := fun h =>
@@ -721,7 +721,7 @@ theorem topoSort_spec (xs : Array UInt64) (hv : Valid xs) (hsize : xs.size < 2 ^
     -- some vertex is outside the queue
     have hmiss : ∃ u, u < vertexCount xs ∧ ¬ InQueue st.2 u := by
       by_contra hall
-      push_neg at hall
+      push Not at hall
       have hsub : Finset.range (vertexCount xs) ⊆ (st.2.toList.map UInt64.toNat).toFinset := by
         intro u hu
         obtain ⟨x, hx, hxu⟩ := hall u (by simpa using hu)

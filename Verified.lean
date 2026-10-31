@@ -28,6 +28,7 @@ import Verified.Compile
 import Verified.State
 import Verified.Correct
 import Verified.Call
+import Verified.Congr
 import Verified.BoundFacts
 import Verified.LoopCostLast
 import Verified.ChargeFacts

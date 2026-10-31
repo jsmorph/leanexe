@@ -19,7 +19,7 @@
 | `lowerBound_call` | [The compilation](Compiled.lean) | Function 3, called from a ready store with a sorted array and a key, returns without a trap the word of `expected (xs, key)`, leaves a ready store, and raises `top` by at most `compiled.lowerBound.bound`. |
 | `binarySearch_file`, `binarySearch_file_decode` | [The file theorems](File.lean) | `build/verified/binarySearch.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
-`lowerBound_call` is a `Verified.Call` whose precondition is `Sorted`, where the library's total functions state `Verified.CallSpec`.  `call_on`, in the compilation, composes the generated `compiled.lowerBound.trapFree` with `lowerBound_eq` on the arguments that meet the precondition.  The axiom report of `lowerBound_call` names only `propext`, `Classical.choice`, and `Quot.sound`.
+`lowerBound_call` is a `Verified.Call` whose precondition is `Sorted`, where the library's total functions state `Verified.CallSpec`.  `Verified.call_on` of [the congruence theorems](../../../Verified/Congr.lean) composes the generated `compiled.lowerBound.trapFree` with `lowerBound_eq` on the arguments that meet the precondition.  The axiom report of `lowerBound_call` names only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Building, running, and testing
 

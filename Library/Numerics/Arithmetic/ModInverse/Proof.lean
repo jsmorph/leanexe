@@ -30,18 +30,18 @@ theorem euclid_spec (A : Nat) (m r0 r1 t0 t1 p : UInt64) (s : ZMod m.toNat)
       (Nat.gcd A m.toNat ≠ 1 → euclid m r0 r1 t0 t1 p = 0) := by
   have hm64 := UInt64.toNat_lt m
   by_cases h1 : r1 = 0
-  · rw [euclid, if_pos h1]
+  · rw [euclid, ite_eq_left h1]
     have hr1 : r1.toNat = 0 := by simp [h1]
     rw [hr1, Nat.gcd_zero_right] at hg
     by_cases h0 : r0 = 1
-    · rw [if_pos h0]
+    · rw [ite_eq_left h0]
       have hR0 : r0.toNat = 1 := by simp [h0]
       refine ⟨fun _ => ?_, fun hne => absurd (hg ▸ hR0) hne⟩
       rw [hr1, hR0] at hid
       have hT1 : t1.toNat = m.toNat := by omega
       have hT0 : t0.toNat ≤ m.toNat := by omega
       rcases hs with ⟨hp, rfl⟩ | ⟨hp, rfl⟩
-      · rw [if_pos hp]
+      · rw [ite_eq_left hp]
         have hsub : (m - t0).toNat = m.toNat - t0.toNat :=
           UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr hT0)
         rw [UInt64.toNat_mod, hsub]
@@ -49,15 +49,15 @@ theorem euclid_spec (A : Nat) (m r0 r1 t0 t1 p : UInt64) (s : ZMod m.toNat)
         rw [ZMod.natCast_mod, Nat.cast_sub hT0, ZMod.natCast_self]
         rw [hR0, Nat.cast_one] at hc0
         linear_combination -hc0
-      · rw [if_neg (by rw [hp]; decide)]
+      · rw [ite_eq_right (by rw [hp]; decide)]
         rw [UInt64.toNat_mod]
         refine ⟨Nat.mod_lt _ (by omega), ?_⟩
         rw [ZMod.natCast_mod]
         rw [hR0, Nat.cast_one] at hc0
         linear_combination hc0
-    · rw [if_neg h0]
+    · rw [ite_eq_right h0]
       refine ⟨fun h => absurd (UInt64.toNat_inj.mp (by rw [hg, h]; rfl)) h0, fun _ => rfl⟩
-  · rw [euclid, if_neg h1]
+  · rw [euclid, ite_eq_right h1]
     have hR1 := toNat_ne_zero h1
     set R0 := r0.toNat with hR0def
     set R1 := r1.toNat with hR1def
@@ -115,8 +115,8 @@ theorem modInverse_eq (a m : UInt64) : modInverse a m = expected (a, m) := by
   by_cases hm : m ≤ 1
   · have := UInt64.le_iff_toNat_le.mp hm
     simp only [UInt64.reduceToNat] at this
-    rw [if_pos hm, if_neg fun h => absurd h.1 (by omega)]
-  · rw [if_neg hm]
+    rw [ite_eq_left hm, ite_eq_right fun h => absurd h.1 (by omega)]
+  · rw [ite_eq_right hm]
     have hM : 2 ≤ m.toNat := by
       have : ¬ m.toNat ≤ 1 := fun h => hm (UInt64.le_iff_toNat_le.mpr (by simpa using h))
       omega
@@ -129,10 +129,10 @@ theorem modInverse_eq (a m : UInt64) : modInverse a m = expected (a, m) := by
       (by rw [hmod, ZMod.natCast_mod]; simp)
       (by simp)
     by_cases hcop : Nat.gcd a.toNat m.toNat = 1
-    · rw [if_pos ⟨hM, hcop⟩]
+    · rw [ite_eq_left ⟨hM, hcop⟩]
       obtain ⟨hlt, hax⟩ := hyes hcop
       rw [val_inv_eq hcop hlt hax, UInt64.ofNat_toNat]
-    · rw [if_neg (fun h => hcop h.2)]
+    · rw [ite_eq_right (fun h => hcop h.2)]
       exact hno hcop
 
 end Library.Numerics.Arithmetic.ModInverse

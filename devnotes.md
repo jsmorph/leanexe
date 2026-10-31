@@ -40153,5 +40153,7 @@ The binary heap's loop state holds the outputs, the heap's size, and the array. 
 The topological sort and the binary heap both need reads after `set!` and `push` and reads of prefixes, so `get_set`, `get_toList`, `push_get_lt`, `push_get_size`, and `take_get_mem` moved from the topological sort's proof into [the dialect's array lemmas](LeanExe/Dialect/ArrayLemmas.lean), generic in the element type.  Toolchain `v4.34.0-rc2` deprecates `if_pos` and `if_neg` in favor of `ite_eq_left` and `ite_eq_right`, which have the same statements.  The binary heap's proof uses the new names.  The earlier TAOCP modules use the old names 93 times and build with deprecation warnings.  Heapsort and merge sort each define the same `implementsA_congr`, a copy that a shared lemma should replace, and binary search defines `call_on` for its precondition.
 
 - [x] Binary heap: program, proof, call theorem, 16 cases in Wasmtime and native C, two reviews, README, index.
-- [ ] Rename `if_pos` and `if_neg` in the earlier TAOCP modules.
-- [ ] Move `implementsA_congr` and `call_on` to one shared module and remove the copies.
+- [x] Rename `if_pos` and `if_neg` in the earlier TAOCP modules, with `if_true`, `if_false`, `dif_pos`, `dif_neg`, and `push_neg`, which the toolchain also deprecates.
+- [x] Move `implementsA_congr` and `call_on` to [the congruence theorems](Verified/Congr.lean) and remove the copies.
+
+The decimal-conversion and Uscale modules also use the deprecated names, and they build with the same warnings.

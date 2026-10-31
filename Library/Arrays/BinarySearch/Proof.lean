@@ -12,11 +12,11 @@ theorem search_of_lt {xs : Array UInt64} {key lo hi : UInt64} (h : lo < hi) :
     search xs key lo hi =
       if xs[(lo + (hi - lo) / 2).toNat]! < key then search xs key (lo + (hi - lo) / 2 + 1) hi
       else search xs key lo (lo + (hi - lo) / 2) := by
-  rw [search, if_pos h]
+  rw [search, ite_eq_left h]
 
 theorem search_of_not_lt {xs : Array UInt64} {key lo hi : UInt64} (h : ¬ lo < hi) :
     search xs key lo hi = lo := by
-  rw [search, if_neg h]
+  rw [search, ite_eq_right h]
 
 theorem mid_toNat {lo hi : UInt64} (h : lo < hi) :
     (lo + (hi - lo) / 2).toNat = lo.toNat + (hi.toNat - lo.toNat) / 2 := by
@@ -51,7 +51,7 @@ theorem search_spec (xs : Array UInt64) (key : UInt64) (hs : Sorted xs) (lo hi :
       rw [UInt64.lt_iff_toNat_lt, hm]; omega
     have hs1 := succ_toNat hmhi
     by_cases hk : xs[(lo + (hi - lo) / 2).toNat]! < key
-    · rw [if_pos hk]
+    · rw [ite_eq_left hk]
       refine search_spec xs key hs _ hi
         (by rw [UInt64.le_iff_toNat_le, hs1, hm]; omega) hhi ?_ habove
       intro j hj
@@ -59,7 +59,7 @@ theorem search_spec (xs : Array UInt64) (key : UInt64) (hs : Sorted xs) (lo hi :
       have hx := UInt64.le_iff_toNat_le.mp (hs j (lo + (hi - lo) / 2).toNat (by rw [hm]; omega) (by rw [hm]; omega))
       have hk' := UInt64.lt_iff_toNat_lt.mp hk
       exact UInt64.lt_iff_toNat_lt.mpr (by omega)
-    · rw [if_neg hk]
+    · rw [ite_eq_right hk]
       refine search_spec xs key hs lo _
         (by rw [UInt64.le_iff_toNat_le, hm]; omega) (by rw [hm]; omega) hbelow ?_
       intro j hj hjs
