@@ -58,7 +58,7 @@ for (const program of programs) {
   function check(file) {
     if (seen.has(file)) return;
     seen.add(file);
-    if (/^(Verified\/|LeanExe\/(Compiler|IR)\/)/.test(file)) {
+    if (/^Verified\//.test(file)) {
       errors.push(`${program}: native import reaches ${file}`);
       return;
     }

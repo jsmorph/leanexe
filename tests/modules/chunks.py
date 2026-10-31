@@ -11,7 +11,8 @@ its array depends on the capacity the allocator gave its block, which differs be
 sessions, so the counts are checked to leave exactly the results and the command arrays
 allocated.
 
-Usage: uv run tests/modules/chunks.py [build directory]"""
+Usage: uv run tests/modules/chunks.py [path/to/clob.wasm].  Without a path the module is the
+verified compiler's build/verified/clob.wasm, which tests/verified/run.sh writes."""
 
 import random
 import struct
@@ -21,9 +22,8 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-BUILD = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build'
 HOST = ROOT / 'build' / 'tools' / 'leanexe-wasmtime-host'
-WASM = BUILD / 'clob' / 'clob.wasm'
+WASM = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build' / 'verified' / 'clob.wasm'
 
 
 def write_words(path, words):

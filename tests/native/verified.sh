@@ -10,8 +10,8 @@
 # A case runs when the translation contains its export, and a module outside the subset, which
 # has no translation, runs none of its cases.  A case that runs must give the line that the
 # Wasmtime host gives, with the same rules for traps and allocation counters.  The module cases
-# of tests/modules/Cases.lean that tests/verified/run.sh checks for the corpus, those of euler
-# and of shapes on sums, come from the compiled generator native-module-cases
+# that tests/verified/run.sh checks for the corpus, those of euler and of shapes on sums, come
+# from the compiled generator native-module-cases
 # (tests/TestSupport/Native/ModuleCases.lean) and run the same way under the rules of
 # tests/modules/run.sh.  The script prints the numbers of cases that pass, that fail, and that do
 # not run, and fails unless every case that runs passes.  Before it loads any module, it builds

@@ -5,8 +5,8 @@
 #   1. `lake build` of LeanExe, Examples, Demos, Verified, Library, and TestSupport with the test
 #      executables native-verified, native-bare, verified-cases, and native-module-cases, at log
 #      level info, so that the log holds the axiom report of every `#print axioms`;
-#   2. tests/verified/run.sh and, when it passes, tests/drone/run.sh on the drone module that it
-#      writes;
+#   2. tests/verified/run.sh and, when it passes, tests/drone/run.sh and tests/modules/chunks.py on
+#      the drone and order-book modules that it writes;
 #   3. tests/native/verified.sh without and with --aligned, tests/native/aligned.sh,
 #      tests/native/run.sh, tests/native/bytes.sh, and tests/native/clight.sh 7 300 for the
 #      platform's target;
@@ -336,6 +336,23 @@ step_drone() {
   record "$step" "$(outcome)" "$seconds" "$cell"
 }
 
+# The order-book sessions run only after a pass of tests/verified/run.sh has written
+# build/verified/clob.wasm.
+step_chunks() {
+  local step='`tests/modules/chunks.py`'
+  if unbuilt "$step"; then
+    return 0
+  fi
+  if [ "$verified" != passed ]; then
+    record "$step" "not run: \`tests/verified/run.sh\` did not pass" "" ""
+    return 0
+  fi
+  ready "$step" uv:uv || return 0
+  run 2-chunks uv run tests/modules/chunks.py
+  record "$step" "$(outcome)" "$seconds" \
+    "$(pf "$(last '^chunks: ([0-9]+) cases, ([0-9]+) failed$' '\1 \2' "$log")" cases)"
+}
+
 step_native() {
   local step mode flags cell notrun made list refused programs calls
   for mode in plain aligned; do
@@ -653,9 +670,7 @@ write_status() {
     else
       notes="These steps did not run: $(unrun_groups)."
     fi
-    notes+="  The check leaves out the suites of the LeanExe compiler, which is being retired:"
-    notes+=" \`tests/modules/run.sh\` beyond the Euler and sums cases that \`tests/verified/run.sh\`"
-    notes+=" runs, \`tests/modules/chunks.py\`, and the LTG check."
+    notes+="  The check leaves out the LTG check of the LeanExe compiler, which is being retired."
     notes+="  It also leaves out"
     notes+=" \`tests/native/subset.sh\`, whose result is the count of modules without a"
     notes+=" translation that \`tests/native/verified.sh\` reports, \`tests/native/bench.sh\`, which"
@@ -724,6 +739,7 @@ main() {
   step_build
   step_verified
   step_drone
+  step_chunks
   step_native
   step_wasi
   step_baremetal

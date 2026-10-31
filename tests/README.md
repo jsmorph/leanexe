@@ -5,7 +5,7 @@
 | Change or question | Checks and their scope |
 |---|---|
 | Documentation or repository layout | [The documentation checker](../tools/check-doc-links.mjs) checks local links, section anchors, and reachability from the root README.  [The layout checker](../tools/source-layout) checks source imports and the module registries. |
-| LeanExe compiler, runtime, or pipeline | [The module driver](modules/run.sh) reads existing files at `build/NAME/NAME.wasm`, compares their cases with native Lean, and checks release counts and the depth guard.  [The full-check procedure](../docs/leanexe-manual.md#the-full-check) gives the build and emission order. |
+| Runtime or pipeline | [The verified driver](verified/run.sh) runs the cases of every registered module, and through [the module driver](modules/run.sh) the module cases of `euler` and of `shapes`.  [The order-book sessions](modules/chunks.py) run command streams through the verified `clob.wasm` whole, in chunks, and one command at a time.  [The full check](../tools/full-check) runs both drivers and the sessions. |
 | Verified compiler or a pure program it compiles | [The verified driver](verified/run.sh) builds its targets, emits modules, validates them, and compares their cases with native Lean.  Cases can state retained blocks and allocation limits as well as results.  [The Verified Compiler Manual](../docs/verified-manual.md#module-cases) describes focused runs. |
 | Encoding or decoding | [The decoder test](decoder/DecodeTest.lean) uses the official WebAssembly testsuite.  [The table-profile checks](decoder/TableProfile.lean) cover the narrow table and export forms used by WASI.  [The encoding guide](../LeanExe/Encoding/README.md#tests) gives their setup. |
 | Talos, the WebAssembly semantics of the theorems | [Talos's conformance driver](talos/run.sh) runs the testsuite runner of the pinned CodeLib revision over the official WebAssembly testsuite.  It fails on a failed command, an interpreter error, or exhausted fuel, and on any difference from the report that CodeLib commits.  It needs CodeLib's `vendor/testsuite` submodule and `wasm-tools` 1.251.0, and its outputs lie in `build/talos/`. |
@@ -37,8 +37,7 @@ Default output directories lie under `build/`.  The native execution drivers rec
 `build/native/run/` and `build/native/verified/`.
 
 `tests/verified/run.sh --check-bytes DIR` reads reference modules from `DIR` and writes fresh
-emissions to `build/byte-check/verified/`.  `tests/modules/run.sh --check-bytes DIR` writes fresh
-emissions to `DIR` and compares them with `build/NAME/NAME.wasm`.  The
+emissions to `build/byte-check/verified/`.  The
 [full-check procedure](../docs/leanexe-manual.md#the-full-check) gives the build, emission,
 comparison, and execution order.
 

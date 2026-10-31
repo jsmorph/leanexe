@@ -2,8 +2,9 @@
 /-! The cases of the drone corpus.  `tests/drone/oracle.sh` appends this file to the reference
 implementation's `LeanExe/Examples/Drone.lean` and runs the result natively.  With the argument
 `corpus`, each output line is a terrain and the reference `compute` of it, as comma-separated words
-joined by `|`.  With `cases`, each line is a call of one of the reference functions in the format of
-`tests/modules/Cases.lean`: `drone|export|result kind|host arguments|the reference result`. -/
+joined by `|`.  With `cases`, each line is a call of one of the reference functions in the case
+format of `tests/modules/run.sh`: `drone|export|result kind|host arguments|the reference result`.
+-/
 
 open LeanExe.Examples.Drone
 

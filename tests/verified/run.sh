@@ -119,7 +119,9 @@ while IFS=: read -r module constant name; do
 done <"$root/tests/verified/modules.txt"
 if [ -z "$reference" ]; then
   if runs gpt; then targets+=($(imports tests/gpt/Cases.lean)); fi
-  if runs euler || runs sums; then targets+=($(imports tests/modules/Cases.lean)); fi
+  if runs euler || runs sums; then
+    targets+=($(imports tests/TestSupport/Native/ModuleCases.lean))
+  fi
   if runs slew; then targets+=(TestSupport.Slew.EdgesMain $(imports tests/slew/Axioms.lean)); fi
   if [ "$case_module" = "slew" ]; then
     targets+=(Demos.Slew.Verified $(imports Demos/Slew/File.lean))

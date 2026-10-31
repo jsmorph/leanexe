@@ -1,94 +1,54 @@
 #!/usr/bin/env bash
-# Compares every case of tests/modules/Cases.lean between the Wasmtime host running
-# build/MODULE/MODULE.wasm and native Lean.
-# Usage: tests/modules/run.sh [build directory] | --module NAME WASM | --check-bytes DIRECTORY
-#        tests/modules/run.sh --emit-from CHECKOUT DIRECTORY
+# Compares the cases of module NAME in tests/TestSupport/Native/ModuleCases.lean between the
+# Wasmtime host running WASM and native Lean.  tests/verified/run.sh runs it on the verified euler
+# module and, under the name shapes, on the verified sums module.
+# Usage: tests/modules/run.sh --module NAME WASM
 set -euo pipefail
 export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
 root=$(cd "$(dirname "$0")/../.." && pwd)
-if [ "$#" -eq 3 ] && [ "$1" = "--emit-from" ]; then
-  source_root=$(cd "$2" && pwd -P)
-  git -C "$source_root" diff --quiet
-  git -C "$source_root" diff --cached --quiet
-  mkdir -p "$3"
-  scratch=$(cd "$3" && pwd -P)
-  git -C "$source_root" rev-parse HEAD >"$scratch/original-source.commit"
-  while IFS=: read -r module constant name; do
-    mkdir -p "$scratch/$name"
-    (cd "$source_root" && tools/leanrun --timeout 60m lake --log-level error build "$module")
-    (cd "$source_root" && tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
-      "$module" "$constant" "$scratch/$name/$name.wasm")
-    wasm-tools validate "$scratch/$name/$name.wasm"
-    echo "$name: reference emitted"
-  done <"$root/tests/modules/modules.txt"
-  exit 0
-fi
-if [ "$#" -eq 2 ] && [ "$1" = "--check-bytes" ] && [ -n "$2" ]; then
-  scratch=$2
-  cd "$root"
-  while IFS=: read -r module constant name; do
-    mkdir -p "$scratch/$name"
-    tools/leanrun --timeout 60m lake --log-level error build "$module"
-    tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
-      "$module" "$constant" \
-      "$scratch/$name/$name.wasm"
-    wasm-tools validate "$scratch/$name/$name.wasm"
-    cmp "$scratch/$name/$name.wasm" "$root/build/$name/$name.wasm"
-    echo "$name: bytes unchanged"
-  done <"$root/tests/modules/modules.txt"
-  exit 0
-fi
-case_module=""
-case_wasm=""
-build=$root/build
-if [ "$#" -le 1 ] && [ "${1:-}" != "--module" ]; then
-  build=${1:-$build}
-elif [ "$#" -eq 3 ] && [ "$1" = "--module" ] && [ -n "$2" ] && [ -n "$3" ]; then
-  case_module=$2
-  case_wasm=$3
-else
-  echo "usage: tests/modules/run.sh [build directory] | --module NAME WASM | --check-bytes DIRECTORY | --emit-from CHECKOUT DIRECTORY" >&2
+if [ "$#" -ne 3 ] || [ "$1" != "--module" ] || [ -z "$2" ] || [ -z "$3" ]; then
+  echo "usage: tests/modules/run.sh --module NAME WASM" >&2
   exit 2
 fi
+case_module=$2
+case_wasm=$3
 host=$root/build/tools/leanexe-wasmtime-host
 if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
   echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
   exit 1
 fi
-tools/leanrun --timeout 30m lake --log-level error build TestSupport
+(cd "$root" && tools/leanrun --timeout 30m lake --log-level error build TestSupport.Native.ModuleCases)
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT
-# Native Lean panics on the reads past the end of an array and the `insertIdx!` past the end that
-# the cases exercise: it writes a message and a backtrace to standard error and returns Lean's
-# default value.  The run fails when Lean exits with an error or writes any other message.
-if ! (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tests/modules/Cases.lean) \
-    >"$cases" 2>"$errors"; then
+# Native Lean panics on the reads past the end of an array that the cases exercise: it writes a
+# message and a backtrace to standard error and returns Lean's default value.  The run fails when
+# Lean exits with an error or writes any other message.
+if ! (cd "$root" && tools/leanrun --timeout 10m lake env lean --run \
+    tests/TestSupport/Native/ModuleCases.lean) >"$cases" 2>"$errors"; then
   cat "$errors" >&2
   echo "fail: native Lean exited with an error" >&2
   exit 1
 fi
 counts=$(awk '
   $0 == "Error: index out of bounds" { reads++; next }
-  /^PANIC at Array\.insertIdx! Init\.Data\.Array\.Basic:[0-9]+:[0-9]+: invalid index$/ { inserts++; next }
   $0 == "backtrace:" || /\[0x[0-9a-f]+\]$/ { next }
   { others++; print > "/dev/stderr" }
-  END { print reads + 0, inserts + 0, others + 0 }' "$errors")
-read -r reads inserts others <<<"$counts"
+  END { print reads + 0, others + 0 }' "$errors")
+read -r reads others <<<"$counts"
 if [ "$others" -ne 0 ]; then
   echo "fail: native Lean wrote $others unexpected lines to standard error, shown above" >&2
   exit 1
 fi
-echo "native Lean: $reads reads past the end and $inserts insertIdx! past the end, as the cases expect"
+echo "native Lean: $reads reads past the end, as the cases expect"
 declare -A passed
 failed=0
 while IFS='|' read -r module name result args expected; do
-  if [ -n "$case_module" ] && [ "$module" != "$case_module" ]; then
+  if [ "$module" != "$case_module" ]; then
     continue
   fi
-  wasm=${case_wasm:-$build/$module/$module.wasm}
   read -ra argv <<<"$args"
-  out=$("$host" call "$wasm" "$name" "$result" "${argv[@]}" | tr -d '[] ' | paste -sd, -)
+  out=$("$host" call "$case_wasm" "$name" "$result" "${argv[@]}" | tr -d '[] ' | paste -sd, -)
   if [ "$out" = "$expected" ]; then
     passed[$module.$name]=$((${passed[$module.$name]:-0} + 1))
   else
@@ -102,317 +62,4 @@ for name in $(printf '%s\n' "${!passed[@]}" | sort); do
   total=$((total + ${passed[$name]}))
 done
 echo "passed $total failed $failed"
-if [ -n "$case_module" ]; then
-  if [ "$total" -eq 0 ] || [ "$failed" -ne 0 ]; then
-    exit 1
-  fi
-  exit 0
-fi
-# The CLOB functions that consume their arrays release them inside the call on the paths that
-# do not return them.  The host releases nothing, so the counters show those frees.  Each line
-# is an export, its arguments, and the expected allocations and frees.
-stats_failed=0
-prices=array-u64:105,102,101
-sizes=array-u64:4,4,6
-while IFS='|' read -r name args expected; do
-  read -ra argv <<<"$args"
-  out=$("$host" call-stats "$build/clob/clob.wasm" "$name" list:array-u64,array-u64 \
-    $prices $sizes "${argv[@]}" | tail -1)
-  if [ "$out" != "stats $expected" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: clob $name $args: $out, expected stats $expected"
-  fi
-done <<'CASES'
-setLevel|i64:1 i64:9|2 0
-addBid|i64:103 i64:5|4 2
-addBid|i64:102 i64:5|2 0
-cancelBid|i64:102 i64:4|2 0
-cancelBid|i64:102 i64:1|2 0
-cancelBid|i64:103 i64:1|2 0
-applyCommand|i64:0 i64:103 i64:5|4 2
-applyCommand|i64:0 i64:102 i64:5|2 0
-applyCommand|i64:1 i64:102 i64:4|2 0
-applyCommand|i64:1 i64:102 i64:1|2 0
-applyCommand|i64:2 i64:102 i64:1|2 0
-CASES
-# Two inserts in one call: the first moves each array to a block of twice the capacity and
-# releases the old block, and the second fits, so the counters show 3 host allocations, 2 more
-# blocks, and 2 frees.
-out=$("$host" call-stats "$build/clob/clob.wasm" runCommands list:array-u64,array-u64 \
-  $prices $sizes array-u64:0,103,5,0,104,5 | tail -1)
-if [ "$out" != "stats 5 2" ]; then
-  stats_failed=$((stats_failed + 1))
-  echo "fail: clob runCommands with two inserts: $out, expected stats 5 2"
-fi
-# stepCommand pushes two words onto the output array in place.  An output of one word fills its
-# block, so the first push moves it to a block of twice the capacity and the second fits: 3 host
-# allocations, 1 more block, and 1 free.  An empty output grows on both pushes.
-for case in "array-u64:7|4 1" "array-u64:|5 2"; do
-  IFS='|' read -r output expected <<<"$case"
-  out=$("$host" call-stats "$build/clob/clob.wasm" stepCommand \
-    list:array-u64,array-u64,array-u64 $prices $sizes "$output" i64:1 i64:102 i64:4 | tail -1)
-  if [ "$out" != "stats $expected" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: clob stepCommand with output $output: $out, expected stats $expected"
-  fi
-done
-# sumRange releases the list of n cells that it builds, so the counters show n allocations and
-# n frees.
-for n in 0 1 2 64 300; do
-  out=$("$host" call-stats "$build/lists/lists.wasm" sumRange i64 "i64:$n" | tail -1)
-  if [ "$out" != "stats $n $n" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: lists sumRange i64:$n: $out, expected stats $n $n"
-  fi
-done
-# setKey and incr rewrite the argument's records in place, so the counters show only the host's
-# allocations of those records.
-for case in .:0 5,.,.:1 5,1,.,.,9,.,.:3; do
-  tree=${case%:*}
-  nodes=${case#*:}
-  for call in "setKey i64:7" incr; do
-    read -ra argv <<<"$call"
-    out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" "${argv[0]}" tree-u64 \
-      "${argv[@]:1}" "tree-u64:$tree" | tail -1)
-    if [ "$out" != "stats $nodes 0" ]; then
-      stats_failed=$((stats_failed + 1))
-      echo "fail: treeMoves $call tree-u64:$tree: $out, expected stats $nodes 0"
-    fi
-  done
-done
-# insert allocates one record for a new key and none for a key already present.
-for case in "i64:7 .:1 0" "i64:7 5,.,.:2 0" "i64:7 5,1,.,.,9,.,.:4 0" "i64:5 5,1,.,.,9,.,.:3 0" \
-    "i64:9 5,1,.,.,9,.,.:3 0"; do
-  read -r key rest <<<"$case"
-  tree=${rest%%:*}
-  expected=${rest#*:}
-  out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" insert tree-u64 "$key" \
-    "tree-u64:$tree" | tail -1)
-  if [ "$out" != "stats $expected" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: treeMoves insert $key tree-u64:$tree: $out, expected stats $expected"
-  fi
-done
-# dropRight frees the right subtree's records, and leftChild frees the root's record and the
-# right subtree's.  Each case is a tree, then the expected counts for dropRight and leftChild.
-for case in ".|0 0|0 0" "5,.,.|1 0|1 1" "5,1,.,.,9,.,.|3 1|3 2" "5,1,.,.,9,7,.,.,8,.,.|5 3|5 4"; do
-  IFS='|' read -r tree drop left <<<"$case"
-  for call in "dropRight:$drop" "leftChild:$left"; do
-    name=${call%%:*}
-    expected=${call#*:}
-    out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" "$name" tree-u64 \
-      "tree-u64:$tree" | tail -1)
-    if [ "$out" != "stats $expected" ]; then
-      stats_failed=$((stats_failed + 1))
-      echo "fail: treeMoves $name tree-u64:$tree: $out, expected stats $expected"
-    fi
-  done
-done
-# keepIf with c other than 0 frees every record.  trim frees what leftChild frees when the
-# root's key is 0, and what dropRight frees otherwise.
-for case in "keepIf i64:0|5,1,.,.,9,.,.|3 0" "keepIf i64:1|5,1,.,.,9,.,.|3 3" "keepIf i64:1|.|0 0" \
-    "trim|0,1,.,.,9,.,.|3 2" "trim|5,1,.,.,9,.,.|3 1" "trim|.|0 0"; do
-  IFS='|' read -r call tree expected <<<"$case"
-  read -ra argv <<<"$call"
-  out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" "${argv[0]}" tree-u64 \
-    "${argv[@]:1}" "tree-u64:$tree" | tail -1)
-  if [ "$out" != "stats $expected" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: treeMoves $call tree-u64:$tree: $out, expected stats $expected"
-  fi
-done
-# insertTwo calls insert twice on the same records: two new keys add two records, and two keys
-# already present add none.
-for case in "i64:7 i64:8|5 0" "i64:5 i64:9|3 0"; do
-  IFS='|' read -r keys expected <<<"$case"
-  read -ra argv <<<"$keys"
-  out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" insertTwo tree-u64 "${argv[@]}" \
-    "tree-u64:5,1,.,.,9,.,." | tail -1)
-  if [ "$out" != "stats $expected" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: treeMoves insertTwo $keys: $out, expected stats $expected"
-  fi
-done
-# pushSum grows the host's exact-capacity array once, freeing the old block, and reads the tree
-# without allocating: the host's array and records, then one block.
-for case in "array-u64:7|5,1,.,.,9,.,.|5 1" "array-u64:|.|2 1"; do
-  IFS='|' read -r xs tree expected <<<"$case"
-  out=$("$host" call-stats "$build/trees/trees.wasm" pushSum list:array-u64,i64 "$xs" \
-    "tree-u64:$tree" | tail -1)
-  if [ "$out" != "stats $expected" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: trees pushSum $xs tree-u64:$tree: $out, expected stats $expected"
-  fi
-done
-# dropSmall lends its tree to size, which allocates nothing, and then frees every record when the
-# tree has fewer than n nodes.
-for case in "i64:3|5,1,.,.,9,.,.|3 0" "i64:4|5,1,.,.,9,.,.|3 3" "i64:1|.|0 0"; do
-  IFS='|' read -r n tree expected <<<"$case"
-  out=$("$host" call-stats "$build/trees/trees.wasm" dropSmall tree-u64 "$n" "tree-u64:$tree" \
-    | tail -1)
-  if [ "$out" != "stats $expected" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: trees dropSmall $n tree-u64:$tree: $out, expected stats $expected"
-  fi
-done
-# sizeDrop lends its tree to size through a word let, then frees every record on the path whose
-# pair holds a leaf.
-for case in "i64:3|5,1,.,.,9,.,.|3 0" "i64:4|5,1,.,.,9,.,.|3 3"; do
-  IFS='|' read -r n tree expected <<<"$case"
-  out=$("$host" call-stats "$build/trees/trees.wasm" sizeDrop list:i64,tree-u64 "$n" \
-    "tree-u64:$tree" | tail -1)
-  if [ "$out" != "stats $expected" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: trees sizeDrop $n tree-u64:$tree: $out, expected stats $expected"
-  fi
-done
-# The callers of sizeDrop: sizeDropNext passes the tree through, sizeAfterDrop releases it at its
-# end, sizeDropSmall passes it to dropSmall, which frees it, and sizeFirst releases it right after
-# the call.  droppedSize and dropWithSize bind dropSmall's result with let, lend it to size, and
-# release or return it.
-for case in "sizeDropNext list:i64,tree-u64|i64:3|3 0" "sizeDropNext list:i64,tree-u64|i64:4|3 3" \
-    "sizeAfterDrop i64|i64:3|3 3" "sizeAfterDrop i64|i64:4|3 3" "sizeDropSmall tree-u64|i64:3|3 3" \
-    "sizeFirst i64|i64:3|3 3" "droppedSize i64|i64:3|3 3" "droppedSize i64|i64:4|3 3" \
-    "dropWithSize list:i64,tree-u64|i64:3|3 0" "dropWithSize list:i64,tree-u64|i64:4|3 3"; do
-  IFS='|' read -r call n expected <<<"$case"
-  read -ra argv <<<"$call"
-  out=$("$host" call-stats "$build/trees/trees.wasm" "${argv[@]}" "$n" "tree-u64:5,1,.,.,9,.,." \
-    | tail -1)
-  if [ "$out" != "stats $expected" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: trees $call $n: $out, expected stats $expected"
-  fi
-done
-# addRoot reads the first tree and rewrites the second's root record in place: only the host's
-# records are allocated, and nothing is freed.
-out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" addRoot tree-u64 "tree-u64:2,.,." \
-  "tree-u64:5,1,.,.,9,.,." | tail -1)
-if [ "$out" != "stats 4 0" ]; then
-  stats_failed=$((stats_failed + 1))
-  echo "fail: treeMoves addRoot: $out, expected stats 4 0"
-fi
-# addAll reads the first tree and rewrites every record of the second in place: only the host's
-# records are allocated, and nothing is freed.
-out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" addAll tree-u64 "tree-u64:2,.,." \
-  "tree-u64:5,1,.,.,9,.,." | tail -1)
-if [ "$out" != "stats 4 0" ]; then
-  stats_failed=$((stats_failed + 1))
-  echo "fail: treeMoves addAll: $out, expected stats 4 0"
-fi
-# addLeft lends the left child to addRoot, which rewrites the right child's root in place: only
-# the host's records are allocated, and nothing is freed.
-out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" addLeft tree-u64 \
-  "tree-u64:5,1,.,.,9,.,." | tail -1)
-if [ "$out" != "stats 3 0" ]; then
-  stats_failed=$((stats_failed + 1))
-  echo "fail: treeMoves addLeft: $out, expected stats 3 0"
-fi
-# leftSpine lends each right subtree to the recursive call and then releases it: the root's right
-# child is the one record freed here.
-out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" leftSpine tree-u64 "tree-u64:2,.,." \
-  "tree-u64:5,1,.,.,9,.,." | tail -1)
-if [ "$out" != "stats 4 1" ]; then
-  stats_failed=$((stats_failed + 1))
-  echo "fail: treeMoves leftSpine: $out, expected stats 4 1"
-fi
-# pickPair returns both trees in either order and frees nothing.
-out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" pickPair list:tree-u64,tree-u64 i64:1 \
-  "tree-u64:2,.,." "tree-u64:5,1,.,.,9,.,." | tail -1)
-if [ "$out" != "stats 4 0" ]; then
-  stats_failed=$((stats_failed + 1))
-  echo "fail: treeMoves pickPair: $out, expected stats 4 0"
-fi
-# fillTwice updates the host's array in place twice: one allocation, no frees.
-out=$("$host" call-stats "$build/clob/clob.wasm" fillTwice array-u64 array-u64:4,4,6 i64:1 i64:2 \
-  i64:1 | tail -1)
-if [ "$out" != "stats 1 0" ]; then
-  stats_failed=$((stats_failed + 1))
-  echo "fail: clob fillTwice: $out, expected stats 1 0"
-fi
-# leftSizes rewrites every record in place and lends each left child to size: only the host's
-# records are allocated, and nothing is freed.
-out=$("$host" call-stats "$build/trees/trees.wasm" leftSizes tree-u64 "tree-u64:5,1,.,.,9,.,." \
-  | tail -1)
-if [ "$out" != "stats 3 0" ]; then
-  stats_failed=$((stats_failed + 1))
-  echo "fail: trees leftSizes: $out, expected stats 3 0"
-fi
-# fillKeep copies the host's array, and fillLevel updates the copy in place: two allocations, no
-# frees.
-out=$("$host" call-stats "$build/clob/clob.wasm" fillKeep list:array-u64,array-u64 \
-  array-u64:4,4,6 i64:1 i64:2 | tail -1)
-if [ "$out" != "stats 2 0" ]; then
-  stats_failed=$((stats_failed + 1))
-  echo "fail: clob fillKeep: $out, expected stats 2 0"
-fi
-# Pair-valued matches on trees: splitRoot frees the root record, rootAndRest rewrites it in place,
-# and splitOr frees a's root record and b when a is a node, and nothing when a is a leaf.  keepOld
-# and addSelf allocate a copy of the tree, which incr and addRoot rewrite in place.
-for case in "splitRoot|list:tree-u64,tree-u64|tree-u64:5,1,.,.,9,.,.|3 1" \
-    "rootAndRest|list:i64,tree-u64|tree-u64:5,1,.,.,9,.,.|3 0" \
-    "splitOr|list:tree-u64,tree-u64|tree-u64:5,1,.,.,9,.,. tree-u64:2,.,.|4 2" \
-    "splitOr|list:tree-u64,tree-u64|tree-u64:. tree-u64:2,.,.|1 0" \
-    "keepOld|list:tree-u64,tree-u64|tree-u64:5,1,.,.,9,.,.|6 0" \
-    "addSelf|tree-u64|tree-u64:5,1,.,.,9,.,.|6 0"; do
-  IFS='|' read -r name kind trees expected <<<"$case"
-  read -ra argv <<<"$trees"
-  out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" "$name" "$kind" "${argv[@]}" | tail -1)
-  if [ "$out" != "stats $expected" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: treeMoves $name $trees: $out, expected stats $expected"
-  fi
-done
-echo "release counts: 77 cases, $stats_failed failed"
-# The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
-# chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
-depth_failed=0
-chain() { printf 'tree-u64:'; i=0; while [ "$i" -lt "$1" ]; do printf '1,.,'; i=$((i + 1)); done; printf '.'; }
-out=$("$host" call "$build/trees/trees.wasm" size i64 "$(chain 999)" 2>&1) || true
-if [ "$out" != "999" ]; then
-  depth_failed=$((depth_failed + 1))
-  echo "fail: trees size on a chain of 999: $out"
-fi
-out=$("$host" call "$build/trees/trees.wasm" size i64 "$(chain 1000)" 2>&1) || true
-case "$out" in
-  *"wasm \`unreachable\` instruction executed"*) ;;
-  *) depth_failed=$((depth_failed + 1)); echo "fail: trees size on a chain of 1000: $out" ;;
-esac
-# leftHeavy and leftSizes call size's internal function at their own depth plus one, so the
-# depth limit covers both recursions together.  keepOld and addSelf reach it in the copy.
-for module_name in trees:height:i64 treeFrame:wide:i64 treeMoves:incr:tree-u64 \
-    trees:leftHeavy:i64 trees:leftSizes:tree-u64 treeMoves:keepOld:list:tree-u64,tree-u64 \
-    treeMoves:addSelf:tree-u64; do
-  IFS=: read -r module name kind <<<"$module_name"
-  out=$("$host" call "$build/$module/$module.wasm" "$name" "$kind" "$(chain 999)" 2>&1) || true
-  case "$out" in
-    *trap*|*error*) depth_failed=$((depth_failed + 1)); echo "fail: $module $name on a chain of 999: $out" ;;
-  esac
-  out=$("$host" call "$build/$module/$module.wasm" "$name" "$kind" "$(chain 1000)" 2>&1) || true
-  case "$out" in
-    *"wasm \`unreachable\` instruction executed"*) ;;
-    *) depth_failed=$((depth_failed + 1)); echo "fail: $module $name on a chain of 1000: $out" ;;
-  esac
-done
-# insert of a key larger than every key of a chain recurses to its end.
-out=$("$host" call "$build/treeMoves/treeMoves.wasm" insert tree-u64 i64:2 "$(chain 999)" 2>&1) || true
-case "$out" in
-  *trap*|*error*) depth_failed=$((depth_failed + 1)); echo "fail: treeMoves insert on a chain of 999: $out" ;;
-esac
-out=$("$host" call "$build/treeMoves/treeMoves.wasm" insert tree-u64 i64:2 "$(chain 1000)" 2>&1) || true
-case "$out" in
-  *"wasm \`unreachable\` instruction executed"*) ;;
-  *) depth_failed=$((depth_failed + 1)); echo "fail: treeMoves insert on a chain of 1000: $out" ;;
-esac
-# Releasing a long chain: dropRight on a chain of 999 nodes frees the 998 records of its right
-# subtree, and leftChild frees all 999.
-for call in "dropRight:999 998" "leftChild:999 999"; do
-  name=${call%%:*}
-  expected=${call#*:}
-  out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" "$name" tree-u64 "$(chain 999)" 2>&1 | tail -1) || true
-  if [ "$out" != "stats $expected" ]; then
-    depth_failed=$((depth_failed + 1))
-    echo "fail: treeMoves $name on a chain of 999: $out, expected stats $expected"
-  fi
-done
-echo "depth guard: 20 cases, $depth_failed failed"
-[ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$stats_failed" -eq 0 ] && [ "$depth_failed" -eq 0 ]
+[ "$total" -gt 0 ] && [ "$failed" -eq 0 ]

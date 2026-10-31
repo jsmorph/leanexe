@@ -2,9 +2,9 @@ import Demos.Euler.Cases
 import Examples.Shape.Cases
 
 /-!
-The module cases of `tests/modules/Cases.lean` for the two modules of the `tests/verified` corpus
-that `tests/verified/run.sh` checks through `tests/modules/run.sh`: `euler`, and `shapes` on the
-`sums` module, one line per case in that driver's format.  `tests/native/verified.sh` runs them
+The module cases of `euler` and of `shapes`, which `tests/verified/run.sh` checks through
+`tests/modules/run.sh` on the verified `euler` and `sums` modules, one line per case in that
+driver's format.  `tests/native/verified.sh` runs them
 on the translations.  Run with `lake env lean --run`.
 -/
 

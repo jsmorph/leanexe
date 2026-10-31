@@ -1,14 +1,11 @@
 import Examples.Binary32.Program
 import TestSupport.Host
 
-/-! The module cases of `binary32`, one line per case in the format of
-`tests/modules/run.sh`. -/
+/-! The inputs of the verified compiler's cases of `binary32` and of its WGSL kernels. -/
 
 namespace Examples.Binary32
 
 open TestSupport.Host
-
-def fl32 (x : Float32) : String := s!"f32:{x.toBits}"
 
 def inf32 : Float32 := 1.0 / 0.0
 def nan32 : Float32 := 0.0 / 0.0
@@ -33,7 +30,7 @@ def float32Triples : List (Float32 × Float32 × Float32) :=
     (small32 (3 * i), small32 (3 * i + 1), small32 (3 * i + 2))
   special ++ random ++ moderate
 
-/-- The arguments `(x, lo, hi)` of `piecewise32`, which the verified compiler's cases also use. -/
+/-- The arguments `(x, lo, hi)` of `piecewise32`. -/
 def piecewiseArgs : List (Float32 × Float32 × Float32) :=
   [(1.0, 1.0, 2.0), (0.5, 1.0, 2.0), (3.0, 1.0, 2.0), (1.5, 1.0, 2.0), (2.0, 1.0, 2.0),
     (nan32, 1.0, 2.0), (1.5, nan32, 2.0), (1.5, 1.0, nan32), (-0.0, 0.0, 1.0), (1.5, 2.0, 1.0)] ++
@@ -59,7 +56,8 @@ def matVecArgs : List (List Float32 × List Float32 × UInt64 × UInt64) :=
     (vals mLen (rows * 31 + cols), vals vLen (rows * 17 + cols * 5 + 1000), rows.toUInt64,
       cols.toUInt64)
 
-/-- The arguments `(x, lo, hi, n)` of `condMix32`, whose mirror reads stop at `n`: all elements, half,
+/-- The arguments `(x, lo, hi, n)` of `condMix32`, whose mirror reads stop at `n`: all elements,
+half,
 or a bound beyond every index. -/
 def condMixArgs : List (List Float32 × Float32 × Float32 × UInt64) :=
   let sp := specialFloat32s.toArray
@@ -69,31 +67,5 @@ def condMixArgs : List (List Float32 × Float32 × Float32 × UInt64) :=
           if i % 3 = 0 then rf32 (i + 11 * k) else sp[(i + 5 * k) % sp.size]!),
         sp[k % sp.size]!, sp[(k * 7 + 3) % sp.size]!,
         if k % 3 = 0 then n.toUInt64 else if k % 3 = 1 then (n / 2).toUInt64 else 0xffffffff00000000)
-
-def binary32Cases : IO Unit := do
-  for (a, x, y) in float32Triples do
-    line "binary32" "axpy32" "f32" [fl32 a, fl32 x, fl32 y]
-      (toString (Examples.Binary32.axpy32 a x y).toBits)
-    line "binary32" "hypot32" "f32" [fl32 a, fl32 x]
-      (toString (Examples.Binary32.hypot32 a x).toBits)
-    line "binary32" "ratio32" "f32" [fl32 a, fl32 x, fl32 y]
-      (toString (Examples.Binary32.ratio32 a x y).toBits)
-  for (x, lo, hi) in piecewiseArgs do
-    line "binary32" "piecewise32" "f32" [fl32 x, fl32 lo, fl32 hi]
-      (toString (Examples.Binary32.piecewise32 x lo hi).toBits)
-  let words32 (xs : List Float32) : List UInt64 := xs.map fun x => x.toBits.toUInt64
-  for (a, x, y) in vectorArgs do
-    line "binary32" "scale32" "array-u64" [fl32 a, arrU (words32 x)]
-      (words (words32 (Library.Numerics.LinearAlgebra.Binary32.scale32 a x.toArray).toList))
-    line "binary32" "axpyArray32" "array-u64" [fl32 a, arrU (words32 x), arrU (words32 y)]
-      (words (words32 (Library.Numerics.LinearAlgebra.Binary32.axpyArray32 a x.toArray y.toArray).toList))
-  for (m, v, rows, cols) in matVecArgs do
-    let r := Library.Numerics.LinearAlgebra.Binary32.matVec32 m.toArray v.toArray rows cols
-    line "binary32" "matVec32" "array-u64"
-      [arrU (words32 m), arrU (words32 v), u rows, u cols]
-      (words (words32 r.toList))
-
-def cases : IO Unit := do
-  binary32Cases
 
 end Examples.Binary32
