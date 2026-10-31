@@ -1,7 +1,5 @@
 import LeanExe.Attr
 import LeanExe.Common
-import LeanExe.Compiler.Command
-import LeanExe.Compiler.Scalar
 import LeanExe.Dialect.Build
 import LeanExe.Dialect.Float32
 import LeanExe.Dialect.InsertErase
