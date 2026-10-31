@@ -155,7 +155,7 @@ The exported-entry theorems quantify an initial store, host implementation, and 
 
 [The native result statement](../Verified/Wasi/NativeResult.lean) relates wrapper execution to native Lean actions.  [The command entry theorem](../Verified/Wasi/NativeCommand.lean) includes main's final exit.  Host relations may permit several replies.  Each sufficiently fueled target execution has a matching source execution or permitted source prefix with the same committed effects.
 
-The target host state contains the abstract world and an append-only joint event journal.  Events record reads, offered writes and their committed counts, accepted exits, and rejected exit requests.  The final journal equals the initial journal followed by the source trace.  This preserves ordering even when stdout and stderr refer to the same host destination.  The world is proof and host state, not an extra argument passed by the source program.
+The target host state contains the abstract world and an append-only joint event journal.  Events record reads, offered writes and their committed counts, accepted exits, and rejected exit requests.  The final journal equals the initial journal followed by the source trace.  This preserves ordering even when stdout and stderr refer to the same host destination.  The world is proof and host state, separate from the source program's arguments.
 
 ### Resources, host assumptions, and total execution
 
@@ -197,7 +197,7 @@ The proofs use Lean's kernel, the project's definitions of source actions and me
 
 `NativeHost.ofStreams` reports errno zero for successful stream reads and full successful count after a write and flush.  It accepts every narrowed exit status.  Stream operations may use several operating-system calls.  An `IO.Error` propagates to the Lean caller, including when a failed stream operation has already changed the outside world.  Explicit `Transfer.trapped` replies instead produce an `Outcome.trapped`.  Invalid host reply lengths or errnos raise an `IO.Error`.  [The native interpreter](../LeanExe/Wasi/Interpreter.lean) defines this adapter policy.
 
-The [running-sum native executable](../Demos/RunningSum/Native.lean) uses a [POSIX fd 0 reader](../Demos/RunningSum/read.c) for short reads on pipes.  The pinned Lean stream reader uses `fread`, which can wait for the requested capacity or EOF.  The descriptor adapter returns after one successful `read`, retries interrupted calls, and propagates other OS errors through Lean's error decoder.  Writes retain the stream adapter's flush policy.  No theorem relates the native interpreter to `Exec`; its agreement with the semantics rests on inspection and on the native tests.  `Process.runFrom` returns the status of a stopped process to its caller without a host exit, while the compiled `_start` passes that status to `proc_exit`, so the two differ for statuses that Wasmtime rejects.
+The [running-sum native executable](../Demos/RunningSum/Native.lean) uses a [POSIX fd 0 reader](../Demos/RunningSum/read.c) for short reads on pipes.  The pinned Lean stream reader uses `fread`, which can wait for the requested capacity or EOF.  The descriptor adapter returns after one successful `read`, retries interrupted calls, and propagates other OS errors through Lean's error decoder.  Writes retain the stream adapter's flush policy.  No theorem relates the native interpreter to `Exec`, and its agreement with the semantics rests on inspection and on the native tests.  `Process.runFrom` returns the status of a stopped process to its caller without a host exit, while the compiled `_start` passes that status to `proc_exit`, so the two differ for statuses that Wasmtime rejects.
 
 ### Wasmtime host
 
@@ -242,11 +242,7 @@ tests/wasi/run.sh
 
 [The WASI driver](../tests/wasi/run.sh) builds the universal proofs and audits their axioms.  The foundations-only mode also runs native interpreter, wrapper-code, and exit-model tests.  The full mode adds emitted-module validation and execution tests for packed bytes, literals, ownership and allocation counts, reflected callable and command modules, and the standard Wasmtime host.  [The public reflection driver](../tests/wasi/reflection-run.sh) tests generated modules against binary stream fixtures and separate control records.  [The host tests](../tests/wasi/host.sh) cover stream routing, accepted and rejected exits, low-32-bit conversion, and terminal lifecycle behavior.
 
-[The development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda) records proof, execution, and repository integration runs.
-
-[The running-sum driver](../tests/running-sum/run.sh) additionally checks the unbounded process loop, native and Wasm decimal streams, split lines, short and zero-byte writes, committed effects before failures, and interactive output before EOF.
-
-[The floating-point driver](../tests/running-sumfp/run.sh) adds rounding, cancellation, subnormals, overflow, signed zero, infinities, NaNs, and the general parser grammar, through native, Talos, Wasmtime, and interactive stream tests.
+[The running-sum driver](../tests/running-sum/run.sh) checks the unbounded process loop, native and Wasm decimal streams, split lines, short and zero-byte writes, committed effects before failures, and interactive output before EOF.  [The floating-point driver](../tests/running-sumfp/run.sh) adds rounding, cancellation, subnormals, overflow, signed zero, infinities, NaNs, and the general parser grammar, through native, Talos, Wasmtime, and interactive stream tests.  [The development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda) records proof, execution, and repository integration runs.
 
 On an 8-CPU host with about 12 GiB of memory, the full WASI and floating-point drivers use `LEANRUN_MEMORY_HIGH=10G`, with the [approved CPU and worker settings](../AGENTS.md#lean-process-limits).  The initial combined parser/printer WASI compilation had a captured memory peak of 4.84 GiB.
 
