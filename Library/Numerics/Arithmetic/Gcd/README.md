@@ -12,8 +12,8 @@ words, and it follows from `Nat.gcd_rec` by induction on the second argument.
 ## The bytes compute `Nat.gcd`
 
 `verified_compile compiled := [gcd]` in [the verified compilation](Compiled.lean) compiles the
-definition into a 1,461-byte module.  The compiler translates the tail recursion into a loop, so a
-call makes no further calls.  `gcd` allocates nothing, so the generated `compiled.gcd.implements`
+definition into a 1,461-byte module.  The verified compiler translates the tail recursion into a
+loop, so a call makes no further calls.  `gcd` allocates nothing, so the generated `compiled.gcd.implements`
 excludes the trap, and the generated `compiled.gcd.pure` states that function 2 computes `gcd` from
 every store and leaves the store unchanged.  The generated `compiled.gcd.native` states the same
 computation for the C function of the module's translation.
