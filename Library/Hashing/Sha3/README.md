@@ -6,7 +6,7 @@ The module `sha3` computes SHA3-224, SHA3-256, SHA3-384, SHA3-512, SHAKE128, and
 
 [`Spec.lean`](Spec.lean) transcribes §2.3, §3 to §6, and Appendix B.1 of FIPS 202 on strings of bits, `List Bool` with `X[0]` first.  KECCAK-p is generic over the seven widths `b = 25 · 2^ℓ`, and the SHA-3 functions use `ℓ = 6` and 24 rounds.  A state array is a function of its coordinates `x`, `y`, and `z`, and θ, π, and χ give their output bit by bit, as their algorithms' steps over all triples do.  ρ separates the walk of Algorithm 2 over the lanes, which `rhoSteps_table2` checks against Table 2, from its assignment, and ι separates the lane value `RC` of steps 2 and 3 of Algorithm 6 from steps 1 and 4.  The standard's `m mod n` takes negative integers in θ, ρ, and pad10*1 to `[0, n)`, as the integer `emod` does.  The squeeze of Algorithm 8 takes at most `d / r + 1` passes, which reach `d` bits for a rate `r > 0` and outputs of at least `r` bits.
 
-Compiled code computes KECCAK-p as `keccakPRun`, which holds the state between rounds as the array of its bits and computes each round's `RC` once.  The `csimp` theorem `keccakP_eq_run` proves it equal to `keccakP`, Algorithm 7 on state arrays.  An independent review compared the transcription with the standard and found no discrepancy.  Step 1 of Algorithm 10 reads `0 ≤ i < 2m − 1`, which omits the last digit that the displayed string and step 2a use, and `h2b` reads all `2m` digits.
+Compiled code computes KECCAK-p as `keccakPRun`, which holds the state between rounds as the array of its bits and computes each round's `RC` once.  The `csimp` theorem `keccakP_eq_run` proves it equal to `keccakP`, Algorithm 7 on state arrays.  An independent review compared the transcription with the standard and found no discrepancy.  Step 1 of Algorithm 10 reads `0 ≤ i < 2m − 1`, which omits the last digit that the displayed string and step 2a use, and `h2b` reads all `2m` digits.  A count beyond an array's bytes is accepted, and the missing bytes read as zero in both the program and the theorems.  FIPS 202 §7 allows a conforming implementation to restrict the message and output lengths it supports, and the module takes whole bytes of each.
 
 | Export | Function | Arguments | Result | Call theorem |
 |---|---|---|---|---|
@@ -16,8 +16,6 @@ Compiled code computes KECCAK-p as `keccakPRun`, which holds the state between r
 | `sha3_512` | 15 | Message array and `n`. | `Words8`: the 64-byte digest. | `sha3_512_call` |
 | `shake128` | 19 | Message array, `n`, and `d`. | Owned array of `⌈d/8⌉` words. | `shake128_call` |
 | `shake256` | 20 | Message array, `n`, and `d`. | Owned array of `⌈d/8⌉` words. | `shake256_call` |
-
-A count beyond an array's bytes is accepted, and the missing bytes read as zero in both the program and the theorems.  FIPS 202 §7 allows a conforming implementation to restrict the message and output lengths it supports, and the module takes whole bytes of each.
 
 ## Implementation
 

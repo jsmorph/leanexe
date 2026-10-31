@@ -127,7 +127,7 @@ The proof has its own modules in `Library/Numerics/Float64/Sinh/`, and it builds
 
 ### Shared modules
 
-The proof added the three ProofKit modules of the table.  It also uses the modules of the `tanh` proof, among them [the nearest sums](../../../../LeanExe/ProofKit/F64NearestSum.lean), [the nearest quotient](../../../../LeanExe/ProofKit/F64NearestDiv.lean), and [the relative step criteria](../../../../LeanExe/ProofKit/F64NearestRelative.lean), together with [one step against the full reference](../../../../LeanExe/ProofKit/F64FullStep.lean) in the top binade and [the borrowed table frame](../../../../LeanExe/ProofKit/BorrowedKept.lean).
+The proof added the ProofKit modules of the table below.  It also uses the modules of the `tanh` proof, among them [the nearest sums](../../../../LeanExe/ProofKit/F64NearestSum.lean), [the nearest quotient](../../../../LeanExe/ProofKit/F64NearestDiv.lean), and [the relative step criteria](../../../../LeanExe/ProofKit/F64NearestRelative.lean), together with [one step against the full reference](../../../../LeanExe/ProofKit/F64FullStep.lean) in the top binade and [the borrowed table frame](../../../../LeanExe/ProofKit/BorrowedKept.lean).
 
 | Module | Content |
 |---|---|

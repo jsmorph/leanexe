@@ -65,7 +65,8 @@ coordinate with `(ν_t² - 1) ∑_k A_{k i}² < (b_i + 1)² δ²`, and `ν_t² �
 `z` with `|z_i| ≤ b_i`, at most 27 vectors.  Cauchy–Schwarz shows that a shorter vector `z B` would
 have `|z_i| ≤ b_i`.  [`certificates.py`](certificates.py) computes the certificates from an
 LLL-reduced basis `B`, its adjugate `A`, and Fincke–Pohst enumeration, and the theorems do not
-depend on it.
+depend on it.  The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
+Finite checks use `decide` or `decide +kernel`, which the kernel evaluates without adding an axiom.
 
 | Theorem | Statement |
 |---------|-----------|
@@ -83,9 +84,6 @@ depend on it.
 | `spectral_two` to `spectral_six` | Every nonzero vector of `Dual t` has squared length at least `ν_t²`, and `shortest2` to `shortest6` attain it, for `t = 2, …, 6`. |
 | `lcg_advance` | The module's bytes decode to the module, whose `advance` export computes `advance` without a trap, and for all words `x` and `y` exactly one count `n` gives `advance n x = y`. |
 | `lcg_jump` | The module's bytes decode to the module, whose `jump` export computes `advance` without a trap. |
-
-The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  Finite checks use
-`decide` or `decide +kernel`, which the kernel evaluates without adding an axiom.
 
 ## Building, running, and testing
 

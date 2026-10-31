@@ -8,7 +8,7 @@ The module `crc` computes CRC-32, the 32-bit frame check sequence of ITU-T V.42 
 
 Neither document defines an integer for the sequence.  `value` gives the integer that zlib and other CRC code report, whose bit `i` is the coefficient of `x^(31 - i)`, so that the four octets of the sequence, each read with its least significant bit as `2^0`, are the bytes of the integer from the least significant.  RFC 1952 §2.1 stores the CRC of gzip in this order, and RFC 3720 Appendix B.4 lists its examples in it.  An independent review compared the transcription with V.42 and RFC 3720 and found no discrepancy in its definitions.
 
-[`Division.lean`](Division.lean) gives a computable form of the transcription.  `lfsr` divides by a generator one bit at a time on strings of 32 bits, and `lfsr_spec` proves that from the remainder `S` and the bits `M` it gives the remainder of `x^k S + x^32 M`.  From 32 ones it gives the sum of V.42's two remainders, so `crc32Eval` and `crc32cEval` compute `crc32` and `crc32c`, as `crc32_eq` and `crc32c_eq` state.  `g32c_explicit` writes out the exponents of CRC-32C's generator.
+[`Division.lean`](Division.lean) gives a computable form of the transcription.  `lfsr` divides by a generator one bit at a time on strings of 32 bits, and `lfsr_spec` proves that from the remainder `S` and the bits `M` it gives the remainder of `x^k S + x^32 M`.  From 32 ones it gives the sum of V.42's two remainders, so `crc32Eval` and `crc32cEval` compute `crc32` and `crc32c`, as `crc32_eq` and `crc32c_eq` state.  `g32c_explicit` writes out the exponents of CRC-32C's generator.  A count beyond an array's bytes is accepted, and the missing bytes read as zero in both the program and the theorems.  An update reads only the low 32 bits of its CRC argument.
 
 | Export | Function | Arguments | Result | Call theorem |
 |---|---|---|---|---|
@@ -16,8 +16,6 @@ Neither document defines an integer for the sequence.  `value` gives the integer
 | `crc32c` | 5 | Message array and `n`. | CRC-32C of the `n` bytes. | `crc32c_call` |
 | `crc32Update` | 6 | CRC-32 of bytes `A`, the message array, and `n`. | CRC-32 of `A` and the `n` bytes. | `crc32Update_call` |
 | `crc32cUpdate` | 7 | CRC-32C of bytes `A`, the message array, and `n`. | CRC-32C of `A` and the `n` bytes. | `crc32cUpdate_call` |
-
-A count beyond an array's bytes is accepted, and the missing bytes read as zero in both the program and the theorems.  An update reads only the low 32 bits of its CRC argument.
 
 ## Implementation
 
