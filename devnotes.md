@@ -39407,3 +39407,24 @@ The study raises two decisions for the user, which the plan's table of open deci
 - [x] Interval rules and their calibration.
 - [x] Stage 2 sweep, report, and window length.
 - [x] Stage 3 policies, economic replay, and report.
+
+## 2026-10-30: The form of the energy command
+
+The replay study found that a setpoint held for a minute costs $79 a year against the vendor's self-consumption mode at the test house, because it cannot follow the load within the minute.  The alternative is a command of power limits: the gateway sends a lower and an upper power limit with an expiry, and the inverter's own self-consumption mode follows the net load within them.  The question for the user is which form the authorizer authorizes, because the answer changes its interface, assumption A2, and the statement of its theorem.
+
+### Analysis
+
+With limits `[c⁻, c⁺]` the window's power interval becomes the hull of the state in force (the limits in force widened by `e`, or `F`), `[c⁻ - e, c⁺ + e]`, and `F`.  A setpoint `s` is the limits `[s, s]`.  The side tests, `window_sound`, and `WithinOrFallback` are functions of `B⁻` and `B⁺` only, so they keep their statements.  The lower side depends only on `c⁻` and the upper side only on `c⁺`, so the widest accepted limits are the largest accepted discharge and charge of the setpoint form.  The changes:
+
+| Part | Change |
+|---|---|
+| `Spec.lean` | `State.command` holds two powers; `powerLow` and `powerHigh` take the proposed limits; `AdmittedUntil` is unchanged in form |
+| `Program.lean`, `Words.lean` | The input holds the limits in force and the proposed limits, 13 words instead of 11; the order check covers both pairs; the result holds both limits |
+| Proofs | `inForceLow`, `inForceHigh`, `lowB`, `highB`, and the word lemmas take the pairs; `window_sound` is unchanged |
+| Examples, cases, file theorems | Rebuilt for the new layout |
+| Gateway rules | Send exactly the returned limits; a snapshot requires measured power within the limits in force widened by `e` |
+| Equipment | The inverter accepts charge and discharge limits for its self-consumption mode with a reversion timeout, which qualification measures as it measures setpoint tracking now |
+
+On the withheld year, with caps that never bind, the self-consumption mode within the widest accepted limits costs $1,423 with wear at 180 s and $1,425 at 900 s, against $1,406 for the vendor's mode alone and $1,499 for the held-setpoint controller at 180 s.  With the study's caps it costs $1,629 at 180 s against $1,657, because the import test still binds.  Every window-minute checked met `WithinOrFallback`.  The limits form loses the controller's curtailment rule, which needs a charge that depends on the surplus.
+
+Recommendation: power limits, before Stage 4, because equipment selection depends on the form and the proofs change in their word layer only.

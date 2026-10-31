@@ -67,23 +67,25 @@ SITE = Profile(floor=10_800_000, ceiling=34_200_000, charge_max=5000, discharge_
 
 @dataclass(frozen=True)
 class Snapshot:
-    """A snapshot in signed units: the state in force is `None` for fallback, or a setpoint."""
+    """A snapshot in signed units: the state in force is `None` for fallback, or the limits of a
+    command, which for a setpoint `s` are `(s, s)`."""
     time: int
     energy_low: int
     energy_high: int
-    held: int | None
+    held: tuple[int, int] | None
     load_low: int
     load_high: int
     pv_low: int
     pv_high: int
 
 
-def power_bounds(p: Profile, q: Snapshot, s: int) -> tuple[int, int]:
-    """The window's power interval `B`: the hull of the state in force, `[s - e, s + e]`, and
-    `F`."""
+def power_bounds(p: Profile, q: Snapshot, low: int, high: int) -> tuple[int, int]:
+    """The window's power interval `B`: the hull of the state in force, `[low - e, high + e]`,
+    and `F`, where a setpoint `s` has `low = high = s`."""
     e = p.tolerance
-    held = (p.fallback_low, p.fallback_high) if q.held is None else (q.held - e, q.held + e)
-    return min(held[0], s - e, p.fallback_low), max(held[1], s + e, p.fallback_high)
+    held = ((p.fallback_low, p.fallback_high) if q.held is None
+            else (q.held[0] - e, q.held[1] + e))
+    return min(held[0], low - e, p.fallback_low), max(held[1], high + e, p.fallback_high)
 
 
 def drain_low(p: Profile, b_low: int) -> int:
@@ -92,9 +94,10 @@ def drain_low(p: Profile, b_low: int) -> int:
     return -(b_low * p.window * 1_000_000 // p.eta) + p.loss_max * p.window
 
 
-def decide(p: Profile, q: Snapshot, s: int) -> str:
-    """The side tests of the acceptance rule for a valid snapshot and a setpoint within limits."""
-    b_low, b_high = power_bounds(p, q, s)
+def decide(p: Profile, q: Snapshot, low: int, high: int) -> str:
+    """The side tests of the acceptance rule for a valid snapshot and command limits within the
+    setpoint limits."""
+    b_low, b_high = power_bounds(p, q, low, high)
     if b_low < p.fallback_low:
         if q.load_low + b_low + p.export_cap < q.pv_high:
             return "exportCap"
@@ -128,8 +131,9 @@ def authorize(p: Profile, words: list[int]) -> tuple[str, int, int]:
     s = proposal - OFFSET
     if not (-p.discharge_max <= s <= p.charge_max):
         return "power", 0, 0
-    q = Snapshot(time, e_lo, e_hi, None if mode == 1 else held - OFFSET, l_lo, l_hi, s_lo, s_hi)
-    status = decide(p, q, s)
+    q = Snapshot(time, e_lo, e_hi, None if mode == 1 else (held - OFFSET, held - OFFSET),
+                 l_lo, l_hi, s_lo, s_hi)
+    status = decide(p, q, s, s)
     if status != "accepted":
         return status, 0, 0
     return status, proposal, time + p.window - p.transition
@@ -138,18 +142,20 @@ def authorize(p: Profile, words: list[int]) -> tuple[str, int, int]:
 def accepted_range(p: Profile, q: Snapshot) -> tuple[int, int] | None:
     """The largest discharge and the largest charge that the rule accepts, or `None` when it
     accepts no setpoint.  When `F` contains `[-e, e]` the accepted setpoints form an interval
-    that contains 0 whenever it is not empty, because `B⁻` falls and `B⁺` rises with `s`."""
-    if decide(p, q, 0) != "accepted":
+    that contains 0 whenever it is not empty, because `B⁻` falls and `B⁺` rises with `s`.  The
+    lower side depends only on the lower limit and the upper side only on the upper limit, so the
+    two results are also the widest limits that the rule accepts."""
+    if decide(p, q, 0, 0) != "accepted":
         return None
     lo, hi = 0, p.charge_max
     while lo < hi:
         mid = (lo + hi + 1) // 2
-        lo, hi = (mid, hi) if decide(p, q, mid) == "accepted" else (lo, mid - 1)
+        lo, hi = (mid, hi) if decide(p, q, mid, mid) == "accepted" else (lo, mid - 1)
     charge = lo
     lo, hi = 0, p.discharge_max
     while lo < hi:
         mid = (lo + hi + 1) // 2
-        lo, hi = (mid, hi) if decide(p, q, -mid) == "accepted" else (lo, mid - 1)
+        lo, hi = (mid, hi) if decide(p, q, -mid, -mid) == "accepted" else (lo, mid - 1)
     return -lo, charge
 
 
@@ -491,7 +497,8 @@ def period(hour: int) -> str:
 
 @dataclass
 class Command:
-    setpoint: int
+    low: int
+    high: int
     expiry: int
     bounds: tuple[int, int, int, int]
 
@@ -550,10 +557,12 @@ def account(t: Totals, p: Profile, s: Series, k: int, b: float, energy: float) -
 
 
 def replay(p: Profile, s: Series, iv: Intervals, propose, margins: bool, gate: bool = True,
-           plant: Plant = NOMINAL) -> Totals:
-    """Replays the gateway's rules with one snapshot a minute.  `propose(k, q, energy)` returns a
-    setpoint or `None`.  The device follows a command from the start of its snapshot's minute
-    until its expiry and runs in the idle fallback otherwise, and each accepted window's
+           plant: Plant = NOMINAL, follow: bool = False) -> Totals:
+    """Replays the gateway's rules with one snapshot a minute.  `propose(k, q, energy)` returns
+    command limits, `(s, s)` for a setpoint `s`, or `None`.  The device follows a command from the
+    start of its snapshot's minute until its expiry and runs in the idle fallback otherwise.  A
+    setpoint holds its power, and with `follow` the device's own self-consumption mode follows
+    each minute's net load within the limits, the floor, and the ceiling.  Each accepted window's
     conclusion is checked at the end of every minute up to which its premises held.  Run-on is the
     energy that a command delivers after a later snapshot's proposal is rejected or absent.
     Without `gate` the gateway sends every proposal, as if the authorizer accepted it."""
@@ -565,8 +574,8 @@ def replay(p: Profile, s: Series, iv: Intervals, propose, margins: bool, gate: b
     power = 0.0
     windows: list[Window] = []
     for k in range(1, len(s.load)):
-        held = command.setpoint if command else None
-        in_state = (abs(power - held) <= p.tolerance if held is not None
+        held = (command.low, command.high) if command else None
+        in_state = (held[0] - p.tolerance <= power <= held[1] + p.tolerance if held is not None
                     else p.fallback_low <= power <= p.fallback_high)
         if iv.bounds[k] is not None and s.load[k - 1] is not None:
             if not in_state:
@@ -584,21 +593,30 @@ def replay(p: Profile, s: Series, iv: Intervals, propose, margins: bool, gate: b
                     t.no_setpoint += r is None
                     t.discharge.append(-r[0] if r else 0)
                     t.charge.append(r[1] if r else 0)
-                setpoint = propose(k, q, energy)
+                limits = propose(k, q, energy)
                 stale = True
-                if setpoint is not None:
-                    status = decide(p, q, setpoint) if gate else "accepted"
+                if limits is not None:
+                    status = decide(p, q, *limits) if gate else "accepted"
                     t.statuses[status] = t.statuses.get(status, 0) + 1
                     if status == "accepted":
                         t.accepted += 1
                         stale = False
-                        command = Command(setpoint, 60 * k + p.window - p.transition, iv.bounds[k])
-                        b_low, b_high = power_bounds(p, q, setpoint)
+                        command = Command(*limits, 60 * k + p.window - p.transition,
+                                          iv.bounds[k])
+                        b_low, b_high = power_bounds(p, q, *limits)
                         if gate:
                             windows.append(Window(k, q, b_low, b_high))
         if command and 60 * k >= command.expiry:
             command = None
-        target = (command.setpoint if command else 0) + plant.offset
+        target = 0
+        if command and follow and s.load[k] is not None:
+            target = max(command.low, min(command.high, s.pv[k] - s.load[k],
+                                          ((p.ceiling - energy) / 60 + LOSS) / ETA_CHARGE),
+                         ((p.floor - energy) / 60 + LOSS) * ETA_DISCHARGE)
+            target = min(command.high, max(command.low, target))
+        elif command:
+            target = command.low
+        target += plant.offset
         power, after = plant.step(energy, target)
         t.cutoffs += power != target
         if command and stale:
@@ -634,9 +652,17 @@ def extreme_proposer(p: Profile):
     """A proposer for the replay at the premises' extremes: the largest accepted discharge in even
     hours and the largest accepted charge in odd hours, which drives the energy against the floor
     and the ceiling."""
-    def propose(k: int, q: Snapshot, energy: float) -> int | None:
+    def propose(k: int, q: Snapshot, energy: float) -> tuple[int, int] | None:
         r = accepted_range(p, q)
-        return None if r is None else r[(k // 60) % 2]
+        return None if r is None else (r[(k // 60) % 2],) * 2
+    return propose
+
+
+def authorized_limits(p: Profile):
+    """Power limits for the device's own self-consumption mode: the widest that the acceptance
+    rule accepts."""
+    def propose(k: int, q: Snapshot, energy: float) -> tuple[int, int] | None:
+        return accepted_range(p, q)
     return propose
 
 
@@ -644,14 +670,16 @@ def self_consumption(p: Profile, s: Series):
     """The vendor's self-consumption rule as a proposer: the last minute's surplus PV or deficit,
     within the setpoint limits and the power that keeps the snapshot's estimate of the energy
     between the floor and the ceiling for one minute."""
-    def propose(k: int, q: Snapshot, energy: float) -> int:
+    def propose(k: int, q: Snapshot, energy: float) -> tuple[int, int]:
         estimate = (q.energy_low + q.energy_high) / 2
         net = s.pv[k - 1] - s.load[k - 1]
         if net > 0:
-            return min(net, p.charge_max,
-                       max(0, int(((p.ceiling - estimate) / 60 + LOSS) / ETA_CHARGE)))
-        return max(net, -p.discharge_max,
-                   min(0, -int(((estimate - p.floor) / 60 - LOSS) * ETA_DISCHARGE)))
+            v = min(net, p.charge_max,
+                    max(0, int(((p.ceiling - estimate) / 60 + LOSS) / ETA_CHARGE)))
+        else:
+            v = max(net, -p.discharge_max,
+                    min(0, -int(((estimate - p.floor) / 60 - LOSS) * ETA_DISCHARGE)))
+        return v, v
     return propose
 
 
@@ -706,17 +734,17 @@ def controller(p: Profile, s: Series, limit: bool, unlimited: list[int]):
     store, peak = look_behind(s)
     plain = self_consumption(p, s)
 
-    def propose(k: int, q: Snapshot, energy: float) -> int | None:
-        want = plain(k, q, energy)
+    def propose(k: int, q: Snapshot, energy: float) -> tuple[int, int] | None:
+        want = plain(k, q, energy)[0]
         if (want > 0 and s.hour[k] < 15 and peak[k] > p.export_cap - 1000
                 and store[k] > 1.5 * (p.ceiling - energy)):
             want = min(want, max(0, s.pv[k - 1] - s.load[k - 1] - p.export_cap + 1000))
         unlimited[0] += 1
-        unlimited[1] += decide(p, q, want) == "accepted"
+        unlimited[1] += decide(p, q, want, want) == "accepted"
         if not limit:
-            return want
+            return want, want
         r = accepted_range(p, q)
-        return None if r is None else max(r[0], min(r[1], want))
+        return None if r is None else (max(r[0], min(r[1], want)),) * 2
     return propose
 
 
@@ -837,6 +865,11 @@ def economics_report(calibration: Series, evaluation: Series, windows: list[int]
         unlimited = [0, 0]
         t = replay(pw, evaluation, iv, controller(pw, evaluation, True, unlimited), False)
         results.append((f"Controller through the authorizer, W = {w} s", t))
+        lt = replay(pw, evaluation, iv, authorized_limits(pw), False, follow=True)
+        results.append((f"Self-consumption mode within authorized limits, W = {w} s", lt))
+        notes.append(f"Limits, W = {w} s: {lt.snapshots:,} snapshots, {lt.accepted:,} accepted, "
+                     f"run-on {lt.run_on:,.0f} kWh, window-minutes checked {lt.checks:,} with "
+                     f"{lt.violations} violations")
         notes.append(f"W = {w} s: {t.snapshots:,} snapshots, {t.skipped} skipped, "
                      f"{t.accepted:,} accepted, unlimited proposals accepted "
                      f"{percent(unlimited[1], unlimited[0])}%, run-on {t.run_on:,.0f} kWh, "
