@@ -8,7 +8,7 @@
 Usage: `uv run tools/gpt2.py --output-tokens 32 --prompt "It was a dark and stormy night"`,
 with `--top-k 40` to sample, and `--temperature` and `--seed` to control the sampling.  The
 module is the verified compiler's build/verified/gpt.wasm, which tests/verified/run.sh writes,
-unless `--wasm` names another, such as the LeanExe compiler's build/gpt/gpt.wasm.
+unless `--wasm` names another.
 
 The program tokenizes the prompt with the pinned `openai-community/gpt2` tokenizer, runs
 the compiled `step` on each prompt token in one host session that keeps the weights
@@ -144,7 +144,7 @@ def main():
                         '(default: random, printed to stderr)')
     parser.add_argument('--wasm', type=pathlib.Path, default=WASM,
                         help='the module to run (default build/verified/gpt.wasm, the verified '
-                        "compiler's; build/gpt/gpt.wasm is the LeanExe compiler's)")
+                        "compiler's)")
     args = parser.parse_args()
     if args.top_k is not None and not 1 <= args.top_k <= 1024:
         raise SystemExit('gpt2: --top-k must be from 1 to 1024')

@@ -2,7 +2,7 @@
 # Runs a drone module in the Wasmtime host on every call of tests/drone/cases.txt and on `compute` of
 # every terrain of tests/drone/corpus.txt, and compares the results with the reference
 # implementation's.  The module is build/verified/drone.wasm, which tests/verified/run.sh writes,
-# unless a path is given, such as build/drone/drone.wasm for the LeanExe compiler's module.
+# unless a path is given.
 # Usage: tests/drone/run.sh [path/to/drone.wasm]
 set -euo pipefail
 if [ "$#" -gt 1 ]; then

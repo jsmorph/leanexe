@@ -2,72 +2,95 @@
 
 ## The bid side of an order book
 
-[The program](Program.lean) is the bid side of a central limit order book, held as two arrays of
+[The program](Verified.lean) is the bid side of a central limit order book, held as two arrays of
 words: the prices in descending order and the size at each price.  `addBid` adds size at a price, to
 an existing level or to a new level at its sorted position, `cancelBid` reduces or removes a level,
 and `applyCommand` dispatches on a command kind.  `runCommands` applies a stream of commands, three
 words each, and `runOut` also records the best bid after each command.  `marketBuy` fills a quantity
-against ask levels, and `depth` totals the size at or above a price.  [The module
-definition](Module.lean) compiles the fifteen functions into the 4,957-byte `clob.wasm`.
+against ask levels and returns the filled quantity and its cost, and `depth` totals the size at or
+above a price.  The command `verified_compile compiled := [marketBuy, …, depth]` after the
+definitions compiles them into `compiled.module` and states their theorems.
 
 ## In-place array updates and command streams
 
-The CLOB uses most of the array rules.  `fillLevel`, `insertLevel`, `setLevel`, and
-`removeLevel` update arrays with `set!`, `insertIdx!`, and `eraseIdxIfInBounds`, in place when the
-array is owned and at its last use.  `addBid` and `cancelBid` call those functions with consumed
-arguments, typed `Moved (Array UInt64)` in their theorems, and `stepCommand` pushes onto an output
-array in place.  `fillKeep` passes an array that it also returns, so the compiler copies it before
-the call, and `fillTwice` passes the result of one call to the next.  `Live`, the invariant of a
-body that calls functions and releases temporaries, carries the proofs of the composite functions.
+`fillLevel` and `setLevel` update a side with `set!`, and `insertLevel` and `removeLevel` insert and
+remove a level with `LeanExe.insertAt` and `LeanExe.eraseAt`.  When such an update is the last use
+of an owned array, the code changes the array in its own block, and it copies any other array
+first.  `stepCommand` extends its output array with the best price and size, in place when the
+array is owned and its block has room.  `fillKeep` passes the sizes to `fillLevel` and also returns
+them, so the call consumes a copy, and `fillTwice` passes the array that one call returns to the
+next.  [The verified compiler manual's section on
+ownership](../../docs/verified-manual.md#ownership) states how the reflector chooses whether each
+array parameter is owned or borrowed, and an owned parameter has type `Moved (Array UInt64)` in the
+theorems.
 
 | Theorem | Statement |
 |---------|-----------|
-| `marketBuy_implements` … `fillKeep_implements` | Each of functions 2 to 16 of `clob.module` implements its Lean function, with consumed arrays typed `Moved`. |
-| `clob_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements all fifteen functions. |
-| `runCommands_append` | Running a command stream in two chunks, the first of whole commands, gives the book of running it at once. |
-| `runOut_book` | The book that `runOut` leaves is the book of `runCommands`. |
+| `compiled.marketBuy.implements` … `compiled.depth.implements` | Each of functions 2 to 16 of `compiled.module`, called with words that represent the arguments of its Lean function, returns words that represent that function's result, or traps at `unreachable` where the function's `aborts` flag allows it. |
+| `compiled.marketBuy.trapFree` … `compiled.depth.trapFree` | Each of those functions returns its result without a trap and raises `top` by at most `compiled.f.bound`.  When the function's `aborts` flag is set, the theorem requires room for that rise within the memory cap. |
+| `compiled.bytes` | `encode` succeeds on `compiled.module` with bytes that decode to it, and every `implements` theorem holds. |
+| `runCommands_append` | Running a command stream of fewer than 2^62 words in two chunks, the first of whole commands, gives the book of running it at once. |
+| `runOut_book` | `runOut` leaves the book of `runCommands`. |
+| `clob_file`, `clob_file_decode` | `build/verified/clob.wasm`, as written, holds `encode compiled.module` and decodes to `compiled.module`. |
 
-The proofs are in [`Verify.lean`](Verify.lean), with the lemmas about command streams in
-[`Commands.lean`](Commands.lean), and they use only the axioms `propext`, `Classical.choice`, and
-`Quot.sound`.  The last two theorems concern the Lean program alone, and since `clob_bytes` states
-that the module computes `runCommands` and `runOut`, they hold for its results.  [The LeanExe
-compiler manual's section on ownership](../../docs/leanexe-manual.md#ownership) explains consumed
-and borrowed arguments, using `fillTuple` from this example.
+[The compilation](Verified.lean) holds the generated theorems and proves `runCommands_append` and
+`runOut_book` from the folds of [the command lemmas](Commands.lean).  Those two concern the Lean
+definitions, and since the `implements` theorems state that the module computes `runCommands` and
+`runOut`, they hold for the module's results.  [The file theorems](File.lean) read the module that
+`tests/verified/run.sh` writes, and the full run of that driver requires both of their axiom
+reports to name only `propext`, `Classical.choice`, and `Quot.sound`.  The second file theorem
+depends on every `implements` theorem through `compiled.bytes`, so its report covers them all.
+
+## The earlier program
+
+The LeanExe compiler compiled an earlier copy of the order book, `Demos/Clob/Program.lean`, which
+the repository no longer holds.  [The verified copy](Verified.lean), in the namespace
+`Demos.Clob.Verified`, keeps that program's definitions except in `marketBuy`, `addBid`,
+`cancelBid`, `insertLevel`, and `removeLevel`, and it adds the compilation and the proofs of
+`runCommands_append` and `runOut_book`.  `marketBuy` returns the filled quantity and its cost as a
+pair, where the earlier program returned the array `#[filled, cost]`.  The conditions of `addBid`
+and `cancelBid` compare words with `&&` and `==`, where the earlier program tested propositions
+with `∧` and `=`.  `insertLevel` inserts with `LeanExe.insertAt` in place of `insertIdx!`, so an
+insertion past the end of a side leaves the side unchanged where `insertIdx!` panics, and
+`removeLevel` erases with `LeanExe.eraseAt`, which is the earlier program's `eraseIdxIfInBounds`.
+`findLevel` returns at most the number of prices, so `addBid`, `cancelBid`, and the command runs
+give the same books in both programs, except where `addBid` inserts past the end of a sizes array
+shorter than its prices array.
 
 ## Building, running, and testing
 
 ```sh
-tools/leanrun --timeout 60m lake build Demos.Clob.Verify
-mkdir -p build/clob
-tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
-  Demos.Clob.Module Demos.Clob.clob.module build/clob/clob.wasm
-build/tools/leanexe-wasmtime-host call build/clob/clob.wasm addBid list:array-u64,array-u64 \
+tools/leanrun --timeout 60m lake build Demos.Clob.Verified LeanExe.Pipeline.FileBytes
+tests/verified/run.sh --cases clob
+tools/leanrun --timeout 10m lake env lean Demos/Clob/File.lean
+build/tools/leanexe-wasmtime-host call build/verified/clob.wasm addBid list:array-u64,array-u64 \
   array-u64:105,101 array-u64:4,6 i64:103 i64:5
-build/tools/leanexe-wasmtime-host call build/clob/clob.wasm runCommands \
+build/tools/leanexe-wasmtime-host call build/verified/clob.wasm runCommands \
   list:array-u64,array-u64 array-u64: array-u64: array-u64:0,100,5,0,102,3,1,100,2
-uv run tests/modules/chunks.py
 ```
 
-The commands build the proofs, write the module, call it in the Wasmtime host, and run the chunk
-test, with the setup of [the repository README](../../README.md#commands).  The first call adds 5 at
-103 to a book of two levels and prints the prices `[105, 103, 101]` and the sizes `[4, 5, 6]`.  The
-second starts from an empty book, adds 5 at 100 and 3 at 102, cancels 2 at 100, and prints `[102,
-100]` and `[3, 3]`.  [`tests/modules/run.sh`](../../tests/modules/run.sh) compares 3,990 cases of
-[`Cases.lean`](Cases.lean) with native Lean and checks the allocation and free counts of the
-functions that consume arrays, and [`tests/modules/chunks.py`](../../tests/modules/chunks.py) runs
-one command stream whole, in chunks, and one command at a time, and checks that the books agree.
+The commands build the compilation and the support of the file theorems, write and test the
+module, check the file theorems, and call the module in the Wasmtime host, with the setup of [the
+repository README](../../README.md#commands).  The first call adds 5 at 103 to a book of two levels
+and prints the prices `[105, 103, 101]` and the sizes `[4, 5, 6]`.  The second starts from an empty
+book, adds 5 at 100 and 3 at 102, cancels 2 at 100, and prints `[102, 100]` and `[3, 3]`.
+
+`tests/verified/run.sh --cases clob` writes `build/verified/clob.wasm`, validates it with
+`wasm-tools`, and compares each `clob` case of [the verified
+cases](../../Verified/Examples/Cases.lean) in Wasmtime with native Lean.  The cases call every
+function on books of up to eight levels with descending prices, on books whose sides differ in
+length, and on a level of the largest size, and they pass positions inside, at, and past the end of
+a side.  Their command streams hold additions, cancellations, and commands of an unknown kind at
+prices near the book's, and the last stream of each book ends in a partial command, which the runs
+ignore.  The command `lake env lean Demos/Clob/File.lean` checks the file theorems against the
+written file and prints their axiom reports.
 
 ## Related examples
 
 [`Updates`](../../Examples/Updates/README.md) tests chains of in-place updates.
-[`SumCount`](../../Examples/SumCount/README.md) and [`PairSum`](../../Examples/PairSum/README.md) are the smallest programs
-with arrays.  The GPT-2 functions in [`Gpt`](../Gpt/README.md) use `Live` on a larger scale.  The
-LTG entries [`in-place-update`](../../ltg/entries/in-place-update/README.md),
-[`array-build`](../../ltg/entries/array-build/README.md),
-[`index-loop`](../../ltg/entries/index-loop/README.md),
-[`function-call`](../../ltg/entries/function-call/README.md), and
-[`release-temporary`](../../ltg/entries/release-temporary/README.md) cite this example's proofs as
-worked examples.
+[`SumCount`](../../Examples/SumCount/README.md) and [`PairSum`](../../Examples/PairSum/README.md)
+are the smallest programs with arrays.  [`Drone`](../Drone/README.md) has loops with tuple states
+over arrays at a larger scale.
 
 ## References
 

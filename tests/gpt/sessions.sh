@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Runs host sessions that call each gpt.wasm function that takes or holds arrays,
 # release the result and the inputs, and check that every allocation was freed.  The module is
-# build/verified/gpt.wasm, which tests/verified/run.sh writes, unless a path is given, such as
-# build/gpt/gpt.wasm for the LeanExe compiler's module.
+# build/verified/gpt.wasm, which tests/verified/run.sh writes, unless a path is given.
 # Usage: tests/gpt/sessions.sh [path/to/gpt.wasm]
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)

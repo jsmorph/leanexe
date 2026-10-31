@@ -1,7 +1,7 @@
 /-! A stream of order-book commands, three words each, and folds over its whole commands: a fold
 over two chunks, the first of whole commands, is the fold over both, and a map that commutes with
-each step commutes with the fold.  `Verify.lean` and the verified compiler's port of the order
-book state their chunking theorems with these lemmas. -/
+each step commutes with the fold.  The verified compiler's order book states its chunking
+theorems with these lemmas. -/
 
 namespace Demos.Clob
 

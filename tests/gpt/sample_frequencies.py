@@ -6,10 +6,9 @@
 sampling.
 
 Run with `uv run tests/gpt/sample_frequencies.py [path/to/gpt.wasm]`.  Without a path the
-module is the verified compiler's build/verified/gpt.wasm, which tests/verified/run.sh writes,
-and build/gpt/gpt.wasm is the LeanExe compiler's.  For several score
-arrays, values of k, and temperatures, the script calls `sampleTopK` 20,000 times in one
-host session, passing the generator state from each call to the next, and compares the
+module is the verified compiler's build/verified/gpt.wasm, which tests/verified/run.sh writes.
+For several score arrays, values of k, and temperatures, the script calls `sampleTopK` 20,000
+times in one host session, passing the generator state from each call to the next, and compares the
 count of each token with the expected count: zero for tokens below the k-th largest score,
 counted with repeats, and otherwise `exp ((score - max) / temperature)` over the total of
 the kept tokens.  It fails if a token outside the kept set is drawn or if a count differs

@@ -3,7 +3,7 @@ import LeanExe.Pipeline.Implements
 
 /-! The weights of GPT-2 and the pointers at which the host holds them, the cache after the first
 `p` tokens, and the arguments of the host's calls of `step` and `scores`.  The generation theorems
-of the LeanExe module and of the verified module state the host's calls with these definitions.
+of the verified module state the host's calls with these definitions.
 `step_reads` gives the regions of the arrays that `step` reads. -/
 
 namespace Demos.Gpt
