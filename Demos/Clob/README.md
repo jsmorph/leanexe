@@ -24,17 +24,12 @@ ownership](../../docs/verified-manual.md#ownership) states how the reflector cho
 array parameter is owned or borrowed, and an owned parameter has type `Moved (Array UInt64)` in the
 theorems.
 
-The program keeps the definitions of the order book that the LeanExe compiler compiled, which [the
-journal](../../devnotes.md#2026-10-06-the-verified-compiler) records, except in `marketBuy`,
-`addBid`, `cancelBid`, `insertLevel`, and `removeLevel`.  `marketBuy` returns the filled quantity
-and its cost as a pair, where the earlier program returned the array `#[filled, cost]`.  The
-conditions of `addBid` and `cancelBid` compare words with `&&` and `==`, where the earlier program
-tested propositions with `∧` and `=`.  `insertLevel` inserts with `LeanExe.insertAt` in place of
-`insertIdx!`, so an insertion past the end of a side leaves the side unchanged where `insertIdx!`
-panics, and `removeLevel` erases with `LeanExe.eraseAt`, which is the earlier program's
-`eraseIdxIfInBounds`.  `findLevel` returns at most the number of prices, so `addBid`, `cancelBid`,
-and the command runs give the same books in both programs, except where `addBid` inserts past the
-end of a sizes array shorter than its prices array.
+`marketBuy` returns the filled quantity and its cost as a pair.  `insertLevel` inserts with
+`LeanExe.insertAt`, which leaves a side unchanged when the position lies past its end, and
+`removeLevel` erases with `LeanExe.eraseAt`.  `findLevel` returns at most the number of prices, so
+an insertion of `addBid` falls past the end of a side only when the sizes array is shorter than the
+prices array.  [The journal](../../devnotes.md#2026-10-06-the-verified-compiler) records how these
+definitions differ from those of the earlier copy that the LeanExe compiler compiled.
 
 | Theorem | Statement |
 |---------|-----------|

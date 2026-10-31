@@ -315,7 +315,6 @@ The commands run from the repository root.  They require Lean through Elan at th
 module of the planner except the file theorems, which read the written module.
 
 ```sh
-export PATH="$HOME/.elan/bin:$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 tools/download-wasmtime.sh
 tools/build-wasmtime-host.sh
 tools/leanrun --timeout 60m lake build Demos.Slew.Optimal Demos.Slew.Premise Demos.Slew.Bound
