@@ -27,8 +27,7 @@ library operations `KeyTree.setKey`, `KeyTree.leftChild`, `KeyTree.splitRoot`, `
 `KeyTree.incr`, which the program exports, beside definitions of its own over `KeyTree`: the
 identity, a duplication into a pair, the empty tree, a node built from its parts, and `followRight`,
 which follows right children by tail recursion.  The same module compiles the functions of
-[`Words`](../Words/README.md).  The operations that this example adds to the library have no
-verified module.
+[`Words`](../Words/README.md).
 
 `size` and `incr` call themselves other than in tail position, so their code takes the call depth,
 and the cases check that they return on a chain of 999 nodes and trap at `unreachable` on chains of
@@ -86,7 +85,7 @@ helpers.
 
 [`Words`](../Words/README.md) and [`Lists`](../Lists/README.md) have records with one child and tail
 recursion or loops.  [`TreeLookup`](../TreeLookup/README.md) searches a binary search tree stored in
-an array.  [`Clob`](../../Demos/Clob/README.md) has the same ownership rules for arrays.
+an array.  [`Clob`](../../Demos/Clob/README.md) applies the same ownership rules to arrays.
 
 ## References
 

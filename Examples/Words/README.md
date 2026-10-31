@@ -10,19 +10,17 @@ example](../../Verified/Examples/RecursiveTypes.lean).
 
 ## Record layout and tail recursion over records
 
-A user recursive type with one constructor without fields and one with fields gets the record layout
-of `List UInt64`: `nil` is the null pointer, and `cons x w` is a record of two slots, the word `x`
-and the pointer to `w`.  The program states that layout through the `Encode` instance in
-[`Encode.lean`](Encode.lean), with hand-written proofs for the instances `EncodeSlotted` and
-`EncodeWellFormed`.  [The
-derivation](Reflected.lean) runs `verified_recursive_type` for `Words` in a module apart from the
-encoding, so that the verified compiler's programs over the type share one set of conversions and
-lemmas.  `sumAcc` is tail recursion over records, which the verified compiler compiles as a loop, so
-a call returns on lists longer than the depth limit of guarded recursion.  [The verified compiler
-manual's section on ownership](../../docs/verified-manual.md#ownership) gives the rules for
-user-defined recursive types, and [its section on
-representations](../../docs/verified-manual.md#representations) describes `Encode`,
-`EncodeWellFormed`, and `EncodeSlotted`.
+`Words` has the record layout of `List UInt64`: `nil` is the null pointer, and `cons x w` is a
+record of two slots, the word `x` and the pointer to `w`.  The `Encode` instance in
+[`Encode.lean`](Encode.lean) states that layout, with hand-written proofs for the instances
+`EncodeSlotted` and `EncodeWellFormed`.  [The derivation](Reflected.lean) runs
+`verified_recursive_type` for `Words` in a module apart from the encoding, so that the verified
+compiler's programs over the type share one set of conversions and lemmas.  `sumAcc` is tail
+recursion over records, which the verified compiler compiles as a loop, so a call returns on lists
+longer than the depth limit of guarded recursion.  [The verified compiler manual's section on
+ownership](../../docs/verified-manual.md#ownership) gives the rules for user-defined recursive
+types, and [its section on representations](../../docs/verified-manual.md#representations)
+describes `Encode`, `EncodeWellFormed`, and `EncodeSlotted`.
 
 ## The verified compiler's module
 
