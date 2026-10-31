@@ -5,7 +5,8 @@ import Verified.Reflect.Command
 /-! The verified compiler's module of `compute`, whose result is a two-word literal, which the
 reflector reads as two pushes onto `#[]`.  `treeLookup_call` composes the generated
 `compiled.compute.trapFree` with `compute_eq`: from a store in which `top` can rise by 232
-bytes, the export `compute` returns the words of `expected` without a trap. -/
+bytes, the export `compute` returns the words of `expected` without a trap.  `compute_callSpec`
+states the call as an instance of `Verified.CallSpec`, with the generated bound as the room. -/
 
 namespace Examples.TreeLookup
 
@@ -42,6 +43,17 @@ theorem treeLookup_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit)
   arrayCall compiled.compute.trapFree (fun xs => (compute_bound xs).le)
     (fun xs h => compute_eq xs h) env heap store xs ptr hAt hCap hb hroom
 
+/-- `Verified.CallSpec` for function 2 and `expected`, with the generated bound as the room: from a
+ready store in which `top` can rise by `compiled.compute.bound xs` bytes, the call with the
+borrowed array `xs` returns an owned array that holds `expected xs`, leaves a ready store, and
+raises `top` by at most that bound. -/
+theorem compute_callSpec :
+    Verified.CallSpec compiled.module compiled.tables 2 expected compiled.compute.bound :=
+  (Verified.ImplementsTables.call (.ofA compiled.compute.trapFree) compiled.tables nofun).spec
+    (fun _ _ _ h => h) (fun _ _ _ _ _ h => h)
+    fun _ _ _ xs ⟨_, _, hxs⟩ => compute_eq xs hxs.values.size_lt
+
 #print axioms treeLookup_call
+#print axioms compute_callSpec
 
 end Examples.TreeLookup

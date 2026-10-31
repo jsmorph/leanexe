@@ -38,15 +38,16 @@ result.  [The journal](journal.md) records the run.
 ## Building, running, and testing
 
 ```sh
-tools/demo-check treeLookup
-build/tools/leanexe-wasmtime-host call build/treeLookup/treeLookup.wasm compute array-u64 \
-  array-u64:40,50,500,30,300,70,700,20,200,40,400,60,600,80,800
+tools/verified-request-check treeLookup
+build/tools/leanexe-wasmtime-host call build/verified-request/treeLookup/treeLookup.wasm compute \
+  array-u64 array-u64:40,50,500,30,300,70,700,20,200,40,400,60,600,80,800
 ```
 
-The commands build the proofs, write the module, and call it in the Wasmtime host, with the setup of
-[the repository README](../../README.md#commands).  `tools/demo-check treeLookup` checks the hashes
-of the reviewed specification, the statement and axioms of `treeLookup_bytes`, and the 22 samples in
-Wasmtime.  The query 40 is found at the root's left child's right child, and the call prints `[400,
+The commands build the proofs, write the verified compiler's module, and call it in the Wasmtime
+host, with the setup of [the repository README](../../README.md#commands).
+`tools/verified-request-check treeLookup` checks the hashes of the reviewed specification, the
+statement and axioms of `compute_callSpec`, and the 22 samples in Wasmtime and, when CompCert is
+found, in the module's translation to C.  The query 40 is found at the root's left child's right child, and the call prints `[400,
 1]`.  [The module tests](../../tests/modules/run.sh) of [`Cases.lean`](Cases.lean) run the same
 samples.
 
@@ -57,11 +58,13 @@ same definition.  The reflector reads the result's literal `#[…, …]` as two 
 so the generated `compiled.compute.bound_eq` charges an empty block and the growth of the array at
 each push, and `compute_bound` closes that bound to 232 bytes.  `treeLookup_call` composes the
 generated `compiled.compute.trapFree` with `compute_eq` through `arrayCall` of [the shared call
-theorem](../ArrayCall.lean).
+theorem](../ArrayCall.lean).  `compute_callSpec` states the call in the form that
+`tools/verified-request-check` requires.
 
 | Theorem | Statement |
 |---------|-----------|
 | `compute_bound` | The allocation bound of `compute` is 232 bytes for every input. |
+| `compute_callSpec` | `Verified.CallSpec` of function 2 and `expected`, with the generated bound as the room: from a ready store in which `top` can rise by that bound, the call returns an owned array that holds `expected xs`, leaves a ready store, and raises `top` by at most the bound. |
 | `treeLookup_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 232 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and lies apart from the result, and `top` rises by at most 232 bytes. |
 
 `treeLookup_bytes` allows a trap at `unreachable`, which `treeLookup_call` excludes under its premise

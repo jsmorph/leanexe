@@ -39679,6 +39679,8 @@ The removal map planned to rewrite `tools/demo-check` for the verified compiler,
 
 `tools/verified-request-check runningMax` ran on the tree of the commit before this entry, at 23:29 UTC, with CompCert 3.18.  In 20 seconds it printed the theorem line with the three permitted axioms, the module of 1,956 bytes, and 21 of 21 samples passed in Wasmtime and in the translation to C.  `tools/verified-request-check treeLookup` failed at the theorem with ``Unknown identifier `Examples.TreeLookup.compute_callSpec` `` after 11 seconds.  The plan's box for `tools/demo-check` is ticked, since this entry records the decision to delete it.
 
+- [x] `--spec` and `--freeze` in `tools/verified-request-check`, and `compute_callSpec` of the tree-lookup example.
+
 ## 2026-10-30: The browser pages, the GPU drivers, and the test defaults on the verified modules
 
 The browser pages, the GPU drivers, and the test defaults now use the verified compiler's modules and kernels, a prerequisite of [the retirement plan](#2026-10-30-the-plan-for-retiring-the-leanexe-compiler).  Each driver and page keeps the LeanExe path behind an explicit option or a module path, so that no working test is lost before the removal commits delete those paths.  The `Exec`, `Compose`, `Driver`, `NativeCases`, and `Generate` edits, `tests/gpt32/Native.lean`, and `tests/gpt32/native.sh` belong to the first removal commit and are unchanged.

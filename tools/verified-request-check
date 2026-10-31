@@ -13,10 +13,10 @@
 #
 # NAME is the module name in lower camel case, such as treeLookup.  Its files are in
 # Examples/<Name>/, with <Name> the capitalized NAME: Spec.lean, Samples.lean, Program.lean,
-# Proof.lean, Compiled.lean, and the request, review, journal, README, and hash record.  The
-# specification stage is that of the verified-executable skill, so --spec and --freeze run the
-# modes of the same names of tools/demo-check.  EXPORT, compute by default, is the export whose
-# function index K the theorem names.
+# Proof.lean, Compiled.lean, and the request, review, journal, README, and hash record.  --spec
+# and --freeze read only Spec.lean and Samples.lean, and --freeze writes their hashes to
+# spec.sha256 in that directory.  EXPORT, compute by default, is the export whose function index K
+# the theorem names.
 #
 # The check writes the call theorem
 #
@@ -66,9 +66,6 @@ Name=${name^}
 ns=Examples.$Name
 demo=Examples/$Name
 [ -d "$demo" ] || fail "$demo does not exist"
-case $mode in
-  spec | freeze) exec tools/demo-check "--$mode" "$@" ;;
-esac
 
 work=tmp/verified-request-check/$name
 out=build/verified-request/$name
@@ -337,6 +334,17 @@ native_samples() {
 }
 
 case $mode in
+  spec)
+    build "$ns.Spec" "$ns.Samples" TestSupport.Host
+    lines
+    while IFS='|' read -r _ _ _ args expected; do
+      echo "$args -> $expected"
+    done <"$work/lines.txt"
+    ;;
+  freeze)
+    sha256sum "$demo/Spec.lean" "$demo/Samples.lean" >"$demo/spec.sha256"
+    cat "$demo/spec.sha256"
+    ;;
   run)
     refuse_extensions
     require_host
