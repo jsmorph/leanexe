@@ -203,7 +203,7 @@ A bare-metal program is the translation of a module, a volatile global `lx_out` 
 | [LeanExe library](LeanExe) | Dialect, runtime, correctness statements, encoding, proof lemmas, WGSL translation, WASI action API, and translator to C with its Lean copy of Clight and its proofs. |
 | [Verified compiler](Verified) | Typed source language, compiler, universal proof, reflector, alignment proof, WGSL lowering, WASI compiler, native and bare-metal theorem generation, and compiled examples. |
 | [Reusable algorithms](Library/README.md) | Implementations, mathematical specifications, accuracy and period proofs, and compiler proofs, grouped by algorithm family. |
-| [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, the order book, the slew planner, and integer and binary64 running sums, with application proofs and host programs. |
+| [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, the order book, the slew planner, the energy authorizer, and integer and binary64 running sums, with application proofs and host programs. |
 | [Example programs](Examples) | Small programs, specifications, proofs, and cases that demonstrate compiler features. |
 | [Manuals and design](docs) | Verified compiler and WASI manuals, design document, trusted-base document, and WASI, translator, and bare-metal designs. |
 | [Verification knowledge base](VKB/README.md) | Entries of lemmas, proof recipes, worked examples, and recorded failures for compiled programs, their template, and the declaration check. |
