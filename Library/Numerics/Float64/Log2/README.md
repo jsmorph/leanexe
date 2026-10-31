@@ -113,7 +113,7 @@ The proof uses ProofKit modules, including the arithmetic chains that prove Lean
 
 ### History
 
-[The journal section](../../../../devnotes.md#2026-10-11-log2-theorem-track-log) records two choices that shaped the proof.  On the main path the generic `11/8` bound of `F64RelativeStep` did not suffice: at subinterval 42 the error reached 1.39 times the allowance, and the exact `t3 - hi` together with the wider factor `47/32` of `F64RelativeStepWide` closed the gap.  For the powers of two, one `decide` over all 2,100 values of `k` had not finished after 16 minutes and a fold over `Nat.rec` had not finished after 10, while chunks of 50 took 4 to 9 seconds each, so `Log2Power` checks 42 chunks.  The first build of `Log2Power` with the chunks elaborated in parallel stopped making progress, and with `Elab.async false` the module checks in about seven minutes.
+[The journal section](../../../../devnotes.md#2026-10-11-log2-theorem-track-log) records two choices that shaped the proof.  On the main path the generic `11/8` bound of `F64RelativeStep` did not suffice: at subinterval 42 the error reached 1.39 times the allowance, and the exact `t3 - hi` together with the wider factor `47/32` of `F64RelativeStepWide` closed the gap.  For the powers of two, chunks of 50 values of `k` take 4 to 9 seconds each, far less than one `decide` over all 2,100 values or a fold over `Nat.rec`, so `Log2Power` checks 42 chunks.  With `Elab.async false`, which elaborates the chunks in sequence, the module checks in about seven minutes.
 
 ## Tests
 

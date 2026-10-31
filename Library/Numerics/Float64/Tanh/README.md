@@ -168,7 +168,7 @@ The proof imports the arithmetic chain of `F64Add`, `F64Mul`, `F64Div`, and `F64
 
 ### History
 
-[The proof's journal section](../../../../devnotes.md#2026-10-10-exponential-minus-one-and-hyperbolic-tangent-track-expm1) records each module with its logs.  The plan of 2026-10-10 set two steps for `tanh` from sampling, and the composition above moved it to three.  `Expm1PathsEdge` first compiled for 40 and then 15 minutes without a diagnostic: `rfl` on an equation between the kernel's word function and its unfolded operations did not finish, while `simp [Expm1Words.kernel]` proved it at once, and the module now uses `simp`.  The arithmetic with `2^1075` in the context exceeded the recursion and heartbeat limits of `positivity`, `linarith`, and `nlinarith`, so each inequality of the kernel's budget sits in a lemma over plain reals (`m0_arith1` to `e2_arith3`).
+[The proof's journal section](../../../../devnotes.md#2026-10-10-exponential-minus-one-and-hyperbolic-tangent-track-expm1) records each module with its logs.  The plan of 2026-10-10 set two steps for `tanh` from sampling, and the composition above moved it to three.  In `Expm1PathsEdge`, `rfl` on an equation between the kernel's word function and its unfolded operations made the first builds take many minutes without a diagnostic, while `simp [Expm1Words.kernel]` proves it at once, and the module now uses `simp`.  The arithmetic with `2^1075` in the context exceeded the recursion and heartbeat limits of `positivity`, `linarith`, and `nlinarith`, so each inequality of the kernel's budget sits in a lemma over plain reals (`m0_arith1` to `e2_arith3`).
 
 ## Tests
 

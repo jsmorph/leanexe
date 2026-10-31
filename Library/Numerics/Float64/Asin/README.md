@@ -82,7 +82,7 @@ The theorems are in [the `asin` theorem](AsinTheorem.lean), [the `acos` theorem]
 
 ### Modules
 
-The chain reuses word and exactness lemmas of [the `log1p` proof](../Log1p/README.md) (`Log1pTheoremReduce`, `Log1pTheoremCorr`, `Log1pTheoremTail`, `Log1pTheoremSpecial`) and of [the arctangent proof](../Atan/README.md) (`AtanTheorem`, `AtanTheoremReduce`, `AtanTheoremConst`, `AtanTheoremSpecial`), among them `AtanTheoremConst.atan_inf`, which places `pio2_hi + pio2_lo` within `2^-64` of `π/2`.  The table lists the chain's own modules in dependency order.  Two of them are generated: `tools/arc/asin/mkratio.py` writes `AsinTheoremRatio.lean`, and `tools/arc/asin/mkmid.py` writes `AsinTheoremMid.lean`, both with constants from the range analyses of the `model*.py` files in the same directory ([the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc)).
+The chain reuses word and exactness lemmas of [the `log1p` proof](../Log1p/README.md) (`Log1pTheoremReduce`, `Log1pTheoremCorr`, `Log1pTheoremTail`, `Log1pTheoremSpecial`) and of [the arctangent proof](../Atan/README.md) (`AtanTheorem`, `AtanTheoremReduce`, `AtanTheoremConst`, `AtanTheoremSpecial`), among them `AtanTheoremConst.atan_inf`, which places `pio2_hi + pio2_lo` within `2^-64` of `π/2`.  The table lists the chain's own modules in dependency order.  `tools/arc/asin/mkratio.py` writes `AsinTheoremRatio.lean`, and `tools/arc/asin/mkmid.py` writes `AsinTheoremMid.lean`, both with constants from the range analyses of the `model*.py` files in the same directory ([the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc)).
 
 | Module | Content |
 |---|---|
