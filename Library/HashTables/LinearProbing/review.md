@@ -1,0 +1,16 @@
+# Review of the specification
+
+Two fresh agents reviewed [the specification](Spec.lean) and [the case inputs](../../../tests/TestSupport/Modules/LinearProbing.lean) against [the request](request.txt), from the files alone, with a Python model of the program for claims about which keys Algorithm R moves.
+
+The first review found no input on which `expected` differs from the request.  It found that the comment did not say which code selects which operation, or that the module's theorem covers only slot counts below `2^63`, and the comment now states both.  It found three inaccurate claims in the inputs' docstring: the input of the keys 3, 11, 19, and 27 does not delete each key, its last deletion moves no key, and the wrapped cluster fills five slots, with no deletion at its end.  The docstring now describes each of these inputs as the model runs it.  It also found the arbitrary operations weak: codes and keys came from residues of the same affine function, so a key received long runs of one operation, and in the 1,024-slot input every key was distinct, so no lookup succeeded and no deletion removed a key.  The generator now takes codes and keys from the high bits of arbitrary words and draws the keys of the 1,024-slot input from 700 arbitrary words.  For the classes it named without inputs, the inputs now include a key that stays at its home slot across the wrap, a search through every occupied slot of a full table, a table of 7 slots with operations, and an input of exactly two words.
+
+The second review found no disagreement, and it found every choice that the request leaves open recorded in the comment.  It found the description of the 7-slot input incomplete and two errors in the README: a link to this record before it existed, and a sentence that derived the outputs for `M ≤ 1` from the hash function instead of the capacity.  All three are corrected.  It recorded these classes without inputs:
+
+| Class | Why the cases leave it out |
+|---|---|
+| Probing in the 1,024-slot input | The 700 keys are `rw` of consecutive arguments, which have distinct residues modulo 1,024, so every key sits at its home slot. |
+| Searches that pass keys of `2^32` or more | The keys that collide are below 500. |
+| Keys of `2^32` or more with a slot count that is not a power of two | A hash computed from the low 32 bits of a key would pass every case. |
+| Slot counts near the memory limit or of `2^63` and more | The table of `2M` words would not fit, and `hashTable_call` assumes `M < 2^63`. |
+
+Both reviews noted that the specification fixes the outputs and not the method, so the theorem that the program equals `expected` says nothing about the hash `k mod M` or the probing, which only the program text shows.  The second review also noted that the program probes upward, while Knuth's Algorithm L probes downward, with the conditions of Algorithm R in mirror image, as the program's comment and the README state.

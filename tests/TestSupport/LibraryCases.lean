@@ -11,6 +11,7 @@ import TestSupport.Modules.BinaryHeap
 import TestSupport.Modules.BinarySearch
 import TestSupport.Modules.Gcd
 import TestSupport.Modules.Heapsort
+import TestSupport.Modules.LinearProbing
 import TestSupport.Modules.MergeSort
 import TestSupport.Modules.ModInverse
 import TestSupport.Modules.PrimeFactors
@@ -79,6 +80,9 @@ def cases : IO Unit := do
   for xs in Library.Queues.BinaryHeap.heapInputs do
     IO.println s!"heapQueue|heapQueue|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Queues.BinaryHeap.expected xs.toArray).toList.map toString)}]"
+  for xs in Library.HashTables.LinearProbing.probeInputs do
+    IO.println s!"hashTable|hashTable|array-u64|{arrU xs}|\
+      [{", ".intercalate ((Library.HashTables.LinearProbing.expected xs.toArray).toList.map toString)}]"
   for (xs, key) in Library.Arrays.BinarySearch.searchInputs do
     IO.println s!"binarySearch|lowerBound|i64|{arrU xs} {u key}|\
       {Library.Arrays.BinarySearch.expected (xs.toArray, key)}|1|1"

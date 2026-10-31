@@ -14,6 +14,7 @@ definitions and state the properties of the resulting WebAssembly.
 | [Lists](Lists/README.md) | V F C | Word-list range, sum, reversal, and increment. |
 | [Trees](Trees/README.md) | V F C | Binary tree of words, structural operations, and search-tree insertion. |
 | [Queues](Queues/BinaryHeap/README.md) | V S F C | Priority queue of words as a binary heap. |
+| [Hash tables](HashTables/LinearProbing/README.md) | V S F C | Hash table of words with linear probing and deletion. |
 | [Graphs](../index.md#13-graphs-and-combinatorial-search) | V S F C | Topological sorting. |
 | [Arithmetic](../index.md#1-arithmetic) | V S F C | Software FMA, limb arithmetic, unrounded scaling, Euclidean and binary GCD, modular inverse, factor counting, and bounded integer square root. |
 | [Binary64 functions](../index.md#6-elementary-and-special-functions) | V S F C | Elementary and special functions with their accuracy proofs. |

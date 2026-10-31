@@ -1,0 +1,8 @@
+A hash table of UInt64 keys with linear probing, Algorithm L of TAOCP section 6.4, with deletion by
+Algorithm R of the same section.  The input is an array of words: the number of slots M, followed
+by pairs of words, each an operation code and a key.  Code 0 inserts the key, code 1 looks the key
+up, and any other code deletes the key.  The hash of a key is the key modulo M, and a table of M
+slots holds at most M - 1 keys.  Return one word for each operation: for an insertion, 1 when the
+key was added, and 0 when the key was already present or the table already held M - 1 keys; for a
+lookup, 1 when the key is present and 0 otherwise; for a deletion, 1 when the key was present and
+is removed, and 0 otherwise.

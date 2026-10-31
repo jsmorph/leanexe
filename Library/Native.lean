@@ -5,6 +5,7 @@ import Library.Arrays.Repeat.Program
 import Library.Arrays.Search.Program
 import Library.Arrays.Word.Program
 import Library.Graphs.TopologicalSort.Program
+import Library.HashTables.LinearProbing.Program
 import Library.Hashing.Crc.Program
 import Library.Hashing.Hmac.Program
 import Library.Hashing.Sha256.Program

@@ -249,6 +249,7 @@ import Library.Sorting.MergeSort.Compiled
 import Library.Sorting.Insertion.Compiled
 import Library.Graphs.TopologicalSort.Compiled
 import Library.Queues.BinaryHeap.Compiled
+import Library.HashTables.LinearProbing.Compiled
 import Library.Arrays.BinarySearch.Compiled
 import Library.Arrays.Search.Compiled
 import Library.Arrays.Filter.Compiled
