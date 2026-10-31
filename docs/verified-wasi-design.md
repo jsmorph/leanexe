@@ -8,23 +8,15 @@ The initial host interface consists of `fd_read`, `fd_write`, and `proc_exit` in
 
 The specification pin is WebAssembly/WASI commit `fae981bae14809d91f9bc2d63852d461f331d161`.  Its [interface definitions](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx), [type definitions](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/typenames.witx), [generated reference](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/docs.md), and [application ABI](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/application-abi.md) are the external references.  A future specification update requires review of the ABI, host assumptions, and proof statements.
 
-The [pure typed source](../Verified/Source.lean) has value semantics.  Its [compiler](../Verified/Compile.lean) emits an import-free module, and its [runtime predicate](../Verified/RuntimeFacts.lean) requires that layout.  The [pure correctness theorem](../Verified/Correct.lean) and [representation API](../LeanExe/Pipeline/Implements.lean) use `Store Unit`.  [The effect language](../Verified/Wasi/Source.lean) embeds these pure expressions, and [its compiler theorem](../Verified/Wasi/Correct.lean) connects them to host-dependent execution through import relocation and host-state transport.
-
-### Earlier implementations
-
-Two earlier efforts informed this design.  A byte-I/O proof inventory covered syscall models, an abstract write protocol, and six concrete echo executions.  The current wrappers have universal execution proofs against the current allocator and ownership layout, and the echo executions remain useful test cases.  An earlier native WASI API exposed all 46 Preview 1 functions through opaque `BaseIO` operations, with direct native lowering, one-iovec transfers, packed byte arrays, and 38 execution cases.  Its wrapper layout and cleanup supplied implementation references, and its full proof gates were incomplete.  The current implementation supplies separate transport, wrapper, and universal effect proofs.  [The development journal](../devnotes.md#2026-10-23-reviewing-the-wasi-design) records the revisions of both efforts.
-
-The earlier native WASI API uses `Action := BaseIO`, UInt32 descriptors, capacities, counts, errnos, and exit codes, and `Except UInt32 ByteArray` read results.  Its byte representation has owner, pointer, and length values.  The current API uses a semantic action monad, UInt64-facing operations, explicit result records, and one root plus length.  Both APIs use `LeanExe.Wasi.Action`, with different meanings and types.  Importing earlier client code requires an explicit compatibility design.  Its wider operation set remains outside the initial scope.
-
-The earlier direct wrappers provide a lowering reference: one iovec, errno checks before count reads, cleanup of failed or empty reads, and partial-transfer preservation.  Its emitter imports the full primitive registry and emits command modules.  The current [module construction](../Verified/Wasi/Program.lean) adds the three-import layout and callable form.  The earlier effect analysis identifies effectful code but supplies no trace semantics or compiler correctness theorem.
+The [pure typed source](../Verified/Source.lean) has value semantics.  Its [compiler](../Verified/Compile.lean) emits an import-free module, and its [runtime predicate](../Verified/RuntimeFacts.lean) requires that layout.  The [pure correctness theorem](../Verified/Correct.lean) and [representation API](../LeanExe/Pipeline/Implements.lean) use `Store Unit`.  [The effect language](../Verified/Wasi/Source.lean) embeds these pure expressions, and [its compiler theorem](../Verified/Wasi/Correct.lean) connects them to host-dependent execution through import relocation and host-state transport.  [The journal entry of the design review](../devnotes.md#2026-10-23-reviewing-the-wasi-design) records the earlier WASI implementations outside the repository, whose wrapper layout and cleanup served as references for the wrappers of this design.
 
 ## Lean API and behavior
 
 ### Actions and results
 
-The public namespace is `LeanExe.Wasi`.  [The native import](../LeanExe/Wasi.lean) supplies actions and their interpreter independently of either compiler.  The shared byte type is `LeanExe.Bytes`, with [its native operations](../LeanExe/Dialect/Bytes.lean).  Compiler representations and proofs live under `Verified`, and [the compiler import](../Verified/Wasi.lean) supplies `verified_compile_wasi`.
+The public namespace is `LeanExe.Wasi`.  [The native import](../LeanExe/Wasi.lean) supplies actions and their interpreter independently of the verified compiler.  The shared byte type is `LeanExe.Bytes`, with [its native operations](../LeanExe/Dialect/Bytes.lean).  Compiler representations and proofs live under `Verified`, and [the compiler import](../Verified/Wasi.lean) supplies `verified_compile_wasi`.
 
-`Action α` is a semantic monad with Lean `pure` and `bind` instances.  The accepted source uses ordinary `do`, named first-order helpers, bindings, conditionals, pure Verified calls, and the bounded loop below.  Effectful helper calls form an acyclic call graph.  Pure callees retain their existing recursion and allocation conditions.  These control-flow restrictions follow the review decisions.
+`Action α` is a semantic monad with Lean `pure` and `bind` instances.  The accepted source uses ordinary `do`, named first-order helpers, bindings, conditionals, calls of pure functions, and the bounded loop below.  Effectful helper calls form an acyclic call graph.  Pure callees retain their existing recursion and allocation conditions.  These control-flow restrictions follow the review decisions.
 
 | Declaration | Meaning |
 |---|---|
@@ -120,7 +112,7 @@ Events record host invocations: the operation, selected fd, requested bytes or c
 
 The abstract world and host-step relations specify the three operations.  [Observed host state](../Verified/Wasi/Observed.lean) adds an append-only joint event journal.  The universal theorem ranges over every satisfying host, with arbitrary input, output length, and permitted transfer partition.  Scripted worlds supply concrete semantic tests.
 
-`Action` has this meaning through [its execution relation](../LeanExe/Wasi/Semantics.lean) and [prefix relation](../LeanExe/Wasi/Prefix.lean).  [The native interpreter](../LeanExe/Wasi/Interpreter.lean) executes actions through a stream or supplied adapter.  Adapter conformance to the abstract host assumptions is external to the compiler proof.  The older opaque `BaseIO` byte-I/O interface would need an explicit relation connecting its operations and state token to the command world.  Kernel-checked equations for `pure` and `bind` establish sequencing, while host assumptions establish transfers.
+`Action` has this meaning through [its execution relation](../LeanExe/Wasi/Semantics.lean) and [prefix relation](../LeanExe/Wasi/Prefix.lean).  [The native interpreter](../LeanExe/Wasi/Interpreter.lean) executes actions through a stream or supplied adapter.  Adapter conformance to the abstract host assumptions is external to the compiler proof.  Kernel-checked equations for `pure` and `bind` establish sequencing, while host assumptions establish transfers.
 
 ### Success, errors, and traps
 
@@ -253,7 +245,7 @@ The implementation separates native APIs from compiler developments:
 | [Byte compilation](../Verified/Bytes) | Byte representation, ownership, lowering, and proofs. |
 | [WASI compilation](../Verified/Wasi) | Host assumptions, typed command IR, module layout, compiler, wrapper proofs, and reflector. |
 
-The pure typed source and compiler include byte operations and the literal-pool context.  An empty pool preserves the previous compilation, and the integration gate compares the old pure outputs byte for byte.
+The pure typed source and compiler include byte operations and the literal-pool context.  For a program without literals, [the empty-pool equality](../Verified/LiteralCodeEq.lean) states the module that `compileWith` produces, and `tests/verified/run.sh --check-bytes` compares the emitted modules with saved reference modules byte for byte.
 
 | Stage | Implemented proof boundary | Source |
 |---|---|---|
