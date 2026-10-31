@@ -1,6 +1,6 @@
 # Verified Energy Controller: Plan and Design
 
-The energy controller schedules the battery of a behind-the-meter solar-and-battery site to lower the electricity bill while it keeps the battery's stored energy and the site's grid import and export within configured limits.  An optimizer without proofs proposes a battery setpoint, and an authorizer compiled with `verified_compile` decides whether a gateway may send it to the battery inverter for the next window of time.  The authorizer's theorem states that an accepted setpoint keeps each modeled limit, or leaves the site no further outside a limit than an immediate return to fallback would, for every load, solar output, efficiency, loss, and device response that the stated assumptions admit.  The compiler's generated theorems and a file theorem connect that statement to the bytes of the WebAssembly module that the gateway runs.  This document gives the scope, the model, the interfaces, the theorems, the tests, and the stages of the work.
+The energy controller schedules the battery of a behind-the-meter solar-and-battery site to lower the electricity bill while it keeps the battery's stored energy and the site's grid import and export within configured limits.  An optimizer without proofs proposes battery power limits, within which the inverter's own self-consumption mode follows the load, and an authorizer compiled with `verified_compile` decides whether a gateway may send them to the battery inverter for the next window of time.  A held setpoint `s` is the limits `[s, s]`.  The authorizer's theorem states that accepted limits keep each modeled limit of the site, or leaves the site no further outside a limit than an immediate return to fallback would, for every load, solar output, efficiency, loss, and device response that the stated assumptions admit.  The compiler's generated theorems and a file theorem connect that statement to the bytes of the WebAssembly module that the gateway runs.  This document gives the scope, the model, the interfaces, the theorems, the tests, and the stages of the work.
 
 ## Scope
 
@@ -10,8 +10,8 @@ The first release covers one site with an AC-coupled battery inverter and its ba
 |---|---|---|
 | Site | One battery, PV, site load, one grid meter | Small enough for a precise model |
 | Electrical architecture | AC-coupled and grid-connected, with no islanding | Islanding and grid-forming behavior remain functions of the inverter |
-| Control variable | Battery AC power setpoint, signed, positive for charging | The inverter's own control loop tracks it |
-| Verified component | One authorizer that accepts or rejects one setpoint for a window of `W` seconds | The window covers the setpoint, its expiry, and the return to fallback |
+| Control variable | Lower and upper limits of battery AC power, signed, positive for charging | The inverter's own self-consumption mode follows the load within them, and equal limits hold a setpoint |
+| Verified component | One authorizer that accepts or rejects one command's limits for a window of `W` seconds | The window covers the command, its expiry, and the return to fallback |
 | Limits | Energy floor and ceiling, and instantaneous grid import and export caps | An instantaneous cap also bounds every average |
 | Profile | Installer's and owner's limits and device parameters, compiled into the module | The theorem names the limits, and the file theorem fixes them in the released bytes |
 | Arithmetic | `UInt64` words in fixed units with validated ranges | Every operation on an accepted input equals the integer operation |
@@ -27,21 +27,21 @@ The model, module, and file levels of the guarantee are theorems.  The installat
 
 | Level | Claim | Evidence | Depends on |
 |---|---|---|---|
-| Model | An accepted setpoint keeps every admitted trajectory of its window within each limit, or no further outside it than an immediate return to fallback | Theorems about Lean functions and the real-valued model | Assumptions A1 to A5 |
+| Model | An accepted command keeps every admitted trajectory of its window within each limit, or no further outside it than an immediate return to fallback | Theorems about Lean functions and the real-valued model | Assumptions A1 to A5 |
 | Module | The module's export computes the authorizer and returns without a trap | `p.f.implements` and `p.bytes`, which `verified_compile` generates | Talos's semantics, the binary decoder, the initial store, and the host's placement of arguments |
 | File | The released file holds the module's encoding | `energy_file` and `energy_file_decode` | The file as it was when Lean checked the theorem, and the gateway's digest check when it loads the file |
 | Installation | The site behaves as the model states | Equipment qualification, commissioning, read-only operation, and fault-injection tests | Measurements, device firmware, the gateway, communication, and wiring |
 
-A window's theorem covers the interval from one measurement to the end of the window, including the command's expiry and the device's return to fallback.  The gateway authorizes a new setpoint from a new measurement before the current command expires, so consecutive windows overlap and each has its own theorem.  Each theorem takes its premises only up to the time of its conclusion, so a window's theorem covers the site until power leaves that window's interval, which the next command can cause only after the next measurement has started the next window.  When no new authorization arrives, the device runs in its fallback mode after the window, and the safety of that mode then depends on the device's own protections (A8).
+A window's theorem covers the interval from one measurement to the end of the window, including the command's expiry and the device's return to fallback.  The gateway authorizes a new command from a new measurement before the current command expires, so consecutive windows overlap and each has its own theorem.  Each theorem takes its premises only up to the time of its conclusion, so a window's theorem covers the site until power leaves that window's interval, which the next command can cause only after the next measurement has started the next window.  When no new authorization arrives, the device runs in its fallback mode after the window, and the safety of that mode then depends on the device's own protections (A8).
 
 ## Site, equipment, and assumptions
 
-The equipment must accept a battery power setpoint with an expiry, after which the inverter returns to a fallback mode without help from the controller.  The vendor must document the fallback mode, its power interval, and the time the inverter takes to reach it, and qualification measures each of them.  The equipment must report battery power, site import and export, PV output, and the BMS's usable-energy estimate with a stated error.  A site whose equipment lacks command expiry or a qualified fallback mode runs only in read-only operation.
+The equipment must accept charge and discharge limits of battery power with an expiry, after which the inverter returns to a fallback mode without help from the controller, and it must report the limits it applies.  Equipment that accepts only a held setpoint receives limits `[s, s]`.  The vendor must document the fallback mode, its power interval, and the time the inverter takes to reach it, and qualification measures each of them.  The equipment must report battery power, site import and export, PV output, and the BMS's usable-energy estimate with a stated error.  A site whose equipment lacks command expiry or a qualified fallback mode runs only in read-only operation.
 
 | ID | Assumption | Role in the theorem | Evidence |
 |---|---|---|---|
 | A1 | At the snapshot time `t_m`, usable stored energy lies in `[E⁻, E⁺]` | Premise | Characterization of the BMS estimate against metered charge and discharge |
-| A2 | From `t_m` to `t`, battery AC power lies in the window's power interval `B` | Premise | Qualification of tracking tolerance, transitions, expiry, and fallback, and the gateway's rules |
+| A2 | From `t_m` to `t`, battery AC power lies in the window's power interval `B` | Premise | Qualification of the tolerance about the limits, transitions, expiry, and fallback, and the gateway's rules |
 | A3 | From `t_m` to `t`, the charge and discharge efficiencies lie between `η` and 1, and the auxiliary loss rate between 0 and `ℓ⁺` | Premise | Characterization over the permitted power and temperature range |
 | A4 | From `t_m` to `t`, instantaneous load and PV output lie within the snapshot's intervals | Premise | Statistics of high-resolution measurements, which a proof cannot supply |
 | A5 | Stored energy changes only through battery power, the efficiencies, and the auxiliary loss, as the energy equation states, with measurable power, efficiencies, and loss rate | Premise, as the model | Comparison of the model with measured energy |
@@ -61,7 +61,7 @@ The authorizer and the specification work in joules, watts, seconds, and parts p
 
 | Quantity | Unit | Representation | Range that validity requires |
 |---|---|---|---|
-| Power, including the tracking tolerance | W | `UInt64`; a signed power `p` as the word `p + 2^32` | `\|p\| ≤ 2^20` W |
+| Power, including the tolerance | W | `UInt64`; a signed power `p` as the word `p + 2^32` | `\|p\| ≤ 2^20` W |
 | Energy | J | `UInt64` | At most `2^42` J, about 1.2 GWh |
 | Time | s, UTC | `UInt64` | Window at most 3,600 s; times below `2^40` |
 | Efficiency | ppm | `UInt64` | 500,000 to 1,000,000 |
@@ -69,21 +69,21 @@ The authorizer and the specification work in joules, watts, seconds, and parts p
 
 ### Battery power in a window
 
-A snapshot taken at time `t_m` records the state in force, a command with setpoint `p` or fallback.  A command's interval is `[p - e, p + e]`, where `e` is the profile's tracking tolerance, and fallback's interval is the profile's fallback interval `F = [f⁻, f⁺]`.  The gateway takes a snapshot only after the last change of state has completed, so battery power at `t_m` lies in the interval `P` of the state in force.  The fallback interval contains 0, because a protective trip or derating by the BMS or an inverter moves power toward 0.  For a proposed setpoint `s`, the window's power interval `B` is the smallest interval that contains `P`, `[s - e, s + e]`, and `F`:
+A snapshot taken at time `t_m` records the state in force, a command with limits `[c⁻, c⁺]` or fallback.  A command's interval is `[c⁻ - e, c⁺ + e]`, where `e` is the profile's tolerance of battery power about the limits, and fallback's interval is the profile's fallback interval `F = [f⁻, f⁺]`.  The gateway takes a snapshot only after the last change of state has completed, so battery power at `t_m` lies in the interval `P` of the state in force.  The fallback interval contains 0, because a protective trip or derating by the BMS or an inverter moves power toward 0.  Proposed limits `[s⁻, s⁺]` satisfy `-D ≤ s⁻ ≤ s⁺ ≤ C`, with `D` and `C` the largest discharge and charge, which the authorizer checks.  The window's power interval `B` is the smallest interval that contains `P`, `[s⁻ - e, s⁺ + e]`, and `F`:
 
 ```text
-B⁻ = min(P⁻, s - e, f⁻)
-B⁺ = max(P⁺, s + e, f⁺)
+B⁻ = min(P⁻, s⁻ - e, f⁻)
+B⁺ = max(P⁺, s⁺ + e, f⁺)
 ```
 
-Qualification of the equipment establishes the device properties from which assumption A2 follows.  When the device's state changes, by a new setpoint, by the command's expiry, or by a request to return to fallback, its power stays between its value at the change and the new state's interval, and it enters that interval within `τ` seconds of the change's time on the gateway's clock, including the delivery delay, the application delay, the ramp, and the difference between the clocks.  Once settled, power stays in the state's interval, except that a protective trip or derating moves it toward 0 and keeps it between its value and 0.  `B` is an interval that contains `P`, `[s - e, s + e]`, `F`, and 0, so every sequence of these changes inside the window keeps power in `B`, whatever the delays.
+Qualification of the equipment establishes the device properties from which assumption A2 follows.  When the device's state changes, by new limits, by the command's expiry, or by a request to return to fallback, its power stays between its value at the change and the new state's interval, and it enters that interval within `τ` seconds of the change's time on the gateway's clock, including the delivery delay, the application delay, the ramp, and the difference between the clocks.  Once settled, power stays in the state's interval, except that a protective trip or derating moves it toward 0 and keeps it between its value and 0.  `B` is an interval that contains `P`, `[s⁻ - e, s⁺ + e]`, `F`, and 0, so every sequence of these changes inside the window keeps power in `B`, whatever the delays.
 
 The window starts at `t_m` and ends at `t_m + W`.  The authorizer returns the command's expiry `t_x = t_m + W - τ`, and the device reaches fallback by the end of the window unless a later authorization replaced the command.  Assumption A2 also requires the gateway to follow these rules, which Stage 6 tests:
 
-1. Take a snapshot only after the last change of state has completed, `τ` seconds after it, and only when measured battery power lies in the state's interval.
+1. Take a snapshot only after the last change of state has completed, `τ` seconds after it, only when the device reports the limits in force, and only when measured battery power lies in the state's interval.
 2. Send at most one command for each authorization, only from the authorization of the most recent snapshot, with the expiry `t_x` that the authorizer returned, and only before `t_m + a`, where the profile's send deadline `a` meets `W > a + 2τ`, so that a command sent at the deadline settles, and the next snapshot follows, before the command expires.
-3. Send exactly the returned setpoint, and nothing on a rejection.
-4. Return the device to fallback when a measurement leaves the snapshot's intervals or telemetry stops, and send nothing more from the current authorization.
+3. Send exactly the returned limits, and nothing on a rejection.
+4. Return the device to fallback when load or PV leaves the snapshot's intervals, battery power leaves `B`, or telemetry stops, and send nothing more from the current authorization.
 5. Take the next snapshot after the new command has settled and before `t_x`, to continue control without a gap.
 
 ### Stored energy
@@ -109,7 +109,7 @@ drain⁻ = ⌈|B⁻| · W · 10^6 / η⌉ + ℓ⁺ · W
 gain⁺  = B⁺ · W
 ```
 
-The floor conditions become `E⁻ ≥ E_floor` and `E_floor + drain⁻ ≤ E⁻`, and the ceiling conditions `E⁺ ≤ E_max` and `E⁺ + gain⁺ ≤ E_max`, all comparisons of sums of nonnegative words.  The authorizer evaluates only the term of a side on which `B` extends beyond `F`, as the acceptance rule below states.  The largest product, `|B| · W · 10^6`, is below `2^21 · 2^12 · 2^20 = 2^53`, since each endpoint of `B` has magnitude at most `2^20 + e` with `e ≤ 2^20`.
+The floor condition becomes `E_floor + drain⁻ ≤ E⁻` and the ceiling condition `E⁺ + gain⁺ ≤ E_max`, comparisons of sums of nonnegative words.  Both terms are at least 0, so each condition also bounds the start of the window.  The authorizer evaluates only the term of a side on which `B` extends beyond `F`, as the acceptance rule below states.  The largest product, `|B| · W · 10^6`, is below `2^21 · 2^12 · 2^20 = 2^53`, since each endpoint of `B` has magnitude at most `2^20 + e` with `e ≤ 2^20`.
 
 ### Grid power
 
@@ -117,30 +117,32 @@ Grid power, positive for import, is `G(t) = L(t) + b(t) - S(t)`, with `L` the si
 
 ### Acceptance rule
 
-The lower side of `B` determines the energy floor and the export cap, and the upper side determines the energy ceiling and the import cap.  When `B` extends beyond `F` on a side, because the state in force or the new setpoint does, the authorizer tests that side's energy and grid conditions against the limits.  When a side of `B` equals the same side of `F`, the window's trajectories admit on that side only what an immediate return to fallback admits, and the authorizer accepts that side without a test.  For every time `t` of the window and every trajectory admitted until `t`, the theorem then states:
+The lower side of `B` determines the energy floor and the export cap, and the upper side determines the energy ceiling and the import cap.  When `B` extends beyond `F` on a side, because the state in force or the new limits do, the authorizer tests that side's energy and grid conditions against the limits.  When a side of `B` equals the same side of `F`, the window's trajectories admit on that side only what an immediate return to fallback admits, and the authorizer accepts that side without a test.  For every time `t` of the window and every trajectory admitted until `t`, the theorem then states:
 
 ```text
 min(E_floor, E⁻ + r_F⁻ (t - t_m)) ≤ E(t) ≤ max(E_max, E⁺ + r_F⁺ (t - t_m))
 min(-X, L⁻ + f⁻ - S⁺)            ≤ G(t) ≤ max(I, L⁺ + f⁺ - S⁻)
 ```
 
-Here `r_F⁻` and `r_F⁺` are the rate bounds of the interval `F`, so the second term of each bound is the model's worst case for a return to fallback at `t_m`, which the gateway can always carry out.  When fallback keeps a limit throughout the window, that bound reduces to the limit, which a lemma of the specification states, and the replay study measures how often fallback breaks each limit.  When the energy starts below the floor with the device in fallback, or when PV output with an idle fallback would exceed the export cap, the authorizer still accepts setpoints that leave the site no further outside the limit, such as charging, while it tests every renewal of a discharge that extends beyond fallback.
+Here `r_F⁻` and `r_F⁺` are the rate bounds of the interval `F`, so the second term of each bound is the model's worst case for a return to fallback at `t_m`, which the gateway can always carry out.  When fallback keeps a limit throughout the window, that bound reduces to the limit, which a lemma of the specification states, and the replay study measures how often fallback breaks each limit.  When the energy starts below the floor with the device in fallback, or when PV output with an idle fallback would exceed the export cap, the authorizer still accepts limits that leave the site no further outside the limit, such as charging, while it tests every renewal of a discharge that extends beyond fallback.
 
-A state in force and a setpoint of opposite directions can extend `B` beyond `F` on both sides, and the authorizer then tests both.  A discharge beyond fallback must meet `B⁻ ≥ S⁺ - L⁻ - X` with the floor conditions, and a charge beyond it must meet `B⁺ ≤ I + S⁻ - L⁺` with the ceiling conditions.  A command that stops a discharge near the floor is tested as if the discharge lasted the whole window, so the authorizer rejects some commands that would help, and the device then continues the discharge until its expiry under the earlier window's theorem.  Longer windows widen the load and PV intervals and reduce both margins, and the replay study measures the margins against the window length.
+When `B⁻ < f⁻` and `B⁺ > f⁺`, which wide limits or a state in force and new limits of opposite directions can cause, the authorizer tests both sides.  A discharge beyond fallback must meet `B⁻ ≥ S⁺ - L⁻ - X` with the floor conditions, and a charge beyond it must meet `B⁺ ≤ I + S⁻ - L⁺` with the ceiling conditions.  A command that stops a discharge near the floor is tested as if the discharge lasted the whole window, so the authorizer rejects some commands that would help, and the device then continues the discharge until its expiry under the earlier window's theorem.  Longer windows widen the load and PV intervals and reduce both margins, and the replay study measures the margins against the window length.
 
 ### Worked example
 
-The example's profile has an energy floor of 10,800,000 J (3 kWh), a ceiling of 34,200,000 J (9.5 kWh), charge and discharge limits of 5,000 W, an import cap of 5,000 W, an export cap of 2,000 W, `η = 900,000` ppm, `ℓ⁺ = 20` W, a tracking tolerance of 50 W, an idle fallback with `F = [-50, 50]` W, `τ = 30` s, a send deadline `a = 60` s, and `W = 900` s.  Except where a row states otherwise, the snapshot has stored energy in `[14,400,000, 15,120,000]` J, a setpoint of 0 W in force, so `P = F = [-50, 50]` W, load in `[3,000, 4,000]` W, and PV in `[0, 3,000]` W.  These cases become the first kernel-evaluated examples and module cases.
+The example's profile has an energy floor of 10,800,000 J (3 kWh), a ceiling of 34,200,000 J (9.5 kWh), charge and discharge limits of 5,000 W, an import cap of 5,000 W, an export cap of 2,000 W, `η = 900,000` ppm, `ℓ⁺ = 20` W, a tolerance of 50 W, an idle fallback with `F = [-50, 50]` W, `τ = 30` s, a send deadline `a = 60` s, and `W = 900` s.  Except where a row states otherwise, the snapshot has stored energy in `[14,400,000, 15,120,000]` J, the limits `[0, 0]` W in force, so `P = F = [-50, 50]` W, load in `[3,000, 4,000]` W, and PV in `[0, 3,000]` W, and a row that names one power proposes the held setpoint `[s, s]`.  These cases become the first kernel-evaluated examples and module cases.
 
-| Setpoint | `B` (W) | Side tested and its conditions | Decision |
+| Proposal | `B` (W) | Side tested and its conditions | Decision |
 |---|---|---|---|
 | Discharge 1,000 W | `[-1,050, 50]` | Lower: export `3,000 - 1,050 + 2,000 ≥ 3,000`; floor `14,400,000 - 1,050,000 - 18,000 = 13,332,000 ≥ 10,800,000` | Accept, expiry `t_m + 870` |
 | Discharge 3,000 W | `[-3,050, 50]` | Lower: export `3,000 - 3,050 + 2,000 = 1,950 < 3,000` | Reject: export |
 | Discharge 1,000 W with `E⁻ = 11,520,000` | `[-1,050, 50]` | Lower: export as in the first row; floor `11,520,000 - 1,068,000 = 10,452,000 < 10,800,000` | Reject: floor |
 | Charge 3,000 W, with load in `[500, 1,000]` W and PV in `[3,000, 5,000]` W | `[-50, 3,050]` | Upper: import `1,000 + 3,050 ≤ 5,000 + 3,000`; ceiling `15,120,000 + 2,745,000 = 17,865,000 ≤ 34,200,000` | Accept, with export relative to fallback's `500 - 50 - 5,000 = -4,550` W |
 | Renewal of a 1,000 W discharge, with that discharge in force and `E⁻ = 11,288,000` | `[-1,050, 50]` | Lower: export as in the first row; floor `11,288,000 - 1,068,000 = 10,220,000 < 10,800,000` | Reject: floor |
+| Limits `[-1,000, 500]` | `[-1,050, 550]` | Lower: as in the first row; upper: import `4,000 + 550 ≤ 5,000 + 0`; ceiling `15,120,000 + 495,000 = 15,615,000 ≤ 34,200,000` | Accept, expiry `t_m + 870` |
+| Limits `[-1,000, 1,000]` | `[-1,050, 1,050]` | Lower: as in the first row; upper: import `4,000 + 1,050 = 5,050 > 5,000 + 0` | Reject: import |
 
-In the first row fallback keeps every limit, so the theorem gives the absolute limits.  The third row passes the export condition and the floor test at the window's start and fails the floor test at the window's end.  In the fourth row idle fallback would export up to 4,550 W against a cap of 2,000 W, and the charge adds no export, so the authorizer accepts it with an export bound relative to fallback.  In the last row the discharge in force and its renewal extend beyond fallback, so the authorizer tests the floor, which a repeated renewal would otherwise cross.
+In the first row fallback keeps every limit, so the theorem gives the absolute limits.  The third row passes the export condition and the floor test at the window's start and fails the floor test at the window's end.  In the fourth row idle fallback would export up to 4,550 W against a cap of 2,000 W, and the charge adds no export, so the authorizer accepts it with an export bound relative to fallback.  In the fifth row the discharge in force and its renewal extend beyond fallback, so the authorizer tests the floor, which a repeated renewal would otherwise cross.  The last two rows let the inverter follow the load between a discharge and a charge, so the authorizer tests both sides, and the last fails because a charge of 1,000 W with the load at 4,000 W and no PV could import 5,050 W.
 
 ## Architecture
 
@@ -150,17 +152,17 @@ meters, BMS, inverters, forecasts, tariffs
     ingestion ----------------------------> historian
         |  snapshot words with intervals        ^
     optimizer                                   |
-        |  proposed setpoint                    |
+        |  proposed limits                      |
     gateway: authorize (in-process module) -----+
-        |  exactly the returned setpoint and expiry
+        |  exactly the returned limits and expiry
     inverter, with BMS protections and fallback mode
 ```
 
 | Component | Proofs | Responsibility |
 |---|---|---|
 | Ingestion | None | Reads meters, BMS, inverters, and forecasts, builds the snapshot's intervals, and records the source and time of each value |
-| Optimizer | None | Proposes a setpoint from nominal forecasts and tariffs by a short rule |
-| Authorizer, export `authorize` | Window theorem | Accepts or rejects one setpoint against a snapshot and returns the command and its expiry |
+| Optimizer | None | Proposes limits from nominal forecasts and tariffs by a short rule |
+| Authorizer, export `authorize` | Window theorem | Accepts or rejects one command's limits against a snapshot and returns the command and its expiry |
 | Gateway | None in the first release | Holds the only device credentials, builds the authorizer's input, calls the module in-process, follows the rules of [Battery power in a window](#battery-power-in-a-window), and monitors the window |
 | Historian | None | Records snapshots, proposals, decisions, commands, acknowledgements, measured responses, and the module's digest |
 | Fallback mode | None | The vendor's mode, which runs when a command expires or the gateway requests it |
@@ -169,28 +171,28 @@ The gateway builds the input words, runs the module in its own process, and writ
 
 | Input | Authority | Route to the authorizer |
 |---|---|---|
-| Limits, efficiency bound, loss rate, tracking tolerance, fallback interval, `τ`, `a`, `W` | Installer, from equipment qualification, and owner, for the reserve and caps | Compiled into the module as the profile table |
+| Limits, efficiency bound, loss rate, tolerance, fallback interval, `τ`, `a`, `W` | Installer, from equipment qualification, and owner, for the reserve and caps | Compiled into the module as the profile table |
 | Energy interval | BMS and meters, through ingestion | Snapshot words |
 | State in force | Gateway's record of the commands it sent and the device's acknowledgements | Snapshot words |
 | Load and PV intervals | Ingestion's rule for intervals, from recent measurements and forecasts | Snapshot words |
 | Snapshot time | Gateway clock | Snapshot words |
-| Setpoint | Optimizer | Snapshot words |
+| Proposed limits | Optimizer | Snapshot words |
 
 The theorem states the limits as the profile table's values, and the file theorem fixes them in the released bytes.  The snapshot holds measurements, the gateway's record, and the proposal, and no snapshot word can change a limit.  A change of profile, including a change of the owner's reserve or caps, requires a new build and a new file theorem for that site.
 
 ## Authorizer interface
 
-The export takes one borrowed `Array UInt64` and returns a structure of words with a `Flat` instance.  The authorizer reads the array, calls helpers with scalar results, builds no array, and owns no parameter, so the compiler's `aborts` flag is false for every function, the generated `implements` theorem excludes traps, and the allocation bound is 0.  The program has no recursion, so its theorem has no frames condition.  The export is a wrapper `authorize xs := authorizeWith site xs` over the profile table `site`, and `p.initial` proves that the module's initial store holds the table.  The authorizer checks the input words, and `site_valid` proves by kernel evaluation that the table meets the profile's validity condition, including the ranges, `f⁻ ≤ 0 ≤ f⁺`, and `W > a + 2τ`.  The layouts below are provisional until Stage 1 fixes them with the theorems.
+The export takes one borrowed `Array UInt64` and returns a structure of words with a `Flat` instance.  The authorizer reads the array, calls helpers with scalar results, builds no array, and owns no parameter, so the compiler's `aborts` flag is false for every function, the generated `implements` theorem excludes traps, and the allocation bound is 0.  The program has no recursion, so its theorem has no frames condition.  The export is a wrapper `authorize xs := authorizeWith site xs` over the profile table `site`, and `p.initial` proves that the module's initial store holds the table.  The authorizer checks the input words, and `site_valid` proves by kernel evaluation that the table meets the profile's validity condition, including the ranges, `f⁻ ≤ 0 ≤ f⁺`, and `W > a + 2τ`.
 
 | Profile word | Field | Unit |
 |---|---|---|
 | 0 | Layout version | |
 | 1, 2 | Energy floor `E_floor` and ceiling `E_max` | J |
-| 3, 4 | Maximum charge and discharge power | W |
+| 3, 4 | Largest charge and discharge limits | W |
 | 5, 6 | Import cap `I` and export cap `X` | W |
 | 7 | Efficiency bound `η` | ppm |
 | 8 | Maximum auxiliary loss rate `ℓ⁺` | W |
-| 9 | Tracking tolerance `e` | W |
+| 9 | Tolerance `e` of battery power about the limits | W |
 | 10, 11 | Fallback interval `f⁻`, `f⁺`, offset | W |
 | 12 | Transition time `τ` | s |
 | 13 | Window length `W` | s |
@@ -201,40 +203,42 @@ The export takes one borrowed `Array UInt64` and returns a structure of words wi
 | 0 | Layout version | |
 | 1 | Snapshot time `t_m` | s |
 | 2, 3 | Energy interval `E⁻`, `E⁺` | J |
-| 4, 5 | State in force: mode (0 command, 1 fallback) and setpoint, offset | W |
-| 6, 7 | Load interval `L⁻`, `L⁺` | W |
-| 8, 9 | PV interval `S⁻`, `S⁺` | W |
-| 10 | Proposed setpoint `s`, offset | W |
+| 4 | State in force: mode (0 command, 1 fallback) | |
+| 5, 6 | Limits in force `c⁻`, `c⁺`, offset | W |
+| 7, 8 | Load interval `L⁻`, `L⁺` | W |
+| 9, 10 | PV interval `S⁻`, `S⁺` | W |
+| 11, 12 | Proposed limits `s⁻`, `s⁺`, offset | W |
 
-The result holds a status, the setpoint, and the expiry `t_x`.  The status is an enumeration with a `Flat` instance: `accepted`, or the first failing condition in a fixed order, among `length`, `version`, `range`, `order`, `power`, `exportCap`, `floor`, `importCap`, and `ceiling`.  `range` covers an input word outside its validity range, `order` a reversed interval, and `power` a setpoint beyond the charge or discharge limit.  A rejection returns zero words for the setpoint and the expiry.
+The result holds a status, the lower and upper limits, and the expiry `t_x`.  The status is an enumeration with a `Flat` instance: `accepted`, or the first failing condition in a fixed order, among `length`, `version`, `range`, `order`, `power`, `exportCap`, `floor`, `importCap`, and `ceiling`.  `range` covers an input word outside its validity range, `order` a reversed interval or pair of limits, and `power` proposed limits beyond the largest charge or discharge limit.  A rejection returns zero words for the limits and the expiry.
 
 ## Theorems
 
-`Spec.lean` defines the profile and snapshot as records of integers, the trajectory as functions from reals to reals, `AdmittedUntil`, which states assumptions A1 to A5 from `t_m` to a time `t`, `Within`, the limits, and `WithinOrFallback`, the bounds of the acceptance rule.  It imports neither the program nor the word layout.  `Words.lean` defines the decoding of words into those records, which both the proofs about the program and the readers of the specification use.  A reviewer who sees only this document's model section and `Spec.lean` checks the specification before the proofs start.
+`Spec.lean` defines the profile and snapshot as records of integers, a command's limits and the state in force, the trajectory as functions from reals to reals, `AdmittedUntil`, which states assumptions A1 to A5 from `t_m` to a time `t`, `Within`, the site's limits, and `WithinOrFallback`, the bounds of the acceptance rule.  It imports neither the program nor the word layout.  `Words.lean` defines the decoding of words into those records, which both the proofs about the program and the readers of the specification use.  A reviewer who sees only this document's model section and `Spec.lean` checks the specification before the proofs start.
 
 ```lean
 theorem authorize_sound {xs : Array UInt64} (h : (authorize xs).status = .accepted)
     {x : Trajectory} {t : ℝ} (ht : t ∈ window (profileOf site) (snapshotOf xs))
-    (hx : x.AdmittedUntil (profileOf site) (snapshotOf xs) (setpointOf xs) t) :
+    (hx : x.AdmittedUntil (profileOf site) (snapshotOf xs) (limitsOf xs) t) :
     x.WithinOrFallback (profileOf site) (snapshotOf xs) t
 ```
 
 | Theorem | Statement | File |
 |---|---|---|
-| `fallback_keeps_floor`, `_ceiling`, `_export`, `_import` | When fallback's worst case lies within one limit at `t`, `WithinOrFallback` gives that limit at `t` | `Spec.lean` |
+| `fallback_keeps_floor`, `_ceiling`, `_export`, `_import`, `within_of_fallback` | When fallback's worst case lies within one site limit at `t`, `WithinOrFallback` gives that limit at `t`, and within all four it gives `Within` | `Spec.lean` |
 | `site_valid` | The test site's table meets the profile's validity condition, by kernel evaluation | `Theorems.lean` |
 | `toNat_add`, `toNat_mul`, `lowDrain_toNat`, `lowB_signed`, and the other word lemmas | Under the validity bounds, each `UInt64` operation of the authorizer equals the natural-number operation | `Arith.lean`, `Authorize.lean` |
 | `energy_bounds`, `drainLow_ge` | Rate bounds on a measurable trajectory give the affine energy bounds up to each time of the window, and the integer drain covers the real one | `Window.lean` |
 | `window_sound` | The conditions of the acceptance rule imply `WithinOrFallback` at each time `t` of the window for every trajectory admitted until `t` | `Window.lean` |
+| `admitted_exists`, `authorizeWith_admits`, `authorize_admits` | For ordered intervals, and so for every accepted input, some trajectory is admitted until every time | `Window.lean`, `Authorize.lean`, `Theorems.lean` |
 | `authorizeWith_iff` | Under a valid profile table, the authorizer accepts exactly when the input meets `InputValid` and the conditions of the acceptance rule hold | `Authorize.lean` |
-| `authorizeWith_sound`, `authorize_sound` | For an accepted setpoint, every trajectory admitted until a time `t` of the window meets the bounds of the acceptance rule at `t` | `Authorize.lean`, `Theorems.lean` |
-| `authorizeWith_accepted`, `authorize_accepted` | An accepted result holds the proposed setpoint and the expiry `t_m + W - τ` | `Authorize.lean`, `Theorems.lean` |
-| `example_accept`, `example_export`, `example_floor`, `example_relative`, `example_renewal` | The worked example's decisions, by kernel evaluation | `Examples.lean` |
+| `authorizeWith_sound`, `authorize_sound` | For accepted limits, every trajectory admitted until a time `t` of the window meets the bounds of the acceptance rule at `t` | `Authorize.lean`, `Theorems.lean` |
+| `authorizeWith_accepted`, `authorize_accepted` | An accepted result holds the proposed limits and the expiry `t_m + W - τ` | `Authorize.lean`, `Theorems.lean` |
+| `example_accept`, `example_export`, `example_floor`, `example_relative`, `example_renewal`, `example_limits`, `example_limits_import` | The worked example's decisions, by kernel evaluation | `Examples.lean` |
 | `compiled.authorize.implements`, `compiled.bytes`, `compiled.initial` | Generated by `verified_compile` | `Verified.lean` |
 | `energy_export`, `energy_authorize` | The module exports `authorize` at its function index, and the module's bytes decode to a module whose export, called from a ready store, returns the authorizer's result without a trap, and every accepted result meets `authorize_sound` | `Theorems.lean` |
 | `energy_file`, `energy_file_decode` | The released file holds the module's encoding and decodes to the module | `File.lean` |
 
-`authorizeWith_iff` states the acceptance condition exactly, so an authorizer that rejected every input would contradict it, and `example_accept` and `example_relative` prove acceptance of a nonzero discharge and a nonzero charge, and `example_renewal` proves the rejection of a renewal that would cross the floor.  How often realistic inputs meet the condition is an empirical question, which the replay study answers.  `energy_authorize` follows the pattern of `sha256_call` and `sha256_module` in the SHA-256 compilation, whose entries also read tables: it combines `compiled.bytes`, the wrapper's `implements` theorem through `Verified.ImplementsTables.call`, and `authorize_sound`, and `Verified.Ready.initial` shows that the module's initial store is ready.  `file_theorems energy compiled "../../build/verified/energy.wasm" from compiled.bytes` states the file theorems after the test driver writes the file.  Every theorem must report only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
+`authorizeWith_iff` states the acceptance condition exactly, so an authorizer that rejected every input would contradict it, `authorize_admits` shows that `authorize_sound` is not vacuous for any accepted input, and `example_accept` and `example_relative` prove acceptance of a nonzero discharge and a nonzero charge, `example_renewal` proves the rejection of a renewal that would cross the floor, and `example_limits` proves acceptance of limits that allow both a discharge and a charge.  How often realistic inputs meet the condition is an empirical question, which the replay study answers.  `energy_authorize` follows the pattern of `sha256_call` and `sha256_module` in the SHA-256 compilation, whose entries also read tables: it combines `compiled.bytes`, the wrapper's `implements` theorem through `Verified.ImplementsTables.call`, and `authorize_sound`, and `Verified.Ready.initial` shows that the module's initial store is ready.  `file_theorems energy compiled "../../build/verified/energy.wasm" from compiled.bytes` states the file theorems after the test driver writes the file.  Every theorem must report only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 
 The module-level statements keep the assumptions that [the trusted base](docs/trusted-base.md) lists for modules of the verified compiler and for files with file theorems.  The statements describe execution in Talos's semantics, the gateway runs the module in Wasmtime, and the agreement of the two is an assumption, as is the decoder's reading of the bytes.  No theorem connects Wasmtime's instantiation or the gateway's placement of the argument array to the store that the statements assume, and the tests that compare Wasmtime with native Lean on every case are evidence for these assumptions, without proving them.
 
@@ -261,7 +265,7 @@ The Lean code, proofs, and replay tool are in this repository and follow the sle
 
 ### Module cases
 
-The case printer prints cases with results that native Lean computes, and `tests/verified/run.sh` compares them with Wasmtime.  The cases cover empty, short, and long inputs, unknown versions, reversed intervals, words at `2^20`, `2^32`, `2^42`, and `2^64 - 1`, energies on the floor and the ceiling, setpoints at the power limits, states in force and setpoints inside and beyond fallback on each side, renewals, fallback intervals that break each limit, and load and PV intervals that make each condition fail by one watt.  The replay tool computes the same decisions independently and compares them with the printed cases.  Every failing case found later stays in the corpus.
+The case printer prints cases with results that native Lean computes, and `tests/verified/run.sh` compares them with Wasmtime.  The cases cover empty, short, and long inputs, unknown versions, reversed intervals, words at `2^20`, `2^32`, `2^42`, and `2^64 - 1`, energies on the floor and the ceiling, limits at the largest charge and discharge, reversed limits, states in force and limits inside and beyond fallback on each side, renewals, fallback intervals that break each limit, and load and PV intervals that make each condition fail by one watt.  The replay tool computes the same decisions independently and compares them with the printed cases.  Every failing case found later stays in the corpus.
 
 ### Replay study
 
@@ -281,7 +285,7 @@ The evaluation compares the controller, on withheld data, with a simulation of t
 | 4. Site selection and qualification | Equipment with command expiry and fallback; measurement of `e`, `τ`, `F`, `η`, `ℓ⁺`, and the energy estimate's error | Qualification report; signed profile; site module with its file theorem |
 | 5. Read-only operation | Ingestion, authorizer, and historian on live data, with no device writes | At least 30 consecutive days logged; comparison of model and measurement; coverage statistics for A1, A3, and A4 |
 | 6. Gateway and actuation qualification | Gateway, vendor test rig or hardware-in-the-loop, fault injection | The gateway's rules, expiry, return to fallback, read-back, and credential isolation demonstrated; installer and vendor sign-off |
-| 7. Supervised operation | Narrow setpoint limits, short operating periods, rollback to the vendor's mode | Measured outcomes; incident log |
+| 7. Supervised operation | Narrow power limits, short operating periods, rollback to the vendor's mode | Measured outcomes; incident log |
 | 8. Extensions | Schedules with time-varying reserves and EV deadlines, owner settings in the input, a theorem that composes consecutive windows, a verified optimizer, limits over metering intervals, the C translation | New theorems and assumptions for each extension |
 
 A site stays in read-only operation when its equipment lacks command expiry or a qualified fallback, when its energy estimate has no characterized error bound, when the meaning of a profile value is ambiguous, or when the installer or utility has not approved control.  An extension that changes the model states new theorems and new assumptions, and an earlier theorem never describes the extended system.  The site's module, with its profile table and file theorem, is the artifact that Stages 5 to 7 run.
@@ -317,7 +321,6 @@ A site stays in read-only operation when its equipment lacks command expiry or a
 | Decision | Options | Recommendation |
 |---|---|---|
 | Window length `W` | Any length with `W > a + 2τ` | The replay study chose 180 s, the shortest whole-minute length, by a criterion fixed before its runs.  Stage 4's expiry granularity can lengthen it, and Stage 5's measurement of the excursions within a minute can change its margins. |
-| Form of the command | A battery setpoint held for the window, or power limits within which the inverter's own self-consumption mode follows the load | Decide before Stage 4.  A held setpoint cost $40 to $79 a year against the vendor's mode in the replay, depending on the gateway's estimate of the net load at the snapshot, before the changes within a minute, which minute data cannot measure.  Power limits make `B` the hull of the state in force, the limits widened by `e`, and `F`, and a setpoint `s` is the limits `[s, s]`.  The side tests and the proofs above the word layer keep their text, while the statements of the specification, the window lemma, and the module theorem take the pair, so the specification's review runs again. |
 | Import cap under uncertain load | Test the cap against the worst-case load as now, narrow the load interval, or bound only the import that the battery adds | Decide with the site's interconnection terms.  With a 10 kW cap at the test house and the causal rule's load bound, the import test blocked charging through the winter, and the authorizer cost $119 a year more than with caps that never bind. |
 | Gateway runtime, in Stage 6 | Wasmtime embedded in a small C or Rust program, or the module's C translation with `p.f.native` and CompCert | Choose in Stage 6.  The C translation removes Talos's execution semantics, the decoder, and Wasmtime from the assumptions and adds CompCert, the Lean copy of Clight, and the other items that the trusted base lists for C files. |
 

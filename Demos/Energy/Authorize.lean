@@ -3,9 +3,10 @@ import Demos.Energy.Window
 
 /-! The theorems about `authorizeWith` under a valid profile table.  `authorizeWith_iff` states
 that the authorizer accepts exactly when the input is valid and the conditions of the acceptance
-rule hold, `authorizeWith_sound` that an accepted setpoint gives the bounds of the acceptance rule
-at each time of the window for every trajectory admitted until that time, and
-`authorizeWith_accepted` the setpoint and expiry of an accepted result. -/
+rule hold, `authorizeWith_sound` that accepted limits give the bounds of the acceptance rule at
+each time of the window for every trajectory admitted until that time, and
+`authorizeWith_accepted` the limits and expiry of an accepted result, and `authorizeWith_admits`
+that some trajectory is admitted for accepted limits. -/
 
 namespace Demos.Energy.Authorize
 
@@ -19,7 +20,7 @@ theorem inForceLow_eq (hs : ProfileValid site) (hv : InputValid site xs) :
     (inForceLow site xs).toNat =
       if xs[4]! = 1 then site[10]!.toNat else xs[5]!.toNat - site[9]!.toNat := by
   have h9 := hs.tolerance
-  have h5 := hv.inForce.1
+  have h5 := hv.inForceLow.1
   unfold inForceLow
   simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow, beq_iff_eq]
   split_ifs
@@ -28,49 +29,49 @@ theorem inForceLow_eq (hs : ProfileValid site) (hv : InputValid site xs) :
 
 theorem inForceHigh_eq (hs : ProfileValid site) (hv : InputValid site xs) :
     (inForceHigh site xs).toNat =
-      if xs[4]! = 1 then site[11]!.toNat else xs[5]!.toNat + site[9]!.toNat := by
+      if xs[4]! = 1 then site[11]!.toNat else xs[6]!.toNat + site[9]!.toNat := by
   have h9 := hs.tolerance
-  have h5 := hv.inForce.2
+  have h6 := hv.inForceHigh.2
   unfold inForceHigh
   simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow, beq_iff_eq]
   split_ifs
   · rfl
-  · exact toNat_add (a := xs[5]!) (b := site[9]!) (by omega)
+  · exact toNat_add (a := xs[6]!) (b := site[9]!) (by omega)
 
 theorem lowB_eq (hs : ProfileValid site) (hv : InputValid site xs) :
     (lowB site xs).toNat =
-      min (min (inForceLow site xs).toNat (xs[10]!.toNat - site[9]!.toNat)) site[10]!.toNat := by
+      min (min (inForceLow site xs).toNat (xs[11]!.toNat - site[9]!.toNat)) site[10]!.toNat := by
   have h9 := hs.tolerance
-  have h10 := hv.setpoint.1
+  have h11 := hv.limitLow.1
   unfold lowB
   rw [toNat_min, toNat_min]
   simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow]
-  rw [toNat_sub (a := xs[10]!) (b := site[9]!) (by omega)]
+  rw [toNat_sub (a := xs[11]!) (b := site[9]!) (by omega)]
 
 theorem highB_eq (hs : ProfileValid site) (hv : InputValid site xs) :
     (highB site xs).toNat =
-      max (max (inForceHigh site xs).toNat (xs[10]!.toNat + site[9]!.toNat)) site[11]!.toNat := by
+      max (max (inForceHigh site xs).toNat (xs[12]!.toNat + site[9]!.toNat)) site[11]!.toNat := by
   have h9 := hs.tolerance
-  have h10 := hv.setpoint.2
+  have h12 := hv.limitHigh.2
   unfold highB
   rw [toNat_max, toNat_max]
   simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow]
-  rw [toNat_add (a := xs[10]!) (b := site[9]!) (by omega)]
+  rw [toNat_add (a := xs[12]!) (b := site[9]!) (by omega)]
 
 theorem lowB_signed (hs : ProfileValid site) (hv : InputValid site xs) :
-    signed (lowB site xs) = powerLow (profileOf site) (snapshotOf xs) (setpointOf xs) := by
+    signed (lowB site xs) = powerLow (profileOf site) (snapshotOf xs) (limitsOf xs) := by
   have h9 := hs.tolerance
-  have h10 := hv.setpoint.1
-  have h5 := hv.inForce.1
+  have h11 := hv.limitLow.1
+  have h5 := hv.inForceLow.1
   rw [signed, lowB_eq hs hv, inForceLow_eq hs hv]
-  unfold powerLow setpointOf snapshotOf profileOf signed
+  unfold powerLow limitsOf snapshotOf profileOf signed
   dsimp only
   split_ifs <;> simp only [State.low] <;> push_cast <;> omega
 
 theorem highB_signed (hs : ProfileValid site) (hv : InputValid site xs) :
-    signed (highB site xs) = powerHigh (profileOf site) (snapshotOf xs) (setpointOf xs) := by
+    signed (highB site xs) = powerHigh (profileOf site) (snapshotOf xs) (limitsOf xs) := by
   rw [signed, highB_eq hs hv, inForceHigh_eq hs hv]
-  unfold powerHigh setpointOf snapshotOf profileOf signed
+  unfold powerHigh limitsOf snapshotOf profileOf signed
   dsimp only
   split_ifs <;> simp only [State.high] <;> push_cast <;> omega
 
@@ -83,8 +84,8 @@ theorem lowB_le (hs : ProfileValid site) (hv : InputValid site xs) :
 theorem lowB_ge (hs : ProfileValid site) (hv : InputValid site xs) :
     4294967296 - 2097152 ≤ (lowB site xs).toNat := by
   have h9 := hs.tolerance
-  have h10 := hv.setpoint.1
-  have h5 := hv.inForce.1
+  have h11 := hv.limitLow.1
+  have h5 := hv.inForceLow.1
   have hf := hs.fallbackLow.1
   rw [lowB_eq hs hv, inForceLow_eq hs hv]
   split_ifs <;> omega
@@ -98,22 +99,22 @@ theorem highB_ge (hs : ProfileValid site) (hv : InputValid site xs) :
 theorem highB_le (hs : ProfileValid site) (hv : InputValid site xs) :
     (highB site xs).toNat ≤ 4294967296 + 2097152 := by
   have h9 := hs.tolerance
-  have h10 := hv.setpoint.2
-  have h5 := hv.inForce.2
+  have h12 := hv.limitHigh.2
+  have h6 := hv.inForceHigh.2
   have hf := hs.fallbackHigh.2
   rw [highB_eq hs hv, inForceHigh_eq hs hv]
   split_ifs <;> omega
 
 theorem lower_iff (hs : ProfileValid site) (hv : InputValid site xs) :
     lowB site xs < word site 10 ↔
-      lowerTested (profileOf site) (snapshotOf xs) (setpointOf xs) := by
+      lowerTested (profileOf site) (snapshotOf xs) (limitsOf xs) := by
   rw [lowerTested, ← lowB_signed hs hv, UInt64.lt_iff_toNat_lt]
   simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow, profileOf, signed]
   omega
 
 theorem upper_iff (hs : ProfileValid site) (hv : InputValid site xs) :
     word site 11 < highB site xs ↔
-      upperTested (profileOf site) (snapshotOf xs) (setpointOf xs) := by
+      upperTested (profileOf site) (snapshotOf xs) (limitsOf xs) := by
   rw [upperTested, ← highB_signed hs hv, UInt64.lt_iff_toNat_lt]
   simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow, profileOf, signed]
   omega
@@ -125,7 +126,7 @@ theorem toNat_offset : (4294967296 : UInt64).toNat = 4294967296 := rfl
 theorem exportOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
     exportOk site xs (lowB site xs) = true ↔
       ((snapshotOf xs).pvHigh : ℤ) ≤ (snapshotOf xs).loadLow +
-        powerLow (profileOf site) (snapshotOf xs) (setpointOf xs) + (profileOf site).exportCap := by
+        powerLow (profileOf site) (snapshotOf xs) (limitsOf xs) + (profileOf site).exportCap := by
   have hb := lowB_le hs hv
   have h9 := hv.pv.2
   have h6 := hv.load
@@ -134,12 +135,12 @@ theorem exportOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
   unfold exportOk
   simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow, decide_eq_true_eq,
     UInt64.le_iff_toNat_le, offset]
-  have e1 : (xs[9]! + (4294967296 : UInt64)).toNat = xs[9]!.toNat + 4294967296 := by
+  have e1 : (xs[10]! + (4294967296 : UInt64)).toNat = xs[10]!.toNat + 4294967296 := by
     rw [toNat_add (by rw [toNat_offset]; omega), toNat_offset]
-  have e2 : (xs[6]! + lowB site xs).toNat = xs[6]!.toNat + (lowB site xs).toNat :=
+  have e2 : (xs[7]! + lowB site xs).toNat = xs[7]!.toNat + (lowB site xs).toNat :=
     toNat_add (by omega)
-  have e3 : (xs[6]! + lowB site xs + site[6]!).toNat =
-      xs[6]!.toNat + (lowB site xs).toNat + site[6]!.toNat := by
+  have e3 : (xs[7]! + lowB site xs + site[6]!).toNat =
+      xs[7]!.toNat + (lowB site xs).toNat + site[6]!.toNat := by
     rw [toNat_add (by rw [e2]; omega), e2]
   rw [e1, e3]
   simp only [snapshotOf, profileOf, signed]
@@ -147,7 +148,7 @@ theorem exportOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
 
 theorem importOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
     importOk site xs (highB site xs) = true ↔
-      ((snapshotOf xs).loadHigh : ℤ) + powerHigh (profileOf site) (snapshotOf xs) (setpointOf xs) ≤
+      ((snapshotOf xs).loadHigh : ℤ) + powerHigh (profileOf site) (snapshotOf xs) (limitsOf xs) ≤
         (profileOf site).importCap + (snapshotOf xs).pvLow := by
   have hb := highB_le hs hv
   have h7 := hv.load.2
@@ -157,11 +158,11 @@ theorem importOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
   unfold importOk
   simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow, decide_eq_true_eq,
     UInt64.le_iff_toNat_le, offset]
-  have e1 : (xs[7]! + highB site xs).toNat = xs[7]!.toNat + (highB site xs).toNat :=
+  have e1 : (xs[8]! + highB site xs).toNat = xs[8]!.toNat + (highB site xs).toNat :=
     toNat_add (by omega)
-  have e2 : (site[5]! + xs[8]!).toNat = site[5]!.toNat + xs[8]!.toNat := toNat_add (by omega)
-  have e3 : (site[5]! + xs[8]! + (4294967296 : UInt64)).toNat =
-      site[5]!.toNat + xs[8]!.toNat + 4294967296 := by
+  have e2 : (site[5]! + xs[9]!).toNat = site[5]!.toNat + xs[9]!.toNat := toNat_add (by omega)
+  have e3 : (site[5]! + xs[9]! + (4294967296 : UInt64)).toNat =
+      site[5]!.toNat + xs[9]!.toNat + 4294967296 := by
     rw [toNat_add (by rw [e2, toNat_offset]; omega), e2, toNat_offset]
   rw [e1, e3]
   simp only [snapshotOf, profileOf, signed]
@@ -229,7 +230,7 @@ theorem highGain_toNat (hs : ProfileValid site) (hv : InputValid site xs) :
 
 theorem drainLow_cast (hs : ProfileValid site) (hv : InputValid site xs) :
     ((lowDrain site (lowB site xs)).toNat : ℤ) =
-      drainLow (profileOf site) (powerLow (profileOf site) (snapshotOf xs) (setpointOf xs)) := by
+      drainLow (profileOf site) (powerLow (profileOf site) (snapshotOf xs) (limitsOf xs)) := by
   have hb := lowB_le hs hv
   have he1 := hs.etaLow
   rw [lowDrain_toNat hs hv, ← lowB_signed hs hv]
@@ -243,9 +244,8 @@ theorem drainLow_cast (hs : ProfileValid site) (hv : InputValid site xs) :
 
 theorem floorOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
     floorOk site xs (lowB site xs) = true ↔
-      ((profileOf site).floor : ℤ) ≤ (snapshotOf xs).energyLow ∧
-        ((profileOf site).floor : ℤ) +
-          drainLow (profileOf site) (powerLow (profileOf site) (snapshotOf xs) (setpointOf xs)) ≤
+      ((profileOf site).floor : ℤ) +
+          drainLow (profileOf site) (powerLow (profileOf site) (snapshotOf xs) (limitsOf xs)) ≤
             (snapshotOf xs).energyLow := by
   have hb := lowB_le hs hv
   have hb' := lowB_ge hs hv
@@ -267,17 +267,16 @@ theorem floorOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
         site[7]!.toNat := Nat.le_trans (Nat.div_le_self _ _) (by omega)
   rw [← drainLow_cast hs hv]
   unfold floorOk
-  simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow, Bool.and_eq_true,
-    decide_eq_true_eq, UInt64.le_iff_toNat_le]
+  simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow, decide_eq_true_eq,
+    UInt64.le_iff_toNat_le]
   rw [toNat_add (by rw [hd]; omega)]
   simp only [snapshotOf, profileOf]
   omega
 
 theorem ceilingOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
     ceilingOk site xs (highB site xs) = true ↔
-      ((snapshotOf xs).energyHigh : ℤ) ≤ (profileOf site).ceiling ∧
-        ((snapshotOf xs).energyHigh : ℤ) +
-          powerHigh (profileOf site) (snapshotOf xs) (setpointOf xs) * (profileOf site).window ≤
+      ((snapshotOf xs).energyHigh : ℤ) +
+          powerHigh (profileOf site) (snapshotOf xs) (limitsOf xs) * (profileOf site).window ≤
             (profileOf site).ceiling := by
   have hb := highB_le hs hv
   have hb' := highB_ge hs hv
@@ -289,21 +288,19 @@ theorem ceilingOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
     Nat.mul_le_mul hn hW
   rw [← highB_signed hs hv]
   unfold ceilingOk
-  simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow, Bool.and_eq_true,
-    decide_eq_true_eq, UInt64.le_iff_toNat_le]
+  simp only [word_eq, UInt64.toNat_ofNat, Nat.reduceMod, Nat.reducePow, decide_eq_true_eq,
+    UInt64.le_iff_toNat_le]
   rw [toNat_add (by rw [hg]; omega), hg]
   simp only [snapshotOf, profileOf, signed]
   have hcast : (((highB site xs).toNat - 4294967296 : ℕ) : ℤ) =
       ((highB site xs).toNat : ℤ) - 4294967296 := by omega
   constructor
-  · rintro ⟨h1, h2⟩
-    refine ⟨by exact_mod_cast h1, ?_⟩
+  · intro h
     have : ((xs[3]!.toNat + ((highB site xs).toNat - 4294967296) * site[13]!.toNat : ℕ) : ℤ) ≤
-        (site[2]!.toNat : ℤ) := by exact_mod_cast h2
+        (site[2]!.toNat : ℤ) := by exact_mod_cast h
     push_cast [hcast] at this
     linarith
-  · rintro ⟨h1, h2⟩
-    refine ⟨by exact_mod_cast h1, ?_⟩
+  · intro h
     have : ((xs[3]!.toNat + ((highB site xs).toNat - 4294967296) * site[13]!.toNat : ℕ) : ℤ) ≤
         (site[2]!.toNat : ℤ) := by
       push_cast [hcast]
@@ -314,7 +311,7 @@ theorem ceilingOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
 
 theorem accepted_iff (site xs : Array UInt64) :
     (authorizeWith site xs).status = .accepted ↔
-      xs.size.toUInt64 = 11 ∧ word xs 0 = 1 ∧ rangeOk xs = true ∧ orderOk xs = true ∧
+      xs.size.toUInt64 = 13 ∧ word xs 0 = 1 ∧ rangeOk xs = true ∧ orderOk xs = true ∧
         limitOk site xs = true ∧
         (lowB site xs < word site 10 →
           exportOk site xs (lowB site xs) = true ∧ floorOk site xs (lowB site xs) = true) ∧
@@ -327,23 +324,24 @@ theorem accepted_iff (site xs : Array UInt64) :
     split_ifs <;> simp_all
 
 theorem inputValid_iff (hs : ProfileValid site) :
-    (xs.size.toUInt64 = 11 ∧ word xs 0 = 1 ∧ rangeOk xs = true ∧ orderOk xs = true ∧
+    (xs.size.toUInt64 = 13 ∧ word xs 0 = 1 ∧ rangeOk xs = true ∧ orderOk xs = true ∧
       limitOk site xs = true) ↔ InputValid site xs := by
   rw [rangeOk_iff, orderOk_iff, limitOk_iff hs]
   simp only [word_eq, show (0 : UInt64).toNat = 0 from rfl]
   constructor
-  · rintro ⟨h1, h2, ⟨r1, r2, r3, r4, r5, r6, r7, r8, r9, r10⟩, ⟨o1, o2, o3⟩, l⟩
-    exact ⟨h1, h2, r1, ⟨o1, r3⟩, r4, r5, ⟨o2, r7⟩, ⟨o3, r9⟩, r10, l⟩
+  · rintro ⟨h1, h2, ⟨r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12⟩, ⟨o1, o2, o3, o4, o5⟩, l⟩
+    exact ⟨h1, h2, r1, ⟨o1, r3⟩, r4, r5, r6, o2, ⟨o3, r8⟩, ⟨o4, r10⟩, r11, r12, o5, l⟩
   · intro hv
     exact ⟨hv.size, hv.version, ⟨hv.time, by have := hv.energy; omega, hv.energy.2, hv.mode,
-      hv.inForce, by have := hv.load; omega, hv.load.2, by have := hv.pv; omega, hv.pv.2,
-      hv.setpoint⟩, ⟨hv.energy.1, hv.load.1, hv.pv.1⟩, hv.limit⟩
+      hv.inForceLow, hv.inForceHigh, by have := hv.load; omega, hv.load.2,
+      by have := hv.pv; omega, hv.pv.2, hv.limitLow, hv.limitHigh⟩,
+      ⟨hv.energy.1, hv.inForceOrder, hv.load.1, hv.pv.1, hv.limitOrder⟩, hv.limit⟩
 
 /-- The authorizer accepts exactly when the input is valid and the conditions of the acceptance
 rule hold. -/
 theorem authorizeWith_iff (hs : ProfileValid site) :
     (authorizeWith site xs).status = .accepted ↔
-      InputValid site xs ∧ Conditions (profileOf site) (snapshotOf xs) (setpointOf xs) := by
+      InputValid site xs ∧ Conditions (profileOf site) (snapshotOf xs) (limitsOf xs) := by
   rw [accepted_iff]
   constructor
   · rintro ⟨h1, h2, h3, h4, h5, hlo, hhi⟩
@@ -362,10 +360,10 @@ theorem authorizeWith_iff (hs : ProfileValid site) :
       exact ⟨(importOk_iff hs hv).mpr (hc.importCap hu'),
         (ceilingOk_iff hs hv).mpr (hc.ceiling hu')⟩
 
-/-- An accepted result holds the proposed setpoint and the expiry `t_m + W - τ`. -/
+/-- An accepted result holds the proposed limits and the expiry `t_m + W - τ`. -/
 theorem authorizeWith_accepted (hs : ProfileValid site)
     (h : (authorizeWith site xs).status = .accepted) :
-    (authorizeWith site xs).setpoint = xs[10]! ∧
+    (authorizeWith site xs).low = xs[11]! ∧ (authorizeWith site xs).high = xs[12]! ∧
       (authorizeWith site xs).expiry.toNat =
         (snapshotOf xs).time + (profileOf site).window - (profileOf site).transition := by
   have hv := ((authorizeWith_iff hs).mp h).1
@@ -373,7 +371,8 @@ theorem authorizeWith_accepted (hs : ProfileValid site)
   have hW := hs.window
   have hT := hs.timing
   have hres : authorizeWith site xs =
-      Decision.mk .accepted (word xs 10) (word xs 1 + word site 13 - word site 12) := by
+      Decision.mk .accepted (word xs 11) (word xs 12)
+        (word xs 1 + word site 13 - word site 12) := by
     unfold authorizeWith reject at h ⊢
     dsimp only at h ⊢
     split_ifs at h ⊢
@@ -384,12 +383,30 @@ theorem authorizeWith_accepted (hs : ProfileValid site)
   have e1 : (xs[1]! + site[13]!).toNat = xs[1]!.toNat + site[13]!.toNat := toNat_add (by omega)
   rw [toNat_sub (by rw [e1]; omega), e1]
 
-/-- An accepted setpoint gives the bounds of the acceptance rule at each time of the window for
-every trajectory admitted until that time. -/
+/-- For accepted limits, some trajectory is admitted until every time, so `authorizeWith_sound`
+is not vacuous. -/
+theorem authorizeWith_admits (hs : ProfileValid site)
+    (h : (authorizeWith site xs).status = .accepted) (t : ℝ) :
+    ∃ x : Trajectory, x.AdmittedUntil (profileOf site) (snapshotOf xs) (limitsOf xs) t := by
+  have hv := ((authorizeWith_iff hs).mp h).1
+  have he := hs.etaHigh
+  have h1 := hs.fallbackLow.2
+  have h2 := hs.fallbackHigh.1
+  refine admitted_exists t ?_ ?_ ?_ ?_ ?_
+  · simp only [profileOf]
+    omega
+  · simp only [profileOf, signed]
+    omega
+  · exact hv.energy.1
+  · exact hv.load.1
+  · exact hv.pv.1
+
+/-- Accepted limits give the bounds of the acceptance rule at each time of the window for every
+trajectory admitted until that time. -/
 theorem authorizeWith_sound (hs : ProfileValid site)
     (h : (authorizeWith site xs).status = .accepted) {x : Trajectory} {t : ℝ}
     (ht : t ∈ window (profileOf site) (snapshotOf xs))
-    (hx : x.AdmittedUntil (profileOf site) (snapshotOf xs) (setpointOf xs) t) :
+    (hx : x.AdmittedUntil (profileOf site) (snapshotOf xs) (limitsOf xs) t) :
     x.WithinOrFallback (profileOf site) (snapshotOf xs) t := by
   have heta : 0 < (profileOf site).eta := by
     have := hs.etaLow

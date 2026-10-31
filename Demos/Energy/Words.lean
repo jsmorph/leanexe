@@ -1,8 +1,8 @@
 import Demos.Energy.Spec
 
 /-! The meaning of the authorizer's words in the specification's terms.  `profileOf` and
-`snapshotOf` read the profile table and the input words into the records of `Spec`, with a signed
-power `p` stored as the word `p + 2 ^ 32`.  `ProfileValid` is the validity condition of a profile
+`snapshotOf` read the profile table and the input words into the records of `Spec`, and
+`limitsOf` the proposed limits, with a signed power `p` stored as the word `p + 2 ^ 32`.  `ProfileValid` is the validity condition of a profile
 table, which `site_valid` proves for the test site, and `InputValid` the condition that the
 authorizer's checks before the side tests accept. -/
 
@@ -35,14 +35,14 @@ def snapshotOf (xs : Array UInt64) : Snapshot where
   time := xs[1]!.toNat
   energyLow := xs[2]!.toNat
   energyHigh := xs[3]!.toNat
-  state := if xs[4]! = 1 then .fallback else .command (signed xs[5]!)
-  loadLow := xs[6]!.toNat
-  loadHigh := xs[7]!.toNat
-  pvLow := xs[8]!.toNat
-  pvHigh := xs[9]!.toNat
+  state := if xs[4]! = 1 then .fallback else .command ⟨signed xs[5]!, signed xs[6]!⟩
+  loadLow := xs[7]!.toNat
+  loadHigh := xs[8]!.toNat
+  pvLow := xs[9]!.toNat
+  pvHigh := xs[10]!.toNat
 
-/-- The proposed setpoint that input words hold. -/
-def setpointOf (xs : Array UInt64) : ℤ := signed xs[10]!
+/-- The proposed limits that input words hold. -/
+def limitsOf (xs : Array UInt64) : Limits := ⟨signed xs[11]!, signed xs[12]!⟩
 
 /-- A signed power word within `2 ^ 20` of zero. -/
 def PowerWord (w : UInt64) : Prop := 2 ^ 32 - 2 ^ 20 ≤ w.toNat ∧ w.toNat ≤ 2 ^ 32 + 2 ^ 20
@@ -70,15 +70,19 @@ structure ProfileValid (site : Array UInt64) : Prop where
 
 /-- The input words that the authorizer's checks before the side tests accept. -/
 structure InputValid (site xs : Array UInt64) : Prop where
-  size : xs.size.toUInt64 = 11
+  size : xs.size.toUInt64 = 13
   version : xs[0]! = 1
   time : xs[1]!.toNat < 2 ^ 40
   energy : xs[2]!.toNat ≤ xs[3]!.toNat ∧ xs[3]!.toNat ≤ 2 ^ 42
   mode : xs[4]!.toNat ≤ 1
-  inForce : PowerWord xs[5]!
-  load : xs[6]!.toNat ≤ xs[7]!.toNat ∧ xs[7]!.toNat ≤ 2 ^ 20
-  pv : xs[8]!.toNat ≤ xs[9]!.toNat ∧ xs[9]!.toNat ≤ 2 ^ 20
-  setpoint : PowerWord xs[10]!
-  limit : 2 ^ 32 - site[4]!.toNat ≤ xs[10]!.toNat ∧ xs[10]!.toNat ≤ 2 ^ 32 + site[3]!.toNat
+  inForceLow : PowerWord xs[5]!
+  inForceHigh : PowerWord xs[6]!
+  inForceOrder : xs[5]!.toNat ≤ xs[6]!.toNat
+  load : xs[7]!.toNat ≤ xs[8]!.toNat ∧ xs[8]!.toNat ≤ 2 ^ 20
+  pv : xs[9]!.toNat ≤ xs[10]!.toNat ∧ xs[10]!.toNat ≤ 2 ^ 20
+  limitLow : PowerWord xs[11]!
+  limitHigh : PowerWord xs[12]!
+  limitOrder : xs[11]!.toNat ≤ xs[12]!.toNat
+  limit : 2 ^ 32 - site[4]!.toNat ≤ xs[11]!.toNat ∧ xs[12]!.toNat ≤ 2 ^ 32 + site[3]!.toNat
 
 end Demos.Energy.Words

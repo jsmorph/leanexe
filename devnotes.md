@@ -39431,3 +39431,20 @@ With limits `[c⁻, c⁺]` the window's power interval becomes the hull of the s
 A fresh reviewer checked the analysis against the Lean files, the replay, and SunSpec's model definitions.  It found that the analysis left out the statement changes in `Window.lean`, `Theorems.lean`, and `Flat.lean`, now in the table, and that the gateway's snapshot rule for limits needs a read-back of the applied limits.  It found two defects in the replay's limits device: with data missing it discharged at its lower limit, and at the floor it charged from the grid at about 10 W.  Both are fixed, and the limits bills changed by $1 to $2.  Its main finding concerns the evidence.  The held-setpoint proposer holds the previous minute's net load through the next minute, while the limits device follows the present minute.  With caps that never bind at 180 s, a held setpoint through the authorizer costs $1,499 from the previous minute, $1,462 from the mean of the previous and the present minute, and $1,426 from the present minute, against $1,421 for limits and $1,406 for the vendor's mode alone, and the replay reproduced these figures.  The minute data therefore cannot measure what limits gain, which lies in the changes within each minute.
 
 Recommendation: power limits, decided before Stage 4.  They contain every held setpoint as `[s, s]`, their proof changes keep the proof text above the word layer, and they allow a device that supports power windows to follow the load within the minute.  The gain within the minute is unmeasured; one-second data such as PTProsumer's can estimate it.  Keeping the held setpoint leaves the Lean work as it is and limits the equipment to held setpoints.
+
+Decision (user, 2026-10-30): power limits.  The authorizer authorizes `[c⁻, c⁺]`, and a held setpoint is `[s, s]`.
+
+A fresh reviewer checked the new `Spec.lean` against the plan's model and found no condition weaker or stronger than the design.  Its findings and their outcomes:
+
+- Inverted snapshot intervals or limits would make the theorem vacuous or A2 unsupported.  `InputValid` already rejects both, and `admitted_exists` and `authorize_admits` now prove that some trajectory is admitted for every accepted input.
+- The plan's claim that limits in both directions are tested on both sides holds only when they extend beyond `F`, and the plan now states the comparison.
+- "Limits" named the site's limits, a command's limits, and the profile's largest charge and discharge, so the documents say "site limits" and "command limits".
+- `floor ≤ E⁻` follows from `floor + drain⁻ ≤ E⁻`, and `E⁺ ≤ E_max` from `E⁺ + gain⁺ ≤ E_max`, so each energy test is now one comparison, with the same decisions.
+- `Within` was unused, and `within_of_fallback` now derives it.
+
+The rework built on `minideb2` with every proof text above the word layer unchanged except the floor and ceiling branches of `window_sound`.  One build attempt failed silently because `~/energy-build.sh` there is not executable and `nohup` sent the error to `/dev/null`, and the wait loop then matched the previous log's exit line.  The scripts now run under `sh`, and the log is removed before each run.  `tests/verified/run.sh --cases energy` passed 2,047 cases, the file theorems of the 6,316-byte module, and the axiom audit, and `replay.py check` agrees on all 2,047 cases.
+
+- [x] `Spec.lean` with limits, and its independent review.
+- [x] `Window.lean`, the word layer, and the module theorems.
+- [x] Examples, cases, file theorems, and the README.
+- [x] The replay tool's `check` against the new cases, and the plan.

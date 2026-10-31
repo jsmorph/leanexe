@@ -35,8 +35,9 @@ theorem toNat_mul {a b : UInt64} (h : a.toNat * b.toNat < 2 ^ 64) :
 
 theorem rangeOk_iff (xs : Array UInt64) : rangeOk xs = true ↔
     xs[1]!.toNat < 2 ^ 40 ∧ xs[2]!.toNat ≤ 2 ^ 42 ∧ xs[3]!.toNat ≤ 2 ^ 42 ∧
-      xs[4]!.toNat ≤ 1 ∧ PowerWord xs[5]! ∧ xs[6]!.toNat ≤ 2 ^ 20 ∧ xs[7]!.toNat ≤ 2 ^ 20 ∧
-      xs[8]!.toNat ≤ 2 ^ 20 ∧ xs[9]!.toNat ≤ 2 ^ 20 ∧ PowerWord xs[10]! := by
+      xs[4]!.toNat ≤ 1 ∧ PowerWord xs[5]! ∧ PowerWord xs[6]! ∧ xs[7]!.toNat ≤ 2 ^ 20 ∧
+      xs[8]!.toNat ≤ 2 ^ 20 ∧ xs[9]!.toNat ≤ 2 ^ 20 ∧ xs[10]!.toNat ≤ 2 ^ 20 ∧
+      PowerWord xs[11]! ∧ PowerWord xs[12]! := by
   simp only [rangeOk, powerOk, word_eq, Bool.and_eq_true, decide_eq_true_eq,
     UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt, PowerWord, timeBound, energyBound,
     powerBound, offset, UInt64.toNat_ofNat, UInt64.reduceSub, UInt64.reduceAdd]
@@ -44,7 +45,8 @@ theorem rangeOk_iff (xs : Array UInt64) : rangeOk xs = true ↔
   constructor <;> intro h <;> omega
 
 theorem orderOk_iff (xs : Array UInt64) : orderOk xs = true ↔
-    xs[2]!.toNat ≤ xs[3]!.toNat ∧ xs[6]!.toNat ≤ xs[7]!.toNat ∧ xs[8]!.toNat ≤ xs[9]!.toNat := by
+    xs[2]!.toNat ≤ xs[3]!.toNat ∧ xs[5]!.toNat ≤ xs[6]!.toNat ∧ xs[7]!.toNat ≤ xs[8]!.toNat ∧
+      xs[9]!.toNat ≤ xs[10]!.toNat ∧ xs[11]!.toNat ≤ xs[12]!.toNat := by
   simp only [orderOk, word_eq, Bool.and_eq_true, decide_eq_true_eq, UInt64.le_iff_toNat_le,
     UInt64.toNat_ofNat]
   norm_num
@@ -52,7 +54,7 @@ theorem orderOk_iff (xs : Array UInt64) : orderOk xs = true ↔
 
 theorem limitOk_iff {site : Array UInt64} (hs : ProfileValid site) (xs : Array UInt64) :
     limitOk site xs = true ↔
-      2 ^ 32 - site[4]!.toNat ≤ xs[10]!.toNat ∧ xs[10]!.toNat ≤ 2 ^ 32 + site[3]!.toNat := by
+      2 ^ 32 - site[4]!.toNat ≤ xs[11]!.toNat ∧ xs[12]!.toNat ≤ 2 ^ 32 + site[3]!.toNat := by
   have h4 := hs.discharge
   have h3 := hs.charge
   have e1 : ((4294967296 : UInt64) - site[4]!).toNat = 4294967296 - site[4]!.toNat :=
@@ -61,7 +63,8 @@ theorem limitOk_iff {site : Array UInt64} (hs : ProfileValid site) (xs : Array U
     toNat_add (by rw [show (4294967296 : UInt64).toNat = 4294967296 from rfl]; omega)
   simp only [limitOk, word_eq, offset, Bool.and_eq_true, decide_eq_true_eq,
     UInt64.le_iff_toNat_le, show (3 : UInt64).toNat = 3 from rfl,
-    show (4 : UInt64).toNat = 4 from rfl, show (10 : UInt64).toNat = 10 from rfl]
+    show (4 : UInt64).toNat = 4 from rfl, show (11 : UInt64).toNat = 11 from rfl,
+    show (12 : UInt64).toNat = 12 from rfl]
   rw [e1, e2]
   constructor <;> intro h <;> omega
 

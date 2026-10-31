@@ -6,10 +6,12 @@ seconds, and the efficiency bound in parts per million.  A snapshot holds the me
 `time`: the interval of stored energy, the state in force, and the intervals of load and PV output
 for the window.  A trajectory gives stored energy, battery AC power (positive for charging), the
 charge and discharge efficiencies, the auxiliary loss rate, the load, and the PV output as
-functions of time.  `AdmittedUntil` states the assumptions from the snapshot's time to a time `t`,
-`Within` the limits, and `WithinOrFallback` the bounds of the acceptance rule: each limit, or the
-worst case that an immediate return to fallback admits.  The program and its word layout appear
-nowhere in this module. -/
+functions of time.  A command sets power limits, within which the device's own control follows
+the load, and a held setpoint `s` is the limits `[s, s]`.  `AdmittedUntil` states the assumptions
+from the snapshot's time to a time `t` for proposed limits, `Within` the site's limits, and
+`WithinOrFallback` the bounds of the acceptance rule: each site limit, or the worst case that an
+immediate return to fallback admits.  The program and its word layout appear nowhere in this
+module. -/
 
 namespace Demos.Energy.Spec
 
@@ -19,9 +21,9 @@ structure Profile where
   floor : ℕ
   /-- Greatest permitted stored energy, J. -/
   ceiling : ℕ
-  /-- Largest charge setpoint, W. -/
+  /-- Largest upper limit of a command, W. -/
   chargeMax : ℕ
-  /-- Largest discharge setpoint, W. -/
+  /-- Largest magnitude of a command's lower limit, W. -/
   dischargeMax : ℕ
   /-- Largest grid import, W. -/
   importCap : ℕ
@@ -31,7 +33,7 @@ structure Profile where
   eta : ℕ
   /-- Largest auxiliary loss rate, W. -/
   lossMax : ℕ
-  /-- Tracking tolerance of a setpoint, W. -/
+  /-- Tolerance of battery power about a command's limits, W. -/
   tolerance : ℕ
   /-- Lower end of the fallback mode's power interval, W. -/
   fallbackLow : ℤ
@@ -44,9 +46,15 @@ structure Profile where
   /-- The gateway's send deadline after a snapshot, s. -/
   sendDeadline : ℕ
 
-/-- The state of the device at a snapshot: a command with its setpoint, or the fallback mode. -/
+/-- The power limits of a command, W: battery power stays between `low` and `high`, within the
+tolerance.  A held setpoint `s` is the limits `[s, s]`. -/
+structure Limits where
+  low : ℤ
+  high : ℤ
+
+/-- The state of the device at a snapshot: a command with its limits, or the fallback mode. -/
 inductive State where
-  | command (setpoint : ℤ)
+  | command (limits : Limits)
   | fallback
 
 /-- A measurement and the intervals that the window's assumptions use. -/
@@ -67,22 +75,22 @@ structure Snapshot where
 
 /-- Lower end of the power interval of a state. -/
 def State.low (p : Profile) : State → ℤ
-  | .command s => s - p.tolerance
+  | .command c => c.low - p.tolerance
   | .fallback => p.fallbackLow
 
 /-- Upper end of the power interval of a state. -/
 def State.high (p : Profile) : State → ℤ
-  | .command s => s + p.tolerance
+  | .command c => c.high + p.tolerance
   | .fallback => p.fallbackHigh
 
-/-- Lower end of the window's power interval `B` for the setpoint `s`: the least of the state in
-force, the setpoint's interval, and the fallback interval. -/
-def powerLow (p : Profile) (q : Snapshot) (s : ℤ) : ℤ :=
-  min (min (q.state.low p) (s - p.tolerance)) p.fallbackLow
+/-- Lower end of the window's power interval `B` for the proposed limits `c`: the least of the
+state in force, the proposed limits widened by the tolerance, and the fallback interval. -/
+def powerLow (p : Profile) (q : Snapshot) (c : Limits) : ℤ :=
+  min (min (q.state.low p) (c.low - p.tolerance)) p.fallbackLow
 
-/-- Upper end of the window's power interval `B` for the setpoint `s`. -/
-def powerHigh (p : Profile) (q : Snapshot) (s : ℤ) : ℤ :=
-  max (max (q.state.high p) (s + p.tolerance)) p.fallbackHigh
+/-- Upper end of the window's power interval `B` for the proposed limits `c`. -/
+def powerHigh (p : Profile) (q : Snapshot) (c : Limits) : ℤ :=
+  max (max (q.state.high p) (c.high + p.tolerance)) p.fallbackHigh
 
 /-- The efficiency bound as a real number. -/
 noncomputable def Profile.eff (p : Profile) : ℝ := (p.eta : ℝ) / 1000000
@@ -120,13 +128,14 @@ noncomputable def rate (x : Trajectory) (u : ℝ) : ℝ :=
 /-- Grid power, W, positive for import. -/
 def grid (x : Trajectory) (u : ℝ) : ℝ := x.load u + x.power u - x.pv u
 
-/-- The assumptions A1 to A5 from the snapshot's time to `t`, for the setpoint `s`. -/
-structure AdmittedUntil (x : Trajectory) (p : Profile) (q : Snapshot) (s : ℤ) (t : ℝ) : Prop where
+/-- The assumptions A1 to A5 from the snapshot's time to `t`, for the proposed limits `c`. -/
+structure AdmittedUntil (x : Trajectory) (p : Profile) (q : Snapshot) (c : Limits) (t : ℝ) :
+    Prop where
   /-- A1: stored energy at the snapshot's time lies in the snapshot's interval. -/
   energy_start : (q.energyLow : ℝ) ≤ x.energy q.time ∧ x.energy q.time ≤ q.energyHigh
   /-- A2: battery power lies in the window's power interval. -/
   power : ∀ u ∈ Set.Icc (q.time : ℝ) t,
-    (powerLow p q s : ℝ) ≤ x.power u ∧ x.power u ≤ powerHigh p q s
+    (powerLow p q c : ℝ) ≤ x.power u ∧ x.power u ≤ powerHigh p q c
   /-- A3: efficiencies lie between the bound and 1. -/
   efficiency : ∀ u ∈ Set.Icc (q.time : ℝ) t,
     p.eff ≤ x.etaCharge u ∧ x.etaCharge u ≤ 1 ∧ p.eff ≤ x.etaDischarge u ∧ x.etaDischarge u ≤ 1
@@ -146,7 +155,7 @@ structure AdmittedUntil (x : Trajectory) (p : Profile) (q : Snapshot) (s : ℤ) 
   energy_eq : ∀ u ∈ Set.Icc (q.time : ℝ) t,
     x.energy u = x.energy q.time + ∫ v in (q.time : ℝ)..u, x.rate v
 
-/-- The limits at time `t`: stored energy between the floor and the ceiling, and grid power
+/-- The site's limits at time `t`: stored energy between the floor and the ceiling, and grid power
 between the export cap and the import cap. -/
 def Within (x : Trajectory) (p : Profile) (t : ℝ) : Prop :=
   (p.floor : ℝ) ≤ x.energy t ∧ x.energy t ≤ p.ceiling ∧
@@ -198,6 +207,16 @@ theorem fallback_keeps_import
     (h : x.WithinOrFallback p q t) : x.grid t ≤ p.importCap := by
   have h4 := h.2.2.2
   rwa [max_eq_left hf] at h4
+
+/-- When the fallback worst case keeps every site limit at `t`, the bounds give `Within`. -/
+theorem within_of_fallback
+    (hf : (p.floor : ℝ) ≤ q.energyLow + rateLow p p.fallbackLow * (t - q.time))
+    (hc : (q.energyHigh : ℝ) + p.fallbackHigh * (t - q.time) ≤ p.ceiling)
+    (he : -(p.exportCap : ℝ) ≤ q.loadLow + p.fallbackLow - q.pvHigh)
+    (hi : (q.loadHigh : ℝ) + p.fallbackHigh - q.pvLow ≤ p.importCap)
+    (h : x.WithinOrFallback p q t) : x.Within p t :=
+  ⟨fallback_keeps_floor hf h, fallback_keeps_ceiling hc h, fallback_keeps_export he h,
+    fallback_keeps_import hi h⟩
 
 end Trajectory
 

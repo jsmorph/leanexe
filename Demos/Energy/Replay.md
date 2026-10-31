@@ -1,6 +1,6 @@
 # Energy: replay study
 
-The replay study measures how the authorizer's acceptance rule limits battery dispatch, chooses the window length `W`, and compares the bills of dispatch policies.  It replays two years of minute data from a test house through a simulated battery, gateway, and authorizer.  [The replay tool](../../tests/energy/replay.py) implements the acceptance rule of [the plan](../../energy-controller-plan.md) a second time, in Python with exact integer arithmetic, and `replay.py check` agrees with native Lean on all 2,038 module cases.  The results describe a simulated site under the stated assumptions and estimate margins and value.  They do not measure an installation.
+The replay study measures how the authorizer's acceptance rule limits battery dispatch, chooses the window length `W`, and compares the bills of dispatch policies.  It replays two years of minute data from a test house through a simulated battery, gateway, and authorizer.  [The replay tool](../../tests/energy/replay.py) implements the acceptance rule of [the plan](../../energy-controller-plan.md) a second time, in Python with exact integer arithmetic, and `replay.py check` agrees with native Lean on all 2,047 module cases.  The results describe a simulated site under the stated assumptions and estimate margins and value.  They do not measure an installation.
 
 ## Data
 

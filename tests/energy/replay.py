@@ -101,42 +101,41 @@ def decide(p: Profile, q: Snapshot, low: int, high: int) -> str:
     if b_low < p.fallback_low:
         if q.load_low + b_low + p.export_cap < q.pv_high:
             return "exportCap"
-        if not (p.floor <= q.energy_low and p.floor + drain_low(p, b_low) <= q.energy_low):
+        if p.floor + drain_low(p, b_low) > q.energy_low:
             return "floor"
     if b_high > p.fallback_high:
         if q.load_high + b_high > p.import_cap + q.pv_low:
             return "importCap"
-        if not (q.energy_high <= p.ceiling and q.energy_high + b_high * p.window <= p.ceiling):
+        if q.energy_high + b_high * p.window > p.ceiling:
             return "ceiling"
     return "accepted"
 
 
-def authorize(p: Profile, words: list[int]) -> tuple[str, int, int]:
-    """The status, setpoint word, and expiry that the authorizer returns for input words."""
-    if len(words) != 11:
-        return "length", 0, 0
+def authorize(p: Profile, words: list[int]) -> tuple[str, int, int, int]:
+    """The status, limit words, and expiry that the authorizer returns for input words."""
+    if len(words) != 13:
+        return "length", 0, 0, 0
     if words[0] != 1:
-        return "version", 0, 0
-    _, time, e_lo, e_hi, mode, held, l_lo, l_hi, s_lo, s_hi, proposal = words
+        return "version", 0, 0, 0
+    _, time, e_lo, e_hi, mode, in_lo, in_hi, l_lo, l_hi, s_lo, s_hi, low, high = words
 
     def power_word(w: int) -> bool:
         return abs(w - OFFSET) <= POWER_BOUND
 
     if not (time < TIME_BOUND and e_lo <= ENERGY_BOUND and e_hi <= ENERGY_BOUND and mode <= 1
-            and power_word(held) and power_word(proposal)
+            and all(power_word(w) for w in (in_lo, in_hi, low, high))
             and all(x <= POWER_BOUND for x in (l_lo, l_hi, s_lo, s_hi))):
-        return "range", 0, 0
-    if not (e_lo <= e_hi and l_lo <= l_hi and s_lo <= s_hi):
-        return "order", 0, 0
-    s = proposal - OFFSET
-    if not (-p.discharge_max <= s <= p.charge_max):
-        return "power", 0, 0
-    q = Snapshot(time, e_lo, e_hi, None if mode == 1 else (held - OFFSET, held - OFFSET),
-                 l_lo, l_hi, s_lo, s_hi)
-    status = decide(p, q, s, s)
+        return "range", 0, 0, 0
+    if not (e_lo <= e_hi and in_lo <= in_hi and l_lo <= l_hi and s_lo <= s_hi and low <= high):
+        return "order", 0, 0, 0
+    if not (-p.discharge_max <= low - OFFSET and high - OFFSET <= p.charge_max):
+        return "power", 0, 0, 0
+    held = None if mode == 1 else (in_lo - OFFSET, in_hi - OFFSET)
+    q = Snapshot(time, e_lo, e_hi, held, l_lo, l_hi, s_lo, s_hi)
+    status = decide(p, q, low - OFFSET, high - OFFSET)
     if status != "accepted":
-        return status, 0, 0
-    return status, proposal, time + p.window - p.transition
+        return status, 0, 0, 0
+    return status, low, high, time + p.window - p.transition
 
 
 def accepted_range(p: Profile, q: Snapshot) -> tuple[int, int] | None:
@@ -169,12 +168,12 @@ def check(path: str) -> int:
                 raise ValueError(f"not an energy case: {line!r}")
             text = fields[3].removeprefix("array-u64:")
             words = [int(w) for w in text.split(",")] if text else []
-            index, setpoint, expiry = map(int, fields[4].split())
+            index, low, high, expiry = map(int, fields[4].split())
             got = authorize(SITE, words)
             count += 1
-            if (STATUSES.index(got[0]), got[1], got[2]) != (index, setpoint, expiry):
+            if (STATUSES.index(got[0]), *got[1:]) != (index, low, high, expiry):
                 failures += 1
-                print(f"mismatch: {words}: module {index} {setpoint} {expiry}, replay {got}")
+                print(f"mismatch: {words}: module {index} {low} {high} {expiry}, replay {got}")
     print(f"replay check: {count} cases, {failures} mismatches")
     return 1 if failures else 0
 
