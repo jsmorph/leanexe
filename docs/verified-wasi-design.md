@@ -263,7 +263,7 @@ The pure typed source and compiler include byte operations and the literal-pool 
 | 4 | Universal one-iovec read and write wrappers with scratch framing. | [Read execution](../Verified/Wasi/ReadFunction.lean) and [write execution](../Verified/Wasi/Write.lean). |
 | 5 | Universal safety and cost-aware compilation for commands, calls, branches, and bounded loops. | [Command safety](../Verified/Wasi/CommandCorrect.lean), [command cost correctness](../Verified/Wasi/CostCommandCorrect.lean), and [program correctness](../Verified/Wasi/Correct.lean). |
 | 6 | Native source correspondence, callable and `_start` execution, modeled initial store, and encoded-module proofs. | [Callable entry](../Verified/Wasi/NativeEntry.lean), [command entry](../Verified/Wasi/NativeCommand.lean), [initial store](../Verified/Wasi/ProgramInitial.lean), and [public frontend](../Verified/Wasi/ReflectCommand.lean). |
-| 7 | Standard Wasmtime embedding and maintained proof and execution gates. | [Native host](../tools/wasmtime-host.c), [WASI driver](../tests/wasi/run.sh), [verified compiler driver](../tests/verified/run.sh), and [full repository checks](leanexe-manual.md#the-full-check). |
+| 7 | Standard Wasmtime embedding and maintained proof and execution gates. | [Native host](../tools/wasmtime-host.c), [WASI driver](../tests/wasi/run.sh), [verified compiler driver](../tests/verified/run.sh), and [full repository checks](verified-manual.md#the-full-check). |
 | 8 | Unbounded process refinement and conditional total execution, with integer and binary64 running-sum output and accepted exit with status 0 or 28. | [Process refinement](../Verified/Wasi/ProcessCorrect.lean), [total-process theorem](../Verified/Wasi/ProcessTotalCorrect.lean), [integer correctness](../Demos/RunningSum/Correct.lean), and [binary64 correctness](../Demos/RunningSumFp/Correct.lean). |
 
 The write theorem quantifies arbitrary borrowed bytes, initial worlds, and satisfying hosts.  It proves the reported prefix on success, the declared error relation, preserved input bytes and caller regions outside scratch, and returned UInt64 status/count.  It includes empty and zero-progress success.  The read theorem quantifies capacity and host replies, proves exact returned bytes and ownership, and proves cleanup on errno and zero-byte success.  Fixed echo executions supplement these theorems.
@@ -280,7 +280,7 @@ The write theorem quantifies arbitrary borrowed bytes, initial worlds, and satis
 
 Scripted host models supply deterministic partial-transfer and failure cases.  Native tests exercise standard Wasmtime behavior without assuming that it returns every permitted short-write count.  Test-driver time limits bound blocked tests without adding a guest deadline API.
 
-[The maintained WASI driver](../tests/wasi/run.sh) invokes the repository runner and checks its registered examples, native executions, decoding, and theorem axioms.  [The verified test driver](../tests/verified/run.sh) and [full-check procedure](leanexe-manual.md#the-full-check) remain integration gates for shared compiler changes.  All Lean runs obey [the repository limits](../AGENTS.md).
+[The maintained WASI driver](../tests/wasi/run.sh) invokes the repository runner and checks its registered examples, native executions, decoding, and theorem axioms.  [The verified test driver](../tests/verified/run.sh) and [full-check procedure](verified-manual.md#the-full-check) remain integration gates for shared compiler changes.  All Lean runs obey [the repository limits](../AGENTS.md).
 
 ### Review decisions
 

@@ -113,7 +113,7 @@ Every theorem in the table reports only the axioms `propext`, `Classical.choice`
 | `parse64_bytes_accuracy`, `parse32_bytes_accuracy` | `ParseFloatBytes` | The compiled entries 35 and 36 return the words of the parsers' results, or trap when memory runs out, and keep the caller's heap. |
 | `parse_file`, `parse_file_decode` | `ParseFloatFile` | `build/verified/parsefloat.wasm` holds the encoding of the module and decodes to it. |
 
-`ofScientific_spec` concerns Lean's own `Float.ofScientific` at `v4.34.0-rc2` [8], which both compilers use for the decimal literals of a program, so every decimal literal of type `Float` or `Float32` in a verified program means the correctly rounded value.
+`ofScientific_spec` concerns Lean's own `Float.ofScientific` at `v4.34.0-rc2` [8], which the compiler uses for the decimal literals of a program, so every decimal literal of type `Float` or `Float32` in a verified program means the correctly rounded value.
 
 ## Proof
 

@@ -71,9 +71,9 @@ tools/leanrun --timeout 30m lake build Library.Sorting.Insertion.Compiled
 ```
 
 The static checks cover import boundaries, registry paths, and local documentation links.
-`Library.Native` builds the native definitions.  The [full-check procedure](../docs/leanexe-manual.md#the-full-check)
+`Library.Native` builds the native definitions.  [The full check](../docs/verified-manual.md#the-full-check)
 gives the complete library build and its resource settings.  The [cold-cache procedure](../docs/verified-manual.md#memory-heavy-numerical-proofs)
 stages the memory-heavy proofs before the parallel aggregate.  The verified test
 driver reads the checked module registries, emits and validates the modules, compares their
 cases with native Lean, and checks file theorems and accuracy tests.  The full check
-also covers the LeanExe compiler and GPU tests.
+also covers the GPU tests.

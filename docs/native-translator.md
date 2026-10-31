@@ -26,7 +26,7 @@ What stays trusted afterwards:
 
 What stops being trusted: Talos's fidelity to the Wasm specification, the Wasm encoder and decoder, and Wasmtime.  Talos becomes an intermediate language whose execution semantics only the proofs consume.  Talos's definitions of the store and of memory remain in the statement of `p.f.native`, which relates the C memory to a Talos store.
 
-Not in scope: Wasm features outside the subset, WGSL kernels, verified I/O, and performance work beyond what CompCert does.  The per-program LeanExe compiler shares the runtime, and whether it emits the translation and the native theorems for a module that passes the subset check is an open decision of [the last section](#risks-open-decisions-and-effort).
+Not in scope: Wasm features outside the subset, WGSL kernels, verified I/O, and performance work beyond what CompCert does.
 
 ## Input: the Wasm subset and the semantics to simulate
 
@@ -312,7 +312,6 @@ The largest risk is a gap between the Lean copy and CompCert's Clight in some ca
 
 - A cap per module, or a region allocated at run time, for a module that needs more than `nativeCap` pages.
 - Whether to prove 8-byte alignment of every address in the Verified compiler's invariants, which removes the byte-wise path.
-- Whether the per-program LeanExe compiler emits the translation and the native theorems, as `verified_compile` has since M4.  It shares the runtime, and the subset check decides module by module.
 
 **Effort**, in lines of Lean:
 

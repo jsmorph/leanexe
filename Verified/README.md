@@ -10,8 +10,7 @@ encoder and decoder with `decode_encode`, `Implements` and its relatives in
 [`LeanExe/Pipeline/`](../LeanExe/Pipeline), and the runtime.  The statements add definitions of
 their own: `Heap.Within` in [the runtime rules](RuntimeFacts.lean), the allocation bound of
 [`Bound.lean`](Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr` for
-the initial store.  The compiler and its proof have their own definitions of the IR parts they need
-and import no part of the LeanExe compiler.  Native algorithm definitions live in
+the initial store.  Native algorithm definitions live in
 [the library](../Library/README.md), compiler fixtures in `Verified/Examples`, and application
 compilations in [the demos](../Demos/README.md).  Separate compilation and mathematical proof
 modules import the compiler or proof rules they use.  The proofs use only the axioms `propext`, `Classical.choice`, and

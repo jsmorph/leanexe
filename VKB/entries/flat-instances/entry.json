@@ -2,8 +2,7 @@
   "id": "flat-instances",
   "goals": [
     "verified_compile: the type T is not UInt64, Bool, Float, Float32, Bytes, a structure with a `Flat` instance, an array, or a pair",
-    "instance : Flat T (A × B × C) for a structure or enumeration of a verified_compile program",
-    "a LeanExe program whose Flat instances live in Verify.lean"
+    "instance : Flat T (A × B × C) for a structure or enumeration of a verified_compile program"
   ],
   "modules": [
     "LeanExe.Pipeline.Implements",

@@ -38,8 +38,8 @@ Default output directories lie under `build/`.  The native execution drivers rec
 
 `tests/verified/run.sh --check-bytes DIR` reads reference modules from `DIR` and writes fresh
 emissions to `build/byte-check/verified/`.  The
-[full-check procedure](../docs/leanexe-manual.md#the-full-check) gives the build, emission,
-comparison, and execution order.
+[full check](../docs/verified-manual.md#the-full-check) gives the order of the build and the
+drivers.
 
 The native tests require CompCert 3.18's `ccomp` and `clightgen` from one configured tree.
 Bare-metal execution also requires `qemu-system-aarch64`.  The Wasmtime and WebGPU tests use

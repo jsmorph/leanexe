@@ -18,7 +18,7 @@
 # and the case executable it runs, in one `lake build` under tools/leanrun with the caller's
 # LEANRUN_THREADS and LEANRUN_MEMORY_HIGH, since `lean` and `lean --run` read a module's compiled
 # file without checking it against the source.  Building the memory-heavy numerical proofs and
-# `Verified Library` first, with the limits of docs/leanexe-manual.md, keeps that build within
+# `Verified Library` first, with the limits of docs/verified-manual.md, keeps that build within
 # the caller's memory limit.
 # Usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]
 set -euo pipefail
