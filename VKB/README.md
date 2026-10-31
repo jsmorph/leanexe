@@ -1,6 +1,6 @@
 # Verification knowledge base (VKB)
 
-The VKB collects what agents and people learn while proving properties of programs that the verified compiler compiles: lemmas, proof recipes, worked examples, and the ways proofs fail.  The compiler's universal theorem gives every accepted program its execution theorem, `p.f.implements`, so the work that remains comes after it.  That work includes equality with an independent specification, call and file theorems, allocation bounds for `p.f.trapFree`, numerical error bounds, WASI totality, and native and bare-metal results.  No compiler, runtime, or trusted statement imports the VKB, so an entry can help a proof or fail its own check but cannot change a theorem.
+The VKB collects what agents and people learn while proving properties of programs that the verified compiler compiles: lemmas, proof recipes, worked examples, and the ways proofs fail.  The compiler's universal theorem gives every accepted program its execution theorem, `p.f.implements`, so the work that remains comes after it.  That work includes equality with an independent specification, call and file theorems, allocation bounds for `p.f.trapFree`, numerical error bounds, WASI totality, and native and bare-metal results.  The verified compiler, the runtime, and the trusted statements import no part of the VKB, so an entry can help a proof or fail its own check but cannot change a theorem.
 
 ## Entries
 
@@ -26,7 +26,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Closed-form allocation bounds](entries/verified-bound-closed-form/README.md) | Bounds the generated allocation term in input sizes or in counts of loop passes. |
 | [Source forms and costs](entries/verified-source-costs/README.md) | Relates source choices, such as arrays kept in a loop's state, to allocation, generated bounds, and compilation cost. |
 | [Array literals, proposition tests, and structure patterns](entries/reflector-forms/README.md) | Explains the reflected code and allocation charges of these forms, and the structure patterns that the reflector reads and those it rejects. |
-| [Representations of structures and enumerations](entries/flat-instances/README.md) | Describes the `Flat` instances that the reflector needs for user types, and where a port of a LeanExe program puts them. |
+| [Representations of structures and enumerations](entries/flat-instances/README.md) | Describes the `Flat` instances that the reflector needs for user types, and the module that holds them. |
 | [Tail-termination cases](entries/tail-termination-cases/README.md) | Diagnoses remaining functional-induction cases in a tail-loop proof. |
 | [Mutual execution induction](entries/mutual-relation-induction/README.md) | Proves statements over mutually inductive WASI or Clight executions. |
 | [Partial loop correctness](entries/partial-wasm-loop/README.md) | States the result of a completed Wasm loop while its termination proof remains separate. |
@@ -42,9 +42,7 @@ An entry names existing declarations instead of restating them.  When several pr
 
 ## Admission and growth
 
-Every proof task ends with proposals for new entries or changes to existing ones, in the form of the template, as [the repository instructions](../AGENTS.md#verification-knowledge-base) require.  A reviewer admits a proposal when its guidance applies beyond the task, its declarations exist, and no entry already covers it.  Otherwise the reviewer merges it into an existing entry or declines it with a reason.
-
-The VKB has no fixed list of categories.  A prover finds an entry by the declarations and goals it names, so the scope grows with the work.  Entries that the work no longer needs leave only when they are wrong, stale, or duplicated without a distinct lesson.
+Every proof task ends with proposals for new entries or changes to existing ones, in the form of the template, as [the repository instructions](../AGENTS.md#verification-knowledge-base) require.  A reviewer admits a proposal when its guidance applies beyond the task, its declarations exist, and no entry already covers it.  Otherwise the reviewer merges it into an existing entry or declines it with a reason.  A prover finds an entry by the declarations and goals it names, so the scope of the VKB grows with the work.  An entry leaves only when it is wrong, stale, or a duplicate without a distinct lesson.
 
 ## Check
 
@@ -54,8 +52,4 @@ The VKB has no fixed list of categories.  A prover finds an entry by the declara
 tools/leanrun --timeout 10m lake env lean --run VKB/Check.lean VKB/entries
 ```
 
-The check catches renamed and removed declarations, but not guidance that a change to the compiler or the library has made wrong.  After such a change, reread the entries that name the changed declarations.  A module that reads a file at elaboration, such as a file-theorem module, does not belong in `modules`, because the check would then depend on emitted files.
-
-## Entries from LTG
-
-LTG, the knowledge base of the LeanExe compiler's per-program proofs, named that compiler's rule lemmas in its hints, and the repository no longer holds it.  The entries on array layout, write ranges, raw locals, calls with operands below the arguments, and region frames restate LTG's general entries without those rules.  Their ids are the ids of the LTG entries.
+The check catches renamed and removed declarations, but not guidance that a change to the verified compiler or the library has made wrong.  After such a change, reread the entries that name the changed declarations.  A module that reads a file at elaboration, such as a file-theorem module, does not belong in `modules`, because the check would then depend on emitted files.

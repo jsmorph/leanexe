@@ -31,8 +31,8 @@ What fails: approaches that look right and do not work, with the reason.
 Worked example: the finished proofs that use it.
 ```
 
-The four parts are a guide, not headings.  Merge or drop a part that has nothing to say, and write each paragraph in full sentences.
+Write the four parts as paragraphs without headings, merge or drop a part that has nothing to say, and write each paragraph in full sentences.
 
-## Internal References
+## Internal references
 
 - [Verification knowledge base (VKB): Check](README.md#check)
