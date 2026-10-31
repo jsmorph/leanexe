@@ -5,9 +5,9 @@
 [The request](request.txt) asks for an array of at most eight words without its first zero, with the
 other words in order, for the input itself when it has no zero, and for the empty array when the
 input is longer.  [The specification](Spec.lean) states that behavior with `Array.findIdx?` and
-`Array.eraseIdx!`.  The verified compiler reads neither `Array.findIdx?`, which returns an `Option`, nor
-`Array.eraseIdx!`, so [the program](Program.lean) computes the same array another way.  `firstZero`
-is a loop over the first `count` words that keeps the index of the first zero, or `count` when there
+`Array.eraseIdx!`.  The verified compiler reads neither `Array.findIdx?`, which returns an
+`Option`, nor `Array.eraseIdx!`, so [the program](Program.lean) computes the same array another
+way.  `firstZero` is a loop over the first `count` words that keeps the index of the first zero, or `count` when there
 is none, and `compute` builds the result by copying the words before that index and shifting the
 rest down by one.  The command `verified_compile compiled := [firstZero, compute]` in [the verified
 compilation](Compiled.lean) compiles both functions into a 1,882-byte module.

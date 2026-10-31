@@ -58,7 +58,7 @@ CompCert.  The cases state that no call allocates a block.
 ## Related examples
 
 [`Calc`](../Calc/README.md) and [`Shape`](../Shape/README.md) have user enumerations, structures,
-and sums, which the compiler represents the same way.  [`Grids`](../Grids/README.md) stores `Bool`
+and sums, which the verified compiler represents the same way.  [`Grids`](../Grids/README.md) stores `Bool`
 values in arrays and in record fields.  [`Piecewise`](../Piecewise/README.md) uses the float
 comparisons inside conditionals instead of returning them.
 

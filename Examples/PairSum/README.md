@@ -5,9 +5,9 @@
 [The program](Program.lean) returns `a + b` by folding addition over the array literal `#[a, b]`.
 The array exists only inside the call.  `verified_compile compiled := [pairSum]` in [the verified
 compilation](Compiled.lean) compiles the definition into the 2,088-byte `pairSum.wasm` of [the
-module registry](../../tests/verified/modules.txt).  The reflector reads
-`#[a, b]` as two pushes onto `#[]`, so the module allocates an empty block on its heap, grows it at
-each push, folds over it, and releases it before returning.
+module registry](../../tests/verified/modules.txt).  The reflector reads `#[a, b]` as two pushes
+onto `#[]`, so the module allocates an empty block on its heap, grows it at each push, folds over
+it, and releases it before returning.
 
 ## Theorems of a call that allocates and frees
 
@@ -51,6 +51,7 @@ theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.
 
 [`SumCount`](../SumCount/README.md) returns its array literal to the caller instead of releasing it.
 [`SumArray`](../SumArray/README.md) folds over an array that the caller passes in.
+[`Lists`](../Lists/README.md) builds a temporary list in `sumRange` and releases it after the fold.
 
 ## References
 

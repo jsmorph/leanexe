@@ -8,8 +8,8 @@ specification](Spec.lean) states it with `Array.filter`.  [The program](Program.
 with `LeanExe.repeatWhile` over the first `count` elements, where `count` is the input's size when
 it is at most eight and 0 otherwise.  `keep` takes the input, an index, and the output array, which
 it consumes: it pushes the element onto the output in place when the element is less than 100.  The
-verified compiler does not read `Array.filter`, so the program builds the output with `push`, which moves the output
-to a larger block when the block is full.  `verified_compile compiled := [keep, compute]` in [the
+verified compiler does not read `Array.filter`, so the program builds the output with `push`, which
+moves the output to a larger block when the block is full.  `verified_compile compiled := [keep, compute]` in [the
 verified compilation](Compiled.lean) compiles both definitions into a 2,118-byte module.
 
 ## The bytes compute the filter

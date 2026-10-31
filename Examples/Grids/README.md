@@ -14,10 +14,10 @@ module registry](../../tests/verified/modules.txt).  The registry names it `exam
 
 ## The flat layout and default records
 
-An array of records of `k` components stores each element's components in order, one word each, so
-element `i` occupies words `i · k` to `i · k + k − 1`, and the length word holds `n · k`.  The
+An array of `n` records of `k` components stores each element's components in order, one word each,
+so element `i` occupies words `i · k` to `i · k + k − 1`, and the length word holds `n · k`.  The
 theorems represent an `Array α` of a flat `α` as `flatWords xs`, which [the verified compiler
-manual](../../docs/verified-manual.md#representations) defines.  The reflector needs the `Flat`
+manual](../../docs/verified-manual.md#representations) describes.  The reflector needs the `Flat`
 instances of `Phase`, `Conserved`, `Cell`, and `Mass`, which [`Flat.lean`](Flat.lean) states: a
 phase as the word of its constructor index, and a state, a cell, and a mass as their fields in
 declaration order.  A read past the end returns Lean's default record, and the reflector checks in

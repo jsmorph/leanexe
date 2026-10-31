@@ -2,9 +2,9 @@
 
 ## Request and programs
 
-This example computes three folds of an array of words: the wrapping sum, the wrapping product, and
-the bitwise exclusive or.  [The request](request.txt) asks for the three folds over an array of any
-length, with scalar results.  The request defines each result as a left fold, so each program is its
+This example computes the wrapping sum, the wrapping product, and the bitwise exclusive or of an
+array of words.  [The request](request.txt) asks for these folds over an array of any length, with
+scalar results.  The request defines each result as a left fold, so each program is its
 own specification.
 
 The implementations live in [the word-reduction
@@ -63,7 +63,8 @@ of both file theorems to name only `propext`, `Classical.choice`, and `Quot.soun
 [`SumSquares`](../../Library/Numerics/Statistics/SumSquares/README.md) and
 [`Mean`](../../Library/Numerics/Statistics/Mean/README.md) fold over arrays of floats.
 [`PairSum`](../PairSum/README.md) folds over a temporary array, and [`Lists`](../Lists/README.md)
-folds over a list.
+folds over a list.  [`SumCount`](../SumCount/README.md) returns the sum with the array's size in an
+array literal.
 
 ## References
 

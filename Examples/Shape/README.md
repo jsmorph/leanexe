@@ -71,7 +71,7 @@ generator](../../tests/TestSupport/Native/ModuleCases.lean).
 
 ## Related examples
 
-[`Calc`](../Calc/README.md) has an enumeration and a structure, the two simpler kinds of user type.
+[`Calc`](../Calc/README.md) has an enumeration and a structure, the simpler kinds of user type.
 [`Grids`](../Grids/README.md) stores an enumeration and structures in arrays.
 [`Words`](../Words/README.md) and [`Trees`](../Trees/README.md) have recursive types, which the
 verified compiler stores on the heap as records instead of in locals.

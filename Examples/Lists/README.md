@@ -5,14 +5,12 @@
 [The program](Program.lean) has functions on Lean's `List UInt64`.  `listSum` folds addition
 over a list, `listRange n` builds the words below `n` in increasing order with a loop that puts one
 cell in front at each step, and `sumRange n` builds `listRange n`, sums it, and releases it.
-`verified_compile compiled := [listSum, listRange, sumRange]` in [the verified
-compilation](Compiled.lean) compiles the definitions into the 1,975-byte `exampleLists.wasm` of [the
-module registry](../../tests/verified/modules.txt).  The registry names it `exampleLists`, since
-`lists` names [the list fixture](../../Verified/Examples/Lists.lean) of the verified compiler.
-
-The sum and range implementations come from [the word-list library](../../Library/Lists/README.md).
-The reflector inlines the library's `range` into `listRange`.  The example retains the composition
-that builds and releases a temporary list.
+`listSum` and `range` come from [the word-list library](../../Library/Lists/README.md), and the
+reflector inlines `range` into `listRange`.  `verified_compile compiled := [listSum, listRange,
+sumRange]` in [the verified compilation](Compiled.lean) compiles the definitions into the
+1,975-byte `exampleLists.wasm` of [the module registry](../../tests/verified/modules.txt).  The
+registry names it `exampleLists`, since `lists` names [the list
+fixture](../../Verified/Examples/Lists.lean) of the verified compiler.
 
 ## Lists as chains of heap records
 
