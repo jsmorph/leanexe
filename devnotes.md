@@ -39527,3 +39527,35 @@ The reviewer also found that the study's 10 kW import cap has no counterpart at 
 The earlier "0.6 to 2 s" for tested equipment had no source and is wrong.  The recommendation to keep the caps as they are rested on the wrong comparison.
 
 Decision (user, 2026-10-31): correct the study only; keep instantaneous caps.  The study's import cap is now 24 kW, a 100 A, 240 V service, above the house's largest minute load of 22.9 kW.  With it, the import test rejects at most 1.0% of snapshots on the calibration year, the export test 4.0% to 7.5%, and the authorizer costs the controller $21 to $48 a year on the withheld year, against $133 to $263 at 10 kW.  The criterion for `W`, applied to the corrected calibration-year bills ($1,921, $1,924, $1,935, and $1,948 for 180, 300, 600, and 900 s), now gives 600 s.  The report and the plan carry the corrected results.  The first attempt at the economic reruns failed because the shell variables were set inside the first backgrounded group only, so the other groups wrote to `/`.
+
+## 2026-10-31: Review of the energy work
+
+Three fresh reviewers read the energy work: one the Lean code, the case generator, `tests/verified/run.sh`, and the replay tool; one the README, the replay report, and the docstrings; and one the plan.  The code reviewer found a defect in the data.  `prepare` set the seconds of each NIST timestamp to 0 and summed the rows of one file that fell in the same minute, which happens because NIST's timestamps drift within the minute.  The merged minutes produced every PV value above 10.5 kW that the report had kept as implausible readings.  `prepare` now marks such a minute missing and prints the count, 34 minutes in 2013–14 and 21 in 2015–16, and every replay ran again.  The largest PV minute is now 10,039 W, the causal rule's largest widening of PV at 900 s fell from 8,779 W to 7,610 W, and the calibration-year bills moved by at most $1, so the criterion still gives `W = 600` s.
+
+### Fixes
+
+| Finding | Fix |
+|---|---|
+| `operation_sound`, `authorizeWith_operation`, and `authorize_operation` did not name the window whose premises a caller supplies | Their conclusions include `Run.Between j t` |
+| `run.sh` ran the axiom audits without reading their output, so an extra axiom passed | `check_axioms` parses every report and fails on a missing report or an axiom beyond `propext`, `Classical.choice`, and `Quot.sound`, and the slew audit uses it too |
+| No case let the range checks of words 2, 7, and 9 fail first, or sat on a range's end, and the input of all ones stopped at the version check | Cases for each, 2,056 in all |
+| The site's profile divides exactly, so no case detects a drain that rounds down | `replay.py check` also tests `drain_low` under `η = 900,001` ppm |
+| Run-on counted charging, `within` read UTC stamps as local time, `check` passed an empty file, and the controller read the simulated energy instead of the snapshot's estimate | Each corrected, with no change in the bills |
+| The report cited figures that the tool could not produce | `--import-cap`, `--estimate`, and `calibration` produce them, and the report lists every command |
+| `run_sound` took the conditions of every window of the run | It takes the conditions of its own window |
+| `affine_ge` and `affine_le` repeated one `nlinarith` call in two branches | `by_cases hr : 0 ≤ r <;> nlinarith` |
+| Stale and unclear prose in all three documents and in the docstrings | README, report, and plan rewritten, and docstrings corrected and wrapped at 100 characters |
+
+The documents now state the tests as formulas, define every table column, present limits as the command form, and describe only the present.  The plan has a Decisions section, a status column for the stages, a table that maps each gateway rule to its formal counterpart, a summary of the replay's results, and links for every source it relies on.  The UL 9540 and UL 1741 listings have no page that answers an automated request, so the plan links UL Solutions' page on energy storage certification, which covers both.
+
+### Suggestions not applied
+
+| Suggestion | Reason |
+|---|---|
+| Drop the range checks of the lower ends of words 2, 7, and 9, which `inputValid_iff` derives | Status `range` then reports every word outside its range, as the interface states, and the new cases test the three checks |
+| One lemma for the drain's bounds that `lowDrain_toNat` and `floorOk_iff` repeat | It saves about eight lines at the cost of a lemma whose statement repeats three bounds |
+| Remove `chargeMax`, `dischargeMax`, and `sendDeadline` from `Profile` | The record reads every word of the table, so the specification shows the whole profile |
+
+- [x] Lean, case, `run.sh`, and replay-tool fixes, with the build and 2,056 cases passing on minideb2.
+- [x] Data prepared again and every replay rerun.
+- [x] README, report, and plan rewritten.

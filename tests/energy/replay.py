@@ -10,18 +10,21 @@ Lean program, with exact integer arithmetic, and runs it on cases and on histori
     uv run tests/energy/replay.py check CASES
     uv run tests/energy/replay.py prepare NIST_YEAR_DIR SERIES
     uv run tests/energy/replay.py margins CALIBRATION EVALUATION
-    uv run tests/energy/replay.py economics CALIBRATION EVALUATION --window W [--open-caps]
+    uv run tests/energy/replay.py economics CALIBRATION EVALUATION --window W ...
+        [--open-caps] [--import-cap WATTS] [--estimate previous|mean]
     uv run tests/energy/replay.py calibration CALIBRATION --window W
     uv run tests/energy/replay.py within NET_LOAD_FILE PV_FILE
 
 `check` compares the decisions of the module cases that `lake exe verified-cases-energy` prints
-with the tool's decisions for the test site's profile.  `prepare` reads the minute files of one
-test year of NIST's Net-Zero Energy Residential Test Facility and writes the house's load and PV
-power for each minute.  `margins` replays the self-consumption rule through the authorizer for
-each window length, tracking tolerance, efficiency bound, interval rule, and set of grid caps,
-and `economics` compares the bills of the dispatch policies.  Both calibrate the causal interval
-rule on the first series and report on the second, and `calibration` prints that rule's widening.
-`within` compares one-second extremes with minute extremes in one house-year of PTProsumer data.
+with the tool's decisions for the test site's profile, and tests the rounding of the drain under
+a profile whose division is inexact.  `prepare` reads the minute files of one test year of NIST's
+Net-Zero Energy Residential Test Facility and writes the house's load and PV power for each
+minute.  `margins` replays the self-consumption rule through the authorizer for each window
+length, tolerance, efficiency bound, interval rule, percentile, and set of grid caps, and
+`economics` compares the bills of the dispatch policies.  Both calibrate the causal interval rule
+on the first series and report on the second, and `calibration` prints that rule's largest
+widening in each month.  `within` compares one-second extremes with minute extremes in one
+house-year of PTProsumer data.
 """
 import argparse
 import csv
@@ -29,9 +32,9 @@ import dataclasses
 import gzip
 import math
 import sys
-from collections import deque
+from collections import Counter, deque
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fractions import Fraction
 
 OFFSET = 2**32
@@ -72,7 +75,7 @@ class Snapshot:
     time: int
     energy_low: int
     energy_high: int
-    held: tuple[int, int] | None
+    in_force: tuple[int, int] | None
     load_low: int
     load_high: int
     pv_low: int
@@ -83,8 +86,8 @@ def power_bounds(p: Profile, q: Snapshot, low: int, high: int) -> tuple[int, int
     """The window's power interval `B`: the hull of the state in force, `[low - e, high + e]`,
     and `F`, where a setpoint `s` has `low = high = s`."""
     e = p.tolerance
-    held = ((p.fallback_low, p.fallback_high) if q.held is None
-            else (q.held[0] - e, q.held[1] + e))
+    held = ((p.fallback_low, p.fallback_high) if q.in_force is None
+            else (q.in_force[0] - e, q.in_force[1] + e))
     return min(held[0], low - e, p.fallback_low), max(held[1], high + e, p.fallback_high)
 
 
@@ -96,7 +99,7 @@ def drain_low(p: Profile, b_low: int) -> int:
 
 def decide(p: Profile, q: Snapshot, low: int, high: int) -> str:
     """The side tests of the acceptance rule for a valid snapshot and command limits within the
-    setpoint limits."""
+    largest discharge and charge."""
     b_low, b_high = power_bounds(p, q, low, high)
     if b_low < p.fallback_low:
         if q.load_low + b_low + p.export_cap < q.pv_high:
@@ -140,10 +143,11 @@ def authorize(p: Profile, words: list[int]) -> tuple[str, int, int, int]:
 
 def accepted_range(p: Profile, q: Snapshot) -> tuple[int, int] | None:
     """The largest discharge and the largest charge that the rule accepts, or `None` when it
-    accepts no setpoint.  When `F` contains `[-e, e]` the accepted setpoints form an interval
-    that contains 0 whenever it is not empty, because `B⁻` falls and `B⁺` rises with `s`.  The
-    lower side depends only on the lower limit and the upper side only on the upper limit, so the
-    two results are also the widest limits that the rule accepts."""
+    accepts no setpoint.  When `F` contains `[-e, e]`, a setpoint `s ≥ 0` leaves `B⁻` fixed and
+    raises `B⁺` as it grows, and a setpoint `s ≤ 0` leaves `B⁺` fixed and lowers `B⁻` as it falls,
+    so the accepted setpoints form an interval that contains 0 whenever it is not empty.  The lower
+    side depends only on the lower limit and the upper side only on the upper limit, so the two
+    results are also the widest limits that the rule accepts."""
     if decide(p, q, 0, 0) != "accepted":
         return None
     lo, hi = 0, p.charge_max
@@ -175,7 +179,10 @@ def check(path: str) -> int:
                 failures += 1
                 print(f"mismatch: {words}: module {index} {low} {high} {expiry}, replay {got}")
     print(f"replay check: {count} cases, {failures} mismatches")
-    return 1 if failures else 0
+    # 1,050 W for 900 s at 900,001 ppm drains 1,049,998.83 J, which rounds up, plus 18,000 J.
+    rounding = drain_low(dataclasses.replace(SITE, eta=900_001), -1050) == 1_067_999
+    print(f"replay check: drain rounded up under an inexact division: {rounding}")
+    return 1 if failures or not count or not rounding else 0
 
 
 # The NIST test house.  Load is the sum of the channels below: every circuit of the house, the
@@ -185,6 +192,8 @@ def check(path: str) -> int:
 # that sum circuits.  PV is the power that the inverters feed into the panel.  A channel that is
 # empty for a whole year is absent from that year.  A minute in which another channel reads below
 # -100 W or is empty is missing, and so is every minute of a day with more than 60 such minutes.
+# The timestamps drift within the minute, so two rows of one file can fall in the same minute, and
+# such a minute is missing too.
 ELEC_EXCLUDED = {
     "Elec_PowerPV1of2", "Elec_PowerPV2of2", "Elec_PowerHeatPumpWH1of2", "Elec_PowerHeatPumpWH2of2",
     "Elec_PowerParentADownstairs", "Elec_PowerParentBDownstairs", "Elec_PowerParentAUpstairs",
@@ -226,7 +235,8 @@ def prepare(directory: str, out: str) -> int:
                 count[name] = count.get(name, 0) + 1
                 stamp = datetime.fromisoformat(row[0]).replace(second=0)
                 minute = int(stamp.timestamp()) // 60
-                entry = rows.setdefault(minute, [stamp, 0.0, 0.0, set(), set()])
+                entry = rows.setdefault(minute, [stamp, 0.0, 0.0, set(), set(), False])
+                entry[5] = entry[5] or name in entry[3]
                 entry[3].add(name)
                 for c, i, is_pv in cols:
                     if row[i] == "":
@@ -244,8 +254,9 @@ def prepare(directory: str, out: str) -> int:
         entry[4] -= absent
         errors[entry[0].date()] = errors.get(entry[0].date(), 0) + bool(entry[4])
     bad_days = {day for day, n in errors.items() if n > BAD_DAY}
-    missing = negative = dropped = 0
+    missing = negative = dropped = doubled = 0
     energy = [0.0, 0.0]
+    max_load = max_pv = 0
     with open(out, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["minute", "local", "load", "pv"])
@@ -257,6 +268,9 @@ def prepare(directory: str, out: str) -> int:
             if entry[0].date() in bad_days:
                 dropped += 1
                 continue
+            if entry[5]:
+                doubled += 1
+                continue
             load, pv = round(entry[1]), round(entry[2])
             if entry[4] or load < 0 or pv < 0:
                 negative += 1
@@ -264,10 +278,12 @@ def prepare(directory: str, out: str) -> int:
             w.writerow([minute, entry[0].isoformat(), load, pv])
             energy[0] += load / 60_000
             energy[1] += pv / 60_000
+            max_load, max_pv = max(max_load, load), max(max_pv, pv)
     print(f"{out}: {last - first + 1} minutes, {missing} missing, channels empty all year "
           f"{sorted(absent)}, {len(bad_days)} days with more than {BAD_DAY} error readings "
-          f"({dropped} minutes), {negative} other minutes with an error reading; "
-          f"load {energy[0]:.0f} kWh, PV {energy[1]:.0f} kWh")
+          f"({dropped} minutes), {doubled} minutes with two rows of one file, {negative} other "
+          f"minutes with an error reading; load {energy[0]:.0f} kWh, PV {energy[1]:.0f} kWh, "
+          f"largest load {max_load} W, largest PV {max_pv} W")
     return 0
 
 
@@ -425,13 +441,13 @@ START_ENERGY = 22_500_000
 
 @dataclass(frozen=True)
 class Plant:
-    """The simulated battery: its efficiencies and loss, the offset of its power from the state in
-    force, and where its energy lies in the snapshot's interval of width `2 * ENERGY_ERROR`: -1 at
-    the lower end, 0 in the middle, 1 at the upper end."""
+    """The simulated battery: its efficiencies and loss, the difference of its power from the
+    command, and where its energy lies in the snapshot's interval of width `2 * ENERGY_ERROR`: -1
+    at the lower end, 0 in the middle, 1 at the upper end."""
     eta_charge: float = ETA_CHARGE
     eta_discharge: float = ETA_DISCHARGE
     loss: float = LOSS
-    offset: int = 0
+    power_offset: int = 0
     position: int = 0
 
     def rate(self, b: float) -> float:
@@ -467,8 +483,8 @@ def extremes(p: Profile) -> list[Plant]:
 def fallback_breaks(p: Profile, q: Snapshot) -> tuple[bool, bool, bool, bool]:
     """Whether the worst case of an immediate return to fallback breaks the floor, the ceiling,
     the export cap, and the import cap within the window."""
-    return (q.energy_low < p.floor or q.energy_low - drain_low(p, p.fallback_low) < p.floor,
-            q.energy_high > p.ceiling or q.energy_high + p.fallback_high * p.window > p.ceiling,
+    return (q.energy_low - drain_low(p, p.fallback_low) < p.floor,
+            q.energy_high + p.fallback_high * p.window > p.ceiling,
             q.load_low + p.fallback_low + p.export_cap < q.pv_high,
             q.load_high + p.fallback_high > p.import_cap + q.pv_low)
 
@@ -513,12 +529,10 @@ class Window:
 
 @dataclass
 class Totals:
-    minutes: int = 0
     snapshots: int = 0
     skipped: int = 0
     accepted: int = 0
     statuses: dict = dataclasses.field(default_factory=dict)
-    no_setpoint: int = 0
     charge: list = dataclasses.field(default_factory=list)
     discharge: list = dataclasses.field(default_factory=list)
     breaks: list = dataclasses.field(default_factory=lambda: [0, 0, 0, 0])
@@ -537,7 +551,6 @@ class Totals:
     curtailed: float = 0.0
     discharged: float = 0.0
     lowest: float = math.inf
-    below_floor: int = 0
 
 
 def account(t: Totals, p: Profile, s: Series, k: int, b: float, energy: float) -> None:
@@ -545,7 +558,6 @@ def account(t: Totals, p: Profile, s: Series, k: int, b: float, energy: float) -
     grid = s.load[k] + b - s.pv[k]
     exported = min(-grid, p.export_cap) if grid < 0 else 0.0
     imported = max(grid, 0.0)
-    t.minutes += 1
     t.imported += imported / 60_000
     t.exported += exported / 60_000
     t.curtailed += (max(-grid, 0.0) - exported) / 60_000
@@ -553,20 +565,21 @@ def account(t: Totals, p: Profile, s: Series, k: int, b: float, energy: float) -
                - exported * EXPORT_CREDIT) / 60_000
     t.discharged += max(-b, 0.0) / 60_000
     t.lowest = min(t.lowest, energy - p.floor)
-    t.below_floor += energy < p.floor
 
 
-def replay(p: Profile, s: Series, iv: Intervals, propose, margins: bool, gate: bool = True,
+def replay(p: Profile, s: Series, iv: Intervals, propose, search: bool, gate: bool = True,
            plant: Plant = NOMINAL, follow: bool = False) -> Totals:
-    """Replays the gateway's rules with one snapshot a minute.  `propose(k, q, energy)` returns
-    command limits, `(s, s)` for a setpoint `s`, or `None`.  The device follows a command from the
-    start of its snapshot's minute until its expiry and runs in the idle fallback otherwise.  A
-    setpoint holds its power, and with `follow` the device's own self-consumption mode follows
-    each minute's net load within the limits, the floor, and the ceiling, and idles within the
-    limits when the minute's data are missing.  Each accepted window's
-    conclusion is checked at the end of every minute up to which its premises held.  Run-on is the
-    energy that a command delivers after a later snapshot's proposal is rejected or absent.
-    Without `gate` the gateway sends every proposal, as if the authorizer accepted it."""
+    """Replays the gateway's rules with one snapshot a minute.  `propose(k, q)` returns command
+    limits, `(s, s)` for a setpoint `s`, or `None`.  The device follows a command from the start
+    of its snapshot's minute until the first minute boundary at or after its expiry, and runs in
+    the idle fallback otherwise.  Without `follow` it holds the lower limit, which for a setpoint
+    `(s, s)` is `s`.  With `follow` the device's own self-consumption mode follows each minute's
+    net load within the limits, the floor, and the ceiling, and idles within the limits when the
+    minute's data are missing.  Each accepted window's conclusion is checked at the end of every
+    minute up to which its premises held.  Run-on is the energy that a command discharges after a
+    later snapshot's proposal is rejected or absent.  With `search` each snapshot's largest
+    accepted charge and discharge are recorded.  Without `gate` the gateway sends every proposal,
+    as if the authorizer accepted it."""
     t = Totals()
     minutes = p.window // 60
     energy = float(START_ENERGY)
@@ -589,12 +602,11 @@ def replay(p: Profile, s: Series, iv: Intervals, propose, margins: bool, gate: b
                 t.by_month[s.month[k] - 1][1] += iv.covered[k]
                 for i, broken in enumerate(fallback_breaks(p, q)):
                     t.breaks[i] += broken
-                if margins:
+                if search:
                     r = accepted_range(p, q)
-                    t.no_setpoint += r is None
                     t.discharge.append(-r[0] if r else 0)
                     t.charge.append(r[1] if r else 0)
-                limits = propose(k, q, energy)
+                limits = propose(k, q)
                 stale = True
                 if limits is not None:
                     status = decide(p, q, *limits) if gate else "accepted"
@@ -617,11 +629,11 @@ def replay(p: Profile, s: Series, iv: Intervals, propose, margins: bool, gate: b
             target = min(command.high, max(command.low, net))
         elif command:
             target = command.low
-        target += plant.offset
+        target += plant.power_offset
         power, after = plant.step(energy, target)
         t.cutoffs += power != target
         if command and stale:
-            t.run_on += abs(power) / 60_000
+            t.run_on += max(-power, 0.0) / 60_000
         known = s.load[k] is not None
         grid = s.load[k] + power - s.pv[k] if known else 0.0
         still = []
@@ -650,10 +662,10 @@ def replay(p: Profile, s: Series, iv: Intervals, propose, margins: bool, gate: b
 
 
 def extreme_proposer(p: Profile):
-    """A proposer for the replay at the premises' extremes: the largest accepted discharge in even
-    hours and the largest accepted charge in odd hours, which drives the energy against the floor
-    and the ceiling."""
-    def propose(k: int, q: Snapshot, energy: float) -> tuple[int, int] | None:
+    """A proposer for the replay at the premises' extremes: the largest accepted discharge in the
+    even hours and the largest accepted charge in the odd hours, counted from the start of the
+    series, which drives the energy against the floor and the ceiling."""
+    def propose(k: int, q: Snapshot) -> tuple[int, int] | None:
         r = accepted_range(p, q)
         return None if r is None else (r[(k // 60) % 2],) * 2
     return propose
@@ -662,24 +674,28 @@ def extreme_proposer(p: Profile):
 def authorized_limits(p: Profile):
     """Power limits for the device's own self-consumption mode: the widest that the acceptance
     rule accepts."""
-    def propose(k: int, q: Snapshot, energy: float) -> tuple[int, int] | None:
+    def propose(k: int, q: Snapshot) -> tuple[int, int] | None:
         return accepted_range(p, q)
     return propose
 
 
-def self_consumption(p: Profile, s: Series):
-    """The vendor's self-consumption rule as a proposer: the last minute's surplus PV or deficit,
-    within the setpoint limits and the power that keeps the snapshot's estimate of the energy
-    between the floor and the ceiling for one minute."""
-    def propose(k: int, q: Snapshot, energy: float) -> tuple[int, int]:
-        estimate = (q.energy_low + q.energy_high) / 2
+def self_consumption(p: Profile, s: Series, estimate: str = "previous"):
+    """The vendor's self-consumption rule as a proposer: the net surplus PV or deficit, within the
+    largest charge and discharge and the power that keeps the snapshot's estimate of the energy
+    between the floor and the ceiling for one minute.  The net is the previous minute's, or with
+    `estimate` "mean" the mean of the previous and the present minute's, which estimates the net at
+    the snapshot instead of over the minute before it."""
+    def propose(k: int, q: Snapshot) -> tuple[int, int]:
+        energy = (q.energy_low + q.energy_high) / 2
         net = s.pv[k - 1] - s.load[k - 1]
+        if estimate == "mean" and s.load[k] is not None:
+            net = round((net + s.pv[k] - s.load[k]) / 2)
         if net > 0:
             v = min(net, p.charge_max,
-                    max(0, int(((p.ceiling - estimate) / 60 + LOSS) / ETA_CHARGE)))
+                    max(0, int(((p.ceiling - energy) / 60 + LOSS) / ETA_CHARGE)))
         else:
             v = max(net, -p.discharge_max,
-                    min(0, -int(((estimate - p.floor) / 60 - LOSS) * ETA_DISCHARGE)))
+                    min(0, -int(((energy - p.floor) / 60 - LOSS) * ETA_DISCHARGE)))
         return v, v
     return propose
 
@@ -725,23 +741,24 @@ def look_behind(s: Series) -> tuple[list[float], list[int]]:
     return store, peak
 
 
-def controller(p: Profile, s: Series, limit: bool, unlimited: list[int]):
+def controller(p: Profile, s: Series, limit: bool, unlimited: Counter, estimate: str = "previous"):
     """The rule-based optimizer: the self-consumption rule, except that before 3 p.m., when the
-    look-behind forecast has a surplus within 1,000 W of the export cap and stores half again the
-    room left below the ceiling, it charges only the surplus within 1,000 W of the cap, so that
+    look-behind forecast has a surplus above the export cap less 1,000 W and stores half again the
+    room left below the ceiling, it charges only the surplus above the cap less 1,000 W, so that
     the battery takes PV that the cap would curtail.  Every proposal stays within the power that
     keeps the snapshot's estimate of the energy between the floor and the ceiling for one minute,
-    and with `limit` within the range that the acceptance rule accepts."""
+    and with `limit` within the range that the acceptance rule accepts.  `unlimited` counts the
+    authorizer's status for each proposal before that limit."""
     store, peak = look_behind(s)
-    plain = self_consumption(p, s)
+    plain = self_consumption(p, s, estimate)
 
-    def propose(k: int, q: Snapshot, energy: float) -> tuple[int, int] | None:
-        want = plain(k, q, energy)[0]
+    def propose(k: int, q: Snapshot) -> tuple[int, int] | None:
+        want = plain(k, q)[0]
+        energy = (q.energy_low + q.energy_high) / 2
         if (want > 0 and s.hour[k] < 15 and peak[k] > p.export_cap - 1000
                 and store[k] > 1.5 * (p.ceiling - energy)):
             want = min(want, max(0, s.pv[k - 1] - s.load[k - 1] - p.export_cap + 1000))
-        unlimited[0] += 1
-        unlimited[1] += decide(p, q, want, want) == "accepted"
+        unlimited[decide(p, q, want, want)] += 1
         if not limit:
             return want, want
         r = accepted_range(p, q)
@@ -751,10 +768,6 @@ def controller(p: Profile, s: Series, limit: bool, unlimited: list[int]):
 
 def percent(a: float, b: float) -> str:
     return f"{100 * a / b:.1f}" if b else "-"
-
-
-def pct(xs: list[int], q: Fraction) -> int:
-    return quantile(xs, q) if xs else 0
 
 
 OPEN_CAPS = {"import_cap": POWER_BOUND, "export_cap": POWER_BOUND}
@@ -774,7 +787,8 @@ def margins_report(calibration: Series, evaluation: Series) -> None:
     free = replay(STUDY, evaluation, intervals(evaluation, 1, None),
                   self_consumption(STUDY, evaluation), False, gate=False)
     columns = "| Rule | Percentile | Caps | W (s) | e (W) | η (ppm) "
-    dispatch = [columns + "| Discharged (kWh) | Run-on (kWh) | Import (kWh) | Export (kWh) "
+    dispatch = [columns + "| Discharged (kWh) | Run-on discharge (kWh) | Import (kWh) "
+                "| Export (kWh) "
                 "| Curtailed (kWh) | Rejected by export, floor, import, ceiling (% of snapshots) |",
                 "|" + "---|" * 12]
     for name, t in (("Vendor's mode, each minute's own values", vendor_totals),
@@ -784,7 +798,8 @@ def margins_report(calibration: Series, evaluation: Series) -> None:
     margin = [columns + "| Largest charge: full, none beyond F (%), median (W) "
               "| Largest discharge: full, none beyond F (%), median (W) "
               "| Fallback breaks floor, ceiling, export, import (%) | Coverage (%) "
-              "| Window-minutes checked, violations | Premise failures, with a limit broken |",
+              "| Window-minutes checked, violations "
+              "| Windows ended by a premise failure, and of those with `WithinOrFallback` broken |",
               "|" + "---|" * 12]
     months = ["| Percentile | W (s) | " + " | ".join(str(m) for m in range(1, 13)) + " |",
               "|" + "---|" * 14]
@@ -807,8 +822,9 @@ def margins_report(calibration: Series, evaluation: Series) -> None:
                         f"| {t.exported:,.0f} | {t.curtailed:,.0f} | {rejected} |")
 
         def spread(xs, full, inside):
+            median = quantile(xs, Fraction(1, 2)) if xs else 0
             return (f"{percent(sum(x == full for x in xs), n)}, "
-                    f"{percent(sum(x <= inside for x in xs), n)}, {pct(xs, Fraction(1, 2)):,}")
+                    f"{percent(sum(x <= inside for x in xs), n)}, {median:,}")
         breaks = ", ".join(percent(b, n) for b in t.breaks)
         margin.append(head + f"| {spread(t.charge, p.charge_max, p.fallback_high - e)} "
                       f"| {spread(t.discharge, p.discharge_max, -p.fallback_low - e)} | {breaks} "
@@ -838,42 +854,52 @@ def margins_report(calibration: Series, evaluation: Series) -> None:
 
 
 def calibration_report(calibration: Series, minutes: int) -> None:
+    """The causal rule's largest widening of each bound over the hours of each month."""
     m = calibrate(calibration, minutes)
-    print(f"Causal rule's widening for W = {60 * minutes} s, by month and hour (W):")
-    for name in ("load_up", "load_down", "pv_up", "pv_down"):
-        print(f"  {name}: {getattr(m, name)}")
+    print("| Month | Load up (W) | Load down (W) | PV up (W) | PV down (W) |")
+    print("|---|---|---|---|---|")
+    for month in range(12):
+        cells = " | ".join(f"{max(getattr(m, name)[month]):,}"
+                           for name in ("load_up", "load_down", "pv_up", "pv_down"))
+        print(f"| {month + 1} | {cells} |")
 
 
 def economics_report(calibration: Series, evaluation: Series, windows: list[int],
-                     open_caps: bool) -> None:
-    """The bills of Stage 3: no battery, the vendor's two modes, and the controller through the
-    authorizer with the causal rule, for each window length."""
-    p = dataclasses.replace(STUDY, **(OPEN_CAPS if open_caps else {}))
+                     caps: dict, estimate: str) -> None:
+    """The bills of Stage 3: no battery, the vendor's self-consumption mode and time-of-use
+    schedule, the self-consumption rule and the controller as one-minute commands with every
+    proposal sent, and, for each window length, the controller through the authorizer and the
+    vendor's mode within authorized limits, both with the causal rule."""
+    p = dataclasses.replace(STUDY, **caps)
     results = [("No battery", vendor(dataclasses.replace(p, charge_max=0, discharge_max=0),
                                      evaluation, False)),
                ("Self-consumption mode", vendor(p, evaluation, False)),
                ("Time-of-use schedule", vendor(p, evaluation, True)),
                ("Self-consumption rule, one-minute commands, every proposal sent",
                 replay(p, evaluation, intervals(evaluation, 1, None),
-                       self_consumption(p, evaluation), False, gate=False)),
+                       self_consumption(p, evaluation, estimate), False, gate=False)),
                ("Controller, every proposal sent",
                 replay(p, evaluation, intervals(evaluation, 1, None),
-                       controller(p, evaluation, False, [0, 0]), False, gate=False))]
+                       controller(p, evaluation, False, Counter(), estimate), False,
+                       gate=False))]
     notes = []
     for w in windows:
         pw = dataclasses.replace(p, window=w)
         iv = intervals(evaluation, w // 60, calibrate(calibration, w // 60))
-        unlimited = [0, 0]
-        t = replay(pw, evaluation, iv, controller(pw, evaluation, True, unlimited), False)
+        unlimited: Counter = Counter()
+        t = replay(pw, evaluation, iv, controller(pw, evaluation, True, unlimited, estimate),
+                   False)
         results.append((f"Controller through the authorizer, W = {w} s", t))
         lt = replay(pw, evaluation, iv, authorized_limits(pw), False, follow=True)
         results.append((f"Self-consumption mode within authorized limits, W = {w} s", lt))
         notes.append(f"Limits, W = {w} s: {lt.snapshots:,} snapshots, {lt.accepted:,} accepted, "
-                     f"run-on {lt.run_on:,.0f} kWh, window-minutes checked {lt.checks:,} with "
-                     f"{lt.violations} violations")
+                     f"run-on discharge {lt.run_on:,.0f} kWh, window-minutes checked "
+                     f"{lt.checks:,} with {lt.violations} violations")
+        total = sum(unlimited.values())
         notes.append(f"W = {w} s: {t.snapshots:,} snapshots, {t.skipped} skipped, "
-                     f"{t.accepted:,} accepted, unlimited proposals accepted "
-                     f"{percent(unlimited[1], unlimited[0])}%, run-on {t.run_on:,.0f} kWh, "
+                     f"{t.accepted:,} accepted, statuses of the unlimited proposals (%) "
+                     + ", ".join(f"{x} {percent(n, total)}" for x, n in unlimited.most_common())
+                     + f", run-on discharge {t.run_on:,.0f} kWh, "
                      f"returns to fallback {t.fallbacks:,}, BMS cutoffs {t.cutoffs}, "
                      f"window-minutes checked {t.checks:,} with {t.violations} violations, "
                      f"coverage by month (%) "
@@ -914,7 +940,8 @@ def within_report(net_path: str, pv_path: str) -> None:
         if pv is None or pv[0] != stamp:
             continue
         load = net + pv[1]
-        m = minutes.setdefault(stamp[:16], [0, 0.0, math.inf, -math.inf, 0.0, math.inf, -math.inf])
+        m = minutes.setdefault(stamp[:16],
+                               [0, 0.0, math.inf, -math.inf, 0.0, math.inf, -math.inf])
         m[0] += 1
         m[1] += load
         m[2] = min(m[2], load)
@@ -922,13 +949,15 @@ def within_report(net_path: str, pv_path: str) -> None:
         m[4] += pv[1]
         m[5] = min(m[5], pv[1])
         m[6] = max(m[6], pv[1])
-    first = datetime.fromisoformat(min(minutes)).timestamp() // 60
-    last = datetime.fromisoformat(max(minutes)).timestamp() // 60
-    n = int(last - first) + 1
+    def minute(key: str) -> int:
+        return int(datetime.fromisoformat(key).replace(tzinfo=timezone.utc).timestamp()) // 60
+
+    first, last = minute(min(minutes)), minute(max(minutes))
+    n = last - first + 1
     rows: list = [None] * n
     for key, m in minutes.items():
         if m[0] >= 50:
-            rows[int(datetime.fromisoformat(key).timestamp() // 60 - first)] = m
+            rows[minute(key) - first] = m
     print(f"{len(minutes):,} minutes with data, {sum(r is not None for r in rows):,} with at least "
           "50 seconds\n")
     print("| W (s) | Windows | Load above the minute maximum: p50, p90, p99, p99.9 (W) "
@@ -966,12 +995,19 @@ def main() -> int:
     c = commands.add_parser("within")
     c.add_argument("net")
     c.add_argument("pv")
-    for name in ("margins", "economics", "calibration"):
-        c = commands.add_parser(name)
-        c.add_argument("calibration")
-        c.add_argument("evaluation", nargs="?" if name == "calibration" else None)
-        c.add_argument("--window", type=int, action="append")
-        c.add_argument("--open-caps", action="store_true")
+    c = commands.add_parser("margins")
+    c.add_argument("calibration")
+    c.add_argument("evaluation")
+    c = commands.add_parser("economics")
+    c.add_argument("calibration")
+    c.add_argument("evaluation")
+    c.add_argument("--window", type=int, action="append", required=True)
+    c.add_argument("--open-caps", action="store_true")
+    c.add_argument("--import-cap", type=int)
+    c.add_argument("--estimate", choices=["previous", "mean"], default="previous")
+    c = commands.add_parser("calibration")
+    c.add_argument("calibration")
+    c.add_argument("--window", type=int, required=True)
     args = parser.parse_args()
     if args.command == "check":
         return check(args.cases)
@@ -982,13 +1018,16 @@ def main() -> int:
         return 0
     calibration = load_series(args.calibration)
     if args.command == "calibration":
-        calibration_report(calibration, (args.window or [300])[0] // 60)
+        calibration_report(calibration, args.window // 60)
         return 0
     evaluation = load_series(args.evaluation)
     if args.command == "margins":
         margins_report(calibration, evaluation)
-    else:
-        economics_report(calibration, evaluation, args.window or [300], args.open_caps)
+        return 0
+    caps = dict(OPEN_CAPS) if args.open_caps else {}
+    if args.import_cap is not None:
+        caps["import_cap"] = args.import_cap
+    economics_report(calibration, evaluation, args.window, caps, args.estimate)
     return 0
 
 

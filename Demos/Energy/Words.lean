@@ -2,9 +2,10 @@ import Demos.Energy.Operation
 
 /-! The meaning of the authorizer's words in the specification's terms.  `profileOf` and
 `snapshotOf` read the profile table and the input words into the records of `Spec`, `limitsOf`
-the proposed limits, and `runOf` a sequence of inputs into a run, with a signed power `p` stored as the word `p + 2 ^ 32`.  `ProfileValid` is the validity condition of a profile
-table, which `site_valid` proves for the test site, and `InputValid` the condition that the
-authorizer's checks before the side tests accept. -/
+the proposed limits, and `runOf` a sequence of inputs into a run, with a signed power `p` stored
+as the word `p + 2 ^ 32`.  `ProfileValid` is the validity condition of a profile table, which
+`site_valid` proves for the test site, and `InputValid` the condition that the authorizer's checks
+before the side tests accept. -/
 
 namespace Demos.Energy.Words
 
@@ -52,8 +53,8 @@ def runOf (n : ℕ) (xs : ℕ → Array UInt64) : Run :=
 def PowerWord (w : UInt64) : Prop := 2 ^ 32 - 2 ^ 20 ≤ w.toNat ∧ w.toNat ≤ 2 ^ 32 + 2 ^ 20
 
 /-- The validity condition of a profile table: the ranges that keep the authorizer's arithmetic
-exact, a positive efficiency bound, a fallback interval that contains 0, and a window long enough
-for the gateway's send deadline and two transitions. -/
+exact, an efficiency bound from 500,000 to 1,000,000 ppm, a fallback interval that contains 0, and
+a window of at most 3,600 s that is longer than the send deadline and two transitions. -/
 structure ProfileValid (site : Array UInt64) : Prop where
   size : site.size = 15
   version : site[0]! = 1

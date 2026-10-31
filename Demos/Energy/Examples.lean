@@ -1,10 +1,10 @@
 import Demos.Energy.Site
 
 /-! The worked example of the plan, evaluated by the kernel under the test site's profile table.
-Every input has snapshot time 0 and the mode word 0.  Except where a name states otherwise, it has
-stored energy in `[14,400,000, 15,120,000]` J, the limits `[0, 0]` W in force, load in
-`[3,000, 4,000]` W, and PV in `[0, 3,000]` W, and a proposal of one power is the held setpoint
-`[s, s]`.  A signed power `p` is the word `p + 2 ^ 32`. -/
+Every input has snapshot time 0 and the mode word 0.  Except where a theorem's docstring states
+otherwise, it has stored energy in `[14,400,000, 15,120,000]` J, the limits `[0, 0]` W in force,
+load in `[3,000, 4,000]` W, and PV in `[0, 3,000]` W, and a proposal of one power is the held
+setpoint `[s, s]`.  A signed power `p` is the word `p + 2 ^ 32`. -/
 
 namespace Demos.Energy.Examples
 

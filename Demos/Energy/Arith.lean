@@ -1,10 +1,11 @@
 import Demos.Energy.Program
 import Demos.Energy.Words
 
-/-! The authorizer's word operations as natural-number operations.  Under the validity bounds no
-sum, product, or difference that the authorizer computes leaves the range of `UInt64`, so each
-operation equals the operation on the words' natural numbers.  The checks before the side tests
-accept exactly the inputs of `InputValid`. -/
+/-! The `UInt64` operations of the authorizer as natural-number operations: `toNat` of a minimum,
+maximum, sum, difference, or product, under bounds that keep the result in range, and the meaning
+of the checks `rangeOk`, `orderOk`, and `limitOk` as bounds and orders of the input's words.
+`Authorize.lean` applies them to the authorizer's terms and proves that the checks before the side
+tests accept exactly the inputs of `InputValid`. -/
 
 namespace Demos.Energy.Arith
 
@@ -52,15 +53,17 @@ theorem orderOk_iff (xs : Array UInt64) : orderOk xs = true ↔
   norm_num
   constructor <;> intro h <;> omega
 
+theorem toNat_offset : (4294967296 : UInt64).toNat = 4294967296 := rfl
+
 theorem limitOk_iff {site : Array UInt64} (hs : ProfileValid site) (xs : Array UInt64) :
     limitOk site xs = true ↔
       2 ^ 32 - site[4]!.toNat ≤ xs[11]!.toNat ∧ xs[12]!.toNat ≤ 2 ^ 32 + site[3]!.toNat := by
   have h4 := hs.discharge
   have h3 := hs.charge
   have e1 : ((4294967296 : UInt64) - site[4]!).toNat = 4294967296 - site[4]!.toNat :=
-    toNat_sub (by rw [show (4294967296 : UInt64).toNat = 4294967296 from rfl]; omega)
+    toNat_sub (by rw [toNat_offset]; omega)
   have e2 : ((4294967296 : UInt64) + site[3]!).toNat = 4294967296 + site[3]!.toNat :=
-    toNat_add (by rw [show (4294967296 : UInt64).toNat = 4294967296 from rfl]; omega)
+    toNat_add (by rw [toNat_offset]; omega)
   simp only [limitOk, word_eq, offset, Bool.and_eq_true, decide_eq_true_eq,
     UInt64.le_iff_toNat_le, show (3 : UInt64).toNat = 3 from rfl,
     show (4 : UInt64).toNat = 4 from rfl, show (11 : UInt64).toNat = 11 from rfl,

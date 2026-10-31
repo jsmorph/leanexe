@@ -4,9 +4,10 @@ import Demos.Energy.Compose
 /-! The theorems about `authorizeWith` under a valid profile table.  `authorizeWith_iff` states
 that the authorizer accepts exactly when the input is valid and the conditions of the acceptance
 rule hold, `authorizeWith_sound` that accepted limits give the bounds of the acceptance rule at
-each time of the window for every trajectory admitted until that time, and
-`authorizeWith_accepted` the limits and expiry of an accepted result, and `authorizeWith_admits`
-that some trajectory is admitted for accepted limits. -/
+each time of the window for every trajectory admitted until that time, `authorizeWith_accepted`
+the limits and expiry of an accepted result, `authorizeWith_admits` that for accepted limits and
+every time `t` some trajectory is admitted until `t`, and `authorizeWith_operation` that
+consecutive accepted windows cover the gateway's operation. -/
 
 namespace Demos.Energy.Authorize
 
@@ -121,15 +122,13 @@ theorem upper_iff (hs : ProfileValid site) (hv : InputValid site xs) :
 
 /-! ### The tests of each side -/
 
-theorem toNat_offset : (4294967296 : UInt64).toNat = 4294967296 := rfl
-
 theorem exportOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
     exportOk site xs (lowB site xs) = true ↔
       ((snapshotOf xs).pvHigh : ℤ) ≤ (snapshotOf xs).loadLow +
         powerLow (profileOf site) (snapshotOf xs) (limitsOf xs) + (profileOf site).exportCap := by
   have hb := lowB_le hs hv
-  have h9 := hv.pv.2
-  have h6 := hv.load
+  have h10 := hv.pv.2
+  have hl := hv.load
   have hx := hs.exportCap
   rw [← lowB_signed hs hv]
   unfold exportOk
@@ -151,8 +150,8 @@ theorem importOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
       ((snapshotOf xs).loadHigh : ℤ) + powerHigh (profileOf site) (snapshotOf xs) (limitsOf xs) ≤
         (profileOf site).importCap + (snapshotOf xs).pvLow := by
   have hb := highB_le hs hv
-  have h7 := hv.load.2
-  have h8 := hv.pv
+  have h8 := hv.load.2
+  have hp := hv.pv
   have hi := hs.importCap
   rw [← highB_signed hs hv]
   unfold importOk
@@ -191,8 +190,6 @@ theorem lowDrain_toNat (hs : ProfileValid site) (hv : InputValid site xs) :
         site[7]!.toNat := Nat.le_trans (Nat.div_le_self _ _) (by omega)
   have e1 : ((4294967296 : UInt64) - lowB site xs).toNat = 4294967296 - (lowB site xs).toNat := by
     rw [toNat_sub (by rw [toNat_offset]; omega), toNat_offset]
-  have e2 : ((4294967296 : UInt64) - lowB site xs) * site[13]! =
-      ((4294967296 : UInt64) - lowB site xs) * site[13]! := rfl
   have e3 : (((4294967296 : UInt64) - lowB site xs) * site[13]!).toNat =
       (4294967296 - (lowB site xs).toNat) * site[13]!.toNat := by
     rw [toNat_mul (by rw [e1]; omega), e1]
@@ -309,7 +306,7 @@ theorem ceilingOk_iff (hs : ProfileValid site) (hv : InputValid site xs) :
 
 /-! ### Acceptance -/
 
-theorem accepted_iff (site xs : Array UInt64) :
+theorem accepted_iff :
     (authorizeWith site xs).status = .accepted ↔
       xs.size.toUInt64 = 13 ∧ word xs 0 = 1 ∧ rangeOk xs = true ∧ orderOk xs = true ∧
         limitOk site xs = true ∧
@@ -383,8 +380,8 @@ theorem authorizeWith_accepted (hs : ProfileValid site)
   have e1 : (xs[1]! + site[13]!).toNat = xs[1]!.toNat + site[13]!.toNat := toNat_add (by omega)
   rw [toNat_sub (by rw [e1]; omega), e1]
 
-/-- For accepted limits, some trajectory is admitted until every time, so `authorizeWith_sound`
-is not vacuous. -/
+/-- For accepted limits and every time `t`, some trajectory is admitted until `t`, so
+`authorizeWith_sound` is not vacuous. -/
 theorem authorizeWith_admits (hs : ProfileValid site)
     (h : (authorizeWith site xs).status = .accepted) (t : ℝ) :
     ∃ x : Trajectory, x.AdmittedUntil (profileOf site) (snapshotOf xs) (limitsOf xs) t := by
@@ -422,15 +419,17 @@ theorem authorizeWith_sound (hs : ProfileValid site)
     x.WithinOrFallback (profileOf site) (snapshotOf xs) t :=
   window_sound (eta_pos hs) (fallback_zero hs) ((authorizeWith_iff hs).mp h).2 ht hx
 
-/-- Consecutive inputs that the authorizer accepted, sent under the gateway's rules, give at every
-time from the first snapshot to the end of the last window the bounds of an accepted window that
-contains that time, for a trajectory that meets that window's other assumptions until then. -/
+/-- For consecutive inputs that the authorizer accepted, whose snapshots lie at most a window
+apart, every time from the first snapshot to the end of the last window lies in the window of the
+latest accepted snapshot at or before it, whose bounds hold at that time for a trajectory that
+meets that window's other assumptions, the device's response, and the gateway's rules until
+then. -/
 theorem authorizeWith_operation (hs : ProfileValid site) {n : ℕ} {ys : ℕ → Array UInt64}
     (h : ∀ j < n, (authorizeWith site (ys j)).status = .accepted)
     (hr : (runOf n ys).Spaced (profileOf site)) (h0 : 0 < n) {x : Trajectory}
     {state : ℝ → State} {t : ℝ} (ht0 : (runOf n ys).time 0 ≤ t)
     (ht1 : t ≤ (runOf n ys).time (n - 1) + (profileOf site).window) :
-    ∃ j < n, t ∈ window (profileOf site) (snapshotOf (ys j)) ∧
+    ∃ j < n, (runOf n ys).Between j t ∧ t ∈ window (profileOf site) (snapshotOf (ys j)) ∧
       (x.ModelUntil (profileOf site) (snapshotOf (ys j)) t →
         x.OperatesIn (profileOf site) (runOf n ys) state j t →
         x.WithinOrFallback (profileOf site) (snapshotOf (ys j)) t) :=

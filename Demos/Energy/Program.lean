@@ -2,9 +2,9 @@
 
 `authorizeWith site xs` decides whether a gateway may send the proposed power limits of the
 snapshot `xs` for one window, under the profile table `site`.  Battery power stays within the
-limits, and a held setpoint `s` is the limits `[s, s]`.  Energies are in joules, powers in
-watts, times in seconds, and the efficiency bound in parts per million.  A signed power `p` is the
-word `p + offset`.
+limits widened by the tolerance, and a held setpoint `s` is the limits `[s, s]`.  Energies are
+in joules, powers in watts, times in seconds, and the efficiency bound in parts per million.  A
+signed power `p` is the word `p + offset`.
 
 | Profile word | Field |
 |---|---|
@@ -32,12 +32,13 @@ word `p + offset`.
 | 11, 12 | Proposed limits, offset |
 
 The window's power interval `B` is the smallest interval that contains the interval of the state
-in force, the proposed limits widened by the tolerance, and the fallback interval.  On a side where `B` extends beyond
-the fallback interval, the authorizer tests that side's grid cap and energy limit: the lower side
-tests the export cap and the energy floor, and the upper side the import cap and the energy
-ceiling.  The fallback interval contains 0, so the lower end of `B` is at most 0 and its upper end
-at least 0.  The lower energy bound discharges at the efficiency bound and loses the largest loss
-rate, rounding up, and the upper energy bound charges at efficiency 1 with no loss. -/
+in force, the proposed limits widened by the tolerance, and the fallback interval.  On a side
+where `B` extends beyond the fallback interval, the authorizer tests that side's grid cap and
+energy limit: the lower side tests the export cap and the energy floor, and the upper side the
+import cap and the energy ceiling.  The fallback interval contains 0, so the lower end of `B` is
+at most 0 and its upper end at least 0.  The lower energy bound discharges at the efficiency
+bound and loses the largest loss rate, rounding up, and the upper energy bound charges at
+efficiency 1 with no loss. -/
 
 namespace Demos.Energy
 

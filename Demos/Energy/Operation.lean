@@ -9,8 +9,8 @@ snapshot, where the device has settled, by 0, and by the intervals of the states
 from the snapshot on, which covers transitions between states, protective trips and deratings
 toward 0, and the return to fallback.  The gateway's rules record at each snapshot a state whose
 interval holds battery power, and allow from one accepted snapshot to the next only the state
-that it records, the command authorized from it, and fallback.  The program and its word layout
-appear nowhere in this module. -/
+that the snapshot records, the command authorized from it, and fallback.  The module is
+independent of the program and its word layout. -/
 
 namespace Demos.Energy.Spec
 
@@ -26,7 +26,7 @@ namespace Run
 /-- The time of the `j`th snapshot, s. -/
 def time (r : Run) (j : ℕ) : ℝ := (r.snapshot j).time
 
-/-- Time `w` lies from the `j`th snapshot to the next, or at or after the last. -/
+/-- Time `w` lies at or after the `j`th snapshot and before the next one, if there is a next. -/
 def Between (r : Run) (j : ℕ) (w : ℝ) : Prop :=
   r.time j ≤ w ∧ (j + 1 < r.length → w < r.time (j + 1))
 

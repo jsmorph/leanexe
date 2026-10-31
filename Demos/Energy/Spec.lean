@@ -10,8 +10,8 @@ functions of time.  A command sets power limits, within which the device's own c
 the load, and a held setpoint `s` is the limits `[s, s]`.  `AdmittedUntil` states the assumptions
 from the snapshot's time to a time `t` for proposed limits, `Within` the site's limits, and
 `WithinOrFallback` the bounds of the acceptance rule: each site limit, or the worst case that an
-immediate return to fallback admits.  The program and its word layout appear nowhere in this
-module. -/
+immediate return to fallback admits.  The module is independent of the program and its word
+layout. -/
 
 namespace Demos.Energy.Spec
 
@@ -101,7 +101,7 @@ rate from below only when `eff` is positive, which the profile's validity condit
 noncomputable def rateLow (p : Profile) (b : ℝ) : ℝ :=
   (if 0 ≤ b then p.eff * b else b / p.eff) - p.lossMax
 
-/-- Time, battery, and site quantities as functions of time in seconds. -/
+/-- Battery and site quantities as functions of time in seconds. -/
 structure Trajectory where
   /-- Usable stored energy, J. -/
   energy : ℝ → ℝ

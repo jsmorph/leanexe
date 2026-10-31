@@ -1,10 +1,10 @@
 import Demos.Energy.Verified
 import LeanExe.Pipeline.FileBytes
 
-/-! Checked after `tests/verified/run.sh` writes `build/verified/energy.wasm`, with
-`tools/leanrun --timeout 10m lake env lean Demos/Energy/File.lean`: the file holds
-`encode compiled.module`, which `compiled.encoded` states as literal bytes, so it decodes to the
-module whose `authorize` export `compiled.authorize.implements` describes. -/
+/-! The file theorems of `build/verified/energy.wasm`, which `tests/verified/run.sh` checks with
+`tools/leanrun --timeout 10m lake env lean Demos/Energy/File.lean` after it writes the file.  The
+file holds `encode compiled.module`, which `compiled.encoded` states as literal bytes, so it
+decodes to the module whose `authorize` export `compiled.authorize.implements` describes. -/
 
 namespace Demos.Energy.File
 

@@ -35,23 +35,31 @@ def worked : List (Array UInt64) :=
     input 14400000 15120000 0 0 0 3000 4000 0 3000 (-1000) 500,
     input 14400000 15120000 0 0 0 3000 4000 0 3000 (-1000) 1000]
 
+/-- Inputs that the checks before the side tests reject: wrong lengths and versions; each word one
+past its range, including the lower ends of the energy, load, and PV intervals, which the range
+check rejects before the order check; reversed intervals and limits; limits beyond the largest
+discharge and charge; and every word at `2 ^ 64 - 1`, with and without the right version. -/
 def invalid : List (Array UInt64) :=
   [#[], base.pop, base.push 0, base.set! 0 2, base.set! 1 1099511627776,
-    base.set! 3 4398046511105, base.set! 4 2, base.set! 5 (pw (-1048577)),
-    base.set! 6 (pw 1048577), base.set! 8 1048577, base.set! 10 1048577,
+    base.set! 2 4398046511105, base.set! 3 4398046511105, base.set! 4 2,
+    base.set! 5 (pw (-1048577)), base.set! 6 (pw 1048577), base.set! 7 1048577,
+    base.set! 8 1048577, base.set! 9 1048577, base.set! 10 1048577,
     base.set! 11 (pw (-1048577)), base.set! 12 (pw 1048577), base.set! 2 15120001,
     (base.set! 5 (pw 1)).set! 6 (pw 0), base.set! 7 4001, base.set! 9 3001,
     base.set! 11 (pw 0), base.set! 11 (pw (-5001)), base.set! 12 (pw 5001),
-    Array.replicate 13 18446744073709551615]
+    Array.replicate 13 18446744073709551615,
+    (Array.replicate 13 18446744073709551615).set! 0 1]
 
 /-- Inputs on both sides of the floor test at `E⁻ = 11,868,000`, the export test at a setpoint of
 -1,950 W, the import test at 950 W, and the ceiling test at `E⁺ = 29,655,000` for a charge of
 5,000 W; the setpoints of ±5,000 W with no load or PV, which fail a grid test; the fallback mode
-in force; a state in force and a setpoint of opposite directions, which the authorizer tests on
-both sides; energies on and beyond the floor and the ceiling, where it accepts setpoints that
-leave the site no further outside the limit; the limits `[-1,000, 950]` and `[-1,000, 951]` on
-both sides of the import test; and wide limits in force with a held setpoint of 0, which the
-authorizer tests on both sides. -/
+in force; a state in force and a setpoint of opposite directions, whose power interval extends
+beyond fallback on both sides and which fail the export test; energies on and beyond the floor
+and the ceiling, where the authorizer accepts setpoints that leave the site no further outside
+the limit; the limits `[-1,000, 950]` and `[-1,000, 951]` on both sides of the import test; wide
+limits in force with a held setpoint of 0, whose power interval extends beyond fallback on both
+sides and which fail the export test; and words at the ends of their ranges: `E⁺ = 2 ^ 42`,
+`L⁺ = 2 ^ 20`, and limits in force of `-2 ^ 20` and `2 ^ 20`. -/
 def boundary : List (Array UInt64) :=
   [snap 11868000 15120000 0 0 3000 4000 0 3000 (-1000),
     snap 11867999 15120000 0 0 3000 4000 0 3000 (-1000),
@@ -68,18 +76,21 @@ def boundary : List (Array UInt64) :=
     snap 14400000 15120000 0 5000 3000 4000 0 3000 (-5000),
     snap 10800000 10800000 0 0 0 0 0 0 0,
     snap 10799999 10800000 0 0 0 0 0 0 1000,
+    snap 34200000 34200000 0 0 0 0 0 0 0,
     snap 34200001 34200001 0 0 0 0 0 0 (-1000),
     input 14400000 15120000 0 0 0 3000 4000 0 3000 (-1000) 950,
     input 14400000 15120000 0 0 0 3000 4000 0 3000 (-1000) 951,
-    input 14400000 15120000 0 (-2000) 2000 3000 4000 0 3000 0 0]
+    input 14400000 15120000 0 (-2000) 2000 3000 4000 0 3000 0 0,
+    base.set! 3 4398046511104, base.set! 8 1048576, base.set! 5 (pw (-1048576)),
+    base.set! 6 (pw 1048576)]
 
 abbrev Gen := StateM UInt64
 
-def word : Gen UInt64 := modifyGet fun s =>
+def next : Gen UInt64 := modifyGet fun s =>
   let (s', v) := Library.Random.SplitMix64.splitMix s
   (v, s')
 
-def below (n : UInt64) : Gen UInt64 := return (← word) % n
+def below (n : UInt64) : Gen UInt64 := return (← next) % n
 
 def signedBelow (n : UInt64) : Gen Int := return ((← below (2 * n + 1)).toNat : Int) - n.toNat
 
@@ -90,9 +101,9 @@ def randomLimits : Gen (Int × Int) := do
   let width ← below 6000
   return if (← below 2) == 0 then (lo, lo) else (lo, lo + width.toNat)
 
-/-- A valid input, except that some proposed limits exceed the largest charge, with energies up to
-40,000,000 J, loads up to 11,000 W, PV up to 9,000 W, and limits in force and proposed limits
-that are held setpoints or intervals. -/
+/-- A valid input, except that some proposed limits exceed the largest charge, with lower energies
+below 40,000,000 J and energy intervals narrower than 2,000,000 J, loads up to 11,000 W, PV up to
+9,000 W, and limits in force and proposed limits that are held setpoints or intervals. -/
 def randomInput : Gen (Array UInt64) := do
   let time ← below 1000000
   let eLo ← below 40000000

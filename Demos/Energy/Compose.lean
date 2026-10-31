@@ -71,11 +71,11 @@ theorem power_in_window (hF : p.fallbackLow ≤ 0 ∧ 0 ≤ p.fallbackHigh)
 for a trajectory that meets the window's other assumptions until that time and under the device's
 response and the gateway's rules. -/
 theorem run_sound (heta : 0 < p.eta) (hF : p.fallbackLow ≤ 0 ∧ 0 ≤ p.fallbackHigh)
-    (hc : ∀ j < r.length, Conditions p (r.snapshot j) (r.limits j))
-    (hj : j < r.length) (hb : r.Between j t) (ht : t ∈ window p (r.snapshot j))
-    (hm : x.ModelUntil p (r.snapshot j) t) (ho : x.OperatesIn p r state j t) :
+    (hc : Conditions p (r.snapshot j) (r.limits j)) (hb : r.Between j t)
+    (ht : t ∈ window p (r.snapshot j)) (hm : x.ModelUntil p (r.snapshot j) t)
+    (ho : x.OperatesIn p r state j t) :
     x.WithinOrFallback p (r.snapshot j) t :=
-  window_sound heta hF (hc j hj) ht { hm with power := power_in_window hF ho hb }
+  window_sound heta hF hc ht { hm with power := power_in_window hF ho hb }
 
 /-- When accepted snapshots lie at most a window apart, every time from the first snapshot to the
 end of the last window lies in the window of the latest accepted snapshot at or before it. -/
@@ -100,23 +100,24 @@ theorem run_covered (hr : r.Spaced p) (h0 : 0 < r.length) (ht0 : r.time 0 ≤ t)
     exact ht1
 
 /-- When accepted snapshots lie at most a window apart, every time from the first snapshot to the
-end of the last window lies in an accepted window whose bounds hold at that time, for a
-trajectory that meets that window's other assumptions, the device's response, and the gateway's
-rules until that time. -/
+end of the last window lies in the window of the latest accepted snapshot at or before it, whose
+bounds hold at that time for a trajectory that meets that window's other assumptions, the
+device's response, and the gateway's rules until that time. -/
 theorem operation_sound (heta : 0 < p.eta) (hF : p.fallbackLow ≤ 0 ∧ 0 ≤ p.fallbackHigh)
     (hc : ∀ j < r.length, Conditions p (r.snapshot j) (r.limits j)) (hr : r.Spaced p)
     (h0 : 0 < r.length) (ht0 : r.time 0 ≤ t) (ht1 : t ≤ r.time (r.length - 1) + p.window) :
-    ∃ j < r.length, t ∈ window p (r.snapshot j) ∧
+    ∃ j < r.length, r.Between j t ∧ t ∈ window p (r.snapshot j) ∧
       (x.ModelUntil p (r.snapshot j) t → x.OperatesIn p r state j t →
         x.WithinOrFallback p (r.snapshot j) t) := by
   obtain ⟨j, hj, hb, hw⟩ := run_covered hr h0 ht0 ht1
-  exact ⟨j, hj, hw, fun hm ho => run_sound heta hF hc hj hb hw hm ho⟩
+  exact ⟨j, hj, hb, hw, fun hm ho => run_sound heta hF (hc j hj) hb hw hm ho⟩
 
 /-- For a window with ordered intervals and a nonempty interval of the state in force, some
 trajectory and states applied meet the window's other assumptions, the device's response, and the
-gateway's rules until every time, so `run_sound` and `operation_sound` are not vacuous: battery
-power held at the lower end of the state in force, efficiencies 1, no loss, and the lower ends of
-the energy, load, and PV intervals. -/
+gateway's rules until every time, so `run_sound` and `operation_sound` are not vacuous.  The
+witness holds battery power at the lower end of the state in force, both efficiencies at 1, and
+the loss at 0, with stored energy starting at the lower end of its interval and changing at the
+battery's rate, and load and PV at the lower ends of their intervals. -/
 theorem operates_exists (r : Run) (j : ℕ) (t : ℝ) (heta : p.eta ≤ 1000000)
     (hE : (r.snapshot j).energyLow ≤ (r.snapshot j).energyHigh)
     (hL : (r.snapshot j).loadLow ≤ (r.snapshot j).loadHigh)
@@ -126,10 +127,7 @@ theorem operates_exists (r : Run) (j : ℕ) (t : ℝ) (heta : p.eta ≤ 1000000)
       x.ModelUntil p (r.snapshot j) t ∧ x.OperatesIn p r state j t := by
   set q := r.snapshot j with hq
   set c0 : ℝ := (q.state.low p : ℝ) with hc0
-  have heff : p.eff ≤ 1 := by
-    unfold Profile.eff
-    rw [div_le_one (by norm_num)]
-    exact_mod_cast heta
+  have heff := eff_le_one heta
   have hm : max c0 0 - max (-c0) 0 = c0 := by
     rcases le_total 0 c0 with h | h
     · rw [max_eq_left h, max_eq_right (by linarith)]

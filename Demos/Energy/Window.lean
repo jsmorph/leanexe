@@ -3,11 +3,12 @@ import Demos.Energy.Spec
 /-! The integer conditions of the acceptance rule and the theorem that they bound every admitted
 trajectory.  `Conditions p q c` states, in integers, the tests of each side on which the window's
 power interval extends beyond the fallback interval: on the lower side the export cap and the
-energy floor, and on the upper side the import cap and the energy ceiling.  The fallback interval
-contains 0, so the lower end of the power interval is at most 0 and the upper end at least 0.  The
-lower energy bound drains at the efficiency bound and the largest loss rate, rounded up, and the
-upper bound gains at efficiency 1 with no loss.  `window_sound` states that the conditions give
-`WithinOrFallback` at each time of the window for every trajectory admitted until that time. -/
+energy floor, and on the upper side the import cap and the energy ceiling.  When the fallback
+interval contains 0, which `window_sound` assumes, the lower end of the power interval is at most 0
+and the upper end at least 0.  The lower energy bound drains at the efficiency bound and the
+largest loss rate, rounded up, and the upper bound gains at efficiency 1 with no loss.
+`window_sound` states that the conditions give `WithinOrFallback` at each time of the window for
+every trajectory admitted until that time. -/
 
 namespace Demos.Energy.Spec
 
@@ -53,6 +54,11 @@ theorem rateLow_mono {p : Profile} (he : 0 < p.eff) {a b : ℝ} (hab : a ≤ b) 
     · exact div_le_div_of_nonneg_right hab he.le
   linarith
 
+theorem eff_le_one {p : Profile} (h : p.eta ≤ 1000000) : p.eff ≤ 1 := by
+  unfold Profile.eff
+  rw [div_le_one (by norm_num)]
+  exact_mod_cast h
+
 /-- The rate of a trajectory is at least the lower rate at any power below the trajectory's. -/
 theorem rate_ge {x : Trajectory} {p : Profile} {u B : ℝ} (he : 0 < p.eff)
     (hb : B ≤ x.power u) (hc : p.eff ≤ x.etaCharge u) (hd : p.eff ≤ x.etaDischarge u)
@@ -97,16 +103,12 @@ theorem rate_le {x : Trajectory} {u : ℝ} (hc1 : x.etaCharge u ≤ 1)
 /-- An affine function of `d` that meets a lower bound at `0` and at `w` meets it on `[0, w]`. -/
 theorem affine_ge {e r f d w : ℝ} (h0 : f ≤ e) (hw : f ≤ e + r * w) (hd0 : 0 ≤ d) (hdw : d ≤ w) :
     f ≤ e + r * d := by
-  by_cases hr : 0 ≤ r
-  · nlinarith
-  · nlinarith
+  by_cases hr : 0 ≤ r <;> nlinarith
 
 /-- An affine function of `d` that meets an upper bound at `0` and at `w` meets it on `[0, w]`. -/
 theorem affine_le {e r f d w : ℝ} (h0 : e ≤ f) (hw : e + r * w ≤ f) (hd0 : 0 ≤ d) (hdw : d ≤ w) :
     e + r * d ≤ f := by
-  by_cases hr : 0 ≤ r
-  · nlinarith
-  · nlinarith
+  by_cases hr : 0 ≤ r <;> nlinarith
 
 /-- Rounding up by `(n + d - 1) / d` gives at least `n / d`. -/
 theorem ceil_div_ge {n d : ℤ} (hd : 0 < d) : (n : ℝ) / d ≤ (((n + d - 1) / d : ℤ) : ℝ) := by
@@ -133,7 +135,7 @@ theorem drainLow_nonneg {p : Profile} (heta : 0 < p.eta) {b : ℤ} (hb : b ≤ 0
 /-- The integer drain of the lower bound over the window at power `b ≤ 0` is at least the real
 drain at the lower rate. -/
 theorem drainLow_ge {p : Profile} (heta : 0 < p.eta) {b : ℤ} (hb : b ≤ 0) :
-    rateLow p b * p.window ≥ -((drainLow p b : ℤ) : ℝ) := by
+    -(drainLow p b : ℝ) ≤ rateLow p b * p.window := by
   have he := eff_pos heta
   have hbR : (b : ℝ) ≤ 0 := by exact_mod_cast hb
   have hrate : rateLow p b = (b : ℝ) / p.eff - p.lossMax := by
@@ -214,17 +216,16 @@ theorem powerLow_le (p : Profile) (q : Snapshot) (c : Limits) : powerLow p q c �
 theorem le_powerHigh (p : Profile) (q : Snapshot) (c : Limits) : p.fallbackHigh ≤ powerHigh p q c :=
   le_max_right _ _
 
-/-- Some trajectory is admitted until every time, so the conclusions about admitted trajectories
-are not vacuous: idle battery power, efficiencies 1, no loss, the lower ends of the energy, load,
-and PV intervals, and an efficiency bound of at most 1. -/
+/-- When the efficiency bound is at most 1, the fallback interval contains 0, and the snapshot's
+intervals are ordered, then for every time `t` some trajectory is admitted until `t`, so the
+conclusions about admitted trajectories are not vacuous.  The witness holds battery power at 0,
+both efficiencies at 1, and the loss at 0, with stored energy, load, and PV at the lower ends of
+their intervals. -/
 theorem admitted_exists {p : Profile} {q : Snapshot} {c : Limits} (t : ℝ)
     (heta : p.eta ≤ 1000000) (hF : p.fallbackLow ≤ 0 ∧ 0 ≤ p.fallbackHigh)
     (hE : q.energyLow ≤ q.energyHigh) (hL : q.loadLow ≤ q.loadHigh) (hS : q.pvLow ≤ q.pvHigh) :
     ∃ x : Trajectory, x.AdmittedUntil p q c t := by
-  have heff : p.eff ≤ 1 := by
-    unfold Profile.eff
-    rw [div_le_one (by norm_num)]
-    exact_mod_cast heta
+  have heff := eff_le_one heta
   refine ⟨⟨fun _ => q.energyLow, fun _ => 0, fun _ => 1, fun _ => 1, fun _ => 0,
     fun _ => q.loadLow, fun _ => q.pvLow⟩, ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
   · show (q.energyLow : ℝ) ≤ q.energyLow ∧ (q.energyLow : ℝ) ≤ q.energyHigh
