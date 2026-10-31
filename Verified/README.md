@@ -947,10 +947,10 @@ retains the potential stated by the callee's `ImplementsP` theorem.
 ## Related work
 
 [The journal](../devnotes.md) records the analysis that led to this library and its plan.  The
-`LeanExe` rule for expressions, `Expr.program_spec` in
-[`LeanExe/IR/Expr.lean`](../LeanExe/IR/Expr.lean), proves the same kind of fact for one IR program
-at a time.  [`Scale`](../Examples/Scale/README.md) and [`Axpy`](../Examples/Axpy/README.md) are the
-closest programs of the LeanExe compiler.
+LeanExe compiler, which the repository no longer holds, proved the same kind of fact for one IR
+program at a time with its expression rule `Expr.program_spec`.
+[`Scale`](../Examples/Scale/README.md) and [`Axpy`](../Examples/Axpy/README.md) were its closest
+programs.
 
 ## References
 

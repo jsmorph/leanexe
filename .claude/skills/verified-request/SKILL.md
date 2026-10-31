@@ -133,7 +133,7 @@ premise of the generated theorem with `#check @Examples.Name.compiled.compute.tr
 ## Stage 3: the proofs
 
 `Proof.lean` holds `compute_eq`, the equality of the program with the specification.  It imports
-the program, the specification, and lemmas about the dialect, such as `LeanExe.IR.Combinators`
+the program, the specification, and lemmas about the dialect, such as `LeanExe.Dialect.Lemmas`
 and the proof modules of the library programs that the program calls, and nothing of either
 compiler.  When the program converts an array's size to a word, as `xs.size.toUInt64` does, the
 equality has the premise `xs.size < 2 ^ 64`, which every array in memory meets, and the call
@@ -165,7 +165,7 @@ argument's representation gives the premise of `compute_eq`.
 | Program shape | `compute_eq` | Bound |
 |---------------|--------------|-------|
 | Tail recursion on words, word result | [GCD proof](../../../Library/Numerics/Arithmetic/Gcd/Proof.lean) (an equation per branch, recursion on the measure), [prime-factor proof](../../../Library/Numerics/Arithmetic/PrimeFactors/Proof.lean) (strong induction on the measure) | None: [GCD compilation](../../../Library/Numerics/Arithmetic/Gcd/Compiled.lean) |
-| `LeanExe.build` of at most eight elements | [Increment proof](../../../Examples/Increment/Proof.lean) (`Array.ext`, `LeanExe.IR.build_size`, `LeanExe.IR.build_get`) | [Increment compilation](../../../Examples/Increment/Compiled.lean) (`Verified.blockCost_eq`) |
+| `LeanExe.build` of at most eight elements | [Increment proof](../../../Examples/Increment/Proof.lean) (`Array.ext`, `LeanExe.Dialect.build_size`, `LeanExe.Dialect.build_get`) | [Increment compilation](../../../Examples/Increment/Compiled.lean) (`Verified.blockCost_eq`) |
 | Library call, then a build | [Zero-removal proof](../../../Examples/RemoveZero/Proof.lean) (`Library.Arrays.Search.firstZero_cases`) | [Zero-removal compilation](../../../Examples/RemoveZero/Compiled.lean) (a bound on the count before `generalize`) |
 | `LeanExe.repeatWhile` over a listed function that pushes | [Bounded-build proof](../../../Examples/Below100/Proof.lean) (induction on the fuel, `keep_go`) | [Bounded-build compilation](../../../Examples/Below100/Compiled.lean) (`Verified.loopCost_le`, `Verified.sumBelow_const`) |
 | `LeanExe.loop` over a literal count with a tuple state, then an array literal | [Lookup proof](../../../Examples/Lookup/Proof.lean), [tree-lookup proof](../../../Examples/TreeLookup/Proof.lean) (`simp only [LeanExe.loop]`, `by_cases` on each pass) | [Lookup compilation](../../../Examples/Lookup/Compiled.lean), [tree-lookup compilation](../../../Examples/TreeLookup/Compiled.lean) (`rw [compiled.compute.bound_eq]; decide`) |

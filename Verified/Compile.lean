@@ -11,8 +11,8 @@ import Verified.Bytes.LiteralCode
 import LeanExe.Runtime.Defs
 
 /-! The verified compiler: a Lean function from source functions to a WebAssembly module.  The
-module has the layout of `LeanExe`'s modules, with the runtime's `alloc` and `release` at
-functions 0 and 1, so the runtime and its proofs serve both compilers. -/
+module holds the runtime's `alloc` and `release` of `LeanExe` at functions 0 and 1, so that the
+runtime's proofs apply to it. -/
 
 namespace Verified
 
