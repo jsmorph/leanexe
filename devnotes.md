@@ -40124,7 +40124,7 @@ Most of these algorithms have total specifications, which `Verified.CallSpec` st
 | 3 | Modular inverse by the extended Euclidean algorithm | 1.2.1 E, 4.5.2 X | `Library/Numerics/Arithmetic/ModInverse` |
 | 4 | Heapsort | 5.2.3 H | `Library/Sorting/Heapsort` |
 | 5 | Merge sort | 5.2.4 | `Library/Sorting/MergeSort` |
-| 6 | Topological sort | 2.2.3 T | |
+| 6 | Topological sort | 2.2.3 T | `Library/Graphs/TopologicalSort` |
 | 7 | Binary heap priority queue | 5.2.3 | |
 | 8 | Hashing with linear probing and deletion | 6.4 L, R | |
 | 9 | Multiple-precision arithmetic | 4.3.1 A, S, M, D | |
@@ -40143,3 +40143,7 @@ The first version of the program copied the array once and then on every exchang
 
 - [x] Heapsort: program, proof, `ImplementsA` theorem, zero bound, 57 cases in Wasmtime and native C, two reviews, README, index.
 - [x] Merge sort: program, proof on lists, `ImplementsA` theorem, 61 cases in Wasmtime and native C, two reviews, README, index.
+
+Topological sort has many correct results for one input, so its specification is a property, `IsTopologicalOrder`, and its call theorem is the generated `Verified.Call` for the Lean function `topoSort`, which `topoSort_spec` relates to the property.  The program scans all relations for each vertex in place of Knuth's successor lists, which keeps the state to two arrays.  The first version of `process` ended its loop body in `if f < queue.size then scan else state`, and the compiler rejected it with "the result of a loop's body charges a credit at a form that the reflector does not support".  The reflector proves a loop body's credits zero only through `Expr.buyFree` in `Verified/Bound.lean`, which requires the two branches of every `if` at the body's result to agree in `Expr.bodyPaid`, and the scan's branch returns arrays that the scan changed while the other returns the state's arrays.  The program now puts the condition into the inner loop's count, which is 0 when `f` lies past the queue, so the body has no `if` at its result.  The restriction belongs to the reflector and is recorded here for a later change to the compiler.
+
+- [x] Topological sort: program, proof of the property, call theorem, 27 cases in Wasmtime and native C, two reviews, README, index section 13.

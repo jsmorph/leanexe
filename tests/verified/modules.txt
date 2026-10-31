@@ -81,6 +81,7 @@ Library.Numerics.Float64.Erfc.Compiled:Library.Numerics.Float64.Erfc.compiled.mo
 Library.Sorting.Heapsort.Compiled:Library.Sorting.Heapsort.compiled.module:heapsort
 Library.Sorting.MergeSort.Compiled:Library.Sorting.MergeSort.compiled.module:mergeSort
 Library.Sorting.Insertion.Compiled:Library.Sorting.Insertion.compiled.module:libsort
+Library.Graphs.TopologicalSort.Compiled:Library.Graphs.TopologicalSort.compiled.module:topoSort
 Library.Arrays.BinarySearch.Compiled:Library.Arrays.BinarySearch.compiled.module:binarySearch
 Library.Arrays.Search.Compiled:Library.Arrays.Search.compiled.module:libsearch
 Library.Arrays.Filter.Compiled:Library.Arrays.Filter.compiled.module:libfilter

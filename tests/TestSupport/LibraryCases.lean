@@ -13,6 +13,7 @@ import TestSupport.Modules.Heapsort
 import TestSupport.Modules.MergeSort
 import TestSupport.Modules.ModInverse
 import TestSupport.Modules.PrimeFactors
+import TestSupport.Modules.TopologicalSort
 
 namespace TestSupport.LibraryCases
 
@@ -71,6 +72,9 @@ def cases : IO Unit := do
   for xs in Library.Sorting.MergeSort.mergeInputs do
     IO.println s!"mergeSort|mergeSort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.MergeSort.expected xs.toArray).toList.map toString)}]"
+  for xs in Library.Graphs.TopologicalSort.topoInputs do
+    IO.println s!"topoSort|topoSort|array-u64|{arrU xs}|\
+      [{", ".intercalate ((Library.Graphs.TopologicalSort.topoSort xs.toArray).toList.map toString)}]"
   for (xs, key) in Library.Arrays.BinarySearch.searchInputs do
     IO.println s!"binarySearch|lowerBound|i64|{arrU xs} {u key}|\
       {Library.Arrays.BinarySearch.expected (xs.toArray, key)}|1|1"

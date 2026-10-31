@@ -1,0 +1,4 @@
+Topological sorting, Algorithm T of TAOCP section 2.2.3.  The input is an array of UInt64 words:
+a vertex count n, followed by pairs j, k, each stating the relation j < k between vertices below n.
+Return the n vertices in an order in which j comes before k for every relation, or the empty array
+when no such order exists because the relations contain a cycle.

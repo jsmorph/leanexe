@@ -247,6 +247,7 @@ import Library.Numerics.Float64.Lgamma.LgammaBytes
 import Library.Sorting.Heapsort.Compiled
 import Library.Sorting.MergeSort.Compiled
 import Library.Sorting.Insertion.Compiled
+import Library.Graphs.TopologicalSort.Compiled
 import Library.Arrays.BinarySearch.Compiled
 import Library.Arrays.Search.Compiled
 import Library.Arrays.Filter.Compiled
