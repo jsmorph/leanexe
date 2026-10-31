@@ -33,9 +33,9 @@ LeanExe modules `build/gpt32/gpt32.wasm` and `build/gpt/gpt.wasm`.  The server w
 files, so after a change to a kernel, to the cases, or to the GPT-2 programs, run
 [`tests/wgsl/run.sh`](../wgsl/run.sh), which rewrites the kernel directory, or delete the affected
 files before starting it.  The pages serve what the kernel directory holds: after
-`tests/wgsl/run.sh --verified`, the kernel page runs that option's cases, and after
-[`tests/gpt32/generate.py`](../gpt32/generate.py), which writes its kernels to
-`build/wgsl-leanexe`, the GPT-2 page with `--leanexe` loads that script's texts.
+`tests/wgsl/run.sh --verified`, the kernel page runs that option's cases.
+[`tests/gpt32/generate.py`](../gpt32/generate.py) writes the texts of the verified GPT-2 kernels to
+`build/wgsl` under the names that `tests/wgsl/run.sh` gives them.
 
 Browsers expose WebGPU only to secure contexts, which include http://127.0.0.1 and
 http://localhost but not a plain-HTTP address of another machine.  To use a browser on another
@@ -107,8 +107,9 @@ without clicks.
 
 Under its shape, token, loaded-weight, and device assumptions, `Demos.Gpt32.Verified.generate_host`
 proves that the setup and step commands, run with the verified kernels, leave the bits of native
-`step32` in the score buffers and that every dispatch is race-free, and `Demos.Gpt32.generate_host`
-proves the same for the LeanExe compiler's kernels.  [The program](../../Demos/Gpt32/Program.lean)
+`step32` in the score buffers and that every dispatch is race-free.  It instantiates
+`Demos.Gpt32.generate_host`, which states the same for the kernels of any backend with dispatch
+theorems, and no theorem of this kind covers the LeanExe compiler's kernels.  [The program](../../Demos/Gpt32/Program.lean)
 defines that binary32 GPT-2 step.  `compiled.sampleTopK.implements` of `Demos.Gpt.Verified` proves
 that `sampleTopK` in the verified `gpt.wasm` computes the Lean function of the same name, and
 `sampleTopK_implements` proves it for the LeanExe module.  The verified `gpt32.wasm` has the Wasm

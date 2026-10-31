@@ -1,5 +1,4 @@
 import Demos.Gpt32.HostProgram
-import Demos.Gpt32.Proofs
 import LeanExe.IR.Combinators
 import LeanExe.WGSL.Workgroup
 
@@ -23,7 +22,6 @@ its inputs.
 namespace Demos.Gpt32
 
 open LeanExe.WGSL Demos.Gpt32
-open LeanExe.IR (build_size)
 
 abbrev HostStore := Buf → Option (Array UInt32)
 
@@ -37,7 +35,7 @@ def outputWords (n : Nat) : Array UInt32 :=
     if i.val = 0 then UInt32.ofNat n else if i.val = 1 then UInt32.ofNat (n / 2 ^ 32) else 0
 
 def Cmd.exec (files : String → Option (Array UInt32)) (s : HostStore) (c : Cmd)
-    (modules : KernelName → Module := KernelName.module) : Option HostStore :=
+    (modules : KernelName → Module) : Option HostStore :=
   match c with
   | .load b path => (files path).map (s.set b)
   | .words b ws => some (s.set b ws.toArray)
@@ -51,21 +49,21 @@ def Cmd.exec (files : String → Option (Array UInt32)) (s : HostStore) (c : Cmd
       pure (s.set out o')
 
 def Cmd.RaceFree (s : HostStore) (c : Cmd)
-    (modules : KernelName → Module := KernelName.module) : Prop :=
+    (modules : KernelName → Module) : Prop :=
   match c with
   | .run k w out ins => ∀ bufs o, ins.mapM s = some bufs → s out = some o →
       (modules k).RaceFree bufs o.size ((modules k).workgroupSize * w)
   | _ => True
 
 def Cmd.execAll (files : String → Option (Array UInt32)) (s : HostStore) (cs : List Cmd)
-    (modules : KernelName → Module := KernelName.module) : Option HostStore :=
+    (modules : KernelName → Module) : Option HostStore :=
   match cs with
   | [] => some s
   | c :: cs => (c.exec files s modules).bind fun s' => Cmd.execAll files s' cs modules
 
 /-- Every dispatch of `cs`, run from `s`, is race-free. -/
 def Cmd.AllRaceFree (files : String → Option (Array UInt32)) (s : HostStore) (cs : List Cmd)
-    (modules : KernelName → Module := KernelName.module) : Prop :=
+    (modules : KernelName → Module) : Prop :=
   match cs with
   | [] => True
   | c :: cs => c.RaceFree s modules ∧
@@ -77,7 +75,7 @@ inductive Val where
   | float (x : Float32)
 
 def Val.buffer : Val → Array UInt32
-  | .arr xs => (Arg.array (floatWords xs)).buffer
+  | .arr xs => (Arg.array (xs.map fun x => x.toBits.toUInt64)).buffer
   | .word v => (Arg.word v).buffer
   | .float x => (Arg.float x.toBits).buffer
 
@@ -141,21 +139,6 @@ def Item.allCmds (items : List Item) : List Cmd := items.flatMap Item.cmds
 
 /-! ### Typed calls and host commands -/
 
-theorem KernelName.workgroupSize (k : KernelName) : k.module.workgroupSize = 64 := by
-  cases k
-  · exact Spec.module_workgroupSize embedSpec_module
-  · exact Spec.module_workgroupSize layerNormSpec_module
-  · exact Spec.module_workgroupSize linearSpec_module
-  · exact Spec.module_workgroupSize appendSpec_module
-  · exact Spec.module_workgroupSize scoresSpec_module
-  · exact Spec.module_workgroupSize headMaxSpec_module
-  · exact Spec.module_workgroupSize headSumSpec_module
-  · exact Spec.module_workgroupSize probsSpec_module
-  · exact Spec.module_workgroupSize mixSpec_module
-  · exact Spec.module_workgroupSize addSpec_module
-  · exact Spec.module_workgroupSize geluSpec_module
-  · exact Spec.module_workgroupSize logitsSpec_module
-
 theorem outputWords_size (n : Nat) : (outputWords n).size = 2 + 2 * n := by
   simp [outputWords]
 
@@ -172,57 +155,8 @@ theorem size_toUInt64 {xs : Array Float32} (h : xs.size < 2 ^ 29) :
   simp only [Nat.toUInt64, UInt64.toNat_ofNat']
   omega
 
-/-- A call's result is what its kernel's dispatch leaves in an output of the host's form. -/
-theorem KernelName.apply_dispatch {k : KernelName} {vs : List Val} {ys : Array Float32}
-    (h : k.apply vs = some ys) :
-    ys.size < 2 ^ 29 ∧
-      k.module.dispatch (vs.map Val.buffer) (outputWords ys.size) (64 * ((ys.size + 63) / 64)) =
-        some (Val.buffer (.arr ys)) ∧
-      k.module.RaceFree (vs.map Val.buffer) (outputWords ys.size).size
-        (64 * ((ys.size + 63) / 64)) := by
-  unfold KernelName.apply at h
-  split at h <;> (try split at h) <;> simp only [Option.some.injEq, reduceCtorEq] at h <;>
-    subst h <;> rename_i hb <;> simp only [build_size, embed32, layerNorm32, Library.Numerics.LinearAlgebra.Binary32.linear32,
-      append32, scores32, headMax32, headSum32, probs32, mix32, Library.Numerics.LinearAlgebra.Binary32.add32, geluArray32,
-      logits32]
-  · obtain ⟨h1, h2, h3⟩ := hb
-    exact ⟨h3, embedKernel_dispatch _ _ _ _ _ h1 h2 h3 _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-  · obtain ⟨h1, h2, h3, h4⟩ := hb
-    exact ⟨h4, layerNormKernel_dispatch _ _ _ _ _ h1 h2 h3 h4 _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-  · obtain ⟨h1, h2, h3, h4⟩ := hb
-    exact ⟨h4, linearKernel_dispatch _ _ _ _ _ h1 h2 h3 h4 _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-  · obtain ⟨h1, h2, h3⟩ := hb
-    exact ⟨h3, appendKernel_dispatch _ _ _ _ h1 h2 h3 _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-  · obtain ⟨h1, h2, h3⟩ := hb
-    exact ⟨h3, scoresKernel_dispatch _ _ _ _ _ h1 h2 h3 _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-  · obtain ⟨h1, h2⟩ := hb
-    exact ⟨h2, headMaxKernel_dispatch _ _ _ h1 h2 _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-  · obtain ⟨h1, h2, h3⟩ := hb
-    exact ⟨h3, headSumKernel_dispatch _ _ _ _ h1 h2 h3 _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-  · obtain ⟨h1, h2, h3, h4⟩ := hb
-    exact ⟨h4, probsKernel_dispatch _ _ _ _ _ h1 h2 h3 h4 _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-  · obtain ⟨h1, h2, h3⟩ := hb
-    exact ⟨h3, mixKernel_dispatch _ _ _ _ h1 h2 h3 _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-  · obtain ⟨h1, h2⟩ := hb
-    rw [size_toUInt64 h1]
-    exact ⟨h1, addKernel_dispatch _ _ h1 h2 _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-  · rw [size_toUInt64 hb]
-    exact ⟨hb, geluKernel_dispatch _ hb _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-  · obtain ⟨h1, h2, h3⟩ := hb
-    exact ⟨h3, logitsKernel_dispatch _ _ _ _ h1 h2 h3 _ (outputWords_size _)
-      (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
-
+/-- A kernel for each host call, with a workgroup size of 64 and the theorem that a dispatch of
+the kernel is race-free and leaves the call's result in an output of the host's form. -/
 structure KernelBackend where
   module : KernelName → Module
   workgroupSize : ∀ k, (module k).workgroupSize = 64
@@ -232,9 +166,6 @@ structure KernelBackend where
           (64 * ((ys.size + 63) / 64)) = some (Val.buffer (.arr ys)) ∧
       (module k).RaceFree (vs.map Val.buffer) (outputWords ys.size).size
         (64 * ((ys.size + 63) / 64))
-
-def KernelBackend.original : KernelBackend :=
-  ⟨KernelName.module, KernelName.workgroupSize, KernelName.apply_dispatch⟩
 
 def hostFiles (files : String → Option Val) : String → Option (Array UInt32) :=
   fun path => (files path).map Val.buffer
@@ -287,7 +218,7 @@ theorem Store.host_set (s : Store) (b : Buf) (v : Val) :
   split <;> rfl
 
 theorem Item.exec_sim (files : String → Option Val) {s s' : Store} {i : Item}
-    (h : i.exec files s = some s') (backend : KernelBackend := .original) :
+    (h : i.exec files s = some s') (backend : KernelBackend) :
     Cmd.execAll (hostFiles files) s.host i.cmds backend.module = some s'.host ∧
       Cmd.AllRaceFree (hostFiles files) s.host i.cmds backend.module := by
   cases i with
@@ -376,7 +307,7 @@ theorem Cmd.allRaceFree_append (files : String → Option (Array UInt32))
 /-- A run of typed items is a run of their host commands, from the encoded store to the encoded
 result, with every dispatch race-free. -/
 theorem Item.execAll_sim (files : String → Option Val) (items : List Item) (s s' : Store)
-    (h : Item.execAll files s items = some s') (backend : KernelBackend := .original) :
+    (h : Item.execAll files s items = some s') (backend : KernelBackend) :
     Cmd.execAll (hostFiles files) s.host (Item.allCmds items) backend.module = some s'.host ∧
       Cmd.AllRaceFree (hostFiles files) s.host (Item.allCmds items) backend.module := by
   induction items generalizing s with

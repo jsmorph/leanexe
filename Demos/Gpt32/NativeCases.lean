@@ -1,12 +1,13 @@
 import Demos.Gpt32.Driver
 
 /-!
-`tools/leanrun --timeout 30m lake env lean --run tests/gpt32/Native.lean HOST DIR` runs small random models through
-`Demos.Gpt32.generate`, the driver of `Demos/Gpt32/Generate.lean`, on the device the Vulkan
-loader chooses, and compares every step's scores with native Lean's `step32` bit for bit.  The
-models keep heads of 64 elements and the scores' stride of 1,024 positions, which the kernels
-fix, and vary the heads, the MLP width, the layers, and the chunks of the vocabulary.  `DIR`
-receives the weight files and the kernels.
+`tools/leanrun --timeout 30m lake env lean --run tests/gpt32/VerifiedNative.lean HOST DIR` runs
+small random models through `Demos.Gpt32.generate`, the driver of `Demos/Gpt32/Generate.lean`,
+with the verified compiler's kernels on the device that the Vulkan loader chooses, and compares
+every step's scores with native Lean's `step32` bit for bit.  The models keep heads of 64
+elements and the scores' stride of 1,024 positions, which the kernels fix, and vary the heads,
+the MLP width, the layers, and the chunks of the vocabulary.  `DIR` receives the weight files and
+the kernels.
 -/
 
 namespace Demos.Gpt32.NativeCases
@@ -72,15 +73,15 @@ def firstDifference (a b : List (Array Float32)) : Option String :=
         else none
 
 /-- Runs one model on the device and natively, and returns the number of steps compared. -/
-def check (host dir : String) (nh f chunk vocab layers : Nat) (prompt : List Nat) (n : Nat)
-    (modules : KernelName → LeanExe.WGSL.Module := KernelName.module) : IO Nat := do
+def check (host dir : String) (nh f chunk vocab layers : Nat) (prompt : List Nat) (n : Nat) :
+    IO Nat := do
   let s := shapeOf nh f chunk vocab layers
   let W := randomWeights s vocab (prompt.length + n)
   let tag := s!"nh{nh}-f{f}-c{chunk}-v{vocab}-l{layers}"
   writeWeights s!"{dir}/{tag}" W
   let seen ← IO.mkRef (#[] : Array (List (Array Float32)))
   let ids ← generate host s!"{dir}/{tag}" s!"{dir}/wgsl" s!"{dir}/read.bin" s prompt n
-    (fun zs => seen.modify (·.push zs)) modules
+    (fun zs => seen.modify (·.push zs))
   let device ← seen.get
   let mut caches := List.replicate s.layers ((#[] : Array Float32), (#[] : Array Float32))
   let mut k := 0
@@ -97,11 +98,10 @@ def check (host dir : String) (nh f chunk vocab layers : Nat) (prompt : List Nat
   IO.println s!"{tag}: {k} steps, scores equal bit for bit, tokens {ids}"
   return k
 
-def run (host dir : String) (modules : KernelName → LeanExe.WGSL.Module := KernelName.module) :
-    IO Unit := do
-  let a ← check host dir 1 96 64 200 2 [5, 17, 3] 4 modules
-  let b ← check host dir 2 256 200 500 3 [7, 400, 12, 99] 5 modules
-  let c ← check host dir 3 192 128 300 1 [250] 6 modules
+def run (host dir : String) : IO Unit := do
+  let a ← check host dir 1 96 64 200 2 [5, 17, 3] 4
+  let b ← check host dir 2 256 200 500 3 [7, 400, 12, 99] 5
+  let c ← check host dir 3 192 128 300 1 [250] 6
   IO.println s!"native: {a + b + c} steps compared, 0 failed"
 
 end Demos.Gpt32.NativeCases

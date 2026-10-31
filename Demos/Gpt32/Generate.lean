@@ -3,8 +3,9 @@ import Demos.Gpt32.Driver
 /-!
 `tools/leanrun --timeout 30m lake env lean --run Demos/Gpt32/Generate.lean HOST WEIGHTS WGSL SCORES NH F CHUNK VOCAB LAYERS N ID...`
 generates `N` tokens after the prompt `ID...` with the weights of the directory `WEIGHTS`, writes
-the kernels to the directory `WGSL`, appends the scores of each step to the file `SCORES` as
-little-endian binary32 values, and prints the prompt and the generated tokens on one line.
+the kernels of `Demos.Gpt32.Verified.kernelMap` to the directory `WGSL`, appends the scores of
+each step to the file `SCORES` as little-endian binary32 values, and prints the prompt and the
+generated tokens on one line.
 -/
 
 open Demos.Gpt32

@@ -10,8 +10,8 @@
 # url = "https://download.pytorch.org/whl/cpu"
 # explicit = true
 # ///
-"""Generates text with GPT-2 124M in binary32, every step in the WGSL kernels of
-Demos/Gpt32/Specs.lean, run by build/tools/leanexe-webgpu-host in session mode.
+"""Generates text with GPT-2 124M in binary32, every step in the verified compiler's WGSL kernels
+of Demos/Gpt32/Verified.lean, run by build/tools/leanexe-webgpu-host in session mode.
 
 Run with `uv run tests/gpt32/generate.py [--driver swiftshader|llvmpipe] [--tokens N] [PROMPT]`,
 or with `--export` to write the weight files and stop.
@@ -19,7 +19,7 @@ The script writes the pinned openai-community/gpt2 checkpoint to build/gpt2-32/ 
 of binary32 values (8 bytes per value), one file per array: the token embedding in four chunks
 of at most 12,565 rows, the positional embedding, and each layer's arrays, with `c_attn` split
 into its `q`, `k`, and `v` columns.  It runs Demos/Gpt32/Generate.lean, which writes the kernels
-to build/wgsl-leanexe, the directory of `tests/wgsl/run.sh --leanexe`, sends the host the
+to build/wgsl, the directory of the kernels of `tests/wgsl/run.sh`, sends the host the
 commands of `Demos.Gpt32.generate_host`, chooses each token with `greedy32`, and saves the scores
 of each step.  For each step the script runs Hugging Face's float32 model on
 the same prefix and reports the largest score difference relative to the largest score and
@@ -37,7 +37,7 @@ from transformers import GPT2LMHeadModel, GPT2TokenizerFast
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HOST = ROOT / 'build/tools/leanexe-webgpu-host'
-WGSL = ROOT / 'build/wgsl-leanexe'
+WGSL = ROOT / 'build/wgsl'
 OUT = ROOT / 'build/gpt2-32'
 REPO = 'openai-community/gpt2'
 REVISION = '607a30d783dfa663caf39e06633721c8d4cfcd7e'

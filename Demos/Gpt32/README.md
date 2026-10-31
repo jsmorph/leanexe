@@ -15,12 +15,16 @@ Vector addition and the biased linear transform come from [the binary32 linear-a
 
 ## The host theorem and device measurements
 
-`generate_host` states that the host's commands, run from the loaded weights for a prompt and one
-more token, end with the scores of `step32`, the Lean step, in the output buffers, and that every
-dispatch along the way is race-free.  It composes the dispatch theorem of each kernel in
-[`Proofs.lean`](Proofs.lean) and [`Kernels.lean`](Kernels.lean) with [`Exec.lean`](Exec.lean), which
-gives the commands their meaning, and [`Compose.lean`](Compose.lean), which follows the eighteen
-kernel calls of a layer.  The theorems prove successful execution and race freedom in a device
+`generate_host` states that the host's commands, run with the kernels of a `KernelBackend` from
+the loaded weights for a prompt and one more token, end with the scores of `step32`, the Lean
+step, in the output buffers, and that every dispatch along the way is race-free.  A backend gives
+a kernel for each host call with the call's dispatch theorem, and `generate_host` composes those
+theorems with [`Exec.lean`](Exec.lean), which gives the commands their meaning, and
+[`Compose.lean`](Compose.lean), which follows the eighteen kernel calls of a layer.  [The host
+instance](VerifiedHost.lean) supplies the verified compiler's kernels, as [the section on the
+verified compiler](#verified-compiler) describes, and no host theorem composes the dispatch
+theorems of the LeanExe kernels in [`Proofs.lean`](Proofs.lean) and [`Kernels.lean`](Kernels.lean).
+The theorems prove successful execution and race freedom in a device
 model with strict binary32 arithmetic, under their shape, buffer, and token bounds.
 A GPU may flush subnormal values and fuse multiply-adds,
 as the WGSL specification permits.  Before arithmetic-NaN normalization, the kernels' scores in
@@ -31,8 +35,8 @@ differed by up to 5.2e-5 of the largest score, while greedy generation chose the
 
 | Theorem | Statement |
 |---------|-----------|
-| `generate_host` | Under bounds on the shape and the tokens, for weights loaded from the files and a prompt of fewer than 1,024 tokens, the commands of `setupItems`, the steps of the prompt, and one more step run without error and race-free, and leave the scores of `step32` for the last token in the output buffers. |
-| `layerNormKernel_dispatch` and the other dispatch theorems | A dispatch of each kernel computes its Lean function into the output buffer and is race-free. |
+| `generate_host` | For the kernels of a backend, under bounds on the shape and the tokens, for weights loaded from the files and a prompt of fewer than 1,024 tokens, the commands of `setupItems`, the steps of the prompt, and one more step run without error and race-free, and leave the scores of `step32` for the last token in the output buffers. |
+| `layerNormKernel_dispatch` and the other dispatch theorems | A dispatch of each LeanExe kernel computes its Lean function into the output buffer and is race-free. |
 | `layerNormSpec_module` and its siblings | The translation of each kernel's IR succeeds and gives the kernel. |
 
 The proofs are in [`Proofs.lean`](Proofs.lean), [`Kernels.lean`](Kernels.lean),
@@ -45,29 +49,18 @@ browser page.
 ## Building, running, and testing
 
 ```sh
-tools/leanrun --timeout 60m lake build Demos.Gpt32.Compose
+tools/leanrun --timeout 60m lake build Demos.Gpt32.Proofs
 tools/build-webgpu-host.sh
 tests/wgsl/run.sh --leanexe
-tests/gpt32/native.sh
-uv run tests/gpt32/generate.py --tokens 8 "The meaning of life is"
 uv run tests/web/serve.py --leanexe
 ```
 
-The commands build the proofs and the WebGPU host, run the kernel tests and the step comparison,
-generate text, and serve the browser pages, with the setup of [the repository
-README](../../README.md#commands).  [`tests/wgsl/run.sh --leanexe`](../../tests/wgsl/run.sh) runs the
-kernel cases on the SwiftShader and llvmpipe Vulkan drivers, and
-[`tests/gpt32/native.sh`](../../tests/gpt32/native.sh) runs small random models through
-[`Generate.lean`](Generate.lean) on both drivers and compares each step's scores with native Lean's
-`step32`.  [`tests/gpt32/generate.py`](../../tests/gpt32/generate.py) writes the pinned checkpoint's
-weights to `build/gpt2-32/`, 949 MiB, generates with the kernels, and compares each step with
-Hugging Face's float32 model.  The command above printed "The meaning of life is not the same as the
-meaning of death" in 10.6 seconds on llvmpipe, with a largest relative score difference of 1.47e-6
-and the same token as Hugging Face's model at every step.
-[`tests/web/serve.py --leanexe`](../../tests/web/serve.py) serves the kernel test page and the GPT-2
-page on http://127.0.0.1:8000/ with these kernels and this `gpt32.wasm`.  `tests/gpt32/generate.py`
-writes the LeanExe compiler's GPT-2 kernels to `build/wgsl-leanexe`, the directory of
-`tests/wgsl/run.sh --leanexe`, apart from the verified kernels of the same names.
+The commands build the proofs of the LeanExe kernels and the WebGPU host, run the kernel tests,
+and serve the browser pages, with the setup of [the repository README](../../README.md#commands).
+[`tests/wgsl/run.sh --leanexe`](../../tests/wgsl/run.sh) runs the kernel cases on the SwiftShader
+and llvmpipe Vulkan drivers, and [`tests/web/serve.py --leanexe`](../../tests/web/serve.py) serves
+the kernel test page and the GPT-2 page on http://127.0.0.1:8000/ with these kernels and this
+`gpt32.wasm`.
 
 ## Verified compiler
 
@@ -83,25 +76,33 @@ above, remains a separate module.
 source theorem and each generated denotation equation.  The thirteen kernels share the
 IR-to-WGSL translation, including its NaN normalization.  [The host
 instance](VerifiedHost.lean) supplies the twelve generation kernels to
-the existing item and layer proofs.  `Demos.Gpt32.Verified.generate_host` states that the
-commands return the native step's scores and that each dispatch is race-free, under the same
-device model, loaded-weight conditions, and bounds as the original theorem.  The host processes,
+the existing item and layer proofs.  `Demos.Gpt32.Verified.generate_host` instantiates
+`generate_host` with these kernels: the commands return the native step's scores, and each
+dispatch is race-free, under its device model, loaded-weight conditions, and bounds.  The host processes,
 file I/O, and browser remain outside those proofs.
 
 ```sh
 tools/leanrun --timeout 20m lake build Demos.Gpt32.VerifiedHost
 tests/verified/run.sh --cases gpt32
 tests/wgsl/run.sh
-tests/gpt32/native.sh --verified
+tests/gpt32/native.sh
+uv run tests/gpt32/generate.py --tokens 8 "The meaning of life is"
 uv run tests/web/serve.py
 ```
 
 [The checked kernel corpus](VerifiedCases.lean) compares Wasm and GPU
 results with native Lean, including empty and short arrays, signed zeros, subnormals,
-infinities, and NaNs.  The Wasm cases also check allocations and retained blocks.  The
-generation driver runs the existing three random models through Wasm and both GPU drivers,
-comparing every score bit and each greedy token with native `step32`.  Its Wasm session adapter
-uses [the browser's existing Wasm host](../../tests/gpt32/browser/hosts.js).  `tests/wgsl/run.sh`
+infinities, and NaNs.  The Wasm cases also check allocations and retained blocks.
+[`tests/gpt32/native.sh`](../../tests/gpt32/native.sh) runs three random models through the driver
+of [`Generate.lean`](Generate.lean) in Wasm and on both GPU drivers, comparing every score bit and
+each greedy token with native `step32`.  Its Wasm session adapter uses [the browser's existing Wasm
+host](../../tests/gpt32/browser/hosts.js).  [`tests/gpt32/generate.py`](../../tests/gpt32/generate.py)
+writes the pinned checkpoint's weights to `build/gpt2-32/`, 949 MiB, generates with these kernels,
+which `Generate.lean` writes to `build/wgsl`, and compares each step with Hugging Face's float32
+model.  With the LeanExe compiler's kernels, the command above printed "The meaning of life is not
+the same as the meaning of death" in 10.6 seconds on llvmpipe, with a largest relative score
+difference of 1.47e-6 and the same token as Hugging Face's model at every step.  The script has
+not run with the verified kernels.  `tests/wgsl/run.sh`
 runs these kernels, with the binary32 example's verified kernels, on the cases of
 [`tests/wgsl/Cases.lean`](../../tests/wgsl/Cases.lean) and of this corpus, and
 `tests/web/serve.py` serves them, `build/verified/gpt32.wasm`, and the verified sampler module

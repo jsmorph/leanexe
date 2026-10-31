@@ -15,7 +15,7 @@
 #   6. VKB/Check.lean;
 #   7. rocq/check.sh;
 #   8. tests/wgsl/run.sh with --verified and without an option, each with --emit-only and then
-#      --drivers-only, and tests/gpt32/native.sh --verified;
+#      --drivers-only, and tests/gpt32/native.sh;
 #   9. tests/talos/run.sh.
 # A failed build leaves every later step but rocq/check.sh and tests/talos/run.sh unrun, since they
 # load the built modules.  The failure of any other step is recorded, and the next step runs.  A
@@ -568,13 +568,13 @@ step_gpu() {
       record "$step" "$(outcome)" "$seconds" "$cell"
     fi
   done
-  step='`tests/gpt32/native.sh --verified`'
+  step='`tests/gpt32/native.sh`'
   if unbuilt "$step"; then
     return 0
   elif [ "$drivers" = absent ]; then
     record "$step" "not run: drivers absent" "" ""
   elif ready "$step" wasm-tools:wasm-tools Node.js:node; then
-    run 8-gpt32-native tests/gpt32/native.sh --verified "$logs/gpt32"
+    run 8-gpt32-native tests/gpt32/native.sh "$logs/gpt32"
     record "$step" "$(outcome)" "$seconds" ""
   fi
 }
@@ -655,8 +655,8 @@ write_status() {
     fi
     notes+="  The check leaves out the suites of the LeanExe compiler, which is being retired:"
     notes+=" \`tests/modules/run.sh\` beyond the Euler and sums cases that \`tests/verified/run.sh\`"
-    notes+=" runs, \`tests/modules/chunks.py\`, the LTG check, \`tests/wgsl/run.sh --leanexe\`, and"
-    notes+=" \`tests/gpt32/native.sh\` without \`--verified\`.  It also leaves out"
+    notes+=" runs, \`tests/modules/chunks.py\`, the LTG check, and \`tests/wgsl/run.sh --leanexe\`."
+    notes+="  It also leaves out"
     notes+=" \`tests/native/subset.sh\`, whose result is the count of modules without a"
     notes+=" translation that \`tests/native/verified.sh\` reports, \`tests/native/bench.sh\`, which"
     notes+=" measures time, the decoder test, which needs the WebAssembly test suite converted by"

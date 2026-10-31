@@ -888,7 +888,7 @@ theorem generate_host (files : String → Option Val) (dir : String) (s : Shape3
     (hnh : s.nh.toNat ≤ 64) (hf : s.f.toNat < 2 ^ 29) (hlen : ts.length < 1024)
     (hts : ∀ t' ∈ t :: ts, (t' / s.chunk).toNat < s.rows.length)
     (hL : Loaded files dir W) (hF : Fits s W (List.replicate s.layers (#[], #[])))
-    (backend : KernelBackend := .original) :
+    (backend : KernelBackend) :
     let cmds := Item.allCmds (setupItems s dir ++ stepsItems s ts 0 ++
       stepItems s t (UInt64.ofNat ts.length))
     let scores := (step32 s W t (UInt64.ofNat ts.length)
