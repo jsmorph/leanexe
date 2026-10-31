@@ -131,7 +131,7 @@ On the GPT-2 124M weights, `forward` matches Hugging Face's model in float64.  `
 | Development proceeds in increments.  Each takes one program from Lean source to bytes, a proved `Implements`, a Wasmtime comparison with native Lean, an axiom audit, and a commit, adding only what that program needs. | Building whole layers before connecting them defers every integration error. |
 | `Implements` is one statement over a `Represent` class.  Every compiled module has a memory and the runtime globals. | A module without memory would make `Heap.At` false and the theorem vacuous. |
 | Every object has one owner, values move at their last use, and an owned array at its last use is updated in place. | Lean values can be shared, so ownership must be established in the source: moves make every reference count 1, and `release` needs no count. |
-| Runtime integers are fixed-width only, and `panic` compiles to `default`. | Bounded `Nat` traps where Lean returns the exact value, and Lean's logic gives `default` for an out-of-bounds `a[i]!`. |
+| Runtime integers are fixed-width only, and a read past the end of an array gives the element type's default. | Bounded `Nat` traps where Lean returns the exact value, and Lean's logic gives `default` for an out-of-bounds `a[i]!`. |
 | I/O uses a pure step function, `State → Input → State × Output`, driven by a fixed adapter, trusted until proved. | Each `step` call is pure, so `Implements` covers it. |
 | `release` and the runtime counters are absent from the source dialect.  Modules keep the counters as globals. | Their values are 0 in Lean and real in WASM. |
 | Floating-point theorems describe the WebAssembly deterministic profile. | Talos implements it, and it matches Lean's float model. |
