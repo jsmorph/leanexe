@@ -39448,3 +39448,19 @@ The rework built on `minideb2` with every proof text above the word layer unchan
 - [x] `Window.lean`, the word layer, and the module theorems.
 - [x] Examples, cases, file theorems, and the README.
 - [x] The replay tool's `check` against the new cases, and the plan.
+
+## 2026-10-30: The grid tests under power limits
+
+With the study's 10 kW import cap and the causal rule's load bound, the import test blocks charging through the winter.  On the withheld year the self-consumption mode within authorized limits costs $1,628 at 180 s with the grid tests, against $1,459 for the vendor's mode alone.  The test assumes that battery power can sit anywhere in `B` while the load is at `L⁺` and PV at `S⁻`.  A self-consumption mode does not behave that way: it charges only from surplus PV and discharges only to cover the load, so it never adds grid import or export.
+
+### Options
+
+| Option | Model | Authorizer | Commands |
+|---|---|---|---|
+| A. Keep the grid tests | A2 as now: power in `B` | Tests both caps over `B` | Any limits, including held setpoints and grid charging |
+| B. Self-consumption commands only | A2 adds a device property: battery power lies between 0 and the net surplus `S - L`, widened by `e` | Tests only the energy limits; grid power lies between 0 and the net load `L - S`, widened by `e`, which the theorem states | Limits for the self-consumption mode; no held setpoint that exchanges power with the grid, and no grid charging |
+| C. Two command kinds | A2 by kind | A mode word selects B's tests for self-consumption limits or A's tests for held setpoints | Both |
+
+Under B, `G = L + b - S` lies between `min(0, L - S) - e` and `max(0, L - S) + e`, so it lies within `min(-X, L⁻ + f⁻ - S⁺)` and `max(I, L⁺ + f⁺ - S⁻)` whenever `F ⊇ [-e, e]` and both caps are at least `e`, which profile validity would require.  `WithinOrFallback` would then hold without a grid test, and the program would lose `exportOk` and `importOk`.  On the withheld year, with the export cap still curtailing PV, option B costs $1,474 at 180 s and $1,476 at 900 s: $15 to $17 more than the vendor's mode alone.  Option B gives up the controller's curtailment rule ($14 a year on the calibration year) and grid charging (a loss on the calibration year under E-ELEC, which other tariffs may reverse).
+
+Provisional recommendation: B, because it removes two tests and their proofs, matches what a self-consumption mode does, and costs $15 a year against the vendor's mode at this house.  C keeps grid charging at the cost of a second path through the program and the theorem.
