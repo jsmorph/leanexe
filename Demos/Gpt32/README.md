@@ -73,14 +73,14 @@ uv run tests/web/serve.py
 The commands build the proofs and the WebGPU host, test the module and the kernels, generate text,
 and serve the browser pages, with the setup of [the repository README](../../README.md#commands).
 `tests/verified/run.sh --cases gpt32` writes the module and compares it with native Lean on the Wasm
-cases of [the checked kernel corpus](VerifiedCases.lean), and without `--cases` the driver also
-checks `File.lean` against the file it wrote.  The corpus covers empty and short arrays, signed
-zeros, subnormals, infinities, and NaNs, and its Wasm cases also check allocations and retained
-blocks.  `tests/wgsl/run.sh` runs the kernels, with the binary32 example's verified kernels, on the
-cases of [`tests/wgsl/Cases.lean`](../../tests/wgsl/Cases.lean) and of the corpus on the SwiftShader
-and llvmpipe Vulkan drivers, and compares each output word with native Lean's.  Without `--cases`,
-the verified driver also checks the file module against the written file and requires the axiom
-reports of both file theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.
+cases of [the checked kernel corpus](VerifiedCases.lean).  The corpus covers empty and short arrays,
+signed zeros, subnormals, infinities, and NaNs, and its Wasm cases also check allocations and
+retained blocks.  Without `--cases`, the verified driver also checks `File.lean` against the file
+it wrote and requires the axiom reports of both file theorems to name only `propext`,
+`Classical.choice`, and `Quot.sound`.  `tests/wgsl/run.sh` runs the kernels, with the binary32
+example's verified kernels, on the cases of [`tests/wgsl/Cases.lean`](../../tests/wgsl/Cases.lean)
+and of the corpus on the SwiftShader and llvmpipe Vulkan drivers, and compares each output word
+with native Lean's.
 
 [`tests/gpt32/native.sh`](../../tests/gpt32/native.sh) runs small random models through `generate`
 of [`Driver.lean`](Driver.lean), the driver that [`Generate.lean`](Generate.lean) runs, on the

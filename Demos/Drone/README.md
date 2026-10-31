@@ -31,8 +31,8 @@ its three words.  The other Lean files of this directory hold the mathematics of
 | Execution without a trap | Called from a ready store of the module with a terrain borrowed below address 8192, under a memory cap of at least 35 pages, the export `compute` returns without a trap a new array that holds the words of `compute`.  The terrain stays borrowed, and `top` rises by at most 2,251,064 bytes.  The module's bytes decode to the module, and the store in which it starts is ready under every memory cap of at most 65,535 pages. | `drone_compute_call` in [the call theorem](VerifiedCall.lean), from `drone_trapFree` and `compute_bound` in [the compilation](Verified.lean) |
 | Written file | `build/verified/drone.wasm`, as written, holds `encode compiled.module` and decodes to `compiled.module`. | `drone_file` and `drone_file_decode` in [the file theorems](File.lean) |
 
-The first three theorems concern the module's bytes, through the round trip of the encoder, and the
-file theorems concern the written file.  The safety theorem concerns the ideal point-mass model of
+The optimality, safety, and execution theorems concern the module's bytes, through the round trip
+of the encoder, and the file theorems concern the written file.  The safety theorem concerns the ideal point-mass model of
 [the drone verification
 report](https://github.com/jsmorph/leanexe-papers/blob/main/paper/drone-verification-report/README.md).
 `drone_trapFree` states that entry 18 computes `compute` without a trap whenever `top` can rise by

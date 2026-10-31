@@ -46,7 +46,7 @@ after `p` tokens, and the arguments of the calls.  `Generating heap store` descr
 the calls: the weights are borrowed at their pointers, and the cache of the first `p` tokens is
 owned at `pc`, apart from them.  It names `heap`, the allocator's state, so that a premise can state
 room for `top` to rise from it.  The theorems follow from `compiled.step.implements` and
-`compiled.scores.implements`, which allow a stop at `unreachable`, and on `compiled.step.trapFree`
+`compiled.scores.implements`, which allow a stop at `unreachable`, and from `compiled.step.trapFree`
 and `compiled.scores.trapFree`, which exclude it under room for the generated bounds
 `compiled.step.bound` and `compiled.scores.bound`.
 
