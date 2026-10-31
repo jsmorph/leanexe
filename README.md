@@ -1,6 +1,40 @@
 # LeanExe
 
-LeanExe compiles functions written in a restricted dialect of Lean to WebAssembly, C, and WGSL, and proves in Lean that the compiled code computes those functions.  Its compiler, `Verified`, has one correctness theorem for every typed source program that it accepts.  The WebAssembly theorems hold in Talos's semantics, and an execution theorem may allow a trap at `unreachable`, which the theorem `p.f.trapFree` excludes under its allocation and call-depth premises.  The compiled modules also translate to a subset of CompCert's C, with a theorem about each C function in the Lean copy of CompCert's Clight, and CompCert compiles the C for x86-64 and AArch64, under an operating system or on bare-metal AArch64.  Only the bare-metal programs have a theorem about the whole program, which a Rocq proof carries to CompCert's Asm, and an executable under an operating system also depends on a C host that no theorem covers.  Array builds compile to WGSL compute kernels with theorems about a modeled GPU dispatch, and Lean actions with stdin, stdout, stderr, and exit compile to WASI Preview 1 modules.
+LeanExe compiles functions written in a restricted dialect of Lean to WebAssembly, C, and WGSL, and proves in Lean that the compiled code computes those functions.
+
+The compiler has one correctness theorem for every typed source program that it accepts.  The WebAssembly theorems hold in [Talos](https://github.com/cajal-technologies/talos)'s semantics, and an execution theorem may allow a trap at `unreachable`, which the theorem `p.f.trapFree` excludes under its allocation and call-depth premises.  The compiled modules also translate to a subset of [CompCert](https://compcert.org/compcert-C.html)'s C, with a theorem about each C function in the Lean copy of CompCert's Clight, and CompCert compiles the C for x86-64 and AArch64, under an operating system or on bare-metal AArch64.  Only the bare-metal programs have a theorem about the whole program, which a Rocq proof carries to CompCert's Asm, and an executable under an operating system also depends on a C host that no theorem covers.  Array builds compile to WGSL compute kernels with theorems about a modeled GPU dispatch, and Lean actions with stdin, stdout, stderr, and exit compile to WASI Preview 1 modules.
+
+## Background
+
+This project is inspired by small languages designed to simplify analysis, implementation, and verification: [PreScheme](https://dustycloud.org/misc/prescheme.pdf), [Low\*](https://arxiv.org/abs/1703.00053), [ACL2](https://doi.org/10.1109/32.588534), [CompCert C / Clight](https://xavierleroy.org/publi/Clight.pdf), [CakeML](https://cakeml.org/popl14.pdf), and [TinyGo](https://tinygo.org/).
+
+Donald Knuth's [The Art of Computer Programming](https://cs.stanford.edu/~knuth/taocp.html) and in particular its "Seminumerical Algorithms" are major inspirations as well.  We are explicitly organizing some development in a similar spirit.  For example, see the current set of [elementary and special functions](https://github.com/jsmorph/leanexe/blob/main/index.md#6-elementary-and-special-functions).
+
+We strive to be both pragmatic and demanding.  For example, floating-point operations have been in scope since the beginning of the project.  IEEE 754 is an impressive, challenging beast.  See David Goldberg's ["What Every Computer Scientist Should Know About
+Floating-Point Arithmetic"](https://dl.acm.org/doi/10.1145/103162.103163).  We are building machinery for complete floating-point accuracy.  The [fused multiply-add](https://github.com/jsmorph/leanexe/blob/main/Library/Numerics/Arithmetic/Fma/FmaTheorem.lean#L144-L149) development is a good example.
+
+These days rewriting a large codebase in a different source language is almost automatic (given appropriate stern oversight).  So inventing a new language today doesn't necessarily impose the classic high hurdles to adoption.  However, AI is of course trained on existing corpora.  Lean in particular continues to receive a lot of investment by AI companies.  So we decided to proceed from a [strict subset of Lean](https://github.com/jsmorph/leanexe/tree/main/docs).
+
+## Demos
+
+Here are some of the demos in this repo:
+
+- [Binary32 GPT-2](Demos/Gpt32/README.md): one generation step of GPT-2 124M in `Float32`, compiled to WGSL kernels with dispatch theorems and to WebAssembly.  `generate_host` composes the kernels' theorems into the step's scores, and a browser page runs the model on WebGPU and in WebAssembly and compares the scores.
+- [Binary64 GPT-2](Demos/Gpt/README.md): the model in `Float`, with `steps_exact`, which proves that cached generation equals full inference bit for bit, and `forward_causal`.
+- [Euler solvers](Demos/Euler/README.md): finite-volume solvers for the compressible Euler equations.  `euler_solve_call` proves that the module returns the solvers' results without a trap within a memory cap, the balance theorems bound the rounding error of conservation, and the solver also runs as C and as a bare-metal AArch64 program.
+- [Drone planner](Demos/Drone/README.md): flights over terrain that `drone_compute` and `drone_safe` prove optimal and safe in a point-mass model.
+- [Slew planner](Demos/Slew/README.md): spacecraft attitude slews that keep body vectors outside keep-out cones and inside keep-in cones, with `plan_safe` for the constraints and `plan_optimal` for least duration.
+- [Running sums](Demos/RunningSum/README.md): WASI programs that read numbers from stdin and print cumulative totals, with proofs of canonical output and eventual exit.  [The binary64 version](Demos/RunningSumFp/README.md) composes proved parsing, IEEE 754 addition, and printing.
+- [SHA-256](#a-worked-example-sha-256): from a transcription of FIPS 180-4 to WebAssembly, C, and a bare-metal AArch64 image whose whole-program theorem a Rocq proof carries to CompCert's Asm.
+- [Elementary and special functions](index.md#6-elementary-and-special-functions): binary64 implementations with proved accuracy bounds, and a software [fused multiply-add](Library/Numerics/Arithmetic/Fma/README.md) proved equal to IEEE 754's fusedMultiplyAdd for all operands.
+
+## Selected documentation
+
+- [Verified compiler manual](docs/verified-manual.md): the dialect, `verified_compile`, the generated theorems, and the tests.
+- [Verified compiler internals](Verified/README.md): the source language, the compiler, and its universal proof.
+- [Algorithm index](index.md): each program with its proved results and compiled forms.
+- [Trusted base](docs/trusted-base.md): what each kind of theorem trusts.
+- [Design document](docs/design.md): the architecture and its decisions.
 
 ## Artifacts
 
@@ -220,3 +254,34 @@ ACCEL=kvm tests/baremetal/programs.sh # the same programs under KVM
 ```
 
 `uv run tests/web/serve.py` serves, on http://127.0.0.1:8000/, a page that runs the WGSL kernel tests on a browser's WebGPU and a page that runs GPT-2 with its kernels on WebGPU, in WebAssembly, or on both and compares the scores.  The GPT-2 page needs the binary32 weights that `uv run tests/gpt32/generate.py --export` writes.  [The browser test guide](tests/web/README.md) covers setup and proof scope.
+
+## References
+
+- Richard A. Kelsey, [Pre-Scheme: A Scheme Dialect for Systems Programming](https://dustycloud.org/misc/prescheme.pdf)
+- Jonathan Protzenko et al., [Verified Low-Level Programming Embedded in F\*](https://arxiv.org/abs/1703.00053)
+- Matt Kaufmann and J Strother Moore, [An Industrial Strength Theorem Prover for a Logic Based on Common Lisp](https://doi.org/10.1109/32.588534)
+- Sandrine Blazy and Xavier Leroy, [Mechanized Semantics for the Clight Subset of the C Language](https://xavierleroy.org/publi/Clight.pdf)
+- Ramana Kumar, Magnus O. Myreen, Michael Norrish, and Scott Owens, [CakeML: A Verified Implementation of ML](https://cakeml.org/popl14.pdf)
+- [TinyGo](https://tinygo.org/)
+- Donald E. Knuth, [The Art of Computer Programming](https://cs.stanford.edu/~knuth/taocp.html)
+- David Goldberg, [What Every Computer Scientist Should Know About Floating-Point Arithmetic](https://dl.acm.org/doi/10.1145/103162.103163)
+- [IEEE 754-2019, IEEE Standard for Floating-Point Arithmetic](https://doi.org/10.1109/IEEESTD.2019.8766229)
+- [WebAssembly Core Specification](https://webassembly.github.io/spec/core/)
+- [WASI Preview 1](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/docs.md)
+- [WebGPU](https://www.w3.org/TR/webgpu/) and [WebGPU Shading Language](https://www.w3.org/TR/WGSL/)
+- [FIPS 180-4, Secure Hash Standard](https://csrc.nist.gov/pubs/fips/180-4/final)
+- [FIPS 198-1, The Keyed-Hash Message Authentication Code](https://csrc.nist.gov/pubs/fips/198-1/final)
+- [FIPS 202, SHA-3 Standard](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf)
+- [ITU-T Recommendation V.42](https://www.itu.int/rec/T-REC-V.42-200203-I/en)
+- [RFC 3720, Internet Small Computer Systems Interface (iSCSI)](https://www.rfc-editor.org/rfc/rfc3720)
+- Jean-Philippe Aumasson and Daniel J. Bernstein, [SipHash: a fast short-input PRF](https://cr.yp.to/siphash/siphash-20120918.pdf)
+- [xxHash specification](https://github.com/Cyan4973/xxHash/blob/dev/doc/xxhash_spec.md)
+- Alec Radford et al., [Language Models are Unsupervised Multitask Learners](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
+- [Lean](https://lean-lang.org/), [Elan](https://github.com/leanprover/elan), and [Mathlib](https://github.com/leanprover-community/mathlib4)
+- [Talos](https://github.com/cajal-technologies/talos)
+- [CompCert](https://compcert.org/compcert-C.html)
+- [Rocq](https://rocq-prover.org/)
+- [Wasmtime](https://wasmtime.dev/) and [wasm-tools](https://github.com/bytecodealliance/wasm-tools)
+- [QEMU](https://www.qemu.org/)
+- [wgpu-native](https://github.com/gfx-rs/wgpu-native), [SwiftShader](https://github.com/google/swiftshader), and [llvmpipe](https://docs.mesa3d.org/drivers/llvmpipe.html)
+- [uv](https://docs.astral.sh/uv/)
