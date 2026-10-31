@@ -28,8 +28,8 @@ The axiom reports of the file theorems, which depend on every `implements` theor
 `compiled.bytes`, name only `propext`, `Classical.choice`, and `Quot.sound`.  [The design
 document](../../docs/design.md#floating-point) describes ProofKit's proofs that Lean's binary64
 addition, subtraction, multiplication, division, and square root equal Talos's `IEEE64` functions on
-bit patterns for all inputs, and the three places where Lean's and WebAssembly's float operations
-differ.  None of the three occurs in this program.
+bit patterns for all inputs, and the places where Lean's and WebAssembly's float operations differ,
+none of which occurs in this program.
 
 ## Building, running, and testing
 
@@ -58,6 +58,8 @@ CompCert.  The cases state that a call allocates no block.
 [`ScaledHypot`](../ScaledHypot/README.md) adds square root and division, and
 [`Piecewise`](../Piecewise/README.md) adds comparisons, negation, `abs`, `min`, and `max`.
 [`Binary32`](../Binary32/README.md) has `axpy32`, the same function on `Float32`.
+[`Bucket`](../Bucket/README.md) converts a binary64 quotient to a word with the saturating
+conversion.
 
 ## References
 

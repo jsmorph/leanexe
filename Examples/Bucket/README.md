@@ -56,6 +56,8 @@ to C, compiled with CompCert.  The cases state that a call allocates no block.
 
 [`Mean`](../../Library/Numerics/Statistics/Mean/README.md) converts a word to a float with
 `UInt64.toFloat`.  [`Shape`](../Shape/README.md) converts words to floats inside a sum type.
+[`Slew`](../../Demos/Slew/README.md) builds the ceiling of each cost from the saturating
+`Float.toUInt64`.
 
 ## References
 

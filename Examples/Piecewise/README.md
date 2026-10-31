@@ -55,6 +55,8 @@ compiled with CompCert.  The cases state that a call allocates no block.
 
 [`Binary32`](../Binary32/README.md) has `piecewise32`, the same function on `Float32`.
 [`Bools`](../Bools/README.md) returns float comparisons as `Bool` values.
+[`Slew`](../../Demos/Slew/README.md) uses `max` and `min` in its edge check, and its soundness proof
+follows Lean's choice of operand when a value is a NaN.
 
 ## References
 

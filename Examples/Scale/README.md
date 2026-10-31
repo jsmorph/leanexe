@@ -28,7 +28,7 @@ Without `--cases`, [the verified driver](../../tests/verified/run.sh) checks the
 it writes `build/verified/scale.wasm`, and it requires the axiom reports of both file theorems to
 name only `propext`, `Classical.choice`, and `Quot.sound`.  [The verified compiler
 manual](../../docs/verified-manual.md#the-implements-family) defines `ImplementsA`, which
-`compiled.scale.implements` states, and [its section on generated
+`compiled.scale.implements` states.  [Its section on generated
 declarations](../../docs/verified-manual.md#generated-declarations) gives the numbering of the
 functions.
 

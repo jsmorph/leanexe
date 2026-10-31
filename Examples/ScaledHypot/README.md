@@ -56,8 +56,8 @@ with CompCert.  The cases state that a call allocates no block.
 
 [`Axpy`](../Axpy/README.md) has the same structure with multiplication and addition.
 [`Binary32`](../Binary32/README.md) has `hypot32`, the unscaled length in binary32.  The Euler
-solvers in [`Euler`](../../Demos/Euler/README.md) use square roots for sound speeds, with outward-rounded
-bounds in the reconstructed solver.
+solvers in [`Euler`](../../Demos/Euler/README.md) use square roots for sound speeds, with
+outward-rounded bounds in the reconstructed solver.
 
 ## References
 
