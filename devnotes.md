@@ -39486,3 +39486,34 @@ A fresh reviewer checked the first version of the specification against the plan
 - [x] `Operation.lean`, its review, and the fixes.
 - [x] `Compose.lean` and `authorize_operation`.
 - [x] Rebuild, the case run with the axiom audit, and the commit: 2,047 cases pass, and `operation_sound`, `operates_exists`, and `authorize_operation` use only `propext`, `Classical.choice`, and `Quot.sound`.
+
+## 2026-10-31: Grid limits over metering intervals
+
+The user chose grid limits over metering intervals as the next Stage 8 extension.  Before a design, the analysis below asks what such limits would gain, because the replay's import-test cost came from the causal rule's bound on the load's instantaneous maximum.
+
+### Two kinds of limit over time
+
+Interconnection limits on import and export are enforced at the site by a power control system certified under UL 1741's requirements for power control systems, which caps the open-loop response at 30 s and which tested equipment meets in 0.6 to 2 s.  Demand limits are averages over fixed metering intervals, most often 15 minutes.  An averaged limit in the authorizer would need, in each snapshot, the grid energy already metered in the current interval and bounds on the average load and PV up to the end of every metering interval that the window touches, so the forecast horizon would grow from `W` to as much as `W + M`.  The window that ends inside a metering interval would also have to leave room for fallback until that interval ends.
+
+### What averaging gains at the test house
+
+On the calibration year, against the previous 15 minutes (`/tmp` script `avg.py` over `nist-2014.csv`):
+
+| Season | Percentile | Maximum over the next 300 s above the recent maximum (W) | Average over the next 900 s above the recent average (W) | Average over the next 900 s above the recent maximum (W) |
+|---|---|---|---|---|
+| November to March | 99 | 10,174 | 5,598 | 4,084 |
+| November to March | 99.9 | 10,744 | 9,661 | 9,182 |
+| June to September | 99 | 1,826 | 2,718 | 1,553 |
+| June to September | 99.9 | 5,549 | 5,103 | 4,480 |
+
+At the 99.9th percentile, which the study's causal rule uses, the winter bound falls by only 1.6 kW, because the heat pump's resistance heat runs for many minutes and raises the 15-minute average nearly as much as the maximum.  The bound falls by 6 kW at the 99th percentile, at lower coverage.  The import test at the test house binds because the study chose a 10 kW cap that the house's own winter load reaches, and an averaged cap of the same size would bind in the same hours.
+
+### Options
+
+| Option | Theorem | Cost |
+|---|---|---|
+| A. Averaged caps over fixed metering intervals | Each completed metering interval inside the window keeps its average within the cap, or no further outside than fallback | New snapshot words (metered energy so far, average bounds per metering interval), a horizon up to `W + M`, new tests and proofs; gains little at this house at 99.9% coverage |
+| B. Leave the caps to a certified power control system | The theorem covers the energy limits; the grid caps become an assumption about the site's power control system, like the other protections of A8 | Removes two tests and their proofs; the theorem no longer states a grid bound |
+| C. Keep the instantaneous caps | As now | None |
+
+Provisional recommendation: C for now, with this analysis recorded, because A's gain at 99.9% coverage is small at the only house measured and B removes a guarantee.  The import test's cost in the replay reflects a cap below the house's own peak load, which a real site's service rating would not be.
