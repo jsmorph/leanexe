@@ -157,20 +157,20 @@ the value that `segmentField` writes at field `f` of the segment from node `a` t
 
 | Theorem | File | Hypotheses | Conclusion |
 |---|---|---|---|
-| `compiled.plan.implements` | [The compilation](Verified.lean) | A heap with the allocator invariant, a memory cap of at most 65,535 pages, and argument words that represent the borrowed `xs` | Entry 28, the `plan` export, returns words that represent `plan xs`, or traps at `unreachable`, which an allocation that finds no memory can cause. |
-| `compiled.plan.trapFree` | [The compilation](Verified.lean) | Those of `implements`, and room for `top` to rise by `compiled.plan.bound xs` bytes within the cap | Entry 28 returns words that represent `plan xs` without a trap, and `top` rises by at most `compiled.plan.bound xs`. |
-| `compiled.bytes` | [The compilation](Verified.lean) | None | `encode compiled.module` succeeds with bytes that decode to `compiled.module`, and the `implements` theorem of every function holds. |
-| `edgeOk_sound` | [The soundness proof](Check.lean) | An attitude `q_a` with finite components and a squared norm within `3e-12` of 1, a relative quaternion `rel` with finite components, `w ≥ 0`, and a squared norm within `1e-11` of 1, cones whose body vectors and axes are finite with squared norms within `3e-12` of 1 and whose cosines are finite and in `[-1, 1]`, and `edgeOk` accepting `rel` from `q_a` | For every cone, every `φ` from 0 to the rotation angle of `rel`'s real value, and every vector within `1.05e-9` of `R(n, φ) R(q̄_a) b̄`, where `n` is the normalized vector part of `rel`'s real value, the vector satisfies the cone against `ū`. |
-| `attitudeOk_sound` | [The soundness proof](Check.lean) | An attitude `q` and cones as for `edgeOk_sound`, and `attitudeOk` accepting `q` without slack | For every cone, every vector within `1.05e-9` of `R(q̄) b̄` satisfies the cone against `ū`. |
-| `plan_safe` | [The safety theorem](Safety.lean) | Status 1 | For some `K ≥ 1`, the output has `8 + 11K` values and starts and ends with the input's start and goal quaternions, bit for bit.  For each segment `g`, `n̄_g` has length 1, `R(n̄_g, θ_g) R(q̄_g)` lies within `1e-9` of `R(q̄_{g+1})`, and for every `φ` in `[0, θ_g]` and every map within `1e-9` of `R(n̄_g, φ) R(q̄_g)`, the map's image of `b̄` satisfies every cone against `ū`. |
-| `plan_finite` | [NaN-freedom](NanFree.lean) | `validInput xs` | The values that `validInput` computes, the conversion of every word to a float, the values of the static check of every node without slack, and, for every pair of nodes, the values of the edge check, the relative quaternion, the angle and the arguments and result of its `atan2` call, the duration, and the output axis are finite. |
-| `plan_premise` | [The premise theorem](Premise.lean) | Status 1 with `K` segments, `g < K`, `φ` in `[0, θ_g]`, a map `F` that moves every unit vector by an angle of at most `ε` from `R(n̄_g, φ) R(q̄_g)`, a cone with a true axis `u` within angle `d` of `ū`, and a real `α` | For a keep-out cone with `α + d + ε ≤ arccos c`, the angle between `F b̄` and `u` is at least `α`.  For a keep-in cone with `arccos c + d + ε ≤ α`, it is at most `α`. |
-| `edge_cost_le` | [The edge cost](Cost.lean) | `validInput xs`, and nodes `a` and `b` below `nw + 2` | The cost of the edge from `a` to `b`, `⌈1000 T(θ)⌉ + ⌈1000 t_s⌉` as computed, is at most `2^34` ms. |
+| `compiled.plan.implements` | [Compilation](Verified.lean) | Heap with the allocator invariant, a memory cap of at most 65,535 pages, and argument words that represent the borrowed `xs` | Entry 28, the `plan` export, returns words that represent `plan xs`, or traps at `unreachable`, which an allocation that finds no memory can cause. |
+| `compiled.plan.trapFree` | [Compilation](Verified.lean) | Those of `implements`, and room for `top` to rise by `compiled.plan.bound xs` bytes within the cap | Entry 28 returns words that represent `plan xs` without a trap, and `top` rises by at most `compiled.plan.bound xs`. |
+| `compiled.bytes` | [Compilation](Verified.lean) | None | `encode compiled.module` succeeds with bytes that decode to `compiled.module`, and the `implements` theorem of every function holds. |
+| `edgeOk_sound` | [Soundness proof](Check.lean) | Attitude `q_a` with finite components and a squared norm within `3e-12` of 1, a relative quaternion `rel` with finite components, `w ≥ 0`, and a squared norm within `1e-11` of 1, cones whose body vectors and axes are finite with squared norms within `3e-12` of 1 and whose cosines are finite and in `[-1, 1]`, and `edgeOk` accepting `rel` from `q_a` | For every cone, every `φ` from 0 to the rotation angle of `rel`'s real value, and every vector within `1.05e-9` of `R(n, φ) R(q̄_a) b̄`, where `n` is the normalized vector part of `rel`'s real value, the vector satisfies the cone against `ū`. |
+| `attitudeOk_sound` | [Soundness proof](Check.lean) | Attitude `q` and cones as for `edgeOk_sound`, and `attitudeOk` accepting `q` without slack | For every cone, every vector within `1.05e-9` of `R(q̄) b̄` satisfies the cone against `ū`. |
+| `plan_safe` | [Safety theorem](Safety.lean) | Status 1 | For some `K ≥ 1`, the output has `8 + 11K` values and starts and ends with the input's start and goal quaternions, bit for bit.  For each segment `g`, `n̄_g` has length 1, `R(n̄_g, θ_g) R(q̄_g)` lies within `1e-9` of `R(q̄_{g+1})`, and for every `φ` in `[0, θ_g]` and every map within `1e-9` of `R(n̄_g, φ) R(q̄_g)`, the map's image of `b̄` satisfies every cone against `ū`. |
+| `plan_finite` | [NaN-freedom](NanFree.lean) | `validInput xs` | Values that `validInput` computes, the conversion of every word to a float, the values of the static check of every node without slack, and, for every pair of nodes, the values of the edge check, the relative quaternion, the angle and the arguments and result of its `atan2` call, the duration, and the output axis are finite. |
+| `plan_premise` | [Premise theorem](Premise.lean) | Status 1 with `K` segments, `g < K`, `φ` in `[0, θ_g]`, a map `F` that moves every unit vector by an angle of at most `ε` from `R(n̄_g, φ) R(q̄_g)`, a cone with a true axis `u` within angle `d` of `ū`, and a real `α` | For a keep-out cone with `α + d + ε ≤ arccos c`, the angle between `F b̄` and `u` is at least `α`.  For a keep-in cone with `arccos c + d + ε ≤ α`, it is at most `α`. |
+| `edge_cost_le` | [Edge cost](Cost.lean) | `validInput xs`, and nodes `a` and `b` below `nw + 2` | Cost of the edge from `a` to `b`, `⌈1000 T(θ)⌉ + ⌈1000 t_s⌉` as computed, is at most `2^34` ms. |
 | `plan_optimal` | [Optimality](Optimal.lean) | `validInput xs`, and the start and the goal pass the static check without slack | When the graph has a walk from the start to the goal, the output has status 1, its segments join the nodes of such a walk, each field as `segValue` gives it, its header reports the walk's cost, and no walk from the start to the goal costs less.  Otherwise the output has status 0. |
-| `plan_bound` | [The allocation bound](Bound.lean) | None | `compiled.plan.bound xs ≤ 68,020,488`. |
-| `slew_trapFree` | [The allocation bound](Bound.lean) | Those of `implements`, and room for `top` to rise by 68,020,488 bytes within the cap | Entry 28 returns words that represent `plan xs` without a trap, and `top` rises by at most 68,020,488 bytes. |
-| `slew_file` | [The file theorems](File.lean) | The file `build/verified/slew.wasm` as written | `encode compiled.module` equals the file's bytes. |
-| `slew_file_decode` | [The file theorems](File.lean) | The same file | The file decodes to `compiled.module`. |
+| `plan_bound` | [Allocation bound](Bound.lean) | None | `compiled.plan.bound xs ≤ 68,020,488`. |
+| `slew_trapFree` | [Allocation bound](Bound.lean) | Those of `implements`, and room for `top` to rise by 68,020,488 bytes within the cap | Entry 28 returns words that represent `plan xs` without a trap, and `top` rises by at most 68,020,488 bytes. |
+| `slew_file` | [File theorems](File.lean) | `build/verified/slew.wasm` as written | `encode compiled.module` equals the file's bytes. |
+| `slew_file_decode` | [File theorems](File.lean) | Same file | `build/verified/slew.wasm` decodes to `compiled.module`. |
 
 ## Soundness of the checks
 
@@ -182,9 +182,9 @@ threshold, with `μ = 2⁻⁵³`, the margin covers these parts.
 | Part | Bound |
 |---|---|
 | Rounding of `f₀`, `f₁`, the stationary value, and the tightened cosine `c ∓ margin` | `2300 μ`, about `2.6e-13` |
-| The use of `w² - s²` and `2ws`, which equal `cos θ` and `sin θ` times `w² + s²`, in place of `cos θ` and `sin θ` | `2.3e-11` |
+| Use of `w² - s²` and `2ws`, which equal `cos θ` and `sin θ` times `w² + s²`, in place of `cos θ` and `sin θ` | `2.3e-11` |
 | Normalization of the attitude, the body vector, and the cone axis | `1.3e-11` |
-| The tube `ρ` | `1.05e-9` |
+| Tube `ρ` | `1.05e-9` |
 | Total | about `1.0863e-9`, about `1.4e-11` below `margin` |
 
 Below `s = 1e-7`, the slack `2.125 · s` exceeds the change `2.0003 S` of the cosine along the
@@ -280,16 +280,17 @@ admitted node unreached.
 
 ## Limits of the theorems
 
-The theorems rest on the verified compiler's
-[trusted base](../../docs/verified-manual.md#trusted-base): Lean's kernel with the three axioms,
-the semantics of WebAssembly of [Talos](../../docs/trusted-base.md#v-webassembly-modules-of-the-verified-compiler), an interpreter
-written in Lean, the binary decoder, the module emitter, and, for the file theorems, the elaborator
-`binary_file%`, which reads the written file.  The manual's section
-[outside the proofs](../../docs/verified-manual.md#outside-the-proofs) lists what those semantics
-leave out, such as engine instantiation and the call depth of a real engine.  `plan_safe`,
-`plan_premise`, and `plan_optimal` concern `plan` in Lean, and `compiled.plan.implements` carries
-them to every output that the module's `plan` export returns.  `plan_finite` concerns the
-evaluation in Lean and states nothing about the module's instructions.
+The theorems rest on the verified compiler's [trusted
+base](../../docs/verified-manual.md#trusted-base): Lean's kernel with the three axioms, the
+semantics of WebAssembly of
+[Talos](../../docs/trusted-base.md#v-webassembly-modules-of-the-verified-compiler), an
+interpreter written in Lean, the binary decoder, the module emitter, and, for the file theorems,
+the elaborator `binary_file%`, which reads the written file.  The manual's section [outside the
+proofs](../../docs/verified-manual.md#outside-the-proofs) lists what those semantics leave out,
+such as engine instantiation and the call depth of a real engine.  `plan_safe`, `plan_premise`,
+and `plan_optimal` concern `plan` in Lean, and `compiled.plan.implements` carries them to every
+output that the module's `plan` export returns.  `plan_finite` concerns the evaluation in Lean and
+states nothing about the module's instructions.
 
 No theorem concerns time or dynamics, so `T(θ)` is a cost model, and the theorems concern the
 attitudes that the commanded rotations pass through.  The checks are conservative: the margin, the
@@ -368,19 +369,18 @@ blocks left allocated after a call.
 | Stationary points | Stationary points near the start and the end of a rotation, with `B` of both signs and within and beyond `eta` | 336 | 168 | 0 | 84 | 84 | 0 |
 | Angles near 0 and π | Rotations on both sides of the small-angle threshold, near and at `π`, and antipodal quaternions | 114 | 72 | 22 | 0 | 20 | 0 |
 | Extreme cones | Cones of half-angle `1e-6` rad on and beside a rotation's path, of 90°, and of 0° and 180° | 64 | 48 | 0 | 16 | 0 | 0 |
-| Norms at the tolerance | A body vector and the start quaternion with squared norms just inside and just outside the tolerance | 8 | 4 | 0 | 0 | 0 | 4 |
+| Norms at the tolerance | Body vector and start quaternion with squared norms just inside and just outside the tolerance | 8 | 4 | 0 | 0 | 0 | 4 |
 | Invalid inputs | Inputs that fail `validInput`, and a start and a goal that violate a cone | 24 | 2 | 0 | 1 | 1 | 20 |
 
 The invalid inputs fail the tests of the minimum length of 16 values, the version, a count of
 bodies of 0 or not a whole number, a count of cones above 16, a count of waypoints above 1,024,
 finiteness, the lower rate limit, the upper acceleration limit, the lower settling time, the upper
 `maxEdge`, the start's norm, a cone's body index, cosine, and kind, and the length's agreement with
-the counts.  The tests
-of a count of bodies above 8, of counts of cones and waypoints that are not whole numbers, of the
-upper rate limit, the lower acceleration limit, the upper settling time, the lower `maxEdge`, the
-goal's norm, a waypoint's norm, a cone axis's norm, and a cosine below -1 are not exercised.  The
-cases also call the `atan2` export on all 225 pairs of 15 special values and on 1,000 random
-arguments.
+the counts.  The cases do not exercise the tests of a count of bodies above 8, of counts of cones
+and waypoints that are not whole numbers, of the upper rate limit, the lower acceleration limit,
+the upper settling time, the lower `maxEdge`, the goal's norm, a waypoint's norm, a cone axis's
+norm, and a cosine below -1.  The cases also call the `atan2` export on all 225 pairs of 15
+special values and on 1,000 random arguments.
 
 [The edge test](../../tests/slew/edges.sh) compares the module's `edgeOk` export with native Lean
 on 100,000 single-cone edges from [the edge generator](../../tests/TestSupport/Slew/Edges.lean), all
