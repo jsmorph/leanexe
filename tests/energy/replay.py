@@ -412,9 +412,10 @@ def intervals(s: Series, minutes: int, margins: Margins | None) -> Intervals:
     return Intervals(bounds, covered)
 
 
-# The simulated site: the worked example's battery with caps that the test house's largest loads
-# and its PV array's output on clear days each break when the battery is idle.
-STUDY = dataclasses.replace(SITE, import_cap=10_000, export_cap=5000, window=300)
+# The simulated site: the worked example's battery, an import cap of a 100 A, 240 V service, above
+# the test house's largest minute load of 22.9 kW, and an export cap that the PV array's output on
+# clear days breaks when the battery is idle.
+STUDY = dataclasses.replace(SITE, import_cap=24_000, export_cap=5000, window=300)
 CAPACITY = 36_000_000
 ETA_CHARGE = ETA_DISCHARGE = 0.95
 LOSS = 10

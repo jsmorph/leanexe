@@ -17,13 +17,13 @@ Scaled to the whole year, the 2013–14 sums lie within 1% of NIST's published c
 
 ## The simulated site
 
-The site keeps the battery of the plan's worked example and caps that the house breaks when the battery is idle: its load exceeds 10 kW in 6,550 minutes of 2013–14 and 96 minutes of 2015–16, and its surplus PV exceeds 5 kW in about 48,000 to 50,000 minutes of each year.  The PV inverter curtails export at the cap.  A second set of runs uses caps of `2^20` W, which never bind, to separate the energy tests from the grid tests.
+The site keeps the battery of the plan's worked example.  Its import cap is that of a 100 A, 240 V service, 24 kW, above the house's largest minute load of 22.9 kW.  Its export cap of 5 kW is one that the array breaks when the battery is idle: surplus PV exceeds 5 kW in about 48,000 to 50,000 minutes of each year.  The PV inverter curtails export at the cap.  A second set of runs uses caps of `2^20` W, which never bind, to separate the energy tests from the grid tests.
 
 | Quantity | Value |
 |---|---|
 | Battery | 10 kWh between the BMS cutoffs, 5,000 W charge and discharge |
 | Floor and ceiling | 3 kWh and 9.5 kWh |
-| Import and export caps | 10,000 W and 5,000 W, or `2^20` W |
+| Import and export caps | 24,000 W and 5,000 W, or `2^20` W |
 | Profile bounds | `η = 900,000` ppm, `ℓ⁺ = 20` W, `e = 50` W, `F = [-50, 50]` W, `τ = 30` s, `a = 60` s |
 | Simulated battery | Charge and discharge efficiencies 0.95, loss 10 W, power equal to the command |
 | Energy estimate | The simulated energy ± 360,000 J |
@@ -38,33 +38,33 @@ The true-range rule takes the minimum and maximum of the minute values in the wi
 
 The sweep runs on the calibration year, with the causal rule calibrated on the same year, so that the choice of `W` uses no withheld data.  The proposer is the self-consumption rule: the last minute's surplus PV or deficit, within the setpoint limits and the power that keeps the energy estimate between the floor and the ceiling.  For reference, the vendor's self-consumption mode, which follows each minute's own values, discharges 2,054 kWh in the year, and the one-minute proposer discharges 2,052 kWh when every proposal is sent without the authorizer.
 
-| Rule | Caps | W (s) | Discharged (kWh) | Run-on (kWh) | Snapshots rejected by the import test (%) | Full 5,000 W charge accepted (%) | No charge beyond `F` accepted (%) | Coverage (%) |
+| Rule | Caps | W (s) | Discharged (kWh) | Run-on (kWh) | Snapshots rejected by the export and import tests (%) | Full 5,000 W charge accepted (%) | No charge beyond `F` accepted (%) | Coverage (%) |
 |---|---|---|---|---|---|---|---|---|
-| True range | Study | 180 | 1,962 | 153 | 0.1 | 75.4 | 2.9 | 100 |
-| True range | Study | 300 | 1,953 | 262 | 0.2 | 73.5 | 3.8 | 100 |
-| True range | Study | 600 | 1,934 | 491 | 0.3 | 69.2 | 5.8 | 100 |
-| True range | Study | 900 | 1,903 | 685 | 0.5 | 65.7 | 7.6 | 100 |
-| Causal | Study | 180 | 870 | 128 | 21.1 | 17.3 | 59.5 | 99.5 |
-| Causal | Study | 300 | 847 | 213 | 22.7 | 14.8 | 61.7 | 99.3 |
-| Causal | Study | 600 | 723 | 329 | 26.7 | 9.2 | 71.0 | 98.8 |
-| Causal | Study | 900 | 559 | 391 | 27.8 | 7.7 | 72.8 | 98.3 |
-| Causal, 99th percentile | Study | 300 | 1,546 | 229 | 8.7 | 31.8 | 36.0 | 96.7 |
-| True range | Open | 180 | 2,001 | 141 | 0 | 78.8 | 1.1 | 100 |
-| Causal | Open | 180 | 1,997 | 140 | 0 | 78.6 | 1.2 | 99.5 |
-| True range | Open | 900 | 2,021 | 730 | 0 | 72.9 | 3.7 | 100 |
-| Causal | Open | 900 | 2,017 | 730 | 0 | 72.9 | 3.7 | 98.3 |
+| True range | Study | 180 | 1,963 | 152 | 0.4, 0.0 | 78.5 | 1.2 | 100 |
+| True range | Study | 300 | 1,954 | 255 | 0.5, 0.0 | 77.4 | 1.7 | 100 |
+| True range | Study | 600 | 1,937 | 478 | 0.9, 0.0 | 74.7 | 2.7 | 100 |
+| True range | Study | 900 | 1,905 | 666 | 1.2, 0.0 | 72.5 | 3.6 | 100 |
+| Causal | Study | 180 | 1,830 | 176 | 4.0, 0.3 | 72.5 | 1.6 | 99.5 |
+| Causal | Study | 300 | 1,828 | 288 | 4.9, 0.3 | 71.2 | 2.2 | 99.3 |
+| Causal | Study | 600 | 1,822 | 518 | 6.4, 0.9 | 67.6 | 4.0 | 98.8 |
+| Causal | Study | 900 | 1,816 | 720 | 7.5, 1.0 | 64.6 | 5.6 | 98.3 |
+| Causal, 99th percentile | Study | 300 | 1,846 | 242 | 2.2, 0.0 | 72.1 | 1.7 | 96.7 |
+| True range | Open | 180 | 2,001 | 141 | 0, 0 | 78.8 | 1.1 | 100 |
+| Causal | Open | 180 | 1,997 | 140 | 0, 0 | 78.6 | 1.2 | 99.5 |
+| True range | Open | 900 | 2,021 | 730 | 0, 0 | 72.9 | 3.7 | 100 |
+| Causal | Open | 900 | 2,017 | 730 | 0, 0 | 72.9 | 3.7 | 98.3 |
 
 Run-on is the energy that a command delivers after a later proposal is rejected, while the command runs to its expiry.  It counts in the discharged energy, so the discharged energy of a long window overstates what the authorizer allows: with open caps the 900 s window discharges more than the 180 s window only because of run-on.  The largest accepted setpoints come from a search at every snapshot.  They depend on the state in force, which at a one-minute cadence is the last command, so a discharge in force subjects every charge to the floor and export tests.
 
-With the study's caps, the import test decides the result.  The causal rule widens the load's upper bound by the 99.9th percentile of the load's rise over the window.  For 300 s that percentile lies between 9.7 and 12.2 kW in every hour from November to March, the heating season, and below 8.6 kW from June to September.  A charge then fails `L⁺ + B⁺ ≤ I + S⁻` in 21% to 28% of all snapshots, and in 60% to 73% of snapshots no charge beyond the fallback interval passes.  With the same rule and caps that never bind, the authorizer delivers 97% of the ungated proposer's discharge at 180 s.  The 99th percentile delivers 1.8 times the energy of the 99.9th at 300 s, with coverage of 96.7% instead of 99.3%, and in 785 minutes it let a limit break while a premise had failed, against 89 for the 99.9th percentile.
+With the causal rule, the authorizer delivers 89% of the ungated proposer's discharge at 180 s with the study's caps, and 97% with caps that never bind.  Most of the difference comes from the export test, which rejects 4.0% to 7.5% of snapshots, because the causal rule widens PV's upper bound by up to 7 kW at midday and a discharge while PV could exceed the export cap fails.  The import test rejects at most 1.0% of snapshots at 24 kW.  The causal rule widens the load's upper bound by up to 12.2 kW in winter, so an import cap near the house's own load binds far more: in winter at 180 s, the instantaneous import test accepts none of the self-consumption rule's charge proposals at a 10 kW cap, 94.4% at 20 kW, and 98.5% at 25 kW.  The 99th percentile delivers 1,846 kWh against 1,828 kWh for the 99.9th at 300 s, with coverage of 96.7% instead of 99.3%, and in 38 minutes it let a limit break while a premise had failed, against 3 for the 99.9th percentile.
 
-The tracking tolerance and the efficiency bound change little at 300 s with the causal rule: the discharged energy is 849, 847, 844, and 839 kWh for `e` of 25, 50, 100, and 200 W, with `F` widened to `[-e, e]` where `e` exceeds 50 W, and 847 and 848 kWh for `η` of 850,000 and 950,000 ppm.  Fallback's worst case breaks the floor at 32% to 70% of snapshots, because the battery often rests at the floor, where the idle loss drains it below the floor, so the theorem's floor bound is relative to fallback at those snapshots.  Fallback breaks the ceiling at fewer than 0.05% of snapshots, the export cap at 12% to 16% with the true range and 30% to 35% with the causal rule, and the import cap at 2% to 4% with the true range and 59% to 72% with the causal rule.
+The tolerance and the efficiency bound change little at 300 s with the causal rule: the discharged energy is 1,829, 1,828, 1,826, and 1,820 kWh for `e` of 25, 50, 100, and 200 W, with `F` widened to `[-e, e]` where `e` exceeds 50 W, and 1,828 and 1,829 kWh for `η` of 850,000 and 950,000 ppm.  Fallback's worst case breaks the floor at 30% to 44% of snapshots, because the battery often rests at the floor, where the idle loss drains it below the floor, so the theorem's floor bound is relative to fallback at those snapshots.  Fallback breaks the ceiling at fewer than 0.05% of snapshots, the export cap at 12% to 16% with the true range and 30% to 35% with the causal rule, and the import cap at fewer than 0.05% with the true range and 0.6% to 2.4% with the causal rule.
 
-The causal rule's coverage by month is lowest in July and August, at 97.0% to 97.1% for 900 s, and at least 99.1% in every month for 180 s.  In every run, the simulated energy and grid power met `WithinOrFallback` at every minute of every accepted window up to its first premise failure: 0.56 to 3.6 million window-minutes per run without a violation.  The replay at the premises' extremes runs the device at `s - e` with efficiency `η`, loss `ℓ⁺`, and the energy at the lower end of its interval, or at `s + e` with efficiency 1, no loss, and the energy at the upper end, under a proposer that alternates the largest accepted discharge and charge by the hour.  It checked 1.2 to 4.8 million window-minutes for 180 and 900 s without a violation.
+The causal rule's coverage by month is lowest in July and August, at 97.0% to 97.1% for 900 s, and at least 99.1% in every month for 180 s.  In every run, the simulated energy and grid power met `WithinOrFallback` at every minute of every accepted window up to its first premise failure: 0.54 to 1.7 million window-minutes per run without a violation.  The replay at the premises' extremes runs the device at `s - e` with efficiency `η`, loss `ℓ⁺`, and the energy at the lower end of its interval, or at `s + e` with efficiency 1, no loss, and the energy at the upper end, under a proposer that alternates the largest accepted discharge and charge by the hour.  It checked 1.2 to 5.0 million window-minutes for 180 and 900 s without a violation.
 
 ## The window length
 
-The criterion, fixed before the runs: among the window lengths that the gateway's timing allows, choose the longest whose controller bill and wear on the calibration year lies within 1% of the lowest, because a longer window keeps a command in force through a longer loss of communication.  The controller's bills and wear on the calibration year, with the study's caps and the causal rule, are $2,044, $2,067, $2,121, and $2,147 for 180, 300, 600, and 900 s.  The study chooses `W = 180` s, the shortest length in whole minutes that `W > a + 2τ` allows, since 300 s lies 1.1% above it.  The choice is provisional: the equipment's expiry granularity, which Stage 4 measures, can only lengthen it, and the excursions within a minute, which Stage 5 measures at the site, can change the margins of every length.
+The criterion, fixed before the runs: among the window lengths that the gateway's timing allows, choose the longest whose controller bill and wear on the calibration year lies within 1% of the lowest, because a longer window keeps a command in force through a longer loss of communication.  The controller's bills and wear on the calibration year, with the study's caps and the causal rule, are $1,921, $1,924, $1,935, and $1,948 for 180, 300, 600, and 900 s.  The study chooses `W = 600` s, which lies 0.7% above the lowest, since 900 s lies 1.4% above it.  The choice is provisional: the equipment's expiry granularity, which Stage 4 measures, can only lengthen it, and the excursions within a minute, which Stage 5 measures at the site, can change the margins of every length.
 
 ## Stage 3: bills
 
@@ -90,18 +90,18 @@ The withheld year's bills and wear:
 | Time-of-use schedule | 1,482 | 1,428 | 5,478 | 5,670 | 1,076 | 1,817 |
 | Self-consumption rule, one-minute commands | 1,538 | 1,485 | 5,625 | 5,821 | 1,059 | 1,939 |
 | Controller, every proposal sent | 1,524 | 1,485 | 5,679 | 6,395 | 552 | 1,816 |
-| Controller through the authorizer, 180 s | 1,657 | 1,499 | 6,280 | 6,965 | 660 | 1,118 |
-| Controller through the authorizer, 300 s | 1,684 | 1,503 | 6,389 | 7,036 | 709 | 1,012 |
-| Controller through the authorizer, 600 s | 1,757 | 1,513 | 6,632 | 7,214 | 823 | 774 |
-| Controller through the authorizer, 900 s | 1,787 | 1,526 | 6,710 | 7,284 | 846 | 711 |
-| Self-consumption mode within authorized limits, 180 s | 1,628 | 1,421 | 6,143 | 6,569 | 916 | 1,151 |
-| Self-consumption mode within authorized limits, 900 s | 1,723 | 1,423 | 6,512 | 6,937 | 988 | 782 |
+| Controller through the authorizer, 180 s | 1,545 | 1,499 | 5,770 | 6,479 | 572 | 1,690 |
+| Controller through the authorizer, 300 s | 1,549 | 1,503 | 5,780 | 6,489 | 572 | 1,687 |
+| Controller through the authorizer, 600 s | 1,560 | 1,513 | 5,813 | 6,519 | 576 | 1,680 |
+| Controller through the authorizer, 900 s | 1,572 | 1,526 | 5,849 | 6,551 | 581 | 1,676 |
+| Self-consumption mode within authorized limits, 180 s | 1,501 | 1,421 | 5,528 | 5,727 | 1,074 | 1,766 |
+| Self-consumption mode within authorized limits, 900 s | 1,506 | 1,423 | 5,549 | 5,758 | 1,066 | 1,746 |
 
-The energy columns are those of the study's caps.  With those caps, the vendor's mode saves $549 against no battery and the controller through the authorizer at 180 s saves $351.  The difference has three parts.  Commands that hold a power for a minute cost $79, because the proposer holds the previous minute's net load through the next minute, and the minute data show none of the changes within a minute that the vendor's mode also follows.  With caps that never bind, a proposer that estimates the net load at the snapshot by the mean of the previous and the present minute cuts this cost from $79 to $40.  The controller's curtailment rule saves $14.  The authorizer costs $133, most of it through the grid tests, since with caps that never bind it costs $14 at 180 s and $41 at 900 s.
+The energy columns are those of the study's caps.  With those caps, the vendor's mode saves $549 against no battery and the controller through the authorizer at 600 s, the chosen window, saves $448.  The difference has three parts.  Commands that hold a power for a minute cost $79, because the proposer holds the previous minute's net load through the next minute, and the minute data show none of the changes within a minute that the vendor's mode also follows.  With caps that never bind, a proposer that estimates the net load at the snapshot by the mean of the previous and the present minute cuts this cost from $79 to $40.  The controller's curtailment rule saves $14.  The authorizer costs $36 at 600 s, and $21 to $48 from 180 to 900 s, against $14 to $41 with caps that never bind.
 
-Through the authorizer the controller's unlimited proposals pass 50% to 56% of the time.  At 180 s the others fail the floor test (29% of snapshots), the import test (16%), the ceiling test (3%), and the export test (2%), and the controller sends a limited proposal at 94% of snapshots.  With the study's caps the import test blocks charging through much of the winter, and the battery drains to its BMS cutoff through its standby loss: the lowest energy is 3 kWh below the floor.  The vendor's modes reach 1.6 kWh below the floor in the same year by the same loss.  The replay checked `WithinOrFallback` over 1.3 to 6.3 million window-minutes for each window length without a violation.
+Through the authorizer the controller's unlimited proposals pass 44% to 50% of the time.  At 180 s the others fail the floor test (36% of snapshots), the ceiling test (11%), the export test (3%), and the import test (fewer than 0.05%), mostly because a proposal near the floor or the ceiling fails the window's energy test, and the controller sends a limited proposal at 91% of snapshots.  The battery's lowest energy is 1.5 to 1.7 kWh below the floor through its standby loss, and the vendor's modes reach 1.6 kWh below the floor in the same year by the same loss.  The replay checked `WithinOrFallback` over 1.3 to 5.3 million window-minutes for each window length without a violation.
 
-A command of power limits, within which the inverter's own self-consumption mode follows the load, makes the window's power interval the hull of the limits in force widened by `e`, the proposed limits widened by `e`, and `F`.  The side tests are those of the setpoint form, and the widest accepted limits are its largest accepted discharge and charge.  With caps that never bind, the vendor's mode within the widest accepted limits costs $1,421 at 180 s and $1,423 at 900 s, $15 to $17 more than the mode alone, against $93 more for the held setpoints of the controller at 180 s.  Most of that difference comes from the proposer, which holds the previous minute's net load while the limits device follows the present minute.  Through the authorizer at 180 s, a held setpoint proposed from the present minute's net load, which no gateway knows in advance, costs $1,426, and one proposed from the mean of the previous and the present minute costs $1,462.  The minute data therefore cannot measure what limits gain, which lies in the changes of load within each minute.  A setpoint `s` is the limits `[s, s]`, so the limits form also authorizes held setpoints, including the controller's curtailment rule on equipment that accepts them.  With the study's caps limits cost $1,628 at 180 s, because the import test still binds, and the replay checked their windows over 1.2 to 5.9 million window-minutes without a violation.
+A command of power limits, within which the inverter's own self-consumption mode follows the load, makes the window's power interval the hull of the limits in force widened by `e`, the proposed limits widened by `e`, and `F`.  The side tests are those of the setpoint form, and the widest accepted limits are its largest accepted discharge and charge.  With caps that never bind, the vendor's mode within the widest accepted limits costs $1,421 at 180 s and $1,423 at 900 s, $15 to $17 more than the mode alone, against $93 more for the held setpoints of the controller at 180 s.  Most of that difference comes from the proposer, which holds the previous minute's net load while the limits device follows the present minute.  Through the authorizer at 180 s, a held setpoint proposed from the present minute's net load, which no gateway knows in advance, costs $1,426, and one proposed from the mean of the previous and the present minute costs $1,462.  The minute data therefore cannot measure what limits gain, which lies in the changes of load within each minute.  A setpoint `s` is the limits `[s, s]`, so the limits form also authorizes held setpoints, including the controller's curtailment rule on equipment that accepts them.  With the study's caps limits cost $1,501 at 180 s and $1,506 at 900 s, $42 to $47 more than the vendor's mode alone, mostly through the export test, and the replay checked their windows over 1.2 to 5.5 million window-minutes without a violation.
 
 ## Excursions within a minute
 
@@ -118,7 +118,7 @@ In 1% of 180 s windows the one-second load rises more than 1.4 kW above the high
 
 ## What the study shows about the design
 
-The authorizer's own tests cost little when the grid caps lie beyond what the house's load and PV can reach: $14 a year at 180 s on the withheld year, and coverage of the causal rule's intervals of 99.4% to 99.7% by month.  Two features of the design cost more.  A command that holds one power cannot follow the load within the window.  In the replay it costs $40 to $79 a year against the vendor's mode at this house, depending on how the gateway estimates the net load at the snapshot, and more once the changes within a minute count, which power limits for the vendor's mode would follow.  An instantaneous import cap that the house's own load can approach makes the causal rule's worst-case load block charging through the winter: with the study's caps the authorizer costs $133 a year at 180 s instead of $14, and the battery drains to its cutoff.  Both are properties of the design as specified, and changing either changes the acceptance rule and the statement of its theorem.
+At a 24 kW import cap and a 5 kW export cap, the authorizer's tests cost the controller $21 to $48 a year on the withheld year, against $14 to $41 with caps that never bind, and the causal rule's intervals cover 98.3% to 99.7% of windows by month.  A command that holds one power cannot follow the load within the window.  In the replay it costs $40 to $79 a year against the vendor's mode at this house, depending on how the gateway estimates the net load at the snapshot, and more once the changes within a minute count, which power limits for the vendor's mode would follow.  An instantaneous import cap below the house's own peak load makes the causal rule's worst-case load block charging through the winter, while a cap at the house's service rating rejects at most 1% of snapshots.  The export cap binds whenever the causal rule's PV bound exceeds it, which rejects discharges at midday.
 
 ## Limits
 

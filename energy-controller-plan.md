@@ -195,7 +195,7 @@ The export takes one borrowed `Array UInt64` and returns a structure of words wi
 | 9 | Tolerance `e` of battery power about the limits | W |
 | 10, 11 | Fallback interval `f⁻`, `f⁺`, offset | W |
 | 12 | Transition time `τ` | s |
-| 13 | Window length `W` | s |
+| 13 | Window length `W` | Any length with `W > a + 2τ` | The replay study chose 600 s by a criterion fixed before its runs: the longest length whose bill on the calibration year lies within 1% of the lowest.  Stage 4's expiry granularity can lengthen it, and Stage 5's measurement of the excursions within a minute can change its margins. |
 | 14 | Send deadline `a`, which only the gateway uses | s |
 
 | Input word | Field | Unit |
@@ -324,7 +324,7 @@ A site stays in read-only operation when its equipment lacks command expiry or a
 | Decision | Options | Recommendation |
 |---|---|---|
 | Window length `W` | Any length with `W > a + 2τ` | The replay study chose 180 s, the shortest whole-minute length, by a criterion fixed before its runs.  Stage 4's expiry granularity can lengthen it, and Stage 5's measurement of the excursions within a minute can change its margins. |
-| Import cap under uncertain load | Test the cap against the worst-case load, narrow the load interval, or state grid limits over metering intervals | The authorizer keeps the worst-case grid tests.  With a 10 kW cap at the test house and the causal rule's load bound, the import test blocked charging through the winter and cost $154 a year against limits without grid tests.  Dropping the tests would need the battery to follow the net load at every instant, which equipment that responds in seconds does not do, so grid limits over metering intervals, in Stage 8, are the remedy with a true premise. |
+| Import cap under uncertain load | Test the cap against the worst-case load, narrow the load interval, or state grid limits over metering intervals | The authorizer keeps the worst-case instantaneous tests.  At the 24 kW of a 100 A service the import test rejects at most 1% of snapshots in the replay, while a cap below the site's own peak load blocks charging through the winter.  Dropping the tests would need the battery to follow the net load at every instant, which equipment that responds in seconds does not do.  For a site with an averaged limit, a pro-rata form, in which the import metered since the start of a metering interval stays at or below the cap times the elapsed time, fits the existing proofs. |
 | Gateway runtime, in Stage 6 | Wasmtime embedded in a small C or Rust program, or the module's C translation with `p.f.native` and CompCert | Choose in Stage 6.  The C translation removes Talos's execution semantics, the decoder, and Wasmtime from the assumptions and adds CompCert, the Lean copy of Clight, and the other items that the trusted base lists for C files. |
 
 ## References
