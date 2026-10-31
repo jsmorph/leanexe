@@ -36,7 +36,7 @@ The split `s = w + c` in the middle range of `asin` and the positive range of `a
 
 The sources are `lib/msun/src/e_asin.c` and `lib/msun/src/e_acos.c` of FreeBSD [1], each `Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.` with the notice "Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved."  fdlibm is Sun's "Freely Distributable LIBM" [2].  The module docstring of [the implementation](Program.lean) quotes the notice verbatim, as the notice requires.
 
-The port follows the dialect of the Verified compiler as [the exponential document](../Exp/README.md#implementation) describes.  `verified_compile compiled := [asinRatio, asin, acos]` generates a module whose functions are `alloc` (0), `release` (1), `asinRatio` (2), `asin` (3), and `acos` (4).  Every named constant of the C code is `Float.ofBits` of its bit pattern, and the module reads no table.
+The port follows the dialect of the verified compiler as [the exponential document](../Exp/README.md#implementation) describes.  `verified_compile compiled := [asinRatio, asin, acos]` generates a module whose functions are `alloc` (0), `release` (1), `asinRatio` (2), `asin` (3), and `acos` (4).  Every named constant of the C code is `Float.ofBits` of its bit pattern, and the module reads no table.
 
 | C code | Port | Reason |
 |---|---|---|
@@ -57,7 +57,7 @@ The port follows the dialect of the Verified compiler as [the exponential docume
 | `pio4_hi` | `0x3FE921FB54442D18` | `pi` | `0x400921FB54442D18` |
 | `huge` | `0x7E37E43C8800759C` (`1.0e300`) | | |
 
-Each file prints the bits of 14 constants beside their decimal values, and each decimal value rounds to its printed word ([the journal's audit of the ports](../../../../devnotes.md#2026-10-10-ports-of-log1p-atan-atan2-asin-acos-and-tan)).  Each `Float.ofBits` word of `Asin.lean` equals the word that the pinned `e_asin.c` or `e_acos.c` prints for the same constant, and `huge`, which the source gives without bits, is the nearest double to `1.0e300`.  The kernel bound restates `pS0` to `qS4` as `PolyBound.ratOfWord` of the same words.
+Each file prints the bits of 14 constants beside their decimal values, and each decimal value rounds to its printed word ([the journal's audit of the ports](../../../../devnotes.md#2026-10-10-ports-of-log1p-atan-atan2-asin-acos-and-tan)).  Each `Float.ofBits` word of [the implementation](Program.lean) equals the word that the pinned `e_asin.c` or `e_acos.c` prints for the same constant, and `huge`, which the source gives without bits, is the nearest double to `1.0e300`.  The kernel bound restates `pS0` to `qS4` as `PolyBound.ratOfWord` of the same words.
 
 ## Theorems
 
@@ -154,7 +154,7 @@ In the test run of 2026-10-11, all 400,376 results lie within one step of the re
 
 The limits of [the exponential theorem](../Exp/README.md#limits) apply in the same way: the theorem is about Talos's semantics, the interpreter and the decoder are trusted, the file theorem trusts `binary_file%`, Talos implements the deterministic profile in which every NaN result is canonical [6], and the argument is the bits of a Lean `Float`, whose only NaN is the canonical one (`F64Bits.toBits_canonical`), so the theorems cover only the canonical NaN among the NaN words a WebAssembly caller can pass.  The byte theorems cover sequences of calls to `asin` and `acos`, and a host that calls `alloc`, `release`, or `asinRatio` or writes the memory between calls needs a theorem that the action preserves `Ready`.  The module reads no table, so the store invariant has only the allocator invariant and the memory cap.
 
-The byte theorems state the bound only on the domain `|a| ≤ 1`.  `AsinTheoremSpecial` gives the words of the exceptional inputs for the Lean functions, and the byte theorems' equality `w = (Asin.asin x).toBits`, or the same for `acos`, carries them to the module.  The docstring of `Asin.lean` gives fdlibm's bound of `2^-58.75` for `P/q` as a bound for exact coefficients, which the stored coefficients exceed at `x = 0`, as the section on the kernel bound explains.  The Python scripts in `tools/arc/asin` generated modules that Lean checks, so the theorems do not rest on them.
+The byte theorems state the bound only on the domain `|a| ≤ 1`.  `AsinTheoremSpecial` gives the words of the exceptional inputs for the Lean functions, and the byte theorems' equality `w = (Asin.asin x).toBits`, or the same for `acos`, carries them to the module.  The docstring of [the implementation](Program.lean) gives fdlibm's bound of `2^-58.75` for `P/q` as a bound for exact coefficients, which the stored coefficients exceed at `x = 0`, as the section on the kernel bound explains.  The Python scripts in `tools/arc/asin` generated modules that Lean checks, so the theorems do not rest on them.
 
 ## References
 
