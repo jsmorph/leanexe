@@ -30,6 +30,7 @@ crc:Library.Hashing.Crc.Bytes:Library/Hashing/Crc/File.lean
 siphash:Library.Hashing.SipHash.Bytes:Library/Hashing/SipHash/File.lean
 xxhash64:Library.Hashing.XxHash64.Bytes:Library/Hashing/XxHash64/File.lean
 slew:Demos.Slew.Verified:Demos/Slew/File.lean
+energy:Demos.Energy.Verified:Demos/Energy/File.lean
 poly:Verified.Examples.Poly:Verified/Examples/PolyFile.lean
 mix:Verified.Examples.Mix:Verified/Examples/MixFile.lean
 lets:Verified.Examples.Lets:Verified/Examples/LetsFile.lean

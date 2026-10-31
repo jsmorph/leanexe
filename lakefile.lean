@@ -150,6 +150,10 @@ lean_exe «verified-cases-slew» where
   srcDir := "tests"
   root := `TestSupport.Slew.CasesMain
 
+lean_exe «verified-cases-energy» where
+  srcDir := "tests"
+  root := `TestSupport.Energy.CasesMain
+
 -- The differential test of the Lean copy of Clight against CompCert's reference interpreter
 -- (tests/native/clight.sh); not a default target.
 lean_exe «clight-diff» where

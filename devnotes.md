@@ -39732,6 +39732,177 @@ The default set has the cases of the former `--verified-gpt32`, whose run in [th
 - [x] `tests/drone/run.sh` in the full check, after a pass of `tests/verified/run.sh`.
 - [x] `tests/gpt32/generate.py` writing its LeanExe kernels to `build/wgsl-leanexe`.
 
+## 2026-10-30: The energy controller plan
+
+[The energy controller plan](energy-controller-plan.md) replaces revision 0.2 of the external design "Verified Energy Controller" and the review notes in `energy-controller-notes.md`.  The review checked the design against [the verified compiler manual](docs/verified-manual.md), [the trusted base](docs/trusted-base.md), the slew planner, and `Expr.aborts` in `Verified/Source.lean`.  The design's theorems P08 to P10 are generated: `verified_compile` states `implements` and `bytes`, and `file_theorems` states the file theorems.  A checker that reads a borrowed array, keeps scalar loop state, and calls helpers with scalar results has `aborts = false`, so its `implements` theorem excludes traps with an allocation bound of 0 and no frames condition.
+
+The design bounded auxiliary loss as a total per slot, and the notes showed that endpoint checks on totals miss an energy maximum inside a slot.  The plan bounds instantaneous rates instead, integrates them with `intervalIntegral.integral_mono_on`, and obtains affine bounds whose extremes lie at the window's ends.  Under validated ranges the design's quotient-and-remainder algorithms are unnecessary: every product stays below `2^57`, and every condition is a comparison of sums of nonnegative words, with signed powers offset by `2^32`.  The checker's input omits tariffs, since no theorem uses them.
+
+The notes asked how a 900-second energy step relates to 30- to 60-second authorizations.  The plan defines a window from the measurement time `t_m` to `t_m + W`, a power interval that contains the state in force, the setpoint, and the fallback interval, a device-command expiry at `t_m + W - τ_f`, and an authorization expiry at `t_m + a`, so the window theorem covers delay, expiry, and the return to fallback.  The notes' width condition for grid acceptance appears in the plan, and a replay study before the plan checker measures acceptance against window length and fallback interval.  For the authority over inputs, the plan compiles the integrator's profile into the module as a table and lets the owner's snapshot values only tighten it, and the gateway runs the module in its own process, so no digest binds the checked input to the sent command.
+
+The same day, a review of the plan's decisions found that the window's power interval contained the fallback interval without a listed decision.  With every limit absolute, that choice rejects every setpoint whenever the site would break a limit without a new command, as when the energy starts below the floor or PV surplus with an idle fallback exceeds the export cap.  The plan now recommends, as D4, a rule that tests only the side of the interval that the setpoint extends beyond the alternative of no new command, with bounds that are absolute when the alternative keeps the limits and relative to the alternative's worst case otherwise.  The rule accepts every setpoint that the other options accept, and D4 must be decided before Stage 1.  A fresh reviewer confirmed the rule's bounds, the integer formulas, the worked example, and the compiler claims, and found defects that the plan now corrects.  The device's transition property allowed power outside the interval during a return to fallback, so the plan states that power stays between its value at a change and the new state's interval.  Premises over the whole window made each window's theorem empty once the next command moved power outside its interval, so the theorems take premises up to the time of their conclusion.  A snapshot could fall inside an unfinished transition, and the expiry had no clock margin, so the checker rejects a snapshot taken within a transition time of the last change, the profile gains the clock allowance `δ`, the expiry becomes `t_m + W - τ_f - δ`, and validity requires `W > a + τ_s + τ_f + δ`.  The plan also lists the instantaneous form of the grid limits (D9) and the snapshot rule (D10) as decisions, adds an owner's energy ceiling, and recommends writing the optimizer in the verified compiler's dialect (D7).
+
+The user then asked for simplification and decided four questions.  The first release contains only the one-window authorizer, and the 24-hour plan checker waits for time-varying reserves or EV deadlines.  The theorem uses the rule that each limit holds when the alternative of no new command keeps it and that the setpoint leaves the site no further outside it otherwise.  The installer's and owner's limits are compiled into the module, and the authorizer checks only input validity and the theorem's conditions, while the gateway enforces snapshot timing, consistency with measured power, and send deadlines as written rules.  The plan also moved to joules, one efficiency bound with efficiency 1 for the upper energy bound, one maximum loss rate, one transition time `τ` with the expiry `t_m + W - τ`, instantaneous grid limits, a rule-based optimizer, and one Python replay tool.  The authorizer's input has eleven words, it has no loop, and the window length and the gateway runtime remain open.
+
+A fresh review of the revised plan found that the authorizer accepted a renewal of the command in force without a test, because its alternative let the command in force last the whole new window although it expires earlier.  With the worked example's profile, a 1,000 W discharge renewed at 600 s passes, and the worst-case energy at 1,500 s is 10,220,000 J, below the floor of 10,800,000 J.  The user chose to compare with an immediate return to fallback: the authorizer tests a side whenever the state in force or the new setpoint extends beyond the fallback interval on it, and the relative bounds refer to fallback from `t_m`, which the gateway can always carry out.  The review also found that a protective trip toward 0 W could leave the power interval, so the fallback interval must contain 0.  The plan now has `site_valid` for the profile table, the send deadline `a` in the profile, one send per authorization, a case printer under `tests/TestSupport/Energy/`, `energy_export`, and a fifth example row for the renewal.
+
+- [ ] Window length, from the replay study.
+- [ ] Gateway runtime, in Stage 6.
+
+## 2026-10-30: The energy authorizer, Stage 1
+
+Stage 1 of [the energy controller plan](energy-controller-plan.md) is in [the energy application](Demos/Energy/README.md).  The authorizer compiles with `verified_compile` into a module of 5,922 bytes whose export `authorize` is a wrapper over the test site's profile table, and its generated theorem is `ImplementsTables false`: no trap and no premise on memory.  `authorizeWith_iff` states that the authorizer accepts exactly when the input is valid and the integer conditions hold, `window_sound` that the conditions give `WithinOrFallback` for every trajectory admitted until a time of the window, and `energy_authorize` combines them with the bytes, the export, and the ready start store.  `tests/verified/run.sh --cases energy` passed 2,038 cases in Wasmtime against native Lean, checked the file theorems of `energy.wasm`, and ran the axiom audit, with only `propext`, `Classical.choice`, and `Quot.sound` in every theorem and only `propext` in the kernel-evaluated examples.
+
+A fresh review of `Spec.lean` against the plan found that `fallback_keeps` required all four fallback bounds at once and that the measurability premise covered all of ℝ.  The specification now has one `fallback_keeps` lemma per limit and states measurability as `AEMeasurable` on `[t_m, t]`.  Because the profile's fallback interval contains 0, the lower end of the window's power interval is at most 0 and the upper end at least 0, so the program and the specification drop the lower bound's gain and the upper bound's drain.  The arithmetic proofs then cover one drain term and one gain term.
+
+The Wasmtime host was rebuilt with `tools/build-wasmtime-host.sh`, because its source was newer than the binary.  Builds ran under `tools/leanrun` with four threads and `--memory-high 8G`.  The registry now holds 117 modules, 116 of them with file theorems.
+
+- [x] Stage 1 of the plan.
+- [x] Stage 2: the replay tool, its dataset, and the choice of the window length.
+
+## 2026-10-30: The energy replay study, Stages 2 and 3
+
+Stages 2 and 3 of [the energy controller plan](energy-controller-plan.md) replay historical load and PV through a simulated battery, the acceptance rule, and the dispatch policies.  The replay tool, `tests/energy/replay.py`, implements the rule a second time from the plan, in Python with exact integer and rational arithmetic, and `replay.py check` agrees with native Lean on all 2,038 module cases.
+
+### Dataset
+
+The plan requires simultaneous load and PV output of one site at one-minute or finer resolution for at least a year.  The candidates and what their data showed:
+
+| Dataset | Content | Finding |
+|---|---|---|
+| [OPSD household data](https://data.open-power-system-data.org/household_data/2020-04-15) | Cumulative kWh of PV, grid import, and grid export of Konstanz households, 2014 to 2019, CC BY 4.0 | The one-minute series of residential3 and residential4 repeat a three-minute pattern: PV and export alternate between single and double values on different minutes, so load computed from the meters swings by kilowatts (9% of residential4's minutes are negative).  Residential6 imports and exports about 10 W all night and absorbs all PV each morning, the signature of an unreported battery, so its computed load is consumption plus battery power.  Residential1 has no export meter. |
+| [NIST NZERTF](https://pages.nist.gov/netzero/data.html) | Minute averages of every circuit and both PV inverters of an all-electric test house in Gaithersburg, Maryland, with a scripted family of four, for July 2013 to June 2014 and February 2015 to January 2016, public | Meets the resolution and length requirements.  No channel measures the whole house, so load is a sum of circuit channels, and the occupants' behavior follows a script. |
+| [SwitchDin residential power and battery data](https://zenodo.org/records/8219786) | Peak power within each minute, of load and PV, for hundreds of Australian units, CC BY 4.0 | Files are R's `.rds` format, which needs a new dependency to read, and the peak within a minute gives no lower bound of load or PV. |
+| [Pecan Street Dataport](https://www.pecanstreet.org/2025/07/public-data/) | One-minute and one-second circuit data | Free only to researchers at four-year academic institutions, and the public sample covers three days. |
+| [HTW Berlin load profiles](https://solar.htw-berlin.de/elektrische-lastprofile-fuer-wohngebaeude/) | One-second load of 74 German households, one year | No PV. |
+
+Recommendation: the NIST test house, with the 2013 test year for calibrating the interval rules and the optimizer and the 2015 test year withheld for evaluation.  Load is the sum of the house's electrical consumption channels, excluding the facility's instrumentation and the channels that duplicate another, and PV is the power that the inverters feed into the panel.  The study checks the sum against NIST's published annual totals.
+
+### The study's site
+
+The simulated site keeps the worked example's battery: a usable range of 10 kWh with BMS cutoffs at 0 and 10 kWh, a floor of 3 kWh, a ceiling of 9.5 kWh, charge and discharge limits of 5,000 W, `η = 900,000` ppm, `ℓ⁺ = 20` W, `e = 50` W, an idle fallback `F = [-50, 50]` W, `τ = 30` s, and `a = 60` s.  The simulated battery has charge and discharge efficiencies of 0.95 and a loss of 10 W, within the profile's bounds, follows each command exactly from the start of its snapshot's minute, returns to idle at expiry, and stops at the BMS cutoffs.  The next snapshot comes 60 s after the change, more than `τ` later, and the minute data say nothing about `a` or `τ` themselves.  The energy interval of a snapshot is the simulated energy ± 360,000 J.  The grid caps are 10,000 W of import and 5,000 W of export, so that the house's largest loads and the 10.2 kW PV array's output on clear days each break a cap when the battery is idle.
+
+### Interval rules
+
+The window of a snapshot at minute `k` with length `W` covers the minutes `k` to `k + W/60 - 1`.  The true-range rule takes the minimum and maximum of the minute values in the window, which bounds acceptance from above and understates the variation within each minute.  The causal rule takes the extremes of the previous 15 minutes and widens each by the 99.9th percentile of the excursions that the calibration year shows, for the same window length and hour of day, with the lower bounds no lower than 0.  The study reports the causal rule's coverage on the withheld year.
+
+### Stage 2: margins and the window length
+
+The gateway takes a snapshot every minute.  The proposer at each snapshot is the self-consumption rule, the last minute's PV minus load within the setpoint limits, and the gateway sends it when the authorizer accepts it and nothing otherwise, so that the command in force continues to its expiry.  The gateway returns the device to fallback when a minute's load or PV leaves the intervals of the command in force.  For each window length of 180, 300, 600, and 900 s and each interval rule, the report gives the fraction of proposals accepted, the dispatch energy delivered against the energy proposed, percentiles of the largest accepted charge and discharge, and the fraction of snapshots at which fallback's worst case breaks each limit.  At 300 s it also varies `e` (25, 100, 200 W) and `η` (850,000 and 950,000 ppm).  The replay also checks the theorem's conclusion: at every minute of an accepted window whose intervals held, the simulated energy and grid power must meet `WithinOrFallback`.
+
+### Stage 3: optimizer and economic replay
+
+The bill follows [PG&E's Electric Home Rate Plan (E-ELEC)](https://PGE.com/assets/pge/docs/account/rate-plans/residential-electric-rate-plan-pricing.pdf), effective March 1, 2026, for an all-electric home: in summer (June to September) 33¢ off-peak, 39¢ partial peak (3 to 4 p.m. and 9 p.m. to midnight), and 55¢ peak (4 to 9 p.m.), and in winter 28¢, 30¢, and 32¢.  Exports earn a flat credit of 5¢/kWh, an assumption of the study that stands in for the hourly export rates of PG&E's net billing tariff, and the fixed base services charge is the same for every policy and is omitted.  The tariff applies on the house's local clock, so the study pairs a Maryland load and PV with a California tariff.  Battery wear costs 5¢ per kWh discharged, a stated assumption that the optimizer uses as a threshold and the report adds to the bill.
+
+The policies are no battery; the vendor's self-consumption mode, which charges from surplus PV and discharges to cover deficit down to the floor; a fixed time-of-use schedule, which charges from surplus PV at any time and discharges only during partial peak and peak, down to a fixed reserve of 3 kWh; and the controller.  The controller's rule uses a one-day look-behind forecast, as SAM's retail-rate dispatch does: it charges from surplus PV, discharges to cover deficit during partial peak and peak, discharges off-peak only the energy above what the forecast peak deficit needs, and charges from the grid off-peak only when the peak price exceeds the off-peak price divided by the round-trip efficiency plus the wear cost.  The controller limits each proposal to the range that its own copy of the acceptance rule accepts and sends it through the authorizer, which accepts every proposal so limited.  The report gives each policy's bill, import and export energy, battery throughput, the fraction of the controller's unlimited proposals that the authorizer would accept, and the reserve margins, on the withheld year.
+
+### Review of the design
+
+A fresh reviewer checked the design against the plan, the data, and SAM's documentation, and confirmed the OPSD findings and the NIST and PG&E facts.  Its findings and their outcomes:
+
+| Finding | Outcome |
+|---|---|
+| The load needs the `Elec`, `HVAC`, `DHW`, and `Load` files: the heat pump is in `HVAC`, the oven only in `Load`, and one leg of the water heater reads 0 all year, so `DHW_HeatPumpWaterHeaterPowerTotal` replaces both legs.  Including the occupant emulators gives a net export of 74 kWh against NIST's 2,240 kWh for 2015, and excluding them about 1,850 kWh.  NIST publishes no 2015 consumption figure. | The prepared load already follows these rules and excludes the emulators.  The check of totals uses the 2013 year, whose consumption NIST publishes (13,039 kWh). |
+| The indoor unit of the heat pump reads negative for most of several days, down to -17,087 W, and failed sensors read 0. | A minute with a channel below -100 W is missing, and a day with more than 60 such minutes is dropped. |
+| The 2015 year changed the dehumidification, ventilation, and thermostat, and choosing `W` on the withheld year tunes it on the evaluation data. | The Stage 2 sweep runs on 2013, with the causal rule calibrated on 2013, and the withheld 2015 year gives the coverage and the economic results.  The report states the change of configuration. |
+| PTProsumer (Madeira) has 1-second net and PV meters of real households for several years. | Recorded as the dataset that can measure the excursions within a minute, which the minute averages hide.  Most of its arrays are below 3 kW. |
+| The check of `WithinOrFallback` has little power, because the simulated device runs at interior values. | A stress replay runs the device at the premises' extremes: power at `s - e` with `η_d = η` and `ℓ = ℓ⁺` and the energy at the lower end of its interval, and `s + e` with `η_c = 1` and `ℓ = 0` and the energy at the upper end. |
+| The largest accepted setpoints depend on the state in force, which at a one-minute cadence is the last command. | The report states it.  The tool finds them by search at every snapshot. |
+| Minute averages overstate acceptance and coverage for both interval rules. | The report states it, and `W` stays provisional until Stage 5 measures excursions within a minute. |
+| One percentile per clock hour pools sunrise times that move by 1.5 hours over the year. | The causal rule's percentiles are by month and hour, pooled over the month and its two neighbors, and the report gives coverage by month. |
+| Energy that a command delivers after a later proposal is rejected inflates the delivered energy. | The report gives this run-on energy separately. |
+| No criterion selects `W`. | Stated below, before the sweep. |
+| The study bills a Maryland house on a California tariff, while the plan asks for the site's billing rules. | The plan's replay section names the tariff as a hypothetical one, and the report labels it. |
+| Partial peak from 3 to 4 p.m. spends energy that the 4 to 9 p.m. peak values more. | Before the peak, partial peak follows the off-peak reserve rule. |
+| Grid charging needs a quantity net of forecast PV. | The rule already charges only the forecast need less the forecast surplus stored before 3 p.m. less the usable energy. |
+| The wear cost has no source, and SAM's capacity fade is missing. | The wear cost is stated as the assumption of a $400/kWh replacement over 8,000 full cycles, and the report states that capacity is constant over the one-year replay. |
+| The vendor modes follow each minute's own values, while the controller acts through one-minute commands, so the difference mixes the rule with the lag. | The report separates them with the one-minute proposer without the authorizer.  The vendor modes stop at the same floor and ceiling. |
+
+The criterion for `W`: among the window lengths that the gateway's timing allows, choose the longest whose controller bill and wear on the calibration year lies within 1% of the lowest, because a longer window keeps a command in force through a longer loss of communication.  The equipment's expiry granularity in Stage 4 can only lengthen the choice.
+
+### Results
+
+[The replay study](Demos/Energy/Replay.md) holds the results, and this section records what the report does not.
+
+- The OPSD findings rested on the one-minute series.  The 2013–14 NIST year has the dehumidifier channel empty all year, so `prepare` treats a channel empty for a whole year as absent.  With that rule the 2013–14 load and PV, scaled to the year, lie within 1% of NIST's published totals, which supports excluding the occupant emulators.
+- The first margins report counted the fraction of proposals accepted, which mostly counted small discharges proposed at the floor at night.  The report now measures energy against the vendor's mode and against the one-minute proposer without the authorizer.
+- The first controller ignored the floor and the ceiling and let the authorizer stop it, so its ungated replay used the whole 10 kWh.  Every proposer now stays within the floor and the ceiling for one minute.
+- The controller began with an evening reserve, summer grid charging, and curtailment-aware charging.  On the calibration year without the authorizer the self-consumption rule cost $1,917 with wear, all three rules $1,916, curtailment alone $1,900, the reserve alone $1,919, and the reserve with grid charging $1,931.  The controller keeps only the curtailment rule.  With caps that never bind that rule held back morning charging though nothing would be curtailed, so it now applies only when the previous day's surplus came within 1,000 W of the cap.
+- The criterion for `W` gave 180 s: the calibration-year bills with wear were $2,044, $2,067, $2,121, and $2,147 for 180, 300, 600, and 900 s.
+- The causal rule's widening of the load's upper bound for 300 s lies between 9.7 and 12.2 kW in every hour from November to March, which, with the 10 kW import cap, blocks charging through the winter.
+- A first draft of the report gave that widening as 5 to 9 kW, from the earlier hour-only rule's output on the 2015 data.  The final rule's calibration output corrected it before the commit.
+
+The study raises two decisions for the user, which the plan's table of open decisions records: the form of the command, a held setpoint or power limits for the inverter's own self-consumption mode, and the treatment of an import cap that the site's own load can approach.
+
+- [x] Replay tool's acceptance rule and `check`.
+- [x] Dataset preparation and the check of annual totals.
+- [x] Interval rules and their calibration.
+- [x] Stage 2 sweep, report, and window length.
+- [x] Stage 3 policies, economic replay, and report.
+
+## 2026-10-30: The form of the energy command
+
+The replay study found that a setpoint held for a minute costs more than the vendor's self-consumption mode at the test house, because it cannot follow the load.  The alternative is a command of power limits: the gateway sends a lower and an upper power limit with an expiry, and the inverter's own self-consumption mode follows the net load within them.  The question for the user is which form the authorizer authorizes, because the answer changes its interface, assumption A2, and the statement of its theorem.
+
+### Analysis
+
+With limits `[c⁻, c⁺]` the window's power interval becomes the hull of the state in force (the limits in force widened by `e`, or `F`), `[c⁻ - e, c⁺ + e]`, and `F`.  A setpoint `s` is the limits `[s, s]`, so the limits form also authorizes every held setpoint.  The side tests read only `B⁻` and `B⁺`, and the lower side depends only on `c⁻` and the upper side only on `c⁺`, so the widest accepted limits are the largest accepted discharge and charge of the setpoint form, also when the state in force is a pair of limits.
+
+| Part | Change |
+|---|---|
+| `Spec.lean` | `State.command`, `State.low`, `State.high`, `powerLow`, `powerHigh`, and the proposal parameter of `AdmittedUntil` take two powers; `WithinOrFallback`, `Within`, the `fallback_keeps` lemmas, and `drainLow` are unchanged; the specification's independent review runs again |
+| `Window.lean` | The statements of `lowerTested`, `upperTested`, `Conditions`, `energy_bounds`, `grid_bounds`, `powerLow_le`, `le_powerHigh`, and `window_sound` take the pair, and their proofs keep their text if `powerLow` and `powerHigh` keep the shapes `min (min _ _) f⁻` and `max (max _ _) f⁺` |
+| `Program.lean`, `Words.lean`, `Flat.lean` | The input holds the limits in force and the proposed limits, 13 words instead of 11; the order check covers both pairs; the result holds both limits, four words instead of three |
+| `Arith.lean`, `Authorize.lean`, `Theorems.lean` | The word lemmas take the pairs; `authorize_sound`, `energy_authorize`, and `authorize_accepted` name the limits |
+| Examples, cases, file theorems | Rebuilt for the new layout |
+| Gateway rules | Send exactly the returned limits.  A snapshot requires a read-back of the applied limits as well as measured power within the limits in force widened by `e`, because a self-consumption mode's present power says nothing about its later power, and the gateway watches battery power against `B` during the window |
+| Equipment | SunSpec model 124 has the charge and discharge rates `InWRte` and `OutWRte` and the timeout `InOutWRte_RvrtTms`, all optional, and leaves the state after the timeout to the vendor.  Fronius's GEN24 uses model 124 for power windows, including zero-width ones.  SunSpec model 704 has a held setpoint `WSet` with a reversion value and timeout and no window.  Qualification establishes which a device supports and what it does at the timeout |
+
+### Review
+
+A fresh reviewer checked the analysis against the Lean files, the replay, and SunSpec's model definitions.  It found that the analysis left out the statement changes in `Window.lean`, `Theorems.lean`, and `Flat.lean`, now in the table, and that the gateway's snapshot rule for limits needs a read-back of the applied limits.  It found two defects in the replay's limits device: with data missing it discharged at its lower limit, and at the floor it charged from the grid at about 10 W.  Both are fixed, and the limits bills changed by $1 to $2.  Its main finding concerns the evidence.  The held-setpoint proposer holds the previous minute's net load through the next minute, while the limits device follows the present minute.  With caps that never bind at 180 s, a held setpoint through the authorizer costs $1,499 from the previous minute, $1,462 from the mean of the previous and the present minute, and $1,426 from the present minute, against $1,421 for limits and $1,406 for the vendor's mode alone, and the replay reproduced these figures.  The minute data therefore cannot measure what limits gain, which lies in the changes within each minute.
+
+Recommendation: power limits, decided before Stage 4.  They contain every held setpoint as `[s, s]`, their proof changes keep the proof text above the word layer, and they allow a device that supports power windows to follow the load within the minute.  The gain within the minute is unmeasured; one-second data such as PTProsumer's can estimate it.  Keeping the held setpoint leaves the Lean work as it is and limits the equipment to held setpoints.
+
+Decision (user, 2026-10-30): power limits.  The authorizer authorizes `[c⁻, c⁺]`, and a held setpoint is `[s, s]`.
+
+A fresh reviewer checked the new `Spec.lean` against the plan's model and found no condition weaker or stronger than the design.  Its findings and their outcomes:
+
+- Inverted snapshot intervals or limits would make the theorem vacuous or A2 unsupported.  `InputValid` already rejects both, and `admitted_exists` and `authorize_admits` now prove that some trajectory is admitted for every accepted input.
+- The plan's claim that limits in both directions are tested on both sides holds only when they extend beyond `F`, and the plan now states the comparison.
+- "Limits" named the site's limits, a command's limits, and the profile's largest charge and discharge, so the documents say "site limits" and "command limits".
+- `floor ≤ E⁻` follows from `floor + drain⁻ ≤ E⁻`, and `E⁺ ≤ E_max` from `E⁺ + gain⁺ ≤ E_max`, so each energy test is now one comparison, with the same decisions.
+- `Within` was unused, and `within_of_fallback` now derives it.
+
+The rework kept every proof text above the word layer unchanged except the floor and ceiling branches of `window_sound`.  `tests/verified/run.sh --cases energy` passed 2,047 cases, the file theorems of the 6,316-byte module, and the axiom audit, and `replay.py check` agrees on all 2,047 cases.
+
+- [x] `Spec.lean` with limits, and its independent review.
+- [x] `Window.lean`, the word layer, and the module theorems.
+- [x] Examples, cases, file theorems, and the README.
+- [x] The replay tool's `check` against the new cases, and the plan.
+
+## 2026-10-30: The grid tests under power limits
+
+With the study's 10 kW import cap and the causal rule's load bound, the import test blocks charging through the winter.  On the withheld year the self-consumption mode within authorized limits costs $1,628 at 180 s with the grid tests, against $1,459 for the vendor's mode alone.  The test assumes that battery power can sit anywhere in `B` while the load is at `L⁺` and PV at `S⁻`.  A self-consumption mode does not behave that way: it charges only from surplus PV and discharges only to cover the load, so it never adds grid import or export.
+
+### Options
+
+| Option | Model | Authorizer | Commands |
+|---|---|---|---|
+| A. Keep the grid tests | A2 as now: power in `B` | Tests both caps over `B` | Any limits, including held setpoints and grid charging |
+| B. Self-consumption commands only | A2 adds a device property: battery power lies between 0 and the net surplus `S - L`, widened by `e` | Tests only the energy limits; grid power lies between 0 and the net load `L - S`, widened by `e`, which the theorem states | Limits for the self-consumption mode; no held setpoint that exchanges power with the grid, and no grid charging |
+| C. Two command kinds | A2 by kind | A mode word selects B's tests for self-consumption limits or A's tests for held setpoints | Both |
+
+Under B, `G = L + b - S` lies between `min(0, L - S) - e` and `max(0, L - S) + e`, so it lies within `min(-X, L⁻ + f⁻ - S⁺)` and `max(I, L⁺ + f⁺ - S⁻)` whenever `F ⊇ [-e, e]` and both caps are at least `e`, which profile validity would require.  `WithinOrFallback` would then hold without a grid test, and the program would lose `exportOk` and `importOk`.  On the withheld year, with the export cap still curtailing PV, option B costs $1,474 at 180 s and $1,476 at 900 s: $15 to $17 more than the vendor's mode alone.  Option B gives up the controller's curtailment rule ($14 a year on the calibration year) and grid charging (a loss on the calibration year under E-ELEC, which other tariffs may reverse).
+
+Provisional recommendation: B, because it removes two tests and their proofs, matches what a self-consumption mode does, and costs $15 a year against the vendor's mode at this house.  C keeps grid charging at the cost of a second path through the program and the theorem.
+
+### Review and outcome
+
+A fresh reviewer confirmed the grid bound's algebra and the replay's figures ($1,459, $1,628, and $1,474 to $1,476), and rejected option B.  B's property must hold at every instant, but a self-consumption loop follows a meter with a delay of seconds: the G100 grid code allows 5 s to correct an export excursion, and one AC-coupled inverter declares a response under 5 s.  During that delay the battery charges while the site imports, or discharges while it exports, by kilowatts, and one-second data show load steps of more than 1.4 kW within a minute in 1% of 180 s windows.  Meter offsets, loads and PV that the battery's meter does not see, single-phase batteries on multiphase sites, and forced recharging at low charge break the property as well.  A form that tolerates the delay, with the battery charging at most the window's largest surplus, costs $1,625 at 180 s against $1,628 for A, so B's whole gain came from the instantaneous premise that equipment violates.  B would also exclude every nonzero held setpoint.
+
+Outcome: option A, the grid tests over `B`, which leaves the theorems and the program as they are.  The import cap's cost at the test house is a property of an instantaneous cap under a worst-case load bound.  Grid limits stated over metering intervals longer than the equipment's response time, a Stage 8 extension, are the design that can lower it with a true premise.
+
 ## 2026-10-31: The full check with the registry's file theorems and the Talos driver
 
 [`tools/full-check`](tools/full-check) ran from 21:21 UTC on 2026-10-30 to 00:16 UTC on 2026-10-31 on the commit that records the GPT generation port and the driver fix, with no path differing from it, and [`STATUS.md`](STATUS.md) holds its record.  It used `LEANRUN_THREADS=8`, `LEANRUN_MEMORY_HIGH=40G`, and `JOBS=8` on AArch64, and every step that ran passed.  The build's modules were current, so the build replayed its 15,366 jobs in 9 seconds, and the corpus drivers took most of the 2 hours and 55 minutes.
@@ -39818,6 +39989,63 @@ The restoration of `Words.toList` stays a commit of its own, because `STATUS.md`
 - [ ] Port the operations that `Examples/Trees/Program.lean` adds to the library with `verified_compile`, or delete them.
 - [x] Correct the citations of `docs/native-translator.md` in `docs/trusted-base.md`, which point at lines that have moved, among them blank lines and table headers.
 
+## 2026-10-31: Consecutive windows
+
+The user chose the composition of consecutive windows as the first Stage 8 extension.  `Operation.lean` specifies a run of accepted authorizations and, for one window, `OperatesIn`: gateway rule 1 at the snapshot, rules 2 to 4 with assumption A7 as the set of states the device may apply until the next accepted snapshot, and the device's response from the snapshot.  `Compose.lean` derives assumption A2 of each window from them (`power_in_window`), gives the window's bounds from its snapshot to the next (`run_sound`), covers every time from the first accepted snapshot to the end of the last window when accepted snapshots lie at most `W` apart (`run_covered`, `operation_sound`), and shows that the premises can hold together (`operates_exists`).  `authorize_operation` states the result for the test site's module.  `Spec.lean` splits `AdmittedUntil` into `ModelUntil`, assumptions A1 and A3 to A5, and A2, so that the composition can derive A2.
+
+A fresh reviewer checked the first version of the specification against the plan and confirmed the derivation of A2 and its non-vacuity.  It found five defects, all fixed:
+
+- `state w` must be the state the device has applied, since under the gateway's record the response premise fails during delivery delays.
+- The device's response stated from every time `u` is stronger than the plan's transition property, which allows power anywhere between its value at a change and the new interval; the response now starts at the snapshot, where rule 1 guarantees a settled device.
+- Premises over the whole run let a fault in one window silence every later window's theorem, against the plan's "each has its own theorem"; the premises are now per window.
+- `Spaced` is rule 5 together with acceptance of a snapshot in each window, which its documentation now says.
+- The plan's paragraph on consecutive windows claimed coverage until power leaves a window's interval; it now states what `operation_sound` gives.
+
+- [x] `Operation.lean`, its review, and the fixes.
+- [x] `Compose.lean` and `authorize_operation`.
+- [x] Rebuild, the case run with the axiom audit, and the commit: 2,047 cases pass, and `operation_sound`, `operates_exists`, and `authorize_operation` use only `propext`, `Classical.choice`, and `Quot.sound`.
+
+## 2026-10-31: Grid limits over metering intervals
+
+The user chose grid limits over metering intervals as the next Stage 8 extension.  Before a design, the analysis below asks what such limits would gain, because the replay's import-test cost came from the causal rule's bound on the load's instantaneous maximum.
+
+### Two kinds of limit over time
+
+Interconnection limits on import and export are enforced at the site by a power control system certified under UL 1741's requirements for power control systems, which caps the open-loop response at 30 s and which tested equipment meets in 0.6 to 2 s.  Demand limits are averages over fixed metering intervals, most often 15 minutes.  An averaged limit in the authorizer would need, in each snapshot, the grid energy already metered in the current interval and bounds on the average load and PV up to the end of every metering interval that the window touches, so the forecast horizon would grow from `W` to as much as `W + M`.  The window that ends inside a metering interval would also have to leave room for fallback until that interval ends.
+
+### What averaging gains at the test house
+
+On the calibration year, against the previous 15 minutes (`/tmp` script `avg.py` over `nist-2014.csv`):
+
+| Season | Percentile | Maximum over the next 300 s above the recent maximum (W) | Average over the next 900 s above the recent average (W) | Average over the next 900 s above the recent maximum (W) |
+|---|---|---|---|---|
+| November to March | 99 | 10,174 | 5,598 | 4,084 |
+| November to March | 99.9 | 10,744 | 9,661 | 9,182 |
+| June to September | 99 | 1,826 | 2,718 | 1,553 |
+| June to September | 99.9 | 5,549 | 5,103 | 4,480 |
+
+At the 99.9th percentile, which the study's causal rule uses, the winter bound falls by only 1.6 kW, because the heat pump's resistance heat runs for many minutes and raises the 15-minute average nearly as much as the maximum.  The bound falls by 6 kW at the 99th percentile, at lower coverage.  The import test at the test house binds because the study chose a 10 kW cap that the house's own winter load reaches, and an averaged cap of the same size would bind in the same hours.
+
+### Options
+
+| Option | Theorem | Cost |
+|---|---|---|
+| A. Averaged caps over fixed metering intervals | Each completed metering interval inside the window keeps its average within the cap, or no further outside than fallback | New snapshot words (metered energy so far, average bounds per metering interval), a horizon up to `W + M`, new tests and proofs; gains little at this house at 99.9% coverage |
+| B. Leave the caps to a certified power control system | The theorem covers the energy limits; the grid caps become an assumption about the site's power control system, like the other protections of A8 | Removes two tests and their proofs; the theorem no longer states a grid bound |
+| C. Keep the instantaneous caps | As now | None |
+
+Provisional recommendation: C for now, with this analysis recorded, because A's gain at 99.9% coverage is small at the only house measured and B removes a guarantee.  The import test's cost in the replay reflects a cap below the house's own peak load, which a real site's service rating would not be.
+
+### Review and correction
+
+A fresh reviewer found the analysis's comparison wrong: it treated every snapshot as the start of a metering interval, and so ignored the energy already metered in the interval, the uncertainty over only its remaining part, and the battery's power counted only within its window.  With clock-aligned 900 s intervals, `W = 180` s, the causal rule's 99.9% bounds, and the self-consumption rule's charge proposals, the import test accepts in winter 0.0% of charge proposals instantaneously, 59.0% with averaged caps that leave room for fallback to the interval's end, and 76.0% in a pro-rata form: the import metered since the interval's start stays at or below `I · (t - t_s)` at every time of the window.  The replay reproduced these figures (`review4/avgcheck.py`).  The pro-rata form is an affine bound like the ceiling test, needs no horizon beyond `W` and no premise after the window, fits `WithinOrFallback` and `operation_sound`, and implies the interval average at every interval end that a window covers.  It needs the metered import since the interval's start as a snapshot interval with its error, and the interval's length and alignment in the profile.
+
+The reviewer also found that the study's 10 kW import cap has no counterpart at the house: the peak minute load is 22.9 kW, a 200 A, 240 V service is 48 kW, and the instantaneous test accepts 94.4%, 98.5%, and 100% of winter charge proposals at caps of 20, 25, and 30 kW (`review4/caps.py`, reproduced).  The import test's cost in the replay therefore comes from the study's choice of cap.  Interconnection limits are instantaneous with a response time that UL 1741's 2019 requirements for power control systems cap at 30 s until standards exist, utilities may require faster responses (2 s in a CPUC Rule 21 working group), and measured responses range from 0.3 s to 9 s.  A power control system controls only its own sources, so it cannot hold a site's import within a cap that the load alone exceeds.  Averaged limits fit demand targets, which the plan excludes, and sites whose meters use fixed intervals.
+
+The earlier "0.6 to 2 s" for tested equipment had no source and is wrong.  The recommendation to keep the caps as they are rested on the wrong comparison.
+
+Decision (user, 2026-10-31): correct the study only; keep instantaneous caps.  The study's import cap is now 24 kW, a 100 A, 240 V service, above the house's largest minute load of 22.9 kW.  With it, the import test rejects at most 1.0% of snapshots on the calibration year, the export test 4.0% to 7.5%, and the authorizer costs the controller $21 to $48 a year on the withheld year, against $133 to $263 at 10 kW.  The criterion for `W`, applied to the corrected calibration-year bills ($1,921, $1,924, $1,935, and $1,948 for 180, 300, 600, and 900 s), now gives 600 s.  The report and the plan carry the corrected results.  The first attempt at the economic reruns failed because the shell variables were set inside the first backgrounded group only, so the other groups wrote to `/`.
+
 ## 2026-10-31: The design of a two-sided order book
 
 `Demos/Clob` holds the bid side of a book as sorted arrays of level totals, which serves the compiler's tests but cannot match orders.  The new program, in `Demos/OrderBook`, is a deterministic step function over one instrument's two-sided book, with price-time priority, engine-assigned order ids, and an event stream, under limits small enough for closed-form bounds.  The host sequences and authenticates commands, keeps the command log, and maps engine ids to client tags from the events.  Recovery replays the log, which a stream theorem over the specification justifies.
@@ -39844,3 +40072,41 @@ The refinement proof dominates the work.  The design also assumes that the verif
 - [ ] Refinement proof.
 - [ ] `verified_compile`, the allocation bound, the call theorem, the registry entry, cases, and the C translation.
 - [ ] WASI process with stdin command records and stdout event records.
+
+## 2026-10-31: Review of the energy work
+
+Three fresh reviewers read the energy work: one the Lean code, the case generator, `tests/verified/run.sh`, and the replay tool; one the README, the replay report, and the docstrings; and one the plan.  The code reviewer found a defect in the data.  `prepare` set the seconds of each NIST timestamp to 0 and summed the rows of one file that fell in the same minute, which happens because NIST's timestamps drift within the minute.  The merged minutes produced every PV value above 10.5 kW that the report had kept as implausible readings.  `prepare` now marks such a minute missing and prints the count, 34 minutes in 2013–14 and 21 in 2015–16, and every replay ran again.  The largest PV minute is now 10,039 W, the causal rule's largest widening of PV at 900 s fell from 8,779 W to 7,610 W, and the calibration-year bills moved by at most $1, so the criterion still gives `W = 600` s.
+
+### Fixes
+
+| Finding | Fix |
+|---|---|
+| `operation_sound`, `authorizeWith_operation`, and `authorize_operation` did not name the window whose premises a caller supplies | Their conclusions include `Run.Between j t` |
+| `run.sh` ran the axiom audits without reading their output, so an extra axiom passed | `check_axioms` parses every report and fails on a missing report or an axiom beyond `propext`, `Classical.choice`, and `Quot.sound`, and the slew audit uses it too |
+| No case let the range checks of words 2, 7, and 9 fail first, or sat on a range's end, and the input of all ones stopped at the version check | Cases for each, 2,056 in all |
+| The site's profile divides exactly, so no case detects a drain that rounds down | `replay.py check` also tests `drain_low` under `η = 900,001` ppm |
+| Run-on counted charging, `within` read UTC stamps as local time, `check` passed an empty file, and the controller read the simulated energy instead of the snapshot's estimate | Each corrected, with no change in the bills |
+| The report cited figures that the tool could not produce | `--import-cap`, `--estimate`, and `calibration` produce them, and the report lists every command |
+| `run_sound` took the conditions of every window of the run | It takes the conditions of its own window |
+| `affine_ge` and `affine_le` repeated one `nlinarith` call in two branches | `by_cases hr : 0 ≤ r <;> nlinarith` |
+| Stale and unclear prose in all three documents and in the docstrings | README, report, and plan rewritten, and docstrings corrected and wrapped at 100 characters |
+
+The documents now state the tests as formulas, define every table column, present limits as the command form, and describe only the present.  The plan has a Decisions section, a status column for the stages, a table that maps each gateway rule to its formal counterpart, a summary of the replay's results, and links for every source it relies on.  The UL 9540 and UL 1741 listings have no page that answers an automated request, so the plan links UL Solutions' page on energy storage certification, which covers both.
+
+### Suggestions not applied
+
+| Suggestion | Reason |
+|---|---|
+| Drop the range checks of the lower ends of words 2, 7, and 9, which `inputValid_iff` derives | Status `range` then reports every word outside its range, as the interface states, and the new cases test the three checks |
+| One lemma for the drain's bounds that `lowDrain_toNat` and `floorOk_iff` repeat | It saves about eight lines at the cost of a lemma whose statement repeats three bounds |
+| Remove `chargeMax`, `dischargeMax`, and `sendDeadline` from `Profile` | The record reads every word of the table, so the specification shows the whole profile |
+
+- [x] Lean, case, `run.sh`, and replay-tool fixes, with the build and 2,056 cases passing.
+- [x] Data prepared again and every replay rerun.
+- [x] README, report, and plan rewritten.
+
+## 2026-10-31: The energy module's C translation
+
+A review of the branch noted that the indexes list energy's forms as V S F, although its module translates to C.  `#check` shows `Demos.Energy.Verified.compiled.authorize.native`, which states `NativeTablesImpl` for the translation.  CompCert 3.18 was built from the archive whose SHA-256 the M0 entry records, configured with `./configure -clightgen x86_64-linux`, with Debian 13's packages `coq` 8.20.1, `ocaml-nox` 5.3.0, `menhir` and `libmenhir-ocaml-dev` 20240715.  `make -j6 all` built `ccomp`, `clightgen`, and the run-time library, with the proofs.  `ccomp -version` reports 3.17, as the archive's `VERSION` file says.  `tests/native/verified.sh --module energy`, with `CCOMP`, `CLIGHTGEN`, and `CCOMP_STDLIB` naming that tree, passed 2,056 cases and failed none.
+
+Energy's rows in the demo index and the algorithm index now list C, the README lists `compiled.authorize.native` and the native driver, and the plan's open decision on the gateway runtime no longer defers the question of whether the translation contains `authorize`.

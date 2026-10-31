@@ -9,7 +9,10 @@
 # holds the module of the function's byte theorem, and it fails unless both file theorems report
 # only the axioms propext, Classical.choice, and Quot.sound.  For the slew planner, it also compares
 # the edgeOk export with native Lean and runs the axiom audit of tests/slew/Axioms.lean, and with
-# --cases slew it checks the planner's file theorem module as well.  Last, the
+# --cases slew it checks the planner's file theorem module as well.  For the energy authorizer, it
+# runs the axiom audit of tests/energy/Axioms.lean, and with --cases energy it checks the
+# authorizer's file theorem module as well.  Each audit fails the run when a report names an axiom
+# beyond those three.  Last, the
 # tests/TestSupport/Numerics/*Accuracy.lean checks compare the transcendental functions with
 # references computed with Lean's integers, each within the bound its docstring states, and
 # tests/TestSupport/Numerics/FourierAccuracy.lean checks that Fourier.dft, inverse, and
@@ -99,6 +102,8 @@ elif [ "$case_module" = "xxhash64" ]; then
   cases_exe=verified-cases-xxhash64
 elif [ "$case_module" = "slew" ]; then
   cases_exe=verified-cases-slew
+elif [ "$case_module" = "energy" ]; then
+  cases_exe=verified-cases-energy
 fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
@@ -125,6 +130,10 @@ if [ -z "$reference" ]; then
   if runs slew; then targets+=(TestSupport.Slew.EdgesMain $(imports tests/slew/Axioms.lean)); fi
   if [ "$case_module" = "slew" ]; then
     targets+=(Demos.Slew.Verified $(imports Demos/Slew/File.lean))
+  fi
+  if runs energy; then targets+=($(imports tests/energy/Axioms.lean)); fi
+  if [ "$case_module" = "energy" ]; then
+    targets+=(Demos.Energy.Verified $(imports Demos/Energy/File.lean))
   fi
   if [ -z "$case_module" ]; then
     while IFS=: read -r name theorem file; do
@@ -212,11 +221,48 @@ check_file() {
   fi
   echo "$name: $name.wasm holds the module of $theorem, with the permitted axioms"
 }
+# Elaborates an axiom audit and requires every report in it to name only axioms among the three
+# permitted ones.
+check_axioms() {
+  local file=$1 reports verdict
+  reports=$(tools/leanrun --timeout 10m lake env lean "$file") || {
+    echo "$reports"
+    echo "fail: $file does not elaborate" >&2
+    exit 1
+  }
+  echo "$reports"
+  verdict=$(awk '
+    /depends on axioms: \[/ {
+      report = $0
+      while (report !~ /\]/ && (getline) > 0) report = report " " $0
+      sub(/^.*depends on axioms: \[/, "", report)
+      sub(/\].*$/, "", report)
+      count++
+      n = split(report, names, /,[[:space:]]*/)
+      for (i = 1; i <= n; i++) {
+        gsub(/[[:space:]]/, "", names[i])
+        if (names[i] != "propext" && names[i] != "Classical.choice" && names[i] != "Quot.sound")
+          bad++
+      }
+    }
+    /does not depend on any axioms/ { count++ }
+    END { print (count > 0 && bad == 0) ? "ok" : "fail" }' <<<"$reports")
+  if [ "$verdict" != "ok" ]; then
+    echo "fail: $file reports an axiom beyond propext, Classical.choice, and Quot.sound" >&2
+    exit 1
+  fi
+}
 if [ -z "$case_module" ] || [ "$case_module" = "slew" ]; then
   tests/slew/edges.sh "$out/slew.wasm"
-  tools/leanrun --timeout 10m lake env lean tests/slew/Axioms.lean
+  check_axioms tests/slew/Axioms.lean
   if [ "$case_module" = "slew" ]; then
     check_file slew Demos.Slew.Verified Demos/Slew/File.lean
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "energy" ]; then
+  check_axioms tests/energy/Axioms.lean
+  if [ "$case_module" = "energy" ]; then
+    check_file energy Demos.Energy.Verified Demos/Energy/File.lean
   fi
 fi
 # Each entry names the written module, the theorem module, and the file theorem module.
