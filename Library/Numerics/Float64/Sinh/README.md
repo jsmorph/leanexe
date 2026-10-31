@@ -36,7 +36,7 @@ Below 1 the code evaluates `2E - E²/(E + 1)`, which equals `E + E/(E + 1)`, and
 
 The sources are FreeBSD's `lib/msun/src/e_sinh.c`, `e_cosh.c`, and `k_exp.c` [1, 2, 3].  `e_sinh.c` and `e_cosh.c` carry the notice "Copyright (C) 1993 by Sun Microsystems, Inc.  All rights reserved.  Developed at SunSoft, a Sun Microsystems, Inc. business.  Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved."  `k_exp.c` carries "Copyright (c) 2011 David Schultz", `SPDX-License-Identifier: BSD-2-Clause`, and the two conditions and the disclaimer of that license.  The module docstring of [the implementation](Program.lean) quotes both notices verbatim, with the conditions and the disclaimer of the BSD license.
 
-The port is written in the Verified dialect, which [the Verified compiler](../../../../Verified/README.md) translates to WebAssembly with a correctness theorem.  `verified_compile compiled := [Exp.specialCase, Exp.expCore, Exp.expWith, Tanh.expm1Kernel, Tanh.expm1, frexpExp, ldexpExp, sinhWith, coshWith, sinh, cosh]` lists the definitions of the earlier ports first, so that the module contains them, and with the runtime's `alloc` and `release` first, `sinh` is function 11 and `cosh` function 12.  `sinhWith` and `coshWith` take the exponential's table as a parameter, and `sinh` and `cosh` pass `Exp.expTable`, as the base-2 exponential's module does.
+The port is written in the verified compiler's dialect, which [the verified compiler](../../../../Verified/README.md) translates to WebAssembly with a correctness theorem.  `verified_compile compiled := [Exp.specialCase, Exp.expCore, Exp.expWith, Tanh.expm1Kernel, Tanh.expm1, frexpExp, ldexpExp, sinhWith, coshWith, sinh, cosh]` lists the definitions of the earlier ports first, so that the module contains them, and with the runtime's `alloc` and `release` first, `sinh` is function 11 and `cosh` function 12.  `sinhWith` and `coshWith` take the exponential's table as a parameter, and `sinh` and `cosh` pass `Exp.expTable`, as the base-2 exponential's module does.
 
 | fdlibm calls | Port calls | Same function |
 |---|---|---|
@@ -89,13 +89,13 @@ The theorems are in [the cosh theorem module](CoshTheorem.lean), [the sinh theor
 | `SinhBytes.sinh_module_accuracy` | Conjunction of the two byte theorems. |
 | `SinhFile.sinh_file`, `sinh_file_decode` | `build/verified/sinh.wasm` holds `encode Sinh.compiled.module` and decodes to the module of `sinh_module_accuracy`. |
 
-Each theorem of the table has a `#print axioms` line.  The library build and a run of `tests/verified/run.sh` report `[propext, Classical.choice, Quot.sound]` for every theorem of the table except the two file theorems.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Sinh.SinhBytes`, checks `SinhFile.lean` against the `sinh.wasm` it has written, and fails unless both file theorems report exactly the three permitted axioms.  That run passed this check for its entry `sinh:SinhBytes:SinhFile`, and since `sinh_file_decode` takes its bytes from `sinh_module_accuracy`, the axiom report of `sinh_file_decode` covers both byte theorems.
+Each theorem of the table has a `#print axioms` line.  The library build and a run of `tests/verified/run.sh` report `[propext, Classical.choice, Quot.sound]` for every theorem of the table except the two file theorems.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Sinh.SinhBytes`, checks `SinhFile.lean` against the `sinh.wasm` it has written, and fails unless both file theorems report exactly the three permitted axioms.  That run passed this check for the `sinh` entry of `tests/verified/numerics.txt`, and since `sinh_file_decode` takes its bytes from `sinh_module_accuracy`, the axiom report of `sinh_file_decode` covers both byte theorems.
 
 ## Proof
 
 ### Modules
 
-The proof has 23 modules of its own in `Library/Numerics/Float64/Sinh/`, and it builds on the chains of [the exponential](../Exp/README.md) and of [the exponential minus one and the hyperbolic tangent](../Tanh/README.md).  The table lists them by stage, in dependency order.  [The library aggregate](../../../../Library.lean) includes `SinhBytes`, so `lake build Verified Library` builds the chain.
+The proof has its own modules in `Library/Numerics/Float64/Sinh/`, and it builds on the chains of [the exponential](../Exp/README.md) and of [the exponential minus one and the hyperbolic tangent](../Tanh/README.md).  The table lists them by stage, in dependency order.  [The library aggregate](../../../../Library.lean) includes `SinhBytes`, so `lake build Verified Library` builds the chain.
 
 | Stage | Modules | Content |
 |---|---|---|

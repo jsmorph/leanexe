@@ -39,7 +39,7 @@ Below `2^-54` the result is `x`, and for `x ≤ -56 ln 2`, about -38.8, it is `-
 
 The sources are FreeBSD's `lib/msun/src/s_expm1.c` and `s_tanh.c` [1, 2].  Both carry the notice "Copyright (C) 1993 by Sun Microsystems, Inc.  All rights reserved.  Developed at SunPro, a Sun Microsystems, Inc. business.  Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved."  The module docstring of [the implementation](Program.lean) quotes the notice verbatim, as the notice requires.
 
-The port is written in the Verified dialect, which [the Verified compiler](../../../../Verified/README.md) translates to WebAssembly with a correctness theorem.  `verified_compile compiled := [expm1Kernel, expm1, tanh]` generates the module, whose functions are `alloc` (0), `release` (1), `expm1Kernel` (2), `expm1` (3), and `tanh` (4).  The module reads no tables.  [The hyperbolic sine and cosine](../Sinh/Program.lean) call `Tanh.expm1`, so their module contains `expm1Kernel` and `expm1` as well.
+The port is written in the verified compiler's dialect, which [the verified compiler](../../../../Verified/README.md) translates to WebAssembly with a correctness theorem.  `verified_compile compiled := [expm1Kernel, expm1, tanh]` generates the module, whose functions are `alloc` (0), `release` (1), `expm1Kernel` (2), `expm1` (3), and `tanh` (4).  The module reads no tables.  [The hyperbolic sine and cosine](../Sinh/Program.lean) call `Tanh.expm1`, so their module contains `expm1Kernel` and `expm1` as well.
 
 | C code | Port | Reason |
 |---|---|---|
@@ -91,13 +91,13 @@ The theorems are in [the expm1 theorem](Expm1Theorem.lean), [its exceptional val
 | `TanhFile.tanh_file` | `build/verified/tanh.wasm` holds `encode Tanh.compiled.module`. |
 | `TanhFile.tanh_file_decode` | `build/verified/tanh.wasm` decodes to the module of `tanh_module_accuracy`. |
 
-Each of these theorems has a `#print axioms` line.  In a run of `tests/verified/run.sh`, every theorem of the table except the two file theorems reports `[propext, Classical.choice, Quot.sound]`.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Tanh.TanhBytes`, checks `TanhFile.lean` against the `tanh.wasm` it has written, and fails unless both file theorems report exactly the three permitted axioms.  That run passed this check for its entry `tanh:TanhBytes:TanhFile`, and since `tanh_file_decode` takes its bytes from `tanh_module_accuracy`, the axiom report of `tanh_file_decode` covers both byte theorems.
+Each of these theorems has a `#print axioms` line.  In a run of `tests/verified/run.sh`, every theorem of the table except the two file theorems reports `[propext, Classical.choice, Quot.sound]`.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Tanh.TanhBytes`, checks `TanhFile.lean` against the `tanh.wasm` it has written, and fails unless both file theorems report exactly the three permitted axioms.  That run passed this check for the `tanh` entry of `tests/verified/numerics.txt`, and since `tanh_file_decode` takes its bytes from `tanh_module_accuracy`, the axiom report of `tanh_file_decode` covers both byte theorems.
 
 ## Proof
 
 ### Modules
 
-The proof has 31 modules in `Library/Numerics/Float64/Tanh/` above the implementation, and it uses `ExpReductionBounds` from the exponential's proof for an enclosure of `ln 2`.  The table lists them by stage, in dependency order within each stage.  [The library aggregate](../../../../Library.lean) includes `TanhBytes` and `Expm1Near`, so `lake build Verified Library` builds the chain.
+The proof's own modules, in `Library/Numerics/Float64/Tanh/`, build on the implementation, and the proof uses `ExpReductionBounds` from the exponential's proof for an enclosure of `ln 2`.  The table lists them by stage, in dependency order within each stage.  [The library aggregate](../../../../Library.lean) includes `TanhBytes` and `Expm1Near`, so `lake build Verified Library` builds the chain.
 
 | Stage | Modules | Content |
 |---|---|---|

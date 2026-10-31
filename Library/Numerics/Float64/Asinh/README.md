@@ -42,7 +42,7 @@ The code compares high words, so the boundaries at 2 and `2^28` of `asinh` and a
 
 The sources are FreeBSD's `lib/msun/src/s_asinh.c`, `e_acosh.c`, and `e_atanh.c` [1, 2, 3].  Each carries the notice "Copyright (C) 1993 by Sun Microsystems, Inc.  All rights reserved.  Developed at SunPro (`s_asinh.c`) or SunSoft (the others), a Sun Microsystems, Inc. business.  Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved."  The module docstring of [the implementation](Program.lean) quotes both notices verbatim, as they require.
 
-The port is written in the Verified dialect, which [the Verified compiler](../../../../Verified/README.md) translates to WebAssembly with a correctness theorem.  `verified_compile compiled := [Log.logNear1, Log.logCore, Log.logWith, Log1p.log1pTail, Log1p.log1p, asinhWith, acoshWith, atanh, asinh, acosh]` lists the definitions of the earlier ports first, so that the module contains them.  `asinhWith` and `acoshWith` take the logarithm's two tables, `asinh` and `acosh` pass `Log.logTable` and `Log.logTable2`, and `atanh` needs none.
+The port is written in the verified compiler's dialect, which [the verified compiler](../../../../Verified/README.md) translates to WebAssembly with a correctness theorem.  `verified_compile compiled := [Log.logNear1, Log.logCore, Log.logWith, Log1p.log1pTail, Log1p.log1p, asinhWith, acoshWith, atanh, asinh, acosh]` lists the definitions of the earlier ports first, so that the module contains them.  `asinhWith` and `acoshWith` take the logarithm's two tables, `asinh` and `acosh` pass `Log.logTable` and `Log.logTable2`, and `atanh` needs none.
 
 | fdlibm calls | Port calls | Same function |
 |---|---|---|
@@ -65,9 +65,7 @@ A script that compares the port with the C sources at the pinned commit finds th
 
 ## Theorems
 
-`verified_compile` generates `Asinh.compiled` with its `bytes`, `initial`, and `implements` theorems, which state that the compiled module computes the Lean definitions, as [the compiler's documentation](../../../../docs/verified-manual.md#generated-declarations) describes.  `tests/verified/run.sh` writes and validates `asinh.wasm`, runs the accuracy check, and checks the file theorems through its entry `asinh:AsinhBytes:AsinhFile`.
-
-[The journal entry of 2026-10-12](../../../../devnotes.md#2026-10-12-integration-of-asinh-acosh-and-atanh) records the theorems of the table.  `x` is a Lean `Float` and `a = value x.toBits` its real value.  Each theorem reports only `propext`, `Classical.choice`, and `Quot.sound`.
+`verified_compile` generates `Asinh.compiled` with its `bytes`, `initial`, and `implements` theorems, which state that the compiled module computes the Lean definitions, as [the verified compiler manual](../../../../docs/verified-manual.md#generated-declarations) describes.  `tests/verified/run.sh` writes and validates `asinh.wasm`, runs the accuracy check, and checks the file theorems through the `asinh` entry of `tests/verified/numerics.txt`.  [The journal entry of 2026-10-12](../../../../devnotes.md#2026-10-12-integration-of-asinh-acosh-and-atanh) records the theorems of the table.  `x` is a Lean `Float` and `a = value x.toBits` its real value.  Each theorem reports only `propext`, `Classical.choice`, and `Quot.sound`.
 
 | Theorem | Statement |
 |---|---|
