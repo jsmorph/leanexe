@@ -24,7 +24,7 @@ A count beyond an array's bytes is accepted, and the missing bytes read as zero 
 | Module | Content |
 |---|---|
 | [`Proof.lean`](Proof.lean) | `rotl_13` to `rotl_32`, the program's rotations at SipRound's amounts; `sipRound_eq`, `rounds_eq`, and `compress_eq`; `le64_bytes`, which reads a word's eight bytes as the word; `lastWord_toNat` and `messageWords_eq` for the message words; and `sipHashWith_eq`, `siphash24_spec`, and `siphash13_spec`. |
-| [`Compiled.lean`](Compiled.lean) | Verified compilation of the program's seven functions. |
+| [`Compiled.lean`](Compiled.lean) | Verified compilation of the program's functions, from `sipRound` to `siphash13`. |
 | [`Bytes.lean`](Bytes.lean) | Two export facts and two call theorems, from the generated `implements` theorems through `Verified.ImplementsTables.call` and the theorems above. |
 | [`File.lean`](File.lean) | The emitted file holds the module's encoding and decodes to the module. |
 

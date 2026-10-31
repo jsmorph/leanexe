@@ -33,7 +33,7 @@ A count beyond an array's bytes is accepted, and the missing bytes read as zero 
 | [`SpongeProof.lean`](SpongeProof.lean) | `toStateArray_toBits`, which shows that §3.1.2 inverts §3.1.3; `keccakP_lanes`; `xorBlock_spec` for step 6 of Algorithm 8; `padded_eq`, which equates the message, its suffix, and pad10*1 with the bits of `paddedWord`; and `absorb_spec`. |
 | [`Proof.lean`](Proof.lean) | `sponge_absorb`, `squeeze_one`, and `sha3_224_spec` to `sha3_512_spec`: the bits of the digest's bytes are the transcription's digest. |
 | [`ShakeProof.lean`](ShakeProof.lean) | `squeeze_stream`, which reads the squeeze as the first `d` bits of the rate prefixes of the iterated states; the invariant of the squeezing loop; and `shake128_spec`, `shake256_spec`, `shakeWith_size`, and `shakeWith_tail`. |
-| [`Compiled.lean`](Compiled.lean) | Verified compilation of the program's nineteen functions. |
+| [`Compiled.lean`](Compiled.lean) | Verified compilation of the program's functions, from `thetaL` to `shake256`. |
 | [`Bytes.lean`](Bytes.lean) | Six export facts and six call theorems, from the generated `implements` and `trapFree` theorems through `Verified.ImplementsTables.call` and the theorems above. |
 | [`File.lean`](File.lean) | The emitted file holds the module's encoding and decodes to the module. |
 

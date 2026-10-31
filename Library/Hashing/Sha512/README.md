@@ -20,7 +20,7 @@ The specification is [`Library/Hashing/Sha2/Spec`](../Sha2/Spec.lean), a literat
 | `sha512_256` | 15 | Four words: the digest of §6.7. | `sha512_256_call` |
 | `sha512_224` | 16 | Four words whose first 28 bytes are the digest of §6.6.  The last four bytes are zero. | `sha512_224_call` |
 
-Each export takes the message array and then the byte count `n`.  The theorems require `n < 2^61`, under which the bit length `8 n` fits the low word of the 128-bit length field; the copied padding proof assumes that bound, and FIPS 180-4 permits up to `2^128 - 1` bits.  A count beyond the array's bytes is accepted, and the missing bytes read as zero in both the program and `bytes`.  The transcription defines messages of any bit length, and these theorems cover messages of whole bytes.
+Each export takes the message array and then the byte count `n`.  The theorems require `n < 2^61`, under which the bit length `8 n` fits the low word of the 128-bit length field.  The copied padding proof assumes that bound, and FIPS 180-4 permits up to `2^128 - 1` bits.  A count beyond the array's bytes is accepted, and the missing bytes read as zero in both the program and `bytes`.  The transcription defines messages of any bit length, and these theorems cover messages of whole bytes.
 
 ## Implementation
 
