@@ -160,9 +160,7 @@ Function indices and type indices are separate mappings.  The layout reserves th
 
 The encoder and its [module grammar](../LeanExe/Encoding/Spec/Modules.lean) admit one empty nullable-function-reference table with minimum zero and the export `__indirect_function_table` at table index zero.  The table section and table-export entry have encoding, decoding, domain, validity, and round-trip rules.  The empty-table-list case retains the existing encoding scheme, and byte-for-byte preservation of the pure import-free corpus remains an integration gate.  Element segments and indirect calls remain outside this extension.
 
-Existing [function renaming](../Verified/FunRelocation.lean) transports typed source functions and meaning, and the [module-composition rules](../Verified/ModuleComposition.lean) retain the import-free runtime layout.  WASI reuse adds [instruction relocation](../Verified/Wasi/Relocation.lean), [pure execution transport](../Verified/Wasi/PureTransportSpecs.lean), and [module transport](../Verified/Wasi/ModuleTransport.lean).
-
-The transport keeps the pure universal theorem and establishes these properties:
+Existing [function renaming](../Verified/FunRelocation.lean) transports typed source functions and meaning, and the [module-composition rules](../Verified/ModuleComposition.lean) retain the import-free runtime layout.  WASI reuse adds [instruction relocation](../Verified/Wasi/Relocation.lean), [pure execution transport](../Verified/Wasi/PureTransportSpecs.lean), and [module transport](../Verified/Wasi/ModuleTransport.lean).  The transport keeps the pure universal theorem and establishes these properties:
 
 1. Relocated pure code simulates the original code under the layout maps, preserving its data state, represented arguments and results, and resource outcome.  The relation accounts for function identities and any added table resources.
 2. Every reachable pure call targets a relocated definition, including allocator and release calls.  It never reaches the three imports.
