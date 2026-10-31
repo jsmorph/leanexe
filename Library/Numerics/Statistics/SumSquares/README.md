@@ -15,7 +15,7 @@ words.  The fold allocates nothing, so the generated `compiled.sumSquares.implem
 trap, and it holds bit for bit in the program's order of summation, including overflow to infinity
 and NaN.  An `Array Float` holds the elements' bit patterns, so the host passes the array as
 words.  [The verified compiler manual](../../../../docs/verified-manual.md#loops-and-builds) states
-the folds that the compiler accepts.
+the folds that the verified compiler accepts.
 
 | Theorem | Statement |
 |---------|-----------|

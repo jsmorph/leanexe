@@ -12,7 +12,7 @@ the rule of the C++ standard's `linear_congruential_engine` ([rand.eng.lcong]), 
 standard's seed has type `uint_fast32_t`, which has at least 32 bits, and 64 under glibc on 64-bit
 platforms, so `seed` agrees with the standard for every seed below `2^32`, and for every word on
 platforms where that type has 64 bits.  [The compiled module](Verified.lean) is the verified compiler's
-module of the three functions.
+module of `step`, `advance`, and `seed`.
 
 ## A primitive root and the full period
 
