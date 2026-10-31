@@ -198,8 +198,11 @@ rule, and `Cases.spec_leSize` reuses that rule's ownership, release, and allocat
 ## Recursive records
 
 The [tree model](Tree.lean) has a null value and records with a fixed layout of at most 64 slots.
-Each field is a child with the same layout or a word field, `TreeField.word e`, that holds an
-element `e` of one word: a `UInt64`, a `Bool`, or a float of either width.  `TreeShape.kinds r`
+Each field is a child with the same layout, a word field `TreeField.word e` that holds an element
+`e` of one word, an array field `TreeField.array e` of such elements, or a buffer field
+`TreeField.bytes`.  An element of one word is a `UInt64`, a `Bool`, or a float of either width.
+Word and child fields take a record's first slots, and array and buffer fields follow them, a
+buffer as two slots for its root and its length.  `TreeShape.kinds r`
 lists the fields of record constructor `r`, and `TreeShape.fields r` maps them to the child bits
 that `Node`, the release and copy loops, and their proofs read.  `Tree.node` takes its words as a
 family typed by `TreeShape.elem`, which reduces to `Elem.word` when every field of the shape is a
@@ -280,15 +283,19 @@ user-defined recursive type, the command `verified_recursive_type`, run once aft
 `Encode` instance, derives the conversion to the typed tree, the agreement of the instance with it,
 and the match lemmas, and, when no field holds an enumeration or a sum, the conversion back and both
 inverse laws.  `verified_compile` requires these declarations of every recursive type that a program
-uses.  A record's fields may be words, `Bool`s, floats, children, and values of a type with a `Flat`
-instance, one slot for each leaf of its flattening, with at most 64 slots, the tag included.  [The
+uses.  A record's fields may be words, `Bool`s, floats, children, arrays of words, `Bool`s, or
+floats, `LeanExe.Bytes`, and values of a type with a `Flat` instance, one slot for each leaf of its
+flattening, with at most 64 slots, the tag included.  [The
 derivation](Reflect/RecursiveTypes.lean) supports construction, matching, guarded and tail
 recursion, identity, duplication, tuples, calls, and loop state, and it excludes a type with a field
 that holds an enumeration or a sum from recursive parameters.  [Native matcher
 normalization](Reflect/NativeTree.lean) abstracts the alternatives before proving their constructor
 cases.  [Generated branch equations](Reflect/RecursiveMatch.lean) preserve denotation, allocation
 bounds, and frames conditions.  The [native-type example](Examples/RecursiveTypes.lean) checks the
-existing `Words` and `KeyTree` layouts, including subtree release and header reuse.  Native tail
+existing `Words` and `KeyTree` layouts, including subtree release and header reuse.  The
+[array-field example](Examples/ArrayTrees.lean) and the
+[buffer-field example](Examples/BufferTrees.lean) move, release, and copy the arrays and buffers
+that records hold.  Native tail
 matching uses the same field context and branch equations as expression matching.
 
 The typed `Expr.listFold` traverses a list with a scalar accumulator and borrowed captures.
