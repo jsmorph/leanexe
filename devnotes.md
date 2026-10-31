@@ -39326,4 +39326,84 @@ A fresh review of `Spec.lean` against the plan found that `fallback_keeps` requi
 The Lean work ran on `minideb2`, an x86_64 machine with 8 cores and 11 GB, in the clone `~/src/leanexe-energy` of branch `energy`, whose `.lake` came from `~/src/leanexe-final` with the same manifest and toolchain.  `rsync` was installed there as root through `tailscale ssh`, and the Wasmtime host was rebuilt with `tools/build-wasmtime-host.sh` because the clone's host source is newer than the copied binary.  Builds ran under `tools/leanrun` with four threads and `--memory-high 8G`.  The registry now holds 117 modules, 116 of them with file theorems.
 
 - [x] Stage 1 of the plan.
-- [ ] Stage 2: the replay tool, its dataset, and the choice of the window length.
+- [x] Stage 2: the replay tool, its dataset, and the choice of the window length.
+
+## 2026-10-30: The energy replay study, Stages 2 and 3
+
+Stages 2 and 3 of [the energy controller plan](energy-controller-plan.md) replay historical load and PV through a simulated battery, the acceptance rule, and the dispatch policies.  The replay tool, `tests/energy/replay.py`, implements the rule a second time from the plan, in Python with exact integer and rational arithmetic, and `replay.py check` agrees with native Lean on all 2,038 module cases.
+
+### Dataset
+
+The plan requires simultaneous load and PV output of one site at one-minute or finer resolution for at least a year.  The candidates and what their data showed:
+
+| Dataset | Content | Finding |
+|---|---|---|
+| [OPSD household data](https://data.open-power-system-data.org/household_data/2020-04-15) | Cumulative kWh of PV, grid import, and grid export of Konstanz households, 2014 to 2019, CC BY 4.0 | The one-minute series of residential3 and residential4 repeat a three-minute pattern: PV and export alternate between single and double values on different minutes, so load computed from the meters swings by kilowatts (9% of residential4's minutes are negative).  Residential6 imports and exports about 10 W all night and absorbs all PV each morning, the signature of an unreported battery, so its computed load is consumption plus battery power.  Residential1 has no export meter. |
+| [NIST NZERTF](https://pages.nist.gov/netzero/data.html) | Minute averages of every circuit and both PV inverters of an all-electric test house in Gaithersburg, Maryland, with a scripted family of four, for July 2013 to June 2014 and February 2015 to January 2016, public | Meets the resolution and length requirements.  No channel measures the whole house, so load is a sum of circuit channels, and the occupants' behavior follows a script. |
+| [SwitchDin residential power and battery data](https://zenodo.org/records/8219786) | Peak power within each minute, of load and PV, for hundreds of Australian units, CC BY 4.0 | Files are R's `.rds` format, which needs a new dependency to read, and the peak within a minute gives no lower bound of load or PV. |
+| [Pecan Street Dataport](https://www.pecanstreet.org/2025/07/public-data/) | One-minute and one-second circuit data | Free only to researchers at four-year academic institutions, and the public sample covers three days. |
+| [HTW Berlin load profiles](https://solar.htw-berlin.de/elektrische-lastprofile-fuer-wohngebaeude/) | One-second load of 74 German households, one year | No PV. |
+
+Recommendation: the NIST test house, with the 2013 test year for calibrating the interval rules and the optimizer and the 2015 test year withheld for evaluation.  Load is the sum of the house's electrical consumption channels, excluding the facility's instrumentation and the channels that duplicate another, and PV is the power that the inverters feed into the panel.  The study checks the sum against NIST's published annual totals.
+
+### The study's site
+
+The simulated site keeps the worked example's battery: a usable range of 10 kWh with BMS cutoffs at 0 and 10 kWh, a floor of 3 kWh, a ceiling of 9.5 kWh, charge and discharge limits of 5,000 W, `η = 900,000` ppm, `ℓ⁺ = 20` W, `e = 50` W, an idle fallback `F = [-50, 50]` W, `τ = 30` s, and `a = 60` s.  The simulated battery has charge and discharge efficiencies of 0.95 and a loss of 10 W, within the profile's bounds, follows each command exactly from the start of its snapshot's minute, returns to idle at expiry, and stops at the BMS cutoffs.  The next snapshot comes 60 s after the change, more than `τ` later, and the minute data say nothing about `a` or `τ` themselves.  The energy interval of a snapshot is the simulated energy ± 360,000 J.  The grid caps are 10,000 W of import and 5,000 W of export, so that the house's largest loads and the 10.2 kW PV array's output on clear days each break a cap when the battery is idle.
+
+### Interval rules
+
+The window of a snapshot at minute `k` with length `W` covers the minutes `k` to `k + W/60 - 1`.  The true-range rule takes the minimum and maximum of the minute values in the window, which bounds acceptance from above and understates the variation within each minute.  The causal rule takes the extremes of the previous 15 minutes and widens each by the 99.9th percentile of the excursions that the calibration year shows, for the same window length and hour of day, with the lower bounds no lower than 0.  The study reports the causal rule's coverage on the withheld year.
+
+### Stage 2: margins and the window length
+
+The gateway takes a snapshot every minute.  The proposer at each snapshot is the self-consumption rule, the last minute's PV minus load within the setpoint limits, and the gateway sends it when the authorizer accepts it and nothing otherwise, so that the command in force continues to its expiry.  The gateway returns the device to fallback when a minute's load or PV leaves the intervals of the command in force.  For each window length of 180, 300, 600, and 900 s and each interval rule, the report gives the fraction of proposals accepted, the dispatch energy delivered against the energy proposed, percentiles of the largest accepted charge and discharge, and the fraction of snapshots at which fallback's worst case breaks each limit.  At 300 s it also varies `e` (25, 100, 200 W) and `η` (850,000 and 950,000 ppm).  The replay also checks the theorem's conclusion: at every minute of an accepted window whose intervals held, the simulated energy and grid power must meet `WithinOrFallback`.
+
+### Stage 3: optimizer and economic replay
+
+The bill follows [PG&E's Electric Home Rate Plan (E-ELEC)](https://PGE.com/assets/pge/docs/account/rate-plans/residential-electric-rate-plan-pricing.pdf), effective March 1, 2026, for an all-electric home: in summer (June to September) 33¢ off-peak, 39¢ partial peak (3 to 4 p.m. and 9 p.m. to midnight), and 55¢ peak (4 to 9 p.m.), and in winter 28¢, 30¢, and 32¢.  Exports earn a flat credit of 5¢/kWh, an assumption of the study that stands in for the hourly export rates of PG&E's net billing tariff, and the fixed base services charge is the same for every policy and is omitted.  The tariff applies on the house's local clock, so the study pairs a Maryland load and PV with a California tariff.  Battery wear costs 5¢ per kWh discharged, a stated assumption that the optimizer uses as a threshold and the report adds to the bill.
+
+The policies are no battery; the vendor's self-consumption mode, which charges from surplus PV and discharges to cover deficit down to the floor; a fixed time-of-use schedule, which charges from surplus PV at any time and discharges only during partial peak and peak, down to a fixed reserve of 3 kWh; and the controller.  The controller's rule uses a one-day look-behind forecast, as SAM's retail-rate dispatch does: it charges from surplus PV, discharges to cover deficit during partial peak and peak, discharges off-peak only the energy above what the forecast peak deficit needs, and charges from the grid off-peak only when the peak price exceeds the off-peak price divided by the round-trip efficiency plus the wear cost.  The controller limits each proposal to the range that its own copy of the acceptance rule accepts and sends it through the authorizer, which accepts every proposal so limited.  The report gives each policy's bill, import and export energy, battery throughput, the fraction of the controller's unlimited proposals that the authorizer would accept, and the reserve margins, on the withheld year.
+
+### Review of the design
+
+A fresh reviewer checked the design against the plan, the data, and SAM's documentation, and confirmed the OPSD findings and the NIST and PG&E facts.  Its findings and their outcomes:
+
+| Finding | Outcome |
+|---|---|
+| The load needs the `Elec`, `HVAC`, `DHW`, and `Load` files: the heat pump is in `HVAC`, the oven only in `Load`, and one leg of the water heater reads 0 all year, so `DHW_HeatPumpWaterHeaterPowerTotal` replaces both legs.  Including the occupant emulators gives a net export of 74 kWh against NIST's 2,240 kWh for 2015, and excluding them about 1,850 kWh.  NIST publishes no 2015 consumption figure. | The prepared load already follows these rules and excludes the emulators.  The check of totals uses the 2013 year, whose consumption NIST publishes (13,039 kWh). |
+| The indoor unit of the heat pump reads negative for most of several days, down to -17,087 W, and failed sensors read 0. | A minute with a channel below -100 W is missing, and a day with more than 60 such minutes is dropped. |
+| The 2015 year changed the dehumidification, ventilation, and thermostat, and choosing `W` on the withheld year tunes it on the evaluation data. | The Stage 2 sweep runs on 2013, with the causal rule calibrated on 2013, and the withheld 2015 year gives the coverage and the economic results.  The report states the change of configuration. |
+| PTProsumer (Madeira) has 1-second net and PV meters of real households for several years. | Recorded as the dataset that can measure the excursions within a minute, which the minute averages hide.  Most of its arrays are below 3 kW. |
+| The check of `WithinOrFallback` has little power, because the simulated device runs at interior values. | A stress replay runs the device at the premises' extremes: power at `s - e` with `η_d = η` and `ℓ = ℓ⁺` and the energy at the lower end of its interval, and `s + e` with `η_c = 1` and `ℓ = 0` and the energy at the upper end. |
+| The largest accepted setpoints depend on the state in force, which at a one-minute cadence is the last command. | The report states it.  The tool finds them by search at every snapshot. |
+| Minute averages overstate acceptance and coverage for both interval rules. | The report states it, and `W` stays provisional until Stage 5 measures excursions within a minute. |
+| One percentile per clock hour pools sunrise times that move by 1.5 hours over the year. | The causal rule's percentiles are by month and hour, pooled over the month and its two neighbors, and the report gives coverage by month. |
+| Energy that a command delivers after a later proposal is rejected inflates the delivered energy. | The report gives this run-on energy separately. |
+| No criterion selects `W`. | Stated below, before the sweep. |
+| The study bills a Maryland house on a California tariff, while the plan asks for the site's billing rules. | The plan's replay section names the tariff as a hypothetical one, and the report labels it. |
+| Partial peak from 3 to 4 p.m. spends energy that the 4 to 9 p.m. peak values more. | Before the peak, partial peak follows the off-peak reserve rule. |
+| Grid charging needs a quantity net of forecast PV. | The rule already charges only the forecast need less the forecast surplus stored before 3 p.m. less the usable energy. |
+| The wear cost has no source, and SAM's capacity fade is missing. | The wear cost is stated as the assumption of a $400/kWh replacement over 8,000 full cycles, and the report states that capacity is constant over the one-year replay. |
+| The vendor modes follow each minute's own values, while the controller acts through one-minute commands, so the difference mixes the rule with the lag. | The report separates them with the one-minute proposer without the authorizer.  The vendor modes stop at the same floor and ceiling. |
+
+The criterion for `W`: among the window lengths that the gateway's timing allows, choose the longest whose controller bill and wear on the calibration year lies within 1% of the lowest, because a longer window keeps a command in force through a longer loss of communication.  The equipment's expiry granularity in Stage 4 can only lengthen the choice.
+
+### Results
+
+[The replay study](Demos/Energy/Replay.md) holds the results, and this section records what the report does not.
+
+- The OPSD findings rested on the one-minute series.  The 2013–14 NIST year has the dehumidifier channel empty all year, so `prepare` treats a channel empty for a whole year as absent.  With that rule the 2013–14 load and PV, scaled to the year, lie within 1% of NIST's published totals, which supports excluding the occupant emulators.
+- The first margins report counted the fraction of proposals accepted, which mostly counted small discharges proposed at the floor at night.  The report now measures energy against the vendor's mode and against the one-minute proposer without the authorizer.
+- The first controller ignored the floor and the ceiling and let the authorizer stop it, so its ungated replay used the whole 10 kWh.  Every proposer now stays within the floor and the ceiling for one minute.
+- The controller began with an evening reserve, summer grid charging, and curtailment-aware charging.  On the calibration year without the authorizer the self-consumption rule cost $1,917 with wear, all three rules $1,916, curtailment alone $1,900, the reserve alone $1,919, and the reserve with grid charging $1,931.  The controller keeps only the curtailment rule.  With caps that never bind that rule held back morning charging though nothing would be curtailed, so it now applies only when the previous day's surplus came within 1,000 W of the cap.
+- The criterion for `W` gave 180 s: the calibration-year bills with wear were $2,044, $2,067, $2,121, and $2,147 for 180, 300, 600, and 900 s.
+- The causal rule's widening of the load's upper bound for 300 s lies between 9.7 and 12.2 kW in every hour from November to March, which, with the 10 kW import cap, blocks charging through the winter.
+- A first draft of the report gave that widening as 5 to 9 kW, from the earlier hour-only rule's output on the 2015 data.  The final rule's calibration output corrected it before the commit.
+
+The study raises two decisions for the user, which the plan's table of open decisions records: the form of the command, a held setpoint or power limits for the inverter's own self-consumption mode, and the treatment of an import cap that the site's own load can approach.
+
+- [x] Replay tool's acceptance rule and `check`.
+- [x] Dataset preparation and the check of annual totals.
+- [x] Interval rules and their calibration.
+- [x] Stage 2 sweep, report, and window length.
+- [x] Stage 3 policies, economic replay, and report.

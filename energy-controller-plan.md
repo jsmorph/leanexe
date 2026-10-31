@@ -245,6 +245,7 @@ The Lean code, proofs, and replay tool are in this repository and follow the sle
 | Path | Contents |
 |---|---|
 | `Demos/Energy/README.md` | The model, interface, theorem, and limits, as present facts |
+| `Demos/Energy/Replay.md` | The replay study: data, simulated site, interval rules, margins, window length, and bills |
 | `Demos/Energy/Spec.lean` | Profile, snapshot, trajectory, `AdmittedUntil`, `Within`, `WithinOrFallback`, and the `fallback_keeps` lemmas |
 | `Demos/Energy/Words.lean` | Decoding of words into the specification's records, `ProfileValid`, and `InputValid` |
 | `Demos/Energy/Program.lean`, `Flat.lean` | `authorizeWith` and its helpers, in the verified compiler's dialect, and the representations of its result |
@@ -253,7 +254,7 @@ The Lean code, proofs, and replay tool are in this repository and follow the sle
 | `Demos/Energy/Verified.lean`, `Theorems.lean`, `File.lean`, `Examples.lean` | Compilation, `site_valid` and the module-level theorems, file theorems, and kernel-evaluated examples |
 | `tests/TestSupport/Energy/Cases.lean`, `CasesMain.lean` | Case printer, which the executable `verified-cases-energy` of `lakefile.lean` runs from a branch of `tests/verified/run.sh` |
 | `Demos/Verified.lean`, `Verified/Examples/Cases.lean` | Imports of the theorems, the examples, and the cases |
-| `tests/energy/` | The axiom audit, and the replay tool and its driver |
+| `tests/energy/` | The axiom audit and the replay tool |
 | `tests/verified/modules.txt`, `tests/verified/numerics.txt` | Registry entries for the module and its file theorems |
 
 ## Testing and evaluation
@@ -264,11 +265,11 @@ The case printer prints cases with results that native Lean computes, and `tests
 
 ### Replay study
 
-The replay tool is a Python program with PEP 723 metadata that runs with `uv run` and uses only the standard library.  It implements the acceptance rule a second time, from this document, with exact rational arithmetic in `fractions`, and runs it on historical data.  The dataset must hold simultaneous site load and PV output at one-minute or finer resolution for at least a year, and Stage 2 selects it.  Each run fixes a rule for the load and PV intervals: either the true minimum and maximum over the window, which bounds acceptance from above, or a causal rule from recent measurements and characterized ramp allowances.  The sweep covers window lengths from the shortest that `W > a + 2τ` allows to 900 seconds, tracking tolerances, and efficiency bounds, and the report gives, for each window, the largest charge and the largest discharge that pass and whether the alternative breaks each limit.
+The replay tool, `tests/energy/replay.py`, is a Python program with PEP 723 metadata that runs with `uv run` and uses only the standard library.  It implements the acceptance rule a second time, from this document, with exact integer arithmetic, and `replay.py check` compares its decisions with the module cases.  The dataset must hold simultaneous site load and PV output at one-minute or finer resolution for at least a year.  The study uses the minute data of NIST's Net-Zero Energy Residential Test Facility, an all-electric test house with a 10.2 kW PV array, for its test years of 2013–14 and 2015–16.  Each run fixes a rule for the load and PV intervals: either the true minimum and maximum over the window, which bounds acceptance from above, or a causal rule that widens the extremes of the previous 15 minutes by a percentile of the excursions in the calibration year.  The sweep covers window lengths from the shortest that `W > a + 2τ` allows to 900 seconds, tracking tolerances, efficiency bounds, and grid caps that bind or never bind.  For each window, the report gives the largest charge and the largest discharge that pass and whether the alternative breaks each limit.  It also checks `WithinOrFallback` at every minute of every accepted window up to the first premise failure, both for the nominal device and for a device at the extremes that the premises allow.  [The replay study](Demos/Energy/Replay.md) gives the results.
 
 ### Economic evaluation
 
-The evaluation compares the controller, on withheld data, with a simulation of the vendor's self-consumption mode and with a fixed time-of-use schedule with a fixed reserve.  It follows the retail-rate dispatch method of [SAM's battery-dispatch documentation](https://samrepo.nlr.gov/help/battery_dispatch_btm.html), with rolling forecasts, available capacity, and degradation.  The report gives the bill under the site's billing rules, import and export energy, battery throughput, the fraction of proposed setpoints accepted, and reserve margins.  The report presents simulated savings from replay and measured savings from site operation separately, and it presents neither as a causal effect without a suitable evaluation design.
+The evaluation compares the controller, on withheld data, with a simulation of the vendor's self-consumption mode and with a fixed time-of-use schedule with a fixed reserve.  It follows the retail-rate dispatch method of [SAM's battery-dispatch documentation](https://samrepo.nlr.gov/help/battery_dispatch_btm.html), with a one-day look-behind forecast and a wear cost per kWh discharged.  The replay bills a stated tariff, because the test house has no billing rules of its own that value a battery: PG&E's E-ELEC import prices with a flat export credit.  Site operation bills under the site's own rules.  The report gives the bill, import and export energy, battery throughput, the fraction of proposed setpoints accepted, and reserve margins.  The report presents simulated savings from replay and measured savings from site operation separately, and it presents neither as a causal effect without a suitable evaluation design.
 
 ## Stages
 
@@ -300,16 +301,24 @@ A site stays in read-only operation when its equipment lacks command expiry or a
 
 ### Stage 2 tasks
 
-- [ ] Dataset selection against the resolution and length requirements.
-- [ ] Replay tool, with its comparison against the module cases.
-- [ ] Interval rules: the true-range rule and a causal rule.
-- [ ] Sweep, report, and the choice of `W`.
+- [x] Dataset selection against the resolution and length requirements.
+- [x] Replay tool, with its comparison against the module cases.
+- [x] Interval rules: the true-range rule and a causal rule.
+- [x] Sweep, report, and the choice of `W`.
+
+### Stage 3 tasks
+
+- [x] Baselines: the vendor's self-consumption mode and a fixed time-of-use schedule.
+- [x] Rule-based optimizer, with its rules chosen on the calibration year.
+- [x] Economic replay on the withheld year, and its report.
 
 ## Open decisions
 
 | Decision | Options | Recommendation |
 |---|---|---|
-| Window length `W`, in Stage 2 | Any length with `W > a + 2τ` | Choose from the replay study and the equipment's expiry granularity.  The study measures how the acceptance margins change with the window length, and a shorter window costs an authorization in every window. |
+| Window length `W` | Any length with `W > a + 2τ` | The replay study chose 180 s, the shortest whole-minute length, by a criterion fixed before its runs.  Stage 4's expiry granularity can lengthen it, and Stage 5's measurement of the excursions within a minute can change its margins. |
+| Form of the command | A battery setpoint held for the window, or power limits within which the inverter's own self-consumption mode follows the load | Decide before Stage 4.  A held setpoint cost $79 a year against the vendor's mode in the replay, before the changes within a minute.  Power limits make `B` the hull of the state in force, the limits widened by `e`, and `F`, and leave the side tests and the form of the theorem unchanged, but they change the interface and assumption A2. |
+| Import cap under uncertain load | Test the cap against the worst-case load as now, narrow the load interval, or bound only the import that the battery adds | Decide with the site's interconnection terms.  With a 10 kW cap at the test house and the causal rule's load bound, the import test blocked charging through the winter, and the authorizer cost $119 a year more than with caps that never bind. |
 | Gateway runtime, in Stage 6 | Wasmtime embedded in a small C or Rust program, or the module's C translation with `p.f.native` and CompCert | Choose in Stage 6.  The C translation removes Talos's execution semantics, the decoder, and Wasmtime from the assumptions and adds CompCert, the Lean copy of Clight, and the other items that the trusted base lists for C files. |
 
 ## References
