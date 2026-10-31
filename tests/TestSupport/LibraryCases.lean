@@ -89,6 +89,10 @@ def cases : IO Unit := do
       {fmt (Library.Numerics.MultiPrecision.subSpec (u.toArray, v.toArray))}"
     IO.println s!"multiPrecision|mul|array-u64|{arrU u} {arrU v}|\
       {fmt (Library.Numerics.MultiPrecision.mulSpec (u.toArray, v.toArray))}"
+  for (u, v) in Library.Numerics.MultiPrecision.divInputs do
+    IO.println s!"multiPrecision|divide|array-u64|{arrU u} {arrU v}|\
+      [{", ".intercalate ((Library.Numerics.MultiPrecision.divSpec (u.toArray, v.toArray)).toList.map
+        toString)}]"
   for xs in Library.HashTables.LinearProbing.probeInputs do
     IO.println s!"hashTable|hashTable|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.HashTables.LinearProbing.expected xs.toArray).toList.map toString)}]"

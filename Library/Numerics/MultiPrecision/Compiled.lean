@@ -1,17 +1,22 @@
 import Library.Numerics.MultiPrecision.Proof
+import Library.Numerics.MultiPrecision.DivideProof
 import Verified.Reflect.Command
 import Verified.Call
 import Verified.Congr
 
 /-! The verified compiler's module of multiple-precision arithmetic.  The call theorems compose the
-generated `trapFree` theorems with `add_eq`, `sub_eq`, and `mul_eq`, with the precondition that the
-arguments are arrays of digits, and for the product that the two lengths sum to less than `2^64`. -/
+generated `trapFree` theorems with `add_eq`, `sub_eq`, `mul_eq`, and `divide_eq`, with the
+precondition that the arguments are arrays of digits, for the product that the two lengths sum to
+less than `2^64`, and for the division that they sum to less than `2^62`.  The module also compiles
+the Uscale module's `mulSmall` and `wordBits`, which the division calls. -/
 
 namespace Library.Numerics.MultiPrecision
 
 open Wasm LeanExe.Pipeline
 
-verified_compile compiled := [width, add, sub, mul]
+verified_compile compiled := [width, add, sub, mul, significant,
+  Library.Numerics.Arithmetic.Uscale.mulSmall, Library.Numerics.Arithmetic.Uscale.wordBits, shortDiv,
+  tooBig, trial, longDiv, divide]
 
 theorem add_export :
     ({ name := "add", funcIdx := 3 } : Wasm.Export) ∈ compiled.module.exports := by
@@ -19,6 +24,10 @@ theorem add_export :
 
 theorem sub_export :
     ({ name := "sub", funcIdx := 4 } : Wasm.Export) ∈ compiled.module.exports := by
+  decide +kernel
+
+theorem divide_export :
+    ({ name := "divide", funcIdx := 13 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
 theorem mul_export :
@@ -68,6 +77,20 @@ theorem mul_call :
 
 #print axioms add_call
 #print axioms sub_call
+/-- Function 13, the export `divide`, called from a ready store with two arrays of digits whose
+lengths sum to less than `2^62` and with room for `compiled.divide.bound x` bytes, returns without a
+trap the owned array `divSpec x`. -/
+theorem divide_call :
+    Verified.Call compiled.module compiled.tables 13 divSpec
+      (fun x heap store => (Digits x.1 ∧ Digits x.2 ∧ x.1.size + x.2.size < 2 ^ 62) ∧
+        heap.Within store compiled.module (compiled.divide.bound x))
+      (fun x heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.divide.bound x) :=
+  Verified.call_on (fun x => Digits x.1 ∧ Digits x.2 ∧ x.1.size + x.2.size < 2 ^ 62)
+    (Verified.ImplementsTables.call (.ofA compiled.divide.trapFree) compiled.tables nofun)
+    (fun _ _ _ h => h)
+    fun _ _ _ x _ ⟨hu, hv, hs⟩ => divide_eq x.1 x.2 hu hv hs
+
 #print axioms mul_call
+#print axioms divide_call
 
 end Library.Numerics.MultiPrecision

@@ -41,4 +41,43 @@ def mpInputs : List (List UInt64 × List UInt64) :=
       (List.replicate 30 0 ++ List.replicate 30 top, List.replicate 20 top ++ List.replicate 20 0)]
   chosen ++ arbitrary ++ long
 
+/-- The pairs of the verified compiler's cases of division.  The divisor 0 appears as an empty
+array and with one and two zero digits, also longer than the dividend, so that the remainder is
+padded.  Divisors of one significant digit include one with a zero digit above it, also longer than
+the dividend, and one with a dividend of 10 digits.  Among the other pairs are dividends shorter
+than, equal to, and smaller than the divisor, a dividend with zero digits at the top, and zero
+dividends, empty and with two zero digits.  For divisors of two or more significant digits, three
+pairs make the trial digit one too large, so that step D6 adds the divisor back.  In two pairs the
+trial digit before the test of step D3 is the base or more and decreases twice, and in two more it
+is the base and decreases once, once because the remainder `r̂` reaches the base and once because
+the second test fails.  Some divisors have a top digit with its high bit set, so that step D1 does
+not shift, and others have one or two zero digits above their significant digits, one of them
+longer than the dividend.  The arbitrary pairs have dividends of 2 to 13 digits and divisors of 2 to 6, a third of
+them with a top digit from 1 to 5, and the long pairs have 60 and 30, 100 and 3, and 40 and 40
+digits. -/
+def divInputs : List (List UInt64 × List UInt64) :=
+  let top : UInt64 := 4294967295
+  let chosen : List (List UInt64 × List UInt64) :=
+    [([], []), ([], [0]), ([5, 6], []), ([5, 6], [0]), ([5, 6], [0, 0]), ([100], [7]),
+      ([top, top], [3]), ([1, 2, 3], [top]), ([0, 0, 1], [2, 0]), ([7], [7]), ([3], [10]),
+      ([1, 2, 3, 4], [5, 6]), ([1], [0, 1]), ([5], [1, 2, 3]), ([3, 4], [3, 4]),
+      ([top, top, top, top, top, top], [top, top]),
+      ([0, 0, 2147483648, 2147483647], [1, 0, 2147483648]),
+      ([3, 0, 2147483648], [1, 0, 536870912]), ([0, 0, 32768, 32767], [1, 0, 32768]),
+      ([0, 4294967294, 2147483648], [4294967295, 2147483648]),
+      ([0, 4294967294, 0, 32768], [65535, 32768]),
+      (arbitraryDigits 8 1, [5, 2147483649]), (arbitraryDigits 6 2, [5, 6, 0]),
+      ([5], [0, 0]), ([5], [2, 0]), (arbitraryDigits 10 3, [7]), ([5, 0, 0], [1, 2]), ([], [5]),
+      ([0, 0], [1, 2]), ([1, 2], [3, 4, 0]), ([1, 2, 3, 4], [5, 6, 0, 0]),
+      ([0, 1, 2147483647], [2147483647, 2147483647]), ([0, 0, 1], [1, 1])]
+  let arbitrary := (List.range 60).map fun k =>
+    let v := arbitraryDigits (2 + k / 12) (1000 * k + 500)
+    (arbitraryDigits (2 + k % 12) (1000 * k),
+      if k % 3 = 0 then v.dropLast ++ [UInt64.ofNat (1 + k % 5)] else v)
+  let long : List (List UInt64 × List UInt64) :=
+    [(arbitraryDigits 60 20000, arbitraryDigits 30 21000),
+      (arbitraryDigits 100 22000, arbitraryDigits 3 23000),
+      (arbitraryDigits 40 24000, arbitraryDigits 40 25000)]
+  chosen ++ arbitrary ++ long
+
 end Library.Numerics.MultiPrecision
