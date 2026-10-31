@@ -21,7 +21,9 @@ ClightBigstep.Clight2.bigstep_program_terminates p2 t r
 ```
 
 It concludes `program_behaves (Asm.semantics tp) (Terminates t r)`: the assembly semantics has
-the same terminating trace and result.
+the same terminating trace and result.  The assembly theorem ends at CompCert's Asm semantics.
+The startup code, linker, machine, UART, and input-loading procedure have the assumptions
+described in [Trusted base](../docs/trusted-base.md).
 
 `clight2_bigstep_asm_unique` uses assembly determinacy to make the termination the only behavior
 when the trace has no inputs.  `clight2_bigstep_asm_reads` assumes a Clight termination for every
@@ -29,10 +31,6 @@ sequence of values read by volatile loads.  It proves an Asm termination for eac
 that every Asm behavior is one of those terminations.  The
 [bare-metal input procedure](../docs/native-bare-metal.md#arguments-not-fixed-in-advance)
 applies that theorem to a message loaded into memory before execution.
-
-The assembly theorem ends at CompCert's Asm semantics.  The startup code, linker, machine,
-UART, and input-loading procedure have the assumptions described in
-[Trusted base](../docs/trusted-base.md).
 
 ## Checking the composition
 

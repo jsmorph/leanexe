@@ -11,7 +11,9 @@
 | [XXH64](hashing/xxhash64/NOTICE) | Reference lengths, seeds, and digests.  The notice specifies the generator that reconstructs each message. | [XXH64 vector test](../tests/TestSupport/Hashing/XxHash64Vectors.lean) |
 
 The notices record the sources, file transformations, and licenses.  Downloaded NIST files
-retain their original CRLF line endings.
+retain their original CRLF line endings.  The SHA-2 test runs with `lake env lean --run`, and
+the others are the Lake executables `sha3-vectors`, `crc-vectors`, `siphash-vectors`, and
+`xxhash64-vectors`, which `lake build` builds only when a command names them.
 
 ## Decimal conversion
 
@@ -23,9 +25,8 @@ which accepts decimal, hexadecimal, infinity, and NaN forms.
 words with exact rational arithmetic.  [Printer cases](strconv/print-cases.txt) specify strings
 for fixed floating-point words.  [The printer generator](../tools/strconv/print_cases.py)
 searches rounding intervals for a shortest decimal, chooses the candidate nearest to the word's
-value, and prefers an even last digit at a tie.
-
-The [parser guide](../Library/Numerics/Decimal/ParseFloat/README.md#tests) and
+value, and prefers an even last digit at a tie.  The
+[parser guide](../Library/Numerics/Decimal/ParseFloat/README.md#tests) and
 [printer guide](../Library/Numerics/Decimal/PrintFloat/README.md#tests) explain the comparisons.
 The [provenance notice](strconv/NOTICE) and [license](strconv/LICENSE-parse-number-fxx-test-data)
 cover imported parser material.
