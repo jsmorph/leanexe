@@ -3,7 +3,7 @@ import LeanExe.Pipeline.Implements
 
 /-! How the shape theorems represent `Shape`: the constructor index, then the circle's radius,
 then the rectangle's sides, with zeros in the slots of the other constructors.  This instance
-is part of what the theorems in `Verify.lean` state. -/
+is part of what the theorems of `Verified/Examples/Sums.lean` state. -/
 
 namespace Examples.Shape
 

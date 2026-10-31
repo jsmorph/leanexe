@@ -528,9 +528,9 @@ def patternCases : IO Unit := do
         IO.println s!"patterns|record|list:i64,array-u64|i64:{mode md} {arrayArg xs} i64:{x}|\
           {mode r.mode} {arrayOut r.items}|2|2"
 
-/-- The cases of the verified modules of the LeanExe compiler's examples and of the examples of the
-verified-request skill: the inputs of their LeanExe cases or their samples, against the
-specification `expected` where the example has one, with the allocation counters. -/
+/-- The cases of the verified modules of the examples of `Examples/` and of the verified-request
+skill: the inputs of their `Cases.lean` or their samples, against the specification `expected`
+where the example has one, with the allocation counters. -/
 def portCases : IO Unit := do
   for xs in _root_.Examples.Increment.samples do
     let a := arrayArg xs.toArray

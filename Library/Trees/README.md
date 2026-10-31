@@ -13,6 +13,6 @@ from the encoding, so that the verified compiler's programs over the type share 
 conversions and lemmas.  Ordering and membership proofs for search-tree insertion remain future
 work.
 
-[The compiler examples](../../Examples/Trees/README.md) add traversal variants, moves, copies,
-header reuse, and their worked proofs.  Their test support constructs and renders arbitrary
+[The tree example](../../Examples/Trees/README.md) adds the operations that demonstrate ownership,
+composition, and guarded recursion.  Its test support constructs and renders arbitrary
 trees, including trees that exceed the guarded recursion limit.

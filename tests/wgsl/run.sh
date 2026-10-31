@@ -9,19 +9,15 @@
 # With `--verified`, the kernels are those of Verified/Examples/Wgsl.lean and those of
 # Examples/Binary32/Compiled.lean under their own names, with the cases of
 # Verified/Examples/WgslCasesMain.lean, in the same directory.
-# With `--leanexe`, the kernels are the LeanExe compiler's of Examples/Binary32/Wgsl.lean,
-# Demos/Gpt32/Kernels.lean, and Demos/Gpt32/Specs.lean under the default names, with the cases of
-# tests/wgsl/Cases.lean, in the build directory's wgsl-leanexe/.
 # `--emit-only` writes the kernels and the cases and stops, and `--drivers-only` runs existing ones
 # on the drivers, so that the drivers can run on a host without Lean.
-# Usage: tests/wgsl/run.sh [--verified|--leanexe] [--emit-only|--drivers-only] [build directory]
+# Usage: tests/wgsl/run.sh [--verified] [--emit-only|--drivers-only] [build directory]
 set -euo pipefail
 set_name=default
 stage=all
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --verified) set_name=verified ;;
-    --leanexe) set_name=leanexe ;;
     --emit-only) stage=emit ;;
     --drivers-only) stage=drivers ;;
     *) break ;;
@@ -55,18 +51,6 @@ case "$set_name" in
     done
     for k in verifiedScale32 verifiedAxpyArray32 verifiedMatVec32 verifiedCondMix32; do
       kernels+=("Examples.Binary32.Compiled:Examples.Binary32.${k}Kernel:$k")
-    done
-    ;;
-  leanexe)
-    out=$build/wgsl-leanexe
-    modules=(Examples.Binary32.Wgsl Demos.Gpt32.Kernels Demos.Gpt32.Specs)
-    case_sources=(tests/wgsl/Cases.lean)
-    for k in scale axpyArray matVec condMix; do
-      kernels+=("Examples.Binary32.Wgsl:Examples.Binary32.${k}Kernel:$k")
-    done
-    kernels+=("Demos.Gpt32.Kernels:Demos.Gpt32.expKernel:exp")
-    for k in ${gpt32_kernels#exp }; do
-      kernels+=("Demos.Gpt32.Specs:Demos.Gpt32.${k}Kernel:$k")
     done
     ;;
 esac

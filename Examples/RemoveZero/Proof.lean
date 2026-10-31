@@ -4,7 +4,7 @@ import Examples.RemoveZero.Spec
 import LeanExe.IR.Combinators
 
 /-! The program equals the specification, a fact about the Lean definitions that the theorems of
-both compilers use. -/
+the verified compilation use. -/
 
 namespace Examples.RemoveZero
 

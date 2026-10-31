@@ -3,7 +3,7 @@ import LeanExe.Pipeline.Implements
 
 /-! How the calculator's theorems represent its types: an operation as the word of its
 constructor index, and a state as its value, its step count, and its last operation, in
-declaration order.  These instances are part of what the theorems in `Verify.lean` state. -/
+declaration order.  These instances are part of what the theorems of `Compiled.lean` state. -/
 
 namespace Examples.Calc
 

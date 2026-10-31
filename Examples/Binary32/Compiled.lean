@@ -2,12 +2,11 @@ import Examples.Binary32.Program
 import Verified.Reflect.Command
 import Verified.WGSL.Compile
 
-/-! The verified compiler's module of the example's eight functions, in the order of the LeanExe
-compiler's module, and the WGSL kernels that `Verified.WGSL.compile` translates from the reflected
-bodies of `scale32`, `axpyArray32`, `matVec32`, and `condMix32`.  The reflector reads the condition
-`i % 4 ≤ 3 ∧ …` of `condMix32` as the conjunction of its two decisions.  Each dispatch theorem has
-the premises of the LeanExe compiler's theorem for the same kernel in `Examples/Binary32/Wgsl.lean`
-and comes from `Compiled.dispatch_value` with the generated `denote_eq`. -/
+/-! The verified compiler's module of the example's eight functions, and the WGSL kernels that
+`Verified.WGSL.compile` translates from the reflected bodies of `scale32`, `axpyArray32`,
+`matVec32`, and `condMix32`.  The reflector reads the condition
+`i % 4 ≤ 3 ∧ …` of `condMix32` as the conjunction of its two decisions.  Each dispatch theorem
+comes from `Compiled.dispatch_value` with the generated `denote_eq`. -/
 
 namespace Examples.Binary32
 

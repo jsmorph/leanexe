@@ -1,8 +1,8 @@
 import Examples.Bools.Program
 import LeanExe.Pipeline.Implements
 
-/-! How the theorems of both compilers represent `Flagged`: its flag and its value, in declaration
-order.  The instance is part of what the theorems in `Verify.lean` and `Compiled.lean` state. -/
+/-! How the theorems represent `Flagged`: its flag and its value, in declaration order.  The
+instance is part of what the theorems of `Compiled.lean` state. -/
 
 namespace Examples.Bools
 

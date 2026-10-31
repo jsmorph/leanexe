@@ -14,4 +14,5 @@ proofs in `Compiled`.
 
 `removeAll` searches and shifts repeatedly, taking quadratic time.  The compiler examples retain
 their ownership and allocation tests.  [The search proof](Search/Proof.lean)
-proves the first-zero prefix property used by [the removal example](../../Examples/RemoveZero/Verify.lean).
+proves the first-zero prefix property used by [the removal example's
+proof](../../Examples/RemoveZero/Proof.lean).

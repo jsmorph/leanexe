@@ -1,9 +1,9 @@
 import Examples.Grids.Program
 import LeanExe.Pipeline.Implements
 
-/-! How the theorems of both compilers represent the records of the grids: a phase as the word of
-its constructor index, and a state, a cell, and a mass as their fields in declaration order.
-These instances are part of what the theorems in `Verify.lean` and `Compiled.lean` state. -/
+/-! How the theorems represent the records of the grids: a phase as the word of its constructor
+index, and a state, a cell, and a mass as their fields in declaration order.  These instances are
+part of what the theorems of `Compiled.lean` state. -/
 
 namespace Examples.Grids
 

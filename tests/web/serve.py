@@ -6,14 +6,12 @@
 browser's WebGPU, and /gpt2/, which runs GPT-2 124M in binary32 with each kernel on WebGPU or in
 gpt32.wasm on the CPU.
 
-Run with `uv run tests/web/serve.py [--leanexe] [--host H] [--port P]` (default 127.0.0.1:8000).
-By default the pages use the verified compiler's kernels and modules: the kernel texts and the
-cases that `tests/wgsl/run.sh` writes to build/wgsl, build/verified/gpt32.wasm, and the sampler's
-module build/verified/gpt.wasm.  With `--leanexe` they use the LeanExe compiler's: the kernel texts
-and the cases that `tests/wgsl/run.sh --leanexe` writes to build/wgsl-leanexe,
-build/gpt32/gpt32.wasm, and build/gpt/gpt.wasm.  At start the server writes what is missing: it
-runs `tests/wgsl/run.sh --emit-only`, with `--leanexe` when given, if a kernel text or the cases
-are missing, emits each missing Wasm module, and builds the program printer `gpt32-lines`.  The
+Run with `uv run tests/web/serve.py [--host H] [--port P]` (default 127.0.0.1:8000).  The pages
+use the verified compiler's kernels and modules: the kernel texts and the cases that
+`tests/wgsl/run.sh` writes to build/wgsl, build/verified/gpt32.wasm, and the sampler's module
+build/verified/gpt.wasm.  At start the server writes what is missing: it runs
+`tests/wgsl/run.sh --emit-only` if a kernel text or the cases are missing, emits each missing Wasm
+module, and builds the program printer `gpt32-lines`.  The
 GPT-2 page also needs the weight files that `uv run tests/gpt32/generate.py --export` writes to
 build/gpt2-32.  tests/web/README.md describes the pages.  The GPT-2 page gets each step's host
 commands from `gpt32-lines`, which prints the programs of Demos/Gpt32/HostProgram.lean, and the
@@ -45,18 +43,13 @@ SHAPE = ['12', '3072', '12565', '50257', '12']
 # The kernels that the pages load, as tests/wgsl/run.sh names them.
 KERNELS = ['scale', 'axpyArray', 'matVec', 'condMix', 'exp', 'embed', 'layerNorm', 'linear',
            'append', 'scores', 'headMax', 'headSum', 'probs', 'mix', 'add', 'gelu', 'logits']
-# For each compiler: the options of tests/wgsl/run.sh, the directory where it writes the kernels
-# and the cases, and gpt32.wasm and the sampler's gpt.wasm, each with its Lean module and constant.
-COMPILERS = {
-    'verified': ([], ROOT / 'build/wgsl',
-                 [(ROOT / 'build/verified/gpt32.wasm', 'Demos.Gpt32.Verified',
-                   'Demos.Gpt32.Verified.compiled.module'),
-                  (ROOT / 'build/verified/gpt.wasm', 'Demos.Gpt.Verified',
-                   'Demos.Gpt.Verified.compiled.module')]),
-    'leanexe': (['--leanexe'], ROOT / 'build/wgsl-leanexe',
-                [(ROOT / 'build/gpt32/gpt32.wasm', 'Demos.Gpt32.Module', 'Demos.Gpt32.gpt32.module'),
-                 (ROOT / 'build/gpt/gpt.wasm', 'Demos.Gpt.Module', 'Demos.Gpt.gpt.module')]),
-}
+# The directory where tests/wgsl/run.sh writes the kernels and the cases.
+WGSL = ROOT / 'build/wgsl'
+# gpt32.wasm and the sampler's gpt.wasm, each with its Lean module and constant.
+MODULES = [(ROOT / 'build/verified/gpt32.wasm', 'Demos.Gpt32.Verified',
+            'Demos.Gpt32.Verified.compiled.module'),
+           (ROOT / 'build/verified/gpt.wasm', 'Demos.Gpt.Verified',
+            'Demos.Gpt.Verified.compiled.module')]
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
          '.wgsl': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
          '.wasm': 'application/wasm', '.bin': 'application/octet-stream',
@@ -67,11 +60,10 @@ def leanrun(*args):
     subprocess.run([str(ROOT / 'tools/leanrun'), '--timeout', '30m', *args], cwd=ROOT, check=True)
 
 
-def prepare(options, wgsl, modules):
-    if not all((wgsl / name).is_file() for name in ['cases.txt'] + [f'{k}.wgsl' for k in KERNELS]):
-        subprocess.run([str(ROOT / 'tests/wgsl/run.sh'), *options, '--emit-only'], cwd=ROOT,
-                       check=True)
-    for path, module, constant in modules:
+def prepare():
+    if not all((WGSL / name).is_file() for name in ['cases.txt'] + [f'{k}.wgsl' for k in KERNELS]):
+        subprocess.run([str(ROOT / 'tests/wgsl/run.sh'), '--emit-only'], cwd=ROOT, check=True)
+    for path, module, constant in MODULES:
         if not path.is_file():
             path.parent.mkdir(parents=True, exist_ok=True)
             leanrun('lake', '--log-level', 'error', 'build', 'LeanExe.Encoding.Decode', module)
@@ -202,17 +194,14 @@ def handler(lines, tokenizer, wgsl, wasm, sampler):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--leanexe', action='store_true',
-                        help="serve the LeanExe compiler's kernels and modules")
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8000)
     args = parser.parse_args()
-    options, wgsl, modules = COMPILERS['leanexe' if args.leanexe else 'verified']
-    prepare(options, wgsl, modules)
+    prepare()
     tokenizer = GPT2TokenizerFast.from_pretrained(REPO, revision=REVISION)
-    (wasm, _, _), (sampler, _, _) = modules
+    (wasm, _, _), (sampler, _, _) = MODULES
     server = http.server.ThreadingHTTPServer(
-        (args.host, args.port), handler(Lines(), tokenizer, wgsl, wasm, sampler))
+        (args.host, args.port), handler(Lines(), tokenizer, WGSL, wasm, sampler))
     print(f'WebGPU pages: http://{args.host}:{server.server_address[1]}/', flush=True)
     server.serve_forever()
 

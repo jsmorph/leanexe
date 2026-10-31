@@ -158,9 +158,8 @@ def KeyTree.leftHeavy : Library.Trees.WordTree.KeyTree → UInt64
 def KeyTree.sumSizes (n : UInt64) (t : Library.Trees.WordTree.KeyTree) : UInt64 :=
   LeanExe.loop n 0 fun _ acc => acc + t.size
 
-/-- A test of the depth limit: sixteen words computed before the recursive calls and used after
-them, so that the internal function holds 24 values in its frame, the most the compiler
-accepts, and keeps them live across its calls. -/
+/-- Sixteen words computed before the recursive calls and used after them, which a compiled
+function keeps live across its calls. -/
 def KeyTree.wide : Library.Trees.WordTree.KeyTree → UInt64
   | .leaf => 0
   | .node l k r =>

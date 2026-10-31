@@ -16,7 +16,7 @@
 | Translation to C | [Native execution](native/run.sh) compares translated calls with Talos.  [The corpus driver](native/verified.sh) compares registered modules with Wasmtime.  [The Clight test](native/clight.sh) compares the Lean semantics with CompCert's interpreter.  [The translator design](../docs/native-translator.md#trust-argument-and-validation) explains what each comparison covers. |
 | Aligned native translation | [The aligned checks](native/aligned.sh) test the requirement for aligned theorems.  `tests/native/verified.sh --aligned` runs the corpus modules that meet that requirement. |
 | Bare-metal programs | [Program tests](baremetal/programs.sh), [input tests](baremetal/inputs.sh), and [corpus tests](baremetal/verified.sh) run AArch64 images under QEMU and check output, status, and stack use.  [The Rocq check](../rocq/README.md) checks the separate proof composition. |
-| WGSL kernels | [The kernel driver](wgsl/run.sh) compares output words with native Lean on SwiftShader and llvmpipe.  By default it runs the verified compiler's binary32 and GPT-2 kernels, `--verified` selects the verified compiler's kernel examples, and `--leanexe` selects the LeanExe compiler's kernels.  `--emit-only` writes kernels and cases, and `--drivers-only` runs existing outputs.  [The browser guide](web/README.md) explains the interactive comparisons. |
+| WGSL kernels | [The kernel driver](wgsl/run.sh) compares output words with native Lean on SwiftShader and llvmpipe.  By default it runs the verified compiler's binary32 and GPT-2 kernels, and `--verified` selects the verified compiler's kernel examples.  `--emit-only` writes kernels and cases, and `--drivers-only` runs existing outputs.  [The browser guide](web/README.md) explains the interactive comparisons. |
 | Application behavior | The guides for [GPT](../Demos/Gpt/README.md), [GPT32](../Demos/Gpt32/README.md), [drone planning](../Demos/Drone/README.md), [slew planning](../Demos/Slew/README.md), and [regular expressions](../Library/Regex/README.md) identify their reference comparisons and additional drivers. |
 
 ## Builds, inputs, and outputs
@@ -27,8 +27,7 @@ and [cold numerical build procedure](../docs/verified-manual.md#memory-heavy-num
 give the required memory settings and build order.  The full numerical suite can take hours.
 
 The [verified module registry](verified/modules.txt) identifies the source module, module
-constant, and emitted name.  [The original compiler's registry](modules/modules.txt) serves
-the same purpose for its driver.  [The numerical registry](verified/numerics.txt) names the
+constant, and emitted name.  [The numerical registry](verified/numerics.txt) names the
 emitted module, its byte-theorem module, and its file-theorem module.  The file checks run after
 emission because elaboration reads the generated file.  The file theorems state that its bytes
 equal the expected encoding and decode to the module.  [Shared test support](TestSupport)

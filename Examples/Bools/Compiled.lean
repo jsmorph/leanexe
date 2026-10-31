@@ -1,9 +1,8 @@
 import Examples.Bools.Flat
 import Verified.Reflect.Command
 
-/-! The verified compiler's module of the functions of `Program.lean`, in the order of the
-LeanExe compiler's module, so that each function has the same index in both modules.  `Flagged`
-has the representation of `Flat.lean`.  No function allocates, so each generated `implements`
+/-! The verified compiler's module of the functions of `Program.lean`.  `Flagged` has the
+representation of `Flat.lean`.  No function allocates, so each generated `implements`
 theorem states that its function returns without a trap. -/
 
 namespace Examples.Bools

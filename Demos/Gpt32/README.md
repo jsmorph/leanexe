@@ -8,8 +8,7 @@ share are `@[inline]`, so the compiler unfolds them into each kernel.  Its thirt
 functions, from `expArray32` to `logits32`, are translated from their compiled IR into WGSL compute
 kernels.  [The host program](HostProgram.lean) is the list of commands that runs a step on
 `leanexe-webgpu-host`: buffer loads, word and float constants, and kernel dispatches.  [The module
-definition](Module.lean) also compiles the thirteen functions into the 6,384-byte `gpt32.wasm`,
-which the browser page served with `--leanexe` runs on the CPU for comparison.
+definition](Module.lean) also compiles the thirteen functions into the 6,384-byte `gpt32.wasm`.
 
 Vector addition and the biased linear transform come from [the binary32 linear-algebra library](../../Library/Numerics/LinearAlgebra/README.md).  The demo retains the model-specific kernels and host program.
 
@@ -51,16 +50,12 @@ browser page.
 ```sh
 tools/leanrun --timeout 60m lake build Demos.Gpt32.Proofs
 tools/build-webgpu-host.sh
-tests/wgsl/run.sh --leanexe
-uv run tests/web/serve.py --leanexe
 ```
 
-The commands build the proofs of the LeanExe kernels and the WebGPU host, run the kernel tests,
-and serve the browser pages, with the setup of [the repository README](../../README.md#commands).
-[`tests/wgsl/run.sh --leanexe`](../../tests/wgsl/run.sh) runs the kernel cases on the SwiftShader
-and llvmpipe Vulkan drivers, and [`tests/web/serve.py --leanexe`](../../tests/web/serve.py) serves
-the kernel test page and the GPT-2 page on http://127.0.0.1:8000/ with these kernels and this
-`gpt32.wasm`.
+The commands build the proofs of the LeanExe kernels and the WebGPU host, with the setup of [the
+repository README](../../README.md#commands).  No driver or page runs the LeanExe kernels or this
+`gpt32.wasm`, and [the section on the verified compiler](#verified-compiler) gives the drivers and
+pages of the verified kernels.
 
 ## Verified compiler
 

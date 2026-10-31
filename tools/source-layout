@@ -72,18 +72,15 @@ for (const program of programs) {
 
 const verifiedNames = new Set();
 let modules = 0;
-for (const registry of ['tests/modules/modules.txt', 'tests/verified/modules.txt']) {
-  const names = new Set();
-  for (const line of fs.readFileSync(registry, 'utf8').trim().split('\n')) {
-    const [module, constant, name, extra] = line.split(':');
-    if (!module || !constant || !name || extra || !fs.existsSync(modulePath(module))) {
-      errors.push(`${registry}: invalid entry ${line}`);
-    }
-    if (names.has(name)) errors.push(`${registry}: duplicate output ${name}`);
-    names.add(name);
-    modules++;
+const registry = 'tests/verified/modules.txt';
+for (const line of fs.readFileSync(registry, 'utf8').trim().split('\n')) {
+  const [module, constant, name, extra] = line.split(':');
+  if (!module || !constant || !name || extra || !fs.existsSync(modulePath(module))) {
+    errors.push(`${registry}: invalid entry ${line}`);
   }
-  if (registry.includes('/verified/')) for (const name of names) verifiedNames.add(name);
+  if (verifiedNames.has(name)) errors.push(`${registry}: duplicate output ${name}`);
+  verifiedNames.add(name);
+  modules++;
 }
 for (const line of fs.readFileSync('tests/verified/library-cases.txt', 'utf8').trim().split('\n')) {
   const [source, sourceExport, target, targetExport, extra] = line.split('|');
