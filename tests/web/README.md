@@ -5,8 +5,8 @@ WebGPU.  The kernel test page runs the cases that [`tests/wgsl/run.sh`](../wgsl/
 compares every output word with native Lean's.  The GPT-2 page runs GPT-2 124M in binary32, with
 each kernel on WebGPU, in `gpt32.wasm` on the CPU, or on both with their scores compared.  The pages
 run the verified compiler's kernels and modules.  They use only standard WebGPU and WebAssembly.
-Headless Chromium 145 has run them with SwiftShader.  The server needs `uv` and this repository's
-Lean toolchain, and its first start downloads `transformers` and the GPT-2 tokenizer.
+The server needs `uv` and this repository's Lean toolchain, and its first start downloads
+`transformers` and the GPT-2 tokenizer.
 
 ## Running
 
@@ -24,7 +24,7 @@ from `build/`.  When `build/wgsl` lacks a kernel text that the pages load or `ca
 `tests/wgsl/run.sh --emit-only`, which writes the verified compiler's kernels and the cases of
 [`tests/wgsl/Cases.lean`](../wgsl/Cases.lean) and of [the verified GPT-2
 corpus](../../Demos/Gpt32/VerifiedCases.lean).  It also writes the verified modules
-`build/verified/gpt32.wasm` and `build/verified/gpt.wasm`, the sampler's module, and builds the
+`build/verified/gpt32.wasm` and the sampler's module `build/verified/gpt.wasm`, and it builds the
 program printer `gpt32-lines`.  The server writes only missing files.  After a change to a kernel,
 to the cases, or to the GPT-2 programs, [`tests/wgsl/run.sh`](../wgsl/run.sh) rewrites the kernel
 directory, and the server writes again any file that has been deleted.  The pages serve what the
@@ -60,7 +60,7 @@ Lean's.  The cases include subnormal values, infinities, NaNs, and arrays of up 
 
 A device passes every case when its arithmetic meets the strict binary32 profile on these inputs:
 each operation rounded to nearest even, subnormal values kept, and no fused or reordered operations.
-WGSL does not require this profile.  WGSL permits a device to flush subnormal values and to fuse
+WGSL permits a device to flush subnormal values and to fuse
 multiplications with additions (sections 15.7.2 and 15.7.5), and a device that does either fails
 cases.  `?run=high-performance`, `?run=low-power`, or `?run=fallback` starts the run when the page
 loads.

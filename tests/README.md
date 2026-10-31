@@ -5,7 +5,7 @@
 | Change or question | Checks and their scope |
 |---|---|
 | Documentation or repository layout | [`tools/check-doc-links.mjs`](../tools/check-doc-links.mjs) checks local links, section anchors, and reachability from the root README.  [`tools/source-layout`](../tools/source-layout) checks source imports and the verified module registry. |
-| Runtime or pipeline | [`tests/verified/run.sh`](verified/run.sh) runs the cases of every registered module, and through [`tests/modules/run.sh`](modules/run.sh) the module cases of `euler` and of `shapes`.  [`tests/modules/chunks.py`](modules/chunks.py) runs command streams through the verified `clob.wasm` whole, in chunks, and one command at a time.  [`tools/full-check`](../tools/full-check) runs both drivers and the sessions. |
+| Runtime or pipeline | [`tests/verified/run.sh`](verified/run.sh) runs the cases of every registered module, and through [`tests/modules/run.sh`](modules/run.sh) the module cases of `euler` and of `shapes`.  [`tests/modules/chunks.py`](modules/chunks.py) runs command streams through the verified `clob.wasm` whole, in chunks, and one command at a time.  [`tools/full-check`](../tools/full-check) runs `tests/verified/run.sh` and, after it passes, `tests/modules/chunks.py`. |
 | Verified compiler or a pure program it compiles | [`tests/verified/run.sh`](verified/run.sh) builds its targets, emits modules, validates them, and compares their cases with native Lean.  Cases can state retained blocks and allocation limits as well as results.  [The Verified Compiler Manual](../docs/verified-manual.md#module-cases) describes focused runs. |
 | Encoding or decoding | [`tests/decoder/DecodeTest.lean`](decoder/DecodeTest.lean) decodes the official WebAssembly testsuite.  [`tests/decoder/TableProfile.lean`](decoder/TableProfile.lean) covers the narrow table and export forms used by WASI.  [The encoding guide](../LeanExe/Encoding/README.md#tests) gives their setup. |
 | Talos, the WebAssembly semantics of the theorems | [`tests/talos/run.sh`](talos/run.sh) runs the testsuite runner of the pinned CodeLib revision over the official WebAssembly testsuite.  It fails on a failed command, an interpreter error, or exhausted fuel, and on any difference from the report that CodeLib commits.  It needs CodeLib's `vendor/testsuite` submodule and `wasm-tools` 1.251.0, and its outputs lie in `build/talos/`. |
@@ -22,15 +22,16 @@
 ## Builds, inputs, and outputs
 
 Run commands from the repository root.  Lean and Lake commands use `tools/leanrun`, and the
-repository test drivers call that runner themselves.  [The resource instructions](../AGENTS.md#lean-process-limits)
-and [cold numerical build procedure](../docs/verified-manual.md#memory-heavy-numerical-proofs)
-give the required memory settings and build order.  The full numerical suite can take hours.
+repository test drivers call that runner themselves.
+[The repository instructions](../AGENTS.md#lean-process-limits) and [the manual's section on
+memory-heavy numerical proofs](../docs/verified-manual.md#memory-heavy-numerical-proofs) give the
+required memory settings and build order.  The full numerical suite can take hours.
 
 The [verified module registry](verified/modules.txt) identifies the source module, module
 constant, and emitted name.  [The numerical registry](verified/numerics.txt) names the
 emitted module, its byte-theorem module, and its file-theorem module.  The file checks run after
-emission because elaboration reads the generated file.  The file theorems state that its bytes
-equal the expected encoding and decode to the module.  [Shared test support](TestSupport)
+emission because elaboration reads the generated file.  The file theorems state that the file's
+bytes equal the expected encoding and decode to the module.  [Shared test support](TestSupport)
 holds case generators, result formatting, and numerical reference calculations.
 
 Default output directories lie under `build/`.  The native execution drivers recreate
