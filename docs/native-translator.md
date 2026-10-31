@@ -9,7 +9,7 @@ The translator turns the Talos module that `verified_compile` produces into a pr
 The pipeline, with the status of each step:
 
 1. Lean definition → typed source program: the reflector, with kernel-checked meaning equations (exists).
-2. Typed program → Talos `Module`: the Verified compiler, `Prog.correctWith` (exists).
+2. Typed program → Talos `Module`: the verified compiler, `Prog.correctWith` (exists).
 3. Talos `Module` → C-subset program: this translator, with a new simulation proof.
 4. C-subset program → C text: a printer, unverified, checked on every build by comparing the Clight that CompCert's `clightgen` produces from it with the program Lean generated.
 5. C text → machine code: CompCert, proved in Rocq.
@@ -30,7 +30,7 @@ Not in scope: Wasm features outside the subset, WGSL kernels, verified I/O, and 
 
 ## Input: the Wasm subset and the semantics to simulate
 
-The Verified compiler emits 73 instruction forms, one memory, four i64 globals, and no imports, tables or exceptions. The translator accepts exactly the modules that pass a decidable subset check (milestone M0), so the proof never meets anything else.
+The verified compiler emits 73 instruction forms, one memory, four i64 globals, and no imports, tables, or exceptions.  The translator accepts exactly the modules that pass a decidable subset check (milestone M0), so the proof never meets anything else.
 
 **Module shape** (`compileWith` in `Verified/Compile.lean`):
 
@@ -40,7 +40,7 @@ The Verified compiler emits 73 instruction forms, one memory, four i64 globals, 
 - Exports: `alloc`, `release`, each function by name, the wrappers, the memory and the two counters.
 - Locals: parameters are i64, f64 or f32; each function also has an i64, an f64 and an f32 local for every position it uses.
 
-**Instruction forms**, from the code generators in `Verified/` (`Compile.lean` and the `Tree*` and `ListFold*` code files), `LeanExe/Runtime/` and the allocator programs in `LeanExe/ProofKit/`, at LeanExe `b1a3d59` against Talos `87e3aa5`, with the byte loads and stores of `Verified/Bytes/`, which typed fields added later:
+**Instruction forms**, from the code generators in `Verified/` (`Compile.lean` and the `Tree*` and `ListFold*` code files), `LeanExe/Runtime/` and the allocator programs in `LeanExe/ProofKit/`, against Talos `87e3aa5`, with the byte loads and stores of `Verified/Bytes/`, which typed fields added later:
 
 | Group | Forms | Count |
 | --- | --- | --- |
@@ -52,7 +52,7 @@ The Verified compiler emits 73 instruction forms, one memory, four i64 globals, 
 | binary64 | `f64Const` `f64Add` `f64Sub` `f64Mul` `f64Div` `f64Eq` `f64Lt` `f64Le` `f64Sqrt` `f64Abs` `f64ConvertI64U` `f64ReinterpretI64` `i64ReinterpretF64` `i64TruncSatF64U` | 14 |
 | binary32 | `f32Const` `f32Add` `f32Sub` `f32Mul` `f32Div` `f32Eq` `f32Lt` `f32Le` `f32Sqrt` `f32Abs` `f32Nearest` `f32ConvertI64U` `f32ConvertI32S` `f32ReinterpretI32` `i32ReinterpretF32` `i64TruncSatF32U` `i32TruncSatF32S` | 17 |
 
-The count comes from a text search; M0 replaces it with the decidable check. Five facts about how the forms are used shape the design:
+The count comes from a text search, and M0 replaces it with the decidable check.  Five facts about how the forms are used shape the design:
 
 - Branches leave more than one level: tail bodies branch to `exitLabel` and `nextLabel` through nested `iff`s, whose depth grows by one per level.
 - Every `block`, `loop` and `iff` has at most one result, for example `.iff 0 1 … [.i64]`.
@@ -64,10 +64,10 @@ The count comes from a text search; M0 replaces it with the decidable check. Fiv
 
 - `run fuel m id st args` takes the top `numParams` arguments, reversed, as `Locals.params`, zeroes the declared locals, runs the body with `exec`, and returns the top `results.length` values.
 - `execOne` returns a `Continuation`: `Fallthrough`, `Break k`, `Return`, `Trap store msg`, `Invalid` or `OutOfFuel`. `ReturnCall` and `Throwing` never arise in the subset.
-- `block`, `loop` and `iff` each consume one unit of fuel. `Break 0` leaves a block or `iff` keeping its top `resultArity` values; `Break 0` to a loop re-runs it with one less fuel; `Break (k+1)` becomes `Break k`.
+- `block`, `loop`, and `iff` each consume one unit of fuel.  `Break 0` leaves a block or `iff` keeping its top `resultArity` values, `Break 0` to a loop re-runs it with one less fuel, and `Break (k+1)` becomes `Break k`.
 - `call` runs the callee with one less fuel.
-- `load64` and `store64` trap with `"out of bounds memory access"` when `a + off + 8 > pages × 65536`; otherwise they read or write 8 little-endian bytes. `load8U` and `store8` trap when `a + off + 1 > pages × 65536`; otherwise `load8U` reads one byte as an unsigned i32, and `store8` writes the low byte of its i32 value.
-- `memory.grow` succeeds when `pages + delta ≤ memoryCap`, the cap recorded in the store, and returns the old page count; otherwise it returns −1. `memory.size` returns the page count as an i32.
+- `load64` and `store64` trap with `"out of bounds memory access"` when `a + off + 8 > pages × 65536`, and otherwise they read or write 8 little-endian bytes.  `load8U` and `store8` trap when `a + off + 1 > pages × 65536`, and otherwise `load8U` reads one byte as an unsigned i32, and `store8` writes the low byte of its i32 value.
+- `memory.grow` succeeds when `pages + delta ≤ memoryCap`, the cap recorded in the store, and returns the old page count, and otherwise it returns −1.  `memory.size` returns the page count as an i32.
 - Float operations are Talos's IEEE 754 functions on bit patterns. Every NaN result is the positive canonical quiet NaN. `abs` acts on the bits.
 - `unreachable`, and division or remainder by zero, return `Trap`.
 
@@ -101,13 +101,13 @@ The proofs target CompCert's Clight in the form `clightgen` produces: after `Sim
 | Initial memory | `common/Globalenvs.v` | `init_mem` for `Init_int64`, `Init_space`, `Init_int32` |
 | Externals | `common/Events.v`, `common/Builtins0.v` | `EF_external` has the parameter `external_functions_sem` as its semantics, and the translator calls no such function; the built-ins `__builtin_fsqrt` and `__builtin_sqrt` are `Float.sqrt`, and `__builtin_fabs` and `__builtin_fabsf` are `Float.abs` and `Float32.abs` |
 
-Three rules keep the copy honest:
+Three rules keep the copy faithful to CompCert:
 
 - **Undefined stays undefined.** Where CompCert returns `None` or `Vundef`, so does the copy: a shift by the type's width or more, division or remainder by zero, a float-to-integer conversion out of range, a misaligned or out-of-bounds access, and a read of `Undef`. A stuck program has no outcome, so the theorem can never lean on it.
 - **NaN is a parameter.** CompCert chooses NaN results per architecture: the default NaN is negative on x86-64 and positive on AArch64, and operand payloads may propagate. The copy leaves the choice abstract, so every theorem holds on both targets.  A result that is a number or an infinity is the result of Talos's `Wasm.IEEE64` or `Wasm.IEEE32`, the functions that the translation simulates, which LeanExe's `F64*` and `F32*` lemmas relate to Lean's `Float` and `Float32`.  Talos computes the conversions between the two formats with Lean's native floats, so the copy defines `of_single` and `to_single` from Talos's exact rounding helpers.
 - **No rule, no outcome.** The AST type covers all of Clight, so the `clightgen` output always parses. Constructs outside the subset have no evaluation rule.
 
-An executable evaluator, `LClight.run` with fuel, is proved sound against the relation. It is what the conformance tests in section 6 run. Estimated size: 2,500–4,000 lines of Lean.
+An executable evaluator, `LClight.run` with fuel, is proved sound against the relation, and the conformance tests of section 6 run it.  The plan estimated the copy at 2,500 to 4,000 lines of Lean.  Its transcribed files in `LeanExe/Native/Clight/` hold about 2,800 lines, beside the evaluator, its soundness proof, and the determinism proofs.
 
 ## Translation scheme
 
@@ -115,11 +115,11 @@ The translator is a Lean function `translate : Module → Option LClight.Program
 
 **Functions left out.** A module in the subset translates, but the translation leaves out functions with these forms, and `verified_compile` adds no `p.f.native` for them: a function that uses a form of a later milestone, as every float form was until M5 and M6; a function with several results that branches to its own outermost label, which returns in Talos; and a function that calls one left out.  The second restriction keeps the result globals out of the relation for branches.  Surveys of the modules of `tests/verified` at M4, M5, and M6 found no function left out for that reason alone, and since M6 every function of the corpus translates.
 
-**Static stack analysis.** Locals and operand-stack slots become C locals named by index, height and type: `l3`, `s5_l` (i64), `s5_i` (i32), `s5_d` (f64), `s5_f` (f32). The analysis computes the type stack at every instruction, which is possible because every block type here has no parameters and at most one result. A mismatch makes `translate` return `none`. Declared Wasm locals are assigned 0 at entry, as `Function.toLocals` zeroes them; stack slots are always written before they are read.
+**Static stack analysis.** Locals and operand-stack slots become C locals named by index, height, and type: `l3`, `s5_l` (i64), `s5_i` (i32), `s5_d` (f64), `s5_f` (f32).  The analysis computes the type stack at every instruction, which is possible because every block type here has no parameters and at most one result.  A mismatch makes `translate` return `none`.  Declared Wasm locals are assigned 0 at entry, as `Function.toLocals` zeroes them, and stack slots are written before they are read.
 
 **Functions and calls.** A function with no result returns `void`, and one with one result returns that scalar. With two or more results, it writes result `i` to the global `lx_r<i>_<t>` of its type, where `t` is `i`, `l`, `d`, or `f`, and returns `void`, and the caller copies the results into its stack slots straight after the call, before its test of `lx_status`.  The program holds the result globals of as many positions as its function with the most results, and such a function returns only by `ret` or at the end of its body, as the restrictions above require. Arguments are the top `n` slots, deepest first, which matches Talos's reversal of the top `numParams` values. The call-depth parameter is an ordinary `unsigned long long`.  A function is `lxf_<name>` when the module exports it under a name that is a C identifier, and `lxf_<index>` otherwise: a bare export name can be a C keyword, as `double` is, or collide with a library function or with the `lx_` globals.  A call whose result is stored has the form that `clightgen` produces from `x = f(args);`, a call into a temporary of its own, one per call site, followed by a copy to the slot.
 
-**Traps.** A trap stores its code in `lx_status`, one of unreachable, out of bounds, and divide by zero, and returns from the function at once, with `return;` in a function without a result and `return 0;` at the result's type otherwise.  After a call to a function that can trap, directly or through its own calls, the caller tests `if (lx_status != 0) return …;` before it copies the results, so a trap leaves every C frame up to the exported function without running more of its code.  The first translator tests after every call, at the cost of one load and one branch; a static pass over the call graph could omit the test after a call to a function that cannot trap.  The host reads `lx_status` after the exported function returns: 0 means that the call returned its results, and any other value names the trap.  No external function is called, so no assumption that one never returns enters the proof.
+**Traps.** A trap stores its code in `lx_status`, one of unreachable, out of bounds, and divide by zero, and returns from the function at once, with `return;` in a function without a result and `return 0;` at the result's type otherwise.  After a call to a function that can trap, directly or through its own calls, the caller tests `if (lx_status != 0) return …;` before it copies the results, so a trap leaves every C frame up to the exported function without running more of its code.  The first translator tests after every call, at the cost of one load and one branch, and a static pass over the call graph could omit the test after a call to a function that cannot trap.  The host reads `lx_status` after the exported function returns: 0 means that the call returned its results, and any other value names the trap.  No external function is called, so no assumption that one never returns enters the proof.
 
 **Control flow.** Every `block`, `loop` and `iff`, and the function body itself, becomes a loop the body leaves with `break`:
 
@@ -145,9 +145,9 @@ else s4_l = (unsigned long long) ((unsigned char *) lx_mem)[s4_l]
           | ...                                     /* eight byte loads, little-endian */
 ```
 
-`store64` mirrors it, with eight byte stores of `(unsigned char) (v >> 8 k)` on the unaligned path.  `load8U` and `store8` compute the address and test the bound in the same way for one byte, and then access one `unsigned char` of `lx_mem`: `s4_i = (unsigned int) ((unsigned char *) lx_mem)[s4_l]`, and `((unsigned char *) lx_mem)[s4_l] = (unsigned char) s5_i`, whose conversion to `unsigned char` reduces the value modulo 256, which is `store8`'s meaning.  The byte-wise expressions are emitted inline rather than as helper functions, which would add calls and their `lx_status` tests; the proof covers them once, for every address.  `memory.size` reads `lx_pages`.  `memory.grow` adds in 64-bit arithmetic, succeeds when the sum is at most `LX_CAP`, and otherwise yields `0xFFFFFFFF`, exactly Talos's rule with the store's cap set to `LX_CAP`.  Bytes past `lx_pages` hold the same values in both semantics, because every write is bounds-checked and neither semantics changes a byte on growth.
+`store64` mirrors it, with eight byte stores of `(unsigned char) (v >> 8 k)` on the unaligned path.  `load8U` and `store8` compute the address and test the bound in the same way for one byte, and then access one `unsigned char` of `lx_mem`: `s4_i = (unsigned int) ((unsigned char *) lx_mem)[s4_l]`, and `((unsigned char *) lx_mem)[s4_l] = (unsigned char) s5_i`, whose conversion to `unsigned char` reduces the value modulo 256, which is `store8`'s meaning.  The byte-wise expressions are emitted inline rather than as helper functions, which would add calls and their `lx_status` tests, and the proof covers them once, for every address.  `memory.size` reads `lx_pages`.  `memory.grow` adds in 64-bit arithmetic, succeeds when the sum is at most `LX_CAP`, and otherwise yields `0xFFFFFFFF`, exactly Talos's rule with the store's cap set to `LX_CAP`.  Bytes past `lx_pages` hold the same values in both semantics, because every write is bounds-checked and neither semantics changes a byte on growth.
 
-**Initialization.** `lx_g0` to `lx_g3` and `lx_pages` have static initializers.  `lx_init()` writes the data segments into `lx_mem` with straight-line stores: a word store for each 8-byte-aligned word that a segment covers, and a byte store for each other byte.  A static initializer on `lx_mem` itself would put the whole array into the binary, and a copy loop from a constant table would need a loop invariant in the proof; the stores' text grows with the data, as a table would.  The host calls `lx_init()` once before anything else.
+**Initialization.** `lx_g0` to `lx_g3` and `lx_pages` have static initializers.  `lx_init()` writes the data segments into `lx_mem` with straight-line stores: a word store for each 8-byte-aligned word that a segment covers, and a byte store for each other byte.  A static initializer on `lx_mem` itself would put the whole array into the binary, and a copy loop from a constant table would need a loop invariant in the proof.  The stores' text grows with the data, as a table would.  The host calls `lx_init()` once before anything else.
 
 **Numeric operations.** Integer operations map one-to-one, with the guards CompCert's semantics needs:
 
@@ -239,18 +239,18 @@ Three links connect the Lean theorem to the binary:
 - **Floats.** Test binary32 unary operations exhaustively over all 2^32 inputs where the run time allows, and sample the rest.
 - **Interpreter soundness.** `LClight.run` is proved sound against the relation, so each test exercises the relation itself.
 
-**The per-build front-end check.** `clightgen`, built with `./configure -clightgen` from the same 3.18 tree as `ccomp`, runs the same parser and elaborator, then `SimplExpr` and `SimplLocals`. It prints the resulting Clight as Rocq terms, with float constants as bit patterns. A small parser reads that output into the Lean AST, and the build compares it with `p.cprogram` up to renaming of temporaries. Any difference fails the build. What remains trusted is that `ccomp` and `clightgen` from one tree run the same front end on the same text; the `clightgen` README calls the tool experimental.
+**The per-build front-end check.** `clightgen`, built with `./configure -clightgen` from the same 3.18 tree as `ccomp`, runs the same parser and elaborator, then `SimplExpr` and `SimplLocals`.  It prints the resulting Clight as Rocq terms, with float constants as bit patterns.  A small parser reads that output into the Lean AST, and the build compares it with the program of `p.translation` up to a renaming of call temporaries.  Any difference fails the build.  What remains trusted is that `ccomp` and `clightgen` from one tree run the same front end on the same text, and the `clightgen` README calls the tool experimental.
 
 `clightgen`'s exporter changes some statements as it prints them: it prints `Ssequence Sskip s` and `Ssequence s Sskip` as `s`, and two forms of loop as `Swhile` (`export/ExportClight.ml`, lines 104 to 115).  The program that the check reads is therefore `exportProgram` of the program inside `clightgen`, where this design took it to be that program itself.  `bigstep_program_terminates_export` (`LeanExe/Native/Proof/Export.lean`) closes the step: a run of the printed program is a run of the program inside `clightgen`, with the same trace and result.
 
-**CompCert's side.** The Rocq theorems relied on are `transf_c_program_correct`, or `separate_transf_c_program_correct` when the host is a separate C file, together with `bigstep_semantics_sound` for semantics2; the `SimplExpr` and `SimplLocals` proofs sit inside the compiler theorem. CompCert's own unverified parts are its parser and elaborator (covered by the `clightgen` check), its assembler and linker (AbsInt sells a validator for these), and the OCaml extraction of CompCert itself, which every CompCert user shares.
+**CompCert's side.** The Rocq theorems relied on are `transf_c_program_correct`, or `separate_transf_c_program_correct` when the host is a separate C file, together with `bigstep_semantics_sound` for semantics2.  The `SimplExpr` and `SimplLocals` proofs sit inside the compiler theorem. CompCert's own unverified parts are its parser and elaborator (covered by the `clightgen` check), its assembler and linker (AbsInt sells a validator for these), and the OCaml extraction of CompCert itself, which every CompCert user shares.
 
 **Assumptions about the host and environment.** The generated header states these:
 
 - The host is compiled with `ccomp`. It calls `lx_init()` once, places arguments in `lx_mem` through the exported `alloc` so that they meet the `Represent` premises, and reads results through the same representation.
 - The host reads `lx_status` after each call, and treats a nonzero value as a trap of that call.
 - The stack does not overflow. CompCert's theorem assumes this. The 1,000-call depth guard bounds the number of frames, so measure the deepest stack use under `ccomp` and size the thread stack from that.
-- `LX_CAP` pages fit in memory and in the toolchain's addressing limits (section 8).
+- `LX_CAP` pages fit in memory and in the toolchain's addressing limits, which [the risks](#risks-open-decisions-and-effort) describe.
 
 **Still trusted at the end:** the components of the next section.
 
@@ -293,7 +293,7 @@ M0 and M1 can run in parallel. From M2 on, each milestone adds instruction forms
 | M6 · binary32 | `nearest` by integer code, `sqrt` through binary64, `trunc_sat`, conversions; `f64PromoteF32` and `f32DemoteF64` stay outside the subset, with the subset check's warning, since no corpus module uses them and Talos computes them with Lean's native floats | binary32 GPT-2 native with theorems |
 | M7 · Hardening | Benchmarks against Wasmtime, optional alignment proof, the per-build comparison in the native build, every check in CI | release with its trusted base written down |
 
-M2 carries the most design risk, because it proves the `brk` control-flow encoding; nothing after it changes that encoding. M5 and M6 carry the most schedule risk, because of the float lemmas.
+M2 carries the most design risk, because it proves the `brk` control-flow encoding, and nothing after it changes that encoding.  M5 and M6 carry the most schedule risk, because of the float lemmas.
 
 ## Risks, open decisions, and effort
 
@@ -311,7 +311,7 @@ The largest risk is a gap between the Lean copy and CompCert's Clight in some ca
 **Open decisions:**
 
 - A cap per module, or a region allocated at run time, for a module that needs more than `nativeCap` pages.
-- Whether to prove 8-byte alignment of every address in the Verified compiler's invariants, which removes the byte-wise path.
+- Whether to prove 8-byte alignment of every address in the verified compiler's invariants, which removes the byte-wise path.
 
 **Effort**, in lines of Lean:
 
@@ -325,10 +325,10 @@ The largest risk is a gap between the Lean copy and CompCert's Clight in some ca
 | Initialization, composition and `verified_compile` changes | 1,000–2,000 |
 | **Total** | **about 13,000–24,000** |
 
-Tooling outside Lean comes on top: the `clightgen` reader, the test harness and CI. For calibration, the Verified compiler grew from its first commit on 2026-10-06 to about 43,000 lines in 743 commits by 2026-10-25. The translator is roughly a third to a half of that. These figures are estimates, not measurements.
+Tooling outside Lean comes on top: the `clightgen` reader, the test harness, and CI.  For calibration, the verified compiler grew from its first commit on 2026-10-06 to about 43,000 lines in 743 commits by 2026-10-25, and the translator is a third to a half of that.  These figures are estimates.
 
 ## Sources
 
-- jsmorph/leanexe at `b1a3d59`: `Verified/Compile.lean`, `Verified/README.md`, `LeanExe/Pipeline/Implements.lean`, `LeanExe/Pipeline/Aborts.lean`, `LeanExe/Runtime/Defs.lean`
+- jsmorph/leanexe: `Verified/Compile.lean`, `Verified/README.md`, `LeanExe/Pipeline/Implements.lean`, `LeanExe/Pipeline/Aborts.lean`, `LeanExe/Runtime/Defs.lean`
 - jsmorph/talos at `87e3aa5`: `interpreter/Interpreter/Wasm/Semantics.lean`, `Syntax.lean`, `Locals.lean`, `Continuation.lean`
 - AbsInt/CompCert 3.18: `cfrontend/Clight.v`, `cfrontend/ClightBigstep.v`, `common/Memdata.v`, `common/Memory.v`, `common/Builtins0.v`, `x86_64/Archi.v`, `aarch64/Archi.v`, `driver/Compiler.v`, `driver/Driver.ml`, `export/README.md` (`clightgen`)
