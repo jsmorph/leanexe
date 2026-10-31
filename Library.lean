@@ -244,6 +244,7 @@ import Library.Numerics.Float64.Lgamma.LgammaFastTop
 import Library.Numerics.Float64.Lgamma.LgammaAccTop
 import Library.Numerics.Float64.Lgamma.LgammaWithin
 import Library.Numerics.Float64.Lgamma.LgammaBytes
+import Library.Sorting.Heapsort.Compiled
 import Library.Sorting.Insertion.Compiled
 import Library.Arrays.BinarySearch.Compiled
 import Library.Arrays.Search.Compiled

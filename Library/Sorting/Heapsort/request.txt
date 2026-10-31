@@ -1,0 +1,2 @@
+Sort an array of UInt64 words into nondecreasing order with heapsort, Algorithm H of TAOCP
+section 5.2.3, in place, using no storage beyond the array.

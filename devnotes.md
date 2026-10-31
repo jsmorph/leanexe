@@ -40122,7 +40122,7 @@ Most of these algorithms have total specifications, which `Verified.CallSpec` st
 | 1 | Binary search | 6.2.1 B | `Library/Arrays/BinarySearch` |
 | 2 | Binary GCD | 4.5.2 B | `Library/Numerics/Arithmetic/BinaryGcd` |
 | 3 | Modular inverse by the extended Euclidean algorithm | 1.2.1 E, 4.5.2 X | `Library/Numerics/Arithmetic/ModInverse` |
-| 4 | Heapsort | 5.2.3 H | |
+| 4 | Heapsort | 5.2.3 H | `Library/Sorting/Heapsort` |
 | 5 | Merge sort | 5.2.4 | |
 | 6 | Topological sort | 2.2.3 T | |
 | 7 | Binary heap priority queue | 5.2.3 | |
@@ -40136,3 +40136,9 @@ The compiler's termination proof of a tail loop failed for the first version of 
 - [x] Binary search: program, proof, call theorem, 1,004 cases in Wasmtime and native C, two reviews, README, index.
 - [x] Binary GCD: program, proof, call theorem, 166 cases in Wasmtime and native C, two reviews, README, index.
 - [x] Modular inverse: program, proof, call theorem, 334 cases in Wasmtime and native C, two reviews, README, index.
+
+Heapsort takes its array as `Moved (Array UInt64)` and returns it, so its module-level theorem is an `ImplementsA` for `expected`, composed from the generated `trapFree` theorem by a local congruence lemma.  `Verified.Call` assumes arguments that move no object, so a call theorem in that form would say nothing about a moved array.
+
+The first version of the program copied the array once and then on every exchange, which the generated bounds showed as `Verified.blockCost` terms.  The first copy came from the loop body reading `xs.size` after `heapify` had taken `xs`, and binding the size once before removes it.  The other came from the sift's tail call `siftDown (maxChild xs i n) n (swap i (maxChild xs i n) xs)`: small variants compiled in a scratch file showed that the compiler copies an array that one component of a tail call's state reads while a later component consumes it, even when the reading component is a word.  The same read inside `swap`'s own arguments causes no copy.  The program now follows Knuth's steps H4 and H5, which compare the children first, so each branch names its child index without reading the array, and every bound of the module is 0.  The unnecessary copy is a limitation of the compiler's ownership for tuples, recorded here for a later change to the compiler.
+
+- [x] Heapsort: program, proof, `ImplementsA` theorem, zero bound, 57 cases in Wasmtime and native C, two reviews, README, index.

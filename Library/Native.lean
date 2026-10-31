@@ -56,5 +56,6 @@ import Library.Random.ParkMiller.Program
 import Library.Random.SplitMix64.Program
 import Library.Random.Xorshift.Program
 import Library.Regex.Program
+import Library.Sorting.Heapsort.Program
 import Library.Sorting.Insertion.Program
 import Library.Trees.WordTree.Program

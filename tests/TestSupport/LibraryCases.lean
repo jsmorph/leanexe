@@ -9,6 +9,7 @@ import TestSupport.Host
 import TestSupport.Modules.BinaryGcd
 import TestSupport.Modules.BinarySearch
 import TestSupport.Modules.Gcd
+import TestSupport.Modules.Heapsort
 import TestSupport.Modules.ModInverse
 import TestSupport.Modules.PrimeFactors
 
@@ -63,6 +64,9 @@ def cases : IO Unit := do
   for (a, m) in Library.Numerics.Arithmetic.ModInverse.inverseInputs do
     IO.println s!"modInverse|modInverse|i64|{u a} {u m}|\
       {Library.Numerics.Arithmetic.ModInverse.expected (a, m)}|0|0"
+  for xs in Library.Sorting.Heapsort.sortInputs do
+    IO.println s!"heapsort|heapsort|array-u64|{arrU xs}|\
+      [{", ".intercalate ((Library.Sorting.Heapsort.expected xs.toArray).toList.map toString)}]|1|1"
   for (xs, key) in Library.Arrays.BinarySearch.searchInputs do
     IO.println s!"binarySearch|lowerBound|i64|{arrU xs} {u key}|\
       {Library.Arrays.BinarySearch.expected (xs.toArray, key)}|1|1"

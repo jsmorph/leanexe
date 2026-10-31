@@ -78,6 +78,7 @@ Library.Numerics.Float64.Bessel.Compiled:Library.Numerics.Float64.Bessel.compile
 Library.Numerics.Float64.Tgamma.Compiled:Library.Numerics.Float64.Tgamma.compiled.module:tgamma
 Library.Numerics.Float64.Lgamma.Compiled:Library.Numerics.Float64.Lgamma.compiled.module:lgamma
 Library.Numerics.Float64.Erfc.Compiled:Library.Numerics.Float64.Erfc.compiled.module:erfc
+Library.Sorting.Heapsort.Compiled:Library.Sorting.Heapsort.compiled.module:heapsort
 Library.Sorting.Insertion.Compiled:Library.Sorting.Insertion.compiled.module:libsort
 Library.Arrays.BinarySearch.Compiled:Library.Arrays.BinarySearch.compiled.module:binarySearch
 Library.Arrays.Search.Compiled:Library.Arrays.Search.compiled.module:libsearch
