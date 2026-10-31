@@ -6,11 +6,7 @@ This manual describes the verified compiler's pure dialect, the `verified_compil
 
 ### One theorem for every program
 
-The verified compiler is a Lean function, `compileWith` in [`Verified/Compile.lean`](../Verified/Compile.lean), from a typed source language to a module of Talos, the WebAssembly interpreter written in Lean.  [Program correctness with a static pool](../Verified/Correct.lean), `Prog.correctStaticWith`, states that every source program computes its meaning when the supplied static pool covers its literals.  `Prog.correctWith` specializes the theorem to a program with no nonempty byte literals, and `Prog.correct` does so without tables.  The command `verified_compile p := [f, g, …]` reads ordinary Lean definitions, writes each as a source function, and proves with kernel-checked equations that each source function means its definition.  It then states, for each definition `f`, that the module computes `f` with Lean's own types, and that the module's bytes decode to the module.  The reflector that writes the source functions is meta code and is not trusted: a wrong reflection makes an equation fail in the kernel and cannot produce a false theorem.
-
-`Verified.WGSL.compile` also translates supported typed array builds to WGSL and returns a kernel
-with proofs of its translation and local layout.  [The WGSL section](#wgsl-kernels) describes
-that subset and its dispatch theorem.
+The verified compiler is a Lean function, `compileWith` in [`Verified/Compile.lean`](../Verified/Compile.lean), from a typed source language to a module of Talos, the WebAssembly interpreter written in Lean.  [Program correctness with a static pool](../Verified/Correct.lean), `Prog.correctStaticWith`, states that every source program computes its meaning when the supplied static pool covers its literals.  `Prog.correctWith` specializes the theorem to a program with no nonempty byte literals, and `Prog.correct` does so without tables.  The command `verified_compile p := [f, g, …]` reads ordinary Lean definitions, writes each as a source function, and proves with kernel-checked equations that each source function means its definition.  It then states, for each definition `f`, that the module computes `f` with Lean's own types, and that the module's bytes decode to the module.  The reflector that writes the source functions is meta code and is not trusted: a wrong reflection makes an equation fail in the kernel and cannot produce a false theorem.  `Verified.WGSL.compile` also translates supported typed array builds to WGSL and returns a kernel with proofs of its translation and local layout, as [the WGSL section](#wgsl-kernels) describes with that subset and its dispatch theorem.
 
 ### The `implements` and `trapFree` theorems
 
@@ -45,7 +41,7 @@ Every statement about a value of a recursive type uses its representation in [th
 
 WGSL dispatch uses the shared [device model](#the-wgsl-library-and-the-browser-pages)
 with strict binary32 arithmetic.  Its theorems prove successful modeled execution and race freedom
-under their buffer, count, and invocation bounds.
+under their buffer, count, and invocation bounds.  The relation of the model to WGSL's concurrent execution and to a GPU's arithmetic is trusted, as [the WGSL kernels of the trusted-base document](trusted-base.md#g-wgsl-kernels) state.
 
 ### Outside the proofs
 
@@ -323,9 +319,7 @@ open _root_.Library.Random.Lcg
 verified_compile compiled := [affine, step, advance, jumpPass, jump]
 ```
 
-The command adds the program, the module, and every theorem in one step, and the kernel checks each.  The theorems use only the axioms `propext`, `Classical.choice`, and `Quot.sound`, as `#print axioms` shows for `Prog.correct`, `Prog.correctWith`, and each example's `compiled.bytes` and named theorems.  The declarations and the exports take the last component of a definition's name, so two listed definitions whose names end in the same component collide.
-
-`set_option trace.Verified.reflect true` reports the reflection and proof-generation stages for each function and the encoding check for each function index.  Reflection entries include the remaining heartbeat budget in the units of `maxHeartbeats`.
+The command adds the program, the module, and every theorem in one step, and the kernel checks each.  The theorems use only the axioms `propext`, `Classical.choice`, and `Quot.sound`, as `#print axioms` shows for `Prog.correct`, `Prog.correctWith`, and each example's `compiled.bytes` and named theorems.  The declarations and the exports take the last component of a definition's name, so two listed definitions whose names end in the same component collide.  `set_option trace.Verified.reflect true` reports the reflection and proof-generation stages for each function and the encoding check for each function index.  Reflection entries include the remaining heartbeat budget in the units of `maxHeartbeats`.
 
 ### `verified_compile_wasi`
 
@@ -607,25 +601,19 @@ import Library.Numerics.Arithmetic.Gcd.Compiled
 
 `tests/verified/run.sh --cases fold` checks word and float folds, record elements without an `Inhabited` instance, owned array and pair accumulators, a borrowed input that is also the initial accumulator, nested folds, and calls in fold bodies.  Allocation counters check retained blocks and growth in place.  A recursive callee runs at depth 999, and the next frame at depth 1,000 must trap.
 
-`tests/verified/run.sh --cases tail` checks default loop compilation through 4,096 iterations, scalar pairs and exceptional floats, record arrays, owned-array growth, swapping and replacement, an aliased seed, calls between tail functions, and a guarded callee.  It checks retained blocks and allocation counts.  The Recursion and Fold examples set `verified.tailLoops` to false to retain their guarded-depth tests.
-
-`tests/verified/run.sh --cases tailconditions` checks Boolean coercions, word inequality, a proof-named conditional, destructured scalar tuples, and borrowed pair and record states through 4,096 iterations.  The borrowed-state cases require one retained input block and no additional allocation.
+`tests/verified/run.sh --cases tail` checks default loop compilation through 4,096 iterations, scalar pairs and exceptional floats, record arrays, owned-array growth, swapping and replacement, an aliased seed, calls between tail functions, and a guarded callee.  It checks retained blocks and allocation counts.  The Recursion and Fold examples set `verified.tailLoops` to false to retain their guarded-depth tests.  `tests/verified/run.sh --cases tailconditions` checks Boolean coercions, word inequality, a proof-named conditional, destructured scalar tuples, and borrowed pair and record states through 4,096 iterations.  The borrowed-state cases require one retained input block and no additional allocation.
 
 `tests/verified/run.sh --cases scalarcomposition` checks generated store-preserving scalar
 functions: division, conditional calls, tail recursion through 4,096 iterations, float call
 chains, and binary32 bit conversion and nearest-even rounding.  Every case checks zero
-allocations and retained blocks.
-
-`tests/verified/run.sh --cases relocation` reuses that scalar corpus after moving its library
+allocations and retained blocks.  `tests/verified/run.sh --cases relocation` reuses that scalar corpus after moving its library
 behind another compiled program.  It also checks the retained library function and a new
 caller that invokes functions from both libraries.
 
 `tests/verified/run.sh --cases lists` checks construction, duplication, nested calls, matching,
 head and tail access, reconstruction, and head updates on lists through 4,096 cells.  It checks
 retained blocks and allocation counts, including reconstruction with no allocation beyond the
-host's input cells.
-
-`tests/verified/run.sh --cases listrecursion` checks guarded summation and recursive increment.
+host's input cells.  `tests/verified/run.sh --cases listrecursion` checks guarded summation and recursive increment.
 Depth 999 returns, and depth 1,000 traps at `unreachable`.  Increment reuses each consumed cell.
 `tests/verified/run.sh --cases listloops` checks list construction and extension in word-counted
 loops through 4,096 iterations, including empty and nonempty seeds.
@@ -692,11 +680,9 @@ After a change to the verified compiler or its examples, `tools/leanrun --thread
 
 ## Examples
 
-[The algorithm index](../index.md) lists the elementary and special functions, software fused multiply-add, limb arithmetic, decimal parsers and printers, and their numerical and byte theorems.  Each numerical function has a document beside its implementation with the proof modules, exceptional values, and limits.
-
 The [compiler fixtures](../Verified/Examples) compile their own definitions or import native programs from `Examples` and `Library`.  A fixture can use `verified_compile` or construct a typed source program directly, as [the tuple example](../Verified/Examples/Tuples.lean) does.  Its byte theorem states that the emitted bytes decode to the module that computes those definitions.
 
-Reusable implementations and their compilations live in [the library](../Library/README.md), and application ports live in [the demos](../Demos/README.md).  The LCG, Park–Miller, and xorshift64 families under `Library/Random/` hold native definitions in `Program.lean`, compilation in `Verified.lean`, and period and other mathematical results in separate proof modules.  [The shared orbit theory](../Library/Random/Orbit/README.md) proves facts about their iterates.
+Reusable implementations and their compilations live in [the library](../Library/README.md), and applications live in [the demos](../Demos/README.md).  [The algorithm index](../index.md) lists the elementary and special functions, software fused multiply-add, limb arithmetic, decimal parsers and printers, and their numerical and byte theorems.  Each numerical function has a document beside its implementation with the proof modules, exceptional values, and limits.  The LCG, Park–Miller, and xorshift64 families under `Library/Random/` hold native definitions in `Program.lean`, compilation in `Verified.lean`, and period and other mathematical results in separate proof modules.  [The shared orbit theory](../Library/Random/Orbit/README.md) proves facts about their iterates.
 
 | Example | Contents |
 |---|---|
