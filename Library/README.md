@@ -31,13 +31,9 @@ The Forms column gives the union of the codes that [the algorithm index](../inde
 
 ## Modules and imports
 
-Each family's `Program` module defines its native functions.  `Library.Native` imports the native
-implementations together.  For example:
-
-```lean
-import Library.Sorting.Insertion.Program
-import Library.Numerics.Arithmetic.CeilSqrt.Program
-```
+Each family's `Program` module defines its native functions.  `Library.Native` imports every
+`Program` module of the library.  `tools/source-layout` fails when a `Program` module is missing
+from `Library.Native` or reaches a module of `Verified` through its imports.
 
 `Compiled`, or `Verified` in the LCG, Park–Miller, and xorshift families, runs `verified_compile`
 and holds the module with its generated execution, allocation, and trap-free theorems, and with its
@@ -45,8 +41,9 @@ native theorems when the module translates to C.  `File`, or a module whose name
 states the file theorems of the module that `tests/verified/run.sh` writes to `build/verified/`.
 `Proof` and the larger families' named theorem modules state mathematical properties.  `Library`
 imports the implementations and the main proof targets.  [The examples](../Examples) and [the
-application demos](../Demos/README.md) import library functions and compile them among their own functions, with their own cases.  Execution tests and
-reference calculators use [test support](../tests/TestSupport).
+application demos](../Demos/README.md) import library functions and compile them among their own
+functions, with their own cases.  Execution tests and reference calculators use [test
+support](../tests/TestSupport).
 
 ## Proof scope
 
