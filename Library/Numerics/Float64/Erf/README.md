@@ -59,7 +59,7 @@ A script that compares the port with the pinned `s_erf.c` finds that the decimal
 
 ### The port of CORE-MATH's `erfc`
 
-[The port](../Erfc/Program.lean) follows `src/binary64/erfc/erfc.c` of CORE-MATH [10], which carries "Copyright (c) 2022-2026 Alexei Sibidanov, Paul Zimmermann, Tom Hubrecht and Claude-Pierre Jeannerod" and the MIT license; the module docstring quotes the notice in full.  The port follows the C code operation for operation and calls `Fma.fma`, [the software fused multiply-add](../../Arithmetic/Fma/README.md), for each `__builtin_fma`, so its results should equal CORE-MATH's bit for bit.  It imports no other function of the repository: the code carries its own `exp_1` and `exp_accurate`.
+[The port](../Erfc/Program.lean) follows `src/binary64/erfc/erfc.c` of CORE-MATH [10], which carries "Copyright (c) 2022-2026 Alexei Sibidanov, Paul Zimmermann, Tom Hubrecht and Claude-Pierre Jeannerod" and the MIT license.  The module docstring quotes the notice in full.  The port follows the C code operation for operation and calls `Fma.fma`, [the software fused multiply-add](../../Arithmetic/Fma/README.md), for each `__builtin_fma`, so its results should equal CORE-MATH's bit for bit.  It imports no other function of the repository: the code carries its own `exp_1` and `exp_accurate`.
 
 | C code | Port | Reason |
 |---|---|---|
