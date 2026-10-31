@@ -182,12 +182,10 @@ Rewrite a bound with `compiled.compute.bound_eq` and read the goal before choosi
 never evaluate a bound with `#eval`, which runs the interpreter of the reflected program and can
 take minutes.  A `simp` call that unfolds a large term may need `set_option maxHeartbeats 1000000
 in`.  Build with `tools/leanrun --timeout 60m lake build Examples.Name.Proof` and then
-`Examples.Name.Compiled`.
-
-End the stage with proposals for new VKB entries or changes to existing ones, in the form of [the
-template](../../../VKB/TEMPLATE.md), for each lesson of the proofs that applies beyond this program:
-a missing lemma, a tactic that misled, or a goal shape that no entry names.  Put them in
-`journal.md` and in the report to the user.
+`Examples.Name.Compiled`.  End the stage with proposals for new VKB entries or changes to
+existing ones, in the form of [the template](../../../VKB/TEMPLATE.md), for each lesson of the
+proofs that applies beyond this program: a missing lemma, a tactic that misled, or a goal shape
+that no entry names.  Put them in `journal.md` and in the report to the user.
 
 ## Stage 4: acceptance and records
 
@@ -236,3 +234,4 @@ a missing lemma, a tactic that misled, or a goal shape that no entry names.  Put
 Keep `journal.md` during the run in natural prose: the decisions in the specification, the
 program's form and why, each proof approach and what changed it, the VKB entries and worked
 examples that helped or failed, and any missing general rule.  Record failures as they happen.
+[The running-maximum journal](../../../Examples/RunningMax/journal.md) gives the form.
