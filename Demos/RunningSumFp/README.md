@@ -42,7 +42,7 @@ signed zero, infinities, and canonical NaNs.
 
 | Module | Contents |
 |---|---|
-| [Numeric operations](Program.lean) | CR removal, the existing general binary64 parser, and scientific rendering with LF. |
+| [Numeric operations](Program.lean) | CR removal, the library's general binary64 parser, and scientific rendering with LF. |
 | [Arithmetic correspondence](ArithmeticProof.lean) | Parser acceptance and bits, binary64 addition, and renderer properties. |
 | [Stream process](Stream.lean) | Buffered input, partial lines, pending output, EOF, and error handling. |
 | [Stream view](StreamView.lean), [kernel](Kernel.lean), and [termination](Termination.lean) | Relation between the process and [the shared stream process](../StreamFold/README.md), specification of the line kernel, and progress of each step. |
@@ -101,13 +101,12 @@ with the modeled floating-point and host semantics require external execution te
 
 ## Build and run
 
-Commands run from the repository root.  [The host setup](../../docs/verified-manual.md#the-wasmtime-host)
-provides the pinned Wasmtime host and its deterministic floating-point profile.
-
-On an 8-CPU host with about 12 GiB of memory, the tested profile uses `LEANRUN_THREADS=3` and
-`LEANRUN_MEMORY_HIGH=10G`, with a 12 GiB maximum.  The initial WASI compilation had a captured
-memory peak of 4.84 GiB.  [The resource instructions](../../AGENTS.md#lean-process-limits)
-describe these settings.
+Commands run from the repository root, and [the host
+setup](../../docs/verified-manual.md#the-wasmtime-host) provides the pinned Wasmtime host and its
+deterministic floating-point profile.  On an 8-CPU host with about 12 GiB of memory, the tested
+profile uses `LEANRUN_THREADS=3` and `LEANRUN_MEMORY_HIGH=10G`, with a 12 GiB maximum.  The initial
+WASI compilation had a captured memory peak of 4.84 GiB.  [The resource
+instructions](../../AGENTS.md#lean-process-limits) describe these settings.
 
 ```sh
 tests/running-sumfp/run.sh
@@ -118,13 +117,17 @@ printf '12\n-5\n20\n' | build/tools/leanexe-wasmtime-host run build/running-sumf
 [The application driver](../../tests/running-sumfp/run.sh) builds the proofs, audits their axioms,
 checks fixed numerical outputs, exercises short and zero-byte transfers and committed failure
 prefixes, compares native and Wasmtime output and status, checks interactive output before EOF,
-and checks the exit status after read and write errors.  Its numerical cases cover parser rounding, sequential addition, cancellation, subnormals,
-overflow, signed zero, NaNs, and infinities.
+and checks the exit status after read and write errors.  Its numerical cases cover parser rounding,
+sequential addition, cancellation, subnormals, overflow, signed zero, NaNs, and infinities.  The
+driver runs all groups by default.  `--native-wasm` selects numeric and native stream tests,
+native/Wasmtime comparisons, and interactive tests.  `--talos-only` selects the scripted Talos
+cases.  Both groups build and audit the proofs.  An optional case name after `--talos-only` selects
+one case from [the scripted cases](../../tests/running-sumfp/Talos.lean).
 
 | Execution backend | Coverage |
 |---|---|
 | Native numeric checks | Exact parsed words and printed bytes, including negative zero, subnormals, parser overflow, infinities, and NaNs. |
-| Native process and Wasmtime | The 29-case corpus covers finite rounding, cancellation, subnormals, arithmetic overflow, signed zero, nonfinite values, input framing, and rejection.  Scripted native streams add transfer partitions and errors. |
+| Native process and Wasmtime | Corpus of 29 cases covers finite rounding, cancellation, subnormals, arithmetic overflow, signed zero, nonfinite values, input framing, and rejection.  Scripted native streams add transfer partitions and errors. |
 | Talos | Eight cases in the same Float module cover split reads, short and zero-byte writes, committed error and trap prefixes, invalid lines, and exit rejection.  Numeric paths use signed zero, underflow to zero, infinities, and NaN propagation. |
 | Interactive native and Wasmtime | Output before the next read and before EOF. |
 | I/O errors in native and Wasmtime | Directory as stdin and, where it exists, `/dev/full` as stdout.  Wasmtime exits with WASI errno 31 or 51, and the native executable exits with status 1. |
@@ -135,8 +138,3 @@ traverse the accumulated write history.  Printing a finite nonzero value perform
 multiprecision divisions and array writes.  The Talos group uses the shorter numeric paths to
 test the stream protocol within its time limit.  The native/Wasmtime corpus and universal FP
 proofs cover the finite arithmetic and printing paths.
-
-The driver runs all groups by default.  `--native-wasm` selects numeric and native
-stream tests, native/Wasmtime comparisons, and interactive tests.  `--talos-only` selects the
-scripted Talos cases.  Both groups build and audit the proofs.  An optional case name after
-`--talos-only` selects one case from [the scripted cases](../../tests/running-sumfp/Talos.lean).

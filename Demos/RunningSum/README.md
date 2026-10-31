@@ -10,17 +10,15 @@ values and termination ranks are proof-only.
 A line contains an optional `+` or `-`, at least one ASCII digit, and an optional trailing CR.
 LF ends a line.  EOF also ends a nonempty final line.  Leading zeros and signed zero print in
 canonical form.  Blank lines, spaces, and other bytes cause exit status 28.  The program preserves
-output from preceding valid lines and stops before processing another line.
+output from preceding valid lines and stops before processing another line.  For input `12`, `-5`,
+and `20` on separate lines, output is `12`, `7`, and `27` on separate lines.
 
 The program reads chunks of at most 4,096 bytes.  It retains a partial line across reads and
-finishes pending output before processing the next line.  A short successful write retains the
-unwritten suffix.  A successful zero-byte write retries that suffix.  A returned I/O error stops
-the Wasm module with its errno as the exit status.  The native executable raises the error as a
-Lean `IO.Error`, prints it, and exits with status 1.  Host traps preserve the effects committed
-before the trap.
-
-For input `12`, `-5`, and `20` on separate lines, output is `12`, `7`, and `27` on separate lines.
-Each completed line produces output before the next blocking read.
+finishes pending output before processing the next line, so each completed line produces output
+before the next blocking read.  A short successful write retains the unwritten suffix.  A
+successful zero-byte write retries that suffix.  A returned I/O error stops the Wasm module with
+its errno as the exit status.  The native executable raises the error as a Lean `IO.Error`, prints
+it, and exits with status 1.  Host traps preserve the effects committed before the trap.
 
 ## Implementation and proofs
 
@@ -33,7 +31,7 @@ Each completed line produces output before the next blocking read.
 | [Renderer correctness](Rendering.lean) | Canonical signed decimal encoding from `Nat.digits`, followed by LF. |
 | [Line kernel](Kernel.lean) | Line kernel and its specification for [the shared stream proofs](../StreamFold/README.md): normal totals, size room, and nonempty output. |
 | [Line model and size bounds](Model.lean) | `InputBounds`, the line rooms that it implies, and the outputs and status of the kernel's fold over the input lines. |
-| [Arithmetic compilation](Compiled.lean) | Verified compilation of the six pure arithmetic functions. |
+| [Arithmetic compilation](Compiled.lean) | Verified compilation of the pure arithmetic functions `zero`, `parse`, `magnitudeLess`, `combineMagnitude`, `add`, and `render`. |
 | [Stream process](Stream.lean) | Buffered input, pending output, error handling, and the EOF process. |
 | [Stream view](StreamView.lean) and [termination](Termination.lean) | Relation between the process and the shared stream process, and progress of each step. |
 | [Action compilation](Wasi.lean) | Reflection and source-correspondence proofs for the bounded effectful steps. |
@@ -57,17 +55,15 @@ limits, that the compiled command eventually exits with accepted status `status`
 exactly those sums in canonical signed decimal form, each followed by LF.  It supplies a fuel
 threshold valid for every larger Talos fuel value.  `initial_terminates_integer_9000000` fixes
 both limits at 9,000,000, for which that inequality holds.  `integer_bytes` combines the general
-theorem with encoding, exact decoding, and
-binary validity.  Talos represents accepted `proc_exit` by the
-designated exit trap and records the status in the final host world.
-
-The theorem starts with an empty event journal and output history and uses these premises:
+theorem with encoding, exact decoding, and binary validity.  Talos represents accepted `proc_exit`
+by the designated exit trap and records the status in the final host world.  The theorem starts
+with an empty event journal and output history and uses these premises:
 
 | Premise | Requirement |
 |---|---|
 | [Integer sizes](Model.lean) | `InputBounds` requires `line.size + 3 < 2^64` for each line of the input and `integerDigitCount total + 3 < 2^64` for the total of each prefix of valid lines.  These conditions give the kernel's size condition `Room`, `max total.digits.size line.size + 3 < 2^64`, at each line. |
 | [Limits](Limits.lean) | `InputLimits L D` requires at most `L` bytes in each line up to and including the first line that is not a decimal integer, and at most `D` digits in the total after each line before it. |
-| [Memory](Correct.lean) | The literal pool ends 4,104 bytes into memory, and that end plus `limitMemory L D = 220 · (L + D) + 1,010,000` bytes must lie within the memory cap of 65,535 pages. |
+| [Memory](Correct.lean) | Literal pool ends 4,104 bytes into memory, and that end plus `limitMemory L D = 220 · (L + D) + 1,010,000` bytes must lie within the memory cap of 65,535 pages. |
 | [Host behavior](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful reads and writes, consumes input prefixes, reports empty input only at EOF, and commits output prefixes.  Each zero-byte write decreases a proof-only natural-valued credit, and a read or a write of at least one byte may set the credit to any value.  The Talos host also satisfies the WASI specification. |
 | [Final exit](Correct.lean) | `ExitAccepted` excludes rejection of status 0 or 28 at represented host worlds. |
 
@@ -88,18 +84,16 @@ from step to step.
 run that completes without exhausting Talos fuel.  A normally stopped native process returns
 a status, which the compiled command passes to `proc_exit`.  The theorem preserves the ordered
 effects and final world of those steps and the accepted or rejected exit request.  A permitted
-guest resource trap matches a native process
-prefix and residual action.  `run_initial` establishes this result from the modeled initial
-store.  `bytes` combines the execution statement with encoding, exact decoding, and binary
-validity.
+guest resource trap matches a native process prefix and residual action.  `run_initial`
+establishes this result from the modeled initial store.  `bytes` combines the execution statement
+with encoding, exact decoding, and binary validity.
 
 The compiled refinement requires a host satisfying the WASI specification, the allocator
 invariant with an empty free list, valid static bytes, and a memory cap of at most 65,535 pages.
-[The WASI manual](../../docs/wasi.md) states the host, engine, and file-emission assumptions.
-The generic
-[total-process theorem](../../Verified/Wasi/ProcessTotalCorrect.lean) uses an application-supplied
-well-founded progress relation, step charges with room for the copies of the state, and final-exit
-acceptance.
+[The WASI manual](../../docs/wasi.md) states the host, engine, and file-emission assumptions.  The
+generic [total-process theorem](../../Verified/Wasi/ProcessTotalCorrect.lean) uses an
+application-supplied well-founded progress relation, step charges with room for the copies of the
+state, and final-exit acceptance.
 
 The native reader returns after one successful `read` call and retries interrupted calls.  OS
 errors propagate through Lean's `IO.Error` API.  This gives the executable short reads on pipes.
@@ -109,17 +103,18 @@ execution tests.
 
 ## Build and run
 
-Commands run from the repository root.  The [host setup](../../docs/verified-manual.md#the-wasmtime-host)
-provides the pinned Wasmtime host.
-
 ```sh
 tests/running-sum/run.sh
 printf '12\n-5\n20\n' | .lake/build/bin/running-sum-native
 printf '12\n-5\n20\n' | build/tools/leanexe-wasmtime-host run build/running-sum/sum.wasm
 ```
 
-[The application driver](../../tests/running-sum/run.sh) builds the proofs, audits their axioms,
-tests native arithmetic and stream handling, exercises scripted Wasm transfers and failures,
-compares native and Wasmtime output and status, checks interactive output before EOF, and checks
-the exit status after a read error from a directory and, where `/dev/full` exists, a write error
-from `/dev/full`.
+Commands run from the repository root, and [the host
+setup](../../docs/verified-manual.md#the-wasmtime-host) provides the pinned Wasmtime host.  [The
+application driver](../../tests/running-sum/run.sh) builds the proofs and `running-sum-native`,
+writes `build/running-sum/sum.wasm`, audits the axioms of the proofs, tests native arithmetic and
+stream handling, exercises scripted Wasm transfers and failures, compares native and Wasmtime
+output and status, checks interactive output before EOF, and checks the exit status after a read
+error from a directory and, where `/dev/full` exists, a write error from `/dev/full`.  The other
+commands run the native executable and the Wasm module on the example of [Input and
+output](#input-and-output).
