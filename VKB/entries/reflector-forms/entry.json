@@ -9,7 +9,7 @@
     "compiled.f.bound x for a function that returns an array literal",
     "match c with | { value, steps, last := .add } => … | _ => … in a verified_compile definition",
     "verified_compile: a pattern fixes the field … to …, which is not a constructor of an enumeration with a `Flat` instance to words",
-    "verified_compile: the pattern 0 neither binds the value nor applies UInt64.ofBitVec"
+    "verified_compile: unsupported term match w with | 0 => … | x => …"
   ],
   "modules": [
     "Verified.Reflect.Lemmas",
@@ -46,6 +46,7 @@
   "sources": [
     "2026-10-30: Array literals and conditions on propositions in the reflector",
     "2026-10-30: The example ports to the verified compiler",
-    "2026-10-30: A reflector rule for structure patterns, and the port of Calc"
+    "2026-10-30: A reflector rule for structure patterns, and the port of Calc",
+    "2026-10-31: The structure-pattern rule on structures with a `Flat` instance"
   ]
 }

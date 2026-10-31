@@ -7,7 +7,8 @@ chain's equation with the match by cases on the structure and on each fixed fiel
 below fix one field or two, fix different fields in different alternatives, fix every field, bind
 the value, or end without a wildcard.  The matches stand on a parameter, on a structure built in
 place, on a call, in a loop's body, and on a record that holds an array.  A pattern that fixes a
-`Bool` field stops the reflector. -/
+`Bool` field stops the reflector, and so does a match on word literals, since the rule applies only
+to structures with a `Flat` instance and Lean's `UInt64` has none. -/
 
 namespace Verified.Examples.Patterns
 
@@ -134,6 +135,21 @@ error: verified_compile: a pattern fixes the field `flag` to true, which is not 
 -/
 #guard_msgs in
 verified_compile rejected := [flagged]
+
+/-- A match on word literals.  Lean's `UInt64` is a structure without a `Flat` instance, so the
+reflector does not read the match as structure patterns and rejects it as an unsupported term. -/
+def wordMatch (w : UInt64) : UInt64 :=
+  match w with
+  | 0 => 1
+  | _ => 2
+
+/--
+error: verified_compile: unsupported term match w with
+| 0 => 1
+| x => 2
+-/
+#guard_msgs in
+verified_compile wordRejected := [wordMatch]
 
 #print axioms compiled.bytes
 

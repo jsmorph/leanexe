@@ -2306,16 +2306,19 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     if let some name ← sumName? (← inferType app.discrs[0]!) then
       return ← reflectDataMatch app name
     if app.alts.size > 1 then
-      if let some (ctor, fields) ← structOf? (← inferType app.discrs[0]!) then
-        -- Several alternatives on a structure, whose patterns fix fields to constructors of
-        -- enumerations: the chain of tests of `structMatchChain`, on a place or on a variable
-        -- bound to the value first.
-        let d := app.discrs[0]!
-        unless ← isPlace d do
-          return ← reflectAs (← withLetDecl `t (← inferType d) d fun y => do
-            mkLetFVars #[y] { app with discrs := #[y] }.toExpr) app.toExpr
-        let (chain, eq) ← structMatchChain app ctor fields
-        return ← reflectVia chain eq
+      let type ← inferType app.discrs[0]!
+      if let some (ctor, fields) ← structOf? type then
+        -- Several alternatives on a structure with a `Flat` instance, whose patterns fix fields
+        -- to constructors of enumerations: the chain of tests of `structMatchChain`, on a place
+        -- or on a variable bound to the value first.  A structure without the instance, such as
+        -- Lean's `UInt64` in a match on word literals, falls through to the rules below.
+        if (← flatInstance? type).isSome then
+          let d := app.discrs[0]!
+          unless ← isPlace d do
+            return ← reflectAs (← withLetDecl `t (← inferType d) d fun y => do
+              mkLetFVars #[y] { app with discrs := #[y] }.toExpr) app.toExpr
+          let (chain, eq) ← structMatchChain app ctor fields
+          return ← reflectVia chain eq
     if app.alts.size == 1 then
       let alt := app.alts[0]!
       let d := app.discrs[0]!

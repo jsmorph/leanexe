@@ -39564,7 +39564,7 @@ The build, the emissions, and the drivers ran on AArch64 on the tree of the port
 - [x] The byte comparison of the registry modules across the change.
 - [x] The verified manual, the index, the guides, and the counts of the documents.
 - [ ] Decide whether `match` on a `Bool`, and patterns that fix a `Bool` field, get a rule, which no example needs now.
-- [ ] Decide whether the rule applies only to structures with a `Flat` instance, so that a match on word literals stops with `unsupported term` as before, a change to the compiler with its own byte comparison.
+- [x] Decide whether the rule applies only to structures with a `Flat` instance, so that a match on word literals stops with `unsupported term` as before, a change to the compiler with its own byte comparison.
 
 ## 2026-10-30: The version that CompCert 3.18 reports
 
@@ -39747,3 +39747,22 @@ Since [the first record](#2026-10-30-the-full-check-as-a-script), the ported exa
 | `VKB/Check.lean` and `rocq/check.sh` | 5 s and 22 s | 29 entries; `Clight2Asm.v` with the assumptions of CompCert's theorem |
 | `tests/wgsl/run.sh --verified` and `--verified-gpt32`, emission | 105 s and 8 min | 9 kernels and 347 cases; 17 kernels and 694 cases |
 | `tests/talos/run.sh` | 10 min | 64,751 commands passed and 346 skipped; report equal to CodeLib's |
+
+## 2026-10-31: The structure-pattern rule on structures with a `Flat` instance
+
+The rule of [the structure-pattern entry](#2026-10-30-a-reflector-rule-for-structure-patterns-and-the-port-of-calc) applied to every `match` with several alternatives on a type that Lean records as a structure.  Lean's `UInt64` is one, so `match w with | 0 => … | _ => …` reached the rule and stopped with ``verified_compile: the pattern 0 neither binds the value nor applies UInt64.ofBitVec``, where before the rule it had stopped with `unsupported term`.  That entry's last box asked whether the rule should apply only to structures with a `Flat` instance, and the decision is that it does.  [The reflector](Verified/Reflect/Definitions.lean) now builds the chain of `structMatchChain` only when `flatInstance?` finds an instance for the type of the matched value, and a match on any other structure falls through to the rules after it.  The match on words now stops with ``verified_compile: unsupported term match w with``, followed by the match, and [the pattern example](Verified/Examples/Patterns.lean) checks that message with `#guard_msgs`.
+
+A parameter, a result, or a binding whose type is a structure needs a `Flat` instance, so besides a match on a `UInt64`, the restriction reaches a match on a structure without the instance that is built in place.  A scratch module outside the tree tried such a match, on a structure built from its parameters, with an enumeration field fixed in the first pattern.  Before the change it stopped with ``the type Plain is not UInt64, Bool, Float, Float32, Bytes, a structure with a `Flat` instance, an array, or a pair``, and after it, with `unsupported term` and the match.  The reflector does not name the missing instance for that form, since no program in the tree uses it and the message quotes the match.  The byte comparison below found every module of the registry unchanged.
+
+[The verified manual](docs/verified-manual.md#restrictions) gives the new message in its row for matches on words, and its section on structure patterns, its description of the pattern example, the VKB entry `reflector-forms`, and [the reflector's guide](Verified/README.md) state the restriction.  The entry's goal for the earlier message now names the new one, and its sources name this entry.  The Calc entry's box for the decision is ticked.
+
+| Job | Purpose | Duration | Result |
+|---|---|---|---|
+| `tests/verified/emit-modules.sh` on the build before the change | Bytes before | 10 min, from 23:32 UTC on 2026-10-30 | Every registry module written |
+| `lake build Verified.Reflect.Command` and the scratch modules | First check of the change and its messages | 52 s, from 23:42 UTC on 2026-10-30 | Messages quoted above, and no warning on a changed line |
+| `lake env lean Verified/Examples/Patterns.lean` | Pattern example with the new `#guard_msgs` | 17 s, at 23:44 UTC on 2026-10-30 | Passed, with `compiled.bytes` on the three permitted axioms |
+| `lake build LeanExe Examples Demos Verified Library TestSupport native-verified native-bare verified-cases native-module-cases` | Build of every module with the change | 93 min, from 23:45 UTC on 2026-10-30 | 15,366 jobs, no error |
+| `tests/verified/emit-modules.sh` with `--compare`, and the SHA-256 sums of both emissions | Bytes after, and their comparison | 8 min, from 01:18 UTC | Every module identical, and the lists of SHA-256 sums identical |
+| `tests/verified/run.sh` | Full verified driver | 57 min, from 01:26 UTC | 41,462 cases passed and none failed, every file module reported only the three permitted axioms, and the accuracy checks passed |
+| `VKB/Check.lean` on `VKB/entries` | Names of the entries | 3 s, at 02:24 UTC | No problem reported |
+| `node tools/check-doc-links.mjs` on a copy of the tree | Links and reachability | Under 1 s, at 02:24 UTC | No problem reported, and every document is reachable from the README |
