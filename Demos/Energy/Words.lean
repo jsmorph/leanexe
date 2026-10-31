@@ -1,8 +1,8 @@
-import Demos.Energy.Spec
+import Demos.Energy.Operation
 
 /-! The meaning of the authorizer's words in the specification's terms.  `profileOf` and
-`snapshotOf` read the profile table and the input words into the records of `Spec`, and
-`limitsOf` the proposed limits, with a signed power `p` stored as the word `p + 2 ^ 32`.  `ProfileValid` is the validity condition of a profile
+`snapshotOf` read the profile table and the input words into the records of `Spec`, `limitsOf`
+the proposed limits, and `runOf` a sequence of inputs into a run, with a signed power `p` stored as the word `p + 2 ^ 32`.  `ProfileValid` is the validity condition of a profile
 table, which `site_valid` proves for the test site, and `InputValid` the condition that the
 authorizer's checks before the side tests accept. -/
 
@@ -43,6 +43,10 @@ def snapshotOf (xs : Array UInt64) : Snapshot where
 
 /-- The proposed limits that input words hold. -/
 def limitsOf (xs : Array UInt64) : Limits := ⟨signed xs[11]!, signed xs[12]!⟩
+
+/-- The run of the first `n` inputs of a sequence, each with its snapshot and proposed limits. -/
+def runOf (n : ℕ) (xs : ℕ → Array UInt64) : Run :=
+  ⟨n, fun j => snapshotOf (xs j), fun j => limitsOf (xs j)⟩
 
 /-- A signed power word within `2 ^ 20` of zero. -/
 def PowerWord (w : UInt64) : Prop := 2 ^ 32 - 2 ^ 20 ≤ w.toNat ∧ w.toNat ≤ 2 ^ 32 + 2 ^ 20

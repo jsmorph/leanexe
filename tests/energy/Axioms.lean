@@ -8,7 +8,10 @@ and `Quot.sound`. -/
 #print axioms Demos.Energy.Theorems.authorize_sound
 #print axioms Demos.Energy.Theorems.authorize_accepted
 #print axioms Demos.Energy.Theorems.authorize_admits
+#print axioms Demos.Energy.Theorems.authorize_operation
 #print axioms Demos.Energy.Authorize.authorizeWith_iff
+#print axioms Demos.Energy.Spec.operation_sound
+#print axioms Demos.Energy.Spec.operates_exists
 #print axioms Demos.Energy.Spec.Trajectory.fallback_keeps_floor
 #print axioms Demos.Energy.Spec.Trajectory.fallback_keeps_ceiling
 #print axioms Demos.Energy.Spec.Trajectory.fallback_keeps_export

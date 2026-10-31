@@ -221,20 +221,16 @@ theorem admitted_exists {p : Profile} {q : Snapshot} {c : Limits} (t : ℝ)
     (heta : p.eta ≤ 1000000) (hF : p.fallbackLow ≤ 0 ∧ 0 ≤ p.fallbackHigh)
     (hE : q.energyLow ≤ q.energyHigh) (hL : q.loadLow ≤ q.loadHigh) (hS : q.pvLow ≤ q.pvHigh) :
     ∃ x : Trajectory, x.AdmittedUntil p q c t := by
+  have heff : p.eff ≤ 1 := by
+    unfold Profile.eff
+    rw [div_le_one (by norm_num)]
+    exact_mod_cast heta
   refine ⟨⟨fun _ => q.energyLow, fun _ => 0, fun _ => 1, fun _ => 1, fun _ => 0,
-    fun _ => q.loadLow, fun _ => q.pvLow⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    fun _ => q.loadLow, fun _ => q.pvLow⟩, ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
   · show (q.energyLow : ℝ) ≤ q.energyLow ∧ (q.energyLow : ℝ) ≤ q.energyHigh
     exact ⟨le_refl _, by exact_mod_cast hE⟩
   · intro u _
-    show (powerLow p q c : ℝ) ≤ 0 ∧ (0 : ℝ) ≤ powerHigh p q c
-    exact ⟨by exact_mod_cast (powerLow_le p q c).trans hF.1,
-      by exact_mod_cast hF.2.trans (le_powerHigh p q c)⟩
-  · intro u _
-    have : p.eff ≤ 1 := by
-      unfold Profile.eff
-      rw [div_le_one (by norm_num)]
-      exact_mod_cast heta
-    exact ⟨this, le_refl _, this, le_refl _⟩
+    exact ⟨heff, le_refl _, heff, le_refl _⟩
   · intro u _
     exact ⟨le_refl _, by positivity⟩
   · intro u _
@@ -246,6 +242,10 @@ theorem admitted_exists {p : Profile} {q : Snapshot} {c : Limits} (t : ℝ)
   · exact ⟨aemeasurable_const, aemeasurable_const, aemeasurable_const, aemeasurable_const⟩
   · intro u _
     simp [Trajectory.rate]
+  · intro u _
+    show (powerLow p q c : ℝ) ≤ 0 ∧ (0 : ℝ) ≤ powerHigh p q c
+    exact ⟨by exact_mod_cast (powerLow_le p q c).trans hF.1,
+      by exact_mod_cast hF.2.trans (le_powerHigh p q c)⟩
 
 /-- The conditions of the acceptance rule give the bounds of the acceptance rule at each time of
 the window, for every trajectory admitted until that time. -/

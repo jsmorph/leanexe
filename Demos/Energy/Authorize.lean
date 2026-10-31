@@ -1,5 +1,5 @@
 import Demos.Energy.Arith
-import Demos.Energy.Window
+import Demos.Energy.Compose
 
 /-! The theorems about `authorizeWith` under a valid profile table.  `authorizeWith_iff` states
 that the authorizer accepts exactly when the input is valid and the conditions of the acceptance
@@ -401,22 +401,40 @@ theorem authorizeWith_admits (hs : ProfileValid site)
   · exact hv.load.1
   · exact hv.pv.1
 
+theorem eta_pos (hs : ProfileValid site) : 0 < (profileOf site).eta := by
+  have := hs.etaLow
+  simp only [profileOf]
+  omega
+
+theorem fallback_zero (hs : ProfileValid site) :
+    (profileOf site).fallbackLow ≤ 0 ∧ 0 ≤ (profileOf site).fallbackHigh := by
+  have h1 := hs.fallbackLow.2
+  have h2 := hs.fallbackHigh.1
+  simp only [profileOf, signed]
+  omega
+
 /-- Accepted limits give the bounds of the acceptance rule at each time of the window for every
 trajectory admitted until that time. -/
 theorem authorizeWith_sound (hs : ProfileValid site)
     (h : (authorizeWith site xs).status = .accepted) {x : Trajectory} {t : ℝ}
     (ht : t ∈ window (profileOf site) (snapshotOf xs))
     (hx : x.AdmittedUntil (profileOf site) (snapshotOf xs) (limitsOf xs) t) :
-    x.WithinOrFallback (profileOf site) (snapshotOf xs) t := by
-  have heta : 0 < (profileOf site).eta := by
-    have := hs.etaLow
-    simp only [profileOf]
-    omega
-  have hF : (profileOf site).fallbackLow ≤ 0 ∧ 0 ≤ (profileOf site).fallbackHigh := by
-    have h1 := hs.fallbackLow.2
-    have h2 := hs.fallbackHigh.1
-    simp only [profileOf, signed]
-    omega
-  exact window_sound heta hF ((authorizeWith_iff hs).mp h).2 ht hx
+    x.WithinOrFallback (profileOf site) (snapshotOf xs) t :=
+  window_sound (eta_pos hs) (fallback_zero hs) ((authorizeWith_iff hs).mp h).2 ht hx
+
+/-- Consecutive inputs that the authorizer accepted, sent under the gateway's rules, give at every
+time from the first snapshot to the end of the last window the bounds of an accepted window that
+contains that time, for a trajectory that meets that window's other assumptions until then. -/
+theorem authorizeWith_operation (hs : ProfileValid site) {n : ℕ} {ys : ℕ → Array UInt64}
+    (h : ∀ j < n, (authorizeWith site (ys j)).status = .accepted)
+    (hr : (runOf n ys).Spaced (profileOf site)) (h0 : 0 < n) {x : Trajectory}
+    {state : ℝ → State} {t : ℝ} (ht0 : (runOf n ys).time 0 ≤ t)
+    (ht1 : t ≤ (runOf n ys).time (n - 1) + (profileOf site).window) :
+    ∃ j < n, t ∈ window (profileOf site) (snapshotOf (ys j)) ∧
+      (x.ModelUntil (profileOf site) (snapshotOf (ys j)) t →
+        x.OperatesIn (profileOf site) (runOf n ys) state j t →
+        x.WithinOrFallback (profileOf site) (snapshotOf (ys j)) t) :=
+  operation_sound (r := runOf n ys) (eta_pos hs) (fallback_zero hs)
+    (fun j hj => ((authorizeWith_iff hs).mp (h j hj)).2) hr h0 ht0 ht1
 
 end Demos.Energy.Authorize

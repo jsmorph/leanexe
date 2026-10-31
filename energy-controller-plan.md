@@ -32,7 +32,7 @@ The model, module, and file levels of the guarantee are theorems.  The installat
 | File | The released file holds the module's encoding | `energy_file` and `energy_file_decode` | The file as it was when Lean checked the theorem, and the gateway's digest check when it loads the file |
 | Installation | The site behaves as the model states | Equipment qualification, commissioning, read-only operation, and fault-injection tests | Measurements, device firmware, the gateway, communication, and wiring |
 
-A window's theorem covers the interval from one measurement to the end of the window, including the command's expiry and the device's return to fallback.  The gateway authorizes a new command from a new measurement before the current command expires, so consecutive windows overlap and each has its own theorem.  Each theorem takes its premises only up to the time of its conclusion, so a window's theorem covers the site until power leaves that window's interval, which the next command can cause only after the next measurement has started the next window.  When no new authorization arrives, the device runs in its fallback mode after the window, and the safety of that mode then depends on the device's own protections (A8).
+A window's theorem covers the interval from one measurement to the end of the window, including the command's expiry and the device's return to fallback.  The gateway authorizes a new command from a new measurement before the current command expires, so consecutive windows overlap and each has its own theorem.  `operation_sound` composes them: when accepted snapshots lie at most `W` apart, every time from the first accepted snapshot to the end of the last window lies in the window of the latest accepted snapshot at or before it, and that window's bounds hold there.  Its premises are that window's own: assumptions A1 and A3 to A5, and the device's response and the gateway's rules from its snapshot to that time, which `OperatesIn` states and from which the theorem derives A2, so a fault in one window leaves the theorems of later windows intact.  Each theorem takes its premises only up to the time of its conclusion.  When no new authorization arrives, the device runs in its fallback mode after the window, and the safety of that mode then depends on the device's own protections (A8).
 
 ## Site, equipment, and assumptions
 
@@ -230,6 +230,8 @@ theorem authorize_sound {xs : Array UInt64} (h : (authorize xs).status = .accept
 | `energy_bounds`, `drainLow_ge` | Rate bounds on a measurable trajectory give the affine energy bounds up to each time of the window, and the integer drain covers the real one | `Window.lean` |
 | `window_sound` | The conditions of the acceptance rule imply `WithinOrFallback` at each time `t` of the window for every trajectory admitted until `t` | `Window.lean` |
 | `admitted_exists`, `authorizeWith_admits`, `authorize_admits` | For ordered intervals, and so for every accepted input, some trajectory is admitted until every time | `Window.lean`, `Authorize.lean`, `Theorems.lean` |
+| `power_in_window` | The device's response and the gateway's rules give assumption A2 of an accepted window from its snapshot to the next | `Compose.lean` |
+| `run_sound`, `run_covered`, `operation_sound`, `authorize_operation`, `operates_exists` | Each accepted window's bounds hold from its snapshot to the next, every time from the first accepted snapshot to the end of the last window lies in such a window when accepted snapshots lie at most `W` apart, and the premises can hold together | `Compose.lean`, `Authorize.lean`, `Theorems.lean` |
 | `authorizeWith_iff` | Under a valid profile table, the authorizer accepts exactly when the input meets `InputValid` and the conditions of the acceptance rule hold | `Authorize.lean` |
 | `authorizeWith_sound`, `authorize_sound` | For accepted limits, every trajectory admitted until a time `t` of the window meets the bounds of the acceptance rule at `t` | `Authorize.lean`, `Theorems.lean` |
 | `authorizeWith_accepted`, `authorize_accepted` | An accepted result holds the proposed limits and the expiry `t_m + W - τ` | `Authorize.lean`, `Theorems.lean` |
@@ -250,10 +252,11 @@ The Lean code, proofs, and replay tool are in this repository and follow the sle
 |---|---|
 | `Demos/Energy/README.md` | The model, interface, theorem, and limits, as present facts |
 | `Demos/Energy/Replay.md` | The replay study: data, simulated site, interval rules, margins, window length, and bills |
-| `Demos/Energy/Spec.lean` | Profile, snapshot, trajectory, `AdmittedUntil`, `Within`, `WithinOrFallback`, and the `fallback_keeps` lemmas |
+| `Demos/Energy/Spec.lean` | Profile, snapshot, command limits, trajectory, `ModelUntil`, `AdmittedUntil`, `Within`, `WithinOrFallback`, and the `fallback_keeps` lemmas |
+| `Demos/Energy/Operation.lean` | A run of accepted authorizations, rule 5 with acceptance as `Run.Spaced`, and `OperatesIn`: the device's response and the gateway's rules for one window |
 | `Demos/Energy/Words.lean` | Decoding of words into the specification's records, `ProfileValid`, and `InputValid` |
 | `Demos/Energy/Program.lean`, `Flat.lean` | `authorizeWith` and its helpers, in the verified compiler's dialect, and the representations of its result |
-| `Demos/Energy/Arith.lean`, `Window.lean`, `Authorize.lean` | Exactness of word operations, the energy bound and `window_sound`, and the theorems about the authorizer |
+| `Demos/Energy/Arith.lean`, `Window.lean`, `Compose.lean`, `Authorize.lean` | Exactness of word operations, the energy bound and `window_sound`, consecutive windows, and the theorems about the authorizer |
 | `Demos/Energy/Site.lean` | The profile table of the test site and the wrapper `authorize`, and later one table per qualified site |
 | `Demos/Energy/Verified.lean`, `Theorems.lean`, `File.lean`, `Examples.lean` | Compilation, `site_valid` and the module-level theorems, file theorems, and kernel-evaluated examples |
 | `tests/TestSupport/Energy/Cases.lean`, `CasesMain.lean` | Case printer, which the executable `verified-cases-energy` of `lakefile.lean` runs from a branch of `tests/verified/run.sh` |
@@ -286,7 +289,7 @@ The evaluation compares the controller, on withheld data, with a simulation of t
 | 5. Read-only operation | Ingestion, authorizer, and historian on live data, with no device writes | At least 30 consecutive days logged; comparison of model and measurement; coverage statistics for A1, A3, and A4 |
 | 6. Gateway and actuation qualification | Gateway, vendor test rig or hardware-in-the-loop, fault injection | The gateway's rules, expiry, return to fallback, read-back, and credential isolation demonstrated; installer and vendor sign-off |
 | 7. Supervised operation | Narrow power limits, short operating periods, rollback to the vendor's mode | Measured outcomes; incident log |
-| 8. Extensions | Schedules with time-varying reserves and EV deadlines, owner settings in the input, a theorem that composes consecutive windows, a verified optimizer, limits over metering intervals, the C translation | New theorems and assumptions for each extension |
+| 8. Extensions | Schedules with time-varying reserves and EV deadlines, owner settings in the input, a verified optimizer, grid limits over metering intervals, the C translation | New theorems and assumptions for each extension |
 
 A site stays in read-only operation when its equipment lacks command expiry or a qualified fallback, when its energy estimate has no characterized error bound, when the meaning of a profile value is ambiguous, or when the installer or utility has not approved control.  An extension that changes the model states new theorems and new assumptions, and an earlier theorem never describes the extended system.  The site's module, with its profile table and file theorem, is the artifact that Stages 5 to 7 run.
 

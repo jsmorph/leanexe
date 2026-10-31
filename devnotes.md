@@ -39470,3 +39470,19 @@ Provisional recommendation: B, because it removes two tests and their proofs, ma
 A fresh reviewer confirmed the grid bound's algebra and the replay's figures ($1,459, $1,628, and $1,474 to $1,476), and rejected option B.  B's property must hold at every instant, but a self-consumption loop follows a meter with a delay of seconds: the G100 grid code allows 5 s to correct an export excursion, and one AC-coupled inverter declares a response under 5 s.  During that delay the battery charges while the site imports, or discharges while it exports, by kilowatts, and one-second data show load steps of more than 1.4 kW within a minute in 1% of 180 s windows.  Meter offsets, loads and PV that the battery's meter does not see, single-phase batteries on multiphase sites, and forced recharging at low charge break the property as well.  A form that tolerates the delay, with the battery charging at most the window's largest surplus, costs $1,625 at 180 s against $1,628 for A, so B's whole gain came from the instantaneous premise that equipment violates.  B would also exclude every nonzero held setpoint.
 
 Outcome: option A, the grid tests over `B`, which leaves the theorems and the program as they are.  The import cap's cost at the test house is a property of an instantaneous cap under a worst-case load bound.  Grid limits stated over metering intervals longer than the equipment's response time, a Stage 8 extension, are the design that can lower it with a true premise.
+
+## 2026-10-31: Consecutive windows
+
+The user chose the composition of consecutive windows as the first Stage 8 extension.  `Operation.lean` specifies a run of accepted authorizations and, for one window, `OperatesIn`: gateway rule 1 at the snapshot, rules 2 to 4 with assumption A7 as the set of states the device may apply until the next accepted snapshot, and the device's response from the snapshot.  `Compose.lean` derives assumption A2 of each window from them (`power_in_window`), gives the window's bounds from its snapshot to the next (`run_sound`), covers every time from the first accepted snapshot to the end of the last window when accepted snapshots lie at most `W` apart (`run_covered`, `operation_sound`), and shows that the premises can hold together (`operates_exists`).  `authorize_operation` states the result for the test site's module.  `Spec.lean` splits `AdmittedUntil` into `ModelUntil`, assumptions A1 and A3 to A5, and A2, so that the composition can derive A2.
+
+A fresh reviewer checked the first version of the specification against the plan and confirmed the derivation of A2 and its non-vacuity.  It found five defects, all fixed:
+
+- `state w` must be the state the device has applied, since under the gateway's record the response premise fails during delivery delays.
+- The device's response stated from every time `u` is stronger than the plan's transition property, which allows power anywhere between its value at a change and the new interval; the response now starts at the snapshot, where rule 1 guarantees a settled device.
+- Premises over the whole run let a fault in one window silence every later window's theorem, against the plan's "each has its own theorem"; the premises are now per window.
+- `Spaced` is rule 5 together with acceptance of a snapshot in each window, which its documentation now says.
+- The plan's paragraph on consecutive windows claimed coverage until power leaves a window's interval; it now states what `operation_sound` gives.
+
+- [x] `Operation.lean`, its review, and the fixes.
+- [x] `Compose.lean` and `authorize_operation`.
+- [x] Rebuild, the case run with the axiom audit, and the commit: 2,047 cases pass, and `operation_sound`, `operates_exists`, and `authorize_operation` use only `propext`, `Classical.choice`, and `Quot.sound`.

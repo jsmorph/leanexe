@@ -128,14 +128,11 @@ noncomputable def rate (x : Trajectory) (u : ℝ) : ℝ :=
 /-- Grid power, W, positive for import. -/
 def grid (x : Trajectory) (u : ℝ) : ℝ := x.load u + x.power u - x.pv u
 
-/-- The assumptions A1 to A5 from the snapshot's time to `t`, for the proposed limits `c`. -/
-structure AdmittedUntil (x : Trajectory) (p : Profile) (q : Snapshot) (c : Limits) (t : ℝ) :
-    Prop where
+/-- The assumptions A1 and A3 to A5 from the snapshot's time to `t`: everything that a window's
+theorem assumes except where battery power lies. -/
+structure ModelUntil (x : Trajectory) (p : Profile) (q : Snapshot) (t : ℝ) : Prop where
   /-- A1: stored energy at the snapshot's time lies in the snapshot's interval. -/
   energy_start : (q.energyLow : ℝ) ≤ x.energy q.time ∧ x.energy q.time ≤ q.energyHigh
-  /-- A2: battery power lies in the window's power interval. -/
-  power : ∀ u ∈ Set.Icc (q.time : ℝ) t,
-    (powerLow p q c : ℝ) ≤ x.power u ∧ x.power u ≤ powerHigh p q c
   /-- A3: efficiencies lie between the bound and 1. -/
   efficiency : ∀ u ∈ Set.Icc (q.time : ℝ) t,
     p.eff ≤ x.etaCharge u ∧ x.etaCharge u ≤ 1 ∧ p.eff ≤ x.etaDischarge u ∧ x.etaDischarge u ≤ 1
@@ -154,6 +151,13 @@ structure AdmittedUntil (x : Trajectory) (p : Profile) (q : Snapshot) (c : Limit
   /-- A5: stored energy is the energy at the snapshot's time plus the integral of the rate. -/
   energy_eq : ∀ u ∈ Set.Icc (q.time : ℝ) t,
     x.energy u = x.energy q.time + ∫ v in (q.time : ℝ)..u, x.rate v
+
+/-- The assumptions A1 to A5 from the snapshot's time to `t`, for the proposed limits `c`. -/
+structure AdmittedUntil (x : Trajectory) (p : Profile) (q : Snapshot) (c : Limits) (t : ℝ) :
+    Prop extends ModelUntil x p q t where
+  /-- A2: battery power lies in the window's power interval. -/
+  power : ∀ u ∈ Set.Icc (q.time : ℝ) t,
+    (powerLow p q c : ℝ) ≤ x.power u ∧ x.power u ≤ powerHigh p q c
 
 /-- The site's limits at time `t`: stored energy between the floor and the ceiling, and grid power
 between the export cap and the import cap. -/
