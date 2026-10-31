@@ -44,7 +44,7 @@ Above `0x1.713786d9c7c09p+1` the fast path computes `erfc x = exp (-x²) p (1/x)
 
 The source is `lib/msun/src/s_erf.c` of FreeBSD [1].  Its notice reads "Copyright (C) 1993 by Sun Microsystems, Inc.  All rights reserved.  Developed at SunPro, a Sun Microsystems, Inc. business.  Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved."  The module docstring of [the implementation](Program.lean) quotes the notice verbatim, as the notice requires.
 
-`verified_compile compiled := [Exp.specialCase, Exp.expCore, Exp.expWith, erfSmall, erfMiddle, erfTail, erfExp, erfWith, erf]` compiles the exponential's functions into the module, so the module carries Arm's exponential and borrows `Exp.expTable` at address 4096, as [the exponential's module](../Exp/README.md) does.  With the runtime's `alloc` and `release` first, `erf` is function 10; it was function 11 while `erfcWith` came before it.  fdlibm's `erf` and `erfc` call fdlibm's `exp` from `e_exp.c`, which reduces by `ln 2`, approximates `exp r` by a rational form with a Remez polynomial of degree 5, and states an error below one unit in the last place [2].  The port calls `Exp.expWith Exp.expTable` instead, Arm's table-driven exponential with a stated error of 0.511 units [3], so its results can differ from FreeBSD's in the last bit.  The proof uses only the relative bound `1.405 · 2^-53` for each of the two exponentials, which `ErfPositive.expWith_relative` derives from `ExpTightFloat.exp_relative`.
+`verified_compile compiled := [Exp.specialCase, Exp.expCore, Exp.expWith, erfSmall, erfMiddle, erfTail, erfExp, erfWith, erf]` compiles the exponential's functions into the module, so the module carries Arm's exponential and borrows `Exp.expTable` at address 4096, as [the exponential's module](../Exp/README.md) does.  With the runtime's `alloc` and `release` first, `erf` is function 10.  fdlibm's `erf` and `erfc` call fdlibm's `exp` from `e_exp.c`, which reduces by `ln 2`, approximates `exp r` by a rational form with a Remez polynomial of degree 5, and states an error below one unit in the last place [2].  The port calls `Exp.expWith Exp.expTable` instead, Arm's table-driven exponential with a stated error of 0.511 units [3], so its results can differ from FreeBSD's in the last bit.  The proof uses only the relative bound `1.405 · 2^-53` for each of the two exponentials, which `ErfPositive.expWith_relative` derives from `ExpTightFloat.exp_relative`.
 
 | C code | Port | Reason |
 |---|---|---|
@@ -87,22 +87,22 @@ The theorems are in [the error function's theorem module](ErfTheorem.lean) and [
 | `erf_pos_infinity`, `erf_neg_infinity` | `erf (+∞)` has the bits `0x3FF0000000000000` and `erf (-∞)` the bits `0xBFF0000000000000`. |
 | `erf_nan` | For a NaN `x`, the result has the bits `Wasm.IEEE64.canonicalNaN`. |
 | `ready_initial` | The module's initial store satisfies `Ready`. |
-| `erf_entry_call` | A call of function 11 from a store satisfying `Ready` returns, without a trap, the bits of `Erf.erf x`, and leaves a store satisfying `Ready` in which every heap region keeps its bytes. |
-| `erf_export` | Function 11 is exported as `erf`. |
-| `erf_bytes_accuracy` | `Erf.compiled.module` encodes to bytes that decode to it, exports function 11 as `erf`, starts in a `Ready` store, and every call from a `Ready` store returns the bits of `Erf.erf x`, within one step for finite `x`, and leaves a `Ready` store, so the statement covers every call in a sequence of calls to `erf`. |
+| `erf_entry_call` | A call of function 10 from a store satisfying `Ready` returns, without a trap, the bits of `Erf.erf x`, and leaves a store satisfying `Ready` in which every heap region keeps its bytes. |
+| `erf_export` | Function 10 is exported as `erf`. |
+| `erf_bytes_accuracy` | `Erf.compiled.module` encodes to bytes that decode to it, exports function 10 as `erf`, starts in a `Ready` store, and every call from a `Ready` store returns the bits of `Erf.erf x`, within one step for finite `x`, and leaves a `Ready` store, so the statement covers every call in a sequence of calls to `erf`. |
 | `erf_module_accuracy` | Encoding and decoding of the module, from `erf_bytes_accuracy`, for the file module. |
 | `erf_file` | `build/verified/erf.wasm` holds `encode Erf.compiled.module`. |
 | `erf_file_decode` | `build/verified/erf.wasm` decodes to the module of `erf_module_accuracy`. |
 
-Each declaration of `ErfTheorem.lean` has a `#print axioms` line, and all eleven report `[propext, Classical.choice, Quot.sound]`.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Erf.ErfTheorem`, checks `ErfFile.lean` against the `erf.wasm` it has written, and fails unless both file theorems report exactly the three permitted axioms.  A run of the script passed this check for its entry `erf:ErfTheorem:ErfFile`.
+Each declaration of `ErfTheorem.lean` has a `#print axioms` line, and all eleven report `[propext, Classical.choice, Quot.sound]`.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Erf.ErfTheorem`, checks `ErfFile.lean` against the `erf.wasm` it has written, and fails unless both file theorems report exactly the three permitted axioms.  A run of the script passed this check for the `erf` entry of `tests/verified/numerics.txt`.
 
-`ErfcTheorem.erfc_within_one` states `F64SignedRounding.WithinSteps 1 (RealErf.erfc (value x.toBits)) (Erfc.erfc x).toBits` for every finite `x`, with only `propext`, `Classical.choice`, and `Quot.sound`.  Its paths take `FmaSpec.FmaNearest` as a hypothesis, which `FmaSpecTheorem.fma_nearest` proves.  [The byte theorem](../Erfc/ErfcBytes.lean), `ErfcBytes.erfc_bytes_accuracy`, has the form of `erf_bytes_accuracy` with the seven tables of `Erfc.lean` borrowed: the bytes decode to the module, whose function 49 is the export `erfc`, and a call from a ready store returns `(Erfc.erfc x).toBits` without a trap, leaves a ready store, and lies within one step of `erfc x` for finite `x`.  [The file theorem](../Erfc/ErfcFile.lean) takes the module from `erfc_bytes_accuracy`, so its axiom report in `tests/verified/run.sh` covers the byte theorem.  [The section on its proof](#the-proof-of-core-maths-erfc) lists the modules.
+`ErfcTheorem.erfc_within_one` states `F64SignedRounding.WithinSteps 1 (RealErf.erfc (value x.toBits)) (Erfc.erfc x).toBits` for every finite `x`, with only `propext`, `Classical.choice`, and `Quot.sound`.  Its paths take `FmaSpec.FmaNearest` as a hypothesis, which `FmaSpecTheorem.fma_nearest` proves.  [The byte theorem](../Erfc/ErfcBytes.lean), `ErfcBytes.erfc_bytes_accuracy`, has the form of `erf_bytes_accuracy` with the tables of [the `erfc` implementation](../Erfc/Program.lean) borrowed: the bytes decode to the module, whose function 49 is the export `erfc`, and a call from a ready store returns `(Erfc.erfc x).toBits` without a trap, leaves a ready store, and lies within one step of `erfc x` for finite `x`.  [The file theorem](../Erfc/ErfcFile.lean) takes the module from `erfc_bytes_accuracy`, so its axiom report in `tests/verified/run.sh` covers the byte theorem.  [The section on its proof](#the-proof-of-core-maths-erfc) lists the modules.
 
 ## Proof
 
 ### Modules
 
-The chain of `erf`'s proof has 33 modules of its own in `Library/Numerics/Float64/Erf/`, and it imports the exponential's chain and `ExpTightFloat`.  The table lists them by stage, each stage in dependency order.  [The library aggregate](../../../../Library.lean) includes `ErfTheorem`, and the file check of `tests/verified/run.sh` builds it as well.
+The chain of `erf`'s proof has its own modules in `Library/Numerics/Float64/Erf/`, and it imports the exponential's chain and `ExpTightFloat`.  The table lists them by stage, each stage in dependency order.  [The library aggregate](../../../../Library.lean) includes `ErfTheorem`, and the file check of `tests/verified/run.sh` builds it as well.
 
 | Stage | Modules | Content |
 |---|---|---|
@@ -217,7 +217,7 @@ The rounding analysis follows each float with an ideal real value and bounds on 
 | `ErfcTheorem` | `erfc_within_one`: one step for `Erfc.erfc x` at every finite `x`, through the ranges that return constants or `fma (-x, 2^-54, 1)` and the main path |
 | `ErfcBytes` | `erfc_bytes_accuracy`: the compiled module's export `erfc` returns `(Erfc.erfc x).toBits` from every ready store and leaves a ready store, with the bound of `erfc_within_one` |
 
-The axiom reports of these modules list only `propext`, `Classical.choice`, and `Quot.sound`, and `FmaSpec` and `ErfcFastPlan` contain definitions only.  `erfc_within_one` and the four theorems of `ErfcBytes` report the same three axioms.  [The journal](../../../../devnotes.md#2026-10-14-the-accuracy-theorem-of-the-port-of-core-maths-erfc-track-trig) records the repairs of the first build of the 18 modules from `ErfcTrack5` to `ErfcTheorem`.
+The axiom reports of these modules list only `propext`, `Classical.choice`, and `Quot.sound`, and `FmaSpec` and `ErfcFastPlan` contain definitions only.  `erfc_within_one` and the four theorems of `ErfcBytes` report the same three axioms.  [The journal](../../../../devnotes.md#2026-10-14-the-accuracy-theorem-of-the-port-of-core-maths-erfc-track-trig) records the repairs of the first build of the modules from `ErfcTrack5` to `ErfcTheorem`.
 
 ### History
 

@@ -37,7 +37,7 @@ From 2 up, the functions are `√(2/(π x)) (P cos θ ∓ Q sin θ)` and `√(2/
 
 ## Implementation
 
-The sources are FreeBSD's `lib/msun/src/e_j0.c`, `e_j1.c`, and `e_jn.c` [1, 2, 3], each with the 1993 copyright notice of Sun Microsystems, which states that permission "to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved".  The module docstring of [the implementation](Program.lean) quotes the notice verbatim, as the notice requires.  The port follows the C code operation for operation in the Verified dialect, and the `verified_compile` call lists 40 functions: 13 of [the trigonometric functions](../Trig/Program.lean), 3 of [the logarithm](../Log/Program.lean), and 24 of this module.
+The sources are FreeBSD's `lib/msun/src/e_j0.c`, `e_j1.c`, and `e_jn.c` [1, 2, 3], each with the 1993 copyright notice of Sun Microsystems, which states that permission "to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved".  The module docstring of [the implementation](Program.lean) quotes the notice verbatim, as the notice requires.  The port follows the C code operation for operation in the verified compiler's dialect, and the `verified_compile` call lists the functions that it takes from [the trigonometric module](../Trig/Program.lean) and [the logarithm's module](../Log/Program.lean) before those of this module.
 
 | C code | Port | Reason |
 |---|---|---|
