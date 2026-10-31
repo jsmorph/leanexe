@@ -64,10 +64,7 @@ result, and two by `scaled`, which reads one array and builds another.
 
 [`Euler`](../../Demos/Euler/README.md) stores its grids of cells in this layout and updates them in
 loops.  [`Calc`](../Calc/README.md) and [`Shape`](../Shape/README.md) have records in locals instead
-of arrays.  [`Bools`](../Bools/README.md) has `Bool` values outside arrays.  The LTG entries
-[`record-read`](../../ltg/entries/record-read/README.md) and
-[`record-build`](../../ltg/entries/record-build/README.md) hold proof guidance for reads and builds
-of record arrays.
+of arrays.  [`Bools`](../Bools/README.md) has `Bool` values outside arrays.
 
 ## References
 

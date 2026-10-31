@@ -101,9 +101,9 @@ browser pages.
 [`Gpt`](../Gpt/README.md) is the same model in binary64 on WebAssembly, with theorems about the
 bytes, and the GPT-2 browser page samples tokens with its `sampleTopK`.
 [`Binary32`](../../Examples/Binary32/README.md) has the verified WGSL kernels of `scale32`,
-`axpyArray32`, `matVec32`, and `condMix32`, which `tests/wgsl/run.sh` runs with this demo's
-kernels.  The LTG entry [`wgsl-kernel`](../../ltg/entries/wgsl-kernel/README.md) describes the
-printer, the parser, and the dispatch semantics of the WGSL library.
+`axpyArray32`, `matVec32`, and `condMix32`, which `tests/wgsl/run.sh` runs with this demo's kernels.
+The VKB entry [`verified-wgsl-kernel`](../../VKB/entries/verified-wgsl-kernel/README.md) describes
+how a build compiles to a WGSL kernel and how its dispatch theorem is proved.
 
 ## References
 

@@ -56,9 +56,7 @@ CompCert.  The cases state that a call allocates no block.
 
 [`ScaledHypot`](../ScaledHypot/README.md) adds square root and division, and
 [`Piecewise`](../Piecewise/README.md) adds comparisons, negation, `abs`, `min`, and `max`.
-[`Binary32`](../Binary32/README.md) has `axpy32`, the same function on `Float32`.  The LTG entry
-[`float-arithmetic`](../../ltg/entries/float-arithmetic/README.md) describes the rules for float
-expressions.
+[`Binary32`](../Binary32/README.md) has `axpy32`, the same function on `Float32`.
 
 ## References
 

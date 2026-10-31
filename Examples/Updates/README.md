@@ -66,12 +66,9 @@ the written file and requires both file theorems to report only the axioms `prop
 ## Related examples
 
 [`Clob`](../../Demos/Clob/README.md) proves functions that update their arrays in place, with
-`set!`, `insertIdx!`, `eraseIdxIfInBounds`, and `push`.  [`SumCount`](../SumCount/README.md)
-returns a new array without updating one.  The GPT-2 cache in [`Gpt`](../../Demos/Gpt/README.md)
-grows by `++` in place.  The LTG entries
-[`in-place-update`](../../ltg/entries/in-place-update/README.md) and
-[`array-build`](../../ltg/entries/array-build/README.md) describe in-place array updates and the
-copies that the other updates make.
+`set!`, `insertIdx!`, `eraseIdxIfInBounds`, and `push`.  [`SumCount`](../SumCount/README.md) returns
+a new array without updating one.  The GPT-2 cache in [`Gpt`](../../Demos/Gpt/README.md) grows by
+`++` in place.
 
 ## References
 

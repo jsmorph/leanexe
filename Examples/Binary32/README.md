@@ -82,9 +82,8 @@ browser's WebGPU.
 [`Axpy`](../Axpy/README.md), [`ScaledHypot`](../ScaledHypot/README.md), and
 [`Piecewise`](../Piecewise/README.md) are the binary64 forms of the scalar functions.
 [`Gpt32`](../../Demos/Gpt32/README.md) applies the same translation to the kernels of GPT-2 in
-binary32.  The LTG entries
-[`binary32-arithmetic`](../../ltg/entries/binary32-arithmetic/README.md) and
-[`wgsl-kernel`](../../ltg/entries/wgsl-kernel/README.md) describe the rules.
+binary32.  The VKB entry [`verified-wgsl-kernel`](../../VKB/entries/verified-wgsl-kernel/README.md)
+describes how a build compiles to a WGSL kernel and how its dispatch theorem is proved.
 
 ## References
 

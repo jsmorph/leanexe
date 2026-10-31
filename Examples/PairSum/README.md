@@ -48,11 +48,7 @@ most three.
 ## Related examples
 
 [`SumCount`](../SumCount/README.md) returns its array literal to the caller instead of releasing it.
-[`SumArray`](../SumArray/README.md) folds over an array that the caller passes in.  The LTG entries
-[`array-literal`](../../ltg/entries/array-literal/README.md),
-[`array-fold-loop`](../../ltg/entries/array-fold-loop/README.md), and
-[`release-temporary`](../../ltg/entries/release-temporary/README.md) hold proof guidance for the
-literal, the fold, and the release.
+[`SumArray`](../SumArray/README.md) folds over an array that the caller passes in.
 
 ## References
 

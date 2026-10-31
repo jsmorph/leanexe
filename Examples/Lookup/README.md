@@ -57,10 +57,9 @@ with CompCert.  The cases state the two blocks that stay allocated, the input an
 ## Related examples
 
 [`TreeLookup`](../TreeLookup/README.md) has the same loop structure over a search tree.
-[`Calc`](../Calc/README.md) has a loop whose state is a structure.  The LTG entries
-[`index-loop`](../../ltg/entries/index-loop/README.md) and
-[`array-literal`](../../ltg/entries/array-literal/README.md) hold proof guidance for loops and
-array literals.
+[`Calc`](../Calc/README.md) has a loop whose state is a structure.  The VKB entry
+[`loop-combinators`](../../VKB/entries/loop-combinators/README.md) holds the loop lemmas that
+`compute_eq` uses.
 
 ## References
 

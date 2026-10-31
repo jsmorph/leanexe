@@ -54,10 +54,7 @@ compiled with CompCert.  The cases state that a call allocates no block.
 ## Related examples
 
 [`Binary32`](../Binary32/README.md) has `piecewise32`, the same function on `Float32`.
-[`Bools`](../Bools/README.md) returns float comparisons as `Bool` values.  The LTG entries
-[`float-arithmetic`](../../ltg/entries/float-arithmetic/README.md) and
-[`binary32-arithmetic`](../../ltg/entries/binary32-arithmetic/README.md) hold proof guidance for
-binary64 and binary32 operations.
+[`Bools`](../Bools/README.md) returns float comparisons as `Bool` values.
 
 ## References
 

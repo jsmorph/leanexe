@@ -74,10 +74,6 @@ written file and requires both file theorems to report only the axioms `propext`
 [`Lists`](../Lists/README.md) has the same layout for Lean's `List UInt64`, with a fold instead of
 tail recursion.  [`Trees`](../Trees/README.md) has a recursive type with two children and non-tail
 recursion.  [`Gcd`](../../Library/Numerics/Arithmetic/Gcd/README.md) has tail recursion on words.
-The LTG entries [`tail-recursion-records`](../../ltg/entries/tail-recursion-records/README.md),
-[`node-match`](../../ltg/entries/node-match/README.md), and
-[`list-cell`](../../ltg/entries/list-cell/README.md) describe tail recursion over records, matches
-on recursive values, and list cells.
 
 ## References
 

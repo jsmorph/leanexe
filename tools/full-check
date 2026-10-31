@@ -670,8 +670,7 @@ write_status() {
     else
       notes="These steps did not run: $(unrun_groups)."
     fi
-    notes+="  The check leaves out the LTG check of the LeanExe compiler, which is being retired."
-    notes+="  It also leaves out"
+    notes+="  The check leaves out"
     notes+=" \`tests/native/subset.sh\`, whose result is the count of modules without a"
     notes+=" translation that \`tests/native/verified.sh\` reports, \`tests/native/bench.sh\`, which"
     notes+=" measures time, the decoder test, which needs the WebAssembly test suite converted by"

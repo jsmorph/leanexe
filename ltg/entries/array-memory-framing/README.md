@@ -1,9 +1,0 @@
-# Array representation across disjoint writes
-
-`UInt64Array.At store ptr xs` is the memory layout of an `Array UInt64`: the length word at `ptr`, element `i` at `ptr + 8 * (i + 1)`, and bounds that keep every word inside 32-bit addresses and inside memory.  `Heap.Borrowed` and `Heap.Owned` both contain it, and `Stmt.fold_spec` reads an array through it.  The declarations in this entry keep the layout true when other memory changes, and they build it for an array that code writes word by word.
-
-`UInt64Array.At.frame` keeps the layout across a change that does not shrink memory and leaves the array's bytes unchanged, which covers an allocation that grows memory or reuses a free block elsewhere.  `At.frameBefore` covers changes at or above a cutoff that the array ends below, with the page count unchanged, and `At.write64After` covers one later store at or above the cutoff.  `At.writesRange` applies the same preservation to a `Memory.WritesRange` whose interval is disjoint from the array.  `At.generatedElement` gives the address bound and the read for an in-bounds element in the form that a load produces.
-
-`UInt64Array.PrefixAt` records an array's final length and the elements written so far.  `PrefixAt.empty` starts after the length store, `elementBound` gives the next store's memory bound, `write_next` extends the prefix by one written element, and `complete` produces `UInt64Array.At`.  `writeElement_frame` states that an element store changes only bytes inside the array.
-
-For a goal that reads a word after nested `write64` updates, the `word_reads` tactic in `LeanExe.ProofKit.Memory` rewrites reads at equal addresses and proves eight-byte disjointness for the others.  `Memory.read64_write64_disjoint` is the explicit form when the proof supplies the address separation.  These facts describe memory and indexing only, so keep loop invariants and output equations in the entry for the rule that supplies the transition.

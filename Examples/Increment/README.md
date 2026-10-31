@@ -61,10 +61,11 @@ runtime directory as its header describes.
 ## Related examples
 
 [`RemoveZero`](../RemoveZero/README.md) also builds its result with `LeanExe.build`.
-[`Euler`](../../Demos/Euler/README.md) and [`Drone`](../../Demos/Drone/README.md) have verified
-call theorems, `euler_solve_call` and `drone_compute_call`, which state the room that
-`increment_call` takes as a memory cap in pages.  The LTG entry
-[`array-build`](../../ltg/entries/array-build/README.md) holds proof guidance for `LeanExe.build`.
+[`Euler`](../../Demos/Euler/README.md) and [`Drone`](../../Demos/Drone/README.md) have verified call
+theorems, `euler_solve_call` and `drone_compute_call`, which state the room that `increment_call`
+takes as a memory cap in pages.  The VKB entry
+[`loop-combinators`](../../VKB/entries/loop-combinators/README.md) holds the lemmas about
+`LeanExe.build` that `compute_eq` uses.
 
 ## References
 

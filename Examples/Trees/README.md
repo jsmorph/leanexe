@@ -86,15 +86,7 @@ helpers.
 
 [`Words`](../Words/README.md) and [`Lists`](../Lists/README.md) have records with one child and tail
 recursion or loops.  [`TreeLookup`](../TreeLookup/README.md) searches a binary search tree stored in
-an array.  [`Clob`](../../Demos/Clob/README.md) has the same ownership rules for arrays.  The LTG
-entries [`recursive-calls`](../../ltg/entries/recursive-calls/README.md),
-[`consumed-recursion`](../../ltg/entries/consumed-recursion/README.md),
-[`record-reuse`](../../ltg/entries/record-reuse/README.md),
-[`partial-release`](../../ltg/entries/partial-release/README.md),
-[`node-match`](../../ltg/entries/node-match/README.md), and
-[`tree-copy`](../../ltg/entries/tree-copy/README.md) describe recursion with a depth guard,
-recursion over a consumed tree, record reuse, partial release, matches on recursive values, and
-tree copies.
+an array.  [`Clob`](../../Demos/Clob/README.md) has the same ownership rules for arrays.
 
 ## References
 

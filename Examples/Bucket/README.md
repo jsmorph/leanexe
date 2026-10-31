@@ -55,9 +55,7 @@ to C, compiled with CompCert.  The cases state that a call allocates no block.
 ## Related examples
 
 [`Mean`](../../Library/Numerics/Statistics/Mean/README.md) converts a word to a float with
-`UInt64.toFloat`.  [`Shape`](../Shape/README.md) converts words to floats inside a sum type.  The
-LTG entry [`float-arithmetic`](../../ltg/entries/float-arithmetic/README.md) describes the rules for
-float expressions.
+`UInt64.toFloat`.  [`Shape`](../Shape/README.md) converts words to floats inside a sum type.
 
 ## References
 

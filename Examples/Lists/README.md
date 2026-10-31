@@ -60,11 +60,7 @@ allocates `n` cells and frees them all.
 
 [`Words`](../Words/README.md) has the same layout for a list type that the program declares, with a
 tail-recursive sum.  [`Trees`](../Trees/README.md) has records with two children.
-[`SumArray`](../SumArray/README.md) folds over an array, where the elements are contiguous.  The LTG
-entries [`list-cell`](../../ltg/entries/list-cell/README.md),
-[`list-fold-loop`](../../ltg/entries/list-fold-loop/README.md), and
-[`release-list`](../../ltg/entries/release-list/README.md) hold proof guidance for list cells,
-folds over lists, and their release.
+[`SumArray`](../SumArray/README.md) folds over an array, where the elements are contiguous.
 
 ## References
 

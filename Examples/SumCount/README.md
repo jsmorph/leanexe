@@ -59,11 +59,8 @@ most four allocations.
 
 [`PairSum`](../PairSum/README.md) builds an array literal and releases it inside the call.
 [`SumArray`](../SumArray/README.md) has the fold alone, with a word result.
-[`Updates`](../Updates/README.md) and [`Clob`](../../Demos/Clob/README.md) return arrays that they build by
-updating their inputs.  The LTG entries
-[`array-literal`](../../ltg/entries/array-literal/README.md),
-[`array-size`](../../ltg/entries/array-size/README.md), and
-[`array-fold-loop`](../../ltg/entries/array-fold-loop/README.md) describe the rules.
+[`Updates`](../Updates/README.md) and [`Clob`](../../Demos/Clob/README.md) return arrays that they
+build by updating their inputs.
 
 ## References
 

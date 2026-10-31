@@ -17,12 +17,6 @@ checks that the parser reads it back.  The
 [compilation procedure](../docs/verified-manual.md#emitting-and-running) gives the build and
 emission commands.  A file theorem identifies the bytes of a particular emitted file.
 
-[The specification checker](demo-check) implements the acceptance procedure for an example
-made from an English request: specification hashes, its bytes theorem, theorem axioms,
-and samples executed in Wasmtime.  Its `--freeze` mode records specification hashes.
-[The verified-executable procedure](../docs/leanexe-manual.md#from-an-english-request) explains
-when that record is made and how the subsequent check uses it.
-
 ## Execution hosts
 
 [The Wasmtime download](download-wasmtime.sh) obtains the pinned C API, and

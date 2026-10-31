@@ -56,6 +56,6 @@ tools/leanrun --timeout 10m lake env lean --run VKB/Check.lean VKB/entries
 
 The check catches renamed and removed declarations, but not guidance that a change to the compiler or the library has made wrong.  After such a change, reread the entries that name the changed declarations.  A module that reads a file at elaboration, such as a file-theorem module, does not belong in `modules`, because the check would then depend on emitted files.
 
-## Relation to LTG
+## Entries from LTG
 
-[LTG](../ltg/README.md) serves the per-program proofs of the LeanExe compiler, whose hints name its rule lemmas.  The VKB serves programs of the verified compiler, which needs no per-program correctness proof.  The entries on array layout, write ranges, raw locals, calls with operands below the arguments, and region frames restate LTG's general entries of the same names without the LeanExe compiler's rules, and they name no declaration of `LeanExe/Compiler/` or `LeanExe/IR/`.
+LTG, the knowledge base of the LeanExe compiler's per-program proofs, named that compiler's rule lemmas in its hints, and the repository no longer holds it.  The entries on array layout, write ranges, raw locals, calls with operands below the arguments, and region frames restate LTG's general entries without those rules.  Their ids are the ids of the LTG entries.

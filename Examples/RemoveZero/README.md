@@ -62,9 +62,9 @@ same cases on the module's translation to C, compiled with CompCert.
 
 [`Increment`](../Increment/README.md) builds its result in the same way and states its call theorem,
 `increment_call`, through `arrayCall` as well.  [`Updates`](../Updates/README.md) removes an element
-with `eraseIdxIfInBounds`, in place when the array is owned.  The LTG entries
-[`index-loop`](../../ltg/entries/index-loop/README.md) and
-[`array-build`](../../ltg/entries/array-build/README.md) describe the rules.
+with `eraseIdxIfInBounds`, in place when the array is owned.  The VKB entry
+[`loop-combinators`](../../VKB/entries/loop-combinators/README.md) holds the lemmas about
+`LeanExe.build` that `compute_eq` uses.
 
 ## References
 

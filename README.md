@@ -63,7 +63,7 @@ tests/baremetal/inputs.sh
 
 ### The LeanExe compiler
 
-`leanexe_compile p := [f, …]` translates Lean definitions to an intermediate language and records proof hints.  `compile` produces a module, and `encode` produces its bytes.  A proof for each function combines shared compiler rules with facts about the program to establish `Implements`.  [The knowledge base of lemmas, tactics, and guidance (LTG)](ltg/README.md) describes those rules and their use.
+`leanexe_compile p := [f, …]` translates Lean definitions to an intermediate language and records proof hints.  `compile` produces a module, and `encode` produces its bytes.  A proof for each function combines shared compiler rules with facts about the program to establish `Implements`.
 
 [The LeanExe compiler manual](docs/leanexe-manual.md) defines the accepted dialect and the proof procedure.  [The verified-executable skill](.claude/skills/verified-executable/SKILL.md) uses this compiler to turn an English request into a specification, a program, and a theorem about its bytes.  The compiler is untrusted, since a wrong translation makes a proof fail and cannot produce a false theorem.
 
@@ -202,7 +202,6 @@ A bare-metal program is the translation of a module, a volatile global `lx_out` 
 | [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, the order book, the slew planner, and integer and binary64 running sums, with application proofs and host programs. |
 | [Compiler examples](Examples) | Small programs, specifications, proofs, and cases that demonstrate compiler features. |
 | [Manuals and design](docs) | Compiler manuals, design document, and WASI, translator, and bare-metal designs. |
-| [Proof guidance](ltg/README.md) | LTG knowledge base and its declaration checker. |
 | [Verification knowledge base](VKB/README.md) | Entries of lemmas, proof recipes, worked examples, and recorded failures for verified-compiler programs, their template, and the declaration check. |
 | [Rocq proofs](rocq/README.md) | Composition of CompCert's proofs from Clight to Asm and uniqueness lemmas, checked against a CompCert 3.18 tree. |
 | [Tools](tools/README.md) | Lean runner, module and shader emitters, execution hosts, native host, bare-metal startup code and checks, build scripts, and application tools. |

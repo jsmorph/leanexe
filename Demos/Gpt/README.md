@@ -101,8 +101,8 @@ select top-k sampling.  The scripts of `tests/gpt/` and `tools/gpt2.py` read the
 [`Gpt32`](../Gpt32/README.md) is GPT-2 in binary32 on WGSL kernels, and [its GPT-2 browser
 page](../../tests/web/README.md) samples tokens with this module's `sampleTopK`, with the binary32
 scores widened to binary64.  [`Prng`](../../Library/Random/SplitMix64/README.md) compiles
-SplitMix64, the generator of `sampleTopK`, into a module of its own, `prng.wasm`.  The LTG entry
-[`region-frame`](../../ltg/entries/region-frame/README.md) describes the region clause of
+SplitMix64, the generator of `sampleTopK`, into a module of its own, `prng.wasm`.  The VKB entry
+[`region-frame`](../../VKB/entries/region-frame/README.md) describes the region clause of
 `Implements` and the lemmas `Heap.Borrowed.keepIn` and `Heap.Owned.keepIn`, which the generation
 proofs use to keep the weights borrowed and the cache owned across the calls.
 

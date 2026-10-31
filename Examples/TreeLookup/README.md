@@ -2,15 +2,15 @@
 
 ## Request, specification, review, and program
 
-This example is the first run of [the verified-executable
-skill](../../.claude/skills/verified-executable/SKILL.md).
-[The request](request.txt) gives a complete binary search tree of seven nodes in breadth-first
-order after a query, in 15 words, and asks for `[value, 1]` from the node whose key the search
-finds, `[0, 0]` after a miss at a leaf, and `[0, 0]` for any other length.  [The
-specification](Spec.lean) states the request's traversal as a recursive `search` over node numbers,
-with node `j`'s key at `2j + 1`, its value at `2j + 2`, and its children at `2j + 1` and `2j + 2`.
-Two fresh agents reviewed it against the request, as [the review](review.md) records, and the
-second found no disagreement and checked all 22 [samples](Samples.lean) by hand.
+This example is the first run of the verified-executable skill, which [the verified-request
+skill](../../.claude/skills/verified-request/SKILL.md) replaced.  [The request](request.txt) gives a
+complete binary search tree of seven nodes in breadth-first order after a query, in 15 words, and
+asks for `[value, 1]` from the node whose key the search finds, `[0, 0]` after a miss at a leaf, and
+`[0, 0]` for any other length.  [The specification](Spec.lean) states the request's traversal as a
+recursive `search` over node numbers, with node `j`'s key at `2j + 1`, its value at `2j + 2`, and
+its children at `2j + 1` and `2j + 2`.  Two fresh agents reviewed it against the request, as [the
+review](review.md) records, and the second found no disagreement and checked all 22
+[samples](Samples.lean) by hand.
 
 [The program](Program.lean) runs a loop of three steps, one per level of the tree, whose state is
 the node number, a found flag, and the value found.  The node number advances at every step, and the
@@ -77,9 +77,7 @@ that stay allocated, the input and the result.
 ## Related examples
 
 [`Lookup`](../Lookup/README.md) has the same loop structure over ten pairs.
-[`Trees`](../Trees/README.md) holds trees on the heap as records.  [The
-skill](../../.claude/skills/verified-executable/SKILL.md) gives the procedure that produced this
-example.
+[`Trees`](../Trees/README.md) holds trees on the heap as records.
 
 ## References
 
