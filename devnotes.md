@@ -40067,7 +40067,7 @@ The refinement proof dominates the work.  The design also assumes that the verif
 
 - [x] English description, list specification, and a fresh agent's review of the specification against the description.
 - [ ] The specification's theorems.
-- [ ] Probe of in-place updates to the array fields of an owned record in a `repeatWhile` state.
+- [x] Probe of in-place updates to the array fields of an owned record in a `repeatWhile` state.
 - [ ] Array implementation, its native comparison with the specification on random command streams, and an independent Python reference.
 - [ ] Refinement proof.
 - [ ] `verified_compile`, the allocation bound, the call theorem, the registry entry, cases, and the C translation.
@@ -40120,3 +40120,31 @@ Two decisions changed the design during the milestone.  Order ids are sequence n
 The reviews, which [the review record](Demos/OrderBook/review.md) gives, settled the remaining details.  The remainder rules apply in the order of their table, so self-trade prevention takes precedence over IOC and over a full book, and the capacity count is taken after matching.  The requirements cover fewer than 2^64 − 1 accepted orders, so the next id never wraps and the ids of resting orders are distinct.  `Spec.Valid` defines the books that the requirements describe, including the uncrossed book, which the matching and post-only rules imply, and it is the invariant that the specification's theorems are to establish.
 
 Five fresh agents reviewed the specification in turn, each from the requirements, the specification, the samples, and the printed output alone.  The third and the fourth found one defect each, both in `Valid`'s treatment of the next id, and the first, second, and fifth found none.  The input classes that the last review listed as uncovered go into the implementation's tests.
+
+## 2026-10-31: The order book's in-place update probe and representation
+
+The probe compiled eight loops whose state is a record of four word arrays, three of 4,096 words and one of 2,048, and a count, and ran each through the Wasmtime host's `call-stats` at 0, 1, 10, and 1,000 iterations.  The four allocations in each count are the record's four builds, so a count that stays at 4 means that no iteration copies an array.  The counts show that a loop updates the arrays of its record state in place, and that a listed function that takes the record copies every array of it on each call.  A callee's record parameter is borrowed, as [the manual](docs/verified-manual.md#ownership) states, so the callee copies the field that it updates and each field that it returns.
+
+| Body of the loop | Allocations at 0, 1, 10, and 1,000 iterations |
+|---|---|
+| `set!` on four fields in `{ p with … }` | 4, 4, 4, 4 |
+| Field passed to a listed function that updates it | 4, 4, 4, 4 |
+| Two fields passed to a listed function that returns both in a pair | 4, 4, 4, 4 |
+| Inner `loop` over a field, its body reading the record's count | 4, 4, 4, 4 |
+| Inner `repeatWhile` whose state is the record | 4, 4, 4, 4 |
+| Field read after the update of another field in the same body | 4, 4, 4, 4 |
+| Record passed to a listed function that updates one field | 4, 8, 44, 4,004 |
+
+An exported function that takes four arrays one by one, updates three, and returns the record allocated nothing beyond the host's four arrays and released none.  The implementation's module cases will check the same counts on the order book's own functions, so the probe stays outside the repository.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Book | Slot arrays of order id, account, quantity, level, and next slot, of 4,097 words with slot 0 unused, level arrays of head and tail, of 2,048 words indexed by side · 1,024 + price, the next id, and the count of resting orders | Slot 0 marks the end of a chain and an empty level, so the empty book is arrays of zeros. |
+| Calls | Functions that change the book take its arrays as separate parameters and return them, and read-only functions take the record | The probe's record parameter copies every array on each call. |
+| Links | Chain of next links for each level, with its head and tail, and no previous links | Cancel walks its level to the predecessor, at most 4,096 links after a scan of at most 4,096 slots, and no invariant has to keep previous links in agreement. |
+| Free slots | Slot whose order id is 0, found by a scan | Ids start at 1, and no free list needs an invariant. |
+| Best prices and level totals | Not stored | Matching and the top-of-book query scan at most 1,023 levels from the edge of the band, and the query sums the best level's chain. |
+| Exports | `init`, `run` over a word stream with the book's arrays as owned parameters, and `top` | A step is a stream of one record, and the specification's `run_append` covers a stream in parts. |
+
+- [x] Probe of in-place updates.
+- [ ] Implementation, with the native comparison against `Spec.run` and the Python reference.
