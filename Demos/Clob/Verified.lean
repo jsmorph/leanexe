@@ -8,9 +8,9 @@ compare words with `&&` and `==`.  `insertLevel` and `removeLevel` use `LeanExe.
 `LeanExe.eraseAt`, which update an owned side in place, so an insertion past the end leaves a side
 unchanged.  `findLevel` gives a position at most the size, so `addBid` and `cancelBid` insert and
 remove only in range.  `runCommands` over two chunks of commands, the first of whole commands,
-gives the book of one run, and `runOut` leaves the book of `runCommands`.  Since the compiler's
-theorem states that the module computes these definitions, both facts hold for the module's
-results. -/
+gives the book of one run, and `runOut` leaves the book of `runCommands`.  Since the verified
+compiler's theorem states that the module computes these definitions, both facts hold for the
+module's results. -/
 
 namespace Demos.Clob.Verified
 

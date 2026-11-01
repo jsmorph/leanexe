@@ -2,14 +2,15 @@ import Verified.Reflect.Command
 import Library.Random.Xorshift.Jump
 
 /-! The thirty-fourth program of the verified compiler: Marsaglia's xorshift64 of
-`Library/Random/Xorshift/Program.lean`, compiled unchanged.  `step`, `advance`, and `applyCols` do not
-allocate, so the compiler's theorem states that the module computes them without a trap.  `square`,
-`jumpPass`, and `jump` allocate, and `jump_bound` states that the compiler's bound on the growth of
-`top` during `jump` is 36,920 bytes: 568 bytes for each of the 65 blocks that it builds.
-`xorshift_advance` adds the theorems of `Library/Random/Xorshift/Period.lean` that a nonzero state never
-becomes 0 and that from every nonzero state each nonzero state occurs at exactly one count below the
-period `2^64 - 1`, and `xorshift_jump` the theorem of `Library/Random/Xorshift/Jump.lean` that `jump`
-computes `advance`. -/
+`Library/Random/Xorshift/Program.lean`, compiled unchanged.  `step`, `advance`, and `applyCols`
+do not allocate, so the verified compiler's theorem states that the module computes them without
+a trap.  `square`, `jumpPass`, and `jump` allocate, and `jump_bound` states that the verified
+compiler's bound on the growth of `top` during `jump` is 36,920 bytes: 568 bytes for each of the
+65 blocks that it builds.  `xorshift_advance` adds the theorems of
+`Library/Random/Xorshift/Period.lean` that a nonzero state never becomes 0 and that from every
+nonzero state each nonzero state occurs at exactly one count below the period `2^64 - 1`, and
+`xorshift_jump` the theorem of `Library/Random/Xorshift/Jump.lean` that `jump` computes
+`advance`. -/
 
 namespace Library.Random.Xorshift
 
@@ -31,9 +32,9 @@ theorem xorshift_advance : ∃ bytes, Wasm.Encoding.encode compiled.module = .ok
   exact ⟨bytes, success, decoded, compiled.advance.implements, fun n _ hx => advance_ne_zero hx n,
     fun _ _ hx hy => advance_existsUnique hx hy⟩
 
-/-- The compiler's bound on the growth of `top` during `jump` is 36,920 bytes: 568 bytes, the 64
-words, the length word, and a block's header of 48 bytes, for each of 65 blocks, the first columns
-and one square per pass. -/
+/-- The verified compiler's bound on the growth of `top` during `jump` is 36,920 bytes: 568
+bytes, the 64 words, the length word, and a block's header of 48 bytes, for each of 65 blocks,
+the first columns and one square per pass. -/
 theorem jump_bound (x : UInt64 × UInt64) : compiled.jump.bound x = 36920 := by
   obtain ⟨n, y⟩ := x
   have hp : ∀ a b, compiled.jumpPass.bound (n, a, b) = Verified.blockCost (UInt64.toNat 64) := fun a b => by

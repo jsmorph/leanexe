@@ -1,5 +1,4 @@
 import Library.Lists.Word.Program
-import Library.Lists.Word.Program
 import LeanExe.Dialect.Loop
 
 /-!

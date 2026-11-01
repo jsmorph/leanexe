@@ -240,7 +240,7 @@ axioms() {
 }
 
 step_build() {
-  local step='`lake build` of the six libraries and the four test executables'
+  local step='`lake build` of every library and the test executables'
   local jobs sorries errors report total permitted file name other repo=0 cell status
   run 1-build tools/leanrun --timeout 12h lake --log-level info build LeanExe Examples Demos \
     Verified Library TestSupport native-verified native-bare verified-cases native-module-cases
@@ -637,7 +637,7 @@ write_status() {
   {
     echo "# Status"
     echo
-    echo "[\`tools/full-check\`](tools/full-check) wrote this record of the full check of the commit below.  The record covers the tree of that commit with the paths listed as differing from it, and no later commit.  The check builds every module of the six libraries and the test executables, runs the drivers of the verified compiler's modules, of their translations to C and to bare-metal AArch64, of the WASI modules, and of the GPU kernels, and checks the VKB and the Rocq proof.  Each count comes from the output of the step's driver, which the checkout that ran the check keeps in \`build/full-check/\`."
+    echo "[\`tools/full-check\`](tools/full-check) wrote this record of the full check of the commit below.  The record covers the tree of that commit with the paths listed as differing from it, and no later commit.  The check builds every module of every library and the test executables, runs the drivers of the verified compiler's modules, of their translations to C and to bare-metal AArch64, of the WASI modules, and of the GPU kernels, and checks the VKB and the Rocq proof.  Each count comes from the output of the step's driver, which the checkout that ran the check keeps in \`build/full-check/\`."
     echo
     echo "| Item | Value |"
     echo "|---|---|"
