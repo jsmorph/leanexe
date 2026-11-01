@@ -1,5 +1,6 @@
 import Demos.OrderBook.Verified
 import Demos.OrderBook.ProcessBatch
+import Demos.OrderBook.ProgramCounts
 
 /-! The allocation bound of the order book's `run`.  `verified_compile` defines `run.bound`, the
 number of bytes by which the module's `run` can raise the allocator's `top`, and states it through
@@ -14,7 +15,16 @@ bytes, once before the loop and once at each record, and the credit of the event
 record.  Each word that a step pushes costs 80 bytes, and a cancelled remainder charges the event
 array's credit once more.  A step on a book that satisfies the invariant gives at most 4,098 events
 of seven words (`Spec.step_events_length`), so the event array holds at most `28,686 i` words
-before record `i`.  `runBoundOf 74` is 2,712,680,536. -/
+before record `i`.  `runBoundOf 74` is 2,712,680,536.
+
+`run_bound_le_sized` bounds the bound on any book whose seven arrays have the program's sizes, and
+any stream of at most `k` records, by `runBoundSized k`, without the invariant and without room for
+the next ids.  It counts at most 5,122 events of seven words for each record from the program
+(`Program.step_out_size`), where `run_bound_le` counts the specification's 4,098, and it keeps the
+arrays' sizes through every step (`Program.step_sizes`).  The WASI process charges its read step
+with it, because that charge holds for every reply that the host may give, so for a batch that
+need not lie in the input and for a book whose next ids may leave no room for the batch.
+`runBoundSized 74` is 3,383,146,584. -/
 
 namespace Demos.OrderBook.Bound
 
@@ -528,6 +538,105 @@ theorem run_bound_le
     inv.tailSize, creditCost, blockCost_eq, UInt64.toNat_zero, runBoundOf]
   omega
 
+/-! ## The bound on any book of the program's sizes -/
+
+/-- The most event words of one record on any book: 5,122 events of seven words, the `accepted`
+event, a trade at each of matching's 5,120 iterations, and a final event
+(`Program.step_out_size`). -/
+def anyRecordWords : Nat := 7 * 5122
+
+/-- The most that the pass of `run`'s loop for record `i`, counted from 0, charges on a book whose
+arrays have the program's sizes: the book's credits, the credit of an event array of at most
+`anyRecordWords * i` words, and the step's cost, which `step_le` bounds by 96 bytes for each word
+after the step less 80 bytes for each word before it. -/
+def sizedRecordBound (i : Nat) : Nat :=
+  bookCredit + creditCost (anyRecordWords * i) + 96 * anyRecordWords + 16 * (anyRecordWords * i)
+
+/-- The bound of `run` on a stream of at most `k` records from a book whose arrays have the
+program's sizes: the book's credits, the block of the empty event array, and the sum of
+`sizedRecordBound i` for `i` below `k`, which is `3,835,408 k + 573,664 k (k - 1)`. -/
+def runBoundSized (k : Nat) : Nat := 393464 + 3835408 * k + 573664 * (k * (k - 1))
+
+theorem sumBelow_sizedRecordBound :
+    ∀ k, sumBelow sizedRecordBound k = 3835408 * k + 573664 * (k * (k - 1))
+  | 0 => rfl
+  | k + 1 => by
+    rw [sumBelow, sumBelow_sizedRecordBound k]
+    simp only [sizedRecordBound, anyRecordWords, bookCredit, creditCost, Nat.add_sub_cancel]
+    have h1 : (k + 1) * k = k * k + k := Nat.succ_mul k k
+    have h2 : k * (k - 1) + k = k * k := by
+      cases k with
+      | zero => rfl
+      | succ j => simp only [Nat.add_sub_cancel, Nat.mul_add_one]
+    omega
+
+/-- `runBoundSized 74`, for the largest batch of the process: a read of 4,096 bytes and a carry of
+fewer than 56 bytes. -/
+theorem runBoundSized_74 : runBoundSized 74 = 3383146584 := by decide
+
+/-- **The allocation bound of `run` on any book of the program's sizes.**  For any functions with
+the equations that `verified_compile` generates, on a book whose seven arrays have the sizes of the
+program, and a stream of at most `k` records, the bound of `run` is at most `runBoundSized k`.  The
+theorem needs neither the invariant nor room for the next ids, since it counts the events of a
+record from the program, and every step keeps the arrays' sizes (`Program.step_sizes`). -/
+theorem run_bound_le_sized
+    {emitCost : MovedArray × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 → Nat}
+    {fillCost : MovedArray × MovedArray × MovedArray × MovedArray × MovedArray × MovedArray ×
+      MovedArray × UInt64 × UInt64 × MovedArray × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 → Nat}
+    {submitCost : MovedArray × MovedArray × MovedArray × MovedArray × MovedArray × MovedArray ×
+      MovedArray × UInt64 × UInt64 × MovedArray × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 ×
+      UInt64 → Nat}
+    {stepCost : MovedArray × MovedArray × MovedArray × MovedArray × MovedArray × MovedArray ×
+      MovedArray × UInt64 × UInt64 × MovedArray × Array UInt64 × UInt64 → Nat}
+    {runCost runBound : MovedArray × MovedArray × MovedArray × MovedArray × MovedArray ×
+      MovedArray × MovedArray × UInt64 × UInt64 × Array UInt64 → Nat}
+    (E : Equations emitCost fillCost submitCost stepCost runCost runBound)
+    {b : Program.Book}
+    (hsizes : Program.sizes b = (4097, 4097, 4097, 4097, 4097, 2048, 2048))
+    (ws : Array UInt64) (hs : ws.size + 6 < 2 ^ 64) {k : Nat} (hk : (ws.size + 6) / 7 ≤ k) :
+    runBound (⟨b.oid⟩, ⟨b.acct⟩, ⟨b.qty⟩, ⟨b.lvl⟩, ⟨b.nxt⟩, ⟨b.head⟩, ⟨b.tail⟩, b.nextId, b.count,
+      ws) ≤ runBoundSized k := by
+  rw [E.run_bound, E.run_cost, Refinement.StreamLemmas.count_toNat ws hs]
+  refine Nat.le_trans (Nat.add_le_add_left (Nat.add_le_add_left (loopCost_le_below
+    (fun j (s : Program.Book × Array UInt64) =>
+      Program.sizes s.1 = (4097, 4097, 4097, 4097, 4097, 2048, 2048) ∧
+        s.2.size ≤ anyRecordWords * j)
+    sizedRecordBound ?hcost ?hstep ?hI) _) _) ?_
+  case hcost =>
+    intro j s _ hP
+    obtain ⟨B, out⟩ := s
+    obtain ⟨hsz, hsize⟩ := hP
+    dsimp only at hsz hsize ⊢
+    have hst := step_le E B.oid B.acct B.qty B.lvl B.nxt B.head B.tail B.nextId B.count out ws
+      (7 * UInt64.ofNat j)
+    have hev : (Program.stepArrays B.oid B.acct B.qty B.lvl B.nxt B.head B.tail B.nextId B.count
+        out ws (7 * UInt64.ofNat j)).2.size ≤ out.size + 7 * 5122 :=
+      Program.step_out_size B out ws (7 * UInt64.ofNat j)
+    simp only [Program.sizes, Prod.mk.injEq] at hsz
+    obtain ⟨h1, h2, h3, h4, h5, h6, h7⟩ := hsz
+    simp only [↓reduceIte, Nat.zero_add, h1, h2, h3, h4, h5, h6, h7, creditCost, sizedRecordBound,
+      anyRecordWords, bookCredit] at hsize ⊢
+    omega
+  case hstep =>
+    intro j s _ hP _
+    obtain ⟨B, out⟩ := s
+    obtain ⟨hsz, hsize⟩ := hP
+    dsimp only at hsz hsize ⊢
+    have hev : (Program.stepArrays B.oid B.acct B.qty B.lvl B.nxt B.head B.tail B.nextId B.count
+        out ws (7 * UInt64.ofNat j)).2.size ≤ out.size + 7 * 5122 :=
+      Program.step_out_size B out ws (7 * UInt64.ofNat j)
+    refine ⟨(Program.step_sizes B out ws (7 * UInt64.ofNat j)).trans hsz, ?_⟩
+    simp only [anyRecordWords] at hsize ⊢
+    omega
+  case hI => exact ⟨hsizes, by simp⟩
+  have hm := sumBelow_mono sizedRecordBound hk
+  rw [sumBelow_sizedRecordBound k] at hm
+  simp only [Program.sizes, Prod.mk.injEq] at hsizes
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7⟩ := hsizes
+  simp only [h1, h2, h3, h4, h5, h6, h7, creditCost, blockCost_eq, UInt64.toNat_zero,
+    runBoundSized]
+  omega
+
 /-! ## The compiled program -/
 
 /-- The equations of `Verified.compiled`. -/
@@ -547,8 +656,20 @@ theorem compiled_run_bound {b : Program.Book} (inv : Inv b) (ws : Array UInt64)
       ⟨b.tail⟩, b.nextId, b.count, ws) ≤ runBoundOf k :=
   run_bound_le compiled_equations inv ws hs hn hk
 
+/-- The bound of `Verified.compiled`'s `run` on a book whose arrays have the program's sizes and a
+stream of at most `k` records is at most `runBoundSized k`. -/
+theorem compiled_run_bound_sized {b : Program.Book}
+    (hsizes : Program.sizes b = (4097, 4097, 4097, 4097, 4097, 2048, 2048)) (ws : Array UInt64)
+    (hs : ws.size + 6 < 2 ^ 64) {k : Nat} (hk : (ws.size + 6) / 7 ≤ k) :
+    Verified.compiled.run.bound (⟨b.oid⟩, ⟨b.acct⟩, ⟨b.qty⟩, ⟨b.lvl⟩, ⟨b.nxt⟩, ⟨b.head⟩,
+      ⟨b.tail⟩, b.nextId, b.count, ws) ≤ runBoundSized k :=
+  run_bound_le_sized compiled_equations hsizes ws hs hk
+
 #print axioms run_bound_le
 #print axioms compiled_run_bound
 #print axioms runBoundOf_74
+#print axioms run_bound_le_sized
+#print axioms compiled_run_bound_sized
+#print axioms runBoundSized_74
 
 end Demos.OrderBook.Bound

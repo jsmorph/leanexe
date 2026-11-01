@@ -13,10 +13,14 @@ namespace Demos.OrderBook.Process
 open LeanExe LeanExe.Wasi Refinement Abstract
 open Demos.StreamFold (StreamPosition StreamHost byteWords byteWords_length)
 
+/-- The bytes of the events of a batch of at most 74 records, the most that the carry and a read of
+4,096 bytes hold: at most `Spec.capacity + 2` events of seven words for each record. -/
+def outputLimit : Nat := 8 * (7 * (74 * (Spec.capacity + 2)))
+
 /-- The invariant of a reached state `s` at stream position `position`, for the input bytes `input`
 of the whole run, of which the book has received the words of the bytes `processed`.  Before EOF
 `processed` holds whole records and the carry less than one, and after EOF the input is read and
-the carry holds less than one word. -/
+the carry holds less than one word.  The output holds the event bytes of at most one batch. -/
 structure Future (input : List UInt64) (s : State) (position : StreamPosition)
     (processed : List UInt64) : Prop where
   split : input = processed ++ byteWords s.carry ++ position.input
@@ -28,6 +32,7 @@ structure Future (input : List UInt64) (s : State) (position : StreamPosition)
   output : position.output ++ byteWords (remainingOutput s) =
     leBytes (Spec.encodeAll (Spec.run Spec.empty (leWords processed)).2).toList
   safe : Safe s
+  outputSize : s.output.data.size ≤ outputLimit
 
 theorem initial_carry : initial.carry = Bytes.empty := rfl
 
@@ -35,7 +40,8 @@ theorem initial_eof : initial.eof = false := rfl
 
 theorem future_initial (position : StreamPosition) (empty : position.output = []) :
     Future position.input initial position [] := by
-  refine ⟨?_, rfl, fun _ => ⟨rfl, by rw [initial_carry]; decide⟩, ?_, ?_, ?_, ?_, Safe.initial⟩
+  refine ⟨?_, rfl, fun _ => ⟨rfl, by rw [initial_carry]; decide⟩, ?_, ?_, ?_, ?_, Safe.initial,
+    Nat.zero_le _⟩
   · rw [initial_carry, Demos.StreamFold.byteWords_empty]
     rfl
   · intro impossible
@@ -48,6 +54,15 @@ theorem future_initial (position : StreamPosition) (empty : position.output = []
   · rw [empty, remainingOutput_empty Safe.initial (by decide)]
     rfl
 
+theorem afterWrite_output_le (s : State) (reply : WriteResult) :
+    (afterWrite s reply).state.output.data.size ≤ s.output.data.size := by
+  unfold afterWrite
+  split
+  · exact Nat.le_refl _
+  · split
+    · exact Nat.zero_le _
+    · exact Nat.le_refl _
+
 theorem future_afterWrite {input : List UInt64} {s : State} {position next : StreamPosition}
     {processed : List UInt64} (future : Future input s position processed)
     (count : UInt64) (bound : count.toNat ≤ (remainingOutput s).data.size)
@@ -58,7 +73,8 @@ theorem future_afterWrite {input : List UInt64} {s : State} {position next : Str
     afterWrite_fields s ⟨0, count⟩
   have bookSame : book (afterWrite s ⟨0, count⟩).state = book s := by
     simp only [book, oid, acct, qty, lvl, nxt, head, tail, nextId, cnt]
-  refine ⟨?_, future.whole, ?_, ?_, ?_, ?_, ?_, afterWrite_safe future.safe count bound⟩
+  refine ⟨?_, future.whole, ?_, ?_, ?_, ?_, ?_, afterWrite_safe future.safe count bound,
+    Nat.le_trans (afterWrite_output_le s _) future.outputSize⟩
   · rw [carry, sameInput]
     exact future.split
   · rw [eof, carry]
@@ -150,7 +166,7 @@ theorem future_runWords {input : List UInt64}
       (Spec.run Spec.empty (leWords processed)).2).toList := by
     have := future.output
     rwa [remainingOutput_empty future.safe finished, List.append_nil] at this
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, safe⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, safe, ?_⟩
   · rw [carryEq, kept]
     exact nextSplit
   · rw [List.length_append, takeLength]
@@ -174,6 +190,17 @@ theorem future_runWords {input : List UInt64}
   · rw [remainingOutput_words safe, outputEq, writtenEq, UInt64.toNat_zero, List.drop_zero,
       eventBytes_words r.2 eventsSmall, sameOutput, written, ← leBytes_append,
       ← Array.toList_append, i3, received]
+  · have sizeNat : r.2.size.toUInt64.toNat = r.2.size := by
+      simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt (show r.2.size < 2 ^ 64 by omega)]
+    have countNat : (8 * r.2.size.toUInt64).toNat = 8 * r.2.size := by
+      rw [UInt64.toNat_mul, sizeNat]
+      simp only [UInt64.reduceToNat]
+      exact Nat.mod_eq_of_lt eventsSmall
+    rw [outputEq, eventBytes_size, countNat]
+    simp only [Spec.capacity] at i4
+    unfold outputLimit
+    simp only [Spec.capacity]
+    omega
 
 /-- A read of nonempty bytes keeps the invariant. -/
 theorem future_read {input : List UInt64}

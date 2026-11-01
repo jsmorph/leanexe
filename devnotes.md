@@ -40265,7 +40265,7 @@ Lean's interpreter evaluated the first two bounds, which agree with the values c
 
 - [x] Codec, process, batch lemma, native correctness, and termination.
 - [x] Native executable and its tests.
-- [ ] `verified_compile_wasi` of the process, the compiled module's theorems, its charges, and its Wasmtime and Talos tests, after the bound analysis gives in-place updates paid results.
+- [x] `verified_compile_wasi` of the process, the compiled module's theorems, its charges, and its Wasmtime tests, in [the compiled part's entry](#2026-11-01-the-order-books-wasi-process-compiled-part).  The scripted Talos tests did not run there.
 
 ## 2026-11-01: Paid results of `set`
 
@@ -40341,5 +40341,46 @@ The first proof of `step_le` ran `repeat' split` on the tree of the step's cost 
 | Build of `LeanExe`, `Examples`, `Demos`, `Verified`, `Library`, and `TestSupport`, with the module in `Demos.Verified` | 09:45 UTC | 111 min | No error and no `sorry` |
 
 - [x] Closed-form bound of `run`'s generated bound for every compilation that generates its equations, and its value at 74 records.
-- [ ] Charges of the WASI process from `run_bound_le`, with the equations of the process's own compilation.
+- [x] Charges of the WASI process, from `run_bound_le_sized` of [the compiled part](#2026-11-01-the-order-books-wasi-process-compiled-part).
 - [x] Build of every library, with the module in the import root `Demos.Verified`.
+
+## 2026-11-01: The order book's WASI process, compiled part
+
+[The compilation](Demos/OrderBook/ProcessWasi.lean) gives `verified_compile_wasi` the program's functions from `emit` to `run` and the process's own functions, under a heartbeat limit of 1,000,000, and elaborates in 292 s.  [The module](Demos/OrderBook/ProcessModule.lean) composes the compiled `begin` and `step` into a command of 38,627 bytes that `wasm-tools validate` accepts, and [the refinement](Demos/OrderBook/ProcessProof.lean) states, as Running sum's does, that every modeled run of its `_start` that keeps some fuel matches the native process.  [The typed termination](Demos/OrderBook/ProcessTermination.lean) joins the native rank to the running flag, and [the compiled correctness](Demos/OrderBook/ProcessCompiledCorrect.lean) applies `compiled_process_total_run` with the charges of [the charges module](Demos/OrderBook/ProcessCharges.lean).  `initial_terminates` states that, under `StreamHost`, a Talos host that meets `hostSpec`, a host that accepts the statuses 0 and 28, and empty histories, the module from its initial store exits after writing exactly `expectedOutput` of the input, with status `expectedStatus` of it, at every fuel above a bound.
+
+The charges are constants for states of the sizes that `Sized` states: the book's arrays, a carry below 56 bytes, and an output of at most `outputLimit`, 16,982,112 bytes, the event bytes of 74 records at `Spec.capacity + 2` events each.  A state's copy costs at most `copyLimit`, 17,179,317 bytes, and a step at most `stepCharge R = copyLimit + R + 21,435,213`, where `R` bounds `run`'s generated bound on any batch of at most 518 words from any book whose arrays have the program's sizes.  [The closed forms of that bound](Demos/OrderBook/Bound.lean) are `run_bound_le`, written separately, on a book with `Inv` whose next ids leave room for the stream, and `run_bound_le_sized`, added here, on any book of the program's sizes, which gives `R = runBoundSized 74 = 3,383,146,584`.  `initial_room` decides that two copies and a step, 3,456,119,748 bytes above the literal pool, which ends at 4,096 bytes, fit in 65,535 pages.  The final theorem therefore has no memory premise, and its only premise on the input is that of `process_output`, fewer than 2^64 − 1 records.
+
+The charge of a read step holds for every reply, because the resource rules bound each effect body over all worlds, so its batch need not lie in the input and the charge cannot depend on the input's records.  A first version charged the step with `run_bound_le`, whose next-id premise a reached book meets only when the input leaves room for 74 more records, and so assumed that room in `initial_terminates`.  The final version takes a closed form that needs neither the invariant nor the room.  `run_bound_le_sized` counts at most 5,122 events of seven words for each record from the program (`Program.step_out_size`) and keeps the arrays' sizes through every step (`Program.step_sizes`), both on every book in [the program's counts](Demos/OrderBook/ProgramCounts.lean).  Record `i` then charges at most 3,835,408 + 1,147,328 `i` bytes: the book's credits of 393,408 bytes, the event array's credit of 16 bytes for its length word and each of its at most 35,854 `i` words, and the step's cost, which `step_le` bounds by 96 bytes for each word after the step less 80 for each word before it.  Under the invariant's 4,098 events, `run_bound_le` charges 3,147,280 + 917,952 `i`, so the bound at 74 records rises from 2,712,680,536 to 3,383,146,584 bytes.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Output bound | Field `outputSize` of `Future`, proved where the invariant is built | Bound needs the premises of `batch_refines`, which `future_runWords` already derives. |
+| Event count of a charged batch | `Program.run_out_size`, at most 5,122 events for each record from any book | Charge of a read step holds for every reply, because the resource rules quantify over worlds, so the batch need not lie in the input and `Spec.run_events_length`'s next-id premise is not available. |
+| Bound of `run` in the read step's charge | `run_bound_le_sized`, on any book of the program's sizes | Charge cannot depend on the input's records, and `run_bound_le` needs room for the batch's next ids, which a reached book has only with 74 records of room in the input.  The first version assumed that room in `initial_terminates`, and a world-dependent prefix bound would need resource rules that the WASI compiler lacks. |
+| Flags of the pure program | `flags_toList`, by `decide +kernel` | Elaborator evaluates `Prog.flags` over the bodies of every earlier function at each call's credits. |
+| Environment of a call | Simproc `envGetOfIndex` | Effect bodies destructure the state's 13 fields, and each level holds the previous one twice, so the conversion of a call's arguments unfolds a tree exponential in the depth, while `simp` applies the step once to each shared subterm. |
+| Typed termination | One module, `ProcessTermination.lean`, for Running sum's `TerminationTyped.lean` and `TerminationTarget.lean` | Control ghost and its use in `target_terminates` stay small. |
+| Scripted Talos runs | None in the driver | Talos's memory is a function that each store extends with a closure, and a run of the empty input under `lean --run` did not finish in 15 minutes. |
+
+Running sum's charge proofs carry over except at three points.  The stopping branch's status is an `if`, whose cost is an `if` with an instance that still holds the body's environment, so `ite_le_zero` bounds it without rebuilding the instance.  `begin`'s `simp +decide only []` evaluates the whole closed goal and reaches the recursion limit, so `initial_entry` states the table's entry for `initial` by `decide +kernel`.  `open Verified` inside `Demos.OrderBook.Process` opens `Demos.OrderBook.Verified` once `Bound.lean` imports that module, so the charges open `_root_.Verified`.
+
+`tests/orderbook/process.sh` adds the compiled axiom audit, the emission and validation of the module, the streams of `run.sh` and the ends of input through the Wasmtime host, an interactive test of both executables, and the shared I/O-error script, which takes the input of its write cases as a fourth argument, since its default input holds no whole word.
+
+| Check | Start | Duration | Result |
+|---|---|---|---|
+| Build of `Demos.OrderBook.ProcessWasi` | 08:53 UTC | 5 min | No error.  The module itself took 292 s |
+| Builds of `ProcessModule`, `ProcessProof`, and `ProcessTermination` | 08:59 UTC | 5 min | No error.  `ProcessModule` took 127 s, and `source_run` needs 1,000,000 heartbeats |
+| Builds of `ProgramCounts` and `Bound` | 10:44 UTC | Under 1 min | No error.  `ProgramCounts` took 6.2 s and `Bound` 4.5 s |
+| Builds of `ProcessSizes`, `ProcessCharges`, and `ProcessCompiledCorrect` | 10:45 UTC | 1.5 min | No error and no `sorry`.  `ProcessCharges` took 62 s and `ProcessCompiledCorrect` 17 s |
+| `tests/orderbook/ProcessCompiledAxioms.lean` and `tests/orderbook/ProcessAxioms.lean` | 10:47 UTC | Under 1 min | 1,520 and 190 theorems use only `propext`, `Classical.choice`, and `Quot.sound` |
+| `tests/orderbook/process.sh` | 10:47 UTC | 4 min | Every case passed: 13,077 scripted native runs, 94 streams through both executables, 28 ends of input, interactive output, and 4 I/O errors |
+| Scripted Talos run of the empty input under `lean --run` | 09:27 UTC | 15 min, the limit | Did not finish |
+| Build of every library on main with the closed form of `run` and this work | 11:38 UTC | Under 1 min | No error and no `sorry` |
+| `tests/orderbook/process.sh` on the same tree | 11:38 UTC | 4 min | Every case passed, with both axiom audits |
+| `tests/running-sum/run.sh`, for the shared I/O-error script's three-argument form | 11:42 UTC | Under 1 min | Every case passed, with its 4 I/O-error cases |
+
+- [x] Compilation, module, refinement, typed termination, charges, and the final theorem.
+- [x] Wasmtime tests, interactive output, and I/O errors.
+- [ ] Scripted Talos runs of the compiled module, which need a faster memory in Talos or a smaller state.
+- [x] Closed form of `run`'s bound without the invariant, and the native premise in `initial_terminates`.
+- [x] A paragraph on the order book's process in [the WASI manual](docs/wasi.md#processes-without-an-iteration-bound).

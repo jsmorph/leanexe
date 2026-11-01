@@ -5,8 +5,10 @@ set -f
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$root"
 
-if [ "$#" -ne 3 ]; then
-  printf 'Usage: tests/wasi/stream-io-errors.sh NAME NATIVE WASM\n' >&2
+# The write cases give the program INPUT, or the two lines 1 and 2 when INPUT is absent, and need
+# an input that makes the program write.
+if [ "$#" -ne 3 ] && [ "$#" -ne 4 ]; then
+  printf 'Usage: tests/wasi/stream-io-errors.sh NAME NATIVE WASM [INPUT]\n' >&2
   exit 2
 fi
 name=$1
@@ -15,7 +17,11 @@ wasm=$3
 host="$root/build/tools/leanexe-wasmtime-host"
 out="$root/build/$name/io-errors"
 mkdir -p "$out"
-printf '1\n2\n' >"$out/input"
+if [ "$#" -eq 4 ]; then
+  cp "$4" "$out/input"
+else
+  printf '1\n2\n' >"$out/input"
+fi
 
 expect_status() {
   if [ "$3" -ne "$2" ]; then
