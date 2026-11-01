@@ -6,7 +6,7 @@
 #      executables native-verified, native-bare, verified-cases, and native-module-cases, at log
 #      level info, so that the log holds the axiom report of every `#print axioms`;
 #   2. tests/verified/run.sh and, when it passes, tests/drone/run.sh and tests/modules/chunks.py on
-#      the drone and order-book modules that it writes;
+#      the drone and insertion modules that it writes;
 #   3. tests/native/verified.sh without and with --aligned, tests/native/aligned.sh,
 #      tests/native/run.sh, tests/native/bytes.sh, and tests/native/clight.sh 7 300 for the
 #      platform's target;
@@ -336,8 +336,8 @@ step_drone() {
   record "$step" "$(outcome)" "$seconds" "$cell"
 }
 
-# The order-book sessions run only after a pass of tests/verified/run.sh has written
-# build/verified/clob.wasm.
+# The level sessions run only after a pass of tests/verified/run.sh has written
+# build/verified/insert.wasm.
 step_chunks() {
   local step='`tests/modules/chunks.py`'
   if unbuilt "$step"; then

@@ -9,7 +9,8 @@ position down by one element and shortens the array.  An owned array that dies a
 changes in its own block, and any other array is copied first.  A parameter that dies at the
 operation is owned, so the function changes the caller's array in its block.  A position past the end leaves
 the array unchanged.  The programs insert into and remove from parameters, built arrays, a loop's
-state, a local array of pairs, and arrays of structures. -/
+state, a local array of pairs, arrays of structures, and the pair of arrays of a book side, which a
+command loop passes through calls. -/
 
 namespace Verified.Examples.Insert
 
@@ -50,8 +51,33 @@ a flattened array. -/
 def pushConserved (n : UInt64) (u : Conserved) : Array Conserved :=
   LeanExe.loop n (LeanExe.build 0 fun _ => u) fun _ acc => acc.push u
 
+/-- A book side, as its prices and its sizes, with a level of `size` at `price` inserted at
+position `k`. -/
+def insertLevel (prices sizes : Array UInt64) (k price size : UInt64) :
+    Array UInt64 × Array UInt64 :=
+  (LeanExe.insertAt prices k price, LeanExe.insertAt sizes k size)
+
+/-- A book side without level `k`. -/
+def removeLevel (prices sizes : Array UInt64) (k : UInt64) : Array UInt64 × Array UInt64 :=
+  (LeanExe.eraseAt prices k, LeanExe.eraseAt sizes k)
+
+/-- A book side after command `kind`: kind 0 inserts a level of `size` at `price` at position `k`,
+kind 1 removes level `k`, and any other kind leaves the side unchanged. -/
+def applyLevel (prices sizes : Array UInt64) (kind k price size : UInt64) :
+    Array UInt64 × Array UInt64 :=
+  if kind = 0 then insertLevel prices sizes k price size
+  else if kind = 1 then removeLevel prices sizes k
+  else (prices, sizes)
+
+/-- A book side after the commands in `commands`, four words each, as `applyLevel` takes them. -/
+def runLevels (prices sizes commands : Array UInt64) : Array UInt64 × Array UInt64 :=
+  LeanExe.loop (commands.size.toUInt64 / 4) (prices, sizes) fun i (p, s) =>
+    applyLevel p s commands[(4 * i).toNat]! commands[(4 * i + 1).toNat]!
+      commands[(4 * i + 2).toNat]! commands[(4 * i + 3).toNat]!
+
 verified_compile compiled := [insertParam, eraseParam, insertBuilt, eraseBuilt, insertKeep,
-  Library.Sorting.Insertion.sortInsert, Library.Arrays.Filter.removeAll, pointTotal, insertConserved, eraseConserved, pushConserved]
+  Library.Sorting.Insertion.sortInsert, Library.Arrays.Filter.removeAll, pointTotal,
+  insertConserved, eraseConserved, pushConserved, insertLevel, removeLevel, applyLevel, runLevels]
 
 /-- `sortInsert` inserts at most `xs.size` elements into a paid loop state, at a header and four
 times the 8 added bytes each, after the built array's block and its credit. -/

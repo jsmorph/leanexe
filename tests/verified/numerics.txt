@@ -74,7 +74,6 @@ recursion:Verified.Examples.Recursion:Verified/Examples/RecursionFile.lean
 fields:Verified.Examples.Fields:Verified/Examples/FieldsFile.lean
 fourier:Library.Numerics.Fourier.Compiled:Library/Numerics/Fourier/File.lean
 insert:Verified.Examples.Insert:Verified/Examples/InsertFile.lean
-clob:Demos.Clob.Verified:Demos/Clob/File.lean
 tables:Verified.Examples.Tables:Verified/Examples/TablesFile.lean
 drone:Demos.Drone.Verified:Demos/Drone/File.lean
 lcg:Library.Random.Lcg.Verified:Library/Random/Lcg/File.lean

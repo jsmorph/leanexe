@@ -57,7 +57,6 @@ import Verified.Examples.Fields
 import Library.Numerics.Float64.Trig.Program
 import Library.Numerics.Fourier.Program
 import Verified.Examples.Insert
-import Demos.Clob.Verified
 import Verified.Examples.Tables
 import Library.Numerics.Float64.Exp.Program
 import Library.Numerics.Float64.Tanh.Program
@@ -284,34 +283,27 @@ open Records in
 def conservedArrays : List (Array Conserved) :=
   [#[], #[⟨1.0, 2.0, 3.0⟩], conserveds.toArray, Grids.ramp 10]
 
-/-! Order books for `Clob`: books of up to eight levels with descending prices, mismatched sides,
-and a level of the largest size, with command streams of the three kinds near the book's prices. -/
+/-! Book sides for the level functions of `Insert`: sides of up to eight levels with descending
+prices, sides whose arrays differ in length, and a level of the largest size, with command streams
+of the three kinds at positions inside, at, and past the end of a side. -/
 
-def clobBelow (n i : Nat) : UInt64 := UInt64.ofNat ((i * 2654435761 + 7) % n)
+def levelBelow (n i : Nat) : UInt64 := UInt64.ofNat ((i * 2654435761 + 7) % n)
 
-def clobBook (n top seed : Nat) : Array UInt64 × Array UInt64 :=
+def levelBook (n top seed : Nat) : Array UInt64 × Array UInt64 :=
   ((List.range n).toArray.map fun k => UInt64.ofNat (top - 3 * k - (seed + k) % 3),
-    (List.range n).toArray.map fun k => 1 + clobBelow 20 (seed + 5 * k))
+    (List.range n).toArray.map fun k => 1 + levelBelow 20 (seed + 5 * k))
 
-def clobBooks : List (Array UInt64 × Array UInt64) :=
+def levelBooks : List (Array UInt64 × Array UInt64) :=
   [(#[], #[]), (#[100], #[5]), (#[105, 102, 101, 100, 98], #[4, 4, 6, 7, 10]), (#[100, 98], #[5]),
     (#[100], #[5, 6]), (#[100, 99], #[18446744073709551615, 2])] ++
-    (List.range 30).map fun i => clobBook (i % 9) (200 + 7 * i) i
+    (List.range 30).map fun i => levelBook (i % 9) (200 + 7 * i) i
 
-/-- An output array of up to two words, to which `stepCommand` and `runOut` append. -/
-def clobOutputs (i : Nat) : Array UInt64 :=
-  (List.range (i % 3)).toArray.map fun k => UInt64.ofNat (7 + k)
-
-def clobCommands (ps : Array UInt64) (count seed : Nat) : Array UInt64 :=
+def levelCommands (ps : Array UInt64) (count seed : Nat) : Array UInt64 :=
   ((List.range count).flatMap fun j =>
-    let near := if ps.isEmpty then 100 else ps[(seed + j) % ps.size]!
-    [clobBelow 3 (seed + 7 * j), if (seed + j) % 4 = 0 then near + 1 else near,
-      1 + clobBelow 9 (seed + 3 * j)]).toArray
+    [levelBelow 3 (seed + 7 * j), levelBelow (ps.size + 3) (seed + 5 * j),
+      90 + levelBelow 20 (seed + j), 1 + levelBelow 9 (seed + 3 * j)]).toArray
 
 def pairOut (r : Array UInt64 × Array UInt64) : String := s!"{arrayOut r.1} {arrayOut r.2}"
-
-def tripleOut (r : Array UInt64 × Array UInt64 × Array UInt64) : String :=
-  s!"{arrayOut r.1} {arrayOut r.2.1} {arrayOut r.2.2}"
 
 /-! The host's words for enumerations and a calculator, by their `Flat` instances. -/
 
@@ -1327,47 +1319,6 @@ def main : IO Unit := do
       IO.println s!"elements|flip|array-u64|{a} i64:{i}|{boolArrayOut (Elements.flip bs i)}|1|1"
   for n in [0, 1, 2, 10, 30] do
     IO.println s!"elements|sieve|array-u64|i64:{n}|{boolArrayOut (Elements.sieve n)}|1|1"
-  -- The order book.
-  let two := "list:array-u64,array-u64"
-  let three := "list:array-u64,array-u64,array-u64"
-  for (i, (p, s)) in (List.range clobBooks.length).zip clobBooks do
-    let (ap, as) := (arrayArg p, arrayArg s)
-    let q := clobBelow 60 i
-    let (filled, cost) := Demos.Clob.Verified.marketBuy p s q
-    IO.println s!"clob|marketBuy|list:i64,i64|{ap} {as} i64:{q}|{filled} {cost}"
-    for k in [0, p.size / 2, p.size, p.size + 2].map UInt64.ofNat do
-      let a := clobBelow 8 (i + k.toNat)
-      IO.println s!"clob|fillLevel|array-u64|{as} i64:{k} i64:{a}|{arrayOut (Demos.Clob.Verified.fillLevel s k a)}"
-      let r := arrayOut (Demos.Clob.Verified.fillTwice s k a 1)
-      IO.println s!"clob|fillTwice|array-u64|{as} i64:{k} i64:{a} i64:1|{r}"
-      IO.println s!"clob|fillKeep|{two}|{as} i64:{k} i64:{a}|{pairOut (Demos.Clob.Verified.fillKeep s k a)}"
-      let r := pairOut (Demos.Clob.Verified.insertLevel p s k 97 3)
-      IO.println s!"clob|insertLevel|{two}|{ap} {as} i64:{k} i64:97 i64:3|{r}"
-      IO.println s!"clob|setLevel|{two}|{ap} {as} i64:{k} i64:9|{pairOut (Demos.Clob.Verified.setLevel p s k 9)}"
-      IO.println s!"clob|removeLevel|{two}|{ap} {as} i64:{k}|{pairOut (Demos.Clob.Verified.removeLevel p s k)}"
-    let top := if p.isEmpty then [] else [p[0]!, p[p.size - 1]!, p[0]! + 1]
-    for price in [0, 99, 100, 150, 18446744073709551615] ++ top do
-      IO.println s!"clob|findLevel|i64|{ap} i64:{price}|{Demos.Clob.Verified.findLevel p price}"
-      IO.println s!"clob|depth|i64|{ap} {as} i64:{price}|{Demos.Clob.Verified.depth p s price}"
-      let r := pairOut (Demos.Clob.Verified.addBid p s price 4)
-      IO.println s!"clob|addBid|{two}|{ap} {as} i64:{price} i64:4|{r}"
-      let c := clobBelow 12 (i + price.toNat)
-      let r := pairOut (Demos.Clob.Verified.cancelBid p s price c)
-      IO.println s!"clob|cancelBid|{two}|{ap} {as} i64:{price} i64:{c}|{r}"
-      for kind in [0, 1, 2] do
-        let r := pairOut (Demos.Clob.Verified.applyCommand p s kind price 5)
-        IO.println s!"clob|applyCommand|{two}|{ap} {as} i64:{kind} i64:{price} i64:5|{r}"
-        let o := clobOutputs i
-        let r := tripleOut (Demos.Clob.Verified.stepCommand p s o kind price 5)
-        let args := s!"{ap} {as} {arrayArg o} i64:{kind} i64:{price} i64:5"
-        IO.println s!"clob|stepCommand|{three}|{args}|{r}"
-    -- Command streams, the last with a trailing partial command, which the runs ignore.
-    for cs in [0, 1, 4, 13].map (clobCommands p · i) ++ [clobCommands p 2 i ++ #[0, 5]] do
-      let o := clobOutputs i
-      let r := pairOut (Demos.Clob.Verified.runCommands p s cs)
-      IO.println s!"clob|runCommands|{two}|{ap} {as} {arrayArg cs}|{r}"
-      let r := tripleOut (Demos.Clob.Verified.runOut p s o cs)
-      IO.println s!"clob|runOut|{three}|{ap} {as} {arrayArg o} {arrayArg cs}|{r}"
   -- `exp` over its whole range, at its thresholds, and at the special values.
   let expArgs := floats ++ [-746.0, -745.2, -740.0, -708.5, -708.3, -100.0, -1.0, -0.5, 1e-20,
     -1e-20, 0.5, 1.0, 2.0, 10.0, 100.0, 511.9, 512.0, 600.0, 709.7, 709.8, 710.0, 1023.0,
@@ -1430,6 +1381,21 @@ def main : IO Unit := do
       IO.println s!"insert|insertConserved|array-u64|{a} i64:{i} {conservedArg u}|{r}|1|2"
       let r := arrayOut (conservedWords (Insert.eraseConserved us i))
       IO.println s!"insert|eraseConserved|array-u64|{a} i64:{i}|{r}|1|1"
+  -- The levels of a book side, in range and past the end, and command streams, the last with a
+  -- trailing partial command, which the loop ignores.
+  let two := "list:array-u64,array-u64"
+  for (i, (p, s)) in (List.range levelBooks.length).zip levelBooks do
+    let (ap, as) := (arrayArg p, arrayArg s)
+    for k in [0, p.size / 2, p.size, p.size + 2].map UInt64.ofNat do
+      let r := pairOut (Insert.insertLevel p s k 97 3)
+      IO.println s!"insert|insertLevel|{two}|{ap} {as} i64:{k} i64:97 i64:3|{r}|2|4"
+      IO.println s!"insert|removeLevel|{two}|{ap} {as} i64:{k}|{pairOut (Insert.removeLevel p s k)}|2|2"
+      for kind in [0, 1, 2] do
+        let r := pairOut (Insert.applyLevel p s kind k 97 3)
+        IO.println s!"insert|applyLevel|{two}|{ap} {as} i64:{kind} i64:{k} i64:97 i64:3|{r}|2|4"
+    for cs in [0, 1, 4, 13].map (levelCommands p · i) ++ [levelCommands p 2 i ++ #[0, 5, 9]] do
+      let r := pairOut (Insert.runLevels p s cs)
+      IO.println s!"insert|runLevels|{two}|{ap} {as} {arrayArg cs}|{r}|3"
   for n in [0, 1, 5, 100] do
     IO.println s!"tuples|points|array-u64|i64:{n}|{arrayOut (pointWords (Tuples.points n))}|1"
     IO.println s!"tuples|flags|array-u64|i64:{n}|{arrayOut (nestedWords (Tuples.flags n))}|1"

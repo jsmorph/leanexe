@@ -152,7 +152,8 @@ file and requires the axiom reports of both file theorems to name only `propext`
 
 [`Words`](../Words/README.md) and [`Lists`](../Lists/README.md) have records with one child and tail
 recursion or loops.  [`TreeLookup`](../TreeLookup/README.md) searches a binary search tree stored in
-an array.  [`Clob`](../../Demos/Clob/README.md) applies the same ownership rules to arrays.
+an array.  [The insertion example](../../Verified/Examples/Insert.lean) applies the same ownership
+rules to arrays.
 
 ## References
 

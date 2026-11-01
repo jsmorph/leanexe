@@ -88,7 +88,8 @@ show`, and it has already written the corpus, so it runs only to regenerate the 
 
 [`Euler`](../Euler/README.md) is the other large program whose module has a call theorem without a
 trap and a bound on its allocation, and [`Increment`](../../Examples/Increment/README.md) the
-smallest.  [`Clob`](../Clob/README.md) has loops over arrays with tuple states at a small scale.
+smallest.  [The insertion example](../../Verified/Examples/Insert.lean) has a loop whose state is a
+pair of arrays at a small scale.
 [`Below100`](../../Examples/Below100/README.md) has `LeanExe.repeatWhile`, which the planner's
 forward pass also uses.
 

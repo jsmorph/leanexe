@@ -40313,7 +40313,7 @@ The order book's WASI process does not need the loop rule changed.  Its plan pas
 
 - [x] Paid results of an in-place `set`, with the soundness proof, the measurement, and the guide.
 - [ ] Paid values of loops whose state is a pair, which the order book's `run` needs to stop charging the book's credits on every record.
-- [ ] Decide whether to add a paid case for `eraseAt` and to pay a parameter that makes its function's result paid, which Clob's command loops need.
+- [ ] Decide whether to add a paid case for `eraseAt` and to pay a parameter that makes its function's result paid, which the command loop `runLevels` of the insertion example needs.
 
 ## 2026-11-01: The closed-form bound of the order book's `run`
 
@@ -40388,3 +40388,13 @@ Running sum's charge proofs carry over except at three points.  The stopping bra
 ## 2026-11-01: Test scripts take their tools from the caller's search path
 
 The test scripts of the WASI compiler, both running sums, the verified compiler, the module cases, and Talos appended the user's local tool directories to `PATH`, so a script found `uv` and `wasm-tools` even when the caller's environment did not name them.  Each script now checks the tools that it runs with `command -v` before its first build and stops with a message that names the missing tool, as `tests/orderbook/process.sh` does.  `tests/modules/run.sh` runs neither tool and needs no check, `tests/wasi/run.sh` checks `wasm-tools` only outside `--foundations-only`, and `tests/talos/run.sh` checks the search path after it prepends the directory of `WASM_TOOLS`.  A test run without the tools on the search path stopped each script at its check with the tool's name.  `tools/full-check` and `tools/check-wasm-tools-version.sh` still name the local tool directories.
+
+## 2026-11-01: The removal of Clob
+
+`Demos/Clob` held the bid side of an order book as two sorted arrays and served the compiler's tests before the two-sided book of `Demos/OrderBook` existed.  Its one feature that no other test covered was a loop whose state is a pair of arrays that calls change in place with `insertAt` and `eraseAt`.  The insertion example now holds `insertLevel` and `removeLevel` from Clob, `applyLevel`, which inserts or removes a level by a command's kind, and `runLevels`, a loop over four-word commands that calls `applyLevel`.  Their cases reuse Clob's books, state the blocks that each call leaves, and bound the allocations of the single calls, and `tests/modules/chunks.py` runs command streams through `insert.wasm` whole, in chunks, and one command at a time, as it did through `clob.wasm`.  Clob's market buy, `set!` updates, output array, and chunking theorems over the Lean definitions go with it: `Updates` tests chains of `set!`, `Tables` extends an owned parameter, and the order book proves `run_append` for its own stream.
+
+- [x] Level functions, command loop, and cases in the insertion example.
+- [x] `chunks.py`, the module registries, and the documents that named Clob.
+- [x] Build, the insertion cases in Wasmtime and in C, and `chunks.py`.
+
+The test ran from 13:18 to 13:21 UTC.  The build of every library passed without `sorry`, and `tests/verified/run.sh --cases insert` passed all 1,227 cases of the insertion module, 900 of them for the level functions, each with the blocks that it leaves.  The insertion example's file theorems passed against the written module, `chunks.py` passed 160 cases, and `tests/native/verified.sh --module insert` passed the same 1,227 cases on the C translation compiled by CompCert.
