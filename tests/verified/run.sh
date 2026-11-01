@@ -25,7 +25,10 @@
 # the caller's memory limit.
 # Usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]
 set -euo pipefail
-export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
+if ! command -v wasm-tools > /dev/null 2>&1; then
+  echo "fail: wasm-tools is not on the search path" >&2
+  exit 1
+fi
 case_module=""
 reference=""
 if [ "$#" -ne 0 ]; then

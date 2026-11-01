@@ -40384,3 +40384,7 @@ Running sum's charge proofs carry over except at three points.  The stopping bra
 - [ ] Scripted Talos runs of the compiled module, which need a faster memory in Talos or a smaller state.
 - [x] Closed form of `run`'s bound without the invariant, and the native premise in `initial_terminates`.
 - [x] A paragraph on the order book's process in [the WASI manual](docs/wasi.md#processes-without-an-iteration-bound).
+
+## 2026-11-01: Test scripts take their tools from the caller's search path
+
+The test scripts of the WASI compiler, both running sums, the verified compiler, the module cases, and Talos appended the user's local tool directories to `PATH`, so a script found `uv` and `wasm-tools` even when the caller's environment did not name them.  Each script now checks the tools that it runs with `command -v` before its first build and stops with a message that names the missing tool, as `tests/orderbook/process.sh` does.  `tests/modules/run.sh` runs neither tool and needs no check, `tests/wasi/run.sh` checks `wasm-tools` only outside `--foundations-only`, and `tests/talos/run.sh` checks the search path after it prepends the directory of `WASM_TOOLS`.  A test run without the tools on the search path stopped each script at its check with the tool's name.  `tools/full-check` and `tools/check-wasm-tools-version.sh` still name the local tool directories.

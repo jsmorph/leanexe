@@ -4,7 +4,6 @@
 # module and, under the name shapes, on the verified sums module.
 # Usage: tests/modules/run.sh --module NAME WASM
 set -euo pipefail
-export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
 root=$(cd "$(dirname "$0")/../.." && pwd)
 if [ "$#" -ne 3 ] || [ "$1" != "--module" ] || [ -z "$2" ] || [ -z "$3" ]; then
   echo "usage: tests/modules/run.sh --module NAME WASM" >&2

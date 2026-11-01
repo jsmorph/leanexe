@@ -13,11 +13,14 @@
 # checks the version of the wasm-tools that PATH gives.
 # Usage: tests/talos/run.sh
 set -euo pipefail
-PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
 if [ -n "${WASM_TOOLS:-}" ]; then
   PATH="$(dirname "$WASM_TOOLS"):$PATH"
 fi
 export PATH
+if ! command -v wasm-tools > /dev/null 2>&1; then
+  echo "talos: wasm-tools is not on the search path" >&2
+  exit 2
+fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 codelib=$root/.lake/packages/CodeLib
 runner=$codelib/interpreter/.lake/build/bin/testsuite

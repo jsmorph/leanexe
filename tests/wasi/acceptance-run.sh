@@ -1,7 +1,10 @@
 #!/bin/sh
 set -eu
 set -f
-export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
+if ! command -v wasm-tools > /dev/null 2>&1; then
+  printf 'wasm-tools is not on the search path\n' >&2
+  exit 1
+fi
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$root"
