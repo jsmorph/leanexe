@@ -6,8 +6,8 @@ import LeanExe.Dialect.ArrayLemmas
 /-! The proofs that Algorithms A, S, and M compute the digits of the sum, the difference, and the
 product.  `prefixValue u q` is the number of the first `q` digits of `u`.  Each loop keeps an
 equation between the prefix values of its arguments and of the digits it has written, with the
-carry or the borrow weighted by the next power of the base.  `digits_eq` turns an array of digits
-whose value is right into the specification's array. -/
+carry or the borrow weighted by the next power of the base.  `digits_eq` shows that an array of
+`N` digits whose value is `x` modulo `b^N` equals the specification's array `digits N x`. -/
 
 namespace Library.Numerics.MultiPrecision
 

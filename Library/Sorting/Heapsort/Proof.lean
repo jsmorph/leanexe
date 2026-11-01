@@ -4,12 +4,13 @@ import LeanExe.Dialect.Lemmas
 
 /-! The proof that heapsort returns the array's elements in nondecreasing order.  Every step of
 the program exchanges two elements, so the result is a permutation of the input
-(`siftDown_perm`, `heapify_spec`, `heapsort_sorted_perm`).  `HeapFrom a n L` states the heap order
-on `a[0, n)` for every node at or after `L`.  `siftDown_spec` states the invariant of the sift: the
-heap order holds at every node at or after `L` except the moving node `i`, and the children of `i`
-are at most its parent.  `heapify` establishes the heap order on the whole array, and each step of
-`heapsort` keeps a heap on a prefix, a sorted suffix, and every element of the prefix at most every
-element of the suffix.  A sorted permutation is unique, so the result equals `expected`. -/
+(`swap_perm`, `siftDown_frame`, `heapify_spec`, `heapsort_sorted_perm`).  `HeapFrom a n L` states
+the heap order on `a[0, n)` for every node at or after `L`.  `siftDown_spec` states the invariant of
+the sift: the heap order holds at every node at or after `L` except the moving node `i`, and, when
+`L < i`, the children of `i` are at most the parent of `i`.  `heapify` establishes the heap order
+on the whole array, and each step of `heapsort` keeps a heap on a prefix, a sorted suffix, and
+every element of the prefix at most every element of the suffix.  A sorted permutation is unique,
+so the result equals `expected`. -/
 
 namespace Library.Sorting.Heapsort
 
@@ -139,8 +140,8 @@ theorem siftDown_eq (i n : UInt64) (a : Array UInt64) :
 theorem div_two_toNat {i n : UInt64} : i < n / 2 ↔ i.toNat < n.toNat / 2 := by
   rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_div]; rfl
 
-/-- The sift keeps the size, permutes the elements, leaves the elements at `n` and beyond, and
-keeps every bound on the elements of `a[0, n)`. -/
+/-- The sift keeps the size, permutes the elements, leaves the elements at `n` and beyond unchanged,
+and keeps every upper bound on the elements of `a[0, n)`. -/
 theorem siftDown_frame (n x : UInt64) (i : UInt64) (a : Array UInt64) (hn : n.toNat ≤ a.size) :
     (siftDown i n a).size = a.size ∧ (siftDown i n a).toList.Perm a.toList ∧
       (∀ k, n.toNat ≤ k → (siftDown i n a)[k]! = a[k]!) ∧

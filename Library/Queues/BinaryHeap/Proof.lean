@@ -9,7 +9,10 @@ whose words are a permutation of the list queue's words, and the outputs are equ
 states the invariant of an insertion: the heap order holds at every node except between the moving
 node and its parent, and the children of the moving node are at most its parent.  A removal reuses
 heapsort's `siftDown_spec`.  The root of a heap is its largest word, `heap_root`, so it is `largest`
-of the list queue. -/
+of the list queue.  `runOps_eq` writes the specification as a fold of `specStep`, and
+`heapQueue_eq` follows by induction over the operations with `step_agrees`.  After `k` operations
+the heap's size and the array's size are at most `k`, below `2^63`, so `n + 1` and the array's size
+as a word do not wrap. -/
 
 namespace Library.Queues.BinaryHeap
 

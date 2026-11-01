@@ -5,7 +5,9 @@ import Mathlib.Data.Nat.Prime.Basic
 /-! The proof that the binary GCD computes `Nat.gcd`.  `removeTwos_spec` and `commonTwos_spec`
 state what the two shifting loops compute in terms of powers of 2.  `oddGcd_spec` follows from
 `gcd u v = gcd u (v - u)` and from the fact that a power of 2 shares no factor with an odd number.
-`binaryGcd_eq` combines them with `gcd (2^j * a) (2^j * b) = 2^j * gcd a b`. -/
+`binaryGcd_eq` combines them with `gcd (2^j * a) (2^j * b) = 2^j * gcd a b`.  It also uses that one
+quotient of step B1 is odd, so removing the factors of 2 from both leaves the greatest common
+divisor, and that `j < 64` and the result is at most `u`, so the final shift does not wrap. -/
 
 namespace Library.Numerics.Arithmetic.BinaryGcd
 

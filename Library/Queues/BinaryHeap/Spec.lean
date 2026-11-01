@@ -23,6 +23,7 @@ def runOps : List (UInt64 × UInt64) → List UInt64 → List UInt64 → List UI
 def operations (xs : Array UInt64) : List (UInt64 × UInt64) :=
   (List.range (xs.size / 2)).map fun i => (xs[2 * i]!, xs[2 * i + 1]!)
 
+/-- The outputs of the operations of `xs` on the empty queue. -/
 def expected (xs : Array UInt64) : Array UInt64 := (runOps (operations xs) [] []).toArray
 
 end Library.Queues.BinaryHeap

@@ -6,9 +6,10 @@ import LeanExe.Dialect.ArrayLemmas
 /-! The proof that the hash table computes the outputs of the list of keys.  Slots are numbers below
 `m`.  `adv m r d` is the slot `d` steps after slot `r`, and `dist m a b` is the number of steps from
 slot `a` to slot `b`, both without `%`, so that `omega` decides their arithmetic.  `Good` states the
-invariant of the table: the occupied slots hold a permutation of the keys, at least one slot is
-empty, and every slot that the search for an occupied slot's key passes, from the key's home slot
-to the slot before it, is occupied.  `probe_spec` shows that a search ends at the slot of its key
+invariant of the table: the occupied slots hold a permutation of the keys, which number either none
+or at most `m - 1`, so that a table of at least one slot has an empty slot, `Good.free`, and every
+slot that the search for an occupied slot's key passes, from the key's home slot to the slot before
+it, is occupied.  `probe_spec` shows that a search ends at the slot of its key
 or at an empty slot, `CloseInv` states the invariant of Algorithm R, whose one exception is the
 empty slot `j` on the path of a key not yet inspected, and `close_spec` shows that the deletion
 restores `Good`. -/
@@ -194,9 +195,9 @@ theorem tableKeys_length_ge {m h : Nat} {t : Array UInt64}
 
 /-! ### The invariant -/
 
-/-- The table `t` of `m` slots holds the keys `keys`: the occupied slots hold a permutation of the
-keys, which are distinct, at least one slot is empty, and the slots from the home slot of an
-occupied slot's key up to the slot before it are occupied. -/
+/-- The table `t` of `m` slots holds the keys `keys`: the array holds `2m` words, the occupied
+slots hold a permutation of the keys, which are distinct and number either none or at most `m - 1`,
+and the slots from the home slot of an occupied slot's key up to the slot before it are occupied. -/
 structure Good (m : Nat) (t : Array UInt64) (keys : List UInt64) : Prop where
   size : t.size = 2 * m
   perm : (tableKeys m t).Perm keys

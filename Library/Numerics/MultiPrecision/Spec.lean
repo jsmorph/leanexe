@@ -6,7 +6,8 @@ states that every word of `u` is below `2^32`.  The functions return arrays for 
 the proofs assume `Digits` of both arguments, with fewer than `2^64` words in each, fewer than
 `2^64` in both together for a product, and fewer than `2^62` in both together for a division, so
 the results on other arrays carry no meaning.  The call theorems obtain the bound on each argument
-from its array in memory and assume the bound on both together.
+from its array in memory, and those of the product and the division assume the bound on both
+together.
 Each result has a length fixed by the lengths of the arguments: `k + 1` digits for a sum and `k`
 for a difference, where `k` is the larger length, so that a difference `u - v` with `u < v` is
 `u - v + 2^(32 k)`, `m + n` digits for a product, where `m` and `n` are the lengths of `u` and `v`,

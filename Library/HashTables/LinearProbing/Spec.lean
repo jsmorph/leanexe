@@ -30,6 +30,7 @@ def runOps (m : Nat) : List (UInt64 × UInt64) → List UInt64 → List UInt64 �
     else if k ∈ keys then runOps m rest (keys.erase k) (out ++ [1])
     else runOps m rest keys (out ++ [0])
 
+/-- The outputs of the operations of `xs` on a table of `slots xs` slots that holds no key. -/
 def expected (xs : Array UInt64) : Array UInt64 :=
   (runOps (slots xs) (operations xs) [] []).toArray
 

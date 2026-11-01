@@ -6,7 +6,12 @@ import LeanExe.Dialect.Lemmas
 test for every base that it does not divide.  `addMod_spec` and `mulMod_spec` show that every
 partial result is a residue, so no word wraps.  The loop of `mulMod` keeps the product of `a` with
 the top `i` bits of `b`, the loop of `powMod` keeps `x` raised to the low `i` bits of the exponent
-and to `2^i`, and `twos_spec` equates the count of low zero bits with Mathlib's `padicValNat`. -/
+and to `2^i`, and `twos_spec` equates the count of low zero bits with Mathlib's `padicValNat`.
+`TestInv` states the invariant of the squarings of step P4, `testLoop_spec` shows that the loop's
+flag records whether some `x^(2^j q)` with `1 ≤ j < k` is `n - 1` modulo `n`, and `test_eq`
+combines it with `powMod_spec` and `twos_spec`.  `prime_passes` works in the field `ZMod n`:
+Fermat's little theorem makes `x^(2^k q)` equal 1, and the power before the first 1 among the
+powers `x^(2^j q)` squares to 1 and is not 1, so it is `-1`. -/
 
 namespace Library.Numerics.Arithmetic.MillerRabin
 

@@ -1,12 +1,17 @@
 import Library.Sorting.Heapsort.Program
 
-/-! A priority queue as a binary heap, TAOCP §5.2.3.  The heap is the prefix `h[0, n)` of an array,
-with the largest word at the root and every node at or above its children, as in heapsort.  An
-insertion writes the value at position `n`, or appends it when the array is full, and moves it up
-while its parent holds a smaller word.  A removal outputs the root, moves the last word of the heap
-to the root, and moves that word down with heapsort's `siftDown`.  The loop's state holds the
-outputs, the heap's size, and the array, in that order, so that each step reads the array before it
-changes it. -/
+/-! A priority queue as a binary heap, TAOCP §5.2.3.  The input holds the operations as pairs
+`xs[2i], xs[2i + 1]` of a code and a value: code 0 inserts the value, any other code removes the
+largest word and outputs it, or does nothing when the queue is empty, and a last word without a
+partner is no operation.  The heap is the prefix `h[0, n)` of an array, with node `i` the parent of
+nodes `2i + 1` and `2i + 2`, where Knuth numbers the nodes from 1 and gives node `j` the children
+`2j` and `2j + 1`.  The largest word is at the root, and every node is at or above its children, as
+in heapsort.  An insertion writes the value at position `n`, or appends it when the array holds
+exactly `n` words, and moves it up while its parent holds a smaller word.  A removal outputs the
+root, copies the last word of the heap to the root, and moves that word down with heapsort's
+`siftDown`, which performs steps H3 to H8 of Algorithm H.  The loop's state holds the outputs, the
+heap's size, and the array, in that order, so that each step reads the root before it changes the
+array. -/
 
 namespace Library.Queues.BinaryHeap
 
@@ -24,9 +29,13 @@ decreasing_by
   simp only [UInt64.toNat_div, UInt64.toNat_sub, UInt64.reduceToNat] at *
   omega
 
-/-- One operation on the state: the outputs, the heap's size, and the array.  Each component
-chooses its own new value, so that the loop's body ends in one tuple; the compiler unfolds `step`
-into the loop, whose state it owns, so that the arrays change in place. -/
+/-- One operation, with the code `op` and the value `v`, on the state of the outputs, the heap's
+size `n`, and the array.  Code 0 inserts `v`.  Any other code, when `n > 0`, outputs the root,
+copies the word at `n - 1` to the root, and sifts it down the heap of `n - 1` words, and it changes
+nothing when `n = 0`.  Each component chooses its own new value, so that the loop's body ends in
+one tuple, since the compiler does not accept a loop body that chooses among whole states with
+nested `if`s.  The compiler unfolds `step` into the loop, whose state it owns, so that the arrays
+change in place. -/
 @[inline] def step (op v : UInt64) (s : Array UInt64 × UInt64 × Array UInt64) :
     Array UInt64 × UInt64 × Array UInt64 :=
   (if 0 < op ∧ 0 < s.2.1 then s.1.push s.2.2[(0 : UInt64).toNat]! else s.1,
@@ -38,7 +47,8 @@ into the loop, whose state it owns, so that the arrays change in place. -/
       siftDown 0 (s.2.1 - 1) (s.2.2.set! (0 : UInt64).toNat s.2.2[(s.2.1 - 1).toNat]!)
     else s.2.2)
 
-/-- The words that the removals output, in order. -/
+/-- The words that the removals output, in order, for the operations `xs[2i], xs[2i + 1]` with
+`i < xs.size / 2`, from no outputs, the size 0, and the empty array. -/
 def heapQueue (xs : Array UInt64) : Array UInt64 :=
   (LeanExe.loop (xs.size.toUInt64 / 2) ((#[] : Array UInt64), (0 : UInt64), (#[] : Array UInt64))
     fun i s => step xs[(i + i).toNat]! xs[(i + i + 1).toNat]! s).1

@@ -4,10 +4,16 @@ import Library.Numerics.Arithmetic.Uscale.UscaleDiv
 /-! The proof that Algorithm D computes the digits of the quotient and the remainder.  Algorithm D
 calls the Uscale module's `mulSmall` and `wordBits`, whose theorems state values with `val`, so
 `value_eq_val` relates the two definitions of a number's value.  `quot_le_trial`,
-`quot_lt_of_tooBig`, `trial_le_quot_succ`, and `passes_of_large` are Knuth's bounds on the trial
+`quot_lt_of_tooBig`, `passes_of_large`, and `trial_le_quot_succ` are Knuth's bounds on the trial
 quotient digit: the first trial digit is at least the quotient digit, each decrease of step D3
-happens only above it, and a digit that passes the test of step D3 is at most one above it.
-`trial_spec` applies them to the program. -/
+happens only above it, a digit whose remainder `r̂` reaches the base passes the test, and a digit
+that passes the test of step D3 is at most one above the quotient digit.  `trial_spec` applies them
+to the program.  `MulsubInv` and `AddbackInv` state the invariants of the loops of steps D4 and D6
+on the `t + 1` digits from position `j`, and `DivInv` states the invariant of the main loop: for
+the normalized arguments `U` and `V`, the quotient digits so far are `U / (V b^J) * b^J`, and the
+partial remainder is `U % (V b^J)`.  `main_step` keeps `DivInv`, `normalize` states the shift of
+step D1, `shortDiv_spec` states the short division of step D8 and of a divisor of one digit, and
+`longDiv_eq` and `divide_eq` combine them. -/
 
 namespace Library.Numerics.MultiPrecision
 

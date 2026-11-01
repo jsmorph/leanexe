@@ -28,8 +28,7 @@ theorem mergeSort_implements :
   Verified.implementsA_congr compiled.mergeSort.trapFree fun _ _ _ x ⟨_, _, hxs⟩ =>
     mergeSort_eq x.val (show _ < 2 ^ 64 from hxs.values.size_lt)
 
-/-- The room a call needs: the bound of the passes, each of which charges the block of the new
-array of `n` words. -/
+/-- The room a call needs: the bound of `sortLoop` from width 1. -/
 theorem mergeSort_bound (xs : Array UInt64) :
     compiled.mergeSort.bound { val := xs } =
       compiled.sortLoop.bound (1, xs.size.toUInt64, { val := xs }) :=

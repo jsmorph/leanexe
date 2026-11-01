@@ -4,8 +4,8 @@ words with the same repetitions in nondecreasing order, so the specification nam
 not a method, and stability has no effect on words.  The specification cannot state that the
 program merges runs bottom-up, writing each pass into a new array, which the program text shows.
 The program merges adjacent runs from left to right, as the request describes, where Knuth's
-Algorithm S takes its runs from the two ends of the area; both forms give the same result.
-The theorems concern arrays of fewer than `2^64` elements, which every array in memory is. -/
+Algorithm S takes its runs from the two ends of the area.  Both forms give the same result.  The
+theorems concern arrays of fewer than `2^64` elements, which every array in memory is. -/
 
 namespace Library.Sorting.MergeSort
 

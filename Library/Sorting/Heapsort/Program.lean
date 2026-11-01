@@ -1,12 +1,15 @@
 import LeanExe.Dialect.Loop
 
-/-! Heapsort, Algorithm H of TAOCP §5.2.3, on an array of words, in place.  Node `i` of the heap
-`xs[0, n)` has the children `2i + 1` and `2i + 2`, and the heap order puts every node at or above its
-children.  `siftDown` moves the word at a node down until it is at least both children.  `heapify`
-sifts the nodes `n / 2 - 1` down to 0, which makes the whole array a heap, and `heapsort` then
-swaps the root, the largest word, with the last word of the heap, shrinks the heap by one, and
-sifts the new root down, until one word remains.  A node `i` has a child exactly when `i < n / 2`,
-so the program tests that before it computes `2i + 1`, which therefore does not wrap. -/
+/-! Heapsort, Algorithm H of TAOCP §5.2.3, on an array of words, in place.  Indices start at 0, so
+node `i` of the heap `xs[0, n)` has the children `2i + 1` and `2i + 2`, where Knuth's node `j` has
+`2j` and `2j + 1`.  The heap order puts every node at or above its children.  `siftDown`, Knuth's
+siftup of steps H3 to H8, moves the word at a node down until it is at least both children.
+`heapify` performs the first phase of step H2: it sifts the nodes `n / 2 - 1` down to 0, which
+makes the whole array a heap.  `heapsort` performs the second phase: it swaps the root, the largest
+word, with the last word of the heap, shrinks the heap by one, and sifts the new root down, until
+one word remains.  Knuth runs both phases in one loop and assumes at least two records, and
+`heapsort` returns arrays of 0 and 1 elements unchanged.  A node `i` has a child if and only if
+`i < n / 2`, and the program tests that before it computes `2i + 1`, so `2i + 1` does not wrap. -/
 
 namespace Library.Sorting.Heapsort
 
@@ -18,10 +21,14 @@ def swap (i j : UInt64) (xs : Array UInt64) : Array UInt64 :=
   (xs.set! i.toNat y).set! j.toNat x
 
 /-- Steps H3 to H8: the word at node `i` moves down the heap `xs[0, n)`, exchanged with its larger
-child while that child holds a larger word.  Each branch names the child it moves to, `2i + 2` when
-that child exists and holds a larger word than `2i + 1`, and `2i + 1` otherwise, so that the new
-index reads no array.  The index comes before the array, so that the array is used last and changes
-in place. -/
+child while that child holds a larger word.  When the subtrees of the children of `i` are heaps,
+the result is a heap from `i` down.  Knuth's steps H6 and H7 move the larger child up into the
+vacant node and step H8 stores the word once, and the program exchanges the word with the child at
+each level.  Each branch names the child it moves to, `2i + 2` when that child exists and holds a
+larger word than `2i + 1`, and `2i + 1` otherwise, so that the new index reads no array: the
+compiler copies an array that one argument of a tail call reads while a later argument consumes
+it.  The index comes before the array, so that the call uses the array last and the compiler
+updates it in place. -/
 def siftDown (i n : UInt64) (xs : Array UInt64) : Array UInt64 :=
   if i < n / 2 then
     if i + i + 2 < n ∧ xs[(i + i + 1).toNat]! < xs[(i + i + 2).toNat]! then
@@ -44,9 +51,11 @@ decreasing_by
 def heapify (n : UInt64) (xs : Array UInt64) : Array UInt64 :=
   LeanExe.loop (n / 2) xs fun k acc => siftDown (n / 2 - 1 - k) n acc
 
-/-- The array in nondecreasing order: for `e` from `n - 1` down to 1, exchange the root with the
-word at `e` and sift the new root down the heap `xs[0, e)`.  The size is read once, before
-`heapify` takes the array, so that no later step reads the array that the loop changes. -/
+/-- Algorithm H with `n = xs.size`: arrays of 0 and 1 elements return unchanged.  Otherwise
+`heapify` builds the heap, and for `e` from `n - 1` down to 1 the loop performs the second phase of
+step H2: it exchanges the root with the word at `e` and sifts the new root down the heap
+`xs[0, e)`.  The program reads the size once, before `heapify` takes the array, because a later
+read of `xs` would make the compiler copy the array. -/
 def heapsort (xs : Array UInt64) : Array UInt64 :=
   let n := xs.size.toUInt64
   if n ≤ 1 then xs

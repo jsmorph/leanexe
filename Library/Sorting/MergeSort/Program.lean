@@ -2,9 +2,13 @@ import LeanExe.Dialect.Build
 
 /-! Straight two-way merge sort, TAOCP §5.2.4, bottom-up.  A pass of width `w` merges each pair of
 adjacent runs `[lo, lo + w)` and `[lo + w, lo + 2w)` of the array, cut at its length `n`, into a
-new array, and the passes double `w` from 1 until a run covers the array.  The merge takes the
-word of the first run when it is at most the word of the second, as `List.merge` does.  Run ends
-are computed as `lo + min w (n - lo)`, which never exceeds `n` and so never wraps. -/
+new array, and the passes double `w` from 1 until a run covers the array.  Knuth's Algorithm S
+pairs the runs from the two ends of one area of `N` records and writes the merged runs to the two
+ends of the other, alternating between the areas.  The program pairs adjacent runs from left to
+right, as the request describes, and writes each pass into a new array of `n` words.  The merge
+takes the word of the first run when it is at most the word of the second, as `List.merge` does.
+`runEnd` computes a run's end as `lo + min w (n - lo)`, which never exceeds `n` and so never
+wraps. -/
 
 namespace Library.Sorting.MergeSort
 
@@ -51,8 +55,10 @@ decreasing_by
     simp only [UInt64.toNat_sub, UInt64.toNat_add, UInt64.reduceToNat]
     omega
 
-/-- One pass of width `w` from position `lo`: merge the runs `[lo, mid)` and `[mid, hi)` of `src`,
-with `mid` and `hi` the ends of runs of width `w`, into `out`, and continue from `hi`. -/
+/-- One pass of width `w` from position `lo`: while `lo < n`, merge the runs `[lo, mid)` and
+`[mid, hi)` of `src`, with `mid` and `hi` the ends of runs of width `w`, into `out[lo, hi)`, and
+continue from `hi`.  The test `0 < w` makes the definition terminate, since a width of 0 would
+leave `lo` in place. -/
 def pass (src : Array UInt64) (w n lo : UInt64) (out : Array UInt64) : Array UInt64 :=
   if 0 < w ∧ lo < n then
     pass src w n (runEnd (runEnd lo w n) w n)
@@ -71,8 +77,9 @@ decreasing_by
   have := UInt64.toNat_lt n
   omega
 
-/-- The passes of widths `w`, `2w`, and so on, while a run is shorter than `n`.  The width doubles
-while `2w < n` and becomes `n` otherwise, so it never wraps. -/
+/-- The passes of widths `w`, `2w`, and so on, while `0 < w < n`, each from `xs` into a new array
+of `n` zeros, `LeanExe.build n fun _ => 0`.  The width doubles while `2w < n` and becomes `n`
+otherwise, so it never wraps, and the width `n` ends the loop. -/
 def sortLoop (w n : UInt64) (xs : Array UInt64) : Array UInt64 :=
   if 0 < w ∧ w < n then
     sortLoop (if w < n - w then w + w else n) n (pass xs w n 0 (LeanExe.build n fun _ => 0))
@@ -92,7 +99,8 @@ decreasing_by
   · simp only [UInt64.toNat_sub, UInt64.reduceToNat]
     omega
 
-/-- The array in nondecreasing order. -/
+/-- The array in nondecreasing order: the passes of `sortLoop` from width 1, with `n` the array's
+size.  Arrays of 0 and 1 elements return unchanged. -/
 def mergeSort (xs : Array UInt64) : Array UInt64 :=
   sortLoop 1 xs.size.toUInt64 xs
 
