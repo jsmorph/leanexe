@@ -63,7 +63,7 @@ theorem count_call :
   Verified.call_on (fun x => Valid x)
     (Verified.ImplementsTables.call (.ofA compiled.count.trapFree) compiled.tables nofun)
     (fun x _ _ h => ⟨h.1, count_fits x h.1, h.2⟩)
-    fun _ _ _ x ⟨_, _, hxs⟩ hv => count_eq x hv (by have := hxs.values.1; omega)
+    fun _ _ _ x ⟨_, _, hxs⟩ hv => count_eq x hv (by have := hxs.values.size_lt_memory32; omega)
 
 /-- From a ready store with room for `compiled.valid.bound x` bytes, function 18, the export
 `valid`, returns `validSpec x` without a trap and leaves a ready store. -/
@@ -71,7 +71,7 @@ theorem valid_callSpec :
     Verified.CallSpec compiled.module compiled.tables 18 validSpec compiled.valid.bound :=
   (Verified.ImplementsTables.call (.ofA compiled.valid.trapFree) compiled.tables nofun).spec
     (fun _ _ _ h => h) (fun _ _ _ _ _ h => h)
-    fun _ _ _ x ⟨_, _, hxs⟩ => valid_eq x (by have := hxs.values.1; omega)
+    fun _ _ _ x ⟨_, _, hxs⟩ => valid_eq x (by have := hxs.values.size_lt_memory32; omega)
 
 #print axioms count_call
 #print axioms valid_callSpec

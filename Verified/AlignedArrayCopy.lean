@@ -426,7 +426,7 @@ theorem wpX_copyArray {strict : Bool} {m : Module} (hm : Runtime m)
   have hA := hB.values
   have hLen := hA.lengthBound
   have hFitA := hA.1
-  have hSizeLt : xs.size < 536870912 := by omega
+  have hSizeLt := hA.size_lt_memory32
   have hN : (UInt64.ofNat xs.size).toNat = xs.size :=
     UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
   obtain ⟨hBytes, hAllocSize⟩ := allocSize_words hSizeLt
@@ -515,7 +515,7 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
   have hA := hB.values
   have hLen := hA.lengthBound
   have hFitA := hA.1
-  have hSizeLt : xs.size < 536870912 := by omega
+  have hSizeLt := hA.size_lt_memory32
   have hN : (UInt64.ofNat xs.size).toNat = xs.size :=
     UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
   obtain ⟨hBytes, hAllocSize⟩ := allocSize_words hSizeLt

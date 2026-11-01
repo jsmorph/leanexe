@@ -152,6 +152,12 @@ theorem At.size_lt {store : Store Unit} {ptr : UInt64}
   have hSize : UInt64.size = 18446744073709551616 := rfl
   omega
 
+theorem At.size_lt_memory32 {store : Store Unit} {ptr : UInt64}
+    {values : Array UInt64} (h : At store ptr values) :
+    values.size < 536870912 := by
+  have hFit32 := h.1
+  omega
+
 theorem At.encodedSize_eq {store : Store Unit} {ptr : UInt64}
     {values : Array UInt64} (h : At store ptr values) {size : Nat}
     (hSize : size < UInt64.size) :
