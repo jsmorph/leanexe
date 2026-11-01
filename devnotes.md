@@ -39509,7 +39509,7 @@ Euler's timestep and retry loops are the only loops whose pass count the run dec
 Two bounds are large for other reasons.  The order book's `runCommands` and `runOut` charge the credits of both book arrays on every pass, so their bound grows with the square of the command count, 16 N² + 176 N + 32 bytes for N inserting commands from an empty book, while the book holds 16 N bytes.  The survey's reading of `Expr.paid` is that the results of `setLevel` and `cancelBid` are unpaid, which makes the result of `applyCommand` unpaid, but no Lean check has tested that reading, and no theorem uses this bound.  GPT's `forward` charges each layer's temporaries again, about 4.2 GB at 1,024 tokens by a hand estimate, while `step`, the generation path, needs a few MB per token.
 
 - [x] The survey of bounds that grow with a loop's passes, and the decision against a compiler change.
-- [ ] Determine why the order book's command loops buy their credits on every pass, if the order book gets a call theorem.
+- [x] Determine why the order book's command loops buy their credits on every pass, if the order book gets a call theorem: the parameter rule and the absence of a paid case for `eraseAt`, as [the entry on paid results of `set`](#2026-11-01-paid-results-of-set) records.
 
 ## 2026-10-30: LTG's general entries in the VKB and the manual's general sections
 
@@ -40071,7 +40071,7 @@ The refinement proof dominates the work.  The design also assumes that the verif
 - [x] Array implementation, its native comparison with the specification on random command streams, and an independent Python reference.
 - [x] Refinement proof.
 - [x] `verified_compile`, the allocation bound, the call theorem, the registry entry, cases, and the C translation.
-- [ ] WASI process with stdin command records and stdout event records.
+- [x] WASI process with stdin command records and stdout event records, in [its native part](#2026-11-01-the-order-books-wasi-process-native-part) and [its compiled part](#2026-11-01-the-order-books-wasi-process-compiled-part).
 
 ## 2026-10-31: Review of the energy work
 
@@ -40246,7 +40246,7 @@ Lean's interpreter evaluated the first two bounds, which agree with the values c
 | Shared test helpers | `tests/TestSupport/OrderBook/Words.lean` holds the files of words and the host's format for arrays | Native comparison and module cases both use them. |
 
 - [x] Compilation, call theorems, registry entry, module cases, and C translation.
-- [ ] Evaluate `compiled.run.bound` again after the compiler's change to the results of in-place updates.
+- [x] Evaluate `compiled.run.bound` again after the compiler's change to the results of in-place updates, in [the entry on paid results of `set`](#2026-11-01-paid-results-of-set), with the closed form in [its own entry](#2026-11-01-the-closed-form-bound-of-the-order-books-run).
 
 ## 2026-11-01: The order book's WASI process, native part
 
