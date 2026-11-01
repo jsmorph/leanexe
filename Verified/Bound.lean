@@ -12,11 +12,12 @@ variables are paid: it counts each copy that the modes and the live sets call fo
 `build` makes, and each block of `push`, `++`, and `insertAt`.  An owned array that dies and is not
 paid is charged a block of twice the bytes of its new length and twice the added bytes, even when
 it extends in place.  A paid one is charged a header and four times the added bytes, which with
-its potential pay for its growth.  A pair is paid when each component is paid or holds no array,
-and destructuring a paid pair gives paid components, so an array inside a loop's state or a
-record grows at the paid charge.  In the result of the body of a loop whose state grows, an `if`
-is paid when either branch is, and its unpaid branch is charged the credit of its value.  The
-bound ignores the reuse of freed blocks. -/
+its potential pay for its growth.  A `set` of a paid owned array that dies writes inside its
+block, so its result is paid without a charge.  A pair is paid when each component is paid or
+holds no array, and destructuring a paid pair gives paid components, so an array inside a loop's
+state or a record grows at the paid charge.  In the result of the body of a loop whose state
+grows, an `if` is paid when either branch is, and its unpaid branch is charged the credit of its
+value.  The bound ignores the reuse of freed blocks. -/
 
 namespace Verified
 
@@ -250,16 +251,18 @@ def callCredits (funs : Funs S) (flags : Flags S) (modes : List Mode) (paid : Li
 
 /-- Whether the potential of every array of an expression's value is counted, given the
 variables' modes and flags and the variables live after it: for the growth of an owned array that
-dies, for a moved variable that is paid, for an `if` whose branches are both paid, for an owned
-pair whose components are paid or hold no array, for a `let` or a destructuring whose body's value
-is paid, the components of a destructured pair being paid when the pair is, for a loop whose body
-gives a paid value when its state is paid, and for a call of a function whose result holds arrays
-and is paid, given the functions' flags `flags`. -/
+dies, for a moved variable that is paid, for a `set` of a paid owned array that dies, which writes
+inside the array's block and keeps its potential, for an `if` whose branches are both paid, for an
+owned pair whose components are paid or hold no array, for a `let` or a destructuring whose body's
+value is paid, the components of a destructured pair being paid when the pair is, for a loop whose
+body gives a paid value when its state is paid, and for a call of a function whose result holds
+arrays and is paid, given the functions' flags `flags`. -/
 def Expr.paid (flags : Flags S) (modes : List Mode) (paid : List Bool) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .var x => modeAt modes x.index == .owned && !live x.index && paidAt paid x.index
   | _, _, .push x _ | _, _, .insertAt x _ _ => modeAt modes x.index == .owned && !live x.index
   | _, _, .append x y => modeAt modes x.index == .owned && !(live x.index || x.index == y.index)
+  | _, _, .set x _ _ => modeAt modes x.index == .owned && !live x.index && paidAt paid x.index
   | _, _, .ite _ thenE elseE =>
     thenE.paid flags modes paid live && elseE.paid flags modes paid live
   | _, _, .letE value body =>

@@ -14,10 +14,9 @@ whose `toSpec` is the book of `Spec.run`, and the words `Spec.encodeAll` of its 
 Both theorems take room for the bounds that `verified_compile` generates, so they hold for any
 bound that the compiler states.  The generated bound of `run` charges, at each record, the credits
 of the seven book arrays and of the event array, 393,424 bytes and 16 bytes for each event word so
-far, and, at each trade and each cancelled remainder, the credit of the event array again, besides
-80 bytes for each pushed word, so it grows with the records times the event words and with the
-square of the event words.  `Demos/OrderBook/README.md` gives its values on sample and edge
-streams. -/
+far, and, at each cancelled remainder, the credit of the event array again, besides 80 bytes for
+each pushed word, so it grows with the records times the event words.  `Demos/OrderBook/README.md`
+gives its values on sample and edge streams. -/
 
 namespace Demos.OrderBook.Verified
 

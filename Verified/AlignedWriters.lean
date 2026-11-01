@@ -483,7 +483,8 @@ section Cases
 variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
   {fits : Fits S} {host : HostEnv Unit} {pv : List Value} {strict : Bool}
 
-/-- `spec_ownedVar` under the flag. -/
+/-- `spec_ownedVar` under the flag.  An owned variable that dies leaves the store as it was, with
+its own words in its slot, which keeps its potential. -/
 theorem specX_ownedVar (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {tTy : Ty}
     (x : Var Γ' tTy)
     {env : Env Γ'} {slots : List Slot} {live : Nat → Bool} {h base : Nat} {heap : Heap}
@@ -503,8 +504,27 @@ theorem specX_ownedVar (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {tTy : 
       (strict = true → HoldsA env slots live heap' store' s' ∧
         Ty.AlignedVal .owned store' tTy ws (env.get x)) →
       heap'.top.toNat ≤ heap.top.toNat + x.ownedCost (slots.map Slot.mode) live (env.get x) →
+      ((slots.getD x.index default).mode = .owned → live x.index = false →
+        store' = store ∧ LocalsHold s (slots.getD x.index default).loc tTy.types ws) →
       wpX strict m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
     wpX strict m (x.ownedCode h slots base live ++ rest) Q store s host := by
+  by_cases hMove : (slots.getD x.index default).mode = .owned ∧ live x.index = false
+  · obtain ⟨hOwned, hDead⟩ := hMove
+    have hx : (fun i => live i || i == x.index) x.index = true := by simp
+    obtain ⟨-, ws, hold, hRep⟩ := hVars.get x hx
+    rw [hOwned] at hRep
+    have hNoCopy : ¬((slots.getD x.index default).mode = .owned ∧ live x.index = true) := by
+      simp [hDead]
+    have hNoCoerce : ¬((slots.getD x.index default).mode = .borrowed ∧ Mode.owned = .owned ∧
+        tTy.scalar = false) := by
+      rw [hOwned]; simp
+    rw [Var.ownedCode, Var.code, if_neg hNoCopy, coerceCode, if_neg hNoCoerce, List.append_nil]
+    exact wpX_loadCode ws hRep.typed hh hold (hNext heap store s ws
+      (After.move x hVars hAt hOwned hDead hold hRep.length)
+      (fun hs => ⟨(hAl hs).live_mono fun i h => by simp [h], by
+        have := (hAl hs).2 _ x hx ws hold hRep.length
+        rwa [hOwned] at this⟩)
+      (Nat.le_add_right _ _) fun _ _ => ⟨rfl, hold⟩)
   simp only [Var.ownedCode, List.append_assoc]
   have hScratch := tTy.copyScratch_le
   have hMode : modeAt (slots.map Slot.mode) x.index = (slots.getD x.index default).mode :=
@@ -532,7 +552,7 @@ theorem specX_ownedVar (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {tTy : 
       exact h2)
     fun heap2 store2 s2 ws2 a2 hTop2 _ hAl2 => hNext heap2 store2 s2 ws2 a2 hAl2 (by
       simp only [Expr.denote] at hTop2
-      simp only [Var.ownedCost]; rw [hMode]; omega)
+      simp only [Var.ownedCost]; rw [hMode]; omega) fun hO hD => absurd ⟨hO, hD⟩ hMove
 
 /-- `LeanExe.build`: the count in local `base`, a trap at `unreachable` when it is `2 ^ 29` or
 more, a new owned array at the address in local `base + 1`, and the index in local `base + 2`.
@@ -1072,13 +1092,14 @@ theorem specX_set (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {e : Elem} (
   have hIn : ∀ k, ((live k || k == x.index || v.uses k) || i.uses k) = true →
       (live k || (Expr.set x i v).uses k) = true := fun k h => by
     simp only [Expr.uses]; exact set_live_index _ _ _ _ h
-  -- The variables that die in the position and in the value.  The array, when it dies, is
-  -- consumed, and its potential is dropped.
+  -- The variables that die in the position, in the value, and at the write: the array, when it
+  -- dies there, whose potential pays for the result's when the array is paid.
   have hDiv : dyingPot store s env slots paid
         (fun k => (live k || k == x.index || v.uses k) || i.uses k)
         (fun k => live k || k == x.index || v.uses k) +
       dyingPot store s env slots paid (fun k => (live k || k == x.index) || v.uses k)
-        (fun k => live k || k == x.index) ≤
+        (fun k => live k || k == x.index) +
+      dyingPot store s env slots paid (fun k => live k || k == x.index) live ≤
       dyingPot store s env slots paid (fun k => live k || (Expr.set x i v).uses k) live := by
     rw [dyingPot_split _ (fun k => live k || k == x.index || v.uses k) live
       (fun k h => hIn k (by simp [h])) (fun k h => by simp [h]),
@@ -1142,6 +1163,15 @@ theorem specX_set (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {e : Elem} (
       (fun k => live k || k == x.index) (base + 1) heap1 store1 _ heap2 store2
       { s2' with values := s.values } :=
     ⟨e2a.step, e2a.frame.trans f2', e2a.holds.agree f2'⟩
+  -- The potential of the variables that die at the write, which the position's and the value's
+  -- code keep, since the array stays live in both.
+  have hDx : dyingPot store2 { s2' with values := s.values } env slots paid
+        (fun k => live k || k == x.index) live =
+      dyingPot store s env slots paid (fun k => live k || k == x.index) live := by
+    rw [dyingPot_evolves (e1.holds.mono (Nat.le_succ base)) e2 (fun k h => by simp [h])
+      (fun k => live k || k == x.index) live fun _ h => h]
+    exact dyingPot_evolves (hVars.live_mono hIn) e1 (fun k h => by simp [h])
+      (fun k => live k || k == x.index) live fun k h => by simp [h]
   have hp2 : s2'.params = s.params := f2.params.trans hp2a
   have hh2 : s2'.positions = h := f2.positions.trans hh2a
   have hI2 : s2'.get base = some (.i64 (i.denote funs env)) :=
@@ -1161,10 +1191,33 @@ theorem specX_set (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {e : Elem} (
       rw [hDv _ e1] at h2
       rw [hT]; omega)
       (by rw [e2.step.cap m, e1.step.cap m]))
-    fun heap3 store3 s3 ws3 a3 hAlO hTopO => ?_
+    fun heap3 store3 s3 ws3 a3 hAlO hTopO hMove => ?_
   obtain ⟨p, hws, hOwned⟩ := a3.rep
   subst hws
   have hPAl : strict = true → p.toNat % 8 = 0 := fun hs => Ty.AlignedVal.array hOwned (hAlO hs).2
+  -- The result's potential when the array is paid and dies: the array's own, at the same address
+  -- and capacity, which the potential of the variables that die at the write counts.
+  have hPotSet : ∀ store4 : Store Unit, capacityAt store4 p = capacityAt store3 p →
+      (if (Expr.set x i v).paid flags (slots.map Slot.mode) paid live then
+          (Ty.array e).pot store4 [.i64 p] ((Expr.set x i v).denote funs env) else 0) ≤
+        dyingPot store s env slots paid (fun k => live k || k == x.index) live := by
+    intro store4 hCap4
+    split
+    · next hp =>
+      simp only [Expr.paid, modeAt, Slot.modes_getD, Bool.and_eq_true, beq_iff_eq,
+        Bool.not_eq_true'] at hp
+      obtain ⟨⟨hOw, hDd⟩, hPd⟩ := hp
+      obtain ⟨hStore, hold3⟩ := hMove hOw hDd
+      have hPx := dyingPot_var (store := store2) (s := { s2' with values := s.values })
+        (env := env) (paid := paid) (liveIn := fun k => live k || k == x.index) (liveOut := live)
+        x (by simp) hDd hPd hOw
+      rw [Env.potOf, hold3.read_eq rfl, hDx] at hPx
+      have hEq : (Ty.array e).pot store4 [.i64 p] ((Expr.set x i v).denote funs env) =
+          (Ty.array e).pot store2 [.i64 p] (env.get x) := by
+        simp only [Ty.pot, arrayPot, Expr.denote, Elem.words_size, Array.size_set!, hCap4, hStore]
+      rw [hEq]
+      exact hPx
+    · exact Nat.zero_le _
   have hp3 : s3.params = s.params := a3.frame.params.trans hp2
   have hh3 : s3.positions = h := a3.frame.positions.trans hh2
   simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append]
@@ -1193,8 +1246,9 @@ theorem specX_set (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {e : Elem} (
       After env slots (fun k => live k || k == x.index) live (base + 1 + e.width) heap2 store2
         { s2' with values := s.values } (.array .word) .owned ws heap3 store4 s' [.i64 p] →
       (strict = true → heap3.Aligned ∧ Ty.AlignedVal .owned store4 (.array .word) [.i64 p] ws) →
+      capacityAt store4 p = capacityAt store3 p →
       wpX strict m rest Q store4 { s' with values := .i64 p :: s'.values } host := by
-    rintro store4 s' ws _ hv' rfl aX hAlX
+    rintro store4 s' ws _ hv' rfl aX hAlX hCap4
     have aX1 := (After.ofWords aX).lower e2.holds (by omega) fun k h => by simp [h]
     have aX2 := After.prepend (e1.holds.mono (Nat.le_succ base)) e2 aX1
       (fun k h => by simp [h]) fun k h => by simp [h]
@@ -1202,10 +1256,11 @@ theorem specX_set (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {e : Elem} (
       fun k h => by simp [h]) (fun k h => by simp [h]) fun k h => by simp [h]
     simpa [hv'] using hNext heap3 store4 _ [.i64 p] (aX3.liveIn hIn)
       (fun hs => ⟨HoldsA.after hVars (hAl hs) (aX3.liveIn hIn) (fun k h => by simp [h]) (hAlX hs).1,
-        Ty.AlignedVal.ownedArray (hPAl hs) (Ty.AlignedVal.arrayCap (hAlX hs).2)⟩) fun hd => top_unpaid rfl (by
+        Ty.AlignedVal.ownedArray (hPAl hs) (Ty.AlignedVal.arrayCap (hAlX hs).2)⟩) fun hd => by
       have := hTopI (hdS hd).1; have h2 := hTopV (hdS hd).2
+      have := hPotSet store4 hCap4
       rw [hDv _ e1] at h2
-      rw [hT]; omega)
+      rw [hT]; omega
   have hA := hOwned.values
   have hLength := hA.lengthBound
   have hnk : (env.get x).size * e.width < 536870912 := by
@@ -1271,6 +1326,7 @@ theorem specX_set (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {e : Elem} (
     simp only [List.take_zero, List.drop_zero, List.nil_append, hP5]
     exact hFinish store6 s5 _ (hF5.mono (by omega)) rfl rfl a6
       (fun hs => ⟨(hAlO hs).1.1, Ty.AlignedVal.ownedArray (hPAl hs) (by rw [hc6]; exact Ty.AlignedVal.arrayCap (hAlO hs).2)⟩)
+      hc6
   · rw [ite_eq_right (by simp [hLess, hc])]
     rw [wpX_nil]
     dsimp only
@@ -1278,6 +1334,7 @@ theorem specX_set (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {e : Elem} (
     exact hFinish _ s4 (e.words (env.get x)) (Frame.refl _ _) rfl
       (by simp [Array.set!, Array.setIfInBounds, hc]) a4.toWords
       (fun hs => ⟨(hAlO hs).1.1, Ty.AlignedVal.ownedArray (hPAl hs) (Ty.AlignedVal.arrayCap (hAlO hs).2)⟩)
+      rfl
 
 /-- `Var.roomCode`: an owned array, at the address in local `b + 4`, whose first elements are
 those of `x`, whose length is `x`'s length plus the word `e` in local `ext`, and whose block has
@@ -2246,7 +2303,7 @@ theorem specX_eraseAt (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {e : Ele
     (by rw [e1.step.cap m]; exact hCap) (by rw [hp1]; omega) (by omega)
     (hTrap.alloc (by simp [Expr.aborts]) fun hd hw => hw.of_le
       (by have := hTopI (hdS (fits_of_not hd)); rw [hT]; omega) (e1.step.cap m))
-    fun heap3 store3 s3 ws3 a3 hAlO hTopO => ?_
+    fun heap3 store3 s3 ws3 a3 hAlO hTopO _ => ?_
   obtain ⟨p, hws, hOwned⟩ := a3.rep
   subst hws
   have hPAl : strict = true → p.toNat % 8 = 0 := fun hs => Ty.AlignedVal.array hOwned (hAlO hs).2

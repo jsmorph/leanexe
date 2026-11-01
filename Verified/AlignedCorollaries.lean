@@ -60,7 +60,7 @@ theorem spec_ownedVar (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' t
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
     wp m (x.ownedCode h slots base live ++ rest) Q store s host :=
   specX_ownedVar (strict := false) (copyCodeX hm) x hh hpv hVars hAt nofun hSafe hCap hBase hRoom
-    hTrap (fun heap' store' s' ws a1 _ a3 => hNext heap' store' s' ws a1 a3)
+    hTrap (fun heap' store' s' ws a1 _ a3 _ => hNext heap' store' s' ws a1 a3)
 
 theorem spec_bytesGet (hm : Runtime m) {Γ' : List Ty} (x : Var Γ' .bytes)
     {index : Expr S Γ' .word}

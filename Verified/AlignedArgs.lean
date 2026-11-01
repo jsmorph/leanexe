@@ -553,7 +553,7 @@ theorem args_specX (hCopy : CopyCodeX strict m host) {Γ : List Ty} {env : Env �
               exact h.elim id fun he => he ▸ hAllX) hCap hBase hRoom0
             (hTrap.alloc (haA ⟨0, by simp⟩ (by simp [hmd])) fun _ hw => hw.mono (by
               rw [hSum, hc0]; exact Nat.le_add_right _ _))
-            fun heap1 store1 s1 ws1 a1 hAlO1 hTop1 => ?_
+            fun heap1 store1 s1 ws1 a1 hAlO1 hTop1 _ => ?_
           have hStep := a1.step
           simp only [Mode.fresh] at hStep
           refine hRest heap1 store1 s1 ws1 (p.blocks store1 ws1 (env.get x))
