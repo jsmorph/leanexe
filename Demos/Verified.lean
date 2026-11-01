@@ -12,5 +12,6 @@ import Demos.Slew.Bound
 import Demos.Slew.Verified
 import Demos.Energy.Theorems
 import Demos.Energy.Examples
+import Demos.OrderBook.Bound
 import Demos.OrderBook.Verified
 import Demos.OrderBook.VerifiedCall

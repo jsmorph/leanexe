@@ -40314,3 +40314,32 @@ The order book's WASI process does not need the loop rule changed.  Its plan pas
 - [x] Paid results of an in-place `set`, with the soundness proof, the measurement, and the guide.
 - [ ] Paid values of loops whose state is a pair, which the order book's `run` needs to stop charging the book's credits on every record.
 - [ ] Decide whether to add a paid case for `eraseAt` and to pay a parameter that makes its function's result paid, which Clob's command loops need.
+
+## 2026-11-01: The closed-form bound of the order book's `run`
+
+[The closed form](Demos/OrderBook/Bound.lean) bounds `run.bound`, the generated allocation bound of the order book's `run`, by `runBoundOf k = 393,464 + 3,147,280 k + 458,976 k (k − 1)` bytes on a book that satisfies `Refinement.Inv` and a stream of at most `k` records, under the size and next-id premises of `run_eq`.  The order book's WASI process passes at most 74 records to one call of `run`, the whole records of a read of 4,096 bytes and a carry of fewer than 56 bytes, and `runBoundOf_74` states by `decide` that `runBoundOf 74` is 2,712,680,536, below the 4,294,901,760 bytes that the largest memory cap leaves.  The process compiles the program again with `verified_compile_wasi`, which generates its own `run.bound` with the same equations, so `run_bound_le` takes the bound and cost functions as parameters and the six generated equations as the fields of the structure `Equations`.  `compiled_equations` supplies the equations of `Demos.OrderBook.Verified.compiled` by their names, and `compiled_run_bound` applies the lemma to that compilation.
+
+`fill_le` takes the paid side of the `min` in `fillArrays.cost`, whose pass costs 560 bytes exactly when `matchStep` emits a trade, and `loopCost_go` sums those passes along `repeatWhile.go`, the loop that `fill` runs, to 80 bytes for each word that matching pushes.  `submit_le` and `step_le` bound the cost of a step, plus 80 bytes for each word of the event array before it, by 96 bytes for each word after it, where the extra 16 bytes a word cover the event array's credit that a cancelled remainder charges, and the three bounds hold on every book.  The invariant enters through `step_eq`, which gives the sizes of the book's arrays and, with `Spec.step_events_length` and `Spec.encodeAll_size`, at most 28,686 pushed words a record, 4,098 events of seven words.  `loopCost_le_below` then sums `recordBound i` over the records, and it differs from `loopCost_le` in requiring the invariant only at the indices below the loop's count, since `step_eq` says nothing about offsets past the stream's end.
+
+The value at one record is 3,540,744 bytes, 96 above the 3,540,648 that [the measurement of paid results](#2026-11-01-paid-results-of-set) gave for a market sell that trades with 4,096 makers, the largest record.  The program charges a cancelled remainder 16 bytes for each word before the cancellation event and for the length word, and the closed form charges 16 bytes for each word after the event, 96 bytes more.  At the other eight record counts of that measurement, `runBoundOf` exceeds the measured bound by factors from about 8 to about 3,000, since those streams emit far fewer than 4,098 events a record.  The estimate of about 2.7 GB in that entry lies within 0.5 percent of the value at 74.
+
+The first proof of `step_le` ran `repeat' split` on the tree of the step's cost and the tree of its result, as `step_append` does on copies of the step, and it split nothing, for a cause that was not determined.  `ite_bound` replaced it: it bounds an `if` of costs plus a constant by 96 times the event words of an `if` of results on the same condition, with independent `Decidable` instances, and `refine` applies it down the tree.  `Demos/Verified.lean` imports the module, as it imports the slew planner's bound.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Hypotheses | Structure `Equations` of the six generated equations, as `verified_compile` prints them | Each compilation supplies its own equations by name, and a field that differs from a generated equation fails to elaborate in `compiled_equations`. |
+| Event count | `step_eq` with `Spec.step_events_length`, 28,686 words a record | Counting the 5,120 passes of `matchFuel` needs no invariant but allows 35,854 words a record, about 3.38 GB at 74 records by a hand calculation. |
+| Range of `k` | Premise `(ws.size + 6) / 7 ≤ k` | With `k = 74` for every batch, the process needs no monotonicity theorem. |
+| Next id | Premises of `run_eq` | `step_eq` requires a next id below 2^64 − 1 at every record, and `batch_refines` already derives the premises. |
+| Import root | `Demos/Verified.lean` | Slew planner's `Bound` module sits there. |
+
+| Check | Start | Duration | Result |
+|---|---|---|---|
+| Build of `Demos.OrderBook.Bound` | 09:27 UTC | 9 s | No error and no warning in the module.  `#print axioms` gives `propext`, `Classical.choice`, and `Quot.sound` for `run_bound_le` and `compiled_run_bound`, and no axiom for `runBoundOf_74` |
+| Evaluation of `runBoundOf` at the nine record counts of the measurement of paid results | 09:27 UTC | 6 s | Each measured bound at or below `runBoundOf` of its record count |
+| `tools/source-layout` and `node tools/check-doc-links.mjs` | 09:31 UTC | Under 1 s | No problem reported |
+| Build of `LeanExe`, `Examples`, `Demos`, `Verified`, `Library`, and `TestSupport`, with the module in `Demos.Verified` | 09:45 UTC | 111 min | No error and no `sorry` |
+
+- [x] Closed-form bound of `run`'s generated bound for every compilation that generates its equations, and its value at 74 records.
+- [ ] Charges of the WASI process from `run_bound_le`, with the equations of the process's own compilation.
+- [x] Build of every library, with the module in the import root `Demos.Verified`.
