@@ -40129,7 +40129,7 @@ Most of these algorithms have total specifications, which `Verified.CallSpec` st
 | 8 | Hashing with linear probing and deletion | 6.4 L, R | `Library/HashTables/LinearProbing` |
 | 9 | Multiple-precision arithmetic | 4.3.1 A, S, M, D | `Library/Numerics/MultiPrecision` |
 | 10 | Modular exponentiation and Miller–Rabin | 4.6.3, 4.5.4 P | `Library/Numerics/Arithmetic/MillerRabin` |
-| 11 | Dancing links | 7.2.2.1 X | |
+| 11 | Dancing links | 7.2.2.1 X | `Library/Combinatorics/DancingLinks` |
 
 The compiler's termination proof of a tail loop failed for the first version of `search`, whose body bound the midpoint with `let mid := lo + (hi - lo) / 2` and then tested `xs[mid.toNat]!`.  The induction cases held the condition on the bound name `mid`, while the loop's step held it on the expanded expression, so the proof could neither match the recursive call's state nor see that the two branch conditions contradict.  The program now writes the midpoint out in each place.  The limitation belongs to the reflector's tail-loop proof and is recorded here for a later change to the compiler.
 
@@ -40193,4 +40193,7 @@ The proof states the linked lists pointwise.  For a set `B` of active items and 
 
 The design review modelled this design in Python on 30,008 valid inputs, including inputs with `N = 0`, duplicate options, options in no cover, items in no option, consecutive zeros, and no trailing zero, and found the count equal to the specification on every one.  It found the depth bound of the first text one too high, and found that the plan left out the item list, the fixed fields, the precondition on `P`, the bound `|B| ≤ d`, and the proof of `fits`.  The paragraphs above include each.
 
-- [ ] Dancing links: design review, request, specification and its reviews, program, proofs, call theorems, cases, README, index section 13.
+The proof follows the plan in layers, each a file of the module: the count's recursion, the cyclic lists, removal and restoration of one node and of a list of nodes in reverse order, the walk around an option, which `hide`, `unhide`, `coverOthers`, and `uncoverOthers` share and which `walkFwd` and `walkBwd` prove once for any operation at each node, the column loops, cover and uncover of an item, the search, and step X1.  `coverItem` first followed TAOCP's order only in part: it unlinked the item before it hid the column.  It now hides the column first, so `uncoverItem` is its exact reverse and the proof of `uncoverItem i (coverItem i t) = t` composes `relink_unlink` and `unhideColumn_eq` with no commutation of the two parts.  Step X1 reads the words one at a time, and `Read.lean` relates that reader to the specification's `List.splitOn`, so the build's invariant can name the option being read.  The call theorems need fewer than `2^50` words, and `Compiled.lean` derives the bound from the first conjunct of `At`, which bounds every array in memory by `2^29` words.  `At.size_lt` in `LeanExe/ProofKit/Array.lean` gives only `2^64`, and a stronger lemma there would rebuild every module, so it is left for the next full rebuild.
+
+- [x] Dancing links: design review, request, specification and two reviews, program, proofs of the search, the build, and `valid`, call theorems with standard axioms, 88 cases in Wasmtime and native C, README, index section 13.
+- [ ] Move the bound `values.size < 2^29` of `At` into `LeanExe/ProofKit/Array.lean` at the next full rebuild.

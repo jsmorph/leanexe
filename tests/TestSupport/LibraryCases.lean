@@ -6,9 +6,11 @@ import Library.Numerics.Statistics.SumSquares.Program
 import Library.Random.SplitMix64.Program
 import Library.Arrays.Search.Program
 import TestSupport.Host
+import Library.Combinatorics.DancingLinks.Count
 import TestSupport.Modules.BinaryGcd
 import TestSupport.Modules.BinaryHeap
 import TestSupport.Modules.BinarySearch
+import TestSupport.Modules.DancingLinks
 import TestSupport.Modules.Gcd
 import TestSupport.Modules.Heapsort
 import TestSupport.Modules.LinearProbing
@@ -82,6 +84,12 @@ def cases : IO Unit := do
   for xs in Library.Queues.BinaryHeap.heapInputs do
     IO.println s!"heapQueue|heapQueue|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Queues.BinaryHeap.expected xs.toArray).toList.map toString)}]"
+  for xs in Library.Combinatorics.DancingLinks.countInputs do
+    IO.println s!"dancingLinks|count|i64|{arrU xs}|\
+      {Library.Combinatorics.DancingLinks.countRef xs.toArray}|1|2"
+  for xs in Library.Combinatorics.DancingLinks.validInputs do
+    IO.println s!"dancingLinks|valid|i64|{arrU xs}|\
+      {Library.Combinatorics.DancingLinks.validSpec xs.toArray}|1|2"
   for (x, n, m) in Library.Numerics.Arithmetic.MillerRabin.powInputs do
     IO.println s!"millerRabin|powMod|i64|{u x} {u n} {u m}|\
       {Library.Numerics.Arithmetic.MillerRabin.powModRef (x, n, m)}|0|0"
