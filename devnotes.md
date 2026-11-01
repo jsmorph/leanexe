@@ -40196,7 +40196,7 @@ The design review modelled this design in Python on 30,008 valid inputs, includi
 The proof follows the plan in layers, each a file of the module: the count's recursion, the cyclic lists, removal and restoration of one node and of a list of nodes in reverse order, the walk around an option, which `hide`, `unhide`, `coverOthers`, and `uncoverOthers` share and which `walkFwd` and `walkBwd` prove once for any operation at each node, the column loops, cover and uncover of an item, the search, and step X1.  `coverItem` first followed TAOCP's order only in part: it unlinked the item before it hid the column.  It now hides the column first, so `uncoverItem` is its exact reverse and the proof of `uncoverItem i (coverItem i t) = t` composes `relink_unlink` and `unhideColumn_eq` with no commutation of the two parts.  Step X1 reads the words one at a time, and `Read.lean` relates that reader to the specification's `List.splitOn`, so the build's invariant can name the option being read.  The call theorems need fewer than `2^50` words, and `Compiled.lean` derives the bound from the first conjunct of `At`, which bounds every array in memory by `2^29` words.  `At.size_lt` in `LeanExe/ProofKit/Array.lean` gives only `2^64`, and a stronger lemma there would rebuild every module, so it is left for the next full rebuild.
 
 - [x] Dancing links: design review, request, specification and two reviews, program, proofs of the search, the build, and `valid`, call theorems with standard axioms, 88 cases in Wasmtime and native C, README, index section 13.
-- [ ] Move the bound `values.size < 2^29` of `At` into `LeanExe/ProofKit/Array.lean` at the next full rebuild.
+- [x] Move the bound `values.size < 2^29` of `At` into `LeanExe/ProofKit/Array.lean` at the next full rebuild.
 
 ## 2026-10-31: The order book's requirements and specification
 
@@ -40485,3 +40485,22 @@ The test scripts of the WASI compiler, both running sums, the verified compiler,
 - [x] Build, the insertion cases in Wasmtime and in C, and `chunks.py`.
 
 The test ran from 13:18 to 13:21 UTC.  The build of every library passed without `sorry`, and `tests/verified/run.sh --cases insert` passed all 1,227 cases of the insertion module, 900 of them for the level functions, each with the blocks that it leaves.  The insertion example's file theorems passed against the written module, `chunks.py` passed 160 cases, and `tests/native/verified.sh --module insert` passed the same 1,227 cases on the C translation compiled by CompCert.
+
+## 2026-11-01: The TAOCP documents, the merge with main, and a full rebuild
+
+`At.size_lt_memory32` in `LeanExe/ProofKit/Array.lean` derives `values.size < 2^29` from the first conjunct of `At`, which places an array's header and words below `2^32`.  `Verified/AlignedArrayCopy.lean` and the call theorems of `Library/Combinatorics/DancingLinks/Compiled.lean` take the bound from the lemma in place of their own `omega` steps from that conjunct.  A change to the proof kit rebuilds every module that imports it, so the lemma waited for the full rebuild below, as [the TAOCP entry](#2026-10-31-taocp-algorithms-in-the-library) planned.
+
+The README of each TAOCP module has a section on its request and specification and a section on its program.  The program section gives the steps of Knuth's algorithm that the program performs, the representation, the loop invariants, the generated cost bounds, and the departures from Knuth's text.  The References sections list only works that the text uses, the manual is linked where the text cites it, and the DOI of Williams's heapsort paper is corrected to 10.1145/512274.3734138.  Corrections to comments in the programs and tests removed claims that the code does not support, and a script that compares each edited Lean file with its committed version after removing comments found the code unchanged.
+
+Each row of [the algorithm index](index.md) gives its theorems in the order execution, specification, and call, and gives file and native theorems by their codes alone.  Each link title is the subject's title, the introduction links the READMEs of the library and of the application demos, and the `crc32c` row cites `crc32c_spec`.  A script checked that every linked file exists and that every linked theorem is declared or generated in its file.
+
+The merge of main into taocp, which brings the order book's process and the removal of Clob, had conflicts in this journal and in the index.  The journal keeps both sides in date order.  The index places the order book's row after the drone's in the revised format, the `Trees` row keeps `compiled.bytes` and the module `exampleTrees`, and the `Insert` row keeps main's command loop.  Main's test scripts take `uv` and `wasm-tools` from the caller's search path, so the rebuild's script on minideb2 adds `~/.local/bin`, which holds `uv`.
+
+| Step on minideb2 | UTC | Result |
+|---|---|---|
+| The memory-heavy gamma and lgamma proofs, one worker each | 15:11 to 17:03 | Exit 0 for each |
+| Every library and the test executables, two workers | 17:03 to 22:23 | 15,367 jobs, exit 0 |
+| `tests/verified/run.sh` | 22:23 to 23:19 | 44,546 cases passed, 0 failed |
+| `tests/native/verified.sh` with CompCert 3.18 | 23:19 to 23:32 | 44,546 cases and 3,322 module cases passed, 0 failed |
+
+The log has no error and no `sorry` warning.  Its 11,838 axiom reports name only `propext`, `Classical.choice`, and `Quot.sound`, apart from the `native_decide` axiom of the pinned CodeLib dependency's `arithmetic_examples`, which earlier entries record.  The native driver translated every module of the registry, so it left no case unrun.
