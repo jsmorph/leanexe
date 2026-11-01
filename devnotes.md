@@ -40069,7 +40069,7 @@ The refinement proof dominates the work.  The design also assumes that the verif
 - [x] The specification's theorems.
 - [x] Probe of in-place updates to the array fields of an owned record in a `repeatWhile` state.
 - [x] Array implementation, its native comparison with the specification on random command streams, and an independent Python reference.
-- [ ] Refinement proof.
+- [x] Refinement proof.
 - [ ] `verified_compile`, the allocation bound, the call theorem, the registry entry, cases, and the C translation.
 - [ ] WASI process with stdin command records and stdout event records.
 
@@ -40164,3 +40164,20 @@ I wrote the statements and checked that they elaborate, and a fresh agent proved
 A draft `verified_compile` of the program succeeded, and the module gave the native results on every stream tried, from the empty book and from books that earlier runs left.  Allocations stayed at the host's arrays and the regrowths of the event array, so no update copied an array of the book.  The reflection of `fillArrays` took about 270,000 heartbeats, so the command needs a larger limit than the default.  Two findings concern the compiler.  The reflector rejects `init (_ : Unit)`, so a host passes zero arrays, next id 1, and count 0 for the empty book.  A borrowed call whose argument is a structure built in place, with a `Flat` tuple that ends in two or more words, fails: the reflector's `isPlace` accepts the argument and leaves it unbound, while the source's `Expr.isPlace` rejects the scalar pair that the reflector writes for its last words, so the kernel check of `placeArgs` fails.  The program's read-only helpers take the arrays they read and so avoid the case.
 
 - [ ] Fix the reflector's `isPlace` for structures built in place whose tuples end in scalar pairs.
+
+## 2026-10-31: The order book's refinement proof
+
+[The refinement](Demos/OrderBook/Refinement.lean) proves that the program computes the specification.  [The invariant](Demos/OrderBook/Invariant.lean) `Inv` states that the arrays have the program's sizes, that the chain of each level of the band is a list of distinct slots from 1 to 4,096 whose level is that level and whose last slot is the level's tail, that every slot with a nonzero order id lies on the chain of its level, that the count equals the number of resting orders, and that `toSpec` of the book satisfies `Spec.Valid`.  `step_eq` states that a step at an offset inside a stream keeps `Inv` and gives the book of `Spec.step` on the record there and its event words, while the next id lies below 2^64 − 1, and `run_eq` states the same of `run` and `Spec.run` while the next id plus the number of records stays at most 2^64 − 1.  `top_eq` states that `top` gives `Spec.top`, `init_inv` and `toSpec_init` that the empty book satisfies `Inv` and reads as `Spec.empty`, and `run_append` that a stream run in two parts, the first a whole number of records, gives the book and the event words of one run on any book.
+
+I wrote `Inv` and the statements and checked that they elaborate, and two fresh agents proved them in parallel, one the step and the queries, the other the stream theorems from the step's statement as a hypothesis.  A comparison of the files confirmed that neither changed a statement, a definition, or the program, and every theorem uses only `propext`, `Classical.choice`, and `Quot.sound`.  The proofs found `Inv` strong enough: the nonzero ids on the chains, which tell a free slot from a used one, and the single slot of each id, which confines cancel and reduce to the slot that they find, both follow from `Spec.Valid`.
+
+| Module | Content |
+|---|---|
+| [`RefineChains`](Demos/OrderBook/RefineChains.lean) | Chains without fuel, the book as concatenated level lists, one slot per id, and the count of free slots |
+| [`RefineEffects`](Demos/OrderBook/RefineEffects.lean) | Effects of `unlink`, `place`, and a quantity update on the chains, the invariant's structure, and the specification's book |
+| [`RefineHelpers`](Demos/OrderBook/RefineHelpers.lean) | Meanings of the read-only helpers and of `top` |
+| [`RefineMatch`](Demos/OrderBook/RefineMatch.lean) | Loop invariant of matching against `Spec.fill`, its measure within the fuel of 5,120, and `submit` against `Spec.submit` |
+| [`RefineStep`](Demos/OrderBook/RefineStep.lean) | Cancel, reduce, rejections, the record's words, and `step_eq`, `top_eq`, `init_inv`, and `toSpec_init` |
+| [`RefineStream`](Demos/OrderBook/RefineStream.lean) | `run_append` and `run_eq_of_step` |
+
+Lean reaches its recursion limit when `rfl` or unification compares terms that contain `toSpec` or `slotsFrom` at the fuel of 4,097, so the proofs rewrite with `toSpec_eq` and congruence lemmas instead.  `run_append` is the program's counterpart of `Demos/Clob`'s `runCommands_append`, and `run` returns the book with the event words, so the counterpart of `runOut_book` holds by definition.
