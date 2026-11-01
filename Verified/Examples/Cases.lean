@@ -1663,6 +1663,9 @@ def main : IO Unit := do
       let r := Fields.moveHead t k
       IO.println s!"fields|moveHead|list:array-u64,i64|{arrayArg t.marks} i64:{t.head} i64:{k}|\
         {arrayOut r.marks} {r.head}|2"
+  for (xs, lo, hi) in [((#[] : Array UInt64), (0 : UInt64), (0 : UInt64)), (#[4, 5, 6], 1, 9),
+      (#[7], 0, 2)] do
+    IO.println s!"fields|spanOf|i64|{arrayArg xs} i64:{lo} i64:{hi}|{Fields.spanOf xs lo hi}|1|1"
   let grids : List Fields.Grid :=
     [⟨#[], 0.0, 0⟩, ⟨#[⟨1.5, 2⟩], 0.25, 3⟩,
       ⟨(Array.range 5).map fun i => ⟨i.toUInt64.toFloat, i.toUInt64⟩, -1.0, 7⟩]

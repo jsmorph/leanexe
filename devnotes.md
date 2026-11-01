@@ -40163,7 +40163,7 @@ I wrote the statements and checked that they elaborate, and a fresh agent proved
 
 A draft `verified_compile` of the program succeeded, and the module gave the native results on every stream tried, from the empty book and from books that earlier runs left.  Allocations stayed at the host's arrays and the regrowths of the event array, so no update copied an array of the book.  The reflection of `fillArrays` took about 270,000 heartbeats, so the command needs a larger limit than the default.  Two findings concern the compiler.  The reflector rejects `init (_ : Unit)`, so a host passes zero arrays, next id 1, and count 0 for the empty book.  A borrowed call whose argument is a structure built in place, with a `Flat` tuple that ends in two or more words, fails: the reflector's `isPlace` accepts the argument and leaves it unbound, while the source's `Expr.isPlace` rejects the scalar pair that the reflector writes for its last words, so the kernel check of `placeArgs` fails.  The program's read-only helpers take the arrays they read and so avoid the case.
 
-- [ ] Fix the reflector's `isPlace` for structures built in place whose tuples end in scalar pairs.
+- [x] Fix the reflector's `isPlace` for structures built in place whose tuples end in scalar pairs.
 
 ## 2026-10-31: The order book's refinement proof
 
@@ -40214,3 +40214,9 @@ The docstring of `PowFile.lean` gave the module's earlier size, 11,156 bytes, an
 ## 2026-11-01: The slew audit in the module driver
 
 The energy work replaced the driver's call of the slew audit with `check_axioms`, which counts the reports of `#print axioms` and fails when it finds none, but `tests/slew/Axioms.lean` checks its theorems with its own command, which throws an error on a forbidden axiom and logs one summary line.  `tests/verified/run.sh --cases slew` and the full run therefore failed after a passing audit, which no gate of the energy work ran.  The driver again runs the slew audit as it did before the energy work, so the audit's exit status decides, and `check_axioms` keeps the energy audit, whose reports it reads.
+
+## 2026-11-01: The reflector's places
+
+A call whose borrowed argument was a structure built in place, with a `Flat` tuple that ends in two or more words, failed the kernel check of `placeArgs`, as [the order book's program entry](#2026-10-31-the-order-books-program-and-its-tests) records.  The reflector's `isPlace` in `Verified/Reflect/Definitions.lean` accepted a pair of places of any type, so it left the argument unbound, while the reflection of a pair of words is `Expr.mk`, which the source's `Expr.isPlace` does not accept.  `isPlace` now accepts a scalar component of a pair that holds heap data only when the component reflects to a variable, by `isScalarPlace`, so the reflector binds such an argument with `let` before the call.  Pairs of words keep their earlier reading, so a `let` of a pair of words still substitutes its value.
+
+The reflector is outside the trusted base, so the change could only make a program fail to compile, and a byte comparison measured its reach: every module of the registry, emitted after the change, is byte for byte the module that main emitted before it.  `spanOf` of [the record example](Verified/Examples/Fields.lean) passes `spanWidth` a record built in place from an array and two words, and its cases check the result and that the call allocates nothing beyond the host's array.
