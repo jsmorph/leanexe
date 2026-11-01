@@ -40070,7 +40070,7 @@ The refinement proof dominates the work.  The design also assumes that the verif
 - [x] Probe of in-place updates to the array fields of an owned record in a `repeatWhile` state.
 - [x] Array implementation, its native comparison with the specification on random command streams, and an independent Python reference.
 - [x] Refinement proof.
-- [ ] `verified_compile`, the allocation bound, the call theorem, the registry entry, cases, and the C translation.
+- [x] `verified_compile`, the allocation bound, the call theorem, the registry entry, cases, and the C translation.
 - [ ] WASI process with stdin command records and stdout event records.
 
 ## 2026-10-31: Review of the energy work
@@ -40220,3 +40220,30 @@ The energy work replaced the driver's call of the slew audit with `check_axioms`
 A call whose borrowed argument was a structure built in place, with a `Flat` tuple that ends in two or more words, failed the kernel check of `placeArgs`, as [the order book's program entry](#2026-10-31-the-order-books-program-and-its-tests) records.  The reflector's `isPlace` in `Verified/Reflect/Definitions.lean` accepted a pair of places of any type, so it left the argument unbound, while the reflection of a pair of words is `Expr.mk`, which the source's `Expr.isPlace` does not accept.  `isPlace` now accepts a scalar component of a pair that holds heap data only when the component reflects to a variable, by `isScalarPlace`, so the reflector binds such an argument with `let` before the call.  Pairs of words keep their earlier reading, so a `let` of a pair of words still substitutes its value.
 
 The reflector is outside the trusted base, so the change could only make a program fail to compile, and a byte comparison measured its reach: every module of the registry, emitted after the change, is byte for byte the module that main emitted before it.  `spanOf` of [the record example](Verified/Examples/Fields.lean) passes `spanWidth` a record built in place from an array and two words, and its cases check the result and that the call allocates nothing beyond the host's array.
+## 2026-11-01: The order book's verified compilation
+
+[The compilation](Demos/OrderBook/Verified.lean) lists the program's definitions in calling order, from `emit` to `run`, under a heartbeat limit of 1,000,000, since the reflection of `fillArrays` takes about 270,000 heartbeats.  It elaborates in about 190 s with 6.1 GB resident, and the module has 15,662 bytes.  `run` is entry 13 and `top` entry 8, and the seven arrays of `run` are owned parameters, which a call consumes, while the stream stays borrowed.  `init` is absent, because the reflector rejects its parameter of type `Unit`, so a host passes arrays of zeros, next id 1, and count 0 for the empty book.  The module lies in the translator's subset, so the command also generates `compiled.translation`, `compiled.run.native`, and `compiled.top.native`.
+
+[The call theorems](Demos/OrderBook/VerifiedCall.lean) carry the refinement to the exports.  `run_call` starts from `compiled.run.trapFree`, because `Verified.Call` admits only arguments that move no object, and composes it with `run_eq`.  Its hypotheses are a ready store, `Inv b`, the size and next-id bounds of `run_eq`, the book's arrays owned at their pointers, their blocks disjoint and apart from the borrowed stream, and room for `compiled.run.bound`.  Its conclusion is a return without a trap of a book that satisfies `Inv`, whose `toSpec` is the book of `Spec.run`, and of the words `Spec.encodeAll` of its events, in a ready store that keeps the stream borrowed.  `top_call` composes `compiled.top.trapFree`, through `Verified.Call.spec`, with `top_eq`.  Every theorem of the module uses only `propext`, `Classical.choice`, and `Quot.sound`.
+
+A design study predicted that the generated bound of `run` would be large, and its evaluation confirmed the size, though not the mechanism.  The bound charges, at each record, the credits of the loop state's seven book arrays and of its event array, 393,408 bytes and 16 bytes for each event word so far, because the state of the loop of `run` is not paid and each call of `stepArrays` buys the credits of its paid arguments.  Inside matching, `fillArrays.cost` is the `min` of an unpaid loop, which charges the event array's credit, 16 bytes for each event word so far, at each trade, and a paid loop, which charges the book's 393 KB at each trade, and the `min` takes the unpaid loop.  A cancelled remainder charges the event array's credit once more, and every pushed word costs 80 bytes.  The bound thus grows with the records times the event words and with the square of the event words.
+
+| Stream | Records | Event words | Bound in bytes | Memory after the call in bytes |
+|---|---|---|---|---|
+| Sample 1, from the empty book | 3 | 42 | 1,578,824 | 1,048,576 |
+| Market sell that trades with 4,096 makers, from a book of 4,096 bids | 1 | 28,686 | 943,359,656 | 1,048,576 |
+| `matching-fuel-sell`, from the empty book | 4,097 | 57,358 | 5,376,378,536 | 1,638,400 |
+
+Lean's interpreter evaluated the first two bounds, which agree with the values computed by hand from the cost equations, and the third follows from those equations and the evaluated sweep.  The Wasmtime host's session mode measured the memory, which was 1,048,576 bytes before each call.  The third bound exceeds the 4,294,901,760 bytes that the largest memory cap allows, so no call theorem covers that stream in one call, and a host runs long streams in parts, which `run_append` justifies.  The compiler's bound analysis will change separately, so that an in-place `set!` of a paid owned array gives a paid result.  The call theorems therefore take room for the generated bounds rather than for a closed form, and they stay valid when the bound changes.
+
+[The module cases](tests/TestSupport/OrderBook/Cases.lean) run `run` on the samples, the single records, the edge streams, and random streams that SplitMix64 draws from fixed seeds, from the empty book and from the books that the first part of each stream leaves, and `top` on every book that `run` returns.  They pass each array through a file of words under `build/verified/orderbook/`, since a book's arrays and the long streams exceed the length of a command-line argument.  A case of `run` requires nine retained blocks and at most nine allocations plus one for each doubling of the event array's capacity, `⌊log₂ n⌋ + 1` for `n` event words.  83 of the 98 cases of `run` reach that count exactly and the others lie one below it, because the allocator reuses a freed block larger than a request, and every case of `top` allocates nothing beyond the host's arrays.  `tests/verified/run.sh --cases orderbook` and `tests/native/verified.sh --module orderbook`, with CompCert 3.18, each passed the 196 cases.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Aggregates | `Demos/Verified.lean` imports `Verified` and `VerifiedCall`, and `Demos.lean` imports `Flat` | Verified application compilations belong in `Demos/Verified.lean`, which `Verified` imports, by the manual's rule, so the default build does not elaborate the compilation. |
+| Case list | `Verified/Examples/Cases.lean` prints the order book's cases, and `verified-cases-orderbook` prints them alone | `tests/native/verified.sh` reads only `verified-cases`, as for the energy authorizer. |
+| Room of the call theorems | `compiled.run.bound` and `compiled.top.bound` as generated | Theorems stay valid when the compiler's bound changes. |
+| Shared test helpers | `tests/TestSupport/OrderBook/Words.lean` holds the files of words and the host's format for arrays | Native comparison and module cases both use them. |
+
+- [x] Compilation, call theorems, registry entry, module cases, and C translation.
+- [ ] Evaluate `compiled.run.bound` again after the compiler's change to the results of in-place updates.

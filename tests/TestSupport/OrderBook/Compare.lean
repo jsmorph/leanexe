@@ -1,5 +1,6 @@
 import Demos.OrderBook.Abstract
 import TestSupport.OrderBook.Edges
+import TestSupport.OrderBook.Words
 
 /-! The native comparison of [the program](../../../Demos/OrderBook/Program.lean) with [the
 specification](../../../Demos/OrderBook/Spec.lean) on command streams.
@@ -29,31 +30,13 @@ namespace TestSupport.OrderBook.Compare
 
 open Demos.OrderBook
 open Demos.OrderBook.Abstract (toSpec)
+open TestSupport.OrderBook.Words
 
 /-- Records in each part of a stream. -/
 def partRecords : Nat := 1000
 
 /-- Largest number of records for which one call of `Spec.run` runs on the whole stream. -/
 def oneCallRecords : Nat := 3000
-
-def readWords (path : System.FilePath) : IO (Array UInt64) := do
-  let bytes ← IO.FS.readBinFile path
-  unless bytes.size % 8 == 0 do
-    throw (IO.userError s!"{path}: length {bytes.size} bytes is not a multiple of 8")
-  let mut ws : Array UInt64 := Array.emptyWithCapacity (bytes.size / 8)
-  for i in [0:bytes.size / 8] do
-    let mut w : UInt64 := 0
-    for j in [0:8] do
-      w := w ||| (bytes.get! (8 * i + j)).toUInt64 <<< (8 * j).toUInt64
-    ws := ws.push w
-  return ws
-
-def wordBytes (ws : Array UInt64) : ByteArray := Id.run do
-  let mut bytes := ByteArray.empty
-  for w in ws do
-    for j in [0:8] do
-      bytes := bytes.push (w >>> (8 * j).toUInt64).toUInt8
-  return bytes
 
 def runFrom (b : Program.Book) (ws : Array UInt64) : Program.Book × Array UInt64 :=
   Program.run b.oid b.acct b.qty b.lvl b.nxt b.head b.tail b.nextId b.count ws
@@ -166,10 +149,6 @@ def printReference (b : Program.Book) (out : Array UInt64) : IO Unit := do
   text := text ++ s!"top {bp} {bq} {ap} {aq}\n"
   stdout.putStr text
 
-/-- An array in the Wasmtime host's output format. -/
-def hostArray (xs : Array UInt64) : String :=
-  "[" ++ ", ".intercalate (xs.toList.map toString) ++ "]"
-
 def parseWord (s : String) : IO UInt64 :=
   match s.toNat? with
   | some n => if n < 2 ^ 64 then pure n.toUInt64 else throw (IO.userError s!"word {s} too large")
@@ -213,7 +192,7 @@ def writeHost (ws : Array UInt64) (nextId : UInt64) (dir : System.FilePath) : IO
 
 end TestSupport.OrderBook.Compare
 
-open TestSupport.OrderBook.Compare in
+open TestSupport.OrderBook.Compare TestSupport.OrderBook.Words in
 def main (args : List String) : IO UInt32 := do
   try
     match args with

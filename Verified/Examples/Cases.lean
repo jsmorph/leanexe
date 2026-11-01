@@ -9,6 +9,7 @@ import TestSupport.Hashing.XxHash64Cases
 import TestSupport.Regex.Cases
 import TestSupport.Slew.Cases
 import TestSupport.Energy.Cases
+import TestSupport.OrderBook.Cases
 import Verified.Examples.Poly
 import Verified.Examples.Mix
 import Verified.Examples.Lets
@@ -813,6 +814,7 @@ def main : IO Unit := do
   TestSupport.Regex.Cases.cases
   TestSupport.Slew.Cases.cases
   TestSupport.Energy.Cases.cases
+  TestSupport.OrderBook.Cases.cases
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases

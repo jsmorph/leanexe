@@ -59,6 +59,7 @@ import Demos.Gpt32.Driver
 import Demos.Gpt32.Exec
 import Demos.Gpt32.HostProgram
 import Demos.OrderBook.Abstract
+import Demos.OrderBook.Flat
 import Demos.OrderBook.Program
 import Demos.OrderBook.Refinement
 import Demos.OrderBook.Samples
