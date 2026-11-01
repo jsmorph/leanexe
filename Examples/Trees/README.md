@@ -12,12 +12,13 @@ layout, and `encode_slotted`, which proves that every record of an encoded tree 
 The type and shared operations come from [the word-tree library](../../Library/Trees/README.md), and
 the program exports the library's `size`, `sum`, `height`, `incr`, `setKey`, `insert`, `leftChild`,
 and `splitRoot` under `Examples.Trees.KeyTree`.  This example adds operations of its own over
-`KeyTree`, which no verified module compiles.  [The test support](Cases.lean) writes a tree in the
-host's preorder form with `KeyTree.describe` and builds trees with `KeyTree.arbitrary`, whose shape
-and keys follow arbitrary words, and `KeyTree.chain`, a chain of nodes with a leaf on the left of
-each.
+`KeyTree`, which [the verified compilation](Compiled.lean) compiles into the module
+`exampleTrees`.  [The test support](Cases.lean) writes a tree in the host's preorder form with
+`KeyTree.describe` and builds trees with `KeyTree.arbitrary`, whose shape and keys follow arbitrary
+words, `KeyTree.chain`, a chain of nodes with a leaf on the left of each, and `KeyTree.leftChain`,
+a chain with a leaf on the right of each.
 
-## The verified compiler's module
+## The module of the library operations
 
 [The recursive-type example](../../Verified/Examples/RecursiveTypes.lean) of the verified compiler,
 `recursivetypes` in [the module registry](../../tests/verified/modules.txt), imports [the
@@ -46,6 +47,48 @@ ownership](../../docs/verified-manual.md#ownership) the rules for owned and borr
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements every function. |
 | `recursivetypes_file`, `recursivetypes_file_decode` | `build/verified/recursivetypes.wasm` holds the module's encoding and decodes to the module, as [the file module](../../Verified/Examples/RecursiveTypesFile.lean) states. |
 
+## The module of the program's operations
+
+`verified_compile compiled` in [the verified compilation](Compiled.lean) compiles every operation
+that the program adds, from `dropRight` to `wide`, into the 10,994-byte `exampleTrees.wasm` of [the
+module registry](../../tests/verified/modules.txt).  The command lists the library's `size`, `sum`,
+`incr`, and `insert` first, since the operations call them, and the compilation imports the
+library's derivation, as the recursive-type example does.  No rule of the dialect rejects one of
+the operations, so the module leaves none out.  The registry names the module `exampleTrees`, as it
+names the modules of [`Lists`](../Lists/README.md) and [`Updates`](../Updates/README.md)
+`exampleLists` and `exampleUpdates`.
+
+`addAll`, `leftSpine`, `leftSizes`, `leftHeavy`, and `wide` call themselves other than in tail
+position, as the library's `size`, `sum`, `incr`, and `insert` do, so their code takes the call
+depth, and so does the code of each operation that calls one of them, such as `dropSmall`,
+`insertTwo`, and `sumSizes`.
+The entry starts at depth 0, each call of such a function adds 1, and a recursion descends the
+height of its tree, the path of left children for `leftSpine`, or the search path for `insert`.
+The cases run each of these functions on chains of lengths around 1,000, with the leaves on the
+left and on the right, and on a chain of 4,096 nodes, and they check that a call returns when its
+deepest call stays below depth 1,000 and traps at `unreachable` otherwise.  `wide` keeps sixteen
+words live across its two self-calls within the 32 positions that such a function may use.
+
+The allocation counts of the cases show how each operation treats its trees.  `dropRight`, `trim`,
+`rootAndRest`, `leftSizes`, and the second tree of `addAll` are rewritten in place without a new
+record, `insertTwo` allocates one record for each new key, and `dropRight`, `trim`, `splitOr`, and
+`leftSpine` release the records that they drop, as `sizeAfterDrop`, `sizeFirst`, and `droppedSize`
+release the whole tree.  `keyPair`, `sizeSum`, `leftHeavy`, `sumSizes`, `wide`, and the first tree
+of `addAll` stay borrowed, and `keepOld` copies its tree for `incr` and returns the tree itself.  A
+record built in the branch of a match reuses the header of the innermost matched node, so `addRoot`
+consumes both of its trees: when both are nodes, the result is the first tree's root record over
+the second tree's children, and the code releases the other records of the first tree and the root
+record of the second.  `addLeft` therefore copies the left child that its record keeps, and
+`addSelf`, whose tree is the argument of both parameters of `addRoot`, keeps the tree borrowed and
+passes two copies.
+
+| Theorem | Statement |
+|---------|-----------|
+| `compiled.f.implements`, for each listed `f` | Each function of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, with each tree in the representation of the library's `Encode` instance, returns its Lean function's result, owned by the caller, or stops at `unreachable` when its `aborts` flag allows it.  A tree that the function consumes has type `Moved KeyTree`. |
+| `compiled.f.trapFree` | Calls of these functions return without a trap when `top` can rise by the function's allocation bound within the memory cap and, for a function whose code takes the call depth, when the frames condition `compiled.f.fits` places every call of the run below depth 1,000. |
+| `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements every function. |
+| `exampleTrees_file`, `exampleTrees_file_decode` | `build/verified/exampleTrees.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
+
 ## Building, running, and testing
 
 ```sh
@@ -59,13 +102,26 @@ build/tools/leanexe-wasmtime-host call-stats build/verified/recursivetypes.wasm 
   tree-u64:5,1,.,.,9,.,.
 tests/verified/run.sh --cases recursivetypes
 tests/native/verified.sh --module recursivetypes
+tools/leanrun --timeout 60m lake build Examples.Trees.Compiled
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean Examples.Trees.Compiled \
+  Examples.Trees.compiled.module build/verified/exampleTrees.wasm
+build/tools/leanexe-wasmtime-host call-stats build/verified/exampleTrees.wasm dropRight tree-u64 \
+  tree-u64:5,1,.,.,9,.,.
+build/tools/leanexe-wasmtime-host call-stats build/verified/exampleTrees.wasm addRoot tree-u64 \
+  tree-u64:5,1,.,.,9,.,. tree-u64:7,2,.,.,3,.,.
+tests/verified/run.sh --cases exampleTrees
+tests/native/verified.sh --module exampleTrees
 ```
 
-The commands build the verified compilation and its theorems, write the module, call it in the
-Wasmtime host, and run the drivers, with the setup of [the repository
+The commands build the verified compilations and their theorems, write the modules, call them in
+the Wasmtime host, and run the drivers, with the setup of [the repository
 README](../../README.md#commands).  The host writes a tree in preorder, key, left, right, with `.`
 for a leaf.  The first call prints 3, and the second prints `6,2,.,.,10,.,.` and `stats 3 0`: the
-host's three records, rewritten in place, with no new record and no free.
+host's three records, rewritten in place, with no new record and no free.  The third prints
+`5,1,.,.,.` and `stats 3 1`, since `dropRight` keeps the root record and its left child and
+releases the right child.  The fourth prints `12,2,.,.,3,.,.` and `stats 6 3`: the first tree's
+root record holds the sum of the root keys over the second tree's children, and the code releases
+the first tree's children and the second tree's root record.
 
 [The verified driver](../../tests/verified/run.sh) compares the cases of [the recursive-type
 cases](../../Verified/Examples/RecursiveTypesCases.lean), which build their trees with the helpers
@@ -81,11 +137,23 @@ cases](../../Verified/Examples/TreeCopyCases.lean) and [the heap sum
 cases](../../Verified/Examples/HeapSumsCases.lean) build and describe their trees with the same
 helpers.
 
+[The verified compiler's cases](../../Verified/Examples/Cases.lean) of `exampleTrees` run every
+operation on the trees of `keyTreeArgs` and the pairs of `keyTreePairs` of
+[`Cases.lean`](Cases.lean), 1,638 cases, which the verified driver compares between the Wasmtime
+host and native Lean.  Each
+case that returns states the blocks left allocated and bounds the allocations, the host's records
+included, and each case whose deepest call reaches depth 1,000 must trap at `unreachable`.  The
+module's translation to C contains every export, and the native driver runs all the cases on it.
+Without `--cases`, the verified driver also checks [the file module](File.lean) against the written
+file and requires the axiom reports of both file theorems to name only `propext`,
+`Classical.choice`, and `Quot.sound`.
+
 ## Related examples
 
 [`Words`](../Words/README.md) and [`Lists`](../Lists/README.md) have records with one child and tail
 recursion or loops.  [`TreeLookup`](../TreeLookup/README.md) searches a binary search tree stored in
-an array.  [`Clob`](../../Demos/Clob/README.md) applies the same ownership rules to arrays.
+an array.  [The insertion example](../../Verified/Examples/Insert.lean) applies the same ownership
+rules to arrays.
 
 ## References
 

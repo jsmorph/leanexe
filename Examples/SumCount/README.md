@@ -61,8 +61,8 @@ written file and requires the axiom reports of both file theorems to name only `
 
 [`PairSum`](../PairSum/README.md) builds an array literal and releases it inside the call.
 [`SumArray`](../SumArray/README.md) has the fold alone, with a word result.
-[`Updates`](../Updates/README.md) and [`Clob`](../../Demos/Clob/README.md) return arrays that they
-build by updating their inputs.
+[`Updates`](../Updates/README.md) and [the insertion example](../../Verified/Examples/Insert.lean)
+return arrays that they build by updating their inputs.
 
 ## References
 

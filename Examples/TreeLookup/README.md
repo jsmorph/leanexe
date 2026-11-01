@@ -35,7 +35,7 @@ compilation](Compiled.lean).  They use only `propext`,
 comparisons along each of the eleven paths through the tree.
 
 The reflector reads the result's literal `#[…, …]` as two pushes onto `#[]`, so the generated
-`compiled.compute.bound_eq` charges an empty block and the growth of the array at each push, and
+`compiled.compute.bound_eq` charges an empty block, the first growth, and the paid second push, and
 `compute_bound` closes that bound to 232 bytes.  `treeLookup_call` composes the generated
 `compiled.compute.trapFree` with `compute_eq` through `arrayCall` of [the shared call
 theorem](../ArrayCall.lean).  `compute_callSpec` states the call in the form that

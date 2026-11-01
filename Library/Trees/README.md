@@ -14,7 +14,8 @@ conversions and lemmas.  Ordering and membership proofs for search-tree insertio
 work.
 
 [The tree example](../../Examples/Trees/README.md) adds operations of its own over `KeyTree`, which
-no verified module compiles.  Its test support constructs and renders arbitrary trees, including
+its verified compilation compiles, with the library's `size`, `sum`, `incr`, and `insert`, into the
+module `exampleTrees`.  Its test support constructs and renders arbitrary trees, including
 trees that exceed the guarded recursion limit.  [The recursive-type
 cases](../../Verified/Examples/RecursiveTypesCases.lean) use that support to test `size`, `incr`,
 `setKey`, `leftChild`, and `splitRoot` on chains of up to 4,096 nodes and on arbitrary trees, and

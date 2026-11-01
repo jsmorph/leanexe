@@ -770,13 +770,29 @@ partial def tupleLeaf (tuple : Lean.Expr) : List (List Bool) → MetaM Lean.Expr
       | some u => pure u
       | none => flatTerm t) rest
 
+/-- Whether a scalar component of a pair that holds heap data reflects to a variable, the one
+scalar place of `Expr.isPlace`: a pair of scalars, and a structure whose tuple is one, reflects to
+`Expr.mk`. -/
+partial def isScalarPlace (e : Lean.Expr) : MetaM Bool := do
+  let e ← projReduce e
+  if e.isFVar then return true
+  if e.isAppOf ``Prod.mk then return false
+  if let some tuple ← ctorTuple? e then return ← isScalarPlace tuple
+  return false
+
 /-- Whether a Lean term reflects to a place: a variable, a pair of places, or a structure's
-constructor whose tuple of fields is a place, as `reflectStruct?` reflects it. -/
+constructor whose tuple of fields is a place, as `reflectStruct?` reflects it.  A scalar component
+of a pair that holds heap data is a place only when it reflects to a variable, as `Expr.isPlace`
+requires. -/
 partial def isPlace (e : Lean.Expr) : MetaM Bool := do
   let e ← projReduce e
   if e.isFVar then return true
   if let (``Prod.mk, #[_, _, a, b]) := e.getAppFnArgs then
-    return (← isPlace a) && (← isPlace b)
+    if (← shapeOf (← inferType e)).ty matches .elem _ then
+      return (← isPlace a) && (← isPlace b)
+    let part (x : Lean.Expr) : MetaM Bool := do
+      if (← shapeOf (← inferType x)).ty matches .elem _ then isScalarPlace x else isPlace x
+    return (← part a) && (← part b)
   if let some tuple ← ctorTuple? e then return ← isPlace tuple
   return false
 

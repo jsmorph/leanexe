@@ -33,7 +33,8 @@ def KeyTree.trim : Library.Trees.WordTree.KeyTree → Library.Trees.WordTree.Key
   | .leaf => .leaf
   | .node l k r => if k = 0 then l else .node l k .leaf
 
-/-- The tree `b` with `a`'s root key added to its root key: `a` is read, `b` rewritten. -/
+/-- The tree `b` with `a`'s root key added to its root key: both trees are consumed, the result
+keeps as many records as `b` has, and the code releases as many as `a` has. -/
 def KeyTree.addRoot (a : Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree → Library.Trees.WordTree.KeyTree
   | .leaf => .leaf
   | .node l k r => match a with
@@ -49,7 +50,7 @@ def KeyTree.addAll (a : Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree
       (KeyTree.addAll a r)
 
 /-- The tree with its left child's root key added to its right child's root key: the left child
-is lent to `addRoot`, which rewrites the right child. -/
+stays in the record, so `addRoot` consumes a copy of it and rewrites the right child. -/
 def KeyTree.addLeft : Library.Trees.WordTree.KeyTree → Library.Trees.WordTree.KeyTree
   | .leaf => .leaf
   | .node l k r => .node l k (KeyTree.addRoot l r)
@@ -88,7 +89,8 @@ def KeyTree.splitOr (a b : Library.Trees.WordTree.KeyTree) : Library.Trees.WordT
 holds `t` itself. -/
 def KeyTree.keepOld (t : Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree × Library.Trees.WordTree.KeyTree := (t.incr, t)
 
-/-- The tree with its root key doubled: `addRoot` reads `t` and rewrites a copy of it. -/
+/-- The tree with its root key doubled: `t` is the argument of both of `addRoot`'s parameters, so
+it stays borrowed, and `addRoot` consumes two copies of it. -/
 def KeyTree.addSelf (t : Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := KeyTree.addRoot t t
 
 /-- The search tree `t` with the keys `a` and then `b`. -/

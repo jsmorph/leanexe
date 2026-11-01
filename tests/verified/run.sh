@@ -25,7 +25,10 @@
 # the caller's memory limit.
 # Usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]
 set -euo pipefail
-export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
+if ! command -v wasm-tools > /dev/null 2>&1; then
+  echo "fail: wasm-tools is not on the search path" >&2
+  exit 1
+fi
 case_module=""
 reference=""
 if [ "$#" -ne 0 ]; then
@@ -104,6 +107,8 @@ elif [ "$case_module" = "slew" ]; then
   cases_exe=verified-cases-slew
 elif [ "$case_module" = "energy" ]; then
   cases_exe=verified-cases-energy
+elif [ "$case_module" = "orderbook" ]; then
+  cases_exe=verified-cases-orderbook
 fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
@@ -254,7 +259,7 @@ check_axioms() {
 }
 if [ -z "$case_module" ] || [ "$case_module" = "slew" ]; then
   tests/slew/edges.sh "$out/slew.wasm"
-  check_axioms tests/slew/Axioms.lean
+  tools/leanrun --timeout 10m lake env lean tests/slew/Axioms.lean
   if [ "$case_module" = "slew" ]; then
     check_file slew Demos.Slew.Verified Demos/Slew/File.lean
   fi

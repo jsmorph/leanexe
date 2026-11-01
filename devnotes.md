@@ -39509,7 +39509,7 @@ Euler's timestep and retry loops are the only loops whose pass count the run dec
 Two bounds are large for other reasons.  The order book's `runCommands` and `runOut` charge the credits of both book arrays on every pass, so their bound grows with the square of the command count, 16 N² + 176 N + 32 bytes for N inserting commands from an empty book, while the book holds 16 N bytes.  The survey's reading of `Expr.paid` is that the results of `setLevel` and `cancelBid` are unpaid, which makes the result of `applyCommand` unpaid, but no Lean check has tested that reading, and no theorem uses this bound.  GPT's `forward` charges each layer's temporaries again, about 4.2 GB at 1,024 tokens by a hand estimate, while `step`, the generation path, needs a few MB per token.
 
 - [x] The survey of bounds that grow with a loop's passes, and the decision against a compiler change.
-- [ ] Determine why the order book's command loops buy their credits on every pass, if the order book gets a call theorem.
+- [x] Determine why the order book's command loops buy their credits on every pass, if the order book gets a call theorem: the parameter rule and the absence of a paid case for `eraseAt`, as [the entry on paid results of `set`](#2026-11-01-paid-results-of-set) records.
 
 ## 2026-10-30: LTG's general entries in the VKB and the manual's general sections
 
@@ -39986,7 +39986,7 @@ The full check ran from 06:55 UTC to 09:31 UTC with `LEANRUN_THREADS=8`, `LEANRU
 
 The restoration of `Words.toList` stays a commit of its own, because `STATUS.md` names the guide commit by its hash, and folding the fix into the trim of the module driver would change that hash.  The commits from the trim to the deletion of the manual therefore do not build `verified-cases`.  The binary64 GPT-2 guide gives no `tests/native/verified.sh --module gpt` command, because `Verified/Examples/Cases.lean` holds no GPT cases for that driver to run.
 
-- [ ] Port the operations that `Examples/Trees/Program.lean` adds to the library with `verified_compile`, or delete them.
+- [x] Port the operations that `Examples/Trees/Program.lean` adds to the library with `verified_compile`, or delete them.
 - [x] Correct the citations of `docs/native-translator.md` in `docs/trusted-base.md`, which point at lines that have moved, among them blank lines and table headers.
 
 ## 2026-10-31: Consecutive windows
@@ -40065,13 +40065,13 @@ The specification models each side as a list of resting orders sorted by price a
 
 The refinement proof dominates the work.  The design also assumes that the verified compiler updates the array fields of an owned record in place inside a loop state, which the manual lists as supported but which no fixture of this size exercises, so a small probe comes before the implementation grows.  The probe compiles a record of word arrays that a loop updates with `set!` and checks with the allocation counters that no update copies an array.
 
-- [ ] English description, list specification, and a fresh agent's review of the specification against the description.
-- [ ] The specification's theorems.
-- [ ] Probe of in-place updates to the array fields of an owned record in a `repeatWhile` state.
-- [ ] Array implementation, its native comparison with the specification on random command streams, and an independent Python reference.
-- [ ] Refinement proof.
-- [ ] `verified_compile`, the allocation bound, the call theorem, the registry entry, cases, and the C translation.
-- [ ] WASI process with stdin command records and stdout event records.
+- [x] English description, list specification, and a fresh agent's review of the specification against the description.
+- [x] The specification's theorems.
+- [x] Probe of in-place updates to the array fields of an owned record in a `repeatWhile` state.
+- [x] Array implementation, its native comparison with the specification on random command streams, and an independent Python reference.
+- [x] Refinement proof.
+- [x] `verified_compile`, the allocation bound, the call theorem, the registry entry, cases, and the C translation.
+- [x] WASI process with stdin command records and stdout event records, in [its native part](#2026-11-01-the-order-books-wasi-process-native-part) and [its compiled part](#2026-11-01-the-order-books-wasi-process-compiled-part).
 
 ## 2026-10-31: Review of the energy work
 
@@ -40197,3 +40197,291 @@ The proof follows the plan in layers, each a file of the module: the count's rec
 
 - [x] Dancing links: design review, request, specification and two reviews, program, proofs of the search, the build, and `valid`, call theorems with standard axioms, 88 cases in Wasmtime and native C, README, index section 13.
 - [ ] Move the bound `values.size < 2^29` of `At` into `LeanExe/ProofKit/Array.lean` at the next full rebuild.
+
+## 2026-10-31: The order book's requirements and specification
+
+The first milestone of [the order-book design](#2026-10-31-the-design-of-a-two-sided-order-book) is done.  [The requirements](Demos/OrderBook/requirements.md) state the book in English, `Demos/OrderBook/Spec.lean` states them in Lean over lists, and `Demos/OrderBook/Samples.lean` holds command streams whose events and books `Demos/OrderBook/SpecRun.lean` prints.  `Demos.lean` imports the samples, so the default build checks the specification.
+
+Two decisions changed the design during the milestone.  Order ids are sequence numbers, the first accepted order having id 1, so the specification never mentions the implementation's slots, and cancel and reduce find an order by a scan of at most 4,096 slots.  The trade event's sixth field is the maker's remaining quantity instead of the taker's account, which the host knows from its own command, so the events alone give the state of every resting order.
+
+The reviews, which [the review record](Demos/OrderBook/review.md) gives, settled the remaining details.  The remainder rules apply in the order of their table, so self-trade prevention takes precedence over IOC and over a full book, and the capacity count is taken after matching.  The requirements cover fewer than 2^64 − 1 accepted orders, so the next id never wraps and the ids of resting orders are distinct.  `Spec.Valid` defines the books that the requirements describe, including the uncrossed book, which the matching and post-only rules imply, and it is the invariant that the specification's theorems are to establish.
+
+Five fresh agents reviewed the specification in turn, each from the requirements, the specification, the samples, and the printed output alone.  The third and the fourth found one defect each, both in `Valid`'s treatment of the next id, and the first, second, and fifth found none.  The input classes that the last review listed as uncovered go into the implementation's tests.
+
+## 2026-10-31: The order book's in-place update probe and representation
+
+The probe compiled eight loops whose state is a record of four word arrays, three of 4,096 words and one of 2,048, and a count, and ran each through the Wasmtime host's `call-stats` at 0, 1, 10, and 1,000 iterations.  The four allocations in each count are the record's four builds, so a count that stays at 4 means that no iteration copies an array.  The counts show that a loop updates the arrays of its record state in place, and that a listed function that takes the record copies every array of it on each call.  A callee's record parameter is borrowed, as [the manual](docs/verified-manual.md#ownership) states, so the callee copies the field that it updates and each field that it returns.
+
+| Body of the loop | Allocations at 0, 1, 10, and 1,000 iterations |
+|---|---|
+| `set!` on four fields in `{ p with … }` | 4, 4, 4, 4 |
+| Field passed to a listed function that updates it | 4, 4, 4, 4 |
+| Two fields passed to a listed function that returns both in a pair | 4, 4, 4, 4 |
+| Inner `loop` over a field, its body reading the record's count | 4, 4, 4, 4 |
+| Inner `repeatWhile` whose state is the record | 4, 4, 4, 4 |
+| Field read after the update of another field in the same body | 4, 4, 4, 4 |
+| Record passed to a listed function that updates one field | 4, 8, 44, 4,004 |
+
+An exported function that takes four arrays one by one, updates three, and returns the record allocated nothing beyond the host's four arrays and released none.  The implementation's module cases will check the same counts on the order book's own functions, so the probe stays outside the repository.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Book | Slot arrays of order id, account, quantity, level, and next slot, of 4,097 words with slot 0 unused, level arrays of head and tail, of 2,048 words indexed by side · 1,024 + price, the next id, and the count of resting orders | Slot 0 marks the end of a chain and an empty level, so the empty book is arrays of zeros. |
+| Calls | Functions that change the book take its arrays as separate parameters and return them, and read-only functions take the record | The probe's record parameter copies every array on each call. |
+| Links | Chain of next links for each level, with its head and tail, and no previous links | Cancel walks its level to the predecessor, at most 4,096 links after a scan of at most 4,096 slots, and no invariant has to keep previous links in agreement. |
+| Free slots | Slot whose order id is 0, found by a scan | Ids start at 1, and no free list needs an invariant. |
+| Best prices and level totals | Not stored | Matching and the top-of-book query scan at most 1,023 levels from the edge of the band, and the query sums the best level's chain. |
+| Exports | `init`, `run` over a word stream with the book's arrays as owned parameters, and `top` | A step is a stream of one record, and the specification's `run_append` covers a stream in parts. |
+
+- [x] Probe of in-place updates.
+- [x] Implementation, with the native comparison against `Spec.run` and the Python reference.
+
+## 2026-10-31: The order book specification's theorems
+
+[The theorems](Demos/OrderBook/Theorems.lean) state what the requirements say of the specification.  `empty_valid`, `step_valid`, and `run_valid` show that `Valid` holds of the empty book and after every step and stream whose next id stays below 2^64 − 1, and `step_nextId` and `step_accepted` show that the next id advances exactly when an order is accepted.  `fill_shape` states that matching exhausts a prefix of the opposite side, at the resting orders' prices and only with orders of other accounts at acceptable prices, and then stops or trades part of the next order, and `fill_prefix`, `fill_traded`, `fill_total`, `fill_stop`, `submit_conserves`, and `submit_opposite` follow the makers and the quantities.  `step_cancel` and `step_reduce` state the effect of a cancel and a reduce that pass their checks, and the `rejects_` theorems state for each rejection reason the conjunction of the checks before it, which pass, and its own, which fails.  `step_bounded`, `step_events_length`, and `top_bound` bound the events' fields, their number, and the top-of-book totals, and `records_append` and `run_append` show that a stream run in two parts, the first a whole number of records, gives the book and the events of one run.
+
+I wrote the statements and checked that they elaborate, and a fresh agent proved them without changing a statement or a definition, which a comparison of the two files confirmed.  The proofs import only the specification and use only `propext`, `Classical.choice`, and `Quot.sound`.  `Demos.lean` imports the module, so the default build checks it.
+
+## 2026-10-31: The order book's program and its tests
+
+[The program](Demos/OrderBook/Program.lean) holds the book in the representation of [the probe's entry](#2026-10-31-the-order-books-in-place-update-probe-and-representation).  The functions that change the book are `@[inline]` functions of `Book`, and the program enters them through `fillArrays`, `submitArrays`, and `stepArrays`, which take the book's arrays one by one, so that no listed function copies the book.  One iteration of the matching loop either skips an empty level or does what one call of `Spec.fill` does to the level's first order, and `step` runs the checks of `Spec.step` in its order.  `unlink` serves both an exhausted maker and a cancel, a freed slot clears only its order id, and each loop's fuel constant states why it suffices.  [The abstraction](Demos/OrderBook/Abstract.lean) reads the program's book as the specification's: the bids are the chains of the levels from price 1,023 down to 1, and the asks those from 1 up to 1,023.
+
+[The tests](tests/orderbook/README.md) compare the program with the specification and with a Python reference that a fresh agent wrote from the requirements alone, without reading any Lean file.  `orderbook-compare` runs each stream through `Spec.run` and `Program.run` and checks the event words, `toSpec` of the program's book, and the top of the book after every part of 1,000 records and for the whole stream, and `tests/orderbook/run.sh` compares its output with the reference's.  The streams are the samples, edge streams written for the classes that the fifth review of the specification found uncovered, the reference's own edge streams, and random streams of four profiles up to 100,000 commands.  The driver passed on every stream, and earlier runs of the same programs agreed on a larger set of 188 streams of about 1.45 million commands.  Matching reached 5,119 of its 5,120 iterations of fuel on the streams written for the purpose.
+
+A draft `verified_compile` of the program succeeded, and the module gave the native results on every stream tried, from the empty book and from books that earlier runs left.  Allocations stayed at the host's arrays and the regrowths of the event array, so no update copied an array of the book.  The reflection of `fillArrays` took about 270,000 heartbeats, so the command needs a larger limit than the default.  Two findings concern the compiler.  The reflector rejects `init (_ : Unit)`, so a host passes zero arrays, next id 1, and count 0 for the empty book.  A borrowed call whose argument is a structure built in place, with a `Flat` tuple that ends in two or more words, fails: the reflector's `isPlace` accepts the argument and leaves it unbound, while the source's `Expr.isPlace` rejects the scalar pair that the reflector writes for its last words, so the kernel check of `placeArgs` fails.  The program's read-only helpers take the arrays they read and so avoid the case.
+
+- [x] Fix the reflector's `isPlace` for structures built in place whose tuples end in scalar pairs.
+
+## 2026-10-31: The order book's refinement proof
+
+[The refinement](Demos/OrderBook/Refinement.lean) proves that the program computes the specification.  [The invariant](Demos/OrderBook/Invariant.lean) `Inv` states that the arrays have the program's sizes, that the chain of each level of the band is a list of distinct slots from 1 to 4,096 whose level is that level and whose last slot is the level's tail, that every slot with a nonzero order id lies on the chain of its level, that the count equals the number of resting orders, and that `toSpec` of the book satisfies `Spec.Valid`.  `step_eq` states that a step at an offset inside a stream keeps `Inv` and gives the book of `Spec.step` on the record there and its event words, while the next id lies below 2^64 − 1, and `run_eq` states the same of `run` and `Spec.run` while the next id plus the number of records stays at most 2^64 − 1.  `top_eq` states that `top` gives `Spec.top`, `init_inv` and `toSpec_init` that the empty book satisfies `Inv` and reads as `Spec.empty`, and `run_append` that a stream run in two parts, the first a whole number of records, gives the book and the event words of one run on any book.
+
+I wrote `Inv` and the statements and checked that they elaborate, and two fresh agents proved them in parallel, one the step and the queries, the other the stream theorems from the step's statement as a hypothesis.  A comparison of the files confirmed that neither changed a statement, a definition, or the program, and every theorem uses only `propext`, `Classical.choice`, and `Quot.sound`.  The proofs found `Inv` strong enough: the nonzero ids on the chains, which tell a free slot from a used one, and the single slot of each id, which confines cancel and reduce to the slot that they find, both follow from `Spec.Valid`.
+
+| Module | Content |
+|---|---|
+| [`RefineChains`](Demos/OrderBook/RefineChains.lean) | Chains without fuel, the book as concatenated level lists, one slot per id, and the count of free slots |
+| [`RefineEffects`](Demos/OrderBook/RefineEffects.lean) | Effects of `unlink`, `place`, and a quantity update on the chains, the invariant's structure, and the specification's book |
+| [`RefineHelpers`](Demos/OrderBook/RefineHelpers.lean) | Meanings of the read-only helpers and of `top` |
+| [`RefineMatch`](Demos/OrderBook/RefineMatch.lean) | Loop invariant of matching against `Spec.fill`, its measure within the fuel of 5,120, and `submit` against `Spec.submit` |
+| [`RefineStep`](Demos/OrderBook/RefineStep.lean) | Cancel, reduce, rejections, the record's words, and `step_eq`, `top_eq`, `init_inv`, and `toSpec_init` |
+| [`RefineStream`](Demos/OrderBook/RefineStream.lean) | `run_append` and `run_eq_of_step` |
+
+Lean reaches its recursion limit when `rfl` or unification compares terms that contain `toSpec` or `slotsFrom` at the fuel of 4,097, so the proofs rewrite with `toSpec_eq` and congruence lemmas instead.  `run_append` is the program's counterpart of `Demos/Clob`'s `runCommands_append`, and `run` returns the book with the event words, so the counterpart of `runOut_book` holds by definition.
+
+## 2026-10-31: The verified module of the tree example's operations
+
+The operations that `Examples/Trees/Program.lean` adds over `KeyTree`, from `dropRight` to `wide`, now compile with `verified_compile` in `Examples/Trees/Compiled.lean` into the module `exampleTrees`, which closes the item that [the removal of the LeanExe compiler](#2026-10-31-the-removal-of-the-leanexe-compiler) left open.  The command lists the library's `size`, `sum`, `incr`, and `insert` before the operations that call them, and the compilation imports the library's derivation of `KeyTree`, as `Verified/Examples/RecursiveTypes.lean` does.  A probe that compiled each operation in a command of its own, with its callees, accepted every one in 97 seconds, so no rule of the dialect leaves an operation out.  `wide`, which keeps sixteen words live across two self-calls, fits within the 32 positions of a function whose code takes the call depth.
+
+`exampleTreeCases` in `Verified/Examples/Cases.lean` runs each operation on the trees and pairs of `Examples/Trees/Cases.lean`, among them chains with the leaves on either side around depth 1,000, and states a trap when the deepest call reaches that depth.  The first run failed only on `addRoot`, `addLeft`, and `addSelf`, whose expected counts followed docstrings written for the retired compiler.  The reflector reuses the header of the innermost match for a record built in its branch, and `Expr.demands` then makes the matched tree owned, so `addRoot` consumes its first tree as well as its second.  `addLeft` therefore copies the left child that its record keeps, and `addSelf`, whose tree is the argument of both of `addRoot`'s parameters, keeps its tree borrowed and passes two copies.  The cases and the docstrings of `addRoot`, `addLeft`, and `addSelf` now state these counts.
+
+The registry name `exampleTrees` follows `exampleLists` and `exampleUpdates`.  The module has a file module, an entry in the file-theorem registry, an import in `Examples/Verified.lean`, and rows in the index and the manual, and the guides of the example and of the word trees describe it.
+
+| Check | Start | Duration | Result |
+|---|---|---|---|
+| Probe of each operation in a command of its own | 03:01 UTC | 97 s | Every operation compiled |
+| `tests/verified/run.sh --cases exampleTrees` | 03:13 UTC | 168 s | 1,638 cases passed and none failed |
+| `lake env lean Examples/Trees/File.lean` | 03:16 UTC | 5 s | Both file theorems report only `propext`, `Classical.choice`, and `Quot.sound` |
+| `tests/native/verified.sh --module exampleTrees` with CompCert 3.18 | 03:17 UTC | 27 s | Translation of every function and export, `clightgen` agreement, and 1,638 cases passed |
+| `tools/source-layout` and `node tools/check-doc-links.mjs` | 03:29 UTC | Under 1 s | No problem reported |
+| Build of `LeanExe`, `Examples`, `Demos`, `Verified`, `Library`, and `TestSupport` | 05:01 UTC | 8 s, after the runs above had built the changed modules | 11,146 jobs, no error and no `sorry` |
+
+- [x] Compilation, cases, file module, and registry entries.
+- [x] Guides, index, and manual.
+
+Fresh emissions and runs checked the sizes of emitted modules and the printed output that the program guides state.  The emissions match every size except those of `sinpi.wasm`, 6,117 bytes, `pow.wasm`, 11,418, and `printfloat.wasm`, 15,081, which the guides now give, and each quoted host command, driver, and script that ran printed what its guide states.  `#check` shows the same bound equation for PairSum, SumCount, Lookup, and TreeLookup, `blockCost 0 + growCost 1 1 + paidGrowCost 1`, or 232 bytes, so the Lookup and TreeLookup guides now describe the charges as the PairSum and SumCount guides do: an empty block, the first growth, and the paid second push.  The 800-grid Euler runs and the GPT-2 scripts that need the downloaded weights did not run.
+
+`tests/verified/run.sh --cases slew` stops after the slew audit with a failure, because `check_axioms`, which the energy work added, requires `depends on axioms` reports, while `tests/slew/Axioms.lean` checks the axioms with its own command and logs one summary line.  The full run takes the same step and fails there as well.  Run by hand, the slew file theorems report only the three permitted axioms, and the 2,077 slew cases pass.
+
+The docstring of `PowFile.lean` gave the module's earlier size, 11,156 bytes, and now gives 11,418.  The vector test of the SHA-2 programs ran in 447 s against the SHA-512 guide's six minutes, and the check of the SHA-3 transcription in 4,660 s against its guide's three hours, so the guides now give seven and a half minutes and 80 minutes.  Both durations depend on the host, and the guides give them as the expected order of the run time.
+
+- [x] Sizes, printed outputs, and bound equations of the guides checked, and the differing ones corrected.
+- [x] Make `check_axioms` and the slew audit agree, so that the slew run and the full run of `tests/verified/run.sh` pass.
+
+## 2026-11-01: The slew audit in the module driver
+
+The energy work replaced the driver's call of the slew audit with `check_axioms`, which counts the reports of `#print axioms` and fails when it finds none, but `tests/slew/Axioms.lean` checks its theorems with its own command, which throws an error on a forbidden axiom and logs one summary line.  `tests/verified/run.sh --cases slew` and the full run therefore failed after a passing audit, which no gate of the energy work ran.  The driver again runs the slew audit as it did before the energy work, so the audit's exit status decides, and `check_axioms` keeps the energy audit, whose reports it reads.
+
+## 2026-11-01: The reflector's places
+
+A call whose borrowed argument was a structure built in place, with a `Flat` tuple that ends in two or more words, failed the kernel check of `placeArgs`, as [the order book's program entry](#2026-10-31-the-order-books-program-and-its-tests) records.  The reflector's `isPlace` in `Verified/Reflect/Definitions.lean` accepted a pair of places of any type, so it left the argument unbound, while the reflection of a pair of words is `Expr.mk`, which the source's `Expr.isPlace` does not accept.  `isPlace` now accepts a scalar component of a pair that holds heap data only when the component reflects to a variable, by `isScalarPlace`, so the reflector binds such an argument with `let` before the call.  Pairs of words keep their earlier reading, so a `let` of a pair of words still substitutes its value.
+
+The reflector is outside the trusted base, so the change could only make a program fail to compile, and a byte comparison measured its reach: every module of the registry, emitted after the change, is byte for byte the module that main emitted before it.  `spanOf` of [the record example](Verified/Examples/Fields.lean) passes `spanWidth` a record built in place from an array and two words, and its cases check the result and that the call allocates nothing beyond the host's array.
+## 2026-11-01: The order book's verified compilation
+
+[The compilation](Demos/OrderBook/Verified.lean) lists the program's definitions in calling order, from `emit` to `run`, under a heartbeat limit of 1,000,000, since the reflection of `fillArrays` takes about 270,000 heartbeats.  It elaborates in about 190 s with 6.1 GB resident, and the module has 15,662 bytes.  `run` is entry 13 and `top` entry 8, and the seven arrays of `run` are owned parameters, which a call consumes, while the stream stays borrowed.  `init` is absent, because the reflector rejects its parameter of type `Unit`, so a host passes arrays of zeros, next id 1, and count 0 for the empty book.  The module lies in the translator's subset, so the command also generates `compiled.translation`, `compiled.run.native`, and `compiled.top.native`.
+
+[The call theorems](Demos/OrderBook/VerifiedCall.lean) carry the refinement to the exports.  `run_call` starts from `compiled.run.trapFree`, because `Verified.Call` admits only arguments that move no object, and composes it with `run_eq`.  Its hypotheses are a ready store, `Inv b`, the size and next-id bounds of `run_eq`, the book's arrays owned at their pointers, their blocks disjoint and apart from the borrowed stream, and room for `compiled.run.bound`.  Its conclusion is a return without a trap of a book that satisfies `Inv`, whose `toSpec` is the book of `Spec.run`, and of the words `Spec.encodeAll` of its events, in a ready store that keeps the stream borrowed.  `top_call` composes `compiled.top.trapFree`, through `Verified.Call.spec`, with `top_eq`.  Every theorem of the module uses only `propext`, `Classical.choice`, and `Quot.sound`.
+
+A design study predicted that the generated bound of `run` would be large, and its evaluation confirmed the size, though not the mechanism.  The bound charges, at each record, the credits of the loop state's seven book arrays and of its event array, 393,408 bytes and 16 bytes for each event word so far, because the state of the loop of `run` is not paid and each call of `stepArrays` buys the credits of its paid arguments.  Inside matching, `fillArrays.cost` is the `min` of an unpaid loop, which charges the event array's credit, 16 bytes for each event word so far, at each trade, and a paid loop, which charges the book's 393 KB at each trade, and the `min` takes the unpaid loop.  A cancelled remainder charges the event array's credit once more, and every pushed word costs 80 bytes.  The bound thus grows with the records times the event words and with the square of the event words.
+
+| Stream | Records | Event words | Bound in bytes | Memory after the call in bytes |
+|---|---|---|---|---|
+| Sample 1, from the empty book | 3 | 42 | 1,578,824 | 1,048,576 |
+| Market sell that trades with 4,096 makers, from a book of 4,096 bids | 1 | 28,686 | 943,359,656 | 1,048,576 |
+| `matching-fuel-sell`, from the empty book | 4,097 | 57,358 | 5,376,378,536 | 1,638,400 |
+
+Lean's interpreter evaluated the first two bounds, which agree with the values computed by hand from the cost equations, and the third follows from those equations and the evaluated sweep.  The Wasmtime host's session mode measured the memory, which was 1,048,576 bytes before each call.  The third bound exceeds the 4,294,901,760 bytes that the largest memory cap allows, so no call theorem covers that stream in one call, and a host runs long streams in parts, which `run_append` justifies.  The compiler's bound analysis will change separately, so that an in-place `set!` of a paid owned array gives a paid result.  The call theorems therefore take room for the generated bounds rather than for a closed form, and they stay valid when the bound changes.
+
+[The module cases](tests/TestSupport/OrderBook/Cases.lean) run `run` on the samples, the single records, the edge streams, and random streams that SplitMix64 draws from fixed seeds, from the empty book and from the books that the first part of each stream leaves, and `top` on every book that `run` returns.  They pass each array through a file of words under `build/verified/orderbook/`, since a book's arrays and the long streams exceed the length of a command-line argument.  A case of `run` requires nine retained blocks and at most nine allocations plus one for each doubling of the event array's capacity, `⌊log₂ n⌋ + 1` for `n` event words.  83 of the 98 cases of `run` reach that count exactly and the others lie one below it, because the allocator reuses a freed block larger than a request, and every case of `top` allocates nothing beyond the host's arrays.  `tests/verified/run.sh --cases orderbook` and `tests/native/verified.sh --module orderbook`, with CompCert 3.18, each passed the 196 cases.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Aggregates | `Demos/Verified.lean` imports `Verified` and `VerifiedCall`, and `Demos.lean` imports `Flat` | Verified application compilations belong in `Demos/Verified.lean`, which `Verified` imports, by the manual's rule, so the default build does not elaborate the compilation. |
+| Case list | `Verified/Examples/Cases.lean` prints the order book's cases, and `verified-cases-orderbook` prints them alone | `tests/native/verified.sh` reads only `verified-cases`, as for the energy authorizer. |
+| Room of the call theorems | `compiled.run.bound` and `compiled.top.bound` as generated | Theorems stay valid when the compiler's bound changes. |
+| Shared test helpers | `tests/TestSupport/OrderBook/Words.lean` holds the files of words and the host's format for arrays | Native comparison and module cases both use them. |
+
+- [x] Compilation, call theorems, registry entry, module cases, and C translation.
+- [x] Evaluate `compiled.run.bound` again after the compiler's change to the results of in-place updates, in [the entry on paid results of `set`](#2026-11-01-paid-results-of-set), with the closed form in [its own entry](#2026-11-01-the-closed-form-bound-of-the-order-books-run).
+
+## 2026-11-01: The order book's WASI process, native part
+
+[The process](Demos/OrderBook/Process.lean) reads command records from stdin as little-endian words, seven to a record, and writes the event records to stdout in the same form, so that its output is the little-endian bytes of `Spec.encodeAll` of the events of `Spec.run Spec.empty` on the whole words of its input.  A short final record is rejected as malformed, as `Spec.run` does, the process exits with status 28 when the input ends with bytes that do not fill a word and with status 0 otherwise, and a failed transfer stops it with its errno, as StreamFold's processes do.  A design study compared a generalization of StreamFold from lines to fixed records with a process of the order book's own, and found that StreamFold's line-dependent modules hold most of its proofs and that its protocol writes each line's output before it reads further, so the process stands beside StreamFold and imports its host assumptions, its stdout journal, and its byte lists unchanged.  Each step makes one transfer, a read of at most 4,096 bytes passes all its whole records to one call of `Program.run`, and the bytes of a partial record wait in the state.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Framework | Process modules of the order book that import StreamFold's `StreamHost`, `StreamProgress`, observed journal, and byte lists | Generalizing StreamFold's framing would change the proofs of both running sums, at about twice the size of a new process by the study's estimate. |
+| Read capacity | 4,096 bytes | `StreamHost` fixes it, and a larger read would need a capacity parameter there and an amortized count of events per batch. |
+| Batch | Whole records of each read in one call of `Program.run` | One record per step would copy the state's arrays about 70 times as often. |
+| Proof route | `run_eq` for each batch, joined by `Spec.run_append` | Both exist, and `batch_refines` composes them. |
+
+`process_output` of [the correctness proof](Demos/OrderBook/ProcessCorrect.lean) states that, under `StreamHost` and from a world whose stdout history is empty, the process from its initial state returns `expectedStatus` of the input after writing `expectedOutput` of it and consuming it, when the input holds fewer than 2^64 − 1 records.  `process_exec_correct` states the same of every finite execution from a state that satisfies the invariant `Future`, and `process_terminates` that every execution from a safe state returns status 0 or 28.  [The codec](Demos/OrderBook/ProcessCodec.lean) defines the little-endian words of bytes and the bytes of words and proves the equations of the process's conversions, and [the batch lemma](Demos/OrderBook/ProcessBatch.lean) bounds a batch's event words by `Spec.capacity + 2` events a record.  Every theorem uses only `propext`, `Classical.choice`, and `Quot.sound`, which `tests/orderbook/ProcessAxioms.lean` checks for each declaration of the process's modules.
+
+`tests/orderbook/process.sh` runs the axiom audit, the scripted-host runs of `orderbook-process`, which read every stream at each chunk size from 1 to 57 bytes and at 4,096 with whole, short, and zero-byte writes and with read and write errnos, and the comparison driver's streams through the native executable `orderbook-native`, whose output equals the event words that `orderbook-compare` checks against `Spec.run` and the events of the Python reference.  It also runs the ends of input with statuses 0 and 28 and the I/O errors of a directory as stdin and a full device as stdout.  The driver passed every case.
+
+- [x] Codec, process, batch lemma, native correctness, and termination.
+- [x] Native executable and its tests.
+- [x] `verified_compile_wasi` of the process, the compiled module's theorems, its charges, and its Wasmtime tests, in [the compiled part's entry](#2026-11-01-the-order-books-wasi-process-compiled-part).  The scripted Talos tests did not run there.
+
+## 2026-11-01: Paid results of `set`
+
+A design study of the order book's WASI process found that `Expr.paid` in [the bound definitions](Verified/Bound.lean) has no case for `set`, so the array that `set!` returns is unpaid even when the array that it updates is paid, and that `specX_set` in [the aligned writers](Verified/AlignedWriters.lean) drops the potential of the array that dies there.  A reading of both confirmed the study.  The reflector turns `Array.setIfInBounds` into `Array.set!`, which becomes `.set`, so one case covers both forms.  An owned array of `n` words in a block of `c` bytes has the potential `4 · 8 (n + 1) ∸ 2c` of [the potential definitions](Verified/Potential.lean), and when the array is owned and dies, the code of `set` takes the array's own words without a copy and writes inside its block, so the result has the same `n`, the same block, and the same potential.  When the array is borrowed or stays live, the code copies it, and no charge covers the copy's potential, so the new rule requires a paid owned array that dies, the condition under which a variable is paid.
+
+`Expr.paid` now gives `.set x _ _` the value `modeAt modes x.index == .owned && !live x.index && paidAt paid x.index`.  `specX_ownedVar` gives its continuation one more fact: for an owned variable that dies, the store is unchanged and the pushed words are those in the variable's slot.  Its case for such a variable runs the variable's `loadCode` with `After.move` of [the facts that the rules share](Verified/After.lean), because the lemma's other path, through `specX_var`, states no relation between the stores, and `specX_var` with the real flags would require a trap allowance for the dying potential, which the callers of `specX_ownedVar` do not supply.  `specX_set` now keeps the third part of the dying potential, that of the variables that die at the write, which holds the array's potential when the array is paid, owned, and dies.  The array stays live through the index's and the value's code, which therefore keep its block and that potential (`dyingPot_evolves`), the move leaves the store unchanged, the writes keep the capacity at the array's address, and `set!` keeps the size.  The result's potential therefore equals the array's, which the bound's dying potential already counts, and `top` after the code plus that potential stays within `top` before it plus the dying potential and `Expr.allocs`, as `CodeSpecX` requires.  The other edits add a binder to the other continuations of `specX_ownedVar` and update the docstrings and [the internals guide](Verified/README.md), whose list of unpaid results named `set`.  The manual's paragraph on paid values states only the parameter rule and refers to the internals guide for the rest, so it is unchanged.
+
+`p.f.bound` is defined by `Expr.allocs` over the reflected program, so Lean's interpreter evaluates it by interpreting the program's syntax, and on the order book it did not finish a stream of 256 records in nine minutes.  The measurement therefore rewrote `compiled.run.bound` with the generated `bound_eq` and `cost_eq` equations of every function of the program into a term over the program's own functions, defined that term, and compiled it.  The equations are theorems, so the term equals the bound, and on the three streams that both methods evaluated before the change, the values agree.  The measurement used a draft of the order book's compilation, and it evaluated Clob's bounds from their definitions, which take under a second.
+
+| Stream | Records | Event words | Bound at base, bytes | Bound after, bytes |
+|---|---|---|---|---|
+| Order book sample 1 | 3 | 42 | 1,578,824 | 1,578,120 |
+| Order book sample 12 | 8 | 91 | 3,556,952 | 3,553,976 |
+| 64 bids at prices 1 to 64 | 64 | 448 | 25,834,232 | 25,834,232 |
+| 256 bids at prices 1 to 256 | 256 | 1,792 | 104,909,048 | 104,909,048 |
+| 64 asks and a market buy that trades with each | 65 | 903 | 26,963,960 | 26,271,224 |
+| 256 asks and a market buy that trades with each | 257 | 3,591 | 116,503,544 | 105,475,064 |
+| Chain-walk edge stream | 318 | 3,290 | 138,112,008 | 131,461,368 |
+| Last record of the fuel-sell edge stream, from the book of its first 4,096 records | 1 | 28,686 | 943,359,656 | 3,540,648 |
+| Fuel-sell edge stream from the empty book | 4,097 | 57,358 | 5,376,378,536 | 2,557,511,336 |
+| Clob `runCommands` and `runOut`, 64 insertions into an empty book | 64 commands | none | 76,832 and 152,624 | Same |
+| Clob, 100 insertions, 100 additions, and 100 partial cancels | 300 commands | none | 824,032 and 2,312,048 | Same |
+| Clob, 1,000 additions to a book of 1,000 levels | 1,000 commands | none | 32,064,032 and 48,224,048 | Same |
+
+The order book's printed equations differ only in `fillArrays.cost_eq`.  Its trade branch, whose book comes from `unlink` or from `set!` on `qty`, is now paid, so the paid loop of the `min` no longer charges the credits of the next state's eight arrays at each trade, and it charges `emit.cost` alone, 560 bytes for a trade's seven pushes.  The `min` now takes that loop, so a sweep of 4,096 trades from the full book falls from 943 MB to 3.5 MB, and the fuel-sell stream falls from 5.38 GB to 2.56 GB, below the 4,294,901,760 bytes that the memory cap allows.  What remains is `run`'s charge on every record, the credits of the book's seven arrays and of the event array: 393,424 bytes plus 16 bytes for each event word already emitted, which makes the bound quadratic in the stream's events.  The program flags, printed with `Prog.flags`, are unchanged for both programs: every result except `emit`'s and Clob's `insertLevel`'s is unpaid.
+
+The rule that keeps `fillArrays` unpaid is that `Expr.paid` of a loop, and of a fold, requires a state that is not a pair (`!t.isPair`).  `loopAlloc` charges a loop whose state is a paid pair the smaller of its unpaid and paid bounds, and under the unpaid bound the final state's potential is not counted, so the loop's value cannot be paid in general.  A change could charge the paid bound whenever the state is paid, without the `min`, or keep the `min` and add the credit of the final state to its unpaid alternative.  Either changes `loopAlloc`, `specX_loop` and `specX_fold`, the reflector's loop equations, and the fold lemmas, and either can raise the bound of a program whose loop now takes the unpaid alternative, so the choice is a design decision, and the rule is unchanged.  The equations indicate that a paid `fillArrays` would make the results of `submitArrays` and `stepArrays` paid, since their other branches are pairs of paid components and the in-place updates of `unlink`, `place`, and `reduce` are now paid, and then `run` would stop charging the book's credits on every record, but no build has tested that reading.
+
+Clob's bounds do not change, which answers the open item of [the entry on bounds that grow with a loop's passes](#2026-10-30-allocation-bounds-that-grow-with-a-loops-passes).  An owned array parameter is paid only when its function's body extends an array (`paramFlags`), so `setLevel`, `removeLevel`, and `cancelBid` have unpaid parameters, `setLevel`'s `set!` updates an unpaid array, and `removeLevel` returns the results of `eraseAt`, which has no paid case.  The results of `addBid`, `cancelBid`, and `applyCommand` are therefore unpaid, the states of `runCommands` and `runOut` are unpaid, and each pass charges the credits of both book arrays at `applyCommand`'s paid parameters.  A paid case for an `eraseAt` of a paid owned array that dies would follow the argument for `set`, since its code removes the element inside the array's block, so the length falls, the capacity stays, and the potential can only fall.  The parameter rule is the larger change: paying a parameter adds its credit to the function's `p.f.bound` and to every call that passes an unpaid argument, and the reflector repeats the rule when it computes the flags, so it too is a design decision.
+
+| Check | Start | Duration | Result |
+|---|---|---|---|
+| Build of `LeanExe`, `Examples`, `Demos`, `Verified`, `Library`, and `TestSupport` | 05:51 UTC | 96 min | No error and no `sorry`.  Every bound theorem keeps its statement, so the theorems that state an exact value, such as `pushSquare_bound` and the Lookup and TreeLookup bounds of 232 bytes, keep their values |
+| Bounds of the order book and of Clob, at the base and after the change | 05:43 and 07:30 UTC | Under 2 min each | Table above |
+| `tests/verified/run.sh` in full | 07:32 UTC | 57 min | 45,159 module cases passed and none failed, with the allocation counts, the file theorems, the axiom audits, and the accuracy checks |
+| `#print axioms` of `specX_set`, `specX_ownedVar`, `spec_set`, `Prog.correct_entry`, and the `trapFree` theorems of the order book's `run` and Clob's `runOut` | 08:30 UTC | Under 1 min | Only `propext`, `Classical.choice`, and `Quot.sound` |
+| `tools/source-layout` and `node tools/check-doc-links.mjs` | 08:31 UTC | Under 1 s | No problem reported |
+| Build of the same libraries on main with the order book's compilation and process, the change applied | 08:39 UTC | 3 min | No error and no `sorry`.  Only `Demos.OrderBook.Verified`, `Demos.OrderBook.VerifiedCall`, and the import roots rebuilt |
+| Build of the process modules and of `orderbook-native`, `orderbook-process`, `orderbook-compare`, and `verified-cases-orderbook` | 08:43 UTC | Under 1 min | No error |
+| `tests/verified/run.sh --cases orderbook` | 08:43 UTC | Under 1 min | 196 module cases passed and none failed |
+
+The gate shows that every bound theorem still holds as stated, but a theorem that states an upper bound holds whether or not the generated bound fell, and the equations of the other compiled programs were not compared before and after the change.  A `set` changes a bound only where its array is paid, in a function whose body extends an array, in a paid loop state, or in a variable bound to a paid value.  The change can also raise a bound: a loop whose array state the body updates with `set` while it extends another array now has a paid state, and its paid bound charges the credit of an unpaid initial state at each run of the loop and, at each pass that takes an unpaid branch of an `if` whose other branch is now paid, the credit of that branch's value.
+
+The order book's WASI process does not need the loop rule changed.  Its plan passes the whole records of each 4,096-byte read, at most 74 with the carry, to one call of `run`, which starts from an empty event array, so the charges that grow with the event words cover at most 74 records.  A record emits at most 4,098 events of 7 words, and with that count for every record the charges of one call come to about 2.7 GB, below the 4,294,901,760 bytes that the memory cap allows.  The loop rule therefore stays as it is, and the process's charges will bound `run`'s generated bound on a batch in closed form.
+
+- [x] Paid results of an in-place `set`, with the soundness proof, the measurement, and the guide.
+- [ ] Paid values of loops whose state is a pair, which the order book's `run` needs to stop charging the book's credits on every record.
+- [ ] Decide whether to add a paid case for `eraseAt` and to pay a parameter that makes its function's result paid, which the command loop `runLevels` of the insertion example needs.
+
+## 2026-11-01: The closed-form bound of the order book's `run`
+
+[The closed form](Demos/OrderBook/Bound.lean) bounds `run.bound`, the generated allocation bound of the order book's `run`, by `runBoundOf k = 393,464 + 3,147,280 k + 458,976 k (k − 1)` bytes on a book that satisfies `Refinement.Inv` and a stream of at most `k` records, under the size and next-id premises of `run_eq`.  The order book's WASI process passes at most 74 records to one call of `run`, the whole records of a read of 4,096 bytes and a carry of fewer than 56 bytes, and `runBoundOf_74` states by `decide` that `runBoundOf 74` is 2,712,680,536, below the 4,294,901,760 bytes that the largest memory cap leaves.  The process compiles the program again with `verified_compile_wasi`, which generates its own `run.bound` with the same equations, so `run_bound_le` takes the bound and cost functions as parameters and the six generated equations as the fields of the structure `Equations`.  `compiled_equations` supplies the equations of `Demos.OrderBook.Verified.compiled` by their names, and `compiled_run_bound` applies the lemma to that compilation.
+
+`fill_le` takes the paid side of the `min` in `fillArrays.cost`, whose pass costs 560 bytes exactly when `matchStep` emits a trade, and `loopCost_go` sums those passes along `repeatWhile.go`, the loop that `fill` runs, to 80 bytes for each word that matching pushes.  `submit_le` and `step_le` bound the cost of a step, plus 80 bytes for each word of the event array before it, by 96 bytes for each word after it, where the extra 16 bytes a word cover the event array's credit that a cancelled remainder charges, and the three bounds hold on every book.  The invariant enters through `step_eq`, which gives the sizes of the book's arrays and, with `Spec.step_events_length` and `Spec.encodeAll_size`, at most 28,686 pushed words a record, 4,098 events of seven words.  `loopCost_le_below` then sums `recordBound i` over the records, and it differs from `loopCost_le` in requiring the invariant only at the indices below the loop's count, since `step_eq` says nothing about offsets past the stream's end.
+
+The value at one record is 3,540,744 bytes, 96 above the 3,540,648 that [the measurement of paid results](#2026-11-01-paid-results-of-set) gave for a market sell that trades with 4,096 makers, the largest record.  The program charges a cancelled remainder 16 bytes for each word before the cancellation event and for the length word, and the closed form charges 16 bytes for each word after the event, 96 bytes more.  At the other eight record counts of that measurement, `runBoundOf` exceeds the measured bound by factors from about 8 to about 3,000, since those streams emit far fewer than 4,098 events a record.  The estimate of about 2.7 GB in that entry lies within 0.5 percent of the value at 74.
+
+The first proof of `step_le` ran `repeat' split` on the tree of the step's cost and the tree of its result, as `step_append` does on copies of the step, and it split nothing, for a cause that was not determined.  `ite_bound` replaced it: it bounds an `if` of costs plus a constant by 96 times the event words of an `if` of results on the same condition, with independent `Decidable` instances, and `refine` applies it down the tree.  `Demos/Verified.lean` imports the module, as it imports the slew planner's bound.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Hypotheses | Structure `Equations` of the six generated equations, as `verified_compile` prints them | Each compilation supplies its own equations by name, and a field that differs from a generated equation fails to elaborate in `compiled_equations`. |
+| Event count | `step_eq` with `Spec.step_events_length`, 28,686 words a record | Counting the 5,120 passes of `matchFuel` needs no invariant but allows 35,854 words a record, about 3.38 GB at 74 records by a hand calculation. |
+| Range of `k` | Premise `(ws.size + 6) / 7 ≤ k` | With `k = 74` for every batch, the process needs no monotonicity theorem. |
+| Next id | Premises of `run_eq` | `step_eq` requires a next id below 2^64 − 1 at every record, and `batch_refines` already derives the premises. |
+| Import root | `Demos/Verified.lean` | Slew planner's `Bound` module sits there. |
+
+| Check | Start | Duration | Result |
+|---|---|---|---|
+| Build of `Demos.OrderBook.Bound` | 09:27 UTC | 9 s | No error and no warning in the module.  `#print axioms` gives `propext`, `Classical.choice`, and `Quot.sound` for `run_bound_le` and `compiled_run_bound`, and no axiom for `runBoundOf_74` |
+| Evaluation of `runBoundOf` at the nine record counts of the measurement of paid results | 09:27 UTC | 6 s | Each measured bound at or below `runBoundOf` of its record count |
+| `tools/source-layout` and `node tools/check-doc-links.mjs` | 09:31 UTC | Under 1 s | No problem reported |
+| Build of `LeanExe`, `Examples`, `Demos`, `Verified`, `Library`, and `TestSupport`, with the module in `Demos.Verified` | 09:45 UTC | 111 min | No error and no `sorry` |
+
+- [x] Closed-form bound of `run`'s generated bound for every compilation that generates its equations, and its value at 74 records.
+- [x] Charges of the WASI process, from `run_bound_le_sized` of [the compiled part](#2026-11-01-the-order-books-wasi-process-compiled-part).
+- [x] Build of every library, with the module in the import root `Demos.Verified`.
+
+## 2026-11-01: The order book's WASI process, compiled part
+
+[The compilation](Demos/OrderBook/ProcessWasi.lean) gives `verified_compile_wasi` the program's functions from `emit` to `run` and the process's own functions, under a heartbeat limit of 1,000,000, and elaborates in 292 s.  [The module](Demos/OrderBook/ProcessModule.lean) composes the compiled `begin` and `step` into a command of 38,627 bytes that `wasm-tools validate` accepts, and [the refinement](Demos/OrderBook/ProcessProof.lean) states, as Running sum's does, that every modeled run of its `_start` that keeps some fuel matches the native process.  [The typed termination](Demos/OrderBook/ProcessTermination.lean) joins the native rank to the running flag, and [the compiled correctness](Demos/OrderBook/ProcessCompiledCorrect.lean) applies `compiled_process_total_run` with the charges of [the charges module](Demos/OrderBook/ProcessCharges.lean).  `initial_terminates` states that, under `StreamHost`, a Talos host that meets `hostSpec`, a host that accepts the statuses 0 and 28, and empty histories, the module from its initial store exits after writing exactly `expectedOutput` of the input, with status `expectedStatus` of it, at every fuel above a bound.
+
+The charges are constants for states of the sizes that `Sized` states: the book's arrays, a carry below 56 bytes, and an output of at most `outputLimit`, 16,982,112 bytes, the event bytes of 74 records at `Spec.capacity + 2` events each.  A state's copy costs at most `copyLimit`, 17,179,317 bytes, and a step at most `stepCharge R = copyLimit + R + 21,435,213`, where `R` bounds `run`'s generated bound on any batch of at most 518 words from any book whose arrays have the program's sizes.  [The closed forms of that bound](Demos/OrderBook/Bound.lean) are `run_bound_le`, written separately, on a book with `Inv` whose next ids leave room for the stream, and `run_bound_le_sized`, added here, on any book of the program's sizes, which gives `R = runBoundSized 74 = 3,383,146,584`.  `initial_room` decides that two copies and a step, 3,456,119,748 bytes above the literal pool, which ends at 4,096 bytes, fit in 65,535 pages.  The final theorem therefore has no memory premise, and its only premise on the input is that of `process_output`, fewer than 2^64 − 1 records.
+
+The charge of a read step holds for every reply, because the resource rules bound each effect body over all worlds, so its batch need not lie in the input and the charge cannot depend on the input's records.  A first version charged the step with `run_bound_le`, whose next-id premise a reached book meets only when the input leaves room for 74 more records, and so assumed that room in `initial_terminates`.  The final version takes a closed form that needs neither the invariant nor the room.  `run_bound_le_sized` counts at most 5,122 events of seven words for each record from the program (`Program.step_out_size`) and keeps the arrays' sizes through every step (`Program.step_sizes`), both on every book in [the program's counts](Demos/OrderBook/ProgramCounts.lean).  Record `i` then charges at most 3,835,408 + 1,147,328 `i` bytes: the book's credits of 393,408 bytes, the event array's credit of 16 bytes for its length word and each of its at most 35,854 `i` words, and the step's cost, which `step_le` bounds by 96 bytes for each word after the step less 80 for each word before it.  Under the invariant's 4,098 events, `run_bound_le` charges 3,147,280 + 917,952 `i`, so the bound at 74 records rises from 2,712,680,536 to 3,383,146,584 bytes.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Output bound | Field `outputSize` of `Future`, proved where the invariant is built | Bound needs the premises of `batch_refines`, which `future_runWords` already derives. |
+| Event count of a charged batch | `Program.run_out_size`, at most 5,122 events for each record from any book | Charge of a read step holds for every reply, because the resource rules quantify over worlds, so the batch need not lie in the input and `Spec.run_events_length`'s next-id premise is not available. |
+| Bound of `run` in the read step's charge | `run_bound_le_sized`, on any book of the program's sizes | Charge cannot depend on the input's records, and `run_bound_le` needs room for the batch's next ids, which a reached book has only with 74 records of room in the input.  The first version assumed that room in `initial_terminates`, and a world-dependent prefix bound would need resource rules that the WASI compiler lacks. |
+| Flags of the pure program | `flags_toList`, by `decide +kernel` | Elaborator evaluates `Prog.flags` over the bodies of every earlier function at each call's credits. |
+| Environment of a call | Simproc `envGetOfIndex` | Effect bodies destructure the state's 13 fields, and each level holds the previous one twice, so the conversion of a call's arguments unfolds a tree exponential in the depth, while `simp` applies the step once to each shared subterm. |
+| Typed termination | One module, `ProcessTermination.lean`, for Running sum's `TerminationTyped.lean` and `TerminationTarget.lean` | Control ghost and its use in `target_terminates` stay small. |
+| Scripted Talos runs | None in the driver | Talos's memory is a function that each store extends with a closure, and a run of the empty input under `lean --run` did not finish in 15 minutes. |
+
+Running sum's charge proofs carry over except at three points.  The stopping branch's status is an `if`, whose cost is an `if` with an instance that still holds the body's environment, so `ite_le_zero` bounds it without rebuilding the instance.  `begin`'s `simp +decide only []` evaluates the whole closed goal and reaches the recursion limit, so `initial_entry` states the table's entry for `initial` by `decide +kernel`.  `open Verified` inside `Demos.OrderBook.Process` opens `Demos.OrderBook.Verified` once `Bound.lean` imports that module, so the charges open `_root_.Verified`.
+
+`tests/orderbook/process.sh` adds the compiled axiom audit, the emission and validation of the module, the streams of `run.sh` and the ends of input through the Wasmtime host, an interactive test of both executables, and the shared I/O-error script, which takes the input of its write cases as a fourth argument, since its default input holds no whole word.
+
+| Check | Start | Duration | Result |
+|---|---|---|---|
+| Build of `Demos.OrderBook.ProcessWasi` | 08:53 UTC | 5 min | No error.  The module itself took 292 s |
+| Builds of `ProcessModule`, `ProcessProof`, and `ProcessTermination` | 08:59 UTC | 5 min | No error.  `ProcessModule` took 127 s, and `source_run` needs 1,000,000 heartbeats |
+| Builds of `ProgramCounts` and `Bound` | 10:44 UTC | Under 1 min | No error.  `ProgramCounts` took 6.2 s and `Bound` 4.5 s |
+| Builds of `ProcessSizes`, `ProcessCharges`, and `ProcessCompiledCorrect` | 10:45 UTC | 1.5 min | No error and no `sorry`.  `ProcessCharges` took 62 s and `ProcessCompiledCorrect` 17 s |
+| `tests/orderbook/ProcessCompiledAxioms.lean` and `tests/orderbook/ProcessAxioms.lean` | 10:47 UTC | Under 1 min | 1,520 and 190 theorems use only `propext`, `Classical.choice`, and `Quot.sound` |
+| `tests/orderbook/process.sh` | 10:47 UTC | 4 min | Every case passed: 13,077 scripted native runs, 94 streams through both executables, 28 ends of input, interactive output, and 4 I/O errors |
+| Scripted Talos run of the empty input under `lean --run` | 09:27 UTC | 15 min, the limit | Did not finish |
+| Build of every library on main with the closed form of `run` and this work | 11:38 UTC | Under 1 min | No error and no `sorry` |
+| `tests/orderbook/process.sh` on the same tree | 11:38 UTC | 4 min | Every case passed, with both axiom audits |
+| `tests/running-sum/run.sh`, for the shared I/O-error script's three-argument form | 11:42 UTC | Under 1 min | Every case passed, with its 4 I/O-error cases |
+
+- [x] Compilation, module, refinement, typed termination, charges, and the final theorem.
+- [x] Wasmtime tests, interactive output, and I/O errors.
+- [ ] Scripted Talos runs of the compiled module, which need a faster memory in Talos or a smaller state.
+- [x] Closed form of `run`'s bound without the invariant, and the native premise in `initial_terminates`.
+- [x] A paragraph on the order book's process in [the WASI manual](docs/wasi.md#processes-without-an-iteration-bound).
+
+## 2026-11-01: Test scripts take their tools from the caller's search path
+
+The test scripts of the WASI compiler, both running sums, the verified compiler, the module cases, and Talos appended the user's local tool directories to `PATH`, so a script found `uv` and `wasm-tools` even when the caller's environment did not name them.  Each script now checks the tools that it runs with `command -v` before its first build and stops with a message that names the missing tool, as `tests/orderbook/process.sh` does.  `tests/modules/run.sh` runs neither tool and needs no check, `tests/wasi/run.sh` checks `wasm-tools` only outside `--foundations-only`, and `tests/talos/run.sh` checks the search path after it prepends the directory of `WASM_TOOLS`.  A test run without the tools on the search path stopped each script at its check with the tool's name.  A later change removed the same directories from `tools/full-check`, which records a step whose tools are absent as not run, from the fallback of `tools/check-wasm-tools-version.sh`, and from `tests/gpt32/native.sh`, which now checks `wasm-tools` in the same way.
+
+## 2026-11-01: The removal of Clob
+
+`Demos/Clob` held the bid side of an order book as two sorted arrays and served the compiler's tests before the two-sided book of `Demos/OrderBook` existed.  Its one feature that no other test covered was a loop whose state is a pair of arrays that calls change in place with `insertAt` and `eraseAt`.  The insertion example now holds `insertLevel` and `removeLevel` from Clob, `applyLevel`, which inserts or removes a level by a command's kind, and `runLevels`, a loop over four-word commands that calls `applyLevel`.  Their cases reuse Clob's books, state the blocks that each call leaves, and bound the allocations of the single calls, and `tests/modules/chunks.py` runs command streams through `insert.wasm` whole, in chunks, and one command at a time, as it did through `clob.wasm`.  Clob's market buy, `set!` updates, output array, and chunking theorems over the Lean definitions go with it: `Updates` tests chains of `set!`, `Tables` extends an owned parameter, and the order book proves `run_append` for its own stream.
+
+- [x] Level functions, command loop, and cases in the insertion example.
+- [x] `chunks.py`, the module registries, and the documents that named Clob.
+- [x] Build, the insertion cases in Wasmtime and in C, and `chunks.py`.
+
+The test ran from 13:18 to 13:21 UTC.  The build of every library passed without `sorry`, and `tests/verified/run.sh --cases insert` passed all 1,227 cases of the insertion module, 900 of them for the level functions, each with the blocks that it leaves.  The insertion example's file theorems passed against the written module, `chunks.py` passed 160 cases, and `tests/native/verified.sh --module insert` passed the same 1,227 cases on the C translation compiled by CompCert.

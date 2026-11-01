@@ -14,7 +14,7 @@ compiles the definition into a 2,309-byte module that exports `compute`.
 ## The module returns the first match
 
 The reflector reads the result's literal `#[…, …]` as two pushes onto `#[]`, so the generated
-`compiled.compute.bound_eq` charges an empty block and the growth of the array at each push, and
+`compiled.compute.bound_eq` charges an empty block, the first growth, and the paid second push, and
 `compute_bound` closes that bound to 232 bytes.  `lookup_call` composes the generated
 `compiled.compute.trapFree` with `compute_eq` through `arrayCall` of [the shared call
 theorem](../ArrayCall.lean).  The generated `compiled.compute.native` states the computation of the

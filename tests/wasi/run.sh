@@ -1,7 +1,6 @@
 #!/bin/sh
 set -eu
 set -f
-export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$root"
@@ -15,6 +14,10 @@ esac
 
 host="$root/build/tools/leanexe-wasmtime-host"
 if ! "$foundations_only"; then
+  if ! command -v wasm-tools > /dev/null 2>&1; then
+    printf 'wasm-tools is not on the search path\n' >&2
+    exit 1
+  fi
   if [ ! -x "$host" ]; then
     printf 'Missing native host: %s\n' "$host" >&2
     exit 1

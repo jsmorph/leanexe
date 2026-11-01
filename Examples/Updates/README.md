@@ -65,8 +65,9 @@ the written file and requires the axiom reports of both file theorems to name on
 
 ## Related examples
 
-[`Clob`](../../Demos/Clob/README.md) proves functions that update their arrays in place, with
-`set!`, `LeanExe.insertAt`, `LeanExe.eraseAt`, and `push`.  [`SumCount`](../SumCount/README.md)
+[The insertion example](../../Verified/Examples/Insert.lean) updates arrays in place with
+`LeanExe.insertAt` and `LeanExe.eraseAt`, and [`OrderBook`](../../Demos/OrderBook/README.md) with
+`set!` and `push`.  [`SumCount`](../SumCount/README.md)
 returns a new array without updating one.  The GPT-2 cache in [`Gpt`](../../Demos/Gpt/README.md)
 grows by `++` in place.
 

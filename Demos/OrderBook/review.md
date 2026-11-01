@@ -1,0 +1,13 @@
+# Order book specification reviews
+
+Five reviews checked [the specification](Spec.lean) against [the requirements](requirements.md).  Each reviewer was a fresh agent that read only the requirements, the specification, [the samples](Samples.lean), and the output of [the sample printer](SpecRun.lean), ran no command, and edited nothing.  Each was asked to decide every case of the input, to name the cases that the requirements leave open, to check every printed line by hand from the requirements, and to list the input classes that no sample covers.  After each review, the open cases went into the requirements or the specification's comments, samples were added for the uncovered classes, and the samples were run again before the next review.
+
+| Review | Disagreements | Changes that followed |
+|---|---|---|
+| First | None | Requirements state that the remainder rows apply in order, that the capacity count follows matching, that a post-only order's `accepted` event comes first, that ids are distinct in the streams covered, and that the top-of-book query lies outside the command stream.  Samples added for check order, sell-side matching, self-trade cases, placement, and the full book. |
+| Second | None | `Valid` added, with comments on stream lengths, reduce quantities, and top-of-book totals.  Requirements state which words the book compares and copies.  Samples added for words of 2^32 and above, band-edge market orders, a book full on both sides, and sell-side cases. |
+| Third | `Valid.ids` fails once `nextId` wraps after 2^64 − 1 accepted orders, a stream that the requirements then covered | Requirements cover fewer than 2^64 − 1 accepted orders.  `Valid` gains the uncrossed condition.  Samples added for short final records, an empty stream, edge words, and further self-trade and full-book cases. |
+| Fourth | `Valid` admits a book whose `nextId` is 0, from which an order rests with id 0 | `Valid` gains `nextPositive`.  Samples added for words with bit 63 set, IOC stops at an unacceptable price, a book full of asks, and reductions at the quantity limits. |
+| Fifth | None | One sample renamed to match its stream. |
+
+The fifth review recomputed every printed line of the 35 samples and the six single records and found that each one matches.  It listed input classes that no sample covers, among them unknown kinds with nonzero words, post-only orders whose bad price would cross, market buys across two ask prices, top-of-book totals near 2^44, ids at or above 2^32, accounts that differ only in bit 63, and event fields at their largest values.  Most of these classes test an implementation's reading of words rather than the specification, so the implementation's tests take them up.

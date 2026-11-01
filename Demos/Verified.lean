@@ -3,7 +3,6 @@ import Demos.Gpt.VerifiedGeneration
 import Demos.Gpt32.VerifiedHost
 import Demos.Euler.Verified
 import Demos.Euler.VerifiedCall
-import Demos.Clob.Verified
 import Demos.Drone.Verified
 import Demos.Drone.VerifiedCall
 import Demos.RunningSum.Correct
@@ -12,3 +11,6 @@ import Demos.Slew.Bound
 import Demos.Slew.Verified
 import Demos.Energy.Theorems
 import Demos.Energy.Examples
+import Demos.OrderBook.Bound
+import Demos.OrderBook.Verified
+import Demos.OrderBook.VerifiedCall

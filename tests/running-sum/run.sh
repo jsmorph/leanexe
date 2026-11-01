@@ -1,7 +1,12 @@
 #!/bin/sh
 set -eu
 set -f
-export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
+for tool in uv wasm-tools; do
+  if ! command -v "$tool" > /dev/null 2>&1; then
+    printf '%s is not on the search path\n' "$tool" >&2
+    exit 1
+  fi
+done
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$root"

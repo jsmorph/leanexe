@@ -427,11 +427,13 @@ each copy, each built array, and each block of `push`, `++`, and `insertAt`, at 
 plus the payload, and it ignores the reuse of freed blocks.  An owned array of `n` words in a block
 of `c` bytes has the potential `4 · 8 (n + 1) ∸ 2c`, which [`Potential.lean`](Potential.lean)
 defines.  The result of an extension of an owned array that dies is paid, as are a variable that
-`let` binds to a paid value and an `if` whose branches are both paid.  A paid array's extension by
-`k` words is charged a header and `32 k` bytes, which with the array's potential cover the bytes of
-a move to a block of twice the capacity and the new block's potential.  An extension of an owned
-array that dies and is not paid is charged a block of twice the bytes of its new length and `16 k`
-bytes, which leave the result's potential.  A loop's state is paid when the loop's mode is owned,
+`let` binds to a paid value and an `if` whose branches are both paid.  A `set` of a paid owned
+array that dies is paid: its code writes inside the array's block, which keeps the array's length,
+its capacity, and so its potential.  A paid array's extension by `k` words is charged a header and
+`32 k` bytes, which with the array's potential cover the bytes of a move to a block of twice the
+capacity and the new block's potential.  An extension of an owned array that dies and is not paid
+is charged a block of twice the bytes of its new length and `16 k` bytes, which leave the result's
+potential.  A loop's state is paid when the loop's mode is owned,
 the body holds a `push`, `++`, `insertAt`, or a call of a function with a paid parameter, and the
 body's value is paid when the state is, as `Expr.statePaid` checks.  An initial value that is not
 paid is then charged `16 (u + 1)` bytes per array of `u` words, the most potential its block can
@@ -451,7 +453,7 @@ is charged the smaller of its bounds with an unpaid and with a paid state, `loop
 and `loopAllocWith true`.  The paid bound charges the credit of an unpaid initial state once and
 the credits that `Expr.buys` counts, and the minimum keeps the bound at or below the bound with an
 unpaid state.  The value of a loop whose state is a pair is not paid, and neither are the results
-of `build`, `set`, and `eraseAt`.  A function's bound is its body's plus the copy of a borrowed
+of `build` and `eraseAt`.  A function's bound is its body's plus the copy of a borrowed
 result.  `ImplementsB aborts m e
 f bound` is the theorem with the bound: the call traps only when `aborts` holds and `heap.Within
 store m (bound x)` fails, and it raises `top` by at most `bound x`.  `Heap.Within`, defined in
@@ -936,7 +938,8 @@ transfers the paid state's potential to the next state, and `After.release` pres
 For a build, `wp_allocArray` supplies an owned array of the result length.  The invariant describes
 the initialized prefix, and `After.writeElement` extends it by one element.  An update uses
 `spec_ownedVar` to move an owned array at its last use or copy another array, then writes the new
-element.  Extension uses `spec_room` for growth in place, a move to a larger block, or a copy.
+element.  A moved array keeps its block and its capacity, so a paid one passes its potential to the
+result.  Extension uses `spec_room` for growth in place, a move to a larger block, or a copy.
 `After.replace`, the potential lemmas, `wp_allocCopy`, and `wp_copyInto` establish those cases.
 `After.rewrite` preserves the array representation through the writes.
 

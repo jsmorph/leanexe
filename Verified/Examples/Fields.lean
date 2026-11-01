@@ -7,8 +7,9 @@ fields and elements, also past the end, update a field with `{ r with … }` on 
 parameter, which copies the array, and in a loop's state, which updates it in place, pass a record
 to a call, take one apart with `match`, choose one with `if`, return one in a pair, and hold one
 record in another.  `Tape`'s `Flat` instance takes the record apart with a pattern, `pushPrices`
-extends a field's array in a loop whose state is the record, and `heavyPick` returns either its
-borrowed argument or a call's result.  The bound equations of all the functions write the records'
+extends a field's array in a loop whose state is the record, `heavyPick` returns either its
+borrowed argument or a call's result, and `spanOf` passes a call a record built in place whose
+`Flat` tuple ends in two words.  The bound equations of all the functions write the records'
 arrays as fields, such as `b.prices.size`. -/
 
 namespace Verified.Examples.Fields
@@ -109,7 +110,24 @@ def pushPrices (b : Book) (n : UInt64) : Book :=
 of `b` that the first branch returns. -/
 def heavyPick (b : Book) (n : UInt64) : Book := if bookTotal b > n then b else fillOrder b 0 n
 
+/-- A record whose `Flat` tuple ends in two words. -/
+structure Span where
+  marks : Array UInt64
+  lo : UInt64
+  hi : UInt64
+  deriving Inhabited
+
+instance : Flat Span (Array UInt64 × UInt64 × UInt64) := ⟨fun s => (s.marks, s.lo, s.hi)⟩
+
+/-- The mark at `s.lo` plus the width from `s.lo` to `s.hi`. -/
+def spanWidth (s : Span) : UInt64 := s.marks[s.lo.toNat]! + (s.hi - s.lo)
+
+/-- `spanWidth` of a record built in place at the call from an array and two words, which the
+reflector binds before the call, since the source's places hold no pair of words. -/
+def spanOf (marks : Array UInt64) (lo hi : UInt64) : UInt64 := spanWidth ⟨marks, lo, hi⟩
+
 verified_compile compiled := [mkBook, bookTotal, fillOrder, bookValue, pickBook, bookShape,
-  withTotal, advance, gridLevel, gridCells, worldLevel, relabel, moveHead, pushPrices, heavyPick]
+  withTotal, advance, gridLevel, gridCells, worldLevel, relabel, moveHead, pushPrices, heavyPick,
+  spanWidth, spanOf]
 
 end Verified.Examples.Fields

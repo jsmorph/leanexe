@@ -6,7 +6,7 @@
 #      executables native-verified, native-bare, verified-cases, and native-module-cases, at log
 #      level info, so that the log holds the axiom report of every `#print axioms`;
 #   2. tests/verified/run.sh and, when it passes, tests/drone/run.sh and tests/modules/chunks.py on
-#      the drone and order-book modules that it writes;
+#      the drone and insertion modules that it writes;
 #   3. tests/native/verified.sh without and with --aligned, tests/native/aligned.sh,
 #      tests/native/run.sh, tests/native/bytes.sh, and tests/native/clight.sh 7 300 for the
 #      platform's target;
@@ -240,7 +240,7 @@ axioms() {
 }
 
 step_build() {
-  local step='`lake build` of the six libraries and the four test executables'
+  local step='`lake build` of every library and the test executables'
   local jobs sorries errors report total permitted file name other repo=0 cell status
   run 1-build tools/leanrun --timeout 12h lake --log-level info build LeanExe Examples Demos \
     Verified Library TestSupport native-verified native-bare verified-cases native-module-cases
@@ -336,8 +336,8 @@ step_drone() {
   record "$step" "$(outcome)" "$seconds" "$cell"
 }
 
-# The order-book sessions run only after a pass of tests/verified/run.sh has written
-# build/verified/clob.wasm.
+# The level sessions run only after a pass of tests/verified/run.sh has written
+# build/verified/insert.wasm.
 step_chunks() {
   local step='`tests/modules/chunks.py`'
   if unbuilt "$step"; then
@@ -637,7 +637,7 @@ write_status() {
   {
     echo "# Status"
     echo
-    echo "[\`tools/full-check\`](tools/full-check) wrote this record of the full check of the commit below.  The record covers the tree of that commit with the paths listed as differing from it, and no later commit.  The check builds every module of the six libraries and the test executables, runs the drivers of the verified compiler's modules, of their translations to C and to bare-metal AArch64, of the WASI modules, and of the GPU kernels, and checks the VKB and the Rocq proof.  Each count comes from the output of the step's driver, which the checkout that ran the check keeps in \`build/full-check/\`."
+    echo "[\`tools/full-check\`](tools/full-check) wrote this record of the full check of the commit below.  The record covers the tree of that commit with the paths listed as differing from it, and no later commit.  The check builds every module of every library and the test executables, runs the drivers of the verified compiler's modules, of their translations to C and to bare-metal AArch64, of the WASI modules, and of the GPU kernels, and checks the VKB and the Rocq proof.  Each count comes from the output of the step's driver, which the checkout that ran the check keeps in \`build/full-check/\`."
     echo
     echo "| Item | Value |"
     echo "|---|---|"
@@ -692,7 +692,6 @@ main() {
   local origin
   root=$(cd "$(dirname "$0")/.." && pwd)
   cd "$root"
-  export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
   export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-10G}
   ccomp=${CCOMP:-ccomp}
   clightgen=${CLIGHTGEN:-clightgen}

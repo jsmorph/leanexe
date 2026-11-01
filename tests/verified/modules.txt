@@ -49,7 +49,6 @@ Verified.Examples.Fields:Verified.Examples.Fields.compiled.module:fields
 Library.Numerics.Float64.Trig.Compiled:Library.Numerics.Float64.Trig.compiled.module:trig
 Library.Numerics.Fourier.Compiled:Library.Numerics.Fourier.compiled.module:fourier
 Verified.Examples.Insert:Verified.Examples.Insert.compiled.module:insert
-Demos.Clob.Verified:Demos.Clob.Verified.compiled.module:clob
 Verified.Examples.Tables:Verified.Examples.Tables.compiled.module:tables
 Library.Numerics.Float64.Exp.Compiled:Library.Numerics.Float64.Exp.compiled.module:exp
 Library.Numerics.Float64.Tanh.Compiled:Library.Numerics.Float64.Tanh.compiled.module:tanh
@@ -71,6 +70,7 @@ Library.Numerics.Decimal.PrintFloat.Compiled:Library.Numerics.Decimal.PrintFloat
 Demos.Drone.Verified:Demos.Drone.Verified.compiled.module:drone
 Demos.Slew.Verified:Demos.Slew.Verified.compiled.module:slew
 Demos.Energy.Verified:Demos.Energy.Verified.compiled.module:energy
+Demos.OrderBook.Verified:Demos.OrderBook.Verified.compiled.module:orderbook
 Library.Random.Lcg.Verified:Library.Random.Lcg.compiled.module:lcg
 Library.Random.ParkMiller.Verified:Library.Random.ParkMiller.compiled.module:parkmiller
 Library.Random.Xorshift.Verified:Library.Random.Xorshift.compiled.module:xorshift
@@ -141,3 +141,4 @@ Examples.Lists.Compiled:Examples.Lists.compiled.module:exampleLists
 Examples.Updates.Compiled:Examples.Updates.compiled.module:exampleUpdates
 Examples.Grids.Compiled:Examples.Grids.compiled.module:exampleGrids
 Examples.Calc.Compiled:Examples.Calc.compiled.module:calculator
+Examples.Trees.Compiled:Examples.Trees.compiled.module:exampleTrees

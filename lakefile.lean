@@ -154,6 +154,26 @@ lean_exe «verified-cases-energy» where
   srcDir := "tests"
   root := `TestSupport.Energy.CasesMain
 
+lean_exe «verified-cases-orderbook» where
+  srcDir := "tests"
+  root := `TestSupport.OrderBook.CasesMain
+
+-- The native comparison of the order book's program with its specification
+-- (tests/orderbook/run.sh); not a default target.
+lean_exe «orderbook-compare» where
+  srcDir := "tests"
+  root := `TestSupport.OrderBook.Compare
+
+-- The order book's process on stdin and stdout, and its scripted-host tests
+-- (tests/orderbook/process.sh); not default targets.
+lean_exe «orderbook-native» where
+  root := `Demos.OrderBook.ProcessNative
+  moreLinkObjs := #[`@/runningSumRead]
+
+lean_exe «orderbook-process» where
+  srcDir := "tests"
+  root := `TestSupport.OrderBook.Process
+
 -- The differential test of the Lean copy of Clight against CompCert's reference interpreter
 -- (tests/native/clight.sh); not a default target.
 lean_exe «clight-diff» where
