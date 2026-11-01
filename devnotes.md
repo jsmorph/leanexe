@@ -40068,7 +40068,7 @@ The refinement proof dominates the work.  The design also assumes that the verif
 - [x] English description, list specification, and a fresh agent's review of the specification against the description.
 - [x] The specification's theorems.
 - [x] Probe of in-place updates to the array fields of an owned record in a `repeatWhile` state.
-- [ ] Array implementation, its native comparison with the specification on random command streams, and an independent Python reference.
+- [x] Array implementation, its native comparison with the specification on random command streams, and an independent Python reference.
 - [ ] Refinement proof.
 - [ ] `verified_compile`, the allocation bound, the call theorem, the registry entry, cases, and the C translation.
 - [ ] WASI process with stdin command records and stdout event records.
@@ -40147,10 +40147,20 @@ An exported function that takes four arrays one by one, updates three, and retur
 | Exports | `init`, `run` over a word stream with the book's arrays as owned parameters, and `top` | A step is a stream of one record, and the specification's `run_append` covers a stream in parts. |
 
 - [x] Probe of in-place updates.
-- [ ] Implementation, with the native comparison against `Spec.run` and the Python reference.
+- [x] Implementation, with the native comparison against `Spec.run` and the Python reference.
 
 ## 2026-10-31: The order book specification's theorems
 
 [The theorems](Demos/OrderBook/Theorems.lean) state what the requirements say of the specification.  `empty_valid`, `step_valid`, and `run_valid` show that `Valid` holds of the empty book and after every step and stream whose next id stays below 2^64 − 1, and `step_nextId` and `step_accepted` show that the next id advances exactly when an order is accepted.  `fill_shape` states that matching exhausts a prefix of the opposite side, at the resting orders' prices and only with orders of other accounts at acceptable prices, and then stops or trades part of the next order, and `fill_prefix`, `fill_traded`, `fill_total`, `fill_stop`, `submit_conserves`, and `submit_opposite` follow the makers and the quantities.  `step_cancel` and `step_reduce` state the effect of a cancel and a reduce that pass their checks, and the `rejects_` theorems state for each rejection reason the conjunction of the checks before it, which pass, and its own, which fails.  `step_bounded`, `step_events_length`, and `top_bound` bound the events' fields, their number, and the top-of-book totals, and `records_append` and `run_append` show that a stream run in two parts, the first a whole number of records, gives the book and the events of one run.
 
 I wrote the statements and checked that they elaborate, and a fresh agent proved them without changing a statement or a definition, which a comparison of the two files confirmed.  The proofs import only the specification and use only `propext`, `Classical.choice`, and `Quot.sound`.  `Demos.lean` imports the module, so the default build checks it.
+
+## 2026-10-31: The order book's program and its tests
+
+[The program](Demos/OrderBook/Program.lean) holds the book in the representation of [the probe's entry](#2026-10-31-the-order-books-in-place-update-probe-and-representation).  The functions that change the book are `@[inline]` functions of `Book`, and the program enters them through `fillArrays`, `submitArrays`, and `stepArrays`, which take the book's arrays one by one, so that no listed function copies the book.  One iteration of the matching loop either skips an empty level or does what one call of `Spec.fill` does to the level's first order, and `step` runs the checks of `Spec.step` in its order.  `unlink` serves both an exhausted maker and a cancel, a freed slot clears only its order id, and each loop's fuel constant states why it suffices.  [The abstraction](Demos/OrderBook/Abstract.lean) reads the program's book as the specification's: the bids are the chains of the levels from price 1,023 down to 1, and the asks those from 1 up to 1,023.
+
+[The tests](tests/orderbook/README.md) compare the program with the specification and with a Python reference that a fresh agent wrote from the requirements alone, without reading any Lean file.  `orderbook-compare` runs each stream through `Spec.run` and `Program.run` and checks the event words, `toSpec` of the program's book, and the top of the book after every part of 1,000 records and for the whole stream, and `tests/orderbook/run.sh` compares its output with the reference's.  The streams are the samples, edge streams written for the classes that the fifth review of the specification found uncovered, the reference's own edge streams, and random streams of four profiles up to 100,000 commands.  The driver passed on every stream, and earlier runs of the same programs agreed on a larger set of 188 streams of about 1.45 million commands.  Matching reached 5,119 of its 5,120 iterations of fuel on the streams written for the purpose.
+
+A draft `verified_compile` of the program succeeded, and the module gave the native results on every stream tried, from the empty book and from books that earlier runs left.  Allocations stayed at the host's arrays and the regrowths of the event array, so no update copied an array of the book.  The reflection of `fillArrays` took about 270,000 heartbeats, so the command needs a larger limit than the default.  Two findings concern the compiler.  The reflector rejects `init (_ : Unit)`, so a host passes zero arrays, next id 1, and count 0 for the empty book.  A borrowed call whose argument is a structure built in place, with a `Flat` tuple that ends in two or more words, fails: the reflector's `isPlace` accepts the argument and leaves it unbound, while the source's `Expr.isPlace` rejects the scalar pair that the reflector writes for its last words, so the kernel check of `placeArgs` fails.  The program's read-only helpers take the arrays they read and so avoid the case.
+
+- [ ] Fix the reflector's `isPlace` for structures built in place whose tuples end in scalar pairs.

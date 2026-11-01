@@ -154,6 +154,12 @@ lean_exe «verified-cases-energy» where
   srcDir := "tests"
   root := `TestSupport.Energy.CasesMain
 
+-- The native comparison of the order book's program with its specification
+-- (tests/orderbook/run.sh); not a default target.
+lean_exe «orderbook-compare» where
+  srcDir := "tests"
+  root := `TestSupport.OrderBook.Compare
+
 -- The differential test of the Lean copy of Clight against CompCert's reference interpreter
 -- (tests/native/clight.sh); not a default target.
 lean_exe «clight-diff» where
