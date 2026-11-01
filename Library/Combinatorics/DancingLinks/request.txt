@@ -1,0 +1,9 @@
+Exact cover by Algorithm X with dancing links, TAOCP section 7.2.2.1, on UInt64 words.  The input
+is an array [N, items of option 1, 0, items of option 2, 0, ...]: the items are the numbers 1 to N,
+and each option is a run of nonzero item numbers, the runs separated by zeros.  count(x) returns the
+number of exact covers, the sets of options that contain each of the items 1 to N exactly once,
+modulo 2^64.  It keeps the items and the options in Knuth's doubly linked lists, and it covers and
+uncovers items as the search goes down and backs up.  valid(x) returns 1 when N is at most 998, the
+bound that the compiler's recursion depth sets, every item of every option lies in 1 to N, and no
+option repeats an item, and 0 otherwise.  count is required only on inputs for which valid returns
+1.

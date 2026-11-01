@@ -4,6 +4,7 @@ import Library.Arrays.Range.Program
 import Library.Arrays.Repeat.Program
 import Library.Arrays.Search.Program
 import Library.Arrays.Word.Program
+import Library.Combinatorics.DancingLinks.Program
 import Library.Graphs.TopologicalSort.Program
 import Library.HashTables.LinearProbing.Program
 import Library.Hashing.Crc.Program

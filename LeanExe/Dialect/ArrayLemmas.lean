@@ -1,5 +1,5 @@
-/-! Lemmas about reads `xs[k]!` of arrays after `set!` and `push`, and about the words of a prefix
-`xs.toList.take n`. -/
+/-! Lemmas about reads `xs[k]!` of arrays after `set!` and `push`, about the words of a prefix
+`xs.toList.take n`, and about an array's size as a word. -/
 
 namespace LeanExe.Dialect
 
@@ -32,5 +32,10 @@ theorem take_get_mem {α : Type} [Inhabited α] {q : Array α} {f : Nat} {x : α
   refine ⟨p, by omega, by omega, ?_⟩
   rw [get_toList q (by omega)]
   simp
+
+/-- An array's size as a word is the size, for an array of fewer than `2^64` elements. -/
+theorem size_toUInt64 {α : Type} (xs : Array α) (h : xs.size < 2 ^ 64) :
+    xs.size.toUInt64.toNat = xs.size := by
+  simp only [Nat.toUInt64, UInt64.toNat_ofNat']; omega
 
 end LeanExe.Dialect
