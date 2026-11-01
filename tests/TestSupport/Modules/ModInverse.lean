@@ -13,9 +13,9 @@ and `2^64 - 1`, and the modulus 1 with 0, 1, and `2^64 - 1`.  Each small modulus
 `2^64 - 59`, and `10^9 + 7`, the odd composite `2^64 - 1`, the even modulus `2^63`, the composite
 600851475143, and two arbitrary words, one forced odd.  Each is paired with 0, 1, 2, `m - 1`, `m`,
 `m + 1`, `2^64 - 1`, and twelve arbitrary words; for `m = 2^64 - 1`, `m + 1` wraps to 0 and
-`2^64 - 1` is `m`, so two pairs repeat.  The consecutive Fibonacci numbers `F₉₂` and `F₉₃`, on which
-the algorithm reaches the largest number of steps of any pair of words, are paired in both
-orders. -/
+`2^64 - 1` is `m`, so two pairs repeat.  The consecutive Fibonacci numbers `F₉₂` and `F₉₃` are paired in
+both orders.  The pair `a = F₉₂`, `m = F₉₃` takes 91 division steps, the most of any pair of
+words. -/
 def inverseInputs : List (UInt64 × UInt64) :=
   let small : List UInt64 := [2, 3, 4, 6, 7, 10, 12, 97]
   let large : List UInt64 :=

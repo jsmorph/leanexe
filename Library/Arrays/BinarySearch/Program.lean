@@ -5,7 +5,8 @@ increasing order, and his step B3 compares three ways and stops at an equal key.
 assumes nondecreasing order, compares two ways, and stops only when the range is empty, so it
 returns the first index of a run of equal words and the insertion point of a missing key.  The
 midpoint `lo + (hi - lo) / 2` replaces Knuth's `⌊(l + u)/2⌋`, whose sum `l + u` can exceed a
-word. -/
+word.  On a range of even length it is the upper of the two middle indices, where Knuth's is the
+lower. -/
 
 namespace Library.Arrays.BinarySearch
 

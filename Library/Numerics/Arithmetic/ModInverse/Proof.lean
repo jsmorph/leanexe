@@ -3,12 +3,12 @@ import Library.Numerics.Arithmetic.ModInverse.Spec
 import Mathlib.Tactic.LinearCombination
 import Mathlib.Tactic.Ring
 
-/-! The proof that the modular inverse computes `expected`.  `euclid_spec` carries the invariant of
-Algorithm X: `t1 * r0 + t0 * r1 = m`, `r1 < r0`, `t0 ≤ t1`, `gcd r0 r1 = gcd a m`, and, with the
-sign `s` that the parity `p` encodes, `a * t1 = s * r1` and `a * t0 = -s * r0` in `ZMod m`.  The
-identity bounds every coefficient by `m`, so no word operation wraps.  When `r1` reaches 0, `r0` is
-`gcd a m`, and when it is 1 the result `x` satisfies `x < m` and `a * x = 1` in `ZMod m`, which makes
-it the value of the inverse that `expected` names. -/
+/-! The proof that the modular inverse computes `expected`.  The hypotheses of `euclid_spec` state
+the invariant of Algorithm X: `t1 * r0 + t0 * r1 = m`, `r1 < r0`, `t0 ≤ t1`,
+`gcd r0 r1 = gcd a m`, and, with the sign `s` that the parity `p` encodes, `a * t1 = s * r1` and
+`a * t0 = -s * r0` in `ZMod m`.  The identity bounds every coefficient by `m`, so no word operation
+wraps.  When `r1` reaches 0, `r0` is `gcd a m`, and when it is 1 the result `x` satisfies `x < m`
+and `a * x = 1` in `ZMod m`, which makes it the value of the inverse that `expected` names. -/
 
 namespace Library.Numerics.Arithmetic.ModInverse
 

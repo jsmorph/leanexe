@@ -9,8 +9,8 @@ zeros.  The program keeps Knuth's two tables in one array `t`.  Node `p` occupie
 to no list, and its words start at 0.  Node `i` for `1 ≤ i ≤ N` is the header of item `i`'s
 list and keeps the list's length `LEN` in `TOP`.  Node `N + 1` is a spacer, the nodes of each
 option follow in order, and a spacer follows every option, the last at node `Z`.  The `TOP` of an
-option's node is its item, and the `TOP` of a spacer is 0, where Knuth numbers the spacers with
-nonpositive values, which his program DLX1 reads only to print an option.  A spacer's `ULINK` is
+option's node is its item, and the `TOP` of a spacer is 0, where Knuth numbers the spacers 0, -1,
+-2, and so on, and his program DLX1 tests only their sign.  A spacer's `ULINK` is
 the first node of the option before it, and its `DLINK` is the last node of the option after it,
 except that the first spacer's `ULINK` and the last spacer's `DLINK` are 0.  The links of the items
 follow the nodes: `LLINK` and `RLINK` of item `i`, for `0 ≤ i ≤ N`, are the words `b + 2i` and

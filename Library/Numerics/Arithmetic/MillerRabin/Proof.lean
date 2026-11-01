@@ -44,7 +44,8 @@ theorem bit_toNat (x : UInt64) (i : Nat) (hi : i < 64) :
   simp only [UInt64.reduceToNat]
   rw [Nat.and_one_is_mod]
 
-/-- The binary method of `mulMod`: the product of `a` with the top `i` bits of `b`. -/
+/-- `mulMod a b m` is `a * b mod m` for `a < m`: after `i` steps the loop holds `a` times the top
+`i` bits of `b` modulo `m`. -/
 theorem mulMod_spec {a b m : UInt64} (ha : a.toNat < m.toNat) :
     (mulMod a b m).toNat = a.toNat * b.toNat % m.toNat := by
   have hm : 0 < m.toNat := by omega

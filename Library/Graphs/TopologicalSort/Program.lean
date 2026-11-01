@@ -5,11 +5,11 @@ import LeanExe.Dialect.Loop
 `n = xs[0]` and then the relations, relation `e` stating that vertex `xs[2e + 1]` comes before
 vertex `xs[2e + 2]`, for vertices below `n`, where Knuth numbers the objects from 1 to `n`.  The
 program keeps Knuth's count of predecessors for each vertex in an array of `n` words and his queue
-of vertices whose count is 0 in an array that grows at its end, and the queue is also the output.  A scan of the relations replaces Knuth's
-successor lists, so that the loop's state holds only these two arrays: when the vertex at the front
-of the queue leaves it, the program scans every relation for those that start at that vertex.  Each
-scan takes time proportional to the number of relations, so the whole sort takes time proportional
-to the number of vertices times the number of relations. -/
+of vertices whose count is 0 in an array that grows at its end, and the queue is also the output.
+A scan of the relations replaces Knuth's successor lists, so that the loop's state holds only these
+two arrays: when the vertex at the front of the queue leaves it, the program scans every relation
+for those that start at that vertex.  Each scan makes one pass for each of the `m` relations, and
+at most `n` vertices leave the queue, so the scans make at most `n·m` passes. -/
 
 namespace Library.Graphs.TopologicalSort
 

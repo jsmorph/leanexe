@@ -15,8 +15,8 @@ namespace Library.Numerics.Arithmetic.MillerRabin
 /-- `a + b` modulo `m`, for `a, b < m`. -/
 def addMod (a b m : UInt64) : UInt64 := if m - b ≤ a then a - (m - b) else a + b
 
-/-- `a * b` modulo `m`, for `a < m`: the bits of `b` from the most significant down double the
-partial product and add `a`. -/
+/-- `a * b` modulo `m`, for `a < m`: for each bit of `b`, from the most significant down, the loop
+doubles the partial product and adds `a` when the bit is 1. -/
 def mulMod (a b m : UInt64) : UInt64 :=
   LeanExe.loop 64 (0 : UInt64) fun i r =>
     if (b >>> (63 - i)) &&& 1 = 1 then addMod (addMod r r m) a m else addMod r r m
@@ -40,7 +40,8 @@ when it is not or when `n` is even or below 3.  `k` is the number of factors 2 o
 is the base raised to the odd part `q` of `n - 1`.  When `y` is neither 1 nor `n - 1`, the loop's
 state holds the last square and a flag that becomes 1 when a square is `n - 1`, and the loop
 performs the squarings of step P4, at most `k - 1` of them.  The loop continues after a square of
-1, where Knuth's Algorithm P stops, since every later square is 1 and the flag stays 0. -/
+1, where Knuth's Algorithm P stops, and returns the same answer, since every later square is 1 and
+the flag stays 0. -/
 def test (n x : UInt64) : UInt64 :=
   if n % 2 = 0 ∨ n < 3 then 0
   else

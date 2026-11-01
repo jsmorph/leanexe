@@ -47,7 +47,8 @@ decreasing_by
     simp only [UInt64.toNat_sub, UInt64.toNat_add, UInt64.reduceToNat]
     omega
 
-/-- Steps H1 and H2: sift the nodes `n / 2 - 1` down to 0, which makes `xs[0, n)` a heap. -/
+/-- Step H1 and the first phase of step H2: sift the nodes `n / 2 - 1` down to 0, which makes
+`xs[0, n)` a heap. -/
 def heapify (n : UInt64) (xs : Array UInt64) : Array UInt64 :=
   LeanExe.loop (n / 2) xs fun k acc => siftDown (n / 2 - 1 - k) n acc
 
