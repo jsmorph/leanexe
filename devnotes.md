@@ -40247,3 +40247,22 @@ Lean's interpreter evaluated the first two bounds, which agree with the values c
 
 - [x] Compilation, call theorems, registry entry, module cases, and C translation.
 - [ ] Evaluate `compiled.run.bound` again after the compiler's change to the results of in-place updates.
+
+## 2026-11-01: The order book's WASI process, native part
+
+[The process](Demos/OrderBook/Process.lean) reads command records from stdin as little-endian words, seven to a record, and writes the event records to stdout in the same form, so that its output is the little-endian bytes of `Spec.encodeAll` of the events of `Spec.run Spec.empty` on the whole words of its input.  A short final record is rejected as malformed, as `Spec.run` does, the process exits with status 28 when the input ends with bytes that do not fill a word and with status 0 otherwise, and a failed transfer stops it with its errno, as StreamFold's processes do.  A design study compared a generalization of StreamFold from lines to fixed records with a process of the order book's own, and found that StreamFold's line-dependent modules hold most of its proofs and that its protocol writes each line's output before it reads further, so the process stands beside StreamFold and imports its host assumptions, its stdout journal, and its byte lists unchanged.  Each step makes one transfer, a read of at most 4,096 bytes passes all its whole records to one call of `Program.run`, and the bytes of a partial record wait in the state.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Framework | Process modules of the order book that import StreamFold's `StreamHost`, `StreamProgress`, observed journal, and byte lists | Generalizing StreamFold's framing would change the proofs of both running sums, at about twice the size of a new process by the study's estimate. |
+| Read capacity | 4,096 bytes | `StreamHost` fixes it, and a larger read would need a capacity parameter there and an amortized count of events per batch. |
+| Batch | Whole records of each read in one call of `Program.run` | One record per step would copy the state's arrays about 70 times as often. |
+| Proof route | `run_eq` for each batch, joined by `Spec.run_append` | Both exist, and `batch_refines` composes them. |
+
+`process_output` of [the correctness proof](Demos/OrderBook/ProcessCorrect.lean) states that, under `StreamHost` and from a world whose stdout history is empty, the process from its initial state returns `expectedStatus` of the input after writing `expectedOutput` of it and consuming it, when the input holds fewer than 2^64 − 1 records.  `process_exec_correct` states the same of every finite execution from a state that satisfies the invariant `Future`, and `process_terminates` that every execution from a safe state returns status 0 or 28.  [The codec](Demos/OrderBook/ProcessCodec.lean) defines the little-endian words of bytes and the bytes of words and proves the equations of the process's conversions, and [the batch lemma](Demos/OrderBook/ProcessBatch.lean) bounds a batch's event words by `Spec.capacity + 2` events a record.  Every theorem uses only `propext`, `Classical.choice`, and `Quot.sound`, which `tests/orderbook/ProcessAxioms.lean` checks for each declaration of the process's modules.
+
+`tests/orderbook/process.sh` runs the axiom audit, the scripted-host runs of `orderbook-process`, which read every stream at each chunk size from 1 to 57 bytes and at 4,096 with whole, short, and zero-byte writes and with read and write errnos, and the comparison driver's streams through the native executable `orderbook-native`, whose output equals the event words that `orderbook-compare` checks against `Spec.run` and the events of the Python reference.  It also runs the ends of input with statuses 0 and 28 and the I/O errors of a directory as stdin and a full device as stdout.  The driver passed every case.
+
+- [x] Codec, process, batch lemma, native correctness, and termination.
+- [x] Native executable and its tests.
+- [ ] `verified_compile_wasi` of the process, the compiled module's theorems, its charges, and its Wasmtime and Talos tests, after the bound analysis gives in-place updates paid results.

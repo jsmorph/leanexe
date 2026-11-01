@@ -18,6 +18,10 @@ prints the events, the next id, the resting orders, and the top of the book in t
 Python reference, and on a disagreement it writes the check to standard error and exits with
 status 1.
 
+`events FILE OUT` runs the stream from the empty book with next id 1, with the checks of `stream`,
+and writes the event words as little-endian bytes to `OUT`, the output that the order book's
+process writes for the stream.
+
 `write DIR` writes the samples, the single records, and the edge streams to `DIR`, one file each,
 and lists each file with its starting next id in `DIR/manifest.txt`.
 
@@ -202,10 +206,14 @@ def main (args : List String) : IO UInt32 := do
         | _ => pure 1
       let (b, out) ← compare (← readWords file) nextId
       printReference b out
+    | ["events", file, outFile] =>
+      let (_, out) ← compare (← readWords file) 1
+      IO.FS.writeBinFile outFile (wordBytes out)
     | ["write", dir] => writeAll dir
     | ["host", file, n, dir] => writeHost (← readWords file) (← parseWord n) dir
     | _ =>
-      IO.eprintln "usage: orderbook-compare stream FILE [NEXTID] | write DIR | host FILE NEXTID DIR"
+      IO.eprintln ("usage: orderbook-compare stream FILE [NEXTID] | events FILE OUT | " ++
+        "write DIR | host FILE NEXTID DIR")
       return 2
     return 0
   catch e =>
