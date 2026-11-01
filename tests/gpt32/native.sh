@@ -5,7 +5,10 @@
 # bit for bit with native Lean's step32.
 # Usage: tests/gpt32/native.sh [build directory]
 set -euo pipefail
-export PATH="$PATH:$HOME/.cargo/bin"
+if ! command -v wasm-tools > /dev/null 2>&1; then
+  echo "gpt32 native: wasm-tools is not on the search path" >&2
+  exit 1
+fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 build=${1:-$root/build}
 host=$root/build/tools/leanexe-webgpu-host

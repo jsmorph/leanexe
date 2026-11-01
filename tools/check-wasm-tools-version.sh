@@ -8,8 +8,6 @@ wasm_tools="${WASM_TOOLS:-}"
 if [[ -z "$wasm_tools" ]]; then
   if command -v wasm-tools >/dev/null 2>&1; then
     wasm_tools="$(command -v wasm-tools)"
-  elif [[ -x "$HOME/.cargo/bin/wasm-tools" ]]; then
-    wasm_tools="$HOME/.cargo/bin/wasm-tools"
   else
     echo "wasm-tools not found. Install version $expected or set WASM_TOOLS." >&2
     exit 127

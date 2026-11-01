@@ -692,7 +692,6 @@ main() {
   local origin
   root=$(cd "$(dirname "$0")/.." && pwd)
   cd "$root"
-  export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
   export LEANRUN_MEMORY_HIGH=${LEANRUN_MEMORY_HIGH:-10G}
   ccomp=${CCOMP:-ccomp}
   clightgen=${CLIGHTGEN:-clightgen}
