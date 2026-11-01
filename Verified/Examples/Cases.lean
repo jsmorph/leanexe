@@ -88,6 +88,7 @@ import Examples.Scale.Cases
 import Examples.ScaledHypot.Cases
 import Examples.SumArray.Cases
 import Examples.SumCount.Cases
+import Examples.Trees.Cases
 import Examples.Updates.Cases
 import Verified.Examples.Forms
 import Verified.Examples.Patterns
@@ -717,6 +718,85 @@ def portCases : IO Unit := do
   for ws in _root_.Examples.Calc.runArgs do
     IO.println s!"calculator|calcRun|list:i64,i64,i64|{arrayArg ws.toArray}|\
       {words (_root_.Examples.Calc.calcRun ws.toArray)}|1|1"
+
+open _root_.Examples.Trees TestSupport.Host in
+/-- The cases of `exampleTrees`, the verified module of the operations of `Examples/Trees`, on the
+trees of `keyTreeArgs` and the pairs of `keyTreePairs`: each result with the blocks left allocated
+and a bound on the allocations, the host's records included.  A consumed tree's records end in the
+result or are released, a borrowed tree's records stay allocated, and a copy allocates one record
+for each node.  A case whose deepest call has depth 1,000 or more must trap at `unreachable`: the
+entry starts at depth 0, each call of a function whose code takes the call depth adds 1, and a
+recursion below a call at depth `d` reaches `d` plus the height, the path of left children, or the
+search path of its tree. -/
+def exampleTreeCases : IO Unit := do
+  let arg (x : KeyTree) : String := s!"tree-u64:{KeyTree.describe x}"
+  let out (x : KeyTree) : String := KeyTree.describe x
+  let n (x : KeyTree) : Nat := x.size.toNat
+  let emit (f kind args expected : String) (live allocs depth : Nat) : IO Unit :=
+    if depth < 1000 then
+      IO.println s!"exampleTrees|{f}|{kind}|{args}|{expected}|{live}|{allocs}"
+    else IO.println s!"exampleTrees|{f}|{kind}|{args}|trap"
+  for x in keyTreeArgs do
+    let h := x.height.toNat
+    let r := KeyTree.dropRight x
+    emit "dropRight" "tree-u64" (arg x) (out r) (n r) (n x) 0
+    for c in [0, 1, maxU] do
+      let r := KeyTree.keepIf c x
+      emit "keepIf" "tree-u64" s!"{u c} {arg x}" (out r) (n r) (n x) 0
+    let r := KeyTree.trim x
+    emit "trim" "tree-u64" (arg x) (out r) (n r) (n x) 0
+    emit "addLeft" "tree-u64" (arg x) (out (KeyTree.addLeft x)) (n x) (n x + n x.leftChild) 0
+    let (k, k1) := KeyTree.keyPair x
+    emit "keyPair" "list:i64,i64" (arg x) s!"{k} {k1}" (n x) (n x) 0
+    let (k, rest) := KeyTree.rootAndRest x
+    emit "rootAndRest" "list:i64,tree-u64" (arg x) s!"{k} {out rest}" (n x) (n x) 0
+    let (a, b) := KeyTree.keepOld x
+    emit "keepOld" "list:tree-u64,tree-u64" (arg x) s!"{out a} {out b}" (2 * n x) (2 * n x) (h + 1)
+    emit "addSelf" "tree-u64" (arg x) (out (KeyTree.addSelf x)) (2 * n x) (3 * n x) 0
+    emit "sizeSum" "i64" (arg x) s!"{KeyTree.sizeSum x}" (n x) (n x) (h + 1)
+    emit "leftSizes" "tree-u64" (arg x) (out (KeyTree.leftSizes x)) (n x) (n x) h
+    emit "leftHeavy" "i64" (arg x) s!"{KeyTree.leftHeavy x}" (n x) (n x) h
+    emit "wide" "i64" (arg x) s!"{KeyTree.wide x}" (n x) (n x) h
+    for xs in [(#[] : Array UInt64), #[7], #[1, 2, 3]] do
+      let (ys, s) := KeyTree.pushSum xs x
+      emit "pushSum" "list:array-u64,i64" s!"{arrayArg xs} {arg x}" s!"{arrayOut ys} {s}"
+        (n x + 1) (n x + 2) (h + 1)
+    for c in ([0, 1, 7] : List UInt64) do
+      emit "sumSizes" "i64" s!"{u c} {arg x}" s!"{KeyTree.sumSizes c x}" (n x) (n x)
+        (if c = 0 then 0 else h + 1)
+    for (a, b) in [(0, maxU), (maxU, 0), (5, 5), ((KeyTree.keyPair x).1, (KeyTree.keyPair x).1)] do
+      let r := KeyTree.insertTwo a b x
+      let depth := max (KeyTree.searchDepth a x) (KeyTree.searchDepth b (x.insert a)) + 1
+      emit "insertTwo" "tree-u64" s!"{u a} {u b} {arg x}" (out r) (n r) (n r) depth
+    for m in [0, x.size, x.size + 1, maxU] do
+      let r := KeyTree.dropSmall m x
+      emit "dropSmall" "tree-u64" s!"{u m} {arg x}" (out r) (n r) (n x) (h + 1)
+      let (s, v) := KeyTree.sizeDrop m x
+      emit "sizeDrop" "list:i64,tree-u64" s!"{u m} {arg x}" s!"{s} {out v}" (n v) (n x) (h + 1)
+      let (s, v) := KeyTree.sizeDropNext m x
+      emit "sizeDropNext" "list:i64,tree-u64" s!"{u m} {arg x}" s!"{s} {out v}" (n v) (n x) (h + 2)
+      emit "sizeAfterDrop" "i64" s!"{u m} {arg x}" s!"{KeyTree.sizeAfterDrop m x}" 0 (n x) (h + 2)
+      let r := KeyTree.sizeDropSmall m x
+      emit "sizeDropSmall" "tree-u64" s!"{u m} {arg x}" (out r) (n r) (n x) (h + 2)
+      emit "sizeFirst" "i64" s!"{u m} {arg x}" s!"{KeyTree.sizeFirst m x}" 0 (n x) (h + 2)
+      emit "droppedSize" "i64" s!"{u m} {arg x}" s!"{KeyTree.droppedSize m x}" 0 (n x) (h + 2)
+      let (s, v) := KeyTree.dropWithSize m x
+      emit "dropWithSize" "list:i64,tree-u64" s!"{u m} {arg x}" s!"{s} {out v}" (n v) (n x) (h + 2)
+  for (a, b) in keyTreePairs do
+    let r := KeyTree.addRoot a b
+    emit "addRoot" "tree-u64" s!"{arg a} {arg b}" (out r) (n b) (n a + n b) 0
+    let r := KeyTree.addAll a b
+    emit "addAll" "tree-u64" s!"{arg a} {arg b}" (out r) (n a + n b) (n a + n b) b.height.toNat
+    let r := KeyTree.leftSpine a b
+    emit "leftSpine" "tree-u64" s!"{arg a} {arg b}" (out r) (n a + n r) (n a + n b)
+      (KeyTree.spine b)
+    for c in [0, 1, maxU] do
+      let (p, q) := KeyTree.pickPair c a b
+      emit "pickPair" "list:tree-u64,tree-u64" s!"{u c} {arg a} {arg b}" s!"{out p} {out q}"
+        (n a + n b) (n a + n b) 0
+    let (p, q) := KeyTree.splitOr a b
+    emit "splitOr" "list:tree-u64,tree-u64" s!"{arg a} {arg b}" s!"{out p} {out q}"
+      (n p + n q) (n a + n b) 0
 
 end Verified.Examples
 
@@ -1645,5 +1725,6 @@ def main : IO Unit := do
   IO.println s!"xorshift|square|array-u64|{arrayArg cols}|\
     {arrayOut (_root_.Library.Random.Xorshift.square cols)}|2|2"
   portCases
+  exampleTreeCases
   formCases
   patternCases

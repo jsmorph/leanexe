@@ -39986,7 +39986,7 @@ The full check ran from 06:55 UTC to 09:31 UTC with `LEANRUN_THREADS=8`, `LEANRU
 
 The restoration of `Words.toList` stays a commit of its own, because `STATUS.md` names the guide commit by its hash, and folding the fix into the trim of the module driver would change that hash.  The commits from the trim to the deletion of the manual therefore do not build `verified-cases`.  The binary64 GPT-2 guide gives no `tests/native/verified.sh --module gpt` command, because `Verified/Examples/Cases.lean` holds no GPT cases for that driver to run.
 
-- [ ] Port the operations that `Examples/Trees/Program.lean` adds to the library with `verified_compile`, or delete them.
+- [x] Port the operations that `Examples/Trees/Program.lean` adds to the library with `verified_compile`, or delete them.
 - [x] Correct the citations of `docs/native-translator.md` in `docs/trusted-base.md`, which point at lines that have moved, among them blank lines and table headers.
 
 ## 2026-10-31: Consecutive windows
@@ -40181,3 +40181,32 @@ I wrote `Inv` and the statements and checked that they elaborate, and two fresh 
 | [`RefineStream`](Demos/OrderBook/RefineStream.lean) | `run_append` and `run_eq_of_step` |
 
 Lean reaches its recursion limit when `rfl` or unification compares terms that contain `toSpec` or `slotsFrom` at the fuel of 4,097, so the proofs rewrite with `toSpec_eq` and congruence lemmas instead.  `run_append` is the program's counterpart of `Demos/Clob`'s `runCommands_append`, and `run` returns the book with the event words, so the counterpart of `runOut_book` holds by definition.
+
+## 2026-10-31: The verified module of the tree example's operations
+
+The operations that `Examples/Trees/Program.lean` adds over `KeyTree`, from `dropRight` to `wide`, now compile with `verified_compile` in `Examples/Trees/Compiled.lean` into the module `exampleTrees`, which closes the item that [the removal of the LeanExe compiler](#2026-10-31-the-removal-of-the-leanexe-compiler) left open.  The command lists the library's `size`, `sum`, `incr`, and `insert` before the operations that call them, and the compilation imports the library's derivation of `KeyTree`, as `Verified/Examples/RecursiveTypes.lean` does.  A probe that compiled each operation in a command of its own, with its callees, accepted every one in 97 seconds, so no rule of the dialect leaves an operation out.  `wide`, which keeps sixteen words live across two self-calls, fits within the 32 positions of a function whose code takes the call depth.
+
+`exampleTreeCases` in `Verified/Examples/Cases.lean` runs each operation on the trees and pairs of `Examples/Trees/Cases.lean`, among them chains with the leaves on either side around depth 1,000, and states a trap when the deepest call reaches that depth.  The first run failed only on `addRoot`, `addLeft`, and `addSelf`, whose expected counts followed docstrings written for the retired compiler.  The reflector reuses the header of the innermost match for a record built in its branch, and `Expr.demands` then makes the matched tree owned, so `addRoot` consumes its first tree as well as its second.  `addLeft` therefore copies the left child that its record keeps, and `addSelf`, whose tree is the argument of both of `addRoot`'s parameters, keeps its tree borrowed and passes two copies.  The cases and the docstrings of `addRoot`, `addLeft`, and `addSelf` now state these counts.
+
+The registry name `exampleTrees` follows `exampleLists` and `exampleUpdates`.  The module has a file module, an entry in the file-theorem registry, an import in `Examples/Verified.lean`, and rows in the index and the manual, and the guides of the example and of the word trees describe it.
+
+| Check | Start | Duration | Result |
+|---|---|---|---|
+| Probe of each operation in a command of its own | 03:01 UTC | 97 s | Every operation compiled |
+| `tests/verified/run.sh --cases exampleTrees` | 03:13 UTC | 168 s | 1,638 cases passed and none failed |
+| `lake env lean Examples/Trees/File.lean` | 03:16 UTC | 5 s | Both file theorems report only `propext`, `Classical.choice`, and `Quot.sound` |
+| `tests/native/verified.sh --module exampleTrees` with CompCert 3.18 | 03:17 UTC | 27 s | Translation of every function and export, `clightgen` agreement, and 1,638 cases passed |
+| `tools/source-layout` and `node tools/check-doc-links.mjs` | 03:29 UTC | Under 1 s | No problem reported |
+| Build of `LeanExe`, `Examples`, `Demos`, `Verified`, `Library`, and `TestSupport` | 05:01 UTC | 8 s, after the runs above had built the changed modules | 11,146 jobs, no error and no `sorry` |
+
+- [x] Compilation, cases, file module, and registry entries.
+- [x] Guides, index, and manual.
+
+Fresh emissions and runs checked the sizes of emitted modules and the printed output that the program guides state.  The emissions match every size except those of `sinpi.wasm`, 6,117 bytes, `pow.wasm`, 11,418, and `printfloat.wasm`, 15,081, which the guides now give, and each quoted host command, driver, and script that ran printed what its guide states.  `#check` shows the same bound equation for PairSum, SumCount, Lookup, and TreeLookup, `blockCost 0 + growCost 1 1 + paidGrowCost 1`, or 232 bytes, so the Lookup and TreeLookup guides now describe the charges as the PairSum and SumCount guides do: an empty block, the first growth, and the paid second push.  The 800-grid Euler runs and the GPT-2 scripts that need the downloaded weights did not run.
+
+`tests/verified/run.sh --cases slew` stops after the slew audit with a failure, because `check_axioms`, which the energy work added, requires `depends on axioms` reports, while `tests/slew/Axioms.lean` checks the axioms with its own command and logs one summary line.  The full run takes the same step and fails there as well.  Run by hand, the slew file theorems report only the three permitted axioms, and the 2,077 slew cases pass.
+
+The docstring of `PowFile.lean` gave the module's earlier size, 11,156 bytes, and now gives 11,418.  The vector test of the SHA-2 programs ran in 447 s against the SHA-512 guide's six minutes, and the check of the SHA-3 transcription in 4,660 s against its guide's three hours, so the guides now give seven and a half minutes and 80 minutes.  Both durations depend on the host, and the guides give them as the expected order of the run time.
+
+- [x] Sizes, printed outputs, and bound equations of the guides checked, and the differing ones corrected.
+- [ ] Make `check_axioms` and the slew audit agree, so that the slew run and the full run of `tests/verified/run.sh` pass.

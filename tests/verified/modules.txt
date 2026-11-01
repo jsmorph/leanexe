@@ -130,3 +130,4 @@ Examples.Lists.Compiled:Examples.Lists.compiled.module:exampleLists
 Examples.Updates.Compiled:Examples.Updates.compiled.module:exampleUpdates
 Examples.Grids.Compiled:Examples.Grids.compiled.module:exampleGrids
 Examples.Calc.Compiled:Examples.Calc.compiled.module:calculator
+Examples.Trees.Compiled:Examples.Trees.compiled.module:exampleTrees
