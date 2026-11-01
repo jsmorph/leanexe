@@ -1,11 +1,13 @@
 import Library.Combinatorics.DancingLinks.Layout
 
-/-! The parts of step X1: the layout of a valid input satisfies `Layout.Good`, and adding a node
-at the bottom of a column keeps the column.  `col_append` states the writes that step X1 makes
-for a new node `p` of item `c`, above every node of the column: `TOP(p) = c`, `ULINK(p)` the
-column's last node, `DLINK(p) = c`, `DLINK` of the last node and `ULINK(c)` set to `p`, and
-`LEN(c)` increased.  The successor and predecessor lemmas for inserting the largest node are
-`nxt_insert_max` and `prv_insert_max`. -/
+/-! The parts of step X1: the layout of a valid input satisfies `Layout.Good`, and the links of a
+column after the insertion of a node above all of its nodes.  `layout_good` takes the bounds on the
+items and the absence of repeats from `Valid`, and the nonempty options without zeros from
+`options`.  The bound on the array's size follows from `N ≤ 998`, the bound on the input's size, and
+`runCount_options_le`, which bounds the number of nodes and spacers by twice the number of words.
+`nxt_insert_max` and `prv_insert_max` give the successor and predecessor in the column after the
+insertion, which `col_append` of `Build.lean` uses for a node that step X1 adds at the bottom of a
+column. -/
 
 namespace Library.Combinatorics.DancingLinks
 

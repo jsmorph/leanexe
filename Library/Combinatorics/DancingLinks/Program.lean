@@ -5,13 +5,14 @@ import LeanExe.Dialect.RepeatWhile
 /-! Exact cover by Algorithm X with dancing links, TAOCP §7.2.2.1.  The input `x` holds the number
 of items `N = x[0]` and then the options, each a run of nonzero item numbers, the runs separated by
 zeros.  The program keeps Knuth's two tables in one array `t`.  Node `p` occupies the words `3p`,
-`3p + 1`, and `3p + 2`, its `TOP`, `ULINK`, and `DLINK`, for the nodes 0 to `Z`.  Node `i` for
-`1 ≤ i ≤ N` is the header of item `i`'s list and keeps the list's length `LEN` in `TOP`.  Node
-`N + 1` is a spacer, the nodes of each option follow in order, and a spacer follows every option,
-the last at node `Z`.  The `TOP` of an option's node is its item, and the `TOP` of a spacer is 0,
-where Knuth numbers the spacers with nonpositive values, which his program DLX1 reads only to print
-an option.  A spacer's `ULINK` is the first node of the option before it, and its `DLINK` is the
-last node of the option after it, or 0 for the first and last spacers.  The links of the items
+`3p + 1`, and `3p + 2`, its `TOP`, `ULINK`, and `DLINK`, for the nodes 0 to `Z`.  Node 0 belongs
+to no list, and its words start at 0.  Node `i` for `1 ≤ i ≤ N` is the header of item `i`'s
+list and keeps the list's length `LEN` in `TOP`.  Node `N + 1` is a spacer, the nodes of each
+option follow in order, and a spacer follows every option, the last at node `Z`.  The `TOP` of an
+option's node is its item, and the `TOP` of a spacer is 0, where Knuth numbers the spacers with
+nonpositive values, which his program DLX1 reads only to print an option.  A spacer's `ULINK` is
+the first node of the option before it, and its `DLINK` is the last node of the option after it,
+except that the first spacer's `ULINK` and the last spacer's `DLINK` are 0.  The links of the items
 follow the nodes: `LLINK` and `RLINK` of item `i`, for `0 ≤ i ≤ N`, are the words `b + 2i` and
 `b + 2i + 1`, where `b = 3(Z + 1)`, and item 0 heads the doubly linked list of the active items.
 
@@ -21,7 +22,8 @@ so the compiler's limit of 1,000 nested calls bounds the number of items by 998.
 place of Knuth's two tables, keeps the frame of the recursive `search` within the 32 positions
 that the compiler allows, since a tuple that holds two arrays takes a position for each of its
 nested pairs.  Each traversal is a `repeatWhile` whose fuel is the size of `t`, more than the
-length of any list. -/
+length of any list.  The state of the traversals of `hide`, `unhide`, `hideColumn`, `unhideColumn`,
+`coverOthers`, and `uncoverOthers` holds the current node and the array. -/
 
 namespace Library.Combinatorics.DancingLinks
 
@@ -49,8 +51,8 @@ def hide (p : UInt64) (t : Array UInt64) : Array UInt64 :=
 
 /-- Knuth's `unhide(p)`: puts back each other node `q` of the option of node `p`, from `p - 1`
 backward, the reverse of the order of `hide`, by `DLINK(ULINK(q)) ← q` and `ULINK(DLINK(q)) ← q`,
-and increases that item's `LEN`.  The node's own links still name its neighbors from the moment it
-was removed.  At a spacer, `DLINK` leads forward to the last node of the option. -/
+and increases that item's `LEN`.  The node's own links still name the neighbors it had when `hide`
+removed it.  At a spacer, `DLINK` leads forward to the last node of the option. -/
 def unhide (p : UInt64) (t : Array UInt64) : Array UInt64 :=
   let n := t.size.toUInt64
   (repeatWhile n (p - 1, t) (fun s => s.1 ≠ p) fun s =>
@@ -92,12 +94,12 @@ def relinkItem (b i : UInt64) (t : Array UInt64) : Array UInt64 :=
   let r := t[(b + 2 * i + 1).toNat]!
   (t.set! (b + 2 * l + 1).toNat i).set! (b + 2 * r).toNat i
 
-/-- Knuth's `cover(i)`: hides every option that holds item `i`, and then removes `i` from the list
-of active items. -/
+/-- Knuth's `cover(i)`: hides each option in the list of item `i`, and then removes `i` from the
+list of active items. -/
 def coverItem (b i : UInt64) (t : Array UInt64) : Array UInt64 := unlinkItem b i (hideColumn i t)
 
-/-- Knuth's `uncover(i)`: puts item `i` back into the list of active items, and then unhides every
-option that holds it, the reverse of the order of `coverItem`. -/
+/-- Knuth's `uncover(i)`: puts item `i` back into the list of active items, and then unhides each
+option in its list, the reverse of the order of `coverItem`. -/
 def uncoverItem (b i : UInt64) (t : Array UInt64) : Array UInt64 :=
   unhideColumn i (relinkItem b i t)
 
@@ -130,22 +132,24 @@ def choose (b : UInt64) (t : Array UInt64) : UInt64 :=
       (t[(b + 2 * s.1 + 1).toNat]!, if s.2.1 = 0 ∨ len < s.2.2 then s.1 else s.2.1,
         if s.2.1 = 0 ∨ len < s.2.2 then len else s.2.2)).2.1
 
-/-- The end of one pass of the search's loop over the options of the chosen item: uncovers the
-other items of the option of node `r` and returns the next option `DLINK(r)`, the count `acc`
-increased by the option's covers `c`, and the array.  A separate function keeps these values out
-of the frame of the recursive `search`. -/
+/-- The end of one pass of the search's loop over the column of the chosen item: step X6 for the
+option of node `r`, by `uncoverOthers`, and then the next node `DLINK(r)` of the column, the count
+`acc` increased by the option's covers `c`, and the array.  A separate function keeps these values
+out of the frame of the recursive `search`. -/
 def next (b r acc c : UInt64) (t : Array UInt64) : UInt64 × UInt64 × Array UInt64 :=
   let v := uncoverOthers b r t
   (v[(3 * r + 2).toNat]!, acc + c, v)
 
 /-- The number of exact covers of the active items by the options that are not hidden, modulo
-`2^64`, and the array, which the search restores.  When no item is active, the empty set of
-options is the one cover.  Otherwise the search chooses an item `i`, covers it, and for each option
-`r` in its list covers the option's other items, counts the covers of the rest by recursion, and
-uncovers them, and at the end uncovers `i`, as in Knuth's `search(k)`.  `d` bounds the depth: it
-starts at `N` and decreases at each level, so the recursion terminates on any array, and on a
-valid input the active items never outnumber `d`, so the branch `d = 0` with an active item never
-runs. -/
+`2^64`, and the array, which the search restores.  `d` bounds the depth, and the item links begin
+at `b`.  When no item is active, the empty set of options is the one cover, and the result is 1.
+Otherwise the search chooses an item `i` by step X3, covers it, and for each option `r` in its
+list covers the option's other items by step X5, counts the covers of the rest by recursion, and
+uncovers them by step X6, and at the end uncovers `i`, as in Knuth's `search(k)`.  The loop's
+state holds the node `r`, the count so far, and the array, and the loop starts at `DLINK(i)`,
+which covering `i` leaves unchanged.  `d` starts at `N` and decreases at each level, so the
+recursion terminates on any array, and on a valid input the active items never outnumber `d`, so
+the branch `d = 0` with an active item, which returns 0, never runs. -/
 def search (d b : UInt64) (t : Array UInt64) : UInt64 × Array UInt64 :=
   if _h : t[(b + 1).toNat]! = 0 ∨ d = 0 then (if t[(b + 1).toNat]! = 0 then 1 else 0, t)
   else
@@ -162,21 +166,23 @@ decreasing_by
   omega
 
 /-- The number of nodes after the first spacer: one for each nonzero word after `x[0]`, and one
-spacer for each option, counted at the option's first word. -/
+spacer for each option, counted at the option's first word.  The loop's state is the count. -/
 def nodeCount (x : Array UInt64) : UInt64 :=
-  (loop x.size.toUInt64 ((0 : UInt64), (0 : UInt64)) fun k s =>
+  loop x.size.toUInt64 (0 : UInt64) fun k c =>
     let w := x[k.toNat]!
     let prev := x[(k - 1).toNat]!
-    (if k = 0 ∨ w = 0 then s.1 else if k = 1 ∨ prev = 0 then s.1 + 2 else s.1 + 1, s.2)).1
+    if k = 0 ∨ w = 0 then c else if k = 1 ∨ prev = 0 then c + 2 else c + 1
 
-/-- Step X1: the array of the nodes and the item links for the input `x`, with `b = 3(Z + 1)`.  It
-starts with each header's list empty, `ULINK(i) = DLINK(i) = i`, and the items linked in order
-from 0 to `N` and around.  The loop's state holds the last spacer, the next node `p`, the first
-node of the option being read, or 0 between options, and the array.  A nonzero word `w` becomes
-node `p` with `TOP(p) = w`, at the bottom of item `w`'s list, and increases `LEN(w)`.  A zero
-after an option's nodes makes node `p` the next spacer, with `ULINK(p)` the option's first node,
-and sets the previous spacer's `DLINK` to the option's last node `p - 1`.  An input that ends
-inside an option gets the same spacer after the loop. -/
+/-- Step X1: the array of `b + 2(N + 1)` words that holds the nodes and the item links for the
+input `x`, with `b = 3(Z + 1)`.  It starts with each header's list empty, `LEN(i) = 0` and
+`ULINK(i) = DLINK(i) = i`, the words of every other node 0, and the items linked in order from 0
+to `N` and around.  The loop reads the words after `x[0]`, and its state holds the latest spacer,
+the next node `p`, the first node of the current option, or 0 between options, and the array.  A
+nonzero word `w` becomes node `p` with `TOP(p) = w`, at the bottom of item `w`'s list, and
+increases `LEN(w)`.  A zero after an option's nodes makes node `p` the next spacer, with `ULINK(p)`
+the option's first node, and sets the `DLINK` of the spacer before the option to the option's last
+node `p - 1`, and any other zero changes nothing.  An input that ends inside an option gets the
+same spacer after the loop. -/
 def build (b : UInt64) (x : Array UInt64) : Array UInt64 :=
   let n := x[(0 : UInt64).toNat]!
   let t := LeanExe.build (b + 2 * (n + 1)) fun k =>

@@ -4,8 +4,8 @@ import Library.Combinatorics.DancingLinks.Build
 options before `Mc` and the first `j` nodes of option `Mc`: its size, the list of all items, the
 columns of the nodes made so far, the spacers up to `Mc` with their links, and zeros in every word
 of the nodes not yet made.  `partial_append` adds the next node, `partial_close` adds the spacer
-after a finished option, and `partial_final` turns `Partial t L M 0` into the invariant of the
-search for all items. -/
+after a finished option, and `partial_final` turns `Partial t L M 0`, for `M` options, into the
+invariant of the search for all items. -/
 
 namespace Library.Combinatorics.DancingLinks
 

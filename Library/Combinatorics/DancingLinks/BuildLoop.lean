@@ -1,13 +1,14 @@
 import Library.Combinatorics.DancingLinks.Partial
 
 /-! Step X1 as the program performs it.  `partial_init` shows that the array that `LeanExe.build`
-makes holds `Partial` before any option: every header's list is empty, the items are linked in
-order, and every node's words are 0.  The loop reads the words after the first one, and its state
-holds the last spacer, the next node, the first node of the option being read, or 0, and the
-array.  `build_loop` shows that after each prefix of the words the state matches the reader's
-state of `Read.lean`: a nonzero word adds a node by `partial_append`, and a zero after a run
-finishes the option by `partial_close`.  `build_inv` concludes that `build` leaves the invariant of
-the search for all items. -/
+makes holds `Partial` before any option: every header's list is empty, the item links run in
+order, and the first spacer's `TOP` and the words of every later node are 0.  The loop reads the
+words after the first one, and its state holds the latest spacer, the next node, the first node of
+the current option, or 0, and the array.  `BuildInv` states that after each prefix of the words
+the state matches the reader's state of `Read.lean`, and `buildStep_inv` shows that each word keeps
+it: a nonzero word adds a node by `partial_append`, and a zero after a run finishes the option by
+`partial_close`.  `build_inv` concludes, after `partial_close` for an input that ends inside an
+option, that `build` leaves the invariant of the search for all items. -/
 
 namespace Library.Combinatorics.DancingLinks
 

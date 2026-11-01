@@ -3,13 +3,13 @@ import Library.Combinatorics.DancingLinks.Count
 
 /-! The layout of the nodes and the columns of all items.  A `Layout` holds the number of items and
 the options.  Node `first k` is the first node of option `k`, the option's nodes follow, and a
-spacer follows each option, so `first (k + 1) = first k + len k + 1`, node `first 0 - 1 = N + 1`
-is the first spacer, and node `first M - 1` is the last.  `At p k m` states that node `p` is
-position `m` of option `k`.  `Cols t L C P` states that each tracked item `c ∈ C` has its column
-in `t` with the present nodes of `P` whose item is `c`.  `delAll` removes the nodes of a list in
-order, and `rstAll` restores them in the reverse order, and `rstAll_delAll` shows that the second
-undoes the first for distinct present nodes of tracked columns, the order in which Knuth's
-`uncover` reverses `cover`. -/
+spacer follows each option, so `first (k + 1) = first k + len k + 1`, node `first 0 - 1 = N + 1` is
+the first spacer, and node `first M - 1`, for `M` options, is the last.  `At p k m` states that node
+`p` is position `m` of option `k`, and `present B` is the set of the nodes whose options lie inside
+`B`.  `Cols t L C P` states that each tracked item `c ∈ C` has its column in `t` with the present
+nodes of `P` whose item is `c`.  `delAll` removes the nodes of a list in order, and `rstAll`
+restores them in the reverse order, and `rstAll_delAll` shows that the second undoes the first for
+distinct present nodes of tracked columns, the order in which Knuth's `uncover` reverses `cover`. -/
 
 namespace Library.Combinatorics.DancingLinks
 

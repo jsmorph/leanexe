@@ -3,7 +3,7 @@ import Library.Combinatorics.DancingLinks.BuildLoop
 /-! The proof that `valid` decides `Valid`.  After a prefix of the words, the loop's state holds
 the number of the current option, which each zero increases, a flag, and the marks.  The invariant
 relates them to the reader of `Read.lean`: every mark is at most the current number, an item's
-mark equals the current number exactly when the item is in the run being read, and the flag is 1
+mark equals the current number exactly when the item is in the current run, and the flag is 1
 exactly when the finished options and the run hold no repeated item and no item above `N`.  A
 nonzero word that is above `N` or already marked in its run clears the flag, and the reader's
 options at the end are the specification's. -/

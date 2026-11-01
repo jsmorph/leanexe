@@ -7,7 +7,8 @@ backward walk starts at `p - 1`, applies `F`, follows `DLINK` at the spacer befo
 its last node, and returns to `p`.  `walkFwd` shows that the forward walk is `gfold G` of
 `others`, when `F` acts as `G` on each prefix, and `walkBwd` that the backward walk undoes it, when
 `F` undoes `G` at each node.  Both need only that every prefix keeps the static words, which give
-each node's `TOP` and each spacer's links. -/
+each node's `TOP` and each spacer's links.  `hide_eq` and `unhide_eq` apply them with `del` as `G`
+and the steps `hide_step` and `unhide_step` of `Hide.lean`. -/
 
 namespace Library.Combinatorics.DancingLinks
 

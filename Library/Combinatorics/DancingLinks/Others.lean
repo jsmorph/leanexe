@@ -6,8 +6,8 @@ from `r - 1` and uncovers them, so both are walks of `Walk.lean` with `coverItem
 `uncoverItem` as the operation.  `coverFold_inv` shows that covering the items of the nodes of a
 list keeps the invariant of the remaining items, from `cover_inv`, so `coverOthers_eq` and
 `uncoverOthers_eq` follow from `walkFwd` and `walkBwd`.  `choose_mem` shows that `choose`
-returns an active item when one exists: it walks the list of active items, and the item it keeps
-is always one of them.  Which active item it returns does not affect the count. -/
+returns an active item when one exists: it walks the list of active items, and from the first item
+on, the item it keeps is one of them.  Which active item it returns does not affect the count. -/
 
 namespace Library.Combinatorics.DancingLinks
 

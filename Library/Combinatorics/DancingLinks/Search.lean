@@ -8,7 +8,7 @@ item `i`, and its loop visits the present nodes of the column of `i` in increasi
 `cover_inv` keeps.  For each node, `coverOthers` leaves the invariant of `B` without the option's
 items, the induction gives that count, and `uncoverOthers` and `next` restore the array and step
 to the next node.  The column's nodes correspond one to one to the options inside `B` that hold
-`i`, so the sum is `coversOf_rec` at `i`. -/
+`i`, so `column_sum` gives the sum as `coversOf_rec` at `i`. -/
 
 namespace Library.Combinatorics.DancingLinks
 

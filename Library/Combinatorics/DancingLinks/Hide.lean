@@ -1,15 +1,19 @@
 import Library.Combinatorics.DancingLinks.Table
 import Library.Combinatorics.DancingLinks.Program
 
-/-! Knuth's `hide(p)` and `unhide(p)` in the program's array.  `Static t L` states the words that no
-operation changes: the size of the array, the `TOP` of each option's node, and the `TOP`, `ULINK`,
-and `DLINK` of each spacer.  `others L k m` lists the nodes that `hide` removes for node `p`,
-position `m` of option `k`: the nodes after `p` up to the end of the option, and then the nodes from
-the option's first node up to `p - 1`, since the spacer after the option leads back to its first
-node.  `hide_eq` shows that `hide p t` is `delAll (others L k m) t`, and `unhide_eq` that `unhide p`
-applied to that array returns `t`, since it walks the same nodes in the reverse order.  This file
-proves the steps, `hide_step` and `unhide_step`, and the walks that compose them are in
-`Walk.lean`. -/
+/-! Knuth's `hide(p)` and `unhide(p)` in the program's array.  `Layout.Good` states that the options
+are nonempty, repeat no item, and hold items in `1..N`, as those of a valid input do, and that the
+array's size `base + 2(N + 1)` is below `2^60`, where `base = 3(Z + 1)`.  `Static t L` states the
+words that no operation changes: the size of the array, the `TOP` of each option's node and of each
+spacer, the `ULINK` of each spacer after an option, and the `DLINK` of each spacer before one.
+`others L k m` lists the nodes that `hide` removes for node `p`, position `m` of option `k`: the
+nodes after `p` up to the end of the option, and then the nodes from the option's first node up to
+`p - 1`, since the spacer after the option leads back to its first node.  `hide_step` shows that one
+step of `hide` at a present node is `del`, and `unhide_step` that one step of `unhide` at that node
+returns the array before `del`.  `Static.del` and `delAll_inv` show that removals keep the static
+words and the columns of the other nodes.  `Walk.lean` composes the steps into `hide_eq`, which
+states that `hide p t` is `delAll (others L k m) t`, and `unhide_eq`, which states that `unhide p`
+applied to that array returns `t`, since it walks the same nodes in the reverse order. -/
 
 namespace Library.Combinatorics.DancingLinks
 

@@ -8,8 +8,9 @@ of `B` in exactly one chosen option.  `coversOf_empty` gives 1 for no items, and
 gives, for any item `i` of `B`, the sum over the options inside `B` that contain `i` of the counts
 of `B` without that option's items: each cover holds exactly one option through `i`, and removing
 it leaves a cover of the rest.  `refCovers` computes the count by that recursion on lists, and
-`refCount_eq` shows that `refCount` equals `coverCount` on valid inputs, so the cases can compute
-their expected values without the specification's sum over all sets of options. -/
+`refCount_eq` shows that `refCount` equals `coverCount` on valid inputs, and `countRef_eq` that
+`countRef` equals `countSpec`, so the cases can compute their expected values without the
+specification's sum over all sets of options. -/
 
 namespace Library.Combinatorics.DancingLinks
 

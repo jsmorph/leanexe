@@ -1,7 +1,7 @@
 import Library.Combinatorics.DancingLinks.Count
 
 /-! Reading the options word by word, as step X1 does.  The state of `readStep` holds the finished
-options and the run being read: a nonzero word extends the run, and a zero finishes a nonempty
+options and the current run: a nonzero word extends the run, and a zero finishes a nonempty
 run.  `finish_read` shows that reading words from a state and then finishing the last run gives
 the finished options followed by the nonempty runs of the run and the words, as `List.splitOn`
 cuts them.  From the empty state, that is the specification's `options`, and `read_prefix`

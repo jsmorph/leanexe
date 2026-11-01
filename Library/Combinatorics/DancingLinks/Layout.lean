@@ -7,8 +7,8 @@ import LeanExe.Dialect.Lemmas
 one spacer for each option before `k`.  `nodeCount` counts, word by word, one node for each nonzero
 word and one spacer at the first word of each run, and `nodeCount_eq` shows that the count is the
 sum over the options, from the reader of `Read.lean`, so the item links begin at
-`3 (N + 2 + nodeCount x) = base`.  `layout_good` gives the conditions of `Layout.Good` for a
-valid input of fewer than `2^50` words. -/
+`3 (N + 2 + nodeCount x) = base`.  `layout_good`, in `BuildInit.lean`, gives the conditions of
+`Layout.Good` for a valid input of fewer than `2^50` words. -/
 
 namespace Library.Combinatorics.DancingLinks
 
@@ -80,13 +80,13 @@ theorem readCount_finish (s : List (List Nat) × List Nat) : readCount s = runCo
 theorem nodeCount_eq (x : Array UInt64) (hx : x.size < 2 ^ 62) :
     (nodeCount x).toNat = runCount (options x) := by
   have hsz : x.size.toUInt64.toNat = x.size := size_toUInt64 x (by omega)
-  let F : UInt64 → UInt64 × UInt64 → UInt64 × UInt64 := fun k s =>
-    (if k = 0 ∨ x[k.toNat]! = 0 then s.1
-      else if k = 1 ∨ x[(k - 1).toNat]! = 0 then s.1 + 2 else s.1 + 1, s.2)
-  show (LeanExe.loop x.size.toUInt64 ((0 : UInt64), (0 : UInt64)) F).1.toNat = _
-  have key := loop_induction (n := x.size.toUInt64) (init := ((0 : UInt64), (0 : UInt64)))
-    (f := F) (fun k s => s.1.toNat = readCount (((words x).take (k - 1)).foldl readStep ([], [])) ∧
-      s.1.toNat ≤ 2 * k) (by simp [readCount, runCount]) ?_
+  let F : UInt64 → UInt64 → UInt64 := fun k s =>
+    if k = 0 ∨ x[k.toNat]! = 0 then s
+      else if k = 1 ∨ x[(k - 1).toNat]! = 0 then s + 2 else s + 1
+  show (LeanExe.loop x.size.toUInt64 (0 : UInt64) F).toNat = _
+  have key := loop_induction (n := x.size.toUInt64) (init := (0 : UInt64))
+    (f := F) (fun k s => s.toNat = readCount (((words x).take (k - 1)).foldl readStep ([], [])) ∧
+      s.toNat ≤ 2 * k) (by simp [readCount, runCount]) ?_
   · rw [hsz] at key
     rw [key.1, readCount_finish, show x.size - 1 = (words x).length by rw [words_length],
       List.take_length, finish_read (words x) [] [] (by simp), List.nil_append, List.nil_append]
@@ -94,7 +94,7 @@ theorem nodeCount_eq (x : Array UInt64) (hx : x.size < 2 ^ 62) :
   · intro k s hk ⟨hs1, hs2⟩
     rw [hsz] at hk
     have hk64 : (UInt64.ofNat k).toNat = k := UInt64.toNat_ofNat_of_lt' (show k < 2 ^ 64 by omega)
-    show (F (UInt64.ofNat k) s).1.toNat = _ ∧ (F (UInt64.ofNat k) s).1.toNat ≤ _
+    show (F (UInt64.ofNat k) s).toNat = _ ∧ (F (UInt64.ofNat k) s).toNat ≤ _
     simp only [F]
     rcases Nat.eq_zero_or_pos k with rfl | hk0
     · rw [show UInt64.ofNat 0 = 0 from rfl, ite_eq_left (Or.inl rfl)]
