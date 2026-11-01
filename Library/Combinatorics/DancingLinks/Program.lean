@@ -92,12 +92,12 @@ def relinkItem (b i : UInt64) (t : Array UInt64) : Array UInt64 :=
   let r := t[(b + 2 * i + 1).toNat]!
   (t.set! (b + 2 * l + 1).toNat i).set! (b + 2 * r).toNat i
 
-/-- Knuth's `cover(i)`: removes item `i` from the active items and hides every option that holds
-it.  TAOCP hides the options first, and the two parts change different words, so their order does
-not matter. -/
-def coverItem (b i : UInt64) (t : Array UInt64) : Array UInt64 := hideColumn i (unlinkItem b i t)
+/-- Knuth's `cover(i)`: hides every option that holds item `i`, and then removes `i` from the list
+of active items. -/
+def coverItem (b i : UInt64) (t : Array UInt64) : Array UInt64 := unlinkItem b i (hideColumn i t)
 
-/-- Knuth's `uncover(i)`: puts item `i` back and unhides every option that holds it. -/
+/-- Knuth's `uncover(i)`: puts item `i` back into the list of active items, and then unhides every
+option that holds it, the reverse of the order of `coverItem`. -/
 def uncoverItem (b i : UInt64) (t : Array UInt64) : Array UInt64 :=
   unhideColumn i (relinkItem b i t)
 

@@ -1,4 +1,4 @@
-import Library.Combinatorics.DancingLinks.Hide
+import Library.Combinatorics.DancingLinks.Walk
 import Mathlib.Data.Finset.Sort
 
 /-! The loops of Knuth's `cover(i)` and `uncover(i)` over a column.  `colList Q` lists the present
@@ -195,13 +195,6 @@ theorem mem_others {L : Layout} {k m q : Nat} (hm : m < L.len k) :
     rcases Nat.lt_or_gt_of_ne hne with h | h
     · right; omega
     · left; omega
-
-theorem others_nodup (L : Layout) (k m : Nat) : (L.others k m).Nodup := by
-  unfold others
-  refine List.nodup_append.mpr ⟨List.nodup_range' .., List.nodup_range' .., ?_⟩
-  intro x hx y hy
-  simp only [List.mem_range'_1] at hx hy
-  omega
 
 theorem at_of_isNode {L : Layout} {r : Nat} (h : L.IsNode r) :
     L.At r (L.optOf r) (r - L.first (L.optOf r)) := (L.isNode_iff r).mp h
