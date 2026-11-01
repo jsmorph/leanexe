@@ -40066,7 +40066,7 @@ The specification models each side as a list of resting orders sorted by price a
 The refinement proof dominates the work.  The design also assumes that the verified compiler updates the array fields of an owned record in place inside a loop state, which the manual lists as supported but which no fixture of this size exercises, so a small probe comes before the implementation grows.  The probe compiles a record of word arrays that a loop updates with `set!` and checks with the allocation counters that no update copies an array.
 
 - [x] English description, list specification, and a fresh agent's review of the specification against the description.
-- [ ] The specification's theorems.
+- [x] The specification's theorems.
 - [x] Probe of in-place updates to the array fields of an owned record in a `repeatWhile` state.
 - [ ] Array implementation, its native comparison with the specification on random command streams, and an independent Python reference.
 - [ ] Refinement proof.
@@ -40148,3 +40148,9 @@ An exported function that takes four arrays one by one, updates three, and retur
 
 - [x] Probe of in-place updates.
 - [ ] Implementation, with the native comparison against `Spec.run` and the Python reference.
+
+## 2026-10-31: The order book specification's theorems
+
+[The theorems](Demos/OrderBook/Theorems.lean) state what the requirements say of the specification.  `empty_valid`, `step_valid`, and `run_valid` show that `Valid` holds of the empty book and after every step and stream whose next id stays below 2^64 − 1, and `step_nextId` and `step_accepted` show that the next id advances exactly when an order is accepted.  `fill_shape` states that matching exhausts a prefix of the opposite side, at the resting orders' prices and only with orders of other accounts at acceptable prices, and then stops or trades part of the next order, and `fill_prefix`, `fill_traded`, `fill_total`, `fill_stop`, `submit_conserves`, and `submit_opposite` follow the makers and the quantities.  `step_cancel` and `step_reduce` state the effect of a cancel and a reduce that pass their checks, and the `rejects_` theorems state for each rejection reason the conjunction of the checks before it, which pass, and its own, which fails.  `step_bounded`, `step_events_length`, and `top_bound` bound the events' fields, their number, and the top-of-book totals, and `records_append` and `run_append` show that a stream run in two parts, the first a whole number of records, gives the book and the events of one run.
+
+I wrote the statements and checked that they elaborate, and a fresh agent proved them without changing a statement or a definition, which a comparison of the two files confirmed.  The proofs import only the specification and use only `propext`, `Classical.choice`, and `Quot.sound`.  `Demos.lean` imports the module, so the default build checks it.
