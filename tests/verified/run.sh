@@ -254,7 +254,7 @@ check_axioms() {
 }
 if [ -z "$case_module" ] || [ "$case_module" = "slew" ]; then
   tests/slew/edges.sh "$out/slew.wasm"
-  check_axioms tests/slew/Axioms.lean
+  tools/leanrun --timeout 10m lake env lean tests/slew/Axioms.lean
   if [ "$case_module" = "slew" ]; then
     check_file slew Demos.Slew.Verified Demos/Slew/File.lean
   fi

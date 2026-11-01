@@ -40209,4 +40209,8 @@ Fresh emissions and runs checked the sizes of emitted modules and the printed ou
 The docstring of `PowFile.lean` gave the module's earlier size, 11,156 bytes, and now gives 11,418.  The vector test of the SHA-2 programs ran in 447 s against the SHA-512 guide's six minutes, and the check of the SHA-3 transcription in 4,660 s against its guide's three hours, so the guides now give seven and a half minutes and 80 minutes.  Both durations depend on the host, and the guides give them as the expected order of the run time.
 
 - [x] Sizes, printed outputs, and bound equations of the guides checked, and the differing ones corrected.
-- [ ] Make `check_axioms` and the slew audit agree, so that the slew run and the full run of `tests/verified/run.sh` pass.
+- [x] Make `check_axioms` and the slew audit agree, so that the slew run and the full run of `tests/verified/run.sh` pass.
+
+## 2026-11-01: The slew audit in the module driver
+
+The energy work replaced the driver's call of the slew audit with `check_axioms`, which counts the reports of `#print axioms` and fails when it finds none, but `tests/slew/Axioms.lean` checks its theorems with its own command, which throws an error on a forbidden axiom and logs one summary line.  `tests/verified/run.sh --cases slew` and the full run therefore failed after a passing audit, which no gate of the energy work ran.  The driver again runs the slew audit as it did before the energy work, so the audit's exit status decides, and `check_axioms` keeps the energy audit, whose reports it reads.
