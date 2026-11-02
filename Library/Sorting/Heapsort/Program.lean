@@ -25,10 +25,9 @@ child while that child holds a larger word.  When the subtrees of the children o
 the result is a heap from `i` down.  Knuth's steps H6 and H7 move the larger child up into the
 vacant node and step H8 stores the word once, and the program exchanges the word with the child at
 each level.  Each branch names the child it moves to, `2i + 2` when that child exists and holds a
-larger word than `2i + 1`, and `2i + 1` otherwise, so that the new index reads no array: the
-compiler copies an array that one argument of a tail call reads while a later argument consumes
-it.  The index comes before the array, so that the call uses the array last and the compiler
-updates it in place. -/
+larger word than `2i + 1`, and `2i + 1` otherwise, so that the new index reads no array.  The index
+comes before the array, so that the call uses the array last and the compiler updates it in
+place. -/
 def siftDown (i n : UInt64) (xs : Array UInt64) : Array UInt64 :=
   if i < n / 2 then
     if i + i + 2 < n ∧ xs[(i + i + 1).toNat]! < xs[(i + i + 2).toNat]! then

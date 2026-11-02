@@ -19,6 +19,7 @@ import TestSupport.Modules.MillerRabin
 import TestSupport.Modules.ModInverse
 import TestSupport.Modules.MultiPrecision
 import TestSupport.Modules.StraightInsertion
+import TestSupport.Modules.Quicksort
 import TestSupport.Modules.PrimeFactors
 import TestSupport.Modules.Sampling
 import TestSupport.Modules.TopologicalSort
@@ -89,6 +90,9 @@ def cases : IO Unit := do
   for xs in Library.Sorting.StraightInsertion.insertionInputs do
     IO.println s!"straightInsertion|straightInsertion|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.StraightInsertion.expected xs.toArray).toList.map toString)}]|1|1"
+  for xs in Library.Sorting.Quicksort.quicksortInputs do
+    IO.println s!"quicksort|quicksort|array-u64|{arrU xs}|\
+      [{", ".intercalate ((Library.Sorting.Quicksort.expected xs.toArray).toList.map toString)}]|1|2"
   for xs in Library.Sorting.MergeSort.mergeInputs do
     IO.println s!"mergeSort|mergeSort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.MergeSort.expected xs.toArray).toList.map toString)}]"

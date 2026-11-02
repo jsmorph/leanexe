@@ -807,6 +807,48 @@ def bindArgs (fn : Lean.Expr) : List Lean.Expr → List Bool → Array Lean.Expr
     else bindArgs fn as bs (newArgs.push a) fvars
   | a :: as, [], newArgs, fvars => bindArgs fn as [] (newArgs.push a) fvars
 
+/-- `fn args`, with each argument that `early` marks bound by a `let` around the application, in
+order, and each occurrence of a bound argument in the other arguments replaced by its variable.  The
+result is equal to `fn args` by `zeta`. -/
+def bindEarly (fn : Lean.Expr) (args : List Lean.Expr) (early : List Bool) : MetaM Lean.Expr := do
+  let vals := (args.zip early).filterMap fun (a, b) => if b then some a else none
+  let rec go : List Lean.Expr → Array Lean.Expr → MetaM Lean.Expr
+    | v :: rest, xs => do withLetDecl `w (← inferType v) v fun x => go rest (xs.push x)
+    | [], xs => do
+      let pairs := vals.zip xs.toList
+      let sub := fun (e : Lean.Expr) => e.replace fun s => (pairs.find? (·.1 == s)).map (·.2)
+      mkLetFVars xs (mkAppN fn (args.map sub).toArray)
+  go vals #[]
+
+/-- `e` with each projection of a pair and each projection of a structure's constructor replaced by
+the component, at every subterm. -/
+def reduceProjections (e : Lean.Expr) : MetaM Lean.Expr :=
+  Meta.transform e (post := fun s => do
+    let s ← projReduce s
+    let some (i, p) ← structProj? s | return .done s
+    let .const c _ := p.getAppFn | return .done s
+    let some (.ctorInfo ctor) := (← getEnv).find? c | return .done s
+    let args := p.getAppArgs
+    unless args.size == ctor.numParams + ctor.numFields do return .done s
+    return .visit args[ctor.numParams + i]!)
+
+/-- The scalar arguments of a call to bind before its other arguments: each scalar argument that is
+not a place and contains a variable of `vars` with a heap type that also occurs in an argument at an
+owned parameter, which `bind` marks.  Both arguments count occurrences after `reduceProjections`.
+Binding the scalar arguments first lets them read the variable before the owned argument consumes
+it, so that the code updates the variable's heap data in place. -/
+def earlyArgs (vars : List (Lean.Expr × Ty)) (args : List Lean.Expr) (params : List Ty)
+    (mode : Nat → Mode) (bind : List Bool) : MetaM (List Bool) := do
+  let owned ← ((args.zip bind).zipIdx.filter fun ((_, b), i) => b && mode i == .owned).mapM
+    fun ((a, _), _) => reduceProjections a
+  let consumed := vars.filterMap fun (x, ty) =>
+    if !ty.scalar && x.isFVar && owned.any (·.containsFVar x.fvarId!) then some x else none
+  (args.zip params).mapM fun (a, ty) => do
+    if !ty.scalar || consumed.isEmpty then return false
+    let r ← reduceProjections a
+    unless consumed.any fun x => r.containsFVar x.fvarId! do return false
+    return !(← isPlace a)
+
 /-- The source variable whose key in the context is `key`, and its type.  The key of a variable
 is its Lean variable, or, for a leaf of a flat field of a matched record, the leaf's projection of
 the field. -/
@@ -4118,6 +4160,9 @@ where
       if callee.sig.mode i = .owned then return !(← projReduce a).isFVar
       return !(← isPlace a)
     if bind.any id then
+      let early ← earlyArgs c.vars args.toList callee.sig.params callee.sig.mode bind
+      if early.any id then
+        return some (← reflectAs (← bindEarly e.getAppFn args.toList early) e)
       return some (← reflectAs (← bindArgs e.getAppFn args.toList bind #[] #[]) e)
     let reflected ← args.toList.mapM (reflect c)
     let nilArgs ← mkAppOptM ``Args.nil #[some c.sigs, some c.ctx]

@@ -86,6 +86,9 @@ partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
       if t.signature.mode i == .owned then return !(← projReduce a).isFVar
       return !(← isPlace a)
     if bind.any id then
+      let early ← earlyArgs c.vars args.toList t.signature.params t.signature.mode bind
+      if early.any id then
+        return ← reflectTailBody t c (← bindEarly e.getAppFn args.toList early)
       return ← reflectTailBody t c (← bindArgs e.getAppFn args.toList bind #[] #[])
     let rs ← args.toList.mapM (reflect c)
     let nilArgs ← mkAppOptM ``Args.nil #[some c.sigs, some c.ctx]
