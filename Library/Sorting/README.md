@@ -1,11 +1,18 @@
 # Sorting
 
-[Insertion sort](Insertion/Program.lean) inserts each word at the count of smaller words in the
-accumulated array.  It takes quadratic time and uses `UInt64` comparisons.  [The compiled
-module](Insertion/Compiled.lean) has the verified compiler's execution and allocation theorems.
-[The insertion example](../../Verified/Examples/Insert.lean) compiles the same function with an
-allocation bound, `sortInsert_bound`, and its cases run on the library's module as well.
-Sortedness and permutation proofs remain future work.
+[Insertion sort](Insertion/Program.lean), `sortInsert`, builds a new array: it counts the words of
+the accumulated array below the next word and inserts the word at that count with `insertAt`, in
+quadratic time.  [Its proof](Insertion/Proof.lean) shows that the result is the array's elements in
+nondecreasing order, and [the compiled module](Insertion/Compiled.lean) states the module's call,
+`sortInsert_callSpec`.  [The insertion example](../../Verified/Examples/Insert.lean) compiles the
+same function with an allocation bound, `sortInsert_bound`, and its cases run on the library's
+module as well.
+
+[Straight insertion](StraightInsertion/README.md) is Algorithm S of TAOCP §5.2.1.  It moves each
+larger word one place right to make room for the next word, in the array's own block, and allocates
+nothing.  Its proofs show that the module returns the same nondecreasing permutation, and both
+insertion sorts reach `List.mergeSort` through the uniqueness of a sorted permutation, which [the
+sorted lists](Sorted.lean) state.
 
 [Heapsort](Heapsort/README.md) is Algorithm H of TAOCP §5.2.3.  It sorts the array in its own block
 and allocates nothing, and its proofs show that the module returns the array's elements in

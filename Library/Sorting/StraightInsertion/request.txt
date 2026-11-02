@@ -1,0 +1,2 @@
+Sort an array of UInt64 words into nondecreasing order with straight insertion, Algorithm S of
+TAOCP section 5.2.1, in place, using no storage beyond the array.

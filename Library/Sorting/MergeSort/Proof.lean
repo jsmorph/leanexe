@@ -1,5 +1,6 @@
 import Library.Sorting.MergeSort.Program
 import Library.Sorting.MergeSort.Spec
+import Library.Sorting.Sorted
 import LeanExe.Dialect.Lemmas
 
 /-! The proof that merge sort returns the array's elements in nondecreasing order.  `passList w l`
@@ -18,10 +19,6 @@ open LeanExe.Dialect
 theorem wle_trans {a b c : UInt64} (h1 : a ≤ b) (h2 : b ≤ c) : a ≤ c :=
   UInt64.le_iff_toNat_le.mpr
     (Nat.le_trans (UInt64.le_iff_toNat_le.mp h1) (UInt64.le_iff_toNat_le.mp h2))
-
-theorem wle_antisymm {a b : UInt64} (h1 : a ≤ b) (h2 : b ≤ a) : a = b :=
-  UInt64.toNat_inj.mp
-    (Nat.le_antisymm (UInt64.le_iff_toNat_le.mp h1) (UInt64.le_iff_toNat_le.mp h2))
 
 theorem wle_total (a b : UInt64) : a ≤ b ∨ b ≤ a := by
   rcases Nat.le_total a.toNat b.toNat with h | h
@@ -438,11 +435,7 @@ theorem mergeSort_eq (xs : Array UInt64) (hsize : xs.size < 2 ^ 64) :
     (runsSorted_one _)
   rw [hN] at hl
   simp only [UInt64.reduceToNat] at hl
-  have hms := List.pairwise_mergeSort le_trans_bool le_total_bool xs.toList
-  have heq := List.Perm.eq_of_pairwise (le := (· ≤ ·))
-    (fun a b _ _ hab hba => wle_antisymm hab hba) hsorted (pairwise_bool.mp hms)
-    (hperm.trans (List.mergeSort_perm _ _).symm)
   unfold mergeSort expected
-  rw [← heq, ← hl, Array.toArray_toList]
+  rw [← Library.Sorting.eq_mergeSort_of_sorted_perm hsorted hperm, ← hl, Array.toArray_toList]
 
 end Library.Sorting.MergeSort

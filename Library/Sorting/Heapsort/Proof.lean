@@ -1,5 +1,6 @@
 import Library.Sorting.Heapsort.Program
 import Library.Sorting.Heapsort.Spec
+import Library.Sorting.Sorted
 import LeanExe.Dialect.Lemmas
 
 /-! The proof that heapsort returns the array's elements in nondecreasing order.  Every step of
@@ -33,11 +34,6 @@ theorem wle_refl (a : UInt64) : a ≤ a := UInt64.le_iff_toNat_le.mpr (Nat.le_re
 theorem wle_antisymm {a b : UInt64} (h1 : a ≤ b) (h2 : b ≤ a) : a = b :=
   UInt64.toNat_inj.mp
     (Nat.le_antisymm (UInt64.le_iff_toNat_le.mp h1) (UInt64.le_iff_toNat_le.mp h2))
-
-theorem wle_total (a b : UInt64) : a ≤ b ∨ b ≤ a := by
-  rcases Nat.le_total a.toNat b.toNat with h | h
-  · exact Or.inl (UInt64.le_iff_toNat_le.mpr h)
-  · exact Or.inr (UInt64.le_iff_toNat_le.mpr h)
 
 /-! ### Exchanges -/
 
@@ -412,15 +408,7 @@ theorem heapsort_eq (xs : Array UInt64) (hsize : xs.size < 2 ^ 64) :
     simp only [Array.getElem_toList]
     have := hsorted i j (Nat.le_of_lt hij) (by omega)
     rwa [getElem!_pos _ i hi, getElem!_pos _ j hj] at this
-  have hms := List.pairwise_mergeSort (le := fun a b : UInt64 => decide (a ≤ b))
-    (fun a b c hab hbc => by simp only [decide_eq_true_eq] at *; exact wle_trans hab hbc)
-    (fun a b => by rcases wle_total a b with h | h <;> simp [h]) xs.toList
-  have hms' : (xs.toList.mergeSort fun a b => decide (a ≤ b)).Pairwise (· ≤ ·) :=
-    hms.imp fun h => by simpa using h
-  have heq := List.Perm.eq_of_pairwise (le := (· ≤ ·))
-    (fun a b _ _ hab hba => wle_antisymm hab hba) hpair hms'
-    (hp.trans (List.mergeSort_perm _ _).symm)
   unfold expected
-  rw [← heq, Array.toArray_toList]
+  rw [← Library.Sorting.eq_mergeSort_of_sorted_perm hpair hp, Array.toArray_toList]
 
 end Library.Sorting.Heapsort

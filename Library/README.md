@@ -9,7 +9,7 @@ definitions and state the properties of the resulting WebAssembly.
 | Area | Forms | Contents |
 |---|---|---|
 | [Random generators](../index.md#3-pseudorandom-number-generators) | V S F C | LCG, Park–Miller, xorshift64, SplitMix64, word-to-float conversion, and shared orbit lemmas. |
-| [Sorting](Sorting/README.md) | V S F C A | Insertion sort, heapsort, and merge sort on arrays of `UInt64`. |
+| [Sorting](Sorting/README.md) | V S F C A | Insertion sort, straight insertion, heapsort, and merge sort on arrays of `UInt64`. |
 | [Arrays](Arrays/README.md) | V S F C | Counting, first-match search, binary search, ordered removal, bounded filtering, prefix clearing, repetition, and word scaling. |
 | [Lists](Lists/README.md) | V F C | Word-list range, sum, reversal, and increment. |
 | [Trees](Trees/README.md) | V F C | Binary tree of words, structural operations, and search-tree insertion. |
@@ -56,10 +56,9 @@ under the representation, ownership, memory, and recursion premises.  Mathematic
 further properties: period, rounding error, or an equation with an independent specification.
 The named statements determine each function's guarantees.
 
-Insertion sort has the generated theorems of its module, and [the insertion
-example](../Verified/Examples/Insert.lean) proves an allocation bound, `sortInsert_bound`, for its
-own compilation of the function.  Sortedness and permutation theorems for insertion sort, and
-ordering and membership theorems for search-tree insertion, remain future work.  The reduction and
+[The insertion example](../Verified/Examples/Insert.lean) proves an allocation bound,
+`sortInsert_bound`, for its own compilation of insertion sort.  Ordering and membership theorems
+for search-tree insertion remain future work.  The reduction and
 linear-algebra implementations preserve their operation order, wrapping word arithmetic, default
 reads from short arrays, and floating-point exceptional cases.
 

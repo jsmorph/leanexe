@@ -40504,3 +40504,28 @@ The merge of main into taocp, which brings the order book's process and the remo
 | `tests/native/verified.sh` with CompCert 3.18 | 23:19 to 23:32 | 44,546 cases and 3,322 module cases passed, 0 failed |
 
 The log has no error and no `sorry` warning.  Its 11,838 axiom reports name only `propext`, `Classical.choice`, and `Quot.sound`, apart from the `native_decide` axiom of the pinned CodeLib dependency's `arithmetic_examples`, which earlier entries record.  The native driver translated every module of the registry, so it left no case unrun.
+
+## 2026-11-01: The second batch of TAOCP algorithms
+
+The user chose the second batch of the proposal in the order below, from easiest to hardest, with the layout, reviews, tests, and documents of [the first batch](#2026-10-31-taocp-algorithms-in-the-library).  The proposal applied the first batch's four tests: a short specification independent of the method, an implementation harder to get right than its specification, compiler features with little coverage, and a use in the repository.  It left out Karatsuba multiplication, which loses to Algorithm M at the four words of a signature verifier, and Schorr–Waite marking, which nothing in the repository would use.
+
+| Order | Algorithm | TAOCP | Module |
+|---|---|---|---|
+| 1 | Straight insertion, and the proofs of `sortInsert` | 5.2.1 S | `Library/Sorting/StraightInsertion`, `Library/Sorting/Insertion` |
+| 2 | Shuffling and sampling | 3.4.2 P, S, R | |
+| 3 | Quicksort | 5.2.2 Q | |
+| 4 | Selection | 5.3.3 | |
+| 5 | Tree search and insertion on `KeyTree` | 6.2.2 T | `Library/Trees/WordTree` |
+| 6 | Union–find | 2.3.3 E | |
+| 7 | Balanced trees, insertion and then deletion | 6.2.3 A | |
+
+The proposal named the library's `sortInsert` as Algorithm S, but that program counts the words of a growing array that are smaller than the next word and inserts the word there with `insertAt`.  Algorithm S moves each larger word one place to the right in the array itself, and step Q9 of Algorithm Q is the same pass over the whole array, so quicksort can call the new module's function.  The first item is therefore a module of its own for Algorithm S, together with the sortedness and permutation proofs of `sortInsert`, which the sorting README and the index list as open.  `sortInsert` keeps its module, since the insertion example, the native benchmark, and the library cases compile or call it.
+
+The first batch recorded three restrictions of the compiler that quicksort's partition loop is likely to meet: the copy of an array that one component of a tail call's state reads while a later component consumes it, the reflector's requirement that both branches of an `if` at a loop body's result agree in `Expr.bodyPaid`, and the tail-loop proof's failure on a `let`-bound index.  The proposal recommends removing them in the compiler before quicksort, a decision that goes to the user with a design at that point.
+
+`shift` of straight insertion holds a vacant position and tests `0 < i` before it reads `xs[i - 1]`, and the loop of `straightInsertion` passes `acc[j]` and `acc` to `shift` in one call.  The generated bounds of both functions are 0, so that call, which is no tail call, copies no array, and the generated `trapFree` theorem has no call-depth premise, since the compiler translates the tail recursion of `shift` into a loop.  The proof states one insertion on lists with Mathlib's `orderedInsert (· < ·)`, which places a word after every word at most it, as step S3 does, and the case of a move needs no sortedness.  [The sorted lists](Library/Sorting/Sorted.lean) hold `eq_mergeSort_of_sorted_perm`, the uniqueness of a sorted permutation, which the proofs of straight insertion and `sortInsert` use and which replaces the same argument in heapsort and merge sort.
+
+The proof of `sortInsert` shows that its inner loop counts the words below the next word and that an insertion at that count keeps a sorted list sorted.  Its call theorem is a `Verified.CallSpec`, since the function borrows its input, and its file theorems hold against the module written before the change, so the module's bytes are unchanged.  Two reviews of straight insertion's specification found no input on which it disagrees with the request, and [the review](Library/Sorting/StraightInsertion/review.md) records their corrections.  `tests/verified/run.sh --cases straightInsertion` and `tests/native/verified.sh --module straightInsertion` passed all 66 cases, a build of the whole library passed 10,598 jobs, and both modules' file theorems checked with only the permitted axioms.
+
+- [x] Straight insertion: request, specification and review, program, proof, call theorem, bound 0, cases in Wasmtime and native C, README, index.
+- [x] `sortInsert`: proof of `expected`, call theorem, README and index.
