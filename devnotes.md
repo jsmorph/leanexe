@@ -40633,7 +40633,7 @@ With the added trees, `tests/verified/run.sh --cases treeSearch` and `tests/nati
 
 - [x] Two specification reviews.
 - [x] Cases in Wasmtime and native code, file theorems, commit.
-- [ ] Library and test-support build after the reflector change, push.
+- [x] Library and test-support build after the reflector change, push.
 
 ### Equivalence classes: Algorithm E
 
@@ -40670,7 +40670,7 @@ The first case run on minideb2 passed all 1,248 cases in Wasmtime and in CompCer
 - [x] Two specification reviews.
 - [x] Byte comparison of every registry module: no module changed.
 - [x] Cases in Wasmtime and native code after the reviews, file theorems, commit.
-- [ ] Library and test-support build after the reflector change, push.
+- [x] Library and test-support build after the reflector change (10,627 jobs on edgexpert), push.
 
 ### Balanced trees: deletion
 
