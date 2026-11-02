@@ -40515,7 +40515,7 @@ The user chose the second batch of the proposal in the order below, from easiest
 | 2 | Shuffling and sampling | 3.4.2 P, S, R | |
 | 3 | Quicksort | 5.2.2 Q | |
 | 4 | Selection | 5.3.3 | |
-| 5 | Tree search and insertion on `KeyTree` | 6.2.2 T | `Library/Trees/WordTree` |
+| 5 | Tree search and insertion on `KeyTree` | 6.2.2 T | `Library/Trees/Search` |
 | 6 | Union–find | 2.3.3 E | |
 | 7 | Balanced trees, insertion and then deletion | 6.2.3 A | |
 
@@ -40616,3 +40616,21 @@ The two specification reviews, which [the review](Library/Sorting/Find/review.md
 - [x] Selection: request, specification, program, proofs, module, README, index.
 - [x] Selection: the two specification reviews and the cases in Wasmtime and native code.
 - [x] Selection: library build, file theorems, commit.
+
+### Tree search and insertion: Algorithm T with reversed links
+
+Item 5 of the batch is Algorithm T of TAOCP §6.2.2 on `KeyTree`, in the module `treeSearch` of `Library/Trees/Search`.  The library's `KeyTree.insert` computes the tree of Algorithm T by recursion, and the compiler gives it a call depth, so its code traps when the search passes 1,000 nodes, which a tree built from increasing keys reaches.  Knuth's algorithm keeps no stack, so the insertion follows the path in a loop, `descend`, that rebuilds each node it passes with the path above it in place of the child it enters, and returns in a second loop, `ascend`, that restores the links.  A comparison of the key with a node's key tells `ascend` which field holds the path, so the reversed nodes need no mark, and the path type is `KeyTree` itself.  A separate path type with a `KeyTree` field would not compile, since a recursive type's fields may hold only words, arrays, buffers, flat types, or the type itself.  Each step takes apart one node and builds one node of the same layout, which the ownership rules rebuild in the same block, so the generated bound charges only the new node's 72 bytes.  The technique is the link reversal of Schorr and Waite ([CACM 10(8), 1967](https://doi.org/10.1145/363534.363554)).
+
+The first compilation failed in `addTailBounds` with "source equality has a non-finite argument domain … hasNull = true".  `sourceExprEq` in `Verified/Reflect/SourceEq.lean` proves that the tail body's expansion equals an ordinary reflection of the same right-hand side, and when the kernel cannot decide the equality of two terms it descends into their arguments, through functions only when their domain is `Fin n`.  The empty branch of a match on a recursive type is a function of the proof that the type has a null constructor, and when that branch holds a call or a node construction, the call's arguments and the node's fields are functions over `Fin n` that `renameFuns` leaves stuck under the binder.  Probes showed the failure for every such empty branch, including `.node .leaf x .leaf` alone, and earlier tail functions over recursive types had empty branches that return a variable or `.leaf`.  `sourceExprEq` now descends through a function whose domain is a proposition with the hypothesis as a local and closes with `funext`.  The function only produces proofs, and no caller catches its error to fall back on another translation, so the change can make only a failing compilation succeed and changes no emitted module.
+
+The specification states Algorithm T as `algorithmT x t : Bool × KeyTree`, a recursion with the flag of the search and the tree afterward, which extends Knuth's steps to the empty tree and follows the same comparisons on a tree that is not a search tree.  `SearchTree x t` states the guarantees on a binary search tree, whose keys in symmetric order increase: the search succeeds exactly when the key is present, the tree afterward is a search tree, and its keys are the old keys with the new key inserted in order by `List.orderedInsert`.  `descend_eq` states the link reversal by induction on the tree for every path, and the properties follow by induction with the keys of the left subtree below the root and those of the right subtree above it.  `descend_bound` evaluates the generated `Verified.Tail.costAt` by induction on the tree with `costAt_rank_eq` and `rank_lt`, rewriting only the step's value at the current state: a `simp` that unfolds the step also unfolds it inside the remaining cost, and the generated bound equation can no longer fold that cost back.  `algorithmT_snd`, `mem_keys_insert`, and `ordered_insert` give the ordering and membership theorems of the library's `KeyTree.insert`, which the index listed as open.
+
+The two specification reviews, which [the review](Library/Trees/Search/review.md) records, found no input on which `algorithmT` disagrees with the request.  Both found that the statements on storage are weaker than the request's words, since the bound on `top` counts no block from the free list and no statement relates the blocks of the result to those of the argument, and the comments now say so, as they say that the reading of the call stack rests on the compiler's rule from the manual.  Both found two false claims in the inputs' docstring and inputs that no case covered, and the cases gained a chain of 1,000 keys, a left chain down which the key 0 passes 10,000 nodes, a search tree of 2,000 keys whose deepest path changes direction at every node, and a tree with an equal key below the node that holds it.  The first case run, before these additions, passed all 490 cases in Wasmtime and in CompCert's C on minideb2.
+
+- [x] Reflector: tail bounds through the empty branch of a match on a recursive type.
+- [x] Request, specification, program, proofs, module, bound, file theorems.
+With the added trees, `tests/verified/run.sh --cases treeSearch` and `tests/native/verified.sh --module treeSearch` on minideb2 passed all 552 cases, a search and an insertion for each of 276 inputs, and the file theorems of `treeSearch.wasm` name only the permitted axioms.
+
+- [x] Two specification reviews.
+- [x] Cases in Wasmtime and native code, file theorems, commit.
+- [ ] Library and test-support build after the reflector change, push.

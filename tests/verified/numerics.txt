@@ -107,6 +107,7 @@ libceilsqrt:Library.Numerics.Arithmetic.CeilSqrt.Compiled:Library/Numerics/Arith
 libbounds:Library.Numerics.Bounds.Compiled:Library/Numerics/Bounds/File.lean
 libminmod:Library.Numerics.Limiters.Minmod.Compiled:Library/Numerics/Limiters/Minmod/File.lean
 libtrees:Library.Trees.WordTree.Compiled:Library/Trees/WordTree/File.lean
+treeSearch:Library.Trees.Search.Compiled:Library/Trees/Search/File.lean
 increment:Examples.Increment.Compiled:Examples/Increment/File.lean
 below100:Examples.Below100.Compiled:Examples/Below100/File.lean
 removeZero:Examples.RemoveZero.Compiled:Examples/RemoveZero/File.lean

@@ -1,0 +1,7 @@
+Search a binary tree of UInt64 keys, the library's KeyTree, for a key, and insert the key when the
+search fails, with Algorithm T of TAOCP section 6.2.2, tree search and insertion.  The search must
+report whether it finds the key and leave the tree unchanged.  The insertion must put a new node
+with the key in place of the empty subtree where the search ends and change no other link, reuse
+the tree's nodes, allocate no node but the new one, and run with a call stack that does not grow.
+On a binary search tree, the search must succeed exactly when the key is in the tree, and the tree
+after an insertion must be a binary search tree with the keys of the old tree and the new key.

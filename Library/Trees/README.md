@@ -10,8 +10,12 @@ fixed word and child fields.  [The compiled module](WordTree/Compiled.lean) prov
 the verified compiler's representation, ownership, memory, and recursion premises.  [The
 derivation](WordTree/Reflected.lean) runs `verified_recursive_type` for `KeyTree` in a module apart
 from the encoding, so that the verified compiler's programs over the type share one set of
-conversions and lemmas.  Ordering and membership proofs for search-tree insertion remain future
-work.
+conversions and lemmas.
+
+[Tree search and insertion](Search/README.md) states Knuth's Algorithm T on `KeyTree` and proves
+that the library's `insert` gives the tree of Algorithm T, keeps a binary search tree a binary
+search tree, and adds the new key to the keys of any tree.  Its module compiles a search and an
+insertion that run as loops, so a tree of any depth needs no call-depth premise.
 
 [The tree example](../../Examples/Trees/README.md) adds operations of its own over `KeyTree`, which
 its verified compilation compiles, with the library's `size`, `sum`, `incr`, and `insert`, into the

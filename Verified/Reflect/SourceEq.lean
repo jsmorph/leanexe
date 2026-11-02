@@ -8,6 +8,10 @@ partial def sourceExprEq (left right : Lean.Expr) : MetaM Lean.Expr := do
   if ← kernelDefEq left right then return ← rflEq left right
   let type ← kernelWhnf (← inferType left)
   if let .forallE _ domain _ _ := type then
+    if ← isProp domain then
+      let all ← withLocalDeclD `h domain fun h => do
+        mkLambdaFVars #[h] (← sourceExprEq (mkApp left h) (mkApp right h))
+      return ← mkAppM ``funext #[all]
     let (``Fin, #[length]) := (← kernelWhnf domain).getAppFnArgs
       | throwError "verified_compile: source equality has a non-finite argument domain {domain}"
     let some n := natOf (← kernelWhnf length)

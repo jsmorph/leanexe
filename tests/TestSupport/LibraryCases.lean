@@ -24,6 +24,7 @@ import TestSupport.Modules.Find
 import TestSupport.Modules.PrimeFactors
 import TestSupport.Modules.Sampling
 import TestSupport.Modules.TopologicalSort
+import TestSupport.Modules.TreeSearch
 
 namespace TestSupport.LibraryCases
 
@@ -96,6 +97,14 @@ def cases : IO Unit := do
       [{", ".intercalate ((Library.Sorting.Quicksort.expected xs.toArray).toList.map toString)}]|1|2"
   for (xs, k) in Library.Sorting.Find.selectInputs do
     IO.println s!"find|select|i64|{arrU xs} {u k}|{Library.Sorting.Find.expected xs.toArray k}|0|1"
+  for (x, t) in Library.Trees.Search.searchInputs do
+    let r := Library.Trees.Search.algorithmT x t
+    let n := (Library.Trees.Search.keys t).length
+    let m := (Library.Trees.Search.keys r.2).length
+    let tree := s!"tree-u64:{Examples.Trees.KeyTree.describe t}"
+    IO.println s!"treeSearch|search|i64|{u x} {tree}|{if r.1 then 1 else 0}|{n}|{n}"
+    IO.println s!"treeSearch|insert|tree-u64|{u x} {tree}|\
+      {Examples.Trees.KeyTree.describe r.2}|{m}|{m}"
   for xs in Library.Sorting.MergeSort.mergeInputs do
     IO.println s!"mergeSort|mergeSort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.MergeSort.expected xs.toArray).toList.map toString)}]"
