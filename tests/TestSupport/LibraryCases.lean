@@ -78,8 +78,14 @@ def cases : IO Unit := do
     IO.println s!"heapsort|heapsort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.Heapsort.expected xs.toArray).toList.map toString)}]|1|1"
   for (us, xs) in Library.Random.Sampling.shuffleInputs do
-    IO.println s!"shuffle|shuffle|array-u64|{arrU us} {arrU xs}|\
+    IO.println s!"sampling|shuffle|array-u64|{arrU us} {arrU xs}|\
       [{", ".intercalate ((Library.Random.Sampling.shuffle us.toArray xs.toArray).toList.map toString)}]|2|2"
+  for (us, xs, n) in Library.Random.Sampling.sampleInputs do
+    IO.println s!"sampling|sample|array-u64|{arrU us} {arrU xs} {u n}|\
+      [{", ".intercalate ((Library.Random.Sampling.sample us.toArray xs.toArray n).toList.map toString)}]|3|3"
+  for (us, xs, n) in Library.Random.Sampling.reservoirInputs do
+    IO.println s!"sampling|reservoir|array-u64|{arrU us} {arrU xs} {u n}|\
+      [{", ".intercalate ((Library.Random.Sampling.reservoir us.toArray xs.toArray n).toList.map toString)}]|3|3"
   for xs in Library.Sorting.StraightInsertion.insertionInputs do
     IO.println s!"straightInsertion|straightInsertion|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.StraightInsertion.expected xs.toArray).toList.map toString)}]|1|1"

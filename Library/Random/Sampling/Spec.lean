@@ -2,6 +2,7 @@ import Mathlib.Data.FinEnum
 import Mathlib.Data.Fintype.Pi
 import Mathlib.Algebra.BigOperators.Group.Finset.Basic
 import Mathlib.Order.Interval.Finset.Nat
+import Mathlib.Data.Nat.Factorial.Basic
 
 /-! The specification of a shuffle of words that draws its randomness from an array of words.  A
 function `f` shuffles when four properties hold.  First, `f us xs` is Knuth's Algorithm P on `xs`
@@ -64,5 +65,120 @@ structure Shuffles (f : Array UInt64 → Array UInt64 → Array UInt64) : Prop w
   count : ∀ xs ys : Array UInt64, xs.size < 2 ^ 32 → xs.toList.Nodup →
     ys.toList.Perm xs.toList →
       fewest xs.size ≤ (arraysTo f xs ys).card ∧ (arraysTo f xs ys).card ≤ most xs.size
+
+/-! ### Selection sampling
+
+The specification of selection sampling, which chooses `k = min n N` of the `N` words of `xs` and
+keeps their order.  A function `f` samples when four properties hold.  First, `f us xs n` is Knuth's
+Algorithm S, `algorithmS`: with `m` records chosen, it chooses record `t` when
+`(N - t)·us[t] < (k - m)·2^64`, that is, exactly when the test `(N - t)U ≥ n - m` of step S3 fails,
+with `U = us[t] / 2^64`.  Knuth assumes `0 < n ≤ N`, and `algorithmS` extends his algorithm to
+`n = 0`, which chooses nothing, and to `n > N`, which chooses every word.  A missing word is 0,
+which chooses the record while fewer than `k` are chosen.  Second, the result is a sublist of `xs`
+of `k` words.  Third, the positions that `f` chooses do not depend on the words of `xs`.  Fourth,
+for `n ≤ N` and each list of `n` positions in increasing order, the number of word arrays of `N`
+words for which `f` chooses those positions lies between `n!(N - n)! ∏ ⌊2^64 / M⌋` and
+`n!(N - n)! ∏ ⌈2^64 / M⌉`, the products over `M` from 1 to `N`.  For independent uniform words, each
+of the `N! / (n!(N - n)!)` subsets therefore has a probability within a relative error of about
+`N(N - 1) / 2^65` of `1 / C(N, n)`.  Algorithm S reads only the first `N` words, so further words do
+not change the distribution.  The properties concern arrays of fewer than `2^32` words. -/
+
+/-- The records, from record `t` on, that Algorithm S chooses when `m` of `k` are already chosen
+from `N` records. -/
+def selectFrom (us : Array UInt64) (N k : Nat) : Nat → Nat → List UInt64 → List UInt64
+  | _, _, [] => []
+  | t, m, x :: rest =>
+    if us[t]!.toNat * (N - t) < (k - m) * 2 ^ 64 then x :: selectFrom us N k (t + 1) (m + 1) rest
+    else selectFrom us N k (t + 1) m rest
+
+/-- Knuth's Algorithm S: the `min n N` words of `xs` that it chooses, in order. -/
+def algorithmS (us xs : Array UInt64) (n : Nat) : Array UInt64 :=
+  (selectFrom us xs.size (min n xs.size) 0 0 xs.toList).toArray
+
+/-- `n!(N - n)! ∏ ⌊2^64 / M⌋` over `M` from 1 to `N`. -/
+def fewestS (N n : Nat) : Nat :=
+  n.factorial * (N - n).factorial * ∏ M ∈ Finset.Ico 1 (N + 1), 2 ^ 64 / M
+
+/-- `n!(N - n)! ∏ ⌈2^64 / M⌉` over `M` from 1 to `N`. -/
+def mostS (N n : Nat) : Nat :=
+  n.factorial * (N - n).factorial * ∏ M ∈ Finset.Ico 1 (N + 1), (2 ^ 64 + M - 1) / M
+
+/-- The word arrays of length `xs.size` for which `f` chooses `ys` from `xs`. -/
+def samplesTo (f : Array UInt64 → Array UInt64 → UInt64 → Array UInt64) (xs : Array UInt64)
+    (n : UInt64) (ys : Array UInt64) : Finset (Fin xs.size → UInt64) :=
+  Finset.univ.filter fun w => f (Array.ofFn w) xs n = ys
+
+/-- `f` samples: it computes Algorithm S, its result is a sublist of `min n N` words, the positions
+it chooses do not depend on the words, and for `n ≤ N < 2^32` every subset of `n` positions comes
+from between `fewestS N n` and `mostS N n` word arrays of `N` words. -/
+structure Samples (f : Array UInt64 → Array UInt64 → UInt64 → Array UInt64) : Prop where
+  method : ∀ us xs : Array UInt64, ∀ n : UInt64, xs.size < 2 ^ 32 →
+    f us xs n = algorithmS us xs n.toNat
+  sublist : ∀ us xs : Array UInt64, ∀ n : UInt64, xs.size < 2 ^ 32 →
+    (f us xs n).toList.Sublist xs.toList ∧ (f us xs n).size = min n.toNat xs.size
+  positions : ∀ us xs : Array UInt64, ∀ n : UInt64, xs.size < 2 ^ 32 →
+    f us xs n = (f us (iota xs.size) n).map fun p => xs[p.toNat]!
+  count : ∀ (N : Nat) (n : UInt64) (ps : List UInt64), N < 2 ^ 32 → n.toNat ≤ N →
+    ps.Sublist (iota N).toList → ps.length = n.toNat →
+      fewestS N n.toNat ≤ (samplesTo f (iota N) n ps.toArray).card ∧
+        (samplesTo f (iota N) n ps.toArray).card ≤ mostS N n.toNat
+
+/-! ### Reservoir sampling
+
+The specification of reservoir sampling, which keeps `k = min n N` of the `N` words of `xs` as
+candidates.  A function `f` keeps a reservoir when four properties hold.  First, `f us xs n` is
+Algorithm R with the candidates in an array, `algorithmR`: the first `k` words are the candidates,
+and record `t ≥ k` replaces candidate `⌊(t + 1)·us[t - k] / 2^64⌋` when that is below `k`.  Vitter
+assumes `n ≤ N`, and `algorithmR` keeps every word when `n > N`.  A missing word is 0, which puts
+the record into candidate 0 when `k > 0`.  Second, the result holds `k` of the words of `xs`, as a
+sub-multiset.  Third, the positions that `f` keeps do not depend on the words of `xs`.  Fourth, for
+`n ≤ N` and each set of `n` positions, given as a list in increasing order, the number of word
+arrays of `N - n` words for which `f` keeps those positions, in any order, lies between
+`(N - n)! ∏ ⌊2^64 / (t + 1)⌋` and `(N - n)! ∏ ⌈2^64 / (t + 1)⌉`, the products over `t` from `n` to
+`N - 1`.  For independent uniform words, each set therefore has a probability within a relative
+error of about `(N(N - 1) - n(n - 1)) / 2^65` of `1 / C(N, n)`.  Algorithm R reads only the first
+`N - k` words, so further words do not change the distribution.  The order of the candidates depends
+on the words, so the property counts sets.  The properties concern arrays of fewer than `2^32`
+words. -/
+
+/-- Algorithm R on the records from `t` on, with the candidates `r`, of which there are `k`. -/
+def reservoirFrom (us : Array UInt64) (k : Nat) : Nat → List UInt64 → List UInt64 → List UInt64
+  | _, r, [] => r
+  | t, r, x :: rest =>
+    reservoirFrom us k (t + 1) (r.set (us[t - k]!.toNat * (t + 1) / 2 ^ 64) x) rest
+
+/-- Algorithm R with the candidates in an array: the `min n N` candidates at the end. -/
+def algorithmR (us xs : Array UInt64) (n : Nat) : Array UInt64 :=
+  (reservoirFrom us (min n xs.size) (min n xs.size) (xs.toList.take (min n xs.size))
+    (xs.toList.drop (min n xs.size))).toArray
+
+/-- `(N - n)! ∏ ⌊2^64 / (t + 1)⌋` over `t` from `n` to `N - 1`. -/
+def fewestR (N n : Nat) : Nat :=
+  (N - n).factorial * ∏ t ∈ Finset.Ico n N, 2 ^ 64 / (t + 1)
+
+/-- `(N - n)! ∏ ⌈2^64 / (t + 1)⌉` over `t` from `n` to `N - 1`. -/
+def mostR (N n : Nat) : Nat :=
+  (N - n).factorial * ∏ t ∈ Finset.Ico n N, (2 ^ 64 + t) / (t + 1)
+
+/-- The word arrays of length `xs.size - min n xs.size` for which `f` keeps the words of `ys`, in
+any order. -/
+def keepsTo (f : Array UInt64 → Array UInt64 → UInt64 → Array UInt64) (xs : Array UInt64)
+    (n : UInt64) (ys : List UInt64) : Finset (Fin (xs.size - min n.toNat xs.size) → UInt64) :=
+  Finset.univ.filter fun w => (f (Array.ofFn w) xs n).toList.Perm ys
+
+/-- `f` keeps a reservoir: it computes Algorithm R, it keeps `min n N` of the words, the positions
+it keeps do not depend on the words, and for `n ≤ N < 2^32` every set of `n` positions comes from
+between `fewestR N n` and `mostR N n` word arrays of `N - n` words. -/
+structure Reservoirs (f : Array UInt64 → Array UInt64 → UInt64 → Array UInt64) : Prop where
+  method : ∀ us xs : Array UInt64, ∀ n : UInt64, xs.size < 2 ^ 32 →
+    f us xs n = algorithmR us xs n.toNat
+  contents : ∀ us xs : Array UInt64, ∀ n : UInt64, xs.size < 2 ^ 32 →
+    (f us xs n).toList.Subperm xs.toList ∧ (f us xs n).size = min n.toNat xs.size
+  positions : ∀ us xs : Array UInt64, ∀ n : UInt64, xs.size < 2 ^ 32 →
+    f us xs n = (f us (iota xs.size) n).map fun p => xs[p.toNat]!
+  count : ∀ (N : Nat) (n : UInt64) (ps : List UInt64), N < 2 ^ 32 → n.toNat ≤ N →
+    ps.Sublist (iota N).toList → ps.length = n.toNat →
+      fewestR N n.toNat ≤ (keepsTo f (iota N) n ps).card ∧
+        (keepsTo f (iota N) n ps).card ≤ mostR N n.toNat
 
 end Library.Random.Sampling

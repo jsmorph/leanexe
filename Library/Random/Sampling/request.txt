@@ -3,3 +3,16 @@ supplies the random numbers as an array of words, and each word u serves as the 
 in Knuth's step P3.  The result must be a permutation of the input for every word array, and when
 the words are independent and uniform, every arrangement of distinct words must be equally likely
 up to the rounding of 64-bit fractions.
+
+Choose n of the N words of an array of UInt64 words with selection sampling, Algorithm S of TAOCP
+section 3.4.2, keeping their order.  The caller supplies the random numbers as an array of words,
+and each word u serves as the fraction u / 2^64 in Knuth's step S3.  The result must be n words of
+the array in their order, and when the words are independent and uniform, every subset of n
+positions must be equally likely up to the rounding of 64-bit fractions.
+
+Keep a random sample of n of the N words of an array of UInt64 words with reservoir sampling,
+Algorithm R of TAOCP section 3.4.2, with the candidates in an array as Vitter (ACM TOMS 11(1),
+1985, section 2) states it.  The caller supplies the random numbers as an array of words, and each
+word u serves as the fraction u / 2^64 that gives the index M.  The result must be n of the words of
+the array, and when the words are independent and uniform, every set of n positions must be equally
+likely up to the rounding of 64-bit fractions.

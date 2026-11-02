@@ -40552,5 +40552,30 @@ With exact uniform indices `i_t ∈ [0, N - t)`, a subset of positions comes fro
 
 Reservoir sampling, `reservoir us xs n`, copies the first `k` words and, for `t` from `k` to `N - 1`, writes `xs[t]` at position `scale us[t - k] (t + 1)`, Knuth's `M` of step R3.  A position of `k` or more is out of range, so the write changes nothing, which is step R3's test.  With exact uniform indices every set of `n` positions comes from `(N - n)!` index sequences, by induction on `N`: the last record stays out when its index is `n` or more, `N - n` choices, and enters in place of one of the `N - n` words outside the set, at the unique position that word holds.  The specification states the count of word arrays for each set of positions with the bounds `(N - n)! ∏ ⌊2^64 / (t + 1)⌋` and `(N - n)! ∏ ⌈2^64 / (t + 1)⌉` over `t` from `n` to `N - 1`.  The arrangement within the reservoir is not uniform, so the property concerns the set of positions.
 
-- [ ] Selection sampling: design review, request, specification and review, program, proofs, cases, README, index.
-- [ ] Reservoir sampling: the same.
+After the shuffle's reviews, each specification also states the equation with Knuth's algorithm, `algorithmS` and `algorithmR`, written with natural-number arithmetic, and both programs read the words in the order of Knuth's steps: `us[t]` for record `t` in Algorithm S, and `us[t - k]` for record `t ≥ k` in Algorithm R.  Both functions return arrays of `min n N` words and keep `xs` borrowed.  The planned programs are these.
+
+```lean
+def sample (us xs : Array UInt64) (n : UInt64) : Array UInt64 :=
+  let N := xs.size.toUInt64
+  let k := if n ≤ N then n else N
+  (LeanExe.loop N ((0 : UInt64), LeanExe.build k fun _ => 0) fun t s =>
+    (s.1 + (if scale us[t.toNat]! (N - t) < k - s.1 then 1 else 0),
+      s.2.set! s.1.toNat xs[t.toNat]!)).2
+
+def reservoir (us xs : Array UInt64) (n : UInt64) : Array UInt64 :=
+  let N := xs.size.toUInt64
+  let k := if n ≤ N then n else N
+  LeanExe.loop (N - k) (LeanExe.build k fun i => xs[i.toNat]!) fun t r =>
+    r.set! (scale us[t.toNat]! (k + t + 1)).toNat xs[(k + t).toNat]!
+```
+
+A fresh agent reviewed this design with models: 40,000 cases agree with Knuth's steps in exact rationals, and the counts hold exhaustively at small word sizes.  It recalled that Knuth's Algorithm R keeps a table of indices and sorts it before it reads the sample, which neither it nor a search could check against the book's text.  Vitter's section 2, which I read, states the algorithm with the candidates in an array and gives the table and the sort as the version for a reservoir on secondary storage, and the program follows the array form, which the README cites.  The reservoir's order depends on the words, so its specification states the contents as `List.Subperm` and counts sets of positions.  The specification of Algorithm S states the test as `(N - t)·u < (k - m)·2^64`, Knuth's step S3 without a floor, and the README and the comment state the extensions to `n = 0` and `n > N`.
+
+The count of Algorithm S splits the word arrays at the first record with `Fin.consEquiv` and `Finset.card_equiv`: the record is chosen by between `c⌊2^64 / M⌋` and `c⌈2^64 / M⌉` words, and the counts multiply to `c!(M - c)!` times the products of floors and ceilings.  A first form of that split with `Finset.card_bij` made the linter `constructorNameAsVariable` exceed the recursion limit, even at a limit of 100,000, which a scratch file reduced to the `card_bij` proof, so the equivalence replaced it.  The count of Algorithm R goes forward in time, since the set of candidates after record `t` is uniform only from the start: it splits the word arrays at the last word with `Fin.snocEquiv`, and for a set that holds record `t` sums, with `Finset.card_eq_sum_card_fiberwise`, over the `t + 1 - k` positions that the record replaced.  `omega` failed on bounds whose index was still a metavariable, and naming the index fixed each case.
+
+edgexpert (`edgexpert-18ff`) joined minideb2 for the Lean work with a copy of a built checkout in `~/src/leanexe-taocp`.  `tools/leanrun` admits one Lean job per machine, so a second build there waited for the warm-up build and timed out, and the scripts now pass `--lock-timeout`.  A first run of `tests/verified/run.sh --cases sampling` and `tests/native/verified.sh --module sampling` passed all 207 cases, and the axiom reports of the three `trapFree` theorems and the three specification theorems name only the permitted axioms.  The module's registry name is now `sampling`.
+
+Two reviews of each specification, which [the review](Library/Random/Sampling/review.md) records, found no defect in the methods and showed that each method property is needed, since wrong methods meet the other three properties.  Their corrections changed the comments, the docstrings, and the inputs, and after them `tests/verified/run.sh --cases sampling` and `tests/native/verified.sh --module sampling` passed all 224 cases, a build of the whole library passed 10,605 jobs, and the file theorems of `sampling.wasm` name only the permitted axioms.  A script that rewrapped the comments first left NUL characters where it marked sentence breaks and then ran one comment into the next docstring, and both were found by the build and repaired before the commit.
+
+- [x] Selection sampling: design review, request, specification and two reviews, program, proofs, cases, README, index.
+- [x] Reservoir sampling: the same.
