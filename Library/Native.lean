@@ -61,6 +61,7 @@ import Library.Random.Lcg.Program
 import Library.Random.ParkMiller.Program
 import Library.Random.SplitMix64.Program
 import Library.Random.Xorshift.Program
+import Library.Random.Sampling.Program
 import Library.Regex.Program
 import Library.Sorting.Heapsort.Program
 import Library.Sorting.Insertion.Program

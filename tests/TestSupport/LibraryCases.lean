@@ -20,6 +20,7 @@ import TestSupport.Modules.ModInverse
 import TestSupport.Modules.MultiPrecision
 import TestSupport.Modules.StraightInsertion
 import TestSupport.Modules.PrimeFactors
+import TestSupport.Modules.Sampling
 import TestSupport.Modules.TopologicalSort
 
 namespace TestSupport.LibraryCases
@@ -76,6 +77,9 @@ def cases : IO Unit := do
   for xs in Library.Sorting.Heapsort.sortInputs do
     IO.println s!"heapsort|heapsort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.Heapsort.expected xs.toArray).toList.map toString)}]|1|1"
+  for (us, xs) in Library.Random.Sampling.shuffleInputs do
+    IO.println s!"shuffle|shuffle|array-u64|{arrU us} {arrU xs}|\
+      [{", ".intercalate ((Library.Random.Sampling.shuffle us.toArray xs.toArray).toList.map toString)}]|2|2"
   for xs in Library.Sorting.StraightInsertion.insertionInputs do
     IO.println s!"straightInsertion|straightInsertion|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.StraightInsertion.expected xs.toArray).toList.map toString)}]|1|1"

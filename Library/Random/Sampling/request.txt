@@ -1,0 +1,5 @@
+Shuffle an array of UInt64 words in place with Algorithm P of TAOCP section 3.4.2.  The caller
+supplies the random numbers as an array of words, and each word u serves as the fraction u / 2^64
+in Knuth's step P3.  The result must be a permutation of the input for every word array, and when
+the words are independent and uniform, every arrangement of distinct words must be equally likely
+up to the rounding of 64-bit fractions.
