@@ -9,7 +9,7 @@ definitions and state the properties of the resulting WebAssembly.
 | Area | Forms | Contents |
 |---|---|---|
 | [Random generators](../index.md#3-pseudorandom-number-generators) | V S F C | LCG, Park–Miller, xorshift64, SplitMix64, word-to-float conversion, shared orbit lemmas, random shuffling, selection sampling, and reservoir sampling. |
-| [Sorting](Sorting/README.md) | V S F C A | Insertion sort, straight insertion, quicksort, heapsort, and merge sort on arrays of `UInt64`. |
+| [Sorting](Sorting/README.md) | V S F C A | Insertion sort, straight insertion, quicksort, selection, heapsort, and merge sort on arrays of `UInt64`. |
 | [Arrays](Arrays/README.md) | V S F C | Counting, first-match search, binary search, ordered removal, bounded filtering, prefix clearing, repetition, and word scaling. |
 | [Lists](Lists/README.md) | V F C | Word-list range, sum, reversal, and increment. |
 | [Trees](Trees/README.md) | V F C | Binary tree of words, structural operations, and search-tree insertion. |

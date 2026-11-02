@@ -1,0 +1,5 @@
+Return the word of rank k, counting from 0, of an array of UInt64 words, the word at position k of
+the array sorted into nondecreasing order, or 0 when k is not a position of the array.  Use Hoare's
+selection method FIND, which partitions the subfile that holds position k and continues with the
+part that holds it, with the partition steps of quicksort, Algorithm Q of TAOCP section 5.2.2, in
+place, with a call stack that does not grow.

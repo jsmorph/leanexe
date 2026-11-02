@@ -248,6 +248,7 @@ import Library.Sorting.Heapsort.Compiled
 import Library.Sorting.MergeSort.Compiled
 import Library.Sorting.StraightInsertion.Compiled
 import Library.Sorting.Quicksort.Compiled
+import Library.Sorting.Find.Compiled
 import Library.Random.Sampling.Compiled
 import Library.Sorting.Insertion.Compiled
 import Library.Graphs.TopologicalSort.Compiled

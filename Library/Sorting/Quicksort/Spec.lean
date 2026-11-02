@@ -8,10 +8,11 @@ storage beyond the array has a fixed bound: `quicksort_implements` bounds the ri
 128 words.  It reads "a call stack that does not grow" as the generated
 `compiled.quicksort.trapFree` with no call-depth premise.  The compiler translates recognized tail
 recursion into loops and gives every other recursive function and its callers a call depth, which
-their theorems carry as a premise, so a theorem without that premise covers code whose calls do not
-nest beyond the call graph's depth.  The specification does not distinguish Algorithm Q from other
-sorting methods, and the program text shows the method.  The theorems concern arrays of fewer than
-`2^64` elements, which every array in memory is. -/
+their theorems carry as a premise, so a theorem without that premise covers code with no recursion
+other than loops, whose calls nest no deeper than the longest chain of calls in the program.  The
+specification does not distinguish Algorithm Q from other sorting methods, and the program text
+shows the method.  The theorems concern arrays of fewer than `2^64` elements, which every array in
+memory is. -/
 
 namespace Library.Sorting.Quicksort
 

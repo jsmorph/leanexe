@@ -19,6 +19,12 @@ their first words in the array's own block, keeps the pending subfiles on a stac
 the module's one allocation, and finishes with straight insertion.  Its proofs show that the
 partitions permute the array, so straight insertion returns the same nondecreasing permutation.
 
+[Selection](Find/README.md) is Hoare's FIND with quicksort's partition.  It partitions the subfile
+that holds a rank `k` and continues with the part that holds it, in the array's own block, and
+returns the word of rank `k`, or 0 when `k` is not a position.  Its proofs show that the word left
+at `k` lies between the words before it and the words after it, so it is the word at `k` of the
+sorted array.
+
 [Heapsort](Heapsort/README.md) is Algorithm H of TAOCP §5.2.3.  It sorts the array in its own block
 and allocates nothing, and its proofs show that the module returns the array's elements in
 nondecreasing order, a permutation of the input equal to Lean's `List.mergeSort` of it.
