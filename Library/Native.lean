@@ -6,6 +6,7 @@ import Library.Arrays.Search.Program
 import Library.Arrays.Word.Program
 import Library.Combinatorics.DancingLinks.Program
 import Library.Graphs.TopologicalSort.Program
+import Library.Graphs.UnionFind.Program
 import Library.HashTables.LinearProbing.Program
 import Library.Hashing.Crc.Program
 import Library.Hashing.Hmac.Program

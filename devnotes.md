@@ -40634,3 +40634,19 @@ With the added trees, `tests/verified/run.sh --cases treeSearch` and `tests/nati
 - [x] Two specification reviews.
 - [x] Cases in Wasmtime and native code, file theorems, commit.
 - [ ] Library and test-support build after the reflector change, push.
+
+### Equivalence classes: Algorithm E
+
+Item 6 of the batch is Algorithm E of TAOCP §2.3.3 in the module `unionFind` of `Library/Graphs/UnionFind`.  The program takes the element count `n` and the pairs' elements in two lent arrays, keeps the parent links in one array with a root marked as its own parent, and merges the trees of each pair's elements, steps E1 to E4.  The result labels each element with the least element of its class, which a final pass computes by recording at each root the first element that reaches it.  That label makes the result unique, so the specification `LeastLabels` states it with Mathlib's `Relation.EqvGen` and `IsLeast`, with no reference to the method, and the cases compare the module with an independent search of the graph of the pairs.  A specification of the parent array itself would have to state Algorithm E step by step, since other merge orders give other forests.
+
+`root`, step E3, carries a count of steps so that the Lean function is total, since the dialect needs a termination measure and the parent links of an arbitrary array can form a cycle.  The proof keeps an invariant under which the count `n` never runs out: a rank rises along every link, so the elements of a path are distinct, and a path of `n + 1` elements below `n` would repeat one, by Mathlib's `Finset.exists_ne_map_eq_of_card_lt_of_maps_to`.  A link from the root `ra` to the root `rb` keeps the invariant with ranks that rise by the rank of `ra` plus 1 outside the tree of `ra`.  The classes follow from two further invariants, that every link joins equivalent elements and that the elements of every pair taken have the same root, so that the relation of having the same root contains the pairs and is contained in their equivalence closure.  The proof needed no lemma about the closure of a relation with one more pair.
+
+The first compilation stopped at `js.size ≤ ks.size`, a comparison of natural numbers, and the program now compares the sizes as words.  The first proof build failed on six details: a `simp` with nothing to do, an `omega` goal whose iterate stood for the element, `Relation.EqvGen.mono`, which takes and gives inclusions of relations, a `rw` under the decidability instance of an `if`, an induction that generalized two bounds, and a loop whose step the goal held with its `let`s reduced and the hypotheses with them intact, which a `rfl` equation for `classes` resolved.  The module's generated bound is three blocks of `n` words, and `classes_spec` and `classes_call` name only the permitted axioms.  The first case run on minideb1 passed all 674 cases in Wasmtime.
+
+The two specification reviews, which [the review](Library/Graphs/UnionFind/review.md) records, found no input on which `LeastLabels` disagrees with the request.  Both found that the reading of "in place" rests on the compiler's rule for an owned array at its last use, which no theorem states, and the comments now say so.  Both found two signed readings of the elements that passed every case, and random pairs that the low bits of `rw` reduced to a few repeated pairs, and the cases gained elements of `2^63` and more beside elements other than 0, random pairs from the high bits of `rw` with some out of range, and a final pair `(0, 0)` on the chain of 10,000 elements, whose searches pass every link.
+
+- [x] Request, specification, program, proofs, module, bound.
+With the added inputs, `tests/verified/run.sh --cases unionFind` and `tests/native/verified.sh --module unionFind` on minideb1 passed all 678 cases, and the file theorems of `unionFind.wasm` name only the permitted axioms.
+
+- [x] Two specification reviews.
+- [x] Cases in Wasmtime and native code, file theorems, commit.

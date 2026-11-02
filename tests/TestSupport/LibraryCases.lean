@@ -24,6 +24,7 @@ import TestSupport.Modules.Find
 import TestSupport.Modules.PrimeFactors
 import TestSupport.Modules.Sampling
 import TestSupport.Modules.TopologicalSort
+import TestSupport.Modules.UnionFind
 import TestSupport.Modules.TreeSearch
 
 namespace TestSupport.LibraryCases
@@ -111,6 +112,9 @@ def cases : IO Unit := do
   for xs in Library.Graphs.TopologicalSort.topoInputs do
     IO.println s!"topoSort|topoSort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Graphs.TopologicalSort.topoSort xs.toArray).toList.map toString)}]"
+  for (n, js, ks) in Library.Graphs.UnionFind.classInputs do
+    IO.println s!"unionFind|classes|array-u64|{u (UInt64.ofNat n)} {arrU js} {arrU ks}|\
+      [{", ".intercalate ((Library.Graphs.UnionFind.leastLabels n js ks).map toString)}]|3|5"
   for xs in Library.Queues.BinaryHeap.heapInputs do
     IO.println s!"heapQueue|heapQueue|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Queues.BinaryHeap.expected xs.toArray).toList.map toString)}]"

@@ -15,7 +15,7 @@ definitions and state the properties of the resulting WebAssembly.
 | [Trees](Trees/README.md) | V S F C | Binary tree of words, structural operations, search-tree insertion, and tree search and insertion by Algorithm T. |
 | [Queues](Queues/BinaryHeap/README.md) | V S F C | Priority queue of words as a binary heap. |
 | [Hash tables](HashTables/LinearProbing/README.md) | V S F C | Hash table of words with linear probing and deletion. |
-| [Graphs](../index.md#13-graphs-and-combinatorial-search) | V S F C | Topological sorting. |
+| [Graphs](../index.md#13-graphs-and-combinatorial-search) | V S F C | Topological sorting and equivalence classes. |
 | [Combinatorics](Combinatorics/DancingLinks/README.md) | V S F C | Exact cover by Algorithm X with dancing links. |
 | [Arithmetic](../index.md#1-arithmetic) | V S F C | Software FMA, limb arithmetic, multiple-precision addition, subtraction, multiplication, and division, unrounded scaling, Euclidean and binary GCD, modular inverse, modular exponentiation and the strong probable-prime test, factor counting, and bounded integer square root. |
 | [Binary64 functions](../index.md#6-elementary-and-special-functions) | V S F C | Elementary and special functions with their accuracy proofs. |

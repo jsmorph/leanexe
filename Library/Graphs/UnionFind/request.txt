@@ -1,0 +1,9 @@
+Find the equivalence classes of the elements 0 to n - 1 under the least equivalence relation that
+relates the two elements of each given pair, and return an array of n UInt64 words that holds, for
+each element, the least element of its class.  The pairs come as two arrays of UInt64 words, the
+first and the second elements of the pairs, and a pair with an element of n or more relates
+nothing.  Build the classes with Algorithm E of TAOCP section 2.3.3, which keeps each class as a
+tree of PARENT links and, for each pair j ≡ k, follows the links from j and from k to the roots of
+their trees and makes the root of j's tree a child of the root of k's tree when the roots differ.
+Keep the PARENT links in one array that the program updates in place, and run with a call stack
+that does not grow.
