@@ -372,6 +372,9 @@ structure Ctx where
   env : Lean.Expr
   ctx : Lean.Expr
   tables : Tables
+  /-- The source variables of the matched record headers of `vars` that constructions reflected
+  earlier in the same constructor expression reuse, which a later construction does not choose. -/
+  claimed : List Lean.Expr := []
 
 /-- `Expr.denote funs e env`. -/
 def denoteExpr (c : Ctx) (e : Lean.Expr) : MetaM Lean.Expr :=
@@ -849,21 +852,53 @@ def earlyArgs (vars : List (Lean.Expr × Ty)) (args : List Lean.Expr) (params : 
     unless consumed.any fun x => r.containsFVar x.fvarId! do return false
     return !(← isPlace a)
 
+/-- The source variable at position `i` of the context, of type `t`. -/
+def varAt (c : Ctx) (i : Nat) (t : Ty) : MetaM Lean.Expr := do
+  let proof ← mkEqRefl (mkApp (mkConst ``Option.some [Level.zero]) (mkConst ``Ty) |>.app
+    (tyExpr t))
+  mkAppOptM ``Var.ofIndex #[some (tyExpr t), some c.ctx, some (toExpr i), some proof]
+
 /-- The source variable whose key in the context is `key`, and its type.  The key of a variable
 is its Lean variable, or, for a leaf of a flat field of a matched record, the leaf's projection of
 the field. -/
 def keyVar? (c : Ctx) (key : Lean.Expr) : MetaM (Option (Lean.Expr × Ty)) := do
   let some i := c.vars.findIdx? (·.1 == key) | return none
   let some (_, t) := c.vars[i]? | return none
-  let proof ← mkEqRefl (mkApp (mkConst ``Option.some [Level.zero]) (mkConst ``Ty) |>.app
-    (tyExpr t))
-  return some (← mkAppOptM ``Var.ofIndex
-    #[some (tyExpr t), some c.ctx, some (toExpr i), some proof], t)
+  return some (← varAt c i t, t)
 
 /-- The source variable for the Lean variable `e` in scope, and its type. -/
 def varOf (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Ty) := do
   let some v ← keyVar? c e | throwError "verified_compile: {e} is not a variable in scope"
   return v
+
+/-- The source variables of the matched record headers of `c.vars` that the source term `src`
+reuses.  Every match on a record of one layout keys its header by the same term, so the headers
+are told apart by their positions. -/
+def headersIn (c : Ctx) (src : Lean.Expr) : MetaM (List Lean.Expr) := do
+  let mut found := []
+  for ((_, t), i) in c.vars.zipIdx do
+    if let .treeHeader _ _ := t then
+      let x ← varAt c i t
+      if (src.find? (· == x)).isSome then found := found ++ [x]
+  return found
+
+/-- The header that a construction of a record of type `header` reuses: the most recently matched
+one that `c.claimed` does not hold.  A construction chooses before its fields, and each field
+adds the headers it reuses to the claims of the fields after it, so that the constructions of one
+expression take distinct matched records. -/
+def reuseFor (c : Ctx) (header : Ty) : MetaM (Option Lean.Expr) := do
+  for ((_, t), i) in c.vars.zipIdx do
+    if t == header then
+      let x ← varAt c i t
+      unless c.claimed.contains x do return some x
+  return none
+
+/-- The reuse argument of `Expr.treeNode` for the choice `x?` of `reuseFor`. -/
+def reuseArg (c : Ctx) (header : Ty) (x? : Option Lean.Expr) : MetaM Lean.Expr := do
+  let ty := mkApp2 (mkConst ``Var) c.ctx (tyExpr header)
+  match x? with
+  | some x => mkAppOptM ``Option.some #[some ty, some x]
+  | none => mkAppOptM ``Option.none #[some ty]
 
 /-- `Eq.trans p q` with the middle term of `p`.  The elaborator does not unify the two middle
 terms; the kernel checks that `q`'s left side is the same term, which the reflector arranges up to
@@ -2557,14 +2592,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
   | ``List.cons, #[α, a, b] =>
     unless (← whnfR α).isConstOf ``UInt64 do
       throwError "verified_compile: lists require UInt64 elements, in {e}"
-    let ra ← reflect c a
-    let rb ← reflect c b
-    let header := mkApp2 (mkConst ``Var) c.ctx (tyExpr (.treeHeader listShape listCell))
-    let reuse ← match c.vars.find? (fun (_, ty) => ty == .treeHeader listShape listCell) with
-      | none => mkAppOptM ``Option.none #[some header]
-      | some (value, _) => do
-        let (x, _) ← varOf c value
-        mkAppOptM ``Option.some #[some header, some x]
+    let own ← reuseFor c (.treeHeader listShape listCell)
+    let ra ← reflect { c with claimed := c.claimed ++ own.toList } a
+    let rb ← reflect { c with claimed := c.claimed ++ own.toList ++ (← headersIn c ra.src) } b
+    let reuse ← reuseArg c (.treeHeader listShape listCell) own
     let family (r : Reflection) : MetaM Lean.Expr :=
       withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 1)) fun i =>
         mkLambdaFVars #[i] r.src
@@ -3448,16 +3479,31 @@ where
     let mut children : List Reflection := []
     let mut typedArrays : List (Elem × Reflection) := []
     let mut buffers : List Reflection := []
+    let own ← reuseFor c (.treeHeader layout.shape r)
+    let mut claimed := c.claimed ++ own.toList
     for ((a, kind), tuple) in (args.zip natives).zip (tuples.filterMap id) do
       match kind with
-      | .child => children := children ++ [← reflect c a]
-      | .array el => typedArrays := typedArrays ++ [(el, ← reflect c a)]
-      | .bytes => buffers := buffers ++ [← reflect c a]
-      | .leaf el => typedWords := typedWords ++ [(el, ← reflect c a)]
+      | .child =>
+        let ra ← reflect { c with claimed } a
+        claimed := claimed ++ (← headersIn c ra.src)
+        children := children ++ [ra]
+      | .array el =>
+        let ra ← reflect { c with claimed } a
+        claimed := claimed ++ (← headersIn c ra.src)
+        typedArrays := typedArrays ++ [(el, ra)]
+      | .bytes =>
+        let ra ← reflect { c with claimed } a
+        claimed := claimed ++ (← headersIn c ra.src)
+        buffers := buffers ++ [ra]
+      | .leaf el =>
+        let ra ← reflect { c with claimed } a
+        claimed := claimed ++ (← headersIn c ra.src)
+        typedWords := typedWords ++ [(el, ra)]
       | .flat _ leaves =>
         -- The first segment of a leaf of a field is empty, and the tuple is the field's flattening.
         for (el, segments) in leaves do
-          typedWords := typedWords ++ [(el, ← reflect c (← tupleLeaf tuple segments.tail))]
+          typedWords := typedWords ++
+            [(el, ← reflect { c with claimed } (← tupleLeaf tuple segments.tail))]
     let elems := typedWords.map (·.1)
     let words := typedWords.map (·.2)
     let sourceType (t : Ty) := mkApp3 (mkConst ``Expr) c.sigs c.ctx (tyExpr t)
@@ -3468,12 +3514,7 @@ where
     let arrays := typedArrays.map (·.2)
     let arrayFn ← arrayExprFamily c layout.shape r (typedArrays.map fun (e, ra) => (e, ra.src))
     let bufferFn ← bufferExprFamily c layout.shape r (buffers.map (·.src))
-    let header := mkApp2 (mkConst ``Var) c.ctx (tyExpr (.treeHeader layout.shape r))
-    let reuse ← match c.vars.find? (fun (_, t) => t == .treeHeader layout.shape r) with
-      | none => mkAppOptM ``Option.none #[some header]
-      | some (value, _) => do
-        let (x, _) ← varOf c value
-        mkAppOptM ``Option.some #[some header, some x]
+    let reuse ← reuseArg c (.treeHeader layout.shape r) own
     let src ← mkAppM ``Expr.treeNode #[record, reuse, wordFn, arrayFn, bufferFn, childFn]
     let parts := [(`shape, shape), (`r, record), (`reuse, reuse), (`words, wordFn),
       (`arrays, arrayFn), (`buffers, bufferFn), (`children, childFn)]

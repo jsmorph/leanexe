@@ -17,6 +17,11 @@ that the library's `insert` gives the tree of Algorithm T, keeps a binary search
 search tree, and adds the new key to the keys of any tree.  Its module compiles a search and an
 insertion that run as loops, so a tree of any depth needs no call-depth premise.
 
+[Balanced trees](Avl/README.md) holds `AvlTree`, whose nodes carry Knuth's balance factor, and
+Algorithm A, which inserts a key in two loops of the same form and restores the balance with the
+single and double rotations of steps A8 and A9.  Its proofs show that the insertion keeps a balanced
+binary search tree balanced and ordered and allocates only the new node.
+
 [The tree example](../../Examples/Trees/README.md) adds operations of its own over `KeyTree`, which
 its verified compilation compiles, with the library's `size`, `sum`, `incr`, and `insert`, into the
 module `exampleTrees`.  Its test support constructs and renders arbitrary trees, including

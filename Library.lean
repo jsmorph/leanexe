@@ -274,6 +274,7 @@ import Library.Numerics.Bounds.Compiled
 import Library.Numerics.Limiters.Minmod.Compiled
 import Library.Trees.WordTree.Compiled
 import Library.Trees.Search.Compiled
+import Library.Trees.Avl.Compiled
 import Library.Numerics.Arithmetic.BinaryGcd.Compiled
 import Library.Numerics.Arithmetic.Gcd.Compiled
 import Library.Numerics.Arithmetic.ModInverse.Compiled

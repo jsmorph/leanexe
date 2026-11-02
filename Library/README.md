@@ -12,7 +12,7 @@ definitions and state the properties of the resulting WebAssembly.
 | [Sorting](Sorting/README.md) | V S F C A | Insertion sort, straight insertion, quicksort, selection, heapsort, and merge sort on arrays of `UInt64`. |
 | [Arrays](Arrays/README.md) | V S F C | Counting, first-match search, binary search, ordered removal, bounded filtering, prefix clearing, repetition, and word scaling. |
 | [Lists](Lists/README.md) | V F C | Word-list range, sum, reversal, and increment. |
-| [Trees](Trees/README.md) | V S F C | Binary tree of words, structural operations, search-tree insertion, and tree search and insertion by Algorithm T. |
+| [Trees](Trees/README.md) | V S F C | Binary tree of words, structural operations, search-tree insertion, tree search and insertion by Algorithm T, and balanced trees by Algorithm A. |
 | [Queues](Queues/BinaryHeap/README.md) | V S F C | Priority queue of words as a binary heap. |
 | [Hash tables](HashTables/LinearProbing/README.md) | V S F C | Hash table of words with linear probing and deletion. |
 | [Graphs](../index.md#13-graphs-and-combinatorial-search) | V S F C | Topological sorting and equivalence classes. |

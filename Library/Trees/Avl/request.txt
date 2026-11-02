@@ -1,0 +1,9 @@
+Search a balanced binary tree of UInt64 keys for a key, and insert the key when the search fails,
+with Algorithm A of TAOCP section 6.2.3, balanced tree search and insertion, on a tree whose nodes
+hold Knuth's balance factor.  The search must report whether it finds the key and leave the tree
+unchanged.  The insertion must put a new node with the key where the search ends, restore the
+balance with the single and double rotations of steps A8 and A9, reuse the tree's nodes, allocate
+no node but the new one, and run with a call stack that does not grow.  On a balanced binary
+search tree, the search must succeed exactly when the key is in the tree, and the tree after an
+insertion must be a balanced binary search tree with the keys of the old tree and the new key,
+one level higher only when the search failed.
