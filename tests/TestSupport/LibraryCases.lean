@@ -27,6 +27,7 @@ import TestSupport.Modules.TopologicalSort
 import TestSupport.Modules.UnionFind
 import TestSupport.Modules.TreeSearch
 import TestSupport.Modules.Avl
+import TestSupport.Modules.AvlDelete
 
 namespace TestSupport.LibraryCases
 
@@ -115,6 +116,12 @@ def cases : IO Unit := do
     let found := if Library.Trees.Avl.searchA x t then 1 else 0
     IO.println s!"avlTree|search|i64|{u x} {tree}|{found}|{n}|{n}"
     IO.println s!"avlTree|insert|records-u64|{u x} {tree}|{Library.Trees.Avl.describe r}|{m}|{m}"
+  for (x, t) in Library.Trees.AvlDelete.deleteInputs do
+    let r := (Library.Trees.AvlDelete.deleteA x t).2
+    let n := Library.Trees.Avl.size t
+    let m := Library.Trees.Avl.size r
+    IO.println s!"avlDelete|delete|records-u64|{u x} records-u64:{Library.Trees.Avl.describe t}|\
+      {Library.Trees.Avl.describe r}|{m}|{n}"
   for xs in Library.Sorting.MergeSort.mergeInputs do
     IO.println s!"mergeSort|mergeSort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.MergeSort.expected xs.toArray).toList.map toString)}]"

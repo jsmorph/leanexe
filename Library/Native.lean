@@ -73,3 +73,4 @@ import Library.Sorting.Find.Program
 import Library.Trees.WordTree.Program
 import Library.Trees.Search.Program
 import Library.Trees.Avl.Program
+import Library.Trees.AvlDelete.Program

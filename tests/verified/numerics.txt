@@ -110,6 +110,7 @@ libminmod:Library.Numerics.Limiters.Minmod.Compiled:Library/Numerics/Limiters/Mi
 libtrees:Library.Trees.WordTree.Compiled:Library/Trees/WordTree/File.lean
 treeSearch:Library.Trees.Search.Compiled:Library/Trees/Search/File.lean
 avlTree:Library.Trees.Avl.Compiled:Library/Trees/Avl/File.lean
+avlDelete:Library.Trees.AvlDelete.Compiled:Library/Trees/AvlDelete/File.lean
 increment:Examples.Increment.Compiled:Examples/Increment/File.lean
 below100:Examples.Below100.Compiled:Examples/Below100/File.lean
 removeZero:Examples.RemoveZero.Compiled:Examples/RemoveZero/File.lean

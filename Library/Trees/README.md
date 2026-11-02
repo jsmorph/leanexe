@@ -22,6 +22,10 @@ Algorithm A, which inserts a key in two loops of the same form and restores the 
 single and double rotations of steps A8 and A9.  Its proofs show that the insertion keeps a balanced
 binary search tree balanced and ordered and allocates only the new node.
 
+[Balanced tree deletion](AvlDelete/README.md) removes a key from the same trees, replacing a node
+with two subtrees by its successor, in loops of the same form, and its proofs show that the
+deletion keeps a balanced binary search tree balanced and ordered and allocates no node.
+
 [The tree example](../../Examples/Trees/README.md) adds operations of its own over `KeyTree`, which
 its verified compilation compiles, with the library's `size`, `sum`, `incr`, and `insert`, into the
 module `exampleTrees`.  Its test support constructs and renders arbitrary trees, including
