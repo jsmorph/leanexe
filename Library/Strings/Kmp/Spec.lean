@@ -8,11 +8,13 @@ positions in increasing order, an array of words, so the empty pattern gives eve
 to `n`, and a pattern longer than the text gives none.  The specification names the result and not
 the method, and the program text shows the algorithm of Knuth, Morris, and Pratt in two scans of the
 text, one that counts the occurrences and one that records them.  The theorems of the module read
-"allocate only the table of lengths and the result" as a rise of the heap's `top` by at most those
-two blocks, which `occurrences_bound` states and which allocations from free blocks below `top` do
-not raise, and they read "a call stack that does not grow" as theorems with no call-depth premise,
-which rests on the compiler's rule, which the verified compiler's manual states and no theorem
-states, that it translates recognized tail recursion and loops into loops. -/
+"allocate only the table of lengths and the result" as a call that raises the heap's `top` by at
+most those two blocks, which `occurrences_implements` and `occurrences_bound` state.  That reading
+is weaker than the request's: allocations from free blocks below `top` do not raise it, and no
+theorem states that the call releases the table.  They read "a call stack that does not grow" as
+theorems with no call-depth premise, which depends on the compiler's rule, which the verified
+compiler's manual states and no theorem states, that it translates recognized tail recursion and
+loops into loops. -/
 
 namespace Library.Strings.Kmp
 

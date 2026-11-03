@@ -1,15 +1,15 @@
-/-! The specification of the least walk lengths from one vertex.  The graph is in forward-star
-form: the arcs out of a vertex `u` below `n` are the positions `k` with `first[u] ≤ k <
-first[u + 1]` that lie below the sizes of `heads` and `lens`, each from `u` to `heads[k]` with
-the length `lens[k]`, and an arc whose head is `n` or more is no arc.  `Walk n first heads lens s v
-L` states that a walk from `s` to `v` of total length `L` exists, with lengths as natural numbers,
-and a walk starts only at a vertex below `n`.  `Distances` states that the result holds `n` words
-and that word `v` is the least length of a walk from `s` to `v` when that length is below
-`2^64 - 1`, and `2^64 - 1` when no walk reaches `v` or every walk has length `2^64 - 1` or more,
-which determines the result.  `WellFormed` states the request's form of the graph: `first` holds at
-least `n + 1` words, the first `n + 1` in nondecreasing order, and `first[n]` is at most the size
-of `heads` and of `lens`.  The specification names the result and not the method, and the program
-text shows Dijkstra's algorithm. -/
+/-! The specification of the least walk lengths from one vertex.  The graph is in forward-star form:
+the arcs out of a vertex `u` below `n` are the positions `k` with `first[u] ≤ k < first[u + 1]` that
+lie below the sizes of `heads` and `lens`, each from `u` to `heads[k]` with the length `lens[k]`,
+and an arc whose head is `n` or more is no arc.  `Walk n first heads lens s v L` states that a walk
+from `s` to `v` of total length `L` exists, with lengths as natural numbers, and a walk starts only
+at a vertex below `n`.  `Distances` states that the result holds `n` words and that word `v` is the
+least length of a walk from `s` to `v` when that length is below `2^64 - 1`, and `2^64 - 1` when no
+walk reaches `v` or every walk has length `2^64 - 1` or more, which determines the result, as
+`distances_unique` of the proof states.  `WellFormed` states the request's form of the graph:
+`first` holds at least `n + 1` words, the first `n + 1` in nondecreasing order, and `first[n]` is at
+most the size of `heads` and of `lens`.  The specification names the result and not the method, and
+the program text shows Dijkstra's algorithm. -/
 
 namespace Library.Graphs.Dijkstra
 

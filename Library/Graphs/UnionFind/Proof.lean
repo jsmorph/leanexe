@@ -282,7 +282,7 @@ theorem inv_keep {n : Nat} {js ks : Array UInt64} {t : Nat} {p : Array UInt64}
     · exact h
 
 /-- A link from the root of one element of pair `t` to the root of the other, in either direction,
-takes `Inv` from the pairs below `t` to the pairs below `t + 1`. -/
+gives `Inv` for the pairs below `t + 1` from `Inv` for the pairs below `t`. -/
 theorem link_inv {n : Nat} {js ks : Array UInt64} {t : Nat} {p q : Array UInt64}
     (hi : Inv n js ks t p) (htj : t < js.size) (htk : t < ks.size) (ha : js[t]!.toNat < n)
     (hb : ks[t]!.toNat < n) {ra rb : Nat}

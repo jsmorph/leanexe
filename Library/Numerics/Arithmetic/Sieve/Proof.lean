@@ -8,9 +8,10 @@ import Mathlib.Data.Nat.Prime.Basic
 exactly when `m` has a factor `q` with `2 ≤ q < p` and `q·q ≤ m`, which `Struck p m` states.
 `Struck (p + 1)` holds for the numbers of `Struck p` and the multiples of `p` from `p·p`, whose
 flags `crossOff` sets for an unflagged `p`, and a flagged `p` has such a factor `q`, which divides
-every multiple of `p` from `p·p`, so skipping it sets no flag that `Struck (p + 1)` needs.  When the
-sieve stops, every factor `q` with `q·q ≤ m < N` lies below `p`, so the flags below `N` mark the
-composite numbers, and the numbers from 2 with unset flags are the primes. -/
+every multiple of `p` from `p·p`, so `Struck p` already holds those multiples and skipping `p`
+leaves every flag of `Struck (p + 1)` set.  When the sieve stops, every factor `q` with
+`q·q ≤ m < N` lies below `p`, so the flags below `N` mark the composite numbers, and the numbers
+from 2 with unset flags are the primes. -/
 
 namespace Library.Numerics.Arithmetic.Sieve
 

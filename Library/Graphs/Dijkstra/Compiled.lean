@@ -2,7 +2,7 @@ import Library.Graphs.Dijkstra.Proof
 import Verified.Reflect.Command
 import Verified.Call
 
-/-! The verified compiler's module of the shortest walk lengths from one vertex by Dijkstra's
+/-! The verified compiler's module of the least walk lengths from one vertex by Dijkstra's
 algorithm.  By the compiler's rules, which the verified compiler's manual states, the compiler
 translates the tail recursions of `siftUp` and `siftDown` and the loops of `relax` and `dijkstra`
 into loops, so no theorem of the module has a call-depth premise, and `relax` updates the tentative
@@ -50,5 +50,6 @@ theorem dijkstra_bound (n s : UInt64) (first heads lens : Array UInt64) :
 #print axioms dijkstra_call
 #print axioms dijkstra_spec
 #print axioms dijkstra_bound
+#print axioms distances_unique
 
 end Library.Graphs.Dijkstra

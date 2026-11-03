@@ -23,8 +23,9 @@ theorem nextPerm_export :
   decide +kernel
 
 /-- Function 6, the export `nextPerm`, called with an array that the caller hands over, from a heap
-with room for `compiled.nextPerm.bound`, returns without a trap the flag and the owned array of
-`nextPerm xs`, and raises `top` by at most the bound. -/
+with the allocator invariant, a memory cap of at most 65,535 pages, and room for
+`compiled.nextPerm.bound`, returns without a trap the flag and the owned array of `nextPerm xs`, and
+raises `top` by at most the bound. -/
 theorem nextPerm_implements :
     ImplementsA false compiled.module 6 (fun x : Moved (Array UInt64) => nextPerm x.val)
       (fun x heap store => heap.Within store compiled.module (compiled.nextPerm.bound x))

@@ -22,8 +22,9 @@ theorem shellsort_export :
   decide +kernel
 
 /-- Function 8, the export `shellsort`, called with an array that the caller hands over, from a heap
-with room for `compiled.shellsort.bound`, returns without a trap the owned array `expected xs`, the
-elements in nondecreasing order, and raises `top` by at most the bound. -/
+with the allocator invariant, a memory cap of at most 65,535 pages, and room for
+`compiled.shellsort.bound`, returns without a trap the owned array `expected xs`, the elements in
+nondecreasing order, and raises `top` by at most the bound. -/
 theorem shellsort_implements :
     ImplementsA false compiled.module 8 (fun x : Moved (Array UInt64) => expected x.val)
       (fun x heap store => heap.Within store compiled.module (compiled.shellsort.bound x))

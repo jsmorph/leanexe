@@ -4,11 +4,12 @@ import Library.Sorting.Heapsort.Proof
 import Library.Sorting.Sorted
 
 /-! The proof that `nextPerm` computes the next arrangement.  A list in nonincreasing order is
-greater than or equal to each of its arrangements, and a list in nondecreasing order is less than
-or equal to each.  With `j` the last ascent of the input `P ++ p :: S`, the suffix `S` is
-nonincreasing, the program's result is `P ++ q :: S'`, where `q` is the least word of `S` above
-`p` and `S'` holds the other words of `p :: S` in nondecreasing order, and an arrangement above
-the input either departs upward inside `P` or starts its remainder with a word of `S` above `p`. -/
+greater than or equal to each of its arrangements, and a list in nondecreasing order is less than or
+equal to each.  With `j` the last ascent of the input `P ++ p :: S`, the suffix `S` is
+nonincreasing, the program's result is `P ++ q :: S'`, where `q` is the least word of `S` above `p`
+and `S'` holds the other words of `p :: S` in nondecreasing order, and an arrangement above the
+input either has a greater word at its first difference inside `P` or starts its remainder with a
+word of `S` above `p`. -/
 
 namespace Library.Combinatorics.NextPermutation
 
@@ -33,7 +34,8 @@ theorem append_lt_append (P A B : List UInt64) (h : A < B) : P ++ A < P ++ B := 
     rw [List.cons_append, List.cons_append, List.cons_lt_cons_iff]
     exact .inr ⟨rfl, ih⟩
 
-/-- A list above `P ++ M` departs upward inside `P` or continues `P` with a list above `M`. -/
+/-- A list above `P ++ M` has a greater word at its first difference inside `P` or continues `P`
+with a list above `M`. -/
 theorem lt_split (P M Z : List UInt64) (h : P ++ M < Z) :
     (∃ P1 x P2 y Z2, P = P1 ++ x :: P2 ∧ Z = P1 ++ y :: Z2 ∧ x < y) ∨
       ∃ Z', Z = P ++ Z' ∧ M < Z' := by
@@ -170,7 +172,8 @@ theorem lastAbove_spec (a : Array UInt64) (v lo : UInt64) :
       subst this
       exact ⟨le_refl _, le_refl _, .inl rfl, fun m hm hml => by omega⟩
 
-/-- Step L4: the words of positions `lo` to `hi` in reverse order. -/
+/-- The words of positions `lo` to `hi` in reverse order, for `hi` below the size: step L4, and the
+reversal of the whole array at the greatest arrangement. -/
 theorem reverseRange_spec (a : Array UInt64) (lo hi : UInt64) (hhi : hi.toNat < a.size) :
     (reverseRange a lo hi).size = a.size ∧
       (reverseRange a lo hi).toList.Perm a.toList ∧

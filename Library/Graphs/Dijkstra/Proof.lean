@@ -7,10 +7,10 @@ import LeanExe.Dialect.ArrayLemmas
 is the length of a walk, every vertex that is not done and has a tentative length below `2^64 - 1`
 has an entry with that length in the heap, every entry's key is at least the tentative length of its
 vertex, the vertices that are done have their least lengths, and the arcs out of them are relaxed.
-When the entry with the least key leaves the heap and its vertex is not done, every walk to that
+When a step removes the entry with the least key and its vertex is not done, every walk to that
 vertex shorter than `2^64 - 1` leaves the done vertices by a relaxed arc to a vertex whose entry is
 in the heap with a key at most the walk's length, so the vertex's tentative length is the least.
-Each vertex is done once and pushes at most one entry for each position of its range, so the
+Each vertex is done at most once and pushes at most one entry for each position of its range, so the
 `first[n]` steps of the loop empty the heap, and then a vertex that is not done has no walk shorter
 than `2^64 - 1`. -/
 
@@ -673,5 +673,29 @@ theorem dijkstra_spec (n s : UInt64) (first heads lens : Array UInt64)
       rw [build_get hv]
       exact INF_toNat
     omega
+
+/-- `Distances` determines the result: two arrays that satisfy it for the same graph and source are
+equal. -/
+theorem distances_unique {n s : Nat} {first heads lens r r' : Array UInt64}
+    (h : Distances n s first heads lens r) (h' : Distances n s first heads lens r') : r = r' := by
+  obtain ⟨hs, hd⟩ := h
+  obtain ⟨hs', hd'⟩ := h'
+  refine Array.ext (by rw [hs, hs']) fun v hv hv' => ?_
+  have hvn : v < n := by omega
+  obtain ⟨p1, p2⟩ := hd v hvn
+  obtain ⟨q1, q2⟩ := hd' v hvn
+  have a := UInt64.toNat_lt r[v]!
+  have b := UInt64.toNat_lt r'[v]!
+  have e : r[v]!.toNat = r'[v]!.toNat := by
+    rcases Nat.lt_or_ge r[v]!.toNat (2 ^ 64 - 1) with c | c <;>
+      rcases Nat.lt_or_ge r'[v]!.toNat (2 ^ 64 - 1) with d | d
+    · exact Nat.le_antisymm ((p1 c).2 _ (q1 d).1) ((q1 d).2 _ (p1 c).1)
+    · have := q2 (by omega) _ (p1 c).1
+      omega
+    · have := p2 (by omega) _ (q1 d).1
+      omega
+    · omega
+  have := UInt64.toNat_inj.mp e
+  rwa [getElem!_pos r v hv, getElem!_pos r' v hv'] at this
 
 end Library.Graphs.Dijkstra

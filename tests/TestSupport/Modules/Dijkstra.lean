@@ -9,7 +9,7 @@ namespace Library.Graphs.Dijkstra
 open TestSupport.Host
 
 /-- The arcs `(u, v, w)` of the forward star with `n` vertices: for each `u` below `n`, the
-positions `k` from `first[u]` to `first[u + 1] - 1` that lie below the lengths of `heads` and
+positions `k` from `first[u]` to `first[u + 1] - 1` that lie below the sizes of `heads` and
 `lens` and whose head `heads[k]` is below `n`. -/
 def caseArcs (n : Nat) (first heads lens : Array UInt64) : List (Nat × Nat × Nat) :=
   (List.range n).flatMap fun u =>
@@ -55,26 +55,26 @@ def star (n : Nat) (as : List (Nat × UInt64 × UInt64)) :
   ((out.scanl (fun k l => k + l.length) 0).map UInt64.ofNat, out.flatMap (·.map (·.1)),
     out.flatMap (·.map (·.2)))
 
-/-- The inputs `(n, s, first, heads, lens)` of the cases, each in the form that `WellFormed`
-states.  Small graphs cover no vertex, one vertex, sources of `n`, `2^32`, `2^32 + 1`, and
-`2^64 - 1`, of which a program that reads the source in 32 bits places `2^32` at 0 and `2^32 + 1`
-at 1, and sources of `n` or more whose words of `first` give a range of arcs, which a program
-without the test `s < n` relaxes.  They cover a path, vertices that no walk reaches, parallel arcs
-in decreasing length, which add a vertex to the heap three times, and in increasing length, a
-shorter walk found after a longer one, loops, and arcs of length 0.  Heads of `n`, `2^32 + 1`,
-`2^32 + 2`, `2^33 + 3`, `2^63`, and `2^64 - 1` name no vertex, and a program that reads heads in 32
-bits places `2^32 + 1`, `2^32 + 2`, `2^33 + 3`, and `2^63` in the graph.  Lengths of `2^32`,
-`2^63`, `2^64 - 2`, and `2^64 - 1` give sums that a program with 32-bit or signed lengths gets
-wrong, sums of `2^64 - 2`, which is a length, and of `2^64 - 1` and `2^64`, which are not, and a
-vertex whose least walk avoids a walk that saturates.  Arrays whose `first[0]` is above 0, whose
-`heads` and `lens` hold words past `first[n]`, or whose vertices have no arcs although `heads` is
-not empty, cover the forward star's bounds, and two graphs from the reviews detect a `siftUp` with
-the parent `i / 2` and a `siftDown` whose guard is `i < (h - 1) / 2`.  Random graphs drawn with
-SplitMix64 have 10 to 1,000 vertices, 15 to 5,000 arcs, lengths below 10, 1,000, 1,000,000, and
-`2^62`, and several sources, and two graphs of 100 and 200 vertices give the source an arc to
-every other vertex with a length of 64 bits, so that keys on both sides of `2^63` share the heap.
-A grid of 40 by 40 vertices with arcs in both directions, a complete graph of 40 vertices, and a
-vertex with 100 arcs to one head in decreasing length, which fills the heap, cover long runs. -/
+/-- The inputs `(n, s, first, heads, lens)` of the cases, each in the form that `WellFormed` states.
+Small graphs cover no vertex, one vertex, sources of `n`, `2^32`, `2^32 + 1`, and `2^64 - 1`, of
+which a program that reads the source in 32 bits places `2^32` at 0 and `2^32 + 1` at 1, and sources
+of `n` or more whose words of `first` give a range of arcs, which a program without the test `s < n`
+relaxes.  They cover a path, vertices that no walk reaches, parallel arcs in decreasing length,
+which add a vertex to the heap three times, and in increasing length, a shorter walk found after a
+longer one, loops, and arcs of length 0.  Heads of `n`, `2^32 + 1`, `2^32 + 2`, `2^33 + 3`, `2^63`,
+and `2^64 - 1` name no vertex, and a program that reads heads in 32 bits places `2^32 + 1`,
+`2^32 + 2`, `2^33 + 3`, and `2^63` in the graph.  Lengths of `2^32`, `2^63`, `2^64 - 2`, and
+`2^64 - 1` give sums that a program with 32-bit or signed lengths gets wrong, sums of `2^64 - 2`,
+which is a length, and of `2^64 - 1` and `2^64`, which are not, and a vertex whose least walk avoids
+a walk that saturates.  Arrays whose `first[0]` is above 0, whose `heads` and `lens` hold words past
+`first[n]`, or whose vertices have no arcs although `heads` is not empty, cover the forward star's
+bounds, and two graphs from the reviews detect a `siftUp` with the parent `i / 2` and a `siftDown`
+whose guard is `i < (h - 1) / 2`.  Random graphs drawn with SplitMix64 have 10 to 1,000 vertices, 15
+to 5,000 arcs, lengths below 10, 1,000, 1,000,000, and `2^62`, and several sources.  Two graphs of
+100 and 200 vertices have random arcs of 64-bit lengths and an arc of 64-bit length from the source
+to every other vertex, so that keys on both sides of `2^63` share the heap.  A grid of 40 by 40
+vertices with arcs in both directions, a complete graph of 40 vertices, and a vertex with 100 arcs
+to one head in decreasing length, which fills the heap, cover long runs. -/
 def dijkstraInputs : List (UInt64 × UInt64 × List UInt64 × List UInt64 × List UInt64) :=
   let case (n : Nat) (s : UInt64) (as : List (Nat × UInt64 × UInt64)) :=
     let (first, heads, lens) := star n as

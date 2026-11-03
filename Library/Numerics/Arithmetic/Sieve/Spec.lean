@@ -8,10 +8,10 @@ result and not the sieve, and the program text shows the method.  The theorems o
 blocks of `N` flags and of the result, which `primes_implements` and `primes_bound` state.  That
 reading is weaker than the request's: allocations from free blocks below `top` do not raise it, and
 no theorem states that the call releases the flags.  They read "a call stack that does not grow" as
-theorems with no call-depth premise, which rests on the compiler's rule that the verified compiler's
-manual states and no theorem states: the compiler translates recognized tail recursion and loops
-into loops and gives every other recursive function and its callers a call depth, which their
-theorems carry as a premise. -/
+theorems with no call-depth premise, which depends on the compiler's rule that the verified
+compiler's manual states and no theorem states: the compiler translates recognized tail recursion
+and loops into loops and gives every other recursive function and its callers a call depth, which
+their theorems take as a premise. -/
 
 namespace Library.Numerics.Arithmetic.Sieve
 

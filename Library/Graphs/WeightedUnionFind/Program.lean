@@ -2,10 +2,10 @@ import Library.Graphs.UnionFind.Program
 
 /-! Equivalence classes by the trees of Algorithm E of TAOCP §2.3.3 with path compression and union
 by size, as Tarjan analyzed them in 1975.  `root` is the step of Algorithm E that follows the links
-to a root, `compress` gives every element on the path from `j` the root as parent, `unite` merges
-the trees of one pair, the smaller under the larger, and `forest` takes the pairs in order.
-`classes` labels each element with the least element of its class, as the module of Algorithm E
-does. -/
+to a root, `compress` gives every element on the path from `j` the root as parent, `unite` makes the
+root whose recorded size is smaller a child of the other root, and `forest` takes the pairs in
+order.  `classes` labels each element with the least element of its class, as the module of
+Algorithm E does. -/
 
 namespace Library.Graphs.WeightedUnionFind
 

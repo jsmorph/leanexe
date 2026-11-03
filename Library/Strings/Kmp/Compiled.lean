@@ -6,10 +6,10 @@ import Verified.Congr
 the verified compiler's manual states, the compiler translates the tail recursion of `fall` and the
 loops of `failure`, `count`, and `occurrences` into loops, so no theorem of the module has a
 call-depth premise.  The caller lends the pattern and the text.  For a nonempty pattern the module
-builds the table of `failure` and the result, and for the empty pattern it builds the positions
-below `n` and extends that array by `n`.  `occurrences_implements` composes the generated
-`compiled.occurrences.trapFree` with `occurrences_eq`, and `occurrences_bound` states the generated
-bound. -/
+builds the table of `failure` and the result, and for the empty pattern it builds the positions from
+0 to `n` in one block when `n + 1` is a word, and otherwise the positions below `n` extended by `n`.
+`occurrences_implements` composes the generated `compiled.occurrences.trapFree` with
+`occurrences_eq`, and `occurrences_bound` states the generated bound. -/
 
 namespace Library.Strings.Kmp
 

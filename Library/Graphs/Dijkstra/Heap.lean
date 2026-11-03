@@ -6,8 +6,8 @@ import Mathlib.Data.List.FinRange
 /-! The heap of Dijkstra's algorithm: keys in `hk` and vertices in `hv`, with entry `i` the pair
 `(hk[i], hv[i])`, node `i` the parent of nodes `2i + 1` and `2i + 2`, and the least key at the root.
 `pairs hk hv len` lists the entries below `len`.  An exchange of two entries below `len` permutes
-that list, so the sifts permute it, and `push` and `pop` state an insertion and a removal of the
-root as the entries before them with one pair added or removed. -/
+that list, so the sifts permute it, and `push_spec` and `pop_spec` state an insertion and a removal
+of the root as the entries before them with one pair added or removed. -/
 
 namespace Library.Graphs.Dijkstra
 

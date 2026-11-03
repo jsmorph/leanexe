@@ -8,10 +8,10 @@ that raises the heap's `top` by at most a block of the array's size and a block 
 `radixSort_implements` and `radixSort_bound` state.  That reading is weaker than the request's:
 allocations from free blocks below `top` do not raise it, and no theorem states that the call
 releases the second array and the counts or that the result occupies the input's block.  They read
-"a call stack that does not grow" as theorems with no call-depth premise, which rests on the
+"a call stack that does not grow" as theorems with no call-depth premise, which depends on the
 compiler's rule that the verified compiler's manual states and no theorem states: the compiler
 translates recognized tail recursion and loops into loops and gives every other recursive function
-and its callers a call depth, which their theorems carry as a premise.  The theorems concern arrays
+and its callers a call depth, which their theorems take as a premise.  The theorems concern arrays
 of fewer than `2^64` elements, which every array in memory is. -/
 
 namespace Library.Sorting.RadixSort
