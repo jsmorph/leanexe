@@ -1,9 +1,9 @@
 Delete a key from a balanced binary tree of UInt64 keys, the tree of Algorithm A of TAOCP section
-6.2.3 whose nodes hold Knuth's balance factor.  Remove the key with the symmetric form of Algorithm
+6.2.3, whose nodes hold Knuth's balance factor.  Remove the key with the symmetric form of Algorithm
 D of section 6.2.2: a node with an empty subtree gives way to its other subtree, and a node with two
-subtrees takes its successor's key, whose node gives way to its right subtree.  Restore the balance
-with single and double rotations on the way back to the root, as section 6.2.3 describes.  The
-deletion must reuse the tree's nodes, allocate no node, and run with a call stack that does not
-grow, and it must leave the tree unchanged when the key is absent.  On a balanced binary search
-tree, the tree after a deletion must be a balanced binary search tree with the keys of the old tree
-without the deleted key, one level lower only when the key was present.
+subtrees takes the key of its successor, and the successor's node gives way to its right subtree.
+Restore the balance with single and double rotations on the way back to the root, as section 6.2.3
+describes.  The deletion must reuse the tree's nodes, allocate no node, and run with a call stack
+that does not grow, and it must leave the tree unchanged when the key is absent.  On a balanced
+binary search tree, the tree after a deletion must be a balanced binary search tree with the keys of
+the old tree without the deleted key, one level lower only when the key was present.

@@ -1,8 +1,6 @@
 # Library
 
-The library groups reusable implementations and their proofs by algorithm family.  Native
-definitions use the dialect that the verified compiler accepts.  Separate modules compile those
-definitions and state the properties of the resulting WebAssembly.
+The library groups reusable implementations and their proofs by algorithm family.  Native definitions use the dialect that the verified compiler accepts.  Separate modules compile those definitions and state the properties of the resulting WebAssembly.
 
 ## Algorithms
 
@@ -35,32 +33,15 @@ The Forms column gives the union of the codes that [the algorithm index](../inde
 
 ## Modules and imports
 
-Each family's `Program` module defines its native functions.  `Library.Native` imports every
-`Program` module of the library.  `tools/source-layout` fails when a `Program` module is missing
-from `Library.Native` or reaches a module of `Verified` through its imports.
+Each family's `Program` module defines its native functions.  `Library.Native` imports every `Program` module of the library.  `tools/source-layout` fails when a `Program` module is missing from `Library.Native` or reaches a module of `Verified` through its imports.
 
-`Compiled`, or `Verified` in the LCG, Park–Miller, and xorshift families, runs `verified_compile`
-and holds the module with its generated execution, allocation, and trap-free theorems, and with its
-native theorems when the module translates to C.  `File`, or a module whose name contains `File`,
-states the file theorems of the module that `tests/verified/run.sh` writes to `build/verified/`.
-`Proof` and the larger families' named theorem modules state mathematical properties.  `Library`
-imports the implementations and the main proof targets.  [The examples](../Examples) and [the
-application demos](../Demos/README.md) import library functions and compile them among their own
-functions, with their own cases.  Execution tests and reference calculators use [test
-support](../tests/TestSupport).
+`Compiled`, or `Verified` in the LCG, Park–Miller, and xorshift families, runs `verified_compile` and holds the module with its generated execution, allocation, and trap-free theorems, and with its native theorems when the module translates to C.  `File`, or a module whose name contains `File`, states the file theorems of the module that `tests/verified/run.sh` writes to `build/verified/`.  `Proof` and the larger families' named theorem modules state mathematical properties.  `Library` imports the implementations and the main proof targets.  [The examples](../Examples) and [the application demos](../Demos/README.md) import library functions and compile them among their own functions, with their own cases.  Execution tests and reference calculators use [test support](../tests/TestSupport).
 
 ## Proof scope
 
-The theorems that `verified_compile` generates state that the module computes its Lean definition
-under the representation, ownership, memory, and recursion premises.  Mathematical theorems state
-further properties: period, rounding error, or an equation with an independent specification.
-The named statements determine each function's guarantees.
+The theorems that `verified_compile` generates state that the module computes its Lean definition under the representation, ownership, memory, and recursion premises.  Mathematical theorems state further properties: period, rounding error, or an equation with an independent specification.  The named statements determine each function's guarantees.
 
-[The insertion example](../Verified/Examples/Insert.lean) proves an allocation bound,
-`sortInsert_bound`, for its own compilation of insertion sort.  Ordering and membership theorems
-for search-tree insertion remain future work.  The reduction and
-linear-algebra implementations preserve their operation order, wrapping word arithmetic, default
-reads from short arrays, and floating-point exceptional cases.
+[The insertion example](../Verified/Examples/Insert.lean) proves an allocation bound, `sortInsert_bound`, for its own compilation of insertion sort.  [Tree search and insertion](Trees/Search/README.md) states the membership and ordering theorems of search-tree insertion, `mem_keys_insert` and `ordered_insert`.  The reduction and linear-algebra implementations preserve their operation order, wrapping word arithmetic, default reads from short arrays, and floating-point exceptional cases.
 
 ## Builds and tests
 
@@ -71,9 +52,4 @@ tools/leanrun --timeout 30m lake build Library.Native
 tools/leanrun --timeout 30m lake build Library.Sorting.Insertion.Compiled
 ```
 
-The static checks cover import boundaries, registry paths, and local documentation links.
-`Library.Native` builds the native definitions.  [The full check](../docs/verified-manual.md#the-full-check)
-gives the complete library build and its resource settings.  The [cold-cache procedure](../docs/verified-manual.md#memory-heavy-numerical-proofs)
-stages the memory-heavy proofs before the parallel aggregate.  `tests/verified/run.sh` reads the
-module registries, emits and validates the modules, compares their cases with native Lean, checks
-the file theorems, and runs the accuracy checks.  The full check also runs the GPU tests.
+The static checks cover import boundaries, registry paths, and local documentation links.  `Library.Native` builds the native definitions.  [The full check](../docs/verified-manual.md#the-full-check) gives the complete library build and its resource settings.  The [cold-cache procedure](../docs/verified-manual.md#memory-heavy-numerical-proofs) stages the memory-heavy proofs before the parallel aggregate.  `tests/verified/run.sh` reads the module registries, emits and validates the modules, compares their cases with native Lean, checks the file theorems, and runs the accuracy checks.  The full check also runs the GPU tests.
