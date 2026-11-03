@@ -136,6 +136,7 @@ Verified.Examples.Patterns:Verified.Examples.Patterns.compiled.module:patterns
 Examples.Lookup.Compiled:Examples.Lookup.compiled.module:lookup
 Examples.TreeLookup.Compiled:Examples.TreeLookup.compiled.module:treeLookup
 Library.Numerics.Arithmetic.PrimeFactors.Compiled:Library.Numerics.Arithmetic.PrimeFactors.compiled.module:primeFactors
+Library.Numerics.Arithmetic.Sieve.Compiled:Library.Numerics.Arithmetic.Sieve.compiled.module:sieve
 Examples.RunningMax.Compiled:Examples.RunningMax.compiled.module:runningMax
 Examples.Scale.Compiled:Examples.Scale.compiled.module:scale
 Examples.SumArray.Compiled:Examples.SumArray.compiledSum.module:sumArray

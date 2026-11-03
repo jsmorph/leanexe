@@ -23,6 +23,7 @@ import TestSupport.Modules.Quicksort
 import TestSupport.Modules.Shellsort
 import TestSupport.Modules.Find
 import TestSupport.Modules.PrimeFactors
+import TestSupport.Modules.Sieve
 import TestSupport.Modules.Sampling
 import TestSupport.Modules.TopologicalSort
 import TestSupport.Modules.UnionFind
@@ -173,6 +174,11 @@ def cases : IO Unit := do
   for (xs, key) in Library.Arrays.BinarySearch.searchInputs do
     IO.println s!"binarySearch|lowerBound|i64|{arrU xs} {u key}|\
       {Library.Arrays.BinarySearch.expected (xs.toArray, key)}|1|1"
+  for n in Library.Numerics.Arithmetic.Sieve.sieveInputs do
+    IO.println s!"sieve|primes|array-u64|{u n}|\
+      [{", ".intercalate ((Library.Numerics.Arithmetic.Sieve.expected n).toList.map toString)}]|1|2"
+  for n in Library.Numerics.Arithmetic.Sieve.sieveTraps do
+    IO.println s!"sieve|primes|array-u64|{u n}|trap"
   for n in Library.Numerics.Arithmetic.PrimeFactors.primeFactorInputs do
     IO.println s!"primeFactors|compute|i64|{u n}|\
       {Library.Numerics.Arithmetic.PrimeFactors.expected n}|0|0"

@@ -25,6 +25,7 @@ import Library.Numerics.Arithmetic.Gcd.Program
 import Library.Numerics.Arithmetic.MillerRabin.Program
 import Library.Numerics.Arithmetic.ModInverse.Program
 import Library.Numerics.Arithmetic.PrimeFactors.Program
+import Library.Numerics.Arithmetic.Sieve.Program
 import Library.Numerics.Arithmetic.Uscale.Program
 import Library.Numerics.Bounds.Program
 import Library.Numerics.Decimal.ParseFloat.Program

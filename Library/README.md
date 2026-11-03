@@ -15,7 +15,7 @@ The library groups reusable implementations and their proofs by algorithm family
 | [Hash tables](HashTables/LinearProbing/README.md) | V S F C | Hash table of words with linear probing and deletion. |
 | [Graphs](../index.md#13-graphs-and-combinatorial-search) | V S F C | Topological sorting and equivalence classes. |
 | [Combinatorics](../index.md#13-graphs-and-combinatorial-search) | V S F C | Exact cover by Algorithm X with dancing links, and the next arrangement in lexicographic order by Algorithm L. |
-| [Arithmetic](../index.md#1-arithmetic) | V S F C | Software FMA, limb arithmetic, multiple-precision addition, subtraction, multiplication, and division, unrounded scaling, Euclidean and binary GCD, modular inverse, modular exponentiation and the strong probable-prime test, factor counting, and bounded integer square root. |
+| [Arithmetic](../index.md#1-arithmetic) | V S F C | Software FMA, limb arithmetic, multiple-precision addition, subtraction, multiplication, and division, unrounded scaling, Euclidean and binary GCD, modular inverse, modular exponentiation and the strong probable-prime test, factor counting, the sieve of Eratosthenes, and bounded integer square root. |
 | [Binary64 functions](../index.md#6-elementary-and-special-functions) | V S F C | Elementary and special functions with their accuracy proofs. |
 | [Decimal conversion](../index.md#9-conversion-between-decimal-strings-and-binary-floating-point) | V S F C | Parsing and shortest-decimal printing. |
 | [Fourier transforms](Numerics/Fourier/README.md) | V F C | DFT, inverse transform, and power spectrum. |

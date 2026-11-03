@@ -1,0 +1,5 @@
+Given a UInt64 word N, return the primes below N in increasing order, as an array of UInt64 words,
+computed with the sieve of Eratosthenes: in an array of N flags, for each p from 2 with p * p < N
+whose flag is unset, set the flags of p * p, p * p + p, p * p + 2p, and so on below N, and then
+collect the numbers from 2 whose flags remain unset.  Allocate only the flags and the result, and
+use a call stack that does not grow.

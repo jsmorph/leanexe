@@ -128,6 +128,7 @@ patterns:Verified.Examples.Patterns:Verified/Examples/PatternsFile.lean
 lookup:Examples.Lookup.Compiled:Examples/Lookup/File.lean
 treeLookup:Examples.TreeLookup.Compiled:Examples/TreeLookup/File.lean
 primeFactors:Library.Numerics.Arithmetic.PrimeFactors.Compiled:Library/Numerics/Arithmetic/PrimeFactors/File.lean
+sieve:Library.Numerics.Arithmetic.Sieve.Compiled:Library/Numerics/Arithmetic/Sieve/File.lean
 runningMax:Examples.RunningMax.Compiled:Examples/RunningMax/File.lean
 tailcore:Verified.Examples.TailCore:Verified/Examples/TailCoreFile.lean
 treecopy:Verified.Examples.TreeCopy:Verified/Examples/TreeCopyFile.lean
