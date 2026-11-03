@@ -40832,7 +40832,7 @@ Design: `LeanExe/WGSL/Events.lean` is a second semantics of one invocation, so t
 
 ## 2026-11-03: Design of a PTX target
 
-The user asked for an agent to design PTX as a second GPU target beside WGSL.  The agent ran no Lean and measured on the GB10 of edgexpert-18ff (CUDA 13.0, driver 580.178.04); its design and journal are in the session scratchpad.  `mul.rn` and `add.rn` stay separate FMUL and FADD in SASS, while the same sequence without `.rn` becomes FFMA.  For add, sub, mul, div, sqrt, and `cvt.rni` in f32 and f64, every non-NaN result matched the CPU's IEEE result on about 3.1 million cases per operation, and the f32 single-input sequences matched on all 2^32 inputs.
+The user asked for an agent to design PTX as a second GPU target beside WGSL.  The agent ran no Lean and measured on the GB10 of edgexpert-18ff (CUDA 13.0, driver 580.178.04), and its measurement files are in `~/ptx-design` on that host.  `mul.rn` and `add.rn` stay separate FMUL and FADD in SASS, while the same sequence without `.rn` becomes FFMA.  For add, sub, mul, div, sqrt, and `cvt.rni` in f32 and f64, every non-NaN result matched the CPU's IEEE result on about 3.1 million cases per operation, and the f32 single-input sequences matched on all 2^32 inputs.
 
 NaN results differ from Talos: every f32 NaN is `0x7fffffff`, the f64 default NaN is `0xfff8000000000000`, and with two NaN inputs, f64 add, sub, and mul return the second source operand of the SASS instruction, and div returns the dividend.  `div.rn` and `sqrt.rn` are software sequences that ptxas inserts.  The JIT of PTX text and offline `ptxas -arch=sm_121a` gave identical SASS.  The agent wrote two cache entries to `~/.nv/ComputeCache` on edgexpert-18ff.
 
@@ -40846,7 +40846,7 @@ The user asked to start the PTX target with the recommendations of the design en
 - offline `ptxas` from a pinned toolkit with `--fmad=false`;
 - binary64 after binary32.
 
-Stage 1 builds the device model and runs a hand-written kernel on the GB10.  The plan and its review are in the session scratchpad (`ptx/stage1-plan.md`, `ptx/stage1-review.md`).
+Stage 1 builds the device model and runs a hand-written kernel on the GB10.  A fresh agent reviewed the plan before the work started, and the findings below come from that review.
 
 Decisions:
 
@@ -40866,7 +40866,7 @@ Decisions:
 The review found these errors in the plan, and each was adopted:
 - The plan did not state the rule for loads of the output.  The code already stopped such a load.
 - Stopping a thread at an out-of-bounds or misaligned access is sound only through No Thin Air.  A stray store could reach an input buffer and justify itself, as in the LB+deps litmus test.  This becomes a trusted row, and it is the one place where the model relies on an omitted axiom.
-- The phase edges rest on readings of PTX ISA 8.9.4 and 8.2.6 about host copies, initialization, other agents, and proxies.  These become trusted rows worded as readings.
+- The phase edges depend on readings of PTX ISA 8.9.4 and 8.2.6 about host copies, initialization, other agents, and proxies.  These become trusted rows worded as readings.
 - `ld.param` is a read operation in the ISA.  The model records no event for it, and a trusted row states why.
 - The block count needs a bound of `2^32`.
 - The add-one theorem's layout is the WGSL layout: the length word, then the elements.
@@ -40889,3 +40889,20 @@ Progress:
 Stage 2 is next.  It moves the shared kernel source language out of `LeanExe/WGSL/` and translates words and Booleans into PTX, with a launch theorem for each accepted build.
 
 Follow-up for WGSL: its writes before and after the dispatch are per word.  Per-byte writes, as in the PTX model, would cover writes of other sizes.
+
+## 2026-11-03: Review of the GPU documents
+
+The user asked for a review of the documents of the WGSL memory-model work and of PTX stage 1 before stage 2 starts.  The review compared each statement with the code and with the current texts of [the PTX ISA](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html), [WGSL](https://www.w3.org/TR/WGSL/), and [the Vulkan memory model](https://docs.vulkan.org/spec/latest/appendices/memorymodel.html).  The section numbers that the documents cite from the PTX ISA (6.4.1, 8.2, 8.2.6, 8.7.1, 8.9.1, 8.9.4 to 8.9.7, 8.10.1, 8.10.4, 8.10.6, 9.3, 9.7.10.8, and 9.7.10.11) and from WGSL (2.2, 9.2.1, 11.2, 14.5, and 15.1) match the current texts.
+
+| Finding | Change |
+|---|---|
+| The WGSL argument has the gap that the stage 1 review found for PTX.  After a dynamic error, such as an access outside a buffer, WGSL 2.2 restricts accesses to the module's bound resources but leaves the behavior unspecified and allows non-local effects.  An invocation that runs past a point where `Module.invokeE` stops could then write an input and justify its own departure, and the Vulkan memory model has no rule against such a cycle.  Section G of the trust document stated instead that the invocation stops where the model stops. | Section G states what a device invocation does up to a stop, adds the trusted row "No invocation runs past a stop", and gives the argument after its table.  The README and the design document name the assumption. |
+| The PTX row on stopping threads cited an argument in this journal, which the journal did not contain.  The ISA states No Thin Air (8.10.4) in prose and by litmus tests, and the row did not say so. | The argument follows the table of section P and names the LB+deps litmus test. |
+| Section P's list of trusted items omitted that row.  Section G's list omitted the compiled shader and the driver, device, and host. | Both lists name every row. |
+| The PTX thread-semantics row said that the SASS keeps the guards, which no check examines. | Removed. |
+| Section P and README row P said that the add-one theorem gives the Lean function's result, but the kernel is written by hand. | They state the output: the length followed by each input word plus one. |
+| The design entry recommended a pinned `ptxas`, and the test recorded no version. | `tests/ptx/run.sh` writes `ptxas --version` to `ptxas.version` beside the hashes. |
+| The definitions row of the PTX launch omitted `Execution`, `Op`, `Access`, `Event.access`, and the add-one definitions. | Added, with their files. |
+| The README listed P before G, against the order of the trust document.  The design document said that the compiler "does not yet" translate into PTX.  Three paragraphs had lines over 100 characters, the WGSL memory-model comment had an ungrammatical clause, and two entries of this journal pointed to scratchpad files that do not persist. | Fixed. |
+
+On edgexpert, `LeanExe.WGSL.MemoryModel` builds with the corrected comment, and `tests/ptx/run.sh` passed its 9 cases from the cubin and through the driver's compiler.  The recorded `ptxas` is CUDA 13.0 V13.0.88, and the cubin's SHA-256 is unchanged.  The earlier entry's run with `-arch=sm_121a` was a manual run, while the test compiles for `sm_121`, the architecture that the device reports.

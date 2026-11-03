@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Runs PTX kernels on an NVIDIA GPU with the text that tools/EmitPtx.lean prints, on cases whose
 # expected output words native Lean computes, and compares the words.  ptxas compiles each kernel
-# with `-O3 --fmad=false` for the GPU's architecture, and the script records the cubin's SHA-256
-# and its SASS in the build directory's ptx/.  Each case runs twice: from the cubin, and from the
+# with `-O3 --fmad=false` for the GPU's architecture, and the script records the version of ptxas,
+# the cubin's SHA-256, and its SASS in the build directory's ptx/.  Each case runs twice: from the cubin, and from the
 # PTX text through the driver's compiler.
 # Usage: tests/ptx/run.sh [build directory]
 set -euo pipefail
@@ -21,6 +21,7 @@ if [ -z "$arch" ]; then
 fi
 (cd "$root" && tools/leanrun --timeout 20m lake --log-level error build LeanExe.PTX.Parse \
   LeanExe.PTX.AddOne)
+"$cuda/bin/ptxas" --version >"$out/ptxas.version"
 : >"$out/cubins.sha256"
 for entry in "${kernels[@]}"; do
   IFS=: read -r module constant kernel <<<"$entry"

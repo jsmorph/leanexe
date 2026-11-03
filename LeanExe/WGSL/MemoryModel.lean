@@ -11,7 +11,7 @@ The operations on a location fall into five phases: writes before the buffers re
 that the dispatch reads, the write of those values, the reads and writes of the invocations
 (`Module.invokeE`, with an oracle for each invocation's reads), one read of each output word after
 the dispatch, and writes after those reads.  The read after the dispatch represents the copy to
-the readback buffer and the host's read of the mapped buffer, or for a later dispatch's read.
+the readback buffer and the host's read of the mapped buffer, or a later dispatch's read.
 WebGPU orders queue operations (WebGPU 3.4.1 and the queue-timeline steps of `writeBuffer()` and
 `submit()`), and the implementation's memory dependencies between them make the location-order
 edges between phases that `Dispatch.Consistent` requires (Vulkan memory model, "Location-Ordered",

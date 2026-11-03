@@ -198,14 +198,15 @@ The WebAssembly specification ([numerics](https://webassembly.github.io/spec/cor
 ## GPU
 
 The shared [WGSL library](../LeanExe/WGSL) defines the language subset, its printer and inverse
-parser, its semantics, and the proved translation of its kernel source language.  Dispatch theorems prove
-kernel results and race freedom under buffer and invocation bounds in a sequential model.
-`Dispatch.executions` proves that every consistent execution of such a dispatch, under a Lean
-statement of the Vulkan memory model that WGSL adopts, has no data race and leaves the same output.
-The models use strict binary32 arithmetic.  Applying the results to hardware assumes that the
-driver and device implement that arithmetic and the queue order and memory dependencies that the
-memory-model statement uses.  [The binary32 GPT application](../Demos/Gpt32) adds `generate_host`, which proves the
-scores of a generation step and race freedom under its shape, weight, and token bounds.
+parser, its semantics, and the proved translation of its kernel source language.  Dispatch
+theorems prove kernel results and race freedom under buffer and invocation bounds in a sequential
+model.  `Dispatch.executions` proves that every consistent execution of such a dispatch, under a
+Lean statement of the Vulkan memory model that WGSL adopts, has no data race and leaves the same
+output.  The models use strict binary32 arithmetic.  Applying the results to hardware assumes that
+the driver and device implement that arithmetic and the queue order and memory dependencies that
+the memory-model statement uses, and that no invocation runs past a point where the model stops.
+[The binary32 GPT application](../Demos/Gpt32) adds `generate_host`, which proves the scores of a
+generation step and race freedom under its shape, weight, and token bounds.
 [The compiler manual](verified-manual.md#the-wgsl-library-and-the-browser-pages) describes
 the subset, its tools, and the browser pages.
 
@@ -215,7 +216,9 @@ model](../LeanExe/PTX/MemoryModel.lean) states a launch's executions under the P
 and `Launch.executions` proves that every consistent execution of a race-free launch reads the
 output of the sequential run.  [The add-one kernel](../LeanExe/PTX/AddOne.lean) is written by hand
 and runs on an NVIDIA GB10 through [the CUDA host](../tools/cuda-host.c).  The verified compiler
-does not yet translate into PTX.
+does not translate into PTX.  [The trusted-base document](trusted-base.md#p-ptx-kernels) lists
+what applying the launch theorems to a GPU assumes, including the No Thin Air axiom of the PTX
+memory model.
 
 [The compiler's source lowering](../Verified/WGSL/Compile.lean) constructs a kernel of the shared
 source language with a proof of its meaning, then uses the shared WGSL translation and dispatch
