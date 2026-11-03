@@ -94,6 +94,7 @@ topoSort:Library.Graphs.TopologicalSort.Compiled:Library/Graphs/TopologicalSort/
 unionFind:Library.Graphs.UnionFind.Compiled:Library/Graphs/UnionFind/File.lean
 weightedUnionFind:Library.Graphs.WeightedUnionFind.Compiled:Library/Graphs/WeightedUnionFind/File.lean
 kmp:Library.Strings.Kmp.Compiled:Library/Strings/Kmp/File.lean
+dijkstra:Library.Graphs.Dijkstra.Compiled:Library/Graphs/Dijkstra/File.lean
 heapQueue:Library.Queues.BinaryHeap.Compiled:Library/Queues/BinaryHeap/File.lean
 hashTable:Library.HashTables.LinearProbing.Compiled:Library/HashTables/LinearProbing/File.lean
 multiPrecision:Library.Numerics.MultiPrecision.Compiled:Library/Numerics/MultiPrecision/File.lean

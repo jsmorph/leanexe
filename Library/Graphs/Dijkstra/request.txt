@@ -1,0 +1,12 @@
+Given a directed graph with n vertices, numbered from 0 to n - 1, in forward-star form, and a source
+vertex s, return an array of n UInt64 words that holds, for each vertex v, the least total length of
+a walk from s to v, or 2^64 - 1 when no walk reaches v or the least length is 2^64 - 1 or more.  The
+graph is three arrays of UInt64 words: first, of at least n + 1 words in nondecreasing order, and
+heads and lengths, each of at least first[n] words.  The arcs out of a vertex u are the positions k
+with first[u] <= k < first[u + 1], each from u to heads[k] with the length lengths[k], and an arc
+whose head is n or more is no arc.  Compute the lengths with Dijkstra's algorithm, with the
+tentative lengths in an array and the vertices to visit in a binary heap of pairs of a tentative
+length and a vertex, ordered by length, so that each step takes the vertex of least tentative length
+that is not yet done, and a pair whose vertex is done is skipped when it leaves the heap.  Allocate
+only the tentative lengths, the marks of the vertices that are done, and a heap of first[n] pairs,
+and use a call stack that does not grow.

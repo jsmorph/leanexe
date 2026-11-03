@@ -30,6 +30,7 @@ import TestSupport.Modules.TopologicalSort
 import TestSupport.Modules.UnionFind
 import TestSupport.Modules.WeightedUnionFind
 import TestSupport.Modules.Kmp
+import TestSupport.Modules.Dijkstra
 import TestSupport.Modules.TreeSearch
 import TestSupport.Modules.Avl
 import TestSupport.Modules.AvlDelete
@@ -151,6 +152,10 @@ def cases : IO Unit := do
     IO.println s!"kmp|occurrences|array-u64|{arrU pw} {u m} {arrU tw} {u n}|\
       [{", ".intercalate ((Library.Strings.Kmp.expected pw.toArray m tw.toArray n).toList.map
         toString)}]|3|4"
+  for (n, s, first, heads, lens) in Library.Graphs.Dijkstra.dijkstraInputs do
+    IO.println s!"dijkstra|dijkstra|array-u64|{u n} {u s} {arrU first} {arrU heads} {arrU lens}|\
+      [{", ".intercalate ((Library.Graphs.Dijkstra.shortest n s first heads lens).map
+        toString)}]|4|7"
   for (n, js, ks) in Library.Graphs.WeightedUnionFind.weightedInputs do
     IO.println s!"weightedUnionFind|classes|array-u64|{u (UInt64.ofNat n)} {arrU js} {arrU ks}|\
       [{", ".intercalate ((Library.Graphs.UnionFind.leastLabels n js ks).map toString)}]|3|6"

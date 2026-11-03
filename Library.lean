@@ -257,6 +257,7 @@ import Library.Graphs.TopologicalSort.Compiled
 import Library.Graphs.UnionFind.Compiled
 import Library.Graphs.WeightedUnionFind.Compiled
 import Library.Strings.Kmp.Compiled
+import Library.Graphs.Dijkstra.Compiled
 import Library.Queues.BinaryHeap.Compiled
 import Library.HashTables.LinearProbing.Compiled
 import Library.Numerics.MultiPrecision.Compiled

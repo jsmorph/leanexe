@@ -91,6 +91,7 @@ Library.Graphs.TopologicalSort.Compiled:Library.Graphs.TopologicalSort.compiled.
 Library.Graphs.UnionFind.Compiled:Library.Graphs.UnionFind.compiled.module:unionFind
 Library.Graphs.WeightedUnionFind.Compiled:Library.Graphs.WeightedUnionFind.compiled.module:weightedUnionFind
 Library.Strings.Kmp.Compiled:Library.Strings.Kmp.compiled.module:kmp
+Library.Graphs.Dijkstra.Compiled:Library.Graphs.Dijkstra.compiled.module:dijkstra
 Library.Queues.BinaryHeap.Compiled:Library.Queues.BinaryHeap.compiled.module:heapQueue
 Library.HashTables.LinearProbing.Compiled:Library.HashTables.LinearProbing.compiled.module:hashTable
 Library.Numerics.MultiPrecision.Compiled:Library.Numerics.MultiPrecision.compiled.module:multiPrecision
