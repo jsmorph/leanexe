@@ -1,0 +1,10 @@
+Find the equivalence classes of the elements 0 to n - 1 under the least equivalence relation that
+relates the two elements of each given pair, and return an array of n UInt64 words that holds, for
+each element, the least element of its class.  The pairs come as two arrays of UInt64 words, the
+first and the second elements of the pairs, and a pair with an element of n or more relates
+nothing.  Keep each class as a tree of parent links, as Algorithm E of TAOCP section 2.3.3 does.
+For each pair, find the roots of the trees of its two elements, compress both paths by giving every
+element on them its root as parent, and, when the roots differ, make the root of the tree with
+fewer elements a child of the other root, with the size of each tree kept at its root, as in
+Tarjan's set union algorithm of 1975.  Keep the parent links and the sizes in two arrays that the
+program updates in place, and run with a call stack that does not grow.

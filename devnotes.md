@@ -40741,3 +40741,13 @@ Two fresh agents reviewed the specification and the cases, and [the review](Libr
 ### Staging part of a shared file
 
 The commit of the next arrangement, `9324f5466`, staged its lines of the shared files with zero-context patches from which the sieve's hunks had been dropped, and `git apply` placed two of them one line off wherever a dropped hunk came first.  The case loop of the next arrangement went inside the selection loop of `LibraryCases.lean`, where it compiled and generated wrong case lines, and its index row fell outside its table.  `c417100f2` placed both correctly, and a commit that excludes part of a shared file now stages the whole file, derived from the working copy with the other item's lines removed.
+
+### Union–find with path compression and union by size
+
+The module `weightedUnionFind` of `Library/Graphs/WeightedUnionFind` computes the result of the module of Algorithm E, `LeastLabels`, with path compression and union by size, so the two share the specification, and this module's own specification file records its reading of the request.  The proof reuses the invariant `Inv` of Algorithm E, and the proof of Algorithm E now states three of its steps as lemmas over any links: `inv_keep` for a pair that adds nothing, `link_inv` for a link between the two roots in either direction, and `labels_spec` for the labeling loop.  Path compression keeps `Inv`, since the rank function of a forest rises from an element to its root, so a link from an element to its root keeps the same rank function, and the roots of all elements stay, which `rootOf_eq_of` shows with the old roots as the invariant function.  The sizes decide only the direction of a link, so the proof does not use them, and no theorem states that they count the elements of the trees.
+
+The two reviews found that the shared specification's comment described Algorithm E, and that the inputs of Algorithm E build trees of depth 1 under union by size, so the cases add binomial trees whose searches of up to 12 links compress their paths.  On edgexpert, the full build of `Library` and `TestSupport` with the shared lemmas passed 10,650 jobs, and `tests/verified/run.sh --cases unionFind` passed all 678 cases after the change to the proof of Algorithm E.
+
+- [x] Union–find with path compression: request, specification and reviews, program, proofs, cases, README, index.
+
+With the added inputs, `tests/verified/run.sh --cases weightedUnionFind` and the native driver on edgexpert passed all 683 cases, and the theorems name only `propext`, `Classical.choice`, and `Quot.sound`.  [The review](Library/Graphs/WeightedUnionFind/review.md) records the reviews' findings.

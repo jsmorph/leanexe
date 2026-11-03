@@ -28,6 +28,7 @@ import TestSupport.Modules.Sieve
 import TestSupport.Modules.Sampling
 import TestSupport.Modules.TopologicalSort
 import TestSupport.Modules.UnionFind
+import TestSupport.Modules.WeightedUnionFind
 import TestSupport.Modules.TreeSearch
 import TestSupport.Modules.Avl
 import TestSupport.Modules.AvlDelete
@@ -145,6 +146,9 @@ def cases : IO Unit := do
   for (n, js, ks) in Library.Graphs.UnionFind.classInputs do
     IO.println s!"unionFind|classes|array-u64|{u (UInt64.ofNat n)} {arrU js} {arrU ks}|\
       [{", ".intercalate ((Library.Graphs.UnionFind.leastLabels n js ks).map toString)}]|3|5"
+  for (n, js, ks) in Library.Graphs.WeightedUnionFind.weightedInputs do
+    IO.println s!"weightedUnionFind|classes|array-u64|{u (UInt64.ofNat n)} {arrU js} {arrU ks}|\
+      [{", ".intercalate ((Library.Graphs.UnionFind.leastLabels n js ks).map toString)}]|3|6"
   for xs in Library.Queues.BinaryHeap.heapInputs do
     IO.println s!"heapQueue|heapQueue|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Queues.BinaryHeap.expected xs.toArray).toList.map toString)}]"

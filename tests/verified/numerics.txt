@@ -92,6 +92,7 @@ find:Library.Sorting.Find.Compiled:Library/Sorting/Find/File.lean
 sampling:Library.Random.Sampling.Compiled:Library/Random/Sampling/File.lean
 topoSort:Library.Graphs.TopologicalSort.Compiled:Library/Graphs/TopologicalSort/File.lean
 unionFind:Library.Graphs.UnionFind.Compiled:Library/Graphs/UnionFind/File.lean
+weightedUnionFind:Library.Graphs.WeightedUnionFind.Compiled:Library/Graphs/WeightedUnionFind/File.lean
 heapQueue:Library.Queues.BinaryHeap.Compiled:Library/Queues/BinaryHeap/File.lean
 hashTable:Library.HashTables.LinearProbing.Compiled:Library/HashTables/LinearProbing/File.lean
 multiPrecision:Library.Numerics.MultiPrecision.Compiled:Library/Numerics/MultiPrecision/File.lean

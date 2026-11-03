@@ -265,23 +265,67 @@ theorem inv_init (N : UInt64) (js ks : Array UInt64) :
   rw [hup x hx]
   exact .refl x
 
+/-- `Inv` for the pairs below `t + 1` holds for links that satisfy it for the pairs below `t`, when
+pair `t` has an element of `n` or more or has both elements in one tree. -/
+theorem inv_keep {n : Nat} {js ks : Array UInt64} {t : Nat} {p : Array UInt64}
+    (hi : Inv n js ks t p)
+    (hpair : ¬js[t]!.toNat < n ∨ ¬ks[t]!.toNat < n ∨
+      rootOf n p js[t]!.toNat = rootOf n p ks[t]!.toNat) :
+    Inv n js ks (t + 1) p := by
+  refine ⟨hi.forest, fun x hx => eqv_mono (by omega) (hi.link x hx),
+    fun s hs hsj hsk ha hb => ?_⟩
+  rcases Nat.lt_succ_iff_lt_or_eq.mp hs with hs | rfl
+  · exact hi.pairs s hs hsj hsk ha hb
+  · rcases hpair with h | h | h
+    · exact absurd ha h
+    · exact absurd hb h
+    · exact h
+
+/-- A link from the root of one element of pair `t` to the root of the other, in either direction,
+takes `Inv` from the pairs below `t` to the pairs below `t + 1`. -/
+theorem link_inv {n : Nat} {js ks : Array UInt64} {t : Nat} {p q : Array UInt64}
+    (hi : Inv n js ks t p) (htj : t < js.size) (htk : t < ks.size) (ha : js[t]!.toNat < n)
+    (hb : ks[t]!.toNat < n) {ra rb : Nat}
+    (hr : (ra = rootOf n p js[t]!.toNat ∧ rb = rootOf n p ks[t]!.toNat) ∨
+      (ra = rootOf n p ks[t]!.toNat ∧ rb = rootOf n p js[t]!.toNat))
+    (hne : ra ≠ rb) (hsize : q.size = n) (hup : ∀ x, up q x = if x = ra then rb else up p x) :
+    Inv n js ks (t + 1) q := by
+  have hf := hi.forest
+  have hra : ra < n ∧ up p ra = ra := by
+    rcases hr with ⟨e, _⟩ | ⟨e, _⟩ <;> rw [e]
+    · exact ⟨rootOf_lt hf ha, rootOf_root hf ha⟩
+    · exact ⟨rootOf_lt hf hb, rootOf_root hf hb⟩
+  have hrb : rb < n ∧ up p rb = rb := by
+    rcases hr with ⟨_, e⟩ | ⟨_, e⟩ <;> rw [e]
+    · exact ⟨rootOf_lt hf hb, rootOf_root hf hb⟩
+    · exact ⟨rootOf_lt hf ha, rootOf_root hf ha⟩
+  have hq : Forest n q := forest_link hf hsize hra.1 hrb.1 hra.2 hrb.2 hne hup
+  have hpair : PairedBelow n js ks (t + 1) js[t]!.toNat ks[t]!.toNat :=
+    ⟨t, by omega, htj, htk, rfl, rfl, ha, hb⟩
+  have h1 := eqv_mono (Nat.le_succ t) (eqv_iter hi ha n)
+  have h2 := eqv_mono (Nat.le_succ t) (eqv_iter hi hb n)
+  refine ⟨hq, fun x hx => ?_, fun s hs hsj hsk hsa hsb => ?_⟩
+  · rw [hup]
+    by_cases hx' : x = ra
+    · rw [ite_eq_left hx', hx']
+      rcases hr with ⟨e1, e2⟩ | ⟨e1, e2⟩
+      · rw [e1, e2]
+        exact .trans _ _ _ (.symm _ _ h1) (.trans _ _ _ (.rel _ _ hpair) h2)
+      · rw [e1, e2]
+        exact .trans _ _ _ (.symm _ _ h2) (.trans _ _ _ (.symm _ _ (.rel _ _ hpair)) h1)
+    · rw [ite_eq_right hx']
+      exact eqv_mono (Nat.le_succ t) (hi.link x hx)
+  · rw [rootOf_link hf hq hra.2 hrb.2 hne hup hsa, rootOf_link hf hq hra.2 hrb.2 hne hup hsb]
+    rcases Nat.lt_succ_iff_lt_or_eq.mp hs with hs | rfl
+    · rw [hi.pairs s hs hsj hsk hsa hsb]
+    · rcases hr with ⟨e1, e2⟩ | ⟨e1, e2⟩ <;> split_ifs <;> omega
+
 /-- Steps E3 and E4 for pair `t` keep `Inv`. -/
 theorem merge_inv (N : UInt64) (js ks : Array UInt64) {t : Nat} (htj : t < js.size)
     (htk : t < ks.size) {p : Array UInt64} (hi : Inv N.toNat js ks t p) :
     Inv N.toNat js ks (t + 1) (merge N js[t]! ks[t]! p) := by
   have hN := UInt64.toNat_lt N
   have hf := hi.forest
-  have keep : ∀ q, q = p → (¬js[t]!.toNat < N.toNat ∨ ¬ks[t]!.toNat < N.toNat ∨
-      rootOf N.toNat p js[t]!.toNat = rootOf N.toNat p ks[t]!.toNat) →
-      Inv N.toNat js ks (t + 1) q := by
-    rintro q rfl hpair
-    refine ⟨hf, fun x hx => eqv_mono (by omega) (hi.link x hx), fun s hs hsj hsk ha hb => ?_⟩
-    rcases Nat.lt_succ_iff_lt_or_eq.mp hs with hs | rfl
-    · exact hi.pairs s hs hsj hsk ha hb
-    · rcases hpair with h | h | h
-      · exact absurd ha h
-      · exact absurd hb h
-      · exact h
   unfold merge
   by_cases hj : js[t]! < N
   · by_cases hk : ks[t]! < N
@@ -296,45 +340,20 @@ theorem merge_inv (N : UInt64) (js ks : Array UInt64) {t : Nat} (htj : t < js.si
       simp only [hj, hk, ↓reduceIte]
       by_cases he : root p js[t]! N = root p ks[t]! N
       · rw [ite_eq_left he]
-        exact keep p rfl (.inr (.inr (by rw [← hrj, ← hrk, he])))
+        exact inv_keep hi (.inr (.inr (by rw [← hrj, ← hrk, he])))
       · rw [ite_eq_right he]
-        set ra := rootOf N.toNat p js[t]!.toNat with hra_def
-        set rb := rootOf N.toNat p ks[t]!.toNat with hrb_def
-        have hra : ra < N.toNat := rootOf_lt hf ha
-        have hrb : rb < N.toNat := rootOf_lt hf hb
-        have hroota : up p ra = ra := rootOf_root hf ha
-        have hrootb : up p rb = rb := rootOf_root hf hb
-        have hne : ra ≠ rb := fun e => he (UInt64.toNat_inj.mp (by rw [hrj, hrk, e]))
-        have hsize : p.size = N.toNat := hf.size
-        have hup : ∀ x, up (p.set! (root p js[t]! N).toNat (root p ks[t]! N)) x =
-            if x = ra then rb else up p x := by
-          intro x
-          rw [up, set_get p _ _ (by rw [hrj, hsize]; exact hra), hrj]
-          split
-          · exact hrk
-          · rfl
-        have hq : Forest N.toNat (p.set! (root p js[t]! N).toNat (root p ks[t]! N)) :=
-          forest_link hf (by rw [set_size, hsize]) hra hrb hroota hrootb hne hup
-        have hpair : PairedBelow N.toNat js ks (t + 1) js[t]!.toNat ks[t]!.toNat :=
-          ⟨t, by omega, htj, htk, rfl, rfl, ha, hb⟩
-        refine ⟨hq, fun x hx => ?_, fun s hs hsj hsk hsa hsb => ?_⟩
-        · rw [hup]
-          split
-          · rename_i hx'
-            subst hx'
-            have h1 := eqv_mono (Nat.le_succ t) (eqv_iter hi ha N.toNat)
-            have h2 := eqv_mono (Nat.le_succ t) (eqv_iter hi hb N.toNat)
-            exact .trans _ _ _ (.symm _ _ h1) (.trans _ _ _ (.rel _ _ hpair) h2)
-          · exact eqv_mono (Nat.le_succ t) (hi.link x hx)
-        · rw [rootOf_link hf hq hroota hrootb hne hup hsa,
-            rootOf_link hf hq hroota hrootb hne hup hsb]
-          rcases Nat.lt_succ_iff_lt_or_eq.mp hs with hs | rfl
-          · rw [hi.pairs s hs hsj hsk hsa hsb]
-          · rw [ite_eq_left rfl, ite_eq_right (Ne.symm hne)]
+        have hne : rootOf N.toNat p js[t]!.toNat ≠ rootOf N.toNat p ks[t]!.toNat :=
+          fun e => he (UInt64.toNat_inj.mp (by rw [hrj, hrk, e]))
+        refine link_inv hi htj htk ha hb (.inl ⟨rfl, rfl⟩) hne (by rw [set_size, hf.size])
+          fun x => ?_
+        rw [up, set_get p _ _ (by rw [hrj, hf.size]; exact rootOf_lt hf ha), hrj]
+        split
+        · exact hrk
+        · rfl
     · simp only [hj, hk, ↓reduceIte]
-      exact keep p rfl (.inr (.inl fun h => hk (UInt64.lt_iff_toNat_lt.mpr h)))
+      exact inv_keep hi (.inr (.inl fun h => hk (UInt64.lt_iff_toNat_lt.mpr h)))
   · simp only [hj, ↓reduceIte]
-    exact keep p rfl (.inl fun h => hj (UInt64.lt_iff_toNat_lt.mpr h))
+    exact inv_keep hi (.inl fun h => hj (UInt64.lt_iff_toNat_lt.mpr h))
 
 theorem size_toUInt64 {s : Nat} (h : s < 2 ^ 64) : s.toUInt64.toNat = s := by
   simp only [Nat.toUInt64, UInt64.toNat_ofNat']
@@ -491,29 +510,30 @@ theorem label_step (N : UInt64) {p : Array UInt64} (hf : Forest N.toNat p) {i : 
       · rw [ite_eq_left rfl]
         exact ⟨by omega, hroot, hmin⟩
 
-/-- For arrays of fewer than `2^64` words, `classes` labels each element below `n` with the least
-element of its class. -/
-theorem classes_spec (N : UInt64) (js ks : Array UInt64) (hjs : js.size < 2 ^ 64)
-    (hks : ks.size < 2 ^ 64) : LeastLabels N.toNat js ks (classes N js ks) := by
-  have hi := forest_inv N js ks hjs hks
+/-- The loop of `classes`, on any parent links that satisfy `Inv` for all the pairs, labels each
+element below `n` with the least element of its class. -/
+theorem labels_spec (N : UInt64) (js ks p : Array UInt64)
+    (hi : Inv N.toNat js ks (min js.size ks.size) p) :
+    LeastLabels N.toNat js ks
+      (LeanExe.loop N (LeanExe.build N fun _ => N, LeanExe.build N fun _ => (0 : UInt64))
+        fun i s =>
+          let r := root p i N
+          let least := if s.1[r.toNat]! = N then i else s.1[r.toNat]!
+          (s.1.set! r.toNat least, s.2.set! i.toNat least)).2 := by
   have hf := hi.forest
   have hN := UInt64.toNat_lt N
-  let f : UInt64 → Array UInt64 × Array UInt64 → Array UInt64 × Array UInt64 := fun i s =>
-    let r := root (forest N js ks) i N
-    let least := if s.1[r.toNat]! = N then i else s.1[r.toNat]!
-    (s.1.set! r.toNat least, s.2.set! i.toNat least)
-  have hc : classes N js ks =
-      (LeanExe.loop N (LeanExe.build N fun _ => N, LeanExe.build N fun _ => (0 : UInt64)) f).2 :=
-    rfl
   have hloop := loop_induction (n := N)
-    (init := (LeanExe.build N fun _ => N, LeanExe.build N fun _ => (0 : UInt64))) (f := f)
-    (fun i s => LabelInv N (forest N js ks) i s)
+    (init := (LeanExe.build N fun _ => N, LeanExe.build N fun _ => (0 : UInt64)))
+    (f := fun i s =>
+      let r := root p i N
+      let least := if s.1[r.toNat]! = N then i else s.1[r.toNat]!
+      (s.1.set! r.toNat least, s.2.set! i.toNat least))
+    (fun i s => LabelInv N p i s)
     ⟨build_size N _, build_size N _,
       fun r hr => .inl ⟨build_get hr, fun _ h => absurd h (by omega)⟩,
       fun _ h => absurd h (by omega)⟩
     (fun i s hiN hs => label_step N hf hiN s hs)
   obtain ⟨_, hsize, _, hout⟩ := hloop
-  rw [hc]
   refine ⟨hsize, fun i hiN => ⟨?_, fun j hj => ?_⟩⟩
   · obtain ⟨hle, hroot, _⟩ := hout i hiN
     exact (equivalent_iff hi hiN (by omega)).mpr hroot.symm
@@ -522,5 +542,11 @@ theorem classes_spec (N : UInt64) (js ks : Array UInt64) (hjs : js.size < 2 ^ 64
     · exact hle
     · by_contra hlt
       exact hmin j (by omega) ((equivalent_iff hi hiN hjn).mp hj).symm
+
+/-- For arrays of fewer than `2^64` words, `classes` labels each element below `n` with the least
+element of its class. -/
+theorem classes_spec (N : UInt64) (js ks : Array UInt64) (hjs : js.size < 2 ^ 64)
+    (hks : ks.size < 2 ^ 64) : LeastLabels N.toNat js ks (classes N js ks) :=
+  labels_spec N js ks (forest N js ks) (forest_inv N js ks hjs hks)
 
 end Library.Graphs.UnionFind

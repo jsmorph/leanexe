@@ -89,6 +89,7 @@ Library.Random.Sampling.Compiled:Library.Random.Sampling.compiled.module:samplin
 Library.Sorting.Insertion.Compiled:Library.Sorting.Insertion.compiled.module:libsort
 Library.Graphs.TopologicalSort.Compiled:Library.Graphs.TopologicalSort.compiled.module:topoSort
 Library.Graphs.UnionFind.Compiled:Library.Graphs.UnionFind.compiled.module:unionFind
+Library.Graphs.WeightedUnionFind.Compiled:Library.Graphs.WeightedUnionFind.compiled.module:weightedUnionFind
 Library.Queues.BinaryHeap.Compiled:Library.Queues.BinaryHeap.compiled.module:heapQueue
 Library.HashTables.LinearProbing.Compiled:Library.HashTables.LinearProbing.compiled.module:hashTable
 Library.Numerics.MultiPrecision.Compiled:Library.Numerics.MultiPrecision.compiled.module:multiPrecision

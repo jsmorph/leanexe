@@ -255,6 +255,7 @@ import Library.Random.Sampling.Compiled
 import Library.Sorting.Insertion.Compiled
 import Library.Graphs.TopologicalSort.Compiled
 import Library.Graphs.UnionFind.Compiled
+import Library.Graphs.WeightedUnionFind.Compiled
 import Library.Queues.BinaryHeap.Compiled
 import Library.HashTables.LinearProbing.Compiled
 import Library.Numerics.MultiPrecision.Compiled
