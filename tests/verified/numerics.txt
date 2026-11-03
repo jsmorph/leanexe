@@ -86,6 +86,7 @@ heapsort:Library.Sorting.Heapsort.Compiled:Library/Sorting/Heapsort/File.lean
 mergeSort:Library.Sorting.MergeSort.Compiled:Library/Sorting/MergeSort/File.lean
 straightInsertion:Library.Sorting.StraightInsertion.Compiled:Library/Sorting/StraightInsertion/File.lean
 quicksort:Library.Sorting.Quicksort.Compiled:Library/Sorting/Quicksort/File.lean
+shellsort:Library.Sorting.Shellsort.Compiled:Library/Sorting/Shellsort/File.lean
 find:Library.Sorting.Find.Compiled:Library/Sorting/Find/File.lean
 sampling:Library.Random.Sampling.Compiled:Library/Random/Sampling/File.lean
 topoSort:Library.Graphs.TopologicalSort.Compiled:Library/Graphs/TopologicalSort/File.lean

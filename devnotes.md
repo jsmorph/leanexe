@@ -40682,3 +40682,34 @@ The two specification reviews, which [the review](Library/Trees/AvlDelete/review
 
 - [x] Program, specification, proofs, module, bound 0, cases.
 - [x] Two specification reviews, cases in Wasmtime and native code, file theorems, commit.
+
+## 2026-11-02: The third batch of TAOCP algorithms
+
+The user chose the third batch in the order below, from easiest to hardest, with the layout, reviews, tests, and documents of the second batch and with the checks of [the item's own checks, full builds only after shared changes](#2026-11-01-the-second-batch-of-taocp-algorithms).  The proposal applied the four tests of the earlier batches: a short specification independent of the method, a program harder to get right than its specification, compiler features with little coverage, and a use in the repository.  It deferred Kruskal's spanning tree, Huffman coding, and Knuth's optimal binary search trees, each of which needs an optimality proof as large as Dijkstra's, and it left out Karatsuba multiplication and Schorr–Waite marking for the reasons that the second batch recorded.
+
+| Order | Algorithm | Source | Module |
+|---|---|---|---|
+| 1 | Shellsort with Knuth's increments | TAOCP 5.2.1 D | |
+| 2 | Next permutation | TAOCP 7.2.1.2 L | |
+| 3 | Sieve of Eratosthenes | TAOCP 4.5.4 | |
+| 4 | LSD radix sort by distribution counting | TAOCP 5.2 D, 5.2.5 | |
+| 5 | Union–find with weighted merge and path compression | TAOCP 2.3.3, Tarjan | |
+| 6 | Knuth–Morris–Pratt string matching | SIAM J. Comput. 6(2), 1977 | |
+| 7 | Dijkstra's shortest paths with the binary heap | Numer. Math. 1, 1959 | |
+
+### Shellsort: the design
+
+Algorithm D sorts with the passes of straight insertion at the increments `h_t, …, h_1 = 1`, each pass inserting every word among the words `h` places apart before it.  Knuth's recommendation in §5.2.1 takes `h_1 = 1` and `h_{s+1} = 3h_s + 1` and stops with `h_t` at the first `t` with `h_{t+2} ≥ N`, which [Niemann's summary](https://profesores.elo.utfsm.cl/~agv/elo320/PLDS210/niemann/s_shl.htm) also states, so an array of 100 words takes the increments 13, 4, and 1.  The pass with increment 1 is Algorithm S, so the program ends with the library's `straightInsertion`, as quicksort's step Q9 does, and the earlier passes use `insertBy`, straight insertion's `shift` with a stride.  The specification is `List.mergeSort` of the input, as for the other sorts, and the proof needs only that every pass permutes the array, since straight insertion sorts every array.  `firstIncrement` tests `h ≤ (N - 5) / 9` in place of `9h + 4 < N`, so that no word wraps, and the next increment `3h + 1` stays below `N`, which bounds the loop.
+
+- [x] Shellsort: request, specification and reviews, program, proofs, cases, README, index.
+- [ ] Bound theorems: the documents of heapsort, straight insertion, and sampling credit a bound of 0 with a module that allocates nothing, where the theorem states that `top` does not rise.
+
+### Shellsort: the results
+
+Two fresh agents reviewed the specification and the cases, and [the review](Library/Sorting/Shellsort/review.md) records their findings.  They found four docstrings that said more than the code, a reading of "in place" that the theorems state only as a call that does not raise `top`, the same claim in straight insertion's specification, and input classes that no case reached.  The first case run with the added lengths stopped at the array of 9,841 arbitrary words, whose decimal argument exceeded Linux's limit of 128 KiB on one argument (`MAX_ARG_STRLEN`), as quicksort's first run had, so the arrays of 9,841 and 9,842 words hold arbitrary words only at every eighth position and words below 100 elsewhere.  A Python model of the passes then showed that the passes with 1,093 and 3,280 compared no equal words, since words that repeat with a period of 11 never meet within a chain at those strides, and the repeated words are now drawn by the SplitMix64 output of the position.  On edgexpert, `tests/verified/run.sh --cases shellsort` and the native driver passed all 123 cases, and the file theorems name only `propext`, `Classical.choice`, and `Quot.sound`.
+
+### Next permutation: the design
+
+The program is one step of Algorithm L of TAOCP §7.2.1.2 with indices from 0: step L2 finds the last ascent `j`, step L3 the last `l > j` with `a[j] < a[l]`, the program exchanges the two words, and step L4 reverses the words after `j`.  For the greatest arrangement, which has no ascent, the program reverses the whole array and returns the flag 0, so repeated calls cycle through the arrangements.  The specification `IsNext` states the result through the lexicographic order of Lean's lists and `List.Perm` alone: the flag 1 and the least greater arrangement when one exists, and otherwise the flag 0 and `List.mergeSort` of the input.  The proof shows that a nonincreasing list lies above none of its arrangements and a nondecreasing list below none, that the suffix after `j` is nonincreasing, and that the result is the input's prefix, then the least word of the suffix above `a[j]`, then the other words in nondecreasing order.  An arrangement above the input either departs upward within the prefix or continues it with a word of the suffix above `a[j]`, and in both cases it lies at or above the result.
+
+- [ ] Next permutation: request, specification and reviews, program, proofs, cases, README, index.

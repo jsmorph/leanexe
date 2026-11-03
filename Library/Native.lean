@@ -69,6 +69,7 @@ import Library.Sorting.Insertion.Program
 import Library.Sorting.MergeSort.Program
 import Library.Sorting.StraightInsertion.Program
 import Library.Sorting.Quicksort.Program
+import Library.Sorting.Shellsort.Program
 import Library.Sorting.Find.Program
 import Library.Trees.WordTree.Program
 import Library.Trees.Search.Program

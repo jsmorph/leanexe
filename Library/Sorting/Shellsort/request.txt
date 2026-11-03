@@ -1,0 +1,3 @@
+Sort an array of UInt64 words into nondecreasing order with Shellsort, Algorithm D of TAOCP section
+5.2.1, with the increments that Knuth recommends there: h_1 = 1 and h_{s+1} = 3h_s + 1, stopping
+with h_t when h_{t+2} >= N.  Sort in place, with a call stack that does not grow.

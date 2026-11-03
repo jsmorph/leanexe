@@ -4,6 +4,8 @@
 
 [Straight insertion](StraightInsertion/README.md) is Algorithm S of TAOCP §5.2.1.  It moves each larger word one place right to make room for the next word, in the array's own block, and allocates nothing.  Its proofs show that the module returns the same nondecreasing permutation.
 
+[Shellsort](Shellsort/README.md) is Algorithm D of TAOCP §5.2.1 with Knuth's increments `h_{s+1} = 3h_s + 1`.  Each pass with an increment `h` above 1 inserts every word among the words `h` places apart before it, in the array's own block, and the program finishes with straight insertion.  Its proofs show that the passes permute the array, so straight insertion returns the same nondecreasing permutation.
+
 [Quicksort](Quicksort/README.md) is Algorithm Q of TAOCP §5.2.2.  It partitions subfiles around their first words in the array's own block, keeps the pending subfiles on a stack of 64 entries, the module's one allocation, and finishes with straight insertion.  Its proofs show that the partitions permute the array, so straight insertion returns the same nondecreasing permutation.
 
 [Selection](Find/README.md) is Hoare's FIND with quicksort's partition.  It partitions the subfile that holds a rank `k` and continues with the part that holds it, in the array's own block, and returns the word of rank `k`, or 0 when `k` is not a position.  Its proofs show that the word left at `k` lies between the words before it and the words after it, so it is the word at `k` of the sorted array.

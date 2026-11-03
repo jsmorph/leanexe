@@ -20,6 +20,7 @@ import TestSupport.Modules.ModInverse
 import TestSupport.Modules.MultiPrecision
 import TestSupport.Modules.StraightInsertion
 import TestSupport.Modules.Quicksort
+import TestSupport.Modules.Shellsort
 import TestSupport.Modules.Find
 import TestSupport.Modules.PrimeFactors
 import TestSupport.Modules.Sampling
@@ -98,6 +99,9 @@ def cases : IO Unit := do
   for xs in Library.Sorting.Quicksort.quicksortInputs do
     IO.println s!"quicksort|quicksort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.Quicksort.expected xs.toArray).toList.map toString)}]|1|2"
+  for xs in Library.Sorting.Shellsort.shellsortInputs do
+    IO.println s!"shellsort|shellsort|array-u64|{arrU xs}|\
+      [{", ".intercalate ((Library.Sorting.Shellsort.expected xs.toArray).toList.map toString)}]|1|1"
   for (xs, k) in Library.Sorting.Find.selectInputs do
     IO.println s!"find|select|i64|{arrU xs} {u k}|{Library.Sorting.Find.expected xs.toArray k}|0|1"
   for (x, t) in Library.Trees.Search.searchInputs do
