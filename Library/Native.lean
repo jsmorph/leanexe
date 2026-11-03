@@ -5,6 +5,7 @@ import Library.Arrays.Repeat.Program
 import Library.Arrays.Search.Program
 import Library.Arrays.Word.Program
 import Library.Combinatorics.DancingLinks.Program
+import Library.Combinatorics.NextPermutation.Program
 import Library.Graphs.TopologicalSort.Program
 import Library.Graphs.UnionFind.Program
 import Library.HashTables.LinearProbing.Program

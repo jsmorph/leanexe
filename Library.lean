@@ -259,6 +259,7 @@ import Library.HashTables.LinearProbing.Compiled
 import Library.Numerics.MultiPrecision.Compiled
 import Library.Numerics.Arithmetic.MillerRabin.Compiled
 import Library.Combinatorics.DancingLinks.Compiled
+import Library.Combinatorics.NextPermutation.Compiled
 import Library.Arrays.BinarySearch.Compiled
 import Library.Arrays.Search.Compiled
 import Library.Arrays.Filter.Compiled

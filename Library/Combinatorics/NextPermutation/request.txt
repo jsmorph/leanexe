@@ -1,0 +1,6 @@
+Given an array of UInt64 words, compute the next arrangement of its words in lexicographic order
+with one step of Algorithm L of TAOCP section 7.2.1.2: return the least arrangement of the same
+words, repetitions included, that is greater than the input, with the flag 1.  When the input is
+the greatest arrangement, return the least arrangement, the words in nondecreasing order, with the
+flag 0, so that repeated calls cycle through the arrangements.  Work in place, with a call stack
+that does not grow.

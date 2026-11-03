@@ -93,6 +93,7 @@ Library.HashTables.LinearProbing.Compiled:Library.HashTables.LinearProbing.compi
 Library.Numerics.MultiPrecision.Compiled:Library.Numerics.MultiPrecision.compiled.module:multiPrecision
 Library.Numerics.Arithmetic.MillerRabin.Compiled:Library.Numerics.Arithmetic.MillerRabin.compiled.module:millerRabin
 Library.Combinatorics.DancingLinks.Compiled:Library.Combinatorics.DancingLinks.compiled.module:dancingLinks
+Library.Combinatorics.NextPermutation.Compiled:Library.Combinatorics.NextPermutation.compiled.module:nextPermutation
 Library.Arrays.BinarySearch.Compiled:Library.Arrays.BinarySearch.compiled.module:binarySearch
 Library.Arrays.Search.Compiled:Library.Arrays.Search.compiled.module:libsearch
 Library.Arrays.Filter.Compiled:Library.Arrays.Filter.compiled.module:libfilter

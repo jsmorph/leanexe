@@ -96,6 +96,7 @@ hashTable:Library.HashTables.LinearProbing.Compiled:Library/HashTables/LinearPro
 multiPrecision:Library.Numerics.MultiPrecision.Compiled:Library/Numerics/MultiPrecision/File.lean
 millerRabin:Library.Numerics.Arithmetic.MillerRabin.Compiled:Library/Numerics/Arithmetic/MillerRabin/File.lean
 dancingLinks:Library.Combinatorics.DancingLinks.Compiled:Library/Combinatorics/DancingLinks/File.lean
+nextPermutation:Library.Combinatorics.NextPermutation.Compiled:Library/Combinatorics/NextPermutation/File.lean
 libfilter:Library.Arrays.Filter.Compiled:Library/Arrays/Filter/File.lean
 librepeat:Library.Arrays.Repeat.Compiled:Library/Arrays/Repeat/File.lean
 librange:Library.Arrays.Range.Compiled:Library/Arrays/Range/File.lean

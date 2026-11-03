@@ -7,14 +7,14 @@ The library groups reusable implementations and their proofs by algorithm family
 | Area | Forms | Contents |
 |---|---|---|
 | [Random generators](../index.md#3-pseudorandom-number-generators) | V S F C | LCG, Park–Miller, xorshift64, SplitMix64, word-to-float conversion, shared orbit lemmas, random shuffling, selection sampling, and reservoir sampling. |
-| [Sorting](Sorting/README.md) | V S F C A | Insertion sort, straight insertion, quicksort, selection, heapsort, and merge sort on arrays of `UInt64`. |
+| [Sorting](Sorting/README.md) | V S F C A | Insertion sort, straight insertion, Shellsort, quicksort, selection, heapsort, and merge sort on arrays of `UInt64`. |
 | [Arrays](Arrays/README.md) | V S F C | Counting, first-match search, binary search, ordered removal, bounded filtering, prefix clearing, repetition, and word scaling. |
 | [Lists](Lists/README.md) | V F C | Word-list range, sum, reversal, and increment. |
 | [Trees](Trees/README.md) | V S F C | Binary tree of words, structural operations, search-tree insertion, tree search and insertion by Algorithm T, and balanced tree insertion by Algorithm A and deletion. |
 | [Queues](Queues/BinaryHeap/README.md) | V S F C | Priority queue of words as a binary heap. |
 | [Hash tables](HashTables/LinearProbing/README.md) | V S F C | Hash table of words with linear probing and deletion. |
 | [Graphs](../index.md#13-graphs-and-combinatorial-search) | V S F C | Topological sorting and equivalence classes. |
-| [Combinatorics](Combinatorics/DancingLinks/README.md) | V S F C | Exact cover by Algorithm X with dancing links. |
+| [Combinatorics](../index.md#13-graphs-and-combinatorial-search) | V S F C | Exact cover by Algorithm X with dancing links, and the next arrangement in lexicographic order by Algorithm L. |
 | [Arithmetic](../index.md#1-arithmetic) | V S F C | Software FMA, limb arithmetic, multiple-precision addition, subtraction, multiplication, and division, unrounded scaling, Euclidean and binary GCD, modular inverse, modular exponentiation and the strong probable-prime test, factor counting, and bounded integer square root. |
 | [Binary64 functions](../index.md#6-elementary-and-special-functions) | V S F C | Elementary and special functions with their accuracy proofs. |
 | [Decimal conversion](../index.md#9-conversion-between-decimal-strings-and-binary-floating-point) | V S F C | Parsing and shortest-decimal printing. |
