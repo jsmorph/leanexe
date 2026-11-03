@@ -21,6 +21,7 @@ import TestSupport.Modules.MultiPrecision
 import TestSupport.Modules.StraightInsertion
 import TestSupport.Modules.Quicksort
 import TestSupport.Modules.Shellsort
+import TestSupport.Modules.RadixSort
 import TestSupport.Modules.Find
 import TestSupport.Modules.PrimeFactors
 import TestSupport.Modules.Sieve
@@ -101,6 +102,9 @@ def cases : IO Unit := do
   for xs in Library.Sorting.Quicksort.quicksortInputs do
     IO.println s!"quicksort|quicksort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.Quicksort.expected xs.toArray).toList.map toString)}]|1|2"
+  for xs in Library.Sorting.RadixSort.radixInputs do
+    IO.println s!"radixSort|radixSort|array-u64|{arrU xs}|\
+      [{", ".intercalate ((Library.Sorting.RadixSort.expected xs.toArray).toList.map toString)}]|1|3"
   for xs in Library.Sorting.Shellsort.shellsortInputs do
     IO.println s!"shellsort|shellsort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.Shellsort.expected xs.toArray).toList.map toString)}]|1|1"

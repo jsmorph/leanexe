@@ -83,6 +83,7 @@ Library.Sorting.MergeSort.Compiled:Library.Sorting.MergeSort.compiled.module:mer
 Library.Sorting.StraightInsertion.Compiled:Library.Sorting.StraightInsertion.compiled.module:straightInsertion
 Library.Sorting.Quicksort.Compiled:Library.Sorting.Quicksort.compiled.module:quicksort
 Library.Sorting.Shellsort.Compiled:Library.Sorting.Shellsort.compiled.module:shellsort
+Library.Sorting.RadixSort.Compiled:Library.Sorting.RadixSort.compiled.module:radixSort
 Library.Sorting.Find.Compiled:Library.Sorting.Find.compiled.module:find
 Library.Random.Sampling.Compiled:Library.Random.Sampling.compiled.module:sampling
 Library.Sorting.Insertion.Compiled:Library.Sorting.Insertion.compiled.module:libsort

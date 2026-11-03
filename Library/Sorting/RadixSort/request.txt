@@ -1,0 +1,5 @@
+Sort an array of UInt64 words into nondecreasing order by least-significant-digit radix sort: eight
+passes, one for each byte of the words from the least significant to the most significant, each a
+distribution counting sort by Algorithm D of TAOCP section 5.2 on that byte, which is stable, from
+one array into another, as section 5.2.5 describes for radix sorting.  Allocate only a second array
+of the same size and one array of 256 counts, and use a call stack that does not grow.

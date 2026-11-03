@@ -249,6 +249,7 @@ import Library.Sorting.MergeSort.Compiled
 import Library.Sorting.StraightInsertion.Compiled
 import Library.Sorting.Quicksort.Compiled
 import Library.Sorting.Shellsort.Compiled
+import Library.Sorting.RadixSort.Compiled
 import Library.Sorting.Find.Compiled
 import Library.Random.Sampling.Compiled
 import Library.Sorting.Insertion.Compiled
