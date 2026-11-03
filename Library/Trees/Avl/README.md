@@ -23,8 +23,8 @@
 | `keys_growLeft`, `keys_growRight`, `keys_algorithmA` | [The proof](Proof.lean) | Rotations keep the symmetric order, and on a binary search tree the keys afterward are the old keys with `x` inserted in order when the search fails. |
 | `searchTree` | [The proof](Proof.lean) | `SearchTree x t` holds for every balanced binary search tree `t`. |
 | `search_export`, `insert_export` | [The compilation](Compiled.lean) | Exports `search` and `insert` of `compiled.module` are functions 2 and 7. |
-| `search_implements` | [The compilation](Compiled.lean) | Function 2, called with a key and a lent tree, returns without a trap `searchA x t`. |
-| `insert_implements` | [The compilation](Compiled.lean) | Function 7, called with a key and a tree that the caller hands over, returns without a trap the tree of `algorithmA`. |
+| `search_implements` | [The compilation](Compiled.lean) | Function 2, called with a key and a lent tree, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.search.bound`, returns without a trap `searchA x t` and raises `top` by at most the bound. |
+| `insert_implements` | [The compilation](Compiled.lean) | Function 7, called with a key and a tree that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.insert.bound`, returns without a trap the tree of `algorithmA` and raises `top` by at most the bound. |
 | `search_bound`, `rotateRight_bound`, `rotateLeft_bound`, `ascend_bound` | [The compilation](Compiled.lean) | The generated bounds of the search, the rotations, and the return are 0. |
 | `descend_bound`, `insert_bound` | [The compilation](Compiled.lean) | `compiled.insert.bound` is 0 when the search succeeds and 80 bytes, the block of one node, when it fails. |
 | `avlTree_file`, `avlTree_file_decode` | [The file theorems](File.lean) | `build/verified/avlTree.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |

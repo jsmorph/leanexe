@@ -26,8 +26,8 @@ The library's `KeyTree.insert` computes the same tree by recursion, and the comp
 | `keys_algorithmT` | [The proof](Proof.lean) | On a binary search tree the keys afterward in symmetric order are those of `t`, with `x` inserted in order when the search fails. |
 | `searchTree` | [The proof](Proof.lean) | `SearchTree x t` holds for every binary search tree `t`. |
 | `search_export`, `insert_export` | [The compilation](Compiled.lean) | Exports `search` and `insert` of `compiled.module` are functions 2 and 5. |
-| `search_implements` | [The compilation](Compiled.lean) | Function 2, called with a key and a borrowed tree, returns without a trap the flag of `algorithmT`, with `top` raised by at most `compiled.search.bound`. |
-| `insert_implements` | [The compilation](Compiled.lean) | Function 5, called with a key and a tree that the caller hands over, returns without a trap the tree of `algorithmT`, with `top` raised by at most `compiled.insert.bound`. |
+| `search_implements` | [The compilation](Compiled.lean) | Function 2, called with a key and a borrowed tree, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.search.bound`, returns without a trap the flag of `algorithmT` and raises `top` by at most the bound. |
+| `insert_implements` | [The compilation](Compiled.lean) | Function 5, called with a key and a tree that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.insert.bound`, returns without a trap the tree of `algorithmT` and raises `top` by at most the bound. |
 | `search_bound`, `ascend_bound` | [The compilation](Compiled.lean) | `compiled.search.bound` and `compiled.ascend.bound` are 0. |
 | `descend_bound`, `insert_bound` | [The compilation](Compiled.lean) | `compiled.insert.bound` is 0 when the search succeeds and 72 bytes, the block of one node, when it fails. |
 | `treeSearch_file`, `treeSearch_file_decode` | [The file theorems](File.lean) | `build/verified/treeSearch.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |

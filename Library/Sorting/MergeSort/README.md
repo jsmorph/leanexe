@@ -24,7 +24,7 @@ Knuth's Algorithm S takes its runs from the two ends of one area of `N` records 
 | `sortLoop_toList`, `sortList_spec` | [The proof](Proof.lean) | The array passes compute `sortList`, which returns a sorted permutation of its list. |
 | `mergeSort_eq` | [The proof](Proof.lean) | `mergeSort xs = expected xs` for every array with fewer than `2^64` elements. |
 | `mergeSort_export` | [The compilation](Compiled.lean) | Export `mergeSort` of `compiled.module` is function 6. |
-| `mergeSort_implements` | [The compilation](Compiled.lean) | Function 6, called with an array that the caller hands over, from a heap with room for `compiled.mergeSort.bound`, returns without a trap the owned array `expected xs`. |
+| `mergeSort_implements` | [The compilation](Compiled.lean) | Function 6, called with an array that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.mergeSort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
 | `mergeSort_bound` | [The compilation](Compiled.lean) | `compiled.mergeSort.bound xs` equals `compiled.sortLoop.bound (1, n, xs)`, the bound of the passes. |
 | `mergeSort_file`, `mergeSort_file_decode` | [The file theorems](File.lean) | `build/verified/mergeSort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 

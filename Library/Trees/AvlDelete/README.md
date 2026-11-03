@@ -24,7 +24,7 @@
 | `deleteA_of_searchA`, `searchA_of_not_mem` | [The proof](Proof.lean) | A failed search, which every absent key gives, leaves every tree as it is. |
 | `removes` | [The proof](Proof.lean) | `Removes x t` holds for every balanced binary search tree `t`. |
 | `delete_export` | [The compilation](Compiled.lean) | Export `delete` of `compiled.module` is function 9. |
-| `delete_implements` | [The compilation](Compiled.lean) | Function 9, called with a key and a tree that the caller hands over, returns without a trap the tree of `deleteA`. |
+| `delete_implements` | [The compilation](Compiled.lean) | Function 9, called with a key and a tree that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.delete.bound`, returns without a trap the tree of `deleteA` and raises `top` by at most the bound. |
 | `delete_bound` | [The compilation](Compiled.lean) | `compiled.delete.bound` is 0, so a call does not raise `top`. |
 | `avlDelete_file`, `avlDelete_file_decode` | [The file theorems](File.lean) | `build/verified/avlDelete.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 

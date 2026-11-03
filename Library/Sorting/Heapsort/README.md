@@ -28,7 +28,7 @@ Knuth's step H7 moves the larger child up into the vacant node and step H8 store
 | `heapsort_sorted_perm` | [The proof](Proof.lean) | `heapsort` returns a permutation of its input, sorted in nondecreasing order. |
 | `heapsort_eq` | [The proof](Proof.lean) | `heapsort xs = expected xs` for every array with fewer than `2^64` elements. |
 | `heapsort_export` | [The compilation](Compiled.lean) | Export `heapsort` of `compiled.module` is function 5. |
-| `heapsort_implements` | [The compilation](Compiled.lean) | Function 5, called with an array that the caller hands over, returns without a trap the owned array `expected xs`, with `top` raised by at most `compiled.heapsort.bound`. |
+| `heapsort_implements` | [The compilation](Compiled.lean) | Function 5, called with an array that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.heapsort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
 | `heapsort_bound` | [The compilation](Compiled.lean) | `compiled.heapsort.bound` is 0, so a call does not raise `top`. |
 | `heapsort_file`, `heapsort_file_decode` | [The file theorems](File.lean) | `build/verified/heapsort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 

@@ -25,7 +25,7 @@ The first word of each subfile is the partitioning word, so on an array in incre
 | `select_eq` | [The proof](Proof.lean) | `select xs k = expected xs k` for every array with fewer than `2^64` elements and every rank. |
 | `pairwise_mergeSort_le` | [The sorted lists](../Sorted.lean) | `List.mergeSort` with the unsigned order of words returns a list in nondecreasing order. |
 | `select_export` | [The compilation](Compiled.lean) | Export `select` of `compiled.module` is function 7. |
-| `select_implements` | [The compilation](Compiled.lean) | Function 7, called with an array that the caller hands over and a rank `k`, returns without a trap `expected xs k`, with `top` raised by at most `compiled.select.bound`. |
+| `select_implements` | [The compilation](Compiled.lean) | Function 7, called with an array that the caller hands over and a rank `k`, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.select.bound`, returns without a trap `expected xs k` and raises `top` by at most the bound. |
 | `select_bound` | [The compilation](Compiled.lean) | `compiled.select.bound` is 0, so a call does not raise `top`. |
 | `find_file`, `find_file_decode` | [The file theorems](File.lean) | `build/verified/find.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 

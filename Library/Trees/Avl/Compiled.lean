@@ -27,9 +27,10 @@ theorem insert_export :
     ({ name := "insert", funcIdx := 7 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 2, the export `search`, called with a key `x` and a borrowed tree `t`, from a heap
-with room for `compiled.search.bound`, returns without a trap whether Algorithm A's search
-succeeds, and raises `top` by at most the bound. -/
+/-- Function 2, the export `search`, called with a key `x` and a borrowed tree `t`, from a heap with
+the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.search.bound`,
+returns without a trap whether Algorithm A's search succeeds, and raises `top` by at most the
+bound. -/
 theorem search_implements :
     ImplementsA false compiled.module 2 (fun x : UInt64 × AvlTree => searchA x.1 x.2)
       (fun x heap store => heap.Within store compiled.module (compiled.search.bound x))
@@ -37,8 +38,9 @@ theorem search_implements :
   Verified.implementsA_congr compiled.search.trapFree fun _ _ _ x _ => search_eq x.1 x.2
 
 /-- Function 7, the export `insert`, called with a key `x` and a tree `t` that the caller hands
-over, from a heap with room for `compiled.insert.bound`, returns without a trap the owned tree of
-Algorithm A, and raises `top` by at most the bound. -/
+over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for
+`compiled.insert.bound`, returns without a trap the owned tree of Algorithm A, and raises `top` by
+at most the bound. -/
 theorem insert_implements :
     ImplementsA false compiled.module 7
       (fun x : UInt64 × Moved AvlTree => (algorithmA x.1 x.2.val).2)

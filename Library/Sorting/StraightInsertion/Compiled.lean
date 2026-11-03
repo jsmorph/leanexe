@@ -19,8 +19,9 @@ theorem straightInsertion_export :
   decide +kernel
 
 /-- Function 3, the export `straightInsertion`, called with an array that the caller hands over,
-from a heap with room for `compiled.straightInsertion.bound`, returns without a trap the owned
-array `expected xs`, the elements in nondecreasing order, and raises `top` by at most the bound. -/
+from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for
+`compiled.straightInsertion.bound`, returns without a trap the owned array `expected xs`, the
+elements in nondecreasing order, and raises `top` by at most the bound. -/
 theorem straightInsertion_implements :
     ImplementsA false compiled.module 3 (fun x : Moved (Array UInt64) => expected x.val)
       (fun x heap store => heap.Within store compiled.module (compiled.straightInsertion.bound x))

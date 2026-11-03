@@ -24,7 +24,7 @@ Knuth's Algorithm L visits every arrangement in one run and stops at the greates
 | `nextPerm_isNext` | [The proof](Proof.lean) | `nextPerm a` is the pair that `IsNext a` states, for every array of fewer than `2^64` words. |
 | `list_lt_trichotomy`, `isNext_unique` | [The proof](Proof.lean) | The order on lists of words is total, so `IsNext xs` determines the flag and the array. |
 | `nextPerm_export` | [The compilation](Compiled.lean) | Export `nextPerm` of `compiled.module` is function 6. |
-| `nextPerm_implements` | [The compilation](Compiled.lean) | Function 6, called with an array that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.nextPerm.bound`, returns without a trap the flag and the owned array of `nextPerm xs`, with `top` raised by at most `compiled.nextPerm.bound`. |
+| `nextPerm_implements` | [The compilation](Compiled.lean) | Function 6, called with an array that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.nextPerm.bound`, returns without a trap the flag and the owned array of `nextPerm xs` and raises `top` by at most the bound. |
 | `nextPerm_bound` | [The compilation](Compiled.lean) | `compiled.nextPerm.bound` is 0, so a call does not raise `top`. |
 | `nextPermutation_file`, `nextPermutation_file_decode` | [The file theorems](File.lean) | `build/verified/nextPermutation.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 

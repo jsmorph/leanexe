@@ -23,7 +23,7 @@ Step S4 runs once for each inversion of the input, a pair of positions whose wor
 | `straightInsertion_eq` | [The proof](Proof.lean) | `straightInsertion xs = expected xs` for every array with fewer than `2^64` elements. |
 | `eq_mergeSort_of_sorted_perm` | [The sorted lists](../Sorted.lean) | A list of words in nondecreasing order that is a permutation of `m` is `List.mergeSort` of `m`. |
 | `straightInsertion_export` | [The compilation](Compiled.lean) | Export `straightInsertion` of `compiled.module` is function 3. |
-| `straightInsertion_implements` | [The compilation](Compiled.lean) | Function 3, called with an array that the caller hands over, returns without a trap the owned array `expected xs`, with `top` raised by at most `compiled.straightInsertion.bound`. |
+| `straightInsertion_implements` | [The compilation](Compiled.lean) | Function 3, called with an array that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.straightInsertion.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
 | `straightInsertion_bound` | [The compilation](Compiled.lean) | `compiled.straightInsertion.bound` is 0, so a call does not raise `top`. |
 | `straightInsertion_file`, `straightInsertion_file_decode` | [The file theorems](File.lean) | `build/verified/straightInsertion.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 

@@ -24,7 +24,7 @@
 | `straightInsertion_sorted_perm` | [Straight insertion's proof](../StraightInsertion/Proof.lean) | `straightInsertion` returns a permutation of its input in nondecreasing order. |
 | `eq_mergeSort_of_sorted_perm` | [The sorted lists](../Sorted.lean) | A list of words in nondecreasing order that is a permutation of `m` is `List.mergeSort` of `m`. |
 | `shellsort_export` | [The compilation](Compiled.lean) | Export `shellsort` of `compiled.module` is function 8. |
-| `shellsort_implements` | [The compilation](Compiled.lean) | Function 8, called with an array that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.shellsort.bound`, returns without a trap the owned array `expected xs`, with `top` raised by at most `compiled.shellsort.bound`. |
+| `shellsort_implements` | [The compilation](Compiled.lean) | Function 8, called with an array that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.shellsort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
 | `shellsort_bound` | [The compilation](Compiled.lean) | `compiled.shellsort.bound` is 0, so a call does not raise `top`. |
 | `shellsort_file`, `shellsort_file_decode` | [The file theorems](File.lean) | `build/verified/shellsort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 

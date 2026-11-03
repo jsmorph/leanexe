@@ -19,8 +19,9 @@ theorem heapsort_export :
   decide +kernel
 
 /-- Function 5, the export `heapsort`, called with an array that the caller hands over, from a heap
-with room for `compiled.heapsort.bound`, returns without a trap the owned array `expected xs`, the
-elements in nondecreasing order, and raises `top` by at most the bound. -/
+with the allocator invariant, a memory cap of at most 65,535 pages, and room for
+`compiled.heapsort.bound`, returns without a trap the owned array `expected xs`, the elements in
+nondecreasing order, and raises `top` by at most the bound. -/
 theorem heapsort_implements :
     ImplementsA false compiled.module 5 (fun x : Moved (Array UInt64) => expected x.val)
       (fun x heap store => heap.Within store compiled.module (compiled.heapsort.bound x))

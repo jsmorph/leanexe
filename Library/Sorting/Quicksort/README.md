@@ -27,7 +27,7 @@ Each stage lowers the loop's rank, twice the sum of the sizes of the current sub
 | `stages_perm` | [The proof](Proof.lean) | When the current subfile and the stacked subfiles end within the array, `stages` returns a permutation of the array of the same size. |
 | `quicksort_eq` | [The proof](Proof.lean) | `quicksort xs = expected xs` for every array with fewer than `2^64` elements. |
 | `quicksort_export` | [The compilation](Compiled.lean) | Export `quicksort` of `compiled.module` is function 9. |
-| `quicksort_implements` | [The compilation](Compiled.lean) | Function 9, called with an array that the caller hands over, returns without a trap the owned array `expected xs`, with `top` raised by at most `compiled.quicksort.bound`. |
+| `quicksort_implements` | [The compilation](Compiled.lean) | Function 9, called with an array that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.quicksort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
 | `quicksort_bound` | [The compilation](Compiled.lean) | `compiled.quicksort.bound` is `Verified.blockCost 128`, the block of the stack. |
 | `quicksort_file`, `quicksort_file_decode` | [The file theorems](File.lean) | `build/verified/quicksort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 

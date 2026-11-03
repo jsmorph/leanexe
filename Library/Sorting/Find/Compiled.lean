@@ -19,9 +19,10 @@ theorem select_export :
     ({ name := "select", funcIdx := 7 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 7, the export `select`, called with an array that the caller hands over and a rank
-`k`, from a heap with room for `compiled.select.bound`, returns without a trap `expected xs k`, the
-word of rank `k`, and raises `top` by at most the bound. -/
+/-- Function 7, the export `select`, called with an array that the caller hands over and a rank `k`,
+from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for
+`compiled.select.bound`, returns without a trap `expected xs k`, the word of rank `k`, and raises
+`top` by at most the bound. -/
 theorem select_implements :
     ImplementsA false compiled.module 7
       (fun x : Moved (Array UInt64) × UInt64 => expected x.1.val x.2)

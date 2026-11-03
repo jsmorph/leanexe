@@ -18,9 +18,10 @@ theorem mergeSort_export :
     ({ name := "mergeSort", funcIdx := 6 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 6, the export `mergeSort`, called with an array that the caller hands over, from a
-heap with room for `compiled.mergeSort.bound`, returns without a trap the owned array
-`expected xs`, the elements in nondecreasing order, and raises `top` by at most the bound. -/
+/-- Function 6, the export `mergeSort`, called with an array that the caller hands over, from a heap
+with the allocator invariant, a memory cap of at most 65,535 pages, and room for
+`compiled.mergeSort.bound`, returns without a trap the owned array `expected xs`, the elements in
+nondecreasing order, and raises `top` by at most the bound. -/
 theorem mergeSort_implements :
     ImplementsA false compiled.module 6 (fun x : Moved (Array UInt64) => expected x.val)
       (fun x heap store => heap.Within store compiled.module (compiled.mergeSort.bound x))
