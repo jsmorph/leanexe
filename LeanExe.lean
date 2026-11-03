@@ -315,6 +315,8 @@ import LeanExe.ProofKit.TaylorRemainder
 import LeanExe.ProofKit.Writes
 import LeanExe.PTX.AddOne
 import LeanExe.PTX.Det
+import LeanExe.PTX.Launch
+import LeanExe.PTX.MemoryModel
 import LeanExe.PTX.Parse
 import LeanExe.PTX.Print
 import LeanExe.PTX.RoundTrip

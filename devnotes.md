@@ -40878,10 +40878,14 @@ Progress:
 - [x] `tools/cuda-host.c` and `tools/build-cuda-host.sh`.
 - [x] Shared lemmas moved to `LeanExe/ProofKit/Writes.lean`, and the WGSL proof uses them.
 - [x] The add-one kernel on the GB10, from the cubin of `ptxas -arch=sm_121a -O3 --fmad=false` and through the driver's compiler, both gave `[3, 11, 21, 31]` for `[3, 10, 20, 30]`.
-- [ ] Memory model per byte with phases, generic launch theorem, existence.
-- [ ] The add-one theorem.
-- [ ] `tests/ptx/run.sh`.
-- [ ] Trust table section P, design document.
-- [ ] Full build.
+- [x] Memory model per byte with phases, generic launch theorem, existence.
+- [x] The add-one theorem.
+- [x] `tests/ptx/run.sh`.
+- [x] Trust table section P, design document, README, test and tool guides.
+- [x] Full build.
+
+`Launch.executions` and `Launch.execution_exists` hold for every race-free launch whose sequential run reaches the end.  `addOne_executions` and `addOne_execution_exists` specialize them to the add-one kernel with at least `xs.size` threads, fewer than `2^32` blocks, a block size below `2^32`, and fewer than `2^60` threads.  All four depend only on `propext`, `Classical.choice`, and `Quot.sound`.  The proof of the launch theorem uses only coherence and the two rules of causality.  On edgexpert the build of `LeanExe`, `Examples`, `Demos`, `Library`, `TestSupport`, `Verified`, and the file-theorem modules passed 11,432 jobs.  `tests/ptx/run.sh` passed its 9 cases on the GB10 from the cubin and through the driver's compiler.  The cubin's SHA-256 is `5747870ca356f4558007c868834adfd16b7ef39decb1131b9053f0ef7cb86ded`.
+
+Stage 2 is next.  It moves the shared kernel source language out of `LeanExe/WGSL/` and translates words and Booleans into PTX, with a launch theorem for each accepted build.
 
 Follow-up for WGSL: its writes before and after the dispatch are per word.  Per-byte writes, as in the PTX model, would cover writes of other sizes.

@@ -29,7 +29,8 @@ theorem hexNum_hexDigits : ∀ n v, hexNum (hexDigits n v) = some (v % 16 ^ n)
         hexDigits_length, Option.bind_eq_bind, Option.bind_some, Option.pure_def]
       rw [Nat.mod_pow_succ, Nat.add_comm, Nat.mul_comm]
 
-theorem hexDigits_inj {n a b : Nat} (h : hexDigits n a = hexDigits n b) : a % 16 ^ n = b % 16 ^ n := by
+theorem hexDigits_inj {n a b : Nat} (h : hexDigits n a = hexDigits n b) :
+    a % 16 ^ n = b % 16 ^ n := by
   have := congrArg hexNum h
   rw [hexNum_hexDigits, hexNum_hexDigits] at this
   exact Option.some.inj this

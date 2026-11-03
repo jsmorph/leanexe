@@ -209,6 +209,14 @@ scores of a generation step and race freedom under its shape, weight, and token 
 [The compiler manual](verified-manual.md#the-wgsl-library-and-the-browser-pages) describes
 the subset, its tools, and the browser pages.
 
+The [PTX library](../LeanExe/PTX) defines a PTX subset, its printer and inverse parser, and a
+per-thread semantics whose loads take values from an oracle.  [The PTX memory
+model](../LeanExe/PTX/MemoryModel.lean) states a launch's executions under the PTX ISA's chapter 8,
+and `Launch.executions` proves that every consistent execution of a race-free launch reads the
+output of the sequential run.  [The add-one kernel](../LeanExe/PTX/AddOne.lean) is written by hand
+and runs on an NVIDIA GB10 through [the CUDA host](../tools/cuda-host.c).  The verified compiler
+does not yet translate into PTX.
+
 [The compiler's source lowering](../Verified/WGSL/Compile.lean) constructs a kernel of the shared
 source language with a proof of its meaning, then uses the shared WGSL translation and dispatch
 theorems.  [Its binary32 GPT compilation](../Demos/Gpt32/Verified.lean) compiles the kernel

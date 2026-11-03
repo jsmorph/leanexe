@@ -50,6 +50,12 @@ theorem setAll_append (out : Array α) (a b : List (Nat × α)) :
     setAll (setAll out a) b = setAll out (a ++ b) := by
   simp [setAll, List.foldl_append]
 
+@[simp] theorem setAll_size (out : Array α) (ws : List (Nat × α)) :
+    (setAll out ws).size = out.size := by
+  induction ws generalizing out with
+  | nil => rfl
+  | cons w ws ih => exact (ih _).trans (by simp)
+
 theorem setAll_get {out : Array α} {i : Nat} (hi : i < out.size) (ws : List (Nat × α)) :
     (setAll out ws)[i]? = some (lastVal ws i out[i]) := by
   induction ws generalizing out with
