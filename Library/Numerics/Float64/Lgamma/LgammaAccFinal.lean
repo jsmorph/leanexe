@@ -5,11 +5,11 @@ import LeanExe.ProofKit.F64RoundNearest
 /-!
 **The last step of `Lgamma.accurate`**: the sum `fh + fl`, rounded once, or the value of the table
 of hard cases at `x` when the rounding test of the code fails.  An error of `fh + fl` within
-`ρ |log |Γ x||` with `ρ ≤ 1/(2^53 + 1)` puts the rounded sum within one step (`sum_within`).  A row `(x, f, δ)` of
-`Lgamma.dbTable` holds a double `f` within `2^-60` relative of `log |Γ x|` (`LgammaApprox.DbFact`)
-and a correction `δ` with `|δ| ≤ |f|/2^54`, so `f + δ` is within one step as well (`db_entry`).
-`final_of_sum` joins the two cases of the code's final `if` for a rounded sum within one step, and
-`final_step` applies it with `sum_within`.
+`ρ |log |Γ x||` with `ρ ≤ 1/(2^53 + 1)` implies that the rounded sum lies within one step
+(`sum_within`).  A row `(x, f, δ)` of `Lgamma.dbTable` holds a double `f` within `2^-60` relative of
+`log |Γ x|` (`LgammaApprox.DbFact`) and a correction `δ` with `|δ| ≤ |f|/2^54`, so `f + δ` is within
+one step as well (`db_entry`).  `final_of_sum` combines the two cases of the code's final `if` for a
+rounded sum within one step, and `final_step` applies it with `sum_within`.
 -/
 
 namespace Library.Numerics.Float64.Lgamma.LgammaAccFinal

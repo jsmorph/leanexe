@@ -169,7 +169,7 @@ theorem acosh_bytes_accuracy :
   intro _ values ⟨hv, hrest⟩
   exact ⟨(Asinh.acosh x).toBits, hv, rfl, AcoshTheorem.acosh_within_two x, hrest⟩
 
-/-- The three byte theorems of the module. -/
+/-- The byte theorems of the module. -/
 theorem asinh_module_accuracy :
     (∃ bytes, Wasm.Encoding.encode Asinh.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Asinh.compiled.module ∧

@@ -20,8 +20,8 @@ bounding its error.
 `sampleTopK`, with `verified_compile`, and `tests/verified/run.sh` writes the module to
 `build/verified/gpt.wasm`.  For each function `f`, the generated theorem `compiled.f.implements`
 states that the module computes `f` bit for bit, unless the call stops at `unreachable`, and
-`compiled.f.trapFree` excludes the stop when `top` can rise by the allocation bound
-`compiled.f.bound` within the memory cap.  [The verified compiler
+`compiled.f.trapFree` excludes the stop when `top` is at least the allocation bound
+`compiled.f.bound` below the memory cap.  [The verified compiler
 manual](../../docs/verified-manual.md#the-implements-and-trapfree-theorems) states both forms and
 the conditions under which a call stops.  `forward_causal` and `steps_exact` concern the Lean model
 alone: the first states that row `i` of the scores depends only on tokens `0` to `i`, and the second
@@ -32,7 +32,7 @@ of [`VerifiedGeneration.lean`](VerifiedGeneration.lean), whose theorems use `ste
 | Theorem | Statement |
 |---------|-----------|
 | `compiled.f.implements` | For each compiled function `f`, a call on arguments that represent `x` returns the representation of `f x`, with the bits of every float, unless it stops at `unreachable`. |
-| `compiled.f.trapFree` | Under room for `top` to rise by `compiled.f.bound` on the arguments within the memory cap, which the theorem requires only of a function that can stop, the call returns `f` of its arguments without a trap and raises `top` by at most the bound. |
+| `compiled.f.trapFree` | With `top` at least `compiled.f.bound` on the arguments below the memory cap, a condition that the theorem requires only of a function that can stop, the call returns `f` of its arguments without a trap and increases `top` by at most the bound. |
 | `compiled.bytes` | `encode` succeeds on `compiled.module`, `decode` reads the bytes back as the module, and the module implements every compiled function. |
 | `gpt_file`, `gpt_file_decode` | `build/verified/gpt.wasm` holds `encode compiled.module` and decodes to `compiled.module`.  [`VerifiedFile.lean`](VerifiedFile.lean) checks both after the file is written. |
 | `forward_causal` | Under bounds on the dimensions, two token sequences that agree up to position `i` give scores that agree up to row `i`. |
@@ -44,22 +44,22 @@ of [`VerifiedGeneration.lean`](VerifiedGeneration.lean), whose theorems use `ste
 `compiled.module` with [the host's definitions](Host.lean) of the weights, their pointers, the cache
 after `p` tokens, and the arguments of the calls.  `Generating heap store` describes a store between
 the calls: the weights are borrowed at their pointers, and the cache of the first `p` tokens is
-owned at `pc`, apart from them.  It names `heap`, the allocator's state, so that a premise can state
-room for `top` to rise from it.  The theorems follow from `compiled.step.implements` and
+owned at `pc`, disjoint from them.  It names `heap`, the allocator's state, so that a premise can state
+`Heap.Within` of it.  The theorems follow from `compiled.step.implements` and
 `compiled.scores.implements`, which allow a stop at `unreachable`, and from `compiled.step.trapFree`
-and `compiled.scores.trapFree`, which exclude it under room for the generated bounds
+and `compiled.scores.trapFree`, which exclude it when `Heap.Within` holds for the generated bounds
 `compiled.step.bound` and `compiled.scores.bound`.
 
 | Theorem | Statement |
 |---------|-----------|
-| `generating_start`, `generating_step`, `generating_scores` | In the host's sequence of calls, `step` per token with the cache handed over and then `scores` return row `p` of `forward`, unless a call stops at `unreachable`.  `scores` leaves a store of the generation, with the cache and the weights in place. |
-| `generating_step_trapFree` | From a store of the generation after `p` tokens in which `top` can rise by the bound of `step` on its arguments within the memory cap, `step` returns without a trap the cache of `p + 1` tokens in a store of the generation.  It keeps the memory caps and raises `top` by at most the bound. |
-| `generating_scores_trapFree` | From a store of the generation after `p + 1` tokens in which `top` can rise by the bound of `scores` on its arguments within the memory cap, `scores` returns without a trap row `p` of `forward`, under the bounds of `steps_exact`.  It leaves a store of the generation, keeps the memory caps, and raises `top` by at most the bound. |
+| `generating_start`, `generating_step`, `generating_scores` | In the host's sequence of calls, `step` per token with the cache moved to it and then `scores` return row `p` of `forward`, unless a call stops at `unreachable`.  `scores` leaves a store of the generation, with the cache and the weights at their addresses. |
+| `generating_step_trapFree` | From a store of the generation after `p` tokens in which `top` is at least the bound of `step` on its arguments below the memory cap, `step` returns without a trap the cache of `p + 1` tokens in a store of the generation.  It keeps the memory caps and increases `top` by at most the bound. |
+| `generating_scores_trapFree` | From a store of the generation after `p + 1` tokens in which `top` is at least the bound of `scores` on its arguments below the memory cap, `scores` returns without a trap row `p` of `forward`, under the bounds of `steps_exact`.  It leaves a store of the generation, keeps the memory caps, and increases `top` by at most the bound. |
 
 `scores` leaves the cache in its block and the weights borrowed because the generated theorem keeps
 every region of the heap that the call does not consume, and `scores` consumes nothing.  The
-trap-free forms keep the memory caps and bound the rise of `top`, so room for the sum of the bounds
-before the first call gives room for each later call by `Heap.Within.after`.  The theorems cover a
+trap-free forms keep the memory caps and bound the increase of `top`, so `Heap.Within` for the sum of the bounds
+before the first call gives `Heap.Within` for the bound of each later call by `Heap.Within.after`.  The theorems cover a
 host that calls `step` again after `scores` and keeps the scores array.
 [`tools/gpt2.py`](../../tools/gpt2.py) releases that array between the calls, after reading it or
 passing it to `sampleTopK`, and no generation theorem covers the release or the call of

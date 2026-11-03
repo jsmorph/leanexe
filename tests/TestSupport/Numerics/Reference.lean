@@ -100,9 +100,9 @@ def atanhFixed (s q : Nat) : Nat := Id.run do
     n := n + 2
   return total
 
-/-- `ln (m · 2 ^ e) · 2 ^ q` for `m > 0`, `q ≤ 500`, and `|j| ≤ 2 ^ 11`, which every double meets,
-as `j ln 2 + 2 atanh ((y - 1)/(y + 1))` with `m · 2 ^ e = y · 2 ^ j` and `3/4 ≤ y < 3/2`, so that
-`|(y - 1)/(y + 1)| ≤ 1/5`.  The
+/-- `ln (m · 2 ^ e) · 2 ^ q` for `m > 0`, `q ≤ 500`, and `|j| ≤ 2 ^ 11`, which every double
+satisfies, as `j ln 2 + 2 atanh ((y - 1)/(y + 1))` with `m · 2 ^ e = y · 2 ^ j` and `3/4 ≤ y < 3/2`,
+so that `|(y - 1)/(y + 1)| ≤ 1/5`.  The
 truncated quotient and the series leave less than `2 ^ 9` units, and `ln 2` less than
 `2 |j| ≤ 2 ^ 12` more, so that the value lies within `2 ^ 13` units of the exact one, and within
 `2 ^ 9` when `j = 0`. -/

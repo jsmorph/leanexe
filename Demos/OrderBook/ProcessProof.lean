@@ -6,7 +6,7 @@ import Verified.Wasi.ProcessNative
 `begin_related` relate the reflected `step` and `begin` to the native ones on the state's tuple,
 `implements` states that every modeled run of the module that completes without exhausting Talos
 fuel matches the native process, including runs that stop at an I/O error, a host trap, or a
-rejected exit, and `run_initial` states the same from the module's initial store.  `bytes` joins
+rejected exit, and `run_initial` states the same from the module's initial store.  `bytes` combines
 `implements` with the encoding, exact decoding, and binary validity of the module. -/
 
 namespace Demos.OrderBook.Process

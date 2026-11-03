@@ -5,7 +5,7 @@ import LeanExe.ProofKit.FreeListMemory
 
 `release` keeps the free list in address order.  It inserts a freed block before
 the first block at a higher address and merges it with the blocks on either side
-when they touch, as in Knuth's liberation with a sorted list (TAOCP vol. 1,
+when they are adjacent, as in Knuth's liberation with a sorted list (TAOCP vol. 1,
 §2.5, Algorithm B).  This file models the resulting list and memory and proves
 that the list stays laid out.
 -/
@@ -170,7 +170,7 @@ theorem joinNodes_apart {block : FreeNode} {rest : List FreeNode} {region : Nat 
       · exact hBlock
       · exact hApart n hn
 
-/-- Joining a block laid out at `block.root` to a laid-out list keeps it laid
+/-- Adding a block laid out at `block.root` to the front of a laid-out list keeps it laid
 out. -/
 theorem FreeListAt.join {mem : Mem} {block : FreeNode} {rest : List FreeNode}
     (hRest : FreeListAt mem rest) (h48 : 48 ≤ block.root.toNat)
@@ -274,7 +274,7 @@ theorem nodes_split (root : UInt64) (nodes : List FreeNode) :
 
 /-- The free list after `release` returns the block with payload `root` and
 capacity `capacity`: placed before the first block above it, and merged with the
-blocks before and after it when they touch. -/
+blocks before and after it when they are adjacent. -/
 def insertFree (root capacity : UInt64) (nodes : List FreeNode) : List FreeNode :=
   match (belowNodes root nodes).getLast? with
   | none => joinNodes { root, capacity } (aboveNodes root nodes)

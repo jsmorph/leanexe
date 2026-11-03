@@ -1,7 +1,7 @@
 import LeanExe.ProofKit.PolyBound
 
 /-!
-Tools built on `PolyBound.check`: products of polynomials, bounds over a union of intervals,
+Tools that use `PolyBound.check`: products of polynomials, bounds over a union of intervals,
 one-sided bounds, and bounds against a weight.
 
 `Bounded p lo hi ε` states `|eval p x| ≤ ε` on `[lo, hi]`.  `Covers p ε d lo hi ms` is a

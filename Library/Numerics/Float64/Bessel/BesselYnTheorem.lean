@@ -7,13 +7,12 @@ import Library.Numerics.Float64.Bessel.BesselOrderHuge
 `N`, C's `int` in the low 32 bits of the word (`BesselJnTheorem.orderZ`), the result is finite and
 within `(250 + 12 |N|) · 2^-53 · M_|N|(x)` of `Y_N(x)`, or it is the infinity of the sign of
 `Y_N(x)` and `|Y_N(x)| > 2^1023`, where `M_n = √(J_n² + Y_n²)`, except on the range
-`2 ≤ x < 2^302` with `x < 2 |N|`, which the decision of 2026-10-12 leaves open.  From
+`2 ≤ x < 2^302` with `x < 2 |N|`, which the theorem leaves open.  From
 `|Y_N(x)| ≥ 2^1025` on, the result is that infinity (`yn_overflow`), since `M_|N| ≤ 1 + |Y_N|`
-outside the open range (`modn_le_add`).  These are the statements of the decision of 2026-10-12
-for `yn`.
+outside the open range (`modn_le_add`).
 
 `yn_eq` writes `Bessel.yn` at a positive `x` as `y0`, `±1 ⊗ y1`, or the path `ynAbs` of the orders
-from 2, negated when the order is negative and odd.  `ynAbs_bound` joins the paths of `|N| ≥ 2`:
+from 2, negated when the order is negative and odd.  `ynAbs_bound` combines the paths of `|N| ≥ 2`:
 Hankel's term from `2^302` (`BesselOrderHuge.yn_hankel`), the forward recurrence for
 `2 |N| ≤ x` (`BesselOrderLoops.yn_forward`), and the loop below 2 (`BesselYnSmall.yn_small`).  The
 orders 0 and ±1 come from `BesselY0Theorem.y0_accuracy` and `BesselYnOrderOne.y1_bound`.  The

@@ -7,7 +7,7 @@ Taylor models bound `g - Q` for `|s| ≥ τ`, where Stirling's remainder divided
 and the convexity of `lgamma` (`GammaConvex.dd_center`) covers `|s| < τ` with the variation `V` of
 `Q` there: `dd_abs_fact` gives the absolute bound `ε + 2 V` on the whole interval, and
 `dd_rel_center` turns relative bounds at `±τ` into a relative bound between them, which
-`dd_rel_fact` joins with relative bounds for `|s| ≥ τ`.
+`dd_rel_fact` combines with relative bounds for `|s| ≥ τ`.
 -/
 
 namespace LeanExe.ProofKit.GammaDDCover

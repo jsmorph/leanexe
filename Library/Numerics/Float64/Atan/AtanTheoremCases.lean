@@ -5,8 +5,7 @@ import Library.Numerics.Float64.Atan.AtanTheoremConst
 The reduced branches of `Atan.atan` within one step.  `finish` combines the error of the reduced
 argument, the tail of `AtanTheoremTail`, the constant `hi + lo`, the kernel polynomial's error, and
 the Lipschitz bound of `arctan`, and applies `F64Approx.within_one_of_error` in the binade whose
-start lies below the result.  Each case lemma instantiates it for an interval of `|x|` with the
-constants that `scratchpad/w-poly/arc/cases.py` computed from the same formulas.
+start lies below the result.  Each case lemma instantiates it for an interval of `|x|`.
 -/
 
 namespace Library.Numerics.Float64.Atan.AtanTheoremCases

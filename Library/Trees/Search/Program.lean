@@ -5,8 +5,8 @@ tail recursion.  `search` follows steps T1 to T4 from the root.  `insert` follow
 `descend` and reverses each link that it passes: the node that it leaves holds the path above it in
 the field of the child it moves to.  At the end of the path `descend` places a new node with `x`,
 step T5, or keeps the node that holds `x`, and `ascend` restores the links on the way back to the
-root.  A comparison of `x` with a node's key tells `ascend` which field holds the path, so the
-reversed nodes need no other mark, and each step rebuilds the node that it takes apart. -/
+root.  A comparison of `x` with a node's key determines, for `ascend`, which field holds the path,
+so the reversed nodes need no other mark, and each step rebuilds the node that it destructures. -/
 
 namespace Library.Trees.Search
 

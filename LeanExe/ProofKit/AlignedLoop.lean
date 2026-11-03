@@ -4,7 +4,7 @@ import LeanExe.ProofKit.AlignedExec
 The rule for `loop` under `wpA`, the counterpart of Talos's `wp_loop_cons`: an invariant `Inv`
 and a measure `μ` that each re-entry by `br 0` decreases.  As in Talos's rule, the re-entry is
 the one place where the two sides run at different fuel, the inner `execOne` at `f` and the
-outer `exec` at `f + 1`, and `execOne_fuel_mono` joins them.  The alignment of the loop at fuel
+outer `exec` at `f + 1`, and `execOne_fuel_mono` relates them.  The alignment of the loop at fuel
 `f + 1` is the body's at `f` and, on a re-entry, the loop's at `f` from the next state, which the
 induction hypothesis gives at every fuel from its bound on.
 -/

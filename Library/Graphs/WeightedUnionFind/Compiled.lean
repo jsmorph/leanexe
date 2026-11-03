@@ -11,7 +11,7 @@ parent links, the sizes, the least element recorded at each root, and the result
 states the call of the export from the generated `compiled.classes.trapFree`: it returns the array
 of the Lean function `classes`.  `classes_spec` of the proof states that, for arrays of fewer than
 `2^64` words, which every array that the representation of a call holds has, that array labels each
-element below `n` with the least element of its class, and no theorem joins the two. -/
+element below `n` with the least element of its class, and no theorem combines the two. -/
 
 namespace Library.Graphs.WeightedUnionFind
 

@@ -135,7 +135,7 @@ def invLn2 : ℚ := ratOfWord 0x40971547652B82FE + ratOfWord 0x3D1777D0FFDA0D24
 
 /-- The constant, the tables, and the kernel of `asExpd`.  The kernel's interval reaches `5/8`,
 beyond the `1/2` of the reduction, because `asLgammaAsym` passes a low part up to about
-`2 ^ -14.5`, which the first product of `asExpd` carries into the kernel's argument. -/
+`2 ^ -14.5`, which the first product of `asExpd` includes in the kernel's argument. -/
 def ExpFact : Prop :=
   |(invLn2 : ℝ) - 1024 / Real.log 2| ≤ 1 / 2 ^ 80 ∧
     (∀ i < 32, |(e0 i : ℝ) - Real.exp (i * Real.log 2 / 32)| ≤ 1 / 2 ^ 80) ∧

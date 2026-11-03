@@ -6,8 +6,8 @@ The translation of source statements built from assignments, sequences, conditio
 of `Source.Stmt.loop` into WGSL, and its simulation lemma.  An assignment becomes the expression's
 `let` statements and an assignment to the local's `var`.  A conditional runs its selected branch and
 drops that branch's declarations while retaining assignments to outer variables.  A loop on `ltU
-(get index) (get limit)` becomes a `while` on `lt64`, which runs in lockstep with the denotation's
-loop under the same bound.
+(get index) (get limit)` becomes a `while` on `lt64`, whose iterations correspond one to one to
+those of the denotation's loop under the same bound.
 -/
 
 namespace LeanExe.WGSL

@@ -1146,7 +1146,7 @@ theorem KeepDying.mono {liveIn liveOut liveIn' liveOut' : Nat → Bool} {r : Nat
     KeepDying env slots liveIn' liveOut' store s r :=
   fun t x hx hxo hm => let ⟨a, b⟩ := hSub _ hx hxo; h t x a b hm
 
-/-- The facts that carry from a state to the one after a subexpression's step: when the step
+/-- The facts that persist from a state to the one after a subexpression's step: when the step
 keeps the regions of the variables live after it, those regions are unchanged.  So a region
 apart from the blocks of variables that die later is apart from them in either state. -/
 theorem KeepDying.transfer (h : Holds env slots live base heap store s)
@@ -1218,7 +1218,7 @@ words, as for an array of a `Flat` type. -/
   reads store vs xs := Represent.reads store vs (e.words xs)
   moves _ _ _ := []
 
-/-- The instance for an array of tuples that the caller hands over. -/
+/-- The instance for an array of tuples that the caller moves. -/
 @[instance_reducible] def Elem.movedWordsInst (e : Elem) : Represent (Moved (Array e.denote)) where
   width _ := 1
   borrowed heap store vs xs := Represent.borrowed heap store vs (Moved.mk (e.words xs.val))

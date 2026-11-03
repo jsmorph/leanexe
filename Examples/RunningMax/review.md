@@ -12,7 +12,7 @@ the request leaves open, all of which the comment records: unsigned words as the
 result for the empty input, any length, and an array as the list.  It computed all 17 outputs by
 hand, including the two generated inputs of 20 and 100 entries, with the same results.  It noted
 that "a new list" implies an unchanged input, which a pure specification cannot violate and which
-matters only for the input's memory after a call.  The call theorem `Verified.CallSpec` states that
+concerns only the input's memory after a call.  The call theorem `Verified.CallSpec` states that
 every array borrowed before the call stays borrowed, so the input keeps its words.
 
 It named input classes that no sample covered: lengths that leave a remainder of 6 or 7 after
@@ -24,7 +24,7 @@ The second review, of the 21 samples, again found no disagreement.  It read the 
 the toolchain, confirmed the four recorded choices, and checked every output, the three generated
 inputs against their expressions with `awk`.  It agreed that the specification cannot state that
 the input stays unchanged, and it named three classes that no sample covers.  A long input with
-words of `2^32` or more, such as `#[2^63 − 1, 2^63, 1, 2, 3, 4, 5, 6, 7]`, would catch an
+words of `2^32` or more, such as `#[2^63 − 1, 2^63, 1, 2, 3, 4, 5, 6, 7]`, would detect an
 eight-entry loop that compares signed or 32-bit words.  In the 5,000-entry sample no entry after
 index 999 changes the output, so a program that misread those entries as values of at most 999
 would pass.  No sample has more than 8,192 entries, so no single array spans more than a page.

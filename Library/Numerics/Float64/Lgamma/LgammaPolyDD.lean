@@ -5,9 +5,9 @@ import Library.Numerics.Float64.Tgamma.TgammaMul
 **`Lgamma.polyDD`**, the double-double Horner scheme at a double-double point `xh + xl`, against
 the exact Horner values `horner (cDD tab o) N L (xh + xl) m` of `TgammaPolyDDD`.  The proof is that
 of `LgammaPolyFst.polyFst_damped_core` with `mulDD` (`Library.Numerics.Float64.Tgamma.TgammaMul.mulDD_spec`) in place of
-`mulDDD`: the products by `xl` enter the error of each step (`polyEpsD`) and the growth of the low
-part (`polyGrowD`).  The accurate path's logarithm, sine, Stirling series, and polynomials about
-the negative zeros evaluate their polynomials with `polyDD`.
+`mulDDD`: the products by `xl` contribute to the error of each step (`polyEpsD`) and to the growth
+of the low part (`polyGrowD`).  The accurate path's logarithm, sine, Stirling series, and
+polynomials about the negative zeros evaluate their polynomials with `polyDD`.
 -/
 
 namespace Library.Numerics.Float64.Lgamma.LgammaPolyDD

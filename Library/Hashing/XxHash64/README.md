@@ -29,7 +29,7 @@ The module `xxhash64` computes XXH64 of the xxHash specification [1].  Its expor
 
 The executable `xxhash64-vectors`, built from [the vector check](../../../tests/TestSupport/Hashing/XxHash64Vectors.lean), checks the transcription and the program on [the vectors](../../../data/hashing/xxhash64/NOTICE) of the xxHash repository's sanity test [2].  Each vector hashes the first bytes of the test's pseudorandom buffer, for every length from 0 to 4,160 bytes with the seeds 0 and `0x9E3779B1`, and the transcription and the program agree on all 8,322.
 
-[The module cases](../../../tests/TestSupport/Hashing/XxHash64Cases.lean) compare 166 calls in Wasmtime with native Lean: messages of 0 to 40 bytes, which reach every case of step 5 and the first stripes, lengths around multiples of 32 and of 4,096, three seeds, and counts beyond the array.  Each case requires that the call keep the host's message and allocate nothing of its own.
+[The module cases](../../../tests/TestSupport/Hashing/XxHash64Cases.lean) compare 166 calls in Wasmtime with native Lean: messages of 0 to 40 bytes, which test every case of step 5 and the first stripes, lengths around multiples of 32 and of 4,096, three seeds, and counts beyond the array.  Each case requires that the call keep the host's message and allocate nothing of its own.
 
 ```sh
 tools/leanrun --timeout 1h lake build Library.Hashing.XxHash64.Bytes xxhash64-vectors

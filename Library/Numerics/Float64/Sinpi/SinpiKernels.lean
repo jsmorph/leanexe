@@ -5,7 +5,7 @@ import Library.Numerics.Float64.Tan.TanWith
 /-!
 The kernels of `Sinpi`: for `x` from `2 ^ -54` to `1/4`, `kernelSinpi x` and `kernelCospi x` lie
 within one step of `sin (π x)` and `cos (π x)`, and for `x` from `2 ^ -54` below `1/2`,
-`kernelTanpi x` lies within one step of `tan (π x)`.  The product `π x = w + t` meets the
+`kernelTanpi x` lies within one step of `tan (π x)`.  The product `π x = w + t` satisfies the
 hypotheses of fdlibm's kernels: `t` within `|w| / 2 ^ 52` and `w + t` within a relative `2 ^ -59`
 of `π x`.  Above `1/4`, `kernelTanpi` takes `-(-1/tan (π (1/2 - x)))`, which is `tan (π x)`.
 -/

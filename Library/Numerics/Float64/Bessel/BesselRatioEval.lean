@@ -10,9 +10,9 @@ real `z` within `δ` of the computed argument `ẑ`.  On a piece `[lo, hi]` that
 `|R|` above and `S` below, and `F64DivApprox.div_approx` bounds the rounded quotient.  The change
 from `ẑ` to `z` is at most `L δ` by `F64DivApprox.ratio_lipschitz`, with
 `L = magBound (R' S - R S') / (lowBound S)²` on `[lo - δ, hi + δ]`.  `ratioErr` is the sum, and
-`pieceOk` asks the kernel to check it against a bound `E` together with the side conditions;
-`piecesOk` runs the check on consecutive pieces of a list of breakpoints, so that `pieces_sound`
-covers every `ẑ` from the first breakpoint to the last.
+`pieceOk`, which the kernel evaluates, checks it against a bound `E` together with the side
+conditions; `piecesOk` runs the check on consecutive pieces of a list of breakpoints, so that
+`pieces_sound` covers every `ẑ` from the first breakpoint to the last.
 -/
 
 namespace Library.Numerics.Float64.Bessel.BesselRatioEval

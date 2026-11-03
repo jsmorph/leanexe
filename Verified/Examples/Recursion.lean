@@ -1,7 +1,7 @@
 import Library.Numerics.Reductions.Float64.Program
 import Verified.Reflect.Command
 
-/-! The twenty-first program of the verified compiler: recursion.  Each definition recurses by
+/-! A program of the verified compiler: recursion.  Each definition recurses by
 well-founded recursion on a word measure, and its meaning is the definition itself, which solves
 the fixed-point equation of its body.  The code of a recursive function, and of a function that
 calls one, takes the call depth and traps at `unreachable` at depth 1,000; the theorem for it holds
@@ -104,7 +104,7 @@ decreasing_by
 depth too. -/
 def powGcd (a b : UInt64) : UInt64 := pow a (gcd a b) + gcd (pow b 2) a
 
-/-- Two functions without recursion, each with many values live, which `deep` calls at its
+/-- Functions without recursion, each with many values live, which `deep` calls at its
 deepest frame. -/
 def top2 (a b : UInt64) : UInt64 :=
   let x0 := a * b
@@ -236,7 +236,7 @@ decreasing_by
 verified_compile compiled := [gcd, pow, Library.Numerics.Reductions.Float64.sumRange, fill, chain, fibPair, walk, sumXs, powGcd,
   top2, top1, deep, double, spread, countdown]
 
-/-- `chain n` makes `n + 1` nested calls: with `k` frames available, its calls find their frames
+/-- `chain n` makes `n + 1` nested calls: with `k` frames available, its calls have enough frames
 exactly when `n < k`. -/
 theorem chain_fits : ∀ (k : Nat) (n : UInt64), compiled.chain.fits k n = true ↔ n.toNat < k
   | 0, n => by simp [show compiled.chain.fits 0 n = false from rfl]
@@ -274,7 +274,7 @@ theorem succ_toNat {i n : UInt64} (h : i < n) : (i + 1).toNat = i.toNat + 1 := b
   omega
 
 /-- `fill xs i n` makes `n - i` nested calls below its own when `i < n`, and none otherwise: with
-`k` frames available, its calls find their frames exactly when `n - i < k`, in `Nat`'s
+`k` frames available, its calls have enough frames exactly when `n - i < k`, in `Nat`'s
 subtraction. -/
 theorem fill_fits : ∀ (k : Nat) (xs : Array UInt64) (i n : UInt64),
     compiled.fill.fits k (⟨xs⟩, i, n) = true ↔ n.toNat - i.toNat < k

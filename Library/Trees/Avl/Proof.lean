@@ -3,13 +3,13 @@ import Library.Trees.Avl.Spec
 import Library.Trees.Search.Proof
 
 /-! The proofs that `search` and `insert` compute `searchA` and `algorithmA`, and that `algorithmA`
-meets `SearchTree` on every balanced binary search tree.  `descend_eq` states the link reversal:
+satisfies `SearchTree` on every balanced binary search tree.  `descend_eq` states the link reversal:
 `descend x path t` returns what `ascend` returns from the flag and the tree of `algorithmA x t`
 below the same `path`, since each step of `ascend` with the flag set applies `growLeft` or
 `growRight` to the node above, and each other step rebuilds that node.  `growLeft_props` follows
-steps A7 to A9 through the heights of the subtrees: a node that leaned right becomes balanced, a
-balanced node leans left and grows, and a node that leaned left is rotated back to its height before
-the insertion. -/
+steps A7 to A9 through the heights of the subtrees: a node that was higher on the right becomes
+balanced, a balanced node becomes higher on the left and grows, and a node that was higher on the
+left is rotated back to its height before the insertion. -/
 
 namespace Library.Trees.Avl
 
@@ -167,7 +167,7 @@ theorem growRight_props {a t : AvlTree} {k b : UInt64} {hr : Nat} (ha : Balanced
     omega
 
 /-- Algorithm A keeps a tree balanced, grows it by one level exactly when it reports growth, and
-leaves a grown tree of more than one node leaning. -/
+leaves a grown tree of more than one node higher on one side. -/
 theorem algorithmA_props (x : UInt64) (t : AvlTree) (hb : Balanced t) :
     Balanced (algorithmA x t).2 ∧
       height (algorithmA x t).2 = height t + (if (algorithmA x t).1 then 1 else 0) ∧
@@ -363,7 +363,7 @@ theorem ordered_orderedInsert (x : UInt64) :
       · exact UInt64.not_le.mp h
       · exact hl.1 y hy
 
-/-- Algorithm A on a balanced binary search tree meets the guarantees of `SearchTree`. -/
+/-- Algorithm A on a balanced binary search tree satisfies the guarantees of `SearchTree`. -/
 theorem searchTree (x : UInt64) (t : AvlTree) (ho : Ordered t) (hb : Balanced t) :
     SearchTree x t := by
   have hkeys := keys_algorithmA x t ho

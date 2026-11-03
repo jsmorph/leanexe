@@ -7,9 +7,9 @@ The input `0x1.a8f7bfbd15495p+4` of `erfc_asympt_accurate`, whose value of `erfc
 subnormal range near `c₀ = 0x1.99ef5883f656cp-1024` (the word `0x000667BD620FD95B`).  The code
 returns `fma (2^-1074, -0.25, c₀)`, whose exact value `c₀ - 2^-1076` the fma rounds to within
 `2^-1076` (`Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest`).  An enclosure of `erfc` from the model of `erfcxN` on
-`ErfTailPieces0`'s piece and ten squarings of `exp (-x²/1024)` (`ErfcHardRows.asym_encl`) puts
-`erfc x` within `3 · 2^-1076` of `c₀ - 2^-1076`, so the result lies within `2^-1074` of `erfc x`
-and within one step (`ErfcAsymAccFin.within_small`).
+`ErfTailPieces0`'s piece and ten squarings of `exp (-x²/1024)` (`ErfcHardRows.asym_encl`) implies
+that `erfc x` lies within `3 · 2^-1076` of `c₀ - 2^-1076`, so the result lies within `2^-1074` of
+`erfc x` and within one step (`ErfcAsymAccFin.within_small`).
 -/
 
 namespace Library.Numerics.Float64.Erfc.ErfcSpecial

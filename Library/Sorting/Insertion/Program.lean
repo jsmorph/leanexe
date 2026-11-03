@@ -4,8 +4,8 @@ import LeanExe.Dialect.InsertErase
 
 namespace Library.Sorting.Insertion
 
-/-- Insertion sort: each value goes in at the number of smaller values before it, in a loop whose
-state grows in its own block. -/
+/-- Insertion sort: each value is inserted at the number of smaller values before it, in a loop
+whose state grows in its own block. -/
 def sortInsert (xs : Array UInt64) : Array UInt64 :=
   LeanExe.loop xs.size.toUInt64 (LeanExe.build 0 fun _ => 0) fun i acc =>
     let v := xs[i.toNat]!

@@ -10,8 +10,8 @@ import Library.Numerics.Float64.Sinh.SinhSign
 error of `t` that keeps the relative error of the exact difference below `2.9375 u`
 (`F64NearestRelative.within_rel_of`).  `sinh_small_pos` supplies `E` on nine intervals of
 `τ = exp abs(x) - 1`: `2 u τ` on the path without reduction, and on the path `k = 1` the bounds of
-`SinhExpm1.near_one_pos` plus the half spacing of `t`, checked by `SinhCore.check_small`.  Two
-steps are out of reach of these bounds between `0.347` and `0.481`, where the relative error
+`SinhExpm1.near_one_pos` plus the half spacing of `t`, checked by `SinhCore.check_small`.  These
+bounds do not give two steps between `0.347` and `0.481`, where the relative error
 reaches `2.55 u`.
 -/
 

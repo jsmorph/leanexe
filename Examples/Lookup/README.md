@@ -15,7 +15,7 @@ compiles the definition into a 2,309-byte module that exports `compute`.
 
 The reflector reads the result's literal `#[…, …]` as two pushes onto `#[]`, so the generated
 `compiled.compute.bound_eq` charges an empty block, the first growth, and the paid second push, and
-`compute_bound` closes that bound to 232 bytes.  `lookup_call` composes the generated
+`compute_bound` evaluates that bound to 232 bytes.  `lookup_call` composes the generated
 `compiled.compute.trapFree` with `compute_eq` through `arrayCall` of [the shared call
 theorem](../ArrayCall.lean).  The generated `compiled.compute.native` states the computation of the
 C function of the module's translation.
@@ -24,7 +24,7 @@ C function of the module's translation.
 |---------|-----------|
 | `compute_eq` | `compute` equals `expected` on every array of fewer than 2^64 words. |
 | `compute_bound` | `compiled.compute.bound xs` is 232 bytes for every input. |
-| `lookup_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 232 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and lies apart from the result, and `top` rises by at most 232 bytes. |
+| `lookup_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 232 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and is disjoint from the result, and `top` rises by at most 232 bytes. |
 | `lookup_file`, `lookup_file_decode` | `build/verified/lookup.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
 `compute_eq`, in [the proof of the specification](Proof.lean), splits on the input's length and

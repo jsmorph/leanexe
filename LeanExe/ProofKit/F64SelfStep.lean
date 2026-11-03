@@ -5,7 +5,7 @@ import LeanExe.ProofKit.F64SignedNearestSum
 A finite word within `2 ^ -54` of a number, relative to the word, lies within one step of the
 number's nearest-even reference, and a zero word lies within one step of zero.  The ports of
 `sin` and `tan` return `x` itself for tiny `x`, where `|sin x - x| ≤ |x| ^ 3 / 6` and
-`|tan x - x| ≤ |x| ^ 3` meet the first bound.
+`|tan x - x| ≤ |x| ^ 3` satisfy the first bound.
 -/
 
 namespace LeanExe.ProofKit.F64SelfStep

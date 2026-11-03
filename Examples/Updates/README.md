@@ -19,7 +19,7 @@ argument, of type `Moved (Array UInt64)` in the theorems, and it borrows the arr
 which reads the array after the first update and therefore copies it at that update.  An owned
 array that an update, a push, an insertion, or a removal uses for the last time changes in its own
 block, so each update in the chains of `pushTwo` and `insertErase` changes the array that the
-previous one returned, and a push or an insertion that finds no room moves the array to a block of
+previous one returned, and a push or an insertion into a full block moves the array to a block of
 at least twice its capacity.  The push of `pushCopy` copies `xs` once into a block with room, since
 the result holds `xs` as well.  [The verified compiler manual's section on
 ownership](../../docs/verified-manual.md#ownership) states when an update changes an array in place
@@ -60,7 +60,7 @@ module's translation to C, compiled with CompCert.  The cases state one block le
 `pushTwo` and `insertErase`, which consume the host's array, and two by `setTwice` and `pushCopy`,
 with at most three allocations for `pushTwo`, whose pushes onto an empty array grow it twice, and at
 most two for the others.  Without `--cases`, the verified driver also checks the file module against
-the written file and requires the axiom reports of both file theorems to name only `propext`,
+the written file and requires the axiom reports of the file theorems to name only `propext`,
 `Classical.choice`, and `Quot.sound`.
 
 ## Related examples

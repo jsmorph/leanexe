@@ -5,7 +5,7 @@ import LeanExe.ProofKit.BesselModulus
 
 /-!
 The orders 1 and -1 of `yn`, which return `y1 x` times `1.0` or `-1.0`, and the form of the
-decision of 2026-10-12 for results that can overflow.  `YBound r Y B` states that the word `r` is
+statement for results that can overflow.  `YBound r Y B` states that the word `r` is
 finite and within `B` of `Y`, or that it is the infinity of the sign of `Y` and `|Y| > 2^1023`.
 
 `y1_bound` states `YBound` for `y1` at every finite `x > 0` with `B = 12 u M₁`.  From `2^-1022` on,
@@ -19,7 +19,7 @@ finite.  Below `2^-1022`, `y1` returns `-(tpi ⊘ x)` (`BesselYnSmall.y1_code`),
 
 `one_mul` and `neg_one_mul` state that the products with `1.0` and `-1.0` are exact for a finite
 word, from `F64PowerScale.mul_power` for a normal word and `F64ExactProduct.mul_exact_scaled` for a
-subnormal one, and `ybound_one` and `ybound_neg_one` carry `YBound` through them.
+subnormal one, and `ybound_one` and `ybound_neg_one` transfer `YBound` to them.
 -/
 
 namespace Library.Numerics.Float64.Bessel.BesselYnOrderOne

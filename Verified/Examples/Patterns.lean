@@ -5,7 +5,7 @@ other fields, as `{ value, steps, last := .add }` does.  The reflector reads suc
 of tests of the fixed fields' words, in the order of the alternatives, and the kernel checks the
 chain's equation with the match by cases on the structure and on each fixed field.  The patterns
 below fix one field or two, fix different fields in different alternatives, fix every field, bind
-the value, or end without a wildcard.  The matches stand on a parameter, on a structure built in
+the value, or end without a wildcard.  The matches are on a parameter, on a structure built in
 place, on a call, in a loop's body, and on a record that holds an array.  A pattern that fixes a
 `Bool` field stops the reflector, and so does a match on word literals, since the rule applies only
 to structures with a `Flat` instance and Lean's `UInt64` has none. -/

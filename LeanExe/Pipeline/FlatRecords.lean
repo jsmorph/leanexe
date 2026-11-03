@@ -3,7 +3,7 @@ import LeanExe.Pipeline.Implements
 /-!
 A structure whose `Flat` tuple holds arrays, such as a grid of cells with a time and a step
 count, is represented as that tuple: its values are the tuple's values, and it reads, owns, and
-consumes the tuple's arrays.  A structure whose tuple has no arrays keeps the `Scalar` route of
+consumes the tuple's arrays.  A structure whose tuple has no arrays keeps the `Scalar` instance of
 `Implements.lean`, which has a higher priority.
 -/
 

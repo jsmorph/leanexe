@@ -18,7 +18,7 @@ equal traces alone would not suffice.  If an external function may return 0 with
 or 1 with the trace `[e, e']`, a call to it followed by a statement that emits `e'` when the
 result is 0 has two executions with the trace `[e, e']` and different results.
 
-The proofs go by induction on the first execution.  The two executions of `s₁; s₂` may divide
+The proofs are by induction on the first execution.  The two executions of `s₁; s₂` may divide
 their trace differently between `s₁` and `s₂`, so the induction compares traces that agree up to
 the length of the shorter, as `X.Determ` does.  `exec_stmt_determ_prefix`,
 `eval_funcall_determ_prefix`, and `bigstep_program_terminates_determ_prefix` state this form:

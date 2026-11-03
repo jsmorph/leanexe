@@ -11,7 +11,7 @@ reviewed it against the request, as [the review](review.md) records.  Neither fo
 disagreement, and the second checked all 22 [samples](Samples.lean) by hand.
 
 [The program](Program.lean) runs a loop of three steps, one per level of the tree, whose state is
-the node number, a found flag, and the value found.  The node number advances at every step, and the
+the node number, a found flag, and the value found.  The node number changes at every step, and the
 flag and value change only at the first match, so the program needs no early exit.  The result is a
 two-word array literal, zeroed when the input does not have 15 words.  The command
 `verified_compile compiled := [compute]` in [the verified compilation](Compiled.lean) compiles it
@@ -24,7 +24,7 @@ into a 2,362-byte module that exports `compute` as function 2.
 | `compute_eq` | `compute` equals `expected` on every array of fewer than 2^64 words. |
 | `compute_bound` | `compiled.compute.bound xs` is 232 bytes for every input. |
 | `compute_callSpec` | `Verified.CallSpec` of function 2 and `expected`, with the generated bound as the room: from a ready store in which `top` can rise by that bound, the call returns an owned array that holds `expected xs`, leaves a ready store, and raises `top` by at most the bound. |
-| `treeLookup_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 232 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and lies apart from the result, and `top` rises by at most 232 bytes. |
+| `treeLookup_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 232 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and is disjoint from the result, and `top` rises by at most 232 bytes. |
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `compute`. |
 | `treeLookup_file`, `treeLookup_file_decode` | `build/verified/treeLookup.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
@@ -36,7 +36,7 @@ comparisons along each of the eleven paths through the tree.
 
 The reflector reads the result's literal `#[…, …]` as two pushes onto `#[]`, so the generated
 `compiled.compute.bound_eq` charges an empty block, the first growth, and the paid second push, and
-`compute_bound` closes that bound to 232 bytes.  `treeLookup_call` composes the generated
+`compute_bound` evaluates that bound to 232 bytes.  `treeLookup_call` composes the generated
 `compiled.compute.trapFree` with `compute_eq` through `arrayCall` of [the shared call
 theorem](../ArrayCall.lean).  `compute_callSpec` states the call in the form that
 `tools/verified-request-check` requires, and the generated `compiled.compute.native` states the

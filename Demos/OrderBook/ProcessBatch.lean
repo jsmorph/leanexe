@@ -4,7 +4,7 @@ import Demos.OrderBook.Refinement
 /-! The batch lemma of [the process](Process.lean).  `batch_refines` states that one call of
 `Program.run` on a batch of words, from a book that represents the specification's book after a
 whole number of records, keeps the invariant, represents the specification's book after the batch,
-and appends the event words of the batch.  It applies `Refinement.run_eq` and joins the batch to
+and appends the event words of the batch.  It applies `Refinement.run_eq` and combines the batch and
 the earlier words with `Spec.run_append`, and `Spec.run_nextId_le` supplies the next-id premise of
 `run_eq` from a bound on the number of records. -/
 

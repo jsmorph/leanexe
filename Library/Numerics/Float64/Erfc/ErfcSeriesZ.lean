@@ -5,7 +5,7 @@ The tail bound of `ErfcSeriesI` in integer arithmetic.  `rowTail` sums the absol
 high coefficients of the series of `n` terms shifted to the center `m`; the kernel computes that
 shift over `ℚ` slowly, since each rational operation normalizes its result, and for 131 terms the
 check of one row took 21 seconds and 2.8 GB.  `shiftZ` performs the same shift on integer
-coefficients, as `LeanExe.ProofKit.BesselRatio.ishift` does for the Bessel track, and
+coefficients, as `LeanExe.ProofKit.BesselRatio.ishift` does for the Bessel functions, and
 `rowTail_eq` and `rowBoundZ_eq` show that the integer forms give the same rationals.
 -/
 

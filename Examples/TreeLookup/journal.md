@@ -5,7 +5,7 @@ This is the first run of the verified-executable skill, on the earlier system's 
 
 The specification states the request's traversal as a recursive `search` over breadth-first node
 numbers, with node `j`'s key at `2j + 1`, its value at `2j + 2`, its children at `2j + 1` and
-`2j + 2`, and nodes 3 to 6 as leaves.  The request decides every input, including keys out of
+`2j + 2`, and nodes 3 to 6 as leaves.  The request determines the result for every input, including keys out of
 search-tree order, so the specification adds no decisions.  The samples cover each of the seven
 keys of one search tree, four misses, a tree out of order, a tree with a key in both subtrees, and
 inputs of 0, 1, 14, and 16 words.  The user approved the specification and the 17 samples.
@@ -17,7 +17,7 @@ disagreement in the 22 samples and named further classes, recorded in [`review.m
 the specification was frozen.  The skill was then changed to end the review at the first review
 that found no disagreement, after the samples for the named classes were added once.
 
-The program follows the lookup example: a loop of one step per level whose state carries the node
+The program follows the lookup example: a loop of one step per level whose state holds the node
 number, a found flag, and the value, so the search needs no early exit, and a two-word literal for
 the result.  The samples passed in Wasmtime at the first compilation.  `compute_eq` first failed
 in two ways.  The program compared `key == query` and the specification `query = key`, so after a

@@ -125,7 +125,7 @@ theorem Bounds.top {s : Shape32} {p : UInt64} (h : Bounds s p) :
   rw [UInt64.toNat_mul, h.p1, h.d]
   exact Nat.mod_eq_of_lt (by omega)
 
-/-- Layer `l` at position `p` carries a store with the row `x`, the layer's weights `w`, and its
+/-- Layer `l` at position `p` takes a store with the row `x`, the layer's weights `w`, and its
 caches `kc` and `vc` at the parity of `p` to one with `layerStep32`'s row and caches, the caches
 at the other parity, and every buffer other than the activations and those caches unchanged. -/
 theorem layer_exec (files : String → Option Val) {s : Shape32} {p : UInt64} (l : Nat)
@@ -857,7 +857,7 @@ theorem ofNat_succ {p : Nat} : UInt64.ofNat p + 1 = UInt64.ofNat (p + 1) := by
   simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
   omega
 
-/-- The steps of `ts` from position `p` carry a store holding the weights and the caches of
+/-- The steps of `ts` from position `p` take a store holding the weights and the caches of
 positions below `p` to one holding the caches after `ts`. -/
 theorem steps_exec (files : String → Option Val) (s : Shape32) (W : Weights32)
     (hnh : s.nh.toNat ≤ 64) (hf : s.f.toNat < 2 ^ 29) :

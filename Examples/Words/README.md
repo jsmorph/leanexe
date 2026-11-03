@@ -14,8 +14,8 @@ example](../../Verified/Examples/RecursiveTypes.lean).
 record of two slots, the word `x` and the pointer to `w`.  The `Encode` instance in
 [`Encode.lean`](Encode.lean) states that layout, with hand-written proofs for the instances
 `EncodeSlotted` and `EncodeWellFormed`.  [The derivation](Reflected.lean) runs
-`verified_recursive_type` for `Words` in a module apart from the encoding, so that the verified
-compiler's programs over the type share one set of conversions and lemmas.  `sumAcc` is tail
+`verified_recursive_type` for `Words` in a module separate from the encoding, so that the verified
+compiler's programs over the type use one set of conversions and lemmas.  `sumAcc` is tail
 recursion over records, which the verified compiler compiles as a loop, so a call returns on lists
 longer than the depth limit of guarded recursion.  [The verified compiler manual's section on
 ownership](../../docs/verified-manual.md#ownership) gives the rules for user-defined recursive
@@ -26,7 +26,7 @@ describes `Encode`, `EncodeWellFormed`, and `EncodeSlotted`.
 
 [The recursive-type example](../../Verified/Examples/RecursiveTypes.lean), `recursivetypes` in [the
 module registry](../../tests/verified/modules.txt), imports [the derivation](Reflected.lean) and
-compiles `Words.first`, `Words.range`, and `Words.sumAcc` beside definitions of its own over
+compiles `Words.first`, `Words.range`, and `Words.sumAcc` together with definitions of its own over
 `Words`: the identity, a duplication into a pair, the empty list, a word put in front of a list, and
 `reverseWords`, which reverses a list onto an accumulator by tail recursion.  The same module
 compiles functions over the `KeyTree` of [`Trees`](../Trees/README.md).  Its cases convert lists
@@ -65,7 +65,7 @@ Lean, and it checks the blocks left allocated and the number of allocations.  [T
 driver](../../tests/native/verified.sh) runs the same cases on the module's translation to C,
 compiled with CompCert, for the exports that the translation contains.  Without `--cases`, the
 verified driver also checks the file module against the written file and requires the axiom reports
-of both file theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.
+of the file theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 

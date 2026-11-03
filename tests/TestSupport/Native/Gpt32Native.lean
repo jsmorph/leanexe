@@ -4,7 +4,7 @@ import Demos.Gpt32.Verified
 /-!
 The theorems that `verified_compile` adds for the binary32 GPT-2 kernels, the exit criterion of
 milestone M6.  The translation of the module contains every one of its functions, and the
-kernels have their theorems `p.f.native`, which carry the verified compiler's theorems to the C
+kernels have their theorems `p.f.native`, which transfer the verified compiler's theorems to the C
 functions of the translation.  `layerNorm32` takes a square root, and `probs32` rounds to the
 nearest integer in its range reduction.
 -/

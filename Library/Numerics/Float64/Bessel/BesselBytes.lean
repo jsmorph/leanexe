@@ -365,7 +365,7 @@ theorem yn_bytes_accuracy :
     ⟨BesselYnTheorem.yn_accuracy n x hxf hpos hnz hopen,
       BesselYnTheorem.yn_overflow n x hxf hpos hnz hopen⟩, hrest⟩
 
-/-- The six byte theorems of the module. -/
+/-- The byte theorems of the module. -/
 theorem bessel_module_accuracy :
     (∃ bytes, Wasm.Encoding.encode Bessel.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Bessel.compiled.module ∧

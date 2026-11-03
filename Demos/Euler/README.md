@@ -6,7 +6,7 @@ This example holds solvers for the compressible Euler equations of an ideal gas 
 square, run on the four-quadrant Riemann problem with interfaces at x = y = 0.8 to time 0.8, the
 configuration that Lax and Liu number 3.  [The first-order solver](Program.lean) uses Rusanov fluxes
 and an x sweep followed by a y sweep, with time steps chosen for CFL 0.4.  [The reconstructed
-solver](ReconstructedProgram.lean) builds on it with minmod slopes, positivity checks on the
+solver](ReconstructedProgram.lean) adds to it minmod slopes, positivity checks on the
 reconstructed faces, and outward-rounded bounds on the signal speeds.  The solvers take [checked
 outward rounding](../../Library/Numerics/Bounds/README.md) and
 [minmod](../../Library/Numerics/Limiters/README.md) from the library, whose mathematical proofs the
@@ -16,7 +16,7 @@ module](Verified.lean) compiles both with `verified_compile`, and its exports `s
 
 ## Theorems about the module and the solvers
 
-`euler_solve_call` carries the module's generated theorems to the Lean solvers through `solve_eq`
+`euler_solve_call` transfers the module's generated theorems to the Lean solvers through `solve_eq`
 and `reconstructedSolve_eq`, which equate the buffered solvers that the module compiles with the
 programs.  The other theorems state properties of the Lean programs: positive density and pressure
 of the final states in exact arithmetic, hyperbolicity of the flux at those states, conservation up
@@ -27,7 +27,7 @@ flux through the boundary in place of the computed one.
 
 | Theorem | Statement |
 |---------|-----------|
-| `euler_solve_call` | From the store in which the module starts, under a memory cap of at least `solvePages n` and at most 65,535 pages, both solve exports return the words of `solve` and `reconstructedSolve` without a trap, as [the calls of the verified module](#calls-of-the-verified-module) describe. |
+| `euler_solve_call` | From the store in which the module starts, with a memory cap of at least `solvePages n` and at most 65,535 pages, both solve exports return the words of `solve` and `reconstructedSolve` without a trap, as [the calls of the verified module](#calls-of-the-verified-module) describe. |
 | `solve_eq`, `reconstructedSolve_eq` | `Demos.Euler.Buffered.solve` and `reconstructedSolve`, which the module compiles, equal `solve` and `reconstructedSolve` for every argument. |
 | `solve_hyperbolic`, `reconstructedSolve_hyperbolic` | Words with status 0 pack a final grid of admissible states, at which the flux in every direction has real eigenvalues and a basis of eigenvectors. |
 | `run_balance`, `reconstructedRun_balance` | Along the accepted steps, each conserved total equals its initial value minus the boundary fluxes, plus a rounding residual with a computed bound. |
@@ -41,8 +41,8 @@ The proofs are in the Lean files of this directory, with the exact-arithmetic th
 equations, the Rusanov flux, and minmod reconstruction in [`Equations/`](Equations) and the
 rounding analysis of the fluxes and updates in [`Reference/`](Reference), and they use only the
 axioms `propext`, `Classical.choice`, and `Quot.sound`.  `euler_solve_call` holds of the modeled
-store in which the module starts, and instantiation by a WebAssembly engine lies outside the
-proofs, as [the verified compiler manual](../../docs/verified-manual.md#outside-the-proofs) states.
+store in which the module starts, and the proofs do not cover instantiation by a WebAssembly
+engine, as [the verified compiler manual](../../docs/verified-manual.md#outside-the-proofs) states.
 Convergence to a solution of the continuous equations is unproved.  [The first-order
 record](first-order/README.md) and [the reconstructed record](reconstructed/README.md) give the
 full statements, the figures, and the runs on the 192 and 800 grids.
@@ -61,7 +61,7 @@ size.  The module also compiles the sweeps, tries, and timesteps of the programs
 grid for each sweep, because the module cases call them.
 
 The bound that `verified_compile` generates for a function counts the bytes by which `top` can
-rise during a call and ignores the reuse of freed blocks, as [the verified compiler
+increase during a call and does not count the reuse of freed blocks, as [the verified compiler
 manual](../../docs/verified-manual.md#bounds-and-total-execution) describes.  For a buffered solver,
 it charges nothing for a `set!` on a grid that the loop owns and nothing for the moves of the
 rotation.  It charges the three initial grids and the packed result, for any number of tries.
@@ -86,9 +86,9 @@ the store in which the module starts, with a memory cap of `cap` pages, at most 
 least `solvePages n`, the export `solve` returns without a trap the address of a new array that
 holds `Demos.Euler.solve n`.  The call leaves a ready store, as `Verified.Ready` states it, whose
 `top` lies at most `solveBytes n` bytes above the heap base.  The theorem states the same of
-`reconstructedSolve` and `Demos.Euler.reconstructedSolve n trials` under the same cap.
-`solve_callSpec` and `reconstructedSolve_callSpec` state the calls from every ready store with
-room for `solveBytes n` within its cap.
+`reconstructedSolve` and `Demos.Euler.reconstructedSolve n trials` with the same cap.
+`solve_callSpec` and `reconstructedSolve_callSpec` state the calls from every ready store whose
+`top` is at least `solveBytes n` bytes below its cap.
 
 `euler_solve_call` states no final page count, because no theorem of the verified compiler bounds
 the pages to which memory grows, as [the journal entry on the call
@@ -138,7 +138,7 @@ checks the stack of each call against its bound.
 
 [`Grids`](../../Examples/Grids/README.md) has arrays of records in the layout of the solvers'
 grids.  [`Drone`](../Drone/README.md) is the other large program with a call theorem that bounds
-the rise of `top`.  [`Increment`](../../Examples/Increment/README.md) proves a call theorem of the
+the increase of `top`.  [`Increment`](../../Examples/Increment/README.md) proves a call theorem of the
 same kind for a program that adds one to each word of an array of at most eight words.
 
 ## References

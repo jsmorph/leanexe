@@ -4,7 +4,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The thirty-second program of the verified compiler: `log1p`, ported from fdlibm as FreeBSD's
+/-! A program of the verified compiler: `log1p`, ported from fdlibm as FreeBSD's
 `lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379` (`s_log1p.c`, Copyright
 (C) 1993 by Sun Microsystems, Inc., freely distributable with this notice).  The code writes
 `1 + x = 2 ^ k (1 + f)` with `√2/2 < 1 + f < √2`.  For `k ≠ 0` it keeps the rounding error of

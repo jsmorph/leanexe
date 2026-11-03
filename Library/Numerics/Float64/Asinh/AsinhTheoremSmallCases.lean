@@ -4,9 +4,7 @@ import Library.Numerics.Float64.Asinh.AtanhTheoremSmallCases
 /-!
 `Asinh.asinh` from `2 ^ -28` to 2, before the sign, in 25 input ranges: five with a bound relative
 to `arsinh |x|` below `|x| = 0.2526`, and twenty with constant bounds against two spacings of the
-binade of `arsinh |x|`, the largest at 0.981 of the two spacings.  The constants come from
-`near/asinh_inst.py` in the track's scratch directory, which checks each hypothesis in exact
-rational arithmetic.
+binade of `arsinh |x|`, the largest at 0.981 of the two spacings.
 -/
 
 namespace Library.Numerics.Float64.Asinh.AsinhTheoremSmallCases

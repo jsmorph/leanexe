@@ -14,7 +14,7 @@ coefficient list, lowest degree first, evaluated by `PolyBound.eval`.
 
 The functions follow the code with exact arithmetic.  The fast path's are `smallPoly` below
 `2^-5`, the 19 pieces `pieceApprox` from 0.5 to 8.29541 (the pieces that contain the zeros 1 and 2
-carry the factors `1 - x` and `x - 2`), `stirFast` above, the kernels and tables of `asLogd`
+have the factors `1 - x` and `x - 2`), `stirFast` above, the kernels and tables of `asLogd`
 (`LogFact`, the statement of `Library.Numerics.Float64.Tgamma.TgammaApprox.LogFact`), and those of `asSinpipid` (`SinpiFact`).  The
 accurate path's are `accSmallPoly` and `accMidPoly` near 1 and 3/2, `asymAcc` for Stirling's series,
 the kernels and tables of `asLogdAccurate` and `asSinpipidAccurate`, the 17 polynomials about the
@@ -29,8 +29,8 @@ two facts that the rounding test of the fast path needs within about twice CORE-
 at least 2 for the others.  From -17 to -21/2 the accurate path's reflection
 `-(log Γ (1 - x) + log (sin (π φ)/π))` cancels by up to `2^31.04`, next to the zero at
 `-10.99999997494789`, so `asymAcc` on `[15/4, 48]` and the kernels and tables of the accurate
-logarithm and sine carry about `2^-87` relative, and `CancelFact` bounds the cancellation by `2^32`.
-Elsewhere the accurate path needs about `2^-63` after a cancellation of at most `2^8`.
+logarithm and sine are accurate to about `2^-87` relative, and `CancelFact` bounds the cancellation
+by `2^32`.  Elsewhere the accurate path needs about `2^-63` after a cancellation of at most `2^8`.
 -/
 
 namespace Library.Numerics.Float64.Lgamma.LgammaApprox

@@ -27,7 +27,7 @@ theorem valid_export :
     ({ name := "valid", funcIdx := 18 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- The search finds its frames whenever its depth bound is below their number. -/
+/-- The search has enough frames whenever its depth bound is below their number. -/
 theorem search_fits : ∀ (k : Nat) (d b : UInt64) (t : Array UInt64), d.toNat < k →
     compiled.search.fits k (d, b, { val := t }) = true
   | 0, _, _, _, h => absurd h (Nat.not_lt_zero _)

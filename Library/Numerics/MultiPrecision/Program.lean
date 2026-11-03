@@ -119,7 +119,7 @@ def longDiv (u v : Array UInt64) (t : UInt64) : Array UInt64 :=
 /-- The `m` digits of the quotient of `u` by `v` followed by the `n` digits of the remainder, where
 `m` and `n` are the lengths of `u` and `v`.  A divisor of value 0 gives the quotient 0 and the
 remainder `u`, cut or padded to `n` digits.  Knuth's Algorithm D requires a divisor of at least two
-digits, so a divisor of one significant digit goes to `shortDiv`, and every other divisor to
+digits, so a divisor of one significant digit is handled by `shortDiv`, and every other divisor by
 `longDiv`. -/
 def divide (u v : Array UInt64) : Array UInt64 :=
   if significant v = 0 then

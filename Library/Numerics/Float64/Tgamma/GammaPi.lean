@@ -3,7 +3,7 @@ import Library.Numerics.Float64.Trig.TrigPi
 /-!
 Bounds on `π` within `2 ^ -128` for the Taylor models of `lgamma`, from `TrigPi`'s enclosure by
 Machin's formula: `piLo128 ≤ π ≤ piLo128 + 2 ^ -128`.  Mathlib's 20-digit bounds limit a model's
-error to about `10 ^ -21`, which the error budget of `cr_lgamma` near its zeros cannot afford.
+error to about `10 ^ -21`, which exceeds the error budget of `cr_lgamma` near its zeros.
 -/
 
 namespace Library.Numerics.Float64.Tgamma.GammaPi

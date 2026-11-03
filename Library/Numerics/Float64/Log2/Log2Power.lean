@@ -14,7 +14,7 @@ open CodeLib.IEEE64 LeanExe.ProofKit Library.Numerics.Float64.Log.LogCoreBits Lo
 
 set_option exponentiation.threshold 4096
 
--- The 42 kernel checks below each hold a large reduction cache; checked in parallel they exhaust
+-- The kernel checks below each hold a large reduction cache; checked in parallel they exhaust
 -- the memory of the build machine, so this file elaborates its declarations in order.
 set_option Elab.async false
 

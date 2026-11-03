@@ -1,6 +1,6 @@
 # CompCert proof composition
 
-[The composition proof](Clight2Asm.v) connects termination of the Clight program produced by
+[The composition proof](Clight2Asm.v) relates termination of the Clight program produced by
 CompCert's `SimplExpr` and `SimplLocals` passes to the behavior of the assembly program produced
 by the same CompCert compilation.  It composes CompCert 3.18's forward simulations.
 LeanExe's [bare-metal proofs](../docs/native-bare-metal.md#the-program-level-theorem) establish
@@ -21,11 +21,11 @@ ClightBigstep.Clight2.bigstep_program_terminates p2 t r
 ```
 
 It concludes `program_behaves (Asm.semantics tp) (Terminates t r)`: the assembly semantics has
-the same terminating trace and result.  The assembly theorem ends at CompCert's Asm semantics.
+the same terminating trace and result.  The assembly theorem states its conclusion in CompCert's Asm semantics.
 The startup code, linker, machine, UART, and input-loading procedure have the assumptions
 described in [Trusted base](../docs/trusted-base.md).
 
-`clight2_bigstep_asm_unique` uses assembly determinacy to make the termination the only behavior
+`clight2_bigstep_asm_unique` uses assembly determinacy to show that the termination is the only behavior
 when the trace has no inputs.  `clight2_bigstep_asm_reads` assumes a Clight termination for every
 sequence of values read by volatile loads.  It proves an Asm termination for each sequence and
 that every Asm behavior is one of those terminations.  The

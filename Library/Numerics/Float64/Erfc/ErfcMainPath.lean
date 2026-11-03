@@ -4,7 +4,7 @@ import Library.Numerics.Float64.Erfc.ErfcAsymFast
 /-!
 The main path of `cr_erfc`, `Erfc.erfcMain`, within one step of `erfc x` for
 `-47/8 < x < 0x1.b39dc41e48bfdp+4`, `x ≠ 0`.  When the rounding test of the fast path passes, its
-result lies within one step (`ErfcFastPath.fast_within`): the fast path meets `FastOK` below
+result lies within one step (`ErfcFastPath.fast_within`): the fast path satisfies `FastOK` below
 `0x1.713786d9c7c09p+1` (`ErfcFastPath`) and up to `0x1.9db1bb14e15cap+4` (`fast_ok_asym`, from
 `ErfcAsymFast.asym_fast_err`), where `erfc x` stays above `2^-1021` (`erfc_lower`); from there on
 the fast path returns `(0, 0, 1)`, whose test fails.  Otherwise the accurate path's result lies
@@ -104,8 +104,8 @@ theorem fast_ok_asym (hF : FmaNearest) (x : Float) (hx : ff x) (hlo : (xMax : �
   have : (1 : ℝ) / 2 ^ 57 ≤ 15 / 16 * u := by norm_num
   nlinarith
 
-/-- When the rounding test of the fast path passes, the fast path meets `FastOK` and `erfc x` lies
-above `2^-1021`. -/
+/-- When the rounding test of the fast path passes, the fast path satisfies `FastOK` and `erfc x`
+lies above `2^-1021`. -/
 theorem fast_cases (hF : FmaNearest) (x : Float) (hx : ff x) (hlo : -(47 / 8) < fv x)
     (htest : ((Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x).1 +
         ((Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x).2.1 -

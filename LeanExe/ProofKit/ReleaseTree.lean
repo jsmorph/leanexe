@@ -17,7 +17,7 @@ attribute [-simp] Wasm.Mem.read64_write64_same
 attribute [local simp] Memory.read64_write64
 
 /-- A loop rule whose measure is a ghost index in the invariant: each iteration that
-branches back re-enters the invariant at a smaller index. -/
+branches back establishes the invariant again at a smaller index. -/
 theorem wp_loop_ghost {α : Type} {m : Module} {env : HostEnv α} {ps rs : Nat}
     {body rest : Program} {Q : Assertion α} {st : Store α} {s : Locals}
     (Inv : Nat → AssertionF α) (n : Nat) (hInit : Inv n st s)
@@ -921,7 +921,7 @@ theorem toUInt32_sub_ofNat {p k : UInt64} (hk : k.toNat ≤ 48) (hBase : 48 ≤ 
   rw [Memory.toUInt32_eq_ofNat, UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le]; omega),
     Nat.mod_eq_of_lt (by omega)]
 
-/-- An owned record carries the header facts that `dropReference` reads. -/
+/-- The header facts that `dropReference` reads hold for an owned record. -/
 theorem RecordHeader.childHeader {heap : Heap} {store : Store Unit} {c : UInt64}
     {cs : List Slot} (h : RecordHeader heap store c cs) (hHeap : heap.At store) :
     ChildHeader store c := by
@@ -937,7 +937,7 @@ theorem RecordHeader.childHeader {heap : Heap} {store : Store Unit} {c : UInt64}
     rw [toUInt32_sub_ofNat (by decide) (by omega) (by omega)] at this
     exact this
 
-/-- An object that `release` frees carries the header facts that `dropReference` reads. -/
+/-- The header facts that `dropReference` reads hold for an object that `release` frees. -/
 theorem ItemOwned.childHeader {heap : Heap} {store : Store Unit} {c : UInt64}
     {cs : List Slot} (h : ItemOwned heap store c cs) (hHeap : heap.At store) :
     ChildHeader store c := by

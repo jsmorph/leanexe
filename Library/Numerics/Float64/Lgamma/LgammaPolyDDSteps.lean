@@ -5,7 +5,7 @@ import Library.Numerics.Float64.Lgamma.LgammaPolyDD
 `LgammaPolyDD.polyDD_damped_core` bounds the high part of every state by `M + 1` and every low part
 by one cap `Λ`, which suits coefficients near 1.  The kernels of `asSinpipidAccurate` have
 coefficients from `2.5 · 10^-2` down to `5 · 10^-26`, and a cap above the smallest coefficients
-breaks the dominance that each `fastSum` needs.  Here the caller gives the error `E m`, the cap
+violates the dominance that each `fastSum` needs.  Here the caller gives the error `E m`, the cap
 `Λ m` on the low part, and the bound `K m` on the high part of the state after `m` steps, and
 checks the conditions of each step (`epsS`, `growS`), which come from `mulDD_spec` and
 `fastSum_spec` as in `polyDD_damped_core`.

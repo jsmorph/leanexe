@@ -5,7 +5,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The thirty-eighth program of the verified compiler: `exp2` and `exp10`, ported from Arm's
+/-! A program of the verified compiler: `exp2` and `exp10`, ported from Arm's
 optimized-routines, `math/exp2.c`, `math/exp10.c`, and `math/exp_data.c` at commit
 `503fafe311c177de0e571c458c7c337b1ca5f522` (`exp2.c` Copyright (c) 2018-2025, `exp10.c` Copyright
 (c) 2023-2025, and `exp_data.c` Copyright (c) 2018-2023, Arm Limited, SPDX-License-Identifier: MIT
@@ -16,7 +16,7 @@ intrinsics or fused multiply-add, `EXP_TABLE_BITS` 7, so `N` is 128, `EXP2_POLY_
 take `2 ^ (k/N)` as `H j · (1 + T j)` from `__exp_data.tab`, which is `Exp.expTable` word for word,
 and a polynomial of degree 5 in `r` for the rest.  Arm states 0.511 units in the last place for
 `exp2` without fused multiply-add and about 0.513 for `exp10`.  Results near overflow and underflow
-go through `exp2SpecialCase`, which is `exp2.c`'s `specialcase` and `exp10.c`'s `special_case`, the
+use `exp2SpecialCase`, which is `exp2.c`'s `specialcase` and `exp10.c`'s `special_case`, the
 same code, and which differs from `exp.c`'s in scaling a positive `k` by 2 rather than `2 ^ 1009`.
 `exp2` and `exp10` pass `Exp.expTable` to `exp2With` and `exp10With`.  Each constant is written as
 the bit pattern of its value in Arm's source, the products and quotients by `N` included, and the
@@ -75,7 +75,7 @@ def exp2Core (tab : Array UInt64) (x : Float) (special : Bool) : Float :=
 /-- Arm's `exp2` with the table `tab`.  `abstop` is the biased exponent of `x`.  Below `2 ^ -54`
 the result is `1 + x`.  From 1024 on in magnitude, `-∞` gives 0, an infinity or NaN `1 + x`, a
 positive `x` the overflow product, and an `x` at or below -1075 the underflow product.  Above 928
-in magnitude, -1075 to -1024 included, the result goes through `exp2SpecialCase`.  The thresholds
+in magnitude, -1075 to -1024 included, the result is computed by `exp2SpecialCase`.  The thresholds
 are `top12 (0x1p-54) = 0x3c9`, `top12 (512) = 0x408`, `top12 (1024) = 0x409`, and the bits of
 `-1075` and `928`. -/
 def exp2With (tab : Array UInt64) (x : Float) : Float :=
@@ -127,7 +127,7 @@ def exp10Core (tab : Array UInt64) (x : Float) (special : Bool) : Float :=
 /-- Arm's `exp10` with the table `tab`.  `abstop` is the biased exponent of `x`.  Below `2 ^ -57`
 the result is `x + 1`.  From 256 on in magnitude, `-∞` gives 0, an infinity or NaN `x + 1`, an
 `x` at or above `log10 (DBL_MAX)` the overflow product, one below -350 the underflow product, and
-the others go through `exp2SpecialCase`.  The thresholds are `top12 (0x1p-57) = 0x3c6` and
+the others are computed by `exp2SpecialCase`.  The thresholds are `top12 (0x1p-57) = 0x3c6` and
 `top12 (0x1p8) - top12 (0x1p-57) = 0x41`. -/
 def exp10With (tab : Array UInt64) (x : Float) : Float :=
   let oflowBound := Float.ofBits 0x40734413509F79FF  -- 0x1.34413509f79ffp8

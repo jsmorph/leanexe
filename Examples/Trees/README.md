@@ -14,7 +14,7 @@ the program exports the library's `size`, `sum`, `height`, `incr`, `setKey`, `in
 and `splitRoot` under `Examples.Trees.KeyTree`.  This example adds operations of its own over
 `KeyTree`, which [the verified compilation](Compiled.lean) compiles into the module
 `exampleTrees`.  [The test support](Cases.lean) writes a tree in the host's preorder form with
-`KeyTree.describe` and builds trees with `KeyTree.arbitrary`, whose shape and keys follow arbitrary
+`KeyTree.describe` and builds trees with `KeyTree.arbitrary`, whose shape and keys are determined by arbitrary
 words, `KeyTree.chain`, a chain of nodes with a leaf on the left of each, and `KeyTree.leftChain`,
 a chain with a leaf on the right of each.
 
@@ -25,7 +25,7 @@ a chain with a leaf on the right of each.
 encoding](Encode.lean) and [the library's derivation](../../Library/Trees/WordTree/Reflected.lean),
 which runs `verified_recursive_type` for `KeyTree`.  Its `verified_compile compiled` compiles the
 library operations `KeyTree.setKey`, `KeyTree.leftChild`, `KeyTree.splitRoot`, `KeyTree.size`, and
-`KeyTree.incr`, which the program exports, beside definitions of its own over `KeyTree`: the
+`KeyTree.incr`, which the program exports, together with definitions of its own over `KeyTree`: the
 identity, a duplication into a pair, the empty tree, a node built from its parts, and `followRight`,
 which follows right children by tail recursion.  The same module compiles the functions of
 [`Words`](../Words/README.md).
@@ -43,7 +43,7 @@ ownership](../../docs/verified-manual.md#ownership) the rules for owned and borr
 | Theorem | Statement |
 |---------|-----------|
 | `compiled.f.implements`, for `f` among `setKey`, `leftChild`, `splitRoot`, `size`, and `incr` | Each function of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, with each tree in the representation of [the library's `Encode` instance](../../Library/Trees/WordTree/Encoding.lean), returns its Lean function's result, owned by the caller, or stops at `unreachable` when its `aborts` flag allows it.  A tree that the function consumes has type `Moved KeyTree`. |
-| `compiled.f.trapFree` | Calls of these functions return without a trap when `top` can rise by the function's allocation bound within the memory cap and, for `size` and `incr`, when the frames condition `compiled.f.fits` places every call of the run below depth 1,000. |
+| `compiled.f.trapFree` | Calls of these functions return without a trap when `top` can rise by the function's allocation bound within the memory cap and, for `size` and `incr`, when the frames condition `compiled.f.fits` requires every call of the run to be below depth 1,000. |
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements every function. |
 | `recursivetypes_file`, `recursivetypes_file_decode` | `build/verified/recursivetypes.wasm` holds the module's encoding and decodes to the module, as [the file module](../../Verified/Examples/RecursiveTypesFile.lean) states. |
 
@@ -85,7 +85,7 @@ passes two copies.
 | Theorem | Statement |
 |---------|-----------|
 | `compiled.f.implements`, for each listed `f` | Each function of `compiled.module`, called from any store with the allocator invariant and a memory cap of at most 65,535 pages, with each tree in the representation of the library's `Encode` instance, returns its Lean function's result, owned by the caller, or stops at `unreachable` when its `aborts` flag allows it.  A tree that the function consumes has type `Moved KeyTree`. |
-| `compiled.f.trapFree` | Calls of these functions return without a trap when `top` can rise by the function's allocation bound within the memory cap and, for a function whose code takes the call depth, when the frames condition `compiled.f.fits` places every call of the run below depth 1,000. |
+| `compiled.f.trapFree` | Calls of these functions return without a trap when `top` can rise by the function's allocation bound within the memory cap and, for a function whose code takes the call depth, when the frames condition `compiled.f.fits` requires every call of the run to be below depth 1,000. |
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements every function. |
 | `exampleTrees_file`, `exampleTrees_file_decode` | `build/verified/exampleTrees.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
@@ -132,7 +132,7 @@ map](../../tests/verified/library-cases.txt), the driver runs the cases of `size
 driver](../../tests/native/verified.sh) runs the same cases on the module's translation to C,
 compiled with CompCert, for the exports that the translation contains.  Without `--cases`, the
 verified driver also checks the file module against the written file and requires the axiom reports
-of both file theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.  [The copy
+of the file theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.  [The copy
 cases](../../Verified/Examples/TreeCopyCases.lean) and [the heap sum
 cases](../../Verified/Examples/HeapSumsCases.lean) build and describe their trees with the same
 helpers.
@@ -145,7 +145,7 @@ case that returns states the blocks left allocated and bounds the allocations, t
 included, and each case whose deepest call reaches depth 1,000 must trap at `unreachable`.  The
 module's translation to C contains every export, and the native driver runs all the cases on it.
 Without `--cases`, the verified driver also checks [the file module](File.lean) against the written
-file and requires the axiom reports of both file theorems to name only `propext`,
+file and requires the axiom reports of the file theorems to name only `propext`,
 `Classical.choice`, and `Quot.sound`.
 
 ## Related examples

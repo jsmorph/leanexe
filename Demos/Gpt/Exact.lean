@@ -6,7 +6,7 @@ bit, for any number of tokens above `p`.  Each kernel that `layerStep` runs on o
 performs the operations of the corresponding row of `block`, in the same order; the
 cache holds, for each earlier position, the row of the last layer's output and the
 rows of each layer's keys and values.  The theorems concern the Lean definitions;
-`Implements` carries them to the bytes. -/
+`Implements` transfers them to the bytes. -/
 
 namespace Demos.Gpt.Exact
 
@@ -190,7 +190,7 @@ theorem succ_toNat {p : Nat} (hp : p < 2 ^ 16) :
   have hP : (UInt64.ofNat p).toNat = p := UInt64.toNat_ofNat_of_lt' (show p < 2 ^ 64 by omega)
   rw [UInt64.toNat_add, hP, UInt64.toNat_one, Nat.mod_eq_of_lt (by omega)]
 
-/-- Head `h`, score `j` sits at `h · (p + 1) + j` in `nh` rows of `p + 1`. -/
+/-- Head `h`, score `j` is at `h · (p + 1) + j` in `nh` rows of `p + 1`. -/
 theorem head_lt {nh : UInt64} {p h j : Nat} (hp : p < 2 ^ 16) (hn : nh.toNat < 2 ^ 16)
     (hh : h < nh.toNat) (hj : j ≤ p) : h * (p + 1) + j < (nh * (UInt64.ofNat p + 1)).toNat := by
   rw [mul_toNat (by omega) (by rw [succ_toNat hp]; omega), succ_toNat hp]

@@ -20,7 +20,7 @@ words and each permutation `ys` of `xs`, the number of word arrays `us` of `n - 
 `⌈2^64 / (j + 1)⌉` over `j` from 1 to `n - 1`.  When the words of `us` are independent and
 uniform, each of the `(2^64)^(n - 1)` arrays has the same probability, so each permutation of
 distinct words has a probability within a relative error of about `n(n - 1) / 2^65` of `1 / n!`,
-and the third property carries the distribution to inputs with repeated words.  Algorithm P reads
+and the third property extends the distribution to inputs with repeated words.  Algorithm P reads
 only the first `n - 1` words, so further words do not change the distribution.  The first and
 fourth properties concern arrays of fewer than `2^32` words, which includes every array in a
 32-bit WebAssembly memory, and the second and third arrays of fewer than `2^64` words. -/

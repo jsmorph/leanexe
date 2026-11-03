@@ -93,9 +93,9 @@ official memory-instruction rules.
 
 | Constructor | Derivation under the official rules |
 | --- | --- |
-| `block` | Empty input, declared results, and a label expecting those results.  The body must produce the complete result list. |
-| `loop` | Empty input and a label expecting the empty parameter list.  Normal exit still produces the declared results. |
-| `iff` | Consumes `i32`.  Both branches start with an empty operand stack and must produce the same declared results.  The label expects those results. |
+| `block` | Empty input, declared results, and a label whose type is those results.  The body must produce the complete result list. |
+| `loop` | Empty input and a label whose type is the empty parameter list.  Normal exit still produces the declared results. |
+| `iff` | Consumes `i32`.  Both branches start with an empty operand stack and must produce the same declared results.  The label's type is those results. |
 | `br` | Lookup fixes the target result list.  Those values must be on top of the input stack.  Extra values below them are discarded by the branch.  Its output stack is polymorphic. |
 | `brIf` | Consumes the condition above the target values.  The fall-through stack retains those values. |
 | `ret` | Requires the function results on top of the input stack, with arbitrary numeric values below them and arbitrary numeric output types. |
@@ -111,7 +111,7 @@ result list.
 A structural induction on `Instruction` and `Program` supplies the manual
 correspondence argument.  Its target for an instruction is an official
 single-instruction sequence judgment, allowing the `frame` case.  The
-induction carries the numeric-context conditions.  The control cases preserve
+induction keeps the numeric-context conditions.  The control cases preserve
 them when adding labels, and local assignment preserves initialization.  Each
 other case uses the corresponding official rule in the tables above.
 
@@ -125,8 +125,8 @@ rule and its declaration rules.
 | `shape` | Selects the module components represented by the binary grammar and fixes canonical scalar type metadata. |
 | `types` | Makes all parameter and result types valid numeric types.  With canonical metadata, each type is a valid singleton final function subtype. |
 | `imports` | Provides an existing type for every imported function signature.  The encoding derivation supplies the chosen index and the two names. |
-| `functions` | Connects each declared type index to the function signature, validates local types, bounds the combined parameter/local count, and types the body from an empty stack to the declared results. |
-| `memories` | Requires 32-bit memory, minimum at most 65,536 pages, and any maximum between the minimum and 65,536.  Each data segment targets memory 0 at a constant offset. |
+| `functions` | Relates each declared type index to the function signature, validates local types, bounds the combined parameter/local count, and types the body from an empty stack to the declared results. |
+| `memories` | Requires 32-bit memory, minimum at most 65,536 pages, and any maximum between the minimum and 65,536.  Each data segment refers to memory 0 at a constant offset. |
 | `globals` | Supplies a numeric global type, mutability, and a matching constant initializer.  Integer constants are permitted constant expressions. |
 | `functionCount` | Bounds the combined import and defined-function index set. |
 | Function exports | Each index refers to an imported or defined function. |
@@ -135,9 +135,9 @@ rule and its declaration rules.
 | Tables and table exports | `shape` admits an empty 32-bit nullable `funcref` table with minimum zero and no maximum, exported as `__indirect_function_table` at index zero, or no table and no table exports.  `tableProfile_valid` proves the declaration shape and export-index bound. |
 | `distinctExports` | Names are distinct across all four export kinds together. |
 
-Function bodies see all function signatures, allowing mutual recursion.
+The context of every function body includes all function signatures, allowing mutual recursion.
 Global initializers contain one integer constant, so their validity is
-independent of the preceding-global context.  Each active data segment targets
+independent of the preceding-global context.  Each active data segment refers to
 the declared memory, and its `i32.const` offset is a constant expression of the
 memory's address type.  The admitted table type has a valid zero minimum,
 an optional maximum of none, and a nullable reference element type.  Its zero

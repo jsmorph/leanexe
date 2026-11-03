@@ -3,7 +3,7 @@
 ## `a + b` by a fold over `#[a, b]`
 
 [The program](Program.lean) returns `a + b` by folding addition over the array literal `#[a, b]`.
-The array exists only inside the call.  `verified_compile compiled := [pairSum]` in [the verified
+The array exists only during the call.  `verified_compile compiled := [pairSum]` in [the verified
 compilation](Compiled.lean) compiles the definition into the 2,088-byte `pairSum.wasm` of [the
 module registry](../../tests/verified/modules.txt).  The reflector reads `#[a, b]` as two pushes
 onto `#[]`, so the module allocates an empty block on its heap, grows it at each push, folds over
@@ -13,7 +13,7 @@ it, and releases it before returning.
 
 The generated `compiled.pairSum.bound_eq` charges the empty block, the first growth, and the paid
 second push.  When `top` can rise by that bound, `compiled.pairSum.trapFree` excludes the stop at
-`unreachable` that `compiled.pairSum.implements` allows.  Both theorems state `ImplementsA`, which
+`unreachable` that `compiled.pairSum.implements` allows.  These theorems state `ImplementsA`, which
 [the verified compiler manual](../../docs/verified-manual.md#the-implements-family) defines, and its
 region clause keeps the bytes of every region of the caller's heap across the call.
 
@@ -44,7 +44,7 @@ driver](../../tests/verified/run.sh) runs the inputs of [`Cases.lean`](Cases.lea
 that wrap, in Wasmtime against native Lean, and [the native driver](../../tests/native/verified.sh)
 runs them on the module's translation to C, compiled with CompCert.  The cases state that no block
 stays allocated and that a call allocates at most three.  Without `--cases`, the verified driver
-also checks the file module against the written file and requires the axiom reports of both file
+also checks the file module against the written file and requires the axiom reports of the file
 theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Related examples

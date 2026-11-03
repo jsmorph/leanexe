@@ -4,7 +4,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The twenty-third program of the verified compiler: `sin` and `cos`, ported from fdlibm as
+/-! A program of the verified compiler: `sin` and `cos`, ported from fdlibm as
 FreeBSD's `lib/msun/src` has it (`k_sin.c`, `k_cos.c`, `s_sin.c`, `s_cos.c`, and `e_rem_pio2.c`,
 Copyright (C) 1993 by Sun Microsystems, Inc., freely distributable with this notice).  An argument
 above `π/4` in magnitude is reduced by multiples of `π/2` to `y0 + y1` in `[-π/4, π/4]`, and the
@@ -63,7 +63,7 @@ The notices of the ported files follow verbatim, as their licenses require.
 
 namespace Library.Numerics.Float64.Trig
 
-/-- fdlibm's `__kernel_sin`: `sin (x + y)` for `|x| ≤ π/4` with the tail `y`, which `tail` says
+/-- fdlibm's `__kernel_sin`: `sin (x + y)` for `|x| ≤ π/4` with the tail `y`, which `tail` indicates
 is not zero.  The odd polynomial of degree 13 approximates `sin x`: its quotient by `x`, of degree
 12, is within `2 ^ -58` of `sin x / x`. -/
 def kernelSin (x y : Float) (tail : Bool) : Float :=
@@ -80,8 +80,8 @@ def kernelSin (x y : Float) (tail : Bool) : Float :=
   if tail then x - ((z * (0.5 * y - v * r) - y) - v * S1) else x + v * (S1 + z * r)
 
 /-- fdlibm's `__kernel_cos`: `cos (x + y)` for `|x| ≤ π/4` with the tail `y`.  The polynomial of
-degree 14 approximates `cos x` within `2 ^ -58`, and `w + ((1 - w) - hz)` carries the rounding of
-`1 - x * x / 2`. -/
+degree 14 approximates `cos x` within `2 ^ -58`, and `w + ((1 - w) - hz)` adds back the rounding
+error of `1 - x * x / 2`. -/
 def kernelCos (x y : Float) : Float :=
   let C1 := Float.ofBits 0x3FA555555555554C  --  4.16666666666666019037e-02
   let C2 := Float.ofBits 0xBF56C16C16C15177  -- -1.38888888888741095749e-03

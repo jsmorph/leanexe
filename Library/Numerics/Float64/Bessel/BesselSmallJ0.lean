@@ -8,7 +8,7 @@ with `z = x x`, `r = z R(z)`, and `s = S(z)`.  `form1` follows the third through
 `2 u`, with the Horner bounds of `BesselSmallEval.horner_at` checked by the kernel on one interval
 (`horner_facts`); `BesselSmallJ0Form2` follows the fourth.  `j0_quad` gives
 `J₀ = 1 - x²/4 + O(x⁴)` for the first two paths, and `huge_add` the guard `1e300 + x > 1` of `j0`
-and `j1`.  `BesselJ0Small.j0_small` puts the paths together.
+and `j1`.  `BesselJ0Small.j0_small` combines the paths.
 -/
 
 namespace Library.Numerics.Float64.Bessel.BesselSmallJ0

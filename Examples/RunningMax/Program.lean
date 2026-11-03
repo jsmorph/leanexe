@@ -1,5 +1,5 @@
 /-!
-The largest entry seen so far at each position of an array of words.  A fold over the input keeps
+The largest entry up to each position of an array of words.  A fold over the input keeps
 the largest entry so far and the result built so far, and each step pushes the new largest entry
 onto the result, which grows in place.
 -/

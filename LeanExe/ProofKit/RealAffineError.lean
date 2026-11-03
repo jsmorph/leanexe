@@ -1,6 +1,6 @@
 import Mathlib.Tactic
 
-/-! The error of `state - ratio · difference` when the difference, the product, and the result carry
+/-! The error of `state - ratio · difference` when the difference, the product, and the result have
 errors. -/
 
 namespace LeanExe.ProofKit.RealAffineError

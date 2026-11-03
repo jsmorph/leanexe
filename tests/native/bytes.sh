@@ -2,12 +2,12 @@
 # The byte and literal examples translated to C.  native-verified build translates
 # Verified.Examples.Bytes and Verified.Examples.Literals, has clightgen read each C text back,
 # compares that Clight with the translation, and compiles the text with ccomp only when they
-# match; ccomp then links the object with its glue and tools/native-host.c.  The cases of tests/wasi/bytes.tsv,
-# tests/wasi/literals.tsv, and tests/wasi/byte-traps.tsv, which tests/wasi/run.sh checks with
-# Wasmtime, must give the same lines and allocation counts natively, and each trap case must stop
-# at `unreachable`.  The build includes tests/TestSupport/Native/LiteralsNative.lean, which states
-# the examples' native theorems.  CCOMP, CLIGHTGEN, and CCOMP_STDLIB are as for
-# tests/native/run.sh.
+# match; ccomp then links the object with its export tables and tools/native-host.c.  The cases of
+# tests/wasi/bytes.tsv, tests/wasi/literals.tsv, and tests/wasi/byte-traps.tsv, which
+# tests/wasi/run.sh checks with Wasmtime, must give the same lines and allocation counts natively,
+# and each trap case must stop at `unreachable`.  The build includes
+# tests/TestSupport/Native/LiteralsNative.lean, which states the examples' native theorems.  CCOMP,
+# CLIGHTGEN, and CCOMP_STDLIB are as for tests/native/run.sh.
 # LEANRUN_MEMORY_HIGH is the memory limit of each step that runs under tools/leanrun, 6G unless
 # the caller sets it.  The largest step measured, the elaboration of the native theorem file
 # that the build compiles, keeps 3.7 GB resident.

@@ -163,7 +163,7 @@ def accept(book, side, price, quantity, account, tag, tif):
 
 
 def rest(book, side, order):
-    """Insert the order behind every resting order at its price or better."""
+    """Insert the order after every resting order at its price or better."""
     orders = book.side(side)
     if side == BUY:
         i = bisect.bisect_right(orders, -order.price, key=lambda o: -o.price)

@@ -3,8 +3,8 @@ import Verified.Reflect.Command
 import Verified.Congr
 
 /-! The verified compiler's module of merge sort.  The compiler translates the tail recursions of
-`merge`, `pass`, and `sortLoop` into loops.  `mergeSort` consumes its array, which the caller hands
-over as `Moved (Array UInt64)`, and each pass writes into a new array of the same length and
+`merge`, `pass`, and `sortLoop` into loops.  `mergeSort` consumes its array, which the caller moves
+as `Moved (Array UInt64)`, and each pass writes into a new array of the same length and
 releases the old one.  `mergeSort_implements` composes the generated
 `compiled.mergeSort.trapFree` with `mergeSort_eq`. -/
 
@@ -18,7 +18,7 @@ theorem mergeSort_export :
     ({ name := "mergeSort", funcIdx := 6 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 6, the export `mergeSort`, called with an array that the caller hands over, from a heap
+/-- Function 6, the export `mergeSort`, called with an array that the caller moves, from a heap
 with the allocator invariant, a memory cap of at most 65,535 pages, and room for
 `compiled.mergeSort.bound`, returns without a trap the owned array `expected xs`, the elements in
 nondecreasing order, and raises `top` by at most the bound. -/

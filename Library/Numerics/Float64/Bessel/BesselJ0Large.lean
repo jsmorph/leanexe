@@ -6,7 +6,7 @@ import Library.Numerics.Float64.Bessel.BesselLarge
 `BesselPQ0` gives `P` and `Q`, `BesselCS.asym0_near` the pair `(cc, ss)`, and
 `BesselLarge.large_sub` the result, with the numeric conditions checked by `norm_num`.  From
 `2 ^ 129` on the code drops `P - 1` and `Q`, which `BesselLarge.huge_pq0` bounds by `262 · 2^-68`
-and `19 · 2^-68`.  `abs_facts` collects the facts about `|x|` that the four functions share.
+and `19 · 2^-68`.  `abs_facts` collects the facts about `|x|` that `j0`, `j1`, `y0`, and `y1` share.
 -/
 
 namespace Library.Numerics.Float64.Bessel.BesselJ0Large

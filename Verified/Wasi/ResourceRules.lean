@@ -1,7 +1,7 @@
 import Verified.Wasi.ResourcePrefix
 
 /-! Compositional bounds on the resource semantics of effect commands.  `Bounded` states that every
-run and every prefix of a command spends at most a budget and finds its frames, and `Rule` gives,
+run and every prefix of a command uses at most a budget and has enough frames, and `Rule` gives,
 for each form of command, the facts about its parts from which that follows.  A bound on an effect
 function's body follows by `bounded_of_rule` at each command. -/
 
@@ -28,8 +28,8 @@ def LoopBounded {World : Type} (host : Host World) (pure : PureContext pureSigs)
       world trace outcome final spent fits → spent ≤ budget ∧ fits = true) ∧
   ∀ world, LoopPrefixBound host pure program depth modes live test step env remaining index state world budget
 
-/-- Every run and every prefix of a call of `callee` at `depth` on `env` spends at most `budget`
-and finds its frames. -/
+/-- Every run and every prefix of a call of `callee` at `depth` on `env` uses at most `budget`
+and has enough frames. -/
 def CallBounded {World : Type} (host : Host World) (pure : PureContext pureSigs)
     (program : EffectProg pureSigs effectSigs) {signature : EffectSig}
     (callee : EffectVar effectSigs signature) (depth : UInt64) (env : Env signature.params)
@@ -246,8 +246,8 @@ theorem call_prefix_rule {World : Type} {host : Host World} {pure : PureContext 
     exact ⟨cost, by simp only [valid, fits, Bool.true_and]⟩
   | there progress => trivial
 
-/-- The facts about a call's parts from which every run and every prefix of it spends at most
-`budget` and finds its frames: for the first function, a frame at the call's depth and a bound on
+/-- The facts about a call's parts from which every run and every prefix of it uses at most
+`budget` and has enough frames: for the first function, a frame at the call's depth and a bound on
 its body, and for a later one, a bound on the call in the rest of the program. -/
 def CallBoundRule {World : Type} (host : Host World) (pure : PureContext pureSigs) :
     {effectSigs : List EffectSig} → (program : EffectProg pureSigs effectSigs) →
@@ -341,7 +341,7 @@ theorem CallBounded.mono {World : Type} {host : Host World} {pure : PureContext 
       obtain ⟨cost, valid⟩ := bounded.2 _ _ _ _ _ _ progress
       exact ⟨by omega, valid⟩⟩
 
-/-- What a run that returns a value tells of it: a read returns at most its capacity's bytes. -/
+/-- What a run that returns a value implies: a read returns at most its capacity's bytes. -/
 def ReadReturns (pure : PureContext pureSigs) {context : List Ty} {result : ResultTy}
     (command : Command pureSigs effectSigs context result)
     (env : Env context) (outcome : Outcome result.denote) : Prop :=

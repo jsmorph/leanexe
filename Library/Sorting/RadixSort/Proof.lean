@@ -195,7 +195,7 @@ theorem pos_lt (s : UInt64) (src : Array UInt64) (j : Nat) (hj : j < src.size) :
   simp only [Array.length_toList] at this
   omega
 
-/-- A word with a smaller byte goes to an earlier position. -/
+/-- A word with a smaller byte is written to an earlier position. -/
 theorem pos_lt_of_digit_lt (s : UInt64) (src : Array UInt64) (j j' : Nat) (hj : j < src.size)
     (h : (digit s src[j]!).toNat < (digit s src[j']!).toNat) : pos s src j < pos s src j' := by
   have h1 := pos_lt_le s src j hj
@@ -205,7 +205,7 @@ theorem pos_lt_of_digit_lt (s : UInt64) (src : Array UInt64) (j j' : Nat) (hj : 
   unfold pos at h1 ⊢
   omega
 
-/-- Of two words with the same byte, the earlier goes to the earlier position. -/
+/-- Of two words with the same byte, the earlier is written to the earlier position. -/
 theorem pos_lt_of_lt (s : UInt64) (src : Array UInt64) (j j' : Nat) (hj' : j' < src.size)
     (hjj : j < j') (h : (digit s src[j]!).toNat = (digit s src[j']!).toNat) :
     pos s src j < pos s src j' := by

@@ -18,7 +18,7 @@ returns the Lean function's value without a trap, and `compiled.f.native` states
 function.  `&&` and `||` compile to `i64.and` and `i64.or` on the 0-or-1 words, with both operands
 evaluated, which gives Lean's result because an operand has no effect, and `!` compiles to
 `i64.eqz`, a test for zero.  `floatSame` is IEEE equality, under which NaN equals nothing and the
-two zeros are equal, and `anyEqual` carries its `Bool` state through `LeanExe.loop`.  `mark` returns
+two zeros are equal, and `anyEqual` uses a `Bool` as the state of `LeanExe.loop`.  `mark` returns
 the structure `Flagged` as two words, its flag and its value.
 
 | Theorem | Statement |
@@ -29,7 +29,7 @@ the structure `Flagged` as two words, its flag and its value.
 
 The axiom reports of the file theorems, which depend on every `implements` theorem through
 `compiled.bytes`, name only `propext`, `Classical.choice`, and `Quot.sound`.  `Bool` has a built-in
-`Flat` instance, `cond b 1 0`, which states how a `Bool` argument or result appears to the module,
+`Flat` instance, `cond b 1 0`, which states how the module represents a `Bool` argument or result,
 as [the verified compiler manual](../../docs/verified-manual.md#representations) describes.
 `Flagged` takes the representation of [`Flat.lean`](Flat.lean), its flag and its value in
 declaration order, and that instance is part of what the theorems state.

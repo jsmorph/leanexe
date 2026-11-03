@@ -13,8 +13,8 @@ namespace Library.Sorting.Shellsort
 open Library.Sorting.StraightInsertion (straightInsertion)
 
 /-- Steps D4 to D6 with the increment `h` and the vacant position `i`: while `h ≤ i` and
-`v < xs[i - h]`, the word at `i - h` moves to `i` and `i` decreases by `h`, and then `v` goes into
-position `i`.  The program tests `h ≤ i` before it reads `xs[i - h]`, so no index wraps, and an
+`v < xs[i - h]`, the word at `i - h` moves to `i` and `i` decreases by `h`, and then `v` is written
+into position `i`.  The program tests `h ≤ i` before it reads `xs[i - h]`, so no index wraps, and an
 increment of 0 stores `v` at once. -/
 def insertBy (v h i : UInt64) (xs : Array UInt64) : Array UInt64 :=
   if 0 < h then

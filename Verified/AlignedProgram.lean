@@ -11,7 +11,7 @@ depth, at its call index, `Prog.entry_alignedWith` gives it at the exported entr
 whose code takes the call depth, and `Prog.wrapper_alignedWith` gives `ImplementsTablesAligned` at
 a wrapper's entry, each with the trap flag, function, and conditions of the `ImplementsA` or
 `ImplementsTables` theorem at the same index.  `ImplementsAligned.transferAgree` and
-`ImplementsTablesAligned.transferAgree` carry them to types whose representations agree with the
+`ImplementsTablesAligned.transferAgree` transfer them to types whose representations agree with the
 function's arguments and result, as `ImplementsA.transferAgree` and
 `ImplementsTables.transferAgree` do.
 -/
@@ -20,7 +20,7 @@ namespace Verified
 
 open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
-/-- `Prog.correctWith` under the flag: every function of the module meets `FunSpecX true`. -/
+/-- `Prog.correctWith` under the flag: every function of the module satisfies `FunSpecX true`. -/
 theorem Prog.callsAlignedWith {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) (hNoLiterals : prog.literals = []) :

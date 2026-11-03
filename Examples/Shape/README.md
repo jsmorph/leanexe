@@ -16,7 +16,7 @@ maps a shape to a word, a float, and two words: the constructor index, the circl
 rectangle's sides, with zeros in the fields of the other constructors.  A match on a sum tests the
 index and takes the fields of the matching constructor from their positions in the tuple, and the
 kernel checks this translation by cases on the constructors.  `Shape.normalize` matches on the
-result of `Shape.ofWords`, so a sum flows from one function's result into another's case split, and
+result of `Shape.ofWords`, so a sum that one function returns is matched by another's case split, and
 the wildcards of `Shape.grow` and `Shape.normalize` bind the matched value.  [The verified compiler
 manual's section on sums](../../docs/verified-manual.md#records-tuples-and-sums) gives the rules for
 a sum's `Flat` instance and its matches.
@@ -63,7 +63,7 @@ The verified driver then compares the cases of `sums` in [the verified compiler'
 cases](../../Verified/Examples/Cases.lean), which cover the array, loop, and `Packet` functions with
 shapes written by `shapeArgs` and `shapeWords` of `Cases.lean`, and it checks the blocks left
 allocated and the number of allocations.  Without `--cases`, it also checks the file module against
-the written file and requires the axiom reports of both file theorems to name only `propext`,
+the written file and requires the axiom reports of the file theorems to name only `propext`,
 `Classical.choice`, and `Quot.sound`.  [The native driver](../../tests/native/verified.sh) runs both
 sets of cases on the module's translation to C, compiled with CompCert, for the exports that the
 translation contains, and it takes the cases of `Cases.lean` from [the native case

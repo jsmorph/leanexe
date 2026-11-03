@@ -165,7 +165,7 @@ def flatField? (field : Lean.Expr) : MetaM (Option NativeField) := do
 /-- The layout of `type` when it is an inductive type without parameters or indices, neither
 mutual nor nested, whose constructors' fields are `UInt64`, `Bool`, `Float`, `Float32`, types
 whose `Flat` instance gives a tuple of these, arrays of `UInt64`, `Bool`, `Float`, or `Float32`,
-`LeanExe.Bytes`, or the type itself, and whose constructors meet `shapeValid`. -/
+`LeanExe.Bytes`, or the type itself, and whose constructors satisfy `shapeValid`. -/
 def recursiveLayout? (type : Lean.Expr) : MetaM (Option RecursiveLayout) := do
   let .const name _ ← withReducible (whnf type) | return none
   if name == ``Nat || name == ``Int then return none

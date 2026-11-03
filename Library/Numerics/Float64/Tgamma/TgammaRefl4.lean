@@ -3,8 +3,8 @@ import Library.Numerics.Float64.Tgamma.TgammaExpLow
 
 /-!
 The real error analysis of the path of `tgammaWith` below `-3`, with the hypotheses that other
-tracks prove: `SinpidSpec`, the specification of `asSinpid` from track `expm1`, and `SubnormalGap`,
-the gap of `|Γ|` around `2 ^ -1022` from track `erf`.  With `K = sin (π d) Γ (1 - x)` and
+modules prove: `SinpidSpec`, the specification of `asSinpid`, and `SubnormalGap`, the gap of `|Γ|`
+around `2 ^ -1022`.  With `K = sin (π d) Γ (1 - x)` and
 `P = 2 ^ E`, the code's quotient `rh + rl` approximates `T = π P/K = |Γ x| P` within `11 · 2 ^ -60`
 relative, and `rh` alone within `24 · 2 ^ -53` relative (`refl_real`), the margin that the choice of
 the subnormal branch below `-170` needs against the gap of `32 · 2 ^ -53`.  `grid` and `sin_lower`
@@ -26,8 +26,8 @@ def SinpidSpec : Prop :=
         Real.sin (Real.pi * value d.toBits)| ≤ Real.sin (Real.pi * value d.toBits) / 2 ^ 58 ∧
     |value (asSinpid sinpidTable d).2.toBits| ≤ |value (asSinpid sinpidTable d).1.toBits| / 2 ^ 50
 
-/-- The gap of `|Γ|` around `2 ^ -1022` at the doubles of `(-184, -170)`, which track `erf` proves
-as `GammaSubnormal.subnormal_gap`. -/
+/-- The gap of `|Γ|` around `2 ^ -1022` at the doubles of `(-184, -170)`, which
+`GammaSubnormal.subnormal_gap` proves. -/
 def SubnormalGap : Prop :=
   ∀ m : ℕ, 170 * 2 ^ 45 < m → m < 184 * 2 ^ 45 →
     |Real.Gamma (-(m : ℝ) / 2 ^ 45)| ≤ 2 ^ (-1022 : ℤ) * (1 - 1 / 2 ^ 48) ∨

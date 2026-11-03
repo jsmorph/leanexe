@@ -3,7 +3,7 @@ import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.Ring
 
 /-!
-Errors of sums and products whose operands carry errors, and the magnitude of a value within a
+Errors of sums and products whose operands have errors, and the magnitude of a value within a
 relative error of another.
 -/
 

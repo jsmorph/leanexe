@@ -9,12 +9,12 @@ compiled with the tables `tables` when the allocator invariant holds, the memory
 `p.initial` states of the store in which `p.module` starts.  `Call m tables k f Pre Post` names the
 statement that function `k` of `m`, called from a ready store with represented arguments `x` that
 move no object and with `Pre`, returns `f x` without a trap and leaves a ready store.  The call
-also keeps every borrowed array borrowed and every region of the heap intact, and it meets `Post`.
-`CallSpec m tables k f B` is `Call` from a store with room for `B x` bytes, in which `top` rises by
-at most `B x`.  `ImplementsTables.call` proves `Call` from the theorem of an entry whose tables are
-among the program's, which `tables_at` checks for literal addresses, `Call.spec` proves `CallSpec`
-for a specification from a `trapFree` theorem, and `Call.array` restates `Call` for an entry whose
-result is an owned array.
+also keeps every borrowed array borrowed and every region of the heap intact, and it satisfies
+`Post`.  `CallSpec m tables k f B` is `Call` from a store with room for `B x` bytes, in which `top`
+rises by at most `B x`.  `ImplementsTables.call` proves `Call` from the theorem of an entry whose
+tables are among the program's, which `tables_at` checks for literal addresses, `Call.spec` proves
+`CallSpec` for a specification from a `trapFree` theorem, and `Call.array` restates `Call` for an
+entry whose result is an owned array.
 -/
 
 namespace Verified
@@ -93,7 +93,7 @@ theorem tables_at {tables : List (Array UInt64)} {ts : List (UInt64 × Array UIn
   exact ⟨k, hks k hk, by rw [getElem!_pos tables k (hks k hk)]⟩
 
 /-- An entry that cannot trap and reads the tables `ts`, each of which is a table of the program
-at its address, meets `Call`. -/
+at its address, satisfies `Call`. -/
 theorem ImplementsTables.call {α β : Type} [Represent α] [Represent β] {m : Module} {k : Nat}
     {f : α → β} {ts : List (UInt64 × Array UInt64)} {Pre : α → Heap → Store Unit → Prop}
     {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}

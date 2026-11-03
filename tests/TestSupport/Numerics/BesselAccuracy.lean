@@ -13,7 +13,7 @@ constants that the measured errors allow, and the first argument of `main` repla
 It reports the largest error, in thousandths of a unit rounded down, with its argument and the
 largest of each order.  At NaN, the zeros, the infinities, and the negative arguments of `y0`, `y1`,
 and `yn` it requires the special values that `Bessel`'s docstring lists, with the signs of the zeros
-that fdlibm gives.  The arguments of the four functions of orders 0 and 1 are evenly spaced values
+that fdlibm gives.  The arguments of `j0`, `j1`, `y0`, and `y1` are evenly spaced values
 from 0.001 to 2, from 2 to 40, and from 40 to 300, the doubles within three steps of the first two
 zeros of each function, hashed values from `2 ^ 9` to `2 ^ 201`, from `2 ^ 201` to `2 ^ 1000`, and
 below 1, the inputs of `WorstCases`, which give the largest known errors of thirteen libraries in

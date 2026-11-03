@@ -246,7 +246,8 @@ theorem Expr.code_specInX {strict : Bool} {S : List Sig} (m : Module) (funs : Fu
   | proj x p =>
     intro _ _; exact specInOfX (pool := pool) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) <| specX_proj x p
 
-/-- The code of every expression meets its specification, also in the result of a loop's body. -/
+/-- The code of every expression satisfies its specification, also in the result of a loop's
+body. -/
 theorem Expr.code_specIn {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S)
     (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (hm : Runtime m) {pv : List Value}
     {d0 : UInt64} (hCalls : CallsAt m funs flags bounds fits d0 pool) {Γ : List Ty} {t : Ty}
@@ -273,7 +274,7 @@ theorem Expr.code_specX {strict : Bool} {S : List Sig} (m : Module) (funs : Funs
     (Expr.code_specInX m funs flags bounds fits host hm hRA hRt hCopy hCalls expr hCover hD
       false env slots paid live).spec
 
-/-- The code of every expression meets its specification. -/
+/-- The code of every expression satisfies its specification. -/
 theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S)
     (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (hm : Runtime m) {pv : List Value}
     {d0 : UInt64} (hCalls : CallsAt m funs flags bounds fits d0 pool) {Γ : List Ty} {t : Ty}

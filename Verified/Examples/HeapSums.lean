@@ -37,7 +37,7 @@ def rootKey (t : KeyTree) : UInt64 :=
   | .leaf => 0
   | .node _ k _ => k
 
-/-- A size of the item, read without taking it apart. -/
+/-- A size of the item, read without destructuring it. -/
 def measure (i : Item) : UInt64 :=
   match i with
   | .text body => body.size
@@ -73,7 +73,7 @@ def tally (i : Item) (n : UInt64) : Item × UInt64 := (i, n + measure i)
 
 /-- The item after `n` steps, each of which appends the step's index to the words of a words
 item.  The alternative `other` names the matched state, so each step copies the state before the
-match takes it apart. -/
+match destructures it. -/
 def grow (n : UInt64) (i : Item) : Item :=
   LeanExe.loop n i fun j s =>
     match s with
@@ -90,7 +90,7 @@ def regrow (n : UInt64) (i : Item) : Item :=
     | .keys tree weight => .keys tree weight
     | .none => .none
 
-/-- The item with a text turned into its length as a word, words turned into their low bytes,
+/-- The item with a text replaced by its length as a word, words replaced by their low bytes,
 and the root key of a tree set to 7. -/
 def convert (i : Item) : Item :=
   match i with

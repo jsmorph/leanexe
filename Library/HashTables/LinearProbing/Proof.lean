@@ -400,7 +400,7 @@ theorem slot_after {m j0 b a s : Nat} (hj0 : j0 < m) (hba : b ≤ a) (ham : a < 
   rw [h, adv_adv (d := b) (e := a - b) hj0 (by omega), Nat.add_sub_cancel' hba] at h1
   exact h1.symm
 
-/-- Algorithm R, from a state that meets `CloseInv`, ends with a table that meets `Good`. -/
+/-- Algorithm R, from a state that satisfies `CloseInv`, ends with a table that satisfies `Good`. -/
 theorem close_spec (M : UInt64) (hm : M.toNat < 2 ^ 63) (j0 : Nat) (hj0 : j0 < M.toNat)
     (keys : List UInt64) (hnodup : keys.Nodup) (hlen : keys.length + 2 ≤ M.toNat)
     (b a : Nat) (t : Array UInt64) (hinv : CloseInv M.toNat t j0 b a)

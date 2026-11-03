@@ -5,7 +5,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The forty-sixth program of the verified compiler: `tgamma`, CORE-MATH's correctly rounded `Γ`,
+/-! A program of the verified compiler: `tgamma`, CORE-MATH's correctly rounded `Γ`,
 ported from `src/binary64/tgamma/tgamma.c` at commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8` of
 https://gitlab.inria.fr/core-math/core-math (Copyright (c) 2024 Alexei Sibidanov, MIT license).  The
 code evaluates `Γ` in double-double arithmetic with an error bound `eps` and returns the result when

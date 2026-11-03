@@ -5,9 +5,9 @@ import LeanExe.ProofKit.F64Approx
 `x` and `Fin x` states that it is finite.  The comparisons, `max`, `min`, and negation of finite
 floats follow their real values, and the program's constants `margin`, `eta`, and `sMin` and the
 literals it uses have the values stated here.  `Bnd x X e M` states that `x` is finite, within `e`
-of the real `X`, and that `|X| ≤ M`.  The operations carry it from operands to results with the
-rounding error that `F64Approx` charges, so a chain of operations yields numeric bounds that
-`norm_num` checks. -/
+of the real `X`, and that `|X| ≤ M`.  The lemmas for the operations transfer it from operands to
+results with the rounding error that `F64Approx` charges, so a chain of operations yields numeric
+bounds that `norm_num` checks. -/
 
 namespace Demos.Slew.Rounding
 

@@ -88,8 +88,8 @@ def asGood (side : Side) (p q : Nat) : Bool :=
   | .buy => q ≤ p
   | .sell => p ≤ q
 
-/-- `o` placed into a side in priority order, behind every order whose price is at least as good as
-its own, which puts it behind every order at its price. -/
+/-- `o` placed into a side in priority order, after every order whose price is at least as good as
+its own, which puts it after every order at its price. -/
 def place (o : Order) : List Order → List Order
   | [] => [o]
   | r :: rs => if asGood o.side r.price o.price then r :: place o rs else o :: r :: rs

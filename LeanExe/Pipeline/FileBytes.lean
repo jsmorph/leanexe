@@ -5,8 +5,8 @@ import LeanExe.Encoding.RoundTrip
 directory of the source file, as a `ByteArray` term.  Lean's `include_str` reads a text
 file the same way.  `encode_eq_of_toList` states that a module's encoding is such a file
 from a comparison of byte lists, which the kernel decides, since it reads an array element
-by walking the list that represents the array, and `encode_eq_of_encoding` from the literal bytes
-that `verified_compile` states.  `file_theorems` states the two theorems of a file module with
+by recursion on the list that represents the array, and `encode_eq_of_encoding` from the literal
+bytes that `verified_compile` states.  `file_theorems` states the theorems of a file module with
 these lemmas and `decode_eq_of_file`: the file holds a module's encoding, and it decodes to the
 module. -/
 
@@ -70,7 +70,7 @@ private partial def bytesShape (type : Expr) : MetaM (Nat × Bool) := do
     let some (_, decoded) := (← whnf (predicate.beta #[bytes])).and? | throwError unexpected
     return (0, (← whnf decoded).isAppOf ``And)
 
-/-- `file_theorems name p "path" from b₁, …, bₙ` states the two theorems of a file module, for the
+/-- `file_theorems name p "path" from b₁, …, bₙ` states the theorems of a file module, for the
 module `p.module` and the file at `path`, relative to the directory of the source file, and prints
 the axioms of each:
 

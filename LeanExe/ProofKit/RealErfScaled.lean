@@ -2,7 +2,7 @@ import LeanExe.ProofKit.RealErf
 
 /-!
 `erfcxN x = erfcx x / (2/√π) = (√π/2) exp (x²) erfc x`, which satisfies `erfcxN' = 2 x erfcxN - 1`
-without the constant `2/√π`, so that polynomial models checked against the equation carry no
+without the constant `2/√π`, so that polynomial models checked against the equation have no
 error from the enclosure of `π`.  The comparison lemma `ode_backward` holds for any function with
 derivative `2 x G - k`, and the asymptotic bounds of `erfcx` become rational bounds on `erfcxN`.
 -/

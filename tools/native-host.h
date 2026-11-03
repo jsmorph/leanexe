@@ -1,6 +1,6 @@
 /* The interface between tools/native-host.c and a translated module.  The module's C text
-   defines the lx_ globals, lx_init, and its functions; its glue, which native-verified writes,
-   defines the tables of its exported functions and globals. */
+   defines the lx_ globals, lx_init, and its functions; its export tables, which native-verified
+   writes, list its exported functions and globals. */
 
 /* An exported function: its name, one letter per parameter and per result (i for unsigned
    int, l for unsigned long long, f for float, d for double), and a function that calls it with

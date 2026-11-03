@@ -18,7 +18,7 @@ export Library.Numerics.LinearAlgebra.Binary32 (add32 linear32)
 significant bits so that `k · 0.693359375` is exact.  The Taylor polynomial of degree 7 gives
 `e^r`, which is multiplied by `2^k` as two normal powers of two built from their bits, with
 `k + 254` taken from the bits of `k + 1.5 · 2^23`.  Against correctly rounded results the error
-is at most 1.19 ulp over `[-90, 90]` (review of 2026-10-04); no theorem bounds it. -/
+is at most 1.19 ulp over `[-90, 90]`, and no theorem bounds it. -/
 @[inline] def exp32 (x : Float32) : Float32 :=
   let a := if x ≤ 89.0 then x else 89.0
   let c := if -104.0 ≤ a then a else -104.0
@@ -107,7 +107,7 @@ def logits32 (h wte : Array Float32) (rows d : UInt64) : Array Float32 :=
   LeanExe.build rows fun v => LeanExe.loop d 0.0 (fun c acc => acc + h[c.toNat]! * wte[(v * d + c).toNat]!)
 
 /-! One token's step.  A row has `d = 64 nh` elements, the hidden layer of the MLP `f`.  The
-token embedding comes in chunks of `chunk` rows, the last one possibly shorter, so that each
+token embedding is split into chunks of `chunk` rows, the last one possibly shorter, so that each
 chunk fits a binding. -/
 
 /-- The weights of one layer, as in Hugging Face's `GPT2Block`, with `c_attn` split into its

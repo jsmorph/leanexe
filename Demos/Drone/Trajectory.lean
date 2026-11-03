@@ -41,7 +41,7 @@ theorem stopped_words (u v : UInt64) (hu : u.toNat ≤ 20) (hv : v.toNat ≤ 20)
   exact ⟨UInt64.toNat_inj.mp (by change u.toNat = 0; omega),
     UInt64.toNat_inj.mp (by change v.toNat = 0; omega)⟩
 
-/-- Both horizontal primitives meet their supplied waypoint positions and speeds. -/
+/-- Both horizontal primitives match their supplied waypoint positions and speeds. -/
 theorem horizontal_endpoints (out : List UInt64) (i : Nat)
     (hu : out[2*i+1]!.toNat ≤ 20) (hv : out[2*(i+1)+1]!.toNat ≤ 20)
     (hT : 0 < duration out i) :
@@ -228,7 +228,7 @@ theorem compute_global_clearance (terrain : Array UInt64) (h : terrainBound terr
   simp only [z, Kinematics.verticalPosition, mul_div_cancel_right₀ _ (ne_of_gt hT)]
   simpa only [Array.getElem!_toList, real] using compute_segment_clearance terrain h i hi s hs0 hs1
 
-/-- Actual global velocity components obey the speed limits on every flight interval. -/
+/-- Actual global velocity components satisfy the speed limits on every flight interval. -/
 theorem compute_global_speed (terrain : Array UInt64) (h : terrainBound terrain)
     (i : Nat) (hi : i+1 < terrain.size) (s : ℝ) (hs0 : 0 ≤ s) (hs1 : s ≤ 1) :
     let out := (compute terrain).toList

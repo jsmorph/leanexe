@@ -8,8 +8,8 @@ Aligned runs.  `AlignedExec fuel m st s p env` states that every 64-bit load and
 predicates `AlignedOne`, `AlignedExec`, `AlignedRun`, and `AlignedRunTail` are in
 [the aligned run definitions](AlignedDefs.lean), which import only Talos's semantics.
 
-`wpA` is `wp` with `AlignedExec` at every fuel from some bound on.  `wpA.wp` forgets the alignment,
-and the rules for single instructions have the form of Talos's `wp_*_cons` rules, with the
+`wpA` is `wp` with `AlignedExec` at every fuel from some bound on.  `wpA.wp` derives `wp` from
+`wpA`, and the rules for single instructions have the form of Talos's `wp_*_cons` rules, with the
 alignment of the address as a conjunct in the rules for `load64` and `store64`.
 -/
 

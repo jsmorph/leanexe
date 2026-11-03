@@ -7,9 +7,9 @@
 | Read or write a word in linear memory | [Memory facts](Memory.lean) prove read-after-write equality and preservation of reads disjoint from a write.  [Memory frames](MemoryFrame.lean) define `WritesRange`, which preserves the page count, other store fields, and bytes outside a half-open interval. |
 | Relate a compiled array to its elements | [Array representation](Array.lean) supplies `UInt64Array.At`, length and element facts, and `ArrayFold.foldPrefix`.  [Prefix representation](ArrayPrefix.lean) states how much of a new array has been filled.  Pointer and size bounds keep addresses within memory. |
 | Prove allocator behavior | [Fixed-array allocation](FixedArrayAllocate.lean) supplies `program_spec_runs` for 32-bit memory, requests of at most `2^32` bytes, and a cap of at most 65,535 pages.  It covers free-list reuse and bump allocation, requiring room when `aborts = false`.  [The pipeline allocation rules](../Pipeline/Allocation.lean) prove preservation of `Heap.At`, borrowed arrays, and owned objects. |
-| Recover locals after replacing the operand stack | [Local frames](Frame.lean) prove that replacing `Locals.values` preserves parameters, internal locals, and `get`.  `parameter_getElem_of_get` and `internal_getElem_of_get` turn combined-index reads into facts about the corresponding lists. |
+| Recover locals after replacing the operand stack | [Local frames](Frame.lean) prove that replacing `Locals.values` preserves parameters, internal locals, and `get`.  `parameter_getElem_of_get` and `internal_getElem_of_get` convert combined-index reads into facts about the corresponding lists. |
 | Release a recursive value | [Tree release](ReleaseTree.lean) proves that the runtime traversal through masked child slots frees the owned records and preserves the caller's other regions.  The value's owned blocks and their separation supply the premises. |
-| Carry alignment through an execution | [Aligned-run definitions](AlignedDefs.lean) follow Talos's execution and require an in-bounds 64-bit access to have an address divisible by eight.  [Flagged rules](AlignedFlag.lean) specialize to ordinary `wp` at `strict = false` and aligned `wpA` at `strict = true`. |
+| Keep alignment through an execution | [Aligned-run definitions](AlignedDefs.lean) follow Talos's execution and require an in-bounds 64-bit access to have an address divisible by eight.  [Flagged rules](AlignedFlag.lean) specialize to ordinary `wp` at `strict = false` and aligned `wpA` at `strict = true`. |
 | Establish partial correctness of a process loop | [Partial-loop rules](PartialLoop.lean) use `pwp`, which constrains runs that finish within their fuel.  A termination argument is an additional obligation of the total-process proof. |
 | Represent arrays in the heap and across a call | [Pipeline heap predicates](../Pipeline/Runtime.lean) combine `UInt64Array.At` with block bounds and free-list separation in `Heap.Borrowed` and `Heap.Owned`.  [The call statement](../Pipeline/Implements.lean) includes argument representation, separation, and preservation of the caller's regions. |
 
@@ -26,7 +26,7 @@
 | Bound a function that returns its argument | [`within_one_of_self`](F64WithinSelf.lean) proves `WithinSteps 1 y x` for a finite input word `x`, `0 ≤ ρ ≤ 2^-53`, and `\|value x - y\| ≤ ρ * \|value x\|`. |
 
 [The binary64 wrapper](Float64.lean), [binary32 facts](F32Bits.lean), and
-[binary64 bit facts](F64Bits.lean) connect Lean floating-point operations with their raw-word
+[binary64 bit facts](F64Bits.lean) relate Lean floating-point operations to their raw-word
 models.  The [binary64 error-tracking entry](../../VKB/entries/float-error-tracking/README.md) explains
 how finished numerical proofs discharge magnitude premises and choose a final rounding rule.
 The [numerical guides](../../index.md#6-elementary-and-special-functions) state each function's
@@ -36,9 +36,9 @@ domain, exceptional results, and proved allowance.
 
 [The polynomial checker](PolyBound.lean) bounds a polynomial with rational coefficients over
 a rational interval by shifting it to the midpoint and bisecting when needed.  `check_sound`
-turns an accepted calculation into a bound for every real input in the interval.
+converts an accepted calculation into a bound for every real input in the interval.
 [Interval and weighted checks](PolyChecks.lean) combine checks over subintervals with `Covers`
-and derive `abs (A x) ≤ ε * W x` from two one-sided polynomial bounds.  `sub_div_le` turns
+and derive `abs (A x) ≤ ε * W x` from two one-sided polynomial bounds.  `sub_div_le` converts
 `abs (f * q - p) ≤ e * q` into `abs (f - p / q) ≤ e` when `q > 0`.  Generators choose
 coefficients, interval divisions, and bounds, and Lean's kernel checks the proofs of the generated
 claims, as [the arcsine proof](../../Library/Numerics/Float64/Asin/README.md#proof) illustrates.

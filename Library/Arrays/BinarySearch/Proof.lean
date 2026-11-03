@@ -4,11 +4,11 @@ import Library.Arrays.BinarySearch.Spec
 /-! The proof that binary search on a sorted array returns `expected`, the number of elements less
 than the key.  `search_spec` states the search's invariant: every element before `lo` is less than
 the key, and every element from `hi` on is at least the key.  Its proof follows the recursion of
-`search`: when the midpoint's element is less than the key, sortedness puts every element up to the
-midpoint below the key, and otherwise it puts every element from the midpoint on at or above the
-key.  `lowerBound_spec` starts the invariant on `[0, xs.size)`, where no index of the array lies
-before `lo` or from `hi` on, and `countP_of_split` counts the elements before the result, which
-`lowerBound_eq` equates with `expected`. -/
+`search`: when the midpoint's element is less than the key, sortedness implies that every element up
+to the midpoint is below the key, and otherwise it implies that every element from the midpoint on
+is at or above the key.  `lowerBound_spec` starts the invariant on `[0, xs.size)`, where no index of
+the array lies before `lo` or from `hi` on, and `countP_of_split` counts the elements before the
+result, which `lowerBound_eq` equates with `expected`. -/
 
 namespace Library.Arrays.BinarySearch
 

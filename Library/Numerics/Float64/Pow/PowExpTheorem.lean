@@ -3,7 +3,7 @@ import Library.Numerics.Float64.Pow.PowExpFar
 /-!
 `Pow.powExp` with `signBias = 0` within one step of `exp L`, for finite `x` and `xtail` with
 `|xtail| ≤ 17 · 2 ^ -28 |x|` and a target `L` with `|x + xtail - L| ≤ |L| / 2 ^ 65`.  These are
-the conditions that `pow` meets with `x + xtail` its product `y log x`.  Every path of `powExp`
+the conditions that `pow` satisfies with `x + xtail` its product `y log x`.  Every path of `powExp`
 is covered: `1 + x` below `2 ^ -54`, the ordinary reconstruction below 512, the special paths
 below 1024, and the overflow and underflow products from 1024 on.
 -/

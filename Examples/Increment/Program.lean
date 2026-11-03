@@ -3,7 +3,7 @@ import LeanExe.Dialect.Build
 /-!
 Each element of an array of at most eight words plus
 one, with wrapping arithmetic, or the empty array for a longer input.  The count is 0 for a longer
-input, so one build serves both cases.
+input, so one build is used for both cases.
 -/
 
 namespace Examples.Increment

@@ -1,7 +1,7 @@
 import Library.Numerics.Float64.Bessel.BesselSmallSigns
 
 /-!
-The real analysis behind the backward recurrence of `jn` (Miller's algorithm) for `0 < x < 2` and
+The real analysis of the backward recurrence of `jn` (Miller's algorithm) for `0 < x < 2` and
 `n ≥ 2`.  The kernel `kern x m M = (π x/2)(Y_m J_M - J_m Y_M)` satisfies 10.6.1 in its first index
 as well (`kern_first`), so for `M` fixed it grows from `kern M M = 0` and `kern (M - 1) M = 1` as
 `m` decreases while `λ_m ≥ 2` (`kern_grow`).  The quotient `cfrac m = kern m M / kern (m - 1) M`

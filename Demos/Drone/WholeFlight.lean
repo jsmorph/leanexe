@@ -100,7 +100,7 @@ theorem compute_normalized_cover (terrain : Array UInt64) (h : terrainBound terr
   ring
 
 /-- Every physical time in the finite flight satisfies spatial clearance,
-stays inside the terrain extent, and obeys both component speed limits. -/
+stays inside the terrain extent, and satisfies both component speed limits. -/
 theorem compute_throughout (terrain : Array UInt64) (h : terrainBound terrain)
     (hn : 0 < terrain.size) (t : ℝ) (ht : t ∈ Icc 0 (flightTime terrain)) :
     (0 ≤ globalX terrain t ∧ globalX terrain t ≤ 100*(terrain.size-1 : Nat)) ∧

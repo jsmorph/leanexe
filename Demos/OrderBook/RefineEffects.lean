@@ -594,7 +594,7 @@ theorem levelsOK_ordersAt (b : Book) : LevelsOK (ordersAt b) := by
   obtain ⟨t, -, rfl⟩ := List.mem_map.1 ho
   exact ⟨rfl, rfl⟩
 
-/-- Placing an order behind a prefix whose prices are at least as good as its own. -/
+/-- Placing an order after a prefix whose prices are at least as good as its own. -/
 theorem place_append (o : Spec.Order) {X : List Spec.Order} (Y : List Spec.Order)
     (hX : ∀ x ∈ X, Spec.asGood o.side x.price o.price = true) :
     Spec.place o (X ++ Y) = X ++ Spec.place o Y := by

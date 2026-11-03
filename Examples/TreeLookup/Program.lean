@@ -2,7 +2,7 @@ import LeanExe.Dialect.Loop
 
 /-!
 Lookup in a complete binary search tree of seven nodes,
-stored in breadth-first order after the query.  A loop of three steps, one per level, carries the
+stored in breadth-first order after the query.  A loop of three steps, one per level, keeps the
 node index, a found flag, and the value of the node found; the node index advances at every step,
 and the flag and value change only at the first match.
 -/

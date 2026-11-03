@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # The cases of tests/native/verified.sh under QEMU's virt machine for AArch64, without libc or an
 # operating system (docs/native-bare-metal.md, milestone B1).  native-verified writes the C text,
-# the glue, and the exports of each module of tests/verified/modules.txt.  CompCert compiles
-# them, each translation with -fno-common, as tools/baremetal/build.sh compiles its inputs, with
-# tools/native-host.c, whose main becomes host_main, and with the C library of
+# the export tables, and the exports of each module of tests/verified/modules.txt.  CompCert
+# compiles them, each translation with -fno-common, as tools/baremetal/build.sh compiles its inputs,
+# with tools/native-host.c, whose main becomes host_main, and with the C library of
 # tools/baremetal/libc, and tools/baremetal/build.sh links them with the startup code and a stack
 # of STACK_SIZE bytes, 0x400000 by default.  The host reads its command line from a block that
 # QEMU's generic loader places at 0x7F000000.  Each case runs in its own QEMU process, JOBS at a
@@ -12,20 +12,20 @@
 # tests/modules/run.sh.  A case also fails when it reports an exception or a stack high-water mark
 # of the whole stack.  CompCert also compiles each module to assembly, from which
 # tools/baremetal/stack-bound.sh computes the bound of every function with the list of the
-# functions that take the call depth that native-verified writes, and the glue, compiled with
-# LX_STACK_MARK, reports the stack that each call of a module function used: a case fails when a
-# call used more than its function's bound (docs/native-bare-metal.md, test 3).  A module does
-# not build when the tool cannot bound its stack or when tools/baremetal/access-check.sh finds an
-# instruction in its assembly that requires an aligned access.  The script prints, for each
-# module, the cases that pass, that fail, and that do not run because the translation lacks their
-# export, the largest high-water mark, and the largest stack of a call with its bound, then each
-# failure, the modules without a translation, and the modules that CompCert cannot compile or
-# link, with the first lines of the error.  It fails unless every case that runs passes and every
-# translated module builds.  CCOMP and CCOMP_STDLIB are as for tools/baremetal/build.sh,
-# and QEMU names qemu-system-aarch64.  Before it loads any module, it builds every module it loads
-# and native-verified in one `lake build` under tools/leanrun, with the caller's LEANRUN_THREADS and
-# LEANRUN_MEMORY_HIGH, since native-verified and `lean --run` read a module's compiled file
-# without checking it against the source.
+# functions that take the call depth that native-verified writes, and the call functions of the
+# export tables, compiled with LX_STACK_MARK, report the stack that each call of a module function
+# used: a case fails when a call used more than its function's bound (docs/native-bare-metal.md,
+# test 3).  A module does not build when the tool cannot bound its stack or when
+# tools/baremetal/access-check.sh finds an instruction in its assembly that requires an aligned
+# access.  The script prints, for each module, the cases that pass, that fail, and that do not run
+# because the translation lacks their export, the largest high-water mark, and the largest stack of
+# a call with its bound, then each failure, the modules without a translation, and the modules that
+# CompCert cannot compile or link, with the first lines of the error.  It fails unless every case
+# that runs passes and every translated module builds.  CCOMP and CCOMP_STDLIB are as for
+# tools/baremetal/build.sh, and QEMU names qemu-system-aarch64.  Before it loads any module, it
+# builds every module it loads and native-verified in one `lake build` under tools/leanrun, with the
+# caller's LEANRUN_THREADS and LEANRUN_MEMORY_HIGH, since native-verified and `lean --run` read a
+# module's compiled file without checking it against the source.
 # Usage: tests/baremetal/verified.sh [--module NAME]
 set -euo pipefail
 only=""

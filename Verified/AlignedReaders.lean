@@ -13,7 +13,7 @@ The copy of an owned variable that stays live runs `copyCode`, whose flagged for
 leaves an aligned heap and an aligned owned value.  `specX_var` takes it as a premise, as
 `specX_size` takes `ReadReleaseX`, and `copyCodeX` in `Verified/AlignedCopy.lean` proves it for
 every runtime.  The code of the other readers is free of 64-bit accesses and calls except for the
-loads, so `wpX_append_free` carries the original lemmas about `loadCode` and the buffer read.
+loads, so `wpX_append_free` transfers the original lemmas about `loadCode` and the buffer read.
 -/
 
 namespace Verified

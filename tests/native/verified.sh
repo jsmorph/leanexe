@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # The cases of tests/verified, run on the modules translated to C and compiled with CompCert.
 # For each module of tests/verified/modules.txt, native-verified build (tests/TestSupport/Native/
-# Verified.lean) writes the C text of its translation, the glue of tools/native-host.h, and the
-# exports that the translation contains, has clightgen read the C text back, compares that Clight
-# with the translation, and compiles the text with ccomp only when they match.  ccomp then links
-# the object with the glue and tools/native-host.c, which takes the commands of the Wasmtime host.  The cases are the
-# lines of the compiled generator verified-cases (Verified/Examples/Cases.lean), with the library
-# entries of tests/verified/library-cases.txt, which tests/verified/run.sh checks with Wasmtime.
-# A case runs when the translation contains its export, and a module outside the subset, which
-# has no translation, runs none of its cases.  A case that runs must give the line that the
-# Wasmtime host gives, with the same rules for traps and allocation counters.  The module cases
-# that tests/verified/run.sh checks for the corpus, those of euler and of shapes on sums, come
-# from the compiled generator native-module-cases
+# Verified.lean) writes the C text of its translation, the export tables of tools/native-host.h, and
+# the exports that the translation contains, has clightgen read the C text back, compares that
+# Clight with the translation, and compiles the text with ccomp only when they match.  ccomp then
+# links the object with the export tables and tools/native-host.c, which takes the commands of the
+# Wasmtime host.  The cases are the lines of the compiled generator verified-cases
+# (Verified/Examples/Cases.lean), with the library entries of tests/verified/library-cases.txt,
+# which tests/verified/run.sh checks with Wasmtime.  A case runs when the translation contains its
+# export, and a module outside the subset, which has no translation, runs none of its cases.  A case
+# that runs must give the line that the Wasmtime host gives, with the same rules for traps and
+# allocation counters.  The module cases that tests/verified/run.sh checks for the corpus, those of
+# euler and of shapes on sums, come from the compiled generator native-module-cases
 # (tests/TestSupport/Native/ModuleCases.lean) and run the same way under the rules of
 # tests/modules/run.sh.  The script prints the numbers of cases that pass, that fail, and that do
 # not run, and fails unless every case that runs passes.  Before it loads any module, it builds
@@ -23,7 +23,7 @@
 # the caller sets it.  The largest step measured, native-verified build of the largest corpus
 # module, keeps 3.7 GB resident.
 # With --aligned, native-verified builds each module with the translation option alignedAccess,
-# whose load64 and store64 omit the test of alignment.  native-verified refuses, with status 4, a
+# whose load64 and store64 omit the test of alignment.  native-verified rejects, with status 4, a
 # module whose theorems do not cover that translation.  The script lists such a module beside the
 # modules without a translation and runs none of its cases.
 # Usage: tests/native/verified.sh [--aligned] [--module NAME]

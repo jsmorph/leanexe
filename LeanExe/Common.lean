@@ -9,7 +9,7 @@ Arithmetic and list facts that every artifact proof needs when it reasons
 about generated `UInt64` code and byte or cell reads from linear memory.
 The `u64_omega` tactic closes `UInt64` equalities and inequalities by
 rewriting to `toNat` normal forms and calling `omega`, `getElem_of_some`
-converts an optional local fact to its proof-carrying form, and
+converts an optional local fact to its form with a bound proof, and
 `wp_run_with` is the one instruction-stepping simplification macro.
 -/
 
@@ -58,8 +58,8 @@ theorem getBang_eq {α : Type _} [Inhabited α] {l : List α} {i : Nat}
     (hi : i < l.length) : l[i]! = l[i] := by
   rw [List.getElem!_eq_getElem?_getD, List.getElem?_eq_getElem hi, Option.getD_some]
 
-/-- Convert an optional element fact to its proof-carrying form.  The
-bound is an autoparam, so a context that knows the list length closes it
+/-- Convert an optional element fact to its form with a bound proof.  The
+bound is an autoparam, so a context with a hypothesis on the list length closes it
 without an explicit argument. -/
 theorem getElem_of_some {α : Type _} {l : List α} {i : Nat} {v : α}
     (h : l[i]? = some v) (hi : i < l.length := by omega) : l[i] = v := by
@@ -67,10 +67,10 @@ theorem getElem_of_some {α : Type _} {l : List α} {i : Nat} {v : α}
   exact Option.some.inj h
 
 /-- Prepend a six-part conjunction pack onto a tail in one step.  The
-instruction proofs use this where the goal carries a `wp` term behind
+instruction proofs use this where the goal contains a `wp` term after
 side conditions: splitting such a goal with more than two live
-components stalls the elaborator, while one application of this lemma
-with a prepacked left side stays cheap. -/
+components makes the elaborator too slow, while one application of this lemma
+with a prepacked left side stays fast. -/
 theorem and6_and {A₁ A₂ A₃ A₄ A₅ A₆ B : Prop}
     (h : A₁ ∧ A₂ ∧ A₃ ∧ A₄ ∧ A₅ ∧ A₆) (hb : B) :
     A₁ ∧ A₂ ∧ A₃ ∧ A₄ ∧ A₅ ∧ A₆ ∧ B :=
@@ -104,7 +104,7 @@ theorem write8_bytes_ne (mm : Wasm.Mem) (ad : UInt32) (v : UInt8) {x : Nat}
   rw [if_neg hx]
 
 /-- A byte write is visible at its own address.  The address is an equation
-hypothesis so the rewrite never touches the address expression itself. -/
+hypothesis so the rewrite never changes the address expression itself. -/
 theorem write8_bytes_hit (mm : Wasm.Mem) (ad : UInt32) (v : UInt8) {x : Nat}
     (hx : x = ad.toNat) : (mm.write8 ad v).bytes x = v := by
   subst hx
@@ -194,11 +194,11 @@ macro "wp_run_with" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
       Nat.reduceAdd, Nat.reduceLT, Nat.reduceLeDiff, Nat.reduceSub,
       Wasm.ValueType.zero, List.headD, $ts,*])
 
-/-- Enter a generated conditional and select its positive branch. -/
+/-- Apply `Wasm.wp_iff_cons` to a generated conditional and select its positive branch. -/
 macro "wp_guard_pos" h:term : tactic =>
   `(tactic| (refine Wasm.wp_iff_cons rfl ?_; rw [if_pos $h]))
 
-/-- Enter a generated conditional and select its negative branch. -/
+/-- Apply `Wasm.wp_iff_cons` to a generated conditional and select its negative branch. -/
 macro "wp_guard_neg" h:term : tactic =>
   `(tactic| (refine Wasm.wp_iff_cons rfl ?_; rw [if_neg $h]))
 

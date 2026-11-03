@@ -10,7 +10,7 @@ states the code with its loop bodies and final steps as named functions.  The ra
 `AccRangeFact` give `Γ (x + jm)`, and the three cases of the sign of `jm` give the result
 (`TgammaAccUpCase.up_case`, `TgammaAccDownCase.down_case`, `zero_case`).  When the rounding test
 fails, the code looks `x` up in the database of hard cases, and `DbWithin` states its values within
-one step of `Γ` (`final_step`).  `accurate_within` joins the path below `1/4` and states
+one step of `Γ` (`final_step`).  `accurate_within` adds the path below `1/4` and states
 `TgammaFinal.AccurateWithin` under `DbWithin`.
 -/
 

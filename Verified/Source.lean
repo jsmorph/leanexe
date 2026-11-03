@@ -383,7 +383,7 @@ parameter `i`.  `letPair e body` gives `body` the second component of `e` as var
 first as variable 1.  `loop count init cond body` is `LeanExe.loop` with a test: starting from
 the value of `init`, for each index 0 to `count - 1` it applies `body` to a state that satisfies
 `cond` and keeps any other, with the state as variable 0 of `cond`, and the state as variable 0
-and the index as variable 1 of `body`.  `cond` does not see the index, so a state that fails it
+and the index as variable 1 of `body`.  `cond` does not take the index, so a state that fails it
 stays for the remaining indices.  `LeanExe.loop` is the loop whose `cond` is `true`, and
 `LeanExe.repeatWhile` is the one whose `body` ignores the index.  `size x` is the number of
 elements of the array variable `x` as a word.  `fold x init body` folds over every element of
@@ -747,7 +747,7 @@ def argsMask : {n : Nat} → ((i : Fin n) → Nat) → Nat
   | _ + 1, b => b 0 ||| argsMask fun i => b i.succ
 
 /-- The variables that an expression reads, as a bitmask whose bit `i` is set when it reads
-variable `i`: `Expr.uses` as data.  The code generator asks whether many variables are read by
+variable `i`: `Expr.uses` as data.  The code generator tests whether many variables are read by
 the same subexpression, and the kernel evaluates the code generator in every program's byte
 theorem, so it computes the mask of a subexpression once instead of walking the subexpression
 for each variable. -/

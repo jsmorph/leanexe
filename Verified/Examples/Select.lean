@@ -1,6 +1,6 @@
 import Verified.Reflect.Command
 
-/-! The fourth program of the verified compiler: comparisons, `Bool` operations, `Bool`-valued
+/-! A program of the verified compiler: comparisons, `Bool` operations, `Bool`-valued
 `let` bindings, `if` on a `Bool` and on a comparison, and functions that take or return a
 `Bool`. -/
 

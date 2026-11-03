@@ -5,7 +5,7 @@
 [The program](Program.lean) is one generation step of GPT-2 124M in Lean `Float32`, binary32,
 written for GPU kernels: it builds every array element by element and marks the helpers that kernels
 share `@[inline]`, so that `verified_compile` unfolds them into each kernel.  Its kernel functions
-run from `expArray32` to `logits32`, and `step32` composes all of them but `expArray32` into the
+are `expArray32` through `logits32`, and `step32` composes all of them but `expArray32` into the
 embedding, the layers of attention and MLP, the final layer norm, and the token scores.  Vector
 addition and the biased linear transform come from [the binary32 linear-algebra
 library](../../Library/Numerics/LinearAlgebra/README.md), and the model-specific kernels and the
@@ -25,16 +25,16 @@ arithmetic NaNs to `0x7fc00000`.  [The dispatch theorems](VerifiedDispatch.lean)
 combine `Compiled.dispatch_value` with each generated denotation equation `compiled.f.denote_eq`,
 so that a dispatch of each kernel computes its Lean function.  [The kernel
 map](VerifiedKernels.lean) names the kernel of each host call, and [the host
-instance](VerifiedHost.lean) gathers their dispatch theorems into `backend`, a `KernelBackend`.
+instance](VerifiedHost.lean) defines `backend`, a `KernelBackend`, from their dispatch theorems.
 [The verified compiler manual](../../docs/verified-manual.md#wgsl-kernels) gives the subset that
 the translation accepts and the conditions of its dispatch theorem.
 
 | Theorem | Statement |
 |---------|-----------|
-| `compiled.f.implements`, `compiled.f.trapFree` | For each compiled function `f`, `gpt32.wasm` computes `f` bit for bit, unless the call stops at `unreachable`, and without that stop under room for `top` to rise by `compiled.f.bound` within the memory cap. |
+| `compiled.f.implements`, `compiled.f.trapFree` | For each compiled function `f`, `gpt32.wasm` computes `f` bit for bit, unless the call stops at `unreachable`, and without that stop when `top` is at least `compiled.f.bound` bytes below the memory cap. |
 | `compiled.bytes` | `encode` succeeds on `compiled.module`, `decode` reads the bytes back as the module, and the module implements every compiled function. |
 | `gpt32_file`, `gpt32_file_decode` | `build/verified/gpt32.wasm` holds `encode compiled.module` and decodes to `compiled.module`.  [`File.lean`](File.lean) checks both after the file is written. |
-| `embedKernel_dispatch` and the other dispatch theorems | Under bounds below `2^29` on the input sizes and the output count, with an output buffer that has the length header and room for every element, and with enough invocations to cover the output, a dispatch of each kernel leaves its Lean function of the inputs in the output buffer and is race-free. |
+| `embedKernel_dispatch` and the other dispatch theorems | Under bounds below `2^29` on the input sizes and the output count, with an output buffer that has the length header and a slot for every element, and with enough invocations to cover the output, a dispatch of each kernel leaves its Lean function of the inputs in the output buffer and is race-free. |
 | `Demos.Gpt32.generate_host` | For the kernels of a backend, under bounds on the shape and the tokens, for weights loaded from the files and a prompt of fewer than 1,024 tokens, the commands of `setupItems`, the steps of the prompt, and one more step run without error and race-free, and leave the scores of `step32` for the last token in the output buffers. |
 | `Demos.Gpt32.Verified.generate_host` | `Demos.Gpt32.generate_host` for `backend`, whose kernels are those of the verified compilation. |
 
@@ -44,7 +44,7 @@ the translation accepts and the conditions of its dispatch theorem.
 each host call with the call's dispatch theorem.  It composes those theorems with
 [`Exec.lean`](Exec.lean), which gives meaning to the typed items of the host program and to their
 host commands and shows that a run of the items is a run of their commands, and with
-[`Compose.lean`](Compose.lean), which follows the eighteen kernel calls of a layer.
+[`Compose.lean`](Compose.lean), which proves what the eighteen kernel calls of a layer compute.
 `Demos.Gpt32.Verified.generate_host` instantiates it with `backend`, so the commands, run with the
 verified kernels, leave the bits of `step32`, the Lean step, in the score buffers, and every
 dispatch is race-free.
@@ -56,7 +56,7 @@ verified kernels and `gpt32.wasm` gave equal scores at every step of 16 greedy t
 description of the pages](../../tests/web/README.md) records.  [The design
 document](../../docs/design.md#gpu) states what the device model adds to the trusted base, and [the
 description of the pages](../../tests/web/README.md) states what is proved about the browser page.
-The host processes, file I/O, and browser remain outside the proofs.
+The proofs do not cover the host processes, file I/O, and browser.
 
 ## Building, running, and testing
 

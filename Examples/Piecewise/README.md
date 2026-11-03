@@ -4,7 +4,7 @@
 
 [The program](Program.lean) is a piecewise function of `x` with the bounds `lo` and `hi`: 0 when `x
 == lo`, `-(lo - x) * 0.5` below `lo`, `|hi - x| + 1.5` at or above `hi`, and `max lo (min x hi)` in
-between.  It exists to exercise the operations it contains: float equality, `<`, `≤`, nested `if`,
+between.  It exists to test the operations it contains: float equality, `<`, `≤`, nested `if`,
 negation, absolute value, `min`, and `max`.  `verified_compile compiled := [piecewise]` in [the
 verified compilation](Compiled.lean) compiles the definition into the 1,567-byte `piecewise.wasm` of
 [the module registry](../../tests/verified/modules.txt).

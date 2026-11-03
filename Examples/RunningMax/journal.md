@@ -2,7 +2,7 @@
 
 This is the first run of the verified-request skill.  The request asks for a new list whose entry
 at each position is the largest value seen up to and including that position, and the skill's
-types read the list as an array of unsigned 64-bit words.
+types represent the list as an array of unsigned 64-bit words.
 
 ## Specification
 
@@ -12,8 +12,8 @@ starts at 0, which is the least word, so it gives the largest entry of every non
 the result has the input's length.  The request leaves three cases open, which the specification's
 comment records: the numbers are unsigned words compared as unsigned, the empty input gives the
 empty result, and the input may have any length.  The verified compiler's call theorem takes a
-bound function, so the request needs no limit on the length, unlike the examples that cap their
-inputs at eight words.
+bound function, so the request needs no limit on the length, unlike the examples that limit their
+inputs to eight words.
 
 The samples cover the empty array, one word of 0, 7, and `2^64 − 1`, increasing, decreasing, mixed,
 and equal entries, a tie with the largest so far, the largest word first and last, a pair on each
@@ -29,7 +29,7 @@ file, since the 5,000-entry sample made it 41 kilobytes.  Neither found a disagr
 named lengths with remainders 6 and 7 after division by 8 and lengths of 4,096 or more, and four
 samples were added for them.  The second named three further classes: long inputs with large
 words, a long input whose later entries can change the output, and arrays of more than a page.
-Step 6 of the skill then asked for a sample for each uncovered class and a new review after any
+Step 6 of the skill then required a sample for each uncovered class and a new review after any
 change, while step 7 ended the stage at a review that found no disagreement.  The run followed step 7 after
 the second review, as the tree-lookup run of the other skill did, and recorded the classes in the
 review.
@@ -47,7 +47,7 @@ of an unpaid and a paid sum of `Verified.foldCost` charges.
 `compute_eq` needs no premise, since the program converts no size to a word.  Its proof rewrites
 the array fold as a list fold with `← Array.foldl_toList` and proves `foldl_largest` by induction
 on the list, generalizing the state.  `List.range_succ_eq_map`, `List.take_succ_cons`, and
-`List.map_map` close the step with `simp`, and `Array.toList_inj` turns the list equation into the
+`List.map_map` close the step with `simp`, and `Array.toList_inj` converts the list equation into the
 array equation.  No VKB entry then named `Array.foldl_toList` or this induction, and the
 `loop-combinators` entry covered `LeanExe.loop`, `LeanExe.build`, and `LeanExe.repeatWhile`.
 
@@ -61,7 +61,7 @@ imports it itself rather than relying on the run's imports.
 The `verified-bound-closed-form` entry then gave the block charges and the loop lemmas but no lemma
 for `Verified.foldCost`.  `fold_charge_const` proves by induction on `Nat.fold_succ` that a constant
 charge of `c` per step adds `c n`, and `foldCost_const` applies it to a fold.  `compute_bound`
-takes the paid side of the bound with `min_le_right` and closes it with `Verified.blockCost_eq`,
+takes the paid operand of the bound's minimum with `min_le_right` and closes it with `Verified.blockCost_eq`,
 `Verified.paidGrowCost_eq`, `Verified.creditCost`, and `omega`, for `80 n + 72` bytes.  Every proof
 passed its first build.
 
@@ -76,11 +76,11 @@ passed its first build.
 
 ## Proposals for the VKB
 
-The proposals below follow the template.  The VKB has since admitted all three: the extension of
+The proposals below follow the template.  The VKB now includes all three: the extension of
 `verified-bound-closed-form`, the entry `array-fold-list-induction`, and the change to
 `spec-call-theorem`.
 
-An extension of `verified-bound-closed-form`, with `goals` `["Verified.foldCost xs init step (fun _ _ _ => c)", "min unpaid paid of a fold whose state pushes onto an array"]`, `declarations` `["Examples.RunningMax.foldCost_const", "Examples.RunningMax.fold_charge_const"]`, and `examples` `["Examples.RunningMax.compute_bound"]`.  The README would say that a fold's bound is `Verified.foldCost` of each step's charge, that a fold whose state is a pair with a pushed array has the bound `min unpaid paid` with the paid side `blockCost 0 + creditCost 0 + foldCost … (paidGrowCost 1)`, and that `foldCost_const` sums a constant charge.  Moving `foldCost_const` to `Verified/Reflect/FoldLemmas.lean` beside `foldCost_zero` is a separate code change.
+An extension of `verified-bound-closed-form`, with `goals` `["Verified.foldCost xs init step (fun _ _ _ => c)", "min unpaid paid of a fold whose state pushes onto an array"]`, `declarations` `["Examples.RunningMax.foldCost_const", "Examples.RunningMax.fold_charge_const"]`, and `examples` `["Examples.RunningMax.compute_bound"]`.  The README would say that a fold's bound is `Verified.foldCost` of each step's charge, that a fold whose state is a pair with a pushed array has the bound `min unpaid paid` with the paid operand `blockCost 0 + creditCost 0 + foldCost … (paidGrowCost 1)`, and that `foldCost_const` sums a constant charge.  Moving `foldCost_const` to `Verified/Reflect/FoldLemmas.lean` beside `foldCost_zero` is a separate code change.
 
 A new entry `array-fold-list-induction`, with `goals` `["(xs.foldl f init).2 = …", "Array.foldl f init xs = …"]`, `modules` `["Examples.RunningMax.Proof"]`, `declarations` `["Array.foldl_toList", "Array.toList_inj", "List.range_succ_eq_map", "List.take_succ_cons"]`, `examples` `["Examples.RunningMax.foldl_largest", "Examples.RunningMax.compute_eq"]`, and `sources` naming this journal.  The README would say to rewrite the array fold as a list fold with `← Array.foldl_toList`, to prove the list fold's result for every initial state by induction on the list, and to compare arrays through `Array.toList_inj`.
 

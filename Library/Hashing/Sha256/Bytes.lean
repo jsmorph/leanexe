@@ -68,7 +68,7 @@ theorem sha224_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit)
 
 /-- The module's bytes decode to the module, whose exports `sha256` and `sha224` are functions 11
 and 12, whose start store is ready, and whose two entries compute their digests from every ready
-store, as the two call theorems state. -/
+store, as the call theorems state. -/
 theorem sha256_module :
     (∃ bytes, Wasm.Encoding.encode compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok compiled.module) ∧

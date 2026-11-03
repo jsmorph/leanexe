@@ -1,7 +1,7 @@
 import Mathlib.Data.Real.Basic
 import Mathlib.Tactic.Ring
 
-/-! The error of a product when both factors carry errors. -/
+/-! The error of a product when both factors have errors. -/
 
 namespace LeanExe.ProofKit.RealProductError
 

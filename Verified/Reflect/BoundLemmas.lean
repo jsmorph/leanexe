@@ -8,9 +8,9 @@ by `rfl`.  The lemmas hold for every program, mode list, and live set, so the ke
 once, when this file builds.
 
 Each conclusion is built from the lemma's arguments without applying an argument or building a
-lambda, and a binder's body enters through its equation at the value.  The type that the kernel
+lambda, and a lemma takes a binder's body as its equation at the value.  The type that the kernel
 infers for an application of a lemma, which instantiates without beta reduction, is then the type
-that `inferType` computes, so the reflector joins two equations where their terms are identical.
+that `inferType` computes, so the reflector combines two equations where their terms are identical.
 The kernel compares two closed `Nat` sums that differ by evaluating both, since it reduces the
 operands of `Nat.add` to numerals before it compares arguments, and a sum can hold a loop's
 cost. -/

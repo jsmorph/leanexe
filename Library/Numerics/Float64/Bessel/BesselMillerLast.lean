@@ -2,7 +2,7 @@ import Library.Numerics.Float64.Bessel.BesselMillerBack
 
 /-!
 The last step of `jn`'s backward recurrence, from `i = 1` to `i = 0`, and the loop as a whole.
-`binv_iter` carries `BesselMillerBack.BInv` from the start to `i = 1`.  The last step uses
+`binv_iter` extends `BesselMillerBack.BInv` from the start to `i = 1`.  The last step uses
 `BesselMillerStep.bstep` with a bound `d` on `J₂/J₀` that the caller supplies (`last_step`):
 `25/6` always, and `21/20` when `J₁ ≤ J₀ + 2^-40`.  The result is a scale `σ` with `b` within
 `βL d n` of `σ J₀`, `a` within `βB (n - 2) 1 + 2 u` of `σ J₁`, and `t` within

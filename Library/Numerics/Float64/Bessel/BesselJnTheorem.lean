@@ -10,10 +10,10 @@ import Library.Numerics.Float64.Bessel.BesselSpecial
 **The accuracy theorem for `Bessel.jn`** (`jn_accuracy`): for every finite `x` and every order
 `N`, C's `int` in the low 32 bits of the word (`orderZ`), the result lies within
 `(23 + 12 |N|) · 2^-53 · M_|N|(|x|)` of `J_N(x)`, where `M_n = √(J_n² + Y_n²)`, except on the range
-`2 ≤ |x| < 2^302` with `|x| < 2 |N|`, which the decision of 2026-10-12 leaves open.  `order_spec`
+`2 ≤ |x| < 2^302` with `|x| < 2 |N|`, which the theorem leaves open.  `order_spec`
 reads the code's `order` as `|N|` and the sign of `N`, and `jn_eq` writes `Bessel.jn` as the
 reflection of the order and the argument followed by `j0`, `j1`, or the path `jnAbs` at `|x|`.
-`jnAbs_bound` joins the paths of `|N| ≥ 2`: 0 at the zeros, Hankel's term from `2^302`
+`jnAbs_bound` combines the paths of `|N| ≥ 2`: 0 at the zeros, Hankel's term from `2^302`
 (`BesselOrderHuge.jn_hankel`), the forward recurrence for `2 |N| ≤ |x|`
 (`BesselOrderLoops.jn_forward`), the series term below `2^-30`, where `M_n ≥ 2^59`
 (`BesselJnTiny`), and Miller's method from `2^-30` to 2, where `M_n ≥ 1/8`

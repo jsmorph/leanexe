@@ -3,7 +3,7 @@ import Verified.Reflect.Command
 import Verified.Congr
 
 /-! The verified compiler's module of heapsort.  The compiler translates the tail recursion of
-`siftDown` into a loop, and `heapsort` consumes its array, which the caller hands over as
+`siftDown` into a loop, and `heapsort` consumes its array, which the caller moves as
 `Moved (Array UInt64)`: every update is the array's last use, so the module sorts the array in its
 own block.  `heapsort_implements` composes the generated `compiled.heapsort.trapFree` with
 `heapsort_eq`. -/
@@ -18,7 +18,7 @@ theorem heapsort_export :
     ({ name := "heapsort", funcIdx := 5 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 5, the export `heapsort`, called with an array that the caller hands over, from a heap
+/-- Function 5, the export `heapsort`, called with an array that the caller moves, from a heap
 with the allocator invariant, a memory cap of at most 65,535 pages, and room for
 `compiled.heapsort.bound`, returns without a trap the owned array `expected xs`, the elements in
 nondecreasing order, and raises `top` by at most the bound. -/

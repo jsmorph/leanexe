@@ -5,7 +5,7 @@ import Demos.StreamFold.Observed
 import Verified.Wasi.ProcessEntryProofs
 
 /-! The correctness of the compiled process.  Under StreamFold's host assumptions, a Talos host
-that meets the three import specifications, a host that accepts the exit statuses 0 and 28, and
+that satisfies the three import specifications, a host that accepts the exit statuses 0 and 28, and
 the requirements' bound of fewer than 2^64 - 1 records, `initial_terminates` states that the
 module's `_start` exits after writing exactly the bytes of `expectedOutput` of the input, with the
 status `expectedStatus` of it.  The memory condition is a closed inequality, `initial_room`, with
@@ -118,7 +118,7 @@ def CommandResult {World : Type} (host : Host World) (rep : StreamPosition → W
           (observedHost host).exitTrap before (expectedStatus input) message final)
 
 /-- Every terminal execution of `begin` and the process followed by the exit of its status writes
-the bytes of `expectedOutput` and exits with `expectedStatus`, or meets a rejected exit of it. -/
+the bytes of `expectedOutput` and exits with `expectedStatus`, or ends in a rejected exit of it. -/
 theorem command_output {World : Type} {host : Host World}
     {rep : StreamPosition → World → Prop} (streams : StreamHost host rep)
     {position : StreamPosition} {world final : Observed World} {trace : List Event}
@@ -256,7 +256,7 @@ theorem initial_top : (initialStaticHeap io.literalPool).top.toNat = 4096 := by
   decide +kernel
 
 /-- The memory that a run needs fits in 65,535 pages: two copies of a state and a step's charge
-with `run`'s bound on 74 records from any book of the program's sizes come to 3,456,119,748 bytes
+with `run`'s bound on 74 records from any book of the program's sizes total 3,456,119,748 bytes
 above the literal pool, which ends at 4,096 bytes, and the sum lies below the 4,294,901,760 bytes
 of 65,535 pages. -/
 theorem initial_room :
@@ -264,7 +264,7 @@ theorem initial_room :
   decide
 
 /-- For every input of fewer than 2^64 - 1 records, under StreamFold's host assumptions, a Talos
-host that meets the import specifications, and a host that accepts the exit statuses 0 and 28,
+host that satisfies the import specifications, and a host that accepts the exit statuses 0 and 28,
 the compiled command from its initial store exits after writing exactly the little-endian bytes of
 the event words of `Spec.run` from the empty book on the whole words of the input, with status 0
 when the input fills whole words and 28 otherwise. -/

@@ -25,7 +25,7 @@ function is function 2.
 | `scale_file`, `scale_file_decode` | `build/verified/scale.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
 Without `--cases`, [the verified driver](../../tests/verified/run.sh) checks the file module after
-it writes `build/verified/scale.wasm`, and it requires the axiom reports of both file theorems to
+it writes `build/verified/scale.wasm`, and it requires the axiom reports of the file theorems to
 name only `propext`, `Classical.choice`, and `Quot.sound`.  [The verified compiler
 manual](../../docs/verified-manual.md#the-implements-family) defines `ImplementsA`, which
 `compiled.scale.implements` states.  [Its section on generated

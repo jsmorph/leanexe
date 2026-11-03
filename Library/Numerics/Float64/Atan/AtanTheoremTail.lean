@@ -5,7 +5,7 @@ The errors of the two ends of `Atan.atan` as explicit functions of the bounds of
 `poly_result` covers `x - x * atanS x` at a scale `s`, where `|x| ≤ s ≤ T0 ≤ 7/16`, and
 `tail_result` covers `hi - ((t * atanS t - lo) - t)` for a reduced argument with `|t| ≤ T0`.
 The exact values are `x - x · polyS x` and `hi + lo + (t - t · polyS t)`, which
-`AtanTheoremPoly.kernel_link` turns into the kernel polynomial.
+`AtanTheoremPoly.kernel_link` converts into the kernel polynomial.
 -/
 
 namespace Library.Numerics.Float64.Atan.AtanTheoremTail

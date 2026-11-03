@@ -14,7 +14,7 @@ of `J₁` and `Y₁` and `log v ≥ 1 - 1/v` for `v = x/2`; with the cross produ
 `|Y₁| ≤ |Y₂|`, and the recurrence then makes `|Y_k|` nondecreasing from `k = 1` (`g_mono`).  The
 products `s_j = (π x/2) J_(j+1) |Y_j|` satisfy `s_j ≤ ρ (1 + s_(j-1))` for `J_(j+1) ≤ ρ J_(j-1)`,
 which gives `s₁ ≤ 5/6`, `s₂ ≤ 11/9`, and `s_j ≤ 4/9` from `j = 3` (`s_bounds`).  `small_error`
-joins these: floats that start within `11 u M₀` and `12 u M₁` of `Y₀` and `Y₁` and whose steps
+combines these: floats that start within `11 u M₀` and `12 u M₁` of `Y₀` and `Y₁` and whose steps
 each add at most `u (3.01 λ_(k+1) |f_(k+1)| + |f_k|) + 2^-1070` stay within `(250 + 12 n) u |Y_n|`
 of `Y_n` for `2 ≤ n ≤ N ≤ 2^31`.
 -/

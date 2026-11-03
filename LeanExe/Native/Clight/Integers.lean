@@ -1,7 +1,7 @@
 /-
 Derived from CompCert 3.18, the file `lib/Integers.v`.  CompCert is Copyright Institut National de
 Recherche en Informatique et en Automatique (INRIA) and AbsInt Angewandte Informatik GmbH, and its
-source files carry INRIA's copyright.
+source files state INRIA's copyright.
 
 This file is distributed under the GNU Lesser General Public License, version 2.1 or (at your
 option) any later version, one of the two licenses CompCert offers for its source files.  The
@@ -14,7 +14,7 @@ Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the ch
 The machine integers of CompCert 3.18's `lib/Integers.v`: `Int` (32 bits), `Int64`, `Ptrofs`
 (64 bits on both targets), and `Byte`.  A value is a Lean fixed-width word, and each operation is
 defined as `Integers.v` defines it, through `unsigned`, `signed`, and `repr` on Lean's `Int`,
-which plays the part of Coq's `Z`: `Z.quot` and `Z.rem` are `Int.tdiv` and `Int.tmod`, and `Z.div`
+which replaces Coq's `Z`: `Z.quot` and `Z.rem` are `Int.tdiv` and `Int.tmod`, and `Z.div`
 and `Z.modulo` with a positive divisor are `/` and `%`.  The shifts state the result for an
 amount of at least the word size outright, which agrees with `Z.shiftl` and `Z.shiftr` followed
 by `repr` and avoids computing a power of two that large.  Only the operations that the

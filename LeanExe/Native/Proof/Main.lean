@@ -638,7 +638,7 @@ structure PrefixOk (pre : List (ident × globdef (fundef function) type)) : Prop
   nodup : (pre.map (·.1)).Nodup
   ids : ∀ x : Nat, x ∈ pre.map (·.1) → x = 24 ∨ (x % 4 = 1 ∧ x ≠ 1)
 
-/-- The call of the entry `fd` on `args` in every environment that meets the hypotheses of
+/-- The call of the entry `fd` on `args` in every environment that satisfies the hypotheses of
 `NativeA`, from every memory related to `nativeStore` with `lx_status` 0: it returns with
 `lx_status` 0 and a result that gives the bytes `bs`, or, when `aborts`, it ends with `lx_status`
 holding the code of `unreachable`. -/

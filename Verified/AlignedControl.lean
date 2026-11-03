@@ -4,7 +4,7 @@ import Verified.AlignedReaders
 The constructs that bind or choose under the flag.  `After.coerceX` is `After.coerce` with the
 copy as `CopyCodeX`: a copy leaves an aligned heap and an aligned owned value, and a value that
 needs no copy keeps its alignment.  `wpX_releaseWhere` is `wp_releaseWhere` from
-`wpX_releaseVars`, and `wpX_storeCode` carries `wp_storeCode`, whose code is free of 64-bit
+`wpX_releaseVars`, and `wpX_storeCode` transfers `wp_storeCode`, whose code is free of 64-bit
 accesses.  Each construct is its original in `ExprCorrect.lean` with these and the changes of
 `AlignedScalar.lean`.  Storing words in locals from `base` on leaves the variables, which lie
 below `base`, and so `HoldsA`, as they were (`HoldsA.agree`).

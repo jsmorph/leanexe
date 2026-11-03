@@ -7,7 +7,8 @@ import Library.Hashing.Sha2.Equiv.SHA512.Main
 `SHS.SHA512.sha512` of `Library.Hashing.Sha2.Spec` gives for the message's bits, and likewise for
 SHA-384, SHA-512/256, and SHA-512/224.  The proof shows that the program's state after each
 block is that of the copied implementation `SHS.SHA512.Impl`, so that its digest bytes are those
-of `Impl.sha512`, and then applies `SHS.Equiv.SHA512.sha512_correct` and its companions. -/
+of `Impl.sha512`, and then applies `SHS.Equiv.SHA512.sha512_correct`, `sha384_correct`,
+`sha512_256_correct`, and `sha512_224_correct`. -/
 
 namespace Library.Hashing.Sha512
 
@@ -62,7 +63,7 @@ theorem loadBlock_toVec (pre : ByteArray) (p : Nat) (hpre : pre.size = 128 * p)
   · exact key0
   all_goals exact key _ (by decide)
 
-/-- The hash value that `hashFrom` reaches from `h` is the implementation's after the blocks that
+/-- The hash value that `hashFrom` computes from `h` is the implementation's after the blocks that
 follow the prefix `pre`. -/
 theorem hashFrom_toVec (pre : ByteArray) (p : Nat) (hpre : pre.size = 128 * p) (h : Words8)
     (msg : Array UInt64) (n len : UInt64) (hlen : len.toNat = 128 * p + n.toNat)

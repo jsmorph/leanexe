@@ -242,7 +242,7 @@ theorem root_domain_dec (m : ℕ) {lo hi A B c x : ℝ} (hlo : -(m : ℝ) - 1 �
     have : max (lgamma B) (lgamma hi) < -c := max_lt fB fhi
     linarith
 
-/-- The mirror image of `root_domain_dec`: `lgamma` increases through its zero, and `lo` is a
+/-- The counterpart of `root_domain_dec`: `lgamma` increases through its zero, and `lo` is a
 regular point. -/
 theorem root_domain_inc (m : ℕ) {lo hi A B c x : ℝ} (hlo : -(m : ℝ) - 1 < lo) (hhi : hi ≤ -m)
     (hA : lo < A) (hAB : A < B) (hB : B < hi) (hc : 0 ≤ c) (fA : lgamma A < -c)

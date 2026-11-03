@@ -14,8 +14,8 @@ returns two results.
 `firstAbove_native_init` calls the loop example's `firstAbove`, which also returns two results,
 from the state that `lx_init` leaves, and finds them in the result globals.  `crc_start` relates
 the state that `lx_init` leaves in the CRC program's initial memory to the module's initial
-store, with its memory capped at `cap` pages, which meets the premises that the functions'
-theorems put on the store and the heap; the CRC tables are borrowed arrays there.  The
+store, with its memory capped at `cap` pages, which satisfies the premises that the functions'
+theorems state about the store and the heap; the CRC tables are borrowed arrays there.  The
 `*_runtime` theorems place the runtime's `alloc` and `release` in each translation, for
 `alloc_native` and `release_native`.
 -/

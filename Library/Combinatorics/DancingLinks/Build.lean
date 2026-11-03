@@ -4,7 +4,7 @@ import Library.Combinatorics.DancingLinks.Cover
 /-! Adding a node at the bottom of a column, the write of step X1 for each nonzero word.
 `append` performs the writes of the program for a new node `p` of item `c`, above every node of
 the column, and `col_append` shows that the column of `c` then holds `insert p Q`.  The writes
-touch only the words of `p`, of the header `c`, and of the column's last node, so `append_frame`
+change only the words of `p`, of the header `c`, and of the column's last node, so `append_frame`
 keeps every other column. -/
 
 namespace Library.Combinatorics.DancingLinks
@@ -142,7 +142,7 @@ theorem col_append {t : Array UInt64} {c : Nat} {Q : Finset Nat} (h : Col t c Q)
           ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ← W,
           h.up y (mem_insert_of_mem hy), prv_insert_max hA hp hy]
 
-/-- The writes of `append` touch only the words of the header, the new node, and the column's last
+/-- The writes of `append` change only the words of the header, the new node, and the column's last
 node. -/
 theorem append_frame {t : Array UInt64} {c : Nat} {Q : Finset Nat} (h : Col t c Q) {p : Nat}
     (hps : 3 * p + 2 < t.size) (k : Nat)

@@ -12,10 +12,10 @@ thresholds `2 ^ -112`, `1/4`, 3, 4, `0x1.573fae561f648p+7`, and -184, the 57 inp
 hard cases and the doubles next to them, the inputs of `WorstCases`, which give the largest known
 errors of thirteen libraries in Tables 4 to 11 of the August 2026 report by Gladman, Innocente,
 Mather, Ozaki, and Zimmermann, and the special values.  The check also calls `Library.Numerics.Float64.Tgamma.accurate`, the
-path that the fast paths fall back on, at every eighth argument from -184 to 171 above `2 ^ -112` in
-magnitude, other than the integers, and at the table's inputs, and requires the same bound of it.
-It exits with an error at the first result further than one unit from the reference.  Run with
-`lake env lean --run`. -/
+path that the fast paths use when their rounding tests fail, at every eighth argument from -184 to
+171 above `2 ^ -112` in magnitude, other than the integers, and at the table's inputs, and requires
+the same bound of it.  It exits with an error at the first result further than one unit from the
+reference.  Run with `lake env lean --run`. -/
 
 namespace TestSupport.Numerics.TgammaAccuracy
 

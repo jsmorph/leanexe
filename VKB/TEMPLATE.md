@@ -1,6 +1,6 @@
 # VKB entry template
 
-An entry is a directory `entries/NAME/`, where `NAME` is a short lowercase name with hyphens, containing `entry.json` and `README.md`.  Write the README for a prover who has the goal at hand and no other context.  Support each claim with a declaration, a file, or a journal entry that a reader can check.
+An entry is a directory `entries/NAME/`, where `NAME` is a short lowercase name with hyphens, containing `entry.json` and `README.md`.  Write the README for a prover who has the goal and no other context.  Support each claim with a declaration, a file, or a journal entry that a reader can check.
 
 ## `entry.json`
 
@@ -31,7 +31,7 @@ What fails: approaches that look right and do not work, with the reason.
 Worked example: the finished proofs that use it.
 ```
 
-Write the four parts as paragraphs without headings, merge or drop a part that has nothing to say, and write each paragraph in full sentences.
+Write the four parts as paragraphs without headings, merge or drop a part that would be empty, and write each paragraph in full sentences.
 
 ## Internal references
 

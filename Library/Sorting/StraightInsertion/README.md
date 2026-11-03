@@ -2,7 +2,7 @@
 
 ## Request and specification
 
-[The request](request.txt) asks for straight insertion of an array of words into nondecreasing order, in place, with no storage beyond the array.  [The specification](Spec.lean) states the result as `expected xs`, the array's elements in the order of Lean's `List.mergeSort` with the unsigned comparison of words.  Exactly one list holds the same words with the same repetitions in nondecreasing order, so the specification names the result and leaves the method to the program, and arrays of 0 and 1 elements are their own result.  The specification reads "in place, using no storage beyond the array" as a call that does not raise the heap's `top`, which `straightInsertion_bound` states, and whose call stack does not grow, which the generated `trapFree` theorem shows by having no call-depth premise.  That reading is weaker than the request's: a call could place its result in a free block below `top`, and no theorem states that the result occupies the input's block.  [The review](review.md) records the specification's two independent reviews and the classes of input that the cases leave out.
+[The request](request.txt) asks for straight insertion of an array of words into nondecreasing order, in place, with no storage beyond the array.  [The specification](Spec.lean) states the result as `expected xs`, the array's elements in the order of Lean's `List.mergeSort` with the unsigned comparison of words.  Exactly one list holds the same words with the same repetitions in nondecreasing order, so the specification names the result and not the method, and arrays of 0 and 1 elements are their own result.  The specification reads "in place, using no storage beyond the array" as a call that does not raise the heap's `top`, which `straightInsertion_bound` states, and whose call stack does not grow, which the generated `trapFree` theorem shows by having no call-depth premise.  That reading is weaker than the request's: a call could place its result in a free block below `top`, and no theorem states that the result occupies the input's block.  [The review](review.md) records the specification's two independent reviews and the classes of input that the cases leave out.
 
 ## The program
 
@@ -12,7 +12,7 @@ Step S4 runs once for each inversion of the input, a pair of positions whose wor
 
 ## The module sorts in place
 
-`verified_compile compiled := [shift, straightInsertion]` in [the verified compilation](Compiled.lean) compiles the program into a module whose export `straightInsertion` is function 3.  The compiler translates the tail recursion of `shift` into a loop.  The caller hands the array over as `Moved (Array UInt64)`, and every update is the array's last use, so by the compiler's [ownership rules](../../../docs/verified-manual.md#ownership) the module changes the array in its own block.
+`verified_compile compiled := [shift, straightInsertion]` in [the verified compilation](Compiled.lean) compiles the program into a module whose export `straightInsertion` is function 3.  The compiler translates the tail recursion of `shift` into a loop.  The caller moves the array to `straightInsertion` as `Moved (Array UInt64)`, and every update is the array's last use, so by the compiler's [ownership rules](../../../docs/verified-manual.md#ownership) the module changes the array in its own block.
 
 | Theorem | File | Statement |
 |---|---|---|
@@ -23,7 +23,7 @@ Step S4 runs once for each inversion of the input, a pair of positions whose wor
 | `straightInsertion_eq` | [The proof](Proof.lean) | `straightInsertion xs = expected xs` for every array with fewer than `2^64` elements. |
 | `eq_mergeSort_of_sorted_perm` | [The sorted lists](../Sorted.lean) | A list of words in nondecreasing order that is a permutation of `m` is `List.mergeSort` of `m`. |
 | `straightInsertion_export` | [The compilation](Compiled.lean) | Export `straightInsertion` of `compiled.module` is function 3. |
-| `straightInsertion_implements` | [The compilation](Compiled.lean) | Function 3, called with an array that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.straightInsertion.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
+| `straightInsertion_implements` | [The compilation](Compiled.lean) | Function 3, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.straightInsertion.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
 | `straightInsertion_bound` | [The compilation](Compiled.lean) | `compiled.straightInsertion.bound` is 0, so a call does not raise `top`. |
 | `straightInsertion_file`, `straightInsertion_file_decode` | [The file theorems](File.lean) | `build/verified/straightInsertion.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
@@ -37,7 +37,7 @@ tests/verified/run.sh --cases straightInsertion
 tests/native/verified.sh --module straightInsertion
 ```
 
-The commands build the verified compilation and its theorems and run the module's cases, with the setup of [the repository README](../../../README.md#commands).  The cases come from `insertionInputs` in [the case inputs](../../../tests/TestSupport/Modules/StraightInsertion.lean): the inputs of heapsort, arrays whose insertions move every earlier word, move one word each, or stop at an equal word, the words 0 and `2^64 - 1` side by side, 1,500 words in decreasing order, and 1,000 words in increasing order except for a 0 at the end or a `2^64 - 1` at the front.  [The verified library cases](../../../tests/TestSupport/LibraryCases.lean) print each array with `expected`.  [The verified driver](../../../tests/verified/run.sh) runs the cases in Wasmtime and checks that the module allocates nothing beyond the host's input array and keeps one block, and [the native driver](../../../tests/native/verified.sh) runs them on the module's translation to C, compiled with CompCert.
+The commands build the verified compilation and its theorems and run the module's cases, with the setup of [the repository README](../../../README.md#commands).  The cases come from `insertionInputs` in [the case inputs](../../../tests/TestSupport/Modules/StraightInsertion.lean): the inputs of heapsort, arrays whose insertions move every earlier word, move one word each, or stop at an equal word, the words 0 and `2^64 - 1` in adjacent positions, 1,500 words in decreasing order, and 1,000 words in increasing order except for a 0 at the end or a `2^64 - 1` at the front.  [The verified library cases](../../../tests/TestSupport/LibraryCases.lean) print each array with `expected`.  [The verified driver](../../../tests/verified/run.sh) runs the cases in Wasmtime and checks that the module allocates nothing beyond the host's input array and keeps one block, and [the native driver](../../../tests/native/verified.sh) runs them on the module's translation to C, compiled with CompCert.
 
 ## References
 

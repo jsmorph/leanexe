@@ -103,7 +103,7 @@ def lineOf (m : Nat) (axisY : Bool) (k : Nat) : Nat := if axisY then k % m else 
 /-- The position of the cell at index `k` on its line. -/
 def positionOf (m : Nat) (axisY : Bool) (k : Nat) : Nat := if axisY then k / m else k % m
 
-/-- The state at position `q` of line `l`, as seen along the axis. -/
+/-- The state at position `q` of line `l`, oriented to the axis. -/
 def lineState (m : Nat) (axisY : Bool) (grid : Array Cell) (l q : Nat) : Conserved :=
   oriented axisY grid[lineIndex m axisY l q]!.state
 

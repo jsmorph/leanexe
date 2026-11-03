@@ -32,7 +32,7 @@ reads or writes as an `unsigned char` of `lx_mem`: `load8U` converts the byte to
 writes the module's data segments into `lx_mem`, with a word store for each aligned word that a
 segment covers and a byte store for each other byte.
 
-This version handles the forms of milestones M2 to M6 and the byte forms: locals, globals, the
+The translator handles the forms of milestones M2 to M6 and the byte forms: locals, globals, the
 `i64` and `i32` operations of the subset, `block`, `loop`, `iff`, `br`, `br_if`, `ret`, `call`,
 `unreachable`, `load64`, `store64`, `load8U`, `store8`, `memory.size`, `memory.grow`, and the
 binary64 and binary32 forms, in functions with one result or several, which return several
@@ -516,7 +516,7 @@ def sqrt32Stmt (h n : Nat) : statement :=
       (.Sset (slotId h .f32) (.Ecast (.Etempvar (callId n) tdouble) tfloat)))
     (canonStmt32 h)
 
-/-- `nearest` of the float slot at height `h`.  The word `u` goes to the word slot at height
+/-- `nearest` of the float slot at height `h`.  The word `u` is written to the word slot at height
 `h` and its biased exponent `e` to the one above.  For `e ≥ 150` the value is integral, infinite,
 or a NaN, and stays; for `e < 126` its magnitude is below one half, and the result is a zero of
 its sign.  Otherwise, with the significand `m` and `s = 150 - e`, the quotient `q = m >> s` rises

@@ -2,9 +2,9 @@ import Demos.OrderBook.ProcessWasi
 import Verified.Wasi.ProcessCode
 
 /-! The order book's process as a WASI command module: the process entry of the compiled `begin`
-and `step`, the module, its stack check, its cost-aware calls, and its validity and encoding.  The
-state's type pairs the seven arrays of the book, its next id and count, the carry and the output,
-and the written count with the EOF flag. -/
+and `step`, the module, its stack check, its calls with costs and effects, and its validity and
+encoding.  The state's type pairs the seven arrays of the book, its next id and count, the carry and
+the output, and the written count with the EOF flag. -/
 
 namespace Demos.OrderBook.Process
 

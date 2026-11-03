@@ -1,7 +1,7 @@
 import Library.Hashing.Hmac.Bits
 import Library.Hashing.Sha256.Proof
 
-/-! HMAC-SHA-256 computes FIPS 198-1.  `implHmac256` is HMAC built on the copied byte-level
+/-! HMAC-SHA-256 computes FIPS 198-1.  `implHmac256` is HMAC computed with the copied byte-level
 implementation `SHS.SHA256.Impl.sha256`.  `implHmac256_spec` shows that its digest is the
 transcription `Spec.hmacSha256` of the key's and the message's bits, and `hmacSha256_bytes` shows
 that the digest bytes of `hmacSha256 key kn msg n` are those of `implHmac256` for the first `kn`

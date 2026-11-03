@@ -7,7 +7,7 @@ import LeanExe.ProofKit.F64RoundNearest
 `2 ^ -30 ≤ |x|`, `-0.293 ≤ x ≤ 0.41422`.  The exact value of `x - (x²/2 - P)` with the exact `s`
 is the kernel's `2 s + s R(s)`, so the error is that of `x²/2 - P` and the kernel's.  The
 difference rounds once, and `F64RoundNearest` charges no error for that rounding: negative `x` and
-`x ≤ 0.285` meet the relative criterion, and `x ≥ 0.285` gives `log (1 + x) ≥ 0.2507` and an
+`x ≤ 0.285` satisfy the relative criterion, and `x ≥ 0.285` gives `log (1 + x) ≥ 0.2507` and an
 error below one spacing of `[1/4, 1/2)`.
 -/
 

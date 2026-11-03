@@ -9,12 +9,12 @@ the kind, the element width, and the child mask.  Every live object has one owne
 so its count is 1.  Globals 0 to 3 hold the bump pointer `top`, the free-list head,
 and the allocation and free counters.
 
-`release` does not recurse.  The released object joins a pending list linked
+`release` does not recurse.  The released object is added to a pending list linked
 through its count field.  A loop takes each pending object,
 drops the references its masked slots hold, and then returns its block to the
 free list, whose link overwrites the child mask.  The free list is in address
-order: the block goes before the first free block above it and merges with the
-free blocks on either side when they touch.  `alloc` takes the first block that
+order: the block is inserted before the first free block above it and merges with the
+free blocks on either side when they are adjacent.  `alloc` takes the first block that
 fits and, when at least 56 bytes would remain, only its upper part.
 -/
 
@@ -36,7 +36,7 @@ def headerStore (ptr : Nat) (back : UInt64) (value : Program) : Program :=
 def incrementGlobal (index : Nat) : Program :=
   [.globalGet index, .constI64 1, .addI64, .globalSet index]
 
-/-- Traps unless the object at local `ptr` carries the magic number. -/
+/-- Traps unless the header of the object at local `ptr` holds the magic number. -/
 def checkMagic (ptr : Nat) : Program :=
   headerLoad ptr 48 ++ [.constI64 magic, .neI64, .iff 0 0 [.unreachable] []]
 

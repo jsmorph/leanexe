@@ -68,8 +68,8 @@ theorem power_in_window (hF : p.fallbackLow ≤ 0 ∧ 0 ≤ p.fallbackHigh)
         exact_mod_cast le_powerHigh p _ _
 
 /-- An accepted window's bounds hold at each time of the window from its snapshot to the next,
-for a trajectory that meets the window's other assumptions until that time and under the device's
-response and the gateway's rules. -/
+for a trajectory that satisfies the window's other assumptions until that time and under the
+device's response and the gateway's rules. -/
 theorem run_sound (heta : 0 < p.eta) (hF : p.fallbackLow ≤ 0 ∧ 0 ≤ p.fallbackHigh)
     (hc : Conditions p (r.snapshot j) (r.limits j)) (hb : r.Between j t)
     (ht : t ∈ window p (r.snapshot j)) (hm : x.ModelUntil p (r.snapshot j) t)
@@ -101,7 +101,7 @@ theorem run_covered (hr : r.Spaced p) (h0 : 0 < r.length) (ht0 : r.time 0 ≤ t)
 
 /-- When accepted snapshots lie at most a window apart, every time from the first snapshot to the
 end of the last window lies in the window of the latest accepted snapshot at or before it, whose
-bounds hold at that time for a trajectory that meets that window's other assumptions, the
+bounds hold at that time for a trajectory that satisfies that window's other assumptions, the
 device's response, and the gateway's rules until that time. -/
 theorem operation_sound (heta : 0 < p.eta) (hF : p.fallbackLow ≤ 0 ∧ 0 ≤ p.fallbackHigh)
     (hc : ∀ j < r.length, Conditions p (r.snapshot j) (r.limits j)) (hr : r.Spaced p)
@@ -113,7 +113,7 @@ theorem operation_sound (heta : 0 < p.eta) (hF : p.fallbackLow ≤ 0 ∧ 0 ≤ p
   exact ⟨j, hj, hb, hw, fun hm ho => run_sound heta hF (hc j hj) hb hw hm ho⟩
 
 /-- For a window with ordered intervals and a nonempty interval of the state in force, some
-trajectory and states applied meet the window's other assumptions, the device's response, and the
+trajectory and states applied satisfy the window's other assumptions, the device's response, and the
 gateway's rules until every time, so `run_sound` and `operation_sound` are not vacuous.  The
 witness holds battery power at the lower end of the state in force, both efficiencies at 1, and
 the loss at 0, with stored energy starting at the lower end of its interval and changing at the

@@ -6,12 +6,12 @@ tests produce: globals of scalar or array type, functions whose parameters and t
 scalars or pointers, and the statements and expressions of `Clight.lean` other than `Sswitch`,
 `Slabel`, `Sgoto`, `Efield`, `Esizeof`, and `Ealignof`.  `Sloop s1 s2` prints only when `s2` is
 `Sskip`, as `while (c)` when `s1` begins with `if (c) ; else break;` and as `for (;;)`
-otherwise.  Every subexpression is parenthesized, integer constants carry the suffix of their
+otherwise.  Every subexpression is parenthesized, integer constants print with the suffix of their
 type, and floating-point constants print as hexadecimal literals, which C reads exactly; a NaN
 or infinite constant has no literal and is an error.  The printer is not verified: `clightgen`
 reads its output back for comparison.
 
-The printer writes the forms that `clightgen` produces so that they come back unchanged.  A
+The printer writes the forms that `clightgen` produces so that they parse back unchanged.  A
 sequence nested as the first part of a sequence prints as a block, since C's blocks nest to the
 right.  `Sloop (Ssequence Sskip s) Sskip` prints as `for (;;) { s }`, from which `clightgen`
 restores the `Sskip`.  A call through a temporary `t` that `isCall` accepts, `Scall (some t) f
@@ -146,8 +146,8 @@ def loadPair? : statement → Option (ident × expr)
       if isCall t && t == t' then some (x, l) else none
   | _ => none
 
-/-- The C text of a statement.  It is `partial`: its recursion is structural, but the matches
-that recognize `clightgen`'s forms hide that from Lean's checker. -/
+/-- The C text of a statement.  It is `partial`: its recursion is structural, but Lean's checker
+does not recognize that through the matches that recognize `clightgen`'s forms. -/
 partial def cstmt (depth : Nat) : statement → Except String String
   | .Sskip => pure s!"{indent depth};\n"
   | .Sassign a1 a2 => do

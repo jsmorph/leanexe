@@ -1,7 +1,7 @@
 import Verified.Reflect.Command
 import Library.Random.Lcg.Jump
 
-/-! The thirty-second program of the verified compiler: the linear congruential generator of
+/-! A program of the verified compiler: the linear congruential generator of
 `Library/Random/Lcg/Program.lean`, compiled unchanged.  None of its functions allocates, so the compiler's
 theorem states that the module computes each of them without a trap.  `lcg_advance` adds the
 theorem of `Library/Random/Lcg/Period.lean` that from every word each word occurs at exactly one count,

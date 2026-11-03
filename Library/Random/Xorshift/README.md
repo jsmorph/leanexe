@@ -15,7 +15,7 @@ verified compiler's module of `step`, `advance`, `applyCols`, `square`, `jumpPas
 ## Bijection, period, jump-ahead, and memory bound
 
 Each of the three xorshifts distributes over xor and is injective, since `d = d <<< a` or
-`d = d >>> a` with `a > 0` forces every bit of `d` to 0, by induction on the bit position.  The step
+`d = d >>> a` with `a > 0` implies that every bit of `d` is 0, by induction on the bit position.  The step
 is then a bijection that maps 0 to 0, so a nonzero state never becomes 0.  These proofs work with
 the bit vectors of the words.
 
@@ -36,7 +36,7 @@ columns computes `g`, and `square` of its columns gives those of `g ∘ g`.  Aft
 `jump`'s state holds `step^[n % 2^k] x` and the columns of `step^[2^k]`.  The code releases each
 pass's old columns.  The verified compiler's bound on the growth of `top` charges 568 bytes for each of the
 65 blocks that `jump` builds, the 64 words, the length word, and the 48 bytes of a block's header,
-and it ignores the reuse of freed blocks.  The count of the top bits over a period follows from the
+and it assumes that no freed block is reused.  The count of the top bits over a period follows from the
 bijection of the counts below `2^64 - 1` onto the nonzero words.
 
 | Theorem | Statement |

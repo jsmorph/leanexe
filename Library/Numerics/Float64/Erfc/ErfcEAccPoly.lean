@@ -9,7 +9,7 @@ from the table `E2`: three steps of Horner's rule with `fma` in `yh`, then `Erfc
 `Erfc.dMul` and `fast_two_sum` with the single coefficients, and eight with the double-double
 coefficients.  `eaccB` computes the bounds of the stages for the coefficients `q`, `|Y| ≤ MU`, and
 `|yl| ≤ LU`, and `eacc_core_pr` bounds the distance of the computed double-double from `P (Y)` when
-`EAccHyp` holds.  `gen/eaccgen.py` in the track's scratch directory wrote the bounds.  The proof
+`EAccHyp` holds.  The proof
 writes `eaccCore` as the pieces `pA` and `pB` and the steps `bodyC` and `bodyD` of its loops
 (`eaccCore_eq`, `loopC_eq`, `loopD_eq`) and generalizes the result of each piece once its stage
 lemma applies, so that no stage unfolds the whole computation.

@@ -4,7 +4,7 @@ import Library.Numerics.Float64.Erf.ErfNegative
 One step for `Erf.erfWith Exp.expTable x` for every finite `x`.  For a clear sign bit it is
 `ErfPositive.erf_pos`.  For a set sign bit, `erf_neg_bits` shows that the result is the negation of
 the result at `-x`, branch by branch, with the lemmas of `ErfNegative`, and `erf (-x) = -erf x`
-with `F64SignedRounding.within_negate` carries the step.
+with `F64SignedRounding.within_negate` transfers the step.
 -/
 
 namespace Library.Numerics.Float64.Erf.ErfOdd

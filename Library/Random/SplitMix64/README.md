@@ -15,7 +15,7 @@ compiles both definitions into a 1,498-byte module.  `splitMix` returns a pair, 
 function returns as two WebAssembly results.  Both functions take and return scalars and allocate
 nothing, so the generated `compiled.splitMix.pure` and `compiled.unitFloat.pure` state that
 functions 2 and 3 return their Lean results from every store without a trap and leave the store
-unchanged.  `prng_module` combines them with the module's bytes and the two exports.
+unchanged.  `prng_module` combines them with the module's bytes and its exports.
 
 | Theorem | Statement |
 |---------|-----------|

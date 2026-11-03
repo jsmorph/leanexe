@@ -48,8 +48,8 @@ theorem loop_set {α : Type} (k : UInt64) (out : Array α) (f : UInt64 → α)
     rw [he m (by rw [hs] at h1; exact h1) h1]
     simp [LeanExe.build]
 
-/-- A `LeanExe.repeatWhile` maps under `π` onto a second one when `π` carries the condition and
-the step at every state of an invariant `P` that the step keeps. -/
+/-- A `LeanExe.repeatWhile` maps under `π` onto a second one when `π` commutes with the condition
+and the step at every state of an invariant `P` that the step keeps. -/
 theorem repeatWhile_map {α β : Type} (π : α → β) (P : α → Prop) {cond : α → Bool}
     {step : α → α} {cond' : β → Bool} {step' : β → β} (fuel : UInt64) (init : α) (h0 : P init)
     (hcond : ∀ s, P s → cond' (π s) = cond s)

@@ -1,6 +1,6 @@
 # The arcsine and arccosine
 
-[The implementation](Program.lean) exports `asin` and `acos`, ports of fdlibm's `e_asin.c` and `e_acos.c` as FreeBSD's msun has them [1].  The decided bound is one representable step from the nearest-even rounding of `arcsin x` and of `arccos x`, unchanged by the review of the worst inputs of Zimmermann's report ([the journal](../../../../devnotes.md#2026-10-11-zimmermanns-inputs-in-the-accuracy-checks)).  The theorems prove the bound for every finite `x` with `|x| ≤ 1` and the exceptional values as words, and `AsinBytes.asin_module_accuracy` carries both functions to the decoded WebAssembly module, with `AsinFile.asin_file` connecting that module to `build/verified/asin.wasm`.  No accepted theorem depends on an axiom other than `propext`, `Classical.choice`, and `Quot.sound`.
+[The implementation](Program.lean) exports `asin` and `acos`, ports of fdlibm's `e_asin.c` and `e_acos.c` as FreeBSD's msun has them [1].  The decided bound is one representable step from the nearest-even rounding of `arcsin x` and of `arccos x`.  The theorems prove the bound for every finite `x` with `|x| ≤ 1` and the exceptional values as words, and `AsinBytes.asin_module_accuracy` transfers the results of both functions to the decoded WebAssembly module, with `AsinFile.asin_file` stating that `build/verified/asin.wasm` contains the encoding of that module.  No accepted theorem depends on an axiom other than `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Specification
 
@@ -19,9 +19,9 @@ IEEE 754-2019 recommends both operations in clause 9.2, where a conforming imple
 
 ## Algorithm
 
-Both functions use one rational function, `R(t) = p(t)/q(t)` with `p(t) = t (pS0 + pS1 t + ⋯ + pS5 t⁵)` and `q(t) = 1 + qS1 t + ⋯ + qS4 t⁴`, which approximates `(arcsin √t - √t)/√t` on `0 ≤ t ≤ 1/4`.  Below `1/2` in magnitude, `asin x = x + x R(x²)` and `acos x = π/2 - (x + x R(x²))`, the latter computed as `pio2_hi - (x - (pio2_lo - x R(x²)))` so that `π/2` enters in two parts.  The series that `R` approximates is DLMF 4.24.1 [3].  Below `2^-26` `asin` returns `x`, and for `|x| < (1 + 2^-20) · 2^-57`, where the high word is at most `0x3c600000` (`AcosTheorem.ix_tiny`), `acos` returns `pio2_hi + pio2_lo`.
+Both functions use one rational function, `R(t) = p(t)/q(t)` with `p(t) = t (pS0 + pS1 t + ⋯ + pS5 t⁵)` and `q(t) = 1 + qS1 t + ⋯ + qS4 t⁴`, which approximates `(arcsin √t - √t)/√t` on `0 ≤ t ≤ 1/4`.  Below `1/2` in magnitude, `asin x = x + x R(x²)` and `acos x = π/2 - (x + x R(x²))`, the latter computed as `pio2_hi - (x - (pio2_lo - x R(x²)))` so that the computation uses `π/2` in two parts.  The series that `R` approximates is DLMF 4.24.1 [3].  Below `2^-26` `asin` returns `x`, and for `|x| < (1 + 2^-20) · 2^-57`, where the high word is at most `0x3c600000` (`AcosTheorem.ix_tiny`), `acos` returns `pio2_hi + pio2_lo`.
 
-From `1/2` on, the half-angle identities `arcsin |x| = π/2 - 2 arcsin √z` and `arccos x = 2 arcsin √z`, with `z = (1 - |x|)/2 ≤ 1/4`, and `arccos x = π - 2 arcsin √z` with `z = (1 + x)/2` for negative `x`, bring the argument of `R` back into its range.  The argument `z` is exact: `1 - |x|` by Sterbenz's lemma, and the halving because `1 - |x|` lies on the grid of `2^-53`.  With `s = √z`, `arcsin √z ≈ s + s R(z)`.
+From `1/2` on, the half-angle identities `arcsin |x| = π/2 - 2 arcsin √z` and `arccos x = 2 arcsin √z`, with `z = (1 - |x|)/2 ≤ 1/4`, and `arccos x = π - 2 arcsin √z` with `z = (1 + x)/2` for negative `x`, reduce the argument of `R` to its range.  The argument `z` is exact: `1 - |x|` by Sterbenz's lemma, and the halving because `1 - |x|` lies on the grid of `2^-53`.  With `s = √z`, `arcsin √z ≈ s + s R(z)`.
 
 | Function and range | Result |
 |---|---|
@@ -30,21 +30,21 @@ From `1/2` on, the half-angle identities `arcsin |x| = π/2 - 2 arcsin √z` and
 | `acos`, `-1 < x ≤ -1/2` | `π - 2 (s + (r s - pio2_lo))` |
 | `acos`, `1/2 ≤ x < 1` | `2 (w + (r s + c))` with `w` and `c` as for `asin` |
 
-The split `s = w + c` in the middle range of `asin` and the positive range of `acos` carries the bits of `√z` below the last place of `s`, which the subtraction from `π/4` in `asin` and the small results of `acos` near 1 would otherwise lose.  `w` has at most 21 significant bits, so `w²` is exact (`AsinTheoremSupport.trunc_facts`), and `w + c` lies within `2^-70` of `√z`, as the docstrings of `AsinTheoremMid` and `AcosTheoremPos` state.  `r = R(z)` is the same computation in every branch.
+The split `s = w + c` in the middle range of `asin` and the positive range of `acos` keeps the bits of `√z` below the last place of `s`, which the subtraction from `π/4` in `asin` and the small results of `acos` near 1 would otherwise lose.  `w` has at most 21 significant bits, so `w²` is exact (`AsinTheoremSupport.trunc_facts`), and `w + c` lies within `2^-70` of `√z`, as the docstrings of `AsinTheoremMid` and `AcosTheoremPos` state.  `r = R(z)` is the same computation in every branch.
 
 ## Implementation
 
 The sources are `lib/msun/src/e_asin.c` and `lib/msun/src/e_acos.c` of FreeBSD [1], each `Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.` with the notice "Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved."  fdlibm is Sun's "Freely Distributable LIBM" [2].  The module docstring of [the implementation](Program.lean) quotes the notice verbatim, as the notice requires.
 
-The port follows the dialect of the verified compiler as [the exponential document](../Exp/README.md#implementation) describes.  `verified_compile compiled := [asinRatio, asin, acos]` generates a module whose functions are `alloc` (0), `release` (1), `asinRatio` (2), `asin` (3), and `acos` (4).  Every named constant of the C code is `Float.ofBits` of its bit pattern, and the module reads no table.
+The port is written in the dialect of the verified compiler as [the exponential document](../Exp/README.md#implementation) describes.  `verified_compile compiled := [asinRatio, asin, acos]` generates a module whose functions are `alloc` (0), `release` (1), `asinRatio` (2), `asin` (3), and `acos` (4).  Every named constant of the C code is `Float.ofBits` of its bit pattern, and the module reads no table.
 
 | C code | Port | Reason |
 |---|---|---|
-| `p`, `q`, and `p/q` written out in each branch | `asinRatio t`, with the same operations in the same order | One function serves every branch. |
+| `p`, `q`, and `p/q` written out in each branch | `asinRatio t`, with the same operations in the same order | Every branch calls one function. |
 | `SET_LOW_WORD (w, 0)` | `Float.ofBits (s.toBits &&& 0xFFFFFFFF00000000)` | The dialect has word operations and no word macros. |
-| `huge + x > one` | kept as a test | It serves only to raise inexact, and it holds for every finite `x` with `\|x\| < 1` (`AtanTheorem.huge_gt`), so it changes no result. |
+| `huge + x > one` | kept as a test | Its only purpose is to raise inexact, and it holds for every finite `x` with `\|x\| < 1` (`AtanTheorem.huge_gt`), so it changes no result. |
 | Signed `int32_t` high word `hx`, tested with `hx > 0` | `UInt64` word, its sign the top bit | The dialect has no signed integers, and `hx = 0` cannot occur on the paths that test it. |
-| `pio2_lo` volatile in `e_acos.c` | its value | The volatile access serves only to prevent constant folding. |
+| `pio2_lo` volatile in `e_acos.c` | its value | The only purpose of the volatile access is to prevent constant folding. |
 
 | Constant | Bits | Constant | Bits |
 |---|---|---|---|
@@ -57,7 +57,7 @@ The port follows the dialect of the verified compiler as [the exponential docume
 | `pio4_hi` | `0x3FE921FB54442D18` | `pi` | `0x400921FB54442D18` |
 | `huge` | `0x7E37E43C8800759C` (`1.0e300`) | | |
 
-Each file prints the bits of 14 constants beside their decimal values, and each decimal value rounds to its printed word ([the journal's audit of the ports](../../../../devnotes.md#2026-10-10-ports-of-log1p-atan-atan2-asin-acos-and-tan)).  Each `Float.ofBits` word of [the implementation](Program.lean) equals the word that the pinned `e_asin.c` or `e_acos.c` prints for the same constant, and `huge`, which the source gives without bits, is the nearest double to `1.0e300`.  The kernel bound restates `pS0` to `qS4` as `PolyBound.ratOfWord` of the same words.
+Each file gives the bits of 14 constants beside their decimal values, and each decimal value rounds to the word given for it ([the journal's audit of the ports](../../../../devnotes.md#2026-10-10-ports-of-log1p-atan-atan2-asin-acos-and-tan)).  Each `Float.ofBits` word of [the implementation](Program.lean) equals the word that the pinned `e_asin.c` or `e_acos.c` gives for the same constant, and `huge`, which the source gives without bits, is the nearest double to `1.0e300`.  The kernel bound restates `pS0` to `qS4` as `PolyBound.ratOfWord` of the same words.
 
 ## Theorems
 
@@ -73,16 +73,16 @@ The theorems are in [the `asin` theorem](AsinTheorem.lean), [the `acos` theorem]
 | `AsinBytes.ready_initial` | The initial store satisfies `Ready`: the allocator invariant and a memory cap of at most 65,535 pages. |
 | `AsinBytes.asin_entry_call`, `acos_entry_call` | A call of function 3 or 4 from a `Ready` store returns, without a trap, the bits of the Lean function, and leaves a `Ready` store in which every heap region keeps its bytes. |
 | `AsinBytes.asin_bytes_accuracy`, `acos_bytes_accuracy` | `Asin.compiled.module` encodes to bytes that decode to it, exports the function, starts in a `Ready` store, and every call from a `Ready` store returns the bits of the Lean function, within one step for finite `x` with `\|a\| ≤ 1`, and leaves a `Ready` store. |
-| `AsinBytes.asin_module_accuracy` | Conjunction of the two byte theorems. |
+| `AsinBytes.asin_module_accuracy` | Conjunction of the byte theorems. |
 | `AsinFile.asin_file`, `asin_file_decode` | `build/verified/asin.wasm` holds `encode Asin.compiled.module`, and the file decodes to the module of `asin_module_accuracy`. |
 
-`asin_file_decode` takes its bytes from `asin_module_accuracy`, so its axiom report covers both byte theorems, which `tests/verified/run.sh` requires because it reads only the two axiom reports of the file module.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Asin.AsinBytes`, checks `AsinFile.lean` against the `asin.wasm` that it writes earlier in the same run, and fails unless both file theorems report exactly the three permitted axioms.  The recorded run of 2026-10-11 passed that check and printed `[propext, Classical.choice, Quot.sound]` for both accuracy theorems, every exceptional value, and the three byte theorems.  Another build printed the same report, and [the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc) records the builds that first accepted `asin_within_one`, `acos_within_one`, the exceptional values, the byte theorems, and the file theorems.
+`asin_file_decode` uses the bytes of `asin_module_accuracy`, so its axiom report covers both byte theorems, which `tests/verified/run.sh` requires because it reads only the axiom reports of the file module.  `tests/verified/run.sh` builds `Library.Numerics.Float64.Asin.AsinBytes`, checks `AsinFile.lean` against the `asin.wasm` that it writes earlier in the same run, and fails unless both file theorems report exactly the three permitted axioms.  A run of the script passes that check and prints `[propext, Classical.choice, Quot.sound]` for both accuracy theorems, every exceptional value, and the byte theorems.  [The journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc) records the builds that accepted `asin_within_one`, `acos_within_one`, the exceptional values, the byte theorems, and the file theorems.
 
 ## Proof
 
 ### Modules
 
-The chain reuses word and exactness lemmas of [the `log1p` proof](../Log1p/README.md) (`Log1pTheoremReduce`, `Log1pTheoremCorr`, `Log1pTheoremTail`, `Log1pTheoremSpecial`) and of [the arctangent proof](../Atan/README.md) (`AtanTheorem`, `AtanTheoremReduce`, `AtanTheoremConst`, `AtanTheoremSpecial`), among them `AtanTheoremConst.atan_inf`, which places `pio2_hi + pio2_lo` within `2^-64` of `π/2`.  The table lists the chain's own modules in dependency order.  `tools/arc/asin/mkratio.py` writes `AsinTheoremRatio.lean`, and `tools/arc/asin/mkmid.py` writes `AsinTheoremMid.lean`, both with constants from the range analyses of the `model*.py` files in the same directory ([the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc)).
+The chain reuses word and exactness lemmas of [the `log1p` proof](../Log1p/README.md) (`Log1pTheoremReduce`, `Log1pTheoremCorr`, `Log1pTheoremTail`, `Log1pTheoremSpecial`) and of [the arctangent proof](../Atan/README.md) (`AtanTheorem`, `AtanTheoremReduce`, `AtanTheoremConst`, `AtanTheoremSpecial`), among them `AtanTheoremConst.atan_inf`, which states that `pio2_hi + pio2_lo` lies within `2^-64` of `π/2`.  The table lists the chain's own modules in dependency order.  `tools/arc/asin/mkratio.py` writes `AsinTheoremRatio.lean`, and `tools/arc/asin/mkmid.py` writes `AsinTheoremMid.lean`, both with constants from the range analyses of the `model*.py` files in the same directory ([the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc)).
 
 | Module | Content |
 |---|---|
@@ -99,7 +99,7 @@ The chain reuses word and exactness lemmas of [the `log1p` proof](../Log1p/READM
 
 ### Kernel bound
 
-`AsinKernelPoly.asin_kernel_error` states `|arcsin x - x - x³ P(x²)/Q(x²)| ≤ |x|³ · (11/16) · 2^-56` for `|x| ≤ 1/2`, where `x³ P/Q` is the code's `x R(x²)` in exact arithmetic.  The proof compares `P/Q` with the Taylor polynomial `T` of `(arcsin x - x)/x³` in `t = x²` of degree 34 through the weighted bound `|T q - p| ≤ ε q` with `ε = (43/64) · 2^-56`.  `PolyBound.check` proves the two one-sided bounds `T q - p - ε q ≤ 0` and `T q - p + ε q ≥ 0`, each on four pieces of `[0, 1/4]` (`asin_up_1` to `asin_up_4`, `asin_lo_1` to `asin_lo_4`), and `asin_q_range` places `q` in `[1/2, 1]` there.  A plain bound divided by the smallest denominator would lose accuracy, since `q` falls from 1 to about 0.515 on the range.
+`AsinKernelPoly.asin_kernel_error` states `|arcsin x - x - x³ P(x²)/Q(x²)| ≤ |x|³ · (11/16) · 2^-56` for `|x| ≤ 1/2`, where `x³ P/Q` is the code's `x R(x²)` in exact arithmetic.  The proof compares `P/Q` with the Taylor polynomial `T` of `(arcsin x - x)/x³` in `t = x²` of degree 34 through the weighted bound `|T q - p| ≤ ε q` with `ε = (43/64) · 2^-56`.  `PolyBound.check` proves the two one-sided bounds `T q - p - ε q ≤ 0` and `T q - p + ε q ≥ 0`, each on four pieces of `[0, 1/4]` (`asin_up_1` to `asin_up_4`, `asin_lo_1` to `asin_lo_4`), and `asin_q_range` states that `q` lies in `[1/2, 1]` there.  A plain bound divided by the smallest denominator would lose accuracy, since `q` decreases from 1 to about 0.515 on the range.
 
 Mathlib has no series for `arcsin`, so [the arcsine remainder](../../../../LeanExe/ProofKit/AsinRemainder.lean) proves one without series.  The truncation `S` of the binomial series of `(1 - u)^(-1/2)` to 36 terms satisfies `1 - (1 - u) S(u)² = u^36 G(u)`: `defect_low` checks that the first 36 coefficients of the left side vanish, and `defect_high` bounds `G` by `1/2` on `[0, 1/4]`.  With `y = 1/√(1 - u)`, the identity `(y - S)(1 - u)(y + S) = u^36 G(u)` bounds `y - S`, and the mean value inequality, applied to `arcsin` minus its Taylor polynomial, whose derivative is `y - S` at `u = t²`, bounds the remainder by `(4/3) γ |x|^73`.  The derivative of `arcsin` and the mean value inequality come from Mathlib [7].
 
@@ -107,7 +107,7 @@ fdlibm's comment bounds the Remez error of `R` by `2^-58.75`, which describes th
 
 ### Error budget
 
-Each path ends with one of the criteria that [the `log1p` document](../Log1p/README.md#error-budget) describes.  `F64RoundNearest.sub_within` and `add_within` charge nothing for the last rounding: they accept an exact value of the last operation less than one spacing of a binade at or below the target from the target.  `add_within_rel` and `within_one_of_rounded_rel` accept an exact value within the fraction `1/(2^53 + 1)` of the target, and `F64WithinSelf.within_one_of_self` covers a result equal to the argument.  The bounds and allowances of the table are the constants of the Lean statements.
+Each path ends with one of the criteria that [the `log1p` document](../Log1p/README.md#error-budget) describes.  `F64RoundNearest.sub_within` and `add_within` require no allowance for the last rounding: they accept an exact value of the last operation less than one spacing of a binade at or below the target from the target.  `add_within_rel` and `within_one_of_rounded_rel` accept an exact value within the fraction `1/(2^53 + 1)` of the target, and `F64WithinSelf.within_one_of_self` covers a result equal to the argument.  The bounds and allowances of the table are the constants of the Lean statements.
 
 | Function and range | Theorem | Proved bound | Allowance |
 |---|---|---|---|
@@ -122,11 +122,11 @@ Each path ends with one of the criteria that [the `log1p` document](../Log1p/REA
 | `acos`, `1/2 ≤ x < 1` | `AcosTheoremPos.pos_within` | relative `0.7 · 2^-53` | relative `1/(2^53 + 1)` |
 | both, `\|x\| = 1` | `AsinTheorem.asin_unit`, `AcosTheorem.acos_unit` | constants | one step |
 
-The code takes the tiny path of `acos` below `(1 + 2^-20) · 2^-57`, inside the range of `tiny_within`, and `small_within` covers the rest from `2^-58` on.  The smallest margin is that of `mid_A` and `mid_B`, 2 percent of a spacing of `[1/2, 1)`, which serves as the allowance for results from `π/6` to `arcsin 0.9 ≈ 1.12`.  On the positive range of `acos` the result reaches down to about `2^-26`, so its bounds are relative to `s₀ = √z`, and the doubling `2 (w + ...)` keeps a nearest word nearest (`F64RoundDouble`).  A negative `x` in `asin` gives the negated word, and `AsinTheorem.signed_asin` carries the bound through the negation.
+The code takes the tiny path of `acos` below `(1 + 2^-20) · 2^-57`, inside the range of `tiny_within`, and `small_within` covers the rest from `2^-58` on.  The smallest margin is that of `mid_A` and `mid_B`, 2 percent of a spacing of `[1/2, 1)`, which is the allowance for results from `π/6` to `arcsin 0.9 ≈ 1.12`.  On the positive range of `acos` the result is as small as about `2^-26`, so its bounds are relative to `s₀ = √z`, and the doubling `2 (w + ...)` keeps a nearest word nearest (`F64RoundDouble`).  A negative `x` in `asin` gives the negated word, and `AsinTheorem.signed_asin` extends the bound to that word.
 
 ### Shared modules
 
-The analysis uses [error tracking for straight-line code](../../../../LeanExe/ProofKit/F64Approx.lean), [half-spacing sums](../../../../LeanExe/ProofKit/F64HalfUlp.lean), [nearest rounding of sums](../../../../LeanExe/ProofKit/F64RoundNearest.lean), [doubling a nearest word](../../../../LeanExe/ProofKit/F64RoundDouble.lean), [functions that return their argument](../../../../LeanExe/ProofKit/F64WithinSelf.lean), [exact operations and Sterbenz's lemma](../../../../LeanExe/ProofKit/F64Exact.lean), [exact products](../../../../LeanExe/ProofKit/F64ExactProduct.lean), [fdlibm's high-word tests](../../../../LeanExe/ProofKit/F64UpperWord.lean), [the polynomial checker](../../../../LeanExe/ProofKit/PolyBound.lean), [its unions of intervals and weighted bounds](../../../../LeanExe/ProofKit/PolyChecks.lean), [Taylor remainders](../../../../LeanExe/ProofKit/TaylorRemainder.lean), and [the arcsine remainder](../../../../LeanExe/ProofKit/AsinRemainder.lean).  The square root's rounding enters through `F64Approx.fapprox_sqrt`, which rests on `F64SqrtBounds`.
+The analysis uses [error tracking for straight-line code](../../../../LeanExe/ProofKit/F64Approx.lean), [half-spacing sums](../../../../LeanExe/ProofKit/F64HalfUlp.lean), [nearest rounding of sums](../../../../LeanExe/ProofKit/F64RoundNearest.lean), [doubling a nearest word](../../../../LeanExe/ProofKit/F64RoundDouble.lean), [functions that return their argument](../../../../LeanExe/ProofKit/F64WithinSelf.lean), [exact operations and Sterbenz's lemma](../../../../LeanExe/ProofKit/F64Exact.lean), [exact products](../../../../LeanExe/ProofKit/F64ExactProduct.lean), [fdlibm's high-word tests](../../../../LeanExe/ProofKit/F64UpperWord.lean), [the polynomial checker](../../../../LeanExe/ProofKit/PolyBound.lean), [its unions of intervals and weighted bounds](../../../../LeanExe/ProofKit/PolyChecks.lean), [Taylor remainders](../../../../LeanExe/ProofKit/TaylorRemainder.lean), and [the arcsine remainder](../../../../LeanExe/ProofKit/AsinRemainder.lean).  The proofs bound the square root's rounding with `F64Approx.fapprox_sqrt`, which depends on `F64SqrtBounds`.
 
 ### Kernel-checked facts
 
@@ -140,21 +140,21 @@ The analysis uses [error tracking for straight-line code](../../../../LeanExe/Pr
 | Functions 3 and 4 are exported as `asin` and `acos` | `AsinBytes.asin_export`, `acos_export` |
 | Bytes of the file equal the encoder's | `AsinFile.asin_file` |
 
-### History
+### Proof structure
 
-`AsinTheoremMid` and `AcosTheoremPos.pos_core` raise `maxHeartbeats` to 1,000,000 and 4,000,000, because their many `nlinarith` calls run in large contexts.  `nlinarith` also spent minutes in `whnf` on a power when the context held `scaledMagnitude w = q * 2^(e - 1 + 32)`, which `AsinTheoremMid` clears once used.  `rw [← hsqv]` with `hsqv : √t * √t = t` also rewrote the `t` inside `√t`, so the proofs name `√t` with `set` ([the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc)).
+`AsinTheoremMid` and `AcosTheoremPos.pos_core` raise `maxHeartbeats` to 1,000,000 and 4,000,000, because their many `nlinarith` calls run in large contexts.  `AsinTheoremMid` clears the hypothesis `scaledMagnitude w = q * 2^(e - 1 + 32)` once used, since `nlinarith` would otherwise spend minutes in `whnf` on its power.  The proofs name `√t` with `set`, since `rw [← hsqv]` with `hsqv : √t * √t = t` would also rewrite the `t` inside `√t` ([the journal](../../../../devnotes.md#2026-10-10-full-theorems-for-log1p-atan-atan2-asin-and-acos-track-arc)).
 
 ## Tests
 
 [The accuracy check](../../../../tests/TestSupport/Numerics/AsinAccuracy.lean) compares `Asin.asin` and `Asin.acos` natively with the doubles nearest to `arcsin x` and `arccos x`, computed by `ArcReference.asinFixed`, as `2 atan (x/(1 + √(1 - x²)))`, and `ArcReference.acosFixed`, as `2 atan √((1 - x)/(1 + x))`, or `π - 2 atan √((1 + x)/(1 - x))` for negative `x`, and it fails at the first result more than one step away.  Its 200,188 arguments, each giving one result of each function, are 100,001 evenly spaced values from -1 to 1, 100,000 hashed values over the exponents below 1 with both signs, the 106 doubles `±(1 - 2^-k)` for `k` from 1 to 53, the five doubles at and next to each of ten thresholds, `±1` among them, 11 special values, and the 20 inputs of `WorstCases.asin` and `WorstCases.acos`.  Those 20 are the inputs of the largest known errors in Tables 4 to 11 of Gladman, Innocente, Mather, Ozaki, and Zimmermann's report [8], whose Table 3 lists 0.981 units for FreeBSD 15.1's `asin` and 0.930 for its `acos`.
 
-In the test run of 2026-10-11, all 400,376 results lie within one step of the reference, and 13,563 of them differ from it, so the largest measured distance equals the proved bound.  The C library of the test run lies within one step at the same arguments, with 239 results unequal to the reference.  The reference's docstrings bound its truncation errors below `2^-390` relative for `asin` and `2^-560` for `acos`, and no theorem proves these bounds.
+In a test run, all 400,376 results lie within one step of the reference, and 13,563 of them differ from it, so the largest measured distance equals the proved bound.  The C library of the test run lies within one step at the same arguments, with 239 results unequal to the reference.  The reference's docstrings bound its truncation errors below `2^-390` relative for `asin` and `2^-560` for `acos`, and no theorem proves these bounds.
 
 ## Limits
 
 The limits of [the exponential theorem](../Exp/README.md#limits) apply in the same way: the theorem is about Talos's semantics, the interpreter and the decoder are trusted, the file theorem trusts `binary_file%`, Talos implements the deterministic profile in which every NaN result is canonical [6], and the argument is the bits of a Lean `Float`, whose only NaN is the canonical one (`F64Bits.toBits_canonical`), so the theorems cover only the canonical NaN among the NaN words a WebAssembly caller can pass.  The byte theorems cover sequences of calls to `asin` and `acos`, and a host that calls `alloc`, `release`, or `asinRatio` or writes the memory between calls needs a theorem that the action preserves `Ready`.  The module reads no table, so the store invariant has only the allocator invariant and the memory cap.
 
-The byte theorems state the bound only on the domain `|a| ≤ 1`.  `AsinTheoremSpecial` gives the words of the exceptional inputs for the Lean functions, and the byte theorems' equality `w = (Asin.asin x).toBits`, or the same for `acos`, carries them to the module.  The docstring of [the implementation](Program.lean) gives fdlibm's bound of `2^-58.75` for `P/q` as a bound for exact coefficients, which the stored coefficients exceed at `x = 0`, as the section on the kernel bound explains.  The Python scripts in `tools/arc/asin` generated modules that Lean checks, so the theorems do not rest on them.
+The byte theorems state the bound only on the domain `|a| ≤ 1`.  `AsinTheoremSpecial` gives the words of the exceptional inputs for the Lean functions, and the byte theorems' equality `w = (Asin.asin x).toBits`, or the same for `acos`, transfers them to the module.  The docstring of [the implementation](Program.lean) gives fdlibm's bound of `2^-58.75` for `P/q` as a bound for exact coefficients, which the stored coefficients exceed at `x = 0`, as the section on the kernel bound explains.  The Python scripts in `tools/arc/asin` generated modules that Lean checks, so the theorems do not depend on them.
 
 ## References
 

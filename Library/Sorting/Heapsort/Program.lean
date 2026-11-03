@@ -2,7 +2,7 @@ import LeanExe.Dialect.Loop
 
 /-! Heapsort, Algorithm H of TAOCP §5.2.3, on an array of words, in place.  Indices start at 0, so
 node `i` of the heap `xs[0, n)` has the children `2i + 1` and `2i + 2`, where Knuth's node `j` has
-`2j` and `2j + 1`.  The heap order puts every node at or above its children.  `siftDown`, Knuth's
+`2j` and `2j + 1`.  In the heap order every node is at or above its children.  `siftDown`, Knuth's
 siftup of steps H3 to H8, moves the word at a node down until it is at least both children.
 `heapify` performs the first phase of step H2: it sifts the nodes `n / 2 - 1` down to 0, which
 makes the whole array a heap.  `heapsort` performs the second phase: it swaps the root, the largest

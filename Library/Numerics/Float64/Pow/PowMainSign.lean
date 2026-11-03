@@ -4,7 +4,7 @@ import Library.Numerics.Float64.Pow.PowExpSign
 /-!
 `Pow.powMain` with the sign bias against `powMain` without it, on the normalized word of a
 positive finite `x` and a finite `y` with `2 ^ -65 ≤ |y| < 2 ^ 63`.  Both run `powExp` on the
-same `ehi` and `elo`, which meet the conditions of `PowExpSign.powExp_rel` when `x ≠ 1`; for
+same `ehi` and `elo`, which satisfy the conditions of `PowExpSign.powExp_rel` when `x ≠ 1`; for
 `x = 1`, `ehi` is a zero and both take the branch `±(1 + ehi)`.
 -/
 

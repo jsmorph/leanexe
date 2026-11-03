@@ -32,10 +32,10 @@ with no word, eight positions with seven words, all 0, all `2^64 - 1`, or all `2
 word, which the step `j = m - 1` reads, at the least word `⌈i·2^64 / m⌉` that selects `i` and at the
 word below it, for `m` of 3, 5, and 7 with each `i` from 1 to `m - 1`, and for `m` of 1,000 and
 1,024 with `i` of 1, `m / 2`, and `m - 1`, where at an inexact threshold the carry from the low half
-in `scale` decides the index of the least word.  Word arrays from SplitMix64 shuffle the positions
-of every length `n` from 2 to 40 with `n - 1` words, 100 positions with 50, 99, and 150 words, and
-2,000 and 4,500 positions with `n - 1` words, where the two arrays of 4,500 words take more than one
-64 KiB page of memory. -/
+in `scale` determines the index of the least word.  Word arrays from SplitMix64 shuffle the
+positions of every length `n` from 2 to 40 with `n - 1` words, 100 positions with 50, 99, and 150
+words, and 2,000 and 4,500 positions with `n - 1` words, where the two arrays of 4,500 words take
+more than one 64 KiB page of memory. -/
 def shuffleInputs : List (List UInt64 × List UInt64) :=
   let half : UInt64 := 9223372036854775808
   let chosen : List (List UInt64 × List UInt64) :=

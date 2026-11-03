@@ -18,16 +18,16 @@ request asks for, and the theorem `searchTree` proves them for every binary sear
 search succeeds exactly when `x` is a key, the tree afterward is a binary search tree, and its keys
 are those of `t`, with `x` inserted in order when the search fails.  The second guarantee follows
 from the third and states the request's words.  The module computes the flag with `search`, on a
-tree that the caller lends, and the tree with `insert`, on a tree that the caller hands over, so a
+tree that the caller lends, and the tree with `insert`, on a tree that the caller moves, so a
 caller that needs both calls both.  The specification reads "reuse the tree's nodes" and "allocate
 no node but the new one" as a bound on the rise of the heap's `top` by one node's block, which
 `insert_bound` states.  The bound does not count blocks that the allocator takes from its free list,
 and no statement relates the blocks of the result to those of the argument, so the program text and
 the compiler's charge for every allocation show the reuse.  It reads "a call stack that does not
-grow" as theorems with no call-depth premise.  That reading rests on the compiler's rule, which the
-verified compiler's manual states and no theorem states: the compiler translates recognized tail
-recursion into loops and gives every other recursive function and its callers a call depth, which
-their theorems carry as a premise. -/
+grow" as theorems with no call-depth premise.  That reading depends on the compiler's rule, which
+the verified compiler's manual states and no theorem states: the compiler translates recognized
+tail recursion into loops and gives every other recursive function and its callers a call depth,
+which their theorems take as a premise. -/
 
 namespace Library.Trees.Search
 

@@ -29,9 +29,9 @@ theorem address_toNat {p : UInt64} {k : Nat} (h : p.toNat + k < 4294967296) :
   rw [Memory.toUInt32_toNat, UInt64.toNat_add, hk]
   omega
 
-/-- The move loop: the bytes from `psrc`, as many as `n` rounded up to a word, go to the bytes
-from `pdst`, which lies at or below `psrc`.  The loop writes only that range and changes no local
-but `index`. -/
+/-- The move loop: the bytes from `psrc`, as many as `n` rounded up to a word, are copied to the
+bytes from `pdst`, which lies at or below `psrc`.  The loop writes only that range and changes no
+local but `index`. -/
 theorem wp_moveCode {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
     {dst src count index : Nat} {pdst psrc n : UInt64} {rest : Program} {Q : Assertion Unit}
     (hDst : s.get dst = some (.i64 pdst)) (hSrc : s.get src = some (.i64 psrc))

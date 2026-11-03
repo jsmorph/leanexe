@@ -291,7 +291,7 @@ theorem finish_out {qa : Q4} {b u : V3} (hq : GoodQ qa) (hb : GoodV b) (hu : Goo
     (Arc.norm_unit _ (norm_near_one (vecOf u) 3e-12 (by norm_num) hu.norm).2) hv
   linarith [hn.1]
 
-/-- The keep-in mirror of `finish_out`. -/
+/-- The keep-in counterpart of `finish_out`. -/
 theorem finish_in {qa : Q4} {b u : V3} (hq : GoodQ qa) (hb : GoodV b) (hu : GoodV u) {N : Vec}
     {φ c : ℝ} (hN : Vec.dot N N = 1 ∨ φ = 0)
     (hg : c + 1.07e-9 ≤ Vec.dot (vecOf u) (rod N φ (Quat.rot (quatOf qa) (vecOf b)))) (v : Vec)
@@ -740,8 +740,8 @@ theorem edgeOk_eq (xs : Array Float) (d : Dims) (qa rel : Q4) :
             (coneBody xs d k) (coneAxis xs d k) (coneCos xs d k) (coneKind xs d k)) :=
   rfl
 
-/-- An accepted static check at the attitude `q` puts every cone's tube around the normalized
-body vector on the allowed side. -/
+/-- An accepted static check at the attitude `q` implies that every cone's tube around the
+normalized body vector lies on the allowed side. -/
 theorem attitudeOk_sound {xs : Array Float} {d : Dims} {q : Q4} (hq : GoodQ q)
     (hcones : ∀ k : Nat, k < d.nc.toNat → ConeGood xs d (UInt64.ofNat k))
     (h : attitudeOk xs d q 0.0 = true) (k : Nat) (hk : k < d.nc.toNat) :

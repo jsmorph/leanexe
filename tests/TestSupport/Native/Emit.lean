@@ -326,7 +326,8 @@ def memops : Module :=
 /-- The binary64 forms on words: each function reads its arguments' bits as doubles and returns
 the result's bits, so that the expected lines hold Talos's bits.  The calls produce NaNs from
 numbers and from NaN operands with payloads, compare NaNs, convert at the bounds of
-`trunc_sat`, and load the constants that go through `lx_pun` and those that are negated. -/
+`trunc_sat`, and load the constants that the code converts with `lx_pun` and those that are
+negated. -/
 def fops : Module :=
   let d (i : Nat) : List Instruction := [.localGet i, .f64ReinterpretI64]
   let bin (op : Instruction) : Function :=

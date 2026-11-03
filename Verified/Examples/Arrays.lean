@@ -1,7 +1,7 @@
 import Library.Arrays.Search.Program
 import Verified.Reflect.Command
 
-/-! The eighth program of the verified compiler: arrays of words as parameters, read with
+/-! A program of the verified compiler: arrays of words as parameters, read with
 `xs.size.toUInt64` and the bounds-checked `xs[i.toNat]!`, inside loops, passed to calls, bound with
 `let`, and held in a pair.  An array is passed as its address and borrowed, so no function here
 allocates, and every function returns without a trap. -/

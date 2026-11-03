@@ -121,7 +121,7 @@ def maskedScores (q k : Array Float) (t nh dh : UInt64) (scale : Float) : Array 
         k[(e % t * (nh * dh) + (e / t % nh * dh + c)).toNat]!) * scale
 
 /-- The largest of elements `0` to `r / nh` of each row `r` of the `t · nh` rows of width
-`t` of attention scores `x`: row `r` holds the scores of position `r / nh`, which sees
+`t` of attention scores `x`: row `r` holds the scores of position `r / nh`, which attends to
 positions `0` to `r / nh`. -/
 def rowMax (x : Array Float) (t nh : UInt64) : Array Float :=
   LeanExe.build (t * nh) fun r =>

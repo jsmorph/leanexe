@@ -3,9 +3,8 @@ import Library.Numerics.Float64.Asinh.AtanhTheoremSmall
 /-!
 `Asinh.atanh` below `1/2` in eight input ranges: four with a bound relative to `artanh a` below
 `a = 0.1244`, and four with constant bounds against two spacings of the binade of `artanh a`,
-with the largest bound at 0.973 of the two spacings.  The constants come from
-`near/atanh_inst.py` in the track's scratch directory, which checks each hypothesis in exact
-rational arithmetic.  `artanh_lower` bounds `2 artanh aL` from below by the rational series of
+with the largest bound at 0.973 of the two spacings.  `artanh_lower` bounds `2 artanh aL` from
+below by the rational series of
 `Log1pTheoremConst`.
 -/
 

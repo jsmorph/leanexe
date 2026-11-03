@@ -9,11 +9,11 @@
 # configured for aarch64-linux, and CCOMP_STDLIB, when set, names the directory of its run-time
 # library for a tree that is not installed.  STACK_SIZE is the size of the stack in bytes,
 # 0x100000 by default.  The arguments
-# after -- go to the preprocessor of the startup code, for example -DNO_FPEN.  When STACK_DEPTHS
-# names the list of the functions that take the call depth, as native-verified and native-bare
-# write it, every input must be a C file: the script also compiles each to assembly beside OUT,
-# named as its object with .s for .o, and fails unless tools/baremetal/stack-bound.sh bounds the
-# stack of main within STACK_SIZE, writing the bound as OUT.bound, and unless
+# after -- are passed to the preprocessor of the startup code, for example -DNO_FPEN.  When
+# STACK_DEPTHS names the list of the functions that take the call depth, as native-verified and
+# native-bare write it, every input must be a C file: the script also compiles each to assembly
+# beside OUT, named as its object with .s for .o, and fails unless tools/baremetal/stack-bound.sh
+# bounds the stack of main within STACK_SIZE, writing the bound as OUT.bound, and unless
 # tools/baremetal/access-check.sh finds no instruction that requires an aligned access.
 # Usage: tools/baremetal/build.sh OUT INPUT... [-- -DNAME...]
 set -euo pipefail

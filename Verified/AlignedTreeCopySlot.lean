@@ -186,7 +186,7 @@ theorem wpX_treeCopyOther {strict : Bool} {m : Module} (hm : Runtime m)
   | array words => exact absurd hSlot (hNotArray words)
   | bytes data => exact absurd hSlot (hNotBytes data)
 
-/-- The copy of a slot that is not an array slot: a word or a null child goes into the copy as it
+/-- The copy of a slot that is not an array slot: a word or a null child is copied as it
 is, and a record child starts the copy of its record. -/
 theorem wp_treeCopyOther {m : Module} (hm : Runtime m) {host : HostEnv Unit}
     {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
@@ -323,7 +323,7 @@ theorem wpX_treeCopyNonArray {strict : Bool} {m : Module} (hm : Runtime m)
       simpa only [List.append_nil, List.append_assoc] using hRun
 
 /-- The copy of a slot that is not an array slot: for a shape with buffer fields, a buffer's root
-goes to the buffer step, and any other slot to `wp_treeCopyOther`. -/
+is handled by the buffer step, and any other slot by `wp_treeCopyOther`. -/
 theorem wp_treeCopyNonArray {m : Module} (hm : Runtime m) {host : HostEnv Unit}
     {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
     {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit base : Nat}

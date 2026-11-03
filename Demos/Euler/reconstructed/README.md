@@ -3,7 +3,7 @@
 The `reconstructedSolve` export of the verified Euler module, proved to compute its Lean
 definition, evaluates the four-state Euler problem from the [Lanyon
 article](https://lanyon.ai/research/euler-equations/).  Initialization, reconstruction, timestep
-selection, both directional sweeps, retries, allocation, and final output execute inside one call of
+selection, both directional sweeps, retries, allocation, and final output execute in one call of
 the export.  The module compiles [the buffered form](../Buffered.lean) of the solver, which equals
 [the program](../ReconstructedProgram.lean) by `reconstructedSolve_eq`.
 
@@ -13,7 +13,7 @@ the export.  The module compiles [the buffered form](../Buffered.lean) of the so
 
 Both calculations ran with a trial count of 8, the limit on reconstruction attempts, and reached
 time 0.8 with status 0.  The `reconstructedSolve` export of the verified module computed their
-output words on 2026-10-31, in 120 s on the 192-grid and 9,706 s on the 800-grid, and the SHA-256 of
+output words in 120 s on the 192-grid and 9,706 s on the 800-grid, and the SHA-256 of
 each run's words equals the one that the record's `summary.json` states.  The figures, CSV files,
 and ranges below come from those words.
 
@@ -62,7 +62,7 @@ export and the Lean function `reconstructedSolve`, which packs the result of `re
 
 | Claim | Statement | Theorem |
 |-------|-----------|---------|
-| Execution and memory | Encoding gives bytes that decode back to the module, whose `reconstructedSolve` export is entry 66.  Called with any `n` and trial count from the store in which the module starts, under a memory cap of at least `solvePages n` and at most 65,535 pages, the export returns without a trap the address of a new array that holds the words of `reconstructedSolve n trials`.  It leaves a ready store whose `top` lies at most `solveBytes n` bytes above the heap base, and `solvePages n` is at most 1,563 for every `n`. | `euler_solve_call` in [the call theorems](../VerifiedCall.lean) |
+| Execution and memory | Encoding gives bytes that decode back to the module, whose `reconstructedSolve` export is entry 66.  Called with any `n` and trial count from the store in which the module starts, with a memory cap of at least `solvePages n` and at most 65,535 pages, the export returns without a trap the address of a new array that holds the words of `reconstructedSolve n trials`.  It leaves a ready store whose `top` lies at most `solveBytes n` bytes above the heap base, and `solvePages n` is at most 1,563 for every `n`. | `euler_solve_call` in [the call theorems](../VerifiedCall.lean) |
 | Output | Words with status 0 hold the bits of 0.8, `2 ≤ n ≤ 800`, and `n²` positive, finite densities and pressures. | `reconstructedSolve_ok` in [the run properties](../ReconstructedSpec.lean) |
 | Admissibility and hyperbolicity | Words with status 0 pack a final grid whose states have positive density and pressure in exact arithmetic with γ = 7/5.  At each such state the derivative of the flux in every unit direction has a basis of real eigenvectors with eigenvalues `un - c`, `un`, `un`, and `un + c`. | `reconstructedSolve_hyperbolic` in [the hyperbolicity theorems](../Hyperbolic.lean) |
 | Speeds and CFL | Each accepted outward speed bound is at least the exact `\|u\| + c`.  Each run with status 0 is a chain of accepted steps.  Each step advances the time by `dt > 0` with a ratio `r ≥ dt · n`, every state of the grid it starts from is admissible, and `r` times the signal speed of every cell in either direction is at most 1/2. | `speedUpper_ge` in [the enclosures](../Enclosure.lean), `reconstructedRun_steps` in [the step theorems](../Cfl.lean) |
@@ -71,12 +71,12 @@ export and the Lean function `reconstructedSolve`, which packs the result of `re
 | Reconstruction accuracy | Each accepted reconstruction returns the cell average or the faces of the factor after some number of halvings of 1/2.  Each face differs from `center ∓ factor · slope`, with the exact minmod slope of the three input states, by at most the rounding radii of the offset and of the face plus the factor times the slope's error, and the faces average to the center up to half the sum of their rounding radii.  When the stencil is linear, its subtractions are exact, the limiter accepts 1/2, and the face arithmetic is exact, the faces are exactly `center ∓ delta / 2`. | `reconstruct_accuracy` and `reconstruct_linear` in [the reconstruction theorems](../ReconstructionAccuracy.lean) |
 
 The axiom reports of [the call theorems](../VerifiedCall.lean) and of the file theorems name only
-`propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on Wasmtime and the hardware
-implementing the WebAssembly semantics that the proofs model.  `solveBytes n` covers three grids of
+`propext`, `Classical.choice`, and `Quot.sound`.  Execution depends on Wasmtime and the hardware
+implementing the WebAssembly semantics that the proofs model.  `solveBytes n` includes three grids of
 `cells n` cells and the packed result, each with its block header, for any trial count, and
-`solvePages n` adds the heap base of 4096 bytes.  `euler_solve_call` starts from the modeled store
-in which the module starts and states no final page count.  Instantiation by a WebAssembly engine
-lies outside the proofs, as [the verified compiler
+`solvePages n` adds the heap base of 4096 bytes.  `euler_solve_call` concerns a call from the modeled store
+in which the module starts and states no final page count.  The proofs do not cover instantiation by a WebAssembly
+engine, as [the verified compiler
 manual](../../../docs/verified-manual.md#outside-the-proofs) states.  Convergence to a solution of
 the continuous Euler equations remains unproved.
 

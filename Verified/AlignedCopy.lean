@@ -142,7 +142,7 @@ theorem wpX_copyCode {strict : Bool} {m : Module} (hm : Runtime m)
       exact hFresh1 x hx y hy
 
 /-- The copy of a value of type `t` whose words locals `src` on hold and that its words represent
-in `heap` at `store`: each of its arrays goes to a new owned block, and the other words stay as
+in `heap` at `store`: each of its arrays is copied to a new owned block, and the other words stay as
 they are.  The copy consumes nothing, raises `top` by at most `t.copyCost v`, and traps only when
 `top` cannot rise by that much within the cap. -/
 theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
@@ -163,7 +163,7 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     wpX_copyCode (strict := false) hm nofun t hAt hCap hTrap hh hRep hLoc hSrc hBase hRoom nofun
       fun heap' store' s' ws' hs hr hf ht _ => hNext heap' store' s' ws' hs hr hf ht
 
-/-- The copy of every runtime meets `CopyCodeX`. -/
+/-- The copy of every runtime satisfies `CopyCodeX`. -/
 theorem copyCodeX {strict : Bool} {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     CopyCodeX strict m host :=
   wpX_copyCode hm fun _ => Runtime.allocAligned hm

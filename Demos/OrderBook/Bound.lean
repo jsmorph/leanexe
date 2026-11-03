@@ -4,10 +4,10 @@ import Demos.OrderBook.ProgramCounts
 
 /-! The allocation bound of the order book's `run`.  `verified_compile` defines `run.bound`, the
 number of bytes by which the module's `run` can raise the allocator's `top`, and states it through
-the equations `bound_eq` and `cost_eq` of `run` and of the functions whose costs it reaches: `emit`,
-`fillArrays`, `submitArrays`, and `stepArrays`.  `Equations` states those six equations for any
-functions, so that `run_bound_le` applies to every compilation of the program that generates them,
-and `compiled_run_bound` applies it to `Verified.compiled`.
+the equations `bound_eq` and `cost_eq` of `run` and of the functions whose costs its cost includes:
+`emit`, `fillArrays`, `submitArrays`, and `stepArrays`.  `Equations` states those equations for
+any functions, so that `run_bound_le` applies to every compilation of the program that generates
+them, and `compiled_run_bound` applies it to `Verified.compiled`.
 
 `run_bound_le` bounds the bound on a book that satisfies `Refinement.Inv` and a stream of at most
 `k` records by `runBoundOf k`.  The bound charges the credits of the book's seven arrays, 393,408

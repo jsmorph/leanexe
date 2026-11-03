@@ -2,7 +2,7 @@ import Examples.Binary32.Program
 import Verified.Reflect.Command
 import Verified.WGSL.Compile
 
-/-! The verified compiler's module of the example's eight functions, and the WGSL kernels that
+/-! The verified compiler's module of the example's functions, and the WGSL kernels that
 `Verified.WGSL.compile` translates from the reflected bodies of `scale32`, `axpyArray32`,
 `matVec32`, and `condMix32`.  The reflector reads the condition
 `i % 4 ≤ 3 ∧ …` of `condMix32` as the conjunction of its two decisions.  Each dispatch theorem

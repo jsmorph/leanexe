@@ -58,7 +58,7 @@ preserving its bits in an integer constant.
 | `Name` | Counts UTF-8 bytes and retains their order, including embedded zero bytes. |
 
 `Vector` agrees with the [binary list rule][lists].  The same size rule
-serves code bodies and sections.  Their length premises prevent narrowing
+applies to code bodies and sections.  Their length premises prevent narrowing
 an oversized count into a smaller integer.
 
 For names, Lean's `String` contains a byte array and an `IsValidUTF8` proof.
@@ -143,7 +143,7 @@ validation constraint and hint for these ordinary loads and stores.
 Each structured rule fixes parameter count zero, an empty parameter-type
 list, and result count equal to the encoded result-type list length.  The
 `BlockType` premise restricts that length to zero or one.  Every nested body
-receives its own `end`.  Each `if` has an explicit `else`, including an empty
+has its own `end`.  Each `if` has an explicit `else`, including an empty
 else branch.  `Instrs` preserves instruction order by concatenation.
 
 ### Modules and Talos fields
@@ -156,11 +156,11 @@ the [official module grammar][modules].
 | Header | Magic `00 61 73 6d`, version `01 00 00 00`. |
 | Sections | IDs `1, 2, 3, 5, 6, 7, 10`, once each, in the prescribed order, then ID `11` when the memory has data segments.  The WASI profile adds ID `4` between `3` and `5`.  Empty vectors are permitted. |
 | Table section | `04 04 01 70 00 00` declares one 32-bit nullable `funcref` table with minimum zero and no maximum.  The table-free profile omits this section. |
-| Data section | Each segment uses mode `0`, an active segment of memory 0, with the offset as `i32.const` and `end`, then the bytes as a vector.  The memory section carries the declaration without its segments, and the decoder joins the segments back to the memory. |
+| Data section | Each segment uses mode `0`, an active segment of memory 0, with the offset as `i32.const` and `end`, then the bytes as a vector.  The memory section contains the declaration without its segments, and the decoder sets the memory's `data` field to the segments. |
 | Type and import sections | Preserve the type table and import order.  Each imported function's selected type index resolves to its recorded signature. |
 | Function and code sections | Both range over `m.funcs` in the same order.  Their counts agree.  Each type index resolves to that function's parameter and result lists. |
 | Locals | Each local forms a group with count one.  Vector count therefore also bounds the expanded local count. |
-| Function body | Local vector, instruction sequence, `end`, enclosed by the exact body byte length. |
+| Function body | Local vector, instruction sequence, `end`, preceded by the exact body byte length. |
 | Exports | Names, kinds, and indices are retained.  The chosen order is function, global, memory, then table exports, preserving order within each list.  The table export uses kind `01`. |
 | Section lengths | Each length counts exactly its payload. |
 
@@ -173,7 +173,7 @@ admits either no table and no table exports, or the one empty function table
 and exactly `__indirect_function_table` at index zero.  Other table types,
 limits, widths, counts, names, and export indices fail the profile check.
 The memory-section declaration omits the data
-segments that the data section carries.
+segments that the data section contains.
 Every field of the pinned Talos module record is accounted for.
 
 Declared function type indices remain unchanged.  An imported function has
@@ -197,8 +197,8 @@ The UTF-8 discrepancies also occur in the rendered Core 3 value formulas.  The
 interpretation and Unicode range.  The official [reference decoder][decoder]
 confirms signed constant immediates.  For example, `41 7f` denotes the 32-bit
 word `ffffffff`, which the Lean rule preserves.  The Lean definitions agree with
-these resolved meanings.  A claim of literal agreement with every formula in the
-Core 3 snapshot would exceed this review.
+these resolved meanings.  This review does not claim literal agreement with every formula in the
+Core 3 snapshot.
 
 ## Reviewed source identity
 

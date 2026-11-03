@@ -3,8 +3,8 @@ import Library.Numerics.Float64.Tan.TanOdd
 /-!
 The error of `Tan.kernelTan` from `0x3FE59428` on, in real numbers: with `x'` the argument,
 `r` the computed correction, and `W = x' + r`, the computed `x' - (w ^ 2/(w + v) - r)` lies within
-`2.4 u |x'| + 4 η` of `W v/(W + v)`, for `v = ±1` and `|x'| ≤ 1/8`.  The rounding of `w` enters
-only through `W ^ 2/(W + v) - w ^ 2/(w + v)`, which carries a factor of the size of `|x'|`.
+`2.4 u |x'| + 4 η` of `W v/(W + v)`, for `v = ±1` and `|x'| ≤ 1/8`.  The rounding of `w` affects the
+result only through `W ^ 2/(W + v) - w ^ 2/(w + v)`, which has a factor of the size of `|x'|`.
 -/
 
 namespace Library.Numerics.Float64.Tan.TanBigReal

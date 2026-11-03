@@ -4,7 +4,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The twenty-eighth program of the verified compiler: `exp`, ported from Arm's
+/-! A program of the verified compiler: `exp`, ported from Arm's
 optimized-routines, `math/exp.c` and `math/exp_data.c` at commit
 `503fafe311c177de0e571c458c7c337b1ca5f522` (`exp.c` Copyright (c) 2018-2025 and `exp_data.c`
 Copyright (c) 2018-2023, Arm Limited,

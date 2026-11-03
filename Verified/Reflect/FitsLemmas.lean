@@ -3,9 +3,9 @@ import Verified.Reflect.BoundLemmas
 /-! The lemmas from which the reflector builds the equation between whether a function's calls find
 their frames, `Expr.fits`, and a Lean term: one lemma per source form with parts, with the forms
 of conditions that `BoundLemmas` distinguishes.  An expression that calls no function whose code
-takes the call depth, a leaf among them, finds its frames by `Expr.fits_of_depthCalls`.  As in
-`BoundLemmas`, each conclusion is built from the lemma's arguments, and a binder's body enters
-through its equation at the value. -/
+takes the call depth, a leaf among them, has enough frames by `Expr.fits_of_depthCalls`.  As in
+`BoundLemmas`, each conclusion is built from the lemma's arguments, and a lemma takes a binder's
+body as its equation at the value. -/
 
 namespace Verified.Reflect
 

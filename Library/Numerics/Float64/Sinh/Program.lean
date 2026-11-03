@@ -6,7 +6,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The thirty-sixth program of the verified compiler: `sinh` and `cosh`, ported from fdlibm as
+/-! A program of the verified compiler: `sinh` and `cosh`, ported from fdlibm as
 FreeBSD's `lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379` (`e_sinh.c`
 and `e_cosh.c`, Copyright (C) 1993 by Sun Microsystems, Inc., freely distributable with this
 notice), with the helpers `__frexp_exp` and `__ldexp_exp` from `k_exp.c` (Copyright (c) 2011 David

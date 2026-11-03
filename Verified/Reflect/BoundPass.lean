@@ -10,10 +10,11 @@ compare them.  A side condition is a closed term, which the kernel evaluates to 
 its proof is `rfl`.
 
 Each lemma's conclusion is built from its arguments, and each congruence is stated with its sides,
-so the type that `inferType` computes for a proof is the one the kernel infers, and two equations
-join where their terms are identical.  The kernel compares two closed `Nat` sums that differ by
-evaluating both, so the hints that do compare different terms compare them where one holds a free
-variable, or under heads that the kernel unfolds by their heights before it compares arguments. -/
+so the type that `inferType` computes for a proof is the one the kernel infers, and the builders
+combine two equations where their terms are identical.  The kernel compares two closed `Nat` sums
+that differ by evaluating both, so the hints that do compare different terms compare them where one
+holds a free variable, or under heads that the kernel unfolds by their heights before it compares
+arguments. -/
 
 namespace Verified.Reflect
 

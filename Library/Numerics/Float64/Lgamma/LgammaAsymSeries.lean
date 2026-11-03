@@ -4,8 +4,8 @@ import Library.Numerics.Float64.Tgamma.TgammaPolyLip
 /-!
 The series term of `Lgamma.asLgammaAsymAccurate`: from `zh + zl ≈ Z = 1/x` (`LgammaAsymRecip`),
 the code squares the pair with `mulDD`, evaluates the polynomial of the range with `polyDD` at the
-square, and multiplies the result by the pair with `mulDD`.  `series_gen` puts the result within
-`R/2^99` of `Z · P (Z²)` for `R ≈ Z`, from a kernel check of the polynomial's steps on
+square, and multiplies the result by the pair with `mulDD`.  `series_gen` shows that the result lies
+within `R/2^99` of `Z · P (Z²)` for `R ≈ Z`, from a kernel check of the polynomial's steps on
 subintervals (`LgammaPolyIv.kern_iv`), a check that its value lies in `[lo, hi]` (`valOk`), and its
 Lipschitz bound `Library.Numerics.Float64.Tgamma.TgammaPolyLip.lipQ`.  The square differs from `Z²` by at most `R²/2^94`.
 -/

@@ -151,7 +151,7 @@ theorem convex_left {f : ℝ → ℝ} {s : Set ℝ} (hf : ConvexOn ℝ s f) {x x
     · nlinarith [mul_pos hl0 (neg_pos.mpr hneg)]
   nlinarith [mul_nonneg (sub_nonneg.mpr hl1) hfx]
 
-/-- The mirror image of `convex_left`. -/
+/-- The counterpart of `convex_left` for points to the right. -/
 theorem convex_right {f : ℝ → ℝ} {s : Set ℝ} (hf : ConvexOn ℝ s f) {x xc xd : ℝ} (hx : x ∈ s)
     (hc : xc ∈ s) (h1 : xd ≤ x) (h2 : xc < xd) (hfd : 0 ≤ f xd) (hfc : f xc ≤ 0) :
     f xd ≤ f x := by

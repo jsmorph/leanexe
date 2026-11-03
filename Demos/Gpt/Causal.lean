@@ -5,7 +5,7 @@ import LeanExe.Dialect.Lemmas
 /-! Row `i` of `forward`'s scores, and of each layer's input inside it, depends only on
 tokens `0` to `i`, whatever the number of tokens.  The lemmas compare a run on `t` tokens
 with a run on `t'` tokens, both above `i`; `forward_causal` is the case `t = t'`, for any
-`i`.  The theorems concern the Lean definitions; `Implements` carries them to the bytes.
+`i`.  The theorems concern the Lean definitions; `Implements` transfers them to the bytes.
 The bounds on the dimensions (`t`, `nh`, and `dh` below `2 ^ 16`; `f` and `vocab` below
 `2 ^ 32`) exclude overflow in the `UInt64` index arithmetic. -/
 
@@ -19,7 +19,7 @@ open Demos.Gpt
 def RowsAgree {α : Type} [Inhabited α] (w i : Nat) (a b : Array α) : Prop :=
   ∀ m, m < (i + 1) * w → a[m]! = b[m]!
 
-/-- The attention scores of positions `0` to `i` agree on the keys each position sees:
+/-- The attention scores of positions `0` to `i` agree on the keys each position attends to:
 `a` and `b` hold rows of `nh` blocks of `t` and `t'` scores, and score `j` of block `r`
 is equal in both for `j` up to the block's position `r / nh`. -/
 def ScoresAgree (t t' nh i : Nat) (a b : Array Float) : Prop :=

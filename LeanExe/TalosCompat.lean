@@ -1,20 +1,20 @@
 import Interpreter.Wasm.Wp.Tactic
 
 /-!
-# Talos compatibility for the pre-floating-point migration
+# Talos compatibility declarations
 
-The Lean 4.34 Talos baseline removes a few convenience declarations while
-preserving the definitions they wrapped.  Existing audited integer proofs keep
-their old surface through these proved, project-local adapters.  New proofs use
-the current Talos APIs directly.
+Talos for Lean 4.34 does not provide a few convenience declarations, although it
+keeps the definitions they wrapped.  These proved, project-local adapters restate
+those declarations for the integer proofs that use them.  Other proofs use the
+Talos APIs directly.
 -/
 
 namespace Wasm
 
 namespace UInt32
 
-/-- Compatibility name for frame arithmetic now supplied by Lean core rather
-than CodeLib. -/
+/-- Compatibility name for the frame arithmetic lemma
+`_root_.UInt32.toNat_sub_of_le` of Lean core. -/
 theorem toNat_sub_of_le (a b : _root_.UInt32) (h : b ≤ a) :
     (a - b).toNat = a.toNat - b.toNat :=
   _root_.UInt32.toNat_sub_of_le a b h
@@ -35,11 +35,11 @@ theorem wp.imp {Q Q' : Assertion α}
     wp m c Q' st s env :=
   wp.conseq hq h
 
-/-! The 4.34 decoder preserves the validation types attached to structured
-control.  Execution uses the checked arities and deliberately ignores these
-proof metadata fields, while the pre-FP WP convenience lemmas still state
-their rules with the default empty lists.  Normalize only at the WP boundary;
-the decoded module itself retains the exact metadata. -/
+/-! The decoder of Talos for Lean 4.34 keeps the validation types of structured
+control.  Execution uses the checked arities and ignores these proof metadata
+fields, while the `wp` convenience lemmas state their rules with the default
+empty lists.  The theorems below remove the types only in `exec` and `wp` terms,
+and the decoded module keeps the exact metadata. -/
 
 theorem exec_block_control_types (fuel : Nat) {ps rs : Nat} {body rest : Program}
     {paramTypes resultTypes : List ValueType} :
@@ -80,8 +80,8 @@ theorem wp_iff_control_types {ps rs : Nat} {thenBody elseBody rest : Program}
   unfold wp
   simp only [exec_iff_control_types]
 
-/-- Retained proof script for the two grandfathered specifications that peel
-low-information structural boundaries before straight-line simplification. -/
+/-- Applies `wp_block_cons` and `wp_iff_cons` to the leading blocks and conditionals, and then
+runs `wp_run` and `simp`. -/
 macro "wp_peel" : tactic => `(tactic|
   ((repeat (first
     | apply wp_block_cons

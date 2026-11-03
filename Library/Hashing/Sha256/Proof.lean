@@ -61,7 +61,7 @@ theorem loadBlock_toVec32 (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p)
   · exact key0
   all_goals exact key _ (by decide)
 
-/-- The 32-bit words of the hash value that `hashFrom` reaches from `h` are the implementation's
+/-- The 32-bit words of the hash value that `hashFrom` computes from `h` are the implementation's
 after the blocks that follow the prefix `pre`. -/
 theorem hashFrom_toVec32 (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (h : Words8)
     (msg : Array UInt64) (n len : UInt64) (hlen : len.toNat = 64 * p + n.toNat)

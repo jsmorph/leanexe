@@ -2,11 +2,11 @@ import LeanExe.WGSL.Syntax
 import Interpreter.Wasm.IEEE32
 
 /-!
-The meaning of a kernel under the device model of 2026-10-04.  Binary32 operations compute Talos's
+The meaning of a kernel under the device model.  Binary32 operations compute Talos's
 `IEEE32` results.  An invocation runs the body with the read-only buffers and records its stores
 to the read-write buffer, which it may not read.  A dispatch runs invocations `0` to `count - 1`
 on the initial buffers and applies each invocation's stores to the output in order; when the
-stores of distinct invocations go to distinct words (`Module.RaceFree`), the order does not
+stores of distinct invocations write distinct words (`Module.RaceFree`), the order does not
 matter, and WGSL's memory model gives the same result for the concurrent execution.  Every error
 here, an ill-typed operation, an access outside a buffer, or a read of the output, makes the
 result `none`.  So does a `while` loop whose condition still holds after `loopBound` tests.  A run
@@ -41,7 +41,7 @@ def Env.find (env : Env) (index : Nat) : Option (Value × Bool) :=
 def Env.set (env : Env) (index : Nat) (value : Value) : Env :=
   env.map fun b => if b.1 = index then (b.1, value, b.2.2) else b
 
-/-- What an invocation sees: its index, the read-only buffers, and the size of the output. -/
+/-- The inputs of an invocation: its index, the read-only buffers, and the size of the output. -/
 structure Context where
   gid : UInt32
   inputs : List (Array UInt32)
@@ -65,7 +65,7 @@ def BinOp.apply : BinOp → Value → Value → Option Value
   | .eq, .bool a, .bool b => some (.bool (a == b))
   | _, _, _ => none
 
-/-- The value of an expression.  `&&` and `||` evaluate their right operand only when it decides
+/-- The value of an expression.  `&&` and `||` evaluate their right operand only when it determines
 the result, and `select` evaluates all three arguments, as WGSL does. -/
 def Expr.eval (ctx : Context) (env : Env) : Expr → Option Value
   | .lit v => some (.u32 v)

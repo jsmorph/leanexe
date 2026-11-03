@@ -1,12 +1,12 @@
 import Verified.Reflect.Command
 
-/-! The twenty-second program of the verified compiler: records with array fields.  A structure
+/-! A program of the verified compiler: records with array fields.  A structure
 whose `Flat` tuple holds arrays is represented as that tuple, by `instRepresentOfFlat`, so its
 arrays are passed and returned as a tuple's arrays are.  The programs build records, read their
 fields and elements, also past the end, update a field with `{ r with … }` on a borrowed
 parameter, which copies the array, and in a loop's state, which updates it in place, pass a record
-to a call, take one apart with `match`, choose one with `if`, return one in a pair, and hold one
-record in another.  `Tape`'s `Flat` instance takes the record apart with a pattern, `pushPrices`
+to a call, destructure one with `match`, choose one with `if`, return one in a pair, and hold one
+record in another.  `Tape`'s `Flat` instance destructures the record with a pattern, `pushPrices`
 extends a field's array in a loop whose state is the record, `heavyPick` returns either its
 borrowed argument or a call's result, and `spanOf` passes a call a record built in place whose
 `Flat` tuple ends in two words.  The bound equations of all the functions write the records'
@@ -91,7 +91,7 @@ def worldLevel (w : World) : Float := gridLevel w.grid + w.label.toFloat
 
 def relabel (w : World) (k : UInt64) : World := { w with label := w.label + k }
 
-/-- A record whose `Flat` instance takes it apart with a pattern. -/
+/-- A record whose `Flat` instance destructures it with a pattern. -/
 structure Tape where
   marks : Array UInt64
   head : UInt64

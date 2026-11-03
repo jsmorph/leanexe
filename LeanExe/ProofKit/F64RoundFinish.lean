@@ -126,7 +126,7 @@ theorem roundShift_mul_pow (r k : Nat) (hk : 0 < k) : Wasm.IEEE32.roundShift (r 
 
 /-- `roundScaledMagnitude` of an exact `r * 2 ^ k` with `r` in `[2^52, 2^53]`
 encodes `r` with exponent field `k + 1`, carrying into the exponent when
-`r = 2^53`.  Binary64's dyadic rounder reaches this form, where binary32's
+`r = 2^53`.  Binary64's dyadic rounder produces this form, where binary32's
 encodes the fields directly. -/
 theorem roundScaled_mul_pow (negative : Bool) (r k : Nat) (hk : 0 < k)
     (hlo : 2 ^ 52 ≤ r) (hhi : r ≤ 2 ^ 53) :

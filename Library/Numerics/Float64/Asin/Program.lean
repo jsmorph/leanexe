@@ -4,7 +4,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The thirty-fourth program of the verified compiler: `asin` and `acos`, ported from fdlibm as
+/-! A program of the verified compiler: `asin` and `acos`, ported from fdlibm as
 FreeBSD's `lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379` (`e_asin.c` and
 `e_acos.c`, Copyright (C) 1993 by Sun Microsystems, Inc., freely distributable with this notice).
 Both use the quotient `w (z) = p (z)/q (z)` of `e_asin.c`, which approximates `(asin √z - √z)/√z`:
@@ -15,7 +15,7 @@ alone gives about `2 ^ -56.58` (`AsinKernelPoly`).  Below `1/2` in magnitude,
 `asin √z = √z + √z w (z)`: `asin |x| = π/2 - 2 asin √z` with `z = (1 - |x|)/2`, `acos x = 2 asin √z`
 for positive `x`, and `acos x = π - 2 asin √z` with `z = (1 + x)/2` for negative `x`.  Where the
 result needs it, `√z` is split into its high 32 bits `f` and the correction `(z - f²)/(√z + f)`, and
-`π/2` comes in two parts.  fdlibm states no error bound for either function.  Each constant is
+`π/2` is stored in two parts.  fdlibm states no error bound for either function.  Each constant is
 written as the bit pattern that fdlibm's source gives beside its decimal value, and `1.0e+300` as
 the bits of that decimal.  The dialect has no floating-point flags, and the expressions that fdlibm
 evaluates only for their flags keep their values: the guard `huge + x > 1` stays.  fdlibm computes

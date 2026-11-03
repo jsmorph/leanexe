@@ -3,7 +3,7 @@ import Demos.Energy.Verified
 import Verified.Call
 
 /-! The energy authorizer under the test site's profile table, and its module.  `site_valid`
-proves that the table meets the profile's validity condition.  `authorize_sound` states that
+proves that the table satisfies the profile's validity condition.  `authorize_sound` states that
 accepted limits give the bounds of the acceptance rule at each time of the window for every
 trajectory admitted until that time, `authorize_admits` that for every time `t` some trajectory
 is admitted until `t`,
@@ -11,7 +11,7 @@ is admitted until `t`,
 `authorize_accepted` the limits and the expiry of an accepted result.  `energy_authorize` states
 that the module's bytes decode to the module, whose export `authorize` is function 17, whose
 start store is ready, and whose entry returns, without a trap and from every ready store, the
-authorizer's decision, and whose accepted decisions meet `authorize_sound`. -/
+authorizer's decision, and whose accepted decisions satisfy `authorize_sound`. -/
 
 namespace Demos.Energy.Theorems
 
@@ -36,8 +36,8 @@ theorem authorize_admits {xs : Array UInt64} (h : (authorize xs).status = .accep
 
 /-- For consecutive inputs that `authorize` accepted, whose snapshots lie at most a window apart,
 every time from the first snapshot to the end of the last window lies in the window of the latest
-accepted snapshot at or before it, whose bounds hold at that time for a trajectory that meets that
-window's other assumptions, the device's response, and the gateway's rules until then. -/
+accepted snapshot at or before it, whose bounds hold at that time for a trajectory that satisfies
+that window's other assumptions, the device's response, and the gateway's rules until then. -/
 theorem authorize_operation {n : ℕ} {ys : ℕ → Array UInt64}
     (h : ∀ j < n, (authorize (ys j)).status = .accepted)
     (hr : (runOf n ys).Spaced (profileOf site)) (h0 : 0 < n) {x : Trajectory}

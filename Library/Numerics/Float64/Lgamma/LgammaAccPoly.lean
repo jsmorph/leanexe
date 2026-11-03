@@ -9,7 +9,8 @@ pairs at offset 68 (`d ↦ log Γ (3/2 + d)`).  `LgammaPolyFst.polyFst_damped_co
 Horner value of each step at the point, which the sums of the coefficients' magnitudes give
 (`hbT`), and the kernel checks its conditions with rationals (`accOk`, `acc_gen`).  The coefficient
 `ψ (3/2) ≈ 0.0365` of the second polynomial is smaller than the product that `fastSum` adds to it,
-so its first 28 pairs go through `acc_gen` and its last two steps through `Library.Numerics.Float64.Tgamma.TgammaAcc2.fts_approx`.
+so `acc_gen` handles its first 28 pairs and `Library.Numerics.Float64.Tgamma.TgammaAcc2.fts_approx`
+its last two steps.
 -/
 
 namespace Library.Numerics.Float64.Lgamma.LgammaAccPoly

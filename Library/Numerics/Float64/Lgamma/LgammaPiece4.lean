@@ -6,7 +6,7 @@ import Library.Numerics.Float64.Lgamma.LgammaPiece4E
 
 /-!
 Piece 4 of `cr_lgamma`'s piecewise polynomial (`lgamma.c` lines 759-870, commit `ff2f71f6`), which
-contains the zero 1 of `lgamma` and carries the factor `1 - x`: on the piece widened by `2 ^ -50`
+contains the zero 1 of `lgamma` and has the factor `1 - x`: on the piece widened by `2 ^ -50`
 at each end, `|lgamma x - (1 - x) pieceP 4 (x - off 4)| ≤ 12 · 10 ^ -20 |lgamma x|` (`piece4`).
 With `s = x - 1`, `lgamma x = s g s` for the divided difference `g`, and `Q = q4` of
 `LgammaPiece4Base` has `(1 - x) pieceP 4 (x - off 4) = s Q s`.  Kernel checks of Taylor models of

@@ -2,11 +2,11 @@ import Library.Numerics.Float64.Lgamma.LgammaWalk
 
 /-!
 Reading the block of `Lgamma.accurate`, with the steps of `LgammaWalk` and two more.  `acc_step`
-takes one step as `walk_step` does and also enters the matcher `Lgamma.accurate.match_1` on the
+takes one step as `walk_step` does and also handles the matcher `Lgamma.accurate.match_1` on the
 4-tuple of `rootRange`.  `spec_step P` splits a goal `S (match p with (a, b) => f a b)` on a pair or
 triple into `P p` and `∀ a b, P (a, b) → S (f a b)`, so that a specification `P` of the matched
-value, proved by its own walk, carries into the rest of the block.  Both instantiate their lemmas
-with the goal's own subterms, as `walk_step` does.
+value, proved by its own walk, becomes a hypothesis for the rest of the block.  Both instantiate
+their lemmas with the goal's own subterms, as `walk_step` does.
 -/
 
 namespace Library.Numerics.Float64.Lgamma.LgammaAccWalk

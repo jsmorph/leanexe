@@ -39,8 +39,8 @@ source instances along `φ`.  Its body may use literals, its parameters, `let`, 
 `+`, `-`, `*`, `/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`,
 `≤`, `>`, `≥`, `=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a
 comparison, also as `if h : c` with branches that do not use `h`, pairs built with `(a, b)` and
-taken apart with `.1`, `.2`, or `match`, structures built with their constructor or `{ s with … }`
-and taken apart with their fields or `match`, whose patterns may fix fields to enumeration
+destructured with `.1`, `.2`, or `match`, structures built with their constructor or `{ s with … }`
+and destructured with their fields or `match`, whose patterns may fix fields to enumeration
 constructors, enumeration constructors, `Flat.flat` of enumerations, `match` and comparisons on
 enumerations, Boolean equality and inequality, `LeanExe.loop`,
 `LeanExe.repeatWhile`, whole-array `Array.foldl`, `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`,
@@ -358,8 +358,8 @@ def Tables.table (t : Tables) (fits : Bool) : Lean.Expr :=
     mkAppN (mkConst (if fits then ``Fits.cons else ``Bounds.cons))
       #[t.sigs, g, if fits then fi else b, t.rest fits]
 
-/-- The functions an expression may call, the Lean functions they mean, the definitions behind
-them, variable 0 of `sigs` first, the variables in scope with their types, variable 0 first, the
+/-- The functions an expression may call, the Lean functions they mean, their definitions,
+variable 0 of `sigs` first, the variables in scope with their types, variable 0 first, the
 environment of their values, and the bounds and frames conditions of the functions. -/
 structure Ctx where
   /-- The program's name, under which the reflector adds the theorems it shares between
@@ -873,7 +873,7 @@ def varOf (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Ty) := do
 
 /-- The source variables of the matched record headers of `c.vars` that the source term `src`
 reuses.  Every match on a record of one layout keys its header by the same term, so the headers
-are told apart by their positions. -/
+are distinguished by their positions. -/
 def headersIn (c : Ctx) (src : Lean.Expr) : MetaM (List Lean.Expr) := do
   let mut found := []
   for ((_, t), i) in c.vars.zipIdx do
@@ -1108,7 +1108,7 @@ partial def expandPairs (d : Lean.Expr) : MetaM Lean.Expr := do
     #[← expandPairs (← mkAppM ``Prod.fst #[d]), ← expandPairs (← mkAppM ``Prod.snd #[d])]
 
 /-- The arguments that the one alternative of the match `app` receives for the discriminant `d`,
-a tuple, along the alternative's pattern, which may take nested pairs apart: the match on `d`
+a tuple, along the alternative's pattern, which may destructure nested pairs: the match on `d`
 expanded into pairs reduces to the alternative applied to them. -/
 def matchFields (app : MatcherApp) (d : Lean.Expr) : MetaM (Array Lean.Expr) := do
   withLocalDeclD `h (← inferType app.alts[0]!) fun h => do
@@ -1121,7 +1121,7 @@ def matchFields (app : MatcherApp) (d : Lean.Expr) : MetaM (Array Lean.Expr) := 
 /-- For a match `app` with one discriminant `d` of a structure type, `Prod` included, and one
 alternative `alt`, the proof of `alt (fields d) = app`.  It is proved by `rfl` for a variable for
 `d` and a variable for the alternative, since structure eta lets the match reduce on a variable,
-also when the pattern takes nested pairs apart, and then applied to both, so that the kernel
+also when the pattern destructures nested pairs, and then applied to both, so that the kernel
 evaluates neither the value nor the alternative's body. -/
 def casesEq (app : MatcherApp) (fields : Lean.Expr → MetaM (Array Lean.Expr)) :
     MetaM Lean.Expr := do
@@ -1467,7 +1467,7 @@ partial def ctorRebuild (e : Lean.Expr) (ys : Array Lean.Expr) (i : Nat) :
 
 /-- `e` with each projection of an application of a structure's constructor reduced, and each pair
 `(y.1, y.2)` replaced by `y`, where the term holds a variable of the current context.  The kernel
-checks the reduction, behind a hint at this context, by comparing pairs of terms of which one holds
+checks the reduction, with a hint at this context, by comparing pairs of terms of which one holds
 that variable, and it evaluates the operands of `Nat` operations only in pairs of closed terms.  A
 variable that a lambda inside `e` binds is bound at the hint, so it does not count. -/
 def reduceOpenProjs (e : Lean.Expr) : MetaM Lean.Expr := do
@@ -2416,7 +2416,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       let alt := app.alts[0]!
       let d := app.discrs[0]!
       -- A pair built in place whose pattern binds its two components becomes `let` bindings of
-      -- the components.  A pattern that takes a component further apart binds the pair first, as
+      -- the components.  A pattern that destructures a component further binds the pair first, as
       -- for any other value.
       if (← projReduce d).isAppOf ``Prod.mk && app.altNumParams[0]! == 2 then
         let fs ← matchFields app d
@@ -4435,7 +4435,7 @@ def trueByEval (b : Lean.Expr) : MetaM Lean.Expr := do
     (← mkEq b (mkConst ``Bool.true))
 
 /-- The flattening of `userT` as a lambda, the identity when nothing in it is flattened.  The
-theorem applies it to Lean's values, so it carries no type annotation that would keep the
+theorem applies it to Lean's values, so it has no type annotation that would keep the
 application from reducing by beta reduction. -/
 def flatFn (userT : Lean.Expr) : MetaM Lean.Expr := do
   if let some f := (← shapeOf userT).flat then return f
@@ -4565,7 +4565,7 @@ partial def agreeArgs (userT : Lean.Expr) (ps : List Ty) (ms : List Mode) :
   | _, _ => throwError "verified_compile: the arguments {userT} do not have the shape of the \
     parameters"
 
-/-- What the reflector learns from one definition: its signature, whether a call may trap, the
+/-- What the reflector records from one definition: its signature, whether a call may trap, the
 modes of its parameters, and whether its code takes the call depth. -/
 structure Reflected where
   name : Name
@@ -4759,7 +4759,7 @@ of the record's tuple tree for field `f`, written as `x.f`.  When `x` holds no v
 binder inside the term binds, a lemma of `flatFieldEq` rewrites it by congruence on the term with
 the occurrence abstracted at reducible transparency, innermost first, so that the kernel unfolds
 neither `x` nor a term that unfolds to it.  When `x` is a variable or a projection of one, also
-under a binder, the component becomes `x.f` behind a type hint, which the kernel checks with the
+under a binder, the component becomes `x.f` with a type hint, which the kernel checks with the
 variable free.  The hint also covers the eta of a pair or a structure into `y` when `y` is a
 variable or a projection of one, and, where a term holds a variable of the context, the reduction
 of a projection of a constructor's application.  A component whose `x` holds a bound variable and
@@ -4973,7 +4973,7 @@ its arguments, with `base.bound_eq`, which states the bound as a Lean term in th
 a function with a paid parameter, `base.cost` is the table's entry with `base.cost_eq`, and
 `base.bound` is the credits of the paid arguments plus `base.cost`.  When its code takes the call
 depth, the bound takes the frames available, and `base.fits` and `base.fits_eq` state whether its
-calls find their frames. -/
+calls have enough frames. -/
 def reflectDefinition (base name : Name) (sigs funs prog : Lean.Expr) (callees : List Callee) :
     MetaM Reflected := do
   let info ← getConstInfoDefn name

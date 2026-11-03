@@ -1,6 +1,6 @@
 import Verified.Reflect.Command
 
-/-! The twelfth program of the verified compiler: parameter modes.  The reflector makes an array
+/-! A program of the verified compiler: parameter modes.  The reflector makes an array
 parameter owned when the body consumes it where it dies, and a caller then moves an owned
 variable that dies at the call into the function instead of copying it.  A parameter that the
 body reads, or uses again after the consuming use, stays borrowed.  `byHand` is a program written

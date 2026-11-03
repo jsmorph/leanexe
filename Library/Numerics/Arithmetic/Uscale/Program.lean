@@ -7,7 +7,7 @@ import LeanExe.Dialect.Float32
 /-! Natural numbers of any size as arrays of 32-bit limbs, least significant first, each limb held
 in a 64-bit word, and the exact unrounded scaling that the decimal parsers and printers use.  A
 32-bit limb keeps every intermediate product of a limb by a word below `2 ^ 32` inside one word:
-`(2 ^ 32 - 1) ^ 2 + 2 · (2 ^ 32 - 1) = 2 ^ 64 - 1`.  The arrays may carry zero limbs at the top.
+`(2 ^ 32 - 1) ^ 2 + 2 · (2 ^ 32 - 1) = 2 ^ 64 - 1`.  The arrays may have zero limbs at the top.
 `mulSmall` multiplies by a word below `2 ^ 32` and adds one, `shl` multiplies by a power of two
 with `mulSmall` and zero limbs, `le` compares, `sub` subtracts a smaller number, `bitLen` gives the
 bit length, and `divBits` divides by restoring division when the quotient has at most `bits ≤ 63`

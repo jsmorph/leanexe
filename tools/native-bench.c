@@ -1,11 +1,11 @@
 /* The command `bench` of the host of a translated module, for tests/native/bench.sh, which links
-   this file with its translation, its glue, and tools/native-host.c compiled with
+   this file with its translation, its export tables, and tools/native-host.c compiled with
    -Dmain=host_main.  `bench SECONDS MAX FUNC RESULT [ARG...]`, which tools/wasmtime-host.c also
    takes, calls the export once to warm up, and then repeatedly until SECONDS have passed or MAX
    timed calls have run.  Before each call it places the arguments again, since a call may
    consume them, and it times only the call, with CLOCK_MONOTONIC.  It prints the results of the
    last call as `call` does, then `bench N NS`, the number of timed calls and their total time in
-   nanoseconds.  Every other command goes to the main of tools/native-host.c. */
+   nanoseconds.  Every other command is passed to the main of tools/native-host.c. */
 
 /* For clock_gettime and CLOCK_MONOTONIC. */
 #define _POSIX_C_SOURCE 199309L

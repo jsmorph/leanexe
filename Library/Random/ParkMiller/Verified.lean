@@ -1,7 +1,7 @@
 import Verified.Reflect.Command
 import Library.Random.ParkMiller.Period
 
-/-! The thirty-third program of the verified compiler: Park and Miller's generator of
+/-! A program of the verified compiler: Park and Miller's generator of
 `Library/Random/ParkMiller/Program.lean`, compiled unchanged.  None of `step`, `advance`, and `seed`
 allocates, so the compiler's theorem states that the module computes each of them without a trap.
 `parkMiller_advance` adds the theorems of `Library/Random/ParkMiller/Period.lean` that every seed gives a

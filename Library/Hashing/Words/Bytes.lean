@@ -2,8 +2,8 @@ import Library.Hashing.Words.Program
 import Library.Bytes.Packed
 
 /-! The bytes of a digest.  The correctness theorems of the hash functions state their results
-through `Words8.bytes` and its companions, in the packing of `Library.Bytes`, and their arguments
-through `Library.Bytes.bytes`. -/
+through `Words8.bytes`, `Words6.bytes`, and `Words4.bytes`, in the packing of `Library.Bytes`, and
+their arguments through `Library.Bytes.bytes`. -/
 
 namespace Library.Hashing.Words
 

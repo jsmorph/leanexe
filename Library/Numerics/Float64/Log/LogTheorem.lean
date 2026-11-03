@@ -7,7 +7,7 @@ The accuracy theorem for `Log.log`.  For every finite binary64 input with positi
 result lies within one representable step of the nearest-even rounding of the real `log x`, by the
 main path for normal and subnormal arguments and the path near 1.  The exceptional inputs give the
 results of IEEE 754: `log (±0) = -∞`, `log (+∞) = +∞`, `log 1 = +0`, and the canonical NaN for a
-negative argument, negative infinity included, and for a NaN.  `log_bytes_accuracy` carries the
+negative argument, negative infinity included, and for a NaN.  `log_bytes_accuracy` transfers the
 bound to the decoded bytes of the compiled module and to every call in a sequence of calls to its
 export `log`.
 -/

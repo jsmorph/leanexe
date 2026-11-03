@@ -99,7 +99,7 @@ theorem alloc_spec_or_abort {m : Module} {typeIdx : Nat} (hMemory32 : m.memIs64 
     (fun h => nomatch h)
 
 /-- The heap after `release` frees the object at `ptr`, whose header records
-payload capacity `capacity`: the block joins the free list in address order. -/
+payload capacity `capacity`: the block is inserted into the free list in address order. -/
 def Heap.release (heap : Heap) (ptr capacity : UInt64) : Heap :=
   { heap with
     free := insertFree ptr capacity heap.free
@@ -333,7 +333,7 @@ theorem findPlace_spec {m : Module} (env : HostEnv Unit) (store : Store Unit)
           · simp only [freeHead] at hScanAfter
             omega
 
-/-- The store `release` reaches after dropping the reference to the object at
+/-- The store that `release` produces after dropping the reference to the object at
 `ptr`: the count word cleared. -/
 def releaseEntry (store : Store Unit) (ptr : UInt64) : Store Unit :=
   { store with mem := store.mem.write64 (UInt32.ofNat (ptr.toNat - 40)) 0 }
@@ -505,7 +505,7 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
     exact h
 
 /-- Clearing the count word of an object keeps the allocator invariant and the object's
-block facts, and `release` then reaches the same store. -/
+block facts, and `release` then produces the same store. -/
 theorem Heap.Object.clearCount {heap : Heap} {store : Store Unit} {ptr : UInt64}
     (hHeap : heap.At store) (h : heap.Object store ptr) :
     heap.At (releaseEntry store ptr) ∧ heap.Object (releaseEntry store ptr) ptr ∧

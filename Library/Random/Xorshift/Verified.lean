@@ -1,7 +1,7 @@
 import Verified.Reflect.Command
 import Library.Random.Xorshift.Jump
 
-/-! The thirty-fourth program of the verified compiler: Marsaglia's xorshift64 of
+/-! A program of the verified compiler: Marsaglia's xorshift64 of
 `Library/Random/Xorshift/Program.lean`, compiled unchanged.  `step`, `advance`, and `applyCols`
 do not allocate, so the verified compiler's theorem states that the module computes them without
 a trap.  `square`, `jumpPass`, and `jump` allocate, and `jump_bound` states that the verified

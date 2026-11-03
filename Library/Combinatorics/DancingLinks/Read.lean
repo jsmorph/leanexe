@@ -5,7 +5,7 @@ options and the current run: a nonzero word extends the run, and a zero finishes
 run.  `finish_read` shows that reading words from a state and then finishing the last run gives
 the finished options followed by the nonempty runs of the run and the words, as `List.splitOn`
 cuts them.  From the empty state, that is the specification's `options`, and `read_prefix`
-gives, for any prefix of the words, how the state after it sits inside the options. -/
+gives, for any prefix of the words, how the state after it relates to the options. -/
 
 namespace Library.Combinatorics.DancingLinks
 

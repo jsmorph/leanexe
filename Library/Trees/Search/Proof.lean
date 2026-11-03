@@ -1,7 +1,7 @@
 import Library.Trees.Search.Program
 import Library.Trees.Search.Spec
 
-/-! The proofs that `search` and `insert` compute `algorithmT` and that `algorithmT` meets
+/-! The proofs that `search` and `insert` compute `algorithmT` and that `algorithmT` satisfies
 `SearchTree` on every binary search tree.  For the library's `KeyTree.insert`, which computes the
 tree of `algorithmT` by recursion, they prove that equality and the membership and ordering
 theorems.  `descend_eq` states the link reversal: `descend x path t` returns what `ascend` returns
@@ -172,7 +172,7 @@ theorem keys_algorithmT (x : UInt64) (t : KeyTree) (ht : Ordered t) :
         subst this
         simp [algorithmT, keys, h]
 
-/-- Algorithm T on a binary search tree meets the guarantees of `SearchTree`. -/
+/-- Algorithm T on a binary search tree satisfies the guarantees of `SearchTree`. -/
 theorem searchTree (x : UInt64) (t : KeyTree) (ht : Ordered t) : SearchTree x t :=
   ⟨found_algorithmT x t ht, ordered_algorithmT x t ht, keys_algorithmT x t ht⟩
 

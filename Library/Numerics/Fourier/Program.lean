@@ -5,7 +5,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The twenty-fourth program of the verified compiler: the discrete Fourier transform.  A signal
+/-! A program of the verified compiler: the discrete Fourier transform.  A signal
 of `n` complex values is an array of `2 n` floats, the real and imaginary parts interleaved, and
 the transform computes `X k = Σ j, x j · exp (-2 π i j k / n)` in floating point, in the same
 layout, by the `n²` products of the definition.  An odd last float is ignored.  The factors

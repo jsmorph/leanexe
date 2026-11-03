@@ -5,7 +5,7 @@ import LeanExe.Native.Proof.Sqrt32
 
 /-!
 The simulation of every instruction, and of instruction lists at every fuel up to a bound, for
-code whose calls go to functions whose `CallSim` holds below that bound.
+code whose callees are functions whose `CallSim` holds below that bound.
 -/
 
 namespace LeanExe.Native
@@ -113,7 +113,7 @@ theorem instr_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.
     intro L σ n s σ' n' htr
     simp [trInstr] at htr
 
-/-- Instruction lists simulate at every fuel up to `Fmax`, for code whose calls go to functions
+/-- Instruction lists simulate at every fuel up to `Fmax`, for code whose callees are functions
 whose simulation holds below `Fmax`. -/
 theorem body_sim (hE : EnvOk E) (hG : c.nglobals = E.globals.length) (hcap : c.cap = E.cap)
     (h64 : mod.memIs64 = false) (hres : ResOk E c.results) {CallOk : Nat → Prop}

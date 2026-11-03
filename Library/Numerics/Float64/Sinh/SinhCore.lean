@@ -3,8 +3,8 @@ import Library.Numerics.Float64.Sinh.SinhWords
 /-!
 Real bounds for `sinh` below 22.  With `τ = exp a - 1`, `2 sinh a = f τ` for
 `f z = z + z/(1 + z)` (`two_sinh`), and `f T - f τ = (T - τ)(1 + 1/((1 + T)(1 + τ)))`
-(`f_diff`), so an error `E` of `T = expm1 a` enters `2 sinh a` with a factor below 2.  The code
-evaluates `f T` as `2 T - T T/(T + 1)` below 1 and as `T + T/(T + 1)` above; the rounded
+(`f_diff`), so an error `E` of `T = expm1 a` changes `2 sinh a` by `E` times a factor below 2.  The
+code evaluates `f T` as `2 T - T T/(T + 1)` below 1 and as `T + T/(T + 1)` above; the rounded
 quotients lie within `3.1 u` and `2.1 u` of `T T/(1 + T)` and `T/(1 + T)` (`small_round`,
 `mid_round`).  `check_small` turns bounds on an interval of `τ` into the relative error
 `2.9375 u` that `F64NearestRelative.within_rel_of` needs for three steps.

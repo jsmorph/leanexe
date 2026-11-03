@@ -4,7 +4,7 @@ import LeanExe.ProofKit.PolyBound
 import LeanExe.ProofKit.TaylorRemainder
 
 /-!
-The polynomial of Arm's `exp_inline` as `pow` uses it, whose residual carries the tail `xtail` of
+The polynomial of Arm's `exp_inline` as `pow` uses it, whose residual includes the tail `xtail` of
 the product `y log x` and so reaches `1/360`.  On `|r| ≤ 1/360` the polynomial is within `2 ^ -63`
 of `exp r - 1`, from the Taylor polynomial of degree 7 and `PolyBound.check`, and its evaluation
 in the order of the code is within `2 ^ -59` of the polynomial.  A coarse bound covers residuals up

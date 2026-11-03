@@ -1,6 +1,6 @@
 import Mathlib.Tactic
 
-/-! The error of the Rusanov flux formula when its inputs carry errors. -/
+/-! The error of the Rusanov flux formula when its inputs have errors. -/
 
 namespace LeanExe.ProofKit.RealRusanovError
 

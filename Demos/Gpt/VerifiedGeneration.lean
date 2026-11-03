@@ -2,14 +2,14 @@ import Demos.Gpt.Host
 import Demos.Gpt.Verified
 
 /-! The generation as the host runs it, on the verified compiler's module of GPT-2.  The host
-calls `step` once per token, each time handing over the cache that the previous call returned,
+calls `step` once per token, each time moving the cache that the previous call returned,
 which `step` consumes, and calls `scores` on the last cache.  `Generating heap store` describes a
 store between these calls, with `heap` the allocator's state.  `generating_start` gives it for the
 empty cache, `generating_step` shows that `step` gives it for one more token, and
 `generating_scores` shows that `scores` then returns row `p` of `forward` and leaves a store of
-the generation.  `generating_step` and `generating_scores` rest on the generated
+the generation.  `generating_step` and `generating_scores` depend on the generated
 `compiled.step.implements` and `compiled.scores.implements`, which allow a stop at `unreachable`.
-`generating_step_trapFree` and `generating_scores_trapFree` rest on the generated `trapFree`
+`generating_step_trapFree` and `generating_scores_trapFree` depend on the generated `trapFree`
 theorems: from a store in which `top` can rise by the call's generated bound within the memory
 cap, the call returns without a trap, keeps the memory caps, and raises `top` by at most that
 bound, so that `Heap.Within.after` gives the room for the next call. -/
@@ -71,7 +71,7 @@ theorem generating_start {heap : Heap} {store : Store Unit} {W : Weights} {P : P
 first `p + 1` tokens, gives the step of the generation: from a store of the generation after `p`
 tokens and with `Pre`, the call on token `p` consumes the cache at `pc` and, when it returns,
 returns the address `pc'` of a cache in a store of the generation after `p + 1` tokens, keeps the
-memory caps, and meets `Post`. -/
+memory caps, and satisfies `Post`. -/
 theorem step_runs {aborts : Bool} {g : StepInput → Array Float}
     {Pre : StepInput → Heap → Store Unit → Prop}
     {Post : StepInput → Heap → Store Unit → Heap → Store Unit → Prop} {heap : Heap}
@@ -139,7 +139,7 @@ theorem step_runs {aborts : Bool} {g : StepInput → Array Float}
 /-- A theorem of the form `ImplementsA` for function 42 gives the scores of the generation: from a
 store of the generation after `p` tokens and with `Pre`, the call of `scores` on the cache at `pc`,
 when it returns, returns the address `r` of an owned array that holds the result of `g` and leaves
-a store of the generation after `p` tokens, with the same memory caps, that meets `Post`. -/
+a store of the generation after `p` tokens, with the same memory caps, that satisfies `Post`. -/
 theorem scores_runs {aborts : Bool} {g : ScoresInput → Array Float}
     {Pre : ScoresInput → Heap → Store Unit → Prop}
     {Post : ScoresInput → Heap → Store Unit → Heap → Store Unit → Prop} {heap : Heap}

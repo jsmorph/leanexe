@@ -1,7 +1,7 @@
 import Library.Random.Sampling.Select
 
-/-! The proof that `reservoir` meets `Reservoirs`.  The loop of `reservoir` keeps the candidates of
-Algorithm R in an array, and step `t` replaces candidate `scale us[t] (k + t + 1)` with record
+/-! The proof that `reservoir` satisfies `Reservoirs`.  The loop of `reservoir` keeps the candidates
+of Algorithm R in an array, and step `t` replaces candidate `scale us[t] (k + t + 1)` with record
 `k + t` when that index is below `k` (`reservoir_eq`).  A replacement removes one candidate and adds
 the record, so the candidates are always a sub-multiset of the records (`reservoirFrom_subperm`),
 and the indices do not depend on the records (`reservoirFrom_map`). -/

@@ -1,11 +1,11 @@
 import Verified.Examples.Records
 
-/-! The seventeenth program of the verified compiler: arrays of structures.  An array of
+/-! A program of the verified compiler: arrays of structures.  An array of
 structures with `Flat` instances holds each element's flattening in consecutive words, as an array
 of tuples does.  The programs build such arrays, read elements and their fields, update elements in
-place, extend and join arrays, and return an array with a total.  The theorem for each definition
-is stated for Lean's arrays of structures and the instances Lean synthesizes for them.  An array of
-tuples has no `Represent` instance, so `pairTotal` holds one only inside its body. -/
+place, extend and concatenate arrays, and return an array with a total.  The theorem for each
+definition is stated for Lean's arrays of structures and the instances Lean synthesizes for them.
+An array of tuples has no `Represent` instance, so `pairTotal` holds one only inside its body. -/
 
 namespace Verified.Examples.Grids
 

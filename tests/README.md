@@ -8,7 +8,7 @@
 | Runtime or pipeline | [`tests/verified/run.sh`](verified/run.sh) runs the cases of every registered module, and through [`tests/modules/run.sh`](modules/run.sh) the module cases of `euler` and of `shapes`.  [`tests/modules/chunks.py`](modules/chunks.py) runs command streams on a book side through the verified `insert.wasm` whole, in chunks, and one command at a time.  [`tools/full-check`](../tools/full-check) runs `tests/verified/run.sh` and, after it passes, `tests/modules/chunks.py`. |
 | Verified compiler or a pure program it compiles | [`tests/verified/run.sh`](verified/run.sh) builds its targets, emits modules, validates them, and compares their cases with native Lean.  Cases can state retained blocks and allocation limits as well as results.  [The Verified Compiler Manual](../docs/verified-manual.md#module-cases) describes focused runs. |
 | Encoding or decoding | [`tests/decoder/DecodeTest.lean`](decoder/DecodeTest.lean) decodes the official WebAssembly testsuite.  [`tests/decoder/TableProfile.lean`](decoder/TableProfile.lean) covers the narrow table and export forms used by WASI.  [The encoding guide](../LeanExe/Encoding/README.md#tests) gives their setup. |
-| Talos, the WebAssembly semantics of the theorems | [`tests/talos/run.sh`](talos/run.sh) runs the testsuite runner of the pinned CodeLib revision over the official WebAssembly testsuite.  It fails on a failed command, an interpreter error, or exhausted fuel, and on any difference from the report that CodeLib commits.  It needs CodeLib's `vendor/testsuite` submodule and `wasm-tools` 1.251.0, and its outputs lie in `build/talos/`. |
+| Talos, the WebAssembly semantics of the theorems | [`tests/talos/run.sh`](talos/run.sh) runs the testsuite runner of the pinned CodeLib revision over the official WebAssembly testsuite.  It fails on a failed command, an interpreter error, or exhausted fuel, and on any difference from the report that CodeLib commits.  It needs CodeLib's `vendor/testsuite` submodule and `wasm-tools` 1.251.0, and its outputs are in `build/talos/`. |
 | Numerical algorithms | [`tests/verified/run.sh`](verified/run.sh) checks numerical byte and file theorems and runs the native accuracy checks under [test support](TestSupport/Numerics).  The [algorithm guides](../Library/README.md) state test inputs, reference comparisons, and the scope of the proved results. |
 | Hash functions or their fixtures | [`tests/TestSupport/Hashing`](TestSupport/Hashing) compares implementations with their specifications and the vectors described in [Test inputs](../data/README.md). |
 | Packed bytes, WASI compilation, or stream effects | [`tests/wasi/run.sh`](wasi/run.sh) checks proofs, reflection, decoding, ownership, Lean action execution, and Wasmtime behavior.  `--foundations-only` selects its proof and semantic checks.  [The WASI manual](../docs/wasi.md#tests) explains the groups. |
@@ -34,7 +34,7 @@ emission because elaboration reads the generated file.  The file theorems state 
 bytes equal the expected encoding and decode to the module.  [Shared test support](TestSupport)
 holds case generators, result formatting, and numerical reference calculations.
 
-Default output directories lie under `build/`.  The native execution drivers recreate
+Default output directories are under `build/`.  The native execution drivers recreate
 `build/native/run/` and `build/native/verified/`.  The verified driver adds to `build/verified/`
 without clearing it, and its byte check writes `build/byte-check/verified/`.
 

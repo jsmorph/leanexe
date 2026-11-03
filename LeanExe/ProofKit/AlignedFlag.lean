@@ -4,8 +4,8 @@ import LeanExe.ProofKit.AlignedLoop
 
 /-!
 The flag `strict`.  `wpX false` is Talos's `wp` and `wpX true` is `wpA`, both by definition, so a
-proof written once against the `wpX` rules proves today's statement at `strict = false` and the
-aligned statement at `strict = true`.  Each rule below is the two rules it joins: Talos's rule
+proof written once against the `wpX` rules proves the `wp` statement at `strict = false` and the
+aligned statement at `strict = true`.  Each rule below is the two rules it combines: Talos's rule
 for `false` and the `wpA` rule for `true`.  In the rules for `load64` and `store64` the alignment
 of an access inside memory is a conjunct under `strict = true`, which is vacuous at `false`.
 -/

@@ -11,9 +11,9 @@ logarithms of the thresholds' significands (`RatExpLog`), with `π` from Mathlib
 `gamma_overflow` gives `Γ x ≥ 2 ^ 1024` there, beyond the largest double plus half its spacing.
 `lgamma` treats `|x| ≥ x1 = 0x1.754d9278b51a6p+1014` apart (`lgamma.c` lines 874-895): it returns
 the double below the largest at `x1`, the largest at the next double `x2`, and `+∞` from `x3`, the
-double after `x2`.  With `u = 2 ^ 971` the spacing of the largest doubles, `lgamma_x1` puts
-`lgamma x1` within `3 u/5` of `2 ^ 1024 - 2 u`, `lgamma_x2` puts `lgamma x2` within `u/5` of
-`2 ^ 1024 - u`, and `lgamma_overflow` gives `lgamma x ≥ 2 ^ 1024 - u/2` for `x ≥ x3`.  Each
+double after `x2`.  With `u = 2 ^ 971` the spacing of the largest doubles, `lgamma_x1` shows that
+`lgamma x1` lies within `3 u/5` of `2 ^ 1024 - 2 u`, `lgamma_x2` shows that `lgamma x2` lies within
+`u/5` of `2 ^ 1024 - u`, and `lgamma_overflow` gives `lgamma x ≥ 2 ^ 1024 - u/2` for `x ≥ x3`.  Each
 threshold is also identified with its binary64 word by `ratOfWord`.
 -/
 

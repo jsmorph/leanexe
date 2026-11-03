@@ -14,8 +14,8 @@ term that the code computes from `x + x`, which is exact below `2 ^ 1023` (`add_
 
 `Trig.sin` and `Trig.cos` lie within `e = (71/50) u` of `sin x` and `cos x` (`TrigNear`), with
 `u = 2 ^ -53`, so the direct sum or difference lies within `2e + u = (96/25) u`, the rounding
-being at most `u` below 2 (`F64HalfUlp`).  The sign of the rounded product `s c` tells which of `A`
-and `B` has magnitude near 1 or more: `(A B)` and `|A|, |B| ≤ √2` give
+being at most `u` below 2 (`F64HalfUlp`).  The sign of the rounded product `s c` determines which of
+`A` and `B` has magnitude near 1 or more: `(A B)` and `|A|, |B| ≤ √2` give
 `A² - B² = ±4 sin x cos x`.  The code divides `A B` by that one, so the quotient lies within
 `(627/100) u` of the other (`quot_near`), and the two branches give
 `|cc - A| ≤ (96/25) u`, `|ss - B| ≤ (627/100) u`, `A² ≥ 1 - 2^-48`, `B² ≤ 1 + 2^-48`, or the same
@@ -154,7 +154,7 @@ theorem quot_bound : ((71 / 50 * 𝐮) + (96 / 25 * 𝐮) / (1 - 1 / 2 ^ 48)) /
         2 ^ 53 + 1 / 2 ^ 1075 ≤ 627 / 100 * 𝐮 := by
   norm_num [unitRoundoff64]
 
-/-- The rounded product `s c` and what its sign says about `sin x cos x`. -/
+/-- The rounded product `s c` and what its sign implies about `sin x cos x`. -/
 theorem product_near {s c : Float} {σ γ : ℝ} (hs : FApprox s σ trigErr) (hc : FApprox c γ trigErr)
     (hσ : |σ| ≤ 1) (hγ : |γ| ≤ 1) :
     Finite (s * c).toBits ∧ |value (s * c).toBits - σ * γ| ≤ 1 / 2 ^ 50 := by

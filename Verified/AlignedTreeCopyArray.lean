@@ -10,8 +10,8 @@ import Verified.ArrayCopy
 The copy of an array slot under the flag: the ports of `CopyInv.arrayStep` and
 `wp_treeCopyArrayInv`.  The source's array, whose region in the initial store is a region of the
 source record, has an aligned address, so its copy by `wpX_copyArray` reads aligned words, and the
-new block's address and capacity are multiples of 8.  The address goes into the slot of the record
-being copied as a word does.
+new block's address and capacity are multiples of 8.  The address is written to the slot of the
+record being copied as a word is.
 -/
 
 namespace Verified
@@ -278,8 +278,8 @@ theorem wpX_treeCopyArrayInv {strict : Bool} {m : Module} (hm : Runtime m)
           exact ⟨by omega, by omega, ha⟩) hLocals5)
   simpa only [List.append_assoc, List.cons_append, List.nil_append] using hRun
 
-/-- The copy of an array slot: the array goes to a new block, and its address goes into the slot
-of the record being copied, whose index advances. -/
+/-- The copy of an array slot: the array is copied to a new block, and its address is written to the
+slot of the record being copied, whose index advances. -/
 theorem wp_treeCopyArrayInv {m : Module} (hm : Runtime m) {host : HostEnv Unit}
     {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
     {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit base : Nat}

@@ -1,7 +1,7 @@
 import Mathlib.Tactic
 import Mathlib.Analysis.Real.Sqrt
 
-/-! The relative error of a square root whose input carries a relative error. -/
+/-! The relative error of a square root whose input has a relative error. -/
 
 namespace LeanExe.ProofKit.RealSqrtError
 

@@ -6,10 +6,10 @@ import Library.Hashing.Words.Program
 a message of `n` bytes packed eight to a word as `Library.Hashing.Words` describes.  Word `i` of
 the packed message holds the bits `64 i` to `64 i + 63` of the message's string, read least
 significant bit first in each byte as in Appendix B.1, which are the bits of lane `i = x + 5y`
-in the order of §3.1.2, so message words enter the state and the digest leaves it without a byte
-swap.  `paddedWord` reads each word of the padded message of §5.1 and §6 from the packed message,
-so no padded copy exists.  The hash functions allocate nothing, and SHAKE allocates its output.
-`Library.Hashing.Sha3.Encoding` gives the `Flat` instance of the lanes. -/
+in the order of §3.1.2, so message words are XORed into the state and the digest is read from it
+without a byte swap.  `paddedWord` reads each word of the padded message of §5.1 and §6 from the
+packed message, so no padded copy exists.  The hash functions allocate nothing, and SHAKE allocates
+its output.  `Library.Hashing.Sha3.Encoding` gives the `Flat` instance of the lanes. -/
 
 namespace Library.Hashing.Sha3
 

@@ -11,7 +11,7 @@ rounds to 24.  Talos's `IEEE32.sqrt` rounds once, to 24 bits, and the two result
 computes both square roots with `roundSqrtIntegral`, which rounds the integer square root of a
 radicand at a shift by comparing four times the radicand with the squares of the midpoints.  The
 binary64 radicand of a binary32 value is the binary32 radicand times `4^925`, which raises the
-shift by 925 (`roundSqrtIntegral_scale`), and the binary64 root carries 29 more bits than the
+shift by 925 (`roundSqrtIntegral_scale`), and the binary64 root has 29 more bits than the
 binary32 one.  Four times the binary32 radicand is a multiple of twice the square of the
 midpoints' unit, while each midpoint's square is an odd multiple of that square, so the radicand
 differs from each midpoint's square by at least the square of the unit; the binary64 root then
@@ -118,7 +118,7 @@ theorem le_rsi {R s j : Nat} (h : (2 * j + 1) ^ 2 * 2 ^ (2 * s) < 4 * R) :
     simp only [← heq, Nat.lt_asymm h, h, ↓reduceIte, Nat.le_refl]
 
 /-- The rounding to 24 bits of the 53-bit rounding of a square root is its rounding to 24 bits:
-`roundSqrtIntegral (R * 4^29) s` carries 29 more bits than `roundSqrtIntegral R s`, and
+`roundSqrtIntegral (R * 4^29) s` has 29 more bits than `roundSqrtIntegral R s`, and
 `roundShift _ 29` drops them. -/
 theorem double_round (R s : Nat) (hdiv : 2 ^ (2 * s + 1) ∣ 4 * R)
     (hhi : Nat.sqrt R / 2 ^ s < 2 ^ 24) :

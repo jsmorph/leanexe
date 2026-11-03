@@ -8,7 +8,7 @@ import Verified.ArrayCopy
 import LeanExe.TalosCompat
 
 /-! The copy loop's step for a buffer's root slot: a copy of the buffer into a new object, or
-root 0 for an empty buffer, whose root goes into the slot.  The next step copies the buffer's
+root 0 for an empty buffer, whose root is written to the slot.  The next step copies the buffer's
 length, in the following slot, as a word. -/
 
 namespace Verified

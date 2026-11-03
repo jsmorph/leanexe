@@ -2,14 +2,14 @@ import LeanExe.Native.Proof.MemBytes
 import LeanExe.Native.Proof.Control
 
 /-!
-The simulation of the memory instructions.  `MemRel` survives a change of memory that keeps the
-blocks of the globals, `lx_status`, and `lx_pages` (`SameExcept`), and the stores that `store64`,
-`store8`, and `memory.grow` perform carry it to Talos's new memory.  `load64` and `store64`
-compute the address in the slot of their address with `addrStmt`, trap with `boundsCheck 8` when
-the eight bytes do not lie below `lx_pages × 65536`, and then access one word of `lx_mem` when
-the address is a multiple of 8 and eight bytes otherwise; `lbval` is the value that `loadBytes`
-combines, which is `Mem.read64`.  `load8U` and `store8` trap with `boundsCheck 1` and access one
-byte.  Each `sim_` lemma states `InstrSim` for one instruction.
+The simulation of the memory instructions.  `MemRel` is preserved by a change of memory that keeps
+the blocks of the globals, `lx_status`, and `lx_pages` (`SameExcept`), and the stores that
+`store64`, `store8`, and `memory.grow` perform keep it for Talos's new memory.  `load64` and
+`store64` compute the address in the slot of their address with `addrStmt`, trap with
+`boundsCheck 8` when the eight bytes do not lie below `lx_pages × 65536`, and then access one word
+of `lx_mem` when the address is a multiple of 8 and eight bytes otherwise; `lbval` is the value that
+`loadBytes` combines, which is `Mem.read64`.  `load8U` and `store8` trap with `boundsCheck 1` and
+access one byte.  Each `sim_` lemma states `InstrSim` for one instruction.
 -/
 
 namespace LeanExe.Native

@@ -7,9 +7,9 @@ import LeanExe.ProofKit.F64Packing
 The sign of a zero result of `Pow.pow`.  `PowTheorem.pow_within` bounds the results within one
 step of `x ^ y`, and `WithinSteps` places both zeros at position 0, so it leaves the sign of a zero
 result open.  A zero result within one step of a nonnegative real `E` needs `E · 2 ^ 1074 ≤ 3/2`
-(`zero_tiny`), and for `Pow.powExp` that puts its argument below `-512`, where only the underflow
-product and the negative branch of `powSpecialCase` remain.  Without the sign bias the underflow
-product is `+0` and the negative branch keeps the sign of its positive scale
+(`zero_tiny`), and for `Pow.powExp` that implies that its argument is below `-512`, where only the
+underflow product and the negative branch of `powSpecialCase` remain.  Without the sign bias the
+underflow product is `+0` and the negative branch keeps the sign of its positive scale
 (`powExp_zero_sign`); with the bias the scale is negated, and so is the result
 (`powExp_bias_zero_sign`).
 -/

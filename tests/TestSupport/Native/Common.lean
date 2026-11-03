@@ -6,8 +6,8 @@ What the translator's tests share: the number of pages `cap` of `lx_mem` and `st
 from which a translated program's functions are called.  `start` runs `lx_init` from the
 program's initial memory and relates the result to `nativeStore`, Talos's initial store with the
 memory's cap set to `cap`, in the environment `envOf` of the program's own global environment,
-which meets every hypothesis on the environment of `NativeA`.  `heapAt_caps` and `borrowed_caps`
-carry the verified compiler's instantiation theorem `p.initial` to `nativeStore`.
+which satisfies every hypothesis on the environment of `NativeA`.  `heapAt_caps` and `borrowed_caps`
+transfer the verified compiler's instantiation theorem `p.initial` to `nativeStore`.
 -/
 
 namespace TestSupport.Native
@@ -43,7 +43,7 @@ theorem nativeStore_memoryCap (m : Module) (cap : Nat) : (nativeStore m cap).mem
   rfl
 
 /-- The state from which the functions of a translated program are called: `init_mem` gives
-`m0`, and `lx_init` from `m0` gives `m1`, which `envOf`, which meets the hypotheses on the
+`m0`, and `lx_init` from `m0` gives `m1`, which `envOf`, which satisfies the hypotheses on the
 environment of `NativeA`, relates to `nativeStore` with `lx_status` 0. -/
 theorem start {m : Module} {T : Translation} (h : translate cap m = some T) (A : Archi)
     (X : ExtSem) :

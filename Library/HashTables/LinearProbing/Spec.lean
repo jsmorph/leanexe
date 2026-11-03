@@ -4,7 +4,7 @@ An insertion adds an absent key while the list holds fewer than `M - 1` keys, a 
 membership, and a deletion removes a present key.  Each operation
 outputs 1 when it adds, finds, or removes its key, and 0 otherwise.  For `M = 0` and `M = 1` the
 table holds no key, so every operation outputs 0.  The input holds `M = xs[0]` and then the
-operations as pairs `xs[2i + 1], xs[2i + 2]` of a code and a key, and a last word without a partner
+operations as pairs `xs[2i + 1], xs[2i + 2]` of a code and a key, and an unpaired last word
 is no operation.  The empty input has no operations.  The specification fixes the outputs and not
 the hash function or the arrangement of the slots.  It defines the outputs for every `M`, and the
 module's theorem covers `M < 2^63`. -/

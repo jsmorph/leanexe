@@ -5,8 +5,8 @@ import Library.Numerics.Float64.Tgamma.TgammaLogd
 import Library.Numerics.Arithmetic.Fma.FmaSpecTheorem
 
 /-!
-The two specifications that the tgamma paths take as hypotheses, derived from the theorems of
-track `expm1`: `TgammaRefl4.SinpidSpec` from `TgammaSinpid.asSinpid_spec` and
+The specifications that the tgamma paths take as hypotheses:
+`TgammaRefl4.SinpidSpec` from `TgammaSinpid.asSinpid_spec` and
 `TgammaAsym1.LogdSpec` from `TgammaLogd.asLogd_spec`, each under the fused multiply-add proved by
 `Library.Numerics.Arithmetic.Fma.FmaSpecTheorem.fma_nearest` and the polynomial fact of its table.
 -/

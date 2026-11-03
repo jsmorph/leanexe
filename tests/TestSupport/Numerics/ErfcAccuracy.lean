@@ -12,10 +12,10 @@ the ends of the paths, the multiples of `1/16` and `1/8` that end the intervals 
 of `erf`, the reciprocals of the bounds of the intervals of `1/x`, and the 69 inputs of the hard
 cases.  They also include the inputs of `WorstCases`, which give the largest known errors of
 thirteen libraries in Tables 4 to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki,
-and Zimmermann.  The check also calls `Library.Numerics.Float64.Erfc.erfcAccurate`, the path that the fast path falls back
-on, at every eighth argument in its range and at the inputs of the hard cases, and requires the
-same.  It exits with an error at the first result unequal to the reference.  Run with
-`lake env lean --run`. -/
+and Zimmermann.  The check also calls `Library.Numerics.Float64.Erfc.erfcAccurate`, the path that
+the fast path uses when its rounding test fails, at every eighth argument in its range and at the
+inputs of the hard cases, and requires the same.  It exits with an error at the first result unequal
+to the reference.  Run with `lake env lean --run`. -/
 
 namespace TestSupport.Numerics.ErfcAccuracy
 

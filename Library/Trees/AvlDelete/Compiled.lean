@@ -6,9 +6,9 @@ import Verified.Congr
 /-! The verified compiler's module of deletion from a balanced tree.  By the compiler's rules, which
 the verified compiler's manual states, the compiler translates the tail recursions of `ascendDel`,
 `ascendMin`, `minDel`, and `descendDel` into loops, so no theorem of the module has a call-depth
-premise.  `delete` consumes its tree, which the caller hands over as `Moved AvlTree`.  The
+premise.  `delete` consumes its tree, which the caller moves as `Moved AvlTree`.  The
 generated bound charges no block, since every node that a step or a rotation builds is rebuilt
-from a node that it takes apart, but no theorem relates the blocks of the result to those of the
+from a node that it destructures, but no theorem relates the blocks of the result to those of the
 argument.  `delete_implements` composes the generated `trapFree` theorem with `delete_eq`. -/
 
 namespace Library.Trees.AvlDelete
@@ -24,8 +24,8 @@ theorem delete_export :
     ({ name := "delete", funcIdx := 9 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 9, the export `delete`, called with a key `x` and a tree `t` that the caller hands
-over, from a heap that meets the allocator invariant within a memory cap of at most 65,535 pages,
+/-- Function 9, the export `delete`, called with a key `x` and a tree `t` that the caller moves,
+from a heap that satisfies the allocator invariant within a memory cap of at most 65,535 pages,
 with the tree's blocks apart from the memory that the call reads and room for
 `compiled.delete.bound`, returns without a trap the owned tree of `deleteA`, and raises `top` by at
 most the bound. -/

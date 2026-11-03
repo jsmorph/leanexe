@@ -8,7 +8,7 @@ The term `S (1/x²)/x` of the fast path's Stirling series in `Lgamma.lgammaWith`
 `F = w (c401 + c402 w + w² (c403 + c404 w + w² c405))` at `w = zh zh` in plain double arithmetic
 (`sE`, bounded by `TgammaExpr`), the exact sum `c399 + F` (`fastTwoSum`), and the product with
 `zh + zl` (`mulDD`).  `w` differs from `1/x²` by about `2 ^ -51` of `1/x²`, which the Lipschitz
-bound `sE_lip` carries to the tail, and the result lies within `2 ^ -66` of
+bound `sE_lip` transfers to the tail, and the result lies within `2 ^ -66` of
 `(c399 + c400 + evalR sE (1/x²))/x` (`series_spec`).
 -/
 

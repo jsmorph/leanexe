@@ -142,7 +142,7 @@ inductive Tint where
 
 instance : Flat Tint UInt64 := ⟨fun | .red => 0 | .black => 1⟩
 
-/-- A tree whose nodes carry a tint, which occupies one slot.  The words that encode no tint have
+/-- A tree whose nodes hold a tint, which occupies one slot.  The words that encode no tint have
 no value of the type, so no recursive definition or loop takes the tree as a parameter. -/
 inductive Tinted where
   | leaf
@@ -187,7 +187,7 @@ instance : Flat Reading (UInt64 × Float × UInt64) := ⟨fun
   | .count n => (1, 0, n)
   | .none => (2, 0, 0)⟩
 
-/-- A tree whose nodes carry a reading, which occupies three slots: its tag, its value, and its
+/-- A tree whose nodes hold a reading, which occupies three slots: its tag, its value, and its
 count.  The words that encode no reading have no value of the type, so no recursive definition or
 loop takes the tree as a parameter. -/
 inductive Logged where

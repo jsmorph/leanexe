@@ -7,8 +7,7 @@ import Library.Numerics.Float64.Bessel.BesselY1Theorem
 `yn`'s forward loop for `0 < x < 2` and `2 ≤ n ≤ 2^31` in floating point: the result is negative
 infinity and `|Y_n(x)| > 2^1023`, or the result is finite and within `(250 + 12 n) u |Y_n(x)|` of
 `Y_n(x)` (`yn_small`).  From `|Y_n(x)| ≥ 2^1025` on the result is negative infinity
-(`yn_small_inf`), since a finite double lies below `2^1024`.  These are the statements of the
-decision of 2026-10-12 for `yn` below 2.
+(`yn_small_inf`), since a finite double lies below `2^1024`.
 
 Below `x = 2^-513` (`yn_tiny`), `y1` returns `-(tpi ⊘ x)` (`y1_code`), which is negative infinity
 or at most `-2^511`, and `2 ⊘ x` is positive infinity or at least `2^513`

@@ -255,7 +255,7 @@ def initialCells (n : UInt64) : Array Cell := LeanExe.build (n * n) (initialCell
 /-! Sweeps. -/
 
 /-- One sweep along an axis: each cell advanced by its two interfaces.  A y sweep exchanges
-the momenta on the way in and out. -/
+the momenta before and after the update. -/
 def sweep (n : UInt64) (axisY : Bool) (ratio : Float) (grid : Array Cell) : Array Cell :=
   LeanExe.build grid.size.toUInt64 fun index =>
     -- The neighbors along the axis, clamped at the boundary.

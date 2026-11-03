@@ -1,7 +1,8 @@
 /* The host of a module translated to C, for tests/native/verified.sh.  It takes the commands
    `call` and `call-stats` of tools/wasmtime-host.c, with the same argument specs and result
    kinds, and prints the same lines, so that the corpus of tests/verified runs unchanged.  It is
-   compiled with ccomp together with the module's C text and its glue (tools/native-host.h).
+   compiled with ccomp together with the module's C text and its export tables
+   (tools/native-host.h).
 
    tools/native-bench.c adds the command `bench` for tests/native/bench.sh, which compiles this
    file with -Dmain=host_main and links it with the functions that tools/native-call.h declares.

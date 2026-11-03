@@ -5,7 +5,7 @@ The soundness of `run` against the big-step semantics: an `.ok` result of `exec_
 `eval_funcall_fn` is an execution of `exec_stmt` or `eval_funcall`, for every semantics `X` of
 external functions and every choice `vload` of the values of volatile loads.  `run_sound` states
 it for a call from the initial memory, and `run_program_sound` concludes
-`bigstep_program_terminates` from a result of `run_program`.  The proofs go by induction on the
+`bigstep_program_terminates` from a result of `run_program`.  The proofs are by induction on the
 fuel and, within one unit of fuel, by cases on the statement.
 -/
 

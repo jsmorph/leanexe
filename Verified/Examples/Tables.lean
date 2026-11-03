@@ -1,6 +1,6 @@
 import Verified.Reflect.Command
 
-/-! The twenty-seventh program of the verified compiler: constant tables.  A table is a constant
+/-! A program of the verified compiler: constant tables.  A table is a constant
 array of words, which the module holds in a data segment.  A function takes it as a borrowed array
 parameter, and a wrapper, a definition that applies such a function to tables, becomes an exported
 entry that passes the tables' addresses.  The wrapper's theorem holds from a store that holds the

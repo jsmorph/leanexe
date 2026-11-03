@@ -9,7 +9,7 @@ on and `BesselY1Small.y1_small` below.  For `0 < x` below the high word `0x3c900
 `2^-54`, subnormal arguments included, the result lies within one representable step of the
 nearest-even double to `Y₁(x)` (`BesselY1Tiny.y1_tiny`): there `Y₁(x)` is about `-2/(π x)`, which
 exceeds the largest double below about `0.64 · 2^-1024`, where the result is negative infinity.
-`y1_positive` joins the two statements, which together cover every finite `x > 0`.  The
+`y1_positive` combines the statements, which together cover every finite `x > 0`.  The
 exceptional results, at both zeros, at negative arguments, and at the infinities and NaN, are in
 `BesselSpecial`.
 -/

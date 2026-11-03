@@ -181,7 +181,7 @@ release of the owned parameters that the body does not use, the body's code, and
 the body's value to an owned one.  The parameters' flags are `pf`, and the result's flag `rf`
 holds only when the body's value is paid.  The code traps only through a call whose code takes the
 call depth, or, when it may allocate, when `top` cannot rise by the potential of the paid owned
-parameters plus the function's bound within the cap.  When the body finds its frames, `top` after
+parameters plus the function's bound within the cap.  When the body has enough frames, `top` after
 the code, plus the result's potential when `rf` holds, is at most `top` before it plus that sum. -/
 theorem body_code_spec {S : List Sig} {params : List Ty} {result : Ty} (modes : List Mode)
     (body : Expr S params result) (hCovered : body.Covered pool)
@@ -608,7 +608,7 @@ theorem bodyFunction_implements {S : List Sig} {params : List Ty} {result : Ty}
 
 /-- The code of a function whose code takes the call depth computes its body's meaning from the
 words of the depth `d` and its arguments, when the functions that the body calls compute theirs
-at the next depth below the limit, within the bound `A` when its calls find their frames as `Fi`
+at the next depth below the limit, within the bound `A` when its calls have enough frames as `Fi`
 states, which are its body's below the limit, and with any trap at the limit. -/
 theorem bodyFunction_depth {S : List Sig} {params : List Ty} {result : Ty} (modes : List Mode)
     (body : Expr S params result) (placeArgs : body.placeArgs = true) (funs : Funs S)

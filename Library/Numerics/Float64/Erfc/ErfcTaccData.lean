@@ -5,8 +5,7 @@ import Library.Numerics.Float64.Erfc.ErfcRound
 /-!
 The data of the ten rows of `Tacc` for `ErfcTaccLoop`: the bound `MU` on `U ≈ 1/x²`, the
 magnitudes of the coefficients, and the bounds of the states of the two loops, and the kernel's
-check of each row (`TRow`).  `cert/taccbnd.py` in the track's scratch directory computed the bounds
-and wrote this file.
+check of each row (`TRow`).
 -/
 
 namespace Library.Numerics.Float64.Erfc.ErfcTaccRows

@@ -6,7 +6,7 @@ balance factor `B` is the height of its right subtree minus the height of its le
 word, with −1 written `2^64 - 1`.  `Balanced t` states that at every node the heights of the
 subtrees differ by at most 1 and the stored factor is their difference.  `algorithmA x t` states the
 insertion as a recursion on the tree and gives a flag and the tree afterward, and on a balanced tree
-the flag tells whether the tree grew one level.  Steps A2 to A4 compare `x` with the key `k` of a
+the flag records whether the tree grew one level.  Steps A2 to A4 compare `x` with the key `k` of a
 node, with words compared as unsigned numbers, and continue in the left subtree when `x < k` and in
 the right subtree when `k < x`.  A node with `k = x` ends the search, and the tree stays as it is.
 At an empty subtree, step A5 puts a node with `x`, factor 0, and two empty subtrees in its place,
@@ -19,7 +19,7 @@ factors of Knuth's step.  Knuth assumes a tree with at least one node and a head
 root, whose link field counts the height, and `algorithmA` extends his steps to the empty tree,
 where the insertion gives a tree of one node, and keeps no head node.  On a tree whose factors do
 not match its heights, `algorithmA` applies the same rules to the stored factors and gives Knuth's
-result wherever his steps apply, and its flag need not tell whether the tree grew.  Two choices
+result wherever his steps apply, and its flag need not record whether the tree grew.  Two choices
 cover the trees where his steps do not apply.  A factor word other than 0, 1, and `2^64 - 1` counts
 as a lean toward the side that grew, so the node is rotated.  A node that leans toward the side that
 grew, whose grown subtree is a single new node or has no grandchild on the inner side when one is
@@ -64,7 +64,7 @@ def searchA (x : UInt64) : AvlTree → Bool
 
 /-- The node with left subtree `t`, key `k`, and right subtree `c`, after `t` has grown: steps A6
 to A9 for a node whose factor before the growth was `b`.  On a balanced tree, the flag of the
-result tells whether the node grew. -/
+result records whether the node grew. -/
 def growLeft (t : AvlTree) (k b : UInt64) (c : AvlTree) : Bool × AvlTree :=
   if b = 1 then (false, .node t k 0 c)
   else if b = 0 then (true, .node t k (0 - 1) c)
@@ -92,8 +92,8 @@ def growRight (a : AvlTree) (k b : UInt64) (t : AvlTree) : Bool × AvlTree :=
         | .leaf => (false, .node a k b t)
     | .leaf => (false, .node a k b t)
 
-/-- Algorithm A's insertion of `x` into `t`: a flag that tells, on a balanced tree, whether the tree
-grew one level, and the tree. -/
+/-- Algorithm A's insertion of `x` into `t`: a flag that records, on a balanced tree, whether the
+tree grew one level, and the tree. -/
 def algorithmA (x : UInt64) : AvlTree → Bool × AvlTree
   | .leaf => (true, .node .leaf x 0 .leaf)
   | .node l k b r =>

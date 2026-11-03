@@ -2,10 +2,10 @@ import LeanExe.Native.Proof.Genv
 
 /-!
 Renaming of identifiers in Clight programs, and the theorem `bigstep_program_terminates_rename`:
-the whole-program judgment survives every injective renaming.  `clightgen` numbers identifiers
-by a canonical encoding of their names and `ccomp` numbers them in the order it meets them, so
-the program that the per-build check reads and the program that `ccomp` compiles differ from
-the translation by renamings (`docs/native-bare-metal.md`).
+the whole-program judgment is preserved by every injective renaming.  `clightgen` numbers
+identifiers by a canonical encoding of their names and `ccomp` numbers them in the order in which
+they occur, so the program that the per-build check reads and the program that `ccomp` compiles
+differ from the translation by renamings (`docs/native-bare-metal.md`).
 
 A renaming has two parts.  `g` renames the identifiers of globals: the definitions of a program,
 the variables of expressions, the local variables of functions, `Init_addrof`, `prog_main`, and
@@ -17,13 +17,13 @@ compared, since the semantics does not read it.
 
 The semantics of an external function is a parameter, and nothing makes it invariant under
 renaming.  `ExtRen g X X'` states that `X'` does on renamed symbols what `X` does, and
-`ExtSem.none`, which relates nothing, meets it with every `X'`: a run that calls no external
+`ExtSem.none`, which relates nothing, satisfies it with every `X'`: a run that calls no external
 function holds for `ExtSem.none`, and its renaming then holds for every semantics.
 
 A compiler numbers the identifiers of the program alone, so its renaming is injective on them
 and undefined elsewhere.  `exists_injective_extension` extends such a map to an injective map on
 all identifiers, and renaming depends only on the identifiers that occur.
-`bigstep_program_terminates_rename_on` therefore asks for injectivity only on those identifiers.
+`bigstep_program_terminates_rename_on` therefore requires injectivity only on those identifiers.
 -/
 
 namespace LClight
@@ -573,7 +573,7 @@ theorem init_mem_ren (hg : Function.Injective g) {p p' : program function}
 
 end Programs
 
-/-- The whole-program judgment survives an injective renaming `g` of globals and injective
+/-- The whole-program judgment is preserved by an injective renaming `g` of globals and injective
 renamings `τ` of the temporaries of each function, with the identifiers of the trace renamed by
 `g`.  The semantics of external functions changes from `X` to any `X'` that does on renamed
 symbols what `X` does; for `X = ExtSem.none`, every `X'` qualifies. -/
@@ -613,7 +613,7 @@ theorem bigstep_program_terminates_rename_none {A : Archi} {g : ident → ident}
 
 /-! ## Renamings of the program's own identifiers
 
-`bigstep_program_terminates_rename` asks for renamings injective on all identifiers.  A
+`bigstep_program_terminates_rename` requires renamings injective on all identifiers.  A
 renaming that a compiler gives is defined, and injective, on the identifiers of the program
 alone.  Every such map agrees on those identifiers with an injective map on all identifiers,
 `exists_injective_extension`, and renaming depends only on the identifiers that occur, so
@@ -880,7 +880,7 @@ theorem renGlobdef_congr (d : globdef (fundef function) type) (hg : ∀ x ∈ gl
 
 end Congr
 
-/-- The judgment of a whole program survives every renaming that is injective on the
+/-- The judgment of a whole program is preserved by every renaming that is injective on the
 identifiers of globals in the program, `progG p`, and, for each identifier `id`, on the
 temporaries of the definitions under `id`.  The trace is renamed by an injective map that agrees
 with `g` on `progG p`. -/

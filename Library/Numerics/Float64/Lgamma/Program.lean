@@ -5,7 +5,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The forty-seventh program of the verified compiler: `lgamma` and `lgammaR`, CORE-MATH's
+/-! A program of the verified compiler: `lgamma` and `lgammaR`, CORE-MATH's
 correctly rounded `ln |Γ|` and the sign of `Γ`, ported from `src/binary64/lgamma/lgamma.c` at commit
 `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8` of https://gitlab.inria.fr/core-math/core-math (Copyright
 (c) 2025 Alexei Sibidanov, MIT license).  The fast path evaluates in double-double arithmetic with

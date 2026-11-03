@@ -209,7 +209,7 @@ def realistic : Gen (List (Array Float)) := do
     | none => pure ()
   return out.toList
 
-/-- Variations of the limits on scenes of 500 waypoints: fast and slow slews, shorter edges, no
+/-- Variations of the limits on sets of 500 waypoints: fast and slow slews, shorter edges, no
 edges but the direct one, and edges of at most 15° and 10°. -/
 def limits : Gen (List (Array Float)) := do
   let mut out : Array (Array Float) := #[]
@@ -223,7 +223,7 @@ def limits : Gen (List (Array Float)) := do
         pack { s with maxEdge := 15 * d2r }, pack { s with maxEdge := 10 * d2r }]
   return out.toList
 
-/-- A single cone whose limit sits at a chosen distance from the designed extremum of a rotation.
+/-- A single cone whose limit is at a chosen distance from the designed extremum of a rotation.
 With `p ⊥ n`, `v₀ = cos γ p + sin γ n`, and `u = cos β R(n, φ*) p + sin β n`, the cosine along the
 rotation is `cos β cos γ cos (φ - φ*) + sin β sin γ`, whose maximum `cos (β - γ)` lies at `φ*`
 inside the rotation. -/
@@ -297,7 +297,7 @@ def angles : Gen (List (Array Float)) := do
   return out.toList
 
 /-- Cones of cosine 0, 1, and -1, and of half-angle `1e-6` on and beside the path, placed so that
-the endpoints pass and the edge check decides. -/
+the endpoints pass and the edge check determines the result. -/
 def extremeCones : Gen (List (Array Float)) := do
   let mut out : Array (Array Float) := #[]
   let tiny := Library.Numerics.Float64.Trig.cos 1e-6

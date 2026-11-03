@@ -5,7 +5,7 @@ endpoint and status one for rejection.  `endpoint` moves a rounded binary64 resu
 word upward or downward and rejects nonfinite results or endpoints.  `outAdd`, `outSub`, `outMul`,
 `outDiv`, and `outSqrt` also check their inputs.  Division rejects a zero denominator.
 
-[The mathematical proofs](Proof.lean) connect accepted endpoints to the word-level outward-rounding
+[The mathematical proofs](Proof.lean) relate accepted endpoints to the word-level outward-rounding
 theory in `LeanExe.ProofKit.F64OutwardAccepted` and prove the corresponding real inequalities.
 Their named premises state the accepted domains.  [The compiled module](Compiled.lean) supplies
 execution proofs, with [a flat encoding](Encoding.lean) of status and value.

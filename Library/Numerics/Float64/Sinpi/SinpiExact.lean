@@ -2,8 +2,8 @@ import Library.Numerics.Float64.Sinpi.SinpiWithin
 
 /-!
 The exact results of `Sinpi.sinpi` and `Sinpi.cospi` as bit equalities: `sinpi` of an integer is
-`±0` with the sign of `x`, `cospi` of an integer plus `1/2` is `+0`, and the three functions give
-the canonical NaN for an infinity or a NaN.
+`±0` with the sign of `x`, `cospi` of an integer plus `1/2` is `+0`, and `sinpi`, `cospi`, and
+`tanpi` give the canonical NaN for an infinity or a NaN.
 -/
 
 namespace Library.Numerics.Float64.Sinpi.SinpiExact

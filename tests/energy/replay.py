@@ -192,7 +192,7 @@ def check(path: str) -> int:
 # that sum circuits.  PV is the power that the inverters feed into the panel.  A channel that is
 # empty for a whole year is absent from that year.  A minute in which another channel reads below
 # -100 W or is empty is missing, and so is every minute of a day with more than 60 such minutes.
-# The timestamps drift within the minute, so two rows of one file can fall in the same minute, and
+# The timestamps drift within the minute, so two rows of one file can be in the same minute, and
 # such a minute is missing too.
 ELEC_EXCLUDED = {
     "Elec_PowerPV1of2", "Elec_PowerPV2of2", "Elec_PowerHeatPumpWH1of2", "Elec_PowerHeatPumpWH2of2",
@@ -360,7 +360,7 @@ def quantile(xs: list[int], q: Fraction) -> int:
 @dataclass(frozen=True)
 class Margins:
     """The causal rule's widening of each bound, by month and hour, from the excursions of the
-    month and its two neighbors, so that the hours of sunrise and sunset fall in like bins."""
+    month and its two neighbors, so that the hours of sunrise and sunset are in like bins."""
     load_up: list[list[int]]
     load_down: list[list[int]]
     pv_up: list[list[int]]
@@ -430,7 +430,7 @@ def intervals(s: Series, minutes: int, margins: Margins | None) -> Intervals:
 
 # The simulated site: the worked example's battery, an import cap of a 100 A, 240 V service, above
 # the test house's largest minute load of 22.9 kW, and an export cap that the PV array's output on
-# clear days breaks when the battery is idle.
+# clear days exceeds when the battery is idle.
 STUDY = dataclasses.replace(SITE, import_cap=24_000, export_cap=5000, window=300)
 CAPACITY = 36_000_000
 ETA_CHARGE = ETA_DISCHARGE = 0.95
@@ -481,7 +481,7 @@ def extremes(p: Profile) -> list[Plant]:
 
 
 def fallback_breaks(p: Profile, q: Snapshot) -> tuple[bool, bool, bool, bool]:
-    """Whether the worst case of an immediate return to fallback breaks the floor, the ceiling,
+    """Whether the worst case of an immediate return to fallback violates the floor, the ceiling,
     the export cap, and the import cap within the window."""
     return (q.energy_low - drain_low(p, p.fallback_low) < p.floor,
             q.energy_high + p.fallback_high * p.window > p.ceiling,
@@ -664,7 +664,7 @@ def replay(p: Profile, s: Series, iv: Intervals, propose, search: bool, gate: bo
 def extreme_proposer(p: Profile):
     """A proposer for the replay at the premises' extremes: the largest accepted discharge in the
     even hours and the largest accepted charge in the odd hours, counted from the start of the
-    series, which drives the energy against the floor and the ceiling."""
+    series, so that the energy reaches the floor and the ceiling."""
     def propose(k: int, q: Snapshot) -> tuple[int, int] | None:
         r = accepted_range(p, q)
         return None if r is None else (r[(k // 60) % 2],) * 2

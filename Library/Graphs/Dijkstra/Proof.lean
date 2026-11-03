@@ -118,11 +118,11 @@ theorem arc_iff {N : Nat} {first heads lens : Array UInt64} (hwf : WellFormed N 
 
 /-- The state of `relax` for `u` after `t` positions of its range, from the tentative lengths
 `dist` and the heap `hk`, `hv` of `h` entries: the arrays keep their sizes, the heap is in order
-and holds at most `h + t` entries, the lengths only fall, the length of `u` stays, the arcs at the
-first `t` positions are relaxed, a fallen length is the length of `u` plus an arc, and the heap
-holds its old entries and new entries `E`.  Each entry of `E` has a vertex below `N` and a key below
-`2^64 - 1`, at least the tentative length of its vertex and at least the length of `u`, and `E`
-holds the fallen length of each fallen vertex. -/
+and holds at most `h + t` entries, the lengths only decrease, the length of `u` stays, the arcs at
+the first `t` positions are relaxed, a decreased length is the length of `u` plus an arc, and the
+heap holds its old entries and new entries `E`.  Each entry of `E` has a vertex below `N` and a key
+below `2^64 - 1`, at least the tentative length of its vertex and at least the length of `u`, and
+`E` holds the decreased length of each vertex whose length decreased. -/
 def RelaxInv (N : Nat) (first heads lens dist hk hv : Array UInt64) (h : UInt64) (u t : Nat)
     (st : Array UInt64 × Array UInt64 × Array UInt64 × UInt64) : Prop :=
   st.1.size = N ∧ st.2.1.size = hk.size ∧ st.2.2.1.size = hv.size ∧

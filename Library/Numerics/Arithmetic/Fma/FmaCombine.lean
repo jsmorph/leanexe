@@ -9,7 +9,7 @@ The rounded sum of `FmaParts.combine`.  For normalized addends `X` at scale `wX`
 exact zero sum and otherwise the signed nearest-even reference of the exact sum
 `±X · 2 ^ wX ± Y · 2 ^ wY`, in units of `2 ^ -2400`.  The aligned sum is exact when the sticky
 shift loses no set bit, and otherwise it is odd, at least `2 ^ 124`, and within one unit of the
-exact sum at its scale, so that `FmaGrid.roundsTo_transfer` carries the rounding over
+exact sum at its scale, so that `FmaGrid.roundsTo_transfer` transfers the rounding
 (`round_sum`).  `combine_spec` orders the product and the addend as `combine` does.
 -/
 

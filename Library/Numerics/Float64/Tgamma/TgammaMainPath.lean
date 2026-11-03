@@ -9,12 +9,13 @@ import LeanExe.ProofKit.GammaBasic
 **The path of `tgammaWith` on `(-3, 4)`** within one step of `Γ`.  With `I = roundEven (x - 7/2)`,
 `J = -I`, and `d = x - (I + 7/2)` (`TgammaMainRed.main_red`), `Γ x = Γ (7/2 + d) / W` for
 `W = x (x + 1) ⋯ (x + J - 1)` (`GammaBasic.gamma_eq_div`).  The double-double polynomial lies within
-`2 ^ -72` of `mainPoly d` (`TgammaMainPoly.main_poly`), which `MainFact` puts within `2 ^ -62` of
-`Γ (7/2 + d) ≥ 1`.  The shift loop gives `W` within `2 ^ -80` relative (`TgammaMainLoop.loop_inv`),
-the corrected reciprocal gives `1/W` within `2 ^ -77` (`TgammaRecipDD.recip_dd`), and their product
-adds `2 ^ -70` (`prod_loose`), so the rounded `fh + (fl + eps)` is the nearest double to a value
-within `2 ^ -60` of `Γ x` relative (`mainPath_within`).  When the rounding test of the code fails,
-the result is that of the accurate path, which the theorem takes as a hypothesis.
+`2 ^ -72` of `mainPoly d` (`TgammaMainPoly.main_poly`), which `MainFact` shows to lie within
+`2 ^ -62` of `Γ (7/2 + d) ≥ 1`.  The shift loop gives `W` within `2 ^ -80` relative
+(`TgammaMainLoop.loop_inv`), the corrected reciprocal gives `1/W` within `2 ^ -77`
+(`TgammaRecipDD.recip_dd`), and their product adds `2 ^ -70` (`prod_loose`), so the rounded
+`fh + (fl + eps)` is the nearest double to a value within `2 ^ -60` of `Γ x` relative
+(`mainPath_within`).  When the rounding test of the code fails, the result is that of the accurate
+path, which the theorem takes as a hypothesis.
 -/
 
 namespace Library.Numerics.Float64.Tgamma.TgammaMainPath

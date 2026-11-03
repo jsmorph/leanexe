@@ -13,7 +13,7 @@ models `erfcxN x`: `defectP p c` is `p' - 2 x p + 1`, which `piece_model` turns,
 polynomials in `x` minus `1/x + 2x - 1/erfcxN`, and `checkN`, `checkW` give a polynomial check that
 bounds the derivative with `p` in place of `erfcxN` (`deriv_bound`).  `anchor_bound` bounds `tailF` at
 a rational point from rational enclosures of the exponential of the model, of `2/√π`, and of
-`erfcxN`, and `combine` adds the derivative bound over a stretch of the piece.
+`erfcxN`, and `combine` adds the derivative bound over a subinterval of the piece.
 -/
 
 namespace Library.Numerics.Float64.Erf.ErfTailBase
@@ -435,8 +435,8 @@ theorem piece_deriv (R S : List ℚ) (m n : ℕ) (p : List ℚ) (a b c η M N pm
       (((pm - pr : ℚ) : ℝ) - ((σ + ηd * (b - a) : ℚ) : ℝ))) ≤ Md := by exact_mod_cast hMd
   linarith
 
-/-- The tail error on a stretch `[a', b']` of a piece, from the anchor at `b'` and the derivative
-bound `Md`. -/
+/-- The tail error on a subinterval `[a', b']` of a piece, from the anchor at `b'` and the
+derivative bound `Md`. -/
 theorem sub_bound (R S : List ℚ) (m n : ℕ) (hR : R.length ≤ m + 1) (hS : S.length ≤ n + 1)
     (hmn : m ≤ n) (p : List ℚ) (a b c σ ηd Md : ℚ) (ha : (0 : ℝ) < a)
     (hmodel : ∀ x ∈ Icc (a : ℝ) b, |erfcxN x - eval p (x - c)| ≤ (σ : ℝ) + ηd * ((b : ℝ) - x))

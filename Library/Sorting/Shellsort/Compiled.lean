@@ -6,7 +6,7 @@ import Verified.Congr
 compiler's manual states, the compiler translates the tail recursions of `shift`, `insertBy`,
 `passes`, and `firstIncrement`, and the loops of `pass` and `straightInsertion`, into loops, so no
 theorem of the module has a call-depth premise.  `shellsort` consumes its array, which the caller
-hands over as `Moved (Array UInt64)`, and the generated bound is 0.  `shellsort_implements`
+moves as `Moved (Array UInt64)`, and the generated bound is 0.  `shellsort_implements`
 composes the generated `compiled.shellsort.trapFree` with `shellsort_eq`. -/
 
 namespace Library.Sorting.Shellsort
@@ -21,7 +21,7 @@ theorem shellsort_export :
     ({ name := "shellsort", funcIdx := 8 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 8, the export `shellsort`, called with an array that the caller hands over, from a heap
+/-- Function 8, the export `shellsort`, called with an array that the caller moves, from a heap
 with the allocator invariant, a memory cap of at most 65,535 pages, and room for
 `compiled.shellsort.bound`, returns without a trap the owned array `expected xs`, the elements in
 nondecreasing order, and raises `top` by at most the bound. -/

@@ -4,8 +4,7 @@ import Library.Numerics.Float64.Erfc.ErfcAccRow
 The certificate parameters of the 47 rows of `C2`, the table of `cr_erf_accurate` from `1/8` on,
 and the target of each row: `(7/8) u erfcLo` at the row's top, or at `0x1.b59ffb450828cp+0`, for
 the rows 1 to 13 that positive arguments reach, and `(7/8) u` for the rows from 14, which only
-negative arguments reach.  `cert/c2plan.py` in the track's scratch directory chose the parameters,
-and `cert/c2emit.py` wrote this file and the row modules.
+negative arguments reach.
 -/
 
 namespace Library.Numerics.Float64.Erfc.ErfcAccPlan

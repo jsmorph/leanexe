@@ -11,7 +11,7 @@ with an integer `ky ≤ 64` and `|d| ≤ 1/2` (`TgammaSinpidRed.red_spec`), so t
 the table rows `ky` and `64 - ky` and the kernels in `d²` (`TgammaSinpidTail.sinTail_spec`).
 `asSinpid_gen` states the bound for any table that passes `TgammaSinpidTab.sinTabOK`, with
 table entries within `εT` of `κ sin (k π/128)` and kernels within `εs |d|` and `εc d²`, so that it
-also serves `Lgamma`'s table of `sin (k π/128)/π`.  The error is at most
+also applies to `Lgamma`'s table of `sin (k π/128)/π`.  The error is at most
 `min 1 (2y) (81/80 εT + (1 + 2^-50)(εs/2 + εc/4) + 2^-71) + 2^-1060` for
 `y = 64 - 128 |x - 1/2|`, and `sin (π x) ≥ y/64`.
 -/

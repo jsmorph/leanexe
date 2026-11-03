@@ -44,7 +44,7 @@ instance : Represent LeanExe.Bytes where
   reads store values _ := (Bytes.roots values).map (block store)
   moves _ _ _ := []
 
-/-- A buffer that the caller hands over: the call receives its object as owned, reads nothing
+/-- A buffer that the caller moves: the call receives its object as owned, reads nothing
 else of it, and consumes the object at a nonzero root. -/
 instance : Represent (Moved LeanExe.Bytes) where
   width _ := 2

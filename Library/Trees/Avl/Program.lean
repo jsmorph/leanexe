@@ -22,9 +22,9 @@ def search (x : UInt64) : AvlTree → Bool
   | .node l k _ r => if x < k then search x l else if k < x then search x r else true
 
 /-- Steps A8 and A9 at a node whose left subtree has grown two levels above its right subtree: a
-single rotation when the left subtree leans left, and a double rotation when it leans right.  The
-rotation takes the node apart, so that each node it builds can take the block of a node it
-consumed. -/
+single rotation when the left subtree is higher on its left, and a double rotation when it is higher
+on its right.  The rotation destructures the node, so that each node it builds can take the block of
+a node it consumed. -/
 def rotateRight (s : AvlTree) : AvlTree :=
   match s with
   | .leaf => .leaf

@@ -463,7 +463,7 @@ theorem fin_pos (fh fl : Float) (E : ℕ) (G : ℝ) (hfh : Finite fh.toBits) (hf
       _ = _ := by ring
 
 /-- **The result for a scale `-F`** with `1 ≤ F`: normal when the exponent field of `fh + fl`
-exceeds `F`, and subnormal otherwise, which the gap `hgap` around `2 ^ -1022` puts below
+exceeds `F`, and subnormal otherwise, and then, by the gap `hgap` around `2 ^ -1022`, below
 `2 ^ -1022 (1 - 2 ^ -48)`. -/
 theorem fin_neg (fh fl : Float) (F : ℕ) (G : ℝ) (hfh : Finite fh.toBits) (hfl : Finite fl.toBits)
     (hF1 : 1 ≤ F) (hF : F ≤ 1500) (hG0 : G ≠ 0)

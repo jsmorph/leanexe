@@ -1,7 +1,7 @@
 import Library.Arrays.Word.Program
 import Verified.Reflect.Command
 
-/-! The ninth program of the verified compiler: values that own arrays.  A function returns an owned
+/-! A program of the verified compiler: values that own arrays.  A function returns an owned
 array, so a function that returns a parameter takes it owned, as `copy` does, and copies it where
 the parameter is used again, as `twice` does.  A caller owns a call's array result: it moves the
 result where the result's variable dies, copies it where the variable stays live, and releases it

@@ -5,7 +5,7 @@ import Library.Numerics.Float64.Pow.PowExpPaths
 The product `y log x` of `Pow.powMain` as `ehi + elo`.  `yhi` and `lhi` keep the top 26
 significant bits of `y` and of the high word of `log x`, by clearing the low 27 bits of their
 words, so `ehi = yhi lhi` is exact and `yhi`, `lhi` lie within `2 ^ -25` of `y` and `hi` in
-relative terms.  `elo = (y - yhi) lhi + y ((hi - lhi) + lo)` carries a few roundings of
+relative terms.  `elo = (y - yhi) lhi + y ((hi - lhi) + lo)` includes a few roundings of
 quantities below `2 ^ -24 |y hi|`, so `ehi + elo` lies within `2 ^ -74 |y (hi + lo)|` of
 `y (hi + lo)`, and `|elo| ≤ 17 · 2 ^ -28 |ehi|`.
 -/

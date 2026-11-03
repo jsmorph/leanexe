@@ -9,7 +9,7 @@ Matrices use row-major flat arrays and `UInt64` dimensions.  Index and dimension
 modulo `2^64`.  Missing entries read as zero.  Dot products accumulate left to right with a
 separate multiplication and addition.  `linear32` adds its bias after the dot product.
 
-Output lengths follow the definitions.  Binary64 `axpy` returns the length of `ys`, while binary32
+The definitions determine the output lengths.  Binary64 `axpy` returns the length of `ys`, while binary32
 `axpyArray32` returns the length of `x`.  Vector addition returns the first input's length.
 Matrix products return the requested row count or the word product of their output dimensions.
 

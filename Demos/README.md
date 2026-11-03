@@ -3,7 +3,7 @@
 Each demo contains its application definitions, specifications, compilations, proofs, and host
 programs.  Shared algorithms come from [the library](../Library/README.md).  The Forms column gives
 each demo's compiled forms in the codes of [the algorithm index](../index.md), whose section on
-applications names the theorem behind each code.
+applications names the theorem for each code.
 
 | Demo | Forms | Program and results |
 |---|---|---|
@@ -14,7 +14,7 @@ applications names the theorem behind each code.
 | [Running sum](RunningSum/README.md) | V S I | Decimal cumulative totals over stdin, with a verified WASI process loop and runs in native Lean. |
 | [Floating-point running sum](RunningSumFp/README.md) | S I | Binary64 cumulative totals over stdin, with parsing, addition, printing, and WASI process proofs. |
 | [Slew](Slew/README.md) | V S F C | Attitude slew planning under cone constraints, with safety, premise, NaN-freedom, optimality, allocation-bound, and compilation proofs. |
-| [Energy](Energy/README.md) | V S F C | Authorization of battery power limits for a solar-and-battery site, with proofs that accepted limits keep the modeled energy and grid limits, or stays no further outside a limit than a return to fallback. |
+| [Energy](Energy/README.md) | V S F C | Authorization of battery power limits for a solar-and-battery site, with proofs that accepted limits satisfy the modeled energy and grid limits, or stay no further outside a limit than a return to fallback. |
 | [Order book](OrderBook/README.md) | V S C I | Central limit order book of one instrument with price-time priority, with specification, refinement, and call proofs for its module, and a WASI process with exact-output and termination proofs. |
 
 Each guide states its proof premises and run commands.  Euler's recorded outputs are under [the

@@ -483,7 +483,7 @@ def inputWords (st : Store Unit) (p : UInt64) (w : Nat) : Array UInt64 :=
 /-- The number of words of a message of `n` bytes. -/
 def wordsOf (n : Nat) : Nat := (n + 7) / 8
 
-/-- The payload that `main` asks `alloc` for: the length word and the words. -/
+/-- The payload that `main` requests from `alloc`: the length word and the words. -/
 def needOf (n : Nat) : UInt64 := allocSize (UInt64.ofNat (8 + 8 * wordsOf n))
 
 theorem needOf_toNat {n : Nat} (hn : n ≤ inMax) : 8 + 8 * wordsOf n ≤ (needOf n).toNat := by
@@ -585,7 +585,7 @@ theorem eval_wordCount {le : temp_env} {m : mem} {n : UInt64}
   unfold wordsOf
   norm_num
 
-/-- `8ULL + wordCount * 8ULL`, the bytes that `main` asks `alloc` for. -/
+/-- `8ULL + wordCount * 8ULL`, the bytes that `main` requests from `alloc`. -/
 theorem eval_allocArg {le : temp_env} {m : mem} {n : UInt64}
     (hn : le[nTemp]? = some (.Vlong n)) (hlen : n.toNat ≤ inMax) :
     eval_expr A ge empty_env le m
@@ -712,8 +712,8 @@ def InResult (σ : Nat → int) (aborts : Bool) (out : Nat → (Nat → UInt8) �
         outTrace (out (inLen σ).toNat (inMsgByte σ)))))
 
 /-- The call of the entry `fd` on the array that `main` builds from the heap `heap` for each
-length `n` and bytes `b`, in every environment that meets the hypotheses of `NativeA`, from every
-memory related to the store after `main`'s writes with `lx_status` 0: it returns with
+length `n` and bytes `b`, in every environment that satisfies the hypotheses of `NativeA`, from
+every memory related to the store after `main`'s writes with `lx_status` 0: it returns with
 `lx_status` 0 and a result that gives the bytes `out n b`, or, when `aborts`, it ends with
 `lx_status` holding the code of `unreachable`. -/
 def EntryInRuns (A : Archi) (X : ExtSem) (cap : Nat) (m : Wasm.Module) (T : Translation)

@@ -24,7 +24,7 @@ open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
 /-- `code` runs as a branch nested in `d` blocks for the assertion `Q` of the code around them:
 for every assertion `Q'` that accepts, for a break out of `k + d` blocks, what `Q` accepts for a
-break out of `k`, and that accepts the traps that `Q` accepts, `code` meets `Q'`. -/
+break out of `k`, and that accepts the traps that `Q` accepts, `code` satisfies `Q'`. -/
 def RunsTailBranchX (strict : Bool) (m : Module) (host : HostEnv Unit) (code : Program) (d : Nat)
     (Q : Assertion Unit) (store : Store Unit) (s : Locals) : Prop :=
   ∀ Q' : Assertion Unit,

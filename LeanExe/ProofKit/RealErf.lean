@@ -10,7 +10,7 @@ the limits at infinity from the Gaussian integral, the power series with a remai
 every `x`, the alternating asymptotic bounds of `erfc` for `x > 0`, the differential equation
 `erfcx' = 2 x erfcx - 2/√π`, and a comparison of `erfcx` with a function that satisfies the
 equation up to a bounded defect, from a known value at the right end of an interval of
-nonnegative numbers.  The series bound rests on `exp_nonpos_remainder`, the Taylor remainder of
+nonnegative numbers.  The series bound depends on `exp_nonpos_remainder`, the Taylor remainder of
 the exponential at a nonpositive argument, and each asymptotic bound on the sign of a derivative
 and the limit at infinity.
 -/

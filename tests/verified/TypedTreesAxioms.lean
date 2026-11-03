@@ -5,7 +5,7 @@ import Verified.Examples.TypedTrees
 `compiled`, and the conversions' laws, the encodings, the well-formedness theorems, and the match
 lemmas that `verified_recursive_type` derives for the recursive types.  Every recursive type of
 the example has its well-formedness theorem, which shows that each record of each of its values
-meets the conditions of the representation on the value alone. -/
+satisfies the conditions of the representation on the value alone. -/
 
 open Lean Elab Command in
 elab "check_typed_tree_axioms" : command => do

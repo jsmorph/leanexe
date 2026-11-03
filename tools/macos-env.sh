@@ -3,7 +3,7 @@
 LEANRUN_TOOLCHAIN="$PWD/build/tools/lean-4.34.0-rc2-darwin_aarch64"
 LEAN_SYSROOT="$LEANRUN_TOOLCHAIN"
 LEANRUN_LOCAL=1
-# Approved for this project's ARM Mac sandbox on 2026-09-07.
+# Approved for this project's ARM Mac sandbox.
 LEANRUN_INHERIT_PRIORITY=1
 LEAN_NUM_THREADS=1
 WASM_TOOLS="$PWD/build/tools/wasm-tools-1.251.0-aarch64-macos/wasm-tools"

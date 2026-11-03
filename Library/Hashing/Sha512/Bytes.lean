@@ -119,7 +119,7 @@ theorem sha512_224_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit)
 
 /-- The module's bytes decode to the module, whose exports `sha512`, `sha384`, `sha512_256`, and
 `sha512_224` are functions 13 to 16, whose start store is ready, and whose four entries compute
-their digests from every ready store, as the four call theorems state. -/
+their digests from every ready store, as the call theorems state. -/
 theorem sha512_module :
     (∃ bytes, Wasm.Encoding.encode compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok compiled.module) ∧

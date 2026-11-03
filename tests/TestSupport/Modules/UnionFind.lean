@@ -33,7 +33,7 @@ def leastLabels (n : Nat) (js ks : List UInt64) : List UInt64 :=
 /-- The inputs `(n, js, ks)` of the cases.  Every list of at most two pairs over the elements 0 to
 4 with `n = 4`, so that the element 4 lies outside, covers repeated pairs, pairs of an element with
 itself, and pairs in both orders.  Small cases cover `n = 0` and `n = 1`, arrays of different
-lengths, whose extra words belong to no pair, and a pair that joins two classes of several
+lengths, whose extra words belong to no pair, and a pair that unites two classes of several
 elements each.  The element `2^32`, which a program that reads elements in 32 bits places at 0,
 `2^63` and `2^64 - 1`, which a program that reads elements as signed numbers places below `n`,
 and 1,000, which lies between `n` and `2^32`, each appear beside an element other than 0.  Random

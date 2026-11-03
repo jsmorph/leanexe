@@ -14,7 +14,7 @@ fixture](../../Verified/Examples/Lists.lean) of the verified compiler.
 
 ## Lists as chains of heap records
 
-A list lives on the heap as a chain of records of two slots, the element and the pointer to the
+A list is stored on the heap as a chain of records of two slots, the element and the pointer to the
 rest, and the empty list is the null pointer.  `List UInt64` has a built-in `Encode` instance,
 which states the record layout that the theorems use, and [the verified compiler
 manual](../../docs/verified-manual.md#types) describes recursive types and their records.
@@ -47,14 +47,14 @@ tests/native/verified.sh --module exampleLists
 The commands build the verified compilation and its theorems, write the module, call it in the
 Wasmtime host, and run the tests, with the setup of [the repository
 README](../../README.md#commands).  The first call prints `[0, 1, 2, 3]`, which the host reads by
-walking the records and checking each header, and the second prints 4950 and `stats 100 100`, the
+traversing the records and checking each header, and the second prints 4950 and `stats 100 100`, the
 allocation and free counters.  [The verified driver](../../tests/verified/run.sh) runs the inputs of
 [`Cases.lean`](Cases.lean) in Wasmtime against native Lean, and [the native
 driver](../../tests/native/verified.sh) runs them on the module's translation to C, compiled with
 CompCert.  The cases state that the host's cells stay allocated after `listSum`, that `listRange n`
 leaves its `n` cells allocated, and that `sumRange n` allocates `n` cells and frees them all.
 Without `--cases`, the verified driver also checks the file module against the written file and
-requires the axiom reports of both file theorems to name only `propext`, `Classical.choice`, and
+requires the axiom reports of the file theorems to name only `propext`, `Classical.choice`, and
 `Quot.sound`.
 
 ## Related examples

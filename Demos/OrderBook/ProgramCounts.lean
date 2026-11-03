@@ -4,7 +4,7 @@ import Demos.OrderBook.Program
 invariant.  A record adds at most 5,122 events of seven words to the event words of `run`: the
 accepted event, at most one trade for each of the 5,120 iterations of matching, and a final event.
 Every step keeps the sizes of the book's seven arrays, since the program changes them only with
-`set!`.  The process's charges and the closed form of `run`'s bound that they use rest on these
+`set!`.  The process's charges and the closed form of `run`'s bound that they use depend on these
 counts, because the charge of a read step holds for every reply, so for a batch that need not lie
 in the input and for a book whose next ids may leave no room for it. -/
 

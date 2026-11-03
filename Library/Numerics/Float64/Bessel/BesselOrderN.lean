@@ -63,7 +63,7 @@ theorem Jn_one (x : ℝ) : Jn 1 x = J1 x := by
   congr 1
   exact psum_congr an_one _
 
-/-- The coefficient identity behind the recurrence. -/
+/-- The coefficient identity of the recurrence. -/
 theorem an_identity (n k : ℕ) :
     an n (k + 1) + an (n + 2) k = (n + 1) * an (n + 1) (k + 1) := by
   simp only [an, Nat.factorial_succ, show n + (k + 1) = (n + k) + 1 by ring,

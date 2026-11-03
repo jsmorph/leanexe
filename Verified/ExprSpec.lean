@@ -32,7 +32,7 @@ have `h` positions, the variables live before the expression hold their values b
 `paid` state which variables' potential counts.  The code may trap at `unreachable` only as
 `trapFlag` allows for the potential of the paid owned variables that die plus the bound
 `e.allocs`, and the frames `e.fits`, for callees with the flags `flags`, the bounds `bounds`, and
-the frames `fits`.  When it finds its frames, `top` after the code, plus the potential of a paid
+the frames `fits`.  When it has enough frames, `top` after the code, plus the potential of a paid
 value, is at most `top` before it plus that sum.  The locals' parameters are `pv`, the function's arguments, which no
 code changes. -/
 def CodeSpec {S : List Sig} {Γ : List Ty} {t : Ty} (m : Module) (funs : Funs S)
@@ -231,7 +231,7 @@ def ImplementsP {α β : Type} [Represent α] [Represent β] (pre : α → Prop)
 heap and store changed only as `ImplementsA` allows, as `ImplementsP` states with the potential of
 the arguments at the parameters that the flags `pf` pick and, when `rf` holds, of the result:
 from its arguments, within the allocation bound `A`, or, when the code takes the call depth, at
-each depth that `D` admits, within `A` when its calls find their frames as `Fi` states. -/
+each depth that `D` admits, within `A` when its calls have enough frames as `Fi` states. -/
 def FunSpec (m : Module) (g : Sig) (idx : Nat) (F : Env g.params → g.result.denote)
     (pf : List Bool) (rf : Bool) (A : Env g.params → Nat) (Fi : Env g.params → Bool)
     (D : UInt64 → Prop) (pool : Bytes.LiteralPool) : Prop :=
@@ -603,7 +603,7 @@ theorem top_move {Γ : List Ty} {env : Env Γ} {slots : List Slot} {paid : List 
 
 /-- Two parts of an expression in sequence: the parts trap only as the whole's allowance
 `d || (a && …)` allows for the potential of the paid owned variables that die in the whole and the
-sum of their bounds, and, when the whole finds its frames, `top` rises by at most that sum.  The
+sum of their bounds, and, when the whole has enough frames, `top` rises by at most that sum.  The
 variables that die in the whole are those that die in the first part and those that die in the
 second, and the potential of the second's lies in blocks that the first keeps. -/
 theorem seq_spec {Γ : List Ty} {t u : Ty} {l : Expr S Γ t} {r : Expr S Γ u}

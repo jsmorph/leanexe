@@ -2,7 +2,7 @@ import Demos.OrderBook.Invariant
 
 /-! Chains of slots and the level structure of `toSpec`, for the refinement of
 [the specification](Spec.lean) by [the program](Program.lean).  `Path nxt s L e` states without
-fuel that `L` is the chain from slot `s` along the links `nxt` and that its last link goes to `e`.
+fuel that `L` is the chain from slot `s` along the links `nxt` and that its last link points to `e`.
 Under the structural part of the invariant, `Shape`, each level's chain is such a path that ends
 at 0, so the fuel of `slotsFrom` never runs out.  The book `toSpec b` is the concatenation of the
 levels' order lists `ordersAt b l` over the bid levels and the ask levels. -/
@@ -62,7 +62,7 @@ theorem toNat_ne {s t : UInt64} (h : s ≠ t) : s.toNat ≠ t.toNat :=
 
 /-! ## Paths -/
 
-/-- The list `L` is the chain from slot `s` along the links `nxt`, whose last link goes to `e`. -/
+/-- The list `L` is the chain from slot `s` along the links `nxt`, whose last link points to `e`. -/
 def Path (nxt : Array UInt64) : UInt64 → List UInt64 → UInt64 → Prop
   | s, [], e => s = e
   | s, x :: L, e => s = x ∧ x ≠ 0 ∧ Path nxt nxt[x.toNat]! L e

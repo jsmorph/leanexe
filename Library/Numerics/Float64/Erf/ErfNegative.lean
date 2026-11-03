@@ -9,7 +9,7 @@ on it computes from `|x|` and negates the final sum through the sign flag.  Nega
 a sum negates the rounded sum only when the exact sum is not zero, and `add_ne_zero_of_within`
 excludes a zero sum from the step at `-x`: a zero sum rounds to positive zero, more than one step
 from the reference of a number above `2^-1073`.  `finite_of_within_add` gives the finiteness of the
-second term in the same way.  `erf` is odd, so `F64SignedRounding.within_negate` carries the step
+second term in the same way.  `erf` is odd, so `F64SignedRounding.within_negate` transfers the step
 from `-x` to `x`.
 -/
 

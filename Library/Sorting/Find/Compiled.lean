@@ -4,7 +4,7 @@ import Verified.Congr
 
 /-! The verified compiler's module of selection.  The compiler translates the tail recursions of
 `scanUp`, `scanDown`, `part`, and `find` into loops, so the call stack does not grow.  `select`
-consumes its array, which the caller hands over as `Moved (Array UInt64)`, and the module allocates
+consumes its array, which the caller moves as `Moved (Array UInt64)`, and the module allocates
 nothing.  `select_implements` composes the generated `compiled.select.trapFree` with `select_eq`. -/
 
 namespace Library.Sorting.Find
@@ -19,7 +19,7 @@ theorem select_export :
     ({ name := "select", funcIdx := 7 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 7, the export `select`, called with an array that the caller hands over and a rank `k`,
+/-- Function 7, the export `select`, called with an array that the caller moves and a rank `k`,
 from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for
 `compiled.select.bound`, returns without a trap `expected xs k`, the word of rank `k`, and raises
 `top` by at most the bound. -/

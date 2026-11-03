@@ -1,12 +1,12 @@
 import Verified.After
 
-/-! The potential of owned arrays, which pays for the moves of an array that grows.  An owned
-array of `n` words at `p` has the potential `4u ∸ 2c`, with `u = 8 (n + 1)` the bytes of its length
-word and words and `c` the capacity of its block.  The block holds the array, so `c ≥ u` and the
-potential is at most `2u`.  A growth of an array whose potential is counted, a paid array, raises
-`top` and the potential together by at most `48` plus four times the added bytes, since a move
-requests twice the capacity.  `Env.pot` sums the potential of the variables that a selection
-picks, from their words at their slots. -/
+/-! The potential of owned arrays, which, with the charges, bounds the bytes of the moves of an
+array that grows.  An owned array of `n` words at `p` has the potential `4u ∸ 2c`, with
+`u = 8 (n + 1)` the bytes of its length word and words and `c` the capacity of its block.  The block
+holds the array, so `c ≥ u` and the potential is at most `2u`.  A growth of an array whose potential
+is counted, a paid array, raises `top` and the potential together by at most `48` plus four times
+the added bytes, since a move requests twice the capacity.  `Env.pot` sums the potential of the
+variables that a selection picks, from their words at their slots. -/
 
 namespace Verified
 

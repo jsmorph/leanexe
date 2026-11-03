@@ -5,7 +5,7 @@ array has the value 0, and zero digits at the top count toward a number's length
 states that every word of `u` is below `2^32`.  The functions return arrays for every argument, and
 the proofs assume `Digits` of both arguments, with fewer than `2^64` words in each, fewer than
 `2^64` in both together for a product, and fewer than `2^62` in both together for a division, so
-the results on other arrays carry no meaning.  The call theorems obtain the bound on each argument
+the results on other arrays have no meaning.  The call theorems obtain the bound on each argument
 from its array in memory, and those of the product and the division assume the bound on both
 together.
 Each result has a length fixed by the lengths of the arguments: `k + 1` digits for a sum and `k`

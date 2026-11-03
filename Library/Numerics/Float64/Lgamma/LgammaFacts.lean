@@ -53,7 +53,7 @@ theorem accurateTable_eq : LgammaData.accurateTable = Lgamma.accurateTable := rf
 
 theorem smallFact : SmallFact := LgammaSmallFact.small_fact
 
-/-- The pieces other than 4 and 10 carry no factor. -/
+/-- The pieces other than 4 and 10 have no factor. -/
 theorem pieceApprox_plain (j : ℕ) (h4 : j ≠ 4) (h10 : j ≠ 10) (x : ℝ) :
     pieceApprox j x = eval (LgammaPieceBase.pieceP j) (x - LgammaPieceBase.off j) := by
   rw [pieceApprox, ite_eq_right h4, ite_eq_right h10, one_mul]

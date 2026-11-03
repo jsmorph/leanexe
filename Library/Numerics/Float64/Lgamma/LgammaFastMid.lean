@@ -13,8 +13,8 @@ from `asLogd` (`sumDD`).  `t` lies in `[1/2, 3/2]`, so its top bits select a pie
 (`mid_t`).  `t - offs k` is exact by Sterbenz's lemma, and the sum with `xl` is exact because
 `1 + x - offs k` is a multiple of the spacing `2 ^ (e - 1075)` of `x`, for the biased exponent `e`
 of `x`, and the kernel checks `|1 + x - offs k| ≤ 2 ^ (e - 1022)` on each piece and binade that
-the range reaches (`z_ok`, `mid_z`).  `PieceFact` puts the result within `1.4 · 10^-19` of
-`ln Γ (1 + x)`, and `|ln |Γ x|| ≥ ln 2 - 0.58 > 1/10`, so the relative form of `FastSpec` holds
+the range reaches (`z_ok`, `mid_z`).  `PieceFact` states that the result lies within `1.4 · 10^-19`
+of `ln Γ (1 + x)`, and `|ln |Γ x|| ≥ ln 2 - 0.58 > 1/10`, so the relative form of `FastSpec` holds
 (`mid_spec`).
 -/
 
@@ -121,7 +121,7 @@ theorem zOK_apply (lo hi off B : ℚ) (h : zOK lo hi off B) (y : ℝ) (hlo : (lo
   constructor <;> linarith [h1'.1, h2'.2]
 
 /-- The offsets of the pieces `0` to `7` lie in the binades 1022 and 1023, and their polynomials
-stay below `0.58`, except piece 4, below `0.7`, which carries the factor `-x`. -/
+stay below `0.58`, except piece 4, below `0.7`, which has the factor `-x`. -/
 theorem mid_ok : ∀ k < 8, 1022 ≤ Wasm.IEEE64.exponent (wq (20 + k)) ∧
     Wasm.IEEE64.exponent (wq (20 + k)) ≤ 1023 := by
   decide +kernel

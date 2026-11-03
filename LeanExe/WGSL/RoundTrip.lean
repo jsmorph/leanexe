@@ -3,7 +3,7 @@ import LeanExe.WGSL.Parse
 /-!
 The parser reads every printed kernel back as itself: `Module.parse_print` states
 `Module.parse m.print = some m` for every kernel whose indices fit in eight hexadecimal digits.
-The proof goes through the tokens: the lexer recovers the printed tokens, since none is empty or
+The proof uses the tokens: the lexer recovers the printed tokens, since none is empty or
 contains a space or newline, and the parser reads each printed form back with enough fuel.
 -/
 

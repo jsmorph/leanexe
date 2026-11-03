@@ -2,8 +2,8 @@ import Library.Sorting.Heapsort.Program
 
 /-! A priority queue as a binary heap, TAOCP §5.2.3.  The input holds the operations as pairs
 `xs[2i], xs[2i + 1]` of a code and a value: code 0 inserts the value, any other code removes the
-largest word and outputs it, or does nothing when the queue is empty, and a last word without a
-partner is no operation.  The heap is the prefix `h[0, n)` of an array, with node `i` the parent of
+largest word and outputs it, or does nothing when the queue is empty, and an unpaired last word
+is no operation.  The heap is the prefix `h[0, n)` of an array, with node `i` the parent of
 nodes `2i + 1` and `2i + 2`, where Knuth numbers the nodes from 1 and gives node `j` the children
 `2j` and `2j + 1`.  The largest word is at the root, and every node is at or above its children, as
 in heapsort.  An insertion writes the value at position `n`, or appends it when the array holds

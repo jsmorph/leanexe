@@ -10,7 +10,7 @@ equalities, proved in `SinpiExact` and `SinpiExactTan`: `sinpi` of an integer is
 sign of `x`, `cospi` of an integer plus `1/2` is `+0`, `tanpi` of an integer `n` is `±0` with the
 sign of `x` for even `n` and the other sign for odd `n`, `tanpi` of `n + 1/2` is `+∞` for even
 `n` and `-∞` for odd `n`, and an infinity or a NaN gives the canonical NaN.
-`sinpi_bytes_accuracy`, `cospi_bytes_accuracy`, and `tanpi_bytes_accuracy` carry the bounds to
+`sinpi_bytes_accuracy`, `cospi_bytes_accuracy`, and `tanpi_bytes_accuracy` transfer the bounds to
 the decoded bytes of the compiled module and to every call in a sequence of calls to its exports
 `sinpi`, `cospi`, and `tanpi`, functions 13, 14, and 15.  The module has no tables.
 -/

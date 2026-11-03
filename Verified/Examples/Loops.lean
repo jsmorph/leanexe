@@ -1,6 +1,6 @@
 import Verified.Reflect.Command
 
-/-! The seventh program of the verified compiler: `LeanExe.loop` over a word, over a pair, and
+/-! A program of the verified compiler: `LeanExe.loop` over a word, over a pair, and
 over a pair with a `Bool`, a loop inside a loop, a loop whose body branches, and a loop whose
 body calls an earlier function.  The loop keeps its count, its index, and its state in locals and
 leaves when the index reaches the count. -/

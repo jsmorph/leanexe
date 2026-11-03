@@ -6,7 +6,7 @@
 structure with a nested `Conserved` structure, floats, words, a `Bool`, and a `Phase` enumeration;
 `Conserved` alone; a one-field `Mass`; and `Bool`.  They read fields of an element, count elements,
 build arrays of records with `LeanExe.build`, update fields with `{ c with … }`, and sum a field in
-a loop.  The types mirror the cell states of a fluid solver.
+a loop.  The types have the same structure as the cell states of a fluid solver.
 `verified_compile compiled := [density, …, totalDensity]` in [the verified
 compilation](Compiled.lean) compiles the definitions into the 5,237-byte `exampleGrids.wasm` of [the
 module registry](../../tests/verified/modules.txt).  The registry names it `exampleGrids`, since
@@ -60,7 +60,7 @@ native Lean, and [the native driver](../../tests/native/verified.sh) runs them o
 translation to C, compiled with CompCert.  The cases state one block left allocated by each
 function, the host's array or the result, and two by `scaled`, which reads one array and builds
 another.  Without `--cases`, the verified driver also checks the file module against the written
-file and requires the axiom reports of both file theorems to name only `propext`,
+file and requires the axiom reports of the file theorems to name only `propext`,
 `Classical.choice`, and `Quot.sound`.
 
 ## Related examples

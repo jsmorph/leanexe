@@ -1,7 +1,7 @@
 /-
 Derived from CompCert 3.18, the files `lib/Floats.v`, `lib/IEEE754_extra.v`, `x86_64/Archi.v`, and
 `aarch64/Archi.v`.  CompCert is Copyright Institut National de Recherche en Informatique et en
-Automatique (INRIA) and AbsInt Angewandte Informatik GmbH, and its source files carry INRIA's
+Automatique (INRIA) and AbsInt Angewandte Informatik GmbH, and its source files state INRIA's
 copyright.
 
 This file is distributed under the GNU Lesser General Public License, version 2.1 or (at your
@@ -25,8 +25,8 @@ or an infinity, the copy returns Talos's `Wasm.IEEE64` or `Wasm.IEEE32` result, 
 which happens exactly when the Talos operation returns its canonical NaN, the copy computes the
 NaN as `Floats.v` does, from the architecture's choice function `Archi.choose_nan_64` or
 `choose_nan_32`.  `Archi` holds these functions, so a theorem stated for every `Archi` holds on
-both targets; `x86_64` and `aarch64` are the two instances.  The fields `default_nan_64` and
-`default_nan_32` record `Archi.v`'s default NaNs, which the operations reach only through the
+both targets; `x86_64` and `aarch64` are the instances.  The fields `default_nan_64` and
+`default_nan_32` record `Archi.v`'s default NaNs, which the operations use only through the
 choice functions.  `Float.binop` and `Float32.binop`, which replace a Talos NaN result by
 Flocq's, have no counterpart in `Floats.v`.  `of_single` and `to_single`, which
 Talos computes with Lean's native floats, are defined here from Talos's exact rounding helpers.

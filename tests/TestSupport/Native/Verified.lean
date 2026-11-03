@@ -9,13 +9,14 @@ Lean module that defines it, as `tools/Emit.lean` does.
 
 * `survey MODULE CONSTANT NAME` prints which functions of the module translate and why the
   others do not.
-* `emit MODULE CONSTANT NAME DIR` writes the C text of the translation as `DIR/NAME.c`, the glue
-  of `tools/native-host.h` as `DIR/NAME_glue.c`, and the names of the exported functions that
+* `emit MODULE CONSTANT NAME DIR` writes the C text of the translation as `DIR/NAME.c`, the export
+  tables of `tools/native-host.h` as `DIR/NAME_glue.c`, and the names of the exported functions that
   the translation contains, one per line, as `DIR/NAME.exports`, and the C names of the functions
   that take the call depth, one per line, as `DIR/NAME.depth`; for a module outside the subset or
   one that does not translate, it writes nothing and exits with status 3.  Compiled with
-  `LX_STACK_MARK`, the glue measures the stack of each call with `lx_stack_mark` and
-  `lx_stack_used` of `tools/baremetal/start.S` and reports it with `lx_stack_report`.
+  `LX_STACK_MARK`, the call functions of the export tables measure the stack of each call with
+  `lx_stack_mark` and `lx_stack_used` of `tools/baremetal/start.S` and report it with
+  `lx_stack_report`.
 * `check MODULE CONSTANT NAME DIR` compares the translation with the Clight that `clightgen`
   wrote for `DIR/NAME.c` as `DIR/NAME.v`.
 * `build MODULE CONSTANT NAME DIR` is the native build of a module: it writes the files of
@@ -121,7 +122,7 @@ def resultCType (n : String) : String :=
 def table (entries : List String) (empty : String) : String :=
   ",\n".intercalate (if entries.isEmpty then [empty] else entries) ++ "\n"
 
-/-- The glue of `tools/native-host.h` for the exported functions of `m` that `t` contains. -/
+/-- The tables of `tools/native-host.h` for the exported functions of `m` that `t` contains. -/
 def glue (t : Translation) (m : Wasm.Module) : Except String String := do
   let exports := m.exports.filter fun e => t.funcs.contains e.funcIdx
   let mut protos := ""

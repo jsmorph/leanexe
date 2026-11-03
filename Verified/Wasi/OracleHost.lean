@@ -2,9 +2,9 @@ import Verified.Wasi.HostMemory
 import Interpreter.Wasm.Host.Registry
 
 /-! A Talos host for the three WASI imports from an oracle that answers each request of an
-abstract host.  The imports decode the one-iovec arguments from guest memory, as the contracts of
-`hostSpec` describe, ask the oracle for the reply and the next world, place the read payload and
-the count in guest memory, and append the event.  `env_satisfies` proves that the environment
+abstract host.  The imports decode the one-iovec arguments from guest memory, as the specifications
+of `hostSpec` describe, query the oracle for the reply and the next world, place the read payload
+and the count in guest memory, and append the event.  `env_satisfies` proves that the environment
 satisfies `hostSpec host` whenever every reply of the oracle is permitted by `host`. -/
 
 namespace Verified.Wasi.OracleHost
@@ -261,7 +261,7 @@ theorem exit_contract (sound : oracle.Sound host) (before : Store (Observed Worl
 
 variable (oracle host)
 
-/-- The three imports with the contracts of `hostSpec host`. -/
+/-- The three imports with the specifications of `hostSpec host`. -/
 def registry (sound : oracle.Sound host) : HostRegistry (Observed World) :=
   [{ decl := ABI.imports[0]!, fn := readFn oracle, contract := readContract host,
       sound := read_contract sound },

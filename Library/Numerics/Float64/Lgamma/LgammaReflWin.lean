@@ -10,7 +10,7 @@ the relative form of `FastSpec` holds there (`LgammaReflMid.refl_rel` with `|fh|
 windows the absolute form holds (`LgammaReflMid.refl_abs`): `ln Γ (-x)` is at least 0.24 above
 2.5 (`lgamma_five_halves`), 0.17 from 2.42 to 2.5 by convexity (`lgamma_chord`), and `ln 2` above
 3, and `s = sin (π φ)/π` is at least `p - π² p³/6` for `p` at most the distance of `φ` from the
-integers (`s_ge`).  `refl_four` puts the cases together.
+integers (`s_ge`).  `refl_four` combines the cases.
 -/
 
 namespace Library.Numerics.Float64.Lgamma.LgammaReflWin

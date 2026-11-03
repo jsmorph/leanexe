@@ -4,11 +4,12 @@ import Verified.Reflect.Command
 /-! The verified compiler's module of the next arrangement.  By the compiler's rules, which the
 verified compiler's manual states, the compiler translates the tail recursions of `ascent`,
 `lastAbove`, and `reverseRange` into loops, so no theorem of the module has a call-depth premise.
-`nextPerm` consumes its array, which the caller hands over as `Moved (Array UInt64)`, and returns
+`nextPerm` consumes its array, which the caller moves as `Moved (Array UInt64)`, and returns
 the flag and the array, and the generated bound is 0.  `nextPerm_implements` is the generated
 `compiled.nextPerm.trapFree`: the module returns `nextPerm xs`.  `nextPerm_isNext` of the proof
 states that `nextPerm xs` is the pair that `IsNext xs` specifies when `xs` has fewer than `2^64`
-words, which every array that the representation of a call holds has, and no theorem joins the two.
+words, which every array that the representation of a call holds has, and no theorem combines the
+two.
 -/
 
 namespace Library.Combinatorics.NextPermutation
@@ -22,7 +23,7 @@ theorem nextPerm_export :
     ({ name := "nextPerm", funcIdx := 6 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 6, the export `nextPerm`, called with an array that the caller hands over, from a heap
+/-- Function 6, the export `nextPerm`, called with an array that the caller moves, from a heap
 with the allocator invariant, a memory cap of at most 65,535 pages, and room for
 `compiled.nextPerm.bound`, returns without a trap the flag and the owned array of `nextPerm xs`, and
 raises `top` by at most the bound. -/

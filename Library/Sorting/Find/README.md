@@ -6,13 +6,13 @@
 
 ## The program
 
-[The program](Program.lean) applies `part`, steps Q3 to Q6 of [quicksort](../Quicksort/README.md), to the subfile `[l, e)` that holds position `k`, with the subfile's first word `K` as the partitioning word.  When the final position `j` of `K` is above `k`, `find` continues with `[l, j)`, when it is below `k`, with `[j + 1, e)`, and when it equals `k`, it stops, as it does when the subfile has fewer than two words.  `select xs k` returns 0 when `k` is not a position of the array, and otherwise runs `find` on the whole array and reads the word at `k`.  Hoare's FIND, Algorithm 65, applies his partition procedure, Algorithm 63, which he published with it, to the segment that holds position `k`, and continues with the part that holds it.  The program uses Knuth's partition in its place, which puts the subfile's first word at its final position, so that selection shares its partition with quicksort.
+[The program](Program.lean) applies `part`, steps Q3 to Q6 of [quicksort](../Quicksort/README.md), to the subfile `[l, e)` that holds position `k`, with the subfile's first word `K` as the partitioning word.  When the final position `j` of `K` is above `k`, `find` continues with `[l, j)`, when it is below `k`, with `[j + 1, e)`, and when it equals `k`, it stops, as it does when the subfile has fewer than two words.  `select xs k` returns 0 when `k` is not a position of the array, and otherwise runs `find` on the whole array and reads the word at `k`.  Hoare's FIND, Algorithm 65, applies his partition procedure, Algorithm 63, which he published with it, to the segment that holds position `k`, and continues with the part that holds it.  The program uses Knuth's partition in its place, which puts the subfile's first word at its final position, so that selection uses the same partition as quicksort.
 
 The first word of each subfile is the partitioning word, so on an array in increasing order a rank near the end takes about `n²/2` comparisons.  Each scan reads the array before the exchange that consumes it, and the compiler binds the scans first, so the module partitions the array in its own block.  The generated bounds of `find` and `select` are 0.
 
 ## The module partitions in place
 
-`verified_compile compiled := [swap, scanUp, scanDown, part, find, select]` in [the verified compilation](Compiled.lean) compiles the program into a module whose export `select` is function 7.  The compiler translates the tail recursions of `scanUp`, `scanDown`, `part`, and `find` into loops.  The caller hands the array over as `Moved (Array UInt64)`, and by the compiler's [ownership rules](../../../docs/verified-manual.md#ownership) the module partitions the array in its own block and releases it after its last use.
+`verified_compile compiled := [swap, scanUp, scanDown, part, find, select]` in [the verified compilation](Compiled.lean) compiles the program into a module whose export `select` is function 7.  The compiler translates the tail recursions of `scanUp`, `scanDown`, `part`, and `find` into loops.  The caller moves the array to `select` as `Moved (Array UInt64)`, and by the compiler's [ownership rules](../../../docs/verified-manual.md#ownership) the module partitions the array in its own block and releases it after its last use.
 
 | Theorem | File | Statement |
 |---|---|---|
@@ -25,7 +25,7 @@ The first word of each subfile is the partitioning word, so on an array in incre
 | `select_eq` | [The proof](Proof.lean) | `select xs k = expected xs k` for every array with fewer than `2^64` elements and every rank. |
 | `pairwise_mergeSort_le` | [The sorted lists](../Sorted.lean) | `List.mergeSort` with the unsigned order of words returns a list in nondecreasing order. |
 | `select_export` | [The compilation](Compiled.lean) | Export `select` of `compiled.module` is function 7. |
-| `select_implements` | [The compilation](Compiled.lean) | Function 7, called with an array that the caller hands over and a rank `k`, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.select.bound`, returns without a trap `expected xs k` and raises `top` by at most the bound. |
+| `select_implements` | [The compilation](Compiled.lean) | Function 7, called with an array that the caller moves to it and a rank `k`, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.select.bound`, returns without a trap `expected xs k` and raises `top` by at most the bound. |
 | `select_bound` | [The compilation](Compiled.lean) | `compiled.select.bound` is 0, so a call does not raise `top`. |
 | `find_file`, `find_file_decode` | [The file theorems](File.lean) | `build/verified/find.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 

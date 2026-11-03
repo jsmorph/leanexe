@@ -2,7 +2,7 @@ import Library.Numerics.Reductions.Float64.Program
 import Library.Numerics.LinearAlgebra.Float64.Program
 import Verified.Reflect.Command
 
-/-! The fourteenth program of the verified compiler: arrays of floats and of `Bool`s.  The
+/-! A program of the verified compiler: arrays of floats and of `Bool`s.  The
 programs read, build, update, and extend such arrays, take them as borrowed and as owned
 parameters, and return them.  An array of floats holds each element's bit pattern in a word, and
 an array of `Bool`s holds 1 or 0. -/

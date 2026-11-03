@@ -1,10 +1,10 @@
 import Verified.Reflect.Command
 
-/-! The sixteenth program of the verified compiler: records.  A structure with a `Flat` instance is
+/-! A program of the verified compiler: records.  A structure with a `Flat` instance is
 represented as the tuple of its fields, as `Implements` represents it, and a nested structure as
 its own tuple.  The programs build structures, update them with `{ s with … }`, read fields and
-fields of fields, take them apart with `match`, choose between them with `if`, pass them to calls,
-and carry one as a loop's state.  The theorem for each definition is stated for Lean's structures
+fields of fields, destructure them with `match`, choose between them with `if`, pass them to calls,
+and use one as a loop's state.  The theorem for each definition is stated for Lean's structures
 and the instances Lean synthesizes for them. -/
 
 namespace Verified.Examples.Records

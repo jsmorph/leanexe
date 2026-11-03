@@ -10,7 +10,7 @@ and the flag of the start of a normal binade that `PrintFloat.print64With` compu
 (`print64_code`).  `n = pack b64 E Q` (`pack_sig`), so `Library.Numerics.Decimal.Shared.StrconvInterval.interval_iff` makes
 `round64` of a decimal equal to `w` exactly when its sign is that of `w` and its magnitude lies in
 the interval `[lo, hi]` of `PrintFloatSearch`, the ends included when `Q` is even (`round64_iff`).
-`shortest64` joins this with `PrintFloatShort.shortest_of_choice`: the decimal of the code's
+`shortest64` combines this with `PrintFloatShort.shortest_of_choice`: the decimal of the code's
 choice is `Shortest64` and has no trailing zero.
 -/
 

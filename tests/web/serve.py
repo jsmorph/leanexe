@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = ["transformers==5.18.0"]
 # ///
-"""Serves the two WebGPU pages from one server: /kernels/, which runs the WGSL kernel cases on the
+"""Serves the WebGPU pages from one server: /kernels/, which runs the WGSL kernel cases on the
 browser's WebGPU, and /gpt2/, which runs GPT-2 124M in binary32 with each kernel on WebGPU or in
 gpt32.wasm on the CPU.
 

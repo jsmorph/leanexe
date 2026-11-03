@@ -4,11 +4,12 @@ import Library.Numerics.Arithmetic.Fma.FmaSpecTheorem
 /-!
 **`Tgamma.tgamma` within one step of `Γ`** for every finite input other than the poles
 (`tgamma_within_one`), and the canonical NaN at the negative integers (`tgamma_neg_int`).
-`TgammaSpecial` gives the exact results at `±0`, `±∞`, and NaN.  The fused multiply-add enters
-through `Library.Numerics.Arithmetic.Fma.FmaSpecTheorem.fma_nearest`.  The theorem takes as hypotheses the approximation facts of
-`TgammaApprox` that track `erf` proves, the specifications of `asLogd` and `asSinpid` that track
-`expm1` proves, `GammaBelowT0` and `SubnormalGap` from track `erf`, and `AccurateWithin`, the
-accurate path within one step at the inputs where the fast paths call it.
+`TgammaSpecial` gives the exact results at `±0`, `±∞`, and NaN.  The proof uses the fused
+multiply-add through `Library.Numerics.Arithmetic.Fma.FmaSpecTheorem.fma_nearest`.  The theorem
+takes as hypotheses the approximation facts of `TgammaApprox`, the
+specifications of `asLogd` and `asSinpid`, `GammaBelowT0`, and
+`SubnormalGap`, and `AccurateWithin`, the accurate path within one step at the
+inputs where the fast paths call it.
 -/
 
 namespace Library.Numerics.Float64.Tgamma.TgammaFinal

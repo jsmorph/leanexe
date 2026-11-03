@@ -22,7 +22,7 @@ def RunsA (aborts : Bool) (env : HostEnv α) (m : Module) (id : Nat) (initial : 
     (args : List Value) (P : Store α → List Value → Prop) : Prop :=
   Runs aborts env m id initial args P ∧ ∃ N, ∀ fuel ≥ N, AlignedRun fuel m id initial args env
 
-/-- The entry rule: a body whose `wpA` reaches `P` or a trap that `TrapMsg aborts` accepts gives
+/-- The entry rule: a body whose `wpA` establishes `P` or a trap that `TrapMsg aborts` accepts gives
 `RunsA aborts`. -/
 theorem RunsA.of_wpA_entry_for {aborts : Bool} {f : Function}
     (hf : m.funcs[id - m.imports.length]? = some f)

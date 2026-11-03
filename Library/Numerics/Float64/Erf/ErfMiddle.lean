@@ -3,8 +3,7 @@ import Library.Numerics.Float64.Erf.ErfMiddleBase
 /-!
 One step for `erf` on the middle range `[0.84375, 1.25)` of `s_erf.c` for positive arguments.  The
 range of `s = x - 1` is cut into 13 intervals of width `1/32`, and `decide +kernel` checks
-`ErfMiddleBase.middleOK` on each.  `gen_middle.py` and `emit_middle.py` in the track's scratch
-directory compute the intervals and write the file.
+`ErfMiddleBase.middleOK` on each.
 -/
 
 namespace Library.Numerics.Float64.Erf.ErfMiddle

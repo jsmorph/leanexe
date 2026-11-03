@@ -2,7 +2,7 @@ import Library.Numerics.Float64.Sinpi.SinpiFloor
 import Library.Numerics.Float64.Sinpi.SinpiPieces
 
 /-!
-Facts shared by the three functions of `Sinpi`: the high word of `|x|` against its thresholds,
+Facts shared by `sinpi`, `cospi`, and `tanpi`: the high word of `|x|` against its thresholds,
 the exact subtraction of equal positive words, which gives `+0`, and the integer value of every
 input from `2 ^ 52` on.
 -/
@@ -43,7 +43,7 @@ theorem consts : value (0x3FF0000000000000 : UInt64) = 1 ∧
   · rw [Library.Numerics.Float64.Trig.TrigReduce.value_word _ (2 ^ 52) 0 (by norm_num) (by decide +kernel)]
     norm_num
 
-/-- The thresholds of `|x|` in the three functions. -/
+/-- The thresholds of `|x|` in `sinpi`, `cospi`, and `tanpi`. -/
 theorem abs_thresholds (x : Float) (hxf : Finite x.toBits) :
     ((x.toBits >>> 32) &&& 0x7fffffff < 0x3ff00000 ↔ |value x.toBits| < 1) ∧
       ((x.toBits >>> 32) &&& 0x7fffffff < 0x3e200000 ↔ |value x.toBits| < 1 / 2 ^ 29) ∧

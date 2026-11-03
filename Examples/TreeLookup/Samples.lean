@@ -9,7 +9,7 @@ def samples : List (Array UInt64) :=
     (q :: tree).toArray) ++
   [ -- Keys out of search-tree order: 9 is in the left subtree of 5, so a search for it misses.
     #[9, 5, 1, 7, 2, 3, 4, 9, 6, 8, 10, 11, 12, 13, 14],
-    -- A key equal to the query in the subtree the search does not enter.
+    -- A key equal to the query in the subtree the search does not visit.
     #[40, 50, 1, 60, 2, 30, 3, 40, 4, 70, 5, 40, 6, 80, 7],
     -- Unsigned comparison: 2^63 is greater than 50 and 70, so the search goes right twice.
     #[9223372036854775808, 50, 500, 30, 300, 70, 700, 20, 200, 40, 400, 60, 600,

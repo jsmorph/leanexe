@@ -6,7 +6,7 @@ Calls under the flag.  `FunSpecX strict` is `FunSpec` together, under `strict = 
 64-bit accesses (`RunsA`) and returns, beside what `FunSpec.runs` states, an aligned owned value in
 an aligned heap.  `FunPost strict` is the postcondition of `FunSpec.runs` with that conjunct
 under `strict = true`, and `RunsX strict` is `Runs` at `strict = false` and `RunsA` at
-`strict = true`, so that `FunSpecX.runs` and `wpX_call_runs` serve both values of the flag.
+`strict = true`, so that `FunSpecX.runs` and `wpX_call_runs` apply to both values of the flag.
 `CallsAtX` is `CallsAt` with `FunSpecX`; the function level proves it as it proves `CallsAt`.
 -/
 

@@ -5,8 +5,8 @@ import LeanExe.ProofKit.F64RoundNearest
 A word that is a nearest rounding of a real within `E` of `y`.  The last operation of a computed
 function rounds its exact value `S` to a nearest word, so a bound `|S - y| ≤ E` holds every error
 except that rounding.  `Near.within_one` and `Near.within_two` turn the bound into one or two steps
-without charging the rounding, `Near.shift` moves the target, and `Near.half` carries the bound
-through an exact halving of the word.
+without charging the rounding, `Near.shift` moves the target, and `Near.half` halves the bound
+for an exact halving of the word.
 -/
 
 namespace LeanExe.ProofKit.F64Near

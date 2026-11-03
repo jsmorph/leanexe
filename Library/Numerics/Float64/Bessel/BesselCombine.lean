@@ -8,8 +8,8 @@ The last steps of `j0`, `y0`, `j1`, and `y1` from 2 on: `invsqrtpi · (P̂ ĉc �
 `combine_sub` and `combine_add` bound the bracket from the errors and magnitudes of its four
 factors, with `mulErr` the error form of `F64Approx.fapprox_mul` and a rounding of at most `u`
 below 2.  `final_step` bounds the product with `invsqrtpi` and the quotient by the rounded `√x`,
-and gives the error `finErr eT MT / √x + 2 ^ -1075`.  `J0_form` and its three companions rewrite
-the large-argument forms of `BesselPQ` with `A = sin x ± cos x` and `B`, and `modulus_lower`
+and gives the error `finErr eT MT / √x + 2 ^ -1075`.  `J0_form`, `Y0_form`, `J1_form`, and `Y1_form`
+rewrite the large-argument forms of `BesselPQ` with `A = sin x ± cos x` and `B`, and `modulus_lower`
 bounds the modulus below by `0.7978 Pl / √x` when `P ≥ Pl > 0`.
 -/
 

@@ -1,7 +1,7 @@
 /-
 Derived from CompCert 3.18, the files `common/Memtype.v`, `common/Memory.v`, and `lib/Maps.v`.
 CompCert is Copyright Institut National de Recherche en Informatique et en Automatique (INRIA) and
-AbsInt Angewandte Informatik GmbH, and its source files carry INRIA's copyright.
+AbsInt Angewandte Informatik GmbH, and its source files state INRIA's copyright.
 
 This file is distributed under the GNU Lesser General Public License, version 2.1 or (at your
 option) any later version, one of the two licenses CompCert offers for its source files.  The
@@ -36,7 +36,7 @@ so the memories that `init_mem` and these operations produce are images, and a t
 for every `mem` holds for the images of CompCert's memories; a statement about a `mem` outside
 the image says nothing about CompCert.  An external call under an arbitrary `ExtSem` can produce
 a memory outside the image, so a theorem should hold for every `X` and be applied with `X` the
-image of CompCert's `external_functions_sem`.  Carrying a conclusion about the copy over to
+image of CompCert's `external_functions_sem`.  Transferring a conclusion about the copy to
 CompCert relies on a rule-for-rule correspondence between the copy's derivations and CompCert's,
 which the reviews and the differential tests support and no proof covers.
 -/

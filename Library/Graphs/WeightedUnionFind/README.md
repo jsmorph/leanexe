@@ -2,7 +2,7 @@
 
 ## Request and specification
 
-[The request](request.txt) asks for the least element of the class of each element `0` to `n - 1` under the least equivalence relation that relates the two elements of each pair, with the trees of parent links of Algorithm E of TAOCP §2.3.3, path compression, and union by size, with the parent links and the sizes updated in place and a call stack that does not grow.  The specification is `LeastLabels` of [the module of Algorithm E](../UnionFind/README.md), which [its specification](../UnionFind/Spec.lean) states: the result holds `n` words, and word `i` is the least element equivalent to `i`, where a pair with an element of `n` or more relates nothing.  The specification names the result and not the method, so the two modules share it, and [this module's specification file](Spec.lean) records its reading of the request: four arrays of `n` words, the parent links and the sizes updated in place, and the program text as the only statement of path compression and union by size.  [The review](review.md) records the specification's two independent reviews and the cases that they added.
+[The request](request.txt) asks for the least element of the class of each element `0` to `n - 1` under the least equivalence relation that relates the two elements of each pair, with the trees of parent links of Algorithm E of TAOCP §2.3.3, path compression, and union by size, with the parent links and the sizes updated in place and a call stack that does not grow.  The specification is `LeastLabels` of [the module of Algorithm E](../UnionFind/README.md), which [its specification](../UnionFind/Spec.lean) states: the result holds `n` words, and word `i` is the least element equivalent to `i`, where a pair with an element of `n` or more relates nothing.  The specification names the result and not the method, so this module and the module of Algorithm E use it, and [this module's specification file](Spec.lean) records its reading of the request: four arrays of `n` words, the parent links and the sizes updated in place, and the program text as the only statement of path compression and union by size.  [The review](review.md) records the specification's two independent reviews and the cases that they added.
 
 ## The program
 
@@ -16,7 +16,7 @@ Union by size keeps every tree of `k` elements at a height of at most `⌊lg k�
 
 | Theorem | File | Statement |
 |---|---|---|
-| `rank_mono`, `rank_lt_root` | [The proof](Proof.lean) | Along the links of a forest the rank does not fall, and an element that is not a root has a lower rank than its root. |
+| `rank_mono`, `rank_lt_root` | [The proof](Proof.lean) | Along the links of a forest the rank does not decrease, and an element that is not a root has a lower rank than its root. |
 | `rootOf_eq_of` | [The proof](Proof.lean) | On a forest whose links keep a function `R` and whose roots `R` fixes, the root of every element is its value under `R`. |
 | `link_root` | [The proof](Proof.lean) | A link from an element to its root keeps a forest and the root of every element. |
 | `compress_spec` | [The proof](Proof.lean) | Path compression keeps a forest and the root of every element, and gives each element its old parent or its root. |
@@ -27,7 +27,7 @@ Union by size keeps every tree of `k` elements at a height of at most `⌊lg k�
 | `classes_bound` | [The compilation](Compiled.lean) | `compiled.classes.bound` is four blocks of `n` words, `4 * Verified.blockCost n`. |
 | `weightedUnionFind_file`, `weightedUnionFind_file_decode` | [The file theorems](File.lean) | `build/verified/weightedUnionFind.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
-The proof uses the invariant `Inv` of the module of Algorithm E: the links form a forest, every link joins two equivalent elements, and the two elements of every pair taken so far that are both below `n` have the same root.  The rank function of a forest rises from an element to its root, so a link from an element to its root keeps the same rank function, and the root of every element stays, which `rootOf_eq_of` shows with the old roots as `R`.  `unite` links one root to the other in either direction, which `link_inv` covers, and the sizes decide only the direction, so the proof does not use them.  The axiom reports of `classes_call` and `classes_spec` name only `propext`, `Classical.choice`, and `Quot.sound`.
+The proof uses the invariant `Inv` of the module of Algorithm E: the links form a forest, every element is equivalent to its parent, and the two elements of every pair taken so far that are both below `n` have the same root.  The rank function of a forest increases along the link of every element that is not a root, and so from such an element to its root, so a link from such an element to its root keeps the same rank function, and the root of every element is unchanged, which `rootOf_eq_of` shows with the old roots as `R`.  `unite` links one root to the other in either direction, which `link_inv` covers, and the sizes determine only the direction, so the proof does not use them.  The axiom reports of `classes_call` and `classes_spec` name only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Building, running, and testing
 

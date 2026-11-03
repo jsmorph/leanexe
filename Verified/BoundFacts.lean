@@ -15,7 +15,8 @@ passes on as potential. -/
 def growCost (words ext : Nat) : Nat := allocCost (16 * (words + 1)) + 16 * ext
 
 /-- The charge for a paid owned array that grows by `ext` words: a header and four times the added
-bytes, which with the array's potential pay for a move and pass the potential on. -/
+bytes, which with the array's potential are at least the bytes of a move plus the moved array's
+potential. -/
 def paidGrowCost (ext : Nat) : Nat := allocCost (32 * ext)
 
 /-- The credit for a loop's initial state that is not paid, for an array of `words` words: the most

@@ -3,7 +3,7 @@
 The `solve` export of the verified Euler module, proved to compute its Lean definition, evolves
 the four-quadrant problem from the [Lanyon Euler
 article](https://lanyon.ai/research/euler-equations/).  Initialization, timestep selection, both
-directional sweeps, retries, allocation, and final output execute inside one call of the export.
+directional sweeps, retries, allocation, and final output execute in one call of the export.
 The module compiles [the buffered form](../Buffered.lean) of the solver, which equals [the
 program](../Program.lean) by `solve_eq`.
 
@@ -29,10 +29,10 @@ The domain is the unit square, and the initial interfaces lie at x = y = 0.8.  T
 | Bottom left | 0.029 | 0.138 | 1.206 | 1.206 |
 | Bottom right | 0.3 | 0.5323 | 0 | 1.206 |
 
-Each cell stores density, both momenta, and total energy.  Cells cut by an initial interface receive
+Each cell stores density, both momenta, and total energy.  Cells cut by an initial interface are initialized to
 conservative area averages.  The first-order finite-volume method uses Rusanov fluxes, an x sweep
 followed by a y sweep, and transmissive boundaries implemented by clamping neighbor indices.
-Timestep selection targets CFL 0.4.  Each accepted cell update checks that its rounded Courant
+Timestep selection chooses the timestep for CFL 0.4.  Each accepted cell update checks that its rounded Courant
 number is at most 0.5.
 
 ## Program and proofs
@@ -45,7 +45,7 @@ the result of `run`.
 
 | Claim | Statement | Theorem |
 |-------|-----------|---------|
-| Execution and memory | Encoding gives bytes that decode back to the module, whose `solve` export is entry 28.  Called with any `n` from the store in which the module starts, under a memory cap of at least `solvePages n` and at most 65,535 pages, the export returns without a trap the address of a new array that holds the words of `solve n`.  It leaves a ready store whose `top` lies at most `solveBytes n` bytes above the heap base, and `solvePages n` is at most 1,563 for every `n`. | `euler_solve_call` in [the call theorems](../VerifiedCall.lean) |
+| Execution and memory | Encoding gives bytes that decode back to the module, whose `solve` export is entry 28.  Called with any `n` from the store in which the module starts, with a memory cap of at least `solvePages n` and at most 65,535 pages, the export returns without a trap the address of a new array that holds the words of `solve n`.  It leaves a ready store whose `top` lies at most `solveBytes n` bytes above the heap base, and `solvePages n` is at most 1,563 for every `n`. | `euler_solve_call` in [the call theorems](../VerifiedCall.lean) |
 | Output | Words with status 0 hold the bits of 0.8, `2 ≤ n ≤ 800`, and `n²` positive, finite densities and pressures. | `solve_ok` in [the run properties](../Spec.lean) |
 | Admissibility and hyperbolicity | Words with status 0 pack a final grid whose states have positive density and pressure in exact arithmetic with γ = 7/5.  At each such state the derivative of the flux in every unit direction has a basis of real eigenvectors with eigenvalues `un - c`, `un`, `un`, and `un + c`. | `solve_hyperbolic` in [the hyperbolicity theorems](../Hyperbolic.lean) |
 | Conservation | Each run with status 0 is a chain of accepted steps along which the total of mass, of each momentum, and of energy equals its initial total, minus the boundary fluxes summed over the steps, plus a rounding residual.  The residual is at most a sum of per-update bounds computed from the words of the run. | `run_balance` in [the balance theorems](../FirstOrderBalance.lean) |
@@ -53,11 +53,11 @@ the result of `run`.
 | Flux and update accuracy | Let `ε = 2⁻⁵²` and `1 ≤ M ≤ 2¹⁰⁰`.  For two states that pass the state guard, with density in `[1/M, M]`, momenta and energy at most `M` in magnitude, and internal energy at least `24 ε M³`, `flux` accepts with a positive speed at most `32 M²`, and each component is within `304 ε M⁵` of the exact Rusanov flux of the two states' values with that speed.  When `advanceCell` accepts three such states with a ratio `r ≤ 1`, each conserved output is within `ε M + 1004 ε r M⁵ + 2⁻¹⁰⁷⁴` of the exact Rusanov update. | `interface_reference_error` in [the interface theorems](../Reference/Interface.lean), `advanceCell_reference_error` in [the update theorems](../Reference/Update.lean) |
 
 The axiom reports of [the call theorems](../VerifiedCall.lean) and of the file theorems name only
-`propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on Wasmtime and the hardware
-implementing the WebAssembly semantics that the proofs model.  `solveBytes n` covers three grids of
+`propext`, `Classical.choice`, and `Quot.sound`.  Execution depends on Wasmtime and the hardware
+implementing the WebAssembly semantics that the proofs model.  `solveBytes n` includes three grids of
 `cells n` cells and the packed result, each with its block header, and `solvePages n` adds the heap
-base of 4096 bytes.  `euler_solve_call` starts from the modeled store in which the module starts and
-states no final page count.  Instantiation by a WebAssembly engine lies outside the proofs, as [the
+base of 4096 bytes.  `euler_solve_call` concerns a call from the modeled store in which the module starts and
+states no final page count.  The proofs do not cover instantiation by a WebAssembly engine, as [the
 verified compiler manual](../../../docs/verified-manual.md#outside-the-proofs) states.
 
 For density 1, zero momenta, and energy 1, an admissible state, `side` accepts the state and
@@ -77,7 +77,7 @@ Euler equations remains unproved.
 | 192 × 192 | 0.138–1.490131234 | 0.029–1.476780108 | [Words](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/words.u64le), [CSV](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/cells.csv.gz) | [SVG](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/density-pressure.svg), [PDF](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/192-run/density-pressure.pdf) |
 | 800 × 800 | 0.138–1.671084032 | 0.029–1.632146140 | [Words](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/words.u64le), [CSV](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/cells.csv.gz) | [SVG](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/density-pressure.svg), [PDF](https://github.com/jsmorph/leanexe-papers/blob/main/data/euler/first-order/800-run/density-pressure.pdf) |
 
-The `solve` export of the verified module computed the output words of both runs on 2026-10-31, in
+The `solve` export of the verified module computed the output words of both runs, in
 30 s on the 192-grid and 2,193 s on the 800-grid, and the SHA-256 of each run's words equals the one
 that the record's `summary.json` states.  The CSV files and the ranges come from those words, which
 follow the layout of `pack`: the status, the bits of the time, `n` twice, the `n²` densities, and

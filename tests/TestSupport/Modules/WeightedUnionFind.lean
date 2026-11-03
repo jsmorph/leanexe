@@ -15,7 +15,7 @@ def binomial (n levels : Nat) : List (UInt64 × UInt64) :=
 
 /-- The inputs of the cases: those of Algorithm E, `classInputs`, whose pairs `(i, i + 1)` build a
 tree of depth 1 under union by size, and inputs whose searches are long.  A pair `(31, 31)` after
-the binomial tree of 32 elements searches 5 links and compresses them, a pair `(15, 31)` joins two
+the binomial tree of 32 elements searches 5 links and compresses them, a pair `(15, 31)` unites two
 binomial trees of 16 elements through two paths of 4 links, and the same holds for 4,096 elements
 with paths of 12 and 11 links.  The input `(4, [1, 2, 0, 3], [0, 3, 2, 2])` compresses a path in a
 small forest. -/

@@ -65,7 +65,7 @@ structure Shape (m : Wasm.Module) : Prop where
   tagExports : m.tagExports = []
   tags : m.tags = []
 
-/-- The memory declarations without their data segments, which the data section carries. -/
+/-- The memory declarations without their data segments, which the data section holds. -/
 def memoryDecls (m : Wasm.Module) : List Wasm.MemDecl :=
   m.memory.toList.map fun decl => { decl with data := [] }
 

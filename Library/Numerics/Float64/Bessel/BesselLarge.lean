@@ -3,7 +3,7 @@ import Library.Numerics.Float64.Bessel.BesselPQ0
 import Library.Numerics.Float64.Bessel.BesselPQ1
 
 /-!
-The path from 2 of the four functions, with the two branches of `BesselCS` folded in.
+The path from 2 of `j0`, `j1`, `y0`, and `y1`, with the two branches of `BesselCS` folded in.
 `large_sub` and `large_add` take the rounded `P̂` and `Q̂` of one range, the pair `(cc, ss)` in its
 two branches, and the numeric conditions of `BesselCase.case_sub` or `case_add` for each branch,
 and bound the result against any `F` equal to the large-argument form, in units of any `M` at least

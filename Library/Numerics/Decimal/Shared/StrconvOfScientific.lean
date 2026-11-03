@@ -9,9 +9,9 @@ import LeanExe.ProofKit.F64GridExact
 Lean's `Float.ofScientific` at `v4.34.0-rc2`, the meaning of every decimal literal of type `Float`,
 is `round64` of the decimal (`ofScientific_spec`).  The definition takes Clinger's fast path when
 `m < 2 ^ 53` and `e ≤ 22`: one multiplication or division of the exact double `m` by the exact
-power of ten `10 ^ e` from `Float.exactlyRepresentablePowersOfTen`, which `F64Bits` turns into
+power of ten `10 ^ e` from `Float.exactlyRepresentablePowersOfTen`, which `F64Bits` converts into
 Talos's `mul` and `div`, and `StrconvRational.dyadic64` and `rational64` into the reference.  Every
-other input goes through `Float.Model.ofScientific`, which returns zero for `m = 0`, infinity for
+other input is converted by `Float.Model.ofScientific`, which returns zero for `m = 0`, infinity for
 `e > 2 ^ 11`, zero for `e < -(2 ^ 11 + log2 m)`, the model's product of `m · 2 ^ 52 · 2 ^ -52` and
 `10 ^ e` for `e ≥ 0`, and its quotient of `m` by `10 ^ -e` otherwise.  ProofKit's
 `F64RoundDyadic.pack_round_above_dyadic` and `F64DivCore.pack_div_finite` give the product and the

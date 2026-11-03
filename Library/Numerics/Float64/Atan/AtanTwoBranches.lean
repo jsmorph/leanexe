@@ -34,7 +34,8 @@ def notNaN (y x : Float) : Prop :=
   ((ixOf x ||| ((lxOf x ||| ((0 - lxOf x) &&& 0xFFFFFFFF)) >>> 31)) > 0x7ff00000 ||
     (ixOf y ||| ((lxOf y ||| ((0 - lxOf y) &&& 0xFFFFFFFF)) >>> 31)) > 0x7ff00000) = false
 
-/-- The general branch: finite nonzero inputs, `x ≠ 1`, and `|y/x|` between the shortcuts. -/
+/-- The general branch: finite nonzero inputs, `x ≠ 1`, and `kOf2` outside the special branches for
+large and small `|y/x|`. -/
 theorem atan2_gen_eq (y x : Float) (hn : notNaN y x)
     (h1 : (x.toBits >>> 32 == 0x3ff00000 && lxOf x == 0) = false)
     (h2 : (ixOf y ||| lxOf y == 0) = false) (h3 : (ixOf x ||| lxOf x == 0) = false)

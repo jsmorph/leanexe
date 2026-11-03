@@ -3,9 +3,9 @@ import LeanExe.ProofKit.AlignedFlagRules
 /-!
 The flagged forms of Talos's atomic rules for the instructions of the native subset, generated from
 `Interpreter/Wasm/Wp/Atomic.lean`: each states the rule with `wpX strict` for `wp` and proves it
-from Talos's rule at `strict = false` and from the `wpA` step rules at `strict = true`.  They carry
-`@[simp]`, as Talos's rules do, so that `simp` runs straight-line code under either value of the
-flag.  `load64` and `store64` have their own rules, with the alignment conjunct.
+from Talos's rule at `strict = false` and from the `wpA` step rules at `strict = true`.  They have
+the attribute `@[simp]`, as Talos's rules do, so that `simp` runs straight-line code under either
+value of the flag.  `load64` and `store64` have their own rules, with the alignment conjunct.
 -/
 
 namespace LeanExe.ProofKit

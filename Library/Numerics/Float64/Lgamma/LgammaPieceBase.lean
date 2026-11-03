@@ -14,7 +14,7 @@ coefficients are the five `ch` and then the eight `cl`.  The bounds hold on the 
 `2 ^ -50` at each end, `[lo j, lo j + 8 rr j]`, since the code selects the piece from a rounded
 argument.  `sub_bound` turns a kernel check `GammaRel.lgammaRelOk` on sub-piece `k` of radius
 `rr j` into the relative bound `2 ^ -63` there, with `π` within `2 ^ -128` (`GammaPi`).  The pieces
-4 and 10, which contain the zeros 1 and 2, carry the factors `1 - x` and `x - 2` and are bounded
+4 and 10, which contain the zeros 1 and 2, have the factors `1 - x` and `x - 2` and are bounded
 elsewhere.
 -/
 

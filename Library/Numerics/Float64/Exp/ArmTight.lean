@@ -4,7 +4,7 @@ import Library.Numerics.Float64.Exp.ExpSpecialPositive
 /-!
 The reconstruction `s + s · w` of Arm's exponential family with a larger allowance for the
 polynomial word: `|w| ≤ 1/256` and `|w - (T + ρ - 1)| ≤ (37/100) u`, as `pow` needs, whose
-argument carries the error of its logarithm.  The final rounding is then at most
+argument includes the error of its logarithm.  The final rounding is then at most
 `(1 + 1/128) u s`, and with the table the reconstruction stays within `(7/5) u 2 ^ q H j` of
 `2 ^ d E`.  This gives one step for the ordinary reconstruction, for the reconstruction scaled
 up by `2 ^ 1009` (with overflow to infinity), and for the scaled-down reconstruction with the

@@ -5,7 +5,7 @@ import Verified.Call
 The accuracy theorem for `Erf.erf`.  For every finite binary64 input the result lies within one
 representable step of the signed nearest-even rounding of the real `erf x` (`erf_within_one`, from
 `ErfOdd.erfWith_within_one`).  The exceptional inputs give `erf (±0) = ±0`, `erf (±∞) = ±1`, and
-the canonical NaN for a NaN.  `erf_bytes_accuracy` carries the bound to the decoded bytes of the
+the canonical NaN for a NaN.  `erf_bytes_accuracy` transfers the bound to the decoded bytes of the
 compiled module and to every call in a sequence of calls to its export `erf`, function 10, whose
 store borrows `Exp.expTable` at address 4096.  `erf_module_accuracy` collects the byte theorems of
 the module for the file theorem module `ErfFile`.

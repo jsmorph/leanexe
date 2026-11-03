@@ -5,8 +5,8 @@ import Demos.Slew.Rounding
 program's binary64 result with the same formula in exact arithmetic on the real values of the
 program's inputs, so the inputs need not be normalized.  `qrot_bnd` bounds the rotation formula,
 whose components lie within `75 u` of the exact ones for inputs of magnitude at most `1.001`, and
-`dot_bnd` and `cross_bnd` carry bounds through dot and cross products.  The constants are crude,
-and the margins of the check exceed them by several orders of magnitude. -/
+`dot_bnd` and `cross_bnd` bound dot and cross products from bounds on their operands.  The constants
+are crude, and the margins of the check exceed them by several orders of magnitude. -/
 
 namespace Demos.Slew.Error
 

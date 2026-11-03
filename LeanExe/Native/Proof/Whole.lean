@@ -10,12 +10,12 @@ among them `__builtin_fsqrt`, which the translation places between `lx_pun` and 
 globals, so `wholeDefs` takes that declaration from `pre` and leaves it out of the translation's
 part.  The program's `main` is `mainId`.
 
-`WholeOk pre post T` asks that `pre` declare `__builtin_fsqrt` as the translation does, that
+`WholeOk pre post T` requires that `pre` declare `__builtin_fsqrt` as the translation does, that
 every definition be a function or a variable whose allocation `init_mem` can do, and that the
 identifiers be distinct.  Under it, `init_whole` follows `init_mem` of the whole program, each
 definition at the block one more than its position, and `start_whole` runs `lx_init` and states
-every premise that `NativeA` puts on the environment, for `envWhole`, whose blocks are those
-positions.  These theorems hold for every `pre` and `post` that meet `WholeOk`, so they cover
+every premise that `NativeA` states about the environment, for `envWhole`, whose blocks are those
+positions.  These theorems hold for every `pre` and `post` that satisfy `WholeOk`, so they cover
 every list of declarations that a version of CompCert prints.  `wholeOk_of` derives `WholeOk`
 from conditions on identifiers that the per-build check confirms for the program `clightgen`
 reads.  `bareProgram` is the whole program of a bare-metal build, whose `post` declares `lx_out`
@@ -492,7 +492,7 @@ theorem funcs_whole {T : Translation}
   exact ⟨b, hs, Genv.find_funct_ptr_of_def hd⟩
 
 /-- The state from which the functions of the translation are called in the whole program:
-`init_mem` gives `m0`, and `lx_init` from `m0` gives `m1`, which `envWhole`, which meets the
+`init_mem` gives `m0`, and `lx_init` from `m0` gives `m1`, which `envWhole`, which satisfies the
 hypotheses on the environment of `NativeA`, relates to `nativeStore` with `lx_status` 0. -/
 theorem start_whole {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
     {pre post : List (ident × globdef (fundef function) type)} (hw : WholeOk pre post T)

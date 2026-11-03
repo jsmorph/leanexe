@@ -27,11 +27,11 @@ def arbitrary (count seed range : Nat) : List (UInt64 × UInt64) :=
     if c % 3 = 0 then (if c = 0 then 1 else c, w)
     else (0, if range = 0 then w else w % UInt64.ofNat range)
 
-/-- The verified compiler's cases run these inputs: the empty input, one word without a partner, a
+/-- The verified compiler's cases run these inputs: the empty input, one unpaired word, a
 removal from the empty queue, one insertion and one removal, five insertions with a repeated word
 and seven removals, the words 0, `2^63`, and `2^64 - 1` inserted and removed, removals with the
 codes 2, `2^32`, `2^63`, and `2^64 - 1`, an insertion after the queue has emptied, and two
-insertions and a removal followed by the word 1 without a partner, which would remove the remaining
+insertions and a removal followed by the unpaired word 1, which would remove the remaining
 word if the program read it as an operation.  The heap reuses the array's positions when it shrinks
 and grows again: ten insertions, five removals, ten insertions, and fifteen removals.  Insertions in
 increasing order move each new word to the root, and insertions in decreasing order move none.  The

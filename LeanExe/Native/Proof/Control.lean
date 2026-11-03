@@ -21,7 +21,7 @@ section
 
 variable (A : Archi) (X : ExtSem) (E : Env) (mod : Module) (c : FCtx)
 
-/-- The simulation of `inst` at fuel `F`, for code whose calls go to functions that `CallOk`
+/-- The simulation of `inst` at fuel `F`, for code whose callees are functions that `CallOk`
 accepts.  When the translation omits the test of alignment, the Talos step's 64-bit accesses
 inside memory must be aligned. -/
 def InstrSimL (CallOk : Nat → Prop) (F : Nat) (inst : Instruction) : Prop :=

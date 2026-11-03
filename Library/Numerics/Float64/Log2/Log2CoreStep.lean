@@ -212,7 +212,7 @@ theorem core2_index (ix : UInt64) (E : Int) (f : Nat) (hE1 : -51 ≤ E) (hE2 : E
         linarith
       linarith
 
-/-- The real arithmetic behind the main path: the target of `final2Word` against
+/-- The real arithmetic of the main path: the target of `final2Word` against
 `k + log2 Z`, from the errors of `r`, `logc`, and `invc`. -/
 theorem target2_close (k : Int) (Z c invc R LC : ℝ) (hZ : 0 < Z) (hc : 0 < c)
     (hcinv : |c * invc - 1| ≤ 1 / 2 ^ 100) (hre : |(Z - c) * invc| ≤ 776 / 100000)

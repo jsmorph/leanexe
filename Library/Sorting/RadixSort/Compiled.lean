@@ -5,7 +5,7 @@ import Verified.Congr
 /-! The verified compiler's module of radix sort.  By the compiler's rules, which the verified
 compiler's manual states, the compiler translates the loops of `countDigits` and `distribute` and
 the tail recursion of `passes` into loops, so no theorem of the module has a call-depth premise.
-`radixSort` consumes its array, which the caller hands over as `Moved (Array UInt64)`, and builds a
+`radixSort` consumes its array, which the caller moves as `Moved (Array UInt64)`, and builds a
 second array of the same size and an array of 256 counts.  `radixSort_implements` composes the
 generated `compiled.radixSort.trapFree` with `radixSort_eq`, and `radixSort_bound` states the
 generated bound as `blockCost n + blockCost 256`, the costs of the program's two builds. -/
@@ -20,7 +20,7 @@ theorem radixSort_export :
     ({ name := "radixSort", funcIdx := 6 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 6, the export `radixSort`, called with an array that the caller hands over, from a heap
+/-- Function 6, the export `radixSort`, called with an array that the caller moves, from a heap
 with the allocator invariant, a memory cap of at most 65,535 pages, and room for
 `compiled.radixSort.bound`, returns without a trap the owned array `expected xs`, the elements in
 nondecreasing order, and raises `top` by at most the bound. -/

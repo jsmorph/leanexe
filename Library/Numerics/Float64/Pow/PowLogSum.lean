@@ -6,7 +6,7 @@ units).  `t1 = k ln2hi + logc` is exact on the grid of `2 ^ -43`.  A sum `s = a 
 on the grid, with `|b| ≤ 1/150`, is on the grid itself: either it is exact or `|s| ≥ 2 ^ -8`,
 where every word lies on the grid.  Then `a - s` and `(a - s) + b` are exact, so `lo2` and `lo4`
 are the exact errors of `t2` and `hi`.  The halving products `ar` and `arhi` are exact, and so is
-`arhi2 = rhi arhi`, on the grid of `2 ^ -59`.  `lo1 = k ln2lo + logctail` carries two roundings,
+`arhi2 = rhi arhi`, on the grid of `2 ^ -59`.  `lo1 = k ln2lo + logctail` includes two roundings,
 and is exact for `k = 0` up to the rounding of `logctail`.
 -/
 

@@ -6,7 +6,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The forty-eighth program of the verified compiler: the Bessel functions `j0`, `j1`, `y0`, `y1`,
+/-! A program of the verified compiler: the Bessel functions `j0`, `j1`, `y0`, `y1`,
 `jn`, and `yn`, ported from fdlibm as FreeBSD's `lib/msun/src` has it at commit
 `20381bce4b63975494a2f4bc84257f6932e6d379` (`e_j0.c`, `e_j1.c`, and `e_jn.c`, Copyright (C) 1993 by
 Sun Microsystems, Inc., freely distributable with this notice).  Below 2, `j0` and `j1` are rational

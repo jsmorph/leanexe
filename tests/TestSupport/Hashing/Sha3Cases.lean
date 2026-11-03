@@ -2,7 +2,7 @@ import Library.Hashing.Sha3.Program
 
 /-! The cases of the module `sha3`: the four digests of messages whose lengths reach the ends of
 the blocks of every rate, 72, 104, 136, 144, and 168 bytes, where the suffix and the last bit of
-the padding share a byte or fall in separate blocks, and of longer messages; SHAKE128 and SHAKE256
+the padding share a byte or are in separate blocks, and of longer messages; SHAKE128 and SHAKE256
 outputs of lengths around their rates; byte counts beyond the array, whose missing words read as
 zero; and KECCAK-p[1600, 24] of two states.  The bytes after a message in its last word are
 nonzero.  A hash case requires one retained block, the host's message, and at most one

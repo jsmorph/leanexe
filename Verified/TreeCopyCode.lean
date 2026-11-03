@@ -38,8 +38,8 @@ def treeCopyAllocate (shape : TreeShape) (src dst : Nat) : Program :=
     [.call 0, .localSet dst]
 
 /-- Starts the copy of a record into the block at local `dst`.  For a tagged shape the width,
-selected by the tag of the source record at local `src`, goes into the width word.  The parent
-link, the source pointer, and the next slot index then go into the header. -/
+selected by the tag of the source record at local `src`, is written to the width word.  The parent
+link, the source pointer, and the next slot index are then written to the header. -/
 def treeCopyBegin (shape : TreeShape) (src dst : Nat) (input parent : Program) : Program :=
   (if shape.tagged then
     headerStore dst 16 (shape.selectCode (treeTagCode src) fun r => UInt64.ofNat (shape.width r))
@@ -64,10 +64,10 @@ def treeCopyArrayTest (shape : TreeShape) (base : Nat) : Program :=
   shape.selectCode (treeTagCode (base + 3)) shape.arrayMask ++
     [.localGet (base + 2), .shrUI64, .constI64 1, .andI64, .eqzI64, .eqz]
 
-/-- The copy of an array slot.  The array whose address local `base + 4` holds goes to a new
-block, with locals `base + 2` to `base + 5` as scratch.  The new address goes to local `base + 4`,
-the slot index goes back to local `base + 2` from the header, and the address goes into the slot
-as a word does. -/
+/-- The copy of an array slot.  The array whose address local `base + 4` holds is copied to a new
+block, with locals `base + 2` to `base + 5` as scratch.  The new address is written to local
+`base + 4`, the slot index is read back into local `base + 2` from the header, and the address is
+written to the slot as a word is. -/
 def treeCopyArray (base : Nat) : Program :=
   [.localGet (base + 4), .localSet (base + 2)] ++ copyArrayCode (base + 2) (base + 3) ++
     [.localSet (base + 4)] ++ headerLoad (base + 1) 8 ++ [.localSet (base + 2)] ++
@@ -81,11 +81,11 @@ def treeCopyBufferTest (shape : TreeShape) (base : Nat) : Program :=
     [.localGet (base + 2), .shrUI64, .constI64 1, .andI64, .eqzI64, .eqz]
 
 /-- The copy of a buffer's root slot.  The buffer's length, in the next slot of the source record
-whose address local `base + 3` holds, goes to local `base + 5`, through the index of that slot in
-the same local, and then the root moves to local `base + 2` and the length to `base + 3`.  The
-buffer goes to a new object, or stays at root 0 when it is empty, with locals `base + 4` and
-`base + 5` as scratch.  The new root goes to local `base + 4`, the slot index goes back to local
-`base + 2` from the header, and the root goes into the slot as a word does. -/
+whose address local `base + 3` holds, is written to local `base + 5`, through the index of that slot
+in the same local, and then the root moves to local `base + 2` and the length to `base + 3`.  The
+buffer is copied to a new object, or stays at root 0 when it is empty, with locals `base + 4` and
+`base + 5` as scratch.  The new root is written to local `base + 4`, the slot index is read back
+into local `base + 2` from the header, and the root is written to the slot as a word is. -/
 def treeCopyBuffer (base : Nat) : Program :=
   [.localGet (base + 2), .constI64 1, .addI64, .localSet (base + 5)] ++
     treeSlotAddress (base + 3) (base + 5) ++
@@ -97,8 +97,8 @@ def treeCopyBuffer (base : Nat) : Program :=
     [.localGet (base + 4), .store64 0] ++ treeCopyAdvance (base + 1) (base + 2)
 
 /-- One step of the copy loop: the copy of the slot of the record being copied that local
-`base + 2` indexes.  For a shape with array fields, an array slot goes to `treeCopyArray` first,
-and for a shape with buffer fields, a buffer's root goes to `treeCopyBuffer` next.  The code for
+`base + 2` indexes.  For a shape with array fields, `treeCopyArray` handles an array slot first,
+and for a shape with buffer fields, `treeCopyBuffer` handles a buffer's root next.  The code for
 a shape without such fields has no such test. -/
 def treeCopySlot (shape : TreeShape) (base : Nat) : Program :=
   let current := base + 1

@@ -6,8 +6,8 @@
 `Wasm.Module` and returns `Except String ByteArray`, and
 `Wasm.Encoding.writeModule path module` writes a successful result and raises an
 I/O error if encoding fails.  [`Decode.lean`](Decode.lean) defines the decoder,
-`Wasm.Encoding.decode`, which the trusted base uses to give the bytes their
-meaning, and [`RoundTrip.lean`](RoundTrip.lean) connects the two.  The verified
+`Wasm.Encoding.decode`, which is part of the trusted base and defines the
+meaning of the bytes, and [`RoundTrip.lean`](RoundTrip.lean) relates the two.  The verified
 compiler checks encoder success when it generates a module and applies
 `decode_encode` in its [bytes theorems](../../Verified/Reflect/Command.lean).
 

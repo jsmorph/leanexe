@@ -7,7 +7,7 @@ import Library.Numerics.Float64.Lgamma.LgammaAccCancel
 collects the hypotheses of `LgammaAccPair.norm_pair` on the triple before the renormalization, and
 `ready_pair` applies it; `pos_ready` covers the positive arguments.  From -21/2 to -1/4,
 `NegSmall T r` states a triple within the error of the windows of `log Γ (1 + |x|)` with small
-parts, and `small_ready` carries it through the reflection (`LgammaAccRefl.refl_spec`): the error
+parts, and `small_ready` extends it to the reflected triple (`LgammaAccRefl.refl_spec`): the error
 stays below `(1/20)/(2^53 + 1)`, and `LgammaAccRegion.neg_mid_lower` bounds `|log |Γ x||` by
 `1/20` from below whenever no polynomial about a zero applies.
 -/

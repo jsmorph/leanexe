@@ -11,7 +11,7 @@ memory, and it runs `translate_correct` at a fuel at which both hold.
 
 `NativeAlignedA` is `NativeA` with the premise `AlignedInput` after `Separate` and, in the
 conclusion for a return, the alignment of the final heap (`Heap.Aligned`) and of the result's
-blocks (`AlignedOutput`), which a host needs to meet `AlignedInput` at its next call.
+blocks (`AlignedOutput`), which a host needs to satisfy `AlignedInput` at its next call.
 `ImplementsAligned.native` derives it from `ImplementsAligned` alone.  `NativeAlignedImpl h`
 states it for the function of the theorem `h` of `ImplementsA`, as `NativeImpl h` states
 `NativeA`, and `ImplementsAligned.nativeImpl` derives it from `ImplementsAligned` at the

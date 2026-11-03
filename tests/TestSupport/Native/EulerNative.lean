@@ -4,7 +4,7 @@ import Demos.Euler.Verified
 /-!
 The theorems that `verified_compile` adds for the Euler solvers, the exit criterion of milestone
 M5.  The translation of the Euler module contains every one of its functions, and the two
-solvers, `solve` and `reconstructedSolve`, have their theorems `p.f.native`, which carry the
+solvers, `solve` and `reconstructedSolve`, have their theorems `p.f.native`, which transfer the
 verified compiler's theorems to the C functions of the translation.
 -/
 

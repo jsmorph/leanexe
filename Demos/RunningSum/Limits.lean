@@ -4,7 +4,7 @@ import Demos.StreamFold.Observed
 import Demos.StreamFold.Sizes
 
 /-! Limits on the lines and totals of an input of the integer running sum, and the kernel
-specification that carries them through a run. -/
+specification that keeps them through a run. -/
 
 namespace Demos.RunningSum
 

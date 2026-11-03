@@ -17,8 +17,8 @@ def sieveInputs : List UInt64 :=
     [64, 100, 128, 1000, 1024, 4096, 10000, 65536, 65537, 100000, 1000000, 1000004, 2000003]
 
 /-- The bounds whose flags do not fit in memory, so that a call traps: `2^29 - 1`, whose flags
-exceed the memory cap, and `2^29`, `2^32`, and `2^64 - 1`, which also meet the guard on the length
-of an array. -/
+exceed the memory cap, and `2^29`, `2^32`, and `2^64 - 1`, which also satisfy the guard on the
+length of an array. -/
 def sieveTraps : List UInt64 := [536870911, 536870912, 4294967296, 18446744073709551615]
 
 end Library.Numerics.Arithmetic.Sieve

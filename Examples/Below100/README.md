@@ -10,7 +10,7 @@ it is at most eight and 0 otherwise.  `keep` takes the input, an index, and the 
 it consumes: it pushes the element onto the output in place when the element is less than 100.  The
 verified compiler does not read `Array.filter`, so the program builds the output with `push`, which
 moves the output to a larger block when the block is full.  `verified_compile compiled := [keep, compute]` in [the
-verified compilation](Compiled.lean) compiles both definitions into a 2,118-byte module.
+verified compilation](Compiled.lean) compiles the definitions into a 2,118-byte module.
 
 ## The bytes compute the filter
 
@@ -18,7 +18,7 @@ verified compilation](Compiled.lean) compiles both definitions into a 2,118-byte
 `compute` without a trap from a store in which `top` can rise by `compiled.compute.bound xs` bytes.
 `compiled.compute.bound_eq` states that bound as the smaller of two loop costs, in which each push
 that `keep` makes onto its paid output array costs `paidGrowCost 1`, 80 bytes.  `compute_bound`
-closes the bound to 712 bytes: 56 bytes for the empty output array, 16 bytes of its credit, and 80
+shows that the bound is at most 712 bytes: 56 bytes for the empty output array, 16 bytes of its credit, and 80
 bytes for each of at most eight pushes.  `below100_call` composes the trap-free theorem with
 `compute_eq` through `arrayCall` of [the shared call theorem](../ArrayCall.lean).
 
@@ -27,7 +27,7 @@ bytes for each of at most eight pushes.  `below100_call` composes the trap-free 
 | `keep_go` | `keep` repeated from index `i` with the filtered prefix up to `i` gives the filtered prefix up to `count`. |
 | `compute_eq` | Program equals the specification on every array of fewer than 2^64 words. |
 | `compute_bound` | Allocation bound of `compute` is at most 712 bytes. |
-| `below100_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 712 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and lies apart from the result, and `top` rises by at most 712 bytes. |
+| `below100_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 712 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and is disjoint from the result, and `top` rises by at most 712 bytes. |
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and the module implements `keep` and `compute`. |
 | `below100_file`, `below100_file_decode` | `build/verified/below100.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 
@@ -35,7 +35,7 @@ bytes for each of at most eight pushes.  `below100_call` composes the trap-free 
 `compute_bound` and `below100_call` are in the verified compilation.  The theorems use only
 `propext`, `Classical.choice`, and `Quot.sound`.  The charge of 80 bytes for each push is the
 amortized cost that [the verified compiler
-manual](../../docs/verified-manual.md#bounds-and-total-execution) describes, which pays for the
+manual](../../docs/verified-manual.md#bounds-and-total-execution) describes, which includes the cost of the
 moves of the output to larger blocks.  The generated `compiled.keep.native` and
 `compiled.compute.native` state the computations of the C functions of the module's translation.
 

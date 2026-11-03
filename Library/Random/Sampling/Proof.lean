@@ -9,7 +9,7 @@ import Mathlib.Algebra.BigOperators.Fin
 import Mathlib.Algebra.BigOperators.Intervals
 import Mathlib.Data.Fintype.BigOperators
 
-/-! The proof that `shuffle` meets `Shuffles`.  `byIndices k m a` is Algorithm P with given
+/-! The proof that `shuffle` satisfies `Shuffles`.  `byIndices k m a` is Algorithm P with given
 indices: for `j` from `m` down to 1 it exchanges the words at `k j` and `j`.  With indices
 `k j ≤ j` it permutes `a` and leaves the words after `m` in place (`byIndices_frame`), and the word
 that ends at position `m` is the word that was at `k m` (`byIndices_top`).  When the words in
@@ -450,7 +450,7 @@ theorem shuffle_method (us xs : Array UInt64) (hs : xs.size < 2 ^ 32) :
   · rw [shuffle_eq us xs (by omega) (by omega)]
     exact byIndices_eq_algorithmP us _ _ xs hs (by omega)
 
-/-- `shuffle` meets the specification. -/
+/-- `shuffle` satisfies the specification. -/
 theorem shuffle_spec : Shuffles shuffle :=
   ⟨shuffle_method, shuffle_perm, shuffle_positions, shuffle_count⟩
 

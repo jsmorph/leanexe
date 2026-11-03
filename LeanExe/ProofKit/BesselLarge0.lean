@@ -6,7 +6,7 @@ degree 40 on `[2, 3]`, `[3, 9/2]`, `[9/2, 7]`, `[7, 10]`, `[10, 15]`, `[15, 22]`
 and Hankel's expansion with 60 terms in `1/x` on `[30, ∞)`.  The polynomials are dyadic
 rationals that a Python model computed from high-precision values of the Bessel functions; the
 proof uses only their residuals in the system of `P0` and `Q0`, which the kernel bounds, and
-the enclosures at `x = 2` of `BesselStart`.  `chain0_sound` carries the bound `2 ^ -83` at 2
+the enclosures at `x = 2` of `BesselStart`.  `chain0_sound` extends the bound `2 ^ -83` at 2
 through the pieces, and `asym_bound0` from 30 to infinity.
 -/
 

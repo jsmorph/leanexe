@@ -321,7 +321,7 @@ section Bodies
 
 local notation "pureContext" => Resource.PureContext.ofProg io.pure.program io.pure.funs
 
-/-- Proves that a condition of an effect body finds its frames: it calls no function that takes
+/-- Proves that a condition of an effect body has enough frames: it calls no function that takes
 the call depth. -/
 local macro "condition_fits" : tactic =>
   `(tactic| exact Expr.fits_of_depthCalls _ _ _ (by decide) _)
@@ -519,7 +519,7 @@ theorem step_body_bounded {World : Type} (host : Host World) (state : State) :
             .here (0 + 1) (.cons (sourceState state) .nil) (readCharge state)
           exact callBounded_here (by decide) (readStep_bounded host _ state)
 
-/-- The step from `state` spends at most `stepBudget state` and finds its frames. -/
+/-- The step from `state` uses at most `stepBudget state` and has enough frames. -/
 theorem step_bounded {World : Type} (host : Host World) (state : State) :
     CallBounded host pureContext io.program entry.step 0 (.cons (sourceState state) .nil)
       (stepBudget state) :=

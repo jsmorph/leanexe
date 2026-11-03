@@ -12,7 +12,7 @@ of `lx_mem`.  `funcs_found` finds the program's functions in its own global envi
 
 The allocation lemmas of the first part hold for the definitions that the translator emits
 (`Genv.InitShape`): `Genv.InitFact` states what a block holds after its allocation, and later
-allocations, which touch only later blocks, keep it (`Mem.SameBlock`).
+allocations, which change only later blocks, keep it (`Mem.SameBlock`).
 -/
 
 namespace LClight

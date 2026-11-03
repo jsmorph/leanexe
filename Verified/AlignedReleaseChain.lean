@@ -5,7 +5,7 @@ import Verified.AlignedSpec
 The release chain under the flag.  `wpX_release`, `Bytes.wpX_release`, `wpX_releaseNode`, and
 `wpX_releaseHeader` call `release` through the three fields of `ReleaseAligned`; `wpX_releaseCode`
 releases an owned value of any type, `wpX_releaseVars` the owned variables that die, and
-`readReleaseX` proves `ReadReleaseX` from them.  `HoldsA.step` carries the invariant of the
+`readReleaseX` proves `ReadReleaseX` from them.  `HoldsA.step` keeps the invariant of the
 variables that stay live across a step, by `Ty.AlignedVal.step`.  Each theorem is its original
 with `wpX strict` for `wp`, the invariant's premises under `strict = true`, and the alignment of
 the heap after the release for the continuation.

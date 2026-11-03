@@ -6,7 +6,7 @@ The accuracy theorems for `Trig.sin` and `Trig.cos`.  For every finite binary64 
 result lies within one representable step of the nearest-even rounding of the real `sin x` and
 `cos x`.  The exceptional inputs give the results of IEEE 754: `sin (±0) = ±0`, `cos (±0) = 1`,
 and the canonical NaN for an infinity or a NaN.  `sin_bytes_accuracy` and `cos_bytes_accuracy`
-carry the bounds to the decoded bytes of the compiled module and to every call in a sequence of
+transfer the bounds to the decoded bytes of the compiled module and to every call in a sequence of
 calls to its exports `sin` and `cos`, which read the tables of `2/π` and `π/2` at addresses 4096
 and 4264.
 -/

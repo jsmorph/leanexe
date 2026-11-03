@@ -77,7 +77,7 @@ buffers.
 
 | Control | Effect |
 |---|---|
-| Kernels | `WGSL and Wasm, compared` runs every step on both, compares the scores bit for bit, and follows Wasm's tokens.  `WGSL on WebGPU` and `gpt32.wasm on the CPU` run one |
+| Kernels | `WGSL and Wasm, compared` runs every step on both, compares the scores bit for bit, and continues with Wasm's tokens.  `WGSL on WebGPU` and `gpt32.wasm on the CPU` run one |
 | Adapter | WebGPU adapter, as on the kernel page |
 | Load | Loads the weights into each kind of kernel and compiles the WGSL kernels |
 | Tokens | Number of tokens to generate.  The prompt and the tokens may take up to 1,024 positions |
@@ -105,7 +105,7 @@ theorems.  [The program](../../Demos/Gpt32/Program.lean) defines that binary32 G
 `gpt.wasm` computes the Lean function of the same name.  The verified `gpt32.wasm` has the Wasm
 execution theorems of [the verified compilation](../../Demos/Gpt32/README.md#verified-compiler).
 The JavaScript hosts, the generation loop, the
-server, the tokenizer, and the browser's WebGPU implementation remain outside those proofs.  The
+server, the tokenizer, and the browser's WebGPU implementation are not covered by those proofs.  The
 compared mode measures differences between the page's GPU and Wasm results.
 
 Headless Chromium 145, with its SwiftShader adapter on an AArch64 machine, ran the pages with the

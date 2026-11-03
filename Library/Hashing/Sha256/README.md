@@ -21,7 +21,7 @@ The verified compiler's integers are `UInt64`, so [the program](Program.lean) ho
 
 | Module | Content |
 |---|---|
-| [`WordProof.lean`](WordProof.lean) | 32-bit truncations of the helpers: `rot_toUInt32` and `shr_toUInt32` for a masked operand, `ch_toUInt32`, `maj_toUInt32`, and four sigma functions.  `bswap_high` and `bswap_low` give the two 32-bit words that a byte-swapped word holds, and `byteOf_pair_low` and `byteOf_pair_high` the bytes of a digest word. |
+| [`WordProof.lean`](WordProof.lean) | 32-bit truncations of the helpers: `rot_toUInt32` and `shr_toUInt32` for a masked operand, `ch_toUInt32`, `maj_toUInt32`, and the sigma functions.  `bswap_high` and `bswap_low` give the two 32-bit words that a byte-swapped word holds, and `byteOf_pair_low` and `byteOf_pair_high` the bytes of a digest word. |
 | [`PaddingProof.lean`](PaddingProof.lean) | `paddedWord_eq`: the 32-bit word of padded word `i` is the big-endian word of bytes `4 i` to `4 i + 3` of `implPaddedBytes`, the padding of the copied implementation. |
 | [`CompressProof.lean`](CompressProof.lean) | `window`: after `t` rounds the window holds words `t` to `t + 15` of the specification's schedule.  `compress_spec`: `compress` is the specification's compression on the 32-bit words.  `compress_toVec32`: it is `Impl.compress`. |
 | [`Proof.lean`](Proof.lean) | `hashFrom_toVec32`: after a prefix of whole blocks, the 32-bit state after every block of the rest of the message is the implementation's.  `foldl_append` splits the implementation's fold at the prefix, and `hashFrom_iv` covers the message without a prefix.  `sha256_bytes` and `sha224_bytes`: the digest bytes are those of `Impl.sha256` and `Impl.sha224`.  `sha256_spec` and `sha224_spec`: the digest is the transcription's. |
@@ -32,9 +32,9 @@ The compression is proved against the specification's round and 64-word schedule
 
 ## Tests
 
-[The vector test](../../../tests/TestSupport/Hashing/Sha2Vectors.lean) hashes the NIST CAVP byte-oriented vectors [2] in [`data/hashing/sha2`](../../../data/hashing/sha2/NOTICE) with the native program and with the transcription.  For both functions, both agree with all 65 short and 64 long messages, and the program reproduces the 100 checkpoints of the Monte Carlo test of SHAVS §6.4 [3].
+[The vector test](../../../tests/TestSupport/Hashing/Sha2Vectors.lean) hashes the NIST CAVP byte-oriented vectors [2] in [`data/hashing/sha2`](../../../data/hashing/sha2/NOTICE) with the native program and with the transcription.  For each function, both agree with all 65 short and 64 long messages, and the program reproduces the 100 checkpoints of the Monte Carlo test of SHAVS §6.4 [3].
 
-[The module cases](../../../tests/TestSupport/Hashing/Sha256Cases.lean) compare 145 calls in Wasmtime with native Lean.  They cover message lengths of 0 to 17, 50 to 70, and 110 to 130 bytes, which cross the boundaries at 56 and 64 bytes, and longer messages up to 4,096 bytes.  They also cover byte counts beyond the array and nonzero bytes after a message.  Every case requires that the call keep one block, the host's message, and make no allocation of its own.
+[The module cases](../../../tests/TestSupport/Hashing/Sha256Cases.lean) compare 145 calls in Wasmtime with native Lean.  They cover message lengths of 0 to 17, 50 to 70, and 110 to 130 bytes, which include lengths on each side of the boundaries at 56 and 64 bytes, and longer messages up to 4,096 bytes.  They also cover byte counts beyond the array and nonzero bytes after a message.  Every case requires that the call keep one block, the host's message, and make no allocation of its own.
 
 ```sh
 tools/leanrun --timeout 2h lake build Library.Hashing.Sha256.Bytes

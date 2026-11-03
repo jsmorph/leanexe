@@ -3,8 +3,9 @@ import Library.Numerics.Float64.Erf.ErfTailBase
 /-!
 The coefficients of the two tail rational functions of `s_erf.c`, as `Erf.erfTail` holds them,
 the ends of the ranges where the code uses each, and the positivity of their denominators.  `R_a/S_a`
-serves `1.25 ≤ x` below the high word `0x4006DB6E` in `erf` and `0x4006DB6D` in `erfc`, and `R_b/S_b`
-serves `x` from the high word `0x4006DB6D` to 28, so each kernel's bound covers both functions' uses.
+is used for `1.25 ≤ x` below the high word `0x4006DB6E` in `erf` and `0x4006DB6D` in `erfc`, and
+`R_b/S_b` is used for `x` from the high word `0x4006DB6D` to 28, so each kernel's bound covers both
+functions' uses.
 -/
 
 namespace Library.Numerics.Float64.Erf.ErfTailCoeffs

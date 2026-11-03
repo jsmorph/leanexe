@@ -10,7 +10,7 @@ encoder and decoder with `decode_encode`, `Implements` and its relatives in
 [`LeanExe/Pipeline/`](../LeanExe/Pipeline), and the runtime.  The statements add definitions of
 their own: `Heap.Within` in [the runtime rules](RuntimeFacts.lean), the allocation bound of
 [`Bound.lean`](Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr` for
-the initial store.  Native algorithm definitions live in
+the initial store.  Native algorithm definitions are in
 [the library](../Library/README.md), compiler fixtures in `Verified/Examples`, and application
 compilations in [the demos](../Demos/README.md).  Separate compilation and mathematical proof
 modules import the compiler or proof rules they use.  The proofs use only the axioms `propext`, `Classical.choice`, and
@@ -41,7 +41,7 @@ variable.  A binary64 operation has the meaning of Lean's `Float`, which
 [`F64Bits.lean`](../LeanExe/ProofKit/F64Bits.lean) proves equal on bit patterns to Talos's `IEEE64`
 functions, the semantics of WebAssembly's f64 instructions in the deterministic profile, in which
 every NaN result is the canonical NaN.  The source expresses `LeanExe.loop` and
-`LeanExe.repeatWhile` with one loop that tests a condition on the state before each pass and leaves
+`LeanExe.repeatWhile` with one loop that tests a condition on the state before each pass and exits
 when it fails: `LeanExe.loop` is the loop whose condition is `true`, and `LeanExe.repeatWhile` the
 one whose body ignores the index.  A variable is numbered by its distance from the front of the
 context: a binding's value is variable 0 of its body, parameter `i` is variable `i` of the
@@ -52,7 +52,7 @@ is a place, a variable or a pair of places, and a variable at an owned parameter
 
 ### Values and ownership
 
-A value is carried as words, as `Implements` passes it: a word as itself, a `Bool` as 1 or 0, a
+A value is represented as words, as `Implements` passes it: a word as itself, a `Bool` as 1 or 0, a
 float as its bit pattern in an f64 or f32 word, a tuple or a pair as its first component's words
 followed by its second's, and an array as the address of its length word and its elements' words
 in memory.  An element of `k` words occupies `k` consecutive eight-byte words, with a `Bool` as
@@ -77,20 +77,20 @@ live before it and not after: an owned variable moves into the value where it di
 where it stays live, a reader or a call releases an owned variable that dies there, and a branch, a
 binding, and a loop release the owned variables that die without a use.  Recursive values also have
 borrowed and owned modes, with copying, release, and reuse described [below](#recursive-records).
-The code generator learns which variables each subexpression reads from the bitmask `Expr.useMask`
+The code generator determines which variables each subexpression reads from the bitmask `Expr.useMask`
 through `Expr.usesFast`, and `Expr.usesFast_eq` equates it with `Expr.uses`.  A pair has one mode, and a
 loop's state is owned when its initial value or its body's value is owned, so a borrowed component
 or state is copied.  An array copy allocates through the runtime's `alloc` and writes the length word and
 the elements.
 
 A byte value occupies two i64 words: its allocation root and logical length.  Borrowed bytes
-protect the allocation's header and full capacity.  An owned copy allocates a packed payload
+leave the allocation's header and full capacity unchanged.  An owned copy allocates a packed payload
 without an array-length word.  Copying empty bytes returns `(0, 0)` without allocating.  A valid
 incoming empty buffer may have a nonzero root, which cleanup releases.  The
 [byte examples](Examples/Bytes.lean) cover parameters, results, duplication, branches, cleanup,
 empty values, UInt64 lengths, and indexed reads.  An out-of-bounds read returns zero.  Length and
 index operations release an owned input at its last use.  `Expr.bytesBuild` allocates a packed
-result and stores each callback's low eight bits.  Its proof carries live captures, callback
+result and stores each callback's low eight bits.  Its proof keeps live captures, callback
 allocation bounds, and separation through the loop.  Zero count skips allocation and callbacks,
 and counts of at least `2^32` trap before allocating the result.  The [WASI compiler](../docs/wasi.md)
 uses these buffers for stdin, stdout, and stderr.
@@ -266,7 +266,7 @@ The source types `Ty.tree` and `Ty.treeHeader` record the layout.  The [construc
 rule](AlignedTreeBuild.lean) composes field evaluation, parent allocation or reuse, and record
 assembly.  The [matching rule](AlignedTreeCase.lean) handles null and nonempty values, loads the
 fields, detaches an owned header, releases unused bindings, and composes the branch's ownership and
-allocation bound.  Both rules enter `Expr.code_spec` and the whole-program correctness theorems.
+allocation bound.  Both rules are used by `Expr.code_spec` and the whole-program correctness theorems.
 Borrowed aliases retain their regions, and moving or copying a recursive value uses its exact record
 blocks at the current store.  The reflector supports `List UInt64` construction, matching, identity,
 duplication, tuples, and calls.  [Representation agreement](TreeAgree.lean) proves that borrowed and
@@ -275,10 +275,10 @@ execution theorems for ordinary Lean definitions.  The [match equations](Reflect
 preserve both branch meanings and their allocation and frames conditions.  [Matcher
 normalization](Reflect/NativeList.lean) derives the equation from Lean's elaborated match to its two
 list cases, which the kernel checks with the generated theorem.  The [tail-match
-rule](AlignedTailTree.lean) enters `TailBody.code_spec` and the whole-loop theorem.  Its branches
+rule](AlignedTailTree.lean) is used by `TailBody.code_spec` and the whole-loop theorem.  Its branches
 preserve the enclosing loop's return and continue labels.  The [recursive-tail
 reflector](Reflect/TailBody.lean) shares the expression reflector's field context, and [its
-equations](Reflect/TailListLemmas.lean) connect the native step to the typed match.  For a
+equations](Reflect/TailListLemmas.lean) relate the native step to the typed match.  For a
 user-defined recursive type, the command `verified_recursive_type`, run once after the type's
 `Encode` instance, derives the conversion to the typed tree, the agreement of the instance with it,
 and the match lemmas, and, when no field holds an enumeration or a sum, the conversion back and both
@@ -377,13 +377,13 @@ continuing transition from Lean's generated induction theorem.  [State flattenin
 proves both inverse laws for the tuple of native parameters and its source environment.
 [The reflection examples](Examples/TailReflection.lean) check these proofs for word accumulation,
 array growth with fixed weights, scalar pairs, and arrays of records.  [Definition assembly](Reflect/TailDefinition.lean)
-adds the typed function, decreasing rank, and fixed meaning.  The fixed-point equations go
-through `Sum.elim_inl`, `Sum.elim_inr`, and `Tail.fixed_restate`, and each meaning definition
+adds the typed function, decreasing rank, and fixed meaning.  The fixed-point equations use
+`Sum.elim_inl`, `Sum.elim_inr`, and `Tail.fixed_restate`, and each meaning definition
 has a height above its function's, so the kernel checks them without unfolding the recursive
 definition.  For the prime-factor count, whose measure has a factor `2 ^ 64`, that unfolding does
 not finish.  When Lean's induction theorem states a case's condition in another form than the step,
 the termination proof splits the step on its conditions and closes contradictory branches with
-`omega`.  The command selects this path
+`omega`.  The command selects this translation
 for recognized tail recursion by default.  `set_option verified.tailLoops false` retains
 guarded recursion.  A tail function takes a depth parameter only when its body calls guarded
 code.  Continuing iterations preserve that depth.
@@ -397,7 +397,7 @@ Zero charges give bound 0 without evaluating the rank.  [The command example](Ex
 includes owned growth, rotation, replacement, aliases, and calls between tail and guarded functions.
 [The condition examples](Examples/TailConditions.lean) cover Boolean coercions, inequality,
 proof-named conditionals, destructuring, and borrowed pair and record states.  The native step
-uses the existing field-normalization pass, so the termination proof sees native record fields.
+uses the existing field-normalization pass, so the termination proof's goals contain native record fields.
 
 ## Theorem statement, allocation bounds, and tables
 
@@ -422,9 +422,9 @@ the depth word.
 
 Each function also has an allocation bound, a Lean function of its arguments that
 [`Bound.lean`](Bound.lean) defines from the code: the bytes by which the allocator's `top` can rise
-during the call.  `Expr.allocs` follows `Expr.code` with the same modes and live sets and counts
+during the call.  `Expr.allocs` has the structure of `Expr.code` with the same modes and live sets and counts
 each copy, each built array, and each block of `push`, `++`, and `insertAt`, at 48 bytes of header
-plus the payload, and it ignores the reuse of freed blocks.  An owned array of `n` words in a block
+plus the payload, and it assumes that no freed block is reused.  An owned array of `n` words in a block
 of `c` bytes has the potential `4 · 8 (n + 1) ∸ 2c`, which [`Potential.lean`](Potential.lean)
 defines.  The result of an extension of an owned array that dies is paid, as are a variable that
 `let` binds to a paid value and an `if` whose branches are both paid.  A `set` of a paid owned
@@ -464,14 +464,14 @@ bound fits and the postcondition that `top` rises by at most the bound, and
 `ImplementsB.implementsA` into `ImplementsA aborts` without the bound.
 
 A function whose code takes the call depth has a bound and a frames condition for each number `k` of
-frames available, `framesAt d = 1000 - d` at depth `d`.  `Expr.fits` follows `Expr.allocs` with `&&`
-in place of `+` and states whether every call that the run makes of such a function finds its
-frames.  `Func.boundAt` and `Func.fitsAt` give such a function the bound 0 and the condition `false`
+frames available, `framesAt d = 1000 - d` at depth `d`.  `Expr.fits` has the structure of `Expr.allocs` with `&&`
+in place of `+` and states whether every call that the run makes of such a function fits in the
+available frames.  `Func.boundAt` and `Func.fitsAt` give such a function the bound 0 and the condition `false`
 at 0 frames, where its guard traps, and at `k + 1` frames its bound and its body's frames condition
 with its callees at `k`.  `RecFunc.boundAt` and `RecFunc.fitsAt` do the same for a recursive
 function, which is among its own callees.  `Prog.boundsAt` and `Prog.fitsAt` collect them for a
 program.  A function whose code takes no call depth has the same bound at every `k`, and its calls
-always find their frames.  `ImplementsP` states the theorem of a function, at depth `d` for one
+always fit in the available frames.  `ImplementsP` states the theorem of a function, at depth `d` for one
 whose code takes the call depth: the call traps only when the frames condition fails or, when
 `aborts` holds, `top` cannot rise within the cap by the potential of the arguments at paid
 parameters plus the bound.  When the condition holds, `top` after the call, plus the potential of a
@@ -495,7 +495,7 @@ each such program as `p.initial`.  A wrapper is no function of the program, so o
 tables as parameters.  [The call module](Call.lean) names that condition on a store `Ready` and
 states with `Call` that an entry, called from a ready store, leaves a ready store, so that a call
 theorem covers every call of a sequence that starts in the initial store.  [The congruence
-theorems](Congr.lean) carry `ImplementsA` and `Call` from one Lean function to another that equals
+theorems](Congr.lean) transfer `ImplementsA` and `Call` from one Lean function to another that equals
 it on the represented arguments, the second on the arguments that meet a predicate.
 
 [Literal collection](Literals.lean) traverses every function body, including guarded and tail
@@ -508,7 +508,7 @@ are its only data, its memory size and heap start depend only on the tables, and
 the empty pool.  The default `compileWith` pool
 starts at `tablesEnd tables`.
 
-The compiler carries the same pool through expression code, ordinary and tail function
+The compiler passes the same pool through expression code, ordinary and tail function
 templates, and every program suffix.  This compile-time context adds no function parameter.
 `Expr.Covered` and `Prog.Covered` require the source literals to occur in the pool.  The universal
 expression and program theorems take this coverage premise.  Expression rules take
@@ -524,7 +524,7 @@ states the pool's exact contents, memory bounds, and heap region when it is none
 `CodeSpec`, `ImplementsP`, `FunSpec`, and `Calls` share this pool.  [Program correctness with a static pool](Correct.lean),
 `Prog.correctStaticWith`, proves the program specifications under coverage.  The public
 [static call specification](StaticImplements.lean), `ImplementsStatic`, adds `pool.Input` as a
-separate premise using the machine argument words, alongside the ordinary precondition and
+separate premise using the machine argument words, together with the ordinary precondition and
 borrowed-table premises.  It retains the owned-result, frame, and memory-cap conclusions.
 [The static program rules](ProgramStatic.lean) derive the exported `implements` and `trapFree`
 theorems and transfer them to Lean's representations.
@@ -540,7 +540,7 @@ three-part `p.initial` for such a program.
 
 ## Module composition
 
-[Prefix composition](ModuleComposition.lean) carries a program's correctness into any module
+[Prefix composition](ModuleComposition.lean) extends a program's correctness to any module
 that keeps its functions at their original indices and provides the shared runtime.
 `Prog.calls_prefix` requires the program's function list to be a prefix after the two runtime
 functions.  `Prog.calls_extension` applies that rule to a larger compiled program, including its
@@ -567,7 +567,7 @@ meaning theorem and store-independent execution.  [Sequence rules](ScalarTranspo
 return their Lean results and preserve the whole store, starting from any store in a module
 with the library prefix.  [Proof generation](Reflect/ScalarProof.lean) adds `p.f.uniform` and
 `p.f.pure` for scalar functions whose instructions and callees have these store-preservation
-rules.  It scans each instruction sequence and joins its proofs with balanced applications of
+rules.  It scans each instruction sequence and combines its proofs with balanced applications of
 the append rules.  The [automatic example](Examples/ScalarComposition.lean) covers branches, division,
 tail loops, both float widths, and call chains.
 
@@ -596,7 +596,7 @@ pure callees.  [The WASI manual](../docs/wasi.md) states the API and generated d
 | [Pure transport](Wasi/PureTransportSpecs.lean) | `Calls` | Relocated pure code computes the same values and preserves the host world in a module with the three WASI imports. |
 | [Universal command proof](Wasi/CostCommandCorrect.lean) | `Command.cost_code_spec` | Every command constructor preserves ownership and caller regions outside scratch, with source execution or a permitted resource prefix.  Normal results retain their allocation charge, fit predicate, and heap-top bound. |
 | [Universal program proof](Wasi/Correct.lean) | `EffectProg.correctWith` | Pure correctness, effect calls, function entries, and command rules compose for the compiled effect program. |
-| [Native callable entry](Wasi/NativeEntry.lean) | `compiled_native_entry_run` | Each exported wrapper executes the original Lean action after injecting depth zero and hidden table addresses. |
+| [Native callable entry](Wasi/NativeEntry.lean) | `compiled_native_entry_run` | Each exported wrapper executes the original Lean action after supplying depth zero and hidden table addresses. |
 | [Native command entry](Wasi/NativeCommand.lean) | `compiled_native_start_run` | `_start` executes the selected closed action, then requests its returned status as an exit. |
 | [Modeled initialization](Wasi/ProgramInitial.lean) | `compileWith_initialStore` | Initialization of the assembled module establishes the allocator invariant, memory cap, borrowed tables, and static literal pool. |
 
@@ -628,13 +628,13 @@ The [development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda
 [The WGSL compiler](WGSL/Compile.lean) translates an outer typed array build to a program of
 [the kernel source language](../LeanExe/WGSL/Source.lean), which the translation of `LeanExe.WGSL`
 turns into the WGSL subset.  [Typed representations](WGSL/Context.lean) relate source values to scalar
-expressions and borrowed input buffers.  [Lowering](WGSL/Lower.lean) recursively constructs
+expressions and borrowed input buffers.  [The expression translation](WGSL/Lower.lean) recursively constructs
 [code with a denotation proof](WGSL/Code.lean), using shared rules for bindings, branches, and
 counted loops.  Parameters, loop state, and output elements use words, Booleans, or binary32
 values.  Unsupported expressions return `none`.
 
 [Kernel construction](WGSL/Kernel.lean) checks the local layout and WGSL translation and retains
-their proofs.  [Dispatch correctness](WGSL/Dispatch.lean) combines the lowered element theorem
+their proofs.  [Dispatch correctness](WGSL/Dispatch.lean) combines the translated element theorem
 with the generic dispatch theorem `LeanExe.WGSL.Spec.dispatch_eq`.  Every accepted source build
 computes its source array and has a race-free dispatch under that theorem's buffer, count,
 coverage, and device conditions.  [The manual's WGSL section](../docs/verified-manual.md#wgsl-kernels)
@@ -702,7 +702,7 @@ fields in the instance's order, a chain of field reads, `.1`, and `.2` on a stru
 becomes one `Expr.proj`, and a `match` on a structure binds its fields.  `letE_flat_eq`,
 `letPair_flat_eq`, `loop_flat_eq` and `repeatWhile_flat_eq` with `loop_map`, and `apply_ite` state
 that `φ` commutes with bindings, pairs, loops, and `if`.  An array of structures is the array of its
-elements' flattenings, `Array.map φ`, and `size_map_eq` through `build_map_eq` move the map through
+elements' flattenings, `Array.map φ`, and `size_map_eq` through `build_map_eq` state that the map commutes with
 a size, a read, an update, an extension, and a build.  A read past the end gives the flattening of
 Lean's default structure, which the reflector checks by unfolding to be the default element, as it
 is when the default takes each field's default, as `deriving Inhabited` gives.  The theorem for a
@@ -719,7 +719,7 @@ unfolding, and the reflector checks it first to name the type that fails.  The r
 equations and the theorems as terms so that the kernel never unfolds a definition, because it would
 evaluate a loop over literal data pass by pass.  `p.f.denote_eq` relates `f` to its body through `f
 = fun params => body`, which the kernel checks by unfolding `f` against the lambda.  A call and
-`p.f.implements` reach a function's meaning through `Funs.get_there` and `Funs.get_here`, which take
+`p.f.implements` obtain a function's meaning from `Funs.get_there` and `Funs.get_here`, which rewrite
 `p.funs.get` to the function's meaning.  A recursive definition, one that Lean records as recursive,
 is reflected from its unfolding equation `f.eq_def` with a callee for itself, and its meaning
 `p.f.meaning` is `f` at the inverses of the flattenings of an environment's values.  Both laws of
@@ -734,7 +734,7 @@ the choice repeats or after one round per parameter.  An `if h : c` whose branch
 reflected as `if c`.  The reflector evaluates a body's flags, modes, and positions with the kernel's
 `whnf`, and the `bytes` theorem's bound on locals with `decide +kernel`: the elaborator's evaluation
 recurses once per level of the body and exceeds its recursion limit on a deep one.  A `match` on a
-value that is not a variable meets its alternative through an equation proved by `cases` on a
+value that is not a variable is related to its alternative by an equation proved by `cases` on a
 variable, the flattenings appear as lambdas, and equations compose with explicit middle terms.  A
 definition without parameters is the exception: the kernel relates the constant to a body that is a
 `match` by unfolding the matcher first, as for Lean's own equation lemmas, so it evaluates a
@@ -767,9 +767,9 @@ pattern from the matcher's type with its motive abstract, and it accepts a varia
 and the structure's constructor with each field a variable or a constructor of an enumeration with
 a `Flat` instance to words.  Any other field pattern, such as a literal, a `Bool`, or a nested
 structure, stops the reflector with a message that names the field.  A match on a structure without
-a `Flat` instance does not reach the rule, so a match on a `UInt64` with literal patterns, which
+a `Flat` instance is not covered by the rule, so a match on a `UInt64` with literal patterns, which
 Lean records as a match on a structure, stops with `unsupported term`.  The chain tests, in the
-order of the alternatives, the words of the fields that each pattern fixes, joined with `&&`, and
+order of the alternatives, the words of the fields that each pattern fixes, combined with `&&`, and
 the last alternative, or one that fixes no field, takes no test.  The equation of the chain and the
 match is proved by `casesOn` on a variable for the value and then on each fixed field, with
 variables for the alternatives, so the kernel reduces both sides at each combination of
@@ -788,7 +788,7 @@ projections.  `requireRecursiveTypes` also checks the recursive types that only 
 names.  [The heap sum example](Examples/HeapSums.lean) covers construction, borrowed and owned
 matches, results, pairs, loop state, and lists, trees, bytes, and arrays as fields.
 
-The reflector spreads a field of a type with a `Flat` instance over the leaves of its flattening,
+The reflector represents a field of a type with a `Flat` instance by the leaves of its flattening,
 one word field for each leaf, and `NativeField.flat` holds each leaf's element and path.  In a
 branch the field is one Lean variable and each leaf a source variable keyed by the leaf's term, and
 `keyedComponent?` reads the field, a component, or a leaf from those variables.
@@ -802,13 +802,13 @@ A variable that holds a pair or a record with arrays is split into the component
 its pair, and the body at the value rebuilt from them is the body at the variable by `pair_eta` or
 by `p.flat_eta.R`, a theorem added once per program and record and proved by `rfl` with the body and
 the variable free, so the kernel unfolds only the `Flat` instance.  Wherever the reflector reflects
-a term in place of the one it was given, a `let` it substitutes, a match on a pair it takes apart,
-or arguments it binds, it closes the gap with an equation of the two terms by `rfl`, which the
+a term in place of the one it was given, a `let` it substitutes, a match on a pair it destructures,
+or arguments it binds, it proves an equation of the two terms by `rfl`, which the
 kernel checks by `let`, beta, and constructor reductions, before it applies a flattening.  Under a
 flattening that is a `match`, comparing the flattened terms would evaluate them.  A match on a pair
 built in place whose pattern binds its two components becomes `let` bindings of the components, and
-a match on any other tuple takes apart a variable bound to the tuple, so that each part of the tuple
-is computed once.  A pattern may take nested pairs apart, as `let (n, a, b) := f x` does: the
+a match on any other tuple destructures a variable bound to the tuple, so that each part of the tuple
+is computed once.  A pattern may destructure nested pairs, as `let (n, a, b) := f x` does: the
 reflector reads the alternative's arguments by reducing the match on the variable expanded into its
 pairs, which gives projections of the variable.  It proves the equation of the match and the
 alternative at those projections by `rfl` with variables for the discriminant and the alternative,
@@ -843,7 +843,7 @@ for enough fuel, and raises `top` by at most `p.f.bound x`.  When `aborts` holds
 is `heap.Within store p.module (p.f.bound x)`.  A function with a paid parameter also gets
 `p.f.cost`, the compiler's bound, and its `p.f.bound x` adds the credits of the paid arguments to
 `p.f.cost x`, so that `p.f.trapFree` has the same form for every function.  A wrapper whose callee's
-code takes no call depth gets the same two declarations, with `Wrapper.bound`, the callee's credits
+code takes no call depth gets the same declarations, with `Wrapper.bound`, the callee's credits
 and bound at the tables and the wrapper's arguments, as `ImplementsTables` with the same conditions
 when the byte-literal pool is empty.  With a nonempty pool, generated execution theorems use
 `ImplementsStatic` and require static input safety.  Their trap-free forms require the allocation
@@ -860,10 +860,10 @@ precondition `p.f.fits 1000 x = true ∧ heap.Within store p.module (p.f.bound 1
 raises `top` by at most `p.f.bound 1000 x`.  With an empty pool, a wrapper whose callee's code takes the call depth gets
 no bound and no `trapFree`.
 
-`p.f.bound_eq` states `p.f.bound x` as a Lean term in the function's parameters that mirrors the
+`p.f.bound_eq` states `p.f.bound x` as a Lean term in the function's parameters with the structure of the
 definition: the user's loop counts, initial states, steps, conditions, and call arguments,
 `blockCost`, `growCost`, `paidGrowCost`, and `creditCost` of [`BoundFacts.lean`](BoundFacts.lean)
-for each block and credit that the modes, paid flags, and live sets call for, `loopCost` and
+for each block and credit that the modes, paid flags, and live sets require, `loopCost` and
 `sumBelow` for loops and builds, `min` of the unpaid and paid bounds for a loop whose state is a
 paid pair, and `p.g.bound` at the arguments of a call, or the numeral that
 `p.g.bound_eq` states, with `let` values substituted and summands `0` dropped, so that a function
@@ -875,7 +875,7 @@ arrays appear as its fields, such as `b.prices.size`.  A lemma `p.flat_field.R.f
 v).path = v.f`, for `R` the record's full name, proved by `rfl`, rewrites each component of the
 record's flattening by congruence, so that the kernel unfolds neither the term that holds the record
 nor a term that unfolds to it.  Under a binder, a component of a variable, such as a loop's state,
-becomes its field behind a type hint, and a record with parameters keeps the flattened form.  The
+becomes its field with a type hint, and a record with parameters keeps the flattened form.  The
 proof applies one lemma of [`Reflect/BoundLemmas.lean`](Reflect/BoundLemmas.lean) per source form.
 Each lemma builds its conclusion from its arguments, so that two equations compose by transitivity
 where their terms are identical.  The kernel compares two closed `Nat` sums that differ by
@@ -930,7 +930,7 @@ The loop rule uses `wp_loop_cons`.  Its invariant states that the index is at mo
 state locals represent the state after that many passes, live variables retain their values, and
 the remaining allocation allowance covers the state potential and remaining passes.  The
 condition borrows the state.  `After.test` and `After.test_regions` preserve it, and
-`loopState_stop` identifies the result when the condition is false.  A paid initial state brings
+`loopState_stop` identifies the result when the condition is false.  A paid initial state supplies
 its potential.  An unpaid initial state receives credit covering its potential, by
 `Ty.pot_le_credit`.  Each pass
 transfers the paid state's potential to the next state, and `After.release` preserves it at exit.
@@ -951,7 +951,7 @@ header rules described in [Recursive records](#recursive-records).
 
 For a call, `args_spec` proves separation between consumed arguments, borrowed data, and the
 caller's live values.  A depth-taking callee receives the next depth, and `FunSpec.runs` supplies
-its execution theorem.  `Expr.paramPot` accounts for paid arguments: a moved paid variable brings
+its execution theorem.  `Expr.paramPot` accounts for paid arguments: a moved paid variable supplies
 its potential, and another argument receives the credit charged by `Expr.allocs`.  A paid result
 retains the potential stated by the callee's `ImplementsP` theorem.
 

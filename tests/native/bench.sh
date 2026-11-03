@@ -20,7 +20,7 @@
 # K = 0, and runs each of the sixteen binaries BENCH_ROUNDS (2) times, between the same idle
 # checks as a pair.  The summary then adds, per workload, the mean time per call over the
 # placements and the means of the fastest and the slowest placement, next to the median of the
-# pairs.  A comparison of two builds of the translator rests on these means (the section on the
+# pairs.  A comparison of two builds of the translator depends on these means (the section on the
 # benchmark method in docs/native-translator.md); the default, without the sweep, compares one
 # build with Wasmtime.
 #
@@ -32,7 +32,7 @@
 # under tools/leanrun, 8G unless the caller sets it, since tools/Emit.lean loads a module as
 # tools/Subset.lean does.
 # `--aligned` builds the native form with the translation option alignedAccess, whose load64 and
-# store64 omit the test of alignment.  native-verified refuses a module whose theorems do not
+# store64 omit the test of alignment.  native-verified rejects a module whose theorems do not
 # cover that translation, so the option needs every workload's module compiled with
 # verified_compile.alignedNative.
 # Usage: tests/native/bench.sh [--test] [--placements] [--aligned]

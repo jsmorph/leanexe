@@ -5,7 +5,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The forty-third program of the verified compiler: `erf`, ported from fdlibm as FreeBSD's
+/-! A program of the verified compiler: `erf`, ported from fdlibm as FreeBSD's
 `lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379` (`s_erf.c`, Copyright (C)
 1993 by Sun Microsystems, Inc., freely distributable with this notice).  Below `0.84375` in
 magnitude, `erf x = x + x R (x²)` with a rational function `R` of degrees 4 and 5, within
@@ -21,13 +21,14 @@ table `Exp.expTable`, Arm's `exp`, which the module lists, so that the reflector
 this module.  Both state errors below one unit in the last place, and their results may differ in
 the last bit.  `erf` passes `Exp.expTable` to `erfWith`, and `erfSmall`, `erfMiddle`, `erfTail`, and
 `erfExp` compute the rational functions and the two exponentials with fdlibm's operations.
-`s_erf.c` also defines `erfc`, which the module exported until 2026-10-15 without a theorem.
-CORE-MATH's correctly rounded `erfc` in `Erfc.lean` replaces it.  Each constant is written as the
-bit pattern that fdlibm's source gives beside its decimal value, and `1.0e-300` as the bits of that
-decimal.  The dialect has no floating-point flags, and the expressions that fdlibm evaluates only
-for their flags keep their values: `1 - tiny` and `tiny - 1` stay rounded sums.  fdlibm's signed
-high word `hx` is a word, so a signed comparison with a positive bound also tests its sign bit.
-`ErfAccuracy.lean` checks the results against references computed with Lean's integers.
+`s_erf.c` also defines `erfc`, which the module does not define.
+The library's `erfc` is CORE-MATH's correctly rounded `erfc` in `Erfc.lean`.  Each constant is
+written as the bit pattern that fdlibm's source gives beside its decimal value, and `1.0e-300` as
+the bits of that decimal.  The dialect has no floating-point flags, and the expressions that fdlibm
+evaluates only for their flags keep their values: `1 - tiny` and `tiny - 1` stay rounded sums.
+fdlibm's signed high word `hx` is a word, so a signed comparison with a positive bound also tests
+its sign bit.  `ErfAccuracy.lean` checks the results against references computed with Lean's
+integers.
 
 The notices of the ported files follow verbatim, as their licenses require.
 

@@ -17,7 +17,7 @@ The transcribed CompCert files are lib/Integers.v, lib/Floats.v, lib/IEEE754_ext
 lib/Maps.v, common/AST.v, common/Values.v, common/Memdata.v, common/Memtype.v, common/Memory.v,
 common/Globalenvs.v, common/Events.v, common/Builtins0.v, common/Builtins.v, cfrontend/Ctypes.v,
 cfrontend/Cop.v, cfrontend/Clight.v, cfrontend/ClightBigstep.v, x86_64/Archi.v, and
-aarch64/Archi.v.  Each carries the copyright of INRIA, and CompCert's LICENSE file lists each of
+aarch64/Archi.v.  Each states the copyright of INRIA, and CompCert's LICENSE file lists each of
 them among the files distributed both under the INRIA Non-Commercial License Agreement and under
 the GNU Lesser General Public License, version 2.1 or any later version, with the choice left to
 the user.  The rest of CompCert, including the compiler's back end, is under the INRIA agreement

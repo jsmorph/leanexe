@@ -22,7 +22,7 @@ def countDigits (s : UInt64) (src count : Array UInt64) : Array UInt64 :=
     c.set! d.toNat (c[d.toNat]! + 1)
   LeanExe.loop 255 counted fun v c => c.set! (v + 1).toNat (c[(v + 1).toNat]! + c[v.toNat]!)
 
-/-- Steps D5 and D6: for `j` from `n - 1` down to 0, the word `src[j]` goes to position
+/-- Steps D5 and D6: for `j` from `n - 1` down to 0, the word `src[j]` is written to position
 `count[d] - 1` of `dst`, where `d` is its byte, and `count[d]` decreases. -/
 def distribute (s : UInt64) (src dst count : Array UInt64) : Array UInt64 × Array UInt64 :=
   let n := src.size.toUInt64

@@ -4,7 +4,7 @@ import Library.Numerics.Float64.Atan.AtanTwoErr
 `Atan.atan q` for the rounded quotient `q = |y/x|` of `Atan.atan2`, against `arctan Q` for the
 exact quotient `Q`: every branch of `atan` gives `AtanTwoErr.Good`.  The reduced branches use the
 error bounds of `AtanTheoremCases` and the polynomial branch those of `AtanTheoremSmall`.  Below
-`2 ^ -27` the result is `q`, which meets the relative criterion down to `2 ^ -1021` and the
+`2 ^ -27` the result is `q`, which satisfies the relative criterion down to `2 ^ -1021` and the
 criterion of the uniform grid of spacing `2 ^ -1074` below.
 -/
 

@@ -7,7 +7,7 @@ import Library.Numerics.Float64.Tgamma.TgammaSmall
 /-!
 The argument reduction of `Tgamma.asExpd` for `1 ≤ x + l ≤ 1001` and `|l| ≤ 2 ^ -14`.  The product
 of `x + l` with the double-double `1024/ln 2` lies within `2 ^ -54` of `(x + l) invLn2`, and its low
-part, which carries `1477 l`, stays below `1/10` (`exp_mulc`).  The high part rounds to an integer
+part, which includes `1477 l`, stays below `1/10` (`exp_mulc`).  The high part rounds to an integer
 `K ≥ 1000`, and the double-double `X = q1 + q2` after the subtraction of `K` lies within `2 ^ -53` of
 the product minus `K`, with `|q1| ≤ 61/100` and `|q2| ≤ 2 ^ -52` (`exp_red`).  The code's subtraction and `fastTwoSum` are exact, but the analysis does not need it:
 an error of `2 ^ -53` in `X` changes the result by about `2 ^ -63.5` relative.  `exp_index` gives

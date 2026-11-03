@@ -12,7 +12,7 @@ registry](../../tests/verified/modules.txt).
 ## Ownership in the postcondition
 
 `compiled.sumCount.implements` states that the returned pointer represents the result array, which
-the caller owns, and that every region of the caller's heap keeps its bytes and lies apart from the
+the caller owns, and that every region of the caller's heap keeps its bytes and is disjoint from the
 result.  [The verified compiler manual's section on
 representations](../../docs/verified-manual.md#representations) describes how an argument and a
 result represent a Lean value, borrowed or owned.  [Its section on
@@ -54,12 +54,12 @@ empty array and sums that wrap, in Wasmtime against native Lean, and [the native
 driver](../../tests/native/verified.sh) runs them on the module's translation to C, compiled with
 CompCert.  The cases state the two blocks that stay allocated, the input and the result, and at most
 four allocations.  Without `--cases`, the verified driver also checks the file module against the
-written file and requires the axiom reports of both file theorems to name only `propext`,
+written file and requires the axiom reports of the file theorems to name only `propext`,
 `Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 
-[`PairSum`](../PairSum/README.md) builds an array literal and releases it inside the call.
+[`PairSum`](../PairSum/README.md) builds an array literal and releases it during the call.
 [`SumArray`](../SumArray/README.md) has the fold alone, with a word result.
 [`Updates`](../Updates/README.md) and [the insertion example](../../Verified/Examples/Insert.lean)
 return arrays that they build by updating their inputs.

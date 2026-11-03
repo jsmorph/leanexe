@@ -1,6 +1,6 @@
 import Verified.Reflect.Command
 
-/-! The nineteenth program of the verified compiler: enumerations.  An enumeration with a `Flat`
+/-! A program of the verified compiler: enumerations.  An enumeration with a `Flat`
 instance is the word that the instance gives each constructor.  A `match` on one becomes a chain of
 tests of that word, and `==`, `!=`, `decide`, and `if` compare words.  The programs use
 enumerations as parameters, results, a structure field, a loop state's field, and array

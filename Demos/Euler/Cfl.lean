@@ -70,7 +70,7 @@ theorem cellUpper_ge {q : Conserved} (h : (cellUpper q.density q.mx q.my q.energ
   exact ⟨w, stateGuard_admissible (speedUpper_guard hx), bx.trans hxm, byy.trans hym⟩
 
 /-- A property of `LeanExe.loop`'s state that holds at index 0, and that each step below `k`
-carries from index `i` to `i + 1`, holds at every index up to `k`. -/
+keeps from index `i` to `i + 1`, holds at every index up to `k`. -/
 theorem loop_inv {P : Nat → α → Prop} {f : UInt64 → α → α} {init : α} {k : Nat}
     (h0 : P 0 init) (hStep : ∀ i < k, ∀ a, P i a → P (i + 1) (f (UInt64.ofNat i) a)) :
     ∀ m ≤ k, P m (Nat.fold m (fun i _ a => f (UInt64.ofNat i) a) init) := by

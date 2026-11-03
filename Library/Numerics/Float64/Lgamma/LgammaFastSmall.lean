@@ -9,10 +9,10 @@ The fast path of `Lgamma.lgammaWith` from `2 ^ -75` to `2 ^ -5` in magnitude: `-
 `asLogd` plus `x P (x)`, with `P = LgammaApprox.smallPoly`.  The code evaluates the tail of degree 7
 in plain double arithmetic (`lE`, bounded by `TgammaExpr`), adds `x` times it to the top
 coefficient of the double-double Horner scheme of degree 3 (`LgammaPolyFst.polyFst_spec`),
-multiplies by `x` (`mulDDD`), and adds `-log |x|` (`sumDD`).  `SmallFact` puts
-`lgamma (1 + x) = lgamma x + log |x|` within `2 ^ -70 |x|` of `x P (x)`, and `|lgamma x| ≥ 3.38`,
-so the error with `2 eps` lies far below `|lgamma x|/2 ^ 54` and `FastSpec` holds in its relative
-form (`small_spec`).
+multiplies by `x` (`mulDDD`), and adds `-log |x|` (`sumDD`).  `SmallFact` states that
+`lgamma (1 + x) = lgamma x + log |x|` lies within `2 ^ -70 |x|` of `x P (x)`, and
+`|lgamma x| ≥ 3.38`, so the error with `2 eps` lies far below `|lgamma x|/2 ^ 54` and `FastSpec`
+holds in its relative form (`small_spec`).
 -/
 
 namespace Library.Numerics.Float64.Lgamma.LgammaFastSmall

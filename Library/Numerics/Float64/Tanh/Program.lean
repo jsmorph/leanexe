@@ -4,13 +4,13 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The twenty-ninth program of the verified compiler: `expm1` and `tanh`, ported from fdlibm as
+/-! A program of the verified compiler: `expm1` and `tanh`, ported from fdlibm as
 FreeBSD's `lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379` (`s_expm1.c`
 and `s_tanh.c`, Copyright (C) 1993 by Sun Microsystems, Inc., freely distributable with this
 notice).  `expm1` writes `x = k ln 2 + r` with `|r|` at most about `ln 2/2`, using `ln 2` in two
 parts and keeping the rounding error of `r` as a correction `c`, approximates `expm1 r` by a
-rational function built on a polynomial of degree 5 in `r²`, and scales by `2 ^ k` in the form that
-loses the least precision for each range of `k`.  fdlibm states an error below one unit in the
+rational function formed from a polynomial of degree 5 in `r²`, and scales by `2 ^ k` in the form
+that loses the least precision for each range of `k`.  fdlibm states an error below one unit in the
 last place for `expm1`.  `tanh` is `x` below `2 ^ -28` in magnitude and otherwise `tanh |x|` with
 the sign of `x`, where `tanh |x|` is `-t/(t + 2)` with `t = expm1 (-2|x|)` below 1,
 `1 - 2/(t + 2)` with `t = expm1 (2|x|)` below 22, and 1 from 22 on.  fdlibm states no error bound

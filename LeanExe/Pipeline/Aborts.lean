@@ -111,7 +111,7 @@ theorem Runs.append_args {aborts : Bool} {f : Function}
     · obtain ⟨final, hRun⟩ := hTrap
       exact ⟨final, run_append_of_trap hImp hf hlen hRun rest⟩
 
-/-- The entry rule: a body whose `wp` reaches `P` or a trap that `TrapMsg aborts` accepts
+/-- The entry rule: a body whose `wp` establishes `P` or a trap that `TrapMsg aborts` accepts
 gives `Runs aborts`. -/
 theorem Runs.of_wp_entry_for {aborts : Bool} {f : Function}
     (hf : m.funcs[id - m.imports.length]? = some f)

@@ -4,7 +4,7 @@ import Library.Numerics.Float64.Erfc.ErfcCast
 
 /-!
 The certificate of a polynomial `Z` in `1/x²` against `x erfcx x = x exp (x²) erfc x`, from a
-model `p` of `erfcxN = erfcx/(2/√π)` on a piece `[a, b]` of the track `erf`
+model `p` of `erfcxN = erfcx/(2/√π)` on a piece `[a, b]`
 (`ErfTailPieces0` to `ErfTailPieces7`): `|erfcxN x - p (x - c)| ≤ s + eD (b - x)` and
 `|p (x - c) - pm| ≤ pr` on `[a, b]`.  `certP` is `x^(2n) Z (1/x²) - sig x^(2n+1) p (x - c)` in the
 variable `t = x - c`, with `sig` the middle of `[sLo, sHi]`, and `PolyBound.check` bounds it on

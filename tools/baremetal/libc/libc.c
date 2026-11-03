@@ -1,7 +1,7 @@
 /* The C library functions that tools/native-host.c uses, for its build without libc on QEMU's
-   virt machine (docs/native-bare-metal.md, milestone B1).  Standard output goes to the UART
+   virt machine (docs/native-bare-metal.md, milestone B1).  Standard output is written to the UART
    through lx_out, and standard error too, with each line prefixed by "E:".  printf and fprintf
-   know the conversions %s, %llu, %02x, and %d that the host uses.  malloc rounds each request up
+   support the conversions %s, %llu, %02x, and %d that the host uses.  malloc rounds each request up
    to a multiple of 16 bytes and takes it from a static arena of 16 MiB, and free does nothing,
    since each QEMU process runs one case.  fopen fails, so the host's file arguments are not
    available.  exit reports through the startup code's lx_exit.  main reads the command line

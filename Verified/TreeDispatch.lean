@@ -8,7 +8,7 @@ open Wasm LeanExe.Runtime
 /-- `code` runs, at the store `store` and the locals `s`, as the branch of a test followed by
 `rest` under `Q`: for every continuation `rest'` and assertion `Q'` that accept what `rest` and
 `Q` accept after a fall-through with the stack of `s`, and that accept the traps that `Q`
-accepts, `code ++ rest'` meets `Q'`.  A chain of tests nests the branch in blocks, and this form
+accepts, `code ++ rest'` satisfies `Q'`.  A chain of tests nests the branch in blocks, and this form
 holds at every depth. -/
 def RunsBranch (m : Module) (host : HostEnv Unit) (code rest : Program) (Q : Assertion Unit)
     (store : Store Unit) (s : Locals) : Prop :=
@@ -49,7 +49,7 @@ theorem chainDepth_index {α : Type} :
       simp only [List.length_cons] at hj ⊢
       split <;> split <;> omega
 
-/-- The branch of record constructor `r` sits in as many tests as `TailBody.codeWith` counts. -/
+/-- The branch of record constructor `r` is in as many tests as `TailBody.codeWith` counts. -/
 theorem TreeShape.chainDepth_tag {α : Type} (shape : TreeShape) (r : Fin shape.records)
     (f : Fin shape.records → α) (t : UInt64)
     (ht : shape.tagged = true → t = UInt64.ofNat (shape.ctorIndex r)) :
@@ -77,7 +77,7 @@ theorem TreeShape.chainDepth_tag {α : Type} (shape : TreeShape) (r : Fin shape.
 
 /-- `code` runs as a branch nested in `d` blocks for the assertion `Q` of the code around them:
 for every assertion `Q'` that accepts, for a break out of `k + d` blocks, what `Q` accepts for a
-break out of `k`, and that accepts the traps that `Q` accepts, `code` meets `Q'`. -/
+break out of `k`, and that accepts the traps that `Q` accepts, `code` satisfies `Q'`. -/
 def RunsTailBranch (m : Module) (host : HostEnv Unit) (code : Program) (d : Nat)
     (Q : Assertion Unit) (store : Store Unit) (s : Locals) : Prop :=
   ∀ Q' : Assertion Unit,

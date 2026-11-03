@@ -20,9 +20,9 @@
 # Before it loads any module, the script builds every module that it and the scripts it calls load
 # and the case executable it runs, in one `lake build` under tools/leanrun with the caller's
 # LEANRUN_THREADS and LEANRUN_MEMORY_HIGH, since `lean` and `lean --run` read a module's compiled
-# file without checking it against the source.  Building the memory-heavy numerical proofs and
-# `Verified Library` first, with the limits of docs/verified-manual.md, keeps that build within
-# the caller's memory limit.
+# file without checking it against the source.  Building the numerical proofs that need much
+# memory and `Verified Library` first, with the limits of docs/verified-manual.md, keeps that
+# build within the caller's memory limit.
 # Usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]
 set -euo pipefail
 if ! command -v wasm-tools > /dev/null 2>&1; then

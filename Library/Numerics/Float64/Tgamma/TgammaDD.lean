@@ -7,12 +7,13 @@ import LeanExe.ProofKit.F64UpperWord
 import LeanExe.ProofKit.F64Sign
 
 /-!
-The double-double operations of `Tgamma`, with error bounds.  `Library.Numerics.Arithmetic.Fma.fma` enters through the
-hypothesis `Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest`, which makes its result a nearest double to `a b + c`, within
-`|a b + c|/2^53 + 2^-1075` (`fma_approx`).  `fastTwoSum` is exact by Dekker's theorem
-(`F64TwoSum.fast_two_sum`), and its low part lies within `2^-52` of the high part
+The double-double operations of `Tgamma`, with error bounds.  The proof uses
+`Library.Numerics.Arithmetic.Fma.fma` through the hypothesis
+`Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest`, which makes its result a nearest double to
+`a b + c`, within `|a b + c|/2^53 + 2^-1075` (`fma_approx`).  `fastTwoSum` is exact by Dekker's
+theorem (`F64TwoSum.fast_two_sum`), and its low part lies within `2^-52` of the high part
 (`fastTwoSum_spec`).  The other operations add low parts with ordinary rounded sums and products,
-whose errors `F64Approx` bounds, so their results carry errors of order `2^-53` of the low parts and
+whose errors `F64Approx` bounds, so their results have errors of order `2^-53` of the low parts and
 `2^-104` of the high parts.  Each lemma takes bounds on the magnitudes of the high and low parts as
 hypotheses and states bounds of the same kind for its result.
 -/

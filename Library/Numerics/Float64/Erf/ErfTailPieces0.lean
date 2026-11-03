@@ -4,8 +4,7 @@ import Library.Numerics.Float64.Erf.ErfTailCoeffs
 Pieces 0 to 3 of the tail kernels' proof, from `x = 28` down to
 `19.3184`: the model of `erfcxN` on each piece, its defect check, the chain of its
 accuracy from the previous piece, and for each kernel used on the piece the derivative checks, the
-anchors, and the bound `epsT` on `tailF`.  `gen_tail.py` and `emit_tail.py` in the track's scratch
-directory generate the file.
+anchors, and the bound `epsT` on `tailF`.
 -/
 
 namespace Library.Numerics.Float64.Erf.ErfTailPieces0

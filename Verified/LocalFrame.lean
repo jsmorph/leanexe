@@ -43,7 +43,7 @@ theorem Frame.trans {base : Nat} {s1 s2 s3 : Locals} (h1 : Frame base s1 s2)
         rw [h1.positions] at h
         exact h.trans (h1.below32 j hj)⟩
 
-/-- The operand stack plays no part in a frame. -/
+/-- The operand stack is not part of a frame. -/
 theorem Frame.values {base : Nat} {s s' : Locals} {values : List Value}
     (h : Frame base { s with values } s') : Frame base s s' :=
   ⟨h.params, h.length, h.below, h.below32⟩

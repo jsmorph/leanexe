@@ -7,7 +7,7 @@ not raise the heap's `top`: `select_implements` bounds the rise of `top` by
 `compiled.select.bound`, and `select_bound` states that the bound is 0.  It reads "a call stack
 that does not grow" as the generated `compiled.select.trapFree` with no call-depth premise.  The
 compiler translates recognized tail recursion into loops and gives every other recursive function
-and its callers a call depth, which their theorems carry as a premise, so a theorem without that
+and its callers a call depth, which their theorems take as a premise, so a theorem without that
 premise covers code with no recursion other than loops, whose calls nest no deeper than the
 longest chain of calls in the program.  The specification does not distinguish FIND from other
 selection methods, and the program text shows the method.  The theorems concern arrays of fewer

@@ -60,25 +60,25 @@ signed zero, infinities, and canonical NaNs.
 `InputValues input numbers status` holds when `numbers` are the numbers that the input lines
 denote before the first line that denotes none, with `status` 0 when every line denotes a number
 and 28 otherwise.  `inputValues_exist` and `inputValues_unique` show that every input with lines
-shorter than `2^32` bytes determines one such pair.  `initial_terminates_fp` supplies, for every
+shorter than `2^32` bytes determines one such pair.  `initial_terminates_fp` gives, for every
 such input whose lines up to and including the first line that denotes no number hold at most `L`
 bytes, a Talos fuel threshold such that every larger fuel value runs the compiled command to
 accepted exit with status `status` and the cumulative output of `numbers`.
 `initial_terminates_fp_50000000` fixes `L` at 50,000,000, for which the memory inequality holds.
 `fp_bytes` combines the theorem with encoding, exact decoding, and binary validity.  The theorem
-starts with an empty event journal and output history and uses these premises:
+concerns runs that start with an empty event journal and output history and uses these premises:
 
 | Premise | Requirement |
 |---|---|
 | [Line sizes](Model.lean) | `ShortLines` requires each line of the input to hold fewer than `2^32` bytes. |
-| [Host progress](../StreamFold/StreamHost.lean) | `StreamHost` supplies successful transfers, input-prefix consumption, EOF, and committed output prefixes.  Each zero-byte write decreases a proof-only natural-valued credit, and a read or a write of at least one byte may set the credit to any value.  The Talos host also satisfies the WASI specification. |
+| [Host progress](../StreamFold/StreamHost.lean) | `StreamHost` assumes successful transfers, input-prefix consumption, EOF, and committed output prefixes.  Each zero-byte write decreases a proof-only natural-valued counter, and a read or a write of at least one byte may set the counter to any value.  The Talos host also satisfies the WASI specification. |
 | [Line limit](Limits.lean) | `InputLimits L` requires each line up to and including the first line that denotes no number to hold at most `L` bytes. |
 | [Memory](Correct.lean) | `4096 + limitMemory L ≤ 65536 · 65535`, where `limitMemory L = 80 · L + 64,031,000`: the heap starts at 4,096 bytes, since the module has no byte literals, and the memory cap is 65,535 pages. |
 | [Exit acceptance](Correct.lean) | `ExitAccepted` excludes rejected exits with status 0 or 28 at represented worlds. |
 
 `limitCharges` derives from the limit the charges that the general theorem `terminates_fp` takes.
 The process compacts its state after `begin` and after each step, so between steps the heap holds
-the literal pool and one state, and each step needs room for its charge and the copies of the
+the literal pool and one state, and each step needs memory for its charge and the copies of the
 state before and after it.  A copy of a state within the limit costs at most `8 · L + 4,305` bytes,
 and a step from such a state at most `64 · L + 4,910,000` bytes, which include a parse of at most
 `8 · L + 4,404,576` bytes, plus at most 59,112,378 bytes for one rendering.  `limitMemory L`

@@ -326,7 +326,7 @@ theorem colOthers_prefix (L : Layout) (l : List Nat) (j : Nat) :
   exact List.prefix_append _ _
 
 /-- The removals of a prefix of a column's `colOthers` keep the static words, the columns, and the
-column itself, whose nodes they do not touch. -/
+column itself, whose nodes they do not change. -/
 theorem colOthers_inv {t : Array UInt64} {L : Layout} {B : Finset Nat} (hL : L.Good)
     (hs : Static t L) (h : Cols t L B (L.present B)) {i : Nat} (j : Nat) :
     let l := colList (L.colQ (L.present B) i)

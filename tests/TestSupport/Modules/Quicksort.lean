@@ -8,7 +8,7 @@ namespace Library.Sorting.Quicksort
 open TestSupport.Host
 
 /-- The arrays of the verified compiler's cases: the inputs of straight insertion,
-`insertionInputs`, which include those of heapsort, and arrays that drive the partitions of steps Q2
+`insertionInputs`, which include those of heapsort, and arrays that test the partitions of steps Q2
 to Q7.  Arrays of 10 words, the shortest that the steps partition, and of 11 words, the shortest
 whose partition leaves a part that they partition again, appear in increasing and decreasing order.
 A first word above every other word runs the scan of step Q3 to the end of the subfile, where

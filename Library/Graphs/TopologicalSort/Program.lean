@@ -27,10 +27,10 @@ def initialQueue (cnt : Array UInt64) (n : UInt64) : Array UInt64 :=
 /-- Steps T5 to T7.  The state is the pair of the counts and the queue, and step `f` takes the
 vertex at position `f` of the queue.  It scans the `m` relations for those that start at that
 vertex, decreases the count of each such relation's second vertex, and appends that vertex to the
-queue when its count reaches 0.  At most `n` vertices enter the queue, so `n` steps suffice.  A step
-whose `f` lies past the queue scans no relation, because its scan has length 0.  The test lies in
-the scan's length because the compiler does not accept a loop body that ends in an `if` between
-the scan and the unchanged state. -/
+queue when its count reaches 0.  At most `n` vertices are appended to the queue, so `n` steps
+suffice.  A step whose `f` lies past the queue scans no relation, because its scan has length 0.
+The test is in the scan's length because the compiler does not accept a loop body that ends in an
+`if` between the scan and the unchanged state. -/
 def process (xs : Array UInt64) (n m : UInt64) (cnt q : Array UInt64) :
     Array UInt64 × Array UInt64 :=
   LeanExe.loop n (cnt, q) fun f s =>

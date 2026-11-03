@@ -9,7 +9,7 @@ result lies within one representable step of the nearest-even rounding of
 ones scaled by `2 ^ 54`.  The exceptional inputs give the results of IEEE 754:
 `log10 (±0) = -∞`, `log10 (+∞) = +∞`, `log10 1 = +0`, and the canonical NaN for a negative
 argument, negative infinity included, and for a NaN.  `log10 (10 ^ n) = n` for `n` from 0 to 22,
-the exact powers of ten.  `log10_bytes_accuracy` carries the bound to the decoded bytes of the
+the exact powers of ten.  `log10_bytes_accuracy` transfers the bound to the decoded bytes of the
 compiled module and to every call in a sequence of calls to its export `log10`.
 -/
 

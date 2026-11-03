@@ -5,8 +5,8 @@ import LeanExe.WGSL.F32Result
 /-!
 The translation of source expressions of the kernel subset into WGSL `let` statements, one per node,
 and its simulation lemma: from an environment that holds the source locals and arrays the way a
-`Layout` says, the statements run without error and leave the expression's denotation in the result
-variable, a `u64` as the pair of its halves and a binary32 value as an `f32`.
+`Layout` specifies, the statements run without error and leave the expression's denotation in the
+result variable, a `u64` as the pair of its halves and a binary32 value as an `f32`.
 -/
 
 namespace LeanExe.WGSL
@@ -170,7 +170,7 @@ def wgslValue : (type : Source.ScalarType) → type.denote → Value
   | .bool, b => .bool b
   | .f64, bits => pairOf bits
 
-/-- The environment and buffers hold the source locals and arrays as the layout says. -/
+/-- The environment and buffers hold the source locals and arrays as the layout specifies. -/
 structure Layout.Agrees (F : Layout) (locals : Nat → Option Wasm.Value)
     (arrays : Nat → Option (Array UInt64)) (ctx : Context) (env : Env) : Prop where
   word : ∀ j v, locals j = some (.i64 v) →

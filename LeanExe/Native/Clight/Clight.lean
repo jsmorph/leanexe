@@ -1,7 +1,7 @@
 /-
 Derived from CompCert 3.18, the files `cfrontend/Clight.v` and `common/Globalenvs.v`.  CompCert is
 Copyright Institut National de Recherche en Informatique et en Automatique (INRIA) and AbsInt
-Angewandte Informatik GmbH, and its source files carry INRIA's copyright.
+Angewandte Informatik GmbH, and its source files state INRIA's copyright.
 
 This file is distributed under the GNU Lesser General Public License, version 2.1 or (at your
 option) any later version, one of the two licenses CompCert offers for its source files.  The

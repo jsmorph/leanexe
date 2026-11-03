@@ -8,7 +8,7 @@ open Wasm LeanExe.Runtime
 
 /-- How a Lean value appears to a compiled function: as `width x` WASM values,
 together with any heap data they point to.  `borrowed` describes an argument, which
-the call reads, and which the caller hands over when its type is `Moved`.  `owned`
+the call reads, and which the caller moves when its type is `Moved`.  `owned`
 describes a result, which the caller owns after the call. -/
 class Represent (α : Type) where
   width : α → Nat
@@ -33,7 +33,7 @@ def Represent.outside [Represent α] (store : Store Unit) (vs : List Value) (x :
     (region : Nat × Nat) : Prop :=
   ∀ b ∈ Represent.blocks store vs x, regionsDisjoint region b
 
-/-- An argument that the caller hands over to the call. -/
+/-- An argument that the caller moves to the call. -/
 structure Moved (α : Type) where
   val : α
 
@@ -201,7 +201,7 @@ instance [Flat α β] [Scalar β] : Represent (Array α) where
   reads store vs xs := Represent.reads store vs (flatWords xs)
   moves _ _ _ := []
 
-/-- An array that the caller hands over: the call receives it as owned, reads
+/-- An array that the caller moves: the call receives it as owned, reads
 nothing else of it, and consumes its block. -/
 instance : Represent (Moved (Array UInt64)) where
   width _ := 1
@@ -229,7 +229,7 @@ instance : Represent (Moved (Array Float32)) where
   reads _ _ _ := []
   moves store vs xs := Represent.moves store vs (Moved.mk (xs.val.map (fun x : Float32 => x.toBits.toUInt64)))
 
-/-- An array of a structure, sum, or enumeration that the caller hands over: the call receives
+/-- An array of a structure, sum, or enumeration that the caller moves: the call receives
 its words as owned and consumes its block. -/
 instance [Flat α β] [Scalar β] : Represent (Moved (Array α)) where
   width _ := 1
@@ -250,8 +250,8 @@ inductive Slot where
   | array (words : Array UInt64)
   | bytes (data : LeanExe.Bytes)
 
-/-- How a value of a recursive type sits in memory: the null pointer, or a record whose slots
-hold words, child values, arrays, and byte buffers. -/
+/-- How a value of a recursive type is represented in memory: the null pointer, or a record whose
+slots hold words, child values, arrays, and byte buffers. -/
 inductive Node where
   | null
   | record (slots : List Slot)
@@ -452,20 +452,20 @@ def slotsWellFormed : List Slot → Prop
   | .bytes _ :: rest => slotsWellFormed rest
 end
 
-/-- An encoding whose records all meet the conditions of `RecordHeader` and `RecordSlots` on the
-value alone.  An encoding that breaks `RecordSlots.lengths` makes `Represent.borrowed` and
-`Represent.owned` false for its values in every store, and one that breaks `RecordHeader.short`
+/-- An encoding whose records all satisfy the conditions of `RecordHeader` and `RecordSlots` on the
+value alone.  An encoding that violates `RecordSlots.lengths` makes `Represent.borrowed` and
+`Represent.owned` false for its values in every store, and one that violates `RecordHeader.short`
 makes `Represent.owned` and the precondition of a moved value false, while `NodeBorrowed` can
 still hold.  An `Implements` statement over the type then holds for every module whenever the
-type is an argument, for a broken length condition, or a moved argument, for a broken slot bound.
-A type that appears only as a result constrains nothing in either case, because only modules
+type is an argument, for a violated length condition, or a moved argument, for a violated slot
+bound.  A type that appears only as a result constrains nothing in either case, because only modules
 that always trap satisfy the statement, and those satisfy every `Implements` statement.  The
 instances of `Represent` for a type with `Encode` therefore require this class. -/
 class EncodeWellFormed (α : Type) [Encode α] : Prop where
   wellFormed : ∀ x : α, (Encode.encode x).WellFormed
 
 /-- A value of a type with `Encode` is a pointer to the records that `encode` gives, for an
-encoding whose records meet the conditions on the value alone.  The caller lends records that
+encoding whose records satisfy the conditions on the value alone.  The caller lends records that
 hold the right words and pointers, with their arrays and buffers.  A result's records, arrays,
 and nonempty buffers are owned and occupy pairwise disjoint blocks.  The call reads the slots of
 the records, the words of their arrays, and the blocks of their nonempty buffers, which
@@ -483,7 +483,7 @@ instance [Encode α] [EncodeWellFormed α] : Represent α where
     | _ => []
   moves _ _ _ := []
 
-/-- A value of a recursive type that the caller hands over: the call receives its records,
+/-- A value of a recursive type that the caller moves: the call receives its records,
 arrays, and buffers as owned, reads nothing else of it, and consumes every record, array, and
 nonempty buffer. -/
 instance [Encode α] [EncodeWellFormed α] : Represent (Moved α) where
@@ -644,7 +644,7 @@ theorem Implements.congr [Represent α] [Represent β] {m : Module} {entry : Nat
 
 /-- `Implements` with the abort flag and conditions on the heap: from a heap and store with
 `Pre x heap store`, the call returns, or, when `aborts`, traps at `unreachable`.  On a return,
-some heap `heap'` meets the conditions of `Implements` and `Post x heap store heap' final`. -/
+some heap `heap'` satisfies the conditions of `Implements` and `Post x heap store heap' final`. -/
 def ImplementsA [Represent α] [Represent β] (aborts : Bool) (m : Module) (entry : Nat)
     (f : α → β) (Pre : α → Heap → Store Unit → Prop)
     (Post : α → Heap → Store Unit → Heap → Store Unit → Prop) : Prop :=

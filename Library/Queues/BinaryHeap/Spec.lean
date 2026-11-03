@@ -2,7 +2,7 @@
 words in any order.  An insertion adds its value to the list.  A removal outputs the largest word of
 the list and deletes one copy of it, and a removal from an empty list outputs nothing.  The input
 holds the operations as pairs `xs[2i], xs[2i + 1]` of a code and a value.  Code 0 inserts the
-value, every other code removes and ignores the value, and a last word without a partner is no
+value, every other code removes and ignores the value, and an unpaired last word is no
 operation.  The specification fixes the outputs and not how the queue stores its
 words. -/
 

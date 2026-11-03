@@ -4,7 +4,7 @@ import TestSupport.Native.Common
 /-!
 The theorems of the translated GCD functions, with `lx_mem` of `cap` pages.  `verified_compile`
 adds the translations and the theorems `loopCompiled.gcd.native` and `recCompiled.gcd.native`,
-which carry the verified compiler's theorems to the C functions of the translations, as
+which transfer the verified compiler's theorems to the C functions of the translations, as
 `NativeImpl` states.  `loop_native_init` and `rec_native_init` call `lxf_gcd` from the state
 that `lx_init` leaves in the translated program's initial memory: the loop returns `gcd a b`
 with `lx_status` 0, and the recursion does too or ends with `lx_status` set to the code of

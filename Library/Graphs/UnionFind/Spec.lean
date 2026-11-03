@@ -12,14 +12,14 @@ least element of the class of `i`, which determines `r`.  The specification does
 Algorithm E from other methods that find the classes, such as one that links the roots the other
 way, and the program text shows the method.  The theorems require room in memory for three arrays
 of `n` words and say nothing for a larger `n`.  The specification reads "in place" as the update
-of the array of parent links in its own block, which rests on the compiler's rule that the code
+of the array of parent links in its own block, which depends on the compiler's rule that the code
 updates an owned array at its last use in place, a rule that the verified compiler's manual states
 and no theorem states.  The theorems bound the rise of the heap's `top` by three arrays of `n`
 words for any number of pairs, which the generated bound, charging every copy, supports.  It reads
-"a call stack that does not grow" as theorems with no call-depth premise, which rests on another
+"a call stack that does not grow" as theorems with no call-depth premise, which depends on another
 rule of the manual that no theorem states: the compiler translates recognized tail recursion into
 loops and gives every other recursive function and its callers a call depth, which their theorems
-carry as a premise. -/
+take as a premise. -/
 
 namespace Library.Graphs.UnionFind
 

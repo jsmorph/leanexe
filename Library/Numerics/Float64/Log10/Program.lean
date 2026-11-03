@@ -4,7 +4,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The fortieth program of the verified compiler: `log10`, ported from fdlibm as FreeBSD's
+/-! A program of the verified compiler: `log10`, ported from fdlibm as FreeBSD's
 `lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379` (`e_log10.c` and
 `k_log.h`, Copyright (C) 1993 by Sun Microsystems, Inc., freely distributable with this notice).
 Arm's optimized-routines has no double `log10` in `math/`, only `log10f`.  The code writes

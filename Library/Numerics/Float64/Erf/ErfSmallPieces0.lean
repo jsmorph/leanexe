@@ -4,9 +4,7 @@ import Library.Numerics.Float64.Erf.ErfSmallBase
 Intervals 0 to 36 of the first range of `s_erf.c` for `erf`, from `x = 3.72529e-09` to `0.421875`.
 For each interval `[xlo, xhi]` with the range `[zlo, zhi]` of the computed `x x`, `decide +kernel` checks
 `ErfSmallBase.smallOK` and either the relative criterion `smallRelOK` or, for results in `[1/2, 1)`,
-`smallTopOK`, and `small_erf_rel` or `small_erf_top` gives one step.  `gen_small.py` and
-`emit_small.py` in the track's scratch directory compute the intervals with the same rational
-arithmetic and write the file.
+`smallTopOK`, and `small_erf_rel` or `small_erf_top` gives one step.
 -/
 
 namespace Library.Numerics.Float64.Erf.ErfSmallPieces0

@@ -12,11 +12,11 @@ function may abort and `lx_status` holds the code of `unreachable`.
 
 `NativeA` states this for a function that the verified compiler proves with `ImplementsA`, in
 the terms of that theorem: for every global environment that holds the translation's globals,
-memory, and functions, every store and heap that meet the premises of `ImplementsA`, and every
+memory, and functions, every store and heap that satisfy the premises of `ImplementsA`, and every
 C memory related to the store with `lx_status` 0, the C call of the translation of entry `k`
 terminates.  Either it returns with `lx_status` 0 and a result related to Talos's results, or,
 when `aborts`, it ends with `lx_status` holding the code of `unreachable`.  After a return,
-Talos's results represent `f x` in a heap that meets the allocator invariant and the
+Talos's results represent `f x` in a heap that satisfies the allocator invariant and the
 postcondition, the memory caps are unchanged, and every nonempty region of the heap apart from
 the moved blocks keeps its bytes, remains a region of the final heap, and lies outside the
 result, as `ImplementsA` states.  `ImplementsA.native` derives `NativeA` from `ImplementsA`.
@@ -24,7 +24,7 @@ result, as `ImplementsA` states.  `ImplementsA.native` derives `NativeA` from `I
 function's parameters and result, and `ImplementsA.nativeImpl` derives it from `h` and the
 presence of the function in the translation.
 
-`alloc_native` and `release_native` carry the runtime's theorems `alloc_spec_runs` and
+`alloc_native` and `release_native` transfer the runtime's theorems `alloc_spec_runs` and
 `release_run` to the C functions `lxf_alloc` and `lxf_release` of a translated module.
 -/
 
@@ -192,7 +192,7 @@ variable {A : Archi} {X : ExtSem}
 
 open LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit in
 /-- The runtime's `alloc` in a translated module: from a C memory related to a store whose heap
-meets the allocator invariant, the C call of `alloc` on `bytes` terminates.  It returns the
+satisfies the allocator invariant, the C call of `alloc` on `bytes` terminates.  It returns the
 address of the new block with `lx_status` 0, in a memory related to the store after the
 allocation, or ends with `lx_status` holding the code of `unreachable`, when memory cannot
 grow. -/
@@ -231,7 +231,7 @@ theorem alloc_native {mod : Module} {cap : Nat} {T : Translation} (hT : translat
 
 open LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit in
 /-- The runtime's `release` in a translated module: from a C memory related to a store whose
-heap meets the allocator invariant and owns the object at `ptr`, the C call of `release` on
+heap satisfies the allocator invariant and owns the object at `ptr`, the C call of `release` on
 `ptr` returns with `lx_status` 0, in a memory related to the store after the release. -/
 theorem release_native {mod : Module} {cap : Nat} {T : Translation}
     (hT : translate cap mod = some T) {typeIdx : Nat}

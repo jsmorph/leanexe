@@ -1,11 +1,10 @@
 import Library.Numerics.Float64.Erf.ErfTailErfBase
 
 /-!
-One step for `erf` on the tail `[1.25, 6]` of `s_erf.c` for positive arguments.  `R_a/S_a` serves
-`[1.25, tailB2]` and `R_b/S_b` serves `[tailB2, 6]`.  For each interval `decide +kernel` checks
-`ErfTailEval.tailOK` and the criterion of `ErfTailErfBase.tail_erf_word`, and `tail_kernel_a` or
-`tail_kernel_b` bounds `tailF`.  `gen_tail_erf.py` and `emit_tail_erf.py` in the track's scratch
-directory compute the intervals and write the file.
+One step for `erf` on the tail `[1.25, 6]` of `s_erf.c` for positive arguments.  `R_a/S_a` is used
+on `[1.25, tailB2]` and `R_b/S_b` is used on `[tailB2, 6]`.  For each interval `decide +kernel`
+checks `ErfTailEval.tailOK` and the criterion of `ErfTailErfBase.tail_erf_word`, and `tail_kernel_a`
+or `tail_kernel_b` bounds `tailF`.
 -/
 
 namespace Library.Numerics.Float64.Erf.ErfTailErf

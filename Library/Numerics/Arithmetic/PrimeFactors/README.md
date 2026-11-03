@@ -19,7 +19,7 @@ conditions, since Lean states the negated condition as `1 < remaining ∧ 1 < di
 states the equations of `countFactors` without unfolding its measure, `remaining.toNat * 2 ^ 64 +
 …`, which would exhaust the kernel's recursion, as [the
 journal](../../../../devnotes.md#2026-10-30-array-literals-and-conditions-on-propositions-in-the-reflector)
-records.  Both functions take and return words and allocate nothing, so the generated
+records.  The functions take and return words and allocate nothing, so the generated
 `compiled.compute.pure` states that function 3 computes `compute` from every store without a trap
 and leaves the store unchanged.  The generated `compiled.countFactors.native` and
 `compiled.compute.native` state the computations of the C functions of the module's translation.
@@ -34,7 +34,7 @@ and leaves the store unchanged.  The generated `compiled.countFactors.native` an
 | `primeFactors_file`, `primeFactors_file_decode` | `build/verified/primeFactors.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`, as [the file module](File.lean) states. |
 
 `countFactors_eq` and `compute_eq` are in [the proof of the specification](Proof.lean), and the
-number theory stays in `countFactors_eq`, which concerns the Lean program alone.  `compute_eq`
+number theory is all in `countFactors_eq`, which concerns the Lean program alone.  `compute_eq`
 applies `countFactors_eq` with the divisor 2 and the count 0, since every prime is at least 2.
 `primeFactors_call` composes `compiled.compute.pure` with `compute_eq` and requires nothing of the
 store.  The axiom report of `primeFactors_call` in the verified compilation names only `propext`,

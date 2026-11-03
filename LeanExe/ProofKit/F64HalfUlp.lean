@@ -5,7 +5,7 @@ import LeanExe.ProofKit.F64RoundingScale
 The rounding error of a sum or difference is at most half the spacing of the binade below the
 bound of the exact result: when `|a + b| < 2 ^ (53 + g)` scaled units, the rounded sum lies within
 `2 ^ g / 2` scaled units.  The relative bound of `F64AddBounds` charges up to a whole spacing at the
-top of a binade.  `fapprox_add_half` and `fapprox_sub_half` carry the bound through `FApprox`.
+top of a binade.  `fapprox_add_half` and `fapprox_sub_half` state the bound in terms of `FApprox`.
 -/
 
 namespace LeanExe.ProofKit.F64HalfUlp

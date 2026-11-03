@@ -6,9 +6,10 @@ import Library.Numerics.Float64.Tgamma.TgammaSmall
 
 /-!
 The polynomial of `tgammaWith` on `(-3, 4)`, in `d = x - (i + 7/2)` with `|d| ≤ 1/2 + 2 ^ -50`.
-The tail `d Q(d)` of degree 8 in plain double arithmetic (`flE`, bounded by `TgammaExpr`) enters the
-top coefficient of the double-double Horner scheme of degree 9 (`TgammaPolyDDD.polyDDD_damped`), and
-the result lies within `2 ^ -72` of `mainPoly d` (`main_poly`).
+The tail `d Q(d)` of degree 8 in plain double arithmetic (`flE`, bounded by `TgammaExpr`) is added
+to the top coefficient of the double-double Horner scheme of degree 9
+(`TgammaPolyDDD.polyDDD_damped`), and the result lies within `2 ^ -72` of `mainPoly d`
+(`main_poly`).
 -/
 
 namespace Library.Numerics.Float64.Tgamma.TgammaMainPoly

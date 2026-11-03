@@ -26,7 +26,7 @@ Each pass of `oddGcd` that subtracts replaces the larger odd number `L` by at mo
 | `binaryGcd_callSpec` | [The compilation](Compiled.lean) | From a ready store with room for `compiled.binaryGcd.bound (u, v)` bytes, function 5 returns `expected (u, v)` without a trap and leaves a ready store, as `Verified.CallSpec` states. |
 | `binaryGcd_file`, `binaryGcd_file_decode` | [The file theorems](File.lean) | `build/verified/binaryGcd.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
-`oddGcd_spec` uses two facts about natural numbers: `gcd u v = gcd u (v - u)` for `u ≤ v`, which Lean's core library states as `Nat.gcd_sub_self_right`, and `gcd u (2^j * b) = gcd u b` for odd `u`, since a power of 2 is coprime to an odd number.  `binaryGcd_eq` adds `gcd (2^j * a) (2^j * b) = 2^j * gcd a b` for step B1 and shows that the final shift does not wrap, because the result is at most `u`.  The axiom report of `binaryGcd_callSpec` names only `propext`, `Classical.choice`, and `Quot.sound`.
+`oddGcd_spec` uses these facts about natural numbers: `gcd u v = gcd u (v - u)` for `u ≤ v`, which Lean's core library states as `Nat.gcd_sub_self_right`, and `gcd u (2^j * b) = gcd u b` for odd `u`, since a power of 2 is coprime to an odd number.  `binaryGcd_eq` adds `gcd (2^j * a) (2^j * b) = 2^j * gcd a b` for step B1 and shows that the final shift does not wrap, because the result is at most `u`.  The axiom report of `binaryGcd_callSpec` names only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Building, running, and testing
 

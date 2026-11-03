@@ -20,7 +20,7 @@ division of exact values (W. D. Clinger, PLDI 1990).  Every other decimal is rou
 `p + 2` or `p + 3` bits, and whether the division leaves a remainder, which is Cox's unrounded form
 (R. Cox, "Floating-Point Printing and Parsing Can Be Simple And Fast", 2026), and `roundUnits`
 rounds it.  A hexadecimal significand keeps 15 significant hexadecimal digits and a sticky flag
-and needs no division.  Signed exponents are carried with the bias `2 ^ 62`. -/
+and needs no division.  Signed exponents are represented with the bias `2 ^ 62`. -/
 
 namespace Library.Numerics.Decimal.ParseFloat
 open Library.Numerics.Arithmetic.Uscale

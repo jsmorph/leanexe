@@ -19,7 +19,7 @@ whose coefficient lists equal those of `TgammaApprox` by definition: `TgammaPoly
 `TgammaAccRangeA` to `TgammaAccRangeC` for the nine ranges of the accurate path, `TgammaAsymFitB`
 and `TgammaAsymFitC` for the two Stirling fits, and `TgammaLogTables`, `TgammaExpTables`, and
 `TgammaSinTables` for the kernels and tables of the logarithm, the exponential, and the sine.  The
-table of `sin (k π/128)`, the split `π`, and the cosine kernel meet tighter bounds than the
+table of `sin (k π/128)`, the split `π`, and the cosine kernel satisfy tighter bounds than the
 statements require (`2 ^ -80`, `2 ^ -80`, and `2 ^ -78 d²`).
 -/
 

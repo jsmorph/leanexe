@@ -5,7 +5,7 @@ namespace Verified.Wasi.ScriptHost
 
 open LeanExe.Wasi
 
-/-- The scripted world's replies: its queues, links, and policies decide every request. -/
+/-- The scripted world's replies: its queues, links, and policies determine every reply. -/
 def oracle : OracleHost.Oracle World := ⟨readStep, writeStep, exitStep⟩
 
 theorem oracle_sound : oracle.Sound sourceHost where

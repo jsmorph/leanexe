@@ -1,8 +1,8 @@
 import Library.Arrays.Filter.Program
 import Verified.Reflect.Command
 
-/-! The eighteenth program of the verified compiler: `LeanExe.repeatWhile`, a loop that stops when
-its condition fails.  The programs carry words, floats, pairs that hold arrays, and a structure as
+/-! A program of the verified compiler: `LeanExe.repeatWhile`, a loop that stops when
+its condition fails.  The programs use words, floats, pairs that hold arrays, and a structure as
 the state, stop early under fuels up to `2 ^ 64 - 1`, read an owned array of the state in the
 condition, and update it in place in the step.  The last five check that the theorems do not
 evaluate loops whose conditions read only literal data: a pair result that holds an array,
@@ -45,7 +45,7 @@ def countUp (xs : Array UInt64) : Array UInt64 × UInt64 :=
   LeanExe.repeatWhile 18446744073709551615 (xs, (0 : UInt64)) (fun s => s.2 < 100000)
     fun s => (s.1, s.2 + 1)
 
-/-- `k` plus the sum of the words below `100000`, taken apart from the loop's tuple with `match`. -/
+/-- `k` plus the sum of the words below `100000`, extracted from the loop's tuple with `match`. -/
 def sumTo (k : UInt64) : UInt64 :=
   match LeanExe.repeatWhile 1000000 ((0 : UInt64), (0 : UInt64)) (fun s => s.1 < 100000)
       fun s => (s.1 + 1, s.2 + s.1) with

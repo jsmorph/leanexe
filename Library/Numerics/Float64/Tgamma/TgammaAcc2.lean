@@ -3,7 +3,7 @@ import Library.Numerics.Float64.Tgamma.TgammaAcc1
 /-!
 `Tgamma.sprod`, the step `x (x0 + x1 + x2)` of the powers of `d` in the accurate path of `Tgamma`.
 The high part `z0 = x x0` is split by `splt` at multiples of `2^-26`, its remainder and the error of
-the product join the low parts, and the result is a triple whose first part is a multiple of
+the product are added to the low parts, and the result is a triple whose first part is a multiple of
 `2^-26` and whose sum lies within `2^-76` of `x (x0 + x1 + x2)` (`sprod_spec`).  `fts_approx`
 bounds `fastTwoSum a b` without Dekker's condition `|b| ≤ |a|`.
 -/

@@ -41,11 +41,11 @@ def leanFun (r : Reflected) : MetaM Lean.Expr :=
     mkLambdaFVars #[x] (mkAppN (mkConst r.name) projs.toArray)
 
 /-- The proof of the theorem `claim` that the module computes the definition of `r`: the
-compiler's theorem `h` for its source function, carried to Lean's instances by `transfer`, which
+compiler's theorem `h` for its source function, transferred to Lean's instances by `transfer`, which
 is `ImplementsA.transferAgree`, or `ImplementsAligned.transferAgree` for `p.f.aligned`.  The
 constant `funs` of the functions' meanings has the value `funsVal`, a chain of `Funs.cons`.  The
-definition's equation `r.meaningEq` enters through `Funs.get_there` and `Funs.get_here`, which take
-`funs.get` to the meaning of the definition's function, and through plain lambdas for the
+proof uses the definition's equation `r.meaningEq` through `Funs.get_there` and `Funs.get_here`,
+which take `funs.get` to the meaning of the definition's function, and through plain lambdas for the
 flattenings, so that the kernel checks each step by matching terms and by beta reduction and never
 unfolds the definition or its loops. -/
 def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
@@ -483,11 +483,11 @@ that holds the tables; for each definition `f` of a program without byte literal
 `p.f.aligned`, with the arguments of `p.f.implements`, that from an input whose heap, consumed
 objects, and read regions are aligned, the run of the entry at every fuel from some bound on makes
 only aligned 64-bit accesses inside memory, and the final heap and the result's blocks are
-aligned; `p.initial`, that the store in which the module starts meets the allocator invariant and
-holds the tables; `p.inSubset`, that the module is in the subset that the translator to C accepts,
-when it is, from the theorems `p.native_part_k`, one per function, which also give the callees of
-each function's C function as `p.translation_infos` lists them; when the module translates, its
-translation `p.translation` to C, with `lx_mem` of `nativeCap` pages, the list
+aligned; `p.initial`, that the store in which the module starts satisfies the allocator invariant
+and holds the tables; `p.inSubset`, that the module is in the subset that the translator to C
+accepts, when it is, from the theorems `p.native_part_k`, one per function, which also give the
+callees of each function's C function as `p.translation_infos` lists them; when the module
+translates, its translation `p.translation` to C, with `lx_mem` of `nativeCap` pages, the list
 `p.translation_funcs` of the functions that the translation contains, the equation
 `p.translation_eq`, and, for each definition `f` whose function the translation contains, the
 theorem `p.f.native` that the C function computes `f` as `p.f.implements` states, for an
@@ -611,7 +611,7 @@ def elabVerifiedCompile : CommandElab
           pure (← `(Verified.ImplementsB.implementsA (Verified.FunSpec.implementsB_unpaid
             (Verified.Prog.correctWith $progId $funsId $meaningId $tablesId $wrappersId $noLiterals $fvar 0)
             rfl (by decide +kernel))), 2 + k)
-      -- The theorem for the flattened types, carried to Lean's types: each argument is
+      -- The theorem for the flattened types, transferred to Lean's types: each argument is
       -- represented as its flattening is, and the flattening of the result represents it.
       liftTermElabM do
         let h ← Term.elabTerm (← `(Verified.ImplementsA.lean $hStx)) none
@@ -659,7 +659,7 @@ def elabVerifiedCompile : CommandElab
       -- The theorem without a trap, with the growth of `top` bounded by the function's bound on
       -- Lean's argument tuple.  For a function whose code takes no call depth, it holds when the
       -- bound fits, if the function may trap; for one whose code does, with the frames that the
-      -- entry's depth 0 leaves, when its calls find their frames and the bound fits.
+      -- entry's depth 0 leaves, when its calls have enough frames and the bound fits.
       let boundId := mkIdent (base ++ simple ++ `bound)
       liftTermElabM do
         let progVal := (← getConstInfoDefn (base ++ `program)).value
@@ -877,7 +877,7 @@ def elabVerifiedCompile : CommandElab
     let lengthId := mkIdent (target.getId ++ `funcs_length)
     let codesId := mkIdent (target.getId ++ `codes_ok)
     let nb := bodies.length
-    -- The kernel walks lists of bytes recursively, as the file theorems' comparisons do.
+    -- The kernel processes lists of bytes recursively, as the file theorems' comparisons do.
     elabCommand (← `(set_option maxRecDepth 100000 in
       theorem $restId : Wasm.Encoding.restOk $moduleId $sectionsId = true := by
         decide +kernel))

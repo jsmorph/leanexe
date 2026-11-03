@@ -9,7 +9,7 @@ of `2m` words: slot `s` is occupied when `t[2s] ≠ 0`, and then `t[2s + 1]` is 
 words of every slot so that a deletion, which moves keys, returns one array.  The home slot of key
 `k` is `k % m`, and a search inspects the slots `k % m`, `k % m + 1`, and so on, with slot 0 after
 slot `m - 1`, until it finds the key or an empty slot.  Knuth's searches move down the table, and
-these move up, so the conditions of Algorithm R appear in mirror image.  The loop's state holds the
+these move up, so the conditions of Algorithm R are reversed.  The loop's state holds the
 outputs, the number of keys, and the table. -/
 
 namespace Library.HashTables.LinearProbing

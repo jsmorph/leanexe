@@ -5,7 +5,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The forty-fourth program of the verified compiler: `sinpi`, `cospi`, and `tanpi`, the sine,
+/-! A program of the verified compiler: `sinpi`, `cospi`, and `tanpi`, the sine,
 cosine, and tangent of `π x`, ported from FreeBSD's `lib/msun/src` at commit
 `20381bce4b63975494a2f4bc84257f6932e6d379` (`s_sinpi.c`, `s_cospi.c`, and `s_tanpi.c`, Copyright (c)
 2017, 2023 Steven G. Kargl, and `k_sinpi.h` and `k_cospi.h`, Copyright (c) 2017 Steven G. Kargl,

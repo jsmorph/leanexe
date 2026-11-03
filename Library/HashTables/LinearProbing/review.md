@@ -6,9 +6,9 @@ The second review found no disagreement, and it found every choice that the requ
 
 | Class | Why the cases leave it out |
 |---|---|
-| Probing in the 1,024-slot input | The 700 keys are `rw` of consecutive arguments, which have distinct residues modulo 1,024, so every key sits at its home slot. |
+| Probing in the 1,024-slot input | The 700 keys are `rw` of consecutive arguments, which have distinct residues modulo 1,024, so every key is at its home slot. |
 | Searches that pass keys of `2^32` or more | The keys that collide are below 500. |
 | Keys of `2^32` or more with a slot count that is not a power of two | A hash computed from the low 32 bits of a key would pass every case. |
 | Slot counts near the memory limit or of `2^63` and more | The table of `2M` words would not fit, and `hashTable_call` assumes `M < 2^63`. |
 
-Both reviews noted that the specification fixes the outputs and not the method, so the theorem that the program equals `expected` says nothing about the hash `k mod M` or the probing, which only the program text shows.  The second review also noted that the program probes upward, while Knuth's Algorithm L probes downward, with the conditions of Algorithm R in mirror image, as the program's comment and the README state.
+Both reviews noted that the specification fixes the outputs and not the method, so the theorem that the program equals `expected` says nothing about the hash `k mod M` or the probing, which only the program text shows.  The second review also noted that the program probes upward, while Knuth's Algorithm L probes downward, with the conditions of Algorithm R reversed, as the program's comment and the README state.

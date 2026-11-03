@@ -5,7 +5,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The forty-first program of the verified compiler: `pow`, ported from Arm's optimized-routines,
+/-! A program of the verified compiler: `pow`, ported from Arm's optimized-routines,
 `math/pow.c`, `math/pow_common.h`, and `math/pow_log_data.c` at commit
 `503fafe311c177de0e571c458c7c337b1ca5f522` (Copyright (c) 2018-2026, Arm Limited,
 SPDX-License-Identifier: MIT OR Apache-2.0 WITH LLVM-exception).  The configuration is the one for
@@ -286,7 +286,7 @@ def powExpCore (tab : Array UInt64) (x xtail : Float) (signBias : UInt64) (speci
 
 /-- Arm's `exp_inline`: `± exp (x + xtail)`, with the sign of `signBias`.  Below `2 ^ -54` in
 magnitude the result is `±(1 + x)`, from 1024 on it is the signed underflow or overflow product of
-`__math_uflow` or `__math_oflow`, and from 512 on it goes through `powSpecialCase`. -/
+`__math_uflow` or `__math_oflow`, and from 512 on it is computed by `powSpecialCase`. -/
 def powExp (tab : Array UInt64) (x xtail : Float) (signBias : UInt64) : Float :=
   let abstop := (x.toBits >>> 52) &&& 0x7ff
   if abstop - 0x3c9 ≥ 0x408 - 0x3c9 then

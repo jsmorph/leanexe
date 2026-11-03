@@ -223,7 +223,7 @@ theorem wp_recordLoadCode {m : Module} {host : HostEnv Unit} {store : Store Unit
 /-- `code` runs, at the store `store` and the locals `s`, as the branch of a test followed by
 `rest` under `Q`: for every continuation `rest'` and assertion `Q'` that accept what `rest` and
 `Q` accept after a fall-through with the stack of `s`, and that accept the traps that `Q`
-accepts, `code ++ rest'` meets `Q'`.  A chain of tests nests the branch in blocks, and this form
+accepts, `code ++ rest'` satisfies `Q'`.  A chain of tests nests the branch in blocks, and this form
 holds at every depth. -/
 def RunsBranchX (strict : Bool) (m : Module) (host : HostEnv Unit) (code rest : Program) (Q : Assertion Unit)
     (store : Store Unit) (s : Locals) : Prop :=

@@ -2,7 +2,7 @@ import Library.Random.Sampling.Reservoir
 import Verified.Reflect.Command
 
 /-! The verified compiler's module of Algorithms P, S, and R.  `shuffle` borrows the word array and
-consumes the array it shuffles, which the caller hands over as `Moved (Array UInt64)`: every
+consumes the array it shuffles, which the caller moves as `Moved (Array UInt64)`: every
 exchange is the array's last use, so the module shuffles the array in its own block.  `sample` and
 `reservoir` borrow both arrays and build one array of `min n N` words.  The generated `trapFree`
 theorems state that functions 4, 5, and 6 compute `shuffle`, `sample`, and `reservoir`, and

@@ -1,7 +1,7 @@
 import Demos.Slew.Hypot
 
-/-! The decisions of the edge check.  A comparison of floats that holds puts neither operand at
-NaN and orders their values (`le_val_of_le`), and Lean's `max a b`, `if a ≤ b then b else a`,
+/-! The decisions of the edge check.  A comparison of floats that holds implies that neither operand
+is NaN and orders their values (`le_val_of_le`), and Lean's `max a b`, `if a ≤ b then b else a`,
 returns `a` when `b` is a NaN, so an accepted keep-out check bounds `f₀` whatever the other values
 are.  A NaN operand gives a NaN result in every operation of the check (`IsNaN`), which makes a
 keep-in check fail when the axis is a NaN.  `keepout_arc` and `keepin_arc` turn the decisions into

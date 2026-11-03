@@ -383,8 +383,9 @@ theorem wpX_treeCopyBufferInv {strict : Bool} {m : Module} (hm : Runtime m)
               omega⟩) hLocals8)
   simpa only [List.append_assoc, List.cons_append, List.nil_append] using hRun
 
-/-- The copy of a buffer's root slot: the buffer goes to a new object, or stays at root 0 when it
-is empty, and its root goes into the slot of the record being copied, whose index advances. -/
+/-- The copy of a buffer's root slot: the buffer is copied to a new object, or stays at root 0 when
+it is empty, and its root is written to the slot of the record being copied, whose index
+advances. -/
 theorem wp_treeCopyBufferInv {m : Module} (hm : Runtime m) {host : HostEnv Unit}
     {heap0 heap : Heap} {initial store : Store Unit} {shape : TreeShape}
     {root : List LeanExe.Pipeline.Slot} {result : UInt64} {limit base : Nat}

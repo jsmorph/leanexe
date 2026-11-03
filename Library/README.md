@@ -30,7 +30,7 @@ The library groups reusable implementations and their proofs by algorithm family
 | [Regular expressions](Regex/README.md) | V S F C | Matcher for regular expressions over bytes given at run time, by the position automaton, with Glushkov's theorem and a specification on Mathlib's languages. |
 | [String matching](Strings/Kmp/README.md) | V S F C | Every occurrence of a pattern in a text of bytes, by the algorithm of Knuth, Morris, and Pratt. |
 
-The Forms column gives the union of the codes that [the algorithm index](../index.md) gives an area's entries outside parentheses, which are the forms of the library's own modules.  The index's key defines the codes, and its rows also name the forms that other programs contribute.  The index also states the mathematical results and domains of the families.  A dash marks an area of definitions that the libraries use and that no module compiles on its own.
+The Forms column gives the union of the codes that [the algorithm index](../index.md) gives an area's entries outside parentheses, which are the forms of the library's own modules.  The index's key defines the codes, and its rows also name the forms that other programs provide.  The index also states the mathematical results and domains of the families.  A dash marks an area of definitions that the libraries use and that no module compiles on its own.
 
 ## Modules and imports
 
@@ -53,4 +53,4 @@ tools/leanrun --timeout 30m lake build Library.Native
 tools/leanrun --timeout 30m lake build Library.Sorting.Insertion.Compiled
 ```
 
-The static checks cover import boundaries, registry paths, and local documentation links.  `Library.Native` builds the native definitions.  [The full check](../docs/verified-manual.md#the-full-check) gives the complete library build and its resource settings.  The [cold-cache procedure](../docs/verified-manual.md#memory-heavy-numerical-proofs) stages the memory-heavy proofs before the parallel aggregate.  `tests/verified/run.sh` reads the module registries, emits and validates the modules, compares their cases with native Lean, checks the file theorems, and runs the accuracy checks.  The full check also runs the GPU tests.
+The static checks cover import rules, registry paths, and local documentation links.  `Library.Native` builds the native definitions.  [The full check](../docs/verified-manual.md#the-full-check) gives the complete library build and its resource settings.  The [cold-cache procedure](../docs/verified-manual.md#memory-heavy-numerical-proofs) builds the memory-heavy proofs one at a time before the parallel build of the aggregate.  `tests/verified/run.sh` reads the module registries, emits and validates the modules, compares their cases with native Lean, checks the file theorems, and runs the accuracy checks.  The full check also runs the GPU tests.

@@ -10,7 +10,7 @@ result lies within one representable step of the nearest-even rounding of the re
 near 1.  The exceptional inputs give the results of IEEE 754: `log2 (±0) = -∞`, `log2 (+∞) = +∞`,
 `log2 1 = +0`, and the canonical NaN for a negative argument, negative infinity included, and for
 a NaN.  `log2 (2 ^ k)` is exactly `k` for every power of two other than 1, subnormal ones included.
-`log2_bytes_accuracy` carries the bound to the decoded bytes of the compiled module and to every
+`log2_bytes_accuracy` transfers the bound to the decoded bytes of the compiled module and to every
 call in a sequence of calls to its export `log2`.
 -/
 

@@ -5,7 +5,7 @@ import Demos.StreamFold.Observed
 import Demos.StreamFold.Sizes
 
 /-! A limit on the lines of an input of the binary64 running sum, and the kernel specification
-that carries it through a run. -/
+that keeps it through a run. -/
 
 namespace Demos.RunningSumFp
 

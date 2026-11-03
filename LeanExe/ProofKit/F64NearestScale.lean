@@ -24,7 +24,7 @@ theorem mul_comm_finite (a b : UInt64) (ha : Finite a) (hb : Finite b) :
     cases Wasm.IEEE64.sign a <;> cases Wasm.IEEE64.sign b <;> rfl
   rw [mul_finite_rounder a b ha hb, mul_finite_rounder b a hb ha, Nat.mul_comm, hs]
 
-/-- Word arithmetic in clean contexts, where `omega` stays within its recursion limit. -/
+/-- Word arithmetic in small contexts, where `omega` stays within its recursion limit. -/
 theorem exponent_pos_of (c : UInt64) (h : 2 ^ 52 ≤ c.toNat) (h' : c.toNat < 2 ^ 63) :
     1 ≤ Wasm.IEEE64.exponent c := by
   unfold Wasm.IEEE64.exponent

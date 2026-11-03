@@ -64,7 +64,7 @@ CompCert.  The cases state that no call allocates a block other than the host's 
 
 ## Related examples
 
-[`Shape`](../Shape/README.md) has a sum type, whose constructors carry different fields.
+[`Shape`](../Shape/README.md) has a sum type, whose constructors have different fields.
 [`Bools`](../Bools/README.md) has `Bool`, the built-in two-constructor enumeration, and a small
 structure.  [`Grids`](../Grids/README.md) stores records in arrays, and the Euler and drone programs
 use structures such as the solver's `Cell` and the planner's `Choice`.  [The pattern

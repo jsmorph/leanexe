@@ -2,7 +2,7 @@
 
 ## Request and specification
 
-[The request](request.txt) asks for straight two-way merge sort of an array of words: passes that merge adjacent sorted runs of length 1, 2, 4, and so on, each pass writing into a new array of the same length.  [The specification](Spec.lean) states the result as `expected xs`, the array's elements in the order of Lean's `List.mergeSort` with the unsigned comparison of words, as [heapsort's specification](../Heapsort/Spec.lean) does.  Exactly one list holds the same words with the same repetitions in nondecreasing order, so the specification names the result and leaves the method to the program, and only the program text shows the bottom-up merges and the new array of each pass.  The theorems concern arrays of fewer than `2^64` elements, which every array in memory is.  [The review](review.md) records the specification's two independent reviews and the classes of input that the cases leave out.
+[The request](request.txt) asks for straight two-way merge sort of an array of words: passes that merge adjacent sorted runs of length 1, 2, 4, and so on, each pass writing into a new array of the same length.  [The specification](Spec.lean) states the result as `expected xs`, the array's elements in the order of Lean's `List.mergeSort` with the unsigned comparison of words, as [heapsort's specification](../Heapsort/Spec.lean) does.  Exactly one list holds the same words with the same repetitions in nondecreasing order, so the specification names the result and not the method, and only the program text shows the bottom-up merges and the new array of each pass.  The theorems concern arrays of fewer than `2^64` elements, which every array in memory is.  [The review](review.md) records the specification's two independent reviews and the classes of input that the cases leave out.
 
 ## The program
 
@@ -14,7 +14,7 @@ Knuth's Algorithm S takes its runs from the two ends of one area of `N` records 
 
 ## The module sorts by merging
 
-`verified_compile compiled := [runEnd, merge, pass, sortLoop, mergeSort]` in [the verified compilation](Compiled.lean) compiles the program into a module whose export `mergeSort` is function 6.  The compiler generates `compiled.mergeSort.implements`, which states that the module computes `mergeSort`.  The caller hands the array over as `Moved (Array UInt64)`, and each pass releases the array it read.
+`verified_compile compiled := [runEnd, merge, pass, sortLoop, mergeSort]` in [the verified compilation](Compiled.lean) compiles the program into a module whose export `mergeSort` is function 6.  The compiler generates `compiled.mergeSort.implements`, which states that the module computes `mergeSort`.  The caller moves the array to `mergeSort` as `Moved (Array UInt64)`, and each pass releases the array it read.
 
 | Theorem | File | Statement |
 |---|---|---|
@@ -24,11 +24,11 @@ Knuth's Algorithm S takes its runs from the two ends of one area of `N` records 
 | `sortLoop_toList`, `sortList_spec` | [The proof](Proof.lean) | The array passes compute `sortList`, which returns a sorted permutation of its list. |
 | `mergeSort_eq` | [The proof](Proof.lean) | `mergeSort xs = expected xs` for every array with fewer than `2^64` elements. |
 | `mergeSort_export` | [The compilation](Compiled.lean) | Export `mergeSort` of `compiled.module` is function 6. |
-| `mergeSort_implements` | [The compilation](Compiled.lean) | Function 6, called with an array that the caller hands over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.mergeSort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
+| `mergeSort_implements` | [The compilation](Compiled.lean) | Function 6, called with an array that the caller moves to it, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for `compiled.mergeSort.bound`, returns without a trap the owned array `expected xs` and raises `top` by at most the bound. |
 | `mergeSort_bound` | [The compilation](Compiled.lean) | `compiled.mergeSort.bound xs` equals `compiled.sortLoop.bound (1, n, xs)`, the bound of the passes. |
 | `mergeSort_file`, `mergeSort_file_decode` | [The file theorems](File.lean) | `build/verified/mergeSort.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |
 
-The proof states each pass on lists with `passList w l`, which merges each pair of adjacent runs of width `w` with `List.merge`, and moves from the array to its list with `Array.toList`.  `List.merge_perm_append` and `List.pairwise_merge` of Lean's library give the permutation and the sortedness of each merge.  Every list satisfies `RunsSorted 1`, each pass doubles the width, and the last pass leaves one run that covers the list.  A sorted permutation is unique, which `eq_mergeSort_of_sorted_perm` of [the sorted lists](../Sorted.lean) states, so the result equals `expected`.  The axiom report of `mergeSort_implements` names only `propext`, `Classical.choice`, and `Quot.sound`.
+The proof states each pass on lists with `passList w l`, which merges each pair of adjacent runs of width `w` with `List.merge`, and relates the array to its list with `Array.toList`.  `List.merge_perm_append` and `List.pairwise_merge` of Lean's library give the permutation and the sortedness of each merge.  Every list satisfies `RunsSorted 1`, each pass doubles the width, and the last pass leaves one run that covers the list.  A sorted permutation is unique, which `eq_mergeSort_of_sorted_perm` of [the sorted lists](../Sorted.lean) states, so the result equals `expected`.  The axiom report of `mergeSort_implements` names only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Building, running, and testing
 

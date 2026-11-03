@@ -268,8 +268,8 @@ theorem wpX_copyInto {strict : Bool} {m : Module} {host : HostEnv Unit} {store :
     · simp only [Locals.get_setLocal_same hLowI' hHighI, hSucc, hSucc64, hi64]
       omega
 
-/-- The copy loop: the elements of the array `xs`, readable at `psrc`, go to elements `k` on of
-the array `words` at `pdst`, whose address plus `8 * k` local `dst` holds.  The loop writes only
+/-- The copy loop: the elements of the array `xs`, readable at `psrc`, are copied to elements `k` on
+of the array `words` at `pdst`, whose address plus `8 * k` local `dst` holds.  The loop writes only
 inside the region of `words`, which lies apart from that of `xs`, and changes no local but
 `index`. -/
 theorem wp_copyInto {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}

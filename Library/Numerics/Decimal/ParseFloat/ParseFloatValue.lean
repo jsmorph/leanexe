@@ -10,7 +10,7 @@ positive exactly when a dropped digit is nonzero, and `D` of `kept` digits with 
 digit.  `dec_value` proves that `decRound` on the scanner's outputs is the reference of
 `decValue L · 10 ^ (e - nf)`: with no dropped nonzero digit the two values are equal, otherwise
 `kept` is the format's count and the truncation theorem applies, and an exponent beyond `10 ^ 11`
-in magnitude puts both values beyond the overflow threshold or below half the least subnormal.
+in magnitude makes both values lie beyond the overflow threshold or below half the least subnormal.
 `hex_value` proves the same for `roundUnits` and `hexValue L · 2 ^ (e - 4 nf)`.
 -/
 

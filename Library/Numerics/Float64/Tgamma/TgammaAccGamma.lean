@@ -4,8 +4,8 @@ import Mathlib.Analysis.SpecialFunctions.Gamma.BohrMollerup
 /-!
 The size of `Γ` on the ranges of the accurate path.  On each row `[j, j + 1]` of
 `TgammaApprox.accRanges`, `(j - 1)! ≥ 2 ^ eoff / 16` (`fact_ok`, a kernel check), and `Γ` increases
-from 2 on, so `Γ y ≥ 2 ^ eoff / 16` there (`gamma_range_lo`).  `AccRangeFact` then puts the
-polynomial `accPoly` at least `1/17` (`accPoly_lo`).
+from 2 on, so `Γ y ≥ 2 ^ eoff / 16` there (`gamma_range_lo`).  `AccRangeFact` then implies that the
+polynomial `accPoly` is at least `1/17` (`accPoly_lo`).
 -/
 
 namespace Library.Numerics.Float64.Tgamma.TgammaAccGamma

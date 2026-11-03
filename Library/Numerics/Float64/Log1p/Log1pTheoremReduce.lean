@@ -4,7 +4,7 @@ import LeanExe.ProofKit.F64ExactProduct
 /-!
 The normalization in `Log1pTheoremBranches.mainTail`.  For a positive normal `u` with exponent
 field `e` and fraction `F`, the words `(hu ||| 0x3ff00000) <<< 32 ||| low` and
-`(hu ||| 0x3fe00000) <<< 32 ||| low` carry `F` with exponent fields `0x3ff` and `0x3fe`, so
+`(hu ||| 0x3fe00000) <<< 32 ||| low` hold `F` with exponent fields `0x3ff` and `0x3fe`, so
 `1 + f` is `u / 2 ^ (e - 1023)` or `u / 2 ^ (e - 1022)` and `f` is exact by Sterbenz's lemma.  `kd`
 is the integer `K` exactly, and so is `kd ln2Hi`, whose significand has 32 bits.  The branch on
 `hu < 0x6a09e` keeps `f` in `[-0.29290, 0.41422]`, and the `hu` passed on is 0 exactly when

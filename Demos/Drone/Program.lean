@@ -13,7 +13,7 @@ segment keeps the speed, acceleration, and clearance limits, and it costs its du
 
 The words are `UInt64` throughout, and the loops are counted.  The square root takes 17 halvings.  A
 row is a build over the 45 targets, each a loop over the 45 sources that replaces its incumbent only
-on strict improvement, so ties go to the lowest source.  The forward pass carries one table of all
+on strict improvement, so a tie selects the lowest source.  The forward pass builds one table of all
 rows, and the output follows the parents back from the last station.  Invalid input runs the same
 code with no stations, which returns `#[]`.
 -/

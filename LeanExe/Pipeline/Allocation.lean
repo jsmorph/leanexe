@@ -748,7 +748,7 @@ theorem capacityAt_frame {store store' : Store Unit} {ptr : UInt64} (hBase : 48 
     rw [headerAddress_toNat (by rw [h32]; omega) hFit, h32]
     exact hBytes _ (by omega) (by omega)
 
-/-- An owned object survives an allocation followed by writes inside the new
+/-- An owned object is preserved by an allocation followed by writes inside the new
 block, with its capacity word unchanged. -/
 theorem Heap.Owned.allocate_within {heap : Heap} {initial store : Store Unit}
     {need p : UInt64} {ws : Array UInt64} (h : heap.Owned initial p ws) (hHeap : heap.At initial)
@@ -784,7 +784,7 @@ theorem Heap.Owned.allocate_within {heap : Heap} {initial store : Store Unit}
   exact ⟨hAllocated.writesWithin (by rw [hSameCapacity]; exact hDisjoint) (by omega) hWithin,
     hCapacity⟩
 
-/-- A borrowed array survives an allocation followed by writes inside the new
+/-- A borrowed array is preserved by an allocation followed by writes inside the new
 block. -/
 theorem Heap.Borrowed.allocate_within {heap : Heap} {initial store : Store Unit}
     {need p : UInt64} {ws : Array UInt64} (h : heap.Borrowed initial p ws) (hHeap : heap.At initial)

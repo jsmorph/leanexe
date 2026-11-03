@@ -8,7 +8,7 @@ programs of `nanPrograms` as `DIR/nanI.c` and `DIR/nanI.expected`, and `COUNT` t
 as `DIR/vI.c`, with the lines of `expectedTrace` as `DIR/vI.expected`, and `COUNT` input
 programs as `DIR/wI.c` and `DIR/wI.expected`.  It prints the number of
 programs of each kind whose output differs between the two targets, which measures how often the
-NaN parameters come into play.  `tests/native/clight.sh` runs CompCert's reference interpreter
+NaN parameters affect the output.  `tests/native/clight.sh` runs CompCert's reference interpreter
 on the C files and compares.
 -/
 

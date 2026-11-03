@@ -164,7 +164,7 @@ theorem scaled_bound (a b : UInt64) (hs : |value a + value b| < (2 : ℝ) ^ 1023
     exact h
   exact_mod_cast h'
 
-/-- The magnitude comparison behind both signs of `add_nearest`. -/
+/-- The magnitude comparison that both signs of `add_nearest` use. -/
 theorem nearest_of_magnitude (w : UInt64) (S : ℝ) (n : Nat)
     (hw : w.toNat < F64NearestNonnegative.limit)
     (hwm : Wasm.IEEE64.scaledMagnitude w = roundedMagnitude n)

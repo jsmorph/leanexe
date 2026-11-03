@@ -6,8 +6,7 @@ target of each row.  Row `i` takes `planN` terms of the series of `erf` at 0, cu
 after degree `planJ`, checks the difference with `ε = 2 ^ -planE` and at most `planD` bisections,
 and must stay within `target i` of `erf x`: `(7/8) u erfcLo` at the row's top, or at
 `0x1.713786d9c7c09p+1`, for the rows 1 to 46 that positive arguments reach, and `(7/8) u` for the
-rows 47 to 94, which only negative arguments reach.  `cert/cgen.py` in the track's scratch
-directory chose the parameters, and `cert/cemit.py` wrote this file and the row modules.
+rows 47 to 94, which only negative arguments reach.
 -/
 
 namespace Library.Numerics.Float64.Erfc.ErfcFastPlan

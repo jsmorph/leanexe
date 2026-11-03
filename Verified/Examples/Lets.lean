@@ -1,7 +1,7 @@
 import Verified.Reflect.Command
 
-/-! The third program of the verified compiler: `let` bindings, including one inside the operand
-of a division, whose locals sit above the division's scratch locals. -/
+/-! A program of the verified compiler: `let` bindings, including one inside the operand
+of a division, whose locals have indices above the division's scratch locals. -/
 
 namespace Verified.Examples.Lets
 

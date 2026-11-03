@@ -230,7 +230,7 @@ theorem log_split (E : Int) (e : Nat) (he : 1 ≤ e) (f : Nat) :
   have hpos : (0 : ℝ) < (2 : ℝ) ^ 52 + f := by positivity
   rw [hX, hZ, Real.log_mul (by positivity) (by positivity), Real.log_zpow]
 
-/-- The real arithmetic behind the main path: the target of `finalWord` against
+/-- The real arithmetic of the main path: the target of `finalWord` against
 `k log 2 + log Z`, from the errors of `r`, `logc`, and `invc`. -/
 theorem target_close (k : Int) (hk : |k| ≤ 1075) (Z c invc R LC : ℝ) (hZ : 0 < Z) (hc : 0 < c)
     (hcinv : |c * invc - 1| ≤ 1 / 2 ^ 100) (hre : |(Z - c) * invc| ≤ 39 / 10000)

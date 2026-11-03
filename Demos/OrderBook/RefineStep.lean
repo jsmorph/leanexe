@@ -3,7 +3,7 @@ import Demos.OrderBook.RefineMatch
 /-! The refinement of one step of [the specification](Spec.lean) by [the program](Program.lean),
 and the program's top of the book and empty book.  `step_eq` follows the branches of
 `Program.step` and `Spec.step` on the record at the offset: a rejection leaves the book and gives
-one `rejected` event, a limit or market order goes to `submit_refines`, and a cancel or reduce
+one `rejected` event, a limit or market order is handled by `submit_refines`, and a cancel or reduce
 finds the order's slot with `findSlot` and changes that slot alone. -/
 
 namespace Demos.OrderBook.Refinement

@@ -18,7 +18,7 @@ lemmas follow the `Float` operations through `F64Bits`.
 
 `within_one_of_error` turns a total error into one representable step: when `y` and the result lie
 at or above the start `B` of binade `n`, an error below one and a half spacings of that binade,
-`3 B / 2 ^ 53`, puts the result within one step of the nearest-even reference of `y`.
+`3 B / 2 ^ 53`, implies that the result lies within one step of the nearest-even reference of `y`.
 -/
 
 namespace LeanExe.ProofKit.F64Approx
@@ -332,7 +332,7 @@ theorem within_one_of_error (y : ℝ) (c : UInt64) (n : ℕ) (hn : n < 2047) (E 
 
 
 /-- `w` approximates `v` at the positive scale `s ≤ 1`: `|v| ≤ M s` and the error is at most
-`e s`.  The numbers `M` and `e` stay numerals while the scale carries the size of the input. -/
+`e s`.  The numbers `M` and `e` stay numerals while the scale represents the size of the input. -/
 def SApprox (w : UInt64) (v s M e : ℝ) : Prop :=
   0 < s ∧ s ≤ 1 ∧ |v| ≤ M * s ∧ Approx w v (e * s)
 

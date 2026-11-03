@@ -2,7 +2,7 @@ import Library.Sorting.Insertion.Program
 import Library.Arrays.Filter.Program
 import Verified.Examples.Records
 
-/-! The twenty-fifth program of the verified compiler: `LeanExe.insertAt` and `LeanExe.eraseAt`.
+/-! A program of the verified compiler: `LeanExe.insertAt` and `LeanExe.eraseAt`.
 An insertion takes the array with room for one more element, as `push` does, and moves the
 elements from the position on up by one element, and a removal moves the elements after the
 position down by one element and shortens the array.  An owned array that dies at the operation

@@ -1,11 +1,11 @@
 import Verified.AlignedCopy
 
 /-!
-The original theorems whose flagged twins take `CopyCodeX` or `ReadReleaseX` and lie upstream of
-`Verified/AlignedCopy.lean`, which proves both premises for every runtime.  Each is the
-`strict = false` instance of its twin, with the premises from `copyCodeX` and `readReleaseX`, and
-keeps its name and statement.  `spec_loop_with` keeps its own proof, which uses the corollaries
-of this module.
+The unflagged theorems whose flagged counterparts take `CopyCodeX` or `ReadReleaseX` and are in
+modules that `Verified/AlignedCopy.lean` imports, which proves both premises for every runtime.
+Each is the `strict = false` instance of its flagged counterpart, with the premises from `copyCodeX`
+and `readReleaseX`, and keeps its name and statement.  `spec_loop_with` keeps its own proof, which
+uses the corollaries of this module.
 -/
 
 namespace Verified
@@ -77,7 +77,7 @@ theorem spec_bytesGet (hm : Runtime m) {Γ' : List Ty} (x : Var Γ' .bytes)
 /-- A value turned from mode `source` into mode `target` after an expression's code: a borrowed
 value that must be owned is copied into new blocks, which raises `top` by at most
 `coerceCost t source target v`, a value already owned keeps its store and words, and the facts of
-`After` carry over. -/
+`After` still hold. -/
 theorem After.coerce (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     {liveIn live : Nat → Bool} {h base base' : Nat} {heap : Heap} {store : Store Unit}
     {s : Locals} {t : Ty} {source target : Mode} {v : t.denote} {heap1 : Heap}

@@ -5,7 +5,7 @@ import Verified.Call
 The accuracy theorem for `Tan.tan`.  For every finite binary64 input, the result lies within one
 representable step of the nearest-even rounding of the real `tan x`.  The exceptional inputs give
 the results of IEEE 754: `tan (±0) = ±0`, and the canonical NaN for an infinity or a NaN.
-`tan_bytes_accuracy` carries the bound to the decoded bytes of the compiled module and to every
+`tan_bytes_accuracy` transfers the bound to the decoded bytes of the compiled module and to every
 call in a sequence of calls to its export `tan`, which reads the tables of `2/π` and `π/2` at
 addresses 4096 and 4264.
 -/

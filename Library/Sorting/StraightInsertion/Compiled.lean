@@ -4,7 +4,7 @@ import Verified.Congr
 
 /-! The verified compiler's module of straight insertion.  The compiler translates the tail
 recursion of `shift` into a loop, and `straightInsertion` consumes its array, which the caller
-hands over as `Moved (Array UInt64)`: every update is the array's last use, so the module sorts the
+moves as `Moved (Array UInt64)`: every update is the array's last use, so the module sorts the
 array in its own block.  `straightInsertion_implements` composes the generated
 `compiled.straightInsertion.trapFree` with `straightInsertion_eq`. -/
 
@@ -18,7 +18,7 @@ theorem straightInsertion_export :
     ({ name := "straightInsertion", funcIdx := 3 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 3, the export `straightInsertion`, called with an array that the caller hands over,
+/-- Function 3, the export `straightInsertion`, called with an array that the caller moves,
 from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for
 `compiled.straightInsertion.bound`, returns without a trap the owned array `expected xs`, the
 elements in nondecreasing order, and raises `top` by at most the bound. -/

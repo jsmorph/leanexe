@@ -4,7 +4,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The thirty-ninth program of the verified compiler: `log2`, ported from Arm's optimized-routines,
+/-! A program of the verified compiler: `log2`, ported from Arm's optimized-routines,
 `math/log2.c` and `math/log2_data.c` at commit `503fafe311c177de0e571c458c7c337b1ca5f522`
 (Copyright (c) 2018-2025, Arm Limited, SPDX-License-Identifier: MIT OR Apache-2.0 WITH
 LLVM-exception).  The configuration is the one for a target without fused multiply-add:

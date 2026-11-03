@@ -37,8 +37,8 @@ theorem select_ends (fh fl eps sign acc : Float) (L : ℝ) (h : EndSpec L (fh, f
   obtain ⟨W, hW, hub, hlb, hin⟩ := h
   exact LgammaEndCell.select_end fh fl eps sign acc W L hW hub hlb hin
 
-/-- The conditions, checked by the kernel, that put the interval of radius `M` around every number
-from `lo` to `hi` in the rounding cell of the finite word `W`. -/
+/-- The conditions, checked by the kernel, under which the interval of radius `M` around every
+number from `lo` to `hi` lies in the rounding cell of the finite word `W`. -/
 def CellOK (W : UInt64) (lo hi M : ℚ) : Prop :=
   Wasm.IEEE64.isFinite W = true ∧ 1 ≤ W.toNat % 2 ^ 63 ∧ W.toNat % 2 ^ 63 + 1 < 2 ^ 63 ∧
     M ≤ 1 / 2 ^ 54 ∧

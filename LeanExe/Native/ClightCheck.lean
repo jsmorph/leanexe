@@ -16,7 +16,7 @@ the translation declares it.  A temporary is read back through `tempName`, and t
 of calls are compared up to renaming: both programs number them in order of first occurrence in
 the body.  When the check passes, the program of the file is the whole program `wholeProgram pre
 [] t` with its identifiers renamed injectively, by name for globals and per function for
-temporaries, where `pre` holds the external declarations and meets the hypotheses of
+temporaries, where `pre` holds the external declarations and satisfies the hypotheses of
 `wholeOk_of`.  The reader is not verified, and a file it cannot read fails the check.
 -/
 

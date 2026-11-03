@@ -218,7 +218,7 @@ def reconstructedStep (trials : UInt64) (ratio : Float)
 
 /-! Sweeps. -/
 
-/-- The state as seen along an axis: a y sweep exchanges the momenta. -/
+/-- The state oriented to an axis: a y sweep exchanges the momenta. -/
 abbrev oriented (axisY : Bool) (q : Conserved) : Conserved :=
   ⟨q.density, if axisY then q.my else q.mx, if axisY then q.mx else q.my, q.energy⟩
 

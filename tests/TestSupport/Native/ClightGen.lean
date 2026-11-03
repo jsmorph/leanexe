@@ -12,7 +12,7 @@ and globals with the operators and casts of `Cop.lean`, `Oabsfloat` among them, 
 `unsigned int`, `int`, `unsigned long long`, `double`, and `float`.  Some operations can be undefined, such as a shift
 by the word size or more, a division by zero, and a conversion of a float out of range; most are
 guarded so that they are defined.  `pun` starts as a NaN or an infinity half of the time, the
-only way a NaN with a chosen payload can enter a program.
+only way a NaN with a chosen payload can occur in a program.
 
 `cText` is the program in C with a `main` that calls `test` and prints the result and the
 globals' bits, and `expected` is what `LClight.run` gives for the same lines, or `UB`.
@@ -168,8 +168,8 @@ def finiteFloat : Gen Nat := do
       pure (if b / 2 ^ 23 % 2 ^ 8 == 0xFF then b - 2 ^ 23 else b)
 
 /-- The initial bits of `pun`: a NaN or an infinity half of the time, with either sign and,
-for a NaN, a quiet or signaling payload, so that the NaN rules of the two targets come into
-play; otherwise uniform. -/
+for a NaN, a quiet or signaling payload, so that the NaN rules of the two targets apply;
+otherwise uniform. -/
 def punBits : Gen Nat := do
   if (← rand 2) == 0 then
     let sign := (← rand 2) * 2 ^ 63

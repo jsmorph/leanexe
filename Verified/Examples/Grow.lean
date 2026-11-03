@@ -2,7 +2,7 @@ import Library.Arrays.Repeat.Program
 import Library.Arrays.Range.Program
 import Verified.Reflect.Command
 
-/-! The eleventh program of the verified compiler: arrays that grow with `xs.push v` and
+/-! A program of the verified compiler: arrays that grow with `xs.push v` and
 `xs ++ ys`.  An owned array that dies at the operation grows in its own block while the block has
 room, and otherwise moves to a block of twice its capacity, so that a loop of pushes copies its
 elements a number of times logarithmic in the final length.  Any other array is copied once into a

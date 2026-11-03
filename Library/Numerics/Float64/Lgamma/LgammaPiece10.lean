@@ -9,7 +9,7 @@ import Library.Numerics.Float64.Lgamma.LgammaPiece10H
 
 /-!
 Piece 10 of `cr_lgamma`'s piecewise polynomial (`lgamma.c` lines 759-870, commit `ff2f71f6`), which
-contains the zero 2 of `lgamma` and carries the factor `x - 2`: on the piece widened by `2 ^ -50`
+contains the zero 2 of `lgamma` and has the factor `x - 2`: on the piece widened by `2 ^ -50`
 at each end, `|lgamma x - (x - 2) pieceP 10 (x - off 10)| ≤ 12 · 10 ^ -20 |lgamma x|` (`piece10`).
 With `s = x - 2`, `lgamma x = s g s` for the divided difference `g`, and `Q = q10` of
 `LgammaPiece10Base` has `(x - 2) pieceP 10 (x - off 10) = s Q s`.  Kernel checks of Taylor models

@@ -204,7 +204,7 @@ simproc ↓ envGetOfIndex (Env.get _ (Var.ofIndex _ _ _)) := fun e => do
   let some v ← envValueAt env n | return .continue
   return .done { expr := v }
 
-/-- Proves that a condition of an effect body finds its frames: it calls no function that takes
+/-- Proves that a condition of an effect body has enough frames: it calls no function that takes
 the call depth. -/
 local macro "condition_fits" : tactic =>
   `(tactic| exact Expr.fits_of_depthCalls _ _ _ (by decide) _)
@@ -384,7 +384,7 @@ theorem step_body_bounded {World : Type} (host : Host World) {R : Nat} {s : Stat
           .here (0 + 1) (.cons (sourceState s) .nil) (readCharge R s)
         exact callBounded_here (by decide) (readStep_bounded host _ runLe carrySmall)
 
-/-- The step from `s` spends at most `stepBudget R s` and finds its frames. -/
+/-- The step from `s` uses at most `stepBudget R s` and has enough frames. -/
 theorem step_bounded {World : Type} (host : Host World) {R : Nat} {s : State}
     (runLe : ∀ ws : Array UInt64, ws.size ≤ 518 →
       io.pureSources.run.bound (⟨s.oid⟩, ⟨s.acct⟩, ⟨s.qty⟩, ⟨s.lvl⟩, ⟨s.nxt⟩, ⟨s.head⟩, ⟨s.tail⟩,
@@ -447,7 +447,7 @@ theorem stepBudget_le {R : Nat} {s : State} (sized : Sized s) : stepBudget R s �
         sized.tail]
       omega
 
-/-- From a state with the sizes of `Sized`, when `RunBound R` holds, the step spends at most
+/-- From a state with the sizes of `Sized`, when `RunBound R` holds, the step uses at most
 `stepCharge R`. -/
 theorem step_prefix_bound {World : Type} (host : Host World) {R : Nat} (runBound : RunBound R)
     {s : State} (sized : Sized s) (world : World) :

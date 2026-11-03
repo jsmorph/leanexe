@@ -6,9 +6,9 @@ import LeanExe.ProofKit.F64NearestDiv
 `Sinh.cosh` within one step of `cosh x` for `0.34657359 ≤ abs(x) < 22`, where the code returns
 `0.5 t + 0.5 / t` with `t = exp abs(x)`.  Write `E = exp abs(x)`, `T` for the value of `t`, and
 `B` for the rounded quotient.  The exact sum `V = T/2 + B` satisfies
-`V - cosh x = (T - E)/2 (1 - 1/(T E)) + (B - 1/(2 T))`, so the error of `T` enters with a factor
-below 1/2.  `Library.Numerics.Float64.Exp.ExpTightFloat.exp_near` puts `T` within a spacing `d` of the binade of `cosh x`, plus
-`u/16 E` (`mid_band`), and the band `-3d/4 < V - cosh x < d` of
+`V - cosh x = (T - E)/2 (1 - 1/(T E)) + (B - 1/(2 T))`, so the error of `T` is multiplied by a
+factor below 1/2.  `Library.Numerics.Float64.Exp.ExpTightFloat.exp_near` puts `T` within a spacing
+`d` of the binade of `cosh x`, plus `u/16 E` (`mid_band`), and the band `-3d/4 < V - cosh x < d` of
 `F64NearestBand.within_of_band` follows: for `cosh x < 2` the error is at most `1.48 u` against
 `1.5 u`, and above 2 the quotient is small against the spacing.
 -/

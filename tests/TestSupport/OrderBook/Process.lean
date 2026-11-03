@@ -4,12 +4,12 @@ import TestSupport.OrderBook.Edges
 /-! The scripted-host tests of [the order book's process](../../../Demos/OrderBook/Process.lean).
 Each case runs `Process.runFrom` with a host that returns reads of a fixed number of bytes,
 commits writes of at most a fixed number of bytes, makes every third write commit nothing when
-asked, and returns errno 29 at a chosen read or write.  The expected output and status are
-`expectedOutput` and `expectedStatus` of [the codec](../../../Demos/OrderBook/ProcessCodec.lean),
-computed with `Spec.run`, and the cases cover the samples, the single records, the edge streams,
-the ends of input with and without whole words, a command whose events take 229,488 bytes, and
-errnos of reads and writes.  The program prints one summary line and exits with status 1 on the
-first failure. -/
+`zeroWrites` is set, and returns errno 29 at a chosen read or write.  The expected output and status
+are `expectedOutput` and `expectedStatus` of
+[the codec](../../../Demos/OrderBook/ProcessCodec.lean), computed with `Spec.run`, and the cases
+cover the samples, the single records, the edge streams, the ends of input with and without whole
+words, a command whose events take 229,488 bytes, and errnos of reads and writes.  The program
+prints one summary line and exits with status 1 on the first failure. -/
 
 namespace TestSupport.OrderBook.Process
 

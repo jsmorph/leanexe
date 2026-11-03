@@ -4,10 +4,10 @@ import LeanExe.Common
 /-!
 # Release trees
 
-A model of the object graphs the runtime release function tears down: a
+A model of the object graphs the runtime release function frees: a
 tree of slots-kind heap objects at refcount one, whose masked slots hold
 null, an owned subtree, or a shared object that the walk only decrements.
-`TreeAt` ties a tree to a memory; `releaseEvents` lists the walk's writes
+`TreeAt` relates a tree to a memory; `releaseEvents` lists the walk's writes
 in traversal order; `applyEvents` folds them over a memory and the
 free-list head.  The generic release theorem consumes these.
 -/
@@ -463,7 +463,7 @@ theorem regionsDisjoint_symm {a b : Nat × Nat}
   unfold regionsDisjoint at h ⊢
   omega
 
-/-- Every event's header region sits inside a footprint region of its tree. -/
+/-- Every event's header region is inside a footprint region of its tree. -/
 private theorem events_sub_fuel (n : Nat) :
     (∀ t : RelTree, sizeOf t ≤ n →
       ∀ e ∈ t.events, ∃ r ∈ t.footprint, regionSub (eventRegion e) r) ∧

@@ -4,7 +4,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The thirty-third program of the verified compiler: `atan` and `atan2`, ported from fdlibm as
+/-! A program of the verified compiler: `atan` and `atan2`, ported from fdlibm as
 FreeBSD's `lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379` (`s_atan.c`
 and `e_atan2.c`, Copyright (C) 1993 by Sun Microsystems, Inc., freely distributable with this
 notice).  `atan` evaluates an odd polynomial of degree 23 directly for `|x| < 7/16`, and above
@@ -14,8 +14,8 @@ the signed zeros, the infinities, and NaN by IEEE 754's rules, gives `atan y` fo
 when `|y/x|` exceeds `2 ^ 60` or so, `±π` when `x < 0` and `|y/x|` is below `2 ^ -60` or so, and
 otherwise `atan |y/x|`, placed in the quadrant of `(x, y)` with `π` in two parts.  fdlibm
 states no error bound for either function.  Each constant is written as the bit pattern that
-fdlibm's source gives beside its decimal value, and `1.0e+300` and `1.0e-300`, which serve only to
-raise the inexact flag, as the bits of those decimals.  The dialect has no floating-point flags,
+fdlibm's source gives beside its decimal value, and `1.0e+300` and `1.0e-300`, which are used only
+to raise the inexact flag, as the bits of those decimals.  The dialect has no floating-point flags,
 and the expressions that fdlibm evaluates only for their flags keep their values: the guard
 `huge + x > 1` stays, and `π + tiny` is `π` rounded.  fdlibm's index `id = -1` of the direct
 polynomial is 4 here, its four table entries are selected by comparisons, and its signed high

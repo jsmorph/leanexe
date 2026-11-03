@@ -15,13 +15,13 @@ Verified.CallSpec compiled.module compiled.tables K expected compiled.compute.bo
 
 `Verified.CallSpec` and `Verified.Call` of [the call theorem](../../../Verified/Call.lean) give
 the meaning.  Function `K`, called from a store that `Verified.Ready` states ready, with arguments
-that represent `x` and move no object, and with room for `top` to rise by `compiled.compute.bound
-x` bytes, returns without a trap the representation of `expected x`.  A store is ready when the
+that represent `x` and move no object, and with `top` at least `compiled.compute.bound
+x` bytes below the memory cap, returns without a trap the representation of `expected x`.  A store is ready when the
 allocator invariant holds, the memory cap is at most 65,535 pages, and each table of the program is
 a borrowed array at its address, and `Verified.Ready.initial` proves that the store in which the
 module starts is ready.  After the call the store is ready again, every array borrowed before the
-call stays borrowed, every region of the heap before the call keeps its bytes and lies apart from
-the result, and `top` has risen by at most the bound.
+call stays borrowed, every region of the heap before the call keeps its bytes and is disjoint from
+the result, and `top` has increased by at most the bound.
 
 [`tools/verified-request-check`](../../../tools/verified-request-check) writes the statement
 itself.  It accepts the run only if `compute_callSpec` proves the statement with no axioms beyond
@@ -31,7 +31,7 @@ the module's translation to C.  The verified compiler's generated theorems state
 computes the program, so the run proves that the program equals the specification.  The theorem
 says nothing about the request beyond what `expected` says, so the independent review of
 `expected` against the request is the only check that the theorem states what the request asks.
-The run does not ask the user to approve the specification.
+The run does not require the user's approval of the specification.
 
 ## Names, files, and types
 
@@ -53,8 +53,8 @@ capitalized, and every file of the run is in `Examples/Name/`, a new directory.
 | `README.md` | Description of the result. |
 
 `expected` has type `α → β`, where `α` is `UInt64`, `Array UInt64`, or a tuple of these, one
-component per parameter of `compute` in order, and `β` is `UInt64` or `Array UInt64`.  Other types
-are outside this version of the skill.  If the request needs one, say so and stop before stage 1.
+component per parameter of `compute` in order, and `β` is `UInt64` or `Array UInt64`.  This version
+of the skill supports no other types.  If the request needs one, say so and stop before stage 1.
 
 ## Stage 1: the specification
 
@@ -83,10 +83,10 @@ are outside this version of the skill.  If the request needs one, say so and sto
    After any change, run steps 4 and 5 again with a new agent.
 7. The first review that finds no disagreement may name input classes that no sample covers.  Add
    a sample for each class that a program could get wrong, run step 4, and have a second fresh agent
-   review the specification and samples as step 5 describes.  The classes that the second review
-   names go into `review.md` without new samples.
+   review the specification and samples as step 5 describes.  Record the classes that the second review
+   names in `review.md`, without new samples.
 8. A review that finds no disagreement ends the stage when it names no uncovered class or when it
-   is the second review of step 7, and its remaining notes go into `review.md`.  Run
+   is the second review of step 7, and `review.md` records its remaining notes.  Run
    `tools/verified-request-check --freeze NAME`, which records the hashes of `Spec.lean` and
    `Samples.lean`, and proceed without asking the user.  Never edit either file afterward.  If one
    must change, repeat steps 4 to 8.
@@ -106,7 +106,7 @@ No Lean file of the run may declare a global or scoped instance, notation, macro
 elaborator, or code that runs at import, such as `instance`, `attribute [instance]`, `notation`,
 `infixl`, `macro_rules`, or `initialize`.  The check elaborates its statement in a file that
 imports the run's modules, where such a declaration could change what the statement means.  The
-check and `--run` refuse each one with its file and line, and they accept the same form after
+check and `--run` reject each one with its file and line, and they accept the same form after
 `local`, which keeps it in its file.
 
 `Compiled.lean` starts with the compilation alone, listing the program's definitions and the
@@ -127,8 +127,8 @@ Build it with `tools/leanrun --timeout 60m lake build Examples.Name.Compiled`.  
 names its term in the message, and the manual's restrictions table gives the rewrite.  Then run
 `tools/verified-request-check --run NAME`, which emits the module and runs the samples in Wasmtime
 without proofs, and fix the program until every sample passes.  Before the proofs, read the
-premise of the generated theorem with `#check @Examples.Name.compiled.compute.trapFree`: room for
-`compiled.compute.bound x` bytes when the function can abort, and `True` when it cannot.
+premise of the generated theorem with `#check @Examples.Name.compiled.compute.trapFree`: `top` at least
+`compiled.compute.bound x` bytes below the memory cap when the function can abort, and `True` when it cannot.
 
 ## Stage 3: the proofs
 
@@ -137,7 +137,7 @@ the program, the specification, and lemmas about the dialect, such as `LeanExe.D
 and the proof modules of the library programs that the program calls, and no module of
 `Verified`.  When the program converts an array's size to a word, as `xs.size.toUInt64` does, the
 equality has the premise `xs.size < 2 ^ 64`, which every array in memory meets, and the call
-theorem takes it from the argument's representation, as `Examples.Increment.compute_callSpec` does.
+theorem derives it from the argument's representation, as `Examples.Increment.compute_callSpec` does.
 Otherwise the equality has no premise, as in the running-maximum example, and passes to the call
 theorem as `fun _ _ _ xs _ => compute_eq xs`:
 
@@ -155,8 +155,8 @@ after `verified_compile`.  `K` is 2 plus the position of `compute` in the list o
 
 | Declaration | Content |
 |-------------|---------|
-| `compute_callSpec` | Statement of the first section, proved as `Examples.Increment.compute_callSpec` and `Library.Numerics.Arithmetic.Gcd.gcd_callSpec` prove theirs.  `Verified.ImplementsTables.call (.ofA compiled.compute.trapFree) compiled.tables nofun` gives `Verified.Call`, and `Verified.Call.spec` turns it into `CallSpec` for `expected`, from `fun _ _ _ h => h` for the premise, or `fun _ _ _ _ => trivial` when `trapFree`'s premise is `True`, from `fun _ _ _ _ _ h => h` for the conclusion, and from `compute_eq` on represented arguments. |
-| `compute_bound` | Closed form of `compiled.compute.bound x`, from `compiled.compute.bound_eq`, which the README states so that a reader knows how much room a call needs.  A function that cannot abort needs none. |
+| `compute_callSpec` | Statement of the first section, proved as `Examples.Increment.compute_callSpec` and `Library.Numerics.Arithmetic.Gcd.gcd_callSpec` prove theirs.  `Verified.ImplementsTables.call (.ofA compiled.compute.trapFree) compiled.tables nofun` gives `Verified.Call`, and `Verified.Call.spec` converts it to `CallSpec` for `expected`, from `fun _ _ _ h => h` for the premise, or `fun _ _ _ _ => trivial` when `trapFree`'s premise is `True`, from `fun _ _ _ _ _ h => h` for the conclusion, and from `compute_eq` on represented arguments. |
+| `compute_bound` | Closed form of `compiled.compute.bound x`, from `compiled.compute.bound_eq`, which the README states so that a reader knows how much free memory a call needs.  A function that cannot abort needs none. |
 
 Follow the worked example whose program has the same shape.  The call theorem of every shape
 follows `compute_callSpec` and `gcd_callSpec`, which differ only in the premise and in how the
@@ -172,7 +172,7 @@ argument's representation gives the premise of `compute_eq`.
 | Fold over an array of any length whose state pushes onto the result | [Running-maximum proof](../../../Examples/RunningMax/Proof.lean) (`Array.foldl_toList`, induction on the list) | [Running-maximum compilation](../../../Examples/RunningMax/Compiled.lean) (`foldCost_const`, `min_le_right`) |
 
 Before each proof, search [the verification knowledge base](../../../VKB/README.md) for the
-declarations and goal shapes at hand.  Search the `entry.json` files under `VKB/entries/` for the
+declarations and goal shapes of the proof.  Search the `entry.json` files under `VKB/entries/` for the
 constants of the goal, such as `LeanExe.repeatWhile` or `Verified.loopCost`, and read the README of
 every entry that names them.  The entries `spec-call-theorem`, `verified-bound-closed-form`,
 `loop-combinators`, `array-fold-list-induction`, and `reflector-forms` cover the shapes of the
@@ -220,16 +220,16 @@ that no entry names.  Put them in `journal.md` and in the report to the user.
    where CompCert is installed.  The registry entry gives the module its native coverage: the
    native driver translates every module of the registry to C, compiles it with CompCert, and runs
    its cases.
-4. Run the gate of a new example: the acceptance check of step 1, `tests/verified/run.sh --cases
+4. Run the required checks of a new example: the acceptance check of step 1, `tests/verified/run.sh --cases
    NAME`, `tests/native/verified.sh --module NAME`, a build of every module that the run adds or
    changes and of those that import them, and the VKB check.  The build is `tools/leanrun
    --timeout 3h lake build Examples.Name.Compiled Examples.Verified Verified
    Verified.Examples.Cases verified-cases native-verified native-module-cases`, and the VKB check is
    `tools/leanrun --timeout 10m lake env lean --run VKB/Check.lean VKB/entries`.  [The verified
-   compiler manual's full check](../../../docs/verified-manual.md#the-full-check) remains the gate
+   compiler manual's full check](../../../docs/verified-manual.md#the-full-check) remains the required check
    for a change to the verified compiler or the runtime.
-5. Report the result to the user with the theorem line, the sample counts, the gate's results, and
-   the VKB proposals.  Commit only when the user's instructions call for it, after the gate.
+5. Report the result to the user with the theorem line, the sample counts, the results of those checks, and
+   the VKB proposals.  Commit only when the user's instructions call for it, after those checks pass.
 
 Keep `journal.md` during the run in natural prose: the decisions in the specification, the
 program's form and why, each proof approach and what changed it, the VKB entries and worked

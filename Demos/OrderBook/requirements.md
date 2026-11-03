@@ -1,6 +1,6 @@
 # Order book requirements
 
-The order book matches orders for one instrument by price-time priority.  It is a deterministic function from a book and one command to a new book and a list of events.  The host sequences and authenticates commands, keeps the command log, and learns each order's id from the events.
+The order book matches orders for one instrument by price-time priority.  It is a deterministic function from a book and one command to a new book and a list of events.  The host sequences and authenticates commands, keeps the command log, and reads each order's id from the events.
 
 ## Limits
 
@@ -38,7 +38,7 @@ When matching ends with a remaining quantity, the remainder is handled as follow
 | GTC limit order, with fewer than 4,096 resting orders | Remainder rests at the order's price, behind every resting order at that price, with no further event |
 | GTC limit order, with 4,096 resting orders | Remainder cancelled, reason book full |
 
-When more than one row applies, the first row that applies decides, so self-trade prevention takes precedence over IOC and over a full book.  The count of resting orders is taken after matching, when the makers that the order exhausted have left the book.  A `market` order whose opposite side is empty is accepted and has its whole quantity cancelled with reason IOC.
+When more than one row applies, the first row that applies determines the result, so self-trade prevention takes precedence over IOC and over a full book.  The count of resting orders is taken after matching, when the makers that the order exhausted have left the book.  A `market` order whose opposite side is empty is accepted and has its whole quantity cancelled with reason IOC.
 
 A post-only `limit` order is rejected, with no id, when the opposite side's first order has an acceptable price.  Otherwise it is accepted, with its `accepted` event first, makes no trade, and rests as a GTC order would, or is cancelled with reason book full when the book holds 4,096 resting orders.
 

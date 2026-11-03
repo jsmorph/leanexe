@@ -254,7 +254,7 @@ theorem zipIdx_map_kind (args : List Arg) (n : Nat) :
   | nil => rfl
   | cons a rest ih => simp [List.zipIdx_cons, ih]
 
-/-- The conditions a kernel's arguments meet, with count `n`. -/
+/-- The conditions a kernel's arguments satisfy, with count `n`. -/
 structure Spec.Fits (K : Spec) (args : List Arg) (n : Nat) : Prop where
   kinds : args.map Arg.kind = K.kinds
   sizes : ∀ ys, Arg.array ys ∈ args → ys.size < 2 ^ 29

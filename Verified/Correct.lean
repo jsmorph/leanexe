@@ -88,7 +88,7 @@ states at each depth with the flags `Prog.flags` and the bounds and frames `Prog
 the heap and store changed only as `ImplementsA` allows.  A function traps only at `unreachable`:
 when it may allocate and `top` cannot rise within the cap by the potential of its paid arguments
 plus its bound, or, when its code takes the call depth, when a call lacks its frames.  When its
-calls find their frames, `top` after the call, plus the potential of a paid result, is at most
+calls have enough frames, `top` after the call, plus the potential of a paid result, is at most
 `top` before it plus that sum. -/
 theorem Prog.correctStatic {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (pool : Bytes.LiteralPool := prog.literalPool 4096)
@@ -235,7 +235,7 @@ theorem FunSpec.implementsB_unpaid {m : Module} {g : Sig} {idx : Nat}
   exact h
 
 /-- The entry of a function whose code takes the call depth, at position `e`, computes the function
-without a trap when its calls find their frames, as `Fi` states, and `top` can rise by the credits
+without a trap when its calls have enough frames, as `Fi` states, and `top` can rise by the credits
 of its paid owned parameters plus its bound `A` within the cap, and it raises `top` by at most that
 sum. -/
 theorem entry_trapFreeStatic {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : Nat}

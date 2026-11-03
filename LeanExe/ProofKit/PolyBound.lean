@@ -8,7 +8,8 @@ kernel.  `check p lo hi ε d` evaluates, over `ℚ`, the coefficients of `p` shi
 bisects the interval, at most `d` times along each branch.  `check_sound` turns an accepted check
 into `|eval p x| ≤ ε` for every real `x` in the interval.  The computation uses structural
 recursion only, so `decide +kernel` evaluates it.  `ratOfWord` gives the exact rational value of
-a binary64 word, so a kernel's coefficients `value 0x...` enter a polynomial as `ratOfWord 0x...`.
+a binary64 word, so a kernel's coefficients `value 0x...` occur in a polynomial as
+`ratOfWord 0x...`.
 -/
 
 namespace LeanExe.ProofKit.PolyBound

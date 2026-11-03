@@ -1,10 +1,7 @@
 import Library.Numerics.Float64.Asinh.AcoshTheoremSmall
 
 /-!
-Ranges 40 to 59 of `Asinh.acosh` from 1 to `2 (1 + 2 ^ -20)`, in `t = x - 1`.  The
-constants come from `near/acosh_inst.py` in the track's scratch directory, which checks each
-hypothesis of `AcoshTheoremSmall.acosh_piece_exact` and `acosh_piece_half` in exact rational
-arithmetic.
+Ranges 40 to 59 of `Asinh.acosh` from 1 to `2 (1 + 2 ^ -20)`, in `t = x - 1`.
 -/
 
 namespace Library.Numerics.Float64.Asinh.AcoshTheoremPieces2

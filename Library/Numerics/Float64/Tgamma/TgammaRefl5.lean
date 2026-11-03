@@ -2,8 +2,8 @@ import Library.Numerics.Float64.Tgamma.TgammaRefl4
 
 /-!
 The quotient `rh + rl` of the path of `tgammaWith` below `-3` against `T = π P/(s Γ1)`, where
-`s = sin (π d)`, `Γ1 = Γ (1 - x)`, and `P = 2 ^ E`.  `prod_close` puts the product
-`(ph + pl) P` of `asSinpid` and `asExpd` within `10 · 2 ^ -60` of `s Γ1` relative, and
+`s = sin (π d)`, `Γ1 = Γ (1 - x)`, and `P = 2 ^ E`.  `prod_close` shows that the product
+`(ph + pl) P` of `asSinpid` and `asExpd` lies within `10 · 2 ^ -60` of `s Γ1` relative, and
 `refl_real` puts `rh + rl` within `11 · 2 ^ -60` of `T` relative and `rh` alone within
 `24 · 2 ^ -53`, from the low part `|pl| ≤ 18.01 · 2 ^ -53 ph` and the bound `2 ^ -49/ph` of `rh`
 against `p1/ph`.

@@ -3,10 +3,10 @@ import LeanExe.ProofKit.AlignedFlagRules
 
 /-!
 The rest of the flagged specification layer: `CodeSpecInX`, the flagged `CodeSpecIn`, with its
-bridges `CodeSpecInX.false_iff`, `CodeSpecInX.spec`, and `CodeSpecX.specIn`, the assembly lemmas
-`specOfX` and `specInOfX`, and `seqX_spec`, the flagged `seq_spec`, through which every construct
-with two operands runs them in order.  `After.alignedSeq` carries the first operand's alignment
-across the second's step, as `After.seq` carries its representation.
+conversion lemmas `CodeSpecInX.false_iff`, `CodeSpecInX.spec`, and `CodeSpecX.specIn`, the assembly
+lemmas `specOfX` and `specInOfX`, and `seqX_spec`, the flagged `seq_spec`, through which every
+construct with two operands runs them in order.  `After.alignedSeq` keeps the first operand's
+alignment across the second's step, as `After.seq` keeps its representation.
 -/
 
 namespace Verified

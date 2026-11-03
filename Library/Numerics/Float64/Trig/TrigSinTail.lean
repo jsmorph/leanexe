@@ -6,7 +6,7 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 The rounding error of `Trig.kernelSin x y true`, the sine kernel with the tail `y` of a reduced
 argument.  For `2 ^ -70 ≤ |x| ≤ 0.78541` and `|y| ≤ |x| / 2 ^ 52`, the result is the rounding
 of a real `t` with `|t - sin (x + y)| ≤ u (33/40 |x| ^ 3 + |x| / 30)`, `u = 2 ^ -53`.  Each step
-of the evaluation carries an error bound in powers of `|x|`, so the bound keeps its relative size
+of the evaluation has an error bound in powers of `|x|`, so the bound keeps its relative size
 for small `x`.
 -/
 

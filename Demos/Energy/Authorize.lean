@@ -422,7 +422,7 @@ theorem authorizeWith_sound (hs : ProfileValid site)
 /-- For consecutive inputs that the authorizer accepted, whose snapshots lie at most a window
 apart, every time from the first snapshot to the end of the last window lies in the window of the
 latest accepted snapshot at or before it, whose bounds hold at that time for a trajectory that
-meets that window's other assumptions, the device's response, and the gateway's rules until
+satisfies that window's other assumptions, the device's response, and the gateway's rules until
 then. -/
 theorem authorizeWith_operation (hs : ProfileValid site) {n : ℕ} {ys : ℕ → Array UInt64}
     (h : ∀ j < n, (authorizeWith site (ys j)).status = .accepted)

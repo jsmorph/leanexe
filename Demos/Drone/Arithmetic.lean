@@ -75,7 +75,7 @@ private theorem max_nat (a b : UInt64) : (max a b).toNat = max a.toNat b.toNat :
   · rw [if_pos h, max_eq_right (UInt64.le_iff_toNat_le.mp h)]
   · rw [if_neg h, max_eq_left (by rw [UInt64.le_iff_toNat_le] at h; omega)]
 
-/-- The rest duration meets the horizontal and vertical limits, and its upper bound keeps
+/-- The rest duration satisfies the horizontal and vertical limits, and its upper bound keeps
 reachable costs below the infinity sentinel. -/
 theorem restSeconds_bounds (d : UInt64) (hd : d.toNat ≤ heightLimit) :
     25 ≤ (restSeconds d).toNat ∧

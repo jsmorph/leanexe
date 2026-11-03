@@ -87,7 +87,7 @@ theorem accepted_forward_bounds (r0 r1 z0 z1 u v : UInt64)
     Motion.vertical_accel_bound hT ha hs0 hs1⟩
   simpa only [abs_div, abs_of_pos (by norm_num : (0:ℝ)<200)] using hh
 
-/-- The actual rest duration meets the continuous component limits. -/
+/-- The actual rest duration satisfies the continuous component limits. -/
 theorem rest_bounds (z0 z1 : UInt64)
     (hz0 : z0.toNat ≤ heightLimit) (hz1 : z1.toNat ≤ heightLimit)
     (s : ℝ) (hs0 : 0 ≤ s) (hs1 : s ≤ 1) :

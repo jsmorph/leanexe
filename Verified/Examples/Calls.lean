@@ -1,6 +1,6 @@
 import Verified.Reflect.Command
 
-/-! The fifth program of the verified compiler: four functions, each of which may call the
+/-! A program of the verified compiler: functions, each of which may call the
 functions before it, with a call as the argument of another call and a call that returns a
 `Bool` as the test of an `if`. -/
 

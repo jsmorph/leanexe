@@ -16,7 +16,7 @@ Run with `uv run tests/gpt/hf_compare.py [path/to/gpt.wasm]`.  Without a path th
 the verified compiler's build/verified/gpt.wasm, which tests/verified/run.sh writes.  The model
 uses the explicit ("eager") attention, no dropout, and every parameter drawn from a normal
 distribution with standard deviation 0.5, with 1 added to the layer-norm gains.  The
-same arrays and token ids go to `forward`, with `c_attn` split into its `q`, `k`, and
+same arrays and token ids are passed to `forward`, with `c_attn` split into its `q`, `k`, and
 `v` columns and each of the sixteen layer arrays stacked layer after layer.  The host
 takes arrays on its command line, which limits each array to about 6,000 values.  The
 script fails if any score differs from Hugging Face's by more than

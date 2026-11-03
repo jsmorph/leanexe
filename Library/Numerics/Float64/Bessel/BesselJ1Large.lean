@@ -4,7 +4,7 @@ import Library.Numerics.Float64.Bessel.BesselY1Large
 `Bessel.j1 x` for `|x| ≥ 2`: the result lies within `12 · 2^-53 · √(J₁(|x|)² + Y₁(|x|)²)` of
 `J₁(x)` (`j1_large`).  The code computes `z` from `|x|` as `BesselJ0Large.j0_large` does, with
 `asym1`, the `P` and `Q` of `BesselPQ1`, and `θ = x - 3π/4`, and negates it when the sign bit of
-`x` is set; `J₁` is odd, so `sign_select` carries the bound across the negation.
+`x` is set; `J₁` is odd, so `sign_select` keeps the bound under the negation.
 -/
 
 namespace Library.Numerics.Float64.Bessel.BesselJ1Large

@@ -3,16 +3,16 @@ import Demos.Slew.Angle
 
 /-! The safety theorem of the slew planner.  For an output of status 1, `plan_safe` states that
 the plan starts at the input's start attitude and ends at its goal, bit for bit; that each
-segment's commanded rotation, by its output angle about its output axis, carries its start
+segment's commanded rotation, by its output angle about its output axis, maps its start
 attitude to within `1e-9` of the next segment's start attitude, or the goal's; and that every
 attitude within `1e-9` of the commanded path satisfies every cone of the input.  An attitude `R`
 lies within `ρ` of an attitude `R'` when it moves no unit vector farther than `ρ` from `R'`.
 
-The proof joins the path structure of the search (`plan_segments`), which makes every segment
+The proof combines the path structure of the search (`plan_segments`), which makes every segment
 an edge that `edgeOk` accepted, with the soundness of the edge check (`edgeOk_sound`), whose
 hypotheses come from `validInput` (`valid_good`) and `relative` (`relative_good`).  The output's
 axis and angle lie within `5e-14` of the axis and angle of the relative quaternion's real value
-(`angle_out`, `axis_out`), and the rotation by that axis and angle carries the start attitude to
+(`angle_out`, `axis_out`), and the rotation by that axis and angle maps the start attitude to
 within `1.2e-14` of the next node (`relative_rot`).  The margin's tube of `1.05e-9` absorbs
 these differences (`segment_safe`). -/
 
@@ -220,7 +220,7 @@ theorem segment_close {rel : Q4} (hr : GoodRel rel) :
       nlinarith
 
 /-- An accepted edge from `qa` to `qb`: the commanded rotation by the output angle about the
-output axis carries `qa` to within `1e-9` of `qb`, and every attitude within `1e-9` of the
+output axis maps `qa` to within `1e-9` of `qb`, and every attitude within `1e-9` of the
 commanded path satisfies every cone. -/
 theorem segment_safe {xs : Array Float} {qa qb : Q4} (hqa : GoodQ qa) (hqb : GoodQ qb)
     (hcones : ∀ k : Nat, k < (dims xs).nc.toNat → ConeGood xs (dims xs) (UInt64.ofNat k))
@@ -304,7 +304,7 @@ theorem segValue_axis (xs : Array Float) (d : Dims) (st a b : UInt64) :
 starts at the input's start quaternion and ends at its goal quaternion, bit for bit.  Segment `g`
 has its start quaternion at offset `4 + 11 g`, its axis, which is not zero, at `8 + 11 g`, and
 its angle at `11 + 11 g`, and the next start quaternion, or the goal, at `4 + 11 (g + 1)`.  Its
-rotation by its angle about its normalized axis carries its normalized start attitude to within
+rotation by its angle about its normalized axis maps its normalized start attitude to within
 `1e-9` of the next.  For every angle `φ` from 0 to its angle and every map `R'` that moves every
 unit vector at most `1e-9` from the attitude after the rotation by `φ`, every cone of the input
 holds of `R'` applied to the cone's normalized body vector: a keep-out cone gives a cosine with

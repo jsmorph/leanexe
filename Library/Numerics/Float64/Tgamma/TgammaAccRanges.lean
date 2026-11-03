@@ -6,8 +6,9 @@ import Library.Numerics.Float64.Tgamma.TgammaApprox
 of every range in `TgammaApprox.accRanges`: each double coefficient is a multiple of `2 ^ -17`
 with a numerator below `2 ^ 19` and a magnitude at most 4, each double-double coefficient has a
 high part at most `2 ^ -16` and a low part at most `2 ^ -70`, and the double-double coefficients
-sum to at most `2 ^ -13` in magnitude (`coef_ok`, `dd_ok`, `dd_sum`).  `TgammaAccPoly3.poly3_spec` then puts
-`poly3` within `2 ^ -63` of `TgammaApprox.accPoly` for `|d| ≤ 1` (`poly3_range`).
+sum to at most `2 ^ -13` in magnitude (`coef_ok`, `dd_ok`, `dd_sum`).  `TgammaAccPoly3.poly3_spec`
+then shows that `poly3` lies within `2 ^ -63` of `TgammaApprox.accPoly` for `|d| ≤ 1`
+(`poly3_range`).
 -/
 
 namespace Library.Numerics.Float64.Tgamma.TgammaAccRanges

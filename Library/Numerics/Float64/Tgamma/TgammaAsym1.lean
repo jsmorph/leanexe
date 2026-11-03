@@ -6,11 +6,11 @@ import Library.Numerics.Float64.Tgamma.TgammaApprox
 
 /-!
 The first product of `Tgamma.asLgammaAsym`: `(x - 1/2)(log xh - 1 + l + dz)` with `x = xh + xl`,
-for `4 ≤ xh ≤ 186`.  `asLogd` enters through `LogdSpec`, the statement that track `expm1` proves:
-its low part is not renormalized and reaches `2 ^ -22`.  The subtractions `xh - 1/2` and `lh - 1`
-are exact, since the subtrahend is a multiple of the spacing of the binade of the minuend
-(`sub_exact_binade`).  The product then lies within `2 ^ -63` of its exact value, and its low part
-stays below `0.73 · 2 ^ -14` (`asym_prod`).
+for `4 ≤ xh ≤ 186`.  The proof uses `asLogd` through `LogdSpec`, the statement that
+`TgammaLogd.asLogd_spec` proves: its low part is not renormalized and reaches `2 ^ -22`.  The
+subtractions `xh - 1/2` and `lh - 1` are exact, since the subtrahend is a multiple of the spacing of
+the binade of the minuend (`sub_exact_binade`).  The product then lies within `2 ^ -63` of its exact
+value, and its low part stays below `0.73 · 2 ^ -14` (`asym_prod`).
 -/
 
 namespace Library.Numerics.Float64.Tgamma.TgammaAsym1
@@ -19,7 +19,8 @@ open CodeLib.IEEE64 LeanExe.ProofKit F64Approx Tgamma TgammaDD TgammaMul TgammaM
 
 set_option exponentiation.threshold 4096
 
-/-- The specification of `Tgamma.asLogd` on `[4, 186]` in the form that track `expm1` states. -/
+/-- The specification of `Tgamma.asLogd` on `[4, 186]` in the form that `TgammaLogd.asLogd_spec`
+states. -/
 def LogdSpec : Prop :=
   ∀ x : Float, Finite x.toBits → 4 ≤ value x.toBits → value x.toBits ≤ 186 →
     Finite (asLogd logdTable x).1.toBits ∧ Finite (asLogd logdTable x).2.toBits ∧

@@ -6,13 +6,13 @@ its right subtree, its successor on a search tree, whose node gives way to its r
 symmetric form of the deletion of TAOCP §6.2.2, Algorithm D.  §6.2.3 restores the balance on the
 way back to the root.  `descendDel` follows the path of comparisons to `x`, reversing each link
 that it passes as the insertion does.  When the node with `x` has two subtrees, `minDel` follows
-the left links of its right subtree to the successor, reversing them as well, and carries the node
-with `x`, with the path above it in its right field.  `ascendMin` and `ascendDel` restore the links
-on the way back.  While the subtree below a node has shrunk one level, `shrinkLeft` and
-`shrinkRight` adjust the node: a node that leaned toward the side that shrank becomes balanced and
-shrinks, a balanced node leans to the other side and keeps its height, and on a balanced tree a
-node that leaned to the other side is rotated single or double, which keeps its height when the
-single rotation's child was balanced and shrinks it otherwise. -/
+the left links of its right subtree to the successor, reversing them as well, and takes the node
+with `x` as an argument, with the path above it in its right field.  `ascendMin` and `ascendDel`
+restore the links on the way back.  While the subtree below a node has shrunk one level,
+`shrinkLeft` and `shrinkRight` adjust the node: a node that leaned toward the side that shrank
+becomes balanced and shrinks, a balanced node leans to the other side and keeps its height, and on a
+balanced tree a node that leaned to the other side is rotated single or double, which keeps its
+height when the single rotation's child was balanced and shrinks it otherwise. -/
 
 namespace Library.Trees.AvlDelete
 

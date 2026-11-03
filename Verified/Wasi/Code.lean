@@ -7,7 +7,7 @@ open Wasm LeanExe.Wasi
 
 /-- Command code uses final module indices.  Pure fragments, copies, and releases undergo the
 three-import relocation once.  Normal returns leave owned result words on the stack.  Local
-zero carries the incoming depth, and `live` identifies context values retained afterward. -/
+zero holds the incoming depth, and `live` identifies context values retained afterward. -/
 def Command.code (source : Wasm.Module) (h : Nat) (slots : List Slot) (base : Nat)
     (live : Nat → Bool) (pool : Bytes.LiteralPool) :
     {context : List Ty} → {result : ResultTy} →

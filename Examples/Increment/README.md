@@ -6,7 +6,7 @@
 wrapping arithmetic, and for the empty array when the input is longer.  [The
 specification](Spec.lean) states that behavior in ordinary Lean, with `Array.map`.  [The
 program](Program.lean) sets the count to the input's size when it is at most eight and to 0
-otherwise, and builds that many words, each the input's word plus one, so one build serves both
+otherwise, and builds that many words, each the input's word plus one, so the program uses one build for both
 cases.  `verified_compile compiled := [compute]` in [the verified compilation](Compiled.lean)
 compiles the definition into a 1,605-byte module that exports `compute`.
 
@@ -15,7 +15,7 @@ compiles the definition into a 1,605-byte module that exports `compute`.
 `verified_compile` generates `compiled.compute.trapFree`, which states that function 2 computes
 `compute` without a trap from a store in which `top` can rise by `compiled.compute.bound xs` bytes,
 and `compiled.compute.bound_eq`, which gives that bound as one block of the result's length.
-`compute_bound` closes the bound to 120 bytes, and `increment_call` composes the trap-free theorem
+`compute_bound` shows that the bound is at most 120 bytes, and `increment_call` composes the trap-free theorem
 with `compute_eq` through `arrayCall` of [the shared call theorem](../ArrayCall.lean).
 `compute_callSpec` states the call as an instance of `Verified.CallSpec`, with the generated bound
 as the room, and the generated `compiled.compute.native` states the same computation for the C
@@ -25,7 +25,7 @@ function of the module's translation.
 |---------|-----------|
 | `compute_eq` | `compute` equals `expected` on every array of fewer than 2^64 words. |
 | `compute_bound` | `compiled.compute.bound xs` is at most 120 bytes. |
-| `increment_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 120 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and lies apart from the result, and `top` rises by at most 120 bytes. |
+| `increment_call` | Called with a borrowed array from a store with the allocator invariant, a memory cap of at most 65,535 pages, and room for `top` to rise by 120 bytes, the export `compute` returns without a trap an owned array that holds `expected xs`.  The input stays borrowed, every region of the heap before the call keeps its bytes and is disjoint from the result, and `top` rises by at most 120 bytes. |
 | `compute_callSpec` | Called with a borrowed array `xs` from a ready store in which `top` can rise by `compiled.compute.bound xs` bytes, the export `compute` returns without a trap an owned array that holds `expected xs`, leaves a ready store, and raises `top` by at most that bound. |
 | `increment_file`, `increment_file_decode` | `build/verified/increment.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 

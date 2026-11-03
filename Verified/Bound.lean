@@ -8,12 +8,12 @@ import Verified.Bytes.Cost
 either reuses a free block, which leaves `top`, or raises `top` by `48 + b`, and the code requests
 only multiples of 8 of at least 8 bytes, so `allocCost b = 48 + b`.  The bound follows
 `Expr.code` with the modes of the variables, the same live sets, and flags that state which
-variables are paid: it counts each copy that the modes and the live sets call for, each array that
+variables are paid: it counts each copy that the modes and the live sets require, each array that
 `build` makes, and each block of `push`, `++`, and `insertAt`.  An owned array that dies and is not
 paid is charged a block of twice the bytes of its new length and twice the added bytes, even when
 it extends in place.  A paid one is charged a header and four times the added bytes, which with
-its potential pay for its growth.  A `set` of a paid owned array that dies writes inside its
-block, so its result is paid without a charge.  A pair is paid when each component is paid or
+its potential bound the bytes of its growth.  A `set` of a paid owned array that dies writes inside
+its block, so its result is paid without a charge.  A pair is paid when each component is paid or
 holds no array, and destructuring a paid pair gives paid components, so an array inside a loop's
 state or a record grows at the paid charge.  In the result of the body of a loop whose state
 grows, an `if` is paid when either branch is, and its unpaid branch is charged the credit of its
@@ -158,7 +158,7 @@ def Flags.toList : {S : List Sig} → Flags S → List (List Bool × Bool)
   | _, .nil => []
   | _, .cons ps r rest => (ps, r) :: rest.toList
 
-/-- The flags of the parameters of function `f`.  The lookup goes by `f`'s index: the kernel
+/-- The flags of the parameters of function `f`.  The lookup uses `f`'s index: the kernel
 reduces a match on `Flags S` and `FVar S g` together in tens of milliseconds per step of `f`, and
 the reflector evaluates these flags at every argument of every call. -/
 def Flags.params {S : List Sig} {g : Sig} (flags : Flags S) (f : FVar S g) : List Bool :=
@@ -849,7 +849,7 @@ def loopFits {α : Type} (condFits : α → Bool) (cond : α → Bool) (bodyFits
 
 /-- Whether the code of an expression finds the frames it needs, for the functions `funs` whose
 calls find theirs as `fits` states: whether every call that the run makes of a function whose code
-takes the call depth finds its frames.  It follows `Expr.allocs`, with `&&` in place of `+`. -/
+takes the call depth has enough frames.  It follows `Expr.allocs`, with `&&` in place of `+`. -/
 def Expr.fits (funs : Funs S) (fits : Fits S) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Env Γ → Bool
   | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ | _, _, .float32 _, _ | _, _, .var _, _ => true
@@ -938,7 +938,7 @@ theorem loopFits_true {α : Type} {cf : α → Bool} {cond : α → Bool} {bf : 
     simp only [loopFits, hc, hb, loopFits_true hc hb n, Bool.true_and]
     split <;> rfl
 
-/-- An expression whose code calls no function that takes the call depth finds its frames. -/
+/-- An expression whose code calls no function that takes the call depth has enough frames. -/
 theorem Expr.fits_of_depthCalls (funs : Funs S) (fits : Fits S) {Γ : List Ty} {t : Ty}
     (e : Expr S Γ t) : e.depthCalls = false → ∀ env, e.fits funs fits env = true := by
   induction e with
@@ -1097,21 +1097,21 @@ def RecFunc.boundAt (func : RecFunc S) (funs : Funs (func.sig :: S)) (flags : Fl
   | k + 1 => bodyBound func.modes (func.paidParams flags) func.body funs (func.flags flags)
     (.cons (func.boundAt funs flags rest k) (rest k))
 
-/-- Whether a function whose code takes the call depth finds its frames with `k` frames
+/-- Whether a function whose code takes the call depth has enough frames with `k` frames
 available: not at 0, and otherwise whether its body does, with its callees at `k - 1` frames. -/
 def Func.fitsAt (func : Func S) (funs : Funs S) (rest : Nat → Fits S) :
     Nat → Env func.params → Bool
   | 0 => fun _ => false
   | k + 1 => func.body.fits funs (rest k)
 
-/-- Whether a recursive function finds its frames with `k` frames available: not at 0, and
+/-- Whether a recursive function has enough frames with `k` frames available: not at 0, and
 otherwise whether its body does, with itself and its callees at `k - 1` frames. -/
 def RecFunc.fitsAt (func : RecFunc S) (funs : Funs (func.sig :: S)) (rest : Nat → Fits S) :
     Nat → Env func.params → Bool
   | 0 => fun _ => false
   | k + 1 => func.body.fits funs (.cons (func.fitsAt funs rest k) (rest k))
 
-/-- Whether the calls of a program's functions find their frames when they have `k` frames
+/-- Whether the calls of a program's functions have enough frames when they have `k` frames
 available.  A call of a function whose code takes no call depth always does. -/
 def Prog.fitsAt : {S : List Sig} → Prog S → Funs S → Nat → Fits S
   | _, .nil, .nil, _ => .nil

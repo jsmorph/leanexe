@@ -10,7 +10,7 @@ The rational function of `Asin.asinRatio`, `t (pS0 + ... + pS5 t ^ 5)/(1 + qS1 t
 in the order of `e_asin.c`, as `F64Approx.SApprox` chains for seven ranges of `t`.  Each partial
 sum of the two Horner schemes has a bound over its range that the kernel checks with
 `PolyBound.check`, which keeps the bounds near the true magnitudes of the alternating sums, and
-the denominator's lower bound comes from the same check.  The input `t` may carry a relative
+the denominator's lower bound comes from the same check.  The input `t` may have a relative
 error, as `x * x` does.
 -/
 

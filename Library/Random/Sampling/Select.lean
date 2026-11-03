@@ -1,10 +1,10 @@
 import Library.Random.Sampling.Proof
 
-/-! The proof that `sample` meets `Samples`.  The loop of `sample` keeps `m`, the number of records
-chosen, and an array of `k` words whose first `m` words are the records chosen so far, followed by
-the records that Algorithm S chooses from record `t` on (`sample_eq`).  At the end no record is
-left, and `k - m ≤ N - t` forces `m = k`.  `selectFrom` chooses `k - m` of the remaining records
-(`selectFrom_length`), since a word `u` gives `⌊(N - t)·u / 2^64⌋ < N - t`, so that when
+/-! The proof that `sample` satisfies `Samples`.  The loop of `sample` keeps `m`, the number of
+records chosen, and an array of `k` words whose first `m` words are the records chosen so far,
+followed by the records that Algorithm S chooses from record `t` on (`sample_eq`).  At the end no
+record is left, and `k - m ≤ N - t` forces `m = k`.  `selectFrom` chooses `k - m` of the remaining
+records (`selectFrom_length`), since a word `u` gives `⌊(N - t)·u / 2^64⌋ < N - t`, so that when
 `k - m = N - t` every remaining record is chosen.
 
 For the count, `selL` states Algorithm S on a list of words, one word for each record, with `M`

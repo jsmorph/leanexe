@@ -1,7 +1,7 @@
 import LeanExe.Dialect.Loop
 
 /-!
-Shapes as a sum: a type whose constructors carry different fields, words and a float.
+Shapes as a sum: a type whose constructors have different fields, words and a float.
 -/
 
 namespace Examples.Shape

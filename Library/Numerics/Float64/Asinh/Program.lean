@@ -6,7 +6,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The thirty-seventh program of the verified compiler: `asinh`, `acosh`, and `atanh`, ported
+/-! A program of the verified compiler: `asinh`, `acosh`, and `atanh`, ported
 from fdlibm as FreeBSD's `lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379`
 (`s_asinh.c`, `e_acosh.c`, and `e_atanh.c`, Copyright (C) 1993 by Sun Microsystems, Inc., freely
 distributable with this notice).  `asinh` is `sign x · log (|x| + √(x² + 1))`, computed as `x`

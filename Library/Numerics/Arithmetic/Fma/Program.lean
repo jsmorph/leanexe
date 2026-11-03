@@ -4,7 +4,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The forty-fifth program of the verified compiler: `fma a b c`, the fused multiply-add of IEEE
+/-! A program of the verified compiler: `fma a b c`, the fused multiply-add of IEEE
 754 (2019, clause 5.4.1), the double nearest to the exact `a · b + c` with ties to even, computed
 with 64-bit words.  WebAssembly has no fused multiply-add, and the CORE-MATH functions call one.
 The product of the two significands, each below `2 ^ 53`, is a 128-bit pair of words formed from the

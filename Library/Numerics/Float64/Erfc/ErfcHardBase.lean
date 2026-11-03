@@ -12,7 +12,7 @@ fixed word, which the kernel computes, and one step follows from a rational encl
 at the row's input (`hard_within`, from `F64NearestSteps.within_of_interior`).  The enclosures
 come from the series of `erf` (`erf_encl`) and, for the asymptotic rows, from a model of
 `erfcxN` and an enclosure of `exp (-x²)` by `RatExpLog.abs_exp_sub_le` at `-x²/1024` followed by
-ten squarings (`exp_chain`).  `half_within` (from `F64NearestSteps.within_of_half`) serves a row
+ten squarings (`exp_chain`).  `half_within` (from `F64NearestSteps.within_of_half`) applies to a row
 whose value lies too close to the start of its binade for `hard_within`.
 -/
 

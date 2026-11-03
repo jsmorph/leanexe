@@ -4,7 +4,7 @@ import LeanExe.ProofKit.F64GridExact
 Every real `S` with `|S| ≤ 2 ^ 1000` has a finite double within `|S|/2^53 + 2^-1075`
 (`exists_near`): with `n = S 2 ^ 1074` in scaled units and `g` the least shift with
 `|n| < 2 ^ (53 + g)`, the integer `K` nearest to `n/2^g` has at most 53 bits, and `K 2 ^ g` is a
-word.  So a word that no finite word beats in distance to `S`, such as the result of a correctly
+word.  So a word such that no finite word is closer to `S`, such as the result of a correctly
 rounded operation, lies within that bound (`nearest_bound`).
 -/
 

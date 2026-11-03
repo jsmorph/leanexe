@@ -6,7 +6,7 @@ import Verified.TailArgs
 /-!
 The tail body's constructs that pass the next state, choose, and bind, under the flag.  Each is its
 original with `TailCodeSpecX strict` for `TailCodeSpec`, `CodeSpecX strict` for `CodeSpec`, the
-flagged rules for the code, `HoldsA` carried beside `Holds`, and the alignment of the outcome for
+flagged rules for the code, `HoldsA` added beside `Holds`, and the alignment of the outcome for
 the continuation.  The next state's alignment comes from the arguments' (`args_specX`) and
 persists across the release of the variables that die there (`Env.AlignedVals.step`).  A bound
 variable's alignment is the value's (`HoldsA.push`), and a pair's components are aligned when the

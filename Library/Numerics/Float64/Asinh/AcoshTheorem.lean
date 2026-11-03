@@ -8,7 +8,7 @@ import Library.Numerics.Float64.Asinh.AsinhTheorem
 `log (2x - 1/(x + √(x² - 1)))` from `2 (1 + 2 ^ -20)` (`AcoshTheoremMid.acosh_mid`), and
 `log1p (t + √(2t + t²))` with `t = x - 1` below (`AcoshTheoremSmallCases.acosh_small`).  Its tests
 read the high word `hx` and the low word of `x`.  For a word below `2 ^ 63` they are comparisons
-of the word, which `F64PositiveOrder.value_le_iff` turns into comparisons of values.  `x < 1`,
+of the word, which `F64PositiveOrder.value_le_iff` converts into comparisons of values.  `x < 1`,
 `-0` included, `-∞`, and NaN give the canonical NaN, `+∞` gives `+∞`, and 1 gives `+0`.
 -/
 

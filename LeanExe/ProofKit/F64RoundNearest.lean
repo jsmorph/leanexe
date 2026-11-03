@@ -21,7 +21,7 @@ open CodeLib.IEEE64 F64NearestNonnegative F64Approx
 
 set_option exponentiation.threshold 4096
 
-/-- `c` is finite, carries the sign of a nonzero `S`, and no word has a magnitude closer to
+/-- `c` is finite, has the sign of a nonzero `S`, and no word has a magnitude closer to
 `|S|`. -/
 def Rounded (c : UInt64) (S : ℝ) : Prop :=
   Finite c ∧ (S < 0 → Wasm.IEEE64.sign c = true) ∧ (0 < S → Wasm.IEEE64.sign c = false) ∧

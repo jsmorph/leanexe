@@ -222,7 +222,7 @@ def count (x : Array UInt64) : UInt64 :=
 and 0 otherwise.  It tests `N` before it allocates the mark array of `N + 1` words.  The loop's
 state holds the number of the current option, which each zero increases, a flag that becomes 0 at
 the first defect, and the marks, where `marks[w]` is the number of the last option that held `w`,
-so that an item seen again in the same option finds its own option's number. -/
+so that for an item that occurs again in the same option, `marks` holds its own option's number. -/
 def valid (x : Array UInt64) : UInt64 :=
   let n := x[(0 : UInt64).toNat]!
   if itemLimit < n then 0

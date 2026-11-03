@@ -27,7 +27,7 @@ def arbitrary (count seed range : Nat) : List (UInt64 × UInt64) :=
       if range = 0 then rw (seed + 2 * count + (w % 700).toNat) else w % UInt64.ofNat range)
 
 /-- The verified compiler's cases run these inputs: the empty input, a slot count without
-operations, a slot count and one word without a partner, tables of 0 and 1 slots, which hold no key,
+operations, a slot count and one unpaired word, tables of 0 and 1 slots, which hold no key,
 and a table of 2 slots, which holds one key.  In a table of 8 slots, the keys 3, 11, 19, and 27
 share the home slot 3.  Deleting 11 and then 3 moves the keys after them back, and deleting 27, the
 last key of its cluster, moves none.  The keys 7, 15, 8, 23, and 9 fill slots 7, 0, 1, 2, and 3, a
@@ -41,7 +41,7 @@ through every occupied slot, and after a deletion accepts the eighth key.  A tab
 the keys 2, 9, 16, and 23 of home slot 2 and the key 3 of home slot 3 in one cluster, and the
 deletions of 9 and 2 move the keys after them, 3 among them.  The other short inputs repeat
 insertions and deletions of one key, delete absent keys, use the deletion codes 2, 3, `2^63`, and
-`2^64 - 1` and the keys 0 and `2^64 - 1`, and end with a word without a partner.  The long inputs
+`2^64 - 1` and the keys 0 and `2^64 - 1`, and end with an unpaired word.  The long inputs
 run 2,000 arbitrary operations on keys below 40 in a table of 16 slots, 3,000 operations on keys
 below 500 in a table of 101 slots, and 3,000 operations on 700 arbitrary words in a table of 1,024
 slots. -/

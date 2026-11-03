@@ -14,14 +14,14 @@ The model consumes the input one byte at a time.  `Model.outcome kernel state by
 
 | Premise | Requirement |
 |---|---|
-| [Kernel](Interface.lean) | `KernelSpec` supplies an invariant `Good` of the accumulator and a size condition `Room` for a line.  An accepted line keeps `Good` and produces nonempty output of fewer than `2^64` bytes. |
+| [Kernel](Interface.lean) | `KernelSpec` includes an invariant `Good` of the accumulator and a size condition `Room` for a line.  An accepted line keeps `Good` and produces nonempty output of fewer than `2^64` bytes. |
 | [Line sizes](Model.lean) | `LineRooms` requires `Room` for each line up to and including the first rejected line. |
-| [Host](StreamHost.lean) | `StreamHost` supplies successful reads and writes, consumes input prefixes, reports an empty read only at EOF, and commits output prefixes.  Each zero-byte write decreases a proof-only credit, and a read or a write of at least one byte may set the credit to any value. |
+| [Host](StreamHost.lean) | `StreamHost` performs successful reads and writes, consumes input prefixes, reports an empty read only at EOF, and commits output prefixes.  Each zero-byte write decreases a proof-only counter, and a read or a write of at least one byte may set the counter to any value. |
 
 The compiled termination proof of each application needs allocation charges for begin and each
 step.  [Sizes](Sizes.lean) bounds the pending line by any line-length bound that `Room` implies,
-since the pending line is a prefix of a line whose `Room` holds, keeps the input buffer within one
-read and the output buffer within a bound on the kernel's output, and bounds the line and total of
+since the pending line is a prefix of a line whose `Room` holds, bounds the input buffer by one
+read and the output buffer by a bound on the kernel's output, and bounds the line and total of
 a state at which a step stops.  The integer application proves its charges from these bounds and
 its limits on line length and total size, and the binary64 application from these bounds and its
 limit on line length, as [the WASI manual](../../docs/wasi.md#resources-host-assumptions-and-total-execution)

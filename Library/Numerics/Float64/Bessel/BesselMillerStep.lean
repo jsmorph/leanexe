@@ -6,7 +6,7 @@ One step `b ⊗ dᵢ ⊘ x ⊖ a` of the backward recurrence of `jn`, in the for
 errors bounded.  With `T = b J_(i-1)/J_i` the value that the step would give from an exact ratio,
 `d ≥ J_(i+1)/J_(i-1)`, and `E` the relative error of the ratio `b/a` against `J_i/J_(i+1)`, the
 result lies within `((1 + d) 2.03 u + d E (1 + 2E) + 1.01 u) T` of `T` (`bstep`).  The two
-roundings of `b dᵢ/x` give `2 u` relative to `b λᵢ ≤ (1 + d) T`, the error of the ratio enters as
+roundings of `b dᵢ/x` give `2 u` relative to `b λᵢ ≤ (1 + d) T`, the error of the ratio contributes
 `(b J_(i+1) - a J_i)/J_i`, at most `d E (1 + 2E) T`, and the subtraction rounds once.
 -/
 

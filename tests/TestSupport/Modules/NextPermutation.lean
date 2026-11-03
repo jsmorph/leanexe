@@ -34,7 +34,7 @@ def tuples (vals : List UInt64) : Nat → List (List UInt64)
   | 0 => [[]]
   | n + 1 => (tuples vals n).flatMap fun t => vals.map (· :: t)
 
-/-- The arrays of the verified compiler's cases.  The arrays of up to 5 words from 0, 1, and 2 put
+/-- The arrays of the verified compiler's cases.  The arrays of up to 5 words from 0, 1, and 2 have
 the last ascent at every position, with repeated words, the 120 arrangements of 1 to 5 are the steps
 of one cycle, and the arrays of 1 to 3 words from 0, `2^63 - 1`, `2^63`, and `2^64 - 1` detect a
 signed comparison.  Arrays of 6, 7, 8, 16, 33, 100, 255, and 999 words draw words from those four by

@@ -7,7 +7,7 @@ import LeanExe.Dialect.Float32
 
 /-! `erfc`, CORE-MATH's correctly rounded complementary error function, ported from
 `src/binary64/erfc/erfc.c` at commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8` of
-https://gitlab.inria.fr/core-math/core-math.  The file carries this notice:
+https://gitlab.inria.fr/core-math/core-math.  The file contains this notice:
 
 Copyright (c) 2022-2026 Alexei Sibidanov, Paul Zimmermann, Tom Hubrecht and
 Claude-Pierre Jeannerod.

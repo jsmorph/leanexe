@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The check of `native-verified build --aligned` (tests/TestSupport/Native/Verified.lean) against
 # the theorems of a module.  It must compile tests/TestSupport/Native/AlignedCrc.lean, the CRC
-# programs compiled with verified_compile.alignedNative, and it must refuse
+# programs compiled with verified_compile.alignedNative, and it must reject
 # Library.Arrays.Word.Compiled, a program compiled without the option, and
 # Verified.Examples.Literals, a program with byte literals.  A refusal must exit with status 4,
 # name the missing theorem or the literals, and write no file.  The script prints one line per
@@ -35,7 +35,7 @@ else
   echo "fail: crcaligned: status $code: $(cat "$out/crcaligned.log")"
   status=1
 fi
-# refused MODULE CONSTANT NAME TEXT: the aligned build must refuse with status 4 and TEXT.
+# refused MODULE CONSTANT NAME TEXT: the aligned build must fail with status 4 and TEXT.
 refused() {
   build "$1" "$2" "$3"
   if [ "$code" -eq 4 ] && grep -qF "$4" "$out/$3.log" && [ ! -e "$out/$3.c" ]; then

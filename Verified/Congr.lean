@@ -1,10 +1,10 @@
 import Verified.Call
 
-/-! Theorems that carry a module's theorem from one Lean function to another that equals it on the
-represented arguments.  `implementsA_congr` carries `ImplementsA`, which also covers arguments that
-the caller hands over, such as `Moved (Array UInt64)`.  `call_on` carries `Call` to a function that
-equals the first on the represented arguments that meet a predicate `P`, which the new
-precondition implies. -/
+/-! Theorems that transfer a module's theorem from one Lean function to another that equals it on
+the represented arguments.  `implementsA_congr` transfers `ImplementsA`, which also covers arguments
+that the caller moves, such as `Moved (Array UInt64)`.  `call_on` transfers `Call` to a
+function that equals the first on the represented arguments that satisfy a predicate `P`, which the
+new precondition implies. -/
 
 namespace Verified
 
@@ -22,8 +22,8 @@ theorem implementsA_congr {α β : Type} [Represent α] [Represent β] {aborts :
   rw [← hfg heap store params x hArgs]
   exact h env store heap params x hHeap hPre hArgs hSep hCap
 
-/-- `Call` for `g` on the arguments that meet `P`, from `Call` for `f` and the equality of `f` and
-`g` on the represented arguments that meet `P`. -/
+/-- `Call` for `g` on the arguments that satisfy `P`, from `Call` for `f` and the equality of `f`
+and `g` on the represented arguments that satisfy `P`. -/
 theorem call_on {α β : Type} [Represent α] [Represent β] {m : Module}
     {tables : List (Array UInt64)} {k : Nat} {f g : α → β}
     {Pre Q : α → Heap → Store Unit → Prop}

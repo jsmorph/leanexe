@@ -4,8 +4,7 @@ import Library.Numerics.Float64.Erfc.Compiled
 /-!
 The rows of `T` and `Tacc` of `Erfc` as rational polynomials in `u = 1/x²`, the intervals of `x`
 that their indices allow, and the accuracy of the certificates: `epsA` for the checks and `rhoA`
-for the results of `ErfcAsymCert.cert_sound`.  `gen/trows.py` in the track's scratch directory
-generates the file and the row modules.
+for the results of `ErfcAsymCert.cert_sound`.
 -/
 
 namespace Library.Numerics.Float64.Erfc.ErfcAsymPlan

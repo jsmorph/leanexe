@@ -16,7 +16,7 @@ The second review found no disagreement, and it found every choice that the requ
 
 The first review of division found no pair of digit arrays on which `divSpec` differs from the request.  It found that the comment omitted the bound of `2^62` on the lengths, which the division theorems assume, and the padding of the remainder when a zero divisor is longer than the dividend, and the comment now states both.  It found three inaccurate phrases in the docstring of `divInputs`, now corrected.  It named classes without inputs: a dividend with zero digits at the top, zero dividends, a zero divisor longer than the dividend, a divisor with zero digits at the top longer than the dividend, a divisor with two zero digits at the top, a one-digit divisor with a long dividend, and the two paths of step D3 in which a trial digit of the base decreases once.  The inputs now include an input of each class, among them `([0, 1, 2^31 - 1], [2^31 - 1, 2^31 - 1])` and `([0, 0, 1], [1, 1])` for the two paths of step D3.
 
-The second review of division found no disagreement, and it found every choice that the request leaves open recorded in the comment.  It found two imprecise phrases in the docstring and a clause of the comment that read as if Lean's division cut the remainder, all now corrected.  It recorded these classes without inputs:
+The second review of division found no disagreement, and it found every choice that the request leaves open recorded in the comment.  It found two imprecise phrases in the docstring and a clause of the comment that read as if Lean's division truncated the remainder, all now corrected.  It recorded these classes without inputs:
 
 | Class | Why the cases leave it out |
 |---|---|

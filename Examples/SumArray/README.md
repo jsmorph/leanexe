@@ -7,7 +7,7 @@ array of words.  [The request](request.txt) asks for these folds over an array o
 scalar results.  The request defines each result as a left fold, so each program is its
 own specification.
 
-The implementations live in [the word-reduction
+The implementations are in [the word-reduction
 library](../../Library/Numerics/Reductions/Word/Program.lean), and [the programs](Program.lean) of
 this example export them.  `sumArray` is `xs.foldl (· + ·) 0`, `productArray` is
 `xs.foldl (· * ·) 1`, and `xorArray` is `xs.foldl (· ^^^ ·) 0`.  The command
@@ -56,7 +56,7 @@ empty array and words near 2^64, in Wasmtime against native Lean for each export
 driver](../../tests/native/verified.sh) runs them on the modules' translations to C, compiled with
 CompCert.  The cases state one block that stays allocated, the input array.  Without `--cases`, the
 verified driver also checks the file module against the written file and requires the axiom reports
-of both file theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.
+of the file theorems to name only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Related examples
 

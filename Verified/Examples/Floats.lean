@@ -1,6 +1,6 @@
 import Verified.Reflect.Command
 
-/-! The thirteenth program of the verified compiler: floats.  The programs use the arithmetic
+/-! A program of the verified compiler: floats.  The programs use the arithmetic
 operations, the square root, the absolute value, negation, comparisons as conditions and as
 `Bool` values, `min` and `max`, literals, and the conversions between words and floats, and they
 pass floats as parameters, results, components of pairs, and a loop's state.  The reflector

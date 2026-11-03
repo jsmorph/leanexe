@@ -31,12 +31,12 @@ The generated execution theorems state that the compiled module computes these L
 definitions, including their operation order and floating-point rounding.  Allocation and
 call-depth premises determine when the generated trap-free theorems apply, as
 [the Verified Compiler Manual](../../../docs/verified-manual.md#the-implements-and-trapfree-theorems)
-explains.  Error bounds for the complete transform and spectrum remain open.
+explains.  Error bounds for the complete transform and spectrum are not proved.
 
 ## Accuracy tests
 
 [The accuracy test](../../../tests/TestSupport/Numerics/FourierAccuracy.lean) compares signals
-with a reference based on exact integer sums and 300-bit approximations to the trigonometric
+with a reference computed from exact integer sums and 300-bit approximations to the trigonometric
 factors.  For `n` complex samples with components `a j` and `b j`, it computes
 `τ = 2 * (n + 8) * 2^-53 * Σ j, (abs (a j) + abs (b j))` in binary64 arithmetic.
 The reference check divides each absolute component difference by `τ` and requires the largest ratio

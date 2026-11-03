@@ -160,7 +160,7 @@ for t in 1 2 3 4 5 6 7; do
   expect_end "words-bytes-$t" "$out/ends/words-bytes-$t.bin" "$out/ends/words-3.bin" 28
 done
 
-# Interactive output: each record's events arrive before the next record is written.
+# Interactive output: each record's events are printed before the next record is written.
 uv run "$tests/interactive.py" "$native" "$host" "$wasm" || fail "interactive output"
 
 # I/O errors: a directory as stdin fails the first read, with errno 31 in the module and an IO.Error

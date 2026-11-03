@@ -27,7 +27,7 @@ def EffectSig.mode (signature : EffectSig) : Nat → Mode :=
   paramMode signature.params signature.modes
 
 /-- Heap-valued arguments are places, owned arguments are variables, and nested pure calls
-obey the same requirements. -/
+satisfy the same requirements. -/
 def EffectSig.placeArgs (signature : EffectSig)
     (args : (i : Fin signature.params.length) → Expr pureSigs context (signature.params.get i)) :
     Bool :=

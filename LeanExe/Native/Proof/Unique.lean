@@ -3,10 +3,10 @@ import LeanExe.Native.Clight.Determinism
 
 /-!
 The execution that `NativeA` asserts is the only one with its trace.  `NativeA.unique` takes a
-semantics `X` of external functions that meets `ExtSem.Determ` and the premises of `NativeA`.
+semantics `X` of external functions that satisfies `ExtSem.Determ` and the premises of `NativeA`.
 It concludes that the C call has an execution with a trace `t`, and that every execution of the
 call from the same memory whose trace agrees with `t` up to the length of the shorter has the
-trace `t` and meets the conclusions of `NativeA`.  The proof applies
+trace `t` and satisfies the conclusions of `NativeA`.  The proof applies
 `eval_funcall_determ_prefix` of `LeanExe/Native/Clight/Determinism.lean` to the execution that
 `NativeA` gives.
 -/
@@ -17,7 +17,7 @@ open Wasm LClight
 
 open LeanExe.Pipeline in
 /-- Every execution of the call of `NativeA` whose trace agrees with the trace `t` of the
-asserted execution, up to the length of the shorter, has the trace `t` and meets the conclusions
+asserted execution, up to the length of the shorter, has the trace `t` and satisfies the conclusions
 of `NativeA`. -/
 theorem NativeA.unique {α β : Type} [Represent α] [Represent β] {A : Archi} {X : ExtSem}
     {cap : Nat} {mod : Module} {T : Translation} {ps rs : List VT} {fd : function}

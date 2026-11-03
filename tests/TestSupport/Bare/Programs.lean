@@ -5,7 +5,7 @@ import Verified.Reflect.Command
 
 /-!
 Programs of the bare-metal test (`docs/native-bare-metal.md`, test 2) that the libraries do not
-compile as they stand: CRC-32 and SHA-256 of a short message whose bytes come in as words, so
+compile as they stand: CRC-32 and SHA-256 of a short message whose bytes are passed as words, so
 that `main` calls the entry on constants.  The function builds the message in the heap.  Each
 entry is a wrapper, which applies a function to the constant table of its hash before its own
 parameters: `crcCheck` takes the words of `123456789`, and `shaCheck` the word of `abc`.

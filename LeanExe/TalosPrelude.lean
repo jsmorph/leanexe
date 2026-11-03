@@ -4,10 +4,10 @@ import CodeLib.Entry
 import CodeLib.RustStd.Frame
 
 /-!
-# LeanExe's focused Talos surface
+# The Talos modules that LeanExe imports
 
 LeanExe imports the stable interpreter and proof modules it uses directly.
-The broader CodeLib umbrella now includes unrelated separation-logic examples
-and Iris. This explicit artifact boundary keeps those modules out of integer
+The top-level CodeLib module imports unrelated separation-logic examples
+and Iris. This explicit list of imports keeps those modules out of integer
 and floating-point execution proofs.
 -/

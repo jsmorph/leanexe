@@ -13,8 +13,8 @@ each with the parameters of the `ImplementsA` theorem that `verified_compile` em
 final heap and the result's blocks are aligned by `FunAligned`'s postcondition, `FunPost true`.
 `wrapper_aligned` is `ImplementsTablesAligned`, the same statement for a wrapper, whose tables
 need no premise because each starts at a multiple of 8.  `ImplementsAligned.lean` and
-`ImplementsTablesAligned.lean` carry the theorems to the instances of Lean's types, as
-`ImplementsA.lean` carries `ImplementsA`.
+`ImplementsTablesAligned.lean` transfer the theorems to the instances of Lean's types, as
+`ImplementsA.lean` transfers `ImplementsA`.
 -/
 
 namespace Verified

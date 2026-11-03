@@ -6,9 +6,9 @@ import Verified.AlignedCopy
 The construction of a tree under the flag.  A tree's fields are evaluated in order and each is
 coerced to owned (`CodeSpecX.coerced`, `CodeSpecX.owned`); `FieldsAligned` states that the
 blocks of the owned fields start and end at multiples of 8, which `FieldsAligned.prepend`
-carries as `FieldsAfter.prepend` carries the fields' facts.  The record's own block comes from
-`alloc` or from a detached header, and the tree's blocks are the record's and its fields'
-(`wp_assembleTree`), so the tree is aligned when they are.
+extends to a prepended value, as `FieldsAfter.prepend` extends the fields' facts.  The record's own
+block comes from `alloc` or from a detached header, and the tree's blocks are the record's and its
+fields' (`wp_assembleTree`), so the tree is aligned when they are.
 -/
 
 namespace Verified

@@ -1,7 +1,7 @@
 import Library.Hashing.Hmac.Bits
 import Library.Hashing.Sha512.Proof
 
-/-! HMAC-SHA-512 computes FIPS 198-1.  `implHmac512` is HMAC built on the copied byte-level
+/-! HMAC-SHA-512 computes FIPS 198-1.  `implHmac512` is HMAC computed with the copied byte-level
 implementation `SHS.SHA512.Impl.sha512`.  `implHmac512_spec` shows that its digest is the
 transcription `Spec.hmacSha512` of the key's and the message's bits, and `hmacSha512_bytes` shows
 that the digest bytes of `hmacSha512 key kn msg n` are those of `implHmac512` for the first `kn`

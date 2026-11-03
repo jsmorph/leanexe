@@ -4,12 +4,12 @@ Two fresh agents reviewed [the specification](Spec.lean) and [the case inputs](.
 
 The first review also named a program whose loop checks `j = k` as well, and that program computes the same function.  If `x^(n - 1)` is `n - 1` modulo an odd `n`, then for each prime `p` dividing `n` the order of `x` modulo `p` divides `2(n - 1)` and not `n - 1`, so `2^(k + 1)` divides it and therefore divides `p - 1`.  Every prime factor of `n` is then 1 modulo `2^(k + 1)`, so `n` is too, which contradicts the definition of `k`.
 
-The second review found no disagreement in value.  It found that the comment's reason for the base 1 was wrong, since `q` odd explains only why `n - 1` passes, and the comment now says that 1 passes because `1^q = 1`.  It found the phrase "`j` from 2 to 15" imprecise, since no input passes at `j` from 5 to 14, and the docstring now lists the values.  The README linked to this record before it existed.  It named three wrong programs that agreed with every sample, and the inputs now catch each:
+The second review found no disagreement in value.  It found that the comment's reason for the base 1 was wrong, since `q` odd explains only why `n - 1` passes, and the comment now says that 1 passes because `1^q = 1`.  It found the phrase "`j` from 2 to 15" imprecise, since no input passes at `j` from 5 to 14, and the docstring now lists the values.  The README linked to this record before it existed.  It named three wrong programs that agreed with every sample, and the inputs now detect each:
 
-| Wrong program | Inputs that catch it |
+| Wrong program | Inputs that detect it |
 |---|---|
 | Omits the parity test and checks `n - 1` only inside the loop, so that for even `n ≥ 4` it returns 1 when `x^(n - 1)` is 1 modulo `n` | `(4, 1)`, `(4, 5)`, `(100, 1)`, and `(2^64 - 2, 1)`, and `(4, 3)` for the form that checks `n - 1` before the loop |
-| Caps the count of factors 2 of `n - 1`, at 32 or at 62 for example | `(2^63 + 1, 8881765665119413741)`, whose base is a square root of 1 other than 1 and `n - 1` modulo `n` |
+| Limits the count of factors 2 of `n - 1`, at 32 or at 62 for example | `(2^63 + 1, 8881765665119413741)`, whose base is a square root of 1 other than 1 and `n - 1` modulo `n` |
 | Stops squaring after `j = c` for `c` from 57 to 62 | `(27 * 2^59 + 1, 5)`, which passes at `j = 58` |
 
 These classes remain without inputs:

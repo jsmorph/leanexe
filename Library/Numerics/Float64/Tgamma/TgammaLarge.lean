@@ -10,8 +10,8 @@ The path of `tgammaWith` from `4` to the overflow threshold `t0 = 0x1.573fae561f
 within `2 ^ -59`, and the code rounds `h + (l + eps)` and adds `E` to the exponent field of the
 result.  `scale_word` gives the value of that word, `ub 2 ^ E`, while the exponent field stays
 below `2047`, which `field_lower` reduces to `ub 2 ^ E < 2 ^ 1024`.  That bound needs `Γ` below
-`2 ^ 1024 (1 - 2 ^ -50)` at the predecessor of `t0`, the hypothesis `GammaBelowT0` that track `erf`
-proves.  The result lies within `1.05` units of roundoff of `Γ x` relative, so it is within one
+`2 ^ 1024 (1 - 2 ^ -50)` at the predecessor of `t0`, the hypothesis `GammaBelowT0`.
+The result lies within `1.05` units of roundoff of `Γ x` relative, so it is within one
 step (`largePath_within`).
 -/
 

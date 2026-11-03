@@ -6,7 +6,7 @@ room they share.  Every word that their code loads or stores lies in an array wh
 multiple of 8: an owned variable's, which `HoldsA` covers, or a new block's, which the flagged
 allocation gives.  The lemmas about code are their originals in `After.lean` and `Heap.lean` with
 `wpX strict` for `wp`, a premise that the array's pointer is a multiple of 8, and the alignment
-conjunct of each access; `wpX_requestCode` carries `wp_requestCode`, whose code is free of
+conjunct of each access; `wpX_requestCode` transfers `wp_requestCode`, whose code is free of
 64-bit accesses.  A write inside an owned block keeps the block, so the variable's alignment
 persists across it by `Ty.AlignedVal.step`.
 -/
@@ -1093,7 +1093,7 @@ theorem specX_set (hCopy : CopyCodeX strict m host) {Γ' : List Ty} {e : Elem} (
       (live k || (Expr.set x i v).uses k) = true := fun k h => by
     simp only [Expr.uses]; exact set_live_index _ _ _ _ h
   -- The variables that die in the position, in the value, and at the write: the array, when it
-  -- dies there, whose potential pays for the result's when the array is paid.
+  -- dies there, whose potential is at least the result's when the array is paid.
   have hDiv : dyingPot store s env slots paid
         (fun k => (live k || k == x.index || v.uses k) || i.uses k)
         (fun k => live k || k == x.index || v.uses k) +

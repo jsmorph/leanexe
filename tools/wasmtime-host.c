@@ -583,7 +583,7 @@ static uint64_t alloc_records(Runtime *runtime, const char **text) {
 
 #define OBJECT_MAGIC UINT64_C(5501223100278326855)
 
-/* Writes to `out` unless `out` is NULL.  The result printers walk a result once with NULL to
+/* Writes to `out` unless `out` is NULL.  The result printers read a result once with NULL to
    check it and once with the control output to print it, so a malformed result prints nothing. */
 static void emit(FILE *out, const char *format, ...) {
   if (out == NULL) {

@@ -6,11 +6,11 @@ import Verified.Congr
 /-! The verified compiler's module of tree search and insertion.  The compiler translates the tail
 recursions of `search`, `ascend`, and `descend` into loops, so no theorem of the module has a
 call-depth premise.  `search` borrows its tree, and `insert` consumes its tree, which the caller
-hands over as `Moved KeyTree`.  By the compiler's ownership rules, each step of `descend` and
-`ascend` rebuilds the node that it takes apart in that node's block, and the generated bound charges
-only the new node's block of 72 bytes, but no theorem relates the blocks of the result to those of
-the argument.  `search_implements` and `insert_implements` compose the generated `trapFree` theorems
-with `search_eq` and `insert_eq`. -/
+moves as `Moved KeyTree`.  By the compiler's ownership rules, each step of `descend` and
+`ascend` rebuilds the node that it destructures in that node's block, and the generated bound
+charges only the new node's block of 72 bytes, but no theorem relates the blocks of the result to
+those of the argument.  `search_implements` and `insert_implements` compose the generated `trapFree`
+theorems with `search_eq` and `insert_eq`. -/
 
 namespace Library.Trees.Search
 
@@ -37,8 +37,8 @@ theorem search_implements :
       (fun x heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.search.bound x) :=
   Verified.implementsA_congr compiled.search.trapFree fun _ _ _ x _ => search_eq x.1 x.2
 
-/-- Function 5, the export `insert`, called with a key `x` and a tree `t` that the caller hands
-over, from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for
+/-- Function 5, the export `insert`, called with a key `x` and a tree `t` that the caller moves,
+from a heap with the allocator invariant, a memory cap of at most 65,535 pages, and room for
 `compiled.insert.bound`, returns without a trap the owned tree of Algorithm T, and raises `top` by
 at most the bound. -/
 theorem insert_implements :

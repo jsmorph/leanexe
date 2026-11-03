@@ -5,8 +5,8 @@ import LeanExe.Wasi.Process
 /-! The order book as a WASI process over stdin and stdout.  The process reads command records as
 little-endian 64-bit words, seven words to a record, in reads of at most 4,096 bytes.  It runs the
 whole records of each read through `Program.run` from the book that the earlier reads left, and it
-writes the event words in the same form before it reads again.  Bytes that complete no record wait
-in the carry for the next read.  At EOF the whole words of the carry, at most six, go through
+writes the event words in the same form before it reads again.  Bytes that complete no record stay
+in the carry until the next read.  At EOF the whole words of the carry, at most six, are passed to
 `Program.run` as one short record, which the book rejects as malformed, and the process stops with
 status 28 when bytes that fill no word remain and with status 0 otherwise.  A read or a write that
 returns an errno stops the process with that errno. -/

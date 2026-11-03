@@ -88,7 +88,7 @@ triples (`Lgamma.asLgammaAsymAccurate.match_3`).  These lemmas read the block's 
 kernel compares `sgnOf a` with `sgnOf b` through `a` and `b`: on `r.2.2.2` it unfolds the projection,
 evaluates the block with `whnf`, and runs out of memory on calls such as `piecePoly tab j z`.  The
 lemmas name the code's matchers, which `linter.auxLemma` flags because a change of `Lgamma` can
-rename them, and such a change breaks these proofs at build time. -/
+rename them, and such a change makes these proofs fail at build time. -/
 
 set_option linter.auxLemma false
 

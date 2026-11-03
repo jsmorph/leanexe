@@ -4,7 +4,7 @@ import LeanExe.ProofKit.BesselRatio
 
 /-!
 The evaluation of fdlibm's rational functions in `z = 1/x²` for `x ≥ 2`, as `Bessel.pAsym` and
-`Bessel.qRatio` compute them.  `recip_sq` puts the computed `ẑ = 1/(x x)` within
+`Bessel.qRatio` compute them.  `recip_sq` shows that the computed `ẑ = 1/(x x)` lies within
 `(2 + 2^-40) u / x²` of `1/x²`, with `u = 2 ^ -53`, for `2 ≤ x ≤ 2 ^ 130`.  `ratio_float` turns
 `BesselRatioEval.pieces_cover` into a statement on the `Float` expression `hornerF R ẑ / hornerF S ẑ`
 that the code evaluates.  `boundsOk` checks `|R/S| ≤ ρ` on pieces of the real `z`, and `eval_nonneg`

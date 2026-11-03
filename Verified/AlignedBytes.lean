@@ -16,7 +16,7 @@ import Verified.Bytes.Overlay
 Buffers under the flag.  A buffer's bytes are read and written one at a time, so only the
 allocation of its object makes 64-bit accesses, inside `alloc`, and the block it returns starts and
 ends at multiples of 8 (`wpX_allocate`).  The byte loop of `copyCode` is free of 64-bit accesses
-and calls, so `wpX_append_free` carries `wp_copy`.  `wpX_copyOwned` is `wp_copyOwned`, the copy
+and calls, so `wpX_append_free` transfers `wp_copy`.  `wpX_copyOwned` is `wp_copyOwned`, the copy
 of a buffer into a new object, under the flag; an owned buffer's alignment is that of its nonzero
 root's block.
 -/

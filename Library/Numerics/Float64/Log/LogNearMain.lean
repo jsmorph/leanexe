@@ -2,12 +2,13 @@ import Library.Numerics.Float64.Log.LogMain
 
 /-!
 The error of `Log.log` on its main path as a distance, for proofs that combine the result with
-further arithmetic.  `LogCoreStep.core_within` puts the sum before the final rounding within
-`1.83 · 2 ^ -60` of `log X` and converts that bound to one representable step.  `core_near` stops
-before the conversion: the result lies within `u |log X| + 2 ^ -59` of `log X`, with `u = 2 ^ -53`,
-for every argument word that reaches `Log.logCore`.  `normal_near` and `subnormal_near` carry the
-bound to `Log.log` on positive normal arguments outside `[15/16, 1 + 265/4096)` and on positive
-subnormal arguments, following `LogMain.log_normal_within` and `LogMain.log_subnormal_within`.
+further arithmetic.  `LogCoreStep.core_within` shows that the sum before the final rounding lies
+within `1.83 · 2 ^ -60` of `log X` and converts that bound to one representable step.  `core_near`
+stops before the conversion: the result lies within `u |log X| + 2 ^ -59` of `log X`, with
+`u = 2 ^ -53`, for every argument word that reaches `Log.logCore`.  `normal_near` and
+`subnormal_near` transfer the bound to `Log.log` on positive normal arguments outside
+`[15/16, 1 + 265/4096)` and on positive subnormal arguments, following `LogMain.log_normal_within`
+and `LogMain.log_subnormal_within`.
 -/
 
 namespace Library.Numerics.Float64.Log.LogNearMain

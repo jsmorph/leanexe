@@ -83,7 +83,7 @@ theorem compute_global_acceleration_within (terrain : Array UInt64) (h : terrain
       (by linarith [hu.1]) (by linarith [hu.2])
     simpa only [add_sub_cancel] using he.2.2.2
 
-/-- Between joins the ordinary two-sided accelerations exist and obey the
+/-- Between joins the ordinary two-sided accelerations exist and satisfy the
 component limits. No two-sided acceleration is asserted at a waypoint. -/
 theorem compute_global_acceleration (terrain : Array UInt64) (h : terrainBound terrain)
     (i : Nat) (hi : i+1 < terrain.size) (t : ℝ) (ht0 : 0 < t)

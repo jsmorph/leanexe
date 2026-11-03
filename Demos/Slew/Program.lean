@@ -256,7 +256,7 @@ def selectNext (s : Search) (n : UInt64) : UInt64 × UInt64 :=
     if !s.done[i.toNat]! && s.ok[i.toNat]! && c < acc.2 then (i, c) else acc
 
 /-- Relaxes every edge out of node `u`.  An edge is checked only when it would improve the
-target's cost.  The check sits in its own `if` because the compiled code evaluates both operands
+target's cost.  The check is in its own `if` because the compiled code evaluates both operands
 of `&&`. -/
 def relax (xs : Array Float) (d : Dims) (n u settleTicks : UInt64) (s : Search) : Search :=
   let qa := nodeAt xs d u

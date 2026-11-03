@@ -2,13 +2,13 @@ import Library.Trees.AvlDelete.Program
 import Library.Trees.AvlDelete.Spec
 import Library.Trees.Avl.Proof
 
-/-! The proofs that `delete` computes `deleteA` and that `deleteA` meets `Removes` on every balanced
-binary search tree.  `descendDel_eq` and `minDel_eq` state the link reversal: each loop returns
-what `ascendDel` or `ascendMin` returns from the flag and the tree of `deleteA` or `deleteMinA`
-below the same path, since each step with the flag set applies `shrinkLeftA` or `shrinkRightA` to
-the node above, and each other step rebuilds that node.  `shrinkLeftA_props` follows the cases of
-a shrunk left subtree through the heights, and `deleteA_props` and `keys_deleteA` give the balance,
-the height, and the keys of the result. -/
+/-! The proofs that `delete` computes `deleteA` and that `deleteA` satisfies `Removes` on every
+balanced binary search tree.  `descendDel_eq` and `minDel_eq` state the link reversal: each loop
+returns what `ascendDel` or `ascendMin` returns from the flag and the tree of `deleteA` or
+`deleteMinA` below the same path, since each step with the flag set applies `shrinkLeftA` or
+`shrinkRightA` to the node above, and each other step rebuilds that node.  `shrinkLeftA_props`
+follows the cases of a shrunk left subtree through the heights, and `deleteA_props` and
+`keys_deleteA` give the balance, the height, and the keys of the result. -/
 
 namespace Library.Trees.AvlDelete
 
@@ -388,7 +388,7 @@ theorem searchA_of_not_mem (x : UInt64) (t : AvlTree) (h : x ∉ keys t) : searc
       · simp [searchA, h1, h2, ihr hr]
       · exact absurd (Library.Trees.Avl.eq_of_not_lt h1 h2) hk
 
-/-- Deletion on a balanced binary search tree meets the guarantees of `Removes`. -/
+/-- Deletion on a balanced binary search tree satisfies the guarantees of `Removes`. -/
 theorem removes (x : UInt64) (t : AvlTree) (ho : Ordered t) (hb : Balanced t) : Removes x t := by
   have hk := keys_deleteA x t ho
   have hp := deleteA_props x t hb

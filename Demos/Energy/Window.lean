@@ -100,12 +100,14 @@ theorem rate_le {x : Trajectory} {u : ℝ} (hc1 : x.etaCharge u ≤ 1)
     simp only [mul_zero, zero_sub]
     linarith
 
-/-- An affine function of `d` that meets a lower bound at `0` and at `w` meets it on `[0, w]`. -/
+/-- An affine function of `d` that satisfies a lower bound at `0` and at `w` satisfies it on
+`[0, w]`. -/
 theorem affine_ge {e r f d w : ℝ} (h0 : f ≤ e) (hw : f ≤ e + r * w) (hd0 : 0 ≤ d) (hdw : d ≤ w) :
     f ≤ e + r * d := by
   by_cases hr : 0 ≤ r <;> nlinarith
 
-/-- An affine function of `d` that meets an upper bound at `0` and at `w` meets it on `[0, w]`. -/
+/-- An affine function of `d` that satisfies an upper bound at `0` and at `w` satisfies it on
+`[0, w]`. -/
 theorem affine_le {e r f d w : ℝ} (h0 : e ≤ f) (hw : e + r * w ≤ f) (hd0 : 0 ≤ d) (hdw : d ≤ w) :
     e + r * d ≤ f := by
   by_cases hr : 0 ≤ r <;> nlinarith

@@ -5,7 +5,7 @@ import LeanExe.Dialect.RepeatWhile
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 
-/-! The thirty-fifth program of the verified compiler: `tan`, ported from fdlibm as FreeBSD's
+/-! A program of the verified compiler: `tan`, ported from fdlibm as FreeBSD's
 `lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379` (`s_tan.c`, Copyright
 (C) 1993, and `k_tan.c`, Copyright 2004, by Sun Microsystems, Inc., freely distributable with this
 notice).  The argument reduction is the one of `Trig.lean`: the module lists `Trig.remPio2` and

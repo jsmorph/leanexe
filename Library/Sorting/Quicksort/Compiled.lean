@@ -4,7 +4,7 @@ import Verified.Congr
 
 /-! The verified compiler's module of quicksort.  The compiler translates the tail recursions of
 `scanUp`, `scanDown`, `part`, and `stages`, and the loop of straight insertion, into loops, so the
-call stack does not grow.  `quicksort` consumes its array, which the caller hands over as
+call stack does not grow.  `quicksort` consumes its array, which the caller moves as
 `Moved (Array UInt64)`, and allocates the stack of 64 entries.  `quicksort_implements` composes
 the generated `compiled.quicksort.trapFree` with `quicksort_eq`. -/
 
@@ -22,7 +22,7 @@ theorem quicksort_export :
     ({ name := "quicksort", funcIdx := 9 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- Function 9, the export `quicksort`, called with an array that the caller hands over, from a heap
+/-- Function 9, the export `quicksort`, called with an array that the caller moves, from a heap
 with the allocator invariant, a memory cap of at most 65,535 pages, and room for
 `compiled.quicksort.bound`, returns without a trap the owned array `expected xs`, the elements in
 nondecreasing order, and raises `top` by at most the bound. -/

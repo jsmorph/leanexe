@@ -1,7 +1,7 @@
 /-
 Derived from CompCert 3.18, the file `common/Globalenvs.v`.  CompCert is Copyright Institut National
 de Recherche en Informatique et en Automatique (INRIA) and AbsInt Angewandte Informatik GmbH, and
-its source files carry INRIA's copyright.
+its source files state INRIA's copyright.
 
 This file is distributed under the GNU Lesser General Public License, version 2.1 or (at your
 option) any later version, one of the two licenses CompCert offers for its source files.  The
@@ -23,7 +23,7 @@ to its size.  `public_symbol`, `invert_symbol`, and `to_senv` are omitted.
 `Genv.t` drops the invariants `genv_symb_range`, `genv_defs_range`, and `genv_vars_inj`.  The
 environments that CompCert's semantics uses are those of `globalenv p`, which satisfy them; a
 theorem stated for every `Genv.t` holds for those, and a theorem whose hypotheses only
-`globalenv p` meets should take `globalenv p`.
+`globalenv p` satisfies should take `globalenv p`.
 -/
 
 namespace LClight

@@ -5,7 +5,7 @@ import LeanExe.ProofKit.AlignedDefs
 The alignment statement of a compiled function.  `ImplementsAligned` adds three facts to
 `ImplementsA` on the inputs that `AlignedInput` admits: every run of the entry from some fuel on
 makes only aligned 64-bit accesses inside memory, the postcondition's heap is aligned, and the
-result's blocks meet `AlignedOutput`.  The last two lie inside the postcondition, so they hold of
+result's blocks satisfy `AlignedOutput`.  The last two lie inside the postcondition, so they hold of
 the heap that the postcondition chooses, which is the heap a host passes to the next call.
 -/
 

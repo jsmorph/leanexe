@@ -3,7 +3,7 @@ import LeanExe.ProofKit.Sequencing
 
 /-!
 Code without a 64-bit access or a call.  `freeCode` holds of code none of whose instructions, in
-its bodies too, is a `load64`, a `store64`, or a `call`.  Every run of such code meets
+its bodies too, is a `load64`, a `store64`, or a `call`.  Every run of such code satisfies
 `AlignedExec`, so `wpX_append_free` turns Talos's `wp` of it, with `wpX` of the code after it as
 the continuation, into `wpX` of the whole, and the original lemmas about such code apply with
 `[]` for the code after it.
