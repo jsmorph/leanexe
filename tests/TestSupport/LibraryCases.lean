@@ -29,8 +29,8 @@ import TestSupport.Modules.UnionFind
 import TestSupport.Modules.TreeSearch
 import TestSupport.Modules.Avl
 import TestSupport.Modules.AvlDelete
-
 import TestSupport.Modules.NextPermutation
+
 namespace TestSupport.LibraryCases
 
 open TestSupport.Host Library.Numerics.Bounds
@@ -103,11 +103,11 @@ def cases : IO Unit := do
   for xs in Library.Sorting.Shellsort.shellsortInputs do
     IO.println s!"shellsort|shellsort|array-u64|{arrU xs}|\
       [{", ".intercalate ((Library.Sorting.Shellsort.expected xs.toArray).toList.map toString)}]|1|1"
-  for (xs, k) in Library.Sorting.Find.selectInputs do
   for xs in Library.Combinatorics.NextPermutation.nextPermInputs do
     let (flag, ys) := Library.Combinatorics.NextPermutation.expectedOf xs
     IO.println s!"nextPermutation|nextPerm|list:i64,array-u64|{arrU xs}|\
       {flag} [{", ".intercalate (ys.map toString)}]|1|1"
+  for (xs, k) in Library.Sorting.Find.selectInputs do
     IO.println s!"find|select|i64|{arrU xs} {u k}|{Library.Sorting.Find.expected xs.toArray k}|0|1"
   for (x, t) in Library.Trees.Search.searchInputs do
     let r := Library.Trees.Search.algorithmT x t
