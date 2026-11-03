@@ -1,4 +1,5 @@
 import LeanExe.WGSL.Events
+import LeanExe.ProofKit.Writes
 
 /-!
 Properties of the event semantics of `Events.lean` under every oracle.  A result's events extend
@@ -36,22 +37,6 @@ structure Good (s : Shape) (o : Oracle) (evs : List Event) : Prop where
   read : ∀ (k b i : Nat) (w : UInt32), evs[k]? = some (.read b i w) →
     o k b i = w ∧ ∃ n, s.sizes[b]? = some n ∧ i < n
   write : ∀ (k i : Nat) (w : UInt32), evs[k]? = some (Event.write i w) → i < s.outputSize
-
-theorem getElem?_append_some {l : List α} (new : List α) {k : Nat} {a : α} (h : l[k]? = some a) :
-    (l ++ new)[k]? = some a := by
-  obtain ⟨hk, -⟩ := List.getElem?_eq_some_iff.mp h
-  rw [List.getElem?_append_left hk, h]
-
-theorem getElem?_append_singleton {l : List α} {a b : α} {k : Nat} (h : (l ++ [a])[k]? = some b) :
-    l[k]? = some b ∨ (k = l.length ∧ a = b) := by
-  rcases Nat.lt_or_ge k l.length with hk | hk
-  · left
-    rwa [List.getElem?_append_left hk] at h
-  · right
-    rw [List.getElem?_append_right hk] at h
-    obtain ⟨j, rfl⟩ : ∃ j, k = l.length + j := ⟨k - l.length, by omega⟩
-    cases j <;> simp at h ⊢
-    exact h
 
 theorem Answers.of_prefix {o : Oracle} {evs evs' : List Event} (h : Answers o evs')
     (hp : ∃ new, evs' = evs ++ new) : Answers o evs := by

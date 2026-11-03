@@ -24,57 +24,6 @@ theorem byteOf_ext {a b : UInt32} (h : ∀ k, byteOf k a = byteOf k b) : a = b :
 
 /-! ### The writes of a dispatch -/
 
-/-- The value at word `i` after the writes `ws`, starting from `v`. -/
-def lastVal (ws : List (Nat × UInt32)) (i : Nat) (v : UInt32) : UInt32 :=
-  ws.foldl (fun acc w => if w.1 = i then w.2 else acc) v
-
-theorem lastVal_cons (w : Nat × UInt32) (ws : List (Nat × UInt32)) (i : Nat) (v : UInt32) :
-    lastVal (w :: ws) i v = lastVal ws i (if w.1 = i then w.2 else v) := rfl
-
-theorem lastVal_append (a b : List (Nat × UInt32)) (i : Nat) (v : UInt32) :
-    lastVal (a ++ b) i v = lastVal b i (lastVal a i v) := by
-  simp [lastVal, List.foldl_append]
-
-theorem lastVal_of_forall {ws : List (Nat × UInt32)} {i : Nat} (h : ∀ w ∈ ws, w.1 ≠ i)
-    (v : UInt32) : lastVal ws i v = v := by
-  induction ws generalizing v with
-  | nil => rfl
-  | cons w ws ih =>
-      have hw : w.1 ≠ i := h w (by simp)
-      rw [lastVal_cons, ih fun w' hw' => h w' (by simp [hw'])]
-      simp [hw]
-
-theorem applyWrites_get {out : Array UInt32} {i : Nat} (hi : i < out.size)
-    (ws : List (Nat × UInt32)) : (applyWrites out ws)[i]? = some (lastVal ws i out[i]) := by
-  induction ws generalizing out with
-  | nil => simp [applyWrites, lastVal, getElem?_pos out i hi]
-  | cons w ws ih =>
-      have hs : i < (out.setIfInBounds w.1 w.2).size := by simpa using hi
-      have hv : (out.setIfInBounds w.1 w.2)[i] = if w.1 = i then w.2 else out[i] :=
-        Array.getElem_setIfInBounds hi
-      show (applyWrites (out.setIfInBounds w.1 w.2) ws)[i]? = _
-      rw [ih hs, hv]
-      rfl
-
-theorem lastVal_flatMap (W : Nat → List (Nat × UInt32)) (i g0 N : Nat)
-    (hu : ∀ g, g < N → g ≠ g0 → ∀ w ∈ W g, w.1 ≠ i) (v : UInt32) :
-    ∀ n, n ≤ N → lastVal ((List.range n).flatMap W) i v =
-      if g0 < n then lastVal (W g0) i v else v := by
-  intro n
-  induction n with
-  | zero => intro _; rfl
-  | succ n ih =>
-      intro hn
-      rw [List.range_succ, List.flatMap_append, lastVal_append, ih (by omega)]
-      simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil]
-      by_cases hg : n = g0
-      · subst hg
-        simp
-      · rw [lastVal_of_forall (hu n (by omega) hg)]
-        by_cases h0 : g0 < n
-        · simp [h0, show g0 < n + 1 by omega]
-        · simp [h0, show ¬g0 < n + 1 by omega]
-
 theorem Module.dispatch_apply {m : Module} {inputs : List (Array UInt32)} {output : Array UInt32}
     (W : Nat → List (Nat × UInt32)) :
     ∀ count, (∀ g, g < count → m.invoke inputs output.size (UInt32.ofNat g) = some (W g)) →
@@ -174,7 +123,9 @@ theorem Dispatch.output_word (d : Dispatch) {out : Array UInt32}
         out[i]? = some d.output[i]) := by
   have hout := Module.dispatch_apply (fun g => writesOf (evs g)) d.count hW
   rw [h, Option.some.injEq] at hout
-  have hget := applyWrites_get hi ((List.range d.count).flatMap fun g => writesOf (evs g))
+  have hget : (applyWrites d.output ((List.range d.count).flatMap fun g => writesOf (evs g)))[i]? =
+      some (lastVal ((List.range d.count).flatMap fun g => writesOf (evs g)) i d.output[i]) :=
+    setAll_get hi _
   rw [← hout] at hget
   by_cases hex : ∃ (g0 p : Nat) (w : UInt32), g0 < d.count ∧ (evs g0)[p]? = some (Event.write i w)
   · obtain ⟨g0, p0, w0, hg0, hp0⟩ := hex

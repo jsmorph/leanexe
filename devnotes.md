@@ -40837,3 +40837,51 @@ The user asked for an agent to design PTX as a second GPU target beside WGSL.  T
 NaN results differ from Talos: every f32 NaN is `0x7fffffff`, the f64 default NaN is `0xfff8000000000000`, and with two NaN inputs, f64 add, sub, and mul return the second source operand of the SASS instruction, and div returns the dividend.  `div.rn` and `sqrt.rn` are software sequences that ptxas inserts.  The JIT of PTX text and offline `ptxas -arch=sm_121a` gave identical SASS.  The agent wrote two cache entries to `~/.nv/ComputeCache` on edgexpert-18ff.
 
 Recommendation, pending the user's decisions on the trusted items: build the PTX device model as an event semantics under the PTX memory model, as for WGSL above, instead of a sequential model; model NaN results with an oracle and replace any NaN result with Talos's canonical NaN by an integer test; compile with a pinned offline `ptxas` and `--fmad=false`; and add binary64 kernels after binary32 matches, once binary64 throughput on the GB10 has been measured.
+
+## 2026-11-03: PTX target, stage 1
+
+The user asked to start the PTX target with the recommendations of the design entry above.  Those recommendations are:
+- an event semantics under the PTX memory model;
+- NaN results from an oracle;
+- offline `ptxas` from a pinned toolkit with `--fmad=false`;
+- binary64 after binary32.
+
+Stage 1 builds the device model and runs a hand-written kernel on the GB10.  The plan and its review are in the session scratchpad (`ptx/stage1-plan.md`, `ptx/stage1-review.md`).
+
+Decisions:
+
+| Question | Decision and reason |
+|---|---|
+| Semantics | One event semantics per thread, `Stmt.exec` with a load oracle, instead of WGSL's two semantics and an agreement proof.  The sequential result is the run under the input oracle. |
+| Values | `.b64` registers hold a word or a block-and-offset pointer.  `mov.b64` and `selp.b64` copy pointers, `add.u64` adds a word to a pointer, and every other use of a pointer stops the thread. |
+| Events | Only global loads of inputs and global stores to the output are events.  `ld.param` records none, and a load of the output stops the thread. |
+| Address offsets | `[a + imm]` takes a signed 32-bit offset (PTX ISA 6.4.1), so the model stops at an immediate of `2^31` or more. |
+| Control flow | Structured `ite` and `while` with numbered labels.  `while` is in stage 1, so the semantics, `Det`, and the round trip cover loops from the start. |
+| Memory model | Causality order is defined, not chosen: it is the phase edges plus program order on one address.  A smaller order weakens the coherence and causality axioms and leaves more pairs unrelated, so a proof of no data race and of the output holds for the ISA's order. |
+| Reads-from | Each read takes each byte from some write, by a per-byte reads-from map with value agreement.  The model keeps coherence (8.10.1) and both causality rules (8.10.6).  It omits No Thin Air, Fence-SC, atomicity, and sequential consistency per location. |
+| Writes outside the kernel | Writes before and after the kernel are per byte, so writes of any size are covered. |
+| Launch | A launch takes a block count below `2^32` and a block size `0 < B < 2^32`, and its threads are `g < blocks * B`.  `%ctaid.x` is a `.u32`. |
+| Host | `tools/cuda-host.c` queues the copies, the launch, and the copy back on one stream and synchronizes it, so every edge corresponds to a sentence of PTX ISA 8.9.4. |
+
+The review found these errors in the plan, and each was adopted:
+- The plan did not state the rule for loads of the output.  The code already stopped such a load.
+- Stopping a thread at an out-of-bounds or misaligned access is sound only through No Thin Air.  A stray store could reach an input buffer and justify itself, as in the LB+deps litmus test.  This becomes a trusted row, and it is the one place where the model relies on an omitted axiom.
+- The phase edges rest on readings of PTX ISA 8.9.4 and 8.2.6 about host copies, initialization, other agents, and proxies.  These become trusted rows worded as readings.
+- `ld.param` is a read operation in the ISA.  The model records no event for it, and a trusted row states why.
+- The block count needs a bound of `2^32`.
+- The add-one theorem's layout is the WGSL layout: the length word, then the elements.
+- A PTX memory location is a byte range.  The per-byte relations relax the per-operation ones.
+
+Progress:
+- [x] Syntax, event semantics with oracles, `Det`.
+- [x] Printer, parser, `Module.parse_print`; `tools/EmitPtx.lean`.
+- [x] `tools/cuda-host.c` and `tools/build-cuda-host.sh`.
+- [x] Shared lemmas moved to `LeanExe/ProofKit/Writes.lean`, and the WGSL proof uses them.
+- [x] The add-one kernel on the GB10, from the cubin of `ptxas -arch=sm_121a -O3 --fmad=false` and through the driver's compiler, both gave `[3, 11, 21, 31]` for `[3, 10, 20, 30]`.
+- [ ] Memory model per byte with phases, generic launch theorem, existence.
+- [ ] The add-one theorem.
+- [ ] `tests/ptx/run.sh`.
+- [ ] Trust table section P, design document.
+- [ ] Full build.
+
+Follow-up for WGSL: its writes before and after the dispatch are per word.  Per-byte writes, as in the PTX model, would cover writes of other sizes.
