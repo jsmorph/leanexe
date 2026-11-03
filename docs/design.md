@@ -199,9 +199,12 @@ The WebAssembly specification ([numerics](https://webassembly.github.io/spec/cor
 
 The shared [WGSL library](../LeanExe/WGSL) defines the language subset, its printer and inverse
 parser, its semantics, and the proved translation of its kernel source language.  Dispatch theorems prove
-kernel results and race freedom under buffer and invocation bounds.  The model uses strict binary32
-arithmetic.  Applying the results to hardware assumes that the driver and device implement that
-model.  [The binary32 GPT application](../Demos/Gpt32) adds `generate_host`, which proves the
+kernel results and race freedom under buffer and invocation bounds in a sequential model.
+`Dispatch.executions` proves that every consistent execution of such a dispatch, under a Lean
+statement of the Vulkan memory model that WGSL adopts, has no data race and leaves the same output.
+The models use strict binary32 arithmetic.  Applying the results to hardware assumes that the
+driver and device implement that arithmetic and the queue order and memory dependencies that the
+memory-model statement uses.  [The binary32 GPT application](../Demos/Gpt32) adds `generate_host`, which proves the
 scores of a generation step and race freedom under its shape, weight, and token bounds.
 [The compiler manual](verified-manual.md#the-wgsl-library-and-the-browser-pages) describes
 the subset, its tools, and the browser pages.

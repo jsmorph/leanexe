@@ -318,7 +318,12 @@ import LeanExe.Runtime.Tree
 import LeanExe.TalosCompat
 import LeanExe.TalosPrelude
 import LeanExe.WGSL.Build
+import LeanExe.WGSL.Events
+import LeanExe.WGSL.EventsAgree
+import LeanExe.WGSL.EventsInput
 import LeanExe.WGSL.Kernel
+import LeanExe.WGSL.MemoryModel
+import LeanExe.WGSL.MemoryModelProof
 import LeanExe.WGSL.Pair
 import LeanExe.WGSL.Parse
 import LeanExe.WGSL.Print

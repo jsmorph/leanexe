@@ -637,7 +637,10 @@ values.  Unsupported expressions return `none`.
 their proofs.  [Dispatch correctness](WGSL/Dispatch.lean) combines the translated element theorem
 with the generic dispatch theorem `LeanExe.WGSL.Spec.dispatch_eq`.  Every accepted source build
 computes its source array and has a race-free dispatch under that theorem's buffer, count,
-coverage, and device conditions.  [The manual's WGSL section](../docs/verified-manual.md#wgsl-kernels)
+coverage, and device conditions.  `Kernel.executions_eq` applies `LeanExe.WGSL.Dispatch.executions`
+to that result: under [the memory model](../LeanExe/WGSL/MemoryModel.lean) a consistent execution
+exists, and in every consistent execution each invocation ends, there is no data race, and the
+reads after the dispatch return the source array's words.  [The manual's WGSL section](../docs/verified-manual.md#wgsl-kernels)
 states the accepted subset and API.  [The examples](Examples/Wgsl.lean) and
 [native-value proofs](Examples/WgslProof.lean) specialize the result to reflected Lean functions.
 The translation normalizes binary arithmetic, square root, and nearest-even results

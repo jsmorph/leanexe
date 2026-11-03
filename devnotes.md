@@ -40800,3 +40800,40 @@ A script compared each changed source file with `HEAD` after removing comments a
 
 The first run of those checks stopped before any case, because the comment edits in `tools/wasmtime-host.c` made the source newer than `build/tools/leanexe-wasmtime-host`, and `tests/verified/run.sh` refuses a host older than its source.  After `tools/build-wasmtime-host.sh` rebuilt the host, the checks of `insert` and of the 26 modules whose files edgexpert lacked wrote those files and passed every case in Wasmtime and in the CompCert translation, from 16 cases of `heapQueue` to 1,876 of `avlDelete`.  Their file theorems and `tests/verified/TypedTreesAxioms.lean` name only `propext`, `Classical.choice`, and `Quot.sound`.
 
+
+## 2026-11-03: WGSL dispatches under the Vulkan memory model
+
+The user asked to adopt from [Formalizing PTX in Lean to Prove GPU Kernel Correctness](https://sf-tensor.com/papers/formalizing-ptx.pdf) the method that applies to this repository: give each GPU thread a deterministic semantics whose loads take their values from an oracle, and constrain those values by the axioms of a memory model.  Section G of `docs/trusted-base.md` listed as unproved that `Module.dispatch`, which runs the invocations one after another, gives the result of WGSL's concurrent execution when `Module.RaceFree` holds.  WGSL 14.5 states that WGSL follows the Vulkan memory model, so the work states the parts of that model that the kernels use and proves the sequential result from them.
+
+Sources: [the Vulkan memory model](https://docs.vulkan.org/spec/latest/appendices/memorymodel.html) (memory location, program order, location-ordered, data race, visible-to, acyclicity), [WGSL 14.5](https://www.w3.org/TR/WGSL/#memory-model) (memory operations and references), [WebGPU 3.4](https://www.w3.org/TR/webgpu/#programming-model-timelines) (timelines, compatible usage lists, usage scopes), and WGSL 9.2.1, 11.2, and 15.1 for the order of evaluation.
+
+The first plan modeled a location as a binding and a word, one initial write per location, and executions in which every invocation completes.  A fresh reviewer found five errors in it, and each was checked against the texts and adopted:
+
+| Finding | Change |
+|---|---|
+| The Vulkan relations are per byte, and visible-to is not preserved when four byte orders become one word order | `Execution.lo` takes a byte `Fin 4`, and the value rule compares `byteOf k` of the values |
+| Visible-to ranges over every write, including writes before the dispatch and after the reads of the output | `Op.before` and `Op.after`, and edges between phases in place of separate initial and final edges |
+| A theorem about complete executions says nothing about an execution in which an invocation stops | `Expr.evalE` and `Stmt.execE` return the events produced before the invocation stops, and the theorem proves that every invocation ends |
+| One oracle for all invocations cannot give two invocations different values for the same read | `Execution.oracle : Nat → Oracle` |
+| WebGPU 3.4.3 and 3.4.4 define usage scopes, not queue order | The trust table cites 3.4.1 and the queue-timeline steps of `writeBuffer()` and `submit()`, and names the memory dependencies of wgpu-native and the browsers |
+
+The reviewer's suggestions were also adopted: the justification uses program order and the device-domain cases of location order, the trust table states the correspondence between model invocations and `global_invocation_id.x` and the bound `count ≤ 2^32`, and the table of definitions that statements reach lists the new definitions.
+
+Design: `LeanExe/WGSL/Events.lean` is a second semantics of one invocation, so the proofs that use `Stmt.exec` stay as they are.  `EventsAgree.lean` proves that a run is determined by the values its reads return (`Det`, with lemmas for sequencing, branches, reads, and writes), and `EventsInput.lean` proves that with the input words as read values it computes `Stmt.exec` and `Module.invoke`.  `MemoryModel.lean` defines `Dispatch`, `Execution`, `Dispatch.Consistent`, and `Dispatch.NoDataRace`.  The theorems quantify over every location order that contains the edges of the phases and of program order and has no cycle.  The Vulkan relation is one of these, and the visible write is determined in each of them, because every other write to the location is ordered before it or after the read.  The acyclicity axiom omits reads-from and from-reads, which admits more executions.
+
+- [x] Event semantics with oracles and the events of runs that stop.
+- [x] Determinism in the values of reads; agreement with `Module.invoke` under the input oracle.
+- [x] Memory model per byte, with phases; `Dispatch.executions` and `Dispatch.execution_exists`.
+- [x] `Verified.WGSL.Kernel.executions_eq`.
+- [x] Trust table, design, manual, compiler README, GPT-2 README, `Semantics.lean` comment.
+- [x] Full build on edgexpert, commit, push.
+
+`Dispatch.executions` states, for a dispatch with `Module.dispatch = some out` and `Module.RaceFree`, that in every consistent execution each invocation's events equal those of the input oracle and the invocation ends, there is no data race, and each read after the dispatch returns the word of `out`.  `Dispatch.execution_exists` constructs a consistent execution from the input oracle and the lexicographic order of phase, invocation, and position.  These two and `Kernel.executions_eq` depend only on `propext`, `Classical.choice`, and `Quot.sound`, and on edgexpert the build of `LeanExe`, `Examples`, `Demos`, `Library`, `TestSupport`, `Verified`, and the file-theorem modules passed 11,431 jobs.  The WGSL kernels and their translation are unchanged, so the WGSL tests were not rerun.  `generate_host` composes the GPT-2 dispatches in the sequential model, so the memory-model theorem applies to each dispatch of it separately.
+
+## 2026-11-03: Design of a PTX target
+
+The user asked for an agent to design PTX as a second GPU target beside WGSL.  The agent ran no Lean and measured on the GB10 of edgexpert-18ff (CUDA 13.0, driver 580.178.04); its design and journal are in the session scratchpad.  `mul.rn` and `add.rn` stay separate FMUL and FADD in SASS, while the same sequence without `.rn` becomes FFMA.  For add, sub, mul, div, sqrt, and `cvt.rni` in f32 and f64, every non-NaN result matched the CPU's IEEE result on about 3.1 million cases per operation, and the f32 single-input sequences matched on all 2^32 inputs.
+
+NaN results differ from Talos: every f32 NaN is `0x7fffffff`, the f64 default NaN is `0xfff8000000000000`, and with two NaN inputs, f64 add, sub, and mul return the second source operand of the SASS instruction, and div returns the dividend.  `div.rn` and `sqrt.rn` are software sequences that ptxas inserts.  The JIT of PTX text and offline `ptxas -arch=sm_121a` gave identical SASS.  The agent wrote two cache entries to `~/.nv/ComputeCache` on edgexpert-18ff.
+
+Recommendation, pending the user's decisions on the trusted items: build the PTX device model as an event semantics under the PTX memory model, as for WGSL above, instead of a sequential model; model NaN results with an oracle and replace any NaN result with Talos's canonical NaN by an integer test; compile with a pinned offline `ptxas` and `--fmad=false`; and add binary64 kernels after binary32 matches, once binary64 throughput on the GB10 has been measured.

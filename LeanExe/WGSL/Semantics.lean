@@ -2,12 +2,13 @@ import LeanExe.WGSL.Syntax
 import Interpreter.Wasm.IEEE32
 
 /-!
-The meaning of a kernel under the device model.  Binary32 operations compute Talos's
+The meaning of a kernel under the sequential device model.  Binary32 operations compute Talos's
 `IEEE32` results.  An invocation runs the body with the read-only buffers and records its stores
 to the read-write buffer, which it may not read.  A dispatch runs invocations `0` to `count - 1`
-on the initial buffers and applies each invocation's stores to the output in order; when the
-stores of distinct invocations write distinct words (`Module.RaceFree`), the order does not
-matter, and WGSL's memory model gives the same result for the concurrent execution.  Every error
+on the initial buffers and applies each invocation's stores to the output in order.  When the
+stores of distinct invocations write distinct words (`Module.RaceFree`), `Dispatch.executions` in
+`MemoryModelProof.lean` proves that every consistent execution under the memory model of
+`MemoryModel.lean` leaves the output that this order gives.  Every error
 here, an ill-typed operation, an access outside a buffer, or a read of the output, makes the
 result `none`.  So does a `while` loop whose condition still holds after `loopBound` tests.  A run
 that ends within the bound is also a run of WGSL's unbounded loop, so a theorem that a result is

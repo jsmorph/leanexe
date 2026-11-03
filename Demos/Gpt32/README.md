@@ -50,7 +50,10 @@ verified kernels, leave the bits of `step32`, the Lean step, in the score buffer
 dispatch is race-free.
 
 The theorems prove successful execution and race freedom in a device model with strict binary32
-arithmetic, under their shape, buffer, and token bounds.  A GPU may flush subnormal values and fuse
+arithmetic, under their shape, buffer, and token bounds.  `LeanExe.WGSL.Dispatch.executions` gives
+each dispatch theorem's output for every consistent execution of that dispatch under a statement
+of the Vulkan memory model, while `generate_host` composes the dispatches in the sequential
+model.  A GPU may flush subnormal values and fuse
 multiply-adds, as the WGSL specification permits.  Under SwiftShader in headless Chromium 145, the
 verified kernels and `gpt32.wasm` gave equal scores at every step of 16 greedy tokens, as [the
 description of the pages](../../tests/web/README.md) records.  [The design
