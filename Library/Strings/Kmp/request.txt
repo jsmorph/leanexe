@@ -1,0 +1,10 @@
+Given a pattern of m bytes and a text of n bytes, each held eight bytes to a UInt64 word in
+little-endian order with its length as a separate UInt64 word, return in increasing order every
+position i of the text at which the pattern occurs: i + m <= n, and the bytes i to i + m - 1 of the
+text equal the bytes of the pattern.  A byte past the end of an array reads as zero, and the empty
+pattern occurs at every position from 0 to n.  Find the occurrences with the algorithm of Knuth,
+Morris, and Pratt: compute for each prefix of the pattern the length of its longest proper prefix
+that is also its suffix, and scan the text, falling back through those lengths after a mismatch, so
+that a scan reads each byte of the text once.  Scan the text twice, first to count the occurrences
+and then to record them in a result of that size, so that the program allocates only the table of
+lengths and the result, and use a call stack that does not grow.

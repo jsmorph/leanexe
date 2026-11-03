@@ -35,7 +35,7 @@ The Forms column lists a row's codes in the order of the key below.  Codes that 
 - [9. Conversion between decimal strings and binary floating point](#9-conversion-between-decimal-strings-and-binary-floating-point)
 - [10. Outward rounding and limiters](#10-outward-rounding-and-limiters)
 - [11. Hash functions](#11-hash-functions)
-- [12. Regular expressions](#12-regular-expressions)
+- [12. Regular expressions and string matching](#12-regular-expressions-and-string-matching)
 - [13. Graphs and combinatorial search](#13-graphs-and-combinatorial-search)
 - [14. WASI stream operations](#14-wasi-stream-operations)
 - [15. Applications](#15-applications)
@@ -318,13 +318,14 @@ The SHA-2 specification is a literate transcription of FIPS 180-4, copied with i
 
 The SHA-256, SHA-3, and CRC modules set `verified_compile.alignedNative`, and the native benchmark times one export of each.  The bare-metal programs on constants compute CRC-32 and SHA-256 with wrappers in [test support](tests/TestSupport/Bare/Programs.lean) over the library's `crcWith` and `sha256With`, and the program with input calls the export `sha256` itself.  `sha256_input` states the output as the bytes of `SHS.SHA256.Impl.sha256`, which `SHS.Equiv.SHA256.sha256_correct` in [the SHA-256 equivalence](Library/Hashing/Sha2/Equiv/SHA256/Main.lean) equates with the digest of the transcription of FIPS 180-4.
 
-## 12. Regular expressions
+## 12. Regular expressions and string matching
 
-[The regex guide](Library/Regex/README.md) describes the pattern and the input: a regular expression over bytes in postfix order, one word for each operator and five for each set of bytes, and an input of `n` bytes packed eight to a word.  The specification defines the language of an expression with Mathlib's `Language` and proves it equal to the language of Mathlib's `RegularExpression`.  [Glushkov's theorem](Library/Regex/Glushkov.lean) relates the language to the position automaton.
+[The regex guide](Library/Regex/README.md) describes the pattern and the input: a regular expression over bytes in postfix order, one word for each operator and five for each set of bytes, and an input of `n` bytes packed eight to a word.  The specification defines the language of an expression with Mathlib's `Language` and proves it equal to the language of Mathlib's `RegularExpression`.  [Glushkov's theorem](Library/Regex/Glushkov.lean) relates the language to the position automaton.  [The string matcher](Library/Strings/Kmp/README.md) takes a pattern and a text, each packed eight bytes to a word with its length in bytes, and returns the positions of the occurrences, with a byte past the end of an array read as zero.
 
 | Entry | Forms | Implementation | Behavior | Theorems, claims, and limits |
 |---|---|---|---|---|
 | `matchWith` | V S F C | [Regular expressions](Library/Regex/README.md) | Builds the position automaton of the pattern in one pass over its words, with each state a set of at most 63 positions in one word, and runs it over the input with nine table reads per byte. | [`compiled.matchWith.implements`](Library/Regex/Compiled.lean).  [`matchWith_call`](Library/Regex/Bytes.lean): the code of the specification without a trap, from [`matchWith_eq`](Library/Regex/Proof.lean), for every input and every pattern of `pn` words with `3 pn < 2^64`, from a store with room for `24 pn + 21,272` bytes.  The code is 2 for a pattern that does not decode, 3 for one of more than 63 sets, and otherwise 1 or 0 for whether the whole input is in the language. |
+| `occurrences` | V S F C | [String matching](Library/Strings/Kmp/README.md) | The positions, in increasing order, at which a pattern of `m` bytes occurs in a text of `n` bytes, both packed eight bytes to a word, by the algorithm of Knuth, Morris, and Pratt: a table of the longest proper borders of the pattern's prefixes, then a scan that counts the occurrences and a scan that records them. | [`occurrences_eq`](Library/Strings/Kmp/Proof.lean): the result is `expected`, every position `i` with `i + m ≤ n` at which the bytes of the text equal those of the pattern, for all arrays and lengths.  [`occurrences_implements`](Library/Strings/Kmp/Compiled.lean): the module's call, with the arrays lent, returns that array without a trap.  [`occurrences_bound`](Library/Strings/Kmp/Compiled.lean): the generated bound is the table of `m` lengths and the result, or for the empty pattern a block of `n + 1` words. |
 
 ## 13. Graphs and combinatorial search
 

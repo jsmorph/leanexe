@@ -29,6 +29,7 @@ import TestSupport.Modules.Sampling
 import TestSupport.Modules.TopologicalSort
 import TestSupport.Modules.UnionFind
 import TestSupport.Modules.WeightedUnionFind
+import TestSupport.Modules.Kmp
 import TestSupport.Modules.TreeSearch
 import TestSupport.Modules.Avl
 import TestSupport.Modules.AvlDelete
@@ -146,6 +147,10 @@ def cases : IO Unit := do
   for (n, js, ks) in Library.Graphs.UnionFind.classInputs do
     IO.println s!"unionFind|classes|array-u64|{u (UInt64.ofNat n)} {arrU js} {arrU ks}|\
       [{", ".intercalate ((Library.Graphs.UnionFind.leastLabels n js ks).map toString)}]|3|5"
+  for (pw, m, tw, n) in Library.Strings.Kmp.kmpInputs do
+    IO.println s!"kmp|occurrences|array-u64|{arrU pw} {u m} {arrU tw} {u n}|\
+      [{", ".intercalate ((Library.Strings.Kmp.expected pw.toArray m tw.toArray n).toList.map
+        toString)}]|3|4"
   for (n, js, ks) in Library.Graphs.WeightedUnionFind.weightedInputs do
     IO.println s!"weightedUnionFind|classes|array-u64|{u (UInt64.ofNat n)} {arrU js} {arrU ks}|\
       [{", ".intercalate ((Library.Graphs.UnionFind.leastLabels n js ks).map toString)}]|3|6"

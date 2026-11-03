@@ -9,6 +9,7 @@ import Library.Combinatorics.NextPermutation.Program
 import Library.Graphs.TopologicalSort.Program
 import Library.Graphs.UnionFind.Program
 import Library.Graphs.WeightedUnionFind.Program
+import Library.Strings.Kmp.Program
 import Library.HashTables.LinearProbing.Program
 import Library.Hashing.Crc.Program
 import Library.Hashing.Hmac.Program
