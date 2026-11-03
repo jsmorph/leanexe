@@ -40702,7 +40702,7 @@ The user chose the third batch in the order below, from easiest to hardest, with
 Algorithm D sorts with the passes of straight insertion at the increments `h_t, …, h_1 = 1`, each pass inserting every word among the words `h` places apart before it.  Knuth's recommendation in §5.2.1 takes `h_1 = 1` and `h_{s+1} = 3h_s + 1` and stops with `h_t` at the first `t` with `h_{t+2} ≥ N`, which [Niemann's summary](https://profesores.elo.utfsm.cl/~agv/elo320/PLDS210/niemann/s_shl.htm) also states, so an array of 100 words takes the increments 13, 4, and 1.  The pass with increment 1 is Algorithm S, so the program ends with the library's `straightInsertion`, as quicksort's step Q9 does, and the earlier passes use `insertBy`, straight insertion's `shift` with a stride.  The specification is `List.mergeSort` of the input, as for the other sorts, and the proof needs only that every pass permutes the array, since straight insertion sorts every array.  `firstIncrement` tests `h ≤ (N - 5) / 9` in place of `9h + 4 < N`, so that no word wraps, and the next increment `3h + 1` stays below `N`, which bounds the loop.
 
 - [x] Shellsort: request, specification and reviews, program, proofs, cases, README, index.
-- [ ] Bound theorems: the documents of heapsort, straight insertion, and sampling credit a bound of 0 with a module that allocates nothing, where the theorem states that `top` does not rise.
+- [x] Bound theorems: the documents of heapsort, straight insertion, and sampling credited a bound of 0 with a module that allocates nothing, where the theorem states that `top` does not rise, and now state what the theorem states.
 
 ### Shellsort: the results
 

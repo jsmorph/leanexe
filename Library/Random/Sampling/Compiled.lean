@@ -19,7 +19,7 @@ theorem shuffle_export :
     ({ name := "shuffle", funcIdx := 4 } : Wasm.Export) ∈ compiled.module.exports := by
   decide +kernel
 
-/-- The module allocates nothing: it shuffles the array in its own block. -/
+/-- The generated bound is 0, so a call of `shuffle` does not raise `top`. -/
 theorem shuffle_bound (us xs : Array UInt64) : compiled.shuffle.bound (us, { val := xs }) = 0 :=
   compiled.shuffle.bound_eq us xs
 

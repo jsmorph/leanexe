@@ -46,7 +46,7 @@ The third part of [the request](request.txt) asks for Algorithm R with the candi
 | `reservoir_eq`, `reservoirFrom_subperm` | [The reservoir proofs](Reservoir.lean) | `reservoir` computes `algorithmR`, whose candidates are a sub-multiset of the records. |
 | `cands_count` | [The reservoir proofs](Reservoir.lean) | After `L` records, every set of `k` positions below `k + L` comes from between `L! ∏ ⌊2^64 / (t + 1)⌋` and `L! ∏ ⌈2^64 / (t + 1)⌉` word arrays. |
 | `reservoir_spec` | [The reservoir proofs](Reservoir.lean) | `Reservoirs reservoir`. |
-| `shuffle_bound` | [The compilation](Compiled.lean) | `compiled.shuffle.bound` is 0: the shuffle allocates nothing. |
+| `shuffle_bound` | [The compilation](Compiled.lean) | `compiled.shuffle.bound` is 0, so a call of `shuffle` does not raise `top`. |
 | `sample_bound`, `reservoir_bound` | [The compilation](Compiled.lean) | The bounds are `Verified.blockCost` of `min n N`: each call allocates one block of `min n N` words. |
 | `shuffle_export`, `sample_export`, `reservoir_export` | [The compilation](Compiled.lean) | The exports are functions 4, 5, and 6 of `compiled.module`. |
 | `sampling_file`, `sampling_file_decode` | [The file theorems](File.lean) | `build/verified/sampling.wasm` holds the encoding of `compiled.module` and decodes to the module of `compiled.bytes`. |

@@ -28,7 +28,7 @@ theorem heapsort_implements :
   Verified.implementsA_congr compiled.heapsort.trapFree fun _ _ _ x ⟨_, _, hxs⟩ =>
     heapsort_eq x.val (show _ < 2 ^ 64 from hxs.values.size_lt)
 
-/-- The module allocates nothing: it sorts the array in its own block. -/
+/-- The generated bound is 0, so a call does not raise `top`. -/
 theorem heapsort_bound (xs : Array UInt64) : compiled.heapsort.bound { val := xs } = 0 :=
   compiled.heapsort.bound_eq xs
 

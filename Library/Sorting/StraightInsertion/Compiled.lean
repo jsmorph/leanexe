@@ -29,7 +29,7 @@ theorem straightInsertion_implements :
   Verified.implementsA_congr compiled.straightInsertion.trapFree fun _ _ _ x ⟨_, _, hxs⟩ =>
     straightInsertion_eq x.val (show _ < 2 ^ 64 from hxs.values.size_lt)
 
-/-- The module allocates nothing: it sorts the array in its own block. -/
+/-- The generated bound is 0, so a call does not raise `top`. -/
 theorem straightInsertion_bound (xs : Array UInt64) :
     compiled.straightInsertion.bound { val := xs } = 0 :=
   compiled.straightInsertion.bound_eq xs
