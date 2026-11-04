@@ -258,7 +258,11 @@ structure ReqCase where
 def reqCases : List ReqCase := [
   { name := "echo", module := TestSupport.Bare.reqCompiled.module, cap := 1, k := 5, s0 := 3,
     tick := TestSupport.Bare.cmsdkTick,
-    thm := thm_of TestSupport.Bare.reqCompiled.translation_eq TestSupport.Bare.echo_program }]
+    thm := thm_of TestSupport.Bare.reqCompiled.translation_eq TestSupport.Bare.echo_program },
+  { name := "deadline", module := TestSupport.Bare.reqCompiled.module, cap := 1, k := 8,
+    s0 := 5, tick := TestSupport.Bare.deadlineCmsdkTick,
+    thm := thm_of TestSupport.Bare.reqCompiled.translation_eq
+      TestSupport.Bare.deadline_program }]
 
 def emitReq (dir : String) (c : ReqCase) : IO Unit := do
   let some t := translate c.cap c.module

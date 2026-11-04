@@ -2,9 +2,9 @@
 # requires-python = ">=3.12"
 # dependencies = []
 # ///
-"""The far end of UART0 of QEMU's mps2-an500 for the echo of the request protocol
-(tests/TestSupport/Bare/Req.lean), whose step cmsdkTick answers each byte with the byte's bit 5
-flipped.
+"""The far end of UART0 of QEMU's mps2-an500 for the echoes of the request protocol
+(tests/TestSupport/Bare/Req.lean), whose steps cmsdkTick and deadlineCmsdkTick answer each byte
+with the byte's bit 5 flipped.
 
 The script listens on a Unix-domain socket in a temporary directory and runs the command QEMU
 ARG... followed by "-serial unix:PATH" and "-trace cmsdk_apb_uart_tx_pending -D LOG".  The first
@@ -17,6 +17,13 @@ time, waiting for each reply; (b) sends bursts of BURSTS bytes from a second thr
 the replies; (c) sends HELD bytes from a second thread, reads nothing until LOG shows that the
 transmitter waits, and then reads the replies; and (d) repeats (a), so that a reply in excess of
 the bytes sent shows as a wrong reply.  Each reply must equal the byte sent with bit 5 flipped.
+With --hold HOLD, for deadlineCmsdkTick, which drops a reply that it cannot write within its
+limit of 671 ms after the byte arrived, (c) sends HELD - 1 bytes other than 0xff and then 0xff,
+waits HOLD more seconds before it reads, and reads until the reply to 0xff.  The replies must
+then be the bytes sent with bit 5 flipped, in order, with at least one missing: the reply to
+the byte that the step read while the transmitter waited.  QEMU's CMSDK timer is a ptimer,
+which counts on QEMU_CLOCK_VIRTUAL (hw/core/ptimer.c, ptimer_init), and that clock follows the
+host's clock while the machine runs, without -icount (system/cpu-timers.c, cpu_get_clock_locked).
 Finally it stops QEMU with SIGTERM, after which QEMU must exit with status 0, prints one line, a
 summary or the cause of the failure, and exits with status 0 or 1.  TIMEOUT bounds each wait in
 seconds.
@@ -39,7 +46,7 @@ A TCP socket on the loopback interface grows its send buffer to 2.5 MiB, which t
 40 KB/s, fills only after a minute.  The checks depend on no timing: each wait ends on an event of
 the socket or of LOG, and TIMEOUT bounds only a failure.
 
-Usage: uv run tests/baremetal/uart_echo.py [--timeout TIMEOUT] LOG QEMU [ARG...]
+Usage: uv run tests/baremetal/uart_echo.py [--timeout TIMEOUT] [--hold HOLD] LOG QEMU [ARG...]
 """
 
 import argparse
@@ -55,6 +62,7 @@ MESSAGE = b"The request protocol's echo answers each byte with bit 5 flipped.\n"
 BURSTS = (2, 16, len(MESSAGE), 65536)
 HELD = 65536
 PENDING = b"cmsdk_apb_uart_tx_pending"
+LAST = 0xFF
 
 
 class Failure(Exception):
@@ -105,15 +113,44 @@ def check(what, sent, reply):
                           f"replies {i} on: {reply[i:i + 32]!r}")
 
 
+def receive_until(conn, last):
+    data = bytearray()
+    while not data or data[-1] != last:
+        try:
+            chunk = conn.recv(65536)
+        except TimeoutError:
+            raise Failure(f"{len(data)} replies without {last:#04x}, then none for "
+                          f"{conn.gettimeout()} s") from None
+        if not chunk:
+            raise Failure(f"the connection closed after {len(data)} replies without {last:#04x}")
+        data += chunk
+    return bytes(data)
+
+
+def check_dropped(what, sent, reply):
+    """Checks that reply is sent with bit 5 flipped, in order, with bytes missing, and returns
+    the number missing."""
+    i = 0
+    for j, r in enumerate(reply):
+        while i < len(sent) and sent[i] ^ 0x20 != r:
+            i += 1
+        if i == len(sent):
+            raise Failure(f"{what}: reply {j}, {r:#04x}, answers no byte sent after those that "
+                          f"replies 0 to {j - 1} answer; replies {j} on: {reply[j:j + 32]!r}")
+        i += 1
+    return len(sent) - len(reply)
+
+
 def lockstep(conn):
     for i, s in enumerate(MESSAGE):
         conn.sendall(bytes([s]))
         check(f"lockstep byte {i}", [s], receive(conn, 1))
 
 
-def burst(conn, data, log=None):
+def burst(conn, data, log=None, hold=None):
     """Sends data from a second thread and reads the replies.  With log, it reads nothing until
-    the log shows the transmitter waiting, and it returns the number of waits."""
+    the log shows the transmitter waiting, and it returns the number of waits and of replies
+    missing.  With hold, it waits hold seconds more and accepts missing replies."""
     errors = []
 
     def send():
@@ -134,15 +171,25 @@ def burst(conn, data, log=None):
                 raise Failure(f"the transmitter did not wait within {conn.gettimeout()} s of "
                               f"holding {len(data)} replies")
             time.sleep(0.01)
-    reply = receive(conn, len(data))
+    if hold is None:
+        reply = receive(conn, len(data))
+    else:
+        time.sleep(hold)
+        reply = receive_until(conn, data[-1] ^ 0x20)
     sender.join()
     if errors:
         raise Failure(f"sending {len(data)} bytes failed: {errors[0]}")
-    check(f"burst of {len(data)}", data, reply)
-    return log.pending() - before if log is not None else 0
+    dropped = 0
+    if hold is None:
+        check(f"burst of {len(data)}", data, reply)
+    else:
+        dropped = check_dropped(f"burst of {len(data)}", data, reply)
+        if dropped == 0:
+            raise Failure(f"burst of {len(data)}: no reply missing after a hold of {hold} s")
+    return (log.pending() - before, dropped) if log is not None else (0, 0)
 
 
-def exchange(qemu, listener, log_path, timeout):
+def exchange(qemu, listener, log_path, timeout, hold):
     listener.settimeout(0.1)
     deadline = time.monotonic() + timeout
     while True:
@@ -158,14 +205,19 @@ def exchange(qemu, listener, log_path, timeout):
         lockstep(conn)
         for n in BURSTS:
             burst(conn, block(n))
-        waits = burst(conn, block(HELD), log)
+        if hold is None:
+            held = block(HELD)
+        else:
+            held = bytes(b for b in block(2 * HELD) if b != LAST)[:HELD - 1] + bytes([LAST])
+        waits, dropped = burst(conn, held, log, hold)
         lockstep(conn)
-    return waits
+    return waits, dropped
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--timeout", type=float, default=120)
+    parser.add_argument("--hold", type=float)
     parser.add_argument("log")
     parser.add_argument("qemu", nargs=argparse.REMAINDER)
     args = parser.parse_args()
@@ -182,7 +234,7 @@ def main():
         start = time.monotonic()
         error = None
         try:
-            waits = exchange(qemu, listener, args.log, args.timeout)
+            waits, dropped = exchange(qemu, listener, args.log, args.timeout, args.hold)
         except (Failure, OSError) as e:
             error = e
         elapsed = time.monotonic() - start
@@ -198,8 +250,11 @@ def main():
     else:
         print(f"{2 * len(MESSAGE)} bytes in lockstep, bursts of {', '.join(map(str, BURSTS))}, "
               f"and {HELD} held bytes, during which the transmitter waited "
-              f"{waits} time{'' if waits == 1 else 's'}, "
-              f"in {elapsed:.1f} s")
+              f"{waits} time{'' if waits == 1 else 's'}"
+              + ("" if args.hold is None else
+                 f" and {dropped} repl{'y' if dropped == 1 else 'ies'} went missing after a "
+                 f"hold of {args.hold:g} s")
+              + f", in {elapsed:.1f} s")
         return 0
     return 1
 

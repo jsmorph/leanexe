@@ -41517,7 +41517,7 @@ A read is a volatile load of chunk `Mint32` with the event `Event_vload Mint32 r
 
 A TCP socket did not serve: QEMU's loopback connection grew its send buffer to 2.6 MB, so the transmitter never waited within the test's time, and a Unix-domain socket makes it wait after 278 unread replies.  QEMU 8.2.2's CMSDK UART holds one received byte and takes a byte from its character device only while that buffer is empty (`hw/char/cmsdk-apb-uart.c`, lines 115 to 124), so excess bytes wait in the socket and the model never overruns.  Real hardware overruns when the program reads too slowly, so the test checks polling and the flags, and nothing about overrun.  A write while the transmitter's flag is set replaces the waiting byte (lines 250 to 256), which is how the altered program loses replies.  `req.sh` needs the ARMv7-M tree, so `tools/full-check`, which uses the AArch64 tree, does not run it.
 
-## 2026-11-04: Controller PoC, step 6: design of clock reads and deadlines
+## 2026-11-04: Controller PoC, step 6: clock reads and deadlines
 
 A deadline enters the theorem as a property of the trace: the clock is a device register, each read of it is a volatile load whose value the theorem quantifies over, and the step's specification requires that an output follows a clock read that meets its deadline.  The physical claim adds two assumptions, that the clock counts correctly and that the code between the clock read and the store takes less than a stated time.
 
@@ -41525,11 +41525,17 @@ A deadline enters the theorem as a property of the trace: the clock is a device 
 |---|---|
 | Register bank | `lx_reg` at `0x40000000`, the base of `mps2-an500`'s APB devices, with the register index masked to 16 bits, so that one bank covers CMSDK Timer0 at `0x40000000` and UART0 at `0x40004000` (index `0x1000`).  The masks change from 255 to 65535 in `reqIndex` and `reqReg`; offsets stay below 256 KiB |
 | Timer | Timer0's `VALUE` register, index 1, counts down from `RELOAD`, index 2, at the system clock, with `CTRL`, index 0, enabling it.  The startup code sets `RELOAD` to its maximum and enables the timer |
-| Step | The echo with a deadline: after reading a byte, the step reads the timer and keeps the reading; before writing the reply, it reads the timer again and writes the reply only if fewer than `D` ticks have passed, and otherwise writes an error byte |
-| Theorem | Every reply follows, in an earlier window, a timer read whose value is within `D` ticks of the reading taken after the byte arrived |
-| Test | The host script measures nothing about time; it checks that every reply is the transformed byte or the error byte, and that replies arrive while QEMU's timer runs |
+| Step | `deadlineTick`, the echo with a deadline: after reading a byte, the step reads the timer and keeps the reading in its state; before writing the reply, it reads the timer again and writes the reply only if fewer than `limit` ticks have passed, and otherwise drops it.  An error byte would need a value that no reply takes, and the replies take all 256 values.  `deadlineCmsdkTick` sets the limit to `0x1000000` ticks, 671 ms at Timer0's clock of 25 MHz in QEMU (`SYSCLK_FRQ` in `hw/arm/mps2.c`) |
+| Theorem | `deadlineCmsdkTick_write`: the step requests a write only in phase 4 and only when the timer value read is within the limit of the reading in the state.  `deadline_write_on_time` states this for every window of a run from state 5: the window before a write read the timer.  `deadline_program` gives the program's `LoopReacts` with `reqTrace deadlineCmsdkTick 5 σ` |
+| Test | The host script holds the replies for 2 s, longer than the limit, and requires the replies in order with at least one missing; in every other part of the run every reply must arrive |
 
 - [x] Widen the register index and move `lx_reg` to `0x40000000`, with the UART at index `0x1000`.  The startup code starts Timer0 from its maximum reload value and enables UART0 through `lx_uart`.  `req.sh` and `m7.sh` pass, the echo with a stack bound of 208 bytes.
-- [ ] Timer setup in the startup code, and the step with a deadline.
-- [ ] The deadline theorem about the step.
-- [ ] The QEMU run.
+- [x] Timer setup in the startup code, and the step with a deadline.
+- [x] The deadline theorem about the step.
+- [x] The QEMU run.
+
+### Results
+
+`tests/baremetal/req.sh` emits both programs, finds the ARMv7-M `clightgen` read-back of each equal to the program of its theorem, and runs both on `mps2-an500`.  The deadline program passes in 5.5 s with a stack bound of 296 bytes: every reply arrives in lockstep and in the bursts, and after the hold of 2 s exactly one reply is missing, the reply to the byte that the step read while the transmitter waited.  The host script's check distinguishes the cases it should: the echo without a deadline fails it with a hold of 2 s, since no reply goes missing, the deadline program fails it with a hold of 0.2 s, shorter than the limit, and passes it with a hold of 1 s.  QEMU's CMSDK timer is a `ptimer` on `QEMU_CLOCK_VIRTUAL` (`hw/core/ptimer.c`), which follows the host's clock while the machine runs when QEMU has no `-icount` (`system/cpu-timers.c`, `cpu_get_clock_locked`).
+
+The theorem bounds the difference of two timer values that the program read; the physical claim needs two more assumptions.  The timer must count at its stated rate, and the store of a reply must follow the second timer read within a bounded time, which here covers the rest of one loop iteration and one call of the step.  Neither assumption is proved: the Clight semantics has no notion of time, and execution-time bounds are outside the PoC.

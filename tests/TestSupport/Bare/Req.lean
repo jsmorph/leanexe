@@ -41,7 +41,40 @@ def echoTick (data status txFull rxFull s v : UInt64) : UInt64 × UInt64 :=
 is full, and bit 1 set while the receive buffer is full. -/
 def cmsdkTick (s v : UInt64) : UInt64 × UInt64 := echoTick 0x1000 0x1001 1 2 s v
 
-verified_compile (pages := 1) (cap := 1) reqCompiled := [readReq, writeReq, echoTick, cmsdkTick]
+/-- The ticks that a down-counting 32-bit timer has counted from the reading `t0` to the reading
+`t1`. -/
+def elapsed (t0 t1 : UInt64) : UInt64 := (t0 - t1) &&& 0xFFFFFFFF
+
+/-- The echo with a deadline, from the state `s` and the value `v` that the last request read,
+for the register map of `echoTick` and the index `timer` of a down-counting timer's value: after
+reading a byte, it reads the timer; before writing the reply, the byte with bit 5 flipped, it
+reads the timer again, and it writes the reply only when fewer than `limit` ticks have passed,
+dropping the byte otherwise.  The state is the phase plus 256 times the reply plus 65,536 times
+the timer reading taken after the byte arrived. -/
+def deadlineTick (data status timer txFull rxFull limit s v : UInt64) : UInt64 × UInt64 :=
+  let phase := s % 256
+  let reply := (s / 256) % 256
+  let stamp := (s / 65536) % 0x100000000
+  if phase == 0 then
+    if v &&& rxFull != 0 then (1, readReq data) else (0, readReq status)
+  else if phase == 1 then
+    (2 + 256 * ((v % 256) ^^^ 32), readReq timer)
+  else if phase == 2 then
+    (3 + 256 * reply + 65536 * (v % 0x100000000), readReq status)
+  else if phase == 3 then
+    if v &&& txFull == 0 then (s + 1, readReq timer) else (s, readReq status)
+  else if phase == 4 then
+    if elapsed stamp v < limit then (5, writeReq data reply) else (5, readReq status)
+  else (0, readReq status)
+
+/-- The echo with a deadline of `0x1000000` ticks for UART0 and Timer0 of `mps2-an500`, whose
+value register is index 1.  QEMU 8.2.2 clocks Timer0 with the system clock of 25 MHz
+(`SYSCLK_FRQ` in `hw/arm/mps2.c`), so the limit is 671 ms. -/
+def deadlineCmsdkTick (s v : UInt64) : UInt64 × UInt64 :=
+  deadlineTick 0x1000 0x1001 1 1 2 0x1000000 s v
+
+verified_compile (pages := 1) (cap := 1) reqCompiled := [readReq, writeReq, echoTick, cmsdkTick,
+  elapsed, deadlineTick, deadlineCmsdkTick]
 
 /-! ## Polling -/
 
@@ -110,6 +143,83 @@ theorem echo_write_after_room (σ : Nat → LClight.int) (n : Nat)
 open LeanExe.Native in
 theorem echo_first_read : reqWrite (cmsdkTick 3 0).2 = false := by decide
 
+open LeanExe.Native in
+theorem readReq_timer : reqWrite (readReq 1) = false := by decide
+
+open LeanExe.Native in
+/-- The echo with a deadline requests a write only in the phase that follows a timer read, and
+only when fewer than the limit's ticks have passed since the reading in the state. -/
+theorem deadlineCmsdkTick_write (s v : UInt64) (hw : reqWrite (deadlineCmsdkTick s v).2 = true) :
+    s % 256 = 4 ∧ elapsed ((s / 65536) % 0x100000000) v < 0x1000000 := by
+  simp only [deadlineCmsdkTick, deadlineTick] at hw
+  split at hw
+  · split at hw <;> simp [readReq_status, readReq_data] at hw
+  · split at hw
+    · simp [readReq_timer] at hw
+    · split at hw
+      · simp [readReq_status] at hw
+      · split at hw
+        · split at hw <;> simp [readReq_status, readReq_timer] at hw
+        · split at hw
+          · rename_i h4
+            split at hw
+            · rename_i hl
+              exact ⟨by simpa using h4, hl⟩
+            · simp [readReq_status] at hw
+          · simp [readReq_status] at hw
+
+open LeanExe.Native in
+/-- The echo with a deadline enters the phase 4 only with a request to read the timer. -/
+theorem deadlineCmsdkTick_phase4 (s v : UInt64) (h : (deadlineCmsdkTick s v).1 % 256 = 4) :
+    (deadlineCmsdkTick s v).2 = readReq 1 := by
+  simp only [deadlineCmsdkTick, deadlineTick] at h ⊢
+  split <;> rename_i h0
+  · split <;> rename_i hr
+    · rw [if_pos h0, if_pos hr] at h
+      exact absurd h (by decide)
+    · rw [if_pos h0, if_neg hr] at h
+      exact absurd h (by decide)
+  · split <;> rename_i h1
+    · rfl
+    · split <;> rename_i h2
+      · rw [if_neg h0, if_neg h1, if_pos h2] at h
+        have := congrArg UInt64.toNat h
+        simp [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_mod, UInt64.toNat_div] at this
+        omega
+      · split <;> rename_i h3
+        · split <;> rename_i ht
+          · rfl
+          · rw [if_neg h0, if_neg h1, if_neg h2, if_pos h3, if_neg ht] at h
+            have h3' : s % 256 = 3 := by simpa using h3
+            rw [h3'] at h
+            exact absurd h (by decide)
+        · split <;> rename_i h4
+          · rw [if_neg h0, if_neg h1, if_neg h2, if_neg h3, if_pos h4] at h
+            split at h <;> simp at h
+          · rw [if_neg h0, if_neg h1, if_neg h2, if_neg h3, if_neg h4] at h
+            exact absurd h (by decide)
+
+open LeanExe.Native in
+/-- In every run of the echo with a deadline from the state 5, a window that requests a write
+follows a window that read the timer, and fewer than `0x1000000` ticks separate the reading
+stored in the state from the value read. -/
+theorem deadline_write_on_time (σ : Nat → LClight.int) (n : Nat)
+    (hw : reqWrite (deadlineCmsdkTick (reqRun deadlineCmsdkTick 5 σ (n + 1)).state
+      (reqRun deadlineCmsdkTick 5 σ (n + 1)).last).2 = true) :
+    (deadlineCmsdkTick (reqRun deadlineCmsdkTick 5 σ n).state
+        (reqRun deadlineCmsdkTick 5 σ n).last).2 = readReq 1 ∧
+      elapsed (((reqRun deadlineCmsdkTick 5 σ (n + 1)).state / 65536) % 0x100000000)
+        (reqRun deadlineCmsdkTick 5 σ (n + 1)).last < 0x1000000 := by
+  obtain ⟨hph, hok⟩ := deadlineCmsdkTick_write _ _ hw
+  refine ⟨deadlineCmsdkTick_phase4 _ _ ?_, hok⟩
+  have e : (reqRun deadlineCmsdkTick 5 σ (n + 1)).state =
+      (deadlineCmsdkTick (reqRun deadlineCmsdkTick 5 σ n).state
+        (reqRun deadlineCmsdkTick 5 σ n).last).1 := by
+    simp only [reqRun, reqNext]
+    split <;> rfl
+  rw [← e]
+  exact hph
+
 open Wasm LClight LeanExe.Native in
 /-- The program with requests around `cmsdkTick`, from the state 3, runs forever: for every
 sequence `σ` of the values that its volatile loads read, window `n` performs the one register
@@ -134,5 +244,30 @@ theorem echo_program (A : Archi) (X : ExtSem)
     Verified.Ready.initial rfl reqCompiled.initial
   exact req_program reqCompiled.translation_eq hpre hfd hty h2 A X
     (heapAt_nativeStore hAt0 1) (reqRuns_of_nativeA hnat (fun _ _ _ => trivial) (by decide)) 3 σ
+
+open Wasm LClight LeanExe.Native in
+/-- The program with requests around `deadlineCmsdkTick`, from the state 5, runs forever: for
+every sequence `σ` of the values that its volatile loads read, window `n` performs the one
+register access that `deadlineCmsdkTick` requests from the state and the last value read. -/
+theorem deadline_program (A : Archi) (X : ExtSem)
+    (pre : List (ident × globdef (fundef function) type)) (hpre : PrefixOk pre)
+    (σ : Nat → int) :
+    LoopReacts A X (reqProgram pre reqCompiled.translation (reqMain 8 5)) E0
+      (reqTrace deadlineCmsdkTick 5 σ) := by
+  obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := reqCompiled.deadlineCmsdkTick.native A X
+  obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := [.i64, .i64])
+    (rs0 := [.i64, .i64]) (by decide +kernel)
+  have hty : type_of_function fd = .Tfunction [tulong, tulong] .Tvoid cc_default := by
+    rw [entry_type reqCompiled.translation_eq hfd hsig]
+    rfl
+  have h2 : 2 ≤ reqCompiled.translation.nres := by
+    rw [translate_nres reqCompiled.translation_eq,
+      translate_funcs_eq reqCompiled.translation_eq reqCompiled.translation_funcs]
+    decide +kernel
+  obtain ⟨hAt0, -, -⟩ : Verified.Ready reqCompiled.module reqCompiled.tables
+      (Verified.initialHeap reqCompiled.tables) reqCompiled.module.initialStore :=
+    Verified.Ready.initial rfl reqCompiled.initial
+  exact req_program reqCompiled.translation_eq hpre hfd hty h2 A X
+    (heapAt_nativeStore hAt0 1) (reqRuns_of_nativeA hnat (fun _ _ _ => trivial) (by decide)) 5 σ
 
 end TestSupport.Bare
