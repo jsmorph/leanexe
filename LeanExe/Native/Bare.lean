@@ -293,7 +293,8 @@ def ctlWindow (k : Nat) : statement :=
 /-- The body of the controller's `main` before the `return 0;` that `clightgen` appends:
 `lx_init();`, the initial state `l0 = s0;`, and `for (;;)` around the window. -/
 def ctlBody (k : Nat) (s0 : UInt64) : statement :=
-  seqList [initCall, .Sset resTemp (.Econst_long s0 tulong), .Sloop (.Ssequence .Sskip (ctlWindow k)) .Sskip]
+  seqList [initCall, .Sset resTemp (.Econst_long s0 tulong),
+    .Sloop (.Ssequence .Sskip (ctlWindow k)) .Sskip]
 
 /-- The temporaries of the controller's `main`: the state `l0`, the word `l3`, the index `l5`,
 the byte `l6`, and the temporaries that `clightgen` creates for the call and the load. -/
