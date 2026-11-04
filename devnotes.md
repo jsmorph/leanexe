@@ -41464,3 +41464,26 @@ An input program whose volatile load falls outside its array is undefined for bo
 
 - [x] Evaluator, soundness, printer, script, and the check.
 - [ ] Comparisons under the x86_64 and armv7m trees.
+
+## 2026-11-04: Controller PoC, step 4: Cortex-M7 on QEMU `mps2-an500`
+
+`tools/baremetal/armv7m/` builds LeanExe's C programs for a Cortex-M7 with CompCert 3.18 configured `armv7m-eabihf`: startup code with the vector table, the FPU enable, an MPU region that guards the stack's limit, a fault handler that reports, and an exit through semihosting; a linker script for `mps2-an500`; a build script; a stack-bound tool for Thumb-2; and an access check for ARMv7-M.  Code and read-only data lie in ZBT SSRAM1 at 0, data, the stacks, and the guard in SSRAM2 and 3 at `0x20000000`, `lx_in` in PSRAM at `0x60000000`, and `lx_out` is the data register of UART0 at `0x40004000`, whose transmitter the startup code enables.  The comments cite AN500 (DAI 0500B), QEMU 8.2.2's `hw/arm/mps2.c` and `cmsdk-apb-uart.c`, the CMSDK TRM (DDI 0479D), the ARMv7-M ARM (DDI 0403E.e), and the Cortex-M7 TRM (DDI 0489F).  `tests/baremetal/m7.sh DIR` checks QEMU's memory map against the linker script, runs the probe `m7probe.c`, and runs each controller program that `native-bare emit-ctl` wrote to `DIR`.
+
+The stack-bound tool takes CompCert's frames from its assembly and the run-time helpers' frames from the disassembly of the linked image, and it fails on an indirect call, on recursion outside the list of functions that take the call depth, and on a helper missing from the image.  The build prints the helpers that each program reaches with `nm`.  The access check reads the disassembly of the whole image and reports every instruction that requires word alignment even with unaligned access enabled, `ldrd`, `strd`, `ldm`, `stm`, `vldr`, and `vstr`, unless its base is the stack pointer.
+
+| Run | Result |
+|---|---|
+| Filter controller at one page | 16 windows, 128 bytes, equal to `filter.expected`; bound of `main` 80 bytes; helpers `__compcert_i64_shl`, `__compcert_i64_shr`, `__compcert_i64_udiv`, `__compcert_i64_udivmod` |
+| Probe | the expected words and exit status 42, with a high-water mark of 16,032 bytes equal to the static bound |
+| Unaligned word load | runs as the probe |
+| No FPU enable | UsageFault with NOCP, status 255 |
+| Unaligned `ldrd` | UsageFault with UNALIGNED; the access check rejects the image |
+| Store below the stack, and a stack of 8 KiB | MemManage with the guard's address in MMFAR, status 255 |
+| UART transmitter off | no output, status 42 |
+
+A floating-point module fails the access check: `vldr` and `vstr` through a computed address, such as the accesses to `lx_pun`, have no alignment argument that the check can see.  `lx_pun` is a 64-bit global, which the AAPCS aligns to 8 bytes, so these accesses are aligned, but running a floating-point module on this target needs that argument stated and checked.  The filter has no such instruction.  The `VERSION` file of the CompCert 3.18 archive reads 3.17, as `LeanExe/Native/NOTICE` records, so `ccomp --version` prints 3.17.
+
+- [x] Toolchain, probe, and the filter controller on `mps2-an500`.
+- [ ] The Rocq theorems against the ARMv7-M tree, with the integer-load hypothesis.
+- [ ] The ARMv7-M `clightgen` read-back of the controller program.
+- [ ] The alignment argument for floating-point loads and stores.
