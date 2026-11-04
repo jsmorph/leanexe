@@ -18,6 +18,13 @@ the theorem allows only for an entry that may abort, no byte is expected and the
 code of `unreachable`.  `native-bare check DIR` compares each whole program with the Clight that
 `clightgen` wrote for it as `DIR/NAME.v`, `main` and `lx_out` included.
 
+The controller programs of `tests/baremetal/ctl.sh` are the cases of `ctlCases`, each a step
+function with its initial state, the eight bytes of the register bank `lx_in`, and the theorem
+`LoopReacts` of its program.  `native-bare emit-ctl DIR` writes each one's C text, the names of
+its functions that take the call depth, the input bytes as `DIR/NAME.in`, and the bytes of the
+first windows that the step computes from them as `DIR/NAME.expected`.  `native-bare check-ctl
+DIR` compares each whole program with the Clight that `clightgen` wrote for it.
+
 The programs with input of `tests/baremetal/inputs.sh` are the cases of `inCases`, each an entry
 that takes an array and a length, with the theorem of its program, whose type fixes the entry and
 the kind of result.  `native-bare emit-in DIR` writes each one's C text, its
@@ -179,11 +186,15 @@ structure CtlCase where
   s0 : UInt64
   input : List UInt8
   windows : Nat
+  thm : ∀ T, translate nativeCap module = some T → ∀ (A : Archi) (X : ExtSem)
+    (pre : List (ident × globdef (fundef function) type)), PrefixOk pre → ∀ σ : Nat → int,
+    LoopReacts A X (inProgram pre T (ctlMain k s0)) E0 (ctlTrace step s0 σ)
 
 def ctlCases : List CtlCase := [
   { name := "filter", module := TestSupport.Bare.ctlCompiled.module, k := 2,
     step := TestSupport.Bare.ctlStep, s0 := 0, input := [0x00, 0x10, 0, 0, 0, 0, 0, 0],
-    windows := 16 }]
+    windows := 16,
+    thm := thm_of TestSupport.Bare.ctlCompiled.translation_eq TestSupport.Bare.filter_program }]
 
 /-- The bytes that the first `n` windows store, from the state `s` and the input word `x`. -/
 def ctlBytes (step : UInt64 → UInt64 → UInt64) (x : UInt64) : Nat → UInt64 → List UInt8

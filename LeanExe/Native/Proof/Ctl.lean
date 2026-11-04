@@ -53,6 +53,32 @@ def CtlRuns (A : Archi) (X : ExtSem) (cap : Nat) (m : Wasm.Module) (T : Translat
         StoreRel A E st' m' ∧ StatusRel A E m' 0 ∧ heap'.At st' ∧
         st'.memoryCaps = (nativeStore m cap).memoryCaps
 
+/-- `CtlRuns` of a step that cannot trap, from its theorem `NativeA` over the pairs of state and
+input. -/
+theorem ctlRuns_of_nativeA {A : Archi} {X : ExtSem} {cap : Nat} {m : Wasm.Module}
+    {T : Translation} {fd : function} {ctl : UInt64 → UInt64 → UInt64}
+    {Pre : UInt64 × UInt64 → Heap → Store Unit → Prop}
+    {Post : UInt64 × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
+    (hnat : NativeA A X cap m T [.i64, .i64] [.i64] fd false
+      (fun x : UInt64 × UInt64 => ctl x.1 x.2) Pre Post)
+    (hPre : ∀ x heap st, Pre x heap st) (hcap : cap ≤ 65535) :
+    CtlRuns A X cap m T fd ctl := by
+  intro E hE hG hcap' hnres hF st heap hat hcaps s x m1 hst hs
+  have hcapS : st.memoryCap m 0 ≤ 65535 := by
+    simp [Store.memoryCap, hcaps, nativeStore, hcap]
+  obtain ⟨t, m', vres, final, hcall, hst', hres⟩ := hnat E hE hG hcap' hnres hF st heap
+    [.i64 s, .i64 x] (s, x) hat (hPre _ _ _) rfl Separate.nil hcapS (argsTyped_i64 [s, x]) m1
+    hst hs
+  rcases hres with ⟨hs', vs, heap', hr, hat', hown, hcaps', -, -⟩ | ⟨habs, -⟩
+  · obtain ⟨v, hvs, -, rfl⟩ := hr
+    have hv : vs.reverse = [Wasm.Value.i64 (ctl s x)] := hown
+    have hv' : v = .i64 (ctl s x) := by
+      rw [show vs = [v] by simpa using hvs] at hv
+      simpa using hv
+    subst hv'
+    exact ⟨t, m', final, heap', hcall, hst', hs', hat', hcaps'.trans hcaps⟩
+  · cases habs
+
 section
 
 variable {A : Archi} {X : ExtSem} {ge : genv}
@@ -201,5 +227,84 @@ theorem ctl_program {m : Wasm.Module} {cap : Nat} {T : Translation}
     st', hp', hst', hs', hat', hcaps', hr'⟩
   simp only [E0, List.nil_append, List.append_nil]
   rfl
+
+/-! ## The values that the windows read -/
+
+/-- The loads of `t` read `σ` from position `c`: the `k`-th volatile load of `t` reads
+`σ (c + k)`, and `t` has no system call. -/
+def ReadsFrom (σ : Nat → int) (c : Nat) (t : trace) : Prop :=
+  ∀ tp ev u, t = tp ++ ev :: u →
+    match ev with
+    | .Event_syscall _ _ _ => False
+    | .Event_vload _ _ _ v => v = .EVint (σ (c + countVloads tp))
+    | _ => True
+
+theorem countVloads_append (t1 t2 : trace) :
+    countVloads (t1 ++ t2) = countVloads t1 + countVloads t2 := by
+  simp [countVloads, List.filter_append]
+
+theorem countVloads_inTrace (σ : Nat → int) : ∀ (a d : Nat), countVloads (inTrace σ a d) = d
+  | _, 0 => rfl
+  | a, d + 1 => by
+      simp only [inTrace]
+      rw [countVloads_cons_inEvent, countVloads_inTrace σ (a + 1) d]
+
+theorem countVloads_outTrace (bs : List UInt8) : countVloads (outTrace bs) = 0 := by
+  simp [countVloads, outTrace, List.filter_map, isVload, Function.comp_def]
+
+theorem ReadsFrom.append {σ : Nat → int} {c : Nat} {t1 t2 : trace} (h1 : ReadsFrom σ c t1)
+    (h2 : ReadsFrom σ (c + countVloads t1) t2) : ReadsFrom σ c (t1 ++ t2) := by
+  intro tp ev u h
+  rcases List.append_eq_append_iff.mp h with ⟨a', rfl, ht2⟩ | ⟨c', ht1, hc'⟩
+  · have e : c + countVloads (t1 ++ a') = c + countVloads t1 + countVloads a' := by
+      rw [countVloads_append, Nat.add_assoc]
+    rw [e]
+    exact h2 a' ev u ht2
+  · cases c' with
+    | nil =>
+        simp only [List.append_nil, List.nil_append] at ht1 hc'
+        subst ht1
+        have h' := h2 [] ev u (by simpa using hc'.symm)
+        have e : c + countVloads t1 + countVloads [] = c + countVloads t1 := by
+          simp [countVloads]
+        rw [e] at h'
+        exact h'
+    | cons e c'' =>
+        simp only [List.cons_append, List.cons.injEq] at hc'
+        obtain ⟨rfl, -⟩ := hc'
+        exact h1 tp ev c'' ht1
+
+theorem ctlTrace_reads (ctl : UInt64 → UInt64 → UInt64) (s0 : UInt64) (σ : Nat → int)
+    (n : Nat) : ReadsFrom σ (8 * n) (ctlTrace ctl s0 σ n) := by
+  intro tp ev u h
+  have h' := reads_inTrace_aux (fun j => σ (8 * n + j)) _ (fun e he => by
+    simp only [outTrace, List.mem_map] at he
+    obtain ⟨b, -, rfl⟩ := he
+    exact ⟨_, _, _, _, rfl⟩) 8 0 tp ev u h
+  cases ev <;> simpa using h'
+
+theorem countVloads_ctlTrace (ctl : UInt64 → UInt64 → UInt64) (s0 : UInt64) (σ : Nat → int)
+    (n : Nat) : countVloads (ctlTrace ctl s0 σ n) = 8 := by
+  rw [ctlTrace, countVloads_append, countVloads_inTrace, countVloads_outTrace]
+
+theorem ctl_windows_reads (ctl : UInt64 → UInt64 → UInt64) (s0 : UInt64) (σ : Nat → int) :
+    ∀ n, ReadsFrom σ 0 (windows (ctlTrace ctl s0 σ) n) ∧
+      countVloads (windows (ctlTrace ctl s0 σ) n) = 8 * n
+  | 0 => ⟨fun tp ev u h => by simp [windows] at h, rfl⟩
+  | n + 1 => by
+      obtain ⟨hr, hc⟩ := ctl_windows_reads ctl s0 σ n
+      refine ⟨hr.append ?_, ?_⟩
+      · rw [hc, Nat.zero_add]
+        exact ctlTrace_reads ctl s0 σ n
+      · rw [windows, countVloads_append, hc, countVloads_ctlTrace]
+        omega
+
+/-- The initial trace and the first `n` windows read `σ`: the `reads` premise of
+`clight2_loop_to_asm` in `rocq/Clight2Asm.v`. -/
+theorem ctl_reads (ctl : UInt64 → UInt64 → UInt64) (s0 : UInt64) (σ : Nat → int) (n : Nat) :
+    Reads σ (E0 ++ windows (ctlTrace ctl s0 σ) n) := by
+  intro tp ev u h
+  have h' := (ctl_windows_reads ctl s0 σ n).1 tp ev u (by simpa [E0] using h)
+  cases ev <;> simpa using h'
 
 end LeanExe.Native

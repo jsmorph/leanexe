@@ -41396,5 +41396,20 @@ The register bank is `lx_in[0]` to `lx_in[7]`, read with volatile byte loads, so
 
 Window `n` reads `σ (8 n)` to `σ (8 n + 7)`, and its trace is `inTrace (fun j => σ (8 * n + j)) 0 8 ++ outTrace (encodeWord s_{n+1})`, with `s_0 = S0` and `s_{n+1} = ctl s_n (inLen fun j => σ (8 * n + j))`.  The call's trace is empty by `funcall_quiet`.  The invariant of window `n` holds a Talos store `st` with `StoreRel A E st m`, `StatusRel A E m 0`, some heap with `heap.At st`, the memory caps of `nativeStore`, and `l0 = s_n`.
 - [x] Window lemma and the generic theorem: `exec_ctlWindow` and `ctl_program` (`LeanExe/Native/Proof/Ctl.lean`) prove `LoopReacts` of `inProgram pre T (ctlMain k s0)` with `t0 = E0` and the window traces `ctlTrace`, for every `σ`, from `CtlRuns` for the step.
-- [ ] The `Reads` fact for the windows, `CtlRuns` for `ctlCompiled` from its native theorem, and the filter's program theorem.
+- [x] The `Reads` fact for the windows, `CtlRuns` for `ctlCompiled` from its native theorem, and the filter's program theorem: `ctl_reads` states `Reads σ (E0 ++ windows (ctlTrace ctl s0 σ) n)`, the `reads` premise of `clight2_loop_to_asm`, with `windows` the twin of the Rocq definition.  `ctlRuns_of_nativeA` derives `CtlRuns` from `NativeA` of a step that cannot trap, and `filter_program` (`tests/TestSupport/Bare/Ctl.lean`) states `LoopReacts` of the filter's program for every `σ`.  `filter_program`, `loopReacts_export`, and `loopReacts_rename_on` depend on `propext`, `Classical.choice`, and `Quot.sound`, and `ctl_reads` on `propext` and `Quot.sound`.
 - [ ] Check, QEMU run, docs, commit, push.
+
+## 2026-11-04: Importing the Lean side into Rocq
+
+The Lean theorems connect to CompCert's Rocq proofs through a trusted step: the Lean copy of Clight means what CompCert's Clight means, and each interface definition, such as `LoopReacts`, means what its Rocq twin means.  The user asked how to reduce that trust, and an agent researched Gaëtan Gilbert's `rocq-lean-import`, which reads Lean 4 kernel exports into Rocq, as a way to have Coq's kernel check the whole chain.  The agent read the sources at [rocq-lean-import `bd3247a`](https://github.com/SkySkimmer/rocq-lean-import) and `lean4export` and ran nothing, so the failures below are predictions from the source.
+
+| Obstacle | Finding |
+|---|---|
+| Mutual and nested inductives | The NDJSON reader rejects groups of more than one type and ignores nested types (`src/leanParseNdjson.ml`, `src/lean.ml`).  `LClight` has mutual judgments and the nested `type` |
+| Arithmetic | No counterpart of the Lean kernel's GMP reductions.  `UInt64` is `BitVec 64` over `Fin (2^64)`, so `decide` and `rfl` over 64-bit values unfold unary or binary definitions.  `tests/core.v` expects failure after about 500 of 2,611 core entries |
+| Core types | `src/Lean.v` predeclares `UInt32` over `Fin` and strings as `String.mk`, which Lean v4.34 no longer has |
+| Versions | The importer needs Rocq 9.3 or `dev`.  CompCert 3.18's `configure` accepts Rocq 9.0 to 9.2 |
+| Logic | Lean's `Prop` becomes `SProp` with definitional UIP and unchecked eliminations, both classed unsafe by `rocqchk` (`checker/checkFlags.ml`).  Results in `SProp` reach CompCert's statements only under `Squash` |
+| Scale | The largest Lean 4 import found ([lf-lean](https://github.com/theorem-labs/lf-lean)) has at most 449 entries per export.  No import of Lean core, `Std`, or Mathlib is known |
+
+Relating the imported definitions to CompCert's would also need, by the agent's estimate, 10,000 to 20,000 lines of Rocq: `Nat`, `Int`, and the fixed-width words against `Z` and `Int64`, `Std.TreeMap` against `PTree`, the memory model with `Nat` blocks against `positive`, and Talos's floating point against Flocq.  Importing only the statement as a Rocq axiom would move the trust to Lean's kernel and the importer, and the closure would still carry the proofs inside definitions.  The route is set aside.  A Rocq-proved Clight evaluator, compared with `LClight.run` on `clightgen`'s ASTs, would strengthen the evidence at lower cost.  An experiment that exports `LoopReacts` with `lean4export` at `v4.34.0-rc2` and imports it under Rocq `dev` would test the predictions above.
