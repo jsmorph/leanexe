@@ -41487,3 +41487,26 @@ A floating-point module fails the access check: `vldr` and `vstr` through a comp
 - [x] The Rocq theorems against the ARMv7-M tree, with the integer-load hypothesis.  One `rocq/Clight2Asm.v` checks against both trees.  On ARM `eventval_type_int` failed, since it used `Tptr = Tlong`, and the uniqueness halves of `determinate_reads`, `determinate_reacts_reads`, `clight2_bigstep_asm_reads`, and `clight2_loop_to_asm` now take `int_loads beh`: every volatile load of the behaviour whose event has type `Tint` reads an integer.  `reads_int_loads` and `reacts_int_loads` show that every behaviour the conclusions describe satisfies it, so it is the weakest premise on behaviours, and `int_loads_ptr64` discharges it when `Archi.ptr64` is true, giving `clight2_bigstep_asm_reads_ptr64` and `clight2_loop_to_asm_ptr64`.  A premise about the program was rejected: a pointer event needs only a load with a chunk of type `Tint` and a public symbol, and the controller and the input program load with `Mint8unsigned` while `clightgen` lists `_main` and `_lx_in` as public.  `rocq/check.sh` reports the tree's target and the value of `Archi.ptr64`.
 - [x] The ARMv7-M `clightgen` read-back of the controller program: `native-bare check-ctl` finds the program that the armv7m tree's `clightgen` reads from `filter.c` equal to the program of `filter_program`, which holds for every `Archi`, `Archi.arm` included.
 - [ ] The alignment argument for floating-point loads and stores.
+
+### Concrete design
+
+The step is `tick : UInt64 × UInt64 → UInt64 × UInt64`, compiled with `(pages := 1) (cap := 1)`, from the state and the last value read to the new state and a request word.  Its two results land in the result globals `lx_r0_l` and `lx_r1_l`, as for the kind `words 2`.  The request word `q` encodes the access: bit 63 set is a write of the low 32 bits of `q` to register `(q >> 32) & 255`, and bit 63 clear is a read of that register.  `main` declares `extern volatile unsigned int lx_reg[];`, which the linker script places at the device's base, and runs this window forever:
+
+```c
+lxf_k(l0, l3);
+l0 = lx_r0_l;
+l6 = lx_r1_l;
+if ((l6 >> 63ULL) != 0ULL) {
+  lx_reg[(l6 >> 32ULL) & 255ULL] = (unsigned int) l6;
+  l3 = 0ULL;
+} else {
+  l3 = (unsigned long long) lx_reg[(l6 >> 32ULL) & 255ULL];
+}
+```
+
+A read is a volatile load of chunk `Mint32` with the event `Event_vload Mint32 regId (4 r) (EVint v)`, and a write a volatile store of chunk `Mint32`.  The trace of window `n` is that one event, computed by iterating `tick` from `(s0, 0)` with the count of reads so far: the `k`-th read returns `σ k`, zero-extended to 64 bits.  The register index is masked to 255, so every offset lies within 1 KiB of `lx_reg`.
+
+- [ ] `reqMain`, its C text, and `native-bare emit-req`/`check-req`.
+- [ ] Lemmas for the register load and store, the window lemma, `req_program` (`LoopReacts`), and the `Reads` fact.
+- [ ] A UART step for the CMSDK UART, with the register map as a parameter, and its theorems about polling.
+- [ ] The QEMU run on `mps2-an500` with a host script on a socket that checks the replies against native Lean.
