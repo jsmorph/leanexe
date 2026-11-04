@@ -319,6 +319,8 @@ open _root_.Library.Random.Lcg
 verified_compile compiled := [affine, step, advance, jumpPass, jump]
 ```
 
+Two options size the memory.  `verified_compile (pages := N) p := [...]` starts the module's memory with `N` pages, 16 by default, or with more when the module's tables and literals need them, and the allocator grows the memory on demand.  `(cap := C)` gives the translation to C an `lx_mem` of `C` pages in place of `nativeCap`, 4,096, and states `p.translation` and every `p.f.native` for that cap, which must be at least the module's pages.  The filter of the controller test, [`tests/TestSupport/Bare/Ctl.lean`](../tests/TestSupport/Bare/Ctl.lean), uses `(pages := 1) (cap := 1)`, so that its program fits a microcontroller's RAM.
+
 The command adds the program, the module, and every theorem in one step, and the kernel checks each.  The theorems use only the axioms `propext`, `Classical.choice`, and `Quot.sound`, as `#print axioms` shows for `Prog.correct`, `Prog.correctWith`, and each example's `compiled.bytes` and named theorems.  The declarations and the exports take the last component of a definition's name, so two listed definitions whose names end in the same component collide.  `set_option trace.Verified.reflect true` reports the reflection and proof-generation stages for each function and the encoding check for each function index.  Reflection entries include the remaining heartbeat budget in the units of `maxHeartbeats`.
 
 ### `verified_compile_wasi`

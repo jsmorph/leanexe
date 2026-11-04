@@ -64,18 +64,19 @@ theorem Prog.functions_empty_pool (prog : Prog S) (address : Nat) :
   | consTail func rest ih =>
     simp only [Prog.functions, ih, TailFunc.function, TailBody.code_empty_pool]
 
-theorem compileWith_eq_empty_of_no_literals (prog : Prog S) (tables : List (Array UInt64))
-    (wrappers : List (Wrapper S tables.length)) (hNone : prog.literals = []) :
-    compileWith prog tables wrappers =
-      compileWith prog tables wrappers ⟨tablesEnd tables, []⟩ := by
+theorem compileWith_eq_empty_of_no_literals {minPages : Nat} (prog : Prog S)
+    (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length))
+    (hNone : prog.literals = []) :
+    compileWith prog tables wrappers (minPages := minPages) =
+      compileWith prog tables wrappers (minPages := minPages) ⟨tablesEnd tables, []⟩ := by
   have hPool : prog.literalPool (tablesEnd tables) = ⟨tablesEnd tables, []⟩ := by
     simp only [Prog.literalPool, hNone, List.eraseDups_nil]
-  change compileWith prog tables wrappers (prog.literalPool (tablesEnd tables)) = _
+  change compileWith prog tables wrappers (prog.literalPool (tablesEnd tables)) minPages = _
   rw [hPool]
 
-theorem compileWith_empty_pool (prog : Prog S) (tables : List (Array UInt64))
+theorem compileWith_empty_pool {minPages : Nat} (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) :
-    compileWith prog tables wrappers ⟨tablesEnd tables, []⟩ =
+    compileWith prog tables wrappers (minPages := minPages) ⟨tablesEnd tables, []⟩ =
       let n := 2 + S.length + prog.depthFuns.length
       let types := [wordToWord, wordToNone] ++ prog.types ++ prog.entryTypes ++
         wrappers.map Wrapper.type
@@ -86,7 +87,7 @@ theorem compileWith_empty_pool (prog : Prog S) (tables : List (Array UInt64))
         exports := [{ name := "alloc", funcIdx := 0 }, { name := "release", funcIdx := 1 }] ++
           prog.exports S.length ++ wrappers.mapIdx fun j w => { name := w.name, funcIdx := n + j }
         memory := some {
-          pagesMin := UInt32.ofNat (max 16 ((tablesEnd tables + 65535) / 65536))
+          pagesMin := UInt32.ofNat (max minPages ((tablesEnd tables + 65535) / 65536))
           pagesMax := some 65535
           data := tableSegments tables }
         globals := runtimeGlobals (UInt64.ofNat (tablesEnd tables))

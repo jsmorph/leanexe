@@ -71,10 +71,10 @@ theorem ImplementsB.trapFree {α β : Type} {_ : Represent α} {_ : Represent β
       simp only [Bool.and_eq_true, Bool.not_eq_true', decide_eq_false_iff_not] at hf
       exact absurd hW hf.2
 
-theorem compileWith_runtime {S : List Sig} (prog : Prog S) (tables : List (Array UInt64))
-    (wrappers : List (Wrapper S tables.length))
+theorem compileWith_runtime {minPages : Nat} {S : List Sig} (prog : Prog S)
+    (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length))
     (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) :
-    Runtime (compileWith prog tables wrappers pool) :=
+    Runtime (compileWith prog tables wrappers pool (minPages := minPages)) :=
   ⟨rfl, rfl, by simp [compileWith], by simp [compileWith]⟩
 
 theorem compile_runtime {S : List Sig} (prog : Prog S)
@@ -108,21 +108,22 @@ theorem Prog.correct {S : List Sig} (prog : Prog S) (funs : Funs S) (h : prog.Me
   · simp [Prog.Covered, hNoLiterals]
 
 /-- The correctness theorem for a program with tables and wrappers. -/
-theorem Prog.correctStaticWith {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.correctStaticWith {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length))
     (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables))
     (hCovered : prog.Covered pool) :
-    Calls (compileWith prog tables wrappers pool) funs prog.flags (prog.boundsAt funs)
-      (prog.fitsAt funs) pool :=
+    Calls (compileWith prog tables wrappers pool (minPages := minPages)) funs prog.flags
+      (prog.boundsAt funs) (prog.fitsAt funs) pool :=
   prog.calls funs h _ (compileWith_runtime prog tables wrappers pool)
     (fun _ hk => compileWith_funcs prog tables wrappers hk pool) hCovered
 
-theorem Prog.correctWith {S : List Sig} (prog : Prog S) (funs : Funs S) (h : prog.Meaning funs)
-    (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length))
+theorem Prog.correctWith {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
+    (h : prog.Meaning funs) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length))
     (hNoLiterals : prog.literals = []) :
-    Calls (compileWith prog tables wrappers) funs prog.flags (prog.boundsAt funs)
-      (prog.fitsAt funs) ⟨tablesEnd tables, []⟩ := by
+    Calls (compileWith prog tables wrappers (minPages := minPages)) funs prog.flags
+      (prog.boundsAt funs) (prog.fitsAt funs) ⟨tablesEnd tables, []⟩ := by
   apply prog.calls funs h _ (compileWith_runtime prog tables wrappers)
   · intro k hk
     rw [compileWith_funcs prog tables wrappers hk]
@@ -316,14 +317,14 @@ theorem Prog.correct_entry {S : List Sig} (prog : Prog S) (funs : Funs S)
   entry_correct (compile_runtime prog) (prog.correct funs h hNoLiterals f 0) hd rfl (compile_entries prog hj)
 
 /-- `Prog.correct_entry` for a program with tables and wrappers. -/
-theorem Prog.correct_entryWith {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.correct_entryWith {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g) (hd : g.depth = true)
     {j : Nat} (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result))
     (hNoLiterals : prog.literals = []) :
     @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) true
-      (compileWith prog tables wrappers) (2 + S.length + j) (funs.get f) (fun _ _ _ => True)
-      (fun _ _ _ _ _ => True) :=
+      (compileWith prog tables wrappers (minPages := minPages)) (2 + S.length + j) (funs.get f)
+      (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
   entry_correct (compileWith_runtime prog tables wrappers)
     (prog.correctWith funs h tables wrappers hNoLiterals f 0) hd rfl
     (compileWith_entries prog tables wrappers hj)
@@ -331,15 +332,15 @@ theorem Prog.correct_entryWith {S : List Sig} (prog : Prog S) (funs : Funs S)
 /-- `entry_trapFree` at the exported entry of the `j`-th function whose code takes the call depth,
 of a program with tables and wrappers: with 1000 frames, which the entry's depth 0 leaves, and the
 credits of the function's paid owned parameters. -/
-theorem Prog.entry_trapFreeWith {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.entry_trapFreeWith {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g) (hd : g.depth = true)
     {j : Nat} (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result))
     (hNoLiterals : prog.literals = []) :
     @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) false
-      (compileWith prog tables wrappers) (2 + S.length + j) (funs.get f)
+      (compileWith prog tables wrappers (minPages := minPages)) (2 + S.length + j) (funs.get f)
       (fun x heap store => (prog.fitsAt funs (framesAt 0)).get f x = true ∧
-        heap.Within store (compileWith prog tables wrappers)
+        heap.Within store (compileWith prog tables wrappers (minPages := minPages))
           (Env.credit (g.paidSel (prog.flags.params f)) x +
             (prog.boundsAt funs (framesAt 0)).get f x))
       (fun x heap _ heap' _ =>
@@ -351,20 +352,21 @@ theorem Prog.entry_trapFreeWith {S : List Sig} (prog : Prog S) (funs : Funs S)
     (compileWith_entries prog tables wrappers hj)
 
 /-- `Prog.entry_trapFreeWith` for a function without paid parameters: its bound alone. -/
-theorem Prog.entry_trapFreeWith_unpaid {S : List Sig} (prog : Prog S) (funs : Funs S)
-    (h : prog.Meaning funs) (tables : List (Array UInt64))
+theorem Prog.entry_trapFreeWith_unpaid {minPages : Nat} {S : List Sig} (prog : Prog S)
+    (funs : Funs S) (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g) (hd : g.depth = true)
     {j : Nat} (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result))
     (hpf : ((prog.flags.params f).all fun b => !b) = true)
     (hNoLiterals : prog.literals = []) :
     @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) false
-      (compileWith prog tables wrappers) (2 + S.length + j) (funs.get f)
+      (compileWith prog tables wrappers (minPages := minPages)) (2 + S.length + j) (funs.get f)
       (fun x heap store => (prog.fitsAt funs (framesAt 0)).get f x = true ∧
-        heap.Within store (compileWith prog tables wrappers)
+        heap.Within store (compileWith prog tables wrappers (minPages := minPages))
           ((prog.boundsAt funs (framesAt 0)).get f x))
       (fun x heap _ heap' _ =>
         heap'.top.toNat ≤ heap.top.toNat + (prog.boundsAt funs (framesAt 0)).get f x) := by
-  have h0 := prog.entry_trapFreeWith funs h tables wrappers f hd hj hNoLiterals
+  have h0 :=
+    prog.entry_trapFreeWith (minPages := minPages) funs h tables wrappers f hd hj hNoLiterals
   simp only [Env.credit_eq_zero (Sig.paidSel_none hpf), Nat.zero_add] at h0
   exact h0
 
@@ -926,12 +928,13 @@ theorem wrapper_noTrap {m : Module} (hm : Runtime m) {S : List Sig}
         ⟨heap', hAt', hOwned, hCaps, hRegions, hTop (by simp [hd])⟩
 
 /-- The wrapper theorem for the `j`-th wrapper of a program with tables. -/
-theorem Prog.correct_wrapper {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.correct_wrapper {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
     (hj : wrappers[j]? = some w) (hNoLiterals : prog.literals = []) :
     @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
-      (Ty.represent w.result) (w.aborts || w.depth) (compileWith prog tables wrappers)
+      (Ty.represent w.result) (w.aborts || w.depth)
+      (compileWith prog tables wrappers (minPages := minPages))
       (2 + S.length + prog.depthFuns.length + j)
       (fun env => funs.get w.callee (Env.withTables tables w.tables env))
       (w.tables.map fun k => (tableAddr tables k.val, tables[k])) (fun _ _ _ => True)
@@ -940,31 +943,32 @@ theorem Prog.correct_wrapper {S : List Sig} (prog : Prog S) (funs : Funs S)
     (prog.correctWith funs h tables wrappers hNoLiterals) (compileWith_wrappers prog tables wrappers hj)
 
 /-- `wrapper_trapFree` for the `j`-th wrapper of a program with tables. -/
-theorem Prog.wrapper_trapFree {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.wrapper_trapFree {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
     (hj : wrappers[j]? = some w) (hd : w.depth = false)
     (hNoLiterals : prog.literals = []) :
     @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
-      (Ty.represent w.result) false (compileWith prog tables wrappers)
+      (Ty.represent w.result) false (compileWith prog tables wrappers (minPages := minPages))
       (2 + S.length + prog.depthFuns.length + j)
       (fun env => funs.get w.callee (Env.withTables tables w.tables env))
       (w.tables.map fun k => (tableAddr tables k.val, tables[k]))
-      (fun x heap store => heap.Within store (compileWith prog tables wrappers)
-        (Wrapper.bound tables w prog.flags (prog.boundsAt funs (framesAt 0)) x))
+      (fun x heap store =>
+        heap.Within store (compileWith prog tables wrappers (minPages := minPages))
+          (Wrapper.bound tables w prog.flags (prog.boundsAt funs (framesAt 0)) x))
       (fun x heap _ heap' _ =>
         heap'.top.toNat ≤ heap.top.toNat + Wrapper.bound tables w prog.flags (prog.boundsAt funs (framesAt 0)) x) :=
   Verified.wrapper_trapFree (compileWith_runtime prog tables wrappers) w
     (prog.correctWith funs h tables wrappers hNoLiterals) (compileWith_wrappers prog tables wrappers hj) hd
 
 /-- `wrapper_noTrap` for the `j`-th wrapper of a program with tables. -/
-theorem Prog.wrapper_noTrap {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.wrapper_noTrap {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
     (hj : wrappers[j]? = some w) (ha : w.aborts = false) (hd : w.depth = false)
     (hNoLiterals : prog.literals = []) :
     @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
-      (Ty.represent w.result) false (compileWith prog tables wrappers)
+      (Ty.represent w.result) false (compileWith prog tables wrappers (minPages := minPages))
       (2 + S.length + prog.depthFuns.length + j)
       (fun env => funs.get w.callee (Env.withTables tables w.tables env))
       (w.tables.map fun k => (tableAddr tables k.val, tables[k])) (fun _ _ _ => True)

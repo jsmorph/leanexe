@@ -19,11 +19,13 @@ code of `unreachable`.  `native-bare check DIR` compares each whole program with
 `clightgen` wrote for it as `DIR/NAME.v`, `main` and `lx_out` included.
 
 The controller programs of `tests/baremetal/ctl.sh` are the cases of `ctlCases`, each a step
-function with its initial state, the eight bytes of the register bank `lx_in`, and the theorem
-`LoopReacts` of its program.  `native-bare emit-ctl DIR` writes each one's C text, the names of
-its functions that take the call depth, the input bytes as `DIR/NAME.in`, and the bytes of the
-first windows that the step computes from them as `DIR/NAME.expected`.  `native-bare check-ctl
-DIR` compares each whole program with the Clight that `clightgen` wrote for it.
+function with the pages of its `lx_mem`, its initial state, the eight bytes of the register bank
+`lx_in`, and the theorem `LoopReacts` of its program.  `native-bare emit-ctl DIR` writes each one's
+C text, the names of its functions that take the call depth, its module as `DIR/NAME.wasm`, the
+input bytes as `DIR/NAME.in`, the initial state as `DIR/NAME.state`, the step's export name as
+`DIR/NAME.export`, and the bytes of the first windows that the step computes from them as
+`DIR/NAME.expected`.  `native-bare check-ctl DIR` compares each whole program with the Clight that
+`clightgen` wrote for it.
 
 The programs with input of `tests/baremetal/inputs.sh` are the cases of `inCases`, each an entry
 that takes an array and a length, with the theorem of its program, whose type fixes the entry and
@@ -50,8 +52,8 @@ structure BareCase where
       (aborts = true ∧ bigstep_program_terminates A X (bareProgram pre T
         (bareMain nativeCap k args kind)) E0 (UInt32.ofNat trapUnreachable))
 
-theorem thm_of {m : Module} {T0 : Translation} (h : translate nativeCap m = some T0)
-    {P : Translation → Prop} (hp : P T0) : ∀ T, translate nativeCap m = some T → P T := by
+theorem thm_of {cap : Nat} {m : Module} {T0 : Translation} (h : translate cap m = some T0)
+    {P : Translation → Prop} (hp : P T0) : ∀ T, translate cap m = some T → P T := by
   intro T hT
   rw [h] at hT
   cases hT
@@ -181,17 +183,18 @@ the test reads. -/
 structure CtlCase where
   name : String
   module : Module
+  cap : Nat
   k : Nat
   step : UInt64 → UInt64 → UInt64
   s0 : UInt64
   input : List UInt8
   windows : Nat
-  thm : ∀ T, translate nativeCap module = some T → ∀ (A : Archi) (X : ExtSem)
+  thm : ∀ T, translate cap module = some T → ∀ (A : Archi) (X : ExtSem)
     (pre : List (ident × globdef (fundef function) type)), PrefixOk pre → ∀ σ : Nat → int,
     LoopReacts A X (inProgram pre T (ctlMain k s0)) E0 (ctlTrace step s0 σ)
 
 def ctlCases : List CtlCase := [
-  { name := "filter", module := TestSupport.Bare.ctlCompiled.module, k := 2,
+  { name := "filter", module := TestSupport.Bare.ctlCompiled.module, cap := 1, k := 2,
     step := TestSupport.Bare.ctlStep, s0 := 0, input := [0x00, 0x10, 0, 0, 0, 0, 0, 0],
     windows := 16,
     thm := thm_of TestSupport.Bare.ctlCompiled.translation_eq TestSupport.Bare.filter_program }]
@@ -202,14 +205,21 @@ def ctlBytes (step : UInt64 → UInt64 → UInt64) (x : UInt64) : Nat → UInt64
   | n + 1, s => let s' := step s x; encodeWord s' ++ ctlBytes step x n s'
 
 def emitCtl (dir : String) (c : CtlCase) : IO Unit := do
-  let some t := translate nativeCap c.module
+  let some t := translate c.cap c.module
     | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
   match t.ctlText c.k c.s0 with
   | .error e => throw <| IO.userError s!"native-bare: {c.name}: {e}"
   | .ok text => IO.FS.writeFile s!"{dir}/{c.name}.c" text
   IO.FS.writeFile s!"{dir}/{c.name}.depth"
     (String.join ((t.depthNames c.module).map (· ++ "\n")))
+  match Wasm.Encoding.encode c.module with
+  | .error e => throw <| IO.userError s!"native-bare: {c.name}: {e}"
+  | .ok bytes => IO.FS.writeBinFile s!"{dir}/{c.name}.wasm" bytes
   IO.FS.writeBinFile s!"{dir}/{c.name}.in" ⟨c.input.toArray⟩
+  IO.FS.writeFile s!"{dir}/{c.name}.state" s!"{c.s0}\n"
+  let some e := c.module.exports.find? (·.funcIdx == c.k)
+    | throw <| IO.userError s!"native-bare: {c.name}: function {c.k} has no export"
+  IO.FS.writeFile s!"{dir}/{c.name}.export" s!"{e.name}\n"
   IO.FS.writeBinFile s!"{dir}/{c.name}.expected"
     ⟨(ctlBytes c.step (wordOfBytes c.input) c.windows c.s0).toArray⟩
   IO.println s!"native-bare: {c.name}: written"
@@ -217,7 +227,7 @@ def emitCtl (dir : String) (c : CtlCase) : IO Unit := do
 def checkCtl (dir : String) : IO UInt32 := do
   let mut failed := false
   for c in ctlCases do
-    let some t := translate nativeCap c.module
+    let some t := translate c.cap c.module
       | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
     let text ← IO.FS.readFile s!"{dir}/{c.name}.v"
     match ClightCheck.check t text (inTail (ctlMain c.k c.s0)) with

@@ -32,15 +32,17 @@ def Ready (m : Module) (tables : List (Array UInt64)) (heap : Heap) (store : Sto
 `p.initial`, as `Ready.initial rfl p.initial` states it.  The pool's equation `hpool` lets Lean
 match `p.module` by its definition: `p.initial` given as `Ready` directly reaches the recursion
 limit for the tables of CRC and of the exponential. -/
-theorem Ready.initial {S : List Sig} {prog : Prog S} {tables : List (Array UInt64)}
+theorem Ready.initial {minPages : Nat} {S : List Sig} {prog : Prog S} {tables : List (Array UInt64)}
     {wrappers : List (Wrapper S tables.length)} {pool : Bytes.LiteralPool}
     (hpool : pool = prog.literalPool (tablesEnd tables))
-    (h : let store : Store Unit := (compileWith prog tables wrappers).initialStore
-      (initialHeap tables).At store ∧ store.memoryCap (compileWith prog tables wrappers) 0 ≤ 65535 ∧
+    (h : let store : Store Unit :=
+        (compileWith prog tables wrappers (minPages := minPages)).initialStore
+      (initialHeap tables).At store ∧
+        store.memoryCap (compileWith prog tables wrappers (minPages := minPages)) 0 ≤ 65535 ∧
         ∀ k (hk : k < tables.length),
           (initialHeap tables).Borrowed store (tableAddr tables k) tables[k]) :
-    Ready (compileWith prog tables wrappers pool) tables (initialHeap tables)
-      (compileWith prog tables wrappers pool).initialStore := by
+    Ready (compileWith prog tables wrappers pool (minPages := minPages)) tables (initialHeap tables)
+      (compileWith prog tables wrappers pool (minPages := minPages)).initialStore := by
   subst hpool
   exact h
 

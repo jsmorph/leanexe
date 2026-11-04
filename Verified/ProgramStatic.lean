@@ -227,7 +227,7 @@ theorem ImplementsStatic.lean {ps : List Ty} {ms : List Mode} {r : Ty}
     (fun _ _ _ _ owned => r.leanInst_owned.mpr owned)
     (fun _ _ _ => r.leanInst_blocks)
 
-theorem Prog.correct_entryStaticWith {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.correct_entryStaticWith {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (meaning : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g)
     (depth : g.depth = true) {j : Nat}
@@ -235,23 +235,24 @@ theorem Prog.correct_entryStaticWith {S : List Sig} (prog : Prog S) (funs : Funs
     (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables))
     (covered : prog.Covered pool) :
     @ImplementsStatic _ _ (Env.represent g.params g.modes) (Ty.represent g.result)
-      pool true (compileWith prog tables wrappers pool) (2 + S.length + j) (funs.get f) []
-      (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
+      pool true (compileWith prog tables wrappers pool (minPages := minPages)) (2 + S.length + j)
+      (funs.get f) [] (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
   entry_correctStatic (compileWith_runtime prog tables wrappers pool)
     (prog.correctStaticWith funs meaning tables wrappers pool covered f 0) depth rfl
     (compileWith_entries prog tables wrappers entry pool)
 
-theorem Prog.entry_trapFreeStaticWith {S : List Sig} (prog : Prog S) (funs : Funs S)
-    (meaning : prog.Meaning funs) (tables : List (Array UInt64))
+theorem Prog.entry_trapFreeStaticWith {minPages : Nat} {S : List Sig} (prog : Prog S)
+    (funs : Funs S) (meaning : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g)
     (depth : g.depth = true) {j : Nat}
     (entry : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result))
     (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables))
     (covered : prog.Covered pool) :
     @ImplementsStatic _ _ (Env.represent g.params g.modes) (Ty.represent g.result)
-      pool false (compileWith prog tables wrappers pool) (2 + S.length + j) (funs.get f) []
+      pool false (compileWith prog tables wrappers pool (minPages := minPages)) (2 + S.length + j)
+      (funs.get f) []
       (fun value heap store => (prog.fitsAt funs (framesAt 0)).get f value = true ∧
-        heap.Within store (compileWith prog tables wrappers pool)
+        heap.Within store (compileWith prog tables wrappers pool (minPages := minPages))
           (Env.credit (g.paidSel (prog.flags.params f)) value +
             (prog.boundsAt funs (framesAt 0)).get f value))
       (fun value heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat +
@@ -261,8 +262,8 @@ theorem Prog.entry_trapFreeStaticWith {S : List Sig} (prog : Prog S) (funs : Fun
     (prog.correctStaticWith funs meaning tables wrappers pool covered f 0) depth rfl
     (compileWith_entries prog tables wrappers entry pool)
 
-theorem Prog.entry_trapFreeStaticWith_unpaid {S : List Sig} (prog : Prog S) (funs : Funs S)
-    (meaning : prog.Meaning funs) (tables : List (Array UInt64))
+theorem Prog.entry_trapFreeStaticWith_unpaid {minPages : Nat} {S : List Sig} (prog : Prog S)
+    (funs : Funs S) (meaning : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g)
     (depth : g.depth = true) {j : Nat}
     (entry : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result))
@@ -270,23 +271,26 @@ theorem Prog.entry_trapFreeStaticWith_unpaid {S : List Sig} (prog : Prog S) (fun
     (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables))
     (covered : prog.Covered pool) :
     @ImplementsStatic _ _ (Env.represent g.params g.modes) (Ty.represent g.result)
-      pool false (compileWith prog tables wrappers pool) (2 + S.length + j) (funs.get f) []
+      pool false (compileWith prog tables wrappers pool (minPages := minPages)) (2 + S.length + j)
+      (funs.get f) []
       (fun value heap store => (prog.fitsAt funs (framesAt 0)).get f value = true ∧
-        heap.Within store (compileWith prog tables wrappers pool)
+        heap.Within store (compileWith prog tables wrappers pool (minPages := minPages))
           ((prog.boundsAt funs (framesAt 0)).get f value))
       (fun value heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat +
         (prog.boundsAt funs (framesAt 0)).get f value) := by
-  have result := prog.entry_trapFreeStaticWith funs meaning tables wrappers f depth entry pool covered
+  have result := prog.entry_trapFreeStaticWith (minPages := minPages) funs meaning tables wrappers
+    f depth entry pool covered
   simpa only [Env.credit_eq_zero (Sig.paidSel_none unpaid), Nat.zero_add] using result
 
-theorem Prog.correct_wrapperStatic {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.correct_wrapperStatic {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (meaning : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
     (entry : wrappers[j]? = some w)
     (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables))
     (covered : prog.Covered pool) :
     @ImplementsStatic _ _ (Env.represent w.params (w.modes.drop w.tables.length))
-      (Ty.represent w.result) pool (w.aborts || w.depth) (compileWith prog tables wrappers pool)
+      (Ty.represent w.result) pool (w.aborts || w.depth)
+      (compileWith prog tables wrappers pool (minPages := minPages))
       (2 + S.length + prog.depthFuns.length + j)
       (fun env => funs.get w.callee (Env.withTables tables w.tables env))
       (w.tables.map fun k => (tableAddr tables k.val, tables[k]))
@@ -295,21 +299,22 @@ theorem Prog.correct_wrapperStatic {S : List Sig} (prog : Prog S) (funs : Funs S
     (prog.correctStaticWith funs meaning tables wrappers pool covered)
     (compileWith_wrappers prog tables wrappers entry pool)
 
-theorem Prog.wrapper_trapFreeStatic {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.wrapper_trapFreeStatic {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (meaning : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
     (entry : wrappers[j]? = some w)
     (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables))
     (covered : prog.Covered pool) :
     @ImplementsStatic _ _ (Env.represent w.params (w.modes.drop w.tables.length))
-      (Ty.represent w.result) pool false (compileWith prog tables wrappers pool)
+      (Ty.represent w.result) pool false
+      (compileWith prog tables wrappers pool (minPages := minPages))
       (2 + S.length + prog.depthFuns.length + j)
       (fun env => funs.get w.callee (Env.withTables tables w.tables env))
       (w.tables.map fun k => (tableAddr tables k.val, tables[k]))
       (fun value heap store =>
         (w.depth && !(prog.fitsAt funs (framesAt 0)).get w.callee
           (Env.withTables tables w.tables value)) = false ∧
-        heap.Within store (compileWith prog tables wrappers pool)
+        heap.Within store (compileWith prog tables wrappers pool (minPages := minPages))
           (Wrapper.bound tables w prog.flags (prog.boundsAt funs (framesAt 0)) value))
       (fun value heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat +
         Wrapper.bound tables w prog.flags (prog.boundsAt funs (framesAt 0)) value) :=

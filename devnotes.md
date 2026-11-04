@@ -41437,7 +41437,7 @@ A Cortex-M7 board has 512 KiB of SRAM, and the defaults do not fit it.  `nativeC
 - [x] `minPages` in `compileWith`, `Instantiate.lean`, and the lemmas of `verified_compile`.  Each theorem whose statement names `compileWith` in `Correct.lean`, `ProgramStatic.lean`, `AlignedProgram.lean`, `Compile.lean`, `Call.lean`, `ModuleComposition.lean`, and `LiteralCodeEq.lean` takes an implicit `minPages`, which the expected type fixes at a use.  The initial-store theorems take it explicitly, 16 by default, with `minPages ≤ 65535` proved by `decide`.
 - [x] The options `pages` and `cap` of `verified_compile`, and `thm_of` of the bare-metal test over every cap.
 - [x] The filter at one page: `verified_compile (pages := 1) (cap := 1) ctlCompiled`, `filter_program` at cap 1, and `tests/baremetal/ctl.sh`, which passes under TCG and KVM with `lx_mem` of 8,192 words and in Wasmtime with the module of 1,463 bytes.  `emit-ctl` also writes the module, the initial state, and the step's export name.
-- [ ] Docs, commit, push.
+- [x] Docs, commit, push.  The full build, `LeanExe`, `Verified`, `TestSupport`, `Demos`, `Examples`, and `Library`, passes with the default floor, and the file theorems confirm that the committed modules' bytes are unchanged.
 
 ## 2026-11-04: Controller PoC, step 5: design of the request protocol
 

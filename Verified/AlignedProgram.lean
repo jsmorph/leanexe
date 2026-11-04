@@ -21,12 +21,12 @@ namespace Verified
 open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
 /-- `Prog.correctWith` under the flag: every function of the module satisfies `FunSpecX true`. -/
-theorem Prog.callsAlignedWith {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.callsAlignedWith {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) (hNoLiterals : prog.literals = []) :
-    CallsX true (compileWith prog tables wrappers) funs prog.flags (prog.boundsAt funs)
-      (prog.fitsAt funs) ⟨tablesEnd tables, []⟩ := by
-  have hm := compileWith_runtime prog tables wrappers
+    CallsX true (compileWith prog tables wrappers (minPages := minPages)) funs prog.flags
+      (prog.boundsAt funs) (prog.fitsAt funs) ⟨tablesEnd tables, []⟩ := by
+  have hm := compileWith_runtime (minPages := minPages) prog tables wrappers
   apply prog.callsX funs h _ hm (fun _ => Runtime.releaseAligned hm)
     (fun _ => Runtime.allocAligned hm) (fun _ => copyCodeX hm)
   · intro k hk
@@ -36,37 +36,38 @@ theorem Prog.callsAlignedWith {S : List Sig} (prog : Prog S) (funs : Funs S)
 
 /-- `Prog.correctWith`'s counterpart for `ImplementsAligned`: a function whose code takes no call
 depth, at its call index, with the trap flag, function, and conditions of `p.f.implements`. -/
-theorem Prog.implementsAlignedWith {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.implementsAlignedWith {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) (hNoLiterals : prog.literals = [])
     {g : Sig} (f : FVar S g) (hd : g.depth = false) :
     @ImplementsAligned _ _ (Env.represent g.params g.modes) (Ty.represent g.result) g.aborts
-      (compileWith prog tables wrappers) f.callIndex (funs.get f) (fun _ _ _ => True)
-      (fun _ _ _ _ _ => True) :=
+      (compileWith prog tables wrappers (minPages := minPages)) f.callIndex (funs.get f)
+      (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
   FunSpecX.implementsAligned (prog.callsAlignedWith funs h tables wrappers hNoLiterals f 0) hd
 
 /-- `Prog.correct_entryWith`'s counterpart for `ImplementsAligned`: the exported entry of the
 `j`-th function whose code takes the call depth. -/
-theorem Prog.entry_alignedWith {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.entry_alignedWith {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g) (hd : g.depth = true)
     {j : Nat} (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result))
     (hNoLiterals : prog.literals = []) :
     @ImplementsAligned _ _ (Env.represent g.params g.modes) (Ty.represent g.result) true
-      (compileWith prog tables wrappers) (2 + S.length + j) (funs.get f) (fun _ _ _ => True)
-      (fun _ _ _ _ _ => True) :=
+      (compileWith prog tables wrappers (minPages := minPages)) (2 + S.length + j) (funs.get f)
+      (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
   entry_aligned (compileWith_runtime prog tables wrappers)
     ((prog.callsAlignedWith funs h tables wrappers hNoLiterals f 0).2 rfl) hd rfl
     (compileWith_entries prog tables wrappers hj)
 
 /-- `Prog.correct_wrapper`'s counterpart for `ImplementsTablesAligned`: the entry of the `j`-th
 wrapper. -/
-theorem Prog.wrapper_alignedWith {S : List Sig} (prog : Prog S) (funs : Funs S)
+theorem Prog.wrapper_alignedWith {minPages : Nat} {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
     (hj : wrappers[j]? = some w) (hNoLiterals : prog.literals = []) :
     @ImplementsTablesAligned _ _ (Env.represent w.params (w.modes.drop w.tables.length))
-      (Ty.represent w.result) (w.aborts || w.depth) (compileWith prog tables wrappers)
+      (Ty.represent w.result) (w.aborts || w.depth)
+      (compileWith prog tables wrappers (minPages := minPages))
       (2 + S.length + prog.depthFuns.length + j)
       (fun env => funs.get w.callee (Env.withTables tables w.tables env))
       (w.tables.map fun k => (tableAddr tables k.val, tables[k])) (fun _ _ _ => True)

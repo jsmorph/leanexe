@@ -160,23 +160,26 @@ theorem tableBytes_word (t : Array UInt64) {i j : Nat} (hi : i ≤ t.size) (hj :
   rw [List.getElem!_eq_getElem?_getD, List.getElem!_eq_getElem?_getD, tableBytes,
     flatMap_wordBytes_getElem? _ (by simp; omega) hj]
 
-/-- The pages of a module with tables `tables`: 16, or enough for the tables. -/
-def tablePages (tables : List (Array UInt64)) : Nat := max 16 ((tablesEnd tables + 65535) / 65536)
+/-- The pages of a module with tables `tables`: `minPages`, or enough for the tables. -/
+def tablePages (minPages : Nat) (tables : List (Array UInt64)) : Nat :=
+  max minPages ((tablesEnd tables + 65535) / 65536)
 
-def staticPages (pool : Bytes.LiteralPool) : Nat := max 16 ((pool.top + 65535) / 65536)
+def staticPages (minPages : Nat) (pool : Bytes.LiteralPool) : Nat :=
+  max minPages ((pool.top + 65535) / 65536)
 
-theorem staticPages_top (pool : Bytes.LiteralPool) : pool.top ≤ staticPages pool * 65536 := by
+theorem staticPages_top (minPages : Nat) (pool : Bytes.LiteralPool) :
+    pool.top ≤ staticPages minPages pool * 65536 := by
   have hDiv := Nat.div_add_mod (pool.top + 65535) 65536
   have hMod := Nat.mod_lt (pool.top + 65535) (show 0 < 65536 by omega)
   have hMax := Nat.mul_le_mul_right 65536
-    (Nat.le_max_right 16 ((pool.top + 65535) / 65536))
+    (Nat.le_max_right minPages ((pool.top + 65535) / 65536))
   simp only [staticPages]
   omega
 
-theorem staticPages_cap (pool : Bytes.LiteralPool) (hFit : pool.top ≤ 65535 * 65536) :
-    staticPages pool ≤ 65535 := by
+theorem staticPages_cap (minPages : Nat) (pool : Bytes.LiteralPool) (hMin : minPages ≤ 65535)
+    (hFit : pool.top ≤ 65535 * 65536) : staticPages minPages pool ≤ 65535 := by
   simp only [staticPages]
-  refine Nat.max_le.mpr ⟨by omega, ?_⟩
+  refine Nat.max_le.mpr ⟨hMin, ?_⟩
   have hDiv := Nat.div_add_mod (pool.top + 65535) 65536
   omega
 
@@ -217,45 +220,50 @@ theorem literalPool_written (pool : Bytes.LiteralPool) (mem : Mem)
 
 theorem initialStore_static_mem {S : List Sig} (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) (pool : Bytes.LiteralPool)
-    (hFit : pool.top ≤ 65535 * 65536) :
-    ((compileWith prog tables wrappers pool).initialStore : Store Unit).mem =
-      (tableSegments tables ++ pool.segments).foldl segStep (Mem.empty (staticPages pool)) := by
-  have hP : (UInt32.ofNat (staticPages pool)).toNat = staticPages pool :=
-    UInt32.toNat_ofNat_of_lt' (by have := staticPages_cap pool hFit; change _ < 4294967296; omega)
+    (hFit : pool.top ≤ 65535 * 65536) (minPages : Nat := 16)
+    (hMin : minPages ≤ 65535 := by decide) :
+    ((compileWith prog tables wrappers pool minPages).initialStore : Store Unit).mem =
+      (tableSegments tables ++ pool.segments).foldl segStep
+        (Mem.empty (staticPages minPages pool)) := by
+  have hP : (UInt32.ofNat (staticPages minPages pool)).toNat = staticPages minPages pool :=
+    UInt32.toNat_ofNat_of_lt' (by
+      have := staticPages_cap minPages pool hMin hFit; change _ < 4294967296; omega)
   show (tableSegments tables ++ pool.segments).foldl segStep
-    (Mem.empty (UInt32.ofNat (staticPages pool)).toNat) = _
+    (Mem.empty (UInt32.ofNat (staticPages minPages pool)).toNat) = _
   rw [hP]
 
 theorem initialStore_mem {S : List Sig} (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) (hFit : tablesEnd tables ≤ 65535 * 65536)
-    (hNoLiterals : prog.literals = []) :
-    ((compileWith prog tables wrappers).initialStore : Store Unit).mem =
-      (tableSegments tables).foldl segStep (Mem.empty (tablePages tables)) := by
+    (hNoLiterals : prog.literals = []) (minPages : Nat := 16)
+    (hMin : minPages ≤ 65535 := by decide) :
+    ((compileWith prog tables wrappers (minPages := minPages)).initialStore : Store Unit).mem =
+      (tableSegments tables).foldl segStep (Mem.empty (tablePages minPages tables)) := by
   have hPool : prog.literalPool (tablesEnd tables) = ⟨tablesEnd tables, []⟩ := by
     simp only [Prog.literalPool, hNoLiterals, List.eraseDups_nil]
   have hAligned : tablesEnd tables % 8 = 0 := by simp [tablesEnd, Nat.add_mod, Nat.mul_mod]
   have hTop := Bytes.LiteralPool.top_empty (tablesEnd tables) hAligned
   have h := initialStore_static_mem prog tables wrappers ⟨tablesEnd tables, []⟩
-    (by simpa only [hTop] using hFit)
+    (by simpa only [hTop] using hFit) minPages hMin
   simpa only [compileWith, hPool, Bytes.LiteralPool.segments_empty, List.append_nil,
     staticPages, hTop, tablePages] using h
 
-theorem tablePages_end (tables : List (Array UInt64)) :
-    tablesEnd tables ≤ tablePages tables * 65536 := by
+theorem tablePages_end (minPages : Nat) (tables : List (Array UInt64)) :
+    tablesEnd tables ≤ tablePages minPages tables * 65536 := by
   have hDiv := Nat.div_add_mod (tablesEnd tables + 65535) 65536
   have hMod := Nat.mod_lt (tablesEnd tables + 65535) (show 0 < 65536 by omega)
-  have hMax := Nat.mul_le_mul_right 65536 (Nat.le_max_right 16 ((tablesEnd tables + 65535) / 65536))
+  have hMax := Nat.mul_le_mul_right 65536
+    (Nat.le_max_right minPages ((tablesEnd tables + 65535) / 65536))
   simp only [tablePages]
   generalize (tablesEnd tables + 65535) % 65536 = r at *
   generalize (tablesEnd tables + 65535) / 65536 = q at *
-  generalize max 16 q = P at *
+  generalize max minPages q = P at *
   generalize tablesEnd tables = e at *
   omega
 
-theorem tablePages_cap (tables : List (Array UInt64)) (hFit : tablesEnd tables ≤ 65535 * 65536) :
-    tablePages tables ≤ 65535 := by
+theorem tablePages_cap (minPages : Nat) (tables : List (Array UInt64)) (hMin : minPages ≤ 65535)
+    (hFit : tablesEnd tables ≤ 65535 * 65536) : tablePages minPages tables ≤ 65535 := by
   simp only [tablePages]
-  refine Nat.max_le.mpr ⟨by omega, ?_⟩
+  refine Nat.max_le.mpr ⟨hMin, ?_⟩
   have hDiv := Nat.div_add_mod (tablesEnd tables + 65535) 65536
   generalize (tablesEnd tables + 65535) % 65536 = r at *
   generalize (tablesEnd tables + 65535) / 65536 = q at *
@@ -275,10 +283,11 @@ table's representation, and establishes the pool's contents and protected region
 theorem compileWith_initialStaticStore {S : List Sig} (prog : Prog S)
     (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length))
     (pool : Bytes.LiteralPool) (hPoolBase : pool.base = tablesEnd tables)
-    (hFit : pool.top ≤ 65535 * 65536) :
-    let store : Store Unit := (compileWith prog tables wrappers pool).initialStore
+    (hFit : pool.top ≤ 65535 * 65536) (minPages : Nat := 16)
+    (hMin : minPages ≤ 65535 := by decide) :
+    let store : Store Unit := (compileWith prog tables wrappers pool minPages).initialStore
     (initialStaticHeap pool).At store ∧
-      store.memoryCap (compileWith prog tables wrappers pool) 0 ≤ 65535 ∧
+      store.memoryCap (compileWith prog tables wrappers pool minPages) 0 ≤ 65535 ∧
       (∀ k (hk : k < tables.length),
         (initialStaticHeap pool).Borrowed store (tableAddr tables k) tables[k]) ∧
       pool.Static (initialStaticHeap pool) store := by
@@ -289,18 +298,19 @@ theorem compileWith_initialStaticStore {S : List Sig} (prog : Prog S)
   have h32 : tablesEnd tables < 4294967296 := by omega
   have hPool32 : pool.endAddress < 4294967296 := by omega
   have hMem : store.mem = (tableSegments tables ++ pool.segments).foldl segStep
-      (Mem.empty (staticPages pool)) := initialStore_static_mem prog tables wrappers pool hFit
-  have hEndP := staticPages_top pool
-  have hPagesCap := staticPages_cap pool hFit
-  obtain ⟨hTablePages, hTableBytes⟩ := tables_written tables (staticPages pool)
+      (Mem.empty (staticPages minPages pool)) :=
+    initialStore_static_mem prog tables wrappers pool hFit minPages hMin
+  have hEndP := staticPages_top minPages pool
+  have hPagesCap := staticPages_cap minPages pool hMin hFit
+  obtain ⟨hTablePages, hTableBytes⟩ := tables_written tables (staticPages minPages pool)
     (by omega) h32 tables.length
     (Nat.le_refl _)
   rw [List.take_of_length_le (by rw [tableSegments_length])] at hTablePages hTableBytes
   obtain ⟨hPoolPages, hPoolBelow, hValid⟩ := literalPool_written pool
-    ((tableSegments tables).foldl segStep (Mem.empty (staticPages pool))) hPool32
+    ((tableSegments tables).foldl segStep (Mem.empty (staticPages minPages pool))) hPool32
     (by rw [hTablePages]; omega)
   rw [← List.foldl_append, ← hMem] at hPoolPages hPoolBelow hValid
-  have hPages : store.mem.pages = staticPages pool := hPoolPages.trans hTablePages
+  have hPages : store.mem.pages = staticPages minPages pool := hPoolPages.trans hTablePages
   have hBytes : ∀ k < tables.length, ∀ i < 8 * (tables[k]!.size + 1),
       store.mem.bytes (tableStart tables k + i) = (tableBytes tables[k]!)[i]! := by
     intro k hk i hi
@@ -318,7 +328,7 @@ theorem compileWith_initialStaticStore {S : List Sig} (prog : Prog S)
     · simp only [initialStaticHeap, hTop]; omega
     · simp only [initialStaticHeap, hTop, hPages]; exact hEndP
     · rw [hPages]; exact hPagesCap
-  have hCap : store.memoryCap (compileWith prog tables wrappers pool) 0 ≤ 65535 := by
+  have hCap : store.memoryCap (compileWith prog tables wrappers pool minPages) 0 ≤ 65535 := by
     show (([Nat.min 65535 Module.memoryHardCap][0]?).getD _) ≤ 65535
     simp [Module.memoryHardCap]
   have hStatic : pool.Static (initialStaticHeap pool) store := by
@@ -353,9 +363,11 @@ theorem compileWith_initialStaticStore {S : List Sig} (prog : Prog S)
 
 theorem compileWith_initialStore {S : List Sig} (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) (hFit : tablesEnd tables ≤ 65535 * 65536)
-    (hNoLiterals : prog.literals = []) :
-    let store : Store Unit := (compileWith prog tables wrappers).initialStore
-    (initialHeap tables).At store ∧ store.memoryCap (compileWith prog tables wrappers) 0 ≤ 65535 ∧
+    (hNoLiterals : prog.literals = []) (minPages : Nat := 16)
+    (hMin : minPages ≤ 65535 := by decide) :
+    let store : Store Unit := (compileWith prog tables wrappers (minPages := minPages)).initialStore
+    (initialHeap tables).At store ∧
+      store.memoryCap (compileWith prog tables wrappers (minPages := minPages)) 0 ≤ 65535 ∧
       ∀ k (hk : k < tables.length),
         (initialHeap tables).Borrowed store (tableAddr tables k) tables[k] := by
   have hPool : prog.literalPool (tablesEnd tables) = ⟨tablesEnd tables, []⟩ := by
@@ -363,7 +375,7 @@ theorem compileWith_initialStore {S : List Sig} (prog : Prog S) (tables : List (
   have hAligned : tablesEnd tables % 8 = 0 := by simp [tablesEnd, Nat.add_mod, Nat.mul_mod]
   have hTop := Bytes.LiteralPool.top_empty (tablesEnd tables) hAligned
   have h := compileWith_initialStaticStore prog tables wrappers ⟨tablesEnd tables, []⟩ rfl
-    (by simpa only [hTop] using hFit)
+    (by simpa only [hTop] using hFit) minPages hMin
   have hHeap : initialStaticHeap ⟨tablesEnd tables, []⟩ = initialHeap tables := by
     simp only [initialStaticHeap, initialHeap, hTop]
   rw [hHeap] at h
