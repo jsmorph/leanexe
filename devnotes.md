@@ -41539,3 +41539,63 @@ A deadline enters the theorem as a property of the trace: the clock is a device 
 `tests/baremetal/req.sh` emits both programs, finds the ARMv7-M `clightgen` read-back of each equal to the program of its theorem, and runs both on `mps2-an500`.  The deadline program passes in 5.5 s with a stack bound of 296 bytes: every reply arrives in lockstep and in the bursts, and after the hold of 2 s exactly one reply is missing, the reply to the byte that the step read while the transmitter waited.  The host script's check distinguishes the cases it should: the echo without a deadline fails it with a hold of 2 s, since no reply goes missing, the deadline program fails it with a hold of 0.2 s, shorter than the limit, and passes it with a hold of 1 s.  QEMU's CMSDK timer is a `ptimer` on `QEMU_CLOCK_VIRTUAL` (`hw/core/ptimer.c`), which follows the host's clock while the machine runs when QEMU has no `-icount` (`system/cpu-timers.c`, `cpu_get_clock_locked`).
 
 The theorem bounds the difference of two timer values that the program read; the physical claim needs two more assumptions.  The timer must count at its stated rate, and the store of a reply must follow the second timer read within a bounded time, which here covers the rest of one loop iteration and one call of the step.  Neither assumption is proved: the Clight semantics has no notion of time, and execution-time bounds are outside the PoC.
+
+## 2026-11-04: Controller PoC, step 7: design of the energy controller in the loop
+
+The plan's step 7 runs a verified gateway, a machine around `authorizeWith`, in the request loop on `mps2-an500`, with a simulator of the plant, the inverter, ingestion, and the optimizer on the host at the far end of UART0.  The specification is the machine `gateway : G → In → G × Out` over records.  G1 to G4 are theorems about the machine alone, and `OperatesIn.states` follows from them and a device assumption.  The program's theorem states the register trace of the loop, and a framing theorem relates that trace to the records that `gateway` reads and writes.
+
+### Constraints that shape the design
+
+The step of the request loop computes `tick : UInt64 → UInt64 → UInt64 × UInt64` from one state word, and `ReqRuns` asks for a step that allocates nothing, so that the window invariant needs no heap beyond the initial store.  The gateway's state, with the authorization in force and the record being received, holds about 40 words.  `authorizeWith` reads a borrowed `Array UInt64` of 13 words and the profile table `site`, so a call from the step either builds an array, which allocates, or reads a table, which adds the table to the loop's invariant.  A two-year replay at one tick per simulated minute has about a million ticks, so the clock cannot be Timer0 in real time.
+
+### Decisions
+
+| Part | Design | Reason |
+|---|---|---|
+| Loop state | Generalize the request loop from one state word to `n` words: `reqMain` keeps `n` temporaries, the step takes `n + 1` words and returns `n + 1` results, and `ReqRuns`, `req_program`, and `req_reads` are stated for `tick : List UInt64 → UInt64 → List UInt64 × UInt64` on lists of length `n`.  The step is a function from a structure with a `Flat` instance and the last value to the structure and the request, which the compiler passes as words | The step stays allocation-free, the invariant stays the initial store's, and the generalization serves every later controller |
+| Authorizer call | `authorizeFlat (p : Prof) (s : Snap) : Decision` over two flat structures of 15 and 13 words, the authorizer's code with `word xs i` replaced by fields, and `authorizeFlat_eq : authorizeFlat (Prof.of site) s = authorizeWith site s.words` for every `site` of 15 words.  The gateway passes `Prof.of site` as a structure of constants | No array and no table in the step.  The equation transfers every theorem about `authorizeWith`, so the copy needs no proof of its own |
+| Records over the UART | Fixed-length records of 64-bit words, each sent as 8 bytes, least significant first.  The simulator sends an input record, the gateway reads it, computes `gateway`, and writes an output record, which the simulator reads before it sends the next.  The step holds the input record as a shift register, a word accumulator, and a byte counter, and the output record as a shift register and a counter | Lockstep needs no framing bytes.  Shift registers need no dynamic index into a structure |
+| Clock | The simulator's clock, a word of the input record, in seconds | The energy theorems use the gateway's clock (A7), and a replay runs faster than real time.  On a board the clock is a hardware timer, which step 8 decides |
+| Profile | The test site's table `site` of `Demos/Energy/Site.lean` | The theorems about `authorize` apply unchanged |
+
+### The machine
+
+The input record holds the sequence number, the clock `c`, the time of the measurements, measured battery power, load, and PV, the BMS's energy interval, the inverter's read-back of its mode and limits, a flag for a proposal, and the proposal's load and PV intervals and limits.  The output record holds the sequence number, the kind (nothing, a command, or a fallback request), the command's limits and its revert timeout in seconds, and the status of the last snapshot.  The state holds the expected sequence number, the largest clock seen, the recorded state (mode, limits, and a command's expiry `t_x`) with the time of its last change, and the window in force (the interval `B` and the snapshot's load and PV intervals).  The state's words form nested structures with `Flat` instances, so that each update names few fields.
+
+Each step of `gateway` is a tick.  It applies these rules in order, and a fallback request ends the tick.
+
+1. A record whose sequence number differs from the expected one, whose clock is below the largest seen or at least `2^40`, or whose measurements are older than a bound requests fallback.  The first tick requests fallback.
+2. A recorded command whose expiry `t_x` is at most `c` becomes fallback, with the change's time `t_x`.
+3. With a window in force, load or PV outside the snapshot's intervals, or battery power outside `B`, requests fallback and ends the window.  So does a read-back that differs from the recorded state at least `τ` after the last change.  In fallback mode the comparison ignores the limit words.
+4. A proposal becomes a snapshot only when the read-back equals the recorded state, measured power lies in the recorded state's interval, and `lastChange + τ ≤ c`.  The snapshot's words are the version, `c`, the energy interval, the recorded state, with limit words `2^32` in fallback mode, and the proposal's intervals and limits.
+5. An accepted snapshot sends its command in the same tick, with the revert timeout `t_x − c`, records the command with its expiry and the change's time `c`, and becomes the window in force.  A rejected snapshot changes only the reported status, and the window in force stays.
+
+A fallback request records fallback with the change's time `c`, or the largest clock seen when rule 1 rejects the clock, so that the times of changes never decrease.
+
+| Property | Statement about a run of `gateway` |
+|---|---|
+| G1 | A tick outputs a command only when it accepts a snapshot `xs` with `authorizeWith site xs` accepted.  `xs` holds the tick's clock as its time and the recorded state before the tick as its state.  The command's limits are the decision's limits and its revert timeout is the expiry minus the clock.  After the tick the recorded state is that command, changed at the tick's clock |
+| G2 | When a window is in force and load or PV leaves the snapshot's intervals, or battery power leaves `B`, the tick outputs a fallback request and ends the window.  The same holds when the measurements are older than the bound.  No command follows until a tick accepts a snapshot |
+| G3 | A tick takes a snapshot only when the read-back equals the recorded state, measured battery power lies in its interval, and the last change lies at least `τ` before the clock |
+| G4 | The recorded state changes only to a command, at the tick's clock, by G1; to fallback at `t_x`, by an expiry; or to fallback at the tick's clock or the largest clock seen, by a fallback request.  The times of the changes do not decrease |
+
+### `OperatesIn.states`
+
+The records of a run define a sequence of changes of the recorded state, each a state and a time.  The device assumption, A7, states that the device applies at time `w` the state of a change whose time is at most `w`, and no earlier than the last change whose time is at most `w − τ`.  Before the first change's time plus `τ`, it may apply any state.  The assumption's upper side also requires that the gateway's clock not run ahead of the device's.  With G1, G3, and G4, the changes from the last one at or before `t_j − τ` to the next accepted snapshot are the snapshot's recorded state, the command of snapshot `j`, and fallback, which is `OperatesIn.states` for window `j`.  The `Run` of the theorem holds every accepted snapshot up to `t`, since `Run.Between` puts no upper end on the last window.  `settled`, `low`, and `high` stay premises.
+
+### Limits
+
+The gateway acts only on complete records and takes its clock from them, so a silent channel produces no fallback request, and only the device's expiry returns it to fallback.  The gateway detects a lost or added byte through the sequence number and requests fallback, but it does not resynchronize; QEMU's UART loses no byte, and a board needs a framing that resynchronizes.  The clock is a word of the input record, so step 8 with a hardware timer changes the gateway's inputs, and its theorems need restating.
+
+### Review
+
+A fresh agent reviewed the first draft of this design.  It found that the draft recorded an expiry at the tick that detected it under an assumption stated over ticks, which let a snapshot follow an expiry while the device could still apply the old command; the assumption over changes fixes this.  It found that the draft kept the expiry only with the authorization and ended the authorization on a rejection, so that the record kept a command after its expiry and the gateway stopped taking snapshots.  It also found the fallback request, the clock's decrease, and the initial state undefined, and the sent flag and the send deadline without effect, since the command leaves in the snapshot's tick; the draft above removes both.  It recommended nested structures, a framing theorem parametric in the record machine, and the derivation of `OperatesIn.states` together with the machine.
+
+### Increments
+
+Each increment ends with a program on QEMU and its theorem.
+
+- [x] 7a, loop.  The request loop with `n` state words, with `ReqRuns`, `req_program`, and `req_reads` over a state type with its words.  The echo and the deadline programs are instances with one word, and `req.sh` passes for both.
+- [ ] 7a, records.  The framing of records, with its theorem parametric in the record machine and stated over finite prefixes, and a record machine that sums its input words, on QEMU with a host script.
+- [ ] 7b.  `authorizeFlat` and its equation, `gateway`, G1 to G4, the device assumption, and `OperatesIn.states`.
+- [ ] 7c.  The gateway's program on QEMU with the simulator, which checks G1 to G4 on the records and compares each command with `replay.py`'s decision, and a comparison of the record streams with native Lean.
