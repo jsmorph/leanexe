@@ -41172,7 +41172,7 @@ A fresh agent reviewed a first version of the recommendation against the reports
 
 ### Revised recommendation
 
-The direction stands with one change: the 32-bit core that runs the controller is a choice for the user.  Linux on the Cortex-A cores runs the network and the unverified gateway, and the verified controller runs bare metal on a safety core in a loop that the controller theorem describes, exchanging records with Linux through a mailbox in on-chip RAM.  The recommended first core is the Cortex-M4F of the TI AM64x, its safety island, with QEMU's `mps2-an386` for development.  The energy controller computes only with words, which suits the M4F's single-precision FPU behind an instruction check, and the SK-AM64B also carries the A53 cores for the Linux side.  A lockstep Cortex-R5F (TDA4VM MCU domain, Zynq UltraScale+ RPU) follows when a SIL 3 rating of the core itself becomes the goal.
+The next subsection supersedes this one.  The direction stands with one change: the 32-bit core that runs the controller is a choice for the user.  Linux on the Cortex-A cores runs the network and the unverified gateway, and the verified controller runs bare metal on a safety core in a loop that the controller theorem describes, exchanging records with Linux through a mailbox in on-chip RAM.  The recommended first core is the Cortex-M4F of the TI AM64x, its safety island, with QEMU's `mps2-an386` for development.  The energy controller computes only with words, which suits the M4F's single-precision FPU behind an instruction check, and the SK-AM64B also carries the A53 cores for the Linux side.  A lockstep Cortex-R5F (TDA4VM MCU domain, Zynq UltraScale+ RPU) follows when a SIL 3 rating of the core itself becomes the goal.
 
 | Step | Work | Running code | Theorem |
 |---|---|---|---|
@@ -41216,3 +41216,57 @@ The user stated the same day that certification, safety documents, and licences 
 
 - [x] Independent review of this entry.
 - [x] Revised recommendation to the user.
+
+### Plan without the Linux side
+
+The user removed the Linux side from the proof of concept.  It existed only to carry the energy plan's unverified gateway (ingestion, forecasts, optimizer, historian, Modbus) beside the verified controller.  The end state is the verified controller alone on a safety core, driven by a plant simulator on a host computer over a serial line.  The controller theorem quantifies over every sequence of values that the controller's reads return, so the simulator needs no trust: it decides only what a test exercises, not what the theorem states.
+
+The serial line replaces the mailbox.  The controller polls the UART's status register and moves bytes through its data register, as the request protocol of increment C2 in `controller-theorem.md` describes, so the same program and theorem run on QEMU, with the UART on a socket, and on a board.  The mailbox's trusted items leave the plan: memory attributes shared with another processor, the writer's barriers, isolation from other cores, and the loading order.  The UART's register semantics and the clock device join the trusted base, together with the startup code and the board.  A reactive loop that polls is productive, so a UART that refuses a store needs no bound on retries.
+
+| Step | Work | Running code | Theorem |
+|---|---|---|---|
+| 1 | `ptr64` parameter in the Lean copy and the address lemmas at both widths, with CompCert 3.18 configured `armv7m-eabi` | `tests/native/clight.sh` against `ccomp -interp`; the corpus through the C path under `qemu-arm` user mode | `translate_correct`, every `p.f.native` and `p.f.program` at both widths |
+| 2 | Controller loop C1 with a register bank, written once for both widths | QEMU `virt`, AArch64 | `p.ctl.program`, `clight2_loop_to_asm` |
+| 3 | Request protocol and UART polling (C2) | QEMU `virt` with the UART on a socket and a host script that checks replies against native Lean | The C1 theorems for the new window traces, and a projection from register traces to records |
+| 4 | Minimum-page option and per-program cap | One-page modules in Wasmtime and natively | Existing theorems at cap 1 |
+| 5 | Startup for the chosen 32-bit core, stack bound, alignment and floating-point checks, and the integer-load hypothesis in the Rocq reads lemma | The corpus at cap 1 and the controller loop on QEMU | `p.f.program` and `clight2_loop_to_asm` at the ARM instance |
+| 6 | Clock reads and deadlines (C3) | QEMU | Deadline properties of the trace |
+| 7 | The energy controller of `controller-theorem.md`, section 5, around `authorizeWith`, with a plant simulator on the host | QEMU | G1 to G4 and the derivation of `OperatesIn.states` |
+| 8 | The board | The controller on the board, the simulator on a host computer over the serial line | Step 7's theorems; the board's startup, UART, and clock join the trusted base |
+
+Steps 1, 4, and 5 belong to the 32-bit route.  On the 64-bit route the controller runs on an AArch64 core and steps 1 and 5 drop out.
+
+| Decision for the user | Options | Recommendation |
+|---|---|---|
+| Route | 32-bit safety core; or a 64-bit core | 32-bit: industrial safety functions run on 32-bit microcontrollers with MPUs, tightly coupled memory, and lockstep cores |
+| Core profile and board | Cortex-M (QEMU `mps2` machines boot images with `-kernel`); or Cortex-R5F (lockstep safety microcontrollers, no mainline QEMU machine that boots an R5F image) | The user chose Cortex-M on 2026-11-04, with the board chosen as the path of least resistance: a QEMU machine that matches the board, CompCert's output without FPU restrictions, enough RAM, and simple flashing and serial access |
+
+### Review of the plan without the Linux side
+
+A fresh agent reviewed the plan and the board facts.  I checked two of its facts: QEMU's Cortex-M7 sets `mvfr0 = 0x10110221`, a double-precision FPU, and its Cortex-M4 sets `0x10110021`, single precision only ([`target/arm/tcg/cpu-v7m.c`](https://github.com/qemu/qemu/blob/master/target/arm/tcg/cpu-v7m.c)).  ST's product page lists the NUCLEO-F767ZI as active, according to search results, since a direct fetch of the page timed out.
+
+| Finding | Response |
+|---|---|
+| The theorem covers a number of polls per record that depends on the values read when each poll is one tick of the outer loop.  A wait loop inside the body would not terminate for every `σ` | Each tick polls once |
+| An idle tick with no access makes `W n = []`, which the theorem's nonemptiness premise excludes | Every tick reads the status register |
+| The tick names device registers, which differ on QEMU `virt` (PL011), `mps2` (CMSDK UART), and an STM32 (USART) | The register map is a parameter, with one instance per device, and the UART protocol starts on `mps2` rather than `virt` |
+| The simulator needs no trust for the trace theorem and G1 to G4, but a simulated run meets `OperatesIn.states` only if the simulator implements the device assumptions (A7, expiry).  Records move only if the UART eventually reports room | Both stated as assumptions of a simulated run, and the second added to the trusted base |
+| A store that the UART refuses remains possible unless the program stores only after reading room | A trace property in Lean: every data store follows a status read that shows room.  QEMU's CMSDK UART overwrites a pending byte when its socket blocks, so tests use a reader that keeps up |
+| `armv7m-eabi` objects do not link with an ARM Linux libc, so `qemu-arm` user mode cannot run the corpus | The corpus runs on `mps2-an500` with a semihosting exit |
+| Missing items: the 32-bit `clightgen` read-back, a Thumb-2 stack-bound tool with the helpers' frames, an `nm` list of the helpers each module reaches, a configurable `depthLimit`, the integer-load hypothesis in the uniqueness lemma, and the output checks on QEMU | Added.  Thumb interworking drops out, since `armv7m` builds the helpers in Thumb state and emits `sdiv` and `udiv` |
+| Board: NUCLEO-F767ZI (Cortex-M7 with a double-precision FPU, 512 KiB of SRAM at `0x20000000`, the RAM base of `mps2-an500`, ST-LINK with a virtual COM port, USD 23 to 33).  The S32K344's lockstep M7 has a single-precision FPU.  Fallback NUCLEO-H723ZG | Adopted |
+
+### Final plan
+
+CompCert 3.18 configured `armv7m-eabi`, QEMU `mps2-an500` (Cortex-M7 with a double-precision FPU, 4 MiB at `0x20000000`), and a NUCLEO-F767ZI.  The FPU matches on QEMU and the board, so float modules run without an instruction check.
+
+| Step | Work | Running code | Theorem |
+|---|---|---|---|
+| 1 | `ptr64` parameter in the Lean copy and the address lemmas at both widths; a CompCert tree configured `armv7m-eabi`; the 32-bit `clightgen` read-back | `tests/native/clight.sh` against the 32-bit `ccomp -interp` | `translate_correct`, every `p.f.native` and `p.f.program` at both widths |
+| 2 | Controller loop C1 with a register bank, written once for both widths, every tick with at least one access, and the integer-load hypothesis in its uniqueness lemma | QEMU `virt`, AArch64 | `p.ctl.program`, `clight2_loop_to_asm` |
+| 3 | Minimum-page option, per-program cap, configurable `depthLimit` | One-page modules in Wasmtime and natively | Existing theorems at cap 1 |
+| 4 | Cortex-M7 startup (vector table, FPU enable, MPU stack guard, semihosting exit), a Thumb-2 stack-bound tool with the helpers' frames, an `nm` list of helpers, the alignment check | The corpus at cap 1 on `mps2-an500` | `p.f.program` at the ARM instance; Rocq against the `armv7m` tree |
+| 5 | Request protocol over the CMSDK UART with the register map as a parameter; a host script on a socket | `N` windows on `mps2-an500`, checked against native Lean | `clight2_loop_to_asm` for the protocol's traces; every data store follows a status read that shows room |
+| 6 | Clock reads from an `mps2` timer, and deadlines | QEMU | Deadline properties of the trace |
+| 7 | The energy controller around `authorizeWith`, with a plant simulator on the host over the UART | QEMU | G1 to G4, and `OperatesIn.states` under the device assumptions that the simulator implements |
+| 8 | STM32F7 startup (clocks, USART3 on the ST-LINK virtual COM port), the USART and timer instances of the register map | The controller on the NUCLEO-F767ZI and the simulator on a host computer | Step 7's theorems; the startup, USART, timer, and the UART's eventual room join the trusted base |
