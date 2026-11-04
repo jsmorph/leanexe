@@ -460,7 +460,13 @@ execution no access of a thread is in a data race, every thread ends, and the co
 count followed by the source array's encoded elements.  Its conditions are those of the WGSL
 dispatch theorem for the arguments, an output of the count followed by one word for each element,
 and a launch of at least the count's threads in fewer than 2³² blocks with fewer than 2⁶⁰ threads.
-[The PTX examples](../Verified/Examples/Ptx.lean) compile the WGSL examples, [the binary32
+`ptx.launch_value` states the sequential run of the launch, which leaves the same words and is
+race-free.  `LaunchSeq` and `LaunchMeets` name the two conclusions for a kernel's statements.
+`Verified.PTX.Compiled.of_wgsl` in [`Verified/WgslPtx.lean`](../Verified/WgslPtx.lean) gives, for a
+build that both compilers translate, the equality of the PTX and WGSL `spec`, arguments, and
+encoding, so a PTX launch theorem can take the `Spec.Fits` proof of a WGSL dispatch theorem, as
+[the GPT-2 PTX kernels](../Demos/Gpt32/VerifiedPtx.lean) do.  [The PTX
+examples](../Verified/Examples/Ptx.lean) compile the WGSL examples, [the binary32
 example](../Examples/Binary32/CompiledPtx.lean) compiles its kernels, and
 [`tests/ptx/run.sh`](../tests/ptx/run.sh) compiles their text with `ptxas` and compares their
 output words with native Lean on an NVIDIA GPU.  [`tests/ptx/nearest.sh`](../tests/ptx/nearest.sh)

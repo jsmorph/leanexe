@@ -670,8 +670,12 @@ threads that a consistent execution exists under [the PTX memory
 model](../LeanExe/PTX/MemoryModel.lean).  In every consistent execution no access of a thread is
 in a data race, every thread ends, and the copy back reads the count followed by the source
 array's encoded elements.  [The examples](Examples/Ptx.lean) compile the WGSL examples, [the
-binary32 example](../Examples/Binary32/CompiledPtx.lean) compiles its kernels, and [the PTX
-test](../tests/ptx/run.sh) runs them on an NVIDIA GPU.
+binary32 example](../Examples/Binary32/CompiledPtx.lean) and [the GPT-2
+demo](../Demos/Gpt32/VerifiedPtx.lean) compile their kernels, and [the PTX
+test](../tests/ptx/run.sh) runs them on an NVIDIA GPU.  `Compiled.launch_value` states the
+sequential run of a launch.  [The bridge](WgslPtx.lean) `Verified.PTX.Compiled.of_wgsl` shows that a
+build that both compilers translate has the same `spec`, arguments, and encoding in both, so a PTX
+theorem can take the `Spec.Fits` proof of a WGSL one.
 
 ## The reflector
 

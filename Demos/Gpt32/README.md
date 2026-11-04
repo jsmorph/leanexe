@@ -1,4 +1,4 @@
-# Gpt32: GPT-2 in binary32 on WGSL
+# Gpt32: GPT-2 in binary32 on WGSL and PTX
 
 ## One GPT-2 step as WGSL kernels
 
@@ -37,6 +37,13 @@ the translation accepts and the conditions of its dispatch theorem.
 | `embedKernel_dispatch` and the other dispatch theorems | Under bounds below `2^29` on the input sizes and the output count, with an output buffer that has the length header and a slot for every element, and with enough invocations to cover the output, a dispatch of each kernel leaves its Lean function of the inputs in the output buffer and is race-free. |
 | `Demos.Gpt32.generate_host` | For the kernels of a backend, under bounds on the shape and the tokens, for weights loaded from the files and a prompt of fewer than 1,024 tokens, the commands of `setupItems`, the steps of the prompt, and one more step run without error and race-free, and leave the scores of `step32` for the last token in the output buffers. |
 | `Demos.Gpt32.Verified.generate_host` | `Demos.Gpt32.generate_host` for `backend`, whose kernels are those of the verified compilation. |
+| `embedKernel_launch` and the other launch theorems of `Demos.Gpt32.VerifiedPtx` | Under the bounds of the matching dispatch theorem, the sequential run of a launch of the PTX kernel with at least as many threads as output elements leaves the Lean function's result after the count and is race-free, and in every consistent execution under the PTX memory model no access of a thread is in a data race, every thread ends, and the copy back reads that result. |
+
+[The PTX compilation](VerifiedPtx.lean) translates the same bodies with `Verified.PTX.compile`.
+Each launch theorem takes the bounds of the WGSL dispatch theorem of its kernel, whose `Spec.Fits`
+proof, such as `embedGpu_fits`, it shares through `Verified.PTX.Compiled.of_wgsl`: a build that both
+compilers translate has one kernel plan.  The host program and `generate_host` use the WGSL
+kernels, and no host theorem composes the PTX launches.
 
 ## The host theorem and the device model
 

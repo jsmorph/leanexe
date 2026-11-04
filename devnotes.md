@@ -41068,8 +41068,19 @@ A probe compiled every kernel of `Demos/Gpt32/Verified.lean` with `Verified.PTX.
 | Cases | A PTX form of `Demos/Gpt32/VerifiedCases.lean` with `Arg.ptxBuffer`, and the kernels in `tests/ptx/run.sh` |
 | Documents | GPT-2 guide, index, README row P, trust document |
 
-- [ ] Review of this plan by a fresh agent.
-- [ ] Plan lemmas and fits lemmas.
-- [ ] Kernels and launch theorems.
-- [ ] Cases and device test on the GB10.
-- [ ] Documents, full build, commit, push.
+A fresh agent reviewed the plan and found no error.  Its suggestions, all adopted:
+- The bridge lemma states that the PTX `spec`, `args`, and `encode` of a build equal the WGSL ones, at types that do not depend on the count and the element.  It lives in `Verified/WgslPtx.lean`, outside `Verified/PTX/`, since it imports both compilers.
+- `Verified.PTX` gains the sequential form of `Spec.ptx_launch` at the level of `Kernel` and `Compiled`, which the stage 5 host needs.
+- The PTX kernels and theorems go in the namespace `Demos.Gpt32.VerifiedPtx`, so that `embedKernel` there names the PTX module.
+- One case generator, with the buffer format as a parameter, writes the WGSL and the PTX cases.
+- The documents include the test guide, the compiler README, and the manual, and the new theorems get axiom reports.
+
+- [x] Review of this plan by a fresh agent.
+- [x] Plan lemmas, bridge, sequential launch theorem, and fits lemmas.
+- [x] Kernels and launch theorems.
+- [x] Cases and device test on the GB10.
+- [x] Documents, full build, commit, push.
+
+### Results
+
+`Demos/Gpt32/VerifiedPtx.lean` states `embedKernel_launch` and the other launch theorems, each the conjunction of `LaunchSeq` and `LaunchMeets` from `Compiled.launch_value` and `Compiled.executions_eq`.  The names end in `_launch`, because each theorem states both the sequential launch and the executions.  The fits lemmas are `expGpu_fits`, `embedGpu_fits`, and the others, named after `expGpu` and the other compilations whose `Spec.Fits` they state.  `tests/ptx/run.sh` passed its 576 cases on the GB10, from the cubins and through the driver's compiler.  The SASS of `gelu`, `layerNorm`, and `probs` contains FFMA instructions, and each of these kernels contains `div.rn.f32` or `sqrt.rn.f32`, which `ptxas` implements with sequences that use FFMA.  The SASS of the kernels without division or square root contains none, and the PTX files contain no `fma` and no `mad` except the `mad.wide.u32` of the prologue.  The full build of `LeanExe`, `Examples`, `Demos`, `Library`, `TestSupport`, `Verified`, and the file modules succeeded with 11,452 jobs.  The axiom reports of the launch theorems, of `PTX.Compiled.of_wgsl`, and of the `Kernel` and `Compiled` theorems name only `propext`, `Classical.choice`, and `Quot.sound`, and the log contains no `sorryAx`.

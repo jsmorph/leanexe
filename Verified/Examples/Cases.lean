@@ -814,7 +814,7 @@ def main : IO Unit := do
   Verified.Examples.ScalarComposition.cases
   Verified.Examples.Relocation.cases
   Verified.Examples.WgslCases.runCases false
-  Demos.Gpt32.VerifiedCases.runCases false
+  Demos.Gpt32.VerifiedCases.runCases .wasm
   Verified.Examples.ListRecursion.cases
   Verified.Examples.ListLoops.cases
   Verified.Examples.ListTail.cases

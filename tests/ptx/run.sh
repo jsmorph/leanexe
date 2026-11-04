@@ -19,6 +19,9 @@ done
 for k in Scale32 AxpyArray32 MatVec32 CondMix32; do
   kernels+=("Examples.Binary32.CompiledPtx:Examples.Binary32.ptx${k}Kernel:verified$k")
 done
+for k in exp embed layerNorm linear append scores headMax headSum probs mix add gelu logits; do
+  kernels+=("Demos.Gpt32.VerifiedPtx:Demos.Gpt32.VerifiedPtx.${k}Kernel:$k")
+done
 mkdir -p "$out"
 arch=$("$host" info | sed -n 's/^compute capability \([0-9]*\)\.\([0-9]*\)$/sm_\1\2/p')
 if [ -z "$arch" ]; then
@@ -26,7 +29,8 @@ if [ -z "$arch" ]; then
   exit 1
 fi
 (cd "$root" && tools/leanrun --timeout 40m lake --log-level error build LeanExe.PTX.Parse \
-  LeanExe.PTX.AddOne Verified.Examples.PtxCases Examples.Binary32.VerifiedPtxCases)
+  LeanExe.PTX.AddOne Verified.Examples.PtxCases Examples.Binary32.VerifiedPtxCases \
+  Demos.Gpt32.VerifiedPtx Demos.Gpt32.VerifiedCases)
 "$cuda/bin/ptxas" --version >"$out/ptxas.version"
 : >"$out/cubins.sha256"
 for entry in "${kernels[@]}"; do

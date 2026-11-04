@@ -53,6 +53,7 @@ import Verified.Examples.Relocation
 import Verified.WGSL.Compile
 import Verified.Examples.WgslProof
 import Verified.PTX.Compile
+import Verified.WgslPtx
 import Verified.Examples.Ptx
 import Verified.Examples.ListRecursion
 import Verified.Examples.ListLoops

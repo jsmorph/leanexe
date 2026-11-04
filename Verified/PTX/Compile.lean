@@ -2,7 +2,9 @@ import Verified.PTX.Kernel
 
 /-!
 `compile` translates a source expression that is a build into a PTX kernel, or gives `none`.
-`Compiled.executions_eq` states the launch theorem of `Kernel.executions_eq` for the source array.
+`Compiled.executions_eq` states the launch theorem of `Kernel.executions_eq` for the source array,
+and `Compiled.launch_value` the sequential form of `Kernel.launch_eq`.  `LaunchSeq` and
+`LaunchMeets` name these conclusions for the statements of kernels.
 -/
 
 namespace Verified.PTX
@@ -19,6 +21,23 @@ def compile : (source : Verified.Expr S Γ (.array e)) → Option (Compiled sour
   | _ => none
 
 variable {source : Verified.Expr S Γ (.array e)}
+
+/-- The sequential run of a launch leaves the count followed by the words of `value`, and distinct
+threads store to distinct words. -/
+def LaunchSeq (m : LeanExe.PTX.Module) (args : List LeanExe.Source.Arg) (n : Nat)
+    (ys : Array UInt64) (blocks block : Nat) (value : Array UInt64) : Prop :=
+  let L := LeanExe.PTX.buildLaunch m args n ys blocks block
+  L.seq = some (#[UInt64.ofNat n] ++ value) ∧ L.RaceFree
+
+/-- A consistent execution of a launch exists, and in every consistent execution no access of a
+thread is in a data race, every thread ends, and the copy back reads the count followed by the
+words of `value`. -/
+def LaunchMeets (m : LeanExe.PTX.Module) (args : List LeanExe.Source.Arg) (n : Nat)
+    (ys : Array UInt64) (blocks block : Nat) (value : Array UInt64) : Prop :=
+  let L := LeanExe.PTX.buildLaunch m args n ys blocks block
+  (∃ E, L.Consistent E) ∧ ∀ E, L.Consistent E →
+    L.NoDataRace E ∧ (∀ g, g < blocks * block → (L.events (E.oracle g) g).2 = true) ∧
+      ∀ i, i < n + 1 → (#[UInt64.ofNat n] ++ value)[i]? = some (E.observed i)
 
 def Compiled.module (c : Compiled source) : LeanExe.PTX.Module := c.kernel.module
 def Compiled.spec (c : Compiled source) : LeanExe.Source.Spec := c.kernel.toKernelPlan.spec
@@ -41,6 +60,19 @@ theorem Compiled.executions_eq (c : Compiled source) (funs : Funs S) (env : Veri
     congrArg (fun expr => expr.denote funs env) c.shape
   have h := c.kernel.executions_eq funs env n fits ys hys blocks block hb hb32 hbl hcover
     hthreads
+  rw [← meaning, hValue]
+  exact h
+
+theorem Compiled.launch_value (c : Compiled source) (funs : Funs S) (env : Verified.Env Γ)
+    (value : Array e.denote) (meaning : source.denote funs env = value) (n : Nat)
+    (fits : c.spec.Fits (c.args env) n)
+    (ys : Array UInt64) (hys : ys.size = n) (blocks block : Nat) (hb : 0 < block)
+    (hb32 : block < 2 ^ 32) (hbl : blocks < 2 ^ 32) (hcover : n ≤ blocks * block)
+    (hthreads : blocks * block < 2 ^ 60) :
+    LaunchSeq c.module (c.args env) n ys blocks block (value.map c.encode) := by
+  have hValue : source.denote funs env = (Verified.Expr.build c.count c.element).denote funs env :=
+    congrArg (fun expr => expr.denote funs env) c.shape
+  have h := c.kernel.launch_eq funs env n fits ys hys blocks block hb hb32 hbl hcover hthreads
   rw [← meaning, hValue]
   exact h
 

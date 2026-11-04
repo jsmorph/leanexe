@@ -27,6 +27,24 @@ def compileKernel (count : Verified.Expr S Γ .word)
     | some m => some ⟨plan, m, plan.spec.wf_of_wfb hWF, hModule⟩
   else none
 
+/-- A compiled kernel's plan is the one that `KernelPlan.ofBuild` returns. -/
+theorem compileKernel_plan {count : Verified.Expr S Γ .word}
+    {element : Verified.Expr S (.word :: Γ) (.elem e)} {k : Kernel count element}
+    (h : compileKernel count element = some k) :
+    KernelPlan.ofBuild count element = some k.toKernelPlan := by
+  unfold compileKernel at h
+  cases hp : KernelPlan.ofBuild count element with
+  | none => simp [hp] at h
+  | some plan =>
+    simp only [hp, Option.bind_eq_bind, Option.bind_some] at h
+    split at h
+    · split at h
+      · cases h
+      · simp only [Option.some.injEq] at h
+        subst h
+        rfl
+    · cases h
+
 variable {countExpr : Verified.Expr S Γ .word}
   {element : Verified.Expr S (.word :: Γ) (.elem e)}
 
@@ -56,6 +74,30 @@ theorem Kernel.executions_eq (kernel : Kernel countExpr element)
     ys hys blocks block hb hb32 hbl hcover hthreads
   simpa only [Verified.Expr.denote, hCount, build_map] using h
 
+/-- The sequential run of a launch of a kernel with at least `n` threads leaves the count followed
+by the source array's encoded elements, and distinct threads store to distinct words. -/
+theorem Kernel.launch_eq (kernel : Kernel countExpr element)
+    (funs : Funs S) (env : Verified.Env Γ) (n : Nat)
+    (fits : kernel.toKernelPlan.spec.Fits (kernel.params.args env) n)
+    (ys : Array UInt64) (hys : ys.size = n) (blocks block : Nat) (hb : 0 < block)
+    (hb32 : block < 2 ^ 32) (hbl : blocks < 2 ^ 32) (hcover : n ≤ blocks * block)
+    (hthreads : blocks * block < 2 ^ 60) :
+    let L := LeanExe.PTX.buildLaunch kernel.module (kernel.params.args env) n ys blocks block
+    L.seq = some (#[UInt64.ofNat n] ++
+        ((Verified.Expr.build countExpr element).denote funs env).map kernel.output.encode) ∧
+      L.RaceFree := by
+  intro L
+  have hCount := kernel.counter.value funs env n (by
+    cases hc : kernel.counter.count <;>
+      simpa only [KernelPlan.spec, hc, FitsCount] using fits.count)
+  have h := kernel.toKernelPlan.spec.ptx_launch kernel.wf kernel.translated
+    (kernel.params.args env) n fits
+    (fun k => kernel.output.encode (element.denote funs (.cons k env)))
+    (fun k _ => kernel.toKernelPlan.element_denote kernel.wf funs env k n fits)
+    ys hys blocks block hb hb32 hbl hcover hthreads
+  simpa only [Verified.Expr.denote, hCount, build_map] using h
+
 end Verified.PTX
 
 #print axioms Verified.PTX.Kernel.executions_eq
+#print axioms Verified.PTX.Kernel.launch_eq

@@ -7,6 +7,8 @@ Each theorem comes from `Compiled.executions_eq` with the generated `denote_eq`.
 
 namespace Examples.Binary32
 
+open Verified.PTX (LaunchMeets)
+
 def scale32Ptx :=
   (Verified.PTX.compile (e := .float32) compiled.scale32.func.body).get (by decide +kernel)
 def axpyArray32Ptx :=
@@ -20,16 +22,6 @@ def ptxScale32Kernel : LeanExe.PTX.Module := scale32Ptx.module
 def ptxAxpyArray32Kernel : LeanExe.PTX.Module := axpyArray32Ptx.module
 def ptxMatVec32Kernel : LeanExe.PTX.Module := matVec32Ptx.module
 def ptxCondMix32Kernel : LeanExe.PTX.Module := condMix32Ptx.module
-
-/-- The launch theorem of a kernel: a consistent execution exists, and in every consistent
-execution no access of a thread is in a data race, every thread ends, and the copy back reads the
-count followed by the words of `value`. -/
-def LaunchMeets (m : LeanExe.PTX.Module) (args : List LeanExe.Source.Arg) (n : Nat)
-    (ys : Array UInt64) (blocks block : Nat) (value : Array UInt64) : Prop :=
-  let L := LeanExe.PTX.buildLaunch m args n ys blocks block
-  (∃ E, L.Consistent E) ∧ ∀ E, L.Consistent E →
-    L.NoDataRace E ∧ (∀ g, g < blocks * block → (L.events (E.oracle g) g).2 = true) ∧
-      ∀ i, i < n + 1 → (#[UInt64.ofNat n] ++ value)[i]? = some (E.observed i)
 
 theorem scale32_executions (a : Float32) (x : Array Float32)
     (fits : scale32Ptx.spec.Fits (scale32Ptx.args (.cons a (.cons x .nil))) x.size)
