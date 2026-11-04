@@ -41305,3 +41305,71 @@ Most proofs needed only the new arguments.  A proof splits on `A` where CompCert
 `tests/native/clight.sh 7 300 ARCHI` passes for all three instances, each against the `ccomp -interp` of its own tree: 921 programs agree and none differ.  Under `arm`, 370 programs are undefined, against 371 under the 64-bit instances.  The difference is the input program `w119`, whose index lies outside the array with 64-bit offsets and wraps to 0 with 32-bit offsets, and CompCert's ARMv7-M interpreter agrees with the copy on it.  `clight-diff` now runs every program under all three instances and reports two counts: programs that differ between `x86_64` and `aarch64`, where only the NaN rules differ, and programs that differ between `aarch64` and `arm`, where only the pointer width differs.  The libraries `LeanExe`, `Verified`, `TestSupport`, `Demos`, and `Examples` build with no `sorry`, and the axioms are `propext`, `Classical.choice`, and `Quot.sound`.
 
 The ARMv7-M tree's `clightgen` reads back the C text of every corpus module of `native-emit`, and `native-emit check` finds each program equal to its translation, as with the 64-bit trees.  The commands are `native-emit emit DIR`, `clightgen` from `~/compcert/armv7m/CompCert-3.18` on each file, and `native-emit check DIR`.  Compiling and running the corpus for ARMv7-M waits for the Cortex-M startup of step 4.
+
+## 2026-11-04: Controller PoC, step 2: the reactive loop C1
+
+Step 2 states and proves that a bare-metal `main` of the form `init; while (1) body` performs, for every sequence `σ` of values that its volatile loads return, the infinite trace `t0 ⧺ W σ 0 ⧺ W σ 1 ⧺ ...`, where window `n`'s trace `W σ n` is the loads of the window's inputs followed by the stores of the outputs that a Lean step function computes.  The design follows Vélus (PLDI 2017; `src/VelusCorrectness.v`, `src/ObcToClight/Correctness.v:2174-2257`, `src/Traces.v:64-133` at commit `27ba860c`) and the controller-theorem report of the 2026-11-04 review.  The Lean side proves no coinductive judgment.  It proves `LoopReacts`, an invariant over windows of terminating `exec_stmt` executions, and a Rocq twin of that definition carries the statement to `Reacts` in Asm through CompCert's forward simulation.
+
+### The interface judgment
+
+```lean
+/-- `s` runs `init` and then the loop `Sloop body post`. -/
+inductive LoopEntry : statement → statement → statement → statement → Prop
+  | loop (body post : statement) : LoopEntry (.Sloop body post) .Sskip body post
+  | seq_after {s init body post : statement} (rest : statement) :
+      LoopEntry s init body post → LoopEntry (.Ssequence s rest) init body post
+  | seq_before {s init body post : statement} (pre : statement) :
+      LoopEntry s init body post → LoopEntry (.Ssequence pre s) (.Ssequence pre init) body post
+
+def LoopReacts (A : Archi) (X : ExtSem) (p : program function) (t0 : trace)
+    (W : Nat → trace) : Prop :=
+  (∀ n, W n ≠ []) ∧
+  ∃ (b : block) (f : function) (m0 m1 : mem) (e : env) (le0 : temp_env)
+    (init body post : statement) (Inv : Nat → temp_env → mem → Prop),
+    init_mem A p = some m0 ∧
+    Genv.find_symbol (globalenv p) p.prog_main = some b ∧
+    Genv.find_funct_ptr (globalenv p) b = some (.Internal f) ∧
+    type_of_function f = .Tfunction [] type_int32s cc_default ∧
+    LoopEntry f.fn_body init body post ∧
+    function_entry2 f [] m0 e le0 m1 ∧
+    (∃ le m, exec_stmt A X (globalenv p) e le0 m1 init t0 le m .Out_normal ∧ Inv 0 le m) ∧
+    ∀ n le m, Inv n le m → ∃ le' m',
+      exec_stmt A X (globalenv p) e le m (.Ssequence body post) (W n) le' m' .Out_normal ∧
+        Inv (n + 1) le' m'
+```
+
+The controller-theorem report fixed the body's shape as `Ssequence (Ssequence init (Sloop body Sskip)) rest`.  That condition cannot be transferred from `clightgen`'s Coq file to the program inside `clightgen`.  The internal program may wrap any statement in a sequence with `Sskip`, which the export drops (`LeanExe/Native/Proof/Export.lean`, `ExportRel`).  SimplExpr also turns `while (1) s` into `Sloop (Ssequence (Ssequence Sskip Sskip) s') Sskip`: `makeif` replaces the constant condition by `Sskip`, and `makeseq` starts from `Sskip` (`cfrontend/SimplExpr.v`, lines 80 to 87, 111 to 118, and 559 to 562).  `LoopEntry` admits every such wrapping: `init` collects the statements that run before the loop, and a window runs `body` and then `post`, as one iteration of `Sloop body post` does in Clight's small steps (`step_loop`, `step_skip_or_continue_loop1`, `step_skip_loop2`).
+
+The pair "invariant at 0, preserved by one window" is the post-fixpoint witness of a coinductive predicate, so the statement has coinductive content without a coinductive type.  `W n ≠ []` excludes silent divergence, which a transcription of `execinf_stmt` would admit (`common/Behaviors.v:835-845`).  The Rocq theorem is parametric in `W`, as `clight2_bigstep_asm_reads` is parametric in `Q`, so neither `W` nor the step function is transcribed into Coq.
+
+```coq
+Theorem clight2_loop_to_asm:
+  forall p p1 p2 tp t0 (W: (nat -> int) -> nat -> trace)
+         (NE: forall sigma n, W sigma n <> E0),
+  SimplExpr.transl_program p = OK p1 ->
+  SimplLocals.transf_program p1 = OK p2 ->
+  transf_c_program p = OK tp ->
+  (forall sigma, loop_reacts p2 t0 (W sigma)) ->
+  (forall sigma n, reads sigma (t0 ** windows (W sigma) n)) ->
+  (forall sigma, program_behaves (Asm.semantics tp)
+                   (Reacts (t0 *** concat (W sigma) (NE sigma)))) /\
+  (forall beh, program_behaves (Asm.semantics tp) beh ->
+     exists sigma, same_behaviors beh (Reacts (t0 *** concat (W sigma) (NE sigma)))).
+```
+
+### Plan
+
+| Part | Work |
+|---|---|
+| Rocq | `loop_reacts`, `windows`, `concat`; `Forever_reactive` in `Clight.semantics2` by cofixpoint from `loop_reacts`, as Vélus's `reactive_loop`; `Reacts` to Asm through `clight2_to_asm_forward`; uniqueness up to `traceinf_sim` with the values read, extending `determinate_reads` |
+| Step function | An allocation-free scalar Mealy machine with `aborts = false`, compiled by `verified_compile` |
+| Generated `main` | `ctlMain` beside `bareMain` and `inMain`: `lx_init`, then a loop that reads the register bank `lx_in` by volatile loads of 32-bit words, calls the step, tests `lx_status`, stores the outputs to `lx_out`, and keeps the state in temporaries |
+| Window lemma | `Inv n le m → ∃ le' m', exec_stmt … body (W σ n) le' m' ∧ Inv (n + 1) le' m'`, from `NativeA`, `funcall_quiet`, and the load and store lemmas of `Input.lean` and `Main.lean` |
+| Transfers | `LoopReacts` across `clightgen`'s export and the renaming of identifiers, from `exec_export` and the renaming of `exec_stmt` |
+| Check and run | `native-bare check` for the loop program; QEMU `virt` runs `N` windows, and the UART bytes equal native Lean's iteration of the step |
+
+- [ ] Rocq: `loop_reacts`, existence, uniqueness, `rocq/check.sh`.
+- [x] Lean: `LoopReacts` and its transfer lemmas (`LeanExe/Native/Proof/Reacts.lean`): `loopReacts_export`, `loopReacts_rename`, and `loopReacts_rename_on`.  `function_entry2_ren` and `exists_injective_renaming` now hold the parts of `eval_funcall_ren` and `bigstep_program_terminates_rename_on` that the loop's transfers share.
+- [ ] Step function and `ctlMain`.
+- [ ] Window lemma and `p.ctl.program`.
+- [ ] Check, QEMU run, docs, commit, push.
