@@ -86,7 +86,7 @@ Each artifact has a code, which [the algorithm index](index.md) uses to list the
 | Call in Wasmtime | V | None | `sha256_call`, for the message `abc` packed into the word 6,513,249 |
 | Native build | C | `build/native/sha256/sha256.c`, `sha256_glue.c`, `sha256.exports`, `sha256.depth`, `sha256.v`, `sha256.o`, and the executable `sha256` | `compiled.sha256.native` |
 | Native build without the alignment test | A | Same files in `build/native/sha256-aligned/` | `compiled.sha256.nativeAligned` |
-| Bare-metal image with input | B | `build/baremetal/inputs/sha256in.c`, `sha256in.v`, `sha256in.elf`, and its stack bound `sha256in.elf.bound` | [`sha256_input`](tests/TestSupport/Bare/Input.lean), which also allows the code of `unreachable` with no output when `alloc` traps, with `clight2_bigstep_asm_reads` of [the Rocq composition](rocq/Clight2Asm.v) |
+| Bare-metal image with input | B | `build/baremetal/inputs/sha256in.c`, `sha256in.v`, `sha256in.elf`, and its stack bound `sha256in.elf.bound` | [`sha256_input`](tests/TestSupport/Bare/Input.lean), which also allows the code of `unreachable` with no output when `alloc` traps, with `clight2_bigstep_asm_reads_ptr64` of [the Rocq composition](rocq/Clight2Asm.v) |
 
 ```sh
 tools/leanrun --timeout 60m lake build Library.Hashing.Sha256.Bytes native-verified

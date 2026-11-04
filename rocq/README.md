@@ -35,7 +35,8 @@ described in [Trusted base](../docs/trusted-base.md).
 `clight2_bigstep_asm_unique` uses assembly determinacy to show that the termination is the only behavior
 when the trace has no inputs.  `clight2_bigstep_asm_reads` assumes a Clight termination for every
 sequence of values read by volatile loads.  It proves an Asm termination for each sequence and
-that every Asm behavior is one of those terminations.  The
+that every Asm behavior that satisfies `int_loads`, described below, is one of those
+terminations.  The
 [bare-metal input procedure](../docs/native-bare-metal.md#arguments-not-fixed-in-advance)
 applies that theorem to a message loaded into memory before execution.
 
@@ -52,10 +53,44 @@ forall n, reads sigma (t0 ** windows (W sigma) n)
 initialization with the trace `t0`, and iteration `n` of the loop runs with the nonempty trace
 `W sigma n` from a state of an invariant that every iteration preserves.  The theorem concludes
 that the Asm program has the behavior `Reacts (t0 *** concat (W sigma) (NE sigma))` for every
-`sigma`, where `concat` joins the traces of all iterations, and that every Asm behavior is
-bisimilar, by CompCert's `same_behaviors`, to one of those behaviors.  The proof builds the
-reactive behavior of the Clight program by cofixpoint from the invariant, carries it to Asm by
-the forward simulation, and obtains uniqueness from the determinacy of Asm and the values read.
+`sigma`, where `concat` joins the traces of all iterations, and that every Asm behavior that
+satisfies `int_loads` is bisimilar, by CompCert's `same_behaviors`, to one of those behaviors.
+The proof builds the reactive behavior of the Clight program by cofixpoint from the invariant,
+carries it to Asm by the forward simulation, and obtains uniqueness from the determinacy of Asm
+and the values read.
+
+## Integer loads and pointer width
+
+`int_loads beh` holds when every volatile load of the behavior `beh` whose value has the type
+`Tint` reads an integer:
+
+```coq
+Definition int_loads (beh: program_behavior) : Prop :=
+  forall t chunk id ofs ev,
+  behavior_prefix (t ** Event_vload chunk id ofs ev :: nil) beh ->
+  eventval_type ev = Tint -> exists i, ev = EVint i.
+```
+
+CompCert's `ev_match_ptr` (`common/Events.v`) lets a volatile load of a chunk of type `Tptr`
+read a pointer event `EVptr_global id ofs` for every public symbol `id`.  With 32-bit pointers,
+as on ARMv7-M, `Tptr` is `Tint`, the type of the chunks `Mint32` and `Mint8unsigned`, so the Asm
+program has behaviors in which such a load reads a pointer.  The Lean copy of Clight omits
+`ev_match_ptr`, `reads sigma` requires `EVint` at every load, and no `sigma` describes those
+behaviors.  The uniqueness halves of `clight2_bigstep_asm_reads` and `clight2_loop_to_asm`
+therefore take `int_loads beh` as a premise, and `reads_int_loads` and `reacts_int_loads` prove
+that every behavior their conclusions describe satisfies it, which makes it the weakest premise
+on behaviors under which they hold.  A premise about the program would have to exclude pointer
+events through the chunks of its volatile loads or through its public symbols, but the input
+program and the controller load with `Mint8unsigned`, whose type is `Tint`, and `clightgen` makes
+`main` public.  With 32-bit pointers, applying the theorems to a machine assumes that each of
+its runs is a behavior with `int_loads`: a device returns bits, which the Asm semantics
+represents as `EVint` and then `Vint`.
+
+With 64-bit pointers `Tptr` is `Tlong`, and `int_loads_ptr64` proves `int_loads` of every
+behavior from `Archi.ptr64 = true`.  The corollaries `clight2_bigstep_asm_reads_ptr64` and
+`clight2_loop_to_asm_ptr64` take that equation in place of `int_loads` and conclude that every
+Asm behavior is one of the terminations or bisimilar to one of the reactive behaviors.
+`aarch64/Archi.v` defines `ptr64` as `true`, and `arm/Archi.v` defines it as `false`.
 
 ## The Clight evaluator
 
@@ -116,16 +151,22 @@ difference with the lines that the evaluator computes.
 
 ## Checking the proofs
 
-[The checker](check.sh) requires `coqc` and a CompCert 3.18 source tree for AArch64 with its
-proofs built.  The tree must contain `_CoqProject` and `driver/Compiler.vo`.  From the repository
-root, the command is:
+[The checker](check.sh) requires `coqc` and a CompCert 3.18 source tree with its proofs built,
+configured for AArch64 (`aarch64-linux`) or for ARMv7-M (`armv7m-eabihf`).  The tree must
+contain `_CoqProject`, `Makefile.config`, and `driver/Compiler.vo`.  From the repository root,
+the command for either target is:
 
 ```sh
 rocq/check.sh /path/to/CompCert
 ```
 
-The checker obtains the load paths from that tree's `_CoqProject`, compiles the composition and
-the evaluator in a temporary directory, and compares the printed assumptions of every theorem
-above with those of CompCert's `transf_c_program_correct`.  For the composition, it permits the
-additional `ClassicalEpsilon.constructive_indefinite_description` used by CompCert's behavior
-argument.  An unexpected assumption causes failure.
+The checker obtains the load paths from that tree's `_CoqProject`, which select the back end
+whose `Archi`, `Asm`, and `Asmgenproof` the composition uses, so the same files check against
+each target.  It compiles the composition and the evaluator in a temporary directory and
+compares the printed assumptions of every theorem above with those of CompCert's
+`transf_c_program_correct`.  For the composition, it permits the additional
+`ClassicalEpsilon.constructive_indefinite_description` used by CompCert's behavior argument.  An
+unexpected assumption causes failure.  The last line of the output names the architecture and
+model of the tree's `Makefile.config` and the value of `Archi.ptr64`, which Rocq computes: `true`
+for AArch64, where the corollaries for 64-bit pointers apply, and `false` for ARMv7-M, where the
+uniqueness theorems keep the premise `int_loads`.

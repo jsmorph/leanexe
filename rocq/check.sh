@@ -6,7 +6,9 @@
 # CompCert's transf_c_program_correct and, for Clight2Asm.v,
 # ClassicalEpsilon.constructive_indefinite_description, which
 # forward_simulation_same_safe_behavior of common/Behaviors.v uses.  Clight2Asm.v imports
-# Compopts and Events, so the comparison drops those modules' qualifiers.
+# Compopts and Events, so the comparison drops those modules' qualifiers.  The script then reports
+# the architecture and model of the tree's Makefile.config and the value of Archi.ptr64, which
+# decides whether int_loads_ptr64 discharges the premise int_loads (rocq/README.md).
 # Usage: rocq/check.sh COMPCERT_TREE
 set -euo pipefail
 if [ "$#" -ne 1 ]; then
@@ -15,7 +17,8 @@ if [ "$#" -ne 1 ]; then
 fi
 tree=$(cd "$1" && pwd)
 here=$(cd "$(dirname "$0")" && pwd)
-if [ ! -f "$tree/_CoqProject" ] || [ ! -f "$tree/driver/Compiler.vo" ]; then
+if [ ! -f "$tree/_CoqProject" ] || [ ! -f "$tree/Makefile.config" ] ||
+  [ ! -f "$tree/driver/Compiler.vo" ]; then
   echo "rocq: $tree is not a CompCert tree with built proofs" >&2
   exit 2
 fi
@@ -41,9 +44,12 @@ printf 'Require Import Compiler.\nPrint Assumptions transf_c_program_correct.\n'
   echo 'Require ClightEval.'
   printf 'Print Assumptions ClightEval.%s.\n' exec_call_sound run_sound run_program_sound
 } >"$work/Eval.v"
+printf 'Require Archi.\nLocal Transparent Archi.ptr64.\nEval compute in Archi.ptr64.\n' \
+  >"$work/Width.v"
 (cd "$work" && coqc "${flags[@]}" Clight2Asm.v >clight2asm.out)
 (cd "$work" && coqc "${flags[@]}" ClightEval.v && coqc "${flags[@]}" Eval.v >eval.out)
 (cd "$work" && coqc "${flags[@]}" Reference.v >reference.out)
+(cd "$work" && coqc "${flags[@]}" Width.v >width.out)
 names() {
   grep -oE '^[A-Za-z][A-Za-z0-9_.]*( :|$)' "$1" | sed 's/ :$//; s/^Compopts\.//; s/^Events\.//' | sort -u
 }
@@ -59,3 +65,8 @@ if [ -n "$extra" ]; then
   exit 1
 fi
 echo "rocq: ClightEval.v checks, with assumptions among those of transf_c_program_correct"
+arch=$(sed -n 's/^ARCH=//p' "$tree/Makefile.config")
+model=$(sed -n 's/^MODEL=//p' "$tree/Makefile.config")
+ptr64=$(sed -n 's/^ *= //p' "$work/width.out")
+case "$ptr64" in true | false) ;; *) ptr64="a parameter" ;; esac
+echo "rocq: the tree is configured for $arch, model $model, where Archi.ptr64 is $ptr64"

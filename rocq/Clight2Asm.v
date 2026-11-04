@@ -8,8 +8,11 @@
    clight2_loop_to_asm carries a main that runs an initialization and then a loop forever, each
    iteration with a nonempty trace, to the reactive behaviors of the Asm program, one for each
    sequence of values read, and shows that every behavior of the Asm program is bisimilar to one
-   of them.  rocq/check.sh checks the file against a CompCert 3.18 tree for AArch64 whose proofs
-   are built. *)
+   of them.  The uniqueness halves of clight2_bigstep_asm_reads and clight2_loop_to_asm take the
+   premise int_loads, which holds of every behavior when pointers are 64 bits wide, and the
+   corollaries clight2_bigstep_asm_reads_ptr64 and clight2_loop_to_asm_ptr64 state them without
+   it.  rocq/check.sh checks the file against a CompCert 3.18 tree whose proofs are built, configured
+   for AArch64 or for ARMv7-M. *)
 
 From Coq Require Classical ClassicalEpsilon.
 Require Import Coqlib Errors AST Integers Linking Values Memory Globalenvs Events Smallstep.
@@ -120,9 +123,9 @@ Proof.
 Qed.
 
 (* The behavior of the Asm program is unique.  Asm's semantics is determinate
-   (aarch64/Asm.v, semantics_determinate): two steps from one state have traces that
-   match_traces relates (common/Events.v, lines 505 to 517), and with equal traces they reach
-   one state.  match_traces relates a trace without inputs, a system call or a volatile load,
+   (semantics_determinate in the Asm.v of each back end): two steps from one state have traces
+   that match_traces relates (common/Events.v, lines 505 to 517), and with equal traces they
+   reach one state.  match_traces relates a trace without inputs, a system call or a volatile load,
    only to itself, so every run follows a terminating run whose trace has no inputs, and the
    program has no behavior but that run's. *)
 
@@ -421,14 +424,27 @@ Proof.
   intros. inversion H; subst. eauto.
 Qed.
 
-(* On AArch64, pointers are 64 bits wide (aarch64/Archi.v, line 22), so an event value of the
-   type of int is an integer. *)
-Local Transparent Archi.ptr64.
+(* An event value of the type of int is an integer EVint or, when pointers are 32 bits wide and
+   Tptr is Tint (common/AST.v), a pointer EVptr_global, which ev_match_ptr (common/Events.v)
+   lets a volatile load of a chunk of that type read for every public symbol.  The Lean copy of
+   Clight omits ev_match_ptr, so the traces of its executions have no pointer events, and the
+   uniqueness theorems below consider the behaviors in which no such load reads a pointer.
+   int_loads beh holds when every volatile load of beh whose value has the type of int reads an
+   integer.  With 64-bit pointers it holds of every behavior (int_loads_ptr64).  Every behavior
+   that the uniqueness theorems describe satisfies it (reads_int_loads, reacts_int_loads), so the
+   premise excludes only behaviors that no such theorem describes and is the weakest premise on
+   behaviors under which they hold.  A premise about the program would have to rule out pointer
+   events by the chunks of its volatile loads or by its public symbols, but the input program
+   and the controller load Mint8unsigned, whose type is int, and clightgen makes main public. *)
+Definition int_loads (beh: program_behavior) : Prop :=
+  forall t chunk id ofs ev,
+  behavior_prefix (t ** Event_vload chunk id ofs ev :: nil) beh ->
+  eventval_type ev = Tint -> exists i, ev = EVint i.
 
-Lemma eventval_type_int:
-  forall ev, eventval_type ev = Tint -> exists i, ev = EVint i.
+Lemma int_loads_ptr64: Archi.ptr64 = true -> forall beh, int_loads beh.
 Proof.
-  destruct ev; simpl; intros H; try discriminate; eauto.
+  intros P beh t chunk id ofs ev _ TY.
+  destruct ev; simpl in TY; try (unfold Tptr in TY; rewrite P in TY); try discriminate TY; eauto.
 Qed.
 
 (* reads sigma t: the trace t has no system call, and its k-th volatile load reads the value
@@ -440,6 +456,15 @@ Definition reads (sigma: nat -> int) (t: trace) : Prop :=
   | Event_vload _ _ _ v => v = EVint (sigma (count_vloads tp))
   | _ => True
   end.
+
+Lemma reads_int_loads:
+  forall sigma t r, reads sigma t -> int_loads (Terminates t r).
+Proof.
+  intros sigma t r R tp chunk id ofs ev [b E] _.
+  destruct b as [u r1 | u | U | u]; simpl in E; try discriminate. inv E.
+  exists (sigma (count_vloads tp)).
+  exact (R tp (Event_vload chunk id ofs ev) u ltac:(rewrite Eapp_assoc; reflexivity)).
+Qed.
 
 (* kth_vload beh k ev: the k-th volatile load of the behavior beh reads ev.  read_values beh k
    is the integer that the k-th volatile load of beh reads, when there is one. *)
@@ -472,12 +497,14 @@ Proof.
   rewrite V. reflexivity.
 Qed.
 
-(* A behavior beh cannot leave a trace that reads read_values beh: where the trace has the event
-   e after the prefix tp, beh cannot have a different event e' that match_traces relates to e.
-   Both would be volatile loads, and e reads the value of the load of beh, since kth_vload makes
-   that load unique. *)
+(* A behavior beh with int_loads cannot leave a trace that reads read_values beh: where the
+   trace has the event e after the prefix tp, beh cannot have a different event e' that
+   match_traces relates to e.  Both would be volatile loads, e' would read a value of the type of
+   int, which int_loads makes an integer, and e reads the value of the load of beh, since
+   kth_vload makes that load unique. *)
 Lemma read_values_leaves:
   forall ge tp e e' b beh,
+  int_loads beh ->
   match e with
   | Event_syscall _ _ _ => False
   | Event_vload _ _ _ v => v = EVint (read_values beh (count_vloads tp))
@@ -486,11 +513,12 @@ Lemma read_values_leaves:
   match_traces ge (e :: nil) (e' :: nil) -> e <> e' ->
   beh = behavior_app (tp ** e' :: nil) b -> False.
 Proof.
-  intros ge tp e e' b beh HE M NE PRE.
+  intros ge tp e e' b beh IL HE M NE PRE.
   destruct e as [name args res | chunk id ofs res1 | chunk id ofs v | txt args]; simpl in HE.
   - exact HE.
   - destruct (match_traces_vload_inv _ _ _ _ _ _ M) as [res2 [E' TY]]. subst e'.
-    destruct (eventval_type_int res2) as [i2 EV].
+    destruct (IL tp chunk id ofs res2) as [i2 EV].
+    { exists b. exact PRE. }
     { rewrite <- TY, HE. reflexivity. }
     subst res2.
     apply NE. rewrite HE, (read_values_kth _ _ _ _ _ _ _ PRE). reflexivity.
@@ -500,28 +528,53 @@ Qed.
 
 (* Q holds of a sequence sigma of values and of a termination when the termination's trace reads
    sigma, and of a determinate semantics with such a termination for every sigma, every behavior
-   is one of them.  For a behavior beh, take the termination for read_values beh, which beh
-   cannot leave by read_values_leaves. *)
+   with int_loads is one of them.  For a behavior beh, take the termination for read_values beh,
+   which beh cannot leave by read_values_leaves. *)
 Theorem determinate_reads:
   forall L, determinate L ->
   forall (Q: (nat -> int) -> trace -> int -> Prop),
   (forall sigma, exists t r,
      program_behaves L (Terminates t r) /\ reads sigma t /\ Q sigma t r) ->
-  forall beh, program_behaves L beh ->
+  forall beh, program_behaves L beh -> int_loads beh ->
   exists sigma t r, beh = Terminates t r /\ reads sigma t /\ Q sigma t r.
 Proof.
-  intros L DET Q HB beh B.
+  intros L DET Q HB beh B IL.
   destruct (HB (read_values beh)) as [t [r [BT [HR HQ]]]].
   exists (read_values beh), t, r. split; [|split; auto].
   destruct (determinate_behavior_leaves L DET _ _ BT _ B)
     as [EQ | [tp [e [e' [u [A [NE [M [b' PRE]]]]]]]]]; auto.
-  exfalso. exact (read_values_leaves _ _ _ _ _ _ (HR tp e u A) M NE PRE).
+  exfalso. exact (read_values_leaves _ _ _ _ _ _ IL (HR tp e u A) M NE PRE).
 Qed.
 
 (** For a Clight program with a termination that reads sigma and satisfies Q for every sequence
     sigma of values, the Asm program has such a termination for every sigma, and every behavior
-    of the Asm program is one of them. *)
+    of the Asm program with int_loads is one of them. *)
 Theorem clight2_bigstep_asm_reads:
+  forall p p1 p2 tp (Q: (nat -> int) -> trace -> int -> Prop),
+  SimplExpr.transl_program p = OK p1 ->
+  SimplLocals.transf_program p1 = OK p2 ->
+  transf_c_program p = OK tp ->
+  (forall sigma, exists t r,
+     ClightBigstep.Clight2.bigstep_program_terminates p2 t r /\ reads sigma t /\ Q sigma t r) ->
+  (forall sigma, exists t r,
+     program_behaves (Asm.semantics tp) (Terminates t r) /\ reads sigma t /\ Q sigma t r) /\
+  (forall beh, program_behaves (Asm.semantics tp) beh -> int_loads beh ->
+     exists sigma t r, beh = Terminates t r /\ reads sigma t /\ Q sigma t r).
+Proof.
+  intros p p1 p2 tp Q E1 E2 TR H.
+  assert (HA: forall sigma, exists t r,
+     program_behaves (Asm.semantics tp) (Terminates t r) /\ reads sigma t /\ Q sigma t r).
+  { intros sigma. destruct (H sigma) as [t [r [B [HR HQ]]]].
+    exists t, r. split; auto. eapply clight2_bigstep_to_asm; eauto. }
+  split; auto.
+  intros beh B' IL. eapply determinate_reads; eauto.
+  apply Asm.semantics_determinate.
+Qed.
+
+(** With 64-bit pointers, as on AArch64, every behavior of the Asm program is one of the
+    terminations. *)
+Corollary clight2_bigstep_asm_reads_ptr64:
+  Archi.ptr64 = true ->
   forall p p1 p2 tp (Q: (nat -> int) -> trace -> int -> Prop),
   SimplExpr.transl_program p = OK p1 ->
   SimplLocals.transf_program p1 = OK p2 ->
@@ -533,14 +586,9 @@ Theorem clight2_bigstep_asm_reads:
   (forall beh, program_behaves (Asm.semantics tp) beh ->
      exists sigma t r, beh = Terminates t r /\ reads sigma t /\ Q sigma t r).
 Proof.
-  intros p p1 p2 tp Q E1 E2 TR H.
-  assert (HA: forall sigma, exists t r,
-     program_behaves (Asm.semantics tp) (Terminates t r) /\ reads sigma t /\ Q sigma t r).
-  { intros sigma. destruct (H sigma) as [t [r [B [HR HQ]]]].
-    exists t, r. split; auto. eapply clight2_bigstep_to_asm; eauto. }
-  split; auto.
-  intros beh B'. eapply determinate_reads; eauto.
-  apply Asm.semantics_determinate.
+  intros P p p1 p2 tp Q E1 E2 TR H.
+  destruct (clight2_bigstep_asm_reads p p1 p2 tp Q E1 E2 TR H) as [A U].
+  split; auto. intros beh B. apply U; auto. apply int_loads_ptr64; auto.
 Qed.
 
 (* loop_entry s init body post holds when the statement s runs init and then the loop Sloop body
@@ -654,6 +702,29 @@ Proof.
     unfold Eapp. rewrite !app_length. simpl. lia. }
   apply (R (S (length tp)) tp ev u).
   rewrite U, Eapp_assoc. reflexivity.
+Qed.
+
+Lemma traceinf_sim_app_inv:
+  forall t T1 T2, traceinf_sim (t *** T1) T2 -> exists T2', T2 = t *** T2'.
+Proof.
+  induction t as [|e t IH]; intros T1 T2 S.
+  - exists T2. reflexivity.
+  - change ((e :: t) *** T1) with (Econsinf e (t *** T1)) in S.
+    inversion S as [e' T1' T2' S' E1 E2]; subst.
+    destruct (IH _ _ S') as [T U]. exists T. subst. reflexivity.
+Qed.
+
+Lemma reacts_int_loads:
+  forall sigma t0 W NE beh,
+  (forall n, reads sigma (t0 ** windows W n)) ->
+  same_behaviors beh (Reacts (t0 *** concat W NE)) -> int_loads beh.
+Proof.
+  intros sigma t0 W NE beh R S tp chunk id ofs ev [b E] _.
+  destruct beh as [u r | u | T | u]; simpl in S; try contradiction.
+  destruct b as [u r | u | T' | u]; simpl in E; try discriminate. inv E.
+  destruct (traceinf_sim_app_inv _ _ _ S) as [T2 E].
+  exists (sigma (count_vloads tp)).
+  exact (windows_reads sigma t0 W NE R tp (Event_vload chunk id ofs ev) T2 E).
 Qed.
 
 (* One iteration in small steps: step_loop enters body, the steps of body end in Sskip,
@@ -920,17 +991,18 @@ Qed.
 End REACTIVE.
 
 (* For a determinate semantics with the behavior Reacts (t0 *** concat (W sigma) _) for every
-   sequence sigma of values, whose finite prefixes read sigma, every behavior beh is bisimilar to
-   the one for read_values beh, since beh cannot leave it by read_values_leaves. *)
+   sequence sigma of values, whose finite prefixes read sigma, every behavior beh with int_loads
+   is bisimilar to the one for read_values beh, since beh cannot leave it by
+   read_values_leaves. *)
 Theorem determinate_reacts_reads:
   forall L, determinate L ->
   forall t0 (W: (nat -> int) -> nat -> trace) (NE: forall sigma n, W sigma n <> E0),
   (forall sigma, program_behaves L (Reacts (t0 *** concat (W sigma) (NE sigma)))) ->
   (forall sigma n, reads sigma (t0 ** windows (W sigma) n)) ->
-  forall beh, program_behaves L beh ->
+  forall beh, program_behaves L beh -> int_loads beh ->
   exists sigma, same_behaviors beh (Reacts (t0 *** concat (W sigma) (NE sigma))).
 Proof.
-  intros L DET t0 W NE HB HR beh B.
+  intros L DET t0 W NE HB HR beh B IL.
   exists (read_values beh).
   generalize (HB (read_values beh)).
   generalize (windows_reads _ t0 _ (NE (read_values beh)) (HR (read_values beh))).
@@ -939,8 +1011,9 @@ Proof.
   assert (X: forall tp e e' T' b, T = (tp ** e :: nil) *** T' -> e <> e' ->
              match_traces (symbolenv L) (e :: nil) (e' :: nil) ->
              beh = behavior_app (tp ** e' :: nil) b -> False)
-    by (intros tp e e' T' b A C D PRE; exact (read_values_leaves _ _ _ _ _ _ (RT _ _ _ A) D C PRE)).
-  clear RT HB HR.
+    by (intros tp e e' T' b A C D PRE;
+        exact (read_values_leaves _ _ _ _ _ _ IL (RT _ _ _ A) D C PRE)).
+  clear RT HB HR IL.
   inversion BT as [s beh0 INIT SB | NOINIT]; subst.
   inversion SB as [ | | T0 REACT | ]; subst.
   inversion B as [s0 beh1 INIT' SB' | NOINIT']; subst.
@@ -972,9 +1045,37 @@ Qed.
 (** For a Clight program whose main runs an initialization with the trace t0 and then a loop
     forever, with the trace W sigma n in its n-th iteration when the volatile loads read the
     sequence sigma of values, the Asm program has the reactive behavior with the trace t0 ***
-    concat (W sigma) (NE sigma) for every sigma, and every behavior of the Asm program is
-    bisimilar to one of them. *)
+    concat (W sigma) (NE sigma) for every sigma, and every behavior of the Asm program with
+    int_loads is bisimilar to one of them. *)
 Theorem clight2_loop_to_asm:
+  forall p p1 p2 tp t0 (W: (nat -> int) -> nat -> trace)
+         (NE: forall sigma n, W sigma n <> E0),
+  SimplExpr.transl_program p = OK p1 ->
+  SimplLocals.transf_program p1 = OK p2 ->
+  transf_c_program p = OK tp ->
+  (forall sigma, loop_reacts p2 t0 (W sigma)) ->
+  (forall sigma n, reads sigma (t0 ** windows (W sigma) n)) ->
+  (forall sigma, program_behaves (Asm.semantics tp)
+                   (Reacts (t0 *** concat (W sigma) (NE sigma)))) /\
+  (forall beh, program_behaves (Asm.semantics tp) beh -> int_loads beh ->
+     exists sigma, same_behaviors beh (Reacts (t0 *** concat (W sigma) (NE sigma)))).
+Proof.
+  intros p p1 p2 tp t0 W NE E1 E2 T LR R.
+  assert (HA: forall sigma, program_behaves (Asm.semantics tp)
+                              (Reacts (t0 *** concat (W sigma) (NE sigma)))).
+  { intros sigma. eapply forward_simulation_same_safe_behavior.
+    - eapply clight2_to_asm_forward; eauto.
+    - apply loop_reacts_clight. apply LR.
+    - red; auto. }
+  split; auto.
+  intros beh B IL. eapply determinate_reacts_reads; eauto.
+  apply Asm.semantics_determinate.
+Qed.
+
+(** With 64-bit pointers, as on AArch64, every behavior of the Asm program is bisimilar to one of
+    the reactive behaviors. *)
+Corollary clight2_loop_to_asm_ptr64:
+  Archi.ptr64 = true ->
   forall p p1 p2 tp t0 (W: (nat -> int) -> nat -> trace)
          (NE: forall sigma n, W sigma n <> E0),
   SimplExpr.transl_program p = OK p1 ->
@@ -987,19 +1088,14 @@ Theorem clight2_loop_to_asm:
   (forall beh, program_behaves (Asm.semantics tp) beh ->
      exists sigma, same_behaviors beh (Reacts (t0 *** concat (W sigma) (NE sigma)))).
 Proof.
-  intros p p1 p2 tp t0 W NE E1 E2 T LR R.
-  assert (HA: forall sigma, program_behaves (Asm.semantics tp)
-                              (Reacts (t0 *** concat (W sigma) (NE sigma)))).
-  { intros sigma. eapply forward_simulation_same_safe_behavior.
-    - eapply clight2_to_asm_forward; eauto.
-    - apply loop_reacts_clight. apply LR.
-    - red; auto. }
-  split; auto.
-  intros beh B. eapply determinate_reacts_reads; eauto.
-  apply Asm.semantics_determinate.
+  intros P p p1 p2 tp t0 W NE E1 E2 T LR R.
+  destruct (clight2_loop_to_asm p p1 p2 tp t0 W NE E1 E2 T LR R) as [A U].
+  split; auto. intros beh B. apply U; auto. apply int_loads_ptr64; auto.
 Qed.
 
 Print Assumptions clight2_bigstep_to_asm.
 Print Assumptions clight2_bigstep_asm_unique.
 Print Assumptions clight2_bigstep_asm_reads.
+Print Assumptions clight2_bigstep_asm_reads_ptr64.
 Print Assumptions clight2_loop_to_asm.
+Print Assumptions clight2_loop_to_asm_ptr64.
