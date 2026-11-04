@@ -331,9 +331,9 @@ def regVar : globvar type :=
 def reqTail (main : function) : List (ident × globdef (fundef function) type) :=
   [(regId, .Gvar regVar), (mainId, .Gfun (.Internal main))]
 
-/-- `(l6 >> 32ULL) & 255ULL`, the register of the request in `l6`. -/
+/-- `(l6 >> 32ULL) & 65535ULL`, the register of the request in `l6`. -/
 def reqIndex : expr :=
-  .Ebinop .Oand (.Ebinop .Oshr (.Etempvar byteTemp tulong) (clong 32) tulong) (clong 255) tulong
+  .Ebinop .Oand (.Ebinop .Oshr (.Etempvar byteTemp tulong) (clong 32) tulong) (clong 65535) tulong
 
 /-- `lx_reg[i]`, the register at the index `i`. -/
 def regAt (i : expr) : expr := .Ederef (.Ebinop .Oadd (.Evar regId regArray) i regPtr) regType

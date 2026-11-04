@@ -41529,7 +41529,7 @@ A deadline enters the theorem as a property of the trace: the clock is a device 
 | Theorem | Every reply follows, in an earlier window, a timer read whose value is within `D` ticks of the reading taken after the byte arrived |
 | Test | The host script measures nothing about time; it checks that every reply is the transformed byte or the error byte, and that replies arrive while QEMU's timer runs |
 
-- [ ] Widen the register index and move `lx_reg` to `0x40000000`, with the UART at index `0x1000`.
+- [x] Widen the register index and move `lx_reg` to `0x40000000`, with the UART at index `0x1000`.  The startup code starts Timer0 from its maximum reload value and enables UART0 through `lx_uart`.  `req.sh` and `m7.sh` pass, the echo with a stack bound of 208 bytes.
 - [ ] Timer setup in the startup code, and the step with a deadline.
 - [ ] The deadline theorem about the step.
 - [ ] The QEMU run.

@@ -13,7 +13,7 @@ the transmitter cannot take a byte, and the bit that is set while the receiver h
 echo reads the status until the receiver holds a byte, reads the byte, reads the status until
 the transmitter has room, and writes the byte with bit 5 flipped.  The state's low byte is the
 phase, which names the register that the last request read, and its second byte holds the byte
-to send.  `cmsdkTick` instantiates the map for the CMSDK APB UART of QEMU's `mps2-an500`.
+to send.  `cmsdkTick` instantiates the map for the CMSDK APB UART0 of QEMU's `mps2-an500`.
 -/
 
 namespace TestSupport.Bare
@@ -36,19 +36,20 @@ def echoTick (data status txFull rxFull s v : UInt64) : UInt64 × UInt64 :=
     if v &&& txFull == 0 then (3, writeReq data (s >>> 8)) else (s, readReq status)
   else (0, readReq status)
 
-/-- The echo for the CMSDK APB UART: data at index 0, status at index 1, bit 0 set while the
-transmit buffer is full, and bit 1 set while the receive buffer is full. -/
-def cmsdkTick (s v : UInt64) : UInt64 × UInt64 := echoTick 0 1 1 2 s v
+/-- The echo for the CMSDK APB UART0 of `mps2-an500`, whose registers lie `0x4000` bytes above
+`lx_reg`: data at index `0x1000`, status at index `0x1001`, bit 0 set while the transmit buffer
+is full, and bit 1 set while the receive buffer is full. -/
+def cmsdkTick (s v : UInt64) : UInt64 × UInt64 := echoTick 0x1000 0x1001 1 2 s v
 
 verified_compile (pages := 1) (cap := 1) reqCompiled := [readReq, writeReq, echoTick, cmsdkTick]
 
 /-! ## Polling -/
 
 open LeanExe.Native in
-theorem readReq_status : reqWrite (readReq 1) = false := by decide
+theorem readReq_status : reqWrite (readReq 0x1001) = false := by decide
 
 open LeanExe.Native in
-theorem readReq_data : reqWrite (readReq 0) = false := by decide
+theorem readReq_data : reqWrite (readReq 0x1000) = false := by decide
 
 open LeanExe.Native in
 /-- `cmsdkTick` requests a write only from the phase that follows a status read, and only when
@@ -71,7 +72,7 @@ theorem cmsdkTick_write (s v : UInt64) (hw : reqWrite (cmsdkTick s v).2 = true) 
 open LeanExe.Native in
 /-- `cmsdkTick` enters the phase 2 only with a request to read the status register. -/
 theorem cmsdkTick_phase2 (s v : UInt64) (h : (cmsdkTick s v).1 &&& 255 = 2) :
-    (cmsdkTick s v).2 = readReq 1 := by
+    (cmsdkTick s v).2 = readReq 0x1001 := by
   simp only [cmsdkTick, echoTick] at h ⊢
   split <;> rename_i h0
   · split <;> rename_i hr
@@ -94,7 +95,8 @@ clear.  The first window reads the status. -/
 theorem echo_write_after_room (σ : Nat → LClight.int) (n : Nat)
     (hw : reqWrite (cmsdkTick (reqRun cmsdkTick 3 σ (n + 1)).state
       (reqRun cmsdkTick 3 σ (n + 1)).last).2 = true) :
-    (cmsdkTick (reqRun cmsdkTick 3 σ n).state (reqRun cmsdkTick 3 σ n).last).2 = readReq 1 ∧
+    (cmsdkTick (reqRun cmsdkTick 3 σ n).state (reqRun cmsdkTick 3 σ n).last).2 =
+      readReq 0x1001 ∧
       (reqRun cmsdkTick 3 σ (n + 1)).last &&& 1 = 0 := by
   obtain ⟨hph, hroom⟩ := cmsdkTick_write _ _ hw
   refine ⟨cmsdkTick_phase2 _ _ ?_, hroom⟩

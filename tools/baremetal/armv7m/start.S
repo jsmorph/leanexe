@@ -13,7 +13,9 @@
    CCR.IC at their reset value 0 (Cortex-M7 TRM, DDI 0489F, Table 3-1, page 3-3), since the caches
    need invalidation before they are enabled (section 4.1.3, page 4-3).  It enables the
    floating-point unit by giving CP10 and CP11 full access in CPACR (section B3.2.20, page
-   B3-614).  It sets the baud divider of the CMSDK UART0, whose registers begin at lx_reg, to 16,
+   B3-614).  It starts CMSDK Timer0 at lx_timer counting down from its maximum reload value, so
+   that a read of its VALUE register is a clock (Cortex-M System Design Kit TRM, DDI 0479D, Table
+   3-1).  It sets the baud divider of the CMSDK UART0, whose registers begin at lx_uart, to 16,
    the minimum (Cortex-M System Design Kit TRM, DDI 0479D, Table 4-7, page 4-9), and sets its
    transmitter and receiver enables, without which QEMU's model sends no byte and takes none
    (hw/char/cmsdk-apb-uart.c, lines 115 to 124, 194 to 203, and 249 to 260).  It copies .data
@@ -57,6 +59,10 @@
 #define GUARD_RASR ((1 << 28) | (11 << 1) | 1)
 #define MPU_ENABLE ((1 << 2) | 1)
 #define UART_CTRL 8
+#define TIMER_CTRL 0
+#define TIMER_VALUE 4
+#define TIMER_RELOAD 8
+#define TIMER_ENABLE 1
 #define UART_BAUDDIV 16
 #define UART_TX_RX_EN 3
 #define PATTERN 0x5354414b
@@ -101,8 +107,14 @@ _start:
 #endif
         dsb
         isb
+        ldr     r0, =lx_timer
+        mvn     r1, #0
+        str     r1, [r0, #TIMER_RELOAD]
+        str     r1, [r0, #TIMER_VALUE]
+        movs    r1, #TIMER_ENABLE
+        str     r1, [r0, #TIMER_CTRL]
 #ifndef NO_UART
-        ldr     r0, =lx_reg
+        ldr     r0, =lx_uart
         movs    r1, #16
         str     r1, [r0, #UART_BAUDDIV]
         movs    r1, #UART_TX_RX_EN

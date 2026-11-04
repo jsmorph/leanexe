@@ -7,7 +7,7 @@ sequence `σ` of the values that its volatile loads read, `req_program` states `
 the initial trace `E0` and the window traces `reqTrace`.  `ReqState` is the state before a
 window: the step's state, the last value read, and the number of reads so far.  The step's two
 results are the new state and the request word `q`: bit 63 set requests a write of the low 32
-bits of `q` to register `reqReg q`, and bit 63 clear a read of that register, whose value is the
+bits of `q` to register `reqReg q`, of 16 bits, and bit 63 clear a read of that register, whose value is the
 `k`-th read's `σ k`.  `ReqRuns` is what the step must do from every store that the loop's
 invariant allows, which `NativeA` gives for a step that cannot trap.
 -/
@@ -16,8 +16,8 @@ namespace LeanExe.Native
 
 open LClight Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
 
-/-- The register of the request `q`, `(q >> 32) & 255`. -/
-def reqReg (q : UInt64) : UInt64 := (q >>> UInt64.ofNat 32) &&& UInt64.ofNat 255
+/-- The register of the request `q`, `(q >> 32) & 65535`. -/
+def reqReg (q : UInt64) : UInt64 := (q >>> UInt64.ofNat 32) &&& UInt64.ofNat 65535
 
 /-- Whether the request `q` is a write, bit 63. -/
 def reqWrite (q : UInt64) : Bool := q >>> UInt64.ofNat 63 != UInt64.ofNat 0
@@ -114,10 +114,10 @@ section
 
 variable {A : Archi} {X : ExtSem} {ge : genv}
 
-theorem reqReg_lt (q : UInt64) : (reqReg q).toNat < 256 := by
+theorem reqReg_lt (q : UInt64) : (reqReg q).toNat < 65536 := by
   simp only [reqReg, UInt64.toNat_and]
-  have := Nat.and_le_right (n := (q >>> UInt64.ofNat 32).toNat) (m := (UInt64.ofNat 255).toNat)
-  have h255 : (UInt64.ofNat 255).toNat = 255 := rfl
+  have := Nat.and_le_right (n := (q >>> UInt64.ofNat 32).toNat) (m := (UInt64.ofNat 65535).toNat)
+  have h255 : (UInt64.ofNat 65535).toNat = 65535 := rfl
   omega
 
 theorem sem_add_reg (b : block) (k : UInt64) (m : mem) (hk : 4 * k.toNat < 2 ^ 32) :
