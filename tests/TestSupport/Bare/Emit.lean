@@ -3,6 +3,7 @@ import TestSupport.Bare.Theorems
 import TestSupport.Bare.Input
 import TestSupport.Bare.Ctl
 import TestSupport.Bare.Req
+import TestSupport.Bare.Records
 import LeanExe.Native.ClightCheck
 
 /-!
@@ -271,7 +272,11 @@ def reqCases : List ReqCase := [
   { name := "deadline", module := TestSupport.Bare.reqCompiled.module, cap := 1, k := 8,
     G := UInt64, s0 := 5, words := fun g => [g], tick := TestSupport.Bare.deadlineCmsdkTick,
     thm := thm_of TestSupport.Bare.reqCompiled.translation_eq
-      TestSupport.Bare.deadline_program }]
+      TestSupport.Bare.deadline_program },
+  { name := "records", module := TestSupport.Bare.sumCompiled.module, cap := 1, k := 5,
+    G := TestSupport.Bare.SumFrame, s0 := TestSupport.Bare.sumInit,
+    words := TestSupport.Bare.sumWords, tick := TestSupport.Bare.sumTick,
+    thm := thm_of TestSupport.Bare.sumCompiled.translation_eq TestSupport.Bare.sum_program }]
 
 def emitReq (dir : String) (c : ReqCase) : IO Unit := do
   let some t := translate c.cap c.module

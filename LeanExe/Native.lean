@@ -25,6 +25,8 @@ import LeanExe.Native.Proof.Export
 import LeanExe.Native.Proof.Reacts
 import LeanExe.Native.Proof.Ctl
 import LeanExe.Native.Proof.Req
+import LeanExe.Native.Requests
+import LeanExe.Native.Proof.Records
 import LeanExe.Native.Proof.Whole
 import LeanExe.Native.Proof.Quiet
 import LeanExe.Native.Proof.Main

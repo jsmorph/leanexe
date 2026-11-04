@@ -1,6 +1,7 @@
 import Verified.Reflect.Command
 import TestSupport.Native.Common
 import LeanExe.Native.Proof.Req
+import LeanExe.Native.Requests
 import Verified.Bare
 import Verified.Call
 
@@ -18,11 +19,7 @@ to send.  `cmsdkTick` instantiates the map for the CMSDK APB UART0 of QEMU's `mp
 
 namespace TestSupport.Bare
 
-/-- The request that reads register `r`. -/
-def readReq (r : UInt64) : UInt64 := r <<< 32
-
-/-- The request that writes the low 32 bits of `v` to register `r`. -/
-def writeReq (r v : UInt64) : UInt64 := ((1 : UInt64) <<< 63) ||| (r <<< 32) ||| (v &&& 0xFFFFFFFF)
+open LeanExe.Native (readReq writeReq)
 
 /-- The echo's step from the state `s` and the value `v` that the last request read, for the
 register map `data`, `status`, `txFull`, and `rxFull`. -/
@@ -109,14 +106,14 @@ theorem cmsdkTick_phase2 (s v : UInt64) (h : (cmsdkTick s v).1 &&& 255 = 2) :
   simp only [cmsdkTick, echoTick] at h ⊢
   split <;> rename_i h0
   · split <;> rename_i hr
-    · rw [if_pos h0, if_pos hr] at h
+    · rw [ite_eq_left h0, ite_eq_left hr] at h
       exact absurd h (by show ¬ (1 : UInt64) &&& 255 = 2; decide)
     · rfl
   · split <;> rename_i h1
     · rfl
     · split <;> rename_i h2
       · split <;> rename_i ht
-        · rw [if_neg h0, if_neg h1, if_pos h2, if_pos ht] at h
+        · rw [ite_eq_right h0, ite_eq_right h1, ite_eq_left h2, ite_eq_left ht] at h
           exact absurd h (by show ¬ (3 : UInt64) &&& 255 = 2; decide)
         · rfl
       · rfl
@@ -175,28 +172,28 @@ theorem deadlineCmsdkTick_phase4 (s v : UInt64) (h : (deadlineCmsdkTick s v).1 %
   simp only [deadlineCmsdkTick, deadlineTick] at h ⊢
   split <;> rename_i h0
   · split <;> rename_i hr
-    · rw [if_pos h0, if_pos hr] at h
+    · rw [ite_eq_left h0, ite_eq_left hr] at h
       exact absurd h (by decide)
-    · rw [if_pos h0, if_neg hr] at h
+    · rw [ite_eq_left h0, ite_eq_right hr] at h
       exact absurd h (by decide)
   · split <;> rename_i h1
     · rfl
     · split <;> rename_i h2
-      · rw [if_neg h0, if_neg h1, if_pos h2] at h
+      · rw [ite_eq_right h0, ite_eq_right h1, ite_eq_left h2] at h
         have := congrArg UInt64.toNat h
         simp [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_mod, UInt64.toNat_div] at this
         omega
       · split <;> rename_i h3
         · split <;> rename_i ht
           · rfl
-          · rw [if_neg h0, if_neg h1, if_neg h2, if_pos h3, if_neg ht] at h
+          · rw [ite_eq_right h0, ite_eq_right h1, ite_eq_right h2, ite_eq_left h3, ite_eq_right ht] at h
             have h3' : s % 256 = 3 := by simpa using h3
             rw [h3'] at h
             exact absurd h (by decide)
         · split <;> rename_i h4
-          · rw [if_neg h0, if_neg h1, if_neg h2, if_neg h3, if_pos h4] at h
+          · rw [ite_eq_right h0, ite_eq_right h1, ite_eq_right h2, ite_eq_right h3, ite_eq_left h4] at h
             split at h <;> simp at h
-          · rw [if_neg h0, if_neg h1, if_neg h2, if_neg h3, if_neg h4] at h
+          · rw [ite_eq_right h0, ite_eq_right h1, ite_eq_right h2, ite_eq_right h3, ite_eq_right h4] at h
             exact absurd h (by decide)
 
 open LeanExe.Native in

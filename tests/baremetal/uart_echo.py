@@ -189,28 +189,67 @@ def burst(conn, data, log=None, hold=None):
     return (log.pending() - before, dropped) if log is not None else (0, 0)
 
 
-def exchange(qemu, listener, log_path, timeout, hold):
+def accept(qemu, listener, timeout):
     listener.settimeout(0.1)
     deadline = time.monotonic() + timeout
     while True:
         try:
             conn, _ = listener.accept()
-            break
+            conn.settimeout(timeout)
+            return conn
         except TimeoutError:
             if qemu.poll() is not None or time.monotonic() > deadline:
                 raise Failure("QEMU did not connect") from None
-    with conn:
-        conn.settimeout(timeout)
-        log = Log(log_path)
-        lockstep(conn)
-        for n in BURSTS:
-            burst(conn, block(n))
-        if hold is None:
-            held = block(HELD)
-        else:
-            held = bytes(b for b in block(2 * HELD) if b != LAST)[:HELD - 1] + bytes([LAST])
-        waits, dropped = burst(conn, held, log, hold)
-        lockstep(conn)
+
+
+def serve(qemu_args, log_path, timeout, session):
+    """Runs QEMU with its first serial port on a Unix-domain socket and with the trace of the
+    transmitter's waits in log_path, calls session(conn, Log) on the connection, and stops QEMU.
+    Returns session's result, the failure if any, the time taken, and QEMU's status before and
+    after the stop."""
+    with tempfile.TemporaryDirectory() as tmp, \
+            socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
+        path = os.path.join(tmp, "uart0")
+        listener.bind(path)
+        listener.listen(1)
+        qemu = subprocess.Popen(qemu_args + ["-serial", f"unix:{path}", "-trace",
+                                             PENDING.decode(), "-D", log_path],
+                                stdin=subprocess.DEVNULL)
+        start = time.monotonic()
+        result, error = None, None
+        try:
+            with accept(qemu, listener, timeout) as conn:
+                result = session(conn, Log(log_path))
+        except (Failure, OSError) as e:
+            error = e
+        elapsed = time.monotonic() - start
+        early = qemu.poll()
+        qemu.terminate()
+        status = qemu.wait()
+    return result, error, elapsed, early, status
+
+
+def report(error, early, status):
+    """The line for a failed run, or None."""
+    if early is not None:
+        return f"QEMU exited with status {early} before the stop" + (f": {error}" if error else "")
+    if error:
+        return str(error)
+    if status != 0:
+        return f"QEMU exited with status {status} after SIGTERM"
+    return None
+
+
+def exchange(conn, log, hold):
+    lockstep(conn)
+    for n in BURSTS:
+        burst(conn, block(n))
+    if hold is None:
+        held = block(HELD)
+    else:
+        held = bytes(b for b in block(2 * HELD) if b != LAST)[:HELD - 1] + bytes([LAST])
+    waits, dropped = burst(conn, held, log, hold)
+    lockstep(conn)
     return waits, dropped
 
 
@@ -223,40 +262,21 @@ def main():
     args = parser.parse_args()
     if not args.qemu:
         parser.error("QEMU is missing")
-    with tempfile.TemporaryDirectory() as tmp, \
-            socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
-        path = os.path.join(tmp, "uart0")
-        listener.bind(path)
-        listener.listen(1)
-        qemu = subprocess.Popen(args.qemu + ["-serial", f"unix:{path}", "-trace",
-                                             PENDING.decode(), "-D", args.log],
-                                stdin=subprocess.DEVNULL)
-        start = time.monotonic()
-        error = None
-        try:
-            waits, dropped = exchange(qemu, listener, args.log, args.timeout, args.hold)
-        except (Failure, OSError) as e:
-            error = e
-        elapsed = time.monotonic() - start
-        early = qemu.poll()
-        qemu.terminate()
-        status = qemu.wait()
-    if early is not None:
-        print(f"QEMU exited with status {early} before the stop" + (f": {error}" if error else ""))
-    elif error:
-        print(error)
-    elif status != 0:
-        print(f"QEMU exited with status {status} after SIGTERM")
-    else:
-        print(f"{2 * len(MESSAGE)} bytes in lockstep, bursts of {', '.join(map(str, BURSTS))}, "
-              f"and {HELD} held bytes, during which the transmitter waited "
-              f"{waits} time{'' if waits == 1 else 's'}"
-              + ("" if args.hold is None else
-                 f" and {dropped} repl{'y' if dropped == 1 else 'ies'} went missing after a "
-                 f"hold of {args.hold:g} s")
-              + f", in {elapsed:.1f} s")
-        return 0
-    return 1
+    result, error, elapsed, early, status = serve(
+        args.qemu, args.log, args.timeout, lambda conn, log: exchange(conn, log, args.hold))
+    failure = report(error, early, status)
+    if failure:
+        print(failure)
+        return 1
+    waits, dropped = result
+    print(f"{2 * len(MESSAGE)} bytes in lockstep, bursts of {', '.join(map(str, BURSTS))}, "
+          f"and {HELD} held bytes, during which the transmitter waited "
+          f"{waits} time{'' if waits == 1 else 's'}"
+          + ("" if args.hold is None else
+             f" and {dropped} repl{'y' if dropped == 1 else 'ies'} went missing after a "
+             f"hold of {args.hold:g} s")
+          + f", in {elapsed:.1f} s")
+    return 0
 
 
 if __name__ == "__main__":
