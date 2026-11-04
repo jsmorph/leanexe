@@ -1,4 +1,5 @@
 import LeanExe.WGSL.Semantics
+import LeanExe.ProofKit.F32Canonical
 
 namespace LeanExe.WGSL
 
@@ -16,9 +17,6 @@ theorem nanBits_eq (bits : UInt32) : nanBits bits = Wasm.IEEE32.isNaN bits := by
 
 def nanExpr (bits : Expr) : Expr :=
   .bin .lt (.lit 0xff000000) (.bin .mul bits (.lit 2))
-
-def canonical32 (bits : UInt32) : UInt32 :=
-  if Wasm.IEEE32.isNaN bits then Wasm.IEEE32.canonicalNaN else bits
 
 def canonicalF32 (value : Expr) : Expr :=
   .toF32 (.select (.toU32 value) (.lit 0x7fc00000) (nanExpr (.toU32 value)))

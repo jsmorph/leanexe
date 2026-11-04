@@ -41038,8 +41038,14 @@ A fresh agent reviewed the first version of this recommendation, and the version
 
 - [x] Review of this plan by a fresh agent.
 - [x] `.f32` registers, the instructions, semantics, `Det`, printer, parser, and round trip.  The first version of the parser matched the opcode and the operand list in one `match`, and with the new opcodes every case of `Instr.parse_tokens` ran out of heartbeats.  The parser now matches the opcode first and reads the operands with `ops2`, `ops3`, and `ops4`.  The cubins of the existing test kernels are unchanged.
-- [ ] Translation of binary32 expressions and statements, with the simulation lemmas.
-- [ ] Float parameters in the build kernel; `Spec.ptx` accepts floats.
-- [ ] Examples, theorems, and cases; exhaustive `cvt.rni` test; device test on the GB10.
-- [ ] Documents.
-- [ ] Full build, commit, push.
+- [x] Translation of binary32 expressions and statements, with the simulation lemmas.
+- [x] Float parameters in the build kernel; `Spec.ptx` accepts floats.
+- [x] Examples, theorems, and cases; exhaustive `cvt.rni` test; device test on the GB10.
+- [x] Documents.
+- [x] Full build, commit, push.
+
+### Results
+
+`Verified.PTX.compile` accepts the binary32 builds of the WGSL examples and of the binary32 example.  `scale_executions`, `branch_executions`, and `roots_executions` in `Verified/Examples/Ptx.lean` and `scale32_executions`, `axpyArray32_executions`, `matVec32_executions`, and `condMix32_executions` in `Examples/Binary32/CompiledPtx.lean` state their launch theorems.  These theorems and `Spec.ptx_executions` depend only on `propext`, `Classical.choice`, and `Quot.sound`.  On edgexpert the build of `LeanExe`, `Examples`, `Demos`, `Library`, `TestSupport`, `Verified`, and the file-theorem modules passed 11,450 jobs, with no warning in the new files.  The WGSL kernels and cases that `tests/wgsl/run.sh --emit-only` and `--verified --emit-only` write are byte-identical to those of 2026-10-30, so moving `canonical32` and its lemmas left the WGSL output unchanged.
+
+`tests/ptx/run.sh` passed its 356 cases on the GB10 from the cubins and through the driver's compiler.  The cases include signed zeros, subnormals, infinities, and the canonical NaN.  They leave out NaNs with other payloads, whose expected words would test native Lean's float runtime rather than the kernels.  The SASS of `roundRoot` contains FFMA instructions, which belong to the sequence that `ptxas` emits for `sqrt.rn.f32`; the other kernels contain none.  `tests/ptx/nearest.sh` found no mismatch between `cvt.rni.f32.f32` with the NaN replacement and C's `nearbyintf` on all 2^32 inputs.  A copy of the test with `cvt.rzi` in place of `cvt.rni` reported 201,326,592 mismatches, so the comparison detects a wrong rounding.

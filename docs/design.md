@@ -215,12 +215,16 @@ per-thread semantics whose loads take values from an oracle.  [The PTX memory
 model](../LeanExe/PTX/MemoryModel.lean) states a launch's executions under the PTX ISA's chapter 8,
 and `Launch.executions` proves that every consistent execution of a race-free launch reads the
 output of the sequential run.  [The PTX translation](../LeanExe/PTX/Translate.lean) translates
-the words and Booleans of the kernel source language, and [the PTX build
+the words, Booleans, and binary32 values of the kernel source language, and [the PTX build
 kernel](../LeanExe/PTX/Build.lean) proves the launch theorem of every build that it accepts.
+A `.f32` register of the model holds a binary32 value's bits or a NaN with unspecified bits, since
+the ISA leaves single-precision NaN results unspecified, and the translation replaces every NaN
+result of an operation by Talos's canonical NaN.
 [The add-one kernel](../LeanExe/PTX/AddOne.lean) is written by hand, and the verified compiler's
 kernels and the add-one kernel run on an NVIDIA GB10 through [the CUDA host](../tools/cuda-host.c).
 [The trusted-base document](trusted-base.md#p-ptx-kernels) lists what applying the launch
-theorems to a GPU assumes, including the No Thin Air axiom of the PTX memory model.
+theorems to a GPU assumes, including the No Thin Air axiom of the PTX memory model and the
+meaning of `cvt.rni.f32.f32`.
 
 [The kernel source language](../LeanExe/Source/Syntax.lean), its
 [denotation](../LeanExe/Source/Denote.lean), and [the build record](../LeanExe/Source/Build.lean)

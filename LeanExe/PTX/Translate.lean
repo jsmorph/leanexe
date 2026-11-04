@@ -1,13 +1,18 @@
 import LeanExe.PTX.Runs
 import LeanExe.Source.Denote
+import LeanExe.ProofKit.F32Canonical
 
 /-!
-The translation of source expressions and statements of words and Booleans into PTX statements,
-and its simulation lemmas.  A source word is the word of a `.b64` register, and a Boolean is the
-word 0 or 1 in a `.b64` register.  A predicate holds only the test of a branch or a loop.  Each
-expression node writes a fresh register, numbered from a counter that also numbers the `.b32` and
-`.pred` registers that the node uses.  `and`, `or`, and `ite` evaluate the selected operand in a
-branch, as the denotation does.
+The translation of source expressions and statements of words, Booleans, and binary32 values into
+PTX statements, and its simulation lemmas.  A source word is the word of a `.b64` register, a
+Boolean is the word 0 or 1, and a binary32 value is its bits, zero-extended.  A predicate holds only
+the test of a branch or a loop, and a `.f32` register holds an operand or a result only inside the
+code of one binary32 operation or comparison.  Each expression node writes a fresh register,
+numbered from a counter that also numbers the `.b32`, `.f32`, and `.pred` registers that the node
+uses.  `and`, `or`, and `ite` evaluate the selected operand in a branch, as the denotation does.
+The code of a binary32 operation replaces a NaN result by `0x7fc00000`, which gives Talos's result
+whatever NaN the device returns (`canonical_f32_bin`, `canonical_f32_sqrt`, and
+`canonical_f32_nearest`).
 
 From registers that hold the source locals and arrays as a `Layout` states, and an oracle whose
 loads return the arrays' words, `trExpr_sim` states that an expression's code runs without
@@ -19,8 +24,9 @@ agree with the statement's new locals.
 
 namespace LeanExe.PTX
 
-/-- Where the source values live: the `.b64` register of each word local, the registers of each
-array's pointer and length, and the type of each local that statements may assign. -/
+/-- Where the source values live: the `.b64` register of each word or binary32 local, the
+registers of each array's pointer and length, and the type of each local that statements may
+assign. -/
 structure Layout where
   scalar : Nat → Option Nat
   array : Nat → Option (Nat × Nat)
@@ -29,7 +35,8 @@ structure Layout where
 /-- An unguarded instruction. -/
 abbrev inst (i : Instr) : Stmt := .instr none i
 
-/-- The word of a source value: a word itself, and 0 or 1 for a Boolean. -/
+/-- The word of a source value: a word itself, 0 or 1 for a Boolean, and the bits of a binary32
+value. -/
 def wordOf : (type : Source.ScalarType) → type.denote → UInt64
   | .u64, v => v
   | .bool, b => if b then 1 else 0
@@ -58,6 +65,41 @@ def binCode (op : Source.U64Op) (d l r : Nat) : List Stmt :=
 def cmpCode (c : Cmp) (d l r : Nat) : List Stmt :=
   [inst (.setp c d l (.reg r)), inst (.selp d (.imm 1) (.imm 0) d)]
 
+/-- The PTX operation of a binary32 operation. -/
+def f32Op : Source.F32Op → BinF
+  | .add => .add
+  | .sub => .sub
+  | .mul => .mul
+  | .div => .div
+
+/-- `.f32` register `f` from the low half of the word in `.b64` register `v`, through `.b32`
+register `w`. -/
+def toFCode (f w v : Nat) : List Stmt := [inst (.narrow w v), inst (.toF f w)]
+
+/-- The replacement of a NaN in `.f32` register `d` by the canonical NaN, and the move of its bits
+into `.b64` register `d`. -/
+def fromFCode (d : Nat) : List Stmt :=
+  [inst (.testNaN d d), inst (.selpF d (.imm Wasm.IEEE32.canonicalNaN) (.reg d) d),
+    inst (.ofF d d), inst (.widen d d)]
+
+/-- The code of `d := l op r` on the binary32 values whose bits registers `l` and `r` hold. -/
+def binFCode (op : Source.F32Op) (d l r : Nat) : List Stmt :=
+  toFCode d d l ++ toFCode (d + 1) d r ++ [inst (.binF (f32Op op) d d (d + 1))] ++ fromFCode d
+
+/-- The code of `d := op a` on the binary32 value whose bits register `a` holds.  `abs` clears the
+sign bit, which keeps a NaN's payload as Talos's `abs` does. -/
+def unFCode (op : Source.F32UnOp) (d a : Nat) : List Stmt :=
+  match op with
+  | .sqrt => toFCode d d a ++ [inst (.sqrtF d d)] ++ fromFCode d
+  | .nearest => toFCode d d a ++ [inst (.rniF d d)] ++ fromFCode d
+  | .abs => [inst (.bin64 .and d a (.imm 0x7fffffff))]
+
+/-- The code of `d := 1` when the ordered comparison `c` of two binary32 values holds and `d := 0`
+otherwise. -/
+def cmpFCode (c : CmpF) (d l r : Nat) : List Stmt :=
+  toFCode d d l ++ toFCode (d + 1) d r ++
+    [inst (.setpF c d d (d + 1)), inst (.selp d (.imm 1) (.imm 0) d)]
+
 /-- The code of two operands, the right one's numbered from the register after the left one's
 code, followed by `k n2 vl vr`.  Register `n2`, the first after both operands' code, holds the
 result. -/
@@ -71,7 +113,7 @@ def joinCode (left : Option (List Stmt × Nat × Nat))
   | none => none
 
 /-- The code of an expression from register `next` on, its result register, and the next free
-register, or `none` outside the subset of words and Booleans. -/
+register, or `none` outside the subset of words, Booleans, and binary32 values. -/
 def trExpr (F : Layout) : {type : Source.ScalarType} → Source.Expr type → Nat →
     Option (List Stmt × Nat × Nat)
   | .u64, .get j, next => (F.scalar j).map fun r => ([], r, next)
@@ -110,6 +152,28 @@ def trExpr (F : Layout) : {type : Source.ScalarType} → Source.Expr type → Na
         .ite n1 [inst (.shift .shl (n1 + 1) vp (.imm 3)),
           inst (.bin64 .add (n1 + 1) base (.reg (n1 + 1))), inst (.ld n1 (n1 + 1) 8)] []],
         n1, n1 + 2)
+  | .f32, .getF32 j, next => (F.scalar j).map fun r => ([], r, next)
+  | .f32, .constF32 bits, next => some ([inst (.mov64 next (.imm bits.toUInt64))], next, next + 1)
+  | .f32, .binF32 op left right, next =>
+      joinCode (trExpr F left next) (trExpr F right) (binFCode op)
+  | .f32, .unF32 op operand, next => (trExpr F operand next).map fun (so, vo, n1) =>
+      (so ++ unFCode op n1 vo, n1, n1 + 1)
+  | .f32, .ofBits32 operand, next => (trExpr F operand next).map fun (so, vo, n1) =>
+      (so ++ [inst (.bin64 .and n1 vo (.imm 0xffffffff))], n1, n1 + 1)
+  | .u64, .toBits32 operand, next => trExpr F operand next
+  | .f32, .iteF32 c t e, next => do
+      let (sc, vc, n1) ← trExpr F c next
+      let (st, vt, n2) ← trExpr F t (n1 + 1)
+      let (se, ve, n3) ← trExpr F e n2
+      pure (sc ++ [inst (.setp .ne n1 vc (.imm 0)),
+        .ite n1 (st ++ [inst (.mov64 n1 (.reg vt))]) (se ++ [inst (.mov64 n1 (.reg ve))])],
+        n1, n3)
+  | .bool, .eqF32 left right, next =>
+      joinCode (trExpr F left next) (trExpr F right) (cmpFCode .eq)
+  | .bool, .ltF32 left right, next =>
+      joinCode (trExpr F left next) (trExpr F right) (cmpFCode .lt)
+  | .bool, .leF32 left right, next =>
+      joinCode (trExpr F left next) (trExpr F right) (cmpFCode .le)
   | _, _, _ => none
 
 /-- The code of a statement from register `next` on and the next free register, or `none` outside
@@ -119,6 +183,12 @@ def trStmt (F : Layout) : Source.Stmt → Nat → Option (List Stmt × Nat)
   | .assign (type := .u64) j e, next => do
       let r ← F.scalar j
       if F.assigned j = some .u64 then
+        let (se, v, n1) ← trExpr F e next
+        pure (se ++ [inst (.mov64 r (.reg v))], n1)
+      else none
+  | .assign (type := .f32) j e, next => do
+      let r ← F.scalar j
+      if F.assigned j = some .f32 then
         let (se, v, n1) ← trExpr F e next
         pure (se ++ [inst (.mov64 r (.reg v))], n1)
       else none
@@ -159,6 +229,29 @@ theorem Local.set32_r32_ne (l : Local) {d r : Nat} (v : UInt32) (h : r ≠ d) :
 
 @[simp] theorem Local.set64_r32 (l : Local) (d : Nat) (v : Val64) : (l.set64 d v).r32 = l.r32 :=
   rfl
+
+@[simp] theorem Local.setf_r64 (l : Local) (d : Nat) (v : F32Val) : (l.setf d v).r64 = l.r64 :=
+  rfl
+
+@[simp] theorem Local.setf_r32 (l : Local) (d : Nat) (v : F32Val) : (l.setf d v).r32 = l.r32 :=
+  rfl
+
+@[simp] theorem Local.setf_rp (l : Local) (d : Nat) (v : F32Val) : (l.setf d v).rp = l.rp := rfl
+
+@[simp] theorem Local.setf_returned (l : Local) (d : Nat) (v : F32Val) :
+    (l.setf d v).returned = l.returned := rfl
+
+@[simp] theorem Local.setf_rf_self (l : Local) (d : Nat) (v : F32Val) :
+    (l.setf d v).rf d = some v := by simp [Local.setf]
+
+theorem Local.setf_rf_ne (l : Local) {d r : Nat} (v : F32Val) (h : r ≠ d) :
+    (l.setf d v).rf r = l.rf r := by simp [Local.setf, h]
+
+@[simp] theorem Local.set32_rf (l : Local) (d : Nat) (v : UInt32) : (l.set32 d v).rf = l.rf := rfl
+
+@[simp] theorem Local.set64_rf (l : Local) (d : Nat) (v : Val64) : (l.set64 d v).rf = l.rf := rfl
+
+@[simp] theorem Local.setp_rf (l : Local) (d : Nat) (v : Bool) : (l.setp d v).rf = l.rf := rfl
 
 @[simp] theorem Local.set32_returned (l : Local) (d : Nat) (v : UInt32) :
     (l.set32 d v).returned = l.returned := rfl
@@ -264,12 +357,14 @@ structure Layout.Distinct (F : Layout) : Prop where
   assigned : ∀ j t r a base len, F.assigned j = some t → F.scalar j = some r →
     F.array a = some (base, len) → r ≠ base ∧ r ≠ len
 
-/-- The registers of `l` hold the word locals of `L` and each array of `arrays`: a pointer to
-the start of a buffer whose first word is the length and whose next words, as the oracle gives
-them, are the elements. -/
+/-- The registers of `l` hold the word and binary32 locals of `L` and each array of `arrays`: a
+pointer to the start of a buffer whose first word is the length and whose next words, as the
+oracle gives them, are the elements. -/
 structure Layout.Agrees (F : Layout) (L : Nat → Option Wasm.Value)
     (arrays : Nat → Option (Array UInt64)) (s : Shape) (o : Oracle) (l : Local) : Prop where
   word : ∀ j v, L j = some (.i64 v) → ∃ r, F.scalar j = some r ∧ l.r64 r = some (.word v)
+  float : ∀ j b, L j = some (.f32 b) →
+    ∃ r, F.scalar j = some r ∧ l.r64 r = some (.word b.toUInt64)
   array : ∀ a xs, arrays a = some xs → xs.size < 2 ^ 29 ∧ ∃ base len b,
     F.array a = some (base, len) ∧ l.r64 base = some (.ptr b 0) ∧
     l.r64 len = some (.word (UInt64.ofNat xs.size)) ∧ s.sizes[b]? = some (xs.size + 1) ∧
@@ -281,6 +376,9 @@ theorem Layout.Agrees.same {F : Layout} {L : Nat → Option Wasm.Value}
     F.Agrees L arrays s o l' where
   word j v hj := by
     obtain ⟨r, hr, hv⟩ := h.word j v hj
+    exact ⟨r, hr, (hs r (hB.scalar j r hr)).trans hv⟩
+  float j b hj := by
+    obtain ⟨r, hr, hv⟩ := h.float j b hj
     exact ⟨r, hr, (hs r (hB.scalar j r hr)).trans hv⟩
   array a xs ha := by
     obtain ⟨hsz, base, len, b, hF, hb, hl, hsize, ho⟩ := h.array a xs ha
@@ -311,25 +409,26 @@ theorem trExpr_mono (F : Layout) : ∀ {type : Source.ScalarType} (e : Source.Ex
       next ≤ next' ∧ (F.Below next → res < next') := by
   intro type e
   induction e with
-  | get j =>
+  | get j | getF32 j =>
       intro next code res next' h
       simp only [trExpr, Option.map_eq_some_iff] at h
       obtain ⟨r, hr, h⟩ := h
       simp only [Prod.mk.injEq] at h
       obtain ⟨rfl, rfl, rfl⟩ := h
       exact ⟨le_refl _, fun hB => hB.scalar j r hr⟩
-  | const c | bconst c =>
+  | const c | bconst c | constF32 c =>
       intro next code res next' h
       simp only [trExpr, Option.some.injEq, Prod.mk.injEq] at h
       omega
   | bin _ left right ihl ihr | eq left right ihl ihr | ne left right ihl ihr
-  | ltU left right ihl ihr | leU left right ihl ihr =>
+  | ltU left right ihl ihr | leU left right ihl ihr | binF32 _ left right ihl ihr
+  | eqF32 left right ihl ihr | ltF32 left right ihl ihr | leF32 left right ihl ihr =>
       intro next code res next' h
       obtain ⟨sl, vl, n1, sr, vr, hl, hr, -, rfl⟩ := joinCode_eq_some h
       have := (ihl _ _ _ _ hl).1
       have := (ihr _ _ _ _ hr).1
       exact ⟨by omega, fun _ => by omega⟩
-  | not operand ih =>
+  | not operand ih | unF32 _ operand ih | ofBits32 operand ih =>
       intro next code res next' h
       simp only [trExpr, Option.map_eq_some_iff] at h
       obtain ⟨⟨so, vo, n1⟩, ho, h⟩ := h
@@ -354,7 +453,7 @@ theorem trExpr_mono (F : Layout) : ∀ {type : Source.ScalarType} (e : Source.Ex
           have := (ihl _ _ _ _ hl).1
           have := (ihr _ _ _ _ hr).1
           exact ⟨by omega, fun _ => by omega⟩
-  | ite c t e ihc iht ihe =>
+  | ite c t e ihc iht ihe | iteF32 c t e ihc iht ihe =>
       intro next code res next' h
       simp only [trExpr, Option.bind_eq_bind] at h
       cases hc : trExpr F c next with
@@ -392,6 +491,9 @@ theorem trExpr_mono (F : Layout) : ∀ {type : Source.ScalarType} (e : Source.Ex
           obtain ⟨-, rfl, rfl⟩ := h
           have := (ih _ _ _ _ hp).1
           exact ⟨by omega, fun _ => by omega⟩
+  | toBits32 operand ih =>
+      intro next code res next' h
+      exact ih next code res next' h
   | _ =>
       intro next code res next' h
       simp [trExpr] at h
@@ -468,6 +570,129 @@ theorem cmpCode_sets {s : Shape} {o : Oracle} {l : Local} (c : Cmp) {d vl vr : N
   refine Runs.selp hr' (c := c.apply x y) (by simp) (v := .word (if c.apply x y then 1 else 0))
     (by cases c.apply x y <;> simp [Src64.get]) ⟨fun r hr'' => ?_, by simp⟩
   simp [Local.set64_r64_ne _ _ (show r ≠ d by omega)]
+
+theorem F32Val.isNaN_ofResult (r : UInt32) : (F32Val.ofResult r).isNaN = Wasm.IEEE32.isNaN r := by
+  unfold F32Val.ofResult
+  split <;> simp_all [F32Val.isNaN]
+
+theorem f32Op_apply (op : Source.F32Op) (a b : UInt32) : (f32Op op).apply a b = op.apply a b := by
+  cases op <;> rfl
+
+theorem toF_runs {s : Shape} {o : Oracle} {l : Local} {f w v : Nat} {b : UInt32}
+    (hr : l.returned = false) (hv : l.r64 v = some (.word b.toUInt64)) :
+    Runs s o l (toFCode f w v) (· = (l.set32 w b).setf f (.bits b)) := by
+  have hb : b.toUInt64.toUInt32 = b := by simp
+  refine Runs.cons (Runs.narrow hr hv rfl) fun l1 h1 hr1 => ?_
+  subst h1
+  rw [hb]
+  exact Runs.step hr1 (fun evs => by simp [Instr.exec]) (by simpa using hr1) rfl
+
+/-- The replacement of a NaN result `r` by the canonical NaN gives `r` when Talos's NaN results
+are canonical, and moves its bits into `.b64` register `d`. -/
+theorem fromF_sets {s : Shape} {o : Oracle} {l : Local} {d : Nat} {r : UInt32}
+    (hr : l.returned = false) (hf : l.rf d = some (F32Val.ofResult r))
+    (hc : canonical32 r = r) : SetsReg s o l (fromFCode d) d r.toUInt64 := by
+  let c := (F32Val.ofResult r).isNaN
+  have hsel : ((if c then SrcF.imm Wasm.IEEE32.canonicalNaN else SrcF.reg d).get
+      (l.setp d c)) = some (.bits r) := by
+    by_cases h : Wasm.IEEE32.isNaN r = true
+    · have hcn : Wasm.IEEE32.canonicalNaN = r := by simpa [canonical32, h] using hc
+      simp [c, F32Val.isNaN_ofResult, h, SrcF.get, hcn]
+    · simp [c, F32Val.isNaN_ofResult, h, SrcF.get, hf, F32Val.ofResult]
+  refine Runs.cons (Runs.step (l' := l.setp d c) hr (fun evs => by simp [Instr.exec, hf, c])
+    (by simpa using hr) rfl) fun l1 h1 hr1 => ?_
+  subst h1
+  refine Runs.cons (Runs.step (l' := (l.setp d c).setf d (.bits r)) hr1
+    (fun evs => by simp [Instr.exec, hsel]) (by simpa using hr1) rfl) fun l2 h2 hr2 => ?_
+  subst h2
+  refine Runs.cons (Runs.step (l' := ((l.setp d c).setf d (.bits r)).set32 d r) hr2
+    (fun evs => by simp [Instr.exec]) (by simpa using hr2) rfl) fun l3 h3 hr3 => ?_
+  subst h3
+  exact Runs.step (l' := (((l.setp d c).setf d (.bits r)).set32 d r).set64 d (.word r.toUInt64))
+    hr3 (fun evs => by simp [Instr.exec]) hr3
+    ⟨fun i hi => Local.set64_r64_ne _ _ (show i ≠ d by omega), by simp⟩
+
+theorem binFCode_sets {s : Shape} {o : Oracle} {l : Local} (op : Source.F32Op) {d vl vr : Nat}
+    {a b : UInt32} (hr : l.returned = false) (hx : l.r64 vl = some (.word a.toUInt64))
+    (hy : l.r64 vr = some (.word b.toUInt64)) :
+    SetsReg s o l (binFCode op d vl vr) d (op.apply a b).toUInt64 := by
+  unfold binFCode
+  let l1 := (l.set32 d a).setf d (.bits a)
+  let l2 := (l1.set32 d b).setf (d + 1) (.bits b)
+  let l3 := l2.setf d (.ofResult (op.apply a b))
+  have h12 : Runs s o l (toFCode d d vl ++ toFCode (d + 1) d vr) (· = l2) :=
+    Runs.append (toF_runs hr hx) fun l' h hr' => by
+      subst h
+      exact toF_runs hr' (by simpa using hy)
+  have h123 : Runs s o l (toFCode d d vl ++ toFCode (d + 1) d vr ++
+      [inst (.binF (f32Op op) d d (d + 1))]) (· = l3) :=
+    Runs.append h12 fun l' h hr' => by
+      subst h
+      exact Runs.step (l' := l3) hr' (fun evs => by
+        simp [Instr.exec, l3, l2, l1, Local.setf_rf_ne _ _ (show d ≠ d + 1 by omega), f32Op_apply,
+          F32Val.repr]) hr' rfl
+  refine Runs.append h123 fun l' h hr' => ?_
+  subst h
+  exact (fromF_sets hr' (by simp [l3]) (canonical_f32_bin op a b)).mono
+    fun l4 ⟨h4, hv4⟩ => ⟨fun i hi => (h4 i hi).trans rfl, hv4⟩
+
+theorem unFCode_sets {s : Shape} {o : Oracle} {l : Local} (op : Source.F32UnOp) {d va : Nat}
+    {a : UInt32} (hr : l.returned = false) (hx : l.r64 va = some (.word a.toUInt64)) :
+    SetsReg s o l (unFCode op d va) d (op.apply a).toUInt64 := by
+  cases op with
+  | sqrt =>
+      let l2 := ((l.set32 d a).setf d (.bits a)).setf d (.ofResult (Wasm.IEEE32.sqrt a))
+      have h1 : Runs s o l (toFCode d d va ++ [inst (.sqrtF d d)]) (· = l2) :=
+        Runs.append (toF_runs hr hx) fun l' h hr' => by
+          subst h
+          exact Runs.step (l' := l2) hr' (fun evs => by simp [Instr.exec, F32Val.repr, l2]) hr'
+            rfl
+      refine Runs.append h1 fun l' h hr' => ?_
+      subst h
+      exact (fromF_sets hr' (by simp [l2]) (canonical_f32_sqrt a)).mono fun l3 ⟨h3, hv3⟩ =>
+        ⟨fun i hi => (h3 i hi).trans rfl, by simpa [Source.F32UnOp.apply] using hv3⟩
+  | nearest =>
+      let l2 := ((l.set32 d a).setf d (.bits a)).setf d (.ofResult (Wasm.IEEE32.nearest a))
+      have h1 : Runs s o l (toFCode d d va ++ [inst (.rniF d d)]) (· = l2) :=
+        Runs.append (toF_runs hr hx) fun l' h hr' => by
+          subst h
+          exact Runs.step (l' := l2) hr' (fun evs => by simp [Instr.exec, F32Val.repr, l2]) hr'
+            rfl
+      refine Runs.append h1 fun l' h hr' => ?_
+      subst h
+      exact (fromF_sets hr' (by simp [l2]) (canonical_f32_nearest a)).mono fun l3 ⟨h3, hv3⟩ =>
+        ⟨fun i hi => (h3 i hi).trans rfl, by simpa [Source.F32UnOp.apply] using hv3⟩
+  | abs =>
+      have habs : (Wasm.IEEE32.abs a).toUInt64 = a.toUInt64 &&& 0x7fffffff := by
+        apply UInt64.toNat_inj.mp
+        have h : ∀ n : Nat, n &&& 2147483647 = n % 2147483648 := fun n =>
+          Nat.and_two_pow_sub_one_eq_mod n 31
+        have ha := a.toNat_lt
+        simp [Wasm.IEEE32.abs, Wasm.IEEE32.encodeFinite, Wasm.IEEE32.exponent,
+          Wasm.IEEE32.fraction, UInt64.toNat_and, h]
+        omega
+      exact Runs.bin hr hx rfl rfl ⟨Same.set64 (le_refl _) l _,
+        by simp [Source.F32UnOp.apply, habs]⟩
+
+theorem cmpFCode_sets {s : Shape} {o : Oracle} {l : Local} (c : CmpF) {d vl vr : Nat}
+    {a b : UInt32} (hr : l.returned = false) (hx : l.r64 vl = some (.word a.toUInt64))
+    (hy : l.r64 vr = some (.word b.toUInt64)) :
+    SetsReg s o l (cmpFCode c d vl vr) d (if c.apply a b then 1 else 0) := by
+  unfold cmpFCode
+  let l2 := (((l.set32 d a).setf d (.bits a)).set32 d b).setf (d + 1) (.bits b)
+  have h12 : Runs s o l (toFCode d d vl ++ toFCode (d + 1) d vr) (· = l2) :=
+    Runs.append (toF_runs hr hx) fun l' h hr' => by
+      subst h
+      exact toF_runs hr' (by simpa using hy)
+  refine Runs.append h12 fun l' h hr2 => ?_
+  subst h
+  refine Runs.cons (Runs.step (l' := l2.setp d (c.apply a b)) hr2 (fun evs => by
+    simp [Instr.exec, l2, Local.setf_rf_ne _ _ (show d ≠ d + 1 by omega), F32Val.repr]) hr2 rfl)
+    fun l3 h3 hr3 => ?_
+  subst h3
+  refine Runs.selp hr3 (c := c.apply a b) (by simp) (v := .word (if c.apply a b then 1 else 0))
+    (by cases c.apply a b <;> simp [Src64.get]) ⟨fun i hi => ?_, by simp⟩
+  exact (Local.set64_r64_ne _ _ (show i ≠ d by omega)).trans rfl
 
 theorem ExprRuns.two {s : Shape} {o : Oracle} {l : Local} {sl sr k : List Stmt}
     {vl vr next n1 n2 : Nat} {wl wr w : UInt64} (hn1 : next ≤ n1) (hvl : vl < n1)
@@ -638,7 +863,7 @@ theorem trExpr_sim (F : Layout) (L : Nat → Option Wasm.Value)
                    exact Runs.mov hr3 hw3
                      ⟨(h2.trans (h3.mono (by omega))).trans (Same.set64 (by omega) l3 _),
                       by simp⟩)
-  | ite c t e ihc iht ihe =>
+  | ite c t e ihc iht ihe | iteF32 c t e ihc iht ihe =>
       intro next code res next' h v hv l hA hB hr
       simp only [trExpr, Option.bind_eq_bind] at h
       cases hc : trExpr F c next with
@@ -771,6 +996,100 @@ theorem trExpr_sim (F : Layout) (L : Nat → Option Wasm.Value)
                 · intro r hr'
                   simp [Local.set64_r64_ne _ _ (show r ≠ n1 by omega), h1 r hr']
                 · simp [wordOf, getElem!_neg xs k.toNat hkn, show (default : UInt64) = 0 from rfl]
+  | getF32 j =>
+      intro next code res next' h v hv l hA hB hr
+      simp only [trExpr, Option.map_eq_some_iff] at h
+      obtain ⟨r, hrj, h⟩ := h
+      simp only [Prod.mk.injEq] at h
+      obtain ⟨rfl, rfl, rfl⟩ := h
+      have hL : L j = some (.f32 v) := by
+        simp only [Source.Expr.denote] at hv
+        split at hv <;> simp_all
+      obtain ⟨r', hr', hw⟩ := hA.float j v hL
+      rw [hrj] at hr'
+      cases hr'
+      exact Runs.nil hr ⟨Same.refl _ _, hw⟩
+  | constF32 c =>
+      intro next code res next' h v hv l hA hB hr
+      simp only [trExpr, Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨rfl, rfl, rfl⟩ := h
+      simp only [Source.Expr.denote, Option.some.injEq] at hv
+      subst hv
+      exact Runs.mov hr rfl ⟨Same.set64 (le_refl _) l _, by simp [wordOf]⟩
+  | binF32 op left right ihl ihr =>
+      intro next code res next' h v hv l hA hB hr
+      obtain ⟨sl, vl, n1, sr, vr, hl, hrt, rfl, rfl⟩ := joinCode_eq_some h
+      simp only [Source.Expr.denote] at hv
+      obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Source.denote_two hv
+      have ml := trExpr_mono F _ _ _ _ _ hl
+      have mr := trExpr_mono F _ _ _ _ _ hrt
+      exact ExprRuns.two ml.1 (ml.2 hB) mr.1 (ihl _ _ _ _ hl lv hdl l hA hB hr)
+        (fun l1 h1 hr1 => ihr _ _ _ _ hrt rv hdr l1 (hA.same hB h1) (hB.mono ml.1) hr1)
+        (fun l2 hr2 h2l h2r => binFCode_sets op hr2 h2l h2r)
+  | eqF32 left right ihl ihr =>
+      intro next code res next' h v hv l hA hB hr
+      obtain ⟨sl, vl, n1, sr, vr, hl, hrt, rfl, rfl⟩ := joinCode_eq_some h
+      simp only [Source.Expr.denote] at hv
+      obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Source.denote_two hv
+      have ml := trExpr_mono F _ _ _ _ _ hl
+      have mr := trExpr_mono F _ _ _ _ _ hrt
+      exact ExprRuns.two ml.1 (ml.2 hB) mr.1 (ihl _ _ _ _ hl lv hdl l hA hB hr)
+        (fun l1 h1 hr1 => ihr _ _ _ _ hrt rv hdr l1 (hA.same hB h1) (hB.mono ml.1) hr1)
+        (fun l2 hr2 h2l h2r => cmpFCode_sets .eq hr2 h2l h2r)
+  | ltF32 left right ihl ihr =>
+      intro next code res next' h v hv l hA hB hr
+      obtain ⟨sl, vl, n1, sr, vr, hl, hrt, rfl, rfl⟩ := joinCode_eq_some h
+      simp only [Source.Expr.denote] at hv
+      obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Source.denote_two hv
+      have ml := trExpr_mono F _ _ _ _ _ hl
+      have mr := trExpr_mono F _ _ _ _ _ hrt
+      exact ExprRuns.two ml.1 (ml.2 hB) mr.1 (ihl _ _ _ _ hl lv hdl l hA hB hr)
+        (fun l1 h1 hr1 => ihr _ _ _ _ hrt rv hdr l1 (hA.same hB h1) (hB.mono ml.1) hr1)
+        (fun l2 hr2 h2l h2r => cmpFCode_sets .lt hr2 h2l h2r)
+  | leF32 left right ihl ihr =>
+      intro next code res next' h v hv l hA hB hr
+      obtain ⟨sl, vl, n1, sr, vr, hl, hrt, rfl, rfl⟩ := joinCode_eq_some h
+      simp only [Source.Expr.denote] at hv
+      obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Source.denote_two hv
+      have ml := trExpr_mono F _ _ _ _ _ hl
+      have mr := trExpr_mono F _ _ _ _ _ hrt
+      exact ExprRuns.two ml.1 (ml.2 hB) mr.1 (ihl _ _ _ _ hl lv hdl l hA hB hr)
+        (fun l1 h1 hr1 => ihr _ _ _ _ hrt rv hdr l1 (hA.same hB h1) (hB.mono ml.1) hr1)
+        (fun l2 hr2 h2l h2r => cmpFCode_sets .le hr2 h2l h2r)
+  | unF32 op operand ih =>
+      intro next code res next' h v hv l hA hB hr
+      simp only [trExpr, Option.map_eq_some_iff] at h
+      obtain ⟨⟨so, vo, n1⟩, ho, h⟩ := h
+      simp only [Prod.mk.injEq] at h
+      obtain ⟨rfl, rfl, rfl⟩ := h
+      simp only [Source.Expr.denote, Option.map_eq_some_iff] at hv
+      obtain ⟨b, hb, rfl⟩ := hv
+      have mo := trExpr_mono F _ _ _ _ _ ho
+      refine Runs.append (ih _ _ _ _ ho b hb l hA hB hr) fun l1 ⟨h1, hw⟩ hr1 => ?_
+      exact (unFCode_sets op hr1 hw).mono fun l2 ⟨h2, hv2⟩ =>
+        ⟨h1.trans (h2.mono mo.1), hv2⟩
+  | ofBits32 operand ih =>
+      intro next code res next' h v hv l hA hB hr
+      simp only [trExpr, Option.map_eq_some_iff] at h
+      obtain ⟨⟨so, vo, n1⟩, ho, h⟩ := h
+      simp only [Prod.mk.injEq] at h
+      obtain ⟨rfl, rfl, rfl⟩ := h
+      simp only [Source.Expr.denote, Option.map_eq_some_iff] at hv
+      obtain ⟨w, hw', rfl⟩ := hv
+      have mo := trExpr_mono F _ _ _ _ _ ho
+      have hlow : w &&& 0xffffffff = w.toUInt32.toUInt64 := by
+        apply UInt64.toNat_inj.mp
+        have h32 : ∀ n : Nat, n &&& 4294967295 = n % 4294967296 := fun n =>
+          Nat.and_two_pow_sub_one_eq_mod n 32
+        simp [UInt64.toNat_and, h32]
+      refine Runs.append (ih _ _ _ _ ho w hw' l hA hB hr) fun l1 ⟨h1, hw⟩ hr1 => ?_
+      exact Runs.bin hr1 hw rfl rfl ⟨h1.trans (Same.set64 mo.1 l1 _), by simp [wordOf, hlow]⟩
+  | toBits32 operand ih =>
+      intro next code res next' h v hv l hA hB hr
+      simp only [trExpr] at h
+      simp only [Source.Expr.denote, Option.map_eq_some_iff] at hv
+      obtain ⟨b, hb, rfl⟩ := hv
+      exact ih next code res next' h b hb l hA hB hr
   | _ =>
       intro next code res next' h
       simp [trExpr] at h
@@ -793,6 +1112,42 @@ theorem Layout.Keeps.mono {F : Layout} {n n' : Nat} {a b : Local} (h : F.Keeps n
 theorem Same.keeps {F : Layout} {n : Nat} {a b : Local} (h : Same n a b) : F.Keeps n a b :=
   fun r hr _ => h r hr
 
+/-- The agreement after a store of word `w` to the register `r` of assigned local `j`, where `w`
+represents the local's new value `val`. -/
+theorem Layout.Agrees.assign {F : Layout} (hD : F.Distinct) {L : Nat → Option Wasm.Value}
+    {arrays : Nat → Option (Array UInt64)} {s : Shape} {o : Oracle} {l l1 : Local} {n j r : Nat}
+    {t : Source.ScalarType} {val : Wasm.Value} {w : UInt64}
+    (hA : F.Agrees L arrays s o l) (hB : F.Below n) (h1 : Same n l l1)
+    (hrj : F.scalar j = some r) (hasg : F.assigned j = some t)
+    (hword : ∀ v, val = .i64 v → w = v) (hfloat : ∀ b, val = .f32 b → w = b.toUInt64) :
+    F.Agrees (fun i => if i = j then some val else L i) arrays s o (l1.set64 r (.word w)) ∧
+      F.Keeps n l (l1.set64 r (.word w)) := by
+  refine ⟨⟨fun i u hi => ?_, fun i b hi => ?_, fun a xs ha => ?_⟩, fun r' hr' hna => ?_⟩
+  · by_cases hij : i = j
+    · subst hij
+      simp only [↓reduceIte, Option.some.injEq] at hi
+      exact ⟨r, hrj, by rw [hword u hi]; simp⟩
+    · simp only [hij, ↓reduceIte] at hi
+      obtain ⟨ri, hri, hu⟩ := hA.word i u hi
+      have hne : ri ≠ r := fun heq => hij (hD.scalar i j r (heq ▸ hri) hrj)
+      exact ⟨ri, hri, by rw [Local.set64_r64_ne _ _ hne, h1 ri (hB.scalar i ri hri), hu]⟩
+  · by_cases hij : i = j
+    · subst hij
+      simp only [↓reduceIte, Option.some.injEq] at hi
+      exact ⟨r, hrj, by rw [hfloat b hi]; simp⟩
+    · simp only [hij, ↓reduceIte] at hi
+      obtain ⟨ri, hri, hu⟩ := hA.float i b hi
+      have hne : ri ≠ r := fun heq => hij (hD.scalar i j r (heq ▸ hri) hrj)
+      exact ⟨ri, hri, by rw [Local.set64_r64_ne _ _ hne, h1 ri (hB.scalar i ri hri), hu]⟩
+  · obtain ⟨hsz, base, len, b, hF, hb, hl, hsize, ho⟩ := hA.array a xs ha
+    have hbl := hB.array a base len hF
+    have hne := hD.assigned j t r a base len hasg hrj hF
+    exact ⟨hsz, base, len, b, hF,
+      by rw [Local.set64_r64_ne _ _ (Ne.symm hne.1), h1 base hbl.1, hb],
+      by rw [Local.set64_r64_ne _ _ (Ne.symm hne.2), h1 len hbl.2, hl], hsize, ho⟩
+  · have hne : r' ≠ r := fun heq => hna j t hasg (heq ▸ hrj)
+    rw [Local.set64_r64_ne _ _ hne, h1 r' hr']
+
 theorem trStmt_mono (F : Layout) : ∀ (st : Source.Stmt) (next : Nat) (code : List Stmt)
     (next' : Nat), trStmt F st next = some (code, next') → next ≤ next' := by
   intro st
@@ -805,20 +1160,21 @@ theorem trStmt_mono (F : Layout) : ∀ (st : Source.Stmt) (next : Nat) (code : L
       intro next code next' h
       cases type <;> simp only [trStmt, Option.bind_eq_bind] at h
       all_goals try (simp at h; done)
-      cases hr : F.scalar j with
-      | none => simp [hr] at h
-      | some r =>
-        simp only [hr, Option.bind_some] at h
-        split at h
-        · cases he : trExpr F e next with
-          | none => simp [he] at h
-          | some re =>
-            obtain ⟨se, v, n1⟩ := re
-            simp only [he, Option.bind_some, Option.pure_def, Option.some.injEq,
-              Prod.mk.injEq] at h
-            obtain ⟨-, rfl⟩ := h
-            exact (trExpr_mono F e next se v n1 he).1
-        · cases h
+      all_goals
+        cases hr : F.scalar j with
+        | none => simp [hr] at h
+        | some r =>
+          simp only [hr, Option.bind_some] at h
+          split at h
+          · cases he : trExpr F e next with
+            | none => simp [he] at h
+            | some re =>
+              obtain ⟨se, v, n1⟩ := re
+              simp only [he, Option.bind_some, Option.pure_def, Option.some.injEq,
+                Prod.mk.injEq] at h
+              obtain ⟨-, rfl⟩ := h
+              exact (trExpr_mono F e next se v n1 he).1
+          · cases h
   | seq a b iha ihb =>
       intro next code next' h
       simp only [trStmt, Option.bind_eq_bind] at h
@@ -957,48 +1313,29 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
       intro next code next' h hB L L' hd l hA hr
       cases type <;> simp only [trStmt, Option.bind_eq_bind] at h
       all_goals try (simp at h; done)
-      cases hrj : F.scalar j with
-      | none => simp [hrj] at h
-      | some r =>
-        simp only [hrj, Option.bind_some] at h
-        split at h
-        · rename_i hasg
-          cases he : trExpr F e next with
-          | none => simp [he] at h
-          | some re =>
-            obtain ⟨se, v, n1⟩ := re
-            simp only [he, Option.bind_some, Option.pure_def, Option.some.injEq,
-              Prod.mk.injEq] at h
-            obtain ⟨rfl, rfl⟩ := h
-            simp only [Source.Stmt.denote] at hd
-            split at hd
-            · obtain ⟨w, hw, rfl⟩ := Option.map_eq_some_iff.mp hd
-              have hrB := hB.scalar j r hrj
-              refine Runs.append (trExpr_sim F L arrays s o e next se v n1 he w hw l hA hB hr)
-                fun l1 ⟨h1, hw1⟩ hr1 => Runs.mov hr1 hw1
-                  ⟨⟨fun i u hi => ?_, fun a xs ha => ?_⟩,
-                  fun r' hr' hna => ?_⟩
-              · by_cases hij : i = j
-                · subst hij
-                  simp only [↓reduceIte, Source.ScalarType.value, Option.some.injEq,
-                    Wasm.Value.i64.injEq] at hi
-                  subst hi
-                  exact ⟨r, hrj, by simp [wordOf]⟩
-                · simp only [hij, ↓reduceIte] at hi
-                  obtain ⟨ri, hri, hu⟩ := hA.word i u hi
-                  have hne : ri ≠ r := fun heq => hij (hD.scalar i j r (heq ▸ hri) hrj)
-                  refine ⟨ri, hri, ?_⟩
-                  rw [Local.set64_r64_ne _ _ hne, h1 ri (hB.scalar i ri hri), hu]
-              · obtain ⟨hsz, base, len, b, hF, hb, hl, hsize, ho⟩ := hA.array a xs ha
-                have hbl := hB.array a base len hF
-                have hne := hD.assigned j .u64 r a base len hasg hrj hF
-                exact ⟨hsz, base, len, b, hF,
-                  by rw [Local.set64_r64_ne _ _ (Ne.symm hne.1), h1 base hbl.1, hb],
-                  by rw [Local.set64_r64_ne _ _ (Ne.symm hne.2), h1 len hbl.2, hl], hsize, ho⟩
-              · have hne : r' ≠ r := fun heq => hna j .u64 hasg (heq ▸ hrj)
-                rw [Local.set64_r64_ne _ _ hne, h1 r' hr']
-            · cases hd
-        · cases h
+      all_goals
+        cases hrj : F.scalar j with
+        | none => simp [hrj] at h
+        | some r =>
+          simp only [hrj, Option.bind_some] at h
+          split at h
+          · rename_i hasg
+            cases he : trExpr F e next with
+            | none => simp [he] at h
+            | some re =>
+              obtain ⟨se, v, n1⟩ := re
+              simp only [he, Option.bind_some, Option.pure_def, Option.some.injEq,
+                Prod.mk.injEq] at h
+              obtain ⟨rfl, rfl⟩ := h
+              simp only [Source.Stmt.denote] at hd
+              split at hd
+              · obtain ⟨w, hw, rfl⟩ := Option.map_eq_some_iff.mp hd
+                exact Runs.append (trExpr_sim F L arrays s o e next se v n1 he w hw l hA hB hr)
+                  fun l1 ⟨h1, hw1⟩ hr1 => Runs.mov hr1 hw1
+                    (Layout.Agrees.assign hD hA hB h1 hrj hasg (fun _ h => by cases h <;> rfl)
+                      (fun _ h => by cases h <;> rfl))
+              · cases hd
+          · cases h
   | seq a b iha ihb =>
       intro next code next' h hB L L' hd l hA hr
       simp only [trStmt, Option.bind_eq_bind] at h

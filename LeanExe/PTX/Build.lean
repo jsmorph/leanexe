@@ -6,16 +6,18 @@ import LeanExe.Dialect.Build
 /-!
 The PTX kernel of a build: thread `g` with `g` below the count stores the element of index `g` to
 output word `1 + g`.  Each parameter has its own buffer, numbered by its parameter index: a word
-parameter's holds the word, and an array parameter's holds its length followed by its elements.
+parameter's holds the word, a float parameter's holds the bits of its binary32 value, and an array
+parameter's holds its length followed by its elements.
 The output buffer comes after them, and its word 0 holds the count, which the host writes.
 
-The `.b64` registers follow the source locals.  Register `j` holds word local `j`, the index
-local, or a variable of the statements.  Array parameter `a` has its length in register `a` and a
-pointer to its buffer in register `W + a`, where `W` is the source width, and the size local of a
-count `.size l src` reads register `src`.  The output pointer is in register `W + p` for `p`
+The `.b64` registers follow the source locals.  Register `j` holds word or binary32 local `j`, the
+index local, or a variable of the statements.  Array parameter `a` has its length in register `a`
+and a pointer to its buffer in register `W + a`, where `W` is the source width, and the size local
+of a count `.size l src` reads register `src`.  The output pointer is in register `W + p` for `p`
 parameters, and fresh registers start at `W + p + 3`.  The prologue reads `%ctaid.x`, `%ntid.x`,
 and `%tid.x` into `.b32` registers 0 to 2 and computes the index, then converts each parameter
-address and loads each word parameter and array length.  Predicate 0 holds the test of the index
+address and loads word 0 of each parameter's buffer: a word, the bits of a binary32 value, or an
+array's length.  Predicate 0 holds the test of the index
 against the count.
 
 `Spec.ptx_thread` states each thread's run with the input oracle, `Spec.ptx_launch` the launch's
@@ -25,8 +27,8 @@ sequential output and race freedom, and `Spec.ptx_executions` the launch under t
 
 namespace LeanExe.PTX
 
-/-- The buffer of an argument: a word, or an array's length followed by its elements.  A float
-parameter, which `Spec.ptx` rejects, gives its bits. -/
+/-- The buffer of an argument: a word, the bits of a binary32 value, or an array's length followed
+by its elements. -/
 def _root_.LeanExe.Source.Arg.ptxBuffer : Source.Arg → Array UInt64
   | .word v => #[v]
   | .float bits => #[bits.toUInt64]
@@ -41,7 +43,7 @@ def _root_.LeanExe.Source.Count.ptxReg : Source.Count → Nat
 /-- The registers of the source locals and arrays. -/
 def _root_.LeanExe.Source.Spec.ptxLayout (K : Source.Spec) : Layout where
   scalar j :=
-    if j < K.kinds.length then (if K.kinds[j]? = some .word then some j else none)
+    if j < K.kinds.length then (if K.kinds[j]? = some .array then none else some j)
     else if j = K.index then some j
     else if K.count.sizeLocal? = some j then some K.count.ptxReg
     else if (K.vars.lookup j).isSome then some j
@@ -68,17 +70,15 @@ def _root_.LeanExe.Source.Spec.ptxPrologue (K : Source.Spec) : List Stmt :=
 def storeCode (index out d res : Nat) : List Stmt :=
   [inst (.shift .shl d index (.imm 3)), inst (.bin64 .add d out (.reg d)), inst (.st d 8 res)]
 
-/-- The kernel, or `none` when a parameter is a float or the statements or the element are outside
-the translated subset. -/
-def _root_.LeanExe.Source.Spec.ptx (K : Source.Spec) : Option Module :=
-  if K.kinds.contains .float then none else do
-    let p := K.kinds.length
-    let (sb, n1) ← trStmt K.ptxLayout K.body (K.width + p + 3)
-    let (se, res, n2) ← trExpr K.ptxLayout K.element n1
-    pure { inputs := p, regs32 := n2 + 1, regs64 := n2 + 1, regsF := n2 + 1,
-           preds := n2 + 1
-           body := K.ptxPrologue ++ [inst (.setp .lt 0 K.index (.reg K.count.ptxReg)),
-             .ite 0 (sb ++ se ++ storeCode K.index (K.width + p) n2 res) []] }
+/-- The kernel, or `none` when the statements or the element are outside the translated
+subset. -/
+def _root_.LeanExe.Source.Spec.ptx (K : Source.Spec) : Option Module := do
+  let p := K.kinds.length
+  let (sb, n1) ← trStmt K.ptxLayout K.body (K.width + p + 3)
+  let (se, res, n2) ← trExpr K.ptxLayout K.element n1
+  pure { inputs := p, regs32 := n2 + 1, regs64 := n2 + 1, regsF := n2 + 1, preds := n2 + 1
+         body := K.ptxPrologue ++ [inst (.setp .lt 0 K.index (.reg K.count.ptxReg)),
+           .ite 0 (sb ++ se ++ storeCode K.index (K.width + p) n2 res) []] }
 
 /-! ### The layout -/
 
@@ -89,8 +89,8 @@ theorem _root_.LeanExe.Source.Spec.ptxLayout_below (K : Source.Spec) (hK : K.WF)
   · simp only [Source.Spec.ptxLayout] at hr
     split at hr
     · split at hr
-      · cases hr; have := hK.kindsW; omega
       · cases hr
+      · cases hr; have := hK.kindsW; omega
     · split at hr
       · cases hr; have := hK.indexW; omega
       · split at hr
@@ -121,13 +121,13 @@ theorem _root_.LeanExe.Source.Spec.ptxLayout_below (K : Source.Spec) (hK : K.WF)
 
 theorem _root_.LeanExe.Source.Spec.ptxLayout_scalar {K : Source.Spec} {j r : Nat}
     (h : K.ptxLayout.scalar j = some r) :
-    (r = j ∧ (j < K.kinds.length → K.kinds[j]? = some .word)) ∨
+    (r = j ∧ (j < K.kinds.length → K.kinds[j]? ≠ some .array)) ∨
       (K.count.sizeLocal? = some j ∧ r = K.count.ptxReg) := by
   simp only [Source.Spec.ptxLayout] at h
   split at h
   · split at h
-    · cases h; exact .inl ⟨rfl, fun _ => by assumption⟩
     · cases h
+    · cases h; exact .inl ⟨rfl, fun _ => by assumption⟩
   · rename_i hj
     split at h
     · cases h; exact .inl ⟨rfl, fun h' => absurd h' hj⟩
@@ -172,14 +172,10 @@ theorem _root_.LeanExe.Source.Spec.ptxLayout_distinct (K : Source.Spec) (hK : K.
     · exact hj'
     · have ha := hsrc j' hs'
       rw [← hr'] at ha
-      have hlt := (List.getElem?_eq_some_iff.mp ha).1
-      rw [hw hlt] at ha
-      cases ha
+      exact absurd ha (hw (List.getElem?_eq_some_iff.mp ha).1)
     · have ha := hsrc j hs
       rw [hj'] at ha
-      have hlt := (List.getElem?_eq_some_iff.mp ha).1
-      rw [hw' hlt] at ha
-      cases ha
+      exact absurd ha (hw' (List.getElem?_eq_some_iff.mp ha).1)
     · rw [hs] at hs'
       exact Option.some.inj hs'
   · obtain ⟨hrj', h1, h2, -⟩ := K.ptxLayout_assigned hK ht
@@ -316,7 +312,7 @@ theorem _root_.LeanExe.Source.Spec.ptx_agrees (K : Source.Spec) (hK : K.WF)
         | .array xs => UInt64.ofNat xs.size := by
     intro j a ha
     cases a <;> simp [inputOracle, List.getElem?_map, ha, Source.Arg.ptxBuffer]
-  refine ⟨fun j v hj => ?_, fun a xs ha => ?_⟩
+  refine ⟨fun j v hj => ?_, fun j b hj => ?_, fun a xs ha => ?_⟩
   · simp only [Source.Spec.locals] at hj
     by_cases hji : j = K.index
     · subst hji
@@ -355,9 +351,33 @@ theorem _root_.LeanExe.Source.Spec.ptx_agrees (K : Source.Spec) (hK : K.WF)
                   rw [← hlen]; exact (List.getElem?_eq_some_iff.mp harg).1
                 refine ⟨j, ?_, ?_⟩
                 · have hw : K.kinds[j]? = some .word := hkind j _ harg
-                  simp only [Source.Spec.ptxLayout, hjl, hw, ↓reduceIte]
+                  simp only [Source.Spec.ptxLayout, hjl, hw, Option.some.injEq, reduceCtorEq,
+                    ↓reduceIte]
                 · rw [hval j hjl, hfirst j _ harg]
             | float _ => simp [harg] at hj
+            | array _ => simp [harg] at hj
+  · simp only [Source.Spec.locals] at hj
+    by_cases hji : j = K.index
+    · simp [hji] at hj
+    · simp only [hji, ↓reduceIte] at hj
+      by_cases hjs : K.count.sizeLocal? = some j
+      · simp [hjs] at hj
+      · simp only [hjs, ↓reduceIte] at hj
+        cases harg : args[j]? with
+        | none => simp [harg] at hj
+        | some a =>
+            cases a with
+            | float bits =>
+                simp only [harg, Option.some.injEq, Wasm.Value.f32.injEq] at hj
+                subst hj
+                have hjl : j < K.kinds.length := by
+                  rw [← hlen]; exact (List.getElem?_eq_some_iff.mp harg).1
+                refine ⟨j, ?_, ?_⟩
+                · have hw : K.kinds[j]? = some .float := hkind j _ harg
+                  simp only [Source.Spec.ptxLayout, hjl, hw, Option.some.injEq, reduceCtorEq,
+                    ↓reduceIte]
+                · rw [hval j hjl, hfirst j _ harg]
+            | word _ => simp [harg] at hj
             | array _ => simp [harg] at hj
   · simp only [Source.Spec.arrays] at ha
     cases harg : args[a]? with
@@ -444,10 +464,7 @@ theorem _root_.LeanExe.Source.Spec.ptx_thread (K : Source.Spec) (hK : K.WF) {m :
   have hp := hK.index
   have hiW := hK.indexW
   have hnb := h.bound
-  simp only [Source.Spec.ptx] at hm
-  split at hm
-  · cases hm
-  simp only [Option.bind_eq_bind] at hm
+  simp only [Source.Spec.ptx, Option.bind_eq_bind] at hm
   cases hb' : trStmt K.ptxLayout K.body (K.width + K.kinds.length + 3) with
   | none => simp [hb'] at hm
   | some rb =>

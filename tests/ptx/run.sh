@@ -12,9 +12,13 @@ out=$build/ptx
 host=$root/build/tools/leanexe-cuda-host
 cuda=${CUDA_HOME:-/usr/local/cuda}
 # Each kernel as MODULE:CONSTANT:NAME, where NAME.ptx receives the text of CONSTANT.
-kernels=(LeanExe.PTX.AddOne:LeanExe.PTX.addOne:addOne
-  Verified.Examples.Ptx:Verified.Examples.Ptx.verifiedFlagsKernel:verifiedFlags
-  Verified.Examples.Ptx:Verified.Examples.Ptx.verifiedWordsKernel:verifiedWords)
+kernels=(LeanExe.PTX.AddOne:LeanExe.PTX.addOne:addOne)
+for k in Scale Branch Roots Flags Words; do
+  kernels+=("Verified.Examples.Ptx:Verified.Examples.Ptx.verified${k}Kernel:verified$k")
+done
+for k in Scale32 AxpyArray32 MatVec32 CondMix32; do
+  kernels+=("Examples.Binary32.CompiledPtx:Examples.Binary32.ptx${k}Kernel:verified$k")
+done
 mkdir -p "$out"
 arch=$("$host" info | sed -n 's/^compute capability \([0-9]*\)\.\([0-9]*\)$/sm_\1\2/p')
 if [ -z "$arch" ]; then
@@ -22,7 +26,7 @@ if [ -z "$arch" ]; then
   exit 1
 fi
 (cd "$root" && tools/leanrun --timeout 40m lake --log-level error build LeanExe.PTX.Parse \
-  LeanExe.PTX.AddOne Verified.Examples.PtxCases)
+  LeanExe.PTX.AddOne Verified.Examples.PtxCases Examples.Binary32.VerifiedPtxCases)
 "$cuda/bin/ptxas" --version >"$out/ptxas.version"
 : >"$out/cubins.sha256"
 for entry in "${kernels[@]}"; do

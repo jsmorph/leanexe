@@ -436,13 +436,16 @@ tests](#wgsl-tests) compare these kernels and those of the examples with native 
 
 ### PTX kernels
 
-[`Verified.PTX.compile`](../Verified/PTX/Compile.lean) translates the same builds as
-`Verified.WGSL.compile` when their parameters and elements are words or Booleans, and gives `none`
-for a build with binary32 values.  Word arithmetic includes every operation of the kernel source
-language, with division and remainder by any divisor.  [The PTX
-translation](../LeanExe/PTX/Translate.lean) keeps each word and each Boolean, as 0 or 1, in a
-`.b64` register, and it evaluates the operands of `&&`, `||`, and conditional expressions in
-branches, as the source semantics does.  The typed API constructs a kernel as follows:
+[`Verified.PTX.compile`](../Verified/PTX/Compile.lean) translates the builds of words, Booleans,
+and binary32 values that `Verified.WGSL.compile` translates, without the WGSL translation's limits:
+word division and remainder take any divisor, and a binary32 constant may be an infinity or a NaN.
+[The PTX translation](../LeanExe/PTX/Translate.lean) keeps each word, each Boolean as 0 or 1, and
+the bits of each binary32 value in a `.b64` register, and it evaluates the operands of `&&`, `||`,
+and conditional expressions in branches, as the source semantics does.  A binary32 operation moves
+its operands into `.f32` registers, and the translation replaces a NaN result by `0x7fc00000`,
+since PTX leaves single-precision NaN results unspecified and Talos's NaN results are that NaN.
+Absolute value clears the sign bit of the word, which keeps a NaN's payload as Talos's `abs` does.
+The typed API constructs a kernel as follows:
 
 ```lean
 import Verified.PTX.Compile
@@ -457,9 +460,12 @@ execution no access of a thread is in a data race, every thread ends, and the co
 count followed by the source array's encoded elements.  Its conditions are those of the WGSL
 dispatch theorem for the arguments, an output of the count followed by one word for each element,
 and a launch of at least the count's threads in fewer than 2³² blocks with fewer than 2⁶⁰ threads.
-[The PTX examples](../Verified/Examples/Ptx.lean) compile `flags` and `wordScan`, and
+[The PTX examples](../Verified/Examples/Ptx.lean) compile the WGSL examples, [the binary32
+example](../Examples/Binary32/CompiledPtx.lean) compiles its kernels, and
 [`tests/ptx/run.sh`](../tests/ptx/run.sh) compiles their text with `ptxas` and compares their
-output words with native Lean on an NVIDIA GPU.
+output words with native Lean on an NVIDIA GPU.  [`tests/ptx/nearest.sh`](../tests/ptx/nearest.sh)
+checks the meaning of `cvt.rni.f32.f32`, which the ISA does not state for every input, on all 2³²
+binary32 inputs.
 
 ### The WGSL library and the browser pages
 

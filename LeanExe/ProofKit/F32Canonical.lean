@@ -1,11 +1,20 @@
-import LeanExe.WGSL.F32Canonical
 import LeanExe.Source.Syntax
 import LeanExe.ProofKit.F32Bits
 import LeanExe.ProofKit.F32Nearest
 
-namespace LeanExe.WGSL
+/-!
+Talos's binary32 operations give the canonical NaN `0x7fc00000` for every NaN result:
+`canonical32`, which replaces a NaN by that NaN, leaves the results of the arithmetic operations,
+`sqrt`, and `nearest` unchanged.  The GPU translations replace the NaN result of each such
+operation by the canonical NaN, and these lemmas show that the replacement gives Talos's result.
+-/
+
+namespace LeanExe
 
 open LeanExe.ProofKit
+
+def canonical32 (bits : UInt32) : UInt32 :=
+  if Wasm.IEEE32.isNaN bits then Wasm.IEEE32.canonicalNaN else bits
 
 theorem canonical32_nan : canonical32 Wasm.IEEE32.canonicalNaN = Wasm.IEEE32.canonicalNaN := by
   decide +kernel
@@ -58,4 +67,4 @@ theorem canonical_f32_nearest (a : UInt32) :
     exact (F32Nearest.nearest_nan a h).symm
   · rfl
 
-end LeanExe.WGSL
+end LeanExe

@@ -87,6 +87,7 @@ import LeanExe.ProofKit.ExpTinyError
 import LeanExe.ProofKit.F32Add
 import LeanExe.ProofKit.F32AddFinite
 import LeanExe.ProofKit.F32Bits
+import LeanExe.ProofKit.F32Canonical
 import LeanExe.ProofKit.F32Compare
 import LeanExe.ProofKit.F32Convert
 import LeanExe.ProofKit.F32Decoded

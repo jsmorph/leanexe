@@ -1,4 +1,4 @@
-# Binary32: `Float32` in WebAssembly and WGSL
+# Binary32: `Float32` in WebAssembly, WGSL, and PTX
 
 ## `Float32` functions and GPU kernels
 
@@ -13,7 +13,9 @@ piecewise32, scale32, axpyArray32, condMix32]` in [the verified compilation](Com
 them into a 3,258-byte module, whose functions 2 to 9 are the program's functions in that order.
 `Verified.WGSL.compile` translates the reflected bodies of `scale32`, `axpyArray32`, `matVec32`, and
 `condMix32` into the WGSL compute kernels `verifiedScale32Kernel`, `verifiedAxpyArray32Kernel`,
-`verifiedMatVec32Kernel`, and `verifiedCondMix32Kernel` for a GPU.
+`verifiedMatVec32Kernel`, and `verifiedCondMix32Kernel` for a GPU.  `Verified.PTX.compile` translates
+the same bodies into the PTX kernels `ptxScale32Kernel`, `ptxAxpyArray32Kernel`,
+`ptxMatVec32Kernel`, and `ptxCondMix32Kernel` of [the PTX compilation](CompiledPtx.lean).
 
 ## Module and kernel theorems
 
@@ -29,12 +31,14 @@ their buffer and invocation bounds.
 | `compiled.bytes` | `encode` succeeds on the module, its bytes decode to the module, and its functions 2 to 9 compute `axpy32`, `hypot32`, `ratio32`, `matVec32`, `piecewise32`, `scale32`, `axpyArray32`, and `condMix32`. |
 | `binary32_file`, `binary32_file_decode` | `build/verified/binary32.wasm` holds the module's encoding and decodes to the module, as [the file module](File.lean) states. |
 | `scale32_dispatch`, `axpyArray32_dispatch`, `matVec32_dispatch`, `condMix32_dispatch` | Dispatch of the kernel over at least as many invocations as output elements, with an output buffer of the result's size whose length word the host has written, writes the Lean function's result into the buffer, and distinct invocations store to distinct words, under bounds on the sizes and the invocation count. |
+| `scale32_executions`, `axpyArray32_executions`, `matVec32_executions`, `condMix32_executions` | In every consistent execution of a launch of the PTX kernel with at least as many threads as output elements, under the PTX memory model, no access of a thread is in a data race, every thread ends, and the copy back reads the count followed by the bits of the Lean function's result.  A consistent execution exists. |
 
 The reflector reads the condition `i % 4 ≤ 3 ∧ i / 4 * 4 + (3 - i % 4) < n` of `condMix32` as
 `decide (i % 4 ≤ 3) && decide (i / 4 * 4 + (3 - i % 4) < n)`, by the rule that [the verified
 compiler manual](../../docs/verified-manual.md#array-literals-and-conditions-on-propositions)
-describes, and the WGSL translation lowers the conjunction.  The axiom reports of `compiled.bytes`
-and of the dispatch theorems name only `propext`, `Classical.choice`, and `Quot.sound`.  [The
+describes, and the WGSL translation lowers the conjunction.  The axiom reports of `compiled.bytes`,
+of the dispatch theorems, and of the launch theorems name only `propext`, `Classical.choice`, and
+`Quot.sound`.  [The
 manual's section on WGSL kernels](../../docs/verified-manual.md#wgsl-kernels) describes the
 translation and its dispatch theorem, [its section on the WGSL
 library](../../docs/verified-manual.md#the-wgsl-library-and-the-browser-pages) describes the device
@@ -75,7 +79,9 @@ SwiftShader and llvmpipe Vulkan drivers through `leanexe-webgpu-host`, which
 `tests/wgsl/run.sh` writes the verified kernels under the names `scale`, `axpyArray`, `matVec`, and
 `condMix` and runs them on the cases of [`tests/wgsl/Cases.lean`](../../tests/wgsl/Cases.lean).
 The kernel page of `uv run tests/web/serve.py` loads these kernels and runs the cases on a
-browser's WebGPU.
+browser's WebGPU.  [`tests/ptx/run.sh`](../../tests/ptx/run.sh) emits the PTX kernels, compiles
+them with `ptxas`, and runs the cases of [`VerifiedPtxCases.lean`](VerifiedPtxCases.lean), which
+use the same inputs, on an NVIDIA GPU.
 
 ## Related examples
 

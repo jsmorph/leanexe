@@ -650,19 +650,6 @@ with [integer tests of their bit patterns](../LeanExe/WGSL/F32Canonical.lean), a
 [result lemmas](../LeanExe/WGSL/F32Result.lean) prove that normalization preserves each operation's
 strict-model result.
 
-## PTX kernels
-
-[The PTX compiler](PTX/Compile.lean) takes the same kernel plan and translates its build with
-`LeanExe.Source.Spec.ptx` of [the PTX build kernel](../LeanExe/PTX/Build.lean).  It accepts
-parameters, loop state, and elements of words and Booleans, and it gives `none` for a build with
-binary32 values.  [`Kernel.executions_eq`](PTX/Kernel.lean) states for a launch with at least the
-count's threads, fewer than 2³² blocks, and fewer than 2⁶⁰ threads that a consistent execution
-exists under [the PTX memory model](../LeanExe/PTX/MemoryModel.lean).  In every consistent
-execution no access of a thread is in a data race, every thread ends, and the copy back reads the
-count followed by the source array's encoded elements.  [The examples](Examples/Ptx.lean) compile
-`flags` and `wordScan` of the WGSL examples, and [the PTX test](../tests/ptx/run.sh) runs them on
-an NVIDIA GPU.
-
 [Binary32 GPT](../Demos/Gpt32/Verified.lean) compiles the program's kernel functions without
 changing them.  [The native dispatch proofs](../Demos/Gpt32/VerifiedDispatch.lean) combine
 `Compiled.dispatch_value` with each generated denotation equation and the buffer bounds.
@@ -671,6 +658,20 @@ layer, and generation proofs, and [the generation driver](../Demos/Gpt32/Driver.
 kernels of [the kernel map](../Demos/Gpt32/VerifiedKernels.lean).
 [The application guide](../Demos/Gpt32/README.md#verified-compiler) describes the tests and the
 separate Wasm and device-model claims.
+
+## PTX kernels
+
+[The PTX compiler](PTX/Compile.lean) takes the same kernel plan and translates its build with
+`LeanExe.Source.Spec.ptx` of [the PTX build kernel](../LeanExe/PTX/Build.lean).  It accepts
+parameters, loop state, and elements of words, Booleans, and binary32 values, without the WGSL
+translation's limits on divisors and float constants.  [`Kernel.executions_eq`](PTX/Kernel.lean)
+states for a launch with at least the count's threads, fewer than 2³² blocks, and fewer than 2⁶⁰
+threads that a consistent execution exists under [the PTX memory
+model](../LeanExe/PTX/MemoryModel.lean).  In every consistent execution no access of a thread is
+in a data race, every thread ends, and the copy back reads the count followed by the source
+array's encoded elements.  [The examples](Examples/Ptx.lean) compile the WGSL examples, [the
+binary32 example](../Examples/Binary32/CompiledPtx.lean) compiles its kernels, and [the PTX
+test](../tests/ptx/run.sh) runs them on an NVIDIA GPU.
 
 ## The reflector
 
