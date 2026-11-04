@@ -1,4 +1,5 @@
-# The QEMU runs of tests/baremetal/run.sh, programs.sh, and inputs.sh, which source this file.
+# The QEMU runs of tests/baremetal/run.sh, programs.sh, inputs.sh, and ctl.sh, which source this
+# file.
 # ACCEL selects the accelerator: tcg, the default, or kvm.  Under TCG, QEMU emulates a
 # Cortex-A57 and the startup code exits through semihosting, so QEMU's exit status is the
 # program's.  Under KVM, the guest runs on the host's AArch64 CPU, where semihosting is
@@ -47,4 +48,27 @@ bm_run() {
       -e 's/^.*R:level [0-9]*$/254/p')
     code=${code:-none}
   fi
+}
+
+# Runs the image $3 on the machine $1 with the QEMU options after $4, as bm_run does, for a
+# program that never ends: it copies the first $4 bytes of the UART output to the file $2 and
+# then stops QEMU with SIGTERM, unless QEMU has exited.  When QEMU exits, or TIMEOUT seconds
+# pass, before the output reaches $4 bytes, the file holds the output up to then.  code is
+# QEMU's exit status, 0 after the stop and 124 after the timeout.  QEMU writes the UART output
+# to its standard output, a FIFO that the shell opens before QEMU starts, so that head reaches
+# the end of the FIFO even when QEMU exits before it opens the serial port.
+bm_stream() {
+  local machine=$1 serial=$2 image=$3 bytes=$4 fifo=$2.fifo pid
+  shift 4
+  rm -f "$serial" "$fifo"
+  mkfifo "$fifo"
+  timeout "${TIMEOUT:-120}" "$qemu" -M "$machine" "${bm_cpu[@]}" -m 1G -display none \
+    -monitor none -serial stdio "${bm_semihosting[@]}" "$@" -kernel "$image" \
+    </dev/null >"$fifo" &
+  pid=$!
+  head -c "$bytes" "$fifo" >"$serial"
+  rm "$fifo"
+  kill "$pid" 2>/dev/null || :
+  code=0
+  wait "$pid" || code=$?
 }

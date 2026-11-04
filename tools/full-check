@@ -11,7 +11,7 @@
 #      tests/native/run.sh, tests/native/bytes.sh, and tests/native/clight.sh 7 300 for the
 #      platform's target;
 #   4. tests/wasi/run.sh;
-#   5. tests/baremetal/run.sh, programs.sh, inputs.sh, and verified.sh under TCG;
+#   5. tests/baremetal/run.sh, programs.sh, inputs.sh, ctl.sh, and verified.sh under TCG;
 #   6. VKB/Check.lean;
 #   7. rocq/check.sh;
 #   8. tests/wgsl/run.sh with --verified and without an option, each with --emit-only and then
@@ -467,7 +467,7 @@ step_baremetal() {
     fi
     record "$step" "$(outcome)" "$seconds" "$cell"
   fi
-  for name in programs inputs; do
+  for name in programs inputs ctl; do
     step="\`tests/baremetal/$name.sh\`"
     ready "$step" ccomp:"$ccomp" clightgen:"$clightgen" QEMU:"$qemu" || continue
     run "5-baremetal-$name" env ACCEL=tcg "tests/baremetal/$name.sh"

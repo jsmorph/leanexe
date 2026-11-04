@@ -41397,7 +41397,13 @@ The register bank is `lx_in[0]` to `lx_in[7]`, read with volatile byte loads, so
 Window `n` reads `σ (8 n)` to `σ (8 n + 7)`, and its trace is `inTrace (fun j => σ (8 * n + j)) 0 8 ++ outTrace (encodeWord s_{n+1})`, with `s_0 = S0` and `s_{n+1} = ctl s_n (inLen fun j => σ (8 * n + j))`.  The call's trace is empty by `funcall_quiet`.  The invariant of window `n` holds a Talos store `st` with `StoreRel A E st m`, `StatusRel A E m 0`, some heap with `heap.At st`, the memory caps of `nativeStore`, and `l0 = s_n`.
 - [x] Window lemma and the generic theorem: `exec_ctlWindow` and `ctl_program` (`LeanExe/Native/Proof/Ctl.lean`) prove `LoopReacts` of `inProgram pre T (ctlMain k s0)` with `t0 = E0` and the window traces `ctlTrace`, for every `σ`, from `CtlRuns` for the step.
 - [x] The `Reads` fact for the windows, `CtlRuns` for `ctlCompiled` from its native theorem, and the filter's program theorem: `ctl_reads` states `Reads σ (E0 ++ windows (ctlTrace ctl s0 σ) n)`, the `reads` premise of `clight2_loop_to_asm`, with `windows` the twin of the Rocq definition.  `ctlRuns_of_nativeA` derives `CtlRuns` from `NativeA` of a step that cannot trap, and `filter_program` (`tests/TestSupport/Bare/Ctl.lean`) states `LoopReacts` of the filter's program for every `σ`.  `filter_program`, `loopReacts_export`, and `loopReacts_rename_on` depend on `propext`, `Classical.choice`, and `Quot.sound`, and `ctl_reads` on `propext` and `Quot.sound`.
-- [ ] Check, QEMU run, docs, commit, push.
+- [x] Check, QEMU run, docs, commit, push.
+
+### Results
+
+`tests/baremetal/ctl.sh` builds the filter's program, compares `clightgen`'s Clight with the program of `filter_program`, and runs it under QEMU `virt` with the register bank loaded from a file.  It passes under TCG and under KVM: the first 16 windows, 128 bytes of UART output, equal the states that `ctlStep` computes in Lean, and the static stack bound of `main` is 32 bytes.  `bm_stream` in `tests/baremetal/qemu.sh` reads a fixed number of UART bytes through a FIFO and then stops QEMU, since the program never returns and the startup code's report never comes.  The run therefore checks no high-water mark of the stack, and a program that stopped exactly after the expected bytes would pass under KVM, where QEMU exits with status 0 either way.  `tools/full-check` runs `ctl.sh` under TCG with the other bare-metal tests.
+
+The theorems compose as follows.  `filter_program` gives `LoopReacts` of the Coq file's program for every `σ`, `loopReacts_export` and `loopReacts_rename_on` carry it to the program inside `clightgen`, `ctl_reads` gives the `reads` premise, and `clight2_loop_to_asm` gives the reactive behavior of the Asm program and its uniqueness up to `traceinf_sim`.  The step from the Lean judgment to its Rocq twin is trusted, as for a termination, and `docs/trusted-base.md` lists the loop's twin definitions.
 
 ## 2026-11-04: Importing the Lean side into Rocq
 
