@@ -4,6 +4,7 @@ import TestSupport.Bare.Input
 import TestSupport.Bare.Ctl
 import TestSupport.Bare.Req
 import TestSupport.Bare.Records
+import Demos.Energy.Loop
 import LeanExe.Native.ClightCheck
 
 /-!
@@ -41,7 +42,9 @@ function with the words of its initial state and the theorem `LoopReacts` of its
 `native-bare emit-req DIR` writes each one's C text, its translation followed by `lx_reg` and the
 `main` of `reqMain`, and the names of its functions that take the call depth, and
 `native-bare check-req DIR` compares each whole program with the Clight that `clightgen` wrote
-for it.
+for it.  `native-bare gateway-run IN OUT` runs the energy controller's gateway in native Lean on
+the input records of `IN`, one line of 18 decimal words each, from its initial state, and writes
+its output records to `OUT`, one line of 6 words each, for comparison with a run of its program.
 -/
 
 open LeanExe.Native LClight Wasm
@@ -276,7 +279,30 @@ def reqCases : List ReqCase := [
   { name := "records", module := TestSupport.Bare.sumCompiled.module, cap := 1, k := 5,
     G := TestSupport.Bare.SumFrame, s0 := TestSupport.Bare.sumInit,
     words := TestSupport.Bare.sumWords, tick := TestSupport.Bare.sumTick,
-    thm := thm_of TestSupport.Bare.sumCompiled.translation_eq TestSupport.Bare.sum_program }]
+    thm := thm_of TestSupport.Bare.sumCompiled.translation_eq TestSupport.Bare.sum_program },
+  { name := "gateway", module := Demos.Energy.gwCompiled.module, cap := 1, k := 32,
+    G := Demos.Energy.GwFrame, s0 := Demos.Energy.gwInit, words := Demos.Energy.gwWords,
+    tick := Demos.Energy.gwTick,
+    thm := thm_of Demos.Energy.gwCompiled.translation_eq Demos.Energy.gw_program }]
+
+/-- The gateway's output records, one line of 6 words each, for the input records of the file
+`inPath`, one line of 18 words each, from the initial state `gw0`. -/
+def gatewayRun (inPath outPath : String) : IO UInt32 := do
+  let lines ← IO.FS.lines inPath
+  let mut g := Demos.Energy.gw0
+  let mut out : Array String := #[]
+  for line in lines do
+    let words := (line.splitOn " ").filter (· ≠ "")
+    let some ws := words.mapM (fun w => w.toNat?.map UInt64.ofNat)
+      | throw <| IO.userError s!"native-bare: gateway-run: not a record of words: {line}"
+    if ws.length != 18 then
+      throw <| IO.userError s!"native-bare: gateway-run: {ws.length} words, not 18: {line}"
+    let r := Demos.Energy.gateway g (Demos.Energy.GwIn.ofList ws)
+    g := r.1
+    out := out.push (" ".intercalate (r.2.toList.map toString))
+  IO.FS.writeFile outPath (String.join (out.toList.map (· ++ "\n")))
+  IO.println s!"native-bare: gateway-run: {out.size} records"
+  pure 0
 
 def emitReq (dir : String) (c : ReqCase) : IO Unit := do
   let some t := translate c.cap c.module
@@ -323,7 +349,7 @@ def check (dir : String) : IO UInt32 := do
 
 def usage : String :=
   "usage: native-bare emit|check|emit-in|check-in|emit-ctl|check-ctl|emit-req|check-req DIR, " ++
-    "or native-bare names"
+    "native-bare gateway-run IN OUT, or native-bare names"
 
 def main (args : List String) : IO UInt32 := do
   match args with
@@ -350,4 +376,5 @@ def main (args : List String) : IO UInt32 := do
       for c in reqCases do emitReq dir c
       pure 0
   | ["check-req", dir] => checkReq dir
+  | ["gateway-run", inPath, outPath] => gatewayRun inPath outPath
   | _ => throw <| IO.userError usage
