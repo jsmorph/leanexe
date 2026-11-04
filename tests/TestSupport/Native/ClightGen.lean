@@ -31,8 +31,10 @@ volatile` arrays of four elements of the same five types with random initial val
 `g_ins8`, `g_in16`, `g_in32`, and `g_in64`), and its statements also load from them into
 temporaries, in the form `Sbuiltin (Some t) (EF_vload chunk)` that SimplExpr gives a read of a
 volatile lvalue.  The index is usually masked to the array's bounds.  The reference interpreter
-answers each load with the initial value, as `LClight.world_vload` does, and a load outside the
-array is undefined for both.
+answers each load with the initial value, as `LClight.world_vload` does.  A load outside the
+array has no initial value, so both interpreters report it as undefined behavior, although
+CompCert's `volatile_load_vol` has no bounds premise and lets the load return any value of its
+type.  Such a program tests that the two interpreters agree, not that the semantics is stuck.
 -/
 
 namespace TestSupport.Native.ClightGen

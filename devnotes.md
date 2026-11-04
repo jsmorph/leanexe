@@ -41419,3 +41419,48 @@ The Lean theorems connect to CompCert's Rocq proofs through a trusted step: the 
 | Scale | The largest Lean 4 import found ([lf-lean](https://github.com/theorem-labs/lf-lean)) has at most 449 entries per export.  No import of Lean core, `Std`, or Mathlib is known |
 
 Relating the imported definitions to CompCert's would also need, by the agent's estimate, 10,000 to 20,000 lines of Rocq: `Nat`, `Int`, and the fixed-width words against `Z` and `Int64`, `Std.TreeMap` against `PTree`, the memory model with `Nat` blocks against `positive`, and Talos's floating point against Flocq.  Importing only the statement as a Rocq axiom would move the trust to Lean's kernel and the importer, and the closure would still carry the proofs inside definitions.  The route is set aside.  A Rocq-proved Clight evaluator, compared with `LClight.run` on `clightgen`'s ASTs, would strengthen the evidence at lower cost.  An experiment that exports `LoopReacts` with `lean4export` at `v4.34.0-rc2` and imports it under Rocq `dev` would test the predictions above.
+
+## 2026-11-04: Controller PoC, step 3: memory options
+
+A Cortex-M7 board has 512 KiB of SRAM, and the defaults do not fit it.  `nativeCap` gives `lx_mem` 4,096 pages (256 MiB), and every compiled module declares at least 16 pages (1 MiB), which the translation requires to lie within the cap (`Verified/Compile.lean:1170`, `LeanExe/Native/Translate.lean:1162`).  The floor of 16 dates from before the allocator called `memory.grow` (journal entry at line 1945).  The allocator now grows the memory on demand, so a module may start with one page.  The floor enters the proofs only through the initial store, `staticPages` and `tablePages` in `Verified/Instantiate.lean`, whose lemmas hold for any floor up to 65,535.
+
+### Design
+
+| Part | Change |
+|---|---|
+| Page floor | `compileWith` takes `minPages`, 16 by default, and declares `max minPages` of the pages that its static data needs.  The lemmas that `verified_compile` uses take it as well.  The default keeps every existing module, its bytes, and the committed `.wasm` files unchanged |
+| Native cap | `verified_compile` takes `(pages := N)` and `(cap := C)`: `N` is the floor, and the translation and every `p.f.native` use `C` pages for `lx_mem` instead of `nativeCap`.  `C` must be at least the module's declared pages, as the translation already checks |
+| Tests | The filter controller compiled with one page and a cap of one page, its theorem, the QEMU run, and a run in Wasmtime |
+
+`depthLimit` stays fixed at 1000.  It appears 76 times in 20 proof files, and a parameter would thread through the proofs of every function that takes the call depth.  No later step needs a smaller limit: the controller's step has no recursion, and QEMU's `mps2-an500` has 4 MiB of RAM, which holds the corpus's deepest recursion.  It becomes a parameter when a recursive module must fit a small stack.
+
+- [x] `minPages` in `compileWith`, `Instantiate.lean`, and the lemmas of `verified_compile`.  Each theorem whose statement names `compileWith` in `Correct.lean`, `ProgramStatic.lean`, `AlignedProgram.lean`, `Compile.lean`, `Call.lean`, `ModuleComposition.lean`, and `LiteralCodeEq.lean` takes an implicit `minPages`, which the expected type fixes at a use.  The initial-store theorems take it explicitly, 16 by default, with `minPages ≤ 65535` proved by `decide`.
+- [x] The options `pages` and `cap` of `verified_compile`, and `thm_of` of the bare-metal test over every cap.
+- [x] The filter at one page: `verified_compile (pages := 1) (cap := 1) ctlCompiled`, `filter_program` at cap 1, and `tests/baremetal/ctl.sh`, which passes under TCG and KVM with `lx_mem` of 8,192 words and in Wasmtime with the module of 1,463 bytes.  `emit-ctl` also writes the module, the initial state, and the step's export name.
+- [ ] Docs, commit, push.
+
+## 2026-11-04: Controller PoC, step 5: design of the request protocol
+
+Step 5 replaces the fixed register bank and output byte stream of step 2 with a device driven by requests.  A device such as the CMSDK UART of `mps2-an500` must be polled: the transmitter accepts a byte only when its status register shows room, and the receiver holds a byte only when its status register shows one.  The step function decides each access, so polling is part of the verified program, and a busy device costs windows instead of a wait loop inside `main`.
+
+| Part | Design |
+|---|---|
+| Step | `tick : UInt64 → UInt64 → UInt64 × UInt64`, from the state and the value of the last read to the new state and a request word.  A request is a read of register `r` or a write of `v` to register `r`.  Every window performs one access, so `W n ≠ []` holds without an idle request |
+| Registers | `volatile unsigned int lx_reg[]`, which the linker script places at the device's base address.  The register map, the offsets of data and status, is a parameter of the Lean specification, so a board with another UART changes the map and the linker script, not the program's form |
+| `main` | `lx_init`, then a loop: call the step on the state and the last value, then perform the request with one volatile 32-bit load or store of `lx_reg[r]`.  A write leaves the last value 0 |
+| Theorem | `LoopReacts` with window traces of one event each, computed by iterating `tick` over the values that the reads return.  The `k`-th volatile load reads `σ k`, counted over all windows, so `ctlState` becomes a fold that also counts reads |
+| Specification | Theorems about `tick` alone: every data store follows, in an earlier window, a status read that shows room, and every data read follows a status read that shows a byte |
+| Test | A host script on a socket, written for `uv run`, plays the far end of the UART under QEMU and checks each reply against native Lean |
+
+At 32 bits, `Tptr` is `Tint`, so CompCert lets a volatile load of an `unsigned int` register match a pointer event.  The Lean copy omits such events.  The uniqueness half of `clight2_loop_to_asm` at the ARM instance therefore needs the integer-load hypothesis of the 32-bit report: every volatile load of the program has an integer chunk and reads an integer event.  The existence half needs nothing more.
+
+## 2026-11-04: A Rocq evaluator of Clight against the Lean copy
+
+The Lean copy of Clight is trusted to mean what CompCert's Clight means, and the differential test compared it with `ccomp -interp`, which interprets CompCert C, so SimplExpr and `Csem` lay between the two semantics.  `rocq/ClightEval.v` is an evaluator of CompCert's Clight written for this comparison: structural evaluation of expressions, fuel-bounded execution of statements and calls with `function_entry2`, and volatile loads that read the initial memory of the program, as `world_vload` does.  `run_program_sound` proves that a run that returns gives `Clight2.bigstep_program_terminates`, from `exec_call_sound` and the lemma `init_mem_eq` that its initial memory is `Genv.init_mem p`.  Module `MemExec` restates the memory operations that `vm_compute` cannot reduce, because `Mem.range_perm_dec` recurs on an opaque proof of well-foundedness, and proves each equal to CompCert's.  The evaluator was written from CompCert's definitions.  An earlier experiment adapted an unlicensed evaluator from the sm64 proof project, and none of its code is in the repository.
+
+`tests/native/clight-rocq.sh DIR TREE` runs `clightgen` on the programs that `clight.sh` writes and checks, for each, a lemma proved by `vm_compute` that the evaluator's result prints the `.expected` text that `LClight.run` gave (`rocq/ClightPrint.v`).  On the 921 programs of seed 7 under the AArch64 tree, all agree: 371 undefined, 300 trace programs, and 300 input programs.  Each of the 550 programs that terminate thus has a kernel-checked execution of CompCert's Clight with the output that the Lean copy computed.  The undefined agreements show only that the evaluator is stuck, since completeness is not proved.  The `vm_compute` step averages 22 ms and the kernel check 21 ms per program, and the run takes 42 s on 19 cores.  `rocq/check.sh` checks `ClightEval.v` with assumptions among those of `transf_c_program_correct`.
+
+An input program whose volatile load falls outside its array is undefined for both interpreters, which have no value to return, although CompCert's `volatile_load_vol` lets the load return any value.  `ClightGen.lean`'s documentation now says so.  The comparison under the x86_64 and armv7m trees needs `.expected` files computed for those targets.
+
+- [x] Evaluator, soundness, printer, script, and the check.
+- [ ] Comparisons under the x86_64 and armv7m trees.
