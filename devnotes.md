@@ -41516,3 +41516,20 @@ A read is a volatile load of chunk `Mint32` with the event `Event_vload Mint32 r
 `tests/baremetal/req.sh` emits the echo program, checks the ARMv7-M `clightgen` read-back with `native-bare check-req`, builds it for `mps2-an500` with `lx_reg` at UART0's base, `0x40004000`, and runs `tests/baremetal/uart_echo.py` under `uv run`.  The host script connects to UART0 through a Unix-domain socket, sends 644 bytes one at a time and bursts of 2, 16, 322, and 65,536 bytes, and checks every reply against the byte with bit 5 flipped, as `cmsdkTick` computes.  It then holds 65,536 replies unread until QEMU's trace shows the transmitter waiting.  The run passes in 3.7 s, with a stack bound of 200 bytes for `main`.  Programs altered to ignore the transmitter's flag, to ignore the receiver's flag, or to leave the receiver disabled each fail: replies are lost, wrong, or missing.
 
 A TCP socket did not serve: QEMU's loopback connection grew its send buffer to 2.6 MB, so the transmitter never waited within the test's time, and a Unix-domain socket makes it wait after 278 unread replies.  QEMU 8.2.2's CMSDK UART holds one received byte and takes a byte from its character device only while that buffer is empty (`hw/char/cmsdk-apb-uart.c`, lines 115 to 124), so excess bytes wait in the socket and the model never overruns.  Real hardware overruns when the program reads too slowly, so the test checks polling and the flags, and nothing about overrun.  A write while the transmitter's flag is set replaces the waiting byte (lines 250 to 256), which is how the altered program loses replies.  `req.sh` needs the ARMv7-M tree, so `tools/full-check`, which uses the AArch64 tree, does not run it.
+
+## 2026-11-04: Controller PoC, step 6: design of clock reads and deadlines
+
+A deadline enters the theorem as a property of the trace: the clock is a device register, each read of it is a volatile load whose value the theorem quantifies over, and the step's specification requires that an output follows a clock read that meets its deadline.  The physical claim adds two assumptions, that the clock counts correctly and that the code between the clock read and the store takes less than a stated time.
+
+| Part | Design |
+|---|---|
+| Register bank | `lx_reg` at `0x40000000`, the base of `mps2-an500`'s APB devices, with the register index masked to 16 bits, so that one bank covers CMSDK Timer0 at `0x40000000` and UART0 at `0x40004000` (index `0x1000`).  The masks change from 255 to 65535 in `reqIndex` and `reqReg`; offsets stay below 256 KiB |
+| Timer | Timer0's `VALUE` register, index 1, counts down from `RELOAD`, index 2, at the system clock, with `CTRL`, index 0, enabling it.  The startup code sets `RELOAD` to its maximum and enables the timer |
+| Step | The echo with a deadline: after reading a byte, the step reads the timer and keeps the reading; before writing the reply, it reads the timer again and writes the reply only if fewer than `D` ticks have passed, and otherwise writes an error byte |
+| Theorem | Every reply follows, in an earlier window, a timer read whose value is within `D` ticks of the reading taken after the byte arrived |
+| Test | The host script measures nothing about time; it checks that every reply is the transformed byte or the error byte, and that replies arrive while QEMU's timer runs |
+
+- [ ] Widen the register index and move `lx_reg` to `0x40000000`, with the UART at index `0x1000`.
+- [ ] Timer setup in the startup code, and the step with a deadline.
+- [ ] The deadline theorem about the step.
+- [ ] The QEMU run.
