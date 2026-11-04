@@ -11,8 +11,10 @@
    4 KiB, the guard of 4 KiB that MPU region 0 denies, aligned to its size as MPU_RBAR requires
    (section B3.5.8, page B3-639), and the stack of STACK_SIZE bytes, which the linker's --defsym
    sets.  The sections after .data are loaded at their own addresses, so that the zeros that QEMU's
-   loader writes for them fall in SRAM.  lx_out is the data register of the CMSDK UART0 (Cortex-M
-   System Design Kit TRM, DDI 0479D, Table 4-7, page 4-9).  lx_in is the start of PSRAM, into which
+   loader writes for them fall in SRAM.  lx_reg is the array of the 32-bit registers of the CMSDK
+   UART0, whose index 0 is DATA, 1 STATE, 2 CTRL, and 4 BAUDDIV, and lx_out is its data register
+   (Cortex-M System Design Kit TRM, DDI 0479D, Table 4-7, page 4-9).  QEMU connects UART0 to its
+   first serial port (hw/arm/mps2.c, lines 287 to 308).  lx_in is the start of PSRAM, into which
    QEMU's generic loader places a program's input. */
 ENTRY(_start)
 MEMORY
@@ -54,6 +56,7 @@ SECTIONS
     . += STACK_SIZE;
     __stack_top = .;
   } >SRAM AT>SRAM
+  lx_reg = 0x40004000;
   lx_out = 0x40004000;
   lx_in = 0x60000000;
   ASSERT(__vectors == 0, "the vector table does not start at 0, the reset value of VTOR")

@@ -168,7 +168,7 @@ theorem ctl_program {m : Wasm.Module} {cap : Nat} {T : Translation}
     start_whole h hw A X
   set E := envWhole pre (inTail (ctlMain k s0)) T m.globals.length cap with hEdef
   have hidp : ∀ x : Nat, x ∈ (inTail (ctlMain k s0)).map (·.1) →
-      x = 4 ∨ x = 28 ∨ x = 32 := by
+      x = 0 ∨ x = 4 ∨ x = 28 ∨ x = 32 := by
     intro x hx
     simp only [inTail, List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil,
       or_false] at hx

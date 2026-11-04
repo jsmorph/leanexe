@@ -207,7 +207,7 @@ theorem wholeOk_of {m : Module} {cap : Nat} {T : Translation} (h : translate cap
     (hfun : ∀ d ∈ pre, ∃ f, d.2 = .Gfun f) (hpost : ∀ d ∈ post, Genv.InitShapeW d.2)
     (hnd : (pre.map (·.1)).Nodup) (hndp : (post.map (·.1)).Nodup)
     (hids : ∀ x : Nat, x ∈ pre.map (·.1) → x = 24 ∨ (x % 4 = 1 ∧ x ≠ 1))
-    (hidp : ∀ x : Nat, x ∈ post.map (·.1) → x = 4 ∨ x = 28 ∨ x = 32) :
+    (hidp : ∀ x : Nat, x ∈ post.map (·.1) → x = 0 ∨ x = 4 ∨ x = 28 ∨ x = 32) :
     WholeOk pre post T := by
   obtain ⟨decl, gdefs, funs, -, -, -, -, -, hfuns, hdefs⟩ := translate_defs h
   have hT : (T.cprogram.prog_defs.map (·.1)).Nodup := by
@@ -284,6 +284,28 @@ theorem wholeOk_in {m : Module} {cap : Nat} {T : Translation} (h : translate cap
     rcases hx with hx | hx | hx
     · have : x = 32 := hx; omega
     · have : x = 28 := hx; omega
+    · have : x = 4 := hx; omega
+
+/-- The whole program with requests: the prefix, the translation, `lx_reg`, and `main`. -/
+def reqProgram (pre : List (ident × globdef (fundef function) type)) (T : Translation)
+    (main : function) : program function :=
+  wholeProgram pre (reqTail main) T
+
+theorem wholeOk_req {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
+    {pre : List (ident × globdef (fundef function) type)} (hsq : (sqrtId, sqrtDef) ∈ pre)
+    (hfun : ∀ d ∈ pre, ∃ f, d.2 = .Gfun f) (hnd : (pre.map (·.1)).Nodup)
+    (hids : ∀ x : Nat, x ∈ pre.map (·.1) → x = 24 ∨ (x % 4 = 1 ∧ x ≠ 1)) (main : function) :
+    WholeOk pre (reqTail main) T := by
+  refine wholeOk_of h hsq hfun (fun d hd => ?_) hnd (by simp [reqTail, regId, mainId]) hids
+    (fun x hx => ?_)
+  · simp only [reqTail, List.mem_cons, List.not_mem_nil, or_false] at hd
+    rcases hd with rfl | rfl
+    · exact .inr ⟨regVar, rfl, rfl⟩
+    · exact .inl trivial
+  · simp only [reqTail, List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil,
+      or_false] at hx
+    rcases hx with hx | hx
+    · have : x = 0 := hx; omega
     · have : x = 4 := hx; omega
 
 /-! ## The initial memory -/

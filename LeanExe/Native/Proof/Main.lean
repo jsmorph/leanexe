@@ -675,7 +675,7 @@ theorem bare_program {m : Wasm.Module} {cap : Nat} {T : Translation}
   obtain ⟨decl, m0, m1, -, hinit, hmemi, hcalli, hst1, hs1, hE, hG, hcap, hnres, hF⟩ :=
     start_whole h hw A X
   have hidp : ∀ x : Nat, x ∈ (bareTail (bareMain cap k args kind)).map (·.1) →
-      x = 4 ∨ x = 28 ∨ x = 32 := by
+      x = 0 ∨ x = 4 ∨ x = 28 ∨ x = 32 := by
     intro x hx
     simp only [bareTail, List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil,
       or_false] at hx
