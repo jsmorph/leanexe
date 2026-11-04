@@ -1,4 +1,5 @@
 import LeanExe.WGSL.TranslateStmt
+import LeanExe.Source.Build
 
 import LeanExe.Dialect.Build
 
@@ -16,75 +17,36 @@ the element's halves.
 
 namespace LeanExe.WGSL
 
-inductive Kind where
-  | word
-  | float
-  | array
-  deriving DecidableEq, Repr
-
-/-- An argument of a kernel. -/
-inductive Arg where
-  | word (value : UInt64)
-  | float (bits : UInt32)
-  | array (xs : Array UInt64)
-
-def Arg.kind : Arg → Kind
-  | .word _ => .word
-  | .float _ => .float
-  | .array _ => .array
-
 /-- The buffer that holds an argument. -/
-def Arg.buffer : Arg → Array UInt32
+def _root_.LeanExe.Source.Arg.wgslBuffer : Source.Arg → Array UInt32
   | .word v => #[v.toUInt32, (v >>> 32).toUInt32]
   | .float bits => #[bits, 0]
   | .array xs => arrayWords xs
 
 /-- The WGSL value of an argument's variable: a word's pair, a binary32 value, or an array's
 length pair. -/
-def Arg.value : Arg → Value
+def _root_.LeanExe.Source.Arg.wgslValue : Source.Arg → Value
   | .word v => pairOf v
   | .float bits => .f32 bits
   | .array xs => .vec2 (UInt32.ofNat xs.size) 0
 
-/-- Where a build kernel's count comes from: the length of array parameter `src`, which local
-`sizeLocal` holds, or `u64` parameter `j`. -/
-inductive Count where
-  | size (sizeLocal src : Nat)
-  | param (j : Nat)
-
 /-- The variable that holds the count's pair. -/
-def Count.var : Count → Nat
+def _root_.LeanExe.Source.Count.wgslVar : Source.Count → Nat
   | .size _ src => 1 + src
   | .param j => 1 + j
 
-def Count.sizeLocal? : Count → Option Nat
-  | .size l _ => some l
-  | .param _ => none
-
-/-- A build kernel: the parameters' kinds, the build's index local, the count, the locals that
-the per-element statements assign with their types, a bound on the source locals, the per-element
-statements, and the element. -/
-structure Spec where
-  kinds : List Kind
-  index : Nat
-  count : Count
-  vars : List (Nat × Source.ScalarType)
-  width : Nat
-  body : Source.Stmt
-  element : Source.Expr .u64
-
 /-- The statement that binds parameter `j`'s variable from its buffer. -/
-def paramStmt (j : Nat) : Kind → Stmt
+def paramStmt (j : Nat) : Source.Kind → Stmt
   | .float => .let_ (1 + j) .f32 (.toF32 (.index j (.lit 0)))
   | _ => .let_ (1 + j) .vec2u (.vec2 (.index j (.lit 0)) (.index j (.lit 1)))
 
 /-- Variable 0 holds the index; variable `1 + j` holds parameter `j`, an array's length, or an
 assigned local `j`; the size local reads its array's length variable. -/
-def Spec.layout (K : Spec) : Layout where
+def _root_.LeanExe.Source.Spec.wgslLayout (K : Source.Spec) : Layout where
   scalar j :=
     if h : j < K.kinds.length then (if K.kinds[j] = .array then none else some (1 + j))
     else if j = K.index then some 0
-    else if K.count.sizeLocal? = some j then some K.count.var
+    else if K.count.sizeLocal? = some j then some K.count.wgslVar
     else if (K.vars.lookup j).isSome then some (1 + j)
     else none
   array a := if h : a < K.kinds.length then (if K.kinds[a] = .array then some (a, 1 + a) else none)
@@ -92,7 +54,7 @@ def Spec.layout (K : Spec) : Layout where
   assigned j := K.vars.lookup j
 
 /-- The prologue: the index pair, then each parameter's variable. -/
-def Spec.prologue (K : Spec) : List Stmt :=
+def _root_.LeanExe.Source.Spec.wgslPrologue (K : Source.Spec) : List Stmt :=
   .let_ 0 .vec2u (.vec2 .gidX (.lit 0)) :: (K.kinds.zipIdx.map fun (k, j) => paramStmt j k)
 
 /-- The zero of a source scalar type, as a WGSL expression and value. -/
@@ -107,45 +69,19 @@ def zeroValue : Source.ScalarType → Value
   | _ => .vec2 0 0
 
 /-- The declarations of the assigned locals' variables. -/
-def Spec.decls (K : Spec) : List Stmt :=
+def _root_.LeanExe.Source.Spec.wgslDecls (K : Source.Spec) : List Stmt :=
   K.vars.map fun (j, type) => .var (1 + j) (wgslTy type) (zeroExpr type)
 
 /-- The kernel, or `none` when the statements or the element are outside the translated subset. -/
-def Spec.module (K : Spec) : Option Module := do
+def _root_.LeanExe.Source.Spec.wgsl (K : Source.Spec) : Option Module := do
   let p := K.kinds.length
-  let (sb, n1) ← trStmt K.layout K.body (1 + K.width)
-  let (stmts, res, _) ← trExpr K.layout K.element n1
+  let (sb, n1) ← trStmt K.wgslLayout K.body (1 + K.width)
+  let (stmts, res, _) ← trExpr K.wgslLayout K.element n1
   pure { inputs := p, workgroupSize := 64
-         body := K.prologue ++ K.decls ++ [.ite (.not (lt64 0 K.count.var)) [.ret] []] ++ sb ++
+         body := K.wgslPrologue ++ K.wgslDecls ++ [.ite (.not (lt64 0 K.count.wgslVar)) [.ret] []] ++ sb ++
            stmts ++
            [.store p (.bin .add (.lit 2) (.bin .mul (.lit 2) (.fst 0))) (.fst res),
             .store p (.bin .add (.lit 3) (.bin .mul (.lit 2) (.fst 0))) (.snd res)] }
-
-/-- The source locals that the statements' denotation reads at index `k` with count `n`. -/
-def Spec.locals (K : Spec) (args : List Arg) (k n : Nat) (j : Nat) : Option Wasm.Value :=
-  if j = K.index then some (.i64 (UInt64.ofNat k))
-  else if K.count.sizeLocal? = some j then some (.i64 (UInt64.ofNat n))
-  else match args[j]? with
-    | some (.word v) => some (.i64 v)
-    | some (.float bits) => some (.f32 bits)
-    | _ => none
-
-def Spec.arrays (args : List Arg) (a : Nat) : Option (Array UInt64) :=
-  match args[a]? with
-  | some (.array xs) => some xs
-  | _ => none
-
-/-- The conditions on a kernel's own indices, checked by evaluation. -/
-def Spec.wfb (K : Spec) : Bool :=
-  decide (K.kinds.length ≤ K.index) && decide (K.index < K.width) &&
-  decide (K.kinds.length ≤ K.width) &&
-  (match K.count with
-    | .size l src => decide (K.kinds.length ≤ l) && decide (l < K.width) && decide (l ≠ K.index) &&
-        decide (K.kinds[src]? = some .array)
-    | .param j => decide (K.kinds[j]? = some .word)) &&
-  decide (K.vars.map (·.1)).Nodup &&
-  K.vars.all fun (j, _) => decide (K.kinds.length ≤ j) && decide (j < K.width) &&
-    decide (j ≠ K.index) && decide (K.count.sizeLocal? ≠ some j)
 
 theorem pairOf_ofNat (k : Nat) (hk : k < 2 ^ 32) : pairOf (UInt64.ofNat k) = .vec2 (UInt32.ofNat k) 0 := by
   simp only [pairOf, Value.vec2.injEq]
@@ -158,17 +94,17 @@ theorem pairOf_ofNat (k : Nat) (hk : k < 2 ^ 32) : pairOf (UInt64.ofNat k) = .ve
     omega
 
 /-- The value a parameter's statement binds. -/
-theorem paramStmt_eval (ctx : Context) (env : Env) (j : Nat) (a : Arg)
-    (hbuf : ctx.inputs[j]? = some a.buffer) (hsize : ∀ xs, a = .array xs → xs.size < 2 ^ 29) :
-    ∃ e ty, paramStmt j a.kind = .let_ (1 + j) ty e ∧ e.eval ctx env = some a.value ∧
-      ty.holds a.value = true := by
+theorem paramStmt_eval (ctx : Context) (env : Env) (j : Nat) (a : Source.Arg)
+    (hbuf : ctx.inputs[j]? = some a.wgslBuffer) (hsize : ∀ xs, a = .array xs → xs.size < 2 ^ 29) :
+    ∃ e ty, paramStmt j a.kind = .let_ (1 + j) ty e ∧ e.eval ctx env = some a.wgslValue ∧
+      ty.holds a.wgslValue = true := by
   cases a with
   | word v =>
-      refine ⟨_, _, rfl, ?_, by simp [Arg.value, pairOf, Ty.holds]⟩
-      simp [Expr.eval, hbuf, Arg.buffer, Arg.value, pairOf]
+      refine ⟨_, _, rfl, ?_, by simp [Source.Arg.wgslValue, pairOf, Ty.holds]⟩
+      simp [Expr.eval, hbuf, Source.Arg.wgslBuffer, Source.Arg.wgslValue, pairOf]
   | float bits =>
-      refine ⟨_, _, rfl, ?_, by simp [Arg.value, Ty.holds]⟩
-      simp [Expr.eval, hbuf, Arg.buffer, Arg.value]
+      refine ⟨_, _, rfl, ?_, by simp [Source.Arg.wgslValue, Ty.holds]⟩
+      simp [Expr.eval, hbuf, Source.Arg.wgslBuffer, Source.Arg.wgslValue]
   | array xs =>
       have hs := hsize xs rfl
       obtain ⟨h0, h1, -, -⟩ : (arrayWords xs)[0]? = some (UInt32.ofNat xs.size) ∧
@@ -181,17 +117,17 @@ theorem paramStmt_eval (ctx : Context) (env : Env) (j : Nat) (a : Arg)
           apply UInt32.toNat_inj.mp
           simp [UInt64.toNat_shiftRight]
           omega
-      refine ⟨_, _, rfl, ?_, by simp [Arg.value, Ty.holds]⟩
-      simp [Expr.eval, hbuf, Arg.buffer, Arg.value, h0, h1]
+      refine ⟨_, _, rfl, ?_, by simp [Source.Arg.wgslValue, Ty.holds]⟩
+      simp [Expr.eval, hbuf, Source.Arg.wgslBuffer, Source.Arg.wgslValue, h0, h1]
 
 /-- The parameters' statements bind each parameter's variable. -/
 theorem params_run (ctx : Context) (writes : List (Nat × UInt32)) :
-    ∀ (rest : List Arg) (n : Nat) (env : Env),
-    (∀ i a, rest[i]? = some a → ctx.inputs[n + i]? = some a.buffer) →
-    (∀ xs, Arg.array xs ∈ rest → xs.size < 2 ^ 29) →
+    ∀ (rest : List Source.Arg) (n : Nat) (env : Env),
+    (∀ i a, rest[i]? = some a → ctx.inputs[n + i]? = some a.wgslBuffer) →
+    (∀ xs, Source.Arg.array xs ∈ rest → xs.size < 2 ^ 29) →
     (∀ m, n + 1 ≤ m → Env.find env m = none) →
     Stmt.execList ctx ⟨env, writes, false⟩ ((rest.zipIdx n).map fun (a, j) => paramStmt j a.kind) =
-      some ⟨((rest.zipIdx n).map fun (a, j) => (1 + j, a.value, false)).reverse ++ env, writes, false⟩ := by
+      some ⟨((rest.zipIdx n).map fun (a, j) => (1 + j, a.wgslValue, false)).reverse ++ env, writes, false⟩ := by
   intro rest
   induction rest with
   | nil => intro n env _ _ _; simp [Stmt.execList]
@@ -204,19 +140,19 @@ theorem params_run (ctx : Context) (writes : List (Nat × UInt32)) :
       have hfree : Env.find env (1 + n) = none := hfresh (1 + n) (by omega)
       simp only [Stmt.exec, hev, Option.bind_eq_bind, Option.bind_some, hty, hfree, Option.isNone_none,
         Bool.and_self, ite_true]
-      rw [ih (n + 1) ((1 + n, a.value, false) :: env)
+      rw [ih (n + 1) ((1 + n, a.wgslValue, false) :: env)
         (fun i b hb => by have := hbuf (i + 1) b (by simpa using hb); rwa [show n + (i + 1) = n + 1 + i by omega] at this)
         (fun xs h => hsize xs (by simp [h]))
         (fun m hm => by
-          rw [Env.find_cons_ne env (1 + n) m a.value false (by omega)]
+          rw [Env.find_cons_ne env (1 + n) m a.wgslValue false (by omega)]
           exact hfresh m (by omega))]
       simp [List.reverse_cons]
 
 /-- The bindings the parameters' statements add. -/
-def paramBindings (args : List Arg) (n : Nat) : Env :=
-  ((args.zipIdx n).map fun (a, j) => (1 + j, a.value, false)).reverse
+def paramBindings (args : List Source.Arg) (n : Nat) : Env :=
+  ((args.zipIdx n).map fun (a, j) => (1 + j, a.wgslValue, false)).reverse
 
-theorem paramBindings_names (args : List Arg) (n : Nat) :
+theorem paramBindings_names (args : List Source.Arg) (n : Nat) :
     ∀ b ∈ paramBindings args n, n + 1 ≤ b.1 ∧ b.1 < n + 1 + args.length := by
   intro b hb
   simp only [paramBindings, List.mem_reverse, List.mem_map] at hb
@@ -225,9 +161,9 @@ theorem paramBindings_names (args : List Arg) (n : Nat) :
   simp only at this ⊢
   omega
 
-theorem find_paramBindings (args : List Arg) :
-    ∀ (env : Env) (n j : Nat) (a : Arg), args[j]? = some a →
-      Env.find (paramBindings args n ++ env) (1 + (n + j)) = some (a.value, false) := by
+theorem find_paramBindings (args : List Source.Arg) :
+    ∀ (env : Env) (n j : Nat) (a : Source.Arg), args[j]? = some a →
+      Env.find (paramBindings args n ++ env) (1 + (n + j)) = some (a.wgslValue, false) := by
   induction args with
   | nil => intro env n j a h; simp at h
   | cons x rest ih =>
@@ -243,89 +179,30 @@ theorem find_paramBindings (args : List Arg) :
           simp [Env.find]
       | succ j =>
           simp only [List.getElem?_cons_succ] at h
-          have := ih ((1 + n, x.value, false) :: env) (n + 1) j a h
+          have := ih ((1 + n, x.wgslValue, false) :: env) (n + 1) j a h
           rw [show 1 + (n + (j + 1)) = 1 + (n + 1 + j) by omega]
           simpa [paramBindings, List.append_assoc] using this
 
-theorem zipIdx_map_kind (args : List Arg) (n : Nat) :
-    ((args.map Arg.kind).zipIdx n).map (fun (k, j) => paramStmt j k) =
+theorem zipIdx_map_kind (args : List Source.Arg) (n : Nat) :
+    ((args.map Source.Arg.kind).zipIdx n).map (fun (k, j) => paramStmt j k) =
       (args.zipIdx n).map fun (a, j) => paramStmt j a.kind := by
   induction args generalizing n with
   | nil => rfl
   | cons a rest ih => simp [List.zipIdx_cons, ih]
 
-/-- The conditions a kernel's arguments satisfy, with count `n`. -/
-structure Spec.Fits (K : Spec) (args : List Arg) (n : Nat) : Prop where
-  kinds : args.map Arg.kind = K.kinds
-  sizes : ∀ ys, Arg.array ys ∈ args → ys.size < 2 ^ 29
-  count : match K.count with
-    | .size _ src => ∃ xs, args[src]? = some (.array xs) ∧ xs.size = n
-    | .param j => args[j]? = some (.word (UInt64.ofNat n))
-  bound : n < 2 ^ 29
-
-/-- The facts that `Spec.wfb` checks. -/
-structure Spec.WF (K : Spec) : Prop where
-  index : K.kinds.length ≤ K.index
-  indexW : K.index < K.width
-  kindsW : K.kinds.length ≤ K.width
-  count : match K.count with
-    | .size l src => K.kinds.length ≤ l ∧ l < K.width ∧ l ≠ K.index ∧ K.kinds[src]? = some .array
-    | .param j => K.kinds[j]? = some .word
-  nodup : (K.vars.map (·.1)).Nodup
-  vars : ∀ j type, (j, type) ∈ K.vars → K.kinds.length ≤ j ∧ j < K.width ∧ j ≠ K.index ∧
-    K.count.sizeLocal? ≠ some j
-
-theorem Spec.wf_of_wfb (K : Spec) (h : K.wfb = true) : K.WF := by
-  simp only [Spec.wfb, Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true] at h
-  obtain ⟨⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩ := h
-  refine ⟨h1, h2, h3, ?_, h5, fun j type hj => ?_⟩
-  · cases hc : K.count <;> simp_all
-  · have h' := h6 (j, type) hj
-    simp only [Bool.and_eq_true, decide_eq_true_eq] at h'
-    exact ⟨h'.1.1.1, h'.1.1.2, h'.1.2, h'.2⟩
-
-theorem lookup_mem {vars : List (Nat × Source.ScalarType)} {j : Nat}
-    {type : Source.ScalarType} (h : vars.lookup j = some type) : (j, type) ∈ vars := by
-  induction vars with
-  | nil => simp at h
-  | cons x vars ih =>
-      obtain ⟨a, t⟩ := x
-      by_cases ha : j = a
-      · subst ha
-        simp only [List.lookup_cons, BEq.rfl, Option.some.injEq] at h
-        subst h
-        simp
-      · simp only [List.lookup_cons, show (j == a) = false by simpa using ha] at h
-        exact List.mem_cons_of_mem _ (ih h)
-
-theorem lookup_of_mem {vars : List (Nat × Source.ScalarType)} (hnd : (vars.map (·.1)).Nodup)
-    {j : Nat} {type : Source.ScalarType} (h : (j, type) ∈ vars) : vars.lookup j = some type := by
-  induction vars with
-  | nil => cases h
-  | cons x vars ih =>
-      obtain ⟨a, t⟩ := x
-      simp only [List.map_cons, List.nodup_cons, List.mem_map] at hnd
-      rcases List.mem_cons.mp h with h | h
-      · simp only [Prod.mk.injEq] at h
-        obtain ⟨rfl, rfl⟩ := h
-        simp
-      · have hne : j ≠ a := fun hj => hnd.1 ⟨(j, type), h, by simp [hj]⟩
-        simp only [List.lookup_cons, show (j == a) = false by simpa using hne]
-        exact ih hnd.2 h
-
-theorem Spec.layout_var (K : Spec) (hK : K.WF) {j : Nat} {type : Source.ScalarType}
-    (h : (j, type) ∈ K.vars) : K.layout.scalar j = some (1 + j) := by
+theorem _root_.LeanExe.Source.Spec.wgslLayout_var (K : Source.Spec) (hK : K.WF) {j : Nat} {type : Source.ScalarType}
+    (h : (j, type) ∈ K.vars) : K.wgslLayout.scalar j = some (1 + j) := by
   obtain ⟨h1, h2, h3, h4⟩ := hK.vars j type h
-  have hl : (K.vars.lookup j).isSome := by simp [lookup_of_mem hK.nodup h]
-  simp only [Spec.layout, show ¬ j < K.kinds.length by omega, dite_false, h3, ↓reduceIte, hl]
+  have hl : (K.vars.lookup j).isSome := by simp [Source.lookup_of_mem hK.nodup h]
+  simp only [Source.Spec.wgslLayout, show ¬ j < K.kinds.length by omega, dite_false, h3, ↓reduceIte, hl]
   split
   · rename_i hc; exact absurd hc h4
   · rfl
 
-theorem Spec.layout_below (K : Spec) (hK : K.WF) : K.layout.Below (1 + K.width) := by
+theorem _root_.LeanExe.Source.Spec.wgslLayout_below (K : Source.Spec) (hK : K.WF) : K.wgslLayout.Below (1 + K.width) := by
   have hc := hK.count
   refine ⟨fun j w hw => ?_, fun a b len hF => ?_⟩
-  · simp only [Spec.layout] at hw
+  · simp only [Source.Spec.wgslLayout] at hw
     split at hw
     · split at hw
       · cases hw
@@ -340,34 +217,34 @@ theorem Spec.layout_below (K : Spec) (hK : K.WF) : K.layout.Below (1 + K.width) 
               intro hc
               have := (List.getElem?_eq_some_iff.mp hc.2.2.2).1
               have := hK.kindsW
-              simp [Count.var]; omega
+              simp [Source.Count.wgslVar]; omega
           | param j' =>
               intro hc
               have := (List.getElem?_eq_some_iff.mp hc).1
               have := hK.kindsW
-              simp [Count.var]; omega
+              simp [Source.Count.wgslVar]; omega
         · split at hw
           · cases hw
             rename_i hl
             obtain ⟨type, ht⟩ := Option.isSome_iff_exists.mp hl
-            have := (hK.vars j type (lookup_mem ht)).2.1
+            have := (hK.vars j type (Source.lookup_mem ht)).2.1
             omega
           · cases hw
-  · simp only [Spec.layout] at hF
+  · simp only [Source.Spec.wgslLayout] at hF
     split at hF
     · split at hF
       · cases hF; have := hK.kindsW; omega
       · cases hF
     · cases hF
 
-theorem Spec.layout_distinct (K : Spec) (hK : K.WF) : K.layout.Distinct := by
+theorem _root_.LeanExe.Source.Spec.wgslLayout_distinct (K : Source.Spec) (hK : K.WF) : K.wgslLayout.Distinct := by
   have hc := hK.count
   refine ⟨fun j j' type w hj hw hw' => ?_, fun j type w a b len hj hw hF => ?_⟩
-  · have hmem := lookup_mem (show K.vars.lookup j = some type from hj)
-    rw [K.layout_var hK hmem] at hw
+  · have hmem := Source.lookup_mem (show K.vars.lookup j = some type from hj)
+    rw [K.wgslLayout_var hK hmem] at hw
     obtain rfl := (Option.some.inj hw).symm
     obtain ⟨hp, hwid, hi, hs⟩ := hK.vars j type hmem
-    simp only [Spec.layout] at hw'
+    simp only [Source.Spec.wgslLayout] at hw'
     split at hw'
     · split at hw'
       · cases hw'
@@ -384,22 +261,22 @@ theorem Spec.layout_distinct (K : Spec) (hK : K.WF) : K.layout.Distinct := by
           | size l src =>
               intro hc hcv
               have := (List.getElem?_eq_some_iff.mp hc.2.2.2).1
-              simp only [Count.var] at hcv
+              simp only [Source.Count.wgslVar] at hcv
               omega
           | param j'' =>
               intro hc hcv
               have := (List.getElem?_eq_some_iff.mp hc).1
-              simp only [Count.var] at hcv
+              simp only [Source.Count.wgslVar] at hcv
               omega
         · split at hw'
           · have := Option.some.inj hw'
             omega
           · cases hw'
-  · have hmem := lookup_mem (show K.vars.lookup j = some type from hj)
-    rw [K.layout_var hK hmem] at hw
+  · have hmem := Source.lookup_mem (show K.vars.lookup j = some type from hj)
+    rw [K.wgslLayout_var hK hmem] at hw
     obtain rfl := (Option.some.inj hw).symm
     obtain ⟨hp, -, -, -⟩ := hK.vars j type hmem
-    simp only [Spec.layout] at hF
+    simp only [Source.Spec.wgslLayout] at hF
     split at hF
     · split at hF
       · rename_i ha _
@@ -409,9 +286,9 @@ theorem Spec.layout_distinct (K : Spec) (hK : K.WF) : K.layout.Distinct := by
       · cases hF
     · cases hF
 
-theorem Spec.agrees (K : Spec) (hK : K.WF) (args : List Arg) (n : Nat) (h : K.Fits args n)
-    (ctx : Context) (hin : ctx.inputs = args.map Arg.buffer) (g : Nat) (hg : g < 2 ^ 32) :
-    K.layout.Agrees (K.locals args g n) (Spec.arrays args) ctx
+theorem _root_.LeanExe.Source.Spec.wgsl_agrees (K : Source.Spec) (hK : K.WF) (args : List Source.Arg) (n : Nat) (h : K.Fits args n)
+    (ctx : Context) (hin : ctx.inputs = args.map Source.Arg.wgslBuffer) (g : Nat) (hg : g < 2 ^ 32) :
+    K.wgslLayout.Agrees (K.locals args g n) (Source.Spec.arrays args) ctx
       (paramBindings args 0 ++ [(0, .vec2 (UInt32.ofNat g) 0, false)]) := by
   have hlen : args.length = K.kinds.length := by rw [← h.kinds, List.length_map]
   have hfind0 : Env.find (paramBindings args 0 ++ [(0, .vec2 (UInt32.ofNat g) 0, false)]) 0 =
@@ -420,7 +297,7 @@ theorem Spec.agrees (K : Spec) (hK : K.WF) (args : List Arg) (n : Nat) (h : K.Fi
     simp [Env.find]
   have hfindj : ∀ j a, args[j]? = some a →
       Env.find (paramBindings args 0 ++ [(0, .vec2 (UInt32.ofNat g) 0, false)]) (1 + j) =
-        some (a.value, false) := fun j a hj => by
+        some (a.wgslValue, false) := fun j a hj => by
     simpa using find_paramBindings args _ 0 j a hj
   have hkind : ∀ j (hj : j < K.kinds.length), K.kinds[j] = (args[j]'(by omega)).kind := by
     intro j hj
@@ -430,12 +307,12 @@ theorem Spec.agrees (K : Spec) (hK : K.WF) (args : List Arg) (n : Nat) (h : K.Fi
     simpa using this.symm
   have hidx := hK.index
   refine ⟨fun j v hj => ?_, fun j b hj => ?_, fun a ys ha => ?_⟩
-  · simp only [Spec.locals] at hj
+  · simp only [Source.Spec.locals] at hj
     by_cases hji : j = K.index
     · subst hji
       simp only [ite_true, Option.some.injEq, Wasm.Value.i64.injEq] at hj
       subst hj
-      refine ⟨0, false, by simp [Spec.layout, show ¬ K.index < K.kinds.length by omega],
+      refine ⟨0, false, by simp [Source.Spec.wgslLayout, show ¬ K.index < K.kinds.length by omega],
         by rw [hfind0, pairOf_ofNat g hg]⟩
     · by_cases hjs : K.count.sizeLocal? = some j
       · simp only [hji, ite_false, hjs, ite_true, Option.some.injEq, Wasm.Value.i64.injEq] at hj
@@ -443,16 +320,16 @@ theorem Spec.agrees (K : Spec) (hK : K.WF) (args : List Arg) (n : Nat) (h : K.Fi
         have hc := hK.count
         have hf := h.count
         cases hcount : K.count with
-        | param j' => rw [hcount] at hjs; simp [Count.sizeLocal?] at hjs
+        | param j' => rw [hcount] at hjs; simp [Source.Count.sizeLocal?] at hjs
         | size l src =>
             rw [hcount] at hc hf hjs
-            simp only [Count.sizeLocal?, Option.some.injEq] at hjs
+            simp only [Source.Count.sizeLocal?, Option.some.injEq] at hjs
             subst hjs
             simp only at hc hf
             obtain ⟨xs, hxs, hn⟩ := hf
             refine ⟨1 + src, false, ?_, ?_⟩
-            · simp [Spec.layout, show ¬ l < K.kinds.length by omega, hc.2.2.1, hcount,
-                Count.sizeLocal?, Count.var]
+            · simp [Source.Spec.wgslLayout, show ¬ l < K.kinds.length by omega, hc.2.2.1, hcount,
+                Source.Count.sizeLocal?, Source.Count.wgslVar]
             · rw [hfindj _ _ hxs, pairOf_ofNat n (by have := h.bound; omega), ← hn]
               rfl
       · simp only [hji, hjs, ite_false] at hj
@@ -464,11 +341,11 @@ theorem Spec.agrees (K : Spec) (hK : K.WF) (args : List Arg) (n : Nat) (h : K.Fi
             obtain ⟨hj', _⟩ := List.getElem?_eq_some_iff.mp hv; omega
           refine ⟨1 + j, false, ?_, by rw [hfindj _ _ hv]; rfl⟩
           have : K.kinds[j] = .word := by
-            rw [hkind j hjl]; rw [List.getElem?_eq_some_iff] at hv; obtain ⟨_, hv⟩ := hv; simp [hv, Arg.kind]
-          simp [Spec.layout, hjl, this]
+            rw [hkind j hjl]; rw [List.getElem?_eq_some_iff] at hv; obtain ⟨_, hv⟩ := hv; simp [hv, Source.Arg.kind]
+          simp [Source.Spec.wgslLayout, hjl, this]
         · simp at hj
         · simp at hj
-  · simp only [Spec.locals] at hj
+  · simp only [Source.Spec.locals] at hj
     by_cases hji : j = K.index
     · simp only [hji, ite_true] at hj; cases hj
     · by_cases hjs : K.count.sizeLocal? = some j
@@ -483,10 +360,10 @@ theorem Spec.agrees (K : Spec) (hK : K.WF) (args : List Arg) (n : Nat) (h : K.Fi
             obtain ⟨hj', _⟩ := List.getElem?_eq_some_iff.mp hv; omega
           refine ⟨1 + j, false, ?_, by rw [hfindj _ _ hv]; rfl⟩
           have : K.kinds[j] = .float := by
-            rw [hkind j hjl]; rw [List.getElem?_eq_some_iff] at hv; obtain ⟨_, hv⟩ := hv; simp [hv, Arg.kind]
-          simp [Spec.layout, hjl, this]
+            rw [hkind j hjl]; rw [List.getElem?_eq_some_iff] at hv; obtain ⟨_, hv⟩ := hv; simp [hv, Source.Arg.kind]
+          simp [Source.Spec.wgslLayout, hjl, this]
         · simp at hj
-  · simp only [Spec.arrays] at ha
+  · simp only [Source.Spec.arrays] at ha
     split at ha
     · rename_i ys' hv
       simp only [Option.some.injEq] at ha
@@ -495,8 +372,8 @@ theorem Spec.agrees (K : Spec) (hK : K.WF) (args : List Arg) (n : Nat) (h : K.Fi
         obtain ⟨ha', _⟩ := List.getElem?_eq_some_iff.mp hv; omega
       refine ⟨h.sizes _ (List.mem_of_getElem? hv), a, 1 + a, ?_, ?_, by rw [hfindj _ _ hv]; rfl⟩
       · have : K.kinds[a] = .array := by
-          rw [hkind a hal]; rw [List.getElem?_eq_some_iff] at hv; obtain ⟨_, hv⟩ := hv; simp [hv, Arg.kind]
-        simp [Spec.layout, hal, this]
+          rw [hkind a hal]; rw [List.getElem?_eq_some_iff] at hv; obtain ⟨_, hv⟩ := hv; simp [hv, Source.Arg.kind]
+        simp [Source.Spec.wgslLayout, hal, this]
       · rw [hin, List.getElem?_map, hv]; rfl
     · simp at ha
 
@@ -557,20 +434,20 @@ theorem declBindings_names (vars : List (Nat × Source.ScalarType)) :
 
 /-- What invocation `g` of a build kernel stores: element `g`'s halves when `g` is below the
 count, and nothing otherwise. -/
-theorem Spec.invoke_eq (K : Spec) (hK : K.WF) (m : Module) (hm : K.module = some m)
-    (args : List Arg) (n : Nat) (h : K.Fits args n) (f : UInt64 → UInt64)
-    (hElem : ∀ k, k < n → ∃ L', K.body.denote (Spec.arrays args) (K.locals args k n) = some L' ∧
-      K.element.denote L' (Spec.arrays args) = some (f (UInt64.ofNat k)))
+theorem _root_.LeanExe.Source.Spec.wgsl_invoke (K : Source.Spec) (hK : K.WF) (m : Module) (hm : K.wgsl = some m)
+    (args : List Source.Arg) (n : Nat) (h : K.Fits args n) (f : UInt64 → UInt64)
+    (hElem : ∀ k, k < n → ∃ L', K.body.denote (Source.Spec.arrays args) (K.locals args k n) = some L' ∧
+      K.element.denote L' (Source.Spec.arrays args) = some (f (UInt64.ofNat k)))
     (outputSize : Nat) (hOut : outputSize = 2 + 2 * n) (g : Nat) (hg : g < 2 ^ 32) :
-    m.invoke (args.map Arg.buffer) outputSize (UInt32.ofNat g) =
+    m.invoke (args.map Source.Arg.wgslBuffer) outputSize (UInt32.ofNat g) =
       some (if g < n then [(2 + 2 * g, (f (UInt64.ofNat g)).toUInt32),
         (3 + 2 * g, (f (UInt64.ofNat g) >>> 32).toUInt32)] else []) := by
-  simp only [Spec.module, Option.bind_eq_bind] at hm
-  cases hsb : trStmt K.layout K.body (1 + K.width) with
+  simp only [Source.Spec.wgsl, Option.bind_eq_bind] at hm
+  cases hsb : trStmt K.wgslLayout K.body (1 + K.width) with
   | none => simp [hsb] at hm
   | some rb =>
   obtain ⟨sb, n1⟩ := rb
-  cases htr : trExpr K.layout K.element n1 with
+  cases htr : trExpr K.wgslLayout K.element n1 with
   | none => simp [hsb, htr] at hm
   | some r =>
     obtain ⟨stmts, res, next'⟩ := r
@@ -581,11 +458,11 @@ theorem Spec.invoke_eq (K : Spec) (hK : K.WF) (m : Module) (hm : K.module = some
     have hidx := hK.index
     unfold Module.invoke
     rw [if_pos (by simp [hlen])]
-    set ctx : Context := { gid := UInt32.ofNat g, inputs := args.map Arg.buffer, outputSize }
+    set ctx : Context := { gid := UInt32.ofNat g, inputs := args.map Source.Arg.wgslBuffer, outputSize }
       with hctx
     set envP := paramBindings args 0 ++ [(0, .vec2 (UInt32.ofNat g) 0, false)] with henvP
-    have hpro : Stmt.execList ctx ⟨[], [], false⟩ K.prologue = some ⟨envP, [], false⟩ := by
-      simp only [Spec.prologue, Stmt.execList, Bool.false_eq_true, ite_false, Stmt.exec,
+    have hpro : Stmt.execList ctx ⟨[], [], false⟩ K.wgslPrologue = some ⟨envP, [], false⟩ := by
+      simp only [Source.Spec.wgslPrologue, Stmt.execList, Bool.false_eq_true, ite_false, Stmt.exec,
         Expr.eval, Option.bind_eq_bind, Option.bind_some, Ty.holds, Env.find, List.find?_nil,
         Option.map_none, Option.isNone_none, Bool.and_self, ite_true]
       rw [← h.kinds, zipIdx_map_kind args 0]
@@ -605,7 +482,7 @@ theorem Spec.invoke_eq (K : Spec) (hK : K.WF) (m : Module) (hm : K.module = some
     have hVnames : ∀ x ∈ K.vars, K.kinds.length ≤ x.1 ∧ x.1 < K.width := fun x hx => by
       have := hK.vars x.1 x.2 hx; exact ⟨this.1, this.2.1⟩
     set envD := declBindings K.vars ++ envP with henvD
-    have hdecl : Stmt.execList ctx ⟨envP, [], false⟩ K.decls = some ⟨envD, [], false⟩ :=
+    have hdecl : Stmt.execList ctx ⟨envP, [], false⟩ K.wgslDecls = some ⟨envD, [], false⟩ :=
       decls_run ctx [] K.vars envP hK.nodup fun x hx =>
         find_none_of_names hPnames (1 + x.1) (by have := hVnames x hx; omega)
     have hDnames : ∀ b ∈ envD, b.1 < 1 + K.width := by
@@ -623,15 +500,15 @@ theorem Spec.invoke_eq (K : Spec) (hK : K.WF) (m : Module) (hm : K.module = some
       rw [henvP, Env.find_append_fresh _ _ 0 (fun b hb => by
         have := paramBindings_names args 0 b hb; omega), pairOf_ofNat g hg]
       simp [Env.find]
-    have hfindC : Env.find envD K.count.var = some (pairOf (UInt64.ofNat n), false) := by
+    have hfindC : Env.find envD K.count.wgslVar = some (pairOf (UInt64.ofNat n), false) := by
       have hc := hK.count
       have hf := h.count
-      have hCvar : K.count.var < 1 + K.kinds.length := by
+      have hCvar : K.count.wgslVar < 1 + K.kinds.length := by
         revert hc
         cases K.count with
         | size l src =>
-            intro hc; have := (List.getElem?_eq_some_iff.mp hc.2.2.2).1; simp [Count.var]; omega
-        | param j => intro hc; have := (List.getElem?_eq_some_iff.mp hc).1; simp [Count.var]; omega
+            intro hc; have := (List.getElem?_eq_some_iff.mp hc.2.2.2).1; simp [Source.Count.wgslVar]; omega
+        | param j => intro hc; have := (List.getElem?_eq_some_iff.mp hc).1; simp [Source.Count.wgslVar]; omega
       rw [henvD, Env.find_append_fresh _ _ _ (fun b hb => by
         obtain ⟨x, hx, rfl⟩ := declBindings_names K.vars b hb
         have := hVnames x hx; simp; omega)]
@@ -641,11 +518,11 @@ theorem Spec.invoke_eq (K : Spec) (hK : K.WF) (m : Module) (hm : K.module = some
           intro hf _
           obtain ⟨xs, hxs, hxn⟩ := hf
           rw [pairOf_ofNat n (by omega), ← hxn]
-          simpa [Arg.value, Count.var] using find_paramBindings args _ 0 src _ hxs
+          simpa [Source.Arg.wgslValue, Source.Count.wgslVar] using find_paramBindings args _ 0 src _ hxs
       | param j =>
           intro hf _
-          simpa [Arg.value, Count.var] using find_paramBindings args _ 0 j _ hf
-    have hguard := lt64_word ctx envD 0 K.count.var _ _ hfind0 hfindC
+          simpa [Source.Arg.wgslValue, Source.Count.wgslVar] using find_paramBindings args _ 0 j _ hf
+    have hguard := lt64_word ctx envD 0 K.count.wgslVar _ _ hfind0 hfindC
     have hcmp : decide (UInt64.ofNat g < UInt64.ofNat n) = decide (g < n) := by
       simp only [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat']
       rw [Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
@@ -653,27 +530,27 @@ theorem Spec.invoke_eq (K : Spec) (hK : K.WF) (m : Module) (hm : K.module = some
     by_cases hgn : g < n
     · -- The guard passes; the statements and the element run; the two stores follow.
       have hite : Stmt.execList ctx ⟨envD, [], false⟩
-          [.ite (.not (lt64 0 K.count.var)) [.ret] []] = some ⟨envD, [], false⟩ := by
+          [.ite (.not (lt64 0 K.count.wgslVar)) [.ret] []] = some ⟨envD, [], false⟩ := by
         simp [Stmt.execList, Stmt.exec, Expr.eval, hguard, hcmp, hgn]
       rw [hite, Option.bind_some]
       obtain ⟨L', hden, hel⟩ := hElem g hgn
-      have hB := K.layout_below hK
-      have hD := K.layout_distinct hK
-      have hAgreeD : K.layout.Agrees (K.locals args g n) (Spec.arrays args) ctx envD :=
-        (K.agrees hK args n h ctx rfl g hg).extend _ hdeclFresh
-      have hW : K.layout.Writable envD := by
+      have hB := K.wgslLayout_below hK
+      have hD := K.wgslLayout_distinct hK
+      have hAgreeD : K.wgslLayout.Agrees (K.locals args g n) (Source.Spec.arrays args) ctx envD :=
+        (K.wgsl_agrees hK args n h ctx rfl g hg).extend _ hdeclFresh
+      have hW : K.wgslLayout.Writable envD := by
         intro j type hj
-        have hmem := lookup_mem (show K.vars.lookup j = some type from hj)
-        refine ⟨1 + j, zeroValue type, K.layout_var hK hmem, ?_, zero_holds type⟩
+        have hmem := Source.lookup_mem (show K.vars.lookup j = some type from hj)
+        refine ⟨1 + j, zeroValue type, K.wgslLayout_var hK hmem, ?_, zero_holds type⟩
         rw [henvD]
         refine Env.find_append_left (Env.find_of_mem (declBindings_nodup K.vars hK.nodup) ?_)
         simp only [declBindings, List.mem_reverse, List.mem_map]
         exact ⟨(j, type), hmem, rfl⟩
       have hFreshD : ∀ k, 1 + K.width ≤ k → Env.find envD k = none := find_none_of_names hDnames
-      obtain ⟨added1, E1, hrun1, hS1, hb1, hA1, hW1⟩ := trStmt_sim K.layout hD (Spec.arrays args)
+      obtain ⟨added1, E1, hrun1, hS1, hb1, hA1, hW1⟩ := trStmt_sim K.wgslLayout hD (Source.Spec.arrays args)
         ctx [] K.body (1 + K.width) sb n1 hsb hB (K.locals args g n) L' hden envD hAgreeD hW hFreshD
       rw [hrun1, Option.bind_some]
-      have hle1 := trStmt_mono K.layout K.body _ _ _ hsb
+      have hle1 := trStmt_mono K.wgslLayout K.body _ _ _ hsb
       have hE1 : ∀ x ∈ E1, x.1 < 1 + K.width := fun x hx => by
         obtain ⟨y, hy, hxy⟩ := hS1.names x hx
         have := hDnames y hy
@@ -684,20 +561,20 @@ theorem Spec.invoke_eq (K : Spec) (hK : K.WF) (m : Module) (hm : K.module = some
           rcases List.mem_append.mp hx with hx | hx
           · exact (hb1 x hx).2
           · have := hE1 x hx; omega
-      obtain ⟨added2, hrun2, hb2, hle2, hlt2, mres, hres⟩ := trExpr_sim K.layout L'
-        (Spec.arrays args) ctx [] K.element n1 stmts res next' htr _ hel (added1 ++ E1) hA1'
+      obtain ⟨added2, hrun2, hb2, hle2, hlt2, mres, hres⟩ := trExpr_sim K.wgslLayout L'
+        (Source.Spec.arrays args) ctx [] K.element n1 stmts res next' htr _ hel (added1 ++ E1) hA1'
         hFresh1
       rw [hrun2, Option.bind_some]
       have hidxW : K.index ∉ K.body.writes := fun hw => by
-        have := trStmt_writes K.layout K.body _ _ _ hsb K.index hw
+        have := trStmt_writes K.wgslLayout K.body _ _ _ hsb K.index hw
         obtain ⟨type, ht⟩ := Option.isSome_iff_exists.mp this
-        exact (hK.vars K.index type (lookup_mem ht)).2.2.1 rfl
+        exact (hK.vars K.index type (Source.lookup_mem ht)).2.2.1 rfl
       have hL'idx : L' K.index = some (.i64 (UInt64.ofNat g)) := by
         rw [Source.Stmt.denote_frame _ K.body _ L' hden K.index hidxW]
-        simp [Spec.locals]
+        simp [Source.Spec.locals]
       obtain ⟨w0, m0, hw0, hf0⟩ := hA1.word K.index _ hL'idx
       have hw00 : w0 = 0 := by
-        simp only [Spec.layout, show ¬ K.index < K.kinds.length by omega, dite_false, ↓reduceIte,
+        simp only [Source.Spec.wgslLayout, show ¬ K.index < K.kinds.length by omega, dite_false, ↓reduceIte,
           Option.some.injEq] at hw0
         exact hw0.symm
       subst hw00
@@ -721,7 +598,7 @@ theorem Spec.invoke_eq (K : Spec) (hK : K.WF) (m : Module) (hm : K.module = some
         hpos3, hOut, hgn]
       omega
     · have hite : Stmt.execList ctx ⟨envD, [], false⟩
-          [.ite (.not (lt64 0 K.count.var)) [.ret] []] = some ⟨envD, [], true⟩ := by
+          [.ite (.not (lt64 0 K.count.wgslVar)) [.ret] []] = some ⟨envD, [], true⟩ := by
         simp [Stmt.execList, Stmt.exec, Expr.eval, hguard, hcmp, hgn]
       rw [hite, Option.bind_some, execList_returned _ _ rfl, Option.bind_some,
         execList_returned _ _ rfl, Option.bind_some, execList_returned _ _ rfl]
@@ -788,19 +665,19 @@ theorem build_fold (n : Nat) (word : Nat → UInt64) (output : Array UInt32)
 whose length word the host has written, and at least the count of invocations, the dispatch leaves
 the output holding `LeanExe.build n f` as a Wasm array, and distinct invocations store to distinct
 words. -/
-theorem Spec.dispatch_eq (K : Spec) (hK : K.WF) (m : Module) (hm : K.module = some m)
-    (args : List Arg) (n : Nat) (h : K.Fits args n) (f : UInt64 → UInt64)
-    (hElem : ∀ k, k < n → ∃ L', K.body.denote (Spec.arrays args) (K.locals args k n) = some L' ∧
-      K.element.denote L' (Spec.arrays args) = some (f (UInt64.ofNat k)))
+theorem _root_.LeanExe.Source.Spec.wgsl_dispatch (K : Source.Spec) (hK : K.WF) (m : Module) (hm : K.wgsl = some m)
+    (args : List Source.Arg) (n : Nat) (h : K.Fits args n) (f : UInt64 → UInt64)
+    (hElem : ∀ k, k < n → ∃ L', K.body.denote (Source.Spec.arrays args) (K.locals args k n) = some L' ∧
+      K.element.denote L' (Source.Spec.arrays args) = some (f (UInt64.ofNat k)))
     (output : Array UInt32) (hOut : output.size = 2 + 2 * n)
     (hL0 : output[0]? = some (UInt32.ofNat n)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : n ≤ count) (h32 : count ≤ 2 ^ 32) :
-    m.dispatch (args.map Arg.buffer) output count =
+    m.dispatch (args.map Source.Arg.wgslBuffer) output count =
         some (arrayWords (LeanExe.build (UInt64.ofNat n) f)) ∧
-      m.RaceFree (args.map Arg.buffer) output.size count := by
+      m.RaceFree (args.map Source.Arg.wgslBuffer) output.size count := by
   have hxs := h.bound
   have hinv := fun g (hg : g < 2 ^ 32) =>
-    K.invoke_eq hK m hm args n h f hElem output.size hOut g hg
+    K.wgsl_invoke hK m hm args n h f hElem output.size hOut g hg
   have hn64 : (UInt64.ofNat n).toNat = n := by simp; omega
   have hbuild : ∀ k, k < n → (LeanExe.build (UInt64.ofNat n) f)[k]! = f (UInt64.ofNat k) := by
     intro k hk

@@ -4,13 +4,14 @@ import LeanExe.WGSL.Build
 namespace Demos.Gpt32.VerifiedCases
 
 open _root_.Demos.Gpt32 LeanExe.WGSL
+open LeanExe.Source (Arg Arg.word Arg.float Arg.array)
 
 private def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
 private def fwords (xs : Array Float32) : Array UInt64 := xs.map fun x => x.toBits.toUInt64
 private def arr (xs : Array Float32) : Arg := .array (fwords xs)
 
 private def gpuArg (arg : Arg) : String :=
-  s!"u32:{",".intercalate (arg.buffer.toList.map toString)}"
+  s!"u32:{",".intercalate (arg.wgslBuffer.toList.map toString)}"
 
 private def wasmArg : Arg → String
   | .word value => s!"i64:{value}"

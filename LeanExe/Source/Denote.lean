@@ -1,4 +1,4 @@
-import LeanExe.WGSL.Source
+import LeanExe.Source.Syntax
 import LeanExe.Pipeline.Implements
 import LeanExe.Dialect.Loop
 
@@ -9,7 +9,7 @@ condition at most `loopBound` times.  `Stmt.denote_frame` keeps the locals outsi
 writes, and `Stmt.denote_loop` gives the denotation of `Stmt.loop` as `LeanExe.loop`.
 -/
 
-namespace LeanExe.WGSL.Source
+namespace LeanExe.Source
 
 open Wasm LeanExe.Pipeline
 
@@ -331,4 +331,4 @@ theorem getElem!_map_toBits32 (xs : Array Float32) (k : Nat) :
   · rw [getElem!_neg (xs.map _) k (by simpa using h), getElem!_neg xs k h]
     decide +kernel
 
-end LeanExe.WGSL.Source
+end LeanExe.Source

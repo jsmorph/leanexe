@@ -40906,3 +40906,77 @@ The user asked for a review of the documents of the WGSL memory-model work and o
 | The README listed P before G, against the order of the trust document.  The design document said that the compiler "does not yet" translate into PTX.  Three paragraphs had lines over 100 characters, the WGSL memory-model comment had an ungrammatical clause, and two entries of this journal pointed to scratchpad files that do not persist. | Fixed. |
 
 On edgexpert, `LeanExe.WGSL.MemoryModel` builds with the corrected comment, and `tests/ptx/run.sh` passed its 9 cases from the cubin and through the driver's compiler.  The recorded `ptxas` is CUDA 13.0 V13.0.88, and the cubin's SHA-256 is unchanged.  The earlier entry's run with `-arch=sm_121a` was a manual run, while the test compiles for `sm_121`, the architecture that the device reports.
+
+## 2026-11-03: PTX target, stage 2
+
+Stage 2 makes the verified compiler translate build kernels of words and Booleans into PTX, with a launch theorem under the PTX memory model for each accepted build.  The `flags` and `wordScan` kernels of the verified WGSL examples become the first compiled PTX kernels and run on the GB10.
+
+### Plan
+
+The source language and the build record that both GPU targets use move out of the WGSL directories.  The functions that only WGSL uses keep their meaning and receive names that say so, because a function on a shared type sits in that type's namespace.
+
+| From | To |
+|---|---|
+| `LeanExe/WGSL/Source.lean` and `SourceDenote.lean`, namespace `LeanExe.WGSL.Source` | `LeanExe/Source/Syntax.lean` and `LeanExe/Source/Denote.lean`, namespace `LeanExe.Source` |
+| `Kind`, `Arg`, `Arg.kind`, `Count`, `Count.sizeLocal?`, `Spec`, `Spec.locals`, `Spec.arrays`, `Spec.wfb`, `Spec.WF`, `Spec.wf_of_wfb`, and `Spec.Fits` of `LeanExe/WGSL/Build.lean` | `LeanExe/Source/Build.lean`, namespace `LeanExe.Source` |
+| `Arg.buffer`, `Arg.value`, `Count.var`, `Spec.layout`, `Spec.layout_var`, `Spec.layout_below`, `Spec.layout_distinct`, `Spec.prologue`, `Spec.decls`, `Spec.module`, `Spec.agrees`, `Spec.invoke_eq`, `Spec.dispatch_eq`, `Spec.module_workgroupSize` | `Arg.wgslBuffer`, `Arg.wgslValue`, `Count.wgslVar`, `Spec.wgslLayout`, `Spec.wgslLayout_var`, `Spec.wgslLayout_below`, `Spec.wgslLayout_distinct`, `Spec.wgslPrologue`, `Spec.wgslDecls`, `Spec.wgsl`, `Spec.wgsl_agrees`, `Spec.wgsl_invoke`, `Spec.wgsl_dispatch`, `Spec.wgsl_workgroupSize`, still in the WGSL files |
+| `lookup_mem` and `lookup_of_mem` of `LeanExe/WGSL/Build.lean` | `LeanExe/Source/Build.lean` |
+| `Binding`, `Branch`, `Cell`, `Code`, `Context`, `Counter`, `Float32`, `Initial`, `Loop`, `LoopBody`, `Lower`, `Output`, `ParamLookup`, `Params`, `Read`, `Scalar`, and `Size` of `Verified/WGSL/`; `KernelPlan`, `kernelContext`, and the target-independent part of `compileKernel` from `Kernel.lean`; and `build_map`, `Params.args_length`, and `Kernel.element_denote` from `Dispatch.lean`, the last restated as `KernelPlan.element_denote` with the hypothesis `plan.spec.WF` | `Verified/Kernel/`, namespace `Verified.Kernel` |
+
+`Spec.Fits` keeps its bounds of `2^29` on array sizes and on the count.  WGSL needs them for 32-bit indices, and the PTX proofs use them for address arithmetic.
+
+The PTX translation (`LeanExe/PTX/Translate.lean`) represents each source word in a `.b64` register and each Boolean as the word 0 or 1 in a `.b64` register.  A predicate holds only the test of a branch, a loop, or a `selp`.  With this representation the translation uses only instructions that the stage 1 subset, its printer, and its parser already cover.
+
+| Source | PTX |
+|---|---|
+| `get j` | the register of local `j`, with no code |
+| `const`, `bconst` | `mov.b64` of the word, or of 0 or 1 |
+| `bin` with `add`, `sub`, `mul`, `bitAnd`, `bitOr`, `bitXor` | the `.b64` operation |
+| `bin` with `divU` or `remU` | `setp.eq.u64` of the divisor and 0, then a PTX `ite` that moves 0 (or the dividend for `remU`) or divides |
+| `bin` with `shiftLeft` or `shiftRight` | `and.b64` of the amount with 63, `cvt.u32.u64`, then `shl.b64` or `shr.b64` |
+| `eq`, `ne`, `ltU`, `leU` | `setp` of the comparison, then `selp.b64` of 1 and 0 |
+| `not` | `xor.b64` with 1 |
+| `and`, `or`, `ite` | `setp.ne.u64` of the condition and 0, then a PTX `ite` whose branches evaluate the selected operand and move it to the result register, so evaluation follows the denotation's order |
+| `read a k` | `mov.b64` of 0 to the result, `setp.lt.u64` of `k` and the array's length register, and a PTX `ite` that computes the address `base + 8k` and loads word `[address + 8]` |
+| `assign j e` to a local of `vars`, of type `u64` | the expression's code and a `mov.b64` to the local's register |
+| `seq`, `ite`, `while` | sequence, PTX `ite` on `setp.ne` of the condition, PTX `while_` whose condition list ends with `setp.ne` |
+
+One counter numbers the fresh registers of all three classes, and an expression writes only registers at or above the counter.  Both semantics bound a loop's tests by `2^64`, so the iterations correspond one to one.  `trExpr_sim` states that under the input oracle the code runs without stopping, adds only read events, leaves `returned` false, keeps the registers below the counter, and leaves the expression's word in the result register.  `trStmt_sim` states the same for a statement, except that the registers of assigned locals change, and it gives the layout agreement for the new locals.
+
+The build kernel (`LeanExe/PTX/Build.lean`) lays out `.b64` registers by source local.  Register `j` holds word local `j`, the index local, or a variable.  Array parameter `a` has its length in register `a` and a pointer to its buffer in register `W + a`, where `W` is the source width, and the size local of a count `.size l src` maps to register `src`.  The output pointer is in register `W + p` for `p` parameters.  `Arg.ptxBuffer` gives a word parameter the buffer `#[v]` and an array the buffer `#[size] ++ xs`, and `Spec.ptx` rejects a float parameter.  The prologue reads `%ctaid.x`, `%ntid.x`, and `%tid.x` into `.b32` registers 0 to 2, widens `%tid.x` into the index register, and computes `mad.wide.u32` of the index from the three.  It then converts each parameter address and loads each word parameter and array length.  `setp.lt.u64` into predicate 0 and a PTX `ite` on it run the body, the element, and the store of the element to output word `1 + index` when `index < count`.  The counter starts at `W + p + 3`, and the module declares as many registers of each class as the final counter.  The semantics does not read these numbers, so no theorem checks them, but `ptxas` rejects an undeclared register.
+
+| Theorem | Statement |
+|---|---|
+| `Spec.ptx_thread` | Under the input oracle every thread ends, and its writes are `[(1 + g, f g)]` for `g < n` and none otherwise |
+| `Spec.ptx_launch` | `Launch.seq` is `#[n] ++ LeanExe.build n f` and the launch is race-free, given `K.WF`, `K.ptx = some m`, `K.Fits args n`, and the element hypothesis of `Spec.dispatch_eq`, for the output `#[n] ++ ys` with `ys.size = n`, `n ≤ blocks * block`, `blocks < 2^32`, `0 < block < 2^32`, and `blocks * block < 2^60` |
+| `Spec.ptx_executions` | The conclusions of `Launch.executions` and `Launch.execution_exists` for such a launch |
+| `Verified.PTX.Kernel.executions_eq` and `Compiled.executions_eq` | The same for the source array of an accepted build, as `Verified.WGSL.Kernel.executions_eq` states for WGSL |
+
+`Verified/Examples/Ptx.lean` compiles `flags` and `wordScan` with `Verified.PTX.compile` and states their execution theorems.  A cases module beside it writes their cases with the sizes of the WGSL cases, and `tests/ptx/run.sh` builds that module, emits the kernels, and runs the cases.  These kernels are the first on the device to use `cvt.u32.u64`, a register shift amount, `div.u64`, `rem.u64`, `selp.b64`, `setp` with an immediate, nested conditionals, and loops.
+
+A fresh agent reviewed the plan, and the plan above includes its findings:
+- The size local of a `.size` count had no register, so a kernel that reads the array's size would stop.  It maps to the array's length register.
+- `trStmt_sim` cannot keep the registers below the counter, since an assignment writes a local's register.
+- The rename table lacked `Spec.layout_var`, `Spec.layout_below`, and `Spec.layout_distinct`.  It also lacked the dependents in `Demos/Gpt32/Exec.lean`, `Demos/Gpt32/VerifiedKernels.lean`, `Examples/Binary32/VerifiedGpuCases.lean`, and the WGSL examples.
+- `Kernel.element_denote`, `build_map`, `Params.args_length`, and the lookup lemmas do not depend on the target, and the PTX proof needs them, so they move.
+- The lowering never assigns a Boolean local, and no expression reads one, so assignment accepts only `u64`.
+- The launch theorem's hypotheses include the specification's well-formedness, its translation, `Fits`, and the element hypothesis.
+- The test needs the examples module built and a cases module that imports it.
+
+- [x] Review of this plan by a fresh agent.
+- [x] Moves and renames; full build.
+- [x] `LeanExe/PTX/Translate.lean` with `trExpr_sim` and `trStmt_sim`.
+- [x] `LeanExe/PTX/Build.lean` with the launch theorems.
+- [x] `Verified/PTX/` and the examples.
+- [x] Device test on the GB10.
+- [x] Documents: trust document, README, design, manual, compiler README, index, test guide.
+- [x] Full build, commit, push.
+
+### Results
+
+`LeanExe.Source.Spec.ptx_executions` holds for every build that `Spec.ptx` translates, and `Verified.PTX.Kernel.executions_eq` states it for the source array of a compiled build.  `flags_executions` and `words_executions` specialize it to the two examples.  These theorems and `Verified.WGSL.Kernel.executions_eq` depend only on `propext`, `Classical.choice`, and `Quot.sound`.  On edgexpert the build of `LeanExe`, `Examples`, `Demos`, `Library`, `TestSupport`, `Verified`, and the file-theorem modules passed 11,449 jobs, with no warning in the new files.  `tests/ptx/run.sh` passed its 58 cases on the GB10 from the cubins and through the driver's compiler.  The SHA-256 of `verifiedFlags.cubin` is `156b5e50ec83d805268369addedb4897f6ddab907331814fe26e3fe5c2d21dc7`, that of `verifiedWords.cubin` is `d2932061d8a3786d9bf07fa8c6d48cf51415143af46a09f768986ec335a70b5d`, and the add-one cubin's is unchanged.  The kernels and cases that `tests/wgsl/run.sh --emit-only` and `--verified --emit-only` write are byte-identical to those of 2026-10-30, so the moves did not change the WGSL output, and the WGSL device tests were not rerun.
+
+Three problems came up during the work:
+- The kernel rejected the first proof of the loop case with a deep recursion.  `simp` had unfolded the PTX loop bound `2^64`.  The proof now rewrites with the equation of `Stmt.exec` and the equality of the two bounds.
+- Native Lean prints a panic message, with a backtrace, for each read past the end of a shorter array with `!`, while computing the expected outputs of `flags`.  The read returns 0, which is the value that the theorems state.  `tests/ptx/run.sh` now writes standard error of the case computation to a log, as `tests/wgsl/run.sh` does.
+- The session's sync script copied the library directories but not the root import files `LeanExe.lean` and `Verified.lean`, so the first build on edgexpert used an old `LeanExe.lean`.  The script now copies them.

@@ -1,5 +1,5 @@
 import LeanExe.WGSL.Translate
-import LeanExe.WGSL.SourceDenote
+import LeanExe.Source.Denote
 
 /-!
 The translation of source statements built from assignments, sequences, conditionals, and the loops

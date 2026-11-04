@@ -1,9 +1,9 @@
-import Verified.WGSL.Scalar
+import Verified.Kernel.Scalar
 
-namespace Verified.WGSL
+namespace Verified.Kernel
 
 structure Output (e : Elem) where
-  word : Rep (.elem e) → LeanExe.WGSL.Source.Expr .u64
+  word : Rep (.elem e) → LeanExe.Source.Expr .u64
   encode : e.denote → UInt64
   bound : ∀ r, (word r).denoteLocals ≤ r.locals
   correct : ∀ rep locals arrays x, rep.Holds locals arrays x →
@@ -19,12 +19,12 @@ def Output.boolOutput : Output .bool where
   word := fun rep => .ite rep.boolExpr (.const 1) (.const 0)
   encode := boolWord
   bound := by
-    intro r; cases r; simp [Rep.boolExpr, LeanExe.WGSL.Source.Expr.denoteLocals, Rep.locals]
+    intro r; cases r; simp [Rep.boolExpr, LeanExe.Source.Expr.denoteLocals, Rep.locals]
   correct := by
     intro r locals arrays x h
     cases r
     simp only [Rep.Holds] at h
-    cases x <;> simp [Rep.boolExpr, LeanExe.WGSL.Source.Expr.denote, h, boolWord]
+    cases x <;> simp [Rep.boolExpr, LeanExe.Source.Expr.denote, h, boolWord]
 
 def Output.float32Output : Output .float32 where
   word := fun rep => .toBits32 rep.float32Expr
@@ -34,7 +34,7 @@ def Output.float32Output : Output .float32 where
     intro r locals arrays x h
     cases r
     simp only [Rep.Holds] at h
-    simp [Rep.float32Expr, LeanExe.WGSL.Source.Expr.denote, h]
+    simp [Rep.float32Expr, LeanExe.Source.Expr.denote, h]
 
 def Output.ofElem : (e : Elem) → Option (Output e)
   | .word => some .wordOutput
@@ -42,4 +42,4 @@ def Output.ofElem : (e : Elem) → Option (Output e)
   | .float32 => some .float32Output
   | _ => none
 
-end Verified.WGSL
+end Verified.Kernel

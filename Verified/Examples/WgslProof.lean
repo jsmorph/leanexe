@@ -13,10 +13,10 @@ theorem scale_dispatch (gain : Float32) (xs : Array Float32) (n : Nat)
     (hL0 : output[0]? = some (UInt32.ofNat n)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : n ≤ count) (h32 : count ≤ 2 ^ 32) :
     verifiedScaleKernel.dispatch
-        ((scaleGpu.args (.cons gain (.cons xs .nil))).map LeanExe.WGSL.Arg.buffer) output count =
+        ((scaleGpu.args (.cons gain (.cons xs .nil))).map LeanExe.Source.Arg.wgslBuffer) output count =
       some (LeanExe.WGSL.arrayWords ((scale gain xs).map fun x => x.toBits.toUInt64)) ∧
     verifiedScaleKernel.RaceFree
-      ((scaleGpu.args (.cons gain (.cons xs .nil))).map LeanExe.WGSL.Arg.buffer) output.size count := by
+      ((scaleGpu.args (.cons gain (.cons xs .nil))).map LeanExe.Source.Arg.wgslBuffer) output.size count := by
   have hValue : compiled.scale.func.body.denote .nil (.cons gain (.cons xs .nil)) = scale gain xs :=
     compiled.scale.denote_eq gain xs
   have h := scaleGpu.dispatch_eq .nil (.cons gain (.cons xs .nil)) n fits output hOut hL0 hL1
@@ -34,11 +34,11 @@ theorem branch_dispatch (xs : Array Float32) (n limit : UInt64) (size : Nat)
     (hL0 : output[0]? = some (UInt32.ofNat size)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : size ≤ count) (h32 : count ≤ 2 ^ 32) :
     verifiedBranchKernel.dispatch
-        ((branchGpu.args (.cons xs (.cons n (.cons limit .nil)))).map LeanExe.WGSL.Arg.buffer)
+        ((branchGpu.args (.cons xs (.cons n (.cons limit .nil)))).map LeanExe.Source.Arg.wgslBuffer)
         output count =
       some (LeanExe.WGSL.arrayWords ((branchSum xs n limit).map fun x => x.toBits.toUInt64)) ∧
     verifiedBranchKernel.RaceFree
-      ((branchGpu.args (.cons xs (.cons n (.cons limit .nil)))).map LeanExe.WGSL.Arg.buffer)
+      ((branchGpu.args (.cons xs (.cons n (.cons limit .nil)))).map LeanExe.Source.Arg.wgslBuffer)
       output.size count := by
   have hValue : compiled.branchSum.func.body.denote branchFuns
       (.cons xs (.cons n (.cons limit .nil))) = branchSum xs n limit :=

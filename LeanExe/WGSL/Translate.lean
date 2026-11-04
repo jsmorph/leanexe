@@ -1,5 +1,5 @@
 import LeanExe.WGSL.Pair
-import LeanExe.WGSL.SourceDenote
+import LeanExe.Source.Denote
 import LeanExe.WGSL.F32Result
 
 /-!

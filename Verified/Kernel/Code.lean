@@ -1,15 +1,15 @@
-import Verified.WGSL.Context
-import LeanExe.WGSL.SourceDenote
+import Verified.Kernel.Context
+import LeanExe.Source.Denote
 
-namespace Verified.WGSL
+namespace Verified.Kernel
 
 variable {s t u : Ty}
 
 structure Code (ctx : Context Γ) (base : Nat) (value : Funs S → Verified.Env Γ → t.denote) where
   next : Nat
-  body : LeanExe.WGSL.Source.Stmt
+  body : LeanExe.Source.Stmt
   result : Rep t
-  vars : List (Nat × LeanExe.WGSL.Source.ScalarType)
+  vars : List (Nat × LeanExe.Source.ScalarType)
   grows : base ≤ next
   writes : ∀ j ∈ body.writes, base ≤ j ∧ j < next
   resultBound : result.locals ≤ next
@@ -24,7 +24,7 @@ theorem Code.frame {ctx : Context Γ} {base : Nat}
     (h : code.body.denote arrays locals = some last) :
     ∀ j, j < base → last j = locals j := by
   intro j hj
-  exact LeanExe.WGSL.Source.Stmt.denote_frame arrays code.body locals last h j
+  exact LeanExe.Source.Stmt.denote_frame arrays code.body locals last h j
     (fun hw => by have := (code.writes j hw).1; omega)
 
 def Code.atom {ctx : Context Γ} {base : Nat} {value : Funs S → Verified.Env Γ → t.denote}
@@ -36,7 +36,7 @@ def Code.atom {ctx : Context Γ} {base : Nat} {value : Funs S → Verified.Env �
   result := rep
   vars := []
   grows := Nat.le_refl _
-  writes := by simp [LeanExe.WGSL.Source.Stmt.writes]
+  writes := by simp [LeanExe.Source.Stmt.writes]
   resultBound := bound
   correct := fun _ funs env locals arrays agree _ => ⟨locals, rfl, h funs env locals arrays agree⟩
 
@@ -75,7 +75,7 @@ def Code.map₂ {ctx : Context Γ} {base : Nat}
   grows := Nat.le_trans a.grows b.grows
   writes := by
     intro j hj
-    simp only [LeanExe.WGSL.Source.Stmt.writes, List.mem_append] at hj
+    simp only [LeanExe.Source.Stmt.writes, List.mem_append] at hj
     rcases hj with hj | hj
     · have := a.writes j hj
       exact ⟨this.1, Nat.lt_of_lt_of_le this.2 b.grows⟩
@@ -89,7 +89,7 @@ def Code.map₂ {ctx : Context Γ} {base : Nat}
     obtain ⟨last, hb, hvb⟩ := b.correct (ctxBound.mono a.grows) funs env middle arrays
       (agree.frame ctxBound (a.frame ha)) (fun j hj => unused j (Nat.le_trans a.grows hj))
     have hva' := hva.congr a.resultBound (b.frame hb)
-    exact ⟨last, by simp [LeanExe.WGSL.Source.Stmt.denote, ha, hb],
+    exact ⟨last, by simp [LeanExe.Source.Stmt.denote, ha, hb],
       holds a.result b.result last arrays _ _ hva' hvb⟩
 
 def Code.bind {ctx : Context Γ} {base : Nat}
@@ -104,7 +104,7 @@ def Code.bind {ctx : Context Γ} {base : Nat}
   grows := Nat.le_trans a.grows b.grows
   writes := by
     intro j hj
-    simp only [LeanExe.WGSL.Source.Stmt.writes, List.mem_append] at hj
+    simp only [LeanExe.Source.Stmt.writes, List.mem_append] at hj
     rcases hj with hj | hj
     · have := a.writes j hj
       exact ⟨this.1, Nat.lt_of_lt_of_le this.2 b.grows⟩
@@ -118,7 +118,7 @@ def Code.bind {ctx : Context Γ} {base : Nat}
       ((ctxBound.mono a.grows).cons a.resultBound) funs (.cons (value funs env) env) middle
       arrays ((agree.frame ctxBound (a.frame ha)).cons hva)
       (fun j hj => unused j (Nat.le_trans a.grows hj))
-    exact ⟨last, by simp [LeanExe.WGSL.Source.Stmt.denote, ha, hb], hvb⟩
+    exact ⟨last, by simp [LeanExe.Source.Stmt.denote, ha, hb], hvb⟩
 
 def Code.contextMap {ctx : Context Γ} {base : Nat}
     {value : Funs S → Verified.Env Γ → s.denote} (a : Code ctx base value)
@@ -139,4 +139,4 @@ def Code.contextMap {ctx : Context Γ} {base : Nat}
     obtain ⟨last, hBody, hValue⟩ := a.correct ctxBound funs env locals arrays agree unused
     exact ⟨last, hBody, holds funs env last arrays (agree.frame ctxBound (a.frame hBody)) hValue⟩
 
-end Verified.WGSL
+end Verified.Kernel

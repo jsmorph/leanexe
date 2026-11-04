@@ -40,14 +40,6 @@ def addOne : Module where
 def addOneLaunch (xs ys : Array UInt64) (blocks block : Nat) : Launch :=
   ⟨addOne, [#[UInt64.ofNat xs.size] ++ xs], #[UInt64.ofNat xs.size] ++ ys, blocks, block⟩
 
-theorem get_head (a : UInt64) (xs : Array UInt64) : (#[a] ++ xs)[0]? = some a := by
-  rw [Array.getElem?_append_left (by simp)]
-  rfl
-
-theorem get_tail (a : UInt64) (xs : Array UInt64) (k : Nat) : (#[a] ++ xs)[k + 1]? = xs[k]? := by
-  rw [Array.getElem?_append_right (by simp)]
-  simp
-
 theorem wordAt_zero (n : Nat) : wordAt (n + 1) 0 0 = some 0 := by simp [wordAt]
 
 theorem wordAt_elem {n g : Nat} (h : g < n) (hg : g < 2 ^ 60) :
@@ -66,22 +58,6 @@ theorem ofNat_lt_iff {g n : Nat} (hg : g < 2 ^ 60) (hn : n < 2 ^ 60) :
     decide (UInt64.ofNat g < UInt64.ofNat n) = decide (g < n) := by
   simp [UInt64.lt_iff_toNat_lt]
   omega
-
-/-- The frame's `mad.wide.u32` computes the thread's index. -/
-theorem index_eq {block g : Nat} (hb : 0 < block) (hb32 : block < 2 ^ 32)
-    (hq : g / block < 2 ^ 32) (hg : g < 2 ^ 60) :
-    (UInt32.ofNat (g / block)).toUInt64 * (UInt32.ofNat block).toUInt64 +
-      (UInt32.ofNat (g % block)).toUInt64 = UInt64.ofNat g := by
-  apply UInt64.toNat_inj.mp
-  have hm := Nat.mod_lt g hb
-  have h1 : (UInt32.ofNat (g / block)).toUInt64.toNat = g / block := by
-    simp [Nat.mod_eq_of_lt hq]
-  have h2 : (UInt32.ofNat block).toUInt64.toNat = block := by simp [Nat.mod_eq_of_lt hb32]
-  have h3 : (UInt32.ofNat (g % block)).toUInt64.toNat = g % block := by
-    simp [Nat.mod_eq_of_lt (show g % block < 2 ^ 32 by omega)]
-  have hle : g / block * block ≤ g := Nat.div_mul_le_self g block
-  rw [UInt64.toNat_add, UInt64.toNat_mul, h1, h2, h3, UInt64.toNat_ofNat',
-    Nat.mod_eq_of_lt (show g / block * block < 2 ^ 64 by omega), Nat.div_add_mod' g block]
 
 /-- The events of thread `g` with the input oracle. -/
 def addOneEvents (xs : Array UInt64) (g : Nat) : List Event :=

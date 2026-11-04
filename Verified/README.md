@@ -625,17 +625,18 @@ The [development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda
 
 ## WGSL kernels
 
-[The WGSL compiler](WGSL/Compile.lean) translates an outer typed array build to a program of
-[the kernel source language](../LeanExe/WGSL/Source.lean), which the translation of `LeanExe.WGSL`
-turns into the WGSL subset.  [Typed representations](WGSL/Context.lean) relate source values to scalar
-expressions and borrowed input buffers.  [The expression translation](WGSL/Lower.lean) recursively constructs
-[code with a denotation proof](WGSL/Code.lean), using shared rules for bindings, branches, and
+[The kernel plan](Kernel/Plan.lean) lowers an outer typed array build to a program of [the
+kernel source language](../LeanExe/Source/Syntax.lean), which the WGSL and PTX compilers translate.
+[Typed representations](Kernel/Context.lean) relate source values to scalar expressions and
+borrowed input buffers.  [The expression translation](Kernel/Lower.lean) recursively constructs
+[code with a denotation proof](Kernel/Code.lean), using shared rules for bindings, branches, and
 counted loops.  Parameters, loop state, and output elements use words, Booleans, or binary32
-values.  Unsupported expressions return `none`.
+values.  Unsupported expressions return `none`.  [The WGSL compiler](WGSL/Compile.lean) turns the
+program into the WGSL subset with the translation of `LeanExe.WGSL`.
 
 [Kernel construction](WGSL/Kernel.lean) checks the local layout and WGSL translation and retains
 their proofs.  [Dispatch correctness](WGSL/Dispatch.lean) combines the translated element theorem
-with the generic dispatch theorem `LeanExe.WGSL.Spec.dispatch_eq`.  Every accepted source build
+with the generic dispatch theorem `LeanExe.Source.Spec.wgsl_dispatch`.  Every accepted source build
 computes its source array and has a race-free dispatch under that theorem's buffer, count,
 coverage, and device conditions.  `Kernel.executions_eq` applies
 `LeanExe.WGSL.Dispatch.executions` to that result: under [the memory
@@ -648,6 +649,19 @@ The translation normalizes binary arithmetic, square root, and nearest-even resu
 with [integer tests of their bit patterns](../LeanExe/WGSL/F32Canonical.lean), and
 [result lemmas](../LeanExe/WGSL/F32Result.lean) prove that normalization preserves each operation's
 strict-model result.
+
+## PTX kernels
+
+[The PTX compiler](PTX/Compile.lean) takes the same kernel plan and translates its build with
+`LeanExe.Source.Spec.ptx` of [the PTX build kernel](../LeanExe/PTX/Build.lean).  It accepts
+parameters, loop state, and elements of words and Booleans, and it gives `none` for a build with
+binary32 values.  [`Kernel.executions_eq`](PTX/Kernel.lean) states for a launch with at least the
+count's threads, fewer than 2³² blocks, and fewer than 2⁶⁰ threads that a consistent execution
+exists under [the PTX memory model](../LeanExe/PTX/MemoryModel.lean).  In every consistent
+execution no access of a thread is in a data race, every thread ends, and the copy back reads the
+count followed by the source array's encoded elements.  [The examples](Examples/Ptx.lean) compile
+`flags` and `wordScan` of the WGSL examples, and [the PTX test](../tests/ptx/run.sh) runs them on
+an NVIDIA GPU.
 
 [Binary32 GPT](../Demos/Gpt32/Verified.lean) compiles the program's kernel functions without
 changing them.  [The native dispatch proofs](../Demos/Gpt32/VerifiedDispatch.lean) combine

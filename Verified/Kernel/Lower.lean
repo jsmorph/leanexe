@@ -1,9 +1,9 @@
-import Verified.WGSL.Loop
-import Verified.WGSL.Float32
-import Verified.WGSL.Read
-import Verified.WGSL.Size
+import Verified.Kernel.Loop
+import Verified.Kernel.Float32
+import Verified.Kernel.Read
+import Verified.Kernel.Size
 
-namespace Verified.WGSL
+namespace Verified.Kernel
 
 def lower : {Γ : List Ty} → {t : Ty} → (e : Verified.Expr S Γ t) → (ctx : Context Γ) →
     (base : Nat) → ctx.Bounded base →
@@ -76,4 +76,4 @@ def lower : {Γ : List Ty} → {t : Ty} → (e : Verified.Expr S Γ t) → (ctx 
       pure (.loop cell a b c)
   | _, _, _, _, _, _ => none
 
-end Verified.WGSL
+end Verified.Kernel

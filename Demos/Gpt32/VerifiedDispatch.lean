@@ -3,6 +3,7 @@ import Demos.Gpt32.Verified
 namespace Demos.Gpt32.Verified
 
 open _root_.Demos.Gpt32 LeanExe.WGSL
+open LeanExe.Source (Arg Arg.word Arg.float Arg.array)
 
 private abbrev floatWords (xs : Array Float32) : Array UInt64 :=
   xs.map fun x => x.toBits.toUInt64
@@ -11,9 +12,9 @@ theorem expKernel_dispatch (x : Array Float32) (hx : x.size < 2 ^ 29)
     (output : Array UInt32) (hOut : output.size = 2 + 2 * x.size)
     (hL0 : output[0]? = some (UInt32.ofNat x.size)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : x.size ≤ count) (h32 : count ≤ 2 ^ 32) :
-    expKernel.dispatch [(Arg.array (floatWords x)).buffer] output count =
+    expKernel.dispatch [(Arg.array (floatWords x)).wgslBuffer] output count =
         some (arrayWords (floatWords (expArray32 x))) ∧
-      expKernel.RaceFree [(Arg.array (floatWords x)).buffer] output.size count := by
+      expKernel.RaceFree [(Arg.array (floatWords x)).wgslBuffer] output.size count := by
   have fits : expGpu.spec.Fits (expGpu.args (.cons x .nil)) x.size := by
     refine ⟨rfl, ?_, ?_, hx⟩
     · change ∀ ys, Arg.array ys ∈ [Arg.array (floatWords x)] → ys.size < 2 ^ 29
@@ -29,11 +30,11 @@ theorem embedKernel_dispatch (wte wpe : Array Float32) (row p d : UInt64)
     (output : Array UInt32) (hOut : output.size = 2 + 2 * d.toNat)
     (hL0 : output[0]? = some (UInt32.ofNat d.toNat)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : d.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
-    embedKernel.dispatch [(Arg.array (floatWords wte)).buffer, (Arg.array (floatWords wpe)).buffer,
-        (Arg.word row).buffer, (Arg.word p).buffer, (Arg.word d).buffer] output count =
+    embedKernel.dispatch [(Arg.array (floatWords wte)).wgslBuffer, (Arg.array (floatWords wpe)).wgslBuffer,
+        (Arg.word row).wgslBuffer, (Arg.word p).wgslBuffer, (Arg.word d).wgslBuffer] output count =
         some (arrayWords (floatWords (embed32 wte wpe row p d))) ∧
-      embedKernel.RaceFree [(Arg.array (floatWords wte)).buffer, (Arg.array (floatWords wpe)).buffer,
-        (Arg.word row).buffer, (Arg.word p).buffer, (Arg.word d).buffer] output.size count := by
+      embedKernel.RaceFree [(Arg.array (floatWords wte)).wgslBuffer, (Arg.array (floatWords wpe)).wgslBuffer,
+        (Arg.word row).wgslBuffer, (Arg.word p).wgslBuffer, (Arg.word d).wgslBuffer] output.size count := by
   let env : _root_.Verified.Env compiled.embed32.func.sig.params :=
     .cons wte (.cons wpe (.cons row (.cons p (.cons d .nil))))
   have fits : embedGpu.spec.Fits (embedGpu.args env) d.toNat := by
@@ -52,11 +53,11 @@ theorem linearKernel_dispatch (x w b : Array Float32) (k m : UInt64) (hx : x.siz
     (output : Array UInt32) (hOut : output.size = 2 + 2 * m.toNat)
     (hL0 : output[0]? = some (UInt32.ofNat m.toNat)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : m.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
-    linearKernel.dispatch [(Arg.array (floatWords x)).buffer, (Arg.array (floatWords w)).buffer,
-        (Arg.array (floatWords b)).buffer, (Arg.word k).buffer, (Arg.word m).buffer] output count =
+    linearKernel.dispatch [(Arg.array (floatWords x)).wgslBuffer, (Arg.array (floatWords w)).wgslBuffer,
+        (Arg.array (floatWords b)).wgslBuffer, (Arg.word k).wgslBuffer, (Arg.word m).wgslBuffer] output count =
         some (arrayWords (floatWords (Library.Numerics.LinearAlgebra.Binary32.linear32 x w b k m))) ∧
-      linearKernel.RaceFree [(Arg.array (floatWords x)).buffer, (Arg.array (floatWords w)).buffer,
-        (Arg.array (floatWords b)).buffer, (Arg.word k).buffer, (Arg.word m).buffer] output.size
+      linearKernel.RaceFree [(Arg.array (floatWords x)).wgslBuffer, (Arg.array (floatWords w)).wgslBuffer,
+        (Arg.array (floatWords b)).wgslBuffer, (Arg.word k).wgslBuffer, (Arg.word m).wgslBuffer] output.size
         count := by
   let env : _root_.Verified.Env compiled.linear32.func.sig.params := .cons x (.cons w (.cons b (.cons k (.cons m (.nil)))))
   have fits : linearGpu.spec.Fits (linearGpu.args env) m.toNat := by
@@ -74,11 +75,11 @@ theorem logitsKernel_dispatch (h wte : Array Float32) (rows d : UInt64) (hh : h.
     (output : Array UInt32) (hOut : output.size = 2 + 2 * rows.toNat)
     (hL0 : output[0]? = some (UInt32.ofNat rows.toNat)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : rows.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
-    logitsKernel.dispatch [(Arg.array (floatWords h)).buffer, (Arg.array (floatWords wte)).buffer,
-        (Arg.word rows).buffer, (Arg.word d).buffer] output count =
+    logitsKernel.dispatch [(Arg.array (floatWords h)).wgslBuffer, (Arg.array (floatWords wte)).wgslBuffer,
+        (Arg.word rows).wgslBuffer, (Arg.word d).wgslBuffer] output count =
         some (arrayWords (floatWords (logits32 h wte rows d))) ∧
-      logitsKernel.RaceFree [(Arg.array (floatWords h)).buffer,
-        (Arg.array (floatWords wte)).buffer, (Arg.word rows).buffer, (Arg.word d).buffer]
+      logitsKernel.RaceFree [(Arg.array (floatWords h)).wgslBuffer,
+        (Arg.array (floatWords wte)).wgslBuffer, (Arg.word rows).wgslBuffer, (Arg.word d).wgslBuffer]
         output.size count := by
   let env : _root_.Verified.Env compiled.logits32.func.sig.params := .cons h (.cons wte (.cons rows (.cons d (.nil))))
   have fits : logitsGpu.spec.Fits (logitsGpu.args env) rows.toNat := by
@@ -96,11 +97,11 @@ theorem mixKernel_dispatch (pw vc : Array Float32) (p d : UInt64) (hp : pw.size 
     (output : Array UInt32) (hOut : output.size = 2 + 2 * d.toNat)
     (hL0 : output[0]? = some (UInt32.ofNat d.toNat)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : d.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
-    mixKernel.dispatch [(Arg.array (floatWords pw)).buffer, (Arg.array (floatWords vc)).buffer,
-        (Arg.word p).buffer, (Arg.word d).buffer] output count =
+    mixKernel.dispatch [(Arg.array (floatWords pw)).wgslBuffer, (Arg.array (floatWords vc)).wgslBuffer,
+        (Arg.word p).wgslBuffer, (Arg.word d).wgslBuffer] output count =
         some (arrayWords (floatWords (mix32 pw vc p d))) ∧
-      mixKernel.RaceFree [(Arg.array (floatWords pw)).buffer, (Arg.array (floatWords vc)).buffer,
-        (Arg.word p).buffer, (Arg.word d).buffer] output.size count := by
+      mixKernel.RaceFree [(Arg.array (floatWords pw)).wgslBuffer, (Arg.array (floatWords vc)).wgslBuffer,
+        (Arg.word p).wgslBuffer, (Arg.word d).wgslBuffer] output.size count := by
   let env : _root_.Verified.Env compiled.mix32.func.sig.params := .cons pw (.cons vc (.cons p (.cons d (.nil))))
   have fits : mixGpu.spec.Fits (mixGpu.args env) d.toNat := by
     refine ⟨rfl, ?_, ?_, hd⟩
@@ -117,11 +118,11 @@ theorem scoresKernel_dispatch (q kc : Array Float32) (p d n : UInt64) (hq : q.si
     (output : Array UInt32) (hOut : output.size = 2 + 2 * n.toNat)
     (hL0 : output[0]? = some (UInt32.ofNat n.toNat)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : n.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
-    scoresKernel.dispatch [(Arg.array (floatWords q)).buffer, (Arg.array (floatWords kc)).buffer,
-        (Arg.word p).buffer, (Arg.word d).buffer, (Arg.word n).buffer] output count =
+    scoresKernel.dispatch [(Arg.array (floatWords q)).wgslBuffer, (Arg.array (floatWords kc)).wgslBuffer,
+        (Arg.word p).wgslBuffer, (Arg.word d).wgslBuffer, (Arg.word n).wgslBuffer] output count =
         some (arrayWords (floatWords (scores32 q kc p d n))) ∧
-      scoresKernel.RaceFree [(Arg.array (floatWords q)).buffer, (Arg.array (floatWords kc)).buffer,
-        (Arg.word p).buffer, (Arg.word d).buffer, (Arg.word n).buffer] output.size count := by
+      scoresKernel.RaceFree [(Arg.array (floatWords q)).wgslBuffer, (Arg.array (floatWords kc)).wgslBuffer,
+        (Arg.word p).wgslBuffer, (Arg.word d).wgslBuffer, (Arg.word n).wgslBuffer] output.size count := by
   let env : _root_.Verified.Env compiled.scores32.func.sig.params := .cons q (.cons kc (.cons p (.cons d (.cons n (.nil)))))
   have fits : scoresGpu.spec.Fits (scoresGpu.args env) n.toNat := by
     refine ⟨rfl, ?_, ?_, hn⟩
@@ -137,9 +138,9 @@ theorem addKernel_dispatch (a b : Array Float32) (ha : a.size < 2 ^ 29) (hb : b.
     (output : Array UInt32) (hOut : output.size = 2 + 2 * a.size)
     (hL0 : output[0]? = some (UInt32.ofNat a.size)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : a.size ≤ count) (h32 : count ≤ 2 ^ 32) :
-    addKernel.dispatch [(Arg.array (floatWords a)).buffer, (Arg.array (floatWords b)).buffer]
+    addKernel.dispatch [(Arg.array (floatWords a)).wgslBuffer, (Arg.array (floatWords b)).wgslBuffer]
         output count = some (arrayWords (floatWords (Library.Numerics.LinearAlgebra.Binary32.add32 a b))) ∧
-      addKernel.RaceFree [(Arg.array (floatWords a)).buffer, (Arg.array (floatWords b)).buffer]
+      addKernel.RaceFree [(Arg.array (floatWords a)).wgslBuffer, (Arg.array (floatWords b)).wgslBuffer]
         output.size count := by
   let env : _root_.Verified.Env compiled.add32.func.sig.params := .cons a (.cons b (.nil))
   have fits : addGpu.spec.Fits (addGpu.args env) a.size := by
@@ -157,11 +158,11 @@ theorem appendKernel_dispatch (cache row : Array Float32) (base n : UInt64)
     (output : Array UInt32) (hOut : output.size = 2 + 2 * n.toNat)
     (hL0 : output[0]? = some (UInt32.ofNat n.toNat)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : n.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
-    appendKernel.dispatch [(Arg.array (floatWords cache)).buffer,
-        (Arg.array (floatWords row)).buffer, (Arg.word base).buffer, (Arg.word n).buffer] output
+    appendKernel.dispatch [(Arg.array (floatWords cache)).wgslBuffer,
+        (Arg.array (floatWords row)).wgslBuffer, (Arg.word base).wgslBuffer, (Arg.word n).wgslBuffer] output
         count = some (arrayWords (floatWords (append32 cache row base n))) ∧
-      appendKernel.RaceFree [(Arg.array (floatWords cache)).buffer,
-        (Arg.array (floatWords row)).buffer, (Arg.word base).buffer, (Arg.word n).buffer]
+      appendKernel.RaceFree [(Arg.array (floatWords cache)).wgslBuffer,
+        (Arg.array (floatWords row)).wgslBuffer, (Arg.word base).wgslBuffer, (Arg.word n).wgslBuffer]
         output.size count := by
   let env : _root_.Verified.Env compiled.append32.func.sig.params := .cons cache (.cons row (.cons base (.cons n (.nil))))
   have fits : appendGpu.spec.Fits (appendGpu.args env) n.toNat := by
@@ -177,9 +178,9 @@ theorem appendKernel_dispatch (cache row : Array Float32) (base n : UInt64)
 theorem geluKernel_dispatch (x : Array Float32) (hx : x.size < 2 ^ 29) (output : Array UInt32)
     (hOut : output.size = 2 + 2 * x.size) (hL0 : output[0]? = some (UInt32.ofNat x.size))
     (hL1 : output[1]? = some 0) (count : Nat) (hCover : x.size ≤ count) (h32 : count ≤ 2 ^ 32) :
-    geluKernel.dispatch [(Arg.array (floatWords x)).buffer] output count =
+    geluKernel.dispatch [(Arg.array (floatWords x)).wgslBuffer] output count =
         some (arrayWords (floatWords (geluArray32 x))) ∧
-      geluKernel.RaceFree [(Arg.array (floatWords x)).buffer] output.size count := by
+      geluKernel.RaceFree [(Arg.array (floatWords x)).wgslBuffer] output.size count := by
   let env : _root_.Verified.Env compiled.geluArray32.func.sig.params := .cons x (.nil)
   have fits : geluGpu.spec.Fits (geluGpu.args env) x.size := by
     refine ⟨rfl, ?_, ?_, hx⟩
@@ -196,11 +197,11 @@ theorem probsKernel_dispatch (s mx sm : Array Float32) (p n : UInt64) (hs : s.si
     (output : Array UInt32) (hOut : output.size = 2 + 2 * n.toNat)
     (hL0 : output[0]? = some (UInt32.ofNat n.toNat)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : n.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
-    probsKernel.dispatch [(Arg.array (floatWords s)).buffer, (Arg.array (floatWords mx)).buffer,
-        (Arg.array (floatWords sm)).buffer, (Arg.word p).buffer, (Arg.word n).buffer] output
+    probsKernel.dispatch [(Arg.array (floatWords s)).wgslBuffer, (Arg.array (floatWords mx)).wgslBuffer,
+        (Arg.array (floatWords sm)).wgslBuffer, (Arg.word p).wgslBuffer, (Arg.word n).wgslBuffer] output
         count = some (arrayWords (floatWords (probs32 s mx sm p n))) ∧
-      probsKernel.RaceFree [(Arg.array (floatWords s)).buffer, (Arg.array (floatWords mx)).buffer,
-        (Arg.array (floatWords sm)).buffer, (Arg.word p).buffer, (Arg.word n).buffer]
+      probsKernel.RaceFree [(Arg.array (floatWords s)).wgslBuffer, (Arg.array (floatWords mx)).wgslBuffer,
+        (Arg.array (floatWords sm)).wgslBuffer, (Arg.word p).wgslBuffer, (Arg.word n).wgslBuffer]
         output.size count := by
   let env : _root_.Verified.Env compiled.probs32.func.sig.params := .cons s (.cons mx (.cons sm (.cons p (.cons n (.nil)))))
   have fits : probsGpu.spec.Fits (probsGpu.args env) n.toNat := by
@@ -218,12 +219,12 @@ theorem layerNormKernel_dispatch (x g b : Array Float32) (d : UInt64) (nf : Floa
     (output : Array UInt32) (hOut : output.size = 2 + 2 * d.toNat)
     (hL0 : output[0]? = some (UInt32.ofNat d.toNat)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : d.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
-    layerNormKernel.dispatch [(Arg.array (floatWords x)).buffer, (Arg.array (floatWords g)).buffer,
-        (Arg.array (floatWords b)).buffer, (Arg.word d).buffer, (Arg.float nf.toBits).buffer]
+    layerNormKernel.dispatch [(Arg.array (floatWords x)).wgslBuffer, (Arg.array (floatWords g)).wgslBuffer,
+        (Arg.array (floatWords b)).wgslBuffer, (Arg.word d).wgslBuffer, (Arg.float nf.toBits).wgslBuffer]
         output count = some (arrayWords (floatWords (layerNorm32 x g b d nf))) ∧
-      layerNormKernel.RaceFree [(Arg.array (floatWords x)).buffer,
-        (Arg.array (floatWords g)).buffer, (Arg.array (floatWords b)).buffer, (Arg.word d).buffer,
-        (Arg.float nf.toBits).buffer] output.size count := by
+      layerNormKernel.RaceFree [(Arg.array (floatWords x)).wgslBuffer,
+        (Arg.array (floatWords g)).wgslBuffer, (Arg.array (floatWords b)).wgslBuffer, (Arg.word d).wgslBuffer,
+        (Arg.float nf.toBits).wgslBuffer] output.size count := by
   let env : _root_.Verified.Env compiled.layerNorm32.func.sig.params := .cons x (.cons g (.cons b (.cons d (.cons nf (.nil)))))
   have fits : layerNormGpu.spec.Fits (layerNormGpu.args env) d.toNat := by
     refine ⟨rfl, ?_, ?_, hd⟩
@@ -239,10 +240,10 @@ theorem headMaxKernel_dispatch (s : Array Float32) (p nh : UInt64) (hs : s.size 
     (hnh : nh.toNat < 2 ^ 29) (output : Array UInt32) (hOut : output.size = 2 + 2 * nh.toNat)
     (hL0 : output[0]? = some (UInt32.ofNat nh.toNat)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : nh.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
-    headMaxKernel.dispatch [(Arg.array (floatWords s)).buffer, (Arg.word p).buffer,
-        (Arg.word nh).buffer] output count = some (arrayWords (floatWords (headMax32 s p nh))) ∧
-      headMaxKernel.RaceFree [(Arg.array (floatWords s)).buffer, (Arg.word p).buffer,
-        (Arg.word nh).buffer] output.size count := by
+    headMaxKernel.dispatch [(Arg.array (floatWords s)).wgslBuffer, (Arg.word p).wgslBuffer,
+        (Arg.word nh).wgslBuffer] output count = some (arrayWords (floatWords (headMax32 s p nh))) ∧
+      headMaxKernel.RaceFree [(Arg.array (floatWords s)).wgslBuffer, (Arg.word p).wgslBuffer,
+        (Arg.word nh).wgslBuffer] output.size count := by
   let env : _root_.Verified.Env compiled.headMax32.func.sig.params := .cons s (.cons p (.cons nh (.nil)))
   have fits : headMaxGpu.spec.Fits (headMaxGpu.args env) nh.toNat := by
     refine ⟨rfl, ?_, ?_, hnh⟩
@@ -259,11 +260,11 @@ theorem headSumKernel_dispatch (s mx : Array Float32) (p nh : UInt64) (hs : s.si
     (hOut : output.size = 2 + 2 * nh.toNat) (hL0 : output[0]? = some (UInt32.ofNat nh.toNat))
     (hL1 : output[1]? = some 0) (count : Nat) (hCover : nh.toNat ≤ count)
     (h32 : count ≤ 2 ^ 32) :
-    headSumKernel.dispatch [(Arg.array (floatWords s)).buffer, (Arg.array (floatWords mx)).buffer,
-        (Arg.word p).buffer, (Arg.word nh).buffer] output count =
+    headSumKernel.dispatch [(Arg.array (floatWords s)).wgslBuffer, (Arg.array (floatWords mx)).wgslBuffer,
+        (Arg.word p).wgslBuffer, (Arg.word nh).wgslBuffer] output count =
         some (arrayWords (floatWords (headSum32 s mx p nh))) ∧
-      headSumKernel.RaceFree [(Arg.array (floatWords s)).buffer, (Arg.array (floatWords mx)).buffer,
-        (Arg.word p).buffer, (Arg.word nh).buffer] output.size count := by
+      headSumKernel.RaceFree [(Arg.array (floatWords s)).wgslBuffer, (Arg.array (floatWords mx)).wgslBuffer,
+        (Arg.word p).wgslBuffer, (Arg.word nh).wgslBuffer] output.size count := by
   let env : _root_.Verified.Env compiled.headSum32.func.sig.params := .cons s (.cons mx (.cons p (.cons nh (.nil))))
   have fits : headSumGpu.spec.Fits (headSumGpu.args env) nh.toNat := by
     refine ⟨rfl, ?_, ?_, hnh⟩

@@ -6,15 +6,15 @@ private def words (xs : List UInt64) : String := ",".intercalate (xs.map toStrin
 
 private def fwords (xs : Array Float32) : Array UInt64 := xs.map fun x => x.toBits.toUInt64
 
-private def gpuArg (arg : LeanExe.WGSL.Arg) : String :=
-  s!"u32:{",".intercalate (arg.buffer.toList.map toString)}"
+private def gpuArg (arg : LeanExe.Source.Arg) : String :=
+  s!"u32:{",".intercalate (arg.wgslBuffer.toList.map toString)}"
 
-private def wasmArg : LeanExe.WGSL.Arg → String
+private def wasmArg : LeanExe.Source.Arg → String
   | .word value => s!"i64:{value}"
   | .float bits => s!"f32:{bits}"
   | .array xs => s!"array-u64:{words xs.toList}"
 
-private def caseLine (name : String) (n extra : Nat) (inputs : List LeanExe.WGSL.Arg)
+private def caseLine (name : String) (n extra : Nat) (inputs : List LeanExe.Source.Arg)
     (result : Array UInt64) : String :=
   let groups := max ((n + 63) / 64 + extra) 1
   let initial := n.toUInt64 :: List.replicate n 0x7fc000017fc00001
@@ -23,7 +23,7 @@ private def caseLine (name : String) (n extra : Nat) (inputs : List LeanExe.WGSL
   s!"{name}|{groups}|u64:{words initial}|{" ".intercalate (inputs.map gpuArg)}|{words output}"
 
 private def emit (gpu : Bool) (entry kernel : String) (n extra : Nat)
-    (inputs : List LeanExe.WGSL.Arg) (result : Array UInt64) : IO Unit :=
+    (inputs : List LeanExe.Source.Arg) (result : Array UInt64) : IO Unit :=
   if gpu then IO.println (caseLine kernel n extra inputs result)
   else IO.println s!"wgsl|{entry}|array-u64|{" ".intercalate (inputs.map wasmArg)}|{result.toList}|2|2"
 

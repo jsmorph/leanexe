@@ -2,13 +2,14 @@ import Interpreter.Wasm.Syntax
 import Interpreter.Wasm.IEEE64
 
 /-!
-The source language of the WGSL translation: scalar types and their values, the word, binary64,
-and binary32 operators, and the expressions and statements whose denotation
-`LeanExe.WGSL.SourceDenote` gives.  The verified compiler states each kernel body in this language,
-and `LeanExe.WGSL.Translate` and `LeanExe.WGSL.TranslateStmt` translate it to WGSL.
+The source language of GPU kernels: scalar types and their values, the word, binary64, and
+binary32 operators, and the expressions and statements whose denotation `LeanExe.Source.Denote`
+gives.  The verified compiler states each kernel body in this language, `LeanExe.WGSL.Translate`
+and `LeanExe.WGSL.TranslateStmt` translate it to WGSL, and `LeanExe.PTX.Translate` translates its
+words and Booleans to PTX.
 -/
 
-namespace LeanExe.WGSL.Source
+namespace LeanExe.Source
 
 open Wasm
 
@@ -176,4 +177,4 @@ inductive Stmt where
   | abort
   deriving Repr
 
-end LeanExe.WGSL.Source
+end LeanExe.Source

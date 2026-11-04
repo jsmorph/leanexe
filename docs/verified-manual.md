@@ -434,6 +434,33 @@ existing typed generation proof with the new kernel map.  It states the native s
 and race freedom under the same device model and shape, token, and weight bounds.  [The WGSL
 tests](#wgsl-tests) compare these kernels and those of the examples with native Lean.
 
+### PTX kernels
+
+[`Verified.PTX.compile`](../Verified/PTX/Compile.lean) translates the same builds as
+`Verified.WGSL.compile` when their parameters and elements are words or Booleans, and gives `none`
+for a build with binary32 values.  Word arithmetic includes every operation of the kernel source
+language, with division and remainder by any divisor.  [The PTX
+translation](../LeanExe/PTX/Translate.lean) keeps each word and each Boolean, as 0 or 1, in a
+`.b64` register, and it evaluates the operands of `&&`, `||`, and conditional expressions in
+branches, as the source semantics does.  The typed API constructs a kernel as follows:
+
+```lean
+import Verified.PTX.Compile
+
+def ptx := (Verified.PTX.compile (e := .word) compiled.wordScan.func.body).get (by decide +kernel)
+def kernel : LeanExe.PTX.Module := ptx.module
+```
+
+`ptx.executions_eq` states the launch theorem under [the PTX memory
+model](../LeanExe/PTX/MemoryModel.lean): a consistent execution exists, and in every consistent
+execution no access of a thread is in a data race, every thread ends, and the copy back reads the
+count followed by the source array's encoded elements.  Its conditions are those of the WGSL
+dispatch theorem for the arguments, an output of the count followed by one word for each element,
+and a launch of at least the count's threads in fewer than 2³² blocks with fewer than 2⁶⁰ threads.
+[The PTX examples](../Verified/Examples/Ptx.lean) compile `flags` and `wordScan`, and
+[`tests/ptx/run.sh`](../tests/ptx/run.sh) compiles their text with `ptxas` and compares their
+output words with native Lean on an NVIDIA GPU.
+
 ### The WGSL library and the browser pages
 
 [`LeanExe/WGSL/`](../LeanExe/WGSL) defines the WGSL subset of the kernels, a printer, a parser that `Module.parse_print` proves to invert the printer, and the device model, a semantics in which binary32 operations compute Talos's `IEEE32` results and a dispatch runs its invocations in order.  [`MemoryModel.lean`](../LeanExe/WGSL/MemoryModel.lean) states the dispatch's executions under the Vulkan memory model, with each invocation's reads taken from an oracle, and `Dispatch.executions` in [`MemoryModelProof.lean`](../LeanExe/WGSL/MemoryModelProof.lean) proves that every consistent execution of a race-free dispatch has every invocation end, has no data race, and leaves the output of the sequential model.  `Verified.WGSL.compile`, which [WGSL kernels](#wgsl-kernels) describes, translates into this subset.  [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean) prints a kernel after checking that the parser reads the text back as the kernel, and [`tools/build-webgpu-host.sh`](../tools/build-webgpu-host.sh), after [`tools/download-wgpu-native.sh`](../tools/download-wgpu-native.sh), builds `build/tools/leanexe-webgpu-host`.

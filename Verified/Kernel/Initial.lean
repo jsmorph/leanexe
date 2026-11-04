@@ -1,8 +1,8 @@
-import Verified.WGSL.Params
+import Verified.Kernel.Params
 
-namespace Verified.WGSL
+namespace Verified.Kernel
 
-open LeanExe.WGSL
+open LeanExe.Source (Spec Arg Count)
 
 theorem args_holds (K : Spec) (hK : K.WF) (args : List Arg) (k n : Nat)
     (fits : K.Fits args n) (j : Nat) (arg : Arg) (harg : args[j]? = some arg) :
@@ -50,4 +50,4 @@ theorem Params.initial_agrees (params : Params Γ) (K : Spec) (hK : K.WF)
   intro j arg hj
   simpa only [Nat.zero_add] using args_holds K hK (params.args env) k n fits j arg hj
 
-end Verified.WGSL
+end Verified.Kernel

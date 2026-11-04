@@ -75,9 +75,9 @@ inductive Val where
   | float (x : Float32)
 
 def Val.buffer : Val → Array UInt32
-  | .arr xs => (Arg.array (xs.map fun x => x.toBits.toUInt64)).buffer
-  | .word v => (Arg.word v).buffer
-  | .float x => (Arg.float x.toBits).buffer
+  | .arr xs => (LeanExe.Source.Arg.array (xs.map fun x => x.toBits.toUInt64)).wgslBuffer
+  | .word v => (LeanExe.Source.Arg.word v).wgslBuffer
+  | .float x => (LeanExe.Source.Arg.float x.toBits).wgslBuffer
 
 abbrev Store := Buf → Option Val
 
@@ -202,7 +202,7 @@ theorem HostStore.set_set (s : HostStore) (b : Buf) (x y : Array UInt32) :
   split <;> rfl
 
 theorem Val.empty_buffer : (Val.arr #[]).buffer = #[0, 0] := by
-  simp only [Val.buffer, Arg.buffer, arrayWords]
+  simp only [Val.buffer, LeanExe.Source.Arg.wgslBuffer, arrayWords]
   ext i h1 h2
   · simp
   · simp only [Array.size_ofFn, Array.size_map, List.size_toArray, List.length_nil] at h1
@@ -260,12 +260,12 @@ theorem Item.exec_sim (files : String → Option Val) {s s' : Store} {i : Item}
   | word b v =>
     simp only [Item.exec, Option.some.injEq] at h
     subst h
-    exact ⟨by simp [Item.cmds, Cmd.execAll, Cmd.exec, Store.host_set, Val.buffer, Arg.buffer],
+    exact ⟨by simp [Item.cmds, Cmd.execAll, Cmd.exec, Store.host_set, Val.buffer, LeanExe.Source.Arg.wgslBuffer],
       trivial, fun _ _ => trivial⟩
   | float b x =>
     simp only [Item.exec, Option.some.injEq] at h
     subst h
-    exact ⟨by simp [Item.cmds, Cmd.execAll, Cmd.exec, Store.host_set, Val.buffer, Arg.buffer],
+    exact ⟨by simp [Item.cmds, Cmd.execAll, Cmd.exec, Store.host_set, Val.buffer, LeanExe.Source.Arg.wgslBuffer],
       trivial, fun _ _ => trivial⟩
   | empty b =>
     simp only [Item.exec, Option.some.injEq] at h

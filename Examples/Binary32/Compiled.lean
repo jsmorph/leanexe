@@ -11,6 +11,7 @@ comes from `Compiled.dispatch_value` with the generated `denote_eq`. -/
 namespace Examples.Binary32
 
 open LeanExe.WGSL
+open LeanExe.Source (Arg Arg.word Arg.float Arg.array)
 
 verified_compile compiled := [axpy32, hypot32, ratio32, matVec32, piecewise32, scale32,
   axpyArray32, condMix32]
@@ -39,10 +40,10 @@ theorem scale32_dispatch (a : Float32) (x : Array Float32) (hx : x.size < 2 ^ 29
     (output : Array UInt32) (hOut : output.size = 2 + 2 * x.size)
     (hL0 : output[0]? = some (UInt32.ofNat x.size)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : x.size ≤ count) (h32 : count ≤ 2 ^ 32) :
-    verifiedScale32Kernel.dispatch [(Arg.float a.toBits).buffer, (Arg.array (floatWords x)).buffer]
+    verifiedScale32Kernel.dispatch [(Arg.float a.toBits).wgslBuffer, (Arg.array (floatWords x)).wgslBuffer]
         output count = some (arrayWords (floatWords (scale32 a x))) ∧
       verifiedScale32Kernel.RaceFree
-        [(Arg.float a.toBits).buffer, (Arg.array (floatWords x)).buffer] output.size count := by
+        [(Arg.float a.toBits).wgslBuffer, (Arg.array (floatWords x)).wgslBuffer] output.size count := by
   have fits : scale32Gpu.spec.Fits (scale32Gpu.args (.cons a (.cons x .nil))) x.size := by
     refine ⟨rfl, ?_, ?_, hx⟩
     · change ∀ ys, Arg.array ys ∈ [Arg.float a.toBits, Arg.array (floatWords x)] →
@@ -59,11 +60,11 @@ theorem axpyArray32_dispatch (a : Float32) (x y : Array Float32) (hx : x.size < 
     (hy : y.size < 2 ^ 29) (output : Array UInt32) (hOut : output.size = 2 + 2 * x.size)
     (hL0 : output[0]? = some (UInt32.ofNat x.size)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : x.size ≤ count) (h32 : count ≤ 2 ^ 32) :
-    verifiedAxpyArray32Kernel.dispatch [(Arg.float a.toBits).buffer,
-        (Arg.array (floatWords x)).buffer, (Arg.array (floatWords y)).buffer] output count =
+    verifiedAxpyArray32Kernel.dispatch [(Arg.float a.toBits).wgslBuffer,
+        (Arg.array (floatWords x)).wgslBuffer, (Arg.array (floatWords y)).wgslBuffer] output count =
         some (arrayWords (floatWords (axpyArray32 a x y))) ∧
-      verifiedAxpyArray32Kernel.RaceFree [(Arg.float a.toBits).buffer,
-        (Arg.array (floatWords x)).buffer, (Arg.array (floatWords y)).buffer] output.size count := by
+      verifiedAxpyArray32Kernel.RaceFree [(Arg.float a.toBits).wgslBuffer,
+        (Arg.array (floatWords x)).wgslBuffer, (Arg.array (floatWords y)).wgslBuffer] output.size count := by
   have fits : axpyArray32Gpu.spec.Fits
       (axpyArray32Gpu.args (.cons a (.cons x (.cons y .nil)))) x.size := by
     refine ⟨rfl, ?_, ?_, hx⟩
@@ -85,11 +86,11 @@ theorem matVec32_dispatch (m v : Array Float32) (rows cols : UInt64) (hm : m.siz
     (output : Array UInt32) (hOut : output.size = 2 + 2 * rows.toNat)
     (hL0 : output[0]? = some (UInt32.ofNat rows.toNat)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : rows.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
-    verifiedMatVec32Kernel.dispatch [(Arg.array (floatWords m)).buffer,
-        (Arg.array (floatWords v)).buffer, (Arg.word rows).buffer, (Arg.word cols).buffer] output
+    verifiedMatVec32Kernel.dispatch [(Arg.array (floatWords m)).wgslBuffer,
+        (Arg.array (floatWords v)).wgslBuffer, (Arg.word rows).wgslBuffer, (Arg.word cols).wgslBuffer] output
         count = some (arrayWords (floatWords (matVec32 m v rows cols))) ∧
-      verifiedMatVec32Kernel.RaceFree [(Arg.array (floatWords m)).buffer,
-        (Arg.array (floatWords v)).buffer, (Arg.word rows).buffer, (Arg.word cols).buffer]
+      verifiedMatVec32Kernel.RaceFree [(Arg.array (floatWords m)).wgslBuffer,
+        (Arg.array (floatWords v)).wgslBuffer, (Arg.word rows).wgslBuffer, (Arg.word cols).wgslBuffer]
         output.size count := by
   have fits : matVec32Gpu.spec.Fits
       (matVec32Gpu.args (.cons m (.cons v (.cons rows (.cons cols .nil))))) rows.toNat := by
@@ -109,11 +110,11 @@ theorem condMix32_dispatch (x : Array Float32) (lo hi : Float32) (n : UInt64)
     (hx : x.size < 2 ^ 29) (output : Array UInt32) (hOut : output.size = 2 + 2 * x.size)
     (hL0 : output[0]? = some (UInt32.ofNat x.size)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : x.size ≤ count) (h32 : count ≤ 2 ^ 32) :
-    verifiedCondMix32Kernel.dispatch [(Arg.array (floatWords x)).buffer,
-        (Arg.float lo.toBits).buffer, (Arg.float hi.toBits).buffer, (Arg.word n).buffer] output
+    verifiedCondMix32Kernel.dispatch [(Arg.array (floatWords x)).wgslBuffer,
+        (Arg.float lo.toBits).wgslBuffer, (Arg.float hi.toBits).wgslBuffer, (Arg.word n).wgslBuffer] output
         count = some (arrayWords (floatWords (condMix32 x lo hi n))) ∧
-      verifiedCondMix32Kernel.RaceFree [(Arg.array (floatWords x)).buffer,
-        (Arg.float lo.toBits).buffer, (Arg.float hi.toBits).buffer, (Arg.word n).buffer]
+      verifiedCondMix32Kernel.RaceFree [(Arg.array (floatWords x)).wgslBuffer,
+        (Arg.float lo.toBits).wgslBuffer, (Arg.float hi.toBits).wgslBuffer, (Arg.word n).wgslBuffer]
         output.size count := by
   have fits : condMix32Gpu.spec.Fits
       (condMix32Gpu.args (.cons x (.cons lo (.cons hi (.cons n .nil))))) x.size := by

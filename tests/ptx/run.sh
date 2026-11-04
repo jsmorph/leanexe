@@ -12,15 +12,17 @@ out=$build/ptx
 host=$root/build/tools/leanexe-cuda-host
 cuda=${CUDA_HOME:-/usr/local/cuda}
 # Each kernel as MODULE:CONSTANT:NAME, where NAME.ptx receives the text of CONSTANT.
-kernels=(LeanExe.PTX.AddOne:LeanExe.PTX.addOne:addOne)
+kernels=(LeanExe.PTX.AddOne:LeanExe.PTX.addOne:addOne
+  Verified.Examples.Ptx:Verified.Examples.Ptx.verifiedFlagsKernel:verifiedFlags
+  Verified.Examples.Ptx:Verified.Examples.Ptx.verifiedWordsKernel:verifiedWords)
 mkdir -p "$out"
 arch=$("$host" info | sed -n 's/^compute capability \([0-9]*\)\.\([0-9]*\)$/sm_\1\2/p')
 if [ -z "$arch" ]; then
   echo "cannot read the GPU's compute capability from $host info" >&2
   exit 1
 fi
-(cd "$root" && tools/leanrun --timeout 20m lake --log-level error build LeanExe.PTX.Parse \
-  LeanExe.PTX.AddOne)
+(cd "$root" && tools/leanrun --timeout 40m lake --log-level error build LeanExe.PTX.Parse \
+  LeanExe.PTX.AddOne Verified.Examples.PtxCases)
 "$cuda/bin/ptxas" --version >"$out/ptxas.version"
 : >"$out/cubins.sha256"
 for entry in "${kernels[@]}"; do
@@ -32,9 +34,11 @@ for entry in "${kernels[@]}"; do
   "$cuda/bin/cuobjdump" -sass "$out/$kernel.cubin" >"$out/$kernel.sass"
 done
 cases=$out/cases.txt
+# Reads past the end of a shorter array with `!` print panic messages from native Lean, which then
+# returns the default 0, so standard error goes to a log.
 if ! (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tests/ptx/Cases.lean) \
-    >"$cases"; then
-  cat "$cases" >&2
+    >"$cases" 2>"$out/cases.stderr.log"; then
+  cat "$cases" "$out/cases.stderr.log" >&2
   exit 1
 fi
 status=0

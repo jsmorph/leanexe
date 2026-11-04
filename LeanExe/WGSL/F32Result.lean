@@ -1,5 +1,5 @@
 import LeanExe.WGSL.F32Canonical
-import LeanExe.WGSL.Source
+import LeanExe.Source.Syntax
 import LeanExe.ProofKit.F32Bits
 import LeanExe.ProofKit.F32Nearest
 

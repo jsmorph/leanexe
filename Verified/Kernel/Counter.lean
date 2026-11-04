@@ -1,14 +1,14 @@
-import Verified.WGSL.ParamLookup
+import Verified.Kernel.ParamLookup
 
-namespace Verified.WGSL
+namespace Verified.Kernel
 
-def FitsCount (count : LeanExe.WGSL.Count) (args : List LeanExe.WGSL.Arg) (n : Nat) : Prop :=
+def FitsCount (count : LeanExe.Source.Count) (args : List LeanExe.Source.Arg) (n : Nat) : Prop :=
   match count with
   | .size _ src => ∃ xs, args[src]? = some (.array xs) ∧ xs.size = n
   | .param j => args[j]? = some (.word (UInt64.ofNat n))
 
 structure Counter (params : Params Γ) (e : Verified.Expr S Γ .word) where
-  count : LeanExe.WGSL.Count
+  count : LeanExe.Source.Count
   value : ∀ funs env n, FitsCount count (params.args env) n → e.denote funs env = UInt64.ofNat n
   sizeBound : ∀ j, count.sizeLocal? = some j → j < Γ.length + 2
 
@@ -23,7 +23,7 @@ def Counter.param (params : Params Γ) (v : Var Γ .word) :
         simp only [hp, Param.arg] at ha
         change (params.args env)[v.index]? = some (.word (UInt64.ofNat n)) at h
         rw [ha] at h
-        exact LeanExe.WGSL.Arg.word.inj (Option.some.inj h)
+        exact LeanExe.Source.Arg.word.inj (Option.some.inj h)
   sizeBound := by intro j hj; cases hj
 
 def Counter.size (params : Params Γ) (v : Var Γ (.array e)) :
@@ -48,4 +48,4 @@ def Counter.ofExpr (params : Params Γ) : (e : Verified.Expr S Γ .word) → Opt
   | .size v => some (.size params v)
   | _ => none
 
-end Verified.WGSL
+end Verified.Kernel

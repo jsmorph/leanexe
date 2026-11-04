@@ -681,6 +681,30 @@ theorem Launch.execution_exists (L : Launch) {out : Array UInt64} (h : L.seq = s
         · exact Op.Below.irrefl _ hco
         · exact Op.Below.irrefl _ (hco.trans hlt)
 
+theorem get_head (a : UInt64) (xs : Array UInt64) : (#[a] ++ xs)[0]? = some a := by
+  rw [Array.getElem?_append_left (by simp)]
+  rfl
+
+theorem get_tail (a : UInt64) (xs : Array UInt64) (k : Nat) : (#[a] ++ xs)[k + 1]? = xs[k]? := by
+  rw [Array.getElem?_append_right (by simp)]
+  simp
+
+/-- `mad.wide.u32` of `%ctaid.x`, `%ntid.x`, and the widened `%tid.x` gives the thread's index. -/
+theorem index_eq {block g : Nat} (hb : 0 < block) (hb32 : block < 2 ^ 32)
+    (hq : g / block < 2 ^ 32) (hg : g < 2 ^ 60) :
+    (UInt32.ofNat (g / block)).toUInt64 * (UInt32.ofNat block).toUInt64 +
+      (UInt32.ofNat (g % block)).toUInt64 = UInt64.ofNat g := by
+  apply UInt64.toNat_inj.mp
+  have hm := Nat.mod_lt g hb
+  have h1 : (UInt32.ofNat (g / block)).toUInt64.toNat = g / block := by
+    simp [Nat.mod_eq_of_lt hq]
+  have h2 : (UInt32.ofNat block).toUInt64.toNat = block := by simp [Nat.mod_eq_of_lt hb32]
+  have h3 : (UInt32.ofNat (g % block)).toUInt64.toNat = g % block := by
+    simp [Nat.mod_eq_of_lt (show g % block < 2 ^ 32 by omega)]
+  have hle : g / block * block ≤ g := Nat.div_mul_le_self g block
+  rw [UInt64.toNat_add, UInt64.toNat_mul, h1, h2, h3, UInt64.toNat_ofNat',
+    Nat.mod_eq_of_lt (show g / block * block < 2 ^ 64 by omega), Nat.div_add_mod' g block]
+
 end LeanExe.PTX
 
 #print axioms LeanExe.PTX.Launch.executions

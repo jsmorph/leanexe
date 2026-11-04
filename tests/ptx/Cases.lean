@@ -1,4 +1,7 @@
-/-! Test cases for the PTX kernels, computed by native Lean.  Each line is
+import Verified.Examples.PtxCases
+
+/-! Test cases for the PTX kernels, computed by native Lean: the add-one kernel's, then those of
+`Verified.Examples.PtxCases`.  Each line is
 `kernel|blocks|initial output|inputs|expected output`, with buffers in the harness's `u64:`
 notation and the expected output as 32-bit words joined by commas, least significant half of each
 64-bit word first.  `tests/ptx/run.sh` runs each case with `build/tools/leanexe-cuda-host` and
@@ -26,3 +29,4 @@ def main : IO Unit := do
   for (n, seed) in [(0, 1), (1, 2), (63, 3), (64, 4), (65, 5), (200, 6), (1000, 7), (4096, 8)] do
     IO.println (addOneCase n seed (max 1 ((n + 63) / 64)))
   IO.println (addOneCase 100 9 5)
+  Verified.Examples.PtxCases.runCases

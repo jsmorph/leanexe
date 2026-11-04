@@ -1,10 +1,10 @@
-import Verified.WGSL.LoopBody
+import Verified.Kernel.LoopBody
 
-namespace Verified.WGSL
+namespace Verified.Kernel
 
-open LeanExe.WGSL.Source
+open LeanExe.Source
 
-variable {t : Verified.Ty} {ctx : Verified.WGSL.Context Γ} {base : Nat}
+variable {t : Verified.Ty} {ctx : Verified.Kernel.Context Γ} {base : Nat}
 
 def Code.loop (cell : Cell t) {count : Funs S → Verified.Env Γ → UInt64}
     {init : Funs S → Verified.Env Γ → t.denote}
@@ -57,7 +57,7 @@ def Code.loop (cell : Cell t) {count : Funs S → Verified.Env Γ → UInt64}
       have hBound : a.result.wordExpr.denoteLocals ≤ a.next := by
         cases hr : a.result
         simpa only [hr, Rep.locals, Rep.wordExpr] using a.resultBound
-      rw [LeanExe.WGSL.Source.Expr.denote_congr a.result.wordExpr middle start arrays
+      rw [LeanExe.Source.Expr.denote_congr a.result.wordExpr middle start arrays
         (fun j hj => hFrame j (by omega))]
       cases hr : a.result
       simpa only [hr, Rep.Holds, Rep.wordExpr] using hva
@@ -68,4 +68,4 @@ def Code.loop (cell : Cell t) {count : Funs S → Verified.Env Γ → UInt64}
       a.result.wordExpr (count funs env) (init funs env) hCount hInit
     exact ⟨last, by simp [Stmt.denote, ha, hb, hLoop], hResult⟩
 
-end Verified.WGSL
+end Verified.Kernel

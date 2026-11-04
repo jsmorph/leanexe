@@ -1,20 +1,20 @@
 import Verified.Source
-import LeanExe.WGSL.SourceDenote
+import LeanExe.Source.Denote
 
-namespace Verified.WGSL
+namespace Verified.Kernel
 
 abbrev Locals := Nat → Option Wasm.Value
 abbrev Arrays := Nat → Option (Array UInt64)
 
 inductive Rep : Ty → Type where
-  | word (value : LeanExe.WGSL.Source.Expr .u64) : Rep .word
-  | bool (value : LeanExe.WGSL.Source.Expr .bool) : Rep .bool
-  | float32 (value : LeanExe.WGSL.Source.Expr .f32) : Rep .float32
-  | words (index : Nat) (size : Option (LeanExe.WGSL.Source.Expr .u64)) : Rep (.array .word)
-  | bools (index : Nat) (size : Option (LeanExe.WGSL.Source.Expr .u64)) : Rep (.array .bool)
-  | floats32 (index : Nat) (size : Option (LeanExe.WGSL.Source.Expr .u64)) : Rep (.array .float32)
+  | word (value : LeanExe.Source.Expr .u64) : Rep .word
+  | bool (value : LeanExe.Source.Expr .bool) : Rep .bool
+  | float32 (value : LeanExe.Source.Expr .f32) : Rep .float32
+  | words (index : Nat) (size : Option (LeanExe.Source.Expr .u64)) : Rep (.array .word)
+  | bools (index : Nat) (size : Option (LeanExe.Source.Expr .u64)) : Rep (.array .bool)
+  | floats32 (index : Nat) (size : Option (LeanExe.Source.Expr .u64)) : Rep (.array .float32)
 
-def sizeHolds (size : Option (LeanExe.WGSL.Source.Expr .u64)) (locals : Locals) (arrays : Arrays)
+def sizeHolds (size : Option (LeanExe.Source.Expr .u64)) (locals : Locals) (arrays : Arrays)
     (n : Nat) : Prop :=
   ∀ e, size = some e → e.denote locals arrays = some n.toUInt64
 
@@ -30,7 +30,7 @@ def Rep.Holds : {t : Ty} → Rep t → Locals → Arrays → t.denote → Prop
       arrays index = some (value.map fun x => x.toBits.toUInt64) ∧
         sizeHolds size locals arrays value.size
 
-def sizeLocals : Option (LeanExe.WGSL.Source.Expr .u64) → Nat
+def sizeLocals : Option (LeanExe.Source.Expr .u64) → Nat
   | none => 0
   | some e => e.denoteLocals
 
@@ -38,13 +38,13 @@ def Rep.locals : {t : Ty} → Rep t → Nat
   | _, .word e | _, .bool e | _, .float32 e => e.denoteLocals
   | _, .words _ size | _, .bools _ size | _, .floats32 _ size => sizeLocals size
 
-theorem sizeHolds.congr {size : Option (LeanExe.WGSL.Source.Expr .u64)} {locals next : Locals}
+theorem sizeHolds.congr {size : Option (LeanExe.Source.Expr .u64)} {locals next : Locals}
     {arrays : Arrays} {n base : Nat} (h : sizeHolds size locals arrays n)
     (bound : sizeLocals size ≤ base) (same : ∀ j, j < base → next j = locals j) :
     sizeHolds size next arrays n := by
   intro e he
   cases he
-  rw [LeanExe.WGSL.Source.Expr.denote_congr e locals next arrays (fun j hj => same j (by
+  rw [LeanExe.Source.Expr.denote_congr e locals next arrays (fun j hj => same j (by
     simp only [sizeLocals] at bound
     omega))]
   exact h e rfl
@@ -55,7 +55,7 @@ theorem Rep.Holds.congr {t : Ty} {rep : Rep t} {locals next : Locals} {arrays : 
     rep.Holds next arrays value := by
   cases rep with
   | word e | bool e | float32 e =>
-      exact (LeanExe.WGSL.Source.Expr.denote_congr e locals next arrays
+      exact (LeanExe.Source.Expr.denote_congr e locals next arrays
         (fun j hj => same j (by simp only [Rep.locals] at bound; omega))).trans h
   | words index size | bools index size | floats32 index size =>
       exact ⟨h.1, h.2.congr bound same⟩
@@ -102,4 +102,4 @@ theorem Context.Agrees.frame {ctx : Context Γ} {env : Verified.Env Γ}
     (same : ∀ j, j < base → next j = locals j) : ctx.Agrees env next arrays :=
   fun t v => (h t v).congr (bound t v) same
 
-end Verified.WGSL
+end Verified.Kernel

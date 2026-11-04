@@ -16,8 +16,8 @@ def compile : (source : Verified.Expr S Γ (.array e)) → Option (Compiled sour
 variable {source : Verified.Expr S Γ (.array e)}
 
 def Compiled.module (c : Compiled source) : LeanExe.WGSL.Module := c.kernel.module
-def Compiled.spec (c : Compiled source) : LeanExe.WGSL.Spec := c.kernel.toKernelPlan.spec
-def Compiled.args (c : Compiled source) (env : Verified.Env Γ) : List LeanExe.WGSL.Arg :=
+def Compiled.spec (c : Compiled source) : LeanExe.Source.Spec := c.kernel.toKernelPlan.spec
+def Compiled.args (c : Compiled source) (env : Verified.Env Γ) : List LeanExe.Source.Arg :=
   c.kernel.params.args env
 def Compiled.encode (c : Compiled source) : e.denote → UInt64 := c.kernel.output.encode
 
@@ -26,9 +26,9 @@ theorem Compiled.dispatch_eq (c : Compiled source) (funs : Funs S) (env : Verifi
     (output : Array UInt32) (hOut : output.size = 2 + 2 * n)
     (hL0 : output[0]? = some (UInt32.ofNat n)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : n ≤ count) (h32 : count ≤ 2 ^ 32) :
-    c.module.dispatch ((c.args env).map LeanExe.WGSL.Arg.buffer) output count =
+    c.module.dispatch ((c.args env).map LeanExe.Source.Arg.wgslBuffer) output count =
         some (LeanExe.WGSL.arrayWords ((source.denote funs env).map c.encode)) ∧
-      c.module.RaceFree ((c.args env).map LeanExe.WGSL.Arg.buffer) output.size count := by
+      c.module.RaceFree ((c.args env).map LeanExe.Source.Arg.wgslBuffer) output.size count := by
   have hValue := congrArg (fun expr => expr.denote funs env) c.shape
   have h := c.kernel.dispatch_eq funs env n fits output hOut hL0 hL1 count hCover h32
   simpa only [Compiled.module, Compiled.args, Compiled.encode, hValue] using h
@@ -39,9 +39,9 @@ theorem Compiled.dispatch_value (c : Compiled source) (funs : Funs S) (env : Ver
     (output : Array UInt32) (hOut : output.size = 2 + 2 * n)
     (hL0 : output[0]? = some (UInt32.ofNat n)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : n ≤ count) (h32 : count ≤ 2 ^ 32) :
-    c.module.dispatch ((c.args env).map LeanExe.WGSL.Arg.buffer) output count =
+    c.module.dispatch ((c.args env).map LeanExe.Source.Arg.wgslBuffer) output count =
         some (LeanExe.WGSL.arrayWords (value.map c.encode)) ∧
-      c.module.RaceFree ((c.args env).map LeanExe.WGSL.Arg.buffer) output.size count := by
+      c.module.RaceFree ((c.args env).map LeanExe.Source.Arg.wgslBuffer) output.size count := by
   have h := c.dispatch_eq funs env n fits output hOut hL0 hL1 count hCover h32
   exact ⟨h.1.trans (congrArg (fun result =>
     some (LeanExe.WGSL.arrayWords (result.map c.encode))) meaning), h.2⟩

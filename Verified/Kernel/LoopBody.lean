@@ -1,10 +1,10 @@
-import Verified.WGSL.Branch
+import Verified.Kernel.Branch
 
-namespace Verified.WGSL
+namespace Verified.Kernel
 
-open LeanExe.WGSL.Source
+open LeanExe.Source
 
-variable {t : Verified.Ty} {ctx : Verified.WGSL.Context Γ}
+variable {t : Verified.Ty} {ctx : Verified.Kernel.Context Γ}
 
 theorem branchBody_run (cell : Cell t) {slot base : Nat}
     {value : Funs S → Verified.Env Γ → t.denote} (code : Code ctx base value)
@@ -25,7 +25,7 @@ theorem loopBody_run (cell : Cell t) (slot base : Nat) (lower : base ≤ slot)
     (code : Code (.cons (cell.read slot) (.cons (.word (.get (slot + 2))) ctx)) (slot + 3) value)
     (funs : Funs S) (env : Verified.Env Γ) (locals : Locals) (arrays : Arrays)
     (agree : ctx.Agrees env locals arrays) (unused : ∀ j, slot ≤ j → arrays j = none)
-    (count : LeanExe.WGSL.Source.Expr .u64) (n : UInt64) (init : t.denote)
+    (count : LeanExe.Source.Expr .u64) (n : UInt64) (init : t.denote)
     (hCount : count.denote locals arrays = some n)
     (hInit : locals slot = some (cell.type.value (cell.encode init))) :
     ∃ last, (Stmt.loop (slot + 1) (slot + 2) count (branchBody cell slot code)).denote arrays
@@ -39,7 +39,7 @@ theorem loopBody_run (cell : Cell t) (slot base : Nat) (lower : base ≤ slot)
     rcases hj with hj | rfl
     · exact Or.inr (code.writes j hj).1
     · exact Or.inl rfl
-  have bodyBound : (Verified.WGSL.Context.cons (cell.read slot)
+  have bodyBound : (Verified.Kernel.Context.cons (cell.read slot)
       (.cons (.word (.get (slot + 2))) ctx)).Bounded (slot + 3) := by
     apply ((ctxBound.mono (by omega)).cons (by exact Nat.le_refl _)).cons
     have := cell.readBound slot
@@ -60,7 +60,7 @@ theorem loopBody_run (cell : Cell t) (slot base : Nat) (lower : base ≤ slot)
         have := outside j hw
         omega
       have hWord : (Rep.word (.get (slot + 2))).Holds current arrays (UInt64.ofNat k) := by
-        simp [Rep.Holds, LeanExe.WGSL.Source.Expr.denote, hIndex]
+        simp [Rep.Holds, LeanExe.Source.Expr.denote, hIndex]
       have hState' : current slot = some (cell.type.value (cell.encode s)) := by
         cases hState with
         | cons h _ => exact h
@@ -73,4 +73,4 @@ theorem loopBody_run (cell : Cell t) (slot base : Nat) (lower : base ≤ slot)
     cases hHold with
     | cons h _ => exact h)⟩
 
-end Verified.WGSL
+end Verified.Kernel

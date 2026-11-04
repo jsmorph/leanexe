@@ -1,6 +1,6 @@
-import Verified.WGSL.Params
+import Verified.Kernel.Params
 
-namespace Verified.WGSL
+namespace Verified.Kernel
 
 def Params.get : {Γ : List Ty} → {t : Ty} → Params Γ → Var Γ t → Param t
   | _, _, .cons p _, .here => p
@@ -23,7 +23,7 @@ theorem Params.kinds_get (params : Params Γ) (v : Var Γ t) :
   | there v ih => cases params; exact ih _
 
 theorem Params.context_get (params : Params Γ) (v : Var Γ t)
-    (count : LeanExe.WGSL.Count) (start : Nat) :
+    (count : LeanExe.Source.Count) (start : Nat) :
     (params.context count start).get v = (params.get v).rep (start + v.index) count := by
   induction v generalizing start with
   | here => cases params; rfl
@@ -35,4 +35,4 @@ theorem Params.context_get (params : Params Γ) (v : Var Γ t)
           congr 1
           omega
 
-end Verified.WGSL
+end Verified.Kernel

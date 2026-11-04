@@ -1,6 +1,6 @@
-import Verified.WGSL.Scalar
+import Verified.Kernel.Scalar
 
-namespace Verified.WGSL
+namespace Verified.Kernel
 
 def Context.size (ctx : Context Γ) (base : Nat) (bound : ctx.Bounded base)
     (x : Var Γ (.array e)) :
@@ -18,4 +18,4 @@ def Context.size (ctx : Context Γ) (base : Nat) (bound : ctx.Bounded base)
               simp only [hr, hs, Rep.Holds] at h
               exact h.2 value rfl))
 
-end Verified.WGSL
+end Verified.Kernel

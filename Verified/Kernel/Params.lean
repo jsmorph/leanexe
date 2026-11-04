@@ -1,7 +1,7 @@
-import Verified.WGSL.Context
-import LeanExe.WGSL.Build
+import Verified.Kernel.Context
+import LeanExe.Source.Build
 
-namespace Verified.WGSL
+namespace Verified.Kernel
 
 inductive Param : Ty → Type where
   | word : Param .word
@@ -20,12 +20,12 @@ def Param.ofTy : (t : Ty) → Option (Param t)
   | .array .float32 => some .floats32
   | _ => none
 
-def Param.kind : {t : Ty} → Param t → LeanExe.WGSL.Kind
+def Param.kind : {t : Ty} → Param t → LeanExe.Source.Kind
   | _, .word | _, .bool => .word
   | _, .float32 => .float
   | _, .words | _, .bools | _, .floats32 => .array
 
-def Param.arg : {t : Ty} → Param t → t.denote → LeanExe.WGSL.Arg
+def Param.arg : {t : Ty} → Param t → t.denote → LeanExe.Source.Arg
   | _, .word, x => .word x
   | _, .bool, x => .word (boolWord x)
   | _, .float32, x => .float x.toBits
@@ -36,12 +36,12 @@ def Param.arg : {t : Ty} → Param t → t.denote → LeanExe.WGSL.Arg
 theorem Param.arg_kind {t : Ty} (p : Param t) (x : t.denote) : (p.arg x).kind = p.kind := by
   cases p <;> rfl
 
-def countSize (count : LeanExe.WGSL.Count) (index : Nat) : Option (LeanExe.WGSL.Source.Expr .u64) :=
+def countSize (count : LeanExe.Source.Count) (index : Nat) : Option (LeanExe.Source.Expr .u64) :=
   match count with
   | .size sizeSlot src => if index = src then some (.get sizeSlot) else none
   | .param _ => none
 
-def Param.rep : {t : Ty} → Param t → Nat → LeanExe.WGSL.Count → Rep t
+def Param.rep : {t : Ty} → Param t → Nat → LeanExe.Source.Count → Rep t
   | _, .word, index, _ => .word (.get index)
   | _, .bool, index, _ => .bool (.ne (.get index) (.const 0))
   | _, .float32, index, _ => .float32 (.getF32 index)
@@ -49,24 +49,24 @@ def Param.rep : {t : Ty} → Param t → Nat → LeanExe.WGSL.Count → Rep t
   | _, .bools, index, count => .bools index (countSize count index)
   | _, .floats32, index, count => .floats32 index (countSize count index)
 
-theorem countSize_bound (count : LeanExe.WGSL.Count) (index base : Nat)
+theorem countSize_bound (count : LeanExe.Source.Count) (index base : Nat)
     (h : ∀ j, count.sizeLocal? = some j → j < base) : sizeLocals (countSize count index) ≤ base := by
   cases count with
   | param j => exact Nat.zero_le _
   | size sizeSlot src =>
       have := h sizeSlot rfl
       by_cases hi : index = src
-      · simp only [countSize, hi, ↓reduceIte, sizeLocals, LeanExe.WGSL.Source.Expr.denoteLocals]
+      · simp only [countSize, hi, ↓reduceIte, sizeLocals, LeanExe.Source.Expr.denoteLocals]
         omega
       · simp [countSize, hi, sizeLocals]
 
-theorem Param.rep_bound {t : Ty} (p : Param t) (index base : Nat) (count : LeanExe.WGSL.Count)
+theorem Param.rep_bound {t : Ty} (p : Param t) (index base : Nat) (count : LeanExe.Source.Count)
     (hi : index < base) (hs : ∀ j, count.sizeLocal? = some j → j < base) :
     (p.rep index count).locals ≤ base := by
-  cases p <;> simp only [Param.rep, Rep.locals, LeanExe.WGSL.Source.Expr.denoteLocals]
+  cases p <;> simp only [Param.rep, Rep.locals, LeanExe.Source.Expr.denoteLocals]
   all_goals first | exact countSize_bound count index base hs | omega
 
-def argHolds (arg : LeanExe.WGSL.Arg) (index : Nat) (count : LeanExe.WGSL.Count)
+def argHolds (arg : LeanExe.Source.Arg) (index : Nat) (count : LeanExe.Source.Count)
     (locals : Locals) (arrays : Arrays) : Prop :=
   match arg with
   | .word v => locals index = some (.i64 v)
@@ -75,15 +75,15 @@ def argHolds (arg : LeanExe.WGSL.Arg) (index : Nat) (count : LeanExe.WGSL.Count)
       ∀ sizeSlot, count = .size sizeSlot index → locals sizeSlot = some (.i64 xs.size.toUInt64)
 
 theorem Param.rep_holds {t : Ty} (p : Param t) (x : t.denote) (index : Nat)
-    (count : LeanExe.WGSL.Count) (locals : Locals) (arrays : Arrays)
+    (count : LeanExe.Source.Count) (locals : Locals) (arrays : Arrays)
     (h : argHolds (p.arg x) index count locals arrays) :
     (p.rep index count).Holds locals arrays x := by
   cases p with
   | word | float32 =>
-    simp_all [argHolds, Param.arg, Param.rep, Rep.Holds, LeanExe.WGSL.Source.Expr.denote]
+    simp_all [argHolds, Param.arg, Param.rep, Rep.Holds, LeanExe.Source.Expr.denote]
   | bool =>
       cases x <;> simp_all [argHolds, Param.arg, Param.rep, Rep.Holds,
-        LeanExe.WGSL.Source.Expr.denote, boolWord]
+        LeanExe.Source.Expr.denote, boolWord]
   | words | bools | floats32 =>
       simp only [Param.arg, argHolds] at h
       refine ⟨h.1, ?_⟩
@@ -94,7 +94,7 @@ theorem Param.rep_holds {t : Ty} (p : Param t) (x : t.denote) (index : Nat)
           · subst src
             have hs : locals sizeSlot = some (.i64 x.size.toUInt64) := by
               simpa only [Array.size_map] using h.2 sizeSlot rfl
-            simp [countSize, sizeHolds, LeanExe.WGSL.Source.Expr.denote, hs]
+            simp [countSize, sizeHolds, LeanExe.Source.Expr.denote, hs]
           · simp [countSize, hi, sizeHolds]
 
 inductive Params : List Ty → Type where
@@ -105,16 +105,16 @@ def Params.ofTypes : (Γ : List Ty) → Option (Params Γ)
   | [] => some .nil
   | t :: rest => do pure (.cons (← Param.ofTy t) (← ofTypes rest))
 
-def Params.kinds : {Γ : List Ty} → Params Γ → List LeanExe.WGSL.Kind
+def Params.kinds : {Γ : List Ty} → Params Γ → List LeanExe.Source.Kind
   | _, .nil => []
   | _, .cons p rest => p.kind :: rest.kinds
 
-def Params.args : {Γ : List Ty} → Params Γ → Verified.Env Γ → List LeanExe.WGSL.Arg
+def Params.args : {Γ : List Ty} → Params Γ → Verified.Env Γ → List LeanExe.Source.Arg
   | _, .nil, .nil => []
   | _, .cons p rest, .cons x env => p.arg x :: rest.args env
 
 theorem Params.args_kinds (params : Params Γ) (env : Verified.Env Γ) :
-    (params.args env).map LeanExe.WGSL.Arg.kind = params.kinds := by
+    (params.args env).map LeanExe.Source.Arg.kind = params.kinds := by
   induction params with
   | nil => cases env; rfl
   | cons p rest ih => cases env; simp [Params.args, Params.kinds, Param.arg_kind, ih]
@@ -122,11 +122,11 @@ theorem Params.args_kinds (params : Params Γ) (env : Verified.Env Γ) :
 theorem Params.kinds_length (params : Params Γ) : params.kinds.length = Γ.length := by
   induction params <;> simp_all [Params.kinds]
 
-def Params.context (count : LeanExe.WGSL.Count) : {Γ : List Ty} → Params Γ → Nat → Context Γ
+def Params.context (count : LeanExe.Source.Count) : {Γ : List Ty} → Params Γ → Nat → Context Γ
   | _, .nil, _ => .nil
   | _, .cons p rest, start => .cons (p.rep start count) (rest.context count (start + 1))
 
-theorem Params.context_bound (params : Params Γ) (count : LeanExe.WGSL.Count) (start base : Nat)
+theorem Params.context_bound (params : Params Γ) (count : LeanExe.Source.Count) (start base : Nat)
     (hEnd : start + Γ.length ≤ base) (hSize : ∀ j, count.sizeLocal? = some j → j < base) :
     (params.context count start).Bounded base := by
   induction params generalizing start with
@@ -136,7 +136,7 @@ theorem Params.context_bound (params : Params Γ) (count : LeanExe.WGSL.Count) (
       exact p.rep_bound start base count (by simp only [List.length_cons] at hEnd; omega) hSize
 
 theorem Params.context_agrees (params : Params Γ) (env : Verified.Env Γ)
-    (count : LeanExe.WGSL.Count) (start : Nat) (locals : Locals) (arrays : Arrays)
+    (count : LeanExe.Source.Count) (start : Nat) (locals : Locals) (arrays : Arrays)
     (h : ∀ j arg, (params.args env)[j]? = some arg → argHolds arg (start + j) count locals arrays) :
     (params.context count start).Agrees env locals arrays := by
   induction params generalizing start with
@@ -150,4 +150,4 @@ theorem Params.context_agrees (params : Params Γ) (env : Verified.Env Γ)
             simpa only [Nat.add_right_comm, Nat.add_assoc] using h')).cons
           exact p.rep_holds x start count locals arrays (by simpa only [Nat.add_zero] using h 0 _ rfl)
 
-end Verified.WGSL
+end Verified.Kernel

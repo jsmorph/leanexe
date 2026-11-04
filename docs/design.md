@@ -214,17 +214,23 @@ The [PTX library](../LeanExe/PTX) defines a PTX subset, its printer and inverse 
 per-thread semantics whose loads take values from an oracle.  [The PTX memory
 model](../LeanExe/PTX/MemoryModel.lean) states a launch's executions under the PTX ISA's chapter 8,
 and `Launch.executions` proves that every consistent execution of a race-free launch reads the
-output of the sequential run.  [The add-one kernel](../LeanExe/PTX/AddOne.lean) is written by hand
-and runs on an NVIDIA GB10 through [the CUDA host](../tools/cuda-host.c).  The verified compiler
-does not translate into PTX.  [The trusted-base document](trusted-base.md#p-ptx-kernels) lists
-what applying the launch theorems to a GPU assumes, including the No Thin Air axiom of the PTX
-memory model.
+output of the sequential run.  [The PTX translation](../LeanExe/PTX/Translate.lean) translates
+the words and Booleans of the kernel source language, and [the PTX build
+kernel](../LeanExe/PTX/Build.lean) proves the launch theorem of every build that it accepts.
+[The add-one kernel](../LeanExe/PTX/AddOne.lean) is written by hand, and the verified compiler's
+kernels and the add-one kernel run on an NVIDIA GB10 through [the CUDA host](../tools/cuda-host.c).
+[The trusted-base document](trusted-base.md#p-ptx-kernels) lists what applying the launch
+theorems to a GPU assumes, including the No Thin Air axiom of the PTX memory model.
 
-[The compiler's source lowering](../Verified/WGSL/Compile.lean) constructs a kernel of the shared
-source language with a proof of its meaning, then uses the shared WGSL translation and dispatch
-theorems.  [Its binary32 GPT compilation](../Demos/Gpt32/Verified.lean) compiles the kernel
-functions of the binary32 GPT program unchanged.  [The host instance](../Demos/Gpt32/VerifiedHost.lean) passes
-their native dispatch theorems to the shared item, layer, and generation proofs.
+[The kernel source language](../LeanExe/Source/Syntax.lean), its
+[denotation](../LeanExe/Source/Denote.lean), and [the build record](../LeanExe/Source/Build.lean)
+belong to neither target.  [The compiler's source lowering](../Verified/Kernel/Lower.lean)
+constructs a build of that language with a proof of its meaning, and [the WGSL
+compiler](../Verified/WGSL/Compile.lean) and [the PTX compiler](../Verified/PTX/Compile.lean)
+translate the build with their targets' translation and launch theorems.  [The binary32 GPT
+compilation](../Demos/Gpt32/Verified.lean) compiles the kernel functions of the binary32 GPT
+program unchanged.  [The host instance](../Demos/Gpt32/VerifiedHost.lean) passes their native
+dispatch theorems to the shared item, layer, and generation proofs.
 
 ## Scope of the theorem
 
