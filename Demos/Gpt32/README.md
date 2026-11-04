@@ -72,7 +72,8 @@ ISA's `.rn` instructions do.  Under SwiftShader in headless Chromium 145, the ve
 pages](../../tests/web/README.md) records.  On an NVIDIA GB10 with CUDA 13.0, the PTX kernels gave
 the scores of native `step32` bit for bit on the models of `tests/gpt32/native.sh`, and with the
 weights of GPT-2 124M, 16 greedy tokens after "The meaning of life is" chose the tokens of Hugging
-Face's float32 model, with a largest score difference of 8.76e-6 relative to the largest score.  [The design document](../../docs/design.md#gpu) states what the device model adds to
+Face's float32 model, with a largest score difference of 8.76e-6 relative to the largest score.
+All scores of those steps equaled the scores of `gpt32.wasm` bit for bit.  [The design document](../../docs/design.md#gpu) states what the device model adds to
 the trusted base, and [the description of the pages](../../tests/web/README.md) states what is
 proved about the browser page.  The proofs do not cover the host processes, file I/O, and browser.
 
@@ -125,7 +126,7 @@ with the PTX kernels, which it writes to `build/gpt32-ptx`, or `gpt32.wasm`.  Fo
 reports the largest score difference from Hugging Face's float32 model, relative to the largest
 score, and whether the two models choose the same token, and `--compare` compares the scores bit for
 bit with those of an earlier run on another device.  The script has run with the PTX kernels and
-not with the WGSL kernels.  `tests/web/serve.py` serves the kernels,
+`gpt32.wasm` and not with the WGSL kernels.  `tests/web/serve.py` serves the kernels,
 `build/verified/gpt32.wasm`, and the verified sampler module `build/verified/gpt.wasm` to the
 browser pages.
 
