@@ -13,10 +13,9 @@
    CCR.IC at their reset value 0 (Cortex-M7 TRM, DDI 0489F, Table 3-1, page 3-3), since the caches
    need invalidation before they are enabled (section 4.1.3, page 4-3).  It enables the
    floating-point unit by giving CP10 and CP11 full access in CPACR (section B3.2.20, page
-   B3-614).  It sets the baud divider of the CMSDK UART0, whose registers begin at lx_reg, to 16,
-   the minimum (Cortex-M System Design Kit TRM, DDI 0479D, Table 4-7, page 4-9), and sets its
-   transmitter and receiver enables, without which QEMU's model sends no byte and takes none
-   (hw/char/cmsdk-apb-uart.c, lines 115 to 124, 194 to 203, and 249 to 260).  It copies .data
+   B3-614).  It sets the CMSDK UART0's baud divider to 16, the minimum (Cortex-M System Design Kit
+   TRM, DDI 0479D, Table 4-7, page 4-9), and its transmitter enable, without which QEMU's model
+   sends no byte (hw/char/cmsdk-apb-uart.c, lines 194 to 203 and 249 to 260).  It copies .data
    from its load address in the code region to RAM, clears .bss, and fills the stack with a
    pattern for the high-water mark.  It then makes MPU region 0 the guard below the stack, 4 KiB
    at __stack_guard with no access and execute-never, and enables the MPU with the default memory
@@ -37,9 +36,9 @@
    exception number, CFSR, HFSR, MMFAR, BFAR, and the stacked return address, or 0 after a
    stacking error, when the frame is incomplete.  It then moves to the top of the main stack,
    reports through lx_report_fault, and exits with status 255.  Defining NO_FPEN leaves the
-   floating-point unit disabled, NO_UART leaves the UART's transmitter and receiver disabled,
-   GUARD_TEST adds a store to the word below the stack, UNALIGNED_TEST an unaligned word load, and
-   UNALIGNED_LDRD_TEST an unaligned LDRD, each before main. */
+   floating-point unit disabled, NO_UART leaves the transmitter disabled, GUARD_TEST adds a store
+   to the word below the stack, UNALIGNED_TEST an unaligned word load, and UNALIGNED_LDRD_TEST an
+   unaligned LDRD, each before main. */
 
 #define SCB_VTOR 0xe000ed08
 #define SCB_CCR 0xe000ed14
@@ -58,7 +57,6 @@
 #define MPU_ENABLE ((1 << 2) | 1)
 #define UART_CTRL 8
 #define UART_BAUDDIV 16
-#define UART_TX_RX_EN 3
 #define PATTERN 0x5354414b
 #define SYS_EXIT_EXTENDED 0x20
 #define ADP_Stopped_ApplicationExit 0x20026
@@ -102,10 +100,10 @@ _start:
         dsb
         isb
 #ifndef NO_UART
-        ldr     r0, =lx_reg
+        ldr     r0, =lx_out
         movs    r1, #16
         str     r1, [r0, #UART_BAUDDIV]
-        movs    r1, #UART_TX_RX_EN
+        movs    r1, #1
         str     r1, [r0, #UART_CTRL]
 #endif
         ldr     r0, =__data_load
