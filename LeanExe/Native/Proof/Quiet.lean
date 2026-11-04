@@ -61,7 +61,7 @@ variable {A : Archi} {X : ExtSem} {Q : ident → Bool} {ge : genv}
 
 /-- The function that a call of `Evar id` of a function type finds is the one under `id`. -/
 theorem callee_of_evar {e : env} (he : e = empty_env) {le : temp_env} {m : mem} {id : ident}
-    {ty : type} (hty : access_mode ty = .By_reference) {vf : val}
+    {ty : type} (hty : access_mode A ty = .By_reference) {vf : val}
     (h : eval_expr A ge e le m (.Evar id ty) vf) :
     ∃ b, Genv.find_symbol ge id = some b ∧ vf = .Vptr b Ptrofs.zero := by
   subst he

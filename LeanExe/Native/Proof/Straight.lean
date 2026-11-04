@@ -109,33 +109,34 @@ theorem eval_lvalue_global {A : Archi} {ge : genv} {le : temp_env} {m : mem} {id
 
 theorem ptrofs_unsigned_zero : Ptrofs.unsigned Ptrofs.zero = 0 := rfl
 
-theorem loadv_zero (chunk : memory_chunk) (m : mem) (b : block) (h : size_chunk chunk ≤ 8) :
-    Mem.loadv chunk m (.Vptr b Ptrofs.zero) = Mem.load chunk m b 0 := by
+theorem loadv_zero {A : Archi} (chunk : memory_chunk) (m : mem) (b : block)
+    (h : size_chunk chunk ≤ 8) :
+    Mem.loadv A chunk m (.Vptr b Ptrofs.zero) = Mem.load A chunk m b 0 := by
   simp only [Mem.loadv]
   split
   · rfl
   · rename_i hc
-    exact absurd (by rw [ptrofs_unsigned_zero]; simp only [Ptrofs.modulus]; omega) hc
+    exact absurd (by have := Ptrofs.modulus_ge A; rw [ptrofs_unsigned_zero]; omega) hc
 
-theorem storev_zero (chunk : memory_chunk) (m : mem) (b : block) (v : val)
+theorem storev_zero {A : Archi} (chunk : memory_chunk) (m : mem) (b : block) (v : val)
     (h : size_chunk chunk ≤ 8) :
-    Mem.storev chunk m (.Vptr b Ptrofs.zero) v = Mem.store chunk m b 0 v := by
+    Mem.storev A chunk m (.Vptr b Ptrofs.zero) v = Mem.store A chunk m b 0 v := by
   simp only [Mem.storev]
   split
   · rfl
   · rename_i hc
-    exact absurd (by rw [ptrofs_unsigned_zero]; simp only [Ptrofs.modulus]; omega) hc
+    exact absurd (by have := Ptrofs.modulus_ge A; rw [ptrofs_unsigned_zero]; omega) hc
 
 theorem eval_global_long {A : Archi} {ge : genv} {le : temp_env} {m : mem} {id : ident}
     {b : block} {n : UInt64} (h : Genv.find_symbol ge id = some b)
-    (hl : Mem.load .Mint64 m b 0 = some (.Vlong n)) :
+    (hl : Mem.load A .Mint64 m b 0 = some (.Vlong n)) :
     eval_expr A ge empty_env le m (.Evar id tulong) (.Vlong n) :=
   .eval_Elvalue _ _ _ _ _ (eval_lvalue_global h)
     (.deref_loc_value .Mint64 _ rfl (by rw [loadv_zero _ _ _ (by decide)]; exact hl))
 
 theorem eval_global_int {A : Archi} {ge : genv} {le : temp_env} {m : mem} {id : ident}
     {b : block} {n : UInt32} (h : Genv.find_symbol ge id = some b)
-    (hl : Mem.load .Mint32 m b 0 = some (.Vint n)) :
+    (hl : Mem.load A .Mint32 m b 0 = some (.Vint n)) :
     eval_expr A ge empty_env le m (.Evar id tuint) (.Vint n) :=
   .eval_Elvalue _ _ _ _ _ (eval_lvalue_global h)
     (.deref_loc_value .Mint32 _ rfl (by rw [loadv_zero _ _ _ (by decide)]; exact hl))
@@ -156,18 +157,18 @@ theorem limVal_eq {p : Nat} (hp : p ≤ 65535) :
 
 /-- `limExpr` evaluates to the number of bytes of the memory. -/
 theorem eval_limExpr {A : Archi} {E : Env} (hE : EnvOk E) {wm : Wasm.Mem} {caps : List Nat}
-    {m : mem} (h : MemRel E wm caps m) (le : temp_env) :
+    {m : mem} (h : MemRel A E wm caps m) (le : temp_env) :
     eval_expr A E.ge empty_env le m limExpr (limVal wm.pages) := by
   have hp : wm.pages ≤ 65535 := Nat.le_trans h.le_cap hE.cap
   unfold limExpr
   refine .eval_Ebinop _ _ _ _ _ _ _ (.eval_Ecast _ _ _ _ (eval_global_int hE.pages h.pages)
-    (cast_uint_long m _)) (.eval_Econst_long _ _) ?_
+    (cast_uint_long A m _)) (.eval_Econst_long _ _) ?_
   show sem_binary_operation A .Omul (.Vlong _) tulong (.Vlong _) tulong m = _
   rw [sem_mul_ll A m, limVal_eq hp]
   rfl
 
 theorem exec_limSet {A : Archi} {X : ExtSem} {E : Env} (hE : EnvOk E) {wm : Wasm.Mem}
-    {caps : List Nat} {m : mem} (h : MemRel E wm caps m) (le : temp_env) :
+    {caps : List Nat} {m : mem} (h : MemRel A E wm caps m) (le : temp_env) :
     exec_stmt A X E.ge empty_env le m limSet E0 (le.insert limId (limVal wm.pages)) m
       .Out_normal := by
   unfold limSet
@@ -178,8 +179,8 @@ theorem exec_assign_long {A : Archi} {X : ExtSem} {ge : genv} {le : temp_env} {m
     (he : eval_expr A ge empty_env le m e (.Vlong n)) (ht : typeof e = tulong)
     (hva : Mem.valid_access m .Mint64 b 0 .Writable) :
     exec_stmt A X ge empty_env le m (.Sassign (.Evar id tulong) e) E0 le
-      (Mem.stored .Mint64 m b 0 (.Vlong n)) .Out_normal :=
-  .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_lvalue_global h) he (by rw [ht]; rfl)
+      (Mem.stored A .Mint64 m b 0 (.Vlong n)) .Out_normal :=
+  .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_lvalue_global h) he (by rw [ht]; exact cast_ll A m n)
     (.assign_loc_value _ .Mint64 _ rfl
       (by rw [storev_zero _ _ _ _ (by decide)]; exact Mem.store_ok _ hva))
 
@@ -188,19 +189,20 @@ theorem exec_assign_int {A : Archi} {X : ExtSem} {ge : genv} {le : temp_env} {m 
     (he : eval_expr A ge empty_env le m e (.Vint n)) (ht : typeof e = tuint)
     (hva : Mem.valid_access m .Mint32 b 0 .Writable) :
     exec_stmt A X ge empty_env le m (.Sassign (.Evar id tuint) e) E0 le
-      (Mem.stored .Mint32 m b 0 (.Vint n)) .Out_normal :=
-  .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_lvalue_global h) he (by rw [ht]; rfl)
+      (Mem.stored A .Mint32 m b 0 (.Vint n)) .Out_normal :=
+  .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_lvalue_global h) he (by rw [ht]; exact cast_i32 A m n)
     (.assign_loc_value _ .Mint32 _ rfl
       (by rw [storev_zero _ _ _ _ (by decide)]; exact Mem.store_ok _ hva))
 
-theorem VT.access (t : VT) : access_mode t.ty = .By_value t.chunk := by cases t <;> rfl
+theorem VT.access {A : Archi} (t : VT) : access_mode A t.ty = .By_value t.chunk := by
+  cases t <;> rfl
 
 theorem VT.size_chunk_le (t : VT) : size_chunk t.chunk ≤ 8 := by cases t <;> decide
 
 /-- A global of the type `t`, read. -/
 theorem eval_global_vt {A : Archi} {ge : genv} {le : temp_env} {m : mem} {id : ident}
     {b : block} {t : VT} {v : Value} (h : Genv.find_symbol ge id = some b)
-    (hl : Mem.load t.chunk m b 0 = some (cval v)) :
+    (hl : Mem.load A t.chunk m b 0 = some (cval v)) :
     eval_expr A ge empty_env le m (.Evar id t.ty) (cval v) :=
   .eval_Elvalue _ _ _ _ _ (eval_lvalue_global h)
     (.deref_loc_value t.chunk _ (VT.access t)
@@ -212,16 +214,16 @@ theorem exec_assign_vt {A : Archi} {X : ExtSem} {ge : genv} {le : temp_env} {m :
     (h : Genv.find_symbol ge id = some b) (he : eval_expr A ge empty_env le m e (cval v))
     (ht : typeof e = t.ty) (hva : Mem.valid_access m t.chunk b 0 .Writable) :
     exec_stmt A X ge empty_env le m (.Sassign (.Evar id t.ty) e) E0 le
-      (Mem.stored t.chunk m b 0 (cval v)) .Out_normal :=
+      (Mem.stored A t.chunk m b 0 (cval v)) .Out_normal :=
   .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_lvalue_global h) he
     (by rw [ht]; exact cast_cval htv m)
     (.assign_loc_value _ t.chunk _ (VT.access t)
       (by rw [storev_zero _ _ _ _ (VT.size_chunk_le t)]; exact Mem.store_ok _ hva))
 
 /-- A load of the chunk of `t` after its store. -/
-theorem load_stored_vt {m : mem} {b : block} {t : VT} {v : Value} (htv : t.has v = true)
+theorem load_stored_vt {A : Archi} {m : mem} {b : block} {t : VT} {v : Value} (htv : t.has v = true)
     (hva : Mem.valid_access m t.chunk b 0 .Writable) :
-    Mem.load t.chunk (Mem.stored t.chunk m b 0 (cval v)) b 0 = some (cval v) := by
+    Mem.load A t.chunk (Mem.stored A t.chunk m b 0 (cval v)) b 0 = some (cval v) := by
   cases t <;> cases v <;> simp [VT.has] at htv
   · exact Mem.load_stored_int _ _ _ _ hva
   · exact Mem.load_stored_long _ _ _ _ hva
@@ -229,10 +231,10 @@ theorem load_stored_vt {m : mem} {b : block} {t : VT} {v : Value} (htv : t.has v
   · exact Mem.load_stored_float _ _ _ _ hva
 
 /-- A store to a block other than those of `lx_pages` and `lx_mem` keeps the memory. -/
-theorem MemRel.store_other {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem}
-    (h : MemRel E wm caps m) (chunk : memory_chunk) {b : block} (hp : b ≠ E.pages)
+theorem MemRel.store_other {A : Archi} {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem}
+    (h : MemRel A E wm caps m) (chunk : memory_chunk) {b : block} (hp : b ≠ E.pages)
     (hm : b ≠ E.mem) (ofs : _root_.Int) (v : val) :
-    MemRel E wm caps (Mem.stored chunk m b ofs v) where
+    MemRel A E wm caps (Mem.stored A chunk m b ofs v) where
   pages := by rw [Mem.load_stored_other _ _ _ _ _ _ _ _ hp]; exact h.pages
   pagesW := h.pagesW
   le_cap := h.le_cap
@@ -242,26 +244,28 @@ theorem MemRel.store_other {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem}
   resW := h.resW
   punW := h.punW
 
-theorem GlobalsRel.store_status {E : Env} {gs : List Value} {m : mem} (hE : EnvOk E)
-    (h : GlobalsRel E gs m) (v : val) :
-    GlobalsRel E gs (Mem.stored .Mint32 m E.status 0 v) := by
+theorem GlobalsRel.store_status {A : Archi} {E : Env} {gs : List Value} {m : mem} (hE : EnvOk E)
+    (h : GlobalsRel A E gs m) (v : val) :
+    GlobalsRel A E gs (Mem.stored A .Mint32 m E.status 0 v) := by
   refine ⟨h.1, fun i hi => ?_⟩
   obtain ⟨n, hn, hl, hv⟩ := h.2 i hi
   have hne : E.status ≠ E.globals[i] := fun e => hE.status_not (e ▸ List.getElem_mem hi)
   exact ⟨n, hn, by rw [Mem.load_stored_other _ _ _ _ _ _ _ _ hne]; exact hl, hv⟩
 
-theorem StoreRel.store_status {E : Env} {α : Type} {st : Store α} {m : mem} (hE : EnvOk E)
-    (h : StoreRel E st m) (v : val) : StoreRel E st (Mem.stored .Mint32 m E.status 0 v) :=
+theorem StoreRel.store_status {A : Archi} {E : Env} {α : Type} {st : Store α} {m : mem}
+    (hE : EnvOk E) (h : StoreRel A E st m) (v : val) :
+    StoreRel A E st (Mem.stored A .Mint32 m E.status 0 v) :=
   ⟨GlobalsRel.store_status hE h.1 v,
     h.2.store_other _ (Ne.symm hE.pages_status) (Ne.symm hE.mem_status) _ _⟩
 
-theorem StatusRel.store_status {E : Env} {m : mem} {k : Nat} (h : StatusRel E m k) (code : Nat) :
-    StatusRel E (Mem.stored .Mint32 m E.status 0 (.Vint (UInt32.ofNat code))) code :=
+theorem StatusRel.store_status {A : Archi} {E : Env} {m : mem} {k : Nat}
+    (h : StatusRel A E m k) (code : Nat) :
+    StatusRel A E (Mem.stored A .Mint32 m E.status 0 (.Vint (UInt32.ofNat code))) code :=
   ⟨Mem.load_stored_int _ _ _ _ h.2, h.2⟩
 
-theorem GlobalsRel.store_global {E : Env} {gs : List Value} {m : mem} (hE : EnvOk E)
-    (h : GlobalsRel E gs m) {i : Nat} (hi : i < E.globals.length) (n : UInt64) :
-    GlobalsRel E (gs.set i (.i64 n)) (Mem.stored .Mint64 m E.globals[i] 0 (.Vlong n)) := by
+theorem GlobalsRel.store_global {A : Archi} {E : Env} {gs : List Value} {m : mem} (hE : EnvOk E)
+    (h : GlobalsRel A E gs m) {i : Nat} (hi : i < E.globals.length) (n : UInt64) :
+    GlobalsRel A E (gs.set i (.i64 n)) (Mem.stored A .Mint64 m E.globals[i] 0 (.Vlong n)) := by
   refine ⟨by rw [List.length_set]; exact h.1, fun j hj => ?_⟩
   obtain ⟨w, hw, hl, hv⟩ := h.2 j hj
   by_cases hij : i = j
@@ -273,15 +277,15 @@ theorem GlobalsRel.store_global {E : Env} {gs : List Value} {m : mem} (hE : EnvO
     exact ⟨w, by rw [List.getElem?_set_ne hij]; exact hw,
       by rw [Mem.load_stored_other _ _ _ _ _ _ _ _ hne]; exact hl, hv⟩
 
-theorem MemRel.store_global {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem} (hE : EnvOk E)
-    (h : MemRel E wm caps m) {i : Nat} (hi : i < E.globals.length) (v : val) :
-    MemRel E wm caps (Mem.stored .Mint64 m E.globals[i] 0 v) :=
+theorem MemRel.store_global {A : Archi} {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m : mem}
+    (hE : EnvOk E) (h : MemRel A E wm caps m) {i : Nat} (hi : i < E.globals.length) (v : val) :
+    MemRel A E wm caps (Mem.stored A .Mint64 m E.globals[i] 0 v) :=
   h.store_other _ (fun e => hE.pages_not (e ▸ List.getElem_mem hi))
     (fun e => hE.mem_not (e ▸ List.getElem_mem hi)) _ _
 
-theorem StatusRel.store_global {E : Env} {m : mem} {k : Nat} (hE : EnvOk E) (h : StatusRel E m k)
-    {i : Nat} (hi : i < E.globals.length) (v : val) :
-    StatusRel E (Mem.stored .Mint64 m E.globals[i] 0 v) k := by
+theorem StatusRel.store_global {A : Archi} {E : Env} {m : mem} {k : Nat} (hE : EnvOk E)
+    (h : StatusRel A E m k) {i : Nat} (hi : i < E.globals.length) (v : val) :
+    StatusRel A E (Mem.stored A .Mint64 m E.globals[i] 0 v) k := by
   have hne : E.globals[i] ≠ E.status := fun e => hE.status_not (e ▸ List.getElem_mem hi)
   exact ⟨by rw [Mem.load_stored_other _ _ _ _ _ _ _ _ hne]; exact h.1, h.2⟩
 
@@ -300,11 +304,11 @@ theorem exec_retZero (A : Archi) (X : ExtSem) (ge : genv) (le : temp_env) (m : m
       exact this
 
 theorem trap_exec {A : Archi} {X : ExtSem} {E : Env} (hE : EnvOk E) {le : temp_env} {m : mem}
-    {α : Type} {st : Store α} (hg : StoreRel E st m) (hs : StatusRel E m 0) (code : Nat)
+    {α : Type} {st : Store α} (hg : StoreRel A E st m) (hs : StatusRel A E m 0) (code : Nat)
     (r : Option VT) :
     ∃ m', exec_stmt A X E.ge empty_env le m (trapStmt code r) E0 le m' (trapOut r) ∧
-      StoreRel E st m' ∧ StatusRel E m' code := by
-  refine ⟨Mem.stored .Mint32 m E.status 0 (.Vint (UInt32.ofNat code)), ?_,
+      StoreRel A E st m' ∧ StatusRel A E m' code := by
+  refine ⟨Mem.stored A .Mint32 m E.status 0 (.Vint (UInt32.ofNat code)), ?_,
     hg.store_status hE _, hs.store_status code⟩
   have h1 := exec_assign_int (A := A) (X := X) (le := le) hE.status
     (.eval_Econst_int (UInt32.ofNat code) tuint) rfl hs.2
@@ -322,7 +326,7 @@ def InstrSim (F : Nat) (inst : Instruction) : Prop :=
   ∀ (L : List Label) (σ : List VT) (n : Nat) (s : statement) (σ' : Option (List VT)) (n' : Nat),
     trInstr c L σ n inst = some (s, σ', n') → curBase L ≤ σ.length →
     ∀ {α : Type} (st : Store α) (sl : Locals) (le : temp_env) (m : mem) (env : HostEnv α),
-      Inv E c σ st sl le m → Outcome A X E c L σ' (execOne F mod st sl inst env) s le m
+      Inv A E c σ st sl le m → Outcome A X E c L σ' (execOne F mod st sl inst env) s le m
 
 variable {A X E c}
 
@@ -331,7 +335,7 @@ height `σr.length` to `e`. -/
 theorem push_step {L : List Label} {σr : List VT} {α : Type} {st : Store α} {sl : Locals}
     {le : temp_env} {m : mem} {e : expr} {v : Value} {t : VT} {vr : List Value}
     (hrest : StackRel le σr vr) (hloc : LocalsRel le c.locals (sl.params ++ sl.locals))
-    (hg : StoreRel E st m) (hs : StatusRel E m 0)
+    (hg : StoreRel A E st m) (hs : StatusRel A E m 0)
     (hb : le[brkId]? = some (.Vint 0)) (hlm : le[limId]? = some (limVal st.mem.pages))
     (he : eval_expr A E.ge empty_env le m e (cval v)) (ht : t.has v = true)
     (hbase : curBase L ≤ σr.length) :

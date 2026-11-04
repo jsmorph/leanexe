@@ -52,21 +52,22 @@ section
 
 variable {A : Archi} {X : ExtSem} {ge : genv}
 
-theorem sem_add_in (b : block) (k : UInt64) (m : mem) :
+theorem sem_add_in (b : block) (k : UInt64) (m : mem) (hk : k.toNat < 2 ^ 32) :
     sem_binary_operation A .Oadd (.Vptr b Ptrofs.zero) inArray (.Vlong k) tulong m =
       some (.Vptr b k) := by
   show some (val.Vptr b
-    (Ptrofs.add Ptrofs.zero (Ptrofs.mul (Ptrofs.repr 1) (Ptrofs.of_int64 k)))) = _
+    (Ptrofs.add A Ptrofs.zero (Ptrofs.mul A (Ptrofs.repr A 1) (Ptrofs.of_int64 A k)))) = _
   congr 2
   apply UInt64.toNat_inj.mp
-  simp only [Ptrofs.add, Ptrofs.mul, Ptrofs.repr, Ptrofs.of_int64, Ptrofs.unsigned, Ptrofs.zero,
-    Int64.unsigned, Ptrofs.modulus]
-  have := k.toNat_lt
-  simp
-  omega
+  rcases A with ⟨_ | _, _, _, _, _⟩
+  all_goals
+    simp only [Ptrofs.add, Ptrofs.mul, Ptrofs.repr, Ptrofs.of_int64, Ptrofs.unsigned, Ptrofs.zero,
+      Int64.unsigned, Ptrofs.modulus, Ptrofs.wordsize]
+    simp
+    omega
 
 theorem cast_inByte (v : int) (m : mem) :
-    sem_cast (Val.load_result .Mint8unsigned (.Vint v)) inByte tulong m =
+    sem_cast A (Val.load_result A .Mint8unsigned (.Vint v)) inByte tulong m =
       some (.Vlong (inByteOf v)) := by
   show some (val.Vlong (cast_int_long .Unsigned (LClight.Int.zero_ext 8 v))) = _
   congr 2
@@ -80,16 +81,16 @@ theorem cast_inByte (v : int) (m : mem) :
 theorem exec_inLoad {le : temp_env} {m : mem} {bi : block}
     (hs : Genv.find_symbol ge inId = some bi) (hv : Genv.block_is_volatile ge bi = true)
     {t x : ident} {i : expr} {k : UInt64} (hi : eval_expr A ge empty_env le m i (.Vlong k))
-    (hty : typeof i = tulong) (v : int) :
+    (hty : typeof i = tulong) (hk : k.toNat < 2 ^ 32) (v : int) :
     exec_stmt A X ge empty_env le m (inLoad t x i)
       [.Event_vload .Mint8unsigned inId k (.EVint v)]
-      ((le.insert t (Val.load_result .Mint8unsigned (.Vint v))).insert x (.Vlong (inByteOf v))) m
+      ((le.insert t (Val.load_result A .Mint8unsigned (.Vint v))).insert x (.Vlong (inByteOf v))) m
       .Out_normal := by
   have harr : eval_expr A ge empty_env le m (.Evar inId inArray) (.Vptr bi Ptrofs.zero) :=
     .eval_Elvalue _ _ _ _ _ (eval_lvalue_global hs) (.deref_loc_reference rfl)
   have hadd : eval_expr A ge empty_env le m (.Ebinop .Oadd (.Evar inId inArray) i inPtr)
       (.Vptr bi k) :=
-    .eval_Ebinop _ _ _ _ _ _ _ harr hi (by rw [hty]; exact sem_add_in bi k m)
+    .eval_Ebinop _ _ _ _ _ _ _ harr hi (by rw [hty]; exact sem_add_in bi k m hk)
   have haddr : eval_expr A ge empty_env le m
       (.Eaddrof (.Ederef (.Ebinop .Oadd (.Evar inId inArray) i inPtr) inByte) inPtr)
       (.Vptr bi k) :=
@@ -186,7 +187,7 @@ theorem exec_lenLoop {m : mem} {bi : block} (hs : Genv.find_symbol ge inId = som
       refine ⟨le, exec_trace (.exec_Sloop_stop1 _ _ _ _ _ E0 le m .Out_break .Out_normal
         (.exec_Sseq_2 _ _ _ _ _ _ _ _ _
           (.exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hcond
-            (by show bool_val _ tint m = _; simpa using bool_int m 0)
+            (by show bool_val A _ tint m = _; simpa using bool_int A m 0)
             (by simpa using .exec_Sbreak _ _ _)) (by simp))
         .Out_break_or_return_B) (by simp [inTrace, E0]), ?_, fun _ _ _ _ _ => rfl⟩
       have : j = 8 := by omega
@@ -198,8 +199,8 @@ theorem exec_lenLoop {m : mem} {bi : block} (hs : Genv.find_symbol ge inId = som
         simpa [show j < 8 by omega] using
           eval_lt_const (A := A) (ge := ge) (m := m) (c := 8) (by omega) (by omega) hjv
       have hload := exec_inLoad (A := A) (X := X) (m := m) (t := lenLoadTemp) (x := byteTemp) hs hv
-        (.eval_Etempvar _ _ _ hjv) rfl (σ j)
-      let le1 := (le.insert lenLoadTemp (Val.load_result .Mint8unsigned (.Vint (σ j)))).insert
+        (.eval_Etempvar _ _ _ hjv) rfl (by rw [toNat_ofNat64 (by omega)]; omega) (σ j)
+      let le1 := (le.insert lenLoadTemp (Val.load_result A .Mint8unsigned (.Vint (σ j)))).insert
         byteTemp (.Vlong (inByteOf (σ j)))
       have hn1 : le1[nTemp]? = some (.Vlong (lenAcc σ j)) := by
         simp only [le1]
@@ -228,7 +229,7 @@ theorem exec_lenLoop {m : mem} {bi : block} (hs : Genv.find_symbol ge inId = som
         .Out_normal
         (.exec_Sseq_1 _ _ _ _ _ _ le m _ le3 m _
           (.exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hcond
-            (by show bool_val _ tint m = _; simpa using bool_int m 1)
+            (by show bool_val A _ tint m = _; simpa using bool_int A m 1)
             (.exec_Sskip _ _ _))
           (.exec_Sseq_1 _ _ _ _ _ _ le1 m _ le3 m _ hload
             (.exec_Sseq_1 _ _ _ _ _ _ le2 m _ le3 m _ (.exec_Sset _ _ _ _ _ _ hacc)
@@ -270,12 +271,12 @@ theorem byte_inByteOf (v : int) : UInt8.ofNat (inByteOf v).toNat = v.toUInt8 := 
   apply UInt8.toNat_inj.mp
   simp
 
-theorem MemRel.store_byte_at {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m m' : mem}
-    (hE : EnvOk E) (h : MemRel E wm caps m) (hs : Mem.SameExcept E.mem m m') {a : Nat}
+theorem MemRel.store_byte_at {A : Archi} {E : Env} {wm : Wasm.Mem} {caps : List Nat} {m m' : mem}
+    (hE : EnvOk E) (h : MemRel A E wm caps m) (hs : Mem.SameExcept E.mem m m') {a : Nat}
     {y : UInt8}
     (hc : ∀ i : Nat, ZMap.get (i : _root_.Int) (Mem.contents_of m' E.mem) =
       if i = a then .Byte y else ZMap.get (i : _root_.Int) (Mem.contents_of m E.mem)) :
-    MemRel E { wm with bytes := fun i => if i = a then y else wm.bytes i } caps m' := by
+    MemRel A E { wm with bytes := fun i => if i = a then y else wm.bytes i } caps m' := by
   refine h.of_contents hE hs rfl fun i hi => ?_
   rw [hc i]
   show _ = memval.Byte (if i = a then y else wm.bytes i)
@@ -300,19 +301,19 @@ theorem exec_byteStoreAt (hE : EnvOk E) {le : temp_env} (cap : Nat) {e : expr} {
         if i = a.toNat then .Byte (UInt8.ofNat x.toNat)
         else ZMap.get (i : _root_.Int) (Mem.contents_of m E.mem) := by
   have hcap := hE.cap
-  have hlv := eval_byteAt_lvalue hE cap ha hty
+  have hlv := eval_byteAt_lvalue hE cap ha hty (by omega)
   have hva : Mem.valid_access m .Mint8unsigned E.mem (a.toNat : Nat) .Writable := by
     refine ⟨fun ofs h1 h2 => ?_, ⟨(a.toNat : Nat), by simp [align_chunk]⟩⟩
     have h2' : ofs < ((a.toNat : Nat) : _root_.Int) + 1 := h2
     have : ofs = ((a.toNat : Nat) : _root_.Int) := by omega
     subst this
     exact hp _ hin
-  refine ⟨Mem.stored .Mint8unsigned m E.mem (a.toNat : Nat)
+  refine ⟨Mem.stored A .Mint8unsigned m E.mem (a.toNat : Nat)
       (.Vint (UInt32.ofNat (x.toNat % 256))), ?_, Mem.SameExcept.of_stored _ _ _ _ _, ?_⟩
   · refine .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ hlv
       (.eval_Ecast _ _ _ _ (.eval_Etempvar _ _ _ hv) (cast_cbyte x m))
       (cast_uchar _ m) (.assign_loc_value _ .Mint8unsigned _ rfl ?_)
-    have e := storev_mem (m := m) (b := E.mem) (v := .Vint (UInt32.ofNat (x.toNat % 256)))
+    have e := storev_mem (A := A) (m := m) (b := E.mem) (v := .Vint (UInt32.ofNat (x.toNat % 256)))
       .Mint8unsigned (q := a) (by simp [size_chunk]; omega) (by decide)
     rw [e]
     exact Mem.store_ok _ hva
@@ -346,10 +347,10 @@ theorem exec_copyLoop (hE : EnvOk E) (cap : Nat) {bi : block}
     ∀ (d j : Nat) (le : temp_env) (m : mem), j + d = n.toNat →
       le[jTemp]? = some (.Vlong (UInt64.ofNat j)) → le[nTemp]? = some (.Vlong n) →
       le[ptrTemp]? = some (.Vlong p) →
-      MemRel E (withBytes wm (p.toNat + 8) j (inMsgByte σ)) caps m →
+      MemRel A E (withBytes wm (p.toNat + 8) j (inMsgByte σ)) caps m →
       ∃ le' m', exec_stmt A X E.ge empty_env le m (copyLoop cap) (inTrace σ (8 + j) d) le' m'
           .Out_normal ∧
-        MemRel E (withBytes wm (p.toNat + 8) n.toNat (inMsgByte σ)) caps m' ∧
+        MemRel A E (withBytes wm (p.toNat + 8) n.toNat (inMsgByte σ)) caps m' ∧
         Mem.SameExcept E.mem m m' ∧
         ∀ x, x ≠ jTemp → x ≠ byteTemp → x ≠ copyLoadTemp → le'[x]? = le[x]?
   | 0, j, le, m, hd, hjv, hn, hp, hm => by
@@ -365,7 +366,7 @@ theorem exec_copyLoop (hE : EnvOk E) (cap : Nat) {bi : block}
       refine ⟨le, m, exec_trace (.exec_Sloop_stop1 _ _ _ _ _ E0 le m .Out_break .Out_normal
         (.exec_Sseq_2 _ _ _ _ _ _ _ _ _
           (.exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hcond
-            (by show bool_val _ tint m = _; simpa using bool_int m 0)
+            (by show bool_val A _ tint m = _; simpa using bool_int A m 0)
             (by simpa using .exec_Sbreak _ _ _)) (by simp))
         .Out_break_or_return_B) (by simp [inTrace, E0]), ?_, Mem.SameExcept.refl _ _,
         fun _ _ _ _ => rfl⟩
@@ -392,9 +393,9 @@ theorem exec_copyLoop (hE : EnvOk E) (cap : Nat) {bi : block}
         rw [UInt64.toNat_add, toNat_ofNat64 (by omega), toNat_ofNat64 (by omega),
           toNat_ofNat64 (by omega), Nat.mod_eq_of_lt (by omega)]
       have hload := exec_inLoad (A := A) (X := X) (m := m) (t := copyLoadTemp) (x := byteTemp)
-        hs hv hidx rfl (σ (8 + j))
+        hs hv hidx rfl (by rw [toNat_ofNat64 (by omega)]; omega) (σ (8 + j))
       let le1 := (le.insert copyLoadTemp
-        (Val.load_result .Mint8unsigned (.Vint (σ (8 + j))))).insert
+        (Val.load_result A .Mint8unsigned (.Vint (σ (8 + j))))).insert
           byteTemp (.Vlong (inByteOf (σ (8 + j))))
       have hp1 : le1[ptrTemp]? = some (.Vlong p) := by
         simp only [le1]
@@ -430,7 +431,7 @@ theorem exec_copyLoop (hE : EnvOk E) (cap : Nat) {bi : block}
         (by rw [toNat_ofNat64 (by omega)]; omega) hm.perm
       rw [toNat_ofNat64 (by omega), byte_inByteOf] at hc1
       have hm0 := MemRel.store_byte_at hE hm hs1 hc1
-      have hm1 : MemRel E (withBytes wm (p.toNat + 8) (j + 1) (inMsgByte σ)) caps m1 := by
+      have hm1 : MemRel A E (withBytes wm (p.toNat + 8) (j + 1) (inMsgByte σ)) caps m1 := by
         rw [← withBytes_succ]
         exact hm0
       have hinc := eval_incr (A := A) (ge := E.ge) (m := m1) (by omega) hj1
@@ -443,7 +444,7 @@ theorem exec_copyLoop (hE : EnvOk E) (cap : Nat) {bi : block}
         m' .Out_normal
         (.exec_Sseq_1 _ _ _ _ _ _ le m _ le2 m1 _
           (.exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hcond
-            (by show bool_val _ tint m = _; simpa using bool_int m 1)
+            (by show bool_val A _ tint m = _; simpa using bool_int A m 1)
             (.exec_Sskip _ _ _))
           (.exec_Sseq_1 _ _ _ _ _ _ le1 m _ le2 m1 _ hload
             (.exec_Sseq_1 _ _ _ _ _ _ le1 m1 _ le2 m1 _ hstore (.exec_Sset _ _ _ _ _ _ hinc))))
@@ -620,8 +621,8 @@ theorem exec_tooLong {le : temp_env} {m : mem} {n : UInt64} (hn : le[nTemp]? = s
   have hc := eval_tooLong (A := A) (ge := ge) (m := m) hn
   rw [ite_cond_eq_true _ _ (eq_true h)] at hc
   exact .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hc
-    (by show bool_val _ tint m = _; simpa using bool_int m 1)
-    (.exec_Sreturn_some _ _ _ _ _ (.eval_Ecast _ _ _ _ (.eval_Econst_int _ _) rfl))
+    (by show bool_val A _ tint m = _; simpa using bool_int A m 1)
+    (.exec_Sreturn_some _ _ _ _ _ (.eval_Ecast _ _ _ _ (.eval_Econst_int _ _) (cast_i32 A m _)))
 
 /-- The test of the length for a length of at most `inMax`. -/
 theorem exec_notTooLong {le : temp_env} {m : mem} {n : UInt64} (hn : le[nTemp]? = some (.Vlong n))
@@ -630,7 +631,7 @@ theorem exec_notTooLong {le : temp_env} {m : mem} {n : UInt64} (hn : le[nTemp]? 
   have hc := eval_tooLong (A := A) (ge := ge) (m := m) hn
   rw [ite_cond_eq_false _ _ (eq_false (by omega))] at hc
   exact .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hc
-    (by show bool_val _ tint m = _; simpa using bool_int m 0) (.exec_Sskip _ _ _)
+    (by show bool_val A _ tint m = _; simpa using bool_int A m 0) (.exec_Sskip _ _ _)
 
 /-- `l4 = lxf_0(8ULL + wordCount * 8ULL);`. -/
 theorem exec_allocCall {le : temp_env} {m m' : mem} {fA : function} {bA : block} {n : UInt64}
@@ -645,7 +646,7 @@ theorem exec_allocCall {le : temp_env} {m m' : mem} {fA : function} {bA : block}
   exec_trace (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
     (.exec_Scall _ _ _ (some allocTemp) _ _ _ _ _ (.Vptr bA Ptrofs.zero) _ (.Internal fA) _ m'
       vres rfl (.eval_Elvalue _ _ _ _ _ (eval_lvalue_global hs) (.deref_loc_reference rfl))
-      (.eval_Econs _ _ _ _ _ _ _ (eval_allocArg hn hlen) rfl .eval_Enil)
+      (.eval_Econs _ _ _ _ _ _ _ (eval_allocArg hn hlen) (cast_ll A m _) .eval_Enil)
       (by simp [Genv.find_funct, hf]) hty hcall)
     (.exec_Sset _ _ _ _ _ _ (.eval_Etempvar _ _ _ (te_insert_same _ _ _)))) (by simp [E0])
 
@@ -662,8 +663,8 @@ theorem exec_inEntry (k : Nat) (kind : OutKind) {fd : function} {bk : block}
       (outRet kind = tulong → le2[resTemp]? = some vres) := by
   have hargs : eval_exprlist A ge empty_env le m1
       [.Etempvar ptrTemp tulong, .Etempvar nTemp tulong] [tulong, tulong] [.Vlong p, .Vlong n] :=
-    .eval_Econs _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hp) rfl
-      (.eval_Econs _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hn) rfl .eval_Enil)
+    .eval_Econs _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hp) (cast_ll A m1 p)
+      (.eval_Econs _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hn) (cast_ll A m1 n) .eval_Enil)
   have hfn : eval_expr A ge empty_env le m1 (.Evar (funId k) (.Tfunction [tulong, tulong]
       (outRet kind) cc_default)) (.Vptr bk Ptrofs.zero) :=
     .eval_Elvalue _ _ _ _ _ (eval_lvalue_global hsk) (.deref_loc_reference rfl)
@@ -725,16 +726,16 @@ def EntryInRuns (A : Archi) (X : ExtSem) (cap : Nat) (m : Wasm.Module) (T : Tran
       (∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
         ∃ bk, Genv.find_symbol E.ge (funId k) = some bk ∧
           Genv.find_funct_ptr E.ge bk = some (.Internal fd)) →
-      ∀ m1, StoreRel E (inputStore (heap.allocateStore (nativeStore m cap) (needOf n) 1)
+      ∀ m1, StoreRel A E (inputStore (heap.allocateStore (nativeStore m cap) (needOf n) 1)
           (FixedArrayAllocate.root heap.top (needOf n) heap.free) (UInt64.ofNat (wordsOf n)) n b)
           m1 →
-        StatusRel E m1 0 →
+        StatusRel A E m1 0 →
         ∃ t m' vres st', eval_funcall A X E.ge m1 (.Internal fd)
             [.Vlong (FixedArrayAllocate.root heap.top (needOf n) heap.free),
               .Vlong (UInt64.ofNat n)] t m' vres ∧
-          StoreRel E st' m' ∧
-          ((StatusRel E m' 0 ∧ OutOk E kind st' m' vres (out n b)) ∨
-            (aborts = true ∧ StatusRel E m' trapUnreachable))
+          StoreRel A E st' m' ∧
+          ((StatusRel A E m' 0 ∧ OutOk A E kind st' m' vres (out n b)) ∨
+            (aborts = true ∧ StatusRel A E m' trapUnreachable))
 
 /-- The program with input of a translation, for every input `σ`, terminates with a trace and a
 result that `InResult` describes, given the run of the entry that `EntryInRuns` states.  The
@@ -802,7 +803,7 @@ theorem input_program {m : Wasm.Module} {cap : Nat} {T : Translation}
     exact .bigstep_program_terminates_intro bm _ m0 m' _ r hinit hsm
       (Genv.find_funct_ptr_of_def hdm) rfl
       (.eval_funcall_internal _ _ _ _ _ le0 le' m0 m' _ _ m' hentry
-        (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ hb (by simp)) ⟨(fun h => by cases h), rfl⟩ rfl)
+        (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ hb (by simp)) ⟨(fun h => by cases h), cast_i32 A m' _⟩ rfl)
   have hnorm : ∀ {t : trace} {le' : temp_env} {m' : mem},
       exec_stmt A X E.ge empty_env le0 m0 (seqList (L1 ++ L2)) t le' m' .Out_normal →
       bigstep_program_terminates A X (inProgram pre T (inMain cap k kind)) t 0 := by
@@ -813,7 +814,7 @@ theorem input_program {m : Wasm.Module} {cap : Nat} {T : Translation}
       (.eval_funcall_internal _ _ _ _ _ le0 le' m0 m' _ _ m' hentry
         (exec_trace (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hb
           (.exec_Sreturn_some _ _ _ _ _ (.eval_Econst_int _ _))) (by simp [E0]))
-        ⟨(fun h => by cases h), rfl⟩ rfl)
+        ⟨(fun h => by cases h), cast_i32 A m' _⟩ rfl)
   have hc1 := exec_initCall (X := X) (le := le0) hsi (Genv.find_funct_ptr_of_def hdi) rfl hcalli
   let le0a := le0.insert nTemp (.Vlong (UInt64.ofNat 0))
   let le0b := le0a.insert jTemp (.Vlong (UInt64.ofNat 0))
@@ -916,10 +917,10 @@ theorem input_program {m : Wasm.Module} {cap : Nat} {T : Translation}
     hvn σ (wm := (heap.allocateStore (nativeStore m cap) (needOf n.toNat) 1).mem.write64 p.toUInt32
       (UInt64.ofNat (wordsOf n.toNat))) hfit n.toNat 0 le4 mB (by omega) (te_insert_same _ _ _)
     hle4n hle4p (by rw [withBytes_zero]; exact hmB)
-  have hstC : StoreRel E (inputStore (heap.allocateStore (nativeStore m cap) (needOf n.toNat) 1) p
+  have hstC : StoreRel A E (inputStore (heap.allocateStore (nativeStore m cap) (needOf n.toNat) 1) p
       (UInt64.ofNat (wordsOf n.toNat)) n.toNat (inMsgByte σ)) mC :=
     ⟨GlobalsRel.sameExcept hstA.1 (hsameB.trans hsameC) hE.mem_not, hmC⟩
-  have hsC : StatusRel E mC 0 := hsA0.sameExcept (hsameB.trans hsameC) (Ne.symm hE.mem_status)
+  have hsC : StatusRel A E mC 0 := hsA0.sameExcept (hsameB.trans hsameC) (Ne.symm hE.mem_status)
   -- The call of the entry.
   obtain ⟨tE, mE, vE, stE, hcallE, hstE, hresE⟩ := hruns n.toNat hlen hFits' (inMsgByte σ) E hE
     hG hcap hnres hF mC hstC hsC

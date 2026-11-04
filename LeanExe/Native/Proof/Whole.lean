@@ -29,7 +29,7 @@ namespace Genv
 
 open Mem
 
-variable {F V : Type}
+variable {A : Archi} {F V : Type}
 
 /-- The definitions whose allocation `alloc_global_spec_w` follows: those of `InitShape`, and
 variables without initialization data, such as an `extern` declaration. -/
@@ -37,23 +37,23 @@ def InitShapeW (g : globdef F V) : Prop := InitShape g ∨ ∃ v, g = .Gvar v �
 
 theorem alloc_global_spec_w (ge : t F V) (m : mem) (g : ident × globdef F V)
     (hg : InitShapeW g.2) :
-    ∃ m', alloc_global ge m g = some m' ∧ m'.nextblock = m.nextblock + 1 ∧
-      (∀ b, b ≠ m.nextblock → SameBlock b m m') ∧ InitFact m' m.nextblock g.2 := by
+    ∃ m', alloc_global A ge m g = some m' ∧ m'.nextblock = m.nextblock + 1 ∧
+      (∀ b, b ≠ m.nextblock → SameBlock b m m') ∧ InitFact A m' m.nextblock g.2 := by
   rcases hg with hg | ⟨v, hv, hinit⟩
-  · exact alloc_global_spec ge m g hg
+  · exact alloc_global_spec (A := A) ge m g hg
   · obtain ⟨id, d⟩ := g
     simp only at hv
     subst hv
     have hrp : range_perm (alloc m 0 0).1 m.nextblock 0 0 .Cur .Freeable :=
       fun ofs h1 h2 => absurd h2 (by omega)
     refine ⟨dropped (alloc m 0 0).1 m.nextblock 0 0 (perm_globvar v), ?_, rfl, fun b hb => ?_, ?_⟩
-    · show (match Genv.store_zeros (alloc m 0 (init_data_list_size v.gvar_init)).1 m.nextblock 0
-            (init_data_list_size v.gvar_init) with
+    · show (match Genv.store_zeros A (alloc m 0 (init_data_list_size A v.gvar_init)).1 m.nextblock 0
+            (init_data_list_size A v.gvar_init) with
           | none => none
           | some m2 =>
-            match store_init_data_list ge m2 m.nextblock 0 v.gvar_init with
+            match store_init_data_list A ge m2 m.nextblock 0 v.gvar_init with
             | none => none
-            | some m3 => drop_perm m3 m.nextblock 0 (init_data_list_size v.gvar_init)
+            | some m3 => drop_perm m3 m.nextblock 0 (init_data_list_size A v.gvar_init)
                 (perm_globvar v)) = _
       rw [hinit]
       exact drop_perm_ok hrp _
@@ -65,12 +65,12 @@ theorem alloc_global_spec_w (ge : t F V) (m : mem) (g : ident × globdef F V)
 
 theorem alloc_globals_spec_w (ge : t F V) : ∀ (gl : List (ident × globdef F V)) (m : mem),
     (∀ g ∈ gl, InitShapeW g.2) →
-    ∃ m', alloc_globals ge m gl = some m' ∧ m'.nextblock = m.nextblock + gl.length ∧
+    ∃ m', alloc_globals A ge m gl = some m' ∧ m'.nextblock = m.nextblock + gl.length ∧
       (∀ b, b < m.nextblock → SameBlock b m m') ∧
-      ∀ k (hk : k < gl.length), InitFact m' (m.nextblock + k) gl[k].2
+      ∀ k (hk : k < gl.length), InitFact A m' (m.nextblock + k) gl[k].2
   | [], m, _ => ⟨m, rfl, rfl, fun _ _ => SameBlock.refl _ _, fun k hk => absurd hk (by simp)⟩
   | g :: gl, m, h => by
-      obtain ⟨m1, h1, hn1, hs1, hf1⟩ := alloc_global_spec_w ge m g (h g (by simp))
+      obtain ⟨m1, h1, hn1, hs1, hf1⟩ := alloc_global_spec_w (A := A) ge m g (h g (by simp))
       obtain ⟨m', h', hn', hs', hf'⟩ := alloc_globals_spec_w ge gl m1
         (fun g hg => h g (by simp [hg]))
       refine ⟨m', by simp only [alloc_globals, h1]; exact h',
@@ -288,13 +288,14 @@ theorem wholeOk_in {m : Module} {cap : Nat} {T : Translation} (h : translate cap
 
 /-! ## The initial memory -/
 
-theorem init_whole {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
+theorem init_whole {A : Archi} {m : Module} {cap : Nat} {T : Translation}
+    (h : translate cap m = some T)
     {pre post : List (ident × globdef (fundef function) type)} (hw : WholeOk pre post T) :
-    ∃ decl m0, m.memory = some decl ∧ init_mem (wholeProgram pre post T) = some m0 ∧
+    ∃ decl m0, m.memory = some decl ∧ init_mem A (wholeProgram pre post T) = some m0 ∧
       EnvOk (envWhole pre post T m.globals.length cap) ∧
-      StatusRel (envWhole pre post T m.globals.length cap) m0 0 ∧
-      GlobalsRel (envWhole pre post T m.globals.length cap) (m.globals.map (·.init)) m0 ∧
-      MemRel (envWhole pre post T m.globals.length cap) (Wasm.Mem.empty decl.pagesMin.toNat) [cap]
+      StatusRel A (envWhole pre post T m.globals.length cap) m0 0 ∧
+      GlobalsRel A (envWhole pre post T m.globals.length cap) (m.globals.map (·.init)) m0 ∧
+      MemRel A (envWhole pre post T m.globals.length cap) (Wasm.Mem.empty decl.pagesMin.toNat) [cap]
         m0 := by
   obtain ⟨decl, gdefs, funs, hdecl, -, hc1, hc2, hg, hfuns, hdefs⟩ := translate_defs h
   have hG : gdefs.length = m.globals.length := mapM_length hg
@@ -309,8 +310,8 @@ theorem init_whole {m : Module} {cap : Nat} {T : Translation} (h : translate cap
     · rw [hdefs] at hT
       exact .inl (hshT g hT)
     · exact hw.post_shape g hq
-  obtain ⟨m0, hm0, -, -, hfact⟩ := Genv.alloc_globals_spec_w (globalenv (wholeProgram pre post T))
-    D Mem.empty hsh
+  obtain ⟨m0, hm0, -, -, hfact⟩ := Genv.alloc_globals_spec_w (A := A)
+    (globalenv (wholeProgram pre post T)) D Mem.empty hsh
   have hsym := Genv.find_add_globals_idx (Genv.empty_genv (wholeProgram pre post T).prog_public)
     D hnd
   have hge : globalenv (wholeProgram pre post T) =
@@ -319,7 +320,7 @@ theorem init_whole {m : Module} {cap : Nat} {T : Translation} (h : translate cap
   have at_mem : ∀ id d, (id, d) ∈ D →
       Genv.find_symbol (globalenv (wholeProgram pre post T)) id = some (blockOf D id) ∧
         Genv.find_def (globalenv (wholeProgram pre post T)) (blockOf D id) = some d ∧
-        Genv.InitFact m0 (blockOf D id) d := by
+        Genv.InitFact A m0 (blockOf D id) d := by
     intro id d hmem
     obtain ⟨k, hk, hkd, hb⟩ := blockOf_mem hnd hmem
     obtain ⟨h1, h2⟩ := hsym k hk
@@ -449,22 +450,23 @@ theorem init_whole {m : Module} {cap : Nat} {T : Translation} (h : translate cap
 /-! ## `lx_init` and the functions -/
 
 theorem lx_init_whole {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
-    {pre post : List (ident × globdef (fundef function) type)} (hw : WholeOk pre post T) :
-    ∃ decl m0, m.memory = some decl ∧ init_mem (wholeProgram pre post T) = some m0 ∧
+    {pre post : List (ident × globdef (fundef function) type)} (hw : WholeOk pre post T)
+    (A : Archi) :
+    ∃ decl m0, m.memory = some decl ∧ init_mem A (wholeProgram pre post T) = some m0 ∧
       EnvOk (envWhole pre post T m.globals.length cap) ∧
       (initId, globdef.Gfun (.Internal (initFunction cap decl.data))) ∈
         (wholeProgram pre post T).prog_defs ∧
-      ∀ (A : Archi) (X : ExtSem), ∃ m1,
+      ∀ X : ExtSem, ∃ m1,
         eval_funcall A X (globalenv (wholeProgram pre post T)) m0
           (.Internal (initFunction cap decl.data)) [] E0 m1 .Vundef ∧
-        StoreRel (envWhole pre post T m.globals.length cap) (nativeStore m cap) m1 ∧
-        StatusRel (envWhole pre post T m.globals.length cap) m1 0 := by
-  obtain ⟨decl, m0, hdecl, hinit, hE, hs, hg, hmr⟩ := init_whole h hw
+        StoreRel A (envWhole pre post T m.globals.length cap) (nativeStore m cap) m1 ∧
+        StatusRel A (envWhole pre post T m.globals.length cap) m1 0 := by
+  obtain ⟨decl, m0, hdecl, hinit, hE, hs, hg, hmr⟩ := init_whole (A := A) h hw
   obtain ⟨decl', gdefs, funs, hdecl', hv, hc1, -, -, -, hdefs⟩ := translate_defs h
   rw [hdecl] at hdecl'
   cases hdecl'
   refine ⟨decl, m0, hdecl, hinit, hE,
-    mem_wholeDefs_of_mem (by rw [hdefs]; simp [progDefs]) (by decide), fun A X => ?_⟩
+    mem_wholeDefs_of_mem (by rw [hdefs]; simp [progDefs]) (by decide), fun X => ?_⟩
   obtain ⟨m1, hx, hsame, hmr1⟩ := exec_segments (A := A) (X := X) hE (create_undef_temps [])
     cap decl.pagesMin.toNat (by simp [envWhole]; omega) decl.data _ m0
     (violation_segments hv hdecl) rfl hmr
@@ -475,7 +477,7 @@ theorem lx_init_whole {m : Module} {cap : Nat} {T : Translation} (h : translate 
       hx rfl ?_
     rfl
   · exact GlobalsRel.sameExcept hg hsame hE.mem_not
-  · show MemRel _ (m.initialStore : Store Unit).mem [cap] m1
+  · show MemRel A _ (m.initialStore : Store Unit).mem [cap] m1
     rw [initialStore_mem hdecl]
     exact hmr1
 
@@ -497,13 +499,13 @@ hypotheses on the environment of `NativeA`, relates to `nativeStore` with `lx_st
 theorem start_whole {m : Module} {cap : Nat} {T : Translation} (h : translate cap m = some T)
     {pre post : List (ident × globdef (fundef function) type)} (hw : WholeOk pre post T)
     (A : Archi) (X : ExtSem) :
-    ∃ decl m0 m1, m.memory = some decl ∧ init_mem (wholeProgram pre post T) = some m0 ∧
+    ∃ decl m0 m1, m.memory = some decl ∧ init_mem A (wholeProgram pre post T) = some m0 ∧
       (initId, globdef.Gfun (.Internal (initFunction cap decl.data))) ∈
         (wholeProgram pre post T).prog_defs ∧
       eval_funcall A X (globalenv (wholeProgram pre post T)) m0
         (.Internal (initFunction cap decl.data)) [] E0 m1 .Vundef ∧
-      StoreRel (envWhole pre post T m.globals.length cap) (nativeStore m cap) m1 ∧
-      StatusRel (envWhole pre post T m.globals.length cap) m1 0 ∧
+      StoreRel A (envWhole pre post T m.globals.length cap) (nativeStore m cap) m1 ∧
+      StatusRel A (envWhole pre post T m.globals.length cap) m1 0 ∧
       EnvOk (envWhole pre post T m.globals.length cap) ∧
       (envWhole pre post T m.globals.length cap).globals.length = m.globals.length ∧
       (envWhole pre post T m.globals.length cap).cap = cap ∧
@@ -512,8 +514,8 @@ theorem start_whole {m : Module} {cap : Nat} {T : Translation} (h : translate ca
         ∃ b, Genv.find_symbol (envWhole pre post T m.globals.length cap).ge (funId k) = some b ∧
           Genv.find_funct_ptr (envWhole pre post T m.globals.length cap).ge b =
             some (.Internal fd)) := by
-  obtain ⟨decl, m0, hdecl, hinit, hE, hmem, hrun⟩ := lx_init_whole h hw
-  obtain ⟨m1, hcall, hst, hs⟩ := hrun A X
+  obtain ⟨decl, m0, hdecl, hinit, hE, hmem, hrun⟩ := lx_init_whole h hw A
+  obtain ⟨m1, hcall, hst, hs⟩ := hrun X
   exact ⟨decl, m0, m1, hdecl, hinit, hmem, hcall, hst, hs, hE, by simp [envWhole], rfl,
     Nat.le_refl _, funcs_whole hw⟩
 

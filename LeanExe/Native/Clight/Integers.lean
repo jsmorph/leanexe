@@ -7,18 +7,24 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
-`LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the
+changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
+import LeanExe.Native.Clight.Archi
+
 /-!
-The machine integers of CompCert 3.18's `lib/Integers.v`: `Int` (32 bits), `Int64`, `Ptrofs`
-(64 bits on both targets), and `Byte`.  A value is a Lean fixed-width word, and each operation is
-defined as `Integers.v` defines it, through `unsigned`, `signed`, and `repr` on Lean's `Int`,
-which replaces Coq's `Z`: `Z.quot` and `Z.rem` are `Int.tdiv` and `Int.tmod`, and `Z.div`
-and `Z.modulo` with a positive divisor are `/` and `%`.  The shifts state the result for an
-amount of at least the word size outright, which agrees with `Z.shiftl` and `Z.shiftr` followed
-by `repr` and avoids computing a power of two that large.  Only the operations that the
-semantics in this directory use are copied.
+The machine integers of CompCert 3.18's `lib/Integers.v`: `Int` (32 bits), `Int64`, `Ptrofs` (64
+bits when `Archi.ptr64` holds and 32 bits otherwise), and `Byte`.  A value is a Lean fixed-width
+word, and each operation is defined as `Integers.v` defines it, through `unsigned`, `signed`, and
+`repr` on Lean's `Int`, which replaces Coq's `Z`: `Z.quot` and `Z.rem` are `Int.tdiv` and
+`Int.tmod`, and `Z.div` and `Z.modulo` with a positive divisor are `/` and `%`.  The shifts state
+the result for an amount of at least the word size outright, which agrees with `Z.shiftl` and
+`Z.shiftr` followed by `repr` and avoids computing a power of two that large.  A `ptrofs` is a
+`UInt64` at both widths, and the operations of `Ptrofs` take the architecture, whose `ptr64` fixes
+the word size as `Wordsize_Ptrofs` does.  `Ptrofs.unsigned` takes none: every offset that the
+semantics builds comes from `Ptrofs.repr` or `Ptrofs.zero`, so it lies below the modulus, as
+CompCert's type of offsets requires.  Only the operations that the semantics in this directory use
+are copied.
 -/
 
 namespace LClight
@@ -27,7 +33,7 @@ namespace LClight
 abbrev int := UInt32
 /-- `Int64.int`. -/
 abbrev int64 := UInt64
-/-- `Ptrofs.int`; `Archi.ptr64` is true on x86-64 and AArch64. -/
+/-- `Ptrofs.int`, below `Ptrofs.modulus A` for the architecture `A`. -/
 abbrev ptrofs := UInt64
 /-- `Byte.int`. -/
 abbrev byte := UInt8
@@ -188,29 +194,34 @@ end Int64
 
 namespace Ptrofs
 
-def modulus : _root_.Int := 2 ^ 64
-def max_unsigned : _root_.Int := modulus - 1
-def half_modulus : _root_.Int := modulus / 2
-def max_signed : _root_.Int := half_modulus - 1
+/-- `Wordsize_Ptrofs.wordsize`. -/
+def wordsize (A : Archi) : Nat := if A.ptr64 then 64 else 32
+
+def modulus (A : Archi) : _root_.Int := 2 ^ wordsize A
+def max_unsigned (A : Archi) : _root_.Int := modulus A - 1
+def half_modulus (A : Archi) : _root_.Int := modulus A / 2
+def max_signed (A : Archi) : _root_.Int := half_modulus A - 1
 
 def unsigned (n : ptrofs) : _root_.Int := n.toNat
 
-def signed (n : ptrofs) : _root_.Int :=
-  if unsigned n < half_modulus then unsigned n else unsigned n - modulus
+def signed (A : Archi) (n : ptrofs) : _root_.Int :=
+  if unsigned n < half_modulus A then unsigned n else unsigned n - modulus A
 
-def repr (x : _root_.Int) : ptrofs := UInt64.ofNat (x % modulus).toNat
+def repr (A : Archi) (x : _root_.Int) : ptrofs := UInt64.ofNat (x % modulus A).toNat
 
-def zero : ptrofs := repr 0
+/-- `Ptrofs.zero`, which is `repr A 0` for every `A`. -/
+def zero : ptrofs := 0
 
-def add (x y : ptrofs) : ptrofs := repr (unsigned x + unsigned y)
-def sub (x y : ptrofs) : ptrofs := repr (unsigned x - unsigned y)
-def mul (x y : ptrofs) : ptrofs := repr (unsigned x * unsigned y)
-def divs (x y : ptrofs) : ptrofs := repr ((signed x).tdiv (signed y))
+def add (A : Archi) (x y : ptrofs) : ptrofs := repr A (unsigned x + unsigned y)
+def sub (A : Archi) (x y : ptrofs) : ptrofs := repr A (unsigned x - unsigned y)
+def mul (A : Archi) (x y : ptrofs) : ptrofs := repr A (unsigned x * unsigned y)
+def divs (A : Archi) (x y : ptrofs) : ptrofs := repr A ((signed A x).tdiv (signed A y))
 
+def to_int (x : ptrofs) : int := Int.repr (unsigned x)
 def to_int64 (x : ptrofs) : int64 := Int64.repr (unsigned x)
-def of_int64 (x : int64) : ptrofs := repr (Int64.unsigned x)
-def of_intu (x : int) : ptrofs := repr (Int.unsigned x)
-def of_ints (x : int) : ptrofs := repr (Int.signed x)
+def of_int64 (A : Archi) (x : int64) : ptrofs := repr A (Int64.unsigned x)
+def of_intu (A : Archi) (x : int) : ptrofs := repr A (Int.unsigned x)
+def of_ints (A : Archi) (x : int) : ptrofs := repr A (Int.signed x)
 
 end Ptrofs
 

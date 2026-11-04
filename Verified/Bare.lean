@@ -46,8 +46,8 @@ theorem bare_of_nativeTables {α β : Type} [Represent α] [Represent β] {A : A
       (Represent.reads (nativeStore m cap) (args.map .i64) x))
     (hcap : cap ≤ 65535)
     (hout : ∀ (E : LeanExe.Native.Env) vs vres m' (heap' : Heap) final,
-      ResultRel E [.i64] vs [] vres m' →
-      Represent.owned heap' final vs.reverse (f x) → OutOk E kind final m' vres bs) :
+      ResultRel A E [.i64] vs [] vres m' →
+      Represent.owned heap' final vs.reverse (f x) → OutOk A E kind final m' vres bs) :
     bigstep_program_terminates A X (bareProgram pre T (bareMain cap k args kind)) (outTrace bs) 0 ∨
       (aborts = true ∧ bigstep_program_terminates A X (bareProgram pre T (bareMain cap k args kind))
         E0 (UInt32.ofNat trapUnreachable)) := by

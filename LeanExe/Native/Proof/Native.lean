@@ -54,11 +54,11 @@ theorem Runs.native {mod : Module} {cap : Nat} {T : Translation} (hT : translate
     (hsig : ∀ f, mod.funcs[k]? = some f → signatureOf f = some (ps, rs))
     {aborts : Bool} {env : HostEnv Unit} {st : Store Unit} {args : List Value}
     {P : Store Unit → List Value → Prop} (hrun : Runs aborts env mod k st args P)
-    (htyped : ArgsTyped ps args) {m : mem} (hst : StoreRel E st m) (hs : StatusRel E m 0) :
+    (htyped : ArgsTyped ps args) {m : mem} (hst : StoreRel A E st m) (hs : StatusRel A E m 0) :
     ∃ t m' vres st', eval_funcall A X E.ge m (.Internal fd) (argVals ps args) t m' vres ∧
-      StoreRel E st' m' ∧
-      ((StatusRel E m' 0 ∧ ∃ vs, P st' vs ∧ ResultRel E rs vs (args.drop ps.length) vres m') ∨
-        (aborts = true ∧ StatusRel E m' trapUnreachable)) := by
+      StoreRel A E st' m' ∧
+      ((StatusRel A E m' 0 ∧ ∃ vs, P st' vs ∧ ResultRel A E rs vs (args.drop ps.length) vres m') ∨
+        (aborts = true ∧ StatusRel A E m' trapUnreachable)) := by
   obtain ⟨N, hN⟩ := hrun
   obtain ⟨f, ps', r', hf, hsig', hsim⟩ :=
     translate_correct (A := A) (X := X) hT hE hG hcap hnres hF N k fd hfd
@@ -95,18 +95,18 @@ def NativeA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : ExtSem
       heap.At store → Pre x heap store → Represent.borrowed heap store params x →
       Separate store (Represent.moves store params x) (Represent.reads store params x) →
       store.memoryCap mod 0 ≤ 65535 → ArgsTyped ps params.reverse →
-      ∀ m, StoreRel E store m → StatusRel E m 0 →
+      ∀ m, StoreRel A E store m → StatusRel A E m 0 →
       ∃ t m' vres final, eval_funcall A X E.ge m (.Internal fd) (argVals ps params.reverse) t m'
-          vres ∧ StoreRel E final m' ∧
-        ((StatusRel E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
-            ResultRel E rs vs (params.reverse.drop ps.length) vres m' ∧
+          vres ∧ StoreRel A E final m' ∧
+        ((StatusRel A E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
+            ResultRel A E rs vs (params.reverse.drop ps.length) vres m' ∧
             heap'.At final ∧ Represent.owned heap' final vs.reverse (f x) ∧
             final.memoryCaps = store.memoryCaps ∧
             (∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
               (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                 heap'.Region r ∧ Represent.outside final vs.reverse (f x) r) ∧
             Post x heap store heap' final) ∨
-          (aborts = true ∧ StatusRel E m' trapUnreachable))
+          (aborts = true ∧ StatusRel A E m' trapUnreachable))
 
 open LeanExe.Pipeline in
 theorem ImplementsA.native {α β : Type} [Represent α] [Represent β] {A : Archi} {X : ExtSem}
@@ -205,14 +205,14 @@ theorem alloc_native {mod : Module} {cap : Nat} {T : Translation} (hT : translat
         Genv.find_funct_ptr E.ge b = some (.Internal fd))
     (heap : Heap) (store : Store Unit) (bytes : UInt64) (hHeap : heap.At store)
     (hBytes : bytes.toNat ≤ 4294967296) (hCapS : store.memoryCap mod 0 ≤ 65535) (m : mem)
-    (hst : StoreRel E store m) (hs : StatusRel E m 0) :
+    (hst : StoreRel A E store m) (hs : StatusRel A E m 0) :
     ∃ fd, (funId 0, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
       ∃ t m' vres st', eval_funcall A X E.ge m (.Internal fd) [.Vlong bytes] t m' vres ∧
-        StoreRel E st' m' ∧
-        ((StatusRel E m' 0 ∧ heap.Fits (allocSize bytes) ∧
+        StoreRel A E st' m' ∧
+        ((StatusRel A E m' 0 ∧ heap.Fits (allocSize bytes) ∧
             st' = heap.allocateStore store (allocSize bytes) 1 ∧
             vres = .Vlong (FixedArrayAllocate.root heap.top (allocSize bytes) heap.free)) ∨
-          StatusRel E m' trapUnreachable) := by
+          StatusRel A E m' trapUnreachable) := by
   obtain ⟨himp, h64, -⟩ := translate_spec hT
   obtain ⟨fd, ps, rs, hfd, hsig⟩ := translate_sig hT h0
   have hpr : signatureOf (allocFunction typeIdx) = some (ps, rs) := hsig _ hFunc
@@ -243,10 +243,10 @@ theorem release_native {mod : Module} {cap : Nat} {T : Translation}
         Genv.find_funct_ptr E.ge b = some (.Internal fd))
     (heap : Heap) (store : Store Unit) (ptr : UInt64) (words : Array UInt64)
     (hHeap : heap.At store) (hOwned : heap.Owned store ptr words) (m : mem)
-    (hst : StoreRel E store m) (hs : StatusRel E m 0) :
+    (hst : StoreRel A E store m) (hs : StatusRel A E m 0) :
     ∃ fd, (funId 1, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
       ∃ t m', eval_funcall A X E.ge m (.Internal fd) [.Vlong ptr] t m' .Vundef ∧
-        StoreRel E (heap.releaseStore store ptr) m' ∧ StatusRel E m' 0 := by
+        StoreRel A E (heap.releaseStore store ptr) m' ∧ StatusRel A E m' 0 := by
   obtain ⟨himp, -, -⟩ := translate_spec hT
   obtain ⟨fd, ps, rs, hfd, hsig⟩ := translate_sig hT h1
   have hpr : signatureOf (releaseFunction typeIdx) = some (ps, rs) := hsig _ hFunc

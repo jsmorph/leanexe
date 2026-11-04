@@ -7,19 +7,19 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
-`LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
+that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.Ctypes
 
 /-!
-The operators of Clight, from CompCert 3.18's `cfrontend/Cop.v`, with `Archi.ptr64` true and an
-empty composite environment, which `sizeof` assumes.  The floating-point operations take the NaN
-parameters `A : Archi`.  The comparison of two pointers, or of a pointer and an integer, has no
-result (`cmp_ptr`, which needs `Val.cmplu_bool`).  `classify_switch` and `sem_switch_arg`, which
-only `Sswitch` uses, and the bit-field accesses `load_bitfield` and `store_bitfield`, which only
-the members of structs and unions use, are omitted.  The rest of `Cop.v` that Clight uses is
-copied.
+The operators of Clight, from CompCert 3.18's `cfrontend/Cop.v`, with an empty composite
+environment, which `sizeof` assumes.  The operations take the architecture `A : Archi`, whose
+`ptr64` selects the branches of `Cop.v` that test `Archi.ptr64` and whose NaN parameters the
+floating-point operations use.  The comparison of two pointers, or of a pointer and an integer, has
+no result (`cmp_ptr`, which needs `Val.cmplu_bool`).  `classify_switch` and `sem_switch_arg`, which
+only `Sswitch` uses, and the bit-field accesses `load_bitfield` and `store_bitfield`, which only the
+members of structs and unions use, are omitted.  The rest of `Cop.v` that Clight uses is copied.
 -/
 
 namespace LClight
@@ -63,12 +63,13 @@ inductive classify_cast_cases where
   | cast_case_default
   deriving Repr, DecidableEq
 
-def classify_cast (tfrom tto : type) : classify_cast_cases :=
+def classify_cast (A : Archi) (tfrom tto : type) : classify_cast_cases :=
   match tto, tfrom with
   | .Tvoid, _ => .cast_case_void
   | .Tint sz2 si2 _, .Tint _ _ _ =>
       match sz2 with
       | .IBool => .cast_case_i2bool
+      | .I32 => if A.ptr64 then .cast_case_i2i sz2 si2 else .cast_case_pointer
       | _ => .cast_case_i2i sz2 si2
   | .Tint sz2 si2 _, .Tlong _ _ =>
       if sz2 = .IBool then .cast_case_l2bool else .cast_case_l2i sz2 si2
@@ -78,13 +79,19 @@ def classify_cast (tfrom tto : type) : classify_cast_cases :=
       if sz2 = .IBool then .cast_case_s2bool else .cast_case_s2i sz2 si2
   | .Tint sz2 si2 _, .Tpointer _ _ | .Tint sz2 si2 _, .Tarray _ _ _
   | .Tint sz2 si2 _, .Tfunction _ _ _ =>
-      if sz2 = .IBool then .cast_case_l2bool else .cast_case_l2i sz2 si2
-  | .Tlong _ _, .Tlong _ _ => .cast_case_pointer
+      if A.ptr64 then
+        if sz2 = .IBool then .cast_case_l2bool else .cast_case_l2i sz2 si2
+      else
+        match sz2 with
+        | .IBool => .cast_case_i2bool
+        | .I32 => .cast_case_pointer
+        | _ => .cast_case_i2i sz2 si2
+  | .Tlong _ _, .Tlong _ _ => if A.ptr64 then .cast_case_pointer else .cast_case_l2l
   | .Tlong _ _, .Tint _ si1 _ => .cast_case_i2l si1
   | .Tlong si2 _, .Tfloat .F64 _ => .cast_case_f2l si2
   | .Tlong si2 _, .Tfloat .F32 _ => .cast_case_s2l si2
-  | .Tlong _ _, .Tpointer _ _ | .Tlong _ _, .Tarray _ _ _ | .Tlong _ _, .Tfunction _ _ _ =>
-      .cast_case_pointer
+  | .Tlong si2 _, .Tpointer _ _ | .Tlong si2 _, .Tarray _ _ _ | .Tlong si2 _, .Tfunction _ _ _ =>
+      if A.ptr64 then .cast_case_pointer else .cast_case_i2l si2
   | .Tfloat .F64 _, .Tint _ si1 _ => .cast_case_i2f si1
   | .Tfloat .F32 _, .Tint _ si1 _ => .cast_case_i2s si1
   | .Tfloat .F64 _, .Tlong si1 _ => .cast_case_l2f si1
@@ -93,8 +100,9 @@ def classify_cast (tfrom tto : type) : classify_cast_cases :=
   | .Tfloat .F32 _, .Tfloat .F32 _ => .cast_case_s2s
   | .Tfloat .F64 _, .Tfloat .F32 _ => .cast_case_s2f
   | .Tfloat .F32 _, .Tfloat .F64 _ => .cast_case_f2s
-  | .Tpointer _ _, .Tint _ si _ => .cast_case_i2l si
-  | .Tpointer _ _, .Tlong _ _ => .cast_case_pointer
+  | .Tpointer _ _, .Tint _ si _ => if A.ptr64 then .cast_case_i2l si else .cast_case_pointer
+  | .Tpointer _ _, .Tlong _ _ =>
+      if A.ptr64 then .cast_case_pointer else .cast_case_l2i .I32 .Unsigned
   | .Tpointer _ _, .Tpointer _ _ | .Tpointer _ _, .Tarray _ _ _
   | .Tpointer _ _, .Tfunction _ _ _ => .cast_case_pointer
   | .Tstruct id2 _, .Tstruct id1 _ => .cast_case_struct id1 id2
@@ -155,13 +163,13 @@ def cast_single_long (si : signedness) (f : float32) : Option int64 :=
   | .Signed => Float32.to_long f
   | .Unsigned => Float32.to_longu f
 
-def sem_cast (v : val) (t1 t2 : type) (m : mem) : Option val :=
-  match classify_cast t1 t2 with
+def sem_cast (A : Archi) (v : val) (t1 t2 : type) (m : mem) : Option val :=
+  match classify_cast A t1 t2 with
   | .cast_case_pointer =>
       match v with
       | .Vptr _ _ => some v
-      | .Vint _ => none
-      | .Vlong _ => some v
+      | .Vint _ => if A.ptr64 then none else some v
+      | .Vlong _ => if A.ptr64 then some v else none
       | _ => none
   | .cast_case_i2i sz2 si2 =>
       match v with
@@ -208,12 +216,16 @@ def sem_cast (v : val) (t1 t2 : type) (m : mem) : Option val :=
   | .cast_case_i2bool =>
       match v with
       | .Vint n => some (.Vint (if Int.eq n Int.zero then Int.zero else Int.one))
-      | .Vptr _ _ => none
+      | .Vptr b ofs =>
+          if A.ptr64 then none
+          else if Mem.weak_valid_pointer m b (Ptrofs.unsigned ofs) then some Vone else none
       | _ => none
   | .cast_case_l2bool =>
       match v with
       | .Vlong n => some (.Vint (if Int64.eq n Int64.zero then Int.zero else Int.one))
-      | .Vptr b ofs => if Mem.weak_valid_pointer m b (Ptrofs.unsigned ofs) then some Vone else none
+      | .Vptr b ofs =>
+          if !A.ptr64 then none
+          else if Mem.weak_valid_pointer m b (Ptrofs.unsigned ofs) then some Vone else none
       | _ => none
   | .cast_case_f2bool =>
       match v with
@@ -272,26 +284,30 @@ inductive classify_bool_cases where
   | bool_case_i | bool_case_l | bool_case_f | bool_case_s | bool_default
   deriving Repr, DecidableEq
 
-def classify_bool (ty : type) : classify_bool_cases :=
+def classify_bool (A : Archi) (ty : type) : classify_bool_cases :=
   match typeconv ty with
   | .Tint _ _ _ => .bool_case_i
-  | .Tpointer _ _ => .bool_case_l
+  | .Tpointer _ _ => if A.ptr64 then .bool_case_l else .bool_case_i
   | .Tfloat .F64 _ => .bool_case_f
   | .Tfloat .F32 _ => .bool_case_s
   | .Tlong _ _ => .bool_case_l
   | _ => .bool_default
 
-def bool_val (v : val) (t : type) (m : mem) : Option Bool :=
-  match classify_bool t with
+def bool_val (A : Archi) (v : val) (t : type) (m : mem) : Option Bool :=
+  match classify_bool A t with
   | .bool_case_i =>
       match v with
       | .Vint n => some (!Int.eq n Int.zero)
-      | .Vptr _ _ => none
+      | .Vptr b ofs =>
+          if A.ptr64 then none
+          else if Mem.weak_valid_pointer m b (Ptrofs.unsigned ofs) then some true else none
       | _ => none
   | .bool_case_l =>
       match v with
       | .Vlong n => some (!Int64.eq n Int64.zero)
-      | .Vptr b ofs => if Mem.weak_valid_pointer m b (Ptrofs.unsigned ofs) then some true else none
+      | .Vptr b ofs =>
+          if !A.ptr64 then none
+          else if Mem.weak_valid_pointer m b (Ptrofs.unsigned ofs) then some true else none
       | _ => none
   | .bool_case_f =>
       match v with
@@ -305,8 +321,8 @@ def bool_val (v : val) (t : type) (m : mem) : Option Bool :=
 
 /-! ## Unary operators -/
 
-def sem_notbool (v : val) (ty : type) (m : mem) : Option val :=
-  (bool_val v ty m).map fun b => Val.of_bool (!b)
+def sem_notbool (A : Archi) (v : val) (ty : type) (m : mem) : Option val :=
+  (bool_val A v ty m).map fun b => Val.of_bool (!b)
 
 inductive classify_neg_cases where
   | neg_case_i (s : signedness) | neg_case_f | neg_case_s | neg_case_l (s : signedness)
@@ -417,7 +433,7 @@ def binarith_type (c : binarith_cases) : type :=
   | .bin_case_s => .Tfloat .F32 noattr
   | .bin_default => .Tvoid
 
-def sem_binarith
+def sem_binarith (A : Archi)
     (sem_int : signedness → int → int → Option val)
     (sem_long : signedness → int64 → int64 → Option val)
     (sem_float : float → float → Option val)
@@ -425,7 +441,7 @@ def sem_binarith
     (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
   let c := classify_binarith t1 t2
   let t := binarith_type c
-  match sem_cast v1 t1 t m, sem_cast v2 t2 t m with
+  match sem_cast A v1 t1 t m, sem_cast A v2 t2 t m with
   | some v1', some v2' =>
       match c with
       | .bin_case_i sg =>
@@ -462,39 +478,45 @@ def classify_add (ty1 ty2 : type) : classify_add_cases :=
   | .Tlong _ _, .Tpointer ty _ => .add_case_lp ty
   | _, _ => .add_default
 
-def ptrofs_of_int (si : signedness) (n : int) : ptrofs :=
+def ptrofs_of_int (A : Archi) (si : signedness) (n : int) : ptrofs :=
   match si with
-  | .Signed => Ptrofs.of_ints n
-  | .Unsigned => Ptrofs.of_intu n
+  | .Signed => Ptrofs.of_ints A n
+  | .Unsigned => Ptrofs.of_intu A n
 
-def sem_add_ptr_int (ty : type) (si : signedness) (v1 v2 : val) : Option val :=
+def sem_add_ptr_int (A : Archi) (ty : type) (si : signedness) (v1 v2 : val) : Option val :=
   match v1, v2 with
   | .Vptr b1 ofs1, .Vint n2 =>
-      let n2 := ptrofs_of_int si n2
-      some (.Vptr b1 (Ptrofs.add ofs1 (Ptrofs.mul (Ptrofs.repr (sizeof ty)) n2)))
-  | .Vint _, .Vint _ => none
+      let n2 := ptrofs_of_int A si n2
+      some (.Vptr b1 (Ptrofs.add A ofs1 (Ptrofs.mul A (Ptrofs.repr A (sizeof A ty)) n2)))
+  | .Vint n1, .Vint n2 =>
+      if A.ptr64 then none else some (.Vint (Int.add n1 (Int.mul (Int.repr (sizeof A ty)) n2)))
   | .Vlong n1, .Vint n2 =>
       let n2 := cast_int_long si n2
-      some (.Vlong (Int64.add n1 (Int64.mul (Int64.repr (sizeof ty)) n2)))
+      if A.ptr64 then some (.Vlong (Int64.add n1 (Int64.mul (Int64.repr (sizeof A ty)) n2)))
+      else none
   | _, _ => none
 
-def sem_add_ptr_long (ty : type) (v1 v2 : val) : Option val :=
+def sem_add_ptr_long (A : Archi) (ty : type) (v1 v2 : val) : Option val :=
   match v1, v2 with
   | .Vptr b1 ofs1, .Vlong n2 =>
-      let n2 := Ptrofs.of_int64 n2
-      some (.Vptr b1 (Ptrofs.add ofs1 (Ptrofs.mul (Ptrofs.repr (sizeof ty)) n2)))
-  | .Vint _, .Vlong _ => none
-  | .Vlong n1, .Vlong n2 => some (.Vlong (Int64.add n1 (Int64.mul (Int64.repr (sizeof ty)) n2)))
+      let n2 := Ptrofs.of_int64 A n2
+      some (.Vptr b1 (Ptrofs.add A ofs1 (Ptrofs.mul A (Ptrofs.repr A (sizeof A ty)) n2)))
+  | .Vint n1, .Vlong n2 =>
+      let n2 := Int.repr (Int64.unsigned n2)
+      if A.ptr64 then none else some (.Vint (Int.add n1 (Int.mul (Int.repr (sizeof A ty)) n2)))
+  | .Vlong n1, .Vlong n2 =>
+      if A.ptr64 then some (.Vlong (Int64.add n1 (Int64.mul (Int64.repr (sizeof A ty)) n2)))
+      else none
   | _, _ => none
 
 def sem_add (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
   match classify_add t1 t2 with
-  | .add_case_pi ty si => sem_add_ptr_int ty si v1 v2
-  | .add_case_pl ty => sem_add_ptr_long ty v1 v2
-  | .add_case_ip si ty => sem_add_ptr_int ty si v2 v1
-  | .add_case_lp ty => sem_add_ptr_long ty v2 v1
+  | .add_case_pi ty si => sem_add_ptr_int A ty si v1 v2
+  | .add_case_pl ty => sem_add_ptr_long A ty v1 v2
+  | .add_case_ip si ty => sem_add_ptr_int A ty si v2 v1
+  | .add_case_lp ty => sem_add_ptr_long A ty v2 v1
   | .add_default =>
-      sem_binarith
+      sem_binarith A
         (fun _ n1 n2 => some (.Vint (Int.add n1 n2)))
         (fun _ n1 n2 => some (.Vlong (Int64.add n1 n2)))
         (fun n1 n2 => some (.Vfloat (Float.add A n1 n2)))
@@ -519,34 +541,41 @@ def sem_sub (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) 
   | .sub_case_pi ty si =>
       match v1, v2 with
       | .Vptr b1 ofs1, .Vint n2 =>
-          let n2 := ptrofs_of_int si n2
-          some (.Vptr b1 (Ptrofs.sub ofs1 (Ptrofs.mul (Ptrofs.repr (sizeof ty)) n2)))
-      | .Vint _, .Vint _ => none
+          let n2 := ptrofs_of_int A si n2
+          some (.Vptr b1 (Ptrofs.sub A ofs1 (Ptrofs.mul A (Ptrofs.repr A (sizeof A ty)) n2)))
+      | .Vint n1, .Vint n2 =>
+          if A.ptr64 then none
+          else some (.Vint (Int.sub n1 (Int.mul (Int.repr (sizeof A ty)) n2)))
       | .Vlong n1, .Vint n2 =>
           let n2 := cast_int_long si n2
-          some (.Vlong (Int64.sub n1 (Int64.mul (Int64.repr (sizeof ty)) n2)))
+          if A.ptr64 then some (.Vlong (Int64.sub n1 (Int64.mul (Int64.repr (sizeof A ty)) n2)))
+          else none
       | _, _ => none
   | .sub_case_pl ty =>
       match v1, v2 with
       | .Vptr b1 ofs1, .Vlong n2 =>
-          let n2 := Ptrofs.of_int64 n2
-          some (.Vptr b1 (Ptrofs.sub ofs1 (Ptrofs.mul (Ptrofs.repr (sizeof ty)) n2)))
-      | .Vint _, .Vlong _ => none
+          let n2 := Ptrofs.of_int64 A n2
+          some (.Vptr b1 (Ptrofs.sub A ofs1 (Ptrofs.mul A (Ptrofs.repr A (sizeof A ty)) n2)))
+      | .Vint n1, .Vlong n2 =>
+          let n2 := Int.repr (Int64.unsigned n2)
+          if A.ptr64 then none
+          else some (.Vint (Int.sub n1 (Int.mul (Int.repr (sizeof A ty)) n2)))
       | .Vlong n1, .Vlong n2 =>
-          some (.Vlong (Int64.sub n1 (Int64.mul (Int64.repr (sizeof ty)) n2)))
+          if A.ptr64 then some (.Vlong (Int64.sub n1 (Int64.mul (Int64.repr (sizeof A ty)) n2)))
+          else none
       | _, _ => none
   | .sub_case_pp ty =>
       match v1, v2 with
       | .Vptr b1 ofs1, .Vptr b2 ofs2 =>
           if b1 = b2 then
-            let sz := sizeof ty
-            if 0 < sz ∧ sz ≤ Ptrofs.max_signed then
-              some (Vptrofs (Ptrofs.divs (Ptrofs.sub ofs1 ofs2) (Ptrofs.repr sz)))
+            let sz := sizeof A ty
+            if 0 < sz ∧ sz ≤ Ptrofs.max_signed A then
+              some (Vptrofs A (Ptrofs.divs A (Ptrofs.sub A ofs1 ofs2) (Ptrofs.repr A sz)))
             else none
           else none
       | _, _ => none
   | .sub_default =>
-      sem_binarith
+      sem_binarith A
         (fun _ n1 n2 => some (.Vint (Int.sub n1 n2)))
         (fun _ n1 n2 => some (.Vlong (Int64.sub n1 n2)))
         (fun n1 n2 => some (.Vfloat (Float.sub A n1 n2)))
@@ -554,7 +583,7 @@ def sem_sub (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) 
         v1 t1 v2 t2 m
 
 def sem_mul (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
-  sem_binarith
+  sem_binarith A
     (fun _ n1 n2 => some (.Vint (Int.mul n1 n2)))
     (fun _ n1 n2 => some (.Vlong (Int64.mul n1 n2)))
     (fun n1 n2 => some (.Vfloat (Float.mul A n1 n2)))
@@ -562,7 +591,7 @@ def sem_mul (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) 
     v1 t1 v2 t2 m
 
 def sem_div (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
-  sem_binarith
+  sem_binarith A
     (fun sg n1 n2 =>
       match sg with
       | .Signed =>
@@ -582,8 +611,9 @@ def sem_div (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) 
     (fun n1 n2 => some (.Vsingle (Float32.div A n1 n2)))
     v1 t1 v2 t2 m
 
-def sem_mod (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
-  sem_binarith
+def sem_mod (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
+    Option val :=
+  sem_binarith A
     (fun sg n1 n2 =>
       match sg with
       | .Signed =>
@@ -603,24 +633,27 @@ def sem_mod (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val
     (fun _ _ => none)
     v1 t1 v2 t2 m
 
-def sem_and (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
-  sem_binarith
+def sem_and (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
+    Option val :=
+  sem_binarith A
     (fun _ n1 n2 => some (.Vint (Int.and n1 n2)))
     (fun _ n1 n2 => some (.Vlong (Int64.and n1 n2)))
     (fun _ _ => none)
     (fun _ _ => none)
     v1 t1 v2 t2 m
 
-def sem_or (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
-  sem_binarith
+def sem_or (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
+    Option val :=
+  sem_binarith A
     (fun _ n1 n2 => some (.Vint (Int.or n1 n2)))
     (fun _ n1 n2 => some (.Vlong (Int64.or n1 n2)))
     (fun _ _ => none)
     (fun _ _ => none)
     v1 t1 v2 t2 m
 
-def sem_xor (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
-  sem_binarith
+def sem_xor (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
+    Option val :=
+  sem_binarith A
     (fun _ n1 n2 => some (.Vint (Int.xor n1 n2)))
     (fun _ n1 n2 => some (.Vlong (Int64.xor n1 n2)))
     (fun _ _ => none)
@@ -702,11 +735,11 @@ def classify_cmp (ty1 ty2 : type) : classify_cmp_cases :=
   | _, _ => .cmp_default
 
 /-- `sem_cmp`.  The five pointer cases call `cmp_ptr`, which the copy omits. -/
-def sem_cmp (c : comparison) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
-    Option val :=
+def sem_cmp (A : Archi) (c : comparison) (v1 : val) (t1 : type) (v2 : val) (t2 : type)
+    (m : mem) : Option val :=
   match classify_cmp t1 t2 with
   | .cmp_default =>
-      sem_binarith
+      sem_binarith A
         (fun sg n1 n2 =>
           some (Val.of_bool (match sg with
             | .Signed => Int.cmp c n1 n2
@@ -730,9 +763,10 @@ def classify_fun (ty : type) : classify_fun_cases :=
   | .Tpointer (.Tfunction args res cc) _ => .fun_case_f args res cc
   | _ => .fun_default
 
-def sem_unary_operation (op : unary_operation) (v : val) (ty : type) (m : mem) : Option val :=
+def sem_unary_operation (A : Archi) (op : unary_operation) (v : val) (ty : type) (m : mem) :
+    Option val :=
   match op with
-  | .Onotbool => sem_notbool v ty m
+  | .Onotbool => sem_notbool A v ty m
   | .Onotint => sem_notint v ty
   | .Oneg => sem_neg v ty
   | .Oabsfloat => sem_absfloat v ty
@@ -743,18 +777,18 @@ def sem_binary_operation (A : Archi) (op : binary_operation) (v1 : val) (t1 : ty
   | .Oadd => sem_add A v1 t1 v2 t2 m
   | .Osub => sem_sub A v1 t1 v2 t2 m
   | .Omul => sem_mul A v1 t1 v2 t2 m
-  | .Omod => sem_mod v1 t1 v2 t2 m
+  | .Omod => sem_mod A v1 t1 v2 t2 m
   | .Odiv => sem_div A v1 t1 v2 t2 m
-  | .Oand => sem_and v1 t1 v2 t2 m
-  | .Oor => sem_or v1 t1 v2 t2 m
-  | .Oxor => sem_xor v1 t1 v2 t2 m
+  | .Oand => sem_and A v1 t1 v2 t2 m
+  | .Oor => sem_or A v1 t1 v2 t2 m
+  | .Oxor => sem_xor A v1 t1 v2 t2 m
   | .Oshl => sem_shl v1 t1 v2 t2
   | .Oshr => sem_shr v1 t1 v2 t2
-  | .Oeq => sem_cmp .Ceq v1 t1 v2 t2 m
-  | .One => sem_cmp .Cne v1 t1 v2 t2 m
-  | .Olt => sem_cmp .Clt v1 t1 v2 t2 m
-  | .Ogt => sem_cmp .Cgt v1 t1 v2 t2 m
-  | .Ole => sem_cmp .Cle v1 t1 v2 t2 m
-  | .Oge => sem_cmp .Cge v1 t1 v2 t2 m
+  | .Oeq => sem_cmp A .Ceq v1 t1 v2 t2 m
+  | .One => sem_cmp A .Cne v1 t1 v2 t2 m
+  | .Olt => sem_cmp A .Clt v1 t1 v2 t2 m
+  | .Ogt => sem_cmp A .Cgt v1 t1 v2 t2 m
+  | .Ole => sem_cmp A .Cle v1 t1 v2 t2 m
+  | .Oge => sem_cmp A .Cge v1 t1 v2 t2 m
 
 end LClight

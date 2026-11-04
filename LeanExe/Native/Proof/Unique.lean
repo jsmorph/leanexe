@@ -34,13 +34,13 @@ theorem NativeA.unique {α β : Type} [Represent α] [Represent β] {A : Archi} 
     (hArgs : Represent.borrowed heap store params x)
     (hSep : Separate store (Represent.moves store params x) (Represent.reads store params x))
     (hCapS : store.memoryCap mod 0 ≤ 65535) (htyped : ArgsTyped ps params.reverse)
-    (m : mem) (hst : StoreRel E store m) (hs : StatusRel E m 0) :
+    (m : mem) (hst : StoreRel A E store m) (hs : StatusRel A E m 0) :
     ∃ t, (∃ m' vres, eval_funcall A X E.ge m (.Internal fd) (argVals ps params.reverse) t m' vres) ∧
       ∀ t' m' vres u u', eval_funcall A X E.ge m (.Internal fd) (argVals ps params.reverse) t' m'
           vres → t ++ u = t' ++ u' →
-        t' = t ∧ ∃ final, StoreRel E final m' ∧
-          ((StatusRel E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
-              ResultRel E rs vs (params.reverse.drop ps.length) vres m' ∧
+        t' = t ∧ ∃ final, StoreRel A E final m' ∧
+          ((StatusRel A E m' 0 ∧ ∃ (vs : List Value) (heap' : Heap),
+              ResultRel A E rs vs (params.reverse.drop ps.length) vres m' ∧
               heap'.At final ∧ Represent.owned heap' final vs.reverse (f x) ∧
               final.memoryCaps = store.memoryCaps ∧
               (∀ r, heap.Region r → 0 < r.2 →
@@ -48,7 +48,7 @@ theorem NativeA.unique {α β : Type} [Represent α] [Represent β] {A : Archi} 
                 (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
                   heap'.Region r ∧ Represent.outside final vs.reverse (f x) r) ∧
               Post x heap store heap' final) ∨
-            (aborts = true ∧ StatusRel E m' trapUnreachable)) := by
+            (aborts = true ∧ StatusRel A E m' trapUnreachable)) := by
   obtain ⟨t, m₁, v₁, final, hcall, hrest⟩ :=
     h E hE hG hcap hnres hF store heap params x hHeap hPre hArgs hSep hCapS htyped m hst hs
   refine ⟨t, ⟨m₁, v₁, hcall⟩, fun t' m' vres u u' hcall' hu => ?_⟩

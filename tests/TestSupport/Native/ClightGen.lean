@@ -624,12 +624,12 @@ def cText (p : program function) : Except String String := do
 def hex (n : Nat) : String := String.ofList (Nat.toDigits 16 n)
 
 /-- The bits of the `chunk`-sized value at offset `ofs` of the global `id` in `m`. -/
-def bitsAt (p : program function) (m : mem) (id : ident) (chunk : memory_chunk) (ofs : Int) :
-    Option Nat :=
+def bitsAt (A : Archi) (p : program function) (m : mem) (id : ident) (chunk : memory_chunk)
+    (ofs : Int) : Option Nat :=
   match Genv.find_symbol (globalenv p) id with
   | none => none
   | some b =>
-      match Mem.load chunk m b ofs with
+      match Mem.load A chunk m b ofs with
       | some (.Vint n) => some n.toNat
       | some (.Vlong n) => some n.toNat
       | _ => none
@@ -648,12 +648,13 @@ def expected (A : Archi) (p : program function) (fuel : Nat) : String :=
         | .Vlong n => some n.toNat
         | _ => none
       line "r" r ++
-      line "g_u32" (bitsAt p m idU32 .Mint32 0) ++
-      line "g_u64" (bitsAt p m idU64 .Mint64 0) ++
-      line "g_f64" (bitsAt p m idF64 .Mint64 0) ++
-      line "g_f32" (bitsAt p m idF32 .Mint32 0) ++
-      String.join ((List.range 8).map fun (i : Nat) => line "arr" (bitsAt p m idArr .Mint64 (8 * (i : Int)))) ++
-      line "pun" (bitsAt p m idPun .Mint64 0)
+      line "g_u32" (bitsAt A p m idU32 .Mint32 0) ++
+      line "g_u64" (bitsAt A p m idU64 .Mint64 0) ++
+      line "g_f64" (bitsAt A p m idF64 .Mint64 0) ++
+      line "g_f32" (bitsAt A p m idF32 .Mint32 0) ++
+      String.join ((List.range 8).map fun (i : Nat) =>
+        line "arr" (bitsAt A p m idArr .Mint64 (8 * (i : Int)))) ++
+      line "pun" (bitsAt A p m idPun .Mint64 0)
 
 /-! ## Trace programs: C text and expected output -/
 

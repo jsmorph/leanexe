@@ -7,18 +7,18 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26 and 2026-10-27: transcribed from Coq into Lean, with the
-changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26, 2026-10-27, and 2026-11-04: transcribed from Coq into Lean,
+with the changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.Floats
 
 /-!
 The syntax shared by CompCert's languages, from CompCert 3.18's `common/AST.v`: identifiers, the
 back-end types and signatures, memory chunks, the initialization data of globals, global
-definitions, and external functions.  Identifiers and blocks are natural numbers, where Coq
-uses `positive`, so 0 is an identifier and a block with no counterpart in CompCert; `globalenv`
-and `Mem.empty` number blocks from 1.  The constructors are those of `AST.v`, so that the output of `clightgen` has a
-representation; the semantics gives meaning to some of them only.
+definitions, and external functions.  Identifiers and blocks are natural numbers, where Coq uses
+`positive`, so 0 is an identifier and a block with no counterpart in CompCert.  `globalenv` and
+`Mem.empty` number blocks from 1.  The constructors are those of `AST.v`, so that the output of
+`clightgen` has a representation.  The semantics gives meaning to only some of them.
 -/
 
 namespace LClight
@@ -60,8 +60,8 @@ inductive memory_chunk where
   | Mfloat32 | Mfloat64 | Many32 | Many64
   deriving Repr, DecidableEq
 
-/-- `Mptr` on a 64-bit target. -/
-def Mptr : memory_chunk := .Mint64
+/-- `Mptr`. -/
+def Mptr (A : Archi) : memory_chunk := if A.ptr64 then .Mint64 else .Mint32
 
 /-- `type_of_chunk` (`AST.v`, lines 219 to 232). -/
 def type_of_chunk : memory_chunk → typ
@@ -84,19 +84,19 @@ inductive init_data where
   | Init_addrof (id : ident) (ofs : ptrofs)
   deriving Repr, DecidableEq
 
-def init_data_size : init_data → _root_.Int
+def init_data_size (A : Archi) : init_data → _root_.Int
   | .Init_int8 _ => 1
   | .Init_int16 _ => 2
   | .Init_int32 _ => 4
   | .Init_int64 _ => 8
   | .Init_float32 _ => 4
   | .Init_float64 _ => 8
-  | .Init_addrof _ _ => 8
+  | .Init_addrof _ _ => if A.ptr64 then 8 else 4
   | .Init_space n => max n 0
 
-def init_data_list_size : List init_data → _root_.Int
+def init_data_list_size (A : Archi) : List init_data → _root_.Int
   | [] => 0
-  | i :: il => init_data_size i + init_data_list_size il
+  | i :: il => init_data_size A i + init_data_list_size A il
 
 /-- `globvar`. -/
 structure globvar (V : Type) where

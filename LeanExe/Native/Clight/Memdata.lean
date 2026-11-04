@@ -7,15 +7,15 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
-`LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
+that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.Values
 
 /-!
 The in-memory representation of values, from CompCert 3.18's `common/Memdata.v`, on a
-little-endian target with `Archi.ptr64` true and `align_int64 = align_float64 = 8`, which hold
-on x86-64 and AArch64.
+little-endian target with `align_int64 = align_float64 = 8`, which hold on x86-64, AArch64, and
+ARM.
 -/
 
 namespace LClight
@@ -104,24 +104,24 @@ def proj_value (q : quantity) (vl : List memval) : val :=
   | .Fragment v _ _ :: _ => if check_value (size_quantity_nat q) v q vl then v else .Vundef
   | _ => .Vundef
 
-/-- `encode_val` with `Archi.ptr64` true. -/
-def encode_val (chunk : memory_chunk) (v : val) : List memval :=
+/-- `encode_val`. -/
+def encode_val (A : Archi) (chunk : memory_chunk) (v : val) : List memval :=
   match v, chunk with
   | .Vint n, .Mbool | .Vint n, .Mint8signed | .Vint n, .Mint8unsigned =>
       inj_bytes (encode_int 1 (Int.unsigned n))
   | .Vint n, .Mint16signed | .Vint n, .Mint16unsigned => inj_bytes (encode_int 2 (Int.unsigned n))
   | .Vint n, .Mint32 => inj_bytes (encode_int 4 (Int.unsigned n))
-  | .Vptr _ _, .Mint32 => List.replicate 4 .Undef
+  | .Vptr _ _, .Mint32 => if A.ptr64 then List.replicate 4 .Undef else inj_value .Q32 v
   | .Vlong n, .Mint64 => inj_bytes (encode_int 8 (Int64.unsigned n))
-  | .Vptr _ _, .Mint64 => inj_value .Q64 v
+  | .Vptr _ _, .Mint64 => if A.ptr64 then inj_value .Q64 v else List.replicate 8 .Undef
   | .Vsingle n, .Mfloat32 => inj_bytes (encode_int 4 (Int.unsigned (Float32.to_bits n)))
   | .Vfloat n, .Mfloat64 => inj_bytes (encode_int 8 (Int64.unsigned (Float.to_bits n)))
   | _, .Many32 => inj_value .Q32 v
   | _, .Many64 => inj_value .Q64 v
   | _, _ => List.replicate (size_chunk_nat chunk) .Undef
 
-/-- `decode_val` with `Archi.ptr64` true. -/
-def decode_val (chunk : memory_chunk) (vl : List memval) : val :=
+/-- `decode_val`. -/
+def decode_val (A : Archi) (chunk : memory_chunk) (vl : List memval) : val :=
   match proj_bytes vl with
   | some bl =>
       match chunk with
@@ -138,10 +138,10 @@ def decode_val (chunk : memory_chunk) (vl : List memval) : val :=
       | .Many64 => .Vundef
   | none =>
       match chunk with
-      | .Mint32 => .Vundef
-      | .Many32 => Val.load_result chunk (proj_value .Q32 vl)
-      | .Mint64 => Val.load_result chunk (proj_value .Q64 vl)
-      | .Many64 => Val.load_result chunk (proj_value .Q64 vl)
+      | .Mint32 => if A.ptr64 then .Vundef else Val.load_result A chunk (proj_value .Q32 vl)
+      | .Many32 => Val.load_result A chunk (proj_value .Q32 vl)
+      | .Mint64 => if A.ptr64 then Val.load_result A chunk (proj_value .Q64 vl) else .Vundef
+      | .Many64 => Val.load_result A chunk (proj_value .Q64 vl)
       | _ => .Vundef
 
 end LClight

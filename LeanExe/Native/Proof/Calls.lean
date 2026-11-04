@@ -22,11 +22,12 @@ def ArgsTyped (ps : List VT) (args : List Value) : Prop :=
 /-- Talos's results `vs` over the caller's remaining stack `rest`, and the C result `vres` with
 the memory `m` after the call: with several results, `vres` is undefined and the result globals
 hold the results. -/
-def ResultRel (E : Env) (rs : List VT) (vs rest : List Value) (vres : val) (m : mem) : Prop :=
+def ResultRel (A : Archi) (E : Env) (rs : List VT) (vs rest : List Value) (vres : val)
+    (m : mem) : Prop :=
   match rs with
   | [] => vs = rest ∧ vres = .Vundef
   | [t] => ∃ v, vs = v :: rest ∧ t.has v = true ∧ vres = cval v
-  | rs => ∃ ws, vs = ws ++ rest ∧ ws.length = rs.length ∧ vres = .Vundef ∧ ResultsIn E rs ws m
+  | rs => ∃ ws, vs = ws ++ rest ∧ ws.length = rs.length ∧ vres = .Vundef ∧ ResultsIn A E rs ws m
 
 section
 
@@ -38,11 +39,11 @@ def RunOutcome (ps : List VT) (rs : List VT) (fd : function) {α : Type} (res : 
   match res with
   | .Success vs st' => ∃ t m' vres,
       eval_funcall A X E.ge m (.Internal fd) (argVals ps args) t m' vres ∧
-      StoreRel E st' m' ∧ StatusRel E m' 0 ∧
-      ResultRel E rs vs (args.drop ps.length) vres m'
+      StoreRel A E st' m' ∧ StatusRel A E m' 0 ∧
+      ResultRel A E rs vs (args.drop ps.length) vres m'
   | .Trap st' msg => ∃ t m' vres,
       eval_funcall A X E.ge m (.Internal fd) (argVals ps args) t m' vres ∧
-      StoreRel E st' m' ∧ StatusRel E m' (trapCode msg) ∧ trapCode msg ≠ 0
+      StoreRel A E st' m' ∧ StatusRel A E m' (trapCode msg) ∧ trapCode msg ≠ 0
   | .Invalid _ => True
   | .OutOfFuel => True
   | .Thrown _ _ _ => False
@@ -52,7 +53,7 @@ def RunOutcome (ps : List VT) (rs : List VT) (fd : function) {α : Type} (res : 
 memory must be aligned. -/
 def RunSimFun (al : Bool) (g k : Nat) (ps : List VT) (rs : List VT) (fd : function) : Prop :=
   ∀ {α : Type} (st : Store α) (args : List Value) (m : mem) (env : HostEnv α),
-    ArgsTyped ps args → StoreRel E st m → StatusRel E m 0 →
+    ArgsTyped ps args → StoreRel A E st m → StatusRel A E m 0 →
     (al = true → AlignedRun g mod k st args env) →
     RunOutcome A X E ps rs fd (run g mod k st args env) args m
 
@@ -129,7 +130,7 @@ variable {A : Archi} {X : ExtSem} {E : Env} {mod : Module} {c : FCtx}
 
 /-- The test after a call when `lx_status` is `code`. -/
 theorem exec_statusCheck {le : temp_env} {m : mem} {code : Nat} (hE : EnvOk E)
-    (h : StatusRel E m code) (hcode : code ≤ 3) (r : Option VT) :
+    (h : StatusRel A E m code) (hcode : code ≤ 3) (r : Option VT) :
     exec_stmt A X E.ge empty_env le m (statusCheck r) E0 le m
       (if code = 0 then .Out_normal else trapOut r) := by
   have hc : eval_expr A E.ge empty_env le m (.Ebinop .One (.Evar statusId tuint) (cint 0) tint)
@@ -146,16 +147,16 @@ theorem exec_statusCheck {le : temp_env} {m : mem} {code : Nat} (hE : EnvOk E)
   by_cases h0 : code = 0
   · subst h0
     refine .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hc ?_ (by simpa using .exec_Sskip _ _ _)
-    show bool_val _ tint m = _
-    simpa using bool_int m 0
+    show bool_val A _ tint m = _
+    simpa using bool_int A m 0
   · refine .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hc ?_ ?_
-    · show bool_val _ tint m = _
-      simpa [h0] using bool_int m 1
+    · show bool_val A _ tint m = _
+      simpa [h0] using bool_int A m 1
     · simpa [h0] using exec_retZero A X E.ge le m r
 
 /-- The code after a call that returned with `lx_status` 0 sets `lim` again. -/
 theorem exec_callCheck_ok {le : temp_env} {m : mem} (hE : EnvOk E) {wm : Wasm.Mem}
-    {caps : List Nat} (h : StatusRel E m 0) (hmr : MemRel E wm caps m) (r : Option VT) :
+    {caps : List Nat} (h : StatusRel A E m 0) (hmr : MemRel A E wm caps m) (r : Option VT) :
     exec_stmt A X E.ge empty_env le m (callCheck r) (E0 ++ E0)
       (le.insert limId (limVal wm.pages)) m .Out_normal := by
   have hchk := exec_statusCheck (A := A) (X := X) (le := le) (E := E) hE h (by decide) r
@@ -165,7 +166,7 @@ theorem exec_callCheck_ok {le : temp_env} {m : mem} (hE : EnvOk E) {wm : Wasm.Me
 
 /-- The code after a call that trapped returns. -/
 theorem exec_callCheck_trap {le : temp_env} {m : mem} {code : Nat} (hE : EnvOk E)
-    (h : StatusRel E m code) (hcode : code ≤ 3) (h0 : code ≠ 0) (r : Option VT) :
+    (h : StatusRel A E m code) (hcode : code ≤ 3) (h0 : code ≠ 0) (r : Option VT) :
     exec_stmt A X E.ge empty_env le m (callCheck r) E0 le m (trapOut r) := by
   have hchk := exec_statusCheck (A := A) (X := X) (le := le) (E := E) hE h hcode r
   have hchk' : exec_stmt A X E.ge empty_env le m (statusCheck r) E0 le m (trapOut r) := by
@@ -245,7 +246,7 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
           exact hinv.brk
         exact Inv.of_lim hst2 hloc2 hg hs hbrk2
       · have hmany : ∃ ws, vs = ws ++ vr ∧ ws.length = rs.length ∧ vres = .Vundef ∧
-            ResultsIn E rs ws m' := by
+            ResultsIn A E rs ws m' := by
           rw [← hdrop]
           rcases rs with _ | ⟨t1, _ | ⟨t2, rs⟩⟩
           · simp at h2
@@ -254,7 +255,7 @@ theorem sim_call (hE : EnvOk E) {CallOk : Nat → Prop} (f k : Nat)
         obtain ⟨ws, rfl, hwlen, rfl, hin⟩ := hmany
         obtain ⟨hnres, hint⟩ := hresok h2
         have hload : ∀ j (hj : j < rs.length), ∃ v, ws.reverse[j]? = some v ∧ rs[j].has v = true ∧
-            Mem.load rs[j].chunk m' (E.res (0 + j) rs[j]) 0 = some (cval v) := by
+            Mem.load A rs[j].chunk m' (E.res (0 + j) rs[j]) 0 = some (cval v) := by
           intro j hj
           obtain ⟨v, hv, htv, hl⟩ := hin.2 j hj
           rw [List.take_of_length_le (by omega)] at hv

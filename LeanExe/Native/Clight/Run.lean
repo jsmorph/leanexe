@@ -11,12 +11,13 @@ function from the initial memory, and `run_program` runs `main` as `bigstep_prog
 describes.
 
 The semantics lets a volatile load return any value of its type.  The evaluator takes the event
-value of a load of a chunk at an offset of a volatile global from `vload`, as CompCert's
-reference interpreter takes it from its world (`cfrontend/Cexec.v`, lines 204 to 216).  `run` and `run_program` pass `world_vload`, which reads the value from the
-initial memory of `world_program`, where the interpreter's world starts (`driver/Interp.ml`,
-lines 409 to 413 and 566 to 580).  The interpreter's world also records volatile stores, so the
-two agree on a program that does not load from a volatile global after storing to it, such as a
-program whose volatile loads read `const` globals.
+value of a load of a chunk at an offset of a volatile global from `vload`, as CompCert's reference
+interpreter takes it from its world (`cfrontend/Cexec.v`, lines 204 to 216).  `run` and
+`run_program` pass `world_vload`, which reads the value from the initial memory of `world_program`,
+where the interpreter's world starts (`driver/Interp.ml`, lines 409 to 413 and 566 to 580).  The
+interpreter's world also records volatile stores, so the two agree on a program that does not load
+from a volatile global after storing to it, such as a program whose volatile loads read `const`
+globals.
 -/
 
 namespace LClight
@@ -44,8 +45,8 @@ def lvar (e : env) (id : ident) (ty : type) : Option (block × ptrofs) :=
 
 /-- `deref_loc` at a full access. -/
 def deref_loc_fn (ty : type) (m : mem) (b : block) (ofs : ptrofs) : Option val :=
-  match access_mode ty with
-  | .By_value chunk => Mem.loadv chunk m (.Vptr b ofs)
+  match access_mode A ty with
+  | .By_value chunk => Mem.loadv A chunk m (.Vptr b ofs)
   | .By_reference => some (.Vptr b ofs)
   | _ => none
 
@@ -53,8 +54,8 @@ def assign_loc_fn (ty : type) (m : mem) (b : block) (ofs : ptrofs) (bf : bitfiel
     Option mem :=
   match bf with
   | .Full =>
-      match access_mode ty with
-      | .By_value chunk => Mem.storev chunk m (.Vptr b ofs) v
+      match access_mode A ty with
+      | .By_value chunk => Mem.storev A chunk m (.Vptr b ofs) v
       | _ => none
   | .Bits _ _ _ _ => none
 
@@ -77,7 +78,7 @@ def eval_expr_fn (e : env) (le : temp_env) (m : mem) : expr → Option val
       | _ => none
   | .Eunop op a _ =>
       match eval_expr_fn e le m a with
-      | some v1 => sem_unary_operation op v1 (typeof a) m
+      | some v1 => sem_unary_operation A op v1 (typeof a) m
       | none => none
   | .Ebinop op a1 a2 _ =>
       match eval_expr_fn e le m a1 with
@@ -88,15 +89,15 @@ def eval_expr_fn (e : env) (le : temp_env) (m : mem) : expr → Option val
       | none => none
   | .Ecast a ty =>
       match eval_expr_fn e le m a with
-      | some v1 => sem_cast v1 (typeof a) ty m
+      | some v1 => sem_cast A v1 (typeof a) ty m
       | none => none
   | .Evar id ty =>
       match lvar ge e id ty with
-      | some (l, ofs) => deref_loc_fn ty m l ofs
+      | some (l, ofs) => deref_loc_fn A ty m l ofs
       | none => none
   | .Ederef a ty =>
       match eval_expr_fn e le m a with
-      | some (.Vptr l ofs) => deref_loc_fn ty m l ofs
+      | some (.Vptr l ofs) => deref_loc_fn A ty m l ofs
       | _ => none
   | .Efield _ _ _ => none
   | .Esizeof _ _ => none
@@ -119,7 +120,7 @@ def eval_exprlist_fn (e : env) (le : temp_env) (m : mem) :
   | a :: bl, ty :: tyl =>
       match eval_expr_fn A ge e le m a with
       | some v1 =>
-          match sem_cast v1 (typeof a) ty m with
+          match sem_cast A v1 (typeof a) ty m with
           | some v2 =>
               match eval_exprlist_fn e le m bl tyl with
               | some vl => some (v2 :: vl)
@@ -169,12 +170,12 @@ def external_call_fn (ef : external_function) (vargs : List val) (m : mem) :
                 match vload chunk id ofs with
                 | some ev =>
                     match val_of_eventval ev (type_of_chunk chunk) with
-                    | some v => some ([.Event_vload chunk id ofs ev], Val.load_result chunk v, m)
+                    | some v => some ([.Event_vload chunk id ofs ev], Val.load_result A chunk v, m)
                     | none => none
                 | none => none
             | none => none
           else
-            match Mem.loadv chunk m (.Vptr b ofs) with
+            match Mem.loadv A chunk m (.Vptr b ofs) with
             | some v => some (E0, v, m)
             | none => none
       | _ => none
@@ -183,11 +184,11 @@ def external_call_fn (ef : external_function) (vargs : List val) (m : mem) :
       | [.Vptr b ofs, v] =>
           if Genv.block_is_volatile ge b then
             match invert_symbol_fn ge b,
-                eventval_of_val (Val.load_result chunk v) (type_of_chunk chunk) with
+                eventval_of_val (Val.load_result A chunk v) (type_of_chunk chunk) with
             | some id, some ev => some ([.Event_vstore chunk id ofs ev], .Vundef, m)
             | _, _ => none
           else
-            match Mem.storev chunk m (.Vptr b ofs) v with
+            match Mem.storev A chunk m (.Vptr b ofs) v with
             | some m' => some (E0, .Vundef, m')
             | none => none
       | _ => none
@@ -203,7 +204,7 @@ def outcome_result_value_fn (out : outcome) (t : type) (m : mem) : Option val :=
   match out, t with
   | .Out_normal, .Tvoid => some .Vundef
   | .Out_return none, .Tvoid => some .Vundef
-  | .Out_return (some (v', t')), ty => if ty = .Tvoid then none else sem_cast v' t' ty m
+  | .Out_return (some (v', t')), ty => if ty = .Tvoid then none else sem_cast A v' t' ty m
   | _, _ => none
 
 mutual
@@ -218,9 +219,9 @@ mutual
           | some (loc, ofs, bf) =>
               match eval_expr_fn A ge e le m a2 with
               | some v2 =>
-                  match sem_cast v2 (typeof a2) (typeof a1) m with
+                  match sem_cast A v2 (typeof a2) (typeof a1) m with
                   | some v =>
-                      match assign_loc_fn (typeof a1) m loc ofs bf v with
+                      match assign_loc_fn A (typeof a1) m loc ofs bf v with
                       | some m' => .ok (E0, le, m', .Out_normal)
                       | none => .error .stuck
                   | none => .error .stuck
@@ -267,7 +268,7 @@ mutual
       | .Sifthenelse a s1 s2 =>
           match eval_expr_fn A ge e le m a with
           | some v1 =>
-              match bool_val v1 (typeof a) m with
+              match bool_val A v1 (typeof a) m with
               | some b => exec_fn fuel e le m (if b then s1 else s2)
               | none => .error .stuck
           | none => .error .stuck
@@ -307,9 +308,9 @@ mutual
           | some le1 =>
               match exec_fn fuel empty_env le1 m f.fn_body with
               | .ok (t, _, m2, out) =>
-                  match outcome_result_value_fn out f.fn_return m2 with
+                  match outcome_result_value_fn A out f.fn_return m2 with
                   | some vres =>
-                      match Mem.free_list m2 (blocks_of_env empty_env) with
+                      match Mem.free_list m2 (blocks_of_env A empty_env) with
                       | some m3 => .ok (t, m3, vres)
                       | none => .error .stuck
                   | none => .error .stuck
@@ -338,15 +339,16 @@ def world_program (p : program function) : program function :=
 
 /-- The value of a volatile load as the reference interpreter's world gives it, from the initial
 memory of `world_program p` (`driver/Interp.ml`, lines 409 to 413). -/
-def world_vload (p : program function) : memory_chunk → ident → ptrofs → Option eventval :=
+def world_vload (A : Archi) (p : program function) :
+    memory_chunk → ident → ptrofs → Option eventval :=
   let wp := world_program p
-  match init_mem wp with
+  match init_mem A wp with
   | none => fun _ _ _ => none
   | some wm => fun chunk id ofs =>
       match Genv.find_symbol (globalenv wp) id with
       | none => none
       | some b =>
-          match Mem.load chunk wm b (Ptrofs.unsigned ofs) with
+          match Mem.load A chunk wm b (Ptrofs.unsigned ofs) with
           | some v => eventval_of_val v (type_of_chunk chunk)
           | none => none
 
@@ -356,7 +358,7 @@ returned value. -/
 def run (A : Archi) (p : program function) (name : ident) (args : List val) (fuel : Nat) :
     Except Failure (trace × mem × val) :=
   let ge := globalenv p
-  match init_mem p with
+  match init_mem A p with
   | none => .error .stuck
   | some m0 =>
       match Genv.find_symbol ge name with
@@ -364,14 +366,14 @@ def run (A : Archi) (p : program function) (name : ident) (args : List val) (fue
       | some b =>
           match Genv.find_funct_ptr ge b with
           | none => .error .stuck
-          | some fd => eval_funcall_fn A ge (world_vload p) fuel m0 fd args
+          | some fd => eval_funcall_fn A ge (world_vload A p) fuel m0 fd args
 
 /-- Runs the program `p` as `bigstep_program_terminates` describes: its `main`, of the type
 `int(void)`, from the initial memory of `p`, with `fuel` for the statements and calls it runs.
 The result is the trace and the returned `int`. -/
 def run_program (A : Archi) (p : program function) (fuel : Nat) : Except Failure (trace × int) :=
   let ge := globalenv p
-  match init_mem p with
+  match init_mem A p with
   | none => .error .stuck
   | some m0 =>
       match Genv.find_symbol ge p.prog_main with
@@ -381,7 +383,7 @@ def run_program (A : Archi) (p : program function) (fuel : Nat) : Except Failure
           | none => .error .stuck
           | some fd =>
               if type_of_fundef fd = .Tfunction [] type_int32s cc_default then
-                match eval_funcall_fn A ge (world_vload p) fuel m0 fd [] with
+                match eval_funcall_fn A ge (world_vload A p) fuel m0 fd [] with
                 | .ok (t, _, .Vint r) => .ok (t, r)
                 | .ok _ => .error .stuck
                 | .error err => .error err

@@ -7,8 +7,8 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26 and 2026-10-27: transcribed from Coq into Lean, with the
-changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26, 2026-10-27, and 2026-11-04: transcribed from Coq into Lean,
+with the changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.Clight
 
@@ -18,8 +18,8 @@ The big-step semantics of terminating Clight statements and calls, from CompCert
 622 to 634).  CompCert's `bigstep_semantics_sound` relates it to the small-step semantics
 `semantics2`, from which the compiler's passes after SimplLocals prove forward simulations.  The
 copy has no rule for `Sswitch`, whose rule `exec_Sswitch` it omits; `ClightBigstep.v` itself has
-none for `Slabel` and `Sgoto`.  `A` gives the NaN results of floating-point operations and `X`
-the semantics of external functions.
+none for `Slabel` and `Sgoto`.  `A` gives the width of pointers and the NaN results of
+floating-point operations, and `X` the semantics of external functions.
 
 The copy omits the judgments about divergence, `execinf_stmt` and `evalinf_funcall` (lines
 198 to 246) and `bigstep_program_diverges` (lines 262 to 270), and `bigstep_semantics` (lines 272
@@ -48,11 +48,11 @@ inductive out_break_or_return : outcome → outcome → Prop
   | Out_break_or_return_R (ov : Option (val × type)) :
       out_break_or_return (.Out_return ov) (.Out_return ov)
 
-def outcome_result_value (out : outcome) (t : type) (v : val) (m : mem) : Prop :=
+def outcome_result_value (A : Archi) (out : outcome) (t : type) (v : val) (m : mem) : Prop :=
   match out, t with
   | .Out_normal, .Tvoid => v = .Vundef
   | .Out_return none, .Tvoid => v = .Vundef
-  | .Out_return (some (v', t')), ty => ty ≠ .Tvoid ∧ sem_cast v' t' ty m = some v
+  | .Out_return (some (v', t')), ty => ty ≠ .Tvoid ∧ sem_cast A v' t' ty m = some v
   | _, _ => False
 
 mutual
@@ -64,8 +64,8 @@ mutual
         (ofs : ptrofs) (bf : bitfield) (v2 v : val) (m' : mem) :
         eval_lvalue A ge e le m a1 loc ofs bf →
         eval_expr A ge e le m a2 v2 →
-        sem_cast v2 (typeof a2) (typeof a1) m = some v →
-        assign_loc (typeof a1) m loc ofs bf v m' →
+        sem_cast A v2 (typeof a2) (typeof a1) m = some v →
+        assign_loc A (typeof a1) m loc ofs bf v m' →
         exec_stmt A X ge e le m (.Sassign a1 a2) E0 le m' .Out_normal
     | exec_Sset (e : env) (le : temp_env) (m : mem) (id : ident) (a : expr) (v : val) :
         eval_expr A ge e le m a v →
@@ -100,7 +100,7 @@ mutual
     | exec_Sifthenelse (e : env) (le : temp_env) (m : mem) (a : expr) (s1 s2 : statement)
         (v1 : val) (b : Bool) (t : trace) (le' : temp_env) (m' : mem) (out : outcome) :
         eval_expr A ge e le m a v1 →
-        bool_val v1 (typeof a) m = some b →
+        bool_val A v1 (typeof a) m = some b →
         exec_stmt A X ge e le m (if b then s1 else s2) t le' m' out →
         exec_stmt A X ge e le m (.Sifthenelse a s1 s2) t le' m' out
     | exec_Sreturn_none (e : env) (le : temp_env) (m : mem) :
@@ -140,8 +140,8 @@ mutual
         (le1 le2 : temp_env) (m1 m2 : mem) (out : outcome) (vres : val) (m3 : mem) :
         function_entry2 f vargs m e le1 m1 →
         exec_stmt A X ge e le1 m1 f.fn_body t le2 m2 out →
-        outcome_result_value out f.fn_return vres m2 →
-        Mem.free_list m2 (blocks_of_env e) = some m3 →
+        outcome_result_value A out f.fn_return vres m2 →
+        Mem.free_list m2 (blocks_of_env A e) = some m3 →
         eval_funcall A X ge m (.Internal f) vargs t m3 vres
     | eval_funcall_external (m : mem) (ef : external_function) (targs : List type)
         (tres : type) (cconv : calling_convention) (vargs : List val) (t : trace) (vres : val)
@@ -156,7 +156,7 @@ inductive bigstep_program_terminates (A : Archi) (X : ExtSem) (p : program funct
     trace → int → Prop
   | bigstep_program_terminates_intro (b : block) (f : fundef function) (m0 m1 : mem) (t : trace)
       (r : int) :
-      init_mem p = some m0 →
+      init_mem A p = some m0 →
       Genv.find_symbol (globalenv p) p.prog_main = some b →
       Genv.find_funct_ptr (globalenv p) b = some f →
       type_of_fundef f = .Tfunction [] type_int32s cc_default →

@@ -348,7 +348,7 @@ theorem push_exec {L : List Label} {σr : List VT} {α : Type} {st : Store α} {
     (hx : exec_stmt A X E.ge empty_env le m s E0 le' m' .Out_normal)
     (hslot : le'[slotId σr.length t]? = some (cval v)) (ht : t.has v = true)
     (hkeep : ∀ id, id ≠ slotId σr.length t → (∀ k, id ≠ callId k) → le'[id]? = le[id]?)
-    (hg : StoreRel E st m') (hs : StatusRel E m' 0) :
+    (hg : StoreRel A E st m') (hs : StatusRel A E m' 0) :
     Outcome A X E c L (some (t :: σr))
       (.Fallthrough st { params := sl.params, locals := sl.locals, values := v :: vr }) s le m := by
   have hfr : Frame σr.length le le' := fun h' hh t' =>
@@ -380,13 +380,13 @@ theorem eval_punAt_lvalue (hE : EnvOk E) (le : temp_env) (m : mem) (ty : type) :
   .eval_Ederef _ _ _ _ (.eval_Ecast _ _ _ _ (eval_punVar hE le m) rfl)
 
 theorem eval_punAt_double (hE : EnvOk E) {le : temp_env} {m : mem} {x : UInt64}
-    (hl : Mem.load .Mfloat64 m E.pun 0 = some (.Vfloat x)) :
+    (hl : Mem.load A .Mfloat64 m E.pun 0 = some (.Vfloat x)) :
     eval_expr A E.ge empty_env le m (punAt tdouble) (.Vfloat x) :=
   .eval_Elvalue _ _ _ _ _ (eval_punAt_lvalue hE le m _)
     (.deref_loc_value .Mfloat64 _ rfl (by rw [loadv_zero _ _ _ (by decide)]; exact hl))
 
 theorem eval_punAt_long (hE : EnvOk E) {le : temp_env} {m : mem} {x : UInt64}
-    (hl : Mem.load .Mint64 m E.pun 0 = some (.Vlong x)) :
+    (hl : Mem.load A .Mint64 m E.pun 0 = some (.Vlong x)) :
     eval_expr A E.ge empty_env le m (punAt tulong) (.Vlong x) :=
   .eval_Elvalue _ _ _ _ _ (eval_punAt_lvalue hE le m _)
     (.deref_loc_value .Mint64 _ rfl (by rw [loadv_zero _ _ _ (by decide)]; exact hl))
@@ -395,8 +395,9 @@ theorem exec_punAssign_long (hE : EnvOk E) {le : temp_env} {m : mem} {e : expr} 
     (he : eval_expr A E.ge empty_env le m e (.Vlong x)) (hty : typeof e = tulong)
     (hva : Mem.valid_access m .Mint64 E.pun 0 .Writable) :
     exec_stmt A X E.ge empty_env le m (.Sassign (punAt tulong) e) E0 le
-      (Mem.stored .Mint64 m E.pun 0 (.Vlong x)) .Out_normal :=
-  .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_punAt_lvalue hE le m _) he (by rw [hty]; rfl)
+      (Mem.stored A .Mint64 m E.pun 0 (.Vlong x)) .Out_normal :=
+  .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_punAt_lvalue hE le m _) he
+    (by rw [hty]; exact cast_ll A m x)
     (.assign_loc_value _ .Mint64 _ rfl
       (by rw [storev_zero _ _ _ _ (by decide)]; exact Mem.store_ok _ hva))
 
@@ -404,37 +405,38 @@ theorem exec_punAssign_double (hE : EnvOk E) {le : temp_env} {m : mem} {e : expr
     (he : eval_expr A E.ge empty_env le m e (.Vfloat x)) (hty : typeof e = tdouble)
     (hva : Mem.valid_access m .Mfloat64 E.pun 0 .Writable) :
     exec_stmt A X E.ge empty_env le m (.Sassign (punAt tdouble) e) E0 le
-      (Mem.stored .Mfloat64 m E.pun 0 (.Vfloat x)) .Out_normal :=
+      (Mem.stored A .Mfloat64 m E.pun 0 (.Vfloat x)) .Out_normal :=
   .exec_Sassign _ _ _ _ _ _ _ _ _ _ _ (eval_punAt_lvalue hE le m _) he (by rw [hty]; rfl)
     (.assign_loc_value _ .Mfloat64 _ rfl
       (by rw [storev_zero _ _ _ _ (by decide)]; exact Mem.store_ok _ hva))
 
 theorem StoreRel.store_pun {α : Type} {st : Store α} {m : mem} (hE : EnvOk E)
-    (h : StoreRel E st m) (chunk : memory_chunk) (v : val) :
-    StoreRel E st (Mem.stored chunk m E.pun 0 v) :=
+    (h : StoreRel A E st m) (chunk : memory_chunk) (v : val) :
+    StoreRel A E st (Mem.stored A chunk m E.pun 0 v) :=
   ⟨GlobalsRel.sameExcept h.1 (Mem.SameExcept.of_stored _ _ _ _ _) hE.pun_other.2.2.2,
     h.2.store_other _ hE.pun_other.2.1 hE.pun_other.2.2.1 _ _⟩
 
-theorem StatusRel.store_pun {m : mem} {k : Nat} (hE : EnvOk E) (h : StatusRel E m k)
-    (chunk : memory_chunk) (v : val) : StatusRel E (Mem.stored chunk m E.pun 0 v) k :=
+theorem StatusRel.store_pun {m : mem} {k : Nat} (hE : EnvOk E) (h : StatusRel A E m k)
+    (chunk : memory_chunk) (v : val) : StatusRel A E (Mem.stored A chunk m E.pun 0 v) k :=
   h.sameExcept (Mem.SameExcept.of_stored _ _ _ _ _) (Ne.symm hE.pun_other.1)
 
 /-- `punStore w h`: the slot of the double at height `h` gets the bits of the word `w`. -/
 theorem exec_punStore (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env} {m : mem}
     {e : expr} {x : UInt64} {h : Nat} (he : eval_expr A E.ge empty_env le m e (.Vlong x))
-    (hty : typeof e = tulong) (hst : StoreRel E st m) :
+    (hty : typeof e = tulong) (hst : StoreRel A E st m) :
     exec_stmt A X E.ge empty_env le m (punStore e h) E0 (le.insert (slotId h .f64) (.Vfloat x))
-      (Mem.stored .Mint64 m E.pun 0 (.Vlong x)) .Out_normal :=
+      (Mem.stored A .Mint64 m E.pun 0 (.Vlong x)) .Out_normal :=
   .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ (exec_punAssign_long hE he hty hst.2.punW)
     (.exec_Sset _ _ _ _ _ _ (eval_punAt_double hE (Mem.load_float_stored_long _ _ _ _ hst.2.punW)))
 
 /-- `canonStmt h` replaces a NaN in the double slot at height `h` by the canonical NaN. -/
 theorem exec_canon (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env} {m : mem} {h : Nat}
-    {q : UInt64} (hq : le[slotId h .f64]? = some (.Vfloat q)) (hst : StoreRel E st m)
-    (hs : StatusRel E m 0) :
+    {q : UInt64} (hq : le[slotId h .f64]? = some (.Vfloat q)) (hst : StoreRel A E st m)
+    (hs : StatusRel A E m 0) :
     ∃ le' m', exec_stmt A X E.ge empty_env le m (canonStmt h) E0 le' m' .Out_normal ∧
       le'[slotId h .f64]? = some (.Vfloat (canonOf q)) ∧
-      (∀ id, id ≠ slotId h .f64 → le'[id]? = le[id]?) ∧ StoreRel E st m' ∧ StatusRel E m' 0 := by
+      (∀ id, id ≠ slotId h .f64 → le'[id]? = le[id]?) ∧ StoreRel A E st m' ∧
+      StatusRel A E m' 0 := by
   have hc : eval_expr A E.ge empty_env le m (.Ebinop .One (tmp h .f64) (tmp h .f64) tint)
       (Val.of_bool (IEEE64.isNaN q)) := by
     refine .eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hq) (.eval_Etempvar _ _ _ hq) ?_
@@ -446,7 +448,7 @@ theorem exec_canon (hE : EnvOk E) {α : Type} {st : Store α} {le : temp_env} {m
       rw [hn]; rfl
     · rw [hq]; simp [canonOf, hn]
   · refine ⟨le.insert (slotId h .f64) (.Vfloat IEEE64.canonicalNaN),
-      Mem.stored .Mint64 m E.pun 0 (.Vlong IEEE64.canonicalNaN), ?_, ?_,
+      Mem.stored A .Mint64 m E.pun 0 (.Vlong IEEE64.canonicalNaN), ?_, ?_,
       fun id hid => te_insert_ne _ (Ne.symm hid), hst.store_pun hE _ _, hs.store_pun hE _ _⟩
     · refine .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hc ?_
         (exec_punStore hE (.eval_Econst_long _ _) rfl hst)
@@ -578,7 +580,7 @@ theorem sim_fcmp (F : Nat) (inst : Instruction) (op : binary_operation) (f : UIn
       refine .eval_Ecast _ _ _ _ (.eval_Ebinop _ _ _ _ _ _ _ (.eval_Etempvar _ _ _ hx)
         (.eval_Etempvar _ _ _ hy) (hsem m x y)) ?_
       rw [of_bool_eq]
-      exact cast_int_uint m _
+      exact cast_i32 A m _
 
 theorem tr_fcmp {inst : Instruction} {op : binary_operation} (hop : f64Cmp inst = some op)
     {L : List Label} {σ : List VT} {n : Nat} {s : statement} {σ' : Option (List VT)} {n' : Nat}
@@ -778,7 +780,7 @@ theorem exec_truncSat {le : temp_env} {m : mem} {h : Nat} {x : UInt64}
     .eval_Ebinop _ _ _ _ _ _ _ hd (.eval_Econst_float _ _) (by
       show some (Val.of_bool (LClight.Float.cmp .Cge x t64Bits)) = _
       rw [cmp_ge])
-  have hb : ∀ b : Bool, bool_val (Val.of_bool b) tint m = some b := by
+  have hb : ∀ b : Bool, bool_val A (Val.of_bool b) tint m = some b := by
     intro b; cases b <;> rfl
   unfold truncSatStmt
   cases hn : IEEE64.isNaN x

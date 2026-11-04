@@ -36,7 +36,7 @@ variable {A : Archi} {X : ExtSem} {E : Env} {mod : Module} {c : FCtx}
 
 theorem sim_load64_aligned (hE : EnvOk E) (F : Nat) (off : UInt32) {L : List Label}
     {σr : List VT} (hb : curBase L ≤ σr.length) {α : Type} {st : Store α} {sl : Locals}
-    {le : temp_env} {m : mem} {env : HostEnv α} (hinv : Inv E c (.i32 :: σr) st sl le m)
+    {le : temp_env} {m : mem} {env : HostEnv α} (hinv : Inv A E c (.i32 :: σr) st sl le m)
     (hal : AlignedOne F mod st sl (.load64 off) env) :
     Outcome A X E c L (some (.i64 :: σr)) (execOne F mod st sl (.load64 off) env)
       (load64Aligned c σr.length off) le m := by
@@ -70,7 +70,7 @@ theorem sim_load64_aligned (hE : EnvOk E) (F : Nat) (off : UInt32) {L : List Lab
         refine .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hx1
           (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ ?_ (trapOut_ne_normal _))
         refine .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hvb ?_ hxt
-        show bool_val vb tint m = some true
+        show bool_val A vb tint m = some true
         rw [hbb, hq]; simp; omega
       · rw [ite_eq_right hob]
         obtain ⟨hfit, hin⟩ := addr_fits hE hmr hob
@@ -88,7 +88,7 @@ theorem sim_load64_aligned (hE : EnvOk E) (F : Nat) (off : UInt32) {L : List Lab
             (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
             .Out_normal := by
           refine .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hvb ?_ (.exec_Sskip _ _ _)
-          show bool_val vb tint m = some false
+          show bool_val A vb tint m = some false
           rw [hbb, hq]; simp; omega
         have hfr : Frame σr.length le
             ((le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))).insert
@@ -111,7 +111,7 @@ theorem sim_load64_aligned (hE : EnvOk E) (F : Nat) (off : UInt32) {L : List Lab
 theorem sim_store64_aligned (hE : EnvOk E) (F : Nat) (off : UInt32) {L : List Label}
     {σr : List VT} (hb : curBase L ≤ σr.length) {α : Type} {st : Store α} {sl : Locals}
     {le : temp_env} {m : mem} {env : HostEnv α}
-    (hinv : Inv E c (.i64 :: .i32 :: σr) st sl le m)
+    (hinv : Inv A E c (.i64 :: .i32 :: σr) st sl le m)
     (hal : AlignedOne F mod st sl (.store64 off) env) :
     Outcome A X E c L (some σr) (execOne F mod st sl (.store64 off) env)
       (store64Aligned c σr.length off) le m := by
@@ -151,7 +151,7 @@ theorem sim_store64_aligned (hE : EnvOk E) (F : Nat) (off : UInt32) {L : List La
         refine .exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hx1
           (.exec_Sseq_2 _ _ _ _ _ _ _ _ _ ?_ (trapOut_ne_normal _))
         refine .exec_Sifthenelse _ _ _ _ _ _ _ true _ _ _ _ hvb ?_ hxt
-        show bool_val vb tint m = some true
+        show bool_val A vb tint m = some true
         rw [hbb, hq]; simp; omega
       · rw [ite_eq_right hob]
         obtain ⟨hfit, hin⟩ := addr_fits hE hmr hob
@@ -161,22 +161,23 @@ theorem sim_store64_aligned (hE : EnvOk E) (F : Nat) (off : UInt32) {L : List La
             (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
             .Out_normal := by
           refine .exec_Sifthenelse _ _ _ _ _ _ _ false _ _ _ _ hvb ?_ (.exec_Sskip _ _ _)
-          show bool_val vb tint m = some false
+          show bool_val A vb tint m = some false
           rw [hbb, hq]; simp; omega
         have hst : ∃ m', exec_stmt A X E.ge empty_env
             (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m
             (.Sassign (wordAt c.cap (slotId σr.length .i64)) (tmp (σr.length + 1) .i64)) E0
             (le.insert (slotId σr.length .i64) (.Vlong (UInt64.ofNat (a.toNat + off.toNat)))) m'
             .Out_normal ∧ Mem.SameExcept E.mem m m' ∧
-            MemRel E (st.mem.write64 (a + off) x) st.memoryCaps m' := by
+            MemRel A E (st.mem.write64 (a + off) x) st.memoryCaps m' := by
           have hal' : (a.toNat + off.toNat) % 8 = 0 := hal (by omega)
           have hvw := hmr.valid_word (i := (a + off).toNat) (by rw [hfit]; exact hin)
             (by rw [hfit]; exact hal')
-          refine ⟨Mem.stored .Mint64 m E.mem (a + off).toNat (.Vlong x), ?_,
+          refine ⟨Mem.stored A .Mint64 m E.mem (a + off).toNat (.Vlong x), ?_,
             Mem.SameExcept.of_stored _ _ _ _ _, hmr.store_word hE (a + off) x⟩
           refine .exec_Sassign _ _ _ _ _ _ _ _ _ _ _
-            (eval_wordAt_lvalue hE c.cap ht1 (by rw [hq]; exact hal')) (.eval_Etempvar _ _ _ hx')
-            (cast_ll m x) (.assign_loc_value _ .Mint64 _ rfl ?_)
+            (eval_wordAt_lvalue hE c.cap ht1 (by rw [hq]; exact hal') (by rw [hq]; omega))
+            (.eval_Etempvar _ _ _ hx')
+            (cast_ll A m x) (.assign_loc_value _ .Mint64 _ rfl ?_)
           rw [storev_mem _ (by rw [hq]; simp [size_chunk]; omega) (by decide), hq, ← hfit]
           exact Mem.store_ok _ hvw
         obtain ⟨m', hx2, hs', hmr'⟩ := hst

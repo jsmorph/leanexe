@@ -7,8 +7,8 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
-`LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
+that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.Memory
 
@@ -166,8 +166,8 @@ def typeconv (ty : type) : type :=
   | .Tfunction _ _ _ => .Tpointer ty noattr
   | _ => remove_attributes ty
 
-/-- `sizeof` with an empty composite environment and `Archi.ptr64` true. -/
-def sizeof : type → _root_.Int
+/-- `sizeof` with an empty composite environment. -/
+def sizeof (A : Archi) : type → _root_.Int
   | .Tvoid => 1
   | .Tint .I8 _ _ => 1
   | .Tint .I16 _ _ => 2
@@ -176,8 +176,8 @@ def sizeof : type → _root_.Int
   | .Tlong _ _ => 8
   | .Tfloat .F32 _ => 4
   | .Tfloat .F64 _ => 8
-  | .Tpointer _ _ => 8
-  | .Tarray t' n _ => sizeof t' * max 0 n
+  | .Tpointer _ _ => if A.ptr64 then 8 else 4
+  | .Tarray t' n _ => sizeof A t' * max 0 n
   | .Tfunction _ _ _ => 1
   | .Tstruct _ _ => 0
   | .Tunion _ _ => 0
@@ -189,7 +189,7 @@ inductive mode where
   | By_nothing
   deriving Repr, DecidableEq
 
-def access_mode : type → mode
+def access_mode (A : Archi) : type → mode
   | .Tint .I8 .Signed _ => .By_value .Mint8signed
   | .Tint .I8 .Unsigned _ => .By_value .Mint8unsigned
   | .Tint .I16 .Signed _ => .By_value .Mint16signed
@@ -200,7 +200,7 @@ def access_mode : type → mode
   | .Tfloat .F32 _ => .By_value .Mfloat32
   | .Tfloat .F64 _ => .By_value .Mfloat64
   | .Tvoid => .By_nothing
-  | .Tpointer _ _ => .By_value Mptr
+  | .Tpointer _ _ => .By_value (Mptr A)
   | .Tarray _ _ _ => .By_reference
   | .Tfunction _ _ _ => .By_reference
   | .Tstruct _ _ => .By_copy

@@ -17,7 +17,7 @@ The program is the translation of a module, a volatile global `lx_out` that the 
 
 ## Target machine
 
-The target is AArch64, on QEMU's `virt` machine with 1 GiB of RAM, compiled with CompCert's `aarch64-linux` configuration.  QEMU runs the image on an emulated Cortex-A57 under TCG and on the processor of AArch64 hardware under KVM.  CompCert 3.18 has no bare-metal configuration for any 64-bit target: its `configure` lists `-eabi` variants only for PowerPC and 32-bit ARM (lines 43 to 62).  The Lean copy fixes `ptr64 = true`, so x86-64, RISC-V, and AArch64 remain, and AArch64 needs the fewest components that no proof covers:
+The target is AArch64, on QEMU's `virt` machine with 1 GiB of RAM, compiled with CompCert's `aarch64-linux` configuration.  QEMU runs the image on an emulated Cortex-A57 under TCG and on the processor of AArch64 hardware under KVM.  CompCert 3.18 has no bare-metal configuration for any 64-bit target: its `configure` lists `-eabi` variants only for PowerPC and 32-bit ARM (lines 43 to 62).  Of the 64-bit targets, x86-64, RISC-V, and AArch64, AArch64 needs the fewest components that no proof covers:
 
 | Target | CompCert run-time functions that the translations need | Lean copy | Startup |
 | --- | --- | --- | --- |
@@ -93,7 +93,7 @@ The Lean copy adds CompCert's judgment for a whole program (`cfrontend/ClightBig
 inductive bigstep_program_terminates (A : Archi) (X : ExtSem) (p : program function) :
     trace → int → Prop
   | intro (b : block) (f : fundef function) (m0 m1 : mem) (t : trace) (r : int) :
-      init_mem p = some m0 →
+      init_mem A p = some m0 →
       Genv.find_symbol (globalenv p) p.prog_main = some b →
       Genv.find_funct_ptr (globalenv p) b = some f →
       type_of_fundef f = .Tfunction [] type_int32s cc_default →
@@ -199,7 +199,7 @@ No proof covers the startup code, the vectors and their reporting code, the link
 
 A loader that writes input into a C global before the start makes the theorem's premise false.  CompCert's semantics starts from `init_mem`, which fixes the initial contents of every global, so a machine whose memory holds loaded bytes in a global starts from a state that no theorem describes.  Input must therefore come through volatile reads.  `volatile_load` of a volatile block returns an arbitrary value of the access's type and records it in the trace as `Event_vload` (`common/Events.v`, lines 557 to 565).
 
-Milestone B7 implements inputs.  The program declares `extern volatile const unsigned char lx_in[];`, which `clightgen` describes as an array of no elements without initialization data, and the linker script places `lx_in` at `0x7000_0000` with 16 MiB of RAM after it and asserts that the stack ends below it.  QEMU's generic loader fills the region with `-device loader,file=FILE,addr=0x70000000,force-raw=on`.  The input is a length `n` of eight bytes, the lowest first, followed by `n` bytes, and `main` reads every byte with a volatile load of `unsigned char`.  The event value of such a load has type `int`, all of whose values the Lean copy's `eventval_match` covers, while a 64-bit volatile load could return a pointer event in CompCert (`ev_match_ptr`), which the copy omits, so a theorem over 64-bit loads would not cover every behaviour of the Asm program.
+Milestone B7 implements inputs.  The program declares `extern volatile const unsigned char lx_in[];`, which `clightgen` describes as an array of no elements without initialization data, and the linker script places `lx_in` at `0x7000_0000` with 16 MiB of RAM after it and asserts that the stack ends below it.  QEMU's generic loader fills the region with `-device loader,file=FILE,addr=0x70000000,force-raw=on`.  The input is a length `n` of eight bytes, the lowest first, followed by `n` bytes, and `main` reads every byte with a volatile load of `unsigned char`.  The event value of such a load has type `int`.  With the 64-bit pointers of AArch64, the Lean copy's `eventval_match` covers all of its values, while a 64-bit volatile load could return a pointer event in CompCert (`ev_match_ptr`), which the copy omits, so a theorem over 64-bit loads would not cover every behaviour of the Asm program.
 
 `inMain` (`LeanExe/Native/Bare.lean`) reads the length, returns 64 when it exceeds `inMax`, `2 ^ 24 - 8`, so that every read lies in the region that the loader fills, and calls `alloc`, the module's function 0, for the length word and `⌈n / 8⌉` words.  When `alloc` sets `lx_status`, `main` returns it.  Otherwise `main` stores the number of words at the returned address and the `n` bytes after it, and calls the entry on the address and `n`.  It then tests `lx_status` and writes the result as `bareMain` does.  The header that `alloc` writes, kind 2 and width 1, is the one that `Heap.Owned` of an array requires, `alloc` writes nothing in the payload, and `main` writes only the payload, so the array is owned by `main` and lent to the entry.
 

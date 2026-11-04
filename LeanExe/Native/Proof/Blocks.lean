@@ -183,8 +183,8 @@ theorem Outcome.ite {L : List Label} {σ' : Option (List VT)} {α : Type} {r : C
     (hc : eval_expr A E.ge empty_env le m cond (.Vint x)) (hty : typeof cond = tuint)
     (h : Outcome A X E c L σ' r (if x ≠ 0 then s1 else s2) le m) :
     Outcome A X E c L σ' r (.Sifthenelse cond s1 s2) le m := by
-  have hb : bool_val (.Vint x) (typeof cond) m = some (decide (x ≠ 0)) := by
-    rw [hty]; exact bool_uint m x
+  have hb : bool_val A (.Vint x) (typeof cond) m = some (decide (x ≠ 0)) := by
+    rw [hty]; exact bool_uint A m x
   have lift : ∀ {t le' m' out}, exec_stmt A X E.ge empty_env le m (if x ≠ 0 then s1 else s2)
       t le' m' out → exec_stmt A X E.ge empty_env le m (.Sifthenelse cond s1 s2) t le' m' out := by
     intro t le' m' out hx
@@ -231,7 +231,7 @@ theorem sim_iff {CallOk : Nat → Prop} {f : Nat} (hP : ProgSim A X E mod c Call
     exact h1
   rw [execOne_iff _ _ _ _ _ _ _ _ _ _ _ x vs hvs]
   apply ConstructOutcome.toOutcome hp
-  have hinv' : Inv E c σr st { params := sl.params, locals := sl.locals, values := vs } le m :=
+  have hinv' : Inv A E c σr st { params := sl.params, locals := sl.locals, values := vs } le m :=
     { stack := hrest, locals := hinv.locals, store := hinv.store, status := hinv.status,
       brk := hinv.brk, lim := hinv.lim }
   apply construct_of_body hb hrest
@@ -292,7 +292,7 @@ theorem sim_loop {CallOk : Nat → Prop} {F : Nat} (hP : ∀ g, g < F → ProgSi
   have hc' : ∀ k, funId k ∈ callees s0 → CallOk k := fun k hk => hcalls k (callees_wrap _ _ hk)
   suffices key : ∀ g, g ≤ F → ∀ (st : Store α) (sl : Locals) (le : temp_env) (m : mem),
       (c.alignedAccess = true → AlignedOne g mod st sl (.loop 0 r.toList.length body pts rts) env) →
-      Inv E c σ st sl le m →
+      Inv A E c σ st sl le m →
       ConstructOutcome A X E c L (r.toList ++ σ)
         (execOne g mod st sl (.loop 0 r.toList.length body pts rts) env) (wrapLoop s0) le m from
     key F (Nat.le_refl _) st sl le m hal hinv
@@ -333,7 +333,7 @@ theorem sim_loop {CallOk : Nat → Prop} {F : Nat} (hP : ∀ g, g < F → ProgSi
               have hout : out = .Out_continue := by simpa using h0 rfl
               subst hout
               have hf0 : Frame σ.length le le' := hf _ rfl
-              have hinv'' : Inv E c σ st'
+              have hinv'' : Inv A E c σ st'
                   { params := sl'.params, locals := sl'.locals,
                     values := sl'.values.take 0 ++ sl.values.drop 0 } le' m' :=
                 { stack := by simpa using hinv.stack.frame hf0, locals := hrel.locals,

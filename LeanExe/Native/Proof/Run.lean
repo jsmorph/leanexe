@@ -87,18 +87,18 @@ theorem var_names_params (ps : List VT) :
   rw [show ((Prod.fst ∘ fun x : VT × Nat => (localId x.2, x.1.ty)) : VT × Nat → ident) =
     localId ∘ Prod.snd from rfl, ← List.map_map, List.zipIdx_map_snd]
 
-theorem blocks_of_empty : blocks_of_env empty_env = [] := rfl
+theorem blocks_of_empty {A : Archi} : blocks_of_env A empty_env = [] := rfl
 
 section
 
 variable {A : Archi} {X : ExtSem} {E : Env} {mod : Module}
 
 theorem outcome_value {t : VT} {v : Value} (ht : t.has v = true) (m : mem) :
-    outcome_result_value (.Out_return (some (cval v, t.ty))) t.ty (cval v) m :=
+    outcome_result_value A (.Out_return (some (cval v, t.ty))) t.ty (cval v) m :=
   ⟨by cases t <;> simp [VT.ty], cast_cval ht m⟩
 
 theorem outcome_zero (t : VT) (m : mem) :
-    outcome_result_value (.Out_return (some (zval t, t.ty))) t.ty (zval t) m :=
+    outcome_result_value A (.Out_return (some (zval t, t.ty))) t.ty (zval t) m :=
   ⟨by cases t <;> simp [VT.ty], cast_zval t m⟩
 
 /-- The simulation of a call of a translated function whose callees are simulated below `F`. -/
@@ -202,7 +202,7 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
       · rw [te_insert_ne _ (localId_ne_brkId i).symm, hcval]
         rw [show i = ps0.length + 0 + (i - ps0.length) by omega]
         exact hl
-  have hinv : Inv E c [] st (f.toLocals ((args.take ps0.length).reverse)) le4 m :=
+  have hinv : Inv A E c [] st (f.toLocals ((args.take ps0.length).reverse)) le4 m :=
     Inv.of_lim trivial hloc3 hg hs (te_insert_same _ _ _)
   have halb : c.alignedAccess = true →
       AlignedExec F mod st (f.toLocals ((args.take ps0.length).reverse)) f.body env := fun hc => by
@@ -230,7 +230,7 @@ theorem run_sim_fun (hE : EnvOk E) (himp : mod.imports = []) {k : Nat} {f : Func
   have hretEq : fd.fn_return = ((retOf rs0).map VT.ty).getD .Tvoid := by rw [hfd]
   have hfun : ∀ {t le' m' out} vres,
       exec_stmt A X E.ge empty_env le4 m (.Ssequence (wrapLoop body) ret) t le' m' out →
-      outcome_result_value out (((retOf rs0).map VT.ty).getD .Tvoid) vres m' →
+      outcome_result_value A out (((retOf rs0).map VT.ty).getD .Tvoid) vres m' →
       ∃ t', eval_funcall A X E.ge m (.Internal fd) (argVals ps0 args) t' m' vres := by
     intro t le' m' out vres hx hov
     have hx2 : exec_stmt A X E.ge empty_env le2 m

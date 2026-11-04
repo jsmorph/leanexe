@@ -12,6 +12,8 @@ namespace LClight
 
 namespace Mem
 
+variable {A : Archi}
+
 theorem zget_zset (p q : _root_.Int) (v : memval) (c : contents) :
     ZMap.get q (ZMap.set p v c) = if p = q then v else ZMap.get q c := by
   simp only [ZMap.get, ZMap.set, Std.TreeMap.getD_insert]
@@ -59,81 +61,83 @@ theorem int_of_bytes_of_int (k a : Nat) :
       omega
 
 theorem decode_encode_long (n : UInt64) :
-    decode_val .Mint64 (encode_val .Mint64 (.Vlong n)) = .Vlong n := by
+    decode_val A .Mint64 (encode_val A .Mint64 (.Vlong n)) = .Vlong n := by
   simp only [encode_val, decode_val, proj_inj_bytes, decode_int, encode_int, Int64.unsigned,
     int_of_bytes_of_int]
   rw [Nat.mod_eq_of_lt n.toNat_lt, Int64.repr_toNat]
 
 theorem decode_encode_int (n : UInt32) :
-    decode_val .Mint32 (encode_val .Mint32 (.Vint n)) = .Vint n := by
+    decode_val A .Mint32 (encode_val A .Mint32 (.Vint n)) = .Vint n := by
   simp only [encode_val, decode_val, proj_inj_bytes, decode_int, encode_int, Int.unsigned,
     int_of_bytes_of_int]
   rw [Nat.mod_eq_of_lt n.toNat_lt, Int.repr_toNat]
 
 theorem decode_encode_float (n : UInt64) :
-    decode_val .Mfloat64 (encode_val .Mfloat64 (.Vfloat n)) = .Vfloat n := by
+    decode_val A .Mfloat64 (encode_val A .Mfloat64 (.Vfloat n)) = .Vfloat n := by
   simp only [encode_val, decode_val, proj_inj_bytes, decode_int, encode_int, Int64.unsigned,
     int_of_bytes_of_int, Float.to_bits, Float.of_bits]
   rw [Nat.mod_eq_of_lt n.toNat_lt, Int64.repr_toNat]
 
 theorem decode_encode_single (n : UInt32) :
-    decode_val .Mfloat32 (encode_val .Mfloat32 (.Vsingle n)) = .Vsingle n := by
+    decode_val A .Mfloat32 (encode_val A .Mfloat32 (.Vsingle n)) = .Vsingle n := by
   simp only [encode_val, decode_val, proj_inj_bytes, decode_int, encode_int, Int.unsigned,
     int_of_bytes_of_int, Float32.to_bits, Float32.of_bits]
   rw [Nat.mod_eq_of_lt n.toNat_lt, Int.repr_toNat]
 
 /-- A double read back as a word: its bits. -/
 theorem decode_long_of_float (n : UInt64) :
-    decode_val .Mint64 (encode_val .Mfloat64 (.Vfloat n)) = .Vlong n := by
+    decode_val A .Mint64 (encode_val A .Mfloat64 (.Vfloat n)) = .Vlong n := by
   simp only [encode_val, decode_val, proj_inj_bytes, decode_int, encode_int, Int64.unsigned,
     int_of_bytes_of_int, Float.to_bits]
   rw [Nat.mod_eq_of_lt n.toNat_lt, Int64.repr_toNat]
 
 /-- A word read back as a double: the double of its bits. -/
 theorem decode_float_of_long (n : UInt64) :
-    decode_val .Mfloat64 (encode_val .Mint64 (.Vlong n)) = .Vfloat n := by
+    decode_val A .Mfloat64 (encode_val A .Mint64 (.Vlong n)) = .Vfloat n := by
   simp only [encode_val, decode_val, proj_inj_bytes, decode_int, encode_int, Int64.unsigned,
     int_of_bytes_of_int, Float.of_bits]
   rw [Nat.mod_eq_of_lt n.toNat_lt, Int64.repr_toNat]
 
 /-- A float read back as a word of 32 bits: its bits. -/
 theorem decode_int_of_single (n : UInt32) :
-    decode_val .Mint32 (encode_val .Mfloat32 (.Vsingle n)) = .Vint n := by
+    decode_val A .Mint32 (encode_val A .Mfloat32 (.Vsingle n)) = .Vint n := by
   simp only [encode_val, decode_val, proj_inj_bytes, decode_int, encode_int, Int.unsigned,
     int_of_bytes_of_int, Float32.to_bits]
   rw [Nat.mod_eq_of_lt n.toNat_lt, Int.repr_toNat]
 
 /-- A word of 32 bits read back as a float: the float of its bits. -/
 theorem decode_single_of_int (n : UInt32) :
-    decode_val .Mfloat32 (encode_val .Mint32 (.Vint n)) = .Vsingle n := by
+    decode_val A .Mfloat32 (encode_val A .Mint32 (.Vint n)) = .Vsingle n := by
   simp only [encode_val, decode_val, proj_inj_bytes, decode_int, encode_int, Int.unsigned,
     int_of_bytes_of_int, Float32.of_bits]
   rw [Nat.mod_eq_of_lt n.toNat_lt, Int.repr_toNat]
 
-theorem length_encode_long (n : UInt64) : (encode_val .Mint64 (.Vlong n)).length = 8 := by
+theorem length_encode_long (n : UInt64) : (encode_val A .Mint64 (.Vlong n)).length = 8 := by
   simp [encode_val, inj_bytes, encode_int, bytes_of_int]
 
-theorem length_encode_int (n : UInt32) : (encode_val .Mint32 (.Vint n)).length = 4 := by
+theorem length_encode_int (n : UInt32) : (encode_val A .Mint32 (.Vint n)).length = 4 := by
   simp [encode_val, inj_bytes, encode_int, bytes_of_int]
 
-theorem length_encode_float (n : UInt64) : (encode_val .Mfloat64 (.Vfloat n)).length = 8 := by
+theorem length_encode_float (n : UInt64) : (encode_val A .Mfloat64 (.Vfloat n)).length = 8 := by
   simp [encode_val, inj_bytes, encode_int, bytes_of_int]
 
-theorem length_encode_single (n : UInt32) : (encode_val .Mfloat32 (.Vsingle n)).length = 4 := by
+theorem length_encode_single (n : UInt32) : (encode_val A .Mfloat32 (.Vsingle n)).length = 4 := by
   simp [encode_val, inj_bytes, encode_int, bytes_of_int]
 
 /-- The memory after a store whose access is writable. -/
-def stored (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int) (v : val) : mem :=
+def stored (A : Archi) (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int) (v : val) :
+    mem :=
   { m with
-    mem_contents := m.mem_contents.insert b (setN (encode_val chunk v) ofs (contents_of m b)) }
+    mem_contents := m.mem_contents.insert b (setN (encode_val A chunk v) ofs (contents_of m b)) }
 
 theorem store_ok {chunk : memory_chunk} {m : mem} {b : block} {ofs : _root_.Int} (v : val)
-    (h : valid_access m chunk b ofs .Writable) : store chunk m b ofs v = some (stored chunk m b ofs v) := by
+    (h : valid_access m chunk b ofs .Writable) :
+    store A chunk m b ofs v = some (stored A chunk m b ofs v) := by
   simp only [store, h, ite_true, stored]
 
 theorem store_inv {chunk : memory_chunk} {m m' : mem} {b : block} {ofs : _root_.Int} {v : val}
-    (h : store chunk m b ofs v = some m') :
-    valid_access m chunk b ofs .Writable ∧ m' = stored chunk m b ofs v := by
+    (h : store A chunk m b ofs v = some m') :
+    valid_access m chunk b ofs .Writable ∧ m' = stored A chunk m b ofs v := by
   unfold store at h
   split at h
   · exact ⟨by assumption, (Option.some.inj h).symm⟩
@@ -141,7 +145,7 @@ theorem store_inv {chunk : memory_chunk} {m m' : mem} {b : block} {ofs : _root_.
 
 theorem valid_access_stored (chunk chunk' : memory_chunk) (m : mem) (b b' : block)
     (ofs ofs' : _root_.Int) (v : val) (p : permission) :
-    valid_access (stored chunk m b ofs v) chunk' b' ofs' p ↔ valid_access m chunk' b' ofs' p :=
+    valid_access (stored A chunk m b ofs v) chunk' b' ofs' p ↔ valid_access m chunk' b' ofs' p :=
   Iff.rfl
 
 theorem perm_order_writable {p : permission} (h : perm_order p .Writable) :
@@ -161,63 +165,64 @@ theorem valid_access_readable {m : mem} {chunk : memory_chunk} {b : block} {ofs 
 
 theorem contents_stored_same (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int)
     (v : val) :
-    contents_of (stored chunk m b ofs v) b = setN (encode_val chunk v) ofs (contents_of m b) := by
+    contents_of (stored A chunk m b ofs v) b =
+      setN (encode_val A chunk v) ofs (contents_of m b) := by
   simp [contents_of, stored, Std.TreeMap.getD_insert_self]
 
 theorem contents_stored_other (chunk : memory_chunk) (m : mem) (b b' : block)
     (ofs : _root_.Int) (v : val) (h : b ≠ b') :
-    contents_of (stored chunk m b ofs v) b' = contents_of m b' := by
+    contents_of (stored A chunk m b ofs v) b' = contents_of m b' := by
   have : compare b b' ≠ .eq := fun e => h (Nat.compare_eq_eq.mp e)
   simp [contents_of, stored, Std.TreeMap.getD_insert, this]
 
 theorem load_stored_long (m : mem) (b : block) (ofs : _root_.Int) (n : UInt64)
     (h : valid_access m .Mint64 b ofs .Writable) :
-    load .Mint64 (stored .Mint64 m b ofs (.Vlong n)) b ofs = some (.Vlong n) := by
+    load A .Mint64 (stored A .Mint64 m b ofs (.Vlong n)) b ofs = some (.Vlong n) := by
   unfold load
   rw [ite_eq_left ((valid_access_stored _ _ _ _ _ _ _ _ _).mpr (valid_access_readable h)),
     contents_stored_same]
-  have : size_chunk_nat .Mint64 = (encode_val .Mint64 (.Vlong n)).length := by
+  have : size_chunk_nat .Mint64 = (encode_val A .Mint64 (.Vlong n)).length := by
     rw [length_encode_long]; rfl
   rw [this, getN_setN, decode_encode_long]
 
 theorem load_stored_int (m : mem) (b : block) (ofs : _root_.Int) (n : UInt32)
     (h : valid_access m .Mint32 b ofs .Writable) :
-    load .Mint32 (stored .Mint32 m b ofs (.Vint n)) b ofs = some (.Vint n) := by
+    load A .Mint32 (stored A .Mint32 m b ofs (.Vint n)) b ofs = some (.Vint n) := by
   unfold load
   rw [ite_eq_left ((valid_access_stored _ _ _ _ _ _ _ _ _).mpr (valid_access_readable h)),
     contents_stored_same]
-  have : size_chunk_nat .Mint32 = (encode_val .Mint32 (.Vint n)).length := by
+  have : size_chunk_nat .Mint32 = (encode_val A .Mint32 (.Vint n)).length := by
     rw [length_encode_int]; rfl
   rw [this, getN_setN, decode_encode_int]
 
 theorem load_stored_float (m : mem) (b : block) (ofs : _root_.Int) (n : UInt64)
     (h : valid_access m .Mfloat64 b ofs .Writable) :
-    load .Mfloat64 (stored .Mfloat64 m b ofs (.Vfloat n)) b ofs = some (.Vfloat n) := by
+    load A .Mfloat64 (stored A .Mfloat64 m b ofs (.Vfloat n)) b ofs = some (.Vfloat n) := by
   unfold load
   rw [ite_eq_left ((valid_access_stored _ _ _ _ _ _ _ _ _).mpr (valid_access_readable h)),
     contents_stored_same]
-  have : size_chunk_nat .Mfloat64 = (encode_val .Mfloat64 (.Vfloat n)).length := by
+  have : size_chunk_nat .Mfloat64 = (encode_val A .Mfloat64 (.Vfloat n)).length := by
     rw [length_encode_float]; rfl
   rw [this, getN_setN, decode_encode_float]
 
 theorem load_stored_single (m : mem) (b : block) (ofs : _root_.Int) (n : UInt32)
     (h : valid_access m .Mfloat32 b ofs .Writable) :
-    load .Mfloat32 (stored .Mfloat32 m b ofs (.Vsingle n)) b ofs = some (.Vsingle n) := by
+    load A .Mfloat32 (stored A .Mfloat32 m b ofs (.Vsingle n)) b ofs = some (.Vsingle n) := by
   unfold load
   rw [ite_eq_left ((valid_access_stored _ _ _ _ _ _ _ _ _).mpr (valid_access_readable h)),
     contents_stored_same]
-  have : size_chunk_nat .Mfloat32 = (encode_val .Mfloat32 (.Vsingle n)).length := by
+  have : size_chunk_nat .Mfloat32 = (encode_val A .Mfloat32 (.Vsingle n)).length := by
     rw [length_encode_single]; rfl
   rw [this, getN_setN, decode_encode_single]
 
 /-- A load of `Mint64` after a store of `Mfloat64` at the same place: the double's bits. -/
 theorem load_long_stored_float (m : mem) (b : block) (ofs : _root_.Int) (n : UInt64)
     (h : valid_access m .Mint64 b ofs .Writable) :
-    load .Mint64 (stored .Mfloat64 m b ofs (.Vfloat n)) b ofs = some (.Vlong n) := by
+    load A .Mint64 (stored A .Mfloat64 m b ofs (.Vfloat n)) b ofs = some (.Vlong n) := by
   unfold load
   rw [ite_eq_left ((valid_access_stored _ _ _ _ _ _ _ _ _).mpr (valid_access_readable h)),
     contents_stored_same]
-  have : size_chunk_nat .Mint64 = (encode_val .Mfloat64 (.Vfloat n)).length := by
+  have : size_chunk_nat .Mint64 = (encode_val A .Mfloat64 (.Vfloat n)).length := by
     rw [length_encode_float]; rfl
   rw [this, getN_setN, decode_long_of_float]
 
@@ -225,22 +230,22 @@ theorem load_long_stored_float (m : mem) (b : block) (ofs : _root_.Int) (n : UIn
 bits. -/
 theorem load_float_stored_long (m : mem) (b : block) (ofs : _root_.Int) (n : UInt64)
     (h : valid_access m .Mfloat64 b ofs .Writable) :
-    load .Mfloat64 (stored .Mint64 m b ofs (.Vlong n)) b ofs = some (.Vfloat n) := by
+    load A .Mfloat64 (stored A .Mint64 m b ofs (.Vlong n)) b ofs = some (.Vfloat n) := by
   unfold load
   rw [ite_eq_left ((valid_access_stored _ _ _ _ _ _ _ _ _).mpr (valid_access_readable h)),
     contents_stored_same]
-  have : size_chunk_nat .Mfloat64 = (encode_val .Mint64 (.Vlong n)).length := by
+  have : size_chunk_nat .Mfloat64 = (encode_val A .Mint64 (.Vlong n)).length := by
     rw [length_encode_long]; rfl
   rw [this, getN_setN, decode_float_of_long]
 
 /-- A load of `Mint32` after a store of `Mfloat32` at the same place: the float's bits. -/
 theorem load_int_stored_single (m : mem) (b : block) (ofs : _root_.Int) (n : UInt32)
     (h : valid_access m .Mint32 b ofs .Writable) :
-    load .Mint32 (stored .Mfloat32 m b ofs (.Vsingle n)) b ofs = some (.Vint n) := by
+    load A .Mint32 (stored A .Mfloat32 m b ofs (.Vsingle n)) b ofs = some (.Vint n) := by
   unfold load
   rw [ite_eq_left ((valid_access_stored _ _ _ _ _ _ _ _ _).mpr (valid_access_readable h)),
     contents_stored_same]
-  have : size_chunk_nat .Mint32 = (encode_val .Mfloat32 (.Vsingle n)).length := by
+  have : size_chunk_nat .Mint32 = (encode_val A .Mfloat32 (.Vsingle n)).length := by
     rw [length_encode_single]; rfl
   rw [this, getN_setN, decode_int_of_single]
 
@@ -248,11 +253,11 @@ theorem load_int_stored_single (m : mem) (b : block) (ofs : _root_.Int) (n : UIn
 bits. -/
 theorem load_single_stored_int (m : mem) (b : block) (ofs : _root_.Int) (n : UInt32)
     (h : valid_access m .Mfloat32 b ofs .Writable) :
-    load .Mfloat32 (stored .Mint32 m b ofs (.Vint n)) b ofs = some (.Vsingle n) := by
+    load A .Mfloat32 (stored A .Mint32 m b ofs (.Vint n)) b ofs = some (.Vsingle n) := by
   unfold load
   rw [ite_eq_left ((valid_access_stored _ _ _ _ _ _ _ _ _).mpr (valid_access_readable h)),
     contents_stored_same]
-  have : size_chunk_nat .Mfloat32 = (encode_val .Mint32 (.Vint n)).length := by
+  have : size_chunk_nat .Mfloat32 = (encode_val A .Mint32 (.Vint n)).length := by
     rw [length_encode_int]; rfl
   rw [this, getN_setN, decode_single_of_int]
 
@@ -266,7 +271,7 @@ theorem valid_access_four {m : mem} {b : block} {chunk : memory_chunk} {p : perm
 
 theorem load_stored_other (chunk chunk' : memory_chunk) (m : mem) (b b' : block)
     (ofs ofs' : _root_.Int) (v : val) (h : b ≠ b') :
-    load chunk' (stored chunk m b ofs v) b' ofs' = load chunk' m b' ofs' := by
+    load A chunk' (stored A chunk m b ofs v) b' ofs' = load A chunk' m b' ofs' := by
   unfold load
   rw [contents_stored_other _ _ _ _ _ _ h]
   rfl

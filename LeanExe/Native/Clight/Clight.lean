@@ -7,8 +7,8 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26: transcribed from Coq into Lean, with the changes that
-`LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
+that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 import LeanExe.Native.Clight.Cop
 import LeanExe.Native.Clight.Events
@@ -114,8 +114,8 @@ def globalenv (p : program function) : genv :=
   Genv.add_globals (Genv.empty_genv p.prog_public) p.prog_defs
 
 /-- `Genv.init_mem`. -/
-def init_mem (p : program function) : Option mem :=
-  Genv.alloc_globals (globalenv p) Mem.empty p.prog_defs
+def init_mem (A : Archi) (p : program function) : Option mem :=
+  Genv.alloc_globals A (globalenv p) Mem.empty p.prog_defs
 
 abbrev env := Std.TreeMap ident (block × type)
 
@@ -124,22 +124,23 @@ def empty_env : env := ∅
 abbrev temp_env := Std.TreeMap ident val
 
 /-- `deref_loc` without the copy and bit-field cases. -/
-inductive deref_loc (ty : type) (m : mem) (b : block) (ofs : ptrofs) : bitfield → val → Prop
+inductive deref_loc (A : Archi) (ty : type) (m : mem) (b : block) (ofs : ptrofs) :
+    bitfield → val → Prop
   | deref_loc_value (chunk : memory_chunk) (v : val) :
-      access_mode ty = .By_value chunk →
-      Mem.loadv chunk m (.Vptr b ofs) = some v →
-      deref_loc ty m b ofs .Full v
+      access_mode A ty = .By_value chunk →
+      Mem.loadv A chunk m (.Vptr b ofs) = some v →
+      deref_loc A ty m b ofs .Full v
   | deref_loc_reference :
-      access_mode ty = .By_reference →
-      deref_loc ty m b ofs .Full (.Vptr b ofs)
+      access_mode A ty = .By_reference →
+      deref_loc A ty m b ofs .Full (.Vptr b ofs)
 
 /-- `assign_loc` without the copy and bit-field cases. -/
-inductive assign_loc (ty : type) (m : mem) (b : block) (ofs : ptrofs) :
+inductive assign_loc (A : Archi) (ty : type) (m : mem) (b : block) (ofs : ptrofs) :
     bitfield → val → mem → Prop
   | assign_loc_value (v : val) (chunk : memory_chunk) (m' : mem) :
-      access_mode ty = .By_value chunk →
-      Mem.storev chunk m (.Vptr b ofs) v = some m' →
-      assign_loc ty m b ofs .Full v m'
+      access_mode A ty = .By_value chunk →
+      Mem.storev A chunk m (.Vptr b ofs) v = some m' →
+      assign_loc A ty m b ofs .Full v m'
 
 def var_names (vars : List (ident × type)) : List ident := vars.map (·.1)
 
@@ -152,11 +153,12 @@ def bind_parameter_temps : List (ident × type) → List val → temp_env → Op
   | (id, _) :: xl, v :: vl, le => bind_parameter_temps xl vl (le.insert id v)
   | _, _, _ => none
 
-def block_of_binding (id_b_ty : ident × (block × type)) : block × _root_.Int × _root_.Int :=
-  (id_b_ty.2.1, 0, sizeof id_b_ty.2.2)
+def block_of_binding (A : Archi) (id_b_ty : ident × (block × type)) :
+    block × _root_.Int × _root_.Int :=
+  (id_b_ty.2.1, 0, sizeof A id_b_ty.2.2)
 
-def blocks_of_env (e : env) : List (block × _root_.Int × _root_.Int) :=
-  e.toList.map block_of_binding
+def blocks_of_env (A : Archi) (e : env) : List (block × _root_.Int × _root_.Int) :=
+  e.toList.map (block_of_binding A)
 
 def set_opttemp (optid : Option ident) (v : val) (le : temp_env) : temp_env :=
   match optid with
@@ -182,7 +184,7 @@ mutual
         eval_expr A ge e le m (.Eaddrof a ty) (.Vptr loc ofs)
     | eval_Eunop (op : unary_operation) (a : expr) (ty : type) (v1 v : val) :
         eval_expr A ge e le m a v1 →
-        sem_unary_operation op v1 (typeof a) m = some v →
+        sem_unary_operation A op v1 (typeof a) m = some v →
         eval_expr A ge e le m (.Eunop op a ty) v
     | eval_Ebinop (op : binary_operation) (a1 a2 : expr) (ty : type) (v1 v2 v : val) :
         eval_expr A ge e le m a1 v1 →
@@ -191,11 +193,11 @@ mutual
         eval_expr A ge e le m (.Ebinop op a1 a2 ty) v
     | eval_Ecast (a : expr) (ty : type) (v1 v : val) :
         eval_expr A ge e le m a v1 →
-        sem_cast v1 (typeof a) ty m = some v →
+        sem_cast A v1 (typeof a) ty m = some v →
         eval_expr A ge e le m (.Ecast a ty) v
     | eval_Elvalue (a : expr) (loc : block) (ofs : ptrofs) (bf : bitfield) (v : val) :
         eval_lvalue A ge e le m a loc ofs bf →
-        deref_loc (typeof a) m loc ofs bf v →
+        deref_loc A (typeof a) m loc ofs bf v →
         eval_expr A ge e le m a v
 
   inductive eval_lvalue (A : Archi) (ge : genv) (e : env) (le : temp_env) (m : mem) :
@@ -218,7 +220,7 @@ inductive eval_exprlist (A : Archi) (ge : genv) (e : env) (le : temp_env) (m : m
   | eval_Econs (a : expr) (bl : List expr) (ty : type) (tyl : List type) (v1 v2 : val)
       (vl : List val) :
       eval_expr A ge e le m a v1 →
-      sem_cast v1 (typeof a) ty m = some v2 →
+      sem_cast A v1 (typeof a) ty m = some v2 →
       eval_exprlist A ge e le m bl tyl vl →
       eval_exprlist A ge e le m (a :: bl) (ty :: tyl) (v2 :: vl)
 

@@ -41258,11 +41258,11 @@ A fresh agent reviewed the plan and the board facts.  I checked two of its facts
 
 ### Final plan
 
-CompCert 3.18 configured `armv7m-eabi`, QEMU `mps2-an500` (Cortex-M7 with a double-precision FPU, 4 MiB at `0x20000000`), and a NUCLEO-F767ZI.  The FPU matches on QEMU and the board, so float modules run without an instruction check.
+CompCert 3.18 configured `armv7m-eabihf`, QEMU `mps2-an500` (Cortex-M7 with a double-precision FPU, 4 MiB at `0x20000000`), and a NUCLEO-F767ZI.  The FPU matches on QEMU and the board, so float modules run without an instruction check.
 
 | Step | Work | Running code | Theorem |
 |---|---|---|---|
-| 1 | `ptr64` parameter in the Lean copy and the address lemmas at both widths; a CompCert tree configured `armv7m-eabi`; the 32-bit `clightgen` read-back | `tests/native/clight.sh` against the 32-bit `ccomp -interp` | `translate_correct`, every `p.f.native` and `p.f.program` at both widths |
+| 1 | `ptr64` parameter in the Lean copy and the address lemmas at both widths; a CompCert tree configured `armv7m-eabihf`; the 32-bit `clightgen` read-back | `tests/native/clight.sh` against the 32-bit `ccomp -interp` | `translate_correct`, every `p.f.native` and `p.f.program` at both widths |
 | 2 | Controller loop C1 with a register bank, written once for both widths, every tick with at least one access, and the integer-load hypothesis in its uniqueness lemma | QEMU `virt`, AArch64 | `p.ctl.program`, `clight2_loop_to_asm` |
 | 3 | Minimum-page option, per-program cap, configurable `depthLimit` | One-page modules in Wasmtime and natively | Existing theorems at cap 1 |
 | 4 | Cortex-M7 startup (vector table, FPU enable, MPU stack guard, semihosting exit), a Thumb-2 stack-bound tool with the helpers' frames, an `nm` list of helpers, the alignment check | The corpus at cap 1 on `mps2-an500` | `p.f.program` at the ARM instance; Rocq against the `armv7m` tree |
@@ -41270,3 +41270,38 @@ CompCert 3.18 configured `armv7m-eabi`, QEMU `mps2-an500` (Cortex-M7 with a doub
 | 6 | Clock reads from an `mps2` timer, and deadlines | QEMU | Deadline properties of the trace |
 | 7 | The energy controller around `authorizeWith`, with a plant simulator on the host over the UART | QEMU | G1 to G4, and `OperatesIn.states` under the device assumptions that the simulator implements |
 | 8 | STM32F7 startup (clocks, USART3 on the ST-LINK virtual COM port), the USART and timer instances of the register map | The controller on the NUCLEO-F767ZI and the simulator on a host computer | Step 7's theorems; the startup, USART, timer, and the UART's eventual room join the trusted base |
+
+## 2026-11-04: Controller PoC, step 1: pointer width in the Lean copy of Clight
+
+The user approved the final plan of the high-integrity review and its dependencies, and work continues on the branch `controller`.  Step 1 gives the Lean copy of Clight CompCert's `Archi.ptr64` as a field of `Archi`, transcribes the `ptr64 = false` branches of CompCert 3.18, and proves the translation's address lemmas at both widths.
+
+### Plan
+
+| Part | Change |
+|---|---|
+| `Archi` | Moves to its own file before `Integers.lean` and gains `ptr64`.  Instances `x86_64` and `aarch64` set it true; a new instance `arm` sets it false with AArch64's NaN choices, as `arm/Archi.v` does.  ARM's `float_conversion_default_nan` and `float_of_single_preserves_sNaN` are false, as the copy already fixes them |
+| `Ptrofs` | Values stay `UInt64`.  `modulus`, `repr`, and the arithmetic take `A`, with `Wordsize_Ptrofs.wordsize` 64 or 32.  `unsigned` takes no `A`: every offset the semantics builds comes from `repr` or `zero`, so it lies below the modulus |
+| `AST`, `Ctypes` | `Mptr`, the size of `Init_addrof`, and the size, alignment, and access mode of a pointer take `A` |
+| `Values`, `Memdata`, `Memory` | `Vptrofs`, `load_result`, `encode_val`, `decode_val`, `load`, `store`, `loadv`, and `storev` take `A`, with the `ptr64 = false` branches of `Values.v` and `Memdata.v` |
+| `Cop` | The `ptr64` branches of the casts, the Boolean cases, pointer addition and subtraction, and the comparisons |
+| `Events` | `eventval_match` keeps omitting `ev_match_ptr`.  Every derivation of the copy is then a derivation of CompCert's semantics at both widths, which the existence theorems need, and the Rocq composition's uniqueness argument takes the integer-load hypothesis at 32 bits |
+| Proofs | The `A` arguments at every call site, and the address lemmas proved from `E.cap ≤ 65535` for both widths |
+| Tests | `ClightDiff` gains `Archi.arm`, and `tests/native/clight.sh` compares it with the ARMv7-M tree's `ccomp -interp` |
+
+The ARMv7-M CompCert tree is `~/compcert/armv7m/CompCert-3.18` on edgexpert, configured `-clightgen -toolprefix arm-none-eabi- armv7m-eabihf`: the hard-float ABI, since the Cortex-M7 of `mps2-an500` and of the NUCLEO-F767ZI has a double-precision FPU.  edgexpert gained `gcc-arm-none-eabi`, `binutils-arm-none-eabi`, and `libnewlib-arm-none-eabi` from Ubuntu's archive.
+
+- [x] `Archi`, `Ptrofs`, and the copy's definitions.
+- [x] The copy's own proofs (`Determinism`, `RunSound`) and the translation proofs.
+- [x] `ClightDiff` and `tests/native/clight.sh` against the ARMv7-M tree.
+- [x] The 32-bit `clightgen` read-back of the corpus.
+- [x] Full build, axioms, commit, push.
+
+### Results
+
+The translation's relations take the architecture as their first argument: `GlobalsRel`, `MemRel`, `StoreRel`, `StatusRel`, `Inv`, `BreakRel`, `ResultsIn`, `ReturnRel`, `ResultRel`, `PendingBreak`, `OutOk`, and `Genv.InitFact`.  The proofs hold for every `A`, so `p.f.native` and the whole-program theorems state the same facts at both widths.  `lx_init_correct` and `lx_init_whole` take `A` and quantify over `X` only.  Before, they stated one memory `m0` for every architecture, which `init_mem A` no longer allows.
+
+Most proofs needed only the new arguments.  A proof splits on `A` where CompCert's `classify_cast` tests `ptr64`, as for a cast between 32-bit integer types or from `long` to `long`.  `cast_case_pointer` applies at one width and `cast_case_i2i` or `cast_case_l2l` at the other, and both return the value.  `cast_i32` covers every 32-bit integer cast, of any signedness and attributes, and replaces `cast_ii`, `cast_int_uint`, and `cast_uint_int`.  The address lemmas `sem_add_mem_word`, `sem_add_mem_byte`, `sem_add_in`, `loadv_mem`, `storev_mem`, `loadv_zero`, and `storev_zero` require offsets below 2^32, with `Ptrofs.modulus_ge` (`2 ^ 32 ≤ Ptrofs.modulus A`).  Their callers derive the bound from `EnvOk.cap ≤ 65535`, since 65,535 pages of 65,536 bytes end below 2^32.  `eval_wordAt_lvalue`, `eval_byteAt_lvalue`, and `exec_inLoad` gain that premise.
+
+`tests/native/clight.sh 7 300 ARCHI` passes for all three instances, each against the `ccomp -interp` of its own tree: 921 programs agree and none differ.  Under `arm`, 370 programs are undefined, against 371 under the 64-bit instances.  The difference is the input program `w119`, whose index lies outside the array with 64-bit offsets and wraps to 0 with 32-bit offsets, and CompCert's ARMv7-M interpreter agrees with the copy on it.  `clight-diff` now runs every program under all three instances and reports two counts: programs that differ between `x86_64` and `aarch64`, where only the NaN rules differ, and programs that differ between `aarch64` and `arm`, where only the pointer width differs.  The libraries `LeanExe`, `Verified`, `TestSupport`, `Demos`, and `Examples` build with no `sorry`, and the axioms are `propext`, `Classical.choice`, and `Quot.sound`.
+
+The ARMv7-M tree's `clightgen` reads back the C text of every corpus module of `native-emit`, and `native-emit check` finds each program equal to its translation, as with the 64-bit trees.  The commands are `native-emit emit DIR`, `clightgen` from `~/compcert/armv7m/CompCert-3.18` on each file, and `native-emit check DIR`.  Compiling and running the corpus for ARMv7-M waits for the Cortex-M startup of step 4.

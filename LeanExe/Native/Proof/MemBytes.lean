@@ -134,8 +134,8 @@ theorem read64_eq_word (wm : Wasm.Mem) (a : UInt32) :
   simp only [List.getElem?_map, List.getElem?_range hj, Option.map_some] at e'
   exact (Option.some.inj e').symm
 
-theorem cast_cbyte (y : UInt64) (m : mem) :
-    sem_cast (.Vlong y) tulong tuchar m = some (.Vint (UInt32.ofNat (y.toNat % 256))) := by
+theorem cast_cbyte {A : Archi} (y : UInt64) (m : mem) :
+    sem_cast A (.Vlong y) tulong tuchar m = some (.Vint (UInt32.ofNat (y.toNat % 256))) := by
   show some (val.Vint (cast_int_int .I8 .Unsigned (LClight.Int.repr (Int64.unsigned y)))) = _
   congr 2
   apply UInt32.toNat_inj.mp
@@ -144,8 +144,8 @@ theorem cast_cbyte (y : UInt64) (m : mem) :
   simp
   omega
 
-theorem cast_uchar (n : Nat) (m : mem) :
-    sem_cast (.Vint (UInt32.ofNat (n % 256))) tuchar tuchar m =
+theorem cast_uchar {A : Archi} (n : Nat) (m : mem) :
+    sem_cast A (.Vint (UInt32.ofNat (n % 256))) tuchar tuchar m =
       some (.Vint (UInt32.ofNat (n % 256))) := by
   show some (val.Vint (cast_int_int .I8 .Unsigned (UInt32.ofNat (n % 256)))) = _
   congr 2
@@ -155,8 +155,8 @@ theorem cast_uchar (n : Nat) (m : mem) :
   simp
   omega
 
-theorem encode_cbyte (n : Nat) :
-    encode_val .Mint8unsigned (.Vint (UInt32.ofNat (n % 256))) = [.Byte (UInt8.ofNat n)] := by
+theorem encode_cbyte {A : Archi} (n : Nat) :
+    encode_val A .Mint8unsigned (.Vint (UInt32.ofNat (n % 256))) = [.Byte (UInt8.ofNat n)] := by
   simp only [encode_val, inj_bytes, encode_int, bytes_of_int, List.map]
   congr 2
   apply UInt8.toNat_inj.mp
@@ -164,8 +164,8 @@ theorem encode_cbyte (n : Nat) :
   simp
   omega
 
-theorem decode_byte (b : UInt8) :
-    decode_val .Mint8unsigned [.Byte b] = .Vint (UInt32.ofNat b.toNat) := by
+theorem decode_byte {A : Archi} (b : UInt8) :
+    decode_val A .Mint8unsigned [.Byte b] = .Vint (UInt32.ofNat b.toNat) := by
   simp only [decode_val, proj_bytes, decode_int, int_of_bytes, Byte.unsigned]
   congr 1
   apply UInt32.toNat_inj.mp
@@ -174,8 +174,8 @@ theorem decode_byte (b : UInt8) :
   simp
   omega
 
-theorem cast_byte_long (b : UInt8) (m : mem) :
-    sem_cast (.Vint (UInt32.ofNat b.toNat)) tuchar tulong m = some (.Vlong b.toUInt64) := by
+theorem cast_byte_long {A : Archi} (b : UInt8) (m : mem) :
+    sem_cast A (.Vint (UInt32.ofNat b.toNat)) tuchar tulong m = some (.Vlong b.toUInt64) := by
   show some (val.Vlong (cast_int_long .Unsigned (UInt32.ofNat b.toNat))) = _
   rw [uint8_toUInt64]
   congr 2
@@ -183,15 +183,19 @@ theorem cast_byte_long (b : UInt8) (m : mem) :
   congr 1
   simp
 
-theorem cast_byte_uint (b : UInt8) (m : mem) :
-    sem_cast (.Vint (UInt32.ofNat b.toNat)) tuchar tuint m = some (.Vint b.toUInt32) := by
-  show some (val.Vint (cast_int_int .I32 .Unsigned (UInt32.ofNat b.toNat))) = _
+theorem cast_uchar_uint {A : Archi} (x : UInt32) (m : mem) :
+    sem_cast A (.Vint x) tuchar tuint m = some (.Vint x) := by
+  rcases A with ⟨_ | _, _, _, _, _⟩ <;> rfl
+
+theorem cast_byte_uint {A : Archi} (b : UInt8) (m : mem) :
+    sem_cast A (.Vint (UInt32.ofNat b.toNat)) tuchar tuint m = some (.Vint b.toUInt32) := by
+  rw [cast_uchar_uint]
   congr 2
   apply UInt32.toNat_inj.mp
-  simp [cast_int_int]
+  simp
 
-theorem cast_uint_uchar (x : UInt32) (m : mem) :
-    sem_cast (.Vint x) tuint tuchar m = some (.Vint (UInt32.ofNat (x.toUInt8.toNat % 256))) := by
+theorem cast_uint_uchar {A : Archi} (x : UInt32) (m : mem) :
+    sem_cast A (.Vint x) tuint tuchar m = some (.Vint (UInt32.ofNat (x.toUInt8.toNat % 256))) := by
   show some (val.Vint (cast_int_int .I8 .Unsigned x)) = _
   congr 2
   apply UInt32.toNat_inj.mp
@@ -203,6 +207,8 @@ theorem cast_uint_uchar (x : UInt32) (m : mem) :
 end LeanExe.Native
 
 namespace LClight.Mem
+
+variable {A : Archi}
 
 theorem getN_map (n : Nat) (p : _root_.Int) (c : contents) :
     getN n p c = (List.range n).map fun (j : Nat) => ZMap.get (p + (j : _root_.Int)) c := by
@@ -255,7 +261,7 @@ theorem SameExcept.trans {b : block} {m1 m2 m3 : mem} (h1 : SameExcept b m1 m2)
   ⟨h2.access.trans h1.access, fun b' hb => (h2.other b' hb).trans (h1.other b' hb)⟩
 
 theorem SameExcept.of_stored (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int)
-    (v : val) : SameExcept b m (stored chunk m b ofs v) :=
+    (v : val) : SameExcept b m (stored A chunk m b ofs v) :=
   ⟨rfl, fun _ hb => contents_stored_other _ _ _ _ _ _ (Ne.symm hb)⟩
 
 theorem SameExcept.perm_eq {b : block} {m m' : mem} (h : SameExcept b m m') :
@@ -269,7 +275,7 @@ theorem SameExcept.valid_access_eq {b : block} {m m' : mem} (h : SameExcept b m 
   simp only [valid_access, range_perm, h.perm_eq]
 
 theorem SameExcept.load_eq {b b' : block} {m m' : mem} (h : SameExcept b m m') (hb : b' ≠ b)
-    (chunk : memory_chunk) (ofs : _root_.Int) : load chunk m' b' ofs = load chunk m b' ofs := by
+    (chunk : memory_chunk) (ofs : _root_.Int) : load A chunk m' b' ofs = load A chunk m b' ofs := by
   unfold load
   rw [h.other b' hb]
   by_cases hva : valid_access m chunk b' ofs .Readable
