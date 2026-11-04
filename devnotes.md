@@ -41048,4 +41048,28 @@ A fresh agent reviewed the first version of this recommendation, and the version
 
 `Verified.PTX.compile` accepts the binary32 builds of the WGSL examples and of the binary32 example.  `scale_executions`, `branch_executions`, and `roots_executions` in `Verified/Examples/Ptx.lean` and `scale32_executions`, `axpyArray32_executions`, `matVec32_executions`, and `condMix32_executions` in `Examples/Binary32/CompiledPtx.lean` state their launch theorems.  These theorems and `Spec.ptx_executions` depend only on `propext`, `Classical.choice`, and `Quot.sound`.  On edgexpert the build of `LeanExe`, `Examples`, `Demos`, `Library`, `TestSupport`, `Verified`, and the file-theorem modules passed 11,450 jobs, with no warning in the new files.  The WGSL kernels and cases that `tests/wgsl/run.sh --emit-only` and `--verified --emit-only` write are byte-identical to those of 2026-10-30, so moving `canonical32` and its lemmas left the WGSL output unchanged.
 
-`tests/ptx/run.sh` passed its 356 cases on the GB10 from the cubins and through the driver's compiler.  The cases include signed zeros, subnormals, infinities, and the canonical NaN.  They leave out NaNs with other payloads, whose expected words would test native Lean's float runtime rather than the kernels.  The SASS of `roundRoot` contains FFMA instructions, which belong to the sequence that `ptxas` emits for `sqrt.rn.f32`; the other kernels contain none.  `tests/ptx/nearest.sh` found no mismatch between `cvt.rni.f32.f32` with the NaN replacement and C's `nearbyintf` on all 2^32 inputs.  A copy of the test with `cvt.rzi` in place of `cvt.rni` reported 201,326,592 mismatches, so the comparison detects a wrong rounding.
+`tests/ptx/run.sh` passed its 356 cases on the GB10 from the cubins and through the driver's compiler.  The cases include signed zeros, subnormals, infinities, and the canonical NaN.  They leave out NaNs with other payloads, whose expected words would test native Lean's float runtime rather than the kernels.  The SASS of `roundRoot` contains FFMA instructions, which belong to the sequence that `ptxas` emits for `sqrt.rn.f32`.  The SASS of the other kernels contains none.  `tests/ptx/nearest.sh` found no mismatch between `cvt.rni.f32.f32` with the NaN replacement and C's `nearbyintf` on all 2^32 inputs.  A copy of the test with `cvt.rzi` in place of `cvt.rni` reported 201,326,592 mismatches, so the comparison detects a wrong rounding.
+
+## 2026-11-03: PTX target, stage 4: the GPT-2 kernels
+
+Stage 4 compiles the thirteen kernels of the binary32 GPT-2 demo to PTX, states a launch theorem for each under the bounds of its WGSL dispatch theorem, and runs each kernel's cases on the GB10.  Stage 5 adds the host program: a session mode of the CUDA host, a host model of launches, `generate_host` for PTX, and a generation on the GB10 compared with `gpt32.wasm`.
+
+### Research
+
+A probe compiled every kernel of `Demos/Gpt32/Verified.lean` with `Verified.PTX.compile`, and all thirteen are accepted.  The WGSL dispatch theorems of `Demos/Gpt32/VerifiedDispatch.lean` take bounds on the sizes and derive `Spec.Fits` inside each proof (`have fits`).  `Spec.Fits` depends only on the kernel plan: on `plan.spec` and `plan.params.args env`.  Both compilers build their kernel from `KernelPlan.ofBuild count element`, so a build that both compile has one plan.  The host model of `Demos/Gpt32/Exec.lean` uses WGSL buffers and dispatches, which is why the host waits for stage 5.
+
+### Recommendation
+
+| Step | Content |
+|---|---|
+| Plan lemmas | `Verified.WGSL.compileKernel_plan` and `Verified.PTX.compileKernel_plan`: a compiled kernel's plan is the one that `KernelPlan.ofBuild` returns.  A bridge lemma then gives the PTX `Spec.Fits` of a build from the WGSL one |
+| Fits lemmas | Each `have fits` of `VerifiedDispatch.lean` becomes a named theorem, such as `embed_fits`, which the WGSL dispatch theorem and the PTX launch theorem both use |
+| Kernels | `Demos/Gpt32/VerifiedPtx.lean` compiles the kernels and states `embedKernel_executions` and the others with the bounds of the WGSL theorems, an output of the count followed by one word per element, and the launch conditions of `Kernel.executions_eq` |
+| Cases | A PTX form of `Demos/Gpt32/VerifiedCases.lean` with `Arg.ptxBuffer`, and the kernels in `tests/ptx/run.sh` |
+| Documents | GPT-2 guide, index, README row P, trust document |
+
+- [ ] Review of this plan by a fresh agent.
+- [ ] Plan lemmas and fits lemmas.
+- [ ] Kernels and launch theorems.
+- [ ] Cases and device test on the GB10.
+- [ ] Documents, full build, commit, push.
