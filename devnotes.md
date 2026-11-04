@@ -41128,3 +41128,91 @@ A fresh agent reviewed the plan, read the code and the cited documents, and conf
 `Exec.lean` states the host model over `Device` and `Backend`, and `Compose.generate_host` takes a device and its backend.  `Demos.Gpt32.Verified.generate_host` instantiates it with the WGSL device and `Demos.Gpt32.VerifiedPtx.generate_host` with the PTX device, and both depend only on `propext`, `Classical.choice`, and `Quot.sound`.  The PTX backend proves the pairing of 32-bit halves through `toNat` and `omega`, and it takes each call's run from the `LaunchSeq` half of the stage 4 launch theorem and `Launch.meets`.  A short session on the GB10 gave the expected words for `add`, left the output of a run of 0 blocks unchanged, and rejected a run whose output was an input.  `tests/gpt32/native.sh --devices cuda` compared 15 steps of the three small random models, and every score equaled native `step32` bit for bit.  `uv run tests/gpt32/generate.py --driver cuda --tokens 16` generated 16 tokens after "The meaning of life is" with GPT-2 124M in 7.1 seconds for 20 steps, with the start of Lean and the host.  Its largest score difference from Hugging Face's float32 model was 8.76e-6 relative to the largest score, and no choice of token differed.  The GB10 ran driver 580.178.04, and the cubins came from `ptxas` V13.0.88.  The full build passed with 11,454 jobs.  The link check found a link to `LeanExe/WGSL/F32Result.lean` in `Verified/README.md`, which stage 3 left when it moved those lemmas to `LeanExe/ProofKit/F32Canonical.lean`, and the link now points there.
 
 At the user's request I installed Node.js on edgexpert.  Ubuntu 24.04 offers Node.js 18.19.1, which does not detect module syntax, so it cannot import `tests/gpt32/browser/hosts.js`, a `.js` file with `export` statements and no `package.json`.  I installed the official linux-arm64 build of v24.13.0, the version on this desktop, in `~/.local/opt` after checking its SHA-256 against the list on nodejs.org, with `~/.local/bin/node` linked to it.  `uv run tests/gpt32/generate.py --driver wasm --tokens 16 --compare cuda` ran the same generation on `gpt32.wasm` in 15.3 seconds and chose the same tokens, and all 804,112 scores equaled those of the PTX kernels bit for bit.
+
+## 2026-11-04: High-integrity industrial targets: review of the research
+
+The user asked for research toward high-integrity industrial applications of LeanExe.  Five reports in the session scratchpad cover an ESP32 target (`esp32-energy.md`), 64-bit industrial controllers (`industrial-64bit.md`), safety-rated 64-bit platforms (`safety-platforms.md`), a theorem for a controller that runs forever (`controller-theorem.md`), and 32-bit bare metal (`bare32.md`).  This entry reviews them together, resolves their conflicts, and recommends the decisions they raise.  The question of `UInt32` and `Int32` in the dialect, discussed the same day, is included.
+
+### Findings that hold across the reports
+
+| Finding | Evidence |
+|---|---|
+| The C path runs on any controller with a 64-bit Linux userland, and `compiled.authorize.native` already exists | `Demos/Energy/README.md:60,106` |
+| On every safety SoC examined, the 64-bit application cores reach at most SIL 2 or ASIL B, and SIL 3 or ASIL D belongs to a 32-bit core: Cortex-R5F, M4F, M7, M33, or R52 | `safety-platforms.md`, TÜV SÜD documents for the AM64x and TDA4VM |
+| AbsInt's aiT computes static WCET for Cortex-R4F, R5F, and Cortex-M, and offers no static analysis for AArch64 Cortex-A | `controller-theorem.md`, section 4, AbsInt's aiT pages |
+| One `ptr64` parameter in the Lean copy of Clight covers 32-bit targets.  The translator needs no change, because every offset stays below 2^32 | `bare32.md`, sections 1 and 2; the cap bound `E.cap ≤ 65535` at `LeanExe/Native/Proof/Straight.lean:90` |
+| A 32-bit target adds `Asmexpand.ml`'s expansion of 64-bit built-ins and the `__compcert_i64_*` helpers to the trusted base, and floating point needs a double-precision FPU | `bare32.md`, section 3 |
+| A loop that runs forever can be stated as `Reacts` with Vélus's trace shape.  The Lean side needs only an invariant over windows of terminating executions, and CompCert's forward simulations already carry `Reacts` to Asm | `controller-theorem.md`, sections 1 to 3 |
+| CompCert has been qualified (MTU under IEC 61508-3, the ATR 42/72 under DO-178C), its open-source licence forbids commercial use, and no Lean proof has served as certification evidence | `safety-platforms.md`, "Software qualification" |
+
+### Conflicts between the reports
+
+The safety-platform and controller reports say that a 32-bit core needs a second instance of the Lean copy and new proofs of the translation.  The 32-bit report read the definitions of CompCert's pointer arithmetic and loads and found that the translated program has the same executions at both widths, so one parameterized copy and about ten address lemmas suffice.  Its analysis supersedes the other two, subject to its first step, which tests the claim against `ccomp -interp` at 32 bits.
+
+The industrial report plans to build the native executable on this desktop, where Lean does not run.  Builds run on the remote hosts, and none of them has `ccomp` on its login path, so the location of a CompCert 3.18 tree configured for each target must be settled first.  An executable linked on edgexpert's Ubuntu 24.04 (glibc 2.39) also runs on a Debian 13 target (glibc 2.41).
+
+The ESP32 report recommended an ESP32-C6.  No ESP32 carries a safety rating or a double-precision FPU, so the high-integrity aim lowers its value.  The UART that may refuse a store appears in three reports with three answers.  A bounded retry count existed only because the bare-metal theorem required termination, and a reactive loop that polls a status register is productive, so the controller theorem settles the question without a bound.
+
+### Review
+
+A fresh agent reviewed a first version of the recommendation against the reports and primary sources.  I checked its two findings that change the plan.  TI's kernel patch for the AM64x R5F states that the AM64x "supports a new "Single-CPU" mode instead of the LockStep mode", "a non-safety mode", and lists LockStep for the AM65x, J721E, and J7200 only ([linux-arm-kernel, 2021-03](https://lists.infradead.org/pipermail/linux-arm-kernel/2021-March/648340.html)).  QEMU's `xlnx-zcu102` machine exposes no option to boot an R5F first ([`hw/arm/xlnx-zcu102.c`](https://github.com/qemu/qemu/blob/master/hw/arm/xlnx-zcu102.c)).
+
+| Finding | Response |
+|---|---|
+| The first version put the controller on the AM64x R5F while claiming the core type that carries SIL 3.  The AM64x R5F has no lockstep, and the AM64x's safety island is the M4F | The core and board go to the user as a choice |
+| "Every safety SoC" dropped the S32G's lockstep A53 clusters and the lock modes of the A78AE and R82AE | A lockstep 64-bit core is listed as an option that avoids the 32-bit port |
+| "About ten lemmas" understated the 32-bit report's estimate of 800 to 2,000 changed lines | Estimate stated.  The width-independence claim checks out (`Translate.lean:276-284`, CompCert's `Cop.v:666-670` and `Memory.v:436-443`, `Straight.lean:90`) |
+| With `ptr64` false a `Mint32` volatile load can match a pointer event, so the controller's uniqueness conjunct needs the integer-load hypothesis of `bare32.md`, section 4 | Added to the 32-bit steps |
+| QEMU's zcu102 starts its R5F cores powered off and needs Xilinx's fork to run an R5F image | QEMU's M-profile machines (`mps2-an386` for Cortex-M4) and `mps3-an536` (Cortex-R52) boot with `-kernel` |
+| The mailbox's trusted items were missing: memory attributes, barriers in the Linux writer, isolation of `lx_mem` and the stack from the A-cores and DMA, and a protocol for consistent multi-word records | Listed below.  A sequence word read before and after the data makes torn records detectable, and a theorem about the step function states the check |
+| Shared DDR defeats isolation and a sound WCET bound, so the memory options are needed | A minimum-page option and a per-program cap, with `lx_mem` in on-chip RAM |
+| Doing the `ptr64` work first avoids touching the address lemmas twice | Adopted when the 32-bit route is chosen |
+| The C path under `qemu-arm` user mode tests the 32-bit lowering and helpers on the whole corpus without startup code | Adopted as the first 32-bit run |
+| Omissions: 32-bit `clightgen` differences, Thumb interworking with ARM-state helpers on ARMv7-R, `nm` evidence for the helpers the authorizer reaches, the functional-safety code F of the board's part, the Lean kernel advisory, aiT's lack of Cortex-M7, and the A53 errata only where CompCert code runs on an A53 | Listed below |
+
+### Revised recommendation
+
+The direction stands with one change: the 32-bit core that runs the controller is a choice for the user.  Linux on the Cortex-A cores runs the network and the unverified gateway, and the verified controller runs bare metal on a safety core in a loop that the controller theorem describes, exchanging records with Linux through a mailbox in on-chip RAM.  The recommended first core is the Cortex-M4F of the TI AM64x, its safety island, with QEMU's `mps2-an386` for development.  The energy controller computes only with words, which suits the M4F's single-precision FPU behind an instruction check, and the SK-AM64B also carries the A53 cores for the Linux side.  A lockstep Cortex-R5F (TDA4VM MCU domain, Zynq UltraScale+ RPU) follows when a SIL 3 rating of the core itself becomes the goal.
+
+| Step | Work | Running code | Theorem |
+|---|---|---|---|
+| 1 | `ptr64` parameter in the Lean copy and the address lemmas at both widths, with a CompCert 3.18 tree configured `armv7m-eabi` | `tests/native/clight.sh` against `ccomp -interp`; the corpus through the C path under `qemu-arm` user mode | `translate_correct`, every `p.f.native` and `p.f.program` at both widths |
+| 2 | Controller loop C1: `ctlMain`, `LoopReacts`, the window lemma, and the Rocq lemmas, written once for both widths | QEMU `virt`, AArch64 | `p.ctl.program`, `clight2_loop_to_asm` |
+| 3 | Minimum-page option and per-program cap | One-page modules in Wasmtime and natively | Existing theorems at cap 1 |
+| 4 | Cortex-M startup, stack bound, alignment and floating-point checks; the integer-load hypothesis in the Rocq reads lemma | The corpus at cap 1 and the controller loop on QEMU `mps2-an386` | `p.f.program` and `clight2_loop_to_asm` at the ARM instance |
+| 5 | Mailbox records with a sequence word, and clock reads | QEMU, with the mailbox in RAM written by the harness | Trace properties: consistent records only, deadlines |
+| 6 | The AM64x: Linux on the A53 cores, the controller on the M4F, the mailbox in on-chip RAM | SK-AM64B | Step 4's and 5's theorems; the board's items join the trusted base |
+| 7 | The energy controller of `controller-theorem.md`, section 5 | Step 6's board with a plant simulator | G1 to G4 and the derivation of `OperatesIn.states` |
+
+Steps 1 and 3 apply only to the 32-bit route.  On the 64-bit routes the order is step 2, then the board's startup.
+
+| Trusted item added by the mailbox | Treatment |
+|---|---|
+| Memory attributes | M4F MPU region for the mailbox as Strongly-ordered or Device, and a non-cacheable mapping on the A53 side |
+| Ordering on the Linux side | The writer's barriers between data and sequence word |
+| Isolation | Firewalls that keep the A-cores and DMA out of `lx_mem`, the stack, and the code |
+| Loading | The M4F image loaded by the boot loader rather than by Linux's remoteproc |
+
+### Decisions for the user
+
+The user stated the same day that certification, safety documents, and licences are not important now: the work is a rigorous proof of concept.  The decisions below are technical.
+
+| Decision | Options | Recommendation |
+|---|---|---|
+| Integrity route | 64-bit cores only, at SIL 2; a lockstep 64-bit core (S32G, ASIL D in lockstep per forum quotations of an NDA manual, board USD 2,500 to 4,000); or 32-bit safety cores through the `ptr64` parameter | 32-bit safety cores: industrial safety functions run on these cores, with MPUs, tightly coupled memory, and static timing analysis, so the proof of concept runs where such code runs.  The parameter leaves the translator unchanged.  The 64-bit route is simpler and skips steps 1 and 3 |
+| First 32-bit core and board | Cortex-M4F on the AM64x (QEMU `mps2-an386`); lockstep R5F on a TDA4VM or Zynq UltraScale+ board (QEMU needs Xilinx's fork); Cortex-R52 (QEMU `mps3-an536`) | Cortex-M4F on the SK-AM64B |
+
+### Recommendations that need no decision
+
+| Item | Recommendation |
+|---|---|
+| Form of the loop statement | `LoopReacts` |
+| Traps and heap in the loop | `aborts = false`, allocation-free step functions |
+| Timing | Measurement on the board.  aiT, a commercial tool, covers Cortex-M4 and R5F if static bounds are wanted later |
+| Floats on the M4F | Integer modules behind an instruction check |
+| 64-bit built-ins and helpers | Accept and list in the trusted base; confirm with `nm` which helpers each module reaches |
+| PowerPC, ESP32, CM4, Revolution Pi, hypervisor, `UInt32`/`Int32` | Not now |
+| A53 errata 835769 and 843419 | Relevant only where CompCert code runs on an A53 |
+
+- [x] Independent review of this entry.
+- [x] Revised recommendation to the user.
