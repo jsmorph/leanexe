@@ -2,6 +2,7 @@ import TestSupport.Bare.Gcd
 import TestSupport.Bare.Theorems
 import TestSupport.Bare.Input
 import TestSupport.Bare.Ctl
+import TestSupport.Bare.Req
 import LeanExe.Native.ClightCheck
 
 /-!
@@ -241,6 +242,45 @@ def checkCtl (dir : String) : IO UInt32 := do
         failed := true
   pure (if failed then 1 else 0)
 
+/-- A program with requests: the step `k` of `module`, translated with `cap` pages, and the
+initial state `s0`. -/
+structure ReqCase where
+  name : String
+  module : Module
+  cap : Nat
+  k : Nat
+  s0 : UInt64
+
+def reqCases : List ReqCase := [
+  { name := "echo", module := TestSupport.Bare.reqCompiled.module, cap := 1, k := 5, s0 := 3 }]
+
+def emitReq (dir : String) (c : ReqCase) : IO Unit := do
+  let some t := translate c.cap c.module
+    | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
+  match t.reqText c.k c.s0 with
+  | .error e => throw <| IO.userError s!"native-bare: {c.name}: {e}"
+  | .ok text => IO.FS.writeFile s!"{dir}/{c.name}.c" text
+  IO.FS.writeFile s!"{dir}/{c.name}.depth"
+    (String.join ((t.depthNames c.module).map (· ++ "\n")))
+  IO.println s!"native-bare: {c.name}: written"
+
+def checkReq (dir : String) : IO UInt32 := do
+  let mut failed := false
+  for c in reqCases do
+    let some t := translate c.cap c.module
+      | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
+    let text ← IO.FS.readFile s!"{dir}/{c.name}.v"
+    match ClightCheck.check t text (reqTail (reqMain c.k c.s0)) with
+    | .error e =>
+        IO.eprintln s!"native-bare: {c.name}: {e}"
+        failed := true
+    | .ok [] =>
+        IO.println s!"native-bare: {c.name}: the clightgen program matches the whole program"
+    | .ok errors =>
+        for e in errors do IO.eprintln s!"native-bare: {c.name}: {e}"
+        failed := true
+  pure (if failed then 1 else 0)
+
 def check (dir : String) : IO UInt32 := do
   let mut failed := false
   for c in cases do
@@ -258,7 +298,8 @@ def check (dir : String) : IO UInt32 := do
   pure (if failed then 1 else 0)
 
 def usage : String :=
-  "usage: native-bare emit|check|emit-in|check-in|emit-ctl|check-ctl DIR, or native-bare names"
+  "usage: native-bare emit|check|emit-in|check-in|emit-ctl|check-ctl|emit-req|check-req DIR, " ++
+    "or native-bare names"
 
 def main (args : List String) : IO UInt32 := do
   match args with
@@ -280,4 +321,9 @@ def main (args : List String) : IO UInt32 := do
       for c in ctlCases do emitCtl dir c
       pure 0
   | ["check-ctl", dir] => checkCtl dir
+  | ["emit-req", dir] =>
+      IO.FS.createDirAll dir
+      for c in reqCases do emitReq dir c
+      pure 0
+  | ["check-req", dir] => checkReq dir
   | _ => throw <| IO.userError usage

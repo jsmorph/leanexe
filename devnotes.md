@@ -41506,7 +41506,7 @@ if ((l6 >> 63ULL) != 0ULL) {
 
 A read is a volatile load of chunk `Mint32` with the event `Event_vload Mint32 regId (4 r) (EVint v)`, and a write a volatile store of chunk `Mint32`.  The trace of window `n` is that one event, computed by iterating `tick` from `(s0, 0)` with the count of reads so far: the `k`-th read returns `σ k`, zero-extended to 64 bits.  The register index is masked to 255, so every offset lies within 1 KiB of `lx_reg`.
 
-- [ ] `reqMain`, its C text, and `native-bare emit-req`/`check-req`.
+- [x] `reqMain`, its C text, and `native-bare emit-req`/`check-req`.  `lx_reg` takes the identifier 0, since the translation's own globals use identifiers from 1 on and may use every multiple of 4 from 36 on, and `ClightCheck` names it.  The echo's step, `cmsdkTick`, is function 5 of `reqCompiled`, compiled with one page and a cap of one page, and `clightgen`'s program matches the whole program.
 - [ ] Lemmas for the register load and store, the window lemma, `req_program` (`LoopReacts`), and the `Reads` fact.
 - [ ] A UART step for the CMSDK UART, with the register map as a parameter, and its theorems about polling.
 - [ ] The QEMU run on `mps2-an500` with a host script on a socket that checks the replies against native Lean.

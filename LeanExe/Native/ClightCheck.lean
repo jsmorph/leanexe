@@ -613,7 +613,7 @@ def check (t : Translation) (text : String)
     else none
   let tailName (id : ident) : String :=
     if id == outId then "lx_out" else if id == mainId then "main" else if id == inId then "lx_in"
-    else s!"lx_unnamed_{id}"
+    else if id == regId then "lx_reg" else s!"lx_unnamed_{id}"
   let allNames := t.names ++ tail.map fun (id, _) => (id, tailName id)
   let n : Names := { names, globals := allNames.map fun (id, s) => (s, id) }
   let some gdTerm := defs.lookup "global_definitions"

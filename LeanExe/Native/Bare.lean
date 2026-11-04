@@ -308,6 +308,78 @@ def ctlMain (k : Nat) (s0 : UInt64) : function :=
     fn_temps := ctlTemps,
     fn_body := .Ssequence (ctlBody k s0) (.Sreturn (some (.Econst_int 0 tint))) }
 
+/-! ## Requests -/
+
+/-- The identifier of `lx_reg`, the registers of a device.  The translation's own globals use
+identifiers from 1 on. -/
+def regId : ident := 0
+
+/-- `volatile unsigned int`, the type of a register. -/
+def regType : type := .Tint .I32 .Unsigned { attr_volatile := true, attr_alignas := none }
+
+def regPtr : type := .Tpointer regType noattr
+
+/-- The type that `clightgen` gives `lx_reg`, an array of no elements. -/
+def regArray : type := .Tarray regType 0 noattr
+
+/-- `extern volatile unsigned int lx_reg[];`, which the linker script places at the device's
+base address. -/
+def regVar : globvar type :=
+  { gvar_info := regArray, gvar_init := [], gvar_readonly := false, gvar_volatile := true }
+
+/-- The definitions after the translation's in a program with requests: `lx_reg` and `main`. -/
+def reqTail (main : function) : List (ident × globdef (fundef function) type) :=
+  [(regId, .Gvar regVar), (mainId, .Gfun (.Internal main))]
+
+/-- `(l6 >> 32ULL) & 255ULL`, the register of the request in `l6`. -/
+def reqIndex : expr :=
+  .Ebinop .Oand (.Ebinop .Oshr (.Etempvar byteTemp tulong) (clong 32) tulong) (clong 255) tulong
+
+/-- `lx_reg[i]`, the register at the index `i`. -/
+def regAt (i : expr) : expr := .Ederef (.Ebinop .Oadd (.Evar regId regArray) i regPtr) regType
+
+/-- `l3 = (unsigned long long) lx_reg[i];`, through the temporary `t`. -/
+def regLoad (i : expr) : statement :=
+  .Ssequence
+    (.Sbuiltin (some lenLoadTemp) (.EF_vload .Mint32) [regPtr] [.Eaddrof (regAt i) regPtr])
+    (.Sset nTemp (.Ecast (.Etempvar lenLoadTemp regType) tulong))
+
+/-- `lx_reg[i] = (unsigned int) e;`. -/
+def regStore (i e : expr) : statement :=
+  .Sbuiltin none (.EF_vstore .Mint32) [regPtr, regType] [.Eaddrof (regAt i) regPtr, .Ecast e tuint]
+
+/-- The access of the request in `l6`: a write of its low 32 bits when bit 63 is set, after which
+`l3` is 0, and otherwise a read into `l3`. -/
+def reqAccess : statement :=
+  .Sifthenelse
+    (.Ebinop .One (.Ebinop .Oshr (.Etempvar byteTemp tulong) (clong 63) tulong) (clong 0) tint)
+    (.Ssequence (regStore reqIndex (.Etempvar byteTemp tulong)) (.Sset nTemp (clong 0)))
+    (regLoad reqIndex)
+
+/-- One window of the loop with requests: the call `lxf_k(l0, l3);` of the step on the state and
+the last value read, whose two results are the new state and the request, and the access of the
+request. -/
+def reqWindow (k : Nat) : statement :=
+  seqList [voidCall k [tulong, tulong] [.Etempvar resTemp tulong, .Etempvar nTemp tulong],
+    .Sset resTemp (.Evar (resId 0 .i64) tulong), .Sset byteTemp (.Evar (resId 1 .i64) tulong),
+    reqAccess]
+
+/-- The body of the `main` with requests before the `return 0;` that `clightgen` appends. -/
+def reqBody (k : Nat) (s0 : UInt64) : statement :=
+  seqList [initCall, .Sset resTemp (.Econst_long s0 tulong), .Sset nTemp (clong 0),
+    .Sloop (.Ssequence .Sskip (reqWindow k)) .Sskip]
+
+/-- The temporaries of the `main` with requests: the state `l0`, the last value `l3`, the
+request `l6`, and the temporary that `clightgen` creates for the load. -/
+def reqTemps : List (ident × type) :=
+  [(resTemp, tulong), (nTemp, tulong), (byteTemp, tulong), (lenLoadTemp, regType)]
+
+/-- The `main` that runs the step `k` with requests forever from the state `s0`. -/
+def reqMain (k : Nat) (s0 : UInt64) : function :=
+  { fn_return := tint, fn_callconv := cc_default, fn_params := [], fn_vars := [],
+    fn_temps := reqTemps,
+    fn_body := .Ssequence (reqBody k s0) (.Sreturn (some (.Econst_int 0 tint))) }
+
 section
 
 variable (gname : ident → String) (tname : ident → String) (isCall : ident → Bool)
@@ -330,6 +402,12 @@ def cinMain (cap k : Nat) (kind : OutKind) : Except String String := do
     "extern volatile unsigned int lx_out;\n" ++ "int main(void) {\n" ++
     (← cdecls tname isCall (inTemps kind)) ++
     (← cstmt gname tname isCall 1 (inBody cap k kind)) ++ "}\n")
+
+/-- The C text of the declaration of `lx_reg` and of the `main` with requests. -/
+def creqMain (k : Nat) (s0 : UInt64) : Except String String := do
+  pure ("extern volatile unsigned int lx_reg[];\n" ++ "int main(void) {\n" ++
+    (← cdecls tname isCall reqTemps) ++
+    (← cstmt gname tname isCall 1 (reqBody k s0)) ++ "}\n")
 
 /-- The C text of the declarations of `lx_in` and `lx_out` and of the controller's `main`. -/
 def cctlMain (k : Nat) (s0 : UInt64) : Except String String := do
@@ -368,6 +446,12 @@ def Translation.inText (t : Translation) (cap k : Nat) (kind : OutKind) : Except
   let gname (id : ident) : String :=
     if id == outId then "lx_out" else if id == inId then "lx_in" else t.gname id
   pure ((← t.text) ++ (← cinMain gname tempName isCallTemp cap k kind))
+
+/-- The C text of a program with requests: the translation, the declaration of `lx_reg`, and
+the `main` that runs the step `k` with requests forever from the state `s0`. -/
+def Translation.reqText (t : Translation) (k : Nat) (s0 : UInt64) : Except String String := do
+  let gname (id : ident) : String := if id == regId then "lx_reg" else t.gname id
+  pure ((← t.text) ++ (← creqMain gname tempName isCallTemp k s0))
 
 /-- The C text of a controller program: the translation, the declarations of `lx_in` and
 `lx_out`, and the `main` that runs the step `k` forever from the state `s0`. -/
