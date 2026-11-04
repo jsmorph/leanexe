@@ -1,13 +1,15 @@
 /-!
 The PTX subset of the kernels.  A kernel has one entry point whose parameters are 64-bit pointers
-to global buffers: the read-only inputs, then the output.  Registers fall into three classes,
-`.b32`, `.b64`, and `.pred`.  The instructions are integer arithmetic, comparisons, selection,
-conversions, the special registers that identify a thread, loads of parameters, and loads and
-stores of aligned 64-bit words.  Any instruction may carry a guard.  Control flow is structured: a
-conditional, a loop whose condition is computed by a statement list, and `ret`.  The printer writes
-the conditional and the loop as labels and guarded branches.  Registers and parameters are
-numbered; the printer names them `%w`, `%d`, `%p`, and `b`, each followed by eight hexadecimal
-digits.
+to global buffers: the read-only inputs, then the output.  Registers have the classes `.b32`,
+`.b64`, `.f32`, and `.pred`.  The instructions are integer arithmetic, comparisons, selection,
+conversions, the special registers that identify a thread, loads of parameters, loads and stores
+of aligned 64-bit words, and on `.f32` registers binary32 arithmetic with rounding to nearest,
+square root, rounding to an integral value, ordered comparisons, the test for NaN, selection, and
+moves to and from `.b32` registers.  Any instruction may carry a guard.  Control flow is
+structured: a conditional, a loop whose condition is computed by a statement list, and `ret`.  The
+printer writes the conditional and the loop as labels and guarded branches.  Registers and
+parameters are numbered, and the printer names them `%w`, `%d`, `%f`, `%p`, and `b`, each followed
+by eight hexadecimal digits.
 -/
 
 namespace LeanExe.PTX
@@ -22,6 +24,12 @@ inductive Src64 where
 inductive Src32 where
   | reg (index : Nat)
   | imm (value : UInt32)
+  deriving Repr, DecidableEq
+
+/-- An operand of `selp.b32` on `.f32` registers: a `.f32` register or the bits of an immediate. -/
+inductive SrcF where
+  | reg (index : Nat)
+  | imm (bits : UInt32)
   deriving Repr, DecidableEq
 
 /-- The special registers `%tid.x`, `%ntid.x`, and `%ctaid.x`. -/
@@ -48,6 +56,21 @@ inductive Bin64 where
 inductive Shift where
   | shl
   | shr
+  deriving Repr, DecidableEq
+
+/-- `add.rn.f32`, `sub.rn.f32`, `mul.rn.f32`, and `div.rn.f32`. -/
+inductive BinF where
+  | add
+  | sub
+  | mul
+  | div
+  deriving Repr, DecidableEq
+
+/-- The ordered comparisons of `setp` on `.f32` operands. -/
+inductive CmpF where
+  | eq
+  | lt
+  | le
   deriving Repr, DecidableEq
 
 /-- Comparisons of `setp` on `.u64` operands. -/
@@ -90,6 +113,22 @@ inductive Instr where
   | ld (d a : Nat) (offset : UInt64)
   /-- `st.global.u64 [a + offset], v` -/
   | st (a : Nat) (offset : UInt64) (v : Nat)
+  /-- A binary operation on `.f32` registers, `op d, a, b`. -/
+  | binF (op : BinF) (d a b : Nat)
+  /-- `sqrt.rn.f32 d, a` -/
+  | sqrtF (d a : Nat)
+  /-- `cvt.rni.f32.f32 d, a` -/
+  | rniF (d a : Nat)
+  /-- `setp.c.f32 p, a, b` -/
+  | setpF (c : CmpF) (p a b : Nat)
+  /-- `testp.notanumber.f32 p, a` -/
+  | testNaN (p a : Nat)
+  /-- `selp.b32 d, t, f, p` on `.f32` registers. -/
+  | selpF (d : Nat) (t f : SrcF) (p : Nat)
+  /-- `mov.b32 d, a` from `.b32` register `a` into `.f32` register `d`. -/
+  | toF (d a : Nat)
+  /-- `mov.b32 d, a` from `.f32` register `a` into `.b32` register `d`. -/
+  | ofF (d a : Nat)
   deriving Repr, DecidableEq
 
 /-- A guard `@p` (`negated = false`) or `@!p` (`negated = true`). -/
@@ -109,11 +148,13 @@ inductive Stmt where
   deriving Repr
 
 /-- A kernel: input buffers at parameters `0` to `inputs - 1`, the output at parameter `inputs`,
-`regs32` registers of class `.b32`, `regs64` of class `.b64`, and `preds` of class `.pred`. -/
+`regs32` registers of class `.b32`, `regs64` of class `.b64`, `regsF` of class `.f32`, and
+`preds` of class `.pred`. -/
 structure Module where
   inputs : Nat
   regs32 : Nat
   regs64 : Nat
+  regsF : Nat
   preds : Nat
   body : List Stmt
   deriving Repr

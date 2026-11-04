@@ -80,6 +80,9 @@ theorem w32Idx_token (i : Nat) (h : i < 2 ^ 32) : w32Idx (w32Token i) = some i :
 theorem w64Idx_token (i : Nat) (h : i < 2 ^ 32) : w64Idx (w64Token i) = some i :=
   parseNum_nameToken _ i h
 
+theorem fIdx_token (i : Nat) (h : i < 2 ^ 32) : fIdx (fToken i) = some i :=
+  parseNum_nameToken _ i h
+
 theorem predIdx_token (i : Nat) (h : i < 2 ^ 32) : predIdx (predToken i) = some i :=
   parseNum_nameToken _ i h
 
@@ -106,6 +109,22 @@ theorem w32Idx_imm (v : UInt32) : w32Idx (imm32Token v) = none := by
   unfold w32Idx imm32Token
   exact parseNum_other _ _ _ (by simp [List.isPrefixOf])
 
+theorem fIdx_imm (v : UInt32) : fIdx (imm32Token v) = none := by
+  unfold fIdx imm32Token
+  exact parseNum_other _ _ _ (by simp [List.isPrefixOf])
+
+theorem w32Idx_f (i : Nat) : w32Idx (fToken i) = none := by
+  unfold w32Idx fToken nameToken
+  exact parseNum_other _ _ _ (by simp [List.isPrefixOf])
+
+theorem imm32_f (i : Nat) : imm32 (fToken i) = none := by
+  unfold imm32 fToken nameToken
+  rw [parseNum_other _ _ _ (by simp [List.isPrefixOf])]
+  rfl
+
+theorem parseSrc32_f (i : Nat) : parseSrc32 (fToken i) = none := by
+  simp [parseSrc32, w32Idx_f, imm32_f]
+
 /-! ### Well-formed syntax -/
 
 def Src64.WF : Src64 → Prop
@@ -113,6 +132,10 @@ def Src64.WF : Src64 → Prop
   | .imm _ => True
 
 def Src32.WF : Src32 → Prop
+  | .reg i => i < 2 ^ 32
+  | .imm _ => True
+
+def SrcF.WF : SrcF → Prop
   | .reg i => i < 2 ^ 32
   | .imm _ => True
 
@@ -130,6 +153,9 @@ def Instr.WF : Instr → Prop
   | .madWide d a b c => d < 2 ^ 32 ∧ a < 2 ^ 32 ∧ b < 2 ^ 32 ∧ c < 2 ^ 32
   | .ld d a _ => d < 2 ^ 32 ∧ a < 2 ^ 32
   | .st a _ v => a < 2 ^ 32 ∧ v < 2 ^ 32
+  | .binF _ d a b | .setpF _ d a b => d < 2 ^ 32 ∧ a < 2 ^ 32 ∧ b < 2 ^ 32
+  | .sqrtF d a | .rniF d a | .testNaN d a | .toF d a | .ofF d a => d < 2 ^ 32 ∧ a < 2 ^ 32
+  | .selpF d t f p => d < 2 ^ 32 ∧ t.WF ∧ f.WF ∧ p < 2 ^ 32
 
 theorem parseSrc64_token (s : Src64) (h : s.WF) : parseSrc64 s.token = some s := by
   cases s with
@@ -140,6 +166,11 @@ theorem parseSrc32_token (s : Src32) (h : s.WF) : parseSrc32 s.token = some s :=
   cases s with
   | reg i => simp [parseSrc32, Src32.token, w32Idx_token i h]
   | imm v => simp [parseSrc32, Src32.token, w32Idx_imm, imm32_token]
+
+theorem parseSrcF_token (s : SrcF) (h : s.WF) : parseSrcF s.token = some s := by
+  cases s with
+  | reg i => simp [parseSrcF, SrcF.token, fIdx_token i h]
+  | imm v => simp [parseSrcF, SrcF.token, fIdx_imm, imm32_token]
 
 theorem parseGuard_token (g : Guard) (h : g.pred < 2 ^ 32) : parseGuard g.token = some g := by
   obtain ⟨neg, p⟩ := g
@@ -160,6 +191,8 @@ theorem parseSpecial_token (s : Special) : parseSpecial s.token = some s := by c
 theorem parseBin64_token (op : Bin64) : parseBin64 op.token = some op := by cases op <;> rfl
 theorem parseShift_token (op : Shift) : parseShift op.token = some op := by cases op <;> rfl
 theorem parseCmp_token (c : Cmp) : parseCmp c.token = some c := by cases c <;> rfl
+theorem parseBinF_token (op : BinF) : parseBinF op.token = some op := by cases op <;> rfl
+theorem parseCmpF_token (c : CmpF) : parseCmpF c.token = some c := by cases c <;> rfl
 
 /-- The tokens of an instruction: its opcode and the operand tokens that follow it. -/
 theorem Instr.tokens_cons (i : Instr) : ∃ op ops, i.tokens = op :: ops := by
@@ -170,45 +203,53 @@ theorem Instr.parse_tokens (i : Instr) (h : i.WF) (rest : List String) :
     ∃ op ops, i.tokens = op :: ops ∧ parseInstr op (ops ++ rest) = some (i, rest) := by
   cases i with
   | special d s =>
-      exact ⟨_, _, rfl, by simp [parseInstr, w32Idx_token d h, parseSpecial_token]⟩
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, w32Idx_token d h, parseSpecial_token]⟩
   | mov32 d a =>
-      exact ⟨_, _, rfl, by simp [parseInstr, w32Idx_token d h.1,
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, parseMov32, w32Idx_token d h.1,
         parseSrc32_token a h.2]⟩
   | mov64 d a =>
-      exact ⟨_, _, rfl, by simp [parseInstr, w64Idx_token d h.1,
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, w64Idx_token d h.1,
         parseSrc64_token a h.2]⟩
   | bin64 op d a b =>
       refine ⟨_, _, rfl, ?_⟩
-      cases op <;> simp [Bin64.token, parseInstr, parseBin64, parseShift, parseCmp,
+      cases op <;> simp [Bin64.token, parseInstr, ops3, parseOp3, parseBin64,
         w64Idx_token d h.1, w64Idx_token a h.2.1, parseSrc64_token b h.2.2]
   | shift op d a b =>
       refine ⟨_, _, rfl, ?_⟩
-      cases op <;> simp [Shift.token, parseInstr, parseBin64, parseShift, parseCmp,
+      cases op <;> simp [Shift.token, parseInstr, ops3, parseOp3, parseBin64, parseShift,
         w64Idx_token d h.1, w64Idx_token a h.2.1, parseSrc32_token b h.2.2]
   | setp c p a b =>
       refine ⟨_, _, rfl, ?_⟩
-      cases c <;> simp [Cmp.token, parseInstr, parseBin64, parseShift, parseCmp,
+      cases c <;> simp [Cmp.token, parseInstr, ops3, parseOp3, parseBin64, parseShift, parseCmp,
         predIdx_token p h.1, w64Idx_token a h.2.1, parseSrc64_token b h.2.2]
+  | binF op d a b =>
+      refine ⟨_, _, rfl, ?_⟩
+      cases op <;> simp [BinF.token, parseInstr, ops3, parseOp3, parseBin64, parseShift, parseCmp,
+        parseBinF, fIdx_token d h.1, fIdx_token a h.2.1, fIdx_token b h.2.2]
+  | setpF c p a b =>
+      refine ⟨_, _, rfl, ?_⟩
+      cases c <;> simp [CmpF.token, parseInstr, ops3, parseOp3, parseBin64, parseShift, parseCmp,
+        parseBinF, parseCmpF, predIdx_token p h.1, fIdx_token a h.2.1, fIdx_token b h.2.2]
   | selp d t f p =>
-      exact ⟨_, _, rfl, by simp [parseInstr, w64Idx_token d h.1,
+      exact ⟨_, _, rfl, by simp [parseInstr, ops4, w64Idx_token d h.1,
         parseSrc64_token t h.2.1, parseSrc64_token f h.2.2.1, predIdx_token p h.2.2.2]⟩
   | notPred d a =>
-      exact ⟨_, _, rfl, by simp [parseInstr, predIdx_token d h.1,
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, predIdx_token d h.1,
         predIdx_token a h.2]⟩
   | widen d a =>
-      exact ⟨_, _, rfl, by simp [parseInstr, w64Idx_token d h.1,
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, w64Idx_token d h.1,
         w32Idx_token a h.2]⟩
   | narrow d a =>
-      exact ⟨_, _, rfl, by simp [parseInstr, w32Idx_token d h.1,
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, w32Idx_token d h.1,
         w64Idx_token a h.2]⟩
   | madWide d a b c =>
-      exact ⟨_, _, rfl, by simp [parseInstr, w64Idx_token d h.1,
+      exact ⟨_, _, rfl, by simp [parseInstr, ops4, w64Idx_token d h.1,
         w32Idx_token a h.2.1, w32Idx_token b h.2.2.1, w64Idx_token c h.2.2.2]⟩
   | ldParam d j =>
       exact ⟨_, _, rfl, by simp [parseInstr, w64Idx_token d h.1,
         paramIdx_token j h.2]⟩
   | cvtaGlobal d a =>
-      exact ⟨_, _, rfl, by simp [parseInstr, w64Idx_token d h.1,
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, w64Idx_token d h.1,
         w64Idx_token a h.2]⟩
   | ld d a imm =>
       exact ⟨_, _, rfl, by simp [addressTokens, parseInstr, w64Idx_token d h.1,
@@ -216,6 +257,21 @@ theorem Instr.parse_tokens (i : Instr) (h : i.WF) (rest : List String) :
   | st a imm v =>
       exact ⟨_, _, rfl, by simp [addressTokens, parseInstr, w64Idx_token a h.1,
         w64Idx_token v h.2, imm64_token]⟩
+  | sqrtF d a =>
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, fIdx_token d h.1, fIdx_token a h.2]⟩
+  | rniF d a =>
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, fIdx_token d h.1, fIdx_token a h.2]⟩
+  | testNaN p a =>
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, predIdx_token p h.1, fIdx_token a h.2]⟩
+  | selpF d t f p =>
+      exact ⟨_, _, rfl, by simp [parseInstr, ops4, fIdx_token d h.1, parseSrcF_token t h.2.1,
+        parseSrcF_token f h.2.2.1, predIdx_token p h.2.2.2]⟩
+  | toF d a =>
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, parseMov32, w32Idx_f, fIdx_token d h.1,
+        w32Idx_token a h.2]⟩
+  | ofF d a =>
+      exact ⟨_, _, rfl, by simp [parseInstr, ops2, parseMov32, w32Idx_token d h.1,
+        parseSrc32_f, fIdx_token a h.2]⟩
 
 /-! ### Statements -/
 
@@ -313,8 +369,12 @@ theorem Instr.tokens_head (i : Instr) : ∃ op x ops, i.tokens = op :: x :: ops 
       simp [Shift.token, w64Token, nameToken_eq_iff, parseGuard, parseNum, List.isPrefixOf]⟩
   | setp c => cases c <;> exact ⟨_, _, _, rfl, by
       simp [Cmp.token, predToken, nameToken_eq_iff, parseGuard, parseNum, List.isPrefixOf]⟩
+  | binF op => cases op <;> exact ⟨_, _, _, rfl, by
+      simp [BinF.token, fToken, nameToken_eq_iff, parseGuard, parseNum, List.isPrefixOf]⟩
+  | setpF c => cases c <;> exact ⟨_, _, _, rfl, by
+      simp [CmpF.token, predToken, nameToken_eq_iff, parseGuard, parseNum, List.isPrefixOf]⟩
   | _ => exact ⟨_, _, _, rfl, by
-      simp [w32Token, w64Token, predToken, nameToken_eq_iff, parseGuard, parseNum,
+      simp [w32Token, w64Token, fToken, predToken, nameToken_eq_iff, parseGuard, parseNum,
         List.isPrefixOf]⟩
 
 /-- A statement's tokens do not end a statement list. -/
@@ -498,7 +558,8 @@ end
 /-- Every number in a kernel fits in eight hexadecimal digits: parameter and register numbers,
 and label numbers, which run from 0 up to the printer's final counter. -/
 def Module.WF (m : Module) : Prop :=
-  m.inputs < 2 ^ 32 ∧ m.regs32 ≤ 2 ^ 32 ∧ m.regs64 ≤ 2 ^ 32 ∧ m.preds ≤ 2 ^ 32 ∧
+  m.inputs < 2 ^ 32 ∧ m.regs32 ≤ 2 ^ 32 ∧ m.regs64 ≤ 2 ^ 32 ∧ m.regsF ≤ 2 ^ 32 ∧
+    m.preds ≤ 2 ^ 32 ∧
     Stmt.ListWF m.body ∧ (Stmt.listTokens 0 m.body).2 < 2 ^ 32
 
 theorem regDecls_length (cls : String) (name : Nat → String) (i k : Nat) :
@@ -547,12 +608,12 @@ theorem reg_prefix_false (cls cls' : String) (name name' : Nat → String) (i i'
   | succ k => simp [regDecls, List.isPrefixOf, Ne.symm h]
 
 theorem parseModule_tokens (m : Module) (h : m.WF) : parseModule m.tokens = some m := by
-  obtain ⟨hInputs, h32, h64, hp, hBody, hLabels⟩ := h
+  obtain ⟨hInputs, h32, h64, hf, hp, hBody, hLabels⟩ := h
   have hLen := Stmt.listSize_le m.body 0
   unfold parseModule
   generalize hF : m.tokens.length + 1 = fuel
   have hTok : m.tokens.length = 10 + (4 * m.inputs + 3) + 2 + 4 * m.regs32 + 4 * m.regs64 +
-      4 * m.preds + (Stmt.listTokens 0 m.body).1.length + 3 := by
+      4 * m.regsF + 4 * m.preds + (Stmt.listTokens 0 m.body).1.length + 3 := by
     simp only [Module.tokens, List.length_append, paramTokens_length, regDecls_length,
       List.length_cons, List.length_nil]
   have hBodyParse := Stmt.parse_listTokens m.body 0 hBody hLabels fuel (by omega)
@@ -560,22 +621,30 @@ theorem parseModule_tokens (m : Module) (h : m.WF) : parseModule m.tokens = some
   have hRegsP := parseRegs_tokens ".pred" predToken 0 m.preds fuel (by omega)
     ((Stmt.listTokens 0 m.body).1 ++ ["ret", ";", "}"])
     (body_not_prefix ".pred" predToken (0 + m.preds) m.body 0 [";", "}"])
-  have hRegs64 := parseRegs_tokens ".b64" w64Token 0 m.regs64 fuel (by omega)
+  have hRegsF := parseRegs_tokens ".f32" fToken 0 m.regsF fuel (by omega)
     (regDecls ".pred" predToken 0 m.preds ++ ((Stmt.listTokens 0 m.body).1 ++ ["ret", ";", "}"]))
-    (reg_prefix_false ".pred" ".b64" predToken w64Token 0 (0 + m.regs64) m.preds (by decide) _
-      (body_not_prefix ".b64" w64Token (0 + m.regs64) m.body 0 [";", "}"]))
-  have hRegs32 := parseRegs_tokens ".b32" w32Token 0 m.regs32 fuel (by omega)
-    (regDecls ".b64" w64Token 0 m.regs64 ++ (regDecls ".pred" predToken 0 m.preds ++
+    (reg_prefix_false ".pred" ".f32" predToken fToken 0 (0 + m.regsF) m.preds (by decide) _
+      (body_not_prefix ".f32" fToken (0 + m.regsF) m.body 0 [";", "}"]))
+  have hRegs64 := parseRegs_tokens ".b64" w64Token 0 m.regs64 fuel (by omega)
+    (regDecls ".f32" fToken 0 m.regsF ++ (regDecls ".pred" predToken 0 m.preds ++
       ((Stmt.listTokens 0 m.body).1 ++ ["ret", ";", "}"])))
+    (reg_prefix_false ".f32" ".b64" fToken w64Token 0 (0 + m.regs64) m.regsF (by decide) _
+      (reg_prefix_false ".pred" ".b64" predToken w64Token 0 (0 + m.regs64) m.preds (by decide) _
+        (body_not_prefix ".b64" w64Token (0 + m.regs64) m.body 0 [";", "}"])))
+  have hRegs32 := parseRegs_tokens ".b32" w32Token 0 m.regs32 fuel (by omega)
+    (regDecls ".b64" w64Token 0 m.regs64 ++ (regDecls ".f32" fToken 0 m.regsF ++
+      (regDecls ".pred" predToken 0 m.preds ++ ((Stmt.listTokens 0 m.body).1 ++
+        ["ret", ";", "}"]))))
     (reg_prefix_false ".b64" ".b32" w64Token w32Token 0 (0 + m.regs32) m.regs64 (by decide) _
-      (reg_prefix_false ".pred" ".b32" predToken w32Token 0 (0 + m.regs32) m.preds (by decide) _
-        (body_not_prefix ".b32" w32Token (0 + m.regs32) m.body 0 [";", "}"])))
+      (reg_prefix_false ".f32" ".b32" fToken w32Token 0 (0 + m.regs32) m.regsF (by decide) _
+        (reg_prefix_false ".pred" ".b32" predToken w32Token 0 (0 + m.regs32) m.preds
+          (by decide) _ (body_not_prefix ".b32" w32Token (0 + m.regs32) m.body 0 [";", "}"]))))
   have hParams := parseParams_tokens 0 m.inputs fuel (by omega) (by omega)
     ("{" :: (regDecls ".b32" w32Token 0 m.regs32 ++ (regDecls ".b64" w64Token 0 m.regs64 ++
-      (regDecls ".pred" predToken 0 m.preds ++ ((Stmt.listTokens 0 m.body).1 ++
-        ["ret", ";", "}"])))))
+      (regDecls ".f32" fToken 0 m.regsF ++ (regDecls ".pred" predToken 0 m.preds ++
+        ((Stmt.listTokens 0 m.body).1 ++ ["ret", ";", "}"]))))))
   simp only [Module.tokens, List.append_assoc, List.cons_append, List.nil_append]
-  simp [hParams, hRegs32, hRegs64, hRegsP, hBodyParse, Option.bind_eq_bind]
+  simp [hParams, hRegs32, hRegs64, hRegsF, hRegsP, hBodyParse, Option.bind_eq_bind]
 
 /-! ### Lexing -/
 
@@ -605,6 +674,7 @@ theorem good_imm32 (v : UInt32) : good (imm32Token v) = true := by
 theorem good_w32 (i : Nat) : good (w32Token i) = true := good_nameToken _ (by simp) (by decide) i
 theorem good_w64 (i : Nat) : good (w64Token i) = true := good_nameToken _ (by simp) (by decide) i
 theorem good_pred (i : Nat) : good (predToken i) = true := good_nameToken _ (by simp) (by decide) i
+theorem good_f (i : Nat) : good (fToken i) = true := good_nameToken _ (by simp) (by decide) i
 theorem good_param (i : Nat) : good (paramToken i) = true :=
   good_nameToken _ (by simp) (by decide) i
 theorem good_label (i : Nat) : good (labelToken i) = true :=
@@ -620,6 +690,9 @@ theorem good_src64 (s : Src64) : good s.token = true := by
 theorem good_src32 (s : Src32) : good s.token = true := by
   cases s <;> simp [Src32.token, good_w32, good_imm32]
 
+theorem good_srcF (s : SrcF) : good s.token = true := by
+  cases s <;> simp [SrcF.token, good_f, good_imm32]
+
 theorem Instr.good (i : Instr) : i.tokens.all good = true := by
   cases i with
   | special _ s => cases s <;> simp [Instr.tokens, Special.token, good_w32] <;> decide
@@ -627,8 +700,10 @@ theorem Instr.good (i : Instr) : i.tokens.all good = true := by
   | shift op => cases op <;> simp [Instr.tokens, Shift.token, good_w64, good_src32] <;> decide
   | setp c => cases c <;> simp [Instr.tokens, Cmp.token, good_pred, good_w64, good_src64] <;>
       decide
-  | _ => simp [Instr.tokens, addressTokens, good_w32, good_w64, good_pred, good_param,
-      good_src64, good_src32, good_imm64] <;> decide
+  | binF op => cases op <;> simp [Instr.tokens, BinF.token, good_f] <;> decide
+  | setpF c => cases c <;> simp [Instr.tokens, CmpF.token, good_pred, good_f] <;> decide
+  | _ => simp [Instr.tokens, addressTokens, good_w32, good_w64, good_f, good_pred, good_param,
+      good_src64, good_src32, good_srcF, good_imm64] <;> decide
 
 mutual
   theorem Stmt.good : ∀ (s : Stmt) (n : Nat), (Stmt.tokens n s).1.all good = true
@@ -663,7 +738,8 @@ theorem regDecls_good (cls : String) (name : Nat → String) (hc : good cls = tr
 theorem Module.good (m : Module) : m.tokens.all good = true := by
   simp only [Module.tokens, List.all_append, paramTokens_good, Stmt.listGood,
     regDecls_good ".b32" w32Token (by decide) good_w32, regDecls_good ".b64" w64Token (by decide)
-      good_w64, regDecls_good ".pred" predToken (by decide) good_pred, Bool.and_true]
+      good_w64, regDecls_good ".f32" fToken (by decide) good_f,
+    regDecls_good ".pred" predToken (by decide) good_pred, Bool.and_true]
   decide
 
 theorem isSeparator_separator (t : String) : isSeparator (separator t) = true := by

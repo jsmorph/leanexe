@@ -40980,3 +40980,66 @@ Three problems came up during the work:
 - The kernel rejected the first proof of the loop case with a deep recursion.  `simp` had unfolded the PTX loop bound `2^64`.  The proof now rewrites with the equation of `Stmt.exec` and the equality of the two bounds.
 - Native Lean prints a panic message, with a backtrace, for each read past the end of a shorter array with `!`, while computing the expected outputs of `flags`.  The read returns 0, which is the value that the theorems state.  `tests/ptx/run.sh` now writes standard error of the case computation to a log, as `tests/wgsl/run.sh` does.
 - The session's sync script copied the library directories but not the root import files `LeanExe.lean` and `Verified.lean`, so the first build on edgexpert used an old `LeanExe.lean`.  The script now copies them.
+
+## 2026-11-03: PTX target, stage 3: binary32
+
+Stage 3 extends the PTX translation to the binary32 values of the kernel source language: float parameters, float array elements, float locals, and the operations `binF32`, `unF32`, `constF32`, `ofBits32`, `toBits32`, `iteF32`, `eqF32`, `ltF32`, and `leF32`.  Binary64 stays outside both GPU targets.
+
+### Research
+
+The source semantics computes Talos's `IEEE32` results.  Talos returns the canonical NaN `0x7fc00000` for every NaN result and ignores the payload of NaN inputs in `add`, `sub`, `mul`, `div`, `sqrt`, `nearest`, `eq`, `lt`, and `le`, while `abs` and `negate` keep a NaN's payload.  The WGSL model states that the device computes Talos's results exactly, NaNs included, and the WGSL translation still replaces the NaN result of every operation other than `abs` by `0x7fc00000` (`canonicalF32`).  `canonical_f32_bin`, `canonical_f32_sqrt`, and `canonical_f32_nearest` in `LeanExe/WGSL/F32Result.lean` prove that this replacement leaves Talos's results unchanged.
+
+[PTX ISA 9.7.3](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#floating-point-instructions) states that instructions with rounding modifiers are IEEE-754 compliant and that single-precision instructions support subnormal inputs and results by default on sm_20 and later.  It also states that "single-precision instructions return an unspecified NaN" and that "PTX programs should not rely on the specific single-precision NaNs being generated".  9.7.3.9 states that `abs.f32` of a NaN gives an unspecified NaN.  9.7.7.2 makes `eq`, `lt`, and `le` ordered comparisons, false when either operand is NaN, and 9.7.3.1 defines `testp.notanumber`.  9.7.10.24 defines `cvt.rni` as rounding to the nearest integer with ties to even and keeps subnormals without `.ftz`.  9.4 states that bit-size types agree with any type of the same size, so `mov.b32` and `selp.b32` accept `.f32` registers.  The design agent measured on the GB10 that every f32 NaN result is `0x7fffffff`, which differs from Talos's NaN, and that non-NaN results matched the CPU on about 3.1 million cases per binary operation and on all 2^32 inputs of the single-input operations.
+
+### Options for NaN results
+
+| Option | Model | Cost |
+|---|---|---|
+| Exact | An instruction returns Talos's result, NaN bits included, as the WGSL model states | The statement is false on the GB10, which returns `0x7fffffff` |
+| Prediction | Integer tests before each operation decide whether Talos's result is NaN, the operation runs only otherwise, and the model stops at an operation whose result is NaN | Several integer instructions per operation, and proofs that every finite path of Talos's operations gives a non-NaN result |
+| NaN oracle | A NaN result takes its bits from a per-thread choice indexed by the count of operations | The thread semantics, `Det`, the memory model, and the launch theorems gain a second choice and a premise that events do not depend on it |
+| NaN value | A `.f32` register holds the bits of a binary32 value or the value `nan`, which stands for a NaN with unspecified bits.  An instruction whose Talos result is NaN gives `nan`.  The model stops where the bits of `nan` would be read | A new register class, and two instructions after each operation that replace a NaN by `0x7fc00000` |
+
+### Recommendation
+
+Use the NaN value.  It needs no change to the oracle, the memory model, or the launch theorems, and its proofs reuse the lemmas that Talos's NaN results are canonical.  A binary32 value stays a word in a `.b64` register, its bits zero-extended, as `wordOf .f32` already states, so the frame and agreement relations of the simulation lemmas keep their form.  `.f32` registers appear only inside the code of one arithmetic operation or comparison, numbered from that node's result register.
+
+| Source | PTX |
+|---|---|
+| f32 locals and float parameters | the `.b64` registers of the word layout.  A float parameter's buffer `#[bits.toUInt64]` already gives its register the bits through the prologue's load |
+| `constF32 bits` | `mov.b64` of `bits.toUInt64` |
+| `binF32` | `cvt.u32.u64` and `mov.b32` of each operand into a `.f32` register, `add.rn.f32`, `sub.rn.f32`, `mul.rn.f32`, or `div.rn.f32`, `testp.notanumber.f32` and `selp.b32` of `0x7fc00000`, then `mov.b32` and `cvt.u64.u32` back into the result's `.b64` register |
+| `unF32 sqrt`, `unF32 nearest` | the same around `sqrt.rn.f32` or `cvt.rni.f32.f32` |
+| `unF32 abs` | `and.b64` with `0x7fffffff`, since `abs.f32` of a NaN is unspecified and Talos's `abs` keeps the payload |
+| `ofBits32` | `and.b64` with `0xffffffff` |
+| `toBits32` | no code |
+| `eqF32`, `ltF32`, `leF32` | the operands into `.f32` registers, `setp.eq.f32`, `setp.lt.f32`, or `setp.le.f32`, then `selp.b64` of 1 and 0 |
+| `iteF32`, assignment of an f32 local | as for words |
+
+In the model, a `.f32` register holds the bits of a binary32 value or `nan`.  The arithmetic instructions read `nan` as `0x7fc00000`, compute Talos's result, and give `nan` when that result is a NaN and its bits otherwise.  `setp` reads `nan` the same way, `testp.notanumber` holds of `nan` and of NaN bits, `selp.b32` copies the selected operand, and `mov.b32` of `nan` into a `.b32` register stops the thread.  Where the model holds `nan`, the device register holds some NaN.  The code replaces every NaN result before the `mov.b32` that reads its bits, so no run of a translated kernel stops there.
+
+The trust document's thread-semantics row gains these meanings with their sources:
+- Instructions with rounding modifiers are IEEE-754 compliant and keep subnormals (9.7.3 and the subnormal notes of 9.7.3.3, 9.7.3.4, 9.7.3.5, 9.7.3.8, and 9.7.3.15), and single-precision NaN results are unspecified (9.7.3).
+- `testp` (9.7.3.1), the ordered comparisons (9.7.7.2), `selp` (9.7.7.3), `mov` (9.7.10.3), and the agreement of bit-size types with float registers (9.4).
+- Two readings beyond the ISA's text: `setp.eq.f32` treats `-0` and `+0` as equal, and `cvt.rni.f32.f32` gives Talos's `nearest` for every input other than a NaN and a NaN for a NaN.  9.7.10.24 states only that the result is the nearest integral value with ties to even.  A new exhaustive test on the GB10 checks `cvt.rni.f32.f32` followed by the NaN replacement against C's `nearbyintf` on all 2^32 inputs, as the design agent's test did, and the device cases include signed zeros and infinities.
+
+`canonical32` and the lemmas `canonical_f32_bin`, `canonical_f32_sqrt`, and `canonical_f32_nearest` move from `LeanExe/WGSL/` to a module of `LeanExe/ProofKit/`, so the PTX proofs do not import WGSL.
+
+The examples are `scale`, `branchSum`, and `roundRoot` of the verified WGSL examples and the binary32 example kernels `scale32`, `axpyArray32`, `matVec32`, and `condMix32`, with test cases that include zeros, subnormals, infinities, and NaNs.  The GPT-2 kernels and a host theorem for PTX come in a later stage.
+
+A fresh agent reviewed the first version of this recommendation, and the version above includes its findings:
+- `cvt.rni` lies outside the instructions that 9.7.3 calls IEEE-754 compliant, and 9.7.10.24 says nothing about NaN or infinite inputs or the sign of a zero result.  The first version said the model states only what the ISA guarantees.
+- The simulation lemmas cover only `.b64` registers, so `.f32` locals would have needed `.f32` versions of `Same`, `Keeps`, and `Agrees`, the assignment rule, the layout, and the prologue.  The reviewer suggested keeping binary32 values as words, which removes all of these.
+- The float-parameter prologue would have needed a `.b32` scratch register, which keeping floats as words also removes.
+- 9.7.7.2 does not state that `-0` equals `+0`.
+- The planned citations omitted 9.7.3.1, 9.7.7.3, 9.7.10.3, and the subnormal notes.
+- The canonical lemmas sit in a WGSL module.
+- The research paragraph said that the WGSL translation replaces every NaN result.  It does not replace the result of `abs`, and it rejects NaN and infinite constants.
+
+- [x] Review of this plan by a fresh agent.
+- [x] `.f32` registers, the instructions, semantics, `Det`, printer, parser, and round trip.  The first version of the parser matched the opcode and the operand list in one `match`, and with the new opcodes every case of `Instr.parse_tokens` ran out of heartbeats.  The parser now matches the opcode first and reads the operands with `ops2`, `ops3`, and `ops4`.  The cubins of the existing test kernels are unchanged.
+- [ ] Translation of binary32 expressions and statements, with the simulation lemmas.
+- [ ] Float parameters in the build kernel; `Spec.ptx` accepts floats.
+- [ ] Examples, theorems, and cases; exhaustive `cvt.rni` test; device test on the GB10.
+- [ ] Documents.
+- [ ] Full build, commit, push.

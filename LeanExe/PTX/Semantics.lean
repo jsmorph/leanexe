@@ -1,4 +1,5 @@
 import LeanExe.PTX.Syntax
+import Interpreter.Wasm.IEEE32
 
 /-!
 The meaning of one thread of a kernel.  A load of a global word takes its value from an oracle and
@@ -16,6 +17,14 @@ pointer, and every other use of a pointer stops the thread, as does a store of a
 `ld.param` records no event: the launch writes each parameter before the kernel starts, and
 nothing writes the parameters during the kernel.  Only loads of the input buffers and stores to
 the output are events.
+
+A `.f32` register holds the bits of a binary32 value or `nan`, a NaN whose bits PTX leaves
+unspecified (PTX ISA 9.7.3).  An arithmetic instruction reads `nan` as Talos's canonical NaN,
+computes Talos's `IEEE32` result, and gives `nan` when that result is a NaN and its bits
+otherwise.  Talos's results do not depend on the bits of a NaN operand, so reading `nan` as one
+NaN gives the result of every NaN.  `setp` reads `nan` the same way, `testp.notanumber` holds of
+`nan`, `selp.b32` copies the selected operand, and `mov.b32` of `nan` into a `.b32` register
+stops the thread.
 -/
 
 namespace LeanExe.PTX
@@ -47,22 +56,45 @@ structure Shape where
   sizes : List Nat
   outputSize : Nat
 
+/-- The value of a `.f32` register: the bits of a binary32 value, or a NaN with unspecified
+bits. -/
+inductive F32Val where
+  | bits (b : UInt32)
+  | nan
+  deriving Repr, DecidableEq
+
+/-- The bits that an arithmetic instruction reads: `nan` reads as Talos's canonical NaN. -/
+def F32Val.repr : F32Val → UInt32
+  | .bits b => b
+  | .nan => Wasm.IEEE32.canonicalNaN
+
+/-- The register value of an arithmetic result: `nan` for a NaN, and otherwise its bits. -/
+def F32Val.ofResult (r : UInt32) : F32Val := if Wasm.IEEE32.isNaN r then .nan else .bits r
+
+def F32Val.isNaN : F32Val → Bool
+  | .bits b => Wasm.IEEE32.isNaN b
+  | .nan => true
+
 /-- A thread's registers and whether it has returned.  A register that has not been written
 holds `none`. -/
 structure Local where
   r32 : Nat → Option UInt32
   r64 : Nat → Option Val64
+  rf : Nat → Option F32Val
   rp : Nat → Option Bool
   returned : Bool
 
 /-- The registers at the start of a thread. -/
-def Local.initial : Local := ⟨fun _ => none, fun _ => none, fun _ => none, false⟩
+def Local.initial : Local := ⟨fun _ => none, fun _ => none, fun _ => none, fun _ => none, false⟩
 
 def Local.set32 (l : Local) (d : Nat) (v : UInt32) : Local :=
   { l with r32 := fun i => if i = d then some v else l.r32 i }
 
 def Local.set64 (l : Local) (d : Nat) (v : Val64) : Local :=
   { l with r64 := fun i => if i = d then some v else l.r64 i }
+
+def Local.setf (l : Local) (d : Nat) (v : F32Val) : Local :=
+  { l with rf := fun i => if i = d then some v else l.rf i }
 
 def Local.setp (l : Local) (d : Nat) (v : Bool) : Local :=
   { l with rp := fun i => if i = d then some v else l.rp i }
@@ -82,6 +114,11 @@ def Src64.word (l : Local) (a : Src64) : Option UInt64 :=
 def Src32.get (l : Local) : Src32 → Option UInt32
   | .reg i => l.r32 i
   | .imm v => some v
+
+/-- The value of an operand of `selp.b32` on `.f32` registers. -/
+def SrcF.get (l : Local) : SrcF → Option F32Val
+  | .reg i => l.rf i
+  | .imm b => some (.bits b)
 
 /-- The word in a `.b64` register; a pointer has none. -/
 def Local.word (l : Local) (i : Nat) : Option UInt64 :=
@@ -105,6 +142,19 @@ def Bin64.apply : Bin64 → Val64 → Val64 → Option Val64
 def Shift.apply : Shift → UInt64 → UInt32 → UInt64
   | .shl, x, n => if n.toNat < 64 then x <<< n.toUInt64 else 0
   | .shr, x, n => if n.toNat < 64 then x >>> n.toUInt64 else 0
+
+/-- Talos's binary32 arithmetic. -/
+def BinF.apply : BinF → UInt32 → UInt32 → UInt32
+  | .add, a, b => Wasm.IEEE32.add a b
+  | .sub, a, b => Wasm.IEEE32.sub a b
+  | .mul, a, b => Wasm.IEEE32.mul a b
+  | .div, a, b => Wasm.IEEE32.div a b
+
+/-- Talos's ordered binary32 comparisons. -/
+def CmpF.apply : CmpF → UInt32 → UInt32 → Bool
+  | .eq, a, b => Wasm.IEEE32.eq a b
+  | .lt, a, b => Wasm.IEEE32.lt a b
+  | .le, a, b => Wasm.IEEE32.le a b
 
 def Cmp.apply : Cmp → UInt64 → UInt64 → Bool
   | .eq, x, y => x == y
@@ -175,6 +225,22 @@ def Instr.exec (s : Shape) (o : Oracle) (l : Local) (evs : List Event) : Instr �
             | none => (evs, none)
           else (evs, none)
       | _, _ => (evs, none)
+  | .binF op d a b => (evs, match l.rf a, l.rf b with
+      | some x, some y => some (l.setf d (.ofResult (op.apply x.repr y.repr)))
+      | _, _ => none)
+  | .sqrtF d a => (evs, (l.rf a).map fun x => l.setf d (.ofResult (Wasm.IEEE32.sqrt x.repr)))
+  | .rniF d a => (evs, (l.rf a).map fun x => l.setf d (.ofResult (Wasm.IEEE32.nearest x.repr)))
+  | .setpF c p a b => (evs, match l.rf a, l.rf b with
+      | some x, some y => some (l.setp p (c.apply x.repr y.repr))
+      | _, _ => none)
+  | .testNaN p a => (evs, (l.rf a).map fun x => l.setp p x.isNaN)
+  | .selpF d t f p => (evs, match l.rp p with
+      | some c => ((if c then t else f).get l).map (l.setf d)
+      | none => none)
+  | .toF d a => (evs, (l.r32 a).map fun v => l.setf d (.bits v))
+  | .ofF d a => (evs, match l.rf a with
+      | some (.bits v) => some (l.set32 d v)
+      | _ => none)
 
 /-- Whether a guard holds; `none` when its predicate has not been written. -/
 def Guard.holds (l : Local) (g : Guard) : Option Bool :=

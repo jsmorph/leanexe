@@ -24,6 +24,7 @@ def nameToken (pre : List Char) (index : Nat) : String := String.ofList (pre ++ 
 
 def w32Token (i : Nat) : String := nameToken ['%', 'w'] i
 def w64Token (i : Nat) : String := nameToken ['%', 'd'] i
+def fToken (i : Nat) : String := nameToken ['%', 'f'] i
 def predToken (i : Nat) : String := nameToken ['%', 'p'] i
 def paramToken (i : Nat) : String := nameToken ['b'] i
 def labelToken (i : Nat) : String := nameToken ['$', 'L'] i
@@ -37,6 +38,10 @@ def Src64.token : Src64 → String
 
 def Src32.token : Src32 → String
   | .reg i => w32Token i
+  | .imm v => imm32Token v
+
+def SrcF.token : SrcF → String
+  | .reg i => fToken i
   | .imm v => imm32Token v
 
 def Special.token : Special → String
@@ -57,6 +62,17 @@ def Bin64.token : Bin64 → String
 def Shift.token : Shift → String
   | .shl => "shl.b64"
   | .shr => "shr.b64"
+
+def BinF.token : BinF → String
+  | .add => "add.rn.f32"
+  | .sub => "sub.rn.f32"
+  | .mul => "mul.rn.f32"
+  | .div => "div.rn.f32"
+
+def CmpF.token : CmpF → String
+  | .eq => "setp.eq.f32"
+  | .lt => "setp.lt.f32"
+  | .le => "setp.le.f32"
 
 def Cmp.token : Cmp → String
   | .eq => "setp.eq.u64"
@@ -85,6 +101,14 @@ def Instr.tokens : Instr → List String
   | .cvtaGlobal d a => ["cvta.to.global.u64", w64Token d, ",", w64Token a, ";"]
   | .ld d a imm => ["ld.global.u64", w64Token d, ","] ++ addressTokens a imm ++ [";"]
   | .st a imm v => ["st.global.u64"] ++ addressTokens a imm ++ [",", w64Token v, ";"]
+  | .binF op d a b => [op.token, fToken d, ",", fToken a, ",", fToken b, ";"]
+  | .sqrtF d a => ["sqrt.rn.f32", fToken d, ",", fToken a, ";"]
+  | .rniF d a => ["cvt.rni.f32.f32", fToken d, ",", fToken a, ";"]
+  | .setpF c p a b => [c.token, predToken p, ",", fToken a, ",", fToken b, ";"]
+  | .testNaN p a => ["testp.notanumber.f32", predToken p, ",", fToken a, ";"]
+  | .selpF d t f p => ["selp.b32", fToken d, ",", t.token, ",", f.token, ",", predToken p, ";"]
+  | .toF d a => ["mov.b32", fToken d, ",", w32Token a, ";"]
+  | .ofF d a => ["mov.b32", w32Token d, ",", fToken a, ";"]
 
 def Guard.token (g : Guard) : String :=
   nameToken (if g.negated then ['@', '!', '%', 'p'] else ['@', '%', 'p']) g.pred
@@ -131,7 +155,8 @@ def regDecls (cls : String) (name : Nat → String) (i : Nat) : Nat → List Str
 def Module.tokens (m : Module) : List String :=
   [".version", "7.0", ".target", "sm_80", ".address_size", "64", ".visible", ".entry", "main",
     "("] ++ paramTokens 0 m.inputs ++ [")", "{"] ++ regDecls ".b32" w32Token 0 m.regs32 ++
-    regDecls ".b64" w64Token 0 m.regs64 ++ regDecls ".pred" predToken 0 m.preds ++
+    regDecls ".b64" w64Token 0 m.regs64 ++ regDecls ".f32" fToken 0 m.regsF ++
+    regDecls ".pred" predToken 0 m.preds ++
     (Stmt.listTokens 0 m.body).1 ++ ["ret", ";", "}"]
 
 /-- The separator after a token. -/

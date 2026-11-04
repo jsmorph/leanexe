@@ -36,6 +36,7 @@ def parseNum (pre : List Char) (n : Nat) (t : String) : Option Nat :=
 
 def w32Idx (t : String) : Option Nat := parseNum ['%', 'w'] 8 t
 def w64Idx (t : String) : Option Nat := parseNum ['%', 'd'] 8 t
+def fIdx (t : String) : Option Nat := parseNum ['%', 'f'] 8 t
 def predIdx (t : String) : Option Nat := parseNum ['%', 'p'] 8 t
 def paramIdx (t : String) : Option Nat := parseNum ['b'] 8 t
 def imm32 (t : String) : Option UInt32 := (parseNum ['0', 'x'] 8 t).map UInt32.ofNat
@@ -48,6 +49,11 @@ def parseSrc64 (t : String) : Option Src64 :=
 
 def parseSrc32 (t : String) : Option Src32 :=
   match w32Idx t with
+  | some i => some (.reg i)
+  | none => (imm32 t).map .imm
+
+def parseSrcF (t : String) : Option SrcF :=
+  match fIdx t with
   | some i => some (.reg i)
   | none => (imm32 t).map .imm
 
@@ -85,35 +91,110 @@ def parseCmp : String → Option Cmp
   | "setp.le.u64" => some .le
   | _ => none
 
+def parseBinF : String → Option BinF
+  | "add.rn.f32" => some .add
+  | "sub.rn.f32" => some .sub
+  | "mul.rn.f32" => some .mul
+  | "div.rn.f32" => some .div
+  | _ => none
+
+def parseCmpF : String → Option CmpF
+  | "setp.eq.f32" => some .eq
+  | "setp.lt.f32" => some .lt
+  | "setp.le.f32" => some .le
+  | _ => none
+
+/-- The operands `d , a ;` and the tokens after them. -/
+def ops2 : List String → Option (String × String × List String)
+  | d :: "," :: a :: ";" :: rest => some (d, a, rest)
+  | _ => none
+
+/-- The operands `d , a , b ;` and the tokens after them. -/
+def ops3 : List String → Option (String × String × String × List String)
+  | d :: "," :: a :: "," :: b :: ";" :: rest => some (d, a, b, rest)
+  | _ => none
+
+/-- The operands `d , a , b , c ;` and the tokens after them. -/
+def ops4 : List String → Option (String × String × String × String × List String)
+  | d :: "," :: a :: "," :: b :: "," :: c :: ";" :: rest => some (d, a, b, c, rest)
+  | _ => none
+
+/-- `mov.b32` between `.b32` registers, from an immediate, or between a `.b32` and a `.f32`
+register. -/
+def parseMov32 (d a : String) : Option Instr :=
+  match w32Idx d with
+  | some dw => match parseSrc32 a with
+    | some s => some (.mov32 dw s)
+    | none => (fIdx a).map (.ofF dw)
+  | none => do pure (.toF (← fIdx d) (← w32Idx a))
+
+/-- An instruction with three operands whose opcode names its operation. -/
+def parseOp3 (op d a b : String) : Option Instr :=
+  match parseBin64 op, parseShift op, parseCmp op, parseBinF op, parseCmpF op with
+  | some o, _, _, _, _ => do pure (.bin64 o (← w64Idx d) (← w64Idx a) (← parseSrc64 b))
+  | none, some s, _, _, _ => do pure (.shift s (← w64Idx d) (← w64Idx a) (← parseSrc32 b))
+  | none, none, some c, _, _ => do pure (.setp c (← predIdx d) (← w64Idx a) (← parseSrc64 b))
+  | none, none, none, some o, _ => do pure (.binF o (← fIdx d) (← fIdx a) (← fIdx b))
+  | none, none, none, none, some c => do pure (.setpF c (← predIdx d) (← fIdx a) (← fIdx b))
+  | none, none, none, none, none => none
+
 /-- An instruction with opcode `op` and the operand tokens that follow it. -/
 def parseInstr (op : String) (ts : List String) : Option (Instr × List String) :=
-  match op, ts with
-  | "mov.u32", d :: "," :: s :: ";" :: rest => do
+  match op with
+  | "mov.u32" => do
+      let (d, s, rest) ← ops2 ts
       pure (.special (← w32Idx d) (← parseSpecial s), rest)
-  | "mov.b32", d :: "," :: a :: ";" :: rest => do pure (.mov32 (← w32Idx d) (← parseSrc32 a), rest)
-  | "mov.b64", d :: "," :: a :: ";" :: rest => do pure (.mov64 (← w64Idx d) (← parseSrc64 a), rest)
-  | "selp.b64", d :: "," :: t :: "," :: f :: "," :: p :: ";" :: rest => do
+  | "mov.b32" => do
+      let (d, a, rest) ← ops2 ts
+      pure (← parseMov32 d a, rest)
+  | "mov.b64" => do
+      let (d, a, rest) ← ops2 ts
+      pure (.mov64 (← w64Idx d) (← parseSrc64 a), rest)
+  | "selp.b64" => do
+      let (d, t, f, p, rest) ← ops4 ts
       pure (.selp (← w64Idx d) (← parseSrc64 t) (← parseSrc64 f) (← predIdx p), rest)
-  | "not.pred", d :: "," :: a :: ";" :: rest => do pure (.notPred (← predIdx d) (← predIdx a), rest)
-  | "cvt.u64.u32", d :: "," :: a :: ";" :: rest => do pure (.widen (← w64Idx d) (← w32Idx a), rest)
-  | "cvt.u32.u64", d :: "," :: a :: ";" :: rest => do pure (.narrow (← w32Idx d) (← w64Idx a), rest)
-  | "mad.wide.u32", d :: "," :: a :: "," :: b :: "," :: c :: ";" :: rest => do
+  | "selp.b32" => do
+      let (d, t, f, p, rest) ← ops4 ts
+      pure (.selpF (← fIdx d) (← parseSrcF t) (← parseSrcF f) (← predIdx p), rest)
+  | "not.pred" => do
+      let (d, a, rest) ← ops2 ts
+      pure (.notPred (← predIdx d) (← predIdx a), rest)
+  | "cvt.u64.u32" => do
+      let (d, a, rest) ← ops2 ts
+      pure (.widen (← w64Idx d) (← w32Idx a), rest)
+  | "cvt.u32.u64" => do
+      let (d, a, rest) ← ops2 ts
+      pure (.narrow (← w32Idx d) (← w64Idx a), rest)
+  | "mad.wide.u32" => do
+      let (d, a, b, c, rest) ← ops4 ts
       pure (.madWide (← w64Idx d) (← w32Idx a) (← w32Idx b) (← w64Idx c), rest)
-  | "ld.param.u64", d :: "," :: "[" :: j :: "]" :: ";" :: rest => do
-      pure (.ldParam (← w64Idx d) (← paramIdx j), rest)
-  | "cvta.to.global.u64", d :: "," :: a :: ";" :: rest => do
+  | "ld.param.u64" => match ts with
+      | d :: "," :: "[" :: j :: "]" :: ";" :: rest => do
+          pure (.ldParam (← w64Idx d) (← paramIdx j), rest)
+      | _ => none
+  | "cvta.to.global.u64" => do
+      let (d, a, rest) ← ops2 ts
       pure (.cvtaGlobal (← w64Idx d) (← w64Idx a), rest)
-  | "ld.global.u64", d :: "," :: "[" :: a :: "+" :: imm :: "]" :: ";" :: rest => do
-      pure (.ld (← w64Idx d) (← w64Idx a) (← imm64 imm), rest)
-  | "st.global.u64", "[" :: a :: "+" :: imm :: "]" :: "," :: v :: ";" :: rest => do
-      pure (.st (← w64Idx a) (← imm64 imm) (← w64Idx v), rest)
-  | op, d :: "," :: a :: "," :: b :: ";" :: rest =>
-      match parseBin64 op, parseShift op, parseCmp op with
-      | some o, _, _ => do pure (.bin64 o (← w64Idx d) (← w64Idx a) (← parseSrc64 b), rest)
-      | none, some s, _ => do pure (.shift s (← w64Idx d) (← w64Idx a) (← parseSrc32 b), rest)
-      | none, none, some c => do pure (.setp c (← predIdx d) (← w64Idx a) (← parseSrc64 b), rest)
-      | none, none, none => none
-  | _, _ => none
+  | "ld.global.u64" => match ts with
+      | d :: "," :: "[" :: a :: "+" :: imm :: "]" :: ";" :: rest => do
+          pure (.ld (← w64Idx d) (← w64Idx a) (← imm64 imm), rest)
+      | _ => none
+  | "st.global.u64" => match ts with
+      | "[" :: a :: "+" :: imm :: "]" :: "," :: v :: ";" :: rest => do
+          pure (.st (← w64Idx a) (← imm64 imm) (← w64Idx v), rest)
+      | _ => none
+  | "sqrt.rn.f32" => do
+      let (d, a, rest) ← ops2 ts
+      pure (.sqrtF (← fIdx d) (← fIdx a), rest)
+  | "cvt.rni.f32.f32" => do
+      let (d, a, rest) ← ops2 ts
+      pure (.rniF (← fIdx d) (← fIdx a), rest)
+  | "testp.notanumber.f32" => do
+      let (p, a, rest) ← ops2 ts
+      pure (.testNaN (← predIdx p) (← fIdx a), rest)
+  | _ => do
+      let (d, a, b, rest) ← ops3 ts
+      pure (← parseOp3 op d a b, rest)
 
 /-- Whether a statement list ends before the tokens `ts`, when the next label number is `n`. -/
 def stops (n : Nat) : List String → Bool
@@ -207,10 +288,11 @@ def parseModule (ts : List String) : Option Module := do
   let "{" :: rest := rest | none
   let (regs32, rest) ← parseRegs ".b32" w32Token fuel 0 rest
   let (regs64, rest) ← parseRegs ".b64" w64Token fuel 0 rest
+  let (regsF, rest) ← parseRegs ".f32" fToken fuel 0 rest
   let (preds, rest) ← parseRegs ".pred" predToken fuel 0 rest
   let (body, rest, _) ← parseStmts fuel 0 rest
   let ["ret", ";", "}"] := rest | none
-  pure { inputs := params - 1, regs32, regs64, preds, body }
+  pure { inputs := params - 1, regs32, regs64, regsF, preds, body }
 
 /-- The kernel a text holds. -/
 def Module.parse (text : String) : Option Module := parseModule (lex text)

@@ -15,6 +15,7 @@ def addOne : Module where
   inputs := 1
   regs32 := 3
   regs64 := 10
+  regsF := 0
   preds := 1
   body := [
     .instr none (.special 0 .ctaidX),

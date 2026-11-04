@@ -75,7 +75,8 @@ def _root_.LeanExe.Source.Spec.ptx (K : Source.Spec) : Option Module :=
     let p := K.kinds.length
     let (sb, n1) ← trStmt K.ptxLayout K.body (K.width + p + 3)
     let (se, res, n2) ← trExpr K.ptxLayout K.element n1
-    pure { inputs := p, regs32 := n2 + 1, regs64 := n2 + 1, preds := n2 + 1
+    pure { inputs := p, regs32 := n2 + 1, regs64 := n2 + 1, regsF := n2 + 1,
+           preds := n2 + 1
            body := K.ptxPrologue ++ [inst (.setp .lt 0 K.index (.reg K.count.ptxReg)),
              .ite 0 (sb ++ se ++ storeCode K.index (K.width + p) n2 res) []] }
 
