@@ -1,4 +1,8 @@
 import Verified.Reflect.Command
+import TestSupport.Native.Common
+import LeanExe.Native.Proof.Req
+import Verified.Bare
+import Verified.Call
 
 /-!
 The step of the request protocol's test (`docs/native-bare-metal.md`): an echo over a UART that
@@ -37,5 +41,30 @@ transmit buffer is full, and bit 1 set while the receive buffer is full. -/
 def cmsdkTick (s v : UInt64) : UInt64 × UInt64 := echoTick 0 1 1 2 s v
 
 verified_compile (pages := 1) (cap := 1) reqCompiled := [readReq, writeReq, echoTick, cmsdkTick]
+
+open Wasm LClight LeanExe.Native in
+/-- The program with requests around `cmsdkTick`, from the state 3, runs forever: for every
+sequence `σ` of the values that its volatile loads read, window `n` performs the one register
+access that `cmsdkTick` requests from the state and the last value read. -/
+theorem echo_program (A : Archi) (X : ExtSem)
+    (pre : List (ident × globdef (fundef function) type)) (hpre : PrefixOk pre)
+    (σ : Nat → int) :
+    LoopReacts A X (reqProgram pre reqCompiled.translation (reqMain 5 3)) E0
+      (reqTrace cmsdkTick 3 σ) := by
+  obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := reqCompiled.cmsdkTick.native A X
+  obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := [.i64, .i64])
+    (rs0 := [.i64, .i64]) (by decide +kernel)
+  have hty : type_of_function fd = .Tfunction [tulong, tulong] .Tvoid cc_default := by
+    rw [entry_type reqCompiled.translation_eq hfd hsig]
+    rfl
+  have h2 : 2 ≤ reqCompiled.translation.nres := by
+    rw [translate_nres reqCompiled.translation_eq,
+      translate_funcs_eq reqCompiled.translation_eq reqCompiled.translation_funcs]
+    decide +kernel
+  obtain ⟨hAt0, -, -⟩ : Verified.Ready reqCompiled.module reqCompiled.tables
+      (Verified.initialHeap reqCompiled.tables) reqCompiled.module.initialStore :=
+    Verified.Ready.initial rfl reqCompiled.initial
+  exact req_program reqCompiled.translation_eq hpre hfd hty h2 A X
+    (heapAt_nativeStore hAt0 1) (reqRuns_of_nativeA hnat (fun _ _ _ => trivial) (by decide)) 3 σ
 
 end TestSupport.Bare

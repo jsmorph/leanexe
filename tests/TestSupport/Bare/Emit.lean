@@ -250,9 +250,15 @@ structure ReqCase where
   cap : Nat
   k : Nat
   s0 : UInt64
+  tick : UInt64 → UInt64 → UInt64 × UInt64
+  thm : ∀ T, translate cap module = some T → ∀ (A : Archi) (X : ExtSem)
+    (pre : List (ident × globdef (fundef function) type)), PrefixOk pre → ∀ σ : Nat → int,
+    LoopReacts A X (reqProgram pre T (reqMain k s0)) E0 (reqTrace tick s0 σ)
 
 def reqCases : List ReqCase := [
-  { name := "echo", module := TestSupport.Bare.reqCompiled.module, cap := 1, k := 5, s0 := 3 }]
+  { name := "echo", module := TestSupport.Bare.reqCompiled.module, cap := 1, k := 5, s0 := 3,
+    tick := TestSupport.Bare.cmsdkTick,
+    thm := thm_of TestSupport.Bare.reqCompiled.translation_eq TestSupport.Bare.echo_program }]
 
 def emitReq (dir : String) (c : ReqCase) : IO Unit := do
   let some t := translate c.cap c.module
