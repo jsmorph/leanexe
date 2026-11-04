@@ -34,6 +34,13 @@ the kind of result.  `native-bare emit-in DIR` writes each one's C text, its
 translation followed by `lx_in`, `lx_out`, and the `main` of `inMain`, and the names of its
 functions that take the call depth, and `native-bare check-in DIR` compares each whole program
 with the Clight that `clightgen` wrote for it.
+
+The programs with requests of `tests/baremetal/req.sh` are the cases of `reqCases`, each a step
+function with the words of its initial state and the theorem `LoopReacts` of its program.
+`native-bare emit-req DIR` writes each one's C text, its translation followed by `lx_reg` and the
+`main` of `reqMain`, and the names of its functions that take the call depth, and
+`native-bare check-req DIR` compares each whole program with the Clight that `clightgen` wrote
+for it.
 -/
 
 open LeanExe.Native LClight Wasm
@@ -242,32 +249,34 @@ def checkCtl (dir : String) : IO UInt32 := do
         failed := true
   pure (if failed then 1 else 0)
 
-/-- A program with requests: the step `k` of `module`, translated with `cap` pages, and the
-initial state `s0`. -/
+/-- A program with requests: the step `k` of `module`, translated with `cap` pages, whose state
+of type `G` has the words `words`, and the initial state `s0`. -/
 structure ReqCase where
   name : String
   module : Module
   cap : Nat
   k : Nat
-  s0 : UInt64
-  tick : UInt64 → UInt64 → UInt64 × UInt64
+  G : Type
+  s0 : G
+  words : G → List UInt64
+  tick : G → UInt64 → G × UInt64
   thm : ∀ T, translate cap module = some T → ∀ (A : Archi) (X : ExtSem)
     (pre : List (ident × globdef (fundef function) type)), PrefixOk pre → ∀ σ : Nat → int,
-    LoopReacts A X (reqProgram pre T (reqMain k s0)) E0 (reqTrace tick s0 σ)
+    LoopReacts A X (reqProgram pre T (reqMain k (words s0))) E0 (reqTrace tick s0 σ)
 
 def reqCases : List ReqCase := [
-  { name := "echo", module := TestSupport.Bare.reqCompiled.module, cap := 1, k := 5, s0 := 3,
-    tick := TestSupport.Bare.cmsdkTick,
+  { name := "echo", module := TestSupport.Bare.reqCompiled.module, cap := 1, k := 5, G := UInt64,
+    s0 := 3, words := fun g => [g], tick := TestSupport.Bare.cmsdkTick,
     thm := thm_of TestSupport.Bare.reqCompiled.translation_eq TestSupport.Bare.echo_program },
   { name := "deadline", module := TestSupport.Bare.reqCompiled.module, cap := 1, k := 8,
-    s0 := 5, tick := TestSupport.Bare.deadlineCmsdkTick,
+    G := UInt64, s0 := 5, words := fun g => [g], tick := TestSupport.Bare.deadlineCmsdkTick,
     thm := thm_of TestSupport.Bare.reqCompiled.translation_eq
       TestSupport.Bare.deadline_program }]
 
 def emitReq (dir : String) (c : ReqCase) : IO Unit := do
   let some t := translate c.cap c.module
     | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
-  match t.reqText c.k c.s0 with
+  match t.reqText c.k (c.words c.s0) with
   | .error e => throw <| IO.userError s!"native-bare: {c.name}: {e}"
   | .ok text => IO.FS.writeFile s!"{dir}/{c.name}.c" text
   IO.FS.writeFile s!"{dir}/{c.name}.depth"
@@ -280,7 +289,7 @@ def checkReq (dir : String) : IO UInt32 := do
     let some t := translate c.cap c.module
       | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
     let text ← IO.FS.readFile s!"{dir}/{c.name}.v"
-    match ClightCheck.check t text (reqTail (reqMain c.k c.s0)) with
+    match ClightCheck.check t text (reqTail (reqMain c.k (c.words c.s0))) with
     | .error e =>
         IO.eprintln s!"native-bare: {c.name}: {e}"
         failed := true

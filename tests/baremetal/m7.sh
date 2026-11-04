@@ -15,8 +15,8 @@
 # 4, with DACCVIOL and MMARVALID in CFSR and that word's address in MMFAR.  With a stack of 8
 # KiB, below its bound, it must stop at MemManage with DACCVIOL, MMARVALID, and MSTKERR, the
 # failed stacking of the exception's frame on the full stack, and an address of the guard in
-# MMFAR.  Each of these faults ends with status 255.  Without the UART's transmitter enable it
-# must write nothing and exit with status 42.
+# MMFAR.  Each of these faults ends with status 255.  With the UART's transmitter and receiver
+# disabled, it must write nothing and exit with status 42.
 #
 # Each program NAME of DIR is built with tools/baremetal/armv7m/build.sh, whose stack bound and
 # access check must hold, and runs in its own QEMU process, with QEMU's generic loader placing

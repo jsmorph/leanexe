@@ -227,7 +227,7 @@ access that `cmsdkTick` requests from the state and the last value read. -/
 theorem echo_program (A : Archi) (X : ExtSem)
     (pre : List (ident × globdef (fundef function) type)) (hpre : PrefixOk pre)
     (σ : Nat → int) :
-    LoopReacts A X (reqProgram pre reqCompiled.translation (reqMain 5 3)) E0
+    LoopReacts A X (reqProgram pre reqCompiled.translation (reqMain 5 [3])) E0
       (reqTrace cmsdkTick 3 σ) := by
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := reqCompiled.cmsdkTick.native A X
   obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := [.i64, .i64])
@@ -242,8 +242,10 @@ theorem echo_program (A : Archi) (X : ExtSem)
   obtain ⟨hAt0, -, -⟩ : Verified.Ready reqCompiled.module reqCompiled.tables
       (Verified.initialHeap reqCompiled.tables) reqCompiled.module.initialStore :=
     Verified.Ready.initial rfl reqCompiled.initial
-  exact req_program reqCompiled.translation_eq hpre hfd hty h2 A X
-    (heapAt_nativeStore hAt0 1) (reqRuns_of_nativeA hnat (fun _ _ _ => trivial) (by decide)) 3 σ
+  exact req_program (n := 1) reqCompiled.translation_eq hpre hfd hty h2 A X
+    (heapAt_nativeStore hAt0 1) (words := fun g : UInt64 => [g]) (fun _ => rfl)
+    (reqRuns_of_nativeA (n := 0) (fun _ => rfl) (fun _ => rfl) hnat (fun _ _ _ => trivial)
+      (by decide)) 3 σ
 
 open Wasm LClight LeanExe.Native in
 /-- The program with requests around `deadlineCmsdkTick`, from the state 5, runs forever: for
@@ -252,7 +254,7 @@ register access that `deadlineCmsdkTick` requests from the state and the last va
 theorem deadline_program (A : Archi) (X : ExtSem)
     (pre : List (ident × globdef (fundef function) type)) (hpre : PrefixOk pre)
     (σ : Nat → int) :
-    LoopReacts A X (reqProgram pre reqCompiled.translation (reqMain 8 5)) E0
+    LoopReacts A X (reqProgram pre reqCompiled.translation (reqMain 8 [5])) E0
       (reqTrace deadlineCmsdkTick 5 σ) := by
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := reqCompiled.deadlineCmsdkTick.native A X
   obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := [.i64, .i64])
@@ -267,7 +269,9 @@ theorem deadline_program (A : Archi) (X : ExtSem)
   obtain ⟨hAt0, -, -⟩ : Verified.Ready reqCompiled.module reqCompiled.tables
       (Verified.initialHeap reqCompiled.tables) reqCompiled.module.initialStore :=
     Verified.Ready.initial rfl reqCompiled.initial
-  exact req_program reqCompiled.translation_eq hpre hfd hty h2 A X
-    (heapAt_nativeStore hAt0 1) (reqRuns_of_nativeA hnat (fun _ _ _ => trivial) (by decide)) 5 σ
+  exact req_program (n := 1) reqCompiled.translation_eq hpre hfd hty h2 A X
+    (heapAt_nativeStore hAt0 1) (words := fun g : UInt64 => [g]) (fun _ => rfl)
+    (reqRuns_of_nativeA (n := 0) (fun _ => rfl) (fun _ => rfl) hnat (fun _ _ _ => trivial)
+      (by decide)) 5 σ
 
 end TestSupport.Bare
