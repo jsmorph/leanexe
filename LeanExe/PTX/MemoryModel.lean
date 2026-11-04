@@ -5,28 +5,30 @@ Executions of a launch under the PTX memory consistency model (PTX ISA chapter 8
 
 The operations on a location fall into five phases:
 - writes before the buffers receive the values that the kernel reads;
-- the writes of those values by the copies to the device;
+- the writes of those values by copies to the device, memsets, or the threads of earlier launches;
 - the threads' loads and stores (`Module.invoke`, with an oracle for each thread's loads);
-- one read of each output word by the copy back to the host;
+- one read of each output word by the copy back to the host or by a later launch;
 - writes after that read.
 
 The memory model's storage unit is a byte, and a memory location is the range of bytes that an
 access covers (8.2).  A location here is a buffer and a 64-bit word.  Every access of a thread
-covers one aligned word, and the buffers are disjoint allocations, so two accesses of threads
-overlap completely or not at all.  The relations are stated for each byte of a word, and a write
-before or after the kernel covers one byte, so writes of any size before and after the kernel are
-covered.
+covers one aligned word, and the buffers are allocations aligned to 8 bytes, so two accesses of
+threads overlap completely or not at all.  Two input buffers may share one allocation, which the
+kernel's threads only read.  The relations are stated for each byte of a word, and a write before or
+after the kernel covers one byte, so writes of any size before and after the kernel are covered.
 
 Causality order is defined here, not chosen.  An operation precedes another on the same location
 when its phase is earlier, or when both are accesses of one thread in program order.  The phase
-edges follow from API synchronization (8.9.4): the host queues the copies to the device, the launch,
-and the copy back on one stream; the start of a kernel synchronizes with the start of its threads;
-and the end of the threads synchronizes with the end of the kernel.  These synchronizations also
-take part in proxy-preserved base causality order.  Program order is part of base causality order
-(8.9.1, 8.9.5).  The ISA's causality order contains these edges.  A smaller causality order
-weakens the coherence and causality axioms and leaves more pairs of accesses unrelated, so a
-statement that holds in every consistent execution, including that no access of a thread is in a
-data race, holds for the ISA's order.
+edges follow from API synchronization (8.9.4): the host queues the writes of the buffers, the
+launch, and the later reads on one stream, where the completion of a task synchronizes with the
+start of the next; the start of a kernel synchronizes with the start of its threads; and the end of
+the threads synchronizes with the end of the kernel.  A write of a buffer is a copy from the host, a
+memset, or a store of an earlier launch's thread, and a later read is a copy to the host or a load
+of a later launch's thread.  These synchronizations also take part in proxy-preserved base causality
+order.  Program order is part of base causality order (8.9.1, 8.9.5).  The ISA's causality order
+contains these edges.  A smaller causality order weakens the coherence and causality axioms and
+leaves more pairs of accesses unrelated, so a statement that holds in every consistent execution,
+including that no access of a thread is in a data race, holds for the ISA's order.
 
 An execution chooses the oracle of each thread, the writes before and after the kernel, a coherence
 order and a reads-from map for each byte, and the values that the copy back reads.  A read takes

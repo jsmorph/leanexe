@@ -41119,5 +41119,10 @@ A fresh agent reviewed the plan, read the code and the cited documents, and conf
 - [x] Review of this plan by a fresh agent.
 - [x] Memory-model statements and the generic host model.
 - [x] WGSL and PTX devices and their `generate_host`.
-- [ ] CUDA session, driver, and tests on the GB10.
-- [ ] Documents, full build, commit, push.
+- [x] CUDA session, driver, and tests on the GB10.
+- [x] Documents, full build, commit, push.
+- [ ] Comparison of the GPT-2 scores on the GB10 with those of `gpt32.wasm`, which needs Node.js on edgexpert.
+
+### Results
+
+`Exec.lean` states the host model over `Device` and `Backend`, and `Compose.generate_host` takes a device and its backend.  `Demos.Gpt32.Verified.generate_host` instantiates it with the WGSL device and `Demos.Gpt32.VerifiedPtx.generate_host` with the PTX device, and both depend only on `propext`, `Classical.choice`, and `Quot.sound`.  The PTX backend proves the pairing of 32-bit halves through `toNat` and `omega`, and it takes each call's run from the `LaunchSeq` half of the stage 4 launch theorem and `Launch.meets`.  A short session on the GB10 gave the expected words for `add`, left the output of a run of 0 blocks unchanged, and rejected a run whose output was an input.  `tests/gpt32/native.sh --devices cuda` compared 15 steps of the three small random models, and every score equaled native `step32` bit for bit.  `uv run tests/gpt32/generate.py --driver cuda --tokens 16` generated 16 tokens after "The meaning of life is" with GPT-2 124M in 7.1 seconds for 20 steps, with the start of Lean and the host.  Its largest score difference from Hugging Face's float32 model was 8.76e-6 relative to the largest score, and no choice of token differed.  The GB10 ran driver 580.178.04, and the cubins came from `ptxas` V13.0.88.  The full build passed with 11,454 jobs.  The link check found a link to `LeanExe/WGSL/F32Result.lean` in `Verified/README.md`, which stage 3 left when it moved those lemmas to `LeanExe/ProofKit/F32Canonical.lean`, and the link now points there.

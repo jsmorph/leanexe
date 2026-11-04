@@ -10,21 +10,26 @@
 # url = "https://download.pytorch.org/whl/cpu"
 # explicit = true
 # ///
-"""Generates text with GPT-2 124M in binary32, every step in the verified compiler's WGSL kernels
-of Demos/Gpt32/Verified.lean, run by build/tools/leanexe-webgpu-host in session mode.
+"""Generates text with GPT-2 124M in binary32, every step in the verified compiler's kernels
+of Demos/Gpt32/Verified.lean, run in session mode by build/tools/leanexe-webgpu-host on a Vulkan
+driver (WGSL), by build/tools/leanexe-cuda-host on an NVIDIA GPU (PTX), or by
+tools/gpt32-wasm-host.mjs with the verified build/verified/gpt32.wasm.
 
-Run with `uv run tests/gpt32/generate.py [--driver swiftshader|llvmpipe] [--tokens N] [PROMPT]`,
-or with `--export` to write the weight files and stop.
+Run with `uv run tests/gpt32/generate.py [--driver swiftshader|llvmpipe|cuda|wasm] [--tokens N]
+[--compare DRIVER] [PROMPT]`, or with `--export` to write the weight files and stop.
 The script writes the pinned openai-community/gpt2 checkpoint to build/gpt2-32/ as Wasm arrays
 of binary32 values (8 bytes per value), one file per array: the token embedding in four chunks
 of at most 12,565 rows, the positional embedding, and each layer's arrays, with `c_attn` split
 into its `q`, `k`, and `v` columns.  It runs Demos/Gpt32/Generate.lean, which writes the kernels
-to build/wgsl, the directory of the kernels of `tests/wgsl/run.sh`, sends the host the
-commands of `Demos.Gpt32.generate_host`, chooses each token with `greedy32`, and saves the scores
-of each step.  For each step the script runs Hugging Face's float32 model on
-the same prefix and reports the largest score difference relative to the largest score and
-whether the two models choose the same token."""
+to build/wgsl, the directory of the kernels of `tests/wgsl/run.sh`, or to build/gpt32-ptx, sends
+the host the commands of `Demos.Gpt32.generate_host`, chooses each token with `greedy32`, and
+saves the scores of each step to build/gpt2-32/scores-DRIVER.bin.  With `cuda` it records the
+SHA-256 of each cubin in build/gpt32-ptx/cubins.sha256.  For each step the script runs Hugging
+Face's float32 model on the same prefix and reports the largest score difference relative to the
+largest score and whether the two models choose the same token.  `--compare DRIVER` compares the
+scores bit for bit with those that an earlier run on DRIVER saved."""
 import argparse
+import hashlib
 import os
 import pathlib
 import subprocess
@@ -36,13 +41,18 @@ import torch
 from transformers import GPT2LMHeadModel, GPT2TokenizerFast
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-HOST = ROOT / 'build/tools/leanexe-webgpu-host'
+WEBGPU_HOST = ROOT / 'build/tools/leanexe-webgpu-host'
+CUDA_HOST = ROOT / 'build/tools/leanexe-cuda-host'
+WASM_HOST = ROOT / 'tools/gpt32-wasm-host.mjs'
+GPT32_WASM = ROOT / 'build/verified/gpt32.wasm'
 WGSL = ROOT / 'build/wgsl'
+PTX = ROOT / 'build/gpt32-ptx'
 OUT = ROOT / 'build/gpt2-32'
 REPO = 'openai-community/gpt2'
 REVISION = '607a30d783dfa663caf39e06633721c8d4cfcd7e'
-DRIVERS = {'swiftshader': '/usr/lib/chromium/vk_swiftshader_icd.json',
-           'llvmpipe': '/usr/share/vulkan/icd.d/lvp_icd.json'}
+VULKAN = {'swiftshader': '/usr/lib/chromium/vk_swiftshader_icd.json',
+          'llvmpipe': '/usr/share/vulkan/icd.d/lvp_icd.json'}
+DRIVERS = [*VULKAN, 'cuda', 'wasm']
 D, F, NH, CAP, LAYERS, VOCAB, CHUNK = 768, 3072, 12, 1024, 12, 50257, 12565
 LAYER_NAMES = ['g1', 'b1', 'wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo', 'g2', 'b2',
                'wfc', 'bfc', 'wproj', 'bproj']
@@ -90,6 +100,9 @@ def main():
     parser.add_argument('--driver', choices=DRIVERS, default='llvmpipe')
     parser.add_argument('--tokens', type=int, default=32)
     parser.add_argument('--save', help='writes the scores of each step to this .npy file')
+    parser.add_argument('--compare', choices=DRIVERS,
+                        help='compares the scores bit for bit with those of an earlier run on '
+                             'this driver')
     parser.add_argument('--export', action='store_true',
                         help='writes the weight files to build/gpt2-32 and stops')
     parser.add_argument('prompt', nargs='?', default='The meaning of life is')
@@ -103,11 +116,21 @@ def main():
     if len(prompt) + args.tokens > CAP:
         sys.exit(f'prompt and completion exceed {CAP} tokens')
     scores_path = OUT / f'scores-{args.driver}.bin'
-    env = dict(os.environ, VK_ICD_FILENAMES=DRIVERS[args.driver])
+    env = dict(os.environ)
+    if args.driver in VULKAN:
+        target, host, kernels = 'wgsl', WEBGPU_HOST, WGSL
+        env['VK_ICD_FILENAMES'] = VULKAN[args.driver]
+    elif args.driver == 'cuda':
+        target, host, kernels = 'ptx', CUDA_HOST, PTX
+    else:
+        if not GPT32_WASM.exists():
+            sys.exit(f'{GPT32_WASM} is missing; tests/verified/run.sh writes it')
+        target, host, kernels = 'wgsl', WASM_HOST, WGSL
+        env['LEANEXE_GPT32_WASM'] = str(GPT32_WASM)
     start = time.time()
     run = subprocess.run(
         [str(ROOT / 'tools/leanrun'), '--timeout', '6h', 'lake', 'env', 'lean', '--run',
-         'Demos/Gpt32/Generate.lean', str(HOST), str(OUT), str(WGSL), str(scores_path),
+         'Demos/Gpt32/Generate.lean', target, str(host), str(OUT), str(kernels), str(scores_path),
          str(NH), str(F), str(CHUNK), str(VOCAB), str(LAYERS), str(args.tokens)] +
         [str(i) for i in prompt],
         cwd=ROOT, env=env, check=True, stdout=subprocess.PIPE, text=True)
@@ -130,6 +153,23 @@ def main():
             print(f'step {p}: ours {token}, Hugging Face {hf_token}, gap {gap:.3g}')
     if args.save:
         np.save(args.save, saved)
+    if args.driver == 'cuda':
+        (PTX / 'cubins.sha256').write_text(''.join(
+            f'{hashlib.sha256(c.read_bytes()).hexdigest()}  {c.name}\n'
+            for c in sorted(PTX.glob('*.cubin'))))
+    if args.compare:
+        other = np.fromfile(OUT / f'scores-{args.compare}.bin', dtype='<u4')
+        mine = saved.view('<u4').reshape(-1)
+        if other.size != mine.size:
+            print(f'{other.size} scores on {args.compare}, {mine.size} on {args.driver}')
+        else:
+            unequal = np.flatnonzero(other != mine)
+            if unequal.size == 0:
+                print(f'all {mine.size} scores equal bit for bit to those on {args.compare}')
+            else:
+                i = int(unequal[0])
+                print(f'{unequal.size} scores differ from those on {args.compare}, the first '
+                      f'at step {i // VOCAB}, token {i % VOCAB}')
     print(tokenizer.decode(ids))
     print(f'{len(ids)} tokens, {elapsed:.1f} s for {len(ids) - 1} steps on {args.driver}, '
           f'with the start of Lean and the host; '

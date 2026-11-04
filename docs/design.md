@@ -206,7 +206,8 @@ output.  The models use strict binary32 arithmetic.  Applying the results to har
 the driver and device implement that arithmetic and the queue order and memory dependencies that
 the memory-model statement uses, and that no invocation runs past a point where the model stops.
 [The binary32 GPT application](../Demos/Gpt32) adds `generate_host`, which proves the scores of a
-generation step and race freedom under its shape, weight, and token bounds.
+generation step under its shape, weight, and token bounds, with the statement of the memory model
+for each dispatch.
 [The compiler manual](verified-manual.md#the-wgsl-library-and-the-browser-pages) describes
 the subset, its tools, and the browser pages.
 
@@ -222,6 +223,8 @@ the ISA leaves single-precision NaN results unspecified, and the translation rep
 result of an operation by Talos's canonical NaN.
 [The add-one kernel](../LeanExe/PTX/AddOne.lean) is written by hand, and the verified compiler's
 kernels and the add-one kernel run on an NVIDIA GB10 through [the CUDA host](../tools/cuda-host.c).
+`Demos.Gpt32.VerifiedPtx.generate_host` proves the scores of a GPT-2 generation step with the PTX
+kernels in a session of that host, with the statement of the memory model for each launch.
 [The trusted-base document](trusted-base.md#p-ptx-kernels) lists what applying the launch
 theorems to a GPU assumes, including the No Thin Air axiom of the PTX memory model and the
 meaning of `cvt.rni.f32.f32`.

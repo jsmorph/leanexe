@@ -2,6 +2,7 @@
 
    cuda-host info
    cuda-host run IMAGE ENTRY BLOCKS OUTPUT [INPUT...]
+   cuda-host session
 
    IMAGE is a cubin that ptxas wrote or a PTX text, which the driver compiles.  Each INPUT is a
    global buffer at the next parameter, given as u32:W,W,... (32-bit words), u64:W,W,... (64-bit
@@ -12,8 +13,27 @@
    whole number of 64-bit words.  The launch is BLOCKS blocks of 64 threads along x.  The copies
    to the device, the launch, and the copy back are queued on one stream, and the host reads the
    output after synchronizing that stream.  The output is printed as 32-bit words in decimal,
-   separated by commas, least significant half of each 64-bit word first.  Any error ends the
-   process with a message on standard error. */
+   separated by commas, least significant half of each 64-bit word first.
+
+   A session keeps one context, one stream, and named buffers and kernels, and reads commands from
+   standard input, one per line, answering each with a line `ok`:
+     load NAME PATH           a buffer holding the file's bytes
+     words NAME SPEC          a buffer holding u32:W,... or u64:W,... as for an input
+     output NAME N            a buffer of N + 1 64-bit words: N, then zeros
+     kernel NAME PATH         loads the image at PATH and its entry `main`
+     run KERNEL BLOCKS OUT IN...   launches BLOCKS blocks of 64 threads with IN... at parameters
+                              0, 1, ... and OUT after them
+     read NAME PATH           writes the buffer's bytes to the file
+     free NAME                releases the buffer or kernel
+     quit
+   A command that names an existing buffer or kernel replaces it.  The session queues copies,
+   memsets, and launches on its stream, whose tasks run in order.  A replacement buffer of the same
+   size is written in place on the stream.  The session synchronizes the stream before it frees a
+   buffer or unloads a kernel, before it releases host memory that a queued copy reads, and at
+   `read` and `quit`.  `run` rejects an output that is also an input, and a run of 0 blocks
+   launches nothing.  For `run`, `ok` means that the launch is queued, and an error of the launch
+   ends the process at the next synchronization.  Any error ends the process with a message on
+   standard error. */
 
 #include <errno.h>
 #include <inttypes.h>
@@ -261,6 +281,214 @@ static void run(const char *imagePath, const char *entry, unsigned blocks, const
   free(image);
 }
 
+/* A named buffer or kernel of a session. */
+typedef struct {
+  char name[64];
+  CUdeviceptr buffer;
+  size_t bytes;
+  CUmodule module;
+  CUfunction function;
+} Entry;
+
+#define MAX_ENTRIES 4096
+static Entry entries_[MAX_ENTRIES];
+static int entryCount_ = 0;
+
+static Entry *find_entry(const char *name) {
+  for (int i = 0; i < entryCount_; i++) {
+    if (strcmp(entries_[i].name, name) == 0) {
+      return &entries_[i];
+    }
+  }
+  return NULL;
+}
+
+static Entry *new_entry(const char *name) {
+  if (strlen(name) >= sizeof entries_[0].name) {
+    fprintf(stderr, "name too long: %s\n", name);
+    exit(1);
+  }
+  if (entryCount_ == MAX_ENTRIES) {
+    die("too many names");
+  }
+  Entry *entry = &entries_[entryCount_++];
+  memset(entry, 0, sizeof *entry);
+  strcpy(entry->name, name);
+  return entry;
+}
+
+static void synchronize(CUstream stream) {
+  check(cuStreamSynchronize(stream), "cuStreamSynchronize");
+}
+
+/* Frees what an entry holds, after the work queued on the stream ends. */
+static void release(CUstream stream, Entry *entry) {
+  synchronize(stream);
+  if (entry->buffer != 0) {
+    check(cuMemFree(entry->buffer), "cuMemFree");
+  }
+  if (entry->module != NULL) {
+    check(cuModuleUnload(entry->module), "cuModuleUnload");
+  }
+  entry->buffer = 0;
+  entry->bytes = 0;
+  entry->module = NULL;
+  entry->function = NULL;
+}
+
+/* The entry NAME as a buffer of `bytes` bytes: the existing buffer when its size is `bytes`,
+   otherwise a new allocation in place of what the name held. */
+static Entry *buffer_entry(CUstream stream, const char *name, size_t bytes) {
+  Entry *entry = find_entry(name);
+  if (entry != NULL && entry->buffer != 0 && entry->bytes == bytes) {
+    return entry;
+  }
+  if (entry == NULL) {
+    entry = new_entry(name);
+  } else {
+    release(stream, entry);
+  }
+  check(cuMemAlloc(&entry->buffer, bytes), "cuMemAlloc");
+  entry->bytes = bytes;
+  return entry;
+}
+
+static Entry *need_buffer(const char *name) {
+  Entry *entry = find_entry(name);
+  if (entry == NULL || entry->buffer == 0) {
+    fprintf(stderr, "no buffer named %s\n", name);
+    exit(1);
+  }
+  return entry;
+}
+
+/* Copies `count` 32-bit words to the buffer NAME and frees them after the copy ends. */
+static void store_words(CUstream stream, const char *name, uint32_t *words, size_t count) {
+  Entry *entry = buffer_entry(stream, name, count * sizeof *words);
+  check(cuMemcpyHtoDAsync(entry->buffer, words, count * sizeof *words, stream),
+        "cuMemcpyHtoDAsync");
+  synchronize(stream);
+  free(words);
+}
+
+static void session(void) {
+  CUcontext context;
+  open_device(&context);
+  CUstream stream;
+  check(cuStreamCreate(&stream, CU_STREAM_DEFAULT), "cuStreamCreate");
+  char line[65536];
+  while (fgets(line, sizeof line, stdin) != NULL) {
+    size_t length = strlen(line);
+    if (length > 0 && line[length - 1] == '\n') {
+      line[--length] = 0;
+    }
+    char *words[64];
+    int count = 0;
+    for (char *token = strtok(line, " "); token != NULL && count < 64; token = strtok(NULL, " ")) {
+      words[count++] = token;
+    }
+    if (count == 0) {
+      continue;
+    }
+    const char *command = words[0];
+    if (strcmp(command, "quit") == 0) {
+      break;
+    } else if (strcmp(command, "load") == 0 && count == 3) {
+      char spec[4096];
+      snprintf(spec, sizeof spec, "file:%s", words[2]);
+      size_t n;
+      uint32_t *data = parse_buffer(spec, &n);
+      store_words(stream, words[1], data, n);
+    } else if (strcmp(command, "words") == 0 && count == 3) {
+      size_t n;
+      uint32_t *data = parse_buffer(words[2], &n);
+      store_words(stream, words[1], data, n);
+    } else if (strcmp(command, "output") == 0 && count == 3) {
+      char *end;
+      uint64_t n = parse_word(words[2], &end, SIZE_MAX / 8 - 1);
+      if (*end != 0) {
+        fprintf(stderr, "bad output size: %s\n", words[2]);
+        exit(1);
+      }
+      size_t halves = 2 * ((size_t)n + 1);
+      Entry *entry = buffer_entry(stream, words[1], halves * sizeof(uint32_t));
+      check(cuMemsetD32Async(entry->buffer, 0, halves, stream), "cuMemsetD32Async");
+      check(cuMemsetD32Async(entry->buffer, (unsigned)(uint32_t)n, 1, stream), "cuMemsetD32Async");
+      check(cuMemsetD32Async(entry->buffer + 4, (unsigned)(uint32_t)(n >> 32), 1, stream),
+            "cuMemsetD32Async");
+    } else if (strcmp(command, "kernel") == 0 && count == 3) {
+      size_t imageLength;
+      char *image = read_file(words[2], &imageLength);
+      Entry *entry = find_entry(words[1]);
+      if (entry == NULL) {
+        entry = new_entry(words[1]);
+      } else {
+        release(stream, entry);
+      }
+      check(cuModuleLoadData(&entry->module, image), "cuModuleLoadData");
+      check(cuModuleGetFunction(&entry->function, entry->module, "main"), "cuModuleGetFunction");
+      free(image);
+    } else if (strcmp(command, "run") == 0 && count >= 4) {
+      Entry *kernel = find_entry(words[1]);
+      if (kernel == NULL || kernel->function == NULL) {
+        fprintf(stderr, "no kernel named %s\n", words[1]);
+        exit(1);
+      }
+      char *end;
+      uint64_t blocks = parse_word(words[2], &end, UINT32_MAX);
+      if (*end != 0) {
+        fprintf(stderr, "bad block count: %s\n", words[2]);
+        exit(1);
+      }
+      int inputs = count - 4;
+      CUdeviceptr pointers[64];
+      void *params[64];
+      for (int i = 0; i <= inputs; i++) {
+        if (i < inputs && strcmp(words[4 + i], words[3]) == 0) {
+          fprintf(stderr, "the output %s is also an input\n", words[3]);
+          exit(1);
+        }
+        pointers[i] = need_buffer(i < inputs ? words[4 + i] : words[3])->buffer;
+        params[i] = &pointers[i];
+      }
+      if (blocks > 0) {
+        check(cuLaunchKernel(kernel->function, (unsigned)blocks, 1, 1, BLOCK, 1, 1, 0, stream,
+                             params, NULL),
+              "cuLaunchKernel");
+      }
+    } else if (strcmp(command, "read") == 0 && count == 3) {
+      Entry *buffer = need_buffer(words[1]);
+      char *data = malloc(buffer->bytes);
+      if (data == NULL) {
+        die("out of memory");
+      }
+      check(cuMemcpyDtoHAsync(data, buffer->buffer, buffer->bytes, stream), "cuMemcpyDtoHAsync");
+      synchronize(stream);
+      FILE *file = fopen(words[2], "wb");
+      if (file == NULL || fwrite(data, 1, buffer->bytes, file) != buffer->bytes ||
+          fclose(file) != 0) {
+        fprintf(stderr, "cannot write %s\n", words[2]);
+        exit(1);
+      }
+      free(data);
+    } else if (strcmp(command, "free") == 0 && count == 2) {
+      Entry *entry = find_entry(words[1]);
+      if (entry == NULL) {
+        fprintf(stderr, "no buffer or kernel named %s\n", words[1]);
+        exit(1);
+      }
+      release(stream, entry);
+      *entry = entries_[--entryCount_];
+    } else {
+      fprintf(stderr, "bad command: %s\n", command);
+      exit(1);
+    }
+    printf("ok\n");
+    fflush(stdout);
+  }
+  synchronize(stream);
+}
+
 int main(int argc, char **argv) {
   if (argc == 2 && strcmp(argv[1], "info") == 0) {
     info();
@@ -276,8 +504,13 @@ int main(int argc, char **argv) {
     run(argv[2], argv[3], (unsigned)blocks, argv[5], argc - 6, argv + 6);
     return 0;
   }
+  if (argc == 2 && strcmp(argv[1], "session") == 0) {
+    session();
+    return 0;
+  }
   fprintf(stderr,
           "usage: cuda-host info\n"
-          "       cuda-host run IMAGE ENTRY BLOCKS OUTPUT [INPUT...]\n");
+          "       cuda-host run IMAGE ENTRY BLOCKS OUTPUT [INPUT...]\n"
+          "       cuda-host session\n");
   return 2;
 }

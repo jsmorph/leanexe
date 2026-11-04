@@ -98,9 +98,9 @@ without clicks.
 
 Under its shape, token, loaded-weight, and device assumptions, `Demos.Gpt32.Verified.generate_host`
 proves that the setup and step commands, run with the verified kernels, leave the bits of native
-`step32` in the score buffers and that every dispatch is race-free.  It instantiates
-`Demos.Gpt32.generate_host`, which states the same for the kernels of any backend with dispatch
-theorems.  [The program](../../Demos/Gpt32/Program.lean) defines that binary32 GPT-2 step.
+`step32` in the score buffers and that every dispatch is race-free and meets the statement of the
+Vulkan memory model.  It instantiates `Demos.Gpt32.generate_host`, which states the same for any
+device with a backend.  [The program](../../Demos/Gpt32/Program.lean) defines that binary32 GPT-2 step.
 `compiled.sampleTopK.implements` of `Demos.Gpt.Verified` proves that `sampleTopK` in the verified
 `gpt.wasm` computes the Lean function of the same name.  The verified `gpt32.wasm` has the Wasm
 execution theorems of [the verified compilation](../../Demos/Gpt32/README.md#verified-compiler).

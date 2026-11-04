@@ -647,7 +647,7 @@ states the accepted subset and API.  [The examples](Examples/Wgsl.lean) and
 [native-value proofs](Examples/WgslProof.lean) specialize the result to reflected Lean functions.
 The translation normalizes binary arithmetic, square root, and nearest-even results
 with [integer tests of their bit patterns](../LeanExe/WGSL/F32Canonical.lean), and
-[result lemmas](../LeanExe/WGSL/F32Result.lean) prove that normalization preserves each operation's
+[result lemmas](../LeanExe/ProofKit/F32Canonical.lean) prove that normalization preserves each operation's
 strict-model result.
 
 [Binary32 GPT](../Demos/Gpt32/Verified.lean) compiles the program's kernel functions without
@@ -675,7 +675,9 @@ demo](../Demos/Gpt32/VerifiedPtx.lean) compile their kernels, and [the PTX
 test](../tests/ptx/run.sh) runs them on an NVIDIA GPU.  `Compiled.launch_value` states the
 sequential run of a launch.  [The bridge](WgslPtx.lean) `Verified.PTX.Compiled.of_wgsl` shows that a
 build that both compilers translate has the same `spec`, arguments, and encoding in both, so a PTX
-theorem can take the `Spec.Fits` proof of a WGSL one.
+theorem can take the `Spec.Fits` proof of a WGSL one.  [The GPT-2 PTX
+host](../Demos/Gpt32/VerifiedPtxHost.lean) composes the launches of the demo's kernels into the
+scores of a generation step.
 
 ## The reflector
 

@@ -19,7 +19,7 @@ These days rewriting a large codebase in a different source language is almost a
 
 Here are some of the demos in this repo:
 
-- [Binary32 GPT-2](Demos/Gpt32/README.md): one generation step of GPT-2 124M in `Float32`, compiled to WGSL kernels with dispatch theorems and to WebAssembly.  `generate_host` composes the kernels' theorems into the step's scores, and a browser page runs the model on WebGPU and in WebAssembly and compares the scores.
+- [Binary32 GPT-2](Demos/Gpt32/README.md): one generation step of GPT-2 124M in `Float32`, compiled to WGSL kernels with dispatch theorems, to PTX kernels with launch theorems, and to WebAssembly.  `generate_host` composes the kernels' theorems into the step's scores on either GPU target, a browser page runs the model on WebGPU and in WebAssembly and compares the scores, and a CUDA session runs it on an NVIDIA GPU.
 - [Binary64 GPT-2](Demos/Gpt/README.md): the model in `Float`, with `steps_exact`, which proves that cached generation equals full inference bit for bit, and `forward_causal`.
 - [Euler solvers](Demos/Euler/README.md): finite-volume solvers for the compressible Euler equations.  `euler_solve_call` proves that the module returns the solvers' results without a trap within a memory cap, the balance theorems bound the rounding error of conservation, and the solver also runs as C and as a bare-metal AArch64 program.
 - [Drone planner](Demos/Drone/README.md): flights over terrain that `drone_compute` and `drone_safe` prove optimal and safe in a point-mass model.

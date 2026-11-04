@@ -465,7 +465,8 @@ race-free.  `LaunchSeq` and `LaunchMeets` name the two conclusions for a kernel'
 `Verified.PTX.Compiled.of_wgsl` in [`Verified/WgslPtx.lean`](../Verified/WgslPtx.lean) gives, for a
 build that both compilers translate, the equality of the PTX and WGSL `spec`, arguments, and
 encoding, so a PTX launch theorem can take the `Spec.Fits` proof of a WGSL dispatch theorem, as
-[the GPT-2 PTX kernels](../Demos/Gpt32/VerifiedPtx.lean) do.  [The PTX
+[the GPT-2 PTX kernels](../Demos/Gpt32/VerifiedPtx.lean) do, and [the GPT-2 PTX
+host](../Demos/Gpt32/VerifiedPtxHost.lean) composes their launches into a generation step.  [The PTX
 examples](../Verified/Examples/Ptx.lean) compile the WGSL examples, [the binary32
 example](../Examples/Binary32/CompiledPtx.lean) compiles its kernels, and
 [`tests/ptx/run.sh`](../tests/ptx/run.sh) compiles their text with `ptxas` and compares their
