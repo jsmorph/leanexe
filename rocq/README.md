@@ -32,6 +32,24 @@ that every Asm behavior is one of those terminations.  The
 [bare-metal input procedure](../docs/native-bare-metal.md#arguments-not-fixed-in-advance)
 applies that theorem to a message loaded into memory before execution.
 
+`clight2_loop_to_asm` concerns a `main` that runs an initialization and then a loop forever.  It
+takes the compilation premises above and, for every sequence `sigma` of values read by volatile
+loads, two more:
+
+```coq
+loop_reacts p2 t0 (W sigma)
+forall n, reads sigma (t0 ** windows (W sigma) n)
+```
+
+`loop_reacts` restates the Lean definition `LoopReacts` over CompCert's Clight: `main` runs the
+initialization with the trace `t0`, and iteration `n` of the loop runs with the nonempty trace
+`W sigma n` from a state of an invariant that every iteration preserves.  The theorem concludes
+that the Asm program has the behavior `Reacts (t0 *** concat (W sigma) (NE sigma))` for every
+`sigma`, where `concat` joins the traces of all iterations, and that every Asm behavior is
+bisimilar, by CompCert's `same_behaviors`, to one of those behaviors.  The proof builds the
+reactive behavior of the Clight program by cofixpoint from the invariant, carries it to Asm by
+the forward simulation, and obtains uniqueness from the determinacy of Asm and the values read.
+
 ## Checking the composition
 
 [The checker](check.sh) requires `coqc` and a CompCert 3.18 source tree for AArch64 with its
@@ -43,7 +61,7 @@ rocq/check.sh /path/to/CompCert
 ```
 
 The checker obtains the load paths from that tree's `_CoqProject`, compiles the composition in
-a temporary directory, and compares its printed assumptions with those of CompCert's
-`transf_c_program_correct`.  It permits the additional
+a temporary directory, and compares the printed assumptions of every theorem above with those of
+CompCert's `transf_c_program_correct`.  It permits the additional
 `ClassicalEpsilon.constructive_indefinite_description` used by CompCert's behavior argument.
 An unexpected assumption causes failure.

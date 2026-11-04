@@ -41368,7 +41368,7 @@ Theorem clight2_loop_to_asm:
 | Transfers | `LoopReacts` across `clightgen`'s export and the renaming of identifiers, from `exec_export` and the renaming of `exec_stmt` |
 | Check and run | `native-bare check` for the loop program; QEMU `virt` runs `N` windows, and the UART bytes equal native Lean's iteration of the step |
 
-- [ ] Rocq: `loop_reacts`, existence, uniqueness, `rocq/check.sh`.
+- [x] Rocq: `loop_entry`, `loop_reacts`, `windows`, `concat`, `loop_reacts_clight`, `determinate_reacts_reads`, and `clight2_loop_to_asm` in `rocq/Clight2Asm.v`.  `rocq/check.sh` passes with the assumptions of `transf_c_program_correct` and `ClassicalEpsilon.constructive_indefinite_description`, and the file has no `Admitted` or `Axiom`.  The volatile-load contradiction of `determinate_reads` is now the lemma `read_values_leaves`, which the reactive uniqueness proof shares.  The theorem takes `NE` as its own premise because `concat` needs the proof as an argument.
 - [x] Lean: `LoopReacts` and its transfer lemmas (`LeanExe/Native/Proof/Reacts.lean`): `loopReacts_export`, `loopReacts_rename`, and `loopReacts_rename_on`.  `function_entry2_ren` and `exists_injective_renaming` now hold the parts of `eval_funcall_ren` and `bigstep_program_terminates_rename_on` that the loop's transfers share.
 - [ ] Step function and `ctlMain`.
 
@@ -41395,5 +41395,6 @@ int main(void) {
 The register bank is `lx_in[0]` to `lx_in[7]`, read with volatile byte loads, so `lenLoop`, `exec_lenLoop`, and `inTrace` apply unchanged with the input sequence shifted by `8 n`.  The stores are `wordOut` and `exec_wordOuts`.  `for (;;)` is `Sloop (Ssequence Sskip window) Sskip` in the Lean AST, which `Print.lean` already prints and `clightgen` reads back unchanged.  The program is `inProgram pre T (ctlMain k s0)`, whose tail declares `lx_in`, `lx_out`, and `main`.
 
 Window `n` reads `σ (8 n)` to `σ (8 n + 7)`, and its trace is `inTrace (fun j => σ (8 * n + j)) 0 8 ++ outTrace (encodeWord s_{n+1})`, with `s_0 = S0` and `s_{n+1} = ctl s_n (inLen fun j => σ (8 * n + j))`.  The call's trace is empty by `funcall_quiet`.  The invariant of window `n` holds a Talos store `st` with `StoreRel A E st m`, `StatusRel A E m 0`, some heap with `heap.At st`, the memory caps of `nativeStore`, and `l0 = s_n`.
-- [ ] Window lemma and `p.ctl.program`.
+- [x] Window lemma and the generic theorem: `exec_ctlWindow` and `ctl_program` (`LeanExe/Native/Proof/Ctl.lean`) prove `LoopReacts` of `inProgram pre T (ctlMain k s0)` with `t0 = E0` and the window traces `ctlTrace`, for every `σ`, from `CtlRuns` for the step.
+- [ ] The `Reads` fact for the windows, `CtlRuns` for `ctlCompiled` from its native theorem, and the filter's program theorem.
 - [ ] Check, QEMU run, docs, commit, push.
