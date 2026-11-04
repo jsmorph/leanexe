@@ -280,6 +280,33 @@ def inMain (cap k : Nat) (kind : OutKind) : function :=
     fn_temps := inTemps kind,
     fn_body := .Ssequence (inBody cap k kind) (.Sreturn (some (.Econst_int 0 tint))) }
 
+/-! ## Controller loop -/
+
+/-- One window of the controller's loop: the word `l3` from the volatile bytes `lx_in[0]` to
+`lx_in[7]`, the lowest first, the call `l0 = lxf_k(l0, l3);` of the step on the state and the
+word, and the stores of the new state's eight bytes to `lx_out`, the lowest first. -/
+def ctlWindow (k : Nat) : statement :=
+  seqList ([.Sset nTemp (clong 0), .Sset jTemp (clong 0), lenLoop,
+    resultCall inCallTemp k [tulong, tulong] [.Etempvar resTemp tulong, .Etempvar nTemp tulong]] ++
+    (List.range 8).map wordOut)
+
+/-- The body of the controller's `main` before the `return 0;` that `clightgen` appends:
+`lx_init();`, the initial state `l0 = s0;`, and `for (;;)` around the window. -/
+def ctlBody (k : Nat) (s0 : UInt64) : statement :=
+  seqList [initCall, .Sset resTemp (.Econst_long s0 tulong), .Sloop (.Ssequence .Sskip (ctlWindow k)) .Sskip]
+
+/-- The temporaries of the controller's `main`: the state `l0`, the word `l3`, the index `l5`,
+the byte `l6`, and the temporaries that `clightgen` creates for the call and the load. -/
+def ctlTemps : List (ident × type) :=
+  [(resTemp, tulong), (nTemp, tulong), (jTemp, tulong), (byteTemp, tulong), (inCallTemp, tulong),
+    (lenLoadTemp, inByte)]
+
+/-- The controller's `main`, which runs the step `k` forever from the state `s0`. -/
+def ctlMain (k : Nat) (s0 : UInt64) : function :=
+  { fn_return := tint, fn_callconv := cc_default, fn_params := [], fn_vars := [],
+    fn_temps := ctlTemps,
+    fn_body := .Ssequence (ctlBody k s0) (.Sreturn (some (.Econst_int 0 tint))) }
+
 section
 
 variable (gname : ident → String) (tname : ident → String) (isCall : ident → Bool)
@@ -302,6 +329,13 @@ def cinMain (cap k : Nat) (kind : OutKind) : Except String String := do
     "extern volatile unsigned int lx_out;\n" ++ "int main(void) {\n" ++
     (← cdecls tname isCall (inTemps kind)) ++
     (← cstmt gname tname isCall 1 (inBody cap k kind)) ++ "}\n")
+
+/-- The C text of the declarations of `lx_in` and `lx_out` and of the controller's `main`. -/
+def cctlMain (k : Nat) (s0 : UInt64) : Except String String := do
+  pure ("extern volatile const unsigned char lx_in[];\n" ++
+    "extern volatile unsigned int lx_out;\n" ++ "int main(void) {\n" ++
+    (← cdecls tname isCall ctlTemps) ++
+    (← cstmt gname tname isCall 1 (ctlBody k s0)) ++ "}\n")
 
 end
 
@@ -333,5 +367,12 @@ def Translation.inText (t : Translation) (cap k : Nat) (kind : OutKind) : Except
   let gname (id : ident) : String :=
     if id == outId then "lx_out" else if id == inId then "lx_in" else t.gname id
   pure ((← t.text) ++ (← cinMain gname tempName isCallTemp cap k kind))
+
+/-- The C text of a controller program: the translation, the declarations of `lx_in` and
+`lx_out`, and the `main` that runs the step `k` forever from the state `s0`. -/
+def Translation.ctlText (t : Translation) (k : Nat) (s0 : UInt64) : Except String String := do
+  let gname (id : ident) : String :=
+    if id == outId then "lx_out" else if id == inId then "lx_in" else t.gname id
+  pure ((← t.text) ++ (← cctlMain gname tempName isCallTemp k s0))
 
 end LeanExe.Native

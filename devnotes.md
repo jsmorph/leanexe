@@ -41371,5 +41371,29 @@ Theorem clight2_loop_to_asm:
 - [ ] Rocq: `loop_reacts`, existence, uniqueness, `rocq/check.sh`.
 - [x] Lean: `LoopReacts` and its transfer lemmas (`LeanExe/Native/Proof/Reacts.lean`): `loopReacts_export`, `loopReacts_rename`, and `loopReacts_rename_on`.  `function_entry2_ren` and `exists_injective_renaming` now hold the parts of `eval_funcall_ren` and `bigstep_program_terminates_rename_on` that the loop's transfers share.
 - [ ] Step function and `ctlMain`.
+
+### Design of the controller's `main`
+
+The step function is `ctl : UInt64 → UInt64 → UInt64`, from the state and the input word to the new state, which is also the window's output.  This is a Moore machine, the special case of a Mealy machine whose output is its state.  With one result, the window reuses the `word` path of `p.f.program`.  A step with a separate output would use result globals, the `words` kind, and can follow.  The step must be allocation-free and trap-free (`aborts = false`), so that `NativeA` applies in every window from the store the last window left.
+
+```c
+extern volatile const unsigned char lx_in[];
+extern volatile unsigned int lx_out;
+int main(void) {
+  unsigned long long l0, l3, l5, l6;
+  lx_init();
+  l0 = S0;
+  for (;;) {
+    l3 = 0ULL; l5 = 0ULL;
+    while (l5 < 8ULL) { l6 = lx_in[l5]; l3 = l3 | l6 << 8ULL * l5; l5 = l5 + 1ULL; }
+    l0 = lxf_k(l0, l3);
+    lx_out = (unsigned int) (l0 >> 0ULL & 255ULL); /* and the other seven bytes */
+  }
+}
+```
+
+The register bank is `lx_in[0]` to `lx_in[7]`, read with volatile byte loads, so `lenLoop`, `exec_lenLoop`, and `inTrace` apply unchanged with the input sequence shifted by `8 n`.  The stores are `wordOut` and `exec_wordOuts`.  `for (;;)` is `Sloop (Ssequence Sskip window) Sskip` in the Lean AST, which `Print.lean` already prints and `clightgen` reads back unchanged.  The program is `inProgram pre T (ctlMain k s0)`, whose tail declares `lx_in`, `lx_out`, and `main`.
+
+Window `n` reads `σ (8 n)` to `σ (8 n + 7)`, and its trace is `inTrace (fun j => σ (8 * n + j)) 0 8 ++ outTrace (encodeWord s_{n+1})`, with `s_0 = S0` and `s_{n+1} = ctl s_n (inLen fun j => σ (8 * n + j))`.  The call's trace is empty by `funcall_quiet`.  The invariant of window `n` holds a Talos store `st` with `StoreRel A E st m`, `StatusRel A E m 0`, some heap with `heap.At st`, the memory caps of `nativeStore`, and `l0 = s_n`.
 - [ ] Window lemma and `p.ctl.program`.
 - [ ] Check, QEMU run, docs, commit, push.
