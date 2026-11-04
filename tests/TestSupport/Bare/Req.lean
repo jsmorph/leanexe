@@ -42,6 +42,72 @@ def cmsdkTick (s v : UInt64) : UInt64 × UInt64 := echoTick 0 1 1 2 s v
 
 verified_compile (pages := 1) (cap := 1) reqCompiled := [readReq, writeReq, echoTick, cmsdkTick]
 
+/-! ## Polling -/
+
+open LeanExe.Native in
+theorem readReq_status : reqWrite (readReq 1) = false := by decide
+
+open LeanExe.Native in
+theorem readReq_data : reqWrite (readReq 0) = false := by decide
+
+open LeanExe.Native in
+/-- `cmsdkTick` requests a write only from the phase that follows a status read, and only when
+the value read shows room in the transmitter. -/
+theorem cmsdkTick_write (s v : UInt64) (hw : reqWrite (cmsdkTick s v).2 = true) :
+    s &&& 255 = 2 ∧ v &&& 1 = 0 := by
+  simp only [cmsdkTick, echoTick] at hw
+  split at hw
+  · split at hw <;> simp [readReq_status, readReq_data] at hw
+  · split at hw
+    · simp [readReq_status] at hw
+    · split at hw
+      · rename_i h2
+        split at hw
+        · rename_i ht
+          exact ⟨by simpa using h2, by simpa using ht⟩
+        · simp [readReq_status] at hw
+      · simp [readReq_status] at hw
+
+open LeanExe.Native in
+/-- `cmsdkTick` enters the phase 2 only with a request to read the status register. -/
+theorem cmsdkTick_phase2 (s v : UInt64) (h : (cmsdkTick s v).1 &&& 255 = 2) :
+    (cmsdkTick s v).2 = readReq 1 := by
+  simp only [cmsdkTick, echoTick] at h ⊢
+  split <;> rename_i h0
+  · split <;> rename_i hr
+    · rw [if_pos h0, if_pos hr] at h
+      exact absurd h (by show ¬ (1 : UInt64) &&& 255 = 2; decide)
+    · rfl
+  · split <;> rename_i h1
+    · rfl
+    · split <;> rename_i h2
+      · split <;> rename_i ht
+        · rw [if_neg h0, if_neg h1, if_pos h2, if_pos ht] at h
+          exact absurd h (by show ¬ (3 : UInt64) &&& 255 = 2; decide)
+        · rfl
+      · rfl
+
+open LeanExe.Native in
+/-- In every run of the echo from the state 3, a window that requests a write follows a window
+that read the status register, and the value read has bit 0, the transmitter's full flag,
+clear.  The first window reads the status. -/
+theorem echo_write_after_room (σ : Nat → LClight.int) (n : Nat)
+    (hw : reqWrite (cmsdkTick (reqRun cmsdkTick 3 σ (n + 1)).state
+      (reqRun cmsdkTick 3 σ (n + 1)).last).2 = true) :
+    (cmsdkTick (reqRun cmsdkTick 3 σ n).state (reqRun cmsdkTick 3 σ n).last).2 = readReq 1 ∧
+      (reqRun cmsdkTick 3 σ (n + 1)).last &&& 1 = 0 := by
+  obtain ⟨hph, hroom⟩ := cmsdkTick_write _ _ hw
+  refine ⟨cmsdkTick_phase2 _ _ ?_, hroom⟩
+  have e : (reqRun cmsdkTick 3 σ (n + 1)).state =
+      (cmsdkTick (reqRun cmsdkTick 3 σ n).state (reqRun cmsdkTick 3 σ n).last).1 := by
+    simp only [reqRun, reqNext]
+    split <;> rfl
+  rw [← e]
+  exact hph
+
+open LeanExe.Native in
+theorem echo_first_read : reqWrite (cmsdkTick 3 0).2 = false := by decide
+
 open Wasm LClight LeanExe.Native in
 /-- The program with requests around `cmsdkTick`, from the state 3, runs forever: for every
 sequence `σ` of the values that its volatile loads read, window `n` performs the one register
