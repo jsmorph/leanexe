@@ -681,6 +681,19 @@ theorem Launch.execution_exists (L : Launch) {out : Array UInt64} (h : L.seq = s
         · exact Op.Below.irrefl _ hco
         · exact Op.Below.irrefl _ (hco.trans hlt)
 
+/-- A launch is race-free, a consistent execution of it exists, and in every consistent execution
+no access of a thread is in a data race, every thread ends, and the copy back reads `out`. -/
+def Launch.Meets (L : Launch) (out : Array UInt64) : Prop :=
+  L.RaceFree ∧ (∃ E, L.Consistent E) ∧ ∀ E, L.Consistent E → L.NoDataRace E ∧
+    (∀ g, g < L.threads → (L.events (E.oracle g) g).2 = true) ∧
+    ∀ i, i < L.output.size → out[i]? = some (E.observed i)
+
+theorem Launch.meets (L : Launch) {out : Array UInt64} (h : L.seq = some out)
+    (hr : L.RaceFree) : L.Meets out := by
+  refine ⟨hr, L.execution_exists h hr, fun E hE => ?_⟩
+  obtain ⟨hg, hrace, hout⟩ := L.executions h hr E hE
+  exact ⟨hrace, fun g hg' => (hg g hg').2, hout⟩
+
 theorem get_head (a : UInt64) (xs : Array UInt64) : (#[a] ++ xs)[0]? = some a := by
   rw [Array.getElem?_append_left (by simp)]
   rfl

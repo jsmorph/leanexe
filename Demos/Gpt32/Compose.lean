@@ -7,7 +7,7 @@ the step theorem the words, the embedding, the layers, and the scores.
 
 namespace Demos.Gpt32
 
-open LeanExe.WGSL Demos.Gpt32
+open Demos.Gpt32
 open LeanExe.Dialect (build_size)
 
 theorem embed32_size (wte wpe : Array Float32) (row p d : UInt64) :
@@ -881,34 +881,34 @@ theorem steps_exec (files : String → Option Val) (s : Shape32) (W : Weights32)
     · simpa [cachesAfter, Nat.add_assoc, Nat.add_comm 1] using hH'
 
 /-- After the setup and the steps of `ts`, the step of `t` at position `ts.length` leaves the
-scores of `step32` in the buffers `z c`, as words on the host, and every dispatch of the
-commands is race-free. -/
-theorem generate_host (files : String → Option Val) (dir : String) (s : Shape32)
+scores of `step32` in the buffers `z c` of a device with a backend, and every run of the commands
+meets the device's memory model. -/
+theorem generate_host {Word : Type} (D : Device Word) (hB : Backend D)
+    (files : String → Option Val) (dir : String) (s : Shape32)
     (W : Weights32) (ts : List UInt64) (t : UInt64) (st : Store)
     (hnh : s.nh.toNat ≤ 64) (hf : s.f.toNat < 2 ^ 29) (hlen : ts.length < 1024)
     (hts : ∀ t' ∈ t :: ts, (t' / s.chunk).toNat < s.rows.length)
-    (hL : Loaded files dir W) (hF : Fits s W (List.replicate s.layers (#[], #[])))
-    (backend : KernelBackend) :
+    (hL : Loaded files dir W) (hF : Fits s W (List.replicate s.layers (#[], #[]))) :
     let cmds := Item.allCmds (setupItems s dir ++ stepsItems s ts 0 ++
       stepItems s t (UInt64.ofNat ts.length))
     let scores := (step32 s W t (UInt64.ofNat ts.length)
       (cachesAfter s W ts 0 (List.replicate s.layers (#[], #[])))).2
-    ∃ st' : Store, Cmd.execAll (hostFiles files) st.host cmds backend.module = some st'.host ∧
-      Cmd.AllRaceFree (hostFiles files) st.host cmds backend.module ∧
+    ∃ st' : Store, Cmd.execAll D (hostFiles D files) (st.host D) cmds = some (st'.host D) ∧
+      Cmd.AllMeet D (hostFiles D files) (st.host D) cmds ∧
       scores.length = s.rows.length ∧
-      ∀ c < s.rows.length, st'.host (.z c) = some (Val.arr scores[c]!).buffer := by
+      ∀ c < s.rows.length, st'.host D (.z c) = some (D.buffer (.arr scores[c]!)) := by
   intro cmds scores
   obtain ⟨st1, he1, hH1⟩ := setup_exec files dir s W st hL hF.layers hF.chunks
   obtain ⟨st2, he2, hH2, hF2⟩ := steps_exec files s W hnh hf ts 0 _ st1 (by omega)
     (fun t' ht' => hts t' (by simp [ht'])) hF hH1
-  have hB : Bounds s (UInt64.ofNat ts.length) := ⟨hnh, hf, by simp; omega⟩
-  obtain ⟨st3, he3, -, -, hlen3, hz3⟩ := step_exec files s W t _ _ st2 hB hF2
+  have hB' : Bounds s (UInt64.ofNat ts.length) := ⟨hnh, hf, by simp; omega⟩
+  obtain ⟨st3, he3, -, -, hlen3, hz3⟩ := step_exec files s W t _ _ st2 hB' hF2
     (hts t (by simp)) (by simpa using hH2)
   have he : Item.execAll files st (setupItems s dir ++ stepsItems s ts 0 ++
       stepItems s t (UInt64.ofNat ts.length)) = some st3 := by
     rw [Item.execAll_append, Item.execAll_append, he1, Option.bind_some, he2, Option.bind_some,
       he3]
-  obtain ⟨hc, hr⟩ := Item.execAll_sim files _ st st3 he backend
+  obtain ⟨hc, hr⟩ := Item.execAll_sim D hB files _ st st3 he
   exact ⟨st3, hc, hr, hlen3, fun c hc' => by simp [Store.host, hz3 c hc', scores]⟩
 
 end Demos.Gpt32

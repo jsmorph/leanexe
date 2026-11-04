@@ -1,6 +1,7 @@
 import Demos.Gpt.Verified
 import Demos.Gpt.VerifiedGeneration
 import Demos.Gpt32.VerifiedHost
+import Demos.Gpt32.VerifiedPtxHost
 import Demos.Euler.Verified
 import Demos.Euler.VerifiedCall
 import Demos.Drone.Verified

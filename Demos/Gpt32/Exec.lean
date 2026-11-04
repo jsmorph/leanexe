@@ -1,97 +1,103 @@
 import Demos.Gpt32.HostProgram
 import LeanExe.Dialect.Lemmas
-import LeanExe.WGSL.Workgroup
+import LeanExe.Source.Build
 
 /-!
-The meaning of the programs of `Demos/Gpt32/HostProgram.lean`.
+The meaning of the programs of `Demos/Gpt32/HostProgram.lean` on a device.
 
-A host command acts on a store of named buffers of 32-bit words as `leanexe-webgpu-host session`
-does: `load` reads a file, `words` and `output` make a buffer, replacing any buffer of that name,
-and `run` dispatches `workgroups` workgroups, so `workgroupSize · workgroups` invocations, with
-the inputs at bindings `0` to `k - 1` and the output at `k`.  WebGPU rejects a dispatch that binds
-a buffer both read-only and read-write, so the output's name must differ from every input's.  The
-host submits each dispatch separately, and WebGPU runs submissions in order, each dispatch its own
-usage scope, so the commands act in sequence.  A dispatch acts on the device as `Module.dispatch`
-does only when it is race-free, which `Cmd.RaceFree` states.
+A host command acts on a store of named buffers of a device's words as a host session does:
+`load` reads a file, `words` and `output` make a buffer, replacing any buffer of that name, and
+`run` runs a kernel on `w` groups of 64 threads, workgroups in WGSL and blocks in PTX, with the
+inputs at parameters `0` to `k - 1` and the output at `k`.  The output's name must differ from
+every input's.  A `Device` gives the buffers of these commands, the run of a kernel, and `Meets`,
+the statement of the device's memory model about one run.  The session runs the commands in order,
+so the commands act in sequence, and `Cmd.AllMeet` states `Meets` for each run from the store that
+the commands before it leave.  `Demos/Gpt32/VerifiedHost.lean` gives the device of the WGSL kernels
+and `Demos/Gpt32/VerifiedPtxHost.lean` the device of the PTX kernels.
 
 A typed item acts on a store of binary32 arrays, words, and floats.  A call checks the bounds of
-its kernel's dispatch theorem and its element count, then stores the kernel's Lean function of
-its inputs.
+its kernel's theorems and its element count, then stores the kernel's Lean function of its
+inputs.  `Item.execAll_sim` turns a run of items into a run of their commands on any device with
+a `Backend`.
 -/
 
 namespace Demos.Gpt32
 
-open LeanExe.WGSL Demos.Gpt32
-
-abbrev HostStore := Buf → Option (Array UInt32)
-
-def HostStore.set (s : HostStore) (b : Buf) (ws : Array UInt32) : HostStore :=
-  fun b' => if b' = b then some ws else s b'
-
-/-- The buffer of `output NAME n`: `n` as a 64-bit word, least significant half first, then
-`2n` zeros. -/
-def outputWords (n : Nat) : Array UInt32 :=
-  Array.ofFn (n := 2 + 2 * n) fun i =>
-    if i.val = 0 then UInt32.ofNat n else if i.val = 1 then UInt32.ofNat (n / 2 ^ 32) else 0
-
-def Cmd.exec (files : String → Option (Array UInt32)) (s : HostStore) (c : Cmd)
-    (modules : KernelName → Module) : Option HostStore :=
-  match c with
-  | .load b path => (files path).map (s.set b)
-  | .words b ws => some (s.set b ws.toArray)
-  | .output b n => some (s.set b (outputWords n))
-  | .run k w out ins =>
-    if out ∈ ins then none
-    else do
-      let bufs ← ins.mapM s
-      let o ← s out
-      let o' ← (modules k).dispatch bufs o ((modules k).workgroupSize * w)
-      pure (s.set out o')
-
-def Cmd.RaceFree (s : HostStore) (c : Cmd)
-    (modules : KernelName → Module) : Prop :=
-  match c with
-  | .run k w out ins => ∀ bufs o, ins.mapM s = some bufs → s out = some o →
-      (modules k).RaceFree bufs o.size ((modules k).workgroupSize * w)
-  | _ => True
-
-def Cmd.execAll (files : String → Option (Array UInt32)) (s : HostStore) (cs : List Cmd)
-    (modules : KernelName → Module) : Option HostStore :=
-  match cs with
-  | [] => some s
-  | c :: cs => (c.exec files s modules).bind fun s' => Cmd.execAll files s' cs modules
-
-/-- Every dispatch of `cs`, run from `s`, is race-free. -/
-def Cmd.AllRaceFree (files : String → Option (Array UInt32)) (s : HostStore) (cs : List Cmd)
-    (modules : KernelName → Module) : Prop :=
-  match cs with
-  | [] => True
-  | c :: cs => c.RaceFree s modules ∧
-      ∀ s', c.exec files s modules = some s' → Cmd.AllRaceFree files s' cs modules
+open Demos.Gpt32
 
 inductive Val where
   | arr (xs : Array Float32)
   | word (v : UInt64)
   | float (x : Float32)
 
-def Val.buffer : Val → Array UInt32
-  | .arr xs => (LeanExe.Source.Arg.array (xs.map fun x => x.toBits.toUInt64)).wgslBuffer
-  | .word v => (LeanExe.Source.Arg.word v).wgslBuffer
-  | .float x => (LeanExe.Source.Arg.float x.toBits).wgslBuffer
+/-- The kernel argument of a value: the bits of an array's elements, a word, or a float's bits. -/
+def Val.arg : Val → LeanExe.Source.Arg
+  | .arr xs => .array (xs.map fun x => x.toBits.toUInt64)
+  | .word v => .word v
+  | .float x => .float x.toBits
+
+/-- A device of the host: the buffer that holds a value; the buffer of a `words` command, or
+`none` when the host rejects the words; the buffer of `output n`; the run of kernel `k` on `w`
+groups of 64 threads with its inputs and its output's initial words; and `Meets k w ins o out`,
+the statement of the device's memory model that the run of `k` with `ins` and `o` leaves `out`. -/
+structure Device (Word : Type) where
+  buffer : Val → Array Word
+  words : List UInt32 → Option (Array Word)
+  output : Nat → Array Word
+  run : KernelName → Nat → List (Array Word) → Array Word → Option (Array Word)
+  Meets : KernelName → Nat → List (Array Word) → Array Word → Array Word → Prop
+
+abbrev HostStore (Word : Type) := Buf → Option (Array Word)
+
+def HostStore.set {Word : Type} (s : HostStore Word) (b : Buf) (ws : Array Word) :
+    HostStore Word :=
+  fun b' => if b' = b then some ws else s b'
+
+def Cmd.exec {Word : Type} (D : Device Word) (files : String → Option (Array Word))
+    (s : HostStore Word) : Cmd → Option (HostStore Word)
+  | .load b path => (files path).map (s.set b)
+  | .words b ws => (D.words ws).map (s.set b)
+  | .output b n => some (s.set b (D.output n))
+  | .run k w out ins =>
+    if out ∈ ins then none
+    else do
+      let bufs ← ins.mapM s
+      let o ← s out
+      let o' ← D.run k w bufs o
+      pure (s.set out o')
+
+/-- The run of a command from `s` meets the device's memory model. -/
+def Cmd.Meets {Word : Type} (D : Device Word) (s : HostStore Word) : Cmd → Prop
+  | .run k w out ins => ∀ bufs o o', ins.mapM s = some bufs → s out = some o →
+      D.run k w bufs o = some o' → D.Meets k w bufs o o'
+  | _ => True
+
+def Cmd.execAll {Word : Type} (D : Device Word) (files : String → Option (Array Word))
+    (s : HostStore Word) : List Cmd → Option (HostStore Word)
+  | [] => some s
+  | c :: cs => (Cmd.exec D files s c).bind fun s' => Cmd.execAll D files s' cs
+
+/-- Every run of `cs`, from the store that the commands before it leave, meets the device's
+memory model. -/
+def Cmd.AllMeet {Word : Type} (D : Device Word) (files : String → Option (Array Word))
+    (s : HostStore Word) : List Cmd → Prop
+  | [] => True
+  | c :: cs => Cmd.Meets D s c ∧
+      ∀ s', Cmd.exec D files s c = some s' → Cmd.AllMeet D files s' cs
 
 abbrev Store := Buf → Option Val
 
 def Store.set (s : Store) (b : Buf) (v : Val) : Store :=
   fun b' => if b' = b then some v else s b'
 
-def Store.host (s : Store) : HostStore := fun b => (s b).map Val.buffer
+def Store.host {Word : Type} (s : Store) (D : Device Word) : HostStore Word :=
+  fun b => (s b).map D.buffer
 
 abbrev Small (xs : Array Float32) : Prop := xs.size < 2 ^ 29
 
 abbrev SmallWord (v : UInt64) : Prop := v.toNat < 2 ^ 29
 
-/-- Kernel `k` of the arguments `vs`, when they have the kinds and the bounds of its dispatch
-theorem. -/
+/-- Kernel `k` of the arguments `vs`, when they have the kinds and the bounds of its theorems. -/
 def KernelName.apply : KernelName → List Val → Option (Array Float32)
   | .embed, [.arr wte, .arr wpe, .word row, .word p, .word d] =>
     if Small wte ∧ Small wpe ∧ SmallWord d then some (embed32 wte wpe row p d) else none
@@ -139,38 +145,29 @@ def Item.allCmds (items : List Item) : List Cmd := items.flatMap Item.cmds
 
 /-! ### Typed calls and host commands -/
 
-theorem outputWords_size (n : Nat) : (outputWords n).size = 2 + 2 * n := by
-  simp [outputWords]
-
-theorem outputWords_zero (n : Nat) : (outputWords n)[0]? = some (UInt32.ofNat n) := by
-  simp [outputWords]
-
-theorem outputWords_one {n : Nat} (h : n < 2 ^ 32) : (outputWords n)[1]? = some 0 := by
-  rw [Array.getElem?_eq_getElem (by simp [outputWords]; omega)]
-  simp only [outputWords, Array.getElem_ofFn]
-  simp [Nat.div_eq_of_lt (show n < 4294967296 by omega)]
-
 theorem size_toUInt64 {xs : Array Float32} (h : xs.size < 2 ^ 29) :
     xs.size.toUInt64.toNat = xs.size := by
   simp only [Nat.toUInt64, UInt64.toNat_ofNat']
   omega
 
-/-- A kernel for each host call, with a workgroup size of 64 and the theorem that a dispatch of
-the kernel is race-free and leaves the call's result in an output of the host's form. -/
-structure KernelBackend where
-  module : KernelName → Module
-  workgroupSize : ∀ k, (module k).workgroupSize = 64
-  apply_dispatch : ∀ {k vs ys}, k.apply vs = some ys →
-    ys.size < 2 ^ 29 ∧
-      (module k).dispatch (vs.map Val.buffer) (outputWords ys.size)
-          (64 * ((ys.size + 63) / 64)) = some (Val.buffer (.arr ys)) ∧
-      (module k).RaceFree (vs.map Val.buffer) (outputWords ys.size).size
-        (64 * ((ys.size + 63) / 64))
+/-- The facts that relate a device to the typed items: the buffers of the `words` commands of a
+word, a float, and an empty array, and for each call, that the run of its kernel on enough groups
+of 64 threads, from the output of the call's size, leaves the call's result and meets the
+device's memory model. -/
+structure Backend {Word : Type} (D : Device Word) : Prop where
+  word : ∀ v : UInt64, D.words [v.toUInt32, (v >>> 32).toUInt32] = some (D.buffer (.word v))
+  float : ∀ x : Float32, D.words [x.toBits, 0] = some (D.buffer (.float x))
+  empty : D.words [0, 0] = some (D.buffer (.arr #[]))
+  apply : ∀ {k vs ys}, k.apply vs = some ys →
+    D.run k ((ys.size + 63) / 64) (vs.map D.buffer) (D.output ys.size) =
+        some (D.buffer (.arr ys)) ∧
+      D.Meets k ((ys.size + 63) / 64) (vs.map D.buffer) (D.output ys.size) (D.buffer (.arr ys))
 
-def hostFiles (files : String → Option Val) : String → Option (Array UInt32) :=
-  fun path => (files path).map Val.buffer
+def hostFiles {Word : Type} (D : Device Word) (files : String → Option Val) :
+    String → Option (Array Word) :=
+  fun path => (files path).map D.buffer
 
-theorem HostStore.mapM_set {s : HostStore} {b : Buf} {ws : Array UInt32} :
+theorem HostStore.mapM_set {Word : Type} {s : HostStore Word} {b : Buf} {ws : Array Word} :
     ∀ {ins : List Buf}, b ∉ ins → ins.mapM (s.set b ws) = ins.mapM s
   | [], _ => rfl
   | i :: is, h => by
@@ -178,8 +175,9 @@ theorem HostStore.mapM_set {s : HostStore} {b : Buf} {ws : Array UInt32} :
     simp only [List.mapM_cons, HostStore.set, ite_eq_right (fun e : i = b => h.1 e.symm),
       HostStore.mapM_set h.2]
 
-theorem Store.mapM_host (s : Store) : ∀ (ins : List Buf) (vs : List Val),
-    ins.mapM s = some vs → ins.mapM s.host = some (vs.map Val.buffer)
+theorem Store.mapM_host {Word : Type} (D : Device Word) (s : Store) :
+    ∀ (ins : List Buf) (vs : List Val),
+      ins.mapM s = some vs → ins.mapM (s.host D) = some (vs.map D.buffer)
   | [], vs, h => by
     simp only [List.mapM_nil, pure, Option.some.injEq] at h
     subst h
@@ -193,34 +191,24 @@ theorem Store.mapM_host (s : Store) : ∀ (ins : List Buf) (vs : List Val),
       | some ws =>
         simp only [List.mapM_cons, hi, his, bind, Option.bind, pure, Option.some.injEq] at h
         subst h
-        simp [List.mapM_cons, Store.host, hi, Store.mapM_host s is ws his]
+        simp [List.mapM_cons, Store.host, hi, Store.mapM_host D s is ws his]
 
-theorem HostStore.set_set (s : HostStore) (b : Buf) (x y : Array UInt32) :
+theorem HostStore.set_set {Word : Type} (s : HostStore Word) (b : Buf) (x y : Array Word) :
     (s.set b x).set b y = s.set b y := by
   funext b'
   simp only [HostStore.set]
   split <;> rfl
 
-theorem Val.empty_buffer : (Val.arr #[]).buffer = #[0, 0] := by
-  simp only [Val.buffer, LeanExe.Source.Arg.wgslBuffer, arrayWords]
-  ext i h1 h2
-  · simp
-  · simp only [Array.size_ofFn, Array.size_map, List.size_toArray, List.length_nil] at h1
-    simp only [Array.getElem_ofFn]
-    match i, h1 with
-    | 0, _ => simp [wordHalf]
-    | 1, _ => simp [wordHalf]
-
-theorem Store.host_set (s : Store) (b : Buf) (v : Val) :
-    (s.set b v).host = s.host.set b v.buffer := by
+theorem Store.host_set {Word : Type} (D : Device Word) (s : Store) (b : Buf) (v : Val) :
+    (s.set b v).host D = (s.host D).set b (D.buffer v) := by
   funext b'
   simp only [Store.host, Store.set, HostStore.set]
   split <;> rfl
 
-theorem Item.exec_sim (files : String → Option Val) {s s' : Store} {i : Item}
-    (h : i.exec files s = some s') (backend : KernelBackend) :
-    Cmd.execAll (hostFiles files) s.host i.cmds backend.module = some s'.host ∧
-      Cmd.AllRaceFree (hostFiles files) s.host i.cmds backend.module := by
+theorem Item.exec_sim {Word : Type} (D : Device Word) (hB : Backend D)
+    (files : String → Option Val) {s s' : Store} {i : Item} (h : i.exec files s = some s') :
+    Cmd.execAll D (hostFiles D files) (s.host D) i.cmds = some (s'.host D) ∧
+      Cmd.AllMeet D (hostFiles D files) (s.host D) i.cmds := by
   cases i with
   | call k n out ins =>
     simp only [Item.exec] at h
@@ -238,40 +226,39 @@ theorem Item.exec_sim (files : String → Option Val) {s s' : Store} {i : Item}
         · rename_i hn
           simp only [Option.some.injEq] at h
           subst hn h
-          have hW := backend.workgroupSize k
-          obtain ⟨hsmall, hd, hr⟩ :=
-            backend.apply_dispatch hk
-          have hins : ins.mapM (s.host.set out (outputWords ys.size)) =
-              some (vs.map Val.buffer) := by
+          obtain ⟨hd, hm⟩ := hB.apply hk
+          have hins : ins.mapM ((s.host D).set out (D.output ys.size)) =
+              some (vs.map D.buffer) := by
             rw [HostStore.mapM_set hout]
-            exact Store.mapM_host s ins vs hvs
+            exact Store.mapM_host D s ins vs hvs
           refine ⟨?_, trivial, fun s1 h1 => ⟨?_, fun _ _ => trivial⟩⟩
-          · simp [Item.cmds, Cmd.execAll, Cmd.exec, hout, hins, HostStore.set_set, hW, hd,
+          · simp [Item.cmds, Cmd.execAll, Cmd.exec, hout, hins, HostStore.set_set, hd,
               Store.host_set, HostStore.set]
           · simp only [Cmd.exec, Option.some.injEq] at h1
             subst h1
-            intro bufs o hb ho
+            intro bufs o o' hb ho hr
             rw [hins, Option.some.injEq] at hb
             simp only [HostStore.set, ite_true, Option.some.injEq] at ho
             subst hb ho
-            rw [hW]
-            exact hr
+            rw [hd, Option.some.injEq] at hr
+            subst hr
+            exact hm
         · cases h
   | word b v =>
     simp only [Item.exec, Option.some.injEq] at h
     subst h
-    exact ⟨by simp [Item.cmds, Cmd.execAll, Cmd.exec, Store.host_set, Val.buffer, LeanExe.Source.Arg.wgslBuffer],
-      trivial, fun _ _ => trivial⟩
+    exact ⟨by simp [Item.cmds, Cmd.execAll, Cmd.exec, hB.word, Store.host_set], trivial,
+      fun _ _ => trivial⟩
   | float b x =>
     simp only [Item.exec, Option.some.injEq] at h
     subst h
-    exact ⟨by simp [Item.cmds, Cmd.execAll, Cmd.exec, Store.host_set, Val.buffer, LeanExe.Source.Arg.wgslBuffer],
-      trivial, fun _ _ => trivial⟩
+    exact ⟨by simp [Item.cmds, Cmd.execAll, Cmd.exec, hB.float, Store.host_set], trivial,
+      fun _ _ => trivial⟩
   | empty b =>
     simp only [Item.exec, Option.some.injEq] at h
     subst h
-    refine ⟨?_, trivial, fun _ _ => trivial⟩
-    simp [Item.cmds, Cmd.execAll, Cmd.exec, Store.host_set, Val.empty_buffer]
+    exact ⟨by simp [Item.cmds, Cmd.execAll, Cmd.exec, hB.empty, Store.host_set], trivial,
+      fun _ _ => trivial⟩
   | load b path =>
     simp only [Item.exec] at h
     cases hf : files path with
@@ -282,34 +269,35 @@ theorem Item.exec_sim (files : String → Option Val) {s s' : Store} {i : Item}
       exact ⟨by simp [Item.cmds, Cmd.execAll, Cmd.exec, hostFiles, hf, Store.host_set],
         trivial, fun _ _ => trivial⟩
 
-theorem Cmd.execAll_append (files : String → Option (Array UInt32))
-    {modules : KernelName → Module} :
-    ∀ (s : HostStore) (cs ds : List Cmd),
-      Cmd.execAll files s (cs ++ ds) modules = (Cmd.execAll files s cs modules).bind fun s' =>
-        Cmd.execAll files s' ds modules
+theorem Cmd.execAll_append {Word : Type} (D : Device Word)
+    (files : String → Option (Array Word)) :
+    ∀ (s : HostStore Word) (cs ds : List Cmd),
+      Cmd.execAll D files s (cs ++ ds) = (Cmd.execAll D files s cs).bind fun s' =>
+        Cmd.execAll D files s' ds
   | s, [], ds => rfl
   | s, c :: cs, ds => by
     simp only [List.cons_append, Cmd.execAll]
-    cases c.exec files s modules with
+    cases c.exec D files s with
     | none => rfl
-    | some s' => exact Cmd.execAll_append files s' cs ds
+    | some s' => exact Cmd.execAll_append D files s' cs ds
 
-theorem Cmd.allRaceFree_append (files : String → Option (Array UInt32))
-    {modules : KernelName → Module} :
-    ∀ (s : HostStore) (cs ds : List Cmd), Cmd.AllRaceFree files s cs modules →
-      (∀ s', Cmd.execAll files s cs modules = some s' → Cmd.AllRaceFree files s' ds modules) →
-      Cmd.AllRaceFree files s (cs ++ ds) modules
+theorem Cmd.allMeet_append {Word : Type} (D : Device Word)
+    (files : String → Option (Array Word)) :
+    ∀ (s : HostStore Word) (cs ds : List Cmd), Cmd.AllMeet D files s cs →
+      (∀ s', Cmd.execAll D files s cs = some s' → Cmd.AllMeet D files s' ds) →
+      Cmd.AllMeet D files s (cs ++ ds)
   | s, [], ds, _, h => h s rfl
   | s, c :: cs, ds, ⟨hc, hcs⟩, h => ⟨hc, fun s' hs' =>
-      Cmd.allRaceFree_append files s' cs ds (hcs s' hs') fun s'' h'' =>
+      Cmd.allMeet_append D files s' cs ds (hcs s' hs') fun s'' h'' =>
         h s'' (by simp [Cmd.execAll, hs', h''])⟩
 
 /-- A run of typed items is a run of their host commands, from the encoded store to the encoded
-result, with every dispatch race-free. -/
-theorem Item.execAll_sim (files : String → Option Val) (items : List Item) (s s' : Store)
-    (h : Item.execAll files s items = some s') (backend : KernelBackend) :
-    Cmd.execAll (hostFiles files) s.host (Item.allCmds items) backend.module = some s'.host ∧
-      Cmd.AllRaceFree (hostFiles files) s.host (Item.allCmds items) backend.module := by
+result, with every run meeting the device's memory model. -/
+theorem Item.execAll_sim {Word : Type} (D : Device Word) (hB : Backend D)
+    (files : String → Option Val) (items : List Item) (s s' : Store)
+    (h : Item.execAll files s items = some s') :
+    Cmd.execAll D (hostFiles D files) (s.host D) (Item.allCmds items) = some (s'.host D) ∧
+      Cmd.AllMeet D (hostFiles D files) (s.host D) (Item.allCmds items) := by
   induction items generalizing s with
   | nil =>
     simp only [Item.execAll, Option.some.injEq] at h
@@ -321,12 +309,12 @@ theorem Item.execAll_sim (files : String → Option Val) (items : List Item) (s 
     | none => simp [hi] at h
     | some s1 =>
       simp only [hi, Option.bind_some] at h
-      obtain ⟨he, hr⟩ := Item.exec_sim files hi backend
+      obtain ⟨he, hr⟩ := Item.exec_sim D hB files hi
       obtain ⟨he', hr'⟩ := ih s1 h
       have hcat : Item.allCmds (i :: is) = i.cmds ++ Item.allCmds is := by
         simp [Item.allCmds]
       rw [hcat]
-      refine ⟨?_, Cmd.allRaceFree_append _ _ _ _ hr fun s'' h'' => ?_⟩
+      refine ⟨?_, Cmd.allMeet_append D _ _ _ _ hr fun s'' h'' => ?_⟩
       · rw [Cmd.execAll_append, he, Option.bind_some, he']
       · rw [he, Option.some.injEq] at h''
         subst h''

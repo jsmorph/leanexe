@@ -533,6 +533,22 @@ theorem Dispatch.execution_exists (d : Dispatch) {out : Array UInt32}
             show out[i]! = d.output[i]
             simp [getElem!_def, hout]
 
+/-- A dispatch is race-free, a consistent execution of it exists, and in every consistent
+execution no access of an invocation is in a data race, every invocation ends, and the reads after
+the dispatch read `out`. -/
+def Dispatch.Meets (d : Dispatch) (out : Array UInt32) : Prop :=
+  d.module.RaceFree d.inputs d.output.size d.count ∧ (∃ E, d.Consistent E) ∧
+    ∀ E, d.Consistent E → d.NoDataRace E ∧
+      (∀ g, g < d.count → (d.events (E.oracle g) g).2 = true) ∧
+      ∀ i, i < d.output.size → out[i]? = some (E.observed i)
+
+theorem Dispatch.meets (d : Dispatch) {out : Array UInt32}
+    (h : d.module.dispatch d.inputs d.output d.count = some out)
+    (hr : d.module.RaceFree d.inputs d.output.size d.count) : d.Meets out := by
+  refine ⟨hr, d.execution_exists h hr, fun E hE => ?_⟩
+  obtain ⟨hg, hrace, hout⟩ := d.executions h hr E hE
+  exact ⟨hrace, fun g hg' => (hg g hg').2, hout⟩
+
 end LeanExe.WGSL
 
 #print axioms LeanExe.WGSL.Dispatch.executions
