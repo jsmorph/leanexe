@@ -1,0 +1,97 @@
+%%{init: {"flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 30, "rankSpacing": 45, "wrappingWidth": 340}, "themeVariables": {"fontSize": "15px", "clusterBkg": "#fafafa", "clusterBorder": "#999999"}}}%%
+flowchart TB
+  subgraph SRC["Source: a Lean dialect"]
+    direction LR
+    LEAN["Lean definitions<br/>words, Bool, Float32, Float, arrays, byte buffers,<br/>records, sums, recursive types,<br/>LeanExe.build, LeanExe.loop, recursion"]
+    ACT["WASI actions<br/>LeanExe.Wasi.Action: stdin reads,<br/>stdout and stderr writes, exit"]
+  end
+
+  subgraph REF["Reflection"]
+    direction LR
+    VC["verified_compile<br/>Lean's kernel checks its proofs"]
+    VCW["verified_compile_wasi<br/>Lean's kernel checks its proofs"]
+  end
+
+  subgraph IR["Intermediate languages"]
+    direction LR
+    EXPR["Typed source language<br/>Verified.Expr S Γ t, with its meaning denote"]
+    CMD["Typed WASI commands<br/>Verified/Wasi/Source.lean,<br/>with Verified.Expr operands"]
+    KSRC["Kernel source language LeanExe.Source<br/>a build's Spec, with its plan Verified.Kernel.KernelPlan"]
+  end
+
+  LEAN --> VC --> EXPR
+  ACT --> VCW --> CMD
+  EXPR -. "operands" .-> CMD
+  EXPR -- "build bodies<br/>Verified/Kernel/Lower.lean" --> KSRC
+
+  subgraph CB["C backend"]
+    TR["LeanExe/Native translate<br/>simulation theorem translate_correct"]
+    CL["Clight program, Lean copy of CompCert 3.18<br/>C: p.f.native, A: p.f.nativeAligned"]
+    BARE["Whole program with a generated main<br/>B: p.f.program, by bare_program"]
+    CTXT["C text<br/>clightgen reads it back,<br/>and it must equal the translation"]
+    CC["CompCert ccomp"]
+    ROCQ["Rocq composition rocq/Clight2Asm.v<br/>CompCert's simulations from Clight to Asm"]
+  end
+
+  subgraph WASMB["WebAssembly backend"]
+    CW["compileWith<br/>universal theorem Prog.correctStaticWith"]
+    CWW["WASI compiler<br/>EffectProg.correctWith"]
+    MOD["Wasm.Module in Talos's semantics<br/>V: p.f.implements, p.f.bound, p.f.trapFree"]
+    MODW["Wasm.Module with WASI Preview 1 imports<br/>I: p.f.implements, p.start, p.f.total, p.total"]
+    ENC["encode, with decode_encode<br/>tools/Emit.lean writes the file"]
+    WASMF[".wasm file<br/>F: NAME_file, NAME_file_decode<br/>for the modules of the registry"]
+  end
+
+  subgraph GPU["GPU backends"]
+    WG["Verified.WGSL.compile<br/>G: dispatch theorems, Dispatch.executions<br/>under the Vulkan memory model"]
+    WGM["LeanExe.WGSL.Module<br/>tools/EmitWgsl.lean prints the .wgsl text,<br/>and the proved parser reads it back"]
+    HOST["Host programs: generate_host composes<br/>the GPT-2 kernels' theorems on either device"]
+    PT["Verified.PTX.compile<br/>P: launch theorems, Kernel.executions_eq<br/>under the PTX memory model"]
+    PTM["LeanExe.PTX.Module<br/>tools/EmitPtx.lean prints the .ptx text,<br/>and the proved parser reads it back"]
+    PTXAS["ptxas -O3 --fmad=false<br/>writes a cubin"]
+  end
+
+  EXPR --> CW --> MOD
+  CMD --> CWW --> MODW
+  MOD --> ENC
+  MODW --> ENC
+  ENC --> WASMF
+
+  MOD --> TR --> CL
+  CL --> CTXT
+  CL --> BARE --> CTXT
+  BARE -.-> ROCQ
+  CTXT --> CC
+
+  KSRC --> WG --> WGM
+  WG -.-> HOST
+  PT -.-> HOST
+  KSRC --> PT --> PTM --> PTXAS
+
+  subgraph RUN["Runs on"]
+    direction LR
+    LNX["Linux on AArch64 and x86-64<br/>executable linked with<br/>tools/native-host.c"]
+    QEMU["QEMU virt, AArch64,<br/>TCG and KVM<br/>ELF image with startup code"]
+    WT["Wasmtime<br/>leanexe-wasmtime-host,<br/>WASI Preview 1"]
+    JS["Browsers and Node.js<br/>GPT-2 pages,<br/>gpt32-wasm-host.mjs"]
+    VK["wgpu-native on Vulkan<br/>SwiftShader, llvmpipe<br/>leanexe-webgpu-host"]
+    WEBGPU["Browser WebGPU"]
+    NV["NVIDIA GB10, CUDA driver API<br/>leanexe-cuda-host runs the cubin,<br/>or the .ptx text through<br/>the driver's compiler"]
+  end
+
+  CC --> LNX
+  CC --> QEMU
+  WASMF --> WT
+  WASMF --> JS
+  WGM ---> VK
+  WGM ---> WEBGPU
+  PTXAS --> NV
+
+  classDef src fill:#eef4ff,stroke:#3b5b92,color:#111
+  classDef ir fill:#fff6e0,stroke:#9a6b00,color:#111
+  classDef back fill:#f3f3f3,stroke:#555,color:#111
+  classDef run fill:#e9f7ec,stroke:#2e7d3c,color:#111
+  class LEAN,ACT,VC,VCW src
+  class EXPR,CMD,KSRC ir
+  class CW,CWW,MOD,MODW,ENC,WASMF,TR,CL,BARE,CTXT,CC,ROCQ,WG,WGM,PT,PTM,PTXAS,HOST back
+  class WT,JS,LNX,QEMU,VK,WEBGPU,NV run

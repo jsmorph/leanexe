@@ -1,0 +1,46 @@
+%%{init: {"flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 30, "rankSpacing": 50, "wrappingWidth": 340}, "themeVariables": {"fontSize": "15px", "clusterBkg": "#fafafa", "clusterBorder": "#999999"}}}%%
+flowchart TB
+  SRC["Lean dialect<br/>pure functions and WASI actions"]
+  REF["verified_compile<br/>verified_compile_wasi<br/>Lean's kernel checks the proofs"]
+
+  EXPR["Intermediate language<br/>typed source language Verified.Expr"]
+  KSRC["Intermediate language for GPU kernels<br/>kernel source language LeanExe.Source"]
+
+  WASM["WebAssembly (V, F, I)<br/>the module computes the Lean function,<br/>in Talos's semantics"]
+  C["C, through Clight (C, A)<br/>each C function computes the Lean result,<br/>in the Lean copy of CompCert's Clight"]
+  BARE["Bare-metal AArch64 program (B)<br/>the whole program writes the result;<br/>a Rocq proof carries it to Asm"]
+  WGSL["WGSL kernels (G)<br/>a dispatch writes the Lean result,<br/>under the Vulkan memory model"]
+  PTX["PTX kernels (P)<br/>a launch writes the Lean result,<br/>under the PTX memory model"]
+
+  subgraph RUN["Runs on"]
+    direction LR
+    T1["Wasmtime, browsers, Node.js"]
+    T2["Linux on AArch64 and x86-64"]
+    T3["QEMU virt, AArch64"]
+    T4["Vulkan: SwiftShader, llvmpipe"]
+    T6["Browser WebGPU"]
+    T5["NVIDIA GB10, CUDA"]
+  end
+
+  SRC --> REF --> EXPR
+  EXPR -- "build bodies" --> KSRC
+  EXPR --> WASM
+  WASM -- "modules without imports" --> C
+  C -- "generated main" --> BARE
+  KSRC --> WGSL
+  KSRC --> PTX
+  WASM --> T1
+  C -- "CompCert ccomp" --> T2
+  BARE -- "CompCert ccomp" --> T3
+  WGSL --> T4
+  WGSL --> T6
+  PTX -- "ptxas" --> T5
+
+  classDef src fill:#eef4ff,stroke:#3b5b92,color:#111
+  classDef ir fill:#fff6e0,stroke:#9a6b00,color:#111
+  classDef back fill:#f3f3f3,stroke:#555,color:#111
+  classDef run fill:#e9f7ec,stroke:#2e7d3c,color:#111
+  class SRC,REF src
+  class EXPR,KSRC ir
+  class WASM,C,BARE,WGSL,PTX back
+  class T1,T2,T3,T4,T5,T6 run

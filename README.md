@@ -2,7 +2,11 @@
 
 LeanExe compiles functions written in a restricted dialect of Lean to WebAssembly, C, WGSL, and PTX, and proves in Lean that the compiled code computes those functions.
 
-The compiler has one correctness theorem for every typed source program that it accepts.  The WebAssembly theorems hold in [Talos](https://github.com/cajal-technologies/talos)'s semantics, and an execution theorem may allow a trap at `unreachable`, which the theorem `p.f.trapFree` excludes under its allocation and call-depth premises.  The compiled modules also translate to a subset of [CompCert](https://compcert.org/compcert-C.html)'s C, with a theorem about each C function in the Lean copy of CompCert's Clight, and CompCert compiles the C for x86-64 and AArch64, under an operating system or on bare-metal AArch64.  Only the bare-metal programs have a theorem about the whole program, which a Rocq proof transfers to CompCert's Asm, and an executable under an operating system also depends on a C host that no theorem covers.  Array builds compile to WGSL compute kernels with theorems about a modeled GPU dispatch, and Lean actions with stdin, stdout, stderr, and exit compile to WASI Preview 1 modules.
+![LeanExe toolchain: source, reflection, intermediate languages, backends and their theorems, and platforms](docs/toolchain-summary.png)
+
+`verified_compile` reflects a Lean definition into a typed intermediate language, and each backend produces code together with a theorem that the code computes the definition's result.  The theorems hold in Talos's WebAssembly semantics, in the Lean copy of CompCert's Clight, and under statements of the Vulkan and PTX memory models, and a Rocq proof carries the bare-metal theorem to CompCert's Asm.  The letters are the artifact codes of [the table below](#artifacts), and [the overview](#overview) shows the full toolchain.
+
+The compiler has one correctness theorem for every typed source program that it accepts.  The WebAssembly theorems hold in [Talos](https://github.com/cajal-technologies/talos)'s semantics, and an execution theorem may allow a trap at `unreachable`, which the theorem `p.f.trapFree` excludes under its allocation and call-depth premises.  The compiled modules also translate to a subset of [CompCert](https://compcert.org/compcert-C.html)'s C, with a theorem about each C function in the Lean copy of CompCert's Clight, and CompCert compiles the C for x86-64 and AArch64, under an operating system or on bare-metal AArch64.  Only the bare-metal programs have a theorem about the whole program, which a Rocq proof transfers to CompCert's Asm, and an executable under an operating system also depends on a C host that no theorem covers.  Array builds compile to WGSL and PTX kernels with theorems under statements of the Vulkan and PTX memory models, and Lean actions with stdin, stdout, stderr, and exit compile to WASI Preview 1 modules.
 
 ## Background
 
@@ -14,6 +18,16 @@ We strive to be both pragmatic and demanding.  For example, floating-point opera
 Floating-Point Arithmetic"](https://dl.acm.org/doi/10.1145/103162.103163).  We are building machinery for complete floating-point accuracy.  The [fused multiply-add](https://github.com/jsmorph/leanexe/blob/main/Library/Numerics/Arithmetic/Fma/FmaTheorem.lean#L144-L149) development is a good example.
 
 These days rewriting a large codebase in a different source language is almost automatic (given appropriate stern oversight).  So inventing a new language today doesn't necessarily impose the classic high hurdles to adoption.  However, AI is of course trained on existing corpora.  Lean in particular continues to receive a lot of investment by AI companies.  So we decided to proceed from a [strict subset of Lean](https://github.com/jsmorph/leanexe/tree/main/docs).
+
+## Overview
+
+![LeanExe toolchain in detail](docs/toolchain.png)
+
+`verified_compile` and `verified_compile_wasi` reflect Lean definitions and WASI actions into typed source languages, and Lean's kernel checks the proofs that they generate, so the reflector is outside the trusted base.  `compileWith` translates the typed source language `Verified.Expr` to a WebAssembly module, and one universal theorem, `Prog.correctStaticWith`, gives each compiled function its execution theorem in Talos's semantics.  The WASI compiler does the same for programs with effects through `EffectProg.correctWith`.  `decode_encode` carries the theorems to the module's encoded bytes, and the file theorems state that the `.wasm` file holds those bytes.
+
+The C backend translates a module without imports to the Lean copy of CompCert's Clight, where `translate_correct` gives each C function a theorem from the module's theorem.  CompCert compiles the printed C only after `clightgen` reads it back as the same Clight program.  For bare-metal AArch64, `bare_program` adds a generated `main` and proves a theorem about the whole program, which a Rocq proof carries to CompCert's Asm.  The GPU backends lower array builds to the kernel source language and translate them to WGSL and PTX, with theorems about every consistent execution under statements of the Vulkan and PTX memory models, and a proved parser reads each printed kernel back.
+
+Applying the theorems on the platforms rests on the items of [the trusted-base document](docs/trusted-base.md), among them Talos's semantics, the decoder, the C host, `ptxas`, and the GPU drivers.  The Mermaid sources of the diagrams are [`docs/toolchain.mmd`](docs/toolchain.mmd) and [`docs/toolchain-summary.mmd`](docs/toolchain-summary.mmd).  `mmdc -i docs/toolchain.mmd -o docs/toolchain.png -b white -s 2 -w 1800`, from `@mermaid-js/mermaid-cli`, renders the full diagram, and the same options render the summary.
 
 ## Demos
 
