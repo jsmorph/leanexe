@@ -61,6 +61,7 @@ structure Inv (P : Platform) (n : Nat) (sl : Locals) (s : State) : Prop where
   count : (sl.params ++ sl.locals).length = n
   aligned : s.sp % 16 = 0
   mapped : ∀ j < 8 * n, P.normal (s.sp + UInt64.ofNat j) = true
+  bound : n < 512
 
 /-- The registers of the heights below `b` keep their values from `s` to `s'`. -/
 def Frame (b : Nat) (s s' : State) : Prop :=

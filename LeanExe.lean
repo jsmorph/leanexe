@@ -5,6 +5,7 @@ import LeanExe.A64.Proof.Bits
 import LeanExe.A64.Proof.Machine
 import LeanExe.A64.Proof.Relation
 import LeanExe.A64.Proof.Sim
+import LeanExe.A64.Proof.Straight
 import LeanExe.Attr
 import LeanExe.Common
 import LeanExe.Dialect.Build

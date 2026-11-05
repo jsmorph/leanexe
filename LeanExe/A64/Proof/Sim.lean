@@ -147,7 +147,7 @@ theorem sim_localGet (F i : Nat) : InstrSim P code F (.localGet i) := by
       · simp
       · simp
       · intro a' _; simp
-      · refine ⟨StackRel.push hinv.stack (by omega) ?_ ?_, ?_, hinv.count, ?_, ?_⟩
+      · refine ⟨StackRel.push hinv.stack (by omega) ?_ ?_, ?_, hinv.count, ?_, ?_, ?_⟩
         · rw [hh, State.x_withPc, State.x_setX_same (regOf_lt_31 h hlt)]
           have := hinv.locals i hil
           rwa [slotAddr, ← ofNat_mul8] at this
@@ -158,6 +158,7 @@ theorem sim_localGet (F i : Nat) : InstrSim P code F (.localGet i) := by
         · exact hinv.locals.congr (by simp) (by simp)
         · simpa using hinv.aligned
         · simpa using hinv.mapped
+        · exact hinv.bound
       · simp [hh]
       · intro k hk
         rw [State.x_withPc, State.x_setX_ne]
