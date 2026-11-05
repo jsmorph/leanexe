@@ -2,6 +2,7 @@ import LeanExe.A64.Encode
 import LeanExe.A64.Gen
 import LeanExe.A64.Machine
 import LeanExe.A64.Proof.Bits
+import LeanExe.A64.Proof.Constructs
 import LeanExe.A64.Proof.Control
 import LeanExe.A64.Proof.Machine
 import LeanExe.A64.Proof.Relation
@@ -93,6 +94,7 @@ import LeanExe.ProofKit.BorrowedKept
 import LeanExe.ProofKit.CallRemainder
 import LeanExe.ProofKit.EntireSeries
 import LeanExe.ProofKit.EulerGamma
+import LeanExe.ProofKit.Exec
 import LeanExe.ProofKit.ExpTinyError
 import LeanExe.ProofKit.F32Add
 import LeanExe.ProofKit.F32AddFinite

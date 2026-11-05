@@ -1,6 +1,7 @@
 import LeanExe.Native.Proof.Ops
 import Interpreter.Wasm.Semantics.Lemmas
 import LeanExe.ProofKit.AlignedDefs
+import LeanExe.ProofKit.Exec
 
 /-!
 The simulation of instruction lists, of `block`, `loop`, and `iff`, and of `br`, `br_if`, and
@@ -122,19 +123,6 @@ theorem Outcome.seq_normal {L : List Label} (hL : LabelsOk L) {σend : List VT} 
   | OutOfFuel => trivial
   | ReturnCall _ _ _ => exact h
   | Throwing _ _ _ _ => exact h
-
-theorem exec_cons {α : Type} (F : Nat) (st : Store α) (sl : Locals) (env : HostEnv α)
-    (i : Instruction) (rest : Program) :
-    exec F mod st sl (i :: rest) env =
-      match execOne F mod st sl i env with
-      | .Fallthrough st s => exec F mod st s rest env
-      | other => other := by
-  simp only [exec]
-  rfl
-
-theorem exec_nil {α : Type} (F : Nat) (st : Store α) (sl : Locals) (env : HostEnv α) :
-    exec F mod st sl [] env = .Fallthrough st sl := by
-  simp only [exec]
 
 theorem callees_seq (s1 s2 : statement) :
     callees (.Ssequence s1 s2) = callees s1 ++ callees s2 := rfl

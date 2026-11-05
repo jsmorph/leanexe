@@ -129,7 +129,7 @@ theorem sim_br (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c CallO
   simp [trInstr, hs0] at htr
   obtain ⟨rfl, rfl, rfl⟩ := htr
   cases F with
-  | zero => rw [execOne_zero]; trivial
+  | zero => rw [ProofKit.execOne_zero]; trivial
   | succ f =>
       simp only [execOne.eq_def]
       obtain ⟨t, le', out, hx, hrel, hf⟩ := br_outcome hs0 hinv
@@ -140,7 +140,7 @@ theorem sim_br_if (F k : Nat) {CallOk : Nat → Prop} : InstrSimL A X E mod c Ca
   rcases σ with _ | ⟨a, σr⟩ <;> simp [trInstr, pops, Option.bind_eq_some_iff] at htr
   obtain ⟨hb, rfl, s0, hs0, rfl, rfl, rfl⟩ := htr
   cases F with
-  | zero => rw [execOne_zero]; trivial
+  | zero => rw [ProofKit.execOne_zero]; trivial
   | succ f =>
       obtain ⟨x, vs, hvs, hx, hrest⟩ := pop1_i32 hinv.stack
       have hinv' : Inv A E c σr st
@@ -169,7 +169,7 @@ theorem sim_ret (hE : EnvOk E) (hres : ResOk E c.results) (F : Nat) {CallOk : Na
     InstrSimL A X E mod c CallOk F .ret := by
   intro L σ n s σ' n' htr hbase hL hcalls α st sl le m env _ hinv
   cases F with
-  | zero => rw [execOne_zero]; trivial
+  | zero => rw [ProofKit.execOne_zero]; trivial
   | succ f =>
       simp only [execOne.eq_def]
       rcases hrs : c.results with _ | ⟨t, _ | ⟨t2, rs⟩⟩

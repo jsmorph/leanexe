@@ -8,42 +8,6 @@ namespace LeanExe.Native
 
 open Wasm LClight LeanExe.ProofKit
 
-theorem execOne_zero {α : Type} (m : Module) (st : Store α) (sl : Locals) (env : HostEnv α)
-    (inst : Instruction) : execOne 0 m st sl inst env = .OutOfFuel := by
-  simp only [execOne.eq_def]
-
-/-- Talos's result for a `block` or `iff` from its body's `r`, with `ra` kept values over
-`below`. -/
-def blockResult {α : Type} (ra : Nat) (below : List Value) : Continuation α → Continuation α
-  | .Fallthrough r' s' =>
-      .Fallthrough r' { params := s'.params, locals := s'.locals, values := s'.values.take ra ++ below }
-  | .Break 0 r' s' =>
-      .Fallthrough r' { params := s'.params, locals := s'.locals, values := s'.values.take ra ++ below }
-  | .Break (k + 1) r' s' => .Break k r' s'
-  | other => other
-
-theorem execOne_block {α : Type} (m : Module) (st : Store α) (sl : Locals) (env : HostEnv α)
-    (f pa ra : Nat) (body : Program) (pts rts : List ValueType) :
-    execOne (f + 1) m st sl (.block pa ra body pts rts) env =
-      blockResult ra (sl.values.drop pa) (exec f m st sl body env) := by
-  simp only [execOne.eq_def]
-  cases exec f m st sl body env with
-  | Break k r' s' => cases k <;> rfl
-  | _ => rfl
-
-theorem execOne_iff {α : Type} (m : Module) (st : Store α) (sl : Locals) (env : HostEnv α)
-    (f pa ra : Nat) (thn els : Program) (pts rts : List ValueType) (x : UInt32) (vs : List Value)
-    (hvs : sl.values = .i32 x :: vs) :
-    execOne (f + 1) m st sl (.iff pa ra thn els pts rts) env =
-      blockResult ra (vs.drop pa)
-        (exec f m st { params := sl.params, locals := sl.locals, values := vs }
-          (if x ≠ 0 then thn else els) env) := by
-  simp only [execOne.eq_def, hvs]
-  cases exec f m st { params := sl.params, locals := sl.locals, values := vs }
-      (if x ≠ 0 then thn else els) env with
-  | Break k r' s' => cases k <;> rfl
-  | _ => rfl
-
 theorem blockTypeOk_inv {pa ra : Nat} {pts rts : List ValueType} {r : Option VT}
     (h : blockTypeOk pa ra pts rts = true) (hr : (rts.head?).mapM VT.ofValueType = some r) :
     pa = 0 ∧ ra = r.toList.length := by
