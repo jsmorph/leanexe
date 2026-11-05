@@ -108,7 +108,8 @@ and the branch.  A construct carries at most one value, as the subset of
 def branchTo (t : Ctl) (h : Nat) (a : UInt64) : GenM (List Instr) := do
   if h < t.base + t.arity ∨ t.arity > 1 then
     throw "a branch with fewer values than its target takes, or with more than one"
-  let moves ← if t.arity = 1 then do pure [mov (← opReg t.base) (← opReg (h - 1))] else pure []
+  let moves ← if t.arity = 1 then do pure [mov (← opReg t.base) (← opReg (h - 1))]
+    else pure []
   return moves ++ [.b (← bField (after a t.arity) t.target)]
 
 mutual
@@ -239,30 +240,35 @@ def genList (E : Env) (ctl : List Ctl) (h : Nat) (a : UInt64) :
           return (c1 ++ c2, fin')
 end
 
-/-- The frame of a function with `n` parameters and locals: 8 bytes each, rounded up to 16. -/
-def frameSize (n : Nat) : Nat := (8 * n + 15) / 16 * 16
+/-- The frame of a function with `n` parameters and locals: 8 bytes for each and 8 for the
+return address above them, rounded up to 16. -/
+def frameSize (n : Nat) : Nat := (8 * (n + 1) + 15) / 16 * 16
 
 /-- The number of instructions of the function `f`. -/
 def functionSize (f : Function) : Nat :=
-  1 + (f.params.length + f.locals.length) + (listSize [f.results.length] f.body).1 + 2
+  2 + (f.params.length + f.locals.length) + (listSize [f.results.length] f.body).1 + 3
 
-/-- The instructions of the function `f` placed at `entry`. -/
+/-- The instructions of the function `f` placed at `entry`: the prologue, which allocates the
+frame, saves the return address in X30 above the locals, and stores the parameters from X0 up and
+zeros for the other locals, then the body, then the epilogue, which restores X30, frees the
+frame, and returns. -/
 def genFunction (trapUnreachable trapDiv entry : UInt64) (f : Function) : GenM (List Instr) := do
   let p := f.params.length
   let n := p + f.locals.length
   let r := f.results.length
   if p > 8 ∨ r > 1 then throw "a function with more than 8 parameters or 1 result"
   if hf : frameSize n < 4096 then
-    let bodyA := after entry (1 + n)
+    have hn : n < 4096 := by unfold frameSize at hf; omega
+    let bodyA := after entry (2 + n)
     let epilogue := after bodyA (listSize [r] f.body).1
     let E : Env := { locals := n, trapUnreachable, trapDiv }
     let (body, fin) ← genList E [{ target := epilogue, arity := r, base := 0 }] 0 bodyA f.body
     if fin.any (· ≠ r) then throw "a function body that ends at another height"
-    let stores ← (List.range n).mapM fun i => do
-      let src : Fin 32 := if i < p then ⟨i % 32, Nat.mod_lt _ (by decide)⟩ else 31
-      return Instr.str src 31 (← slotOf i)
-    return [.subImm 31 31 ⟨frameSize n, hf⟩] ++ stores ++ body ++
-      [.addImm 31 31 ⟨frameSize n, hf⟩, .ret 30]
+    let stores := List.ofFn fun i : Fin n =>
+      Instr.str (if i.val < p then ⟨i.val % 32, Nat.mod_lt _ (by decide)⟩ else 31) 31
+        ⟨i.val, Nat.lt_trans i.isLt hn⟩
+    return [.subImm 31 31 ⟨frameSize n, hf⟩, .str 30 31 ⟨n, hn⟩] ++ stores ++ body ++
+      [.ldr 30 31 ⟨n, hn⟩, .addImm 31 31 ⟨frameSize n, hf⟩, .ret 30]
   else throw s!"a frame of {frameSize n} bytes"
 
 /-- The number of instructions of `main` for `k` arguments. -/
