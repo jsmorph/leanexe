@@ -102,11 +102,13 @@ def curBase : List Ctl → Nat
   | [] => 0
   | t :: _ => t.base
 
-/-- The moves of a branch from height `h` to `t`, placed at `a`, and the branch. -/
+/-- The move of a branch from height `h` to `t`, placed at `a`, when the branch carries a value,
+and the branch.  A construct carries at most one value, as the subset of
+`LeanExe/Native/Subset.lean` requires. -/
 def branchTo (t : Ctl) (h : Nat) (a : UInt64) : GenM (List Instr) := do
-  if h < t.base + t.arity then throw "a branch with fewer values than its target takes"
-  let moves ← (List.range t.arity).mapM fun i => do
-    return mov (← opReg (t.base + i)) (← opReg (h - t.arity + i))
+  if h < t.base + t.arity ∨ t.arity > 1 then
+    throw "a branch with fewer values than its target takes, or with more than one"
+  let moves ← if t.arity = 1 then do pure [mov (← opReg t.base) (← opReg (h - 1))] else pure []
   return moves ++ [.b (← bField (after a t.arity) t.target)]
 
 mutual
@@ -195,19 +197,20 @@ def genInstr (E : Env) (ctl : List Ctl) (h : Nat) (a : UInt64) :
       | some t => return (← branchTo t h a, none)
       | none => throw "ret outside a function"
   | .block pa ra body _ _ => do
-      if pa ≠ 0 then throw "a block with parameters"
+      if pa ≠ 0 ∨ ra > 1 then throw "a block with parameters or more than one result"
       let n := (listSize (ra :: ctl.map (·.arity)) body).1
       let inner := { target := after a n, arity := ra, base := h } :: ctl
       let (code, fin) ← genList E inner h a body
       if fin.any (· ≠ h + ra) then throw "a block that ends at another height"
       return (code, some (h + ra))
   | .loop pa ra body _ _ => do
-      if pa ≠ 0 then throw "a loop with parameters"
+      if pa ≠ 0 ∨ ra > 1 then throw "a loop with parameters or more than one result"
       let (code, fin) ← genList E ({ target := a, arity := 0, base := h } :: ctl) h a body
       if fin.any (· ≠ h + ra) then throw "a loop that ends at another height"
       return (code, some (h + ra))
   | .iff pa ra thn els _ _ => do
-      if pa ≠ 0 ∨ h < curBase ctl + 1 then throw "an if with parameters or without a condition"
+      if pa ≠ 0 ∨ ra > 1 ∨ h < curBase ctl + 1 then
+        throw "an if with parameters, more than one result, or no condition"
       let c ← opReg (h - 1)
       let ar := ra :: ctl.map (·.arity)
       let aB := after a (1 + (listSize ar thn).1)
