@@ -19,9 +19,12 @@ the end of a `block` or an `iff`, the start of a `loop`, or the epilogue for the
 which also serves `ret`.  The result lies at height 0, in X0, when the epilogue releases the frame
 and returns.  Code after a `br`, a `ret`, or `unreachable` in the same list is unreachable, and the
 generator emits nothing for it, while the code after a construct is reachable, as Wasm's typing
-has it.  A trap branches to a stub that sets X0 to the trap's code of `LeanExe.Native.trapCode`,
-1, 2, or 3, and branches to the program's exit word, which the image fills with a branch to
-`lx_exit` of the startup code.
+has it.  No instruction may pop below the base height of its innermost construct, `curBase`, as
+valid Wasm never does: Talos runs a construct's body on the whole operand stack and restores the
+values below the construct afterwards, which the registers of those heights would not follow.
+A trap branches to a stub that sets X0 to the trap's code of `LeanExe.Native.trapCode`, 1, 2, or
+3, and branches to the program's exit word, which the image fills with a branch to `lx_exit` of
+the startup code.
 
 The generator places code as it emits it: each function takes the address of its first
 instruction, and `instrSize` and `listSize` give the number of instructions of a construct
@@ -94,6 +97,11 @@ structure Env where
   trapUnreachable : UInt64
   trapDiv : UInt64
 
+/-- The height of the innermost construct's base, under which its code must not pop. -/
+def curBase : List Ctl → Nat
+  | [] => 0
+  | t :: _ => t.base
+
 /-- The moves of a branch from height `h` to `t`, placed at `a`, and the branch. -/
 def branchTo (t : Ctl) (h : Nat) (a : UInt64) : GenM (List Instr) := do
   if h < t.base + t.arity then throw "a branch with fewer values than its target takes"
@@ -139,32 +147,32 @@ def genInstr (E : Env) (ctl : List Ctl) (h : Nat) (a : UInt64) :
       if i ≥ E.locals then throw s!"local {i} of {E.locals}"
       return ([.ldr (← opReg h) 31 (← slotOf i)], some (h + 1))
   | .localSet i => do
-      if i ≥ E.locals ∨ h = 0 then throw s!"local.set {i} at height {h}"
+      if i ≥ E.locals ∨ h < curBase ctl + 1 then throw s!"local.set {i} at height {h}"
       return ([.str (← opReg (h - 1)) 31 (← slotOf i)], some (h - 1))
   | .localTee i => do
-      if i ≥ E.locals ∨ h = 0 then throw s!"local.tee {i} at height {h}"
+      if i ≥ E.locals ∨ h < curBase ctl + 1 then throw s!"local.tee {i} at height {h}"
       return ([.str (← opReg (h - 1)) 31 (← slotOf i)], some h)
   | .constI64 v => do return (movImm (← opReg h) v, some (h + 1))
   | .const v => do return (movImm (← opReg h) v.toUInt64, some (h + 1))
   | .eqI64 | .eq => do
-      if h < 2 then throw s!"a comparison at height {h}"
+      if h < curBase ctl + 2 then throw s!"a comparison at height {h}"
       let r ← opReg (h - 2)
       return ([.subsReg 31 r (← opReg (h - 1)), .csinc r 31 31 1], some (h - 1))
   | .eqzI64 | .eqz => do
-      if h < 1 then throw "eqz at height 0"
+      if h < curBase ctl + 1 then throw s!"eqz at height {h}"
       let r ← opReg (h - 1)
       return ([.subsImm 31 r 0, .csinc r 31 31 1], some h)
   | .extendUI32 => do
-      if h < 1 then throw "extend at height 0"
+      if h < curBase ctl + 1 then throw s!"extend at height {h}"
       return ([], some h)
   | .remUI64 => do
-      if h < 2 then throw s!"a remainder at height {h}"
+      if h < curBase ctl + 2 then throw s!"a remainder at height {h}"
       let x ← opReg (h - 2)
       let y ← opReg (h - 1)
       return ([.cbz y (← cbField a E.trapDiv), .udiv scratch x y, .msub x scratch y x],
         some (h - 1))
   | .divUI64 => do
-      if h < 2 then throw s!"a division at height {h}"
+      if h < curBase ctl + 2 then throw s!"a division at height {h}"
       let x ← opReg (h - 2)
       let y ← opReg (h - 1)
       return ([.cbz y (← cbField a E.trapDiv), .udiv x x y], some (h - 1))
@@ -174,7 +182,7 @@ def genInstr (E : Env) (ctl : List Ctl) (h : Nat) (a : UInt64) :
       | some t => return (← branchTo t h a, none)
       | none => throw s!"br {n} under {ctl.length} constructs"
   | .br_if n => do
-      if h < 1 then throw "br_if at height 0"
+      if h < curBase ctl + 1 then throw s!"br_if at height {h}"
       match ctl[n]? with
       | some t =>
           let c ← opReg (h - 1)
@@ -199,7 +207,7 @@ def genInstr (E : Env) (ctl : List Ctl) (h : Nat) (a : UInt64) :
       if fin.any (· ≠ h + ra) then throw "a loop that ends at another height"
       return (code, some (h + ra))
   | .iff pa ra thn els _ _ => do
-      if pa ≠ 0 ∨ h < 1 then throw "an if with parameters or without a condition"
+      if pa ≠ 0 ∨ h < curBase ctl + 1 then throw "an if with parameters or without a condition"
       let c ← opReg (h - 1)
       let ar := ra :: ctl.map (·.arity)
       let aB := after a (1 + (listSize ar thn).1)
