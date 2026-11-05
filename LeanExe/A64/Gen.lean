@@ -14,38 +14,24 @@ zero-extended, so `extendUI32` emits nothing.  X16 is the scratch register of `r
 function keeps its parameters and locals in a frame of 8 bytes each at `SP`, which its prologue
 reserves, a multiple of 16 bytes, stores its parameters into from X0 upward, and clears for the
 other locals.  A branch to a construct moves the values that the branch carries into the
-registers of the construct's base height and branches to the construct's label: the end of a
-`block` or an `iff`, the start of a `loop`, or the epilogue for the function itself, which also
-serves `ret`.  The result lies at height 0, in X0, when the epilogue releases the frame and
-returns.  Code after a `br`, a `ret`, or `unreachable` in the same list is unreachable, and the
-generator emits nothing for it.  A trap branches to a stub that sets X0 to the trap's code of
-`LeanExe.Native.trapCode`, 1, 2, or 3, and branches to `lx_exit` of the startup code.
+registers of the construct's base height, one `ORR` each, and branches to the construct's target:
+the end of a `block` or an `iff`, the start of a `loop`, or the epilogue for the function itself,
+which also serves `ret`.  The result lies at height 0, in X0, when the epilogue releases the frame
+and returns.  Code after a `br`, a `ret`, or `unreachable` in the same list is unreachable, and the
+generator emits nothing for it, while the code after a construct is reachable, as Wasm's typing
+has it.  A trap branches to a stub that sets X0 to the trap's code of `LeanExe.Native.trapCode`,
+1, 2, or 3, and branches to the program's exit word, which the image fills with a branch to
+`lx_exit` of the startup code.
 
-`layout` places the items at an address, gives each label the address of the next instruction,
-and encodes each branch with its offset after checking the offset's range.
+The generator places code as it emits it: each function takes the address of its first
+instruction, and `instrSize` and `listSize` give the number of instructions of a construct
+without addresses, so a construct's end is known before its body is emitted.  Every branch is
+encoded with its offset after a check that the offset fits.
 -/
 
 namespace LeanExe.A64
 
 open Wasm
-
-/-- An item of generated code before layout. -/
-inductive Item where
-  /-- An instruction. -/
-  | ins (i : Instr)
-  /-- A label, which takes the address of the next instruction. -/
-  | label (l : Nat)
-  /-- `B` to a label. -/
-  | b (l : Nat)
-  /-- `BL` to a label. -/
-  | bl (l : Nat)
-  /-- `CBZ` of a register to a label. -/
-  | cbz (r : Fin 32) (l : Nat)
-  /-- `CBNZ` of a register to a label. -/
-  | cbnz (r : Fin 32) (l : Nat)
-  /-- `B` to `lx_exit` of the startup code. -/
-  | exit
-  deriving Repr
 
 /-- The registers of the operand stack's heights. -/
 def opRegs : List Nat := List.range 16 ++ (List.range 10).map (· + 19)
@@ -53,10 +39,7 @@ def opRegs : List Nat := List.range 16 ++ (List.range 10).map (· + 19)
 /-- The scratch register. -/
 def scratch : Fin 32 := 16
 
-abbrev GenM := StateT Nat (Except String)
-
-/-- A label that no other item uses. -/
-def fresh : GenM Nat := modifyGet fun n => (n, n + 1)
+abbrev GenM := Except String
 
 /-- The register of height `h`. -/
 def opReg (h : Nat) : GenM (Fin 32) :=
@@ -69,232 +52,238 @@ def half (v : UInt64) (k : Nat) : Fin 65536 :=
   ⟨v.toNat / 65536 ^ k % 65536, Nat.mod_lt _ (by decide)⟩
 
 /-- Sets register `d` to `v` with `MOVZ` and three `MOVK`. -/
-def movImm (d : Fin 32) (v : UInt64) : List Item :=
-  [.ins (.movz d (half v 0) 0), .ins (.movk d (half v 1) 1), .ins (.movk d (half v 2) 2),
-    .ins (.movk d (half v 3) 3)]
+def movImm (d : Fin 32) (v : UInt64) : List Instr :=
+  [.movz d (half v 0) 0, .movk d (half v 1) 1, .movk d (half v 2) 2, .movk d (half v 3) 3]
 
-/-- Copies register `s` to register `d`, or nothing when they are the same. -/
-def mov (d s : Fin 32) : List Item :=
-  if d = s then [] else [.ins (.orrReg d 31 s)]
+/-- Copies register `s` to register `d`. -/
+def mov (d s : Fin 32) : Instr := .orrReg d 31 s
 
 /-- The frame slot of local `i`, as the scaled offset of `LDR` and `STR`. -/
 def slotOf (i : Nat) : GenM (Fin 4096) :=
   if h : i < 4096 then pure ⟨i, h⟩ else throw s!"local {i} lies beyond the frame's reach"
 
-/-- A construct that a branch can target: its label, the number of values that a branch to it
-carries, and the height under those values at the label. -/
+/-- The field of `bits` bits of a branch from `here` to `target`, when the offset fits. -/
+def branchField (bits : Nat) (here target : UInt64) : GenM Nat := do
+  let d := Int.ofNat target.toNat - Int.ofNat here.toNat
+  if d % 4 ≠ 0 ∨ d / 4 < -(2 ^ (bits - 1)) ∨ d / 4 ≥ 2 ^ (bits - 1) then
+    throw s!"a branch from {here} to {target} beyond {bits} bits"
+  return (d / 4 % (2 ^ bits : Int)).toNat
+
+/-- The field of `B` or `BL` from `here` to `target`. -/
+def bField (here target : UInt64) : GenM (Fin 67108864) := do
+  return ⟨(← branchField 26 here target) % 67108864, Nat.mod_lt _ (by decide)⟩
+
+/-- The field of `CBZ` or `CBNZ` from `here` to `target`. -/
+def cbField (here target : UInt64) : GenM (Fin 524288) := do
+  return ⟨(← branchField 19 here target) % 524288, Nat.mod_lt _ (by decide)⟩
+
+/-- `n` instructions after `a`. -/
+def after (a : UInt64) (n : Nat) : UInt64 := a + 4 * UInt64.ofNat n
+
+/-- A construct that a branch can target: the target's address, the number of values that a
+branch to it carries, and the height under those values at the target. -/
 structure Ctl where
-  label : Nat
+  target : UInt64
   arity : Nat
   base : Nat
 
 /-- What the instructions of one function need: the number of its locals, parameters
-included, and the labels of the traps at `unreachable` and at a division by zero. -/
+included, and the addresses of the trap stubs for `unreachable` and for a division by zero. -/
 structure Env where
   locals : Nat
-  trapUnreachable : Nat
-  trapDiv : Nat
+  trapUnreachable : UInt64
+  trapDiv : UInt64
 
-/-- The moves of a branch to `t` from height `h`, and the branch. -/
-def branchTo (t : Ctl) (h : Nat) : GenM (List Item) := do
+/-- The moves of a branch from height `h` to `t`, placed at `a`, and the branch. -/
+def branchTo (t : Ctl) (h : Nat) (a : UInt64) : GenM (List Instr) := do
   if h < t.base + t.arity then throw "a branch with fewer values than its target takes"
-  let mut moves := []
-  for i in [0:t.arity] do
-    moves := moves ++ mov (← opReg (t.base + i)) (← opReg (h - t.arity + i))
-  return moves ++ [.b t.label]
+  let moves ← (List.range t.arity).mapM fun i => do
+    return mov (← opReg (t.base + i)) (← opReg (h - t.arity + i))
+  return moves ++ [.b (← bField (after a t.arity) t.target)]
 
 mutual
-/-- The items of the instruction `ins` at height `h` under the constructs `ctl`, and the height
-after it, or `none` when the code after it is unreachable. -/
-def genInstr (E : Env) (ctl : List Ctl) (h : Nat) :
-    Instruction → GenM (List Item × Option Nat)
+/-- The number of instructions of `ins` under constructs whose branches carry `ar` values, the
+innermost first, and whether the code after it is reachable. -/
+def instrSize (ar : List Nat) : Instruction → Nat × Bool
+  | .localGet _ | .localSet _ | .localTee _ => (1, true)
+  | .constI64 _ | .const _ => (4, true)
+  | .eqI64 | .eq | .eqzI64 | .eqz => (2, true)
+  | .extendUI32 => (0, true)
+  | .remUI64 => (3, true)
+  | .divUI64 => (2, true)
+  | .unreachable => (1, false)
+  | .br n => (ar[n]?.getD 0 + 1, false)
+  | .br_if n => (if ar[n]?.getD 0 = 0 then 1 else ar[n]?.getD 0 + 2, true)
+  | .ret => (ar.getLast?.getD 0 + 1, false)
+  | .block _ ra body _ _ => ((listSize (ra :: ar) body).1, true)
+  | .loop _ _ body _ _ => ((listSize (0 :: ar) body).1, true)
+  | .iff _ ra thn els _ _ =>
+      ((listSize (ra :: ar) thn).1 + (listSize (ra :: ar) els).1 + 2, true)
+  | _ => (0, true)
+
+/-- The number of instructions of `is` and whether the code after them is reachable. -/
+def listSize (ar : List Nat) : List Instruction → Nat × Bool
+  | [] => (0, true)
+  | i :: rest =>
+      if (instrSize ar i).2 then
+        ((instrSize ar i).1 + (listSize ar rest).1, (listSize ar rest).2)
+      else ((instrSize ar i).1, false)
+end
+
+mutual
+/-- The instructions of `ins` placed at `a`, at height `h` under the constructs `ctl`, and the
+height after it, or `none` when the code after it is unreachable. -/
+def genInstr (E : Env) (ctl : List Ctl) (h : Nat) (a : UInt64) :
+    Instruction → GenM (List Instr × Option Nat)
   | .localGet i => do
       if i ≥ E.locals then throw s!"local {i} of {E.locals}"
-      return ([.ins (.ldr (← opReg h) 31 (← slotOf i))], some (h + 1))
+      return ([.ldr (← opReg h) 31 (← slotOf i)], some (h + 1))
   | .localSet i => do
       if i ≥ E.locals ∨ h = 0 then throw s!"local.set {i} at height {h}"
-      return ([.ins (.str (← opReg (h - 1)) 31 (← slotOf i))], some (h - 1))
+      return ([.str (← opReg (h - 1)) 31 (← slotOf i)], some (h - 1))
   | .localTee i => do
       if i ≥ E.locals ∨ h = 0 then throw s!"local.tee {i} at height {h}"
-      return ([.ins (.str (← opReg (h - 1)) 31 (← slotOf i))], some h)
+      return ([.str (← opReg (h - 1)) 31 (← slotOf i)], some h)
   | .constI64 v => do return (movImm (← opReg h) v, some (h + 1))
   | .const v => do return (movImm (← opReg h) v.toUInt64, some (h + 1))
   | .eqI64 | .eq => do
       if h < 2 then throw s!"a comparison at height {h}"
-      let a ← opReg (h - 2)
-      return ([.ins (.subsReg 31 a (← opReg (h - 1))), .ins (.csinc a 31 31 1)], some (h - 1))
+      let r ← opReg (h - 2)
+      return ([.subsReg 31 r (← opReg (h - 1)), .csinc r 31 31 1], some (h - 1))
   | .eqzI64 | .eqz => do
       if h < 1 then throw "eqz at height 0"
-      let a ← opReg (h - 1)
-      return ([.ins (.subsImm 31 a 0), .ins (.csinc a 31 31 1)], some h)
+      let r ← opReg (h - 1)
+      return ([.subsImm 31 r 0, .csinc r 31 31 1], some h)
   | .extendUI32 => do
       if h < 1 then throw "extend at height 0"
       return ([], some h)
   | .remUI64 => do
       if h < 2 then throw s!"a remainder at height {h}"
-      let a ← opReg (h - 2)
-      let b ← opReg (h - 1)
-      return ([.cbz b E.trapDiv, .ins (.udiv scratch a b), .ins (.msub a scratch b a)],
+      let x ← opReg (h - 2)
+      let y ← opReg (h - 1)
+      return ([.cbz y (← cbField a E.trapDiv), .udiv scratch x y, .msub x scratch y x],
         some (h - 1))
   | .divUI64 => do
       if h < 2 then throw s!"a division at height {h}"
-      let a ← opReg (h - 2)
-      let b ← opReg (h - 1)
-      return ([.cbz b E.trapDiv, .ins (.udiv a a b)], some (h - 1))
-  | .unreachable => return ([.b E.trapUnreachable], none)
+      let x ← opReg (h - 2)
+      let y ← opReg (h - 1)
+      return ([.cbz y (← cbField a E.trapDiv), .udiv x x y], some (h - 1))
+  | .unreachable => do return ([.b (← bField a E.trapUnreachable)], none)
   | .br n => do
       match ctl[n]? with
-      | some t => return (← branchTo t h, none)
+      | some t => return (← branchTo t h a, none)
       | none => throw s!"br {n} under {ctl.length} constructs"
   | .br_if n => do
       if h < 1 then throw "br_if at height 0"
       match ctl[n]? with
       | some t =>
           let c ← opReg (h - 1)
-          if t.arity = 0 then return ([.cbnz c t.label], some (h - 1))
-          let skip ← fresh
-          return ([.cbz c skip] ++ (← branchTo t (h - 1)) ++ [.label skip], some (h - 1))
+          if t.arity = 0 then return ([.cbnz c (← cbField a t.target)], some (h - 1))
+          let skip := after a (t.arity + 2)
+          return (.cbz c (← cbField a skip) :: (← branchTo t (h - 1) (after a 1)), some (h - 1))
       | none => throw s!"br_if {n} under {ctl.length} constructs"
   | .ret => do
       match ctl.getLast? with
-      | some t => return (← branchTo t h, none)
+      | some t => return (← branchTo t h a, none)
       | none => throw "ret outside a function"
   | .block pa ra body _ _ => do
       if pa ≠ 0 then throw "a block with parameters"
-      let l ← fresh
-      let (items, after) ← genList E ({ label := l, arity := ra, base := h } :: ctl) h body
-      if after.any (· ≠ h + ra) then throw "a block that ends at another height"
-      return (items ++ [.label l], some (h + ra))
+      let n := (listSize (ra :: ctl.map (·.arity)) body).1
+      let inner := { target := after a n, arity := ra, base := h } :: ctl
+      let (code, fin) ← genList E inner h a body
+      if fin.any (· ≠ h + ra) then throw "a block that ends at another height"
+      return (code, some (h + ra))
   | .loop pa ra body _ _ => do
       if pa ≠ 0 then throw "a loop with parameters"
-      let l ← fresh
-      let (items, after) ← genList E ({ label := l, arity := 0, base := h } :: ctl) h body
-      if after.any (· ≠ h + ra) then throw "a loop that ends at another height"
-      return (.label l :: items, after)
+      let (code, fin) ← genList E ({ target := a, arity := 0, base := h } :: ctl) h a body
+      if fin.any (· ≠ h + ra) then throw "a loop that ends at another height"
+      return (code, some (h + ra))
   | .iff pa ra thn els _ _ => do
       if pa ≠ 0 ∨ h < 1 then throw "an if with parameters or without a condition"
       let c ← opReg (h - 1)
-      let lElse ← fresh
-      let lEnd ← fresh
-      let inner := { label := lEnd, arity := ra, base := h - 1 } :: ctl
-      let (ti, ta) ← genList E inner (h - 1) thn
-      let (ei, ea) ← genList E inner (h - 1) els
+      let ar := ra :: ctl.map (·.arity)
+      let aB := after a (1 + (listSize ar thn).1)
+      let aElse := after aB 1
+      let aEnd := after aElse (listSize ar els).1
+      let inner := { target := aEnd, arity := ra, base := h - 1 } :: ctl
+      let (ti, ta) ← genList E inner (h - 1) (after a 1) thn
+      let (ei, ea) ← genList E inner (h - 1) aElse els
       if ta.any (· ≠ h - 1 + ra) ∨ ea.any (· ≠ h - 1 + ra) then
         throw "an if whose branches end at another height"
-      let after := if ta.isSome ∨ ea.isSome then some (h - 1 + ra) else none
-      return ([.cbz c lElse] ++ ti ++ (if ta.isSome then [.b lEnd] else []) ++
-        [.label lElse] ++ ei ++ [.label lEnd], after)
+      return ([.cbz c (← cbField a aElse)] ++ ti ++ [.b (← bField aB aEnd)] ++ ei,
+        some (h - 1 + ra))
   | i => throw s!"the form {repr i} lies outside the generator's forms"
 
-/-- The items of the instructions `is` at height `h` under the constructs `ctl`, and the height
-after them, or `none` when their end is unreachable. -/
-def genList (E : Env) (ctl : List Ctl) (h : Nat) :
-    List Instruction → GenM (List Item × Option Nat)
+/-- The instructions of `is` placed at `a`, at height `h` under the constructs `ctl`, and the
+height after them, or `none` when their end is unreachable. -/
+def genList (E : Env) (ctl : List Ctl) (h : Nat) (a : UInt64) :
+    List Instruction → GenM (List Instr × Option Nat)
   | [] => return ([], some h)
   | i :: rest => do
-      let (a, after) ← genInstr E ctl h i
-      match after with
-      | none => return (a, none)
+      let (c1, fin) ← genInstr E ctl h a i
+      match fin with
+      | none => return (c1, none)
       | some h' =>
-          let (b, after') ← genList E ctl h' rest
-          return (a ++ b, after')
+          let (c2, fin') ← genList E ctl h' (after a c1.length) rest
+          return (c1 ++ c2, fin')
 end
 
-/-- The items of the function `f` from its label `entry`. -/
-def genFunction (trapUnreachable trapDiv entry : Nat) (f : Function) : GenM (List Item) := do
+/-- The frame of a function with `n` parameters and locals: 8 bytes each, rounded up to 16. -/
+def frameSize (n : Nat) : Nat := (8 * n + 15) / 16 * 16
+
+/-- The number of instructions of the function `f`. -/
+def functionSize (f : Function) : Nat :=
+  1 + (f.params.length + f.locals.length) + (listSize [f.results.length] f.body).1 + 2
+
+/-- The instructions of the function `f` placed at `entry`. -/
+def genFunction (trapUnreachable trapDiv entry : UInt64) (f : Function) : GenM (List Instr) := do
   let p := f.params.length
   let n := p + f.locals.length
   let r := f.results.length
   if p > 8 ∨ r > 1 then throw "a function with more than 8 parameters or 1 result"
-  let frame := (8 * n + 15) / 16 * 16
-  if hf : frame < 4096 then
-    let lret ← fresh
+  if hf : frameSize n < 4096 then
+    let bodyA := after entry (1 + n)
+    let epilogue := after bodyA (listSize [r] f.body).1
     let E : Env := { locals := n, trapUnreachable, trapDiv }
-    let (body, after) ← genList E [{ label := lret, arity := r, base := 0 }] 0 f.body
-    if after.any (· ≠ r) then throw "a function body that ends at another height"
-    let mut prologue := [.label entry, .ins (.subImm 31 31 ⟨frame, hf⟩)]
-    for i in [0:n] do
+    let (body, fin) ← genList E [{ target := epilogue, arity := r, base := 0 }] 0 bodyA f.body
+    if fin.any (· ≠ r) then throw "a function body that ends at another height"
+    let stores ← (List.range n).mapM fun i => do
       let src : Fin 32 := if i < p then ⟨i % 32, Nat.mod_lt _ (by decide)⟩ else 31
-      prologue := prologue ++ [.ins (.str src 31 (← slotOf i))]
-    return prologue ++ body ++ [.label lret, .ins (.addImm 31 31 ⟨frame, hf⟩), .ins (.ret 30)]
-  else throw s!"a frame of {frame} bytes"
+      return Instr.str src 31 (← slotOf i)
+    return [.subImm 31 31 ⟨frameSize n, hf⟩] ++ stores ++ body ++
+      [.addImm 31 31 ⟨frameSize n, hf⟩, .ret 30]
+  else throw s!"a frame of {frameSize n} bytes"
 
-/-- `main`: it calls the function at `entry` with `args`, writes the eight bytes of the result to
-the UART at `uart`, the lowest first, and returns 0. -/
-def genMain (entry : Nat) (args : List UInt64) (uart : UInt64) : GenM (List Item) := do
+/-- The number of instructions of `main` for `k` arguments. -/
+def mainSize (k : Nat) : Nat := 2 + 4 * k + 1 + 4 + 16 + 4 + 3
+
+/-- `main` placed at `a`: it calls the function at `entry` with `args`, writes the eight bytes of
+the result to the UART at `uart`, the lowest first, and returns 0. -/
+def genMain (a entry : UInt64) (args : List UInt64) (uart : UInt64) : GenM (List Instr) := do
   if args.length > 8 then throw "more than 8 arguments"
-  let loads := args.zipIdx.flatMap fun (a, i) => movImm ⟨i % 32, Nat.mod_lt _ (by decide)⟩ a
+  let loads := args.zipIdx.flatMap fun (v, i) => movImm ⟨i % 32, Nat.mod_lt _ (by decide)⟩ v
   let writes := (List.range 8).flatMap fun i =>
-    [Item.ins (.lsrImm 2 0 ⟨8 * i % 64, Nat.mod_lt _ (by decide)⟩), .ins (.strb 2 1 0)]
-  return [.ins (.subImm 31 31 16), .ins (.str 30 31 0)] ++ loads ++ [.bl entry] ++
-    movImm 1 uart ++ writes ++ movImm 0 0 ++
-    [.ins (.ldr 30 31 0), .ins (.addImm 31 31 16), .ins (.ret 30)]
+    [Instr.lsrImm 2 0 ⟨8 * i % 64, Nat.mod_lt _ (by decide)⟩, .strb 2 1 0]
+  let call := Instr.bl (← bField (after a (2 + 4 * args.length)) entry)
+  return [.subImm 31 31 16, .str 30 31 0] ++ loads ++ [call] ++ movImm 1 uart ++ writes ++
+    movImm 0 0 ++ [.ldr 30 31 0, .addImm 31 31 16, .ret 30]
 
-/-- The program that runs function `k` of `m` on `args`: `main`, the function, and the trap
-stubs, in that order. -/
-def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart : UInt64) :
-    Except String (List Item) :=
-  (do
-    let trapUnreachable ← fresh
-    let trapBounds ← fresh
-    let trapDiv ← fresh
-    let entry ← fresh
-    let f ← match m.funcs[k]? with
-      | some f => pure f
-      | none => throw s!"no function {k}"
-    let main ← genMain entry args uart
-    let fn ← genFunction trapUnreachable trapDiv entry f
-    let stub (l code : Nat) : List Item :=
-      [Item.label l] ++ movImm 0 (UInt64.ofNat code) ++ [Item.exit]
-    return main ++ fn ++ stub trapUnreachable 1 ++ stub trapBounds 2 ++ stub trapDiv 3).run' 0
-
-/-- A placed word: an instruction's encoding, or the branch to `lx_exit`. -/
-inductive Word where
-  | inst (w : UInt32)
-  | exit
-  deriving Repr, BEq
-
-/-- The addresses of the labels of `items` placed from `base`. -/
-def labels (base : UInt64) (items : List Item) : List (Nat × UInt64) :=
-  (items.foldl (fun (acc, a) it => match it with
-    | .label l => ((l, a) :: acc, a)
-    | _ => (acc, a + 4)) ([], base)).1
-
-/-- The field of `bits` bits of a branch from `here` to `target`, when the offset fits. -/
-def branchField (bits : Nat) (here target : UInt64) : Except String Nat := do
-  let off := (Int.ofNat target.toNat - Int.ofNat here.toNat) / 4
-  if (Int.ofNat target.toNat - Int.ofNat here.toNat) % 4 ≠ 0 ∨ off < -(2 ^ (bits - 1)) ∨
-      off ≥ 2 ^ (bits - 1) then
-    throw s!"a branch from {here} to {target} beyond {bits} bits"
-  return (off % (2 ^ bits : Int)).toNat
-
-/-- The words of `items` placed from `base`. -/
-def layout (base : UInt64) (items : List Item) : Except String (List Word) := do
-  let ls := labels base items
-  let addr (l : Nat) : Except String UInt64 :=
-    match ls.lookup l with
-    | some a => pure a
-    | none => throw s!"label {l} is not placed"
-  let mut out := #[]
-  let mut here := base
-  for it in items do
-    match it with
-    | .label _ => continue
-    | .ins i => out := out.push (.inst (encode i))
-    | .exit => out := out.push .exit
-    | .b l =>
-        let f ← branchField 26 here (← addr l)
-        out := out.push (.inst (encode (.b ⟨f % 67108864, Nat.mod_lt _ (by decide)⟩)))
-    | .bl l =>
-        let f ← branchField 26 here (← addr l)
-        out := out.push (.inst (encode (.bl ⟨f % 67108864, Nat.mod_lt _ (by decide)⟩)))
-    | .cbz r l =>
-        let f ← branchField 19 here (← addr l)
-        out := out.push (.inst (encode (.cbz r ⟨f % 524288, Nat.mod_lt _ (by decide)⟩)))
-    | .cbnz r l =>
-        let f ← branchField 19 here (← addr l)
-        out := out.push (.inst (encode (.cbnz r ⟨f % 524288, Nat.mod_lt _ (by decide)⟩)))
-    here := here + 4
-  return out.toList
+/-- The program that runs function `k` of `m` on `args`, placed after its exit word at `base`:
+`main` at `base + 4`, the function, and the trap stubs of codes 1, 2, and 3, each `movImm` of
+X0 and a branch to the exit word.  The image puts a branch to `lx_exit` at `base`. -/
+def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base : UInt64) :
+    GenM (List Instr) := do
+  let f ← match m.funcs[k]? with
+    | some f => pure f
+    | none => throw s!"no function {k}"
+  let mainA := after base 1
+  let entry := after mainA (mainSize args.length)
+  let traps := after entry (functionSize f)
+  let main ← genMain mainA entry args uart
+  let fn ← genFunction traps (after traps 10) entry f
+  let stub (a : UInt64) (code : Nat) : GenM (List Instr) := do
+    return movImm 0 (UInt64.ofNat code) ++ [.b (← bField (after a 4) base)]
+  return main ++ fn ++ (← stub traps 1) ++ (← stub (after traps 5) 2) ++
+    (← stub (after traps 10) 3)
 
 end LeanExe.A64

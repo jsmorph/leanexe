@@ -16,23 +16,23 @@ def main (args : List String) : IO UInt32 := do
   | ["emit", dir] =>
       let mut status : UInt32 := 0
       for p in programs do
-        match p.items >>= layout base with
+        match p.code with
         | .error e =>
             IO.println s!"fail: {p.name}: {e}"
             status := 1
-        | .ok words =>
-            match run words 10000000 with
+        | .ok code =>
+            match run code 10000000 with
             | .error e =>
                 IO.println s!"fail: {p.name}: in the model, {e}"
                 status := 1
             | .ok (out, x0, steps) =>
                 if out = p.bytes ∧ x0 = 0 then
                   IO.println (s!"model: {p.name}: {out.length} bytes and status 0 after " ++
-                    s!"{steps} steps of {words.length} words")
+                    s!"{steps} steps of {code.length} instructions")
                 else
                   IO.println s!"fail: {p.name}: in the model, bytes {out} and status {x0}"
                   status := 1
-                IO.FS.writeFile s!"{dir}/{p.name}.s" (assembly words)
+                IO.FS.writeFile s!"{dir}/{p.name}.s" (assembly code)
                 IO.FS.writeBinFile s!"{dir}/{p.name}.expected" (ByteArray.mk p.bytes.toArray)
       return status
   | _ =>
