@@ -54,9 +54,11 @@ def Outcome (E : Env) (ctl : List Ctl) (fin : Option Nat) (endA : UInt64) {α : 
   | .ReturnCall _ _ _ => False
   | .Throwing _ _ _ _ => False
 
-/-- The bases of the enclosing constructs lie at or below the innermost one's. -/
-def CtlOk (ctl : List Ctl) : Prop :=
-  ∀ t ∈ ctl, t.base ≤ curBase ctl
+/-- The enclosing constructs, the function's last, with their bases at or below the innermost
+one's. -/
+structure CtlOk (ctl : List Ctl) : Prop where
+  nonempty : ctl ≠ []
+  bases : ∀ t ∈ ctl, t.base ≤ curBase ctl
 
 /-- The simulation of `inst` at fuel `F`. -/
 def InstrSim (F : Nat) (inst : Instruction) : Prop :=

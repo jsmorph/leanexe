@@ -250,7 +250,7 @@ theorem sim_br_if (F n : Nat) : InstrSim P code F (.br_if n) := by
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]
   | succ f =>
-      have hbase : t.base ≤ h := Nat.le_trans (hctl t (List.mem_of_getElem? ht)) hb
+      have hbase : t.base ≤ h := Nat.le_trans (hctl.bases t (List.mem_of_getElem? ht)) hb
       have h26 := hinv.stack.1
       rcases exec_br_if f n m st sl with
         ⟨vs, hv, hex⟩ | ⟨c, vs, hc, hv, hex⟩ | ⟨msg, hex⟩
