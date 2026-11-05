@@ -404,4 +404,63 @@ theorem function_sim {tU tD entry : UInt64} {f : Function} {is : List Instr}
   | ReturnCall _ _ _ => exact ho.elim
   | Throwing _ _ _ _ => exact ho.elim
 
+/-! ## Talos's run of the function -/
+
+theorem Returned.take {fs r : Nat} {vals : List Value} {ms ms' : State}
+    (h : Returned fs r vals ms ms') : Returned fs (vals.take r).length (vals.take r) ms ms' :=
+  ⟨h.pc, h.sp, h.out, h.mem, Nat.le_refl _, by
+    rw [List.take_of_length_le (Nat.le_refl _)]
+    exact h.res⟩
+
+/-- The return from function `k` of `m`, which imports nothing, when Talos's run of it on the
+arguments `args`, in declaration order, returns `vs`. -/
+theorem run_sim {tU tD entry : UInt64} {m : Module} {k : Nat} {f : Function} {is : List Instr}
+    (hm : m.imports = []) (hk : m.funcs[k]? = some f)
+    (hg : genFunction tU tD entry f = .ok is) (hcode : CodeAt code entry is)
+    (hloc : ∀ t ∈ f.locals, ValRel t.zero 0) {F : Nat} {α : Type} {st st' : Store α}
+    {args vs : List Value} (hargs : args.length = f.params.length)
+    (hrun : Wasm.run F m k st args.reverse = .Success vs st') (ms : State)
+    (hpc : ms.pc = entry) (hal : ms.sp % 16 = 0)
+    (hmap : ∀ j < frameSize (f.params.length + f.locals.length),
+      P.normal (ms.sp - UInt64.ofNat (frameSize (f.params.length + f.locals.length)) +
+        UInt64.ofNat j) = true)
+    (hregs : ∀ i (hi : i < args.length),
+      ValRel args[i] (ms.x ⟨i % 32, Nat.mod_lt _ (by decide)⟩)) :
+    ∃ ms', Reach P code ms ms' ∧
+      Returned (frameSize (f.params.length + f.locals.length)) vs.length vs ms ms' := by
+  have ho := function_sim P code hg hcode hloc F m st args hargs ms hpc hal hmap hregs
+  have hta : (args.reverse.take f.numParams).reverse = args := by
+    rw [Function.numParams, ← hargs, ← List.length_reverse, List.take_length,
+      List.reverse_reverse]
+  have hdr : args.reverse.drop f.numParams = [] := by
+    rw [Function.numParams, ← hargs, ← List.length_reverse, List.drop_length]
+  simp only [Wasm.run, hm, List.getElem?_nil, List.length_nil, Nat.sub_zero, hk, hta, hdr,
+    List.append_nil] at hrun
+  revert ho hrun
+  generalize Wasm.exec F m st (f.toLocals args) f.body = res
+  cases res with
+  | Fallthrough st'' sl' =>
+      intro ho hrun
+      obtain ⟨ms', hr, hret⟩ := ho
+      cases hrun
+      exact ⟨ms', hr, hret.take⟩
+  | Break k st'' sl' =>
+      cases k with
+      | zero =>
+          intro ho hrun
+          obtain ⟨ms', hr, hret⟩ := ho
+          cases hrun
+          exact ⟨ms', hr, hret.take⟩
+      | succ k => intro _ hrun; cases hrun
+  | Return st'' vs' =>
+      intro ho hrun
+      obtain ⟨ms', hr, hret⟩ := ho
+      cases hrun
+      exact ⟨ms', hr, hret.take⟩
+  | Trap _ _ => intro _ hrun; cases hrun
+  | Invalid _ => intro _ hrun; cases hrun
+  | OutOfFuel => intro _ hrun; cases hrun
+  | ReturnCall _ _ _ => intro ho; exact ho.elim
+  | Throwing _ _ _ _ => intro ho; exact ho.elim
+
 end LeanExe.A64
