@@ -14,9 +14,6 @@ namespace LeanExe.A64
 
 open Wasm
 
-/-- The register of height `k`, which `opReg k` gives for the 26 heights that have one. -/
-def regOf (k : Nat) : Fin 32 := ⟨opRegs.getD k 0 % 32, Nat.mod_lt _ (by decide)⟩
-
 theorem opRegs_length : opRegs.length = 26 := by decide
 
 theorem opReg_ok {k : Nat} (h : k < 26) : opReg k = .ok (regOf k) := by
@@ -33,6 +30,9 @@ theorem regOf_lt_31 : ∀ k < 26, (regOf k).val < 31 := by decide
 theorem regOf_ne_scratch : ∀ k < 26, regOf k ≠ scratch := by decide
 
 theorem regOf_inj : ∀ k < 26, ∀ j < 26, regOf k = regOf j → k = j := by decide
+
+/-- No register of a height is X18, which holds the stack's limit. -/
+theorem regOf_ne_18 : ∀ k < 26, regOf k ≠ 18 := by decide
 
 /-- The register word `r` holds the Talos value `v`. -/
 def ValRel : Value → UInt64 → Prop
@@ -54,14 +54,79 @@ def slotAddr (sp : UInt64) (i : Nat) : UInt64 := sp + 8 * UInt64.ofNat i
 def LocalsRel (s : State) (ls : List Value) : Prop :=
   ∀ i (hi : i < ls.length), ValRel ls[i] (load64 s.mem (slotAddr s.sp i))
 
+/-- The stack at SP: SP is a multiple of 16, and the stack's limit in X18 lies from 4096 up to SP,
+with the bytes from it to SP Normal memory, while SP lies below `2 ^ 63`. -/
+structure StackOk (P : Platform) (s : State) : Prop where
+  aligned : s.sp % 16 = 0
+  limit : 4096 ≤ (s.x 18).toNat ∧ (s.x 18).toNat ≤ s.sp.toNat ∧ s.sp.toNat < 2 ^ 63
+  below : ∀ j < (s.sp - s.x 18).toNat, P.normal (s.x 18 + UInt64.ofNat j) = true
+
+/-- The frame at `SP` of a function with `n` locals, parameters included: SP is a multiple of 16,
+the bytes of the locals, of the spill slots above them, and of the return address's slot above
+those are Normal memory, the frame has fewer than 512 slots, and the stack's limit in X18 lies
+from 4096 up to SP, with the bytes from it to SP Normal memory, while SP lies below `2 ^ 63`. -/
+structure FrameOk (P : Platform) (n : Nat) (s : State) : Prop where
+  aligned : s.sp % 16 = 0
+  mapped : ∀ j < 8 * (n + spillSlots + 1), P.normal (s.sp + UInt64.ofNat j) = true
+  bound : n + spillSlots + 1 < 512
+  limit : 4096 ≤ (s.x 18).toNat ∧ (s.x 18).toNat ≤ s.sp.toNat ∧ s.sp.toNat < 2 ^ 63
+  below : ∀ j < (s.sp - s.x 18).toNat, P.normal (s.x 18 + UInt64.ofNat j) = true
+
+/-- `StackOk` depends on SP and X18 alone. -/
+theorem StackOk.congr {P : Platform} {s s' : State} (h : StackOk P s) (hsp : s'.sp = s.sp)
+    (h18 : s'.x 18 = s.x 18) : StackOk P s' := by
+  refine ⟨?_, ?_, ?_⟩
+  · rw [hsp]; exact h.aligned
+  · rw [hsp, h18]; exact h.limit
+  · rw [hsp, h18]; exact h.below
+
+theorem FrameOk.stack {P : Platform} {n : Nat} {s : State} (h : FrameOk P n s) : StackOk P s :=
+  ⟨h.aligned, h.limit, h.below⟩
+
+/-- `FrameOk` depends on SP and X18 alone. -/
+theorem FrameOk.congr {P : Platform} {n : Nat} {s s' : State} (h : FrameOk P n s)
+    (hsp : s'.sp = s.sp) (h18 : s'.x 18 = s.x 18) : FrameOk P n s' := by
+  refine ⟨?_, ?_, h.bound, ?_, ?_⟩
+  · rw [hsp]; exact h.aligned
+  · rw [hsp]; exact h.mapped
+  · rw [hsp, h18]; exact h.limit
+  · rw [hsp, h18]; exact h.below
+
+/-- An address outside the bytes from the stack's limit to the end of a frame's spill slots lies
+outside the frame's first `m` slots. -/
+theorem FrameOk.outside {P : Platform} {n : Nat} {s : State} (hf : FrameOk P n s) {a : UInt64}
+    {m : Nat}
+    (hm : m ≤ n + spillSlots)
+    (h : ¬ a - s.x 18 < s.sp - s.x 18 + UInt64.ofNat (8 * (n + spillSlots))) :
+    ¬ a - s.sp < UInt64.ofNat (8 * m) := by
+  intro hc
+  apply h
+  obtain ⟨h1, h2, h3⟩ := hf.limit
+  have hb := hf.bound
+  have ha := a.toNat_lt
+  rw [UInt64.lt_iff_toNat_lt] at hc ⊢
+  rw [UInt64.toNat_sub, UInt64.toNat_ofNat'] at hc
+  rw [UInt64.toNat_sub, UInt64.toNat_add, UInt64.toNat_sub, UInt64.toNat_ofNat']
+  simp only [Nat.reducePow] at *
+  omega
+
 /-- The relation at a point of a function with `n` locals, parameters included. -/
 structure Inv (P : Platform) (n : Nat) (sl : Locals) (s : State) : Prop where
   stack : StackRel s sl.values
   locals : LocalsRel s (sl.params ++ sl.locals)
   count : (sl.params ++ sl.locals).length = n
-  aligned : s.sp % 16 = 0
-  mapped : ∀ j < 8 * n, P.normal (s.sp + UInt64.ofNat j) = true
-  bound : n < 512
+  frame : FrameOk P n s
+
+theorem Inv.aligned {P : Platform} {n : Nat} {sl : Locals} {s : State} (h : Inv P n sl s) :
+    s.sp % 16 = 0 := h.frame.aligned
+
+theorem Inv.mapped {P : Platform} {n : Nat} {sl : Locals} {s : State} (h : Inv P n sl s) :
+    ∀ j < 8 * n, P.normal (s.sp + UInt64.ofNat j) = true :=
+  fun j hj => h.frame.mapped j (by omega)
+
+theorem Inv.bound {P : Platform} {n : Nat} {sl : Locals} {s : State} (h : Inv P n sl s) :
+    n < 512 := by
+  have := h.frame.bound; omega
 
 /-- The registers of the heights below `b` keep their values from `s` to `s'`. -/
 def Frame (b : Nat) (s s' : State) : Prop :=

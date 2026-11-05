@@ -12,13 +12,16 @@
    exit, so the exception stack holds nothing when lx_exit moves to it, and a fault in
    lx_report_exit starts lx_report_exception from the same top.  lx_stack_mark and lx_stack_used
    measure the stack of one call for the test of the stack bound.  Defining NO_FPEN leaves
-   floating point disabled, defining UNALIGNED_TEST adds an unaligned 8-byte load before main, and
-   defining GUARD_TEST adds a store to the guard page below the stack.  The first two reproduce
-   results of the design's experiments.
+   floating point disabled, defining UNALIGNED_TEST adds an unaligned 8-byte load before main,
+   defining GUARD_TEST adds a store to the guard page below the stack, defining CODE_WRITE_TEST
+   adds a store to _start, and defining DATA_EXEC_TEST adds a call of lx_boot_el in .bss.  The
+   first two reproduce results of the design's experiments.
 
    The translation tables map RAM, from __ram_start to __ram_end, as Normal Inner and Outer
-   Write-Back memory, Inner Shareable, and the 4 KiB page of lx_out as Device-nGnRnE memory, and
-   leave the guard page below the stack and every other address unmapped.  The startup code
+   Write-Back memory, Inner Shareable: the blocks of 2 MiB below __rw_start, which hold the code
+   and read-only data, read-only and executable at EL1, and the rest writable and not executable.
+   They map the 4 KiB page of lx_out as Device-nGnRnE memory, and leave the guard page below the
+   stack and every other address unmapped.  The startup code
    writes them with the MMU off, as Device-nGnRnE accesses, and the table walks are
    Non-cacheable, so that the walks read what those writes stored.  The five tables at __tables
    are a level 1 table, a level 2 and a level 3 table for the UART's page, a level 2 table for
@@ -28,8 +31,9 @@
 #define PATTERN 0x5354414b5354414b
 #define TABLE 3
 #define DEVICE_PAGE ((1 << 54) | (1 << 53) | (1 << 10) | 3)
-#define RAM_BLOCK ((1 << 54) | (1 << 10) | (3 << 8) | (1 << 2) | 1)
-#define RAM_PAGE ((1 << 54) | (1 << 10) | (3 << 8) | (1 << 2) | 3)
+#define RAM_CODE ((1 << 54) | (1 << 10) | (3 << 8) | (1 << 7) | (1 << 2) | 1)
+#define RAM_BLOCK ((1 << 54) | (1 << 53) | (1 << 10) | (3 << 8) | (1 << 2) | 1)
+#define RAM_PAGE ((1 << 54) | (1 << 53) | (1 << 10) | (3 << 8) | (1 << 2) | 3)
 #define MAIR 0xff00
 #define TCR ((2 << 30) | (1 << 23) | (32 << 16) | 32)
 #define SCTLR_SET ((1 << 12) | (1 << 2) | 1)
@@ -76,11 +80,15 @@ _start:
         ubfx    x7, x6, #30, #2
         orr     x5, x3, #TABLE
         str     x5, [x0, x7, lsl #3]
-        ldr     x5, =RAM_BLOCK
-        orr     x5, x6, x5
+        ldr     x9, =__rw_start
+        ldr     x10, =RAM_CODE
+        ldr     x11, =RAM_BLOCK
         mov     x7, #0
-2:      str     x5, [x3, x7, lsl #3]
-        add     x5, x5, #0x200000
+2:      cmp     x6, x9
+        csel    x5, x10, x11, lo
+        orr     x5, x6, x5
+        str     x5, [x3, x7, lsl #3]
+        add     x6, x6, #0x200000
         add     x7, x7, #1
         cmp     x7, #512
         b.lo    2b
@@ -144,6 +152,14 @@ _start:
 #ifdef GUARD_TEST
         ldr     x1, =__stack_bottom
         str     xzr, [x1, #-8]
+#endif
+#ifdef CODE_WRITE_TEST
+        ldr     x1, =_start
+        str     xzr, [x1]
+#endif
+#ifdef DATA_EXEC_TEST
+        ldr     x1, =lx_boot_el
+        blr     x1
 #endif
         ldr     x0, =lx_boot_el
         str     x19, [x0]

@@ -38,8 +38,8 @@ structure State where
   mem : UInt64 → UInt8
   out : List UInt8
 
-/-- The instruction forms of the model, all with 64-bit registers.  A register field is the
-5-bit number of the encoding, and an immediate field is the encoding's unsigned field. -/
+/-- The instruction forms of the model, all with 64-bit registers but `orrW`.  A register field is
+the 5-bit number of the encoding, and an immediate field is the encoding's unsigned field. -/
 inductive Instr where
   /-- `MOVZ Xd, #imm, LSL #(16 * hw)`. -/
   | movz (d : Fin 32) (imm : Fin 65536) (hw : Fin 4)
@@ -80,6 +80,27 @@ inductive Instr where
   | udiv (d n m : Fin 32)
   /-- `MSUB Xd, Xn, Xm, Xa`, which computes `Xa - Xn * Xm`. -/
   | msub (d n m a : Fin 32)
+  /-- `ADD Xd, Xn, Xm`. -/
+  | addReg (d n m : Fin 32)
+  /-- `SUB Xd, Xn, Xm`. -/
+  | subReg (d n m : Fin 32)
+  /-- `AND Xd, Xn, Xm`. -/
+  | andReg (d n m : Fin 32)
+  /-- `EOR Xd, Xn, Xm`. -/
+  | eorReg (d n m : Fin 32)
+  /-- `MADD Xd, Xn, Xm, Xa`, which computes `Xa + Xn * Xm` and is `MUL Xd, Xn, Xm` when `a` is
+  31. -/
+  | madd (d n m a : Fin 32)
+  /-- `LSLV Xd, Xn, Xm`, a shift left by `Xm` modulo 64. -/
+  | lslv (d n m : Fin 32)
+  /-- `LSRV Xd, Xn, Xm`, a logical shift right by `Xm` modulo 64. -/
+  | lsrv (d n m : Fin 32)
+  /-- `ORR Wd, Wn, Wm`, which writes the 32-bit result zero-extended and is `MOV Wd, Wm` when `n`
+  is 31. -/
+  | orrW (d n m : Fin 32)
+  /-- `B.cond` to the program counter plus 4 times `imm` read as a signed 19-bit number when the
+  condition `cond` holds. -/
+  | bcond (cond : Fin 16) (imm : Fin 524288)
   deriving DecidableEq, Repr
 
 /-- The instruction that the 32-bit word of value `v` encodes, or `none` for a word outside the
@@ -116,6 +137,16 @@ def decodeNat (v : Nat) : Option Instr :=
   else if v / 1024 = 0x3597C0 ∧ v % 32 = 0 then some (.ret n)
   else if v / 2097152 = 0x4D6 ∧ v / 1024 % 64 = 2 then some (.udiv d n m)
   else if v / 2097152 = 0x4D8 ∧ v / 32768 % 2 = 1 then some (.msub d n m a)
+  else if v / 2097152 = 0x458 ∧ v / 1024 % 64 = 0 then some (.addReg d n m)
+  else if v / 2097152 = 0x658 ∧ v / 1024 % 64 = 0 then some (.subReg d n m)
+  else if v / 2097152 = 0x450 ∧ v / 1024 % 64 = 0 then some (.andReg d n m)
+  else if v / 2097152 = 0x650 ∧ v / 1024 % 64 = 0 then some (.eorReg d n m)
+  else if v / 2097152 = 0x4D8 ∧ v / 32768 % 2 = 0 then some (.madd d n m a)
+  else if v / 2097152 = 0x4D6 ∧ v / 1024 % 64 = 8 then some (.lslv d n m)
+  else if v / 2097152 = 0x4D6 ∧ v / 1024 % 64 = 9 then some (.lsrv d n m)
+  else if v / 2097152 = 0x150 ∧ v / 1024 % 64 = 0 then some (.orrW d n m)
+  else if v / 16777216 = 0x54 ∧ v / 16 % 2 = 0 then
+    some (.bcond ⟨v % 16, Nat.mod_lt _ (by decide)⟩ imm19)
   else none
 
 /-- The instruction that the word `w` encodes, or `none` for a word outside the forms. -/
@@ -236,6 +267,16 @@ def exec (P : Platform) (i : Instr) (s : State) : Option State :=
   | .ret n => some { s with pc := s.x n }
   | .udiv d n m => some { s.setX d (s.x n / s.x m) with pc := next }
   | .msub d n m a => some { s.setX d (s.x a - s.x n * s.x m) with pc := next }
+  | .addReg d n m => some { s.setX d (s.x n + s.x m) with pc := next }
+  | .subReg d n m => some { s.setX d (s.x n - s.x m) with pc := next }
+  | .andReg d n m => some { s.setX d (s.x n &&& s.x m) with pc := next }
+  | .eorReg d n m => some { s.setX d (s.x n ^^^ s.x m) with pc := next }
+  | .madd d n m a => some { s.setX d (s.x a + s.x n * s.x m) with pc := next }
+  | .lslv d n m => some { s.setX d (s.x n <<< (s.x m % 64)) with pc := next }
+  | .lsrv d n m => some { s.setX d (s.x n >>> (s.x m % 64)) with pc := next }
+  | .orrW d n m => some { s.setX d (s.x n ||| s.x m).toUInt32.toUInt64 with pc := next }
+  | .bcond cond imm =>
+      some { s with pc := if s.condHolds cond then s.pc + sext 19 imm.val * 4 else next }
 
 /-- One step from `s` with the code `code`: the fetch, the decoding, and the execution of the
 word at the program counter. -/

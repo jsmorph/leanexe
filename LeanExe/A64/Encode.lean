@@ -33,6 +33,15 @@ def encodeNat : Instr → Nat
   | .udiv d n m => 0x9AC00800 + m.val * 65536 + n.val * 32 + d.val
   | .msub d n m a =>
       0x9B008000 + m.val * 65536 + a.val * 1024 + n.val * 32 + d.val
+  | .addReg d n m => 0x8B000000 + m.val * 65536 + n.val * 32 + d.val
+  | .subReg d n m => 0xCB000000 + m.val * 65536 + n.val * 32 + d.val
+  | .andReg d n m => 0x8A000000 + m.val * 65536 + n.val * 32 + d.val
+  | .eorReg d n m => 0xCA000000 + m.val * 65536 + n.val * 32 + d.val
+  | .madd d n m a => 0x9B000000 + m.val * 65536 + a.val * 1024 + n.val * 32 + d.val
+  | .lslv d n m => 0x9AC02000 + m.val * 65536 + n.val * 32 + d.val
+  | .lsrv d n m => 0x9AC02400 + m.val * 65536 + n.val * 32 + d.val
+  | .orrW d n m => 0x2A000000 + m.val * 65536 + n.val * 32 + d.val
+  | .bcond cond imm => 0x54000000 + imm.val * 32 + cond.val
 
 /-- The 32-bit word of the instruction `i`. -/
 def encode (i : Instr) : UInt32 :=
@@ -60,7 +69,9 @@ macro_rules
         Instr.orrReg.injEq, Instr.lsrImm.injEq,
         Instr.ldr.injEq, Instr.str.injEq, Instr.strb.injEq, Instr.b.injEq, Instr.bl.injEq,
         Instr.cbz.injEq, Instr.cbnz.injEq, Instr.ret.injEq, Instr.udiv.injEq, Instr.msub.injEq,
-        Fin.ext_iff]
+        Instr.addReg.injEq, Instr.subReg.injEq, Instr.andReg.injEq, Instr.eorReg.injEq,
+        Instr.madd.injEq, Instr.lslv.injEq, Instr.lsrv.injEq, Instr.orrW.injEq,
+        Instr.bcond.injEq, Fin.ext_iff]
       omega))
 
 theorem decode_encode (i : Instr) : decode (encode i) = some i := by

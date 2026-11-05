@@ -1,7 +1,10 @@
 import LeanExe.A64.Encode
 import LeanExe.A64.Gen
+import LeanExe.A64.Image
 import LeanExe.A64.Machine
+import LeanExe.A64.Proof.Arith
 import LeanExe.A64.Proof.Bits
+import LeanExe.A64.Proof.Call
 import LeanExe.A64.Proof.Constructs
 import LeanExe.A64.Proof.Control
 import LeanExe.A64.Proof.Function

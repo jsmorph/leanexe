@@ -6,7 +6,11 @@
 # lx_out.  With an unaligned 8-byte load before main it must do the same, since the startup code
 # maps RAM as Normal memory with SCTLR_EL1.A clear.  With a store to the word below the stack it
 # must stop at vector 4 with a level 3 translation fault on a write in ESR_EL1 and that word's
-# address in FAR_EL1, and exit with status 255.  Without the enabling of floating point it must
+# address in FAR_EL1, and exit with status 255.  With a store to _start it must stop at vector 4
+# with a level 2 permission fault on a write and _start's address, since the tables map the code
+# read-only, and with a call of lx_boot_el in .bss it must stop at vector 4 with an instruction
+# abort for a permission fault at level 2 or 3 and that address, since they map data as not
+# executable, each with status 255.  Without the enabling of floating point it must
 # stop at vector 4 with the exception class 0x07 in ESR_EL1 and exit with status 255.  entry.c
 # must print the exception level 1, DAIF 0x3c0, and, under TCG, SCTLR_EL1 0x00c50838 of
 # entry.expected, since under KVM the value at entry is the one that KVM's reset gives.  Under
@@ -17,16 +21,16 @@
 # the method hvc, which PSCI_EXIT uses.  The reports' stack high-water marks, 16,048 bytes for
 # probe.c and 32 for entry.c, are those of main and its callees as CompCert 3.18 compiles them.
 # CCOMP and CCOMP_STDLIB are as for tools/baremetal/build.sh, and NM and DTC name nm for AArch64
-# objects and the device-tree compiler.
+# objects and the device-tree compiler.  The products lie in OUT, build/baremetal/run unless set.
 # Usage: tests/baremetal/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 here=$root/tests/baremetal
-out=$root/build/baremetal
+out=$(realpath -m "${OUT:-$root/build/baremetal/run}")
 nm=${NM:-nm}
 dtc=${DTC:-dtc}
 source "$here/qemu.sh"
-rm -rf "$out"
+rm -rf "${out:?}"
 mkdir -p "$out"
 status=0
 
@@ -74,6 +78,25 @@ if [ "$code" != 255 ] ||
       "$out/serial.txt"; then
   fail "probe.c after a store below the stack gave status $code and\
  $(paste -sd' ' "$out/serial.txt")"
+fi
+
+build codewrite.elf probe.c -DCODE_WRITE_TEST
+start=$("$nm" "$out/codewrite.elf" | awk '$3 == "_start" { print $1 }')
+run "$out/codewrite.elf"
+if [ "$code" != 255 ] ||
+    ! grep -q "^R:exception 4 esr 0x000000009600004e elr 0x[0-9a-f]* far 0x$start\$" \
+      "$out/serial.txt"; then
+  fail "probe.c after a store to _start gave status $code and\
+ $(paste -sd' ' "$out/serial.txt")"
+fi
+
+build dataexec.elf probe.c -DDATA_EXEC_TEST
+boot=$("$nm" "$out/dataexec.elf" | awk '$3 == "lx_boot_el" { print $1 }')
+run "$out/dataexec.elf"
+if [ "$code" != 255 ] ||
+    ! grep -q "^R:exception 4 esr 0x000000008600000[ef] elr 0x$boot far 0x$boot\$" \
+      "$out/serial.txt"; then
+  fail "probe.c after a call into .bss gave status $code and $(paste -sd' ' "$out/serial.txt")"
 fi
 
 build nofp.elf probe.c -DNO_FPEN
@@ -137,11 +160,11 @@ fi
 
 if [ "$status" -eq 0 ]; then
   if [ "$accel" = tcg ]; then
-    echo "baremetal: probe, unaligned, guard, nofp, entry at EL1, EL2, and EL3, and the device" \
-      "tree pass under TCG"
+    echo "baremetal: probe, unaligned, guard, codewrite, dataexec, nofp, entry at EL1, EL2, and" \
+      "EL3, and the device tree pass under TCG"
   else
-    echo "baremetal: probe, unaligned, guard, nofp, entry at EL1, and the device tree pass under" \
-      "KVM"
+    echo "baremetal: probe, unaligned, guard, codewrite, dataexec, nofp, entry at EL1, and the" \
+      "device tree pass under KVM"
   fi
 fi
 exit $status

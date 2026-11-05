@@ -82,15 +82,15 @@ theorem res_outcome {E : Env} {ctl : List Ctl} {endA : UInt64} {α : Type} {st :
     (hinv : Inv P E.locals sl ms) (hb : curBase ctl ≤ vs.length)
     (hlt : vs.length < 26) (hstack : StackRel ms vs) (hr : Reach P code ms ms')
     (hpc : ms'.pc = endA) (hx : ms'.x (regOf vs.length) = w)
-    (hkeep : ∀ k < vs.length, ms'.x (regOf k) = ms.x (regOf k)) (hsp : ms'.sp = ms.sp)
-    (hmem : ms'.mem = ms.mem) (hout : ms'.out = ms.out) :
+    (hkeep : ∀ k < vs.length, ms'.x (regOf k) = ms.x (regOf k)) (h18 : ms'.x 18 = ms.x 18)
+    (hsp : ms'.sp = ms.sp) (hmem : ms'.mem = ms.mem) (hout : ms'.out = ms.out) :
     Outcome P code E ctl (some n) endA
       (.Fallthrough st { sl with values := v :: vs }) ms := by
   subst hn
-  refine ⟨vs.length + 1, rfl, ms', hr, hpc, hsp, hout, fun b _ => by rw [hmem], ?_, by simp,
-    fun j hj => hkeep j (by omega)⟩
+  refine .inr ⟨vs.length + 1, rfl, ms', hr, hpc, hsp, hout, h18, fun b _ => by rw [hmem], ?_,
+    by simp, fun j hj => hkeep j (by omega)⟩
   refine ⟨StackRel.push hstack hlt (by rw [hx]; exact hv) hkeep, hinv.locals.congr hmem hsp,
-    hinv.count, by rw [hsp]; exact hinv.aligned, by rw [hsp]; exact hinv.mapped, hinv.bound⟩
+    hinv.count, hinv.frame.congr hsp h18⟩
 
 theorem sub_div_mul_eq_mod (a b : UInt64) : a - a / b * b = a % b := by
   apply UInt64.toNat_inj.mp
@@ -117,15 +117,15 @@ theorem gen_unreachable {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : 
       exact ⟨f, rfl, hg.1.symm, hg.2.symm⟩
 
 theorem sim_unreachable (F : Nat) : InstrSim P code F .unreachable := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc
+  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc _
   obtain ⟨f, hf, rfl, rfl⟩ := gen_unreachable hgen
   cases F with
-  | zero => simp only [execOne.eq_def, Outcome]
+  | zero => simp only [execOne.eq_def, Outcome, or_true]
   | succ k =>
       simp only [execOne.eq_def]
       have hc : code ms.pc = some (encode (.b f)) := by
         rw [hpc]; simpa [after_zero] using hcode 0 (by simp)
-      refine ⟨{ ms with pc := ms.pc + sext 26 f.val * 4 },
+      refine .inr ⟨{ ms with pc := ms.pc + sext 26 f.val * 4 },
         reach_exec P code hc rfl (.refl _), rfl, .inl ⟨rfl, ?_⟩⟩
       show ms.pc + sext 26 f.val * 4 = E.trapUnreachable
       rw [hpc]; exact bField_target hf
@@ -192,10 +192,11 @@ theorem sim_divrem_of {F : Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 �
           else .Fallthrough st { sl with values := .i64 (op a b) :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc
+  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc _
   obtain ⟨hhb, hlt, f, hf, rfl, rfl⟩ := gen_divrem hinst hgen
   cases F with
-  | zero => rcases hinst with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;> simp only [execOne.eq_def, Outcome]
+  | zero =>
+      rcases hinst with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;> simp only [execOne.eq_def, Outcome, or_true]
   | succ k =>
       rcases hexec k m st sl with ⟨b, a', vs, hvs, hex⟩ | ⟨msg, hex⟩
       · rw [hex]
@@ -211,7 +212,7 @@ theorem sim_divrem_of {F : Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 �
           rw [hpc]; exact (CodeAt.cons.mp hcode).1
         split
         · rename_i hb0
-          exact ⟨_, cbz_taken P code hc hpc hf (by rw [hy, hb0]), rfl, .inr ⟨rfl, rfl⟩⟩
+          exact .inr ⟨_, cbz_taken P code hc hpc hf (by rw [hy, hb0]), rfl, .inr ⟨rfl, rfl⟩⟩
         · rename_i hb0
           have hstep := reach_exec P code hc (cbz_next P (by rw [hy]; exact hb0)) (.refl _)
           have hrest := (CodeAt.cons.mp hcode).2
@@ -223,14 +224,15 @@ theorem sim_divrem_of {F : Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 �
               (regOf_ne_scratch _ hlt) hne hrest (by simp [hpc, after])
           apply res_outcome P code (vs := vs) (v := .i64 (op a' b)) (w := op a' b) rfl
             (by omega) hinv (by omega) (by omega)
-            hst.pop.pop (hstep.trans hr) _ _ _ hsp hmem hout
+            hst.pop.pop (hstep.trans hr) _ _ _
+            (hkeep 18 (Ne.symm (regOf_ne_18 _ (by omega))) (by decide)) hsp hmem hout
           · rw [hp, after_after, List.length_cons, Nat.add_comm]
           · rw [hvl, hres]; simp [hx, hy]
           · intro j hj
             rw [hkeep _ (fun e => absurd (regOf_inj j (by omega) (h - 2) (by omega) e) (by omega))
               (regOf_ne_scratch j (by omega))]
             rfl
-      · rw [hex]; trivial
+      · rw [hex]; exact .inr trivial
 
 theorem sim_remUI64 (F : Nat) : InstrSim P code F .remUI64 := by
   refine sim_divrem_of P code (fun a b => a % b) (.inl ⟨rfl, rfl⟩) ?_ ?_

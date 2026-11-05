@@ -78,8 +78,8 @@ structure Case where
   relWin : List Nat := []
   relPad : Option (Nat × Int) := none
 
-/-- The 19 forms in the order of `Instr`. -/
-def formCount : Nat := 19
+/-- The 28 forms in the order of `Instr`. -/
+def formCount : Nat := 28
 
 /-- The value that puts an access of the window at `o` at `delta` from the base: `o - delta`. -/
 def rel (o delta : Nat) : UInt64 := UInt64.ofNat o - UInt64.ofNat delta
@@ -149,7 +149,16 @@ def genCase (form : Nat) : Gen Case := do
       let j ← offset
       return { c with instr := .ret ⟨n.val, by omega⟩, relPad := some (n.val, j) }
   | 17 => return { c with instr := .udiv (← fin 32) (← fin 32) (← fin 32) }
-  | _ => return { c with instr := .msub (← fin 32) (← fin 32) (← fin 32) (← fin 32) }
+  | 18 => return { c with instr := .msub (← fin 32) (← fin 32) (← fin 32) (← fin 32) }
+  | 19 => return { c with instr := .addReg (← fin 32) (← fin 32) (← fin 32) }
+  | 20 => return { c with instr := .subReg (← fin 32) (← fin 32) (← fin 32) }
+  | 21 => return { c with instr := .andReg (← fin 32) (← fin 32) (← fin 32) }
+  | 22 => return { c with instr := .eorReg (← fin 32) (← fin 32) (← fin 32) }
+  | 23 => return { c with instr := .madd (← fin 32) (← fin 32) (← fin 32) (← fin 32) }
+  | 24 => return { c with instr := .lslv (← fin 32) (← fin 32) (← fin 32) }
+  | 25 => return { c with instr := .lsrv (← fin 32) (← fin 32) (← fin 32) }
+  | 26 => return { c with instr := .orrW (← fin 32) (← fin 32) (← fin 32) }
+  | _ => return { c with instr := .bcond (← fin 16) (field19 (← offset)) }
 
 def hex (v : Nat) : String := "0x" ++ String.ofList (Nat.toDigits 16 v)
 

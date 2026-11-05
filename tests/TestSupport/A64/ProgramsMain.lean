@@ -4,10 +4,11 @@ import TestSupport.A64.Gcd
 /-!
 The command `a64-programs emit DIR` of the AArch64 back end's bare-metal programs.  For each
 program it generates and places the code, runs it in the model, which must write the program's
-bytes and return status 0, and writes DIR/NAME.s, the assembly that
-`tests/baremetal/a64-programs.sh` links with the startup code, and DIR/NAME.expected, the bytes
-that the UART must show.  It prints one line for each program and exits with status 1 when a
-program fails.
+bytes and return status 0, and writes DIR/NAME.bin, the bytes of the instructions, DIR/NAME.s,
+the assembly that includes them and that `tests/baremetal/a64-programs.sh` links with the
+startup code, and DIR/NAME.expected, the bytes that the UART must show.  DIR must be an
+absolute path, since the assembly names DIR/NAME.bin.  It prints one line for each program and
+exits with status 1 when a program fails.
 -/
 
 open LeanExe.A64 TestSupport.A64
@@ -33,7 +34,8 @@ def main (args : List String) : IO UInt32 := do
                 else
                   IO.println s!"fail: {p.name}: in the model, bytes {out} and status {x0}"
                   status := 1
-                IO.FS.writeFile s!"{dir}/{p.name}.s" (assembly code)
+                IO.FS.writeBinFile s!"{dir}/{p.name}.bin" (ByteArray.mk (imageBytes code).toArray)
+                IO.FS.writeFile s!"{dir}/{p.name}.s" (stub s!"{dir}/{p.name}.bin")
                 IO.FS.writeBinFile s!"{dir}/{p.name}.expected" (ByteArray.mk p.bytes.toArray)
       return status
   | _ =>

@@ -6,7 +6,8 @@
 # with tools/native-host.c, whose main becomes host_main, and with the C library of
 # tools/baremetal/libc, and tools/baremetal/build.sh links them with the startup code and a stack
 # of STACK_SIZE bytes, 0x400000 by default.  The host reads its command line from a block that
-# QEMU's generic loader places at 0x7F000000.  Each case runs in its own QEMU process, JOBS at a
+# QEMU's generic loader places at 0x7F000000, in which an array that a case passes as a file
+# appears as the list of its words.  Each case runs in its own QEMU process, JOBS at a
 # time (4 by default), under the rules of tests/native/verified.sh for results, traps, and
 # allocation counters, and the module cases of euler and of shapes on sums under the rules of
 # tests/modules/run.sh.  A case also fails when it reports an exception or a stack high-water mark
@@ -22,10 +23,11 @@
 # a call with its bound, then each failure, the modules without a translation, and the modules that
 # CompCert cannot compile or link, with the first lines of the error.  It fails unless every case
 # that runs passes and every translated module builds.  CCOMP and CCOMP_STDLIB are as for
-# tools/baremetal/build.sh, and QEMU names qemu-system-aarch64.  Before it loads any module, it
-# builds every module it loads and native-verified in one `lake build` under tools/leanrun, with the
-# caller's LEANRUN_THREADS and LEANRUN_MEMORY_HIGH, since native-verified and `lean --run` read a
-# module's compiled file without checking it against the source.
+# tools/baremetal/build.sh, and QEMU names qemu-system-aarch64.  The cases come from the compiled
+# generators verified-cases and native-module-cases, as in tests/native/verified.sh.  Before it
+# loads any module, it builds every module it loads and the executables it runs in one `lake build`
+# under tools/leanrun, with the caller's LEANRUN_THREADS and LEANRUN_MEMORY_HIGH, since
+# native-verified reads a module's compiled file without checking it against the source.
 # Usage: tests/baremetal/verified.sh [--module NAME]
 set -euo pipefail
 only=""
@@ -47,9 +49,7 @@ export STACK_SIZE=${STACK_SIZE:-0x400000}
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out=$root/build/baremetal/verified
 cd "$root"
-# The modules that `lean --run` reads for tests/TestSupport/Native/ModuleCases.lean are its imports.
-targets=(native-verified Verified.Examples.Cases
-  $(sed -n -E 's/^import ([A-Za-z0-9_.]+).*/\1/p' tests/TestSupport/Native/ModuleCases.lean))
+targets=(native-verified verified-cases native-module-cases)
 while IFS=: read -r module constant name; do
   if [ -z "$only" ] || [ "$name" = "$only" ]; then
     targets+=("$module")
@@ -100,8 +100,9 @@ if [ "$modules" -eq 0 ]; then
 fi
 
 cases=$out/cases.txt
-if ! tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Cases.lean \
-    >"$cases" 2>"$out/cases.err"; then
+# Native Lean writes the panics that the cases exercise to standard error, which
+# tests/verified/run.sh checks; here only its exit status counts.
+if ! tools/leanrun --timeout 10m .lake/build/bin/verified-cases >"$cases" 2>"$out/cases.err"; then
   cat "$out/cases.err" >&2
   echo "fail: native Lean exited with an error" >&2
   exit 1
@@ -116,7 +117,7 @@ awk -F'|' '
   }' "$root/tests/verified/library-cases.txt" "$cases" >"$cases.library"
 mv "$cases.library" "$cases"
 modcases=$out/module-cases.txt
-if ! tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Native/ModuleCases.lean \
+if ! tools/leanrun --timeout 10m .lake/build/bin/native-module-cases \
     >"$modcases" 2>"$out/module-cases.err"; then
   cat "$out/module-cases.err" >&2
   echo "fail: native Lean exited with an error" >&2
@@ -180,6 +181,21 @@ run_host() {
   exception=$(grep '^R:exception\|^R:level' "$w/serial.txt" || true)
 }
 
+# Sets inlined to the arguments that follow, with each file-u64:PATH, a file that the host under
+# QEMU cannot open, replaced by array-u64: and the file's words, each from 8 bytes, the lowest
+# first, in decimal.  The host lays out both kinds as the same array.
+inline_files() {
+  local a
+  inlined=()
+  for a in "$@"; do
+    if [[ $a == file-u64:* ]]; then
+      inlined+=("array-u64:$(od -An -v -t u8 -w8 "${a#file-u64:}" | tr -d ' ' | paste -sd, -)")
+    else
+      inlined+=("$a")
+    fi
+  done
+}
+
 # Runs the work lines of shard $1 and writes one result line per case to $out/results.$1: the
 # module, pass or fail, the high-water mark, and for a failure its description.
 run_shard() {
@@ -190,6 +206,8 @@ run_shard() {
   local kind name export result args expected live allocsMax got held allocs frees message
   while IFS='|' read -r kind name export result args expected live allocsMax; do
     read -ra argv <<<"$args"
+    inline_files "${argv[@]}"
+    argv=("${inlined[@]}")
     message=""
     if [ "$kind" = "M" ]; then
       run_host "$name" call "$export" "$result" "${argv[@]}"
