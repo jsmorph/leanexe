@@ -1,4 +1,3 @@
-   
 /* The layout of a CompCert program on the NUCLEO-F767ZI's STM32F767ZI, a Cortex-M7.  The
    addresses are those of ST's device header stm32f767xx.h.  FLASH is the 2 MiB of flash at
    0x08000000 on the AXIM interface (FLASH_BASE to FLASH_END), and DTCM is the 128 KiB of RAM at
