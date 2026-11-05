@@ -41727,3 +41727,135 @@ The first runs of the gateway in this entry failed in `native-bare gateway-run` 
 ### On a board
 
 With a NUCLEO-F767ZI attached to a host that has the ARMv7-M tree, run `usart3.sh build` and then, for each of `guard`, `ldrd`, `echo`, and `gateway` in turn, write `NAME.bin` to flash at `0x08000000` and run `usart3.sh run NAME /dev/ttyACM0`.  For `guard` and `ldrd`, reset the board after the script starts.  For the echo and the gateway, reset it before.  The gateway's simulated day takes about ten minutes at 4,800 baud.  If nothing answers, the causes to check first are `BOOT_ADD0`, the solder bridges of the virtual COM port, and the baud rate, which a terminal program at 4,800 baud and the ST-LINK's debugger, reading USART3's registers and `SCB_CFSR`, tell apart.
+
+## 2026-11-05: A native back end without C: research
+
+The user asked for research on a back end that compiles the verified compiler's IR to machine code without going through C, first for x86-64 with semantics that might come from CompCert, and then for AArch64.  The user then decided to focus on AArch64 ("We will focus on AArch64").  A research agent wrote both reports.  It ran no Lean, read CompCert 3.18 on edgexpert-18ff with read-only commands, read LNSym and the Lean 4 port of s2n-bignum in shallow clones without building them, and read the other sources on the web.  The claims marked unverified carry the agent's own marks, and no one has checked them since.
+
+### Source IR
+
+The IR is the `Wasm.Module` that `compileWith` emits.  The C translator consumes it (`translate cap m`), every function theorem (`Implements`, `ImplementsA`, `Runs`) concerns it, and the translator's design calls Talos on the native path an intermediate language whose execution semantics only the proofs use (`docs/native-translator.md`, line 25).  A back end from the typed source language `Expr` would need its own proof for every source construct and would bypass the `Implements` theorems that the C and bare-metal paths reuse.
+
+The modules form a decidable subset (`LeanExe/Native/Subset.lean`): one memory, four `i64` globals, no imports or tables, blocks with at most one result, and 8-byte accesses except for byte buffers.  Talos's linear memory is flat, `bytes : Nat → UInt8` with a page count, every access is bounds-checked, and `memory.grow` succeeds within the cap.  Talos traps at `unreachable`, outside memory, and on division by zero, and it bounds no call depth, while guarded code traps at depth 1,000.  `ImplementsA` (`LeanExe/Pipeline/Implements.lean`, line 648) concludes, from a store with `Heap.At`, the precondition, represented and separated arguments, and a cap of at most 65,535 pages, that above some fuel every run returns a represented result or traps at `unreachable`, with a frame clause over the bytes of the linear memory.  A machine relation that equates a memory region with those bytes carries these conclusions over unchanged, as `ImplementsA.native` does for C.
+
+On AArch64 every instruction is one 32-bit word, CompCert needs no run-time library (`docs/native-bare-metal.md`, line 24), and an unaligned load or store to Normal memory succeeds while `SCTLR_EL1.A` is clear (line 193), so the back end needs neither helper functions nor the aligned translation.  The agent expects `FRINTN` to give `f32.nearest` and `FCVTZU` to saturate and map NaN to 0 as Wasm's `trunc_sat` does, and did not check either against the Arm manual.
+
+### x86-64
+
+| Option | Prover, licence, status | What it models | Path into Lean |
+|---|---|---|---|
+| (a) CompCert 3.18 `x86/Asm.v` | Coq.  `x86/Asm.v` is under the INRIA Non-Commercial License only, while `lib/`, `common/`, and the Clight files are also under the LGPL (`LICENSE`, lines 20 to 57) | An abstract instruction list, block memory, flags as values, pseudo-instructions, and no encoding | A transcription of about 1,200 lines onto the existing copies of `Values`, `Memory`, `Events`, and `Globalenvs`, plus the pointer fragments of `Memdata.v`, since `Pallocframe` stores `RSP` and `RA` in memory.  No reference interpreter exists: `ccomp -interp` runs CompCert C (`driver/Interp.ml`, line 13) |
+| (b1) CakeML x64 | HOL4, BSD-3-Clause | An L3-generated model with byte memory and `next` built from `fetch`, `decode`, and `run`, under a target-neutral `asm` with per-target encoders proved by `asm_to_target_correct` | No HOL4-to-Lean tool.  The target proofs took 3,813 lines, as the agent read the paper |
+| (b2) ACL2 x86isa | ACL2, BSD-3-Clause, maintained in 2025 | Decoding, most of the integer ISA, parts of the vector extensions, and 64-bit mode with paging, checked by co-simulation and by tests from XED's database | Only through (b5) |
+| (b3) K x86-64 | K, licence not confirmed, and its README says it does not compile with current K | 3,155 Haswell user-level instruction variants, tested on over 7,000 instruction tests and the GCC torture suite | A reference only |
+| (b4) s2n-bignum | HOL Light, Apache-2.0, ISC, or MIT-0, active | `decode` from bytes, memory as `int64 -> byte`, explicitly undefined flags, and integer and SIMD instructions, with no scalar floating point in the part the agent read | Its Lean 4 port covers AArch64 only |
+| (b5) Sail x86 from ACL2 | Sail, BSD | An automatic translation of x86isa | Sail's Lean backend serves sail-riscv, and the agent did not check whether it accepts this model |
+| (b6) Jasmin | Coq, MIT, active | Abstract x86-64 syntax with addresses as machine words and frames from `alloc_stack`, and no encoding file seen | A hand translation, from a memory model closer to Wasm's than CompCert's |
+| (b7) CompCertELF and successors | Coq, on CompCert | A verified assembler to ELF for CompCert 3.0.1 on 32-bit x86, and verified assemblers for CompCert's x86 and RISC-V assembly with encoders and decoders generated by CSLED | Extends (a) to bytes at the cost of translating these developments too |
+| (b8) vWasm | F* | Compiles Wasm to x86-64 over its own model of a subset, proving sandbox safety only, with a trusted printer | Prior art for the code generator |
+| (b9) Lean | | No Lean 4 x86-64 semantics found.  Carneiro's Lean 3 `x86.lean` decodes bytes and covers common integer instructions in 766 lines | A port, or a reference |
+| (c) A new Lean subset model | The project's own | Flat byte memory, the registers, RIP, the flags the code reads, the low lanes of the XMM registers, and a decoder for the emitted forms | Written with the back end and tested against XED or objdump and against hardware |
+
+`Asmgenproof.transf_program_correct` (`x86/Asmgenproof.v`, lines 917 to 924) is the last pass that CompCert proves, and everything below `x86/Asm.v` carries no proof.  In `Asm.v` code is a list of instructions and the PC an index into it (lines 295, 558, and 564).  Memory is CompCert's block memory, whose `Mem.alloc` never fails (`common/Memory.v`, lines 342 to 358).  `Pcall_s` stores the return address in a pseudo-register `RA` (930), while the machine's `call` pushes it.  `Pallocframe` and `Pfreeframe` allocate and free a fresh block (948 to 975), which `Asmexpand.ml` turns into `subq` and `addq` (533 to 592).  `Pbuiltin` steps by `external_call`, and the forms that `Asmgen` never emits, such as `Psqrtsd`, go `Stuck` (976 to 1016), while `Asmexpand.ml` emits them for builtins, so the printed program lies outside the semantics.  `TargetPrinter.ml` loads float constants and wide immediates from literals, prints `Pjcc2` as two jumps and `Pjmptbl` as a table jump, and prints nothing for `Pmovls_rr` (426 to 903).  Registers hold typed `val`, the flags become `Vundef` after most instructions, `Pmovq_rf` goes `Stuck`, there is no MXCSR, and nothing encodes instructions.
+
+A back end that emits programs of a Lean copy of `x86/Asm.v` would use none of CompCert's proofs, since they end at Asm.  It would trust the copy with its added pointer fragments, its own expansion and printer, the GNU assembler and linker, the startup code, and the correspondence between `RA`, fresh-block frames, and instruction-indexed PCs and the machine's stack and byte addresses.  The stack bound would remain a trusted tool.
+
+With option (c), `translateX64_correct` would assume `translateX64 cap m = some img` and a Talos run that ends in `Success` or `Trap`, from a machine state that holds the image's code, `st.mem.bytes` in the linear-memory region, the globals, a return address with enough mapped stack below it, and the default MXCSR.  It would conclude that the machine reaches the return address with the results in their registers, the region equal to the final store's bytes, the callee-saved registers restored, and every other byte unchanged, or reaches the trap exit.  A deterministic step function makes that run the only one, with undefined flags and NaN bits from an oracle that the theorem quantifies over.  `ImplementsA.x64` would follow from `p.f.implements` as `ImplementsA.native` does.  The induction on Talos's fuel stays, and each construct gets a lemma about code at an address that reaches the construct's end, a break target, the return sequence, or the trap exit.  A Lean function would lay out the code with fixed `rel32` displacements and encode it, so no assembler or linker remains, and `binary_file%` can tie a written file to the image.  The simulation would need `decode (encode i ++ rest) = some (i, (encode i).length)` for each emitted form, as a lemma or a per-build `decide +kernel` check, and an external decoder such as XED would have to check the model's decoder, since x86 has no conformance suite like Wasm's.
+
+| Item | C path today (code C) | (c) Lean subset model | (a) Lean copy of `Asm.v` |
+|---|---|---|---|
+| Lean kernel, Talos's store definitions | Trusted | Trusted | Trusted |
+| Clight copy, `clightgen` check, front end | Trusted | Absent | Absent |
+| CompCert's proofs, Coq, extraction | Trusted | Absent | Absent |
+| Processor description | `x86/Asm.v`, under CompCert's proofs | Lean model with its decoder | Lean copy of `Asm.v` |
+| Expansion and printer | CompCert's | Absent | The project's own |
+| Assembler and linker | GNU | Absent | GNU |
+| Run-time helpers | `libcompcert.a` | Absent | Absent |
+| Loading and entry | glibc start-up and the OS | A host mapping, an ELF loader, or boot code, with ABI and MXCSR premises | As today |
+| Stack | Assumed | A proved bound, with a premise on the reserved stack | Assumed, or a trusted tool |
+
+The main risk of (c) is the fidelity of a new model with no reference implementation, which needs co-simulation on x86-64 hardware that the project does not have: its x86-64 runs use `qemu-x86_64` (`docs/native-translator.md`, line 272).  Others are the speed of a simple code generator, which no one has measured against `ccomp`'s output, and the cost of kernel-checked symbolic evaluation without `bv_decide`.  `LeanExe/Native/` holds about 25,000 lines of Lean against a design estimate of 13,000 to 24,000, and the agent could not support a figure for an x86 simulation proof beyond the unmeasured judgment that it would be at least as large as the C translator's simulation layers.  The agent recommended (c) for x86-64 and noted that AArch64 hardware and a Lean 4 AArch64 model already exist.
+
+### AArch64
+
+| Option | Prover, licence, status | What it models | Path into Lean |
+|---|---|---|---|
+| (a) CompCert 3.18 `aarch64/Asm.v` | Coq, 1,326 lines, INRIA Non-Commercial License only (header, lines 7 to 9) | An abstract instruction list, block memory, pseudo-instructions, and no encoding | A transcription onto the existing Lean copies, with pointer fragments added to `Memdata`, and no reference interpreter |
+| (b1) LNSym | Lean 4 `nightly-2024-10-07`, Apache-2.0, last commit on its default branch 2024-12-09 | Integer, SIMD, and cryptographic instructions decoded from 32-bit words, with memory a total map from 64-bit addresses to bytes | A port across two years of Lean releases to `v4.34.0-rc2`, at a cost the agent did not estimate |
+| (b2) Arm's ASL and `sail-arm` | Sail models of Armv8.5-A, Armv9.3-A, and Armv9.4-A, BSD-3-Clause-Clear, from Arm's ASL (POPL 2019).  Arm publishes its A-profile specification, whose licence text the agent did not read | The whole architecture, with system registers and address translation | The Armv9.4-A `Makefile` has a `gen_lean` target that calls Sail with `-lean-noncomputable`.  The agent did not check that the output builds.  Islaris verifies Armv8-A code against it in Coq through Isla |
+| (b3) CakeML arm8 | HOL4, BSD-3-Clause | An L3 model of Armv8 that Kanabar, Fox, and Myreen proved in HOL4 to simulate Arm's Armv8.6 specification | None.  A precedent for checking a hand-written model against ASL |
+| (b4) s2n-bignum and its Lean 4 port | HOL Light, Apache-2.0, ISC, or MIT-0, active.  The port is Apache-2.0 on `v4.36.0-rc1`, last commit 2026-11-05 | `arm_decode` reads 4 aligned bytes from memory and covers integer and partial SIMD instructions, with no scalar floating point in the part the agent read.  The port decodes only add and subtract, with and without carry | The port uses neither `bv_decide` nor `native_decide` but covers little |
+| (c) A new Lean subset model | The project's own | Only the emitted forms, with code in memory, a device region for the bare-metal programs, and FPCR as a premise | Written with the back end and co-simulated on edgexpert-18ff |
+
+LNSym covers the immediate data-processing forms (add and subtract, logical, bitfield, move wide, and PC-relative), the register forms (shifted and carry forms, conditional select, variable shifts, `MADD`, `MSUB`, and `UMULH`), the branches `B`, `BL`, `B.cond`, `CBZ`, `CBNZ`, and `RET`, the loads and stores `LDR` and `STR` with unsigned offset or post-index, `LDRB`, `STRB`, pairs, unscaled offsets, `LD1`, and `ST1`, and the Advanced SIMD classes, AES, and SHA-512.  It lacks `UDIV`, `BR`, `BLR`, register-offset loads, and scalar floating-point arithmetic, and its floating-point file holds only `FMOV` between general and SIMD registers.  `ArmState` (`Arm/State.lean`, lines 137 to 161) holds the general registers, the 128-bit SIMD registers, the PC, NZCV, memory as `Store (BitVec 64) (BitVec 8)` with no faults or permissions, and a separate `program` map from addresses to words that the model assumes disjoint from memory.  `stepi` (`Arm/Exec.lean`, lines 105 to 125) fetches from that map, decodes with `decode_raw_inst`, and sets an error state on an unknown word.  `Arm/Cosim.lean` assembles a test with `gcc` for each random instruction, runs it once on random general, NZCV, and SIMD register values, and compares the resulting registers.  Its generators cover branches and data processing but not loads and stores (`Arm/Insts.lean`, lines 13 to 17).  Some library lemmas use `bv_decide` (`Arm/Insts/Common.lean`, lines 135 to 145, and `Arm/Memory/MemoryProofs.lean`, line 80), and the definitions do not depend on them.
+
+In CompCert's tree, `Asmgenproof.transf_program_correct` (`aarch64/Asmgenproof.v`, line 1012) is the last proved pass, and `Driver.ml` runs `Asmexpand.expand_program` after it (lines 58 to 61).  Code is a list with an instruction-indexed PC (lines 311, 440, and 443), and `Asmexpand.ml` relaxes branches whose targets lie out of range (425 to 485).  `RA` names the real register `X30` (100), and `Pbl` writes `PC + 1` to it (702 and 703) where the machine writes PC + 4.  `Pallocframe` and `Pfreeframe` allocate and free a fresh block (1068 to 1091), which `Asmexpand.ml` turns into an `stp` that lowers `sp` and an `add` (491 to 518), while in the model `Pstp` and `Pldp` go `Stuck` (1116 and 1117) and the stack never overflows.  `Pbuiltin` steps by `external_call`, the forms that `Asmgen` never emits go `Stuck` (1113 to 1132), and `__builtin_fsqrt` becomes `Pfsqrt` (`Asmexpand.ml`, lines 387 and 388), so the printed program lies outside the semantics.  `TargetPrinter.ml` loads symbols through the GOT, prints `sxtw` and `uxtw` for the conversion pseudo-instructions, loads float constants with `fmov` or from literals, and prints `Pbtbl` as a table of branches (159 to 605), and `Pcvtx2w` emits nothing (`Asmexpand.ml`, lines 519 to 521).  `preg` has no FPCR (71 to 76), execution starts with `RA` and `SP` null and ends at a null PC with `Vint r` in `X0` (1238 to 1253), and nothing encodes instructions.  The AArch64 model lies closer to the machine than the x86 model, because the return address lives in a real register, but a Lean copy would trust the same printer, assembler, linker, and stack tool as today.
+
+The theorem, its composition with `ImplementsA`, the per-construct lemmas, and the encoder round trip are as for x86-64, with four changes.  Every instruction is one word, so layout reduces to counting words, and `decode (encode i) = some i` concerns one 32-bit value per emitted instruction.  `B.cond` and `CBZ` carry a 19-bit word offset and `B` a 26-bit one, so the layout must prove each target in range or branch around it with `B`, the job of CompCert's unproved relaxation.  Code can lie in a separate map, as in LNSym, which makes the theorem assume that no store reaches the code, or in memory, as in s2n-bignum, which ties the bytes to the image.  In the bare-metal programs, stores to `lx_out` and loads of `lx_reg` and `lx_in` become accesses to a device region whose stores append to a trace and whose loads take oracle values, the role of CompCert's volatile events today.
+
+edgexpert-18ff reports 19 Arm cores, 9 with part number `0xd85` and 10 with `0xd87`, which by Linux's numbering are Cortex-X925 and Cortex-A725 (unverified), and it has `gcc` 13, the GNU assembler, `objdump`, `qemu-system-aarch64`, and `/dev/kvm`.  The desktop's 4 AArch64 processors report part `0x000`.  A conformance test of a Lean model needs an executable model, which LNSym's definitions are and `sail-arm`'s noncomputable Lean is not, a harness that sets registers, flags, FPCR, and a memory window, runs one emitted form, and dumps the state, generators that bias operands toward edge values as `tests/native/clight.sh` does, and runs pinned to each core type.  The test's Lean side runs as compiled code whose results feed no theorem, so the ban on `native_decide` and `bv_decide` does not touch it.  The ban does touch the model's proofs: per-word decoding by `decide +kernel` works, and lemmas like LNSym's flag lemmas would need proofs by rewriting and `omega`.
+
+| Item | Bare-metal path today (code B) | (c) Lean subset model | (a) Lean copy of `Asm.v` |
+|---|---|---|---|
+| Lean kernel, Talos's store definitions | Trusted | Trusted | Trusted |
+| Clight copy, front end and `clightgen` check, renaming assumption | Trusted | Absent | Absent |
+| CompCert's proofs, Coq, the Rocq composition, extraction | Trusted | Absent | Absent |
+| Processor description | `aarch64/Asm.v`, under CompCert's proofs | Lean model, co-simulated | Lean copy of `Asm.v` |
+| Printer, expansion, branch relaxation | CompCert's | Absent | The project's own |
+| Assembler, linker, linker script | GNU, with the script's addresses | Absent: Lean places the code and fixes the addresses | GNU |
+| Stack | Trusted tool `stack-bound.sh` | Proved bound | Trusted tool |
+| Access check | Trusted tool `access-check.sh` | Absent: the encoder emits no such form | Trusted tool |
+| Startup code, vectors, MMU tables | Trusted | Trusted | Trusted |
+| QEMU, KVM, the processor, the UART | Trusted | Trusted, with the device-region model | Trusted |
+
+The main risk of (c) remains the model's fidelity, which co-simulation on both core types of edgexpert-18ff would check in place of the `ccomp -interp` comparison that the Clight copy had.  A second risk is that the bare-metal statements change form: CompCert's traces of volatile events become the model's device trace, so `p.f.program`, the Rocq uniqueness theorems, and the records and gateway theorems would need restating over it.  LNSym's model holds about 6,500 lines and its memory reasoning about 4,000 more, and the port's AArch64 part about 1,200.  The emitted subset needs fewer instruction classes than LNSym has but adds scalar floating point, division, and loads and stores at computed addresses.
+
+The agent recommended (c): a Lean model of the forms the back end emits, owned by the repository, written in LNSym's style, and validated by co-simulation on edgexpert-18ff.  It judged LNSym a poor dependency, for its October 2024 nightly, its last commit in December 2024, its missing `UDIV`, `BR`, `BLR`, and scalar floating point, its code outside memory, and its lemmas proved with `bv_decide`, while its decoder style, state layout, and co-simulation harness can be reused under Apache-2.0.  It named `sail-arm` as the authoritative reference, usable to check each emitted form against the hand-written model if its Lean output builds, as Kanabar, Fox, and Myreen checked L3 against ASL in HOL4.  It proposed as the first increment GCD's integer core in an image that a C host maps on edgexpert-18ff or the desktop.
+
+### Open decisions
+
+- [ ] A Lean subset model or a copy of `aarch64/Asm.v`, and for the model, LNSym's code adapted or written anew.
+- [ ] Code in a separate map or in memory.
+- [ ] Co-simulation alone, or with a per-form proof against `sail-arm`'s generated Lean.
+- [ ] A hosted image first or a bare-metal image first, and the restatement of the bare-metal theorems over a device trace.
+- [ ] The code generator's operand-stack slots, bounds checks, and trap propagation.
+- [ ] A universal encoder lemma or a per-build kernel check of decoding.
+- [ ] Machine time on edgexpert-18ff for co-simulation.
+- [ ] Whether the C path stays beside the new back end.
+
+### Sources
+
+- [CompCert 3.18 source](https://github.com/AbsInt/CompCert/tree/v3.18)
+- [LNSym](https://github.com/leanprover/LNSym)
+- [LNSym machine state](https://github.com/leanprover/LNSym/blob/main/Arm/State.lean)
+- [LNSym co-simulation](https://github.com/leanprover/LNSym/blob/main/Arm/Cosim.lean)
+- [Sail Arm models](https://github.com/rems-project/sail-arm)
+- [Sail Armv9.4-A Makefile with the Lean target](https://github.com/rems-project/sail-arm/blob/master/arm-v9.4-a/Makefile)
+- [Sail](https://github.com/rems-project/sail)
+- [Sail Lean backend package](https://ocaml.org/p/sail_lean_backend)
+- [Armstrong et al., ISA Semantics for ARMv8-A, RISC-V, and CHERI-MIPS (POPL 2019)](https://www.cl.cam.ac.uk/~pes20/sail/popl2019.html)
+- [Mirror of Arm's A-profile machine-readable specification](https://kernel.googlesource.com/pub/scm/linux/kernel/git/maz/AARCHMRS/+/HEAD)
+- [Sammler et al., Islaris (PLDI 2022)](https://pldi22.sigplan.org/details/pldi-2022-pldi/9/Islaris-Verification-of-Machine-Code-Against-Authoritative-ISA-Semantics)
+- [Kanabar, Fox, and Myreen, Taming an Authoritative Armv8 ISA Specification (ITP 2022)](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ITP.2022.20)
+- [Fox, Myreen, Tan, and Kumar, Verified Compilation of CakeML to Multiple Machine-Code Targets (CPP 2017)](https://www.cl.cam.ac.uk/~mom22/cpp17.pdf)
+- [CakeML repository](https://github.com/CakeML/cakeml)
+- [s2n-bignum repository](https://github.com/awslabs/s2n-bignum)
+- [s2n-bignum AArch64 model](https://github.com/awslabs/s2n-bignum/blob/main/arm/proofs/arm.ml)
+- [s2n-bignum x86 decoder](https://github.com/awslabs/s2n-bignum/blob/main/x86/proofs/decode.ml)
+- [Bignum-Lean, a Lean 4 port of s2n-bignum](https://github.com/arademaker/bignum)
+- [ACL2 x86isa manual](https://www.cs.utexas.edu/users/moore/acl2/manuals/current/manual/index-seo.php/X86ISA____INTRODUCTION)
+- [Goel, The x86isa Books](https://arxiv.org/abs/1705.01225v1)
+- [Sohail and Hunt, Updates on the Linux Capable ACL2 x86 Model (2025)](https://www.cs.utexas.edu/~moore/acl2/workshop-2025/slides/x86-model-updates-workshop-2025.pdf)
+- [Dasgupta et al., A Complete Formal Semantics of x86-64 User-Level Instruction Set Architecture (PLDI 2019)](https://fsl.cs.illinois.edu/publications/dasgupta-park-kasampalis-adve-rosu-2019-pldi.html)
+- [K x86-64 semantics repository](https://github.com/kframework/X86-64-semantics)
+- [Sail x86 model translated from ACL2](https://github.com/rems-project/sail-x86-from-acl2)
+- [Sail RISC-V model](https://github.com/riscv/sail-riscv)
+- [Jasmin repository](https://github.com/jasmin-lang/jasmin)
+- [Jasmin memory model](https://github.com/jasmin-lang/jasmin/blob/main/proofs/lang/memory_model.v)
+- [Almeida et al., The Last Mile](https://arxiv.org/abs/1904.04606)
+- [Wang, Xu, Wilke, and Shao, CompCertELF (OOPSLA 2020)](https://flint.cs.yale.edu/flint/publications/compcertelf.html)
+- [Wu et al., Towards a Framework for Developing Verified Assemblers for the ELF Format (APLAS 2023)](https://conf.researchr.org/details/aplas-2023/aplas-2023-research-papers/14/Towards-a-Framework-for-Developing-Verified-Assemblers-for-the-ELF-Format)
+- [Xu et al., artifact for Automatic Generation and Validation of Instruction Encoders and Decoders](https://zenodo.org/record/4720184)
+- [Bosamiya, Lim, and Parno, Provably-Safe Multilingual Software Sandboxing using WebAssembly (USENIX Security 2022)](https://usenix.org/conference/usenixsecurity22/presentation/bosamiya)
+- [Carneiro, Specifying verified x86 software from scratch](https://arxiv.org/abs/1907.01283)
+- [Metamath Zero Lean 3 package with the x86 model](https://github.com/digama0/mm0/tree/master/mm0-lean)
