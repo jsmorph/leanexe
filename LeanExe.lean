@@ -3,6 +3,7 @@ import LeanExe.A64.Gen
 import LeanExe.A64.Machine
 import LeanExe.A64.Proof.Machine
 import LeanExe.A64.Proof.Relation
+import LeanExe.A64.Proof.Sim
 import LeanExe.Attr
 import LeanExe.Common
 import LeanExe.Dialect.Build

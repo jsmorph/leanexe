@@ -24,6 +24,10 @@ theorem opReg_ok {k : Nat} (h : k < 26) : opReg k = .ok (regOf k) := by
   simp [opReg, regOf, List.getElem?_eq_getElem h, List.getD_eq_getElem?_getD]
   rfl
 
+theorem opReg_error {k : Nat} (h : ¬ k < 26) : ∃ e, opReg k = .error e := by
+  have : opRegs[k]? = none := List.getElem?_eq_none (by rw [opRegs_length]; omega)
+  exact ⟨_, by simp only [opReg, this]; rfl⟩
+
 theorem regOf_lt_31 : ∀ k < 26, (regOf k).val < 31 := by decide
 
 theorem regOf_ne_scratch : ∀ k < 26, regOf k ≠ scratch := by decide
