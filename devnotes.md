@@ -41659,6 +41659,7 @@ ST's reference manual RM0410 and the Nucleo-144 user manual UM1974 did not downl
 - [x] `--device` in `uart_echo.py` and `uart_gateway.py`; `tests/baremetal/usart3.sh`.
 - [x] `m7.sh` and `req.sh` on QEMU after the split; `usart3.sh build`.
 - [x] Documentation.
+- [x] Renode: `usart3.sh emulate` for the echo and the gateway, and the check with `NO_UART`.
 - [ ] On a board: the echo, then the gateway over a simulated day.
 
 ### Results
@@ -41670,6 +41671,16 @@ After the split of the startup code, `m7.sh` passes every check: the memory map,
 `usart3.sh build` writes both images, and the ARMv7-M `clightgen` read-back of each matches the program of its theorem.  The echo takes 21,248 bytes of flash and the gateway 80,440, with stack bounds of 264 and 6,720 bytes.  In the gateway's image the vector table at `0x08000000` holds `__exc_stack_top`, `0x200115f0`, then `_start` and `fault` with the Thumb bit set, for 126 words, `lx_mem` lies at `0x20000308`, the stack ends at `0x2001b000`, inside DTCM, and the program headers name flash only for the code and the load image of `.data`.
 
 The serial-port mode of the host scripts ran without a board.  `uart_echo.py --device` passes against a pseudo-terminal whose far end answers each byte with bit 5 flipped and fails at the first reply when the far end flips bits 5 and 0.  `uart_gateway.py --device` ran 1,440 ticks through a pseudo-terminal that a bridge connects to UART0 of QEMU running the gateway's program for `mps2-an500`, and its output records equal native Lean's.  The USART3 images themselves have not run: no emulator here models the STM32F767, and Renode, which models STM32F7 parts, would be a new dependency.
+
+### Renode
+
+The user approved Renode as a dependency.  Renode 1.17.0, Antmicro's emulator, lies in `~/renode-1.17.0` on edgexpert, unpacked from the release's `renode-1.17.0.linux-arm64-portable.tar.gz`, whose SHA-256, `e9051578411441bfb47b77de0381cfba3badce03663367fab561472fd7807f1f`, matched the digest that GitHub's release record gives ([release](https://github.com/renode/renode/releases/tag/v1.17.0)).  Its platform `platforms/boards/nucleo_f767zi.repl` builds on `platforms/cpus/stm32f777.repl`, the STM32F777, which is the STM32F767 with a cryptographic unit and the same memory map.  The platform applies the register descriptions `STM32F7x6.svd.gz` from `dl.antmicro.com`, which Renode downloads on its first run and caches.
+
+Renode's USART model, [`STM32F7_USART.cs`](https://github.com/renode/renode-infrastructure/blob/master/src/Emulator/Peripherals/Peripherals/UART/STM32F7_USART.cs), sends a byte only while `UE` and `TE` are set, logging a warning otherwise, takes one only while `UE` and `RE` are set, sets `RXNE` while its queue of received bytes is not empty, and reports `TXE` always set.  The emulation therefore checks the startup code, the memory layout, the vector table, and USART3's addresses, bits, and enables.  It does not check the RCC's clock enables, which no Renode peripheral requires, the connection of PD8 and PD9, which its GPIO model does not make, the baud rate, the time a window takes, or the receiver's overrun, since its queue holds every byte.  Its RCC model lacks `RCC_DCKCFGR2` and logs the read and the write of `board_init` as unhandled.
+
+`usart3.sh emulate NAME` writes a Renode script that loads the platform, puts USART3 on a pseudo-terminal, and loads `NAME.elf`, runs Renode with `--disable-gui --plain -P -1`, plays the far end through the pseudo-terminal with the host script of `usart3.sh run`, and stops Renode.  It fails when Renode logs a warning or error other than the two of `RCC_DCKCFGR2` and the one of its translation cache.  `NO_UART` in `nucleo-f767zi/board.S` leaves `UE`, `RE`, and `TE` clear, as `NO_UART` leaves UART0 disabled on `mps2-an500`.
+
+In Renode, the echo passed in 1.8 s, and the gateway's program ran 1,440 ticks, 94 commands and 4 fallback requests, in 45.8 s, with output records equal to native Lean's.  Renode guessed the vector table at `0x08000000` and started at `_start`, `0x080001f9`, with the main stack pointer `__exc_stack_top`.  The echo built with `NO_UART` got no reply, and the test failed after its timeout.
 
 ### On a board
 

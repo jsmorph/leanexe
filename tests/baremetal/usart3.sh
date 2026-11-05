@@ -21,17 +21,30 @@
 # set, and checks the commands and the monitoring, and native-bare gateway-run then runs the
 # gateway in native Lean on the same input records, whose output records must equal the board's.
 #
+# "usart3.sh emulate NAME" runs NAME.elf in Renode on its model of the NUCLEO-F767ZI,
+# platforms/boards/nucleo_f767zi.repl, with USART3 on a pseudo-terminal, NAME.pty, and plays the
+# far end of USART3 through it as "run" does.  Renode loads the image's segments, takes the vector
+# table from 0x08000000, and models USART3's registers: it sends a byte only while UE and TE are
+# set, takes one only while UE and RE are set, sets RXNE while its queue of received bytes is not
+# empty, and always reports TXE set.  It models neither the RCC's clock enables, nor the
+# connection of PD8 and PD9 to USART3, nor time at the board's clock, and its queue never
+# overruns.  Renode's log, NAME.renode, may hold no warning or error other than those of its
+# translation cache and of RCC_DCKCFGR2, at offset 0x90, which its RCC model lacks.  On its first
+# run Renode downloads the register descriptions that the platform names from dl.antmicro.com.
+#
 # The products lie in OUT, build/baremetal/usart3 unless set: NAME.elf with the files of build.sh,
 # NAME.bin, NAME.echo, the line that the host script prints, NAME.stderr, the messages of uv, and
 # for gateway the records NAME.records.in, NAME.records.out, and NAME.records.lean.  CCOMP,
 # CCOMP_STDLIB, and CLIGHTGEN name CompCert 3.18's driver, run-time library, and clightgen
 # configured armv7m-eabihf, OBJCOPY, OBJDUMP, and NM name objcopy, objdump, and nm for ARM, UV
-# names uv, and TIMEOUT, 120 unless set, bounds each wait of the host script in seconds.
+# names uv, RENODE names Renode 1.17.0's renode, and TIMEOUT, 120 unless set, bounds each wait of
+# the host script in seconds.
 # Usage: tests/baremetal/usart3.sh build [DIR]
 #        tests/baremetal/usart3.sh run NAME DEVICE
+#        tests/baremetal/usart3.sh emulate NAME
 set -euo pipefail
 usage() {
-  echo "usage: tests/baremetal/usart3.sh build [DIR] | run NAME DEVICE" >&2
+  echo "usage: tests/baremetal/usart3.sh build [DIR] | run NAME DEVICE | emulate NAME" >&2
   exit 2
 }
 [ "$#" -ge 1 ] || usage
@@ -39,6 +52,36 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 here=$root/tests/baremetal
 out=${OUT:-$root/build/baremetal/usart3}
 uv=${UV:-uv}
+timeout=${TIMEOUT:-120}
+
+# Plays the far end of USART3 for the program $1 through the serial port $2 and, for the gateway,
+# compares the output records with native Lean's.  Fails with a line that names the cause.
+host_run() {
+  local name=$1 device=$2 series=${SERIES:-$HOME/data/energy/series/nist-2015.csv} host
+  case $name in
+    echo) host=(uart_echo.py) ;;
+    gateway) host=(uart_gateway.py --ticks "${TICKS:-1440}" "$series" "$out/$name.records") ;;
+    *) usage ;;
+  esac
+  if ! "$uv" run "$here/${host[0]}" --timeout "$timeout" --device "$device" \
+      "${host[@]:1}" >"$out/$name.echo" 2>"$out/$name.stderr"; then
+    echo "fail: $name: $(cat "$out/$name.echo" "$out/$name.stderr" | paste -sd' ' | head -c 400)"
+    return 1
+  fi
+  echo "pass: $name: $(cat "$out/$name.echo")"
+  if [ "$name" = gateway ]; then
+    (cd "$root" && tools/leanrun --timeout 30m lake env .lake/build/bin/native-bare gateway-run \
+      "$out/$name.records.in" "$out/$name.records.lean") >"$out/$name.native" 2>&1
+    if ! cmp -s "$out/$name.records.out" "$out/$name.records.lean"; then
+      echo "fail: $name: the output records differ from native Lean's:" \
+        "$(cmp "$out/$name.records.out" "$out/$name.records.lean" 2>&1 | head -c 300)" \
+        "$(head -c 300 "$out/$name.native")"
+      return 1
+    fi
+    echo "pass: $name: the output records equal native Lean's for" \
+      "$(wc -l <"$out/$name.records.in") input records"
+  fi
+}
 
 case $1 in
   build)
@@ -78,33 +121,48 @@ case $1 in
     ;;
   run)
     [ "$#" -eq 3 ] || usage
+    host_run "$2" "$3"
+    ;;
+  emulate)
+    [ "$#" -eq 2 ] || usage
     name=$2
-    device=$3
-    series=${SERIES:-$HOME/data/energy/series/nist-2015.csv}
-    mkdir -p "$out"
-    case $name in
-      echo) host=(uart_echo.py) ;;
-      gateway) host=(uart_gateway.py --ticks "${TICKS:-1440}" "$series" "$out/$name.records") ;;
-      *) usage ;;
-    esac
-    if ! "$uv" run "$here/${host[0]}" --timeout "${TIMEOUT:-120}" --device "$device" \
-        "${host[@]:1}" >"$out/$name.echo" 2>"$out/$name.stderr"; then
-      echo "fail: $name: $(cat "$out/$name.echo" "$out/$name.stderr" | paste -sd' ' | head -c 400)"
+    renode=${RENODE:-renode}
+    [ -f "$out/$name.elf" ] || { echo "fail: $name: $out/$name.elf is missing"; exit 1; }
+    pty=$out/$name.pty
+    rm -f "$pty" "$out/$name.renode.pid"
+    cat >"$out/$name.resc" <<EOF
+mach create "nucleo-f767zi"
+machine LoadPlatformDescription @platforms/boards/nucleo_f767zi.repl
+emulation CreateUartPtyTerminal "usart3" "$pty" true
+connector Connect sysbus.usart3 usart3
+sysbus LoadELF @$out/$name.elf
+start
+EOF
+    "$renode" --disable-gui --plain -P -1 --pid-file "$out/$name.renode.pid" "$out/$name.resc" \
+      >"$out/$name.renode" 2>&1 &
+    renode_job=$!
+    for _ in $(seq "$timeout"); do
+      [ -e "$pty" ] && break
+      kill -0 "$renode_job" 2>/dev/null || break
+      sleep 1
+    done
+    if [ ! -e "$pty" ]; then
+      kill "$renode_job" 2>/dev/null || :
+      echo "fail: $name: Renode made no pseudo-terminal: $(tail -c 300 "$out/$name.renode")"
       exit 1
     fi
-    echo "pass: $name: $(cat "$out/$name.echo")"
-    if [ "$name" = gateway ]; then
-      (cd "$root" && tools/leanrun --timeout 30m lake env .lake/build/bin/native-bare gateway-run \
-        "$out/$name.records.in" "$out/$name.records.lean") >"$out/$name.native" 2>&1
-      if ! cmp -s "$out/$name.records.out" "$out/$name.records.lean"; then
-        echo "fail: $name: the output records differ from native Lean's:" \
-          "$(cmp "$out/$name.records.out" "$out/$name.records.lean" 2>&1 | head -c 300)" \
-          "$(head -c 300 "$out/$name.native")"
-        exit 1
-      fi
-      echo "pass: $name: the output records equal native Lean's for" \
-        "$(wc -l <"$out/$name.records.in") input records"
+    status=0
+    host_run "$name" "$pty" || status=1
+    kill "$(cat "$out/$name.renode.pid")" 2>/dev/null || :
+    wait "$renode_job" 2>/dev/null || :
+    unexpected=$(grep -a '\[WARNING\]\|\[ERROR\]' "$out/$name.renode" |
+      grep -av 'Translation cache size [0-9]* is larger than maximum allowed' |
+      grep -av 'rcc: Unhandled \(read from\|write to\) offset 0x90[.,]' | head -c 400 || :)
+    if [ -n "$unexpected" ]; then
+      echo "fail: $name: Renode logged $unexpected"
+      status=1
     fi
+    exit "$status"
     ;;
   *)
     usage
