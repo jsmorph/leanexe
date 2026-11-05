@@ -102,4 +102,199 @@ theorem run_branchTo {t : Ctl} {h : Nat} {a : UInt64} {is : List Instr} {ms : St
       rw [hpc, ← bField_target hf, h0, after_zero]
     · exact ⟨by omega, by omega, fun j hj => absurd hj (by omega)⟩
 
+/-! ## Outcomes of branches -/
+
+/-- The outcome of a branch `k` levels out to `t` that reaches `t.target` with the values that it
+carries kept and the locals unchanged. -/
+theorem break_outcome {E : Env} {ctl : List Ctl} {fin : Option Nat} {endA : UInt64} {α : Type}
+    {st : Store α} {sl sl' : Locals} {ms ms' : State} {k : Nat} {t : Ctl}
+    (ht : ctl[k]? = some t) (hinv : Inv P E.locals sl ms)
+    (hl : sl'.params ++ sl'.locals = sl.params ++ sl.locals) (hr : Reach P code ms ms')
+    (hpc : ms'.pc = t.target) (hk : Kept t sl'.values ms') (hf : Frame t.base ms ms')
+    (hsp : ms'.sp = ms.sp) (hmem : ms'.mem = ms.mem) (hout : ms'.out = ms.out) :
+    Outcome P code E ctl fin endA (.Break k st sl') ms :=
+  ⟨t, ht, ms', hr, hpc, hsp, hout, fun _ _ => by rw [hmem],
+    by rw [hl]; exact hinv.locals.congr hmem hsp, by rw [hl]; exact hinv.count, hk, hf⟩
+
+/-- Popping the top of the stack of a related state and moving its program counter. -/
+theorem Inv.pop {n : Nat} {sl : Locals} {ms : State} {v : Value} {vs : List Value}
+    (hinv : Inv P n sl ms) (hv : sl.values = v :: vs) (p : UInt64) :
+    Inv P n { sl with values := vs } { ms with pc := p } := by
+  have hst := hinv.stack
+  rw [hv] at hst
+  exact ⟨hst.pop.congr fun _ _ => rfl, hinv.locals.congr rfl rfl, hinv.count, hinv.aligned,
+    hinv.mapped, hinv.bound⟩
+
+/-- `CBNZ` of a nonzero register branches. -/
+theorem cbnz_taken {ms : State} {a target : UInt64} {r : Fin 32} {f : Fin 524288}
+    (hc : code ms.pc = some (encode (.cbnz r f))) (hpc : ms.pc = a)
+    (hf : cbField a target = .ok f) (h0 : ms.x r ≠ 0) :
+    Reach P code ms { ms with pc := target } := by
+  refine reach_exec P code hc ?_ (.refl _)
+  simp only [exec, ne_eq, h0, not_false_eq_true, ite_true]
+  rw [hpc, cbField_target hf]
+
+/-- `CBNZ` of a zero register falls through. -/
+theorem cbnz_next {ms : State} {r : Fin 32} {f : Fin 524288} (h0 : ms.x r = 0) :
+    LeanExe.A64.exec P (.cbnz r f) ms = some { ms with pc := ms.pc + 4 } := by
+  simp [exec, h0]
+
+/-! ## `br` and `ret` -/
+
+theorem gen_br {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {n : Nat} {is : List Instr}
+    {fin : Option Nat} (hg : genInstr E ctl h a (.br n) = .ok (is, fin)) :
+    ∃ t, ctl[n]? = some t ∧ branchTo t h a = .ok is ∧ fin = none := by
+  cases ht : ctl[n]? with
+  | none => simp [genInstr, ht, throw, throwThe, MonadExceptOf.throw] at hg
+  | some t =>
+      cases hb : branchTo t h a with
+      | error e => simp [genInstr, ht, hb, bind, Except.bind] at hg
+      | ok bs =>
+          simp [genInstr, ht, hb, bind, Except.bind, pure, Except.pure] at hg
+          obtain ⟨rfl, rfl⟩ := hg
+          exact ⟨t, rfl, hb, rfl⟩
+
+theorem gen_ret {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Instr}
+    {fin : Option Nat} (hg : genInstr E ctl h a .ret = .ok (is, fin)) :
+    ∃ t, ctl.getLast? = some t ∧ branchTo t h a = .ok is ∧ fin = none := by
+  cases ht : ctl.getLast? with
+  | none => simp [genInstr, ht, throw, throwThe, MonadExceptOf.throw] at hg
+  | some t =>
+      cases hb : branchTo t h a with
+      | error e => simp [genInstr, ht, hb, bind, Except.bind] at hg
+      | ok bs =>
+          simp [genInstr, ht, hb, bind, Except.bind, pure, Except.pure] at hg
+          obtain ⟨rfl, rfl⟩ := hg
+          exact ⟨t, rfl, hb, rfl⟩
+
+theorem sim_br (F n : Nat) : InstrSim P code F (.br n) := by
+  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc
+  obtain ⟨t, ht, hbr, rfl⟩ := gen_br hgen
+  cases F with
+  | zero => simp only [execOne.eq_def, Outcome]
+  | succ f =>
+      simp only [execOne.eq_def]
+      obtain ⟨ms', hr, hp, hk, hfr, hsp, hmem, hout⟩ :=
+        run_branchTo P code hbr hcode hpc hinv.stack hh
+      exact break_outcome P code ht hinv rfl hr hp hk hfr hsp hmem hout
+
+theorem sim_ret (F : Nat) : InstrSim P code F .ret := by
+  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc
+  obtain ⟨t, ht, hbr, rfl⟩ := gen_ret hgen
+  cases F with
+  | zero => simp only [execOne.eq_def, Outcome]
+  | succ f =>
+      simp only [execOne.eq_def]
+      obtain ⟨ms', hr, hp, hk, -, hsp, hmem, hout⟩ :=
+        run_branchTo P code hbr hcode hpc hinv.stack hh
+      exact ⟨t, ht, ms', hr, hp, hsp, hout, fun _ _ => by rw [hmem], hk⟩
+
+/-! ## `br_if` -/
+
+theorem gen_br_if {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {n : Nat}
+    {is : List Instr} {fin : Option Nat} (hg : genInstr E ctl h a (.br_if n) = .ok (is, fin)) :
+    curBase ctl + 1 ≤ h ∧ h - 1 < 26 ∧ fin = some (h - 1) ∧ ∃ t, ctl[n]? = some t ∧
+      ((t.arity = 0 ∧ ∃ f, cbField a t.target = .ok f ∧ is = [.cbnz (regOf (h - 1)) f]) ∨
+        (t.arity ≠ 0 ∧ ∃ f bs, cbField a (after a (t.arity + 2)) = .ok f ∧
+          branchTo t (h - 1) (after a 1) = .ok bs ∧ is = .cbz (regOf (h - 1)) f :: bs)) := by
+  by_cases hc : h < curBase ctl + 1
+  · simp [genInstr, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+  cases ht : ctl[n]? with
+  | none =>
+      simp [genInstr, hc, ht, throw, throwThe, MonadExceptOf.throw] at hg
+  | some t =>
+      by_cases hlt : h - 1 < 26
+      · by_cases h0 : t.arity = 0
+        · cases hf : cbField a t.target with
+          | error e => simp [genInstr, hc, ht, opReg_ok hlt, h0, hf, bind, Except.bind] at hg
+          | ok f =>
+              simp [genInstr, hc, ht, opReg_ok hlt, h0, hf, bind, Except.bind, pure,
+                Except.pure] at hg
+              obtain ⟨rfl, rfl⟩ := hg
+              exact ⟨by omega, hlt, rfl, t, rfl, .inl ⟨h0, f, hf, rfl⟩⟩
+        · cases hf : cbField a (after a (t.arity + 2)) with
+          | error e => simp [genInstr, hc, ht, opReg_ok hlt, h0, hf, bind, Except.bind] at hg
+          | ok f =>
+              cases hbt : branchTo t (h - 1) (after a 1) with
+              | error e =>
+                  simp [genInstr, hc, ht, opReg_ok hlt, h0, hf, hbt, bind, Except.bind] at hg
+              | ok bs =>
+                  simp [genInstr, hc, ht, opReg_ok hlt, h0, hf, hbt, bind, Except.bind, pure,
+                    Except.pure] at hg
+                  obtain ⟨rfl, rfl⟩ := hg
+                  exact ⟨by omega, hlt, rfl, t, rfl, .inr ⟨h0, f, bs, hf, hbt, rfl⟩⟩
+      · obtain ⟨e, he⟩ := opReg_error hlt
+        simp [genInstr, hc, ht, he, bind, Except.bind] at hg
+
+theorem exec_br_if (f n : Nat) {α : Type} (m : Module) (st : Store α) (sl : Locals) :
+    (∃ vs, sl.values = .i32 0 :: vs ∧
+      execOne (f + 1) m st sl (.br_if n) = .Fallthrough st { sl with values := vs }) ∨
+    (∃ c vs, c ≠ 0 ∧ sl.values = .i32 c :: vs ∧
+      execOne (f + 1) m st sl (.br_if n) = .Break n st { sl with values := vs }) ∨
+    ∃ msg, execOne (f + 1) m st sl (.br_if n) = .Invalid msg := by
+  cases hv : sl.values with
+  | nil => exact .inr (.inr ⟨_, by simp only [execOne.eq_def, hv]; rfl⟩)
+  | cons v vs =>
+      cases v with
+      | i32 c =>
+          by_cases hc : c = 0
+          · subst hc
+            exact .inl ⟨vs, rfl, by simp only [execOne.eq_def, hv]⟩
+          · refine .inr (.inl ⟨c, vs, hc, rfl, ?_⟩)
+            simp only [execOne.eq_def, hv]
+      | _ => exact .inr (.inr ⟨_, by simp only [execOne.eq_def, hv]; rfl⟩)
+
+theorem sim_br_if (F n : Nat) : InstrSim P code F (.br_if n) := by
+  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc
+  obtain ⟨hhb, hlt, rfl, t, ht, hcase⟩ := gen_br_if hgen
+  cases F with
+  | zero => simp only [execOne.eq_def, Outcome]
+  | succ f =>
+      have hbase : t.base ≤ h := Nat.le_trans (hctl t (List.mem_of_getElem? ht)) hb
+      have h26 := hinv.stack.1
+      rcases exec_br_if f n m st sl with
+        ⟨vs, hv, hex⟩ | ⟨c, vs, hc, hv, hex⟩ | ⟨msg, hex⟩
+      · rw [hex]
+        have hvl : vs.length = h - 1 := by rw [hv] at hh; simp at hh; omega
+        have hst := hinv.stack
+        rw [hv] at hst
+        have hw : ms.x (regOf (h - 1)) = 0 := by
+          have := hst.top; rw [hvl] at this; rw [this]; rfl
+        rcases hcase with ⟨h0, g, hg, rfl⟩ | ⟨h0, g, bs, hg, hbt, rfl⟩
+        · have hc0 : code ms.pc = some (encode (.cbnz (regOf (h - 1)) g)) := by
+            rw [hpc]; exact (CodeAt.cons.mp hcode).1
+          exact ⟨h - 1, rfl, { ms with pc := ms.pc + 4 },
+            reach_exec P code hc0 (cbnz_next P hw) (.refl _), by simp [hpc, after], rfl, rfl,
+            fun _ _ => rfl, Inv.pop P hinv hv _, by simp [hvl], fun _ _ => rfl⟩
+        · obtain ⟨-, ha1, -, g2, -, hbs⟩ := gen_branchTo hbt
+          have hlen : (Instr.cbz (regOf (h - 1)) g :: bs).length = t.arity + 2 := by
+            rw [hbs, show t.arity = 1 by omega]; simp
+          have hcz : code ms.pc = some (encode (.cbz (regOf (h - 1)) g)) := by
+            rw [hpc]; exact (CodeAt.cons.mp hcode).1
+          exact ⟨h - 1, rfl, _, cbz_taken P code hcz hpc hg hw, by rw [hlen], rfl, rfl,
+            fun _ _ => rfl, Inv.pop P hinv hv _, by simp [hvl], fun _ _ => rfl⟩
+      · rw [hex]
+        have hvl : vs.length = h - 1 := by rw [hv] at hh; simp at hh; omega
+        have hst := hinv.stack
+        rw [hv] at hst
+        have hw : ms.x (regOf (h - 1)) ≠ 0 := by
+          have := hst.top; rw [hvl] at this; rw [this]
+          exact fun e => hc (UInt32.toUInt64_inj.mp (by rw [e]; rfl))
+        rcases hcase with ⟨h0, g, hg, rfl⟩ | ⟨h0, g, bs, hg, hbt, rfl⟩
+        · have hc0 : code ms.pc = some (encode (.cbnz (regOf (h - 1)) g)) := by
+            rw [hpc]; exact (CodeAt.cons.mp hcode).1
+          exact break_outcome P code (sl' := { sl with values := vs }) ht hinv rfl
+            (cbnz_taken P code hc0 hpc hg hw) rfl
+            ⟨by simp [h0], by omega, fun j hj => absurd hj (by omega)⟩ (fun _ _ => rfl) rfl rfl
+            rfl
+        · have hcz : code ms.pc = some (encode (.cbz (regOf (h - 1)) g)) := by
+            rw [hpc]; exact (CodeAt.cons.mp hcode).1
+          have hstep := reach_exec P code hcz (cbz_next P hw) (.refl _)
+          obtain ⟨ms', hr, hp, hk, hfr, hsp, hmem, hout⟩ :=
+            run_branchTo P code (ms := { ms with pc := ms.pc + 4 }) (vs := vs) hbt
+              (CodeAt.cons.mp hcode).2 (by simp [hpc, after]) (hst.pop.congr fun _ _ => rfl) hvl
+          exact break_outcome P code (sl' := { sl with values := vs }) ht hinv rfl
+            (hstep.trans hr) hp hk hfr hsp hmem hout
+      · rw [hex]; trivial
+
 end LeanExe.A64
