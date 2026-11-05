@@ -502,4 +502,104 @@ theorem sim_eq (F : Nat) : InstrSim P code F .eq := by
         · rw [hvl]; exact hkeep
       next => trivial
 
+theorem State.xsp_eq_x {s : State} {r : Fin 32} (h : r.val < 31) : s.xsp r = s.x r := by
+  simp [State.xsp, State.x, h]
+
+theorem sim_eqz_of {F : Nat} {inst : Instruction} (hinst : inst = .eqzI64 ∨ inst = .eqz)
+    (hcase : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals),
+      (∃ v vs w, sl.values = v :: vs ∧ ValRel v w ∧
+        execOne (f + 1) m st sl inst =
+          .Fallthrough st { sl with values := .i32 (if w = 0 then 1 else 0) :: vs }) ∨
+      ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
+    InstrSim P code F inst := by
+  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc
+  obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_eqz hinst hgen
+  cases F with
+  | zero => rcases hinst with rfl | rfl <;> simp only [execOne.eq_def, Outcome]
+  | succ f =>
+      rcases hcase f m st sl with ⟨v, vs, w, hvs, hvw, hex⟩ | ⟨msg, hex⟩
+      · rw [hex]
+        have hvl : vs.length = h - 1 := by rw [hvs] at hh; simp at hh; omega
+        have hst := hinv.stack
+        rw [hvs] at hst
+        have hw : ms.x (regOf (h - 1)) = w := by
+          have := hst.top; rw [hvl] at this
+          cases v <;> simp only [ValRel] at hvw this <;>
+            first | (rw [this, hvw]) | exact absurd hvw id
+        obtain ⟨ms', hr, hp, hres, hkeep, hsp, hmem, hout⟩ :=
+          run_cset P code (x := ms.x (regOf (h - 1))) (y := 0) (regOf_lt_31 (h - 1) hlt)
+            (by simpa [after_zero] using hcode 0 (by simp))
+            (by simpa using hcode 1 (by simp)) hpc
+            (by simp only [exec, State.xsp_eq_x (regOf_lt_31 (h - 1) hlt)]; rfl)
+        rw [show h = vs.length + 1 by omega]
+        apply cmp_outcome P code _ hinv (vs := vs) (by omega) (by omega) hst.pop hr hp _ _ hsp
+          hmem hout
+        · rw [hvl, hres, hw]; exact cset_val w 0 (w = 0) Iff.rfl
+        · rw [hvl]; exact hkeep
+      · rw [hex]; trivial
+
+theorem sim_eqzI64 (F : Nat) : InstrSim P code F .eqzI64 :=
+  sim_eqz_of P code (.inl rfl) fun f α m st sl => by
+    cases hv : sl.values with
+    | nil => exact .inr ⟨_, by simp only [execOne.eq_def, hv]; rfl⟩
+    | cons v vs =>
+        cases v with
+        | i64 x => exact .inl ⟨.i64 x, vs, x, rfl, rfl, by simp only [execOne.eq_def, hv]⟩
+        | _ => exact .inr ⟨_, by simp only [execOne.eq_def, hv]; rfl⟩
+
+theorem sim_eqz (F : Nat) : InstrSim P code F .eqz :=
+  sim_eqz_of P code (.inr rfl) fun f α m st sl => by
+    cases hv : sl.values with
+    | nil => exact .inr ⟨_, by simp only [execOne.eq_def, hv]; rfl⟩
+    | cons v vs =>
+        cases v with
+        | i32 x =>
+            refine .inl ⟨.i32 x, vs, x.toUInt64, rfl, rfl, ?_⟩
+            simp only [execOne.eq_def, hv]
+            congr 3
+            by_cases h : x = 0
+            · subst h; rfl
+            · have : x.toUInt64 ≠ 0 := fun e => h (UInt32.toUInt64_inj.mp (by rw [e]; rfl))
+              rw [ite_eq_right h, ite_eq_right this]
+        | _ => exact .inr ⟨_, by simp only [execOne.eq_def, hv]; rfl⟩
+
+theorem gen_extend {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Instr}
+    {fin : Option Nat} (hg : genInstr E ctl h a .extendUI32 = .ok (is, fin)) :
+    curBase ctl + 1 ≤ h ∧ is = [] ∧ fin = some h := by
+  by_cases hc : h < curBase ctl + 1
+  · simp [genInstr, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+  · simp [genInstr, hc, pure, Except.pure] at hg
+    exact ⟨by omega, by cases hg.1; rfl, by cases hg.2; rfl⟩
+
+theorem sim_extendUI32 (F : Nat) : InstrSim P code F .extendUI32 := by
+  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc
+  obtain ⟨hhb, rfl, rfl⟩ := gen_extend hgen
+  cases F with
+  | zero => simp only [execOne.eq_def, Outcome]
+  | succ f =>
+      simp only [execOne.eq_def]
+      split
+      next x vs hvs =>
+        have hst := hinv.stack
+        rw [hvs] at hst
+        refine ⟨h, rfl, ms, .refl _, by simp [hpc, after_zero], rfl, rfl, fun _ _ => rfl, ?_,
+          by rw [← hh, hvs]; simp, fun _ _ => rfl⟩
+        refine ⟨⟨by have := hst.1; simpa using this, fun k hk => ?_⟩, hinv.locals, hinv.count,
+          hinv.aligned, hinv.mapped, hinv.bound⟩
+        have := hst.2 k (by simpa using hk)
+        by_cases hkl : k < vs.length
+        · simpa [List.getElem_append_left (show k < vs.reverse.length by simpa using hkl)]
+            using this
+        · have : k = vs.length := by simp at hk; omega
+          subst this
+          have htop : ms.x (regOf vs.length) = x.toUInt64 := hst.top
+          simp only [List.reverse_cons, List.getElem_append, List.length_reverse, Nat.lt_irrefl,
+            dite_false, Nat.sub_self, List.getElem_cons_zero, ValRel]
+          rw [htop]
+          apply UInt64.toNat_inj.mp
+          simp only [UInt32.toNat_toUInt64, UInt64.toNat_ofNat']
+          have := x.toNat_lt
+          omega
+      next => trivial
+
 end LeanExe.A64
