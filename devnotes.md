@@ -41859,3 +41859,38 @@ The agent recommended (c): a Lean model of the forms the back end emits, owned b
 - [Bosamiya, Lim, and Parno, Provably-Safe Multilingual Software Sandboxing using WebAssembly (USENIX Security 2022)](https://usenix.org/conference/usenixsecurity22/presentation/bosamiya)
 - [Carneiro, Specifying verified x86 software from scratch](https://arxiv.org/abs/1907.01283)
 - [Metamath Zero Lean 3 package with the x86 model](https://github.com/digama0/mm0/tree/master/mm0-lean)
+
+## 2026-11-05: Native AArch64 back end, increment 1: a model for GCD
+
+The first increment of the back end decided in the entry above compiles GCD's integer core to a bare-metal AArch64 image with a theorem over a Lean model of the processor.  This entry starts it with the model of the instruction forms that GCD's translation needs, in `LeanExe/A64/Machine.lean` and `LeanExe/A64/Encode.lean`, which import only Lean's core library.  On the new path the model takes the place of CompCert's `aarch64/Asm.v` and the GNU tools in the trusted base, so each form's encoding is checked against GNU `as` here, and its semantics against the processor by the co-simulation of the next step.
+
+### GCD's Wasm
+
+Function 2 of `TestSupport.Native.Gcd.loopCompiled.module`, which `lake env lean` printed on edgexpert-18ff, takes two `i64` parameters and declares 5 `i64`, 7 `f64`, and 7 `f32` locals, of which the body uses locals 2 to 6.  It copies its parameters to locals 2 and 3 and runs a `loop` inside a `block`.  Each pass compares local 3 with 0 by `constI64 0`, `eqI64`, `extendUI32`, and `eqzI64`, and an `iff` either sets locals 2 and 3 to `b` and `a % b` and branches to the loop with `br 1`, or copies local 2 to local 4 and leaves the block with `br 2`.  The remainder is itself an `iff` with one `i64` result that returns `a` when the divisor is 0 and `remUI64` otherwise, so the compiler's guard means that the divisor check of `remUI64` never branches to the trap in GCD.  The function returns local 4.  Functions 0 and 1, the runtime's `alloc` and `release`, are unreachable from it.
+
+| Wasm form | AArch64 forms |
+|---|---|
+| `localGet`, `localSet` | `LDR` and `STR` relative to `SP` |
+| `constI64` | `MOVZ` and `MOVK` |
+| `eqI64`, `eqzI64` | `SUBS` with a register or with 0, then `CSINC` as `CSET` |
+| `extendUI32` | nothing: an `i32` lies zero-extended in its X register |
+| `iff`, `block`, `loop`, `br` | `CBZ`, `B`, and register moves by `ORR` for a result |
+| `remUI64` | `CBZ` to the trap stub, `UDIV`, and `MSUB` |
+| call and return | `BL`, `RET`, `ADD` and `SUB` of `SP`, and the frame's stores of zero for the locals |
+| `main` | `MOVZ` and `MOVK` for the arguments and the UART's address, `LSR` and `STRB` for the result's eight bytes |
+
+### The model
+
+`Machine.lean` holds the platform, `Platform`, with a predicate for the bytes mapped as Normal memory and the address of the UART's data register, and the state, `State`, with X0 to X30, `SP`, the PC, the flags N, Z, C, and V, the memory as `UInt64 → UInt8`, and the bytes written to the UART.  `Instr` has 19 forms, all with 64-bit registers: `MOVZ`, `MOVK`, `ADD` and `SUB` with an immediate, `SUBS` with an immediate or a register, `CSINC`, `ORR` and `LSR`, `LDR` and `STR` with a scaled unsigned offset, `STRB`, `B`, `BL`, `CBZ`, `CBNZ`, `RET`, `UDIV`, and `MSUB`.  `decodeNat` reads the fixed bits and the fields of a word as a natural number, `exec` executes a form, and `step` fetches from a fixed map of code words, as decision 2 has it.  Register 31 is the stack pointer as the base of a load or store and in `ADD` and `SUB` with an immediate, and the zero register elsewhere, as the Arm Architecture Reference Manual's encodings give.  `exec` returns `none` for an access to a byte outside `Platform.normal`, for any UART access but a byte store to the data register, and for a load or store based on `SP` while `SP` is not a multiple of 16.  The startup code leaves `SCTLR_EL1.SA` as it found it, so the model takes the stricter case.  `UDIV` by 0 gives 0, which Lean's `UInt64` division also gives.
+
+`Encode.lean` holds `encodeNat`, each form's fixed bits plus its fields as a sum of natural numbers, `encode`, and `decode_encode : decode (encode i) = some i` for every form, decision 6's universal lemma.  Its proof generalizes `encodeNat i` to a variable, unfolds the decoder, and rewrites each condition with `ite_eq_left` or `ite_eq_right` after `omega` decides it.  `split` exceeded `simp`'s step limit on the decoder's chain of conditions, at first because of the large proof terms that `by omega` left in the decoder's `Fin` fields and then with small ones too, so the proof does not use it.  `decode_encode` depends on `propext`, `Classical.choice`, and `Quot.sound` only.  GNU `as` 2.44 on the AArch64 desktop assembles 47 sample instructions of the 19 forms, with register 31 in each role and the extreme branch offsets, to the words that the Lean encoder gives, and `decode` reads each back.
+
+The startup code's tables map all of RAM as read-write and executable at EL1, so the platform premise of decision 2 that the loader maps the code read-only does not hold of today's tables.  The proof's invariant that every store lands in a data region does not depend on the mapping, and either the premise or the tables change when the image writer comes.  Which of the two changes is a decision for that step.
+
+### Plan
+
+- [x] The model of the forms, the decoder, the encoder, and `decode_encode`, built by `lake build LeanExe.A64.Encode`.
+- [ ] Co-simulation: a bare-metal image under QEMU, with TCG and with KVM, that runs each form on states from a table and stores the results, against the model's predictions.
+- [ ] The code generator for GCD's forms: the frame, the operand registers, the locals in the frame, constants, comparisons, `iff`, `block`, `loop`, and `br`, `remUI64` with the divisor check, calls and returns, `main` with its UART stores, and the trap stub.
+- [ ] The simulation proof against Talos for those forms, and the whole-program theorem.
+- [ ] The image writer with the startup code, and the run of `programs.sh`'s GCD under QEMU and KVM.
