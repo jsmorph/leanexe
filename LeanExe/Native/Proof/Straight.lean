@@ -1,4 +1,5 @@
 import LeanExe.Native.Proof.Relation
+import LeanExe.ProofKit.Locals
 
 /-!
 The simulation of the instructions that do not branch or call: locals, globals, constants, the
@@ -11,25 +12,7 @@ namespace LeanExe.Native
 
 open Wasm LClight
 
-/-! ## Talos locals -/
-
-theorem locals_get (s : Locals) (i : Nat) : s.get i = (s.params ++ s.locals)[i]? := by
-  unfold Locals.get
-  split
-  · rw [List.getElem?_append_left (by assumption)]
-  · split
-    · rw [List.getElem?_append_right (by omega)]
-    · rw [List.getElem?_eq_none (by simp; omega)]
-
-theorem locals_set (s : Locals) (i : Nat) (v : Value) (hi : i < (s.params ++ s.locals).length) :
-    ∃ s', s.set? i v = some s' ∧ s'.params ++ s'.locals = (s.params ++ s.locals).set i v ∧
-      s'.values = s.values := by
-  unfold Locals.set?
-  split
-  · exact ⟨_, rfl, by rw [List.set_append_left _ _ (by assumption)], rfl⟩
-  · split
-    · exact ⟨_, rfl, by rw [List.set_append_right _ _ (by omega)], rfl⟩
-    · simp at hi; omega
+/-! ## The C locals -/
 
 theorem LocalsRel.get {le : temp_env} {tys : List VT} {vals : List Value} (h : LocalsRel le tys vals)
     {i : Nat} {t : VT} (ht : tys[i]? = some t) :
@@ -365,7 +348,7 @@ theorem sim_localGet (F i : Nat) : InstrSim A X E mod c F (.localGet i) := by
   | zero => simp only [execOne.eq_def, Outcome]
   | succ f =>
       obtain ⟨v, hv, htv, hl⟩ := hinv.locals.get ht
-      simp only [execOne.eq_def, locals_get, hv]
+      simp only [execOne.eq_def, ProofKit.Locals.get_append, hv]
       exact push_step hinv.stack hinv.locals hinv.store hinv.status hinv.brk hinv.lim
         (.eval_Etempvar _ _ _ hl) htv hbase
 
@@ -379,7 +362,7 @@ theorem sim_localSet (F i : Nat) : InstrSim A X E mod c F (.localSet i) := by
       obtain ⟨v, vr, hvs, htv, hl, hrest⟩ := hinv.stack.cons_inv
       have hi : i < (sl.params ++ sl.locals).length := by
         rw [hinv.locals.1]; exact (List.getElem?_eq_some_iff.mp ht).1
-      obtain ⟨s', hs', hpl, -⟩ := locals_set sl i v hi
+      obtain ⟨s', hs', hpl, -⟩ := ProofKit.Locals.set?_append sl i v hi
       simp only [execOne.eq_def, hvs, hs']
       refine ⟨σr, rfl, hb, E0, le.insert (localId i) (cval v), m,
         .exec_Sset _ _ _ _ _ _ (.eval_Etempvar _ _ _ hl), ?_, Frame.insert_other _ _ _
@@ -403,7 +386,7 @@ theorem sim_localTee (F i : Nat) : InstrSim A X E mod c F (.localTee i) := by
       obtain ⟨v, vr, hvs, htv, hl, hrest⟩ := hinv.stack.cons_inv
       have hi : i < (sl.params ++ sl.locals).length := by
         rw [hinv.locals.1]; exact (List.getElem?_eq_some_iff.mp ht).1
-      obtain ⟨s', hs', hpl, hvals⟩ := locals_set sl i v hi
+      obtain ⟨s', hs', hpl, hvals⟩ := ProofKit.Locals.set?_append sl i v hi
       simp only [execOne.eq_def, hvs, hs']
       refine ⟨a :: σr, rfl, by simp; omega, E0, le.insert (localId i) (cval v), m,
         .exec_Sset _ _ _ _ _ _ (.eval_Etempvar _ _ _ hl), ?_, Frame.insert_other _ _ _

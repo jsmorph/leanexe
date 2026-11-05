@@ -272,6 +272,7 @@ import LeanExe.ProofKit.FloatRounding
 import LeanExe.ProofKit.FloatShift
 import LeanExe.ProofKit.FloatSqrtRounding
 import LeanExe.ProofKit.Frame
+import LeanExe.ProofKit.Locals
 import LeanExe.ProofKit.FreeListMemory
 import LeanExe.ProofKit.GammaBasic
 import LeanExe.ProofKit.GammaBelowT0
