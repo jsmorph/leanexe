@@ -1,15 +1,15 @@
-/* The reports of the Cortex-M7 startup code, through the UART, outside every proof.
-   lx_report_exit writes "R:exit", the status, and the stack's high-water mark in bytes, the part
-   of the stack whose fill pattern changed.  lx_report_fault writes "R:fault", the exception
-   number, CFSR, HFSR, MMFAR, BFAR, and the stacked return address, and returns 255, the exit
-   status.  The code computes with 32-bit integers only, so that it calls none of CompCert's
-   run-time functions. */
+/* The reports of the Cortex-M7 startup code, outside every proof, written to the board's UART
+   by lx_putc of the board's board.S.  lx_report_exit writes "R:exit", the status, and the stack's
+   high-water mark in bytes, the part of the stack whose fill pattern changed.  lx_report_fault
+   writes "R:fault", the exception number, CFSR, HFSR, MMFAR, BFAR, and the stacked return
+   address, and returns 255, the exit status.  The code computes with 32-bit integers only, so
+   that it calls none of CompCert's run-time functions. */
 
-extern volatile unsigned int lx_out;
+extern void lx_putc(unsigned int c);
 extern unsigned int __stack_bottom[];
 extern unsigned int __stack_top[];
 
-static void out(char c) { lx_out = (unsigned char) c; }
+static void out(char c) { lx_putc((unsigned char) c); }
 
 static void outs(const char *s) { while (*s) out(*s++); }
 

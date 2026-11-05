@@ -42,7 +42,9 @@ function with the words of its initial state and the theorem `LoopReacts` of its
 `native-bare emit-req DIR` writes each one's C text, its translation followed by `lx_reg` and the
 `main` of `reqMain`, and the names of its functions that take the call depth, and
 `native-bare check-req DIR` compares each whole program with the Clight that `clightgen` wrote
-for it.  `native-bare gateway-run IN OUT` runs the energy controller's gateway in native Lean on
+for it.  `native-bare emit-usart3 DIR` and `native-bare check-usart3 DIR` do the same for the
+programs with requests of `tests/baremetal/usart3.sh`, the cases of `usart3Cases`, which drive
+USART3 of the NUCLEO-F767ZI's STM32F767ZI.  `native-bare gateway-run IN OUT` runs the energy controller's gateway in native Lean on
 the input records of `IN`, one line of 18 decimal words each, from its initial state, and writes
 its output records to `OUT`, one line of 6 words each, for comparison with a run of its program.
 -/
@@ -280,10 +282,21 @@ def reqCases : List ReqCase := [
     G := TestSupport.Bare.SumFrame, s0 := TestSupport.Bare.sumInit,
     words := TestSupport.Bare.sumWords, tick := TestSupport.Bare.sumTick,
     thm := thm_of TestSupport.Bare.sumCompiled.translation_eq TestSupport.Bare.sum_program },
-  { name := "gateway", module := Demos.Energy.gwCompiled.module, cap := 1, k := 32,
+  { name := "gateway", module := Demos.Energy.gwCompiled.module, cap := 1, k := 33,
     G := Demos.Energy.GwFrame, s0 := Demos.Energy.gwInit, words := Demos.Energy.gwWords,
     tick := Demos.Energy.gwTick,
     thm := thm_of Demos.Energy.gwCompiled.translation_eq Demos.Energy.gw_program }]
+
+/-- The programs with requests for USART3 of the NUCLEO-F767ZI's STM32F767ZI. -/
+def usart3Cases : List ReqCase := [
+  { name := "echo", module := TestSupport.Bare.reqCompiled.module, cap := 1, k := 9, G := UInt64,
+    s0 := 3, words := fun g => [g], tick := TestSupport.Bare.usart3Tick,
+    thm := thm_of TestSupport.Bare.reqCompiled.translation_eq
+      TestSupport.Bare.echo_usart3_program },
+  { name := "gateway", module := Demos.Energy.gwCompiled.module, cap := 1, k := 34,
+    G := Demos.Energy.GwFrame, s0 := Demos.Energy.gwInit, words := Demos.Energy.gwWords,
+    tick := Demos.Energy.gwTickUsart3,
+    thm := thm_of Demos.Energy.gwCompiled.translation_eq Demos.Energy.gw_usart3_program }]
 
 /-- The gateway's output records, one line of 6 words each, for the input records of the file
 `inPath`, one line of 18 words each, from the initial state `gw0`. -/
@@ -314,9 +327,9 @@ def emitReq (dir : String) (c : ReqCase) : IO Unit := do
     (String.join ((t.depthNames c.module).map (· ++ "\n")))
   IO.println s!"native-bare: {c.name}: written"
 
-def checkReq (dir : String) : IO UInt32 := do
+def checkReq (cases : List ReqCase) (dir : String) : IO UInt32 := do
   let mut failed := false
-  for c in reqCases do
+  for c in cases do
     let some t := translate c.cap c.module
       | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
     let text ← IO.FS.readFile s!"{dir}/{c.name}.v"
@@ -348,7 +361,8 @@ def check (dir : String) : IO UInt32 := do
   pure (if failed then 1 else 0)
 
 def usage : String :=
-  "usage: native-bare emit|check|emit-in|check-in|emit-ctl|check-ctl|emit-req|check-req DIR, " ++
+  "usage: native-bare emit|check|emit-in|check-in|emit-ctl|check-ctl|emit-req|check-req|" ++
+    "emit-usart3|check-usart3 DIR, " ++
     "native-bare gateway-run IN OUT, or native-bare names"
 
 def main (args : List String) : IO UInt32 := do
@@ -375,6 +389,11 @@ def main (args : List String) : IO UInt32 := do
       IO.FS.createDirAll dir
       for c in reqCases do emitReq dir c
       pure 0
-  | ["check-req", dir] => checkReq dir
+  | ["check-req", dir] => checkReq reqCases dir
+  | ["emit-usart3", dir] =>
+      IO.FS.createDirAll dir
+      for c in usart3Cases do emitReq dir c
+      pure 0
+  | ["check-usart3", dir] => checkReq usart3Cases dir
   | ["gateway-run", inPath, outPath] => gatewayRun inPath outPath
   | _ => throw <| IO.userError usage

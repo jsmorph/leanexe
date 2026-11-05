@@ -2,9 +2,9 @@
 # requires-python = ">=3.12"
 # dependencies = []
 # ///
-"""The far end of UART0 of QEMU's mps2-an500 for the echoes of the request protocol
-(tests/TestSupport/Bare/Req.lean), whose steps cmsdkTick and deadlineCmsdkTick answer each byte
-with the byte's bit 5 flipped.
+"""The far end of UART0 of QEMU's mps2-an500, or of USART3 of a NUCLEO-F767ZI, for the echoes of
+the request protocol (tests/TestSupport/Bare/Req.lean), whose steps cmsdkTick, deadlineCmsdkTick,
+and usart3Tick answer each byte with the byte's bit 5 flipped.
 
 The script listens on a Unix-domain socket in a temporary directory and runs the command QEMU
 ARG... followed by "-serial unix:PATH" and "-trace cmsdk_apb_uart_tx_pending -D LOG".  The first
@@ -46,17 +46,29 @@ A TCP socket on the loopback interface grows its send buffer to 2.5 MiB, which t
 40 KB/s, fills only after a minute.  The checks depend on no timing: each wait ends on an event of
 the socket or of LOG, and TIMEOUT bounds only a failure.
 
+With --device DEVICE, the script runs no QEMU and talks to a board through the serial port
+DEVICE, the virtual COM port of a NUCLEO-F767ZI's ST-LINK that the program of usart3Tick drives,
+in raw mode at BAUD, 9,600 unless set, with 8 data bits, no parity, one stop bit, and no flow
+control (termios(3)).  It discards the bytes that the port holds, then runs (a), (b), and (d).
+The board's USART has no flow control, so the step must read each byte before the next one
+arrives, and a lost byte shows as a missing or wrong reply.  The board must be running the echo
+from reset.
+
 Usage: uv run tests/baremetal/uart_echo.py [--timeout TIMEOUT] [--hold HOLD] LOG QEMU [ARG...]
+       uv run tests/baremetal/uart_echo.py [--timeout TIMEOUT] --device DEVICE [--baud BAUD]
 """
 
 import argparse
 import os
+import select
 import socket
 import subprocess
 import sys
 import tempfile
+import termios
 import threading
 import time
+import tty
 
 MESSAGE = b"The request protocol's echo answers each byte with bit 5 flipped.\n" + bytes(range(256))
 BURSTS = (2, 16, len(MESSAGE), 65536)
@@ -229,6 +241,62 @@ def serve(qemu_args, log_path, timeout, session):
     return result, error, elapsed, early, status
 
 
+class Serial:
+    """A serial port in raw mode at a baud rate, with 8 data bits, no parity, one stop bit, and
+    no flow control, with the methods of a socket that the scripts use."""
+
+    def __init__(self, path, baud, timeout):
+        speed = getattr(termios, f"B{baud}", None)
+        if speed is None:
+            raise Failure(f"termios has no baud rate {baud}")
+        self.fd = os.open(path, os.O_RDWR | os.O_NOCTTY)
+        try:
+            attrs = termios.tcgetattr(self.fd)
+            tty.cfmakeraw(attrs)
+            attrs[2] &= ~(termios.CSTOPB | termios.PARENB | termios.CRTSCTS)
+            attrs[2] |= termios.CLOCAL | termios.CREAD | termios.CS8
+            attrs[4] = attrs[5] = speed
+            termios.tcsetattr(self.fd, termios.TCSANOW, attrs)
+            termios.tcflush(self.fd, termios.TCIOFLUSH)
+        except BaseException:
+            os.close(self.fd)
+            raise
+        self.timeout = timeout
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        os.close(self.fd)
+
+    def gettimeout(self):
+        return self.timeout
+
+    def recv(self, n):
+        ready, _, _ = select.select([self.fd], [], [], self.timeout)
+        if not ready:
+            raise TimeoutError
+        return os.read(self.fd, n)
+
+    def sendall(self, data):
+        view = memoryview(data)
+        while view:
+            view = view[os.write(self.fd, view):]
+
+
+def serve_device(path, baud, timeout, session):
+    """Calls session(conn, None) on the serial port path at baud.  Returns session's result, the
+    failure if any, and the time taken."""
+    start = time.monotonic()
+    result, error = None, None
+    try:
+        with Serial(path, baud, timeout) as conn:
+            result = session(conn, None)
+    except (Failure, OSError) as e:
+        error = e
+    return result, error, time.monotonic() - start
+
+
 def report(error, early, status):
     """The line for a failed run, or None."""
     if early is not None:
@@ -253,13 +321,34 @@ def exchange(conn, log, hold):
     return waits, dropped
 
 
+def exchange_device(conn):
+    lockstep(conn)
+    for n in BURSTS:
+        burst(conn, block(n))
+    lockstep(conn)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--hold", type=float)
-    parser.add_argument("log")
+    parser.add_argument("--device")
+    parser.add_argument("--baud", type=int, default=9600)
+    parser.add_argument("log", nargs="?")
     parser.add_argument("qemu", nargs=argparse.REMAINDER)
     args = parser.parse_args()
+    if args.device:
+        if args.log or args.hold is not None:
+            parser.error("--device takes no LOG, QEMU, or --hold")
+        _, error, elapsed = serve_device(args.device, args.baud, args.timeout,
+                                         lambda conn, log: exchange_device(conn))
+        if error:
+            print(error)
+            return 1
+        print(f"{2 * len(MESSAGE)} bytes in lockstep and bursts of "
+              f"{', '.join(map(str, BURSTS))} on {args.device} at {args.baud} baud, "
+              f"in {elapsed:.1f} s")
+        return 0
     if not args.qemu:
         parser.error("QEMU is missing")
     result, error, elapsed, early, status = serve(

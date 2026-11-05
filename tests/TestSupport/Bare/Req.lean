@@ -8,13 +8,15 @@ import Verified.Call
 /-!
 The step of the request protocol's test (`docs/native-bare-metal.md`): an echo over a UART that
 `main` drives one register access per window.  The step returns the new state and a request: a
-read of a register, or a write of a value to a register.  The register map is a parameter: the
-index of the data register, the index of the status register, the status bit that is set while
-the transmitter cannot take a byte, and the bit that is set while the receiver holds one.  The
-echo reads the status until the receiver holds a byte, reads the byte, reads the status until
-the transmitter has room, and writes the byte with bit 5 flipped.  The state's low byte is the
-phase, which names the register that the last request read, and its second byte holds the byte
-to send.  `cmsdkTick` instantiates the map for the CMSDK APB UART0 of QEMU's `mps2-an500`.
+read of a register, or a write of a value to a register.  The register map is a parameter, as in
+`Uart` of `LeanExe/Native/Proof/Records.lean`: the indices of the receive, transmit, and status
+registers, the status bit `rxFull` that is set while the receiver holds a byte, and the status
+bits `txMask` that equal `txRoom` while the transmitter has room.  The echo reads the status until
+the receiver holds a byte, reads the byte, reads the status until the transmitter has room, and
+writes the byte with bit 5 flipped.  The state's low byte is the phase, which names the register
+that the last request read, and its second byte holds the byte to send.  `cmsdkTick`
+instantiates the map for the CMSDK APB UART0 of QEMU's `mps2-an500`, and `usart3Tick` for USART3
+of the STM32F767ZI.
 -/
 
 namespace TestSupport.Bare
@@ -22,21 +24,28 @@ namespace TestSupport.Bare
 open LeanExe.Native (readReq writeReq)
 
 /-- The echo's step from the state `s` and the value `v` that the last request read, for the
-register map `data`, `status`, `txFull`, and `rxFull`. -/
-def echoTick (data status txFull rxFull s v : UInt64) : UInt64 × UInt64 :=
+register map `rx`, `tx`, `status`, `rxFull`, `txMask`, and `txRoom`. -/
+def echoTick (rx tx status rxFull txMask txRoom s v : UInt64) : UInt64 × UInt64 :=
   let phase := s &&& 255
   if phase == 0 then
-    if v &&& rxFull != 0 then (1, readReq data) else (0, readReq status)
+    if v &&& rxFull != 0 then (1, readReq rx) else (0, readReq status)
   else if phase == 1 then
     ((2 : UInt64) ||| (((v &&& 255) ^^^ 32) <<< 8), readReq status)
   else if phase == 2 then
-    if v &&& txFull == 0 then (3, writeReq data (s >>> 8)) else (s, readReq status)
+    if v &&& txMask == txRoom then (3, writeReq tx (s >>> 8)) else (s, readReq status)
   else (0, readReq status)
 
 /-- The echo for the CMSDK APB UART0 of `mps2-an500`, whose registers lie `0x4000` bytes above
-`lx_reg`: data at index `0x1000`, status at index `0x1001`, bit 0 set while the transmit buffer
-is full, and bit 1 set while the receive buffer is full. -/
-def cmsdkTick (s v : UInt64) : UInt64 × UInt64 := echoTick 0x1000 0x1001 1 2 s v
+`lx_reg`: data at index `0x1000` for both directions, status at index `0x1001`, bit 1 set while
+the receive buffer is full, and bit 0 set while the transmit buffer is full. -/
+def cmsdkTick (s v : UInt64) : UInt64 × UInt64 := echoTick 0x1000 0x1000 0x1001 2 1 0 s v
+
+/-- The echo for USART3 of the STM32F767ZI, whose registers lie `0x4800` bytes above `lx_reg`
+at `0x40000000` (`USART3_BASE` and `USART_TypeDef` in ST's `stm32f767xx.h`): `USART_RDR` at
+index `0x1209`, `USART_TDR` at index `0x120A`, `USART_ISR` at index `0x1207`, `RXNE` in bit 5,
+and `TXE` in bit 7, set while the transmit data register is empty. -/
+def usart3Tick (s v : UInt64) : UInt64 × UInt64 :=
+  echoTick 0x1209 0x120A 0x1207 0x20 0x80 0x80 s v
 
 /-- The ticks that a down-counting 32-bit timer has counted from the reading `t0` to the reading
 `t1`. -/
@@ -48,30 +57,31 @@ reading a byte, it reads the timer; before writing the reply, the byte with bit 
 reads the timer again, and it writes the reply only when fewer than `limit` ticks have passed,
 dropping the byte otherwise.  The state is the phase plus 256 times the reply plus 65,536 times
 the timer reading taken after the byte arrived. -/
-def deadlineTick (data status timer txFull rxFull limit s v : UInt64) : UInt64 × UInt64 :=
+def deadlineTick (rx tx status timer rxFull txMask txRoom limit s v : UInt64) :
+    UInt64 × UInt64 :=
   let phase := s % 256
   let reply := (s / 256) % 256
   let stamp := (s / 65536) % 0x100000000
   if phase == 0 then
-    if v &&& rxFull != 0 then (1, readReq data) else (0, readReq status)
+    if v &&& rxFull != 0 then (1, readReq rx) else (0, readReq status)
   else if phase == 1 then
     (2 + 256 * ((v % 256) ^^^ 32), readReq timer)
   else if phase == 2 then
     (3 + 256 * reply + 65536 * (v % 0x100000000), readReq status)
   else if phase == 3 then
-    if v &&& txFull == 0 then (s + 1, readReq timer) else (s, readReq status)
+    if v &&& txMask == txRoom then (s + 1, readReq timer) else (s, readReq status)
   else if phase == 4 then
-    if elapsed stamp v < limit then (5, writeReq data reply) else (5, readReq status)
+    if elapsed stamp v < limit then (5, writeReq tx reply) else (5, readReq status)
   else (0, readReq status)
 
 /-- The echo with a deadline of `0x1000000` ticks for UART0 and Timer0 of `mps2-an500`, whose
 value register is index 1.  QEMU 8.2.2 clocks Timer0 with the system clock of 25 MHz
 (`SYSCLK_FRQ` in `hw/arm/mps2.c`), so the limit is 671 ms. -/
 def deadlineCmsdkTick (s v : UInt64) : UInt64 × UInt64 :=
-  deadlineTick 0x1000 0x1001 1 1 2 0x1000000 s v
+  deadlineTick 0x1000 0x1000 0x1001 1 2 1 0 0x1000000 s v
 
 verified_compile (pages := 1) (cap := 1) reqCompiled := [readReq, writeReq, echoTick, cmsdkTick,
-  elapsed, deadlineTick, deadlineCmsdkTick]
+  elapsed, deadlineTick, deadlineCmsdkTick, usart3Tick]
 
 /-! ## Polling -/
 
@@ -227,6 +237,33 @@ theorem echo_program (A : Archi) (X : ExtSem)
     LoopReacts A X (reqProgram pre reqCompiled.translation (reqMain 5 [3])) E0
       (reqTrace cmsdkTick 3 σ) := by
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := reqCompiled.cmsdkTick.native A X
+  obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := [.i64, .i64])
+    (rs0 := [.i64, .i64]) (by decide +kernel)
+  have hty : type_of_function fd = .Tfunction [tulong, tulong] .Tvoid cc_default := by
+    rw [entry_type reqCompiled.translation_eq hfd hsig]
+    rfl
+  have h2 : 2 ≤ reqCompiled.translation.nres := by
+    rw [translate_nres reqCompiled.translation_eq,
+      translate_funcs_eq reqCompiled.translation_eq reqCompiled.translation_funcs]
+    decide +kernel
+  obtain ⟨hAt0, -, -⟩ : Verified.Ready reqCompiled.module reqCompiled.tables
+      (Verified.initialHeap reqCompiled.tables) reqCompiled.module.initialStore :=
+    Verified.Ready.initial rfl reqCompiled.initial
+  exact req_program (n := 1) reqCompiled.translation_eq hpre hfd hty h2 A X
+    (heapAt_nativeStore hAt0 1) (words := fun g : UInt64 => [g]) (fun _ => rfl)
+    (reqRuns_of_nativeA (n := 0) (fun _ => rfl) (fun _ => rfl) hnat (fun _ _ _ => trivial)
+      (by decide)) 3 σ
+
+open Wasm LClight LeanExe.Native in
+/-- The program with requests around `usart3Tick`, from the state 3, runs forever: for every
+sequence `σ` of the values that its volatile loads read, window `n` performs the one register
+access that `usart3Tick` requests from the state and the last value read. -/
+theorem echo_usart3_program (A : Archi) (X : ExtSem)
+    (pre : List (ident × globdef (fundef function) type)) (hpre : PrefixOk pre)
+    (σ : Nat → int) :
+    LoopReacts A X (reqProgram pre reqCompiled.translation (reqMain 9 [3])) E0
+      (reqTrace usart3Tick 3 σ) := by
+  obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := reqCompiled.usart3Tick.native A X
   obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := [.i64, .i64])
     (rs0 := [.i64, .i64]) (by decide +kernel)
   have hty : type_of_function fd = .Tfunction [tulong, tulong] .Tvoid cc_default := by

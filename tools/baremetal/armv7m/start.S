@@ -1,9 +1,10 @@
-/* The startup code of a CompCert program on QEMU's mps2-an500, a Cortex-M7, outside every proof.
-   The vector table at address 0 gives the initial main stack pointer, __exc_stack_top, and the
-   reset entry _start, and sends every other exception to fault.  QEMU reads the first two words
-   at reset from VTOR, whose reset value is 0 (QEMU 8.2.2, target/arm/cpu.c, lines 429 to 457,
-   and hw/arm/armv7m.c, line 547).  The table has the 16 system entries and the 32 interrupts that
-   QEMU gives the AN500 (hw/arm/mps2.c, line 234).
+/* The startup code of a CompCert program on a Cortex-M7, outside every proof.  The board's
+   directory, tools/baremetal/armv7m/BOARD, holds link.ld, the board's memory layout, and board.S,
+   which defines the vector table __vectors, whose first two words are the initial main stack
+   pointer, __exc_stack_top, and the reset entry _start, and whose other words send every
+   exception to fault; board_init, which sets up the board's devices; board_exit, which ends the
+   program with the status in r0; and lx_putc, which writes the byte in r0 to the board's UART for
+   the reports of report.c.
 
    _start runs in privileged Thread mode on the main stack.  It sets VTOR to the table and enables
    MemManage, BusFault, and UsageFault in SHCSR, so that each such fault is taken as itself rather
@@ -13,35 +14,26 @@
    CCR.IC at their reset value 0 (Cortex-M7 TRM, DDI 0489F, Table 3-1, page 3-3), since the caches
    need invalidation before they are enabled (section 4.1.3, page 4-3).  It enables the
    floating-point unit by giving CP10 and CP11 full access in CPACR (section B3.2.20, page
-   B3-614).  It starts CMSDK Timer0 at lx_timer counting down from its maximum reload value, so
-   that a read of its VALUE register is a clock (Cortex-M System Design Kit TRM, DDI 0479D, Table
-   3-1).  It sets the baud divider of the CMSDK UART0, whose registers begin at lx_uart, to 16,
-   the minimum (Cortex-M System Design Kit TRM, DDI 0479D, Table 4-7, page 4-9), and sets its
-   transmitter and receiver enables, without which QEMU's model sends no byte and takes none
-   (hw/char/cmsdk-apb-uart.c, lines 115 to 124, 194 to 203, and 249 to 260).  It copies .data
-   from its load address in the code region to RAM, clears .bss, and fills the stack with a
-   pattern for the high-water mark.  It then makes MPU region 0 the guard below the stack, 4 KiB
-   at __stack_guard with no access and execute-never, and enables the MPU with the default memory
-   map as the background for privileged accesses (sections B3.5.6 to B3.5.9, pages B3-637 to
-   B3-642), so that an access to the guard takes a MemManage fault.  Finally it sets the process
-   stack pointer to __stack_top, selects it with CONTROL.SPSEL (section B1.4.4, page B1-519), and
-   calls main.  The program runs on the process stack and every exception handler on the main
-   stack, so that a handler runs after an overflow of the program's stack.  No interrupt is
-   enabled.  PRIMASK stays 0, since setting it raises the execution priority to 0, that of the
-   faults, which would then escalate to HardFault (section B1.5.4, pages B1-528 and B1-529).
+   B3-614).  It calls board_init, copies .data from its load address to RAM, clears .bss, and
+   fills the stack with a pattern for the high-water mark.  It then makes MPU region 0 the guard
+   below the stack, 4 KiB at __stack_guard with no access and execute-never, and enables the MPU
+   with the default memory map as the background for privileged accesses (sections B3.5.6 to
+   B3.5.9, pages B3-637 to B3-642), so that an access to the guard takes a MemManage fault.
+   Finally it sets the process stack pointer to __stack_top, selects it with CONTROL.SPSEL
+   (section B1.4.4, page B1-519), and calls main.  The program runs on the process stack and every
+   exception handler on the main stack, so that a handler runs after an overflow of the program's
+   stack.  No interrupt is enabled.  PRIMASK stays 0, since setting it raises the execution
+   priority to 0, that of the faults, which would then escalate to HardFault (section B1.5.4,
+   pages B1-528 and B1-529).
 
    After main returns, or after a call of lx_exit, the code selects the main stack again at
-   __exc_stack_top, reports through lx_report_exit, and exits through the semihosting call
-   SYS_EXIT_EXTENDED, 0x20, whose parameter block holds ADP_Stopped_ApplicationExit and the
-   status (Arm semihosting specification).  QEMU takes BKPT 0xab as a semihosting call on
-   M-profile (target/arm/tcg/translate.c, lines 6391 to 6401) and exits with that status
-   (semihosting/arm-compat-semi.c, lines 725 to 757).  An exception enters fault, which reads the
-   exception number, CFSR, HFSR, MMFAR, BFAR, and the stacked return address, or 0 after a
-   stacking error, when the frame is incomplete.  It then moves to the top of the main stack,
-   reports through lx_report_fault, and exits with status 255.  Defining NO_FPEN leaves the
-   floating-point unit disabled, NO_UART leaves the UART's transmitter and receiver disabled,
-   GUARD_TEST adds a store to the word below the stack, UNALIGNED_TEST an unaligned word load, and
-   UNALIGNED_LDRD_TEST an unaligned LDRD, each before main. */
+   __exc_stack_top, reports through lx_report_exit, and ends through board_exit.  An exception
+   enters fault, which reads the exception number, CFSR, HFSR, MMFAR, BFAR, and the stacked return
+   address, or 0 after a stacking error, when the frame is incomplete.  It then moves to the top
+   of the main stack, reports through lx_report_fault, and ends through board_exit with status
+   255.  Defining NO_FPEN leaves the floating-point unit disabled, GUARD_TEST adds a store to the
+   word below the stack, UNALIGNED_TEST an unaligned word load, and UNALIGNED_LDRD_TEST an
+   unaligned LDRD, each before main. */
 
 #define SCB_VTOR 0xe000ed08
 #define SCB_CCR 0xe000ed14
@@ -58,16 +50,7 @@
 #define CFSR_STACKING ((1 << 12) | (1 << 4))
 #define GUARD_RASR ((1 << 28) | (11 << 1) | 1)
 #define MPU_ENABLE ((1 << 2) | 1)
-#define UART_CTRL 8
-#define TIMER_CTRL 0
-#define TIMER_VALUE 4
-#define TIMER_RELOAD 8
-#define TIMER_ENABLE 1
-#define UART_BAUDDIV 16
-#define UART_TX_RX_EN 3
 #define PATTERN 0x5354414b
-#define SYS_EXIT_EXTENDED 0x20
-#define ADP_Stopped_ApplicationExit 0x20026
 
         .syntax unified
         .arch   armv7e-m
@@ -75,17 +58,9 @@
         .eabi_attribute Tag_ABI_VFP_args, 1
         .thumb
 
-        .section .vectors, "a"
-        .global __vectors
-__vectors:
-        .word   __exc_stack_top
-        .word   _start
-        .rept   46
-        .word   fault
-        .endr
-
         .section .text.boot, "ax"
         .global _start
+        .type   _start, %function
         .thumb_func
 _start:
         ldr     r0, =SCB_VTOR
@@ -107,19 +82,7 @@ _start:
 #endif
         dsb
         isb
-        ldr     r0, =lx_timer
-        mvn     r1, #0
-        str     r1, [r0, #TIMER_RELOAD]
-        str     r1, [r0, #TIMER_VALUE]
-        movs    r1, #TIMER_ENABLE
-        str     r1, [r0, #TIMER_CTRL]
-#ifndef NO_UART
-        ldr     r0, =lx_uart
-        movs    r1, #16
-        str     r1, [r0, #UART_BAUDDIV]
-        movs    r1, #UART_TX_RX_EN
-        str     r1, [r0, #UART_CTRL]
-#endif
+        bl      board_init
         ldr     r0, =__data_load
         ldr     r1, =__data_start
         ldr     r2, =__data_end
@@ -175,6 +138,7 @@ _start:
         bl      main
 
         .global lx_exit
+        .type   lx_exit, %function
         .thumb_func
 lx_exit:
         mrs     r1, CONTROL
@@ -184,16 +148,10 @@ lx_exit:
         ldr     r1, =__exc_stack_top
         mov     sp, r1
         bl      lx_report_exit
-exit:
-        ldr     r1, =exit_block
-        ldr     r2, =ADP_Stopped_ApplicationExit
-        str     r2, [r1]
-        str     r0, [r1, #4]
-        movs    r0, #SYS_EXIT_EXTENDED
-        bkpt    0xab
-7:      wfi
-        b       7b
+        b       board_exit
 
+        .global fault
+        .type   fault, %function
         .thumb_func
 fault:
         mrs     r0, IPSR
@@ -222,12 +180,7 @@ fault:
         str     r4, [sp]
         str     r5, [sp, #4]
         bl      lx_report_fault
-        b       exit
+        b       board_exit
         .ltorg
-
-        .bss
-        .balign 4
-exit_block:
-        .skip   8
 
         .section .note.GNU-stack, "", %progbits

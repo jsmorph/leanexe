@@ -35,3 +35,8 @@ import Demos.Energy.Loop
 #print axioms Demos.Energy.gwTick_abs
 #print axioms Demos.Energy.gw_program
 #print axioms Demos.Energy.gw_prefix
+#print axioms Demos.Energy.gwTickWith_abs
+#print axioms Demos.Energy.gwTickUsart3_abs
+#print axioms Demos.Energy.gw_usart3_program
+#print axioms Demos.Energy.gw_usart3_prefix
+#print axioms LeanExe.Native.frame_prefix

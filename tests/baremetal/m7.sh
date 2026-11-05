@@ -4,11 +4,12 @@
 # program NAME: NAME.c, NAME.depth, NAME.in, and NAME.expected (tests/baremetal/ctl.sh).
 #
 # QEMU's memory map, from its monitor's "info mtree", must place ZBT SSRAM1 and SSRAM2 and 3 at
-# the CODE and SRAM regions of tools/baremetal/armv7m/link.ld, PSRAM's 16 MiB at lx_in, and
-# UART0 at lx_out.  tests/baremetal/m7probe.c must print the words of m7probe.expected and exit
-# with status 42 through semihosting, with a high-water mark of 16,032 bytes, which must equal
-# the static bound of its main, and its object may name no undefined symbol but lx_out and
-# CompCert's run-time functions.  With an unaligned word load before main it must do the same.
+# the CODE and SRAM regions of tools/baremetal/armv7m/mps2-an500/link.ld, PSRAM's 16 MiB at
+# lx_in, and UART0 at lx_out.  tests/baremetal/m7probe.c must print the words of
+# m7probe.expected and exit with status 42 through semihosting, with a high-water mark of 16,032
+# bytes, which must equal the static bound of its main, and its object may name no undefined
+# symbol but lx_out and CompCert's run-time functions.  With an unaligned word load before main
+# it must do the same.
 # Without the floating-point enable it must stop at UsageFault, exception 6, with NOCP in CFSR,
 # and with an unaligned LDRD before main at UsageFault with UNALIGNED, which access-check.sh
 # must report.  With a store to the word below the stack it must stop at MemManage, exception
@@ -53,7 +54,7 @@ fail() {
   status=1
 }
 
-ld=$tools/link.ld
+ld=$tools/mps2-an500/link.ld
 uart=$(sed -n 's/^ *lx_out = \(0x[0-9a-fA-F]*\);$/\1/p' "$ld")
 input=$(sed -n 's/^ *lx_in = \(0x[0-9a-fA-F]*\);$/\1/p' "$ld")
 

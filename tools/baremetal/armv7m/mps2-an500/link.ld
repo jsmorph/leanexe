@@ -9,21 +9,22 @@
    loader places each segment at its physical address (include/hw/elf_ops.h, line 499), and the
    startup code copies .data to its address in SRAM.  SRAM holds .data, .bss, the exception stack of
    4 KiB, the guard of 4 KiB that MPU region 0 denies, aligned to its size as MPU_RBAR requires
-   (section B3.5.8, page B3-639), and the stack of STACK_SIZE bytes, which the linker's --defsym
-   sets.  The sections after .data are loaded at their own addresses, so that the zeros that QEMU's
-   loader writes for them fall in SRAM.  lx_reg is the array of the 32-bit registers of the APB
-   devices from 0x40000000 on: CMSDK Timer0, whose index 0 is CTRL, 1 VALUE, and 2 RELOAD
-   (Cortex-M System Design Kit TRM, DDI 0479D, Table 3-1), and, from index 0x1000, the CMSDK
-   UART0 at lx_uart, whose index 0x1000 is DATA, 0x1001 STATE, 0x1002 CTRL, and 0x1004 BAUDDIV
-   (Table 4-7, page 4-9).  lx_out is UART0's data register.  QEMU connects UART0 to its
-   first serial port (hw/arm/mps2.c, lines 287 to 308).  lx_in is the start of PSRAM, into which
-   QEMU's generic loader places a program's input. */
+   (section B3.5.8, page B3-639), and the stack of STACK_SIZE bytes, 1 MiB unless the linker's
+   --defsym sets it.  The sections after .data are loaded at their own addresses, so that the zeros
+   that QEMU's loader writes for them fall in SRAM.  lx_reg is the array of the 32-bit registers of
+   the APB devices from 0x40000000 on: CMSDK Timer0, whose index 0 is CTRL, 1 VALUE, and 2 RELOAD
+   (Cortex-M System Design Kit TRM, DDI 0479D, Table 3-1), and, from index 0x1000, the CMSDK UART0
+   at lx_uart, whose index 0x1000 is DATA, 0x1001 STATE, 0x1002 CTRL, and 0x1004 BAUDDIV (Table 4-7,
+   page 4-9).  lx_out is UART0's data register.  QEMU connects UART0 to its first serial port
+   (hw/arm/mps2.c, lines 287 to 308).  lx_in is the start of PSRAM, into which QEMU's generic loader
+   places a program's input. */
 ENTRY(_start)
 MEMORY
 {
   CODE (rx) : ORIGIN = 0x00000000, LENGTH = 0x400000
   SRAM (rw) : ORIGIN = 0x20000000, LENGTH = 0x400000
 }
+STACK_SIZE = DEFINED(STACK_SIZE) ? STACK_SIZE : 0x100000;
 SECTIONS
 {
   .text : {

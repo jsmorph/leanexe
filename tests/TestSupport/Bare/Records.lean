@@ -84,8 +84,10 @@ def sumInit : SumFrame := ⟨0, 0, 0, 0, ⟨0, 0, 0⟩, ⟨0, 0⟩, 0⟩
 
 verified_compile (pages := 1) (cap := 1) sumCompiled := [readReq, writeReq, sumMach, sumTick]
 
-/-- UART0 of `mps2-an500` in `lx_reg`. -/
-def cmsdkUart : Uart := ⟨4096, 4097, 1, 2⟩
+/-- UART0 of `mps2-an500` in `lx_reg`: the data register `0x1000` for both directions, the status
+register `0x1001`, `RXFULL` in bit 1, and `TXFULL` in bit 0, clear while the transmitter has
+room. -/
+def cmsdkUart : Uart := ⟨4096, 4096, 4097, 2, 1, 0⟩
 
 /-- The record machine over lists: the sum of the words, and the number of records before. -/
 def sumSpec (m : UInt64) (r : List UInt64) : UInt64 × List UInt64 :=
@@ -147,6 +149,6 @@ theorem sum_prefix (σ : Nat → int) (n : Nat) :
   rw [← reqTrace_map sumAbs sumTick_abs]
   exact frame_prefix (u := cmsdkUart) (kin := 3) (kout := 2) (mach := sumSpec) (m0 := 0)
     (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
-    (fun m r _ => rfl) σ n
+    (by decide) (fun m r _ => rfl) σ n
 
 end TestSupport.Bare

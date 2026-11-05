@@ -3,20 +3,23 @@
 # dependencies = []
 # ///
 """The plant, the inverter, ingestion, and the optimizer of the energy controller
-(Demos/Energy/Loop.lean) at the far end of UART0 of QEMU's mps2-an500.
+(Demos/Energy/Loop.lean) at the far end of UART0 of QEMU's mps2-an500, or of USART3 of a
+NUCLEO-F767ZI.
 
-The script runs QEMU through serve of tests/baremetal/uart_echo.py and plays one tick a minute
-from minute START of the minute series SERIES that tests/energy/replay.py prepare writes, for
-TICKS ticks.  Each tick it sends the gateway an input record of 18 words, each as 8 bytes, most
-significant first, and reads its output record of 6 words.  The clock is 60 s per tick from
-CLOCK0.  The measurements are the battery power of the last minute, the minute's load and PV
-(the last known values for a missing minute), and the energy interval of replay.py's nominal
-plant, the simulated energy plus or minus 360,000 J.  The read-back is the inverter's state.
-Every PROPOSE ticks the optimizer proposes the load and PV intervals of replay.py's interval rule
-over the window, which uses the minute values ahead, and limits: alternately the widest limits
-that replay.py's rule accepts for the snapshot and the full range of charge and discharge.
-Every SPIKE ticks, from tick SPIKE / 2 on, the measured load exceeds the minute's load by
-5,000 W, which the interval rule does not cover.
+The script runs QEMU through serve of tests/baremetal/uart_echo.py, or with --device DEVICE talks to
+a board through the serial port DEVICE at BAUD, 9,600 unless set, through serve_device of the same
+script.  The board must be running the program of gwTickUsart3 from reset.  The script plays one
+tick a minute from minute START of the minute series SERIES that tests/energy/replay.py prepare
+writes, for TICKS ticks.  Each tick it sends the gateway an input record of 18 words, each as 8
+bytes, most significant first, and reads its output record of 6 words.  The clock is 60 s per tick
+from CLOCK0.  The measurements are the battery power of the last minute, the minute's load and PV
+(the last known values for a missing minute), and the energy interval of replay.py's nominal plant,
+the simulated energy plus or minus 360,000 J.  The read-back is the inverter's state.  Every PROPOSE
+ticks the optimizer proposes the load and PV intervals of replay.py's interval rule over the window,
+which uses the minute values ahead, and limits: alternately the widest limits that replay.py's rule
+accepts for the snapshot and the full range of charge and discharge.  Every SPIKE ticks, from tick
+SPIKE / 2 on, the measured load exceeds the minute's load by 5,000 W, which the interval rule does
+not cover.
 
 The inverter applies a command at once with the revert timeout of the output record, returns to
 fallback when the timeout passes or when the gateway requests it, and, as replay.py's plant does
@@ -39,6 +42,8 @@ exits with status 0 or 1.
 
 Usage: uv run tests/baremetal/uart_gateway.py [--timeout TIMEOUT] [--start START] [--ticks TICKS]
     [--propose PROPOSE] [--spike SPIKE] SERIES RECORDS LOG QEMU [ARG...]
+       uv run tests/baremetal/uart_gateway.py [--timeout TIMEOUT] [--start START] [--ticks TICKS]
+    [--propose PROPOSE] [--spike SPIKE] --device DEVICE [--baud BAUD] SERIES RECORDS
 """
 
 import argparse
@@ -47,7 +52,7 @@ import sys
 import time
 from collections import Counter
 
-from uart_echo import Failure, receive, report, serve
+from uart_echo import Failure, receive, report, serve, serve_device
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "energy"))
 import replay  # noqa: E402
@@ -164,20 +169,30 @@ def main():
     parser.add_argument("--ticks", type=int, default=7 * 24 * 60)
     parser.add_argument("--propose", type=int, default=5)
     parser.add_argument("--spike", type=int, default=360)
+    parser.add_argument("--device")
+    parser.add_argument("--baud", type=int, default=9600)
     parser.add_argument("series")
     parser.add_argument("records")
-    parser.add_argument("log")
+    parser.add_argument("log", nargs="?")
     parser.add_argument("qemu", nargs=argparse.REMAINDER)
     args = parser.parse_args()
-    if not args.qemu:
+    if args.device and args.log:
+        parser.error("--device takes no LOG or QEMU")
+    if not args.device and not args.qemu:
         parser.error("QEMU is missing")
     series = replay.load_series(args.series)
     iv = replay.intervals(series, P.window // 60, None)
     if args.start + args.ticks > len(series.load):
         parser.error(f"the series has {len(series.load)} minutes")
-    result, error, elapsed, early, status = serve(
-        args.qemu, args.log, args.timeout, lambda conn, log: run(conn, args, series, iv))
-    failure = report(error, early, status)
+    def session(conn, log):
+        return run(conn, args, series, iv)
+
+    if args.device:
+        result, error, elapsed = serve_device(args.device, args.baud, args.timeout, session)
+        failure = str(error) if error else None
+    else:
+        result, error, elapsed, early, status = serve(args.qemu, args.log, args.timeout, session)
+        failure = report(error, early, status)
     if failure:
         print(failure)
         return 1

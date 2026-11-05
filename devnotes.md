@@ -41617,3 +41617,60 @@ Each increment ends with a program on QEMU and its theorem.
 `Demos/Energy/GatewayTheorems.lean` states G1 to G4 for one tick, from `gateway_cases`, which lists the cases of a tick with the state and the output of each.  `gateway_command` is G1 and G3: a tick outputs a command only when the record is not faulty, the measurements stay in the window, the read-back equals the recorded state, battery power lies in its interval, and the last change lies `τ` before the clock, and then `authorizeWith site` accepts the snapshot of the tick's clock and recorded state, the command's limits are the snapshot's, its revert timeout is the expiry minus the clock, and the recorded state becomes the command, changed at the clock.  `gateway_fault` and `gateway_leaves` are G2, and `gateway_record` with `expire_record` is G4.
 
 `Demos/Energy/GatewayRun.lean` derives `OperatesIn.states`.  The changes of a run occupy two slots a tick, the expiry in slot `2n` and the command or request to return to fallback in slot `2n + 1`, and `Follows` states A7 over them: once a change has had `τ` to take effect, the device applies at time `w` the state of a change at or before `w`, no older than every change at or before `w - τ`.  `last_change` locates the change that set the recorded state, and `states_between` follows: by G3 that change lies at or before `w - τ`, every later change is an expiry, a request to return to fallback, the snapshot's own command, or a later command, whose time lies after `w` before the next accepted snapshot.  The argument needs no bound on the time of a later expiry, since an expiry records fallback, and no theorem states that the times of the changes increase, which the design's G4 had listed and the derivation does not use.  `gateway_states` states `OperatesIn.states` for `runOf` the accepted snapshots, given that the run includes every accepted snapshot up to the time `t`.  `settled`, `low`, and `high` remain premises: `settled` concerns battery power at the snapshot's time, which the gateway checks through a measurement.  `tests/energy/Axioms.lean` audits the gateway's theorems with the authorizer's.
+
+## 2026-11-04: Controller PoC, step 8: the NUCLEO-F767ZI without a board
+
+No NUCLEO-F767ZI is attached to a host, and the user asked for the STM32 startup code untested.  This step writes the board code, the linker script, the USART3 instances of the register map, the programs and theorems for USART3, a serial-port mode of the host scripts, and a script that builds the images and runs them against a board.  Every part that runs on the board is untested: the build, the stack bound, the access check, the `clightgen` read-back, and the theorems are checked, and no instruction has executed on an STM32.
+
+### Sources
+
+ST's reference manual RM0410 and the Nucleo-144 user manual UM1974 did not download: ST's site timed out, and a retry with a browser's user agent was refused by this session's permissions.  The board code takes its facts from ST's files on GitHub, which ST maintains for its own tools, and the board's wiring from two board ports.
+
+| Fact | Source |
+|---|---|
+| Addresses of RCC, GPIOD, USART3, TIM2, flash, DTCM, SRAM1, and SRAM2; register offsets; bit positions of `GPIODEN`, `USART3EN`, `USART3SEL`, `UE`, `RE`, `TE`, `RXNE`, and `TXE`; 110 interrupts, 0 to 109 | [`stm32f767xx.h`](https://github.com/STMicroelectronics/cmsis-device-f7/blob/master/Include/stm32f767xx.h) |
+| The vector table of 126 words | [`startup_stm32f767xx.s`](https://github.com/STMicroelectronics/cmsis-device-f7/blob/master/Source/Templates/gcc/startup_stm32f767xx.s) |
+| The core clock after reset, HSI at 16 MHz (`SystemCoreClock = 16000000` with no clock setup) | [`system_stm32f7xx.c`](https://github.com/STMicroelectronics/cmsis-device-f7/blob/master/Source/Templates/system_stm32f7xx.c) |
+| PD8 is `USART3_TX` and PD9 `USART3_RX`, both alternate function 7 | [`STM32F767ZITx.xml` and `GPIO-STM32F76x_gpio_v1_0_Modes.xml`](https://github.com/STMicroelectronics/STM32_open_pin_data) |
+| `USART3SEL` = 2 selects HSI; `BOOT_ADD0` = `0x0080` names `0x00200000`, flash on ITCM | [`stm32f7xx_hal_rcc_ex.h` and `stm32f7xx_hal_flash_ex.h`](https://github.com/STMicroelectronics/stm32f7xx-hal-driver) |
+| The board connects PD8 and PD9 to the ST-LINK's virtual COM port, with solder bridges SB5 and SB6 closed as shipped | [Zephyr's board page](https://docs.zephyrproject.org/4.0.0/boards/st/nucleo_f767zi/doc/index.html), [NuttX's board page](https://nuttx.apache.org/docs/latest/platforms/arm/stm32f7/boards/nucleo-f767/index.html) |
+| `BOOT_ADD0` holds `0x0080` as shipped | ST community forum reports only; to check on the board |
+
+### Decisions
+
+| Question | Decision and reason |
+|---|---|
+| Register map of a UART | `Uart` gains separate receive and transmit registers and a transmit test `v &&& txMask == txRoom`.  The CMSDK UART has one data register and a bit set while the transmitter is full; the STM32 USART has `USART_RDR` and `USART_TDR` and `TXE`, set while the transmit register is empty.  `frame_prefix` takes four premises on the map instead of three: both data registers lie in the bank, and the receive register differs from the status register |
+| Programs for the board | The echo, for bring-up, and the gateway.  The deadline program stays on QEMU: the ST-LINK's virtual COM port has no flow control, so USART3's transmitter never waits longer than a byte, and the deadline could not expire in a test.  No program reads a timer, so the board code starts none |
+| Clock | HSI at 16 MHz, the clock after reset, with no PLL, so that the trusted startup code configures no clock tree, flash latency, or voltage scaling.  USART3's kernel clock is set to HSI explicitly, so that the baud rate depends on no prescaler |
+| Baud rate | 9,600.  In QEMU, with one instruction per block and the execution log (`-accel tcg,one-insn-per-tb=on -d exec,nochain`), counting the instructions between consecutive calls of the step, a window of the gateway's program executed 2,201 instructions while idle, at most 3,315 while it received, and 10,703 when it ran the gateway.  After `gwTick` became a call of `gwTickWith`, which passes 52 words on the stack, the counts are 3,346, 4,477, and 11,867.  The board polls, and USART3 holds one received byte, so the program must read each byte within about a byte's time.  At 16 MHz a byte at 115,200 baud lasts 1,389 cycles, fewer than the instructions of an idle window, and a byte at 9,600 baud lasts 16,667 cycles, 3.7 times the longest receiving window.  A tick of 192 bytes then takes 200 ms, and a simulated day 290 s |
+| RAM | DTCM only, 128 KiB, which holds `lx_mem`'s 64 KiB, the exception stack, the guard, and a stack of 32 KiB, against the gateway's bound of 5,720 bytes |
+| Startup code | One `start.S` for every Cortex-M7 board, and per board a directory with `board.S` (vector table, `board_init`, `board_exit`, `lx_putc`) and `link.ld`.  `build.sh` takes `BOARD`, and the stack's size comes from the linker script unless `STACK_SIZE` is set |
+| Exit on the board | `board_exit` waits for interrupts forever, since without a debugger a semihosting call escalates to HardFault.  Reports go through `lx_putc`, which polls `TXE` |
+| Host side | The host scripts open the serial port with `termios` from Python's standard library, in raw mode with no flow control.  Flashing stays outside the scripts: the user writes `NAME.bin` to flash at `0x08000000` and resets the board |
+
+### Plan
+
+- [x] `Uart` with separate data registers and the transmit test; the framing's proofs.
+- [x] `echoTick` and `deadlineTick` over the same map; `usart3Tick` and `echo_usart3_program`.
+- [x] `gwTickWith` over the map; `gwTick` and `gwTickUsart3`, with their `abs`, program, and prefix theorems.
+- [x] `native-bare emit-usart3` and `check-usart3`.
+- [x] Shared `start.S`, `mps2-an500/board.S`, `nucleo-f767zi/board.S` and `link.ld`, `build.sh` with `BOARD`, `report.c` through `lx_putc`.
+- [x] `--device` in `uart_echo.py` and `uart_gateway.py`; `tests/baremetal/usart3.sh`.
+- [x] `m7.sh` and `req.sh` on QEMU after the split; `usart3.sh build`.
+- [ ] Documentation.
+- [ ] On a board: the echo, then the gateway over a simulated day.
+
+### Results
+
+The build of `native-bare` on edgexpert passed on the first attempt with the generalized `Uart`, the new echo and gateway instances, and `emit-usart3`.  `frame_prefix`, `gwTickWith_abs`, `gwTickUsart3_abs`, `gw_usart3_program`, `gw_usart3_prefix`, `echo_usart3_program`, `sum_program`, and `sum_prefix` depend on no axioms other than `propext`, `Classical.choice`, and `Quot.sound`.  `tests/energy/Axioms.lean` now lists the gateway's new theorems and `frame_prefix`, while the theorems of `TestSupport.Bare` still have no audit file and were checked by hand.
+
+After the split of the startup code, `m7.sh` passes every check: the memory map, the probe and its high-water mark, the unaligned load, the faults without the FPU, with an unaligned `LDRD`, with a store to the guard, and with a short stack, the run without the UART's enables, and the filter.  `req.sh` passes for the echo, the deadline program, the records program, and the gateway, whose 10,080 ticks gave 715 commands and 17 fallback requests in 31.4 s, with output records equal to native Lean's.  The stack bounds of `main` grew with the longer argument lists: 264 bytes for the echo, 360 for the deadline program, and 6,712 for the gateway, while the records program keeps 544.
+
+`usart3.sh build` writes both images, and the ARMv7-M `clightgen` read-back of each matches the program of its theorem.  The echo takes 21,248 bytes of flash and the gateway 80,440, with stack bounds of 264 and 6,720 bytes.  In the gateway's image the vector table at `0x08000000` holds `__exc_stack_top`, `0x200115f0`, then `_start` and `fault` with the Thumb bit set, for 126 words, `lx_mem` lies at `0x20000308`, the stack ends at `0x2001b000`, inside DTCM, and the program headers name flash only for the code and the load image of `.data`.
+
+The serial-port mode of the host scripts ran without a board.  `uart_echo.py --device` passes against a pseudo-terminal whose far end answers each byte with bit 5 flipped and fails at the first reply when the far end flips bits 5 and 0.  `uart_gateway.py --device` ran 1,440 ticks through a pseudo-terminal that a bridge connects to UART0 of QEMU running the gateway's program for `mps2-an500`, and its output records equal native Lean's.  The USART3 images themselves have not run: no emulator here models the STM32F767, and Renode, which models STM32F7 parts, would be a new dependency.
+
+### On a board
+
+With a NUCLEO-F767ZI attached to a host that has the ARMv7-M tree, the order is: `usart3.sh build`; write `echo.bin` to flash at `0x08000000`, reset the board, and run `usart3.sh run echo /dev/ttyACM0`; then the same for `gateway.bin` and `usart3.sh run gateway /dev/ttyACM0`, a simulated day of about five minutes.  If nothing answers, the causes to check first are `BOOT_ADD0`, the solder bridges of the virtual COM port, and the baud rate, which a terminal program at 9,600 baud and the ST-LINK's debugger, reading USART3's registers and `SCB_CFSR`, tell apart.
