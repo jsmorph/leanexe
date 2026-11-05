@@ -41891,7 +41891,7 @@ The startup code's tables map all of RAM as read-write and executable at EL1, so
 
 - [x] The model of the forms, the decoder, the encoder, and `decode_encode`, built by `lake build LeanExe.A64.Encode`.
 - [x] Co-simulation: a bare-metal image under QEMU, with TCG and with KVM, that runs each form on states from a table and stores the results, against the model's predictions.
-- [ ] The code generator for GCD's forms: the frame, the operand registers, the locals in the frame, constants, comparisons, `iff`, `block`, `loop`, and `br`, `remUI64` with the divisor check, calls and returns, `main` with its UART stores, and the trap stub.
+- [x] The code generator for GCD's forms: the frame, the operand registers, the locals in the frame, constants, comparisons, `iff`, `block`, `loop`, and `br`, `remUI64` with the divisor check, calls and returns, `main` with its UART stores, and the trap stub.
 - [ ] The simulation proof against Talos for those forms, and the whole-program theorem.
 - [ ] The image writer with the startup code, and the run of `programs.sh`'s GCD under QEMU and KVM.
 
@@ -41909,3 +41909,17 @@ The script links the harness with the startup code through `tools/baremetal/buil
 | KVM, processor 5, `0xd85` | 3, 10 to 14 | 22,800 | all |
 
 A copy of the output with one changed register value made `check` report that case and exit with status 1.  The co-simulation checks only what the model lets run: accesses inside the window, including unaligned ones, branches within 16 words, and no UART store.  A theorem over the model excludes every state in which the model stops, so the processor's behavior on those states does not bear on it.  Branch offsets beyond 16 words rest on `decode_encode` and on GNU `as`'s agreement with the encoder.
+
+### Code generator
+
+`LeanExe/A64/Gen.lean` translates function `k` of a module and its arguments into a list of items: instructions, labels, branches to labels, and the branch to `lx_exit`.  The value at operand-stack height `h` lies in X0 to X15 and then X19 to X28, an `i32` zero-extended, and X16 is the scratch register of the remainder.  A function's prologue reserves a frame of 8 bytes per parameter and local, rounded up to 16, stores the parameters from X0 upward, and stores zero into the other locals, and its epilogue releases the frame and returns with the result in X0, at height 0.  A `block`, `loop`, or `iff` gets a label, and a branch to it moves the values that it carries down to the construct's base height with `ORR` before the `B`.  The function's own label is the epilogue, which `ret` also targets.  Code after a `br`, `ret`, or `unreachable` in the same list is unreachable, and the generator emits nothing for it.  `eqI64` and `eqzI64` are `SUBS` and `CSINC`, `extendUI32` emits nothing, and `remUI64` and `divUI64` are a `CBZ` of the divisor to the trap stub of code 3, then `UDIV`, and for the remainder `MSUB`.  `main` reserves 16 bytes for X30, loads the arguments with `MOVZ` and `MOVK`, calls the function with `BL`, writes the result's eight bytes to the UART with `LSR` and `STRB`, and returns 0.  The trap stubs set X0 to 1, 2, or 3 and branch to `lx_exit`.  Every other Wasm form, a call inside a function among them, gets a message.  `layout` places the items, gives each label the address of the next instruction, and encodes each branch after checking that its offset fits 19 or 26 bits.
+
+`tests/baremetal/a64-programs.sh` builds `a64-programs` (`tests/TestSupport/A64/Programs.lean`), which generates GCD's program of `loopCompiled` on 1071 and 462, runs it in the model from `main` with a return address below the code, and writes its assembly, each word as `.inst` and the branches to `lx_exit` as symbolic branches.  The script assembles that file, links it with the startup code through `tools/baremetal/build.sh`, and runs it under QEMU, as `programs.sh` runs the C path's images.  This test path still uses GNU `as` and `ld` to place the words beside the startup code, which the image writer of a later step replaces.
+
+| Run | Result |
+|---|---|
+| Model | the 8 bytes of `encodeWord (gcd 1071 462)` and status 0 after 161 steps of the program's 114 words |
+| TCG | the same 8 bytes, then `R:exit 0 el 1 stack 192` |
+| KVM | the same 8 bytes, then `R:exit 0 el 1 stack 192` |
+
+The stack's high-water mark of 192 bytes is `main`'s 16 and the function's frame of 176, for 2 parameters and 19 locals.

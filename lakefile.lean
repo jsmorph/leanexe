@@ -45,6 +45,12 @@ lean_exe «a64-cosim» where
   srcDir := "tests"
   root := `TestSupport.A64.CosimMain
 
+-- The bare-metal programs of the AArch64 back end (tests/baremetal/a64-programs.sh); not a
+-- default target.
+lean_exe «a64-programs» where
+  srcDir := "tests"
+  root := `TestSupport.A64.ProgramsMain
+
 -- The checks of the hashing transcriptions and programs on their vectors
 -- (tests/TestSupport/Hashing); not default targets.
 lean_exe «sha3-vectors» where
