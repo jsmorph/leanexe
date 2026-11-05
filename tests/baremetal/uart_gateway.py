@@ -7,7 +7,7 @@
 NUCLEO-F767ZI.
 
 The script runs QEMU through serve of tests/baremetal/uart_echo.py, or with --device DEVICE talks to
-a board through the serial port DEVICE at BAUD, 9,600 unless set, through serve_device of the same
+a board through the serial port DEVICE at BAUD, 4,800 unless set, through serve_device of the same
 script.  The board must be running the program of gwTickUsart3 from reset.  The script plays one
 tick a minute from minute START of the minute series SERIES that tests/energy/replay.py prepare
 writes, for TICKS ticks.  Each tick it sends the gateway an input record of 18 words, each as 8
@@ -170,7 +170,7 @@ def main():
     parser.add_argument("--propose", type=int, default=5)
     parser.add_argument("--spike", type=int, default=360)
     parser.add_argument("--device")
-    parser.add_argument("--baud", type=int, default=9600)
+    parser.add_argument("--baud", type=int, default=4800)
     parser.add_argument("series")
     parser.add_argument("records")
     parser.add_argument("log", nargs="?")

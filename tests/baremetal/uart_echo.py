@@ -48,11 +48,16 @@ the socket or of LOG, and TIMEOUT bounds only a failure.
 
 With --device DEVICE, the script runs no QEMU and talks to a board through the serial port
 DEVICE, the virtual COM port of a NUCLEO-F767ZI's ST-LINK that the program of usart3Tick drives,
-in raw mode at BAUD, 9,600 unless set, with 8 data bits, no parity, one stop bit, and no flow
-control (termios(3)).  It discards the bytes that the port holds, then runs (a), (b), and (d).
-The board's USART has no flow control, so the step must read each byte before the next one
-arrives, and a lost byte shows as a missing or wrong reply.  The board must be running the echo
-from reset.
+in raw mode at BAUD, 4,800 unless set, with 8 data bits, no parity, one stop bit, and no flow
+control (termios(3)).  It opens the port without waiting for carrier, reads the settings back,
+and discards the bytes that the port holds.  It then runs (a), sends the bytes of each burst of
+BURSTS with at most UNANSWERED of them unanswered, and runs (d).  The board's USART has no flow
+control, so the step must read each byte before the next one arrives, and a lost byte shows as a
+missing or wrong reply.  The step reads a byte only after it has written the previous reply, so
+it takes bytes no faster than its transmitter sends, at the rate of the board's clock, which may
+run slower than the host's.  A back-to-back burst would then overrun the receiver after enough
+bytes, while two unanswered bytes keep the board receiving one byte while it sends the reply to
+the one before.  The board must be running the echo from reset.
 
 Usage: uv run tests/baremetal/uart_echo.py [--timeout TIMEOUT] [--hold HOLD] LOG QEMU [ARG...]
        uv run tests/baremetal/uart_echo.py [--timeout TIMEOUT] --device DEVICE [--baud BAUD]
@@ -72,6 +77,7 @@ import tty
 
 MESSAGE = b"The request protocol's echo answers each byte with bit 5 flipped.\n" + bytes(range(256))
 BURSTS = (2, 16, len(MESSAGE), 65536)
+UNANSWERED = 2
 HELD = 65536
 PENDING = b"cmsdk_apb_uart_tx_pending"
 LAST = 0xFF
@@ -201,6 +207,25 @@ def burst(conn, data, log=None, hold=None):
     return (log.pending() - before, dropped) if log is not None else (0, 0)
 
 
+def window(conn, data, unanswered):
+    """Sends data with at most unanswered bytes unanswered and checks the replies."""
+    sent = 0
+    reply = bytearray()
+    while len(reply) < len(data):
+        while sent < len(data) and sent - len(reply) < unanswered:
+            conn.sendall(data[sent:sent + 1])
+            sent += 1
+        try:
+            chunk = conn.recv(sent - len(reply))
+        except TimeoutError:
+            raise Failure(f"window of {len(data)}: {len(reply)} replies, then none for "
+                          f"{conn.gettimeout()} s") from None
+        if not chunk:
+            raise Failure(f"window of {len(data)}: the port closed after {len(reply)} replies")
+        reply += chunk
+    check(f"window of {len(data)}", data, reply)
+
+
 def accept(qemu, listener, timeout):
     listener.settimeout(0.1)
     deadline = time.monotonic() + timeout
@@ -243,13 +268,16 @@ def serve(qemu_args, log_path, timeout, session):
 
 class Serial:
     """A serial port in raw mode at a baud rate, with 8 data bits, no parity, one stop bit, and
-    no flow control, with the methods of a socket that the scripts use."""
+    no flow control, with the methods of a socket that the scripts use.  The port opens with
+    O_NONBLOCK, so that the open does not wait for carrier while CLOCAL is clear, and is blocking
+    once CLOCAL is set.  tcsetattr succeeds when it applies any of the settings (termios(3)), so
+    the settings are read back."""
 
     def __init__(self, path, baud, timeout):
         speed = getattr(termios, f"B{baud}", None)
         if speed is None:
             raise Failure(f"termios has no baud rate {baud}")
-        self.fd = os.open(path, os.O_RDWR | os.O_NOCTTY)
+        self.fd = os.open(path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
         try:
             attrs = termios.tcgetattr(self.fd)
             tty.cfmakeraw(attrs)
@@ -257,6 +285,12 @@ class Serial:
             attrs[2] |= termios.CLOCAL | termios.CREAD | termios.CS8
             attrs[4] = attrs[5] = speed
             termios.tcsetattr(self.fd, termios.TCSANOW, attrs)
+            got = termios.tcgetattr(self.fd)
+            flags = (termios.CSIZE | termios.CSTOPB | termios.PARENB | termios.CRTSCTS |
+                     termios.CLOCAL | termios.CREAD)
+            if got[:2] + got[3:] != attrs[:2] + attrs[3:] or got[2] & flags != attrs[2] & flags:
+                raise Failure(f"{path} took the settings {got}, not {attrs}")
+            os.set_blocking(self.fd, True)
             termios.tcflush(self.fd, termios.TCIOFLUSH)
         except BaseException:
             os.close(self.fd)
@@ -324,7 +358,7 @@ def exchange(conn, log, hold):
 def exchange_device(conn):
     lockstep(conn)
     for n in BURSTS:
-        burst(conn, block(n))
+        window(conn, block(n), UNANSWERED)
     lockstep(conn)
 
 
@@ -333,7 +367,7 @@ def main():
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--hold", type=float)
     parser.add_argument("--device")
-    parser.add_argument("--baud", type=int, default=9600)
+    parser.add_argument("--baud", type=int, default=4800)
     parser.add_argument("log", nargs="?")
     parser.add_argument("qemu", nargs=argparse.REMAINDER)
     args = parser.parse_args()
@@ -346,8 +380,8 @@ def main():
             print(error)
             return 1
         print(f"{2 * len(MESSAGE)} bytes in lockstep and bursts of "
-              f"{', '.join(map(str, BURSTS))} on {args.device} at {args.baud} baud, "
-              f"in {elapsed:.1f} s")
+              f"{', '.join(map(str, BURSTS))} with at most {UNANSWERED} unanswered on "
+              f"{args.device} at {args.baud} baud, in {elapsed:.1f} s")
         return 0
     if not args.qemu:
         parser.error("QEMU is missing")

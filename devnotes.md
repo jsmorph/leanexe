@@ -41624,7 +41624,7 @@ No NUCLEO-F767ZI is attached to a host, and the user asked for the STM32 startup
 
 ### Sources
 
-ST's reference manual RM0410 and the Nucleo-144 user manual UM1974 did not download: ST's site timed out, and a retry with a browser's user agent was refused by this session's permissions.  The board code takes its facts from ST's files on GitHub, which ST maintains for its own tools, and the board's wiring from two board ports.
+ST's reference manual RM0410 and the Nucleo-144 user manual UM1974 did not download: ST's site timed out, and a retry with a browser's user agent was refused by this session's permissions.  The board code takes its facts from ST's files on GitHub and the board's wiring from two board ports.
 
 | Fact | Source |
 |---|---|
@@ -41633,17 +41633,17 @@ ST's reference manual RM0410 and the Nucleo-144 user manual UM1974 did not downl
 | The core clock after reset, HSI at 16 MHz (`SystemCoreClock = 16000000` with no clock setup) | [`system_stm32f7xx.c`](https://github.com/STMicroelectronics/cmsis-device-f7/blob/master/Source/Templates/system_stm32f7xx.c) |
 | PD8 is `USART3_TX` and PD9 `USART3_RX`, both alternate function 7 | [`STM32F767ZITx.xml` and `GPIO-STM32F76x_gpio_v1_0_Modes.xml`](https://github.com/STMicroelectronics/STM32_open_pin_data) |
 | `USART3SEL` = 2 selects HSI; `BOOT_ADD0` = `0x0080` names `0x00200000`, flash on ITCM | [`stm32f7xx_hal_rcc_ex.h` and `stm32f7xx_hal_flash_ex.h`](https://github.com/STMicroelectronics/stm32f7xx-hal-driver) |
-| The board connects PD8 and PD9 to the ST-LINK's virtual COM port, with solder bridges SB5 and SB6 closed as shipped | [Zephyr's board page](https://docs.zephyrproject.org/4.0.0/boards/st/nucleo_f767zi/doc/index.html), [NuttX's board page](https://nuttx.apache.org/docs/latest/platforms/arm/stm32f7/boards/nucleo-f767/index.html) |
+| The board connects PD8 and PD9 to the ST-LINK's virtual COM port | [Zephyr's board page](https://docs.zephyrproject.org/4.0.0/boards/st/nucleo_f767zi/doc/index.html), [NuttX's board page](https://nuttx.apache.org/docs/latest/platforms/arm/stm32f7/boards/nucleo-f767/index.html) |
 | `BOOT_ADD0` holds `0x0080` as shipped | ST community forum reports only; to check on the board |
 
 ### Decisions
 
 | Question | Decision and reason |
 |---|---|
-| Register map of a UART | `Uart` gains separate receive and transmit registers and a transmit test `v &&& txMask == txRoom`.  The CMSDK UART has one data register and a bit set while the transmitter is full; the STM32 USART has `USART_RDR` and `USART_TDR` and `TXE`, set while the transmit register is empty.  `frame_prefix` takes four premises on the map instead of three: both data registers lie in the bank, and the receive register differs from the status register |
+| Register map of a UART | `Uart` gains separate receive and transmit registers and a transmit test `v &&& txMask == txRoom`.  The CMSDK UART has one data register and a bit set while the transmitter is full; the STM32 USART has `USART_RDR` and `USART_TDR` and `TXE`, set while the transmit register is empty.  `frame_prefix` takes four premises on the map instead of three: the receive, transmit, and status registers lie in the bank, and the receive register differs from the status register |
 | Programs for the board | The echo, for bring-up, and the gateway.  The deadline program stays on QEMU: the ST-LINK's virtual COM port has no flow control, so USART3's transmitter never waits longer than a byte, and the deadline could not expire in a test.  No program reads a timer, so the board code starts none |
 | Clock | HSI at 16 MHz, the clock after reset, with no PLL, so that the trusted startup code configures no clock tree, flash latency, or voltage scaling.  USART3's kernel clock is set to HSI explicitly, so that the baud rate depends on no prescaler |
-| Baud rate | 9,600.  In QEMU, with one instruction per block and the execution log (`-accel tcg,one-insn-per-tb=on -d exec,nochain`), counting the instructions between consecutive calls of the step, a window of the gateway's program executed 2,201 instructions while idle, at most 3,315 while it received, and 10,703 when it ran the gateway.  After `gwTick` became a call of `gwTickWith`, which passes 52 words on the stack, the counts are 3,346, 4,477, and 11,867.  The board polls, and USART3 holds one received byte, so the program must read each byte within about a byte's time.  At 16 MHz a byte at 115,200 baud lasts 1,389 cycles, fewer than the instructions of an idle window, and a byte at 9,600 baud lasts 16,667 cycles, 3.7 times the longest receiving window.  A tick of 192 bytes then takes 200 ms, and a simulated day 290 s |
+| Baud rate | 9,600.  In QEMU, with one instruction per block and the execution log (`-accel tcg,one-insn-per-tb=on -d exec,nochain`), counting the instructions between consecutive calls of the step, a window of the gateway's program executed 2,201 instructions while idle, at most 3,315 while it received, and 10,703 when it ran the gateway.  After `gwTick` became a call of `gwTickWith`, which passes 52 words on the stack, the counts are 3,346, 4,477, and 11,867.  The board polls, and USART3 holds one received byte, so the program must read each byte within about a byte's time.  At 16 MHz a byte at 115,200 baud lasts 1,389 cycles, fewer than the instructions of an idle window, and a byte at 9,600 baud lasts 16,667 cycles, 3.7 times the longest receiving window.  A tick of 192 bytes then takes 200 ms, and a simulated day 290 s.  The entry of 2026-11-05 corrects the count: a byte takes two windows, and the rate became 4,800 baud |
 | RAM | DTCM only, 128 KiB, which holds `lx_mem`'s 64 KiB, the exception stack, the guard, and a stack of 32 KiB, against the gateway's bound of 6,720 bytes |
 | Startup code | One `start.S` for every Cortex-M7 board, and per board a directory with `board.S` (vector table, `board_init`, `board_exit`, `lx_putc`) and `link.ld`.  `build.sh` takes `BOARD`, and the stack's size comes from the linker script unless `STACK_SIZE` is set |
 | Exit on the board | `board_exit` waits for interrupts forever, since without a debugger a semihosting call escalates to HardFault.  Reports go through `lx_putc`, which polls `TXE` |
@@ -41684,4 +41684,46 @@ In Renode, the echo passed in 1.8 s, and the gateway's program ran 1,440 ticks, 
 
 ### On a board
 
-With a NUCLEO-F767ZI attached to a host that has the ARMv7-M tree, the order is: `usart3.sh build`; write `echo.bin` to flash at `0x08000000`, reset the board, and run `usart3.sh run echo /dev/ttyACM0`; then the same for `gateway.bin` and `usart3.sh run gateway /dev/ttyACM0`, a simulated day of about five minutes.  If nothing answers, the causes to check first are `BOOT_ADD0`, the solder bridges of the virtual COM port, and the baud rate, which a terminal program at 9,600 baud and the ST-LINK's debugger, reading USART3's registers and `SCB_CFSR`, tell apart.
+With a NUCLEO-F767ZI attached to a host that has the ARMv7-M tree, the order is: `usart3.sh build`; write `echo.bin` to flash at `0x08000000`, reset the board, and run `usart3.sh run echo /dev/ttyACM0`; then the same for `gateway.bin` and `usart3.sh run gateway /dev/ttyACM0`, a simulated day of about five minutes.  If nothing answers, the causes to check first are `BOOT_ADD0`, the solder bridges of the virtual COM port, and the baud rate, which a terminal program at 9,600 baud and the ST-LINK's debugger, reading USART3's registers and `SCB_CFSR`, tell apart.  The entry of 2026-11-05 gives the order and the rate that replace these.
+
+## 2026-11-05: Controller PoC, step 8: review of the board code
+
+A review of the step's board code, host scripts, and documents found two faults that would fail a run on a board whose program, pins, and baud rate are correct, a script error that could pass a failed run, and errors in the documents.  The user chose 4,800 baud over 9,600 with a measurement on the board.  No finding affects a theorem.
+
+| Finding | Change |
+|---|---|
+| Echo bursts | The echo reads a byte only after it has written the previous reply, so it takes bytes at the rate of its own transmitter, 9,598 baud at the old divider and up to 1% less with HSI's trim, while the ST-LINK sends at the host's rate.  A back-to-back burst of 65,536 bytes overruns USART3 when HSI runs 0.02% slow.  In device mode `uart_echo.py` now keeps at most two bytes unanswered, so that the board receives one byte while it sends the reply to the one before |
+| Timing margin | A byte takes two windows of `frameTick`, the status read that sees `RXNE` and the read of `USART_RDR`, so at 9,600 baud a byte's 16,667 cycles allowed 1.9 cycles per instruction of the longest receiving window, not 3.7.  At 4,800 baud, `USART_BRR` 3,333, the margin is 3.7 again with no cache or clock code in the startup code, and a simulated day takes about 580 s |
+| Status of `gateway-run` | `host_run` ignored the exit status of `native-bare gateway-run`, so in `emulate`, where errexit is off, a stale `records.lean` could pass.  The script now deletes the records first and fails on the status |
+| `BOOT_ADD0` | `0x2000`, `OB_BOOTADDR_AXIM_FLASH`, names `0x08000000` and also boots the image.  The documents accept both values |
+| Fault path | The guard and the fault report had run on no model of the board.  `usart3.sh build` builds the echo with `GUARD_TEST` and `UNALIGNED_LDRD_TEST` as `guard` and `ldrd`, `run` checks their reports with the new `uart_report.py`, and they come first in bring-up |
+| Serial port | `Serial` opened the port without `O_NONBLOCK`, so the open could wait for carrier after another program had cleared `CLOCAL`, and it never read the settings back.  It now opens with `O_NONBLOCK`, compares the settings that `tcgetattr` returns, and then makes the descriptor blocking |
+| `build DIR` | With `DIR` equal to `OUT`, the build deleted its own inputs.  It now refuses a `DIR` inside `OUT`, and `OUT` is made absolute, since Renode resolves a relative path against its own directories |
+| Start in Renode | `emulate` started the host when the pseudo-terminal appeared, before Renode started the machine, and Renode 1.17.0 drops a byte that arrives while `UE` or `RE` is clear ([`UARTBase.cs`](https://github.com/renode/renode-infrastructure/blob/066a7f13c052215632d469c995c89aea37c573b1/src/Emulator/Main/Peripherals/UART/UARTBase.cs), `WriteCharInner`), logging it only at debug level.  A hook at `main` now logs `reached main`, after `board_init`, and the host starts on that line |
+| Pin settings | `board_init` gave PD9 no pull-up.  It now gives PD8 and PD9 the settings of ST's example `USART_Communication_Rx_IT` for the board: high speed, push-pull, pull-up, and alternate function 7.  It clears `USART_CR2.STOP` as `LL_USART_ConfigCharacter` does, so the character format depends on no reset value other than that of `USART_CR3`, which the example states |
+| Documents | The step's entry said four premises and listed three, credited the solder bridges SB5 and SB6 to board pages that do not name them (Zephyr's page names USART3 on PD8 and PD9, and the address of NuttX's page now returns 404), and said that ST maintains its GitHub files for its own tools.  The NUCLEO-F767ZI section said that every fact came from its listed sources, which give neither the divider's formula nor the reset values, and it counted one warning of `RCC_DCKCFGR2` where Renode logs two |
+
+### Sources
+
+ST's example for the board, [`USART_Communication_Rx_IT`](https://github.com/STMicroelectronics/STM32CubeF7/tree/master/Projects/STM32F767ZI-Nucleo/Examples_LL/USART/USART_Communication_Rx_IT), configures USART3 on PD8 and PD9 when `USE_VCP_CONNECTION` is 1, and its readme states that the default configuration of solder bridges allows the virtual COM port.  Its `main.c` sets each pin to the alternate function mode, alternate function 7, high speed, push-pull, and pull-up, and states the reset values of no hardware flow control and 16 times oversampling.  The HAL example `UART_Printf` also sets pull-ups on both pins.  ST's [LL headers](https://github.com/STMicroelectronics/stm32f7xx-hal-driver) give `LL_GPIO_MODE_ALTERNATE`, `LL_GPIO_SPEED_FREQ_HIGH`, `LL_GPIO_OUTPUT_PUSHPULL`, `LL_GPIO_PULL_UP`, the `LL_USART_` encodings of the character format, and `__LL_USART_DIV_SAMPLING16(f, b) = (f + b / 2) / b`, which gives 3,333 for 16 MHz and 4,800 baud, 4,800.5 baud.  `stm32f7xx_hal_flash_ex.h` defines `OB_BOOTADDR_AXIM_FLASH` as `0x2000`, booting from `0x08000000`.  ST's site refused a scripted request for RM0410 again, with an HTTP/2 stream error, so the reference manual stays unconsulted.
+
+### Plan
+
+- [x] `board.S`: 4,800 baud, the example's pin settings, `STOP` cleared.
+- [x] `uart_echo.py`: two unanswered bytes, `O_NONBLOCK`, and the read-back; `uart_gateway.py` at 4,800 baud; `uart_report.py`.
+- [x] `usart3.sh`: the status of `gateway-run`, the refusal, the absolute `OUT`, the hook at `main`, and `guard` and `ldrd`.
+- [x] Documents.
+- [x] Renode: the echo, the gateway, `guard`, and the echo with `NO_UART`.
+- [ ] On a board: `guard`, `ldrd`, the echo, and the gateway.
+
+### Results
+
+The images built under the ARMv7-M tree from the C texts of the last full build, and `usart3.sh build` refused `build/baremetal/usart3` as `DIR`.  The echo takes 21,288 bytes of flash and the gateway 80,480, with stack bounds of 264 and 6,720 bytes, and `guard` and `ldrd` take 21,296 each.  The gateway's image keeps `lx_mem` at `0x20000308` and the stack's end at `0x2001b000`.
+
+In Renode, in a scope capped at 6 GiB and a limit of 15 minutes, the echo passed in 48.8 s with at most two bytes unanswered.  The gateway's program ran 1,440 ticks, 94 commands and 4 fallback requests, in 43.9 s, with output records equal to native Lean's.  `guard` reported `R:fault 4 cfsr 0x00000082 hfsr 0x00000000 mmfar 0x20012ffc`, a MemManage fault at the word below `__stack_bottom`, `0x20013000`.  The echo built with `NO_UART`, under a relative `OUT`, reached `main` and got no reply within 30 s.  `ldrd` reached `main` in Renode with no fault, as a hook at `main` showed, so Renode's Cortex-M7 takes an unaligned `LDRD`, and `emulate ldrd` now refuses the image.
+
+The first runs of the gateway in this entry failed in `native-bare gateway-run` with "Failed to connect to bus: Connection refused", and the new status check reported it.  The out-of-memory kills during the Rocq evaluator's run under the armv7m tree had killed this account's `systemd --user` and `dbus-daemon`, which `tools/leanrun` needs for its scope.  After the user manager restarted, the gateway passed.  The first run of the echo with `NO_UART` used a relative `OUT`, and Renode, which resolves `@` paths against its own directories, logged no loading of the image and never reached `main`.
+
+### On a board
+
+With a NUCLEO-F767ZI attached to a host that has the ARMv7-M tree, run `usart3.sh build` and then, for each of `guard`, `ldrd`, `echo`, and `gateway` in turn, write `NAME.bin` to flash at `0x08000000` and run `usart3.sh run NAME /dev/ttyACM0`.  For `guard` and `ldrd`, reset the board after the script starts.  For the echo and the gateway, reset it before.  The gateway's simulated day takes about ten minutes at 4,800 baud.  If nothing answers, the causes to check first are `BOOT_ADD0`, the solder bridges of the virtual COM port, and the baud rate, which a terminal program at 4,800 baud and the ST-LINK's debugger, reading USART3's registers and `SCB_CFSR`, tell apart.
