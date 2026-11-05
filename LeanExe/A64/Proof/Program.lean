@@ -227,11 +227,33 @@ theorem above_frame {sp : UInt64} {fs k : Nat} (hfs : fs < 4096) (hk : k < 8) :
   simp only [Nat.reducePow] at *
   omega
 
+theorem stack_main {sp : UInt64} {j : Nat} (hj : j < 16) :
+    sp - 16 + UInt64.ofNat j = sp - 4112 + UInt64.ofNat (4096 + j) := by
+  apply UInt64.toNat_inj.mp
+  simp only [UInt64.toNat_add, UInt64.toNat_sub, UInt64.toNat_ofNat']
+  have := sp.toNat_lt
+  have h16 : (16 : UInt64).toNat = 16 := rfl
+  have h4112 : (4112 : UInt64).toNat = 4112 := rfl
+  rw [h16, h4112]
+  simp only [Nat.reducePow] at *
+  omega
+
+theorem stack_fn {sp : UInt64} {fs j : Nat} (hfs : fs < 4096) (hj : j < fs) :
+    sp - 16 - UInt64.ofNat fs + UInt64.ofNat j = sp - 4112 + UInt64.ofNat (4096 - fs + j) := by
+  apply UInt64.toNat_inj.mp
+  simp only [UInt64.toNat_add, UInt64.toNat_sub, UInt64.toNat_ofNat']
+  have := sp.toNat_lt
+  have h16 : (16 : UInt64).toNat = 16 := rfl
+  have h4112 : (4112 : UInt64).toNat = 4112 := rfl
+  rw [h16, h4112]
+  simp only [Nat.reducePow] at *
+  omega
+
 /-- The run of the program that runs function `k` of `m`, which imports nothing, on the words
 `args`, from `main` at `after base 1`: when Talos's run of the function on the arguments returns
 the word `y`, the machine returns to the address in X30 with SP as it was, X0 = 0, and the eight
-bytes of `y`, the lowest first, appended to the UART's output.  The 16 bytes below SP and the
-function's frame below them must be Normal memory. -/
+bytes of `y`, the lowest first, appended to the UART's output.  The 4112 bytes below SP, the 16
+of `main`'s frame and at most 4096 of the function's, must be Normal memory. -/
 theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64} {base : UInt64}
     {is : List Instr} (hg : genProgram m k args P.uart base = .ok is)
     (hcode : CodeAt code (after base 1) is) (hm : m.imports = []) (hk : m.funcs[k]? = some f)
@@ -239,16 +261,22 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64} {
     {F : Nat} {α : Type} {st st' : Store α} {y : UInt64}
     (hrun : Wasm.run F m k st (args.map .i64).reverse = .Success [.i64 y] st')
     (ms : State) (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0)
-    (hmain : ∀ j < 16, P.normal (ms.sp - 16 + UInt64.ofNat j) = true)
-    (hfn : ∀ j < frameSize (f.params.length + f.locals.length),
-      P.normal (ms.sp - 16 - UInt64.ofNat (frameSize (f.params.length + f.locals.length)) +
-        UInt64.ofNat j) = true) :
+    (hstack : ∀ j < 4112, P.normal (ms.sp - 4112 + UInt64.ofNat j) = true) :
     ∃ ms', Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧
       ms'.out = ms.out ++ (List.range 8).map fun j => (y >>> UInt64.ofNat (8 * j)).toUInt8 := by
   obtain ⟨f', main, fn, stubs, hk', hmg, hfg, rfl⟩ := gen_program hg
   rw [hk] at hk'
   cases hk'
   obtain ⟨h8, g, hbl, hmeq⟩ := gen_main hmg
+  obtain ⟨-, -, hff, -⟩ := gen_function hfg
+  have hmain : ∀ j < 16, P.normal (ms.sp - 16 + UInt64.ofNat j) = true := fun j hj => by
+    rw [stack_main hj]
+    exact hstack _ (by omega)
+  have hfn : ∀ j < frameSize (f.params.length + f.locals.length),
+      P.normal (ms.sp - 16 - UInt64.ofNat (frameSize (f.params.length + f.locals.length)) +
+        UInt64.ofNat j) = true := fun j hj => by
+    rw [stack_fn hff hj]
+    exact hstack _ (by omega)
   have hc := (CodeAt.append (code := code)).mp hcode
   have hc2 := CodeAt.split code hc.1 (genMain_length hmg)
   have cfn := hc2.2
@@ -345,8 +373,7 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64} {
     run_epilogue P code (n := 0) (fs := 16) (by decide) (by decide) s6.2 p8' al8 mp8
   refine ⟨t9, r2.trans (r3.trans (reach_exec P code (by rw [p3]; exact cbl) e4
     (r5.trans (r6.trans (r7.trans (r8.trans r9)))))), ?_, ?_, ?_, ?_⟩
-  · obtain ⟨-, -, hff, -⟩ := gen_function hfg
-    have hab : ∀ k < 8, ¬ slotAddr (ms.sp - 16) 0 + UInt64.ofNat k -
+  · have hab : ∀ k < 8, ¬ slotAddr (ms.sp - 16) 0 + UInt64.ofNat k -
         (t4.sp - UInt64.ofNat (frameSize (f.params.length + f.locals.length))) <
         UInt64.ofNat (frameSize (f.params.length + f.locals.length)) := fun k hk => by
       rw [sp4]

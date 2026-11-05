@@ -250,6 +250,14 @@ theorem run_epilogue {n fs : Nat} (hf : fs < 4096) (hn : n < 4096) {a : UInt64} 
 
 /-! ## The function -/
 
+/-- A numeric value type, whose zero is the word 0. -/
+def numeric : ValueType → Bool
+  | .i32 | .i64 | .f32 | .f64 => true
+  | _ => false
+
+theorem ValRel_zero {t : ValueType} (h : numeric t = true) : ValRel t.zero 0 := by
+  cases t <;> simp [numeric] at h <;> rfl
+
 /-- The machine returned from the function that it entered at `ms`: at the address that X30 held,
 with SP and the UART's output as they were, the memory outside the frame of `fs` bytes below SP
 unchanged, and the result, the top of `vs` when the function has one, in X0. -/

@@ -1,4 +1,5 @@
 import TestSupport.A64.Programs
+import TestSupport.A64.Gcd
 
 /-!
 The command `a64-programs emit DIR` of the AArch64 back end's bare-metal programs.  For each
