@@ -41938,3 +41938,37 @@ The constructs rest on `genInstr_size` and `genList_size`, which prove that the 
 `TestSupport.A64.Gcd.program` (`tests/TestSupport/A64/Gcd.lean`) is the whole-program theorem.  For every platform, code map, and base at which `genProgram` gives the instructions `is` of GCD's program on 1071 and 462 and the code map holds `is` from `main`, a run from `main` with SP a multiple of 16 and the 4112 bytes below SP Normal memory reaches the address in X30 with SP restored, X0 equal to 0, and `encodeWord (gcd 1071 462)` appended to the UART's output.  The proof takes Talos's run of the function from `loopCompiled.gcd.implements` and `loopCompiled.initial`.  `a64-programs` imports the theorem, so `tests/baremetal/a64-programs.sh` checks it with every run.  Every theorem of the proof depends on `propext`, `Classical.choice`, and `Quot.sound` only.
 
 The theorem holds of the model, and the co-simulation compares the model with QEMU and with the processor.  Its premise that `genProgram` succeeds holds of every base at which the branch offsets fit, and the image writer chooses the base.  `InstrSim` and `function_sim` cover traps, which reach their stubs, while the whole-program theorem covers GCD's run alone, which `loopCompiled.gcd.implements` proves to return without a trap.
+
+## 2026-11-05: Native AArch64 back end: the plan for coverage
+
+The back end's target is the subset of Wasm that the C path accepts, `InSubset` of `LeanExe/Native/Subset.lean`, so that one definition of the subset serves both paths.  Each increment ends, as the first did, with the bytes of a program from the C path's bare-metal test and a whole-program theorem for it, in the order of the forms that those programs need.  A script on edgexpert-18ff listed the forms of each module's functions.  Every module but GCD's loop holds the allocator's runtime, which uses calls, globals, and linear memory, so a program needs those forms when its entry reaches the runtime.
+
+| Program | Functions | Most parameters | Most locals | Forms beyond increment 1 |
+|---|---|---|---|---|
+| GCD by recursion, `recCompiled` | 4 | 3 | 18 | `call`, globals, `load64`, `store64`, `memorySize`, `memoryGrow`, i64 `add`, `sub`, `mul`, `and`, `shrU`, `ltU`, `geU`, `ne`, `wrapI64`, i32 `const` and `eq` |
+| CRC-32 | 6 | 4 | 42 | also `xorI64`, `shlI64`, `leUI64` |
+| SHA-256 | 12 | 25 | 255 | also `orI64` |
+| Fold | 15 | 2 | 63 | also `f64Add`, `f64Const`, `f64ReinterpretI64` |
+| Euler | 67 | 22 | 204 | also the rest of the f64 forms |
+
+The user approved the plan and the recommendations of its decisions.  A new instruction form of the model needs its semantics in `exec`, its encoding with `decode_encode`, cases in the co-simulation under TCG and KVM, and a check against GNU `as`.  The forms expected for increments 2 and 3 are `ADD`, `SUB`, `AND`, `ORR`, and `EOR` of registers, `MADD`, `LSLV` and `LSRV`, `B.cond`, the 32-bit `ORR` for `wrapI64`, and `LDR` and `STR` with a base other than `SP`.
+
+| Increment | Program | Work | Decision and recommendation |
+|---|---|---|---|
+| 1b | GCD's loop | the image writer, with a theorem that the image's bytes hold the encoded words at their addresses, which discharges `CodeAt` | the mapping of the code: read-only |
+| 2 | GCD by recursion | the functions that the entry reaches, `call`, globals in a fixed area of RAM, the integer forms, the proof's premise on callees and induction on fuel as in the C proof | the convention of calls: the caller spills the operand registers below the arguments to its frame, passes arguments in X0 to X7, and reloads after `BL` |
+| 3 | CRC-32 | linear memory with explicit bounds checks to trap stub 2, a relation of Talos's bytes to a region of RAM, the initial store from the image, `MemFrame` with stores into the region | the region's place and whether a reserved register holds its base |
+| 4 | SHA-256 | more than 8 parameters, frames of up to 255 locals, an array as `main`'s result, spills beyond 26 operand registers if a program needs them | parameters beyond 8 on the stack, and spills to the frame |
+| 5 | Fold, then Euler | floating-point registers and the f64 forms in the model, with semantics that match Talos's | NaNs, after reading Talos's f64 semantics |
+| 6 | the rest of `InSubset` | f32, `load8U`, `store8`, and the remaining forms, for the records and the controller's programs | none yet |
+
+The work across increments is a check of the subset that both paths share, a command for the A64 path like `bare_program` so that each program's theorem is one line, and the track of decision 3 with Sail, which needs a place to install it.  `LeanExe/A64/Proof/Function.lean` declares `numeric`, a copy of `LeanExe.Native.numeric`, which moves to a module that both paths import.
+
+- [ ] Increment 1b: the image writer.
+- [ ] Increment 2: GCD by recursion.
+- [ ] Increment 3: CRC-32.
+- [ ] Increment 4: SHA-256.
+- [ ] Increment 5: Fold and Euler.
+- [ ] Increment 6: the rest of `InSubset`.
+- [ ] One definition of `numeric` and of the subset.
+- [ ] A command for each program's theorem.
