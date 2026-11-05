@@ -338,4 +338,168 @@ theorem sim_const (F : Nat) (c : UInt32) : InstrSim P code F (.const c) :=
   sim_const_of P code (w := c.toUInt64) (v := .i32 c) (.inr ⟨c, rfl, rfl⟩) rfl
     (fun _ _ _ _ _ => by simp only [execOne.eq_def])
 
+/-! ## Comparisons -/
+
+theorem sub_eq_zero_iff' (x y : UInt64) : x - y = 0 ↔ x = y := by
+  constructor
+  · intro h
+    have := congrArg (· + y) h
+    simpa using this
+  · intro h; subst h; simp
+
+/-- `SUBS XZR` of `x` and `y`, which `he` executes, followed by `CSINC r, XZR, XZR, NE`, sets
+register `r`, below 31, to 1 when `x = y` and to 0 otherwise. -/
+theorem run_cset {s : State} {a : UInt64} {i0 : Instr} {r : Fin 32} {x y : UInt64}
+    (hr : r.val < 31) (hc0 : code a = some (encode i0))
+    (hc1 : code (after a 1) = some (encode (.csinc r 31 31 1))) (hpc : s.pc = a)
+    (he : LeanExe.A64.exec P i0 s = some { s.subs 31 x y with pc := s.pc + 4 }) :
+    ∃ s', Reach P code s s' ∧ s'.pc = after a 2 ∧ s'.x r = (if x = y then 1 else 0) ∧
+      (∀ q, q ≠ r → s'.x q = s.x q) ∧ s'.sp = s.sp ∧ s'.mem = s.mem ∧ s'.out = s.out := by
+  let s1 : State := { s.subs 31 x y with pc := s.pc + 4 }
+  have hx1 : ∀ q, s1.x q = s.x q := by
+    intro q
+    show (s.setX 31 (x - y)).x q = s.x q
+    unfold State.setX; rw [ite_eq_right (by decide)]
+  have hz : s1.zFlag = (x - y == 0) := rfl
+  have p1 : s1.pc = after a 1 := by simp [s1, hpc, after]
+  refine ⟨{ s1.setX r (if s1.condHolds 1 then s1.x 31 else s1.x 31 + 1) with pc := s1.pc + 4 },
+    reach_exec P code (by rw [hpc]; exact hc0) he
+      (reach_exec P code (by rw [p1]; exact hc1) rfl (.refl _)), ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · show s1.pc + 4 = after a 2
+    rw [p1]; exact (after_succ a 1).symm
+  · rw [State.x_withPc, State.x_setX_same hr]
+    have h31 : s1.x 31 = 0 := by unfold State.x; rw [dite_eq_right (by decide)]
+    have hc : s1.condHolds 1 = !(x - y == 0) := by
+      unfold State.condHolds; rw [hz]; rfl
+    rw [h31, hc]
+    by_cases hxy : x = y
+    · subst hxy; simp
+    · have : ¬ x - y = 0 := fun e => hxy ((sub_eq_zero_iff' x y).mp e)
+      simp [hxy, this]
+  · intro q hq
+    rw [State.x_withPc, State.x_setX_ne (Ne.symm hq), hx1]
+  · show (s1.setX r _).sp = s.sp
+    rw [State.setX_sp]; exact State.setX_sp
+  · show (s1.setX r _).mem = s.mem
+    rw [State.setX_mem]; exact State.setX_mem
+  · show (s1.setX r _).out = s.out
+    rw [State.setX_out]; exact State.setX_out
+
+theorem gen_cmp {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Instr}
+    {fin : Option Nat} {inst : Instruction} (hinst : inst = .eqI64 ∨ inst = .eq)
+    (hg : genInstr E ctl h a inst = .ok (is, fin)) :
+    curBase ctl + 2 ≤ h ∧ h - 1 < 26 ∧
+      is = [.subsReg 31 (regOf (h - 2)) (regOf (h - 1)), .csinc (regOf (h - 2)) 31 31 1] ∧
+      fin = some (h - 1) := by
+  by_cases hc : h < curBase ctl + 2
+  · rcases hinst with rfl | rfl <;>
+      simp [genInstr, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+  by_cases hlt : h - 1 < 26
+  · rcases hinst with rfl | rfl <;>
+      simp [genInstr, hc, opReg_ok hlt, opReg_ok (show h - 2 < 26 by omega), bind, Except.bind,
+        pure, Except.pure] at hg <;>
+      exact ⟨by omega, hlt, hg.1.symm, hg.2.symm⟩
+  · obtain ⟨e, he⟩ := opReg_error hlt
+    by_cases hlt2 : h - 2 < 26
+    · rcases hinst with rfl | rfl <;>
+        simp [genInstr, hc, he, opReg_ok hlt2, bind, Except.bind] at hg
+    · obtain ⟨e2, he2⟩ := opReg_error hlt2
+      rcases hinst with rfl | rfl <;> simp [genInstr, hc, he2, bind, Except.bind] at hg
+
+theorem gen_eqz {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Instr}
+    {fin : Option Nat} {inst : Instruction} (hinst : inst = .eqzI64 ∨ inst = .eqz)
+    (hg : genInstr E ctl h a inst = .ok (is, fin)) :
+    curBase ctl + 1 ≤ h ∧ h - 1 < 26 ∧
+      is = [.subsImm 31 (regOf (h - 1)) 0, .csinc (regOf (h - 1)) 31 31 1] ∧ fin = some h := by
+  by_cases hc : h < curBase ctl + 1
+  · rcases hinst with rfl | rfl <;>
+      simp [genInstr, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+  by_cases hlt : h - 1 < 26
+  · rcases hinst with rfl | rfl <;>
+      simp [genInstr, hc, opReg_ok hlt, bind, Except.bind, pure, Except.pure] at hg <;>
+      exact ⟨by omega, hlt, hg.1.symm, hg.2.symm⟩
+  · obtain ⟨e, he⟩ := opReg_error hlt
+    rcases hinst with rfl | rfl <;> simp [genInstr, hc, he, bind, Except.bind] at hg
+
+/-- The outcome of a comparison whose result `c` replaces the operands above `vs` and lies,
+zero-extended, in the register of height `vs.length`. -/
+theorem cmp_outcome {E : Env} {ctl : List Ctl} {a : UInt64} {α : Type} {st : Store α}
+    {sl : Locals} {ms ms' : State} {vs : List Value} (c : UInt32)
+    (hinv : Inv P E.locals sl ms) (hb : curBase ctl ≤ vs.length)
+    (hlt : vs.length < 26) (hstack : StackRel ms vs) (hr : Reach P code ms ms')
+    (hpc : ms'.pc = after a 2) (hx : ms'.x (regOf vs.length) = c.toUInt64)
+    (hkeep : ∀ q, q ≠ regOf vs.length → ms'.x q = ms.x q) (hsp : ms'.sp = ms.sp)
+    (hmem : ms'.mem = ms.mem) (hout : ms'.out = ms.out) :
+    Outcome P code E ctl (some (vs.length + 1)) (after a 2)
+      (.Fallthrough st { sl with values := .i32 c :: vs }) ms := by
+  have hk : ∀ j < vs.length, ms'.x (regOf j) = ms.x (regOf j) := fun j hj =>
+    hkeep _ (fun e => absurd (regOf_inj j (by omega) vs.length hlt e) (by omega))
+  refine ⟨vs.length + 1, rfl, ms', hr, hpc, hsp, hout, fun b _ => by rw [hmem], ?_, by simp,
+    fun j hj => hk j (by omega)⟩
+  refine ⟨StackRel.push hstack hlt (by rw [hx]; rfl) hk, hinv.locals.congr hmem hsp, hinv.count,
+    by rw [hsp]; exact hinv.aligned, by rw [hsp]; exact hinv.mapped, hinv.bound⟩
+
+theorem cset_val (x y : UInt64) (c : Prop) [Decidable c] (hc : x = y ↔ c) :
+    (if x = y then (1 : UInt64) else 0) = (if c then (1 : UInt32) else 0).toUInt64 := by
+  by_cases h : c
+  · rw [ite_eq_left (hc.mpr h), ite_eq_left h]; rfl
+  · rw [ite_eq_right (fun e => h (hc.mp e)), ite_eq_right h]; rfl
+
+theorem sim_eqI64 (F : Nat) : InstrSim P code F .eqI64 := by
+  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc
+  obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_cmp (.inl rfl) hgen
+  cases F with
+  | zero => simp only [execOne.eq_def, Outcome]
+  | succ f =>
+      simp only [execOne.eq_def]
+      split
+      next y x vs hvs =>
+        have hvl : vs.length = h - 2 := by rw [hvs] at hh; simp at hh; omega
+        have hst := hinv.stack
+        rw [hvs] at hst
+        have hy : ms.x (regOf (h - 1)) = y := by
+          have := hst.top; rw [show (Value.i64 x :: vs).length = h - 1 by simp; omega] at this
+          exact this
+        have hx : ms.x (regOf (h - 2)) = x := by
+          have := hst.pop.top; rw [hvl] at this; exact this
+        obtain ⟨ms', hr, hp, hres, hkeep, hsp, hmem, hout⟩ :=
+          run_cset P code (regOf_lt_31 (h - 2) (by omega))
+            (by simpa [after_zero] using hcode 0 (by simp))
+            (by simpa using hcode 1 (by simp)) hpc rfl
+        rw [show h - 1 = vs.length + 1 by omega]
+        apply cmp_outcome P code _ hinv (vs := vs) (by omega) (by omega)
+          hst.pop.pop hr hp _ _ hsp hmem hout
+        · rw [hvl, hres, hx, hy]; exact cset_val x y (x = y) Iff.rfl
+        · rw [hvl]; exact hkeep
+      next => trivial
+
+theorem sim_eq (F : Nat) : InstrSim P code F .eq := by
+  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc
+  obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_cmp (.inr rfl) hgen
+  cases F with
+  | zero => simp only [execOne.eq_def, Outcome]
+  | succ f =>
+      simp only [execOne.eq_def]
+      split
+      next y x vs hvs =>
+        have hvl : vs.length = h - 2 := by rw [hvs] at hh; simp at hh; omega
+        have hst := hinv.stack
+        rw [hvs] at hst
+        have hy : ms.x (regOf (h - 1)) = y.toUInt64 := by
+          have := hst.top; rw [show (Value.i32 x :: vs).length = h - 1 by simp; omega] at this
+          exact this
+        have hx : ms.x (regOf (h - 2)) = x.toUInt64 := by
+          have := hst.pop.top; rw [hvl] at this; exact this
+        obtain ⟨ms', hr, hp, hres, hkeep, hsp, hmem, hout⟩ :=
+          run_cset P code (regOf_lt_31 (h - 2) (by omega))
+            (by simpa [after_zero] using hcode 0 (by simp))
+            (by simpa using hcode 1 (by simp)) hpc rfl
+        rw [show h - 1 = vs.length + 1 by omega]
+        apply cmp_outcome P code _ hinv (vs := vs) (by omega) (by omega)
+          hst.pop.pop hr hp _ _ hsp hmem hout
+        · rw [hvl, hres, hx, hy]
+          exact cset_val _ _ (x = y) ⟨fun e => UInt32.toUInt64_inj.mp e, fun e => by rw [e]⟩
+        · rw [hvl]; exact hkeep
+      next => trivial
+
 end LeanExe.A64
