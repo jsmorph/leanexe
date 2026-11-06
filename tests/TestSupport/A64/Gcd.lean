@@ -22,14 +22,14 @@ namespace TestSupport.A64.Gcd
 open LeanExe.A64 TestSupport.Native.Gcd Wasm
 
 theorem program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List Instr}
-    (hg : genProgram loopCompiled.module 2 [1071, 462] P.uart base room area cap .word = .ok is)
+    (hg : genProgram loopCompiled.module 2 [1071, 462] P.uart base room cap .word = .ok is)
     (ms : State)
     (himage : ∀ j (hj : j < (imageBytes is).length),
       ms.mem (after base 1 + UInt64.ofNat j) = (imageBytes is)[j])
     (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0)
     (hroom : 4096 ≤ room.toNat) (htop : ms.sp.toNat ≤ 2 ^ 63)
     (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
-    (harea : ∀ j < areaSize cap,
+    (h17 : ms.x 17 = area) (harea : ∀ j < areaSize cap,
       ms.mem (area + UInt64.ofNat j) = areaByte loopCompiled.module.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
     (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
@@ -62,7 +62,7 @@ theorem program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List 
         rw [List.reverse_eq_cons_iff, List.reverse_nil, List.nil_append] at hv
         subst hv
         rcases ProgramOutcome.success P _ (program_sim P _ hg (codeAt_fetchFrom hn himage) rfl hk
-          hpar.symm N ms hpc hal hroom htop hstack harea hamap habove) hrun with
+          hpar.symm N ms hpc hal hroom htop hstack h17 harea hamap habove) hrun with
           ⟨hne, -⟩ | ⟨w, ms', hw, h⟩
         · exact absurd hct hne
         · simp only [ValRel] at hw
@@ -76,14 +76,14 @@ machine writes the eight bytes of `gcd 1071 462` to the UART from `main` and ret
 address in X30, or it reaches the exit word at `base` with the status 1 of the trap of the call
 depth's guard or the status 4 of an overflow of the stack, and the UART's output as it was. -/
 theorem rec_program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List Instr}
-    (hg : genProgram recCompiled.module 3 [1071, 462] P.uart base room area cap .word = .ok is)
+    (hg : genProgram recCompiled.module 3 [1071, 462] P.uart base room cap .word = .ok is)
     (ms : State)
     (himage : ∀ j (hj : j < (imageBytes is).length),
       ms.mem (after base 1 + UInt64.ofNat j) = (imageBytes is)[j])
     (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0)
     (hroom : 4096 ≤ room.toNat) (htop : ms.sp.toNat ≤ 2 ^ 63)
     (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
-    (harea : ∀ j < areaSize cap,
+    (h17 : ms.x 17 = area) (harea : ∀ j < areaSize cap,
       ms.mem (area + UInt64.ofNat j) = areaByte recCompiled.module.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
     (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
@@ -113,7 +113,7 @@ theorem rec_program (P : Platform) (base room area : UInt64) (cap : Nat) {is : L
         (LeanExe.Native.heapAt_nativeStore recCompiled.initial.1 cap) trivial rfl
         LeanExe.Pipeline.Separate.nil (show cap ≤ 65535 by omega)
       have hc := codeAt_fetchFrom hn himage
-      have hsim := program_sim P _ hg hc rfl hk hpar.symm N ms hpc hal hroom htop hstack harea
+      have hsim := program_sim P _ hg hc rfl hk hpar.symm N ms hpc hal hroom htop hstack h17 harea
         hamap habove
       rcases hN N (Nat.le_refl _) with ⟨vs, st', hrun, heap', -, hown, -⟩ | ⟨st', hrun⟩
       · have hv : vs.reverse = [.i64 (TestSupport.Native.Gcd.gcd 1071 462)] := hown

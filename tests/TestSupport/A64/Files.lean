@@ -38,7 +38,7 @@ theorem gcd (P : Platform) (hu : P.uart = uart) (ms : State)
     (himage : ∀ j < gcdSize, ms.mem (after base 1 + UInt64.ofNat j) = byteAt gcdBytes j)
     (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0) (htop : ms.sp.toNat ≤ 2 ^ 63)
     (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
-    (harea : ∀ j < areaSize cap, ms.mem (rwStart + UInt64.ofNat j) =
+    (h17 : ms.x 17 = rwStart) (harea : ∀ j < areaSize cap, ms.mem (rwStart + UInt64.ofNat j) =
       areaByte TestSupport.Native.Gcd.loopCompiled.module.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (rwStart + UInt64.ofNat j) = true)
     (habove : rwStart.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
@@ -46,17 +46,17 @@ theorem gcd (P : Platform) (hu : P.uart = uart) (ms : State)
       ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧
       ms'.out = ms.out ++ LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462) := by
   obtain ⟨is, hl, h⟩ := of_file
-    (g := genProgram TestSupport.Native.Gcd.loopCompiled.module 2 [1071, 462] uart base room
-      rwStart cap .word) (by decide +kernel) himage fun is hg hi =>
+    (g := genProgram TestSupport.Native.Gcd.loopCompiled.module 2 [1071, 462] uart base room cap
+      .word) (by decide +kernel) himage fun is hg hi =>
     Gcd.program P base room rwStart cap (by rw [hu]; exact hg) ms hi hpc hal (by decide) htop
-      hstack harea hamap habove
+      hstack h17 harea hamap habove
   rwa [show gcdSize / 4 = is.length by omega]
 
 theorem gcdrec (P : Platform) (hu : P.uart = uart) (ms : State)
     (himage : ∀ j < gcdrecSize, ms.mem (after base 1 + UInt64.ofNat j) = byteAt gcdrecBytes j)
     (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0) (htop : ms.sp.toNat ≤ 2 ^ 63)
     (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
-    (harea : ∀ j < areaSize cap, ms.mem (rwStart + UInt64.ofNat j) =
+    (h17 : ms.x 17 = rwStart) (harea : ∀ j < areaSize cap, ms.mem (rwStart + UInt64.ofNat j) =
       areaByte TestSupport.Native.Gcd.recCompiled.module.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (rwStart + UInt64.ofNat j) = true)
     (habove : rwStart.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
@@ -66,17 +66,17 @@ theorem gcdrec (P : Platform) (hu : P.uart = uart) (ms : State)
     ∃ ms', Reach P (fetchFrom ms.mem (after base 1) (gcdrecSize / 4)) ms ms' ∧ ms'.pc = base ∧
       (ms'.x 0 = 1 ∨ ms'.x 0 = 4) ∧ ms'.out = ms.out := by
   obtain ⟨is, hl, h⟩ := of_file
-    (g := genProgram TestSupport.Native.Gcd.recCompiled.module 3 [1071, 462] uart base room
-      rwStart cap .word) (by decide +kernel) himage fun is hg hi =>
+    (g := genProgram TestSupport.Native.Gcd.recCompiled.module 3 [1071, 462] uart base room cap
+      .word) (by decide +kernel) himage fun is hg hi =>
     Gcd.rec_program P base room rwStart cap (by rw [hu]; exact hg) ms hi hpc hal (by decide) htop
-      hstack harea hamap habove
+      hstack h17 harea hamap habove
   rwa [show gcdrecSize / 4 = is.length by omega]
 
 theorem crc32 (P : Platform) (hu : P.uart = uart) (ms : State)
     (himage : ∀ j < crcSize, ms.mem (after base 1 + UInt64.ofNat j) = byteAt crcBytes j)
     (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0) (htop : ms.sp.toNat ≤ 2 ^ 63)
     (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
-    (harea : ∀ j < areaSize cap, ms.mem (rwStart + UInt64.ofNat j) =
+    (h17 : ms.x 17 = rwStart) (harea : ∀ j < areaSize cap, ms.mem (rwStart + UInt64.ofNat j) =
       areaByte TestSupport.Bare.crcCompiled.module.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (rwStart + UInt64.ofNat j) = true)
     (habove : rwStart.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
@@ -87,16 +87,16 @@ theorem crc32 (P : Platform) (hu : P.uart = uart) (ms : State)
       (ms'.x 0 = 1 ∨ ms'.x 0 = 4) ∧ ms'.out = ms.out := by
   obtain ⟨is, hl, h⟩ := of_file
     (g := genProgram TestSupport.Bare.crcCompiled.module 5 [0x3837363534333231, 0x39] uart base
-      room rwStart cap .word) (by decide +kernel) himage fun is hg hi =>
+      room cap .word) (by decide +kernel) himage fun is hg hi =>
     Crc.program P base room rwStart cap (by rw [hu]; exact hg) ms hi hpc hal (by decide) htop
-      hstack harea hamap habove
+      hstack h17 harea hamap habove
   rwa [show crcSize / 4 = is.length by omega]
 
 theorem sha256 (P : Platform) (hu : P.uart = uart) (ms : State)
     (himage : ∀ j < shaSize, ms.mem (after base 1 + UInt64.ofNat j) = byteAt shaBytes j)
     (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0) (htop : ms.sp.toNat ≤ 2 ^ 63)
     (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
-    (harea : ∀ j < areaSize cap, ms.mem (rwStart + UInt64.ofNat j) =
+    (h17 : ms.x 17 = rwStart) (harea : ∀ j < areaSize cap, ms.mem (rwStart + UInt64.ofNat j) =
       areaByte TestSupport.Bare.shaCompiled.module.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (rwStart + UInt64.ofNat j) = true)
     (habove : rwStart.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
@@ -106,17 +106,17 @@ theorem sha256 (P : Platform) (hu : P.uart = uart) (ms : State)
     ∃ ms', Reach P (fetchFrom ms.mem (after base 1) (shaSize / 4)) ms ms' ∧ ms'.pc = base ∧
       (ms'.x 0 = 1 ∨ ms'.x 0 = 4) ∧ ms'.out = ms.out := by
   obtain ⟨is, hl, h⟩ := of_file
-    (g := genProgram TestSupport.Bare.shaCompiled.module 11 [0x636261] uart base room rwStart cap
+    (g := genProgram TestSupport.Bare.shaCompiled.module 11 [0x636261] uart base room cap
       .array) (by decide +kernel) himage fun is hg hi =>
     Sha.program P base room rwStart cap (by rw [hu]; exact hg) ms hi hpc hal (by decide) htop
-      hstack harea hamap habove
+      hstack h17 harea hamap habove
   rwa [show shaSize / 4 = is.length by omega]
 
 theorem depth (P : Platform) (hu : P.uart = uart) (ms : State)
     (himage : ∀ j < depthSize, ms.mem (after base 1 + UInt64.ofNat j) = byteAt depthBytes j)
     (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0) (htop : ms.sp.toNat ≤ 2 ^ 63)
     (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
-    (harea : ∀ j < areaSize cap, ms.mem (rwStart + UInt64.ofNat j) =
+    (h17 : ms.x 17 = rwStart) (harea : ∀ j < areaSize cap, ms.mem (rwStart + UInt64.ofNat j) =
       areaByte Verified.Examples.Fold.compiled.module.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (rwStart + UInt64.ofNat j) = true)
     (habove : rwStart.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
@@ -126,10 +126,10 @@ theorem depth (P : Platform) (hu : P.uart = uart) (ms : State)
     ∃ ms', Reach P (fetchFrom ms.mem (after base 1) (depthSize / 4)) ms ms' ∧ ms'.pc = base ∧
       (ms'.x 0 = 1 ∨ ms'.x 0 = 4) ∧ ms'.out = ms.out := by
   obtain ⟨is, hl, h⟩ := of_file
-    (g := genProgram Verified.Examples.Fold.compiled.module 13 [1000] uart base room rwStart cap
+    (g := genProgram Verified.Examples.Fold.compiled.module 13 [1000] uart base room cap
       .word) (by decide +kernel) himage fun is hg hi =>
     Fold.program P base room rwStart cap (by rw [hu]; exact hg) ms hi hpc hal (by decide) htop
-      hstack harea hamap habove
+      hstack h17 harea hamap habove
   rwa [show depthSize / 4 = is.length by omega]
 
 end TestSupport.A64.Files

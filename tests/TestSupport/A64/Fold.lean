@@ -18,14 +18,14 @@ namespace TestSupport.A64.Fold
 open LeanExe.A64 Verified.Examples.Fold Wasm
 
 theorem program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List Instr}
-    (hg : genProgram compiled.module 13 [1000] P.uart base room area cap .word = .ok is)
+    (hg : genProgram compiled.module 13 [1000] P.uart base room cap .word = .ok is)
     (ms : State)
     (himage : ∀ j (hj : j < (imageBytes is).length),
       ms.mem (after base 1 + UInt64.ofNat j) = (imageBytes is)[j])
     (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0)
     (hroom : 4096 ≤ room.toNat) (htop : ms.sp.toNat ≤ 2 ^ 63)
     (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
-    (harea : ∀ j < areaSize cap,
+    (h17 : ms.x 17 = area) (harea : ∀ j < areaSize cap,
       ms.mem (area + UInt64.ofNat j) = areaByte compiled.module.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
     (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
@@ -55,7 +55,7 @@ theorem program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List 
         (LeanExe.Native.heapAt_nativeStore compiled.initial.1 cap) trivial rfl
         LeanExe.Pipeline.Separate.nil (show cap ≤ 65535 by omega)
       have hc := codeAt_fetchFrom hn himage
-      have hsim := program_sim P _ hg hc rfl hk hpar.symm N ms hpc hal hroom htop hstack harea
+      have hsim := program_sim P _ hg hc rfl hk hpar.symm N ms hpc hal hroom htop hstack h17 harea
         hamap habove
       rcases hN N (Nat.le_refl _) with ⟨vs, st', hrun, heap', -, hown, -⟩ | ⟨st', hrun⟩
       · have hv : vs.reverse = [.i64 (recursive 1000)] := hown

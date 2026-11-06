@@ -481,19 +481,20 @@ def genOut (a : UInt64) : Output → GenM (List Instr)
         .ldr 6 3 512] ++ writesOf 6 ++ [.subImm 4 4 1, .b back]
 
 /-- The number of instructions of `main` for `k` arguments and the output `o`. -/
-def mainSize (k : Nat) (o : Output) : Nat := 3 + 4 + 1 + 4 + 4 * k + 1 + 4 + outSize o + 4 + 3
+def mainSize (k : Nat) (o : Output) : Nat := 3 + 4 + 1 + 4 * k + 1 + 4 + outSize o + 4 + 3
 
-/-- `main` placed at `a`: it saves X30, sets the stack's limit in X18 to `room` bytes below its
-SP and X17 to the area at `area`, calls the function at `entry` with `args`, writes the result to
-the UART at `uart` as `o` says, and returns 0. -/
-def genMain (a entry : UInt64) (args : List UInt64) (uart room area : UInt64) (o : Output) :
+/-- `main` placed at `a`, entered with the area's address in X17: it saves X30, sets the stack's
+limit in X18 to `room` bytes below its SP, calls the function at `entry` with `args`, writes the
+result to the UART at `uart` as `o` says, and returns 0.  The code holds no address of the area,
+so it runs wherever the image places the area. -/
+def genMain (a entry : UInt64) (args : List UInt64) (uart room : UInt64) (o : Output) :
     GenM (List Instr) := do
   if args.length > 8 then throw "more than 8 arguments"
   let loads := args.zipIdx.flatMap fun (v, i) => movImm ⟨i % 32, Nat.mod_lt _ (by decide)⟩ v
-  let call := Instr.bl (← bField (after a (12 + 4 * args.length)) entry)
-  let out ← genOut (after a (17 + 4 * args.length)) o
+  let call := Instr.bl (← bField (after a (8 + 4 * args.length)) entry)
+  let out ← genOut (after a (13 + 4 * args.length)) o
   return [.subImm 31 31 16, .str 30 31 0, .addImm 18 31 0] ++ movImm 16 room ++
-    [.subReg 18 18 16] ++ movImm 17 area ++ loads ++ [call] ++ movImm 1 uart ++ out ++
+    [.subReg 18 18 16] ++ loads ++ [call] ++ movImm 1 uart ++ out ++
     movImm 0 0 ++ [.ldr 30 31 0, .addImm 31 31 16, .ret 30]
 
 mutual
@@ -630,7 +631,7 @@ exit word.  The parameters of function `k` are `i64`s, the memory satisfies `are
 globals are at most 511 numbers.  The table of the functions' calls holds the functions that
 `callTargets` names.  `main` writes the result as `o` says.  The image puts a branch to `lx_exit`
 at `base` and `areaBytes` at `area`. -/
-def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room area : UInt64)
+def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UInt64)
     (cap : Nat) (o : Output) : GenM (List Instr) := do
   if !areaOk m cap then throw s!"a memory that an area of {cap} pages does not hold"
   let gts ← match globalTypesOf m with
@@ -647,7 +648,7 @@ def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room area 
     | some (e, ps, _) =>
         if ps.all (· == .i64) then pure e else throw s!"function {k} takes a value of another type"
     | none => throw s!"no function {k}"
-  let main ← genMain mainA entry args uart room area o
+  let main ← genMain mainA entry args uart room o
   let S : Shared :=
     { trapUnreachable := traps, trapBounds := after traps 5, trapDiv := after traps 10,
       trapStack := after traps 15, cap, globalTypes := gts }

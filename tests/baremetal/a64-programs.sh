@@ -7,9 +7,9 @@
 # each NAME.bin holds the bytes of the code that the generator returns and proves each program's
 # theorem over that file, with no axiom beyond propext, Classical.choice, and Quot.sound.  Each
 # program is assembled, linked with the startup code through tools/baremetal/build.sh, and run with
-# bm_run of tests/baremetal/qemu.sh.  The image must place main at 0x40100004, the address for which
-# a64-programs generated the code, and its section .text, which the link script starts with
-# .text.a64 at 0x40100000, must hold the instructions' bytes from main.  It must place lx_area at
+# bm_run of tests/baremetal/qemu.sh.  The image must place lx_code at 0x40100004, the address for
+# which a64-programs generated the code, and its section .text, which the link script starts with
+# .text.a64 at 0x40100000, must hold the instructions' bytes from lx_code.  It must place lx_area at
 # 0x40200000, the area's address in the generated code, and its section .data, which the link script
 # starts with .data.a64, must begin with the area's bytes.  The UART output must begin with the
 # expected bytes, followed by the startup code's report of the expected exit status, which must be
@@ -51,11 +51,11 @@ for s in "$out"/*.s; do
     status=1
     continue
   fi
-  if [ "$("$nm" "$out/$name.elf" | awk '$3 == "main" { print $1 }')" != 0000000040100004 ] ||
+  if [ "$("$nm" "$out/$name.elf" | awk '$3 == "lx_code" { print $1 }')" != 0000000040100004 ] ||
       ! "$objcopy" -O binary --only-section=.text "$out/$name.elf" "$out/$name.text" ||
       ! cmp -s <(tail -c +5 "$out/$name.text" | head -c "$(stat -c %s "$out/$name.bin")") \
         "$out/$name.bin"; then
-    echo "fail: $name: the image does not hold the program's bytes from main at 0x40100004"
+    echo "fail: $name: the image does not hold the program's bytes at 0x40100004"
     status=1
     continue
   fi

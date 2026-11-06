@@ -10,15 +10,17 @@ The bare-metal programs of the AArch64 back end, the counterparts of the program
 `tests/baremetal/programs.sh` that it covers so far: GCD's loop and GCD's recursion on 1071 and 462,
 CRC-32 of the 9 bytes of `123456789`, SHA-256 of the 3 bytes of `abc`, whose result is an array, and
 Fold's recursion of depth 1000.  The program's exit word lies at `base`, where
-`tools/baremetal/link.ld` places the section `.text.a64`, and `main` and the rest of the
-instructions follow it.  The area of the module's store lies at `rwStart`, where the link script
-places the section `.data.a64`.  For each program `run` places the bytes of the instructions,
-`imageBytes`, in a memory from `main` and the bytes of the area, `areaBytes`, from `rwStart`, runs
-the model from `main` with the code map `fetchFrom` of that memory, the stack pointer at `stackTop`,
-and a return address outside the code, and reports the UART's bytes, the status in X0, and the
-number of steps when `main` returns.  `stub` writes the assembly of the two sections: the exit word
-as a branch to `lx_exit` for the linker, then `main`, whose words are the bytes of a file that the
-assembler includes, and the area, whose bytes are those of another such file.
+`tools/baremetal/link.ld` places the section `.text.a64`, and the generated code follows it from
+`lx_code`.  The area of the module's store lies at `rwStart`, where the link script places the
+section `.data.a64`.  For each program `run` places the bytes of the instructions, `imageBytes`, in
+a memory from `lx_code` and the bytes of the area, `areaBytes`, from `rwStart`, runs the model from
+`lx_code` with the code map `fetchFrom` of that memory, X17 at `rwStart`, the stack pointer at
+`stackTop`, and a return address outside the code, and reports the UART's bytes, the status in X0,
+and the number of steps when the code returns.  `stub` writes the assembly of the two sections and
+of `main`: the exit word as a branch to `lx_exit` for the linker, then `lx_code`, whose words are
+the bytes of a file that the assembler includes, the area, whose bytes are those of another such
+file, and `main`, which the startup code calls, which sets X17 to `lx_area` with `ADRP` and `ADD`
+and branches to `lx_code`.  `main` lies outside the theorems, as the startup code does.
 -/
 
 namespace TestSupport.A64
@@ -57,26 +59,25 @@ def programs : List Program := [
   { name := "gcd"
     module := TestSupport.Native.Gcd.loopCompiled.module
     code := genProgram TestSupport.Native.Gcd.loopCompiled.module 2 [1071, 462] uart base room
-      rwStart cap .word
+      cap .word
     bytes := LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462) },
   { name := "gcdrec"
     module := TestSupport.Native.Gcd.recCompiled.module
     code := genProgram TestSupport.Native.Gcd.recCompiled.module 3 [1071, 462] uart base room
-      rwStart cap .word
+      cap .word
     bytes := LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462) },
   { name := "crc32"
     module := TestSupport.Bare.crcCompiled.module
     code := genProgram TestSupport.Bare.crcCompiled.module 5 [0x3837363534333231, 0x39] uart base
-      room rwStart cap .word
+      room cap .word
     bytes := LeanExe.Native.encodeWord (TestSupport.Bare.crcCheck 0x3837363534333231 0x39) },
   { name := "sha256"
     module := TestSupport.Bare.shaCompiled.module
-    code := genProgram TestSupport.Bare.shaCompiled.module 11 [0x636261] uart base room rwStart
-      cap .array
+    code := genProgram TestSupport.Bare.shaCompiled.module 11 [0x636261] uart base room cap .array
     bytes := LeanExe.Native.encodeArray (TestSupport.Bare.shaCheck 0x636261) },
   { name := "depth"
     module := Verified.Examples.Fold.compiled.module
-    code := genProgram Verified.Examples.Fold.compiled.module 13 [1000] uart base room rwStart cap
+    code := genProgram Verified.Examples.Fold.compiled.module 13 [1000] uart base room cap
       .word
     bytes := []
     status := 1 }]
@@ -97,7 +98,8 @@ def run (m : Wasm.Module) (code : List Instr) (fuel : Nat) :
     { normal := fun a => rwStart ≤ a ∧ a < 0x80000000, uart := uart }
   let ret := base - 8
   let mut s : State :=
-    { regs := fun r => if r.val = 30 then ret else 0, sp := stackTop, pc := mainA,
+    { regs := fun r => if r.val = 30 then ret else if r.val = 17 then rwStart else 0,
+      sp := stackTop, pc := mainA,
       nFlag := false, zFlag := false, cFlag := false, vFlag := false, mem := image, out := [] }
   let fetch := fetchFrom image mainA code.length
   for k in [0:fuel] do
@@ -108,12 +110,15 @@ def run (m : Wasm.Module) (code : List Instr) (fuel : Nat) :
     | none => throw s!"the model stops at {s.pc} after {k} steps"
   throw s!"no return within {fuel} steps"
 
-/-- The assembly of the section `.text.a64`, the exit word, a branch to `lx_exit`, then `main`,
-whose words are the bytes of the file `bin`, and of the section `.data.a64`, the area `lx_area`,
-whose bytes are those of the file `area`. -/
+/-- The assembly of the section `.text.a64`, the exit word, a branch to `lx_exit`, then
+`lx_code`, whose words are the bytes of the file `bin`, of `main` in `.text`, which sets X17 to
+`lx_area` and branches to `lx_code`, and of the section `.data.a64`, the area `lx_area`, whose
+bytes are those of the file `area`. -/
 def stub (bin area : String) : String :=
-  "  .section .text.a64, \"ax\"\n  .balign 4\n  b lx_exit\n  .global main\nmain:\n" ++
+  "  .section .text.a64, \"ax\"\n  .balign 4\n  b lx_exit\n  .global lx_code\nlx_code:\n" ++
     s!"  .incbin \"{bin}\"\n" ++
+    "  .text\n  .global main\nmain:\n  adrp x17, lx_area\n  add x17, x17, :lo12:lx_area\n" ++
+    "  b lx_code\n" ++
     "  .section .data.a64, \"aw\"\n  .global lx_area\nlx_area:\n" ++
     s!"  .incbin \"{area}\"\n"
 
