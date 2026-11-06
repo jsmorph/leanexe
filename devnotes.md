@@ -42110,3 +42110,40 @@ The co-simulation draws each D register from zeros, infinities, quiet NaNs with 
 - [x] The co-simulation of the f64 forms, with D registers in the harness, under TCG and KVM.
 - [ ] The generator's f64 instructions and their simulations.
 - [ ] Euler's program, its theorem, and its runs under QEMU.
+
+The user set floating point aside on 2026-11-06, before the generator's f64 instructions, in favor of the entry that follows.  The model's f64 forms, their co-simulation, and the generator's unbuilt f64 cases are on branch `a64-f64`, and `controller` returns to the integer forms.
+
+## 2026-11-06: Foundations of the A64 path
+
+The program theorems of the A64 back end join the verified compiler's `implements` with `program_sim`, so each states, from the Lean function to the A64 model, what the generated code writes to the UART.  Several links between that theorem and a running image have no proof.  The model's agreement with the processor rests on the co-simulation.  The image's bytes come from the compiled evaluation of `genProgram`, GNU `as` and `ld` place them, and QEMU's loader loads them.  `tools/baremetal/start.S` builds the translation tables, turns on the MMU, sets the stack, and runs CompCert's compilation of the report code after `main`, and nothing proves that it establishes the theorem's premises.
+
+The premises also lack a condition.  The model fetches instructions from a fixed map of the initial memory, which matches the processor only if no store reaches the code, and no premise of `program_sim` relates the code to the stack or the area.  The condition that closes the gap reads: `P.normal` is false on every byte of the code, and `P.uart` lies outside it.  The model checks `P.normal` on every load and store, so under that premise a store into the code stops the model, which the theorem shows never happens.
+
+The user set floating point aside until these links are settled, and the startup will leave it disabled, so an FP or SIMD instruction traps.  The user approved the plan and these decisions.  The image is an arm64 Linux Image, whose header and entry state `booting.rst` documents, with position-independent code and one level-1 translation table of 1 GiB blocks: the GiB of RAM as Normal memory, and the first GiB, which holds the UART, as Device memory that is not executable.  That table holds no address inside the image, so it is the same for every load base.  The program writes its status as one byte on the UART after its output and then calls PSCI `SYSTEM_OFF`, under TCG and KVM, since semihosting is unavailable under KVM.  The report code and the stack's high-water mark leave the verified image.
+
+| Step | Content |
+|------|---------|
+| A | The kernel checks the image's bytes: an elaborator reads the file into a literal, and each program's theorem is stated over that literal. |
+| B | Lean writes the whole image: the header, the startup, the program, the trap stubs, the exit, the translation table, and the area, with the premise about `P.normal` and the code. |
+| C | The model gains the boot state, the system registers that the startup writes, and the MMU in this configuration, and a proof joins the startup and the exit to the program theorem, first for GCD's loop. |
+| D | Under QEMU, the loaded memory is compared with the file before the first instruction. |
+| E | Isla's traces of the Sail Arm-A model, first a feasibility check on the integer forms, then an SMT check or a Lean proof of the model's forms against them. |
+| F | Optional: a static bound of the stack and the success of the given inputs. |
+
+Step E replaces trust in the model with trust in Arm's ASL, its translation into Sail, Isla and its solver, and the meaning of a trace.  It covers every operand value and the architecture as written, where testing covers sampled values on two implementations and cannot detect a dependence on an IMPLEMENTATION DEFINED choice.  The model is the best-supported link, so step E follows steps A to D.
+
+- [x] The f64 work on branch `a64-f64`.
+- [ ] A: the literal of a file, the kernel's check, and the theorems over the files.
+- [ ] D: the comparison of the loaded memory with the file.
+- [ ] E: Isla's feasibility on the integer forms.
+- [ ] B: the image written by Lean.
+- [ ] C: the model of the startup and the joined theorem.
+
+### References
+
+- [Booting AArch64 Linux](https://www.kernel.org/doc/html/latest/arch/arm64/booting.html)
+- [QEMU 'virt' machine](https://www.qemu.org/docs/master/system/arm/virt.html)
+- [QEMU generic loader](https://www.qemu.org/docs/master/system/generic-loader.html)
+- [Islaris (PLDI 2022)](https://www.cl.cam.ac.uk/~jp622/islaris.pdf)
+- [Isla](https://github.com/rems-project/isla)
+- [Sail Arm models](https://github.com/rems-project/sail-arm)

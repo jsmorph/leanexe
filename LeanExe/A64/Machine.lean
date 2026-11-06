@@ -1,9 +1,7 @@
-import Interpreter.Wasm.Float
-
 /-!
 A model of the AArch64 instructions that the native back end emits, for a bare-metal program at
-exception level 1 under the startup code of `tools/baremetal/start.S`.  It covers the integer forms
-that the back end emits and the double-precision forms that Wasm's f64 arithmetic needs.
+exception level 1 under the startup code of `tools/baremetal/start.S`.  It covers the 64-bit integer
+forms that the back end emits.
 
 The code lies in a fixed map from addresses to 32-bit words, which the theorem derives from the
 image's bytes, so a store never changes what the processor fetches.  `step` fetches the word at
@@ -16,12 +14,6 @@ register 31 follow the pseudocode of the Arm Architecture Reference Manual (DDI 
 is the stack pointer as the base of a load or store and as an operand or destination of `ADD` and
 `SUB` with an immediate, and the zero register elsewhere.  Unaligned accesses to Normal memory
 succeed, as they do while `SCTLR_EL1.A` is clear.
-
-The floating-point registers D0 to D31 hold the 64-bit words of doubles.  The arithmetic forms on
-them compute Talos's IEEE 754 functions of `Interpreter/Wasm/Float.lean`, which round to nearest,
-keep subnormals, and give the canonical NaN `0x7FF8000000000000` for every NaN result.  The
-processor computes the same with `FPCR` as the startup code sets it under `DEFAULT_NAN`: `DN`
-set, `FZ` clear, and rounding to nearest, which the co-simulation checks.
 -/
 
 namespace LeanExe.A64
@@ -33,12 +25,10 @@ structure Platform where
   normal : UInt64 → Bool
   uart : UInt64
 
-/-- The state that the emitted code uses: the general registers X0 to X30, the floating-point
-registers D0 to D31, the stack pointer, the program counter, the condition flags, the memory as
-bytes, and the bytes written to the UART. -/
+/-- The state that the emitted code uses: the general registers X0 to X30, the stack pointer, the
+program counter, the condition flags, the memory as bytes, and the bytes written to the UART. -/
 structure State where
   regs : Fin 31 → UInt64
-  dregs : Fin 32 → UInt64
   sp : UInt64
   pc : UInt64
   nFlag : Bool
@@ -111,24 +101,6 @@ inductive Instr where
   /-- `B.cond` to the program counter plus 4 times `imm` read as a signed 19-bit number when the
   condition `cond` holds. -/
   | bcond (cond : Fin 16) (imm : Fin 524288)
-  /-- `FMOV Dd, Xn`, which copies the word of `Xn`, the zero register for 31, to `Dd`. -/
-  | fmovDX (d n : Fin 32)
-  /-- `FMOV Xd, Dn`, which copies the word of `Dn` to `Xd`. -/
-  | fmovXD (d n : Fin 32)
-  /-- `FADD Dd, Dn, Dm`. -/
-  | fadd (d n m : Fin 32)
-  /-- `FSUB Dd, Dn, Dm`, which computes `Dn - Dm`. -/
-  | fsub (d n m : Fin 32)
-  /-- `FMUL Dd, Dn, Dm`. -/
-  | fmul (d n m : Fin 32)
-  /-- `FDIV Dd, Dn, Dm`, which computes `Dn / Dm`. -/
-  | fdiv (d n m : Fin 32)
-  /-- `FSQRT Dd, Dn`. -/
-  | fsqrt (d n : Fin 32)
-  /-- `FABS Dd, Dn`. -/
-  | fabs (d n : Fin 32)
-  /-- `UCVTF Dd, Xn`, which converts the unsigned word of `Xn` to a double. -/
-  | ucvtf (d n : Fin 32)
   deriving DecidableEq, Repr
 
 /-- The instruction that the 32-bit word of value `v` encodes, or `none` for a word outside the
@@ -175,15 +147,6 @@ def decodeNat (v : Nat) : Option Instr :=
   else if v / 2097152 = 0x150 ∧ v / 1024 % 64 = 0 then some (.orrW d n m)
   else if v / 16777216 = 0x54 ∧ v / 16 % 2 = 0 then
     some (.bcond ⟨v % 16, Nat.mod_lt _ (by decide)⟩ imm19)
-  else if v / 1024 = 0x2799C0 then some (.fmovDX d n)
-  else if v / 1024 = 0x279980 then some (.fmovXD d n)
-  else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 10 then some (.fadd d n m)
-  else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 14 then some (.fsub d n m)
-  else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 2 then some (.fmul d n m)
-  else if v / 2097152 = 0xF3 ∧ v / 1024 % 64 = 6 then some (.fdiv d n m)
-  else if v / 1024 = 0x79870 then some (.fsqrt d n)
-  else if v / 1024 = 0x79830 then some (.fabs d n)
-  else if v / 1024 = 0x2798C0 then some (.ucvtf d n)
   else none
 
 /-- The instruction that the word `w` encodes, or `none` for a word outside the forms. -/
@@ -203,10 +166,6 @@ def xsp (s : State) (r : Fin 32) : UInt64 :=
 /-- The state with register `r` set to `v`, where a write to 31 has no effect. -/
 def setX (s : State) (r : Fin 32) (v : UInt64) : State :=
   if r.val < 31 then { s with regs := fun i => if i.val = r.val then v else s.regs i } else s
-
-/-- The state with the floating-point register `r` set to the word `v`. -/
-def setD (s : State) (r : Fin 32) (v : UInt64) : State :=
-  { s with dregs := fun i => if i = r then v else s.dregs i }
 
 /-- The state with register `r` set to `v`, where 31 is the stack pointer. -/
 def setXsp (s : State) (r : Fin 32) (v : UInt64) : State :=
@@ -318,15 +277,6 @@ def exec (P : Platform) (i : Instr) (s : State) : Option State :=
   | .orrW d n m => some { s.setX d (s.x n ||| s.x m).toUInt32.toUInt64 with pc := next }
   | .bcond cond imm =>
       some { s with pc := if s.condHolds cond then s.pc + sext 19 imm.val * 4 else next }
-  | .fmovDX d n => some { s.setD d (s.x n) with pc := next }
-  | .fmovXD d n => some { s.setX d (s.dregs n) with pc := next }
-  | .fadd d n m => some { s.setD d (Wasm.f64Add (s.dregs n) (s.dregs m)) with pc := next }
-  | .fsub d n m => some { s.setD d (Wasm.f64Sub (s.dregs n) (s.dregs m)) with pc := next }
-  | .fmul d n m => some { s.setD d (Wasm.f64Mul (s.dregs n) (s.dregs m)) with pc := next }
-  | .fdiv d n m => some { s.setD d (Wasm.f64Div (s.dregs n) (s.dregs m)) with pc := next }
-  | .fsqrt d n => some { s.setD d (Wasm.f64Sqrt (s.dregs n)) with pc := next }
-  | .fabs d n => some { s.setD d (Wasm.f64Abs (s.dregs n)) with pc := next }
-  | .ucvtf d n => some { s.setD d (Wasm.f64ConvertI64U (s.x n)) with pc := next }
 
 /-- One step from `s` with the code `code`: the fetch, the decoding, and the execution of the
 word at the program counter. -/
