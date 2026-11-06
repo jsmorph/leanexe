@@ -66,4 +66,13 @@ theorem platform_normal {h : Hw} {R : UInt64 → Bool} {b : Boot}
   simp only [Boot.platform, hR, Bool.not_false, Bool.true_and,
     classify_normal hcov htab hlo hhi, writableNormal]
 
+theorem image_add_64 (a : UInt64) : a + 64 = after a 16 := by
+  simp [after]
+
+theorem layout_base (image : UInt64) (n : Nat) (m : Wasm.Module) (cap : Nat) (room : UInt64) :
+    (layoutOf image n m cap room).base = after (image + 64) 67 := by
+  show image + UInt64.ofNat (64 + 4 * startupLength) = image + 64 + 4 * UInt64.ofNat startupLength
+  rw [UInt64.add_assoc]
+  rfl
+
 end LeanExe.A64

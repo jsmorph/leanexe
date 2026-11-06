@@ -7,12 +7,17 @@ A run of the program model lifts to a run of the boot model.  A step of the prog
 only bytes that its platform maps as Normal memory, so the bytes of the translation table, which
 `R` protects and `Boot.platform` therefore excludes, keep their values along a run.  `classify`
 reads only the 32 bytes of the table, so the platform and every fetch check stay those of the
-boot state at the start, and each step of the run is a step of `BootStep` by its rule `prog`.
+boot state at the start, and each step of the run is a step of `BootStep` by its rule `prog`.  A
+step keeps the UART's output or appends to it, so `uartDone` holds after the run exactly when it
+held before and the run wrote no byte to the UART.
 -/
 
 namespace LeanExe.A64
 
 theorem State.setXsp_mem {s : State} {r : Fin 32} {v : UInt64} : (s.setXsp r v).mem = s.mem := by
+  unfold State.setXsp; split <;> rfl
+
+theorem State.setXsp_out {s : State} {r : Fin 32} {v : UInt64} : (s.setXsp r v).out = s.out := by
   unfold State.setXsp; split <;> rfl
 
 /-- A byte less than 8 bytes above `a` is Normal memory when the 8 bytes from `a` are. -/
@@ -59,6 +64,37 @@ theorem exec_frame {P : Platform} {i : Instr} {s t : State} (h : exec P i s = so
     simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
       simp [State.setXsp_mem, State.subs]
 
+/-- An instruction keeps the UART's output or appends to it. -/
+theorem exec_out {P : Platform} {i : Instr} {s t : State} (h : exec P i s = some t) :
+    s.out <+: t.out := by
+  cases i
+  case ldr r n imm =>
+    simp only [exec] at h
+    split at h
+    · obtain rfl := Option.some.inj h
+      simp
+    · cases h
+  case str r n imm =>
+    simp only [exec] at h
+    split at h
+    · obtain rfl := Option.some.inj h
+      exact List.prefix_rfl
+    · cases h
+  case strb r n imm =>
+    simp only [exec] at h
+    split at h
+    · cases h
+    split at h
+    · obtain rfl := Option.some.inj h
+      exact List.prefix_append _ _
+    split at h
+    · obtain rfl := Option.some.inj h
+      exact List.prefix_rfl
+    · cases h
+  all_goals
+    simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
+      simp [State.setXsp_out, State.subs]
+
 /-- The fetch, the decoding, and the execution of a step. -/
 theorem step_some {P : Platform} {code : UInt64 → Option UInt32} {s t : State}
     (h : step P code s = some t) :
@@ -72,6 +108,15 @@ theorem step_frame {P : Platform} {code : UInt64 → Option UInt32} {s t : State
     (h : step P code s = some t) {a : UInt64} (ha : P.normal a = false) : t.mem a = s.mem a := by
   obtain ⟨_, _, _, _, he⟩ := step_some h
   exact exec_frame he ha
+
+/-- A run keeps the UART's output or appends to it. -/
+theorem Reach.out {P : Platform} {code : UInt64 → Option UInt32} {s t : State}
+    (h : Reach P code s t) : s.out <+: t.out := by
+  induction h with
+  | refl => exact List.prefix_rfl
+  | next hs _ ih =>
+    obtain ⟨_, _, _, _, he⟩ := step_some hs
+    exact (exec_out he).trans ih
 
 /-- A run keeps every byte that its platform does not map as Normal memory. -/
 theorem Reach.frame {P : Platform} {code : UInt64 → Option UInt32} {s t : State}
@@ -105,7 +150,8 @@ theorem classify_congr {h : Hw} {s : Sys} {mem mem' : UInt64 → UInt8}
 
 /-- Under the hypotheses of `bootReach_of_reach`, a run of the program model from a state `s` whose
 memory agrees with `b`'s on the table lifts to a run of the boot model from `b` with core `s`.
-The run changes only the core and `uartDone`. -/
+The run changes only the core and `uartDone`, which it keeps when it writes no byte to the UART and
+clears otherwise. -/
 theorem bootReach_of_reach_agree {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Option UInt32}
     {b : Boot} (hsp : b.spSel = true) (hsync : b.written = b.eff)
     (hcov : b.eff.covered h = true) (htlb : b.tlb = .clean)
@@ -115,11 +161,14 @@ theorem bootReach_of_reach_agree {h : Hw} {R : UInt64 → Bool} {code : UInt64 �
     {s c : State} (hr : Reach (b.platform h R) code s c) :
     (∀ j < 32,
       s.mem (b.eff.ttbr0 + UInt64.ofNat j) = b.core.mem (b.eff.ttbr0 + UInt64.ofNat j)) →
-    ∀ u, ∃ u', BootReach h R code { b with core := s, uartDone := u }
-      { b with core := c, uartDone := u' } := by
+    ∀ u, BootReach h R code { b with core := s, uartDone := u }
+      { b with core := c, uartDone := u && c.out == s.out } := by
   induction hr with
-  | refl => exact fun _ u => ⟨u, .refl _⟩
-  | @next s t c hs _ ih =>
+  | refl =>
+    intro _ u
+    rw [beq_self_eq_true, Bool.and_true]
+    exact .refl _
+  | @next s t c hs hr ih =>
     intro hT u
     obtain ⟨w, i, hc, hd, he⟩ := step_some hs
     have hT' : ∀ j < 32, t.mem (b.eff.ttbr0 + UInt64.ofNat j) =
@@ -130,8 +179,21 @@ theorem bootReach_of_reach_agree {h : Hw} {R : UInt64 → Bool} {code : UInt64 �
     have hcl := classify_congr (h := h) hT
     have hP : Boot.platform h R { b with core := s, uartDone := u } = b.platform h R := by
       simp only [Boot.platform, hcl]
-    obtain ⟨u', hr'⟩ := ih hT' (u && t.out == s.out)
-    refine ⟨u', .next (c := { b with core := t, uartDone := u && t.out == s.out }) ?_ hr'⟩
+    have hu' : (u && t.out == s.out && c.out == t.out) = (u && c.out == s.out) := by
+      by_cases ht : t.out = s.out
+      · rw [ht, beq_self_eq_true, Bool.and_true]
+      · have hst := exec_out he
+        have htc := hr.out
+        have hcs : c.out ≠ s.out := fun e => ht (hst.eq_of_length (by
+          have h1 := hst.length_le
+          have h2 := htc.length_le
+          rw [e] at h2
+          omega)).symm
+        rw [beq_false_of_ne ht, beq_false_of_ne hcs]
+        simp
+    have hr' := ih hT' (u && t.out == s.out)
+    rw [hu'] at hr'
+    refine .next (c := { b with core := t, uartDone := u && t.out == s.out }) ?_ hr'
     refine .prog hc hd hsp hsync hcov htlb
       (.inr ⟨htlb, (hx _ _ hc).imp fun _ e => (hcl _).trans e⟩) ((hcl _).trans hu) ?_
     rw [hP]
@@ -142,7 +204,8 @@ rule `prog` when SP_EL1 is the stack pointer, the written system registers are t
 ones, translation is on in the covered configuration with valid TLBs, the table maps the UART as
 writable Device memory and every address of the code as executable Normal memory, and `R`
 protects the table's bytes.  The run's last state differs from `b` only in its core and in
-`uartDone`. -/
+`uartDone`, which holds at the end exactly when it holds in `b` and the run writes no byte to the
+UART. -/
 theorem bootReach_of_reach {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Option UInt32}
     {b : Boot} (hsp : b.spSel = true) (hsync : b.written = b.eff)
     (hcov : b.eff.covered h = true) (htlb : b.tlb = .clean)
@@ -150,7 +213,7 @@ theorem bootReach_of_reach {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Opt
     (hR : ∀ j < 32, R (b.eff.ttbr0 + UInt64.ofNat j) = true)
     (hx : ∀ a w, code a = some w → ∃ x, classify h b.eff b.core.mem a = some (.normal x true))
     {c : State} (hr : Reach (b.platform h R) code b.core c) :
-    ∃ u, BootReach h R code b { b with core := c, uartDone := u } :=
+    BootReach h R code b { b with core := c, uartDone := b.uartDone && c.out == b.core.out } :=
   bootReach_of_reach_agree hsp hsync hcov htlb hu hR hx hr (fun _ _ => rfl) b.uartDone
 
 end LeanExe.A64
