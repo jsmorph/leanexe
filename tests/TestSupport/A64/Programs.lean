@@ -8,17 +8,17 @@ import LeanExe.A64.Image
 /-!
 The bare-metal programs of the AArch64 back end, the counterparts of the programs of
 `tests/baremetal/programs.sh` that it covers so far: GCD's loop and GCD's recursion on 1071 and 462,
-CRC-32 of the 9 bytes of `123456789`, SHA-256 of the 3 bytes of `abc`, whose result is an array,
-and Fold's recursion of depth 1000.  The program's exit word lies at `base`, where `tools/baremetal/link.ld` places the section
-`.text.a64`, and `main` and the rest of the instructions follow it.  The area of the module's
-store lies at `rwStart`, where the link script places the section `.data.a64`.  For each program
-`run` places the bytes of the instructions, `imageBytes`, in a memory from `main` and the bytes of
-the area, `areaBytes`, from `rwStart`, runs the model from `main` with the code map `fetchFrom` of
-that memory, the stack pointer at `stackTop`, and a return address outside the code, and reports
-the UART's bytes, the status in X0, and the number of steps when `main` returns.  `stub` writes
-the assembly of the two sections: the exit word as a branch to `lx_exit` for the linker, then
-`main`, whose words are the bytes of a file that the assembler includes, and the area, whose
-bytes are those of another such file.
+CRC-32 of the 9 bytes of `123456789`, SHA-256 of the 3 bytes of `abc`, whose result is an array, and
+Fold's recursion of depth 1000.  The program's exit word lies at `base`, where
+`tools/baremetal/link.ld` places the section `.text.a64`, and `main` and the rest of the
+instructions follow it.  The area of the module's store lies at `rwStart`, where the link script
+places the section `.data.a64`.  For each program `run` places the bytes of the instructions,
+`imageBytes`, in a memory from `main` and the bytes of the area, `areaBytes`, from `rwStart`, runs
+the model from `main` with the code map `fetchFrom` of that memory, the stack pointer at `stackTop`,
+and a return address outside the code, and reports the UART's bytes, the status in X0, and the
+number of steps when `main` returns.  `stub` writes the assembly of the two sections: the exit word
+as a branch to `lx_exit` for the linker, then `main`, whose words are the bytes of a file that the
+assembler includes, and the area, whose bytes are those of another such file.
 -/
 
 namespace TestSupport.A64
