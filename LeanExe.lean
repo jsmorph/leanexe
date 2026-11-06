@@ -8,6 +8,7 @@ import LeanExe.A64.Machine
 import LeanExe.A64.Proof.Area
 import LeanExe.A64.Proof.Arith
 import LeanExe.A64.Proof.Bits
+import LeanExe.A64.Proof.Boot
 import LeanExe.A64.Proof.Call
 import LeanExe.A64.Proof.Clear
 import LeanExe.A64.Proof.Constructs
@@ -20,6 +21,7 @@ import LeanExe.A64.Proof.Relation
 import LeanExe.A64.Proof.Sim
 import LeanExe.A64.Proof.Straight
 import LeanExe.A64.Proof.Traps
+import LeanExe.A64.Startup
 import LeanExe.Attr
 import LeanExe.Common
 import LeanExe.Dialect.Build
