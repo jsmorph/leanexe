@@ -14,6 +14,7 @@ import LeanExe.A64.Proof.Clear
 import LeanExe.A64.Proof.Constructs
 import LeanExe.A64.Proof.Control
 import LeanExe.A64.Proof.Function
+import LeanExe.A64.Proof.Lift
 import LeanExe.A64.Proof.Machine
 import LeanExe.A64.Proof.Memory
 import LeanExe.A64.Proof.Program

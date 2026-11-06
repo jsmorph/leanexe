@@ -1,0 +1,156 @@
+import LeanExe.A64.Boot
+import LeanExe.A64.Proof.Bits
+import LeanExe.A64.Proof.Relation
+
+/-!
+A run of the program model lifts to a run of the boot model.  A step of the program model changes
+only bytes that its platform maps as Normal memory, so the bytes of the translation table, which
+`R` protects and `Boot.platform` therefore excludes, keep their values along a run.  `classify`
+reads only the 32 bytes of the table, so the platform and every fetch check stay those of the
+boot state at the start, and each step of the run is a step of `BootStep` by its rule `prog`.
+-/
+
+namespace LeanExe.A64
+
+theorem State.setXsp_mem {s : State} {r : Fin 32} {v : UInt64} : (s.setXsp r v).mem = s.mem := by
+  unfold State.setXsp; split <;> rfl
+
+/-- A byte less than 8 bytes above `a` is Normal memory when the 8 bytes from `a` are. -/
+theorem normal_of_mapped {P : Platform} {a b : UInt64} (hm : P.mapped a 8 = true)
+    (h : b - a < 8) : P.normal b = true := by
+  have hk : (b - a).toNat < 8 := UInt64.lt_iff_toNat_lt.mp h
+  have := List.all_eq_true.mp hm _ (List.mem_range.mpr hk)
+  rwa [UInt64.ofNat_toNat, UInt64.add_comm, UInt64.sub_add_cancel] at this
+
+/-- An instruction keeps every byte that its platform does not map as Normal memory. -/
+theorem exec_frame {P : Platform} {i : Instr} {s t : State} (h : exec P i s = some t)
+    {a : UInt64} (ha : P.normal a = false) : t.mem a = s.mem a := by
+  cases i
+  case ldr r n imm =>
+    simp only [exec] at h
+    split at h
+    · obtain rfl := Option.some.inj h
+      simp
+    · cases h
+  case str r n imm =>
+    simp only [exec] at h
+    split at h
+    · rename_i hc
+      obtain rfl := Option.some.inj h
+      simp only [Bool.and_eq_true] at hc
+      show store64 s.mem _ _ a = s.mem a
+      exact store64_other _ _ _ _ fun hlt => by simp [normal_of_mapped hc.2 hlt] at ha
+    · cases h
+  case strb r n imm =>
+    simp only [exec] at h
+    split at h
+    · cases h
+    split at h
+    · obtain rfl := Option.some.inj h
+      rfl
+    split at h
+    · rename_i hn
+      obtain rfl := Option.some.inj h
+      show store8 s.mem _ _ a = s.mem a
+      simp only [store8]
+      exact ite_eq_right fun e => by subst e; simp [hn] at ha
+    · cases h
+  all_goals
+    simp only [exec, Option.some.injEq, reduceCtorEq] at h <;> subst h <;>
+      simp [State.setXsp_mem, State.subs]
+
+/-- The fetch, the decoding, and the execution of a step. -/
+theorem step_some {P : Platform} {code : UInt64 → Option UInt32} {s t : State}
+    (h : step P code s = some t) :
+    ∃ w i, code s.pc = some w ∧ decode w = some i ∧ exec P i s = some t := by
+  simp only [step, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+  obtain ⟨w, hc, i, hd, he⟩ := h
+  exact ⟨w, i, hc, hd, he⟩
+
+/-- A step keeps every byte that its platform does not map as Normal memory. -/
+theorem step_frame {P : Platform} {code : UInt64 → Option UInt32} {s t : State}
+    (h : step P code s = some t) {a : UInt64} (ha : P.normal a = false) : t.mem a = s.mem a := by
+  obtain ⟨_, _, _, _, he⟩ := step_some h
+  exact exec_frame he ha
+
+/-- A run keeps every byte that its platform does not map as Normal memory. -/
+theorem Reach.frame {P : Platform} {code : UInt64 → Option UInt32} {s t : State}
+    (h : Reach P code s t) {a : UInt64} (ha : P.normal a = false) : t.mem a = s.mem a := by
+  induction h with
+  | refl => rfl
+  | next hs _ ih => rw [ih, step_frame hs ha]
+
+/-- `classify` reads only the 32 bytes of the table at `TTBR0_EL1`: two memories that agree on
+them give every address the same type. -/
+theorem classify_congr {h : Hw} {s : Sys} {mem mem' : UInt64 → UInt8}
+    (hm : ∀ j < 32, mem (s.ttbr0 + UInt64.ofNat j) = mem' (s.ttbr0 + UInt64.ofNat j))
+    (a : UInt64) : classify h s mem a = classify h s mem' a := by
+  by_cases ha : 0x100000000 ≤ a
+  · simp [classify, ha]
+  · have hlt : a.toNat < 2 ^ 32 := by
+      have : (0x100000000 : UInt64).toNat = 2 ^ 32 := rfl
+      rw [UInt64.le_iff_toNat_le, this] at ha
+      omega
+    have hq : (a >>> (30 : UInt64)).toNat < 4 := by
+      rw [UInt64.toNat_shiftRight, show (30 : UInt64).toNat % 64 = 30 from rfl,
+        Nat.shiftRight_eq_div_pow]
+      omega
+    have hd : load64 mem (s.ttbr0 + (8 : UInt64) * (a >>> (30 : UInt64))) =
+        load64 mem' (s.ttbr0 + (8 : UInt64) * (a >>> (30 : UInt64))) :=
+      load64_congr fun k hk => by
+        have := hm (8 * (a >>> (30 : UInt64)).toNat + k) (by omega)
+        rwa [UInt64.ofNat_add, UInt64.ofNat_mul, UInt64.ofNat_toNat, ← UInt64.add_assoc] at this
+    unfold classify
+    rw [hd]
+
+/-- Under the hypotheses of `bootReach_of_reach`, a run of the program model from a state `s` whose
+memory agrees with `b`'s on the table lifts to a run of the boot model from `b` with core `s`.
+The run changes only the core and `uartDone`. -/
+theorem bootReach_of_reach_agree {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Option UInt32}
+    {b : Boot} (hsp : b.spSel = true) (hsync : b.written = b.eff)
+    (hcov : b.eff.covered h = true) (htlb : b.tlb = .clean)
+    (hu : classify h b.eff b.core.mem uartAddr = some (.device true))
+    (hR : ∀ j < 32, R (b.eff.ttbr0 + UInt64.ofNat j) = true)
+    (hx : ∀ a w, code a = some w → ∃ x, classify h b.eff b.core.mem a = some (.normal x true))
+    {s c : State} (hr : Reach (b.platform h R) code s c) :
+    (∀ j < 32,
+      s.mem (b.eff.ttbr0 + UInt64.ofNat j) = b.core.mem (b.eff.ttbr0 + UInt64.ofNat j)) →
+    ∀ u, ∃ u', BootReach h R code { b with core := s, uartDone := u }
+      { b with core := c, uartDone := u' } := by
+  induction hr with
+  | refl => exact fun _ u => ⟨u, .refl _⟩
+  | @next s t c hs _ ih =>
+    intro hT u
+    obtain ⟨w, i, hc, hd, he⟩ := step_some hs
+    have hT' : ∀ j < 32, t.mem (b.eff.ttbr0 + UInt64.ofNat j) =
+        b.core.mem (b.eff.ttbr0 + UInt64.ofNat j) := fun j hj => by
+      have hn : (b.platform h R).normal (b.eff.ttbr0 + UInt64.ofNat j) = false := by
+        simp [Boot.platform, hR j hj]
+      rw [exec_frame he hn, hT j hj]
+    have hcl := classify_congr (h := h) hT
+    have hP : Boot.platform h R { b with core := s, uartDone := u } = b.platform h R := by
+      simp only [Boot.platform, hcl]
+    obtain ⟨u', hr'⟩ := ih hT' (u && t.out == s.out)
+    refine ⟨u', .next (c := { b with core := t, uartDone := u && t.out == s.out }) ?_ hr'⟩
+    refine .prog hc hd hsp hsync hcov htlb
+      (.inr ⟨htlb, (hx _ _ hc).imp fun _ e => (hcl _).trans e⟩) ((hcl _).trans hu) ?_
+    rw [hP]
+    exact he
+
+/-- A run of the program model under the platform of `b` lifts to a run of the boot model by its
+rule `prog` when SP_EL1 is the stack pointer, the written system registers are the effective
+ones, translation is on in the covered configuration with valid TLBs, the table maps the UART as
+writable Device memory and every address of the code as executable Normal memory, and `R`
+protects the table's bytes.  The run's last state differs from `b` only in its core and in
+`uartDone`. -/
+theorem bootReach_of_reach {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Option UInt32}
+    {b : Boot} (hsp : b.spSel = true) (hsync : b.written = b.eff)
+    (hcov : b.eff.covered h = true) (htlb : b.tlb = .clean)
+    (hu : classify h b.eff b.core.mem uartAddr = some (.device true))
+    (hR : ∀ j < 32, R (b.eff.ttbr0 + UInt64.ofNat j) = true)
+    (hx : ∀ a w, code a = some w → ∃ x, classify h b.eff b.core.mem a = some (.normal x true))
+    {c : State} (hr : Reach (b.platform h R) code b.core c) :
+    ∃ u, BootReach h R code b { b with core := c, uartDone := u } :=
+  bootReach_of_reach_agree hsp hsync hcov htlb hu hR hx hr (fun _ _ => rfl) b.uartDone
+
+end LeanExe.A64
