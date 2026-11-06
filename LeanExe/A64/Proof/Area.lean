@@ -124,20 +124,22 @@ theorem agrees_segWrite {n pages : Nat} {acc : List UInt8} {mem : Mem} {seg : Da
         · exact ⟨hl, hp, hb⟩
       · exact ⟨hl, hp, hb⟩
 
-/-- `memPrefix` gives the bytes of the initial memory of `m`. -/
-theorem memPrefix_getElem (m : Module) (n : Nat) (hn : dataEnd m ≤ n) (j : Nat) (hj : j < n) :
-    (memPrefix m n)[j]? = some ((m.initialStore : Store Unit).mem.bytes j) := by
+/-- `memPrefix` has `n` bytes, those of the initial memory of `m`. -/
+theorem memPrefix_agrees (m : Module) (n : Nat) (hn : dataEnd m ≤ n) :
+    (memPrefix m n).length = n ∧
+      ∀ j < n, (memPrefix m n)[j]? = some ((m.initialStore : Store Unit).mem.bytes j) := by
   unfold memPrefix Module.initialStore
   unfold dataEnd at hn
   cases hm : m.memory with
-  | none => simp [List.getElem?_replicate, hj]; rfl
+  | none => exact ⟨by simp, fun j hj => by simp [List.getElem?_replicate, hj]; rfl⟩
   | some d =>
       rw [hm] at hn
       simp only at hn ⊢
       suffices H : ∀ (G : Mem → DataSegment → Mem), (∀ acc mem seg, seg ∈ d.data →
           AgreesWith n d.pagesMin.toNat acc mem →
           AgreesWith n d.pagesMin.toNat (segWrite d.pagesMin.toNat acc seg) (G mem seg)) →
-          (d.data.foldl (segWrite d.pagesMin.toNat) (List.replicate n 0))[j]? =
+          (d.data.foldl (segWrite d.pagesMin.toNat) (List.replicate n 0)).length = n ∧
+          ∀ j < n, (d.data.foldl (segWrite d.pagesMin.toNat) (List.replicate n 0))[j]? =
             some ((d.data.foldl G (Mem.empty d.pagesMin.toNat)).bytes j) by
         apply H
         intro acc mem seg hs h
@@ -155,8 +157,25 @@ theorem memPrefix_getElem (m : Module) (n : Nat) (hn : dataEnd m ≤ n) (j : Nat
             intro acc mem hs h
             exact ih _ _ (fun x hx => hs x (List.mem_cons_of_mem _ hx))
               (hG acc mem s (hs s List.mem_cons_self) h)
-      exact (key d.data _ _ (fun _ h => h)
-        ⟨by simp, rfl, fun i hi => by simp [List.getElem?_replicate, hi]; rfl⟩).2.2 j hj
+      have k := key d.data (List.replicate n 0) (Mem.empty d.pagesMin.toNat) (fun _ h => h)
+        ⟨by simp, rfl, fun i hi => by simp [List.getElem?_replicate, hi]; rfl⟩
+      exact ⟨k.1, k.2.2⟩
+
+theorem memPrefix_getElem (m : Module) (n : Nat) (hn : dataEnd m ≤ n) (j : Nat) (hj : j < n) :
+    (memPrefix m n)[j]? = some ((m.initialStore : Store Unit).mem.bytes j) :=
+  (memPrefix_agrees m n hn).2 j hj
+
+theorem memPrefix_length (m : Module) (n : Nat) (hn : dataEnd m ≤ n) :
+    (memPrefix m n).length = n :=
+  (memPrefix_agrees m n hn).1
+
+theorem areaPrefixBytes_length (m : Module) : (areaPrefixBytes m).length = areaPrefix m := by
+  have h1 : 4096 + dataEnd m ≤ areaPrefix m := by
+    unfold areaPrefix roundUp
+    omega
+  unfold areaPrefixBytes
+  rw [List.length_append, List.length_map, List.length_range, memPrefix_length m _ (by omega)]
+  omega
 
 /-- The area's prefix in an image holds the area's bytes. -/
 theorem areaPrefixBytes_getElem (m : Module) (j : Nat) (hj : j < areaPrefix m) :
