@@ -42209,10 +42209,15 @@ The other ID_AA64 registers read 0 in both profiles, and under KVM only MIDR_EL1
 
 UDIV has no trace.  Its ASL divides as real numbers, `RoundTowardsZero(Real(n) / Real(m))` for a nonzero divisor, and Isla e9b5d945 maps every real-number primitive, among them `to_real`, `div_real`, and `round_down`, to `unimplemented` (`isla-lib/src/primop.rs`, line 2695), so concrete operands fail as well.  The generator emits UDIV, so the check needs a course for it: (a) leave UDIV outside the Isla check, with its Lean definition read against the ASL and exercised by the image runs under TCG and KVM; (b) replace the real division in UDIV's IR function by Sail's `tdiv_int`, which Isla implements with `bvsdiv`, in a recorded edit of a copy of `armv9p4.ir`, so that the trace checks UDIV's decoding, operand order, and zero case and leaves one equation of integers to reading; or (c) add real numbers to Isla and to the Lean semantics, which needs a real sort in Isla's SMT layer and Z3's nonlinear arithmetic.  The choice goes to the user.
 
+In the IR, UDIV's function `execute_aarch64_instrs_integer_arithmetic_div`, which SDIV shares, uses real numbers in one statement, for a nonzero divisor: `RoundTowardsZero(to_real(Int(n)) / to_real(Int(m)))`, where `RoundTowardsZero(r)` is `ceil(r)` for `r < 0` and `floor(r)` otherwise.  Z3 4.12.6 found the branch test `a/b < 0` unsatisfiable at once for unsigned 64-bit operands, and it did not decide `int2bv(to_int(a/b)) = bvudiv(a, b)` in 90 s, an equation that course (c) would leave to Lean.  Courses (b) and (c) check the same parts of UDIV, and each adds a small reading to the trusted base, so cost decided.  The user chose (b): a copy of the IR replaces the nine statements with `tdiv_int(Int(n), Int(m))`, which Isla computes as truncating division of 128-bit integers, and the trusted base gains the edit's fidelity and the identity that truncation of `a/b` equals `tdiv(a, b)` for `b ≠ 0`.
+
+The Lean semantics of stage 2 (`LeanExe/A64/Isla/Trace.lean`) reads the `(segments ...)` header, binds the opcode's fields to a theorem's operands, reads Isla's vector primitives as the events `readGprs` and `writeGprs`, applies the PC rule of `__InstructionExecute` at the end of each path, and stores bytes for `write-mem`, appending a byte stored at the UART to the output.  The readings of Isla beyond Islaris's semantics, with their sources, head the module.  `Agrees` in `Check.lean` requires that the header name the opcode's fields, that the opcode's word decode to the instruction, and that for every `σ` that agrees with a profile on the registers the trace reads, wherever `exec` succeeds, the trace's outcomes be exactly `exec`'s state with registers that differ from `σ` only at named ones.  `addReg` proves it for ADD (register) at every Rd, Rn, and Rm, register 31 included, from a trace of unpatched Isla (`tests/isla/dev/add.trace`) under a profile of two registers.  The module builds on minideb2 in 133 s with the standard axioms, and `addReg` takes about 50 s, about 0.07 s per event that the proof evaluates.
+
 - [x] E: the patches and their validation.
 - [x] E: traces of every form in both profiles, except UDIV.
-- [ ] E: UDIV.
-- [ ] E: the extended semantics and ADD.
+- [ ] E: UDIV's IR edit and traces.
+- [x] E: the extended semantics and ADD.
+- [ ] E: ADD on the committed traces under the full TCG and KVM profiles.
 - [ ] E: the theorems of the remaining forms.
 
 ### References
