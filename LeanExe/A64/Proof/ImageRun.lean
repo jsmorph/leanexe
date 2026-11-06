@@ -146,4 +146,48 @@ theorem boot_after_main {L : Layout} {is : List Instr} (hs : startupCode L = .ok
     show ms.out ++ [(ms.x 0).toUInt8] = _
     rw [ho]
 
+/-- A code map of `n` words from `a'`, word `o` of a code map of `N` words from `a`, whose memory
+agrees with the larger map's memory on its bytes, is part of the larger map. -/
+theorem fetchFrom_sub {m m' : UInt64 → UInt8} {a a' : UInt64} {o n N : Nat}
+    (ha' : a' = a + UInt64.ofNat (4 * o)) (hon : o + n ≤ N) (hN : 4 * N < 2 ^ 64)
+    (hm : ∀ j < 4 * n, m' (a' + UInt64.ofNat j) = m (a' + UInt64.ofNat j))
+    {p : UInt64} {w : UInt32} (h : fetchFrom m' a' n p = some w) : fetchFrom m a N p = some w := by
+  unfold fetchFrom at h ⊢
+  split at h
+  · rename_i hin
+    obtain ⟨hlt, h4⟩ := hin
+    have hpa := p.toNat_lt
+    have haa := a.toNat_lt
+    have ha'n : a'.toNat = (a.toNat + 4 * o) % 2 ^ 64 := by
+      rw [ha', UInt64.toNat_add, UInt64.toNat_ofNat']
+      simp only [Nat.reducePow]
+      omega
+    have hd : (p - a').toNat = (2 ^ 64 - a'.toNat + p.toNat) % 2 ^ 64 := UInt64.toNat_sub _ _
+    have hd2 : (p - a).toNat = (2 ^ 64 - a.toNat + p.toNat) % 2 ^ 64 := UInt64.toNat_sub _ _
+    have hpa' : (p - a).toNat = (p - a').toNat + 4 * o := by
+      have := a'.toNat_lt
+      simp only [Nat.reducePow] at *
+      omega
+    rw [if_pos ⟨by omega, by omega⟩]
+    rw [← h]
+    have hk : ∀ k < 4, p + UInt64.ofNat k = a' + UInt64.ofNat ((p - a').toNat + k) := by
+      intro k hk
+      apply UInt64.toNat_inj.mp
+      simp only [UInt64.toNat_add, UInt64.toNat_ofNat']
+      have := a'.toNat_lt
+      simp only [Nat.reducePow] at *
+      omega
+    have hb : ∀ k < 4, m' (p + UInt64.ofNat k) = m (p + UInt64.ofNat k) := fun k hk' => by
+      rw [hk k hk']
+      exact hm _ (by omega)
+    unfold load32
+    have h0 := hb 0 (by decide)
+    have h1 := hb 1 (by decide)
+    have h2 := hb 2 (by decide)
+    have h3 := hb 3 (by decide)
+    rw [show p + UInt64.ofNat 0 = p by simp] at h0
+    rw [show p + 1 = p + UInt64.ofNat 1 from rfl, show p + 2 = p + UInt64.ofNat 2 from rfl,
+      show p + 3 = p + UInt64.ofNat 3 from rfl, h0, h1, h2, h3]
+  · cases h
+
 end LeanExe.A64
