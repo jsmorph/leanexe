@@ -1,6 +1,7 @@
 import LeanExe.A64.Proof.ImageLayout
 import LeanExe.A64.Proof.Lift
 import LeanExe.A64.Proof.Table
+import LeanExe.A64.Proof.Exit
 
 /-!
 The pieces that join the startup, the program, and the exit of an image in the boot model.  A
@@ -74,5 +75,75 @@ theorem layout_base (image : UInt64) (n : Nat) (m : Wasm.Module) (cap : Nat) (ro
   show image + UInt64.ofNat (64 + 4 * startupLength) = image + 64 + 4 * UInt64.ofNat startupLength
   rw [UInt64.add_assoc]
   rfl
+
+/-- A boot state ready for the program: SP_EL1 selected, the written system registers in effect
+in the covered configuration with clean TLBs, the translation table in memory at `TTBR0_EL1` and
+protected by `R`, and every address of the code map executable Normal memory. -/
+structure Ready (h : Hw) (R : UInt64 → Bool) (code : UInt64 → Option UInt32) (b : Boot) :
+    Prop where
+  sp : b.spSel = true
+  sync : b.written = b.eff
+  cov : b.eff.covered h = true
+  tlb : b.tlb = .clean
+  tab : ∀ j (hj : j < 32), b.core.mem (b.eff.ttbr0 + UInt64.ofNat j) = tableBytes[j]
+  prot : ∀ j < 32, R (b.eff.ttbr0 + UInt64.ofNat j) = true
+  exe : ∀ a w, code a = some w → ∃ x, classify h b.eff b.core.mem a = some (.normal x true)
+
+/-- A run of the program model under a ready state's platform keeps the state ready. -/
+theorem Ready.reach {h : Hw} {R : UInt64 → Bool} {code c' : UInt64 → Option UInt32} {b : Boot}
+    (hr : Ready h R code b) {c : State} (hrun : Reach (b.platform h R) c' b.core c) (u : Bool) :
+    Ready h R code { b with core := c, uartDone := u } := by
+  have hkeep : ∀ j < 32, c.mem (b.eff.ttbr0 + UInt64.ofNat j) =
+      b.core.mem (b.eff.ttbr0 + UInt64.ofNat j) := fun j hj =>
+    Reach.frame hrun (by simp [Boot.platform, hr.prot j hj])
+  refine ⟨hr.sp, hr.sync, hr.cov, hr.tlb, fun j hj => ?_, hr.prot, fun a w hw => ?_⟩
+  · show c.mem _ = _
+    rw [hkeep j hj]
+    exact hr.tab j hj
+  · show ∃ x, classify h b.eff c.mem a = _
+    rw [classify_congr hkeep]
+    exact hr.exe a w hw
+
+/-- The rest of an image's run once the program starts: when the program, in the program model
+with a code map that the image's extends, either returns to the exit with X0 = 0 after writing
+`out`, or reaches the exit word with a status that satisfies `T` and writes nothing, the boot
+model reaches the `HVC #0` with X0 holding `SYSTEM_OFF`, every UART store complete, and the UART
+showing `out` followed by the byte 0, or the status's byte alone. -/
+theorem boot_after_main {L : Layout} {is : List Instr} (hs : startupCode L = .ok is)
+    {code pcode : UInt64 → Option UInt32} (hc : CodeAt code (L.image + 64) is)
+    (hbase : L.base = after (L.image + 64) 67) (hmono : ∀ a w, pcode a = some w → code a = some w)
+    {h : Hw} {R : UInt64 → Bool} {b : Boot} (hr : Ready h R code b) {out : List UInt8}
+    {T : UInt64 → Prop}
+    (hout : (∃ ms', Reach (b.platform h R) pcode b.core ms' ∧
+        ms'.pc = after (L.image + 64) 55 ∧ ms'.x 0 = 0 ∧ ms'.out = b.core.out ++ out) ∨
+      ∃ ms', Reach (b.platform h R) pcode b.core ms' ∧ ms'.pc = L.base ∧ T (ms'.x 0) ∧
+        ms'.out = b.core.out) :
+    ∃ b', BootReach h R code b b' ∧ code b'.core.pc = some (encode .hvc0) ∧
+      b'.core.x 0 = 0x84000008 ∧ b'.uartDone = true ∧
+      (b'.core.out = b.core.out ++ out ++ [0] ∨
+        ∃ c, T c ∧ b'.core.out = b.core.out ++ [c.toUInt8]) := by
+  have hu := classify_uart hr.cov hr.tab
+  rcases hout with ⟨ms, hrun, hp, hx, ho⟩ | ⟨ms, hrun, hp, ht, ho⟩
+  · have hrun' := Reach.mono_code hmono hrun
+    have r1 := bootReach_of_reach hr.sp hr.sync hr.cov hr.tlb hu hr.prot hr.exe hrun'
+    have hr1 := hr.reach hrun' (b.uartDone && ms.out == b.core.out)
+    obtain ⟨b', r2, -, hcb, hx', ho', hu'⟩ := boot_exit hs hc hr1.sp hr1.sync hr1.cov hr1.tlb
+      hr1.tab hr1.prot hr1.exe hp
+    refine ⟨b', r1.trans r2, hcb, hx', hu', .inl ?_⟩
+    rw [ho']
+    show ms.out ++ [(ms.x 0).toUInt8] = _
+    rw [ho, hx]
+    rfl
+  · have hrun' := Reach.mono_code hmono hrun
+    have hw := run_exitWord (P := b.platform h R) hs hc hbase hp
+    have hboth := hrun'.trans hw
+    have r1 := bootReach_of_reach hr.sp hr.sync hr.cov hr.tlb hu hr.prot hr.exe hboth
+    have hr1 := hr.reach hboth (b.uartDone && ms.out == b.core.out)
+    obtain ⟨b', r2, -, hcb, hx', ho', hu'⟩ := boot_exit hs hc hr1.sp hr1.sync hr1.cov hr1.tlb
+      hr1.tab hr1.prot hr1.exe rfl
+    refine ⟨b', r1.trans r2, hcb, hx', hu', .inr ⟨ms.x 0, ht, ?_⟩⟩
+    rw [ho']
+    show ms.out ++ [(ms.x 0).toUInt8] = _
+    rw [ho]
 
 end LeanExe.A64
