@@ -98,43 +98,45 @@ theorem LocalsRel.store {s : State} {ls : List Value} (h : LocalsRel s ls) {i : 
     rw [load64_store64_other _ _ _ _ (slot_apart (by omega) (by omega) hij)]
     exact h j hj
 
-theorem gen_localSet {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {i : Nat}
-    {is : List Instr} {fin : Option Nat}
-    (hg : genInstr E ctl h a (.localSet i) = .ok (is, fin)) :
-    ∃ hs : i < 4096, i < E.locals ∧ curBase ctl + 1 ≤ h ∧ h - 1 < 26 ∧
-      is = [.str (regOf (h - 1)) 31 ⟨i, hs⟩] ∧ fin = some (h - 1) := by
-  unfold genInstr at hg
-  by_cases hc : i ≥ E.locals ∨ h < curBase ctl + 1
-  · simp [hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
-  by_cases hlt : h - 1 < 26
-  · by_cases hs : i < 4096
-    · simp [hc, opReg_ok hlt, slotOf, hs, bind, Except.bind, pure, Except.pure] at hg
-      exact ⟨hs, by omega, by omega, hlt, hg.1.symm, hg.2.symm⟩
-    · simp [hc, opReg_ok hlt, slotOf, hs, throw, throwThe, MonadExceptOf.throw, bind,
-        Except.bind] at hg
-  · obtain ⟨e, he⟩ := opReg_error hlt
-    simp [hc, he, bind, Except.bind] at hg
+theorem lt_of_getElem?_eq_some {β : Type} {l : List β} {i : Nat} {x : β}
+    (h : l[i]? = some x) : i < l.length := by
+  by_cases hi : i < l.length
+  · exact hi
+  · rw [List.getElem?_eq_none (by omega)] at h; cases h
 
-theorem gen_localTee {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {i : Nat}
-    {is : List Instr} {fin : Option Nat}
-    (hg : genInstr E ctl h a (.localTee i) = .ok (is, fin)) :
-    ∃ hs : i < 4096, i < E.locals ∧ curBase ctl + 1 ≤ h ∧ h - 1 < 26 ∧
-      is = [.str (regOf (h - 1)) 31 ⟨i, hs⟩] ∧ fin = some h := by
-  unfold genInstr at hg
-  by_cases hc : i ≥ E.locals ∨ h < curBase ctl + 1
+/-- The generator's `STR` of the top into the slot of local `i`, for `local.set` and
+`local.tee`, whose top has the local's type. -/
+theorem gen_localStore {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64} {i : Nat}
+    {is : List Instr} {fin : Option (List ValueType)} {inst : Instruction}
+    {σ' : List ValueType} (hinst : inst = .localSet i ∧ σ' = σ.tail ∨ inst = .localTee i ∧ σ' = σ)
+    (hg : genInstr E ctl σ a inst = .ok (is, fin)) :
+    ∃ (hs : i < 4096) (hi : i < E.localTypes.length), curBase ctl + 1 ≤ σ.length ∧
+      σ.length - 1 < 26 ∧ σ.head? = some E.localTypes[i] ∧
+      is = [.str (regOf (σ.length - 1)) 31 ⟨i, hs⟩] ∧ fin = some σ' := by
+  rcases hinst with ⟨rfl, hσ⟩ | ⟨rfl, hσ⟩ <;> rw [hσ] <;> unfold genInstr at hg <;> (
+  by_cases hc : σ.length < curBase ctl + 1 ∨ σ.head? ≠ E.localTypes[i]?
   · simp [hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
-  by_cases hlt : h - 1 < 26
+  have hc' := hc
+  simp only [not_or, Ne, Decidable.not_not] at hc'
+  obtain ⟨hc1, hc2⟩ := hc'
+  have hi : i < E.localTypes.length := by
+    cases σ with
+    | nil => simp at hc1
+    | cons t σ0 => exact lt_of_getElem?_eq_some (by rw [← hc2]; rfl)
+  have hhead : σ.head? = some E.localTypes[i] := by
+    rw [hc2, List.getElem?_eq_getElem hi]
+  by_cases hlt : σ.length - 1 < 26
   · by_cases hs : i < 4096
     · simp [hc, opReg_ok hlt, slotOf, hs, bind, Except.bind, pure, Except.pure] at hg
-      exact ⟨hs, by omega, by omega, hlt, hg.1.symm, hg.2.symm⟩
+      exact ⟨hs, hi, by omega, hlt, hhead, hg.1.symm, hg.2.symm⟩
     · simp [hc, opReg_ok hlt, slotOf, hs, throw, throwThe, MonadExceptOf.throw, bind,
         Except.bind] at hg
   · obtain ⟨e, he⟩ := opReg_error hlt
-    simp [hc, he, bind, Except.bind] at hg
+    simp [hc, he, bind, Except.bind] at hg)
 
 /-- The machine's side of `STR` of the top into slot `i`. -/
-theorem exec_str_slot {n : Nat} {sl : Locals} {ms : State} (hinv : Inv P n sl ms) {i : Nat}
-    (hi : i < n) (hs : i < 4096) (r : Fin 32) :
+theorem exec_str_slot {lts σ : List ValueType} {sl : Locals} {ms : State}
+    (hinv : Inv P lts σ sl ms) {i : Nat} (hi : i < lts.length) (hs : i < 4096) (r : Fin 32) :
     LeanExe.A64.exec P (.str r 31 ⟨i, hs⟩) ms =
       some { ms with
         mem := store64 ms.mem (ms.sp + UInt64.ofNat (8 * i)) (ms.x r), pc := ms.pc + 4 } := by
@@ -142,76 +144,78 @@ theorem exec_str_slot {n : Nat} {sl : Locals} {ms : State} (hinv : Inv P n sl ms
     hinv.aligned]
   simp
 
-theorem sim_localSet (F i : Nat) : InstrSim P code F (.localSet i) := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc _
-  obtain ⟨hs, hi, hhb, hlt, rfl, rfl⟩ := gen_localSet hgen
+/-- The simulation of `local.set i` and `local.tee i`, which keep the operand stack `σ'`. -/
+theorem sim_localStore {F i : Nat} {inst : Instruction} (tee : Bool)
+    (hinst : inst = (if tee then .localTee i else .localSet i))
+    (hexec : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals) (v : Value)
+      (vs : List Value) (s' : Locals), sl.values = v :: vs → sl.set? i v = some s' →
+      s'.values = sl.values → execOne (f + 1) m st sl inst =
+        .Fallthrough st { s' with values := if tee then v :: vs else vs }) :
+    InstrSim P code F inst := by
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
+  obtain ⟨hs, hi, hhb, hlt, hhead, rfl, rfl⟩ := gen_localStore (i := i)
+    (σ' := if tee then σ else σ.tail) (by cases tee <;> simp [hinst]) hgen
+  have hh := hinv.len
   cases F with
-  | zero => simp only [execOne.eq_def, Outcome, or_true]
+  | zero => cases tee <;> subst hinst <;> simp only [execOne.eq_def, Outcome, or_true]
   | succ f =>
       obtain ⟨v, vs, hvs⟩ : ∃ v vs, sl.values = v :: vs := by
         cases hv : sl.values with
         | nil => rw [hv] at hh; simp at hh; omega
         | cons v vs => exact ⟨v, vs, rfl⟩
-      have hvl : vs.length = h - 1 := by rw [hvs] at hh; simp at hh; omega
+      have hvl : vs.length = σ.length - 1 := by rw [hvs] at hh; simp at hh; omega
       have hil : i < (sl.params ++ sl.locals).length := by rw [hinv.count]; exact hi
       obtain ⟨s', hs', hpl, hvals⟩ := ProofKit.Locals.set?_append sl i v hil
-      simp only [execOne.eq_def, hvs, hs']
-      have hc : code ms.pc = some (encode (.str (regOf (h - 1)) 31 ⟨i, hs⟩)) := by
+      rw [hexec f m st sl v vs s' hvs hs' hvals]
+      have hc : code ms.pc = some (encode (.str (regOf (σ.length - 1)) 31 ⟨i, hs⟩)) := by
         rw [hpc]; simpa [after_zero] using hcode 0 (by simp)
       have hstack := hinv.stack
       rw [hvs] at hstack
-      refine .inr ⟨h - 1, rfl, _,
+      have hty := hinv.types
+      rw [hvs] at hty
+      obtain ⟨t, σ0, rfl⟩ : ∃ t σ0, σ = t :: σ0 := by
+        cases σ with
+        | nil => simp at hhb
+        | cons t σ0 => exact ⟨t, σ0, rfl⟩
+      have htv : HasType E.localTypes[i] v := by
+        simp only [List.head?_cons, Option.some.injEq] at hhead
+        rw [← hhead]; exact hty.1
+      refine .inr ⟨_, rfl, _,
         reach_exec P code hc (exec_str_slot P hinv hi hs _) (.refl _), ?_, rfl, rfl, rfl, ?_, ?_,
-        ?_, fun k _ => rfl⟩
+        fun k _ => rfl⟩
       · simp [hpc, after]
       · intro b hb'
         have hin := slot_inside hi hinv.bound (hinv.frame.outside (by omega) hb')
         rw [slotAddr, ← ofNat_mul8] at hin
         exact store64_other _ _ _ _ hin
-      · refine ⟨hstack.pop.congr (fun k _ => rfl), ?_, ?_, hinv.frame.congr rfl rfl⟩
+      · refine ⟨?_, ?_, ?_, hinv.frame.congr rfl rfl, ?_, ?_⟩
+        · cases tee
+          · exact hstack.pop.congr (fun k _ => rfl)
+          · exact hstack.congr (fun k _ => rfl)
         · show LocalsRel _ (s'.params ++ s'.locals)
           rw [hpl]
           refine hinv.locals.store hil (by rw [hinv.count]; exact hinv.bound) ?_
           rw [← hvl]; exact hstack.top
-        · show (s'.params ++ s'.locals).length = E.locals
+        · show (s'.params ++ s'.locals).length = E.localTypes.length
           rw [hpl, List.length_set, hinv.count]
-      · show vs.length = h - 1
-        exact hvl
+        · cases tee
+          · exact hty.2
+          · exact hty
+        · show Typed E.localTypes (s'.params ++ s'.locals)
+          rw [hpl]
+          exact hinv.ltypes.set hi htv
 
-theorem sim_localTee (F i : Nat) : InstrSim P code F (.localTee i) := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc _
-  obtain ⟨hs, hi, hhb, hlt, rfl, rfl⟩ := gen_localTee hgen
-  cases F with
-  | zero => simp only [execOne.eq_def, Outcome, or_true]
-  | succ f =>
-      obtain ⟨v, vs, hvs⟩ : ∃ v vs, sl.values = v :: vs := by
-        cases hv : sl.values with
-        | nil => rw [hv] at hh; simp at hh; omega
-        | cons v vs => exact ⟨v, vs, rfl⟩
-      have hvl : vs.length = h - 1 := by rw [hvs] at hh; simp at hh; omega
-      have hil : i < (sl.params ++ sl.locals).length := by rw [hinv.count]; exact hi
-      obtain ⟨s', hs', hpl, hvals⟩ := ProofKit.Locals.set?_append sl i v hil
-      simp only [execOne.eq_def, hvs, hs']
-      have hc : code ms.pc = some (encode (.str (regOf (h - 1)) 31 ⟨i, hs⟩)) := by
-        rw [hpc]; simpa [after_zero] using hcode 0 (by simp)
-      have hstack := hinv.stack
-      rw [hvs] at hstack
-      refine .inr ⟨h, rfl, _, reach_exec P code hc (exec_str_slot P hinv hi hs _) (.refl _),
-        ?_, rfl, rfl, rfl, ?_, ?_, ?_, fun k _ => rfl⟩
-      · simp [hpc, after]
-      · intro b hb'
-        have hin := slot_inside hi hinv.bound (hinv.frame.outside (by omega) hb')
-        rw [slotAddr, ← ofNat_mul8] at hin
-        exact store64_other _ _ _ _ hin
-      · refine ⟨?_, ?_, ?_, hinv.frame.congr rfl rfl⟩
-        · rw [hvals, hvs]; exact hstack.congr (fun k _ => rfl)
-        · show LocalsRel _ (s'.params ++ s'.locals)
-          rw [hpl]
-          refine hinv.locals.store hil (by rw [hinv.count]; exact hinv.bound) ?_
-          rw [← hvl]; exact hstack.top
-        · show (s'.params ++ s'.locals).length = E.locals
-          rw [hpl, List.length_set, hinv.count]
-      · rw [hvals, hvs]; simp; omega
+theorem sim_localSet (F i : Nat) : InstrSim P code F (.localSet i) :=
+  sim_localStore P code false rfl fun f α m st sl v vs s' hvs hs' _ => by
+    simp only [execOne.eq_def, hvs, hs']; rfl
+
+theorem sim_localTee (F i : Nat) : InstrSim P code F (.localTee i) :=
+  sim_localStore P code true rfl fun f α m st sl v vs s' hvs hs' hv => by
+    simp only [execOne.eq_def, hvs, hs']
+    obtain ⟨p, l, vals⟩ := s'
+    simp only at hv
+    rw [hv, hvs]
+    rfl
 
 /-! ## Constants -/
 
@@ -292,51 +296,57 @@ theorem run_movImm {s : State} {a : UInt64} {d : Fin 32} {v : UInt64} (hd : d.va
   · simp [s4, s3, s2, s1]
   · simp [s4, s3, s2, s1]
 
-theorem gen_const {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Instr}
-    {fin : Option Nat} {inst : Instruction} {w : UInt64}
-    (hinst : inst = .constI64 w ∨ ∃ c : UInt32, inst = .const c ∧ w = c.toUInt64)
-    (hg : genInstr E ctl h a inst = .ok (is, fin)) :
-    h < 26 ∧ is = movImm (regOf h) w ∧ fin = some (h + 1) := by
-  by_cases hlt : h < 26
-  · rcases hinst with rfl | ⟨c, rfl, rfl⟩ <;>
+theorem gen_const {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64}
+    {is : List Instr} {fin : Option (List ValueType)} {inst : Instruction} {w : UInt64}
+    {t : ValueType}
+    (hinst : inst = .constI64 w ∧ t = .i64 ∨ ∃ c : UInt32, inst = .const c ∧ w = c.toUInt64 ∧
+      t = .i32)
+    (hg : genInstr E ctl σ a inst = .ok (is, fin)) :
+    σ.length < 26 ∧ is = movImm (regOf σ.length) w ∧ fin = some (t :: σ) := by
+  by_cases hlt : σ.length < 26
+  · rcases hinst with ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ <;>
       simp [genInstr, opReg_ok hlt, bind, Except.bind, pure, Except.pure] at hg <;>
       exact ⟨hlt, hg.1.symm, hg.2.symm⟩
   · obtain ⟨e, he⟩ := opReg_error hlt
-    rcases hinst with rfl | ⟨c, rfl, rfl⟩ <;> simp [genInstr, he, bind, Except.bind] at hg
+    rcases hinst with ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ <;>
+      simp [genInstr, he, bind, Except.bind] at hg
 
 /-- The simulation of a constant `v` that `w`, its register word, holds. -/
-theorem sim_const_of {F : Nat} {inst : Instruction} {w : UInt64} {v : Value}
-    (hinst : inst = .constI64 w ∨ ∃ c : UInt32, inst = .const c ∧ w = c.toUInt64)
-    (hv : ValRel v w)
+theorem sim_const_of {F : Nat} {inst : Instruction} {w : UInt64} {v : Value} {t : ValueType}
+    (hinst : inst = .constI64 w ∧ t = .i64 ∨ ∃ c : UInt32, inst = .const c ∧ w = c.toUInt64 ∧
+      t = .i32)
+    (hv : ValRel v w) (ht : HasType t v)
     (hexec : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals),
       execOne (f + 1) m st sl inst = .Fallthrough st { sl with values := v :: sl.values }) :
     InstrSim P code F inst := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
   obtain ⟨hlt, rfl, rfl⟩ := gen_const hinst hgen
+  have hh := hinv.len
   cases F with
-  | zero => rcases hinst with rfl | ⟨c, rfl, rfl⟩ <;> simp only [execOne.eq_def, Outcome, or_true]
+  | zero =>
+      rcases hinst with ⟨rfl, rfl⟩ | ⟨c, rfl, rfl, rfl⟩ <;>
+        simp only [execOne.eq_def, Outcome, or_true]
   | succ f =>
       rw [hexec f m st sl]
       obtain ⟨s', hr, hp, hx, hkeep, hsp, hmem, hout⟩ :=
-        run_movImm P code (regOf_lt_31 h hlt) hcode hpc
-      have h18 := hkeep 18 (Ne.symm (regOf_ne_18 h hlt))
-      refine .inr ⟨h + 1, rfl, s', hr, by simpa [movImm] using hp, hsp, hout, h18, ?_, ?_, ?_,
-        ?_⟩
+        run_movImm P code (regOf_lt_31 _ hlt) hcode hpc
+      have h18 := hkeep 18 (Ne.symm (regOf_ne_18 _ hlt))
+      refine .inr ⟨_, rfl, s', hr, by simpa [movImm] using hp, hsp, hout, h18, ?_, ?_, ?_⟩
       · intro b _; rw [hmem]
       · refine ⟨StackRel.push hinv.stack (by omega) ?_ ?_, hinv.locals.congr hmem hsp,
-          hinv.count, hinv.frame.congr hsp h18⟩
+          hinv.count, hinv.frame.congr hsp h18, Typed.cons ht hinv.types, hinv.ltypes⟩
         · rw [hh, hx]; exact hv
         · intro k hk
-          exact hkeep _ (fun e => absurd (regOf_inj k (by omega) h hlt e) (by omega))
-      · simp [hh]
+          exact hkeep _ (fun e => absurd (regOf_inj k (by omega) _ hlt e) (by omega))
       · intro k hk
-        exact hkeep _ (fun e => absurd (regOf_inj k (by omega) h hlt e) (by omega))
+        exact hkeep _ (fun e => absurd (regOf_inj k (by omega) _ hlt e) (by omega))
 
 theorem sim_constI64 (F : Nat) (w : UInt64) : InstrSim P code F (.constI64 w) :=
-  sim_const_of P code (v := .i64 w) (.inl rfl) rfl (fun _ _ _ _ _ => by simp only [execOne.eq_def])
+  sim_const_of P code (v := .i64 w) (.inl ⟨rfl, rfl⟩) rfl trivial
+    (fun _ _ _ _ _ => by simp only [execOne.eq_def])
 
 theorem sim_const (F : Nat) (c : UInt32) : InstrSim P code F (.const c) :=
-  sim_const_of P code (w := c.toUInt64) (v := .i32 c) (.inr ⟨c, rfl, rfl⟩) rfl
+  sim_const_of P code (w := c.toUInt64) (v := .i32 c) (.inr ⟨c, rfl, rfl, rfl⟩) rfl trivial
     (fun _ _ _ _ _ => by simp only [execOne.eq_def])
 
 /-! ## Comparisons -/
@@ -386,43 +396,54 @@ theorem run_cset {s : State} {a : UInt64} {i0 : Instr} {r : Fin 32} {x y : UInt6
   · show (s1.setX r _).out = s.out
     rw [State.setX_out]; exact State.setX_out
 
-theorem genCmp_ok {ctl : List Ctl} {h : Nat} {c : Fin 16} {is : List Instr} {fin : Option Nat}
-    (hg : genCmp ctl h c = .ok (is, fin)) :
-    curBase ctl + 2 ≤ h ∧ h - 1 < 26 ∧
-      is = [.subsReg 31 (regOf (h - 2)) (regOf (h - 1)), .csinc (regOf (h - 2)) 31 31 c] ∧
-      fin = some (h - 1) := by
+theorem genCmp_ok {ctl : List Ctl} {σ : List ValueType} {c : Fin 16} {is : List Instr}
+    {fin : Option (List ValueType)} (hg : genCmp ctl σ c = .ok (is, fin)) :
+    curBase ctl + 2 ≤ σ.length ∧ σ.length - 1 < 26 ∧
+      is = [.subsReg 31 (regOf (σ.length - 2)) (regOf (σ.length - 1)),
+        .csinc (regOf (σ.length - 2)) 31 31 c] ∧
+      fin = some (.i32 :: σ.drop 2) := by
+  generalize hσl : σ.length = h at hg ⊢
+  have e : genCmp ctl σ c = do
+      if h < curBase ctl + 2 then throw s!"a comparison at height {h}"
+      let r ← opReg (h - 2)
+      return ([.subsReg 31 r (← opReg (h - 1)), .csinc r 31 31 c], some (.i32 :: σ.drop 2)) := by
+    rw [← hσl]; rfl
+  rw [e] at hg
+  clear e
   by_cases hc : h < curBase ctl + 2
-  · simp [genCmp, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
+  · simp [hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
   by_cases hlt : h - 1 < 26
-  · simp [genCmp, hc, opReg_ok hlt, opReg_ok (show h - 2 < 26 by omega), bind, Except.bind,
+  · simp [hc, opReg_ok hlt, opReg_ok (show h - 2 < 26 by omega), bind, Except.bind,
       pure, Except.pure] at hg
     exact ⟨by omega, hlt, hg.1.symm, hg.2.symm⟩
   · obtain ⟨e, he⟩ := opReg_error hlt
     by_cases hlt2 : h - 2 < 26
-    · simp [genCmp, hc, he, opReg_ok hlt2, bind, Except.bind] at hg
+    · simp [hc, he, opReg_ok hlt2, bind, Except.bind] at hg
     · obtain ⟨e2, he2⟩ := opReg_error hlt2
-      simp [genCmp, hc, he2, bind, Except.bind] at hg
+      simp [hc, he2, bind, Except.bind] at hg
 
-theorem gen_cmp {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Instr}
-    {fin : Option Nat} {inst : Instruction} (hinst : inst = .eqI64 ∨ inst = .eq)
-    (hg : genInstr E ctl h a inst = .ok (is, fin)) :
-    curBase ctl + 2 ≤ h ∧ h - 1 < 26 ∧
-      is = [.subsReg 31 (regOf (h - 2)) (regOf (h - 1)), .csinc (regOf (h - 2)) 31 31 1] ∧
-      fin = some (h - 1) := by
-  have e : genInstr E ctl h a inst = genCmp ctl h 1 := by
+theorem gen_cmp {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64} {is : List Instr}
+    {fin : Option (List ValueType)} {inst : Instruction} (hinst : inst = .eqI64 ∨ inst = .eq)
+    (hg : genInstr E ctl σ a inst = .ok (is, fin)) :
+    curBase ctl + 2 ≤ σ.length ∧ σ.length - 1 < 26 ∧
+      is = [.subsReg 31 (regOf (σ.length - 2)) (regOf (σ.length - 1)),
+        .csinc (regOf (σ.length - 2)) 31 31 1] ∧
+      fin = some (.i32 :: σ.drop 2) := by
+  have e : genInstr E ctl σ a inst = genCmp ctl σ 1 := by
     rcases hinst with rfl | rfl <;> simp only [genInstr]
   rw [e] at hg
   exact genCmp_ok hg
 
-theorem gen_eqz {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Instr}
-    {fin : Option Nat} {inst : Instruction} (hinst : inst = .eqzI64 ∨ inst = .eqz)
-    (hg : genInstr E ctl h a inst = .ok (is, fin)) :
-    curBase ctl + 1 ≤ h ∧ h - 1 < 26 ∧
-      is = [.subsImm 31 (regOf (h - 1)) 0, .csinc (regOf (h - 1)) 31 31 1] ∧ fin = some h := by
-  by_cases hc : h < curBase ctl + 1
+theorem gen_eqz {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64} {is : List Instr}
+    {fin : Option (List ValueType)} {inst : Instruction} (hinst : inst = .eqzI64 ∨ inst = .eqz)
+    (hg : genInstr E ctl σ a inst = .ok (is, fin)) :
+    curBase ctl + 1 ≤ σ.length ∧ σ.length - 1 < 26 ∧
+      is = [.subsImm 31 (regOf (σ.length - 1)) 0, .csinc (regOf (σ.length - 1)) 31 31 1] ∧
+      fin = some (.i32 :: σ.tail) := by
+  by_cases hc : σ.length < curBase ctl + 1
   · rcases hinst with rfl | rfl <;>
       simp [genInstr, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
-  by_cases hlt : h - 1 < 26
+  by_cases hlt : σ.length - 1 < 26
   · rcases hinst with rfl | rfl <;>
       simp [genInstr, hc, opReg_ok hlt, bind, Except.bind, pure, Except.pure] at hg <;>
       exact ⟨by omega, hlt, hg.1.symm, hg.2.symm⟩
@@ -432,21 +453,21 @@ theorem gen_eqz {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Ins
 /-- The outcome of a comparison whose result `c` replaces the operands above `vs` and lies,
 zero-extended, in the register of height `vs.length`. -/
 theorem cmp_outcome {E : Env} {ctl : List Ctl} {a : UInt64} {α : Type} {st : Store α}
-    {sl : Locals} {ms ms' : State} {vs : List Value} (c : UInt32)
-    (hinv : Inv P E.locals sl ms) (hb : curBase ctl ≤ vs.length)
+    {sl : Locals} {ms ms' : State} {vs : List Value} {σ0 σr : List ValueType} (c : UInt32)
+    (hinv : Inv P E.localTypes σ0 sl ms) (hty : Typed σr vs) (hb : curBase ctl ≤ vs.length)
     (hlt : vs.length < 26) (hstack : StackRel ms vs) (hr : Reach P code ms ms')
     (hpc : ms'.pc = after a 2) (hx : ms'.x (regOf vs.length) = c.toUInt64)
     (hkeep : ∀ q, q ≠ regOf vs.length → ms'.x q = ms.x q) (hsp : ms'.sp = ms.sp)
     (hmem : ms'.mem = ms.mem) (hout : ms'.out = ms.out) :
-    Outcome P code E ctl (some (vs.length + 1)) (after a 2)
+    Outcome P code E ctl (some (.i32 :: σr)) (after a 2)
       (.Fallthrough st { sl with values := .i32 c :: vs }) ms := by
   have hk : ∀ j < vs.length, ms'.x (regOf j) = ms.x (regOf j) := fun j hj =>
     hkeep _ (fun e => absurd (regOf_inj j (by omega) vs.length hlt e) (by omega))
   have h18 := hkeep 18 (Ne.symm (regOf_ne_18 _ hlt))
-  refine .inr ⟨vs.length + 1, rfl, ms', hr, hpc, hsp, hout, h18, fun b _ => by rw [hmem], ?_,
-    by simp, fun j hj => hk j (by omega)⟩
-  refine ⟨StackRel.push hstack hlt (by rw [hx]; rfl) hk, hinv.locals.congr hmem hsp, hinv.count,
-    hinv.frame.congr hsp h18⟩
+  refine .inr ⟨_, rfl, ms', hr, hpc, hsp, hout, h18, fun b _ => by rw [hmem], ?_,
+    fun j hj => hk j (by omega)⟩
+  exact ⟨StackRel.push hstack hlt (by rw [hx]; rfl) hk, hinv.locals.congr hmem hsp, hinv.count,
+    hinv.frame.congr hsp h18, Typed.cons trivial hty, hinv.ltypes⟩
 
 theorem cset_val (x y : UInt64) (c : Prop) [Decidable c] (hc : x = y ↔ c) :
     (if x = y then (1 : UInt64) else 0) = (if c then (1 : UInt32) else 0).toUInt64 := by
@@ -455,8 +476,11 @@ theorem cset_val (x y : UInt64) (c : Prop) [Decidable c] (hc : x = y ↔ c) :
   · rw [ite_eq_right (fun e => h (hc.mp e)), ite_eq_right h]; rfl
 
 theorem sim_eqI64 (F : Nat) : InstrSim P code F .eqI64 := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_cmp (.inl rfl) hgen
+  have hh := hinv.len
+  have hty := hinv.types
+  generalize hσl : σ.length = h at *
   cases F with
   | zero => simp only [execOne.eq_def, Outcome, or_true]
   | succ f =>
@@ -466,6 +490,7 @@ theorem sim_eqI64 (F : Nat) : InstrSim P code F .eqI64 := by
         have hvl : vs.length = h - 2 := by rw [hvs] at hh; simp at hh; omega
         have hst := hinv.stack
         rw [hvs] at hst
+        rw [hvs] at hty
         have hy : ms.x (regOf (h - 1)) = y := by
           have := hst.top; rw [show (Value.i64 x :: vs).length = h - 1 by simp; omega] at this
           exact this
@@ -475,16 +500,18 @@ theorem sim_eqI64 (F : Nat) : InstrSim P code F .eqI64 := by
           run_cset P code (regOf_lt_31 (h - 2) (by omega))
             (by simpa [after_zero] using hcode 0 (by simp))
             (by simpa using hcode 1 (by simp)) hpc rfl
-        rw [show h - 1 = vs.length + 1 by omega]
-        apply cmp_outcome P code _ hinv (vs := vs) (by omega) (by omega)
+        apply cmp_outcome P code _ hinv (vs := vs) (hty.drop 2) (by omega) (by omega)
           hst.pop.pop hr hp _ _ hsp hmem hout
         · rw [hvl, hres, hx, hy]; exact cset_val x y (x = y) Iff.rfl
         · rw [hvl]; exact hkeep
       next => exact .inr trivial
 
 theorem sim_eq (F : Nat) : InstrSim P code F .eq := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_cmp (.inr rfl) hgen
+  have hh := hinv.len
+  have hty := hinv.types
+  generalize hσl : σ.length = h at *
   cases F with
   | zero => simp only [execOne.eq_def, Outcome, or_true]
   | succ f =>
@@ -494,6 +521,7 @@ theorem sim_eq (F : Nat) : InstrSim P code F .eq := by
         have hvl : vs.length = h - 2 := by rw [hvs] at hh; simp at hh; omega
         have hst := hinv.stack
         rw [hvs] at hst
+        rw [hvs] at hty
         have hy : ms.x (regOf (h - 1)) = y.toUInt64 := by
           have := hst.top; rw [show (Value.i32 x :: vs).length = h - 1 by simp; omega] at this
           exact this
@@ -503,8 +531,7 @@ theorem sim_eq (F : Nat) : InstrSim P code F .eq := by
           run_cset P code (regOf_lt_31 (h - 2) (by omega))
             (by simpa [after_zero] using hcode 0 (by simp))
             (by simpa using hcode 1 (by simp)) hpc rfl
-        rw [show h - 1 = vs.length + 1 by omega]
-        apply cmp_outcome P code _ hinv (vs := vs) (by omega) (by omega)
+        apply cmp_outcome P code _ hinv (vs := vs) (hty.drop 2) (by omega) (by omega)
           hst.pop.pop hr hp _ _ hsp hmem hout
         · rw [hvl, hres, hx, hy]
           exact cset_val _ _ (x = y) ⟨fun e => UInt32.toUInt64_inj.mp e, fun e => by rw [e]⟩
@@ -521,8 +548,11 @@ theorem sim_eqz_of {F : Nat} {inst : Instruction} (hinst : inst = .eqzI64 ∨ in
           .Fallthrough st { sl with values := .i32 (if w = 0 then 1 else 0) :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_eqz hinst hgen
+  have hh := hinv.len
+  have hty := hinv.types
+  generalize hσl : σ.length = h at *
   cases F with
   | zero => rcases hinst with rfl | rfl <;> simp only [execOne.eq_def, Outcome, or_true]
   | succ f =>
@@ -531,6 +561,7 @@ theorem sim_eqz_of {F : Nat} {inst : Instruction} (hinst : inst = .eqzI64 ∨ in
         have hvl : vs.length = h - 1 := by rw [hvs] at hh; simp at hh; omega
         have hst := hinv.stack
         rw [hvs] at hst
+        rw [hvs] at hty
         have hw : ms.x (regOf (h - 1)) = w := by
           have := hst.top; rw [hvl] at this
           cases v <;> simp only [ValRel] at hvw this <;>
@@ -540,9 +571,8 @@ theorem sim_eqz_of {F : Nat} {inst : Instruction} (hinst : inst = .eqzI64 ∨ in
             (by simpa [after_zero] using hcode 0 (by simp))
             (by simpa using hcode 1 (by simp)) hpc
             (by simp only [exec, State.xsp_eq_x (regOf_lt_31 (h - 1) hlt)]; rfl)
-        rw [show h = vs.length + 1 by omega]
-        apply cmp_outcome P code _ hinv (vs := vs) (by omega) (by omega) hst.pop hr hp _ _ hsp
-          hmem hout
+        apply cmp_outcome P code _ hinv (vs := vs) hty.tail (by omega) (by omega) hst.pop hr hp _ _
+          hsp hmem hout
         · rw [hvl, hres, hw]; exact cset_val w 0 (w = 0) Iff.rfl
         · rw [hvl]; exact hkeep
       · rw [hex]; exact .inr trivial
@@ -572,16 +602,17 @@ theorem sim_eqz (F : Nat) : InstrSim P code F .eqz :=
               rw [ite_eq_right h, ite_eq_right this]
         | _ => exact .inr ⟨_, by simp only [execOne.eq_def, hv]; rfl⟩
 
-theorem gen_extend {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Instr}
-    {fin : Option Nat} (hg : genInstr E ctl h a .extendUI32 = .ok (is, fin)) :
-    curBase ctl + 1 ≤ h ∧ is = [] ∧ fin = some h := by
-  by_cases hc : h < curBase ctl + 1
+theorem gen_extend {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64}
+    {is : List Instr} {fin : Option (List ValueType)}
+    (hg : genInstr E ctl σ a .extendUI32 = .ok (is, fin)) :
+    curBase ctl + 1 ≤ σ.length ∧ is = [] ∧ fin = some (.i64 :: σ.tail) := by
+  by_cases hc : σ.length < curBase ctl + 1
   · simp [genInstr, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
   · simp [genInstr, hc, pure, Except.pure] at hg
     exact ⟨by omega, by cases hg.1; rfl, by cases hg.2; rfl⟩
 
 theorem sim_extendUI32 (F : Nat) : InstrSim P code F .extendUI32 := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
   obtain ⟨hhb, rfl, rfl⟩ := gen_extend hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome, or_true]
@@ -591,10 +622,12 @@ theorem sim_extendUI32 (F : Nat) : InstrSim P code F .extendUI32 := by
       next x vs hvs =>
         have hst := hinv.stack
         rw [hvs] at hst
-        refine .inr ⟨h, rfl, ms, .refl _, by simp [hpc, after_zero], rfl, rfl, rfl,
-          fun _ _ => rfl, ?_, by rw [← hh, hvs]; simp, fun _ _ => rfl⟩
+        have hty := hinv.types
+        rw [hvs] at hty
+        refine .inr ⟨_, rfl, ms, .refl _, by simp [hpc, after_zero], rfl, rfl, rfl,
+          fun _ _ => rfl, ?_, fun _ _ => rfl⟩
         refine ⟨⟨by have := hst.1; simpa using this, fun k hk => ?_⟩, hinv.locals, hinv.count,
-          hinv.frame⟩
+          hinv.frame, Typed.cons trivial hty.tail, hinv.ltypes⟩
         have := hst.2 k (by simpa using hk)
         by_cases hkl : k < vs.length
         · simpa [List.getElem_append_left (show k < vs.reverse.length by simpa using hkl)]

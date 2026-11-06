@@ -42043,7 +42043,9 @@ The revised recommendation is option A with the area at the start of `.data`, th
 
 The user approved the revised option A and asked to go on with the rest of the plan after it.
 
-- [ ] Static types in the generator and in `Inv`.
+The generator tracks the type of every value of the operand stack and of every local.  `genInstr` takes the types `σ` of the operand stack, top first, and returns the types after the instruction, and it rejects a `localSet` or `localTee` of a value whose type differs from the local's, a branch whose values lack the target's types, and a call whose arguments lack the callee's parameter types.  `Inv` gains `types`, which states that the operand stack's values have the types `σ`, and `ltypes`, which states the same of the locals, and every simulation lemma keeps both.  `Returned`, `CallResult`, and `FunSim` carry the types of the results and the arguments, `TrapAt` names each trap's stub, with the access outside the memory at stub 2, and `genProgram` rejects an entry function with a parameter other than an `i64`.  The theorems of both GCD programs build on edgexpert-18ff against the typed generator with the axioms `propext`, `Classical.choice`, and `Quot.sound`, and both programs pass under QEMU with KVM.
+
+- [x] Static types in the generator and in `Inv`.
 - [ ] The area at the start of `.data`, its image, and the store relation in `Inv`, `Outcome`, `Returned`, and `CallResult`.
 - [ ] `load64`, `store64`, `globalGet`, `globalSet`, `memorySize`, and `memoryGrow`, with stub 2.
 - [ ] The co-simulation of loads and stores with a base other than SP at unaligned addresses.

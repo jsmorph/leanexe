@@ -10,28 +10,29 @@ integer comparisons and operations of the C path's subset, and it rejects every 
 message.
 
 The operand stack's height and types are fixed at every reachable instruction, so the value at
-height `h` lies in the register `opReg h`, X0 to X15 and then X19 to X28.  An `i32` lies there
-zero-extended, so `extendUI32` emits nothing, `wrapI64` is a 32-bit `ORR`, and an `i32` comparison
-or `and` is the 64-bit one.  X16 is the scratch register of `remUI64` and of the prologue.  A
-function keeps its parameters and locals in a frame at `SP` of 8 bytes each, followed by 26 spill
-slots and the slot of the return address, a multiple of 16 bytes in all.  Its prologue checks that
-the frame fits above the stack's limit, which X18 holds, reserves the frame, stores the parameters
-into it from X0 upward, and clears the other locals.  A call spills the operand registers below its
-arguments to the spill slots, moves the arguments into X0 upward, branches with `BL`, moves the
-result from X0 into the register of its height, and reloads the spilled registers.  The callee may
-change every register but SP and X18, and it changes no memory from its caller's SP upward.  A
-construct carries at most one value, and a branch to one moves the value that it carries, if any,
-into the register of the construct's base height with one `ORR` and branches to the construct's
-target: the end of a `block` or an `iff`, the start of a `loop`, or the epilogue for the function
-itself, which also serves `ret`.  The result lies at height 0, in X0, when the epilogue releases the
-frame and returns.  Code after a `br`, a `ret`, or `unreachable` in the same list is unreachable,
-and the generator emits nothing for it, while the code after a construct is reachable, as Wasm's
-typing has it.  No instruction may pop below the base height of its innermost construct, `curBase`,
-as valid Wasm never does: Talos runs a construct's body on the whole operand stack and restores the
-values below the construct afterwards, which the registers of those heights would not follow.  A
-trap branches to a stub that sets X0 to the trap's code of `LeanExe.Native.trapCode`, 1, 2, or 3, or
-to 4 for an overflow of the stack, and branches to the program's exit word, which the image fills
-with a branch to `lx_exit` of the startup code.
+height `h` lies in the register `opReg h`, X0 to X15 and then X19 to X28.  The generator tracks the
+types and checks the types of the values that a `local.set`, a branch, and a call receive against
+the declared types.  An `i32` lies there zero-extended, so `extendUI32` emits nothing, `wrapI64` is
+a 32-bit `ORR`, and an `i32` comparison or `and` is the 64-bit one.  X16 is the scratch register of
+`remUI64` and of the prologue.  A function keeps its parameters and locals in a frame at `SP` of 8
+bytes each, followed by 26 spill slots and the slot of the return address, a multiple of 16 bytes in
+all.  Its prologue checks that the frame fits above the stack's limit, which X18 holds, reserves the
+frame, stores the parameters into it from X0 upward, and clears the other locals.  A call spills the
+operand registers below its arguments to the spill slots, moves the arguments into X0 upward,
+branches with `BL`, moves the result from X0 into the register of its height, and reloads the
+spilled registers.  The callee may change every register but SP and X18, and it changes no memory
+from its caller's SP upward.  A construct carries at most one value, and a branch to one moves the
+value that it carries, if any, into the register of the construct's base height with one `ORR` and
+branches to the construct's target: the end of a `block` or an `iff`, the start of a `loop`, or the
+epilogue for the function itself, which also serves `ret`.  The result lies at height 0, in X0, when
+the epilogue releases the frame and returns.  Code after a `br`, a `ret`, or `unreachable` in the
+same list is unreachable, and the generator emits nothing for it, while the code after a construct
+is reachable, as Wasm's typing has it.  No instruction may pop below the base height of its
+innermost construct, `curBase`, as valid Wasm never does: Talos runs a construct's body on the whole
+operand stack and restores the values below the construct afterwards, which the registers of those
+heights would not follow.  A trap branches to a stub that sets X0 to the trap's code of
+`LeanExe.Native.trapCode`, 1, 2, or 3, or to 4 for an overflow of the stack, and branches to the
+program's exit word, which the image fills with a branch to `lx_exit` of the startup code.
 
 The generator places code as it emits it: each function takes the address of its first
 instruction, and `instrSize` and `listSize` give the number of instructions of a construct
@@ -97,57 +98,70 @@ def cbField (here target : UInt64) : GenM (Fin 524288) := do
 /-- `n` instructions after `a`. -/
 def after (a : UInt64) (n : Nat) : UInt64 := a + 4 * UInt64.ofNat n
 
-/-- A construct that a branch can target: the target's address, the number of values that a
-branch to it carries, and the height under those values at the target. -/
+/-- A construct that a branch can target: the target's address, the types of the values that a
+branch to it carries, the top first, and the height under those values at the target. -/
 structure Ctl where
   target : UInt64
-  arity : Nat
+  types : List ValueType
   base : Nat
 
-/-- What the instructions of one function need: the number of its locals, parameters
-included, the addresses of the trap stubs for `unreachable`, for a division by zero, and for a
-stack that a frame would overflow, and for each function that a call may name, its entry, its
-number of parameters, and its number of results. -/
+/-- The number of values that a branch to `t` carries. -/
+def Ctl.arity (t : Ctl) : Nat := t.types.length
+
+/-- A table of the functions that calls may name: for each, its entry and the types of its
+parameters and of its results. -/
+abbrev Table := Nat → Option (UInt64 × List ValueType × List ValueType)
+
+/-- What the instructions of one function need: the types of its locals, parameters included,
+the addresses of the trap stubs for `unreachable`, for an access outside the memory, for a
+division by zero, and for a stack that a frame would overflow, and the table of the functions
+that its calls may name. -/
 structure Env where
-  locals : Nat
+  localTypes : List ValueType
   trapUnreachable : UInt64
+  trapBounds : UInt64
   trapDiv : UInt64
   trapStack : UInt64
-  callee : Nat → Option (UInt64 × Nat × Nat)
+  callee : Table
+
+/-- The number of the locals of `E`, parameters included. -/
+def Env.locals (E : Env) : Nat := E.localTypes.length
 
 /-- The numbers of parameters and results of the functions of the table `callee`. -/
-def sigOf (callee : Nat → Option (UInt64 × Nat × Nat)) (k : Nat) : Option (Nat × Nat) :=
-  (callee k).map fun c => (c.2.1, c.2.2)
+def sigOf (callee : Table) (k : Nat) : Option (Nat × Nat) :=
+  (callee k).map fun c => (c.2.1.length, c.2.2.length)
 
 /-- The height of the innermost construct's base, under which its code must not pop. -/
 def curBase : List Ctl → Nat
   | [] => 0
   | t :: _ => t.base
 
-/-- The move of a branch from height `h` to `t`, placed at `a`, when the branch carries a value,
-and the branch.  A construct carries at most one value, as the subset of
-`LeanExe/Native/Subset.lean` requires. -/
-def branchTo (t : Ctl) (h : Nat) (a : UInt64) : GenM (List Instr) := do
-  if h < t.base + t.arity ∨ t.arity > 1 then
-    throw "a branch with fewer values than its target takes, or with more than one"
-  let moves ← if t.arity = 1 then do pure [mov (← opReg t.base) (← opReg (h - 1))]
+/-- The move of a branch from the operand stack of types `σ`, top first, to `t`, placed at `a`,
+when the branch carries a value, and the branch.  A construct carries at most one value, as the
+subset of `LeanExe/Native/Subset.lean` requires, and the values that the branch carries must have
+the types of `t`. -/
+def branchTo (t : Ctl) (σ : List ValueType) (a : UInt64) : GenM (List Instr) := do
+  if σ.length < t.base + t.arity ∨ t.arity > 1 ∨ σ.take t.arity ≠ t.types then
+    throw "a branch with fewer values than its target takes, with more than one, or of other types"
+  let moves ← if t.arity = 1 then do pure [mov (← opReg t.base) (← opReg (σ.length - 1))]
     else pure []
   return moves ++ [.b (← bField (after a t.arity) t.target)]
 
 /-- A comparison of the two values on top, which `SUBS` and `CSINC` with the condition `c`, the
-inverse of the comparison's, replace by 1 or 0. -/
-def genCmp (ctl : List Ctl) (h : Nat) (c : Fin 16) : GenM (List Instr × Option Nat) := do
-  if h < curBase ctl + 2 then throw s!"a comparison at height {h}"
-  let r ← opReg (h - 2)
-  return ([.subsReg 31 r (← opReg (h - 1)), .csinc r 31 31 c], some (h - 1))
+inverse of the comparison's, replace by 1 or 0, an `i32`. -/
+def genCmp (ctl : List Ctl) (σ : List ValueType) (c : Fin 16) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 2 then throw s!"a comparison at height {σ.length}"
+  let r ← opReg (σ.length - 2)
+  return ([.subsReg 31 r (← opReg (σ.length - 1)), .csinc r 31 31 c], some (.i32 :: σ.drop 2))
 
 /-- An operation on the two values on top, which the instruction `op d n m` replaces by its
-result. -/
-def genBin (ctl : List Ctl) (h : Nat) (op : Fin 32 → Fin 32 → Fin 32 → Instr) :
-    GenM (List Instr × Option Nat) := do
-  if h < curBase ctl + 2 then throw s!"an operation at height {h}"
-  let r ← opReg (h - 2)
-  return ([op r r (← opReg (h - 1))], some (h - 1))
+result, of type `t`. -/
+def genBin (ctl : List Ctl) (σ : List ValueType) (op : Fin 32 → Fin 32 → Fin 32 → Instr)
+    (t : ValueType) : GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 2 then throw s!"an operation at height {σ.length}"
+  let r ← opReg (σ.length - 2)
+  return ([op r r (← opReg (σ.length - 1))], some (t :: σ.drop 2))
 
 mutual
 /-- The number of instructions of `ins` at height `h`, under constructs whose branches carry
@@ -195,131 +209,140 @@ def listSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
 end
 
 mutual
-/-- The instructions of `ins` placed at `a`, at height `h` under the constructs `ctl`, and the
-height after it, or `none` when the code after it is unreachable. -/
-def genInstr (E : Env) (ctl : List Ctl) (h : Nat) (a : UInt64) :
-    Instruction → GenM (List Instr × Option Nat)
+/-- The instructions of `ins` placed at `a`, on the operand stack of types `σ`, top first, under
+the constructs `ctl`, and the types after it, or `none` when the code after it is unreachable. -/
+def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
+    Instruction → GenM (List Instr × Option (List ValueType))
   | .localGet i => do
-      if i ≥ E.locals then throw s!"local {i} of {E.locals}"
-      return ([.ldr (← opReg h) 31 (← slotOf i)], some (h + 1))
+      match E.localTypes[i]? with
+      | some t => return ([.ldr (← opReg σ.length) 31 (← slotOf i)], some (t :: σ))
+      | none => throw s!"local {i} of {E.locals}"
   | .localSet i => do
-      if i ≥ E.locals ∨ h < curBase ctl + 1 then throw s!"local.set {i} at height {h}"
-      return ([.str (← opReg (h - 1)) 31 (← slotOf i)], some (h - 1))
+      if σ.length < curBase ctl + 1 ∨ σ.head? ≠ E.localTypes[i]? then
+        throw s!"local.set {i} at height {σ.length}"
+      return ([.str (← opReg (σ.length - 1)) 31 (← slotOf i)], some σ.tail)
   | .localTee i => do
-      if i ≥ E.locals ∨ h < curBase ctl + 1 then throw s!"local.tee {i} at height {h}"
-      return ([.str (← opReg (h - 1)) 31 (← slotOf i)], some h)
-  | .constI64 v => do return (movImm (← opReg h) v, some (h + 1))
-  | .const v => do return (movImm (← opReg h) v.toUInt64, some (h + 1))
-  | .eqI64 | .eq => genCmp ctl h 1
-  | .neI64 => genCmp ctl h 0
-  | .ltUI64 => genCmp ctl h 2
-  | .leUI64 => genCmp ctl h 8
-  | .geUI64 => genCmp ctl h 3
-  | .addI64 => genBin ctl h .addReg
-  | .subI64 => genBin ctl h .subReg
-  | .mulI64 => genBin ctl h fun d n m => .madd d n m 31
-  | .andI64 | .and => genBin ctl h .andReg
-  | .orI64 => genBin ctl h .orrReg
-  | .xorI64 => genBin ctl h .eorReg
-  | .shlI64 => genBin ctl h .lslv
-  | .shrUI64 => genBin ctl h .lsrv
+      if σ.length < curBase ctl + 1 ∨ σ.head? ≠ E.localTypes[i]? then
+        throw s!"local.tee {i} at height {σ.length}"
+      return ([.str (← opReg (σ.length - 1)) 31 (← slotOf i)], some σ)
+  | .constI64 v => do return (movImm (← opReg σ.length) v, some (.i64 :: σ))
+  | .const v => do return (movImm (← opReg σ.length) v.toUInt64, some (.i32 :: σ))
+  | .eqI64 | .eq => genCmp ctl σ 1
+  | .neI64 => genCmp ctl σ 0
+  | .ltUI64 => genCmp ctl σ 2
+  | .leUI64 => genCmp ctl σ 8
+  | .geUI64 => genCmp ctl σ 3
+  | .addI64 => genBin ctl σ .addReg .i64
+  | .subI64 => genBin ctl σ .subReg .i64
+  | .mulI64 => genBin ctl σ (fun d n m => .madd d n m 31) .i64
+  | .andI64 => genBin ctl σ .andReg .i64
+  | .and => genBin ctl σ .andReg .i32
+  | .orI64 => genBin ctl σ .orrReg .i64
+  | .xorI64 => genBin ctl σ .eorReg .i64
+  | .shlI64 => genBin ctl σ .lslv .i64
+  | .shrUI64 => genBin ctl σ .lsrv .i64
   | .wrapI64 => do
-      if h < curBase ctl + 1 then throw s!"wrap at height {h}"
-      let r ← opReg (h - 1)
-      return ([.orrW r 31 r], some h)
+      if σ.length < curBase ctl + 1 then throw s!"wrap at height {σ.length}"
+      let r ← opReg (σ.length - 1)
+      return ([.orrW r 31 r], some (.i32 :: σ.tail))
   | .eqzI64 | .eqz => do
-      if h < curBase ctl + 1 then throw s!"eqz at height {h}"
-      let r ← opReg (h - 1)
-      return ([.subsImm 31 r 0, .csinc r 31 31 1], some h)
+      if σ.length < curBase ctl + 1 then throw s!"eqz at height {σ.length}"
+      let r ← opReg (σ.length - 1)
+      return ([.subsImm 31 r 0, .csinc r 31 31 1], some (.i32 :: σ.tail))
   | .extendUI32 => do
-      if h < curBase ctl + 1 then throw s!"extend at height {h}"
-      return ([], some h)
+      if σ.length < curBase ctl + 1 then throw s!"extend at height {σ.length}"
+      return ([], some (.i64 :: σ.tail))
   | .remUI64 => do
-      if h < curBase ctl + 2 then throw s!"a remainder at height {h}"
-      let x ← opReg (h - 2)
-      let y ← opReg (h - 1)
+      if σ.length < curBase ctl + 2 then throw s!"a remainder at height {σ.length}"
+      let x ← opReg (σ.length - 2)
+      let y ← opReg (σ.length - 1)
       return ([.cbz y (← cbField a E.trapDiv), .udiv scratch x y, .msub x scratch y x],
-        some (h - 1))
+        some (.i64 :: σ.drop 2))
   | .divUI64 => do
-      if h < curBase ctl + 2 then throw s!"a division at height {h}"
-      let x ← opReg (h - 2)
-      let y ← opReg (h - 1)
-      return ([.cbz y (← cbField a E.trapDiv), .udiv x x y], some (h - 1))
+      if σ.length < curBase ctl + 2 then throw s!"a division at height {σ.length}"
+      let x ← opReg (σ.length - 2)
+      let y ← opReg (σ.length - 1)
+      return ([.cbz y (← cbField a E.trapDiv), .udiv x x y], some (.i64 :: σ.drop 2))
   | .unreachable => do return ([.b (← bField a E.trapUnreachable)], none)
   | .br n => do
       match ctl[n]? with
-      | some t => return (← branchTo t h a, none)
+      | some t => return (← branchTo t σ a, none)
       | none => throw s!"br {n} under {ctl.length} constructs"
   | .br_if n => do
-      if h < curBase ctl + 1 then throw s!"br_if at height {h}"
+      if σ.length < curBase ctl + 1 then throw s!"br_if at height {σ.length}"
       match ctl[n]? with
       | some t =>
-          let c ← opReg (h - 1)
-          if t.arity = 0 then return ([.cbnz c (← cbField a t.target)], some (h - 1))
+          let c ← opReg (σ.length - 1)
+          if t.arity = 0 then return ([.cbnz c (← cbField a t.target)], some σ.tail)
           let skip := after a (t.arity + 2)
-          return (.cbz c (← cbField a skip) :: (← branchTo t (h - 1) (after a 1)), some (h - 1))
+          return (.cbz c (← cbField a skip) :: (← branchTo t σ.tail (after a 1)), some σ.tail)
       | none => throw s!"br_if {n} under {ctl.length} constructs"
   | .ret => do
       match ctl.getLast? with
-      | some t => return (← branchTo t h a, none)
+      | some t => return (← branchTo t σ a, none)
       | none => throw "ret outside a function"
-  | .block pa ra body _ _ => do
-      if pa ≠ 0 ∨ ra > 1 then throw "a block with parameters or more than one result"
-      let n := (listSize (sigOf E.callee) (ra :: ctl.map (·.arity)) h body).1
-      let inner := { target := after a n, arity := ra, base := h } :: ctl
-      let (code, fin) ← genList E inner h a body
-      if fin.any (· ≠ h + ra) then throw "a block that ends at another height"
-      return (code, some (h + ra))
-  | .loop pa ra body _ _ => do
-      if pa ≠ 0 ∨ ra > 1 then throw "a loop with parameters or more than one result"
-      let (code, fin) ← genList E ({ target := a, arity := 0, base := h } :: ctl) h a body
-      if fin.any (· ≠ h + ra) then throw "a loop that ends at another height"
-      return (code, some (h + ra))
-  | .iff pa ra thn els _ _ => do
-      if pa ≠ 0 ∨ ra > 1 ∨ h < curBase ctl + 1 then
-        throw "an if with parameters, more than one result, or no condition"
-      let c ← opReg (h - 1)
+  | .block pa ra body _ rts => do
+      if pa ≠ 0 ∨ ra > 1 ∨ rts.length ≠ ra then
+        throw "a block with parameters, more than one result, or results without their types"
+      let n := (listSize (sigOf E.callee) (ra :: ctl.map (·.arity)) σ.length body).1
+      let inner := { target := after a n, types := rts.reverse, base := σ.length } :: ctl
+      let (code, fin) ← genList E inner σ a body
+      if fin.any (· ≠ rts.reverse ++ σ) then throw "a block that ends with other types"
+      return (code, some (rts.reverse ++ σ))
+  | .loop pa ra body _ rts => do
+      if pa ≠ 0 ∨ ra > 1 ∨ rts.length ≠ ra then
+        throw "a loop with parameters, more than one result, or results without their types"
+      let (code, fin) ← genList E ({ target := a, types := [], base := σ.length } :: ctl) σ a body
+      if fin.any (· ≠ rts.reverse ++ σ) then throw "a loop that ends with other types"
+      return (code, some (rts.reverse ++ σ))
+  | .iff pa ra thn els _ rts => do
+      if pa ≠ 0 ∨ ra > 1 ∨ rts.length ≠ ra ∨ σ.length < curBase ctl + 1 then
+        throw "an if with parameters, more than one result, results without types, or no condition"
+      let c ← opReg (σ.length - 1)
       let ar := ra :: ctl.map (·.arity)
-      let aB := after a (1 + (listSize (sigOf E.callee) ar (h - 1) thn).1)
+      let aB := after a (1 + (listSize (sigOf E.callee) ar (σ.length - 1) thn).1)
       let aElse := after aB 1
-      let aEnd := after aElse (listSize (sigOf E.callee) ar (h - 1) els).1
-      let inner := { target := aEnd, arity := ra, base := h - 1 } :: ctl
-      let (ti, ta) ← genList E inner (h - 1) (after a 1) thn
-      let (ei, ea) ← genList E inner (h - 1) aElse els
-      if ta.any (· ≠ h - 1 + ra) ∨ ea.any (· ≠ h - 1 + ra) then
-        throw "an if whose branches end at another height"
+      let aEnd := after aElse (listSize (sigOf E.callee) ar (σ.length - 1) els).1
+      let inner := { target := aEnd, types := rts.reverse, base := σ.length - 1 } :: ctl
+      let (ti, ta) ← genList E inner σ.tail (after a 1) thn
+      let (ei, ea) ← genList E inner σ.tail aElse els
+      if ta.any (· ≠ rts.reverse ++ σ.tail) ∨ ea.any (· ≠ rts.reverse ++ σ.tail) then
+        throw "an if whose branches end with other types"
       return ([.cbz c (← cbField a aElse)] ++ ti ++ [.b (← bField aB aEnd)] ++ ei,
-        some (h - 1 + ra))
+        some (rts.reverse ++ σ.tail))
   | .call k => do
       match E.callee k with
       | none => throw s!"a call of function {k}, which the program lacks"
-      | some (target, p, r) =>
-          if hc : h < curBase ctl + p ∨ 26 < h ∨ 26 < h - p + r ∨ 1 < r ∨ 8 < p ∨
-              4096 ≤ E.locals + spillSlots then
-            throw s!"a call of function {k} at height {h}"
+      | some (target, ps, rs) =>
+          if hc : σ.length < curBase ctl + ps.length ∨ 26 < σ.length ∨
+              26 < σ.length - ps.length + rs.length ∨ 1 < rs.length ∨ 8 < ps.length ∨
+              4096 ≤ E.locals + spillSlots ∨ σ.take ps.length ≠ ps.reverse then
+            throw s!"a call of function {k} at height {σ.length}"
           else
             have hs : spillSlots = 26 := rfl
-            let spills := List.ofFn fun j : Fin (h - p) =>
+            let spills := List.ofFn fun j : Fin (σ.length - ps.length) =>
               Instr.str (regOf j) 31 ⟨E.locals + j, by omega⟩
-            let moves := List.ofFn fun i : Fin p => mov ⟨i, by omega⟩ (regOf (h - p + i))
-            let res := if r = 1 then [mov (regOf (h - p)) 0] else []
-            let reloads := List.ofFn fun j : Fin (h - p) =>
+            let moves := List.ofFn fun i : Fin ps.length =>
+              mov ⟨i, by omega⟩ (regOf (σ.length - ps.length + i))
+            let res := if rs.length = 1 then [mov (regOf (σ.length - ps.length)) 0] else []
+            let reloads := List.ofFn fun j : Fin (σ.length - ps.length) =>
               Instr.ldr (regOf j) 31 ⟨E.locals + j, by omega⟩
-            let call := Instr.bl (← bField (after a (h - p + p)) target)
-            return (spills ++ moves ++ [call] ++ res ++ reloads, some (h - p + r))
+            let call := Instr.bl (← bField (after a (σ.length - ps.length + ps.length)) target)
+            return (spills ++ moves ++ [call] ++ res ++ reloads,
+              some (rs.reverse ++ σ.drop ps.length))
   | i => throw s!"the form {repr i} lies outside the generator's forms"
 
-/-- The instructions of `is` placed at `a`, at height `h` under the constructs `ctl`, and the
-height after them, or `none` when their end is unreachable. -/
-def genList (E : Env) (ctl : List Ctl) (h : Nat) (a : UInt64) :
-    List Instruction → GenM (List Instr × Option Nat)
-  | [] => return ([], some h)
+/-- The instructions of `is` placed at `a`, on the operand stack of types `σ` under the
+constructs `ctl`, and the types after them, or `none` when their end is unreachable. -/
+def genList (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
+    List Instruction → GenM (List Instr × Option (List ValueType))
+  | [] => return ([], some σ)
   | i :: rest => do
-      let (c1, fin) ← genInstr E ctl h a i
+      let (c1, fin) ← genInstr E ctl σ a i
       match fin with
       | none => return (c1, none)
-      | some h' =>
-          let (c2, fin') ← genList E ctl h' (after a c1.length) rest
+      | some σ' =>
+          let (c2, fin') ← genList E ctl σ' (after a c1.length) rest
           return (c1 ++ c2, fin')
 end
 
@@ -343,8 +366,8 @@ lies below; it then allocates the frame, saves the return address in X30 above t
 and stores the parameters from X0 up and zeros for the other locals.  The body follows, then the
 epilogue, which restores X30, frees the frame, and returns.  Its calls name the functions of
 `callee`. -/
-def genFunction (callee : Nat → Option (UInt64 × Nat × Nat))
-    (trapUnreachable trapDiv trapStack entry : UInt64) (f : Function) : GenM (List Instr) := do
+def genFunction (callee : Table) (trapUnreachable trapBounds trapDiv trapStack entry : UInt64)
+    (f : Function) : GenM (List Instr) := do
   let p := f.params.length
   let n := p + f.locals.length
   let r := f.results.length
@@ -353,10 +376,13 @@ def genFunction (callee : Nat → Option (UInt64 × Nat × Nat))
   if hf : frameSize n < 4096 then
     have hn : n + spillSlots < 4096 := by unfold frameSize at hf; omega
     let bodyA := after entry (5 + n)
-    let E : Env := { locals := n, trapUnreachable, trapDiv, trapStack, callee }
+    let E : Env :=
+      { localTypes := f.params ++ f.locals, trapUnreachable, trapBounds, trapDiv, trapStack,
+        callee }
     let epilogue := after bodyA (listSize (sigOf callee) [r] 0 f.body).1
-    let (body, fin) ← genList E [{ target := epilogue, arity := r, base := 0 }] 0 bodyA f.body
-    if fin.any (· ≠ r) then throw "a function body that ends at another height"
+    let (body, fin) ←
+      genList E [{ target := epilogue, types := f.results.reverse, base := 0 }] [] bodyA f.body
+    if fin.any (· ≠ f.results.reverse) then throw "a function body that ends with other types"
     let stores := List.ofFn fun i : Fin n =>
       Instr.str (if i.val < p then ⟨i.val % 32, Nat.mod_lt _ (by decide)⟩ else 31) 31
         ⟨i.val, by omega⟩
@@ -430,14 +456,13 @@ def sigIn (targets : List Nat) (fs : List (Nat × Function)) (k : Nat) : Option 
     (fs.find? (·.1 = k)).map fun (_, f) => (f.params.length, f.results.length)
   else none
 
-/-- The entries of the functions of `fs`, laid out one after another from `a`, with their
-numbers of parameters and results, by index. -/
+/-- The entries of the functions of `fs`, laid out one after another from `a`, with the types of
+their parameters and results, by index. -/
 def entriesFrom (sig : Nat → Option (Nat × Nat)) :
-    UInt64 → List (Nat × Function) → List (Nat × UInt64 × Nat × Nat)
+    UInt64 → List (Nat × Function) → List (Nat × UInt64 × List ValueType × List ValueType)
   | _, [] => []
   | a, (j, f) :: rest =>
-      (j, a, f.params.length, f.results.length) ::
-        entriesFrom sig (after a (functionSize sig f)) rest
+      (j, a, f.params, f.results) :: entriesFrom sig (after a (functionSize sig f)) rest
 
 /-- The address after the functions of `fs`, laid out one after another from `a`. -/
 def endOf (sig : Nat → Option (Nat × Nat)) : UInt64 → List (Nat × Function) → UInt64
@@ -445,30 +470,30 @@ def endOf (sig : Nat → Option (Nat × Nat)) : UInt64 → List (Nat × Function
   | a, (_, f) :: rest => endOf sig (after a (functionSize sig f)) rest
 
 /-- The instructions of the functions of `fs`, one after another from `a`. -/
-def genFunctions (callee : Nat → Option (UInt64 × Nat × Nat)) (tU tD tS : UInt64) :
+def genFunctions (callee : Table) (tU tB tD tS : UInt64) :
     UInt64 → List (Nat × Function) → GenM (List Instr)
   | _, [] => pure []
   | a, (_, f) :: rest => do
-      let is ← genFunction callee tU tD tS a f
-      return is ++ (← genFunctions callee tU tD tS (after a is.length) rest)
+      let is ← genFunction callee tU tB tD tS a f
+      return is ++ (← genFunctions callee tU tB tD tS (after a is.length) rest)
 
-/-- The entry of function `j` and its numbers of parameters and results, among the functions of
-`fs` laid out one after another from `a`. -/
+/-- The entry of function `j` and the types of its parameters and results, among the functions
+of `fs` laid out one after another from `a`. -/
 def entryIn (sig : Nat → Option (Nat × Nat)) (a : UInt64) (fs : List (Nat × Function))
-    (j : Nat) : Option (UInt64 × Nat × Nat) :=
+    (j : Nat) : Option (UInt64 × List ValueType × List ValueType) :=
   ((entriesFrom sig a fs).find? (·.1 = j)).map (·.2)
 
 /-- The table of the calls of the functions of `fs`, laid out one after another from `a`: the
 functions that `targets` names. -/
-def tableOf (targets : List Nat) (a : UInt64) (fs : List (Nat × Function)) :
-    Nat → Option (UInt64 × Nat × Nat) :=
+def tableOf (targets : List Nat) (a : UInt64) (fs : List (Nat × Function)) : Table :=
   fun j => if j ∈ targets then entryIn (sigIn targets fs) a fs j else none
 
 /-- The program that runs function `k` of `m` on `args`, placed after its exit word at `base`,
 with a stack of `room` bytes below `main`'s frame: `main` at `base + 4`, the functions that calls
 reach from function `k`, `k` first, and the trap stubs of codes 1, 2, 3, and 4, each `movImm` of
-X0 and a branch to the exit word.  The table of the functions' calls holds the functions that
-`callTargets` names.  The image puts a branch to `lx_exit` at `base`. -/
+X0 and a branch to the exit word.  The parameters of function `k` are `i64`s.  The table of the
+functions' calls holds the functions that `callTargets` names.  The image puts a branch to
+`lx_exit` at `base`. -/
 def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UInt64) :
     GenM (List Instr) := do
   let fs ← (reachFrom m k).mapM (funcOf m)
@@ -479,10 +504,11 @@ def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UIn
   let callee := tableOf targets first fs
   let traps := endOf sig first fs
   let entry ← match entryIn sig first fs k with
-    | some (e, _, _) => pure e
+    | some (e, ps, _) =>
+        if ps.all (· == .i64) then pure e else throw s!"function {k} takes a value of another type"
     | none => throw s!"no function {k}"
   let main ← genMain mainA entry args uart room
-  let fns ← genFunctions callee traps (after traps 10) (after traps 15) first fs
+  let fns ← genFunctions callee traps (after traps 5) (after traps 10) (after traps 15) first fs
   let stub (a : UInt64) (code : Nat) : GenM (List Instr) := do
     return movImm 0 (UInt64.ofNat code) ++ [.b (← bField (after a 4) base)]
   return main ++ fns ++ (← stub traps 1) ++ (← stub (after traps 5) 2) ++

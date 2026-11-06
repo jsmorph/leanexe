@@ -86,13 +86,14 @@ theorem CodeAt.split {a : UInt64} {l1 l2 : List Instr} {n : Nat}
   have := (CodeAt.append (code := code)).mp h
   rwa [hn] at this
 
-theorem genFunction_length {callee : Nat → Option (UInt64 × Nat × Nat)}
-    {tU tD tS entry : UInt64} {f : Function} {is : List Instr}
-    (hg : genFunction callee tU tD tS entry f = .ok is) :
+theorem genFunction_length {callee : Table}
+    {tU tB tD tS entry : UInt64} {f : Function} {is : List Instr}
+    (hg : genFunction callee tU tB tD tS entry f = .ok is) :
     is.length = functionSize (sigOf callee) f := by
   obtain ⟨-, -, -, hf, hn, stores, body, fin, g, hsl, -, hl, -, -, rfl⟩ := gen_function hg
   have hs := (genList_size _ _ _ f.body body fin hl).1
-  simp only [List.map_cons, List.map_nil] at hs
+  simp only [List.map_cons, List.map_nil, List.length_nil, Ctl.arity_mk,
+    List.length_reverse] at hs
   simp only [List.length_append, List.length_cons, List.length_nil, hsl, hs, functionSize]
 
 /-! ## The layout of the functions -/
@@ -127,7 +128,7 @@ theorem mapM_funcOf {m : Module} : ∀ {ks : List Nat} {fs : List (Nat × Functi
 
 theorem find_entriesFrom (sig : Nat → Option (Nat × Nat)) (j : Nat) :
     ∀ (a : UInt64) (fs : List (Nat × Function)),
-      ((entriesFrom sig a fs).find? (·.1 = j)).map (fun x => (x.2.2.1, x.2.2.2)) =
+      ((entriesFrom sig a fs).find? (·.1 = j)).map (fun x => (x.2.2.1.length, x.2.2.2.length)) =
         (fs.find? (·.1 = j)).map (fun x => (x.2.params.length, x.2.results.length))
   | _, [] => rfl
   | a, (j', f) :: rest => by
@@ -146,7 +147,7 @@ theorem sigOf_tableOf (targets : List Nat) (a : UInt64) (fs : List (Nat × Funct
   · rfl
 
 theorem entryIn_mem {sig : Nat → Option (Nat × Nat)} {a : UInt64} {fs : List (Nat × Function)}
-    {j : Nat} {c : UInt64 × Nat × Nat} (h : entryIn sig a fs j = some c) :
+    {j : Nat} {c : UInt64 × List ValueType × List ValueType} (h : entryIn sig a fs j = some c) :
     (j, c) ∈ entriesFrom sig a fs := by
   unfold entryIn at h
   simp only [Option.map_eq_some_iff] at h
@@ -159,10 +160,10 @@ theorem entryIn_mem {sig : Nat → Option (Nat × Nat)} {a : UInt64} {fs : List 
 
 /-- The number of instructions of the functions of `fs` that `genFunctions` lays out from `a`,
 and the address after them. -/
-theorem genFunctions_length {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS : UInt64}
+theorem genFunctions_length {callee : Table} {tU tB tD tS : UInt64}
     {sig : Nat → Option (Nat × Nat)} (hsig : sigOf callee = sig) :
     ∀ {a : UInt64} {fs : List (Nat × Function)} {is : List Instr},
-      genFunctions callee tU tD tS a fs = .ok is →
+      genFunctions callee tU tB tD tS a fs = .ok is →
       is.length = (fs.map fun x => functionSize sig x.2).sum ∧ endOf sig a fs = after a is.length
   | a, [], is, hg => by
       simp only [genFunctions, pure, Except.pure, Except.ok.injEq] at hg
@@ -170,10 +171,10 @@ theorem genFunctions_length {callee : Nat → Option (UInt64 × Nat × Nat)} {tU
       exact ⟨rfl, by rw [List.length_nil, after_zero]; rfl⟩
   | a, (j, f) :: rest, is, hg => by
       simp only [genFunctions, bind, Except.bind] at hg
-      cases h1 : genFunction callee tU tD tS a f with
+      cases h1 : genFunction callee tU tB tD tS a f with
       | error e => simp [h1] at hg
       | ok is1 =>
-          cases h2 : genFunctions callee tU tD tS (after a is1.length) rest with
+          cases h2 : genFunctions callee tU tB tD tS (after a is1.length) rest with
           | error e => simp [h1, h2] at hg
           | ok is2 =>
               simp [h1, h2, pure, Except.pure] at hg
@@ -186,20 +187,19 @@ theorem genFunctions_length {callee : Nat → Option (UInt64 × Nat × Nat)} {tU
                 rw [← hl1, he2, after_after, List.length_append]
 
 /-- The code of each function of `fs` that `genFunctions` lays out from `a`, at its entry. -/
-theorem gen_functions {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS : UInt64}
+theorem gen_functions {callee : Table} {tU tB tD tS : UInt64}
     {sig : Nat → Option (Nat × Nat)} (hsig : sigOf callee = sig) :
     ∀ {a : UInt64} {fs : List (Nat × Function)} {is : List Instr},
-      genFunctions callee tU tD tS a fs = .ok is → CodeAt code a is →
-      ∀ x ∈ entriesFrom sig a fs, ∃ f fis, (x.1, f) ∈ fs ∧
-        x.2.2 = (f.params.length, f.results.length) ∧
-        genFunction callee tU tD tS x.2.1 f = .ok fis ∧ CodeAt code x.2.1 fis
+      genFunctions callee tU tB tD tS a fs = .ok is → CodeAt code a is →
+      ∀ x ∈ entriesFrom sig a fs, ∃ f fis, (x.1, f) ∈ fs ∧ x.2.2 = (f.params, f.results) ∧
+        genFunction callee tU tB tD tS x.2.1 f = .ok fis ∧ CodeAt code x.2.1 fis
   | a, [], is, _, _ => fun x hx => by simp [entriesFrom] at hx
   | a, (j, f) :: rest, is, hg, hcode => by
       simp only [genFunctions, bind, Except.bind] at hg
-      cases h1 : genFunction callee tU tD tS a f with
+      cases h1 : genFunction callee tU tB tD tS a f with
       | error e => simp [h1] at hg
       | ok is1 =>
-          cases h2 : genFunctions callee tU tD tS (after a is1.length) rest with
+          cases h2 : genFunctions callee tU tB tD tS (after a is1.length) rest with
           | error e => simp [h1, h2] at hg
           | ok is2 =>
               simp [h1, h2, pure, Except.pure] at hg
@@ -224,13 +224,15 @@ theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room 
       first = after (after base 1) (mainSize args.length) ∧
       T = endOf (sigIn (callTargets m k) fs) first fs ∧
       entryIn (sigIn (callTargets m k) fs) first fs k = some (e, pk, rk) ∧
+      pk.all (· == .i64) = true ∧
       genMain (after base 1) e args uart room = .ok main ∧
-      genFunctions (tableOf (callTargets m k) first fs) T (after T 10) (after T 15) first fs =
-        .ok fns ∧
+      genFunctions (tableOf (callTargets m k) first fs) T (after T 5) (after T 10) (after T 15)
+        first fs = .ok fns ∧
       is = main ++ fns ++ (movImm 0 (UInt64.ofNat 1) ++ [.b g1] ++
         (movImm 0 (UInt64.ofNat 2) ++ [.b g2]) ++ (movImm 0 (UInt64.ofNat 3) ++ [.b g3]) ++
         (movImm 0 (UInt64.ofNat 4) ++ [.b g4])) ∧
-      bField (after T 4) base = .ok g1 ∧ bField (after (after T 10) 4) base = .ok g3 ∧
+      bField (after T 4) base = .ok g1 ∧ bField (after (after T 5) 4) base = .ok g2 ∧
+      bField (after (after T 10) 4) base = .ok g3 ∧
       bField (after (after T 15) 4) base = .ok g4 := by
   simp only [genProgram] at hg
   cases hfs : (reachFrom m k).mapM (funcOf m) with
@@ -243,13 +245,17 @@ theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room 
       | none => simp [hen, throw, throwThe, MonadExceptOf.throw] at hg
       | some c =>
           obtain ⟨e, pk, rk⟩ := c
-          simp only [hen, pure, Except.pure] at hg
+          have hps : pk.all (· == .i64) = true := by
+            cases h : pk.all (· == .i64) with
+            | true => rfl
+            | false => simp [hen, h, throw, throwThe, MonadExceptOf.throw] at hg
+          simp only [hen, hps, if_true, pure, Except.pure] at hg
           cases hmn : genMain (after base 1) e args uart room with
           | error err => simp [hmn] at hg
           | ok main =>
               simp only [hmn] at hg
-              cases hfn : genFunctions (tableOf (callTargets m k) first fs) T (after T 10)
-                  (after T 15) first fs with
+              cases hfn : genFunctions (tableOf (callTargets m k) first fs) T (after T 5)
+                  (after T 10) (after T 15) first fs with
               | error err => simp [hfn] at hg
               | ok fns =>
                   simp only [hfn] at hg
@@ -267,7 +273,7 @@ theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room 
                   | ok g4 =>
                   simp [hb1, hb2, hb3, hb4] at hg
                   refine ⟨fs, first, T, main, fns, e, pk, rk, g1, g2, g3, g4, rfl, rfl, hT.symm,
-                    hen, hmn, hfn, ?_, hb1, hb3, hb4⟩
+                    hen, hps, hmn, hfn, ?_, hb1, hb2, hb3, hb4⟩
                   rw [← hg]
                   simp [List.append_assoc]
 
@@ -276,7 +282,7 @@ theorem genProgram_length {m : Module} {k : Nat} {args : List UInt64}
     {fs : List (Nat × Function)} (hfs : (reachFrom m k).mapM (funcOf m) = .ok fs) :
     is.length = mainSize args.length +
       (fs.map fun x => functionSize (sigIn (callTargets m k) fs) x.2).sum + 20 := by
-  obtain ⟨fs', first, T, main, fns, e, pk, rk, g1, g2, g3, g4, hfs', -, -, -, hmg, hfg, rfl,
+  obtain ⟨fs', first, T, main, fns, e, pk, rk, g1, g2, g3, g4, hfs', -, -, -, -, hmg, hfg, rfl,
     -⟩ := gen_program hg
   rw [hfs] at hfs'
   cases hfs'
@@ -406,6 +412,17 @@ theorem stack_main (sp room : UInt64) (j : Nat) :
 theorem toNat_sub_le {a b : UInt64} (h : b.toNat ≤ a.toNat) : (a - b).toNat = a.toNat - b.toNat :=
   UInt64.toNat_sub_of_le a b (UInt64.le_iff_toNat_le.mpr h)
 
+theorem typed_i64 : ∀ {ts : List ValueType} {ws : List UInt64}, ts.all (· == .i64) = true →
+    ts.length = ws.length → Typed ts (ws.map .i64)
+  | [], [], _, _ => trivial
+  | t :: ts, w :: ws, h, hl => by
+      simp only [List.all_cons, Bool.and_eq_true] at h
+      cases t <;> first
+        | exact ⟨trivial, typed_i64 h.2 (by simpa using hl)⟩
+        | exact absurd h.1 (by intro e; cases e)
+  | [], _ :: _, _, hl => by simp at hl
+  | _ :: _, [], _, hl => by simp at hl
+
 /-- The run of a trap stub at `a`: X0 set to the trap's code `c`, then a branch to the exit word
 at `base`. -/
 theorem run_stub {a base : UInt64} {c : Nat} {g : Fin 67108864} {s : State}
@@ -424,10 +441,10 @@ theorem run_stub {a base : UInt64} {c : Nat} {g : Fin 67108864} {s : State}
 
 /-- What the machine does from `main` at `ms` when Talos's run of the program's function gives
 `res`: a return of one value writes the eight bytes of its word to the UART, the lowest first,
-and returns 0 to the address in X30 with SP as it was, and a trap at `unreachable` or a division
-by zero reaches the exit word at `base` with the trap's code in X0 and the UART's output as it
-was.  When `calls` holds, the machine may instead reach the exit word with the status 4 of an
-overflow of the stack. -/
+and returns 0 to the address in X30 with SP as it was, and a trap at `unreachable`, an access
+outside the memory, or a division by zero reaches the exit word at `base` with the trap's code in
+X0 and the UART's output as it was.  When `calls` holds, the machine may instead reach the exit
+word with the status 4 of an overflow of the stack. -/
 def ProgramOutcome (base : UInt64) (calls : Prop) {α : Type} (res : Result α) (ms : State) :
     Prop :=
   (calls ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.out = ms.out) ∨
@@ -436,7 +453,8 @@ def ProgramOutcome (base : UInt64) (calls : Prop) {α : Type} (res : Result α) 
       ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧
       ms'.out = ms.out ++ (List.range 8).map fun j => (w >>> UInt64.ofNat (8 * j)).toUInt8
   | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.out = ms.out ∧
-      ((msg = "unreachable" ∧ ms'.x 0 = 1) ∨ (msg = "integer divide by zero" ∧ ms'.x 0 = 3))
+      ((msg = "unreachable" ∧ ms'.x 0 = 1) ∨ (msg = "out of bounds memory access" ∧ ms'.x 0 = 2) ∨
+        (msg = "integer divide by zero" ∧ ms'.x 0 = 3))
   | _ => True
 
 theorem ProgramOutcome.success {base : UInt64} {calls : Prop} {α : Type} {res : Result α}
@@ -455,9 +473,10 @@ theorem ProgramOutcome.unreachable {base : UInt64} {calls : Prop} {α : Type} {r
     (calls ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.out = ms.out) ∨
       ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 1 ∧ ms'.out = ms.out := by
   subst hres
-  rcases h with h | ⟨ms', hr, hp, ho, ⟨-, hx⟩ | ⟨habs, -⟩⟩
+  rcases h with h | ⟨ms', hr, hp, ho, ⟨-, hx⟩ | ⟨habs, -⟩ | ⟨habs, -⟩⟩
   · exact .inl h
   · exact .inr ⟨ms', hr, hp, hx, ho⟩
+  · exact absurd habs (by decide)
   · exact absurd habs (by decide)
 
 /-- The run of the program that runs function `k` of `m`, which imports nothing, on the words
@@ -476,8 +495,8 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
     (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true) :
     ProgramOutcome P code base (callTargets m k ≠ []) (Wasm.run F m k st (args.map .i64).reverse)
       ms := by
-  obtain ⟨fs, first, T, main, fns, e, pk, rk, g1, g2, g3, g4, hfs, hfirst, hT, hen, hmg, hfg,
-    his, hb1, hb3, hb4⟩ := gen_program hg
+  obtain ⟨fs, first, T, main, fns, e, pk, rk, g1, g2, g3, g4, hfs, hfirst, hT, hen, hps, hmg,
+    hfg, his, hb1, hb2, hb3, hb4⟩ := gen_program hg
   subst his
   have hfm := mapM_funcOf hfs
   have hsig := sigOf_tableOf (callTargets m k) first fs
@@ -500,16 +519,18 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
   have cs3 := CodeAt.split code cs4.1 (n := 10) (by simp [movImm])
   have cs1 := CodeAt.split code cs3.1 (n := 5) (by simp [movImm])
   -- the functions
-  obtain ⟨f', fis, hkm, -, hgk, cfk⟩ := gen_functions code hsig hfg cfns _ (entryIn_mem hen)
+  obtain ⟨f', fis, hkm, hpk, hgk, cfk⟩ := gen_functions code hsig hfg cfns _ (entryIn_mem hen)
   have hf' := hfm _ hkm
   simp only at hf'
   rw [hk] at hf'
   cases hf'
+  simp only [Prod.mk.injEq] at hpk
+  rw [hpk.1] at hps
   obtain ⟨-, -, -, hff, -⟩ := gen_function hgk
   have htab : ∀ j c, tableOf (callTargets m k) first fs j = some c → ∃ f is,
-      m.funcs[j]? = some f ∧ c.2 = (f.params.length, f.results.length) ∧
-      genFunction (tableOf (callTargets m k) first fs) T (after T 10) (after T 15) c.1 f =
-        .ok is ∧ CodeAt code c.1 is := by
+      m.funcs[j]? = some f ∧ c.2 = (f.params, f.results) ∧
+      genFunction (tableOf (callTargets m k) first fs) T (after T 5) (after T 10) (after T 15)
+        c.1 f = .ok is ∧ CodeAt code c.1 is := by
     intro j c hj
     unfold tableOf at hj
     split at hj
@@ -639,8 +660,12 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
     r2.trans (r3a.trans (reach_exec P code (by rw [p3a, after_after]; exact csub) e3b
       (r3.trans (reach_exec P code (by rw [p3]; exact cbl) e4 (.refl _)))))
   have hvs : ((args.map Value.i64).reverse).length = f.params.length := by simp [hn, hp]
-  rcases run_outcome P code hm hk hgk cfk hcl st (args.map Value.i64).reverse t4 (by omega) p4
-    hstk (fun i hi => by
+  have hvt : Typed f.params.reverse
+      (((args.map Value.i64).reverse).take f.params.length) := by
+    rw [List.take_of_length_le (by omega)]
+    exact Typed.reverse (typed_i64 hps (by simp [hn, hp]))
+  rcases run_outcome P code hm hk hgk cfk hcl st (args.map Value.i64).reverse t4 (by omega) hvt
+    p4 hstk (fun i hi => by
       have hi' : i < n := by omega
       have e1 : f.params.length - 1 - i < (args.map Value.i64).reverse.length := by omega
       rw [List.getElem_reverse]
@@ -670,17 +695,21 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
   | Trap st' msg =>
       intro hro
       obtain ⟨u, ru, outu, hmsg⟩ := hro
-      rcases hmsg with ⟨hm1, pu⟩ | ⟨hm3, pu⟩
+      rcases hmsg with ⟨hm1, pu⟩ | ⟨hm2, pu⟩ | ⟨hm3, pu⟩
       · obtain ⟨u2, ru2, pu2, xu2, outu2⟩ := run_stub P code cs1.1 hb1 pu
         exact ⟨u2, r4.trans (ru.trans ru2), pu2, by rw [outu2, outu, out4], .inl ⟨hm1, xu2⟩⟩
+      · obtain ⟨u2, ru2, pu2, xu2, outu2⟩ := run_stub P code cs1.2 hb2 pu
+        exact ⟨u2, r4.trans (ru.trans ru2), pu2, by rw [outu2, outu, out4],
+          .inr (.inl ⟨hm2, xu2⟩)⟩
       · obtain ⟨u2, ru2, pu2, xu2, outu2⟩ := run_stub P code cs3.2 hb3 pu
-        exact ⟨u2, r4.trans (ru.trans ru2), pu2, by rw [outu2, outu, out4], .inr ⟨hm3, xu2⟩⟩
+        exact ⟨u2, r4.trans (ru.trans ru2), pu2, by rw [outu2, outu, out4],
+          .inr (.inr ⟨hm3, xu2⟩)⟩
   | Invalid _ => intro _; trivial
   | OutOfFuel => intro _; trivial
   | Thrown _ _ _ => intro _; trivial
   | Success vs' st' =>
   intro hro
-  obtain ⟨t5, r5, p5, sp5, -, out5, mf5, hlen5, -, hres5⟩ := hro
+  obtain ⟨t5, r5, p5, sp5, -, out5, mf5, hlen5, -, hres5, -⟩ := hro
   rcases vs' with _ | ⟨v, _ | ⟨v2, rest⟩⟩
   · trivial
   rotate_left

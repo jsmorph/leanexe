@@ -112,16 +112,19 @@ theorem cset_leU : CsetOk 8 (fun x y => x ≤ y) := by
 
 theorem sim_cmp_of {F : Nat} {inst : Instruction} {c : Fin 16}
     (R : UInt64 → UInt64 → Prop) [DecidableRel R] (hR : CsetOk c R)
-    (hgen : ∀ E ctl h a, genInstr E ctl h a inst = genCmp ctl h c)
+    (hgen : ∀ E ctl σ a, genInstr E ctl σ a inst = genCmp ctl σ c)
     (hcase : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals),
       (∃ va vb vs, sl.values = vb :: va :: vs ∧ ∀ wa wb, ValRel va wa → ValRel vb wb →
         execOne (f + 1) m st sl inst =
           .Fallthrough st { sl with values := .i32 (if R wa wb then 1 else 0) :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl h a is fin hg hcode hb hctl α m st sl ms hinv hh hpc _
+  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hpc _
   rw [hgen] at hg
   obtain ⟨hhb, hlt, rfl, rfl⟩ := genCmp_ok hg
+  have hh := hinv.len
+  have hty := hinv.types
+  generalize hσl : σ.length = h at *
   cases F with
   | zero => rw [ProofKit.execOne_zero]; exact .inr trivial
   | succ f =>
@@ -136,50 +139,55 @@ theorem sim_cmp_of {F : Nat} {inst : Instruction} {c : Fin 16}
           have := hst.pop.top
           rwa [hvl] at this
         rw [hex _ _ ha' hb']
+        rw [hvs] at hty
         obtain ⟨ms', hr, hp, hres, hkeep, hsp, hmem, hout⟩ :=
           run_csetc P code (x := ms.x (regOf (h - 2))) (y := ms.x (regOf (h - 1)))
             (regOf_lt_31 (h - 2) (by omega)) (by simpa [after_zero] using hcode 0 (by simp))
             (by simpa using hcode 1 (by simp)) hpc rfl
-        rw [show h - 1 = vs.length + 1 by omega]
-        apply cmp_outcome P code _ hinv (vs := vs) (by omega) (by omega) hst.pop.pop hr hp _ _
-          hsp hmem hout
-        · rw [hvl, hres, show h - 2 + 1 = h - 1 by omega]
+        apply cmp_outcome P code _ hinv (vs := vs) (hty.drop 2) (by omega) (by omega) hst.pop.pop
+          hr hp _ _ hsp hmem hout
+        · rw [hvl, hres]
           exact hR ms _ _
         · rw [hvl]; exact hkeep
       · rw [hex]; exact .inr trivial
 
 /-! ## Operations -/
 
-theorem genBin_ok {ctl : List Ctl} {h : Nat} {op : Fin 32 → Fin 32 → Fin 32 → Instr}
-    {is : List Instr} {fin : Option Nat} (hg : genBin ctl h op = .ok (is, fin)) :
-    curBase ctl + 2 ≤ h ∧ h - 1 < 26 ∧
-      is = [op (regOf (h - 2)) (regOf (h - 2)) (regOf (h - 1))] ∧ fin = some (h - 1) := by
-  by_cases hc : h < curBase ctl + 2
+theorem genBin_ok {ctl : List Ctl} {σ : List ValueType} {op : Fin 32 → Fin 32 → Fin 32 → Instr}
+    {t : ValueType} {is : List Instr} {fin : Option (List ValueType)}
+    (hg : genBin ctl σ op t = .ok (is, fin)) :
+    curBase ctl + 2 ≤ σ.length ∧ σ.length - 1 < 26 ∧
+      is = [op (regOf (σ.length - 2)) (regOf (σ.length - 2)) (regOf (σ.length - 1))] ∧
+      fin = some (t :: σ.drop 2) := by
+  by_cases hc : σ.length < curBase ctl + 2
   · simp [genBin, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
-  by_cases hlt : h - 1 < 26
-  · simp [genBin, hc, opReg_ok hlt, opReg_ok (show h - 2 < 26 by omega), bind, Except.bind,
-      pure, Except.pure] at hg
+  by_cases hlt : σ.length - 1 < 26
+  · simp [genBin, hc, opReg_ok hlt, opReg_ok (show σ.length - 2 < 26 by omega), bind,
+      Except.bind, pure, Except.pure] at hg
     exact ⟨by omega, hlt, hg.1.symm, hg.2.symm⟩
   · obtain ⟨e, he⟩ := opReg_error hlt
-    by_cases hlt2 : h - 2 < 26
+    by_cases hlt2 : σ.length - 2 < 26
     · simp [genBin, hc, he, opReg_ok hlt2, bind, Except.bind] at hg
     · obtain ⟨e2, he2⟩ := opReg_error hlt2
       simp [genBin, hc, he2, bind, Except.bind] at hg
 
 theorem sim_bin_of {F : Nat} {inst : Instruction} {op : Fin 32 → Fin 32 → Fin 32 → Instr}
-    (g : UInt64 → UInt64 → UInt64)
-    (hgen : ∀ E ctl h a, genInstr E ctl h a inst = genBin ctl h op)
+    {t : ValueType} (g : UInt64 → UInt64 → UInt64)
+    (hgen : ∀ E ctl σ a, genInstr E ctl σ a inst = genBin ctl σ op t)
     (hexec : ∀ (s : State) (d n m : Fin 32), LeanExe.A64.exec P (op d n m) s =
       some { s.setX d (g (s.x n) (s.x m)) with pc := s.pc + 4 })
     (hcase : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals),
       (∃ va vb vs, sl.values = vb :: va :: vs ∧ ∀ wa wb, ValRel va wa → ValRel vb wb →
-        ∃ vr, ValRel vr (g wa wb) ∧
+        ∃ vr, ValRel vr (g wa wb) ∧ HasType t vr ∧
           execOne (f + 1) m st sl inst = .Fallthrough st { sl with values := vr :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl h a is fin hg hcode hb hctl α m st sl ms hinv hh hpc _
+  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hpc _
   rw [hgen] at hg
   obtain ⟨hhb, hlt, rfl, rfl⟩ := genBin_ok hg
+  have hh := hinv.len
+  have hty := hinv.types
+  generalize hσl : σ.length = h at *
   cases F with
   | zero => rw [ProofKit.execOne_zero]; exact .inr trivial
   | succ f =>
@@ -193,14 +201,15 @@ theorem sim_bin_of {F : Nat} {inst : Instruction} {op : Fin 32 → Fin 32 → Fi
         have ha' : ValRel va (ms.x (regOf (h - 2))) := by
           have := hst.pop.top
           rwa [hvl] at this
-        obtain ⟨vr, hvr, hex'⟩ := hex _ _ ha' hb'
+        obtain ⟨vr, hvr, htr, hex'⟩ := hex _ _ ha' hb'
         rw [hex']
+        rw [hvs] at hty
         have hc0 : code ms.pc = some (encode (op (regOf (h - 2)) (regOf (h - 2))
             (regOf (h - 1)))) := by
           rw [hpc]; simpa [after_zero] using hcode 0 (by simp)
         have hr := reach_exec P code hc0 (hexec ms _ _ _) (.refl _)
         have hd := regOf_lt_31 (h - 2) (by omega)
-        apply res_outcome P code hvr (vs := vs) (by omega) hinv (by omega) (by omega)
+        apply res_outcome P code hvr (vs := vs) htr (hty.drop 2) hinv (by omega) (by omega)
           hst.pop.pop hr
         · show ms.pc + 4 = _
           rw [hpc]; simp [after]
@@ -225,12 +234,13 @@ theorem i64_bin_case {inst : Instruction} (t g : UInt64 → UInt64 → UInt64)
     (hbad : (∀ a b vs, sl.values ≠ .i64 b :: .i64 a :: vs) →
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     (∃ va vb vs, sl.values = vb :: va :: vs ∧ ∀ wa wb, ValRel va wa → ValRel vb wb →
-      ∃ vr, ValRel vr (g wa wb) ∧
+      ∃ vr, ValRel vr (g wa wb) ∧ HasType .i64 vr ∧
         execOne (f + 1) m st sl inst = .Fallthrough st { sl with values := vr :: vs }) ∨
     ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg := by
   by_cases h : ∃ a b vs, sl.values = .i64 b :: .i64 a :: vs
   · obtain ⟨a, b, vs, hv⟩ := h
-    refine .inl ⟨.i64 a, .i64 b, vs, hv, fun wa wb ha hb => ⟨.i64 (t a b), ?_, hgood a b vs hv⟩⟩
+    refine .inl ⟨.i64 a, .i64 b, vs, hv, fun wa wb ha hb =>
+      ⟨.i64 (t a b), ?_, trivial, hgood a b vs hv⟩⟩
     simp only [ValRel] at ha hb ⊢
     rw [ha, hb, htg]
   · exact .inr (hbad fun a b vs hv => h ⟨a, b, vs, hv⟩)
@@ -298,21 +308,21 @@ theorem sim_geUI64 (F : Nat) : InstrSim P code F .geUI64 :=
       i64_rule_tac
 
 theorem sim_addI64 (F : Nat) : InstrSim P code F .addI64 :=
-  sim_bin_of P code (inst := .addI64) (op := Instr.addReg) (fun x y => x + y)
+  sim_bin_of P code (inst := .addI64) (t := .i64) (op := Instr.addReg) (fun x y => x + y)
     (fun _ _ _ _ => by simp only [genInstr])
     (fun _ _ _ _ => rfl) fun _ _ _ _ _ => by
       apply i64_bin_case (fun a b => a + b) _ (fun _ _ => rfl)
       i64_rule_tac
 
 theorem sim_subI64 (F : Nat) : InstrSim P code F .subI64 :=
-  sim_bin_of P code (inst := .subI64) (op := Instr.subReg) (fun x y => x - y)
+  sim_bin_of P code (inst := .subI64) (t := .i64) (op := Instr.subReg) (fun x y => x - y)
     (fun _ _ _ _ => by simp only [genInstr])
     (fun _ _ _ _ => rfl) fun _ _ _ _ _ => by
       apply i64_bin_case (fun a b => a - b) _ (fun _ _ => rfl)
       i64_rule_tac
 
 theorem sim_mulI64 (F : Nat) : InstrSim P code F .mulI64 :=
-  sim_bin_of P code (inst := .mulI64) (op := (fun d n m => Instr.madd d n m 31))
+  sim_bin_of P code (inst := .mulI64) (t := .i64) (op := (fun d n m => Instr.madd d n m 31))
     (fun x y => 0 + x * y)
     (fun _ _ _ _ => by simp only [genInstr])
     (fun _ _ _ _ => rfl) fun _ _ _ _ _ => by
@@ -320,47 +330,47 @@ theorem sim_mulI64 (F : Nat) : InstrSim P code F .mulI64 :=
       i64_rule_tac
 
 theorem sim_andI64 (F : Nat) : InstrSim P code F .andI64 :=
-  sim_bin_of P code (inst := .andI64) (op := Instr.andReg) (fun x y => x &&& y)
+  sim_bin_of P code (inst := .andI64) (t := .i64) (op := Instr.andReg) (fun x y => x &&& y)
     (fun _ _ _ _ => by simp only [genInstr])
     (fun _ _ _ _ => rfl) fun _ _ _ _ _ => by
       apply i64_bin_case (fun a b => a &&& b) _ (fun _ _ => rfl)
       i64_rule_tac
 
 theorem sim_orI64 (F : Nat) : InstrSim P code F .orI64 :=
-  sim_bin_of P code (inst := .orI64) (op := Instr.orrReg) (fun x y => x ||| y)
+  sim_bin_of P code (inst := .orI64) (t := .i64) (op := Instr.orrReg) (fun x y => x ||| y)
     (fun _ _ _ _ => by simp only [genInstr])
     (fun _ _ _ _ => rfl) fun _ _ _ _ _ => by
       apply i64_bin_case (fun a b => a ||| b) _ (fun _ _ => rfl)
       i64_rule_tac
 
 theorem sim_xorI64 (F : Nat) : InstrSim P code F .xorI64 :=
-  sim_bin_of P code (inst := .xorI64) (op := Instr.eorReg) (fun x y => x ^^^ y)
+  sim_bin_of P code (inst := .xorI64) (t := .i64) (op := Instr.eorReg) (fun x y => x ^^^ y)
     (fun _ _ _ _ => by simp only [genInstr])
     (fun _ _ _ _ => rfl) fun _ _ _ _ _ => by
       apply i64_bin_case (fun a b => a ^^^ b) _ (fun _ _ => rfl)
       i64_rule_tac
 
 theorem sim_shlI64 (F : Nat) : InstrSim P code F .shlI64 :=
-  sim_bin_of P code (inst := .shlI64) (op := Instr.lslv) (fun x y => x <<< (y % 64))
+  sim_bin_of P code (inst := .shlI64) (t := .i64) (op := Instr.lslv) (fun x y => x <<< (y % 64))
     (fun _ _ _ _ => by simp only [genInstr])
     (fun _ _ _ _ => rfl) fun _ _ _ _ _ => by
       apply i64_bin_case (fun a b => a <<< (b % 64)) _ (fun _ _ => rfl)
       i64_rule_tac
 
 theorem sim_shrUI64 (F : Nat) : InstrSim P code F .shrUI64 :=
-  sim_bin_of P code (inst := .shrUI64) (op := Instr.lsrv) (fun x y => x >>> (y % 64))
+  sim_bin_of P code (inst := .shrUI64) (t := .i64) (op := Instr.lsrv) (fun x y => x >>> (y % 64))
     (fun _ _ _ _ => by simp only [genInstr])
     (fun _ _ _ _ => rfl) fun _ _ _ _ _ => by
       apply i64_bin_case (fun a b => a >>> (b % 64)) _ (fun _ _ => rfl)
       i64_rule_tac
 
 theorem sim_and (F : Nat) : InstrSim P code F .and :=
-  sim_bin_of P code (inst := .and) (op := Instr.andReg) (fun x y => x &&& y)
+  sim_bin_of P code (inst := .and) (t := .i32) (op := Instr.andReg) (fun x y => x &&& y)
     (fun _ _ _ _ => by simp only [genInstr])
     (fun _ _ _ _ => rfl) fun f α m st sl => by
       by_cases h : ∃ a b vs, sl.values = .i32 a :: .i32 b :: vs
       · obtain ⟨a, b, vs, hv⟩ := h
-        refine .inl ⟨.i32 b, .i32 a, vs, hv, fun wa wb ha hb => ⟨.i32 (a &&& b), ?_, ?_⟩⟩
+        refine .inl ⟨.i32 b, .i32 a, vs, hv, fun wa wb ha hb => ⟨.i32 (a &&& b), ?_, trivial, ?_⟩⟩
         · simp only [ValRel] at ha hb ⊢
           rw [ha, hb, UInt32.toUInt64_and, UInt64.and_comm]
         · simp only [execOne.eq_def, hv]
@@ -371,13 +381,14 @@ theorem sim_and (F : Nat) : InstrSim P code F .and :=
           exact absurd ⟨a, b, vs, hv⟩ h
         · exact ⟨_, rfl⟩
 
-theorem gen_wrap {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Instr}
-    {fin : Option Nat} (hg : genInstr E ctl h a .wrapI64 = .ok (is, fin)) :
-    curBase ctl + 1 ≤ h ∧ h - 1 < 26 ∧ is = [.orrW (regOf (h - 1)) 31 (regOf (h - 1))] ∧
-      fin = some h := by
-  by_cases hc : h < curBase ctl + 1
+theorem gen_wrap {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64} {is : List Instr}
+    {fin : Option (List ValueType)} (hg : genInstr E ctl σ a .wrapI64 = .ok (is, fin)) :
+    curBase ctl + 1 ≤ σ.length ∧ σ.length - 1 < 26 ∧
+      is = [.orrW (regOf (σ.length - 1)) 31 (regOf (σ.length - 1))] ∧
+      fin = some (.i32 :: σ.tail) := by
+  by_cases hc : σ.length < curBase ctl + 1
   · simp [genInstr, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
-  by_cases hlt : h - 1 < 26
+  by_cases hlt : σ.length - 1 < 26
   · simp [genInstr, hc, opReg_ok hlt, bind, Except.bind, pure, Except.pure] at hg
     exact ⟨by omega, hlt, hg.1.symm, hg.2.symm⟩
   · obtain ⟨e, he⟩ := opReg_error hlt
@@ -390,8 +401,11 @@ theorem wrap_val (x : UInt64) :
   rw [UInt64.zero_or, UInt64.toNat_toUInt32, UInt32.toNat_ofNat', Nat.mod_mod]
 
 theorem sim_wrapI64 (F : Nat) : InstrSim P code F .wrapI64 := by
-  intro E ctl h a is fin hg hcode hb hctl α m st sl ms hinv hh hpc _
+  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hpc _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_wrap hg
+  have hh := hinv.len
+  have hty := hinv.types
+  generalize hσl : σ.length = h at *
   cases F with
   | zero => rw [ProofKit.execOne_zero]; exact .inr trivial
   | succ f =>
@@ -401,6 +415,7 @@ theorem sim_wrapI64 (F : Nat) : InstrSim P code F .wrapI64 := by
         have hvl : vs.length = h - 1 := by rw [hv] at hh; simp at hh; omega
         have hst := hinv.stack
         rw [hv] at hst
+        rw [hv] at hty
         have hx : ms.x (regOf (h - 1)) = x := by
           have := hst.top; rw [hvl] at this; exact this
         have hc0 : code ms.pc = some (encode (.orrW (regOf (h - 1)) 31 (regOf (h - 1)))) := by
@@ -409,7 +424,7 @@ theorem sim_wrapI64 (F : Nat) : InstrSim P code F .wrapI64 := by
         have hd := regOf_lt_31 (h - 1) hlt
         apply res_outcome P code (v := .i32 (UInt32.ofNat (x.toNat % 2 ^ 32)))
           (w := (UInt32.ofNat (x.toNat % 2 ^ 32)).toUInt64) rfl
-          (vs := vs) (by omega) hinv (by omega) (by omega) hst.pop hr
+          (vs := vs) (t := .i32) trivial hty.tail hinv (by omega) (by omega) hst.pop hr
         · show ms.pc + 4 = _
           rw [hpc]; simp [after]
         · rw [State.x_withPc, hvl, State.x_setX_same hd]

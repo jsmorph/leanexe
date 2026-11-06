@@ -77,9 +77,12 @@ theorem not_lt_mono {a sp : UInt64} {k k' : Nat} (hk : k ≤ k') (hk' : k' < 2 ^
 
 /-! ## The generator's call -/
 
-theorem gen_call {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {k : Nat} {is : List Instr}
-    {fin : Option Nat} (hg : genInstr E ctl h a (.call k) = .ok (is, fin)) :
-    ∃ target p r, E.callee k = some (target, p, r) ∧ curBase ctl + p ≤ h ∧ h ≤ 26 ∧
+theorem gen_call {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64} {k : Nat}
+    {is : List Instr} {fin : Option (List ValueType)}
+    (hg : genInstr E ctl σ a (.call k) = .ok (is, fin)) :
+    ∃ target ps rs, E.callee k = some (target, ps, rs) ∧ σ.take ps.length = ps.reverse ∧
+      fin = some (rs.reverse ++ σ.drop ps.length) ∧
+      ∃ h p r, σ.length = h ∧ ps.length = p ∧ rs.length = r ∧ curBase ctl + p ≤ h ∧ h ≤ 26 ∧
       h - p + r ≤ 26 ∧ r ≤ 1 ∧ p ≤ 8 ∧ E.locals + spillSlots < 4096 ∧
       ∃ spills moves reloads g,
         is = spills ++ moves ++ [Instr.bl g] ++
@@ -92,30 +95,38 @@ theorem gen_call {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {k : Nat} {is
         reloads.length = h - p ∧
         (∀ j (hj : j < reloads.length), ∃ hs,
           reloads[j] = .ldr (regOf j) 31 ⟨E.locals + j, hs⟩) ∧
-        bField (after a (h - p + p)) target = .ok g ∧ fin = some (h - p + r) := by
+        bField (after a (h - p + p)) target = .ok g := by
   simp only [genInstr] at hg
   cases hk : E.callee k with
   | none => simp [hk, throw, throwThe, MonadExceptOf.throw] at hg
   | some c =>
-      obtain ⟨target, p, r⟩ := c
+      obtain ⟨target, ps, rs⟩ := c
       rw [hk] at hg
-      by_cases hc : h < curBase ctl + p ∨ 26 < h ∨ 26 < h - p + r ∨ 1 < r ∨ 8 < p ∨
-          4096 ≤ E.locals + spillSlots
+      by_cases hc : σ.length < curBase ctl + ps.length ∨ 26 < σ.length ∨
+          26 < σ.length - ps.length + rs.length ∨ 1 < rs.length ∨ 8 < ps.length ∨
+          4096 ≤ E.locals + spillSlots ∨ σ.take ps.length ≠ ps.reverse
       · simp [hc, throw, throwThe, MonadExceptOf.throw] at hg
       · have hs : spillSlots = 26 := rfl
-        cases hb : bField (after a (h - p + p)) target with
+        have hc' := hc
+        simp only [not_or, Ne, Decidable.not_not] at hc'
+        obtain ⟨c1, c2, c3, c4, c5, c6, htake⟩ := hc'
+        cases hb : bField (after a (σ.length - ps.length + ps.length)) target with
         | error e => simp [hc, hb, bind, Except.bind] at hg
         | ok g =>
             simp [hc, hb, bind, Except.bind, pure, Except.pure] at hg
             obtain ⟨rfl, rfl⟩ := hg
-            refine ⟨target, p, r, rfl, by omega, by omega, by omega, by omega, by omega, by omega,
-              List.ofFn fun j : Fin (h - p) => Instr.str (regOf j) 31 ⟨E.locals + j, by omega⟩,
-              List.ofFn fun i : Fin p => mov ⟨i, by omega⟩ (regOf (h - p + i)),
-              List.ofFn fun j : Fin (h - p) => Instr.ldr (regOf j) 31 ⟨E.locals + j, by omega⟩,
+            refine ⟨target, ps, rs, rfl, htake, rfl, σ.length, ps.length, rs.length, rfl, rfl, rfl,
+              by omega, by omega, by omega, by omega, by omega, by omega,
+              List.ofFn fun j : Fin (σ.length - ps.length) =>
+                Instr.str (regOf j) 31 ⟨E.locals + j, by omega⟩,
+              List.ofFn fun i : Fin ps.length =>
+                mov ⟨i, by omega⟩ (regOf (σ.length - ps.length + i)),
+              List.ofFn fun j : Fin (σ.length - ps.length) =>
+                Instr.ldr (regOf j) 31 ⟨E.locals + j, by omega⟩,
               g, by simp [List.append_assoc], by simp,
               fun j hj => ⟨by simp at hj; omega, by simp⟩, by simp,
               fun i hi => ⟨by simp at hi; omega, by simp⟩, by simp,
-              fun j hj => ⟨by simp at hj; omega, by simp⟩, hb, rfl⟩
+              fun j hj => ⟨by simp at hj; omega, by simp⟩, hb⟩
 
 /-! ## Registers -/
 
@@ -345,10 +356,14 @@ theorem getElem_reverse_top {vs' : List Value} {d kk : Nat} (hlen' : vs'.length 
 /-! ## The call -/
 
 theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc hcl
-  obtain ⟨target, p, r, hk, hpb, hh26, hhr, hr1, hp8, hlocs, spills, moves, reloads, g, his,
-    hsl, hsv, hml, hmv, hrl, hrv, hbf, hfin⟩ := gen_call hgen
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc hcl
+  obtain ⟨target, ps, rs, hk, htk, hfin, h, p, r, hσl, hpl, hrl0, hpb, hh26, hhr, hr1, hp8, hlocs,
+    spills, moves, reloads, g, his, hsl, hsv, hml, hmv, hrl, hrv, hbf⟩ := gen_call hgen
   subst his hfin
+  have hh : sl.values.length = h := by rw [hinv.len, hσl]
+  have hEl : E.locals = E.localTypes.length := rfl
+  have hty := hinv.types
+  rw [hσl] at hb
   have hbound := hinv.frame.bound
   obtain ⟨hl1, hl2, hl3⟩ := hinv.frame.limit
   have hs26 : spillSlots = 26 := rfl
@@ -420,10 +435,17 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
     have := hinv.stack.2 (d + i) (by omega)
     simp only [List.getElem_reverse, hidx] at this
     exact this
-  have hfs : CallOutcome P code E.trapUnreachable E.trapDiv E.trapStack p r sl.values
-      (Wasm.run f m k st sl.values) t :=
-    hcl k (target, p, r) hk f (by omega) st sl.values t (show p ≤ sl.values.length by omega) pt
-      (hinv.frame.stack.congr tsp t18) hargs
+  have htargs : Typed ps.reverse (sl.values.take ps.length) := by
+    rw [← htk]; exact hty.take ps.length
+  have hfs : CallOutcome P code E.trapUnreachable E.trapBounds E.trapDiv E.trapStack ps rs
+      sl.values (Wasm.run f m k st sl.values) t :=
+    hcl k (target, ps, rs) hk f (by omega) st sl.values t
+      (show ps.length ≤ sl.values.length by omega) htargs pt
+      (hinv.frame.stack.congr tsp t18) (fun i hi => by
+        have hi' : i < ps.length := hi
+        have := hargs i (by omega)
+        simp only [hpl]
+        exact this)
   simp only [execOne.eq_def]
   rcases hfs with hov | hfs
   · obtain ⟨ms', hr', hp', hout'⟩ := hov
@@ -433,7 +455,13 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
   cases Wasm.run f m k st sl.values with
   | Success vs' st' =>
       intro hfs
-      obtain ⟨ms', hr', hp', hsp', h18', hout', hmf', hlen', hdrop', hres'⟩ := hfs
+      obtain ⟨ms', hr', hp', hsp', h18', hout', hmf', hlen', hdrop', hres', htres'⟩ := hfs
+      have htres : Typed (rs.reverse ++ σ.drop ps.length) vs' := by
+        rw [← List.take_append_drop rs.length vs', hdrop']
+        exact htres'.append (hty.drop ps.length)
+      rw [hpl, hrl0] at hlen'
+      rw [hpl, hrl0] at hdrop'
+      rw [hrl0] at hres'
       rw [t30] at hp'
       rw [tsp] at hsp'
       rw [t18] at h18'
@@ -483,7 +511,7 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
         rw [x4a j hj, mem3, sp3, hsp', hcal _ (by omega), ld1 j hj]
       have hloc' : LocalsRel s4 (sl.params ++ sl.locals) := by
         intro i hi
-        have hi' : i < E.locals := by rw [← hinv.count]; exact hi
+        have hi' : i < E.locals := by rw [hEl, ← hinv.count]; exact hi
         rw [sp4, sp3, hsp', mem4, mem3, hcal _ (by omega)]
         rw [load64_congr (m' := ms.mem) fun kk hkk =>
           mem1 _ fun j hj => slot_apart (by omega) (by omega) (by omega) kk hkk]
@@ -515,9 +543,9 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
               (by omega)), x3a hr]
           rw [hx, getElem_reverse_top (by omega) hkk]
           exact hv
-      refine ⟨d + r, rfl, s4, rt.trans (hr'.trans (r3.trans r4)), ?_, ?_, ?_, h184, hmf4,
-        ⟨hstack', hloc', hinv.count, hinv.frame.congr (by rw [sp4, sp3, hsp']) h184⟩, hvl',
-        fun kk hk => hrest kk (by omega)⟩
+      refine ⟨_, rfl, s4, rt.trans (hr'.trans (r3.trans r4)), ?_, ?_, ?_, h184, hmf4,
+        ⟨hstack', hloc', hinv.count, hinv.frame.congr (by rw [sp4, sp3, hsp']) h184, htres,
+          hinv.ltypes⟩, fun kk hk => hrest kk (by omega)⟩
       · rw [p4, after_after, hlenis]
       · rw [sp4, sp3, hsp']
       · rw [out4, out3, hout']

@@ -24,21 +24,22 @@ theorem frameSize_bounds {n : Nat} (h : frameSize n < 4096) :
   unfold frameSize at h ⊢
   omega
 
-theorem gen_function {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS entry : UInt64}
-    {f : Function} {is : List Instr} (hg : genFunction callee tU tD tS entry f = .ok is) :
+theorem gen_function {callee : Table} {tU tB tD tS entry : UInt64}
+    {f : Function} {is : List Instr} (hg : genFunction callee tU tB tD tS entry f = .ok is) :
     let p := f.params.length
     let n := p + f.locals.length
     let r := f.results.length
     let bodyA := after entry (5 + n)
     p ≤ 8 ∧ r ≤ 1 ∧ (∀ t ∈ f.locals, numeric t = true) ∧
       ∃ (hf : frameSize n < 4096) (hn : n + spillSlots < 4096)
-      (stores body : List Instr) (fin : Option Nat) (g : Fin 524288),
+      (stores body : List Instr) (fin : Option (List ValueType)) (g : Fin 524288),
       stores.length = n ∧
       (∀ i (hi : i < stores.length), ∃ hs, stores[i] =
         .str (if i < p then ⟨i % 32, Nat.mod_lt _ (by decide)⟩ else 31) 31 ⟨i, hs⟩) ∧
-      genList ⟨n, tU, tD, tS, callee⟩
-        [⟨after bodyA (listSize (sigOf callee) [r] 0 f.body).1, r, 0⟩] 0 bodyA f.body =
-        .ok (body, fin) ∧ (∀ x, fin = some x → x = r) ∧ cbField (after entry 2) tS = .ok g ∧
+      genList ⟨f.params ++ f.locals, tU, tB, tD, tS, callee⟩
+        [⟨after bodyA (listSize (sigOf callee) [r] 0 f.body).1, f.results.reverse, 0⟩] []
+        bodyA f.body = .ok (body, fin) ∧ (∀ x, fin = some x → x = f.results.reverse) ∧
+      cbField (after entry 2) tS = .ok g ∧
       is = [.subImm 16 31 ⟨frameSize n, hf⟩, .subsReg 31 16 18, .bcond 3 g,
           .subImm 31 31 ⟨frameSize n, hf⟩, .str 30 31 ⟨n + spillSlots, hn⟩] ++ stores ++ body ++
         [.ldr 30 31 ⟨n + spillSlots, hn⟩, .addImm 31 31 ⟨frameSize n, hf⟩, .ret 30] := by
@@ -277,33 +278,41 @@ theorem run_epilogue {n fs : Nat} (hf : fs < 4096) (hn : n < 4096) {a : UInt64} 
 theorem ValRel_zero {t : ValueType} (h : numeric t = true) : ValRel t.zero 0 := by
   cases t <;> simp [numeric] at h <;> rfl
 
+theorem hasType_zero {t : ValueType} (h : numeric t = true) : HasType t t.zero := by
+  cases t <;> simp [numeric] at h <;> trivial
+
+theorem typed_zeros : ∀ {ts : List ValueType}, (∀ t ∈ ts, numeric t = true) →
+    Typed ts (ts.map ValueType.zero)
+  | [], _ => trivial
+  | t :: ts, h => ⟨hasType_zero (h t (by simp)), typed_zeros fun t' ht' => h t' (by simp [ht'])⟩
+
 /-- The machine returned from the function that it entered at `ms`: at the address that X30 held,
 with SP, X18, and the UART's output as they were, the memory outside the bytes from the stack's
 limit in X18 up to SP unchanged, and the result, the top of `vs` when the function has one, in
 X0. -/
-structure Returned (nres : Nat) (vs : List Value) (ms ms' : State) : Prop where
+structure Returned (rs : List ValueType) (vs : List Value) (ms ms' : State) : Prop where
   pc : ms'.pc = ms.x 30
   sp : ms'.sp = ms.sp
   x18 : ms'.x 18 = ms.x 18
   out : ms'.out = ms.out
   mem : MemFrame (ms.x 18) ms.sp 0 ms ms'
-  len : nres ≤ vs.length
-  res : ∀ v ∈ vs.take nres, ValRel v (ms'.x 0)
+  len : rs.length ≤ vs.length
+  res : ∀ v ∈ vs.take rs.length, ValRel v (ms'.x 0)
+  types : Typed rs.reverse (vs.take rs.length)
 
-/-- What the machine does from `ms` at the entry of a function with a frame of `fs` bytes, `nres`
-results, and calls to the functions of `callee` when Talos's run of the function's body gives
-`r`: a return reaches the return address, and a trap reaches the stub of its code.  When the frame
-does not fit between the stack's limit and SP, or when the function may call another, the machine
-may instead reach the stub `tS` of an overflow of the stack. -/
-def FunOutcome (callee : Nat → Option (UInt64 × Nat × Nat)) (tU tD tS : UInt64) (fs nres : Nat)
+/-- What the machine does from `ms` at the entry of a function with a frame of `fs` bytes,
+results of the types `rs`, and calls to the functions of `callee` when Talos's run of the
+function's body gives `r`: a return reaches the return address, and a trap reaches the stub of its
+code.  When the frame does not fit between the stack's limit and SP, or when the function may call
+another, the machine may instead reach the stub `tS` of an overflow of the stack. -/
+def FunOutcome (callee : Table) (tU tB tD tS : UInt64) (fs : Nat) (rs : List ValueType)
     {α : Type} (r : Continuation α) (ms : State) : Prop :=
   (((ms.sp - ms.x 18).toNat < fs ∨ HasCalls callee) ∧ Overflows P code tS ms) ∨
   match r with
-  | .Fallthrough _ sl' => ∃ ms', Reach P code ms ms' ∧ Returned nres sl'.values ms ms'
-  | .Break 0 _ sl' => ∃ ms', Reach P code ms ms' ∧ Returned nres sl'.values ms ms'
-  | .Return _ vs => ∃ ms', Reach P code ms ms' ∧ Returned nres vs ms ms'
-  | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.out = ms.out ∧
-      ((msg = "unreachable" ∧ ms'.pc = tU) ∨ (msg = "integer divide by zero" ∧ ms'.pc = tD))
+  | .Fallthrough _ sl' => ∃ ms', Reach P code ms ms' ∧ Returned rs sl'.values ms ms'
+  | .Break 0 _ sl' => ∃ ms', Reach P code ms ms' ∧ Returned rs sl'.values ms ms'
+  | .Return _ vs => ∃ ms', Reach P code ms ms' ∧ Returned rs vs ms ms'
+  | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.out = ms.out ∧ TrapAt tU tB tD msg ms'.pc
   | .Break (_ + 1) _ _ => True
   | .Invalid _ => True
   | .OutOfFuel => True
@@ -360,16 +369,16 @@ theorem outside_frame {a lim sp : UInt64} {fs k : Nat} (hk : k ≤ fs)
     Nat.reducePow, Nat.mul_zero] at *
   constructor <;> omega
 
-theorem function_sim {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS entry : UInt64}
-    {f : Function} {is : List Instr} (hg : genFunction callee tU tD tS entry f = .ok is)
+theorem function_sim {callee : Table} {tU tB tD tS entry : UInt64}
+    {f : Function} {is : List Instr} (hg : genFunction callee tU tB tD tS entry f = .ok is)
     (hcode : CodeAt code entry is) (F : Nat) {α : Type} (m : Module) (st : Store α)
-    (args : List Value) (hargs : args.length = f.params.length) (ms : State)
-    (hpc : ms.pc = entry) (hstk : StackOk P ms)
+    (args : List Value) (hargs : args.length = f.params.length) (hargt : Typed f.params args)
+    (ms : State) (hpc : ms.pc = entry) (hstk : StackOk P ms)
     (hregs : ∀ i (hi : i < args.length),
       ValRel args[i] (ms.x ⟨i % 32, Nat.mod_lt _ (by decide)⟩))
-    (hcl : CallsOk P code F m callee tU tD tS) :
-    FunOutcome P code callee tU tD tS (frameSize (f.params.length + f.locals.length))
-      f.results.length (Wasm.exec F m st (f.toLocals args) f.body) ms := by
+    (hcl : CallsOk P code F m callee tU tB tD tS) :
+    FunOutcome P code callee tU tB tD tS (frameSize (f.params.length + f.locals.length))
+      f.results (Wasm.exec F m st (f.toLocals args) f.body) ms := by
   obtain ⟨hp8, hr1, hnum, hf, hn, stores, body, fin, g, hsl, hsti, hl, hfin, hgc, his⟩ :=
     gen_function hg
   have hloc : ∀ t ∈ f.locals, ValRel t.zero 0 := fun t ht => ValRel_zero (hnum t ht)
@@ -429,10 +438,13 @@ theorem function_sim {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS 
       rw [hsp', h18, UInt64.toNat_sub, hsn] at hj
       simp only [Nat.reducePow] at hj
       exact hstk.below j (by omega)
-  have hinv : Inv P n (f.toLocals args) s := by
+  have hlts : (f.params ++ f.locals).length = n := by rw [List.length_append, hpd, hnd]
+  have hinv : Inv P (f.params ++ f.locals) [] (f.toLocals args) s := by
     refine ⟨⟨by simp [Function.toLocals],
       fun k hk => absurd hk (by simp [Function.toLocals])⟩,
-      fun i hi => ?_, by simp [Function.toLocals, hargs, ← hnd, ← hpd], hframe⟩
+      fun i hi => ?_, by rw [hlts]; simp [Function.toLocals, hargs, ← hnd],
+      by rw [hlts]; exact hframe, trivial,
+      hargt.append (typed_zeros hnum)⟩
     simp only [Function.toLocals, List.length_append, List.length_map] at hi
     rw [hslots i (by omega)]
     simp only [Function.toLocals]
@@ -447,23 +459,34 @@ theorem function_sim {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS 
     congr 1
     simp only [List.length_cons, List.length_nil]
     omega
-  let fn : Ctl := ⟨after (after entry (5 + n)) (listSize (sigOf callee) [r] 0 f.body).1, r, 0⟩
+  let fn : Ctl :=
+    ⟨after (after entry (5 + n)) (listSize (sigOf callee) [r] 0 f.body).1, f.results.reverse, 0⟩
+  have hfa : fn.arity = r := by simp [fn, Ctl.arity, hrd]
   have hsize := (genList_size _ _ _ f.body body fin hl).1
-  simp only [List.map_cons, List.map_nil] at hsize
-  have ho := list_sim P code F ⟨n, tU, tD, tS, callee⟩ [fn] 0 _ f.body body fin hl cbody
-    (Nat.le_refl _)
+  simp only [List.map_cons, List.map_nil, List.length_nil, Ctl.arity_mk, List.length_reverse,
+    hrd] at hsize
+  have ho := list_sim P code F ⟨f.params ++ f.locals, tU, tB, tD, tS, callee⟩ [fn] [] _ f.body
+    body fin hl cbody (Nat.le_refl _)
     ⟨List.cons_ne_nil _ _, fun t ht => by simp at ht; subst ht; exact Nat.le_refl _⟩ m st
-    (f.toLocals args) s hinv rfl hps' hcl
+    (f.toLocals args) s hinv hps' hcl
   have ret : ∀ (vs : List Value) (ms' : State), Reach P code s ms' →
       ms'.pc = after (after entry (5 + n)) body.length → ms'.sp = s.sp → ms'.out = s.out →
-      ms'.x 18 = s.x 18 → MemFrame (s.x 18) s.sp (n + spillSlots) s ms' → Kept fn vs ms' →
-      ∃ ms'', Reach P code ms ms'' ∧ Returned r vs ms ms'' := by
-    intro vs ms' hr hp hsp hout h18' hmf hk
+      ms'.x 18 = s.x 18 →
+      MemFrame (s.x 18) s.sp (Env.locals ⟨f.params ++ f.locals, tU, tB, tD, tS, callee⟩ +
+        spillSlots) s ms' → Kept fn vs ms' →
+      ∃ ms'', Reach P code ms ms'' ∧ Returned f.results vs ms ms'' := by
+    intro vs ms' hr hp hsp hout h18' hmf0 hk
+    have hmf : MemFrame (s.x 18) s.sp (n + spillSlots) s ms' := by rw [← hlts]; exact hmf0
     obtain ⟨ms'', hr', hp', hsp'', hout', hmem', hx'⟩ := run_epilogue P code hf hn cepi hp
       (by rw [hsp]; exact hframe.aligned)
       (fun j hj => by rw [hsp]; exact hframe.mapped (8 * (n + spillSlots) + j) (by omega))
     have hlim := hframe.limit
-    refine ⟨ms'', hrc.trans (hrs.trans (hr.trans hr')), ⟨?_, ?_, ?_, ?_, ?_, hk.len, ?_⟩⟩
+    have hkl := hk.len
+    rw [hfa] at hkl
+    have hkt := hk.types
+    simp only [fn, Ctl.arity_mk, List.length_reverse] at hkt
+    refine ⟨ms'', hrc.trans (hrs.trans (hr.trans hr')),
+      ⟨?_, ?_, ?_, ?_, ?_, by rw [hrd]; exact hkl, ?_, hkt⟩⟩
     · rw [hp', hsp, load64_congr (m' := s.mem) fun k hk' =>
         hmf _ (slot_above hk' hlim.2.1 hlim.2.2 (by omega)), h30, hxc 30 (by decide)]
     · rw [hsp'', hsp, hsps, hspc, UInt64.sub_add_cancel]
@@ -474,18 +497,23 @@ theorem function_sim {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS 
         outside_frame (fs := fs) (k := 8 * (n + spillSlots)) (by omega) (by omega) ha
       rw [hmem', hmf a (by rw [h18, hsp']; exact o2), hmems a (by rw [hsps, hspc]; exact o1),
         hmemc]
-    · rw [hx' 0 (by decide)]
-      exact kept_res hk rfl hr1
+    · rw [hx' 0 (by decide), hrd, ← hfa]
+      exact kept_res hk rfl (by rw [hfa]; exact hr1)
   generalize Wasm.exec F m st (f.toLocals args) f.body = res at ho ⊢
   rcases ho with ⟨hc, ms', hr, hp, hout⟩ | ho
   · exact .inl ⟨.inr hc, ms', hrc.trans (hrs.trans hr), hp, by rw [hout, hos, houtc]⟩
   refine .inr ?_
   cases res with
   | Fallthrough st' sl' =>
-      obtain ⟨h', hf', ms', hr, hp, hsp, hout, h18', hmf, hinv', hh', -⟩ := ho
-      have e := hfin h' hf'
+      obtain ⟨σ', hf', ms', hr, hp, hsp, hout, h18', hmf, hinv', -⟩ := ho
+      have e := hfin σ' hf'
+      have hty' := hinv'.types
+      rw [e] at hty'
       exact ret _ ms' hr hp hsp hout h18' hmf
-        (StackRel.kept hinv'.stack (by simp [fn]; omega))
+        (StackRel.kept hinv'.stack (by rw [← hty'.length]; simp [fn, Ctl.arity])
+          (by
+            rw [List.take_of_length_le (by rw [← hty'.length]; simp [fn, Ctl.arity])]
+            exact hty'))
   | Break k st' sl' =>
       cases k with
       | zero =>
@@ -515,17 +543,19 @@ code `genFunction` places at `entry`, when Talos runs a call of it at fuel `g` o
 table simulate below `g`: `CallResult`, or, when the frame does not fit between the stack's limit
 and SP or the function may call another, the machine reaches the stub `tS` of an overflow of the
 stack. -/
-theorem run_outcome {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS entry : UInt64}
+theorem run_outcome {callee : Table} {tU tB tD tS entry : UInt64}
     {m : Module} {k : Nat} {f : Function} {is : List Instr}
     (hm : m.imports = []) (hk : m.funcs[k]? = some f)
-    (hg : genFunction callee tU tD tS entry f = .ok is) (hcode : CodeAt code entry is) {g : Nat}
-    (hcl : CallsOk P code g m callee tU tD tS) {α : Type} (st : Store α) (vs : List Value)
-    (ms : State) (hp : f.params.length ≤ vs.length) (hpc : ms.pc = entry) (hstk : StackOk P ms)
+    (hg : genFunction callee tU tB tD tS entry f = .ok is) (hcode : CodeAt code entry is)
+    {g : Nat} (hcl : CallsOk P code g m callee tU tB tD tS) {α : Type} (st : Store α)
+    (vs : List Value) (ms : State) (hp : f.params.length ≤ vs.length)
+    (hvt : Typed f.params.reverse (vs.take f.params.length)) (hpc : ms.pc = entry)
+    (hstk : StackOk P ms)
     (hargs : ∀ i (hi : i < f.params.length),
       ValRel (vs[f.params.length - 1 - i]'(by omega)) (ms.x ⟨i % 32, Nat.mod_lt _ (by decide)⟩)) :
     (((ms.sp - ms.x 18).toNat < frameSize (f.params.length + f.locals.length) ∨
         HasCalls callee) ∧ Overflows P code tS ms) ∨
-      CallResult P code tU tD f.params.length f.results.length vs (Wasm.run g m k st vs) ms := by
+      CallResult P code tU tB tD f.params f.results vs (Wasm.run g m k st vs) ms := by
   have hargs' : ((vs.take f.params.length).reverse).length = f.params.length := by
     simp
     omega
@@ -539,7 +569,10 @@ theorem run_outcome {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS e
     have e : min f.params.length vs.length - 1 - i = f.params.length - 1 - i := by omega
     simp only [e]
     exact this
-  have ho := function_sim P code hg hcode g m st _ hargs' ms hpc hstk hregs hcl
+  have hargt : Typed f.params (vs.take f.params.length).reverse := by
+    have := Typed.reverse hvt
+    rwa [List.reverse_reverse] at this
+  have ho := function_sim P code hg hcode g m st _ hargs' hargt ms hpc hstk hregs hcl
   simp only [Wasm.run, hm, List.getElem?_nil, List.length_nil, Nat.sub_zero, hk,
     Function.numParams]
   rcases ho with hov | ho
@@ -548,15 +581,17 @@ theorem run_outcome {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS e
   revert ho
   generalize Wasm.exec g m st (f.toLocals (vs.take f.params.length).reverse) f.body = res
   have hout : ∀ (vals : List Value) (ms' : State), Reach P code ms ms' →
-      Returned f.results.length vals ms ms' →
+      Returned f.results vals ms ms' →
       ∃ ms', Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧ ms'.x 18 = ms.x 18 ∧
         ms'.out = ms.out ∧ MemFrame (ms.x 18) ms.sp 0 ms ms' ∧
         (vals.take f.results.length ++ vs.drop f.params.length).length =
           f.results.length + (vs.length - f.params.length) ∧
         (vals.take f.results.length ++ vs.drop f.params.length).drop f.results.length =
           vs.drop f.params.length ∧
-        ∀ v ∈ (vals.take f.results.length ++ vs.drop f.params.length).take f.results.length,
-          ValRel v (ms'.x 0) := by
+        (∀ v ∈ (vals.take f.results.length ++ vs.drop f.params.length).take f.results.length,
+          ValRel v (ms'.x 0)) ∧
+        Typed f.results.reverse
+          ((vals.take f.results.length ++ vs.drop f.params.length).take f.results.length) := by
     intro vals ms' hr hret
     have hl : (vals.take f.results.length).length = f.results.length := by
       have := hret.len
@@ -565,7 +600,7 @@ theorem run_outcome {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS e
     refine ⟨ms', hr, hret.pc, hret.sp, hret.x18, hret.out, hret.mem, by simp [hl], ?_, ?_⟩
     · exact List.drop_left' hl
     · rw [List.take_left' hl]
-      exact hret.res
+      exact ⟨hret.res, hret.types⟩
   cases res with
   | Fallthrough st' sl' =>
       intro ho
@@ -591,25 +626,25 @@ theorem run_outcome {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS e
 /-- The simulation of a call of function `k` of `m`, which imports nothing, whose code
 `genFunction` places at `entry`, at fuel `g`, when the functions of its table simulate below
 `g`. -/
-theorem fun_sim {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS entry : UInt64}
+theorem fun_sim {callee : Table} {tU tB tD tS entry : UInt64}
     {m : Module} {k : Nat} {f : Function} {is : List Instr}
     (hm : m.imports = []) (hk : m.funcs[k]? = some f)
-    (hg : genFunction callee tU tD tS entry f = .ok is) (hcode : CodeAt code entry is) {g : Nat}
-    (hcl : CallsOk P code g m callee tU tD tS) :
-    FunSim P code m tU tD tS g k (entry, f.params.length, f.results.length) := by
-  intro α st vs ms hp hpc hstk hargs
-  rcases run_outcome P code hm hk hg hcode hcl st vs ms hp hpc hstk hargs with ⟨-, hov⟩ | h
+    (hg : genFunction callee tU tB tD tS entry f = .ok is) (hcode : CodeAt code entry is)
+    {g : Nat} (hcl : CallsOk P code g m callee tU tB tD tS) :
+    FunSim P code m tU tB tD tS g k (entry, f.params, f.results) := by
+  intro α st vs ms hp hvt hpc hstk hargs
+  rcases run_outcome P code hm hk hg hcode hcl st vs ms hp hvt hpc hstk hargs with ⟨-, hov⟩ | h
   · exact .inl hov
   · exact .inr h
 
 /-- The functions of a table whose code `genFunction` places at their entries, in a module that
 imports nothing, simulate at every fuel. -/
-theorem calls_ok {callee : Nat → Option (UInt64 × Nat × Nat)} {tU tD tS : UInt64}
+theorem calls_ok {callee : Table} {tU tB tD tS : UInt64}
     {m : Module} (hm : m.imports = [])
     (htab : ∀ k c, callee k = some c → ∃ f is, m.funcs[k]? = some f ∧
-      c.2 = (f.params.length, f.results.length) ∧ genFunction callee tU tD tS c.1 f = .ok is ∧
+      c.2 = (f.params, f.results) ∧ genFunction callee tU tB tD tS c.1 f = .ok is ∧
       CodeAt code c.1 is) :
-    ∀ F, CallsOk P code F m callee tU tD tS := by
+    ∀ F, CallsOk P code F m callee tU tB tD tS := by
   intro F
   induction F using Nat.strongRecOn with
   | _ F ih =>

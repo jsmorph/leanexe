@@ -77,20 +77,19 @@ theorem cbField_target {here target : UInt64} {f : Fin 524288}
 /-- The outcome of an instruction whose result `v`, which `w` holds, replaces its operands above
 `vs` in the register of height `vs.length`, after code that ends at `endA`. -/
 theorem res_outcome {E : Env} {ctl : List Ctl} {endA : UInt64} {α : Type} {st : Store α}
-    {sl : Locals} {ms ms' : State} {vs : List Value} {v : Value} {w : UInt64} {n : Nat}
-    (hv : ValRel v w) (hn : vs.length + 1 = n)
-    (hinv : Inv P E.locals sl ms) (hb : curBase ctl ≤ vs.length)
+    {sl : Locals} {ms ms' : State} {vs : List Value} {v : Value} {w : UInt64}
+    {σ0 σr : List ValueType} {t : ValueType} (hv : ValRel v w) (ht : HasType t v)
+    (hty : Typed σr vs) (hinv : Inv P E.localTypes σ0 sl ms) (hb : curBase ctl ≤ vs.length)
     (hlt : vs.length < 26) (hstack : StackRel ms vs) (hr : Reach P code ms ms')
     (hpc : ms'.pc = endA) (hx : ms'.x (regOf vs.length) = w)
     (hkeep : ∀ k < vs.length, ms'.x (regOf k) = ms.x (regOf k)) (h18 : ms'.x 18 = ms.x 18)
     (hsp : ms'.sp = ms.sp) (hmem : ms'.mem = ms.mem) (hout : ms'.out = ms.out) :
-    Outcome P code E ctl (some n) endA
+    Outcome P code E ctl (some (t :: σr)) endA
       (.Fallthrough st { sl with values := v :: vs }) ms := by
-  subst hn
-  refine .inr ⟨vs.length + 1, rfl, ms', hr, hpc, hsp, hout, h18, fun b _ => by rw [hmem], ?_,
-    by simp, fun j hj => hkeep j (by omega)⟩
-  refine ⟨StackRel.push hstack hlt (by rw [hx]; exact hv) hkeep, hinv.locals.congr hmem hsp,
-    hinv.count, hinv.frame.congr hsp h18⟩
+  refine .inr ⟨_, rfl, ms', hr, hpc, hsp, hout, h18, fun b _ => by rw [hmem], ?_,
+    fun j hj => hkeep j (by omega)⟩
+  exact ⟨StackRel.push hstack hlt (by rw [hx]; exact hv) hkeep, hinv.locals.congr hmem hsp,
+    hinv.count, hinv.frame.congr hsp h18, Typed.cons ht hty, hinv.ltypes⟩
 
 theorem sub_div_mul_eq_mod (a b : UInt64) : a - a / b * b = a % b := by
   apply UInt64.toNat_inj.mp
@@ -107,8 +106,9 @@ theorem sub_div_mul_eq_mod (a b : UInt64) : a - a / b * b = a % b := by
 
 /-! ## Traps -/
 
-theorem gen_unreachable {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Instr}
-    {fin : Option Nat} (hg : genInstr E ctl h a .unreachable = .ok (is, fin)) :
+theorem gen_unreachable {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64}
+    {is : List Instr} {fin : Option (List ValueType)}
+    (hg : genInstr E ctl σ a .unreachable = .ok (is, fin)) :
     ∃ f, bField a E.trapUnreachable = .ok f ∧ is = [.b f] ∧ fin = none := by
   cases hb : bField a E.trapUnreachable with
   | error e => simp [genInstr, hb, bind, Except.bind] at hg
@@ -117,7 +117,7 @@ theorem gen_unreachable {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : 
       exact ⟨f, rfl, hg.1.symm, hg.2.symm⟩
 
 theorem sim_unreachable (F : Nat) : InstrSim P code F .unreachable := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
   obtain ⟨f, hf, rfl, rfl⟩ := gen_unreachable hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome, or_true]
@@ -130,30 +130,31 @@ theorem sim_unreachable (F : Nat) : InstrSim P code F .unreachable := by
       show ms.pc + sext 26 f.val * 4 = E.trapUnreachable
       rw [hpc]; exact bField_target hf
 
-theorem gen_divrem {E : Env} {ctl : List Ctl} {h : Nat} {a : UInt64} {is : List Instr}
-    {fin : Option Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 → List Instr}
+theorem gen_divrem {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64}
+    {is : List Instr} {fin : Option (List ValueType)} {inst : Instruction}
+    {rest : Fin 32 → Fin 32 → List Instr}
     (hinst : (inst = .remUI64 ∧ rest = fun x y => [.udiv scratch x y, .msub x scratch y x]) ∨
       (inst = .divUI64 ∧ rest = fun x y => [.udiv x x y]))
-    (hg : genInstr E ctl h a inst = .ok (is, fin)) :
-    curBase ctl + 2 ≤ h ∧ h - 1 < 26 ∧ ∃ f, cbField a E.trapDiv = .ok f ∧
-      is = .cbz (regOf (h - 1)) f :: rest (regOf (h - 2)) (regOf (h - 1)) ∧
-      fin = some (h - 1) := by
-  by_cases hc : h < curBase ctl + 2
+    (hg : genInstr E ctl σ a inst = .ok (is, fin)) :
+    curBase ctl + 2 ≤ σ.length ∧ σ.length - 1 < 26 ∧ ∃ f, cbField a E.trapDiv = .ok f ∧
+      is = .cbz (regOf (σ.length - 1)) f :: rest (regOf (σ.length - 2)) (regOf (σ.length - 1)) ∧
+      fin = some (.i64 :: σ.drop 2) := by
+  by_cases hc : σ.length < curBase ctl + 2
   · rcases hinst with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
       simp [genInstr, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
-  by_cases hlt : h - 1 < 26
+  by_cases hlt : σ.length - 1 < 26
   · cases hcb : cbField a E.trapDiv with
     | error e =>
         rcases hinst with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
-          simp [genInstr, hc, opReg_ok hlt, opReg_ok (show h - 2 < 26 by omega), hcb, bind,
+          simp [genInstr, hc, opReg_ok hlt, opReg_ok (show σ.length - 2 < 26 by omega), hcb, bind,
             Except.bind] at hg
     | ok f =>
         rcases hinst with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
-          simp [genInstr, hc, opReg_ok hlt, opReg_ok (show h - 2 < 26 by omega), hcb, bind,
+          simp [genInstr, hc, opReg_ok hlt, opReg_ok (show σ.length - 2 < 26 by omega), hcb, bind,
             Except.bind, pure, Except.pure] at hg <;>
           exact ⟨by omega, hlt, f, rfl, hg.1.symm, hg.2.symm⟩
   · obtain ⟨e, he⟩ := opReg_error hlt
-    by_cases hlt2 : h - 2 < 26
+    by_cases hlt2 : σ.length - 2 < 26
     · rcases hinst with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;>
         simp [genInstr, hc, he, opReg_ok hlt2, bind, Except.bind] at hg
     · obtain ⟨e2, he2⟩ := opReg_error hlt2
@@ -192,8 +193,11 @@ theorem sim_divrem_of {F : Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 �
           else .Fallthrough st { sl with values := .i64 (op a b) :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl h a is fin hgen hcode hb hctl α m st sl ms hinv hh hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
   obtain ⟨hhb, hlt, f, hf, rfl, rfl⟩ := gen_divrem hinst hgen
+  have hh := hinv.len
+  have hty := hinv.types
+  generalize hσl : σ.length = h at *
   cases F with
   | zero =>
       rcases hinst with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;> simp only [execOne.eq_def, Outcome, or_true]
@@ -203,6 +207,7 @@ theorem sim_divrem_of {F : Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 �
         have hvl : vs.length = h - 2 := by rw [hvs] at hh; simp at hh; omega
         have hst := hinv.stack
         rw [hvs] at hst
+        rw [hvs] at hty
         have hy : ms.x (regOf (h - 1)) = b := by
           have := hst.top; rw [show (Value.i64 a' :: vs).length = h - 1 by simp; omega] at this
           exact this
@@ -212,7 +217,7 @@ theorem sim_divrem_of {F : Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 �
           rw [hpc]; exact (CodeAt.cons.mp hcode).1
         split
         · rename_i hb0
-          exact .inr ⟨_, cbz_taken P code hc hpc hf (by rw [hy, hb0]), rfl, .inr ⟨rfl, rfl⟩⟩
+          exact .inr ⟨_, cbz_taken P code hc hpc hf (by rw [hy, hb0]), rfl, .inr (.inr ⟨rfl, rfl⟩)⟩
         · rename_i hb0
           have hstep := reach_exec P code hc (cbz_next P (by rw [hy]; exact hb0)) (.refl _)
           have hrest := (CodeAt.cons.mp hcode).2
@@ -222,8 +227,9 @@ theorem sim_divrem_of {F : Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 �
             hrun { ms with pc := ms.pc + 4 } (after a 1) (regOf (h - 2)) (regOf (h - 1))
               (regOf_lt_31 _ (by omega)) (regOf_ne_scratch _ (by omega))
               (regOf_ne_scratch _ hlt) hne hrest (by simp [hpc, after])
-          apply res_outcome P code (vs := vs) (v := .i64 (op a' b)) (w := op a' b) rfl
-            (by omega) hinv (by omega) (by omega)
+          apply res_outcome P code (vs := vs) (v := .i64 (op a' b)) (w := op a' b) (t := .i64) rfl
+            trivial
+            (hty.drop 2) hinv (by omega) (by omega)
             hst.pop.pop (hstep.trans hr) _ _ _
             (hkeep 18 (Ne.symm (regOf_ne_18 _ (by omega))) (by decide)) hsp hmem hout
           · rw [hp, after_after, List.length_cons, Nat.add_comm]
