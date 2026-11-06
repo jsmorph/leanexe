@@ -42058,6 +42058,8 @@ The CRC-32 module declares 16 pages with a data segment of 2056 bytes at 4096, 4
 
 - [x] Static types in the generator and in `Inv`.
 - [x] The area at the start of `.data`, its image, and the store relation in `Outcome`, `FunOutcome`, and `CallResult`.
-- [ ] `load64`, `store64`, `globalGet`, `globalSet`, `memorySize`, and `memoryGrow`, with stub 2.
+`LeanExe/A64/Proof/Memory.lean` proves the simulation of `globalGet`, `globalSet`, `memorySize`, `load64`, `store64`, and `memoryGrow`, and `instr_sim` dispatches them.  The generator emits the `SUB` of the offset at every offset, 0 included, so every access takes 6 instructions and its proof has one shape.  `run_bounds` proves the bounds check once for loads and stores, `write64_byte` relates the machine's `store64` to Talos's `write64` byte by byte, and `run_grow_head` and `run_grow_ok` split the run of `memoryGrow`, whose proof as one theorem exceeded the elaborator's default budget of heartbeats.  The axioms of `list_sim` and of the new simulations are `propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] `load64`, `store64`, `globalGet`, `globalSet`, `memorySize`, and `memoryGrow`, with stub 2.
 - [ ] The co-simulation of loads and stores with a base other than SP at unaligned addresses.
 - [ ] The CRC-32 program, its theorem, and its runs under QEMU.

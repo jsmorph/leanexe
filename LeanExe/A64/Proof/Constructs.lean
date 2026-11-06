@@ -1,5 +1,6 @@
 import LeanExe.A64.Proof.Control
 import LeanExe.A64.Proof.Call
+import LeanExe.A64.Proof.Memory
 import LeanExe.ProofKit.Exec
 import Interpreter.Wasm.Semantics.Lemmas
 
@@ -208,6 +209,16 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : U
   | divUI64 =>
       obtain ⟨_, _, _, _, rfl, rfl⟩ := gen_divrem (.inr ⟨rfl, rfl⟩) hg; simp [instrSize]; omega
   | unreachable => obtain ⟨_, _, rfl, rfl⟩ := gen_unreachable hg; simp [instrSize]
+  | globalGet i => obtain ⟨_, _, _, rfl, rfl⟩ := gen_globalGet hg; simp [instrSize]
+  | globalSet i =>
+      obtain ⟨_, h1, _, _, rfl, rfl⟩ := gen_globalSet hg; simp [instrSize]
+  | memorySize => obtain ⟨_, rfl, rfl⟩ := gen_memorySize hg; simp [instrSize]
+  | memoryGrow =>
+      obtain ⟨_, _, _, _, _, _, _, _, rfl, rfl⟩ := gen_memoryGrow hg; simp [instrSize, movImm]
+  | load64 off =>
+      obtain ⟨_, _, h1, _, _, _, rfl, rfl⟩ := gen_load64 hg; simp [instrSize]; omega
+  | store64 off =>
+      obtain ⟨_, _, h1, _, _, _, _, rfl, rfl⟩ := gen_store64 hg; simp [instrSize]
   | br n =>
       obtain ⟨t, ht, hb, rfl⟩ := gen_br hg
       simp [instrSize, ht, branchTo_length hb]
@@ -342,6 +353,12 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt
   | divUI64 =>
       obtain ⟨h1, _, _, _, _, he⟩ := gen_divrem (.inr ⟨rfl, rfl⟩) hg; cases he; simp; omega
   | unreachable => obtain ⟨_, _, _, he⟩ := gen_unreachable hg; cases he
+  | globalGet i => obtain ⟨_, _, _, _, he⟩ := gen_globalGet hg; cases he; simp; omega
+  | globalSet i => obtain ⟨_, h1, _, _, _, he⟩ := gen_globalSet hg; cases he; simp; omega
+  | memorySize => obtain ⟨_, _, he⟩ := gen_memorySize hg; cases he; simp; omega
+  | memoryGrow => obtain ⟨_, _, _, h1, _, _, _, _, _, he⟩ := gen_memoryGrow hg; cases he; omega
+  | load64 off => obtain ⟨_, _, h1, _, _, _, _, he⟩ := gen_load64 hg; cases he; simp; omega
+  | store64 off => obtain ⟨_, _, h1, _, _, _, _, _, he⟩ := gen_store64 hg; cases he; simp; omega
   | br n => obtain ⟨_, _, _, he⟩ := gen_br hg; cases he
   | br_if n => obtain ⟨h1, _, he, _⟩ := gen_br_if hg; cases he; simp; omega
   | ret => obtain ⟨_, _, _, he⟩ := gen_ret hg; cases he
@@ -784,6 +801,12 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P code g) (inst : Instructi
   case remUI64 => exact sim_remUI64 P code F
   case divUI64 => exact sim_divUI64 P code F
   case unreachable => exact sim_unreachable P code F
+  case globalGet i => exact sim_globalGet P code F i
+  case globalSet i => exact sim_globalSet P code F i
+  case memorySize => exact sim_memorySize P code F
+  case memoryGrow => exact sim_memoryGrow P code F
+  case load64 off => exact sim_load64 P code F off
+  case store64 off => exact sim_store64 P code F off
   case br n => exact sim_br P code F n
   case br_if n => exact sim_br_if P code F n
   case ret => exact sim_ret P code F

@@ -187,6 +187,12 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .extendUI32 => (0, some h)
   | .remUI64 => (3, some (h - 1))
   | .divUI64 => (2, some (h - 1))
+  | .globalGet _ => (1, some (h + 1))
+  | .globalSet _ => (1, some (h - 1))
+  | .memorySize => (3, some (h + 1))
+  | .memoryGrow => (16, some h)
+  | .load64 _ => (6, some h)
+  | .store64 _ => (6, some (h - 2))
   | .unreachable => (1, none)
   | .br n => (ar[n]?.getD 0 + 1, none)
   | .br_if n => (if ar[n]?.getD 0 = 0 then 1 else ar[n]?.getD 0 + 2, some (h - 1))
@@ -269,6 +275,53 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
       let x ← opReg (σ.length - 2)
       let y ← opReg (σ.length - 1)
       return ([.cbz y (← cbField a E.trapDiv), .udiv x x y], some (.i64 :: σ.drop 2))
+  | .globalGet i => do
+      match E.globalTypes[i]? with
+      | some t =>
+          if h : i + 1 < 4096 then
+            return ([.ldr (← opReg σ.length) 17 ⟨i + 1, h⟩], some (t :: σ))
+          else throw s!"global {i} lies beyond the area's reach"
+      | none => throw s!"global {i} of {E.globalTypes.length}"
+  | .globalSet i => do
+      if σ.length < curBase ctl + 1 ∨ σ.head? ≠ E.globalTypes[i]? then
+        throw s!"global.set {i} at height {σ.length}"
+      if h : i + 1 < 4096 then
+        return ([.str (← opReg (σ.length - 1)) 17 ⟨i + 1, h⟩], some σ.tail)
+      else throw s!"global {i} lies beyond the area's reach"
+  | .memorySize => do
+      let d ← opReg σ.length
+      return ([.ldr d 17 0, .addImm d d 8, .lsrImm d d 16], some (.i32 :: σ))
+  | .memoryGrow => do
+      if σ.length < curBase ctl + 1 ∨ σ.head? ≠ some .i32 then
+        throw s!"memory.grow at height {σ.length}"
+      if hc : E.cap < 4096 then
+        let r ← opReg (σ.length - 1)
+        let fail ← cbField (after a 5) (after a 12)
+        let done ← bField (after a 11) (after a 16)
+        return ([.ldr 16 17 0, .addImm 16 16 8, .lsrImm 16 16 16, .addReg 29 16 r,
+            .subsImm 31 29 ⟨E.cap, hc⟩, .bcond 8 fail, .movz r 16 0, .lslv 29 29 r,
+            .subImm 29 29 8, .str 29 17 0, mov r 16, .b done] ++ movImm r 0xFFFFFFFF, some σ)
+      else throw s!"a cap of {E.cap} pages"
+  | .load64 off => do
+      if σ.length < curBase ctl + 1 ∨ ¬ (σ.head? = some .i32 ∨ σ.head? = some .i64) then
+        throw s!"a load at height {σ.length}"
+      if h : off.toNat % 8 = 0 ∧ off.toNat < 4096 then
+        let r ← opReg (σ.length - 1)
+        let trap ← cbField (after a 3) E.trapBounds
+        return ([.ldr 16 17 0, .subImm 16 16 ⟨off.toNat, h.2⟩, .subsReg 31 r 16, .bcond 8 trap,
+            .addReg 16 17 r, .ldr r 16 ⟨512 + off.toNat / 8, by omega⟩], some (.i64 :: σ.tail))
+      else throw s!"a load at offset {off}"
+  | .store64 off => do
+      if σ.length < curBase ctl + 2 ∨ σ.head? ≠ some .i64 ∨
+          ¬ (σ[1]? = some .i32 ∨ σ[1]? = some .i64) then
+        throw s!"a store at height {σ.length}"
+      if h : off.toNat % 8 = 0 ∧ off.toNat < 4096 then
+        let v ← opReg (σ.length - 1)
+        let r ← opReg (σ.length - 2)
+        let trap ← cbField (after a 3) E.trapBounds
+        return ([.ldr 16 17 0, .subImm 16 16 ⟨off.toNat, h.2⟩, .subsReg 31 r 16, .bcond 8 trap,
+            .addReg 16 17 r, .str v 16 ⟨512 + off.toNat / 8, by omega⟩], some (σ.drop 2))
+      else throw s!"a store at offset {off}"
   | .unreachable => do return ([.b (← bField a E.trapUnreachable)], none)
   | .br n => do
       match ctl[n]? with
