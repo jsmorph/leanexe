@@ -1,3 +1,4 @@
+import LeanExe.A64.Boot
 import LeanExe.A64.Clear
 import LeanExe.A64.Encode
 import LeanExe.A64.File

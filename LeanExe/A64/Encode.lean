@@ -42,6 +42,16 @@ def encodeNat : Instr → Nat
   | .lsrv d n m => 0x9AC02400 + m.val * 65536 + n.val * 32 + d.val
   | .orrW d n m => 0x2A000000 + m.val * 65536 + n.val * 32 + d.val
   | .bcond cond imm => 0x54000000 + imm.val * 32 + cond.val
+  | .adr d lo hi => 0x10000000 + lo.val * 536870912 + hi.val * 32 + d.val
+  | .adrp d lo hi => 0x90000000 + lo.val * 536870912 + hi.val * 32 + d.val
+  | .msr k t => 0xD5100000 + k.val * 32 + t.val
+  | .mrs t k => 0xD5300000 + k.val * 32 + t.val
+  | .spsel1 => 0xD50041BF
+  | .isb => 0xD5033FDF
+  | .dsbIsh => 0xD5033B9F
+  | .dsbSy => 0xD5033F9F
+  | .tlbiVmalle1 => 0xD508871F
+  | .hvc0 => 0xD4000002
 
 /-- The 32-bit word of the instruction `i`. -/
 def encode (i : Instr) : UInt32 :=
@@ -57,23 +67,29 @@ theorem toNat_encode (i : Instr) : (encode i).toNat = encodeNat i := by
 /-- Proves `decodeNat v = some i` for one form `i`, with a hypothesis that `encodeNat i = v` in
 context: it unfolds that hypothesis and the decoder, takes each condition of the decoder in turn
 to be true or false with `omega`, which knows the bounds of `Fin` fields, until it reaches the
-form's own branch, and reads the fields back with `omega`. -/
+form's own branch, and reads the fields back with `omega`.  For a form without fields the rewrite
+of its branch closes the goal. -/
 syntax "decode_encode_tac" : tactic
 macro_rules
   | `(tactic| decode_encode_tac) => `(tactic| (
       simp only [encodeNat] at *
       dsimp only [decodeNat]
       repeat (first | rw [ite_eq_left (by omega)] | rw [ite_eq_right (by omega)])
-      simp only [Option.some.injEq, Instr.movz.injEq, Instr.movk.injEq, Instr.addImm.injEq,
+      all_goals simp only [Option.some.injEq, Instr.movz.injEq, Instr.movk.injEq, Instr.addImm.injEq,
         Instr.subImm.injEq, Instr.subsImm.injEq, Instr.subsReg.injEq, Instr.csinc.injEq,
         Instr.orrReg.injEq, Instr.lsrImm.injEq,
         Instr.ldr.injEq, Instr.str.injEq, Instr.strb.injEq, Instr.b.injEq, Instr.bl.injEq,
         Instr.cbz.injEq, Instr.cbnz.injEq, Instr.ret.injEq, Instr.udiv.injEq, Instr.msub.injEq,
         Instr.addReg.injEq, Instr.subReg.injEq, Instr.andReg.injEq, Instr.eorReg.injEq,
         Instr.madd.injEq, Instr.lslv.injEq, Instr.lsrv.injEq, Instr.orrW.injEq,
-        Instr.bcond.injEq, Fin.ext_iff]
-      omega))
+        Instr.bcond.injEq, Instr.adr.injEq, Instr.adrp.injEq, Instr.msr.injEq, Instr.mrs.injEq,
+        Fin.ext_iff]
+      all_goals omega))
 
+set_option maxHeartbeats 1000000 in
+/-- The decoder reads every encoded form back as itself.  Each form's case decides every earlier
+condition of the decoder's chain with `omega`, so the proof's cost grows with the product of the
+number of forms and the chain's length, beyond the default budget of heartbeats. -/
 theorem decode_encode (i : Instr) : decode (encode i) = some i := by
   rw [decode, toNat_encode]
   generalize hv : encodeNat i = v

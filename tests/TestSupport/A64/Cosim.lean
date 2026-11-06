@@ -78,8 +78,9 @@ structure Case where
   relWin : List Nat := []
   relPad : Option (Nat × Int) := none
 
-/-- The 28 forms in the order of `Instr`. -/
-def formCount : Nat := 28
+/-- The forms of `Instr` that the co-simulation covers, every form but the system instructions,
+in the order of `Instr`. -/
+def formCount : Nat := 30
 
 /-- The value that puts an access of the window at `o` at `delta` from the base: `o - delta`. -/
 def rel (o delta : Nat) : UInt64 := UInt64.ofNat o - UInt64.ofNat delta
@@ -158,7 +159,9 @@ def genCase (form : Nat) : Gen Case := do
   | 24 => return { c with instr := .lslv (← fin 32) (← fin 32) (← fin 32) }
   | 25 => return { c with instr := .lsrv (← fin 32) (← fin 32) (← fin 32) }
   | 26 => return { c with instr := .orrW (← fin 32) (← fin 32) (← fin 32) }
-  | _ => return { c with instr := .bcond (← fin 16) (field19 (← offset)) }
+  | 27 => return { c with instr := .bcond (← fin 16) (field19 (← offset)) }
+  | 28 => return { c with instr := .adr (← fin 32) (← fin 4) (← fin 524288) }
+  | _ => return { c with instr := .adrp (← fin 32) (← fin 4) (← fin 524288) }
 
 def hex (v : Nat) : String := "0x" ++ String.ofList (Nat.toDigits 16 v)
 

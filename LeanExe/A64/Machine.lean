@@ -1,7 +1,8 @@
 /-!
 A model of the AArch64 instructions that the native back end emits, for a bare-metal program at
-exception level 1 under the startup code of `tools/baremetal/start.S`.  It covers the 64-bit integer
-forms that the back end emits.
+exception level 1.  It covers the 64-bit integer forms that the back end emits, `ADR` and `ADRP`,
+and the system instructions of the startup.  `exec` gives no semantics to a system instruction:
+the model of the startup in `LeanExe/A64/Boot.lean` gives them.
 
 The code lies in a fixed map from addresses to 32-bit words, which the theorem derives from the
 image's bytes, so a store never changes what the processor fetches.  `step` fetches the word at
@@ -101,6 +102,29 @@ inductive Instr where
   /-- `B.cond` to the program counter plus 4 times `imm` read as a signed 19-bit number when the
   condition `cond` holds. -/
   | bcond (cond : Fin 16) (imm : Fin 524288)
+  /-- `ADR Xd`, which sets `Xd` to the program counter plus `4 * hi + lo` read as a signed 21-bit
+  number, from the fields immhi and immlo. -/
+  | adr (d : Fin 32) (lo : Fin 4) (hi : Fin 524288)
+  /-- `ADRP Xd`, which sets `Xd` to the program counter with its low 12 bits clear plus 4096 times
+  `4 * hi + lo` read as a signed 21-bit number. -/
+  | adrp (d : Fin 32) (lo : Fin 4) (hi : Fin 524288)
+  /-- `MSR` of the system register whose field `op0<0>:op1:CRn:CRm:op2` is `k`, from `Xt`, the zero
+  register for 31. -/
+  | msr (k : Fin 32768) (t : Fin 32)
+  /-- `MRS Xt` of the system register whose field `op0<0>:op1:CRn:CRm:op2` is `k`. -/
+  | mrs (t : Fin 32) (k : Fin 32768)
+  /-- `MSR SPSel, #1`. -/
+  | spsel1
+  /-- `ISB`. -/
+  | isb
+  /-- `DSB ISH`. -/
+  | dsbIsh
+  /-- `DSB SY`. -/
+  | dsbSy
+  /-- `TLBI VMALLE1`. -/
+  | tlbiVmalle1
+  /-- `HVC #0`. -/
+  | hvc0
   deriving DecidableEq, Repr
 
 /-- The instruction that the 32-bit word of value `v` encodes, or `none` for a word outside the
@@ -118,6 +142,8 @@ def decodeNat (v : Nat) : Option Instr :=
   let imm26 : Fin 67108864 := ⟨v % 67108864, Nat.mod_lt _ (by decide)⟩
   let imm19 : Fin 524288 := ⟨v / 32 % 524288, Nat.mod_lt _ (by decide)⟩
   let sh : Fin 64 := ⟨v / 65536 % 64, Nat.mod_lt _ (by decide)⟩
+  let lo2 : Fin 4 := ⟨v / 536870912 % 4, Nat.mod_lt _ (by decide)⟩
+  let k15 : Fin 32768 := ⟨v / 32 % 32768, Nat.mod_lt _ (by decide)⟩
   if v / 8388608 = 0x1A5 then some (.movz d imm16 hw)
   else if v / 8388608 = 0x1E5 then some (.movk d imm16 hw)
   else if v / 4194304 = 0x244 then some (.addImm d n imm12)
@@ -147,6 +173,16 @@ def decodeNat (v : Nat) : Option Instr :=
   else if v / 2097152 = 0x150 ∧ v / 1024 % 64 = 0 then some (.orrW d n m)
   else if v / 16777216 = 0x54 ∧ v / 16 % 2 = 0 then
     some (.bcond ⟨v % 16, Nat.mod_lt _ (by decide)⟩ imm19)
+  else if v / 16777216 % 32 = 16 ∧ v / 2147483648 = 0 then some (.adr d lo2 imm19)
+  else if v / 16777216 % 32 = 16 then some (.adrp d lo2 imm19)
+  else if v / 1048576 = 0xD51 then some (.msr k15 d)
+  else if v / 1048576 = 0xD53 then some (.mrs d k15)
+  else if v = 0xD50041BF then some .spsel1
+  else if v = 0xD5033FDF then some .isb
+  else if v = 0xD5033B9F then some .dsbIsh
+  else if v = 0xD5033F9F then some .dsbSy
+  else if v = 0xD508871F then some .tlbiVmalle1
+  else if v = 0xD4000002 then some .hvc0
   else none
 
 /-- The instruction that the word `w` encodes, or `none` for a word outside the forms. -/
@@ -277,6 +313,10 @@ def exec (P : Platform) (i : Instr) (s : State) : Option State :=
   | .orrW d n m => some { s.setX d (s.x n ||| s.x m).toUInt32.toUInt64 with pc := next }
   | .bcond cond imm =>
       some { s with pc := if s.condHolds cond then s.pc + sext 19 imm.val * 4 else next }
+  | .adr d lo hi => some { s.setX d (s.pc + sext 21 (4 * hi.val + lo.val)) with pc := next }
+  | .adrp d lo hi =>
+      some { s.setX d ((s.pc &&& ~~~0xFFF) + sext 21 (4 * hi.val + lo.val) * 4096) with pc := next }
+  | .msr _ _ | .mrs _ _ | .spsel1 | .isb | .dsbIsh | .dsbSy | .tlbiVmalle1 | .hvc0 => none
 
 /-- One step from `s` with the code `code`: the fetch, the decoding, and the execution of the
 word at the program counter. -/
