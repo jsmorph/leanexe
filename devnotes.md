@@ -42101,4 +42101,8 @@ Talos's IEEE64 (`Interpreter/Wasm/IEEE64.lean`) returns the canonical NaN `0x7FF
 The C path's program of Fold, `depth`, runs entry 13 of `Verified.Examples.Fold.compiled.module`, `recursive`, on 1000, and its module reaches no f64 form, so the back end already generates it, in 148 instructions.  Talos's run of that entry traps at `unreachable`, the guard of the call depth, as the C path's test expects, and the A64 program reaches the exit word with status 1 and no bytes in the model and under QEMU with TCG and KVM, after a stack of 288,528 bytes.  The test driver gained the expected status of each program, 0 after the result's bytes or a trap's code with no bytes, as `programs.sh` has it, and `tests/TestSupport/A64/Fold.lean` proves the program's theorem, whose axioms are `propext`, `Classical.choice`, and `Quot.sound`.  The f64 forms are therefore needed only for Euler: `f64Const`, the two reinterpretations, `f64ConvertI64U`, `f64Add`, `f64Sub`, `f64Mul`, `f64Div`, `f64Sqrt`, and `f64Abs`.  Euler's functions take at most 13 parameters, return at most 8 results, and hold at most 168 locals and an operand stack of 20.
 
 - [x] Fold's program, its theorem, and its runs under QEMU.
-- [ ] `start.S` sets `FPCR.DN` under the define, for the A64 images and the co-simulation.
+- [x] `start.S` sets `FPCR.DN` under `DEFAULT_NAN`, which `a64-programs.sh` and `a64-cosim.sh` define; the five programs pass under TCG and KVM with it.
+- [ ] The model's FP registers and f64 forms, their encodings, `decode_encode`, and a check against GNU `as`.
+- [ ] The co-simulation of the f64 forms, with D registers in the harness, under TCG and KVM.
+- [ ] The generator's f64 instructions and their simulations.
+- [ ] Euler's program, its theorem, and its runs under QEMU.

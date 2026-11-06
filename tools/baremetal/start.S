@@ -15,7 +15,11 @@
    floating point disabled, defining UNALIGNED_TEST adds an unaligned 8-byte load before main,
    defining GUARD_TEST adds a store to the guard page below the stack, defining CODE_WRITE_TEST
    adds a store to _start, and defining DATA_EXEC_TEST adds a call of lx_boot_el in .bss.  The
-   first two reproduce results of the design's experiments.
+   first two reproduce results of the design's experiments.  Defining DEFAULT_NAN sets FPCR.DN, so
+   that a floating-point operation whose result is a NaN gives the default NaN, the canonical NaN
+   of Talos's semantics, for the images of the AArch64 back end and its co-simulation.  The C
+   path's images leave FPCR at its reset value, whose NaN propagation CompCert's semantics
+   assumes.
 
    The translation tables map RAM, from __ram_start to __ram_end, as Normal Inner and Outer
    Write-Back memory, Inner Shareable: the blocks of 2 MiB below __rw_start, which hold the code
@@ -128,6 +132,11 @@ _start:
         msr     CPACR_EL1, x0
 #endif
         isb
+#ifdef DEFAULT_NAN
+        mov     x0, #(1 << 25)
+        msr     FPCR, x0
+        isb
+#endif
         ldr     x0, =__stack_top
         mov     sp, x0
         ldr     x0, =__stack_bottom

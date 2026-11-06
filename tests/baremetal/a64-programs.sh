@@ -14,8 +14,8 @@
 # the report, for a program whose entry Talos's run ends with that trap.  ACCEL selects the
 # accelerator, as qemu.sh describes, and CCOMP and CCOMP_STDLIB name CompCert 3.18's driver and
 # run-time library for AArch64, which assemble the programs and the startup code, and NM and OBJCOPY
-# name nm and objcopy for AArch64 objects.  The products lie in OUT, build/baremetal/a64-programs
-# unless set.
+# name nm and objcopy for AArch64 objects.  The images are built with DEFAULT_NAN, with which the
+# startup code sets FPCR.DN.  The products lie in OUT, build/baremetal/a64-programs unless set.
 # Usage: tests/baremetal/a64-programs.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -34,7 +34,7 @@ for s in "$out"/*.s; do
   name=$(basename "${s%.s}")
   if ! "$ccomp" -c "$s" -o "$out/$name.o" >"$out/$name.build" 2>&1 ||
       ! tools/baremetal/build.sh "$out/$name.elf" "$out/$name.o" -- "${bm_defines[@]}" \
-        >>"$out/$name.build" 2>&1; then
+        -DDEFAULT_NAN >>"$out/$name.build" 2>&1; then
     echo "fail: $name: $(head -c 300 "$out/$name.build")"
     status=1
     continue
