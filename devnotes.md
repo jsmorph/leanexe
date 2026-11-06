@@ -41964,9 +41964,9 @@ The user approved the plan and the recommendations of its decisions.  A new inst
 
 The work across increments is a check of the subset that both paths share, a command for the A64 path like `bare_program` so that each program's theorem is one line, and the track of decision 3 with Sail, which needs a place to install it.  `LeanExe/A64/Proof/Function.lean` declares `numeric`, a copy of `LeanExe.Native.numeric`, which moves to a module that both paths import.
 
-- [ ] Increment 1b: the image writer.
-- [ ] Increment 2: GCD by recursion.
-- [ ] Increment 3: CRC-32.
+- [x] Increment 1b: the image writer.
+- [x] Increment 2: GCD by recursion.
+- [x] Increment 3: CRC-32.
 - [ ] Increment 4: SHA-256.
 - [ ] Increment 5: Fold and Euler.
 - [ ] Increment 6: the rest of `InSubset`.
@@ -42064,4 +42064,11 @@ The CRC-32 module declares 16 pages with a data segment of 2056 bytes at 4096, 4
 The co-simulation already draws a load or a store with a base other than SP at any of the 57 offsets of its window of 64 bytes in `.data`, Normal memory like the area's, so most of those accesses are unaligned, and no new cases were needed.  `a64-cosim.sh 41 200` agrees with the model on all 5,600 cases under TCG and under KVM on processor 5 of edgexpert-18ff.  The KVM run holds 171 unaligned `LDR` cases and 168 unaligned `STR` cases with a base other than SP, against 23 aligned ones of each.
 
 - [x] The co-simulation of loads and stores with a base other than SP at unaligned addresses.
-- [ ] The CRC-32 program, its theorem, and its runs under QEMU.
+`tests/TestSupport/A64/Crc.lean` proves the theorem of CRC-32's program, which `main` runs on entry 5 of `crcCompiled.module` with the words of `123456789`: the machine writes the eight bytes of `crcCheck 0x3837363534333231 0x39` to the UART and returns 0, or it reaches the exit word with the status 1 of `unreachable`, which the allocator reaches when the memory cannot grow, or the status 4 of an overflow of the stack.  The proof discharges the premises of the wrapper's `ImplementsTables` as the C path's `bare_program` does, with `heapAt_nativeStore` and `borrowed_nativeStore` for `initStore`, which is `nativeStore` by definition, and its axioms are `propext`, `Classical.choice`, and `Quot.sound`.
+
+| Test | Result |
+|---|---|
+| The model, from `main` | 8 bytes and status 0 after 3,502 steps of 2,275 instructions |
+| `a64-programs.sh` on edgexpert-18ff | GCD's loop, GCD's recursion, and CRC-32 pass under TCG and KVM, CRC-32 with a stack of 1,648 bytes |
+
+- [x] The CRC-32 program, its theorem, and its runs under QEMU.

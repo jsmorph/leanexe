@@ -1,11 +1,13 @@
 import TestSupport.Native.Gcd
+import TestSupport.Bare.Programs
 import LeanExe.Native.Bare
 import LeanExe.A64.Gen
 import LeanExe.A64.Image
 
 /-!
 The bare-metal programs of the AArch64 back end, the counterparts of the programs of
-`tests/baremetal/programs.sh` that it covers so far: GCD's loop and GCD's recursion on 1071 and 462.
+`tests/baremetal/programs.sh` that it covers so far: GCD's loop and GCD's recursion on 1071 and 462,
+and CRC-32 of the 9 bytes of `123456789`.
 The program's exit word lies at `base`, where `tools/baremetal/link.ld` places the section
 `.text.a64`, and `main` and the rest of the instructions follow it.  The area of the module's
 store lies at `rwStart`, where the link script places the section `.data.a64`.  For each program
@@ -57,7 +59,12 @@ def programs : List Program := [
     module := TestSupport.Native.Gcd.recCompiled.module
     code := genProgram TestSupport.Native.Gcd.recCompiled.module 3 [1071, 462] uart base room
       rwStart cap
-    bytes := LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462) }]
+    bytes := LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462) },
+  { name := "crc32"
+    module := TestSupport.Bare.crcCompiled.module
+    code := genProgram TestSupport.Bare.crcCompiled.module 5 [0x3837363534333231, 0x39] uart base
+      room rwStart cap
+    bytes := LeanExe.Native.encodeWord (TestSupport.Bare.crcCheck 0x3837363534333231 0x39) }]
 
 /-- The UART's bytes, X0, and the number of steps when `main` returns to the address below the
 code, after at most `fuel` steps from `main` at `base + 4` with the area of module `m` at
