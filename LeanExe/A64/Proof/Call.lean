@@ -320,7 +320,7 @@ theorem getElem_reverse_call {vs vs' : List Value} {p r d kk : Nat} (hlen : vs.l
 /-! ## The call -/
 
 theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc hcl
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc need D hcl hD
   obtain ⟨target, ps, rs, hk, htk, hfin, h, p, r, hσl, hpl, hrl0, hpb, hh26, hhr, hlocs,
     spills, moves, res, reloads, g, his, hsl, hsv, hml, hmv, hresl, hresv, hrl, hrv, hbf⟩ :=
     gen_call hgen
@@ -410,14 +410,18 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
     exact this
   have htargs : Typed ps.reverse (sl.values.take ps.length) := by
     rw [← htk]; exact hty.take ps.length
-  have hfs : CallOutcome P code E.toShared ps rs sl.values (Wasm.run f m k st sl.values) t :=
+  have hfs : CallOutcome P code E.toShared (need k) ps rs sl.values
+      (Wasm.run f m k st sl.values) t :=
     hcl k (target, ps, rs) hk f (by omega) st sl.values t
       (show ps.length ≤ sl.values.length by omega) htargs pt
       (hinv.frame.stack.congr tsp t18) hsrt hargs
   simp only [execOne.eq_def]
   rcases hfs with hov | hfs
-  · obtain ⟨ms', hr', hp', hout'⟩ := hov
-    exact .inl ⟨⟨k, _, hk⟩, ms', rt.trans hr', hp', by rw [hout', tout]⟩
+  · obtain ⟨hn, ms', hr', hp', hout'⟩ := hov
+    have hnD : (ms.sp - ms.x 18).toNat < D := by
+      rw [← tsp, ← t18]
+      exact Nat.lt_of_lt_of_le hn (hD k (by simp [callsOf]))
+    exact .inl ⟨hnD, ms', rt.trans hr', hp', by rw [hout', tout]⟩
   refine .inr ?_
   revert hfs
   cases Wasm.run f m k st sl.values with

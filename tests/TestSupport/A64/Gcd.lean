@@ -13,8 +13,9 @@ stack below SP holds `room + 16` bytes of Normal memory above address 4096, for 
 below the stack's limit, the machine writes the eight bytes of `gcd 1071 462` to the UART from
 `main` and returns 0 to the address in X30.  In the second, `main` calls entry 3 of
 `recCompiled.module`, the recursion of `gcd` with the depth of calls, and the machine writes the
-same bytes and returns 0, or it reaches the exit word with the status 1 of the trap of the depth's
-guard or the status 4 of an overflow of the stack.
+same bytes and returns 0, or it reaches the exit word with the status 4 of an overflow of the
+stack.  The compiler's theorem without a trap excludes the status 1 of the depth's guard, and the
+recursion's cycle of calls leaves the stack without a static bound.
 -/
 
 namespace TestSupport.A64.Gcd
@@ -70,12 +71,34 @@ theorem program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List 
           exact ⟨ms', h⟩
       · exact hab.elim
 
-/-- The theorem of GCD's recursion: `main` calls entry 3 of `recCompiled.module`, which calls
-the recursion of `gcd` with depth 0, on 1071 and 462.  Under the premises of `program`, the
-machine writes the eight bytes of `gcd 1071 462` to the UART from `main` and returns 0 to the
-address in X30, or it reaches the exit word at `base` with the status 1 of the trap of the call
-depth's guard or the status 4 of an overflow of the stack, and the UART's output as it was. -/
-theorem rec_program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List Instr}
+/-- The memory of `recCompiled.module` starts with 16 pages. -/
+theorem rec_pages : (recCompiled.module.memory.map (·.pagesMin.toNat)).getD 0 = 16 := by
+  decide +kernel
+
+/-- The recursion of `gcd` on 1071 and 462 fits the frames of the depth's guard. -/
+theorem rec_fits : recCompiled.gcd.fits 1000 (1071, 462) = true := by
+  decide +kernel
+
+/-- The heap's `top` at the end of the tables, plus the allocations of `gcd 1071 462`, fits 16
+pages. -/
+theorem rec_heap_room : (Verified.initialHeap recCompiled.tables).top.toNat +
+    recCompiled.gcd.bound 1000 (1071, 462) ≤ 65536 * 16 := by
+  decide +kernel
+
+/-- The recursion's cycle of calls leaves `stackBound` at 2^64, which bounds nothing. -/
+theorem rec_stack_bound : stackBound recCompiled.module 3 = 2 ^ 64 := by
+  decide +kernel
+
+/-- The theorem of GCD's recursion: `main` calls entry 3 of `recCompiled.module`, which calls the
+recursion of `gcd` with depth 0, on 1071 and 462.  Under the premises of `program`, the machine
+writes the eight bytes of `gcd 1071 462` to the UART from `main` and returns 0 to the address in
+X30, or it reaches the exit word at `base` with the status 4 of an overflow of the stack and the
+UART's output as it was.  `recCompiled.gcd.trapFree` excludes the
+trap of the depth's guard and of the allocator: the recursion on 1071 and 462 fits the guard's
+frames, and it allocates nothing.  The recursion's calls form a cycle, so `stackBound` bounds
+nothing, and the overflow remains. -/
+theorem rec_program (P : Platform) (base room area : UInt64) (cap : Nat)
+    {is : List Instr}
     (hg : genProgram recCompiled.module 3 [1071, 462] P.uart base room cap .word = .ok is)
     (ms : State)
     (himage : ∀ j (hj : j < (imageBytes is).length),
@@ -91,7 +114,7 @@ theorem rec_program (P : Platform) (base room area : UInt64) (cap : Nat) {is : L
       ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧
       ms'.out = ms.out ++ LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462)) ∨
     ∃ ms', Reach P (fetchFrom ms.mem (after base 1) is.length) ms ms' ∧ ms'.pc = base ∧
-      (ms'.x 0 = 1 ∨ ms'.x 0 = 4) ∧ ms'.out = ms.out := by
+      ms'.x 0 = 4 ∧ ms'.out = ms.out := by
   obtain ⟨-, fs, -, -, -, -, -, -, -, -, -, -, -, hok, -, -, hfs, -⟩ := gen_program hg
   have hcap := cap_lt_of_areaOk hok
   have hcheck : (match (reachFrom recCompiled.module 3).mapM (funcOf recCompiled.module) with
@@ -104,30 +127,30 @@ theorem rec_program (P : Platform) (base room area : UInt64) (cap : Nat) {is : L
     simpa using hcheck
   have hpar : (recCompiled.module.funcs[3]?).map (fun f => f.params.length) = some 2 := by
     decide
+  have hpg := pages_le_of_areaOk hok
+  rw [rec_pages] at hpg
+  have hheap := rec_heap_room
   cases hk : recCompiled.module.funcs[3]? with
   | none => rw [hk] at hpar; cases hpar
   | some f =>
       rw [hk] at hpar
       simp only [Option.map_some, Option.some.injEq] at hpar
-      obtain ⟨N, hN⟩ := recCompiled.gcd.implements {} _ _ [.i64 1071, .i64 462] (1071, 462)
-        (LeanExe.Native.heapAt_nativeStore recCompiled.initial.1 cap) trivial rfl
-        LeanExe.Pipeline.Separate.nil (show cap ≤ 65535 by omega)
-      have hc := codeAt_fetchFrom hn himage
-      have hsim := program_sim P _ hg hc rfl hk hpar.symm N ms hpc hal hroom htop hstack h17 harea
-        hamap habove
-      rcases hN N (Nat.le_refl _) with ⟨vs, st', hrun, heap', -, hown, -⟩ | ⟨st', hrun⟩
+      obtain ⟨N, hN⟩ := recCompiled.gcd.trapFree {} _ _ [.i64 1071, .i64 462] (1071, 462)
+        (LeanExe.Native.heapAt_nativeStore recCompiled.initial.1 cap)
+        ⟨rec_fits, show _ ≤ 65536 * cap by omega⟩ rfl LeanExe.Pipeline.Separate.nil
+        (show cap ≤ 65535 by omega)
+      have hsim := program_sim P _ hg (codeAt_fetchFrom hn himage) rfl hk hpar.symm N ms hpc hal
+        hroom htop hstack h17 harea hamap habove
+      rcases hN N (Nat.le_refl _) with ⟨vs, st', hrun, heap', -, hown, -⟩ | hab
       · have hv : vs.reverse = [.i64 (TestSupport.Native.Gcd.gcd 1071 462)] := hown
         rw [List.reverse_eq_cons_iff, List.reverse_nil, List.nil_append] at hv
         subst hv
         rcases ProgramOutcome.success P _ hsim hrun with ⟨-, ms', hr, hp, hx, hout⟩ |
           ⟨w, ms', hw, h⟩
-        · exact .inr ⟨ms', hr, hp, .inr hx, hout⟩
+        · exact .inr ⟨ms', hr, hp, hx, hout⟩
         · simp only [ValRel] at hw
           subst hw
           exact .inl ⟨ms', h⟩
-      · rcases ProgramOutcome.unreachable P _ hsim hrun with ⟨-, ms', hr, hp, hx, hout⟩ |
-          ⟨ms', hr, hp, hx, hout⟩
-        · exact .inr ⟨ms', hr, hp, .inr hx, hout⟩
-        · exact .inr ⟨ms', hr, hp, .inl hx, hout⟩
+      · exact hab.elim
 
 end TestSupport.A64.Gcd

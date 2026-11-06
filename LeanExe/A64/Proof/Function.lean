@@ -263,6 +263,44 @@ theorem run_epilogue {n fs : Nat} (hf : fs < 4096) (hn : n < 4096) {a : UInt64} 
     show (s.setX 30 w).x q = s.x q
     exact State.x_setX_ne (Ne.symm hq)
 
+/-! ## The stack that a call uses -/
+
+theorem foldr_max_le : ∀ {l : List Nat} {c : Nat}, (∀ x ∈ l, x ≤ c) → l.foldr max 0 ≤ c
+  | [], _, _ => Nat.zero_le _
+  | x :: _, _, h => Nat.max_le.mpr ⟨h x List.mem_cons_self,
+      foldr_max_le fun y hy => h y (List.mem_cons_of_mem x hy)⟩
+
+theorem le_foldr_max : ∀ {l : List Nat} {x : Nat}, x ∈ l → x ≤ l.foldr max 0
+  | y :: _, _, h => by
+      rcases List.mem_cons.mp h with rfl | h
+      · exact Nat.le_max_left _ _
+      · exact Nat.le_trans (le_foldr_max h) (Nat.le_max_right y _)
+
+/-- The largest of `need j` over the functions `j` that the calls of `body` name, or 0. -/
+def callNeed (need : Nat → Nat) (body : List Instruction) : Nat :=
+  ((callsIn body).map need).foldr max 0
+
+theorem le_callNeed {need : Nat → Nat} {body : List Instruction} {j : Nat}
+    (h : j ∈ callsIn body) : need j ≤ callNeed need body :=
+  le_foldr_max (List.mem_map_of_mem h)
+
+theorem callNeed_mono {need need' : Nat → Nat} (h : ∀ j, need j ≤ need' j)
+    (body : List Instruction) : callNeed need body ≤ callNeed need' body :=
+  foldr_max_le fun x hx => by
+    obtain ⟨j, hj, rfl⟩ := List.mem_map.mp hx
+    exact Nat.le_trans (h j) (le_callNeed hj)
+
+/-- `n` bounds the bytes of stack that a call of a function uses, when the function's frame has
+`fs` bytes, its body is `body`, and `need` bounds the stack of the calls in the body: `n` is at
+least the frame plus `callNeed`, or at least 2^64, which bounds nothing. -/
+def NeedOk (need : Nat → Nat) (fs : Nat) (body : List Instruction) (n : Nat) : Prop :=
+  2 ^ 64 ≤ n ∨ fs + callNeed need body ≤ n
+
+/-- A count below 2^64 and below `fs` plus `callNeed` lies below `n`. -/
+theorem NeedOk.lt {need : Nat → Nat} {fs : Nat} {body : List Instruction} {n d : Nat}
+    (h : NeedOk need fs body n) (hd : d < 2 ^ 64) (hlt : d < fs + callNeed need body) : d < n := by
+  rcases h with h | h <;> omega
+
 /-! ## The function -/
 
 theorem ValRel_zero {t : ValueType} (h : numeric t = true) : ValRel t.zero 0 := by
@@ -290,15 +328,14 @@ structure Returned (rs : List ValueType) (vs : List Value) (ms ms' : State) : Pr
   res : StackRel ms' (vs.take rs.length)
   types : Typed rs.reverse (vs.take rs.length)
 
-/-- What the machine does from `ms` at the entry of a function with a frame of `fs` bytes,
-results of the types `rs`, and calls to the functions of `callee` when Talos's run of the
-function's body gives `r`: a return reaches the return address with the final store in the area,
-and a trap reaches the stub of its code.  When the frame does not fit between the stack's limit
-and SP, or when the function may call another, the machine may instead reach the stub of an
-overflow of the stack. -/
-def FunOutcome (callee : Table) (S : Shared) (fs : Nat) (rs : List ValueType)
+/-- What the machine does from `ms` at the entry of a function with results of the types `rs`
+when Talos's run of the function's body gives `r`: a return reaches the return address with the
+final store in the area, and a trap reaches the stub of its code.  When fewer than `n` bytes lie
+between the stack's limit and SP, the machine may instead reach the stub of an overflow of the
+stack. -/
+def FunOutcome (S : Shared) (n : Nat) (rs : List ValueType)
     {α : Type} (r : Continuation α) (ms : State) : Prop :=
-  (((ms.sp - ms.x 18).toNat < fs ∨ HasCalls callee) ∧ Overflows P code S.trapStack ms) ∨
+  ((ms.sp - ms.x 18).toNat < n ∧ Overflows P code S.trapStack ms) ∨
   match r with
   | .Fallthrough st' sl' => ∃ ms', Reach P code ms ms' ∧ Returned rs sl'.values ms ms' ∧
       StoreRel P S.cap S.globalTypes st' ms'
@@ -351,9 +388,9 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     (ms : State) (hpc : ms.pc = entry) (hstk : StackOk P ms)
     (hsr : StoreRel P S.cap S.globalTypes st ms) (h64 : m.memIs64 = false)
     (hregs : ∀ i (hi : i < args.length), ValRel args[i] (ms.x (regOf i)))
-    (hcl : CallsOk P code F m callee S) :
-    FunOutcome P code callee S (frameSize (f.params.length + f.locals.length))
-      f.results (Wasm.exec F m st (f.toLocals args) f.body) ms := by
+    {need : Nat → Nat} (hcl : CallsOk P code F m callee S need) {n0 : Nat}
+    (hneed : NeedOk need (frameSize (f.params.length + f.locals.length)) f.body n0) :
+    FunOutcome P code S n0 f.results (Wasm.exec F m st (f.toLocals args) f.body) ms := by
   obtain ⟨hp8, hr1, hnum, hf, hn, stores, body, fin, g, hsl, hsti, hl, hfin, hgc, his⟩ :=
     gen_function hg
   have hloc : ∀ t ∈ f.locals, ValRel t.zero 0 := fun t ht => ValRel_zero (hnum t ht)
@@ -384,9 +421,10 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     omega
   obtain ⟨c, hrc, hspc, hmemc, houtc, hxc, hpcc⟩ :=
     run_check P code hf hgc hpro.1 hpc (by omega) hl2
+  have hd64 := (ms.sp - ms.x 18).toNat_lt
   rcases Nat.lt_or_ge (ms.sp - ms.x 18).toNat fs with hfit | hfit
   · rw [ite_eq_right (by omega)] at hpcc
-    exact .inl ⟨.inl hfit, c, hrc, hpcc, houtc⟩
+    exact .inl ⟨hneed.lt hd64 (by omega), c, hrc, hpcc, houtc⟩
   rw [ite_eq_left hfit] at hpcc
   have hmap : ∀ j < fs, P.normal (ms.sp - UInt64.ofNat fs + UInt64.ofNat j) = true := by
     intro j hj
@@ -450,7 +488,8 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
   have ho := list_sim P code F { toShared := S, localTypes := f.params ++ f.locals, callee }
     [fn] [] _ f.body body fin hl cbody (Nat.le_refl _)
     ⟨List.cons_ne_nil _ _, fun t ht => by simp at ht; subst ht; exact Nat.le_refl _⟩ m st
-    (f.toLocals args) s hinv hsrs h64 hps' hcl
+    (f.toLocals args) s hinv hsrs h64 hps' need (callNeed need f.body) hcl
+    fun j hj => le_callNeed hj
   have ret : ∀ (st' : Store α) (vs : List Value) (ms' : State), Reach P code s ms' →
       ms'.pc = after (after entry (5 + n)) body.length → ms'.sp = s.sp → ms'.out = s.out →
       ms'.x 18 = s.x 18 →
@@ -489,7 +528,12 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
       exact this.congr fun k hk => hx' _ (regOf_ne_30 k (by have := this.1; omega))
   generalize Wasm.exec F m st (f.toLocals args) f.body = res at ho ⊢
   rcases ho with ⟨hc, ms', hr, hp, hout⟩ | ho
-  · exact .inl ⟨.inr hc, ms', hrc.trans (hrs.trans hr), hp, by rw [hout, hos, houtc]⟩
+  · have hds : (s.sp - s.x 18).toNat + fs = (ms.sp - ms.x 18).toNat := by
+      rw [hsp', h18, UInt64.toNat_sub_of_le (ms.sp - UInt64.ofNat fs) (ms.x 18)
+        (UInt64.le_iff_toNat_le.mpr (by omega)), hsn]
+      omega
+    exact .inl ⟨hneed.lt hd64 (by omega), ms', hrc.trans (hrs.trans hr), hp,
+      by rw [hout, hos, houtc]⟩
   refine .inr ?_
   cases res with
   | Fallthrough st' sl' =>
@@ -528,21 +572,20 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
 /-- What the machine does from the entry of function `k` of `m`, which imports nothing, whose
 code `genFunction` places at `entry`, when Talos runs a call of it at fuel `g` on the operand stack
 `vs`, the top `f.params.length` values in X0 upward, the deepest first, and the functions of its
-table simulate below `g`: `CallResult`, or, when the frame does not fit between the stack's limit
-and SP or the function may call another, the machine reaches the stub `tS` of an overflow of the
-stack. -/
+table simulate below `g` with the bounds `need`: `CallOutcome` with the bound `n` of the stack
+that the call uses. -/
 theorem run_outcome {callee : Table} {S : Shared} {entry : UInt64}
     {m : Module} {k : Nat} {f : Function} {is : List Instr}
     (hm : m.imports = []) (h64 : m.memIs64 = false) (hk : m.funcs[k]? = some f)
     (hg : genFunction callee S entry f = .ok is) (hcode : CodeAt code entry is)
-    {g : Nat} (hcl : CallsOk P code g m callee S) {α : Type} (st : Store α)
+    {g : Nat} {need : Nat → Nat} (hcl : CallsOk P code g m callee S need) {n : Nat}
+    (hneed : NeedOk need (frameSize (f.params.length + f.locals.length)) f.body n)
+    {α : Type} (st : Store α)
     (vs : List Value) (ms : State) (hp : f.params.length ≤ vs.length)
     (hvt : Typed f.params.reverse (vs.take f.params.length)) (hpc : ms.pc = entry)
     (hstk : StackOk P ms) (hsr : StoreRel P S.cap S.globalTypes st ms)
     (hargs : StackRel ms (vs.take f.params.length)) :
-    (((ms.sp - ms.x 18).toNat < frameSize (f.params.length + f.locals.length) ∨
-        HasCalls callee) ∧ Overflows P code S.trapStack ms) ∨
-      CallResult P code S f.params f.results vs (Wasm.run g m k st vs) ms := by
+    CallOutcome P code S n f.params f.results vs (Wasm.run g m k st vs) ms := by
   have hargs' : ((vs.take f.params.length).reverse).length = f.params.length := by
     simp
     omega
@@ -553,6 +596,7 @@ theorem run_outcome {callee : Table} {S : Shared} {entry : UInt64}
     have := Typed.reverse hvt
     rwa [List.reverse_reverse] at this
   have ho := function_sim P code hg hcode g m st _ hargs' hargt ms hpc hstk hsr h64 hregs hcl
+    hneed
   simp only [Wasm.run, hm, List.getElem?_nil, List.length_nil, Nat.sub_zero, hk,
     Function.numParams]
   rcases ho with hov | ho
@@ -606,27 +650,27 @@ theorem run_outcome {callee : Table} {S : Shared} {entry : UInt64}
 
 /-- The simulation of a call of function `k` of `m`, which imports nothing, whose code
 `genFunction` places at `entry`, at fuel `g`, when the functions of its table simulate below
-`g`. -/
+`g` and `need k` bounds the stack that the call uses. -/
 theorem fun_sim {callee : Table} {S : Shared} {entry : UInt64}
     {m : Module} {k : Nat} {f : Function} {is : List Instr}
     (hm : m.imports = []) (h64 : m.memIs64 = false) (hk : m.funcs[k]? = some f)
     (hg : genFunction callee S entry f = .ok is) (hcode : CodeAt code entry is)
-    {g : Nat} (hcl : CallsOk P code g m callee S) :
-    FunSim P code m S g k (entry, f.params, f.results) := by
-  intro α st vs ms hp hvt hpc hstk hsr hargs
-  rcases run_outcome P code hm h64 hk hg hcode hcl st vs ms hp hvt hpc hstk hsr hargs with
-    ⟨-, hov⟩ | h
-  · exact .inl hov
-  · exact .inr h
+    {g : Nat} {need : Nat → Nat} (hcl : CallsOk P code g m callee S need)
+    (hneed : NeedOk need (frameSize (f.params.length + f.locals.length)) f.body (need k)) :
+    FunSim P code m S need g k (entry, f.params, f.results) :=
+  fun st vs ms hp hvt hpc hstk hsr hargs =>
+    run_outcome P code hm h64 hk hg hcode hcl hneed st vs ms hp hvt hpc hstk hsr hargs
 
 /-- The functions of a table whose code `genFunction` places at their entries, in a module that
-imports nothing, simulate at every fuel. -/
+imports nothing, simulate at every fuel, with bounds `need` of the stack that their calls use. -/
 theorem calls_ok {callee : Table} {S : Shared}
     {m : Module} (hm : m.imports = []) (h64 : m.memIs64 = false)
     (htab : ∀ k c, callee k = some c → ∃ f is, m.funcs[k]? = some f ∧
       c.2 = (f.params, f.results) ∧ genFunction callee S c.1 f = .ok is ∧
-      CodeAt code c.1 is) :
-    ∀ F, CallsOk P code F m callee S := by
+      CodeAt code c.1 is) {need : Nat → Nat}
+    (hneed : ∀ k f, m.funcs[k]? = some f →
+      NeedOk need (frameSize (f.params.length + f.locals.length)) f.body (need k)) :
+    ∀ F, CallsOk P code F m callee S need := by
   intro F
   induction F using Nat.strongRecOn with
   | _ F ih =>
@@ -635,6 +679,6 @@ theorem calls_ok {callee : Table} {S : Shared}
       obtain ⟨e, p, r⟩ := c
       simp only [Prod.mk.injEq] at hc2
       obtain ⟨rfl, rfl⟩ := hc2
-      exact fun_sim P code hm h64 hf hgen hcode (ih g hg)
+      exact fun_sim P code hm h64 hf hgen hcode (ih g hg) (hneed k f hf)
 
 end LeanExe.A64

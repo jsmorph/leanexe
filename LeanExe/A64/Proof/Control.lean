@@ -121,15 +121,15 @@ theorem run_branchTo {t : Ctl} {σ : List ValueType} {a : UInt64} {is : List Ins
 
 /-- The outcome of a branch `k` levels out to `t` that reaches `t.target` with the values that it
 carries kept and the locals unchanged. -/
-theorem break_outcome {E : Env} {ctl : List Ctl} {fin : Option (List ValueType)} {endA : UInt64}
-    {α : Type} {st : Store α} {sl sl' : Locals} {ms ms' : State} {k : Nat} {t : Ctl}
-    {σ : List ValueType} (ht : ctl[k]? = some t) (hinv : Inv P E.localTypes σ sl ms)
+theorem break_outcome {E : Env} {ctl : List Ctl} {D : Nat} {fin : Option (List ValueType)}
+    {endA : UInt64} {α : Type} {st : Store α} {sl sl' : Locals} {ms ms' : State} {k : Nat}
+    {t : Ctl} {σ : List ValueType} (ht : ctl[k]? = some t) (hinv : Inv P E.localTypes σ sl ms)
     (hsr : StoreRel P E.cap E.globalTypes st ms)
     (hl : sl'.params ++ sl'.locals = sl.params ++ sl.locals) (hr : Reach P code ms ms')
     (hpc : ms'.pc = t.target) (hk : Kept t sl'.values ms') (hf : Frame t.base ms ms')
     (h18 : ms'.x 18 = ms.x 18) (h17 : ms'.x 17 = ms.x 17) (hsp : ms'.sp = ms.sp)
     (hmem : ms'.mem = ms.mem) (hout : ms'.out = ms.out) :
-    Outcome P code E ctl fin endA (.Break k st sl') ms :=
+    Outcome P code E ctl D fin endA (.Break k st sl') ms :=
   .inr ⟨t, ht, ms', hr, hpc, hsp, hout, h18, fun _ _ => by rw [hmem],
     by rw [hl]; exact hinv.locals.congr hmem hsp, by rw [hl]; exact hinv.ltypes, hk, hf,
     hsr.regs h17 h18 hmem⟩
@@ -189,7 +189,7 @@ theorem gen_ret {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64} {i
           exact ⟨t, rfl, hb, rfl⟩
 
 theorem sim_br (F n : Nat) : InstrSim P code F (.br n) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨t, ht, hbr, rfl⟩ := gen_br hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome, or_true]
@@ -200,7 +200,7 @@ theorem sim_br (F n : Nat) : InstrSim P code F (.br n) := by
       exact break_outcome P code ht hinv hsr rfl hr hp hk hfr h18 h17 hsp hmem hout
 
 theorem sim_ret (F : Nat) : InstrSim P code F .ret := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨t, ht, hbr, rfl⟩ := gen_ret hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome, or_true]
@@ -270,7 +270,7 @@ theorem exec_br_if (f n : Nat) {α : Type} (m : Module) (st : Store α) (sl : Lo
       | _ => exact .inr (.inr ⟨_, by simp only [execOne.eq_def, hv]; rfl⟩)
 
 theorem sim_br_if (F n : Nat) : InstrSim P code F (.br_if n) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hhb, hlt, rfl, t, ht, hcase⟩ := gen_br_if hgen
   have hh := hinv.len
   have hty := hinv.types

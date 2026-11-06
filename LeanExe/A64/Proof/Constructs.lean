@@ -376,18 +376,18 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt
 /-- An outcome from a state that the machine reaches from `ms` with SP, X18, the UART's output,
 the memory outside the frame, and the registers below the innermost base unchanged, as an outcome
 from `ms`. -/
-theorem Outcome.trans {E : Env} {ctl : List Ctl} {fin : Option (List ValueType)} {endA : UInt64}
-    {α : Type}
+theorem Outcome.trans {E : Env} {ctl : List Ctl} {D : Nat} {fin : Option (List ValueType)}
+    {endA : UInt64} {α : Type}
     {r : Continuation α} {ms ms1 : State} (hctl : CtlOk ctl) (hr : Reach P code ms ms1)
     (hsp : ms1.sp = ms.sp) (hout : ms1.out = ms.out) (h18 : ms1.x 18 = ms.x 18)
     (hmf : MemFrame ms.sp (E.locals + spillSlots) ms ms1)
-    (hfr : Frame (curBase ctl) ms ms1) (ho : Outcome P code E ctl fin endA r ms1) :
-    Outcome P code E ctl fin endA r ms := by
+    (hfr : Frame (curBase ctl) ms ms1) (ho : Outcome P code E ctl D fin endA r ms1) :
+    Outcome P code E ctl D fin endA r ms := by
   have hmf2 : ∀ ms' : State, MemFrame ms1.sp (E.locals + spillSlots) ms1 ms' →
       MemFrame ms.sp (E.locals + spillSlots) ms ms' :=
     fun ms' h b hb => by rw [h b (by rwa [hsp]), hmf b hb]
   rcases ho with ⟨hc, ms', hr', hp, hout'⟩ | ho
-  · exact .inl ⟨hc, ms', hr.trans hr', hp, by rw [hout', hout]⟩
+  · exact .inl ⟨by rw [← hsp, ← h18]; exact hc, ms', hr.trans hr', hp, by rw [hout', hout]⟩
   refine .inr ?_
   cases r with
   | Fallthrough st' sl' =>
@@ -414,30 +414,38 @@ theorem Outcome.trans {E : Env} {ctl : List Ctl} {fin : Option (List ValueType)}
 
 /-! ## Instruction lists -/
 
-/-- The simulation of instruction lists at fuel `F`. -/
+/-- The simulation of instruction lists at fuel `F`, in which an overflow of the stack occurs
+only when fewer than `D` bytes lie between the stack's limit and SP, for any `D` at or above
+`need j` for each function `j` that the list calls. -/
 def ListSim (F : Nat) : Prop :=
   ∀ (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) (p : List Instruction)
     (is : List Instr) (fin : Option (List ValueType)), genList E ctl σ a p = .ok (is, fin) →
     CodeAt code a is → curBase ctl ≤ σ.length → CtlOk ctl →
     ∀ {α : Type} (m : Module) (st : Store α) (sl : Locals) (ms : State),
       Inv P E.localTypes σ sl ms → StoreRel P E.cap E.globalTypes st ms → m.memIs64 = false →
-      ms.pc = a → CallsOk P code F m E.callee E.toShared →
-      Outcome P code E ctl fin (after a is.length) (Wasm.exec F m st sl p) ms
+      ms.pc = a → ∀ (need : Nat → Nat) (D : Nat), CallsOk P code F m E.callee E.toShared need →
+      (∀ j ∈ callsIn p, need j ≤ D) →
+      Outcome P code E ctl D fin (after a is.length) (Wasm.exec F m st sl p) ms
 
 theorem prog_sim {F : Nat} (hI : ∀ inst, InstrSim P code F inst) : ListSim P code F := by
   intro E ctl σ a p
   induction p generalizing σ a with
   | nil =>
-      intro is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc hcl
+      intro is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc need D hcl hD
       obtain ⟨rfl, rfl⟩ := gen_nil hg
       rw [ProofKit.exec_nil]
       exact .inr ⟨σ, rfl, ms, .refl _, by simp [hpc, after_zero], rfl, rfl, rfl, fun _ _ => rfl,
         hinv, fun _ _ => rfl, hsr⟩
   | cons i rest ih =>
-      intro is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc hcl
+      intro is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc need D hcl hD
+      have hDi : ∀ j ∈ callsOf i, need j ≤ D := fun j hj =>
+        hD j (by simp only [callsIn]; exact List.mem_append_left _ hj)
+      have hDr : ∀ j ∈ callsIn rest, need j ≤ D := fun j hj =>
+        hD j (by simp only [callsIn]; exact List.mem_append_right _ hj)
       obtain ⟨c1, f1, h1, ⟨rfl, his, rfl⟩ | ⟨σ', c2, rfl, h2, rfl⟩⟩ := gen_cons hg
       · subst his
-        have hi := hI i E ctl σ a _ none h1 hcode hb hctl m st sl ms hinv hsr h64 hpc hcl
+        have hi := hI i E ctl σ a _ none h1 hcode hb hctl m st sl ms hinv hsr h64 hpc need D hcl
+          hDi
         rw [ProofKit.exec_cons]
         revert hi
         cases execOne F m st sl i with
@@ -448,7 +456,8 @@ theorem prog_sim {F : Nat} (hI : ∀ inst, InstrSim P code F inst) : ListSim P c
             · cases hn
         | _ => intro hi; exact hi
       · have hc := (CodeAt.append (code := code)).mp hcode
-        have hi := hI i E ctl σ a c1 (some σ') h1 hc.1 hb hctl m st sl ms hinv hsr h64 hpc hcl
+        have hi := hI i E ctl σ a c1 (some σ') h1 hc.1 hb hctl m st sl ms hinv hsr h64 hpc need D
+          hcl hDi
         rw [ProofKit.exec_cons]
         revert hi
         cases execOne F m st sl i with
@@ -458,7 +467,7 @@ theorem prog_sim {F : Nat} (hI : ∀ inst, InstrSim P code F inst) : ListSim P c
             · exact .inl hov
             cases hn
             have ho := ih σ' (after a c1.length) c2 fin h2 hc.2 (genInstr_base h1 hb) hctl m st'
-              sl' ms1 hinv1 hsr1 h64 hp hcl
+              sl' ms1 hinv1 hsr1 h64 hp need D hcl hDr
             rw [after_after, ← List.length_append] at ho
             exact Outcome.trans P code hctl hr hsp hout h18 hmf hfr ho
         | _ => intro hi; exact hi
@@ -515,8 +524,8 @@ theorem StackRel.of_kept {s s' : State} {t : Ctl} {vs below : List Value} (hk : 
 /-- The outcome of a block or an `if` whose body, under the construct `t` and from `ms1`, gives
 `r`, where the machine reaches `ms1` from `ms` with only its program counter changed and the
 body's end `endB` leads to `t.target`, over the stack `below` of the types `σb`. -/
-theorem construct_outcome {E : Env} {ctl : List Ctl} {α : Type} {r : Continuation α} {t : Ctl}
-    {below : List Value} {σb σ0 : List ValueType} {sl0 : Locals} {ms ms1 : State}
+theorem construct_outcome {E : Env} {ctl : List Ctl} {D : Nat} {α : Type} {r : Continuation α}
+    {t : Ctl} {below : List Value} {σb σ0 : List ValueType} {sl0 : Locals} {ms ms1 : State}
     {fb : Option (List ValueType)} {endB : UInt64} {ra : Nat} (hra : t.arity = ra)
     (hctl : CtlOk ctl) (hb : curBase ctl ≤ t.base) (hinv : Inv P E.localTypes σ0 sl0 ms)
     (hbelow : StackRel ms below) (hbt : Typed σb below) (hlen : below.length = t.base)
@@ -524,15 +533,16 @@ theorem construct_outcome {E : Env} {ctl : List Ctl} {α : Type} {r : Continuati
     (hsp1 : ms1.sp = ms.sp) (hout1 : ms1.out = ms.out) (hmem1 : ms1.mem = ms.mem)
     (hfr1 : ∀ q, ms1.x q = ms.x q) (hfb : ∀ x, fb = some x → x = t.types ++ σb)
     (hjump : ∀ s : State, s.pc = endB → Reach P code s { s with pc := t.target })
-    (ho : Outcome P code E (t :: ctl) fb endB r ms1) :
-    Outcome P code E ctl (some (t.types ++ σb)) t.target
+    (ho : Outcome P code E (t :: ctl) D fb endB r ms1) :
+    Outcome P code E ctl D (some (t.types ++ σb)) t.target
       (ProofKit.blockResult ra below r) ms := by
   subst hra
   have hmf2 : ∀ ms' : State, MemFrame ms1.sp (E.locals + spillSlots) ms1 ms' →
       MemFrame ms.sp (E.locals + spillSlots) ms ms' :=
     fun ms' h b hb => by rw [h b (by rwa [hsp1]), hmem1]
   rcases ho with ⟨hc, ms', hr', hp, hout'⟩ | ho
-  · exact .inl ⟨hc, ms', hr1.trans hr', hp, by rw [hout', hout1]⟩
+  · exact .inl ⟨by rw [← hsp1, ← hfr1 18]; exact hc, ms', hr1.trans hr', hp,
+      by rw [hout', hout1]⟩
   refine .inr ?_
   cases r with
   | Fallthrough st' sl' =>
@@ -593,7 +603,7 @@ theorem reach_pc {s : State} {p : UInt64} (h : s.pc = p) : Reach P code s { s wi
 
 theorem sim_block {f : Nat} (hP : ListSim P code f) (pa ra : Nat) (body : List Instruction)
     (pts rts : List ValueType) : InstrSim P code (f + 1) (.block pa ra body pts rts) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc hcl
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc need D hcl hD
   obtain ⟨rfl, hra, hrl, rfl, fb, hl, hfb⟩ := gen_block hgen
   have hn := (genList_size _ σ a body is fb hl).1
   simp only [List.map_cons, Ctl.arity_mk, List.length_reverse, hrl] at hn
@@ -604,7 +614,8 @@ theorem sim_block {f : Nat} (hP : ListSim P code f) (pa ra : Nat) (body : List I
     rw [hn]
     exact hl
   have ho := hP E (t :: ctl) σ a body is fb hl' hcode (Nat.le_refl _) (hctl.push hb) m st sl ms
-    hinv hsr h64 hpc (hcl.mono P code (by omega))
+    hinv hsr h64 hpc need D (hcl.mono P code (by omega))
+    fun j hj => hD j (by simpa [callsOf] using hj)
   rw [ProofKit.execOne_block]
   exact construct_outcome P code (t := t) (by simp [t, Ctl.arity, hrl]) hctl hb hinv hinv.stack
     hinv.types hinv.len (.refl _) rfl rfl rfl (fun _ => rfl) hfb (fun _ hs => reach_pc P code hs)
@@ -618,15 +629,16 @@ theorem sim_loop {F : Nat} (hP : ∀ g < F, ListSim P code g) (pa ra : Nat)
   intro g
   induction g with
   | zero =>
-      intro _ E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv _ _ hpc _
+      intro _ E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv _ _ hpc _ _ _ _
       rw [ProofKit.execOne_zero]
       exact .inr trivial
   | succ f ih =>
-      intro hf E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc hcl
+      intro hf E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc need D hcl hD
       obtain ⟨rfl, hra, hrl, rfl, fb, hl, hfb⟩ := gen_loop hgen
       let t : Ctl := { target := a, types := [], base := σ.length }
       have ho := hP f (by omega) E (t :: ctl) σ a body is fb hl hcode (Nat.le_refl _)
-        (hctl.push hb) m st sl ms hinv hsr h64 hpc (hcl.mono P code (by omega))
+        (hctl.push hb) m st sl ms hinv hsr h64 hpc need D (hcl.mono P code (by omega))
+        fun j hj => hD j (by simpa [callsOf] using hj)
       rw [execOne_loop_succ f m st sl {} 0 ra body pts rts]
       revert ho
       cases Wasm.exec f m st sl body with
@@ -654,7 +666,7 @@ theorem sim_loop {F : Nat} (hP : ∀ g < F, ListSim P code g) (pa ra : Nat)
               exact Outcome.trans P code hctl hr hsp hout h18 hmf
                 (fun k hk => hfr' k (Nat.lt_of_lt_of_le hk hb))
                 (ih (by omega) E ctl σ a is _ hgen hcode hb hctl m st' _ ms' hinv2 hsr' h64 hp
-                  (hcl.mono P code (by omega)))
+                  need D (hcl.mono P code (by omega)) hD)
           | succ k =>
               exact .inr ⟨t', ht', ms', hr, hp, hsp, hout, h18, hmf, hloc, hcnt, hk, hfr, hsr'⟩
       | Return st' vs =>
@@ -681,7 +693,11 @@ theorem exec_iff_cases (f pa ra : Nat) (thn els : List Instruction) (pts rts : L
 
 theorem sim_iff {f : Nat} (hP : ListSim P code f) (pa ra : Nat) (thn els : List Instruction)
     (pts rts : List ValueType) : InstrSim P code (f + 1) (.iff pa ra thn els pts rts) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc hcl
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc need D hcl hD
+  have hDt : ∀ j ∈ callsIn thn, need j ≤ D := fun j hj =>
+    hD j (by simp only [callsOf]; exact List.mem_append_left _ hj)
+  have hDe : ∀ j ∈ callsIn els, need j ≤ D := fun j hj =>
+    hD j (by simp only [callsOf]; exact List.mem_append_right _ hj)
   obtain ⟨rfl, hra, hrl, hhb, hlt, rfl, ti, ta, ei, ea, g1, g2, hthn, hels, hta, hea, hg1, hg2,
     his⟩ := gen_iff hgen
   have hh := hinv.len
@@ -735,7 +751,8 @@ theorem sim_iff {f : Nat} (hP : ListSim P code f) (pa ra : Nat) (thn els : List 
       have hreg : ms.x (regOf (σ.length - 1)) = 0 := by rw [hx, hx0]; rfl
       have ho := hP E (t :: ctl) σ.tail _ els ei ea hels cE hbase hctl' m st
         { sl with values := vs } { ms with pc := after (after (after a 1) ti.length) 1 }
-        (Inv.pop P hinv hv _) (hsr.regs rfl rfl rfl) h64 rfl (hcl.mono P code (by omega))
+        (Inv.pop P hinv hv _) (hsr.regs rfl rfl rfl) h64 rfl need D (hcl.mono P code (by omega))
+        hDe
       exact construct_outcome P code (t := t) (by simp [t, Ctl.arity, hrl]) hctl
         (show curBase ctl ≤ σ.length - 1 by omega) hinv hst0.pop hty.tail hvl
         (cbz_taken P code hcz hpc hg1 hreg) rfl rfl rfl (fun _ => rfl) hea
@@ -746,7 +763,7 @@ theorem sim_iff {f : Nat} (hP : ListSim P code f) (pa ra : Nat) (thn els : List 
         exact fun e => hx0 (UInt32.toUInt64_inj.mp (by rw [e]; rfl))
       have ho := hP E (t :: ctl) σ.tail (after a 1) thn ti ta hthn hc1.1 hbase hctl'
         m st { sl with values := vs } { ms with pc := ms.pc + 4 } (Inv.pop P hinv hv _)
-        (hsr.regs rfl rfl rfl) h64 (by simp [hpc, after]) (hcl.mono P code (by omega))
+        (hsr.regs rfl rfl rfl) h64 (by simp [hpc, after]) need D (hcl.mono P code (by omega)) hDt
       have hjump : ∀ s : State, s.pc = after (after a 1) ti.length →
           Reach P code s { s with pc := t.target } := by
         intro s hs
@@ -765,7 +782,7 @@ theorem sim_iff {f : Nat} (hP : ListSim P code f) (pa ra : Nat) (thn els : List 
 /-! ## Every instruction and list -/
 
 theorem sim_zero (inst : Instruction) : InstrSim P code 0 inst := by
-  intro E ctl σ a is fin _ _ _ _ α m st sl ms _ _ _ _ _
+  intro E ctl σ a is fin _ _ _ _ α m st sl ms _ _ _ _ _ _ _ _
   rw [ProofKit.execOne_zero]
   exact .inr trivial
 

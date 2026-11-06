@@ -245,6 +245,95 @@ theorem gen_functions {callee : Table} {S : Shared}
                 obtain ⟨f', fis, hm, hp, hgen, hcd⟩ := ht2 x hx
                 exact ⟨f', fis, List.mem_cons_of_mem _ hm, hp, hgen, hcd⟩
 
+/-! ## A bound of the stack -/
+
+/-- A bound on the bytes of stack that a call of function `k` of `m` uses, following calls `d`
+deep: at depth 0, 2^64, which bounds nothing, and otherwise the function's frame plus `callNeed`
+of the bounds at depth `d - 1`, at most 2^64, or 0 when `m` has no function `k`.  A call spills
+registers into its caller's frame, so the frames of the calls in progress hold all the stack that
+the program uses below `main`'s frame. -/
+def stackNeed (m : Module) : Nat → Nat → Nat
+  | 0, _ => 2 ^ 64
+  | d + 1, k =>
+      match m.funcs[k]? with
+      | some f => min (2 ^ 64)
+          (frameSize (f.params.length + f.locals.length) + callNeed (stackNeed m d) f.body)
+      | none => 0
+
+/-- `stackNeed` as many calls deep as `m` has functions.  When the calls from `k` reach no cycle,
+a chain of calls from `k` holds each function at most once, so the search reaches the end of every
+chain and gives the largest sum of the frames along one.  A cycle makes the search reach depth 0
+and gives 2^64. -/
+def stackBound (m : Module) (k : Nat) : Nat :=
+  stackNeed m m.funcs.length k
+
+theorem stackNeed_zero (m : Module) (k : Nat) : stackNeed m 0 k = 2 ^ 64 := rfl
+
+theorem stackNeed_some {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]? = some f)
+    (d : Nat) : stackNeed m (d + 1) k = min (2 ^ 64)
+      (frameSize (f.params.length + f.locals.length) + callNeed (stackNeed m d) f.body) := by
+  simp only [stackNeed.eq_2, hk]
+
+theorem stackNeed_none {m : Module} {k : Nat} (hk : m.funcs[k]? = none) (d : Nat) :
+    stackNeed m (d + 1) k = 0 := by
+  simp only [stackNeed.eq_2, hk]
+
+theorem stackNeed_succ_le (m : Module) : ∀ d k, stackNeed m (d + 1) k ≤ stackNeed m d k
+  | 0, k => by
+      cases hk : m.funcs[k]? with
+      | none => simp only [stackNeed_none hk 0, Nat.zero_le]
+      | some f =>
+          rw [stackNeed_some hk 0, stackNeed_zero]
+          exact Nat.min_le_left _ _
+  | d + 1, k => by
+      cases hk : m.funcs[k]? with
+      | none => simp only [stackNeed_none hk (d + 1), stackNeed_none hk d, Nat.le_refl]
+      | some f =>
+          have h := callNeed_mono (stackNeed_succ_le m d) f.body
+          rw [stackNeed_some hk (d + 1), stackNeed_some hk d, Nat.min_def, Nat.min_def]
+          split <;> split <;> omega
+
+/-- `stackNeed` at every depth satisfies `NeedOk` for every function of `m`. -/
+theorem stackNeed_ok {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]? = some f) :
+    ∀ d, NeedOk (stackNeed m d) (frameSize (f.params.length + f.locals.length)) f.body
+      (stackNeed m d k)
+  | 0 => .inl (Nat.le_of_eq (stackNeed_zero m k).symm)
+  | d + 1 => by
+      have h := callNeed_mono (stackNeed_succ_le m d) f.body
+      unfold NeedOk
+      rw [stackNeed_some hk d, Nat.min_def]
+      split <;> omega
+
+/-- `stackNeed` of a function whose body calls no function is at most its frame. -/
+theorem stackNeed_of_nil {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]? = some f)
+    (hc : callsIn f.body = []) (d : Nat) :
+    stackNeed m (d + 1) k ≤ frameSize (f.params.length + f.locals.length) := by
+  rw [stackNeed_some hk d, callNeed, hc, List.map_nil, List.foldr_nil, Nat.add_zero]
+  exact Nat.min_le_right _ _
+
+theorem mem_reachable (m : Module) {x : Nat} :
+    ∀ (fuel : Nat) (done todo : List Nat), x ∈ done → x ∈ reachable m fuel done todo
+  | 0, _, _, h => by simpa only [reachable] using h
+  | _ + 1, _, [], h => by simpa only [reachable] using h
+  | fuel + 1, done, j :: todo, h => by
+      simp only [reachable]
+      split
+      · exact mem_reachable m fuel done todo h
+      · exact mem_reachable m fuel _ _ (List.mem_append_left _ h)
+
+theorem mem_reachFrom (m : Module) (k : Nat) : k ∈ reachFrom m k := by
+  unfold reachFrom
+  rw [Nat.add_comm]
+  simp only [reachable]
+  rw [ite_eq_right List.not_mem_nil]
+  exact mem_reachable m _ _ _ (by simp)
+
+/-- The functions that the body of function `k` of `m` calls lie among `callTargets m k`. -/
+theorem callsIn_callTargets {m : Module} {k : Nat} {f : Function} (hk : m.funcs[k]? = some f)
+    {j : Nat} (hj : j ∈ callsIn f.body) : j ∈ callTargets m k := by
+  unfold callTargets
+  exact List.mem_flatMap.mpr ⟨k, mem_reachFrom m k, by simpa [hk] using hj⟩
+
 /-! ## The generator's program -/
 
 theorem gen_program {m : Module} {k : Nat} {args : List UInt64} {uart base room : UInt64}
@@ -493,6 +582,17 @@ theorem cap_lt_of_areaOk {m : Module} {cap : Nat} (h : areaOk m cap = true) : ca
       rw [hd] at h
       simp only [Bool.and_eq_true, decide_eq_true_eq] at h
       exact h.2
+
+/-- The memory of `m` starts with at most `cap` pages when `areaOk m cap` holds. -/
+theorem pages_le_of_areaOk {m : Module} {cap : Nat} (h : areaOk m cap = true) :
+    (m.memory.map (·.pagesMin.toNat)).getD 0 ≤ cap := by
+  unfold areaOk at h
+  cases hd : m.memory with
+  | none => rw [hd] at h; cases h
+  | some d =>
+      rw [hd] at h
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at h
+      simpa using h.1.2
 
 theorem foldl_pages {β : Type} (f : Mem → β → Mem) (hf : ∀ acc b, (f acc b).pages = acc.pages) :
     ∀ (l : List β) (m0 : Mem), (l.foldl f m0).pages = m0.pages
@@ -897,11 +997,8 @@ theorem run_arrayOut {cap : Nat} {gts : List ValueType} {st : Store Unit} {s : S
 word or, for every array that the final store holds at the pointer that the value is, the array's
 bytes, and returns 0 to the address in X30 with SP as it was.  A trap at `unreachable`, an access
 outside the memory, or a division by zero reaches the exit word at `base` with the trap's code in
-X0 and the UART's output as it was.  When `calls` holds, the machine may instead reach the exit
-word with the status 4 of an overflow of the stack. -/
-def ProgramOutcome (base : UInt64) (calls : Prop) (o : Output) (res : Result Unit) (ms : State) :
-    Prop :=
-  (calls ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.out = ms.out) ∨
+X0 and the UART's output as it was. -/
+def ProgramResult (base : UInt64) (o : Output) (res : Result Unit) (ms : State) : Prop :=
   match res, o with
   | .Success [v] _, .word => ∃ w ms', ValRel v w ∧ Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧
       ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧ ms'.out = ms.out ++ bytesOf w
@@ -912,6 +1009,37 @@ def ProgramOutcome (base : UInt64) (calls : Prop) (o : Output) (res : Result Uni
       ((msg = "unreachable" ∧ ms'.x 0 = 1) ∨ (msg = "out of bounds memory access" ∧ ms'.x 0 = 2) ∨
         (msg = "integer divide by zero" ∧ ms'.x 0 = 3))
   | _, _ => True
+
+/-- `ProgramResult`, or, when `calls` holds, the machine reaches the exit word with the status 4
+of an overflow of the stack and the UART's output as it was. -/
+def ProgramOutcome (base : UInt64) (calls : Prop) (o : Output) (res : Result Unit) (ms : State) :
+    Prop :=
+  (calls ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = base ∧ ms'.x 0 = 4 ∧ ms'.out = ms.out) ∨
+    ProgramResult P code base o res ms
+
+theorem ProgramOutcome.mono {base : UInt64} {calls calls' : Prop} {o : Output}
+    {res : Result Unit} {ms : State} (h : ProgramOutcome P code base calls o res ms)
+    (hc : calls → calls') : ProgramOutcome P code base calls' o res ms := by
+  rcases h with ⟨h1, h2⟩ | h
+  · exact .inl ⟨hc h1, h2⟩
+  · exact .inr h
+
+theorem ProgramResult.success {base : UInt64} {res : Result Unit} {v : Value}
+    {st' : Store Unit} {ms : State} (h : ProgramResult P code base .word res ms)
+    (hres : res = .Success [v] st') :
+    ∃ w ms', ValRel v w ∧ Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧
+      ms'.x 0 = 0 ∧ ms'.out = ms.out ++ bytesOf w := by
+  subst hres
+  exact h
+
+theorem ProgramResult.array {base : UInt64} {res : Result Unit} {ptr : UInt64}
+    {ws : Array UInt64} {st' : Store Unit} {ms : State}
+    (h : ProgramResult P code base .array res ms) (hres : res = .Success [.i64 ptr] st')
+    (hat : LeanExe.ProofKit.UInt64Array.At st' ptr ws) :
+    ∃ ms', Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧
+      ms'.out = ms.out ++ arrayBytes ws := by
+  subst hres
+  exact h ptr ws rfl hat
 
 theorem ProgramOutcome.success {base : UInt64} {calls : Prop} {res : Result Unit}
     {v : Value} {st' : Store Unit} {ms : State} (h : ProgramOutcome P code base calls .word res ms)
@@ -950,11 +1078,11 @@ theorem ProgramOutcome.unreachable {base : UInt64} {calls : Prop} {o : Output} {
 `args`, from `main` at `after base 1`, for Talos's run of the function on the arguments at any
 fuel from the module's initial store with a memory of `cap` pages.  The machine may reach the exit
 word with the status of an overflow of the stack only when the functions that calls reach from
-function `k` call others.  `main` sets the stack's limit `room` bytes below its frame of 16 bytes,
-and those `room + 16` bytes below SP must be Normal memory above address 4096.  X17 must hold the
-area's address `area`, and the area must hold `areaBytes`, lie in Normal memory, and end at or
-below the stack's limit. -/
-theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
+function `k` call others and `room` lies below `stackBound m k`.  `main` sets the stack's limit
+`room` bytes below its frame of 16 bytes, and those `room + 16` bytes below SP must be Normal
+memory above address 4096.  X17 must hold the area's address `area`, and the area must hold
+`areaBytes`, lie in Normal memory, and end at or below the stack's limit. -/
+theorem program_sim_stack {m : Module} {k : Nat} {f : Function} {args : List UInt64}
     {base room area : UInt64} {cap : Nat} {o : Output} {is : List Instr}
     (hg : genProgram m k args P.uart base room cap o = .ok is)
     (hcode : CodeAt code (after base 1) is) (hm : m.imports = []) (hk : m.funcs[k]? = some f)
@@ -966,7 +1094,7 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
     (harea : ∀ j < areaSize cap, ms.mem (area + UInt64.ofNat j) = areaByte m.initialStore j)
     (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
     (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
-    ProgramOutcome P code base (callTargets m k ≠ []) o
+    ProgramOutcome P code base (callTargets m k ≠ [] ∧ room.toNat < stackBound m k) o
       (Wasm.run F m k (initStore m cap) (args.map .i64).reverse) ms := by
   obtain ⟨gts, fs, first, T, main, fns, e, pk, rk, g1, g2, g3, g4, hok, hgt, hgl, hfs, hfirst, hT,
     hen, hps, hmg, hfg, his, hb1, hb2, hb3, hb4⟩ := gen_program hg
@@ -1012,7 +1140,8 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
     · obtain ⟨f', fis, hmem, hpr, hgen, hcd⟩ := gen_functions code hsig hfg cfns _ (entryIn_mem hj)
       exact ⟨f', fis, hfm _ hmem, hpr, hgen, hcd⟩
     · cases hj
-  have hcl := calls_ok P code hm h64 htab F
+  have hcl := calls_ok P code hm h64 htab (need := stackNeed m m.funcs.length)
+    (fun _ _ hj => stackNeed_ok hj _) F
   have cmain := hc2.1
   rw [hmeq] at cmain
   generalize hA : after base 1 = A at *
@@ -1162,8 +1291,8 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
       (((args.map Value.i64).reverse).take f.params.length) := by
     rw [List.take_of_length_le (by omega)]
     exact Typed.reverse (typed_i64 hps (by simp [hn, hp]))
-  rcases run_outcome P code hm h64 hk hgk cfk hcl (initStore m cap) (args.map Value.i64).reverse
-    t4 (by omega) hvt p4 hstk hsr4 (by
+  rcases run_outcome P code hm h64 hk hgk cfk hcl (stackNeed_ok hk _) (initStore m cap)
+    (args.map Value.i64).reverse t4 (by omega) hvt p4 hstk hsr4 (by
       rw [List.take_of_length_le (by omega)]
       refine ⟨by simp; omega, fun i hi => ?_⟩
       simp only [List.length_reverse, List.length_map] at hi
@@ -1174,18 +1303,20 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
         have : 30 = i % 32 := congrArg Fin.val e
         omega)]
       exact hx3 i (by omega)) with ⟨hov, hovr⟩ | hro
-  · rcases hov with hov | ⟨j, c, hj⟩
-    · rw [hd4] at hov
+  · rw [hd4] at hov
+    have hct : callTargets m k ≠ [] := by
+      intro hct
+      have hc0 : callsIn f.body = [] := List.eq_nil_iff_forall_not_mem.mpr fun j hj => by
+        simpa [hct] using callsIn_callTargets hk hj
+      have hlen : 0 < m.funcs.length := Nat.lt_of_not_le fun h => by
+        rw [List.getElem?_eq_none (by omega)] at hk
+        cases hk
+      have hle := stackNeed_of_nil hk hc0 (m.funcs.length - 1)
+      rw [Nat.sub_add_cancel hlen] at hle
       omega
-    have htj : j ∈ callTargets m k := by
-      unfold tableOf at hj
-      split at hj
-      · assumption
-      · cases hj
     obtain ⟨u, ru, pu, outu⟩ := hovr
     obtain ⟨u2, ru2, pu2, xu2, outu2⟩ := run_stub P code cs4.2 hb4 pu
-    exact .inl ⟨fun he => by rw [he] at htj; exact List.not_mem_nil htj, u2,
-      r4.trans (ru.trans ru2), pu2, xu2, by rw [outu2, outu, out4]⟩
+    exact .inl ⟨⟨hct, hov⟩, u2, r4.trans (ru.trans ru2), pu2, xu2, by rw [outu2, outu, out4]⟩
   refine .inr ?_
   revert hro
   cases Wasm.run F m k (initStore m cap) (args.map Value.i64).reverse with
@@ -1286,5 +1417,47 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
         (by rw [sp7, sp6, sp5, sp4]) (by rw [mem7, mem6])
       refine ⟨t9, r9, p9, sp9, x9, ?_⟩
       rw [out9, out7, out6, out5, out4]
+
+/-- `program_sim_stack` without its condition on `room`: the machine may reach the exit word with
+the status of an overflow of the stack only when the functions that calls reach from function `k`
+call others. -/
+theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
+    {base room area : UInt64} {cap : Nat} {o : Output} {is : List Instr}
+    (hg : genProgram m k args P.uart base room cap o = .ok is)
+    (hcode : CodeAt code (after base 1) is) (hm : m.imports = []) (hk : m.funcs[k]? = some f)
+    (hp : args.length = f.params.length) (F : Nat)
+    (ms : State) (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0)
+    (hroom : 4096 ≤ room.toNat) (htop : ms.sp.toNat ≤ 2 ^ 63)
+    (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
+    (h17 : ms.x 17 = area)
+    (harea : ∀ j < areaSize cap, ms.mem (area + UInt64.ofNat j) = areaByte m.initialStore j)
+    (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
+    (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
+    ProgramOutcome P code base (callTargets m k ≠ []) o
+      (Wasm.run F m k (initStore m cap) (args.map .i64).reverse) ms :=
+  (program_sim_stack P code hg hcode hm hk hp F ms hpc hal hroom htop hstack h17 harea hamap
+    habove).mono P code And.left
+
+/-- `program_sim_stack` with `room` at or above `stackBound m k`: the machine does what
+`ProgramResult` states, without the outcome of an overflow of the stack.  The premise can hold
+only when the calls from function `k` reach no cycle, since a cycle makes `stackBound m k` 2^64. -/
+theorem program_sim_bounded {m : Module} {k : Nat} {f : Function} {args : List UInt64}
+    {base room area : UInt64} {cap : Nat} {o : Output} {is : List Instr}
+    (hg : genProgram m k args P.uart base room cap o = .ok is)
+    (hcode : CodeAt code (after base 1) is) (hm : m.imports = []) (hk : m.funcs[k]? = some f)
+    (hp : args.length = f.params.length) (F : Nat)
+    (ms : State) (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0)
+    (hroom : 4096 ≤ room.toNat) (hbound : stackBound m k ≤ room.toNat)
+    (htop : ms.sp.toNat ≤ 2 ^ 63)
+    (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
+    (h17 : ms.x 17 = area)
+    (harea : ∀ j < areaSize cap, ms.mem (area + UInt64.ofNat j) = areaByte m.initialStore j)
+    (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
+    (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
+    ProgramResult P code base o (Wasm.run F m k (initStore m cap) (args.map .i64).reverse) ms := by
+  rcases program_sim_stack P code hg hcode hm hk hp F ms hpc hal hroom htop hstack h17 harea hamap
+    habove with ⟨⟨-, hlt⟩, -⟩ | h
+  · omega
+  · exact h
 
 end LeanExe.A64

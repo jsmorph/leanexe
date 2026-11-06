@@ -37,10 +37,6 @@ UART's output as it was. -/
 def Overflows (tS : UInt64) (ms : State) : Prop :=
   ∃ ms', Reach P code ms ms' ∧ ms'.pc = tS ∧ ms'.out = ms.out
 
-/-- The table `callee` names a function, which a call may enter. -/
-def HasCalls (callee : Table) : Prop :=
-  ∃ k c, callee k = some c
-
 /-- The trap with the message `msg` reaches its stub at `pc`: `unreachable`, an access outside the
 memory, or a division by zero. -/
 def TrapAt (tU tB tD : UInt64) (msg : String) (pc : UInt64) : Prop :=
@@ -48,14 +44,14 @@ def TrapAt (tU tB tD : UInt64) (msg : String) (pc : UInt64) : Prop :=
     (msg = "integer divide by zero" ∧ pc = tD)
 
 /-- What the machine does from `ms` at the code of an instruction or a list, whose end is
-`endA`, when Talos gives `r`, unless the function may call another and a call's frame would
-overflow the stack: `fin` is the types of the operand stack after the code, `none` when its end
-is unreachable.  SP, X18, and the UART's output keep their values, the bytes from the end of the
-frame's spill slots up keep theirs, and the machine holds the store of every continuation that
-continues the function. -/
-def Outcome (E : Env) (ctl : List Ctl) (fin : Option (List ValueType)) (endA : UInt64)
-    {α : Type} (r : Continuation α) (ms : State) : Prop :=
-  (HasCalls E.callee ∧ Overflows P code E.trapStack ms) ∨
+`endA`, when Talos gives `r`, unless fewer than `D` bytes lie between the stack's limit in X18 and
+SP and a call's frame overflows the stack: `fin` is the types of the operand stack after the code,
+`none` when its end is unreachable.  SP, X18, and the UART's output keep their values, the bytes
+from the end of the frame's spill slots up keep theirs, and the machine holds the store of every
+continuation that continues the function. -/
+def Outcome (E : Env) (ctl : List Ctl) (D : Nat) (fin : Option (List ValueType))
+    (endA : UInt64) {α : Type} (r : Continuation α) (ms : State) : Prop :=
+  ((ms.sp - ms.x 18).toNat < D ∧ Overflows P code E.trapStack ms) ∨
   match r with
   | .Fallthrough st' sl' => ∃ σ', fin = some σ' ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = endA ∧
       ms'.sp = ms.sp ∧ ms'.out = ms.out ∧ ms'.x 18 = ms.x 18 ∧
@@ -104,33 +100,37 @@ def CallResult (S : Shared) (ps rs : List ValueType) (vs : List Value) {α : Typ
   | .OutOfFuel => True
   | .Thrown _ _ _ => False
 
-/-- `CallResult`, or the machine reaches the stub of an overflow of the stack. -/
-def CallOutcome (S : Shared) (ps rs : List ValueType) (vs : List Value) {α : Type}
+/-- `CallResult`, or, when fewer than `n` bytes lie between the stack's limit in X18 and SP, the
+machine reaches the stub of an overflow of the stack. -/
+def CallOutcome (S : Shared) (n : Nat) (ps rs : List ValueType) (vs : List Value) {α : Type}
     (res : Result α) (ms : State) : Prop :=
-  Overflows P code S.trapStack ms ∨ CallResult P code S ps rs vs res ms
+  ((ms.sp - ms.x 18).toNat < n ∧ Overflows P code S.trapStack ms) ∨
+    CallResult P code S ps rs vs res ms
 
 /-- The simulation of a call of function `k` of `m`, whose entry and the types of whose
 parameters and results `c` gives, at fuel `g`: from the entry, with the stack's limit in X18,
 the store in the area, and the top values of the operand stack `vs`, of the parameters' types, in
 the registers of the heights from 0, the deepest first, the machine does what `CallOutcome`
-states of Talos's run of the call. -/
-def FunSim (m : Module) (S : Shared) (g k : Nat) (c : UInt64 × List ValueType × List ValueType) :
-    Prop :=
+states of Talos's run of the call, where `need k` bounds the bytes of stack that the call uses. -/
+def FunSim (m : Module) (S : Shared) (need : Nat → Nat) (g k : Nat)
+    (c : UInt64 × List ValueType × List ValueType) : Prop :=
   ∀ {α : Type} (st : Store α) (vs : List Value) (ms : State) (hp : c.2.1.length ≤ vs.length),
     Typed c.2.1.reverse (vs.take c.2.1.length) → ms.pc = c.1 → StackOk P ms →
     StoreRel P S.cap S.globalTypes st ms → StackRel ms (vs.take c.2.1.length) →
-    CallOutcome P code S c.2.1 c.2.2 vs (Wasm.run g m k st vs) ms
+    CallOutcome P code S (need k) c.2.1 c.2.2 vs (Wasm.run g m k st vs) ms
 
 /-- The functions of the table `callee` simulate at every fuel below `F` in module `m`, with what
-the program's functions share `S`. -/
-def CallsOk (F : Nat) (m : Module) (callee : Table) (S : Shared) : Prop :=
-  ∀ k c, callee k = some c → ∀ g < F, FunSim P code m S g k c
+the program's functions share `S` and the bounds `need` of the stack that their calls use. -/
+def CallsOk (F : Nat) (m : Module) (callee : Table) (S : Shared) (need : Nat → Nat) : Prop :=
+  ∀ k c, callee k = some c → ∀ g < F, FunSim P code m S need g k c
 
-theorem CallsOk.mono {F G : Nat} {m : Module} {callee : Table} {S : Shared}
-    (h : CallsOk P code F m callee S) (hle : G ≤ F) : CallsOk P code G m callee S :=
+theorem CallsOk.mono {F G : Nat} {m : Module} {callee : Table} {S : Shared} {need : Nat → Nat}
+    (h : CallsOk P code F m callee S need) (hle : G ≤ F) : CallsOk P code G m callee S need :=
   fun k c hk g hg => h k c hk g (by omega)
 
-/-- The simulation of `inst` at fuel `F`. -/
+/-- The simulation of `inst` at fuel `F`, in which an overflow of the stack occurs only when
+fewer than `D` bytes lie between the stack's limit and SP, for any `D` at or above `need j` for
+each function `j` that `inst` calls. -/
 def InstrSim (F : Nat) (inst : Instruction) : Prop :=
   ∀ (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) (is : List Instr)
     (fin : Option (List ValueType)),
@@ -138,8 +138,9 @@ def InstrSim (F : Nat) (inst : Instruction) : Prop :=
     CtlOk ctl →
     ∀ {α : Type} (m : Module) (st : Store α) (sl : Locals) (ms : State),
       Inv P E.localTypes σ sl ms → StoreRel P E.cap E.globalTypes st ms → m.memIs64 = false →
-      ms.pc = a → CallsOk P code F m E.callee E.toShared →
-      Outcome P code E ctl fin (after a is.length) (execOne F m st sl inst) ms
+      ms.pc = a → ∀ (need : Nat → Nat) (D : Nat), CallsOk P code F m E.callee E.toShared need →
+      (∀ j ∈ callsOf inst, need j ≤ D) →
+      Outcome P code E ctl D fin (after a is.length) (execOne F m st sl inst) ms
 
 /-! ## Facts about states and the relation -/
 
@@ -259,7 +260,7 @@ theorem gen_localGet {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt6
     simp [throw, throwThe, MonadExceptOf.throw] at hg
 
 theorem sim_localGet (F i : Nat) : InstrSim P code F (.localGet i) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr _ hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr _ hpc _ _ _ _
   obtain ⟨hs, hi, hlt, rfl, rfl⟩ := gen_localGet hgen
   have hh := hinv.len
   cases F with

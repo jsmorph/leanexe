@@ -129,7 +129,7 @@ theorem gen_globalGet {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt
     simp [throw, throwThe, MonadExceptOf.throw] at hg
 
 theorem sim_globalGet (F i : Nat) : InstrSim P code F (.globalGet i) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hi, h, hlt, rfl, rfl⟩ := gen_globalGet hgen
   have hh := hinv.len
   have hgl := hsr.glen
@@ -217,7 +217,7 @@ theorem StoreRel.setGlobal {cap : Nat} {gts : List ValueType} {α : Type} {st : 
     exact h.bytes j hj
 
 theorem sim_globalSet (F i : Nat) : InstrSim P code F (.globalSet i) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨h, hc1, hhead, hlt, rfl, rfl⟩ := gen_globalSet hgen
   have hh := hinv.len
   have hgl := hsr.glen
@@ -365,7 +365,7 @@ theorem run_size {cap : Nat} {gts : List ValueType} {α : Type} {st : Store α} 
     rw [State.setX_out]
 
 theorem sim_memorySize (F : Nat) : InstrSim P code F .memorySize := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hlt, rfl, rfl⟩ := gen_memorySize hgen
   have hh := hinv.len
   cases F with
@@ -598,7 +598,7 @@ theorem addr_cases {t : ValueType} {v : Value} (ht : HasType t v)
     first | exact .inl ⟨_, rfl⟩ | exact .inr ⟨_, rfl⟩ | exact ht.elim
 
 theorem sim_load64 (F : Nat) (off : UInt32) : InstrSim P code F (.load64 off) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ D _ _
   obtain ⟨h, g, hc1, hty0, hlt, hg, rfl, rfl⟩ := gen_load64 hgen
   have hh := hinv.len
   cases F with
@@ -627,7 +627,7 @@ theorem sim_load64 (F : Nat) (off : UInt32) : InstrSim P code F (.load64 off) :=
       generalize hn : (ms.x (regOf σ0.length)).toNat = n
       suffices key : ∀ y : UInt32, (n + off.toNat + 8 ≤ st.mem.pages * 65536 →
           y.toNat = n + off.toNat) →
-          Outcome P code E ctl (some (.i64 :: σ0)) (after a 6)
+          Outcome P code E ctl D (some (.i64 :: σ0)) (after a 6)
             (if n + off.toNat + 8 > st.mem.pages * 65536 then
               .Trap st "out of bounds memory access"
             else .Fallthrough st { sl with values := .i64 (st.mem.read64 y) :: vs }) ms by
@@ -845,7 +845,7 @@ theorem access_addr0 {g w : UInt64} {off : Nat} (h8 : off % 8 = 0) (hoff : off <
   rwa [add_ofNat_zero, Nat.add_zero] at this
 
 theorem sim_store64 (F : Nat) (off : UInt32) : InstrSim P code F (.store64 off) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ D _ _
   obtain ⟨h, g, hc1, hty0, hty1, hlt, hg, rfl, rfl⟩ := gen_store64 hgen
   have hh := hinv.len
   cases F with
@@ -884,7 +884,7 @@ theorem sim_store64 (F : Nat) (off : UInt32) : InstrSim P code F (.store64 off) 
       generalize hn : (ms.x (regOf σ0.length)).toNat = n
       suffices key : ∀ y : UInt32, (n + off.toNat + 8 ≤ st.mem.pages * 65536 →
           y.toNat = n + off.toNat) →
-          Outcome P code E ctl (some σ0) (after a 6)
+          Outcome P code E ctl D (some σ0) (after a 6)
             (if n + off.toNat + 8 > st.mem.pages * 65536 then
               .Trap st "out of bounds memory access"
             else .Fallthrough { st with mem := st.mem.write64 y vv } { sl with values := vs })
@@ -1299,7 +1299,7 @@ theorem run_grow_ok {cap : Nat} {gts : List ValueType} {α : Type} {st : Store �
     rw [hmem9, hk9 17 (by decide) (Ne.symm hr17), hx29_9]
 
 theorem sim_memoryGrow (F : Nat) : InstrSim P code F .memoryGrow := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hc, gf, gd, hc1, hhead, hlt, hgf, hgd, rfl, rfl⟩ := gen_memoryGrow hgen
   have hh := hinv.len
   cases F with

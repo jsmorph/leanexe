@@ -76,7 +76,7 @@ theorem cbField_target {here target : UInt64} {f : Fin 524288}
 
 /-- The outcome of an instruction whose result `v`, which `w` holds, replaces its operands above
 `vs` in the register of height `vs.length`, after code that ends at `endA`. -/
-theorem res_outcome {E : Env} {ctl : List Ctl} {endA : UInt64} {α : Type} {st : Store α}
+theorem res_outcome {E : Env} {ctl : List Ctl} {D : Nat} {endA : UInt64} {α : Type} {st : Store α}
     {sl : Locals} {ms ms' : State} {vs : List Value} {v : Value} {w : UInt64}
     {σ0 σr : List ValueType} {t : ValueType} (hv : ValRel v w) (ht : HasType t v)
     (hty : Typed σr vs) (hinv : Inv P E.localTypes σ0 sl ms)
@@ -86,7 +86,7 @@ theorem res_outcome {E : Env} {ctl : List Ctl} {endA : UInt64} {α : Type} {st :
     (hkeep : ∀ k < vs.length, ms'.x (regOf k) = ms.x (regOf k)) (h18 : ms'.x 18 = ms.x 18)
     (h17 : ms'.x 17 = ms.x 17) (hsp : ms'.sp = ms.sp) (hmem : ms'.mem = ms.mem)
     (hout : ms'.out = ms.out) :
-    Outcome P code E ctl (some (t :: σr)) endA
+    Outcome P code E ctl D (some (t :: σr)) endA
       (.Fallthrough st { sl with values := v :: vs }) ms := by
   refine .inr ⟨_, rfl, ms', hr, hpc, hsp, hout, h18, fun b _ => by rw [hmem], ?_,
     fun j hj => hkeep j (by omega), hsr.regs h17 h18 hmem⟩
@@ -119,7 +119,7 @@ theorem gen_unreachable {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UI
       exact ⟨f, rfl, hg.1.symm, hg.2.symm⟩
 
 theorem sim_unreachable (F : Nat) : InstrSim P code F .unreachable := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨f, hf, rfl, rfl⟩ := gen_unreachable hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome, or_true]
@@ -195,7 +195,7 @@ theorem sim_divrem_of {F : Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 �
           else .Fallthrough st { sl with values := .i64 (op a b) :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hhb, hlt, f, hf, rfl, rfl⟩ := gen_divrem hinst hgen
   have hh := hinv.len
   have hty := hinv.types

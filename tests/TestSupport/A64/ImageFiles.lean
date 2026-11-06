@@ -16,7 +16,7 @@ theorem then joins with `image_run`: from a boot state whose memory holds the fi
 `imageBase`, with the program counter there and the MMU off, the machine reaches `HVC #0` with
 X0 holding PSCI's `SYSTEM_OFF`, every store to the UART complete, and the UART's output extended
 by the result's bytes and the status 0, or, where the program's theorem allows a trap, by the
-status 1 or 4 alone.
+status byte alone: 4 for an overflow of the stack in GCD's recursion, and 1 or 4 in Fold's.
 -/
 
 namespace TestSupport.A64.ImageFiles
@@ -91,13 +91,16 @@ theorem gcdrec (h : Hw) (b : Boot)
       b'.core.x 0 = 0x84000008 ∧ b'.uartDone = true ∧
       (b'.core.out = b.core.out ++
           LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462) ++ [0] ∨
-        ∃ c : UInt64, (c = 1 ∨ c = 4) ∧ b'.core.out = b.core.out ++ [c.toUInt8]) :=
-  image_run (T := fun c => c = 1 ∨ c = 4) h gcdrec_file (by decide) (by decide) (by decide) hm hpc
-    hoff (by
+        b'.core.out = b.core.out ++ [4]) := by
+  obtain ⟨b', r, hc, hx, hu, ho⟩ := image_run (T := fun c => c = 4) h gcdrec_file (by decide)
+    (by decide) (by decide) hm hpc hoff (by
       intro P area _ hg ms himage hpc hal hroom htop hstack h17 harea hamap habove
       exact (TestSupport.A64.Gcd.rec_program P _ room area cap hg ms himage hpc hal hroom htop
         hstack h17 harea hamap habove).imp (fun ⟨ms', hr, hp, _, hx, ho⟩ => ⟨ms', hr, hp, hx, ho⟩)
         id)
+  refine ⟨b', r, hc, hx, hu, ho.imp id ?_⟩
+  rintro ⟨c, rfl, h⟩
+  exact h
 
 theorem crc32 (h : Hw) (b : Boot)
     (hm : ∀ j < crcSize, b.core.mem (imageBase + UInt64.ofNat j) = byteAt crcBytes j)
@@ -106,14 +109,17 @@ theorem crc32 (h : Hw) (b : Boot)
         (fetchFrom b.core.mem imageBase (codeWords crcLength)) b b' ∧
       fetchFrom b.core.mem imageBase (codeWords crcLength) b'.core.pc = some (encode .hvc0) ∧
       b'.core.x 0 = 0x84000008 ∧ b'.uartDone = true ∧
-      (b'.core.out = b.core.out ++
-          LeanExe.Native.encodeWord (TestSupport.Bare.crcCheck 0x3837363534333231 0x39) ++ [0] ∨
-        ∃ c : UInt64, (c = 1 ∨ c = 4) ∧ b'.core.out = b.core.out ++ [c.toUInt8]) :=
-  image_run (T := fun c => c = 1 ∨ c = 4) h crc32_file (by decide) (by decide) (by decide) hm hpc
-    hoff (by
+      b'.core.out = b.core.out ++
+        LeanExe.Native.encodeWord (TestSupport.Bare.crcCheck 0x3837363534333231 0x39) ++ [0] := by
+  obtain ⟨b', r, hc, hx, hu, ho⟩ := image_run (T := fun _ => False) h crc32_file (by decide)
+    (by decide) (by decide) hm hpc hoff (by
       intro P area _ hg ms himage hpc hal hroom htop hstack h17 harea hamap habove
-      exact (TestSupport.A64.Crc.program P _ room area cap hg ms himage hpc hal hroom htop hstack
-        h17 harea hamap habove).imp (fun ⟨ms', hr, hp, _, hx, ho⟩ => ⟨ms', hr, hp, hx, ho⟩) id)
+      obtain ⟨ms', hr, hp, -, hx, ho⟩ := TestSupport.A64.Crc.program P _ room area cap hg ms
+        himage hpc hal hroom htop hstack h17 harea hamap habove
+      exact .inl ⟨ms', hr, hp, hx, ho⟩)
+  rcases ho with ho | ⟨_, hf, -⟩
+  · exact ⟨b', r, hc, hx, hu, ho⟩
+  · exact hf.elim
 
 theorem sha256 (h : Hw) (b : Boot)
     (hm : ∀ j < shaSize, b.core.mem (imageBase + UInt64.ofNat j) = byteAt shaBytes j)
@@ -122,14 +128,17 @@ theorem sha256 (h : Hw) (b : Boot)
         (fetchFrom b.core.mem imageBase (codeWords shaLength)) b b' ∧
       fetchFrom b.core.mem imageBase (codeWords shaLength) b'.core.pc = some (encode .hvc0) ∧
       b'.core.x 0 = 0x84000008 ∧ b'.uartDone = true ∧
-      (b'.core.out = b.core.out ++
-          LeanExe.Native.encodeArray (TestSupport.Bare.shaCheck 0x636261) ++ [0] ∨
-        ∃ c : UInt64, (c = 1 ∨ c = 4) ∧ b'.core.out = b.core.out ++ [c.toUInt8]) :=
-  image_run (T := fun c => c = 1 ∨ c = 4) h sha256_file (by decide) (by decide) (by decide) hm hpc
-    hoff (by
-      intro P area _ hg ms himage hpc hal hroom htop hstack h17 harea hamap habove
-      exact (TestSupport.A64.Sha.program P _ room area cap hg ms himage hpc hal hroom htop hstack
-        h17 harea hamap habove).imp (fun ⟨ms', hr, hp, _, hx, ho⟩ => ⟨ms', hr, hp, hx, ho⟩) id)
+      b'.core.out = b.core.out ++
+        LeanExe.Native.encodeArray (TestSupport.Bare.shaCheck 0x636261) ++ [0] := by
+  obtain ⟨b', r, hc, hx, hu, ho⟩ := image_run (T := fun _ => False) h sha256_file (by decide)
+    (by decide) (by decide) hm hpc hoff (by
+      intro P area _ hg ms himage hpc hal _ htop hstack h17 harea hamap habove
+      obtain ⟨ms', hr, hp, -, hx, ho⟩ := TestSupport.A64.Sha.program P _ room area cap hg ms
+        himage hpc hal (by decide) htop hstack h17 harea hamap habove
+      exact .inl ⟨ms', hr, hp, hx, ho⟩)
+  rcases ho with ho | ⟨_, hf, -⟩
+  · exact ⟨b', r, hc, hx, hu, ho⟩
+  · exact hf.elim
 
 theorem depth (h : Hw) (b : Boot)
     (hm : ∀ j < depthSize, b.core.mem (imageBase + UInt64.ofNat j) = byteAt depthBytes j)
@@ -140,12 +149,16 @@ theorem depth (h : Hw) (b : Boot)
       b'.core.x 0 = 0x84000008 ∧ b'.uartDone = true ∧
       (b'.core.out = b.core.out ++
           LeanExe.Native.encodeWord (Verified.Examples.Fold.recursive 1000) ++ [0] ∨
-        ∃ c : UInt64, (c = 1 ∨ c = 4) ∧ b'.core.out = b.core.out ++ [c.toUInt8]) :=
-  image_run (T := fun c => c = 1 ∨ c = 4) h depth_file (by decide) (by decide) (by decide) hm hpc
-    hoff (by
+        b'.core.out = b.core.out ++ [1] ∨ b'.core.out = b.core.out ++ [4]) := by
+  obtain ⟨b', r, hc, hx, hu, ho⟩ := image_run (T := fun c => c = 1 ∨ c = 4) h depth_file
+    (by decide) (by decide) (by decide) hm hpc hoff (by
       intro P area _ hg ms himage hpc hal hroom htop hstack h17 harea hamap habove
       exact (TestSupport.A64.Fold.program P _ room area cap hg ms himage hpc hal hroom htop hstack
         h17 harea hamap habove).imp (fun ⟨ms', hr, hp, _, hx, ho⟩ => ⟨ms', hr, hp, hx, ho⟩) id)
+  refine ⟨b', r, hc, hx, hu, ho.imp id ?_⟩
+  rintro ⟨c, rfl | rfl, h⟩
+  · exact .inl h
+  · exact .inr h
 
 end TestSupport.A64.ImageFiles
 

@@ -119,7 +119,7 @@ theorem sim_cmp_of {F : Nat} {inst : Instruction} {c : Fin 16}
           .Fallthrough st { sl with values := .i32 (if R wa wb then 1 else 0) :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   rw [hgen] at hg
   obtain ⟨hhb, hlt, rfl, rfl⟩ := genCmp_ok hg
   have hh := hinv.len
@@ -183,7 +183,7 @@ theorem sim_bin_of {F : Nat} {inst : Instruction} {op : Fin 32 → Fin 32 → Fi
           execOne (f + 1) m st sl inst = .Fallthrough st { sl with values := vr :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   rw [hgen] at hg
   obtain ⟨hhb, hlt, rfl, rfl⟩ := genBin_ok hg
   have hh := hinv.len
@@ -403,7 +403,7 @@ theorem wrap_val (x : UInt64) :
   rw [UInt64.zero_or, UInt64.toNat_toUInt32, UInt32.toNat_ofNat', Nat.mod_mod]
 
 theorem sim_wrapI64 (F : Nat) : InstrSim P code F .wrapI64 := by
-  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_wrap hg
   have hh := hinv.len
   have hty := hinv.types

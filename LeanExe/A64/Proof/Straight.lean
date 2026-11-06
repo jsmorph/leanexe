@@ -173,7 +173,7 @@ theorem sim_localStore {F i : Nat} {inst : Instruction} (tee : Bool)
       s'.values = sl.values → execOne (f + 1) m st sl inst =
         .Fallthrough st { s' with values := if tee then v :: vs else vs }) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hs, hi, hhb, hlt, hhead, rfl, rfl⟩ := gen_localStore (i := i)
     (σ' := if tee then σ else σ.tail) (by cases tee <;> simp [hinst]) hgen
   have hh := hinv.len
@@ -344,7 +344,7 @@ theorem sim_const_of {F : Nat} {inst : Instruction} {w : UInt64} {v : Value} {t 
     (hexec : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals),
       execOne (f + 1) m st sl inst = .Fallthrough st { sl with values := v :: sl.values }) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hlt, rfl, rfl⟩ := gen_const hinst hgen
   have hh := hinv.len
   cases F with
@@ -478,7 +478,7 @@ theorem gen_eqz {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64} {i
 
 /-- The outcome of a comparison whose result `c` replaces the operands above `vs` and lies,
 zero-extended, in the register of height `vs.length`. -/
-theorem cmp_outcome {E : Env} {ctl : List Ctl} {a : UInt64} {α : Type} {st : Store α}
+theorem cmp_outcome {E : Env} {ctl : List Ctl} {D : Nat} {a : UInt64} {α : Type} {st : Store α}
     {sl : Locals} {ms ms' : State} {vs : List Value} {σ0 σr : List ValueType} (c : UInt32)
     (hinv : Inv P E.localTypes σ0 sl ms) (hsr : StoreRel P E.cap E.globalTypes st ms)
     (hty : Typed σr vs) (hb : curBase ctl ≤ vs.length)
@@ -486,7 +486,7 @@ theorem cmp_outcome {E : Env} {ctl : List Ctl} {a : UInt64} {α : Type} {st : St
     (hpc : ms'.pc = after a 2) (hx : ms'.x (regOf vs.length) = c.toUInt64)
     (hkeep : ∀ q, q ≠ regOf vs.length → ms'.x q = ms.x q) (hsp : ms'.sp = ms.sp)
     (hmem : ms'.mem = ms.mem) (hout : ms'.out = ms.out) :
-    Outcome P code E ctl (some (.i32 :: σr)) (after a 2)
+    Outcome P code E ctl D (some (.i32 :: σr)) (after a 2)
       (.Fallthrough st { sl with values := .i32 c :: vs }) ms := by
   have hk : ∀ j < vs.length, ms'.x (regOf j) = ms.x (regOf j) := fun j hj =>
     hkeep _ (fun e => absurd (regOf_inj j (by omega) vs.length hlt e) (by omega))
@@ -503,7 +503,7 @@ theorem cset_val (x y : UInt64) (c : Prop) [Decidable c] (hc : x = y ↔ c) :
   · rw [ite_eq_right (fun e => h (hc.mp e)), ite_eq_right h]; rfl
 
 theorem sim_eqI64 (F : Nat) : InstrSim P code F .eqI64 := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_cmp (.inl rfl) hgen
   have hh := hinv.len
   have hty := hinv.types
@@ -534,7 +534,7 @@ theorem sim_eqI64 (F : Nat) : InstrSim P code F .eqI64 := by
       next => exact .inr trivial
 
 theorem sim_eq (F : Nat) : InstrSim P code F .eq := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_cmp (.inr rfl) hgen
   have hh := hinv.len
   have hty := hinv.types
@@ -575,7 +575,7 @@ theorem sim_eqz_of {F : Nat} {inst : Instruction} (hinst : inst = .eqzI64 ∨ in
           .Fallthrough st { sl with values := .i32 (if w = 0 then 1 else 0) :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_eqz hinst hgen
   have hh := hinv.len
   have hty := hinv.types
@@ -639,7 +639,7 @@ theorem gen_extend {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64}
     exact ⟨by omega, by cases hg.1; rfl, by cases hg.2; rfl⟩
 
 theorem sim_extendUI32 (F : Nat) : InstrSim P code F .extendUI32 := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _ _ _ _
   obtain ⟨hhb, rfl, rfl⟩ := gen_extend hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome, or_true]
