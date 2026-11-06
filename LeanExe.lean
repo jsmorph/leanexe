@@ -5,6 +5,8 @@ import LeanExe.A64.Encode
 import LeanExe.A64.File
 import LeanExe.A64.Gen
 import LeanExe.A64.Image
+import LeanExe.A64.Isla.Check
+import LeanExe.A64.Isla.Trace
 import LeanExe.A64.Machine
 import LeanExe.A64.Proof.Addr
 import LeanExe.A64.Proof.Area
