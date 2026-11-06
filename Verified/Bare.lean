@@ -4,8 +4,10 @@ import LeanExe.Native.Proof.Main
 /-!
 The theorems of bare-metal programs (`docs/native-bare-metal.md`).  `bare_of_nativeTables` is
 `bare_of_nativeA` for a wrapper, whose `NativeTablesImpl` adds that the tables are borrowed arrays
-apart from the blocks that the call consumes.  `bare_program p.f := (x) [args]` states and proves
-`p.f.program`: for every list of CompCert's declarations that `PrefixOk` accepts, the program
+apart from the blocks that the call consumes.  `ImplementsTables.implementsA` states a wrapper's
+theorem for an argument of words as `ImplementsA`, with the tables in the precondition, the form
+that the AArch64 back end's `program_runs` takes.  `bare_program p.f := (x) [args]` states and
+proves `p.f.program`: for every list of CompCert's declarations that `PrefixOk` accepts, the program
 `bareProgram` of the translation with `main` calling the entry of `f` on the words `args`, the
 words of the argument `x`, terminates with result 0 after writing the bytes of `f x` to `lx_out`,
 `encodeWord` for a `UInt64` and `encodeArray` for an `Array UInt64`, or, when `f` may abort,
@@ -22,6 +24,20 @@ theorem borrowed_nativeStore {heap : Heap} {m : Module} {ptr : UInt64} {words : 
     (h : heap.Borrowed (m.initialStore : Store Unit) ptr words) (cap : Nat) :
     heap.Borrowed (nativeStore m cap) ptr words :=
   ⟨h.values, h.below, h.separate⟩
+
+/-- A wrapper's theorem for an argument of words as `ImplementsA`, with the tables in the
+precondition: each table of `tables` is a borrowed array of the store.  An argument of words moves
+no block, so the wrapper's condition that each table lie apart from the moved blocks holds. -/
+theorem ImplementsTables.implementsA {α β : Type} [Scalar α] [Represent β] {aborts : Bool}
+    {m : Module} {entry : Nat} {f : α → β} {tables : List (UInt64 × Array UInt64)}
+    {Pre : α → Heap → Store Unit → Prop}
+    {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsTables aborts m entry f tables Pre Post) :
+    ImplementsA aborts m entry f
+      (fun x heap store => Pre x heap store ∧ ∀ t ∈ tables, heap.Borrowed store t.1 t.2)
+      Post :=
+  fun env store heap params x hAt hPre hArgs hSep hCap =>
+    h env store heap params x hAt hPre.1 (fun t ht => ⟨hPre.2 t ht, Apart.nil⟩) hArgs hSep hCap
 
 /-- `bare_of_nativeA` for a wrapper of the tables `tables`, each a borrowed array of the module's
 initial store, for an argument that moves no block. -/

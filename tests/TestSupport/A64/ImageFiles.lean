@@ -12,13 +12,13 @@ The theorems of the arm64 Images that `a64-programs emit` writes.
 them, so `file_nat%` and `file_size%` read each NAME.img, and no build target includes it.  For each
 program the kernel evaluates `genImage` on the program's module, entry, arguments, stack, cap, and
 form of result at `imageBase`, and checks that the image's bytes are the file's.  The program's
-theorem, in the form `ProgramRuns`, then joins with `image_run_at`: for every base `B` that is a
-multiple of 4096 and whose image's memory lies in the RAM GiB, from a boot state whose memory holds
-the file's bytes at `B`, with the program counter there and the MMU off, the machine reaches
-`HVC #0` with X0 holding PSCI's `SYSTEM_OFF`, every store to the UART complete, and the UART's
-output extended by the result's bytes and the status 0, or, where the program's theorem allows a
-trap, by the status byte alone: 4 for an overflow of the stack in GCD's recursion, and 1 or 4 in
-Fold's.
+theorem, in the form `ProgramRuns` at the image's room and cap, then joins with `image_run_at`: for
+every base `B` that is a multiple of 4096 and whose image's memory lies in the RAM GiB, from a boot
+state whose memory holds the file's bytes at `B`, with the program counter there and the MMU off,
+the machine reaches `HVC #0` with X0 holding PSCI's `SYSTEM_OFF`, every store to the UART complete,
+and the UART's output extended by the result's bytes and the status 0, or, where the program's
+theorem allows a trap, by the status byte alone: 4 for an overflow of the stack in GCD's
+recursion, and 1 or 4 in Fold's.
 -/
 
 namespace TestSupport.A64.ImageFiles
@@ -76,41 +76,6 @@ theorem sha256_file : bytesOk (genImage TestSupport.Bare.shaCompiled.module 11 [
 theorem depth_file : bytesOk (genImage Verified.Examples.Fold.compiled.module 13 [1000] room cap
     .word imageBase) depthBytes depthSize = true := by decide +kernel
 
-theorem gcd_runs : ProgramRuns TestSupport.Native.Gcd.loopCompiled.module 2 [1071, 462] room cap
-    .word (LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462)) (fun _ => False) := by
-  intro P base area _ hg ms himage hpc hal hroom htop hstack h17 harea hamap habove
-  obtain ⟨ms', hr, hp, -, hx, ho⟩ := TestSupport.A64.Gcd.program P base room area cap hg ms himage
-    hpc hal hroom htop hstack h17 harea hamap habove
-  exact .inl ⟨ms', hr, hp, hx, ho⟩
-
-theorem gcdrec_runs : ProgramRuns TestSupport.Native.Gcd.recCompiled.module 3 [1071, 462] room cap
-    .word (LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462)) (fun c => c = 4) := by
-  intro P base area _ hg ms himage hpc hal hroom htop hstack h17 harea hamap habove
-  exact (TestSupport.A64.Gcd.rec_program P base room area cap hg ms himage hpc hal hroom htop
-    hstack h17 harea hamap habove).imp (fun ⟨ms', hr, hp, _, hx, ho⟩ => ⟨ms', hr, hp, hx, ho⟩) id
-
-theorem crc32_runs : ProgramRuns TestSupport.Bare.crcCompiled.module 5 [0x3837363534333231, 0x39]
-    room cap .word (LeanExe.Native.encodeWord (TestSupport.Bare.crcCheck 0x3837363534333231 0x39))
-    (fun _ => False) := by
-  intro P base area _ hg ms himage hpc hal hroom htop hstack h17 harea hamap habove
-  obtain ⟨ms', hr, hp, -, hx, ho⟩ := TestSupport.A64.Crc.program P base room area cap hg ms himage
-    hpc hal hroom htop hstack h17 harea hamap habove
-  exact .inl ⟨ms', hr, hp, hx, ho⟩
-
-theorem sha256_runs : ProgramRuns TestSupport.Bare.shaCompiled.module 11 [0x636261] room cap .array
-    (LeanExe.Native.encodeArray (TestSupport.Bare.shaCheck 0x636261)) (fun _ => False) := by
-  intro P base area _ hg ms himage hpc hal _ htop hstack h17 harea hamap habove
-  obtain ⟨ms', hr, hp, -, hx, ho⟩ := TestSupport.A64.Sha.program P base room area cap hg ms himage
-    hpc hal (by decide) htop hstack h17 harea hamap habove
-  exact .inl ⟨ms', hr, hp, hx, ho⟩
-
-theorem depth_runs : ProgramRuns Verified.Examples.Fold.compiled.module 13 [1000] room cap .word
-    (LeanExe.Native.encodeWord (Verified.Examples.Fold.recursive 1000))
-    (fun c => c = 1 ∨ c = 4) := by
-  intro P base area _ hg ms himage hpc hal hroom htop hstack h17 harea hamap habove
-  exact (TestSupport.A64.Fold.program P base room area cap hg ms himage hpc hal hroom htop hstack
-    h17 harea hamap habove).imp (fun ⟨ms', hr, hp, _, hx, ho⟩ => ⟨ms', hr, hp, hx, ho⟩) id
-
 theorem gcd (h : Hw) (B : UInt64) (hB : B.toNat % 4096 = 0) (hlo : 0x40000000 ≤ B.toNat)
     (hhi : B.toNat + gcdImageSize ≤ 0x80000000) (b : Boot)
     (hm : ∀ j < gcdSize, b.core.mem (B + UInt64.ofNat j) = byteAt gcdBytes j)
@@ -122,7 +87,7 @@ theorem gcd (h : Hw) (B : UInt64) (hB : B.toNat % 4096 = 0) (hlo : 0x40000000 �
       b'.core.out = b.core.out ++
         LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462) ++ [0] := by
   obtain ⟨b', r, hc, hx, hu, ho⟩ := image_run_at h gcd_file (by decide) (by decide) (by decide) hB
-    hlo hhi hm hpc hoff gcd_runs
+    hlo hhi hm hpc hoff (Gcd.runs room cap)
   rcases ho with ho | ⟨_, hf, -⟩
   · exact ⟨b', r, hc, hx, hu, ho⟩
   · exact hf.elim
@@ -139,7 +104,7 @@ theorem gcdrec (h : Hw) (B : UInt64) (hB : B.toNat % 4096 = 0) (hlo : 0x40000000
           LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462) ++ [0] ∨
         b'.core.out = b.core.out ++ [4]) := by
   obtain ⟨b', r, hc, hx, hu, ho⟩ := image_run_at h gcdrec_file (by decide) (by decide) (by decide)
-    hB hlo hhi hm hpc hoff gcdrec_runs
+    hB hlo hhi hm hpc hoff (Gcd.rec_runs room cap)
   refine ⟨b', r, hc, hx, hu, ho.imp id ?_⟩
   rintro ⟨c, rfl, h⟩
   exact h
@@ -155,7 +120,7 @@ theorem crc32 (h : Hw) (B : UInt64) (hB : B.toNat % 4096 = 0) (hlo : 0x40000000 
       b'.core.out = b.core.out ++
         LeanExe.Native.encodeWord (TestSupport.Bare.crcCheck 0x3837363534333231 0x39) ++ [0] := by
   obtain ⟨b', r, hc, hx, hu, ho⟩ := image_run_at h crc32_file (by decide) (by decide) (by decide) hB
-    hlo hhi hm hpc hoff crc32_runs
+    hlo hhi hm hpc hoff (Crc.runs room cap)
   rcases ho with ho | ⟨_, hf, -⟩
   · exact ⟨b', r, hc, hx, hu, ho⟩
   · exact hf.elim
@@ -171,7 +136,7 @@ theorem sha256 (h : Hw) (B : UInt64) (hB : B.toNat % 4096 = 0) (hlo : 0x40000000
       b'.core.out = b.core.out ++
         LeanExe.Native.encodeArray (TestSupport.Bare.shaCheck 0x636261) ++ [0] := by
   obtain ⟨b', r, hc, hx, hu, ho⟩ := image_run_at h sha256_file (by decide) (by decide) (by decide)
-    hB hlo hhi hm hpc hoff sha256_runs
+    hB hlo hhi hm hpc hoff (Sha.runs room cap (by decide))
   rcases ho with ho | ⟨_, hf, -⟩
   · exact ⟨b', r, hc, hx, hu, ho⟩
   · exact hf.elim
@@ -188,7 +153,7 @@ theorem depth (h : Hw) (B : UInt64) (hB : B.toNat % 4096 = 0) (hlo : 0x40000000 
           LeanExe.Native.encodeWord (Verified.Examples.Fold.recursive 1000) ++ [0] ∨
         b'.core.out = b.core.out ++ [1] ∨ b'.core.out = b.core.out ++ [4]) := by
   obtain ⟨b', r, hc, hx, hu, ho⟩ := image_run_at h depth_file (by decide) (by decide) (by decide)
-    hB hlo hhi hm hpc hoff depth_runs
+    hB hlo hhi hm hpc hoff (Fold.runs room cap)
   refine ⟨b', r, hc, hx, hu, ho.imp id ?_⟩
   rintro ⟨c, rfl | rfl, h⟩
   · exact .inl h

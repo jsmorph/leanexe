@@ -1,88 +1,37 @@
 import TestSupport.Native.Gcd
-import LeanExe.A64.Proof.Program
-import LeanExe.A64.Image
+import LeanExe.A64.Proof.ProgramRuns
 import LeanExe.Native.Bare
-import LeanExe.Native.Proof.Main
 
 /-!
-The theorems of GCD's bare-metal programs for AArch64.  In the first, `main` calls entry 2 of
-`loopCompiled.module`, the loop of `gcd`, on 1071 and 462.  When the memory holds the bytes of the
-program's instructions from `main`, the machine fetches its instructions from those bytes, the
-stack below SP holds `room + 16` bytes of Normal memory above address 4096, for a `room` of at least
-4096 bytes, and the area at `area` holds `areaBytes` of the module with `cap` pages in Normal memory
-below the stack's limit, the machine writes the eight bytes of `gcd 1071 462` to the UART from
-`main` and returns 0 to the address in X30.  In the second, `main` calls entry 3 of
-`recCompiled.module`, the recursion of `gcd` with the depth of calls, and the machine writes the
-same bytes and returns 0, or it reaches the exit word with the status 4 of an overflow of the
-stack.  The compiler's theorem without a trap excludes the status 1 of the depth's guard, and the
-recursion's cycle of calls leaves the stack without a static bound.
+The theorems of GCD's bare-metal programs for AArch64, in the form `ProgramRuns`, for every room
+and cap.  In the first, `main` calls entry 2 of `loopCompiled.module`, the loop of `gcd`, on 1071
+and 462, and the machine writes the eight bytes of `gcd 1071 462` to the UART and returns 0.  In
+the second, `main` calls entry 3 of `recCompiled.module`, the recursion of `gcd` with the depth of
+calls, and the machine writes the same bytes and returns 0, or it reaches the exit word with the
+status 4 of an overflow of the stack.  The compiler's theorem without a trap excludes the status 1
+of the depth's guard, and the recursion's cycle of calls leaves the stack without a static bound.
 -/
 
 namespace TestSupport.A64.Gcd
 
-open LeanExe.A64 TestSupport.Native.Gcd Wasm
+open LeanExe.A64 TestSupport.Native.Gcd
 
-theorem program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List Instr}
-    (hg : genProgram loopCompiled.module 2 [1071, 462] P.uart base room cap .word = .ok is)
-    (ms : State)
-    (himage : ∀ j (hj : j < (imageBytes is).length),
-      ms.mem (after base 1 + UInt64.ofNat j) = (imageBytes is)[j])
-    (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0)
-    (hroom : 4096 ≤ room.toNat) (htop : ms.sp.toNat ≤ 2 ^ 63)
-    (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
-    (h17 : ms.x 17 = area) (harea : ∀ j < areaSize cap,
-      ms.mem (area + UInt64.ofNat j) = areaByte loopCompiled.module.initialStore j)
-    (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
-    (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
-    ∃ ms', Reach P (fetchFrom ms.mem (after base 1) is.length) ms ms' ∧ ms'.pc = ms.x 30 ∧
-      ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧
-      ms'.out = ms.out ++ LeanExe.Native.encodeWord (gcd 1071 462) := by
-  obtain ⟨-, fs, -, -, -, -, -, -, -, -, -, -, -, hok, -, -, hfs, -⟩ := gen_program hg
-  have hcap := cap_lt_of_areaOk hok
-  have hcheck : (match (reachFrom loopCompiled.module 2).mapM (funcOf loopCompiled.module) with
-      | .ok fs => decide (4 * (mainSize 2 .word + (fs.map fun x =>
-          functionSize (sigIn (callTargets loopCompiled.module 2) fs) x.2).sum + 20) < 2 ^ 64)
-      | .error _ => false) = true := by decide +kernel
-  rw [hfs] at hcheck
-  have hn : 4 * is.length < 2 ^ 64 := by
-    rw [genProgram_length hg hfs]
-    simpa using hcheck
-  have hct : callTargets loopCompiled.module 2 = [] := by decide +kernel
-  have hpar : (loopCompiled.module.funcs[2]?).map (fun f => f.params.length) = some 2 := by
-    decide
-  cases hk : loopCompiled.module.funcs[2]? with
-  | none => rw [hk] at hpar; cases hpar
-  | some f =>
-      rw [hk] at hpar
-      simp only [Option.map_some, Option.some.injEq] at hpar
-      obtain ⟨N, hN⟩ := loopCompiled.gcd.implements {} _ _ [.i64 1071, .i64 462] (1071, 462)
-        (LeanExe.Native.heapAt_nativeStore loopCompiled.initial.1 cap) trivial rfl
-        LeanExe.Pipeline.Separate.nil (show cap ≤ 65535 by omega)
-      rcases hN N (Nat.le_refl _) with ⟨vs, st', hrun, heap', -, hown, -⟩ | hab
-      · have hv : vs.reverse = [.i64 (TestSupport.Native.Gcd.gcd 1071 462)] := hown
-        rw [List.reverse_eq_cons_iff, List.reverse_nil, List.nil_append] at hv
-        subst hv
-        rcases ProgramOutcome.success P _ (program_sim P _ hg (codeAt_fetchFrom hn himage) rfl hk
-          hpar.symm N ms hpc hal hroom htop hstack h17 harea hamap habove) hrun with
-          ⟨hne, -⟩ | ⟨w, ms', hw, h⟩
-        · exact absurd hct hne
-        · simp only [ValRel] at hw
-          subst hw
-          exact ⟨ms', h⟩
-      · exact hab.elim
-
-/-- The memory of `recCompiled.module` starts with 16 pages. -/
-theorem rec_pages : (recCompiled.module.memory.map (·.pagesMin.toNat)).getD 0 = 16 := by
-  decide +kernel
+/-- The theorem of GCD's loop: `loopCompiled.gcd.implements` excludes every trap, and the stack
+that the loop uses is at most 4096 bytes. -/
+theorem runs (room : UInt64) (cap : Nat) :
+    ProgramRuns loopCompiled.module 2 [1071, 462] room cap .word
+      (LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462)) fun _ => False :=
+  program_runs_bounded loopCompiled.gcd.implements (1071, 462) loopCompiled.initial.1
+    (fun _ => trivial) writes_word (.inl (by decide +kernel))
 
 /-- The recursion of `gcd` on 1071 and 462 fits the frames of the depth's guard. -/
 theorem rec_fits : recCompiled.gcd.fits 1000 (1071, 462) = true := by
   decide +kernel
 
-/-- The heap's `top` at the end of the tables, plus the allocations of `gcd 1071 462`, fits 16
-pages. -/
+/-- The heap's `top` at the end of the tables, plus the allocations of `gcd 1071 462`, fits the
+initial pages of the memory of `recCompiled.module`. -/
 theorem rec_heap_room : (Verified.initialHeap recCompiled.tables).top.toNat +
-    recCompiled.gcd.bound 1000 (1071, 462) ≤ 65536 * 16 := by
+    recCompiled.gcd.bound 1000 (1071, 462) ≤ 65536 * initialPages recCompiled.module := by
   decide +kernel
 
 /-- The recursion's cycle of calls leaves `stackBound` at 2^64, which bounds nothing. -/
@@ -90,67 +39,14 @@ theorem rec_stack_bound : stackBound recCompiled.module 3 = 2 ^ 64 := by
   decide +kernel
 
 /-- The theorem of GCD's recursion: `main` calls entry 3 of `recCompiled.module`, which calls the
-recursion of `gcd` with depth 0, on 1071 and 462.  Under the premises of `program`, the machine
-writes the eight bytes of `gcd 1071 462` to the UART from `main` and returns 0 to the address in
-X30, or it reaches the exit word at `base` with the status 4 of an overflow of the stack and the
-UART's output as it was.  `recCompiled.gcd.trapFree` excludes the
-trap of the depth's guard and of the allocator: the recursion on 1071 and 462 fits the guard's
-frames, and it allocates nothing.  The recursion's calls form a cycle, so `stackBound` bounds
+recursion of `gcd` with depth 0, on 1071 and 462.  `recCompiled.gcd.trapFree` excludes the trap of
+the depth's guard and of the allocator: the recursion on 1071 and 462 fits the guard's frames, and
+its allocations fit the memory.  The recursion's calls form a cycle, so `stackBound` bounds
 nothing, and the overflow remains. -/
-theorem rec_program (P : Platform) (base room area : UInt64) (cap : Nat)
-    {is : List Instr}
-    (hg : genProgram recCompiled.module 3 [1071, 462] P.uart base room cap .word = .ok is)
-    (ms : State)
-    (himage : ∀ j (hj : j < (imageBytes is).length),
-      ms.mem (after base 1 + UInt64.ofNat j) = (imageBytes is)[j])
-    (hpc : ms.pc = after base 1) (hal : ms.sp % 16 = 0)
-    (hroom : 4096 ≤ room.toNat) (htop : ms.sp.toNat ≤ 2 ^ 63)
-    (hstack : ∀ j < room.toNat + 16, P.normal (ms.sp - 16 - room + UInt64.ofNat j) = true)
-    (h17 : ms.x 17 = area) (harea : ∀ j < areaSize cap,
-      ms.mem (area + UInt64.ofNat j) = areaByte recCompiled.module.initialStore j)
-    (hamap : ∀ j < areaSize cap, P.normal (area + UInt64.ofNat j) = true)
-    (habove : area.toNat + areaSize cap + room.toNat + 16 ≤ ms.sp.toNat) :
-    (∃ ms', Reach P (fetchFrom ms.mem (after base 1) is.length) ms ms' ∧ ms'.pc = ms.x 30 ∧
-      ms'.sp = ms.sp ∧ ms'.x 0 = 0 ∧
-      ms'.out = ms.out ++ LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462)) ∨
-    ∃ ms', Reach P (fetchFrom ms.mem (after base 1) is.length) ms ms' ∧ ms'.pc = base ∧
-      ms'.x 0 = 4 ∧ ms'.out = ms.out := by
-  obtain ⟨-, fs, -, -, -, -, -, -, -, -, -, -, -, hok, -, -, hfs, -⟩ := gen_program hg
-  have hcap := cap_lt_of_areaOk hok
-  have hcheck : (match (reachFrom recCompiled.module 3).mapM (funcOf recCompiled.module) with
-      | .ok fs => decide (4 * (mainSize 2 .word + (fs.map fun x =>
-          functionSize (sigIn (callTargets recCompiled.module 3) fs) x.2).sum + 20) < 2 ^ 64)
-      | .error _ => false) = true := by decide +kernel
-  rw [hfs] at hcheck
-  have hn : 4 * is.length < 2 ^ 64 := by
-    rw [genProgram_length hg hfs]
-    simpa using hcheck
-  have hpar : (recCompiled.module.funcs[3]?).map (fun f => f.params.length) = some 2 := by
-    decide
-  have hpg := pages_le_of_areaOk hok
-  rw [rec_pages] at hpg
-  have hheap := rec_heap_room
-  cases hk : recCompiled.module.funcs[3]? with
-  | none => rw [hk] at hpar; cases hpar
-  | some f =>
-      rw [hk] at hpar
-      simp only [Option.map_some, Option.some.injEq] at hpar
-      obtain ⟨N, hN⟩ := recCompiled.gcd.trapFree {} _ _ [.i64 1071, .i64 462] (1071, 462)
-        (LeanExe.Native.heapAt_nativeStore recCompiled.initial.1 cap)
-        ⟨rec_fits, show _ ≤ 65536 * cap by omega⟩ rfl LeanExe.Pipeline.Separate.nil
-        (show cap ≤ 65535 by omega)
-      have hsim := program_sim P _ hg (codeAt_fetchFrom hn himage) rfl hk hpar.symm N ms hpc hal
-        hroom htop hstack h17 harea hamap habove
-      rcases hN N (Nat.le_refl _) with ⟨vs, st', hrun, heap', -, hown, -⟩ | hab
-      · have hv : vs.reverse = [.i64 (TestSupport.Native.Gcd.gcd 1071 462)] := hown
-        rw [List.reverse_eq_cons_iff, List.reverse_nil, List.nil_append] at hv
-        subst hv
-        rcases ProgramOutcome.success P _ hsim hrun with ⟨-, ms', hr, hp, hx, hout⟩ |
-          ⟨w, ms', hw, h⟩
-        · exact .inr ⟨ms', hr, hp, hx, hout⟩
-        · simp only [ValRel] at hw
-          subst hw
-          exact .inl ⟨ms', h⟩
-      · exact hab.elim
+theorem rec_runs (room : UInt64) (cap : Nat) :
+    ProgramRuns recCompiled.module 3 [1071, 462] room cap .word
+      (LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462)) fun c => c = 4 :=
+  program_runs_trapFree recCompiled.gcd.trapFree (1071, 462) recCompiled.initial.1
+    (fun hp => ⟨rec_fits, room_initStore rec_heap_room hp⟩) writes_word
 
 end TestSupport.A64.Gcd
