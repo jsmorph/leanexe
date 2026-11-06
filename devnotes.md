@@ -42027,8 +42027,24 @@ A relation of the machine to Talos's store covers every byte below the cap, so `
 
 | Option | Code of a 64-bit load | Proof |
 |---|---|---|
-| A register, X17, holds the address of the area of the globals and the size, with the memory's region a page above it, at fixed addresses that the link script reserves | about 6 instructions: the effective address, a load of the size, a comparison, a branch to stub 2, an addition, and the load | X17 keeps its value everywhere, a clause like that of X18 |
-| No reserved register: each access sets the region's address with `movImm` | about 10 instructions | no register clause |
-| X17 holds the base and X29 the size in bytes, which `memoryGrow` updates | about 5 instructions | X29 belongs to the store relation and changes across calls |
+| A register, X17, holds the address of the area of the globals and the size, with the memory's region a page above it, at fixed addresses that the link script reserves | 7 instructions: `ADD` of the offset, `LDR` of the size, `ADD` of 8, `SUBS`, `B.LO` to stub 2, `ADD` of X17, and the `LDR` at 4096 above it; 6 with offset 0, 11 with an offset from 4096 | X17 keeps its value everywhere, a clause like that of X18 |
+| No reserved register: each access sets the area's address with `movImm` | 11 instructions | no register clause |
+| X17 holds the region's base and X29 the size in bytes, which `memoryGrow` updates | 6 instructions, 5 with a load of register offset, a new form | X29 belongs to the store relation and changes across calls, and the globals need another base |
 
 The region's initial bytes, the data segments and zeros up to the cap, can lie in the image as a loaded section, so that the theorem assumes them as it assumes the code's bytes, or `main` can write them.  The section makes the loader part of the trusted base for the memory, as it is for the code, while writes by `main` add a loop to `main` and to its proof.  A cap that the program generator takes as a parameter, like `room`, keeps the image small for the test programs.
+
+An independent review checked the options against the model and Talos and found a defect in the sequence of option A.  Talos's `load64` and `store64` also take an `.i64` address, with the bounds test on its full value, and the generator tracks heights but no types, so for the word `2 ^ 64 - 8` the end `r + off + 8` wraps to a small number, the test passes, and the machine loads where Talos traps.  The review gives a sequence that compares the address register itself with the size less `off + 8`: `LDR X16, [X17]`, `SUB X16, X16, #(off + 8)`, `SUBS XZR, r, X16`, `B.HI` to stub 2, `ADD X16, X17, r`, and `LDR r, [X16, #(512 + off / 8)]`.  It is exact for both address types when the size is at least `off + 8`, which holds for a module of at least one page and an offset of at most 65528, since `memoryGrow` never lowers the size.  With the size less 8 kept at the area's start, an access at offset 0 takes 5 instructions, and one at another offset that is a multiple of 8 takes 6.
+
+The review found three gaps that every option shares.  `memoryGrow` pushes `.i32 0xFFFFFFFF` or `.i64 0xFFFFFFFFFFFFFFFF` when growth fails, according to its operand's type, and the C path translates it only for an `i32` operand because it tracks types, so the generator needs static types, which the f64 forms of increment 5 need as well.  `Env` has no address for stub 2, and the trap cases of `Outcome`, `FunOutcome`, and `ProgramOutcome` lack "out of bounds memory access".  The program theorem places no condition on the store, which must be the module's initial store with the cap of the image, as `nativeStore` is for the C path.  The review also corrected the table: under option C, X17 can address the same area of globals.
+
+The review places the area at the start of `.data`, the way `.text.a64` starts `.text`, instead of near `0x60000000`.  The area then lies at `__rw_start`, `0x40200000` for a program whose code and read-only data take less than 1 MiB, below `.bss`, the tables, and the stack, so its disjointness from every frame is one premise that its end lies at or below the stack's limit, and the startup code writes none of its bytes.  An area near `0x60000000` would need a third loaded segment and a clause on SP in every frame.  The review agreed that the initial bytes belong in the image: writes by `main` of the data segments alone still need a premise that the rest is zero, or a loop that clears every page.
+
+The revised recommendation is option A with the area at the start of `.data`, the review's sequence, the initial bytes in the image, static types in the generator, stub 2 in `Env` with its trap case, and the store of the program theorem fixed as the module's initial store with the image's cap.  The static types add to `Inv` the type of every value of the operand stack and of every local, which every instruction's proof must keep.
+
+The user approved the revised option A and asked to go on with the rest of the plan after it.
+
+- [ ] Static types in the generator and in `Inv`.
+- [ ] The area at the start of `.data`, its image, and the store relation in `Inv`, `Outcome`, `Returned`, and `CallResult`.
+- [ ] `load64`, `store64`, `globalGet`, `globalSet`, `memorySize`, and `memoryGrow`, with stub 2.
+- [ ] The co-simulation of loads and stores with a base other than SP at unaligned addresses.
+- [ ] The CRC-32 program, its theorem, and its runs under QEMU.
