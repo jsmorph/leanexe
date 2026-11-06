@@ -22,7 +22,7 @@ namespace TestSupport.A64.Gcd
 open LeanExe.A64 TestSupport.Native.Gcd Wasm
 
 theorem program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List Instr}
-    (hg : genProgram loopCompiled.module 2 [1071, 462] P.uart base room area cap = .ok is)
+    (hg : genProgram loopCompiled.module 2 [1071, 462] P.uart base room area cap .word = .ok is)
     (ms : State)
     (himage : ∀ j (hj : j < (imageBytes is).length),
       ms.mem (after base 1 + UInt64.ofNat j) = (imageBytes is)[j])
@@ -39,7 +39,7 @@ theorem program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List 
   obtain ⟨-, fs, -, -, -, -, -, -, -, -, -, -, -, hok, -, -, hfs, -⟩ := gen_program hg
   have hcap := cap_lt_of_areaOk hok
   have hcheck : (match (reachFrom loopCompiled.module 2).mapM (funcOf loopCompiled.module) with
-      | .ok fs => decide (4 * (mainSize 2 + (fs.map fun x =>
+      | .ok fs => decide (4 * (mainSize 2 .word + (fs.map fun x =>
           functionSize (sigIn (callTargets loopCompiled.module 2) fs) x.2).sum + 20) < 2 ^ 64)
       | .error _ => false) = true := by decide +kernel
   rw [hfs] at hcheck
@@ -76,7 +76,7 @@ machine writes the eight bytes of `gcd 1071 462` to the UART from `main` and ret
 address in X30, or it reaches the exit word at `base` with the status 1 of the trap of the call
 depth's guard or the status 4 of an overflow of the stack, and the UART's output as it was. -/
 theorem rec_program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List Instr}
-    (hg : genProgram recCompiled.module 3 [1071, 462] P.uart base room area cap = .ok is)
+    (hg : genProgram recCompiled.module 3 [1071, 462] P.uart base room area cap .word = .ok is)
     (ms : State)
     (himage : ∀ j (hj : j < (imageBytes is).length),
       ms.mem (after base 1 + UInt64.ofNat j) = (imageBytes is)[j])
@@ -95,7 +95,7 @@ theorem rec_program (P : Platform) (base room area : UInt64) (cap : Nat) {is : L
   obtain ⟨-, fs, -, -, -, -, -, -, -, -, -, -, -, hok, -, -, hfs, -⟩ := gen_program hg
   have hcap := cap_lt_of_areaOk hok
   have hcheck : (match (reachFrom recCompiled.module 3).mapM (funcOf recCompiled.module) with
-      | .ok fs => decide (4 * (mainSize 2 + (fs.map fun x =>
+      | .ok fs => decide (4 * (mainSize 2 .word + (fs.map fun x =>
           functionSize (sigIn (callTargets recCompiled.module 3) fs) x.2).sum + 20) < 2 ^ 64)
       | .error _ => false) = true := by decide +kernel
   rw [hfs] at hcheck

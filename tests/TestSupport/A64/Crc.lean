@@ -20,8 +20,8 @@ open LeanExe.A64 TestSupport.Bare Wasm
 
 set_option maxRecDepth 100000 in
 theorem program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List Instr}
-    (hg : genProgram crcCompiled.module 5 [0x3837363534333231, 0x39] P.uart base room area cap =
-      .ok is)
+    (hg : genProgram crcCompiled.module 5 [0x3837363534333231, 0x39] P.uart base room area cap
+      .word = .ok is)
     (ms : State)
     (himage : ∀ j (hj : j < (imageBytes is).length),
       ms.mem (after base 1 + UInt64.ofNat j) = (imageBytes is)[j])
@@ -40,7 +40,7 @@ theorem program (P : Platform) (base room area : UInt64) (cap : Nat) {is : List 
   obtain ⟨-, fs, -, -, -, -, -, -, -, -, -, -, -, hok, -, -, hfs, -⟩ := gen_program hg
   have hcap := cap_lt_of_areaOk hok
   have hcheck : (match (reachFrom crcCompiled.module 5).mapM (funcOf crcCompiled.module) with
-      | .ok fs => decide (4 * (mainSize 2 + (fs.map fun x =>
+      | .ok fs => decide (4 * (mainSize 2 .word + (fs.map fun x =>
           functionSize (sigIn (callTargets crcCompiled.module 5) fs) x.2).sum + 20) < 2 ^ 64)
       | .error _ => false) = true := by decide +kernel
   rw [hfs] at hcheck

@@ -453,21 +453,47 @@ def genFunction (callee : Table) (S : Shared) (entry : UInt64) (f : Function) :
       [.ldr 30 31 ⟨n + spillSlots, hn⟩, .addImm 31 31 ⟨frameSize n, hf⟩, .ret 30]
   else throw s!"a frame of {frameSize n} bytes"
 
-/-- The number of instructions of `main` for `k` arguments. -/
-def mainSize (k : Nat) : Nat := 3 + 4 + 1 + 4 + 4 * k + 1 + 4 + 16 + 4 + 3
+/-- What `main` writes to the UART from the result: the eight bytes of its word, or the array of
+words in the memory at the pointer that it is, its length word and then its elements. -/
+inductive Output where
+  | word
+  | array
+deriving DecidableEq
+
+/-- The writes of the eight bytes of register `r` to the UART at X1 through X2, the lowest first. -/
+def writesOf (r : Fin 32) : List Instr :=
+  (List.range 8).flatMap fun i =>
+    [Instr.lsrImm 2 r ⟨8 * i % 64, Nat.mod_lt _ (by decide)⟩, .strb 2 1 0]
+
+/-- The number of instructions of `main`'s output of the kind `o`. -/
+def outSize : Output → Nat
+  | .word => 16
+  | .array => 39
+
+/-- `main`'s output of the result in X0, placed at `a`.  For an array, X3 holds the address of a
+word of the array in the area, X4 the number of elements that remain, and X6 the element. -/
+def genOut (a : UInt64) : Output → GenM (List Instr)
+  | .word => pure (writesOf 0)
+  | .array => do
+      let cz ← cbField (after a 18) (after a 39)
+      let back ← bField (after a 38) (after a 18)
+      return [.addReg 3 17 0, .ldr 4 3 512] ++ writesOf 4 ++ [.cbz 4 cz, .addImm 3 3 8,
+        .ldr 6 3 512] ++ writesOf 6 ++ [.subImm 4 4 1, .b back]
+
+/-- The number of instructions of `main` for `k` arguments and the output `o`. -/
+def mainSize (k : Nat) (o : Output) : Nat := 3 + 4 + 1 + 4 + 4 * k + 1 + 4 + outSize o + 4 + 3
 
 /-- `main` placed at `a`: it saves X30, sets the stack's limit in X18 to `room` bytes below its
-SP and X17 to the area at `area`, calls the function at `entry` with `args`, writes the eight
-bytes of the result to the UART at `uart`, the lowest first, and returns 0. -/
-def genMain (a entry : UInt64) (args : List UInt64) (uart room area : UInt64) :
+SP and X17 to the area at `area`, calls the function at `entry` with `args`, writes the result to
+the UART at `uart` as `o` says, and returns 0. -/
+def genMain (a entry : UInt64) (args : List UInt64) (uart room area : UInt64) (o : Output) :
     GenM (List Instr) := do
   if args.length > 8 then throw "more than 8 arguments"
   let loads := args.zipIdx.flatMap fun (v, i) => movImm ⟨i % 32, Nat.mod_lt _ (by decide)⟩ v
-  let writes := (List.range 8).flatMap fun i =>
-    [Instr.lsrImm 2 0 ⟨8 * i % 64, Nat.mod_lt _ (by decide)⟩, .strb 2 1 0]
   let call := Instr.bl (← bField (after a (12 + 4 * args.length)) entry)
+  let out ← genOut (after a (17 + 4 * args.length)) o
   return [.subImm 31 31 16, .str 30 31 0, .addImm 18 31 0] ++ movImm 16 room ++
-    [.subReg 18 18 16] ++ movImm 17 area ++ loads ++ [call] ++ movImm 1 uart ++ writes ++
+    [.subReg 18 18 16] ++ movImm 17 area ++ loads ++ [call] ++ movImm 1 uart ++ out ++
     movImm 0 0 ++ [.ldr 30 31 0, .addImm 31 31 16, .ret 30]
 
 mutual
@@ -602,9 +628,10 @@ a memory of `cap` pages: `main` at `base + 4`, the functions that calls reach fr
 `k` first, and the trap stubs of codes 1, 2, 3, and 4, each `movImm` of X0 and a branch to the
 exit word.  The parameters of function `k` are `i64`s, the memory satisfies `areaOk`, and the
 globals are at most 511 numbers.  The table of the functions' calls holds the functions that
-`callTargets` names.  The image puts a branch to `lx_exit` at `base` and `areaBytes` at `area`. -/
+`callTargets` names.  `main` writes the result as `o` says.  The image puts a branch to `lx_exit`
+at `base` and `areaBytes` at `area`. -/
 def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room area : UInt64)
-    (cap : Nat) : GenM (List Instr) := do
+    (cap : Nat) (o : Output) : GenM (List Instr) := do
   if !areaOk m cap then throw s!"a memory that an area of {cap} pages does not hold"
   let gts ← match globalTypesOf m with
     | some gts => if gts.length ≤ 511 then pure gts else throw "more than 511 globals"
@@ -613,14 +640,14 @@ def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room area 
   let targets := callTargets m k
   let sig := sigIn targets fs
   let mainA := after base 1
-  let first := after mainA (mainSize args.length)
+  let first := after mainA (mainSize args.length o)
   let callee := tableOf targets first fs
   let traps := endOf sig first fs
   let entry ← match entryIn sig first fs k with
     | some (e, ps, _) =>
         if ps.all (· == .i64) then pure e else throw s!"function {k} takes a value of another type"
     | none => throw s!"no function {k}"
-  let main ← genMain mainA entry args uart room area
+  let main ← genMain mainA entry args uart room area o
   let S : Shared :=
     { trapUnreachable := traps, trapBounds := after traps 5, trapDiv := after traps 10,
       trapStack := after traps 15, cap, globalTypes := gts }

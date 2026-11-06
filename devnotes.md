@@ -41967,7 +41967,7 @@ The work across increments is a check of the subset that both paths share, a com
 - [x] Increment 1b: the image writer.
 - [x] Increment 2: GCD by recursion.
 - [x] Increment 3: CRC-32.
-- [ ] Increment 4: SHA-256.
+- [x] Increment 4: SHA-256.
 - [ ] Increment 5: Fold and Euler.
 - [ ] Increment 6: the rest of `InSubset`.
 - [ ] One definition of `numeric` and of the subset.
@@ -42082,5 +42082,14 @@ The plan's approved convention passed parameters beyond 8 on the stack and did n
 `FunSim`, `CallResult`, and `Returned` state the arguments and the results as `StackRel` of the values on top, the registers of the heights from 0 holding them deepest first, and `run_movs` proves a run of moves in which no move overwrites the source of a later one, for the arguments in ascending order and for the results in descending order.  A branch still carries at most one value, and no function that SHA-256 reaches branches to its own end with several, so the epilogue receives several results only on a fall-through.  With the new convention SHA-256's program generates 5,397 instructions, and the GCD and CRC-32 programs pass the model and QEMU with KVM as before.
 
 - [x] Parameters and results in the operand registers.
-- [ ] `main` with an array as its result.
-- [ ] The SHA-256 program, its theorem, and its runs under QEMU.
+The entry's result is a pointer to an array in Talos's memory, its length word and then its elements, as `UInt64Array.At` states, and `encodeArray` writes the same words, the lowest byte first.  `genMain` takes the output's kind, a word or an array, as the C path's `OutKind` does.  For an array `main` adds the result to X17, loads the length word from 4096 bytes above that sum, writes its 8 bytes, and then runs a loop that, while the count in X4 is not zero, steps the address by 8, loads the next element, writes its 8 bytes, and decrements the count.  `ProgramOutcome` gains the kind: for an array it states, for every array that the final store holds at the result's pointer, that the UART receives `encodeArray` of it.  The proof of the loop is an induction on the words that remain.
+
+`run_arrayOut` proves the loop by an induction on the words that remain, with `run_arrayStep` for one pass and `array_word` for the word that the area holds at each step, and `ProgramOutcome.array` gives the output for the array of `UInt64Array.At`.  `tests/TestSupport/A64/Sha.lean` proves the theorem of SHA-256's program: the machine writes `encodeArray (shaCheck 0x636261)` to the UART and returns 0, or it reaches the exit word with the status 1 of `unreachable` or the status 4 of an overflow of the stack.  The proof takes the array from `Heap.Owned` of the wrapper's `ImplementsTables`, and its axioms are `propext`, `Classical.choice`, and `Quot.sound`.
+
+| Test | Result |
+|---|---|
+| The model, from `main` | 40 bytes and status 0 after 44,931 steps of 5,420 instructions |
+| `a64-programs.sh` on edgexpert-18ff | GCD's loop, GCD's recursion, CRC-32, and SHA-256 pass under TCG and KVM, SHA-256 with a stack of 5,296 bytes |
+
+- [x] `main` with an array as its result.
+- [x] The SHA-256 program, its theorem, and its runs under QEMU.
