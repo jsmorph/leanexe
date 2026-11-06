@@ -99,6 +99,10 @@ theorem gen_image {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {c
   · simp only [bind, Except.bind, hr, ↓reduceIte, throw, throwThe, MonadExceptOf.throw] at hg
     cases hg
 
+theorem imageBytes_append (a b : List Instr) :
+    imageBytes (a ++ b) = imageBytes a ++ imageBytes b := by
+  simp [imageBytes, List.flatMap_append]
+
 theorem toNat_ofNat_lt {n : Nat} (h : n < 2 ^ 64) : (UInt64.ofNat n).toNat = n := by
   rw [UInt64.toNat_ofNat']
   exact Nat.mod_eq_of_lt h
@@ -238,7 +242,9 @@ theorem image_loaded {m : Module} {k : Nat} {args : List UInt64} {room : UInt64}
       CodeAt (fetchFrom mem image (codeWords prog.length)) image [.spsel1, .b 15] ∧
       CodeAt (fetchFrom mem image (codeWords prog.length)) (after image 16) (start ++ prog) ∧
       (∀ j (hj : j < 32), mem (L.table + UInt64.ofNat j) = tableBytes[j]) ∧
-      (∀ j < areaPrefix m, mem (L.area + UInt64.ofNat j) = areaByte m.initialStore j) := by
+      (∀ j < areaPrefix m, mem (L.area + UInt64.ofNat j) = areaByte m.initialStore j) ∧
+      ∀ j (hj : j < (imageBytes prog).length),
+        mem (image + UInt64.ofNat (64 + 4 * (startupLength + 1) + j)) = (imageBytes prog)[j] := by
   obtain ⟨bytes, L, hg, hl, hb⟩ := of_bytesOk hk
   obtain ⟨prog, start, hp, hL, hlo, hhi, hpre, hs, hbytes⟩ := gen_image hg
   obtain ⟨hlen, hhd, hcode, htab, harea⟩ := image_parts hL hs hhi hbytes
@@ -256,7 +262,8 @@ theorem image_loaded {m : Module} {k : Nat} {args : List UInt64} {room : UInt64}
     rw [tabOff_dvd]
     unfold tabOff at *
     omega
-  refine ⟨_, prog, start, hp, rfl, hlo, hhi, hpre, hs, ?_, ?_, fun j hj => ?_, fun j hj => ?_⟩
+  refine ⟨_, prog, start, hp, rfl, hlo, hhi, hpre, hs, ?_, ?_, fun j hj => ?_, fun j hj => ?_,
+    fun j hj => ?_⟩
   · have := codeAt_fetchFrom_at (m := mem) (a := image) (o := 0) (is := [.spsel1, .b 15]) hN
       (by unfold codeWords tabOff at *; simp; omega) fun j hj => by
         rw [Nat.mul_zero, Nat.zero_add]
@@ -274,5 +281,15 @@ theorem image_loaded {m : Module} {k : Nat} {args : List UInt64} {room : UInt64}
   · show mem (image + UInt64.ofNat (areaOff prog.length) + UInt64.ofNat j) = _
     rw [UInt64.add_assoc, ← UInt64.ofNat_add]
     exact hm' _ _ (by rw [harea j hj, areaPrefixBytes_getElem m j hj])
+  · have hsl : (imageBytes start).length = 4 * (startupLength + 1) := by
+      rw [length_imageBytes, startupCode_length hs]
+    have hj' : 4 * (startupLength + 1) + j < (imageBytes (start ++ prog)).length := by
+      rw [hcl]
+      rw [length_imageBytes] at hj
+      omega
+    rw [show 64 + 4 * (startupLength + 1) + j = 64 + (4 * (startupLength + 1) + j) by omega]
+    refine hm' _ _ ?_
+    rw [hcode _ hj', imageBytes_append, ← hsl, getElem?_append_offset _ _ _ j rfl]
+    exact List.getElem?_eq_getElem hj
 
 end LeanExe.A64
