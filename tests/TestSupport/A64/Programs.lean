@@ -1,5 +1,6 @@
 import TestSupport.Native.Gcd
 import TestSupport.Bare.Programs
+import Verified.Examples.Fold
 import LeanExe.Native.Bare
 import LeanExe.A64.Gen
 import LeanExe.A64.Image
@@ -7,8 +8,8 @@ import LeanExe.A64.Image
 /-!
 The bare-metal programs of the AArch64 back end, the counterparts of the programs of
 `tests/baremetal/programs.sh` that it covers so far: GCD's loop and GCD's recursion on 1071 and 462,
-CRC-32 of the 9 bytes of `123456789`, and SHA-256 of the 3 bytes of `abc`, whose result is an array.
-The program's exit word lies at `base`, where `tools/baremetal/link.ld` places the section
+CRC-32 of the 9 bytes of `123456789`, SHA-256 of the 3 bytes of `abc`, whose result is an array,
+and Fold's recursion of depth 1000.  The program's exit word lies at `base`, where `tools/baremetal/link.ld` places the section
 `.text.a64`, and `main` and the rest of the instructions follow it.  The area of the module's
 store lies at `rwStart`, where the link script places the section `.data.a64`.  For each program
 `run` places the bytes of the instructions, `imageBytes`, in a memory from `main` and the bytes of
@@ -42,12 +43,15 @@ def room : UInt64 := 0x80000
 `verified_compile` declare. -/
 def cap : Nat := 16
 
-/-- A program: its name, its module, its instructions, and the bytes it must write. -/
+/-- A program: its name, its module, its instructions, the bytes it must write, and the status
+with which it must end: 0 when `main` returns after the bytes, or the code of a trap when it
+reaches the exit word, which it must do with no bytes, as Talos's run of the entry traps. -/
 structure Program where
   name : String
   module : Wasm.Module
   code : Except String (List Instr)
   bytes : List UInt8
+  status : Nat := 0
 
 def programs : List Program := [
   { name := "gcd"
@@ -69,13 +73,20 @@ def programs : List Program := [
     module := TestSupport.Bare.shaCompiled.module
     code := genProgram TestSupport.Bare.shaCompiled.module 11 [0x636261] uart base room rwStart
       cap .array
-    bytes := LeanExe.Native.encodeArray (TestSupport.Bare.shaCheck 0x636261) }]
+    bytes := LeanExe.Native.encodeArray (TestSupport.Bare.shaCheck 0x636261) },
+  { name := "depth"
+    module := Verified.Examples.Fold.compiled.module
+    code := genProgram Verified.Examples.Fold.compiled.module 13 [1000] uart base room rwStart cap
+      .word
+    bytes := []
+    status := 1 }]
 
-/-- The UART's bytes, X0, and the number of steps when `main` returns to the address below the
-code, after at most `fuel` steps from `main` at `base + 4` with the area of module `m` at
-`rwStart`; or the reason that it did not. -/
+/-- The UART's bytes, X0, the number of steps, and whether the run reached the exit word, when
+`main` returns to the address below the code or the run reaches the exit word, after at most
+`fuel` steps from `main` at `base + 4` with the area of module `m` at `rwStart`; or the reason
+that it did neither. -/
 def run (m : Wasm.Module) (code : List Instr) (fuel : Nat) :
-    Except String (List UInt8 × UInt64 × Nat) := do
+    Except String (List UInt8 × UInt64 × Nat × Bool) := do
   let bytes := (imageBytes code).toArray
   let area := (areaBytes m cap).toArray
   let mainA := base + 4
@@ -90,8 +101,8 @@ def run (m : Wasm.Module) (code : List Instr) (fuel : Nat) :
       nFlag := false, zFlag := false, cFlag := false, vFlag := false, mem := image, out := [] }
   let fetch := fetchFrom image mainA code.length
   for k in [0:fuel] do
-    if s.pc = ret then return (s.out, s.x 0, k)
-    if s.pc = base then throw s!"the exit word with X0 {s.x 0} after {k} steps"
+    if s.pc = ret then return (s.out, s.x 0, k, false)
+    if s.pc = base then return (s.out, s.x 0, k, true)
     match step P fetch s with
     | some t => s := t
     | none => throw s!"the model stops at {s.pc} after {k} steps"
