@@ -42061,5 +42061,7 @@ The CRC-32 module declares 16 pages with a data segment of 2056 bytes at 4096, 4
 `LeanExe/A64/Proof/Memory.lean` proves the simulation of `globalGet`, `globalSet`, `memorySize`, `load64`, `store64`, and `memoryGrow`, and `instr_sim` dispatches them.  The generator emits the `SUB` of the offset at every offset, 0 included, so every access takes 6 instructions and its proof has one shape.  `run_bounds` proves the bounds check once for loads and stores, `write64_byte` relates the machine's `store64` to Talos's `write64` byte by byte, and `run_grow_head` and `run_grow_ok` split the run of `memoryGrow`, whose proof as one theorem exceeded the elaborator's default budget of heartbeats.  The axioms of `list_sim` and of the new simulations are `propext`, `Classical.choice`, and `Quot.sound`.
 
 - [x] `load64`, `store64`, `globalGet`, `globalSet`, `memorySize`, and `memoryGrow`, with stub 2.
-- [ ] The co-simulation of loads and stores with a base other than SP at unaligned addresses.
+The co-simulation already draws a load or a store with a base other than SP at any of the 57 offsets of its window of 64 bytes in `.data`, Normal memory like the area's, so most of those accesses are unaligned, and no new cases were needed.  `a64-cosim.sh 41 200` agrees with the model on all 5,600 cases under TCG and under KVM on processor 5 of edgexpert-18ff.  The KVM run holds 171 unaligned `LDR` cases and 168 unaligned `STR` cases with a base other than SP, against 23 aligned ones of each.
+
+- [x] The co-simulation of loads and stores with a base other than SP at unaligned addresses.
 - [ ] The CRC-32 program, its theorem, and its runs under QEMU.
