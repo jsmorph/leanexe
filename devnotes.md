@@ -42215,8 +42215,18 @@ In the IR, UDIV's function `execute_aarch64_instrs_integer_arithmetic_div`, whic
 
 The Lean semantics of stage 2 (`LeanExe/A64/Isla/Trace.lean`) reads the `(segments ...)` header, binds the opcode's fields to a theorem's operands, reads Isla's vector primitives as the events `readGprs` and `writeGprs`, applies the PC rule of `__InstructionExecute` at the end of each path, and stores bytes for `write-mem`, appending a byte stored at the UART to the output.  The readings of Isla beyond Islaris's semantics, with their sources, head the module.  `Agrees` in `Check.lean` requires that the header name the opcode's fields, that the opcode's word decode to the instruction, and that for every `σ` that agrees with a profile on the registers the trace reads, wherever `exec` succeeds, the trace's outcomes be exactly `exec`'s state with registers that differ from `σ` only at named ones.  `addReg` proves it for ADD (register) at every Rd, Rn, and Rm, register 31 included, from a trace of unpatched Isla (`tests/isla/dev/add.trace`) under a profile of two registers.  The module builds on minideb2 in 133 s with the standard axioms, and `addReg` takes about 50 s, about 0.07 s per event that the proof evaluates.
 
+An independent review of the semantics (`tmp/a64/isla-semantics-review.md`) verified the readings of the header, the vector primitives, the UART, and register writes outside the model against Isla's source, and the other events against Islaris's `opsem.v`.  It found one error: a mismatched `assume-reg` ends in `fail`, and the traces made with `-R REG=undefined` declare a variable and then assume the register equal to it, so `fail` is an outcome from every state and `Agrees` cannot hold for the branches and the memory forms.  Isla's reset assigns that value to the register, so the fix ends a mismatched `assume-reg` with no outcome, as a mismatched `read-reg` does.  The review also found these gaps:
+- the reader lacks `bvxor` and the unit primitive `sail_take_exception`;
+- `isla_footprint_common` swallows a decoder's SEE, UNDEFINED, or UNPREDICTABLE, so such a path looks complete;
+- the memory traces assume `_EDSCR` with PipeAdv clear, which `__InstructionExecute` sets before every decode;
+- the opcode's fixed bits are written by hand;
+- Lake does not track the files that `isla_trace%` reads (inferred).
+
+The agent proving ADD takes the fixes in the Lean files, building each theorem's opcode from a `FORM.opcode` file that `traces.sh` writes from the same string as `-i`.  An Isla agent corrects the configured values that the steps before the decode contradict, regenerates the affected traces, writes the opcode files, and tests, in a scratch copy of the IR, whether any traced path ends in a swallowed decoder exception.
+
 - [x] E: the patches and their validation.
 - [x] E: traces of every form in both profiles, except UDIV.
+- [ ] E: the review's fixes.
 - [x] E: UDIV's IR edit and traces.
 - [x] E: the extended semantics and ADD.
 - [ ] E: ADD on the committed traces under the full TCG and KVM profiles.
