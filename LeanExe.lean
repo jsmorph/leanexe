@@ -26,6 +26,7 @@ import LeanExe.A64.Proof.Program
 import LeanExe.A64.Proof.Relation
 import LeanExe.A64.Proof.Sim
 import LeanExe.A64.Proof.StartupCode
+import LeanExe.A64.Proof.StartupOff
 import LeanExe.A64.Proof.StartupTail
 import LeanExe.A64.Proof.Straight
 import LeanExe.A64.Proof.Table

@@ -21,6 +21,10 @@ theorem BootReach.trans {b c d : Boot} (h1 : BootReach h R code b c)
 theorem BootReach.single {b c : Boot} (hs : BootStep h R code b c) : BootReach h R code b c :=
   .next hs (.refl _)
 
+/-- `SysReg.ofCode` gives back every register from the 15 bits of its field. -/
+theorem SysReg.ofCode_code (r : SysReg) : SysReg.ofCode (r.code % 32768) = some r := by
+  cases r <;> rfl
+
 /-- The MMU is off in both copies of `SCTLR_EL1`. -/
 def Boot.mmuOff (b : Boot) : Prop := b.eff.sctlr &&& 1 = 0 ∧ b.written.sctlr &&& 1 = 0
 
