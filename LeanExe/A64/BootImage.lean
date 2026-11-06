@@ -26,7 +26,7 @@ def genImage (m : Module) (k : Nat) (args : List UInt64) (room : UInt64) (cap : 
   let pad1 := (L.vectors - image).toNat - 64 - code.length
   let pad2 := (L.area - L.table).toNat - 32
   let bytes := imageHeader L.size ++ code ++ List.replicate pad1 0 ++ vectorBytes ++
-    tableBytes ++ List.replicate pad2 0 ++ (List.range (areaPrefix m)).map (areaByte m.initialStore)
+    tableBytes ++ List.replicate pad2 0 ++ areaPrefixBytes m
   return (bytes, L)
 
 end LeanExe.A64

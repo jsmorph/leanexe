@@ -640,6 +640,29 @@ def dataEnd (m : Module) : Nat :=
 memory up to the end of its data segments, a multiple of 8.  Every later byte of the area is 0. -/
 def areaPrefix (m : Module) : Nat := roundUp (4096 + dataEnd m) 8
 
+/-- `acc` with the bytes of the data segment `seg` written from its offset, when the module's
+start writes them into memory 0 of `pages` pages, as `Module.initialStore` does. -/
+def segWrite (pages : Nat) (acc : List UInt8) (seg : DataSegment) : List UInt8 :=
+  match seg.offset with
+  | some off =>
+      if seg.memIdx = 0 && seg.offsetExpr.isEmpty then
+        if off.toNat + seg.bytes.length ≤ pages * 65536 then
+          acc.take off.toNat ++ seg.bytes ++ acc.drop (off.toNat + seg.bytes.length)
+        else acc
+      else acc
+  | none => acc
+
+/-- The first `n` bytes of the initial memory of `m`, for `n` at or past `dataEnd m`, computed by
+writing each data segment into a list of zeros. -/
+def memPrefix (m : Module) (n : Nat) : List UInt8 :=
+  match m.memory with
+  | some d => d.data.foldl (segWrite d.pagesMin.toNat) (List.replicate n 0)
+  | none => List.replicate n 0
+
+/-- The area's first `areaPrefix m` bytes: the size word and the globals, then the memory. -/
+def areaPrefixBytes (m : Module) : List UInt8 :=
+  (List.range 4096).map (areaByte m.initialStore) ++ memPrefix m (areaPrefix m - 4096)
+
 /-- The program that runs function `k` of `m` on `args`, placed after its exit word at `base`,
 with a stack of `room` bytes below `main`'s frame and the module's store in an area at `area` with
 a memory of `cap` pages: `main` at `base + 4`, the functions that calls reach from function `k`,

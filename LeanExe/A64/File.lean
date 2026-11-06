@@ -72,6 +72,27 @@ theorem of_file {g : Except String (List Instr)} {n len : Nat} (hk : fileOk g n 
       refine ⟨is, by rw [← hl, length_imageBytes], hthm is hg fun j hj => ?_⟩
       rw [h j (hl ▸ hj), ← hn, byteAt_natOfBytes]
 
+/-- The generator's result `g` holds bytes with the number `n` and the length `len`. -/
+def bytesOk {α : Type} (g : Except String (List UInt8 × α)) (n len : Nat) : Bool :=
+  match g with
+  | .ok (bytes, _) => natOfBytes bytes == n && bytes.length == len
+  | .error _ => false
+
+/-- When the kernel's check `hk` passes, the generator's bytes are the `len` bytes of the number
+`n`, byte by byte. -/
+theorem of_bytesOk {α : Type} {g : Except String (List UInt8 × α)} {n len : Nat}
+    (hk : bytesOk g n len = true) :
+    ∃ bytes x, g = .ok (bytes, x) ∧ bytes.length = len ∧
+      ∀ j (hj : j < bytes.length), byteAt n j = bytes[j] := by
+  cases hg : g with
+  | error e => rw [hg] at hk; cases hk
+  | ok r =>
+      obtain ⟨bytes, x⟩ := r
+      rw [hg] at hk
+      simp only [bytesOk, Bool.and_eq_true, beq_iff_eq] at hk
+      obtain ⟨hn, hl⟩ := hk
+      exact ⟨bytes, x, rfl, hl, fun j hj => by rw [← hn, byteAt_natOfBytes]⟩
+
 open Lean Elab Term in
 /-- `natOfBytes` of the bytes of the file at the path, read when the term elaborates. -/
 elab "file_nat% " path:str : term => do

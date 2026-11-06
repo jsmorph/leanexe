@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # The AArch64 back end's programs as arm64 Images that Lean writes whole (LeanExe/A64/Startup.lean),
 # under QEMU's virt machine.  a64-programs emit writes each program's Image, NAME.img, with the
-# bytes that the UART must show and the status with which the program must end.  For each Image the
-# script checks QEMU's loading of it with tests/baremetal/a64-loadcheck.sh, runs it with the
-# machine, CPU, and 1 GiB of RAM of tests/baremetal/qemu.sh within TIMEOUT seconds, 120 unless set,
-# and requires QEMU to exit with status 0, which PSCI SYSTEM_OFF gives, and the UART output to be
-# the expected bytes followed by one byte, the status: 0 after the result's bytes, or the code of a
-# trap with no byte before it.  ACCEL selects the accelerator, as qemu.sh describes.  The products
-# lie in OUT, build/baremetal/a64-images unless set.
+# bytes that the UART must show and the status with which the program must end.  Lean then
+# elaborates tests/TestSupport/A64/ImageFiles.lean in the directory of those files, so that the
+# kernel checks that each NAME.img holds the bytes that genImage gives, with no axiom beyond
+# propext, Classical.choice, and Quot.sound.  For each Image the script checks QEMU's loading of it
+# with tests/baremetal/a64-loadcheck.sh, runs it with the machine, CPU, and 1 GiB of RAM of
+# tests/baremetal/qemu.sh within TIMEOUT seconds, 120 unless set, and requires QEMU to exit with
+# status 0, which PSCI SYSTEM_OFF gives, and the UART output to be the expected bytes followed by
+# one byte, the status: 0 after the result's bytes, or the code of a trap with no byte before it.
+# ACCEL selects the accelerator, as qemu.sh describes.  The products lie in OUT,
+# build/baremetal/a64-images unless set.
 # Usage: tests/baremetal/a64-images.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -16,9 +19,18 @@ out=$(realpath -m "${OUT:-$root/build/baremetal/a64-images}")
 source tests/baremetal/qemu.sh
 rm -rf "${out:?}"
 mkdir -p "$out"
-tools/leanrun --timeout 60m lake --log-level error build a64-programs
+tools/leanrun --timeout 60m lake --log-level error build a64-programs LeanExe.A64.File
 status=0
 tools/leanrun --timeout 30m lake env .lake/build/bin/a64-programs emit "$out" || status=1
+if tools/leanrun --timeout 60m --memory-high 16G lake env sh -c 'cd "$1" && lean "$2"' sh "$out" \
+    "$root/tests/TestSupport/A64/ImageFiles.lean" >"$out/images.check" 2>&1 &&
+    [ "$(grep -c 'depends on axioms: \[propext, Classical.choice, Quot.sound\]$' \
+      "$out/images.check")" = 5 ]; then
+  echo "pass: the kernel's check of the Images"
+else
+  echo "fail: the kernel's check of the Images: $(head -c 600 "$out/images.check")"
+  status=1
+fi
 for img in "$out"/*.img; do
   name=$(basename "${img%.img}")
   if ! check=$(tests/baremetal/a64-loadcheck.sh "$img"); then
