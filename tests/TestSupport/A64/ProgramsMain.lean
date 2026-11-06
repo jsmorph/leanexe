@@ -1,58 +1,28 @@
 import TestSupport.A64.Programs
-import TestSupport.A64.Gcd
-import TestSupport.A64.Crc
-import TestSupport.A64.Sha
-import TestSupport.A64.Fold
 
 /-!
 The command `a64-programs emit DIR` of the AArch64 back end's bare-metal programs.  For each program
-it generates and places the code, runs it in the model, which must write the program's bytes and
-return status 0 or, for a program whose status is a trap's code, reach the exit word with that code
-and no bytes, and writes DIR/NAME.bin, the bytes of the instructions, DIR/NAME.area, the bytes of
-the area, DIR/NAME.s, the assembly that includes both and that `tests/baremetal/a64-programs.sh`
-links with the startup code, DIR/NAME.expected, the bytes that the UART must show, DIR/NAME.status,
-the status with which the program must end, and DIR/NAME.img, the arm64 Image of `genImage` at
-`imageBase`, which `tests/baremetal/a64-images.sh` runs.  DIR must be an absolute path, since the
-assembly names DIR/NAME.bin and DIR/NAME.area.  It prints one line for each program and exits with
-status 1 when a program fails.
+it writes DIR/NAME.img, the arm64 Image of `genImage` at `imageBase`, DIR/NAME.expected, the bytes
+that the UART must show before the status byte, and DIR/NAME.status, the status with which the
+program must end, which `tests/baremetal/a64-images.sh` reads.  It prints a line for each program
+whose image the generator rejects and then exits with status 1.
 -/
 
-open LeanExe.A64 TestSupport.A64
+open TestSupport.A64
 
 def main (args : List String) : IO UInt32 := do
   match args with
   | ["emit", dir] =>
       let mut status : UInt32 := 0
       for p in programs do
-        match p.code with
+        match p.image with
         | .error e =>
-            IO.println s!"fail: {p.name}: {e}"
+            IO.println s!"fail: {p.name}: the image: {e}"
             status := 1
-        | .ok code =>
-            match run p.module code 10000000 with
-            | .error e =>
-                IO.println s!"fail: {p.name}: in the model, {e}"
-                status := 1
-            | .ok (out, x0, steps, exited) =>
-                if out = p.bytes ∧ x0 = UInt64.ofNat p.status ∧ exited = (p.status ≠ 0) then
-                  IO.println (s!"model: {p.name}: {out.length} bytes and status {x0} after " ++
-                    s!"{steps} steps of {code.length} instructions")
-                else
-                  IO.println s!"fail: {p.name}: in the model, bytes {out} and status {x0}"
-                  status := 1
-                IO.FS.writeBinFile s!"{dir}/{p.name}.bin" (ByteArray.mk (imageBytes code).toArray)
-                IO.FS.writeBinFile s!"{dir}/{p.name}.area"
-                  (ByteArray.mk (areaBytes p.module cap).toArray)
-                IO.FS.writeFile s!"{dir}/{p.name}.s"
-                  (stub s!"{dir}/{p.name}.bin" s!"{dir}/{p.name}.area")
-                IO.FS.writeBinFile s!"{dir}/{p.name}.expected" (ByteArray.mk p.bytes.toArray)
-                IO.FS.writeFile s!"{dir}/{p.name}.status" s!"{p.status}\n"
-                match p.image with
-                | .error e =>
-                    IO.println s!"fail: {p.name}: the image: {e}"
-                    status := 1
-                | .ok (img, _) =>
-                    IO.FS.writeBinFile s!"{dir}/{p.name}.img" (ByteArray.mk img.toArray)
+        | .ok (img, _) =>
+            IO.FS.writeBinFile s!"{dir}/{p.name}.img" (ByteArray.mk img.toArray)
+            IO.FS.writeBinFile s!"{dir}/{p.name}.expected" (ByteArray.mk p.bytes.toArray)
+            IO.FS.writeFile s!"{dir}/{p.name}.status" s!"{p.status}\n"
       return status
   | _ =>
       IO.eprintln "usage: a64-programs emit DIR"

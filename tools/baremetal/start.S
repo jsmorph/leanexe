@@ -17,9 +17,8 @@
    adds a store to _start, and defining DATA_EXEC_TEST adds a call of lx_boot_el in .bss.  The
    first two reproduce results of the design's experiments.  Defining DEFAULT_NAN sets FPCR.DN, so
    that a floating-point operation whose result is a NaN gives the default NaN, the canonical NaN
-   of Talos's semantics, for the images of the AArch64 back end and its co-simulation.  The C
-   path's images leave FPCR at its reset value, whose NaN propagation CompCert's semantics
-   assumes.
+   of Talos's semantics, for the co-simulation of the AArch64 back end.  The C path's images leave
+   FPCR at its reset value, whose NaN propagation CompCert's semantics assumes.
 
    The translation tables map RAM, from __ram_start to __ram_end, as Normal Inner and Outer
    Write-Back memory, Inner Shareable: the blocks of 2 MiB below __rw_start, which hold the code

@@ -2,44 +2,21 @@ import TestSupport.Native.Gcd
 import TestSupport.Bare.Programs
 import Verified.Examples.Fold
 import LeanExe.Native.Bare
-import LeanExe.A64.Gen
-import LeanExe.A64.Image
 import LeanExe.A64.BootImage
 
 /-!
 The bare-metal programs of the AArch64 back end, the counterparts of the programs of
 `tests/baremetal/programs.sh` that it covers so far: GCD's loop and GCD's recursion on 1071 and 462,
 CRC-32 of the 9 bytes of `123456789`, SHA-256 of the 3 bytes of `abc`, whose result is an array, and
-Fold's recursion of depth 1000.  The program's exit word lies at `base`, where
-`tools/baremetal/link.ld` places the section `.text.a64`, and the generated code follows it from
-`lx_code`.  The area of the module's store lies at `rwStart`, where the link script places the
-section `.data.a64`.  For each program `run` places the bytes of the instructions, `imageBytes`, in
-a memory from `lx_code` and the bytes of the area, `areaBytes`, from `rwStart`, runs the model from
-`lx_code` with the code map `fetchFrom` of that memory, X17 at `rwStart`, the stack pointer at
-`stackTop`, and a return address outside the code, and reports the UART's bytes, the status in X0,
-and the number of steps when the code returns.  `stub` writes the assembly of the two sections and
-of `main`: the exit word as a branch to `lx_exit` for the linker, then `lx_code`, whose words are
-the bytes of a file that the assembler includes, the area, whose bytes are those of another such
-file, and `main`, which the startup code calls, which sets X17 to `lx_area` with `ADRP` and `ADD`
-and branches to `lx_code`.  `main` lies outside the theorems, as the startup code does.
+Fold's recursion of depth 1000.  Each program's arm64 Image is `genImage` of the program at
+`imageBase`, with the stack's room `room` and the memory's cap `cap`.
 -/
 
 namespace TestSupport.A64
 
 open LeanExe.A64
 
-/-- The address of the UART's data register on QEMU's `virt` machine (`tools/baremetal/link.ld`). -/
-def uart : UInt64 := 0x09000000
-
-/-- The address of the exit word, the start of RAM's writable part in `tools/baremetal/link.ld`
-for a program whose code and read-only data take less than 1 MiB, and the top of `run`'s
-stack. -/
-def base : UInt64 := 0x40100000
-def rwStart : UInt64 := 0x40200000
-def stackTop : UInt64 := 0x40800000
-
-/-- The bytes of the stack below `main`'s frame from which `main` sets the stack's limit: half of
-the stack of 1 MiB that `tools/baremetal/build.sh` gives a program by default. -/
+/-- The bytes of the stack below `main`'s frame from which `main` sets the stack's limit. -/
 def room : UInt64 := 0x80000
 
 /-- The cap of every program's memory in pages: the 16 pages that the modules of
@@ -62,10 +39,6 @@ structure Program where
   bytes : List UInt8
   status : Nat := 0
 
-/-- The program's instructions for the exit word at `base`. -/
-def Program.code (p : Program) : Except String (List Instr) :=
-  genProgram p.module p.entry p.args uart base room cap p.output
-
 /-- The program's image at `imageBase`: its bytes and its layout. -/
 def Program.image (p : Program) : Except String (List UInt8 × Layout) :=
   genImage p.module p.entry p.args room cap p.output imageBase
@@ -85,45 +58,5 @@ def programs : List Program := [
     bytes := LeanExe.Native.encodeArray (TestSupport.Bare.shaCheck 0x636261) },
   { name := "depth", module := Verified.Examples.Fold.compiled.module, entry := 13
     args := [1000], output := .word, bytes := [], status := 1 }]
-
-/-- The UART's bytes, X0, the number of steps, and whether the run reached the exit word, when
-`main` returns to the address below the code or the run reaches the exit word, after at most
-`fuel` steps from `main` at `base + 4` with the area of module `m` at `rwStart`; or the reason
-that it did neither. -/
-def run (m : Wasm.Module) (code : List Instr) (fuel : Nat) :
-    Except String (List UInt8 × UInt64 × Nat × Bool) := do
-  let bytes := (imageBytes code).toArray
-  let area := (areaBytes m cap).toArray
-  let mainA := base + 4
-  let image (a : UInt64) : UInt8 :=
-    if rwStart ≤ a then area.getD (a - rwStart).toNat 0
-    else if mainA ≤ a then bytes.getD (a - mainA).toNat 0 else 0
-  let P : Platform :=
-    { normal := fun a => rwStart ≤ a ∧ a < 0x80000000, uart := uart }
-  let ret := base - 8
-  let mut s : State :=
-    { regs := fun r => if r.val = 30 then ret else if r.val = 17 then rwStart else 0,
-      sp := stackTop, pc := mainA,
-      nFlag := false, zFlag := false, cFlag := false, vFlag := false, mem := image, out := [] }
-  let fetch := fetchFrom image mainA code.length
-  for k in [0:fuel] do
-    if s.pc = ret then return (s.out, s.x 0, k, false)
-    if s.pc = base then return (s.out, s.x 0, k, true)
-    match step P fetch s with
-    | some t => s := t
-    | none => throw s!"the model stops at {s.pc} after {k} steps"
-  throw s!"no return within {fuel} steps"
-
-/-- The assembly of the section `.text.a64`, the exit word, a branch to `lx_exit`, then
-`lx_code`, whose words are the bytes of the file `bin`, of `main` in `.text`, which sets X17 to
-`lx_area` and branches to `lx_code`, and of the section `.data.a64`, the area `lx_area`, whose
-bytes are those of the file `area`. -/
-def stub (bin area : String) : String :=
-  "  .section .text.a64, \"ax\"\n  .balign 4\n  b lx_exit\n  .global lx_code\nlx_code:\n" ++
-    s!"  .incbin \"{bin}\"\n" ++
-    "  .text\n  .global main\nmain:\n  adrp x17, lx_area\n  add x17, x17, :lo12:lx_area\n" ++
-    "  b lx_code\n" ++
-    "  .section .data.a64, \"aw\"\n  .global lx_area\nlx_area:\n" ++
-    s!"  .incbin \"{area}\"\n"
 
 end TestSupport.A64

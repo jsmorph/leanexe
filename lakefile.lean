@@ -45,8 +45,8 @@ lean_exe «a64-cosim» where
   srcDir := "tests"
   root := `TestSupport.A64.CosimMain
 
--- The bare-metal programs of the AArch64 back end (tests/baremetal/a64-programs.sh); not a
--- default target.
+-- The arm64 Images of the AArch64 back end's bare-metal programs (tests/baremetal/a64-images.sh);
+-- not a default target.
 lean_exe «a64-programs» where
   srcDir := "tests"
   root := `TestSupport.A64.ProgramsMain
