@@ -72,7 +72,7 @@ theorem gen_image {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {c
         room cap o = .ok prog ∧
       L = layoutOf image prog.length m cap room ∧
       0x40000000 ≤ image.toNat ∧ image.toNat + L.size ≤ 0x80000000 ∧
-      startupCode L = .ok start ∧
+      areaPrefix m ≤ areaSize cap ∧ startupCode L = .ok start ∧
       bytes = imageHeader L.size ++ imageBytes (start ++ prog) ++
         List.replicate ((L.vectors - image).toNat - 64 - (imageBytes (start ++ prog)).length) 0 ++
         vectorBytes ++ tableBytes ++ List.replicate ((L.area - L.table).toNat - 32) 0 ++
@@ -84,7 +84,8 @@ theorem gen_image {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {c
   | ok prog => ?_
   rw [hp] at hg
   by_cases hr : 0x40000000 ≤ image.toNat ∧
-      image.toNat + (layoutOf image prog.length m cap room).size ≤ 0x80000000
+      image.toNat + (layoutOf image prog.length m cap room).size ≤ 0x80000000 ∧
+      areaPrefix m ≤ areaSize cap
   · simp only [bind, Except.bind, hr] at hg
     cases hs : startupCode (layoutOf image prog.length m cap room) with
     | error e => rw [hs] at hg; cases hg
@@ -94,7 +95,7 @@ theorem gen_image {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {c
         injection hg with hg1
         injection hg1 with hb hL
         subst hL
-        exact ⟨prog, start, rfl, rfl, hr.1, hr.2, hs, hb.symm⟩
+        exact ⟨prog, start, rfl, rfl, hr.1, hr.2.1, hr.2.2, hs, hb.symm⟩
   · simp only [bind, Except.bind, hr, ↓reduceIte, throw, throwThe, MonadExceptOf.throw] at hg
     cases hg
 
@@ -233,13 +234,13 @@ theorem image_loaded {m : Module} {k : Nat} {args : List UInt64} {room : UInt64}
         .ok prog ∧
       L = layoutOf image prog.length m cap room ∧
       0x40000000 ≤ image.toNat ∧ image.toNat + L.size ≤ 0x80000000 ∧
-      startupCode L = .ok start ∧
+      areaPrefix m ≤ areaSize cap ∧ startupCode L = .ok start ∧
       CodeAt (fetchFrom mem image (codeWords prog.length)) image [.spsel1, .b 15] ∧
       CodeAt (fetchFrom mem image (codeWords prog.length)) (after image 16) (start ++ prog) ∧
       (∀ j (hj : j < 32), mem (L.table + UInt64.ofNat j) = tableBytes[j]) ∧
       (∀ j < areaPrefix m, mem (L.area + UInt64.ofNat j) = areaByte m.initialStore j) := by
   obtain ⟨bytes, L, hg, hl, hb⟩ := of_bytesOk hk
-  obtain ⟨prog, start, hp, hL, hlo, hhi, hs, hbytes⟩ := gen_image hg
+  obtain ⟨prog, start, hp, hL, hlo, hhi, hpre, hs, hbytes⟩ := gen_image hg
   obtain ⟨hlen, hhd, hcode, htab, harea⟩ := image_parts hL hs hhi hbytes
   rw [← hl] at hm
   have hm' := fun j (v : UInt8) (h : bytes[j]? = some v) => mem_at hm hb h
@@ -255,7 +256,7 @@ theorem image_loaded {m : Module} {k : Nat} {args : List UInt64} {room : UInt64}
     rw [tabOff_dvd]
     unfold tabOff at *
     omega
-  refine ⟨_, prog, start, hp, rfl, hlo, hhi, hs, ?_, ?_, fun j hj => ?_, fun j hj => ?_⟩
+  refine ⟨_, prog, start, hp, rfl, hlo, hhi, hpre, hs, ?_, ?_, fun j hj => ?_, fun j hj => ?_⟩
   · have := codeAt_fetchFrom_at (m := mem) (a := image) (o := 0) (is := [.spsel1, .b 15]) hN
       (by unfold codeWords tabOff at *; simp; omega) fun j hj => by
         rw [Nat.mul_zero, Nat.zero_add]

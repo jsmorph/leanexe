@@ -13,13 +13,15 @@ open Wasm
 
 /-- The image of the program that runs function `k` of `m` on `args` and writes its result as
 `o`, at `image`, with an area of `cap` pages and a stack of `room` bytes: its bytes and its
-layout.  The image must end within the GiB of RAM from `0x40000000`. -/
+layout.  The image must end within the GiB of RAM from `0x40000000`, and the area's prefix must
+fit in the area. -/
 def genImage (m : Module) (k : Nat) (args : List UInt64) (room : UInt64) (cap : Nat)
     (o : Output) (image : UInt64) : GenM (List UInt8 × Layout) := do
   let prog ← genProgram m k args uartAddr (image + UInt64.ofNat (64 + 4 * startupLength)) room cap o
   let L := layoutOf image prog.length m cap room
-  unless 0x40000000 ≤ image.toNat ∧ image.toNat + L.size ≤ 0x80000000 do
-    throw s!"an image of {L.size} bytes at {image} outside the GiB of RAM"
+  unless 0x40000000 ≤ image.toNat ∧ image.toNat + L.size ≤ 0x80000000 ∧
+      areaPrefix m ≤ areaSize cap do
+    throw s!"an image of {L.size} bytes at {image} outside the GiB of RAM, or data past its area"
   let start ← startupCode L
   let code := imageBytes (start ++ prog)
   let pad1 := (L.vectors - image).toNat - 64 - code.length
