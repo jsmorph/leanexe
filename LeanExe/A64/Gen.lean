@@ -623,6 +623,26 @@ def areaByte (st : Store Unit) (j : Nat) : UInt8 :=
 def areaBytes (m : Module) (cap : Nat) : List UInt8 :=
   (List.range (areaSize cap)).map (areaByte m.initialStore)
 
+/-- `n` rounded up to a multiple of `a`. -/
+def roundUp (n a : Nat) : Nat := (n + a - 1) / a * a
+
+/-- The larger of `acc` and the end of the data segment `seg`, if it has an offset. -/
+def segEnd (acc : Nat) (seg : DataSegment) : Nat :=
+  match seg.offset with
+  | some off => max acc (off.toNat + seg.bytes.length)
+  | none => acc
+
+/-- The end of the data segments of `m`'s memory: the largest offset plus length of a segment
+with an offset, or 0. -/
+def dataEnd (m : Module) : Nat :=
+  match m.memory with
+  | some d => d.data.foldl segEnd 0
+  | none => 0
+
+/-- The number of the area's bytes that an image holds: the size word, the globals, and the
+memory up to the end of its data segments, a multiple of 8.  Every later byte of the area is 0. -/
+def areaPrefix (m : Module) : Nat := roundUp (4096 + dataEnd m) 8
+
 /-- The program that runs function `k` of `m` on `args`, placed after its exit word at `base`,
 with a stack of `room` bytes below `main`'s frame and the module's store in an area at `area` with
 a memory of `cap` pages: `main` at `base + 4`, the functions that calls reach from function `k`,
