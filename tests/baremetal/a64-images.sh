@@ -3,8 +3,9 @@
 # under QEMU's virt machine.  a64-programs emit writes each program's Image, NAME.img, with the
 # bytes that the UART must show and the status with which the program must end.  Lean then
 # elaborates tests/TestSupport/A64/ImageFiles.lean in the directory of those files, so that the
-# kernel checks that each NAME.img holds the bytes that genImage gives, with no axiom beyond
-# propext, Classical.choice, and Quot.sound.  For each Image the script checks QEMU's loading of it
+# kernel checks that each NAME.img holds the bytes that genImage gives and proves, for a boot state
+# whose memory holds the file at imageBase, the run to PSCI SYSTEM_OFF with the program's output,
+# with no axiom beyond propext, Classical.choice, and Quot.sound.  For each Image the script checks QEMU's loading of it
 # with tests/baremetal/a64-loadcheck.sh, runs it with the machine, CPU, and 1 GiB of RAM of
 # tests/baremetal/qemu.sh within TIMEOUT seconds, 120 unless set, and requires QEMU to exit with
 # status 0, which PSCI SYSTEM_OFF gives, and the UART output to be the expected bytes followed by
@@ -19,7 +20,9 @@ out=$(realpath -m "${OUT:-$root/build/baremetal/a64-images}")
 source tests/baremetal/qemu.sh
 rm -rf "${out:?}"
 mkdir -p "$out"
-tools/leanrun --timeout 60m lake --log-level error build a64-programs LeanExe.A64.File
+tools/leanrun --timeout 60m lake --log-level error build a64-programs TestSupport.A64.Gcd \
+  TestSupport.A64.Crc TestSupport.A64.Sha TestSupport.A64.Fold LeanExe.A64.File \
+  LeanExe.A64.Proof.ImageTheorem
 status=0
 tools/leanrun --timeout 30m lake env .lake/build/bin/a64-programs emit "$out" || status=1
 if tools/leanrun --timeout 60m --memory-high 16G lake env sh -c 'cd "$1" && lean "$2"' sh "$out" \
