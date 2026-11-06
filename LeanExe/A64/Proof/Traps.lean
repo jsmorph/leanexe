@@ -79,15 +79,17 @@ theorem cbField_target {here target : UInt64} {f : Fin 524288}
 theorem res_outcome {E : Env} {ctl : List Ctl} {endA : UInt64} {α : Type} {st : Store α}
     {sl : Locals} {ms ms' : State} {vs : List Value} {v : Value} {w : UInt64}
     {σ0 σr : List ValueType} {t : ValueType} (hv : ValRel v w) (ht : HasType t v)
-    (hty : Typed σr vs) (hinv : Inv P E.localTypes σ0 sl ms) (hb : curBase ctl ≤ vs.length)
+    (hty : Typed σr vs) (hinv : Inv P E.localTypes σ0 sl ms)
+    (hsr : StoreRel P E.cap E.globalTypes st ms) (hb : curBase ctl ≤ vs.length)
     (hlt : vs.length < 26) (hstack : StackRel ms vs) (hr : Reach P code ms ms')
     (hpc : ms'.pc = endA) (hx : ms'.x (regOf vs.length) = w)
     (hkeep : ∀ k < vs.length, ms'.x (regOf k) = ms.x (regOf k)) (h18 : ms'.x 18 = ms.x 18)
-    (hsp : ms'.sp = ms.sp) (hmem : ms'.mem = ms.mem) (hout : ms'.out = ms.out) :
+    (h17 : ms'.x 17 = ms.x 17) (hsp : ms'.sp = ms.sp) (hmem : ms'.mem = ms.mem)
+    (hout : ms'.out = ms.out) :
     Outcome P code E ctl (some (t :: σr)) endA
       (.Fallthrough st { sl with values := v :: vs }) ms := by
   refine .inr ⟨_, rfl, ms', hr, hpc, hsp, hout, h18, fun b _ => by rw [hmem], ?_,
-    fun j hj => hkeep j (by omega)⟩
+    fun j hj => hkeep j (by omega), hsr.regs h17 h18 hmem⟩
   exact ⟨StackRel.push hstack hlt (by rw [hx]; exact hv) hkeep, hinv.locals.congr hmem hsp,
     hinv.count, hinv.frame.congr hsp h18, Typed.cons ht hty, hinv.ltypes⟩
 
@@ -117,7 +119,7 @@ theorem gen_unreachable {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UI
       exact ⟨f, rfl, hg.1.symm, hg.2.symm⟩
 
 theorem sim_unreachable (F : Nat) : InstrSim P code F .unreachable := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
   obtain ⟨f, hf, rfl, rfl⟩ := gen_unreachable hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome, or_true]
@@ -193,7 +195,7 @@ theorem sim_divrem_of {F : Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 �
           else .Fallthrough st { sl with values := .i64 (op a b) :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
   obtain ⟨hhb, hlt, f, hf, rfl, rfl⟩ := gen_divrem hinst hgen
   have hh := hinv.len
   have hty := hinv.types
@@ -229,9 +231,10 @@ theorem sim_divrem_of {F : Nat} {inst : Instruction} {rest : Fin 32 → Fin 32 �
               (regOf_ne_scratch _ hlt) hne hrest (by simp [hpc, after])
           apply res_outcome P code (vs := vs) (v := .i64 (op a' b)) (w := op a' b) (t := .i64) rfl
             trivial
-            (hty.drop 2) hinv (by omega) (by omega)
+            (hty.drop 2) hinv hsr (by omega) (by omega)
             hst.pop.pop (hstep.trans hr) _ _ _
-            (hkeep 18 (Ne.symm (regOf_ne_18 _ (by omega))) (by decide)) hsp hmem hout
+            (hkeep 18 (Ne.symm (regOf_ne_18 _ (by omega))) (by decide))
+            (hkeep 17 (Ne.symm (regOf_ne_17 _ (by omega))) (by decide)) hsp hmem hout
           · rw [hp, after_after, List.length_cons, Nat.add_comm]
           · rw [hvl, hres]; simp [hx, hy]
           · intro j hj

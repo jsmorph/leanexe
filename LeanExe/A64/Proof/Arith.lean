@@ -119,7 +119,7 @@ theorem sim_cmp_of {F : Nat} {inst : Instruction} {c : Fin 16}
           .Fallthrough st { sl with values := .i32 (if R wa wb then 1 else 0) :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc _
   rw [hgen] at hg
   obtain ⟨hhb, hlt, rfl, rfl⟩ := genCmp_ok hg
   have hh := hinv.len
@@ -144,7 +144,8 @@ theorem sim_cmp_of {F : Nat} {inst : Instruction} {c : Fin 16}
           run_csetc P code (x := ms.x (regOf (h - 2))) (y := ms.x (regOf (h - 1)))
             (regOf_lt_31 (h - 2) (by omega)) (by simpa [after_zero] using hcode 0 (by simp))
             (by simpa using hcode 1 (by simp)) hpc rfl
-        apply cmp_outcome P code _ hinv (vs := vs) (hty.drop 2) (by omega) (by omega) hst.pop.pop
+        apply cmp_outcome P code _ hinv hsr (vs := vs) (hty.drop 2) (by omega) (by omega)
+          hst.pop.pop
           hr hp _ _ hsp hmem hout
         · rw [hvl, hres]
           exact hR ms _ _
@@ -182,7 +183,7 @@ theorem sim_bin_of {F : Nat} {inst : Instruction} {op : Fin 32 → Fin 32 → Fi
           execOne (f + 1) m st sl inst = .Fallthrough st { sl with values := vr :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc _
   rw [hgen] at hg
   obtain ⟨hhb, hlt, rfl, rfl⟩ := genBin_ok hg
   have hh := hinv.len
@@ -209,7 +210,7 @@ theorem sim_bin_of {F : Nat} {inst : Instruction} {op : Fin 32 → Fin 32 → Fi
           rw [hpc]; simpa [after_zero] using hcode 0 (by simp)
         have hr := reach_exec P code hc0 (hexec ms _ _ _) (.refl _)
         have hd := regOf_lt_31 (h - 2) (by omega)
-        apply res_outcome P code hvr (vs := vs) htr (hty.drop 2) hinv (by omega) (by omega)
+        apply res_outcome P code hvr (vs := vs) htr (hty.drop 2) hinv hsr (by omega) (by omega)
           hst.pop.pop hr
         · show ms.pc + 4 = _
           rw [hpc]; simp [after]
@@ -218,6 +219,7 @@ theorem sim_bin_of {F : Nat} {inst : Instruction} {op : Fin 32 → Fin 32 → Fi
           rw [State.x_withPc, State.x_setX_ne (fun e => absurd
             (regOf_inj (h - 2) (by omega) k (by omega) e) (by omega))]
         · rw [State.x_withPc, State.x_setX_ne (regOf_ne_18 _ (by omega))]
+        · rw [State.x_withPc, State.x_setX_ne (regOf_ne_17 _ (by omega))]
         · exact State.setX_sp
         · exact State.setX_mem
         · exact State.setX_out
@@ -401,7 +403,7 @@ theorem wrap_val (x : UInt64) :
   rw [UInt64.zero_or, UInt64.toNat_toUInt32, UInt32.toNat_ofNat', Nat.mod_mod]
 
 theorem sim_wrapI64 (F : Nat) : InstrSim P code F .wrapI64 := by
-  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hg hcode hb hctl α m st sl ms hinv hsr h64 hpc _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_wrap hg
   have hh := hinv.len
   have hty := hinv.types
@@ -424,7 +426,7 @@ theorem sim_wrapI64 (F : Nat) : InstrSim P code F .wrapI64 := by
         have hd := regOf_lt_31 (h - 1) hlt
         apply res_outcome P code (v := .i32 (UInt32.ofNat (x.toNat % 2 ^ 32)))
           (w := (UInt32.ofNat (x.toNat % 2 ^ 32)).toUInt64) rfl
-          (vs := vs) (t := .i32) trivial hty.tail hinv (by omega) (by omega) hst.pop hr
+          (vs := vs) (t := .i32) trivial hty.tail hinv hsr (by omega) (by omega) hst.pop hr
         · show ms.pc + 4 = _
           rw [hpc]; simp [after]
         · rw [State.x_withPc, hvl, State.x_setX_same hd]
@@ -434,6 +436,7 @@ theorem sim_wrapI64 (F : Nat) : InstrSim P code F .wrapI64 := by
           rw [State.x_withPc, State.x_setX_ne (fun e => absurd
             (regOf_inj (h - 1) hlt k (by omega) e) (by omega))]
         · rw [State.x_withPc, State.x_setX_ne (regOf_ne_18 _ hlt)]
+        · rw [State.x_withPc, State.x_setX_ne (regOf_ne_17 _ hlt)]
         · exact State.setX_sp
         · exact State.setX_mem
         · exact State.setX_out

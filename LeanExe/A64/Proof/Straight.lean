@@ -33,6 +33,14 @@ theorem toNat_slot (sp : UInt64) (i : Nat) :
   rw [this]
   omega
 
+/-- The bytes of slot `i` of a frame at `sp` below `2 ^ 63` lie at or above the end of its first
+`m ≤ i` slots. -/
+theorem le_slot {sp : UInt64} {i k m : Nat} (hk : k < 8) (hsp : sp.toNat < 2 ^ 63) (hi : i < 512)
+    (hm : m ≤ i) : sp.toNat + 8 * m ≤ (slotAddr sp i + UInt64.ofNat k).toNat := by
+  rw [UInt64.toNat_add, toNat_slot, UInt64.toNat_ofNat']
+  simp only [Nat.reducePow] at *
+  omega
+
 /-- Two distinct slots of a frame of fewer than 512 lie at least 8 bytes apart. -/
 theorem slot_apart {sp : UInt64} {i j : Nat} (hi : i < 512) (hj : j < 512) (hne : i ≠ j) :
     ∀ k < 8, ¬ slotAddr sp j + UInt64.ofNat k - slotAddr sp i < 8 := by
@@ -56,6 +64,19 @@ theorem slot_inside {sp a : UInt64} {i n : Nat} (hi : i < n) (hn : n < 512)
   rw [this] at hc
   have := sp.toNat_lt
   have := a.toNat_lt
+  omega
+
+/-! ## The area -/
+
+/-- A byte below the stack's limit lies outside every slot of a frame at or above the limit. -/
+theorem below_slot {a sp lim : UInt64} {i : Nat} (hl : lim.toNat ≤ sp.toNat)
+    (hsp : sp.toNat < 2 ^ 63) (hi : i < 512) (ha : a.toNat < lim.toNat) :
+    ¬ a - slotAddr sp i < 8 := by
+  rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_sub, toNat_slot]
+  have : (8 : UInt64).toNat = 8 := rfl
+  rw [this]
+  have := a.toNat_lt
+  simp only [Nat.reducePow] at *
   omega
 
 /-! ## The operand stack -/
@@ -152,7 +173,7 @@ theorem sim_localStore {F i : Nat} {inst : Instruction} (tee : Bool)
       s'.values = sl.values → execOne (f + 1) m st sl inst =
         .Fallthrough st { s' with values := if tee then v :: vs else vs }) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
   obtain ⟨hs, hi, hhb, hlt, hhead, rfl, rfl⟩ := gen_localStore (i := i)
     (σ' := if tee then σ else σ.tail) (by cases tee <;> simp [hinst]) hgen
   have hh := hinv.len
@@ -182,7 +203,7 @@ theorem sim_localStore {F i : Nat} {inst : Instruction} (tee : Bool)
         rw [← hhead]; exact hty.1
       refine .inr ⟨_, rfl, _,
         reach_exec P code hc (exec_str_slot P hinv hi hs _) (.refl _), ?_, rfl, rfl, rfl, ?_, ?_,
-        fun k _ => rfl⟩
+        fun k _ => rfl, hsr.congr rfl rfl fun b hb => ?_⟩
       · simp [hpc, after]
       · intro b hb'
         have hin := slot_inside hi hinv.bound (hinv.frame.outside (by omega) hb')
@@ -204,6 +225,10 @@ theorem sim_localStore {F i : Nat} {inst : Instruction} (tee : Bool)
         · show Typed E.localTypes (s'.params ++ s'.locals)
           rw [hpl]
           exact hinv.ltypes.set hi htv
+      · have hin := below_slot (i := i) hinv.frame.limit.2.1 hinv.frame.limit.2.2
+          (by have := hinv.bound; omega) hb
+        rw [slotAddr, ← ofNat_mul8] at hin
+        exact store64_other _ _ _ _ hin
 
 theorem sim_localSet (F i : Nat) : InstrSim P code F (.localSet i) :=
   sim_localStore P code false rfl fun f α m st sl v vs s' hvs hs' _ => by
@@ -319,7 +344,7 @@ theorem sim_const_of {F : Nat} {inst : Instruction} {w : UInt64} {v : Value} {t 
     (hexec : ∀ f {α : Type} (m : Module) (st : Store α) (sl : Locals),
       execOne (f + 1) m st sl inst = .Fallthrough st { sl with values := v :: sl.values }) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
   obtain ⟨hlt, rfl, rfl⟩ := gen_const hinst hgen
   have hh := hinv.len
   cases F with
@@ -331,7 +356,8 @@ theorem sim_const_of {F : Nat} {inst : Instruction} {w : UInt64} {v : Value} {t 
       obtain ⟨s', hr, hp, hx, hkeep, hsp, hmem, hout⟩ :=
         run_movImm P code (regOf_lt_31 _ hlt) hcode hpc
       have h18 := hkeep 18 (Ne.symm (regOf_ne_18 _ hlt))
-      refine .inr ⟨_, rfl, s', hr, by simpa [movImm] using hp, hsp, hout, h18, ?_, ?_, ?_⟩
+      refine .inr ⟨_, rfl, s', hr, by simpa [movImm] using hp, hsp, hout, h18, ?_, ?_, ?_,
+        hsr.regs (hkeep 17 (Ne.symm (regOf_ne_17 _ hlt))) h18 hmem⟩
       · intro b _; rw [hmem]
       · refine ⟨StackRel.push hinv.stack (by omega) ?_ ?_, hinv.locals.congr hmem hsp,
           hinv.count, hinv.frame.congr hsp h18, Typed.cons ht hinv.types, hinv.ltypes⟩
@@ -454,7 +480,8 @@ theorem gen_eqz {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64} {i
 zero-extended, in the register of height `vs.length`. -/
 theorem cmp_outcome {E : Env} {ctl : List Ctl} {a : UInt64} {α : Type} {st : Store α}
     {sl : Locals} {ms ms' : State} {vs : List Value} {σ0 σr : List ValueType} (c : UInt32)
-    (hinv : Inv P E.localTypes σ0 sl ms) (hty : Typed σr vs) (hb : curBase ctl ≤ vs.length)
+    (hinv : Inv P E.localTypes σ0 sl ms) (hsr : StoreRel P E.cap E.globalTypes st ms)
+    (hty : Typed σr vs) (hb : curBase ctl ≤ vs.length)
     (hlt : vs.length < 26) (hstack : StackRel ms vs) (hr : Reach P code ms ms')
     (hpc : ms'.pc = after a 2) (hx : ms'.x (regOf vs.length) = c.toUInt64)
     (hkeep : ∀ q, q ≠ regOf vs.length → ms'.x q = ms.x q) (hsp : ms'.sp = ms.sp)
@@ -465,7 +492,7 @@ theorem cmp_outcome {E : Env} {ctl : List Ctl} {a : UInt64} {α : Type} {st : St
     hkeep _ (fun e => absurd (regOf_inj j (by omega) vs.length hlt e) (by omega))
   have h18 := hkeep 18 (Ne.symm (regOf_ne_18 _ hlt))
   refine .inr ⟨_, rfl, ms', hr, hpc, hsp, hout, h18, fun b _ => by rw [hmem], ?_,
-    fun j hj => hk j (by omega)⟩
+    fun j hj => hk j (by omega), hsr.regs (hkeep 17 (Ne.symm (regOf_ne_17 _ hlt))) h18 hmem⟩
   exact ⟨StackRel.push hstack hlt (by rw [hx]; rfl) hk, hinv.locals.congr hmem hsp, hinv.count,
     hinv.frame.congr hsp h18, Typed.cons trivial hty, hinv.ltypes⟩
 
@@ -476,7 +503,7 @@ theorem cset_val (x y : UInt64) (c : Prop) [Decidable c] (hc : x = y ↔ c) :
   · rw [ite_eq_right (fun e => h (hc.mp e)), ite_eq_right h]; rfl
 
 theorem sim_eqI64 (F : Nat) : InstrSim P code F .eqI64 := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_cmp (.inl rfl) hgen
   have hh := hinv.len
   have hty := hinv.types
@@ -500,14 +527,14 @@ theorem sim_eqI64 (F : Nat) : InstrSim P code F .eqI64 := by
           run_cset P code (regOf_lt_31 (h - 2) (by omega))
             (by simpa [after_zero] using hcode 0 (by simp))
             (by simpa using hcode 1 (by simp)) hpc rfl
-        apply cmp_outcome P code _ hinv (vs := vs) (hty.drop 2) (by omega) (by omega)
+        apply cmp_outcome P code _ hinv hsr (vs := vs) (hty.drop 2) (by omega) (by omega)
           hst.pop.pop hr hp _ _ hsp hmem hout
         · rw [hvl, hres, hx, hy]; exact cset_val x y (x = y) Iff.rfl
         · rw [hvl]; exact hkeep
       next => exact .inr trivial
 
 theorem sim_eq (F : Nat) : InstrSim P code F .eq := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_cmp (.inr rfl) hgen
   have hh := hinv.len
   have hty := hinv.types
@@ -531,7 +558,7 @@ theorem sim_eq (F : Nat) : InstrSim P code F .eq := by
           run_cset P code (regOf_lt_31 (h - 2) (by omega))
             (by simpa [after_zero] using hcode 0 (by simp))
             (by simpa using hcode 1 (by simp)) hpc rfl
-        apply cmp_outcome P code _ hinv (vs := vs) (hty.drop 2) (by omega) (by omega)
+        apply cmp_outcome P code _ hinv hsr (vs := vs) (hty.drop 2) (by omega) (by omega)
           hst.pop.pop hr hp _ _ hsp hmem hout
         · rw [hvl, hres, hx, hy]
           exact cset_val _ _ (x = y) ⟨fun e => UInt32.toUInt64_inj.mp e, fun e => by rw [e]⟩
@@ -548,7 +575,7 @@ theorem sim_eqz_of {F : Nat} {inst : Instruction} (hinst : inst = .eqzI64 ∨ in
           .Fallthrough st { sl with values := .i32 (if w = 0 then 1 else 0) :: vs }) ∨
       ∃ msg, execOne (f + 1) m st sl inst = .Invalid msg) :
     InstrSim P code F inst := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
   obtain ⟨hhb, hlt, rfl, rfl⟩ := gen_eqz hinst hgen
   have hh := hinv.len
   have hty := hinv.types
@@ -571,8 +598,8 @@ theorem sim_eqz_of {F : Nat} {inst : Instruction} (hinst : inst = .eqzI64 ∨ in
             (by simpa [after_zero] using hcode 0 (by simp))
             (by simpa using hcode 1 (by simp)) hpc
             (by simp only [exec, State.xsp_eq_x (regOf_lt_31 (h - 1) hlt)]; rfl)
-        apply cmp_outcome P code _ hinv (vs := vs) hty.tail (by omega) (by omega) hst.pop hr hp _ _
-          hsp hmem hout
+        apply cmp_outcome P code _ hinv hsr (vs := vs) hty.tail (by omega) (by omega) hst.pop hr
+          hp _ _ hsp hmem hout
         · rw [hvl, hres, hw]; exact cset_val w 0 (w = 0) Iff.rfl
         · rw [hvl]; exact hkeep
       · rw [hex]; exact .inr trivial
@@ -612,7 +639,7 @@ theorem gen_extend {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64}
     exact ⟨by omega, by cases hg.1; rfl, by cases hg.2; rfl⟩
 
 theorem sim_extendUI32 (F : Nat) : InstrSim P code F .extendUI32 := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc _
   obtain ⟨hhb, rfl, rfl⟩ := gen_extend hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome, or_true]
@@ -625,7 +652,7 @@ theorem sim_extendUI32 (F : Nat) : InstrSim P code F .extendUI32 := by
         have hty := hinv.types
         rw [hvs] at hty
         refine .inr ⟨_, rfl, ms, .refl _, by simp [hpc, after_zero], rfl, rfl, rfl,
-          fun _ _ => rfl, ?_, fun _ _ => rfl⟩
+          fun _ _ => rfl, ?_, fun _ _ => rfl, hsr⟩
         refine ⟨⟨by have := hst.1; simpa using this, fun k hk => ?_⟩, hinv.locals, hinv.count,
           hinv.frame, Typed.cons trivial hty.tail, hinv.ltypes⟩
         have := hst.2 k (by simpa using hk)

@@ -3,7 +3,9 @@
    higher, with the code of the AArch64 back end, the section .text.a64, first when it is present.
    Code and read-only data form one segment, readable and executable, which the startup code's
    tables map read-only, and data and .bss another, readable and writable, from __rw_start at the
-   next 2 MiB boundary, so that the tables' blocks of 2 MiB separate the two.  The five translation tables of the startup code follow .bss,
+   next 2 MiB boundary, so that the tables' blocks of 2 MiB separate the two.  The data begin with
+   the back end's area of the module's store, the section .data.a64, when it is present.  The five
+   translation tables of the startup code follow .bss,
    then an exception stack of 4 KiB, a guard page of 4 KiB that the tables leave unmapped, and
    the stack of STACK_SIZE bytes, which the linker's --defsym sets.  lx_out is the data register
    of the PL011 UART that QEMU 8.2.2's device tree gives.  lx_in is the start of the 16 MiB of
@@ -24,7 +26,7 @@ SECTIONS
   .eh_frame : { *(.eh_frame) } :text
   . = ALIGN(0x200000);
   __rw_start = .;
-  .data : { *(.data .data.*) } :data
+  .data : { KEEP(*(.data.a64)) *(.data .data.*) } :data
   .got : { *(.got .got.plt) } :data
   .bss (NOLOAD) : {
     . = ALIGN(16);

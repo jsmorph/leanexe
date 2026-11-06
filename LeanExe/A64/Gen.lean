@@ -112,16 +112,22 @@ def Ctl.arity (t : Ctl) : Nat := t.types.length
 parameters and of its results. -/
 abbrev Table := Nat → Option (UInt64 × List ValueType × List ValueType)
 
-/-- What the instructions of one function need: the types of its locals, parameters included,
-the addresses of the trap stubs for `unreachable`, for an access outside the memory, for a
-division by zero, and for a stack that a frame would overflow, and the table of the functions
-that its calls may name. -/
-structure Env where
-  localTypes : List ValueType
+/-- What the functions of a program share: the addresses of the trap stubs for `unreachable`, for
+an access outside the memory, for a division by zero, and for a stack that a frame would
+overflow, the memory's cap in pages, and the types of the globals. -/
+structure Shared where
   trapUnreachable : UInt64
   trapBounds : UInt64
   trapDiv : UInt64
   trapStack : UInt64
+  cap : Nat
+  globalTypes : List ValueType
+
+/-- What the instructions of one function need: what the program's functions share, the types of
+the function's locals, parameters included, and the table of the functions that its calls may
+name. -/
+structure Env extends Shared where
+  localTypes : List ValueType
   callee : Table
 
 /-- The number of the locals of `E`, parameters included. -/
@@ -366,8 +372,8 @@ lies below; it then allocates the frame, saves the return address in X30 above t
 and stores the parameters from X0 up and zeros for the other locals.  The body follows, then the
 epilogue, which restores X30, frees the frame, and returns.  Its calls name the functions of
 `callee`. -/
-def genFunction (callee : Table) (trapUnreachable trapBounds trapDiv trapStack entry : UInt64)
-    (f : Function) : GenM (List Instr) := do
+def genFunction (callee : Table) (S : Shared) (entry : UInt64) (f : Function) :
+    GenM (List Instr) := do
   let p := f.params.length
   let n := p + f.locals.length
   let r := f.results.length
@@ -376,9 +382,7 @@ def genFunction (callee : Table) (trapUnreachable trapBounds trapDiv trapStack e
   if hf : frameSize n < 4096 then
     have hn : n + spillSlots < 4096 := by unfold frameSize at hf; omega
     let bodyA := after entry (5 + n)
-    let E : Env :=
-      { localTypes := f.params ++ f.locals, trapUnreachable, trapBounds, trapDiv, trapStack,
-        callee }
+    let E : Env := { toShared := S, localTypes := f.params ++ f.locals, callee }
     let epilogue := after bodyA (listSize (sigOf callee) [r] 0 f.body).1
     let (body, fin) ←
       genList E [{ target := epilogue, types := f.results.reverse, base := 0 }] [] bodyA f.body
@@ -386,28 +390,28 @@ def genFunction (callee : Table) (trapUnreachable trapBounds trapDiv trapStack e
     let stores := List.ofFn fun i : Fin n =>
       Instr.str (if i.val < p then ⟨i.val % 32, Nat.mod_lt _ (by decide)⟩ else 31) 31
         ⟨i.val, by omega⟩
-    let check := Instr.bcond 3 (← cbField (after entry 2) trapStack)
+    let check := Instr.bcond 3 (← cbField (after entry 2) S.trapStack)
     return [.subImm 16 31 ⟨frameSize n, hf⟩, .subsReg 31 16 18, check,
         .subImm 31 31 ⟨frameSize n, hf⟩, .str 30 31 ⟨n + spillSlots, hn⟩] ++ stores ++ body ++
       [.ldr 30 31 ⟨n + spillSlots, hn⟩, .addImm 31 31 ⟨frameSize n, hf⟩, .ret 30]
   else throw s!"a frame of {frameSize n} bytes"
 
 /-- The number of instructions of `main` for `k` arguments. -/
-def mainSize (k : Nat) : Nat := 3 + 4 + 1 + 4 * k + 1 + 4 + 16 + 4 + 3
+def mainSize (k : Nat) : Nat := 3 + 4 + 1 + 4 + 4 * k + 1 + 4 + 16 + 4 + 3
 
 /-- `main` placed at `a`: it saves X30, sets the stack's limit in X18 to `room` bytes below its
-SP, calls the function at `entry` with `args`, writes the eight bytes of the result to the UART
-at `uart`, the lowest first, and returns 0. -/
-def genMain (a entry : UInt64) (args : List UInt64) (uart room : UInt64) :
+SP and X17 to the area at `area`, calls the function at `entry` with `args`, writes the eight
+bytes of the result to the UART at `uart`, the lowest first, and returns 0. -/
+def genMain (a entry : UInt64) (args : List UInt64) (uart room area : UInt64) :
     GenM (List Instr) := do
   if args.length > 8 then throw "more than 8 arguments"
   let loads := args.zipIdx.flatMap fun (v, i) => movImm ⟨i % 32, Nat.mod_lt _ (by decide)⟩ v
   let writes := (List.range 8).flatMap fun i =>
     [Instr.lsrImm 2 0 ⟨8 * i % 64, Nat.mod_lt _ (by decide)⟩, .strb 2 1 0]
-  let call := Instr.bl (← bField (after a (8 + 4 * args.length)) entry)
+  let call := Instr.bl (← bField (after a (12 + 4 * args.length)) entry)
   return [.subImm 31 31 16, .str 30 31 0, .addImm 18 31 0] ++ movImm 16 room ++
-    [.subReg 18 18 16] ++ loads ++ [call] ++ movImm 1 uart ++ writes ++ movImm 0 0 ++
-    [.ldr 30 31 0, .addImm 31 31 16, .ret 30]
+    [.subReg 18 18 16] ++ movImm 17 area ++ loads ++ [call] ++ movImm 1 uart ++ writes ++
+    movImm 0 0 ++ [.ldr 30 31 0, .addImm 31 31 16, .ret 30]
 
 mutual
 /-- The indices of the functions that `ins` calls. -/
@@ -470,12 +474,12 @@ def endOf (sig : Nat → Option (Nat × Nat)) : UInt64 → List (Nat × Function
   | a, (_, f) :: rest => endOf sig (after a (functionSize sig f)) rest
 
 /-- The instructions of the functions of `fs`, one after another from `a`. -/
-def genFunctions (callee : Table) (tU tB tD tS : UInt64) :
+def genFunctions (callee : Table) (S : Shared) :
     UInt64 → List (Nat × Function) → GenM (List Instr)
   | _, [] => pure []
   | a, (_, f) :: rest => do
-      let is ← genFunction callee tU tB tD tS a f
-      return is ++ (← genFunctions callee tU tB tD tS (after a is.length) rest)
+      let is ← genFunction callee S a f
+      return is ++ (← genFunctions callee S (after a is.length) rest)
 
 /-- The entry of function `j` and the types of its parameters and results, among the functions
 of `fs` laid out one after another from `a`. -/
@@ -488,14 +492,66 @@ functions that `targets` names. -/
 def tableOf (targets : List Nat) (a : UInt64) (fs : List (Nat × Function)) : Table :=
   fun j => if j ∈ targets then entryIn (sigIn targets fs) a fs j else none
 
+/-- The type of a number. -/
+def valueType : Value → Option ValueType
+  | .i32 _ => some .i32
+  | .i64 _ => some .i64
+  | .f32 _ => some .f32
+  | .f64 _ => some .f64
+  | _ => none
+
+/-- The types of the globals of `m`, when each is a number. -/
+def globalTypesOf (m : Module) : Option (List ValueType) :=
+  m.globals.mapM fun g => valueType g.init
+
+/-- The memory of `m` fits an area of `cap` pages: it has 32-bit addresses and between 1 and
+`cap` pages, and `cap` lies below 4096. -/
+def areaOk (m : Module) (cap : Nat) : Bool :=
+  match m.memory with
+  | some d => !d.is64 && 1 ≤ d.pagesMin.toNat && d.pagesMin.toNat ≤ cap && cap < 4096
+  | none => false
+
+/-- The number of bytes of the area of a memory of `cap` pages. -/
+def areaSize (cap : Nat) : Nat := 4096 + cap * 65536
+
+/-- Byte `k` of the word `w`, the lowest first. -/
+def byteOf (w : UInt64) (k : Nat) : UInt8 := (w >>> UInt64.ofNat (8 * k)).toUInt8
+
+/-- The word of a number in a register. -/
+def wordOf : Value → UInt64
+  | .i32 x => x.toUInt64
+  | .i64 x => x
+  | .f32 x => x.toUInt64
+  | .f64 x => x
+  | _ => 0
+
+/-- Byte `j` of the area of the store `st`: the size of its memory less 8, the words of its
+globals from byte 8, and from byte 4096 the bytes of its memory. -/
+def areaByte (st : Store Unit) (j : Nat) : UInt8 :=
+  if j < 8 then byteOf (UInt64.ofNat (st.mem.pages * 65536 - 8)) j
+  else if j < 4096 then
+    match st.globals.globals[j / 8 - 1]? with
+    | some v => byteOf (wordOf v) (j % 8)
+    | none => 0
+  else st.mem.bytes (j - 4096)
+
+/-- The bytes of the area of module `m` with `cap` pages, as the module starts. -/
+def areaBytes (m : Module) (cap : Nat) : List UInt8 :=
+  (List.range (areaSize cap)).map (areaByte m.initialStore)
+
 /-- The program that runs function `k` of `m` on `args`, placed after its exit word at `base`,
-with a stack of `room` bytes below `main`'s frame: `main` at `base + 4`, the functions that calls
-reach from function `k`, `k` first, and the trap stubs of codes 1, 2, 3, and 4, each `movImm` of
-X0 and a branch to the exit word.  The parameters of function `k` are `i64`s.  The table of the
-functions' calls holds the functions that `callTargets` names.  The image puts a branch to
-`lx_exit` at `base`. -/
-def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UInt64) :
-    GenM (List Instr) := do
+with a stack of `room` bytes below `main`'s frame and the module's store in an area at `area` with
+a memory of `cap` pages: `main` at `base + 4`, the functions that calls reach from function `k`,
+`k` first, and the trap stubs of codes 1, 2, 3, and 4, each `movImm` of X0 and a branch to the
+exit word.  The parameters of function `k` are `i64`s, the memory satisfies `areaOk`, and the
+globals are at most 511 numbers.  The table of the functions' calls holds the functions that
+`callTargets` names.  The image puts a branch to `lx_exit` at `base` and `areaBytes` at `area`. -/
+def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room area : UInt64)
+    (cap : Nat) : GenM (List Instr) := do
+  if !areaOk m cap then throw s!"a memory that an area of {cap} pages does not hold"
+  let gts ← match globalTypesOf m with
+    | some gts => if gts.length ≤ 511 then pure gts else throw "more than 511 globals"
+    | none => throw "a global that is not a number"
   let fs ← (reachFrom m k).mapM (funcOf m)
   let targets := callTargets m k
   let sig := sigIn targets fs
@@ -507,8 +563,11 @@ def genProgram (m : Module) (k : Nat) (args : List UInt64) (uart base room : UIn
     | some (e, ps, _) =>
         if ps.all (· == .i64) then pure e else throw s!"function {k} takes a value of another type"
     | none => throw s!"no function {k}"
-  let main ← genMain mainA entry args uart room
-  let fns ← genFunctions callee traps (after traps 5) (after traps 10) (after traps 15) first fs
+  let main ← genMain mainA entry args uart room area
+  let S : Shared :=
+    { trapUnreachable := traps, trapBounds := after traps 5, trapDiv := after traps 10,
+      trapStack := after traps 15, cap, globalTypes := gts }
+  let fns ← genFunctions callee S first fs
   let stub (a : UInt64) (code : Nat) : GenM (List Instr) := do
     return movImm 0 (UInt64.ofNat code) ++ [.b (← bField (after a 4) base)]
   return main ++ fns ++ (← stub traps 1) ++ (← stub (after traps 5) 2) ++

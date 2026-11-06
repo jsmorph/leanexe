@@ -34,6 +34,10 @@ theorem regOf_inj : ∀ k < 26, ∀ j < 26, regOf k = regOf j → k = j := by de
 /-- No register of a height is X18, which holds the stack's limit. -/
 theorem regOf_ne_18 : ∀ k < 26, regOf k ≠ 18 := by decide
 
+theorem regOf_ne_17 : ∀ k < 26, regOf k ≠ 17 := by decide
+
+theorem regOf_ne_29 : ∀ k < 26, regOf k ≠ 29 := by decide
+
 /-- The register word `r` holds the Talos value `v`. -/
 def ValRel : Value → UInt64 → Prop
   | .i32 x, r => r = x.toUInt64
@@ -95,18 +99,13 @@ theorem FrameOk.congr {P : Platform} {n : Nat} {s s' : State} (h : FrameOk P n s
 /-- An address outside the bytes from the stack's limit to the end of a frame's spill slots lies
 outside the frame's first `m` slots. -/
 theorem FrameOk.outside {P : Platform} {n : Nat} {s : State} (hf : FrameOk P n s) {a : UInt64}
-    {m : Nat}
-    (hm : m ≤ n + spillSlots)
-    (h : ¬ a - s.x 18 < s.sp - s.x 18 + UInt64.ofNat (8 * (n + spillSlots))) :
+    {m : Nat} (hm : m ≤ n + spillSlots) (h : s.sp.toNat + 8 * (n + spillSlots) ≤ a.toNat) :
     ¬ a - s.sp < UInt64.ofNat (8 * m) := by
   intro hc
-  apply h
   obtain ⟨h1, h2, h3⟩ := hf.limit
   have hb := hf.bound
   have ha := a.toNat_lt
-  rw [UInt64.lt_iff_toNat_lt] at hc ⊢
-  rw [UInt64.toNat_sub, UInt64.toNat_ofNat'] at hc
-  rw [UInt64.toNat_sub, UInt64.toNat_add, UInt64.toNat_sub, UInt64.toNat_ofNat']
+  rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_sub, UInt64.toNat_ofNat'] at hc
   simp only [Nat.reducePow] at *
   omega
 
@@ -215,6 +214,24 @@ theorem Inv.len {P : Platform} {lts σ : List ValueType} {sl : Locals} {s : Stat
 /-- The registers of the heights below `b` keep their values from `s` to `s'`. -/
 def Frame (b : Nat) (s s' : State) : Prop :=
   ∀ k < b, s'.x (regOf k) = s.x (regOf k)
+
+/-- The machine holds Talos's store `st` in the area at X17, below the stack's limit in X18: the
+memory's size less 8 at X17, global `i`, of the type `gts[i]`, at `X17 + 8 (i + 1)`, and byte `j`
+of the memory at `X17 + 4096 + j` for every `j` below `cap` pages.  The memory's cap is `cap`
+pages, below 4096, and it holds at least 1 page, and the globals are at most 511. -/
+structure StoreRel (P : Platform) (cap : Nat) (gts : List ValueType) {α : Type} (st : Store α)
+    (s : State) : Prop where
+  caps : st.memoryCaps = [cap]
+  cap_lt : cap < 4096
+  glen : gts.length ≤ 511
+  pages : 1 ≤ st.mem.pages ∧ st.mem.pages ≤ cap
+  size : load64 s.mem (s.x 17) = UInt64.ofNat (st.mem.pages * 65536 - 8)
+  types : Typed gts st.globals.globals
+  globals : ∀ i (hi : i < st.globals.globals.length),
+    ValRel st.globals.globals[i] (load64 s.mem (s.x 17 + UInt64.ofNat (8 * (i + 1))))
+  bytes : ∀ j < cap * 65536, s.mem (s.x 17 + UInt64.ofNat (4096 + j)) = st.mem.bytes j
+  mapped : ∀ j < areaSize cap, P.normal (s.x 17 + UInt64.ofNat j) = true
+  below : (s.x 17).toNat + areaSize cap ≤ (s.x 18).toNat
 
 namespace State
 

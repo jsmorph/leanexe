@@ -1,4 +1,5 @@
 import LeanExe.A64.Proof.Relation
+import LeanExe.A64.Proof.Bits
 import LeanExe.ProofKit.Locals
 
 /-!
@@ -18,10 +19,9 @@ open Wasm
 
 variable (P : Platform) (code : UInt64 → Option UInt32)
 
-/-- The memory outside the bytes from the stack's limit `lim` to the end of `n` slots at `sp`
-keeps its bytes from `s` to `s'`. -/
-def MemFrame (lim sp : UInt64) (n : Nat) (s s' : State) : Prop :=
-  ∀ a : UInt64, ¬ a - lim < sp - lim + UInt64.ofNat (8 * n) → s'.mem a = s.mem a
+/-- The bytes from the end of `n` slots at `sp` up keep their values from `s` to `s'`. -/
+def MemFrame (sp : UInt64) (n : Nat) (s s' : State) : Prop :=
+  ∀ a : UInt64, sp.toNat + 8 * n ≤ a.toNat → s'.mem a = s.mem a
 
 /-- The values that a branch to `t` carries, the first `t.arity` of `vs`, top first, lie in the
 registers of the heights from `t.base` up. -/
@@ -50,24 +50,27 @@ def TrapAt (tU tB tD : UInt64) (msg : String) (pc : UInt64) : Prop :=
 /-- What the machine does from `ms` at the code of an instruction or a list, whose end is
 `endA`, when Talos gives `r`, unless the function may call another and a call's frame would
 overflow the stack: `fin` is the types of the operand stack after the code, `none` when its end
-is unreachable.  SP, X18, and the UART's output keep their values, and the memory outside the
-bytes from the stack's limit to the end of the frame's spill slots keeps its bytes. -/
+is unreachable.  SP, X18, and the UART's output keep their values, the bytes from the end of the
+frame's spill slots up keep theirs, and the machine holds the store of every continuation that
+continues the function. -/
 def Outcome (E : Env) (ctl : List Ctl) (fin : Option (List ValueType)) (endA : UInt64)
     {α : Type} (r : Continuation α) (ms : State) : Prop :=
   (HasCalls E.callee ∧ Overflows P code E.trapStack ms) ∨
   match r with
-  | .Fallthrough _ sl' => ∃ σ', fin = some σ' ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = endA ∧
+  | .Fallthrough st' sl' => ∃ σ', fin = some σ' ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = endA ∧
       ms'.sp = ms.sp ∧ ms'.out = ms.out ∧ ms'.x 18 = ms.x 18 ∧
-      MemFrame (ms.x 18) ms.sp (E.locals + spillSlots) ms ms' ∧
-      Inv P E.localTypes σ' sl' ms' ∧ Frame (curBase ctl) ms ms'
-  | .Break k _ sl' => ∃ t, ctl[k]? = some t ∧ ∃ ms', Reach P code ms ms' ∧ ms'.pc = t.target ∧
-      ms'.sp = ms.sp ∧ ms'.out = ms.out ∧ ms'.x 18 = ms.x 18 ∧
-      MemFrame (ms.x 18) ms.sp (E.locals + spillSlots) ms ms' ∧
-      LocalsRel ms' (sl'.params ++ sl'.locals) ∧ Typed E.localTypes (sl'.params ++ sl'.locals) ∧
-      Kept t sl'.values ms' ∧ Frame t.base ms ms'
-  | .Return _ vs => ∃ t, ctl.getLast? = some t ∧ ∃ ms', Reach P code ms ms' ∧
+      MemFrame ms.sp (E.locals + spillSlots) ms ms' ∧
+      Inv P E.localTypes σ' sl' ms' ∧ Frame (curBase ctl) ms ms' ∧
+      StoreRel P E.cap E.globalTypes st' ms'
+  | .Break k st' sl' => ∃ t, ctl[k]? = some t ∧ ∃ ms', Reach P code ms ms' ∧
       ms'.pc = t.target ∧ ms'.sp = ms.sp ∧ ms'.out = ms.out ∧ ms'.x 18 = ms.x 18 ∧
-      MemFrame (ms.x 18) ms.sp (E.locals + spillSlots) ms ms' ∧ Kept t vs ms'
+      MemFrame ms.sp (E.locals + spillSlots) ms ms' ∧
+      LocalsRel ms' (sl'.params ++ sl'.locals) ∧ Typed E.localTypes (sl'.params ++ sl'.locals) ∧
+      Kept t sl'.values ms' ∧ Frame t.base ms ms' ∧ StoreRel P E.cap E.globalTypes st' ms'
+  | .Return st' vs => ∃ t, ctl.getLast? = some t ∧ ∃ ms', Reach P code ms ms' ∧
+      ms'.pc = t.target ∧ ms'.sp = ms.sp ∧ ms'.out = ms.out ∧ ms'.x 18 = ms.x 18 ∧
+      MemFrame ms.sp (E.locals + spillSlots) ms ms' ∧ Kept t vs ms' ∧
+      StoreRel P E.cap E.globalTypes st' ms'
   | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.out = ms.out ∧
       TrapAt E.trapUnreachable E.trapBounds E.trapDiv msg ms'.pc
   | .Invalid _ => True
@@ -84,46 +87,49 @@ structure CtlOk (ctl : List Ctl) : Prop where
 /-- What the machine does from `ms` at the entry of a function with parameters of the types `ps`
 and results of the types `rs`, called on the operand stack `vs`, when Talos's run of the call
 gives `res`: a success returns to the address in X30 with SP, X18, and the UART's output as they
-were, the memory outside the bytes from the stack's limit up to SP unchanged, and the result, if
-any, in X0, and a trap reaches the stub of its code. -/
-def CallResult (tU tB tD : UInt64) (ps rs : List ValueType) (vs : List Value) {α : Type}
+were, the bytes from SP up unchanged, the result, if any, in X0, and the final store in the area,
+and a trap reaches the stub of its code. -/
+def CallResult (S : Shared) (ps rs : List ValueType) (vs : List Value) {α : Type}
     (res : Result α) (ms : State) : Prop :=
   match res with
-  | .Success vs' _ => ∃ ms', Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧
-      ms'.x 18 = ms.x 18 ∧ ms'.out = ms.out ∧ MemFrame (ms.x 18) ms.sp 0 ms ms' ∧
+  | .Success vs' st' => ∃ ms', Reach P code ms ms' ∧ ms'.pc = ms.x 30 ∧ ms'.sp = ms.sp ∧
+      ms'.x 18 = ms.x 18 ∧ ms'.out = ms.out ∧ MemFrame ms.sp 0 ms ms' ∧
       vs'.length = rs.length + (vs.length - ps.length) ∧
       vs'.drop rs.length = vs.drop ps.length ∧
-      (∀ v ∈ vs'.take rs.length, ValRel v (ms'.x 0)) ∧ Typed rs.reverse (vs'.take rs.length)
-  | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.out = ms.out ∧ TrapAt tU tB tD msg ms'.pc
+      (∀ v ∈ vs'.take rs.length, ValRel v (ms'.x 0)) ∧ Typed rs.reverse (vs'.take rs.length) ∧
+      StoreRel P S.cap S.globalTypes st' ms'
+  | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.out = ms.out ∧
+      TrapAt S.trapUnreachable S.trapBounds S.trapDiv msg ms'.pc
   | .Invalid _ => True
   | .OutOfFuel => True
   | .Thrown _ _ _ => False
 
-/-- `CallResult`, or the machine reaches the stub `tS` of an overflow of the stack. -/
-def CallOutcome (tU tB tD tS : UInt64) (ps rs : List ValueType) (vs : List Value) {α : Type}
+/-- `CallResult`, or the machine reaches the stub of an overflow of the stack. -/
+def CallOutcome (S : Shared) (ps rs : List ValueType) (vs : List Value) {α : Type}
     (res : Result α) (ms : State) : Prop :=
-  Overflows P code tS ms ∨ CallResult P code tU tB tD ps rs vs res ms
+  Overflows P code S.trapStack ms ∨ CallResult P code S ps rs vs res ms
 
 /-- The simulation of a call of function `k` of `m`, whose entry and the types of whose
-parameters and results `c` gives, at fuel `g`: from the entry, with the stack's limit in X18 and
-the top values of the operand stack `vs`, of the parameters' types, in X0 upward, the deepest
-first, the machine does what `CallOutcome` states of Talos's run of the call. -/
-def FunSim (m : Module) (tU tB tD tS : UInt64) (g k : Nat)
-    (c : UInt64 × List ValueType × List ValueType) : Prop :=
+parameters and results `c` gives, at fuel `g`: from the entry, with the stack's limit in X18,
+the store in the area, and the top values of the operand stack `vs`, of the parameters' types, in
+X0 upward, the deepest first, the machine does what `CallOutcome` states of Talos's run of the
+call. -/
+def FunSim (m : Module) (S : Shared) (g k : Nat) (c : UInt64 × List ValueType × List ValueType) :
+    Prop :=
   ∀ {α : Type} (st : Store α) (vs : List Value) (ms : State) (hp : c.2.1.length ≤ vs.length),
     Typed c.2.1.reverse (vs.take c.2.1.length) → ms.pc = c.1 → StackOk P ms →
+    StoreRel P S.cap S.globalTypes st ms →
     (∀ i (hi : i < c.2.1.length),
       ValRel (vs[c.2.1.length - 1 - i]'(by omega)) (ms.x ⟨i % 32, Nat.mod_lt _ (by decide)⟩)) →
-    CallOutcome P code tU tB tD tS c.2.1 c.2.2 vs (Wasm.run g m k st vs) ms
+    CallOutcome P code S c.2.1 c.2.2 vs (Wasm.run g m k st vs) ms
 
-/-- The functions of the table `callee` simulate at every fuel below `F` in module `m`, with the
-trap stubs `tU`, `tB`, `tD`, and `tS`. -/
-def CallsOk (F : Nat) (m : Module) (callee : Table) (tU tB tD tS : UInt64) : Prop :=
-  ∀ k c, callee k = some c → ∀ g < F, FunSim P code m tU tB tD tS g k c
+/-- The functions of the table `callee` simulate at every fuel below `F` in module `m`, with what
+the program's functions share `S`. -/
+def CallsOk (F : Nat) (m : Module) (callee : Table) (S : Shared) : Prop :=
+  ∀ k c, callee k = some c → ∀ g < F, FunSim P code m S g k c
 
-theorem CallsOk.mono {F G : Nat} {m : Module} {callee : Table} {tU tB tD tS : UInt64}
-    (h : CallsOk P code F m callee tU tB tD tS) (hle : G ≤ F) :
-    CallsOk P code G m callee tU tB tD tS :=
+theorem CallsOk.mono {F G : Nat} {m : Module} {callee : Table} {S : Shared}
+    (h : CallsOk P code F m callee S) (hle : G ≤ F) : CallsOk P code G m callee S :=
   fun k c hk g hg => h k c hk g (by omega)
 
 /-- The simulation of `inst` at fuel `F`. -/
@@ -133,8 +139,8 @@ def InstrSim (F : Nat) (inst : Instruction) : Prop :=
     genInstr E ctl σ a inst = .ok (is, fin) → CodeAt code a is → curBase ctl ≤ σ.length →
     CtlOk ctl →
     ∀ {α : Type} (m : Module) (st : Store α) (sl : Locals) (ms : State),
-      Inv P E.localTypes σ sl ms → ms.pc = a →
-      CallsOk P code F m E.callee E.trapUnreachable E.trapBounds E.trapDiv E.trapStack →
+      Inv P E.localTypes σ sl ms → StoreRel P E.cap E.globalTypes st ms → m.memIs64 = false →
+      ms.pc = a → CallsOk P code F m E.callee E.toShared →
       Outcome P code E ctl fin (after a is.length) (execOne F m st sl inst) ms
 
 /-! ## Facts about states and the relation -/
@@ -181,6 +187,58 @@ theorem StackRel.push {s s' : State} {vs : List Value} {v : Value} (h : StackRel
     subst this
     simpa using hv
 
+/-! ## The area -/
+
+theorem add_ofNat_add (g : UInt64) (a b : Nat) :
+    g + UInt64.ofNat a + UInt64.ofNat b = g + UInt64.ofNat (a + b) := by
+  rw [UInt64.add_assoc, UInt64.ofNat_add]
+
+/-- Byte `j` of the area lies below the stack's limit. -/
+theorem StoreRel.lt_limit {P : Platform} {cap : Nat} {gts : List ValueType} {α : Type}
+    {st : Store α} {s : State} (h : StoreRel P cap gts st s) {j : Nat} (hj : j < areaSize cap) :
+    (s.x 17 + UInt64.ofNat j).toNat < (s.x 18).toNat := by
+  have := h.below
+  have := (s.x 18).toNat_lt
+  rw [UInt64.toNat_add, UInt64.toNat_ofNat']
+  simp only [Nat.reducePow] at *
+  omega
+
+/-- The store relation holds after code that keeps X17, X18, and the bytes below the stack's
+limit. -/
+theorem StoreRel.congr {P : Platform} {cap : Nat} {gts : List ValueType} {α : Type}
+    {st : Store α} {s s' : State} (h : StoreRel P cap gts st s) (h17 : s'.x 17 = s.x 17)
+    (h18 : s'.x 18 = s.x 18)
+    (hmem : ∀ a : UInt64, a.toNat < (s.x 18).toNat → s'.mem a = s.mem a) :
+    StoreRel P cap gts st s' := by
+  have hlt : ∀ j < areaSize cap,
+      s'.mem (s.x 17 + UInt64.ofNat j) = s.mem (s.x 17 + UInt64.ofNat j) :=
+    fun j hj => hmem _ (h.lt_limit hj)
+  have hgl := h.types.length
+  have hg := h.glen
+  refine ⟨h.caps, h.cap_lt, h.glen, h.pages, ?_, h.types, ?_, ?_, ?_, ?_⟩
+  · rw [h17, load64_congr (m := s'.mem) (m' := s.mem) fun k hk =>
+      hlt k (by unfold areaSize; omega)]
+    exact h.size
+  · intro i hi
+    rw [h17, load64_congr (m := s'.mem) (m' := s.mem) fun k hk => by
+      rw [add_ofNat_add]
+      exact hlt _ (by unfold areaSize; omega)]
+    exact h.globals i hi
+  · intro j hj
+    rw [h17, hlt _ (by unfold areaSize; omega)]
+    exact h.bytes j hj
+  · intro j hj
+    rw [h17]
+    exact h.mapped j hj
+  · rw [h17, h18]
+    exact h.below
+
+/-- The store relation holds after code that keeps X17, X18, and the memory. -/
+theorem StoreRel.regs {P : Platform} {cap : Nat} {gts : List ValueType} {α : Type}
+    {st : Store α} {s s' : State} (h : StoreRel P cap gts st s) (h17 : s'.x 17 = s.x 17)
+    (h18 : s'.x 18 = s.x 18) (hmem : s'.mem = s.mem) : StoreRel P cap gts st s' :=
+  h.congr h17 h18 fun _ _ => by rw [hmem]
+
 /-! ## Instructions that neither branch nor trap -/
 
 theorem gen_localGet {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt64} {i : Nat}
@@ -203,7 +261,7 @@ theorem gen_localGet {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt6
     simp [throw, throwThe, MonadExceptOf.throw] at hg
 
 theorem sim_localGet (F i : Nat) : InstrSim P code F (.localGet i) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc _
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr _ hpc _
   obtain ⟨hs, hi, hlt, rfl, rfl⟩ := gen_localGet hgen
   have hh := hinv.len
   cases F with
@@ -219,7 +277,9 @@ theorem sim_localGet (F i : Nat) : InstrSim P code F (.localGet i) := by
       have h18 : ({ ms.setX (regOf σ.length) (load64 ms.mem (ms.sp + UInt64.ofNat (8 * i))) with
           pc := ms.pc + 4 } : State).x 18 = ms.x 18 := by
         rw [State.x_withPc, State.x_setX_ne (regOf_ne_18 _ hlt)]
-      refine .inr ⟨_, rfl, _, Reach.single hex, ?_, ?_, ?_, h18, ?_, ?_, ?_⟩
+      refine .inr ⟨_, rfl, _, Reach.single hex, ?_, ?_, ?_, h18, ?_, ?_, ?_,
+        hsr.regs (by rw [State.x_withPc, State.x_setX_ne (regOf_ne_17 _ hlt)]) h18
+          State.setX_mem⟩
       · simp [hpc, after]
       · simp
       · simp

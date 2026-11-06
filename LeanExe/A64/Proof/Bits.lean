@@ -87,6 +87,18 @@ theorem store64_at (m : UInt64 → UInt8) (a v : UInt64) (k : Nat) (hk : k < 8) 
 theorem add_ofNat_zero (a : UInt64) : a + UInt64.ofNat 0 = a := by
   simp
 
+theorem load64_congr {m m' : UInt64 → UInt8} {a : UInt64}
+    (h : ∀ k < 8, m (a + UInt64.ofNat k) = m' (a + UInt64.ofNat k)) :
+    load64 m a = load64 m' a := by
+  unfold load64
+  have e0 := h 0 (by decide)
+  rw [add_ofNat_zero] at e0
+  rw [e0, show a + 1 = a + UInt64.ofNat 1 from rfl, show a + 2 = a + UInt64.ofNat 2 from rfl,
+    show a + 3 = a + UInt64.ofNat 3 from rfl, show a + 4 = a + UInt64.ofNat 4 from rfl,
+    show a + 5 = a + UInt64.ofNat 5 from rfl, show a + 6 = a + UInt64.ofNat 6 from rfl,
+    show a + 7 = a + UInt64.ofNat 7 from rfl, h 1 (by decide), h 2 (by decide), h 3 (by decide),
+    h 4 (by decide), h 5 (by decide), h 6 (by decide), h 7 (by decide)]
+
 /-- A `load64` after a `store64` at the same address reads the stored word. -/
 theorem load64_store64_same (m : UInt64 → UInt8) (a v : UInt64) :
     load64 (store64 m a v) a = v := by

@@ -55,18 +55,6 @@ theorem exec_ldr_sp {s : State} {r : Fin 32} {i : Nat} (hs : i < 4096) (hal : s.
   simp only [exec, State.xsp_31, State.spAligned, mapped_of P hmap, Bool.and_true, hal]
   simp [slotAddr]
 
-theorem load64_congr {m m' : UInt64 → UInt8} {a : UInt64}
-    (h : ∀ k < 8, m (a + UInt64.ofNat k) = m' (a + UInt64.ofNat k)) :
-    load64 m a = load64 m' a := by
-  unfold load64
-  have e0 := h 0 (by decide)
-  rw [add_ofNat_zero] at e0
-  rw [e0, show a + 1 = a + UInt64.ofNat 1 from rfl, show a + 2 = a + UInt64.ofNat 2 from rfl,
-    show a + 3 = a + UInt64.ofNat 3 from rfl, show a + 4 = a + UInt64.ofNat 4 from rfl,
-    show a + 5 = a + UInt64.ofNat 5 from rfl, show a + 6 = a + UInt64.ofNat 6 from rfl,
-    show a + 7 = a + UInt64.ofNat 7 from rfl, h 1 (by decide), h 2 (by decide), h 3 (by decide),
-    h 4 (by decide), h 5 (by decide), h 6 (by decide), h 7 (by decide)]
-
 /-- An address at least `k` bytes above `sp`, for `k ≤ k'`, when it is at least `k'` above. -/
 theorem not_lt_mono {a sp : UInt64} {k k' : Nat} (hk : k ≤ k') (hk' : k' < 2 ^ 64)
     (h : ¬ a - sp < UInt64.ofNat k') : ¬ a - sp < UInt64.ofNat k := by
@@ -304,30 +292,6 @@ theorem run_moves {p d : Nat} {moves : List Instr} (hlen : moves.length = p) (hp
   obtain ⟨s, hr, hpk, hsp, hmem, hout, hx, hq⟩ := key p (Nat.le_refl _)
   exact ⟨s, hr, hpk, hsp, hmem, hout, hx, hq⟩
 
-/-! ## Addresses -/
-
-/-- The bytes of a slot of the frame at `sp` lie outside the bytes from the stack's limit `lim`
-up to `sp`. -/
-theorem slot_not_below {lim sp : UInt64} {i k : Nat} (hk : k < 8) (hl : lim.toNat ≤ sp.toNat)
-    (hsp : sp.toNat < 2 ^ 63) (hi : i < 512) :
-    ¬ slotAddr sp i + UInt64.ofNat k - lim < sp - lim + UInt64.ofNat (8 * 0) := by
-  have := lim.toNat_lt
-  simp only [UInt64.lt_iff_toNat_lt, UInt64.toNat_sub, UInt64.toNat_add, toNat_slot,
-    UInt64.toNat_ofNat', Nat.reducePow, Nat.mul_zero] at *
-  omega
-
-/-- An address outside the bytes from the stack's limit `lim` to `c` bytes above `sp` lies
-outside the bytes from `lim` up to `sp`. -/
-theorem not_below_of {b lim sp : UInt64} {c : Nat} (hl : lim.toNat ≤ sp.toNat)
-    (hsp : sp.toNat < 2 ^ 63) (hc : c < 2 ^ 62)
-    (h : ¬ b - lim < sp - lim + UInt64.ofNat c) :
-    ¬ b - lim < sp - lim + UInt64.ofNat (8 * 0) := by
-  have := lim.toNat_lt
-  have := b.toNat_lt
-  simp only [UInt64.lt_iff_toNat_lt, UInt64.toNat_sub, UInt64.toNat_add, UInt64.toNat_ofNat',
-    Nat.reducePow, Nat.mul_zero] at *
-  omega
-
 /-- The operand stack after a call: the values below the call's results are those below its
 arguments. -/
 theorem getElem_reverse_call {vs vs' : List Value} {p r d kk : Nat} (hlen : vs.length = d + p)
@@ -356,7 +320,7 @@ theorem getElem_reverse_top {vs' : List Value} {d kk : Nat} (hlen' : vs'.length 
 /-! ## The call -/
 
 theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
-  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hpc hcl
+  intro E ctl σ a is fin hgen hcode hb hctl α m st sl ms hinv hsr h64 hpc hcl
   obtain ⟨target, ps, rs, hk, htk, hfin, h, p, r, hσl, hpl, hrl0, hpb, hh26, hhr, hr1, hp8, hlocs,
     spills, moves, reloads, g, his, hsl, hsv, hml, hmv, hrl, hrv, hbf⟩ := gen_call hgen
   subst his hfin
@@ -423,6 +387,11 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
     rw [State.setX_out, out2, out1]
   have t18 : t.x 18 = ms.x 18 := by
     rw [tx 18 (by decide), x2b 18 (by show p ≤ 18; omega), x1]
+  have t17 : t.x 17 = ms.x 17 := by
+    rw [tx 17 (by decide), x2b 17 (by show p ≤ 17; omega), x1]
+  have hsrt : StoreRel P E.cap E.globalTypes st t := hsr.congr t17 t18 fun b hb => by
+    rw [tmem]
+    exact mem1 b fun j hj => below_slot hl2 hl3 (by omega) hb
   have rt : Reach P code ms t :=
     r1.trans (r2.trans (reach_exec P code (by rw [pB]; exact cB) et (.refl _)))
   -- the callee
@@ -437,11 +406,10 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
     exact this
   have htargs : Typed ps.reverse (sl.values.take ps.length) := by
     rw [← htk]; exact hty.take ps.length
-  have hfs : CallOutcome P code E.trapUnreachable E.trapBounds E.trapDiv E.trapStack ps rs
-      sl.values (Wasm.run f m k st sl.values) t :=
+  have hfs : CallOutcome P code E.toShared ps rs sl.values (Wasm.run f m k st sl.values) t :=
     hcl k (target, ps, rs) hk f (by omega) st sl.values t
       (show ps.length ≤ sl.values.length by omega) htargs pt
-      (hinv.frame.stack.congr tsp t18) (fun i hi => by
+      (hinv.frame.stack.congr tsp t18) hsrt (fun i hi => by
         have hi' : i < ps.length := hi
         have := hargs i (by omega)
         simp only [hpl]
@@ -455,7 +423,8 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
   cases Wasm.run f m k st sl.values with
   | Success vs' st' =>
       intro hfs
-      obtain ⟨ms', hr', hp', hsp', h18', hout', hmf', hlen', hdrop', hres', htres'⟩ := hfs
+      obtain ⟨ms', hr', hp', hsp', h18', hout', hmf', hlen', hdrop', hres', htres', hsr'⟩ :=
+        hfs
       have htres : Typed (rs.reverse ++ σ.drop ps.length) vs' := by
         rw [← List.take_append_drop rs.length vs', hdrop']
         exact htres'.append (hty.drop ps.length)
@@ -505,7 +474,7 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
         intro i hi
         apply load64_congr
         intro kk hkk
-        rw [hmf' _ (by rw [t18, tsp]; exact slot_not_below hkk hl2 hl3 hi), tmem]
+        rw [hmf' _ (by rw [tsp]; exact le_slot hkk hl3 hi (Nat.zero_le _)), tmem]
       have hrest : ∀ j < d, s4.x (regOf j) = ms.x (regOf j) := by
         intro j hj
         rw [x4a j hj, mem3, sp3, hsp', hcal _ (by omega), ld1 j hj]
@@ -516,10 +485,9 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
         rw [load64_congr (m' := ms.mem) fun kk hkk =>
           mem1 _ fun j hj => slot_apart (by omega) (by omega) (by omega) kk hkk]
         exact hinv.locals i hi
-      have hmf4 : MemFrame (ms.x 18) ms.sp (E.locals + spillSlots) ms s4 := by
+      have hmf4 : MemFrame ms.sp (E.locals + spillSlots) ms s4 := by
         intro b hb'
-        rw [mem4, mem3, hmf' b (by rw [t18, tsp]; exact not_below_of hl2 hl3 (by omega) hb'),
-          tmem]
+        rw [mem4, mem3, hmf' b (by rw [tsp]; omega), tmem]
         exact mem1 b fun j hj => slot_inside (n := E.locals + spillSlots) (by omega) (by omega)
           (hinv.frame.outside (m := E.locals + spillSlots) (Nat.le_refl _) hb')
       have hvl' : vs'.length = d + r := by rw [hlen', hvl]; omega
@@ -543,9 +511,13 @@ theorem sim_call (f k : Nat) : InstrSim P code (f + 1) (.call k) := by
               (by omega)), x3a hr]
           rw [hx, getElem_reverse_top (by omega) hkk]
           exact hv
+      have h174 : s4.x 17 = ms'.x 17 := by
+        rw [x4b 17 (fun j hj => (regOf_ne_17 j (by omega)).symm),
+          x3b 17 (fun hr => (regOf_ne_17 d (by omega)).symm)]
       refine ⟨_, rfl, s4, rt.trans (hr'.trans (r3.trans r4)), ?_, ?_, ?_, h184, hmf4,
         ⟨hstack', hloc', hinv.count, hinv.frame.congr (by rw [sp4, sp3, hsp']) h184, htres,
-          hinv.ltypes⟩, fun kk hk => hrest kk (by omega)⟩
+          hinv.ltypes⟩, fun kk hk => hrest kk (by omega),
+        hsr'.regs h174 (by rw [h184, h18']) (by rw [mem4, mem3])⟩
       · rw [p4, after_after, hlenis]
       · rw [sp4, sp3, hsp']
       · rw [out4, out3, hout']
