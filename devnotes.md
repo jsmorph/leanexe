@@ -42134,12 +42134,19 @@ Step E replaces trust in the model with trust in Arm's ASL, its translation into
 
 - [x] The f64 work on branch `a64-f64`.
 - [x] A: the literal of a file, the kernel's check, and the theorems over the files.
-- [ ] D: the comparison of the loaded memory with the file.
-- [ ] E: Isla's feasibility on the integer forms.
+- [x] `main` takes the area's address in X17, so the generated code holds no address of the image.
+- [x] D: `tests/baremetal/a64-loadcheck.sh`, tested on hand-made Images under TCG and KVM.
+- [ ] E: Isla's feasibility on the integer forms, blocked on a Rust toolchain and Z3.
 - [ ] B: the image written by Lean.
 - [ ] C: the model of the startup and the joined theorem.
 
 Step A is in `LeanExe/A64/File.lean` and `tests/TestSupport/A64/Files.lean`.  `file_nat%` reads a file when it elaborates and gives `natOfBytes` of its bytes as a numeral, `file_size%` gives its length, and `of_file` turns a program's theorem about a memory that holds `imageBytes is` into one about a memory that holds the file's bytes, given the kernel's evaluation of `fileOk`, which runs the generator and compares `natOfBytes` of the code's bytes with the file's number.  `a64-programs.sh` elaborates `Files.lean` in the directory of the emitted files and requires each theorem to depend on `propext`, `Classical.choice`, and `Quot.sound` only.  On edgexpert-18ff the check of the five programs, SHA-256's 21,680 bytes among them, passes, and the whole script takes 28 s under KVM.  With one bit of `sha256.bin` changed, the kernel rejects the theorem of SHA-256.  The area stays a premise about `areaByte` of the module's initial store, since its file holds 1 MiB, mostly zeros: step B places its nonzero prefix in the image, and the startup clears the rest.
+
+`main` no longer loads the area's address: it takes it in X17, `program_sim` and the program theorems take `ms.x 17 = area` as a premise, and the generated code holds no absolute address but the UART's.  Until the image carries its own startup, `stub` in `tests/TestSupport/A64/Programs.lean` gives `main` as an assembly preamble, outside the theorems like `start.S`, that sets X17 to `lx_area` with `ADRP` and `ADD` and branches to the generated code at `lx_code`.  The five programs pass under TCG and KVM with it.
+
+An agent read QEMU 8.2.2's `hw/arm/boot.c` and `hw/arm/virt.c`, the version on edgexpert-18ff, and ran a hand-made Image under TCG and KVM.  QEMU copies the whole file to `0x40000000` plus `text_offset`, with 2 MiB added when `text_offset` lies below 4 KiB, where its boot stub lies, or plus `0x80000` when `image_size` is 0, so `text_offset` 0 places the Image at `0x40200000` under both accelerators.  Its stub at `0x40000000` sets X0 to the device tree's address, clears X1 to X3, and branches to the Image, which starts at EL1 with SPSel 1, DAIF masked, the MMU and caches off, SP 0, and floating point trapping.  The device tree lies 2 MiB-aligned at or above the Image's address plus `image_size`, the PSCI conduit is HVC under both accelerators, and `HVC #0` with X0 `0x84000008` ends QEMU with status 0.  Under `-S` the Image already lies in RAM, which `tests/baremetal/a64-loadcheck.sh` compares with the file through the monitor's `pmemsave`.  QEMU's documentation fixes only the addresses of flash and RAM, so the UART's address `0x09000000` holds for QEMU 8.2's memory map and enters the theorem as the platform's.
+
+A second agent examined Isla without building it, since edgexpert-18ff has no Rust toolchain and no Z3 library and installing them needs the user's approval.  From the Armv9.4 snapshot's IR, its documentation, and the Islaris traces, it found these points.  The Armv9.4 footprint function decodes and executes the instruction without the fall-through increment of the PC.  With the MMU off every data access is Device-nGnRnE and an unaligned access faults, while a footprint with the MMU on includes the table walk, which Isla's documentation calls impractical.  A symbolic register field forks the trace once for each register, IMPLEMENTATION DEFINED choices are constants of the model's table, and CONSTRAINED UNPREDICTABLE choices are symbolic.  Islaris's traces of `ldr`, `str`, `b.ne`, and `cmp` hold 18 to 34 events.
 
 ### References
 
