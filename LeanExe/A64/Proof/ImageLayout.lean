@@ -2,6 +2,7 @@ import LeanExe.A64.BootImage
 import LeanExe.A64.Proof.StartupCode
 import LeanExe.A64.Proof.Area
 import LeanExe.A64.Proof.Machine
+import LeanExe.A64.File
 
 /-!
 Where the bytes of an image that `genImage` gives lie.  `gen_image` unpacks the generator, and
@@ -197,5 +198,80 @@ theorem image_parts {m : Module} {cap : Nat} {room image : UInt64} {prog start :
       getElem?_append_offset _ _ 64 _ hH, getElem?_append_offset _ _ _ _ rfl,
       getElem?_append_offset _ _ _ _ rfl, getElem?_append_offset _ _ 2048 _ hV,
       getElem?_append_offset _ _ 32 _ hT, getElem?_append_offset _ _ _ j rfl]
+
+/-- The word count of the code map of an image: the header, the startup, the program, the
+padding, and the vector table, up to the translation table. -/
+def codeWords (n : Nat) : Nat := tabOff n / 4
+
+theorem tabOff_dvd (n : Nat) : 4 * (tabOff n / 4) = tabOff n := by
+  have h : 2048 ∣ vecOff n := roundUp_dvd _ _
+  unfold tabOff
+  omega
+
+theorem mem_at {mem : UInt64 → UInt8} {image : UInt64} {n : Nat} {bytes : List UInt8}
+    (hm : ∀ j < bytes.length, mem (image + UInt64.ofNat j) = byteAt n j)
+    (hb : ∀ j (hj : j < bytes.length), byteAt n j = bytes[j]) {j : Nat} {v : UInt8}
+    (hj : bytes[j]? = some v) : mem (image + UInt64.ofNat j) = v := by
+  have hl : j < bytes.length := by
+    rcases Nat.lt_or_ge j bytes.length with h | h
+    · exact h
+    · rw [List.getElem?_eq_none h] at hj; cases hj
+  rw [hm j hl, hb j hl]
+  rw [List.getElem?_eq_getElem hl] at hj
+  exact Option.some.inj hj
+
+/-- A memory that holds the bytes of a file that the kernel found to be an image's holds the
+image's parts: the code map of its first `codeWords` words has the header's instructions at
+`image` and the startup and the program from byte 64, and the memory holds the translation table
+at `L.table` and the area's prefix at `L.area`. -/
+theorem image_loaded {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {cap : Nat}
+    {o : Output} {image : UInt64} {n len : Nat} {mem : UInt64 → UInt8}
+    (hk : bytesOk (genImage m k args room cap o image) n len = true)
+    (hm : ∀ j < len, mem (image + UInt64.ofNat j) = byteAt n j) :
+    ∃ L prog start,
+      genProgram m k args uartAddr (image + UInt64.ofNat (64 + 4 * startupLength)) room cap o =
+        .ok prog ∧
+      L = layoutOf image prog.length m cap room ∧
+      0x40000000 ≤ image.toNat ∧ image.toNat + L.size ≤ 0x80000000 ∧
+      startupCode L = .ok start ∧
+      CodeAt (fetchFrom mem image (codeWords prog.length)) image [.spsel1, .b 15] ∧
+      CodeAt (fetchFrom mem image (codeWords prog.length)) (after image 16) (start ++ prog) ∧
+      (∀ j (hj : j < 32), mem (L.table + UInt64.ofNat j) = tableBytes[j]) ∧
+      (∀ j < areaPrefix m, mem (L.area + UInt64.ofNat j) = areaByte m.initialStore j) := by
+  obtain ⟨bytes, L, hg, hl, hb⟩ := of_bytesOk hk
+  obtain ⟨prog, start, hp, hL, hlo, hhi, hs, hbytes⟩ := gen_image hg
+  obtain ⟨hlen, hhd, hcode, htab, harea⟩ := image_parts hL hs hhi hbytes
+  rw [← hl] at hm
+  have hm' := fun j (v : UInt8) (h : bytes[j]? = some v) => mem_at hm hb h
+  have hfit := (layoutOf_fields image prog.length m cap room).2.2.2.2.2.2.2.2
+  subst hL
+  have ha := areaOff_ge prog.length
+  have hv := vecOff_ge prog.length
+  have hcl : (imageBytes (start ++ prog)).length = 4 * (startupLength + 1) + 4 * prog.length := by
+    rw [length_imageBytes, List.length_append, startupCode_length hs]
+    omega
+  have hN : 4 * codeWords prog.length < 2 ^ 64 := by
+    unfold codeWords
+    rw [tabOff_dvd]
+    unfold tabOff at *
+    omega
+  refine ⟨_, prog, start, hp, rfl, hlo, hhi, hs, ?_, ?_, fun j hj => ?_, fun j hj => ?_⟩
+  · have := codeAt_fetchFrom_at (m := mem) (a := image) (o := 0) (is := [.spsel1, .b 15]) hN
+      (by unfold codeWords tabOff at *; simp; omega) fun j hj => by
+        rw [Nat.mul_zero, Nat.zero_add]
+        exact hm' j _ (by rw [hhd j hj, List.getElem?_eq_getElem hj])
+    rwa [after_zero] at this
+  · exact codeAt_fetchFrom_at hN (by
+      unfold codeWords tabOff at *
+      rw [List.length_append, startupCode_length hs]
+      omega) fun j hj => hm' _ _ (by rw [hcode j hj, List.getElem?_eq_getElem hj])
+  · show mem (image + UInt64.ofNat (tabOff prog.length) + UInt64.ofNat j) = _
+    rw [UInt64.add_assoc, ← UInt64.ofNat_add]
+    exact hm' _ _ (by
+      rw [htab j hj]
+      exact List.getElem?_eq_getElem (by rw [tableBytes_length]; exact hj))
+  · show mem (image + UInt64.ofNat (areaOff prog.length) + UInt64.ofNat j) = _
+    rw [UInt64.add_assoc, ← UInt64.ofNat_add]
+    exact hm' _ _ (by rw [harea j hj, areaPrefixBytes_getElem m j hj])
 
 end LeanExe.A64
