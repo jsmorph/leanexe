@@ -87,8 +87,8 @@ structure CtlOk (ctl : List Ctl) : Prop where
 /-- What the machine does from `ms` at the entry of a function with parameters of the types `ps`
 and results of the types `rs`, called on the operand stack `vs`, when Talos's run of the call
 gives `res`: a success returns to the address in X30 with SP, X18, and the UART's output as they
-were, the bytes from SP up unchanged, the result, if any, in X0, and the final store in the area,
-and a trap reaches the stub of its code. -/
+were, the bytes from SP up unchanged, the results in the registers of the heights from 0, and the
+final store in the area, and a trap reaches the stub of its code. -/
 def CallResult (S : Shared) (ps rs : List ValueType) (vs : List Value) {α : Type}
     (res : Result α) (ms : State) : Prop :=
   match res with
@@ -96,7 +96,7 @@ def CallResult (S : Shared) (ps rs : List ValueType) (vs : List Value) {α : Typ
       ms'.x 18 = ms.x 18 ∧ ms'.out = ms.out ∧ MemFrame ms.sp 0 ms ms' ∧
       vs'.length = rs.length + (vs.length - ps.length) ∧
       vs'.drop rs.length = vs.drop ps.length ∧
-      (∀ v ∈ vs'.take rs.length, ValRel v (ms'.x 0)) ∧ Typed rs.reverse (vs'.take rs.length) ∧
+      StackRel ms' (vs'.take rs.length) ∧ Typed rs.reverse (vs'.take rs.length) ∧
       StoreRel P S.cap S.globalTypes st' ms'
   | .Trap _ msg => ∃ ms', Reach P code ms ms' ∧ ms'.out = ms.out ∧
       TrapAt S.trapUnreachable S.trapBounds S.trapDiv msg ms'.pc
@@ -112,15 +112,13 @@ def CallOutcome (S : Shared) (ps rs : List ValueType) (vs : List Value) {α : Ty
 /-- The simulation of a call of function `k` of `m`, whose entry and the types of whose
 parameters and results `c` gives, at fuel `g`: from the entry, with the stack's limit in X18,
 the store in the area, and the top values of the operand stack `vs`, of the parameters' types, in
-X0 upward, the deepest first, the machine does what `CallOutcome` states of Talos's run of the
-call. -/
+the registers of the heights from 0, the deepest first, the machine does what `CallOutcome`
+states of Talos's run of the call. -/
 def FunSim (m : Module) (S : Shared) (g k : Nat) (c : UInt64 × List ValueType × List ValueType) :
     Prop :=
   ∀ {α : Type} (st : Store α) (vs : List Value) (ms : State) (hp : c.2.1.length ≤ vs.length),
     Typed c.2.1.reverse (vs.take c.2.1.length) → ms.pc = c.1 → StackOk P ms →
-    StoreRel P S.cap S.globalTypes st ms →
-    (∀ i (hi : i < c.2.1.length),
-      ValRel (vs[c.2.1.length - 1 - i]'(by omega)) (ms.x ⟨i % 32, Nat.mod_lt _ (by decide)⟩)) →
+    StoreRel P S.cap S.globalTypes st ms → StackRel ms (vs.take c.2.1.length) →
     CallOutcome P code S c.2.1 c.2.2 vs (Wasm.run g m k st vs) ms
 
 /-- The functions of the table `callee` simulate at every fuel below `F` in module `m`, with what

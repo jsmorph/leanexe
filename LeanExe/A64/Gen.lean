@@ -5,34 +5,38 @@ import LeanExe.A64.Encode
 The code generator of the AArch64 back end: from a function of a module of the verified
 compiler and its arguments, a bare-metal program of the model's instruction forms whose `main`
 calls the function, writes the eight bytes of its result to the UART, and returns 0 to the
-startup code of `tools/baremetal/start.S`.  It covers the Wasm forms of GCD's loop and the
-integer comparisons and operations of the C path's subset, and it rejects every other form with a
-message.
+startup code of `tools/baremetal/start.S`.  It covers the Wasm forms of GCD's loop, the integer
+comparisons and operations of the C path's subset, calls, globals, and the 64-bit loads and stores
+of linear memory, and it rejects every other form with a message.
 
 The operand stack's height and types are fixed at every reachable instruction, so the value at
 height `h` lies in the register `opReg h`, X0 to X15 and then X19 to X28.  The generator tracks the
 types and checks the types of the values that a `local.set`, a branch, and a call receive against
 the declared types.  An `i32` lies there zero-extended, so `extendUI32` emits nothing, `wrapI64` is
 a 32-bit `ORR`, and an `i32` comparison or `and` is the 64-bit one.  X16 is the scratch register of
-`remUI64` and of the prologue.  A function keeps its parameters and locals in a frame at `SP` of 8
-bytes each, followed by 26 spill slots and the slot of the return address, a multiple of 16 bytes in
-all.  Its prologue checks that the frame fits above the stack's limit, which X18 holds, reserves the
-frame, stores the parameters into it from X0 upward, and clears the other locals.  A call spills the
-operand registers below its arguments to the spill slots, moves the arguments into X0 upward,
-branches with `BL`, moves the result from X0 into the register of its height, and reloads the
-spilled registers.  The callee may change every register but SP and X18, and it changes no memory
-from its caller's SP upward.  A construct carries at most one value, and a branch to one moves the
-value that it carries, if any, into the register of the construct's base height with one `ORR` and
-branches to the construct's target: the end of a `block` or an `iff`, the start of a `loop`, or the
-epilogue for the function itself, which also serves `ret`.  The result lies at height 0, in X0, when
-the epilogue releases the frame and returns.  Code after a `br`, a `ret`, or `unreachable` in the
-same list is unreachable, and the generator emits nothing for it, while the code after a construct
-is reachable, as Wasm's typing has it.  No instruction may pop below the base height of its
-innermost construct, `curBase`, as valid Wasm never does: Talos runs a construct's body on the whole
-operand stack and restores the values below the construct afterwards, which the registers of those
-heights would not follow.  A trap branches to a stub that sets X0 to the trap's code of
-`LeanExe.Native.trapCode`, 1, 2, or 3, or to 4 for an overflow of the stack, and branches to the
-program's exit word, which the image fills with a branch to `lx_exit` of the startup code.
+`remUI64`, of the prologue, and of the memory's instructions, and X29 is a second one of
+`memory.grow`.  X17 holds the address of the area of the module's store: the memory's size less 8,
+the globals, and the memory's bytes, which a load or store reaches after a check of its bounds.  A
+function keeps its parameters and locals in a frame at `SP` of 8 bytes each, followed by 26 spill
+slots and the slot of the return address, a multiple of 16 bytes in all.  Its prologue checks that
+the frame fits above the stack's limit, which X18 holds, reserves the frame, stores the parameters
+into it from the registers of the heights 0 upward, and clears the other locals.  A call spills the
+operand registers below its arguments to the spill slots, moves the arguments into the registers of
+the heights 0 upward, branches with `BL`, moves the results from those registers into the registers
+of their heights, and reloads the spilled registers.  The callee may change every register but SP,
+X17, and X18, and it changes no memory from its caller's SP upward.  A construct carries at most one
+value, and a branch to one moves the value that it carries, if any, into the register of the
+construct's base height with one `ORR` and branches to the construct's target: the end of a `block`
+or an `iff`, the start of a `loop`, or the epilogue for the function itself, which also serves
+`ret`.  The results lie at the heights from 0, in the registers of those heights, when the epilogue
+releases the frame and returns.  Code after a `br`, a `ret`, or `unreachable` in the same list is
+unreachable, and the generator emits nothing for it, while the code after a construct is reachable,
+as Wasm's typing has it.  No instruction may pop below the base height of its innermost construct,
+`curBase`, as valid Wasm never does: Talos runs a construct's body on the whole operand stack and
+restores the values below the construct afterwards, which the registers of those heights would not
+follow.  A trap branches to a stub that sets X0 to the trap's code of `LeanExe.Native.trapCode`, 1,
+2, or 3, or to 4 for an overflow of the stack, and branches to the program's exit word, which the
+image fills with a branch to `lx_exit` of the startup code.
 
 The generator places code as it emits it: each function takes the address of its first
 instruction, and `instrSize` and `listSize` give the number of instructions of a construct
@@ -374,7 +378,7 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
       | none => throw s!"a call of function {k}, which the program lacks"
       | some (target, ps, rs) =>
           if hc : σ.length < curBase ctl + ps.length ∨ 26 < σ.length ∨
-              26 < σ.length - ps.length + rs.length ∨ 1 < rs.length ∨ 8 < ps.length ∨
+              26 < σ.length - ps.length + rs.length ∨
               4096 ≤ E.locals + spillSlots ∨ σ.take ps.length ≠ ps.reverse then
             throw s!"a call of function {k} at height {σ.length}"
           else
@@ -382,8 +386,9 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
             let spills := List.ofFn fun j : Fin (σ.length - ps.length) =>
               Instr.str (regOf j) 31 ⟨E.locals + j, by omega⟩
             let moves := List.ofFn fun i : Fin ps.length =>
-              mov ⟨i, by omega⟩ (regOf (σ.length - ps.length + i))
-            let res := if rs.length = 1 then [mov (regOf (σ.length - ps.length)) 0] else []
+              mov (regOf i) (regOf (σ.length - ps.length + i))
+            let res := List.ofFn fun k : Fin rs.length =>
+              mov (regOf (σ.length - ps.length + (rs.length - 1 - k))) (regOf (rs.length - 1 - k))
             let reloads := List.ofFn fun j : Fin (σ.length - ps.length) =>
               Instr.ldr (regOf j) 31 ⟨E.locals + j, by omega⟩
             let call := Instr.bl (← bField (after a (σ.length - ps.length + ps.length)) target)
@@ -430,7 +435,7 @@ def genFunction (callee : Table) (S : Shared) (entry : UInt64) (f : Function) :
   let p := f.params.length
   let n := p + f.locals.length
   let r := f.results.length
-  if p > 8 ∨ r > 1 then throw "a function with more than 8 parameters or 1 result"
+  if p > 26 ∨ r > 26 then throw "a function with more than 26 parameters or 26 results"
   if !f.locals.all numeric then throw "a local whose zero is not the word 0"
   if hf : frameSize n < 4096 then
     have hn : n + spillSlots < 4096 := by unfold frameSize at hf; omega
@@ -441,8 +446,7 @@ def genFunction (callee : Table) (S : Shared) (entry : UInt64) (f : Function) :
       genList E [{ target := epilogue, types := f.results.reverse, base := 0 }] [] bodyA f.body
     if fin.any (· ≠ f.results.reverse) then throw "a function body that ends with other types"
     let stores := List.ofFn fun i : Fin n =>
-      Instr.str (if i.val < p then ⟨i.val % 32, Nat.mod_lt _ (by decide)⟩ else 31) 31
-        ⟨i.val, by omega⟩
+      Instr.str (if i.val < p then regOf i.val else 31) 31 ⟨i.val, by omega⟩
     let check := Instr.bcond 3 (← cbField (after entry 2) S.trapStack)
     return [.subImm 16 31 ⟨frameSize n, hf⟩, .subsReg 31 16 18, check,
         .subImm 31 31 ⟨frameSize n, hf⟩, .str 30 31 ⟨n + spillSlots, hn⟩] ++ stores ++ body ++

@@ -30,12 +30,12 @@ theorem gen_function {callee : Table} {S : Shared} {entry : UInt64}
     let n := p + f.locals.length
     let r := f.results.length
     let bodyA := after entry (5 + n)
-    p ≤ 8 ∧ r ≤ 1 ∧ (∀ t ∈ f.locals, numeric t = true) ∧
+    p ≤ 26 ∧ r ≤ 26 ∧ (∀ t ∈ f.locals, numeric t = true) ∧
       ∃ (hf : frameSize n < 4096) (hn : n + spillSlots < 4096)
       (stores body : List Instr) (fin : Option (List ValueType)) (g : Fin 524288),
       stores.length = n ∧
       (∀ i (hi : i < stores.length), ∃ hs, stores[i] =
-        .str (if i < p then ⟨i % 32, Nat.mod_lt _ (by decide)⟩ else 31) 31 ⟨i, hs⟩) ∧
+        .str (if i < p then regOf i else 31) 31 ⟨i, hs⟩) ∧
       genList { toShared := S, localTypes := f.params ++ f.locals, callee }
         [⟨after bodyA (listSize (sigOf callee) [r] 0 f.body).1, f.results.reverse, 0⟩] []
         bodyA f.body = .ok (body, fin) ∧ (∀ x, fin = some x → x = f.results.reverse) ∧
@@ -44,10 +44,10 @@ theorem gen_function {callee : Table} {S : Shared} {entry : UInt64}
           .subImm 31 31 ⟨frameSize n, hf⟩, .str 30 31 ⟨n + spillSlots, hn⟩] ++ stores ++ body ++
         [.ldr 30 31 ⟨n + spillSlots, hn⟩, .addImm 31 31 ⟨frameSize n, hf⟩, .ret 30] := by
   dsimp only
-  by_cases hc : f.params.length > 8 ∨ f.results.length > 1
+  by_cases hc : f.params.length > 26 ∨ f.results.length > 26
   · simp [genFunction, hc, throw, throwThe, MonadExceptOf.throw, bind, Except.bind] at hg
-  have h1 : ¬ f.params.length > 8 := by omega
-  have h2 : ¬ f.results.length > 1 := by omega
+  have h1 : ¬ f.params.length > 26 := by omega
+  have h2 : ¬ f.results.length > 26 := by omega
   by_cases hnum0 : f.locals.all numeric = false
   · simp [genFunction, h1, h2, hnum0, throw, throwThe, MonadExceptOf.throw, bind,
       Except.bind] at hg
@@ -70,8 +70,8 @@ theorem gen_function {callee : Table} {S : Shared} {entry : UInt64}
       have := (frameSize_bounds hf).2.2; omega
     exact ⟨by omega, by omega, hloc, hf, hn,
       List.ofFn (fun i : Fin (f.params.length + f.locals.length) =>
-        Instr.str (if i.val < f.params.length then ⟨i.val % 32, Nat.mod_lt _ (by decide)⟩ else 31)
-          31 ⟨i.val, by omega⟩), v.1, v.2, g, by simp, fun i hi => ⟨by simp at hi; omega, by simp⟩,
+        Instr.str (if i.val < f.params.length then regOf i.val else 31) 31 ⟨i.val, by omega⟩),
+      v.1, v.2, g, by simp, fun i hi => ⟨by simp at hi; omega, by simp⟩,
       hl, any_ne hend, hcb, by simp [List.append_assoc]⟩
   · simp [genFunction, h1, h2, hnum, hf, throw, throwThe, MonadExceptOf.throw] at hg
 
@@ -287,7 +287,7 @@ structure Returned (rs : List ValueType) (vs : List Value) (ms ms' : State) : Pr
   out : ms'.out = ms.out
   mem : MemFrame ms.sp 0 ms ms'
   len : rs.length ≤ vs.length
-  res : ∀ v ∈ vs.take rs.length, ValRel v (ms'.x 0)
+  res : StackRel ms' (vs.take rs.length)
   types : Typed rs.reverse (vs.take rs.length)
 
 /-- What the machine does from `ms` at the entry of a function with a frame of `fs` bytes,
@@ -313,25 +313,6 @@ def FunOutcome (callee : Table) (S : Shared) (fs : Nat) (rs : List ValueType)
   | .OutOfFuel => True
   | .ReturnCall _ _ _ => False
   | .Throwing _ _ _ _ => False
-
-/-- The values that a branch to a construct of base 0 and at most one value keeps: the top in
-X0. -/
-theorem kept_res {t : Ctl} {vs : List Value} {s : State} (hk : Kept t vs s) (hb : t.base = 0)
-    (ha : t.arity ≤ 1) : ∀ v ∈ vs.take t.arity, ValRel v (s.x 0) := by
-  intro v hv
-  by_cases h0 : t.arity = 0
-  · rw [h0] at hv
-    simp at hv
-  · have e : t.arity = 1 := by omega
-    have hv0 := hk.vals 0 (by omega)
-    rw [hb, show regOf (0 + 0) = 0 by decide] at hv0
-    rw [e] at hv
-    cases vs with
-    | nil => simp at hv
-    | cons w ws =>
-        simp at hv
-        subst hv
-        simpa [e] using hv0
 
 /-- The address of byte `j` of the `fs` bytes below `sp`, which lie above the stack's limit
 `lim`, as an address above `lim`. -/
@@ -369,8 +350,7 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     (args : List Value) (hargs : args.length = f.params.length) (hargt : Typed f.params args)
     (ms : State) (hpc : ms.pc = entry) (hstk : StackOk P ms)
     (hsr : StoreRel P S.cap S.globalTypes st ms) (h64 : m.memIs64 = false)
-    (hregs : ∀ i (hi : i < args.length),
-      ValRel args[i] (ms.x ⟨i % 32, Nat.mod_lt _ (by decide)⟩))
+    (hregs : ∀ i (hi : i < args.length), ValRel args[i] (ms.x (regOf i)))
     (hcl : CallsOk P code F m callee S) :
     FunOutcome P code callee S (frameSize (f.params.length + f.locals.length))
       f.results (Wasm.exec F m st (f.toLocals args) f.body) ms := by
@@ -414,7 +394,7 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     exact hstk.below _ (by omega)
   obtain ⟨s, hrs, hps, hsps, hxs, hos, h30, hslots, hmems⟩ :=
     run_frame P code (n := n) (j := n + spillSlots) (fs := fs)
-      (src := fun i => if i < p then ⟨i % 32, Nat.mod_lt _ (by decide)⟩ else 31)
+      (src := fun i => if i < p then regOf i else 31)
       (by omega) hfs hfs16 hf hn hn512 hsl (fun i hi => hsti i (by omega)) hpro.2 hpcc
       (by rw [hspc]; exact hstk.aligned) (by rw [hspc]; exact hmap)
   have hsp' : s.sp = ms.sp - UInt64.ofNat fs := by rw [hsps, hspc]
@@ -452,7 +432,7 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
     simp only [Function.toLocals]
     by_cases hip : i < p
     · rw [List.getElem_append_left (by omega), ite_eq_left hip,
-        hxc _ (by rw [Ne, Fin.ext_iff]; show ¬ i % 32 = 16; omega)]
+        hxc _ (regOf_ne_scratch i (by omega))]
       exact hregs i (by omega)
     · rw [List.getElem_append_right (by omega), ite_eq_right hip, List.getElem_map]
       exact hloc _ (List.getElem_mem _)
@@ -501,8 +481,12 @@ theorem function_sim {callee : Table} {S : Shared} {entry : UInt64}
         outside_frame (fs := fs) (k := 8 * (n + spillSlots)) (by omega) hf (by omega) ha
       rw [hmem', hmf a (by rw [hsps, hspc]; exact o2), hmems a (by rw [hsps, hspc]; exact o1),
         hmemc]
-    · rw [hx' 0 (by decide), hrd, ← hfa]
-      exact kept_res hk rfl (by rw [hfa]; exact hr1)
+    · rw [hrd, ← hfa]
+      have := StackRel.of_kept (s := ms') (below := []) hk
+        ⟨by simp, fun k hk => absurd hk (by simp)⟩ rfl
+        (fun k hk => absurd hk (by simp [fn]))
+      rw [List.append_nil] at this
+      exact this.congr fun k hk => hx' _ (regOf_ne_30 k (by have := this.1; omega))
   generalize Wasm.exec F m st (f.toLocals args) f.body = res at ho ⊢
   rcases ho with ⟨hc, ms', hr, hp, hout⟩ | ho
   · exact .inl ⟨.inr hc, ms', hrc.trans (hrs.trans hr), hp, by rw [hout, hos, houtc]⟩
@@ -555,8 +539,7 @@ theorem run_outcome {callee : Table} {S : Shared} {entry : UInt64}
     (vs : List Value) (ms : State) (hp : f.params.length ≤ vs.length)
     (hvt : Typed f.params.reverse (vs.take f.params.length)) (hpc : ms.pc = entry)
     (hstk : StackOk P ms) (hsr : StoreRel P S.cap S.globalTypes st ms)
-    (hargs : ∀ i (hi : i < f.params.length),
-      ValRel (vs[f.params.length - 1 - i]'(by omega)) (ms.x ⟨i % 32, Nat.mod_lt _ (by decide)⟩)) :
+    (hargs : StackRel ms (vs.take f.params.length)) :
     (((ms.sp - ms.x 18).toNat < frameSize (f.params.length + f.locals.length) ∨
         HasCalls callee) ∧ Overflows P code S.trapStack ms) ∨
       CallResult P code S f.params f.results vs (Wasm.run g m k st vs) ms := by
@@ -564,15 +547,8 @@ theorem run_outcome {callee : Table} {S : Shared} {entry : UInt64}
     simp
     omega
   have hregs : ∀ i (hi : i < ((vs.take f.params.length).reverse).length),
-      ValRel ((vs.take f.params.length).reverse)[i]
-        (ms.x ⟨i % 32, Nat.mod_lt _ (by decide)⟩) := by
-    intro i hi
-    rw [hargs'] at hi
-    have := hargs i hi
-    simp only [List.getElem_reverse, List.getElem_take, List.length_take]
-    have e : min f.params.length vs.length - 1 - i = f.params.length - 1 - i := by omega
-    simp only [e]
-    exact this
+      ValRel ((vs.take f.params.length).reverse)[i] (ms.x (regOf i)) := fun i hi =>
+    hargs.2 i (by simpa using hi)
   have hargt : Typed f.params (vs.take f.params.length).reverse := by
     have := Typed.reverse hvt
     rwa [List.reverse_reverse] at this
@@ -592,8 +568,8 @@ theorem run_outcome {callee : Table} {S : Shared} {entry : UInt64}
           f.results.length + (vs.length - f.params.length) ∧
         (vals.take f.results.length ++ vs.drop f.params.length).drop f.results.length =
           vs.drop f.params.length ∧
-        (∀ v ∈ (vals.take f.results.length ++ vs.drop f.params.length).take f.results.length,
-          ValRel v (ms'.x 0)) ∧
+        StackRel ms' ((vals.take f.results.length ++ vs.drop f.params.length).take
+          f.results.length) ∧
         Typed f.results.reverse
           ((vals.take f.results.length ++ vs.drop f.params.length).take f.results.length) ∧
         StoreRel P S.cap S.globalTypes st' ms' := by

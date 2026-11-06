@@ -437,6 +437,9 @@ theorem typed_i64 : ∀ {ts : List ValueType} {ws : List UInt64}, ts.all (· == 
   | [], _ :: _, _, hl => by simp at hl
   | _ :: _, [], _, hl => by simp at hl
 
+/-- The operand registers of the heights below 16 are X0 to X15. -/
+theorem regOf_small : ∀ i < 16, regOf i = ⟨i % 32, Nat.mod_lt _ (by decide)⟩ := by decide
+
 /-! ## The area -/
 
 /-- The store in which the program's function starts: the module's initial store with a memory
@@ -845,18 +848,17 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
     rw [List.take_of_length_le (by omega)]
     exact Typed.reverse (typed_i64 hps (by simp [hn, hp]))
   rcases run_outcome P code hm h64 hk hgk cfk hcl (initStore m cap) (args.map Value.i64).reverse
-    t4 (by omega) hvt p4 hstk hsr4 (fun i hi => by
-      have hi' : i < n := by omega
-      have e1 : f.params.length - 1 - i < (args.map Value.i64).reverse.length := by omega
-      rw [List.getElem_reverse]
-      simp only [List.getElem_map, List.length_map, ValRel]
+    t4 (by omega) hvt p4 hstk hsr4 (by
+      rw [List.take_of_length_le (by omega)]
+      refine ⟨by simp; omega, fun i hi => ?_⟩
+      simp only [List.length_reverse, List.length_map] at hi
+      simp only [List.reverse_reverse, List.getElem_map, ValRel]
+      rw [regOf_small i (by omega)]
       show (t3.setX 30 (t3.pc + 4)).x ⟨i % 32, Nat.mod_lt _ (by decide)⟩ = _
       rw [State.x_setX_ne (fun e => by
         have : 30 = i % 32 := congrArg Fin.val e
         omega)]
-      rw [hx3 i (by omega)]
-      congr 1
-      omega) with ⟨hov, hovr⟩ | hro
+      exact hx3 i (by omega)) with ⟨hov, hovr⟩ | hro
   · rcases hov with hov | ⟨j, c, hj⟩
     · rw [hd4] at hov
       omega
@@ -896,7 +898,9 @@ theorem program_sim {m : Module} {k : Nat} {f : Function} {args : List UInt64}
   · trivial
   have hr1 : f.results.length = 1 := by simp [hvs] at hlen5; omega
   rw [hr1] at hres5
-  have hy : ValRel v (t5.x 0) := hres5 v (by simp)
+  have hy : ValRel v (t5.x 0) := by
+    have := hres5.2 0 (by simp)
+    simpa [show regOf 0 = 0 by decide] using this
   -- the result's bytes
   obtain ⟨t6, r6, p6, hx6, hk6, sp6, mem6, out6⟩ :=
     run_movImm P code (d := 1) (v := P.uart) (by decide) s5.2 (by rw [p5, h30])

@@ -42072,3 +42072,15 @@ The co-simulation already draws a load or a store with a base other than SP at a
 | `a64-programs.sh` on edgexpert-18ff | GCD's loop, GCD's recursion, and CRC-32 pass under TCG and KVM, CRC-32 with a stack of 1,648 bytes |
 
 - [x] The CRC-32 program, its theorem, and its runs under QEMU.
+
+## 2026-11-05: Native AArch64 back end, increment 4: SHA-256
+
+A script on edgexpert-18ff measured the functions that calls reach from entry 11 of `TestSupport.Bare.shaCompiled.module`.  Function 7 takes 25 parameters and has 230 locals, and five functions return several results: function 9 returns 4, functions 5, 7, and 8 return 8, and functions 4 and 6 return 16.  The deepest operand stack, 25 values in function 8, fits the 26 operand registers, and the largest frame, 255 locals, fits the frame limit of 4096 bytes, so neither spills beyond the registers nor larger frames are needed.  The generator stopped at "a call of function 9 at height 3", the call's limit of one result.  The entry returns a pointer to an array of the digest's four words, which `main` must write as `encodeArray` gives it.
+
+The plan's approved convention passed parameters beyond 8 on the stack and did not foresee several results.  The user approved instead passing parameter `i` and result `k` in the operand register of height `i` or `k`, `regOf i` and `regOf k`, among X0 to X15 and X19 to X28, up to 26 of each.  The callee's prologue stores its parameters from those registers into its frame, the caller moves its arguments into them in ascending order and its results out of them in descending order, and neither side needs a stack area, a check by the caller of the callee's frame, or the callee's frame size in the table of calls.  The proof changes the register premises of `FunSim`, `CallResult`, and `Returned` from X0 to the registers of the heights.  `main` passes at most 8 arguments and reads one result, in X0 to X7 and X0, which are `regOf 0` to `regOf 7`.
+
+`FunSim`, `CallResult`, and `Returned` state the arguments and the results as `StackRel` of the values on top, the registers of the heights from 0 holding them deepest first, and `run_movs` proves a run of moves in which no move overwrites the source of a later one, for the arguments in ascending order and for the results in descending order.  A branch still carries at most one value, and no function that SHA-256 reaches branches to its own end with several, so the epilogue receives several results only on a fall-through.  With the new convention SHA-256's program generates 5,397 instructions, and the GCD and CRC-32 programs pass the model and QEMU with KVM as before.
+
+- [x] Parameters and results in the operand registers.
+- [ ] `main` with an array as its result.
+- [ ] The SHA-256 program, its theorem, and its runs under QEMU.

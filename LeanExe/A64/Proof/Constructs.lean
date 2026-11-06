@@ -251,12 +251,12 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : U
         congr 1
         omega
   | call k =>
-      obtain ⟨target, ps, rs, hk, -, rfl, h, p, r, hσl, hpl, hrl0, hpb, -, -, hr1, -, -, spills,
-        moves, reloads, g, rfl, hs, -, hm, -, hrl, -, -⟩ := gen_call hg
+      obtain ⟨target, ps, rs, hk, -, rfl, h, p, r, hσl, hpl, hrl0, hpb, -, -, -, spills,
+        moves, res, reloads, g, rfl, hs, -, hm, -, hres, -, hrl, -, -⟩ := gen_call hg
       simp only [instrSize, sigOf, hk, Option.map_some, List.length_append, List.length_cons,
-        List.length_nil, hs, hm, hrl, hσl, hpl, hrl0, List.length_reverse, List.length_drop]
+        List.length_nil, hs, hm, hres, hrl, hσl, hpl, hrl0, List.length_reverse, List.length_drop]
       constructor
-      · split <;> simp <;> omega
+      · omega
       · congr 1
         omega
   | iff pa ra thn els pts rts =>
