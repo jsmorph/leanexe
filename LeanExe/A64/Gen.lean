@@ -4,39 +4,42 @@ import LeanExe.A64.Encode
 /-!
 The code generator of the AArch64 back end: from a function of a module of the verified
 compiler and its arguments, a bare-metal program of the model's instruction forms whose `main`
-calls the function, writes the eight bytes of its result to the UART, and returns 0 to the
-startup code of `tools/baremetal/start.S`.  It covers the Wasm forms of GCD's loop, the integer
-comparisons and operations of the C path's subset, calls, globals, and the 64-bit loads and stores
-of linear memory, and it rejects every other form with a message.
+calls the function, writes its result to the UART, a word as its eight bytes or an array as its
+length and elements, and returns 0 to the startup code of `tools/baremetal/start.S`.  It covers the
+Wasm forms of GCD's loop, the integer comparisons and operations of the C path's subset, calls,
+globals, the 64-bit loads and stores of linear memory, and the f64 forms of Euler's solver, and it
+rejects every other form with a message.
 
 The operand stack's height and types are fixed at every reachable instruction, so the value at
 height `h` lies in the register `opReg h`, X0 to X15 and then X19 to X28.  The generator tracks the
 types and checks the types of the values that a `local.set`, a branch, and a call receive against
 the declared types.  An `i32` lies there zero-extended, so `extendUI32` emits nothing, `wrapI64` is
-a 32-bit `ORR`, and an `i32` comparison or `and` is the 64-bit one.  X16 is the scratch register of
-`remUI64`, of the prologue, and of the memory's instructions, and X29 is a second one of
-`memory.grow`.  X17 holds the address of the area of the module's store: the memory's size less 8,
-the globals, and the memory's bytes, which a load or store reaches after a check of its bounds.  A
-function keeps its parameters and locals in a frame at `SP` of 8 bytes each, followed by 26 spill
-slots and the slot of the return address, a multiple of 16 bytes in all.  Its prologue checks that
-the frame fits above the stack's limit, which X18 holds, reserves the frame, stores the parameters
-into it from the registers of the heights 0 upward, and clears the other locals.  A call spills the
-operand registers below its arguments to the spill slots, moves the arguments into the registers of
-the heights 0 upward, branches with `BL`, moves the results from those registers into the registers
-of their heights, and reloads the spilled registers.  The callee may change every register but SP,
-X17, and X18, and it changes no memory from its caller's SP upward.  A construct carries at most one
-value, and a branch to one moves the value that it carries, if any, into the register of the
-construct's base height with one `ORR` and branches to the construct's target: the end of a `block`
-or an `iff`, the start of a `loop`, or the epilogue for the function itself, which also serves
-`ret`.  The results lie at the heights from 0, in the registers of those heights, when the epilogue
-releases the frame and returns.  Code after a `br`, a `ret`, or `unreachable` in the same list is
-unreachable, and the generator emits nothing for it, while the code after a construct is reachable,
-as Wasm's typing has it.  No instruction may pop below the base height of its innermost construct,
-`curBase`, as valid Wasm never does: Talos runs a construct's body on the whole operand stack and
-restores the values below the construct afterwards, which the registers of those heights would not
-follow.  A trap branches to a stub that sets X0 to the trap's code of `LeanExe.Native.trapCode`, 1,
-2, or 3, or to 4 for an overflow of the stack, and branches to the program's exit word, which the
-image fills with a branch to `lx_exit` of the startup code.
+a 32-bit `ORR`, and an `i32` comparison or `and` is the 64-bit one.  An `f64` lies there as its
+word, so the reinterpretations emit nothing, and an f64 operation moves its operands' words into D0
+and D1 with `FMOV`, computes into D0, and moves D0's word into the register of its result.  X16 is
+the scratch register of `remUI64`, of the prologue, and of the memory's instructions, and X29 is a
+second one of `memory.grow`.  X17 holds the address of the area of the module's store: the memory's
+size less 8, the globals, and the memory's bytes, which a load or store reaches after a check of its
+bounds.  A function keeps its parameters and locals in a frame at `SP` of 8 bytes each, followed by
+26 spill slots and the slot of the return address, a multiple of 16 bytes in all.  Its prologue
+checks that the frame fits above the stack's limit, which X18 holds, reserves the frame, stores the
+parameters into it from the registers of the heights 0 upward, and clears the other locals.  A call
+spills the operand registers below its arguments to the spill slots, moves the arguments into the
+registers of the heights 0 upward, branches with `BL`, moves the results from those registers into
+the registers of their heights, and reloads the spilled registers.  The callee may change every
+register but SP, X17, and X18, and it changes no memory from its caller's SP upward.  A construct
+carries at most one value, and a branch to one moves the value that it carries, if any, into the
+register of the construct's base height with one `ORR` and branches to the construct's target: the
+end of a `block` or an `iff`, the start of a `loop`, or the epilogue for the function itself, which
+also serves `ret`.  The results lie at the heights from 0, in the registers of those heights, when
+the epilogue releases the frame and returns.  Code after a `br`, a `ret`, or `unreachable` in the
+same list is unreachable, and the generator emits nothing for it, while the code after a construct
+is reachable, as Wasm's typing has it.  No instruction may pop below the base height of its
+innermost construct, `curBase`, as valid Wasm never does: Talos runs a construct's body on the whole
+operand stack and restores the values below the construct afterwards, which the registers of those
+heights would not follow.  A trap branches to a stub that sets X0 to the trap's code of
+`LeanExe.Native.trapCode`, 1, 2, or 3, or to 4 for an overflow of the stack, and branches to the
+program's exit word, which the image fills with a branch to `lx_exit` of the startup code.
 
 The generator places code as it emits it: each function takes the address of its first
 instruction, and `instrSize` and `listSize` give the number of instructions of a construct
@@ -165,13 +168,32 @@ def genCmp (ctl : List Ctl) (σ : List ValueType) (c : Fin 16) :
   let r ← opReg (σ.length - 2)
   return ([.subsReg 31 r (← opReg (σ.length - 1)), .csinc r 31 31 c], some (.i32 :: σ.drop 2))
 
-/-- An operation on the two values on top, which the instruction `op d n m` replaces by its
-result, of type `t`. -/
-def genBin (ctl : List Ctl) (σ : List ValueType) (op : Fin 32 → Fin 32 → Fin 32 → Instr)
+/-- The instruction `op x x y`, an integer operation on registers `x` and `y` into `x`. -/
+def intBin (op : Fin 32 → Fin 32 → Fin 32 → Instr) (x y : Fin 32) : List Instr := [op x x y]
+
+/-- The f64 operation `op` on registers `x` and `y` into `x`: the words of `x` and `y` into D0
+and D1, `op` into D0, and the word of D0 into `x`. -/
+def fBin (op : Fin 32 → Fin 32 → Fin 32 → Instr) (x y : Fin 32) : List Instr :=
+  [.fmovDX 0 x, .fmovDX 1 y, op 0 0 1, .fmovXD x 0]
+
+/-- The f64 operation `op` on register `r` into `r`, through D0. -/
+def fUn (op : Fin 32 → Fin 32 → Instr) (r : Fin 32) : List Instr :=
+  [.fmovDX 0 r, op 0 0, .fmovXD r 0]
+
+/-- An operation on the two values on top, in the registers `x` and `y`, whose code `ops x y`
+replaces them by its result, of type `t`, in `x`. -/
+def genBin (ctl : List Ctl) (σ : List ValueType) (ops : Fin 32 → Fin 32 → List Instr)
     (t : ValueType) : GenM (List Instr × Option (List ValueType)) := do
   if σ.length < curBase ctl + 2 then throw s!"an operation at height {σ.length}"
   let r ← opReg (σ.length - 2)
-  return ([op r r (← opReg (σ.length - 1))], some (t :: σ.drop 2))
+  return (ops r (← opReg (σ.length - 1)), some (t :: σ.drop 2))
+
+/-- An operation on the value on top, in the register `r`, whose code `ops r` replaces it by its
+result, of type `t`. -/
+def genUn (ctl : List Ctl) (σ : List ValueType) (ops : Fin 32 → List Instr) (t : ValueType) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 1 then throw s!"an operation at height {σ.length}"
+  return (ops (← opReg (σ.length - 1)), some (t :: σ.tail))
 
 mutual
 /-- The number of instructions of `ins` at height `h`, under constructs whose branches carry
@@ -182,13 +204,16 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .localGet _ => (1, some (h + 1))
   | .localSet _ => (1, some (h - 1))
   | .localTee _ => (1, some h)
-  | .constI64 _ | .const _ => (4, some (h + 1))
+  | .constI64 _ | .const _ | .f64Const _ => (4, some (h + 1))
   | .eqI64 | .eq | .neI64 | .ltUI64 | .leUI64 | .geUI64 => (2, some (h - 1))
   | .eqzI64 | .eqz => (2, some h)
   | .addI64 | .subI64 | .mulI64 | .andI64 | .and | .orI64 | .xorI64 | .shlI64 | .shrUI64 =>
       (1, some (h - 1))
+  | .f64Add | .f64Sub | .f64Mul | .f64Div => (4, some (h - 1))
+  | .f64Sqrt | .f64Abs => (3, some h)
+  | .f64ConvertI64U => (2, some h)
   | .wrapI64 => (1, some h)
-  | .extendUI32 => (0, some h)
+  | .extendUI32 | .i64ReinterpretF64 | .f64ReinterpretI64 => (0, some h)
   | .remUI64 => (3, some (h - 1))
   | .divUI64 => (2, some (h - 1))
   | .globalGet _ => (1, some (h + 1))
@@ -243,31 +268,36 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
       return ([.str (← opReg (σ.length - 1)) 31 (← slotOf i)], some σ)
   | .constI64 v => do return (movImm (← opReg σ.length) v, some (.i64 :: σ))
   | .const v => do return (movImm (← opReg σ.length) v.toUInt64, some (.i32 :: σ))
+  | .f64Const v => do return (movImm (← opReg σ.length) v, some (.f64 :: σ))
   | .eqI64 | .eq => genCmp ctl σ 1
   | .neI64 => genCmp ctl σ 0
   | .ltUI64 => genCmp ctl σ 2
   | .leUI64 => genCmp ctl σ 8
   | .geUI64 => genCmp ctl σ 3
-  | .addI64 => genBin ctl σ .addReg .i64
-  | .subI64 => genBin ctl σ .subReg .i64
-  | .mulI64 => genBin ctl σ (fun d n m => .madd d n m 31) .i64
-  | .andI64 => genBin ctl σ .andReg .i64
-  | .and => genBin ctl σ .andReg .i32
-  | .orI64 => genBin ctl σ .orrReg .i64
-  | .xorI64 => genBin ctl σ .eorReg .i64
-  | .shlI64 => genBin ctl σ .lslv .i64
-  | .shrUI64 => genBin ctl σ .lsrv .i64
-  | .wrapI64 => do
-      if σ.length < curBase ctl + 1 then throw s!"wrap at height {σ.length}"
-      let r ← opReg (σ.length - 1)
-      return ([.orrW r 31 r], some (.i32 :: σ.tail))
+  | .addI64 => genBin ctl σ (intBin .addReg) .i64
+  | .subI64 => genBin ctl σ (intBin .subReg) .i64
+  | .mulI64 => genBin ctl σ (intBin fun d n m => .madd d n m 31) .i64
+  | .andI64 => genBin ctl σ (intBin .andReg) .i64
+  | .and => genBin ctl σ (intBin .andReg) .i32
+  | .orI64 => genBin ctl σ (intBin .orrReg) .i64
+  | .xorI64 => genBin ctl σ (intBin .eorReg) .i64
+  | .shlI64 => genBin ctl σ (intBin .lslv) .i64
+  | .shrUI64 => genBin ctl σ (intBin .lsrv) .i64
+  | .f64Add => genBin ctl σ (fBin .fadd) .f64
+  | .f64Sub => genBin ctl σ (fBin .fsub) .f64
+  | .f64Mul => genBin ctl σ (fBin .fmul) .f64
+  | .f64Div => genBin ctl σ (fBin .fdiv) .f64
+  | .f64Sqrt => genUn ctl σ (fUn .fsqrt) .f64
+  | .f64Abs => genUn ctl σ (fUn .fabs) .f64
+  | .f64ConvertI64U => genUn ctl σ (fun r => [.ucvtf 0 r, .fmovXD r 0]) .f64
+  | .i64ReinterpretF64 => genUn ctl σ (fun _ => []) .i64
+  | .f64ReinterpretI64 => genUn ctl σ (fun _ => []) .f64
+  | .wrapI64 => genUn ctl σ (fun r => [.orrW r 31 r]) .i32
   | .eqzI64 | .eqz => do
       if σ.length < curBase ctl + 1 then throw s!"eqz at height {σ.length}"
       let r ← opReg (σ.length - 1)
       return ([.subsImm 31 r 0, .csinc r 31 31 1], some (.i32 :: σ.tail))
-  | .extendUI32 => do
-      if σ.length < curBase ctl + 1 then throw s!"extend at height {σ.length}"
-      return ([], some (.i64 :: σ.tail))
+  | .extendUI32 => genUn ctl σ (fun _ => []) .i64
   | .remUI64 => do
       if σ.length < curBase ctl + 2 then throw s!"a remainder at height {σ.length}"
       let x ← opReg (σ.length - 2)
