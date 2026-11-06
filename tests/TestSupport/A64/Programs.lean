@@ -97,8 +97,9 @@ def run (m : Wasm.Module) (code : List Instr) (fuel : Nat) :
     { normal := fun a => rwStart ≤ a ∧ a < 0x80000000, uart := uart }
   let ret := base - 8
   let mut s : State :=
-    { regs := fun r => if r.val = 30 then ret else 0, sp := stackTop, pc := mainA,
-      nFlag := false, zFlag := false, cFlag := false, vFlag := false, mem := image, out := [] }
+    { regs := fun r => if r.val = 30 then ret else 0, dregs := fun _ => 0, sp := stackTop,
+      pc := mainA, nFlag := false, zFlag := false, cFlag := false, vFlag := false, mem := image,
+      out := [] }
   let fetch := fetchFrom image mainA code.length
   for k in [0:fuel] do
     if s.pc = ret then return (s.out, s.x 0, k, false)
