@@ -42133,11 +42133,13 @@ The user set floating point aside until these links are settled, and the startup
 Step E replaces trust in the model with trust in Arm's ASL, its translation into Sail, Isla and its solver, and the meaning of a trace.  It covers every operand value and the architecture as written, where testing covers sampled values on two implementations and cannot detect a dependence on an IMPLEMENTATION DEFINED choice.  The model is the best-supported link, so step E follows steps A to D.
 
 - [x] The f64 work on branch `a64-f64`.
-- [ ] A: the literal of a file, the kernel's check, and the theorems over the files.
+- [x] A: the literal of a file, the kernel's check, and the theorems over the files.
 - [ ] D: the comparison of the loaded memory with the file.
 - [ ] E: Isla's feasibility on the integer forms.
 - [ ] B: the image written by Lean.
 - [ ] C: the model of the startup and the joined theorem.
+
+Step A is in `LeanExe/A64/File.lean` and `tests/TestSupport/A64/Files.lean`.  `file_nat%` reads a file when it elaborates and gives `natOfBytes` of its bytes as a numeral, `file_size%` gives its length, and `of_file` turns a program's theorem about a memory that holds `imageBytes is` into one about a memory that holds the file's bytes, given the kernel's evaluation of `fileOk`, which runs the generator and compares `natOfBytes` of the code's bytes with the file's number.  `a64-programs.sh` elaborates `Files.lean` in the directory of the emitted files and requires each theorem to depend on `propext`, `Classical.choice`, and `Quot.sound` only.  On edgexpert-18ff the check of the five programs, SHA-256's 21,680 bytes among them, passes, and the whole script takes 28 s under KVM.  With one bit of `sha256.bin` changed, the kernel rejects the theorem of SHA-256.  The area stays a premise about `areaByte` of the module's initial store, since its file holds 1 MiB, mostly zeros: step B places its nonzero prefix in the image, and the startup clears the rest.
 
 ### References
 
