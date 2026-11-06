@@ -109,4 +109,34 @@ theorem codeAt_fetchFrom {m : UInt64 → UInt8} {a : UInt64} {is : List Instr}
   rw [UInt64.ofNat_add, UInt64.ofNat_mul]
   rfl
 
+/-- The words of `is` at word `o` of a code map of `N` words from `a`, whose memory holds the bytes
+of `is` from byte `4 * o`. -/
+theorem codeAt_fetchFrom_at {m : UInt64 → UInt8} {a : UInt64} {o N : Nat} {is : List Instr}
+    (hN : 4 * N < 2 ^ 64) (ho : o + is.length ≤ N)
+    (hm : ∀ j (hj : j < (imageBytes is).length),
+      m (a + UInt64.ofNat (4 * o + j)) = (imageBytes is)[j]) :
+    CodeAt (fetchFrom m a N) (after a o) is := by
+  intro i hi
+  rw [after_after]
+  have hd : (after a (o + i) - a).toNat = 4 * (o + i) := by
+    rw [after, UInt64.add_comm, UInt64.add_sub_cancel, UInt64.toNat_mul, UInt64.toNat_ofNat']
+    have e4 : (4 : UInt64).toNat = 4 := rfl
+    rw [e4]
+    simp only [Nat.reducePow] at hN ⊢
+    omega
+  simp only [fetchFrom, hd]
+  rw [if_pos ⟨by omega, by omega⟩]
+  congr 1
+  apply load32_wordBytes
+  intro k hk
+  have := hm (4 * i + k) (by rw [length_imageBytes]; omega)
+  rw [getElem_imageBytes is i k hi hk] at this
+  rw [← this]
+  congr 1
+  rw [after, UInt64.add_assoc]
+  congr 1
+  rw [show 4 * o + (4 * i + k) = 4 * (o + i) + k by omega, UInt64.ofNat_add (4 * (o + i)) k,
+    UInt64.ofNat_mul 4 (o + i)]
+  rfl
+
 end LeanExe.A64
