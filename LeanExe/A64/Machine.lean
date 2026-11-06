@@ -318,7 +318,7 @@ def exec (P : Platform) (i : Instr) (s : State) : Option State :=
       some { s with pc := if s.condHolds cond then s.pc + sext 19 imm.val * 4 else next }
   | .adr d lo hi => some { s.setX d (s.pc + sext 21 (4 * hi.val + lo.val)) with pc := next }
   | .adrp d lo hi =>
-      some { s.setX d ((s.pc &&& ~~~0xFFF) + sext 21 (4 * hi.val + lo.val) * 4096) with pc := next }
+      some { s.setX d (s.pc - s.pc % 4096 + sext 21 (4 * hi.val + lo.val) * 4096) with pc := next }
   | .msr _ _ | .mrs _ _ | .spsel1 | .isb | .dsbIsh | .dsbSy | .tlbiVmalle1 | .hvc0 => none
 
 /-- One step from `s` with the code `code`: the fetch, the decoding, and the execution of the

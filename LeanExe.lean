@@ -6,6 +6,7 @@ import LeanExe.A64.File
 import LeanExe.A64.Gen
 import LeanExe.A64.Image
 import LeanExe.A64.Machine
+import LeanExe.A64.Proof.Addr
 import LeanExe.A64.Proof.Area
 import LeanExe.A64.Proof.Arith
 import LeanExe.A64.Proof.Bits
