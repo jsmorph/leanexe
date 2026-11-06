@@ -40,8 +40,13 @@
 # symbolic, and ZCR_EL3 and SMCR_EL3 are 0, Isla's configuration value, which keeps that path's
 # vector length concrete.
 #
-# UDIV has no trace: its specification divides as real numbers, which Isla cannot do with symbolic
-# operands.
+# The Sail model computes UDIV's quotient by dividing real numbers, which Isla does not implement,
+# so UDIV's trace comes from armv9p4-udiv.ir, a copy of the IR that tests/isla/armv9p4-udiv.diff
+# edits to compute the quotient with Sail's tdiv_int on the same integers.  The diff's header
+# states the replaced computation and the identity that the edit assumes.  The copy sits beside
+# the IR:
+#   cp ~/isla-probe/ir/armv9p4.ir ~/isla-probe/ir/armv9p4-udiv.ir &&
+#   patch ~/isla-probe/ir/armv9p4-udiv.ir < tests/isla/armv9p4-udiv.diff
 #
 # Usage: tests/isla/traces.sh tcg|kvm [DIR [FORM...]]
 # DIR defaults to the profile's directory beside this script.  For each form, the script writes
@@ -67,7 +72,8 @@ case $profile in
     echo "unknown profile $profile" >&2
     exit 1 ;;
 esac
-base=(-A "$probe/ir/armv9p4.ir" -C "$probe/isla-patched/configs/armv9p4.toml"
+ir=$probe/ir/armv9p4.ir
+base=(-C "$probe/isla-patched/configs/armv9p4.toml"
   -f isla_footprint_no_init -s --simplify-registers --tree -I __isla_vector_gpr=true
   -I __supported_pa_size=$pa)
 while read -r setting; do
@@ -109,12 +115,12 @@ run() {
     return
   fi
   if [ -n "${PRINT_ARGS:-}" ]; then
-    printf '%s\0' "${base[@]}" "$@" > "$PRINT_ARGS/$name.args"
+    printf '%s\0' -A "$ir" "${base[@]}" "$@" > "$PRINT_ARGS/$name.args"
     return
   fi
   /usr/bin/time -f "$name %e %M" -o /dev/fd/3 \
     systemd-run --user --scope -q -p MemoryMax=16G -p MemorySwapMax=0 timeout 1800 \
-    "$isla" "${base[@]}" "$@" > "$dir/$name.trace"
+    "$isla" -A "$ir" "${base[@]}" "$@" > "$dir/$name.trace"
 }
 only=("$@")
 
@@ -152,3 +158,5 @@ run lsrv "${tcr[@]}" --partial -i "10011010110 Rm:5 001001 Rn:5 Rd:5"
 run orr-w "${tcr[@]}" --partial -i "00101010000 Rm:5 000000 Rn:5 Rd:5"
 run adr "${tcr[@]}" --partial -i "0 immlo:2 10000 immhi:19 Rd:5"
 run adrp "${tcr[@]}" --partial -i "1 immlo:2 10000 immhi:19 Rd:5"
+ir=$probe/ir/armv9p4-udiv.ir
+run udiv "${tcr[@]}" --partial -i "10011010110 Rm:5 000010 Rn:5 Rd:5"

@@ -1,0 +1,44 @@
+tests/isla/traces.sh traces UDIV from armv9p4-udiv.ir, which this diff makes from armv9p4.ir, the
+Armv9.4-A snapshot of the Sail model (isla-snapshots d8b31014).  The function
+execute_aarch64_instrs_integer_arithmetic_div, which UDIV shares with SDIV, reads operand1 from
+X[n] and operand2 from X[m], and for a nonzero operand2 it computes the quotient as
+RoundTowardsZero(to_real(asl_Int(operand1)) / to_real(asl_Int(operand2))), where
+RoundTowardsZero(r) is ceil(r) for r < 0 and floor(r) otherwise.  Isla implements no real-number
+primitive.  The edit computes the quotient as tdiv_int(asl_Int(operand1), asl_Int(operand2)),
+which Isla evaluates with i128::wrapping_div on concrete operands and with bvsdiv over 128 bits on
+symbolic ones.
+
+A trace from the edited IR describes the unedited model under two readings: that the edit
+divides the same integers in the same order and leaves the function otherwise unchanged, and that
+for integers a and b with b ≠ 0, a/b rounded toward zero equals tdiv_int(a, b).  Rust's i128::wrapping_div and
+SMT-LIB's bvsdiv both truncate toward zero, and neither overflows on operands below 2^64 in
+magnitude.  The edit replaces seven statements by one, so the jump to the zero case and the goto
+that skips it name the same statements as before at indices six lower.  Apply with
+`cp armv9p4.ir armv9p4-udiv.ir && patch armv9p4-udiv.ir < armv9p4-udiv.diff`.
+
+--- armv9p4.ir
++++ armv9p4-udiv.ir
+@@ -2082308,20 +2082308,14 @@
+   zz413 : %bool `24 42732:4-42736:5;
+   zz413 = zIsZero(zz41) `24 42732:7-42732:23;
+   zz414 : %unit `24 42732:4-42736:5;
+-  jump zz413 goto 27 `24 42732:4-42736:5;
+-  zz416 : %real `24 42735:17-42735:110;
+-  zz417 : %real `24 42735:34-42735:109;
++  jump zz413 goto 21 `24 42732:4-42736:5;
+   zz420 : %i `24 42735:34-42735:70;
+   zz420 = zasl_Int(zz40, zis_unsigned) `24 42735:39-42735:69;
+-  zz417 = zto_real(zz420) `24 42735:34-42735:70;
+-  zz418 : %real `24 42735:34-42735:109;
+   zz419 : %i `24 42735:73-42735:109;
+   zz419 = zasl_Int(zz41, zis_unsigned) `24 42735:78-42735:108;
+-  zz418 = zto_real(zz419) `24 42735:73-42735:109;
+-  zz416 = zdiv_real(zz417, zz418) `24 42735:34-42735:109;
+-  zz42 = zRoundTowardsZero(zz416) `24 42735:17-42735:110;
++  zz42 = ztdiv_int(zz420, zz419) `24 42735:17-42735:110;
+   zz414 = () `24 42735:8-42735:110;
+-  goto 31;
++  goto 25;
+   zz415 : %i `24 42733:17-42733:18;
+   zz415 = zz5i64zDzKz5i(0) `24 42733:17-42733:18;
+   zz42 = zz415 `24 42733:17-42733:18;
