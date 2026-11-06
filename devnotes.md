@@ -42205,5 +42205,7 @@ The user asked for a simple CIC filter on the A64 path after the A64 agenda.  Th
 
 - [x] The Python reference.
 - [x] The specification over ℤ and its review.
-- [ ] The cascade's equality with the specification and the exactness theorem.
+`Cascade.lean` defines the block cascade once, over any type with `0`, `+`, and `-`: `integrate`, the running sum whose element `t` includes the input at `t`, `decimate R`, which keeps the elements at `m·R + R − 1`, `comb M v`, `zipWith (· - ·) v (replicate M 0 ++ v)`, and `cascade N R M xs = (comb M)^[N] (decimate R (integrate^[N] xs))`.  `cascade_eq_outputs` proves `cascade N R M xs = outputs N R M xs` over ℤ for every `N`, `R`, `M`, and list, through signals on ℤ: the difference of a moving sum is a comb, combs commute, a signal that is 0 before time 0 is determined by its difference, and sampling at `m·R + R − 1` turns a comb of delay `R·M` into one of delay `M`.  `cascade_map` carries the cascade through any map that keeps `0`, `+`, and `-`, so `Exact.lean` gets the word cascade, the same `cascade` at `UInt64` with core arithmetic, as `(outputs N R M (ws.map toInt)).map UInt64.ofInt`.  `toInt_cascade_of_width` proves that with every input word's `BitVec.toInt` in `[−2^(B−1), 2^(B−1))` and `(R·M)^N · 2^(B−1) ≤ 2^63`, Hogenauer's condition, the outputs read with `BitVec.toInt` are the exact outputs, admitting the most negative input.  The theorems depend on the standard axioms, and the modules build on minideb1.  A program in the dialect that computes the same stages on `UInt64` arrays needs no cast or ring instance to meet `cascade`.
+
+- [x] The cascade's equality with the specification and the exactness theorem.
 - [x] The generic lemma for `ProgramRuns`.
