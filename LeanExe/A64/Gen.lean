@@ -598,9 +598,6 @@ def areaOk (m : Module) (cap : Nat) : Bool :=
 /-- The number of bytes of the area of a memory of `cap` pages. -/
 def areaSize (cap : Nat) : Nat := 4096 + cap * 65536
 
-/-- Byte `k` of the word `w`, the lowest first. -/
-def byteOf (w : UInt64) (k : Nat) : UInt8 := (w >>> UInt64.ofNat (8 * k)).toUInt8
-
 /-- The word of a number in a register. -/
 def wordOf : Value → UInt64
   | .i32 x => x.toUInt64

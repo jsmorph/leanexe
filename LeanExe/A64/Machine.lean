@@ -252,6 +252,9 @@ def load64 (m : UInt64 → UInt8) (a : UInt64) : UInt64 :=
 def store64 (m : UInt64 → UInt8) (a v : UInt64) : UInt64 → UInt8 :=
   fun b => if b - a < 8 then (v >>> ((b - a) * 8)).toUInt8 else m b
 
+/-- Byte `k` of the word `w`, the lowest first. -/
+def byteOf (w : UInt64) (k : Nat) : UInt8 := (w >>> UInt64.ofNat (8 * k)).toUInt8
+
 /-- The memory `m` with the byte at `a` replaced by `v`. -/
 def store8 (m : UInt64 → UInt8) (a : UInt64) (v : UInt8) : UInt64 → UInt8 :=
   fun b => if b = a then v else m b

@@ -3,9 +3,10 @@ import LeanExe.A64.Machine
 /-!
 Arithmetic facts about the bitwise definitions of the AArch64 model: `load64` is the
 little-endian sum of its eight bytes, a `load64` after a `store64` at the same address reads the
-stored word and one at least 8 bytes away reads what it read before, and a `MOVK` into a value
-below `2 ^ sh` adds its field.  The proofs turn an OR of disjoint fields into a sum with
-`Nat.two_pow_add_eq_or_of_lt` and use no bit-vector decision procedure.
+stored word and one at least 8 bytes away reads what it read before, a `load64` of the bytes of a
+word reads the word, and a `MOVK` into a value below `2 ^ sh` adds its field.  The proofs turn an
+OR of disjoint fields into a sum with `Nat.two_pow_add_eq_or_of_lt` and use no bit-vector decision
+procedure.
 -/
 
 namespace LeanExe.A64
@@ -132,6 +133,27 @@ theorem load64_store64_other (m : UInt64 → UInt8) (a v b : UInt64)
     store64_other m a v (b + 3) (h 3 (by decide)), store64_other m a v (b + 4) (h 4 (by decide)),
     store64_other m a v (b + 5) (h 5 (by decide)), store64_other m a v (b + 6) (h 6 (by decide)),
     store64_other m a v (b + 7) (h 7 (by decide))]
+
+/-- A `load64` of 8 bytes that hold those of `w`, the lowest first, reads `w`. -/
+theorem load64_bytes {mem : UInt64 → UInt8} {a w : UInt64}
+    (h : ∀ k < 8, mem (a + UInt64.ofNat k) = byteOf w k) : load64 mem a = w := by
+  rw [load64_congr (m' := store64 mem a w) fun k hk => ?_]
+  · exact load64_store64_same _ _ _
+  rw [h k hk]
+  have e : a + UInt64.ofNat k - a = UInt64.ofNat k := by
+    rw [UInt64.add_comm, UInt64.add_sub_cancel]
+  have hlt : UInt64.ofNat k < 8 := by
+    rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat']
+    have : (8 : UInt64).toNat = 8 := rfl
+    rw [this]
+    omega
+  simp only [store64, e, hlt, ite_true, byteOf]
+  congr 2
+  apply UInt64.toNat_inj.mp
+  rw [UInt64.toNat_ofNat', UInt64.toNat_mul, UInt64.toNat_ofNat']
+  have : (8 : UInt64).toNat = 8 := rfl
+  rw [this]
+  omega
 
 /-- A `MOVK` at `sh`, 16, 32, or 48, into a value below `2 ^ sh` adds its field there. -/
 theorem movk_add (x : UInt64) (imm sh : Nat) (hx : x.toNat < 2 ^ sh) (him : imm < 65536)

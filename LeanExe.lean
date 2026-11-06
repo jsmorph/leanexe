@@ -1,4 +1,5 @@
 import LeanExe.A64.Boot
+import LeanExe.A64.BootImage
 import LeanExe.A64.Clear
 import LeanExe.A64.Encode
 import LeanExe.A64.File
@@ -21,8 +22,10 @@ import LeanExe.A64.Proof.Program
 import LeanExe.A64.Proof.Relation
 import LeanExe.A64.Proof.Sim
 import LeanExe.A64.Proof.Straight
+import LeanExe.A64.Proof.Table
 import LeanExe.A64.Proof.Traps
 import LeanExe.A64.Startup
+import LeanExe.A64.Table
 import LeanExe.Attr
 import LeanExe.Common
 import LeanExe.Dialect.Build

@@ -10,10 +10,11 @@ it generates and places the code, runs it in the model, which must write the pro
 return status 0 or, for a program whose status is a trap's code, reach the exit word with that code
 and no bytes, and writes DIR/NAME.bin, the bytes of the instructions, DIR/NAME.area, the bytes of
 the area, DIR/NAME.s, the assembly that includes both and that `tests/baremetal/a64-programs.sh`
-links with the startup code, DIR/NAME.expected, the bytes that the UART must show, and
-DIR/NAME.status, the status with which the program must end.  DIR must be an absolute path, since
-the assembly names DIR/NAME.bin and DIR/NAME.area.  It prints one line for each program and exits
-with status 1 when a program fails.
+links with the startup code, DIR/NAME.expected, the bytes that the UART must show, DIR/NAME.status,
+the status with which the program must end, and DIR/NAME.img, the arm64 Image of `genImage` at
+`imageBase`, which `tests/baremetal/a64-images.sh` runs.  DIR must be an absolute path, since the
+assembly names DIR/NAME.bin and DIR/NAME.area.  It prints one line for each program and exits with
+status 1 when a program fails.
 -/
 
 open LeanExe.A64 TestSupport.A64
@@ -46,6 +47,12 @@ def main (args : List String) : IO UInt32 := do
                   (stub s!"{dir}/{p.name}.bin" s!"{dir}/{p.name}.area")
                 IO.FS.writeBinFile s!"{dir}/{p.name}.expected" (ByteArray.mk p.bytes.toArray)
                 IO.FS.writeFile s!"{dir}/{p.name}.status" s!"{p.status}\n"
+                match p.image with
+                | .error e =>
+                    IO.println s!"fail: {p.name}: the image: {e}"
+                    status := 1
+                | .ok (img, _) =>
+                    IO.FS.writeBinFile s!"{dir}/{p.name}.img" (ByteArray.mk img.toArray)
       return status
   | _ =>
       IO.eprintln "usage: a64-programs emit DIR"

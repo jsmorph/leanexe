@@ -4,6 +4,7 @@ import Verified.Examples.Fold
 import LeanExe.Native.Bare
 import LeanExe.A64.Gen
 import LeanExe.A64.Image
+import LeanExe.A64.BootImage
 
 /-!
 The bare-metal programs of the AArch64 back end, the counterparts of the programs of
@@ -45,42 +46,45 @@ def room : UInt64 := 0x80000
 `verified_compile` declare. -/
 def cap : Nat := 16
 
-/-- A program: its name, its module, its instructions, the bytes it must write, and the status
-with which it must end: 0 when `main` returns after the bytes, or the code of a trap when it
-reaches the exit word, which it must do with no bytes, as Talos's run of the entry traps. -/
+/-- The address at which QEMU's virt machine places an arm64 Image whose `text_offset` is 0. -/
+def imageBase : UInt64 := 0x40200000
+
+/-- A program: its name, its module, the function it calls with its arguments, the form of the
+result, the bytes it must write, and the status with which it must end: 0 when `main` returns
+after the bytes, or the code of a trap when it reaches the exit word, which it must do with no
+bytes, as Talos's run of the entry traps. -/
 structure Program where
   name : String
   module : Wasm.Module
-  code : Except String (List Instr)
+  entry : Nat
+  args : List UInt64
+  output : Output
   bytes : List UInt8
   status : Nat := 0
 
+/-- The program's instructions for the exit word at `base`. -/
+def Program.code (p : Program) : Except String (List Instr) :=
+  genProgram p.module p.entry p.args uart base room cap p.output
+
+/-- The program's image at `imageBase`: its bytes and its layout. -/
+def Program.image (p : Program) : Except String (List UInt8 × Layout) :=
+  genImage p.module p.entry p.args room cap p.output imageBase
+
 def programs : List Program := [
-  { name := "gcd"
-    module := TestSupport.Native.Gcd.loopCompiled.module
-    code := genProgram TestSupport.Native.Gcd.loopCompiled.module 2 [1071, 462] uart base room
-      cap .word
+  { name := "gcd", module := TestSupport.Native.Gcd.loopCompiled.module, entry := 2
+    args := [1071, 462], output := .word
     bytes := LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462) },
-  { name := "gcdrec"
-    module := TestSupport.Native.Gcd.recCompiled.module
-    code := genProgram TestSupport.Native.Gcd.recCompiled.module 3 [1071, 462] uart base room
-      cap .word
+  { name := "gcdrec", module := TestSupport.Native.Gcd.recCompiled.module, entry := 3
+    args := [1071, 462], output := .word
     bytes := LeanExe.Native.encodeWord (TestSupport.Native.Gcd.gcd 1071 462) },
-  { name := "crc32"
-    module := TestSupport.Bare.crcCompiled.module
-    code := genProgram TestSupport.Bare.crcCompiled.module 5 [0x3837363534333231, 0x39] uart base
-      room cap .word
+  { name := "crc32", module := TestSupport.Bare.crcCompiled.module, entry := 5
+    args := [0x3837363534333231, 0x39], output := .word
     bytes := LeanExe.Native.encodeWord (TestSupport.Bare.crcCheck 0x3837363534333231 0x39) },
-  { name := "sha256"
-    module := TestSupport.Bare.shaCompiled.module
-    code := genProgram TestSupport.Bare.shaCompiled.module 11 [0x636261] uart base room cap .array
+  { name := "sha256", module := TestSupport.Bare.shaCompiled.module, entry := 11
+    args := [0x636261], output := .array
     bytes := LeanExe.Native.encodeArray (TestSupport.Bare.shaCheck 0x636261) },
-  { name := "depth"
-    module := Verified.Examples.Fold.compiled.module
-    code := genProgram Verified.Examples.Fold.compiled.module 13 [1000] uart base room cap
-      .word
-    bytes := []
-    status := 1 }]
+  { name := "depth", module := Verified.Examples.Fold.compiled.module, entry := 13
+    args := [1000], output := .word, bytes := [], status := 1 }]
 
 /-- The UART's bytes, X0, the number of steps, and whether the run reached the exit word, when
 `main` returns to the address below the code or the run reaches the exit word, after at most

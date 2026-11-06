@@ -514,27 +514,6 @@ theorem initialStore_pages {m : Module} {d : MemDecl} (h : m.memory = some d) :
       · rfl
     · rfl
 
-/-- A `load64` of 8 bytes that hold those of `w`, the lowest first, reads `w`. -/
-theorem load64_bytes {mem : UInt64 → UInt8} {a w : UInt64}
-    (h : ∀ k < 8, mem (a + UInt64.ofNat k) = byteOf w k) : load64 mem a = w := by
-  rw [load64_congr (m' := store64 mem a w) fun k hk => ?_]
-  · exact load64_store64_same _ _ _
-  rw [h k hk]
-  have e : a + UInt64.ofNat k - a = UInt64.ofNat k := by
-    rw [UInt64.add_comm, UInt64.add_sub_cancel]
-  have hlt : UInt64.ofNat k < 8 := by
-    rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat']
-    have : (8 : UInt64).toNat = 8 := rfl
-    rw [this]
-    omega
-  simp only [store64, e, hlt, ite_true, byteOf]
-  congr 2
-  apply UInt64.toNat_inj.mp
-  rw [UInt64.toNat_ofNat', UInt64.toNat_mul, UInt64.toNat_ofNat']
-  have : (8 : UInt64).toNat = 8 := rfl
-  rw [this]
-  omega
-
 theorem hasType_of_valueType {v : Value} {t : ValueType} (h : valueType v = some t) :
     HasType t v := by
   cases v <;> simp [valueType] at h <;> subst h <;> trivial
