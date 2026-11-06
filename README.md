@@ -17,7 +17,7 @@ Donald Knuth's [The Art of Computer Programming](https://cs.stanford.edu/~knuth/
 We strive to be both pragmatic and demanding.  For example, floating-point operations have been in scope since the beginning of the project.  IEEE 754 is an impressive, challenging beast.  See David Goldberg's ["What Every Computer Scientist Should Know About
 Floating-Point Arithmetic"](https://dl.acm.org/doi/10.1145/103162.103163).  We are building machinery for complete floating-point accuracy.  The [fused multiply-add](https://github.com/jsmorph/leanexe/blob/main/Library/Numerics/Arithmetic/Fma/FmaTheorem.lean#L144-L149) development is a good example.
 
-These days rewriting a large codebase in a different source language is almost automatic (given appropriate stern oversight).  So inventing a new language today doesn't necessarily impose the classic high hurdles to adoption.  However, AI is of course trained on existing corpora.  Lean in particular continues to receive a lot of investment by AI companies.  So we decided to proceed from a [strict subset of Lean](https://github.com/jsmorph/leanexe/tree/main/docs).
+These days rewriting a large codebase in a different source language is almost automatic (given appropriate stern oversight).  So inventing a new language today doesn't necessarily impose the classic high hurdles to adoption.  However, AI is of course trained on existing corpora.  Lean in particular continues to receive a lot of investment by AI companies.  So we decided to proceed from a [strict subset of Lean](https://github.com/jsmorph/leanexe/tree/main/docs).  A major benefit is being able to use fancy Lean (including Mathlib) to prove things about executable artifacts themselves.
 
 ## Overview
 
