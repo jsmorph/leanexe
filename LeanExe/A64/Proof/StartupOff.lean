@@ -27,27 +27,34 @@ variable {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Option UInt32}
 
 /-- With the MMU off, `addrOf`'s two instructions at `here` are two steps of the boot model by its
 rule `plain`, which set register `d`, below 31, to the target and keep the other registers, SP,
-the memory, and the output. -/
-theorem boot_addrOf {b : Boot} {d : Fin 32} {here target : UInt64} {is : List Instr}
+the memory, and the output, when the code map's addresses and the next address lie below
+2^55. -/
+theorem boot_addrOf (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {b : Boot} {d : Fin 32}
+    {here target : UInt64} {is : List Instr}
     (hg : addrOf d here target = .ok is) (hd : d.val < 31) (hc : CodeAt code here is)
-    (hpc : b.core.pc = here) (hsp : b.spSel = true) (hoff : b.mmuOff) :
+    (hpc : b.core.pc = here) (hsp : b.spSel = true) (hoff : b.mmuOff)
+    (hend : (after here 2).toNat < 2 ^ 55) :
     ∃ c, BootReach h R code b { b with core := c } ∧ c.pc = after here 2 ∧ c.x d = target ∧
       (∀ q, q ≠ d → c.x q = b.core.x q) ∧ c.sp = b.core.sp ∧ c.mem = b.core.mem ∧
       c.out = b.core.out := by
   obtain ⟨c, hr, hp, hx, hk, hs, hm, ho⟩ := run_addrOf noMemory code hg hd hc hpc
-  exact ⟨c, bootReach_of_reach_off hsp hoff hr ho, hp, hx, hk, hs, hm, ho⟩
+  exact ⟨c, bootReach_of_reach_off hdom hsp hoff hr ho (by rw [hp]; exact hend), hp, hx, hk, hs,
+    hm, ho⟩
 
 /-- With the MMU off, the four instructions of `movImm d v` at `a` are four steps of the boot model
 by its rule `plain`, which set register `d`, below 31, to `v` and keep the other registers, SP,
-the memory, and the output. -/
-theorem boot_movImm {b : Boot} {a : UInt64} {d : Fin 32} {v : UInt64} (hd : d.val < 31)
+the memory, and the output, when the code map's addresses and the next address lie below
+2^55. -/
+theorem boot_movImm (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {b : Boot} {a : UInt64}
+    {d : Fin 32} {v : UInt64} (hd : d.val < 31)
     (hcode : CodeAt code a (movImm d v)) (hpc : b.core.pc = a) (hsp : b.spSel = true)
-    (hoff : b.mmuOff) :
+    (hoff : b.mmuOff) (hend : (after a 4).toNat < 2 ^ 55) :
     ∃ c, BootReach h R code b { b with core := c } ∧ c.pc = after a 4 ∧ c.x d = v ∧
       (∀ q, q ≠ d → c.x q = b.core.x q) ∧ c.sp = b.core.sp ∧ c.mem = b.core.mem ∧
       c.out = b.core.out := by
   obtain ⟨c, hr, hp, hx, hk, hs, hm, ho⟩ := run_movImm noMemory code hd hcode hpc
-  exact ⟨c, bootReach_of_reach_off hsp hoff hr ho, hp, hx, hk, hs, hm, ho⟩
+  exact ⟨c, bootReach_of_reach_off hdom hsp hoff hr ho (by rw [hp]; exact hend), hp, hx, hk, hs,
+    hm, ho⟩
 
 /-- With the MMU off, `MSR` of `r` from `Xt` writes `r` as `Xt` holds it. -/
 theorem boot_msrOf {b : Boot} {r : SysReg} {t : Fin 32} {w : Sys}
@@ -198,8 +205,8 @@ written registers in effect, `TLBI VMALLE1` and `DSB ISH` clean the TLBs and com
 to the UART, `MSR SCTLR_EL1` writes `sctlrOn`, which keeps the TLBs clean, and the last `ISB` puts
 it in effect.  That `ISB` is fetched with the MMU on in the written registers, so its address
 must lie in the RAM GiB of the table in memory. -/
-theorem OffAt.mmuOn {b0 b : Boot} {a : UInt64} {w : Sys}
-    (hb : BootReach h R code b0 b) (ho : OffAt b0 (after a 31) w b)
+theorem OffAt.mmuOn (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {b0 b : Boot}
+    {a : UInt64} {w : Sys} (hb : BootReach h R code b0 b) (ho : OffAt b0 (after a 31) w b)
     (h31 : code (after a 31) = some (encode .isb))
     (h32 : code (after a 32) = some (encode .tlbiVmalle1))
     (h33 : code (after a 33) = some (encode .dsbIsh))
@@ -240,8 +247,16 @@ theorem OffAt.mmuOn {b0 b : Boot} {a : UInt64} {w : Sys}
     rw [p33, ← after_succ]
   have s33 : BootStep h R code b33 b34 :=
     boot_sys (i := .dsbIsh) (by rw [p33]; exact h33) (.inl hsp) off32 rfl
+  have h38' : (after a 38).toNat < 2 ^ 55 := by
+    have e : after a 39 = after a 38 + 4 := after_succ a 38
+    rw [UInt64.le_iff_toNat_le, e, UInt64.toNat_add] at ha
+    rw [UInt64.lt_iff_toNat_lt, e, UInt64.toNat_add] at ha'
+    have := (after a 38).toNat_lt
+    simp only [UInt64.reduceToNat, Nat.reducePow] at ha ha' this ⊢
+    omega
   obtain ⟨c, rc, pc, xc, -, sc, mc, oc⟩ :=
-    boot_movImm (h := h) (R := R) (b := b34) (by decide) h34 p34 hsp off32
+    boot_movImm (h := h) (R := R) (b := b34) hdom (by decide) h34 p34 hsp off32
+      (by rw [after_after]; exact h38')
   rw [after_after] at pc
   let b39 : Boot :=
     { b34 with core := { c with pc := c.pc + 4 }, written := { b.written with sctlr := sctlrOn } }
@@ -276,7 +291,8 @@ translation table in memory, the machine selects SP_EL1, branches to the startup
 EL1, and turns the MMU on, whether or not the processor has `TCR2_EL1`.  It ends with the written
 system registers in effect in the covered configuration, the table at `TTBR0_EL1`, clean TLBs, and
 every store to the UART complete, and it changes no byte of memory, SP, or the UART's output. -/
-theorem boot_startupOff {image : UInt64} {n : Nat} {m : Module} {cap : Nat} {room : UInt64}
+theorem boot_startupOff (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55) {image : UInt64}
+    {n : Nat} {m : Module} {cap : Nat} {room : UInt64}
     {is : List Instr} {b : Boot} (himg : image.toNat % 4096 = 0)
     (hlo : 0x40000000 ≤ image.toNat)
     (hhi : image.toNat + (layoutOf image n m cap room).size ≤ 0x80000000)
@@ -320,6 +336,11 @@ theorem boot_startupOff {image : UInt64} {n : Nat} {m : Module} {cap : Nat} {roo
     show _ < 2147483648
     unfold tabOff at hao
     omega
+  have hlt : ∀ k, k ≤ 40 → (after (image + 64) k).toNat < 2 ^ 55 := by
+    intro k hk
+    simp only [after, UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat',
+      UInt64.reduceToNat, Nat.reducePow]
+    omega
   generalize hL : layoutOf image n m cap room = L at hs htab hT32 hTlt ⊢
   have hLi : L.image = image := by
     subst hL
@@ -328,7 +349,7 @@ theorem boot_startupOff {image : UInt64} {n : Nat} {m : Module} {cap : Nat} {roo
     startupCode_ok hs
   rw [hLi] at hskip hvec htc
   rw [his] at hcode
-  generalize hs0 : image + 64 = s at hcode hskip hvec htc ha39 ha39' ⊢
+  generalize hs0 : image + 64 = s at hcode hskip hvec htc ha39 ha39' hlt ⊢
   iterate 11 replace hcode := ((CodeAt.append (code := code)).mp hcode).1
   have hm4 : ∀ d v, (movImm d v).length = 4 := fun _ _ => rfl
   simp only [List.append_assoc, List.cons_append, List.nil_append, CodeAt.append, CodeAt.cons,
@@ -345,7 +366,8 @@ theorem boot_startupOff {image : UInt64} {n : Nat} {m : Module} {cap : Nat} {roo
   obtain ⟨b1, r1, o1⟩ : ∃ b1, BootReach h R code b b1 ∧ OffAt b (after s 0) b.written b1 :=
     ⟨_, .next (boot_sys (i := .spsel1) (by rw [hpc]; exact hh0) (.inr rfl) hoff rfl)
       (.single (boot_plain (i := .b 15) (by rw [hpc]; exact hh1) rfl hoff rfl rfl
-        (congrArg (fun p : UInt64 => some ({ b.core with pc := p } : State)) e64))),
+        (congrArg (fun p : UInt64 => some ({ b.core with pc := p } : State)) e64)
+        (by rw [← after_zero s]; exact hlt 0 (by decide)))),
       (after_zero s).symm, rfl, hoff, rfl, rfl, rfl, rfl⟩
   rw [← after_zero s] at c0
   have hS : sctlrOn - 1 &&& 1 = 0 := by decide
@@ -353,33 +375,38 @@ theorem boot_startupOff {image : UInt64} {n : Nat} {m : Module} {cap : Nat} {roo
   obtain ⟨d3, q3, p3, sp3, m3, out3⟩ := run_checkEL (P := noMemory) c1 c2 c3 o2.pc x2
   obtain ⟨d5, q5, p5, x5, -, sp5, m5, out5⟩ := run_addrOf noMemory code hvec (by decide) cv p3
   obtain ⟨r5, o5⟩ := OffAt.core r2 o2
-    (bootReach_of_reach_off o2.spSel o2.off (q3.trans q5) (out5.trans out3))
+    (bootReach_of_reach_off hdom o2.spSel o2.off (q3.trans q5) (out5.trans out3)
+      (by rw [p5.trans (after_after _ _ _)]; exact hlt _ (by decide)))
     (p5.trans (after_after _ _ _)) (m5.trans m3) (sp5.trans sp3) (out5.trans out3)
   obtain ⟨b6, r6, o6⟩ := OffAt.msr r5 o5 c6 (w' := { b.written with vbar := L.vectors })
     (by rw [x5]; rfl) hoff.2
   obtain ⟨d10, q10, p10, x10, -, sp10, m10, out10⟩ :=
-    boot_movImm (h := h) (R := R) (by decide) cm7 o6.pc o6.spSel o6.off
+    boot_movImm (h := h) (R := R) hdom (by decide) cm7 o6.pc o6.spSel o6.off
+      (by rw [after_after]; exact hlt _ (by decide))
   obtain ⟨r10, o10⟩ := OffAt.core r6 o6 q10 (p10.trans (after_after _ _ _)) m10 sp10 out10
   obtain ⟨b11, r11, o11⟩ := OffAt.msr r10 o10 c11
     (w' := { b.written with vbar := L.vectors, sctlr := sctlrOn - 1 }) (by rw [x10]; rfl) hS
   obtain ⟨b12, r12, o12⟩ := OffAt.msr r11 o11 c12
     (w' := { b.written with vbar := L.vectors, sctlr := sctlrOn - 1, cpacr := 0 }) rfl hS
   obtain ⟨d16, q16, p16, x16, -, sp16, m16, out16⟩ :=
-    boot_movImm (h := h) (R := R) (by decide) cm13 o12.pc o12.spSel o12.off
+    boot_movImm (h := h) (R := R) hdom (by decide) cm13 o12.pc o12.spSel o12.off
+      (by rw [after_after]; exact hlt _ (by decide))
   obtain ⟨r16, o16⟩ := OffAt.core r12 o12 q16 (p16.trans (after_after _ _ _)) m16 sp16 out16
   obtain ⟨b17, r17, o17⟩ := OffAt.msr r16 o16 c17
     (w' := { b.written with
       vbar := L.vectors, sctlr := sctlrOn - 1, cpacr := 0, mair := mairValue })
     (by rw [x16]; rfl) hS
   obtain ⟨d21, q21, p21, x21, -, sp21, m21, out21⟩ :=
-    boot_movImm (h := h) (R := R) (by decide) cm18 o17.pc o17.spSel o17.off
+    boot_movImm (h := h) (R := R) hdom (by decide) cm18 o17.pc o17.spSel o17.off
+      (by rw [after_after]; exact hlt _ (by decide))
   obtain ⟨r21, o21⟩ := OffAt.core r17 o17 q21 (p21.trans (after_after _ _ _)) m21 sp21 out21
   obtain ⟨b22, r22, o22⟩ := OffAt.msr r21 o21 c22
     (w' := { b.written with
       vbar := L.vectors, sctlr := sctlrOn - 1, cpacr := 0, mair := mairValue, tcr := tcrValue })
     (by rw [x21]; rfl) hS
   obtain ⟨d24, q24, p24, x24, -, sp24, m24, out24⟩ :=
-    boot_addrOf (h := h) (R := R) htc (by decide) ct o22.pc o22.spSel o22.off
+    boot_addrOf (h := h) (R := R) hdom htc (by decide) ct o22.pc o22.spSel o22.off
+      (by rw [after_after]; exact hlt _ (by decide))
   obtain ⟨r24, o24⟩ := OffAt.core r22 o22 q24 (p24.trans (after_after _ _ _)) m24 sp24 out24
   obtain ⟨b25, r25, o25⟩ := OffAt.msr r24 o24 c25
     (w' := { b.written with
@@ -391,7 +418,9 @@ theorem boot_startupOff {image : UInt64} {n : Nat} {m : Module} {cap : Nat} {roo
     run_mmfr3 (P := noMemory) c27 c28 c29 hskip o26.pc
   rw [x26] at p29
   obtain ⟨r29, o29⟩ := OffAt.core r26 o26
-    (bootReach_of_reach_off o26.spSel o26.off q29 out29) p29 m29 sp29 out29
+    (bootReach_of_reach_off hdom o26.spSel o26.off q29 out29
+      (by rw [p29]; split <;> exact hlt _ (by decide)))
+    p29 m29 sp29 out29
   obtain ⟨w, b31, r31, o31, hw31, hcov31, hT31⟩ : ∃ w b31, BootReach h R code b b31 ∧
       OffAt b (after s 31) w b31 ∧ w.sctlr = sctlrOn - 1 ∧
       { w with sctlr := sctlrOn }.covered h = true ∧ w.ttbr0 = L.table := by
@@ -409,7 +438,7 @@ theorem boot_startupOff {image : UInt64} {n : Nat} {m : Module} {cap : Nat} {roo
         hS
       exact ⟨_, _, r30, o30, rfl, by simp [Sys.covered, ht, hT32, hTlt], rfl⟩
   obtain ⟨bf, rf, pf, spf, wef, tlbf, eff, mf, sf, of, uf⟩ :=
-    OffAt.mmuOn r31 o31 c31 c32 c33 cm34 c38 c39 hw31 hcov31
+    OffAt.mmuOn hdom r31 o31 c31 c32 c33 cm34 c38 c39 hw31 hcov31
       (fun j hj => by rw [hT31]; exact htab j hj) ha39 ha39'
   exact ⟨bf, rf, pf, spf, wef, tlbf, by rw [eff]; exact hcov31, by rw [eff]; exact hT31, mf, sf,
     of, uf⟩

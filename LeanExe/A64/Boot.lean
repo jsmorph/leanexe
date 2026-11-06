@@ -20,7 +20,9 @@ a walk under `eff` would not give: a write of a register that a TLB may cache ma
 `classify` gives the type of memory at an address from the table's bytes for the one configuration
 that the model covers, `covered`, and `none` for every other configuration, descriptor, or
 address, where the model stops.  A system instruction steps by `sysExec`.  Another instruction that
-touches no memory steps by `exec` while the MMU may be off.  Every instruction other than a system
+touches no memory steps by `exec` while the MMU may be off, when its next program counter lies
+below 2^55 or address tagging is off, since a branch under tagging changes the top byte of a
+larger target.  Every instruction other than a system
 instruction steps by `exec` with the platform `Boot.platform` once translation is on in the covered
 configuration with valid TLBs: its Normal memory is the writable Normal memory of the table outside
 the protected bytes `R`, the image's code, vectors, and table, which no store may change, so the
@@ -119,6 +121,10 @@ def tcrValue : UInt64 := 0x80A03520
 
 /-- The value of `MAIR_EL1`: attribute 0 Device-nGnRnE, attribute 1 Normal Write-Back. -/
 def mairValue : UInt64 := 0xFF00
+
+/-- Address tagging is off: `TCR_EL1.TBI0` and `TBI1`, bits 37 and 38, are clear, so a branch
+keeps the top byte of its target. -/
+def Sys.untagged (s : Sys) : Bool := s.tcr &&& 0x6000000000 == 0
 
 /-- `s` is the configuration of translation that the model covers. -/
 def Sys.covered (h : Hw) (s : Sys) : Bool :=
@@ -227,13 +233,17 @@ inductive BootStep (h : Hw) (R : UInt64 → Bool) (code : UInt64 → Option UInt
       (hf : fetchOk h b.eff b.tlb b.core.mem b.core.pc)
       (hw : fetchOk h b.written b.tlb b.core.mem b.core.pc)
       (he : sysExec h i b = some b') : BootStep h R code b b'
-  /-- An instruction that touches no memory, with the MMU on or off. -/
+  /-- An instruction that touches no memory, with the MMU on or off.  The next program counter
+  lies below 2^55, or address tagging is off in both copies of `TCR_EL1`, since a branch under
+  `TCR_EL1.TBI0` or `TBI1` replaces the top byte of a target at or above 2^55. -/
   | plain {b : Boot} {w : UInt32} {i : Instr} {c : State} (hc : code b.core.pc = some w)
       (hd : decode w = some i) (hsp : b.spSel = true)
       (hf : fetchOk h b.eff b.tlb b.core.mem b.core.pc)
       (hw : fetchOk h b.written b.tlb b.core.mem b.core.pc)
       (hn : i.isSys = false) (hm : i.accessesMemory = false)
-      (he : exec noMemory i b.core = some c) : BootStep h R code b { b with core := c }
+      (he : exec noMemory i b.core = some c)
+      (ht : c.pc.toNat < 2 ^ 55 ∨ (b.eff.untagged = true ∧ b.written.untagged = true)) :
+      BootStep h R code b { b with core := c }
   /-- An instruction other than a system instruction, with translation on in the covered
   configuration, synchronized, with valid TLBs, and the UART mapped. -/
   | prog {b : Boot} {w : UInt32} {i : Instr} {c : State} (hc : code b.core.pc = some w)

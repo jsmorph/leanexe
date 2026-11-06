@@ -151,23 +151,26 @@ theorem plain_of_exec_noMemory {i : Instr} {s t : State} (h : exec noMemory i s 
 
 /-- While SP_EL1 is the stack pointer and the MMU is off in both copies of `SCTLR_EL1`, a run of
 the program model with the platform `noMemory` that keeps the UART's output is a run of the boot
-model by its rule `plain`, which changes only the core. -/
+model by its rule `plain`, which changes only the core, when the code map's addresses and the
+run's last program counter lie below 2^55. -/
 theorem bootReach_of_reach_off {h : Hw} {R : UInt64 → Bool} {code : UInt64 → Option UInt32}
+    (hdom : ∀ a w, code a = some w → a.toNat < 2 ^ 55)
     {b : Boot} (hsp : b.spSel = true) (hoff : b.mmuOff) {c : State}
-    (hr : Reach noMemory code b.core c) (ho : c.out = b.core.out) :
+    (hr : Reach noMemory code b.core c) (ho : c.out = b.core.out) (hend : c.pc.toNat < 2 ^ 55) :
     BootReach h R code b { b with core := c } := by
-  suffices H : ∀ s, Reach noMemory code s c → c.out = s.out → ∀ b' : Boot, b'.core = s →
-      b'.spSel = true → b'.mmuOff → BootReach h R code b' { b' with core := c } from
-    H _ hr ho b rfl hsp hoff
-  clear hr ho hsp hoff
+  suffices H : ∀ s, Reach noMemory code s c → c.pc.toNat < 2 ^ 55 → c.out = s.out →
+      ∀ b' : Boot, b'.core = s → b'.spSel = true → b'.mmuOff →
+      BootReach h R code b' { b' with core := c } from
+    H _ hr hend ho b rfl hsp hoff
+  clear hr ho hsp hoff hend
   intro s hr
   induction hr with
   | refl =>
-    intro _ b' hb _ _
+    intro _ _ b' hb _ _
     subst hb
     exact .refl _
   | @next s t u hs hr ih =>
-    intro ho b' hb hsp hoff
+    intro hend ho b' hb hsp hoff
     subst hb
     obtain ⟨w, i, hc, hd, he⟩ := step_some hs
     have hst := exec_out he
@@ -177,8 +180,14 @@ theorem bootReach_of_reach_off {h : Hw} {R : UInt64 → Bool} {code : UInt64 →
       rw [ho] at h2
       omega)).symm
     obtain ⟨hn, hm⟩ := plain_of_exec_noMemory he ht
-    exact .next (.plain hc hd hsp (.inl hoff.1) (.inl hoff.2) hn hm he)
-      (ih (by rw [ho, ht]) { b' with core := t } rfl hsp hoff)
+    have hpc : t.pc.toNat < 2 ^ 55 := by
+      cases hr with
+      | refl => exact hend
+      | next hs' _ =>
+        obtain ⟨w', _, hc', _, _⟩ := step_some hs'
+        exact hdom _ _ hc'
+    exact .next (.plain hc hd hsp (.inl hoff.1) (.inl hoff.2) hn hm he (.inl hpc))
+      (ih hend (by rw [ho, ht]) { b' with core := t } rfl hsp hoff)
 
 /-- A run keeps every byte that its platform does not map as Normal memory. -/
 theorem Reach.frame {P : Platform} {code : UInt64 → Option UInt32} {s t : State}

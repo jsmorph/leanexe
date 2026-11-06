@@ -31,9 +31,9 @@ def Boot.mmuOff (b : Boot) : Prop := b.eff.sctlr &&& 1 = 0 ∧ b.written.sctlr &
 /-- A step of an instruction that touches no memory while the MMU is off. -/
 theorem boot_plain {b : Boot} {i : Instr} {c : State} (hc : code b.core.pc = some (encode i))
     (hsp : b.spSel = true) (hoff : b.mmuOff) (hn : i.isSys = false)
-    (hm : i.accessesMemory = false) (he : exec noMemory i b.core = some c) :
-    BootStep h R code b { b with core := c } :=
-  .plain hc (decode_encode i) hsp (.inl hoff.1) (.inl hoff.2) hn hm he
+    (hm : i.accessesMemory = false) (he : exec noMemory i b.core = some c)
+    (ht : c.pc.toNat < 2 ^ 55) : BootStep h R code b { b with core := c } :=
+  .plain hc (decode_encode i) hsp (.inl hoff.1) (.inl hoff.2) hn hm he (.inl ht)
 
 /-- A step of a system instruction while the MMU is off. -/
 theorem boot_sys {b b' : Boot} {i : Instr} (hc : code b.core.pc = some (encode i))

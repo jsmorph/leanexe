@@ -102,8 +102,9 @@ theorem image_main {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {
   -- the MMU-off part
   obtain ⟨b0, r0, p0, sp0, sync0, tlb0, cov0, ttb0, mem0, -, out0, ud0⟩ :=
     boot_startupOff (h := h) (R := protectedBytes image prog.length)
-      (code := fetchFrom b.core.mem image (codeWords prog.length)) himg hlo hhi hs hhead cstart
-      hpc hoff htab
+      (code := fetchFrom b.core.mem image (codeWords prog.length))
+      (fun a w hw => Nat.lt_trans (fetchFrom_ram hw hlo (by omega)).2.1 (by decide)) himg hlo hhi
+      hs hhead cstart hpc hoff htab
   have htab0 : ∀ j (hj : j < 32), b0.core.mem (b0.eff.ttbr0 + UInt64.ofNat j) = tableBytes[j] :=
     fun j hj => by rw [ttb0, mem0]; exact htab j hj
   have hr0 : Ready h (protectedBytes image prog.length)
