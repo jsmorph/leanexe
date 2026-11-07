@@ -367,6 +367,7 @@ import LeanExe.ProofKit.Signed32
 import LeanExe.ProofKit.TaylorCheck
 import LeanExe.ProofKit.TaylorModel
 import LeanExe.ProofKit.TaylorRemainder
+import LeanExe.ProofKit.Typed
 import LeanExe.ProofKit.Writes
 import LeanExe.PTX.AddOne
 import LeanExe.PTX.Build
