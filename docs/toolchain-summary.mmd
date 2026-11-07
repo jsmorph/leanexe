@@ -9,6 +9,7 @@ flowchart TB
   WASM["WebAssembly (V, F, I)<br/>the module computes the Lean function,<br/>in Talos's semantics"]
   C["C, through Clight (C, A)<br/>each C function computes the Lean result,<br/>in the Lean copy of CompCert's Clight"]
   BARE["Bare-metal AArch64 program (B)<br/>the whole program writes the result;<br/>a Rocq proof carries it to Asm"]
+  A64["AArch64 Image (M)<br/>the run from boot writes the result,<br/>in a Lean model of the machine"]
   WGSL["WGSL kernels (G)<br/>a dispatch writes the Lean result,<br/>under the Vulkan memory model"]
   PTX["PTX kernels (P)<br/>a launch writes the Lean result,<br/>under the PTX memory model"]
 
@@ -27,11 +28,13 @@ flowchart TB
   EXPR --> WASM
   WASM -- "modules without imports" --> C
   C -- "generated main" --> BARE
+  WASM -- "modules without imports" --> A64
   KSRC --> WGSL
   KSRC --> PTX
   WASM --> T1
   C -- "CompCert ccomp" --> T2
   BARE -- "CompCert ccomp" --> T3
+  A64 --> T3
   WGSL --> T4
   WGSL --> T6
   PTX -- "ptxas" --> T5
@@ -42,5 +45,5 @@ flowchart TB
   classDef run fill:#e9f7ec,stroke:#2e7d3c,color:#111
   class SRC,REF src
   class EXPR,KSRC ir
-  class WASM,C,BARE,WGSL,PTX back
+  class WASM,C,BARE,A64,WGSL,PTX back
   class T1,T2,T3,T4,T5,T6 run

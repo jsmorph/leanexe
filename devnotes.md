@@ -42238,6 +42238,8 @@ The experiment on finding C edited `isla_footprint_common` in scratch copies of 
 
 The user adopted the edit.  `tests/isla/armv9p4-checked.diff` holds it with its reasons, every form now runs on `armv9p4-checked.ir`, and UDIV on `armv9p4-checked-udiv.ir`, to which the UDIV diff applies unchanged.  The copies built on edgexpert-18ff from the committed diffs have the SHA-256 digests of the experiment's copies, `22c1420f…` and `373b6279…`, so the experiment's traces are the outputs of the script as it stands, and the committed traces equal them once struct fields are sorted.
 
+The user asked for an artifact code for the Images of the AArch64 back end and a complete root README.  Code M is the AArch64 Image of the direct back end with a theorem about its run from boot.  [The README](README.md) now names AArch64 machine code among the targets, describes the back end in its overview and in a section of its own with the Images and their outcomes, adds row M to the artifact table and to the properties of a return without a trap, adds the AArch64 document to the documentation table, and lists `a64-images.sh` and `tests/isla/theorems.sh` among the commands.  Both diagrams gain the back end: the summary a node for code M, and the full diagram a subgraph with `genProgram`, `genImage`, the Image file, and the Isla check.  `mmdc` could not start Puppeteer's own browser, an x86-64 build, on this AArch64 machine, so the diagrams were rendered with `-p` naming the system Chromium, and the README says so.  [The trusted-base document](docs/trusted-base.md#m-aarch64-images) gains section M, and [the algorithm index](index.md) gains code M in its key and in the rows of SHA-256, CRC-32, and the fold example.  The CIC filter's row, the README's CIC demo, and the CIC Image in the artifact table and the specification properties take code M when the CIC work merges.
+
 - [x] E: the patches and their validation.
 - [x] E: traces of every form in both profiles, except UDIV.
 - [x] E: the review's fixes in the Lean files.
@@ -42247,6 +42249,7 @@ The user adopted the edit.  `tests/isla/armv9p4-checked.diff` holds it with its 
 - [x] E: the extended semantics and ADD.
 - [x] E: ADD on the committed traces under the full TCG and KVM profiles.
 - [ ] E: the theorems of the remaining forms, one module per group in `tests/TestSupport/A64/Isla`.
+- [x] Code M, the root README, and the diagrams for the AArch64 back end.
 - [ ] E: remove `Stage1.lean`, `tests/isla/subs.trace`, `tests/isla/ldr.trace`, and their opcode files once SUBS (register) and LDR hold over every field.
 - [ ] Check how the modules that use `binary_file%` are built.
 

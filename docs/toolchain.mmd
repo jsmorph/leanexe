@@ -42,6 +42,13 @@ flowchart TB
     WASMF[".wasm file<br/>F: NAME_file, NAME_file_decode<br/>for the modules of the registry"]
   end
 
+  subgraph A64B["AArch64 backend"]
+    GEN["LeanExe/A64 genProgram<br/>simulation theorem program_sim<br/>in a Lean model of the machine"]
+    IMG["genImage: startup, program, translation table<br/>M: image_run_at, from boot_startupOff,<br/>the run from boot to SYSTEM_OFF"]
+    IMGF["arm64 Image file<br/>a64-programs emit writes it,<br/>and the kernel compares its bytes"]
+    ISLA["Isla traces of Arm's Sail model<br/>Lean proofs compare the model's<br/>instruction forms with them"]
+  end
+
   subgraph GPU["GPU backends"]
     WG["Verified.WGSL.compile<br/>G: dispatch theorems, Dispatch.executions<br/>under the Vulkan memory model"]
     WGM["LeanExe.WGSL.Module<br/>tools/EmitWgsl.lean prints the .wgsl text,<br/>and the proved parser reads it back"]
@@ -63,6 +70,9 @@ flowchart TB
   BARE -.-> ROCQ
   CTXT --> CC
 
+  MOD --> GEN --> IMG --> IMGF
+  ISLA -. "checks" .-> GEN
+
   KSRC --> WG --> WGM
   WG -.-> HOST
   PT -.-> HOST
@@ -71,7 +81,7 @@ flowchart TB
   subgraph RUN["Runs on"]
     direction LR
     LNX["Linux on AArch64 and x86-64<br/>executable linked with<br/>tools/native-host.c"]
-    QEMU["QEMU virt, AArch64,<br/>TCG and KVM<br/>ELF image with startup code"]
+    QEMU["QEMU virt, AArch64,<br/>TCG and KVM<br/>ELF image with startup code,<br/>or arm64 Image"]
     WT["Wasmtime<br/>leanexe-wasmtime-host,<br/>WASI Preview 1"]
     JS["Browsers and Node.js<br/>GPT-2 pages,<br/>gpt32-wasm-host.mjs"]
     VK["wgpu-native on Vulkan<br/>SwiftShader, llvmpipe<br/>leanexe-webgpu-host"]
@@ -81,6 +91,7 @@ flowchart TB
 
   CC --> LNX
   CC --> QEMU
+  IMGF --> QEMU
   WASMF --> WT
   WASMF --> JS
   WGM ---> VK
@@ -93,5 +104,5 @@ flowchart TB
   classDef run fill:#e9f7ec,stroke:#2e7d3c,color:#111
   class LEAN,ACT,VC,VCW src
   class EXPR,CMD,KSRC ir
-  class CW,CWW,MOD,MODW,ENC,WASMF,TR,CL,BARE,CTXT,CC,ROCQ,WG,WGM,PT,PTM,PTXAS,HOST back
+  class CW,CWW,MOD,MODW,ENC,WASMF,TR,CL,BARE,CTXT,CC,ROCQ,GEN,IMG,IMGF,ISLA,WG,WGM,PT,PTM,PTXAS,HOST back
   class WT,JS,LNX,QEMU,VK,WEBGPU,NV run
