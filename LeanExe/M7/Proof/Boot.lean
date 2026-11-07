@@ -206,8 +206,8 @@ theorem boot_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
     {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
     (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
     (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = []) (hcov : reachCovered m k = true)
-    (hdev : DevWindow P dev) {st : Store Unit} {heap : Heap} (hat : heap.At st)
-    (hcap : st.memoryCap m 0 ≤ 65535)
+    (hna : usesArea m k = false) (hdev : DevWindow P dev) {st : Store Unit} {heap : Heap}
+    (hat : heap.At st) (hcap : st.memoryCap m 0 ≤ 65535)
     (hent : 2 ≤ B.entries) (hw : B.init.all Instr.wide = true)
     (hk : bootFileOk B (bootProgram B m k s0 limit dev) n len = true)
     (hf : FileAt code n len B.org) (horg : B.org.toNat % 4 = 0)
@@ -236,9 +236,11 @@ theorem boot_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
     rw [p1, hbpc, Boot.reset, Boot.base]
     addr_after
   have hsp1 : t1.sp = B.sp := sp1.trans hbsp
-  obtain ⟨t, rt, pt, trt⟩ := main_run (P := P) (σ := σ) (code := code) hwords hlen himpl hPre hm
-    hprog hcp (by rw [Boot.base]; exact even_after (by omega) _) hcov hdev hat hcap g0 hs0 t1 hp1
-    (by rw [hsp1]; exact hsp) (by rw [hsp1]; exact hfit) (hstk _ (by rw [← hsp1])) N
+  obtain ⟨t, rt, pt, trt⟩ := main_run (P := P) (σ := σ) (code := code) hlen
+    (stepCall_of_implementsA hwords himpl hPre hna) hm hprog hcp
+    (by rw [Boot.base]; exact even_after (by omega) _) hcov hdev hat trivial hcap g0 hs0 t1 hp1
+    (by rw [hsp1]; exact hsp) (by rw [hsp1]; exact hfit) (hstk _ (by rw [← hsp1]))
+    (areaHolds_none hna) N
   refine ⟨t, r1.trans rt, pt, ?_⟩
   rw [trt, tr1, rd1, hb.trace, hb.reads, List.nil_append, Nat.zero_add]
   rfl

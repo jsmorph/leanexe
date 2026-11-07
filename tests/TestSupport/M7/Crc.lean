@@ -27,8 +27,7 @@ of the step must keep from one call to the next besides the allocator's invarian
 heap and the table borrowed.  `crcInv_initial` derives it at the module's initial store from
 `crcStepCompiled.initial`, and `crc_call` derives from `aligned` that each call keeps it, with the
 premises of `aligned` other than the heap, the table, and the memory cap discharged for every pair
-of words.  The functions that the step reaches load from the table with `load64` and use
-`wrapI64`, which the Cortex-M7 generator emits and the simulation does not yet cover.
+of words.  `crcCmsdkInv_initial` and `crcCmsdk_call` state the same of `crcCmsdkCompiled`.
 -/
 
 namespace TestSupport.M7.Crc
@@ -136,6 +135,38 @@ theorem crc_call (env : HostEnv Unit) {heap : Heap} {store : Store Unit} (s v : 
     subst ht
     exact ⟨hJ.2, Apart.nil⟩
   obtain ⟨hAl, hRun⟩ := crcStepCompiled.crcUsart3Tick.aligned env store heap [.i64 s, .i64 v]
+    (s, v) hAt trivial hT rfl Separate.nil hCap ⟨hJ.1, nofun, nofun⟩
+  refine ⟨hAl, hRun.mono fun final values ⟨heap', hAt', hOwn, hCaps, hReg, _, hAl', _⟩ => ?_⟩
+  have hpos : 0 < 8 * (crc32Table.size + 1) := by omega
+  obtain ⟨hBytes, hReg', -⟩ := hReg _ hJ.2.region hpos Apart.nil
+  exact ⟨heap', hAt', ⟨hAl', hJ.2.keepIn hAt' hBytes hReg'⟩, hCaps, hOwn⟩
+
+/-- The store in which the CMSDK step's module starts satisfies `CrcInv` with the heap of
+`initialHeap`, from `crcCmsdkCompiled.initial`. -/
+theorem crcCmsdkInv_initial :
+    CrcInv (Verified.initialHeap crcCmsdkCompiled.tables) crcCmsdkCompiled.module.initialStore := by
+  obtain ⟨-, -, hT⟩ : Verified.Ready crcCmsdkCompiled.module crcCmsdkCompiled.tables
+      (Verified.initialHeap crcCmsdkCompiled.tables) crcCmsdkCompiled.module.initialStore :=
+    Verified.Ready.initial rfl crcCmsdkCompiled.initial
+  exact ⟨⟨by decide +kernel, nofun, nofun⟩, hT 0 (by decide)⟩
+
+set_option maxRecDepth 100000 in
+/-- `crc_call` for the CMSDK step, function 5 of `crcCmsdkCompiled.module`. -/
+theorem crcCmsdk_call (env : HostEnv Unit) {heap : Heap} {store : Store Unit} (s v : UInt64)
+    (hAt : heap.At store) (hJ : CrcInv heap store)
+    (hCap : store.memoryCap crcCmsdkCompiled.module 0 ≤ 65535) :
+    (∃ N, ∀ fuel ≥ N, AlignedRun fuel crcCmsdkCompiled.module 5 store [.i64 v, .i64 s] env) ∧
+    Runs false env crcCmsdkCompiled.module 5 store [.i64 v, .i64 s] fun final values =>
+      ∃ heap' : Heap, heap'.At final ∧ CrcInv heap' final ∧
+        final.memoryCaps = store.memoryCaps ∧
+        values.reverse = [.i64 (crcCmsdkTick s v).1, .i64 (crcCmsdkTick s v).2] := by
+  have hT : ∀ t ∈ [((4096 : UInt64), crc32Table)], heap.Borrowed store t.1 t.2 ∧
+      Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
+    intro t ht
+    rw [List.mem_singleton] at ht
+    subst ht
+    exact ⟨hJ.2, Apart.nil⟩
+  obtain ⟨hAl, hRun⟩ := crcCmsdkCompiled.crcCmsdkTick.aligned env store heap [.i64 s, .i64 v]
     (s, v) hAt trivial hT rfl Separate.nil hCap ⟨hJ.1, nofun, nofun⟩
   refine ⟨hAl, hRun.mono fun final values ⟨heap', hAt', hOwn, hCaps, hReg, _, hAl', _⟩ => ?_⟩
   have hpos : 0 < 8 * (crc32Table.size + 1) := by omega

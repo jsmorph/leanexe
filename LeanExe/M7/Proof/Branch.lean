@@ -164,7 +164,8 @@ device trace, and the read count unchanged and the memory that of `ms` with the 
 `k` holding `r`, the top of the new stack `r :: vs`. -/
 theorem outcome_store {E : Env} {ctl : List Ctl} {σs σ' : List ValueType} {sl : Locals}
     {ms z : State} {endA : UInt32} {α : Type} {st : Store α} {k : Nat} {vs : List Value}
-    {r : Value} {w0 w1 : UInt32} (hinv : Inv P E σs sl ms) (hr' : Reach P σ code ms z)
+    {r : Value} {w0 w1 : UInt32} (hinv : Inv P E σs sl ms) (hsr : StoreOk P E.toShared st ms)
+    (hr' : Reach P σ code ms z)
     (hp : z.pc = endA) (hsp : z.sp = ms.sp) (htr : z.trace = ms.trace) (hrd : z.reads = ms.reads)
     (hmem : z.mem = store32 (store32 ms.mem (ms.sp + UInt32.ofNat (E.frame.opAt k)) w0)
       (ms.sp + UInt32.ofNat (E.frame.opAt k + 4)) w1)
@@ -173,7 +174,8 @@ theorem outcome_store {E : Env} {ctl : List Ctl} {σs σ' : List ValueType} {sl 
     (hr : SlotRel r w0 w1) (hty : Typed σ' (r :: vs)) :
     Outcome P σ code E ctl (some σ') endA (.Fallthrough st { sl with values := r :: vs }) ms :=
   ⟨σ', rfl, z, hr', hp, hsp, htr, hrd, keeps_write_op hinv.frame hmem hk,
-    below_write_op hinv.frame hmem hk hb, Inv.write_op hinv hsp hmem hk hvs hbelow hr hty⟩
+    below_write_op hinv.frame hmem hk hb, Inv.write_op hinv hsp hmem hk hvs hbelow hr hty,
+    hsr.congr (keepsBelow_write_op hinv.frame hmem hk)⟩
 
 /-! ## Division -/
 
@@ -234,7 +236,7 @@ theorem sim_divrem {inst : Instruction} {res : Fin 8 × Fin 8} {op : UInt64 → 
       t.r 1 = ((a / b) >>> 32).toUInt32 → t.r 2 = (a % b).toUInt32 →
       t.r 3 = ((a % b) >>> 32).toUInt32 → SlotRel (.i64 (op a b)) (t.r res.1) (t.r res.2))
     (F : Nat) : InstrSim P σ code F inst := by
-  intro E ctl σs a is fin hg hcode hev hdiv hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hg hcode hev hdiv hb _ α m st sl ms hinv hsr hpc _ need D _ _ _
   rw [hgen] at hg
   obtain ⟨hb2, hlt, h0, h1, h2, h3, h4, h5, oq, ob, q1, q2, q3, q4, b1, b2, b3, b4, rfl, rfl⟩ :=
     gen_div hg
@@ -362,7 +364,7 @@ theorem sim_divrem {inst : Instruction} {res : Fin 8 × Fin 8} {op : UInt64 → 
           rw [htpc]
           try addr_after] at hcS
         obtain ⟨rS, pS, spS, -, trS, rdS, -⟩ := run_slots (σ := σ) hokS hcS
-        refine outcome_store hinv
+        refine outcome_store hinv hsr
           (Reach.trans r1 (Reach.trans rB' (Reach.trans (reach_exec hcBL eBL rt) rS))) ?_
           (by rw [spS, hwsp]) (by rw [trS, hwtr]) (by rw [rdS, hwrd]) ?_
           (by omega) (by omega) hvl (fun h v hv' => ?_) (hres t a' b t0 t1 t2 t3)
