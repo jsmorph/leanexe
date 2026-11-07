@@ -53,12 +53,15 @@
 #
 # The co-simulation of the model on the board (tests/TestSupport/M7/BoardCosim.lean) has three
 # commands, the first and the last with Lean and the second with the board.  "m7-board.sh
-# cosim-image SEED PER_FORM" builds m7-cosim under a memory cap of MEM, 8G unless set, and writes
-# cosim.bin, the image of PER_FORM cases of each form from the seed SEED, with its layout and the
-# address and length of the results in cosim.layout.  "m7-board.sh cosim" writes cosim.bin to the
+# cosim-image SEED PER_FORM [seeded]" builds m7-cosim under a memory cap of MEM, 8G unless set,
+# and writes cosim.bin, the image of PER_FORM cases of each form from the seed SEED followed by the
+# fixed cases, without them when "seeded" is given, with its layout and the address and length of
+# the results in cosim.layout.  DTCM holds the results of 963 cases, so PER_FORM is at most 22 with
+# the fixed cases and 23 without them.  "m7-board.sh cosim" writes cosim.bin to the
 # board as "run" does, waits 3 s after the reset, reads the results from DTCM over SWD into
 # cosim.results, and requires the header's word 0x600DCAFE and as many saved cases as the image
-# holds.  "m7-board.sh cosim-check SEED PER_FORM" checks every case of cosim.results against the
+# holds.  "m7-board.sh cosim-check SEED PER_FORM [seeded]", with the arguments of cosim-image,
+# checks every case of cosim.results against the
 # model with m7-cosim board-check, into cosim.check, and requires that all agree.  It then checks
 # them against the model with ADC's carry in replaced by 0, into cosim.mutant, and requires that
 # check to fail with at least one differing ADC case.
@@ -70,12 +73,12 @@
 # script in seconds.
 # Usage: tests/baremetal/m7-board.sh check NAME | emulate NAME | run NAME DEVICE |
 #          host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS |
-#          cosim-image SEED PER_FORM | cosim | cosim-check SEED PER_FORM
+#          cosim-image SEED PER_FORM [seeded] | cosim | cosim-check SEED PER_FORM [seeded]
 set -euo pipefail
 usage() {
   echo "usage: tests/baremetal/m7-board.sh check NAME | emulate NAME | run NAME DEVICE |" \
     "host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS |" \
-    "cosim-image SEED PER_FORM | cosim | cosim-check SEED PER_FORM" >&2
+    "cosim-image SEED PER_FORM [seeded] | cosim | cosim-check SEED PER_FORM [seeded]" >&2
   exit 2
 }
 [ "$#" -ge 1 ] || usage
@@ -317,14 +320,14 @@ EOF
     echo "pass: the output records equal native Lean's for $(wc -l <"$records.in") input records"
     ;;
   cosim-image)
-    [ "$#" -eq 3 ] || usage
+    [ "$#" -eq 3 ] || { [ "$#" -eq 4 ] && [ "$4" = seeded ]; } || usage
     cd "$root"
     mkdir -p "$out"
     rm -f "${out:?}"/cosim.*
     mem=${MEM:-8G}
     tools/leanrun --timeout 60m --memory-high "$mem" lake --log-level error build m7-cosim
     tools/leanrun --timeout 10m --memory-high "$mem" lake env .lake/build/bin/m7-cosim board \
-      "$2" "$3" "$out/cosim.bin" | tee "$out/cosim.layout"
+      "$2" "$3" "$out/cosim.bin" "${@:4}" | tee "$out/cosim.layout"
     ;;
   cosim)
     [ "$#" -eq 1 ] || usage
@@ -343,18 +346,19 @@ EOF
       "${results#* } bytes from ${results% *}"
     ;;
   cosim-check)
-    [ "$#" -eq 3 ] || usage
+    [ "$#" -eq 3 ] || { [ "$#" -eq 4 ] && [ "$4" = seeded ]; } || usage
     cd "$root"
     status=0
     if tools/leanrun --timeout 10m --memory-high "${MEM:-8G}" lake env .lake/build/bin/m7-cosim \
-        board-check "$2" "$3" "$out/cosim.results" >"$out/cosim.check" 2>&1; then
+        board-check "$2" "$3" "$out/cosim.results" "${@:4}" >"$out/cosim.check" 2>&1; then
       echo "pass: $(tail -n 1 "$out/cosim.check")"
     else
       echo "fail: $(head -c 1200 "$out/cosim.check")"
       status=1
     fi
     if tools/leanrun --timeout 10m --memory-high "${MEM:-8G}" lake env .lake/build/bin/m7-cosim \
-        board-check "$2" "$3" "$out/cosim.results" adc-carry >"$out/cosim.mutant" 2>&1; then
+        board-check "$2" "$3" "$out/cosim.results" "${@:4}" adc-carry >"$out/cosim.mutant" 2>&1
+    then
       echo "fail: the check with ADC's carry in replaced by 0 found no difference"
       status=1
     elif grep -q '^m7-cosim: differing cases by form: .*adcReg [1-9]' "$out/cosim.mutant"; then
