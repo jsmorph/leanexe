@@ -86,9 +86,11 @@ import LeanExe.M7.Proof.Machine
 import LeanExe.M7.Proof.Memory
 import LeanExe.M7.Proof.Ops
 import LeanExe.M7.Proof.Pair
+import LeanExe.M7.Proof.Program
 import LeanExe.M7.Proof.Relation
 import LeanExe.M7.Proof.Sim
 import LeanExe.M7.Proof.Slots
+import LeanExe.M7.Proof.Step
 import LeanExe.M7.Proof.Straight
 import LeanExe.Pipeline.Allocation
 import LeanExe.Pipeline.Bytes

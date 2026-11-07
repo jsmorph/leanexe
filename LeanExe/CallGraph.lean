@@ -89,6 +89,78 @@ theorem mapM_funcOf {m : Module} : ∀ {ks : List Nat} {fs : List (Nat × Functi
                 · simp [throw, throwThe, MonadExceptOf.throw] at h1
               · exact mapM_funcOf h2 x hx
 
+/-- The indices of the functions that `funcOf` finds are those of the list. -/
+theorem mapM_funcOf_mem {m : Module} : ∀ {ks : List Nat} {fs : List (Nat × Function)},
+    ks.mapM (funcOf m) = .ok fs → ∀ x ∈ fs, x.1 ∈ ks
+  | [], fs, h => by
+      simp only [List.mapM_nil, pure, Except.pure, Except.ok.injEq] at h
+      subst h
+      simp
+  | j :: ks, fs, h => by
+      rw [List.mapM_cons] at h
+      cases h1 : funcOf m j with
+      | error e => simp [h1, bind, Except.bind] at h
+      | ok y =>
+          cases h2 : ks.mapM (funcOf m) with
+          | error e => simp [h1, h2, bind, Except.bind] at h
+          | ok ys =>
+              simp [h1, h2, bind, Except.bind, pure, Except.pure] at h
+              subst h
+              intro x hx
+              simp only [List.mem_cons] at hx
+              rcases hx with rfl | hx
+              · unfold funcOf at h1
+                split at h1
+                · simp only [pure, Except.pure, Except.ok.injEq] at h1
+                  subst h1
+                  exact List.mem_cons_self
+                · simp [throw, throwThe, MonadExceptOf.throw] at h1
+              · exact List.mem_cons_of_mem _ (mapM_funcOf_mem h2 x hx)
+
+/-- The first of the functions that `funcOf` finds is that of the first index. -/
+theorem mapM_funcOf_cons {m : Module} {j : Nat} {ks : List Nat} {fs : List (Nat × Function)}
+    (h : (j :: ks).mapM (funcOf m) = .ok fs) :
+    ∃ f rest, m.funcs[j]? = some f ∧ fs = (j, f) :: rest := by
+  rw [List.mapM_cons] at h
+  cases h1 : funcOf m j with
+  | error e => simp [h1, bind, Except.bind] at h
+  | ok y =>
+      cases h2 : ks.mapM (funcOf m) with
+      | error e => simp [h1, h2, bind, Except.bind] at h
+      | ok ys =>
+          simp [h1, h2, bind, Except.bind, pure, Except.pure] at h
+          subst h
+          unfold funcOf at h1
+          split at h1
+          · rename_i f hf
+            simp only [pure, Except.pure, Except.ok.injEq] at h1
+            subst h1
+            exact ⟨f, ys, hf, rfl⟩
+          · simp [throw, throwThe, MonadExceptOf.throw] at h1
+
+/-- `reachable` keeps the functions already found, first. -/
+theorem reachable_prefix (m : Module) :
+    ∀ (fuel : Nat) (done todo : List Nat), ∃ rest, reachable m fuel done todo = done ++ rest
+  | 0, done, _ => ⟨[], by simp [reachable]⟩
+  | _ + 1, done, [] => ⟨[], by simp [reachable]⟩
+  | fuel + 1, done, j :: todo => by
+      simp only [reachable]
+      split
+      · exact reachable_prefix m fuel done todo
+      · obtain ⟨rest, h⟩ := reachable_prefix m fuel (done ++ [j]) _
+        exact ⟨j :: rest, by rw [h, List.append_assoc, List.singleton_append]⟩
+
+/-- `reachFrom m k` starts with `k`. -/
+theorem reachFrom_cons (m : Module) (k : Nat) : ∃ rest, reachFrom m k = k :: rest := by
+  unfold reachFrom
+  generalize (m.funcs.map fun f => (callsIn f.body).length).sum = n
+  rw [Nat.add_comm]
+  simp only [reachable]
+  rw [ite_eq_right List.not_mem_nil]
+  obtain ⟨rest, h⟩ := reachable_prefix m n ([] ++ [k])
+    ([] ++ ((m.funcs[k]?).map fun f => callsIn f.body).getD [])
+  exact ⟨rest, by rw [h]; rfl⟩
+
 theorem mem_reachable (m : Module) {x : Nat} :
     ∀ (fuel : Nat) (done todo : List Nat), x ∈ done → x ∈ reachable m fuel done todo
   | 0, _, _, h => by simpa only [reachable] using h
