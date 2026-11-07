@@ -80,6 +80,7 @@ import LeanExe.M7.Encode
 import LeanExe.M7.Gen
 import LeanExe.M7.Image
 import LeanExe.M7.Init
+import LeanExe.M7.Isla.Arith
 import LeanExe.M7.Isla.Check
 import LeanExe.M7.Isla.Profile
 import LeanExe.M7.Isla.Trace
