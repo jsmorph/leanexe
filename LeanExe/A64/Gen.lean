@@ -5,16 +5,22 @@ import LeanExe.CallGraph
 /-!
 The code generator of the AArch64 back end: from a function of a module of the verified
 compiler and its arguments, a bare-metal program of the model's instruction forms whose `main`
-calls the function, writes the eight bytes of its result to the UART, and returns 0 to the
-startup code of `tools/baremetal/start.S`.  It covers the Wasm forms of GCD's loop, the integer
-comparisons and operations of the C path's subset, calls, globals, and the 64-bit loads and stores
-of linear memory, and it rejects every other form with a message.
+calls the function, writes its result to the UART, and returns 0 to the startup code of
+`tools/baremetal/start.S`.  It covers the Wasm forms of GCD's loop, the integer comparisons and
+operations of the C path's subset, calls, globals, the 64-bit loads and stores of linear memory,
+and the f64 forms of the Euler solver: constants, the reinterpretations, `f64ConvertI64U`, `f64Add`,
+`f64Sub`, `f64Mul`, `f64Div`, `f64Sqrt`, and `f64Abs`.  It rejects every other form with a
+message.
 
 The operand stack's height and types are fixed at every reachable instruction, so the value at
 height `h` lies in the register `opReg h`, X0 to X15 and then X19 to X28.  The generator tracks the
 types and checks the types of the values that a `local.set`, a branch, and a call receive against
 the declared types.  An `i32` lies there zero-extended, so `extendUI32` emits nothing, `wrapI64` is
-a 32-bit `ORR`, and an `i32` comparison or `and` is the 64-bit one.  X16 is the scratch register of
+a 32-bit `ORR`, and an `i32` comparison or `and` is the 64-bit one.  An `f64` lies there as its
+word, so a reinterpretation emits nothing.  An f64 operation moves its operands' words into D0 and
+D1 with `FMOV`, computes into D0, and moves D0's word into the register of its result, and
+`f64Abs` clears the sign bit with `ADD Xr, Xr, Xr` and `LSR Xr, Xr, #1`.  X16 is the scratch
+register of
 `remUI64`, of the prologue, and of the memory's instructions, and X29 is a second one of
 `memory.grow`.  X17 holds the address of the area of the module's store: the memory's size less 8,
 the globals, and the memory's bytes, which a load or store reaches after a check of its bounds.  A
@@ -176,6 +182,37 @@ def genBin (ctl : List Ctl) (σ : List ValueType) (op : Fin 32 → Fin 32 → Fi
   let r ← opReg (σ.length - 2)
   return ([op r r (← opReg (σ.length - 1))], some (t :: σ.drop 2))
 
+/-- The code of the f64 operation `op` on the words of registers `x` and `y` into `x`: the words
+into D0 and D1, `op` into D0, and the word of D0 into `x`. -/
+def fBin (op : Fin 32 → Fin 32 → Fin 32 → Instr) (x y : Fin 32) : List Instr :=
+  [.fmovDX 0 x, .fmovDX 1 y, op 0 0 1, .fmovXD x 0]
+
+/-- An f64 operation on the two values on top, which the code `fBin op` replaces by its result,
+an `f64`. -/
+def genFBin (ctl : List Ctl) (σ : List ValueType) (op : Fin 32 → Fin 32 → Fin 32 → Instr) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 2 then throw s!"an operation at height {σ.length}"
+  let x ← opReg (σ.length - 2)
+  return (fBin op x (← opReg (σ.length - 1)), some (.f64 :: σ.drop 2))
+
+/-- An operation on the value on top, in the register `r`, which the code `ops r` replaces by its
+result, of type `t`. -/
+def genUn (ctl : List Ctl) (σ : List ValueType) (ops : Fin 32 → List Instr) (t : ValueType) :
+    GenM (List Instr × Option (List ValueType)) := do
+  if σ.length < curBase ctl + 1 then throw s!"an operation at height {σ.length}"
+  return (ops (← opReg (σ.length - 1)), some (t :: σ.tail))
+
+/-- The code of `f64Sqrt` on register `r`: its word into D0, `FSQRT` in D0, and D0's word back. -/
+def sqrtCode (r : Fin 32) : List Instr := [.fmovDX 0 r, .fsqrt 0 0, .fmovXD r 0]
+
+/-- The code of `f64Abs` on register `r`: the word doubled, which drops the sign bit, and shifted
+back. -/
+def absCode (r : Fin 32) : List Instr := [.addReg r r r, .lsrImm r r 1]
+
+/-- The code of `f64ConvertI64U` on register `r`: `UCVTF` of its word into D0, and D0's word
+back. -/
+def convertCode (r : Fin 32) : List Instr := [.ucvtf 0 r, .fmovXD r 0]
+
 mutual
 /-- The number of instructions of `ins` at height `h`, under constructs whose branches carry
 `ar` values, the innermost first, for calls of functions whose numbers of parameters and results
@@ -185,11 +222,15 @@ def instrSize (sig : Nat → Option (Nat × Nat)) (ar : List Nat) (h : Nat) :
   | .localGet _ => (1, some (h + 1))
   | .localSet _ => (1, some (h - 1))
   | .localTee _ => (1, some h)
-  | .constI64 _ | .const _ => (4, some (h + 1))
+  | .constI64 _ | .const _ | .f64Const _ => (4, some (h + 1))
   | .eqI64 | .eq | .neI64 | .ltUI64 | .leUI64 | .geUI64 => (2, some (h - 1))
   | .eqzI64 | .eqz => (2, some h)
   | .addI64 | .subI64 | .mulI64 | .andI64 | .and | .orI64 | .xorI64 | .shlI64 | .shrUI64 =>
       (1, some (h - 1))
+  | .f64Add | .f64Sub | .f64Mul | .f64Div => (4, some (h - 1))
+  | .f64Sqrt => (3, some h)
+  | .f64Abs | .f64ConvertI64U => (2, some h)
+  | .i64ReinterpretF64 | .f64ReinterpretI64 => (0, some h)
   | .wrapI64 => (1, some h)
   | .extendUI32 => (0, some h)
   | .remUI64 => (3, some (h - 1))
@@ -246,6 +287,7 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
       return ([.str (← opReg (σ.length - 1)) 31 (← slotOf i)], some σ)
   | .constI64 v => do return (movImm (← opReg σ.length) v, some (.i64 :: σ))
   | .const v => do return (movImm (← opReg σ.length) v.toUInt64, some (.i32 :: σ))
+  | .f64Const v => do return (movImm (← opReg σ.length) v, some (.f64 :: σ))
   | .eqI64 | .eq => genCmp ctl σ 1
   | .neI64 => genCmp ctl σ 0
   | .ltUI64 => genCmp ctl σ 2
@@ -260,6 +302,15 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt64) :
   | .xorI64 => genBin ctl σ .eorReg .i64
   | .shlI64 => genBin ctl σ .lslv .i64
   | .shrUI64 => genBin ctl σ .lsrv .i64
+  | .f64Add => genFBin ctl σ .fadd
+  | .f64Sub => genFBin ctl σ .fsub
+  | .f64Mul => genFBin ctl σ .fmul
+  | .f64Div => genFBin ctl σ .fdiv
+  | .f64Sqrt => genUn ctl σ sqrtCode .f64
+  | .f64Abs => genUn ctl σ absCode .f64
+  | .f64ConvertI64U => genUn ctl σ convertCode .f64
+  | .i64ReinterpretF64 => genUn ctl σ (fun _ => []) .i64
+  | .f64ReinterpretI64 => genUn ctl σ (fun _ => []) .f64
   | .wrapI64 => do
       if σ.length < curBase ctl + 1 then throw s!"wrap at height {σ.length}"
       let r ← opReg (σ.length - 1)

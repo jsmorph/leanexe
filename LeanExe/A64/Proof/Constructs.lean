@@ -1,6 +1,7 @@
 import LeanExe.A64.Proof.Control
 import LeanExe.A64.Proof.Call
 import LeanExe.A64.Proof.Memory
+import LeanExe.A64.Proof.Float
 import LeanExe.ProofKit.Exec
 import Interpreter.Wasm.Semantics.Lemmas
 
@@ -187,7 +188,35 @@ theorem genInstr_size_of {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : U
   | constI64 w =>
       obtain ⟨_, rfl, rfl⟩ := gen_const (.inl ⟨rfl, rfl⟩) hg; simp [instrSize, movImm]
   | const c =>
-      obtain ⟨_, rfl, rfl⟩ := gen_const (.inr ⟨c, rfl, rfl, rfl⟩) hg; simp [instrSize, movImm]
+      obtain ⟨_, rfl, rfl⟩ := gen_const (.inr (.inl ⟨c, rfl, rfl, rfl⟩)) hg
+      simp [instrSize, movImm]
+  | f64Const w =>
+      obtain ⟨_, rfl, rfl⟩ := gen_const (.inr (.inr ⟨rfl, rfl⟩)) hg; simp [instrSize, movImm]
+  | f64Add | f64Sub | f64Mul | f64Div =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genFBin_ok hg
+      simp [instrSize, fBin]
+      omega
+  | f64Sqrt =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, sqrtCode]
+      omega
+  | f64Abs =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, absCode]
+      omega
+  | f64ConvertI64U =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize, convertCode]
+      omega
+  | i64ReinterpretF64 | f64ReinterpretI64 =>
+      simp only [genInstr] at hg
+      obtain ⟨_, _, rfl, rfl⟩ := genUn_ok hg
+      simp [instrSize]
+      omega
   | eqI64 => obtain ⟨_, _, rfl, rfl⟩ := gen_cmp (.inl rfl) hg; simp [instrSize]; omega
   | eq => obtain ⟨_, _, rfl, rfl⟩ := gen_cmp (.inr rfl) hg; simp [instrSize]; omega
   | eqzI64 => obtain ⟨_, _, rfl, rfl⟩ := gen_eqz (.inl rfl) hg; simp [instrSize]; omega
@@ -329,7 +358,22 @@ theorem genInstr_base {E : Env} {ctl : List Ctl} {σ : List ValueType} {a : UInt
   | localTee i =>
       obtain ⟨_, _, h1, _, _, _, he⟩ := gen_localStore (.inr ⟨rfl, rfl⟩) hg; cases he; omega
   | constI64 w => obtain ⟨_, _, he⟩ := gen_const (.inl ⟨rfl, rfl⟩) hg; cases he; simp; omega
-  | const c => obtain ⟨_, _, he⟩ := gen_const (.inr ⟨c, rfl, rfl, rfl⟩) hg; cases he; simp; omega
+  | const c =>
+      obtain ⟨_, _, he⟩ := gen_const (.inr (.inl ⟨c, rfl, rfl, rfl⟩)) hg; cases he; simp; omega
+  | f64Const w =>
+      obtain ⟨_, _, he⟩ := gen_const (.inr (.inr ⟨rfl, rfl⟩)) hg; cases he; simp; omega
+  | f64Add | f64Sub | f64Mul | f64Div =>
+      simp only [genInstr] at hg
+      obtain ⟨h1, _, _, he⟩ := genFBin_ok hg
+      cases he
+      simp
+      omega
+  | f64Sqrt | f64Abs | f64ConvertI64U | i64ReinterpretF64 | f64ReinterpretI64 =>
+      simp only [genInstr] at hg
+      obtain ⟨h1, _, _, he⟩ := genUn_ok hg
+      cases he
+      simp
+      omega
   | eqI64 => obtain ⟨h1, _, _, he⟩ := gen_cmp (.inl rfl) hg; cases he; simp; omega
   | eq => obtain ⟨h1, _, _, he⟩ := gen_cmp (.inr rfl) hg; cases he; simp; omega
   | eqzI64 => obtain ⟨h1, _, _, he⟩ := gen_eqz (.inl rfl) hg; cases he; simp; omega
@@ -815,6 +859,16 @@ theorem instr_sim {F : Nat} (hP : ∀ g < F, ListSim P code g) (inst : Instructi
   case shlI64 => exact sim_shlI64 P code F
   case shrUI64 => exact sim_shrUI64 P code F
   case wrapI64 => exact sim_wrapI64 P code F
+  case f64Const w => exact sim_f64Const P code F w
+  case f64Add => exact sim_f64Add P code F
+  case f64Sub => exact sim_f64Sub P code F
+  case f64Mul => exact sim_f64Mul P code F
+  case f64Div => exact sim_f64Div P code F
+  case f64Sqrt => exact sim_f64Sqrt P code F
+  case f64Abs => exact sim_f64Abs P code F
+  case f64ConvertI64U => exact sim_f64ConvertI64U P code F
+  case i64ReinterpretF64 => exact sim_i64ReinterpretF64 P code F
+  case f64ReinterpretI64 => exact sim_f64ReinterpretI64 P code F
   case remUI64 => exact sim_remUI64 P code F
   case divUI64 => exact sim_divUI64 P code F
   case unreachable => exact sim_unreachable P code F
