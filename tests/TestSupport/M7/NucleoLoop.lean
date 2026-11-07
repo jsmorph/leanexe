@@ -61,32 +61,12 @@ theorem usart3_requests (s v : UInt64) :
   repeat' split
   all_goals simp [e1, e2, e3]
 
-theorem event_addr (σ' : Nat → UInt32) (r : ReqState UInt64) :
-    (reqEvent (devBus devBase) usart3Tick σ' r).addr =
-      devBase + UInt32.ofNat (4 * (reqReg (usart3Tick r.state r.last).2).toNat) := by
-  unfold reqEvent
-  split <;> rfl
-
-/-- Every access of the echo's windows is one of `USART_ISR`, `USART_RDR`, and `USART_TDR`. -/
-theorem windows_confined (g : UInt64) (σ' : Nat → UInt32) : ∀ N,
-    ∀ e ∈ windows (reqTrace (devBus devBase) usart3Tick g σ') N,
-      e.addr = usartIsr ∨ e.addr = usartRdr ∨ e.addr = usartTdr
-  | 0 => fun _ he => absurd he List.not_mem_nil
-  | N + 1 => fun e he => by
-      rw [windows] at he
-      rcases List.mem_append.mp he with h | h
-      · exact windows_confined g σ' N e h
-      · rw [reqTrace, List.mem_singleton] at h
-        rw [h, event_addr]
-        rcases usart3_requests (reqRun usart3Tick g σ' N).state (reqRun usart3Tick g σ' N).last
-          with h | h | h <;> rw [h] <;> decide
-
 /-- The accesses of the trace of `echo_loop`: the initialization's lie in RCC, GPIOD, or USART3,
 and the windows' are accesses of `USART_ISR`, `USART_RDR`, and `USART_TDR`. -/
 theorem echo_confined (σ : Nat → UInt32) (N : Nat) :
     (∀ e ∈ initTrace init σ, InitBlock e.addr) ∧
       ∀ e ∈ windows (reqTrace (devBus devBase) usart3Tick 3 (fun j => σ (j + initReads init))) N,
         e.addr = usartIsr ∨ e.addr = usartRdr ∨ e.addr = usartTdr :=
-  ⟨init_confined σ, windows_confined 3 _ N⟩
+  ⟨init_confined σ, windows_confined usart3_requests 3 _ N⟩
 
 end TestSupport.M7.Nucleo
