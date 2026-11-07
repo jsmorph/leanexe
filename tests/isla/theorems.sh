@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Elaborates the modules of tests/TestSupport/A64/Isla, which prove Agrees
+# Elaborates the modules of tests/TestSupport/A64/Isla, which prove Agrees and AgreesAll
 # (LeanExe/A64/Isla/Check.lean) for the forms of LeanExe/A64/Machine.lean from the traces of
 # tests/isla, and prints the axioms of each theorem that a module names in #print axioms.  Lake
 # does not track the files that isla_trace% and isla_features% read, so an olean can hold theorems

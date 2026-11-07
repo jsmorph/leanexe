@@ -6,6 +6,7 @@ import LeanExe.A64.File
 import LeanExe.A64.Gen
 import LeanExe.A64.Image
 import LeanExe.A64.Isla.Check
+import LeanExe.A64.Isla.Float
 import LeanExe.A64.Isla.Profile
 import LeanExe.A64.Isla.Trace
 import LeanExe.A64.Isla.Walk

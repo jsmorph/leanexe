@@ -65,6 +65,21 @@ host that calls `step` again after `scores` and keeps the scores array.
 passing it to `sampleTopK`, and no generation theorem covers the release or the call of
 `sampleTopK`.  No theorem gives the bounds in closed form.
 
+## The AArch64 Image of `scores`
+
+The AArch64 back end without C compiles `scores` to an arm64 Image through the wrapper
+`scoresCheck` of [the kernel's program](../../tests/TestSupport/A64/GptScores.lean), which builds
+a cache of 3 positions, 32 token embeddings of width 16, and the final layer norm's gains and
+biases from the indices of their elements, and calls `scores` with one layer, two heads of width
+8, and `eps` 1e-5.  The theorem `gptscores` of [the GPT-2 kernel's Image
+theorem](../../tests/TestSupport/A64/ImageFilesGpt.lean) states that in the model of the boot
+machine the Image writes the words of those 32 scores to the UART, with the floating-point
+instructions' meanings taken from Talos's IEEE 754 functions, as [the AArch64
+document](../../docs/a64-bare-metal.md#floating-point) describes.  The back end's generator has no
+form for a comparison of doubles, which `exp`, `max`, and the insertion into the top-k buffer use,
+so it rejects every function that reaches one, among them `step`, `softmax`, `mlp`, `attention`,
+and `sampleTopK`.  It also rejects `forward`, whose 28 parameters exceed its limit of 26.
+
 ## Building, running, and testing
 
 ```sh
