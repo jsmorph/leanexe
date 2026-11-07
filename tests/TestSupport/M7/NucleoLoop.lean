@@ -34,7 +34,8 @@ theorem echo_loop {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len
       (Verified.initialHeap reqCompiled.tables) reqCompiled.module.initialStore :=
     Verified.Ready.initial rfl reqCompiled.initial
   exact board_run (words := fun g : UInt64 => [g]) (fun _ => rfl) (fun _ => rfl)
-    reqCompiled.usart3Tick.implements (fun _ _ _ => trivial) rfl echo_covered.1 hAt0 hcap0 hk
+    reqCompiled.usart3Tick.implements (fun _ _ _ => trivial) rfl echo_covered.1 echo_noArea.1
+    hAt0 hcap0 hk
     (by rw [echo_stack.1]; decide) 3 rfl hf b hb N
 
 /-- The echo's run on the board succeeds for every number of steps. -/
@@ -45,7 +46,8 @@ theorem echo_runs {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len
       (Verified.initialHeap reqCompiled.tables) reqCompiled.module.initialStore :=
     Verified.Ready.initial rfl reqCompiled.initial
   exact board_runs (words := fun g : UInt64 => [g]) (fun _ => rfl) (fun _ => rfl)
-    reqCompiled.usart3Tick.implements (fun _ _ _ => trivial) rfl echo_covered.1 hAt0 hcap0 hk
+    reqCompiled.usart3Tick.implements (fun _ _ _ => trivial) rfl echo_covered.1 echo_noArea.1
+    hAt0 hcap0 hk
     (by rw [echo_stack.1]; decide) 3 rfl hf b hb
 
 /-- Every request of `usart3Tick` names `USART_ISR`, index `0x1207`, `USART_RDR`, index

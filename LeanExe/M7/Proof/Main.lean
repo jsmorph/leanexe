@@ -430,7 +430,8 @@ theorem main_start {s0 : List UInt64} {wds : List (List Instr)} {hq : 8 * s0.len
     ∃ t, Reach P σ code b t ∧
       t.pc = b.pc + UInt32.ofNat (4 * (wds.flatten.length + 4)) ∧
       t.sp = b.sp - UInt32.ofNat (8 * (s0.length + 1)) ∧ t.trace = b.trace ∧
-      t.reads = b.reads ∧ WordsAt t (s0 ++ [0]) := by
+      t.reads = b.reads ∧ WordsAt t (s0 ++ [0]) ∧
+      ∀ a : UInt32, a.toNat < t.sp.toNat → t.mem a = b.mem a := by
   have hc' : CodeAt code b.pc (Instr.subwSpSpOf (8 * (s0.length + 1)) :: (wds.flatten ++
       [.movImm 0 0, .strSp 0 ⟨8 * s0.length, hq⟩, .strSp 0 ⟨8 * s0.length + 4, hqh⟩])) := by
     simpa only [List.singleton_append, List.cons_append, List.append_assoc, List.nil_append] using hc
@@ -477,7 +478,10 @@ theorem main_start {s0 : List UInt64} {wds : List (List Instr)} {hq : 8 * s0.len
         (v.sp + UInt32.ofNat (8 * s0.length + 4)) 0 := rfl
   have hsp : (slotRun P σ [.movImm 0 0, .strSp 0 ⟨8 * s0.length, hq⟩,
       .strSp 0 ⟨8 * s0.length + 4, hqh⟩] v).sp = v.sp := rfl
-  refine ⟨_, reach_exec c0 e0 r1, ?_, ?_, ?_, ?_, ?_⟩
+  have hu1n : u1.sp.toNat = b.sp.toNat - 8 * (s0.length + 1) := by
+    rw [hu1sp, toNat_sub_frame hfit]
+  have hb32 := toNat_lt32 b.sp
+  refine ⟨_, reach_exec c0 e0 r1, ?_, ?_, ?_, ?_, ?_, fun c hc => ?_⟩
   · rw [p1, hu1pc]
     simp only [List.length_append, List.length_cons, List.length_nil]
     addr_eq
@@ -490,34 +494,36 @@ theorem main_start {s0 : List UInt64} {wds : List (List Instr)} {hq : 8 * s0.len
       rw [Nat.zero_add] at this
       exact valAt_below hsp hmem (by have := toNat_lt32 b.sp; omega) hi this
     · exact valAt_store2 hsp hmem (by have := toNat_lt32 b.sp; omega) ⟨rfl, rfl⟩
+  · rw [sp1', hu1n] at hc
+    rw [hfin, hmem, store2_below (by rw [sp1, hu1n]; omega) (by rw [sp1, hu1n]; omega),
+      out1 c fun i hi => outside_below (by rw [hu1n]; omega) (by rw [hu1n]; omega), hu1]
 
 /-! ## One window and the loop -/
 
-/-- One window of `main` from the loop's head, for the step `k` of the generator's program and the
-compiler's theorem `himpl` of the step: from the state `r` of `reqRun` in the outgoing area, the
-machine returns to the loop's head with the state after the window there, the window's access
-appended to its trace, and its read counted.  The reads before the loop number `r0`, so the
-windows read `σ` from `r0` on. -/
-theorem main_window {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
+/-- One window of `main` from the loop's head, for the step `k` of the generator's program, whose
+run `hcall` states: from the state `r` of `reqRun` in the outgoing area and the store in the area
+of a program with one, the machine returns to the loop's head with the state after the window
+there, the window's access appended to its trace, its read counted, and the store after the call
+in the area, which keeps `J`.  The reads before the loop number `r0`, so the windows read `σ` from
+`r0` on. -/
+theorem main_window {G : Type} {m : Module} {k : Nat} {s0 : List UInt64}
     {base limit dev : UInt32} {is : List Instr} {words : G → List UInt64}
-    (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
     (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
-    {Pre : G × UInt64 → Heap → Store Unit → Prop}
-    {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
-    (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
-    (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = [])
+    {J : Heap → Store Unit → Prop} (hcall : StepCall m k words tick J) (hm : m.imports = [])
     (hg : genProgram m k s0 base limit dev udivmod64 = .ok is) (hcode : CodeAt code base is)
     (hev : base.toNat % 2 = 0) (hcov : reachCovered m k = true) (hdev : DevWindow P dev)
-    {st : Store Unit} {heap : Heap} (hat : heap.At st) (hcap : st.memoryCap m 0 ≤ 65535)
-    (r0 : Nat) (r : ReqState G) (ms : State) (hpc : ms.pc = after base (mainStart s0))
-    (hrd : ms.reads = r.reads + r0)
+    {st : Store Unit} {heap : Heap} (hat : heap.At st) (hJ : J heap st)
+    (hcap : st.memoryCap m 0 ≤ 65535) (r0 : Nat) (r : ReqState G) (ms : State)
+    (hpc : ms.pc = after base (mainStart s0)) (hrd : ms.reads = r.reads + r0)
     (hstk : StackOk P limit (s0.length + 1) (stackBound m k) ms)
-    (hargs : WordsAt ms (words r.state ++ [r.last])) :
+    (hsr : AreaHolds P m k limit st ms) (hargs : WordsAt ms (words r.state ++ [r.last])) :
     ∃ ms', Reach P σ code ms ms' ∧ ms'.pc = ms.pc ∧ ms'.sp = ms.sp ∧
       ms'.trace = ms.trace ++ [reqEvent (devBus dev) tick (fun j => σ (j + r0)) r] ∧
       ms'.reads = (reqNext tick (fun j => σ (j + r0)) r).reads + r0 ∧
       WordsAt ms' (words (reqNext tick (fun j => σ (j + r0)) r).state ++
-        [(reqNext tick (fun j => σ (j + r0)) r).last]) := by
+        [(reqNext tick (fun j => σ (j + r0)) r).last]) ∧
+      ∃ (st' : Store Unit) (heap' : Heap), heap'.At st' ∧ J heap' st' ∧
+        st'.memoryCaps = st.memoryCaps ∧ AreaHolds P m k limit st' ms' := by
   obtain ⟨f, fs', -, -, -, -, main, fns, _, hmain, hml, -, -, his⟩ := gen_program_entry hg
   have hmw := genMain_wide hmain
   obtain ⟨start, wds, hq, hqh, o1, o2, o3, o4, -, -, -, hmeq, b1, b2, b3, b4⟩ := gen_main hmain
@@ -569,14 +575,22 @@ theorem main_window {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt
   have hs1sp : s1.sp = ms.sp := by rw [hs1, State.sp_withLrPc]
   have hs1tr : s1.trace = ms.trace := by rw [hs1, State.trace_withLrPc]
   have hs1rd : s1.reads = ms.reads := by rw [hs1, State.reads_withLrPc]
-  obtain ⟨ms2, r2, p2, sp2, -, tr2, rd2, -, wa2, -⟩ := step_call (P := P) (σ := σ)
-    (code := code) hwords hlen himpl hPre hm hg hcode hev hcov hat hcap r.state r.last s1
-    hs1pc (by rw [hs1, State.lr_withLrPc]; exact or1_odd _) (hstk.congr hs1sp)
-    (by rw [hs1]; exact hargs)
+  have hs1m : s1.mem = ms.mem := by rw [hs1, State.mem_withLrPc]
+  obtain ⟨ms2, r2, p2, sp2, -, tr2, rd2, -, wa2, st', heap', hat', hJ', hcaps', hsr2⟩ :=
+    step_call (P := P) (σ := σ) (code := code) hlen hcall hm hg hcode hev hcov hat hJ hcap
+    r.state r.last s1 hs1pc (by rw [hs1, State.lr_withLrPc]; exact or1_odd _) (hstk.congr hs1sp)
+    (hsr.congr (KeepsBelow.of_mem hs1m)) (by rw [hs1]; exact hargs)
   have hms2pc : ms2.pc = after ms.pc 1 := by
     rw [p2, hs1, State.lr_withLrPc, or1_and _ hev4, after_eq]
     rfl
   have hsp2 : ms2.sp = ms.sp := sp2.trans hs1sp
+  have hkb : ∀ (w0 w1 : UInt32) (t : State), t.mem = store32 (store32 ms2.mem
+      (ms2.sp + UInt32.ofNat (8 * s0.length)) w0) (ms2.sp + UInt32.ofNat (8 * s0.length + 4)) w1 →
+      KeepsBelow limit ms2 t := fun w0 w1 t ht a ha => by
+    have := hstk.fits
+    have := hstk.limit
+    rw [ht]
+    exact store2_below (by rw [hsp2]; omega) (by rw [hsp2]; omega)
   obtain ⟨g', q, ht⟩ : ∃ g' q, tick r.state r.last = (g', q) := ⟨_, _, rfl⟩
   rw [ht] at wa2
   have hl' : (words g').length = s0.length := hlen g'
@@ -642,7 +656,7 @@ theorem main_window {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt
         (σ (r.reads + r0))) (ms2.sp + UInt32.ofNat (8 * s0.length + 4)) 0 := by
       rw [m5, hu4sp, hu4m, hu4rd, hrd]
     refine ⟨_, hreach.trans (rB.trans (r5.trans (reach_exec hcRB' e6 (.refl _)))), ?_, ?_, ?_,
-      ?_, ?_⟩
+      ?_, ?_, st', heap', hat', hJ', hcaps', hsr2.congr (hkb _ _ _ hm6)⟩
     · show t5.pc + 4 + UInt32.ofInt o3 = ms.pc
       rw [hp5]
       exact d4
@@ -692,7 +706,7 @@ theorem main_window {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt
         (ms2.sp + UInt32.ofNat (8 * s0.length + 4)) 0 := by
       rw [m5, hu4sp, hu4m]
     refine ⟨_, hreach.trans (rB.trans (r5.trans (reach_exec hcWB' e6 (.refl _)))), ?_, ?_, ?_,
-      ?_, ?_⟩
+      ?_, ?_, st', heap', hat', hJ', hcaps', hsr2.congr (hkb _ _ _ hm6)⟩
     · show t5.pc + 4 + UInt32.ofInt o4 = ms.pc
       rw [hp5]
       exact d4
@@ -714,53 +728,53 @@ theorem main_window {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt
 outgoing area: the machine returns to the loop's head with the state `reqRun tick g0 σ' n` in the
 outgoing area and the traces of the windows appended, where `σ'` takes the values of `σ` from
 the reads before the loop on. -/
-theorem main_loop {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
+theorem main_loop {G : Type} {m : Module} {k : Nat} {s0 : List UInt64}
     {base limit dev : UInt32} {is : List Instr} {words : G → List UInt64}
-    (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
     (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
-    {Pre : G × UInt64 → Heap → Store Unit → Prop}
-    {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
-    (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
-    (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = [])
+    {J : Heap → Store Unit → Prop} (hcall : StepCall m k words tick J) (hm : m.imports = [])
     (hg : genProgram m k s0 base limit dev udivmod64 = .ok is) (hcode : CodeAt code base is)
     (hev : base.toNat % 2 = 0) (hcov : reachCovered m k = true) (hdev : DevWindow P dev)
-    {st : Store Unit} {heap : Heap} (hat : heap.At st) (hcap : st.memoryCap m 0 ≤ 65535)
-    (g0 : G) (ms : State) (hpc : ms.pc = after base (mainStart s0))
+    {st : Store Unit} {heap : Heap} (hat : heap.At st) (hJ : J heap st)
+    (hcap : st.memoryCap m 0 ≤ 65535) (g0 : G) (ms : State)
+    (hpc : ms.pc = after base (mainStart s0))
     (hstk : StackOk P limit (s0.length + 1) (stackBound m k) ms)
-    (hargs : WordsAt ms (words g0 ++ [0])) (n : Nat) :
+    (hsr : AreaHolds P m k limit st ms) (hargs : WordsAt ms (words g0 ++ [0])) (n : Nat) :
     ∃ t, Reach P σ code ms t ∧ t.pc = ms.pc ∧ t.sp = ms.sp ∧
       t.trace = ms.trace ++ windows (reqTrace (devBus dev) tick g0 (fun j => σ (j + ms.reads))) n ∧
       t.reads = (reqRun tick g0 (fun j => σ (j + ms.reads)) n).reads + ms.reads ∧
       WordsAt t (words (reqRun tick g0 (fun j => σ (j + ms.reads)) n).state ++
-        [(reqRun tick g0 (fun j => σ (j + ms.reads)) n).last]) := by
+        [(reqRun tick g0 (fun j => σ (j + ms.reads)) n).last]) ∧
+      ∃ (st' : Store Unit) (heap' : Heap), heap'.At st' ∧ J heap' st' ∧
+        st'.memoryCap m 0 ≤ 65535 ∧ AreaHolds P m k limit st' t := by
   induction n with
-  | zero => exact ⟨ms, .refl _, rfl, rfl, (List.append_nil _).symm, (Nat.zero_add _).symm, hargs⟩
+  | zero =>
+      exact ⟨ms, .refl _, rfl, rfl, (List.append_nil _).symm, (Nat.zero_add _).symm, hargs, st,
+        heap, hat, hJ, hcap, hsr⟩
   | succ n ih =>
-      obtain ⟨t, rt, pt, spt, trt, rdt, wat⟩ := ih
-      obtain ⟨t', rt', pt', spt', trt', rdt', wat'⟩ := main_window (P := P) (σ := σ)
-        (code := code) hwords hlen himpl hPre hm hg hcode hev hcov hdev hat hcap ms.reads
-        (reqRun tick g0 (fun j => σ (j + ms.reads)) n) t (pt.trans hpc) rdt (hstk.congr spt) wat
-      refine ⟨t', rt.trans rt', pt'.trans pt, spt'.trans spt, ?_, rdt', wat'⟩
+      obtain ⟨t, rt, pt, spt, trt, rdt, wat, st1, heap1, hat1, hJ1, hcap1, hsr1⟩ := ih
+      obtain ⟨t', rt', pt', spt', trt', rdt', wat', st2, heap2, hat2, hJ2, hcaps2, hsr2⟩ :=
+        main_window (P := P) (σ := σ) (code := code) hlen hcall hm hg hcode hev hcov hdev hat1
+          hJ1 hcap1 ms.reads (reqRun tick g0 (fun j => σ (j + ms.reads)) n) t (pt.trans hpc) rdt
+          (hstk.congr spt) hsr1 wat
+      refine ⟨t', rt.trans rt', pt'.trans pt, spt'.trans spt, ?_, rdt', wat', st2, heap2, hat2,
+        hJ2, by rw [memoryCap_of_caps hcaps2]; exact hcap1, hsr2⟩
       rw [trt', trt, windows, reqTrace, List.append_assoc]
 
 /-- `main` from its entry at `base`, with SP at a multiple of 4 above the outgoing area and the
 stack that `StackOk` states below the area: the start and the first `n` windows reach the loop's
 head with the traces of the windows appended. -/
-theorem main_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
+theorem main_run {G : Type} {m : Module} {k : Nat} {s0 : List UInt64}
     {base limit dev : UInt32} {is : List Instr} {words : G → List UInt64}
-    (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
     (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
-    {Pre : G × UInt64 → Heap → Store Unit → Prop}
-    {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
-    (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
-    (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = [])
+    {J : Heap → Store Unit → Prop} (hcall : StepCall m k words tick J) (hm : m.imports = [])
     (hg : genProgram m k s0 base limit dev udivmod64 = .ok is) (hcode : CodeAt code base is)
     (hev : base.toNat % 2 = 0) (hcov : reachCovered m k = true) (hdev : DevWindow P dev)
-    {st : Store Unit} {heap : Heap} (hat : heap.At st) (hcap : st.memoryCap m 0 ≤ 65535)
-    (g0 : G) (hs0 : words g0 = s0) (b : State) (hpc : b.pc = base)
-    (hal : b.sp.toNat % 4 = 0) (hfit : 8 * (s0.length + 1) ≤ b.sp.toNat)
+    {st : Store Unit} {heap : Heap} (hat : heap.At st) (hJ : J heap st)
+    (hcap : st.memoryCap m 0 ≤ 65535) (g0 : G) (hs0 : words g0 = s0) (b : State)
+    (hpc : b.pc = base) (hal : b.sp.toNat % 4 = 0) (hfit : 8 * (s0.length + 1) ≤ b.sp.toNat)
     (hstk : StackOk P limit (s0.length + 1) (stackBound m k)
-      { b with sp := b.sp - UInt32.ofNat (8 * (s0.length + 1)) }) (n : Nat) :
+      { b with sp := b.sp - UInt32.ofNat (8 * (s0.length + 1)) })
+    (hsr : AreaHolds P m k limit st b) (n : Nat) :
     ∃ t, Reach P σ code b t ∧ t.pc = after base (mainStart s0) ∧
       t.trace = b.trace ++ windows (reqTrace (devBus dev) tick g0 (fun j => σ (j + b.reads))) n := by
   obtain ⟨f, fs', -, -, -, -, main, fns, _, hmain, hml, -, -, his⟩ := gen_program_entry hg
@@ -778,15 +792,17 @@ theorem main_run {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
     (((hcM.split_wide (all_left hmw)).1.split_wide (all_left (all_left hmw))).1.split_wide
       (all_left (all_left (all_left hmw)))).1
   rw [hst, ← hpc] at hcS
-  obtain ⟨t0, r0, p0, sp0, tr0, rd0, wa0⟩ := main_start (P := P) (σ := σ) harea hw hcS hal hfit
-    hstk.ram
+  obtain ⟨t0, r0, p0, sp0, tr0, rd0, wa0, mem0⟩ := main_start (P := P) (σ := σ) harea hw hcS hal
+    hfit hstk.ram
   have hlen0 : wds.flatten.length + 4 = mainStart s0 := by
     rw [← hsl, hst]
     simp only [List.length_append, List.length_cons, List.length_nil]
     omega
   have hp0 : t0.pc = after base (mainStart s0) := by rw [p0, hpc, after_eq, hlen0]
-  obtain ⟨t, rt, pt, -, trt, -, -⟩ := main_loop (P := P) (σ := σ) (code := code) hwords hlen
-    himpl hPre hm hg hcode hev hcov hdev hat hcap g0 t0 hp0 (hstk.congr (by rw [sp0]))
+  have hlim := hstk.limit
+  obtain ⟨t, rt, pt, -, trt, -, -, -⟩ := main_loop (P := P) (σ := σ) (code := code) hlen hcall hm
+    hg hcode hev hcov hdev hat hJ hcap g0 t0 hp0 (hstk.congr (by rw [sp0]))
+    (hsr.congr fun a ha => mem0 a (by rw [sp0]; exact Nat.lt_of_lt_of_le ha hlim.2))
     (by rw [hs0]; exact wa0) n
   exact ⟨t, r0.trans rt, pt.trans hp0, by rw [trt, tr0, rd0]⟩
 

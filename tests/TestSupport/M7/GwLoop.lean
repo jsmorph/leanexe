@@ -53,7 +53,7 @@ theorem qemu_loop {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len
       (Verified.initialHeap gwCompiled.tables) gwCompiled.module.initialStore :=
     Verified.Ready.initial rfl gwCompiled.initial
   exact boot_run (B := Qemu.boot) (s0 := gwState) (words := gwWords) (fun _ => rfl)
-    (fun _ => rfl) gwCompiled.gwTick.implements (fun _ _ _ => trivial) rfl gw_covered.2
+    (fun _ => rfl) gwCompiled.gwTick.implements (fun _ _ _ => trivial) rfl gw_covered.2 gw_noArea.2
     Qemu.devWindow hAt0 hcap0 (by decide) (by decide) hk hf (by decide) (Qemu.initRuns σ code)
     (by decide) (by decide) (fun s hs => by rw [gw_stack.2]; exact Qemu.stackOk (by decide) s hs)
     gwInit rfl b hb N
@@ -72,7 +72,8 @@ theorem board_loop {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n le
       (Verified.initialHeap gwCompiled.tables) gwCompiled.module.initialStore :=
     Verified.Ready.initial rfl gwCompiled.initial
   exact Nucleo.board_run (s0 := gwState) (words := gwWords) (fun _ => rfl) (fun _ => rfl)
-    gwCompiled.gwTickUsart3.implements (fun _ _ _ => trivial) rfl gw_covered.1 hAt0 hcap0 hk
+    gwCompiled.gwTickUsart3.implements (fun _ _ _ => trivial) rfl gw_covered.1 gw_noArea.1 hAt0
+    hcap0 hk
     (by rw [gw_stack.1]; decide) gwInit rfl hf b hb N
 
 /-- The gateway's run on the board succeeds for every number of steps. -/
@@ -84,7 +85,8 @@ theorem board_loop_runs {σ : Nat → UInt32} {code : UInt32 → Option UInt16} 
       (Verified.initialHeap gwCompiled.tables) gwCompiled.module.initialStore :=
     Verified.Ready.initial rfl gwCompiled.initial
   exact Nucleo.board_runs (s0 := gwState) (words := gwWords) (fun _ => rfl) (fun _ => rfl)
-    gwCompiled.gwTickUsart3.implements (fun _ _ _ => trivial) rfl gw_covered.1 hAt0 hcap0 hk
+    gwCompiled.gwTickUsart3.implements (fun _ _ _ => trivial) rfl gw_covered.1 gw_noArea.1 hAt0
+    hcap0 hk
     (by rw [gw_stack.1]; decide) gwInit rfl hf b hb
 
 /-- Every request of `gwTickUsart3` names `USART_ISR`, index `0x1207`, `USART_RDR`, index

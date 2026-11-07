@@ -73,12 +73,6 @@ theorem sub_frame_below {sp lim : UInt32} {F : Nat} (j : Nat) (h : lim.toNat + F
   simp only [Nat.reducePow]
   omega
 
-/-- A word whose bytes all keep their values from `lo` up keeps its value. -/
-theorem load32_above {m m' : UInt32 → UInt8} {lo a : UInt32}
-    (h : ∀ b : UInt32, lo.toNat ≤ b.toNat → m' b = m b) (ha : lo.toNat ≤ a.toNat)
-    (ha4 : a.toNat + 4 ≤ 4294967296) : load32 m' a = load32 m a :=
-  load32_congr fun k hk => h _ (by rw [toNat_add_ofNat (by omega)]; omega)
-
 theorem load32_zero {m : UInt32 → UInt8} {a : UInt32} (h : ∀ k < 4, m (a + UInt32.ofNat k) = 0) :
     load32 m a = 0 := by
   rw [load32_congr (m' := m) (m := fun _ => 0) h]
@@ -630,13 +624,19 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt32} {m : Module} {k :
     {need : Nat → Nat} (hcl : CallsOk P σ code g m callee S need)
     (hneed : NeedOk need (frameOf (sigOf callee) f).size f.body (need k)) :
     FunSim P σ code m S need g k (entry, f.params, f.results) := by
-  intro α st vs ms hp hvt hpc hlr hstk hargs
+  intro α st vs ms hp hvt hpc hlr hstk hargs hsr hal
   change f.params.length ≤ vs.length at hp
   change Typed f.params.reverse (vs.take f.params.length) at hvt
   change ms.pc = entry at hpc
   change StackOk P S.limit (max f.params.length f.results.length) (need k) ms at hstk
   change ArgsAt ms (vs.take f.params.length) at hargs
-  change CallResult P σ code f.params f.results vs (Wasm.run g m k st vs) ms
+  change CallResult P σ code S f.params f.results vs (Wasm.run g m k st vs) ms
+  have hal' : S.area.isSome = true → m.memIs64 = false ∧
+      AlignedExec g m st (f.toLocals (vs.take f.params.length).reverse) f.body {} := fun h => by
+    obtain ⟨h64, ha⟩ := hal h
+    simp only [AlignedRun, hm, List.getElem?_nil, List.length_nil, Nat.sub_zero, hk,
+      Function.numParams] at ha
+    exact ⟨h64, ha.1⟩
   simp only [Wasm.run, hm, List.getElem?_nil, List.length_nil, Nat.sub_zero, hk,
     Function.numParams]
   have hfp : (frameOf (sigOf callee) f).params = f.params.length := rfl
@@ -729,6 +729,12 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt32} {m : Module} {k :
       toNat_add_ofNat (a := sp1) (k := fr.lrOff) (by omega)]
     simp only [Nat.reducePow]
     omega
+  have hkb2 : KeepsBelow S.limit ms s2 := by
+    intro b hb
+    rw [hm2 b fun j hj => outside_below (by rw [sp4, hsp1n]; omega) (by rw [sp4, hsp1n]; omega),
+      hm4]
+    exact store32_high (by rw [toNat_add_ofNat (a := sp1) (k := fr.lrOff) (by omega), hsp1n]; omega)
+      (by rw [toNat_add_ofNat (a := sp1) (k := fr.lrOff) (by omega), hsp1n]; omega)
   have hlrw : load32 s2.mem (sp1 + UInt32.ofNat fr.lrOff) = ms.lr := by
     rw [load32_congr (m' := s2.mem) (m := u4.mem) (a := sp1 + UInt32.ofNat fr.lrOff) fun j hj => by
       rw [add_ofNat_add]
@@ -810,104 +816,149 @@ theorem fun_sim {callee : Table} {S : Shared} {entry : UInt32} {m : Module} {k :
         subst hv
         exact hasType_zero hit
   -- the body
+  have hctl0 : CtlOk [(⟨after (after entry (prologueSize + clear.length))
+      (listSize (sigOf callee) [f.results.length] 0 f.body).1, f.results.reverse, 0⟩ : Ctl)] :=
+    ⟨List.cons_ne_nil _ _, fun t ht => by
+      rw [List.mem_singleton] at ht
+      subst ht
+      exact Nat.le_refl _⟩
   have ho := list_sim (P := P) (σ := σ) (code := code) g E
     [⟨after (after entry (prologueSize + clear.length))
       (listSize (sigOf callee) [f.results.length] 0 f.body).1, f.results.reverse, 0⟩] []
-    _ f.body body fin hcov hbody cB (even_after hev _) hdiv (Nat.le_refl _) m st
-    (f.toLocals (vs.take f.params.length).reverse) s2 hinv hp2' need (callNeed need f.body) hcl
-    (fun j hj => le_callNeed hj)
+    _ f.body body fin hcov hbody cB (even_after hev _) hdiv (Nat.le_refl _) hctl0 m st
+    (f.toLocals (vs.take f.params.length).reverse) s2 hinv (hsr.congr hkb2) hp2' hal' need
+    (callNeed need f.body) hcl (fun j hj => le_callNeed hj)
     (by show callNeed need f.body ≤ s2.sp.toNat - S.limit.toNat; rw [hs2sp, hsp1n]; omega)
+  have hbl : body.length = (listSize (sigOf callee) [f.results.length] 0 f.body).1 := by
+    have := hbs.1
+    simpa only [List.map_cons, List.map_nil, Ctl.arity_mk, List.length_reverse, List.length_nil]
+      using this
+  -- the copies of the results, the epilogue, and the return, from the body's end, from a branch to
+  -- the function's label, or from a return
+  have finish : ∀ (st' : Store α) (vals : List Value) (ms' : State), Reach P σ code s2 ms' →
+      ms'.pc = after (after entry (prologueSize + clear.length)) body.length → ms'.sp = s2.sp →
+      ms'.trace = s2.trace → ms'.reads = s2.reads → BodyKeeps fr s2.sp s2 ms' →
+      Kept fr ⟨after (after entry (prologueSize + clear.length))
+        (listSize (sigOf callee) [f.results.length] 0 f.body).1, f.results.reverse, 0⟩ vals ms' →
+      StoreOk P S st' ms' →
+      CallResult P σ code S f.params f.results vs
+        (.Success (vals.take f.results.length ++ vs.drop f.params.length) st') ms := by
+    intro st' vals ms' hr' hp' hsp' htr' hrd' hk' hkt hsr'
+    have hl' : f.results.length ≤ vals.length := by
+      have := hkt.len
+      simpa only [Ctl.arity, List.length_reverse] using this
+    have hms'sp : ms'.sp = sp1 := hsp'.trans hs2sp
+    -- the copies of the results
+    have cR' := cR
+    rw [← hp'] at cR'
+    obtain ⟨t, rt, pt, spt, lrt, trt, rdt, hwt, hmt⟩ := run_copies (P := P) (σ := σ)
+      (src := fun j => fr.opAt j) (dst := fun j => fr.size + 8 * j) (fun j hj => (hres j hj).2)
+      (fun j hj => by
+        have := (hres j hj).1
+        have := hop j
+        rw [hms'sp]
+        exact ⟨hword _ (by omega) (by omega), hword _ (by omega) (by omega),
+          hword _ (by omega) (by omega), hword _ (by omega) (by omega)⟩)
+      (fun i hi j hj => by have := (hres i hi).1; have := hop i; omega)
+      (fun i hi j hj hij => by omega)
+      (fun i hi => by have := (hres i hi).1; have := hop i; omega) cR'
+    have htsp : t.sp = sp1 := spt.trans hms'sp
+    -- the epilogue
+    have cE' := cE
+    rw [length_copies fun j hj => (hres j hj).2] at cE'
+    have htpc : t.pc = after (after (after entry (prologueSize + clear.length)) body.length)
+        (4 * results.length) := by
+      rw [pt, hp', after_eq (n := 4 * results.length)]
+      congr 2
+      omega
+    have hcE : CodeAt code t.pc
+        ([Instr.ldrLr ⟨fr.lrOff, hlr4⟩, Instr.addwSpSpOf fr.size, Instr.bxLr] ++
+          [Instr.bxLr]) := by
+      rw [htpc]
+      exact cE'
+    have hlrT : load32 t.mem (t.sp + UInt32.ofNat fr.lrOff) = ms.lr := by
+      have hkl : load32 ms'.mem (s2.sp + UInt32.ofNat fr.lrOff) =
+          load32 s2.mem (s2.sp + UInt32.ofNat fr.lrOff) := hk'.lr
+      rw [htsp, load32_congr (m' := t.mem) (m := ms'.mem) (a := sp1 + UInt32.ofNat fr.lrOff)
+        fun j hj => by
+        rw [add_ofNat_add]
+        exact hmt _ fun i hi => by
+          rw [hms'sp]
+          exact outside_of_disjoint (by omega) (by omega) (by omega) (by omega : j < 8)]
+      rw [← hs2sp, hkl, hs2sp, hlrw]
+    obtain ⟨t3, rt3, pt3, spt3, lrt3, mt3, trt3, rdt3⟩ := run_epilogue (P := P) (σ := σ)
+      (s := t) hlr4 hF (CodeAt.append.mp hcE).1 rfl
+      (by rw [htsp]; exact hword _ (by omega) (by omega)) (by rw [hlrT]; exact hlr)
+      (by rw [htsp, toNat_add_ofNat (a := sp1) (k := fr.size) (by omega), hsp1n]; omega)
+    rw [hlrT] at pt3 lrt3
+    rw [htsp, hsp1, UInt32.sub_add_cancel] at spt3
+    have htake : (vals.take f.results.length).length = f.results.length := by
+      rw [List.length_take, Nat.min_eq_left hl']
+    have hvals : (vals.take f.results.length ++ vs.drop f.params.length).take
+        f.results.length = vals.take f.results.length :=
+      List.take_left' htake
+    refine ⟨t3, r4.trans (r2.trans (hr'.trans (rt.trans rt3))), pt3, spt3, lrt3, ?_, ?_,
+      fun a ha => ?_, by rw [List.length_append, htake, List.length_drop],
+      List.drop_left' htake, ?_, ?_, hsr'.congr fun b hb => ?_⟩
+    · rw [trt3, trt, htr', tr2, tr4]
+    · rw [rdt3, rdt, hrd', rd2, rd4]
+    · have ha32 := toNat_lt32 a
+      have hab : s2.sp.toNat + fr.size + 8 * fr.params ≤ a.toNat := by
+        rw [hs2sp, hsp1n]
+        omega
+      rw [mt3, hmt a fun i hi => outside_above (x := fr.size + 8 * i)
+          (by rw [hms'sp, hsp1n]; omega),
+        hk'.above a hab, hkeep2 a (by omega)]
+    · rw [hvals]
+      intro i v hv
+      have hi : i < f.results.length := by have := getElem?_reverse_lt hv; simp at this; omega
+      have hv0 := hkt.valAt (i := i) (v := v) (by
+        simpa only [Ctl.arity, List.length_reverse] using hv)
+      rw [Nat.zero_add] at hv0
+      have e : slotWords t (fr.size + 8 * i) = slotWords ms' (fr.opAt i) := hwt i (by omega)
+      unfold slotWords at e
+      rw [Prod.mk.injEq] at e
+      unfold ValAt at hv0 ⊢
+      have ha1 : t3.sp + UInt32.ofNat (8 * i) = t.sp + UInt32.ofNat (fr.size + 8 * i) := by
+        rw [spt3, htsp, hsp1, sub_frame_above (sp := ms.sp) (F := fr.size)
+          (j := fr.size + 8 * i) (by omega) (by omega),
+          show fr.size + 8 * i - fr.size = 8 * i by omega]
+      have ha2 : t3.sp + UInt32.ofNat (8 * i + 4) =
+          t.sp + UInt32.ofNat (fr.size + 8 * i + 4) := by
+        rw [spt3, htsp, hsp1, sub_frame_above (sp := ms.sp) (F := fr.size)
+          (j := fr.size + 8 * i + 4) (by omega) (by omega),
+          show fr.size + 8 * i + 4 - fr.size = 8 * i + 4 by omega]
+      rw [mt3, ha1, ha2, e.1, e.2]
+      exact hv0
+    · rw [hvals]
+      have := hkt.types
+      simpa only [Ctl.arity, List.length_reverse] using this
+    · rw [mt3, hmt b fun i hi => outside_below (by rw [hms'sp, hsp1n]; omega)
+        (by rw [hms'sp, hsp1n]; have := (hres i hi).1; omega)]
   generalize Wasm.exec g m st (f.toLocals (vs.take f.params.length).reverse) f.body = res at ho ⊢
   cases res with
   | Fallthrough st' sl' =>
-      obtain ⟨σ', hf', ms', hr', hp', hsp', htr', hrd', hk', -, hinv'⟩ := ho
+      obtain ⟨σ', hf', ms', hr', hp', hsp', htr', hrd', hk', -, hinv', hsr'⟩ := ho
       have e := hfin σ' hf'
       subst e
-      have hty' := hinv'.types
-      have hl' : sl'.values.length = f.results.length := by
-        rw [← hty'.length, List.length_reverse]
-      have hms'sp : ms'.sp = sp1 := hsp'.trans hs2sp
-      -- the copies of the results
-      rw [← hp'] at cR
-      obtain ⟨t, rt, pt, spt, lrt, trt, rdt, hwt, hmt⟩ := run_copies (P := P) (σ := σ)
-        (src := fun j => fr.opAt j) (dst := fun j => fr.size + 8 * j) (fun j hj => (hres j hj).2)
-        (fun j hj => by
-          have := (hres j hj).1
-          have := hop j
-          rw [hms'sp]
-          exact ⟨hword _ (by omega) (by omega), hword _ (by omega) (by omega),
-            hword _ (by omega) (by omega), hword _ (by omega) (by omega)⟩)
-        (fun i hi j hj => by have := (hres i hi).1; have := hop i; omega)
-        (fun i hi j hj hij => by omega)
-        (fun i hi => by have := (hres i hi).1; have := hop i; omega) cR
-      have htsp : t.sp = sp1 := spt.trans hms'sp
-      -- the epilogue
-      rw [length_copies fun j hj => (hres j hj).2] at cE
-      have htpc : t.pc = after (after (after entry (prologueSize + clear.length)) body.length)
-          (4 * results.length) := by
-        rw [pt, hp', after_eq (n := 4 * results.length)]
-        congr 2
-        omega
-      have hcE : CodeAt code t.pc
-          ([Instr.ldrLr ⟨fr.lrOff, hlr4⟩, Instr.addwSpSpOf fr.size, Instr.bxLr] ++
-            [Instr.bxLr]) := by
-        rw [htpc]
-        exact cE
-      have hlrT : load32 t.mem (t.sp + UInt32.ofNat fr.lrOff) = ms.lr := by
-        have hkl : load32 ms'.mem (s2.sp + UInt32.ofNat fr.lrOff) =
-            load32 s2.mem (s2.sp + UInt32.ofNat fr.lrOff) := hk'.lr
-        rw [htsp, load32_congr (m' := t.mem) (m := ms'.mem) (a := sp1 + UInt32.ofNat fr.lrOff)
-          fun j hj => by
-          rw [add_ofNat_add]
-          exact hmt _ fun i hi => by
-            rw [hms'sp]
-            exact outside_of_disjoint (by omega) (by omega) (by omega) (by omega : j < 8)]
-        rw [← hs2sp, hkl, hs2sp, hlrw]
-      obtain ⟨t3, rt3, pt3, spt3, lrt3, mt3, trt3, rdt3⟩ := run_epilogue (P := P) (σ := σ)
-        (s := t) hlr4 hF (CodeAt.append.mp hcE).1 rfl (by rw [htsp]; exact hword _ (by omega) (by omega))
-        (by rw [hlrT]; exact hlr)
-        (by rw [htsp, toNat_add_ofNat (a := sp1) (k := fr.size) (by omega), hsp1n]; omega)
-      rw [hlrT] at pt3 lrt3
-      rw [htsp, hsp1, UInt32.sub_add_cancel] at spt3
-      have hvals : (sl'.values.take f.results.length ++ vs.drop f.params.length).take
-          f.results.length = sl'.values := by
-        rw [List.take_left' (l₁ := sl'.values.take f.results.length) (by simp [hl']),
-          List.take_of_length_le (l := sl'.values) (by omega)]
-      refine ⟨t3, r4.trans (r2.trans (hr'.trans (rt.trans rt3))), pt3, spt3, lrt3, ?_, ?_,
-        fun a ha => ?_, by simp [hl'],
-        List.drop_left' (l₁ := sl'.values.take f.results.length) (by simp [hl']), ?_, ?_⟩
-      · rw [trt3, trt, htr', tr2, tr4]
-      · rw [rdt3, rdt, hrd', rd2, rd4]
-      · have ha32 := toNat_lt32 a
-        have hab : s2.sp.toNat + fr.size + 8 * fr.params ≤ a.toNat := by
-          rw [hs2sp, hsp1n]
-          omega
-        rw [mt3, hmt a fun i hi => outside_above (x := fr.size + 8 * i)
-            (by rw [hms'sp, hsp1n]; omega),
-          hk'.above a hab, hkeep2 a (by omega)]
-      · rw [hvals]
-        intro i v hv
-        have hi : i < f.results.length := by have := getElem?_reverse_lt hv; omega
-        have hv0 := hinv'.stack i v hv
-        have e : slotWords t (fr.size + 8 * i) = slotWords ms' (fr.opAt i) := hwt i (by omega)
-        unfold slotWords at e
-        rw [Prod.mk.injEq] at e
-        unfold ValAt at hv0 ⊢
-        have ha1 : t3.sp + UInt32.ofNat (8 * i) = t.sp + UInt32.ofNat (fr.size + 8 * i) := by
-          rw [spt3, htsp, hsp1, sub_frame_above (sp := ms.sp) (F := fr.size)
-            (j := fr.size + 8 * i) (by omega) (by omega),
-            show fr.size + 8 * i - fr.size = 8 * i by omega]
-        have ha2 : t3.sp + UInt32.ofNat (8 * i + 4) =
-            t.sp + UInt32.ofNat (fr.size + 8 * i + 4) := by
-          rw [spt3, htsp, hsp1, sub_frame_above (sp := ms.sp) (F := fr.size)
-            (j := fr.size + 8 * i + 4) (by omega) (by omega),
-            show fr.size + 8 * i + 4 - fr.size = 8 * i + 4 by omega]
-        rw [mt3, ha1, ha2, e.1, e.2]
-        exact hv0
-      · rw [hvals]
-        exact hty'
-  | Break _ _ _ => exact ho.elim
-  | Return _ _ => exact ho.elim
+      exact finish st' sl'.values ms' hr' hp' hsp' htr' hrd' hk' (Kept.of_inv hinv' rfl rfl) hsr'
+  | Break k st' sl' =>
+      cases k with
+      | zero =>
+          obtain ⟨t, ht, ms', hr', hp', hsp', htr', hrd', hk', -, -, hkt, hsr'⟩ := ho
+          have ht0 : t = ⟨after (after entry (prologueSize + clear.length))
+              (listSize (sigOf callee) [f.results.length] 0 f.body).1, f.results.reverse, 0⟩ := by
+            simpa using ht.symm
+          subst ht0
+          exact finish st' sl'.values ms' hr' (by rw [hp', hbl]) hsp' htr' hrd' hk' hkt hsr'
+      | succ k => trivial
+  | Return st' vals =>
+      obtain ⟨t, ht, ms', hr', hp', hsp', htr', hrd', hk', hkt, hsr'⟩ := ho
+      have ht0 : t = ⟨after (after entry (prologueSize + clear.length))
+          (listSize (sigOf callee) [f.results.length] 0 f.body).1, f.results.reverse, 0⟩ := by
+        simpa using ht.symm
+      subst ht0
+      exact finish st' vals ms' hr' (by rw [hp', hbl]) hsp' htr' hrd' hk' hkt hsr'
   | Trap _ _ => trivial
   | Invalid _ => trivial
   | OutOfFuel => trivial

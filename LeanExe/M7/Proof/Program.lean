@@ -227,12 +227,12 @@ def reachCovered (m : Module) (k : Nat) : Bool :=
 global, which gives the generator's program an area: the test of `areaOf`. -/
 def usesArea (m : Module) (k : Nat) : Bool :=
   match (reachFrom m k).mapM (funcOf m) with
-  | .ok fs => fs.any fun x => listArea x.2.body
+  | .ok fs => fnsArea fs
   | .error _ => false
 
 /-- A program whose functions do not access the area has none. -/
 theorem areaOf_none {m : Module} {fs : List (Nat × Function)} {limit : UInt32}
-    (h : (fs.any fun x => listArea x.2.body) = false) : areaOf m fs limit = .ok none := by
+    (h : fnsArea fs = false) : areaOf m fs limit = .ok none := by
   unfold areaOf
   rw [h]
   rfl
@@ -241,7 +241,7 @@ theorem areaOf_none {m : Module} {fs : List (Nat × Function)} {limit : UInt32}
 `i64`s, a memory that `areaOk` accepts for `areaPages` pages, and the stack's limit at or above the
 area's end. -/
 theorem areaOf_some {m : Module} {fs : List (Nat × Function)} {limit : UInt32}
-    {area : Option (List ValueType)} (h : (fs.any fun x => listArea x.2.body) = true)
+    {area : Option (List ValueType)} (h : fnsArea fs = true)
     (ha : areaOf m fs limit = .ok area) :
     ∃ gts, area = some gts ∧ globalTypesOf m = some gts ∧ areaOk m areaPages = true ∧
       gts.length ≤ 511 ∧ gts.all intType = true ∧ areaEnd.toNat ≤ limit.toNat := by
@@ -290,9 +290,13 @@ theorem step_sim {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UIn
     ∃ (f : Function) (S : Shared) (need : Nat → Nat), m.funcs[k]? = some f ∧ S.limit = limit ∧
       f.params = List.replicate (s0.length + 1) .i64 ∧
       f.results = List.replicate (s0.length + 1) .i64 ∧ need k = stackBound m k ∧
+      (usesArea m k = false → S.area = none) ∧
+      (usesArea m k = true → m.memIs64 = false ∧
+        ∃ A, S.area = some A ∧ globalTypesOf m = some A.globals) ∧
       ∀ g, FunSim P σ code m S need g k (after base (mainSize s0), f.params, f.results) := by
-  obtain ⟨f, fs', hfs, hkf, hps, hrs, main, fns, area, hmain, hml, -, hfns, rfl⟩ :=
+  obtain ⟨f, fs', hfs, hkf, hps, hrs, main, fns, area, hmain, hml, harea, hfns, rfl⟩ :=
     gen_program_entry hg
+  obtain ⟨hno, hyes⟩ := area_of_usesArea hfs harea
   generalize hsig : sigIn (callTargets m k) ((k, f) :: fs') = sig at hfns
   generalize hfirst : after base (mainSize s0) = first at hmain hfns ⊢
   generalize hcallee : tableOf (callTargets m k) (entriesFrom sig first ((k, f) :: fs')) =
@@ -349,11 +353,13 @@ theorem step_sim {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UIn
   rw [hkf] at hkf'
   cases hkf'
   refine ⟨f, progShared (endOf sig first ((k, f) :: fs')) limit area, need, hkf, rfl, hps, hrs,
-    ?_, fun g => ?_⟩
+    ?_, fun h => by rw [hno h]; rfl, fun h => ?_, fun g => ?_⟩
   · show stackNeedOf m (fun f => (frameOf sig f).size) m.funcs.length k = stackBound m k
     unfold stackBound
     rw [hfs]
     simp only [hsig]
+  · obtain ⟨gts, rfl, hgt, hok, -, -, -⟩ := hyes h
+    exact ⟨memIs64_of_areaOk hok, _, rfl, hgt⟩
   · exact fun_sim hm hkf (hcovj k (mem_reachFrom m k) f hkf) hgen hcd hev' hdiv (hcl g)
       (hneed k f hkf)
 

@@ -111,7 +111,8 @@ height `k` holding `r`, the top of the new stack `r :: vs`, where `vs` holds the
 heights below `k` in their slots. -/
 theorem outcome_write {E : Env} {ctl : List Ctl} {σs σ' : List ValueType} {sl : Locals}
     {ms : State} {is : List Instr} {a : UInt32} {α : Type} {st : Store α} {k : Nat}
-    {vs : List Value} {r : Value} {w0 w1 : UInt32} (hinv : Inv P E σs sl ms) (hpc : ms.pc = a)
+    {vs : List Value} {r : Value} {w0 w1 : UInt32} (hinv : Inv P E σs sl ms)
+    (hsr : StoreOk P E.toShared st ms) (hpc : ms.pc = a)
     (hc : CodeAt code a is) (hok : SlotsOk P ms.sp is)
     (hmem : (slotRun P σ is ms).mem =
       store32 (store32 ms.mem (ms.sp + UInt32.ofNat (E.frame.opAt k)) w0)
@@ -125,7 +126,8 @@ theorem outcome_write {E : Env} {ctl : List Ctl} {σs σ' : List ValueType} {sl 
   obtain ⟨hr', hp, hsp, -, htr, hrd, -⟩ := run_slots (σ := σ) hok hc
   exact ⟨σ', rfl, _, hr', by rw [hp, hpc, after_eq], hsp, htr, hrd,
     keeps_write_op hinv.frame hmem hk, below_write_op hinv.frame hmem hk hb,
-    Inv.write_op hinv hsp hmem hk hvs hbelow hr hty⟩
+    Inv.write_op hinv hsp hmem hk hvs hbelow hr hty,
+    hsr.congr (keepsBelow_write_op hinv.frame hmem hk)⟩
 
 /-! ## `local.get` -/
 
@@ -148,7 +150,7 @@ theorem gen_localGet {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt
   · exact absurd hg except_throw_ok
 
 theorem sim_localGet (F i : Nat) : InstrSim P σ code F (.localGet i) := by
-  intro E ctl σs a is fin hgen hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hgen hcode _ _ hb _ α m st sl ms hinv hsr hpc _ need D _ _ _
   obtain ⟨t, src, ht, hsrc, hlt, h0, h1, h2, h3, rfl, rfl⟩ := gen_localGet hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]
@@ -167,7 +169,7 @@ theorem sim_localGet (F i : Nat) : InstrSim P σ code F (.localGet i) := by
           (slotsOk_ld (hinv.frame.word (by omega) (by omega))
           (slotsOk_st (hinv.frame.word (by omega) (by omega))
           (slotsOk_st (hinv.frame.word (by omega) (by omega)) (slotsOk_nil _))))
-      exact outcome_write hinv hpc hcode hok rfl hlt hb (by rw [hh]) hinv.stack
+      exact outcome_write hinv hsr hpc hcode hok rfl hlt hb (by rw [hh]) hinv.stack
         (hinv.locals i v src hv hsrc) (Typed.cons (hinv.ltypes i v t src hv ht hsrc) hinv.types)
 
 
@@ -195,7 +197,7 @@ theorem gen_localSet {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt
     exact ⟨by omega, hc.2, hlt, dst, Env.loc_ok hdst, h0, h1, h2, h3, rfl, rfl⟩
 
 theorem sim_localSet (F i : Nat) : InstrSim P σ code F (.localSet i) := by
-  intro E ctl σs a is fin hgen hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hgen hcode _ _ hb _ α m st sl ms hinv hsr hpc _ need D _ _ _
   obtain ⟨hb1, hhead, hlt, dst, hdst, h0, h1, h2, h3, rfl, rfl⟩ := gen_localSet hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]
@@ -246,7 +248,7 @@ theorem sim_localSet (F i : Nat) : InstrSim P σ code F (.localSet i) := by
             rw [hti, Option.some.injEq] at hty'
             subst hty'
             exact hty.head_cons (hhead.trans hti))
-          hty.tail⟩
+          hty.tail, hsr.congr (keepsBelow_write_local hinv.frame hmem hdst)⟩
 
 /-! ## Constants -/
 
@@ -318,7 +320,7 @@ theorem gen_constI64 {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt
   exact ⟨hlt, h0, h1, rfl, rfl⟩
 
 theorem sim_constI64 (F : Nat) (v : UInt64) : InstrSim P σ code F (.constI64 v) := by
-  intro E ctl σs a is fin hgen hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hgen hcode _ _ hb _ α m st sl ms hinv hsr hpc _ need D _ _ _
   obtain ⟨hlt, h0, h1, rfl, rfl⟩ := gen_constI64 hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]
@@ -339,7 +341,7 @@ theorem sim_constI64 (F : Nat) (v : UInt64) : InstrSim P σ code F (.constI64 v)
       have e1 := slotRun_movConst (P := P) (σ := σ) 1 (w := v.toNat / 4294967296)
         (by simp only [UInt64.size] at hv; omega) (slotRun P σ (movConst 0 (v.toNat % 4294967296)) ms)
       refine outcome_write (w0 := (slotRun P σ (movPair v) ms).r 0)
-        (w1 := (slotRun P σ (movPair v) ms).r 1) hinv hpc hcode hok ?_ hlt hb (by rw [hh])
+        (w1 := (slotRun P σ (movPair v) ms).r 1) hinv hsr hpc hcode hok ?_ hlt hb (by rw [hh])
         hinv.stack ?_ (Typed.cons trivial hinv.types)
       · rw [slotRun_append, slotRun_st2, hm0, hm1]
       · show _ ∧ _
@@ -406,7 +408,8 @@ two `i64`s on top, `b` over `a`, by `r`, whose words the code computes. -/
 theorem outcome_two {E : Env} {ctl : List Ctl} {σs : List ValueType} {sl : Locals} {ms : State}
     {a : UInt32} {α : Type} {st : Store α} {L ops : List Instr} {lo hi : Fin 8} {t : ValueType}
     {b a' : UInt64} {vs : List Value} {r : Value} {h4 : E.frame.opAt (σs.length - 2) < 4096}
-    {h5 : E.frame.opAt (σs.length - 2) + 4 < 4096} (hinv : Inv P E σs sl ms) (hpc : ms.pc = a)
+    {h5 : E.frame.opAt (σs.length - 2) + 4 < 4096} (hinv : Inv P E σs sl ms)
+    (hsr : StoreOk P E.toShared st ms) (hpc : ms.pc = a)
     (hcode : CodeAt code a (L ++ ops ++ [.strSp lo ⟨E.frame.opAt (σs.length - 2), h4⟩,
       .strSp hi ⟨E.frame.opAt (σs.length - 2) + 4, h5⟩]))
     (hb2 : curBase ctl + 2 ≤ σs.length) (hlt : σs.length - 1 < E.frame.height)
@@ -429,7 +432,7 @@ theorem outcome_two {E : Env} {ctl : List Ctl} {σs : List ValueType} {sl : Loca
     (slotsOk_st (t := hi) (h := h5) (hinv.frame.word (by omega) (by omega)) (slotsOk_nil _)))
   obtain ⟨hm, hsp, -⟩ := slotRun_reg (P := P) (σ := σ) hops (slotRun P σ L ms)
   refine outcome_write (w0 := (slotRun P σ ops (slotRun P σ L ms)).r lo)
-    (w1 := (slotRun P σ ops (slotRun P σ L ms)).r hi) hinv hpc hcode hok ?_ (by omega)
+    (w1 := (slotRun P σ ops (slotRun P σ L ms)).r hi) hinv hsr hpc hcode hok ?_ (by omega)
     (by omega) hvl (fun h v hv' => ?_) hval (Typed.cons htype ?_)
   · rw [slotRun_append, slotRun_append, slotRun_st2, hm, hsp, hLm, hLs]
   · have hl := getElem?_reverse_lt hv'
@@ -457,7 +460,7 @@ theorem sim_binary {inst : Instruction} {ops : List Instr} {res : Fin 8 × Fin 8
       u.r 2 = b.toUInt32 → u.r 3 = (b >>> 32).toUInt32 →
       SlotRel (op a b) ((slotRun P σ ops u).r res.1) ((slotRun P σ ops u).r res.2))
     (htype : ∀ a b, HasType t (op a b)) (F : Nat) : InstrSim P σ code F inst := by
-  intro E ctl σs a is fin hg hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hg hcode _ _ hb _ α m st sl ms hinv hsr hpc _ need D _ _ _
   rw [hgen] at hg
   obtain ⟨hb2, hlt, h0, h1, h2, h3, h4, h5, rfl, rfl⟩ := gen_bin hg
   cases F with
@@ -469,7 +472,7 @@ theorem sim_binary {inst : Instruction} {ops : List Instr} {res : Fin 8 × Fin 8
         obtain ⟨-, -, ha0, ha1, hb0, hb1⟩ := hinv.top2 hv
         obtain ⟨hk8, hklr, -⟩ := E.frame.opAt_bounds (k := σs.length - 2) (by omega)
         obtain ⟨hj8, hjlr, hlrs⟩ := E.frame.opAt_bounds hlt
-        exact outcome_two hinv hpc hcode hb2 hlt
+        exact outcome_two hinv hsr hpc hcode hb2 hlt
           (slotsOk_ld (P := P) (t := 0) (h := h0) (hinv.frame.word (by omega) (by omega))
           (slotsOk_ld (t := 1) (h := h1) (hinv.frame.word (by omega) (by omega))
           (slotsOk_ld (t := 2) (h := h2) (hinv.frame.word (by omega) (by omega))

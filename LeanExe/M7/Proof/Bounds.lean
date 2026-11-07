@@ -55,6 +55,16 @@ theorem exec_str {s : State} {t n : Fin 8} {o : Fin 4096}
   simp only [exec, storeWord, h4, hd, hm, ne_eq, not_true_eq_false, ↓reduceIte, Bool.false_eq_true,
     Option.map_some]
 
+/-- A placed instruction that does not branch, followed by more code: a step executes it and
+reaches the code after it. -/
+theorem reach_falls {s u : State} {i : Instr} {rest : List Instr}
+    (hc : CodeAt code s.pc (i :: rest)) (hf : i.falls = true) (he : exec P σ i s = some u) :
+    Reach P σ code s u ∧ CodeAt code u.pc rest ∧ u.pc = s.pc + 4 := by
+  obtain ⟨c0, c1⟩ := CodeAt.cons.mp hc
+  have hp := exec_falls_pc hf he
+  rw [size_of_falls hf, show s.pc + UInt32.ofNat 4 = u.pc by rw [hp]; rfl] at c1
+  exact ⟨reach_exec c0 he (.refl _), c1, hp⟩
+
 /-! ## Register code -/
 
 /-- Register code executes as `slotRun` states it. -/
@@ -131,6 +141,12 @@ theorem gen_bounds {trap : UInt32} {x off : Nat} {a : UInt32} {bs : List Instr}
   obtain ⟨o1, rfl, q1, q2, q3, q4⟩ := bcondAt_ok hi1
   obtain ⟨o2, rfl, r1, r2, r3, r4⟩ := bcondAt_ok hi2
   exact ⟨h0, h1, o1, o2, q1, q2, q3, q4, r1, r2, r3, r4, rfl⟩
+
+theorem gen_bounds_wide {trap : UInt32} {x off : Nat} {a : UInt32} {bs : List Instr}
+    (hg : boundsCode trap x off a = .ok bs) : bs.all Instr.wide = true ∧ bs.length = 14 := by
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, hbs⟩ := gen_bounds hg
+  rw [hbs]
+  exact ⟨rfl, rfl⟩
 
 /-- The bounds test of an access at the offset `off` from the address whose words lie in the slot
 at the offset `x` from SP: when the address's high word is 0 and its low word plus `off` is at

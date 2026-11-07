@@ -116,7 +116,8 @@ theorem echo_loop {σ : Nat → UInt32} {code : UInt32 → Option UInt16} {n len
       (Verified.initialHeap reqCompiled.tables) reqCompiled.module.initialStore :=
     Verified.Ready.initial rfl reqCompiled.initial
   exact boot_run (B := boot) (words := fun g : UInt64 => [g]) (fun _ => rfl) (fun _ => rfl)
-    reqCompiled.cmsdkTick.implements (fun _ _ _ => trivial) rfl echo_covered.2 devWindow hAt0
+    reqCompiled.cmsdkTick.implements (fun _ _ _ => trivial) rfl echo_covered.2 echo_noArea.2
+    devWindow hAt0
     hcap0 (by decide) (by decide) hk hf (by decide) (initRuns σ code) (by decide) (by decide)
     (fun s hs => by rw [echo_stack.2]; exact stackOk (by decide) s hs) 3 rfl b hb N
 

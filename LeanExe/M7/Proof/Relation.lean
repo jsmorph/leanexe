@@ -119,6 +119,12 @@ theorem load32_congr {m m' : UInt32 → UInt8} {a : UInt32}
   unfold load32
   rw [h0, h1, h2, h3]
 
+/-- A word whose bytes all keep their values from `lo` up keeps its value. -/
+theorem load32_above {m m' : UInt32 → UInt8} {lo a : UInt32}
+    (h : ∀ b : UInt32, lo.toNat ≤ b.toNat → m' b = m b) (ha : lo.toNat ≤ a.toNat)
+    (ha4 : a.toNat + 4 ≤ 4294967296) : load32 m' a = load32 m a :=
+  load32_congr fun k hk => h _ (by rw [toNat_add_ofNat (by omega)]; omega)
+
 /-! ## Frames -/
 
 /-- The offset from SP of the operand slot of height `h`. -/

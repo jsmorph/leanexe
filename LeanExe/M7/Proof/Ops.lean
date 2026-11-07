@@ -347,7 +347,7 @@ theorem sim_shift {inst : Instruction} {ops : List Instr} {op : UInt64 → UInt6
     (hval : ∀ (u : State) (a b : UInt64), u.r 0 = a.toUInt32 → u.r 1 = (a >>> 32).toUInt32 →
       u.r 2 = b.toUInt32 → SlotRel (op a b) ((slotRun P σ ops u).r 0) ((slotRun P σ ops u).r 1))
     (htype : ∀ a b, HasType .i64 (op a b)) (F : Nat) : InstrSim P σ code F inst := by
-  intro E ctl σs a is fin hg hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hg hcode _ _ hb _ α m st sl ms hinv hsr hpc _ need D _ _ _
   rw [hgen] at hg
   obtain ⟨hb2, hlt, h0, h1, h2, h4, h5, rfl, rfl⟩ := gen_shift hg
   cases F with
@@ -359,7 +359,7 @@ theorem sim_shift {inst : Instruction} {ops : List Instr} {op : UInt64 → UInt6
         obtain ⟨-, -, ha0, ha1, hb0, -⟩ := hinv.top2 hv
         obtain ⟨hk8, hklr, -⟩ := E.frame.opAt_bounds (k := σs.length - 2) (by omega)
         obtain ⟨hj8, hjlr, hlrs⟩ := E.frame.opAt_bounds hlt
-        exact outcome_two hinv hpc hcode hb2 hlt
+        exact outcome_two hinv hsr hpc hcode hb2 hlt
           (slotsOk_ld (P := P) (t := 0) (h := h0) (hinv.frame.word (by omega) (by omega))
           (slotsOk_ld (t := 1) (h := h1) (hinv.frame.word (by omega) (by omega))
           (slotsOk_ld (t := 2) (h := h2) (hinv.frame.word (by omega) (by omega))
@@ -417,7 +417,7 @@ theorem gen_eqzI64 {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UInt32
     exact ⟨by omega, hlt, h0, h1, h2, h3, rfl, rfl⟩
 
 theorem sim_eqzI64 (F : Nat) : InstrSim P σ code F .eqzI64 := by
-  intro E ctl σs a is fin hgen hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hgen hcode _ _ hb _ α m st sl ms hinv hsr hpc _ need D _ _ _
   obtain ⟨hb1, hlt, h0, h1, h2, h3, rfl, rfl⟩ := gen_eqzI64 hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]
@@ -452,7 +452,7 @@ theorem sim_eqzI64 (F : Nat) : InstrSim P σ code F .eqzI64 := by
           rw [show u.r 0 = x.toUInt32 from hx0, show u.r 1 = (x >>> 32).toUInt32 from hx1,
             ofNat_imm0]
           exact eqz_slot x
-        refine outcome_write hinv hpc hcode hok ?_ hlt (by omega) hvl
+        refine outcome_write hinv hsr hpc hcode hok ?_ hlt (by omega) hvl
           (fun h v hv' => ?_) hval (Typed.cons trivial ?_)
         · rw [slotRun_append, slotRun_append, slotRun_st2, hm, hsp]
           rfl
@@ -493,7 +493,7 @@ theorem gen_extendUI32 {E : Env} {ctl : List Ctl} {σs : List ValueType} {a : UI
     exact ⟨by omega, rfl, rfl⟩
 
 theorem sim_extendUI32 (F : Nat) : InstrSim P σ code F .extendUI32 := by
-  intro E ctl σs a is fin hgen hcode _ _ hb α m st sl ms hinv hpc need D _ _ _
+  intro E ctl σs a is fin hgen hcode _ _ hb _ α m st sl ms hinv hsr hpc _ need D _ _ _
   obtain ⟨hb1, rfl, rfl⟩ := gen_extendUI32 hgen
   cases F with
   | zero => simp only [execOne.eq_def, Outcome]
@@ -506,7 +506,7 @@ theorem sim_extendUI32 (F : Nat) : InstrSim P σ code F .extendUI32 := by
         refine ⟨_, rfl, ms, .refl _, by rw [hpc, after_eq]; simp, rfl, rfl, rfl,
           BodyKeeps.refl _ _ _, Below.refl _ _ _,
           ⟨by have h := hinv.height; rw [hv] at h; simpa using h, fun h v hv' => ?_,
-            hinv.count, hinv.locals, hinv.ltypes, hinv.frame, ?_⟩⟩
+            hinv.count, hinv.locals, hinv.ltypes, hinv.frame, ?_⟩, hsr⟩
         · simp only [List.reverse_cons] at hv'
           by_cases hl : h < vs.length
           · rw [List.getElem?_append_left (by simpa using hl)] at hv'

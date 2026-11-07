@@ -37,16 +37,6 @@ theorem initCode_wide : ∀ ops : List InitOp, (initCode ops).all Instr.wide = t
       rw [initCode_cons, List.all_append, opCode_wide, initCode_wide ops]
       rfl
 
-/-- A placed instruction that does not branch, followed by more code: a step executes it and
-reaches the code after it. -/
-theorem reach_falls {s u : State} {i : Instr} {rest : List Instr}
-    (hc : CodeAt code s.pc (i :: rest)) (hf : i.falls = true) (he : exec P σ i s = some u) :
-    Reach P σ code s u ∧ CodeAt code u.pc rest ∧ u.pc = s.pc + 4 := by
-  obtain ⟨c0, c1⟩ := CodeAt.cons.mp hc
-  have hp := exec_falls_pc hf he
-  rw [size_of_falls hf, show s.pc + UInt32.ofNat 4 = u.pc by rw [hp]; rfl] at c1
-  exact ⟨reach_exec c0 he (.refl _), c1, hp⟩
-
 /-- `MOVW` and `MOVT` set register `d` to `w` and keep the other registers, SP, the trace, and
 the read count. -/
 theorem run_movWord {s : State} {d : Fin 8} {w : UInt32} {rest : List Instr}
