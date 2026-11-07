@@ -85,7 +85,14 @@
 # that, KVM traps the guest's first floating-point instruction, loads the guest's registers, and
 # resumes the guest at the instruction (kvm_hyp_handle_fpsimd).
 #
-# Usage: tests/isla/traces.sh tcg|kvm [DIR [FORM...]]
+# A third profile, sme, traces only the floating-point forms, with kvm's settings on a processor that
+# also implements FEAT_SME and FEAT_SME_FA64, a check that their results do not depend on
+# PSTATE.SM or SMCR_ELx.FA64, which Linux's boot protocol leaves free.  The traces leave PSTATE.SM,
+# SMCR_EL1, and SMCR_EL2 unknown, and set what booting.rst requires of such a processor: ESM
+# besides EZ in CPTR_EL3, 0x1100, SMEN 0b11 besides kvm's fields in CPTR_EL2, 0x53330000, and FA64
+# in SMCR_EL3, 0x80000000, whose LEN, which booting.rst leaves to the firmware, is 0.
+#
+# Usage: tests/isla/traces.sh tcg|kvm|sme [DIR [FORM...]]
 # DIR defaults to the profile's directory beside this script.  For each form, the script writes
 # DIR/FORM.opcode, which holds on one line the pattern of the opcode's bits that it passes to Isla
 # with -i, then writes DIR/FORM.trace and prints "FORM SECONDS KIB", the elapsed time and peak
@@ -101,6 +108,7 @@ isla=$probe/isla-patched/target/release/isla-footprint
 export LD_LIBRARY_PATH=$probe/z3/install/lib
 exec 3>&1
 
+smcr3=() fp_only=
 case $profile in
   tcg)
     hcr=0x0000000080000000 oslsr=0x000000000000000a pa=44
@@ -108,6 +116,10 @@ case $profile in
   kvm)
     hcr=0x0000000480000000 oslsr=0x0000000000000008 pa=40
     cptr2=0x0000000050330000 cptr3=0x0000000000000100 ;;
+  sme)
+    hcr=0x0000000480000000 oslsr=0x0000000000000008 pa=40
+    cptr2=0x0000000053330000 cptr3=0x0000000000001100 fp_only=1
+    smcr3=(-R "SMCR_EL3={bits=0x0000000080000000}") ;;
   *)
     echo "unknown profile $profile" >&2
     exit 1 ;;
@@ -146,7 +158,7 @@ memory=("${tcr[@]}" -R VBAR_EL1=undefined:%bv64 -R "ZCR_EL3={bits=0x000000000000
   --fixed-memory "bvadd TTBR0_NS.bits 0x0000000000000008=0x0040000040000705"
   --reset-constraint-fields)
 fp=("${tcr[@]}" -R "CPACR_EL1={bits=0x0000000000300000}" -R "CPTR_EL2={bits=$cptr2}"
-  -R "CPTR_EL3={bits=$cptr3}" -R "FPCR={bits=0x0000000002000000}")
+  -R "CPTR_EL3={bits=$cptr3}" -R "FPCR={bits=0x0000000002000000}" "${smcr3[@]}")
 dword="bvadd ($x) ((_ zero_extend 49) (concat imm12 #b000))"
 byte="bvadd ($x) ((_ zero_extend 52) imm12)"
 
@@ -155,6 +167,9 @@ run() {
   local name=$1 opcode=$2
   shift 2
   if [ ${#only[@]} -gt 0 ] && ! printf '%s\n' "${only[@]}" | grep -qx "$name"; then
+    return
+  fi
+  if [ -n "$fp_only" ] && [ "$ir" != "$probe/ir/armv9p4-checked-fp.ir" ]; then
     return
   fi
   local args=(-A "$ir" "${base[@]}" "$@" --partial -i "$opcode")
