@@ -42268,3 +42268,9 @@ The user asked for a simple CIC filter on the A64 path after the A64 agenda.  Th
 
 - [x] The cascade's equality with the specification and the exactness theorem.
 - [x] The generic lemma for `ProgramRuns`.
+
+On 2026-11-06 the user started the filter before the Isla check ends and chose a fixed table as the input.  The Image uses order 3, decimation 8, differential delay 1, and 64 signed 16-bit samples stored as two's-complement `UInt64`, which give 8 outputs; Hogenauer's bound reads (R·M)^N · 2^(B−1) = 2^24 ≤ 2^63.  The table holds both extremes long enough to reach the integrators' largest values, a step, and segments of alternating sign, and the Python reference checks its outputs.  The dialect function computes the block cascade on `Array UInt64` with wrapping arithmetic, with a theorem for every input that it equals `cascade 3 8 1`, and the Image's theorem states the UART output as the encoding of an array whose elements, read as signed integers, are `outputs 3 8 1` of the table.  An agent builds it on minideb1 and runs the Image under TCG there and under KVM on edgexpert-18ff.
+
+- [ ] The dialect function, its equality with `cascade`, and the fixed table.
+- [ ] The compiler's theorem, `ProgramRuns`, and the Image's theorem over the specification.
+- [ ] Runs under TCG and KVM, checked against the Python reference.
