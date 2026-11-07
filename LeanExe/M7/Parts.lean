@@ -6,7 +6,8 @@ The kernel's check of a generated image in parts.  The memory of the kernel's ev
 gateway's whole image as one declaration exceeds 16 GiB.  These checks divide the image into
 `main`, each function that calls reach from the step, and the trap stubs with `udivmod64`, and each
 states one part's bytes as a slice of the number that `file_nat%` reads: the `len` bytes from byte
-`off`, `n / 256 ^ off % 256 ^ len`.  A function's part takes the layout from the list `ns` of the
+`off`, `n / 256 ^ off % 256 ^ len`, and forms the number of the part's bytes with
+`natOfBytesPaired`.  A function's part takes the layout from the list `ns` of the
 functions' sizes in units, so that its check evaluates the generator on that function alone, and
 it checks that the function's size under the layout's table is its entry of `ns`.
 `LeanExe/M7/Proof/Parts.lean` proves that parts whose checks pass give `fileOk` and `bootFileOk`,
@@ -22,7 +23,8 @@ byte `off` in the order of `natOfBytes`. -/
 def sliceOk (g : GenM (List Instr)) (n off len : Nat) : Bool :=
   match g with
   | .ok is =>
-      (imageBytes is).length == len && natOfBytes (imageBytes is) == n / 256 ^ off % 256 ^ len
+      (imageBytes is).length == len &&
+        natOfBytesPaired (imageBytes is) == n / 256 ^ off % 256 ^ len
   | .error _ => false
 
 /-- The functions that calls reach from function `k` of `m` with their indices, as `genProgram`
@@ -89,6 +91,6 @@ def bootHead (B : Boot) : List UInt8 :=
 
 /-- The image's first bytes are those of `bootHead`. -/
 def bootHeadOk (B : Boot) (n : Nat) : Bool :=
-  natOfBytes (bootHead B) == n % 256 ^ (bootHead B).length
+  natOfBytesPaired (bootHead B) == n % 256 ^ (bootHead B).length
 
 end LeanExe.M7
