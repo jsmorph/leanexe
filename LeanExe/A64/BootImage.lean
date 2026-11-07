@@ -4,7 +4,8 @@ import LeanExe.A64.Table
 /-!
 The bytes of a program's arm64 Image, laid out as `LeanExe.A64.Startup` describes: the header,
 the startup and the program, zeros to the vector table, the vector table, the translation table,
-zeros to the area, and the area's first `areaPrefix` bytes.
+zeros to the area, and the area's first `areaPrefix` bytes.  The parts are joined from the right,
+so that the kernel's evaluation of the bytes passes each byte of the code through one append.
 -/
 
 namespace LeanExe.A64
@@ -23,11 +24,10 @@ def genImage (m : Module) (k : Nat) (args : List UInt64) (room : UInt64) (cap : 
       areaPrefix m ≤ areaSize cap do
     throw s!"an image of {L.size} bytes at {image} outside the GiB of RAM, or data past its area"
   let start ← startupCode L
-  let code := imageBytes (start ++ prog)
-  let pad1 := (L.vectors - image).toNat - 64 - code.length
+  let pad1 := (L.vectors - image).toNat - 64 - 4 * (start.length + prog.length)
   let pad2 := (L.area - L.table).toNat - 32
-  let bytes := imageHeader L.size ++ code ++ List.replicate pad1 0 ++ vectorBytes ++
-    tableBytes ++ List.replicate pad2 0 ++ areaPrefixBytes m
+  let bytes := imageHeader L.size ++ (imageBytes (start ++ prog) ++ (List.replicate pad1 0 ++
+    (vectorBytes ++ (tableBytes ++ (List.replicate pad2 0 ++ areaPrefixBytes m)))))
   return (bytes, L)
 
 end LeanExe.A64

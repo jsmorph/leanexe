@@ -95,7 +95,9 @@ theorem gen_image {m : Module} {k : Nat} {args : List UInt64} {room : UInt64} {c
         injection hg with hg1
         injection hg1 with hb hL
         subst hL
-        exact ⟨prog, start, rfl, rfl, hr.1, hr.2.1, hr.2.2, hs, hb.symm⟩
+        refine ⟨prog, start, rfl, rfl, hr.1, hr.2.1, hr.2.2, hs, ?_⟩
+        rw [← hb, length_imageBytes, List.length_append]
+        simp only [List.append_assoc]
   · simp only [bind, Except.bind, hr, ↓reduceIte, throw, throwThe, MonadExceptOf.throw] at hg
     cases hg
 
