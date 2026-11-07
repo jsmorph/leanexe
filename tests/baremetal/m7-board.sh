@@ -35,7 +35,8 @@
 # NAME.records.out, and the script then reads USART_ISR over SWD into NAME.isr and requires ORE,
 # bit 3, clear: the program never clears ORE, so no byte arrived while RXNE was set during the run.
 # The reset over SWD leaves the debug state that the probe set, which the theorems' power-on
-# premise excludes.
+# premise excludes.  "m7-board.sh host NAME DEVICE" does what "run" does after the reset, without
+# st-flash, for a run from the power-on reset of a replug after NAME.bin lies in the flash.
 #
 # "m7-board.sh measure-div" writes div-dwt.bin, the measurement image of udivmod64 and UDIV, to the
 # board's flash as "run" does, waits 3 s after the reset, and reads the records and the boot log
@@ -55,12 +56,12 @@
 # line NAME.echo and the messages of uv in NAME.stderr.  RENODE names Renode 1.17.0's renode,
 # STFLASH names st-flash, UV names uv, and TIMEOUT, 120 unless set, bounds each wait of the host
 # script in seconds.
-# Usage: tests/baremetal/m7-board.sh check NAME | emulate NAME | run NAME DEVICE | measure-div |
-#          measure NAME DEVICE | compare RECORDS
+# Usage: tests/baremetal/m7-board.sh check NAME | emulate NAME | run NAME DEVICE |
+#          host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS
 set -euo pipefail
 usage() {
   echo "usage: tests/baremetal/m7-board.sh check NAME | emulate NAME | run NAME DEVICE |" \
-    "measure-div | measure NAME DEVICE | compare RECORDS" >&2
+    "host NAME DEVICE | measure-div | measure NAME DEVICE | compare RECORDS" >&2
   exit 2
 }
 [ "$#" -ge 1 ] || usage
@@ -235,10 +236,12 @@ EOF
     fi
     exit "$status"
     ;;
-  run)
+  run|host)
     [ "$#" -eq 3 ] || usage
     program "$2"
-    flash "$2.bin"
+    if [ "$1" = run ]; then
+      flash "$2.bin"
+    fi
     host_run "$2" "$3" "$2" "${TICKS:-1440}"
     if [ "$2" = gateway ]; then
       overrun "$2"
