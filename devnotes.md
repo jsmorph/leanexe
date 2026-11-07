@@ -42916,6 +42916,22 @@ The windows run at about one cycle an instruction.  G0's cost model gave 357 to 
 
 `measure-echo` wrote `echo-dwt.bin`, which read back equal, and after the reset `uart_echo.py` sent its first byte and received no reply within 120 s.  The window table read over SWD showed that the board had received the byte and written its reply to `USART_TDR`, and a probe byte sent afterwards was received and answered in the same way while no byte reached the host.  The ST-LINK's virtual COM port therefore still forwarded the host's bytes to the board and had stopped forwarding the board's output, the failure recorded on 2026-11-06 after a series of `st-flash` sessions.  The proved image had passed at 07:17, and about 15 `st-flash` sessions ran between that run and the failure at 07:28, about 24 in the task.  Only a replug of the board's USB cable has restored the port, so the board work stopped, with `echo-dwt.bin` in the board's flash.
 
+### After the replug
+
+The user replugged the board's USB cable, and the virtual COM port forwarded again.  The images came from `m7-windows` of `~/src/leanexe-m7` on edgexpert-18ff, whose sources matched controller's by SHA-256, and `echo.bin` had the checked file's digest.  `measure-echo` passed: 644 bytes in lockstep and bursts of 2, 16, 322, and 65,536 bytes with at most 2 unanswered, in 170.5 s.
+
+| Window | Windows | Cycles: least, most, mean | Instructions: G0's count plus 5 |
+|---|---|---|---|
+| `idle` | 7,548,659 | 320, 329, 320.1 | 324 |
+| `rxne` | 66,520 | 330, 330, 330.0 | 323 |
+| `byte` | 66,520 | 365, 365, 365.0 | 366 |
+| `tx`, with the routine's 8 | 66,520 | 543, 583, 543.0 | 528 |
+| `sent` | 66,521 | 372, 377, 372.0 | 360 |
+
+No `txwait` window occurred in the bursts.  The host and the board send at the same rate, so the transmitter has emptied by the time the step has a byte to send; this is an inference that no run with a faster sender has tested.  The boot log recorded three boots: the power-on reset of the replug (RCC_CSR `0x0e000000`, POR, PIN, and BOR), a boot with no reset flag during the write session, and a pin reset from `st-flash reset`, which agrees with the boots found above.
+
+`echo.bin` was then written to the flash and read back equal, and the user replugged the cable again.  With no `st-flash` or `st-util` session from that power cycle to the end of the run, `uart_echo.py` passed through `/dev/ttyACM0`: the same 644 bytes and bursts in 169.8 s.  This run starts from the power-on reset that `echo_board` assumes, with the ST-LINK connected over USB and idle.
+
 ### Remote host
 
 All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, updated with rsync from the worktree, one job at a time through `tools/leanrun` with a memory cap of 12 or 16 GiB and a timeout, and no job had to be stopped.  The host kept 117 GB available throughout.  Renode 1.17.0 and QEMU ran there, and `st-flash`, the serial port, and `uart_echo.py` on this machine.
@@ -42927,7 +42943,7 @@ All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, updated with rsync from th
 - [x] `echo.bin`, `echo_file`, `echo_board`, `echo_board_runs`, `usart3_requests`, and `echo_confined`, with their axioms checked.
 - [x] Renode and the board: `uart_echo.py` passed on both, with the flash read back.
 - [x] The DWT images: `UDIV` and `udivmod64`'s paths, and five kinds of the echo's windows.
-- [ ] After a replug of the board's USB cable: `measure-echo` with its bursts, for `txwait` and the windows of bursts, and a run of `echo.bin` from a power cycle with no `st-flash` session before `uart_echo.py`.
+- [x] After a replug of the board's USB cable: `measure-echo` with its bursts, and a run of `echo.bin` from a power cycle with no `st-flash` session before `uart_echo.py`.  No `txwait` window occurred.
 - [ ] T5: Isla and the board's co-simulation.  G1: the gateway, with a kernel check of its image that fits.
 
 ### References
