@@ -42242,6 +42242,8 @@ The user asked for an artifact code for the Images of the AArch64 back end and a
 
 `tests/TestSupport/A64/Isla/Immediate.lean` proves `Agrees` for ADD, SUB, and SUBS (immediate), MOVZ, MOVK, LSR (immediate), CSINC, ADR, and ADRP under both profiles, for every value of every field, register 31 included, and every state, with no premise beyond the variables.  Each KVM theorem follows from the TCG one by `rfl` on the footprints and `Agrees.of_reads`.  On edgexpert-18ff the module takes 383 s with the script's four threads, and the TCG theorems take 6.6 s (ADR) to 140.6 s (CSINC) on one thread.  The SP forms use lemmas on the model's access to register 31 as SP, `xsp_lt`, `xsp_31`, `setXsp_lt`, and `setXsp_31`.  SUBS's V flag needed a split on the operand's sign, the carry, and the result's sign before `omega`, and LSR needed `omega`-backed simplification of the trace's rotate and mask and a `testBit` proof of the shift.  CSINC's condition formula reduces to `State.condHolds` for all 16 conditions and flag values by `decide +kernel` after the flags are abstracted.  The agent proposes moving the SP lemmas, `cond_fwd`, `cond_bwd`, and a general sign-extension lemma into `Check.lean`, since the branch and memory groups need them, and replacing `try rfl` in `gpr_end` by `try with_reducible rfl`, which avoided exhausting 4,000,000 heartbeats.
 
+`tests/TestSupport/A64/Isla/Branch.lean` proves `Agrees` for B, BL, CBZ, CBNZ, B.cond, and RET under both profiles, for every value of every field, register 31 included, and every state.  Each theorem's only premise is the top-byte premise of the boot model's `plain` rule, `Untagged u.tcr target`: the target lies below 2^55, or TBI0 and TBI1 are clear in `TCR_EL1`, and a conditional branch needs it only when it is taken.  `W` holds `SEE`, `Branchtypetaken`, and `__BranchTaken`, and for RET also `BTypeNext`.  The KVM traces carry FEAT_PAuth's test of TBID, so each form has its own proof per profile; on debtop1 the theorems take 110 s (B, TCG) to 285 s (CBZ, KVM) on one thread, and the module 582 s with four threads.  B.cond's condition is decided by `cond_dec`, the method of the immediate group's `cond_fwd` and `cond_bwd`, which needed `synthInstance.maxSize` raised to 100000.  The agent proposes moving `or_cases` with `br_tree`, `decode_word`, `frame_if`, `cond_dec`, and the extra `isla_reads` lemmas into `Check.lean`.
+
 - [x] E: the patches and their validation.
 - [x] E: traces of every form in both profiles, except UDIV.
 - [x] E: the review's fixes in the Lean files.
@@ -42295,7 +42297,7 @@ The plan recommends hardware instructions: the model gains the low 64 bits of V0
 
 The increments run: F0 enables floating point in the startup and the boot model; F1 brings the Euler solver, entry 28 of `Demos.Euler.Buffered`, as the approved coverage plan orders, from the forms of the reverted commit `ede7b3255` reapplied; F2 checks F1's forms against Isla with the wrappers; then exp with FCMP and f64 entries, tests of the equations, the rest of f64, binary32, and the proof of the equations.  The choice between hardware and software floating point goes to the user, and so does installing Sail before the proof of the equations.
 
-- [ ] The user's choice between hardware and software floating point.
+- [x] The user's choice between hardware and software floating point: hardware.
 - [ ] F0: FP enabled in the startup and the boot model.
 - [ ] F1: Euler on the AArch64 path.
 - [ ] F2: Isla checks of F1's forms with size-tested wrappers.
