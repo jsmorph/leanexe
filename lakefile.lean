@@ -45,6 +45,12 @@ lean_exe «a64-cosim» where
   srcDir := "tests"
   root := `TestSupport.A64.CosimMain
 
+-- The comparison of the Cortex-M7 encoder with the GNU assembler (tests/baremetal/m7-encode.sh);
+-- not a default target.
+lean_exe «m7-encode» where
+  srcDir := "tests"
+  root := `TestSupport.M7.EncodeMain
+
 -- The arm64 Images of the AArch64 back end's bare-metal programs (tests/baremetal/a64-images.sh);
 -- not a default target.
 lean_exe «a64-programs» where
