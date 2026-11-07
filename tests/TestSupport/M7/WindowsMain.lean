@@ -8,12 +8,13 @@ The command `m7-windows` of the window counts of the Cortex-M7 back end's progra
 - `m7-windows image NAME FILE` writes the bytes of program NAME's code to FILE.
 - `m7-windows static NAME` prints the longest path of each function of program NAME.
 - `m7-windows run NAME DIR [IN OUT]` runs program NAME in the model and writes to `DIR/NAME.summary`
-  the statistics of each kind of window and to `DIR/NAME.KIND.trace` the first window of each kind,
-  and to `DIR/NAME.KIND.longest` the longest window of the kind `tick`.  An echo receives the bytes
-  of `uart_echo.py`'s lockstep message, blocks of its burst lengths 2, 16, 322, and 65,536, and the
-  message again, and must answer each with bit 5 flipped.  A gateway receives the input records of
-  the file IN, 18 words a line, and must send the output records of the file OUT, 6 words a line,
-  each word's bytes the most significant first.
+  the statistics of each kind of window, to `DIR/NAME.KIND.trace` the first window of each kind, to
+  `DIR/NAME.KIND.longest` the longest window of the kind `tick`, and to `DIR/NAME.divisions` each
+  call of `udivmod64` in a window of that kind, with its path, operands, and loop passes.  An echo
+  receives the bytes of `uart_echo.py`'s lockstep message, blocks of its burst lengths 2, 16, 322,
+  and 65,536, and the message again, and must answer each with bit 5 flipped.  A gateway receives
+  the input records of the file IN, 18 words a line, and must send the output records of the file
+  OUT, 6 words a line, each word's bytes the most significant first.
 
 Each command exits with status 1 on a failure.
 -/
@@ -100,11 +101,14 @@ def main (args : List String) : IO UInt32 := do
       IO.FS.createDirAll dir
       let kinds := r.stats.toList.map (·.1) |>.toArray.qsort (· < ·)
       let lines := kinds.toList.map fun k => statLine k (r.stats.getD k {})
-      let head := s!"{name}: {r.windows} windows, {r.steps} instructions, {input.size} bytes in, " ++
+      let head := s!"{name}: {r.windows} windows, {r.steps} instructions, " ++
+        s!"{input.size} bytes in, " ++
         s!"{r.output.size} bytes out, {t1 - t0} ms"
       IO.FS.writeFile s!"{dir}/{name}.summary" (String.join ((head :: lines).map (· ++ "\n")))
       for (k, t) in r.traces.toList do
         IO.FS.writeFile s!"{dir}/{name}.{k}.trace" (String.join (t.toList.map (· ++ "\n")))
+      IO.FS.writeFile s!"{dir}/{name}.divisions"
+        (String.join (r.divisions.toList.map (· ++ "\n")))
       for (k, t) in r.longest.toList do
         IO.FS.writeFile s!"{dir}/{name}.{k}.longest" (String.join (t.toList.map (· ++ "\n")))
       IO.println head

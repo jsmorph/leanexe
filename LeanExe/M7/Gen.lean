@@ -36,11 +36,15 @@ address `Shared.udivmod`, which takes the dividend in r0:r1 and the divisor in r
 quotient in r0:r1 and the remainder in r2:r3, changes r4 to r7 and LR, and touches no memory.
 Each trap stub is a branch to itself.
 
-The generator places code as it emits it, in units of 4 bytes.  Every form but `BX LR` is 32 bits
-wide, and a function ends with two `BX LR`, the second of which never runs, so that every function
-and every 32-bit instruction starts at a multiple of 4, as in the code of the board's cycle
-measurements.  `instrSize` and `listSize` give a construct's size before its body is emitted, and
-every branch is encoded after a check that its offset fits.
+The generator places code as it emits it, in units of 4 bytes: `after a n` is the address `n`
+units after `a`.  Every form but `BX LR` is 32 bits wide and takes one unit, and a function ends
+with two `BX LR`, the second of which never runs, which together take one unit.  Every function
+therefore starts at a multiple of 4, and so does each 32-bit instruction of `main` and of the
+functions, as in the code of the board's cycle measurements; the code of `udivmod64` follows its
+own layout.  Sizes count units, so a function's list of instructions holds one element more than
+its size, and a position in the program's list exceeds the instruction's unit count by one for
+each function before it.  `instrSize` and `listSize` give a construct's size before its body is
+emitted, and every branch is encoded after a check that its offset fits.
 -/
 
 namespace LeanExe.M7
@@ -83,7 +87,8 @@ def movConst (d : Fin 8) (w : Nat) : List Instr :=
   if w < 65536 then [.movwOf d w] else [.movwOf d (w % 65536), .movtOf d (w / 65536)]
 
 /-- The number of instructions that set r0:r1 to `v`. -/
-def constSize (v : UInt64) : Nat := halfSize (v.toNat % 4294967296) + halfSize (v.toNat / 4294967296)
+def constSize (v : UInt64) : Nat :=
+  halfSize (v.toNat % 4294967296) + halfSize (v.toNat / 4294967296)
 
 /-- Sets r0:r1 to `v`. -/
 def movPair (v : UInt64) : List Instr :=
@@ -206,8 +211,8 @@ def branchTo (E : Env) (t : Ctl) (σ : List ValueType) (a : UInt32) : GenM (List
 /-- An operation on the two values on top: the loads of the lower into r0:r1 and of the top into
 r2:r3, the instructions `ops`, and the store of the pair `res` into the lower's slot, a value of
 type `t`. -/
-def genBin (E : Env) (ctl : List Ctl) (σ : List ValueType) (ops : List Instr) (res : Fin 8 × Fin 8)
-    (t : ValueType) : GenM (List Instr × Option (List ValueType)) := do
+def genBin (E : Env) (ctl : List Ctl) (σ : List ValueType) (ops : List Instr)
+    (res : Fin 8 × Fin 8) (t : ValueType) : GenM (List Instr × Option (List ValueType)) := do
   if σ.length < curBase ctl + 2 then throw s!"an operation at height {σ.length}"
   let x ← E.op (σ.length - 2)
   let y ← E.op (σ.length - 1)
@@ -393,7 +398,8 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt32) :
       | some t =>
           let c ← imm (← E.op (σ.length - 1))
           if t.arity = 0 then
-            return ([.ldrSp 0 c, .cmpImm 0 0, ← bcondAt condNE (after a 2) t.target], some σ.tail)
+            return ([.ldrSp 0 c, .cmpImm 0 0, ← bcondAt condNE (after a 2) t.target],
+              some σ.tail)
           let skip := after a (4 * t.arity + 4)
           return ([.ldrSp 0 c, .cmpImm 0 0, ← bcondAt condEQ (after a 2) skip] ++
             (← branchTo E t σ.tail (after a 3)), some σ.tail)
@@ -413,7 +419,8 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt32) :
   | .loop pa ra body _ rts => do
       if pa ≠ 0 ∨ ra > 1 ∨ rts.length ≠ ra then
         throw "a loop with parameters, more than one result, or results without their types"
-      let (code, fin) ← genList E ({ target := a, types := [], base := σ.length } :: ctl) σ a body
+      let inner := { target := a, types := [], base := σ.length } :: ctl
+      let (code, fin) ← genList E inner σ a body
       if fin.any (· ≠ rts.reverse ++ σ) then throw "a loop that ends with other types"
       return (code, some (rts.reverse ++ σ))
   | .iff pa ra thn els _ rts => do
@@ -441,7 +448,8 @@ def genInstr (E : Env) (ctl : List Ctl) (σ : List ValueType) (a : UInt32) :
           if h < curBase ctl + p ∨ E.frame.out < max p rs.length ∨ σ.take p ≠ ps.reverse then
             throw s!"a call of function {k} at height {h}"
           let args ← (List.range p).mapM fun i => do copySlot (← E.op (h - p + i)) (8 * i)
-          let res ← (List.range rs.length).mapM fun j => do copySlot (8 * j) (← E.op (h - p + j))
+          let res ← (List.range rs.length).mapM fun j => do
+            copySlot (8 * j) (← E.op (h - p + j))
           return (args.flatten ++ [← blAt (after a (4 * p)) target] ++ res.flatten,
             some (rs.reverse ++ σ.drop p))
   | i => throw s!"the form {repr i} lies outside the generator's forms"
@@ -572,10 +580,12 @@ word, and bit 63 set for a write of the low word, after which slot `n` holds 0, 
 whose value slot `n` then holds, zero-extended.  The loop's head lies at `mainStart s0` units. -/
 def genMain (a step dev : UInt32) (s0 : List UInt64) : GenM (List Instr) := do
   let n := s0.length
+  let area ← imm (8 * (n + 1))
   let q ← imm (8 * n)
   let qh ← imm (8 * n + 4)
   let words ← s0.zipIdx.mapM fun (w, i) => do pure (movPair w ++ (← stPair 0 1 (8 * i)))
-  let start := [.subwSpSpOf (8 * (n + 1))] ++ words.flatten ++ [.movImm 0 0, .strSp 0 q, .strSp 0 qh]
+  let start := [.subwSpSpOf area.val] ++ words.flatten ++
+    [.movImm 0 0, .strSp 0 q, .strSp 0 qh]
   let head := after a start.length
   let rd := after head 10
   let wr := after rd 5

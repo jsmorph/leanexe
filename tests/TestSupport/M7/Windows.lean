@@ -204,7 +204,8 @@ def execMachine (i : Instr) (dev : UInt32) (m : Machine) : Except String (Machin
             if a - memBase < memSize then some ((a - memBase).toNat, s'.mem a, s'.mem (a + 1),
               s'.mem (a + 2), s'.mem (a + 3)) else none
         | none => none
-      let m' : Machine := ⟨regs', s'.sp, s'.lr, s'.pc, s'.nFlag, s'.zFlag, s'.cFlag, s'.vFlag, mem⟩
+      let m' : Machine :=
+        ⟨regs', s'.sp, s'.lr, s'.pc, s'.nFlag, s'.zFlag, s'.cFlag, s'.vFlag, mem⟩
       let tr := s'.trace
       match bytes with
       | some (o, b0, b1, b2, b3) =>
@@ -251,11 +252,12 @@ def Stat.add (s : Stat) (n : Nat) (d : Divs) : Stat :=
 def clz64 (x : UInt64) : Nat := if x = 0 then 64 else 63 - x.toNat.log2
 
 /-- The bytes of a word, the most significant first. -/
-def beBytes (w : UInt64) : List UInt8 := (List.range 8).reverse.map fun j => (w >>> (8 * j).toUInt64).toUInt8
+def beBytes (w : UInt64) : List UInt8 :=
+  (List.range 8).reverse.map fun j => (w >>> (8 * j).toUInt64).toUInt8
 
 /-- The result of a run: the statistics by kind, the number of windows and of instructions, the
-first trace of each kind and the longest trace of each traced kind, the output, and a failure, if
-any. -/
+first trace of each kind and the longest trace of each traced kind, the output, one line for each
+call of `udivmod64` in a window of a traced kind, and a failure, if any. -/
 structure Run where
   stats : Std.HashMap String Stat
   windows : Nat
@@ -263,6 +265,7 @@ structure Run where
   traces : Std.HashMap String (Array String)
   longest : Std.HashMap String (Array String)
   output : Array UInt8
+  divisions : Array String
   failure : Option String
 
 /-- The value that the far end of `p` gives a read of the status register: a received byte while
@@ -294,6 +297,7 @@ def runProgram (P : Prog) (input expected : Array UInt8) (maxWindows : Nat)
   let mut longest : Std.HashMap String (Array String) := {}
   let mut output : Array UInt8 := #[]
   let mut failure : Option String := none
+  let mut divisions : Array String := #[]
   let mut windows := 0
   let mut steps := 0
   let mut g := P.s0
@@ -337,11 +341,15 @@ def runProgram (P : Prog) (input expected : Array UInt8) (maxWindows : Nat)
       if d = 0 then
         failure := some s!"window {windows}: udivmod64 with divisor 0"
         break
-      if x >>> 32 = 0 ∧ d >>> 32 = 0 then divs := { divs with fast := divs.fast + 1 }
-      else if d &&& 0xFFFFFFFF = 0 then divs := { divs with low := divs.low + 1 }
-      else
-        let passes := if x < d then 0 else clz64 d - clz64 x + 1
-        divs := { divs with loop := divs.loop + 1, passes := max divs.passes passes }
+      let passes := if x < d then 0 else clz64 d - clz64 x + 1
+      let path := if x >>> 32 = 0 ∧ d >>> 32 = 0 then "fast"
+        else if d &&& 0xFFFFFFFF = 0 then "low" else "loop"
+      if path = "fast" then divs := { divs with fast := divs.fast + 1 }
+      else if path = "low" then divs := { divs with low := divs.low + 1 }
+      else divs := { divs with loop := divs.loop + 1, passes := max divs.passes passes }
+      if kind ∈ traced then
+        divisions := divisions.push
+          s!"window {windows} {kind} path {path} dividend {x} divisor {d} passes {passes}"
       let q := x / d
       let rem := x % d
       let mark : UInt32 := 0xDEADBEEF
@@ -389,12 +397,13 @@ def runProgram (P : Prog) (input expected : Array UInt8) (maxWindows : Nat)
     failure := some "the output differs from the expected bytes"
   if failure.isNone ∧ output.size ≠ expected.size then
     failure := some s!"{output.size} output bytes against {expected.size}"
-  return ⟨stats, windows, steps, traces, longest, output, failure⟩
+  return ⟨stats, windows, steps, traces, longest, output, divisions, failure⟩
 
 /-- The target of the branch `i` at `a`, if `i` branches to an address that it encodes. -/
 def targetOf (a : UInt32) : Instr → Option UInt32
   | .bcond _ s j1 j2 imm6 imm11 => some (a + 4 + bcondOffset s j1 j2 imm6 imm11)
-  | .b s j1 j2 imm10 imm11 | .bl s j1 j2 imm10 imm11 => some (a + 4 + branchOffset s j1 j2 imm10 imm11)
+  | .b s j1 j2 imm10 imm11 | .bl s j1 j2 imm10 imm11 =>
+      some (a + 4 + branchOffset s j1 j2 imm10 imm11)
   | _ => none
 
 /-- A path's length that ends in a trap stub, below every length of a path that returns. -/
