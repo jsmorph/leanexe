@@ -56,6 +56,12 @@ lean_exe «m7-cosim» where
   srcDir := "tests"
   root := `TestSupport.M7.CosimMain
 
+-- The window counts of the Cortex-M7 back end's generated programs in the model; not a default
+-- target.
+lean_exe «m7-windows» where
+  srcDir := "tests"
+  root := `TestSupport.M7.WindowsMain
+
 -- The arm64 Images of the AArch64 back end's bare-metal programs (tests/baremetal/a64-images.sh);
 -- not a default target.
 lean_exe «a64-programs» where
