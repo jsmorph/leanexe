@@ -1,12 +1,13 @@
 import Verified.Reflect.Command
 import TestSupport.Native.Common
-import LeanExe.Native.Proof.Records
+import LeanExe.Native.Proof.Req
+import LeanExe.Requests.Records
 import Verified.Bare
 import Verified.Call
 
 /-!
 A program that exchanges records over UART0 of QEMU's `mps2-an500` through the framing of
-`LeanExe/Native/Proof/Records.lean`.  Each input record holds three words, and the record
+`LeanExe/Requests/Records.lean`.  Each input record holds three words, and the record
 machine answers it with their sum and the number of records before it.  `sumTick` holds the
 framing's state in structures with `Flat` instances, the input record as a shift register of
 three words and the output record as two, and `sumTick_abs` states that it computes `frameTick`
@@ -17,7 +18,7 @@ answers to the records that its windows read.
 
 namespace TestSupport.Bare
 
-open LeanExe.Native LeanExe.Pipeline LClight
+open LeanExe.Native LeanExe.Requests LeanExe.Pipeline LClight
 
 /-- An input record of three words. -/
 structure In3 where
@@ -119,7 +120,7 @@ theorem sum_program (A : Archi) (X : ExtSem)
     (pre : List (ident × globdef (fundef function) type)) (hpre : PrefixOk pre)
     (σ : Nat → int) :
     LoopReacts A X (reqProgram pre sumCompiled.translation (reqMain 5 (sumWords sumInit))) E0
-      (reqTrace sumTick sumInit σ) := by
+      (reqTrace regBus sumTick sumInit σ) := by
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := sumCompiled.sumTick.native A X
   obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := List.replicate 11 .i64)
     (rs0 := List.replicate 11 .i64) (by decide +kernel)
@@ -143,9 +144,9 @@ theorem sum_program (A : Archi) (X : ExtSem)
 program write to UART0's data register begin the bytes of `sumSpec`'s answers to the records of
 three words that the bytes read from the data register in those windows encode. -/
 theorem sum_prefix (σ : Nat → int) (n : Nat) :
-    dataOut cmsdkUart (windows (reqTrace sumTick sumInit σ) n) <+:
+    dataOut regBus cmsdkUart (windows (reqTrace regBus sumTick sumInit σ) n) <+:
       outBytes sumSpec 0 (decode 3
-        (dataIn cmsdkUart (windows (reqTrace sumTick sumInit σ) n))).recs := by
+        (dataIn regBus cmsdkUart (windows (reqTrace regBus sumTick sumInit σ) n))).recs := by
   rw [← reqTrace_map sumAbs sumTick_abs]
   exact frame_prefix (u := cmsdkUart) (kin := 3) (kout := 2) (mach := sumSpec) (m0 := 0)
     (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)

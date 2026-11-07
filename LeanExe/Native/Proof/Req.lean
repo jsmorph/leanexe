@@ -1,66 +1,53 @@
 import LeanExe.Native.Proof.Ctl
+import LeanExe.Requests.Windows
 
 /-!
 The program with requests (`reqMain` of `LeanExe/Native/Bare.lean`), which runs a step function
 forever and performs, in each window, the one register access that the step requests: for every
 sequence `σ` of the values that its volatile loads read, `req_program` states `LoopReacts` with
-the initial trace `E0` and the window traces `reqTrace`.  The step's state has a type `G` whose
-values are lists of words of one length, `words`, which `main` holds in temporaries.
-`ReqState` is the state before a window: the step's state, the last value read, and the number
-of reads so far.  The step's results are the new state and the request word `q`: bit 63 set
-requests a write of the low 32 bits of `q` to register `reqReg q`, of 16 bits, and bit 63 clear
-a read of that register, whose value is the `k`-th read's `σ k`.  `ReqRuns` is what the step
+the initial trace `E0` and the window traces `reqTrace regBus` of `LeanExe/Requests/Windows.lean`.
+`regBus` records a request's access as CompCert's volatile event of `lx_reg`, a 32-bit load or
+store at four times the register's index.  The step's state has a type `G` whose values are lists
+of words of one length, `words`, which `main` holds in temporaries.  `ReqRuns` is what the step
 must do from every store that the loop's invariant allows, which `NativeA` gives for a step that
 cannot trap.
 -/
 
 namespace LeanExe.Native
 
-open LClight Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
-
-/-- The register of the request `q`, `(q >> 32) & 65535`. -/
-def reqReg (q : UInt64) : UInt64 := (q >>> UInt64.ofNat 32) &&& UInt64.ofNat 65535
-
-/-- Whether the request `q` is a write, bit 63. -/
-def reqWrite (q : UInt64) : Bool := q >>> UInt64.ofNat 63 != UInt64.ofNat 0
+open LClight Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime LeanExe.Requests
 
 /-- The offset of the register of the request `q` in `lx_reg`. -/
 def regOfs (q : UInt64) : ptrofs := UInt64.ofNat (4 * (reqReg q).toNat)
 
-/-- The state before a window: the step's state, the last value read, and the number of reads
-so far. -/
-structure ReqState (G : Type) where
-  state : G
-  last : UInt64
-  reads : Nat
+theorem ofs_inj {r r' : UInt64} (hr : r.toNat < 65536) (hr' : r'.toNat < 65536)
+    (h : (UInt64.ofNat (4 * r.toNat) : ptrofs) = UInt64.ofNat (4 * r'.toNat)) : r = r' := by
+  have := congrArg UInt64.toNat h
+  simp only [UInt64.toNat_ofNat'] at this
+  exact UInt64.toNat_inj.mp (by omega)
+
+/-- The register accesses of requests as CompCert's events: a volatile 32-bit load or store of
+`lx_reg` at four times the register's index. -/
+def regBus : Bus event where
+  read r v := .Event_vload .Mint32 regId (UInt64.ofNat (4 * r.toNat)) (.EVint v)
+  write r v := .Event_vstore .Mint32 regId (UInt64.ofNat (4 * r.toNat)) (.EVint v)
+  readOf r e := match e with
+    | .Event_vload .Mint32 id ofs (.EVint v) =>
+        if id = regId ∧ ofs = UInt64.ofNat (4 * r.toNat) then some v else none
+    | _ => none
+  writeOf r e := match e with
+    | .Event_vstore .Mint32 id ofs (.EVint v) =>
+        if id = regId ∧ ofs = UInt64.ofNat (4 * r.toNat) then some v else none
+    | _ => none
+  readOf_read r v := by simp
+  readOf_read_ne r r' v hr hr' hne := by
+    simp only [true_and, ite_eq_right_iff, reduceCtorEq, imp_false]
+    exact fun h => hne (ofs_inj hr' hr h).symm
+  readOf_write r r' v := rfl
+  writeOf_write r v := by simp
+  writeOf_read r r' v := rfl
 
 variable {G : Type}
-
-/-- The state after a window. -/
-def reqNext (tick : G → UInt64 → G × UInt64) (σ : Nat → int) (r : ReqState G) :
-    ReqState G :=
-  if reqWrite (tick r.state r.last).2 then ⟨(tick r.state r.last).1, 0, r.reads⟩
-  else ⟨(tick r.state r.last).1, UInt64.ofNat (σ r.reads).toNat, r.reads + 1⟩
-
-/-- The state before window `n`. -/
-def reqRun (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → int) : Nat → ReqState G
-  | 0 => ⟨s0, 0, 0⟩
-  | n + 1 => reqNext tick σ (reqRun tick s0 σ n)
-
-/-- The event of the window from the state `r`. -/
-def reqEvent (tick : G → UInt64 → G × UInt64) (σ : Nat → int) (r : ReqState G) : event :=
-  if reqWrite (tick r.state r.last).2 then
-    .Event_vstore .Mint32 regId (regOfs (tick r.state r.last).2)
-      (.EVint (UInt32.ofNat ((tick r.state r.last).2.toNat % 2 ^ 32)))
-  else .Event_vload .Mint32 regId (regOfs (tick r.state r.last).2) (.EVint (σ r.reads))
-
-/-- The trace of window `n`: its one register access. -/
-def reqTrace (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → int) (n : Nat) : trace :=
-  [reqEvent tick σ (reqRun tick s0 σ n)]
-
-theorem reqTrace_ne (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → int) (n : Nat) :
-    reqTrace tick s0 σ n ≠ [] := by
-  simp [reqTrace]
 
 /-- The result globals hold the words `ws`, the first in the result global 0. -/
 def ResultsAt (A : Archi) (E : Env) (ws : List UInt64) (m : mem) : Prop :=
@@ -151,12 +138,6 @@ theorem reqRuns_of_nativeA [Scalar G] {A : Archi} {X : ExtSem} {cap : Nat} {m : 
 section
 
 variable {A : Archi} {X : ExtSem} {ge : genv}
-
-theorem reqReg_lt (q : UInt64) : (reqReg q).toNat < 65536 := by
-  simp only [reqReg, UInt64.toNat_and]
-  have := Nat.and_le_right (n := (q >>> UInt64.ofNat 32).toNat) (m := (UInt64.ofNat 65535).toNat)
-  have h255 : (UInt64.ofNat 65535).toNat = 65535 := rfl
-  omega
 
 theorem sem_add_reg (b : block) (k : UInt64) (m : mem) (hk : 4 * k.toNat < 2 ^ 32) :
     sem_binary_operation A .Oadd (.Vptr b Ptrofs.zero) regArray (.Vlong k) tulong m =
@@ -393,9 +374,9 @@ theorem loopEntry_seqList (body post : statement) : ∀ pre : List statement,
 
 /-- The program with requests runs forever for every sequence `σ` of the values that its volatile
 loads read: `main` calls `lx_init` with no event, and window `n` performs the access of
-`reqTrace tick s0 σ n`, given the run of the step that `ReqRuns` states.  `heap` is the heap of
-the store in which the translation starts, the step's type takes the state's words and the last
-value, and the translation keeps a result global for each of them. -/
+`reqTrace regBus tick s0 σ n`, given the run of the step that `ReqRuns` states.  `heap` is the
+heap of the store in which the translation starts, the step's type takes the state's words and the
+last value, and the translation keeps a result global for each of them. -/
 theorem req_program {m : Wasm.Module} {cap : Nat} {T : Translation}
     (h : translate cap m = some T) {pre : List (ident × globdef (fundef function) type)}
     (hpre : PrefixOk pre) {k n : Nat} {fd : function}
@@ -405,8 +386,9 @@ theorem req_program {m : Wasm.Module} {cap : Nat} {T : Translation}
     (hn : n + 1 ≤ T.nres) (A : Archi) (X : ExtSem) {heap : Heap}
     (hheap : heap.At (nativeStore m cap)) {words : G → List UInt64}
     (hlen : ∀ g, (words g).length = n) {tick : G → UInt64 → G × UInt64}
-    (hruns : ReqRuns A X cap m T fd words tick) (s0 : G) (σ : Nat → int) :
-    LoopReacts A X (reqProgram pre T (reqMain k (words s0))) E0 (reqTrace tick s0 σ) := by
+    (hruns : ReqRuns A X cap m T fd words tick) (s0 : G) (σ : Nat → UInt32) :
+    LoopReacts A X (reqProgram pre T (reqMain k (words s0))) E0
+      (reqTrace regBus tick s0 σ) := by
   have hw := wholeOk_req h hpre.sqrt hpre.funs hpre.nodup hpre.ids (reqMain k (words s0))
   obtain ⟨decl, m0, m1, -, hinit, hmemi, hcalli, hst1, hs1, hE, hG, hcap, hnres, hF⟩ :=
     start_whole h hw A X
@@ -459,7 +441,7 @@ theorem req_program {m : Wasm.Module} {cap : Nat} {T : Translation}
       ((initCall :: (stInit 0 (words s0) ++ [statement.Sset nTemp (clong 0)])).foldr
         .Ssequence .Sskip) E0 leI m1 .Out_normal :=
     exec_trace (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _ hc1 hinit0) (by simp [E0])
-  refine ⟨reqTrace_ne tick s0 σ, bm, reqMain k (words s0), m0, m0, empty_env, le0,
+  refine ⟨reqTrace_ne regBus tick s0 σ, bm, reqMain k (words s0), m0, m0, empty_env, le0,
     (initCall :: (stInit 0 (words s0) ++ [statement.Sset nTemp (clong 0)])).foldr
       .Ssequence .Sskip,
     .Ssequence .Sskip (reqWindow k (words s0).length), .Sskip,
@@ -517,7 +499,7 @@ theorem req_program {m : Wasm.Module} {cap : Nat} {T : Translation}
   rw [hlen] at hx1
   have hwin0 := exec_seqList_cons (by simp) hx1 hsets
   have hwin : exec_stmt A X E.ge empty_env le mm (reqWindow k (words s0).length)
-      (E0 ++ (E0 ++ [reqEvent tick σ r])) le4 m' .Out_normal := by
+      (E0 ++ (E0 ++ [reqEvent regBus tick σ r])) le4 m' .Out_normal := by
     rw [hlen s0]
     exact hwin0
   refine ⟨le4, m', exec_trace (.exec_Sseq_1 _ _ _ _ _ _ _ _ _ _ _ _
@@ -538,26 +520,26 @@ theorem req_program {m : Wasm.Module} {cap : Nat} {T : Translation}
 
 /-! ## The values that the windows read -/
 
-theorem reqTrace_reads (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → int) (n : Nat) :
-    ReadsFrom σ (reqRun tick s0 σ n).reads (reqTrace tick s0 σ n) := by
+theorem reqTrace_reads (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → UInt32) (n : Nat) :
+    ReadsFrom σ (reqRun tick s0 σ n).reads (reqTrace regBus tick s0 σ n) := by
   intro tp ev u h
   cases tp with
   | nil =>
       simp only [reqTrace, List.nil_append, List.cons.injEq] at h
       obtain ⟨rfl, -⟩ := h
       cases hw : reqWrite (tick (reqRun tick s0 σ n).state (reqRun tick s0 σ n).last).2 <;>
-        simp [reqEvent, hw, countVloads]
+        simp [reqEvent, regBus, hw, countVloads]
   | cons e tp => simp [reqTrace] at h
 
-theorem reqTrace_count (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → int) (n : Nat) :
-    (reqRun tick s0 σ n).reads + countVloads (reqTrace tick s0 σ n) =
+theorem reqTrace_count (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → UInt32) (n : Nat) :
+    (reqRun tick s0 σ n).reads + countVloads (reqTrace regBus tick s0 σ n) =
       (reqRun tick s0 σ (n + 1)).reads := by
   simp only [reqTrace, reqEvent, reqRun, reqNext]
-  split <;> simp [countVloads, isVload, List.filter_cons]
+  split <;> simp [regBus, countVloads, isVload, List.filter_cons]
 
-theorem req_windows_reads (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → int) :
-    ∀ n, ReadsFrom σ 0 (windows (reqTrace tick s0 σ) n) ∧
-      countVloads (windows (reqTrace tick s0 σ) n) = (reqRun tick s0 σ n).reads
+theorem req_windows_reads (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → UInt32) :
+    ∀ n, ReadsFrom σ 0 (windows (reqTrace regBus tick s0 σ) n) ∧
+      countVloads (windows (reqTrace regBus tick s0 σ) n) = (reqRun tick s0 σ n).reads
   | 0 => ⟨fun tp ev u h => by simp [windows] at h, rfl⟩
   | n + 1 => by
       obtain ⟨hr, hc⟩ := req_windows_reads tick s0 σ n
@@ -568,8 +550,8 @@ theorem req_windows_reads (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : N
 
 /-- The initial trace and the first `n` windows read `σ`: the `reads` premise of
 `clight2_loop_to_asm` in `rocq/Clight2Asm.v`. -/
-theorem req_reads (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → int) (n : Nat) :
-    Reads σ (E0 ++ windows (reqTrace tick s0 σ) n) := by
+theorem req_reads (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → UInt32) (n : Nat) :
+    Reads σ (E0 ++ windows (reqTrace regBus tick s0 σ) n) := by
   intro tp ev u h
   have h' := (req_windows_reads tick s0 σ n).1 tp ev u (by simpa [E0] using h)
   cases ev <;> simpa using h'

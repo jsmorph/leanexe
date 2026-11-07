@@ -393,6 +393,8 @@ import LeanExe.PTX.Runs
 import LeanExe.PTX.Semantics
 import LeanExe.PTX.Syntax
 import LeanExe.PTX.Translate
+import LeanExe.Requests.Records
+import LeanExe.Requests.Windows
 import LeanExe.Runtime.Defs
 import LeanExe.Runtime.FreeList
 import LeanExe.Runtime.Tree

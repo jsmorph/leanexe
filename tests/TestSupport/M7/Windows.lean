@@ -53,7 +53,7 @@ def codeBase : UInt32 := 0x00200200
 def platform : Platform :=
   { normal := fun b => b - memBase < memSize, device := fun a => a - devBase < 0x40000 }
 
-/-- A UART in `lx_reg`, as `Uart` of `LeanExe/Native/Proof/Records.lean` has it. -/
+/-- A UART in `lx_reg`, as `Uart` of `LeanExe/Requests/Records.lean` has it. -/
 structure Port where
   rx : UInt64
   tx : UInt64

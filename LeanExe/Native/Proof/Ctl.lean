@@ -1,5 +1,6 @@
 import LeanExe.Native.Proof.Input
 import LeanExe.Native.Proof.Reacts
+import LeanExe.Requests.Windows
 
 /-!
 The controller's program (`ctlMain` of `LeanExe/Native/Bare.lean`), which runs a step function
@@ -15,6 +16,7 @@ do from every such store, which `NativeA` gives for a step that cannot trap.
 namespace LeanExe.Native
 
 open LClight Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
+open LeanExe.Requests (windows)
 
 /-- The input word of window `n`: the bytes that the loads of `σ (8 n)` to `σ (8 n + 7)` read,
 the lowest first. -/

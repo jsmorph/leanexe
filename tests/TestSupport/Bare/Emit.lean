@@ -49,7 +49,7 @@ the input records of `IN`, one line of 18 decimal words each, from its initial s
 its output records to `OUT`, one line of 6 words each, for comparison with a run of its program.
 -/
 
-open LeanExe.Native LClight Wasm
+open LeanExe.Native LeanExe.Requests LClight Wasm
 
 structure BareCase where
   name : String
@@ -268,7 +268,7 @@ structure ReqCase where
   tick : G → UInt64 → G × UInt64
   thm : ∀ T, translate cap module = some T → ∀ (A : Archi) (X : ExtSem)
     (pre : List (ident × globdef (fundef function) type)), PrefixOk pre → ∀ σ : Nat → int,
-    LoopReacts A X (reqProgram pre T (reqMain k (words s0))) E0 (reqTrace tick s0 σ)
+    LoopReacts A X (reqProgram pre T (reqMain k (words s0))) E0 (reqTrace regBus tick s0 σ)
 
 def reqCases : List ReqCase := [
   { name := "echo", module := TestSupport.Bare.reqCompiled.module, cap := 1, k := 5, G := UInt64,

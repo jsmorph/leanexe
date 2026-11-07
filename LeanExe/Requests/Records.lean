@@ -1,5 +1,4 @@
-import LeanExe.Native.Proof.Req
-import LeanExe.Native.Requests
+import LeanExe.Requests.Windows
 
 /-!
 Records of words over a UART, through the program with requests.  `frameTick` is a step that
@@ -7,89 +6,20 @@ reads records of `kin` words, runs a record machine on each, and writes the mach
 `kout` words, each word as 8 bytes, most significant first.  It reads the status register before
 each access to the receive or transmit register, reads a byte only when the receiver holds one,
 and writes one only when the transmitter has room.  `frame_prefix` states, for every sequence `σ`
-of the values that the volatile loads read, that the bytes that the first `n` windows write to
-the transmit register begin the bytes of the machine's outputs for the records that the bytes
-read from the receive register in those windows encode.  A step that the verified compiler
-compiles holds the records in structures with a `Flat` instance, and a theorem that relates it to
-`frameTick` carries `frame_prefix` to its program through `reqTrace_map`.
+of the values that the reads return and every trace type with its `Bus`, that the bytes that the
+first `n` windows write to the transmit register begin the bytes of the machine's outputs for the
+records that the bytes read from the receive register in those windows encode.  A step that the
+verified compiler compiles holds the records in structures with a `Flat` instance, and a theorem
+that relates it to `frameTick` carries `frame_prefix` to its program through `reqTrace_map`.
 -/
 
-namespace LeanExe.Native
+namespace LeanExe.Requests
 
-open LClight
-
-/-! ## Requests -/
-
-theorem readReq_toNat {r : UInt64} (hr : r.toNat < 65536) :
-    (readReq r).toNat = r.toNat * 4294967296 := by
-  have h2 : (4294967296 : UInt64).toNat = 4294967296 := rfl
-  simp only [readReq, UInt64.toNat_mul, h2]
-  omega
-
-theorem writeReq_toNat {r : UInt64} (v : UInt64) (hr : r.toNat < 65536) :
-    (writeReq r v).toNat = 9223372036854775808 + r.toNat * 4294967296 + v.toNat % 4294967296 := by
-  have h1 : (9223372036854775808 : UInt64).toNat = 9223372036854775808 := rfl
-  have h2 : (4294967296 : UInt64).toNat = 4294967296 := rfl
-  simp only [writeReq, UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_mod, h1, h2]
-  omega
-
-theorem reqWrite_iff (q : UInt64) : reqWrite q = true ↔ 9223372036854775808 ≤ q.toNat := by
-  have h : (q >>> UInt64.ofNat 63).toNat = q.toNat / 9223372036854775808 := by
-    rw [UInt64.toNat_shiftRight, Nat.shiftRight_eq_div_pow]
-    rfl
-  unfold reqWrite
-  rw [bne_iff_ne, ne_eq, ← UInt64.toNat_inj, h]
-  show ¬q.toNat / 9223372036854775808 = 0 ↔ _
-  omega
-
-theorem reqReg_toNat (q : UInt64) : (reqReg q).toNat = q.toNat / 4294967296 % 65536 := by
-  unfold reqReg
-  rw [UInt64.toNat_and, UInt64.toNat_shiftRight,
-    show (UInt64.ofNat 65535).toNat = 2 ^ 16 - 1 from rfl,
-    show (UInt64.ofNat 32).toNat % 64 = 32 from rfl, Nat.and_two_pow_sub_one_eq_mod,
-    Nat.shiftRight_eq_div_pow]
-
-theorem reqWrite_readReq {r : UInt64} (hr : r.toNat < 65536) : reqWrite (readReq r) = false := by
-  cases h : reqWrite (readReq r)
-  · rfl
-  · rw [reqWrite_iff, readReq_toNat hr] at h
-    omega
-
-theorem reqWrite_writeReq {r : UInt64} (v : UInt64) (hr : r.toNat < 65536) :
-    reqWrite (writeReq r v) = true := by
-  rw [reqWrite_iff, writeReq_toNat v hr]
-  omega
-
-theorem reqReg_readReq {r : UInt64} (hr : r.toNat < 65536) : reqReg (readReq r) = r := by
-  apply UInt64.toNat_inj.mp
-  rw [reqReg_toNat, readReq_toNat hr]
-  omega
-
-theorem reqReg_writeReq {r : UInt64} (v : UInt64) (hr : r.toNat < 65536) :
-    reqReg (writeReq r v) = r := by
-  apply UInt64.toNat_inj.mp
-  rw [reqReg_toNat, writeReq_toNat v hr]
-  omega
-
-theorem regOfs_readReq {r : UInt64} (hr : r.toNat < 65536) :
-    regOfs (readReq r) = UInt64.ofNat (4 * r.toNat) := by
-  rw [regOfs, reqReg_readReq hr]
-
-theorem regOfs_writeReq {r : UInt64} (v : UInt64) (hr : r.toNat < 65536) :
-    regOfs (writeReq r v) = regOfs (readReq r) := by
-  rw [regOfs, regOfs, reqReg_writeReq v hr, reqReg_readReq hr]
-
-theorem regOfs_readReq_ne {r s : UInt64} (hr : r.toNat < 65536) (hs : s.toNat < 65536)
-    (h : r ≠ s) : regOfs (readReq r) ≠ regOfs (readReq s) := by
-  rw [regOfs_readReq hr, regOfs_readReq hs]
-  intro he
-  have := congrArg UInt64.toNat he
-  simp only [UInt64.toNat_ofNat'] at this
-  exact h (UInt64.toNat_inj.mp (by omega))
+open LeanExe.Native (readReq writeReq)
 
 /-! ## The framing -/
 
-/-- The registers of a UART in `lx_reg`: the indices of the receive register, from which bytes
+/-- The registers of a UART among the registers that requests name: the indices of the receive register, from which bytes
 are read, the transmit register, to which bytes are written, and the status register; the status
 bit `rxFull`, which is set while the receiver holds a byte; and the status bits `txMask`, which
 equal `txRoom` while the transmitter can take a byte.  The CMSDK UART has one data register for
@@ -118,7 +48,7 @@ structure Framing (M : Type) where
   outb : List UInt64
   m : M
 
-variable {M : Type}
+variable {M α : Type}
 
 /-- One window of the framing, from the state `f` and the value `v` that the last request read,
 for records of `kin` words in and `kout` words out and the record machine `mach`. -/
@@ -196,24 +126,19 @@ def outBytes (mach : M → List UInt64 → M × List UInt64) (m0 : M) (recs : Li
     List UInt64 :=
   (machRun mach m0 recs).2.flatMap recordBytes
 
-/-- The byte that an event reads from the receive register: the low byte of the value read. -/
-def dataInByte (u : Uart) : event → Option UInt64
-  | .Event_vload .Mint32 id ofs (.EVint v) =>
-      if id = regId ∧ ofs = regOfs (readReq u.rx) then some (UInt64.ofNat v.toNat &&& 255)
-      else none
-  | _ => none
+/-- The byte that an access reads from the receive register: the low byte of the value read. -/
+def dataInByte (B : Bus α) (u : Uart) (e : α) : Option UInt64 :=
+  (B.readOf u.rx e).map fun v => UInt64.ofNat v.toNat &&& 255
 
-/-- The value that an event writes to the transmit register. -/
-def dataOutByte (u : Uart) : event → Option UInt64
-  | .Event_vstore .Mint32 id ofs (.EVint v) =>
-      if id = regId ∧ ofs = regOfs (readReq u.tx) then some (UInt64.ofNat v.toNat) else none
-  | _ => none
+/-- The value that an access writes to the transmit register. -/
+def dataOutByte (B : Bus α) (u : Uart) (e : α) : Option UInt64 :=
+  (B.writeOf u.tx e).map fun v => UInt64.ofNat v.toNat
 
 /-- The bytes that the trace reads from the receive register. -/
-def dataIn (u : Uart) (tr : trace) : List UInt64 := tr.filterMap (dataInByte u)
+def dataIn (B : Bus α) (u : Uart) (tr : List α) : List UInt64 := tr.filterMap (dataInByte B u)
 
 /-- The values that the trace writes to the transmit register. -/
-def dataOut (u : Uart) (tr : trace) : List UInt64 := tr.filterMap (dataOutByte u)
+def dataOut (B : Bus α) (u : Uart) (tr : List α) : List UInt64 := tr.filterMap (dataOutByte B u)
 
 theorem decode_append (kin : Nat) (bs : List UInt64) (b : UInt64) :
     decode kin (bs ++ [b]) = decodeByte kin (decode kin bs) b := by
@@ -284,88 +209,40 @@ def FrameInv (kin kout : Nat) (mach : M → List UInt64 → M × List UInt64) (m
   (f.phase = 2 ∧ Send kin kout mach m0 f (decode kin inp) out (rest2 kout f)) ∨
   (f.phase = 3 ∧ Send kin kout mach m0 f (decode kin inp) out (rest3 kout f))
 
-/-! ## Windows -/
-
-section
-
-variable {G : Type}
-
-theorem reqNext_of {tick : G → UInt64 → G × UInt64} {σ : Nat → int} {r : ReqState G} {g : G}
-    {q : UInt64} (h : tick r.state r.last = (g, q)) :
-    (reqNext tick σ r).state = g ∧
-      (reqNext tick σ r).last = (if reqWrite q then 0 else UInt64.ofNat (σ r.reads).toNat) ∧
-      reqEvent tick σ r = (if reqWrite q then
-        .Event_vstore .Mint32 regId (regOfs q) (.EVint (UInt32.ofNat (q.toNat % 2 ^ 32)))
-      else .Event_vload .Mint32 regId (regOfs q) (.EVint (σ r.reads))) := by
-  simp only [reqNext, reqEvent, h]
-  split <;> simp
-
-/-- A map `abs` of states that commutes with the steps carries the run and the trace. -/
-theorem reqRun_map {G' : Type} {tick : G → UInt64 → G × UInt64}
-    {tick' : G' → UInt64 → G' × UInt64} (abs : G → G')
-    (h : ∀ s v, tick' (abs s) v = (abs (tick s v).1, (tick s v).2)) (s0 : G) (σ : Nat → int) :
-    ∀ n, (reqRun tick' (abs s0) σ n).state = abs (reqRun tick s0 σ n).state ∧
-      (reqRun tick' (abs s0) σ n).last = (reqRun tick s0 σ n).last ∧
-      (reqRun tick' (abs s0) σ n).reads = (reqRun tick s0 σ n).reads
-  | 0 => ⟨rfl, rfl, rfl⟩
-  | n + 1 => by
-      obtain ⟨h1, h2, h3⟩ := reqRun_map abs h s0 σ n
-      simp only [reqRun, reqNext, h1, h2, h3, h]
-      split <;> exact ⟨rfl, rfl, rfl⟩
-
-theorem reqTrace_map {G' : Type} {tick : G → UInt64 → G × UInt64}
-    {tick' : G' → UInt64 → G' × UInt64} (abs : G → G')
-    (h : ∀ s v, tick' (abs s) v = (abs (tick s v).1, (tick s v).2)) (s0 : G) (σ : Nat → int) :
-    reqTrace tick' (abs s0) σ = reqTrace tick s0 σ := by
-  funext n
-  obtain ⟨h1, h2, h3⟩ := reqRun_map abs h s0 σ n
-  simp only [reqTrace, reqEvent, h1, h2, h3, h]
-
-end
-
 /-! ## The prefix theorem -/
 
 section
 
-variable (u : Uart) (hrx : u.rx.toNat < 65536) (htx : u.tx.toNat < 65536)
+variable (B : Bus α) (u : Uart) (hrx : u.rx.toNat < 65536) (htx : u.tx.toNat < 65536)
   (hs : u.status.toNat < 65536) (hrs : u.rx ≠ u.status)
 
 include hrx hs hrs in
-theorem dataIn_status (x : int) :
-    dataIn u [.Event_vload .Mint32 regId (regOfs (readReq u.status)) (.EVint x)] = [] := by
-  simp [dataIn, dataInByte, Ne.symm (regOfs_readReq_ne hrx hs hrs)]
+theorem dataIn_status (x : UInt32) : dataIn B u [B.read u.status x] = [] := by
+  simp [dataIn, dataInByte, B.readOf_read_ne u.rx u.status x hrx hs hrs]
 
-theorem dataOut_read (r : UInt64) (x : int) :
-    dataOut u [.Event_vload .Mint32 regId (regOfs (readReq r)) (.EVint x)] = [] := by
-  simp [dataOut, dataOutByte]
+theorem dataOut_read (r : UInt64) (x : UInt32) : dataOut B u [B.read r x] = [] := by
+  simp [dataOut, dataOutByte, B.writeOf_read]
 
-theorem dataIn_data (x : int) :
-    dataIn u [.Event_vload .Mint32 regId (regOfs (readReq u.rx)) (.EVint x)] =
-      [UInt64.ofNat x.toNat &&& 255] := by
-  simp [dataIn, dataInByte]
+theorem dataIn_data (x : UInt32) :
+    dataIn B u [B.read u.rx x] = [UInt64.ofNat x.toNat &&& 255] := by
+  simp [dataIn, dataInByte, B.readOf_read]
 
-theorem dataIn_write (b : UInt64) :
-    dataIn u [.Event_vstore .Mint32 regId (regOfs (writeReq u.tx b))
-      (.EVint (UInt32.ofNat ((writeReq u.tx b).toNat % 2 ^ 32)))] = [] := by
-  simp [dataIn, dataInByte]
-
-theorem dataOutByte_data (x : int) :
-    dataOutByte u (.Event_vstore .Mint32 regId (regOfs (readReq u.tx)) (.EVint x)) =
-      some (UInt64.ofNat x.toNat) := by
-  simp [dataOutByte]
+theorem dataIn_write (r : UInt64) (x : UInt32) : dataIn B u [B.write r x] = [] := by
+  simp [dataIn, dataInByte, B.readOf_write]
 
 include htx in
 theorem dataOut_write {b : UInt64} (hb : b.toNat < 256) :
-    dataOut u [.Event_vstore .Mint32 regId (regOfs (writeReq u.tx b))
-      (.EVint (UInt32.ofNat ((writeReq u.tx b).toNat % 2 ^ 32)))] = [b] := by
+    dataOut B u [B.write u.tx (UInt32.ofNat ((writeReq u.tx b).toNat % 2 ^ 32))] = [b] := by
   have hv : UInt64.ofNat (UInt32.ofNat ((writeReq u.tx b).toNat % 2 ^ 32)).toNat = b := by
     apply UInt64.toNat_inj.mp
     rw [UInt64.toNat_ofNat', UInt32.toNat_ofNat', writeReq_toNat b htx]
     omega
-  rw [regOfs_writeReq b htx]
-  show List.filterMap (dataOutByte u) [_] = [b]
-  rw [List.filterMap_cons, dataOutByte_data, hv]
-  rfl
+  have he : dataOutByte B u (B.write u.tx (UInt32.ofNat ((writeReq u.tx b).toNat % 2 ^ 32))) =
+      some b := by
+    unfold dataOutByte
+    rw [B.writeOf_write]
+    exact congrArg some hv
+  simp only [dataOut, List.filterMap_cons, he, List.filterMap_nil]
 
 theorem top_byte (w : UInt64) : (w >>> 56).toNat < 256 := by
   rw [UInt64.toNat_shiftRight, Nat.shiftRight_eq_div_pow]
@@ -379,17 +256,20 @@ theorem recordBytes_cons (w : UInt64) (ws : List UInt64) :
     recordBytes (w :: ws) = wordBytes w 8 ++ recordBytes ws := by
   simp [recordBytes]
 
-theorem decode_nbyte_le (kin : Nat) :
-    ∀ bs : List UInt64, (decode kin bs).nbyte ≤ 7 := by
-  intro bs
-  induction bs using List.reverseRecOn with
-  | nil => simp [decode]
-  | append_singleton bs b ih =>
-      rw [decode_append, decodeByte]
-      split
-      · simp only
-        omega
-      · split <;> simp
+theorem decodeByte_nbyte_le (kin : Nat) {d : Decoded} (b : UInt64) (h : d.nbyte ≤ 7) :
+    (decodeByte kin d b).nbyte ≤ 7 := by
+  unfold decodeByte
+  split
+  · simp only
+    omega
+  · split <;> simp
+
+theorem decode_nbyte_le (kin : Nat) (bs : List UInt64) : (decode kin bs).nbyte ≤ 7 := by
+  suffices h : ∀ d : Decoded, d.nbyte ≤ 7 → (bs.foldl (decodeByte kin) d).nbyte ≤ 7 from
+    h ⟨[], [], 0, 0⟩ (Nat.zero_le _)
+  induction bs with
+  | nil => exact fun _ h => h
+  | cons b bs ih => exact fun d h => ih _ (decodeByte_nbyte_le kin b h)
 
 theorem recv_phase {kin kout : Nat} {mach : M → List UInt64 → M × List UInt64} {m0 : M}
     {f : Framing M} {d : Decoded} {out : List UInt64} (h : Recv kin kout mach m0 f d out)
@@ -408,7 +288,7 @@ theorem toNat_succ_of_lt {x : UInt64} {n : Nat} (h : x.toNat < n) (hn : n ≤ 42
   rw [UInt64.toNat_add, show (1 : UInt64).toNat = 1 from rfl]
   exact Nat.mod_eq_of_lt (by omega)
 
-theorem drop_tail_append {α : Type} (l : List α) (x : α) {j : Nat} (hj : 1 ≤ j)
+theorem drop_tail_append {β : Type} (l : List β) (x : β) {j : Nat} (hj : 1 ≤ j)
     (hl : j ≤ l.length) : (l.tail ++ [x]).drop (j - 1) = l.drop j ++ [x] := by
   rw [List.drop_append_of_le_length (by rw [List.length_tail]; omega), List.drop_tail,
     Nat.sub_add_cancel hj]
@@ -449,72 +329,54 @@ theorem outBytes_prefix (mach : M → List UInt64 → M × List UInt64) (m0 : M)
       exact (by rw [outBytes_append]; exact List.prefix_append _ _ : outBytes mach m0 recs <+:
         outBytes mach m0 (recs ++ [r])).trans this
 
-theorem dataIn_append (u : Uart) (a b : trace) : dataIn u (a ++ b) = dataIn u a ++ dataIn u b :=
+theorem dataIn_append (B : Bus α) (u : Uart) (a b : List α) :
+    dataIn B u (a ++ b) = dataIn B u a ++ dataIn B u b :=
   List.filterMap_append
 
-theorem dataOut_append (u : Uart) (a b : trace) : dataOut u (a ++ b) = dataOut u a ++ dataOut u b :=
+theorem dataOut_append (B : Bus α) (u : Uart) (a b : List α) :
+    dataOut B u (a ++ b) = dataOut B u a ++ dataOut B u b :=
   List.filterMap_append
 
 section
 
-variable {G : Type}
-
-theorem next_read {tick : G → UInt64 → G × UInt64} {σ : Nat → int} {r : ReqState G} {g : G}
-    {q : UInt64} (ht : tick r.state r.last = (g, q)) (hw : reqWrite q = false) :
-    (reqNext tick σ r).state = g ∧ (reqNext tick σ r).last = UInt64.ofNat (σ r.reads).toNat ∧
-      reqEvent tick σ r = .Event_vload .Mint32 regId (regOfs q) (.EVint (σ r.reads)) := by
-  obtain ⟨h1, h2, h3⟩ := reqNext_of (σ := σ) ht
-  simp only [hw, Bool.false_eq_true, ite_false] at h2 h3
-  exact ⟨h1, h2, h3⟩
-
-theorem next_write {tick : G → UInt64 → G × UInt64} {σ : Nat → int} {r : ReqState G} {g : G}
-    {q : UInt64} (ht : tick r.state r.last = (g, q)) (hw : reqWrite q = true) :
-    (reqNext tick σ r).state = g ∧ (reqNext tick σ r).last = 0 ∧
-      reqEvent tick σ r =
-        .Event_vstore .Mint32 regId (regOfs q) (.EVint (UInt32.ofNat (q.toNat % 2 ^ 32))) := by
-  obtain ⟨h1, h2, h3⟩ := reqNext_of (σ := σ) ht
-  simp only [hw, ite_true] at h2 h3
-  exact ⟨h1, h2, h3⟩
-
-end
-
-section
-
-variable {u : Uart} {kin kout : Nat} {mach : M → List UInt64 → M × List UInt64} {m0 : M}
+variable {B : Bus α} {u : Uart} {kin kout : Nat} {mach : M → List UInt64 → M × List UInt64}
+  {m0 : M}
 
 /-- The invariant after the window from the state `f`, the last value `v`, and `k` reads. -/
-def FrameNext (u : Uart) (kin kout : Nat) (mach : M → List UInt64 → M × List UInt64) (m0 : M)
-    (σ : Nat → int) (f : Framing M) (v : UInt64) (k : Nat) (inp out : List UInt64) : Prop :=
+def FrameNext (B : Bus α) (u : Uart) (kin kout : Nat) (mach : M → List UInt64 → M × List UInt64)
+    (m0 : M) (σ : Nat → UInt32) (f : Framing M) (v : UInt64) (k : Nat) (inp out : List UInt64) :
+    Prop :=
   FrameInv kin kout mach m0 (reqNext (frameTick u kin kout mach) σ ⟨f, v, k⟩).state
     (reqNext (frameTick u kin kout mach) σ ⟨f, v, k⟩).last
-    (inp ++ dataIn u [reqEvent (frameTick u kin kout mach) σ ⟨f, v, k⟩])
-    (out ++ dataOut u [reqEvent (frameTick u kin kout mach) σ ⟨f, v, k⟩])
+    (inp ++ dataIn B u [reqEvent B (frameTick u kin kout mach) σ ⟨f, v, k⟩])
+    (out ++ dataOut B u [reqEvent B (frameTick u kin kout mach) σ ⟨f, v, k⟩])
 
 variable (hrx : u.rx.toNat < 65536) (htx : u.tx.toNat < 65536) (hs : u.status.toNat < 65536)
   (hrs : u.rx ≠ u.status) (hkin : 0 < kin) (hkin' : kin < 4294967296) (hkout : 0 < kout)
   (hkout' : kout < 4294967296) (hmach : ∀ m r, r.length = kin → (mach m r).2.length = kout)
-  (σ : Nat → int) (f : Framing M) (v : UInt64) (k : Nat) {inp out : List UInt64}
+  (σ : Nat → UInt32) (f : Framing M) (v : UInt64) (k : Nat) {inp out : List UInt64}
 
 include hrx hs hrs in
 /-- After a window whose request reads the status, the invariant needs only the new state. -/
 theorem frameNext_status {g : Framing M}
     (htick : frameTick u kin kout mach f v = (g, readReq u.status))
     (h : ∀ x, FrameInv kin kout mach m0 g x inp out) :
-    FrameNext u kin kout mach m0 σ f v k inp out := by
-  obtain ⟨h1, h2, h3⟩ := next_read (σ := σ) (r := ⟨f, v, k⟩) htick (reqWrite_readReq hs)
+    FrameNext B u kin kout mach m0 σ f v k inp out := by
+  obtain ⟨h1, h2, h3⟩ := next_read (B := B) (σ := σ) (r := ⟨f, v, k⟩) htick (reqWrite_readReq hs)
   unfold FrameNext
-  rw [h1, h2, h3, dataIn_status u hrx hs hrs, dataOut_read u, List.append_nil, List.append_nil]
+  rw [h1, h2, h3, reqReg_readReq hs, dataIn_status B u hrx hs hrs, dataOut_read B u, List.append_nil,
+    List.append_nil]
   exact h _
 
 include hrx hs hrs in
 theorem frameNext_phase0 (hp : f.phase = 0) (hr : Recv kin kout mach m0 f (decode kin inp) out) :
-    FrameNext u kin kout mach m0 σ f v k inp out := by
+    FrameNext B u kin kout mach m0 σ f v k inp out := by
   by_cases hx : (v &&& u.rxFull != 0) = true
   · have htick : frameTick u kin kout mach f v = ({ f with phase := 1 }, readReq u.rx) := by
       rw [frameTick, ite_eq_left (by rw [hp]; decide), ite_eq_left hx]
-    obtain ⟨h1, h2, h3⟩ := next_read (σ := σ) (r := ⟨f, v, k⟩) htick (reqWrite_readReq hrx)
+    obtain ⟨h1, h2, h3⟩ := next_read (B := B) (σ := σ) (r := ⟨f, v, k⟩) htick (reqWrite_readReq hrx)
     unfold FrameNext
-    rw [h1, h2, h3, dataIn_data u, dataOut_read u, List.append_nil]
+    rw [h1, h2, h3, reqReg_readReq hrx, dataIn_data B u, dataOut_read B u, List.append_nil]
     exact Or.inr (Or.inl ⟨rfl, inp, rfl, recv_phase hr 1⟩)
   · exact frameNext_status hrx hs hrs σ f v k
       (by rw [frameTick, ite_eq_left (by rw [hp]; decide), ite_eq_right hx])
@@ -523,7 +385,7 @@ theorem frameNext_phase0 (hp : f.phase = 0) (hr : Recv kin kout mach m0 f (decod
 include hrx hs hrs in
 theorem frameNext_byte {inp0 : List UInt64} (hp : f.phase = 1) (hin : inp = inp0 ++ [v &&& 255])
     (hr : Recv kin kout mach m0 f (decode kin inp0) out) (hb : f.nbyte < 7) :
-    FrameNext u kin kout mach m0 σ f v k inp out := by
+    FrameNext B u kin kout mach m0 σ f v k inp out := by
   have h7 : f.nbyte.toNat < 7 := UInt64.lt_iff_toNat_lt.mp hb
   have hd0 := hr.nbyte
   refine frameNext_status hrx hs hrs σ f v k (g := { f with
@@ -543,7 +405,7 @@ include hrx hs hrs hkin' in
 theorem frameNext_word {inp0 : List UInt64} (hp : f.phase = 1) (hin : inp = inp0 ++ [v &&& 255])
     (hr : Recv kin kout mach m0 f (decode kin inp0) out) (hb : ¬f.nbyte < 7)
     (hw : f.nword < UInt64.ofNat (kin - 1)) :
-    FrameNext u kin kout mach m0 σ f v k inp out := by
+    FrameNext B u kin kout mach m0 σ f v k inp out := by
   have h7 : ¬f.nbyte.toNat < 7 := fun h => hb (UInt64.lt_iff_toNat_lt.mpr h)
   have hkm : (UInt64.ofNat (kin - 1)).toNat = kin - 1 := by
     rw [UInt64.toNat_ofNat']
@@ -580,7 +442,7 @@ include hrx hs hrs hkin' hkout hmach in
 theorem frameNext_record {inp0 : List UInt64} (hp : f.phase = 1)
     (hin : inp = inp0 ++ [v &&& 255]) (hr : Recv kin kout mach m0 f (decode kin inp0) out)
     (hb : ¬f.nbyte < 7) (hw : ¬f.nword < UInt64.ofNat (kin - 1)) :
-    FrameNext u kin kout mach m0 σ f v k inp out := by
+    FrameNext B u kin kout mach m0 σ f v k inp out := by
   have h7 : ¬f.nbyte.toNat < 7 := fun h => hb (UInt64.lt_iff_toNat_lt.mpr h)
   have hkm : (UInt64.ofNat (kin - 1)).toNat = kin - 1 := by
     rw [UInt64.toNat_ofNat']
@@ -622,16 +484,17 @@ theorem frameNext_record {inp0 : List UInt64} (hp : f.phase = 1)
 include hrx htx hs hrs in
 theorem frameNext_phase2 (hp : f.phase = 2)
     (hsd : Send kin kout mach m0 f (decode kin inp) out (rest2 kout f)) :
-    FrameNext u kin kout mach m0 σ f v k inp out := by
+    FrameNext B u kin kout mach m0 σ f v k inp out := by
   by_cases hx : (v &&& u.txMask == u.txRoom) = true
   · have htick : frameTick u kin kout mach f v =
         ({ f with phase := 3 }, writeReq u.tx (f.outb.headD 0 >>> 56)) := by
       rw [frameTick, ite_eq_right (by rw [hp]; decide), ite_eq_right (by rw [hp]; decide),
         ite_eq_left (by rw [hp]; decide), ite_eq_left hx]
     obtain ⟨h1, h2, h3⟩ :=
-      next_write (σ := σ) (r := ⟨f, v, k⟩) htick (reqWrite_writeReq _ htx)
+      next_write (B := B) (σ := σ) (r := ⟨f, v, k⟩) htick (reqWrite_writeReq _ htx)
     unfold FrameNext
-    rw [h1, h2, h3, dataIn_write u, dataOut_write u htx (top_byte _), List.append_nil]
+    rw [h1, h2, h3, reqReg_writeReq _ htx, dataIn_write B u, dataOut_write B u htx (top_byte _),
+      List.append_nil]
     refine Or.inr (Or.inr (Or.inr ⟨rfl, ?_⟩))
     have hrest : rest2 kout f = (f.outb.headD 0 >>> 56) :: rest3 kout f := by
       unfold rest2 rest3
@@ -650,7 +513,7 @@ theorem frameNext_phase2 (hp : f.phase = 2)
 include hrx hs hrs hkout in
 theorem frameNext_sent (hp : f.phase = 3)
     (hsd : Send kin kout mach m0 f (decode kin inp) out (rest3 kout f)) (hb : f.nbyte < 7) :
-    FrameNext u kin kout mach m0 σ f v k inp out := by
+    FrameNext B u kin kout mach m0 σ f v k inp out := by
   have h7 : f.nbyte.toNat < 7 := UInt64.lt_iff_toNat_lt.mp hb
   have hnb : (f.nbyte + 1).toNat = f.nbyte.toNat + 1 := toNat_succ_of_lt h7 (by decide)
   have htl : f.outb.tail.length = kout - 1 := by rw [List.length_tail, hsd.outb_len]
@@ -675,7 +538,7 @@ include hrx hs hrs hkout' in
 theorem frameNext_sentWord (hp : f.phase = 3)
     (hsd : Send kin kout mach m0 f (decode kin inp) out (rest3 kout f)) (hb : ¬f.nbyte < 7)
     (hw : f.nword < UInt64.ofNat (kout - 1)) :
-    FrameNext u kin kout mach m0 σ f v k inp out := by
+    FrameNext B u kin kout mach m0 σ f v k inp out := by
   have h7 : ¬f.nbyte.toNat < 7 := fun h => hb (UInt64.lt_iff_toNat_lt.mpr h)
   have hle := hsd.nbyte_le
   have h7' : f.nbyte.toNat = 7 := by omega
@@ -711,7 +574,7 @@ include hrx hs hrs hkin hkout' in
 theorem frameNext_sentRecord (hp : f.phase = 3)
     (hsd : Send kin kout mach m0 f (decode kin inp) out (rest3 kout f)) (hb : ¬f.nbyte < 7)
     (hw : ¬f.nword < UInt64.ofNat (kout - 1)) :
-    FrameNext u kin kout mach m0 σ f v k inp out := by
+    FrameNext B u kin kout mach m0 σ f v k inp out := by
   have h7 : ¬f.nbyte.toNat < 7 := fun h => hb (UInt64.lt_iff_toNat_lt.mpr h)
   have hle := hsd.nbyte_le
   have h7' : f.nbyte.toNat = 7 := by omega
@@ -747,11 +610,11 @@ theorem frameInv_next (r : ReqState (Framing M))
     (h : FrameInv kin kout mach m0 r.state r.last inp out) :
     FrameInv kin kout mach m0 (reqNext (frameTick u kin kout mach) σ r).state
       (reqNext (frameTick u kin kout mach) σ r).last
-      (inp ++ dataIn u [reqEvent (frameTick u kin kout mach) σ r])
-      (out ++ dataOut u [reqEvent (frameTick u kin kout mach) σ r]) := by
+      (inp ++ dataIn B u [reqEvent B (frameTick u kin kout mach) σ r])
+      (out ++ dataOut B u [reqEvent B (frameTick u kin kout mach) σ r]) := by
   obtain ⟨f, v, k⟩ := r
   change FrameInv kin kout mach m0 f v inp out at h
-  change FrameNext u kin kout mach m0 σ f v k inp out
+  change FrameNext B u kin kout mach m0 σ f v k inp out
   rcases h with ⟨hp, hr⟩ | ⟨hp, inp0, hin, hr⟩ | ⟨hp, hsd⟩ | ⟨hp, hsd⟩
   · exact frameNext_phase0 hrx hs hrs σ f v k hp hr
   · by_cases hb : f.nbyte < 7
@@ -770,17 +633,18 @@ end
 
 section
 
-variable {u : Uart} {kin kout : Nat} {mach : M → List UInt64 → M × List UInt64} {m0 : M}
+variable {B : Bus α} {u : Uart} {kin kout : Nat} {mach : M → List UInt64 → M × List UInt64}
+  {m0 : M}
 
 /-- The invariant of the framing holds before every window. -/
 theorem frameInv_run (hrx : u.rx.toNat < 65536) (htx : u.tx.toNat < 65536)
     (hs : u.status.toNat < 65536) (hrs : u.rx ≠ u.status) (hkin : 0 < kin)
     (hkin' : kin < 4294967296) (hkout : 0 < kout) (hkout' : kout < 4294967296)
-    (hmach : ∀ m r, r.length = kin → (mach m r).2.length = kout) (σ : Nat → int) : ∀ n,
+    (hmach : ∀ m r, r.length = kin → (mach m r).2.length = kout) (σ : Nat → UInt32) : ∀ n,
     FrameInv kin kout mach m0 (reqRun (frameTick u kin kout mach) (frame0 kin kout m0) σ n).state
       (reqRun (frameTick u kin kout mach) (frame0 kin kout m0) σ n).last
-      (dataIn u (windows (reqTrace (frameTick u kin kout mach) (frame0 kin kout m0) σ) n))
-      (dataOut u (windows (reqTrace (frameTick u kin kout mach) (frame0 kin kout m0) σ) n))
+      (dataIn B u (windows (reqTrace B (frameTick u kin kout mach) (frame0 kin kout m0) σ) n))
+      (dataOut B u (windows (reqTrace B (frameTick u kin kout mach) (frame0 kin kout m0) σ) n))
   | 0 => Or.inl ⟨rfl, rfl, rfl, rfl, by show 0 ≤ 7; omega, rfl, rfl, hkin,
       List.length_replicate, List.drop_eq_nil_of_le (by simp [frame0, reqRun, windows, dataIn,
         decode]),
@@ -796,14 +660,15 @@ register in those windows encode, for every sequence `σ` of the values read. -/
 theorem frame_prefix (hrx : u.rx.toNat < 65536) (htx : u.tx.toNat < 65536)
     (hs : u.status.toNat < 65536) (hrs : u.rx ≠ u.status) (hkin : 0 < kin)
     (hkin' : kin < 4294967296) (hkout : 0 < kout) (hkout' : kout < 4294967296)
-    (hmach : ∀ m r, r.length = kin → (mach m r).2.length = kout) (σ : Nat → int) (n : Nat) :
-    dataOut u (windows (reqTrace (frameTick u kin kout mach) (frame0 kin kout m0) σ) n) <+:
+    (hmach : ∀ m r, r.length = kin → (mach m r).2.length = kout) (σ : Nat → UInt32) (n : Nat) :
+    dataOut B u (windows (reqTrace B (frameTick u kin kout mach) (frame0 kin kout m0) σ) n) <+:
       outBytes mach m0 (decode kin
-        (dataIn u (windows (reqTrace (frameTick u kin kout mach)
+        (dataIn B u (windows (reqTrace B (frameTick u kin kout mach)
           (frame0 kin kout m0) σ) n))).recs := by
-  rcases frameInv_run (m0 := m0) hrx htx hs hrs hkin hkin' hkout hkout' hmach σ n with
+  rcases frameInv_run (B := B) (m0 := m0) hrx htx hs hrs hkin hkin' hkout hkout' hmach σ n with
     ⟨-, hr⟩ | ⟨-, inp0, hin, hr⟩ | ⟨-, hsd⟩ | ⟨-, hsd⟩
   · rw [hr.out]
+    exact ⟨[], List.append_nil _⟩
   · rw [hin, decode_append, hr.out]
     obtain ⟨rs, hrs⟩ := decodeByte_recs kin (decode kin inp0) _
     rw [hrs]
@@ -813,4 +678,4 @@ theorem frame_prefix (hrx : u.rx.toNat < 65536) (htx : u.tx.toNat < 65536)
 
 end
 
-end LeanExe.Native
+end LeanExe.Requests
