@@ -6,7 +6,7 @@ Reset, the image's bytes, and the run of a program from reset.  `Reset code vtor
 that reset gives from the vector table at `vtor` (DDI 0403E.e section B1.5.5): SP holds word 0 of
 the table with bits 1 and 0 clear, and the program counter word 1 with bit 0 clear, where bit 0 of
 word 1, which reset copies to EPSR.T, is set, since the model executes Thumb code only.  LR holds
-0xFFFFFFFF, the trace is empty, and no device read has happened; r0 to r12, the flags, and memory
+0xFFFFFFFF, the trace is empty, and no device read has happened.  r0 to r12, the flags, and memory
 are arbitrary.  `FileAt code n len org` states that the code map holds from `org` the `len`
 bytes of the number `n` that `file_nat%` reads from a file, two at each even offset, the lower at
 the lower address, as the processor fetches halfwords (DDI 0403E.e section A3.3.1).

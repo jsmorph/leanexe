@@ -42672,7 +42672,7 @@ All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, one job at a time through 
 - [x] The moves to `CallGraph.lean`, `FileNat.lean`, and `ProofKit/Typed.lean`, with A64's exports and its Images passing.
 - [x] The slot relation, the covered forms, `list_sim`, `fun_sim`, `calls_ok`, and `step_sim`.
 - [x] `step_call`, `usart3_step`, `cmsdk_step`, and the kernel's check of the echo's code.
-- [ ] T3: `main`'s windows and the loop theorem from `step_call`.
+- [x] T3: `main`'s windows and the loop theorem from `step_call`, in T3's entry.
 - [ ] T4: `CodeAt` of the program from the bytes at the code's base, the vector table, the board's initialization, and the board.
 - [ ] G1: the gateway's forms, its frames, and the step theorems of `gwTickUsart3` and `gwTick`.
 
@@ -42680,4 +42680,95 @@ All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, one job at a time through 
 
 - [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
 - [WebAssembly Core Specification](https://webassembly.github.io/spec/core/)
+- [Lean language reference](https://lean-lang.org/doc/reference/latest/)
+
+## 2026-11-07: Cortex-M7 back end, T3: the loop under QEMU
+
+T3 of the plan for a back end without C for the NUCLEO-F767ZI (`tmp/m7/plan.md`, sections 4 to 6, the increment T3, decision 3, and items 7, 8, 10, and 11 of its revisions) proves `main`'s windows and the loop theorem of `cmsdkTick` from the state 3 on QEMU's `mps2-an500`, from reset, for every sequence `σ` of device values and every number of windows.  It gives the request traces of both paths a parameter for the access type, rebuilds the C path's theorems as instances, writes the QEMU image from Lean, checks it in the kernel through `file_nat%`, and runs `uart_echo.py` against it.  The T2 review (`tmp/m7/t2-review.md`) found nothing that changes `step_call`, and T3 carries out its three items: `gen_program_entry` states the equation of `main`'s call target that `step_sim` derived and discarded, which `step_sim` and T3 both use, the header of `Sim.lean` names `coveredInstr` and `coveredList`, and `Gen.lean` and the tables of T2 and G0 say that functions start at the program's base plus a multiple of 4.
+
+### The neutral access type
+
+`LeanExe/Requests/Windows.lean` holds `reqReg`, `reqWrite`, `ReqState`, `reqNext`, `reqRun`, `Bus`, `reqEvent`, `reqTrace`, `windows`, `reqRun_map`, `reqTrace_map`, and the lemmas of the requests, and `LeanExe/Requests/Records.lean` holds the framing, `dataIn`, `dataOut`, and `frame_prefix`, which moved from `LeanExe/Native/Proof/Records.lean`.  Neither imports Clight: the first imports only `LeanExe/Native/Requests.lean`, which holds `readReq` and `writeReq` and imports nothing.  `Bus α` gives the read and the write of register `r` with value `v` in a trace of type `α`, `readOf r` and `writeOf r`, the value of an access of each kind to register `r`, and five laws for registers of 16 bits, which are the facts that the proof of `frame_prefix` uses.  `reqEvent B`, `reqTrace B`, `dataIn B`, `dataOut B`, and `frame_prefix` take the bus, and `windows` takes any list type.
+
+```lean
+structure Bus (α : Type) where
+  read : UInt64 → UInt32 → α
+  write : UInt64 → UInt32 → α
+  readOf : UInt64 → α → Option UInt32
+  writeOf : UInt64 → α → Option UInt32
+  readOf_read : ∀ r v, readOf r (read r v) = some v
+  readOf_read_ne : ∀ r r' v, r.toNat < 65536 → r'.toNat < 65536 → r ≠ r' →
+    readOf r (read r' v) = none
+  readOf_write : ∀ r r' v, readOf r (write r' v) = none
+  writeOf_write : ∀ r v, writeOf r (write r v) = some v
+  writeOf_read : ∀ r r' v, writeOf r (read r' v) = none
+
+def reqTrace (B : Bus α) (tick : G → UInt64 → G × UInt64) (s0 : G) (σ : Nat → UInt32)
+    (n : Nat) : List α := [reqEvent B tick σ (reqRun tick s0 σ n)]
+```
+
+The C path's instance is `regBus : Bus event` in `LeanExe/Native/Proof/Req.lean`, the volatile 32-bit load or store of `lx_reg` at four times the register's index, so `regBus.write (reqReg q) v` is the event that `reqEvent` gave before and `req_program` keeps its proof.  `req_program`, `req_reads`, `echo_program`, `echo_usart3_program`, `deadline_program`, `sum_program`, `sum_prefix`, `gw_program`, `gw_usart3_program`, `gw_prefix`, and `gw_usart3_prefix` now name `reqTrace regBus`, `dataIn regBus`, and `dataOut regBus`, and the statements of `docs/native-bare-metal.md` and `docs/trusted-base.md` follow.  The Cortex-M7 instance is `devBus dev : Bus Access` in `LeanExe/M7/Proof/Main.lean`, the model's word access at `dev + 4r`, so a statement about the board's trace names no Clight definition.
+
+### `main`'s windows and the loop
+
+`gen_main` inverts `genMain`: the start, the window's `BL` and the decoding with the branch to the write, the read with its branch back, and the write with its branch back, with each branch's offset and target.  `run_decode` runs the decoding, slot code from the request's high word, and gives r3 the register's address and Z the negation of the write bit.  `run_read` and `run_write` run the device access and the stores of the new value of slot `n`, a read's value zero-extended or 0 after a write.  `main_window` composes the call, by `step_call`, with these and the branches: from the loop's head, with the state `r` of `reqRun` in the outgoing area, the model returns to the head with `reqNext`'s state there, `reqEvent (devBus dev)` appended to the trace, and the read counted.  `main_loop` iterates it by induction on the number of windows, `run_stores` and `main_start` run `main`'s start to the head with the initial state's words and 0 in the outgoing area, and `main_run` joins them from `main`'s entry.
+
+`LeanExe/M7/Boot.lean` lays out an image from reset: a vector table at `org`, a self-loop, an initialization of 32-bit forms that falls through, and the generator's program at the base after it.  Word 0 of the table is the initial SP, word 1 the reset entry with bit 0 set, and every other word the self-loop's address with bit 0 set.  `bootBytes` gives its bytes and `bootFileOk` compares them with a file's number.  `LeanExe/M7/Proof/Boot.lean` defines `Reset code vtor b`, the state that reset gives from the table at `vtor` (DDI 0403E.e section B1.5.5): SP is word 0 with bits 1 and 0 clear, the program counter word 1 with bit 0 clear, bit 0 of word 1 set, LR 0xFFFFFFFF, the trace empty, and no read done.  `FileAt code n len org` states that the code map holds the file's bytes from `org`, a halfword at each even offset with the lower byte first.  `boot_image` turns `bootFileOk` into the table's first two words and the placed code, and `boot_run` runs the initialization, which `InitRuns` describes by the accesses that it appends, and then `main_run`.
+
+### QEMU's `mps2-an500`
+
+`tests/TestSupport/M7/Qemu.lean` gives the board's platform, the image's layout, and UART0's initialization, and `QemuLoop.lean` proves the facts that `boot_run` takes and the loop theorem `echo_loop`.  QEMU 8.2.2 loads a file that is not ELF, given with `-kernel`, as a raw image at address 0, in the 4 MiB of ZBT SSRAM1 (`hw/arm/armv7m.c`, `armv7m_load_kernel`, called from `hw/arm/mps2.c` with base 0 and size `0x400000`).  The platform's Normal memory is ZBT SSRAM2 and SSRAM3, 4 MiB at `0x20000000` (`make_ram` in `hw/arm/mps2.c`), and its device window the 65,536 words from `0x40000000` that the requests address, which hold UART0 at `0x40004000`.  The initialization sets UART0's `BAUDDIV` to 16 and its `CTRL` to 3, as `board_init` of `tools/baremetal/armv7m/mps2-an500/board.S` does, and its two stores are the trace's first events.  `tests/TestSupport/M7/QemuFile.lean`, which `tests/baremetal/m7-qemu.sh` elaborates in the directory of the image, checks the file and states the theorem over it:
+
+```lean
+theorem echo_qemu (σ : Nat → UInt32) (N : Nat) (code : UInt32 → Option UInt16)
+    (hf : FileAt code echoBytes echoSize 0) (b : State) (hb : Reset code 0 b) :
+    ∃ s, Reach platform σ code b s ∧ s.pc = loopHead ∧
+      s.trace = initTrace ++ windows (reqTrace (devBus devBase) cmsdkTick 3 σ) N
+```
+
+The image holds 3,690 bytes.  The table's 48 words at 0, for the 16 system entries and the 32 interrupts of QEMU's AN500, hold SP `0x20400000`, the reset entry `0xC5`, and the self-loop's `0xC1` in every other entry.  The self-loop lies at `0xC0`, the initialization at `0xC4`, and `main` at `0xDC`, whose loop head lies at `0xFC` and whose call targets the step at `0x150`.  `arm-none-eabi-objdump -D -b binary -marm -Mforce-thumb` of the image reads the table, the initialization, and `main` as the generator lists them.
+
+| Choice | Reason |
+|---|---|
+| `reqNext` and `reqRun` take no access type | they involve no access, and they moved to the neutral module with `σ : Nat → UInt32`, which is Clight's `int`, so the C path's `σ : Nat → int` instantiates them unchanged |
+| `Bus` carries `readOf` and `writeOf` and five laws | `dataIn` and `dataOut` must pick the accesses of one register out of a trace of any type, and the laws are what `frame_prefix`'s proof uses, proved once for each instance |
+| `regBus.readOf r` compares the event's offset with `4r` | the earlier `dataInByte` compared it with `regOfs (readReq r)`, the same number for every index below 65,536, the indices that `frame_prefix` assumes |
+| `readReq` and `writeReq` stay in `LeanExe/Native/Requests.lean` | `verified_compile` reflects the dialect's functions by name, and a move would rename the compiled functions |
+| `LeanExe/Native/Proof/Records.lean` is gone, and `windows` left `Reacts.lean` | their content is the same on both paths, and `Ctl.lean` opens the neutral `windows` |
+| The loop passes the initial Talos store to every call | `step_call` quantifies over stores and the relation holds none, as the T2 review states |
+| A window reads `σ` from the number of reads before the loop | the board's initialization of T4 reads RCC's registers first, so its theorem takes `fun k => σ (k + initReads)`, as plan section 6 writes it |
+| `bootProgram` checks nothing, and `boot_image` requires a table of at least two words and an initialization of 32-bit forms | the generator's checks would add a case to every inversion, and the kernel decides both premises for QEMU's layout |
+| A full table whose other entries name a self-loop | an exception, which no proved run takes, stops at the self-loop under QEMU, as plan section 5 states for the board |
+| SP at the top of SSRAM2 and SSRAM3, the stack's limit at their base | the whole region is RAM in QEMU's model, and the step needs 312 bytes below the outgoing area of 16 |
+| `Reset` requires bit 0 of word 1 | revision 8: the model executes Thumb code only, and the kernel's check shows word 1 to be `0xC5` |
+| `InitRuns` takes a trace independent of `σ` | UART0's initialization only writes, while T4's read-modify-writes need a trace that depends on `σ` |
+| `FileAt` quantifies over code maps | the theorem holds for every map whose halfwords at even offsets from 0 are the file's.  QEMU's SSRAM1 is writable, and every store outside SSRAM2, SSRAM3, and the device window stops the model, so the program never changes its code |
+
+### Tests
+
+| Test | Result |
+|---|---|
+| `lake build LeanExe.Requests.Records` | passed in 1.0 s for the module |
+| The C path's modules after the change, 8 cores, cap 16 GiB | `Reacts.lean` 0.4 s, `Ctl.lean` 2.1 s, `Req.lean` 3.2 s, `TestSupport.Bare.Ctl` 3.8 s, `TestSupport.Bare.Records` 12 s, `TestSupport.Bare.Req` 18 s, `Demos.Energy.Loop` 188 s, and `TestSupport.Bare.Emit` 2.1 s, within the cap, and the peak was not measured |
+| `#print axioms` of `req_program`, `req_reads`, `frame_prefix`, `reqTrace_map`, the echo, deadline, and records programs, `sum_prefix`, and the gateway's four theorems, and `tests/energy/Axioms.lean` | `propext`, `Classical.choice`, and `Quot.sound` at most, in 2.0 s and 2.4 s with peaks of 4.28 and 4.29 GB |
+| `lake build LeanExe`, 8 cores | passed |
+| T3's Cortex-M7 modules from clean, one core | 19.8 s with a peak of 4.40 GB: `Proof/Main.lean` 9.2 s, `Proof/Boot.lean` 2.9 s, `Qemu.lean` 1.6 s, `QemuLoop.lean` 2.2 s |
+| `tests/baremetal/m7-qemu.sh`, the kernel's check | `echo_file` by `decide +kernel` and `echo_qemu` over the image of 3,690 bytes in 4.7 s with a peak of 5.09 GB.  `echo_qemu`, `echo_file`, `echo_loop`, `boot_run`, `main_run`, `main_loop`, and `main_window` depend on `propext`, `Classical.choice`, and `Quot.sound` |
+| `tests/baremetal/m7-qemu.sh`, the echo under QEMU 8.2.2 | `uart_echo.py` passed: 644 bytes in lockstep, bursts of 2, 16, 322, and 65,536 bytes, and 65,536 held bytes, during which the transmitter waited once, in 3.2 s, with every reply the byte sent with bit 5 flipped |
+| The kernel's check against a copy of the image with the byte at `0x105` changed from `0xEA` to `0x43` | `echo_file` failed with a kernel type mismatch |
+
+All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, one job at a time through `tools/leanrun` with a memory cap of 8 to 16 GiB and a timeout, and no job had to be stopped.  QEMU ran there, and `uart_echo.py` ran under `~/.local/bin/uv`.  The C path's programs and their C texts did not change, since only Lean statements and proofs did, so `tests/baremetal/req.sh` was not run.  Its echo's checks are those that `m7-qemu.sh` reuses.  The scratch scripts and the QEMU products were removed from the host after the runs, and the checkout keeps its build for T4.
+
+- [x] The neutral access type: `Bus`, `reqTrace`, `windows`, `dataIn`, `dataOut`, and `frame_prefix` in `LeanExe/Requests/`, with the C path's theorems as instances of `regBus`, rebuilt, and their axioms checked.
+- [x] The T2 review's items: `gen_program_entry`, the docstring of `Sim.lean`, and the statements on functions' addresses.
+- [x] `main_window`, `main_loop`, `main_start`, and `main_run`.
+- [x] `Boot`, `Reset`, `FileAt`, `boot_image`, and `boot_run`, and the QEMU image, its kernel check, `echo_qemu`, and `uart_echo.py` under QEMU.
+- [ ] T4: the board's `Boot` at the ITCM alias, an `InitRuns` whose trace depends on `σ` for the read-modify-writes of `board.S`, the corollary that the run never stops, and `echo_board`.
+
+### References
+
+- [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
+- [QEMU 8.2.2, `hw/arm/armv7m.c`](https://gitlab.com/qemu-project/qemu/-/blob/v8.2.2/hw/arm/armv7m.c)
+- [QEMU 8.2.2, `hw/arm/mps2.c`](https://gitlab.com/qemu-project/qemu/-/blob/v8.2.2/hw/arm/mps2.c)
+- [QEMU, the Arm MPS2 and MPS3 boards](https://www.qemu.org/docs/master/system/arm/mps2.html)
 - [Lean language reference](https://lean-lang.org/doc/reference/latest/)
