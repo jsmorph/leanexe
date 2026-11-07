@@ -42599,3 +42599,85 @@ All Lean ran on minideb2 in the checkout `~/src/leanexe-m7gen`, whose `.lake/pac
 - [Arm Cortex-M7 Processor Technical Reference Manual, DDI 0489](https://developer.arm.com/documentation/ddi0489/latest)
 - [RM0410, STM32F76xxx and STM32F77xxx reference manual](https://www.st.com/resource/en/reference_manual/rm0410-stm32f76xxx-and-stm32f77xxx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf)
 - [CompCert 3.18, `runtime/arm`](https://github.com/AbsInt/CompCert/tree/v3.18/runtime/arm)
+
+## 2026-11-07: Cortex-M7 back end, T2: the echo's step
+
+T2 of the plan for a back end without C for the NUCLEO-F767ZI (`tmp/m7/plan.md`, section 4 and the increment T2, with items 1, 2, and 6 of its revisions, and `tmp/m7/gen-review.md`) proves that the code that `LeanExe/M7/Gen.lean` emits simulates Talos for the forms of the functions that the echo's steps reach, with `divUI64` and `remUI64`.  It states the step theorems of `usart3Tick` and `cmsdkTick` from the compiler's theorems of the steps, and the kernel checks the bytes of the echo's generated program.  The proofs follow `LeanExe/A64/Proof/` statement by statement, over the slot relation of decisions 1 and 2, in `LeanExe/M7/Proof/Relation.lean`, `Sim.lean`, `Slots.lean`, `Forms.lean`, `Ops.lean`, `Branch.lean`, `Call.lean`, `Constructs.lean`, `Function.lean`, `Program.lean`, and `Step.lean`.
+
+### Shared modules
+
+The generic definitions that the M7 code used from A64 moved to modules that import only the syntax of Wasm modules, or Lean's core: `LeanExe/CallGraph.lean` holds `callsOf`, `callsIn`, `reachable`, `reachFrom`, `callTargets`, `funcOf`, `sigIn`, their lemmas, `callNeed`, `NeedOk`, and `stackNeedOf`; `LeanExe/FileNat.lean` holds `natOfBytes`, `byteAt`, `byteAt_natOfBytes`, `file_nat%`, and `file_size%`; and `LeanExe/ProofKit/Typed.lean` holds `HasType`, `Typed`, and their lemmas.  A64's modules re-export each moved name with `export`, so every reference in A64, its tests, and the CIC branch `worktree-agent-a62f614f9d1a54776` resolves; that branch's tests name only `byteAt` and `file_nat%` among the moved names.  M7's frames depend on the numbers of parameters and results of the callees, so `stackNeedOf` takes the size of each function's frame as an argument, and A64's `stackNeed` is `stackNeedOf` with `frameSize`, its lemmas one-line instances of the generic ones.
+
+### The relation and the simulation
+
+`SlotRel v lo hi` relates a value to the two words of a slot: an `i64` to its low and high words, an `i32` to its word and a high word of 0.  `Inv` relates Talos's locals and operand stack to a state: each operand height in its slot of `Frame.opAt`, each parameter in the caller's outgoing area at `F + 8i`, each named declared local in its slot, the locals' types, and `FrameOk`, which places the frame and the parameters in `Ram`, SP at a multiple of 4, and the stack's limit at least 4096 and at most SP.  `Outcome`, `InstrSim`, `ListSim`, `CallsOk`, and `FunSim` are A64's statements over this relation, and `list_sim` proves `ListSim` at every fuel by strong induction, from `instr_sim`, which dispatches on the covered forms: `localGet`, `localSet`, `constI64`, `andI64`, `orI64`, `xorI64`, `addI64`, `mulI64`, `eqI64`, `neI64`, `eqzI64`, `extendUI32`, `shlI64`, `shrUI64`, `divUI64`, `remUI64`, `iff`, and `call`.
+
+`sim_divrem` composes the divisor test, `ORRS r4, r2, r3` and `BEQ` to the stub, with `udivmod64_spec`: `DivAt code S`, the routine's code at the shared address, is a premise of `InstrSim`, `ListSim`, `fun_sim`, and `calls_ok`, and `step_sim` discharges it from the program's layout.  `fun_sim` runs the prologue, whose `BCC` falls through because `StackOk` places the limit at least the frame's size below SP, the clearing of the named locals, the body under `list_sim`, the copies of the results, and the epilogue, whose second `BX LR` never runs, and `calls_ok` gives `CallsOk` at every fuel for a table whose functions the generator placed.  `step_sim` inverts `genProgram`, places each function at its entry from `genFunctions`'s check of halfwords, identifies the table's numbers of parameters and results with those of the frames (`sigOf_tableOf`), and gives `FunSim` of the step at its entry after `main` with the bound `stackBound m k`.
+
+| Choice | Reason |
+|---|---|
+| The relation holds no store, and the step theorem quantifies over every store with a heap at it and a memory cap that the compiler's theorem admits | the covered forms neither read nor write the store; the store after the call again has a heap and the same caps, from `ImplementsA`, so a loop's invariant carries both, as `ReqRuns` does (revision 6) |
+| A branch out of a construct, a return, a tail call, and a thrown exception have the outcome `False`; a trap, an invalid state, and the end of the fuel `True` | no reached function of the echo or the gateway has `br`, `br_if`, `return`, or `loop` (revision 6), and the board's theorems exclude traps through the compiler's theorem without a trap |
+| `InstrSim` and `ListSim` require `D ≤ room E ms`, and `FunSim` requires `StackOk` with `need k` bytes below SP, in place of A64's outcome of an overflow | the prologue's branch to the stub is then never taken, and the step theorem's premise `stackBound m k ≤ SP - limit` is what the plan's board theorem discharges by the kernel's evaluation (section 4) |
+| `coveredInstr` and `coveredList` name the forms proved, and `reachCovered`, which the kernel evaluates, checks a step's reached functions | G1 extends the predicate form by form without changing a statement |
+| The code's address is even in `InstrSim`, `ListSim`, and the functions' entries | `BL` returns to LR with bit 0 cleared, which is the next instruction only from an even address; every function starts at a multiple of 4 |
+| `BodyKeeps` keeps the LR slot's word and every byte from `SP + F + 8p` up | a body writes its own parameters' slots, which lie in the caller's outgoing area, so the memory clause needs two regions (review) |
+| `CallResult` keeps every byte from the caller's `SP + 8·max(p, r)` up | the callee writes its frame below SP and its results into the outgoing area (plan, section 4) |
+| `Inv` covers only the locals with slots | a declared local that the body never names gets no slot (revision 1) and need not have an integer type |
+| An `if`'s condition is an `i32` from the typing of the stack (`Typed.i32_head`), and `iff` rests on `ProofKit.execOne_iff` | the generator checks the static type, so Talos's invalid case never arises |
+| The predicate of unchanged lower slots is `Below`; `Frame` keeps its name | `Frame` is the generator's structure, and the clash with A64's predicate disappeared when M7 stopped importing A64 |
+| `stackBound m k` is `stackNeedOf` at depth `m.funcs.length` with the frames of `frameOf` under `sigIn` of the reached functions | the frames that the generator computes are those whose sizes the calls use; for the echo it is 312 bytes |
+| `m7-windows` generates the program with the code of `udivmod64` | the image's code is the one of which the step theorem holds; the window runs still answer the routine natively at its entry |
+
+The halfword code map of T1 enters through `Instr.wide`, true for every form but `BX LR`, and `codeSize_of_wide`, since a function's body, its copies, and its clearing hold no `BX LR`, and `genFunctions` checks that each function's halfwords number twice its size in units.  `mapM_ok` inverts the generator's `mapM` lists of copies and stores, and `run_copies` and `run_zeros` run them: the copies with sources apart from every destination, and the stores of 0 with no condition on overlap, since stores of 0 commute.  The address of `udivmod64` follows from `genMain_wide`, since every instruction of `main` takes 4 bytes and `genProgram` checks `main`'s length.
+
+### The theorems
+
+```lean
+theorem step_call {G : Type} [Scalar G] {m : Module} {k : Nat} {s0 : List UInt64}
+    {base limit dev : UInt32} {is : List Instr} {words : G → List UInt64}
+    (hwords : ∀ g, Scalar.values g = (words g).map Value.i64)
+    (hlen : ∀ g, (words g).length = s0.length) {tick : G → UInt64 → G × UInt64}
+    {Pre : G × UInt64 → Heap → Store Unit → Prop}
+    {Post : G × UInt64 → Heap → Store Unit → Heap → Store Unit → Prop}
+    (himpl : ImplementsA false m k (fun x : G × UInt64 => tick x.1 x.2) Pre Post)
+    (hPre : ∀ x heap st, Pre x heap st) (hm : m.imports = [])
+    (hg : genProgram m k s0 base limit dev udivmod64 = .ok is) (hcode : CodeAt code base is)
+    (hev : base.toNat % 2 = 0) (hcov : reachCovered m k = true)
+    {st : Store Unit} {heap : Heap} (hat : heap.At st) (hcap : st.memoryCap m 0 ≤ 65535)
+    (s : G) (v : UInt64) (ms : State) (hpc : ms.pc = after base (mainSize s0))
+    (hlr : ms.lr % 2 = 1) (hstk : StackOk P limit (s0.length + 1) (stackBound m k) ms)
+    (hargs : WordsAt ms (words s ++ [v])) :
+    ∃ ms', Reach P σ code ms ms' ∧ ms'.pc = ms.lr &&& 0xFFFFFFFE ∧ ms'.sp = ms.sp ∧
+      ms'.lr = ms.lr ∧ ms'.trace = ms.trace ∧ ms'.reads = ms.reads ∧
+      (∀ a : UInt32, ms.sp.toNat + 8 * (s0.length + 1) ≤ a.toNat → ms'.mem a = ms.mem a) ∧
+      WordsAt ms' (words (tick s v).1 ++ [(tick s v).2]) ∧
+      ∃ (st' : Store Unit) (heap' : Heap), heap'.At st' ∧ st'.memoryCaps = st.memoryCaps
+```
+
+`usart3_step` and `cmsdk_step` in `tests/TestSupport/M7/Step.lean` instantiate `step_call` with `reqCompiled.usart3Tick.implements` at index 9 and `reqCompiled.cmsdkTick.implements` at index 5, for an initial state of one word, `WordsAt ms [s, v]`, and the result `WordsAt ms' [(usart3Tick s v).1, (usart3Tick s v).2]`, with the memory unchanged from `SP + 16` up.  `echo_covered` and `echo_stack`, by `decide +kernel`, give `reachCovered` of both steps and `stackBound` of 312 bytes for each.  `step_call`, both step theorems, `echo_stack`, and the image's `echo_image` depend on `propext`, `Classical.choice`, and `Quot.sound` alone.
+
+### Tests
+
+| Test | Result |
+|---|---|
+| `lake build LeanExe`, 8 cores, after the last change to `CallGraph.lean` | passed in 55.5 s, peak 4.5 GB |
+| Build of the M7 proof modules from clean, one core | 59.8 s with their compiled objects, peak 3.95 GB, the most 8.1 s for `Function.lean` and 8.0 s for `Constructs.lean`; each module below 0.9 GB but `Step.lean`, whose imports of `LeanExe.Pipeline.Implements` take 3.9 GB |
+| `tests/baremetal/a64-images.sh` with `ACCEL=tcg`, after the module move, after `stackNeedOf`, and on the final tree | the kernel's check of the five Images and every Image under QEMU passed each time; the last run took 1 min 22 s with a peak of 11.9 GB in the check |
+| `tests/baremetal/m7-image.sh` | the kernel's check of `echo-usart3.bin`, 3,470 bytes and 875 instructions with the routine's 230 bytes, passed in 4.6 s with a peak of 5.08 GB, and the five theorems' axioms are the three |
+| `m7-windows run echo-usart3`, with the routine's code in the program | 399,121 windows and 151,799,003 instructions, G0's counts, in 2 min 45 s; `static` gives the step's longest path of 499 instructions |
+
+All Lean ran on edgexpert-18ff in `~/src/leanexe-m7`, one job at a time through `tools/leanrun` with a memory cap of 8 to 24 GiB and a timeout, and no job had to be stopped.  The CIC branch was checked by a search of its tests for the moved names, not by a build, since its tree lacks the M7 modules.  The kernel's check covers the echo for USART3 alone; `cmsdk_step` rests on the same `step_call`, and its program has no image.
+
+- [x] The moves to `CallGraph.lean`, `FileNat.lean`, and `ProofKit/Typed.lean`, with A64's exports and its Images passing.
+- [x] The slot relation, the covered forms, `list_sim`, `fun_sim`, `calls_ok`, and `step_sim`.
+- [x] `step_call`, `usart3_step`, `cmsdk_step`, and the kernel's check of the echo's code.
+- [ ] T3: `main`'s windows and the loop theorem from `step_call`.
+- [ ] T4: `CodeAt` of the program from the bytes at the code's base, the vector table, the board's initialization, and the board.
+- [ ] G1: the gateway's forms, its frames, and the step theorems of `gwTickUsart3` and `gwTick`.
+
+### References
+
+- [Armv7-M Architecture Reference Manual, DDI 0403](https://developer.arm.com/documentation/ddi0403/latest)
+- [WebAssembly Core Specification](https://webassembly.github.io/spec/core/)
+- [Lean language reference](https://lean-lang.org/doc/reference/latest/)
