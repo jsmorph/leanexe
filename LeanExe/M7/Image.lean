@@ -24,4 +24,14 @@ def fileOk (g : Except String (List Instr)) (n len : Nat) : Bool :=
   | .ok is => LeanExe.FileNat.natOfBytes (imageBytes is) == n && (imageBytes is).length == len
   | .error _ => false
 
+theorem fileOk_ok {g : Except String (List Instr)} {n len : Nat} (h : fileOk g n len = true) :
+    ∃ is, g = .ok is ∧ LeanExe.FileNat.natOfBytes (imageBytes is) = n ∧
+      (imageBytes is).length = len := by
+  unfold fileOk at h
+  split at h
+  · rename_i is
+    simp only [Bool.and_eq_true, beq_iff_eq] at h
+    exact ⟨is, rfl, h.1, h.2⟩
+  · cases h
+
 end LeanExe.M7

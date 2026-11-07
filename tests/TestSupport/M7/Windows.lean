@@ -1,4 +1,5 @@
 import Std.Data.HashMap
+import LeanExe.M7.Div
 import LeanExe.M7.Image
 import TestSupport.M7.Asm
 import TestSupport.Bare.Req
@@ -25,11 +26,11 @@ the next input byte, and a write of the transmit register appends to the output.
 
 At each return from the step, the run compares the step's results in `main`'s outgoing area with
 the words of the state and the request that the step computes in native Lean, and at the end it
-compares the output with the expected bytes.  The routine `udivmod64` is another increment's: at
-its entry the run sets r0:r1 to the quotient and r2:r3 to the remainder of Lean's `UInt64`
-division, sets r4 to r7 to a marker word, returns to LR, and counts the call by the routine's path,
-both high words 0, the divisor's low word 0, or the loop, so that the windows' counts exclude the
-routine's instructions.
+compares the output with the expected bytes.  The program holds the code of `udivmod64`, which
+the run does not execute: at its entry the run sets r0:r1 to the quotient and r2:r3 to the
+remainder of Lean's `UInt64` division, sets r4 to r7 to a marker word, returns to LR, and counts
+the call by the routine's path, both high words 0, the divisor's low word 0, or the loop, so that
+the windows' counts exclude the routine's instructions.
 
 `longest` computes, over the generated code, the largest number of instructions on a path from a
 function's entry to its `BX LR`, with a call costing its callee's longest path and each call of
@@ -113,9 +114,9 @@ def programs : List Prog :=
     gwProg "gateway-usart3" 34 Demos.Energy.gwTickUsart3 usart3,
     gwProg "gateway-cmsdk" 33 Demos.Energy.gwTick cmsdk]
 
-/-- The generated program of `P`, with the stub code of `udivmod64` empty. -/
+/-- The generated program of `P`, with the code of `udivmod64`. -/
 def generate (P : Prog) : GenM (List Instr) :=
-  genProgram P.module P.k (P.words P.s0) codeBase stackLimit devBase []
+  genProgram P.module P.k (P.words P.s0) codeBase stackLimit devBase udivmod64
 
 /-- The address of the loop's head of `main`. -/
 def headOf (P : Prog) : UInt32 := after codeBase (mainStart (P.words P.s0))
