@@ -39,9 +39,10 @@ Each trap stub is a branch to itself.
 The generator places code as it emits it, in units of 4 bytes: `after a n` is the address `n`
 units after `a`.  Every form but `BX LR` is 32 bits wide and takes one unit, and a function ends
 with two `BX LR`, the second of which never runs, which together take one unit.  Every function
-therefore starts at a multiple of 4, and so does each 32-bit instruction of `main` and of the
-functions, as in the code of the board's cycle measurements; the code of `udivmod64` follows its
-own layout.  Sizes count units, so a function's list of instructions holds one element more than
+therefore starts at the program's base plus a multiple of 4, and so does each 32-bit instruction
+of `main` and of the functions; for a base that is a multiple of 4, as in the code of the board's
+cycle measurements, each lies at a multiple of 4.  The code of `udivmod64` follows its own
+layout.  Sizes count units, so a function's list of instructions holds one element more than
 its size, and a position in the program's list exceeds the instruction's unit count by one for
 each function before it.  `instrSize` and `listSize` give a construct's size before its body is
 emitted, and every branch is encoded after a check that its offset fits.

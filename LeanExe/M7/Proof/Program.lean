@@ -4,7 +4,8 @@ import LeanExe.M7.Proof.Function
 The simulation of the step that the generator's program calls, as `LeanExe/A64/Proof/Program.lean`
 lays out the AArch64 program.  `gen_program` inverts `genProgram`: `main`, of `mainSize s0` units
 of 4 bytes, the functions that calls reach from the step, the step first, three trap stubs, and the
-code of `udivmod64`.  `gen_functions` places each function at the entry that `entriesFrom` gives
+code of `udivmod64`, and `gen_program_entry` adds that the step comes first among the functions,
+so that `main`'s call of the step targets the address after `main`.  `gen_functions` places each function at the entry that `entriesFrom` gives
 it, from `genFunctions`'s check that each function's halfwords number twice its size in units, and
 `sigOf_tableOf` identifies the numbers of parameters and results of the table with those from
 which the generator computed the frames.  `step_sim` combines these with `calls_ok` and `fun_sim`:
@@ -110,6 +111,35 @@ theorem gen_program {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : 
     obtain ⟨_, h, -⟩ := hg
     exact absurd h except_throw_ok
 
+/-- The step `k` is the first function after `main`, and `main`'s call of the step targets the
+address after `main`: the program is `main`, generated for that address, the functions that
+calls reach from `k`, `k` first with `s0.length + 1` parameters and results of type `i64`, the
+trap stubs, and `div`. -/
+theorem gen_program_entry {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UInt32}
+    {div is : List Instr} (hg : genProgram m k s0 base limit dev div = .ok is) :
+    ∃ f fs', (reachFrom m k).mapM (funcOf m) = .ok ((k, f) :: fs') ∧ m.funcs[k]? = some f ∧
+      f.params = List.replicate (s0.length + 1) .i64 ∧
+      f.results = List.replicate (s0.length + 1) .i64 ∧
+      ∃ main fns, genMain base (after base (mainSize s0)) dev s0 = .ok main ∧
+        main.length = mainSize s0 ∧
+        genFunctions (tableOf (callTargets m k)
+            (entriesFrom (sigIn (callTargets m k) ((k, f) :: fs')) (after base (mainSize s0))
+              ((k, f) :: fs')))
+          (progShared (endOf (sigIn (callTargets m k) ((k, f) :: fs')) (after base (mainSize s0))
+            ((k, f) :: fs')) limit)
+          (after base (mainSize s0)) ((k, f) :: fs') = .ok fns ∧
+        is = main ++ fns ++ [Instr.bTo (-4), Instr.bTo (-4), Instr.bTo (-4)] ++ div := by
+  obtain ⟨fs, e, main, fns, hfs, hen, hmain, hml, hfns, rfl⟩ := gen_program hg
+  obtain ⟨rest, hrk⟩ := reachFrom_cons m k
+  rw [hrk] at hfs
+  obtain ⟨f, fs', hkf, rfl⟩ := mapM_funcOf_cons hfs
+  rw [← hrk] at hfs
+  have hen' : after base (mainSize s0) = e ∧ f.params = List.replicate (s0.length + 1) .i64 ∧
+      f.results = List.replicate (s0.length + 1) .i64 := by
+    simpa [entriesFrom] using hen
+  obtain ⟨rfl, hps, hrs⟩ := hen'
+  exact ⟨f, fs', hfs, hkf, hps, hrs, main, fns, hmain, hml, hfns, rfl⟩
+
 /-! ## The layout of the functions -/
 
 theorem find_entriesFrom (sig : Nat → Option (Nat × Nat)) (j : Nat) :
@@ -206,23 +236,14 @@ theorem step_sim {m : Module} {k : Nat} {s0 : List UInt64} {base limit dev : UIn
       f.params = List.replicate (s0.length + 1) .i64 ∧
       f.results = List.replicate (s0.length + 1) .i64 ∧ need k = stackBound m k ∧
       ∀ g, FunSim P σ code m S need g k (after base (mainSize s0), f.params, f.results) := by
-  obtain ⟨fs, e, main, fns, hfs, hen, hmain, hml, hfns, rfl⟩ := gen_program hg
-  -- the step's function comes first
-  obtain ⟨rest, hrk⟩ := reachFrom_cons m k
-  rw [hrk] at hfs
-  obtain ⟨f, fs', hkf, rfl⟩ := mapM_funcOf_cons hfs
-  rw [← hrk] at hfs
-  generalize hsig : sigIn (callTargets m k) ((k, f) :: fs') = sig at hen hfns
-  generalize hfirst : after base (mainSize s0) = first at hen hfns ⊢
+  obtain ⟨f, fs', hfs, hkf, hps, hrs, main, fns, hmain, hml, hfns, rfl⟩ := gen_program_entry hg
+  generalize hsig : sigIn (callTargets m k) ((k, f) :: fs') = sig at hfns
+  generalize hfirst : after base (mainSize s0) = first at hmain hfns ⊢
   generalize hcallee : tableOf (callTargets m k) (entriesFrom sig first ((k, f) :: fs')) =
     callee at hfns
   have htab : sigOf callee = sig := by
     rw [← hcallee, sigOf_tableOf]
     exact hsig
-  have hen' : first = e ∧ f.params = List.replicate (s0.length + 1) .i64 ∧
-      f.results = List.replicate (s0.length + 1) .i64 := by
-    simpa [entriesFrom] using hen
-  obtain ⟨-, hps, hrs⟩ := hen'
   -- the code of `main`, the functions, the stubs, and `udivmod64`
   have hcm : codeSize main = 4 * mainSize s0 := by
     rw [codeSize_of_wide (genMain_wide hmain), hml]

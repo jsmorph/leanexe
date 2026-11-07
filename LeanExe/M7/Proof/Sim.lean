@@ -14,8 +14,8 @@ the gateway's steps reach contain no `br`, `br_if`, `return`, or `loop` (`devnot
 branch out of a construct and a return have the outcome `False`, which the covered forms never
 give.
 
-`Covered` names the forms whose simulation this increment proves: the forms of the functions that
-the echo's steps reach, with `divUI64`.  `InstrSim F inst` states the simulation of `inst` at fuel
+`coveredInstr` and `coveredList` name the forms whose simulation this increment proves: the forms
+of the functions that the echo's steps reach, with `divUI64`.  `InstrSim F inst` states the simulation of `inst` at fuel
 `F` for every placement at an even address that the generator gives it, from a state whose stack
 holds at least `D` bytes below SP, where `D` bounds the stack of each call that `inst` makes.  The
 address is even because `BL` sets LR to the next address with bit 0 set, and the return to LR
