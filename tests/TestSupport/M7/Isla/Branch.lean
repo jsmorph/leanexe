@@ -1,33 +1,41 @@
 import LeanExe.M7.Isla.Walk
 
 /-!
-Theorems of `Agrees` for the branches of `LeanExe/M7/Machine.lean`: `B.W` (T4), `BL`, and `BX LR`,
-from the traces of `tests/isla/m7` under the profile `sys` of `LeanExe/M7/Isla/Profile.lean`.
-Each theorem holds for every value of the offset's fields, every platform, and every sequence of
-device values.  `tests/isla/m7-theorems.sh` elaborates the module and prints the axioms of its
-theorems.
+Theorems of `Agrees` for the branches of `LeanExe/M7/Machine.lean`: `B.W` (T4), `B<cond>.W` (T3),
+`BL`, and `BX LR`, from the traces of `tests/isla/m7` under the profile `sys` of
+`LeanExe/M7/Isla/Profile.lean`.  Each theorem holds for every value of the offset's fields, every
+platform, and every sequence of device values, and the theorem of `B<cond>.W` holds for every
+condition from EQ to LE.  `tests/isla/m7-theorems.sh` elaborates the module and prints the axioms
+of its theorems.
 
-A branch writes `_PC` and sets `__BranchTaken`, so the program counter does not advance at the end
-of a path and the theorems need no premise on its bound.  The traces clear bit 0 of the target, as
-`BranchWritePC` of DDI 0403E.e A2.3.1 does, and `exec` adds the offset to the program counter
-unmasked, so the theorems of `B.W` and `BL` take an even program counter, which the generator's
-code keeps.  The traces write `Branchtypetaken`, and those of `BL` and `BX LR` write `PSTATE.T`
-with 1, so these registers join the registers that `σ'` may change.
+A taken branch writes `_PC` and sets `__BranchTaken`, so the program counter does not advance at
+the end of the path, and the theorems of `B.W`, `BL`, and `BX LR` need no premise on its bound.
+The theorem of `B<cond>.W` takes the program counter plus 4 below 2^32 for the path that does not
+branch.  The traces clear bit 0 of the target, as `BranchWritePC` of DDI 0403E.e A2.3.1 does, and
+`exec` adds the offset to the program counter unmasked, so the theorems of `B.W` and `BL` take an
+even program counter, and the theorem of `B<cond>.W` takes one when the condition holds, which the
+generator's code keeps.  The traces write `Branchtypetaken`, and those of `BL` and `BX LR` write
+`PSTATE.T` with 1, so these registers join the registers that `σ'` may change.
 
-The opcodes of `B.W` and `BL` match the patterns of earlier decode clauses, whose tests on bits of
-`imm10` fork the trace, and every fork leads back to the branch's own clause.  The forward
-direction takes every path, and the backward direction chooses the path of the opcode by cases on
-those tests.  `BX LR` forks on bit 0 of LR: the path with bit 0 set writes `PSTATE.T` with 1 and
-branches to LR with bit 0 clear, and the paths with bit 0 clear write `PSTATE.T` with 0, the A32
-state, and take a CONSTRAINED UNPREDICTABLE choice on bit 1.  `exec` stops when bit 0 is clear, so
-the theorem of `BX LR` holds for every machine and states the first path, and the others need no
-counterpart.
+The opcodes of `B.W`, `B<cond>.W`, and `BL` match the patterns of earlier decode clauses, whose
+tests on bits of `imm10`, or of the condition and `imm6`, fork the trace, and every fork leads back
+to the branch's own clause.  The forward direction takes every path, and the backward direction
+chooses the path of the opcode by cases on those tests.  The trace of `B<cond>.W` evaluates
+`ConditionHolds` on the condition's bits and the flags of `PSTATE`, and `cond_cases` proves each
+fact of a path on them by cases on the condition and the flags.  `BX LR` forks on bit 0 of LR: the
+path with bit 0 set writes `PSTATE.T` with 1 and branches to LR with bit 0 clear, and the paths with
+bit 0 clear write `PSTATE.T` with 0, the A32 state, and take a CONSTRAINED UNPREDICTABLE choice on
+bit 1.  `exec` stops when bit 0 is clear, so the theorem of `BX LR` holds for every machine and
+states the first path, and the others need no counterpart.
+
+The theorems of the branches with an offset name the offset's number `b` and the target's number
+`v`, and the walk rewrites the trace's computations of them to the names with the equations `hoff`
+and `htgt`, which `Opaque` hides from `omega`.  With the terms in place of the names, the kernel's
+check of the walk's steps evaluates products with large powers of 2 from the offset and from
+`Mach.x`, and the job runs out of memory.
 -/
 
 namespace TestSupport.M7.Isla
-
-open Lean Elab Tactic in
-elab "show_target" : tactic => do logInfo m!"{← getMainTarget}"
 
 open LeanExe.M7 LeanExe.M7.Isla
 open LeanExe.A64.Isla (Footprint Fields Opcode Val Sys acc upd Opaque)
@@ -172,27 +180,12 @@ theorem offset21_even (s j1 j2 : Fin 2) (imm6 : Fin 64) (imm11 : Fin 2048) :
   rw [← offset21_eq]
   omega
 
-theorem toNat_four32 : (4 : UInt32).toNat = 4 := rfl
-
-theorem toNat_one32 : (1 : UInt32).toNat = 1 := rfl
-
 theorem toNat_fffffffe : (0xFFFFFFFE : UInt32).toNat = 4294967294 := rfl
 
 /-- The low word of X14 is LR. -/
 theorem low_lr (s : State) : low s 14 = s.lr := by
   unfold low
   simp only [Nat.reduceLT, ↓reduceDIte, Nat.reduceEqDiff, ↓reduceIte]
-
-/-- Proves an equation of words as one of their numbers by `omega`, with the lemmas in brackets. -/
-syntax "u32_eq " "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
-macro_rules
-  | `(tactic| u32_eq [$xs,*]) => `(tactic| (
-    apply UInt32.toNat_inj.mp
-    simp (disch := omega) only [UInt32.toNat_ofNat', UInt32.toNat_add, UInt32.toNat_or,
-      UInt32.toNat_and, toNat_branchOffset, toNat_four32, toNat_one32, toNat_fffffffe, or_one,
-      and_fffffffe, x_mod, low_lr, Nat.reducePow, $xs,*]
-    simp -failIfUnchanged only [offsetNat]
-    omega))
 
 /-! The condition of `B<cond>.W`. -/
 
@@ -211,22 +204,40 @@ elab "revert_flags" : tactic => withMainContext do
   let (_, g') ← g.revert fs
   replaceMainGoal [g']
 
-/-- Proves a goal about the condition `cond`, the flags, and facts of the path on them by cases on
-the condition and the flags, after which every fact is a closed proposition that `decide`
-evaluates. -/
+open Lean Meta Elab Tactic in
+/-- Succeeds when the goal names a flag of the model's state, so that `cond_cases` applies only to
+the conditions of `B<cond>.W` and fails at once on the decode's. -/
+elab "guard_flags" : tactic => withMainContext do
+  let flags := [``State.nFlag, ``State.zFlag, ``State.cFlag, ``State.vFlag, ``State.condHolds]
+  let t ← instantiateMVars (← getMainTarget)
+  unless flags.any (fun c => (t.find? (·.isConstOf c)).isSome) do
+    throwError "guard_flags: the goal names no flag"
+
+/-- Proves a goal about the condition `c`, the flags of the machine `m`, and facts of the path on
+them, by cases on the condition and the flags, after which `simp` evaluates every fact, or fails. -/
 syntax "cond_cases " term:max term:max : tactic
 macro_rules
-  | `(tactic| cond_cases $m $c) => `(tactic| (
+  | `(tactic| cond_cases $m $c) => `(tactic| focus (
     revert_flags
     obtain ⟨k, hk⟩ := $c
     rcases k with _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | k
+    all_goals try simp only [Fin.val_mk, Nat.zero_add, Nat.reduceAdd] at *
     all_goals first
       | omega
-      | (generalize Mach.s $m = st
-         cases st
-         rename_i nf zf cf vf _ _ _
-         revert nf zf cf vf
-         decide)))
+      | (simp only [State.condHolds, Nat.reduceDiv, Nat.reduceMod, ↓reduceIte, Nat.reduceEqDiff]
+         cases hn : State.nFlag (Mach.s $m) <;> cases hz : State.zFlag (Mach.s $m) <;>
+           cases hc : State.cFlag (Mach.s $m) <;> cases hv : State.vFlag (Mach.s $m) <;>
+           first | (simp; done) | omega | (simp at *; done) | (simp at *; omega))))
+
+/-- The discharger of the walk of `B<cond>.W`: `mem_omega`, or `cond_cases` on a goal that names a
+flag.  `first` runs its last alternative with error recovery, under which `cond_cases` would log
+its failures and close the goal with `sorry`, and the walk, which proves the condition of a
+disjunction's left branch in a `by` block, would take a branch whose condition is false.  The
+final `fail` keeps `cond_cases` out of that position. -/
+syntax "cond_disch " term:max term:max : tactic
+macro_rules
+  | `(tactic| cond_disch $m $c) => `(tactic|
+    first | mem_omega | (guard_flags; cond_cases $m $c) | fail "cond_disch: no proof")
 
 /-! `PSTATE.T`, which `BL` and `BX LR` write with 1. -/
 
@@ -344,7 +355,8 @@ theorem b_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (s j1 j2 : F
   have hoff := offset_eq s j1 j2 imm10 imm11
   have htgt := target_eq hpc (offset_even s j1 j2 imm10 imm11)
   obtain ⟨b, hb⟩ : ∃ b, (branchOffset s j1 j2 imm10 imm11).toNat = b := ⟨_, rfl⟩
-  obtain ⟨v, hv⟩ : ∃ v, (m.s.pc + 4 + branchOffset s j1 j2 imm10 imm11).toNat = v := ⟨_, rfl⟩
+  obtain ⟨v, hv⟩ : ∃ v, (m.s.pc + 4 + branchOffset s j1 j2 imm10 imm11).toNat = v :=
+    ⟨_, rfl⟩
   rw [hb] at hoff htgt
   rw [hv] at htgt
   have hv32 : v < 4294967296 := hv ▸ UInt32.toNat_lt _
@@ -359,8 +371,8 @@ theorem b_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (s j1 j2 : F
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       t32_reads [bT, sys_get, sys] at hσ
-      refine ⟨((((σ.set "__BranchTaken" (.bool false)).set "__currentCond" (.bits 4 14)).set "SEE"
-        (.bits 128 2855)).set "Branchtypetaken" (.enum "BranchType_DIR")).set "__BranchTaken"
+      refine ⟨((((σ.set "__BranchTaken" (.bool false)).set "__currentCond" (.bits 4 14)).set
+        "SEE" (.bits 128 2855)).set "Branchtypetaken" (.enum "BranchType_DIR")).set "__BranchTaken"
         (.bool true), fun o h => ?_, ?_, by t32_frame⟩
       · unfold footRun at h
         simp only [bT, LeanExe.A64.Isla.Footprint.vars, branchFields, List.foldl, List.lookup,
@@ -378,7 +390,8 @@ theorem b_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (s j1 j2 : F
           by_cases h4 : imm10.val / 32 % 32 = 0
         all_goals first
           | (exfalso; omega)
-          | (m7_bwd [u.feature, m.s.pc.toNat] using mem_omega with [hσ, and_fffffffe, Opaque.out hoff, Opaque.out htgt]
+          | (m7_bwd [u.feature, m.s.pc.toNat] using mem_omega
+              with [hσ, and_fffffffe, Opaque.out hoff, Opaque.out htgt]
              all_goals first
                | br_bwd_end hv
                | t32_side)
@@ -395,7 +408,8 @@ theorem bl_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (s j1 j2 : 
   have htgt := target_eq hpc (offset_even s j1 j2 imm10 imm11)
   have hlr := lr_eq m.s.pc
   obtain ⟨b, hb⟩ : ∃ b, (branchOffset s j1 j2 imm10 imm11).toNat = b := ⟨_, rfl⟩
-  obtain ⟨v, hv⟩ : ∃ v, (m.s.pc + 4 + branchOffset s j1 j2 imm10 imm11).toNat = v := ⟨_, rfl⟩
+  obtain ⟨v, hv⟩ : ∃ v, (m.s.pc + 4 + branchOffset s j1 j2 imm10 imm11).toNat = v :=
+    ⟨_, rfl⟩
   obtain ⟨lv, hlv⟩ : ∃ lv, ((m.s.pc + 4) ||| 1).toNat = lv := ⟨_, rfl⟩
   rw [hb] at hoff htgt
   rw [hv] at htgt
@@ -446,21 +460,23 @@ theorem bl_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (s j1 j2 : 
                | bl_bwd_end hlv hv
                | t32_side)
 
-set_option maxHeartbeats 20000000 in
+set_option maxHeartbeats 0 in
 set_option maxRecDepth 8000 in
 /-- The trace of `B<cond>.W` (T3) agrees with `exec` for every condition from EQ to LE, every value
 of the offset's fields, and every machine whose program counter plus 4 is below 2^32 and, when the
 branch is taken, is even.  The trace writes the condition to `__currentCond` in the decode clause,
-and the taken branch writes `Branchtypetaken`, so `σ'` depends on the condition. -/
-theorem bcond_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (cond : Fin 14)
+and the taken branch writes `Branchtypetaken`, so `σ'` depends on the condition and on whether
+it holds. -/
+theorem bcond_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (cc : Fin 14)
     (s j1 j2 : Fin 2) (imm6 : Fin 64) (imm11 : Fin 2048) (m : Mach)
     (hpc : m.s.pc.toNat + 4 < 4294967296)
-    (hpc2 : m.s.condHolds cond = true → m.s.pc.toNat % 2 = 0) :
+    (hpc2 : m.s.condHolds cc = true → m.s.pc.toNat % 2 = 0) :
     Agrees P δ (sys u) ["SEE", "__BranchTaken", "__currentCond", "Branchtypetaken"] bcondT
-      (bcondFields cond s j1 j2 imm6 imm11) (.bcond cond s j1 j2 imm6 imm11) m := by
+      (bcondFields cc s j1 j2 imm6 imm11) (.bcond cc s j1 j2 imm6 imm11) m := by
   have hoff := offset21_eq s j1 j2 imm6 imm11
   obtain ⟨b, hb⟩ : ∃ b, (bcondOffset s j1 j2 imm6 imm11).toNat = b := ⟨_, rfl⟩
-  obtain ⟨v, hv⟩ : ∃ v, (m.s.pc + 4 + bcondOffset s j1 j2 imm6 imm11).toNat = v := ⟨_, rfl⟩
+  obtain ⟨v, hv⟩ : ∃ v, (m.s.pc + 4 + bcondOffset s j1 j2 imm6 imm11).toNat = v :=
+    ⟨_, rfl⟩
   have hv32 : v < 4294967296 := hv ▸ UInt32.toNat_lt _
   rw [hb] at hoff
   replace hoff : Opaque _ := hoff
@@ -473,12 +489,12 @@ theorem bcond_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (cond : 
     · simp only [exec, Option.some.injEq] at hs
       subst hs
       t32_reads [bcondT, sys_get, sys] at hσ
-      by_cases hc : m.s.condHolds cond = true
+      by_cases hc : m.s.condHolds cc = true
       · have htgt := target_eq (hpc2 hc) (offset21_even s j1 j2 imm6 imm11)
         rw [hb, hv] at htgt
         replace htgt : Opaque _ := htgt
         refine ⟨(((((σ.set "__BranchTaken" (.bool false)).set "__currentCond" (.bits 4 14)).set
-          "SEE" (.bits 128 2854)).set "__currentCond" (.bits 4 cond.val)).set "Branchtypetaken"
+          "SEE" (.bits 128 2854)).set "__currentCond" (.bits 4 cc.val)).set "Branchtypetaken"
           (.enum "BranchType_DIR")).set "__BranchTaken" (.bool true), fun o h => ?_, ?_,
           by t32_frame⟩
         · unfold footRun at h
@@ -487,29 +503,27 @@ theorem bcond_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (cond : 
             Nat.reduceAdd, Nat.reduceDiv] at h
           m7_fwd h using mem_omega with [hσ, and_fffffffe, Opaque.out hoff, Opaque.out htgt]
           all_goals first
-            | (exfalso; cond_cases m cond)
-            | (simp only [hc, ↓reduceIte]; br_end m hv)
+            | (simp -failIfUnchanged only [hc, ↓reduceIte, Bool.cond_true]; br_end m hv)
+            | (exfalso; cond_cases m cc)
         · unfold footRun
           simp only [bcondT, LeanExe.A64.Isla.Footprint.vars, bcondFields, List.foldl,
             List.lookup, String.reduceBEq, Option.getD, LeanExe.A64.Isla.Opcode.width,
             Nat.reduceAdd, Nat.reduceDiv]
-          by_cases h1 : cond.val * 2 + imm6.val / 32 % 2 = 10 <;>
-            by_cases h2 : cond.val * 2 + imm6.val / 32 % 2 = 8 <;>
-            by_cases h3 : cond.val * 4 + imm6.val / 16 % 4 = 32 <;>
-            by_cases h4 : cond.val * 2 + imm6.val / 32 % 2 = 0
+          by_cases h1 : cc.val * 2 + imm6.val / 32 % 2 = 10 <;>
+            by_cases h2 : cc.val * 2 + imm6.val / 32 % 2 = 8 <;>
+            by_cases h3 : cc.val * 4 + imm6.val / 16 % 4 = 32 <;>
+            by_cases h4 : cc.val * 2 + imm6.val / 32 % 2 = 0
           all_goals first
             | (exfalso; omega)
-            | (m7_bwd [u.feature, if m.s.zFlag then 1 else 0, if m.s.cFlag then 1 else 0,
-                if m.s.nFlag then 1 else 0, if m.s.vFlag then 1 else 0, m.s.pc.toNat]
-                using (first | mem_omega | cond_cases m cond)
+            | (m7_auto using (cond_disch m cc)
                 with [hσ, and_fffffffe, Opaque.out hoff, Opaque.out htgt]
                all_goals first
-                 | (simp only [hc, ↓reduceIte]; br_bwd_end hv)
+                 | (simp -failIfUnchanged only [hc, ↓reduceIte, Bool.cond_true]; br_bwd_end hv)
                  | t32_side
-                 | cond_cases m cond)
-      · have hc' : m.s.condHolds cond = false := by simpa using hc
+                 | cond_cases m cc)
+      · have hc' : m.s.condHolds cc = false := by simpa using hc
         refine ⟨(((σ.set "__BranchTaken" (.bool false)).set "__currentCond" (.bits 4 14)).set
-          "SEE" (.bits 128 2854)).set "__currentCond" (.bits 4 cond.val), fun o h => ?_, ?_,
+          "SEE" (.bits 128 2854)).set "__currentCond" (.bits 4 cc.val), fun o h => ?_, ?_,
           by t32_frame⟩
         · unfold footRun at h
           simp only [bcondT, LeanExe.A64.Isla.Footprint.vars, bcondFields, List.foldl,
@@ -517,33 +531,32 @@ theorem bcond_agrees (P : Platform) (δ : Nat → UInt32) (u : Unknown) (cond : 
             Nat.reduceAdd, Nat.reduceDiv] at h
           m7_fwd h using mem_omega with [hσ, and_fffffffe, Opaque.out hoff]
           all_goals first
-            | (exfalso; cond_cases m cond)
-            | (simp only [hc', Bool.false_eq_true, ↓reduceIte]
+            | (simp -failIfUnchanged only [hc', Bool.false_eq_true, ↓reduceIte, Bool.cond_false]
                simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq, ↓reduceIte]
                t32_pc
                exact ⟨m.hi, rfl⟩)
+            | (exfalso; cond_cases m cc)
         · unfold footRun
           simp only [bcondT, LeanExe.A64.Isla.Footprint.vars, bcondFields, List.foldl,
             List.lookup, String.reduceBEq, Option.getD, LeanExe.A64.Isla.Opcode.width,
             Nat.reduceAdd, Nat.reduceDiv]
-          by_cases h1 : cond.val * 2 + imm6.val / 32 % 2 = 10 <;>
-            by_cases h2 : cond.val * 2 + imm6.val / 32 % 2 = 8 <;>
-            by_cases h3 : cond.val * 4 + imm6.val / 16 % 4 = 32 <;>
-            by_cases h4 : cond.val * 2 + imm6.val / 32 % 2 = 0
+          by_cases h1 : cc.val * 2 + imm6.val / 32 % 2 = 10 <;>
+            by_cases h2 : cc.val * 2 + imm6.val / 32 % 2 = 8 <;>
+            by_cases h3 : cc.val * 4 + imm6.val / 16 % 4 = 32 <;>
+            by_cases h4 : cc.val * 2 + imm6.val / 32 % 2 = 0
           all_goals first
             | (exfalso; omega)
-            | (m7_bwd [u.feature, if m.s.zFlag then 1 else 0, if m.s.cFlag then 1 else 0,
-                if m.s.nFlag then 1 else 0, if m.s.vFlag then 1 else 0, m.s.pc.toNat]
-                using (first | mem_omega | cond_cases m cond)
+            | (m7_auto using (cond_disch m cc)
                 with [hσ, and_fffffffe, Opaque.out hoff]
                all_goals first
-                 | (simp only [hc', Bool.false_eq_true, ↓reduceIte]
+                 | (simp -failIfUnchanged only [hc', Bool.false_eq_true, ↓reduceIte,
+                      Bool.cond_false]
                     simp only [finish, LeanExe.A64.Isla.Sys.set_apply, String.reduceEq,
                       ↓reduceIte]
                     t32_pc
                     rfl)
                  | t32_side
-                 | cond_cases m cond)
+                 | cond_cases m cc)
 
 set_option maxHeartbeats 20000000 in
 set_option maxRecDepth 8000 in
